@@ -1,0 +1,28 @@
+wave: 7
+focus: [residual-saturation, filesystem-identity, storage-preflight, sqlite-startup, project-identity, quality-ratchets]
+new_contracts:
+  - { id: PAR-190, area: canonical-filesystem-identity-not-lexical-only, status: MISSING, priority: P0 }
+  - { id: PAR-191, area: aliased-ancestor-containment, status: MISSING, priority: P0 }
+  - { id: PAR-192, area: missing-root-fails-closed-for-identity, status: MISSING, priority: P1 }
+  - { id: PAR-193, area: volume-defined-case-sensitivity, status: MISSING, priority: P1 }
+  - { id: PAR-194, area: state-lock-canonicalizes-symlinked-home, status: MISSING, priority: P1 }
+  - { id: PAR-195, area: storage-space-preflight-nearest-existing-ancestor, status: MISSING, priority: P1 }
+  - { id: PAR-196, area: storage-space-permission-error-not-misclassified, status: MISSING, priority: P1 }
+  - { id: PAR-197, area: sqlite-runtime-minimum-version-gate, status: MISSING, priority: P1 }
+  - { id: PAR-198, area: sqlite-persistent-wal-survives-close, status: MISSING, priority: P0 }
+  - { id: PAR-199, area: remote-filesystem-rejected-before-sqlite-mutation, status: MISSING, priority: P0 }
+  - { id: PAR-200, area: cold-start-concurrent-store-open, status: MISSING, priority: P0 }
+  - { id: PAR-201, area: schema-generation-migration-runs-once, status: MISSING, priority: P0 }
+  - { id: PAR-202, area: newer-schema-generation-fails-closed, status: MISSING, priority: P0 }
+  - { id: PAR-203, area: repository-identity-survives-remote-rename, status: MISSING, priority: P1 }
+  - { id: PAR-204, area: linked-worktrees-share-repository-identity, status: MISSING, priority: P1 }
+  - { id: PAR-205, area: repository-identity-survives-directory-move, status: MISSING, priority: P1 }
+  - { id: PAR-206, area: clone-receives-distinct-opaque-repository-id, status: MISSING, priority: P1 }
+  - { id: PAR-207, area: corrupt-repository-binding-fails-closed, status: MISSING, priority: P0 }
+  - { id: PAR-208, area: concurrent-repository-binding-creation-converges, status: MISSING, priority: P1 }
+  - { id: PAR-209, area: dead-code-regression-ratchet, status: MISSING, priority: P2 }
+  - { id: PAR-210, area: quality-ratchet-analyzer-failure-fails-closed, status: MISSING, priority: P2 }
+observations:
+  - "Filesystem identity must use resolved filesystem identity where authority depends on containment; string normalization alone is insufficient."
+  - "SQLite startup safety is a distinct lifecycle surface from normal read/write concurrency."
+  - "Repository identity and worktree identity affect memory, grants and candidate authority and therefore cannot be treated as cosmetic metadata."
