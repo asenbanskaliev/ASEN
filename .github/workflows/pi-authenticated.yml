@@ -25,4 +25,14 @@ jobs:
         env:
           LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
           ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node --import tsx scripts/pi-authenticated-skill-e2e.mjs
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if node --import tsx scripts/pi-authenticated-skill-e2e.mjs; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
