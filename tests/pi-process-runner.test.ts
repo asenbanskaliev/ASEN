@@ -1,5 +1,33 @@
-import assert from "node:assert/strict";import test from "node:test";import {mkdtemp,writeFile,chmod} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
-async function fixture(body:string){const d=await mkdtemp(join(tmpdir(),"asen-pi-")),p=join(d,"pi-fixture");await writeFile(p,`#!/usr/bin/env node\n${body}`);await chmod(p,0o755);return {d,p};}
-test("Pi RPC adapter correlates request id",async t=>{if(process.platform==="win32")return t.skip("POSIX fixture");const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({requestId:f.requestId,message:f.message}));});');const r=await new PiProcessRunner({command:p}).run({id:"req-1",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,true);assert.match(r.output,/req-1/);});
-test("Pi child times out",async t=>{if(process.platform==="win32")return t.skip("POSIX fixture");const {d,p}=await fixture("setTimeout(()=>{},10000);");const r=await new PiProcessRunner({command:p,timeoutMs:50}).run({id:"t",role:"explorer",prompt:"x",repository:d});assert.equal(r.ok,false);assert.match(r.output,/timed out/);});
-test("Pi child output is bounded",async t=>{if(process.platform==="win32")return t.skip("POSIX fixture");const {d,p}=await fixture('console.log("x".repeat(10000));');const r=await new PiProcessRunner({command:p,maxOutputBytes:100}).run({id:"o",role:"explorer",prompt:"x",repository:d});assert.equal(r.ok,false);assert.match(r.output,/exceeded/);});
+import assert from "node:assert/strict";
+import test from "node:test";
+import {mkdtemp,writeFile,rm} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
+
+async function fixture(t:import("node:test").TestContext,body:string){
+ const dir=await mkdtemp(join(tmpdir(),"asen-pi-rpc-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const path=join(dir,"rpc-fixture.mjs");await writeFile(path,body);return {dir,path};
+}
+const request=(dir:string)=>({id:"expected",role:"explorer" as const,prompt:"hello",repository:dir});
+
+test("Pi RPC adapter validates matching response id and command on every OS",async t=>{
+ const {dir,path}=await fixture(t,'let text="";process.stdin.on("data",d=>text+=d);process.stdin.on("end",()=>{const q=JSON.parse(text.trim());console.log(JSON.stringify({id:q.id,type:"response",command:"prompt",success:true,data:{disposition:"handled"}}));});');
+ const result=await new PiProcessRunner({command:process.execPath,rpcArgs:[path]}).run(request(dir));
+ assert.equal(result.ok,true,result.output);
+});
+
+test("Pi RPC adapter rejects another request id even with exit zero",async t=>{
+ const {dir,path}=await fixture(t,'process.stdin.resume();process.stdin.on("end",()=>console.log(JSON.stringify({id:"other",type:"response",command:"prompt",success:true,data:{disposition:"handled"}})));');
+ const result=await new PiProcessRunner({command:process.execPath,rpcArgs:[path]}).run(request(dir));
+ assert.equal(result.ok,false);
+});
+
+test("Pi RPC adapter times out and bounds output on every OS",async t=>{
+ const timeout=await fixture(t,'process.stdin.resume();setTimeout(()=>{},10000);');
+ const timed=await new PiProcessRunner({command:process.execPath,rpcArgs:[timeout.path],timeoutMs:100}).run(request(timeout.dir));
+ assert.equal(timed.ok,false);assert.match(timed.output,/timed out/);
+ const overflow=await fixture(t,'process.stdin.resume();process.stdin.on("end",()=>console.log("x".repeat(10000)));');
+ const bounded=await new PiProcessRunner({command:process.execPath,rpcArgs:[overflow.path],maxOutputBytes:100}).run(request(overflow.dir));
+ assert.equal(bounded.ok,false);assert.match(bounded.output,/exceeded/);
+});
