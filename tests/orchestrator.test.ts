@@ -33,7 +33,7 @@ test("writer orchestration fails closed without candidate",()=>{
 test("orchestration passes exact selected SKILL.md paths to delegated agents",()=>{
  const candidate={id:"c",repository:"r",revision:"sha",createdAt:"now"};
  const p=buildOrchestrationPlan(
-  {taskId:"phase",repository:"r",prompt:"implement",skillPhase:"apply",codeChange:true,writeSurfaces:["src"],candidate},
+  {taskId:"phase",repository:"r",prompt:"implement",skillPhase:"apply",codeChange:true,filesTouched:4,writeSurfaces:["src"],candidate},
   routeOdd({filesTouched:4})
  );
  assert.ok(p.agents.length>0);
