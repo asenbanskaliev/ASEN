@@ -1,0 +1,192 @@
+wave: 1
+baselines:
+  asen: 3c76ed7aa9be124288397ca8baf35ceacfe5889c
+  gentle_shell: fe61793e7cb3e75462ba53c7631e87d78e989354
+  gentle_ai: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+  engram: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
+inventory:
+  gentle_shell: { runtime_files: 138, test_surfaces: 325, contract_surfaces: 119, workflows: 4 }
+  gentle_ai: { runtime_files: 1352, test_surfaces: 959, contract_surfaces: 148, workflows: 7 }
+  engram: { runtime_files: 361, test_surfaces: 213, contract_surfaces: 8, workflows: 9 }
+corrections:
+  - id: F-001
+    capability: PAR-004
+    previous: PARITY
+    corrected: PARTIAL
+    risk: P0
+    reason: "ASEN rejects overlapping grants, but does not yet prove deterministic post-enqueue cancellation semantics, writer queue ownership, leases/locks, or ambiguous mutation outcome handling."
+    upstream:
+      - "engram/internal/mcp/write_queue.go"
+      - "gentle-ai/internal/reviewtransaction/store_lock*.go"
+      - "gentle-shell/lib/agents-runner.ts"
+    asen:
+      - "src/policies/scopes.ts"
+  - id: F-002
+    capability: PAR-003
+    status: PARTIAL
+    risk: P0
+    reason: "ASEN PiProcessRunner only spawns pi --mode rpc and collects process output. Missing strict RPC framing, queue/concurrency limits, inactivity/tool watchdogs, cancellation grace/process-group handling, query correlation, child notification ownership, mutation observation, bounded stderr, resume/session semantics and terminal quarantine."
+    upstream:
+      - "gentle-shell/lib/agents-runner.ts"
+      - "gentle-shell/tests/agents-runner*.test.ts"
+      - "gentle-shell/tests/agents-session-transport*.test.ts"
+    asen:
+      - "src/agents/pi-process-runner.ts"
+  - id: F-003
+    capability: PAR-015
+    status: PARTIAL
+    risk: P0
+    reason: "Candidate ID binding is not equivalent to an immutable Git candidate. ASEN lacks isolated object store, base/complete/initial trees, intended-untracked inventory, policy hash and correction-tree lineage."
+    upstream:
+      - "gentle-shell/lib/review-snapshot.ts"
+      - "gentle-ai/internal/reviewtransaction/snapshot.go"
+    asen:
+      - "src/evidence/store.ts"
+      - "src/review/review.ts"
+  - id: F-004
+    capability: PAR-018
+    status: PARTIAL
+    risk: P0
+    reason: "ASEN review report is ephemeral and severity-based. Missing durable ledger, lifecycle phases, finding disposition, correction scope, validation convergence, invalidation and recovery semantics."
+    upstream:
+      - "gentle-shell/lib/review-transaction.ts"
+      - "gentle-ai/internal/reviewtransaction/transaction.go"
+      - "gentle-ai/internal/reviewtransaction/ledger.go"
+    asen:
+      - "src/review/review.ts"
+  - id: F-005
+    capability: PAR-022
+    previous: PARITY
+    corrected: PARTIAL
+    risk: P0
+    reason: "ASEN SQLite memory persists basic rows, but save is a two-step memory + FTS mutation without an explicit transaction. Engram includes migration locks, generation fences, diagnostics/repair and stronger crash/concurrency invariants."
+    upstream:
+      - "engram/internal/store/generation_fence.go"
+      - "engram/internal/store/migration_lock*.go"
+      - "engram/internal/store/diagnostic*.go"
+    asen:
+      - "src/memory/sqlite-store.ts"
+  - id: F-006
+    capability: PAR-025
+    status: PARTIAL
+    risk: P0
+    reason: "Context recovery primitives do not prove actual Pi compaction/session lifecycle recovery."
+  - id: F-007
+    capability: PAR-031
+    status: PARTIAL
+    risk: P0
+    reason: "ASEN Doctor currently checks four booleans; upstream diagnostics inspect and sometimes safely repair store/filesystem/runtime state with explicit invariants."
+    upstream:
+      - "engram/internal/diagnostic"
+      - "engram/cmd/engram/doctor.go"
+      - "gentle-ai/internal/verify"
+    asen:
+      - "src/lifecycle/doctor.ts"
+  - id: F-008
+    capability: PAR-036
+    status: PARTIAL
+    risk: P0
+    reason: "ASEN Radar classifies changed paths only; it does not fetch/retain audited heads, analyze commits/releases/contracts, persist review state, or produce capability-gap proposals."
+    asen:
+      - "src/radar/radar.ts"
+new_contracts:
+  - id: PAR-051
+    area: deterministic-write-queue-outcome
+    status: MISSING
+    priority: P0
+  - id: PAR-052
+    area: child-agent-stall-watchdog
+    status: MISSING
+    priority: P0
+  - id: PAR-053
+    area: child-agent-cancellation-process-group
+    status: MISSING
+    priority: P0
+  - id: PAR-054
+    area: child-rpc-correlation-and-query-limits
+    status: MISSING
+    priority: P1
+  - id: PAR-055
+    area: child-mutation-observation
+    status: MISSING
+    priority: P0
+  - id: PAR-056
+    area: immutable-git-object-candidate
+    status: MISSING
+    priority: P0
+  - id: PAR-057
+    area: intended-untracked-candidate-inventory
+    status: MISSING
+    priority: P0
+  - id: PAR-058
+    area: correction-tree-lineage
+    status: MISSING
+    priority: P0
+  - id: PAR-059
+    area: review-invalidation-on-candidate-change
+    status: PARTIAL
+    priority: P0
+  - id: PAR-060
+    area: durable-review-ledger
+    status: MISSING
+    priority: P0
+  - id: PAR-061
+    area: review-recovery-after-interruption
+    status: MISSING
+    priority: P0
+  - id: PAR-062
+    area: review-authority-lock
+    status: MISSING
+    priority: P0
+  - id: PAR-063
+    area: review-idempotent-request-journal
+    status: MISSING
+    priority: P1
+  - id: PAR-064
+    area: provider-contract-version-compatibility
+    status: MISSING
+    priority: P1
+  - id: PAR-065
+    area: memory-atomic-row-and-index-write
+    status: MISSING
+    priority: P0
+  - id: PAR-066
+    area: memory-migration-lock
+    status: MISSING
+    priority: P1
+  - id: PAR-067
+    area: memory-generation-fence
+    status: MISSING
+    priority: P1
+  - id: PAR-068
+    area: memory-diagnostic-repair
+    status: MISSING
+    priority: P1
+  - id: PAR-069
+    area: session-identity-repair-plan-fingerprint
+    status: MISSING
+    priority: P1
+  - id: PAR-070
+    area: repair-preapply-backup
+    status: MISSING
+    priority: P1
+  - id: PAR-071
+    area: ambiguous-nonidempotent-write-protection
+    status: MISSING
+    priority: P0
+  - id: PAR-072
+    area: platform-path-and-owner-safety
+    status: PARTIAL
+    priority: P1
+  - id: PAR-073
+    area: review-secure-open-path-safety
+    status: MISSING
+    priority: P0
+  - id: PAR-074
+    area: review-store-corruption-recovery
+    status: MISSING
+    priority: P0
+  - id: PAR-075
+    area: bounded-review-budget
+    status: MISSING
+    priority: P1
