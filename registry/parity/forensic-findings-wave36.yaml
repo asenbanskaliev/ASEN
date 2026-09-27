@@ -1,0 +1,13 @@
+wave: 36
+focus: [reviewtransaction-authority-paths]
+new_contracts:
+  - { id: PAR-441, area: advisory-routing-uses-admitted-evidence-not-tampered-projections, status: MISSING, priority: P0 }
+  - { id: PAR-442, area: candidate-causality-is-bounded-to-genesis-locations-and-unadmitted-causality-is-downgraded, status: MISSING, priority: P0 }
+  - { id: PAR-443, area: forged-recovery-authorization-never-becomes-authority-and-always-retains-sanctioned-exit, status: MISSING, priority: P0 }
+  - { id: PAR-444, area: git-common-directory-mismatch-or-midquery-control-replacement-fails-before-authority-mutation, status: MISSING, priority: P0 }
+  - { id: PAR-445, area: repository-context-handle-is-pathless-tamper-evident-and-confined-to-registered-repository, status: MISSING, priority: P0 }
+  - { id: PAR-446, area: legacy-readonly-review-authority-cannot-reach-mutation-verbs, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 6
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
