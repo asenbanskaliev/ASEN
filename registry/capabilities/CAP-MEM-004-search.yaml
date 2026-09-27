@@ -1,0 +1,14 @@
+id: CAP-MEM-004
+name: Local persistent memory search
+priority: P0
+status: specified
+owner: ASEN-Memory
+contract:
+  given: project memory has been persisted
+  when: relevant context is requested
+  then:
+    - retrieval is project-scoped by default
+    - local search remains available without cloud service
+    - returned items expose stable identity and provenance
+tests: [unit, integration]
+evidence_required: true

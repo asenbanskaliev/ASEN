@@ -1,0 +1,12 @@
+id: upstream-engram
+repository: Gentleman-Programming/engram
+role: persistent-memory-reference
+audited:
+  branch: main
+  commit: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
+  date: 2026-09-27
+stable_reference:
+  version: 2.2.1
+radar:
+  enabled: true
+runtime_dependency: optional-adapter-only

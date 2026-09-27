@@ -1,0 +1,31 @@
+name: Phase 0 Architecture
+
+on:
+  pull_request:
+  push:
+    branches:
+      - architecture/phase-0
+
+permissions:
+  contents: read
+
+jobs:
+  architecture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject forbidden Gentle runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RIE --exclude-dir=.git --exclude='*.md' --exclude='*.yaml' --exclude='*.yml' '(from|require\(|import).*gentle-(pi|ai|engram)' src 2>/dev/null; then
+            echo "Forbidden Gentle runtime dependency detected."
+            exit 1
+          fi
+          echo "Architecture dependency gate passed."
+      - name: Require frozen upstream baselines
+        shell: bash
+        run: |
+          test -f registry/upstream/gentle-shell.yaml
+          test -f registry/upstream/gentle-ai.yaml
+          test -f registry/upstream/engram.yaml

@@ -1,0 +1,15 @@
+id: CAP-REV-001
+name: Independent candidate review
+priority: P0
+status: specified
+owner: ASEN-Review
+contract:
+  given: risk policy requires independent review
+  when: a candidate enters review
+  then:
+    - reviewer receives immutable candidate identity
+    - findings are structured
+    - reviewer does not silently mutate the reviewed candidate
+    - any correction produces a candidate requiring fresh verification
+tests: [contract, integration, e2e]
+evidence_required: true

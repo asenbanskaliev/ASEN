@@ -1,0 +1,14 @@
+id: CAP-TSK-001
+name: Evidence-aware task state
+priority: P0
+status: specified
+owner: ASEN-Tasks
+contract:
+  given: an engineering task is active
+  when: status changes
+  then:
+    - active ownership is explicit
+    - dependencies and blockers are representable
+    - completion cannot be asserted when mandatory verification is failing
+tests: [unit, integration]
+evidence_required: true

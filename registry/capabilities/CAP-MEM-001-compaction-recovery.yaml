@@ -1,0 +1,20 @@
+id: CAP-MEM-001
+name: Compaction recovery
+priority: P0
+status: specified
+owner: ASEN-Memory
+references:
+  engram:
+    commit: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
+contract:
+  given: Pi compacts an active project session
+  when: ASEN receives the relevant lifecycle event
+  then:
+    - useful engineering context is persisted
+    - relevant project context can be recovered
+    - project and session identity boundaries are preserved
+tests:
+  - unit
+  - integration
+  - pi-e2e
+evidence_required: true

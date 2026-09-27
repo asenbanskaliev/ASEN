@@ -1,0 +1,16 @@
+id: CAP-TST-001
+name: Strict TDD evidence
+priority: P0
+status: specified
+owner: ASEN-Test
+contract:
+  given: strict TDD is required
+  when: implementation is performed
+  then:
+    - a relevant test is executed and fails before the production fix
+    - the production change is applied
+    - the relevant test passes
+    - final verification remains green after refactor
+    - executed evidence is linked to the candidate
+tests: [contract, integration, e2e]
+evidence_required: true

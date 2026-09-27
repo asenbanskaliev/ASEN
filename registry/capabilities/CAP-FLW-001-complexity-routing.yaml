@@ -1,0 +1,14 @@
+id: CAP-FLW-001
+name: Complexity and workflow routing
+priority: P0
+status: specified
+owner: ASEN-Flow
+contract:
+  given: a new engineering request
+  when: scope and risk are assessed
+  then:
+    - an execution mode is selected deterministically
+    - required gates are declared before mutation
+    - uncertainty escalates rather than silently weakening gates
+tests: [unit, contract]
+evidence_required: true
