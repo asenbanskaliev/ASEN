@@ -39,7 +39,7 @@ export async function saveCheckpoint(path:string,checkpoint:SessionCheckpoint):P
  }
 }
 
-export async function loadCheckpoint(path:string,identity:ResumeIdentity):Promise<{task:TaskState;candidate:Candidate}>{
+export async function loadCheckpoint(path:string,identity:ResumeIdentity):Promise<{task:TaskState;candidate:Candidate;skillContext?:IssuedSkillContext;skillPaths?:string[]}>{
  const raw=JSON.parse(await readFile(path,"utf8")) as SessionCheckpoint;
  if(!raw||typeof raw!=="object"||!raw.task||!raw.candidate)throw new Error("Checkpoint missing candidate");
  if(raw.sessionId!==identity.sessionId)throw new Error("Checkpoint session mismatch");
