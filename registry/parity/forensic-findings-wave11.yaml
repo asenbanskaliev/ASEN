@@ -1,0 +1,15 @@
+wave: 11
+focus: [repeat-p0-pass-1]
+new_contracts:
+  - { id: PAR-253, area: rejected-review-artifact-does-not-consume-slot-or-move-authority, status: MISSING, priority: P0 }
+  - { id: PAR-254, area: partial-review-abandonment-binds-exact-discarded-work, status: MISSING, priority: P0 }
+  - { id: PAR-255, area: review-repository-aliases-collapse-to-one-authority-root, status: MISSING, priority: P0 }
+  - { id: PAR-256, area: unrelated-repository-never-reuses-authority-storage-key, status: MISSING, priority: P0 }
+  - { id: PAR-257, area: failed-uninstall-state-matches-actual-disk-per-component, status: N/A, priority: P2, rationale: "ASEN does not manage multiple external agent installations." }
+  - { id: PAR-258, area: standing-review-permission-lifetime-bound-to-live-pi-session, status: MISSING, priority: P0 }
+  - { id: PAR-259, area: standing-review-permission-disposed-on-session-replacement, status: MISSING, priority: P0 }
+saturation_result:
+  pass: 1
+  p0_new: 6
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
