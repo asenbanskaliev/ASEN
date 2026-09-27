@@ -58,3 +58,26 @@ test("orchestrated writer skill context cannot be downgraded after planning",()=
  assert.throws(()=>{(worker.skillContext as {codeChange?:boolean}).codeChange=false;},TypeError);
  assert.equal(worker.skillContext.codeChange,true);
 });
+
+
+test("writer cannot reuse another task's issued skill context",async()=>{
+ const first=buildOrchestrationPlan(
+  {taskId:"first",repository:"repo",prompt:"change code",codeChange:true,writeSurfaces:["src"],candidate},
+  routeOdd({filesTouched:1})
+ );
+ const second=buildOrchestrationPlan(
+  {taskId:"second",repository:"repo",prompt:"change code",codeChange:true,writeSurfaces:["src"],candidate},
+  routeOdd({filesTouched:1})
+ );
+ const firstWorker=first.agents.find(agent=>agent.role==="worker");
+ const secondWorker=second.agents.find(agent=>agent.role==="worker");
+ assert.ok(firstWorker?.skillContext&&secondWorker);
+ const evidence=new EvidenceStore();
+ for(const [id,kind] of [["unit-cross","work-unit"],["scope-cross","scope"],["rollback-cross","rollback"]] as const)
+  evidence.add(candidate,{id,kind,status:"pass",summary:"ok",createdAt:"now"});
+ const runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:"bad"})};
+ await assert.rejects(
+  ()=>new Dispatcher(runner,evidence).dispatch({...secondWorker,skillContext:firstWorker.skillContext}),
+  /does not match task\/candidate/
+ );
+});
