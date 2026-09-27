@@ -49,7 +49,14 @@ export class PiProcessRunner implements AgentRunner{
 
  run(request:AgentRequest):Promise<AgentResult>{
   const command=this.options.command??"pi";
-  const args=[...(this.options.rpcArgs??["--mode","rpc"]),...(this.options.extraArgs??[])];
+  let message:string;
+  try{message=promptWithSkills(request);}
+  catch(error){return Promise.resolve({id:request.id,ok:false,output:`pi skill path error: ${String(error)}`});}
+  const extra=this.options.extraArgs??[];
+  if(request.skillContext&&[...(this.options.rpcArgs??[]),...extra].some(arg=>["--skill","--no-skills","-ns","--extension","-e"].includes(arg)))
+   return Promise.resolve({id:request.id,ok:false,output:"pi skill arguments must be issued by ASEN"});
+  const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,
+   ...(request.skillContext?["--no-extensions","--no-skills",...(request.skillPaths??[]).flatMap(path=>["--skill",path])]:[])];
   const timeoutMs=this.options.timeoutMs??120_000;
   const max=this.options.maxOutputBytes??1_000_000;
 
@@ -106,12 +113,6 @@ export class PiProcessRunner implements AgentRunner{
    else this.options.signal?.addEventListener("abort",onAbort,{once:true});
 
    child.stdin.on("error",error=>finish({id:request.id,ok:false,output:`pi stdin error: ${String(error)}`}));
-   let message:string;
-   try{message=promptWithSkills(request);}
-   catch(error){
-    stop();
-    return finish({id:request.id,ok:false,output:`pi skill path error: ${String(error)}`});
-   }
    child.stdin.end(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
   });
  }
