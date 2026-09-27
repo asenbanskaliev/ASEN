@@ -1,0 +1,20 @@
+wave: 10
+focus: [p0-residual-authority-runtime-backup-release]
+new_contracts:
+  - { id: PAR-240, area: runtime-binary-package-local-integrity-no-path-fallback, status: MISSING, priority: P0 }
+  - { id: PAR-241, area: runtime-binary-manifest-tamper-rejected, status: MISSING, priority: P0 }
+  - { id: PAR-242, area: runtime-binary-explicit-dev-override-only, status: MISSING, priority: P0 }
+  - { id: PAR-243, area: restore-reproduces-recorded-content-and-mode, status: MISSING, priority: P1 }
+  - { id: PAR-244, area: restore-removes-explicitly-created-files-only, status: MISSING, priority: P1 }
+  - { id: PAR-245, area: restore-missing-snapshot-fails-closed, status: MISSING, priority: P0 }
+  - { id: PAR-246, area: backup-manifest-backward-compatible, status: MISSING, priority: P1 }
+  - { id: PAR-247, area: release-signing-secret-isolated-and-proven-removed, status: MISSING, priority: P0 }
+  - { id: PAR-248, area: release-publication-requires-bound-source-and-protected-environment, status: MISSING, priority: P0 }
+  - { id: PAR-249, area: review-authority-mutation-owned-by-single-authority, status: MISSING, priority: P0 }
+  - { id: PAR-250, area: recovery-command-exact-predecessor-successor-binding, status: MISSING, priority: P0 }
+  - { id: PAR-251, area: migration-idempotence-preserves-search-index, status: MISSING, priority: P1 }
+  - { id: PAR-252, area: compaction-archive-unknown-outcome-never-blindly-retried, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 9
+  conclusion: "NOT SATURATED"
+  reason: "Residual authority/runtime/release pass exposed distinct P0 trust contracts."
