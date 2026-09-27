@@ -1,0 +1,15 @@
+wave: 34
+focus: [unopened-p0-test-files-pass]
+new_contracts:
+  - { id: PAR-425, area: artifact-admission-requires-complete-bounded-in-scope-inspection-and-ignores-free-text-claims, status: MISSING, priority: P0 }
+  - { id: PAR-426, area: artifact-admission-never-downgrades-causal-unknown-on-degraded-evidence, status: MISSING, priority: P0 }
+  - { id: PAR-427, area: promoted-candidate-files-remain-readonly, status: MISSING, priority: P0 }
+  - { id: PAR-428, area: terminal-consumption-write-failure-does-not-burn-authority, status: MISSING, priority: P0 }
+  - { id: PAR-429, area: git-process-control-failure-is-typed-and-process-tree-is-released, status: MISSING, priority: P0 }
+  - { id: PAR-430, area: repository-identity-lease-rejects-git-directory-control-or-common-content-replacement, status: MISSING, priority: P0 }
+  - { id: PAR-431, area: repository-identity-lease-validation-is-readonly-and-concurrency-safe, status: MISSING, priority: P0 }
+  - { id: PAR-432, area: verification-resnapshot-requires-equality-of-every-frozen-snapshot-field, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 8
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
