@@ -1,0 +1,13 @@
+audit: normalized-six-pass-round
+round: 1
+canonical_registry_through: PAR-423
+passes:
+  - pass: 1
+    focus: durability-authority-generation
+    p0_new: 0
+    evidence:
+      - internal/reviewtransaction/store_test.go
+      - internal/reviewtransaction/rar_plan_authority_test.go
+      - gentle-shell/tests/review-object-store.test.ts
+      - engram/internal/store/generation_fence_test.go
+    note: "All observed P0 invariants map to canonical contracts through PAR-423."
