@@ -37,3 +37,13 @@ export function verifyCandidate(candidate: Candidate, risk: Risk, evidence: Evid
   if (failed) return { ok: false, reason: "Candidate has failing evidence" };
   return { ok: true, reason: "Verification gates satisfied" };
 }
+
+
+export function authorizeRelease(candidate:Candidate,risk:Risk,evidence:EvidenceStore,skills:readonly SkillId[]):VerificationResult {
+ if(!skills.length) return {ok:false,reason:"Release requires selected skills"};
+ const verification=verifyCandidate(candidate,risk,evidence,skills);
+ if(!verification.ok) return verification;
+ const releaseGate=verifySkillEvidence(candidate,skills,evidence,"release");
+ if(!releaseGate.ok) return releaseGate;
+ return {ok:true,reason:"Release gates satisfied"};
+}
