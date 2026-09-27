@@ -1,0 +1,17 @@
+wave: 9
+focus: [independent-p0-saturation]
+new_contracts:
+  - { id: PAR-231, area: required-native-runtime-tests-fail-not-skip-in-ci, status: MISSING, priority: P0 }
+  - { id: PAR-232, area: owned-package-entry-rejects-internal-symlink, status: MISSING, priority: P0 }
+  - { id: PAR-233, area: supported-platform-gate-before-mutation, status: PARTIAL, priority: P1 }
+  - { id: PAR-234, area: pi-runtime-dependency-preflight-actionable-failure, status: MISSING, priority: P1 }
+  - { id: PAR-235, area: memory-instance-identity-concurrent-recovery-converges, status: MISSING, priority: P1 }
+  - { id: PAR-236, area: unix-socket-directory-trust-policy, status: N/A, priority: P2, rationale: "ASEN has no standalone Unix-socket memory service in current architecture." }
+  - { id: PAR-237, area: unix-socket-active-listener-never-displaced, status: N/A, priority: P2, rationale: "Only applicable if ASEN introduces a Unix-socket service." }
+  - { id: PAR-238, area: unix-socket-restrictive-permissions, status: N/A, priority: P2, rationale: "Only applicable if ASEN introduces a Unix-socket service." }
+  - { id: PAR-239, area: unix-socket-stale-only-replacement, status: N/A, priority: P2, rationale: "Only applicable if ASEN introduces a Unix-socket service." }
+saturation_result:
+  p0_new: 2
+  conclusion: "NOT SATURATED"
+  reason: "Independent residual sample still discovered two previously unclassified P0 invariants."
+next_pass_rule: "Run another independent residual P0 pass. Saturation requires zero new P0 contracts in a complete pass, followed by normalization."
