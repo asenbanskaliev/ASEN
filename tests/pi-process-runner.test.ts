@@ -1,22 +1,5 @@
-import assert from "node:assert/strict";
-import test from "node:test";
-import { mkdtemp, writeFile, chmod } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { PiProcessRunner } from "../src/agents/pi-process-runner.js";
-
-test("Pi RPC adapter sends a prompt frame and consumes process output", async(t)=>{
-  if (process.platform === "win32") return t.skip("POSIX fixture; Windows real smoke runs separately");
-  const dir=await mkdtemp(join(tmpdir(),"asen-pi-"));
-  const fake=join(dir,"pi-fixture");
-  await writeFile(fake,`#!/usr/bin/env node
-let data="";
-process.stdin.on("data",d=>data+=d);
-process.stdin.on("end",()=>{const frame=JSON.parse(data.trim()); console.log(JSON.stringify({type:"response",success:frame.type==="prompt" && frame.message==="hello"}));});
-`);
-  await chmod(fake,0o755);
-  const runner=new PiProcessRunner({command:fake});
-  const result=await runner.run({id:"x",role:"explorer",prompt:"hello",repository:dir});
-  assert.equal(result.ok,true);
-  assert.match(result.output,/"success":true/);
-});
+import assert from "node:assert/strict";import test from "node:test";import {mkdtemp,writeFile,chmod} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
+async function fixture(body:string){const d=await mkdtemp(join(tmpdir(),"asen-pi-")),p=join(d,"pi-fixture");await writeFile(p,`#!/usr/bin/env node\n${body}`);await chmod(p,0o755);return {d,p};}
+test("Pi RPC adapter correlates request id",async t=>{if(process.platform==="win32")return t.skip("POSIX fixture");const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({requestId:f.requestId,message:f.message}));});');const r=await new PiProcessRunner({command:p}).run({id:"req-1",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,true);assert.match(r.output,/req-1/);});
+test("Pi child times out",async t=>{if(process.platform==="win32")return t.skip("POSIX fixture");const {d,p}=await fixture("setTimeout(()=>{},10000);");const r=await new PiProcessRunner({command:p,timeoutMs:50}).run({id:"t",role:"explorer",prompt:"x",repository:d});assert.equal(r.ok,false);assert.match(r.output,/timed out/);});
+test("Pi child output is bounded",async t=>{if(process.platform==="win32")return t.skip("POSIX fixture");const {d,p}=await fixture('console.log("x".repeat(10000));');const r=await new PiProcessRunner({command:p,maxOutputBytes:100}).run({id:"o",role:"explorer",prompt:"x",repository:d});assert.equal(r.ok,false);assert.match(r.output,/exceeded/);});
