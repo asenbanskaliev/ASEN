@@ -1,0 +1,16 @@
+wave: 12
+focus: [repeat-p0-pass-2]
+new_contracts:
+  - { id: PAR-260, area: reviewer-artifact-json-extraction-single-bounded-object, status: MISSING, priority: P0 }
+  - { id: PAR-261, area: reviewer-findings-and-evidence-must-be-frozen-scope, status: MISSING, priority: P0 }
+  - { id: PAR-262, area: publication-boundary-ref-rejects-command-and-argument-injection, status: MISSING, priority: P0 }
+  - { id: PAR-263, area: risk-inspection-resource-cap-escalates-fail-closed, status: MISSING, priority: P0 }
+  - { id: PAR-264, area: risk-process-boundary-detected-from-content-not-only-path, status: MISSING, priority: P0 }
+  - { id: PAR-265, area: permission-file-refusal-preserves-original-bytes-and-mode, status: MISSING, priority: P0 }
+  - { id: PAR-266, area: symlinked-permission-target-refused-before-mutation, status: MISSING, priority: P0 }
+  - { id: PAR-267, area: unknown-native-risk-reason-never-fabricates-explanation, status: MISSING, priority: P1 }
+saturation_result:
+  pass: 2
+  p0_new: 7
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
