@@ -1,5 +1,7 @@
 import {spawn,type ChildProcess} from "node:child_process";
 import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
+import {isIssuedSkillContext} from "../skills/context.js";
+import {selectSkills} from "../skills/registry.js";
 
 export interface PiProcessOptions{
  command?:string;
@@ -23,6 +25,11 @@ function terminateTree(child:ChildProcess):void{
 
 function promptWithSkills(request:AgentRequest):string{
  const paths=request.skillPaths??[];
+ if(paths.length||request.skillContext){
+  if(!request.skillContext||!isIssuedSkillContext(request.skillContext)||request.skillContext.repository!==request.repository||request.skillContext.taskId!==request.id) throw new Error("Pi skill paths require matching ASEN-issued context");
+  const selected=selectSkills(request.skillContext).map(skill=>skill.path);
+  if(selected.length!==paths.length||selected.some((path,index)=>path!==paths[index])) throw new Error("Pi skill paths do not match issued context");
+ }
  if(!paths.length)return request.prompt;
  if(paths.some(path=>!/^skills\/asen-[a-z-]+\/SKILL\.md$/.test(path))){
   throw new Error("Invalid Pi-native skill path");
