@@ -1,18 +1,27 @@
 ---
 name: asen-safe-change
-description: Apply ASEN's deterministic engineering gates to a code change.
+description: "Trigger: code change, source mutation, safe implementation. Require bounded scope, exact authorization and rollback before privileged mutation."
 ---
-
-# ASEN Safe Change
-
-Use for non-trivial engineering mutations.
-
-1. Identify repository, scope, risk and allowed edit surfaces.
-2. Record the plan before mutation when required by Flow.
-3. Prefer tests that demonstrate the defect/requirement before implementation.
-4. Keep one writer per surface unless work is explicitly isolated.
-5. Bind executed test/review evidence to the exact candidate.
-6. High or unknown risk requires independent review.
-7. A changed candidate invalidates prior verification.
-8. Never treat narrative confidence as verification evidence.
-9. Do not perform destructive Git operations or publication without explicit authority.
+## Activation Contract
+Use for every source/code mutation.
+## Hard Rules
+- Mutation requires exact task, repository, candidate and authorized surfaces.
+- Scope and rollback evidence exist before mutation.
+- Only the authorized writer may mutate overlapping surfaces.
+- Scope expansion stops mutation and returns to planning.
+## Decision Gates
+| Situation | Action |
+| --- | --- |
+| Candidate/context mismatch | Refuse mutation |
+| Scope or rollback evidence missing | Block mutation |
+| Overlapping writer exists | Block or isolate surfaces |
+| Change creates new candidate | Rebind subsequent evidence |
+## Execution Steps
+1. Validate issued context and candidate.
+2. Validate bounded write surfaces, scope and rollback.
+3. Perform only authorized mutation.
+4. Freeze resulting candidate and invalidate stale candidate-bound evidence.
+## Output Contract
+Return authorization checked, surfaces changed, rollback, resulting candidate and invalidated evidence.
+## References
+None.
