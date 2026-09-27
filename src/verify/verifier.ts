@@ -39,7 +39,9 @@ export function verifyCandidate(candidate: Candidate, risk: Risk, evidence: Evid
 }
 
 
-export function authorizeRelease(candidate:Candidate,risk:Risk,evidence:EvidenceStore,skills:readonly SkillId[]):VerificationResult {
+export function authorizeRelease(candidate:Candidate,risk:Risk,evidence:EvidenceStore,context:SkillSelectionContext):VerificationResult {
+ if(!Object.isFrozen(context)) return {ok:false,reason:"Release requires sealed skill selection context"};
+ const skills=selectSkills(context).map(skill=>skill.id);
  if(!skills.length) return {ok:false,reason:"Release requires selected skills"};
  const verification=verifyCandidate(candidate,risk,evidence,skills);
  if(!verification.ok) return verification;
