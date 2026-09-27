@@ -31,7 +31,7 @@ export async function loadEvidence(path:string,candidate:Candidate,key:Buffer):P
  const store=new EvidenceStore();
  for(const item of v.items){
   if(!item||item.candidateRepository!==candidate.repository||item.candidateId!==candidate.id||item.candidateRevision!==candidate.revision||typeof item.id!=="string"||!item.id||!kinds.has(item.kind)||!statuses.has(item.status)||typeof item.summary!=="string"||typeof item.createdAt!=="string")throw new Error("Evidence recovery item mismatch");
-  store.restoreSigned(candidate,{id:item.id,kind:item.kind,status:item.status,summary:item.summary,createdAt:item.createdAt,execution:item.execution});
+  store.restoreSigned(candidate,{id:item.id,kind:item.kind,status:item.status,summary:item.summary,createdAt:item.createdAt,...(item.execution?{execution:item.execution}:{})});
  }
  return store;
 }
