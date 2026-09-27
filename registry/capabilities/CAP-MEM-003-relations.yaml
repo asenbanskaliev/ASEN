@@ -1,0 +1,14 @@
+id: CAP-MEM-003
+name: Typed memory relations
+priority: P1
+status: specified
+owner: ASEN-Memory
+contract:
+  given: engineering knowledge items exist
+  when: a semantic relationship is persisted
+  then:
+    - relation type is explicit
+    - source and target identity are stable
+    - superseded decisions remain traceable
+tests: [unit, integration]
+evidence_required: true
