@@ -42,5 +42,9 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "exports": {
+    "./extensions": "./extensions/index.ts",
+    "./skills/*": "./skills/*/SKILL.md"
   }
 }
