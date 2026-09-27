@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Dispatcher, type AgentRunner } from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
+import {issueSkillContext} from "../src/skills/context.js";
 
 const candidate={id:"candidate",repository:"r",revision:"sha",createdAt:"now"};
 function authorized(){
@@ -11,7 +12,7 @@ function authorized(){
  evidence.add(candidate,{id:"rollback",kind:"rollback",status:"pass",summary:"ready",createdAt:"now"});
  return evidence;
 }
-const sealedCodeChange=()=>Object.freeze({codeChange:true});
+const sealedCodeChange=()=>issueSkillContext({codeChange:true});
 const writeRequest={id:"a",role:"worker" as const,prompt:"x",repository:"r",writeSurfaces:["src/a"],candidate,skillContext:sealedCodeChange()};
 
 test("dispatcher releases writer grant after completion", async()=>{
@@ -71,6 +72,6 @@ test("dispatcher rejects mutable skill context even when its values look valid",
  const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
  await assert.rejects(
   ()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,skillContext:{codeChange:true}}),
-  /sealed skill selection context/
+  /ASEN-issued skill selection context/
  );
 });
