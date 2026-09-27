@@ -1,0 +1,15 @@
+id: CAP-SKL-001
+name: Pi-native Skills composition
+priority: P0
+status: specified
+owner: ASEN-Skills
+pi_native: true
+contract:
+  given: a task matches a required engineering skill
+  when: ASEN selects the skill
+  then:
+    - Pi native skill mechanisms are used
+    - ASEN does not introduce an incompatible skill document format
+    - policy may require a skill before mutation
+tests: [integration, pi-e2e]
+evidence_required: true
