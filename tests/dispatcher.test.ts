@@ -99,3 +99,21 @@ test("dispatcher rejects forged skill paths for an issued writer context",async(
   await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),skillPaths}),/skill paths do not match issued context/);
  }
 });
+
+test("dispatcher rejects forged skill paths for read-only delegated agents",async()=>{
+ const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
+ const d=new Dispatcher(runner,new EvidenceStore());
+ const context=issueSkillContext("read","r",undefined,{phase:"explore"});
+ await assert.rejects(
+  ()=>d.dispatch({id:"read:explore",role:"explorer",prompt:"x",repository:"r",skillContext:context,skillPaths:["skills/asen-explore/SKILL.md"]}),
+  /Delegated skill paths do not match issued context/
+ );
+});
+
+test("dispatcher rejects skill paths without an issued context",async()=>{
+ const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
+ await assert.rejects(
+  ()=>new Dispatcher(runner,new EvidenceStore()).dispatch({id:"read",role:"reviewer",prompt:"x",repository:"r",skillPaths:["skills/asen-review/SKILL.md"]}),
+  /ASEN-issued skill selection context/
+ );
+});
