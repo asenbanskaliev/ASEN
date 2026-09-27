@@ -1,10 +1,11 @@
 import type { AgentRequest } from "../agents/dispatcher.js";
 import type { OddDecision } from "../flow/odd.js";
+import type {Candidate} from "../core/types.js";
 import {selectSkills,type SkillId} from "../skills/registry.js";
 
 export interface OrchestrationInput {
   taskId:string; repository:string; prompt:string; writeSurfaces?:string[];
-  codeChange?:boolean; behaviorChange?:boolean; filesTouched?:number;
+  codeChange?:boolean; behaviorChange?:boolean; filesTouched?:number; candidate?:Candidate;
 }
 export interface OrchestrationPlan { decision:OddDecision; agents:AgentRequest[]; skills:SkillId[]; }
 
@@ -28,6 +29,9 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddDec
   const worker:AgentRequest={id:`${input.taskId}:worker`,role:"worker",...base};
   if(input.writeSurfaces?.length){
     worker.writeSurfaces=[...input.writeSurfaces];
+    if(!input.candidate) throw new Error("Writer orchestration requires an exact candidate");
+    if(input.candidate.repository!==input.repository) throw new Error("Orchestration candidate repository mismatch");
+    worker.candidate=input.candidate;
     worker.skillContext=skillContext;
   }
   agents.push(worker);
