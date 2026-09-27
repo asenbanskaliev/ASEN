@@ -20,7 +20,7 @@ const piMain=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"
 const cli=join(dirname(piMain),"bundle","cli.js");
 const marker=randomUUID();
 const args=[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--provider","opencode","--model","mimo-v2.6-flash-free",...paths.flatMap(path=>["--skill",path])];
-const child=spawn(process.execPath,args,{cwd:repo,env:{...process.env,PI_OFFLINE:"1"},stdio:["pipe","pipe","pipe"]});
+const child=spawn(process.execPath,args,{cwd:repo,env:process.env,stdio:["pipe","pipe","pipe"]});
 const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
 const observed={loaded:false,finished:false,read:[],text:[],error:null};
 let buffer="",stderr="",bytes=0;
@@ -42,7 +42,10 @@ const handle=record=>{
   observed.read.push(realpathSync(resolve(repo,path)));
  }
  if(record.type==="message_end"&&record.message?.role==="assistant"){
-  if(record.message.stopReason==="error")throw new Error("Model turn reported an error");
+  if(record.message.stopReason==="error"){
+   const detail=String(record.message.errorMessage??"No provider detail supplied").replaceAll(process.env.OPENCODE_API_KEY,"[redacted]").slice(0,700);
+   throw new Error(`Model turn reported an error: ${detail}`);
+  }
   for(const item of record.message.content??[])if(item.type==="text")observed.text.push(item.text);
  }
  if(record.type==="agent_end"){
