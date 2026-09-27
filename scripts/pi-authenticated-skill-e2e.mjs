@@ -10,7 +10,7 @@ import {selectSkills} from "../src/skills/registry.js";
 const repo=resolve(".");
 const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repo,encoding:"utf8"}).trim();
 if(process.env.ASEN_EXPECTED_SHA&&revision!==process.env.ASEN_EXPECTED_SHA)throw new Error("Authenticated Pi candidate does not match the PR HEAD");
-if(!process.env.OPENROUTER_API_KEY)throw new Error("OPENROUTER_API_KEY repository secret is unavailable");
+if(!process.env.LLM7_API_KEY)throw new Error("LLM7_API_KEY repository secret is unavailable");
 const candidate={id:"pr30-authenticated-pi",repository:repo,revision,createdAt:new Date().toISOString()};
 const context=issueSkillContext("pr30-authenticated-pi:explorer",repo,candidate,{phase:"explore",risk:"low"});
 const selected=selectSkills(context);
@@ -19,7 +19,7 @@ assert.deepEqual(paths,["skills/asen-phase-protocol/SKILL.md","skills/asen-explo
 const piMain=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
 const cli=join(dirname(piMain),"bundle","cli.js");
 const marker=randomUUID();
-const args=[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--tools","read","--provider","openrouter","--model","cohere/north-mini-code:free",...paths.flatMap(path=>["--skill",path])];
+const args=[cli,"--mode","rpc","--no-session","--no-skills","--tools","read","--provider","llm7","--model","default",...paths.flatMap(path=>["--skill",path])];
 const child=spawn(process.execPath,args,{cwd:repo,env:process.env,stdio:["pipe","pipe","pipe"]});
 const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
 const observed={loaded:false,finished:false,read:[],text:[],error:null};
@@ -43,7 +43,7 @@ const handle=record=>{
  }
  if(record.type==="message_end"&&record.message?.role==="assistant"){
   if(record.message.stopReason==="error"){
-   const detail=String(record.message.errorMessage??"No provider detail supplied").replaceAll(process.env.OPENROUTER_API_KEY,"[redacted]").slice(0,700);
+   const detail=String(record.message.errorMessage??"No provider detail supplied").replaceAll(process.env.LLM7_API_KEY,"[redacted]").slice(0,700);
    throw new Error(`Model turn reported an error: ${detail}`);
   }
   for(const item of record.message.content??[])if(item.type==="text")observed.text.push(item.text);
@@ -65,9 +65,9 @@ child.stderr.on("data",chunk=>{stderr=(stderr+String(chunk)).slice(-3000);});
 const exitCode=await new Promise((resolve,reject)=>{child.on("error",reject);child.on("close",resolve);});
 clearTimeout(timeout);
 if(observed.error)throw observed.error;
-if(exitCode!==0)throw new Error(`Pi exited with code ${exitCode}: ${stderr.replaceAll(process.env.OPENROUTER_API_KEY,"[redacted]")}`);
+if(exitCode!==0)throw new Error(`Pi exited with code ${exitCode}: ${stderr.replaceAll(process.env.LLM7_API_KEY,"[redacted]")}`);
 assert.equal(observed.loaded,true,"Pi never confirmed native Skill loading");
 assert.equal(observed.finished,true,"Authenticated model turn did not complete");
 assert.deepEqual(observed.read,expected,"Model did not read the exact selected Skills");
 assert.ok(observed.text.join("\n").includes(`ASEN_AUTH_PROBE:${marker}:READ_ONLY`),"Model did not return the audited marker");
-console.log(JSON.stringify({candidate:revision,provider:"openrouter",model:"cohere/north-mini-code:free",skills:paths,readCount:observed.read.length,result:"PASS"}));
+console.log(JSON.stringify({candidate:revision,provider:"llm7",model:"default",skills:paths,readCount:observed.read.length,result:"PASS"}));

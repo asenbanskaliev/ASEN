@@ -17,8 +17,10 @@ jobs:
         with:
           node-version: 22
       - run: npm install
+      - name: Install pi-free provider
+        run: pi install npm:pi-free
       - name: Execute read-only Pi turn with exact ASEN Skills
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
           ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
         run: node --import tsx scripts/pi-authenticated-skill-e2e.mjs
