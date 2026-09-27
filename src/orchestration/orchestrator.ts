@@ -11,7 +11,7 @@ export interface OrchestrationInput {
 export interface OrchestrationPlan { decision:OddDecision; agents:AgentRequest[]; skills:SkillId[]; }
 
 export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddDecision):OrchestrationPlan {
-  const base={repository:input.repository,prompt:input.prompt};
+  const base={repository:input.repository,prompt:input.prompt,...(input.candidate?{candidate:input.candidate}:{})};
   const common:SkillSelectionContext={
     risk:decision.risk,
     ...(input.codeChange===undefined?{}:{codeChange:input.codeChange}),
