@@ -1,11 +1,11 @@
 import { validateWriteGrant, type WriteGrant } from "../policies/scopes.js";
 import type {Candidate} from "../core/types.js";
 import {EvidenceStore} from "../evidence/store.js";
-import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
-import {isIssuedSkillContext,matchesIssuedSkillContext} from "../skills/context.js";
+import {selectSkills} from "../skills/registry.js";
+import {isIssuedSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {verifySkillEvidence} from "../verify/verifier.js";
 
-export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:SkillSelectionContext; skillPaths?:string[]; }
+export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; }
 export interface AgentResult { id:string; ok:boolean; output:string; }
 export interface AgentRunner { run(request:AgentRequest):Promise<AgentResult>; }
 
