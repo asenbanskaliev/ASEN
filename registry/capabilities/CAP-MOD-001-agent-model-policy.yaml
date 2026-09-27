@@ -1,0 +1,15 @@
+id: CAP-MOD-001
+name: Agent model policy
+priority: P1
+status: specified
+owner: ASEN-Models
+pi_native: true
+contract:
+  given: a delegated role requires model selection
+  when: ASEN applies routing policy
+  then:
+    - Pi remains provider/model execution authority
+    - role policy can request an allowed model/effort profile
+    - unavailable choices degrade explicitly rather than silently changing authority
+tests: [unit, pi-integration]
+evidence_required: true
