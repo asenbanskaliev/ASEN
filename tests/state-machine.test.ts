@@ -8,12 +8,14 @@ const candidate={id:"c",repository:"r",revision:"sha",createdAt:"now"};
 function implementationAuthorization(){
  const evidence=new EvidenceStore();
  evidence.add(candidate,{id:"unit",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
- return authorizeImplementation(candidate,["asen-work-unit"],evidence);
+ return authorizeImplementation(candidate,Object.freeze({filesTouched:2}),evidence);
 }
 function verifiedAuthorization(){
  const evidence=new EvidenceStore();
  evidence.add(candidate,{id:"test",kind:"test",status:"pass",summary:"green",createdAt:"now"});
- return authorizeVerified(candidate,"medium",[],evidence);
+ evidence.add(candidate,{id:"unit-v",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
+ evidence.add(candidate,{id:"review-v",kind:"review",status:"pass",summary:"review",createdAt:"now"});
+ return authorizeVerified(candidate,"medium",Object.freeze({verification:true}),evidence);
 }
 
 test("rejects skipping directly to VERIFIED",()=>assert.throws(()=>transition("IMPLEMENTING","VERIFIED")));
@@ -57,5 +59,25 @@ test("authorization cannot make an invalid structural transition valid",()=>{
  assert.throws(
   ()=>guardedTransition({from:"DISCOVERING",to:"IMPLEMENTING",candidate,authorization:implementationAuthorization()}),
   /Invalid ASEN transition/
+ );
+});
+
+
+test("transition authorization rejects caller-controlled mutable skill context",()=>{
+ const evidence=new EvidenceStore();
+ evidence.add(candidate,{id:"unit-mutable",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
+ assert.throws(
+  ()=>authorizeImplementation(candidate,{filesTouched:2},evidence),
+  /sealed skill selection context/
+ );
+});
+
+test("verification authorization derives mandatory review skill from context",()=>{
+ const evidence=new EvidenceStore();
+ evidence.add(candidate,{id:"test-derived",kind:"test",status:"pass",summary:"green",createdAt:"now"});
+ evidence.add(candidate,{id:"unit-derived",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
+ assert.throws(
+  ()=>authorizeVerified(candidate,"medium",Object.freeze({verification:true}),evidence),
+  /asen-review.*review evidence/
  );
 });
