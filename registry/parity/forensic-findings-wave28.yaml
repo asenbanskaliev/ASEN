@@ -1,0 +1,16 @@
+wave: 28
+focus: [state-pipeline-protocol-pass]
+new_contracts:
+  - { id: PAR-370, area: rollback-attempts-every-compensation-and-joins-apply-and-rollback-errors, status: MISSING, priority: P0 }
+  - { id: PAR-371, area: state-write-error-reconciles-only-when-desired-state-is-provably-visible, status: MISSING, priority: P0 }
+  - { id: PAR-372, area: failed-state-write-preserves-existing-state, status: MISSING, priority: P0 }
+  - { id: PAR-373, area: state-update-rereads-latest-under-lock-contention-and-refuses-corrupt-latest-state, status: MISSING, priority: P0 }
+  - { id: PAR-374, area: imported-memory-session-identity-and-ownership-validation-is-nonbypassable, status: MISSING, priority: P0 }
+  - { id: PAR-375, area: project-repository-binding-corruption-or-write-failure-fails-closed, status: MISSING, priority: P0 }
+  - { id: PAR-376, area: concurrent-project-binding-creation-converges-to-one-identity, status: MISSING, priority: P0 }
+  - { id: PAR-377, area: rpc-event-normalization-rejects-malformed-or-unbounded-metadata, status: MISSING, priority: P0 }
+  - { id: PAR-378, area: child-process-slot-not-released-while-resistant-descendant-remains, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 9
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
