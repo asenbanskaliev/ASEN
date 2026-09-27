@@ -83,3 +83,14 @@ test("verification authorization derives mandatory review skill from context",()
   /asen-review.*review evidence/
  );
 });
+
+
+test("verification rejects an issued context from another candidate revision",()=>{
+ const old={...candidate,revision:"old-context"};
+ const evidence=new EvidenceStore();
+ const context=issueSkillContext("task","r",old,{verification:true});
+ assert.throws(
+  ()=>authorizeVerified(candidate,"medium",context,evidence),
+  /does not match candidate/
+ );
+});
