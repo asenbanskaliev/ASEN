@@ -1,0 +1,32 @@
+wave: 2
+focus: [review-authority, lifecycle, backup-restore, memory-conflict-semantics]
+new_contracts:
+  - { id: PAR-076, area: backup-manifest-with-content-checksum, status: MISSING, priority: P1 }
+  - { id: PAR-077, area: backup-path-kind-preservation, status: MISSING, priority: P1 }
+  - { id: PAR-078, area: restore-allowed-root-containment, status: MISSING, priority: P0 }
+  - { id: PAR-079, area: restore-symlink-escape-defense, status: MISSING, priority: P0 }
+  - { id: PAR-080, area: rollback-preserves-unproven-user-owned-paths, status: MISSING, priority: P0 }
+  - { id: PAR-081, area: pre-upgrade-backup-default, status: MISSING, priority: P1 }
+  - { id: PAR-082, area: backup-retention-and-deduplication, status: MISSING, priority: P2 }
+  - { id: PAR-083, area: update-method-detection, status: MISSING, priority: P2 }
+  - { id: PAR-084, area: update-download-durability, status: MISSING, priority: P1 }
+  - { id: PAR-085, area: update-platform-distribution-policy, status: MISSING, priority: P1 }
+  - { id: PAR-086, area: review-receipt-canonicalization, status: MISSING, priority: P0 }
+  - { id: PAR-087, area: review-receipt-candidate-binding, status: PARTIAL, priority: P0 }
+  - { id: PAR-088, area: review-final-verification-invalidation, status: MISSING, priority: P0 }
+  - { id: PAR-089, area: review-revision-conflict-detection, status: MISSING, priority: P0 }
+  - { id: PAR-090, area: review-legacy-authority-quarantine, status: MISSING, priority: P1 }
+  - { id: PAR-091, area: review-terminal-consumption-once, status: MISSING, priority: P1 }
+  - { id: PAR-092, area: memory-conflict-candidate-detection, status: MISSING, priority: P1 }
+  - { id: PAR-093, area: memory-human-or-agent-judgment, status: MISSING, priority: P1 }
+  - { id: PAR-094, area: memory-supersedes-and-conflict-annotations, status: MISSING, priority: P1 }
+  - { id: PAR-095, area: memory-multi-actor-judgments, status: MISSING, priority: P2 }
+  - { id: PAR-096, area: append-only-sync-chunks, status: N/A, priority: P2, rationale: "Deferred local-first v1; retain as optional future memory provider capability." }
+  - { id: PAR-097, area: sync-idempotent-import-skip, status: N/A, priority: P2, rationale: "Only applicable if ASEN implements sync." }
+  - { id: PAR-098, area: deferred-relation-replay, status: N/A, priority: P2, rationale: "Only applicable if ASEN implements distributed memory sync." }
+  - { id: PAR-099, area: upgrade-stage-resume-and-rollback-boundary, status: MISSING, priority: P1 }
+  - { id: PAR-100, area: diagnostic-corruption-detection, status: MISSING, priority: P1 }
+notes:
+  - "Backup/restore is security-sensitive: containment and symlink semantics are P0, not convenience features."
+  - "Memory semantic conflict/judgment is distinct from basic FTS and relations; ASEN currently has no equivalent lifecycle."
+  - "Distributed memory sync remains intentionally optional, but its contracts must stay visible rather than disappear from the audit."
