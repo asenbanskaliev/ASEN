@@ -1,0 +1,50 @@
+audit: asen-reverse
+asen_branch: audit/gentle-parity
+purpose: "Map every current ASEN runtime module to what it actually proves; prohibit capability inflation."
+modules:
+  src/agents/dispatcher.ts:
+    proves: ["bounded overlapping write-grant rejection", "grant release in finally"]
+    does_not_prove: ["queue fairness", "cross-process lock", "Pi child cancellation", "RPC framing", "worktree authority"]
+  src/agents/pi-process-runner.ts:
+    proves: ["spawn pi --mode rpc", "basic stdout/stderr completion"]
+    does_not_prove: ["RPC response correlation", "timeouts", "watchdog", "bounded frames", "process-group cancellation", "session resume", "mutation observation"]
+  src/core/state-machine.ts:
+    proves: ["legal in-memory phase transition graph"]
+    does_not_prove: ["durability", "recovery", "candidate invalidation", "transition evidence"]
+  src/evidence/store.ts:
+    proves: ["in-memory evidence keyed by candidate id"]
+    does_not_prove: ["immutable Git candidate", "durability", "receipt hash", "command provenance", "policy binding"]
+  src/lifecycle/transaction.ts:
+    proves: ["snapshot/apply/verify/rollback control shape"]
+    does_not_prove: ["filesystem-safe snapshot", "rollback completeness", "mutation journal", "crash recovery", "path ownership"]
+  src/memory/sqlite-store.ts:
+    proves: ["local SQLite persistence", "WAL", "project-scoped FTS search"]
+    does_not_prove: ["atomic memory+FTS mutation", "BEGIN IMMEDIATE writer serialization", "migration lock", "repair", "relations", "session ownership", "compaction archive lifecycle"]
+  src/memory/context.ts:
+    proves: ["project/session values attached on save", "project-scoped search"]
+    does_not_prove: ["context byte budget", "Pi compaction hooks", "session summary recovery", "conflict judgments"]
+  src/review/review.ts:
+    proves: ["candidate-id equality assertion", "blocking severity reduction"]
+    does_not_prove: ["durable ledger", "findings lifecycle", "snapshot authority", "correction validation", "receipt", "recovery"]
+  src/verify/verifier.ts:
+    proves: ["risk-level evidence presence checks", "fail evidence blocks"]
+    does_not_prove: ["evidence freshness", "candidate tree identity", "executed command integrity", "independent reviewer identity", "publication authority"]
+  src/radar/radar.ts:
+    proves: ["path-category classification", "baseline/head difference object"]
+    does_not_prove: ["GitHub fetch", "release analysis", "persistent reviewed SHA", "semantic gap analysis", "proposal generation"]
+  src/lifecycle/doctor.ts:
+    proves: ["four dependency booleans rendered as checks"]
+    does_not_prove: ["actual probes", "corruption diagnosis", "permissions", "repair plan", "read-only guarantee"]
+test_quality:
+  strengths:
+    - "Tests are small and deterministic."
+    - "Candidate mismatch and high-risk review requirements have direct coverage."
+    - "Release E2E proves the Pi extension command can load and execute."
+  weaknesses:
+    - "Most tests prove happy-path shapes rather than adversarial lifecycle semantics."
+    - "No concurrency stress, crash/recovery, filesystem adversarial or transport corruption suite."
+    - "No exact Git candidate snapshot tests."
+    - "No behavioral contract fixtures against frozen upstream baselines."
+conclusion:
+  - "ASEN v1 skeleton is architecturally clean but substantially earlier than Gentle's hardened behavioral guarantees."
+  - "No current P0 parity claim should be accepted solely from module presence."
