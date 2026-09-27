@@ -11,3 +11,19 @@ test("Pi cancellation terminates a spawned descendant",async()=>{const marker=jo
 
 test("Pi RPC adapter rejects a mismatched response id",async()=>{const {d,p}=await fixture('console.log(JSON.stringify({type:"response",id:"other",command:"prompt",success:true}));');const r=await runner(p,{validateResponseId:true}).run({id:"req-expected",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/correlated response missing/);});
 test("Pi RPC adapter rejects malformed structured output",async()=>{const {d,p}=await fixture('console.log("not-json");');const r=await runner(p,{validateResponseId:true}).run({id:"req-json",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/envelope invalid/);});
+
+test("Pi RPC adapter injects exact issued skill paths before the task",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,message:f.message}));});');
+ const r=await runner(p,{validateResponseId:true}).run({id:"skills",role:"explorer",prompt:"inspect this",repository:d,skillPaths:["skills/asen-phase-protocol/SKILL.md","skills/asen-explore/SKILL.md"]});
+ assert.equal(r.ok,true);
+ assert.match(r.output,/Load every SKILL\.md below before task-specific work/);
+ assert.match(r.output,/skills\/asen-phase-protocol\/SKILL\.md/);
+ assert.match(r.output,/skills\/asen-explore\/SKILL\.md/);
+ assert.ok(r.output.indexOf("asen-explore/SKILL.md")<r.output.indexOf("inspect this"));
+});
+test("Pi RPC adapter rejects non-ASEN skill paths",async()=>{
+ const {d,p}=await fixture('setTimeout(()=>{},10000);');
+ const r=await runner(p).run({id:"bad-skill",role:"explorer",prompt:"x",repository:d,skillPaths:["../other/SKILL.md"]});
+ assert.equal(r.ok,false);
+ assert.match(r.output,/Invalid Pi-native skill path/);
+});
