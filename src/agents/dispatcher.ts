@@ -25,8 +25,11 @@ export class Dispatcher {
     if(!isIssuedSkillContext(request.skillContext)) throw new Error("Write authority requires ASEN-issued skill selection context");
     const taskId=request.id.endsWith(":worker")?request.id.slice(0,-":worker".length):request.id;
     if(!matchesIssuedSkillContext(request.skillContext,taskId,request.repository,request.candidate)) throw new Error("Write authority skill context does not match task/candidate");
-    const skills=selectSkills(request.skillContext).map(skill=>skill.id);
+    const selectedSkills=selectSkills(request.skillContext);
+    const skills=selectedSkills.map(skill=>skill.id);
     if(!skills.length) throw new Error("Write authority requires mandatory skills");
+    const expectedPaths=selectedSkills.map(skill=>skill.path);
+    if(!request.skillPaths||request.skillPaths.length!==expectedPaths.length||request.skillPaths.some((path,index)=>path!==expectedPaths[index])) throw new Error("Write authority skill paths do not match issued context");
     const gate=verifySkillEvidence(request.candidate,skills,this.evidence,"mutation");
     if(!gate.ok) throw new Error(`Write authority blocked: ${gate.reason}`);
     grant={agentId:request.id,repository:request.repository,surfaces:request.writeSurfaces};
