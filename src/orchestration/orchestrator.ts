@@ -12,7 +12,7 @@ export interface OrchestrationPlan { decision:OddDecision; agents:AgentRequest[]
 
 export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddDecision):OrchestrationPlan {
   const base={repository:input.repository,prompt:input.prompt};
-  const skillContext=issueSkillContext({
+  const skillContext=issueSkillContext(input.taskId,input.repository,input.candidate,{
     risk:decision.risk,
     verification:decision.route==="verify"||decision.verification==="independent",
     ...(input.codeChange===undefined?{}:{codeChange:input.codeChange}),
