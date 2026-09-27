@@ -1,7 +1,7 @@
 import type { AgentRequest } from "../agents/dispatcher.js";
 import type { OddDecision } from "../flow/odd.js";
 import type {Candidate} from "../core/types.js";
-import {selectSkills,type SkillId,type SkillPhase} from "../skills/registry.js";
+import {selectSkills,type SkillId,type SkillPhase,type SkillSelectionContext} from "../skills/registry.js";
 import {issueSkillContext} from "../skills/context.js";
 
 export interface OrchestrationInput {
@@ -12,25 +12,30 @@ export interface OrchestrationPlan { decision:OddDecision; agents:AgentRequest[]
 
 export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddDecision):OrchestrationPlan {
   const base={repository:input.repository,prompt:input.prompt};
-  const skillContext=issueSkillContext(input.taskId,input.repository,input.candidate,{
+  const common:SkillSelectionContext={
     risk:decision.risk,
-    ...(input.skillPhase===undefined?{}:{phase:input.skillPhase}),
-    verification:decision.route==="verify"||decision.verification==="independent",
     ...(input.codeChange===undefined?{}:{codeChange:input.codeChange}),
     ...(input.behaviorChange===undefined?{}:{behaviorChange:input.behaviorChange}),
     ...(input.filesTouched===undefined?{}:{filesTouched:input.filesTouched})
-  });
-  const selected=selectSkills(skillContext);
-  const skills=selected.map(skill=>skill.id);
-  const skillPaths=selected.map(skill=>skill.path);
+  };
+  const contextFor=(suffix:string,phase:SkillPhase,verification=false)=>{
+    const context=issueSkillContext(`${input.taskId}:${suffix}`,input.repository,input.candidate,{...common,phase,...(verification?{verification:true}:{})});
+    const selected=selectSkills(context);
+    return {context,skills:selected.map(skill=>skill.id),skillPaths:selected.map(skill=>skill.path)};
+  };
+  const requestedPhase=input.skillPhase??"apply";
+  const primary=contextFor("worker",requestedPhase,decision.verification==="independent");
+  const skills=primary.skills;
   const agents:AgentRequest[]=[];
   if(decision.route==="direct"||decision.route==="plan") return {decision,agents,skills};
   if(decision.route==="verify"){
-    agents.push({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext,skillPaths});
-    return {decision,agents,skills};
+    const verifier=contextFor("verify","verify",true);
+    agents.push({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext:verifier.context,skillPaths:verifier.skillPaths});
+    return {decision,agents,skills:verifier.skills};
   }
-  agents.push({id:`${input.taskId}:explore`,role:"explorer",...base,skillContext,skillPaths});
-  const worker:AgentRequest={id:`${input.taskId}:worker`,role:"worker",...base,skillContext,skillPaths};
+  const explorer=contextFor("explore","explore");
+  agents.push({id:`${input.taskId}:explore`,role:"explorer",...base,skillContext:explorer.context,skillPaths:explorer.skillPaths});
+  const worker:AgentRequest={id:`${input.taskId}:worker`,role:"worker",...base,skillContext:primary.context,skillPaths:primary.skillPaths};
   if(input.writeSurfaces?.length){
     worker.writeSurfaces=[...input.writeSurfaces];
     if(!input.candidate) throw new Error("Writer orchestration requires an exact candidate");
@@ -38,7 +43,9 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddDec
     worker.candidate=input.candidate;
   }
   agents.push(worker);
-  agents.push({id:`${input.taskId}:review`,role:"reviewer",...base,skillContext,skillPaths});
-  agents.push({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext,skillPaths});
+  const reviewer=contextFor("review","adversarial-review",true);
+  agents.push({id:`${input.taskId}:review`,role:"reviewer",...base,skillContext:reviewer.context,skillPaths:reviewer.skillPaths});
+  const verifier=contextFor("verify","verify",true);
+  agents.push({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext:verifier.context,skillPaths:verifier.skillPaths});
   return {decision,agents,skills};
 }
