@@ -1,0 +1,14 @@
+id: CAP-GIT-001
+name: Destructive Git guard
+priority: P0
+status: specified
+owner: ASEN-Policies
+contract:
+  given: an operation can destructively rewrite or discard Git state
+  when: execution reaches that operation
+  then:
+    - explicit authority is required
+    - the operation is not disguised through an alternate command path
+    - affected target is identified before execution
+tests: [unit, integration, security]
+evidence_required: true
