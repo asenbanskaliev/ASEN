@@ -63,11 +63,11 @@ test("orchestrated writer skill context cannot be downgraded after planning",()=
 test("writer cannot reuse another task's issued skill context",async()=>{
  const first=buildOrchestrationPlan(
   {taskId:"first",repository:"repo",prompt:"change code",codeChange:true,writeSurfaces:["src"],candidate},
-  routeOdd({filesTouched:1})
+  routeOdd({filesTouched:4})
  );
  const second=buildOrchestrationPlan(
   {taskId:"second",repository:"repo",prompt:"change code",codeChange:true,writeSurfaces:["src"],candidate},
-  routeOdd({filesTouched:1})
+  routeOdd({filesTouched:4})
  );
  const firstWorker=first.agents.find(agent=>agent.role==="worker");
  const secondWorker=second.agents.find(agent=>agent.role==="worker");
