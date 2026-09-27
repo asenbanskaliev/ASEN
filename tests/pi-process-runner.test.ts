@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {mkdtemp,writeFile,rm} from "node:fs/promises";
+import {mkdtemp,writeFile,rm,access} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
@@ -30,4 +30,14 @@ test("Pi RPC adapter times out and bounds output on every OS",async t=>{
  const overflow=await fixture(t,'process.stdin.resume();process.stdin.on("end",()=>console.log("x".repeat(10000)));');
  const bounded=await new PiProcessRunner({command:process.execPath,rpcArgs:[overflow.path],maxOutputBytes:100}).run(request(overflow.dir));
  assert.equal(bounded.ok,false);assert.match(bounded.output,/exceeded/);
+});
+
+test("timeout cleans up descendant processes",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-pi-tree-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const marker=join(dir,"orphan-marker"),path=join(dir,"parent.mjs");
+ await writeFile(path,`import {spawn} from "node:child_process";spawn(process.execPath,["-e",${JSON.stringify(`setTimeout(()=>require('node:fs').writeFileSync(${JSON.stringify(marker)},'orphan'),600)`) }],{stdio:"ignore"});process.stdin.resume();setInterval(()=>{},10000);`);
+ const result=await new PiProcessRunner({command:process.execPath,rpcArgs:[path],timeoutMs:200}).run(request(dir));
+ assert.equal(result.ok,false);assert.match(result.output,/timed out/);
+ await new Promise(resolve=>setTimeout(resolve,850));
+ await assert.rejects(access(marker),{code:"ENOENT"});
 });
