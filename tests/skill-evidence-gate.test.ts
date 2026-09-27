@@ -25,3 +25,30 @@ test("review skill blocks release without candidate-bound review evidence",()=>{
  store.add(c,{id:"review",kind:"review",status:"pass",summary:"independent",createdAt:"now"});
  assert.equal(verifySkillEvidence(c,["asen-review"],store,"release").ok,true);
 });
+
+
+test("mutation gate requires route decision and work-unit evidence",()=>{
+ const store=new EvidenceStore();
+ assert.equal(verifySkillEvidence(c,["asen-odd","asen-work-unit"],store,"mutation").ok,false);
+ store.add(c,{id:"route",kind:"route-decision",status:"pass",summary:"route selected",createdAt:"now"});
+ assert.equal(verifySkillEvidence(c,["asen-odd","asen-work-unit"],store,"mutation").ok,false);
+ store.add(c,{id:"unit",kind:"work-unit",status:"pass",summary:"bounded unit",createdAt:"now"});
+ assert.equal(verifySkillEvidence(c,["asen-odd","asen-work-unit"],store,"mutation").ok,true);
+});
+
+test("safe-change blocks mutation and release until scope and rollback are evidenced",()=>{
+ const store=new EvidenceStore();
+ store.add(c,{id:"scope",kind:"scope",status:"pass",summary:"scope authorized",createdAt:"now"});
+ assert.equal(verifySkillEvidence(c,["asen-safe-change"],store,"mutation").ok,false);
+ store.add(c,{id:"rollback",kind:"rollback",status:"pass",summary:"rollback ready",createdAt:"now"});
+ assert.equal(verifySkillEvidence(c,["asen-safe-change"],store,"mutation").ok,true);
+ assert.equal(verifySkillEvidence(c,["asen-safe-change"],store,"release").ok,true);
+});
+
+test("skill evidence from another revision cannot satisfy mutation or release",()=>{
+ const store=new EvidenceStore(),other={...c,revision:"sha-old"};
+ for(const [id,kind] of [["scope","scope"],["rollback","rollback"]] as const)
+  store.add(other,{id,kind,status:"pass",summary:"old candidate",createdAt:"now"});
+ assert.equal(verifySkillEvidence(c,["asen-safe-change"],store,"mutation").ok,false);
+ assert.equal(verifySkillEvidence(c,["asen-safe-change"],store,"release").ok,false);
+});
