@@ -26,7 +26,10 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddDec
   }
   agents.push({id:`${input.taskId}:explore`,role:"explorer",...base});
   const worker:AgentRequest={id:`${input.taskId}:worker`,role:"worker",...base};
-  if(input.writeSurfaces?.length) worker.writeSurfaces=[...input.writeSurfaces];
+  if(input.writeSurfaces?.length){
+    worker.writeSurfaces=[...input.writeSurfaces];
+    worker.skillContext=skillContext;
+  }
   agents.push(worker);
   agents.push({id:`${input.taskId}:review`,role:"reviewer",...base});
   agents.push({id:`${input.taskId}:verify`,role:"verifier",...base});
