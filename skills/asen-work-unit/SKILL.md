@@ -1,12 +1,26 @@
 ---
 name: asen-work-unit
-description: Keep implementation, tests, evidence and rollback aligned to one reviewable behavior unit.
+description: "Trigger: implementation unit, commit split, review boundary. Keep behavior, tests, evidence and rollback aligned in one cohesive work unit."
 ---
-# ASEN Work Unit
-1. Define one observable behavior or correction and its rollback boundary.
-2. Keep its implementation and focused verification together.
-3. Avoid splitting work merely by file type when that destroys a coherent review unit.
-4. Freeze a candidate only after source-mutating steps are complete.
-5. Bind tests and review evidence to that candidate.
-6. If scope expands into independent behavior or rollback boundaries, split the work unit.
-7. Do not publish or merge solely because the unit is internally complete; repository delivery authority remains separate.
+## Activation Contract
+Use when planning or implementing code/behavior changes and when splitting reviewable delivery.
+## Hard Rules
+- One unit represents one observable behavior/correction and rollback boundary.
+- Keep implementation and focused verification together.
+- Never split only by file type when that breaks behavioral coherence.
+- Freeze candidate after all source-mutating steps for the unit.
+## Decision Gates
+| Situation | Action |
+| --- | --- |
+| Independent behavior or rollback appears | Split the unit |
+| Unit cannot be verified independently | Refine its boundary |
+| Scope grows unexpectedly | Stop and re-plan |
+## Execution Steps
+1. Define behavior and rollback boundary.
+2. Identify implementation and verification belonging to it.
+3. Execute as one cohesive unit.
+4. Freeze candidate and bind evidence.
+## Output Contract
+Return unit purpose, scope, verification, rollback, candidate and any required split.
+## References
+None.
