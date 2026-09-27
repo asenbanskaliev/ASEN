@@ -1,11 +1,11 @@
 export type SkillId =
-  | "asen-context-init" | "asen-explore" | "asen-proposal" | "asen-specification" | "asen-design"
+  | "asen-phase-protocol" | "asen-status" | "asen-context-init" | "asen-explore" | "asen-proposal" | "asen-specification" | "asen-design"
   | "asen-tasks" | "asen-apply" | "asen-verify" | "asen-archive" | "asen-skill-registry"
   | "asen-adversarial-review" | "asen-skill-authoring" | "asen-skill-audit" | "asen-defect-workflow" | "asen-go-testing"
   | "asen-delivery-branch" | "asen-delivery-chain" | "asen-issue-workflow" | "asen-doc-design" | "asen-collaboration-message"
   | "asen-safe-change" | "asen-tdd" | "asen-odd" | "asen-review" | "asen-work-unit";
 
-export type SkillPhase="context-init"|"explore"|"proposal"|"specification"|"design"|"tasks"|"apply"|"verify"|"archive"|"skill-registry"
+export type SkillPhase="status"|"context-init"|"explore"|"proposal"|"specification"|"design"|"tasks"|"apply"|"verify"|"archive"|"skill-registry"
  |"adversarial-review"|"skill-authoring"|"skill-audit"|"defect"|"go-testing"|"delivery-branch"|"delivery-chain"|"issue"|"docs"|"collaboration-message";
 export type SkillTrigger =
   | SkillPhase | "code-change" | "behavior-change" | "high-risk" | "unknown-risk" | "multi-file" | "verification";
@@ -27,15 +27,17 @@ export interface SkillSelectionContext {
   verification?:boolean;
 }
 const contracts:readonly SkillContract[]=[
- {id:"asen-context-init",path:"skills/asen-context-init/SKILL.md",triggers:["context-init"],requires:["asen-skill-registry"],evidence:["project-context"],blocks:[]},
- {id:"asen-explore",path:"skills/asen-explore/SKILL.md",triggers:["explore"],requires:[],evidence:["exploration"],blocks:[]},
- {id:"asen-proposal",path:"skills/asen-proposal/SKILL.md",triggers:["proposal"],requires:[],evidence:["proposal"],blocks:[]},
- {id:"asen-specification",path:"skills/asen-specification/SKILL.md",triggers:["specification"],requires:[],evidence:["specification"],blocks:[]},
- {id:"asen-design",path:"skills/asen-design/SKILL.md",triggers:["design"],requires:[],evidence:["design"],blocks:[]},
- {id:"asen-tasks",path:"skills/asen-tasks/SKILL.md",triggers:["tasks"],requires:["asen-work-unit"],evidence:["task-plan"],blocks:[]},
- {id:"asen-apply",path:"skills/asen-apply/SKILL.md",triggers:["apply"],requires:["asen-safe-change"],evidence:["apply-result"],blocks:[]},
- {id:"asen-verify",path:"skills/asen-verify/SKILL.md",triggers:["verify"],requires:[],evidence:["verification-report"],blocks:[]},
- {id:"asen-archive",path:"skills/asen-archive/SKILL.md",triggers:["archive"],requires:["asen-verify"],evidence:["archive-report"],blocks:[]},
+ {id:"asen-phase-protocol",path:"skills/asen-phase-protocol/SKILL.md",triggers:[],requires:[],evidence:["phase-result"],blocks:[]},
+ {id:"asen-status",path:"skills/asen-status/SKILL.md",triggers:["status"],requires:["asen-phase-protocol"],evidence:["lifecycle-status"],blocks:[]},
+ {id:"asen-context-init",path:"skills/asen-context-init/SKILL.md",triggers:["context-init"],requires:["asen-phase-protocol","asen-skill-registry"],evidence:["project-context"],blocks:[]},
+ {id:"asen-explore",path:"skills/asen-explore/SKILL.md",triggers:["explore"],requires:["asen-phase-protocol"],evidence:["exploration"],blocks:[]},
+ {id:"asen-proposal",path:"skills/asen-proposal/SKILL.md",triggers:["proposal"],requires:["asen-phase-protocol"],evidence:["proposal"],blocks:[]},
+ {id:"asen-specification",path:"skills/asen-specification/SKILL.md",triggers:["specification"],requires:["asen-phase-protocol"],evidence:["specification"],blocks:[]},
+ {id:"asen-design",path:"skills/asen-design/SKILL.md",triggers:["design"],requires:["asen-phase-protocol"],evidence:["design"],blocks:[]},
+ {id:"asen-tasks",path:"skills/asen-tasks/SKILL.md",triggers:["tasks"],requires:["asen-phase-protocol","asen-work-unit"],evidence:["task-plan"],blocks:[]},
+ {id:"asen-apply",path:"skills/asen-apply/SKILL.md",triggers:["apply"],requires:["asen-phase-protocol","asen-safe-change"],evidence:["apply-result"],blocks:[]},
+ {id:"asen-verify",path:"skills/asen-verify/SKILL.md",triggers:["verify"],requires:["asen-phase-protocol"],evidence:["verification-report"],blocks:[]},
+ {id:"asen-archive",path:"skills/asen-archive/SKILL.md",triggers:["archive"],requires:["asen-phase-protocol","asen-verify"],evidence:["archive-report"],blocks:[]},
  {id:"asen-skill-registry",path:"skills/asen-skill-registry/SKILL.md",triggers:["skill-registry"],requires:[],evidence:["skill-index"],blocks:[]},
  {id:"asen-adversarial-review",path:"skills/asen-adversarial-review/SKILL.md",triggers:["adversarial-review"],requires:["asen-review"],evidence:["adversarial-review"],blocks:[]},
  {id:"asen-skill-authoring",path:"skills/asen-skill-authoring/SKILL.md",triggers:["skill-authoring"],requires:["asen-skill-registry"],evidence:["skill-contract"],blocks:[]},
