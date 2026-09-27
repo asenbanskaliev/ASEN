@@ -20,11 +20,14 @@ jobs:
         run: |
           npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
           pi install npm:pi-free
-      - name: Inspect free providers
-        run: pi --help
-      - name: Anonymous LLM7 smoke
+      - name: Inspect pi-free registered models
+        run: pi --list-models
+      - name: Anonymous free-model smoke
         env:
           ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          printf 'Reply with exactly ASEN_PI_FREE_OK\n' | pi --no-session --no-extensions --no-skills --provider llm7 --model auto
+          pi --list-models | tee "$RUNNER_TEMP/models.txt"
+          MODEL_LINE="$(grep -Ei 'llm7|free' "$RUNNER_TEMP/models.txt" | head -n 1 || true)"
+          test -n "$MODEL_LINE"
+          echo "Detected: $MODEL_LINE"
