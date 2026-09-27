@@ -47,3 +47,40 @@ export function authorizeRelease(candidate:Candidate,risk:Risk,evidence:Evidence
  if(!releaseGate.ok) return releaseGate;
  return {ok:true,reason:"Release gates satisfied"};
 }
+
+
+export interface TransitionAuthorization {
+ readonly target:"IMPLEMENTING"|"VERIFIED";
+ readonly candidateRepository:string;
+ readonly candidateId:string;
+ readonly candidateRevision:string;
+}
+const transitionAuthorizations=new WeakSet<object>();
+
+function mintTransitionAuthorization(candidate:Candidate,target:TransitionAuthorization["target"]):TransitionAuthorization {
+ const authorization=Object.freeze({
+  target,
+  candidateRepository:candidate.repository,
+  candidateId:candidate.id,
+  candidateRevision:candidate.revision
+ });
+ transitionAuthorizations.add(authorization);
+ return authorization;
+}
+
+export function isTransitionAuthorization(value:unknown):value is TransitionAuthorization {
+ return typeof value==="object"&&value!==null&&transitionAuthorizations.has(value);
+}
+
+export function authorizeImplementation(candidate:Candidate,skills:readonly SkillId[],evidence:EvidenceStore):TransitionAuthorization {
+ if(!skills.length) throw new Error("Implementation requires selected skills");
+ const gate=verifySkillEvidence(candidate,skills,evidence,"mutation");
+ if(!gate.ok) throw new Error(gate.reason);
+ return mintTransitionAuthorization(candidate,"IMPLEMENTING");
+}
+
+export function authorizeVerified(candidate:Candidate,risk:Risk,skills:readonly SkillId[],evidence:EvidenceStore):TransitionAuthorization {
+ const gate=verifyCandidate(candidate,risk,evidence,skills);
+ if(!gate.ok) throw new Error(gate.reason);
+ return mintTransitionAuthorization(candidate,"VERIFIED");
+}
