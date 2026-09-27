@@ -11,3 +11,14 @@ passes:
       - gentle-shell/tests/review-object-store.test.ts
       - engram/internal/store/generation_fence_test.go
     note: "All observed P0 invariants map to canonical contracts through PAR-423."
+  - pass: 2
+    focus: privacy-transport-permission-process-bounds
+    p0_new: 0
+    evidence:
+      - gentle-ai/internal/cli/review_negotiated_privacy_test.go
+      - gentle-ai/internal/cli/review_process_boundary_test.go
+      - gentle-shell/tests/review-session-standing-permission-ipc.test.ts
+      - gentle-shell/tests/agents-session-transport-process.test.ts
+      - engram/internal/server/auth_test.go
+      - engram/internal/mcp/write_queue_test.go
+    note: "No novel P0 invariant after semantic comparison with canonical registry."
