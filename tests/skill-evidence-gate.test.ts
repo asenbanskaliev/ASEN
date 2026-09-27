@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {EvidenceStore} from "../src/evidence/store.js";
-import {verifyCandidate,verifySkillEvidence} from "../src/verify/verifier.js";
+import {authorizeRelease,verifyCandidate,verifySkillEvidence} from "../src/verify/verifier.js";
 
 const c={id:"candidate",repository:"repo",revision:"sha",createdAt:"now"};
 
@@ -51,4 +51,29 @@ test("skill evidence from another revision cannot satisfy mutation or release",(
   store.add(other,{id,kind,status:"pass",summary:"old candidate",createdAt:"now"});
  assert.equal(verifySkillEvidence(c,["asen-safe-change"],store,"mutation").ok,false);
  assert.equal(verifySkillEvidence(c,["asen-safe-change"],store,"release").ok,false);
+});
+
+
+test("release gate composes verification and release skill requirements",()=>{
+ const store=new EvidenceStore(),skills=["asen-work-unit","asen-safe-change","asen-review"] as const;
+ assert.equal(authorizeRelease(c,"high",store,skills).ok,false);
+ store.add(c,{id:"test-release",kind:"test",status:"pass",summary:"green",createdAt:"now"});
+ store.add(c,{id:"review-release",kind:"review",status:"pass",summary:"independent",createdAt:"now"});
+ store.add(c,{id:"scope-release",kind:"scope",status:"pass",summary:"authorized",createdAt:"now"});
+ assert.equal(authorizeRelease(c,"high",store,skills).ok,false);
+ store.add(c,{id:"rollback-release",kind:"rollback",status:"pass",summary:"ready",createdAt:"now"});
+ assert.equal(authorizeRelease(c,"high",store,skills).ok,true);
+});
+
+test("release rejects evidence from a previous candidate revision",()=>{
+ const store=new EvidenceStore(),old={...c,revision:"old"},skills=["asen-safe-change","asen-review"] as const;
+ for(const [id,kind] of [["test-old","test"],["review-old","review"],["scope-old","scope"],["rollback-old","rollback"]] as const)
+  store.add(old,{id,kind,status:"pass",summary:"old",createdAt:"now"});
+ assert.equal(authorizeRelease(c,"high",store,skills).ok,false);
+});
+
+test("release fails closed when no skill selection is supplied",()=>{
+ const store=new EvidenceStore();
+ store.add(c,{id:"test-no-skills",kind:"test",status:"pass",summary:"green",createdAt:"now"});
+ assert.equal(authorizeRelease(c,"low",store,[]).ok,false);
 });
