@@ -4,7 +4,7 @@ import {getSkillContract,listSkillContracts,selectSkills} from "../src/skills/re
 
 test("skill registry has unique Pi-native paths and evidence contracts",()=>{
  const contracts=listSkillContracts();
- assert.equal(contracts.length,15);
+ assert.equal(contracts.length,25);
  assert.equal(new Set(contracts.map(x=>x.id)).size,contracts.length);
  assert.equal(new Set(contracts.map(x=>x.path)).size,contracts.length);
  for(const contract of contracts){
@@ -39,6 +39,13 @@ test("code change selects safe-change and its dependency",()=>{
 });
 test("high risk verification requires routing, work unit and independent review",()=>{
  assert.deepEqual(selectSkills({risk:"high",verification:true}).map(x=>x.id),["asen-odd","asen-work-unit","asen-review"]);
+});
+test("specialized behavioral families resolve through explicit phases",()=>{
+ assert.deepEqual(selectSkills({phase:"adversarial-review"}).map(x=>x.id),["asen-work-unit","asen-review","asen-adversarial-review"]);
+ assert.deepEqual(selectSkills({phase:"skill-authoring"}).map(x=>x.id),["asen-skill-registry","asen-skill-authoring"]);
+ assert.deepEqual(selectSkills({phase:"defect"}).map(x=>x.id),["asen-work-unit","asen-defect-workflow"]);
+ assert.deepEqual(selectSkills({phase:"delivery-chain"}).map(x=>x.id),["asen-work-unit","asen-delivery-chain"]);
+ assert.deepEqual(selectSkills({phase:"go-testing"}).map(x=>x.id),["asen-go-testing"]);
 });
 test("unknown skill ids fail closed",()=>{
  assert.throws(()=>getSkillContract("asen-missing" as never),/Unknown ASEN skill/);
