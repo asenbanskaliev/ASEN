@@ -12,14 +12,14 @@ function authorized(){
  evidence.add(candidate,{id:"rollback",kind:"rollback",status:"pass",summary:"ready",createdAt:"now"});
  return evidence;
 }
-const sealedCodeChange=()=>issueSkillContext("a","r",candidate,{codeChange:true});
+const sealedCodeChange=(taskId="a")=>issueSkillContext(taskId,"r",candidate,{codeChange:true});
 const writeRequest={id:"a",role:"worker" as const,prompt:"x",repository:"r",writeSurfaces:["src/a"],candidate,skillContext:sealedCodeChange()};
 
 test("dispatcher releases writer grant after completion", async()=>{
   const runner: AgentRunner={run:async r=>({id:r.id,ok:true,output:"ok"})};
   const d=new Dispatcher(runner,authorized());
   await d.dispatch({...writeRequest,skillContext:sealedCodeChange()});
-  const second=await d.dispatch({...writeRequest,id:"b",skillContext:sealedCodeChange()});
+  const second=await d.dispatch({...writeRequest,id:"b",skillContext:sealedCodeChange("b")});
   assert.equal(second.ok,true);
 });
 
