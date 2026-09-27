@@ -1,0 +1,17 @@
+id: CAP-CORE-001
+name: Pi-native extension boundary
+priority: P0
+status: specified
+owner: ASEN-Core
+pi_native: true
+contract:
+  given: ASEN is installed into Pi
+  when: ASEN starts
+  then:
+    - Pi remains the runtime and model host
+    - ASEN composes Pi extension APIs
+    - no Gentle runtime is required
+tests:
+  - architecture
+  - pi-integration
+evidence_required: true
