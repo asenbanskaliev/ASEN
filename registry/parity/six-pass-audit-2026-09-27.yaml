@@ -1,0 +1,102 @@
+audit: six-independent-p0-passes
+baseline:
+  gentle_ai: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+  gentle_shell: fe61793e7cb3e75462ba53c7631e87d78e989354
+  engram: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
+id_policy: "Temporary S6-Px-Fyy identifiers until PAR namespace collision is normalized."
+passes:
+  - pass: 1
+    focus: append-only-authority-locks-runner-import-repair
+    p0_new: 12
+    findings:
+      - { id: S6-P1-F01, contract: "append-only authority publication requires durable event-directory sync before HEAD publication" }
+      - { id: S6-P1-F02, contract: "stale authority writers and regressive/unrelated successors are rejected" }
+      - { id: S6-P1-F03, contract: "live review locks cannot be stolen and concurrent stale-lock recoverers cannot both win" }
+      - { id: S6-P1-F04, contract: "risk inputs, budgets and release bindings remain immutable across successors" }
+      - { id: S6-P1-F05, contract: "historical authority compatibility is explicit and cannot admit fresh legacy-shaped genesis" }
+      - { id: S6-P1-F06, contract: "abandon crash-before-rename is retryable while rewritten/corrupt lineage refuses replay" }
+      - { id: S6-P1-F07, contract: "child runner queue capacity remains occupied until proven process/group exit" }
+      - { id: S6-P1-F08, contract: "child mutation evidence requires paired successful RPC tool outcome" }
+      - { id: S6-P1-F09, contract: "late grants/observations cannot revive canceled or dropped child preparation" }
+      - { id: S6-P1-F10, contract: "import validation cannot bypass session identity and ownership checks" }
+      - { id: S6-P1-F11, contract: "orphan-session repair is batch-transactional and rolls back on conflicts" }
+      - { id: S6-P1-F12, contract: "project reclassification repair backs up before mutating allowed tables" }
+  - pass: 2
+    focus: transport-admission-object-quorum-sqlite-startup
+    p0_new: 10
+    findings:
+      - { id: S6-P2-F01, contract: "unsupported review transport stops before creating any authority" }
+      - { id: S6-P2-F02, contract: "provider malformed-result retry is bounded and transport errors are not blindly retried" }
+      - { id: S6-P2-F03, contract: "provider retry refuses request/target identity drift" }
+      - { id: S6-P2-F04, contract: "immutable review object installation is idempotent and conflicting bytes are rejected" }
+      - { id: S6-P2-F05, contract: "CURRENT authority pointer changes only through two-slot quorum" }
+      - { id: S6-P2-F06, contract: "ambiguous or corrupt quorum recovery fails closed" }
+      - { id: S6-P2-F07, contract: "corrected candidate capture requires fresh STATUS to re-offer exact binding" }
+      - { id: S6-P2-F08, contract: "remote filesystem is rejected before SQLite or data-directory mutation" }
+      - { id: S6-P2-F09, contract: "newer database schema is left untouched rather than repaired/downgraded" }
+      - { id: S6-P2-F10, contract: "cross-process cold start and immediate writer locking converge without deferred-lock deadlock" }
+  - pass: 3
+    focus: release-mutation-journal-snapshot-consent-write-queue
+    p0_new: 11
+    findings:
+      - { id: S6-P3-F01, contract: "release publication is bound to exact source and protected least-privilege environment" }
+      - { id: S6-P3-F02, contract: "signing material cleanup proves secret absence even through fallback cleanup" }
+      - { id: S6-P3-F03, contract: "release CI success selects newest run for exact commit, not nearby/ref-equivalent run" }
+      - { id: S6-P3-F04, contract: "mutation journal captures before write and rejects target drift after capture" }
+      - { id: S6-P3-F05, contract: "mutation journal refuses symlink and symlinked-ancestor root escape" }
+      - { id: S6-P3-F06, contract: "multi-file rollback order is deterministic and aggregates all restore errors" }
+      - { id: S6-P3-F07, contract: "review snapshot creation never mutates real index/worktree" }
+      - { id: S6-P3-F08, contract: "isolated snapshot objects survive live Git GC until explicit sensitive cleanup" }
+      - { id: S6-P3-F09, contract: "consent latch is one-way, canonical, mode-0600 and shared only by same clone common-dir" }
+      - { id: S6-P3-F10, contract: "write queue cancellation distinguishes queued-not-started from started handler outcome" }
+      - { id: S6-P3-F11, contract: "write worker survives handler panic and preserves queue service" }
+  - pass: 4
+    focus: runtime-budget-restart-hydration-closed-space
+    p0_new: 7
+    findings:
+      - { id: S6-P4-F01, contract: "candidate and frozen-policy runtime budgets fail closed before authority creation" }
+      - { id: S6-P4-F02, contract: "aggregate many-small-path candidate cannot bypass total runtime budget" }
+      - { id: S6-P4-F03, contract: "over-budget correction stops typed and does not silently re-offer validation" }
+      - { id: S6-P4-F04, contract: "provider-owned binding drift after controller restart forbids capture" }
+      - { id: S6-P4-F05, contract: "missing restarted reoffer exposes no public binding" }
+      - { id: S6-P4-F06, contract: "STATUS hydration failure remains read-only" }
+      - { id: S6-P4-F07, contract: "closed-space diagnostic reports every foreign sync target and propagates store read failure" }
+  - pass: 5
+    focus: privacy-windows-probes-agent-end-relations
+    p0_new: 9
+    findings:
+      - { id: S6-P5-F01, contract: "defect-report scrub preserves only public identifiers and redacts private fields" }
+      - { id: S6-P5-F02, contract: "Windows authority probes retry transient failures only, never authority-class failures" }
+      - { id: S6-P5-F03, contract: "Windows authority probes fail closed after bounded transient retries" }
+      - { id: S6-P5-F04, contract: "agent_end consumption is bound to captured mutation and active session branch" }
+      - { id: S6-P5-F05, contract: "writes in another canonical root never authorize current-root review" }
+      - { id: S6-P5-F06, contract: "headless and subagent paths cannot accidentally invoke primary review authority" }
+      - { id: S6-P5-F07, contract: "deferred relation redelivery is idempotent and distinct payload identities remain distinct" }
+      - { id: S6-P5-F08, contract: "interrupted relation backfill converges and repeated opens are idempotent" }
+      - { id: S6-P5-F09, contract: "cross-project relation guard rejects different session projects" }
+  - pass: 6
+    focus: terminal-closure-acknowledgement-receipts-server-selftest
+    p0_new: 11
+    findings:
+      - { id: S6-P6-F01, contract: "capture refusals preserve typed native refusal and kill-switch identity" }
+      - { id: S6-P6-F02, contract: "concurrent final-lens capture elects exactly one closer" }
+      - { id: S6-P6-F03, contract: "replayed terminal capture remains single-closer and leaves no stranded slot" }
+      - { id: S6-P6-F04, contract: "acknowledgement is replayable before burn and burns exactly once" }
+      - { id: S6-P6-F05, contract: "unknown mutation reconciliation requires current exact authority and target identity" }
+      - { id: S6-P6-F06, contract: "unreadable acknowledgement degrades continuation, never approval state" }
+      - { id: S6-P6-F07, contract: "reminder receipts persist but remain isolated by session, root and active branch" }
+      - { id: S6-P6-F08, contract: "receipt consumption removes only captured prefix and preserves concurrent mutation" }
+      - { id: S6-P6-F09, contract: "malformed/unknown-version/unmatched receipt cannot establish ownership" }
+      - { id: S6-P6-F10, contract: "compaction context endpoint is session-scoped end-to-end" }
+      - { id: S6-P6-F11, contract: "selftest runs in fresh absolute temporary directory and cleans it afterward" }
+summary:
+  passes_requested: 6
+  passes_completed: 6
+  total_new_p0_observations_before_dedup: 60
+  zero_p0_passes: 0
+  consecutive_zero_p0_passes: 0
+  conclusion: NOT_SATURATED
+next_gate:
+  - "Normalize duplicate/overlapping contracts against all prior waves."
+  - "Assign canonical unique PAR ids only after deduplication."
+  - "Repeat six independent passes against the normalized registry."
