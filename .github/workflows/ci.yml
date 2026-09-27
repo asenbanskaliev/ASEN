@@ -22,10 +22,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Reject Gentle runtime coupling
+      - name: Enforce ASEN upstream isolation boundary
         shell: bash
-        run: |
-          set -euo pipefail
-          if grep -RIE --exclude-dir=node_modules '(from|require\(|import).*gentle-(pi|ai|engram)' src extensions 2>/dev/null; then
-            exit 1
-          fi
+        run: node scripts/audit-upstream-boundary.mjs
