@@ -31,3 +31,10 @@ jobs:
           MODEL_LINE="$(grep -Ei 'llm7|free' "$RUNNER_TEMP/models.txt" | head -n 1 || true)"
           test -n "$MODEL_LINE"
           echo "Detected: $MODEL_LINE"
+      - name: Execute anonymous LLM7 turn
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUTPUT=$(pi --no-session --provider llm7 --model default --print "Reply with exactly ASEN_PI_FREE_OK")
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -q ASEN_PI_FREE_OK
