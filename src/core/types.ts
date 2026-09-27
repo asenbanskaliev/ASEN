@@ -7,5 +7,6 @@ export interface Evidence {
  id:string; candidateRepository:string; candidateId:string; candidateRevision:string;
  kind:"test"|"review"|"command"|"audit"|"tdd"|"route-decision"|"work-unit"|"scope"|"rollback";
  status:"pass"|"fail"|"expected-fail"; summary:string; createdAt:string;
+ execution?:{command:string[];cwd:string;exitCode:number;startedAt:string;finishedAt:string};
 }
 export interface TaskState { id:string; title:string; phase:Phase; candidateId?:string; blockers:string[]; }
