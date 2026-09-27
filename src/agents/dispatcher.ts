@@ -5,7 +5,7 @@ import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import {isIssuedSkillContext,matchesIssuedSkillContext} from "../skills/context.js";
 import {verifySkillEvidence} from "../verify/verifier.js";
 
-export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:SkillSelectionContext; }
+export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:SkillSelectionContext; skillPaths?:string[]; }
 export interface AgentResult { id:string; ok:boolean; output:string; }
 export interface AgentRunner { run(request:AgentRequest):Promise<AgentResult>; }
 
