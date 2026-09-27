@@ -1,0 +1,15 @@
+wave: 48
+focus: [fixed-universe-repeat-2-independent-order]
+new_contracts: []
+saturation_result:
+  p0_new: 0
+  consecutive_zero_p0_passes: 2
+  universe: "fixed at PAR-001..PAR-500 plus upstream baselines"
+  conclusion: "P0 DISCOVERY SATURATED"
+independent_order: [engram, gentle-shell, gentle-ai]
+checks:
+  - "corruption and identity"
+  - "concurrency and locking"
+  - "session/project/repository isolation"
+  - "mutation rollback and non-mutation refusals"
+  - "candidate/review authority"
