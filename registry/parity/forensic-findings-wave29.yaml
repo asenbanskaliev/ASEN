@@ -1,0 +1,16 @@
+wave: 29
+focus: [repeat-critical-surfaces-pass-1]
+new_contracts:
+  - { id: PAR-379, area: windows-secure-review-lock-rejects-reparse-points-and-preserves-target, status: MISSING, priority: P0 }
+  - { id: PAR-380, area: targeted-validation-binds-current-authority-corrected-candidate-frozen-policy-and-causal-evidence, status: MISSING, priority: P0 }
+  - { id: PAR-381, area: targeted-validation-rejects-missing-duplicate-mismatched-or-stale-causal-evidence, status: MISSING, priority: P0 }
+  - { id: PAR-382, area: verification-plan-authority-rejects-registry-shrink-and-forgery, status: MISSING, priority: P0 }
+  - { id: PAR-383, area: correction-closure-cannot-shrink-or-trust-caller-declared-impact, status: MISSING, priority: P0 }
+  - { id: PAR-384, area: immutable-review-object-install-is-idempotent-and-conflicting-bytes-are-rejected, status: MISSING, priority: P0 }
+  - { id: PAR-385, area: review-root-publication-requires-two-slot-quorum-and-crash-exposes-old-or-new-authority, status: MISSING, priority: P0 }
+  - { id: PAR-386, area: ambiguous-or-corrupt-object-store-genesis-repair-fails-closed, status: MISSING, priority: P0 }
+  - { id: PAR-387, area: instance-id-concurrent-recovery-and-publication-is-serialized, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 9
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
