@@ -5,7 +5,7 @@ export type Risk = "low" | "medium" | "high" | "unknown";
 export interface Candidate { id:string; repository:string; revision:string; createdAt:string; }
 export interface Evidence {
  id:string; candidateRepository:string; candidateId:string; candidateRevision:string;
- kind:"test"|"review"|"command"|"audit"|"tdd";
+ kind:"test"|"review"|"command"|"audit"|"tdd"|"route-decision"|"work-unit"|"scope"|"rollback";
  status:"pass"|"fail"|"expected-fail"; summary:string; createdAt:string;
 }
 export interface TaskState { id:string; title:string; phase:Phase; candidateId?:string; blockers:string[]; }
