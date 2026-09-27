@@ -1,18 +1,32 @@
 import { validateWriteGrant, type WriteGrant } from "../policies/scopes.js";
+import type {Candidate} from "../core/types.js";
+import {EvidenceStore} from "../evidence/store.js";
+import type {SkillId} from "../skills/registry.js";
+import {verifySkillEvidence} from "../verify/verifier.js";
 
-export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; }
+export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skills?:SkillId[]; }
 export interface AgentResult { id:string; ok:boolean; output:string; }
 export interface AgentRunner { run(request:AgentRequest):Promise<AgentResult>; }
 
 export class Dispatcher {
  readonly #active:WriteGrant[]=[]; #running=0; readonly #waiters:Array<()=>void>=[];
- constructor(private readonly runner:AgentRunner,private readonly maxConcurrency=4){if(!Number.isInteger(maxConcurrency)||maxConcurrency<1)throw new Error("maxConcurrency must be a positive integer");}
+ constructor(private readonly runner:AgentRunner,private readonly evidence:EvidenceStore,private readonly maxConcurrency=4){if(!Number.isInteger(maxConcurrency)||maxConcurrency<1)throw new Error("maxConcurrency must be a positive integer");}
  async #acquire():Promise<void>{if(this.#running<this.maxConcurrency){this.#running++;return;}await new Promise<void>(resolve=>this.#waiters.push(resolve));this.#running++;}
  #release():void{this.#running--;this.#waiters.shift()?.();}
  async dispatch(request:AgentRequest):Promise<AgentResult>{
   await this.#acquire();let grant:WriteGrant|undefined;
   try{
-   if(request.writeSurfaces){grant={agentId:request.id,repository:request.repository,surfaces:request.writeSurfaces};if(request.isolationKey)grant.isolationKey=request.isolationKey;validateWriteGrant(grant,this.#active);this.#active.push(grant);}
+   if(request.writeSurfaces){
+    if(request.role!=="worker") throw new Error("Only worker agents may receive write authority");
+    if(!request.candidate) throw new Error("Write authority requires an exact candidate");
+    if(request.candidate.repository!==request.repository) throw new Error("Write candidate repository mismatch");
+    if(!request.skills?.length) throw new Error("Write authority requires selected skills");
+    const gate=verifySkillEvidence(request.candidate,request.skills,this.evidence,"mutation");
+    if(!gate.ok) throw new Error(`Write authority blocked: ${gate.reason}`);
+    grant={agentId:request.id,repository:request.repository,surfaces:request.writeSurfaces};
+    if(request.isolationKey)grant.isolationKey=request.isolationKey;
+    validateWriteGrant(grant,this.#active);this.#active.push(grant);
+   }
    return await this.runner.run(request);
   } finally {if(grant){const i=this.#active.indexOf(grant);if(i>=0)this.#active.splice(i,1);}this.#release();}
  }
