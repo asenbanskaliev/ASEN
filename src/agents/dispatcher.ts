@@ -17,6 +17,11 @@ export class Dispatcher {
  async dispatch(request:AgentRequest):Promise<AgentResult>{
   await this.#acquire();let grant:WriteGrant|undefined;
   try{
+   if(request.skillContext||request.skillPaths){
+    if(!request.skillContext||!isIssuedSkillContext(request.skillContext)) throw new Error("Delegated skill paths require ASEN-issued skill selection context");
+    const expectedPaths=selectSkills(request.skillContext).map(skill=>skill.path);
+    if(!request.skillPaths||request.skillPaths.length!==expectedPaths.length||request.skillPaths.some((path,index)=>path!==expectedPaths[index])) throw new Error("Delegated skill paths do not match issued context");
+   }
    if(request.writeSurfaces){
     if(request.role!=="worker") throw new Error("Only worker agents may receive write authority");
     if(!request.candidate) throw new Error("Write authority requires an exact candidate");
@@ -28,8 +33,6 @@ export class Dispatcher {
     const selectedSkills=selectSkills(request.skillContext);
     const skills=selectedSkills.map(skill=>skill.id);
     if(!skills.length) throw new Error("Write authority requires mandatory skills");
-    const expectedPaths=selectedSkills.map(skill=>skill.path);
-    if(!request.skillPaths||request.skillPaths.length!==expectedPaths.length||request.skillPaths.some((path,index)=>path!==expectedPaths[index])) throw new Error("Write authority skill paths do not match issued context");
     const gate=verifySkillEvidence(request.candidate,skills,this.evidence,"mutation");
     if(!gate.ok) throw new Error(`Write authority blocked: ${gate.reason}`);
     grant={agentId:request.id,repository:request.repository,surfaces:request.writeSurfaces};
