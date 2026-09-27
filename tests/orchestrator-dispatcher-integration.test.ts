@@ -81,3 +81,15 @@ test("writer cannot reuse another task's issued skill context",async()=>{
   /does not match task\/candidate/
  );
 });
+
+test("read-only agents cannot exchange their phase authorities",async()=>{
+ const plan=buildOrchestrationPlan({taskId:"roles",repository:"repo",prompt:"inspect",candidate},routeOdd({filesTouched:4}));
+ const explorer=plan.agents.find(agent=>agent.role==="explorer");
+ const reviewer=plan.agents.find(agent=>agent.role==="reviewer");
+ assert.ok(explorer?.skillContext&&explorer.skillPaths&&reviewer?.skillContext);
+ const paths=explorer.skillPaths;
+ let ran=false;
+ const runner:AgentRunner={run:async request=>{ran=true;return{id:request.id,ok:true,output:"bad"}}};
+ await assert.rejects(()=>new Dispatcher(runner,new EvidenceStore()).dispatch({...reviewer,skillContext:explorer.skillContext!,skillPaths:paths}),/does not match agent role/);
+ assert.equal(ran,false);
+});
