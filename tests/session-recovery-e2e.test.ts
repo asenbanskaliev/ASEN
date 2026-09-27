@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {execFileSync,spawnSync} from "node:child_process";
+import {spawnSync} from "node:child_process";
 import {mkdtempSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
@@ -18,6 +18,7 @@ test("checkpoint survives process exit and rejects stale ownership, candidate an
  assert.deepEqual(restored.task.blockers,["review pending"]);
  assert.equal(restored.task.candidateId,restored.candidate.id);
  assert.equal(restored.candidate.revision,"sha-a");
+ assert.equal("evidence" in restored,false,"old evidence must be verified again after restart");
  for(const args of [["read","project-b"],["read","project-a","session-b"],["read","project-a","session-a","repository-b"],["read","project-a","session-a","repository-a","sha-b"]]){
   const rejected=run(...(args as [string,string,string,string,string]));assert.notEqual(rejected.status,0,`stale checkpoint accepted: ${args.join(" ")}`);
  }
