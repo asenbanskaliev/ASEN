@@ -2,7 +2,7 @@ import { validateWriteGrant, type WriteGrant } from "../policies/scopes.js";
 import type {Candidate} from "../core/types.js";
 import {EvidenceStore} from "../evidence/store.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
-import {isIssuedSkillContext} from "../skills/context.js";
+import {isIssuedSkillContext,matchesIssuedSkillContext} from "../skills/context.js";
 import {verifySkillEvidence} from "../verify/verifier.js";
 
 export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:SkillSelectionContext; }
@@ -23,6 +23,8 @@ export class Dispatcher {
     if(request.candidate.repository!==request.repository) throw new Error("Write candidate repository mismatch");
     if(!request.skillContext) throw new Error("Write authority requires skill selection context");
     if(!isIssuedSkillContext(request.skillContext)) throw new Error("Write authority requires ASEN-issued skill selection context");
+    const taskId=request.id.endsWith(":worker")?request.id.slice(0,-":worker".length):request.id;
+    if(!matchesIssuedSkillContext(request.skillContext,taskId,request.repository,request.candidate)) throw new Error("Write authority skill context does not match task/candidate");
     const skills=selectSkills(request.skillContext).map(skill=>skill.id);
     if(!skills.length) throw new Error("Write authority requires mandatory skills");
     const gate=verifySkillEvidence(request.candidate,skills,this.evidence,"mutation");
