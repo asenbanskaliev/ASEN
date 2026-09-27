@@ -10,14 +10,14 @@ function implementationAuthorization(){
  const evidence=new EvidenceStore();
  evidence.add(candidate,{id:"route",kind:"route-decision",status:"pass",summary:"route",createdAt:"now"});
  evidence.add(candidate,{id:"unit",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
- return authorizeImplementation(candidate,issueSkillContext({filesTouched:2}),evidence);
+ return authorizeImplementation(candidate,issueSkillContext("task","r",candidate,{filesTouched:2}),evidence);
 }
 function verifiedAuthorization(){
  const evidence=new EvidenceStore();
  evidence.add(candidate,{id:"test",kind:"test",status:"pass",summary:"green",createdAt:"now"});
  evidence.add(candidate,{id:"unit-v",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  evidence.add(candidate,{id:"review-v",kind:"review",status:"pass",summary:"review",createdAt:"now"});
- return authorizeVerified(candidate,"medium",issueSkillContext({verification:true}),evidence);
+ return authorizeVerified(candidate,"medium",issueSkillContext("task","r",candidate,{verification:true}),evidence);
 }
 
 test("rejects skipping directly to VERIFIED",()=>assert.throws(()=>transition("IMPLEMENTING","VERIFIED")));
@@ -79,7 +79,7 @@ test("verification authorization derives mandatory review skill from context",()
  evidence.add(candidate,{id:"test-derived",kind:"test",status:"pass",summary:"green",createdAt:"now"});
  evidence.add(candidate,{id:"unit-derived",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  assert.throws(
-  ()=>authorizeVerified(candidate,"medium",issueSkillContext({verification:true}),evidence),
+  ()=>authorizeVerified(candidate,"medium",issueSkillContext("task","r",candidate,{verification:true}),evidence),
   /asen-review.*review evidence/
  );
 });
