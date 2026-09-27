@@ -21,9 +21,10 @@ capabilities:
     gap: "Pi process runner exists; session transport and lifecycle parity are incomplete."
   - id: PAR-004
     area: single-writer-and-write-scope
-    status: PARITY
+    status: PARTIAL
     priority: P0
     evidence: [src/policies/scopes.ts, tests/scopes.test.ts]
+    gap: "In-process overlap rejection exists; deterministic queued writer ownership, cross-process locking and ambiguous write outcomes are not proven."
   - id: PAR-005
     area: worktree-isolation
     status: MISSING
@@ -68,9 +69,10 @@ capabilities:
     gap: "Evidence contracts exist; explicit RED -> GREEN -> REFACTOR transition enforcement needs stronger automated proof."
   - id: PAR-014
     area: risk-proportional-verification
-    status: PARITY
+    status: PARTIAL
     priority: P0
     evidence: [src/flow/risk.ts, src/verify/verifier.ts, tests/verification.test.ts]
+    gap: "Risk tiers exist; evidence freshness, immutable candidate binding and effect authorization are not proven."
   - id: PAR-015
     area: exact-candidate-snapshot
     status: PARTIAL
@@ -78,9 +80,10 @@ capabilities:
     gap: "Candidate-bound evidence exists; Git tree/object snapshot isolation is less complete than Gentle review snapshots."
   - id: PAR-016
     area: independent-review
-    status: PARITY
+    status: PARTIAL
     priority: P0
     evidence: [src/review/review.ts, tests/review.test.ts]
+    gap: "Review reduction exists; independent durable authority, immutable snapshot binding and reviewer lifecycle are not proven."
   - id: PAR-017
     area: multi-lens-review
     status: MISSING
@@ -107,9 +110,10 @@ capabilities:
     evidence: [registry/capabilities/CAP-GIT-001-destructive-git-guard.yaml]
   - id: PAR-022
     area: sqlite-memory
-    status: PARITY
+    status: PARTIAL
     priority: P0
     evidence: [src/memory/sqlite-store.ts, tests/memory-persistence.test.ts]
+    gap: "SQLite/WAL persistence exists; atomic row+FTS writes, writer serialization, migration locks, generation fencing and repair are not proven."
   - id: PAR-023
     area: memory-fts-search
     status: PARITY
@@ -117,9 +121,10 @@ capabilities:
     evidence: [src/memory/sqlite-store.ts, tests/memory.test.ts]
   - id: PAR-024
     area: memory-relations
-    status: PARITY
+    status: PARTIAL
     priority: P1
     evidence: [src/memory/types.ts, src/memory/sqlite-store.ts]
+    gap: "Types suggest relations but the current reverse audit does not prove the full relation persistence/replay/ownership lifecycle."
   - id: PAR-025
     area: compaction-recovery
     status: PARTIAL
@@ -145,9 +150,10 @@ capabilities:
     rationale: "Cloud service is intentionally outside ASEN core."
   - id: PAR-030
     area: transactional-apply-verify-rollback
-    status: PARITY
+    status: PARTIAL
     priority: P0
     evidence: [src/lifecycle/transaction.ts, tests/transaction.test.ts]
+    gap: "Control flow exists; filesystem-safe mutation journal, crash recovery, path ownership and complete rollback are not proven."
   - id: PAR-031
     area: doctor
     status: PARTIAL
