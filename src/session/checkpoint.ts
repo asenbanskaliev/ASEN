@@ -1,11 +1,11 @@
 import type {Candidate,TaskState} from "../core/types.js";
-import {open,readFile,rename,unlink} from "node:fs/promises";
+import {open,readFile,realpath,rename,unlink} from "node:fs/promises";
 import {dirname,basename,join} from "node:path";
 import {randomUUID} from "node:crypto";
-export interface SessionCheckpoint{version:1;projectId:string;sessionId:string;task:TaskState;candidate?:Candidate;savedAt:string;}
-export function createCheckpoint(projectId:string,sessionId:string,task:TaskState,candidate?:Candidate):SessionCheckpoint{
+export interface SessionCheckpoint{version:1;projectId:string;sessionId:string;task:TaskState;candidate?:Candidate;piSessionFile?:string;savedAt:string;}
+export function createCheckpoint(projectId:string,sessionId:string,task:TaskState,candidate?:Candidate,piSessionFile?:string):SessionCheckpoint{
  if(task.candidateId&&(!candidate||candidate.id!==task.candidateId))throw new Error("Checkpoint candidate mismatch");
- return {version:1,projectId,sessionId,task:structuredClone(task),...(candidate?{candidate:structuredClone(candidate)}:{}),savedAt:new Date().toISOString()};
+ return {version:1,projectId,sessionId,task:structuredClone(task),...(candidate?{candidate:structuredClone(candidate)}:{}),...(piSessionFile?{piSessionFile}:{}),savedAt:new Date().toISOString()};
 }
 export function restoreCheckpoint(checkpoint:SessionCheckpoint,projectId:string):{task:TaskState;candidate?:Candidate}{
  if(checkpoint.version!==1)throw new Error("Unsupported checkpoint version");
@@ -17,7 +17,7 @@ export function assertResumeRevision(candidate:Candidate,currentRevision:string)
  if(candidate.revision!==currentRevision)throw new Error("Repository revision changed since checkpoint");
 }
 
-export interface ResumeIdentity{projectId:string;sessionId:string;repository:string;revision:string;}
+export interface ResumeIdentity{projectId:string;sessionId:string;repository:string;revision:string;piSessionFile?:string;}
 
 // The checkpoint is a recovery hint, never a source of previously verified evidence.
 export async function saveCheckpoint(path:string,checkpoint:SessionCheckpoint):Promise<void>{
@@ -39,6 +39,9 @@ export async function loadCheckpoint(path:string,identity:ResumeIdentity):Promis
  const raw=JSON.parse(await readFile(path,"utf8")) as SessionCheckpoint;
  if(!raw||typeof raw!=="object"||!raw.task||!raw.candidate)throw new Error("Checkpoint missing candidate");
  if(raw.sessionId!==identity.sessionId)throw new Error("Checkpoint session mismatch");
+ if(identity.piSessionFile){
+  if(!raw.piSessionFile||await realpath(raw.piSessionFile)!==await realpath(identity.piSessionFile))throw new Error("Pi session file mismatch");
+ }
  const restored=restoreCheckpoint(raw,identity.projectId);
  const candidate=restored.candidate;
  if(!candidate||!restored.task.candidateId||candidate.id!==restored.task.candidateId)throw new Error("Checkpoint candidate mismatch");
