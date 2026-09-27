@@ -1,0 +1,22 @@
+audit: phase10-final-reverse
+branch: audit/gentle-parity
+frozen_universe: PAR-001..PAR-500
+result: NO_NEW_P0
+observations:
+  - module: src/agents/dispatcher.ts
+    confirms: "Only in-process overlap rejection and finally-release are implemented; no queue/lock/transport parity claim remains."
+  - module: src/agents/pi-process-runner.ts
+    confirms: "Only basic pi --mode rpc spawn/stdout/stderr is implemented; transport/watchdog/correlation/cancellation claims remain gaps."
+  - module: src/lifecycle/transaction.ts
+    confirms: "Only control-shape snapshot/apply/verify/rollback exists; PAR-030 correctly downgraded to PARTIAL."
+  - module: src/memory/sqlite-store.ts
+    confirms: "WAL and FTS exist, but save is a multi-statement non-atomic row/index mutation; PAR-022 correctly PARTIAL."
+  - module: src/review/review.ts
+    confirms: "Candidate-id equality and severity reduction only; PAR-016 correctly PARTIAL."
+  - module: src/verify/verifier.ts
+    confirms: "Evidence presence checks only; no freshness/tree/effect authorization."
+  - module: src/lifecycle/doctor.ts
+    confirms: "Boolean dependency rendering only; diagnostics/repair remain gaps."
+new_p0_contracts: []
+saturation_reset_required: false
+closure_condition: "CI and Release Gate must pass on exact final audit SHA."
