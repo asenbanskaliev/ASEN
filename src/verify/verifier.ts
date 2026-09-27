@@ -1,7 +1,7 @@
 import type { Candidate, Evidence, Risk } from "../core/types.js";
 import { EvidenceStore } from "../evidence/store.js";
 import { verificationLevel } from "../flow/risk.js";
-import {getSkillContract,type SkillId} from "../skills/registry.js";
+import {getSkillContract,selectSkills,type SkillId,type SkillSelectionContext} from "../skills/registry.js";
 
 export interface VerificationResult { ok: boolean; reason: string; }
 
@@ -72,14 +72,19 @@ export function isTransitionAuthorization(value:unknown):value is TransitionAuth
  return typeof value==="object"&&value!==null&&transitionAuthorizations.has(value);
 }
 
-export function authorizeImplementation(candidate:Candidate,skills:readonly SkillId[],evidence:EvidenceStore):TransitionAuthorization {
+export function authorizeImplementation(candidate:Candidate,context:SkillSelectionContext,evidence:EvidenceStore):TransitionAuthorization {
+ if(!Object.isFrozen(context)) throw new Error("Implementation requires sealed skill selection context");
+ const skills=selectSkills(context).map(skill=>skill.id);
  if(!skills.length) throw new Error("Implementation requires selected skills");
  const gate=verifySkillEvidence(candidate,skills,evidence,"mutation");
  if(!gate.ok) throw new Error(gate.reason);
  return mintTransitionAuthorization(candidate,"IMPLEMENTING");
 }
 
-export function authorizeVerified(candidate:Candidate,risk:Risk,skills:readonly SkillId[],evidence:EvidenceStore):TransitionAuthorization {
+export function authorizeVerified(candidate:Candidate,risk:Risk,context:SkillSelectionContext,evidence:EvidenceStore):TransitionAuthorization {
+ if(!Object.isFrozen(context)) throw new Error("Verification requires sealed skill selection context");
+ const skills=selectSkills(context).map(skill=>skill.id);
+ if(!skills.length) throw new Error("Verification requires selected skills");
  const gate=verifyCandidate(candidate,risk,evidence,skills);
  if(!gate.ok) throw new Error(gate.reason);
  return mintTransitionAuthorization(candidate,"VERIFIED");
