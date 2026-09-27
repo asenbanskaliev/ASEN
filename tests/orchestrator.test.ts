@@ -14,7 +14,7 @@ test("verification route creates only verifier",()=>{
 test("orchestration resolves mandatory skills for a risky behavior change",()=>{
  const decision=routeOdd({filesTouched:4,securitySensitive:true});
  const p=buildOrchestrationPlan({taskId:"t",repository:"r",prompt:"p",codeChange:true,behaviorChange:true,filesTouched:4,writeSurfaces:["src"],candidate:{id:"c",repository:"r",revision:"sha",createdAt:"now"}},decision);
- assert.deepEqual(p.skills,["asen-odd","asen-work-unit","asen-safe-change","asen-tdd","asen-review"]);
+ assert.deepEqual(p.skills,["asen-phase-protocol","asen-work-unit","asen-safe-change","asen-apply","asen-odd","asen-tdd","asen-review"]);
 });
 
 
