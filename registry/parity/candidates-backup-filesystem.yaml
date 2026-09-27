@@ -1,0 +1,8 @@
+source_pass: backup-filesystem-saturation
+candidates:
+  - { area: backup-snapshot-checksum-is-deterministic-and-manifest-binds-snapshot-path, priority: P0, source: internal/backup/snapshot_test.go }
+  - { area: restore-rejects-existing-outside-root-symlink-and-unsafe-symlink-target, priority: P0, source: internal/backup/snapshot_dir_fsync_test.go, likely_covered_by: [PAR-078, PAR-079] }
+  - { area: restore-detects-symlink-type-and-target-collision, priority: P0, source: internal/backup/restore_test.go, likely_duplicate: PAR-362 }
+  - { area: memory-filesystem-policy-rejects-resolved-remote-windows-path-and-normalizes-extended-unc, priority: P0, source: internal/store/filesystem_policy_windows_test.go, likely_duplicate: PAR-421 }
+  - { area: atomic-history-write-leaves-no-staging-file-on-rename-failure, priority: P0, source: tests/history-atomic-write.test.ts }
+disposition: NEEDS_DEDUPLICATION_AGAINST_PAR_001_494
