@@ -22,3 +22,13 @@ passes:
       - engram/internal/server/auth_test.go
       - engram/internal/mcp/write_queue_test.go
     note: "No novel P0 invariant after semantic comparison with canonical registry."
+  - pass: 3
+    focus: filesystem-backup-update-install
+    p0_new: 0
+    evidence:
+      - gentle-ai/internal/backup/restore_test.go
+      - gentle-ai/internal/components/mutationjournal/journal_test.go
+      - gentle-ai/internal/update/upgrade/download_durability_test.go
+      - gentle-ai/internal/cli/install_state_lock_test.go
+      - gentle-shell/tests/review-candidate-owner-retry.test.ts
+    note: "No novel P0 invariant."
