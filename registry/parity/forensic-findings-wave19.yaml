@@ -1,0 +1,11 @@
+wave: 19
+focus: [repeat-p0-pass-9]
+new_contracts:
+  - { id: PAR-296, area: authority-repair-assessment-is-readonly-deterministic-and-path-redacted, status: MISSING, priority: P0 }
+  - { id: PAR-297, area: authority-repair-refuses-ambiguous-or-unknown-inventory, status: MISSING, priority: P0 }
+  - { id: PAR-298, area: windows-authority-owner-acl-rejects-forgeable-principals-and-reparse-points, status: MISSING, priority: P0 }
+saturation_result:
+  pass: 9
+  p0_new: 3
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
