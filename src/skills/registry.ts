@@ -1,9 +1,12 @@
 export type SkillId =
   | "asen-context-init" | "asen-explore" | "asen-proposal" | "asen-specification" | "asen-design"
   | "asen-tasks" | "asen-apply" | "asen-verify" | "asen-archive" | "asen-skill-registry"
+  | "asen-adversarial-review" | "asen-skill-authoring" | "asen-skill-audit" | "asen-defect-workflow" | "asen-go-testing"
+  | "asen-delivery-branch" | "asen-delivery-chain" | "asen-issue-workflow" | "asen-doc-design" | "asen-collaboration-message"
   | "asen-safe-change" | "asen-tdd" | "asen-odd" | "asen-review" | "asen-work-unit";
 
-export type SkillPhase="context-init"|"explore"|"proposal"|"specification"|"design"|"tasks"|"apply"|"verify"|"archive"|"skill-registry";
+export type SkillPhase="context-init"|"explore"|"proposal"|"specification"|"design"|"tasks"|"apply"|"verify"|"archive"|"skill-registry"
+ |"adversarial-review"|"skill-authoring"|"skill-audit"|"defect"|"go-testing"|"delivery-branch"|"delivery-chain"|"issue"|"docs"|"collaboration-message";
 export type SkillTrigger =
   | SkillPhase | "code-change" | "behavior-change" | "high-risk" | "unknown-risk" | "multi-file" | "verification";
 
@@ -34,6 +37,16 @@ const contracts:readonly SkillContract[]=[
  {id:"asen-verify",path:"skills/asen-verify/SKILL.md",triggers:["verify"],requires:[],evidence:["verification-report"],blocks:[]},
  {id:"asen-archive",path:"skills/asen-archive/SKILL.md",triggers:["archive"],requires:["asen-verify"],evidence:["archive-report"],blocks:[]},
  {id:"asen-skill-registry",path:"skills/asen-skill-registry/SKILL.md",triggers:["skill-registry"],requires:[],evidence:["skill-index"],blocks:[]},
+ {id:"asen-adversarial-review",path:"skills/asen-adversarial-review/SKILL.md",triggers:["adversarial-review"],requires:["asen-review"],evidence:["adversarial-review"],blocks:[]},
+ {id:"asen-skill-authoring",path:"skills/asen-skill-authoring/SKILL.md",triggers:["skill-authoring"],requires:["asen-skill-registry"],evidence:["skill-contract"],blocks:[]},
+ {id:"asen-skill-audit",path:"skills/asen-skill-audit/SKILL.md",triggers:["skill-audit"],requires:["asen-skill-registry"],evidence:["skill-audit"],blocks:[]},
+ {id:"asen-defect-workflow",path:"skills/asen-defect-workflow/SKILL.md",triggers:["defect"],requires:["asen-work-unit"],evidence:["defect-reproduction"],blocks:[]},
+ {id:"asen-go-testing",path:"skills/asen-go-testing/SKILL.md",triggers:["go-testing"],requires:[],evidence:["go-test"],blocks:[]},
+ {id:"asen-delivery-branch",path:"skills/asen-delivery-branch/SKILL.md",triggers:["delivery-branch"],requires:["asen-work-unit"],evidence:["delivery-state"],blocks:[]},
+ {id:"asen-delivery-chain",path:"skills/asen-delivery-chain/SKILL.md",triggers:["delivery-chain"],requires:["asen-work-unit"],evidence:["delivery-plan"],blocks:[]},
+ {id:"asen-issue-workflow",path:"skills/asen-issue-workflow/SKILL.md",triggers:["issue"],requires:[],evidence:["issue-evidence"],blocks:[]},
+ {id:"asen-doc-design",path:"skills/asen-doc-design/SKILL.md",triggers:["docs"],requires:[],evidence:["doc-validation"],blocks:[]},
+ {id:"asen-collaboration-message",path:"skills/asen-collaboration-message/SKILL.md",triggers:["collaboration-message"],requires:[],evidence:["message-evidence"],blocks:[]},
  {id:"asen-odd",path:"skills/asen-odd/SKILL.md",triggers:["high-risk","unknown-risk","multi-file"],requires:[],evidence:["route-decision"],blocks:["mutation"]},
  {id:"asen-work-unit",path:"skills/asen-work-unit/SKILL.md",triggers:["code-change","behavior-change","multi-file"],requires:[],evidence:["work-unit"],blocks:["mutation"]},
  {id:"asen-safe-change",path:"skills/asen-safe-change/SKILL.md",triggers:["code-change"],requires:["asen-work-unit"],evidence:["scope","rollback"],blocks:["mutation","release"]},
