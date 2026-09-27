@@ -19,7 +19,7 @@ assert.deepEqual(paths,["skills/asen-phase-protocol/SKILL.md","skills/asen-explo
 const piMain=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
 const cli=join(dirname(piMain),"bundle","cli.js");
 const marker=randomUUID();
-const args=[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--provider","openrouter","--model","cohere/north-mini-code:free",...paths.flatMap(path=>["--skill",path])];
+const args=[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--tools","read","--provider","openrouter","--model","cohere/north-mini-code:free",...paths.flatMap(path=>["--skill",path])];
 const child=spawn(process.execPath,args,{cwd:repo,env:process.env,stdio:["pipe","pipe","pipe"]});
 const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
 const observed={loaded:false,finished:false,read:[],text:[],error:null};
