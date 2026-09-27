@@ -17,11 +17,11 @@ export class PiProcessRunner implements AgentRunner{
    const append=(current:string,d:unknown)=>{const next=current+String(d);if(Buffer.byteLength(next)>max){overflow=true;stop();return current;}return next;};
    child.stdout.on("data",d=>stdout=append(stdout,d));child.stderr.on("data",d=>stderr=append(stderr,d));
    child.on("error",e=>finish({id:request.id,ok:false,output:`pi process error: ${String(e)}`}));
-   child.on("close",code=>{if(code===0&&!overflow&&this.options.validateResponseId){try{const lines=stdout.trim().split(/\\r?\\n/).filter(Boolean);const envelope=JSON.parse(lines.at(-1)??"");if(envelope?.requestId!==request.id)return finish({id:request.id,ok:false,output:"pi response requestId mismatch"});}catch{return finish({id:request.id,ok:false,output:"pi response envelope invalid"});}}finish({id:request.id,ok:code===0&&!overflow,output:overflow?`pi output exceeded ${max} bytes`:(stdout||stderr)});});
+   child.on("close",code=>{if(code===0&&!overflow&&this.options.validateResponseId){try{const records=stdout.trim().split(/\\r?\\n/).filter(Boolean).map(line=>JSON.parse(line));const envelope=records.find(record=>record?.type==="response"&&record?.id===request.id);if(!envelope)return finish({id:request.id,ok:false,output:"pi correlated response missing"});if(envelope.success===false)return finish({id:request.id,ok:false,output:`pi response failed: ${JSON.stringify(envelope)}`});}catch{return finish({id:request.id,ok:false,output:"pi response envelope invalid"});}}finish({id:request.id,ok:code===0&&!overflow,output:overflow?`pi output exceeded ${max} bytes`:(stdout||stderr)});});
    const timer=setTimeout(()=>{stop();finish({id:request.id,ok:false,output:`pi process timed out after ${timeoutMs}ms`});},timeoutMs);
    if(this.options.signal?.aborted)onAbort();else this.options.signal?.addEventListener("abort",onAbort,{once:true});
    child.stdin.on("error",e=>finish({id:request.id,ok:false,output:`pi stdin error: ${String(e)}`}));
-   child.stdin.end(JSON.stringify({type:"prompt",message:request.prompt,requestId:request.id})+"\n");
+   child.stdin.end(JSON.stringify({id:request.id,type:"prompt",message:request.prompt})+"\n");
   });
  }
 }
