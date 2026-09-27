@@ -13,6 +13,6 @@ Verification layers:
 
 A PASS is meaningful only for the exact candidate tested.
 
-Initial CI targets Linux and Windows. macOS is added before stable release. Windows is a first-class platform, not a post-release compatibility task.
+CI and Release Gate run on Linux, Windows and macOS. The Pi RPC fixture uses Node directly on each platform; no platform-specific skip is accepted for request correlation, timeouts or output bounds.
 
 Strict TDD evidence, when enabled, must prove RED -> GREEN -> REFACTOR/GREEN from executed commands rather than narrative claims.
