@@ -1,0 +1,14 @@
+id: CAP-LFC-002
+name: ASEN doctor
+priority: P0
+status: specified
+owner: ASEN-Lifecycle
+contract:
+  given: ASEN health is inspected
+  when: doctor runs
+  then:
+    - checks are diagnostic by default
+    - Pi/config/memory/git/skills/registry state is reportable
+    - repair is a distinct explicit operation
+tests: [unit, integration, failure-injection]
+evidence_required: true
