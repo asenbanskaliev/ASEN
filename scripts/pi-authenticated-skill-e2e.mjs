@@ -34,7 +34,7 @@ const handle=record=>{
   const actual=record.data.commands.filter(item=>item.source==="skill").map(item=>realpathSync(item.sourceInfo.path));
   assert.deepEqual(actual,expected,"Pi loaded an unexpected Skill set");
   observed.loaded=true;
-  command({id:"asen-turn",type:"prompt",message:`Read these two exact files using read, in this order: ${expected[0]} then ${expected[1]}. Use those paths literally. Read no other file and use no other tool. After both reads, reply with exactly ASEN_AUTH_PROBE:${marker}:READ_ONLY followed by NO_REDELEGATION.`});
+  command({id:"asen-turn",type:"prompt",message:`Perform only these two read operations. First call read with path exactly ${expected[0]}. Then call read with path exactly ${expected[1]}. Do not discover, search, infer, inspect, or read any other path, including documentation. After the second read, make no more tool calls. Reply exactly ASEN_AUTH_PROBE:${marker}:READ_ONLY NO_REDELEGATION.`});
  }
  if(record.type==="tool_execution_start"){
   if(record.toolName!=="read")throw new Error(`Disallowed Pi tool: ${record.toolName}`);
