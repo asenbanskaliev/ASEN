@@ -1,0 +1,15 @@
+source_pass: cli-transport-diagnostics-C
+baseline:
+  gentle_ai: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+  engram: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
+  gentle_shell: fe61793e7cb3e75462ba53c7631e87d78e989354
+candidates:
+  - { area: immutable-review-transport-capability-is-closed-and-unsupported-runtime-stops-before-repository-or-authority, priority: P0 }
+  - { area: duplicate-runtime-identities-are-rejected-before-repository-access, priority: P0 }
+  - { area: review-temporary-git-artifacts-are-removed-after-failure, priority: P0 }
+  - { area: memory-health-probe-terminates-descendants-and-preserves-earlier-cancellation-or-deadline, priority: P0 }
+  - { area: pi-memory-session-attributed-writes-require-acknowledged-runtime-identity-and-fail-closed-on-registration-failure, priority: P0 }
+  - { area: pi-memory-compaction-ambiguous-runtime-identity-permanently-blocks-compaction-writes, priority: P0 }
+  - { area: child-query-replies-are-strictly-correlated-bounded-and-settle-exactly-once, priority: P0 }
+  - { area: agent-rpc-activity-is-field-whitelisted-session-scoped-and-size-bounded-before-publication, priority: P0 }
+disposition: NEEDS_DEDUPLICATION_AGAINST_PAR_001_480
