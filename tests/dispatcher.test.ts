@@ -75,3 +75,13 @@ test("dispatcher rejects mutable skill context even when its values look valid",
   /ASEN-issued skill selection context/
  );
 });
+
+
+test("dispatcher rejects a forged frozen skill context",async()=>{
+ const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
+ const forged=Object.freeze({codeChange:false});
+ await assert.rejects(
+  ()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,skillContext:forged}),
+  /ASEN-issued skill selection context/
+ );
+});
