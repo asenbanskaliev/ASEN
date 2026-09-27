@@ -9,6 +9,7 @@ import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {Dispatcher,type AgentRunner} from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
+import {loadEvidence,saveEvidence} from "../src/evidence/persistence.js";
 const candidate={id:"candidate",repository:"repo",revision:"sha",createdAt:"now"};
 const recoveryKey=randomBytes(32);
 const artifacts:Record<LifecyclePhase,string>={"context-init":"project-context",explore:"exploration",proposal:"proposal",specification:"specification",design:"design",tasks:"task-plan",apply:"apply-result",verify:"verification-report",archive:"archive-report"};
@@ -64,13 +65,13 @@ test("interruption resumes exact phase, artifacts and candidate; changed identit
 });
 test("task executes through dispatcher, resumes, verifies and archives",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-lifecycle-e2e-"));t.after(()=>rm(dir,{recursive:true,force:true}));
- const path=join(dir,"flow.json"),evidence=new EvidenceStore(),rolesSeen:string[]=[];
+ const path=join(dir,"flow.json"),evidencePath=join(dir,"evidence.json");let evidence=new EvidenceStore();const rolesSeen:string[]=[];
  const runner:AgentRunner={run:async request=>{
   rolesSeen.push(`${request.skillContext?.phase}:${request.role}`);
   const phase=request.skillContext?.phase as LifecyclePhase;
   return{id:request.id,ok:true,output:JSON.stringify({kind:artifacts[phase],content:`completed ${phase}`,repository:candidate.repository,candidateId:candidate.id,revision:candidate.revision})};
  }};
- const dispatcher=new Dispatcher(runner,evidence),flow=new SkillLifecycle("task",candidate);
+ let dispatcher=new Dispatcher(runner,evidence);const flow=new SkillLifecycle("task",candidate);
  const execute=async(target:SkillLifecycle,phase:LifecyclePhase)=>{
   const issued=completion(phase);
   await target.runPhase(dispatcher,{phase,context:issued.context,skillPaths:issued.skillPaths,prompt:`perform ${phase}`,evidence,risk:"high",...(phase==="apply"?{writeSurfaces:["src/"]}:{})});
@@ -88,6 +89,9 @@ test("task executes through dispatcher, resumes, verifies and archives",async t=
  evidence.add(candidate,{id:"test",kind:"test",status:"pass",summary:"tests",createdAt:"now"});
  await assert.rejects(()=>execute(resumed,"verify"),/Independent review evidence is required/);
  evidence.add(candidate,{id:"review",kind:"review",status:"pass",summary:"review",createdAt:"now"});
+ await saveEvidence(evidencePath,candidate,evidence,recoveryKey);
+ evidence=await loadEvidence(evidencePath,candidate,recoveryKey);
+ dispatcher=new Dispatcher(runner,evidence);
  await execute(resumed,"verify");await execute(resumed,"archive");
  assert.equal(resumed.state.nextPhase,null);
  assert.deepEqual(rolesSeen,["context-init:worker","explore:explorer","proposal:worker","specification:worker","design:worker","tasks:worker","apply:worker","verify:verifier","archive:worker"]);
