@@ -4,7 +4,7 @@ export type Phase =
 export type Risk = "low" | "medium" | "high" | "unknown";
 export interface Candidate { id:string; repository:string; revision:string; createdAt:string; }
 export interface Evidence {
- id:string; candidateId:string; candidateRevision:string;
+ id:string; candidateRepository:string; candidateId:string; candidateRevision:string;
  kind:"test"|"review"|"command"|"audit"|"tdd";
  status:"pass"|"fail"; summary:string; createdAt:string;
 }
