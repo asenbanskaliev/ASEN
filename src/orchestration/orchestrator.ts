@@ -2,6 +2,7 @@ import type { AgentRequest } from "../agents/dispatcher.js";
 import type { OddDecision } from "../flow/odd.js";
 import type {Candidate} from "../core/types.js";
 import {selectSkills,type SkillId} from "../skills/registry.js";
+import {issueSkillContext} from "../skills/context.js";
 
 export interface OrchestrationInput {
   taskId:string; repository:string; prompt:string; writeSurfaces?:string[];
@@ -11,7 +12,7 @@ export interface OrchestrationPlan { decision:OddDecision; agents:AgentRequest[]
 
 export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddDecision):OrchestrationPlan {
   const base={repository:input.repository,prompt:input.prompt};
-  const skillContext=Object.freeze({
+  const skillContext=issueSkillContext({
     risk:decision.risk,
     verification:decision.route==="verify"||decision.verification==="independent",
     ...(input.codeChange===undefined?{}:{codeChange:input.codeChange}),
