@@ -49,7 +49,13 @@ test("Pi RPC adapter supplies selected routes as native Pi flags",async()=>{
  const r=await runner(p).run({id:"native",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:paths});
  assert.equal(r.ok,true);
  const response=JSON.parse(r.output.trim());
- assert.deepEqual(response.args,["--no-extensions","--no-skills",...paths.flatMap(path=>["--skill",path])]);
+ assert.deepEqual(response.args,["--no-extensions","--no-skills","--tools","read",...paths.flatMap(path=>["--skill",path])]);
+});
+test("Pi RPC adapter blocks caller-supplied tool authority",async()=>{
+ const {d,p}=await fixture('setTimeout(()=>{},10000);');
+ const context=issueSkillContext("tool-override",d,undefined,{phase:"explore"});
+ const r=await runner(p,{extraArgs:[p,"--tools","bash"]}).run({id:"tool-override",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
+ assert.equal(r.ok,false);assert.match(r.output,/issued by ASEN/);
 });
 test("Pi RPC adapter blocks caller-supplied skill overrides",async()=>{
  const {d,p}=await fixture('setTimeout(()=>{},10000);');
