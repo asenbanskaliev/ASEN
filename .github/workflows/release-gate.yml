@@ -44,7 +44,7 @@ jobs:
           $list = pi list | Out-String
           $list
           if ($list -notmatch "asen") { throw "ASEN not listed by real Pi" }
-          node (Join-Path $env:GITHUB_WORKSPACE "scripts/pi-extension-e2e.mjs") (Join-Path $env:PI_CODING_AGENT_DIR "npm\node_modules\asen\extensions\asen.ts")
+          node (Join-Path $env:GITHUB_WORKSPACE "scripts/pi-extension-e2e.mjs") (Join-Path $env:GITHUB_WORKSPACE "extensions\asen.ts")
       - name: Packed install smoke
         shell: bash
         if: runner.os != 'Windows'
