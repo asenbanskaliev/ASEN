@@ -1,10 +1,10 @@
 import { validateWriteGrant, type WriteGrant } from "../policies/scopes.js";
 import type {Candidate} from "../core/types.js";
 import {EvidenceStore} from "../evidence/store.js";
-import type {SkillId} from "../skills/registry.js";
+import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import {verifySkillEvidence} from "../verify/verifier.js";
 
-export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skills?:SkillId[]; }
+export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:SkillSelectionContext; }
 export interface AgentResult { id:string; ok:boolean; output:string; }
 export interface AgentRunner { run(request:AgentRequest):Promise<AgentResult>; }
 
@@ -20,8 +20,10 @@ export class Dispatcher {
     if(request.role!=="worker") throw new Error("Only worker agents may receive write authority");
     if(!request.candidate) throw new Error("Write authority requires an exact candidate");
     if(request.candidate.repository!==request.repository) throw new Error("Write candidate repository mismatch");
-    if(!request.skills?.length) throw new Error("Write authority requires selected skills");
-    const gate=verifySkillEvidence(request.candidate,request.skills,this.evidence,"mutation");
+    if(!request.skillContext) throw new Error("Write authority requires skill selection context");
+    const skills=selectSkills(request.skillContext).map(skill=>skill.id);
+    if(!skills.length) throw new Error("Write authority requires mandatory skills");
+    const gate=verifySkillEvidence(request.candidate,skills,this.evidence,"mutation");
     if(!gate.ok) throw new Error(`Write authority blocked: ${gate.reason}`);
     grant={agentId:request.id,repository:request.repository,surfaces:request.writeSurfaces};
     if(request.isolationKey)grant.isolationKey=request.isolationKey;
