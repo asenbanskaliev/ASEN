@@ -1,4 +1,5 @@
 import type { Phase } from "./types.js";
+import type {VerificationResult} from "../verify/verifier.js";
 
 const allowed: Record<Phase, readonly Phase[]> = {
   DISCOVERING: ["PLANNING", "BLOCKED", "FAILED"],
@@ -31,13 +32,12 @@ export function transition(from:Phase,to:Phase):Phase {
 export interface GuardedTransition {
  from:Phase;
  to:Phase;
- authorized:boolean;
- reason?:string;
+ gate:VerificationResult;
 }
 
 export function guardedTransition(input:GuardedTransition):Phase {
- if((input.to==="IMPLEMENTING"||input.to==="VERIFIED")&&!input.authorized){
-  throw new Error(input.reason??`ASEN gate blocked transition to ${input.to}`);
+ if((input.to==="IMPLEMENTING"||input.to==="VERIFIED")&&!input.gate.ok){
+  throw new Error(input.gate.reason||`ASEN gate blocked transition to ${input.to}`);
  }
  return structuralTransition(input.from,input.to);
 }
