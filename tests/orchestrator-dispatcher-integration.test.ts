@@ -45,3 +45,16 @@ test("orchestrated writer cannot use evidence from another revision",async()=>{
  const runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:"bad"})};
  await assert.rejects(()=>new Dispatcher(runner,evidence).dispatch(worker),/route-decision evidence/);
 });
+
+
+test("orchestrated writer skill context cannot be downgraded after planning",()=>{
+ const plan=buildOrchestrationPlan(
+  {taskId:"task",repository:"repo",prompt:"change code",codeChange:true,filesTouched:4,writeSurfaces:["src"],candidate},
+  routeOdd({filesTouched:4})
+ );
+ const worker=plan.agents.find(agent=>agent.role==="worker");
+ assert.ok(worker?.skillContext);
+ assert.equal(Object.isFrozen(worker.skillContext),true);
+ assert.throws(()=>{(worker.skillContext as {codeChange?:boolean}).codeChange=false;},TypeError);
+ assert.equal(worker.skillContext.codeChange,true);
+});
