@@ -1,0 +1,12 @@
+wave: 41
+focus: [saturation-repeat-1]
+new_contracts:
+  - { id: PAR-471, area: target-status-decision-fails-closed-before-adapter-can-broaden-recovery, status: MISSING, priority: P0 }
+  - { id: PAR-472, area: target-status-reconstructs-after-restart-readonly-and-bounds-unstable-authority-reads, status: MISSING, priority: P0 }
+  - { id: PAR-473, area: doctor-runs-all-checks-and-rolls-up-blocking-findings-without-short-circuit, status: MISSING, priority: P0 }
+  - { id: PAR-474, area: native-review-status-rejects-unexpected-stderr-and-malformed-output-without-decoding-authority, status: MISSING, priority: P0 }
+  - { id: PAR-475, area: native-review-client-requires-absolute-package-local-executable-and-never-invokes-through-shell, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 5
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
