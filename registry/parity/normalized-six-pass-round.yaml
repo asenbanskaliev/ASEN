@@ -52,3 +52,21 @@ passes:
       - engram/internal/project/identity_test.go
       - engram/plugin/pi/test/compaction-recovery.test.mjs
     note: "No novel P0 invariant."
+  - pass: 6
+    focus: cross-cutting-package-release-guards-object-store-memory-e2e
+    p0_new: 0
+    evidence:
+      - gentle-shell/tests/provider-contract-bundle.test.ts
+      - gentle-shell/tests/autonomous-guard.test.ts
+      - gentle-shell/tests/review-object-store.test.ts
+      - gentle-ai/internal/update/release_security_test.go
+      - engram/internal/server/server_e2e_test.go
+      - engram/internal/selftest/selftest_test.go
+    note: "No novel P0 invariant."
+summary:
+  passes_completed: 6
+  p0_new_per_pass: [0, 0, 0, 0, 0, 0]
+  consecutive_zero_p0_passes: 6
+  result: SATURATED_AT_P0
+  canonical_registry_through: PAR-423
+  next_gate: "independent reverse audit of normalized registry, then validator/coverage/queue and CI"
