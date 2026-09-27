@@ -39,6 +39,7 @@ test("orchestration passes exact selected SKILL.md paths to delegated agents",()
  assert.ok(p.agents.length>0);
  for(const agent of p.agents){
   assert.deepEqual(agent.skillPaths,[
+   "skills/asen-phase-protocol/SKILL.md",
    "skills/asen-work-unit/SKILL.md",
    "skills/asen-safe-change/SKILL.md",
    "skills/asen-apply/SKILL.md",
