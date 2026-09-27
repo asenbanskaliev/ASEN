@@ -39,7 +39,10 @@ const handle=record=>{
   if(record.toolName!=="read")throw new Error(`Disallowed Pi tool: ${record.toolName}`);
   const path=record.args?.path??record.args?.file_path;
   if(typeof path!=="string")throw new Error("Read tool did not identify its path");
-  const requested=resolve(repo,path);\n  const allowed=expected.includes(requested);\n  if(!allowed)throw new Error(`Disallowed Pi read path: ${path}`);\n  observed.read.push(realpathSync(requested));
+  const requested=resolve(repo,path);
+  const allowed=expected.includes(requested);
+  if(!allowed)throw new Error(`Disallowed Pi read path: ${path}`);
+  observed.read.push(realpathSync(requested));
  }
  if(record.type==="message_end"&&record.message?.role==="assistant"){
   if(record.message.stopReason==="error"){
