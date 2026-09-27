@@ -1,0 +1,44 @@
+audit: phase10-independent-reverse-audit-after-second-six
+date: 2026-09-27
+branch: audit/gentle-parity
+frozen_universe: PAR-001..PAR-500
+trigger:
+  second_six_pass_series: [0,0,0,0,0,0]
+method:
+  - "Start from ASEN runtime implementation rather than registry claims."
+  - "Compare implemented semantics to normalized broad claims."
+  - "Inspect closure artifacts for stale or contradictory coverage assertions."
+runtime_findings:
+  - module: src/agents/dispatcher.ts
+    result: "No new P0. Implementation remains in-process overlap rejection only."
+  - module: src/agents/pi-process-runner.ts
+    result: "No new P0. Basic pi --mode rpc spawn only; hardened transport remains gap."
+  - module: src/evidence/store.ts
+    result: "No new P0. Candidate-id in-memory evidence only; immutable/durable evidence remains gap."
+  - module: src/lifecycle/transaction.ts
+    result: "No new P0. Control-shape rollback only; filesystem transactional guarantees remain gaps."
+  - module: src/memory/sqlite-store.ts
+    result: "No new P0. WAL/FTS present; row+FTS mutation remains non-atomic and advanced ownership/concurrency remain gaps."
+  - module: src/review/review.ts
+    result: "No new P0. Candidate-id/severity logic only; authority lifecycle remains gap."
+  - module: src/verify/verifier.ts
+    result: "No new P0. Presence gates only; freshness/tree/effect authorization remain gaps."
+  - module: src/policies/scopes.ts
+    result: "No new P0. Lexical bounded overlap only; canonical filesystem identity remains gap."
+  - module: src/lifecycle/doctor.ts
+    result: "No new P0. Boolean dependency checks only."
+  - module: src/radar/radar.ts
+    result: "No new P0. Path classification only; persistent semantic upstream tracking remains gap."
+closure_artifact_findings:
+  - id: REV-CLOSURE-001
+    severity: gate
+    file: registry/parity/phase10-gap-queue.yaml
+    issue: "Stale artifact says contracts_discovered: 169 and defines only WS-01..WS-09 while frozen universe is PAR-001..PAR-500 and normalization gate defines WS-01..WS-12."
+    effect: "Does not create a new upstream P0 contract, but Phase 10 cannot close until machine-validated P0 workstream coverage replaces this stale queue."
+new_p0_contracts: []
+saturation_reset_required: false
+result: NO_NEW_P0_CLOSURE_GATE_FOUND
+next:
+  - "Rebuild phase10-gap-queue from canonical PAR-001..PAR-500 dispositions."
+  - "Require every PARTIAL/MISSING P0 exactly once in WS-01..WS-12."
+  - "Run registry validator and CI on exact resulting SHA."
