@@ -14,9 +14,10 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/**/*.test.ts",
-    "check": "npm run typecheck && npm test && npm run audit:parity",
+    "check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills",
     "verify:pack": "node scripts/verify-pack.mjs",
-    "audit:parity": "node scripts/validate-phase10-parity.mjs"
+    "audit:parity": "node scripts/validate-phase10-parity.mjs",
+    "audit:skills": "node scripts/audit-behavior-skills.mjs"
   },
   "pi": {
     "extensions": [
