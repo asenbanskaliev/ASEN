@@ -1,0 +1,14 @@
+id: CAP-INT-001
+name: Explicit human decision boundary
+priority: P0
+status: specified
+owner: ASEN-Interaction
+contract:
+  given: execution reaches a human-only authority boundary
+  when: ASEN cannot safely infer authorization
+  then:
+    - execution pauses before the irreversible action
+    - the required decision is presented clearly
+    - no equivalent action is performed through another path
+tests: [unit, integration, security]
+evidence_required: true
