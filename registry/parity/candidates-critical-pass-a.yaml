@@ -1,0 +1,32 @@
+source_pass: critical-file-saturation-A
+baseline:
+  gentle_ai: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+candidates:
+  - area: publication-gate-has-no-authority-write-path
+    priority: P0
+    source: internal/reviewtransaction/gate_write_guard_test.go
+    test: TestNoGateWritesAuthority_CallAbsenceGuard
+  - area: git-child-process-tree-control-failure-is-typed-and-releases-tree
+    priority: P0
+    source: internal/reviewtransaction/git_process_control_test.go
+    test: TestRunGitTypesProcessTreeControlFailureAndReleasesTree
+  - area: repository-identity-lease-rejects-gitdir-or-control-replacement
+    priority: P0
+    source: internal/reviewtransaction/repository_identity_lease_test.go
+    tests: [TestRepositoryIdentityLeaseRejectsGitDirectoryReplacement, TestRepositoryIdentityLeaseRejectsGitControlReplacement, TestRepositoryIdentityLeaseRejectsCommonControlContentMutation]
+  - area: repository-identity-lease-validation-is-readonly-and-concurrency-safe
+    priority: P0
+    source: internal/reviewtransaction/repository_identity_lease_test.go
+    tests: [TestRepositoryIdentityLeaseOpenAndValidateAreReadOnly, TestRepositoryIdentityLeaseSupportsConcurrentValidation]
+  - area: candidate-untracked-discovery-excludes-linked-worktrees-and-refuses-foreign-embedded-repositories
+    priority: P0
+    source: internal/reviewtransaction/snapshot_nested_worktree_test.go
+  - area: final-verification-resnapshot-requires-every-authority-field-equal
+    priority: P0
+    source: internal/reviewtransaction/verification_convergence_test.go
+    test: TestResnapshotVerificationSubjectRequiresEverySnapshotFieldEqual
+  - area: oversized-candidate-control-plane-carries-only-native-git-references
+    priority: P0
+    source: internal/cli/review_start_oversized_candidate_test.go
+    test: TestLargeCandidateSTARTAndStatusCarryOnlyNativeGitReferences
+disposition: NEEDS_DEDUPLICATION_AGAINST_PAR_001_407
