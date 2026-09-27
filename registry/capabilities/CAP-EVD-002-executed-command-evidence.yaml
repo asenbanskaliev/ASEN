@@ -1,0 +1,15 @@
+id: CAP-EVD-002
+name: Executed command evidence
+priority: P0
+status: specified
+owner: ASEN-Evidence
+contract:
+  given: a verification claim depends on a command or test
+  when: evidence is recorded
+  then:
+    - executed command/check identity is recorded
+    - exit/result status is recorded
+    - candidate identity is recorded
+    - narrative claims alone cannot satisfy the gate
+tests: [unit, contract, integration]
+evidence_required: true
