@@ -13,7 +13,8 @@ function authorized(){
  return evidence;
 }
 const sealedCodeChange=(taskId="a")=>issueSkillContext(taskId,"r",candidate,{codeChange:true});
-const writeRequest={id:"a",role:"worker" as const,prompt:"x",repository:"r",writeSurfaces:["src/a"],candidate,skillContext:sealedCodeChange()};
+const codeChangePaths=["skills/asen-work-unit/SKILL.md","skills/asen-safe-change/SKILL.md"];
+const writeRequest={id:"a",role:"worker" as const,prompt:"x",repository:"r",writeSurfaces:["src/a"],candidate,skillContext:sealedCodeChange(),skillPaths:codeChangePaths};
 
 test("dispatcher releases writer grant after completion", async()=>{
   const runner: AgentRunner={run:async r=>({id:r.id,ok:true,output:"ok"})};
@@ -84,4 +85,17 @@ test("dispatcher rejects a forged frozen skill context",async()=>{
   ()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,skillContext:forged}),
   /ASEN-issued skill selection context/
  );
+});
+
+test("dispatcher rejects forged skill paths for an issued writer context",async()=>{
+ const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
+ const d=new Dispatcher(runner,authorized());
+ for(const skillPaths of [
+  ["skills/asen-work-unit/SKILL.md"],
+  ["skills/asen-work-unit/SKILL.md","skills/asen-review/SKILL.md"],
+  ["skills/asen-safe-change/SKILL.md","skills/asen-work-unit/SKILL.md"],
+  ["skills/asen-work-unit/SKILL.md","skills/asen-safe-change/SKILL.md","skills/asen-safe-change/SKILL.md"]
+ ]){
+  await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),skillPaths}),/skill paths do not match issued context/);
+ }
 });
