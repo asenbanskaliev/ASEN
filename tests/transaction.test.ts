@@ -1,15 +1,4 @@
-import assert from "node:assert/strict";
-import test from "node:test";
-import { transactionalChange } from "../src/lifecycle/transaction.js";
-
-test("failed verification rolls back", async()=>{
-  let state="before";
-  const result=await transactionalChange({
-    snapshot:async()=>state,
-    apply:async()=>{state="after";},
-    verify:async()=>false,
-    rollback:async(s)=>{state=s;}
-  });
-  assert.equal(result,"rolled-back");
-  assert.equal(state,"before");
-});
+import assert from "node:assert/strict";import test from "node:test";import {runCompensationsAll,transactionalChange} from "../src/lifecycle/transaction.js";
+test("failed verification rolls back",async()=>{let state="before";const r=await transactionalChange({snapshot:async()=>state,apply:async()=>{state="after"},verify:async()=>false,rollback:async s=>{state=s}});assert.equal(r.status,"rolled-back");assert.equal(state,"before");});
+test("rollback failure is never reported as rolled back",async()=>{const r=await transactionalChange({snapshot:async()=>0,apply:async()=>{throw new Error("apply")},verify:async()=>true,rollback:async()=>{throw new Error("rollback")}});assert.equal(r.status,"rollback-failed");});
+test("all compensations run in reverse even when one fails",async()=>{const seen:string[]=[];const errors=await runCompensationsAll([{run:async()=>{seen.push("a")}}, {run:async()=>{seen.push("b");throw new Error("b")}}, {run:async()=>{seen.push("c")}}]);assert.deepEqual(seen,["c","b","a"]);assert.equal(errors.length,1);});
