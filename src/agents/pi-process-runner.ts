@@ -1,9 +1,9 @@
 import {spawn} from "node:child_process";import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
-export interface PiProcessOptions{command?:string;extraArgs?:string[];timeoutMs?:number;maxOutputBytes?:number;}
+export interface PiProcessOptions{command?:string;rpcArgs?:string[];extraArgs?:string[];timeoutMs?:number;maxOutputBytes?:number;}
 export class PiProcessRunner implements AgentRunner{
  constructor(private readonly options:PiProcessOptions={}){}
  run(request:AgentRequest):Promise<AgentResult>{
-  const command=this.options.command??"pi",args=["--mode","rpc",...(this.options.extraArgs??[])],timeoutMs=this.options.timeoutMs??120_000,max=this.options.maxOutputBytes??1_000_000;
+  const command=this.options.command??"pi",args=[...(this.options.rpcArgs??["--mode","rpc"]),...(this.options.extraArgs??[])],timeoutMs=this.options.timeoutMs??120_000,max=this.options.maxOutputBytes??1_000_000;
   return new Promise(resolve=>{
    const child=spawn(command,args,{cwd:request.repository,stdio:["pipe","pipe","pipe"]});let stdout="",stderr="",settled=false,overflow=false;
    const finish=(r:AgentResult)=>{if(settled)return;settled=true;clearTimeout(timer);resolve(r);};
