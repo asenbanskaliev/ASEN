@@ -33,13 +33,13 @@ const handle=record=>{
   const actual=record.data.commands.filter(item=>item.source==="skill").map(item=>realpathSync(item.sourceInfo.path));
   assert.deepEqual(actual,expected,"Pi loaded an unexpected Skill set");
   observed.loaded=true;
-  command({id:"asen-turn",type:"prompt",message:`ASEN read-only audit. Candidate ${candidate.id} revision ${revision}. Use the read tool to read these two exact files, one at a time: ${paths.join(" and ")}. Do not call any other tool, modify files, or delegate. Then reply with the exact marker ASEN_AUTH_PROBE:${marker}:READ_ONLY and one short sentence explaining why the phase protocol forbids redelegation. If a file cannot be read, explain the blocker without the marker.`});
+  command({id:"asen-turn",type:"prompt",message:`ASEN read-only audit. Candidate ${candidate.id} revision ${revision}. Use the read tool to read only these two exact repository-relative file paths, one at a time: ${paths.join(" and ")}. The candidate id and revision are metadata, never file paths. Do not read any other path. Do not call any other tool, modify files, or delegate. Then reply with the exact marker ASEN_AUTH_PROBE:${marker}:READ_ONLY and one short sentence explaining why the phase protocol forbids redelegation. If a file cannot be read, explain the blocker without the marker.`});
  }
  if(record.type==="tool_execution_start"){
   if(record.toolName!=="read")throw new Error(`Disallowed Pi tool: ${record.toolName}`);
   const path=record.args?.path??record.args?.file_path;
   if(typeof path!=="string")throw new Error("Read tool did not identify its path");
-  observed.read.push(realpathSync(resolve(repo,path)));
+  const requested=resolve(repo,path);\n  const allowed=expected.includes(requested);\n  if(!allowed)throw new Error(`Disallowed Pi read path: ${path}`);\n  observed.read.push(realpathSync(requested));
  }
  if(record.type==="message_end"&&record.message?.role==="assistant"){
   if(record.message.stopReason==="error"){
