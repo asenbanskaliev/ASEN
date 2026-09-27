@@ -1,0 +1,16 @@
+wave: 31
+focus: [deduplicated-critical-pass]
+new_contracts:
+  - { id: PAR-399, area: compact-record-bounds-reject-overlimit-before-persistence, status: MISSING, priority: P0 }
+  - { id: PAR-400, area: targeted-validator-attempt-ledger-has-hard-retry-bound-and-overflow-is-nonmutating, status: MISSING, priority: P0 }
+  - { id: PAR-401, area: authority-repair-rechecks-head-and-complete-inventory-under-maintenance-cas-before-mutation, status: MISSING, priority: P0 }
+  - { id: PAR-402, area: authority-repair-durable-phases-resume-after-timeout-without-replaying-completed-mutations, status: MISSING, priority: P0 }
+  - { id: PAR-403, area: authority-repair-replay-rejects-corrupt-audit-residue-or-nonunique-global-inventory, status: MISSING, priority: P0 }
+  - { id: PAR-404, area: fts-index-triggers-remain-synchronized-through-observation-lifecycle-and-migration, status: MISSING, priority: P0 }
+  - { id: PAR-405, area: correction-evidence-identity-is-immutable-and-changed-missing-or-reused-evidence-is-rejected, status: MISSING, priority: P0 }
+  - { id: PAR-406, area: partial-maintenance-failure-preserves-provider-audit-and-unknown-mutation-outcome, status: MISSING, priority: P0 }
+  - { id: PAR-407, area: destructive-maintenance-is-ui-gated-and-authority-derived-at-public-boundary, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 9
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
