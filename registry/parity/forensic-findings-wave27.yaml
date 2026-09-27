@@ -13,3 +13,16 @@ saturation_result:
   p0_new: 8
   consecutive_zero_p0_passes: 0
   conclusion: "NOT SATURATED"
+
+additional_contracts:
+  - { id: PAR-370, area: install-state-reloads-after-lock-contention-and-refuses-corrupt-latest-state, status: MISSING, priority: P0 }
+  - { id: PAR-371, area: repository-identity-corruption-or-write-failure-fails-closed, status: MISSING, priority: P0 }
+  - { id: PAR-372, area: repository-identity-concurrent-creation-converges-and-clones-remain-distinct, status: MISSING, priority: P0 }
+  - { id: PAR-373, area: destructive-command-guard-blocks-force-push-hard-reset-root-delete-regardless-autonomous-mode, status: MISSING, priority: P0 }
+  - { id: PAR-374, area: invalid-autonomous-guard-config-fails-safe-to-nonautonomous, status: MISSING, priority: P0 }
+  - { id: PAR-375, area: foreign-target-grant-requires-interactive-live-session-clone-bound-consent, status: MISSING, priority: P0 }
+  - { id: PAR-376, area: lost-or-replaced-session-never-resurrects-foreign-target-grant, status: MISSING, priority: P0 }
+revised_saturation_result:
+  p0_new_total: 15
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
