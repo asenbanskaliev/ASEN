@@ -21,6 +21,7 @@ export class Dispatcher {
     if(!request.candidate) throw new Error("Write authority requires an exact candidate");
     if(request.candidate.repository!==request.repository) throw new Error("Write candidate repository mismatch");
     if(!request.skillContext) throw new Error("Write authority requires skill selection context");
+    if(!Object.isFrozen(request.skillContext)) throw new Error("Write authority requires sealed skill selection context");
     const skills=selectSkills(request.skillContext).map(skill=>skill.id);
     if(!skills.length) throw new Error("Write authority requires mandatory skills");
     const gate=verifySkillEvidence(request.candidate,skills,this.evidence,"mutation");
