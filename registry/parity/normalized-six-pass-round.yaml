@@ -32,3 +32,13 @@ passes:
       - gentle-ai/internal/cli/install_state_lock_test.go
       - gentle-shell/tests/review-candidate-owner-retry.test.ts
     note: "No novel P0 invariant."
+  - pass: 4
+    focus: review-lifecycle-correction-ack-restart
+    p0_new: 0
+    evidence:
+      - gentle-ai/internal/cli/review_last_event_closure_test.go
+      - gentle-ai/internal/reviewtransaction/compact_abandon_test.go
+      - gentle-shell/tests/review-last-event-closure.test.ts
+      - gentle-shell/tests/review-host-relay-restart-parity.test.ts
+      - gentle-shell/tests/review-reminder-receipt.test.ts
+    note: "No novel P0 invariant."
