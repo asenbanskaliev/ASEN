@@ -1,0 +1,21 @@
+normalization: phase10-par-namespace
+date: 2026-09-27
+policy:
+  historical_waves_immutable: true
+  canonical_ids_unique: true
+  collision_resolution: "wave27 retains PAR-370..PAR-376; wave28 colliding records receive canonical aliases PAR-388..PAR-394"
+aliases:
+  - { historical: "wave28:PAR-370", canonical: PAR-388, contract: rollback-attempts-every-compensation-and-joins-apply-and-rollback-errors }
+  - { historical: "wave28:PAR-371", canonical: PAR-389, contract: state-write-error-reconciles-only-when-desired-state-is-provably-visible }
+  - { historical: "wave28:PAR-372", canonical: PAR-390, contract: failed-state-write-preserves-existing-state }
+  - { historical: "wave28:PAR-373", canonical: PAR-391, contract: state-update-rereads-latest-under-lock-contention-and-refuses-corrupt-latest-state }
+  - { historical: "wave28:PAR-374", canonical: PAR-392, contract: imported-memory-session-identity-and-ownership-validation-is-nonbypassable }
+  - { historical: "wave28:PAR-375", canonical: PAR-393, contract: project-repository-binding-corruption-or-write-failure-fails-closed }
+  - { historical: "wave28:PAR-376", canonical: PAR-394, contract: concurrent-project-binding-creation-converges-to-one-identity }
+unchanged:
+  wave28:
+    - PAR-377
+    - PAR-378
+  wave29:
+    range: PAR-379..PAR-387
+next_free_canonical_id: PAR-395

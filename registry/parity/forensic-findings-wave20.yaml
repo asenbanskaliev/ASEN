@@ -1,0 +1,14 @@
+wave: 20
+focus: [repeat-p0-pass-10]
+new_contracts:
+  - { id: PAR-299, area: reviewer-admission-does-not-trust-free-text-inspection-claims, status: MISSING, priority: P0 }
+  - { id: PAR-300, area: reviewer-admission-degraded-evidence-never-downgrades-risk-or-causality, status: MISSING, priority: P0 }
+  - { id: PAR-301, area: verification-plan-rejects-replaced-git-identity-before-publication, status: MISSING, priority: P0 }
+  - { id: PAR-302, area: verification-plan-rejects-stale-snapshot-and-policy-drift, status: MISSING, priority: P0 }
+  - { id: PAR-303, area: verification-effect-authorization-rejects-stale-or-cross-bound-replay, status: MISSING, priority: P0 }
+  - { id: PAR-304, area: restore-symlink-collision-type-and-target-mismatch-refused, status: MISSING, priority: P0 }
+saturation_result:
+  pass: 10
+  p0_new: 6
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

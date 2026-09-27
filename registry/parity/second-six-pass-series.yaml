@@ -1,0 +1,19 @@
+audit: second-six-pass-series
+date: 2026-09-27
+frozen_universe: PAR-001..PAR-500
+upstream_baselines:
+  gentle_shell: fe61793e7cb3e75462ba53c7631e87d78e989354
+  gentle_ai: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+  engram: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
+passes:
+  - { pass: 1, focus: authority-store-lineage, p0_new: 0 }
+  - { pass: 2, focus: immutable-candidate-object-store, p0_new: 0 }
+  - { pass: 3, focus: database-generation-session-ownership, p0_new: 0 }
+  - { pass: 4, focus: backup-restore-release-publication, p0_new: 0 }
+  - { pass: 5, focus: provider-contract-destructive-guards, p0_new: 0 }
+  - { pass: 6, focus: migrations-memory-server-e2e, p0_new: 0 }
+summary:
+  passes_completed: 6
+  p0_new_per_pass: [0,0,0,0,0,0]
+  result: SIX_MORE_ZERO_P0
+  reverse_audit_triggered: true

@@ -1,0 +1,14 @@
+wave: 21
+focus: [family-exhaustion-pass]
+new_contracts:
+  - { id: PAR-305, area: verification-plan-corruption-or-durability-failure-never-publishes-partial-authority, status: MISSING, priority: P0 }
+  - { id: PAR-306, area: verification-plan-rejects-unsafe-authority-storage, status: MISSING, priority: P0 }
+  - { id: PAR-307, area: verification-plan-nonlive-exact-revision-rejected, status: MISSING, priority: P0 }
+  - { id: PAR-308, area: unknown-verification-applicability-records-evidence-gap, status: MISSING, priority: P0 }
+  - { id: PAR-309, area: frozen-plan-consent-resume-reuses-identical-plan, status: MISSING, priority: P0 }
+  - { id: PAR-310, area: restore-ancestor-symlink-fails-closed, status: MISSING, priority: P0 }
+  - { id: PAR-311, area: restore-compressed-archive-missing-fails-closed-without-partial-restore, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 7
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

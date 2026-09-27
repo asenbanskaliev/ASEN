@@ -1,0 +1,12 @@
+wave: 43
+focus: [saturation-repeat-3]
+new_contracts:
+  - { id: PAR-481, area: journaled-operation-replay-survives-restart-and-rejects-idempotency-key-reuse-with-changed-request, status: MISSING, priority: P0 }
+  - { id: PAR-482, area: pending-review-reducer-work-is-crash-completable-and-exact-completion-replay-stable, status: MISSING, priority: P0 }
+  - { id: PAR-483, area: graph-publication-fault-preserves-prior-authoritative-revision, status: MISSING, priority: P0 }
+  - { id: PAR-484, area: protocol-decoders-reject-additional-properties-at-exact-authority-boundaries, status: MISSING, priority: P0 }
+  - { id: PAR-485, area: consent-choice-order-answer-domain-and-invocation-are-bound-to-frozen-target, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 5
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

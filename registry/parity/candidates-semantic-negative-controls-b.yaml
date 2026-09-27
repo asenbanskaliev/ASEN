@@ -1,0 +1,14 @@
+source_pass: semantic-negative-controls-B
+baseline:
+  gentle_ai: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+  engram: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
+  gentle_shell: fe61793e7cb3e75462ba53c7631e87d78e989354
+candidates:
+  - { area: degraded-evidence-cannot-downgrade-review-finding, priority: P0, source: internal/reviewtransaction/artifact_admission_test.go, test: TestAdmitArtifactRefusesToDowngradeOnDegradedEvidenceDerivation }
+  - { area: correction-plan-rejects-downgraded-causal-unknown-fix-target, priority: P0, source: internal/reviewtransaction/artifact_admission_test.go, test: TestValidateCorrectionPlanRequestRejectsDowngradedCausalUnknownFixTarget }
+  - { area: database-generation-change-before-or-during-operation-fails-closed, priority: P0, source: internal/store/generation_fence_test.go }
+  - { area: candidate-view-rejects-control-character-paths-before-prompt-construction, priority: P0, source: tests/review-candidate-view.test.ts }
+  - { area: candidate-view-rejects-unsafe-symlink-targets-and-detects-target-byte-tampering, priority: P0, source: tests/review-candidate-view.test.ts }
+  - { area: candidate-view-cleanup-never-trusts-git-success-with-surviving-root, priority: P0, source: tests/review-candidate-view.test.ts }
+  - { area: rpc-observation-metadata-is-bounded-content-free-and-malformed-counters-are-rejected, priority: P0, source: tests/agents-protocol.test.ts }
+disposition: NEEDS_DEDUPLICATION_AGAINST_CURRENT_CANONICAL_SET

@@ -1,0 +1,10 @@
+wave: 18
+focus: [repeat-p0-pass-8]
+new_contracts:
+  - { id: PAR-294, area: content-addressed-plan-publication-converges-under-concurrency, status: MISSING, priority: P0 }
+  - { id: PAR-295, area: published-authority-objects-private-permissions, status: MISSING, priority: P0 }
+saturation_result:
+  pass: 8
+  p0_new: 2
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

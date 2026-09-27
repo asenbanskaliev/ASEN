@@ -1,0 +1,17 @@
+wave: 33
+focus: [remaining-security-recovery-sweep]
+new_contracts:
+  - { id: PAR-415, area: append-only-review-store-atomicity-includes-parent-directory-durability-before-head-publication, status: MISSING, priority: P0 }
+  - { id: PAR-416, area: review-store-rejects-stale-writers-regressive-successors-and-semantic-hash-valid-bypasses, status: MISSING, priority: P0 }
+  - { id: PAR-417, area: review-store-lock-live-owner-cannot-be-stolen-and-concurrent-recoverers-cannot-both-win, status: MISSING, priority: P0 }
+  - { id: PAR-418, area: reset-refuses-inflight-or-unreadable-lineages-and-preserves-unowned-state, status: MISSING, priority: P0 }
+  - { id: PAR-419, area: reset-partial-failure-restores-moved-worktree-admin-state-or-reports-unrestorable-state-honestly, status: MISSING, priority: P0 }
+  - { id: PAR-420, area: process-boundary-risk-scan-is-batched-bounded-deterministic-and-output-overflow-fails-closed, status: MISSING, priority: P0 }
+  - { id: PAR-421, area: memory-filesystem-policy-resolves-and-rejects-remote-windows-paths-including-extended-unc, status: MISSING, priority: P0 }
+  - { id: PAR-422, area: foreign-target-consent-is-live-session-and-clone-scoped-and-cannot-be-recreated-after-reload, status: MISSING, priority: P0 }
+  - { id: PAR-423, area: foreign-target-consent-fails-closed-on-no-ui-decline-cancel-or-identity-drift, status: MISSING, priority: P0 }
+  - { id: PAR-424, area: model-routing-saved-source-invalidity-fails-closed-with-precedence-preserved, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 10
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

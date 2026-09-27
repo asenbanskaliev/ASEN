@@ -1,0 +1,40 @@
+wave: 4
+focus: [recovery, corruption, windows, concurrency, timeout-semantics, compaction]
+new_contracts:
+  - { id: PAR-123, area: child-control-frame-size-bound, status: MISSING, priority: P0 }
+  - { id: PAR-124, area: child-event-queue-bound, status: MISSING, priority: P0 }
+  - { id: PAR-125, area: child-pending-request-drain-on-transport-failure, status: MISSING, priority: P0 }
+  - { id: PAR-126, area: child-invalid-utf8-or-json-frame-fail-closed, status: MISSING, priority: P0 }
+  - { id: PAR-127, area: child-graceful-shutdown-then-terminal-escalation, status: MISSING, priority: P0 }
+  - { id: PAR-128, area: windows-session-transport-generation-binding, status: MISSING, priority: P1 }
+  - { id: PAR-129, area: windows-named-pipe-message-bounds, status: MISSING, priority: P1 }
+  - { id: PAR-130, area: windows-hidden-child-processes, status: MISSING, priority: P2 }
+  - { id: PAR-131, area: review-maintenance-exact-authorization-binding, status: MISSING, priority: P0 }
+  - { id: PAR-132, area: review-tampered-maintenance-binding-rejected-before-launch, status: MISSING, priority: P0 }
+  - { id: PAR-133, area: review-readonly-authority-inventory, status: MISSING, priority: P1 }
+  - { id: PAR-134, area: review-negotiated-repair-preflight, status: MISSING, priority: P0 }
+  - { id: PAR-135, area: durable-download-stage-then-publish, status: MISSING, priority: P1 }
+  - { id: PAR-136, area: failed-download-preserves-previous-artifact, status: MISSING, priority: P1 }
+  - { id: PAR-137, area: downloaded-artifact-size-cap, status: MISSING, priority: P1 }
+  - { id: PAR-138, area: downloaded-artifact-digest-matches-on-disk-bytes, status: MISSING, priority: P1 }
+  - { id: PAR-139, area: partial-download-cleanup, status: MISSING, priority: P1 }
+  - { id: PAR-140, area: memory-write-timeout-unknown-outcome-no-replay, status: MISSING, priority: P0 }
+  - { id: PAR-141, area: memory-read-retry-write-no-blind-retry, status: MISSING, priority: P0 }
+  - { id: PAR-142, area: sqlite-immediate-writer-locking, status: MISSING, priority: P0 }
+  - { id: PAR-143, area: sqlite-busy-timeout-contention, status: MISSING, priority: P1 }
+  - { id: PAR-144, area: sqlite-concurrent-store-writes, status: MISSING, priority: P0 }
+  - { id: PAR-145, area: compaction-archive-outcome-confirmed, status: MISSING, priority: P0 }
+  - { id: PAR-146, area: compaction-archive-outcome-failed, status: MISSING, priority: P0 }
+  - { id: PAR-147, area: compaction-archive-outcome-unknown-no-blind-retry, status: MISSING, priority: P0 }
+  - { id: PAR-148, area: compaction-archive-outcome-unavailable-recovery, status: MISSING, priority: P0 }
+corrections:
+  - id: F-009
+    capability: PAR-025
+    previous: PARTIAL
+    corrected: PARTIAL
+    reason: "Compaction recovery exists only as memory/context primitives in ASEN; no event-level archive outcome protocol is proven."
+  - id: F-010
+    capability: PAR-022
+    previous: PARTIAL
+    corrected: PARTIAL
+    reason: "SQLite WAL alone is insufficient. Upstream demonstrates read-before-write deadlock avoidance using immediate writer locking and bounded busy semantics."

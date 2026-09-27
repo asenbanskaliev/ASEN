@@ -1,0 +1,11 @@
+wave: 47
+focus: [fixed-universe-repeat-1]
+new_contracts: []
+saturation_result:
+  p0_new: 0
+  consecutive_zero_p0_passes: 1
+  universe: "fixed at PAR-001..PAR-500 plus upstream baselines"
+  conclusion: "FIRST CLEAN PASS"
+notes:
+  - "Repeated authority/mutation/replay/cross-boundary queries mapped to existing contracts."
+  - "Direct AgentRunner boundary inspection introduced no new P0 invariant."

@@ -1,0 +1,11 @@
+wave: 17
+focus: [repeat-p0-pass-7]
+new_contracts:
+  - { id: PAR-291, area: verification-authority-exact-replay-converges-after-lock-timeout, status: MISSING, priority: P0 }
+  - { id: PAR-292, area: unsupported-authority-filesystem-fails-closed-without-misdiagnosis, status: MISSING, priority: P0 }
+  - { id: PAR-293, area: corrupted-recovery-chain-has-explicit-maintainer-exit, status: MISSING, priority: P1 }
+saturation_result:
+  pass: 7
+  p0_new: 2
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

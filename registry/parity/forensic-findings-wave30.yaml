@@ -1,0 +1,18 @@
+wave: 30
+focus: [repeat-critical-surfaces-pass-2]
+new_contracts:
+  - { id: PAR-388, area: exact-revision-snapshot-rejects-local-replacement-objects-and-grafts, status: MISSING, priority: P0 }
+  - { id: PAR-389, area: snapshot-temporary-index-cleanup-occurs-after-git-add-failure, status: MISSING, priority: P0 }
+  - { id: PAR-390, area: snapshot-git-protocol-parsers-reject-diagnostics-and-preserve-unusual-paths, status: MISSING, priority: P0 }
+  - { id: PAR-391, area: correction-verification-is-atomic-candidate-bound-and-preserves-full-scope, status: MISSING, priority: P0 }
+  - { id: PAR-392, area: sqlite-contention-across-processes-preserves-write-serialization, status: MISSING, priority: P0 }
+  - { id: PAR-393, area: candidate-owner-publication-rolls-back-on-failure-without-removing-replaced-marker, status: MISSING, priority: P0 }
+  - { id: PAR-394, area: candidate-materialization-refuses-symlinked-owner-ancestor-before-external-store-creation, status: MISSING, priority: P0 }
+  - { id: PAR-395, area: candidate-view-live-drift-blocks-dispatch-before-candidate-text-injection, status: MISSING, priority: P0 }
+  - { id: PAR-396, area: candidate-manifest-field-status-mode-and-path-drift-fail-closed, status: MISSING, priority: P0 }
+  - { id: PAR-397, area: failed-authoritative-candidate-restore-removes-partial-registry-and-worktree-with-clean-retry, status: MISSING, priority: P0 }
+  - { id: PAR-398, area: correction-finalization-rechecks-fresh-status-binding-before-acceptance, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 11
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

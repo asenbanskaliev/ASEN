@@ -1,0 +1,15 @@
+wave: 13
+focus: [repeat-p0-pass-3]
+new_contracts:
+  - { id: PAR-268, area: binary-patch-inspection-never-emits-raw-binary-bytes, status: MISSING, priority: P0 }
+  - { id: PAR-269, area: binary-changed-path-still-produces-review-evidence, status: MISSING, priority: P0 }
+  - { id: PAR-270, area: review-kill-switch-freezes-all-authority-mutations, status: MISSING, priority: P0 }
+  - { id: PAR-271, area: review-kill-switch-preserves-readonly-inspection-and-delivery, status: MISSING, priority: P0 }
+  - { id: PAR-272, area: malformed-request-validation-precedes-disabled-mode-refusal, status: MISSING, priority: P1 }
+  - { id: PAR-273, area: declared-unsupported-review-runtime-fails-closed, status: MISSING, priority: P0 }
+  - { id: PAR-274, area: explicit-dev-runtime-override-visible-with-version-and-digest, status: MISSING, priority: P1 }
+saturation_result:
+  pass: 3
+  p0_new: 5
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

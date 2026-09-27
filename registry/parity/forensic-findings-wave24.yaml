@@ -1,0 +1,18 @@
+wave: 24
+focus: [gentle-shell-runtime-exhaustion]
+new_contracts:
+  - { id: PAR-333, area: child-agent-transport-clears-pending-on-timeout-late-reply-and-exit, status: MISSING, priority: P0 }
+  - { id: PAR-334, area: child-agent-transport-bounds-unterminated-control-input, status: MISSING, priority: P0 }
+  - { id: PAR-335, area: agent-completion-delivery-is-exactly-once-and-idempotently-consumable, status: MISSING, priority: P0 }
+  - { id: PAR-336, area: session-message-deny-cancel-headless-and-abort-all-fail-closed, status: MISSING, priority: P0 }
+  - { id: PAR-337, area: session-message-grants-invalidated-by-session-or-manager-change, status: MISSING, priority: P0 }
+  - { id: PAR-338, area: consent-pending-message-and-reason-are-snapshotted-against-drift, status: MISSING, priority: P0 }
+  - { id: PAR-339, area: worktree-registry-canonicalizes-aliases-and-rejects-unrelated-clones, status: MISSING, priority: P0 }
+  - { id: PAR-340, area: restored-worktree-registry-validates-missing-or-invalid-roots-without-destructive-cleanup, status: MISSING, priority: P0 }
+  - { id: PAR-341, area: child-git-environment-strips-routing-and-config-overrides-without-source-mutation, status: MISSING, priority: P0 }
+  - { id: PAR-342, area: bounded-writer-surface-parser-rejects-hidden-trailing-or-dangerous-paths, status: MISSING, priority: P0 }
+  - { id: PAR-343, area: native-binary-gate-uses-explicit-environment-only-and-fails-closed-when-required, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 11
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

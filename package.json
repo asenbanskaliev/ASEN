@@ -14,8 +14,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/**/*.test.ts",
-    "check": "npm run typecheck && npm test",
-    "verify:pack": "node scripts/verify-pack.mjs"
+    "check": "npm run typecheck && npm test && npm run audit:parity",
+    "verify:pack": "node scripts/verify-pack.mjs",
+    "audit:parity": "node scripts/validate-phase10-parity.mjs"
   },
   "pi": {
     "extensions": [

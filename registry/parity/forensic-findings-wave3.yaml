@@ -1,0 +1,29 @@
+wave: 3
+focus: [odd-routing, worktrees, consent, model-policy, durability, privacy]
+new_contracts:
+  - { id: PAR-101, area: odd-four-file-mapping-trigger, status: MISSING, priority: P0 }
+  - { id: PAR-102, area: odd-two-file-writer-trigger, status: MISSING, priority: P0 }
+  - { id: PAR-103, area: odd-long-session-backstop, status: MISSING, priority: P0 }
+  - { id: PAR-104, area: odd-incident-routing, status: MISSING, priority: P0 }
+  - { id: PAR-105, area: odd-verification-delegation, status: MISSING, priority: P0 }
+  - { id: PAR-106, area: odd-route-declaration, status: MISSING, priority: P1 }
+  - { id: PAR-107, area: odd-canonical-drift-ratchet, status: MISSING, priority: P1 }
+  - { id: PAR-108, area: model-id-normalization, status: MISSING, priority: P1 }
+  - { id: PAR-109, area: model-config-precedence, status: MISSING, priority: P1 }
+  - { id: PAR-110, area: malformed-model-config-fail-closed, status: MISSING, priority: P1 }
+  - { id: PAR-111, area: foreign-repo-live-session-grant, status: MISSING, priority: P1 }
+  - { id: PAR-112, area: lost-continuation-grant-no-reprompt, status: MISSING, priority: P1 }
+  - { id: PAR-113, area: worktree-canonical-root-dedup, status: MISSING, priority: P1 }
+  - { id: PAR-114, area: worktree-same-clone-boundary, status: MISSING, priority: P1 }
+  - { id: PAR-115, area: worktree-session-replay-identity, status: MISSING, priority: P1 }
+  - { id: PAR-116, area: sanitized-git-child-environment, status: MISSING, priority: P0 }
+  - { id: PAR-117, area: atomic-json-state-write, status: MISSING, priority: P1 }
+  - { id: PAR-118, area: atomic-write-temp-cleanup, status: MISSING, priority: P2 }
+  - { id: PAR-119, area: strict-policy-schema-fail-closed, status: MISSING, priority: P1 }
+  - { id: PAR-120, area: bounded-policy-subprocess, status: MISSING, priority: P1 }
+  - { id: PAR-121, area: telemetry-privacy-environment-veto, status: N/A, priority: P2, rationale: "ASEN currently has no telemetry export. Becomes mandatory before any telemetry feature." }
+  - { id: PAR-122, area: cancellation-confirmation-policy, status: MISSING, priority: P2 }
+audit_observation:
+  - "The initial 50-capability matrix materially undercounted ODD routing semantics; triggers must be separate contracts because each changes execution topology."
+  - "Foreign repository authorization is not just a yes/no consent: grant lifetime, clone identity and continuation loss are security contracts."
+  - "Configuration precedence and malformed-input behavior are externally observable and must be tested independently."

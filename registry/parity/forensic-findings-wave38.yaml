@@ -1,0 +1,17 @@
+wave: 38
+focus: [gentle-shell-mandatory-surfaces]
+new_contracts:
+  - { id: PAR-451, area: publication-gate-rechecks-exact-staged-or-remote-target-and-required-ci-before-publish, status: MISSING, priority: P0 }
+  - { id: PAR-452, area: publication-gate-journal-and-child-claim-publish-atomically-across-faults, status: MISSING, priority: P0 }
+  - { id: PAR-453, area: release-gate-never-trusts-caller-supplied-ci-and-binds-independent-ci-to-exact-remote-sha, status: MISSING, priority: P0 }
+  - { id: PAR-454, area: agent-notification-query-frames-use-bounded-exact-schemas-and-exact-acknowledgement, status: MISSING, priority: P0 }
+  - { id: PAR-455, area: agent-runner-waits-for-proven-child-exit-before-releasing-concurrency-slot, status: MISSING, priority: P0 }
+  - { id: PAR-456, area: successful-child-mutation-evidence-requires-paired-rpc-events-and-successful-tool-outcome, status: MISSING, priority: P0 }
+  - { id: PAR-457, area: child-environment-strips-interactive-host-signal-and-keeps-permission-and-messaging-fds-separated, status: MISSING, priority: P0 }
+  - { id: PAR-458, area: installer-verifies-pinned-runtime-digest-before-publication-and-cleans-mismatch-state, status: MISSING, priority: P0 }
+  - { id: PAR-459, area: installer-rejects-symlinked-runtime-parent-and-archive-entry-ambiguity, status: MISSING, priority: P0 }
+  - { id: PAR-460, area: concurrent-installer-lock-and-backup-recovery-fail-closed-on-ambiguous-ownership-or-candidates, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 10
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

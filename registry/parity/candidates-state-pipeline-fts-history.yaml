@@ -1,0 +1,9 @@
+source_pass: state-pipeline-fts-history
+candidates:
+  - { area: failed-state-write-preserves-existing-state, priority: P0, source: internal/state/state_test.go, likely_duplicate: PAR-372 }
+  - { area: pipeline-rollback-attempts-every-compensation-and-joins-apply-and-rollback-errors, priority: P0, source: internal/pipeline/orchestrator_test.go, likely_duplicate: PAR-370 }
+  - { area: filesystem-lease-release-is-concurrent-idempotent-and-operational, priority: P0, source: internal/filecoord/lock_test.go }
+  - { area: fts-triggers-synchronize-observation-lifecycle-and-migration, priority: P0, source: internal/store/store_fts_test.go, likely_duplicate: PAR-404 }
+  - { area: memory-mutation-auth-token-is-read-at-request-time-and-read-policy-remains-explicit, priority: P0, source: internal/server/auth_test.go, related: PAR-450 }
+  - { area: malformed-history-capture-preference-fails-closed-and-disabled-capture-never-mutates-existing-history, priority: P0, source: tests/history-session-writer.test.ts }
+disposition: NEEDS_DEDUPLICATION_AGAINST_PAR_001_500

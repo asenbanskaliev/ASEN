@@ -1,0 +1,37 @@
+phase: 10
+status: NORMALIZED_MACHINE_VALIDATED
+canonical_universe: PAR-001..PAR-500
+source_of_truth:
+  validator: scripts/validate-phase10-parity.mjs
+  normalization: registry/parity/phase10-normalization.yaml
+  reverse_audit: registry/parity/phase10-independent-reverse-audit-2.yaml
+coverage_rule: "Every canonical P0 whose normalized status is PARTIAL or MISSING is assigned exactly once by the validator. PARITY and N/A are not implementation backlog."
+workstreams:
+  WS-01: immutable-candidate-evidence-and-repository-identity
+  WS-02: review-authority-ledger-locking-recovery
+  WS-03: pi-child-agent-runtime-transport-and-attribution
+  WS-04: write-authority-transactions-state-and-rollback
+  WS-05: memory-durability-concurrency-ownership-and-migrations
+  WS-06: compaction-session-delivery-and-runtime-identity
+  WS-07: filesystem-backup-restore-install-update-safety
+  WS-08: privacy-auth-and-secret-boundaries
+  WS-09: odd-routing-model-policy-and-delegation
+  WS-10: publication-release-gates-and-independent-ci
+  WS-11: protocol-contracts-consent-and-version-compatibility
+  WS-12: diagnostics-doctor-repair-and-maintenance
+classification:
+  policy: "Deterministic first-match semantic classifier in scripts/validate-phase10-parity.mjs."
+  fallback: WS-12
+  invariant: "A P0 implementation gap may never be unassigned or assigned more than once."
+saturation:
+  frozen_universe: PAR-001..PAR-500
+  clean_waves: [47,48]
+  additional_clean_series: "registry/parity/second-six-pass-series.yaml = 6/6 zero-new-P0"
+  independent_reverse_audit: NO_NEW_P0
+closure:
+  discovery_saturated: true
+  namespace_normalized: true
+  false_broad_parity_corrected: true
+  p0_queue_machine_validated: true
+  ci_required_on_exact_head: true
+implementation_gate: "No implementation phase begins unless npm run audit:parity passes on the exact candidate SHA."

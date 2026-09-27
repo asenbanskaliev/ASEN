@@ -1,0 +1,19 @@
+wave: 25
+focus: [inverse-semantic-pass-1]
+new_contracts:
+  - { id: PAR-344, area: approved-authority-acknowledgement-burns-exactly-once-under-concurrent-replay, status: MISSING, priority: P0 }
+  - { id: PAR-345, area: failed-authority-acknowledgement-preserves-pending-authority, status: MISSING, priority: P0 }
+  - { id: PAR-346, area: acknowledgement-secret-token-never-leaks-outside-authority, status: MISSING, priority: P0 }
+  - { id: PAR-347, area: unachievable-review-slot-declaration-is-bound-replay-safe-and-withdrawable, status: MISSING, priority: P0 }
+  - { id: PAR-348, area: session-identity-repair-preserves-journal-references-and-rolls-back-on-drift, status: MISSING, priority: P0 }
+  - { id: PAR-349, area: reviewer-relay-snapshots-mutable-provider-submission-binding-before-execution, status: MISSING, priority: P0 }
+  - { id: PAR-350, area: reviewer-relay-provider-order-is-deterministic-under-concurrent-completion, status: MISSING, priority: P0 }
+  - { id: PAR-351, area: reviewer-relay-submission-refusal-is-typed-as-unknown-outcome-pending-status, status: MISSING, priority: P0 }
+  - { id: PAR-352, area: review-lock-release-requires-exact-owner-token, status: MISSING, priority: P0 }
+  - { id: PAR-353, area: ambiguous-or-live-lock-ownership-fails-closed-during-recovery, status: MISSING, priority: P0 }
+  - { id: PAR-354, area: stale-lock-quarantine-is-token-fenced-and-no-replace, status: MISSING, priority: P0 }
+saturation_result:
+  pass_kind: inverse-semantic
+  p0_new: 11
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

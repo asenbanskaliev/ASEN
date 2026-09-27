@@ -1,0 +1,15 @@
+wave: 26
+focus: [inverse-semantic-pass-2]
+new_contracts:
+  - { id: PAR-355, area: mutation-journal-rolls-back-write-that-failed-after-replacement, status: MISSING, priority: P0 }
+  - { id: PAR-356, area: failed-create-after-replacement-is-removed-on-rollback, status: MISSING, priority: P0 }
+  - { id: PAR-357, area: atomic-binary-replace-verifies-destination-bytes-before-success, status: MISSING, priority: P0 }
+  - { id: PAR-358, area: failed-or-truncated-download-removes-partial-artifact, status: MISSING, priority: P0 }
+  - { id: PAR-359, area: oversized-download-is-rejected-and-removed, status: MISSING, priority: P0 }
+  - { id: PAR-360, area: memory-migrations-are-idempotent-and-preserve-fts-sync-and-existing-data, status: MISSING, priority: P0 }
+  - { id: PAR-361, area: memory-context-output-has-hard-total-byte-bound-and-safe-parameter-clamps, status: MISSING, priority: P0 }
+saturation_result:
+  pass_kind: inverse-semantic
+  p0_new: 7
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

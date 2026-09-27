@@ -1,0 +1,26 @@
+wave: 6
+focus: [saturation, destructive-authority, prompt-budget, pipeline, database-generation, passive-capture, publication]
+new_contracts:
+  - { id: PAR-170, area: hard-deny-destructive-command-precedence, status: MISSING, priority: P0 }
+  - { id: PAR-171, area: guarded-command-whole-command-precedence, status: MISSING, priority: P0 }
+  - { id: PAR-172, area: autonomous-permission-never-overrides-hard-deny, status: MISSING, priority: P0 }
+  - { id: PAR-173, area: orchestrator-always-on-context-byte-budget, status: MISSING, priority: P1 }
+  - { id: PAR-174, area: lazy-orchestrator-reference-reachability, status: MISSING, priority: P1 }
+  - { id: PAR-175, area: normative-prompt-content-loss-ratchet, status: MISSING, priority: P1 }
+  - { id: PAR-176, area: pipeline-continue-on-error-explicit-policy, status: MISSING, priority: P1 }
+  - { id: PAR-177, area: rollback-reverse-order, status: MISSING, priority: P0 }
+  - { id: PAR-178, area: rollback-attempts-all-steps-after-rollback-failure, status: MISSING, priority: P0 }
+  - { id: PAR-179, area: apply-and-rollback-errors-both-preserved, status: MISSING, priority: P0 }
+  - { id: PAR-180, area: database-generation-fence-main-wal-shm, status: MISSING, priority: P0 }
+  - { id: PAR-181, area: database-generation-change-rejects-operation-before-execution, status: MISSING, priority: P0 }
+  - { id: PAR-182, area: database-generation-change-detected-after-write-commit-row-iteration, status: MISSING, priority: P0 }
+  - { id: PAR-183, area: database-generation-transient-stat-error-recoverable, status: MISSING, priority: P1 }
+  - { id: PAR-184, area: passive-capture-redacts-before-persistence, status: MISSING, priority: P0 }
+  - { id: PAR-185, area: passive-capture-excludes-native-memory-results, status: MISSING, priority: P1 }
+  - { id: PAR-186, area: passive-capture-skips-undefined-short-unserializable-values, status: MISSING, priority: P1 }
+  - { id: PAR-187, area: publication-ref-binding-fail-closed, status: PARTIAL, priority: P0 }
+  - { id: PAR-188, area: publication-tests-immediately-precede-publish, status: PARTIAL, priority: P0 }
+  - { id: PAR-189, area: no-alternate-publication-route, status: MISSING, priority: P0 }
+notes:
+  - "ASEN's existing destructive-git guard is a capability contract, but runtime command classification/hard-deny precedence is not yet evidenced."
+  - "ASEN has a release gate but no publication workflow yet; publication contracts remain PARTIAL/MISSING until publication exists."

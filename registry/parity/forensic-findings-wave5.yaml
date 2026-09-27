@@ -1,0 +1,31 @@
+wave: 5
+focus: [delivery, mutation-journal, protocol-compatibility, privacy, context-budget, quality-ratchets]
+new_contracts:
+  - { id: PAR-149, area: memory-bookkeeping-never-replaces-user-delivery, status: MISSING, priority: P0 }
+  - { id: PAR-150, area: memory-failure-never-blocks-or-truncates-final-reply, status: MISSING, priority: P0 }
+  - { id: PAR-151, area: mutation-journal-capture-before-write, status: MISSING, priority: P0 }
+  - { id: PAR-152, area: mutation-journal-nonexistent-path-rollback, status: MISSING, priority: P0 }
+  - { id: PAR-153, area: mutation-journal-refuses-symlink, status: MISSING, priority: P0 }
+  - { id: PAR-154, area: mutation-journal-root-containment, status: MISSING, priority: P0 }
+  - { id: PAR-155, area: deterministic-multi-file-restore-order, status: MISSING, priority: P1 }
+  - { id: PAR-156, area: restore-aggregates-all-errors, status: MISSING, priority: P1 }
+  - { id: PAR-157, area: install-dry-run-reveals-platform-decision, status: MISSING, priority: P1 }
+  - { id: PAR-158, area: dependency-protocol-version-floor, status: MISSING, priority: P1 }
+  - { id: PAR-159, area: dependency-version-untrusted-shape-fail-safe, status: MISSING, priority: P1 }
+  - { id: PAR-160, area: recursive-private-tag-redaction, status: MISSING, priority: P0 }
+  - { id: PAR-161, area: private-query-value-redaction, status: MISSING, priority: P0 }
+  - { id: PAR-162, area: runtime-readiness-probe-before-use, status: MISSING, priority: P1 }
+  - { id: PAR-163, area: runtime-startup-race-bounded-retry, status: MISSING, priority: P1 }
+  - { id: PAR-164, area: memory-context-default-byte-budget, status: MISSING, priority: P1 }
+  - { id: PAR-165, area: memory-context-pinned-item-cap, status: MISSING, priority: P1 }
+  - { id: PAR-166, area: memory-context-valid-utf8-after-truncation, status: MISSING, priority: P1 }
+  - { id: PAR-167, area: memory-context-preserves-required-status-suffix, status: MISSING, priority: P1 }
+  - { id: PAR-168, area: performance-regression-ratchet, status: MISSING, priority: P2 }
+  - { id: PAR-169, area: benchmark-comparability-gate, status: MISSING, priority: P2 }
+classification_policy:
+  mandatory:
+    - "Security, authority, determinism, persistence, recovery, agent execution, evidence, review, lifecycle and user-delivery semantics."
+  optional:
+    - "Pure visual/TUI cosmetics, telemetry export while ASEN has no telemetry, distributed cloud/sync while intentionally outside v1."
+  conditional:
+    - "Any optional surface becomes mandatory before ASEN exposes the corresponding feature."

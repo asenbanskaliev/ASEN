@@ -1,0 +1,34 @@
+phase: 10
+status: DISCOVERY_SATURATED_NORMALIZATION_PENDING
+discovery:
+  canonical_id_universe: PAR-001..PAR-500
+  clean_passes:
+    - { wave: 47, p0_new: 0, order: fixed-universe }
+    - { wave: 48, p0_new: 0, order: [engram, gentle-shell, gentle-ai] }
+  upstream_baselines:
+    gentle_shell: fe61793e7cb3e75462ba53c7631e87d78e989354
+    gentle_ai: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+    engram: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
+rules:
+  - "No P0 implementation may begin until normalization assigns every non-parity P0 to exactly one workstream."
+  - "Candidate files are dedup inputs, not canonical contracts."
+  - "Any new P0 found by reverse audit resets discovery saturation."
+workstreams:
+  WS-01: immutable-candidate-evidence-and-repository-identity
+  WS-02: review-authority-ledger-locking-recovery
+  WS-03: pi-child-agent-runtime-transport-and-attribution
+  WS-04: write-authority-transactions-state-and-rollback
+  WS-05: memory-durability-concurrency-ownership-and-migrations
+  WS-06: compaction-session-delivery-and-runtime-identity
+  WS-07: filesystem-backup-restore-install-update-safety
+  WS-08: privacy-auth-and-secret-boundaries
+  WS-09: odd-routing-model-policy-and-delegation
+  WS-10: publication-release-gates-and-independent-ci
+  WS-11: protocol-contracts-consent-and-version-compatibility
+  WS-12: diagnostics-doctor-repair-and-maintenance
+normalization_required:
+  - "Reclassify false broad PARITY claims using asen-reverse-audit."
+  - "Map aggregate/alias contracts to canonical child invariants without deleting forensic provenance."
+  - "Deduplicate candidates against PAR-001..PAR-500."
+  - "Generate machine-validated P0 workstream coverage."
+  - "Run final ASEN reverse audit; any omitted P0 reopens saturation."

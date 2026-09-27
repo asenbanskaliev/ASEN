@@ -1,0 +1,12 @@
+wave: 42
+focus: [saturation-repeat-2]
+new_contracts:
+  - { id: PAR-476, area: verification-plan-authority-rejects-stale-snapshot-paths-policy-drift-and-nonlive-exact-revision, status: MISSING, priority: P0 }
+  - { id: PAR-477, area: verification-effect-authorization-rejects-stale-and-cross-bound-replay, status: MISSING, priority: P0 }
+  - { id: PAR-478, area: candidate-view-rejects-control-character-paths-before-prompt-construction, status: MISSING, priority: P0 }
+  - { id: PAR-479, area: candidate-context-manifest-rejects-noncanonical-ordering-or-transport-before-trusting-verified-bytes, status: MISSING, priority: P0 }
+  - { id: PAR-480, area: unborn-repository-fallback-preserves-contributor-index-and-never-creates-phantom-commit, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 5
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

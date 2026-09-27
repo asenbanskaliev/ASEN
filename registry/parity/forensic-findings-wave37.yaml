@@ -1,0 +1,11 @@
+wave: 37
+focus: [engram-local-obligatory-surfaces]
+new_contracts:
+  - { id: PAR-447, area: legacy-null-project-session-claim-establishes-durable-owner-without-breaking-read-compatibility, status: MISSING, priority: P0 }
+  - { id: PAR-448, area: session-identity-repair-rejects-unplanned-changed-ambiguous-or-shadowed-journal-before-commit, status: MISSING, priority: P0 }
+  - { id: PAR-449, area: project-reclassification-repair-backs-up-before-updating-only-allowed-tables, status: MISSING, priority: P0 }
+  - { id: PAR-450, area: memory-server-mutation-auth-rejects-missing-or-wrong-credential-while-read-policy-remains-explicit, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 4
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

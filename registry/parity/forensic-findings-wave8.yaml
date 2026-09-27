@@ -1,0 +1,26 @@
+wave: 8
+focus: [contracts, package-integrity, dependency-planning, mcp-schema, ci-supply-chain]
+new_contracts:
+  - { id: PAR-211, area: provider-contract-entry-digest-verification, status: MISSING, priority: P0 }
+  - { id: PAR-212, area: provider-contract-tree-digest-verification, status: MISSING, priority: P0 }
+  - { id: PAR-213, area: provider-contract-archive-digest-verification, status: MISSING, priority: P0 }
+  - { id: PAR-214, area: provider-contract-path-traversal-and-symlink-rejection, status: MISSING, priority: P0 }
+  - { id: PAR-215, area: provider-contract-runtime-registration-trust-gate, status: MISSING, priority: P0 }
+  - { id: PAR-216, area: unknown-risk-reason-does-not-invent-evidence, status: MISSING, priority: P0 }
+  - { id: PAR-217, area: contract-files-on-disk-exact-inventory-ratchet, status: MISSING, priority: P1 }
+  - { id: PAR-218, area: generated-runtime-source-inventory-ratchet, status: MISSING, priority: P1 }
+  - { id: PAR-219, area: authoritative-version-pin-consistency, status: MISSING, priority: P1 }
+  - { id: PAR-220, area: dependency-topological-cycle-fail-closed, status: MISSING, priority: P1 }
+  - { id: PAR-221, area: soft-ordering-never-adds-missing-components, status: MISSING, priority: P1 }
+  - { id: PAR-222, area: soft-ordering-never-mutates-input-plan, status: MISSING, priority: P1 }
+  - { id: PAR-223, area: mcp-schema-rejects-duplicate-json-members, status: MISSING, priority: P1 }
+  - { id: PAR-224, area: mcp-schema-rejects-unknown-keywords, status: MISSING, priority: P1 }
+  - { id: PAR-225, area: mcp-schema-deterministic-normalization, status: MISSING, priority: P1 }
+  - { id: PAR-226, area: all-live-tools-pass-contract-normalization, status: MISSING, priority: P1 }
+  - { id: PAR-227, area: ci-external-actions-pinned-to-full-sha, status: MISSING, priority: P0 }
+  - { id: PAR-228, area: ci-action-version-comment-ratchet, status: MISSING, priority: P2 }
+  - { id: PAR-229, area: privileged-pr-workflow-minimum-permissions, status: MISSING, priority: P0 }
+  - { id: PAR-230, area: privileged-pr-workflow-does-not-trust-head-content, status: MISSING, priority: P0 }
+observations:
+  - "Provider contract integrity is authority-bearing, not packaging trivia: digest, path and runtime-registration checks belong in the P0 trust boundary."
+  - "CI configuration is executable supply-chain code; mutable action refs and privileged pull_request_target misuse are P0 security contracts."

@@ -1,0 +1,17 @@
+wave: 22
+focus: [authority-family-exhaustion]
+new_contracts:
+  - { id: PAR-312, area: atomic-review-start-refuses-every-binding-mismatch-without-mutation, status: MISSING, priority: P0 }
+  - { id: PAR-313, area: atomic-review-start-refuses-cross-worktree-binding-without-mutation, status: MISSING, priority: P0 }
+  - { id: PAR-314, area: atomic-review-start-fails-closed-on-corrupt-or-historical-authority, status: MISSING, priority: P0 }
+  - { id: PAR-315, area: atomic-review-start-leaves-unrelated-authority-stores-byte-identical, status: MISSING, priority: P0 }
+  - { id: PAR-316, area: atomic-review-start-binding-remains-immutable-across-transitions, status: MISSING, priority: P0 }
+  - { id: PAR-317, area: concurrent-identical-review-starts-converge-to-one-authority, status: MISSING, priority: P0 }
+  - { id: PAR-318, area: revision-conflict-is-typed-and-proves-nonmutation, status: MISSING, priority: P0 }
+  - { id: PAR-319, area: target-relation-rejects-inexact-compatibility-evidence, status: MISSING, priority: P0 }
+  - { id: PAR-320, area: unix-authority-root-refuses-unsafe-owner-even-under-privileged-process, status: MISSING, priority: P0 }
+  - { id: PAR-321, area: windows-authority-repair-refuses-principals-outside-current-token, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 10
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"

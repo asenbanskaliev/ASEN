@@ -1,0 +1,14 @@
+wave: 32
+focus: [bounds-security-idempotence]
+new_contracts:
+  - { id: PAR-408, area: review-lens-ledger-records-each-selected-lens-exactly-once-and-rejects-forged-incomplete-freeze, status: MISSING, priority: P0 }
+  - { id: PAR-409, area: git-subprocess-output-is-separately-bounded-and-trace-never-contaminates-machine-output, status: MISSING, priority: P0 }
+  - { id: PAR-410, area: secure-lock-open-concurrent-create-and-persistent-enoent-remain-bounded, status: MISSING, priority: P0 }
+  - { id: PAR-411, area: cross-project-relation-guard-rejects-session-fallback-to-different-project, status: MISSING, priority: P0 }
+  - { id: PAR-412, area: readonly-review-actors-default-deny-tools-and-only-explicit-allowlist-can-enable, status: MISSING, priority: P0 }
+  - { id: PAR-413, area: destructive-command-guard-has-nonoverridable-blocks-for-force-push-hard-reset-and-catastrophic-rm, status: MISSING, priority: P0 }
+  - { id: PAR-414, area: malformed-autonomous-guard-config-fails-safe-to-nonautonomous-mode, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 7
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
