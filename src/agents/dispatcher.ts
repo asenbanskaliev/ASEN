@@ -28,8 +28,7 @@ export class Dispatcher {
     if(request.candidate.repository!==request.repository) throw new Error("Write candidate repository mismatch");
     if(!request.skillContext) throw new Error("Write authority requires skill selection context");
     if(!isIssuedSkillContext(request.skillContext)) throw new Error("Write authority requires ASEN-issued skill selection context");
-    const taskId=request.id.endsWith(":worker")?request.id.slice(0,-":worker".length):request.id;
-    if(!matchesIssuedSkillContext(request.skillContext,taskId,request.repository,request.candidate)) throw new Error("Write authority skill context does not match task/candidate");
+    if(!matchesIssuedSkillContext(request.skillContext,request.id,request.repository,request.candidate)) throw new Error("Write authority skill context does not match task/candidate");
     const selectedSkills=selectSkills(request.skillContext);
     const skills=selectedSkills.map(skill=>skill.id);
     if(!skills.length) throw new Error("Write authority requires mandatory skills");
