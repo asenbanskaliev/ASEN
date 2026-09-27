@@ -1,0 +1,31 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main, "feat/**"]
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run check
+  architecture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject Gentle runtime coupling
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RIE --exclude-dir=node_modules '(from|require\(|import).*gentle-(pi|ai|engram)' src extensions 2>/dev/null; then
+            exit 1
+          fi
