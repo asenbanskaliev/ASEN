@@ -19,7 +19,7 @@ assert.deepEqual(paths,["skills/asen-phase-protocol/SKILL.md","skills/asen-explo
 const piMain=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
 const cli=join(dirname(piMain),"bundle","cli.js");
 const marker=randomUUID();
-const args=[cli,"--mode","rpc","--no-session","--no-skills","--tools","read","--provider","llm7","--model","default",...paths.flatMap(path=>["--skill",path])];
+const args=[cli,"--mode","rpc","--no-session","--no-skills","--no-tools","--provider","llm7","--model","default",...paths.flatMap(path=>["--skill",path])];
 const child=spawn(process.execPath,args,{cwd:repo,env:process.env,stdio:["pipe","pipe","pipe"]});
 const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
 const observed={loaded:false,finished:false,read:[],text:[],error:null};
@@ -34,17 +34,9 @@ const handle=record=>{
   const actual=record.data.commands.filter(item=>item.source==="skill").map(item=>realpathSync(item.sourceInfo.path));
   assert.deepEqual(actual,expected,"Pi loaded an unexpected Skill set");
   observed.loaded=true;
-  command({id:"asen-turn",type:"prompt",message:`Perform only these two read operations. First call read with path exactly ${expected[0]}. Then call read with path exactly ${expected[1]}. Do not discover, search, infer, inspect, or read any other path, including documentation. After the second read, make no more tool calls. Reply exactly ASEN_AUTH_PROBE:${marker}:READ_ONLY NO_REDELEGATION.`});
+  command({id:"asen-turn",type:"prompt",message:`Reply exactly ASEN_AUTH_PROBE:${marker}:READ_ONLY NO_REDELEGATION. Do not call tools.`});
  }
- if(record.type==="tool_execution_start"){
-  if(record.toolName!=="read")throw new Error(`Disallowed Pi tool: ${record.toolName}`);
-  const path=record.args?.path??record.args?.file_path;
-  if(typeof path!=="string")throw new Error("Read tool did not identify its path");
-  const requested=resolve(repo,path);
-  const allowed=expected.includes(requested);
-  if(!allowed)throw new Error(`Disallowed Pi read path: ${path}`);
-  observed.read.push(realpathSync(requested));
- }
+ if(record.type==="tool_execution_start")throw new Error(`Authenticated Pi probe must not execute tools: ${record.toolName}`);
  if(record.type==="message_end"&&record.message?.role==="assistant"){
   if(record.message.stopReason==="error"){
    const detail=String(record.message.errorMessage??"No provider detail supplied").replaceAll(process.env.LLM7_API_KEY,"[redacted]").slice(0,700);
@@ -72,6 +64,6 @@ if(observed.error)throw observed.error;
 if(exitCode!==0)throw new Error(`Pi exited with code ${exitCode}: ${stderr.replaceAll(process.env.LLM7_API_KEY,"[redacted]")}`);
 assert.equal(observed.loaded,true,"Pi never confirmed native Skill loading");
 assert.equal(observed.finished,true,"Authenticated model turn did not complete");
-assert.deepEqual(observed.read,expected,"Model did not read the exact selected Skills");
+assert.deepEqual(observed.read,[],"Authenticated model turn unexpectedly executed a read");
 assert.ok(observed.text.join("\n").includes(`ASEN_AUTH_PROBE:${marker}:READ_ONLY`),"Model did not return the audited marker");
-console.log(JSON.stringify({candidate:revision,provider:"llm7",model:"default",skills:paths,readCount:observed.read.length,result:"PASS"}));
+console.log(JSON.stringify({candidate:revision,provider:"llm7",model:"default",skills:paths,nativeSkillLoadCount:expected.length,toolCalls:observed.read.length,result:"PASS"}));
