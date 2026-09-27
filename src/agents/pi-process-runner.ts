@@ -80,7 +80,7 @@ export class PiProcessRunner implements AgentRunner{
    child.stderr.on("data",data=>stderr=append(stderr,data));
    child.on("error",error=>finish({id:request.id,ok:false,output:`pi process error: ${String(error)}`}));
    child.on("close",code=>{
-    if(code===0&&!overflow&&this.options.validateResponseId){
+    if(code===0&&!overflow&&this.options.validateResponseId!==false){
      try{
       const records=stdout.trim().split(/\\r?\\n/).filter(Boolean).map(line=>JSON.parse(line));
       const envelope=records.find(record=>record?.type==="response"&&record?.id===request.id);
