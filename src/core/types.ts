@@ -6,6 +6,6 @@ export interface Candidate { id:string; repository:string; revision:string; crea
 export interface Evidence {
  id:string; candidateRepository:string; candidateId:string; candidateRevision:string;
  kind:"test"|"review"|"command"|"audit"|"tdd";
- status:"pass"|"fail"; summary:string; createdAt:string;
+ status:"pass"|"fail"|"expected-fail"; summary:string; createdAt:string;
 }
 export interface TaskState { id:string; title:string; phase:Phase; candidateId?:string; blockers:string[]; }
