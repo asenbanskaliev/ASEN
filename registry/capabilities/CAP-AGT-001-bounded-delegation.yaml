@@ -1,0 +1,19 @@
+id: CAP-AGT-001
+name: Bounded agent delegation
+priority: P0
+status: specified
+owner: ASEN-Agents
+contract:
+  given: work is delegated to a Pi child agent
+  when: the child receives write authority
+  then:
+    - explicit edit surfaces exist
+    - repository/project identity is explicit
+    - single-writer policy is preserved unless isolation is explicit
+    - result is returned to parent with observable execution status
+tests:
+  - unit
+  - integration
+  - pi-e2e
+  - security
+evidence_required: true
