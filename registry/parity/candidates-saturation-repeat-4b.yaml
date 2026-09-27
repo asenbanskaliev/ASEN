@@ -1,0 +1,6 @@
+source_pass: saturation-repeat-4b
+candidates:
+  - { area: repository-selection-accepts-only-aliases-proven-to-be-same-repository, priority: P0, source: internal/reviewtransaction/repository_selection_boundary_test.go }
+  - { area: relation-deferred-replay-never-creates-orphan-and-interrupted-identity-backfill-converges-idempotently, priority: P0, source: internal/store/relation_deferred_identity_test.go }
+  - { area: child-runner-does-not-release-concurrency-slot-while-resistant-descendant-remains, priority: P0, source: tests/agents-runner-process.test.ts, likely_duplicate: PAR-378 }
+disposition: NEEDS_DEDUPLICATION_AGAINST_PAR_001_491
