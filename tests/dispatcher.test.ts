@@ -12,7 +12,7 @@ function authorized(){
  evidence.add(candidate,{id:"rollback",kind:"rollback",status:"pass",summary:"ready",createdAt:"now"});
  return evidence;
 }
-const sealedCodeChange=()=>issueSkillContext({codeChange:true});
+const sealedCodeChange=()=>issueSkillContext("a","r",candidate,{codeChange:true});
 const writeRequest={id:"a",role:"worker" as const,prompt:"x",repository:"r",writeSurfaces:["src/a"],candidate,skillContext:sealedCodeChange()};
 
 test("dispatcher releases writer grant after completion", async()=>{
