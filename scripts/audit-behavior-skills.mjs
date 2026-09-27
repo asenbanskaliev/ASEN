@@ -2,6 +2,7 @@ import {readFile,readdir} from "node:fs/promises";
 const root=new URL("../skills/",import.meta.url);
 const dirs=await readdir(root,{withFileTypes:true});
 const required=[
+ "asen-phase-protocol","asen-status",
  "asen-context-init","asen-explore","asen-proposal","asen-specification","asen-design",
  "asen-tasks","asen-apply","asen-verify","asen-archive","asen-skill-registry",
  "asen-adversarial-review","asen-skill-authoring","asen-skill-audit","asen-defect-workflow","asen-go-testing",
