@@ -17,13 +17,16 @@ export class Dispatcher {
  async dispatch(request:AgentRequest):Promise<AgentResult>{
   await this.#acquire();let grant:WriteGrant|undefined;
   try{
+   if(request.writeSurfaces&&request.role!=="worker") throw new Error("Only worker agents may receive write authority");
    if(request.skillContext||request.skillPaths){
     if(!request.skillContext||!isIssuedSkillContext(request.skillContext)) throw new Error("Delegated skill paths require ASEN-issued skill selection context");
+    const requiredPhase=request.role==="explorer"?"explore":request.role==="reviewer"?"adversarial-review":request.role==="verifier"?"verify":undefined;
+    if(requiredPhase&&request.skillContext.phase!==requiredPhase) throw new Error("Delegated skill context does not match agent role");
+    if(request.skillContext.repository!==request.repository) throw new Error("Delegated skill context does not match repository");
     const expectedPaths=selectSkills(request.skillContext).map(skill=>skill.path);
     if(!request.skillPaths||request.skillPaths.length!==expectedPaths.length||request.skillPaths.some((path,index)=>path!==expectedPaths[index])) throw new Error("Delegated skill paths do not match issued context");
    }
    if(request.writeSurfaces){
-    if(request.role!=="worker") throw new Error("Only worker agents may receive write authority");
     if(!request.candidate) throw new Error("Write authority requires an exact candidate");
     if(request.candidate.repository!==request.repository) throw new Error("Write candidate repository mismatch");
     if(!request.skillContext) throw new Error("Write authority requires skill selection context");
