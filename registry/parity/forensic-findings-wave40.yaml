@@ -1,0 +1,11 @@
+wave: 40
+focus: [last-explicit-review-core-files]
+new_contracts:
+  - { id: PAR-467, area: review-artifact-subject-binds-frozen-candidate-slot-and-optional-correction-identity, status: MISSING, priority: P0 }
+  - { id: PAR-468, area: prepared-batch-reconciliation-cannot-remain-ambiguous-before-review-progress, status: MISSING, priority: P0 }
+  - { id: PAR-469, area: repository-context-windows-sharing-violation-retry-is-transient-only-and-bounded, status: MISSING, priority: P0 }
+  - { id: PAR-470, area: selectorless-committed-correction-requires-matching-predecessor-and-proven-ancestry, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 4
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
