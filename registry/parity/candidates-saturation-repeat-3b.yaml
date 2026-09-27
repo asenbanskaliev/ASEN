@@ -1,0 +1,11 @@
+source_pass: saturation-repeat-3b
+baseline:
+  gentle_ai: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+  engram: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
+  gentle_shell: fe61793e7cb3e75462ba53c7631e87d78e989354
+candidates:
+  - { area: git-subprocess-local-and-remote-timeouts-are-bounded-and-typed, priority: P0, source: internal/reviewtransaction/git_timeout_test.go }
+  - { area: git-subprocess-stdout-stderr-are-separately-bounded-and-trace-cannot-contaminate-machine-output, priority: P0, source: internal/reviewtransaction/git_output_test.go, likely_duplicate: PAR-409 }
+  - { area: memory-import-retains-session-identity-and-ownership-validation-without-side-effects-on-invalid-pulled-session, priority: P0, source: internal/store/store_import_test.go }
+  - { area: agent-message-delivery-drops-settled-expired-foreign-or-nonlive-messages-and-deduplicates-queries, priority: P0, source: tests/agents-message-delivery.test.ts }
+disposition: NEEDS_DEDUPLICATION_AGAINST_PAR_001_485
