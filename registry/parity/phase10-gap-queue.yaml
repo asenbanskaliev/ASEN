@@ -1,46 +1,37 @@
 phase: 10
-status: OPEN
-contracts_discovered: 169
-rule: "Implementation order is driven by safety and dependency topology, not by contract number."
-p0_workstreams:
-  - id: WS-01
-    name: immutable-candidate-and-evidence
-    contracts: [PAR-056, PAR-057, PAR-058, PAR-059, PAR-086, PAR-087, PAR-088, PAR-089]
-    gate: "Evidence and review bind to immutable Git trees/revisions; any candidate mutation invalidates prior authority."
-  - id: WS-02
-    name: review-authority-ledger-recovery
-    contracts: [PAR-060, PAR-061, PAR-062, PAR-073, PAR-074, PAR-131, PAR-132, PAR-134]
-    gate: "Review state is durable, locked, recoverable and tamper-bound."
-  - id: WS-03
-    name: pi-child-agent-runtime
-    contracts: [PAR-052, PAR-053, PAR-055, PAR-123, PAR-124, PAR-125, PAR-126, PAR-127]
-    gate: "Bounded RPC transport, stall/cancel handling and mutation observation pass adversarial tests."
-  - id: WS-04
-    name: write-authority-and-transaction-safety
-    contracts: [PAR-051, PAR-071, PAR-116, PAR-151, PAR-152, PAR-153, PAR-154]
-    gate: "Writes are bounded, deterministic, rollback-capable and never blindly replay ambiguous non-idempotent operations."
-  - id: WS-05
-    name: memory-durability-and-concurrency
-    contracts: [PAR-065, PAR-140, PAR-141, PAR-142, PAR-144]
-    gate: "Atomic row/index updates, safe concurrent writers and unknown-outcome semantics are proven."
-  - id: WS-06
-    name: compaction-and-delivery
-    contracts: [PAR-145, PAR-146, PAR-147, PAR-148, PAR-149, PAR-150]
-    gate: "Pi compaction recovery has explicit outcomes; memory bookkeeping can never replace or block the final user answer."
-  - id: WS-07
-    name: filesystem-backup-restore-security
-    contracts: [PAR-078, PAR-079, PAR-080]
-    gate: "Restore cannot escape authorized roots or redirect through unsafe symlinks; unproven user-owned paths survive rollback."
-  - id: WS-08
-    name: privacy
-    contracts: [PAR-160, PAR-161]
-    gate: "Private values are recursively redacted before persistence/transport/logging surfaces."
-  - id: WS-09
-    name: odd-routing-enforcement
-    contracts: [PAR-101, PAR-102, PAR-103, PAR-104, PAR-105]
-    gate: "Each mandatory routing trigger has deterministic tests and changes topology as specified."
-next:
-  - "Normalize overlaps and aliases among PAR-001..169."
-  - "Produce final canonical capability registry with one contract per observable invariant."
-  - "Run a saturation pass: inspect remaining uncategorized tests for any P0 invariant absent from the registry."
-  - "Only then close Phase 10 and begin implementation in isolated workstream branches."
+status: NORMALIZED_MACHINE_VALIDATED
+canonical_universe: PAR-001..PAR-500
+source_of_truth:
+  validator: scripts/validate-phase10-parity.mjs
+  normalization: registry/parity/phase10-normalization.yaml
+  reverse_audit: registry/parity/phase10-independent-reverse-audit-2.yaml
+coverage_rule: "Every canonical P0 whose normalized status is PARTIAL or MISSING is assigned exactly once by the validator. PARITY and N/A are not implementation backlog."
+workstreams:
+  WS-01: immutable-candidate-evidence-and-repository-identity
+  WS-02: review-authority-ledger-locking-recovery
+  WS-03: pi-child-agent-runtime-transport-and-attribution
+  WS-04: write-authority-transactions-state-and-rollback
+  WS-05: memory-durability-concurrency-ownership-and-migrations
+  WS-06: compaction-session-delivery-and-runtime-identity
+  WS-07: filesystem-backup-restore-install-update-safety
+  WS-08: privacy-auth-and-secret-boundaries
+  WS-09: odd-routing-model-policy-and-delegation
+  WS-10: publication-release-gates-and-independent-ci
+  WS-11: protocol-contracts-consent-and-version-compatibility
+  WS-12: diagnostics-doctor-repair-and-maintenance
+classification:
+  policy: "Deterministic first-match semantic classifier in scripts/validate-phase10-parity.mjs."
+  fallback: WS-12
+  invariant: "A P0 implementation gap may never be unassigned or assigned more than once."
+saturation:
+  frozen_universe: PAR-001..PAR-500
+  clean_waves: [47,48]
+  additional_clean_series: "registry/parity/second-six-pass-series.yaml = 6/6 zero-new-P0"
+  independent_reverse_audit: NO_NEW_P0
+closure:
+  discovery_saturated: true
+  namespace_normalized: true
+  false_broad_parity_corrected: true
+  p0_queue_machine_validated: true
+  ci_required_on_exact_head: true
+implementation_gate: "No implementation phase begins unless npm run audit:parity passes on the exact candidate SHA."
