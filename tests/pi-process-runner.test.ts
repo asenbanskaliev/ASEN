@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";import test from "node:test";import {mkdtemp,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {issueSkillContext} from "../src/skills/context.js";
+import {selectSkills} from "../src/skills/registry.js";
 async function fixture(body:string){const d=await mkdtemp(join(tmpdir(),"asen-pi-")),p=join(d,"pi-fixture.mjs");await writeFile(p,body);return {d,p};}
 function runner(p:string,options:ConstructorParameters<typeof PiProcessRunner>[0]={}){return new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p],...options});}
 test("Pi RPC adapter correlates request id",async()=>{const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,command:"prompt",success:true,message:f.message}));});');const r=await runner(p,{validateResponseId:true}).run({id:"req-1",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,true);assert.match(r.output,/req-1/);});
@@ -40,4 +41,19 @@ test("Pi RPC adapter rejects omitted mandatory skill routes",async()=>{
  const r=await runner(p).run({id:"omitted",role:"explorer",prompt:"x",repository:d,skillContext:issueSkillContext("omitted",d,undefined,{phase:"explore"}),skillPaths:[]});
  assert.equal(r.ok,false);
  assert.match(r.output,/do not match issued context/);
+});
+test("Pi RPC adapter supplies selected routes as native Pi flags",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
+ const context=issueSkillContext("native",d,undefined,{phase:"explore"});
+ const paths=selectSkills(context).map(skill=>skill.path);
+ const r=await runner(p).run({id:"native",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:paths});
+ assert.equal(r.ok,true);
+ const response=JSON.parse(r.output.trim());
+ assert.deepEqual(response.args,["--no-extensions","--no-skills",...paths.flatMap(path=>["--skill",path])]);
+});
+test("Pi RPC adapter blocks caller-supplied skill overrides",async()=>{
+ const {d,p}=await fixture('setTimeout(()=>{},10000);');
+ const context=issueSkillContext("override",d,undefined,{phase:"explore"});
+ const r=await runner(p,{extraArgs:[p,"--skill","skills/asen-review/SKILL.md"]}).run({id:"override",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
+ assert.equal(r.ok,false);assert.match(r.output,/issued by ASEN/);
 });
