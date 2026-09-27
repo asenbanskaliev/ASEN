@@ -1,0 +1,30 @@
+name: Pi Free Smoke
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+jobs:
+  anonymous-free-model:
+    if: github.event.pull_request.number == 30 && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Pi and pi-free
+        run: |
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
+          pi install npm:pi-free
+      - name: Inspect free providers
+        run: pi --help
+      - name: Anonymous LLM7 smoke
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          printf 'Reply with exactly ASEN_PI_FREE_OK\n' | pi --no-session --no-extensions --no-skills --provider llm7 --model auto
