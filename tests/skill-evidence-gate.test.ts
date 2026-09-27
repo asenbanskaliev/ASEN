@@ -94,3 +94,13 @@ test("release rejects caller-controlled mutable skill context",()=>{
  assert.equal(authorizeRelease(c,"low",store,{codeChange:true}).ok,false);
  assert.match(authorizeRelease(c,"low",store,{codeChange:true}).reason,/ASEN-issued skill selection context/);
 });
+
+
+test("release rejects an issued context from another candidate revision",()=>{
+ const old={...c,revision:"old-context"};
+ const store=new EvidenceStore();
+ const context=issueSkillContext("task","repo",old,{codeChange:true});
+ const result=authorizeRelease(c,"medium",store,context);
+ assert.equal(result.ok,false);
+ assert.match(result.reason,/does not match candidate/);
+});
