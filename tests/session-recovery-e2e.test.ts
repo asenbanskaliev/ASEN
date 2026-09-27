@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
-import {mkdtempSync,rmSync} from "node:fs";
+import {mkdtempSync,readFileSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import test from "node:test";
@@ -22,4 +22,10 @@ test("checkpoint survives process exit and rejects stale ownership, candidate an
  for(const args of [["read","project-b"],["read","project-a","session-b"],["read","project-a","session-a","repository-b"],["read","project-a","session-a","repository-a","sha-b"]]){
   const rejected=run(...(args as [string,string,string,string,string]));assert.notEqual(rejected.status,0,`stale checkpoint accepted: ${args.join(" ")}`);
  }
+ const corrupt=JSON.parse(readFileSync(path,"utf8"));
+ corrupt.candidate.id="different-candidate";
+ writeFileSync(path,JSON.stringify(corrupt));
+ assert.notEqual(run("read").status,0,"candidate mismatch accepted after restart");
+ writeFileSync(path,"{truncated");
+ assert.notEqual(run("read").status,0,"partial checkpoint accepted after restart");
 });
