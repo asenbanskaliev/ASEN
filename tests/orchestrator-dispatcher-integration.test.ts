@@ -77,7 +77,7 @@ test("writer cannot reuse another task's issued skill context",async()=>{
   evidence.add(candidate,{id,kind,status:"pass",summary:"ok",createdAt:"now"});
  const runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:"bad"})};
  await assert.rejects(
-  ()=>new Dispatcher(runner,evidence).dispatch({...secondWorker,skillContext:firstWorker.skillContext}),
+  ()=>new Dispatcher(runner,evidence).dispatch({...secondWorker,skillContext:firstWorker.skillContext!}),
   /does not match task\/candidate/
  );
 });
