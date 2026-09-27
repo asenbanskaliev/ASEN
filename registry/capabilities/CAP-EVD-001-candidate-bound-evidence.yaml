@@ -1,0 +1,17 @@
+id: CAP-EVD-001
+name: Candidate-bound evidence
+priority: P0
+status: specified
+owner: ASEN-Evidence
+contract:
+  given: a candidate is reviewed or tested
+  when: evidence is recorded
+  then:
+    - evidence contains candidate identity
+    - evidence cannot verify a different candidate
+    - candidate mutation invalidates prior verified status
+tests:
+  - unit
+  - contract
+  - integration
+evidence_required: true
