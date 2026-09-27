@@ -1,0 +1,14 @@
+wave: 14
+focus: [repeat-p0-pass-4]
+new_contracts:
+  - { id: PAR-275, area: invalidation-rejects-live-candidate-drift-without-authority-mutation, status: MISSING, priority: P0 }
+  - { id: PAR-276, area: invalidated-review-is-nonusable-but-does-not-poison-ordinary-delivery, status: MISSING, priority: P0 }
+  - { id: PAR-277, area: review-lens-set-is-closed-bounded-and-nonduplicated, status: MISSING, priority: P1 }
+  - { id: PAR-278, area: standing-permission-never-expands-provider-candidate-authority, status: MISSING, priority: P0 }
+  - { id: PAR-279, area: standing-permission-is-repository-scoped-across-worktrees, status: MISSING, priority: P0 }
+  - { id: PAR-280, area: standing-permission-ipc-fails-deny-on-missing-or-broken-channel, status: MISSING, priority: P0 }
+saturation_result:
+  pass: 4
+  p0_new: 5
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
