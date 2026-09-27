@@ -6,13 +6,18 @@ test("rejects skipping directly to VERIFIED", () => {
   assert.throws(() => transition("IMPLEMENTING", "VERIFIED"));
 });
 
-test("allows canonical engineering path", () => {
+test("allows canonical engineering path only through privileged gates", () => {
   let phase = transition("DISCOVERING", "PLANNING");
-  phase = transition(phase, "IMPLEMENTING");
+  phase = guardedTransition({from:phase,to:"IMPLEMENTING",authorized:true});
   phase = transition(phase, "TESTING");
   phase = transition(phase, "REVIEWING");
   phase = transition(phase, "VERIFYING");
-  assert.equal(transition(phase, "VERIFIED"), "VERIFIED");
+  assert.equal(guardedTransition({from:phase,to:"VERIFIED",authorized:true}), "VERIFIED");
+});
+
+test("plain transition cannot bypass privileged gates",()=>{
+ assert.throws(()=>transition("PLANNING","IMPLEMENTING"),/requires gate authorization/);
+ assert.throws(()=>transition("VERIFYING","VERIFIED"),/requires gate authorization/);
 });
 
 
