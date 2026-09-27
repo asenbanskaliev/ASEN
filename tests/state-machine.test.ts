@@ -7,6 +7,7 @@ import {authorizeImplementation,authorizeVerified,type TransitionAuthorization} 
 const candidate={id:"c",repository:"r",revision:"sha",createdAt:"now"};
 function implementationAuthorization(){
  const evidence=new EvidenceStore();
+ evidence.add(candidate,{id:"route",kind:"route-decision",status:"pass",summary:"route",createdAt:"now"});
  evidence.add(candidate,{id:"unit",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  return authorizeImplementation(candidate,Object.freeze({filesTouched:2}),evidence);
 }
