@@ -24,7 +24,7 @@ const child=spawn(process.execPath,args,{cwd:repo,env:process.env,stdio:["pipe",
 const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
 const observed={loaded:false,finished:false,read:[],text:[],error:null};
 let buffer="",stderr="",bytes=0;
-const expected=paths.map(path=>realpathSync(resolve(repo,path)));
+const expected=paths.map(path=>realpathSync(resolve(repo,path)));\nconst exactPaths=expected.join(" and ");
 const timeout=setTimeout(()=>child.kill(),180_000);
 command({id:"asen-load",type:"get_commands"});
 const handle=record=>{
@@ -33,7 +33,7 @@ const handle=record=>{
   const actual=record.data.commands.filter(item=>item.source==="skill").map(item=>realpathSync(item.sourceInfo.path));
   assert.deepEqual(actual,expected,"Pi loaded an unexpected Skill set");
   observed.loaded=true;
-  command({id:"asen-turn",type:"prompt",message:`ASEN read-only audit. Candidate ${candidate.id} revision ${revision}. Use the read tool to read only these two exact repository-relative file paths, one at a time: ${paths.join(" and ")}. The candidate id and revision are metadata, never file paths. Do not read any other path. Do not call any other tool, modify files, or delegate. Then reply with the exact marker ASEN_AUTH_PROBE:${marker}:READ_ONLY and one short sentence explaining why the phase protocol forbids redelegation. If a file cannot be read, explain the blocker without the marker.`});
+  command({id:"asen-turn",type:"prompt",message:`ASEN read-only audit. Candidate ${candidate.id} revision ${revision}. Use the read tool to read only these two exact absolute file paths, one at a time: ${exactPaths}. Copy each path literally into the read tool; do not prepend the candidate id, workspace name, or any directory. The candidate id and revision are metadata, never file paths. Do not read any other path. Do not call any other tool, modify files, or delegate. Then reply with the exact marker ASEN_AUTH_PROBE:${marker}:READ_ONLY and one short sentence explaining why the phase protocol forbids redelegation. If a file cannot be read, explain the blocker without the marker.`});
  }
  if(record.type==="tool_execution_start"){
   if(record.toolName!=="read")throw new Error(`Disallowed Pi tool: ${record.toolName}`);
