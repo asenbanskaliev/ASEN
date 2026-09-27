@@ -1,0 +1,37 @@
+phase: 10
+purpose: "Canonical normalization disposition for saturated P0 discovery."
+universe: PAR-001..PAR-500
+rules:
+  canonical_statuses: [PARITY, PARTIAL, MISSING, N/A]
+  broad_claim_corrections:
+    PAR-004: PARTIAL
+    PAR-014: PARTIAL
+    PAR-016: PARTIAL
+    PAR-022: PARTIAL
+    PAR-024: PARTIAL
+    PAR-030: PARTIAL
+  candidate_disposition:
+    candidates-critical-pass-a.yaml:
+      repository-identity-lease-rejects-gitdir-or-control-replacement: PAR-430
+      repository-identity-lease-validation-is-readonly-and-concurrency-safe: PAR-431
+      candidate-untracked-discovery-excludes-linked-worktrees-and-refuses-foreign-embedded-repositories: PAR-436
+      final-verification-resnapshot-requires-every-authority-field-equal: PAR-432
+    candidates-semantic-negative-controls-b.yaml:
+      degraded-evidence-cannot-downgrade-review-finding: PAR-426
+      candidate-view-rejects-control-character-paths-before-prompt-construction: PAR-478
+    candidates-saturation-repeat-4b.yaml:
+      child-runner-does-not-release-concurrency-slot-while-resistant-descendant-remains: PAR-378
+    candidates-backup-filesystem.yaml:
+      restore-detects-symlink-type-and-target-collision: PAR-362
+      memory-filesystem-policy-rejects-resolved-remote-windows-path-and-normalizes-extended-unc: PAR-421
+    candidates-state-pipeline-fts-history.yaml:
+      failed-state-write-preserves-existing-state: PAR-372
+      pipeline-rollback-attempts-every-compensation-and-joins-apply-and-rollback-errors: PAR-370
+      fts-triggers-synchronize-observation-lifecycle-and-migration: PAR-404
+  unresolved_candidate_rule: "Unresolved candidate files remain audit evidence; no candidate becomes canonical without a new saturation cycle."
+closure_checks:
+  discovery_saturated: true
+  two_independent_zero_p0_passes: true
+  broad_false_parity_corrected: true
+  final_reverse_audit_required: true
+  ci_required: true
