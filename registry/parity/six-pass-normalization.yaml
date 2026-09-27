@@ -1,0 +1,72 @@
+normalization: six-pass-findings
+source: registry/parity/six-pass-audit-2026-09-27.yaml
+method: "semantic dedup against waves 1-29 plus PAR namespace normalization"
+disposition:
+  already_covered_or_merge:
+    - S6-P1-F02
+    - S6-P1-F03
+    - S6-P1-F07
+    - S6-P1-F08
+    - S6-P1-F09
+    - S6-P1-F10
+    - S6-P1-F11
+    - S6-P2-F01
+    - S6-P2-F04
+    - S6-P2-F05
+    - S6-P2-F06
+    - S6-P2-F08
+    - S6-P2-F10
+    - S6-P3-F01
+    - S6-P3-F02
+    - S6-P3-F04
+    - S6-P3-F05
+    - S6-P3-F06
+    - S6-P3-F10
+    - S6-P3-F11
+    - S6-P4-F04
+    - S6-P4-F05
+    - S6-P4-F06
+    - S6-P5-F02
+    - S6-P5-F03
+    - S6-P5-F04
+    - S6-P5-F05
+    - S6-P6-F02
+    - S6-P6-F03
+    - S6-P6-F04
+    - S6-P6-F05
+  canonical_new:
+    - { temp: S6-P1-F01, canonical: PAR-395, contract: append-only-authority-publication-requires-durable-event-directory-sync-before-head }
+    - { temp: S6-P1-F04, canonical: PAR-396, contract: risk-inputs-budgets-and-release-bindings-immutable-across-authority-successors }
+    - { temp: S6-P1-F05, canonical: PAR-397, contract: historical-authority-compatibility-cannot-admit-fresh-legacy-genesis }
+    - { temp: S6-P1-F06, canonical: PAR-398, contract: abandon-crash-retryable-but-rewritten-or-corrupt-lineage-refuses-replay }
+    - { temp: S6-P1-F12, canonical: PAR-399, contract: project-reclassification-repair-backs-up-before-mutating-allowed-tables }
+    - { temp: S6-P2-F02, canonical: PAR-400, contract: malformed-provider-result-retry-bounded-and-transport-error-not-blindly-retried }
+    - { temp: S6-P2-F03, canonical: PAR-401, contract: provider-retry-refuses-request-target-identity-drift }
+    - { temp: S6-P2-F07, canonical: PAR-402, contract: corrected-candidate-capture-requires-fresh-status-exact-binding }
+    - { temp: S6-P2-F09, canonical: PAR-403, contract: newer-memory-schema-left-untouched-not-repaired-or-downgraded }
+    - { temp: S6-P3-F03, canonical: PAR-404, contract: release-ci-success-selects-newest-run-for-exact-commit }
+    - { temp: S6-P3-F07, canonical: PAR-405, contract: review-snapshot-creation-never-mutates-real-index-or-worktree }
+    - { temp: S6-P3-F08, canonical: PAR-406, contract: isolated-snapshot-objects-survive-gc-until-explicit-sensitive-cleanup }
+    - { temp: S6-P3-F09, canonical: PAR-407, contract: consent-latch-one-way-canonical-private-and-common-dir-scoped }
+    - { temp: S6-P4-F01, canonical: PAR-408, contract: candidate-and-frozen-policy-runtime-budget-fails-before-authority-creation }
+    - { temp: S6-P4-F02, canonical: PAR-409, contract: aggregate-many-small-paths-cannot-bypass-runtime-budget }
+    - { temp: S6-P4-F03, canonical: PAR-410, contract: over-budget-correction-stops-typed-without-validation-reoffer }
+    - { temp: S6-P4-F07, canonical: PAR-411, contract: closed-space-diagnostic-reports-all-foreign-targets-and-store-read-failure }
+    - { temp: S6-P5-F01, canonical: PAR-412, contract: defect-report-scrub-retains-only-public-identifiers }
+    - { temp: S6-P5-F06, canonical: PAR-413, contract: headless-and-subagent-paths-cannot-invoke-primary-review-authority }
+    - { temp: S6-P5-F07, canonical: PAR-414, contract: deferred-relation-redelivery-idempotent-with-distinct-payload-identities }
+    - { temp: S6-P5-F08, canonical: PAR-415, contract: interrupted-relation-backfill-converges-and-is-idempotent }
+    - { temp: S6-P5-F09, canonical: PAR-416, contract: cross-project-relation-guard-rejects-different-session-projects }
+    - { temp: S6-P6-F01, canonical: PAR-417, contract: capture-refusal-preserves-native-refusal-and-kill-switch-identity }
+    - { temp: S6-P6-F06, canonical: PAR-418, contract: unreadable-acknowledgement-degrades-continuation-never-approval }
+    - { temp: S6-P6-F07, canonical: PAR-419, contract: reminder-receipts-isolated-by-session-root-active-branch }
+    - { temp: S6-P6-F08, canonical: PAR-420, contract: receipt-consumption-removes-only-captured-prefix }
+    - { temp: S6-P6-F09, canonical: PAR-421, contract: malformed-version-unknown-unmatched-receipt-cannot-establish-ownership }
+    - { temp: S6-P6-F10, canonical: PAR-422, contract: compaction-context-endpoint-session-scoped-end-to-end }
+    - { temp: S6-P6-F11, canonical: PAR-423, contract: selftest-uses-fresh-absolute-temp-directory-and-cleans-it }
+summary:
+  raw_findings: 60
+  merged_or_already_covered: 31
+  canonical_new: 29
+  canonical_range_added: PAR-395..PAR-423
+  next_free_canonical_id: PAR-424
