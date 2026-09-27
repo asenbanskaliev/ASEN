@@ -1,10 +1,12 @@
 import {open,readFile,rename,unlink} from "node:fs/promises";
 import {dirname,basename,join} from "node:path";
 import {createHmac,randomUUID,timingSafeEqual} from "node:crypto";
-import type {Candidate} from "../core/types.js";
+import type {Candidate,Risk} from "../core/types.js";
 import {matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {selectSkills} from "../skills/registry.js";
 import type {Dispatcher,AgentRequest} from "../agents/dispatcher.js";
+import {EvidenceStore} from "../evidence/store.js";
+import {authorizeRelease,authorizeVerified} from "../verify/verifier.js";
 
 export const lifecyclePhases=["context-init","explore","proposal","specification","design","tasks","apply","verify","archive"] as const;
 export type LifecyclePhase=typeof lifecyclePhases[number];
@@ -31,7 +33,7 @@ export class SkillLifecycle{
   if(snapshot) validateSnapshot(this.#snapshot,taskId,candidate);
  }
  get state():LifecycleSnapshot{return copy(this.#snapshot);}
- async runPhase(dispatcher:Dispatcher,input:{phase:LifecyclePhase;context:IssuedSkillContext;skillPaths:string[];prompt:string;writeSurfaces?:string[]}):Promise<LifecycleSnapshot>{
+ async runPhase(dispatcher:Dispatcher,input:{phase:LifecyclePhase;context:IssuedSkillContext;skillPaths:string[];prompt:string;evidence:EvidenceStore;risk:Risk;writeSurfaces?:string[]}):Promise<LifecycleSnapshot>{
   const role=roleFor[input.phase],s=this.#snapshot;
   if(input.phase!==s.nextPhase)throw new Error("Lifecycle phase out of order");
   if(input.phase==="apply"&&(!input.writeSurfaces||!input.writeSurfaces.length))throw new Error("Lifecycle apply requires bounded write surfaces");
@@ -40,11 +42,16 @@ export class SkillLifecycle{
    ...(input.phase==="apply"?{candidate:s.candidate,writeSurfaces:input.writeSurfaces!}:{})};
   // Validate authority before invoking the agent, then validate its result before advancing.
   this.#assertAuthority(input.phase,role,input.context,input.skillPaths);
+  if(input.phase==="verify")authorizeVerified(s.candidate,input.risk,input.context,input.evidence);
+  if(input.phase==="archive"){
+   const release=authorizeRelease(s.candidate,input.risk,input.evidence,input.context);
+   if(!release.ok)throw new Error(`Lifecycle archive blocked: ${release.reason}`);
+  }
   const response=await dispatcher.dispatch(request);
   if(!response.ok||response.id!==request.id)throw new Error("Lifecycle agent result failed or belongs to another task");
   let artifact:LifecycleArtifact;
   try{artifact=JSON.parse(response.output) as LifecycleArtifact;}catch{throw new Error("Lifecycle agent artifact is not structured JSON");}
-  return this.complete({phase:input.phase,role,context:input.context,skillPaths:input.skillPaths,artifact});
+  return this.#complete({phase:input.phase,role,context:input.context,skillPaths:input.skillPaths,artifact});
  }
  #assertAuthority(phase:LifecyclePhase,role:LifecycleRole,context:IssuedSkillContext,paths:string[]):void{
   const s=this.#snapshot;
@@ -53,7 +60,7 @@ export class SkillLifecycle{
   const expected=selectSkills(context).map(skill=>skill.path);
   if(expected.length!==paths.length||expected.some((path,index)=>path!==paths[index]))throw new Error("Lifecycle skill routes mismatch");
  }
- complete(input:{phase:LifecyclePhase;role:LifecycleRole;context:IssuedSkillContext;skillPaths:string[];artifact:LifecycleArtifact}):LifecycleSnapshot{
+ #complete(input:{phase:LifecyclePhase;role:LifecycleRole;context:IssuedSkillContext;skillPaths:string[];artifact:LifecycleArtifact}):LifecycleSnapshot{
   const s=this.#snapshot;
   if(!s.nextPhase||input.phase!==s.nextPhase)throw new Error("Lifecycle phase out of order");
   this.#assertAuthority(input.phase,input.role,input.context,input.skillPaths);
