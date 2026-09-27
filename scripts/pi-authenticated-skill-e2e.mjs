@@ -24,7 +24,8 @@ const child=spawn(process.execPath,args,{cwd:repo,env:process.env,stdio:["pipe",
 const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
 const observed={loaded:false,finished:false,read:[],text:[],error:null};
 let buffer="",stderr="",bytes=0;
-const expected=paths.map(path=>realpathSync(resolve(repo,path)));\nconst exactPaths=expected.join(" and ");
+const expected=paths.map(path=>realpathSync(resolve(repo,path)));
+const exactPaths=expected.join(" and ");
 const timeout=setTimeout(()=>child.kill(),180_000);
 command({id:"asen-load",type:"get_commands"});
 const handle=record=>{
