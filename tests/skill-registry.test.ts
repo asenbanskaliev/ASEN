@@ -4,7 +4,7 @@ import {getSkillContract,listSkillContracts,selectSkills} from "../src/skills/re
 
 test("skill registry has unique Pi-native paths and evidence contracts",()=>{
  const contracts=listSkillContracts();
- assert.equal(contracts.length,25);
+ assert.equal(contracts.length,27);
  assert.equal(new Set(contracts.map(x=>x.id)).size,contracts.length);
  assert.equal(new Set(contracts.map(x=>x.path)).size,contracts.length);
  for(const contract of contracts){
@@ -13,23 +13,26 @@ test("skill registry has unique Pi-native paths and evidence contracts",()=>{
  }
 });
 test("lifecycle phases resolve exact Pi-native behavior contracts",()=>{
- assert.deepEqual(selectSkills({phase:"explore"}).map(x=>x.id),["asen-explore"]);
- assert.deepEqual(selectSkills({phase:"proposal"}).map(x=>x.id),["asen-proposal"]);
- assert.deepEqual(selectSkills({phase:"specification"}).map(x=>x.id),["asen-specification"]);
- assert.deepEqual(selectSkills({phase:"design"}).map(x=>x.id),["asen-design"]);
- assert.deepEqual(selectSkills({phase:"verify"}).map(x=>x.id),["asen-verify"]);
+ assert.deepEqual(selectSkills({phase:"explore"}).map(x=>x.id),["asen-phase-protocol","asen-explore"]);
+ assert.deepEqual(selectSkills({phase:"proposal"}).map(x=>x.id),["asen-phase-protocol","asen-proposal"]);
+ assert.deepEqual(selectSkills({phase:"specification"}).map(x=>x.id),["asen-phase-protocol","asen-specification"]);
+ assert.deepEqual(selectSkills({phase:"design"}).map(x=>x.id),["asen-phase-protocol","asen-design"]);
+ assert.deepEqual(selectSkills({phase:"verify"}).map(x=>x.id),["asen-phase-protocol","asen-verify"]);
+});
+test("status and lifecycle phases use the shared executor protocol",()=>{
+ assert.deepEqual(selectSkills({phase:"status"}).map(x=>x.id),["asen-phase-protocol","asen-status"]);
 });
 test("context initialization requires the skill registry contract",()=>{
- assert.deepEqual(selectSkills({phase:"context-init"}).map(x=>x.id),["asen-skill-registry","asen-context-init"]);
+ assert.deepEqual(selectSkills({phase:"context-init"}).map(x=>x.id),["asen-phase-protocol","asen-skill-registry","asen-context-init"]);
 });
 test("task planning includes work-unit behavior",()=>{
- assert.deepEqual(selectSkills({phase:"tasks"}).map(x=>x.id),["asen-work-unit","asen-tasks"]);
+ assert.deepEqual(selectSkills({phase:"tasks"}).map(x=>x.id),["asen-phase-protocol","asen-work-unit","asen-tasks"]);
 });
 test("apply includes safe-change and its work-unit dependency",()=>{
- assert.deepEqual(selectSkills({phase:"apply"}).map(x=>x.id),["asen-work-unit","asen-safe-change","asen-apply"]);
+ assert.deepEqual(selectSkills({phase:"apply"}).map(x=>x.id),["asen-phase-protocol","asen-work-unit","asen-safe-change","asen-apply"]);
 });
 test("archive requires verification behavior",()=>{
- assert.deepEqual(selectSkills({phase:"archive"}).map(x=>x.id),["asen-verify","asen-archive"]);
+ assert.deepEqual(selectSkills({phase:"archive"}).map(x=>x.id),["asen-phase-protocol","asen-verify","asen-archive"]);
 });
 test("behavior change selects work unit before TDD",()=>{
  assert.deepEqual(selectSkills({behaviorChange:true}).map(x=>x.id),["asen-work-unit","asen-tdd"]);
