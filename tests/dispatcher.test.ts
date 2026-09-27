@@ -11,13 +11,14 @@ function authorized(){
  evidence.add(candidate,{id:"rollback",kind:"rollback",status:"pass",summary:"ready",createdAt:"now"});
  return evidence;
 }
-const writeRequest={id:"a",role:"worker" as const,prompt:"x",repository:"r",writeSurfaces:["src/a"],candidate,skillContext:{codeChange:true}};
+const sealedCodeChange=()=>Object.freeze({codeChange:true});
+const writeRequest={id:"a",role:"worker" as const,prompt:"x",repository:"r",writeSurfaces:["src/a"],candidate,skillContext:sealedCodeChange()};
 
 test("dispatcher releases writer grant after completion", async()=>{
   const runner: AgentRunner={run:async r=>({id:r.id,ok:true,output:"ok"})};
   const d=new Dispatcher(runner,authorized());
-  await d.dispatch({...writeRequest,skillContext:{...writeRequest.skillContext}});
-  const second=await d.dispatch({...writeRequest,id:"b",skillContext:{...writeRequest.skillContext}});
+  await d.dispatch({...writeRequest,skillContext:sealedCodeChange()});
+  const second=await d.dispatch({...writeRequest,id:"b",skillContext:sealedCodeChange()});
   assert.equal(second.ok,true);
 });
 
@@ -33,7 +34,7 @@ test("dispatcher blocks writes when mandatory mutation evidence is missing",asyn
  const evidence=new EvidenceStore();
  evidence.add(candidate,{id:"work-unit",kind:"work-unit",status:"pass",summary:"bounded",createdAt:"now"});
  const d=new Dispatcher(runner,evidence);
- await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:{...writeRequest.skillContext}}),/asen-safe-change.*scope evidence/);
+ await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange()}),/asen-safe-change.*scope evidence/);
  assert.equal(ran,false);
 });
 
@@ -43,12 +44,12 @@ test("evidence from another revision cannot authorize writes",async()=>{
  evidence.add(old,{id:"old-scope",kind:"scope",status:"pass",summary:"old",createdAt:"now"});
  evidence.add(old,{id:"old-rollback",kind:"rollback",status:"pass",summary:"old",createdAt:"now"});
  const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
- await assert.rejects(()=>new Dispatcher(runner,evidence).dispatch({...writeRequest,skillContext:{...writeRequest.skillContext}}),/work-unit evidence/);
+ await assert.rejects(()=>new Dispatcher(runner,evidence).dispatch({...writeRequest,skillContext:sealedCodeChange()}),/work-unit evidence/);
 });
 
 test("non-worker agents cannot receive write authority",async()=>{
  const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
- await assert.rejects(()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,role:"reviewer",skillContext:{...writeRequest.skillContext}}),/Only worker/);
+ await assert.rejects(()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,role:"reviewer",skillContext:sealedCodeChange()}),/Only worker/);
 });
 
 test("dispatcher bounds concurrent agent executions",async()=>{let active=0,max=0;const runner:AgentRunner={run:async r=>{active++;max=Math.max(max,active);await new Promise(resolve=>setTimeout(resolve,30));active--;return{id:r.id,ok:true,output:"ok"};}};const d=new Dispatcher(runner,new EvidenceStore(),2);await Promise.all(Array.from({length:6},(_,i)=>d.dispatch({id:String(i),role:"explorer",prompt:"x",repository:"r"})));assert.equal(max,2);});
@@ -60,7 +61,16 @@ test("caller cannot omit mandatory safe-change skill from a code mutation",async
  evidence.add(candidate,{id:"only-unit",kind:"work-unit",status:"pass",summary:"bounded",createdAt:"now"});
  const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
  await assert.rejects(
-  ()=>new Dispatcher(runner,evidence).dispatch({...writeRequest,skillContext:{codeChange:true}}),
+  ()=>new Dispatcher(runner,evidence).dispatch({...writeRequest,skillContext:sealedCodeChange()}),
   /asen-safe-change.*scope evidence/
+ );
+});
+
+
+test("dispatcher rejects mutable skill context even when its values look valid",async()=>{
+ const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
+ await assert.rejects(
+  ()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,skillContext:{codeChange:true}}),
+  /sealed skill selection context/
  );
 });
