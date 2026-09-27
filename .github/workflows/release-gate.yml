@@ -32,6 +32,7 @@ jobs:
           pi install "$GITHUB_WORKSPACE/$TARBALL"
           pi list | tee "$RUNNER_TEMP/pi-list.txt"
           grep -qi asen "$RUNNER_TEMP/pi-list.txt"
+          node "$GITHUB_WORKSPACE/scripts/pi-extension-e2e.mjs" "$PI_CODING_AGENT_DIR/npm/node_modules/asen/extensions/asen.ts"
       - name: Real Pi package install smoke (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -43,6 +44,7 @@ jobs:
           $list = pi list | Out-String
           $list
           if ($list -notmatch "asen") { throw "ASEN not listed by real Pi" }
+          node (Join-Path $env:GITHUB_WORKSPACE "scripts/pi-extension-e2e.mjs") (Join-Path $env:PI_CODING_AGENT_DIR "npm\node_modules\asen\extensions\asen.ts")
       - name: Packed install smoke
         shell: bash
         if: runner.os != 'Windows'
