@@ -84,7 +84,7 @@ test("release cannot omit safe-change requirements for a code change",()=>{
  const store=new EvidenceStore();
  store.add(c,{id:"release-derived-test",kind:"test",status:"pass",summary:"green",createdAt:"now"});
  store.add(c,{id:"release-derived-unit",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
- const result=authorizeRelease(c,"medium",store,issueSkillContext("a","r",candidate,{codeChange:true}));
+ const result=authorizeRelease(c,"medium",store,issueSkillContext("task","repo",c,{codeChange:true}));
  assert.equal(result.ok,false);
  assert.match(result.reason,/asen-safe-change.*scope evidence/);
 });
