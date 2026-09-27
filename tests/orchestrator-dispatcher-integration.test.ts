@@ -18,7 +18,7 @@ test("orchestrated writer cannot execute until its mutation evidence is complete
  const runner:AgentRunner={run:async request=>{ran=true;return{id:request.id,ok:true,output:"ok"}}};
  const evidence=new EvidenceStore();
  const dispatcher=new Dispatcher(runner,evidence);
- await assert.rejects(()=>dispatcher.dispatch(worker),/route-decision evidence/);
+ await assert.rejects(()=>dispatcher.dispatch(worker),/requires passing .* evidence for mutation/);
  assert.equal(ran,false);
 
  evidence.add(candidate,{id:"route",kind:"route-decision",status:"pass",summary:"route",createdAt:"now"});
@@ -43,7 +43,7 @@ test("orchestrated writer cannot use evidence from another revision",async()=>{
  for(const [id,kind] of [["route","route-decision"],["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)
   evidence.add(old,{id,kind,status:"pass",summary:"old",createdAt:"now"});
  const runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:"bad"})};
- await assert.rejects(()=>new Dispatcher(runner,evidence).dispatch(worker),/route-decision evidence/);
+ await assert.rejects(()=>new Dispatcher(runner,evidence).dispatch(worker),/requires passing .* evidence for mutation/);
 });
 
 
