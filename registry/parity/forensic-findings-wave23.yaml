@@ -1,0 +1,18 @@
+wave: 23
+focus: [engram-p0-family-exhaustion]
+new_contracts:
+  - { id: PAR-322, area: project-owned-session-rejects-cross-project-memory-write-without-mutation, status: MISSING, priority: P0 }
+  - { id: PAR-323, area: project-owned-session-rejects-cross-project-prompt-without-mutation, status: MISSING, priority: P0 }
+  - { id: PAR-324, area: strict-session-registration-conflict-is-nonmutating, status: MISSING, priority: P0 }
+  - { id: PAR-325, area: session-ownership-import-never-downgrades-project-owned-authority, status: MISSING, priority: P0 }
+  - { id: PAR-326, area: memory-startup-rejects-remote-filesystem-before-sqlite-or-directory-mutation, status: MISSING, priority: P0 }
+  - { id: PAR-327, area: concurrent-cold-start-across-processes-converges-safely, status: MISSING, priority: P0 }
+  - { id: PAR-328, area: migration-lock-is-exclusive-bounded-and-diagnostic, status: MISSING, priority: P0 }
+  - { id: PAR-329, area: orphan-session-repair-rolls-back-on-conflict-or-failure, status: MISSING, priority: P0 }
+  - { id: PAR-330, area: memory-write-queue-serializes-writes-and-bounds-backpressure, status: MISSING, priority: P0 }
+  - { id: PAR-331, area: canceled-queued-memory-write-never-runs-but-started-write-reports-handler-result, status: MISSING, priority: P0 }
+  - { id: PAR-332, area: memory-write-worker-survives-handler-panic, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 11
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
