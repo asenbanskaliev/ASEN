@@ -1,0 +1,16 @@
+id: CAP-LFC-001
+name: Transactional ASEN-owned change
+priority: P0
+status: specified
+owner: ASEN-Lifecycle
+contract:
+  given: ASEN mutates ASEN-owned persistent state or configuration
+  when: the operation begins
+  then:
+    - preconditions are checked
+    - recoverable state is snapshotted when applicable
+    - result is verified
+    - failure does not masquerade as success
+    - rollback or explicit blocked state exists
+tests: [unit, integration, failure-injection]
+evidence_required: true
