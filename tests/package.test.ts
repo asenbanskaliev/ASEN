@@ -7,6 +7,8 @@ test("package exposes only Pi extension/skills and owned runtime files", async()
   assert.deepEqual(pkg.pi.extensions,["./extensions"]);
   assert.deepEqual(pkg.pi.skills,["./skills"]);
   assert.deepEqual(pkg.files,["extensions/","src/","skills/"]);
+  assert.deepEqual(pkg.exports,{"./extensions":"./extensions/index.ts","./skills/*":"./skills/*/SKILL.md"});
+  assert.equal(Object.values(pkg.exports).some((value)=>String(value).includes("src/")),false);
   assert.ok(!Object.keys(pkg.dependencies ?? {}).some((x)=>/gentle/i.test(x)));
   assert.ok(!Object.keys(pkg.peerDependencies ?? {}).some((x)=>/gentle/i.test(x)));
 });
