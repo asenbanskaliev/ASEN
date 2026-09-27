@@ -4,6 +4,7 @@ import {guardedTransition,transition} from "../src/core/state-machine.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {authorizeImplementation,authorizeVerified,type TransitionAuthorization} from "../src/verify/verifier.js";
 import {issueSkillContext} from "../src/skills/context.js";
+import {passingEvidence} from "./execution-evidence-helper.js";
 
 const candidate={id:"c",repository:"r",revision:"sha",createdAt:"now"};
 function implementationAuthorization(){
@@ -12,9 +13,9 @@ function implementationAuthorization(){
  evidence.add(candidate,{id:"unit",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  return authorizeImplementation(candidate,issueSkillContext("task","r",candidate,{filesTouched:2}),evidence);
 }
-function verifiedAuthorization(){
+async function verifiedAuthorization(){
  const evidence=new EvidenceStore();
- evidence.add(candidate,{id:"test",kind:"test",status:"pass",summary:"green",createdAt:"now"});
+ await passingEvidence(evidence,candidate,"test");
  evidence.add(candidate,{id:"unit-v",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  evidence.add(candidate,{id:"review-v",kind:"review",status:"pass",summary:"review",createdAt:"now"});
  return authorizeVerified(candidate,"medium",issueSkillContext("task","r",candidate,{verification:true}),evidence);
@@ -22,13 +23,13 @@ function verifiedAuthorization(){
 
 test("rejects skipping directly to VERIFIED",()=>assert.throws(()=>transition("IMPLEMENTING","VERIFIED")));
 
-test("allows canonical engineering path only through gate-issued authorizations",()=>{
+test("allows canonical engineering path only through gate-issued authorizations",async()=>{
  let phase=transition("DISCOVERING","PLANNING");
  phase=guardedTransition({from:phase,to:"IMPLEMENTING",candidate,authorization:implementationAuthorization()});
  phase=transition(phase,"TESTING");
  phase=transition(phase,"REVIEWING");
  phase=transition(phase,"VERIFYING");
- assert.equal(guardedTransition({from:phase,to:"VERIFIED",candidate,authorization:verifiedAuthorization()}),"VERIFIED");
+ assert.equal(guardedTransition({from:phase,to:"VERIFIED",candidate,authorization:await verifiedAuthorization()}),"VERIFIED");
 });
 
 test("plain transition cannot bypass privileged gates",()=>{
@@ -74,9 +75,9 @@ test("transition authorization rejects caller-controlled mutable skill context",
  );
 });
 
-test("verification authorization derives mandatory review skill from context",()=>{
+test("verification authorization derives mandatory review skill from context",async()=>{
  const evidence=new EvidenceStore();
- evidence.add(candidate,{id:"test-derived",kind:"test",status:"pass",summary:"green",createdAt:"now"});
+ await passingEvidence(evidence,candidate,"test-derived");
  evidence.add(candidate,{id:"unit-derived",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  assert.throws(
   ()=>authorizeVerified(candidate,"medium",issueSkillContext("task","r",candidate,{verification:true}),evidence),
