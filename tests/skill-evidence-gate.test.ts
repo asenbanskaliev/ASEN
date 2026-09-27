@@ -3,20 +3,21 @@ import test from "node:test";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {authorizeRelease,verifyCandidate,verifySkillEvidence} from "../src/verify/verifier.js";
 import {issueSkillContext} from "../src/skills/context.js";
+import {passingEvidence} from "./execution-evidence-helper.js";
 
 const c={id:"candidate",repository:"repo",revision:"sha",createdAt:"now"};
 
-test("TDD skill blocks verification without candidate-bound TDD evidence",()=>{
+test("TDD skill blocks verification without candidate-bound TDD evidence",async()=>{
  const store=new EvidenceStore();
- store.add(c,{id:"test",kind:"test",status:"pass",summary:"suite green",createdAt:"now"});
+ await passingEvidence(store,c,"test");
  const result=verifyCandidate(c,"medium",store,["asen-tdd"]);
  assert.equal(result.ok,false);
  assert.match(result.reason,/asen-tdd.*tdd evidence/);
 });
 
-test("TDD evidence from another repository cannot satisfy the skill gate",()=>{
+test("TDD evidence from another repository cannot satisfy the skill gate",async()=>{
  const store=new EvidenceStore(),other={...c,repository:"other"};
- store.add(other,{id:"tdd-other",kind:"tdd",status:"pass",summary:"cycle complete",createdAt:"now"});
+ await passingEvidence(store,other,"tdd-other","tdd");
  assert.equal(verifySkillEvidence(c,["asen-tdd"],store,"verification").ok,false);
 });
 
@@ -55,10 +56,10 @@ test("skill evidence from another revision cannot satisfy mutation or release",(
 });
 
 
-test("release gate composes verification and release skill requirements",()=>{
+test("release gate composes verification and release skill requirements",async()=>{
  const store=new EvidenceStore(),context=issueSkillContext("task","repo",c,{codeChange:true,risk:"high" as const});
  assert.equal(authorizeRelease(c,"high",store,context).ok,false);
- store.add(c,{id:"test-release",kind:"test",status:"pass",summary:"green",createdAt:"now"});
+ await passingEvidence(store,c,"test-release");
  store.add(c,{id:"review-release",kind:"review",status:"pass",summary:"independent",createdAt:"now"});
  store.add(c,{id:"scope-release",kind:"scope",status:"pass",summary:"authorized",createdAt:"now"});
  assert.equal(authorizeRelease(c,"high",store,context).ok,false);
@@ -66,23 +67,24 @@ test("release gate composes verification and release skill requirements",()=>{
  assert.equal(authorizeRelease(c,"high",store,context).ok,true);
 });
 
-test("release rejects evidence from a previous candidate revision",()=>{
+test("release rejects evidence from a previous candidate revision",async()=>{
  const store=new EvidenceStore(),old={...c,revision:"old"},context=issueSkillContext("task","repo",c,{codeChange:true,risk:"high" as const});
- for(const [id,kind] of [["test-old","test"],["review-old","review"],["scope-old","scope"],["rollback-old","rollback"]] as const)
+ await passingEvidence(store,old,"test-old");
+ for(const [id,kind] of [["review-old","review"],["scope-old","scope"],["rollback-old","rollback"]] as const)
   store.add(old,{id,kind,status:"pass",summary:"old",createdAt:"now"});
  assert.equal(authorizeRelease(c,"high",store,context).ok,false);
 });
 
-test("release fails closed when no skill selection is supplied",()=>{
+test("release fails closed when no skill selection is supplied",async()=>{
  const store=new EvidenceStore();
- store.add(c,{id:"test-no-skills",kind:"test",status:"pass",summary:"green",createdAt:"now"});
+ await passingEvidence(store,c,"test-no-skills");
  assert.equal(authorizeRelease(c,"low",store,issueSkillContext("task","repo",c,{})).ok,false);
 });
 
 
-test("release cannot omit safe-change requirements for a code change",()=>{
+test("release cannot omit safe-change requirements for a code change",async()=>{
  const store=new EvidenceStore();
- store.add(c,{id:"release-derived-test",kind:"test",status:"pass",summary:"green",createdAt:"now"});
+ await passingEvidence(store,c,"release-derived-test");
  store.add(c,{id:"release-derived-unit",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  const result=authorizeRelease(c,"medium",store,issueSkillContext("task","repo",c,{codeChange:true}));
  assert.equal(result.ok,false);
