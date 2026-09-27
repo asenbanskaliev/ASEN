@@ -1,7 +1,8 @@
 import {readFile,readdir} from "node:fs/promises";
 import {join,relative} from "node:path";
+import {fileURLToPath} from "node:url";
 
-const root=new URL("../",import.meta.url);
+const root=fileURLToPath(new URL("../",import.meta.url));
 const forbidden=/gentle|gentleman|engram/i;
 const protectedRoots=["src","skills","extensions"];
 const violations=[];
@@ -12,7 +13,7 @@ async function walk(dir){
   if(entry.isDirectory()) await walk(path);
   else {
    const text=await readFile(path,"utf8");
-   if(forbidden.test(entry.name)||forbidden.test(text)) violations.push(relative(new URL("..",import.meta.url).pathname,path));
+   if(forbidden.test(entry.name)||forbidden.test(text)) violations.push(relative(root,path));
   }
  }
 }
