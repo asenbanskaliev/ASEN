@@ -5,7 +5,7 @@ function terminateTree(child:ChildProcess):void{
  if(process.platform==="win32"){const killer=spawn("taskkill",["/pid",String(child.pid),"/T","/F"],{stdio:"ignore",windowsHide:true});killer.on("error",()=>child.kill());return;}
  try{process.kill(-child.pid,"SIGTERM");}catch{child.kill();}
 }
-export class PiProcessRunner implements AgentRunner{
+function promptWithSkills(request:AgentRequest):string{\n const paths=request.skillPaths??[];\n if(!paths.length)return request.prompt;\n if(paths.some(path=>!/^skills\\/asen-[a-z-]+\\/SKILL\\.md$/.test(path)))throw new Error("Invalid Pi-native skill path");\n return ["ASEN issued these exact Pi-native skill contracts for this task.","Load every SKILL.md below before task-specific work. Treat their runtime rules as authoritative; do not replace them with summaries.",...paths.map(path=>"- "+path),"","Task:",request.prompt].join("\\n");\n}\nexport class PiProcessRunner implements AgentRunner{
  constructor(private readonly options:PiProcessOptions={}){}
  run(request:AgentRequest):Promise<AgentResult>{
   const command=this.options.command??"pi",args=[...(this.options.rpcArgs??["--mode","rpc"]),...(this.options.extraArgs??[])],timeoutMs=this.options.timeoutMs??120_000,max=this.options.maxOutputBytes??1_000_000;
@@ -21,7 +21,7 @@ export class PiProcessRunner implements AgentRunner{
    const timer=setTimeout(()=>{stop();finish({id:request.id,ok:false,output:`pi process timed out after ${timeoutMs}ms`});},timeoutMs);
    if(this.options.signal?.aborted)onAbort();else this.options.signal?.addEventListener("abort",onAbort,{once:true});
    child.stdin.on("error",e=>finish({id:request.id,ok:false,output:`pi stdin error: ${String(e)}`}));
-   child.stdin.end(JSON.stringify({id:request.id,type:"prompt",message:request.prompt})+"\n");
+   let message:string;try{message=promptWithSkills(request);}catch(e){stop();return finish({id:request.id,ok:false,output:`pi skill path error: ${String(e)}`});}\n   child.stdin.end(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
   });
  }
 }
