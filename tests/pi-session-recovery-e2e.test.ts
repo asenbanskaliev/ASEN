@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
-import {mkdtempSync,rmSync} from "node:fs";
+import {copyFileSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import test from "node:test";
@@ -24,4 +24,11 @@ test("real Pi session file and ASEN checkpoint resume across processes",t=>{
   [["resume","project-A","other-repo"],/repository mismatch/],
   [["resume","project-A",dir,"revision-B"],/revision changed/]
  ] as const){const rejected=run(...(args as unknown as [string,string,string,string]));assert.match(rejected.stderr,reason);}
+ const metadataPath=join(dir,"metadata.json"),original=readFileSync(metadataPath,"utf8"),metadata=JSON.parse(original);
+ writeFileSync(metadataPath,JSON.stringify({...metadata,sessionId:"stale-session"}));
+ assert.match(run("resume").stderr,/Pi session identity mismatch/);
+ const copied=join(dir,"copied-session.jsonl");copyFileSync(metadata.sessionFile,copied);
+ writeFileSync(metadataPath,JSON.stringify({...metadata,sessionFile:copied}));
+ assert.match(run("resume").stderr,/Pi session file mismatch/);
+ writeFileSync(metadataPath,original);
 });
