@@ -1,0 +1,13 @@
+wave: 44
+focus: [saturation-repeat-4]
+new_contracts:
+  - { id: PAR-486, area: project-ownership-rescue-rolls-back-if-journal-or-ownership-seal-cannot-confirm-exactly-once, status: MISSING, priority: P0 }
+  - { id: PAR-487, area: project-export-does-not-leak-cross-project-records-through-shared-session-membership, status: MISSING, priority: P0 }
+  - { id: PAR-488, area: active-runtime-session-detection-fails-closed-on-concurrent-live-session-ambiguity, status: MISSING, priority: P0 }
+  - { id: PAR-489, area: child-mutation-attribution-requires-target-bound-tool-evidence-never-model-claims-or-sibling-writes, status: MISSING, priority: P0 }
+  - { id: PAR-490, area: delayed-child-spawn-remains-bound-to-originating-session-and-cannot-write-into-replacement, status: MISSING, priority: P0 }
+  - { id: PAR-491, area: background-completion-never-crosses-session-boundary-or-replays-after-restart, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 6
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
