@@ -1,0 +1,15 @@
+wave: 27
+focus: [full-pass-a-critical-families]
+new_contracts:
+  - { id: PAR-362, area: restore-detects-symlink-type-and-target-collisions-before-mutation, status: MISSING, priority: P0 }
+  - { id: PAR-363, area: mutation-journal-refuses-write-when-target-changed-after-capture, status: MISSING, priority: P0 }
+  - { id: PAR-364, area: mutation-journal-refuses-symlinked-ancestor-escape, status: MISSING, priority: P0 }
+  - { id: PAR-365, area: review-invalidation-rejects-live-candidate-drift-without-mutation, status: MISSING, priority: P0 }
+  - { id: PAR-366, area: database-generation-fence-rejects-unsafe-operations-and-midoperation-generation-change, status: MISSING, priority: P0 }
+  - { id: PAR-367, area: review-repository-rejects-inherited-unsafe-git-overrides, status: MISSING, priority: P0 }
+  - { id: PAR-368, area: review-repository-identity-is-pinned-and-transplant-or-history-rewrite-fails-closed, status: MISSING, priority: P0 }
+  - { id: PAR-369, area: asynchronous-review-consumption-binds-to-captured-mutation-and-active-session-branch, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 8
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
