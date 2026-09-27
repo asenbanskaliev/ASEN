@@ -2,7 +2,7 @@ import type { Candidate, Evidence, Risk } from "../core/types.js";
 import { EvidenceStore } from "../evidence/store.js";
 import { verificationLevel } from "../flow/risk.js";
 import {getSkillContract,selectSkills,type SkillId,type SkillSelectionContext} from "../skills/registry.js";
-import {isIssuedSkillContext} from "../skills/context.js";
+import {isIssuedSkillContext,matchesIssuedSkillContext} from "../skills/context.js";
 
 export interface VerificationResult { ok: boolean; reason: string; }
 
@@ -42,6 +42,7 @@ export function verifyCandidate(candidate: Candidate, risk: Risk, evidence: Evid
 
 export function authorizeRelease(candidate:Candidate,risk:Risk,evidence:EvidenceStore,context:SkillSelectionContext):VerificationResult {
  if(!isIssuedSkillContext(context)) return {ok:false,reason:"Release requires ASEN-issued skill selection context"};
+ if(!matchesIssuedSkillContext(context,context.taskId,candidate.repository,candidate)) return {ok:false,reason:"Release skill context does not match candidate"};
  const skills=selectSkills(context).map(skill=>skill.id);
  if(!skills.length) return {ok:false,reason:"Release requires selected skills"};
  const verification=verifyCandidate(candidate,risk,evidence,skills);
@@ -77,6 +78,7 @@ export function isTransitionAuthorization(value:unknown):value is TransitionAuth
 
 export function authorizeImplementation(candidate:Candidate,context:SkillSelectionContext,evidence:EvidenceStore):TransitionAuthorization {
  if(!isIssuedSkillContext(context)) throw new Error("Implementation requires ASEN-issued skill selection context");
+ if(!matchesIssuedSkillContext(context,context.taskId,candidate.repository,candidate)) throw new Error("Implementation skill context does not match candidate");
  const skills=selectSkills(context).map(skill=>skill.id);
  if(!skills.length) throw new Error("Implementation requires selected skills");
  const gate=verifySkillEvidence(candidate,skills,evidence,"mutation");
@@ -86,6 +88,7 @@ export function authorizeImplementation(candidate:Candidate,context:SkillSelecti
 
 export function authorizeVerified(candidate:Candidate,risk:Risk,context:SkillSelectionContext,evidence:EvidenceStore):TransitionAuthorization {
  if(!isIssuedSkillContext(context)) throw new Error("Verification requires ASEN-issued skill selection context");
+ if(!matchesIssuedSkillContext(context,context.taskId,candidate.repository,candidate)) throw new Error("Verification skill context does not match candidate");
  const skills=selectSkills(context).map(skill=>skill.id);
  if(!skills.length) throw new Error("Verification requires selected skills");
  const gate=verifyCandidate(candidate,risk,evidence,skills);
