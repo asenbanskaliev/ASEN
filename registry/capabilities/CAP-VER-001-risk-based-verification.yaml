@@ -1,0 +1,17 @@
+id: CAP-VER-001
+name: Risk-based verification
+priority: P0
+status: specified
+owner: ASEN-Verify
+contract:
+  given: a candidate requires verification
+  when: risk is assessed
+  then:
+    - low risk receives minimum structural verification
+    - medium risk receives tests and focused verification
+    - high risk receives independent review/verification
+    - unknown or unassessable risk is treated as high
+tests:
+  - unit
+  - contract
+evidence_required: true
