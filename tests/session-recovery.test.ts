@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";import test from "node:test";import {assertResumeRevision,createCheckpoint,restoreCheckpoint} from "../src/session/checkpoint.js";import {issueSkillContext} from "../src/skills/context.js";
+import {isIssuedSkillContext} from "../src/skills/context.js";
 const task={id:"t",title:"x",phase:"VERIFYING" as const,candidateId:"c",blockers:["b"]};const candidate={id:"c",repository:"r",revision:"abc",createdAt:"now"};
 test("checkpoint restores task and exact candidate",()=>{const cp=createCheckpoint("p","s",task,candidate),r=restoreCheckpoint(cp,"p");assert.deepEqual(r.task,task);assert.deepEqual(r.candidate,candidate);});
 test("checkpoint cannot cross project boundary",()=>assert.throws(()=>restoreCheckpoint(createCheckpoint("A","s",task,candidate),"B"),/project mismatch/));
@@ -21,4 +22,10 @@ test("checkpoint rejects a skill context issued for another candidate",()=>{
 });
 test("checkpoint rejects invalid recovered skill paths",()=>{
  assert.throws(()=>createCheckpoint("p","s",task,candidate,undefined,undefined,["../other/SKILL.md"]),/invalid skill path/);
+});
+test("deserialized checkpoint cannot mint delegated authority",()=>{
+ const context=issueSkillContext("t","r",candidate,{phase:"verify",verification:true});
+ const checkpoint=JSON.parse(JSON.stringify(createCheckpoint("p","s",task,candidate,undefined,context,["skills/asen-phase-protocol/SKILL.md","skills/asen-verify/SKILL.md"])));
+ const restored=restoreCheckpoint(checkpoint,"p");
+ assert.equal(isIssuedSkillContext(restored.skillContext),false);
 });
