@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {authorizeRelease,verifyCandidate,verifySkillEvidence} from "../src/verify/verifier.js";
+import {issueSkillContext} from "../src/skills/context.js";
 
 const c={id:"candidate",repository:"repo",revision:"sha",createdAt:"now"};
 
@@ -55,7 +56,7 @@ test("skill evidence from another revision cannot satisfy mutation or release",(
 
 
 test("release gate composes verification and release skill requirements",()=>{
- const store=new EvidenceStore(),context=Object.freeze({codeChange:true,risk:"high" as const});
+ const store=new EvidenceStore(),context=issueSkillContext({codeChange:true,risk:"high" as const});
  assert.equal(authorizeRelease(c,"high",store,context).ok,false);
  store.add(c,{id:"test-release",kind:"test",status:"pass",summary:"green",createdAt:"now"});
  store.add(c,{id:"review-release",kind:"review",status:"pass",summary:"independent",createdAt:"now"});
@@ -66,7 +67,7 @@ test("release gate composes verification and release skill requirements",()=>{
 });
 
 test("release rejects evidence from a previous candidate revision",()=>{
- const store=new EvidenceStore(),old={...c,revision:"old"},context=Object.freeze({codeChange:true,risk:"high" as const});
+ const store=new EvidenceStore(),old={...c,revision:"old"},context=issueSkillContext({codeChange:true,risk:"high" as const});
  for(const [id,kind] of [["test-old","test"],["review-old","review"],["scope-old","scope"],["rollback-old","rollback"]] as const)
   store.add(old,{id,kind,status:"pass",summary:"old",createdAt:"now"});
  assert.equal(authorizeRelease(c,"high",store,context).ok,false);
@@ -75,7 +76,7 @@ test("release rejects evidence from a previous candidate revision",()=>{
 test("release fails closed when no skill selection is supplied",()=>{
  const store=new EvidenceStore();
  store.add(c,{id:"test-no-skills",kind:"test",status:"pass",summary:"green",createdAt:"now"});
- assert.equal(authorizeRelease(c,"low",store,Object.freeze({})).ok,false);
+ assert.equal(authorizeRelease(c,"low",store,issueSkillContext({})).ok,false);
 });
 
 
@@ -83,7 +84,7 @@ test("release cannot omit safe-change requirements for a code change",()=>{
  const store=new EvidenceStore();
  store.add(c,{id:"release-derived-test",kind:"test",status:"pass",summary:"green",createdAt:"now"});
  store.add(c,{id:"release-derived-unit",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
- const result=authorizeRelease(c,"medium",store,Object.freeze({codeChange:true}));
+ const result=authorizeRelease(c,"medium",store,issueSkillContext({codeChange:true}));
  assert.equal(result.ok,false);
  assert.match(result.reason,/asen-safe-change.*scope evidence/);
 });
@@ -91,5 +92,5 @@ test("release cannot omit safe-change requirements for a code change",()=>{
 test("release rejects caller-controlled mutable skill context",()=>{
  const store=new EvidenceStore();
  assert.equal(authorizeRelease(c,"low",store,{codeChange:true}).ok,false);
- assert.match(authorizeRelease(c,"low",store,{codeChange:true}).reason,/sealed skill selection context/);
+ assert.match(authorizeRelease(c,"low",store,{codeChange:true}).reason,/ASEN-issued skill selection context/);
 });
