@@ -26,20 +26,19 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddDec
   const agents:AgentRequest[]=[];
   if(decision.route==="direct"||decision.route==="plan") return {decision,agents,skills};
   if(decision.route==="verify"){
-    agents.push({id:`${input.taskId}:verify`,role:"verifier",...base,skillPaths});
+    agents.push({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext,skillPaths});
     return {decision,agents,skills};
   }
-  agents.push({id:`${input.taskId}:explore`,role:"explorer",...base,skillPaths});
-  const worker:AgentRequest={id:`${input.taskId}:worker`,role:"worker",...base,skillPaths};
+  agents.push({id:`${input.taskId}:explore`,role:"explorer",...base,skillContext,skillPaths});
+  const worker:AgentRequest={id:`${input.taskId}:worker`,role:"worker",...base,skillContext,skillPaths};
   if(input.writeSurfaces?.length){
     worker.writeSurfaces=[...input.writeSurfaces];
     if(!input.candidate) throw new Error("Writer orchestration requires an exact candidate");
     if(input.candidate.repository!==input.repository) throw new Error("Orchestration candidate repository mismatch");
     worker.candidate=input.candidate;
-    worker.skillContext=skillContext;
   }
   agents.push(worker);
-  agents.push({id:`${input.taskId}:review`,role:"reviewer",...base,skillPaths});
-  agents.push({id:`${input.taskId}:verify`,role:"verifier",...base,skillPaths});
+  agents.push({id:`${input.taskId}:review`,role:"reviewer",...base,skillContext,skillPaths});
+  agents.push({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext,skillPaths});
   return {decision,agents,skills};
 }
