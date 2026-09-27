@@ -24,7 +24,7 @@ function terminateTree(child:ChildProcess):void{
 function promptWithSkills(request:AgentRequest):string{
  const paths=request.skillPaths??[];
  if(!paths.length)return request.prompt;
- if(paths.some(path=>!/^skills\\/asen-[a-z-]+\\/SKILL\\.md$/.test(path))){
+ if(paths.some(path=>!/^skills\/asen-[a-z-]+\/SKILL\.md$/.test(path))){
   throw new Error("Invalid Pi-native skill path");
  }
  return [
