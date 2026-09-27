@@ -4,7 +4,7 @@ export type Severity = "critical" | "high" | "medium" | "low";
 export interface Finding { id: string; severity: Severity; message: string; path?: string; }
 export interface ReviewReport { candidateId: string; reviewer: string; findings: Finding[]; }
 
-export function reviewEvidence(report: ReviewReport): Omit<Evidence,"candidateId"> {
+export function reviewEvidence(report: ReviewReport): Omit<Evidence,"candidateId"|"candidateRevision"> {
   const failing=report.findings.some((f)=>f.severity==="critical" || f.severity==="high");
   return {
     id:`review:${report.reviewer}:${report.candidateId}`,
