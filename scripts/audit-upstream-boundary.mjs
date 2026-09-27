@@ -17,8 +17,8 @@ async function walk(dir){
   }
  }
 }
-for(const dir of protectedRoots) await walk(new URL(`../${dir}/`,import.meta.url));
-const pkg=await readFile(new URL("../package.json",import.meta.url),"utf8");
+for(const dir of protectedRoots) await walk(join(root,dir));
+const pkg=await readFile(join(root,"package.json"),"utf8");
 if(forbidden.test(pkg)) violations.push("package.json");
 if(violations.length){console.error("External reference leaked into ASEN product surface:\n"+violations.join("\n"));process.exit(1);}
 console.log("upstream boundary: PASS");
