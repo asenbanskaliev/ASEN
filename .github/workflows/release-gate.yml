@@ -19,6 +19,30 @@ jobs:
       - run: npm install
       - run: npm run check
       - run: npm run verify:pack
+      - name: Install official Pi CLI
+        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
+      - name: Real Pi package install smoke
+        shell: bash
+        if: runner.os != 'Windows'
+        run: |
+          set -euo pipefail
+          export PI_CODING_AGENT_DIR="$RUNNER_TEMP/pi-agent"
+          export PI_OFFLINE=1
+          TARBALL="$(npm pack --silent)"
+          pi install "$GITHUB_WORKSPACE/$TARBALL"
+          pi list | tee "$RUNNER_TEMP/pi-list.txt"
+          grep -qi asen "$RUNNER_TEMP/pi-list.txt"
+      - name: Real Pi package install smoke (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:PI_CODING_AGENT_DIR = Join-Path $env:RUNNER_TEMP "pi-agent"
+          $env:PI_OFFLINE = "1"
+          $tarball = npm pack --silent
+          pi install (Join-Path $env:GITHUB_WORKSPACE $tarball)
+          $list = pi list | Out-String
+          $list
+          if ($list -notmatch "asen") { throw "ASEN not listed by real Pi" }
       - name: Packed install smoke
         shell: bash
         if: runner.os != 'Windows'
