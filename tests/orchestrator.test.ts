@@ -10,3 +10,9 @@ test("verification route creates only verifier",()=>{
  const p=buildOrchestrationPlan({taskId:"t",repository:"r",prompt:"p"},routeOdd({verificationCommand:true}));
  assert.deepEqual(p.agents.map(a=>a.role),["verifier"]);
 });
+
+test("orchestration resolves mandatory skills for a risky behavior change",()=>{
+ const decision=routeOdd({filesTouched:4});
+ const p=buildOrchestrationPlan({taskId:"t",repository:"r",prompt:"p",codeChange:true,behaviorChange:true,filesTouched:4,writeSurfaces:["src"]},decision);
+ assert.deepEqual(p.skills,["asen-odd","asen-work-unit","asen-safe-change","asen-tdd","asen-review"]);
+});
