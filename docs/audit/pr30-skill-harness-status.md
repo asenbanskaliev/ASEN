@@ -18,3 +18,9 @@ The checkpoint is an untrusted recovery hint. `IssuedSkillContext` is branded by
 The new lifecycle snapshot has integrity protection only when its caller supplies the same secret across restarts. The test uses a random in-process key and a fixture agent. Production key management and validation of actual Pi output have not yet been wired into a host workflow. The phase completion method is private; advancement requires an agent result from the dispatcher and candidate-bound verification/release evidence. The fixture agent can still fabricate output, so this is not a completed release gate.
 
 The Pi process runner now supplies selected paths as native `--skill` arguments with default skill and extension discovery disabled. Pi RPC independently reports that the exact paths are loaded. This does not prove the model read or obeyed them, nor that an untrusted agent cannot launch another process through its built-in tools. Until an authenticated turn and process-level authority boundary are checked against candidate, phase and agent, CAP-SKL-001 must remain open.
+
+## Authenticated Pi attempt — 2026-09-27
+
+On PR #30 candidate `cee7db11d9108492e64f417b846ed110dfe8e0a9`, the GitHub Actions job `ASEN Authenticated Pi Audit` (run 36344614260, job 108691192883) received the repository secret, checked out the exact PR HEAD, and reached the real Pi model turn. OpenCode Zen rejected `opencode/mimo-v2.6-flash-free` with HTTP 403 `FreeTierError`: "OpenCode's free tier can only be used from within OpenCode". Pi could not produce a model response, so no authenticated behavior claim is supported. This is a provider restriction; do not reinterpret it as a code failure or make this gate PASS.
+
+The next run needs a model legitimately callable from Pi, with an authorized credential and explicit spending policy if it is paid. Keep the probe job failing until that integration is demonstrated. No paid fallback is selected automatically.
