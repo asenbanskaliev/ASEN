@@ -19,6 +19,9 @@ test("real Pi session file and ASEN checkpoint resume across processes",t=>{
  assert.equal(state.candidate.revision,"revision-A");
  assert.ok(state.piSessionId);
  assert.ok(state.piSessionFile);
+ assert.equal(state.skillContext.phase,"verify");
+ assert.equal(state.skillContext.candidateRevision,"revision-A");
+ assert.deepEqual(state.skillPaths,["skills/asen-phase-protocol/SKILL.md","skills/asen-verify/SKILL.md"]);
  for(const [args,reason] of [
   [["resume","project-B"],/project mismatch/],
   [["resume","project-A","other-repo"],/repository mismatch/],
