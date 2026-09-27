@@ -1,0 +1,15 @@
+id: CAP-RAD-001
+name: Upstream change detection
+priority: P1
+status: specified
+owner: ASEN-Radar
+contract:
+  given: an upstream baseline commit is recorded
+  when: upstream main advances
+  then:
+    - the new commit is detected
+    - changed areas are classified
+    - impacted ASEN capabilities can be identified
+    - no ASEN code is modified automatically
+tests: [unit, integration]
+evidence_required: true
