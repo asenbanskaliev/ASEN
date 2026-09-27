@@ -1,0 +1,43 @@
+name: Release Gate
+on:
+  pull_request:
+  push:
+    branches: [main, "release/**"]
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run check
+      - run: npm run verify:pack
+      - name: Packed install smoke
+        shell: bash
+        if: runner.os != 'Windows'
+        run: |
+          set -euo pipefail
+          TARBALL="$(npm pack --silent)"
+          TMP="$(mktemp -d)"
+          cd "$TMP"
+          npm init -y >/dev/null
+          npm install "$GITHUB_WORKSPACE/$TARBALL"
+          node -e 'const p=require("./node_modules/asen/package.json"); if (!p.pi?.extensions?.length) process.exit(1)'
+      - name: Packed install smoke (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tarball = npm pack --silent
+          $tmp = Join-Path $env:RUNNER_TEMP "asen-packed"
+          New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+          Set-Location $tmp
+          npm init -y | Out-Null
+          npm install (Join-Path $env:GITHUB_WORKSPACE $tarball)
+          node -e "const p=require('./node_modules/asen/package.json'); if (!p.pi?.extensions?.length) process.exit(1)"
