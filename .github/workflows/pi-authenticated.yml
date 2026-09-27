@@ -17,8 +17,10 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - name: Install pi-free provider
-        run: pi install npm:pi-free
+      - name: Install Pi and pi-free provider
+        run: |
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
+          pi install npm:pi-free
       - name: Execute read-only Pi turn with exact ASEN Skills
         env:
           LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
