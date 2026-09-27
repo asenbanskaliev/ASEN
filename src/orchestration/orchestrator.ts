@@ -10,13 +10,14 @@ export interface OrchestrationPlan { decision:OddDecision; agents:AgentRequest[]
 
 export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddDecision):OrchestrationPlan {
   const base={repository:input.repository,prompt:input.prompt};
-  const skills=selectSkills({
-    codeChange:input.codeChange,
-    behaviorChange:input.behaviorChange,
-    filesTouched:input.filesTouched,
+  const skillContext={
     risk:decision.risk,
-    verification:decision.route==="verify"||decision.verification==="independent"
-  }).map(skill=>skill.id);
+    verification:decision.route==="verify"||decision.verification==="independent",
+    ...(input.codeChange===undefined?{}:{codeChange:input.codeChange}),
+    ...(input.behaviorChange===undefined?{}:{behaviorChange:input.behaviorChange}),
+    ...(input.filesTouched===undefined?{}:{filesTouched:input.filesTouched})
+  };
+  const skills=selectSkills(skillContext).map(skill=>skill.id);
   const agents:AgentRequest[]=[];
   if(decision.route==="direct"||decision.route==="plan") return {decision,agents,skills};
   if(decision.route==="verify"){
