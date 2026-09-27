@@ -4,26 +4,41 @@
   "description": "Pi-native deterministic engineering harness",
   "license": "MIT",
   "type": "module",
-  "files": ["extensions/","src/","skills/","registry/","docs/"],
+  "files": [
+    "extensions/",
+    "src/",
+    "skills/",
+    "registry/",
+    "docs/"
+  ],
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/**/*.test.ts",
-    "check": "npm run typecheck && npm test"
+    "check": "npm run typecheck && npm test",
+    "verify:pack": "node scripts/verify-pack.mjs"
   },
   "pi": {
-    "extensions": ["./extensions"],
-    "skills": ["./skills"]
+    "extensions": [
+      "./extensions"
+    ],
+    "skills": [
+      "./skills"
+    ]
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": ">=0.85.1"
   },
   "peerDependenciesMeta": {
-    "@earendil-works/pi-coding-agent": {"optional": true}
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"
   },
-  "engines": {"node": ">=22"}
+  "engines": {
+    "node": ">=22"
+  }
 }
