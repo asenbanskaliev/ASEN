@@ -1,0 +1,14 @@
+id: CAP-SEC-001
+name: Single-writer authority
+priority: P0
+status: specified
+owner: ASEN-Policies
+contract:
+  given: multiple agents operate on one candidate workspace
+  when: mutation authority is granted
+  then:
+    - at most one writer owns a surface unless explicit isolation exists
+    - overlapping writer scopes are rejected
+    - authority is revocable
+tests: [unit, integration, security]
+evidence_required: true
