@@ -11,7 +11,7 @@ function evidenceKindFor(requirement:string):Evidence["kind"] {
  return requirement as Evidence["kind"];
 }
 
-export function verifySkillEvidence(candidate:Candidate,skills:readonly SkillId[],evidence:EvidenceStore,gate:"verification"|"release"):VerificationResult {
+export function verifySkillEvidence(candidate:Candidate,skills:readonly SkillId[],evidence:EvidenceStore,gate:"mutation"|"verification"|"release"):VerificationResult {
  for(const id of skills){
   const contract=getSkillContract(id);
   if(!contract.blocks.includes(gate)) continue;
