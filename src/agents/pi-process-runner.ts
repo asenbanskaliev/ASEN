@@ -53,10 +53,10 @@ export class PiProcessRunner implements AgentRunner{
   try{message=promptWithSkills(request);}
   catch(error){return Promise.resolve({id:request.id,ok:false,output:`pi skill path error: ${String(error)}`});}
   const extra=this.options.extraArgs??[];
-  if(request.skillContext&&[...(this.options.rpcArgs??[]),...extra].some(arg=>["--skill","--no-skills","-ns","--extension","-e"].includes(arg)))
-   return Promise.resolve({id:request.id,ok:false,output:"pi skill arguments must be issued by ASEN"});
+  if(request.skillContext&&[...(this.options.rpcArgs??[]),...extra].some(arg=>["--skill","--no-skills","-ns","--extension","-e","--tools","-t","--no-tools","-nt","--no-builtin-tools","-nbt"].some(flag=>arg===flag||arg.startsWith(flag+"="))))
+   return Promise.resolve({id:request.id,ok:false,output:"pi skill and tool arguments must be issued by ASEN"});
   const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,
-   ...(request.skillContext?["--no-extensions","--no-skills",...(request.skillPaths??[]).flatMap(path=>["--skill",path])]:[])];
+   ...(request.skillContext?["--no-extensions","--no-skills",...request.role==="worker"?[]:["--tools","read"],...(request.skillPaths??[]).flatMap(path=>["--skill",path])]:[])];
   const timeoutMs=this.options.timeoutMs??120_000;
   const max=this.options.maxOutputBytes??1_000_000;
 
