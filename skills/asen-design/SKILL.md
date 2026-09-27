@@ -9,6 +9,7 @@ Use after scope/specification when implementation structure requires architectur
 - Every non-obvious decision records alternatives and rationale.
 - Use existing project patterns unless the change intentionally replaces them.
 - Include security/recovery threats when applicable.
+- For routing, shell/process, VCS or remote-automation changes, classify applicable adversarial boundaries explicitly; mark non-applicable boundaries with reasons rather than inventing tests.
 - Open blocking questions stop design completion.
 ## Decision Gates
 | Situation | Action |
@@ -16,6 +17,7 @@ Use after scope/specification when implementation structure requires architectur
 | Existing pattern satisfies contract | Reuse it |
 | Design changes a public contract | Make migration/rollout explicit |
 | Security, authority or persistence boundary changes | Add threat analysis and fail-closed tests |
+| Shell/process/VCS/remote automation changes | Map cwd/path, argument composition, repository/ref and state boundaries to adversarial tests |
 ## Execution Steps
 1. Map relevant code and interfaces.
 2. Choose architecture and document tradeoffs.
