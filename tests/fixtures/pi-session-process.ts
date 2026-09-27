@@ -18,7 +18,7 @@ if(mode==="write"){
  const sessionFile=session.getSessionFile();if(!sessionFile)throw new Error("Pi session file missing");
  const task={id:"task",title:"Pi recovery",phase:"VERIFYING" as const,candidateId:"candidate",blockers:["needs review"]};
  const candidate={id:"candidate",repository,revision,createdAt:"now"};
- await saveCheckpoint(checkpoint,createCheckpoint(project,session.getSessionId(),task,candidate));
+ await saveCheckpoint(checkpoint,createCheckpoint(project,session.getSessionId(),task,candidate,sessionFile));
  writeFileSync(metadata,JSON.stringify({sessionFile,sessionId:session.getSessionId()}));
 }else if(mode==="resume"){
  const expected=JSON.parse(readFileSync(metadata,"utf8"));
