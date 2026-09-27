@@ -1,0 +1,13 @@
+wave: 39
+focus: [frozen-context-and-standing-permission]
+new_contracts:
+  - { id: PAR-461, area: frozen-candidate-context-isolates-git-attributes-config-and-locale-from-mutable-host-state, status: MISSING, priority: P0 }
+  - { id: PAR-462, area: frozen-candidate-context-rejects-snapshot-metadata-mismatch, status: MISSING, priority: P0 }
+  - { id: PAR-463, area: standing-review-permission-is-memory-only-and-bound-to-manager-session-and-git-common-directory, status: MISSING, priority: P0 }
+  - { id: PAR-464, area: standing-permission-revocation-epoch-prevents-stale-awaited-ui-from-regranting, status: MISSING, priority: P0 }
+  - { id: PAR-465, area: child-permission-channel-is-bounded-and-broken-timeout-or-malformed-channel-fails-closed, status: MISSING, priority: P0 }
+  - { id: PAR-466, area: permission-wire-carries-no-candidate-data-or-provider-consent-secrets, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 6
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
