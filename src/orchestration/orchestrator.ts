@@ -1,12 +1,12 @@
 import type { AgentRequest } from "../agents/dispatcher.js";
 import type { OddDecision } from "../flow/odd.js";
 import type {Candidate} from "../core/types.js";
-import {selectSkills,type SkillId} from "../skills/registry.js";
+import {selectSkills,type SkillId,type SkillPhase} from "../skills/registry.js";
 import {issueSkillContext} from "../skills/context.js";
 
 export interface OrchestrationInput {
   taskId:string; repository:string; prompt:string; writeSurfaces?:string[];
-  codeChange?:boolean; behaviorChange?:boolean; filesTouched?:number; candidate?:Candidate;
+  codeChange?:boolean; behaviorChange?:boolean; filesTouched?:number; candidate?:Candidate; skillPhase?:SkillPhase;
 }
 export interface OrchestrationPlan { decision:OddDecision; agents:AgentRequest[]; skills:SkillId[]; }
 
@@ -14,20 +14,23 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddDec
   const base={repository:input.repository,prompt:input.prompt};
   const skillContext=issueSkillContext(input.taskId,input.repository,input.candidate,{
     risk:decision.risk,
+    ...(input.skillPhase===undefined?{}:{phase:input.skillPhase}),
     verification:decision.route==="verify"||decision.verification==="independent",
     ...(input.codeChange===undefined?{}:{codeChange:input.codeChange}),
     ...(input.behaviorChange===undefined?{}:{behaviorChange:input.behaviorChange}),
     ...(input.filesTouched===undefined?{}:{filesTouched:input.filesTouched})
   });
-  const skills=selectSkills(skillContext).map(skill=>skill.id);
+  const selected=selectSkills(skillContext);
+  const skills=selected.map(skill=>skill.id);
+  const skillPaths=selected.map(skill=>skill.path);
   const agents:AgentRequest[]=[];
   if(decision.route==="direct"||decision.route==="plan") return {decision,agents,skills};
   if(decision.route==="verify"){
-    agents.push({id:`${input.taskId}:verify`,role:"verifier",...base});
+    agents.push({id:`${input.taskId}:verify`,role:"verifier",...base,skillPaths});
     return {decision,agents,skills};
   }
-  agents.push({id:`${input.taskId}:explore`,role:"explorer",...base});
-  const worker:AgentRequest={id:`${input.taskId}:worker`,role:"worker",...base};
+  agents.push({id:`${input.taskId}:explore`,role:"explorer",...base,skillPaths});
+  const worker:AgentRequest={id:`${input.taskId}:worker`,role:"worker",...base,skillPaths};
   if(input.writeSurfaces?.length){
     worker.writeSurfaces=[...input.writeSurfaces];
     if(!input.candidate) throw new Error("Writer orchestration requires an exact candidate");
@@ -36,7 +39,7 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddDec
     worker.skillContext=skillContext;
   }
   agents.push(worker);
-  agents.push({id:`${input.taskId}:review`,role:"reviewer",...base});
-  agents.push({id:`${input.taskId}:verify`,role:"verifier",...base});
+  agents.push({id:`${input.taskId}:review`,role:"reviewer",...base,skillPaths});
+  agents.push({id:`${input.taskId}:verify`,role:"verifier",...base,skillPaths});
   return {decision,agents,skills};
 }
