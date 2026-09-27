@@ -7,6 +7,7 @@ export interface ExecutedEvidence {
  readonly candidateId:string;
  readonly candidateRevision:string;
  readonly command:readonly string[];
+ readonly cwd:string;
  readonly exitCode:number;
  readonly startedAt:string;
  readonly finishedAt:string;
@@ -20,7 +21,6 @@ export function isExecutedEvidence(value:unknown):value is ExecutedEvidence {
 export async function executeEvidenceCommand(candidate:Candidate,command:readonly [string,...string[]],options:{cwd?:string;timeoutMs?:number}={}):Promise<ExecutedEvidence>{
  if(!candidate.repository||!candidate.id||!candidate.revision)throw new Error("Execution evidence requires exact candidate identity");
  const cwd=options.cwd??candidate.repository;
- if(cwd!==candidate.repository)throw new Error("Execution evidence cwd must equal candidate repository");
  const startedAt=new Date().toISOString();
  const exitCode=await new Promise<number>((resolve,reject)=>{
   const child=spawn(command[0],command.slice(1),{cwd,stdio:"ignore",shell:false});
@@ -28,7 +28,7 @@ export async function executeEvidenceCommand(candidate:Candidate,command:readonl
   child.on("error",error=>{clearTimeout(timer);reject(error);});
   child.on("close",code=>{clearTimeout(timer);resolve(code??-1);});
  });
- const proof=Object.freeze({candidateRepository:candidate.repository,candidateId:candidate.id,candidateRevision:candidate.revision,command:Object.freeze([...command]),exitCode,startedAt,finishedAt:new Date().toISOString()});
+ const proof=Object.freeze({candidateRepository:candidate.repository,candidateId:candidate.id,candidateRevision:candidate.revision,command:Object.freeze([...command]),cwd,exitCode,startedAt,finishedAt:new Date().toISOString()});
  executed.add(proof);
  return proof;
 }
