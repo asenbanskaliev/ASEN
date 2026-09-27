@@ -1,5 +1,5 @@
-import type { Phase } from "./types.js";
-import type {VerificationResult} from "../verify/verifier.js";
+import type { Candidate,Phase } from "./types.js";
+import {isTransitionAuthorization,type TransitionAuthorization} from "../verify/verifier.js";
 
 const allowed: Record<Phase, readonly Phase[]> = {
   DISCOVERING: ["PLANNING", "BLOCKED", "FAILED"],
@@ -32,12 +32,18 @@ export function transition(from:Phase,to:Phase):Phase {
 export interface GuardedTransition {
  from:Phase;
  to:Phase;
- gate:VerificationResult;
+ candidate:Candidate;
+ authorization:TransitionAuthorization;
 }
 
 export function guardedTransition(input:GuardedTransition):Phase {
- if((input.to==="IMPLEMENTING"||input.to==="VERIFIED")&&!input.gate.ok){
-  throw new Error(input.gate.reason||`ASEN gate blocked transition to ${input.to}`);
+ if(input.to==="IMPLEMENTING"||input.to==="VERIFIED"){
+  if(!isTransitionAuthorization(input.authorization)) throw new Error(`ASEN gate blocked transition to ${input.to}: invalid authorization`);
+  if(input.authorization.target!==input.to) throw new Error(`ASEN gate authorization target mismatch: ${input.authorization.target} -> ${input.to}`);
+  if(input.authorization.candidateRepository!==input.candidate.repository||
+     input.authorization.candidateId!==input.candidate.id||
+     input.authorization.candidateRevision!==input.candidate.revision)
+    throw new Error("ASEN gate authorization candidate mismatch");
  }
  return structuralTransition(input.from,input.to);
 }
