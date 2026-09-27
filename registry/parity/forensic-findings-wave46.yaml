@@ -1,0 +1,13 @@
+wave: 46
+focus: [saturation-repeat-5]
+new_contracts:
+  - { id: PAR-495, area: review-repair-preflight-is-readonly-and-execution-replays-only-exact-preflight-published-binding, status: MISSING, priority: P0 }
+  - { id: PAR-496, area: review-repair-failure-never-publishes-authorization-or-authority-paths, status: MISSING, priority: P0 }
+  - { id: PAR-497, area: pi-memory-session-registration-is-shared-concurrently-but-never-across-explicit-projects, status: MISSING, priority: P0 }
+  - { id: PAR-498, area: uncertain-session-replacement-end-remains-pending-and-cannot-be-adopted-by-foreign-project, status: MISSING, priority: P0 }
+  - { id: PAR-499, area: ambiguous-runtime-identity-history-permanently-blocks-compaction-writes, status: MISSING, priority: P0 }
+  - { id: PAR-500, area: restored-agent-history-is-readonly-and-cannot-reenter-live-control-plane, status: MISSING, priority: P0 }
+saturation_result:
+  p0_new: 6
+  consecutive_zero_p0_passes: 0
+  conclusion: "NOT SATURATED"
