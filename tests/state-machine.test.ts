@@ -3,20 +3,21 @@ import test from "node:test";
 import {guardedTransition,transition} from "../src/core/state-machine.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {authorizeImplementation,authorizeVerified,type TransitionAuthorization} from "../src/verify/verifier.js";
+import {issueSkillContext} from "../src/skills/context.js";
 
 const candidate={id:"c",repository:"r",revision:"sha",createdAt:"now"};
 function implementationAuthorization(){
  const evidence=new EvidenceStore();
  evidence.add(candidate,{id:"route",kind:"route-decision",status:"pass",summary:"route",createdAt:"now"});
  evidence.add(candidate,{id:"unit",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
- return authorizeImplementation(candidate,Object.freeze({filesTouched:2}),evidence);
+ return authorizeImplementation(candidate,issueSkillContext({filesTouched:2}),evidence);
 }
 function verifiedAuthorization(){
  const evidence=new EvidenceStore();
  evidence.add(candidate,{id:"test",kind:"test",status:"pass",summary:"green",createdAt:"now"});
  evidence.add(candidate,{id:"unit-v",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  evidence.add(candidate,{id:"review-v",kind:"review",status:"pass",summary:"review",createdAt:"now"});
- return authorizeVerified(candidate,"medium",Object.freeze({verification:true}),evidence);
+ return authorizeVerified(candidate,"medium",issueSkillContext({verification:true}),evidence);
 }
 
 test("rejects skipping directly to VERIFIED",()=>assert.throws(()=>transition("IMPLEMENTING","VERIFIED")));
@@ -69,7 +70,7 @@ test("transition authorization rejects caller-controlled mutable skill context",
  evidence.add(candidate,{id:"unit-mutable",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  assert.throws(
   ()=>authorizeImplementation(candidate,{filesTouched:2},evidence),
-  /sealed skill selection context/
+  /ASEN-issued skill selection context/
  );
 });
 
@@ -78,7 +79,7 @@ test("verification authorization derives mandatory review skill from context",()
  evidence.add(candidate,{id:"test-derived",kind:"test",status:"pass",summary:"green",createdAt:"now"});
  evidence.add(candidate,{id:"unit-derived",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  assert.throws(
-  ()=>authorizeVerified(candidate,"medium",Object.freeze({verification:true}),evidence),
+  ()=>authorizeVerified(candidate,"medium",issueSkillContext({verification:true}),evidence),
   /asen-review.*review evidence/
  );
 });
