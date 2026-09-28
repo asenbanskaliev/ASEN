@@ -19,6 +19,16 @@ The new lifecycle snapshot has integrity protection only when its caller supplie
 
 The Pi process runner now supplies selected paths as native `--skill` arguments with default skill and extension discovery disabled. Pi RPC independently reports that the exact paths are loaded. The authenticated explorer turn documented below proves the model read the two selected files. It does not prove that an untrusted agent cannot launch another process through its built-in tools. Process-level authority and the complete lifecycle remain open.
 
+## Cross-cutting checkpoint — 2026-09-28
+
+- **PROBADO (limited):** `EvidenceStore` has no public signed-restoration method. Recovery verifies snapshot MAC and exact repository, candidate and revision before reconstructing executable evidence; direct fabricated PASS and wrong-key recovery are rejected. Executed commands check Git root and exact HEAD both before and after running; failure cannot be labelled PASS, and success cannot be labelled expected RED. Tests use actual temporary Git repositories.
+- **PARCIAL:** independent review PASS now requires an executed reviewer subprocess, a distinct reviewer identity, an issued reviewer context, exact candidate Git HEAD and signed persistence of its metadata. The caller still supplies the reviewer subprocess; a separately authenticated model reviewer and an independent trust root remain unproven.
+- **PROBADO (limited):** dispatcher binds issued contexts to task, candidate, repository, phase and agent role, including read roles. Lifecycle signed snapshots can restore pending exact Skills and reissue authority in a second process; wrong key and forged in-memory snapshots fail. The authenticated Pi workflow resumes an explorer turn after this restart and checks native Skill loading, nonempty model response and zero tool calls. Its phase artifact before restart is fixture output, not authenticated model output.
+- **PARCIAL:** the Pi process runner starts with `--no-extensions`, explicitly loads `extensions/authority.ts`, checks its registered extension command by exact path before sending a prompt, and passes a role/grant policy. A Pi `tool_call` handler denies process/delegation tools, out-of-repository paths, writes by read roles and writes outside worker surfaces; adversarial unit tests include symlink escape, and a real Pi RPC invocation confirms explicit extension loading. The control runs inside the Pi process; it is not an OS sandbox and does not authenticate the runner's caller as a separate security principal. The authenticated workflow currently uses `--no-tools`, so it does not prove a model-backed tool denial.
+- **NO PROBADO:** authenticated worker, reviewer and verifier lifecycle artifacts; actual model-backed TDD RED/GREEN/refactor linked to one candidate; OS-level process isolation; full model-produced nine-phase recovery and archive. Do not mark `CAP-SKL-001` verified.
+
+These findings are local until the final commit's CI, Architecture, Release Gate, and authenticated Pi workflow all finish on the same SHA and the three CI operating-system jobs are inspected.
+
 ## Authenticated Pi attempt — 2026-09-27
 
 On PR #30 candidate `cee7db11d9108492e64f417b846ed110dfe8e0a9`, the GitHub Actions job `ASEN Authenticated Pi Audit` (run 36344614260, job 108691192883) received the repository secret, checked out the exact PR HEAD, and reached the real Pi model turn. OpenCode Zen rejected `opencode/mimo-v2.6-flash-free` with HTTP 403 `FreeTierError`: "OpenCode's free tier can only be used from within OpenCode". Pi could not produce a model response, so no authenticated behavior claim is supported. This is a provider restriction; do not reinterpret it as a code failure or make this gate PASS.
@@ -34,39 +44,3 @@ At the same HEAD, Phase 0 Architecture run 36345025884, CI run 36345025887 (Ubun
 ## Role tool restriction — 2026-09-27
 
 The authenticated explorer probe now launches Pi with `--tools read` in addition to the exact Skills. On candidate `4c512a1addce411e540439a377102da5d313a3ff`, run 36345285070 passed with a real OpenRouter model turn reading both files. The ASEN Pi process runner now supplies `--tools read` for issued explorer, reviewer and verifier turns, and rejects caller-provided skill/tool switches (including `--tools=bash`); `tests/pi-process-runner.test.ts` checks exact arguments and an adversarial override. Local typecheck and 137 tests passed for this change. The worker still has process command access, so this does not prevent subprocess redelegation or constitute OS-enforced write isolation. Full authenticated role lifecycle, recovery after restart and fabricated evidence prevention remain open. CAP-SKL-001 remains `specified`.
-
-## Evidence trust checkpoint — 2026-09-28
-
-The exact PR head before these changes was `c75121c2342fd0e705ff8563346858fa42e34c07`; all four workflows passed there. The following distinctions apply to the subsequent candidates and must be checked again at the final HEAD.
-
-| Property | Status | Evidence and limit |
-| --- | --- | --- |
-| Public recovery bypass | PROBADO, closed | `EvidenceStore.restoreSigned` was removed. The only insertion of recovered passing execution evidence is private to the signed-file loading module after HMAC, candidate identity and item checks; `tests/evidence-persistence.test.ts` demonstrates the former forged PASS cannot be inserted by a caller. The recovery key still has to come from a trusted host. |
-| Executed test/TDD repository and revision | PARCIAL | `executeEvidenceCommand` checks the actual Git root and `HEAD` against the candidate before and after execution. `tests/execution-revision.test.ts` uses a real temporary Git repository and rejects wrong cwd, a nested directory, wrong revision, changed HEAD during execution and a different candidate. This proves the HEAD identity, not a clean worktree or that the test inspected all relevant files. |
-| Real authenticated Pi and extension loading | PARCIAL | On candidate `aca2d62d0e0f6d36b6f6a54193c39a2a30e0371b`, authenticated run 36381084569 passed with exactly two native Skills, an assistant response and zero tool calls. Pi used `--no-extensions` with one explicit `pi-free@2.8.1` extension path and `--no-tools`. This proves one bounded model turn, not the full lifecycle or OS isolation. |
-| Independent reviewer provenance | NO PROBADO | A caller can currently insert `{kind:"review",status:"pass"}` directly into EvidenceStore. High-risk verification can accept it. Do not treat a plain report or a fixture reviewer as authenticated. |
-| Worker process isolation, reissued recovery authority, full authenticated lifecycle | NO PROBADO | Existing logical checks and fixture tests do not establish these process and model properties. |
-
-CAP-SKL-001 remains `specified`. No merge authorization follows from green workflows while the listed critical gaps remain.
-
-## Review and role authority checkpoint — 2026-09-28
-
-This section supersedes the earlier review and worker-tool rows where they differ; all results must be rechecked against the final PR HEAD.
-
-| Property | Status | Evidence and remaining limit |
-| --- | --- | --- |
-| Failed command relabeled PASS | PROBADO, blocked | `EvidenceStore.addExecuted` now enforces zero exit for PASS and nonzero exit for expected-fail. `tests/execution-revision.test.ts` reproduced the bypass before the fix. |
-| Plain review PASS | PROBADO, blocked | `EvidenceStore.add` rejects a caller-created passing review. `addReviewed` requires a proof minted after an actual reviewer subprocess returns a structured report for the exact Git candidate, ASEN-issued reviewer task and a different author identity. A signed legacy PASS without execution and reviewer metadata is rejected during recovery; adversarial tests cover mismatched candidate, reviewer, findings and fabricated proof. |
-| Independent reviewer provenance | PARCIAL | The reviewer process executes and its declared identity, role and result are checked. The subprocess can still be supplied by a caller, and a self-reported independent role is not a cryptographic or organizational attestation. A real, separately authorized Pi reviewer and host-controlled command source remain necessary. Do not count fixture subprocess output as an independent production review. |
-| Role tool and task restrictions | PARCIAL | Pi runner disables discovered extensions and Skills, injects only selected Skills, gives non-writers `read` and an authorized worker `read,edit,write`, and rejects tool/extension overrides including the CLI option terminator. Dispatcher and runner compare read-role task, repository and candidate. This removes the built-in shell from these turns; it does not impose an OS sandbox or prevent a host process from spawning another process outside Pi. |
-| End-to-end lifecycle and recovery with reissued authority | NO PROBADO | Nine-phase lifecycle tests still use fixture output; authenticated Pi reviewer/worker/verifier transitions and restart continuation under reissued authority remain outstanding. |
-
-CAP-SKL-001 remains `specified`; none of these partial guarantees authorize merging the PR.
-
-## Authenticated restart checkpoint — 2026-09-28
-
-At candidate `c48543574f3a67f0fb5ca582ab3a843214e738ca`, authenticated run 36382472937 passed. Its first Node process advanced `context-init` with a fixture artifact, explicitly prepared the explorer's next selection and paths, and saved a signed lifecycle snapshot using an ephemeral host key. A second Node process verified that snapshot, reissued a fresh `IssuedSkillContext` for the same task/repository/candidate/revision/phase, and ran a real Pi + LLM7 turn with exactly the two explorer Skills and zero tools. The model returned nonempty text. The context-init artifact was a fixture, and the model response was not promoted to a structured lifecycle artifact. Status: PARCIAL for model-backed recovery and phase completion.
-
-`tests/skill-lifecycle.test.ts` separately restarts a process, rejects a wrong recovery key, rejects an unverified snapshot object as a source of new authority, and continues the pending design phase under reissued authority using a fixture runner. The pending phase selection and exact Skill paths are stored in the signed snapshot; they are not guessed after restart. Status: PROBADO for this signed checkpoint and reissuance path, PARCIAL for production recovery (the production host still needs durable secret management and authenticated output validation).
-
-A source review confirms exactly 27 `skills/asen-*/SKILL.md` contracts and `CAP-SKL-001` remains `specified`. Remaining critical proofs include a genuine independently authorized reviewer, worker write-surface isolation beyond Pi's tool allowlist, a clean or isolated source tree for executed test evidence, and a fully authenticated nine-phase lifecycle with test/review/release evidence from the exact candidate. The matrix above is historical; these latest classifications supersede its older recovery row. Do not merge.
