@@ -13,6 +13,7 @@ const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:
 assert.equal(revision,process.env.ASEN_EXPECTED_SHA,"Structured Pi candidate must be exact PR HEAD");
 const provider=process.env.ASEN_PI_PROVIDER??"openrouter";
 const model=process.env.ASEN_PI_MODEL??"qwen/qwen3.8-27b:free";
+const providerExtension=process.env.ASEN_PI_PROVIDER_EXTENSION;
 const candidate={id:"pr30-structured-pi",repository,revision,createdAt:new Date().toISOString()};
 const piMain=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
 const cli=join(dirname(piMain),"bundle","cli.js");
@@ -24,7 +25,7 @@ for(const [role,phase] of roles){
  const selected=selectSkills(context).map(skill=>skill.path);
  const expected=selected.map(path=>realpathSync(resolve(repository,path)));
  const id=`artifact-${role}`;
- const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--no-tools","--provider",provider,"--model",model,...selected.flatMap(path=>["--skill",path])],{cwd:repository,env:process.env,stdio:["pipe","pipe","pipe"]});
+ const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions",...(providerExtension?["--extension",providerExtension]:[]),"--no-skills","--no-tools","--provider",provider,"--model",model,...selected.flatMap(path=>["--skill",path])],{cwd:repository,env:process.env,stdio:["pipe","pipe","pipe"]});
  const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
  const metadata={kind:"audit-observation",content:"Brief observation"};
  const message=[
