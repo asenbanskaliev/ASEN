@@ -4,7 +4,8 @@ import {createHmac,randomUUID,timingSafeEqual} from "node:crypto";
 import type {Candidate,Risk} from "../core/types.js";
 import {issueSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
-import type {Dispatcher,AgentRequest} from "../agents/dispatcher.js";\nimport {isIssuedAgentArtifactProof} from "../agents/pi-artifact-runner.js";
+import type {Dispatcher,AgentRequest} from "../agents/dispatcher.js";
+import {isIssuedAgentArtifactProof} from "../agents/pi-artifact-runner.js";
 import {EvidenceStore} from "../evidence/store.js";
 import {authorizeRelease,authorizeVerified} from "../verify/verifier.js";
 
@@ -69,7 +70,9 @@ export class SkillLifecycle{
    if(!release.ok)throw new Error(`Lifecycle archive blocked: ${release.reason}`);
   }
   const response=await dispatcher.dispatch(request);
-  if(!response.ok||response.id!==request.id)throw new Error("Lifecycle agent result failed or belongs to another task");\n  const proof=response.artifactProof;\n  if(!isIssuedAgentArtifactProof(proof)||proof.requestId!==request.id||proof.role!==role||proof.repository!==s.candidate.repository||proof.candidateId!==s.candidate.id||proof.candidateRevision!==s.candidate.revision||proof.skillPaths.length!==input.skillPaths.length||proof.skillPaths.some((path,index)=>path!==input.skillPaths[index]))throw new Error("Lifecycle artifact lacks exact ASEN-issued Pi provenance");
+  if(!response.ok||response.id!==request.id)throw new Error("Lifecycle agent result failed or belongs to another task");
+  const proof=response.artifactProof;
+  if(!isIssuedAgentArtifactProof(proof)||proof.requestId!==request.id||proof.role!==role||proof.repository!==s.candidate.repository||proof.candidateId!==s.candidate.id||proof.candidateRevision!==s.candidate.revision||proof.skillPaths.length!==input.skillPaths.length||proof.skillPaths.some((path,index)=>path!==input.skillPaths[index]))throw new Error("Lifecycle artifact lacks exact ASEN-issued Pi provenance");
   let artifact:LifecycleArtifact;
   try{artifact=JSON.parse(response.output) as LifecycleArtifact;}catch{throw new Error("Lifecycle agent artifact is not structured JSON");}
   return this.#complete({phase:input.phase,role,context:input.context,skillPaths:input.skillPaths,artifact});
