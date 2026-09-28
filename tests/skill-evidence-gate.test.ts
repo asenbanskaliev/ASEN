@@ -7,7 +7,7 @@ import {join} from "node:path";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {authorizeRelease,verifyCandidate,verifySkillEvidence} from "../src/verify/verifier.js";
 import {issueSkillContext} from "../src/skills/context.js";
-import {passingEvidence,gitCandidate} from "./execution-evidence-helper.js";
+import {passingEvidence,passingReview,gitCandidate} from "./execution-evidence-helper.js";
 
 const c=gitCandidate("candidate");
 
@@ -30,10 +30,10 @@ test("TDD evidence from another repository cannot satisfy the skill gate",async(
  }finally{await rm(dir,{recursive:true,force:true});}
 });
 
-test("review skill blocks release without candidate-bound review evidence",()=>{
+test("review skill blocks release without candidate-bound review evidence",async()=>{
  const store=new EvidenceStore();
  assert.equal(verifySkillEvidence(c,["asen-review"],store,"release").ok,false);
- store.add(c,{id:"review",kind:"review",status:"pass",summary:"independent",createdAt:"now"});
+ await passingReview(store,c,"review");
  assert.equal(verifySkillEvidence(c,["asen-review"],store,"release").ok,true);
 });
 
@@ -69,7 +69,7 @@ test("release gate composes verification and release skill requirements",async()
  const store=new EvidenceStore(),context=issueSkillContext("task",c.repository,c,{codeChange:true,risk:"high" as const});
  assert.equal(authorizeRelease(c,"high",store,context).ok,false);
  await passingEvidence(store,c,"test-release");
- store.add(c,{id:"review-release",kind:"review",status:"pass",summary:"independent",createdAt:"now"});
+ await passingReview(store,c,"review-release");
  store.add(c,{id:"scope-release",kind:"scope",status:"pass",summary:"authorized",createdAt:"now"});
  assert.equal(authorizeRelease(c,"high",store,context).ok,false);
  store.add(c,{id:"rollback-release",kind:"rollback",status:"pass",summary:"ready",createdAt:"now"});
@@ -85,7 +85,7 @@ test("release rejects evidence from a previous candidate revision",async()=>{
  const store=new EvidenceStore(),old=gitCandidate(c.id,dir);
  await passingEvidence(store,old,"test-old");
  for(const [id,kind] of [["review-old","review"],["scope-old","scope"],["rollback-old","rollback"]] as const)
-  store.add(old,{id,kind,status:"pass",summary:"old",createdAt:"now"});
+  if(kind==="review")await passingReview(store,old,id);else store.add(old,{id,kind,status:"pass",summary:"old",createdAt:"now"});
  commit("current");
  const current=gitCandidate(c.id,dir),context=issueSkillContext("task",dir,current,{codeChange:true,risk:"high" as const});
  assert.equal(authorizeRelease(current,"high",store,context).ok,false);
