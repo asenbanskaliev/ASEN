@@ -5,6 +5,8 @@ import {saveEvidence,loadEvidence} from "../src/evidence/persistence.js";
 import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
+import {execFileSync} from "node:child_process";
+import {appendFileSync} from "node:fs";
 import {randomBytes} from "node:crypto";
 import {executionProof,passingEvidence,gitCandidate} from "./execution-evidence-helper.js";
 const c=gitCandidate("c");
@@ -16,14 +18,14 @@ test("evidence ids are append only",async()=>{
  const s=new EvidenceStore();await passingEvidence(s,c,"e");
  await assert.rejects(async()=>passingEvidence(s,c,"e"),/already exists/);
 });
-test("TDD enforces RED GREEN REFACTOR",async()=>{
- const s=new EvidenceStore(),t=new TddCycle(c,s,"cycle-a");
- t.record("RED","cycle-a:red","fails",await executionProof(c,1));
- t.record("GREEN","cycle-a:green","passes",await executionProof(c,0));
- t.record("REFACTOR","cycle-a:refactor","clean",await executionProof(c,0));
- const evidence=s.forCandidate(c);assert.equal(evidence.length,3);assert.equal(evidence[0]?.status,"expected-fail");
- await passingEvidence(s,c,"test-final");
- assert.equal(verifyCandidate(c,"medium",s).ok,true,"a resolved TDD RED must not poison final verification");
+test("TDD enforces RED GREEN REFACTOR across real revisions",async()=>{
+ const candidate=gitCandidate("lineage"),s=new EvidenceStore(),t=new TddCycle(candidate,s,"cycle-a");
+ t.record("RED","cycle-a:red","fails",await executionProof(candidate,1),candidate);
+ const next=(label:string)=>{appendFileSync(join(candidate.repository,"candidate.txt"),label+"\\n");execFileSync("git",["-C",candidate.repository,"add","."]);execFileSync("git",["-C",candidate.repository,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","-m",label]);return {...candidate,revision:execFileSync("git",["-C",candidate.repository,"rev-parse","HEAD"],{encoding:"utf8"}).trim()};};
+ const green=next("green");t.record("GREEN","cycle-a:green","passes",await executionProof(green,0),green);
+ const refactor=next("refactor");t.record("REFACTOR","cycle-a:refactor","clean",await executionProof(refactor,0),refactor);
+ assert.equal(s.hasPassing(refactor,"tdd"),true);
+ assert.equal(s.hasPassing(green,"tdd"),false);
 });
 test("TDD rejects GREEN without RED",async()=>{const t=new TddCycle(c,new EvidenceStore(),"cycle-a");assert.throws(()=>t.record("GREEN","cycle-a:green","bad",{} as never),/expected RED/);});
 test("an unresolved real failure still blocks verification",async()=>{const s=new EvidenceStore();await passingEvidence(s,c,"test-ok");s.add(c,{id:"regression",kind:"test",status:"fail",summary:"broken",createdAt:"now"});assert.equal(verifyCandidate(c,"medium",s).ok,false);});
