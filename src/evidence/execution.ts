@@ -18,7 +18,7 @@ export interface ExecutedEvidence {
 }
 const executed=new WeakSet<object>();
 export function assertExactGitCandidate(candidate:Candidate,cwd:string):void{
- const run=(...args:string[])=>execFileSync("git",["-C",cwd,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim();
+ const run=(...args:string[])=>execFileSync("git",["-C",cwd,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"],maxBuffer:16*1024*1024}).trim();
  let prefix:string,head:string;
  try{prefix=run("rev-parse","--show-prefix");head=run("rev-parse","HEAD");}
  catch{throw new Error("Execution evidence requires a Git repository with a checked-out HEAD");}
