@@ -25,7 +25,7 @@ for(const [role,phase] of roles){
  const id=`artifact-${role}`;
  const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--no-tools","--provider","openrouter","--model","openrouter/free",...selected.flatMap(path=>["--skill",path])],{cwd:repository,env:process.env,stdio:["pipe","pipe","pipe"]});
  const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
- const metadata={content:"Brief observation"};
+ const metadata={kind:"audit-observation",content:"Brief observation"};
  const message=[
  "This is a machine-readable ASEN audit step, not a conversational request.",
  "Your entire assistant response MUST be exactly the JSON object on the next line.",
