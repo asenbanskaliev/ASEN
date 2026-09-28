@@ -70,7 +70,7 @@ export class SkillLifecycle{
    if(!release.ok)throw new Error(`Lifecycle archive blocked: ${release.reason}`);
   }
   const response=await dispatcher.dispatch(request);
-  if(!response.ok||response.id!==request.id)throw new Error("Lifecycle agent result failed or belongs to another task");
+  if(!response.ok||response.id!==request.id)throw new Error(`Lifecycle agent result failed or belongs to another task: ${String(response.output).slice(0,1000)}`);
   const proof=response.artifactProof;
   if(!isIssuedAgentArtifactProof(proof)||proof.requestId!==request.id||proof.role!==role||proof.repository!==s.candidate.repository||proof.candidateId!==s.candidate.id||proof.candidateRevision!==s.candidate.revision||proof.skillPaths.length!==input.skillPaths.length||proof.skillPaths.some((path,index)=>path!==input.skillPaths[index]))throw new Error("Lifecycle artifact lacks exact ASEN-issued Pi provenance");
   let artifact:LifecycleArtifact;
