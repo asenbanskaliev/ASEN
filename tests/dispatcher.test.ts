@@ -127,6 +127,15 @@ test("candidate-bound read roles cannot omit their issued context or exact skill
   assert.equal(ran,false);
  }
 });
+test("caller-controlled expectedPhase cannot turn explorer context into reviewer or verifier authority",async()=>{
+ let ran=false;const runner:AgentRunner={run:async r=>{ran=true;return{id:r.id,ok:true,output:"bad"}}};
+ const context=issueSkillContext("role-task","r",candidate,{phase:"explore"});
+ const skillPaths=["skills/asen-phase-protocol/SKILL.md","skills/asen-explore/SKILL.md"];
+ for(const role of ["reviewer","verifier"] as const){
+  await assert.rejects(()=>new Dispatcher(runner,new EvidenceStore()).dispatch({id:"role-task",role,expectedPhase:"explore",prompt:"inspect",repository:"r",candidate,skillContext:context,skillPaths}),/agent role/);
+  assert.equal(ran,false);
+ }
+});
 test("worker cannot use an explore context to acquire write authority",async()=>{
  let ran=false;
  const runner:AgentRunner={run:async r=>{ran=true;return{id:r.id,ok:true,output:"bad"}}};
