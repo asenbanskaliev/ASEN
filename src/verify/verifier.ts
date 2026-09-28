@@ -79,6 +79,7 @@ export function isTransitionAuthorization(value:unknown):value is TransitionAuth
 export function authorizeImplementation(candidate:Candidate,context:SkillSelectionContext,evidence:EvidenceStore):TransitionAuthorization {
  if(!isIssuedSkillContext(context)) throw new Error("Implementation requires ASEN-issued skill selection context");
  if(!matchesIssuedSkillContext(context,context.taskId,candidate.repository,candidate)) throw new Error("Implementation skill context does not match candidate");
+ if(context.phase!=="apply")throw new Error("Implementation requires issued apply phase");
  const skills=selectSkills(context).map(skill=>skill.id);
  if(!skills.length) throw new Error("Implementation requires selected skills");
  const gate=verifySkillEvidence(candidate,skills,evidence,"mutation");
