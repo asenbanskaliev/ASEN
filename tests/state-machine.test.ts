@@ -4,21 +4,21 @@ import {guardedTransition,transition} from "../src/core/state-machine.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {authorizeImplementation,authorizeVerified,type TransitionAuthorization} from "../src/verify/verifier.js";
 import {issueSkillContext} from "../src/skills/context.js";
-import {passingEvidence} from "./execution-evidence-helper.js";
+import {passingEvidence,gitCandidate} from "./execution-evidence-helper.js";
 
-const candidate={id:"c",repository:"r",revision:"sha",createdAt:"now"};
+const candidate=gitCandidate("c");
 function implementationAuthorization(){
  const evidence=new EvidenceStore();
  evidence.add(candidate,{id:"route",kind:"route-decision",status:"pass",summary:"route",createdAt:"now"});
  evidence.add(candidate,{id:"unit",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
- return authorizeImplementation(candidate,issueSkillContext("task","r",candidate,{filesTouched:2}),evidence);
+ return authorizeImplementation(candidate,issueSkillContext("task",candidate.repository,candidate,{filesTouched:2}),evidence);
 }
 async function verifiedAuthorization(){
  const evidence=new EvidenceStore();
  await passingEvidence(evidence,candidate,"test");
  evidence.add(candidate,{id:"unit-v",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  evidence.add(candidate,{id:"review-v",kind:"review",status:"pass",summary:"review",createdAt:"now"});
- return authorizeVerified(candidate,"medium",issueSkillContext("task","r",candidate,{verification:true}),evidence);
+ return authorizeVerified(candidate,"medium",issueSkillContext("task",candidate.repository,candidate,{verification:true}),evidence);
 }
 
 test("rejects skipping directly to VERIFIED",()=>assert.throws(()=>transition("IMPLEMENTING","VERIFIED")));
@@ -38,7 +38,7 @@ test("plain transition cannot bypass privileged gates",()=>{
 });
 
 test("fabricated authorization cannot unlock privileged transition",()=>{
- const fake=Object.freeze({target:"IMPLEMENTING",candidateRepository:"r",candidateId:"c",candidateRevision:"sha"}) as TransitionAuthorization;
+ const fake=Object.freeze({target:"IMPLEMENTING",candidateRepository:candidate.repository,candidateId:"c",candidateRevision:candidate.revision}) as TransitionAuthorization;
  assert.throws(()=>guardedTransition({from:"PLANNING",to:"IMPLEMENTING",candidate,authorization:fake}),/invalid authorization/);
 });
 
@@ -80,7 +80,7 @@ test("verification authorization derives mandatory review skill from context",as
  await passingEvidence(evidence,candidate,"test-derived");
  evidence.add(candidate,{id:"unit-derived",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  assert.throws(
-  ()=>authorizeVerified(candidate,"medium",issueSkillContext("task","r",candidate,{verification:true}),evidence),
+  ()=>authorizeVerified(candidate,"medium",issueSkillContext("task",candidate.repository,candidate,{verification:true}),evidence),
   /asen-review.*review evidence/
  );
 });
@@ -89,7 +89,7 @@ test("verification authorization derives mandatory review skill from context",as
 test("verification rejects an issued context from another candidate revision",()=>{
  const old={...candidate,revision:"old-context"};
  const evidence=new EvidenceStore();
- const context=issueSkillContext("task","r",old,{verification:true});
+ const context=issueSkillContext("task",candidate.repository,old,{verification:true});
  assert.throws(
   ()=>authorizeVerified(candidate,"medium",context,evidence),
   /does not match candidate/
