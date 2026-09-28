@@ -49,3 +49,28 @@ jobs:
             fi
             sleep $((attempt * 5))
           done
+
+      - name: Probe candidate-bound Pi artifacts for worker reviewer verifier
+        env:
+          LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            probe_log="$(mktemp)"
+            if node --import tsx scripts/pi-authenticated-artifact-e2e.mjs > "$probe_log" 2>&1; then
+              cat "$probe_log"
+              rm -f "$probe_log"
+              exit 0
+            fi
+            cat "$probe_log"
+            if ! grep -Eq 'Model turn reported an error for [a-z]+:.*(HTTP[[:space:]]*)?(429|502|503|504)' "$probe_log"; then
+              rm -f "$probe_log"
+              exit 1
+            fi
+            rm -f "$probe_log"
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
