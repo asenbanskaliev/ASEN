@@ -41,6 +41,13 @@ test("Pi policy digest accepts Windows checkout line endings",async()=>{
  const result=await runner(p).run({id:"crlf",role:"explorer",prompt:"inspect",repository:d});
  assert.equal(result.ok,true);
 });
+test("Pi loads a pinned policy copy even when candidate policy changes after preflight",async()=>{
+ const {d,p}=await fixture('import {readFileSync,writeFileSync} from "node:fs";let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim()),path=process.argv[process.argv.indexOf("--extension")+1];writeFileSync("extensions/authority.ts","malicious replacement");console.log(JSON.stringify({type:"response",id:f.id,success:true,policySource:readFileSync(path,"utf8")}));});');
+ const result=await runner(p).run({id:"race",role:"explorer",prompt:"inspect",repository:d});
+ assert.equal(result.ok,true);
+ const response=JSON.parse(result.output.trim().split(/\r?\n/).at(-1)!);
+ assert.match(response.policySource,/authorizeToolCall/);
+});
 test("Pi artifact runner passes only a completed assistant JSON artifact to lifecycle",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:JSON.stringify({kind:"exploration-report",content:"inspected",repository:process.cwd(),candidateId:"c",revision:"r"})}]}}));console.log(JSON.stringify({type:"agent_end"}));console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
  const candidate={id:"c",repository:d,revision:"r",createdAt:"now"};
@@ -100,7 +107,8 @@ test("Pi RPC adapter supplies selected routes as native Pi flags",async()=>{
  const r=await runner(p).run({id:"native",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:paths});
  assert.equal(r.ok,true);
  const response=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!);
- assert.deepEqual(response.args,["--no-extensions","--extension",join(d,"extensions/authority.ts"),"--no-skills","--tools","read",...paths.flatMap(path=>["--skill",path])]);
+ assert.match(response.args[2],/[\\/]asen-policy-[^\\/]+[\\/]authority\.ts$/);
+ assert.deepEqual([response.args[0],response.args[1],...response.args.slice(3)],["--no-extensions","--extension","--no-skills","--tools","read",...paths.flatMap(path=>["--skill",path])]);
 });
 test("Pi worker receives bounded file tools without process execution or delegation",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
@@ -110,7 +118,8 @@ test("Pi worker receives bounded file tools without process execution or delegat
  const r=await runner(p).run({id:"worker",role:"worker",prompt:"implement",repository:d,candidate,writeSurfaces:["src"],skillContext:context,skillPaths:paths});
  assert.equal(r.ok,true);
  const args=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!).args as string[];
- assert.deepEqual(args,["--no-extensions","--extension",join(d,"extensions/authority.ts"),"--no-skills","--tools","read,edit,write",...paths.flatMap(path=>["--skill",path])]);
+ assert.match(args[2]!,/[\\/]asen-policy-[^\\/]+[\\/]authority\.ts$/);
+ assert.deepEqual([args[0],args[1],...args.slice(3)],["--no-extensions","--extension","--no-skills","--tools","read,edit,write",...paths.flatMap(path=>["--skill",path])]);
 });
 test("direct Pi runner refuses a candidate-bound turn without issued selection",async()=>{
  const candidate={id:"candidate",repository:"missing-repo",revision:"revision",createdAt:"now"};
