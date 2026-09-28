@@ -26,6 +26,15 @@ export interface LifecycleSnapshot{version:1;taskId:string;candidate:Candidate;n
 const isPhase=(value:unknown):value is LifecyclePhase=>typeof value==="string"&&lifecyclePhases.includes(value as LifecyclePhase);
 const copy=(snapshot:LifecycleSnapshot):LifecycleSnapshot=>structuredClone(snapshot);
 const verifiedRecovery=new WeakSet<SkillLifecycle>();
+const phaseGrants=new WeakMap<object,{requestId:string;repository:string;candidateId:string;revision:string;phase:LifecyclePhase;used:boolean}>();
+function issuePhaseGrant(requestId:string,candidate:Candidate,phase:LifecyclePhase):object{
+ const grant=Object.freeze({});phaseGrants.set(grant,{requestId,repository:candidate.repository,candidateId:candidate.id,revision:candidate.revision,phase,used:false});return grant;
+}
+export function consumePhaseGrant(request:AgentRequest):boolean{
+ const grant=request.phaseGrant&&phaseGrants.get(request.phaseGrant);
+ if(!grant||grant.used||!request.candidate||grant.requestId!==request.id||grant.repository!==request.repository||grant.candidateId!==request.candidate.id||grant.revision!==request.candidate.revision||grant.phase!==request.expectedPhase)return false;
+ grant.used=true;return true;
+}
 
 export class SkillLifecycle{
  #snapshot:LifecycleSnapshot;
@@ -64,6 +73,7 @@ export class SkillLifecycle{
    ...(input.phase==="apply"?{writeSurfaces:input.writeSurfaces!}:{})};
   // Validate authority before invoking the agent, then validate its result before advancing.
   this.#assertAuthority(input.phase,role,input.context,input.skillPaths);
+  request.phaseGrant=issuePhaseGrant(request.id,s.candidate,input.phase);
   if(input.phase==="verify")authorizeVerified(s.candidate,input.risk,input.context,input.evidence);
   if(input.phase==="archive"){
    const release=authorizeRelease(s.candidate,input.risk,input.evidence,input.context);
