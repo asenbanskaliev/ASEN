@@ -40,6 +40,12 @@ test("lifecycle enforces nine ordered phases and mandatory artifacts",async()=>{
  assert.equal(flow.state.records.length,9);
  await assert.rejects(()=>advance(flow,"archive"),/out of order/);
 });
+test("plain JSON from an arbitrary runner cannot advance lifecycle",async()=>{
+ const flow=new SkillLifecycle("task",candidate),selection=completion("context-init"),evidence=new EvidenceStore();
+ const fabricated:AgentRunner={run:async request=>({id:request.id,ok:true,output:JSON.stringify(selection.artifact)})};
+ await assert.rejects(()=>flow.runPhase(new Dispatcher(fabricated,evidence),{phase:"context-init",context:selection.context,skillPaths:selection.skillPaths,prompt:"context",evidence,risk:"low"}),/Pi provenance/);
+ assert.equal(flow.state.records.length,0);
+});
 test("lifecycle refuses wrong role, task, revision, routes and artifact",async()=>{
  const flow=new SkillLifecycle("task",candidate);
  await assert.rejects(()=>advance(flow,"context-init",{role:"explorer"}),/context lacks/);
