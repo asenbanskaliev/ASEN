@@ -51,3 +51,15 @@ test("execution rejects tracked changes before and during a command even when HE
  await assert.rejects(()=>executeEvidenceCommand(candidate,[process.execPath,"-e",`require("fs").writeFileSync(${JSON.stringify(source)},"changed\\n")`]),/unchanged tracked files/);
  assert.equal(execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim(),revision);
 });
+
+test("execution rejects an untracked candidate source file",async t=>{
+ const repo=await mkdtemp(join(tmpdir(),"asen-untracked-execution-"));t.after(()=>rm(repo,{recursive:true,force:true}));
+ execFileSync("git",["init","-q",repo]);
+ const source=join(repo,"source.js");await writeFile(source,"original\n");
+ execFileSync("git",["-C",repo,"add","source.js"]);
+ execFileSync("git",["-C",repo,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","-m","initial"]);
+ const revision=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+ const candidate={repository:repo,id:"untracked",revision,createdAt:"now"};
+ await writeFile(join(repo,"injected.js"),"throw new Error('injected')\n");
+ await assert.rejects(()=>executeEvidenceCommand(candidate,[process.execPath,"-e","process.exit(0)"]),/no untracked Git files/);
+});
