@@ -97,6 +97,14 @@ test("Pi worker receives bounded file tools without process execution or delegat
  const args=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!).args as string[];
  assert.deepEqual(args,["--no-extensions","--extension",join(d,"extensions/authority.ts"),"--no-skills","--tools","read,edit,write",...paths.flatMap(path=>["--skill",path])]);
 });
+test("Pi preflight rejects omitted, added or replaced native Skill routes",async()=>{
+ for(const mode of ["missing","extra","altered"] as const){
+  const {d,p}=await fixture("setTimeout(()=>{},10000);",true,mode);
+  const context=issueSkillContext("skill-drift",d,undefined,{phase:"explore"});
+  const result=await runner(p).run({id:"skill-drift",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(item=>item.path)});
+  assert.equal(result.ok,false,mode);assert.match(result.output,/native Skill paths do not match/,mode);
+ }
+});
 test("Pi runner refuses to prompt without its authority extension",async()=>{
  const {d,p}=await fixture('setTimeout(()=>{},10000);',false);
  const r=await runner(p).run({id:"no-policy",role:"explorer",prompt:"read",repository:d});
