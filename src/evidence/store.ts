@@ -69,8 +69,8 @@ export class EvidenceStore {
  if(!Array.isArray(v.items))throw new Error("Evidence recovery items invalid");
  const store=new EvidenceStore();
  for(const item of v.items){
-  if(!item||item.candidateRepository!==candidate.repository||item.candidateId!==candidate.id||item.candidateRevision!==candidate.revision||typeof item.id!=="string"||!item.id||!kinds.has(item.kind)||!statuses.has(item.status)||typeof item.summary!=="string"||typeof item.createdAt!=="string")throw new Error("Evidence recovery item mismatch");
-  store.#restoreVerified(candidate,{id:item.id,kind:item.kind,status:item.status,summary:item.summary,createdAt:item.createdAt,...(item.execution?{execution:item.execution}:{}),...(item.review?{review:item.review}:{}),...(item.tdd?{tdd:item.tdd}:{})});
+  if(!item||item.candidateRepository!==candidate.repository||item.candidateId!==candidate.id||(item.kind!=="tdd"&&item.candidateRevision!==candidate.revision)||typeof item.id!=="string"||!item.id||!kinds.has(item.kind)||!statuses.has(item.status)||typeof item.summary!=="string"||typeof item.createdAt!=="string")throw new Error("Evidence recovery item mismatch");
+  const itemCandidate={...candidate,revision:item.candidateRevision};\n  store.#restoreVerified(itemCandidate,{id:item.id,kind:item.kind,status:item.status,summary:item.summary,createdAt:item.createdAt,...(item.execution?{execution:item.execution}:{}),...(item.review?{review:item.review}:{}),...(item.tdd?{tdd:item.tdd}:{})});
  }
  return store;
 }
@@ -79,7 +79,7 @@ export class EvidenceStore {
   const item:Evidence={...evidence,candidateRepository:candidate.repository,candidateId:candidate.id,candidateRevision:candidate.revision};
   this.#items.set(item.id,Object.freeze(item)); return item;
  }
- forCandidate(candidate:Candidate):Evidence[]{return [...this.#items.values()].filter(i=>i.candidateRepository===candidate.repository&&i.candidateId===candidate.id&&i.candidateRevision===candidate.revision);}
+ forCandidate(candidate:Candidate):Evidence[]{return [...this.#items.values()].filter(i=>i.candidateRepository===candidate.repository&&i.candidateId===candidate.id&&i.candidateRevision===candidate.revision);}\n forLogicalCandidate(candidate:Candidate):Evidence[]{return [...this.#items.values()].filter(i=>i.candidateRepository===candidate.repository&&i.candidateId===candidate.id&&(i.candidateRevision===candidate.revision||i.kind==="tdd"));}
  hasPassing(candidate:Candidate,kind:Evidence["kind"]):boolean{
   const items=this.forCandidate(candidate);
   if(kind==="tdd"){
@@ -96,7 +96,7 @@ export class EvidenceStore {
 }
 
 export async function saveEvidence(path:string,candidate:Candidate,store:EvidenceStore,key:Buffer):Promise<void>{
- const value:Envelope={version:1,candidate:structuredClone(candidate),items:store.forCandidate(candidate)};
+ const value:Envelope={version:1,candidate:structuredClone(candidate),items:store.forLogicalCandidate(candidate)};
  const temp=join(dirname(path),`.${basename(path)}.${randomUUID()}.tmp`);
  let handle;
  try{
