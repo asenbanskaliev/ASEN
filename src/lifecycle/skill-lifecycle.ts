@@ -8,6 +8,7 @@ import type {Dispatcher,AgentRequest} from "../agents/dispatcher.js";
 import {isIssuedAgentArtifactProof} from "../agents/pi-artifact-runner.js";
 import {EvidenceStore} from "../evidence/store.js";
 import {authorizeRelease,authorizeVerified} from "../verify/verifier.js";
+import {assertDirectGitParent} from "../evidence/git-lineage.js";
 
 export const lifecyclePhases=["context-init","explore","proposal","specification","design","tasks","apply","verify","archive"] as const;
 export type LifecyclePhase=typeof lifecyclePhases[number];
@@ -22,7 +23,7 @@ const roleFor:Record<LifecyclePhase,LifecycleRole>={
 };
 export interface LifecycleArtifact{kind:string;content:string;repository:string;candidateId:string;revision:string;}
 export interface LifecycleRecord{phase:LifecyclePhase;role:LifecycleRole;artifact:LifecycleArtifact;skillPaths:string[];}
-export interface LifecycleSnapshot{version:1;taskId:string;candidate:Candidate;nextPhase:LifecyclePhase|null;records:LifecycleRecord[];pendingAuthority?:{phase:LifecyclePhase;role:LifecycleRole;selection:SkillSelectionContext;skillPaths:string[]};}
+export interface LifecycleSnapshot{version:1;taskId:string;candidate:Candidate;nextPhase:LifecyclePhase|null;records:LifecycleRecord[];revisions?:string[];pendingAuthority?:{phase:LifecyclePhase;role:LifecycleRole;selection:SkillSelectionContext;skillPaths:string[]};}
 const isPhase=(value:unknown):value is LifecyclePhase=>typeof value==="string"&&lifecyclePhases.includes(value as LifecyclePhase);
 const copy=(snapshot:LifecycleSnapshot):LifecycleSnapshot=>structuredClone(snapshot);
 const verifiedRecovery=new WeakSet<SkillLifecycle>();
@@ -53,6 +54,14 @@ export class SkillLifecycle{
   if(snapshot) validateSnapshot(this.#snapshot,taskId,candidate);
  }
  get state():LifecycleSnapshot{return copy(this.#snapshot);}
+ promoteCandidateRevision(revision:string):void{
+  const s=this.#snapshot;
+  if(s.nextPhase!=="verify"||s.records.length!==7||s.pendingAuthority)throw new Error("Lifecycle revision can advance only after apply and before verify");
+  const revisions=s.revisions??[s.candidate.revision];
+  if(revisions.length>=3)throw new Error("Lifecycle apply supports at most two direct Git transitions");
+  assertDirectGitParent(s.candidate.repository,s.candidate.revision,revision);
+  this.#snapshot={...s,candidate:{...s.candidate,revision},revisions:[...revisions,revision]};
+ }
  preparePhase(context:IssuedSkillContext,skillPaths:string[]):void{
   const s=this.#snapshot,phase=s.nextPhase;
   if(!phase)throw new Error("Completed lifecycle cannot prepare another phase");
@@ -119,11 +128,16 @@ export class SkillLifecycle{
 function validateSnapshot(s:LifecycleSnapshot,taskId:string,candidate:Candidate):void{
  if(s.version!==1||s.taskId!==taskId||s.candidate.id!==candidate.id||s.candidate.repository!==candidate.repository||s.candidate.revision!==candidate.revision)throw new Error("Lifecycle recovery identity mismatch");
  if(!Array.isArray(s.records)||s.records.length>lifecyclePhases.length)throw new Error("Lifecycle recovery records invalid");
+ if(s.revisions!==undefined){
+  if(!Array.isArray(s.revisions)||s.revisions.length<2||s.revisions.length>3||s.revisions.at(-1)!==candidate.revision||s.records.length<7)throw new Error("Lifecycle recovery Git revisions invalid");
+  for(let i=1;i<s.revisions.length;i++)assertDirectGitParent(candidate.repository,s.revisions[i-1]!,s.revisions[i]!);
+ }
  for(let i=0;i<s.records.length;i++){
   const record=s.records[i],phase=lifecyclePhases[i];
   if(!record||!phase||record.phase!==phase||record.role!==roleFor[phase])throw new Error("Lifecycle recovery phase gap");
   const a=record.artifact;
-  if(!a||a.kind!==requiredArtifact[phase]||typeof a.content!=="string"||!a.content.trim()||a.repository!==candidate.repository||a.candidateId!==candidate.id||a.revision!==candidate.revision)throw new Error("Lifecycle recovery artifact mismatch");
+  const revision=s.revisions&&i<=6?s.revisions[0]:candidate.revision;
+  if(!a||a.kind!==requiredArtifact[phase]||typeof a.content!=="string"||!a.content.trim()||a.repository!==candidate.repository||a.candidateId!==candidate.id||a.revision!==revision)throw new Error("Lifecycle recovery artifact mismatch");
   if(!Array.isArray(record.skillPaths)||record.skillPaths.some(path=>typeof path!=="string"||!/^skills\/asen-[a-z-]+\/SKILL\.md$/.test(path)))throw new Error("Lifecycle recovery skill routes invalid");
  }
  if(s.nextPhase!==(lifecyclePhases[s.records.length]??null))throw new Error("Lifecycle recovery next phase mismatch");
