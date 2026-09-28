@@ -1,4 +1,5 @@
 import {spawn,type ChildProcess} from "node:child_process";
+import {resolve} from "node:path";
 import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
 import {matchesIssuedSkillContext} from "../skills/context.js";
 import {selectSkills} from "../skills/registry.js";
@@ -57,18 +58,21 @@ export class PiProcessRunner implements AgentRunner{
    return Promise.resolve({id:request.id,ok:false,output:"pi skill and tool arguments must be issued by ASEN"});
   if(request.writeSurfaces?.length&&request.role!=="worker")return Promise.resolve({id:request.id,ok:false,output:"Only a worker may request write tools"});
   const writer=request.role==="worker"&&!!request.writeSurfaces?.length&&!!request.candidate&&!!request.skillContext;
+  const policy=resolve(request.repository,"extensions/authority.ts");
   const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,
-   "--no-extensions","--no-skills","--tools",writer?"read,edit,write":"read",...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
+   "--no-extensions","--extension",policy,"--no-skills","--tools",writer?"read,edit,write":"read",...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
   const timeoutMs=this.options.timeoutMs??120_000;
   const max=this.options.maxOutputBytes??1_000_000;
 
   return new Promise(resolve=>{
    const child=spawn(command,args,{
     cwd:request.repository,
+    env:{...process.env,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[]})},
     stdio:["pipe","pipe","pipe"],
     detached:process.platform!=="win32"
    });
-   let stdout="",stderr="",settled=false,overflow=false;
+   let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false;
+   const preflightId=`asen-policy:${request.id}`;
 
    const finish=(result:AgentResult)=>{
     if(settled)return;
@@ -85,13 +89,26 @@ export class PiProcessRunner implements AgentRunner{
     return next;
    };
 
-   child.stdout.on("data",data=>stdout=append(stdout,data));
+   child.stdout.on("data",data=>{
+    stdout=append(stdout,data);buffer+=String(data);
+    let end;while((end=buffer.indexOf("\n"))>=0){
+     const line=buffer.slice(0,end).trim();buffer=buffer.slice(end+1);
+     let record:unknown;try{record=JSON.parse(line);}catch{continue;}
+     const response=record as {type?:string;id?:string;success?:boolean;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>}};
+     if(response.type!=="response"||response.id!==preflightId)continue;
+     const matches=response.data?.commands?.filter(item=>item.name==="asen-authority-status"&&item.source==="extension"&&item.sourceInfo?.path===policy)??[];
+     if(response.success!==true||matches.length!==1){stop();finish({id:request.id,ok:false,output:"pi ASEN policy extension was not loaded"});return;}
+     policyLoaded=true;
+     child.stdin.end(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
+    }
+   });
    child.stderr.on("data",data=>stderr=append(stderr,data));
    child.on("error",error=>finish({id:request.id,ok:false,output:`pi process error: ${String(error)}`}));
    child.on("close",code=>{
+    if(!policyLoaded)return finish({id:request.id,ok:false,output:"pi ASEN policy extension was not confirmed"});
     if(code===0&&!overflow&&this.options.validateResponseId!==false){
      try{
-      const records=stdout.trim().split(/\\r?\\n/).filter(Boolean).map(line=>JSON.parse(line));
+      const records=stdout.trim().split(/\r?\n/).filter(Boolean).map(line=>JSON.parse(line));
       const envelope=records.find(record=>record?.type==="response"&&record?.id===request.id);
       if(!envelope)return finish({id:request.id,ok:false,output:"pi correlated response missing"});
       if(envelope.success===false)return finish({id:request.id,ok:false,output:`pi response failed: ${JSON.stringify(envelope)}`});
@@ -115,7 +132,7 @@ export class PiProcessRunner implements AgentRunner{
    else this.options.signal?.addEventListener("abort",onAbort,{once:true});
 
    child.stdin.on("error",error=>finish({id:request.id,ok:false,output:`pi stdin error: ${String(error)}`}));
-   child.stdin.end(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
+   child.stdin.write(JSON.stringify({id:preflightId,type:"get_commands"})+"\n");
   });
  }
 }
