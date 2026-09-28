@@ -60,6 +60,7 @@ jobs:
           ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
           ASEN_PI_PROVIDER: llm7
           ASEN_PI_MODEL: default
+          ASEN_PI_PROVIDER_EXTENSION: npm:pi-free
         run: |
           set -euo pipefail
           export ASEN_RECOVERY_FILE="$(mktemp)"
