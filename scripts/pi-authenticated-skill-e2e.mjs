@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {spawn,execFileSync} from "node:child_process";
 import {realpathSync} from "node:fs";
+import {homedir} from "node:os";
 import {dirname,join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {issueSkillContext} from "../src/skills/context.js";
@@ -17,7 +18,8 @@ const paths=selected.map(skill=>skill.path);
 assert.deepEqual(paths,["skills/asen-phase-protocol/SKILL.md","skills/asen-explore/SKILL.md"]);
 const piMain=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
 const cli=join(dirname(piMain),"bundle","cli.js");
-const args=[cli,"--mode","rpc","--no-session","--no-skills","--no-tools","--provider","llm7","--model","default",...paths.flatMap(path=>["--skill",path])];
+const extension=realpathSync(join(process.env.PI_CODING_AGENT_DIR??join(homedir(),".pi","agent"),"npm","node_modules","pi-free","dist","index.js"));
+const args=[cli,"--mode","rpc","--no-session","--no-extensions","--extension",extension,"--no-skills","--no-tools","--provider","llm7","--model","default",...paths.flatMap(path=>["--skill",path])];
 const child=spawn(process.execPath,args,{cwd:repo,env:process.env,stdio:["pipe","pipe","pipe"]});
 const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
 const observed={loaded:false,finished:false,read:[],text:[],error:null};
