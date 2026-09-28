@@ -4,11 +4,11 @@ import {EvidenceStore} from "../src/evidence/store.js";
 import {verifyCandidate} from "../src/verify/verifier.js";
 import {assertReviewCandidate,reviewEvidence} from "../src/review/review.js";
 import {TddCycle} from "../src/test/tdd-cycle.js";
-import {executionProof,passingEvidence} from "./execution-evidence-helper.js";
+import {executionProof,passingEvidence,gitCandidate} from "./execution-evidence-helper.js";
 
-const a={id:"X",repository:"repo-A",revision:"R",createdAt:"now"};
+const a=gitCandidate("X");
 const b={...a,repository:"repo-B"};
-const report={candidateRepository:"repo-A",candidateId:"X",candidateRevision:"R",reviewer:"independent-1",reviewerRole:"independent" as const,findings:[]};
+const report={candidateRepository:a.repository,candidateId:"X",candidateRevision:a.revision,reviewer:"independent-1",reviewerRole:"independent" as const,findings:[]};
 
 test("test and review PASS from repo-A cannot verify repo-B",async()=>{
  const store=new EvidenceStore();
