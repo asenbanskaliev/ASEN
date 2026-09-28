@@ -53,6 +53,29 @@ test("TDD rejects skipped commits and unrelated REFACTOR histories",async t=>{
  const unrelated=gitCandidate(base.id,base.repository),proof=await executionProof(unrelated,0);
  assert.throws(()=>cycle.record("REFACTOR","chain:refactor","bad",proof,unrelated),/direct Git parent/);
 });
+test("TDD refuses a merge commit as a stage transition",async t=>{
+ const base=gitCandidate("merge");t.after(()=>rm(base.repository,{recursive:true,force:true}));
+ const cycle=new TddCycle(base,new EvidenceStore(),"merge");
+ cycle.record("RED","merge:red","fails",await executionProof(base,1),base);
+ const green=nextCandidateRevision(base,"green");cycle.record("GREEN","merge:green","passes",await executionProof(green,0),green);
+ const git=(...args:string[])=>execFileSync("git",["-C",base.repository,...args],{stdio:"ignore"});
+ const commit=(label:string)=>git("-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m",label);
+ git("checkout","-q","-b","feature",green.revision);commit("feature");
+ git("checkout","-q","-b","mainline",green.revision);commit("mainline");
+ git("-c","user.name=ASEN Test","-c","user.email=test@example.invalid","merge","-q","--no-ff","feature","-m","merge");
+ const merged=gitCandidate(base.id,base.repository),proof=await executionProof(merged,0);
+ assert.throws(()=>cycle.record("REFACTOR","merge:refactor","merge bypass",proof,merged),/direct Git parent/);
+});
+test("TDD does not accept another candidate id or repository mid-cycle",async t=>{
+ const base=gitCandidate("original"),foreign=gitCandidate("original");
+ t.after(()=>rm(base.repository,{recursive:true,force:true}));t.after(()=>rm(foreign.repository,{recursive:true,force:true}));
+ const cycle=new TddCycle(base,new EvidenceStore(),"identity");
+ cycle.record("RED","identity:red","fails",await executionProof(base,1),base);
+ const next=nextCandidateRevision(base,"green"),proof=await executionProof(next,0);
+ assert.throws(()=>cycle.record("GREEN","identity:green","bad id",proof,{...next,id:"other"}),/candidate lineage/);
+ const foreignProof=await executionProof(foreign,0);
+ assert.throws(()=>cycle.record("GREEN","identity:green","bad repo",foreignProof,foreign),/candidate lineage/);
+});
 test("an unresolved real failure still blocks verification",async()=>{const s=new EvidenceStore();await passingEvidence(s,c,"test-ok");s.add(c,{id:"regression",kind:"test",status:"fail",summary:"broken",createdAt:"now"});assert.equal(verifyCandidate(c,"medium",s).ok,false);});
 
 test("TDD rejects evidence from another logical cycle",async()=>{const t=new TddCycle(c,new EvidenceStore(),"cycle-a");await assert.rejects(async()=>t.record("RED","cycle-b:red","mixed",await executionProof(c,1)),/does not belong to this cycle/);});
