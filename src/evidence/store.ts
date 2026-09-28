@@ -34,11 +34,11 @@ export class EvidenceStore {
    token.proof.candidateRepository!==candidate.repository||token.proof.candidateId!==candidate.id||token.proof.candidateRevision!==candidate.revision)throw new Error("TDD stage candidate mismatch");
   const {cycleId,stage,proof}=token;
   if(evidence.id!==`${cycleId}:${stage.toLowerCase()}`)throw new Error("TDD stage id mismatch");
-  const prior=this.forCandidate(candidate);
+  const prior=[...this.#items.values()].filter(x=>x.candidateRepository===candidate.repository&&x.candidateId===candidate.id);
   if(stage==="GREEN"&&!prior.some(x=>x.id===`${cycleId}:red`&&x.status==="expected-fail"&&x.execution?.exitCode!==0))throw new Error("TDD GREEN requires executed RED");
   if(stage==="REFACTOR"&&!prior.some(x=>x.id===`${cycleId}:green`&&x.status==="pass"&&x.execution?.exitCode===0))throw new Error("TDD REFACTOR requires executed GREEN");
   if(stage==="RED"?proof.exitCode===0:proof.exitCode!==0)throw new Error("TDD stage command exit code mismatch");
-  return this.#insert(candidate,{id:evidence.id,kind:"tdd",status:stage==="RED"?"expected-fail":"pass",summary:evidence.summary,createdAt:proof.finishedAt,
+  return this.#insert(candidate,{id:evidence.id,kind:"tdd",status:stage==="RED"?"expected-fail":"pass",summary:evidence.summary,createdAt:proof.finishedAt,tdd:{cycleId,stage,...(token.previousRevision?{previousRevision:token.previousRevision}:{})},
    execution:{command:[...proof.command],cwd:proof.cwd,exitCode:proof.exitCode,startedAt:proof.startedAt,finishedAt:proof.finishedAt}});
  }
  addReviewed(candidate:Candidate,proof:ExecutedReview):Evidence{
@@ -70,7 +70,7 @@ export class EvidenceStore {
  const store=new EvidenceStore();
  for(const item of v.items){
   if(!item||item.candidateRepository!==candidate.repository||item.candidateId!==candidate.id||item.candidateRevision!==candidate.revision||typeof item.id!=="string"||!item.id||!kinds.has(item.kind)||!statuses.has(item.status)||typeof item.summary!=="string"||typeof item.createdAt!=="string")throw new Error("Evidence recovery item mismatch");
-  store.#restoreVerified(candidate,{id:item.id,kind:item.kind,status:item.status,summary:item.summary,createdAt:item.createdAt,...(item.execution?{execution:item.execution}:{}),...(item.review?{review:item.review}:{})});
+  store.#restoreVerified(candidate,{id:item.id,kind:item.kind,status:item.status,summary:item.summary,createdAt:item.createdAt,...(item.execution?{execution:item.execution}:{}),...(item.review?{review:item.review}:{}),...(item.tdd?{tdd:item.tdd}:{})});
  }
  return store;
 }
@@ -83,12 +83,12 @@ export class EvidenceStore {
  hasPassing(candidate:Candidate,kind:Evidence["kind"]):boolean{
   const items=this.forCandidate(candidate);
   if(kind==="tdd"){
-   return items.some((item,index)=>{
-    if(item.kind!=="tdd"||item.status!=="pass"||!item.id.endsWith(":refactor")||item.execution?.exitCode!==0)return false;
-    const cycle=item.id.slice(0,-":refactor".length);
-    const red=items.findIndex(x=>x.id===`${cycle}:red`&&x.kind==="tdd"&&x.status==="expected-fail"&&!!x.execution&&x.execution.exitCode!==0);
-    const green=items.findIndex(x=>x.id===`${cycle}:green`&&x.kind==="tdd"&&x.status==="pass"&&x.execution?.exitCode===0);
-    return red>=0&&red<green&&green<index;
+   return items.some(item=>{
+    if(item.kind!=="tdd"||item.status!=="pass"||item.tdd?.stage!=="REFACTOR"||item.execution?.exitCode!==0)return false;
+    const all=[...this.#items.values()].filter(x=>x.candidateRepository===candidate.repository&&x.candidateId===candidate.id&&x.kind==="tdd"&&x.tdd?.cycleId===item.tdd?.cycleId);
+    const green=all.find(x=>x.tdd?.stage==="GREEN"&&x.candidateRevision===item.tdd?.previousRevision&&x.status==="pass"&&x.execution?.exitCode===0);
+    const red=green&&all.find(x=>x.tdd?.stage==="RED"&&x.candidateRevision===green.tdd?.previousRevision&&x.status==="expected-fail"&&!!x.execution&&x.execution.exitCode!==0);
+    return !!red;
    });
   }
   return items.some(i=>i.kind===kind&&i.status==="pass");
