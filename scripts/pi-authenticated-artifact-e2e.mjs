@@ -86,8 +86,8 @@ for(const [role,phase] of roles){
  assert.equal(artifact.candidateId,candidate.id,`ASEN artifact ${role} lost candidateId`);
  assert.equal(artifact.revision,revision,`ASEN artifact ${role} lost revision`);
  if(raw.kind!==undefined)assert.equal(artifact.kind,raw.kind,`ASEN artifact ${role} changed model kind`);
- const expectedContent=typeof raw.content==="string"?raw.content.trim():JSON.stringify(raw);
- assert.equal(artifact.content,expectedContent,`ASEN artifact ${role} changed model content`);
+ if(typeof raw.content==="string")assert.equal(artifact.content,raw.content.trim(),`ASEN artifact ${role} changed model content`);
+ else assert.deepEqual(JSON.parse(artifact.content),raw,`ASEN artifact ${role} changed model content`);
  results.push({role,phase,skills:selected,kind:artifact.kind});
 }
 console.log(JSON.stringify({candidate:revision,provider,model,artifacts:results,result:"PASS"}));
