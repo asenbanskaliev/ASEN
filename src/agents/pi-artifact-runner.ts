@@ -1,4 +1,4 @@
-import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
+import type {AgentArtifactProof,AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
 import {PiProcessRunner} from "./pi-process-runner.js";
 
 /** Convert a completed Pi RPC turn into the single artifact consumed by the lifecycle. */
@@ -25,13 +25,13 @@ export function extractPiArtifact(output:string,requestId:string):string{
  return body;
 }
 
-/** The lifecycle receives a Pi-produced artifact, never the raw RPC envelope. */
+const issuedArtifactProofs=new WeakSet<object>();\nexport function isIssuedAgentArtifactProof(value:unknown):value is AgentArtifactProof{return typeof value==="object"&&value!==null&&issuedArtifactProofs.has(value);}\nfunction issueArtifactProof(request:AgentRequest):AgentArtifactProof{const proof=Object.freeze({requestId:request.id,role:request.role,repository:request.repository,...(request.candidate?{candidateId:request.candidate.id,candidateRevision:request.candidate.revision}:{}),skillPaths:Object.freeze([...(request.skillPaths??[])])});issuedArtifactProofs.add(proof);return proof;}\n\n/** The lifecycle receives a Pi-produced artifact, never the raw RPC envelope. */
 export class PiArtifactRunner implements AgentRunner{
  constructor(private readonly pi:PiProcessRunner){}
  async run(request:AgentRequest):Promise<AgentResult>{
   const response=await this.pi.run(request);
   if(!response.ok||response.id!==request.id)return {...response,ok:false};
-  try{return {id:request.id,ok:true,output:extractPiArtifact(response.output,request.id)};}
+  try{return {id:request.id,ok:true,output:extractPiArtifact(response.output,request.id),artifactProof:issueArtifactProof(request)};}
   catch(error){return {id:request.id,ok:false,output:String(error)};}
  }
 }
