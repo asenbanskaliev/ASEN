@@ -5,12 +5,41 @@ import type { Candidate, Evidence } from "../core/types.js";
 import {isExecutedEvidence,type ExecutedEvidence} from "./execution.js";
 import {isExecutedReview,type ExecutedReview} from "./review-execution.js";
 import {isIssuedTddStage,type IssuedTddStage} from "../test/tdd-cycle.js";
+import {assertDirectGitParent,assertGitAncestor} from "./git-lineage.js";
 interface Envelope{version:1;candidate:Candidate;items:Evidence[];}
 const kinds=new Set(["test","review","command","audit","tdd","route-decision","work-unit","scope","rollback"]);
 const statuses=new Set(["pass","fail","expected-fail"]);
 function sign(value:Envelope,key:Buffer):string{
  if(key.length<32)throw new Error("Evidence recovery requires a 32-byte secret");
  return createHmac("sha256",key).update(JSON.stringify(value)).digest("hex");
+}
+function validateTddHistory(candidate:Candidate,items:Evidence[]):void{
+ const stages=new Map<string,Evidence>();
+ for(const item of items){
+  if(item.kind!=="tdd"){
+   if(item.tdd!==undefined)throw new Error("Non-TDD evidence cannot carry TDD metadata");
+   continue;
+  }
+  const meta=item.tdd;
+  if(!meta||typeof meta.cycleId!=="string"||!meta.cycleId.trim()||meta.cycleId.includes(":")||
+   !(["RED","GREEN","REFACTOR"] as unknown[]).includes(meta.stage)||
+   Object.keys(meta).some(key=>!["cycleId","stage","previousRevision"].includes(key))||
+   item.id!==`${meta.cycleId}:${meta.stage.toLowerCase()}`||
+   (meta.stage==="RED"?meta.previousRevision!==undefined:typeof meta.previousRevision!=="string")||
+   (meta.stage==="RED"?item.status!=="expected-fail"||!item.execution||item.execution.exitCode===0:item.status!=="pass"||item.execution?.exitCode!==0))
+   throw new Error("Recovered TDD stage structure invalid");
+  assertGitAncestor(candidate.repository,item.candidateRevision,candidate.revision);
+  const key=`${meta.cycleId}:${meta.stage}`;
+  if(stages.has(key))throw new Error("Recovered TDD cycle has duplicate stage");
+  stages.set(key,item);
+ }
+ for(const item of stages.values()){
+  const meta=item.tdd!;
+  if(meta.stage==="RED")continue;
+  const previous=stages.get(`${meta.cycleId}:${meta.stage==="GREEN"?"RED":"GREEN"}`);
+  if(!previous||previous.candidateRevision!==meta.previousRevision)throw new Error("Recovered TDD previousRevision does not match its cycle");
+  assertDirectGitParent(candidate.repository,previous.candidateRevision,item.candidateRevision);
+ }
 }
 export class EvidenceStore {
  readonly #items=new Map<string,Evidence>();
@@ -67,6 +96,7 @@ export class EvidenceStore {
  const v=raw.value,c=v.candidate;
  if(v.version!==1||!c||c.repository!==candidate.repository||c.id!==candidate.id||c.revision!==candidate.revision)throw new Error("Evidence recovery candidate mismatch");
  if(!Array.isArray(v.items))throw new Error("Evidence recovery items invalid");
+ validateTddHistory(candidate,v.items);
  const store=new EvidenceStore();
  for(const item of v.items){
   if(!item||item.candidateRepository!==candidate.repository||item.candidateId!==candidate.id||(item.kind!=="tdd"&&item.candidateRevision!==candidate.revision)||typeof item.id!=="string"||!item.id||!kinds.has(item.kind)||!statuses.has(item.status)||typeof item.summary!=="string"||typeof item.createdAt!=="string")throw new Error("Evidence recovery item mismatch");
@@ -99,6 +129,7 @@ export class EvidenceStore {
 
 export async function saveEvidence(path:string,candidate:Candidate,store:EvidenceStore,key:Buffer):Promise<void>{
  const value:Envelope={version:1,candidate:structuredClone(candidate),items:store.forLogicalCandidate(candidate)};
+ validateTddHistory(candidate,value.items);
  const temp=join(dirname(path),`.${basename(path)}.${randomUUID()}.tmp`);
  let handle;
  try{
