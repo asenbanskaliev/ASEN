@@ -6,13 +6,17 @@ import {dirname,join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
+import {loadLifecycle} from "../src/lifecycle/skill-lifecycle.js";
+import {recoveryKeyFromEnvironment} from "../src/session/recovery-key.js";
 
 const repo=resolve(".");
 const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repo,encoding:"utf8"}).trim();
 if(process.env.ASEN_EXPECTED_SHA&&revision!==process.env.ASEN_EXPECTED_SHA)throw new Error("Authenticated Pi candidate does not match the PR HEAD");
 if(!process.env.LLM7_API_KEY)throw new Error("LLM7_API_KEY repository secret is unavailable");
 const candidate={id:"pr30-authenticated-pi",repository:repo,revision,createdAt:new Date().toISOString()};
-const context=issueSkillContext("pr30-authenticated-pi:explorer",repo,candidate,{phase:"explore",risk:"low"});
+const recovered=process.env.ASEN_RECOVERY_FILE?await loadLifecycle(process.env.ASEN_RECOVERY_FILE,"pr30-authenticated-pi",candidate,recoveryKeyFromEnvironment()):undefined;
+if(recovered)assert.equal(recovered.state.nextPhase,"explore","Recovered lifecycle phase mismatch");
+const context=recovered?recovered.reissuePendingAuthority().context:issueSkillContext("pr30-authenticated-pi:explorer",repo,candidate,{phase:"explore",risk:"low"});
 const selected=selectSkills(context);
 const paths=selected.map(skill=>skill.path);
 assert.deepEqual(paths,["skills/asen-phase-protocol/SKILL.md","skills/asen-explore/SKILL.md"]);
