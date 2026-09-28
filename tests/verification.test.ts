@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { EvidenceStore } from "../src/evidence/store.js";
 import { verifyCandidate } from "../src/verify/verifier.js";
-import {passingEvidence} from "./execution-evidence-helper.js";
+import {passingEvidence,gitCandidate} from "./execution-evidence-helper.js";
 
-const a={id:"a",repository:"r",revision:"111",createdAt:"now"};
+const a=gitCandidate("a");
 const b={id:"b",repository:"r",revision:"222",createdAt:"now"};
 
 test("evidence cannot verify a different candidate", async () => {
