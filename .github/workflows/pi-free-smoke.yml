@@ -51,3 +51,19 @@ jobs:
           npm install
           npm test
           npm run typecheck
+      - name: Execute authenticated ASEN contracts with Pi Free
+        shell: bash
+        env:
+          LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          ASEN_PI_PROVIDER: llm7
+          ASEN_PI_MODEL: default
+        run: |
+          set -euo pipefail
+          export ASEN_RECOVERY_FILE="$(mktemp)"
+          export ASEN_RECOVERY_KEY="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("base64url"))')"
+          trap 'rm -f "$ASEN_RECOVERY_FILE"' EXIT
+          node --import tsx scripts/pi-authenticated-recovery-init.mjs
+          node --import tsx scripts/pi-authenticated-skill-e2e.mjs
+          node --import tsx scripts/pi-authenticated-artifact-e2e.mjs
+          node --import tsx scripts/pi-authenticated-lifecycle-e2e.mjs
