@@ -29,7 +29,7 @@ const cli=join(dirname(piMain),"bundle","cli.js");
 const results=[];
 for(const probe of probes){
  const paths=probe.expected,expected=paths.map(path=>realpathSync(resolve(repo,path)));
- const args=[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--no-tools","--provider","openrouter","--model","openrouter/free",...paths.flatMap(path=>["--skill",path])];
+ const args=[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--no-tools","--provider","openrouter","--model","qwen/qwen3.8-27b:free",...paths.flatMap(path=>["--skill",path])];
  const child=spawn(process.execPath,args,{cwd:repo,env:process.env,stdio:["pipe","pipe","pipe"]});
  const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
  const observed={loaded:false,finished:false,text:[],error:null};
@@ -59,4 +59,4 @@ for(const probe of probes){
  assert.equal(observed.loaded,true,`Pi never confirmed native Skill loading for ${probe.role}`);assert.equal(observed.finished,true,`Authenticated ${probe.role} turn did not complete`);assert.ok(observed.text.join("\n").trim().length>0,`Authenticated ${probe.role} turn returned no assistant text`);
  results.push({role:probe.role,skills:paths,nativeSkillLoadCount:expected.length,toolCalls:0});
 }
-console.log(JSON.stringify({candidate:revision,provider:"openrouter",model:"openrouter/free",probes:results,result:"PASS"}));
+console.log(JSON.stringify({candidate:revision,provider:"openrouter",model:"qwen/qwen3.8-27b:free",probes:results,result:"PASS"}));
