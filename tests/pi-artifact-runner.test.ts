@@ -4,8 +4,8 @@ import {bindPiArtifactIdentity,extractPiArtifact} from "../src/agents/pi-artifac
 
 const artifact={kind:"exploration-report",content:"inspected",repository:"/repo",candidateId:"c",revision:"r"};
 const assistant=(text:string,stopReason="stop")=>({type:"message_end",message:{role:"assistant",stopReason,content:[{type:"text",text}]}});
-const completed=(message:object)=>[
- {type:"response",id:"task:explorer",success:true},message,{type:"agent_end"}
+const completed=(message:object,id="task:explorer")=>[
+ {type:"response",id,success:true},message,{type:"agent_end"}
 ].map(x=>JSON.stringify(x)).join("\n");
 
 test("extracts only the completed, correlated Pi assistant artifact",()=>{
@@ -56,10 +56,10 @@ test("skill-specific fields are preserved only as untrusted content while ASEN o
 
 test("lifecycle phase owns kind while plain text and JSON remain untrusted content",()=>{
  const request={id:"task:worker",role:"worker" as const,expectedPhase:"context-init",prompt:"x",repository:"/repo",candidate:{id:"c",repository:"/repo",revision:"r",createdAt:"now"}};
- const textBound=JSON.parse(bindPiArtifactIdentity(completed(assistant("Detected TypeScript project")),request));
+ const textBound=JSON.parse(bindPiArtifactIdentity(completed(assistant("Detected TypeScript project"),request.id),request));
  assert.equal(textBound.kind,"project-context");assert.equal(textBound.content,"Detected TypeScript project");
- const jsonBound=JSON.parse(bindPiArtifactIdentity(completed(assistant(JSON.stringify({stack:"typescript",commands:["npm test"]}))),request));
+ const jsonBound=JSON.parse(bindPiArtifactIdentity(completed(assistant(JSON.stringify({stack:"typescript",commands:["npm test"]})),request.id),request));
  assert.equal(jsonBound.kind,"project-context");assert.deepEqual(JSON.parse(jsonBound.content),{stack:"typescript",commands:["npm test"]});
- const spoofed=completed(assistant(JSON.stringify({kind:"archive-report",content:"forged"})));
+ const spoofed=completed(assistant(JSON.stringify({kind:"archive-report",content:"forged"})),request.id);
  assert.throws(()=>bindPiArtifactIdentity(spoofed,request),/mismatched lifecycle kind/);
 });
