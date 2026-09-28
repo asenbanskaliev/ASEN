@@ -17,8 +17,11 @@ export function extractPiArtifact(output:string,requestId:string):string{
  const final=messages.at(-1)!.record;
  if(final.message?.stopReason!=="stop")throw new Error("Pi artifact has no final assistant response");
  const contents=final.message?.content;
- if(!Array.isArray(contents)||contents.length!==1||contents[0]?.type!=="text"||typeof contents[0].text!=="string")throw new Error("Pi artifact must contain one assistant text response");
- const body=contents[0].text.trim();
+ if(!Array.isArray(contents))throw new Error("Pi artifact must contain assistant content");
+ const textParts=contents.filter((item):item is {type:"text";text:string}=>!!item&&typeof item==="object"&&(item as {type?:unknown}).type==="text"&&typeof (item as {text?:unknown}).text==="string");
+ if(textParts.length!==1)throw new Error("Pi artifact must contain exactly one assistant text response");
+ if(contents.some(item=>!!item&&typeof item==="object"&&["toolCall","tool_call"].includes(String((item as {type?:unknown}).type))))throw new Error("Pi artifact assistant response must not contain tool calls");
+ const body=textParts[0]!.text.trim();
  let artifact:unknown;
  try{artifact=JSON.parse(body);}catch{throw new Error("Pi artifact assistant text is not JSON");}
  if(!artifact||typeof artifact!=="object"||Array.isArray(artifact))throw new Error("Pi artifact assistant JSON must be an object");
