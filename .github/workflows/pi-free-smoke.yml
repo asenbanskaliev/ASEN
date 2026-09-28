@@ -5,7 +5,7 @@ on:
 permissions:
   contents: read
 jobs:
-  anonymous-free-model:
+  authenticated-free-model:
     if: github.event.pull_request.number == 30 && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -22,15 +22,11 @@ jobs:
           pi install npm:pi-free
       - name: Inspect pi-free registered models
         run: pi --list-models
-      - name: Anonymous free-model smoke
-        env:
-          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+      - name: Verify LLM7 registration
         run: |
           set -euo pipefail
           pi --list-models | tee "$RUNNER_TEMP/models.txt"
-          MODEL_LINE="$(grep -Ei 'llm7|free' "$RUNNER_TEMP/models.txt" | head -n 1 || true)"
-          test -n "$MODEL_LINE"
-          echo "Detected: $MODEL_LINE"
+          grep -Ei 'llm7' "$RUNNER_TEMP/models.txt" | head -n 1
       - name: Execute authenticated LLM7 turn
         shell: bash
         env:
@@ -39,12 +35,14 @@ jobs:
           set -euo pipefail
           test -n "$LLM7_API_KEY"
           OUTPUT=""
-for attempt in 1 2 3; do
-  if OUTPUT=$(pi --no-session --provider llm7 --model default --print "Reply with exactly ASEN_PI_FREE_OK"); then
-    break
-  fi
-  if [ "$attempt" -eq 3 ]; then exit 1; fi
-  sleep $((attempt * 5))
-done
+          for attempt in 1 2 3; do
+            if OUTPUT=$(pi --no-session --provider llm7 --model default --print "Reply with exactly ASEN_PI_FREE_OK"); then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
           echo "$OUTPUT"
           echo "$OUTPUT" | grep -q ASEN_PI_FREE_OK
