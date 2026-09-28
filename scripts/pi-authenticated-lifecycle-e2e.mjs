@@ -42,7 +42,9 @@ for(const [phase,role,kind] of phases){
   "Set content to a short non-empty statement describing completion of this phase.",
   `Required JSON shape: {"kind":"${kind}","content":"..."}`
  ].join("\n");
- const state=await flow.runPhase(dispatcher,{phase,context,skillPaths,prompt,evidence,risk:"low"});
+ let state;
+ try{state=await flow.runPhase(dispatcher,{phase,context,skillPaths,prompt,evidence,risk:"low"});}
+ catch(error){throw new Error(`Authenticated lifecycle phase ${phase} failed: ${String(error)}`); }
  assert.equal(state.records.at(-1)?.phase,phase);
  assert.equal(state.records.at(-1)?.artifact.kind,kind);
  console.log(JSON.stringify({phase,role,skills:skillPaths,result:"PASS"}));
