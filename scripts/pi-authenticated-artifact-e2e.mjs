@@ -32,7 +32,9 @@ for(const [role,phase] of roles){
  "This is a machine-readable ASEN audit step, not a conversational request.",
  "Your entire assistant response MUST be exactly the JSON object on the next line.",
  "Do not use Markdown fences. Do not add prose. Do not rename, omit, or add fields. Do not call tools.",
- JSON.stringify(metadata)
+ JSON.stringify(metadata),
+ "The audit envelope is the required output for this probe. Do not substitute a skill-specific action object.",
+ "Return only the two requested fields and no others."
 ].join("\n");
  assert.ok(message.includes("\n"),"Structured Pi prompt must contain real line breaks");
  assert.ok(!message.includes("\\\\n"),"Structured Pi prompt must not contain escaped line-break text");
