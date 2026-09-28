@@ -4,7 +4,7 @@ import {guardedTransition,transition} from "../src/core/state-machine.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {authorizeImplementation,authorizeVerified,type TransitionAuthorization} from "../src/verify/verifier.js";
 import {issueSkillContext} from "../src/skills/context.js";
-import {passingEvidence,gitCandidate} from "./execution-evidence-helper.js";
+import {passingEvidence,passingReview,gitCandidate} from "./execution-evidence-helper.js";
 
 const candidate=gitCandidate("c");
 function implementationAuthorization(){
@@ -17,7 +17,7 @@ async function verifiedAuthorization(){
  const evidence=new EvidenceStore();
  await passingEvidence(evidence,candidate,"test");
  evidence.add(candidate,{id:"unit-v",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
- evidence.add(candidate,{id:"review-v",kind:"review",status:"pass",summary:"review",createdAt:"now"});
+ await passingReview(evidence,candidate,"review-v");
  return authorizeVerified(candidate,"medium",issueSkillContext("task",candidate.repository,candidate,{verification:true}),evidence);
 }
 
