@@ -35,12 +35,11 @@ for(const [phase,role,kind] of phases){
  const context=issueSkillContext(`${taskId}:${role}`,repository,candidate,{phase,risk:"low"});
  const skillPaths=selectSkills(context).map(skill=>skill.path);
  const prompt=[
-  "Return one machine-readable lifecycle artifact.",
-  "Your entire final response must be exactly one JSON object with only kind and content.",
+  "Return the functional result for this phase as exactly one JSON object.",
   "Do not use Markdown fences or commentary.",
-  `Use exactly this kind: ${kind}`,
-  "Set content to a short non-empty statement describing completion of this phase.",
-  `Required JSON shape: {"kind":"${kind}","content":"..."}`
+  "Follow the loaded Skill output contract.",
+  "Do not provide repository, candidateId or revision; ASEN binds lifecycle identity.",
+  "Keep the result concise and machine-readable."
  ].join("\n");
  let state;
  try{state=await flow.runPhase(dispatcher,{phase,context,skillPaths,prompt,evidence,risk:"low"});}
