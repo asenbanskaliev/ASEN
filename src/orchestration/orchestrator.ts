@@ -24,6 +24,7 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddDec
     return {context,skills:selected.map(skill=>skill.id),skillPaths:selected.map(skill=>skill.path)};
   };
   const requestedPhase=input.skillPhase??"apply";
+  if(input.writeSurfaces?.length&&requestedPhase!=="apply")throw new Error("Writer orchestration requires apply phase");
   const primary=contextFor("worker",requestedPhase,decision.verification==="independent");
   const skills=primary.skills;
   const agents:AgentRequest[]=[];
