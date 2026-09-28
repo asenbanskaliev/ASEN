@@ -4,7 +4,7 @@ import {EvidenceStore} from "../src/evidence/store.js";
 import {verifyCandidate} from "../src/verify/verifier.js";
 import {assertReviewCandidate,reviewEvidence} from "../src/review/review.js";
 import {TddCycle} from "../src/test/tdd-cycle.js";
-import {executionProof,passingEvidence,passingReview,gitCandidate} from "./execution-evidence-helper.js";
+import {executionProof,passingEvidence,passingReview,gitCandidate,nextCandidateRevision} from "./execution-evidence-helper.js";
 
 const a=gitCandidate("X");
 const b={...a,repository:"repo-B"};
@@ -33,6 +33,6 @@ test("review from repo-A is rejected for repo-B",()=>{
 
 test("TDD evidence from repo-A is invisible to repo-B",async()=>{
  const store=new EvidenceStore(),cycle=new TddCycle(a,store,"repo-a-cycle");
- cycle.record("RED","repo-a-cycle:red","failed",await executionProof(a,1));cycle.record("GREEN","repo-a-cycle:green","passed",await executionProof(a,0));cycle.record("REFACTOR","repo-a-cycle:refactor","passed",await executionProof(a,0));
+ cycle.record("RED","repo-a-cycle:red","failed",await executionProof(a,1),a);const green=nextCandidateRevision(a,"repo-a-green");cycle.record("GREEN","repo-a-cycle:green","passed",await executionProof(green,0),green);const refactor=nextCandidateRevision(green,"repo-a-refactor");cycle.record("REFACTOR","repo-a-cycle:refactor","passed",await executionProof(refactor,0),refactor);
  assert.equal(store.forCandidate(b).length,0);
 });
