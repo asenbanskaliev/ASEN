@@ -34,3 +34,17 @@ At the same HEAD, Phase 0 Architecture run 36345025884, CI run 36345025887 (Ubun
 ## Role tool restriction — 2026-09-27
 
 The authenticated explorer probe now launches Pi with `--tools read` in addition to the exact Skills. On candidate `4c512a1addce411e540439a377102da5d313a3ff`, run 36345285070 passed with a real OpenRouter model turn reading both files. The ASEN Pi process runner now supplies `--tools read` for issued explorer, reviewer and verifier turns, and rejects caller-provided skill/tool switches (including `--tools=bash`); `tests/pi-process-runner.test.ts` checks exact arguments and an adversarial override. Local typecheck and 137 tests passed for this change. The worker still has process command access, so this does not prevent subprocess redelegation or constitute OS-enforced write isolation. Full authenticated role lifecycle, recovery after restart and fabricated evidence prevention remain open. CAP-SKL-001 remains `specified`.
+
+## Evidence trust checkpoint — 2026-09-28
+
+The exact PR head before these changes was `c75121c2342fd0e705ff8563346858fa42e34c07`; all four workflows passed there. The following distinctions apply to the subsequent candidates and must be checked again at the final HEAD.
+
+| Property | Status | Evidence and limit |
+| --- | --- | --- |
+| Public recovery bypass | PROBADO, closed | `EvidenceStore.restoreSigned` was removed. The only insertion of recovered passing execution evidence is private to the signed-file loading module after HMAC, candidate identity and item checks; `tests/evidence-persistence.test.ts` demonstrates the former forged PASS cannot be inserted by a caller. The recovery key still has to come from a trusted host. |
+| Executed test/TDD repository and revision | PARCIAL | `executeEvidenceCommand` checks the actual Git root and `HEAD` against the candidate before and after execution. `tests/execution-revision.test.ts` uses a real temporary Git repository and rejects wrong cwd, a nested directory, wrong revision, changed HEAD during execution and a different candidate. This proves the HEAD identity, not a clean worktree or that the test inspected all relevant files. |
+| Real authenticated Pi and extension loading | PARCIAL | On candidate `aca2d62d0e0f6d36b6f6a54193c39a2a30e0371b`, authenticated run 36381084569 passed with exactly two native Skills, an assistant response and zero tool calls. Pi used `--no-extensions` with one explicit `pi-free@2.8.1` extension path and `--no-tools`. This proves one bounded model turn, not the full lifecycle or OS isolation. |
+| Independent reviewer provenance | NO PROBADO | A caller can currently insert `{kind:"review",status:"pass"}` directly into EvidenceStore. High-risk verification can accept it. Do not treat a plain report or a fixture reviewer as authenticated. |
+| Worker process isolation, reissued recovery authority, full authenticated lifecycle | NO PROBADO | Existing logical checks and fixture tests do not establish these process and model properties. |
+
+CAP-SKL-001 remains `specified`. No merge authorization follows from green workflows while the listed critical gaps remain.
