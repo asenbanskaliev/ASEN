@@ -14,7 +14,7 @@ export interface ExecutedEvidence {
  readonly finishedAt:string;
 }
 const executed=new WeakSet<object>();
-function assertExactGitCandidate(candidate:Candidate,cwd:string):void{
+export function assertExactGitCandidate(candidate:Candidate,cwd:string):void{
  const run=(...args:string[])=>execFileSync("git",["-C",cwd,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim();
  let prefix:string,head:string;
  try{prefix=run("rev-parse","--show-prefix");head=run("rev-parse","HEAD");}
