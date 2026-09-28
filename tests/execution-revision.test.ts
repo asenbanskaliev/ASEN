@@ -72,5 +72,6 @@ test("execution currently detects a transient tracked mutation restored before r
  execFileSync("git",["-C",repo,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","-m","initial"]);
  const revision=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
  const candidate={repository:repo,id:"transient",revision,createdAt:"now"};
- const transient=[process.execPath,"-e",`const fs=require("fs");const p=require("path").join(process.cwd(),"source.js");fs.writeFileSync(p,"mutated\\n");fs.readFileSync(p,"utf8");fs.writeFileSync(p,"original\\n")`] as const;\n await assert.rejects(()=>executeEvidenceCommand(candidate,transient),/unchanged tracked files/);
+ const transient=[process.execPath,"-e",`const fs=require("fs");const p=require("path").join(process.cwd(),"source.js");fs.writeFileSync(p,"mutated\\n");fs.readFileSync(p,"utf8");fs.writeFileSync(p,"original\\n")`] as const;
+ await assert.rejects(()=>executeEvidenceCommand(candidate,transient),/unchanged tracked files/);
 });
