@@ -28,6 +28,12 @@ test("TDD requires a stable non-empty cycle id",()=>assert.throws(()=>new TddCyc
 
 test("a lone GREEN cannot satisfy the TDD verification gate",async()=>{
  const store=new EvidenceStore(),proof=await executionProof(c,0);
- addExecutedEvidence(store,c,proof,{id:"rogue:green",kind:"tdd",summary:"GREEN without RED or REFACTOR"});
+ assert.throws(()=>addExecutedEvidence(store,c,proof,{id:"rogue:green",kind:"tdd",summary:"GREEN without RED or REFACTOR"}),/ordered TddCycle/);
  assert.equal(verifySkillEvidence(c,["asen-tdd"],store,"verification").ok,false);
+ const cycle=new TddCycle(c,store,"real");
+ cycle.record("RED","real:red","failed",await executionProof(c,1));
+ cycle.record("GREEN","real:green","passing",await executionProof(c,0));
+ assert.equal(verifySkillEvidence(c,["asen-tdd"],store,"verification").ok,false,"GREEN alone is incomplete");
+ cycle.record("REFACTOR","real:refactor","passing",await executionProof(c,0));
+ assert.equal(verifySkillEvidence(c,["asen-tdd"],store,"verification").ok,true);
 });
