@@ -60,7 +60,7 @@ export class SkillLifecycle{
   if(input.phase!==s.nextPhase)throw new Error("Lifecycle phase out of order");
   if(input.phase==="apply"&&(!input.writeSurfaces||!input.writeSurfaces.length))throw new Error("Lifecycle apply requires bounded write surfaces");
   if(input.phase!=="apply"&&input.writeSurfaces?.length)throw new Error("Lifecycle write authority only available in apply");
-  const request:AgentRequest={id:`${s.taskId}:${role}`,role,prompt:input.prompt,repository:s.candidate.repository,candidate:s.candidate,skillContext:input.context,skillPaths:input.skillPaths,
+  const request:AgentRequest={id:`${s.taskId}:${role}`,role,expectedPhase:input.phase,prompt:input.prompt,repository:s.candidate.repository,candidate:s.candidate,skillContext:input.context,skillPaths:input.skillPaths,
    ...(input.phase==="apply"?{writeSurfaces:input.writeSurfaces!}:{})};
   // Validate authority before invoking the agent, then validate its result before advancing.
   this.#assertAuthority(input.phase,role,input.context,input.skillPaths);
