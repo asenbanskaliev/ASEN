@@ -38,12 +38,24 @@ test("a lone GREEN cannot satisfy the TDD verification gate",async()=>{
  assert.throws(()=>addExecutedEvidence(store,c,proof,{id:"rogue:green",kind:"tdd",summary:"GREEN without RED or REFACTOR"}),/ordered TddCycle/);
  assert.equal(verifySkillEvidence(c,["asen-tdd"],store,"verification").ok,false);
  const cycle=new TddCycle(c,store,"real");
- cycle.record("RED","real:red","failed",await executionProof(c,1),c);\n const green=nextCandidateRevision(c,"real-green");cycle.record("GREEN","real:green","passing",await executionProof(green,0),green);\n assert.equal(verifySkillEvidence(green,["asen-tdd"],store,"verification").ok,false,"GREEN alone is incomplete");\n const refactor=nextCandidateRevision(green,"real-refactor");cycle.record("REFACTOR","real:refactor","passing",await executionProof(refactor,0),refactor);\n assert.equal(verifySkillEvidence(refactor,["asen-tdd"],store,"verification").ok,true);
+ cycle.record("RED","real:red","failed",await executionProof(c,1),c);
+ const green=nextCandidateRevision(c,"real-green");cycle.record("GREEN","real:green","passing",await executionProof(green,0),green);
+ assert.equal(verifySkillEvidence(green,["asen-tdd"],store,"verification").ok,false,"GREEN alone is incomplete");
+ const refactor=nextCandidateRevision(green,"real-refactor");cycle.record("REFACTOR","real:refactor","passing",await executionProof(refactor,0),refactor);
+ assert.equal(verifySkillEvidence(refactor,["asen-tdd"],store,"verification").ok,true);
 });
 
 test("signed recovery retains only a complete TDD cycle on the same revision",async t=>{
  const folder=await mkdtemp(join(tmpdir(),"asen-tdd-recovery-"));t.after(()=>rm(folder,{recursive:true,force:true}));
- const base=gitCandidate("recovered"),path=join(folder,"evidence.json"),key=randomBytes(32),store=new EvidenceStore(),cycle=new TddCycle(base,store,"recovered");\n cycle.record("RED","recovered:red","expected failure",await executionProof(base,1),base);\n const green=nextCandidateRevision(base,"recovered-green");cycle.record("GREEN","recovered:green","passing",await executionProof(green,0),green);\n await saveEvidence(path,green,store,key);\n const partial=await loadEvidence(path,green,key);
+ const base=gitCandidate("recovered"),path=join(folder,"evidence.json"),key=randomBytes(32),store=new EvidenceStore(),cycle=new TddCycle(base,store,"recovered");
+ cycle.record("RED","recovered:red","expected failure",await executionProof(base,1),base);
+ const green=nextCandidateRevision(base,"recovered-green");cycle.record("GREEN","recovered:green","passing",await executionProof(green,0),green);
+ await saveEvidence(path,green,store,key);
+ const partial=await loadEvidence(path,green,key);
  assert.equal(verifySkillEvidence(c,["asen-tdd"],partial,"verification").ok,false);
- const refactor=nextCandidateRevision(green,"recovered-refactor");cycle.record("REFACTOR","recovered:refactor","passing",await executionProof(refactor,0),refactor);\n await saveEvidence(path,refactor,store,key);\n const finished=await loadEvidence(path,refactor,key);\n assert.equal(verifySkillEvidence(refactor,["asen-tdd"],finished,"verification").ok,true);\n assert.equal(verifySkillEvidence({...refactor,revision:"different"},["asen-tdd"],finished,"verification").ok,false);
+ const refactor=nextCandidateRevision(green,"recovered-refactor");cycle.record("REFACTOR","recovered:refactor","passing",await executionProof(refactor,0),refactor);
+ await saveEvidence(path,refactor,store,key);
+ const finished=await loadEvidence(path,refactor,key);
+ assert.equal(verifySkillEvidence(refactor,["asen-tdd"],finished,"verification").ok,true);
+ assert.equal(verifySkillEvidence({...refactor,revision:"different"},["asen-tdd"],finished,"verification").ok,false);
 });
