@@ -1,6 +1,16 @@
 import type {AgentArtifactProof,AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
 import {PiProcessRunner} from "./pi-process-runner.js";
 
+export function bindPiArtifactIdentity(output:string,request:AgentRequest):string{
+ const raw=JSON.parse(extractPiArtifact(output,request.id)) as unknown;
+ if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Pi artifact content must be a JSON object");
+ const record=raw as Record<string,unknown>;
+ if(Object.keys(record).some(key=>key!=="content"))throw new Error("Pi artifact model output may contain only content");
+ if(typeof record.content!=="string"||!record.content.trim())throw new Error("Pi artifact content must be a non-empty string");
+ if(!request.candidate)throw new Error("Authenticated Pi artifact requires an exact candidate");
+ return JSON.stringify({repository:request.repository,candidateId:request.candidate.id,revision:request.candidate.revision,kind:"audit-observation",content:record.content});
+}
+
 /** Convert a completed Pi RPC turn into the single artifact consumed by the lifecycle. */
 export function extractPiArtifact(output:string,requestId:string):string{
  let records:unknown[];
@@ -38,7 +48,7 @@ export class PiArtifactRunner implements AgentRunner{
  async run(request:AgentRequest):Promise<AgentResult>{
   const response=await this.pi.run(request);
   if(!response.ok||response.id!==request.id)return {...response,ok:false};
-  try{return {id:request.id,ok:true,output:extractPiArtifact(response.output,request.id),artifactProof:issueArtifactProof(request)};}
+  try{return {id:request.id,ok:true,output:bindPiArtifactIdentity(response.output,request),artifactProof:issueArtifactProof(request)};}
   catch(error){return {id:request.id,ok:false,output:String(error)};}
  }
 }
