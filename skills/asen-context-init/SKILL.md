@@ -21,6 +21,6 @@ Use at the start of structured work when project capabilities or conventions are
 3. Record concise context and unresolved capabilities.
 4. Return the next safe planning action.
 ## Output Contract
-Return detected context, commands, skill paths, unresolved facts and evidence used.
+Return exactly one machine-readable JSON object and no surrounding Markdown or commentary. Include detected context, commands, skill paths, unresolved facts and evidence used. The object must be non-empty.
 ## References
 None.
