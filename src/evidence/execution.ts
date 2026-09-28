@@ -22,7 +22,7 @@ export function assertExactGitCandidate(candidate:Candidate,cwd:string):void{
  if(prefix!==""||realpathSync(cwd)!==realpathSync(candidate.repository))throw new Error("Execution evidence repository mismatch");
  if(head!==candidate.revision)throw new Error("Execution evidence revision mismatch");
  let dirty:string;
- try{dirty=run("status","--porcelain=v1","--untracked-files=all");}
+ try{dirty=run("status","--porcelain=v1","--untracked-files=all","--ignore-submodules=all");}
  catch{throw new Error("Execution evidence could not inspect Git working tree");}
  if(dirty!=="")throw new Error("Execution evidence requires a clean Git working tree");
  // HEAD alone does not identify the bytes executed from a modified checkout.
