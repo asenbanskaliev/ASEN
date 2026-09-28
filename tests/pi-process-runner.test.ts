@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";import test from "node:test";import {mkdtemp,realpath,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
+import assert from "node:assert/strict";import test from "node:test";import {copyFile,mkdir,mkdtemp,realpath,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {SkillLifecycle} from "../src/lifecycle/skill-lifecycle.js";
 import {Dispatcher} from "../src/agents/dispatcher.js";
@@ -7,6 +7,7 @@ import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 async function fixture(body:string,policy=true,skillsMode:"exact"|"missing"|"extra"|"altered"="exact"){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-pi-"))),p=join(d,"pi-fixture.mjs"),scenario=join(d,"scenario.mjs");
+ await mkdir(join(d,"extensions"));await copyFile(fileURLToPath(new URL("../extensions/authority.ts",import.meta.url)),join(d,"extensions/authority.ts"));
  await writeFile(scenario,body);
  await writeFile(p,`import {spawn} from "node:child_process";
 import {resolve} from "node:path";
@@ -27,6 +28,12 @@ process.stdout.write(JSON.stringify({type:"response",id:record.id,success:true,d
 }
 function runner(p:string,options:ConstructorParameters<typeof PiProcessRunner>[0]={}){return new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p],...options});}
 test("Pi RPC adapter correlates request id",async()=>{const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,command:"prompt",success:true,message:f.message}));});');const r=await runner(p,{validateResponseId:true}).run({id:"req-1",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,true);assert.match(r.output,/req-1/);});
+test("Pi runner refuses a candidate-supplied replacement authority extension",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
+ await writeFile(join(d,"extensions/authority.ts"),'export default pi => pi.registerCommand("asen-authority-status", {handler: async () => {}});');
+ const result=await runner(p).run({id:"tampered",role:"explorer",prompt:"inspect",repository:d});
+ assert.equal(result.ok,false);assert.match(result.output,/authority extension integrity/);
+});
 test("Pi artifact runner passes only a completed assistant JSON artifact to lifecycle",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:JSON.stringify({kind:"exploration-report",content:"inspected",repository:process.cwd(),candidateId:"c",revision:"r"})}]}}));console.log(JSON.stringify({type:"agent_end"}));console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
  const candidate={id:"c",repository:d,revision:"r",createdAt:"now"};
