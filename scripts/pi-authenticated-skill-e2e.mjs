@@ -12,7 +12,7 @@ import {recoveryKeyFromEnvironment} from "../src/session/recovery-key.js";
 const repo=resolve(".");
 const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repo,encoding:"utf8"}).trim();
 if(process.env.ASEN_EXPECTED_SHA&&revision!==process.env.ASEN_EXPECTED_SHA)throw new Error("Authenticated Pi candidate does not match the PR HEAD");
-if(!process.env.OPENROUTER_API_KEY)throw new Error("OPENROUTER_API_KEY repository secret is unavailable");
+const provider=process.env.ASEN_PI_PROVIDER??"openrouter";\nconst model=process.env.ASEN_PI_MODEL??"qwen/qwen3.8-27b:free";
 const candidate={id:"pr30-authenticated-pi",repository:repo,revision,createdAt:new Date().toISOString()};
 const recovered=process.env.ASEN_RECOVERY_FILE?await loadLifecycle(process.env.ASEN_RECOVERY_FILE,"pr30-authenticated-pi",candidate,recoveryKeyFromEnvironment()):undefined;
 if(recovered)assert.equal(recovered.state.nextPhase,"explore","Recovered lifecycle phase mismatch");
@@ -29,7 +29,7 @@ const cli=join(dirname(piMain),"bundle","cli.js");
 const results=[];
 for(const probe of probes){
  const paths=probe.expected,expected=paths.map(path=>realpathSync(resolve(repo,path)));
- const args=[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--no-tools","--provider","openrouter","--model","qwen/qwen3.8-27b:free",...paths.flatMap(path=>["--skill",path])];
+ const args=[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--no-tools","--provider",provider,"--model",model,...paths.flatMap(path=>["--skill",path])];
  const child=spawn(process.execPath,args,{cwd:repo,env:process.env,stdio:["pipe","pipe","pipe"]});
  const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
  const observed={loaded:false,finished:false,text:[],error:null};
@@ -59,4 +59,4 @@ for(const probe of probes){
  assert.equal(observed.loaded,true,`Pi never confirmed native Skill loading for ${probe.role}`);assert.equal(observed.finished,true,`Authenticated ${probe.role} turn did not complete`);assert.ok(observed.text.join("\n").trim().length>0,`Authenticated ${probe.role} turn returned no assistant text`);
  results.push({role:probe.role,skills:paths,nativeSkillLoadCount:expected.length,toolCalls:0});
 }
-console.log(JSON.stringify({candidate:revision,provider:"openrouter",model:"qwen/qwen3.8-27b:free",probes:results,result:"PASS"}));
+console.log(JSON.stringify({candidate:revision,provider,model,probes:results,result:"PASS"}));
