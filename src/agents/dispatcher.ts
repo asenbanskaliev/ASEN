@@ -42,6 +42,7 @@ export class Dispatcher {
     if(request.isolationKey)grant.isolationKey=request.isolationKey;
     validateWriteGrant(grant,this.#active);this.#active.push(grant);
    }
+   if(request.candidate&&(!request.skillContext||!request.skillPaths))throw new Error("Candidate-bound delegation requires issued skill context and exact paths");
    return await this.runner.run(request);
   } finally {if(grant){const i=this.#active.indexOf(grant);if(i>=0)this.#active.splice(i,1);}this.#release();}
  }
