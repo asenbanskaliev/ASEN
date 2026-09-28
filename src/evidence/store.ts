@@ -4,6 +4,7 @@ import {basename,dirname,join} from "node:path";
 import type { Candidate, Evidence } from "../core/types.js";
 import {isExecutedEvidence,type ExecutedEvidence} from "./execution.js";
 import {isExecutedReview,type ExecutedReview} from "./review-execution.js";
+import {isIssuedTddStage,type IssuedTddStage} from "../test/tdd-cycle.js";
 interface Envelope{version:1;candidate:Candidate;items:Evidence[];}
 const kinds=new Set(["test","review","command","audit","tdd","route-decision","work-unit","scope","rollback"]);
 const statuses=new Set(["pass","fail","expected-fail"]);
@@ -21,11 +22,24 @@ export class EvidenceStore {
  addExecuted(candidate:Candidate,proof:ExecutedEvidence,evidence:Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">):Evidence{
   if(!isExecutedEvidence(proof))throw new Error("Executed evidence requires ASEN-issued execution proof");
   if(proof.candidateRepository!==candidate.repository||proof.candidateId!==candidate.id||proof.candidateRevision!==candidate.revision)throw new Error("Executed evidence candidate mismatch");
-  if(evidence.kind!=="test"&&evidence.kind!=="tdd")throw new Error("Executed evidence only applies to test or tdd");
+  if(evidence.kind!=="test")throw new Error("TDD evidence requires an ordered TddCycle");
   if(evidence.status==="pass"&&proof.exitCode!==0)throw new Error("Passing executed evidence requires exit code 0");
   if(evidence.status==="expected-fail"&&proof.exitCode===0)throw new Error("Expected failing evidence requires a failing execution");
   const execution={command:[...proof.command],cwd:proof.cwd,exitCode:proof.exitCode,startedAt:proof.startedAt,finishedAt:proof.finishedAt};
   return this.#insert(candidate,{...evidence,execution});
+ }
+ addTddStage(candidate:Candidate,token:IssuedTddStage,evidence:{id:string;summary:string}):Evidence{
+  if(!isIssuedTddStage(token)||!isExecutedEvidence(token.proof))throw new Error("TDD stage requires ASEN-issued cycle and execution");
+  if(token.candidateRepository!==candidate.repository||token.candidateId!==candidate.id||token.candidateRevision!==candidate.revision||
+   token.proof.candidateRepository!==candidate.repository||token.proof.candidateId!==candidate.id||token.proof.candidateRevision!==candidate.revision)throw new Error("TDD stage candidate mismatch");
+  const {cycleId,stage,proof}=token;
+  if(evidence.id!==`${cycleId}:${stage.toLowerCase()}`)throw new Error("TDD stage id mismatch");
+  const prior=this.forCandidate(candidate);
+  if(stage==="GREEN"&&!prior.some(x=>x.id===`${cycleId}:red`&&x.status==="expected-fail"&&x.execution?.exitCode!==0))throw new Error("TDD GREEN requires executed RED");
+  if(stage==="REFACTOR"&&!prior.some(x=>x.id===`${cycleId}:green`&&x.status==="pass"&&x.execution?.exitCode===0))throw new Error("TDD REFACTOR requires executed GREEN");
+  if(stage==="RED"?proof.exitCode===0:proof.exitCode!==0)throw new Error("TDD stage command exit code mismatch");
+  return this.#insert(candidate,{id:evidence.id,kind:"tdd",status:stage==="RED"?"expected-fail":"pass",summary:evidence.summary,createdAt:proof.finishedAt,
+   execution:{command:[...proof.command],cwd:proof.cwd,exitCode:proof.exitCode,startedAt:proof.startedAt,finishedAt:proof.finishedAt}});
  }
  addReviewed(candidate:Candidate,proof:ExecutedReview):Evidence{
   if(!isExecutedReview(proof)||proof.candidateRepository!==candidate.repository||proof.candidateId!==candidate.id||proof.candidateRevision!==candidate.revision)throw new Error("Review proof candidate mismatch or not ASEN-issued");
@@ -62,7 +76,19 @@ export class EvidenceStore {
   this.#items.set(item.id,Object.freeze(item)); return item;
  }
  forCandidate(candidate:Candidate):Evidence[]{return [...this.#items.values()].filter(i=>i.candidateRepository===candidate.repository&&i.candidateId===candidate.id&&i.candidateRevision===candidate.revision);}
- hasPassing(candidate:Candidate,kind:Evidence["kind"]):boolean{return this.forCandidate(candidate).some(i=>i.kind===kind&&i.status==="pass");}
+ hasPassing(candidate:Candidate,kind:Evidence["kind"]):boolean{
+  const items=this.forCandidate(candidate);
+  if(kind==="tdd"){
+   return items.some((item,index)=>{
+    if(item.kind!=="tdd"||item.status!=="pass"||!item.id.endsWith(":refactor")||item.execution?.exitCode!==0)return false;
+    const cycle=item.id.slice(0,-":refactor".length);
+    const red=items.findIndex(x=>x.id===`${cycle}:red`&&x.kind==="tdd"&&x.status==="expected-fail"&&!!x.execution&&x.execution.exitCode!==0);
+    const green=items.findIndex(x=>x.id===`${cycle}:green`&&x.kind==="tdd"&&x.status==="pass"&&x.execution?.exitCode===0);
+    return red>=0&&red<green&&green<index;
+   });
+  }
+  return items.some(i=>i.kind===kind&&i.status==="pass");
+ }
 }
 
 export async function saveEvidence(path:string,candidate:Candidate,store:EvidenceStore,key:Buffer):Promise<void>{
