@@ -25,7 +25,7 @@ for(const [role,phase] of roles){
  const expected=selected.map(path=>realpathSync(resolve(repository,path)));
  const id=`artifact-${role}`;
  const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--extension",provider,"--no-skills","--no-tools","--provider","llm7","--model","default",...selected.flatMap(path=>["--skill",path])],{cwd:repository,env:process.env,stdio:["pipe","pipe","pipe"]});
- const command=value=>child.stdin.write(JSON.stringify(value)+"\\n");
+ const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
  const metadata={taskId,role,phase,repository,candidateId:candidate.id,revision,kind:"audit-observation",content:"Brief observation"};
  const message=`Return only one JSON object with these exact fields and values: ${JSON.stringify(metadata)}. Do not call tools.`;
  let buffer="",output="",stderr="",failure=null,loaded=false,finished=false;
@@ -35,7 +35,7 @@ for(const [role,phase] of roles){
   try{
    output+=String(chunk);buffer+=String(chunk);
    if(Buffer.byteLength(output)>1000000)throw new Error("Pi artifact output exceeded limit");
-   let end;while((end=buffer.indexOf("\\n"))>=0){
+   let end;while((end=buffer.indexOf("\n"))>=0){
     const line=buffer.slice(0,end).trim();buffer=buffer.slice(end+1);
     if(!line)continue;
     const record=JSON.parse(line);
