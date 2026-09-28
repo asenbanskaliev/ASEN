@@ -135,3 +135,16 @@ test("worker cannot use an explore context to acquire write authority",async()=>
  await assert.rejects(()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,skillContext:context,skillPaths:paths}),/apply phase/);
  assert.equal(ran,false);
 });
+
+
+test("worker cannot reuse authority from another lifecycle phase",async()=>{
+ let ran=false;
+ const runner:AgentRunner={run:async r=>{ran=true;return{id:r.id,ok:true,output:"bad"}}};
+ const context=issueSkillContext("phase-worker","r",candidate,{phase:"proposal"});
+ const paths=["skills/asen-phase-protocol/SKILL.md","skills/asen-proposal/SKILL.md"];
+ await assert.rejects(
+  ()=>new Dispatcher(runner,new EvidenceStore()).dispatch({id:"phase-worker",role:"worker",expectedPhase:"tasks",prompt:"x",repository:"r",candidate,skillContext:context,skillPaths:paths}),
+  /context does not match agent role/
+ );
+ assert.equal(ran,false);
+});
