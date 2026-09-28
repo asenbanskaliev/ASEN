@@ -58,3 +58,8 @@ CI and Release Gate results must be rechecked on the exact final HEAD after ever
 - **PROBADO (scoped):** the adversarial lone-GREEN case failed CI at `bd44728e2d64fb4c03869acdce9a4c16c48d3ff7` (run 36427381779). The generic executed-evidence API now rejects `kind: tdd`. `TddCycle` requires stage-specific ASEN-issued execution proofs and exact candidate identity; only an ordered failing RED, passing GREEN and passing REFACTOR satisfy the TDD gate. Signed reload reconstructs completion from those records and rejects recovered RED without failing execution metadata.
 - **PARCIAL:** the stage commands run on the candidate Git revision. The fixtures do not demonstrate that a model authored the tested code or that the intended behavior was absent before RED. Model text alone cannot prove TDD.
 - **NO PROBADO:** independently authenticated model reviewer, full real-Pi lifecycle and OS isolation. `CAP-SKL-001` remains `specified`.
+
+## Exact checkout gate — 2026-09-28
+
+- **PARCIAL pending final matrix:** CI, Release Gate and Phase 0 Architecture now explicitly check out `github.event.pull_request.head.sha` for PR runs, falling back to `github.sha` for push runs. Each verifies its actual Git HEAD before running gates. This avoids treating tests on GitHub's synthetic PR merge commit as tests on the candidate revision. The authenticated Pi workflow already checks out and asserts the exact PR SHA. These workflow changes require Ubuntu, Windows and macOS jobs to finish on the same final SHA before being marked proven.
+- **NO PROBADO:** full lifecycle with model-produced task/review/verification artifacts and independently trusted reviewer. Four role model turns and the signed recovery preparation are separate limited proofs. `CAP-SKL-001` stays `specified`.
