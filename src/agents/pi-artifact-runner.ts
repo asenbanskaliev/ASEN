@@ -9,11 +9,7 @@ export function bindPiArtifactIdentity(output:string,request:AgentRequest):strin
  const content=typeof record.content==="string"?record.content.trim():JSON.stringify(record);
  if(!content)throw new Error("Pi artifact content must be non-empty");
  const expected={repository:request.repository,candidateId:request.candidate.id,revision:request.candidate.revision};
- for(const [key,value] of Object.entries(expected))if(record[key]!==undefined&&record[key]!==value)throw new Error(`Pi artifact supplied mismatched ${key}`);
- if(record.repository!==undefined||record.candidateId!==undefined||record.revision!==undefined){
-  const allowedIdentity=new Set(["repository","candidateId","revision"]);
-  for(const key of allowedIdentity)if(record[key]!==undefined&&record[key]!==expected[key as keyof typeof expected])throw new Error(`Pi artifact supplied mismatched ${key}`);
- }
+ for(const key of ["repository","candidateId","revision"] as const)if(record[key]!==undefined&&record[key]!==expected[key])throw new Error(`Pi artifact supplied mismatched ${key}`);
  if(record.kind!==undefined&&typeof record.kind!=="string")throw new Error("Pi artifact kind must be a string");
  return JSON.stringify({repository:expected.repository,candidateId:expected.candidateId,revision:expected.revision,...(record.kind===undefined?{}:{kind:record.kind}),content});
 }
