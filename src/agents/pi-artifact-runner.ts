@@ -1,6 +1,8 @@
 import type {AgentArtifactProof,AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
 import {PiProcessRunner} from "./pi-process-runner.js";
 
+const lifecycleArtifactKind:Record<string,string>={"context-init":"project-context",explore:"exploration",proposal:"proposal",specification:"specification",design:"design",tasks:"task-plan",apply:"apply-result",verify:"verification-report",archive:"archive-report"};
+
 export function bindPiArtifactIdentity(output:string,request:AgentRequest):string{
  if(!request.candidate||request.repository!==request.candidate.repository)throw new Error("Pi artifact provenance requires an exact candidate repository");
  const raw=JSON.parse(extractPiArtifact(output,request.id)) as unknown;
@@ -11,7 +13,10 @@ export function bindPiArtifactIdentity(output:string,request:AgentRequest):strin
  const expected={repository:request.repository,candidateId:request.candidate.id,revision:request.candidate.revision};
  for(const key of ["repository","candidateId","revision"] as const)if(record[key]!==undefined&&record[key]!==expected[key])throw new Error(`Pi artifact supplied mismatched ${key}`);
  if(record.kind!==undefined&&typeof record.kind!=="string")throw new Error("Pi artifact kind must be a string");
- return JSON.stringify({repository:expected.repository,candidateId:expected.candidateId,revision:expected.revision,...(record.kind===undefined?{}:{kind:record.kind}),content});
+ const expectedKind=request.expectedPhase?lifecycleArtifactKind[request.expectedPhase]:undefined;
+ if(expectedKind&&record.kind!==undefined&&record.kind!==expectedKind)throw new Error("Pi artifact supplied mismatched lifecycle kind");
+ const kind=expectedKind??record.kind;
+ return JSON.stringify({repository:expected.repository,candidateId:expected.candidateId,revision:expected.revision,...(kind===undefined?{}:{kind}),content});
 }
 
 /** Convert a completed Pi RPC turn into the single artifact consumed by the lifecycle. */
