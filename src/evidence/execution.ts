@@ -1,5 +1,5 @@
 import {spawn,execFileSync} from "node:child_process";
-import {realpathSync} from "node:fs";
+import {realpathSync,watch} from "node:fs";
 import type {Candidate,Evidence} from "../core/types.js";
 import {EvidenceStore} from "./store.js";
 
@@ -39,13 +39,21 @@ export async function executeEvidenceCommand(candidate:Candidate,command:readonl
  const cwd=options.cwd??candidate.repository;
  assertExactGitCandidate(candidate,cwd);
  const startedAt=new Date().toISOString();
+ let contentChanged=false;
+ // Watch the candidate while the command is alive. Pre/post Git checks alone
+ // cannot see a tracked file that is changed, consumed and restored before exit.
+ const watcher=watch(cwd,{recursive:true},(_event,filename)=>{
+  if(filename&&!filename.split(/[\\/]/).includes(".git"))contentChanged=true;
+ });
  const exitCode=await new Promise<number>((resolve,reject)=>{
   const child=spawn(command[0],command.slice(1),{cwd,stdio:"ignore",shell:false});
   const timer=setTimeout(()=>{child.kill();reject(new Error("Execution evidence command timed out"));},options.timeoutMs??120000);
   child.on("error",error=>{clearTimeout(timer);reject(error);});
   child.on("close",code=>{clearTimeout(timer);resolve(code??-1);});
  });
+ watcher.close();
  assertExactGitCandidate(candidate,cwd);
+ if(contentChanged)throw new Error("Execution evidence candidate content changed during execution");
  const proof=Object.freeze({candidateRepository:candidate.repository,candidateId:candidate.id,candidateRevision:candidate.revision,command:Object.freeze([...command]),cwd,exitCode,startedAt,finishedAt:new Date().toISOString()});
  executed.add(proof);
  return proof;
