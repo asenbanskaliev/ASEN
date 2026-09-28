@@ -5,10 +5,14 @@ export function bindPiArtifactIdentity(output:string,request:AgentRequest):strin
  const raw=JSON.parse(extractPiArtifact(output,request.id)) as unknown;
  if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Pi artifact content must be a JSON object");
  const record=raw as Record<string,unknown>;
- if(Object.keys(record).some(key=>key!=="content"))throw new Error("Pi artifact model output may contain only content");
  if(typeof record.content!=="string"||!record.content.trim())throw new Error("Pi artifact content must be a non-empty string");
- if(!request.candidate)throw new Error("Authenticated Pi artifact requires an exact candidate");
- return JSON.stringify({repository:request.repository,candidateId:request.candidate.id,revision:request.candidate.revision,kind:"audit-observation",content:record.content});
+ if(!request.candidate)return JSON.stringify(record);
+ const expected={repository:request.repository,candidateId:request.candidate.id,revision:request.candidate.revision};
+ for(const [key,value] of Object.entries(expected))if(record[key]!==undefined&&record[key]!==value)throw new Error(`Pi artifact supplied mismatched ${key}`);
+ const allowed=new Set(["kind","content","repository","candidateId","revision"]);
+ if(Object.keys(record).some(key=>!allowed.has(key)))throw new Error("Pi artifact contains unsupported fields");
+ if(record.kind!==undefined&&typeof record.kind!=="string")throw new Error("Pi artifact kind must be a string");
+ return JSON.stringify({repository:expected.repository,candidateId:expected.candidateId,revision:expected.revision,...(record.kind===undefined?{}:{kind:record.kind}),content:record.content});
 }
 
 /** Convert a completed Pi RPC turn into the single artifact consumed by the lifecycle. */
