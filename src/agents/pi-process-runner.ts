@@ -73,7 +73,7 @@ export class PiProcessRunner implements AgentRunner{
   const writer=request.role==="worker"&&!!request.writeSurfaces?.length&&!!request.candidate&&!!request.skillContext;
   const policy=resolvePath(request.repository,"extensions/authority.ts");
   try{
-   const digest=createHash("sha256").update(readFileSync(policy)).digest("hex");
+   const digest=createHash("sha256").update(readFileSync(policy,"utf8").replace(/\r\n/g,"\n")).digest("hex");
    if(digest!==authorityDigest)throw new Error("mismatch");
   }catch{return Promise.resolve({id:request.id,ok:false,output:"pi authority extension integrity check failed"});}
   const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,
