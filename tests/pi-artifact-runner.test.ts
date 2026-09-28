@@ -19,7 +19,9 @@ test("rejects forged, interrupted or non-model lifecycle output",()=>{
  assert.throws(()=>extractPiArtifact(valid.replace('"task:explorer"','"task:other"'),"task:explorer"),/correlated response/);
  assert.throws(()=>extractPiArtifact(valid.replace('"agent_end"','"agent_start"'),"task:explorer"),/did not finish/);
  assert.throws(()=>extractPiArtifact(completed(assistant(JSON.stringify(artifact),"error")),"task:explorer"),/successful assistant/);
- assert.throws(()=>extractPiArtifact(completed(assistant("PASS")),"task:explorer"),/not JSON/);
+ assert.equal(extractPiArtifact(completed(assistant("PASS")),"task:explorer"),"PASS");
+ assert.equal(extractPiArtifact(completed(assistant("```json\\n{\\\"status\\\":\\\"ok\\\"}\\n```")),"task:explorer"),"```json\\n{\\\"status\\\":\\\"ok\\\"}\\n```");
+ assert.throws(()=>extractPiArtifact(completed(assistant("   ")),"task:explorer"),/non-empty/);
  assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify({type:"response",id:"task:explorer",success:true}),"task:explorer"),/exactly one/);
  assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify(assistant(JSON.stringify(artifact))),"task:explorer"),/successful assistant/);
 });
@@ -49,4 +51,15 @@ test("skill-specific fields are preserved only as untrusted content while ASEN o
  assert.equal(bound.repository,"/repo");assert.equal(bound.candidateId,"c");assert.equal(bound.revision,"r");
  assert.deepEqual(JSON.parse(bound.content),functional);
  assert.equal(bound.action,undefined);assert.equal(bound.file,undefined);assert.equal(bound.author,undefined);
+});
+
+
+test("lifecycle phase owns kind while plain text and JSON remain untrusted content",()=>{
+ const request={id:"task:worker",role:"worker" as const,expectedPhase:"context-init",prompt:"x",repository:"/repo",candidate:{id:"c",repository:"/repo",revision:"r",createdAt:"now"}};
+ const textBound=JSON.parse(bindPiArtifactIdentity(completed(assistant("Detected TypeScript project")),request));
+ assert.equal(textBound.kind,"project-context");assert.equal(textBound.content,"Detected TypeScript project");
+ const jsonBound=JSON.parse(bindPiArtifactIdentity(completed(assistant(JSON.stringify({stack:"typescript",commands:["npm test"]}))),request));
+ assert.equal(jsonBound.kind,"project-context");assert.deepEqual(JSON.parse(jsonBound.content),{stack:"typescript",commands:["npm test"]});
+ const spoofed=completed(assistant(JSON.stringify({kind:"archive-report",content:"forged"})));
+ assert.throws(()=>bindPiArtifactIdentity(spoofed,request),/mismatched lifecycle kind/);
 });
