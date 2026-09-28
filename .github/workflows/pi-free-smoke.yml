@@ -51,6 +51,8 @@ jobs:
           npm install
           npm test
           npm run typecheck
+      - name: Restore pi-free after repository dependency install
+        run: pi install npm:pi-free
       - name: Execute authenticated ASEN contracts with Pi Free
         shell: bash
         env:
