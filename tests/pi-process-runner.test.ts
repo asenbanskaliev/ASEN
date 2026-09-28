@@ -1,7 +1,21 @@
 import assert from "node:assert/strict";import test from "node:test";import {mkdtemp,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
-async function fixture(body:string){const d=await mkdtemp(join(tmpdir(),"asen-pi-")),p=join(d,"pi-fixture.mjs");await writeFile(p,body);return {d,p};}
+async function fixture(body:string,policy=true){
+ const d=await mkdtemp(join(tmpdir(),"asen-pi-")),p=join(d,"pi-fixture.mjs"),scenario=join(d,"scenario.mjs");
+ await writeFile(scenario,body);
+ await writeFile(p,`import {spawn} from "node:child_process";
+const child=spawn(process.execPath,[${JSON.stringify(scenario)},...process.argv.slice(2)],{stdio:["pipe","pipe","pipe"]});
+child.stdout.on("data",data=>process.stdout.write(data));child.stderr.on("data",data=>process.stderr.write(data));
+let closed=null,prompted=false,buffer="";
+child.on("close",code=>{closed=code??0;if(prompted)process.exit(closed);});
+process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.indexOf("\\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;const record=JSON.parse(line);
+if(record.type==="get_commands"){
+const pos=process.argv.indexOf("--extension"),path=process.argv[pos+1];
+process.stdout.write(JSON.stringify({type:"response",id:record.id,success:true,data:{commands:${policy?"[{name:'asen-authority-status',source:'extension',sourceInfo:{path}}]":"[]"}}})+"\\n");
+}else{prompted=true;child.stdin.end(line+"\\n");if(closed!==null)process.exit(closed);}}});`);
+ return {d,p};
+}
 function runner(p:string,options:ConstructorParameters<typeof PiProcessRunner>[0]={}){return new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p],...options});}
 test("Pi RPC adapter correlates request id",async()=>{const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,command:"prompt",success:true,message:f.message}));});');const r=await runner(p,{validateResponseId:true}).run({id:"req-1",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,true);assert.match(r.output,/req-1/);});
 test("Pi child times out",async()=>{const {d,p}=await fixture("setTimeout(()=>{},10000);");const r=await runner(p,{timeoutMs:50}).run({id:"t",role:"explorer",prompt:"x",repository:d});assert.equal(r.ok,false);assert.match(r.output,/timed out/);});
@@ -48,8 +62,8 @@ test("Pi RPC adapter supplies selected routes as native Pi flags",async()=>{
  const paths=selectSkills(context).map(skill=>skill.path);
  const r=await runner(p).run({id:"native",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:paths});
  assert.equal(r.ok,true);
- const response=JSON.parse(r.output.trim());
- assert.deepEqual(response.args,["--no-extensions","--no-skills","--tools","read",...paths.flatMap(path=>["--skill",path])]);
+ const response=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!);
+ assert.deepEqual(response.args,["--no-extensions","--extension",join(d,"extensions/authority.ts"),"--no-skills","--tools","read",...paths.flatMap(path=>["--skill",path])]);
 });
 test("Pi worker receives bounded file tools without process execution or delegation",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
@@ -58,8 +72,13 @@ test("Pi worker receives bounded file tools without process execution or delegat
  const paths=selectSkills(context).map(skill=>skill.path);
  const r=await runner(p).run({id:"worker",role:"worker",prompt:"implement",repository:d,candidate,writeSurfaces:["src"],skillContext:context,skillPaths:paths});
  assert.equal(r.ok,true);
- const args=JSON.parse(r.output.trim()).args as string[];
- assert.deepEqual(args,["--no-extensions","--no-skills","--tools","read,edit,write",...paths.flatMap(path=>["--skill",path])]);
+ const args=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!).args as string[];
+ assert.deepEqual(args,["--no-extensions","--extension",join(d,"extensions/authority.ts"),"--no-skills","--tools","read,edit,write",...paths.flatMap(path=>["--skill",path])]);
+});
+test("Pi runner refuses to prompt without its authority extension",async()=>{
+ const {d,p}=await fixture('setTimeout(()=>{},10000);',false);
+ const r=await runner(p).run({id:"no-policy",role:"explorer",prompt:"read",repository:d});
+ assert.equal(r.ok,false);assert.match(r.output,/policy extension was not loaded/);
 });
 test("Pi RPC adapter blocks caller-supplied tool authority",async()=>{
  const {d,p}=await fixture('setTimeout(()=>{},10000);');
