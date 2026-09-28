@@ -36,3 +36,15 @@ test("ASEN binds candidate identity and rejects model identity spoofing",()=>{
   {...artifact,revision:"other"}
  ])assert.throws(()=>bindPiArtifactIdentity(completed(assistant(JSON.stringify(forged))),request),/mismatched/);
 });
+
+test("candidate-free Pi output cannot acquire artifact provenance",()=>{
+ const request={id:"task:explorer",role:"explorer" as const,prompt:"x",repository:"/repo"};
+ assert.throws(()=>bindPiArtifactIdentity(completed(assistant(JSON.stringify(artifact))),request),/exact candidate/);
+});
+
+test("model cannot supply phase, role or another lifecycle identity field",()=>{
+ const request={id:"task:explorer",role:"explorer" as const,prompt:"x",repository:"/repo",candidate:{id:"c",repository:"/repo",revision:"r",createdAt:"now"}};
+ for(const key of ["phase","role","taskId","author","skillPaths"]){
+  assert.throws(()=>bindPiArtifactIdentity(completed(assistant(JSON.stringify({...artifact,[key]:"spoofed"}))),request),/unsupported fields/);
+ }
+});
