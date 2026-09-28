@@ -63,3 +63,15 @@ test("execution rejects an untracked candidate source file",async t=>{
  await writeFile(join(repo,"injected.js"),"throw new Error('injected')\n");
  await assert.rejects(()=>executeEvidenceCommand(candidate,[process.execPath,"-e","process.exit(0)"]),/no untracked Git files/);
 });
+
+test("execution currently detects a transient tracked mutation restored before return only if content is attested during execution",async t=>{
+ const repo=await mkdtemp(join(tmpdir(),"asen-transient-execution-"));t.after(()=>rm(repo,{recursive:true,force:true}));
+ execFileSync("git",["init","-q",repo]);
+ const source=join(repo,"source.js");await writeFile(source,"original\n");
+ execFileSync("git",["-C",repo,"add","source.js"]);
+ execFileSync("git",["-C",repo,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","-m","initial"]);
+ const revision=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+ const candidate={repository:repo,id:"transient",revision,createdAt:"now"};
+ const transient=[process.execPath,"-e",`const fs=require("fs");const p=${JSON.stringify(source)};fs.writeFileSync(p,"mutated\\n");fs.readFileSync(p,"utf8");fs.writeFileSync(p,"original\\n")`] as const;
+ await assert.rejects(()=>executeEvidenceCommand(candidate,transient),/candidate content changed during execution/);
+});
