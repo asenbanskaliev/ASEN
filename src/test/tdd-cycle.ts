@@ -1,6 +1,7 @@
 import type {Candidate} from "../core/types.js";
 import {EvidenceStore} from "../evidence/store.js";
 import {isExecutedEvidence,type ExecutedEvidence} from "../evidence/execution.js";
+import {assertDirectGitParent} from "../evidence/git-lineage.js";
 
 export type TddStage="RED"|"GREEN"|"REFACTOR";
 export interface IssuedTddStage{
@@ -22,6 +23,7 @@ export class TddCycle {
   if(candidate.id!==this.candidate.id||candidate.repository!==this.candidate.repository)throw new Error("TDD candidate lineage mismatch");
   if(proof.candidateRepository!==candidate.repository||proof.candidateId!==candidate.id||proof.candidateRevision!==candidate.revision)throw new Error("TDD execution does not match stage revision");
   if(stage!=="RED"&&(!this.#previous||candidate.revision===this.#previous.revision))throw new Error("TDD GREEN and REFACTOR require a new candidate revision");
+  if(this.#previous)assertDirectGitParent(candidate.repository,this.#previous.revision,candidate.revision);
   const token=Object.freeze({cycleId:this.#cycleId,stage,candidateRepository:candidate.repository,candidateId:candidate.id,candidateRevision:candidate.revision,...(this.#previous?{previousRevision:this.#previous.revision}:{}),proof});
   issuedStages.add(token); this.store.addTddStage(candidate,token,{id,summary:`${this.#cycleId} ${stage}: ${summary}`});
   this.#previous=candidate; this.candidate=candidate; this.#next=stage==="RED"?"GREEN":stage==="GREEN"?"REFACTOR":"RED";
