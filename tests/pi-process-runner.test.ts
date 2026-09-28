@@ -67,6 +67,12 @@ test("Pi RPC adapter blocks caller-supplied tool authority",async()=>{
  const r=await runner(p,{extraArgs:[p,"--tools","bash"]}).run({id:"tool-override",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
  assert.equal(r.ok,false);assert.match(r.output,/issued by ASEN/);
 });
+test("Pi RPC adapter rejects option terminators that disable ASEN flags",async()=>{
+ const {d,p}=await fixture('setTimeout(()=>{},10000);');
+ const context=issueSkillContext("terminator",d,undefined,{phase:"explore"});
+ const r=await runner(p,{extraArgs:[p,"--"]}).run({id:"terminator",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
+ assert.equal(r.ok,false);assert.match(r.output,/issued by ASEN/);
+});
 test("Pi RPC adapter blocks caller-supplied skill overrides",async()=>{
  const {d,p}=await fixture('setTimeout(()=>{},10000);');
  const context=issueSkillContext("override",d,undefined,{phase:"explore"});
