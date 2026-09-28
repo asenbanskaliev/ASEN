@@ -90,6 +90,7 @@ export function authorizeImplementation(candidate:Candidate,context:SkillSelecti
 export function authorizeVerified(candidate:Candidate,risk:Risk,context:SkillSelectionContext,evidence:EvidenceStore):TransitionAuthorization {
  if(!isIssuedSkillContext(context)) throw new Error("Verification requires ASEN-issued skill selection context");
  if(!matchesIssuedSkillContext(context,context.taskId,candidate.repository,candidate)) throw new Error("Verification skill context does not match candidate");
+ if(context.phase!=="verify")throw new Error("Verification requires issued verify phase");
  const skills=selectSkills(context).map(skill=>skill.id);
  if(!skills.length) throw new Error("Verification requires selected skills");
  const gate=verifyCandidate(candidate,risk,evidence,skills);
