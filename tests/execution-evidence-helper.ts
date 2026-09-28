@@ -1,5 +1,7 @@
 import {execFileSync} from "node:child_process";
-import {resolve} from "node:path";
+import {resolve,join} from "node:path";
+import {mkdtempSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
 import type {Candidate} from "../src/core/types.js";
 import {addExecutedEvidence,executeEvidenceCommand,type ExecutedEvidence} from "../src/evidence/execution.js";
 import {EvidenceStore} from "../src/evidence/store.js";
@@ -7,9 +9,16 @@ import {TddCycle} from "../src/test/tdd-cycle.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {executeIndependentReview} from "../src/evidence/review-execution.js";
 
-export function gitCandidate(id:string,repository=resolve(".")):Candidate{
- const revision=execFileSync("git",["-C",repository,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
- return {id,repository,revision,createdAt:"now"};
+export function gitCandidate(id:string,repository?:string):Candidate{
+ const root=repository??mkdtempSync(join(tmpdir(),"asen-candidate-"));
+ if(!repository){
+  execFileSync("git",["init","-q",root]);
+  writeFileSync(join(root,"candidate.txt"),"ASEN candidate\n");
+  execFileSync("git",["-C",root,"add","candidate.txt"]);
+  execFileSync("git",["-C",root,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","-m","candidate"]);
+ }
+ const revision=execFileSync("git",["-C",root,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+ return {id,repository:root,revision,createdAt:"now"};
 }
 
 export async function executionProof(candidate:Candidate,exitCode=0):Promise<ExecutedEvidence>{
