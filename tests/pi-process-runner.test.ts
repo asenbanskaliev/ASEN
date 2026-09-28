@@ -5,10 +5,11 @@ import {Dispatcher} from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
-async function fixture(body:string,policy=true){
+async function fixture(body:string,policy=true,skillsMode:"exact"|"missing"|"extra"|"altered"="exact"){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-pi-"))),p=join(d,"pi-fixture.mjs"),scenario=join(d,"scenario.mjs");
  await writeFile(scenario,body);
  await writeFile(p,`import {spawn} from "node:child_process";
+import {resolve} from "node:path";
 const child=spawn(process.execPath,[${JSON.stringify(scenario)},...process.argv.slice(2)],{stdio:["pipe","pipe","pipe"]});
 child.stdout.on("data",data=>process.stdout.write(data));child.stderr.on("data",data=>process.stderr.write(data));
 let closed=null,prompted=false,buffer="";
@@ -16,7 +17,11 @@ child.on("close",code=>{closed=code??0;if(prompted)process.exit(closed);});
 process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.indexOf("\\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;const record=JSON.parse(line);
 if(record.type==="get_commands"){
 const pos=process.argv.indexOf("--extension"),path=process.argv[pos+1];
-process.stdout.write(JSON.stringify({type:"response",id:record.id,success:true,data:{commands:${policy?"[{name:'asen-authority-status',source:'extension',sourceInfo:{path}}]":"[]"}}})+"\\n");
+const skills=process.argv.flatMap((arg,index,args)=>arg==="--skill"?[{name:"fixture",source:"skill",sourceInfo:{path:resolve(process.cwd(),args[index+1])}}]:[]);
+const mode=${JSON.stringify(skillsMode)};
+const loaded=mode==="missing"?[]:mode==="altered"?skills.map(item=>({...item,sourceInfo:{path:resolve(process.cwd(),"skills/asen-other/SKILL.md")}})):skills;
+if(mode==="extra")loaded.push({name:"extra",source:"skill",sourceInfo:{path:resolve(process.cwd(),"skills/asen-extra/SKILL.md")}});
+process.stdout.write(JSON.stringify({type:"response",id:record.id,success:true,data:{commands:[...${policy?"[{name:'asen-authority-status',source:'extension',sourceInfo:{path}}]":"[]"},...loaded]}})+"\\n");
 }else{prompted=true;child.stdin.end(line+"\\n");if(closed!==null)process.exit(closed);}}});`);
  return {d,p};
 }
