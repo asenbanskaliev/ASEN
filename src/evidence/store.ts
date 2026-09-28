@@ -49,6 +49,10 @@ export class EvidenceStore {
   if(evidence.status==="pass"&&(evidence.kind==="test"||evidence.kind==="tdd")){
    const x=evidence.execution;if(!x||x.exitCode!==0||!Array.isArray(x.command)||x.command.length===0||!x.cwd||!x.startedAt||!x.finishedAt)throw new Error("Recovered passing execution evidence lacks provenance");
   }
+  if(evidence.kind==="tdd"&&evidence.status==="expected-fail"){
+   const x=evidence.execution;
+   if(!x||x.exitCode===0||!Array.isArray(x.command)||x.command.length===0||!x.cwd||!x.startedAt||!x.finishedAt)throw new Error("Recovered TDD RED lacks executed failing command");
+  }
   if(evidence.status==="pass"&&evidence.kind==="review"){
    const x=evidence.execution,r=evidence.review;
    if(!x||x.exitCode!==0||x.cwd!==candidate.repository||!Array.isArray(x.command)||x.command.length===0||!x.startedAt||!x.finishedAt||!r||!r.taskId||!r.reviewerId||!r.authorId||r.taskId!==r.reviewerId||r.authorId===r.reviewerId)throw new Error("Recovered passing review evidence lacks authenticated provenance");
