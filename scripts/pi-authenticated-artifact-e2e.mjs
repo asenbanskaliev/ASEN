@@ -6,7 +6,7 @@ import {dirname,join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
-import {extractPiArtifact} from "../src/agents/pi-artifact-runner.js";
+import {bindPiArtifactIdentity} from "../src/agents/pi-artifact-runner.js";
 
 const repository=resolve(".");
 const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8"}).trim();
@@ -25,7 +25,7 @@ for(const [role,phase] of roles){
  const id=`artifact-${role}`;
  const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--no-tools","--provider","openrouter","--model","openrouter/free",...selected.flatMap(path=>["--skill",path])],{cwd:repository,env:process.env,stdio:["pipe","pipe","pipe"]});
  const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
- const metadata={taskId,role,phase,repository,candidateId:candidate.id,revision,kind:"audit-observation",content:"Brief observation"};
+ const metadata={content:"Brief observation"};
  const message=[
  "This is a machine-readable ASEN audit step, not a conversational request.",
  "Your entire assistant response MUST be exactly the JSON object on the next line.",
@@ -76,10 +76,13 @@ for(const [role,phase] of roles){
   throw new Error(`Model artifact ${role} is not strict JSON`,{cause:error});
  }
  assert.deepEqual(Object.keys(raw).sort(),Object.keys(metadata).sort(),`Model artifact ${role} has wrong fields`);
- for(const key of ["taskId","role","phase","repository","candidateId","revision","kind"])assert.equal(raw[key],metadata[key],`Model artifact ${role} has wrong ${key}`);
  assert.equal(typeof raw.content,"string");assert.ok(raw.content.trim(),"Model artifact is empty");
- const artifact=JSON.parse(extractPiArtifact(output,id));
- for(const key of ["repository","candidateId","revision","kind"])assert.equal(artifact[key],metadata[key],`ASEN artifact ${role} lost ${key}`);
+ const artifactRequest={id,role,prompt:message,repository,candidate,skillContext:context,skillPaths:selected};
+ const artifact=JSON.parse(bindPiArtifactIdentity(output,artifactRequest));
+ assert.equal(artifact.repository,repository,`ASEN artifact ${role} lost repository`);
+ assert.equal(artifact.candidateId,candidate.id,`ASEN artifact ${role} lost candidateId`);
+ assert.equal(artifact.revision,revision,`ASEN artifact ${role} lost revision`);
+ assert.equal(artifact.kind,"audit-observation",`ASEN artifact ${role} lost kind`);
  assert.equal(artifact.content,raw.content,`ASEN artifact ${role} changed model content`);
  results.push({role,phase,skills:selected,kind:artifact.kind});
 }
