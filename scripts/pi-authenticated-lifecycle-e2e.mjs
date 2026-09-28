@@ -55,7 +55,7 @@ for(const [phase,role,kind] of phases){
  let lastError;
  let successfulSkillPaths;
  for(let attempt=1;attempt<=maxAttempts;attempt++){
-  const context=issueSkillContext(`${taskId}:${role}:attempt-${attempt}`,repository,candidate,{phase,risk:"low",...(phase==="apply"?{codeChange:true}:{} )});
+  const context=issueSkillContext(`${taskId}:${role}`,repository,candidate,{phase,risk:"low",...(phase==="apply"?{codeChange:true}:{} )});
   const skillPaths=selectSkills(context).map(skill=>skill.path);
   try{state=await flow.runPhase(dispatcher,{phase,context,skillPaths,prompt,evidence,risk:"low",...(phase==="apply"?{writeSurfaces:["docs/audit/"]}:{})});successfulSkillPaths=skillPaths;break;}
   catch(error){lastError=error;const transient=String(error).includes("Pi artifact requires a completed successful assistant message");if(!transient||attempt===maxAttempts)break;await new Promise(resolve=>setTimeout(resolve,attempt*2000));}
