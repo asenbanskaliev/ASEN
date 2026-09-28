@@ -14,7 +14,6 @@ export interface PiProcessOptions{
  timeoutMs?:number;
  maxOutputBytes?:number;
  signal?:AbortSignal;
- validateResponseId?:boolean;
 }
 
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
@@ -141,7 +140,7 @@ export class PiProcessRunner implements AgentRunner{
    child.on("close",code=>{
     rmSync(policyDirectory,{recursive:true,force:true});
     if(!policyLoaded)return finish({id:request.id,ok:false,output:"pi ASEN policy extension was not confirmed"});
-    if(code===0&&!overflow&&this.options.validateResponseId!==false){
+    if(code===0&&!overflow){
      try{
       const records=stdout.trim().split(/\r?\n/).filter(Boolean).map(line=>JSON.parse(line));
       const envelope=records.find(record=>record?.type==="response"&&record?.id===request.id);
