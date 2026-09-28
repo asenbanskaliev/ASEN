@@ -63,7 +63,7 @@ for(const [role,phase] of roles){
  let artifact;
  try{artifact=JSON.parse(extractPiArtifact(output,id));}
  catch(error){
-  const records=output.trim().split(/\\r?\\n/).flatMap(line=>{try{return [JSON.parse(line)];}catch{return [];}});
+  const records=output.trim().split(/\r?\n/).flatMap(line=>{try{return [JSON.parse(line)];}catch{return [];}});
   const final=records.filter(record=>record.type==="message_end"&&record.message?.role==="assistant").at(-1);
   const text=final?.message?.content?.filter(item=>item.type==="text").map(item=>item.text).join("")??"";
   console.error(JSON.stringify({role,assistantLength:text.length,assistantPrefix:text.replaceAll(process.env.LLM7_API_KEY,"[redacted]").slice(0,280)}));
