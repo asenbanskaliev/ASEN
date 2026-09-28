@@ -1,4 +1,5 @@
-import {spawn} from "node:child_process";
+import {spawn,execFileSync} from "node:child_process";
+import {realpathSync} from "node:fs";
 import type {Candidate,Evidence} from "../core/types.js";
 import {EvidenceStore} from "./store.js";
 
@@ -13,6 +14,14 @@ export interface ExecutedEvidence {
  readonly finishedAt:string;
 }
 const executed=new WeakSet<object>();
+function assertExactGitCandidate(candidate:Candidate,cwd:string):void{
+ const run=(...args:string[])=>execFileSync("git",["-C",cwd,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim();
+ let root:string,head:string;
+ try{root=run("rev-parse","--show-toplevel");head=run("rev-parse","HEAD");}
+ catch{throw new Error("Execution evidence requires a Git repository with a checked-out HEAD");}
+ if(realpathSync(root)!==realpathSync(candidate.repository)||realpathSync(cwd)!==realpathSync(root))throw new Error("Execution evidence repository mismatch");
+ if(head!==candidate.revision)throw new Error("Execution evidence revision mismatch");
+}
 
 export function isExecutedEvidence(value:unknown):value is ExecutedEvidence {
  return typeof value==="object"&&value!==null&&executed.has(value);
@@ -21,6 +30,7 @@ export function isExecutedEvidence(value:unknown):value is ExecutedEvidence {
 export async function executeEvidenceCommand(candidate:Candidate,command:readonly [string,...string[]],options:{cwd?:string;timeoutMs?:number}={}):Promise<ExecutedEvidence>{
  if(!candidate.repository||!candidate.id||!candidate.revision)throw new Error("Execution evidence requires exact candidate identity");
  const cwd=options.cwd??candidate.repository;
+ assertExactGitCandidate(candidate,cwd);
  const startedAt=new Date().toISOString();
  const exitCode=await new Promise<number>((resolve,reject)=>{
   const child=spawn(command[0],command.slice(1),{cwd,stdio:"ignore",shell:false});
@@ -28,6 +38,7 @@ export async function executeEvidenceCommand(candidate:Candidate,command:readonl
   child.on("error",error=>{clearTimeout(timer);reject(error);});
   child.on("close",code=>{clearTimeout(timer);resolve(code??-1);});
  });
+ assertExactGitCandidate(candidate,cwd);
  const proof=Object.freeze({candidateRepository:candidate.repository,candidateId:candidate.id,candidateRevision:candidate.revision,command:Object.freeze([...command]),cwd,exitCode,startedAt,finishedAt:new Date().toISOString()});
  executed.add(proof);
  return proof;
