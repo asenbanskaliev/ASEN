@@ -63,3 +63,8 @@ CI and Release Gate results must be rechecked on the exact final HEAD after ever
 
 - **PARCIAL pending final matrix:** CI, Release Gate and Phase 0 Architecture now explicitly check out `github.event.pull_request.head.sha` for PR runs, falling back to `github.sha` for push runs. Each verifies its actual Git HEAD before running gates. This avoids treating tests on GitHub's synthetic PR merge commit as tests on the candidate revision. The authenticated Pi workflow already checks out and asserts the exact PR SHA. These workflow changes require Ubuntu, Windows and macOS jobs to finish on the same final SHA before being marked proven.
 - **NO PROBADO:** full lifecycle with model-produced task/review/verification artifacts and independently trusted reviewer. Four role model turns and the signed recovery preparation are separate limited proofs. `CAP-SKL-001` stays `specified`.
+
+## Pi native Skill preflight — 2026-09-28
+
+- **PARCIAL pending final SHA gates:** the production Pi RPC runner now checks both the explicit ASEN authority extension and the exact ordered native Skills returned by Pi's `get_commands` in the same process, before sending its task. Its adversarial fixtures replace, omit or add a Skill; each mismatch must stop the turn. The real four-role LLM7 workflow independently checks selected native Skills and zero tool use.
+- **NO PROBADO:** this control is inside the Pi process, not an OS sandbox. Worker, reviewer and verifier have not yet produced independently trusted lifecycle artifacts in a complete real-model E2E. `CAP-SKL-001` stays `specified`.
