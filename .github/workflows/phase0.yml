@@ -14,6 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Assert exact candidate checkout
+        shell: bash
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
       - name: Reject forbidden Gentle runtime dependencies
         shell: bash
         run: |
