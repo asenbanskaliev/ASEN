@@ -32,7 +32,7 @@ test("review from repo-A is rejected for repo-B",()=>{
 });
 
 test("TDD evidence from repo-A is invisible to repo-B",async()=>{
- const store=new EvidenceStore(),cycle=new TddCycle(a,store);
- cycle.record("RED","red-A","failed",await executionProof(a,1));cycle.record("GREEN","green-A","passed",await executionProof(a,0));cycle.record("REFACTOR","refactor-A","passed",await executionProof(a,0));
+ const store=new EvidenceStore(),cycle=new TddCycle(a,store,"repo-a-cycle");
+ cycle.record("RED","repo-a-cycle:red","failed",await executionProof(a,1));cycle.record("GREEN","repo-a-cycle:green","passed",await executionProof(a,0));cycle.record("REFACTOR","repo-a-cycle:refactor","passed",await executionProof(a,0));
  assert.equal(store.forCandidate(b).length,0);
 });
