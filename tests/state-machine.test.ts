@@ -11,7 +11,9 @@ function implementationAuthorization(){
  const evidence=new EvidenceStore();
  evidence.add(candidate,{id:"route",kind:"route-decision",status:"pass",summary:"route",createdAt:"now"});
  evidence.add(candidate,{id:"unit",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
- return authorizeImplementation(candidate,issueSkillContext("task",candidate.repository,candidate,{filesTouched:2}),evidence);
+ evidence.add(candidate,{id:"scope",kind:"scope",status:"pass",summary:"scope",createdAt:"now"});
+ evidence.add(candidate,{id:"rollback",kind:"rollback",status:"pass",summary:"rollback",createdAt:"now"});
+ return authorizeImplementation(candidate,issueSkillContext("task",candidate.repository,candidate,{phase:"apply",filesTouched:2}),evidence);
 }
 async function verifiedAuthorization(){
  const evidence=new EvidenceStore();
@@ -35,6 +37,10 @@ test("allows canonical engineering path only through gate-issued authorizations"
 test("plain transition cannot bypass privileged gates",()=>{
  assert.throws(()=>transition("PLANNING","IMPLEMENTING"),/requires gate authorization/);
  assert.throws(()=>transition("VERIFYING","VERIFIED"),/requires gate authorization/);
+});
+test("an explorer context cannot mint IMPLEMENTING authorization",()=>{
+ const context=issueSkillContext("task",candidate.repository,candidate,{phase:"explore"});
+ assert.throws(()=>authorizeImplementation(candidate,context,new EvidenceStore()),/apply phase/);
 });
 
 test("fabricated authorization cannot unlock privileged transition",()=>{
