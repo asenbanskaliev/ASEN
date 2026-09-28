@@ -5,10 +5,11 @@ const lifecycleArtifactKind:Record<string,string>={"context-init":"project-conte
 
 export function bindPiArtifactIdentity(output:string,request:AgentRequest):string{
  if(!request.candidate||request.repository!==request.candidate.repository)throw new Error("Pi artifact provenance requires an exact candidate repository");
- const raw=JSON.parse(extractPiArtifact(output,request.id)) as unknown;
- if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Pi artifact content must be a JSON object");
- const record=raw as Record<string,unknown>;
- const content=typeof record.content==="string"?record.content.trim():JSON.stringify(record);
+ const body=extractPiArtifact(output,request.id);
+ let parsed:unknown;
+ try{parsed=JSON.parse(body);}catch{parsed=undefined;}
+ const record=parsed&&typeof parsed==="object"&&!Array.isArray(parsed)?parsed as Record<string,unknown>:{};
+ const content=typeof record.content==="string"?record.content.trim():body;
  if(!content)throw new Error("Pi artifact content must be non-empty");
  const expected={repository:request.repository,candidateId:request.candidate.id,revision:request.candidate.revision};
  for(const key of ["repository","candidateId","revision"] as const)if(record[key]!==undefined&&record[key]!==expected[key])throw new Error(`Pi artifact supplied mismatched ${key}`);
@@ -40,9 +41,7 @@ export function extractPiArtifact(output:string,requestId:string):string{
  if(textParts.length!==1)throw new Error("Pi artifact must contain exactly one assistant text response");
  if(contents.some(item=>!!item&&typeof item==="object"&&["toolCall","tool_call"].includes(String((item as {type?:unknown}).type))))throw new Error("Pi artifact assistant response must not contain tool calls");
  const body=textParts[0]!.text.trim();
- let artifact:unknown;
- try{artifact=JSON.parse(body);}catch{throw new Error("Pi artifact assistant text is not JSON");}
- if(!artifact||typeof artifact!=="object"||Array.isArray(artifact))throw new Error("Pi artifact assistant JSON must be an object");
+ if(!body)throw new Error("Pi artifact assistant response must be non-empty");
  return body;
 }
 
