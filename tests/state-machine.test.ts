@@ -20,7 +20,7 @@ async function verifiedAuthorization(){
  await passingEvidence(evidence,candidate,"test");
  evidence.add(candidate,{id:"unit-v",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  await passingReview(evidence,candidate,"review-v");
- return authorizeVerified(candidate,"medium",issueSkillContext("task",candidate.repository,candidate,{verification:true}),evidence);
+ return authorizeVerified(candidate,"medium",issueSkillContext("task",candidate.repository,candidate,{phase:"verify",verification:true}),evidence);
 }
 
 test("rejects skipping directly to VERIFIED",()=>assert.throws(()=>transition("IMPLEMENTING","VERIFIED")));
@@ -41,6 +41,10 @@ test("plain transition cannot bypass privileged gates",()=>{
 test("an explorer context cannot mint IMPLEMENTING authorization",()=>{
  const context=issueSkillContext("task",candidate.repository,candidate,{phase:"explore"});
  assert.throws(()=>authorizeImplementation(candidate,context,new EvidenceStore()),/apply phase/);
+});
+test("an explorer context cannot mint VERIFIED authorization",()=>{
+ const context=issueSkillContext("task",candidate.repository,candidate,{phase:"explore"});
+ assert.throws(()=>authorizeVerified(candidate,"low",context,new EvidenceStore()),/verify phase/);
 });
 
 test("fabricated authorization cannot unlock privileged transition",()=>{
@@ -86,7 +90,7 @@ test("verification authorization derives mandatory review skill from context",as
  await passingEvidence(evidence,candidate,"test-derived");
  evidence.add(candidate,{id:"unit-derived",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  assert.throws(
-  ()=>authorizeVerified(candidate,"medium",issueSkillContext("task",candidate.repository,candidate,{verification:true}),evidence),
+  ()=>authorizeVerified(candidate,"medium",issueSkillContext("task",candidate.repository,candidate,{phase:"verify",verification:true}),evidence),
   /asen-review.*review evidence/
  );
 });
