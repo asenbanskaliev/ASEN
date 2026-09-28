@@ -52,3 +52,9 @@ The authenticated explorer probe now launches Pi with `--tools read` in addition
 - **NO PROBADO:** model-produced worker/reviewer/verifier artifacts bound to lifecycle transitions; separately trusted reviewer; executed TDD RED/GREEN/refactor on one Git revision; full model-backed recovery and archive; OS sandbox. `CAP-SKL-001` stays `specified`.
 
 CI and Release Gate results must be rechecked on the exact final HEAD after every subsequent edit, including Ubuntu, Windows and macOS. The four-role model probe above belongs to its stated SHA only.
+
+## Executed TDD checkpoint — 2026-09-28
+
+- **PROBADO (scoped):** the adversarial lone-GREEN case failed CI at `bd44728e2d64fb4c03869acdce9a4c16c48d3ff7` (run 36427381779). The generic executed-evidence API now rejects `kind: tdd`. `TddCycle` requires stage-specific ASEN-issued execution proofs and exact candidate identity; only an ordered failing RED, passing GREEN and passing REFACTOR satisfy the TDD gate. Signed reload reconstructs completion from those records and rejects recovered RED without failing execution metadata.
+- **PARCIAL:** the stage commands run on the candidate Git revision. The fixtures do not demonstrate that a model authored the tested code or that the intended behavior was absent before RED. Model text alone cannot prove TDD.
+- **NO PROBADO:** independently authenticated model reviewer, full real-Pi lifecycle and OS isolation. `CAP-SKL-001` remains `specified`.
