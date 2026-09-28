@@ -117,6 +117,15 @@ test("direct Pi runner rejects role phase substitution and writer authority outs
  const writer=await new PiProcessRunner({command:"does-not-exist"}).run({id:"task:a",role:"worker",prompt:"write",repository:candidate.repository,candidate,skillContext:context,skillPaths,writeSurfaces:["src"]});
  assert.equal(writer.ok,false);assert.match(writer.output,/apply phase/);
 });
+test("direct Pi runner rejects a caller-supplied expectedPhase override for read roles",async()=>{
+ const candidate={id:"candidate",repository:"missing-repo",revision:"revision",createdAt:"now"};
+ const context=issueSkillContext("task:a",candidate.repository,candidate,{phase:"explore"});
+ const skillPaths=selectSkills(context).map(item=>item.path);
+ for(const role of ["reviewer","verifier"] as const){
+  const result=await new PiProcessRunner({command:"does-not-exist"}).run({id:"task:a",role,expectedPhase:"explore",prompt:"inspect",repository:candidate.repository,candidate,skillContext:context,skillPaths});
+  assert.equal(result.ok,false);assert.match(result.output,/agent role/);
+ }
+});
 test("Pi preflight rejects omitted, added or replaced native Skill routes",async()=>{
  for(const mode of ["missing","extra","altered"] as const){
   const {d,p}=await fixture("setTimeout(()=>{},10000);",true,mode);
