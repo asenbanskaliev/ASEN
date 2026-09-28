@@ -4,8 +4,9 @@ import {EvidenceStore} from "../evidence/store.js";
 import {selectSkills} from "../skills/registry.js";
 import {isIssuedSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {verifySkillEvidence} from "../verify/verifier.js";
+import {consumePhaseGrant} from "../lifecycle/skill-lifecycle.js";
 
-export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; }
+export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; }
 export interface AgentArtifactProof { readonly requestId:string; readonly role:AgentRequest["role"]; readonly repository:string; readonly candidateId?:string; readonly candidateRevision?:string; readonly skillPaths:readonly string[]; }
 export interface AgentResult { id:string; ok:boolean; output:string; artifactProof?:AgentArtifactProof; }
 export interface AgentRunner { run(request:AgentRequest):Promise<AgentResult>; }
@@ -46,6 +47,7 @@ export class Dispatcher {
     validateWriteGrant(grant,this.#active);this.#active.push(grant);
    }
    if(request.candidate&&(!request.skillContext||!request.skillPaths))throw new Error("Candidate-bound delegation requires issued skill context and exact paths");
+   if(request.role==="worker"&&request.expectedPhase&&!consumePhaseGrant(request))throw new Error("Worker phase requires unused ASEN lifecycle grant");
    return await this.runner.run(request);
   } finally {if(grant){const i=this.#active.indexOf(grant);if(i>=0)this.#active.splice(i,1);}this.#release();}
  }
