@@ -34,7 +34,9 @@ export async function executionProof(candidate:Candidate,exitCode=0):Promise<Exe
 export async function passingEvidence(store:EvidenceStore,candidate:Candidate,id:string,kind:"test"|"tdd"="test"):Promise<void>{
  if(kind==="tdd"){
   const cycle=new TddCycle(candidate,store,id);
-  cycle.record("RED",`${id}:red`,"executed fixture",await executionProof(candidate,1),candidate);\n  const green=nextCandidateRevision(candidate,`${id}-green`);cycle.record("GREEN",`${id}:green`,"executed fixture",await executionProof(green,0),green);\n  const refactor=nextCandidateRevision(green,`${id}-refactor`);cycle.record("REFACTOR",`${id}:refactor`,"executed fixture",await executionProof(refactor,0),refactor);
+  cycle.record("RED",`${id}:red`,"executed fixture",await executionProof(candidate,1),candidate);
+  const green=nextCandidateRevision(candidate,`${id}-green`);cycle.record("GREEN",`${id}:green`,"executed fixture",await executionProof(green,0),green);
+  const refactor=nextCandidateRevision(green,`${id}-refactor`);cycle.record("REFACTOR",`${id}:refactor`,"executed fixture",await executionProof(refactor,0),refactor);
   return;
  }
  const proof=await executionProof(candidate,0);
