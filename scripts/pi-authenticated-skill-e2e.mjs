@@ -14,6 +14,7 @@ const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repo,encoding:"utf8"
 if(process.env.ASEN_EXPECTED_SHA&&revision!==process.env.ASEN_EXPECTED_SHA)throw new Error("Authenticated Pi candidate does not match the PR HEAD");
 const provider=process.env.ASEN_PI_PROVIDER??"openrouter";
 const model=process.env.ASEN_PI_MODEL??"qwen/qwen3.8-27b:free";
+const providerExtension=process.env.ASEN_PI_PROVIDER_EXTENSION;
 const candidate={id:"pr30-authenticated-pi",repository:repo,revision,createdAt:new Date().toISOString()};
 const recovered=process.env.ASEN_RECOVERY_FILE?await loadLifecycle(process.env.ASEN_RECOVERY_FILE,"pr30-authenticated-pi",candidate,recoveryKeyFromEnvironment()):undefined;
 if(recovered)assert.equal(recovered.state.nextPhase,"explore","Recovered lifecycle phase mismatch");
@@ -30,7 +31,7 @@ const cli=join(dirname(piMain),"bundle","cli.js");
 const results=[];
 for(const probe of probes){
  const paths=probe.expected,expected=paths.map(path=>realpathSync(resolve(repo,path)));
- const args=[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--no-tools","--provider",provider,"--model",model,...paths.flatMap(path=>["--skill",path])];
+ const args=[cli,"--mode","rpc","--no-session","--no-extensions",...(providerExtension?["--extension",providerExtension]:[]),"--no-skills","--no-tools","--provider",provider,"--model",model,...paths.flatMap(path=>["--skill",path])];
  const child=spawn(process.execPath,args,{cwd:repo,env:process.env,stdio:["pipe","pipe","pipe"]});
  const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
  const observed={loaded:false,finished:false,text:[],error:null};
