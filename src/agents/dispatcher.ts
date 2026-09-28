@@ -6,7 +6,7 @@ import {isIssuedSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} 
 import {verifySkillEvidence} from "../verify/verifier.js";
 
 export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; }
-export interface AgentResult { id:string; ok:boolean; output:string; }
+export interface AgentArtifactProof { readonly requestId:string; readonly role:AgentRequest["role"]; readonly repository:string; readonly candidateId?:string; readonly candidateRevision?:string; readonly skillPaths:readonly string[]; }\nexport interface AgentResult { id:string; ok:boolean; output:string; artifactProof?:AgentArtifactProof; }
 export interface AgentRunner { run(request:AgentRequest):Promise<AgentResult>; }
 
 export class Dispatcher {
