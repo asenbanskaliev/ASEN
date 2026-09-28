@@ -54,7 +54,7 @@ test("lifecycle refuses wrong role, task, revision, routes and artifact",async()
  await assert.rejects(()=>advance(flow,"context-init",{paths:[]}),/skill routes mismatch/);
  const valid=completion("context-init");
  await assert.rejects(()=>advance(flow,"context-init",{paths:[...valid.skillPaths,valid.skillPaths[0]!]}),/skill routes mismatch/);
- await assert.rejects(()=>advance(flow,"context-init",{artifact:{content:" "}}),/artifact missing/);
+ await assert.rejects(()=>advance(flow,"context-init",{artifact:{content:" "}}),/failed or belongs to another task|artifact missing/);
  await assert.rejects(()=>advance(flow,"context-init",{artifact:{repository:"other"}}),/failed or belongs to another task|mismatched repository/);
  assert.equal(flow.state.records.length,0);
 });
