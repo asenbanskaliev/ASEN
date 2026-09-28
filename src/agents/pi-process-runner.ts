@@ -143,9 +143,11 @@ export class PiProcessRunner implements AgentRunner{
     if(code===0&&!overflow){
      try{
       const records=stdout.trim().split(/\r?\n/).filter(Boolean).map(line=>JSON.parse(line));
-      const envelope=records.find(record=>record?.type==="response"&&record?.id===request.id);
-      if(!envelope)return finish({id:request.id,ok:false,output:"pi correlated response missing"});
-      if(envelope.success===false)return finish({id:request.id,ok:false,output:`pi response failed: ${JSON.stringify(envelope)}`});
+      const responses=records.filter(record=>record?.type==="response"&&record?.id===request.id);
+      if(!responses.length)return finish({id:request.id,ok:false,output:"pi correlated response missing"});
+      if(responses.length!==1)return finish({id:request.id,ok:false,output:"pi requires exactly one correlated response"});
+      const envelope=responses[0];
+      if(envelope.success!==true)return finish({id:request.id,ok:false,output:`pi response failed: ${JSON.stringify(envelope)}`});
      }catch{
       return finish({id:request.id,ok:false,output:"pi response envelope invalid"});
      }
