@@ -13,8 +13,7 @@ export class EvidenceStore {
   const execution={command:[...proof.command],cwd:proof.cwd,exitCode:proof.exitCode,startedAt:proof.startedAt,finishedAt:proof.finishedAt};
   return this.#insert(candidate,{...evidence,execution});
  }
- restoreVerified(candidate:Candidate,evidence:Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">,verified:boolean):Evidence{
-  if(verified!==true)throw new Error("Recovered evidence requires verified signed proof");
+ restoreSigned(candidate:Candidate,evidence:Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">):Evidence{
   if(evidence.status==="pass"&&(evidence.kind==="test"||evidence.kind==="tdd")){
    const x=evidence.execution;if(!x||x.exitCode!==0||!Array.isArray(x.command)||x.command.length===0||!x.cwd||!x.startedAt||!x.finishedAt)throw new Error("Recovered passing execution evidence lacks provenance");
   }

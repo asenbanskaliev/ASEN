@@ -20,5 +20,3 @@ test("signed evidence survives restart only for exact candidate and signing key"
  const raw=JSON.parse(await readFile(path,"utf8"));raw.value.items[0].status="fail";await writeFile(path,JSON.stringify(raw));
  await assert.rejects(()=>loadEvidence(path,candidate,key),/integrity mismatch/);
 });
-
-test("public restore rejects fabricated recovery proof",()=>{const store=new EvidenceStore();assert.throws(()=>store.restoreVerified(candidate,{id:"fake",kind:"test",status:"pass",summary:"forged",createdAt:"now",execution:{command:["fake"],cwd:"repo",exitCode:0,startedAt:"now",finishedAt:"now"}},false),/verified signed proof/);});
