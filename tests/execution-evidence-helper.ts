@@ -3,6 +3,7 @@ import {resolve} from "node:path";
 import type {Candidate} from "../src/core/types.js";
 import {addExecutedEvidence,executeEvidenceCommand,type ExecutedEvidence} from "../src/evidence/execution.js";
 import {EvidenceStore} from "../src/evidence/store.js";
+import {TddCycle} from "../src/test/tdd-cycle.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {executeIndependentReview} from "../src/evidence/review-execution.js";
 
@@ -15,6 +16,11 @@ export async function executionProof(candidate:Candidate,exitCode=0):Promise<Exe
  return executeEvidenceCommand(candidate,[process.execPath,"-e",`process.exit(${exitCode})`],{cwd:candidate.repository,timeoutMs:10000});
 }
 export async function passingEvidence(store:EvidenceStore,candidate:Candidate,id:string,kind:"test"|"tdd"="test"):Promise<void>{
+ if(kind==="tdd"){
+  const cycle=new TddCycle(candidate,store,id);
+  for(const stage of ["RED","GREEN","REFACTOR"] as const)cycle.record(stage,`${id}:${stage.toLowerCase()}`,"executed fixture",await executionProof(candidate,stage==="RED"?1:0));
+  return;
+ }
  const proof=await executionProof(candidate,0);
  addExecutedEvidence(store,candidate,proof,{id,kind,summary:"executed test proof"});
 }
