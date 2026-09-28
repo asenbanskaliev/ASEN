@@ -1,5 +1,5 @@
 import {spawn,type ChildProcess} from "node:child_process";
-import {resolve} from "node:path";
+import {resolve as resolvePath} from "node:path";
 import {realpathSync} from "node:fs";
 import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
 import {matchesIssuedSkillContext} from "../skills/context.js";
@@ -59,7 +59,7 @@ export class PiProcessRunner implements AgentRunner{
    return Promise.resolve({id:request.id,ok:false,output:"pi skill and tool arguments must be issued by ASEN"});
   if(request.writeSurfaces?.length&&request.role!=="worker")return Promise.resolve({id:request.id,ok:false,output:"Only a worker may request write tools"});
   const writer=request.role==="worker"&&!!request.writeSurfaces?.length&&!!request.candidate&&!!request.skillContext;
-  const policy=resolve(request.repository,"extensions/authority.ts");
+  const policy=resolvePath(request.repository,"extensions/authority.ts");
   const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,
    "--no-extensions","--extension",policy,"--no-skills","--tools",writer?"read,edit,write":"read",...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
   const timeoutMs=this.options.timeoutMs??120_000;
@@ -99,8 +99,8 @@ export class PiProcessRunner implements AgentRunner{
      if(response.type!=="response"||response.id!==preflightId)continue;
      const matches=response.data?.commands?.filter(item=>item.name==="asen-authority-status"&&item.source==="extension"&&item.sourceInfo?.path===policy)??[];
      if(response.success!==true||matches.length!==1){stop();finish({id:request.id,ok:false,output:"pi ASEN policy extension was not loaded"});return;}
-     const canonical=(path:string)=>{try{return realpathSync(path);}catch{return resolve(path);}};
-     const expected=(request.skillPaths??[]).map(path=>canonical(resolve(request.repository,path)));
+     const canonical=(path:string)=>{try{return realpathSync(path);}catch{return resolvePath(path);}};
+     const expected=(request.skillPaths??[]).map(path=>canonical(resolvePath(request.repository,path)));
      const observed=response.data?.commands?.filter(item=>item.source==="skill").map(item=>typeof item.sourceInfo?.path==="string"?canonical(item.sourceInfo.path):"")??[];
      if(observed.length!==expected.length||observed.some((path,index)=>path!==expected[index])){stop();finish({id:request.id,ok:false,output:"pi native Skill paths do not match ASEN selection"});return;}
      policyLoaded=true;
