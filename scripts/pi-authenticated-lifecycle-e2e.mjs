@@ -17,7 +17,7 @@ if(!process.env.OPENROUTER_API_KEY)throw new Error("OPENROUTER_API_KEY is unavai
 const candidate={id:"pr30-real-pi-lifecycle",repository,revision,createdAt:new Date().toISOString()};
 const taskId="pr30-real-pi-lifecycle";
 const evidence=new EvidenceStore();
-const runner=new PiArtifactRunner(new PiProcessRunner({extraArgs:["--no-session","--provider","openrouter","--model","openrouter/free"],timeoutMs:180000}));
+const runner=new PiArtifactRunner(new PiProcessRunner({extraArgs:["--no-session","--provider","openrouter","--model","qwen/qwen3.8-27b:free"],timeoutMs:180000}));
 const dispatcher=new Dispatcher(runner,evidence,1);
 const flow=new SkillLifecycle(taskId,candidate);
 const phases=[
