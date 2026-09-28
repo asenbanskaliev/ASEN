@@ -12,7 +12,8 @@ import {selectSkills} from "../src/skills/registry.js";
 const repository=resolve(".");
 const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8"}).trim();
 assert.equal(revision,process.env.ASEN_EXPECTED_SHA,"Lifecycle candidate must be exact PR HEAD");
-const provider=process.env.ASEN_PI_PROVIDER??"openrouter";\nconst model=process.env.ASEN_PI_MODEL??"qwen/qwen3.8-27b:free";
+const provider=process.env.ASEN_PI_PROVIDER??"openrouter";
+const model=process.env.ASEN_PI_MODEL??"qwen/qwen3.8-27b:free";
 
 const candidate={id:"pr30-real-pi-lifecycle",repository,revision,createdAt:new Date().toISOString()};
 const taskId="pr30-real-pi-lifecycle";
