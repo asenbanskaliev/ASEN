@@ -51,6 +51,16 @@ test("Pi RPC adapter supplies selected routes as native Pi flags",async()=>{
  const response=JSON.parse(r.output.trim());
  assert.deepEqual(response.args,["--no-extensions","--no-skills","--tools","read",...paths.flatMap(path=>["--skill",path])]);
 });
+test("Pi worker receives bounded file tools without process execution or delegation",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
+ const candidate={id:"candidate",repository:d,revision:"revision",createdAt:"now"};
+ const context=issueSkillContext("worker",d,candidate,{phase:"apply"});
+ const paths=selectSkills(context).map(skill=>skill.path);
+ const r=await runner(p).run({id:"worker",role:"worker",prompt:"implement",repository:d,candidate,writeSurfaces:["src"],skillContext:context,skillPaths:paths});
+ assert.equal(r.ok,true);
+ const args=JSON.parse(r.output.trim()).args as string[];
+ assert.deepEqual(args,["--no-extensions","--no-skills","--tools","read,edit,write",...paths.flatMap(path=>["--skill",path])]);
+});
 test("Pi RPC adapter blocks caller-supplied tool authority",async()=>{
  const {d,p}=await fixture('setTimeout(()=>{},10000);');
  const context=issueSkillContext("tool-override",d,undefined,{phase:"explore"});
