@@ -42,9 +42,11 @@ test("candidate-free Pi output cannot acquire artifact provenance",()=>{
  assert.throws(()=>bindPiArtifactIdentity(completed(assistant(JSON.stringify(artifact))),request),/exact candidate/);
 });
 
-test("model cannot supply phase, role or another lifecycle identity field",()=>{
+test("skill-specific fields are preserved only as untrusted content while ASEN owns identity",()=>{
  const request={id:"task:explorer",role:"explorer" as const,prompt:"x",repository:"/repo",candidate:{id:"c",repository:"/repo",revision:"r",createdAt:"now"}};
- for(const key of ["phase","role","taskId","author","skillPaths"]){
-  assert.throws(()=>bindPiArtifactIdentity(completed(assistant(JSON.stringify({...artifact,[key]:"spoofed"}))),request),/unsupported fields/);
- }
+ const functional={action:"inspect",file:"src/example.ts",author:"model"};
+ const bound=JSON.parse(bindPiArtifactIdentity(completed(assistant(JSON.stringify(functional))),request));
+ assert.equal(bound.repository,"/repo");assert.equal(bound.candidateId,"c");assert.equal(bound.revision,"r");
+ assert.deepEqual(JSON.parse(bound.content),functional);
+ assert.equal(bound.action,undefined);assert.equal(bound.file,undefined);assert.equal(bound.author,undefined);
 });
