@@ -1,0 +1,23 @@
+import assert from "node:assert/strict";
+import {execFileSync} from "node:child_process";
+import {resolve} from "node:path";
+import {Dispatcher} from "../src/agents/dispatcher.js";
+import {EvidenceStore} from "../src/evidence/store.js";
+import {SkillLifecycle,saveLifecycle} from "../src/lifecycle/skill-lifecycle.js";
+import {recoveryKeyFromEnvironment} from "../src/session/recovery-key.js";
+import {issueSkillContext} from "../src/skills/context.js";
+import {selectSkills} from "../src/skills/registry.js";
+
+const repository=resolve("."),revision=execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim();
+assert.equal(revision,process.env.ASEN_EXPECTED_SHA,"Recovery candidate must equal PR HEAD");
+if(!process.env.ASEN_RECOVERY_FILE)throw new Error("Recovery checkpoint path missing");
+const candidate={id:"pr30-authenticated-pi",repository,revision,createdAt:new Date().toISOString()},taskId="pr30-authenticated-pi";
+const flow=new SkillLifecycle(taskId,candidate),evidence=new EvidenceStore();
+const context=issueSkillContext(`${taskId}:worker`,repository,candidate,{phase:"context-init",risk:"low"});
+const skillPaths=selectSkills(context).map(skill=>skill.path);
+const runner={run:async request=>({id:request.id,ok:true,output:JSON.stringify({kind:"project-context",content:"ASEN PR 30 recovery audit",repository,candidateId:candidate.id,revision})})};
+await flow.runPhase(new Dispatcher(runner,evidence),{phase:"context-init",context,skillPaths,prompt:"initialize audit",evidence,risk:"low"});
+const pending=issueSkillContext(`${taskId}:explorer`,repository,candidate,{phase:"explore",risk:"low"});
+flow.preparePhase(pending,selectSkills(pending).map(skill=>skill.path));
+await saveLifecycle(process.env.ASEN_RECOVERY_FILE,flow.state,recoveryKeyFromEnvironment());
+console.log(JSON.stringify({candidate:revision,nextPhase:flow.state.nextPhase,persisted:true}));
