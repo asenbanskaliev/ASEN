@@ -1,6 +1,7 @@
 import {spawn,type ChildProcess} from "node:child_process";
 import {resolve as resolvePath} from "node:path";
-import {realpathSync} from "node:fs";
+import {readFileSync,realpathSync} from "node:fs";
+import {createHash} from "node:crypto";
 import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
 import {matchesIssuedSkillContext} from "../skills/context.js";
 import {selectSkills} from "../skills/registry.js";
@@ -14,6 +15,9 @@ export interface PiProcessOptions{
  signal?:AbortSignal;
  validateResponseId?:boolean;
 }
+
+// This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
+const authorityDigest="d8f2e3b139245e0230fa93569814fbd47195dc8fff7fca25175e94cf8ce2f9d2";
 
 function terminateTree(child:ChildProcess):void{
  if(!child.pid)return;
@@ -68,6 +72,10 @@ export class PiProcessRunner implements AgentRunner{
   if(request.writeSurfaces?.length&&request.role!=="worker")return Promise.resolve({id:request.id,ok:false,output:"Only a worker may request write tools"});
   const writer=request.role==="worker"&&!!request.writeSurfaces?.length&&!!request.candidate&&!!request.skillContext;
   const policy=resolvePath(request.repository,"extensions/authority.ts");
+  try{
+   const digest=createHash("sha256").update(readFileSync(policy)).digest("hex");
+   if(digest!==authorityDigest)throw new Error("mismatch");
+  }catch{return Promise.resolve({id:request.id,ok:false,output:"pi authority extension integrity check failed"});}
   const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,
    "--no-extensions","--extension",policy,"--no-skills","--tools",writer?"read,edit,write":"read",...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
   const timeoutMs=this.options.timeoutMs??120_000;
