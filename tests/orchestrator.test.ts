@@ -29,6 +29,10 @@ test("writer is bound to the exact orchestration candidate",()=>{
 test("writer orchestration fails closed without candidate",()=>{
  assert.throws(()=>buildOrchestrationPlan({taskId:"t",repository:"r",prompt:"p",codeChange:true,filesTouched:4,writeSurfaces:["src"]},routeOdd({filesTouched:4})),/exact candidate/);
 });
+test("writer orchestration refuses a non-apply phase before issuing authority",()=>{
+ const candidate={id:"c",repository:"r",revision:"sha",createdAt:"now"};
+ assert.throws(()=>buildOrchestrationPlan({taskId:"task",repository:"r",prompt:"write",skillPhase:"explore",writeSurfaces:["src"],candidate},routeOdd({filesTouched:4})),/apply phase/);
+});
 
 test("orchestration passes exact selected SKILL.md paths to delegated agents",()=>{
  const candidate={id:"c",repository:"r",revision:"sha",createdAt:"now"};
