@@ -62,3 +62,11 @@ This section supersedes the earlier review and worker-tool rows where they diffe
 | End-to-end lifecycle and recovery with reissued authority | NO PROBADO | Nine-phase lifecycle tests still use fixture output; authenticated Pi reviewer/worker/verifier transitions and restart continuation under reissued authority remain outstanding. |
 
 CAP-SKL-001 remains `specified`; none of these partial guarantees authorize merging the PR.
+
+## Authenticated restart checkpoint — 2026-09-28
+
+At candidate `c48543574f3a67f0fb5ca582ab3a843214e738ca`, authenticated run 36382472937 passed. Its first Node process advanced `context-init` with a fixture artifact, explicitly prepared the explorer's next selection and paths, and saved a signed lifecycle snapshot using an ephemeral host key. A second Node process verified that snapshot, reissued a fresh `IssuedSkillContext` for the same task/repository/candidate/revision/phase, and ran a real Pi + LLM7 turn with exactly the two explorer Skills and zero tools. The model returned nonempty text. The context-init artifact was a fixture, and the model response was not promoted to a structured lifecycle artifact. Status: PARCIAL for model-backed recovery and phase completion.
+
+`tests/skill-lifecycle.test.ts` separately restarts a process, rejects a wrong recovery key, rejects an unverified snapshot object as a source of new authority, and continues the pending design phase under reissued authority using a fixture runner. The pending phase selection and exact Skill paths are stored in the signed snapshot; they are not guessed after restart. Status: PROBADO for this signed checkpoint and reissuance path, PARCIAL for production recovery (the production host still needs durable secret management and authenticated output validation).
+
+A source review confirms exactly 27 `skills/asen-*/SKILL.md` contracts and `CAP-SKL-001` remains `specified`. Remaining critical proofs include a genuine independently authorized reviewer, worker write-surface isolation beyond Pi's tool allowlist, a clean or isolated source tree for executed test evidence, and a fully authenticated nine-phase lifecycle with test/review/release evidence from the exact candidate. The matrix above is historical; these latest classifications supersede its older recovery row. Do not merge.
