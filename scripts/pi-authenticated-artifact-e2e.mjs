@@ -11,11 +11,10 @@ import {extractPiArtifact} from "../src/agents/pi-artifact-runner.js";
 const repository=resolve(".");
 const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8"}).trim();
 assert.equal(revision,process.env.ASEN_EXPECTED_SHA,"Structured Pi candidate must be exact PR HEAD");
-if(!process.env.LLM7_API_KEY)throw new Error("LLM7_API_KEY is unavailable");
+if(!process.env.OPENROUTER_API_KEY)throw new Error("OPENROUTER_API_KEY is unavailable");
 const candidate={id:"pr30-structured-pi",repository,revision,createdAt:new Date().toISOString()};
 const piMain=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
 const cli=join(dirname(piMain),"bundle","cli.js");
-const provider=realpathSync(join(process.env.PI_CODING_AGENT_DIR??join(homedir(),".pi","agent"),"npm","node_modules","pi-free","dist","index.js"));
 const roles=[["worker","apply"],["reviewer","adversarial-review"],["verifier","verify"]];
 const results=[];
 for(const [role,phase] of roles){
@@ -24,7 +23,7 @@ for(const [role,phase] of roles){
  const selected=selectSkills(context).map(skill=>skill.path);
  const expected=selected.map(path=>realpathSync(resolve(repository,path)));
  const id=`artifact-${role}`;
- const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--extension",provider,"--no-skills","--no-tools","--provider","llm7","--model","default",...selected.flatMap(path=>["--skill",path])],{cwd:repository,env:process.env,stdio:["pipe","pipe","pipe"]});
+ const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--no-tools","--provider","openrouter","--model","openrouter/auto",...selected.flatMap(path=>["--skill",path])],{cwd:repository,env:process.env,stdio:["pipe","pipe","pipe"]});
  const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
  const metadata={taskId,role,phase,repository,candidateId:candidate.id,revision,kind:"audit-observation",content:"Brief observation"};
  const message=[
@@ -54,7 +53,7 @@ for(const [role,phase] of roles){
     }
     if(record.type==="tool_execution_start")throw new Error("Pi artifact probe attempted a tool");
     if(record.type==="message_end"&&record.message?.role==="assistant"&&record.message.stopReason==="error"){
-     const detail=String(record.message.errorMessage??"No provider detail").replaceAll(process.env.LLM7_API_KEY,"[redacted]").slice(0,700);
+     const detail=String(record.message.errorMessage??"No provider detail").replaceAll(process.env.OPENROUTER_API_KEY,"[redacted]").slice(0,700);
      throw new Error(`Model turn reported an error for ${role}: ${detail}`);
     }
     if(record.type==="agent_end"){finished=true;child.stdin.end();}
@@ -65,7 +64,7 @@ for(const [role,phase] of roles){
  const exit=await new Promise((ok,fail)=>{child.on("error",fail);child.on("close",ok);});
  clearTimeout(timeout);
  if(failure)throw failure;
- if(exit!==0)throw new Error(`Pi artifact process failed for ${role}: ${stderr.replaceAll(process.env.LLM7_API_KEY,"[redacted]")}`);
+ if(exit!==0)throw new Error(`Pi artifact process failed for ${role}: ${stderr.replaceAll(process.env.OPENROUTER_API_KEY,"[redacted]")}`);
  assert.ok(loaded&&finished,"Pi artifact probe did not finish");
  const records=output.trim().split(/\r?\n/).flatMap(line=>{try{return [JSON.parse(line)];}catch{return [];}});
  const final=records.filter(record=>record.type==="message_end"&&record.message?.role==="assistant").at(-1);
@@ -73,7 +72,7 @@ for(const [role,phase] of roles){
  let raw;
  try{raw=JSON.parse(assistantText);}
  catch(error){
-  console.error(JSON.stringify({role,assistantLength:assistantText.length,assistantPrefix:assistantText.replaceAll(process.env.LLM7_API_KEY,"[redacted]").slice(0,280)}));
+  console.error(JSON.stringify({role,assistantLength:assistantText.length,assistantPrefix:assistantText.replaceAll(process.env.OPENROUTER_API_KEY,"[redacted]").slice(0,280)}));
   throw new Error(`Model artifact ${role} is not strict JSON`,{cause:error});
  }
  assert.deepEqual(Object.keys(raw).sort(),Object.keys(metadata).sort(),`Model artifact ${role} has wrong fields`);
@@ -84,4 +83,4 @@ for(const [role,phase] of roles){
  assert.equal(artifact.content,raw.content,`ASEN artifact ${role} changed model content`);
  results.push({role,phase,skills:selected,kind:artifact.kind});
 }
-console.log(JSON.stringify({candidate:revision,model:"llm7/default",artifacts:results,result:"PASS"}));
+console.log(JSON.stringify({candidate:revision,model:"openrouter/openrouter/auto",artifacts:results,result:"PASS"}));
