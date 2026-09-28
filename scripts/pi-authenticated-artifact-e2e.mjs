@@ -27,7 +27,12 @@ for(const [role,phase] of roles){
  const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--extension",provider,"--no-skills","--no-tools","--provider","llm7","--model","default",...selected.flatMap(path=>["--skill",path])],{cwd:repository,env:process.env,stdio:["pipe","pipe","pipe"]});
  const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
  const metadata={taskId,role,phase,repository,candidateId:candidate.id,revision,kind:"audit-observation",content:"Brief observation"};
- const message=`Return only one JSON object with these exact fields and values: ${JSON.stringify(metadata)}. Do not call tools.`;
+ const message=[
+ "This is a machine-readable ASEN audit step, not a conversational request.",
+ "Your entire assistant response MUST be exactly the JSON object on the next line.",
+ "Do not use Markdown fences. Do not add prose. Do not rename, omit, or add fields. Do not call tools.",
+ JSON.stringify(metadata)
+].join("\\n");
  let buffer="",output="",stderr="",failure=null,loaded=false,finished=false;
  const timeout=setTimeout(()=>child.kill(),180000);
  command({id:`load-${role}`,type:"get_commands"});
