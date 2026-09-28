@@ -19,7 +19,7 @@ if(recovered)assert.equal(recovered.state.nextPhase,"explore","Recovered lifecyc
 const recoveredContext=recovered?recovered.reissuePendingAuthority().context:undefined;
 const probes=[
  {role:"explorer",context:recoveredContext??issueSkillContext("pr30-authenticated-pi:explorer",repo,candidate,{phase:"explore",risk:"low"}),expected:["skills/asen-phase-protocol/SKILL.md","skills/asen-explore/SKILL.md"]},
- {role:"reviewer",context:issueSkillContext("pr30-authenticated-pi:reviewer",repo,candidate,{phase:"adversarial-review",risk:"low"}),expected:["skills/asen-review/SKILL.md","skills/asen-adversarial-review/SKILL.md"]},
+ {role:"reviewer",context:issueSkillContext("pr30-authenticated-pi:reviewer",repo,candidate,{phase:"adversarial-review",risk:"low"}),expected:["skills/asen-work-unit/SKILL.md","skills/asen-review/SKILL.md","skills/asen-adversarial-review/SKILL.md"]},
  {role:"verifier",context:issueSkillContext("pr30-authenticated-pi:verifier",repo,candidate,{phase:"verify",risk:"low"}),expected:["skills/asen-phase-protocol/SKILL.md","skills/asen-verify/SKILL.md"]},
  {role:"worker",context:issueSkillContext("pr30-authenticated-pi:worker",repo,candidate,{phase:"apply",risk:"low"}),expected:["skills/asen-phase-protocol/SKILL.md","skills/asen-work-unit/SKILL.md","skills/asen-safe-change/SKILL.md","skills/asen-apply/SKILL.md"]}
 ];
