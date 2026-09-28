@@ -75,6 +75,16 @@ test("Pi RPC correlation cannot be disabled by a runner option",async()=>{
  const result=await runner(p,{validateResponseId:false} as ConstructorParameters<typeof PiProcessRunner>[0]).run({id:"required",role:"explorer",prompt:"hello",repository:d});
  assert.equal(result.ok,false);assert.match(result.output,/correlated response missing/);
 });
+test("Pi RPC runner rejects duplicate correlated responses",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());for(let i=0;i<2;i++)console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
+ const result=await runner(p).run({id:"duplicate",role:"explorer",prompt:"hello",repository:d});
+ assert.equal(result.ok,false);assert.match(result.output,/exactly one correlated response/);
+});
+test("Pi RPC runner requires an explicit successful correlated response",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id}));});');
+ const result=await runner(p).run({id:"missing-success",role:"explorer",prompt:"hello",repository:d});
+ assert.equal(result.ok,false);assert.match(result.output,/response failed/);
+});
 test("Pi RPC adapter rejects malformed structured output",async()=>{const {d,p}=await fixture('console.log("not-json");');const r=await runner(p,{}).run({id:"req-json",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/envelope invalid/);});
 test("Pi RPC adapter requires a correlated response by default",async()=>{const {d,p}=await fixture('console.log(JSON.stringify({type:"event",id:"req-default"}));');const r=await runner(p).run({id:"req-default",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/correlated response missing/);});
 
