@@ -10,7 +10,7 @@ import {selectSkills} from "../src/skills/registry.js";
 import {Dispatcher,type AgentRunner} from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {loadEvidence,saveEvidence} from "../src/evidence/persistence.js";
-import {passingEvidence,gitCandidate} from "./execution-evidence-helper.js";
+import {passingEvidence,passingReview,gitCandidate} from "./execution-evidence-helper.js";
 const candidate=gitCandidate("candidate");
 const recoveryKey=randomBytes(32);
 const artifacts:Record<LifecyclePhase,string>={"context-init":"project-context",explore:"exploration",proposal:"proposal",specification:"specification",design:"design",tasks:"task-plan",apply:"apply-result",verify:"verification-report",archive:"archive-report"};
@@ -22,8 +22,9 @@ function completion(phase:LifecyclePhase,options:{task?:string;candidate?:typeof
 }
 async function advance(flow:SkillLifecycle,phase:LifecyclePhase,options:Parameters<typeof completion>[1]={}){
  const selected=completion(phase,options),evidence=new EvidenceStore();
- for(const [id,kind] of [["route","route-decision"],["unit","work-unit"],["scope","scope"],["rollback","rollback"],["review","review"]] as const)
+ for(const [id,kind] of [["route","route-decision"],["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)
   evidence.add(candidate,{id,kind,status:"pass",summary:id,createdAt:"now"});
+ await passingReview(evidence,candidate,"review");
  await passingEvidence(evidence,candidate,"test");
  const runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:JSON.stringify(selected.artifact)})};
  return flow.runPhase(new Dispatcher(runner,evidence),{phase,context:selected.context,skillPaths:selected.skillPaths,prompt:phase,evidence,risk:"high",...(phase==="apply"?{writeSurfaces:["src/"]}:{})});
@@ -90,7 +91,7 @@ test("task executes through dispatcher, resumes, verifies and archives",async t=
  await assert.rejects(()=>execute(resumed,"verify"),/Passing test evidence is required/);
  await passingEvidence(evidence,candidate,"test");
  await assert.rejects(()=>execute(resumed,"verify"),/Independent review evidence is required/);
- evidence.add(candidate,{id:"review",kind:"review",status:"pass",summary:"review",createdAt:"now"});
+ await passingReview(evidence,candidate,"review");
  await saveEvidence(evidencePath,candidate,evidence,recoveryKey);
  evidence=await loadEvidence(evidencePath,candidate,recoveryKey);
  dispatcher=new Dispatcher(runner,evidence);
