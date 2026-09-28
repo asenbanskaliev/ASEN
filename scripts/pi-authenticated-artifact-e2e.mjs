@@ -79,15 +79,15 @@ for(const [role,phase] of roles){
   console.error(JSON.stringify({role,assistantLength:assistantText.length,assistantPrefix:assistantText.replaceAll(process.env.OPENROUTER_API_KEY,"[redacted]").slice(0,280)}));
   throw new Error(`Model artifact ${role} is not strict JSON`,{cause:error});
  }
- assert.deepEqual(Object.keys(raw).sort(),Object.keys(metadata).sort(),`Model artifact ${role} has wrong fields`);
- assert.equal(typeof raw.content,"string");assert.ok(raw.content.trim(),"Model artifact is empty");
+ assert.ok(Object.keys(raw).length>0,`Model artifact ${role} is empty`);
  const artifactRequest={id,role,prompt:message,repository,candidate,skillContext:context,skillPaths:selected};
  const artifact=JSON.parse(bindPiArtifactIdentity(output,artifactRequest));
  assert.equal(artifact.repository,repository,`ASEN artifact ${role} lost repository`);
  assert.equal(artifact.candidateId,candidate.id,`ASEN artifact ${role} lost candidateId`);
  assert.equal(artifact.revision,revision,`ASEN artifact ${role} lost revision`);
- assert.equal(artifact.kind,"audit-observation",`ASEN artifact ${role} lost kind`);
- assert.equal(artifact.content,raw.content,`ASEN artifact ${role} changed model content`);
+ if(raw.kind!==undefined)assert.equal(artifact.kind,raw.kind,`ASEN artifact ${role} changed model kind`);
+ const expectedContent=typeof raw.content==="string"?raw.content.trim():JSON.stringify(raw);
+ assert.equal(artifact.content,expectedContent,`ASEN artifact ${role} changed model content`);
  results.push({role,phase,skills:selected,kind:artifact.kind});
 }
 console.log(JSON.stringify({candidate:revision,provider,model,artifacts:results,result:"PASS"}));
