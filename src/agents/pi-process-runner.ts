@@ -50,6 +50,7 @@ export class PiProcessRunner implements AgentRunner{
  constructor(private readonly options:PiProcessOptions={}){}
 
  run(request:AgentRequest):Promise<AgentResult>{
+  if(request.candidate&&(!request.skillContext||!request.skillPaths))return Promise.resolve({id:request.id,ok:false,output:"Candidate-bound Pi execution requires issued skill context and exact paths"});
   const command=this.options.command??"pi";
   let message:string;
   try{message=promptWithSkills(request);}
