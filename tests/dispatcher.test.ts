@@ -117,3 +117,13 @@ test("dispatcher rejects skill paths without an issued context",async()=>{
   /ASEN-issued skill selection context/
  );
 });
+
+test("candidate-bound read roles cannot omit their issued context or exact skill paths",async()=>{
+ let ran=false;
+ const runner:AgentRunner={run:async r=>{ran=true;return{id:r.id,ok:true,output:"bad"}}};
+ const dispatcher=new Dispatcher(runner,new EvidenceStore());
+ for(const role of ["explorer","reviewer","verifier"] as const){
+  await assert.rejects(()=>dispatcher.dispatch({id:"task:a",role,prompt:"x",repository:"r",candidate}),/issued skill context/);
+  assert.equal(ran,false);
+ }
+});
