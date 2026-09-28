@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";import test from "node:test";import {mkdtemp,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
+import assert from "node:assert/strict";import test from "node:test";import {mkdtemp,realpath,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {SkillLifecycle} from "../src/lifecycle/skill-lifecycle.js";
 import {Dispatcher} from "../src/agents/dispatcher.js";
@@ -6,7 +6,7 @@ import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 async function fixture(body:string,policy=true){
- const d=await mkdtemp(join(tmpdir(),"asen-pi-")),p=join(d,"pi-fixture.mjs"),scenario=join(d,"scenario.mjs");
+ const d=await realpath(await mkdtemp(join(tmpdir(),"asen-pi-"))),p=join(d,"pi-fixture.mjs"),scenario=join(d,"scenario.mjs");
  await writeFile(scenario,body);
  await writeFile(p,`import {spawn} from "node:child_process";
 const child=spawn(process.execPath,[${JSON.stringify(scenario)},...process.argv.slice(2)],{stdio:["pipe","pipe","pipe"]});
