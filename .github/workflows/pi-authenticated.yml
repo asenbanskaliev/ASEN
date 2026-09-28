@@ -27,6 +27,10 @@ jobs:
           ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+          export ASEN_RECOVERY_FILE="$(mktemp)"
+          export ASEN_RECOVERY_KEY="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("base64url"))')"
+          trap 'rm -f "$ASEN_RECOVERY_FILE"' EXIT
+          node --import tsx scripts/pi-authenticated-recovery-init.mjs
           for attempt in 1 2 3; do
             if node --import tsx scripts/pi-authenticated-skill-e2e.mjs; then
               exit 0
