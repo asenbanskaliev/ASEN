@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";import test from "node:test";
 import {EvidenceStore} from "../src/evidence/store.js";import {TddCycle} from "../src/test/tdd-cycle.js";import {verifyCandidate,verifySkillEvidence} from "../src/verify/verifier.js";
 import {addExecutedEvidence} from "../src/evidence/execution.js";
+import {saveEvidence,loadEvidence} from "../src/evidence/persistence.js";
+import {mkdtemp,rm} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {randomBytes} from "node:crypto";
 import {executionProof,passingEvidence,gitCandidate} from "./execution-evidence-helper.js";
 const c=gitCandidate("c");
 test("evidence is bound to exact revision",async()=>{
@@ -36,4 +41,19 @@ test("a lone GREEN cannot satisfy the TDD verification gate",async()=>{
  assert.equal(verifySkillEvidence(c,["asen-tdd"],store,"verification").ok,false,"GREEN alone is incomplete");
  cycle.record("REFACTOR","real:refactor","passing",await executionProof(c,0));
  assert.equal(verifySkillEvidence(c,["asen-tdd"],store,"verification").ok,true);
+});
+
+test("signed recovery retains only a complete TDD cycle on the same revision",async t=>{
+ const folder=await mkdtemp(join(tmpdir(),"asen-tdd-recovery-"));t.after(()=>rm(folder,{recursive:true,force:true}));
+ const path=join(folder,"evidence.json"),key=randomBytes(32),store=new EvidenceStore(),cycle=new TddCycle(c,store,"recovered");
+ cycle.record("RED","recovered:red","expected failure",await executionProof(c,1));
+ cycle.record("GREEN","recovered:green","passing",await executionProof(c,0));
+ await saveEvidence(path,c,store,key);
+ const partial=await loadEvidence(path,c,key);
+ assert.equal(verifySkillEvidence(c,["asen-tdd"],partial,"verification").ok,false);
+ cycle.record("REFACTOR","recovered:refactor","passing",await executionProof(c,0));
+ await saveEvidence(path,c,store,key);
+ const finished=await loadEvidence(path,c,key);
+ assert.equal(verifySkillEvidence(c,["asen-tdd"],finished,"verification").ok,true);
+ assert.equal(verifySkillEvidence({...c,revision:"different"},["asen-tdd"],finished,"verification").ok,false);
 });
