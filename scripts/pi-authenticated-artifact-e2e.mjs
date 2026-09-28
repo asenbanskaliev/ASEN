@@ -23,7 +23,7 @@ for(const [role,phase] of roles){
  const selected=selectSkills(context).map(skill=>skill.path);
  const expected=selected.map(path=>realpathSync(resolve(repository,path)));
  const id=`artifact-${role}`;
- const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--no-tools","--provider","openrouter","--model","google/gemma-4-26b-a4b-it:free",...selected.flatMap(path=>["--skill",path])],{cwd:repository,env:process.env,stdio:["pipe","pipe","pipe"]});
+ const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--no-skills","--no-tools","--provider","openrouter","--model","openrouter/free",...selected.flatMap(path=>["--skill",path])],{cwd:repository,env:process.env,stdio:["pipe","pipe","pipe"]});
  const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
  const metadata={taskId,role,phase,repository,candidateId:candidate.id,revision,kind:"audit-observation",content:"Brief observation"};
  const message=[
@@ -83,4 +83,4 @@ for(const [role,phase] of roles){
  assert.equal(artifact.content,raw.content,`ASEN artifact ${role} changed model content`);
  results.push({role,phase,skills:selected,kind:artifact.kind});
 }
-console.log(JSON.stringify({candidate:revision,model:"openrouter/google/gemma-4-26b-a4b-it:free",artifacts:results,result:"PASS"}));
+console.log(JSON.stringify({candidate:revision,model:"openrouter/openrouter/free",artifacts:results,result:"PASS"}));
