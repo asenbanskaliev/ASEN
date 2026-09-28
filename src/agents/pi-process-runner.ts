@@ -1,6 +1,7 @@
 import {spawn,type ChildProcess} from "node:child_process";
-import {resolve as resolvePath} from "node:path";
-import {readFileSync,realpathSync} from "node:fs";
+import {join,resolve as resolvePath} from "node:path";
+import {mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {createHash} from "node:crypto";
 import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
 import {matchesIssuedSkillContext} from "../skills/context.js";
@@ -71,11 +72,22 @@ export class PiProcessRunner implements AgentRunner{
    return Promise.resolve({id:request.id,ok:false,output:"pi skill and tool arguments must be issued by ASEN"});
   if(request.writeSurfaces?.length&&request.role!=="worker")return Promise.resolve({id:request.id,ok:false,output:"Only a worker may request write tools"});
   const writer=request.role==="worker"&&!!request.writeSurfaces?.length&&!!request.candidate&&!!request.skillContext;
-  const policy=resolvePath(request.repository,"extensions/authority.ts");
+  const candidatePolicy=resolvePath(request.repository,"extensions/authority.ts");
+  let policySource:string;
   try{
-   const digest=createHash("sha256").update(readFileSync(policy,"utf8").replace(/\r\n/g,"\n")).digest("hex");
+   policySource=readFileSync(candidatePolicy,"utf8").replace(/\r\n/g,"\n");
+   const digest=createHash("sha256").update(policySource).digest("hex");
    if(digest!==authorityDigest)throw new Error("mismatch");
   }catch{return Promise.resolve({id:request.id,ok:false,output:"pi authority extension integrity check failed"});}
+  let policyDirectory:string;
+  try{
+   policyDirectory=mkdtempSync(join(tmpdir(),"asen-policy-"));
+   writeFileSync(join(policyDirectory,"authority.ts"),policySource,{mode:0o400,flag:"wx"});
+  }catch(error){
+   if(policyDirectory!)rmSync(policyDirectory,{recursive:true,force:true});
+   return Promise.resolve({id:request.id,ok:false,output:`pi authority extension preparation failed: ${String(error)}`});
+  }
+  const policy=join(policyDirectory,"authority.ts");
   const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,
    "--no-extensions","--extension",policy,"--no-skills","--tools",writer?"read,edit,write":"read",...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
   const timeoutMs=this.options.timeoutMs??120_000;
@@ -127,6 +139,7 @@ export class PiProcessRunner implements AgentRunner{
    child.stderr.on("data",data=>stderr=append(stderr,data));
    child.on("error",error=>finish({id:request.id,ok:false,output:`pi process error: ${String(error)}`}));
    child.on("close",code=>{
+    rmSync(policyDirectory,{recursive:true,force:true});
     if(!policyLoaded)return finish({id:request.id,ok:false,output:"pi ASEN policy extension was not confirmed"});
     if(code===0&&!overflow&&this.options.validateResponseId!==false){
      try{
