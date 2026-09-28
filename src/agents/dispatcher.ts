@@ -2,7 +2,7 @@ import { validateWriteGrant, type WriteGrant } from "../policies/scopes.js";
 import type {Candidate} from "../core/types.js";
 import {EvidenceStore} from "../evidence/store.js";
 import {selectSkills} from "../skills/registry.js";
-import {isIssuedSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
+import {consumeIssuedWorkerContext,isIssuedSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {verifySkillEvidence} from "../verify/verifier.js";
 import {consumePhaseGrant} from "../lifecycle/skill-lifecycle.js";
 
@@ -48,6 +48,7 @@ export class Dispatcher {
    }
    if(request.candidate&&(!request.skillContext||!request.skillPaths))throw new Error("Candidate-bound delegation requires issued skill context and exact paths");
    if(request.role==="worker"&&request.expectedPhase&&!consumePhaseGrant(request))throw new Error("Worker phase requires unused ASEN lifecycle grant");
+   if(request.role==="worker"&&request.candidate&&!consumeIssuedWorkerContext(request.skillContext!))throw new Error("Candidate-bound worker requires unused worker context");
    return await this.runner.run(request);
   } finally {if(grant){const i=this.#active.indexOf(grant);if(i>=0)this.#active.splice(i,1);}this.#release();}
  }
