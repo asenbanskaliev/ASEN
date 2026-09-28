@@ -9,5 +9,6 @@ export interface Evidence {
  status:"pass"|"fail"|"expected-fail"; summary:string; createdAt:string;
  execution?:{command:string[];cwd:string;exitCode:number;startedAt:string;finishedAt:string};
  review?:{taskId:string;reviewerId:string;authorId:string};
+ tdd?:{cycleId:string;stage:"RED"|"GREEN"|"REFACTOR";previousRevision?:string};
 }
 export interface TaskState { id:string; title:string; phase:Phase; candidateId?:string; blockers:string[]; }
