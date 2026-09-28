@@ -43,8 +43,6 @@ for(const [phase,role,kind] of phases){
   const proof=await executeEvidenceCommand(candidate,[process.execPath,"--import","tsx","--test","tests/pi-artifact-runner.test.ts"],{cwd:repository,timeoutMs:120000});
   addExecutedEvidence(evidence,candidate,proof,{id:"real-pi-lifecycle-test",kind:"test",summary:"Executed artifact normalization tests on exact candidate"});
  }
- const context=issueSkillContext(`${taskId}:${role}`,repository,candidate,{phase,risk:"low",...(phase==="apply"?{codeChange:true}:{} )});
- const skillPaths=selectSkills(context).map(skill=>skill.path);
  const prompt=[
   "Return the functional result required by the loaded Skill.",
   "Plain text, Markdown, or JSON are acceptable unless the Skill itself requires a specific format.",
@@ -55,14 +53,17 @@ for(const [phase,role,kind] of phases){
  let state;
  const maxAttempts=provider==="llm7"?3:1;
  let lastError;
+ let successfulSkillPaths;
  for(let attempt=1;attempt<=maxAttempts;attempt++){
-  try{state=await flow.runPhase(dispatcher,{phase,context,skillPaths,prompt,evidence,risk:"low",...(phase==="apply"?{writeSurfaces:["docs/audit/"]}:{})});break;}
+  const context=issueSkillContext(`${taskId}:${role}:attempt-${attempt}`,repository,candidate,{phase,risk:"low",...(phase==="apply"?{codeChange:true}:{} )});
+  const skillPaths=selectSkills(context).map(skill=>skill.path);
+  try{state=await flow.runPhase(dispatcher,{phase,context,skillPaths,prompt,evidence,risk:"low",...(phase==="apply"?{writeSurfaces:["docs/audit/"]}:{})});successfulSkillPaths=skillPaths;break;}
   catch(error){lastError=error;const transient=String(error).includes("Pi artifact requires a completed successful assistant message");if(!transient||attempt===maxAttempts)break;await new Promise(resolve=>setTimeout(resolve,attempt*2000));}
  }
  if(!state)throw new Error(`Authenticated lifecycle phase ${phase} failed: ${String(lastError)}`);
  assert.equal(state.records.at(-1)?.phase,phase);
  assert.equal(state.records.at(-1)?.artifact.kind,kind);
- console.log(JSON.stringify({phase,role,skills:skillPaths,result:"PASS"}));
+ console.log(JSON.stringify({phase,role,skills:successfulSkillPaths,result:"PASS"}));
 }
 assert.equal(flow.state.nextPhase,null);
 assert.equal(flow.state.records.length,9);
