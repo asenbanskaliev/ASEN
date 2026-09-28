@@ -33,6 +33,7 @@ export class Dispatcher {
     if(!request.skillContext) throw new Error("Write authority requires skill selection context");
     if(!isIssuedSkillContext(request.skillContext)) throw new Error("Write authority requires ASEN-issued skill selection context");
     if(!matchesIssuedSkillContext(request.skillContext,request.id,request.repository,request.candidate)) throw new Error("Write authority skill context does not match task/candidate");
+    if(request.skillContext.phase!=="apply")throw new Error("Write authority requires an issued apply phase");
     const selectedSkills=selectSkills(request.skillContext);
     const skills=selectedSkills.map(skill=>skill.id);
     if(!skills.length) throw new Error("Write authority requires mandatory skills");
