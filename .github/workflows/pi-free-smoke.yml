@@ -46,3 +46,8 @@ jobs:
           done
           echo "$OUTPUT"
           echo "$OUTPUT" | grep -q ASEN_PI_FREE_OK
+      - name: Run repository tests while authenticated provider audit is rate-limited
+        run: |
+          npm install
+          npm test
+          npm run typecheck
