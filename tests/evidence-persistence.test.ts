@@ -20,3 +20,10 @@ test("signed evidence survives restart only for exact candidate and signing key"
  const raw=JSON.parse(await readFile(path,"utf8"));raw.value.items[0].status="fail";await writeFile(path,JSON.stringify(raw));
  await assert.rejects(()=>loadEvidence(path,candidate,key),/integrity mismatch/);
 });
+test("an unverified caller cannot restore a fabricated passing execution",()=>{
+ const store=new EvidenceStore();
+ const forged={id:"fake",kind:"test" as const,status:"pass" as const,summary:"fake",createdAt:"now",execution:{command:["node","test"],cwd:"repo",exitCode:0,startedAt:"now",finishedAt:"now"}};
+ assert.equal("restoreSigned" in store,false);
+ assert.throws(()=>store.add(candidate,forged),/requires executed proof/);
+ assert.equal(store.hasPassing(candidate,"test"),false);
+});
