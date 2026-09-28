@@ -1,6 +1,6 @@
 import {spawn,type ChildProcess} from "node:child_process";
 import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
-import {isIssuedSkillContext} from "../skills/context.js";
+import {matchesIssuedSkillContext} from "../skills/context.js";
 import {selectSkills} from "../skills/registry.js";
 
 export interface PiProcessOptions{
@@ -26,7 +26,7 @@ function terminateTree(child:ChildProcess):void{
 function promptWithSkills(request:AgentRequest):string{
  const paths=request.skillPaths??[];
  if(paths.length||request.skillContext){
-  if(!request.skillContext||!isIssuedSkillContext(request.skillContext)||request.skillContext.repository!==request.repository||request.skillContext.taskId!==request.id) throw new Error("Pi skill paths require matching ASEN-issued context");
+  if(!request.skillContext||!matchesIssuedSkillContext(request.skillContext,request.id,request.repository,request.candidate)) throw new Error("Pi skill paths require matching ASEN-issued context and candidate");
   const selected=selectSkills(request.skillContext).map(skill=>skill.path);
   if(selected.length!==paths.length||selected.some((path,index)=>path!==paths[index])) throw new Error("Pi skill paths do not match issued context");
  }
@@ -53,10 +53,12 @@ export class PiProcessRunner implements AgentRunner{
   try{message=promptWithSkills(request);}
   catch(error){return Promise.resolve({id:request.id,ok:false,output:`pi skill path error: ${String(error)}`});}
   const extra=this.options.extraArgs??[];
-  if(request.skillContext&&[...(this.options.rpcArgs??[]),...extra].some(arg=>["--skill","--no-skills","-ns","--extension","-e","--tools","-t","--no-tools","-nt","--no-builtin-tools","-nbt"].some(flag=>arg===flag||arg.startsWith(flag+"="))))
+  if([...(this.options.rpcArgs??[]),...extra].some(arg=>["--skill","--no-skills","-ns","--extension","-e","--tools","-t","--no-tools","-nt","--no-builtin-tools","-nbt"].some(flag=>arg===flag||arg.startsWith(flag+"="))))
    return Promise.resolve({id:request.id,ok:false,output:"pi skill and tool arguments must be issued by ASEN"});
+  if(request.writeSurfaces?.length&&request.role!=="worker")return Promise.resolve({id:request.id,ok:false,output:"Only a worker may request write tools"});
+  const writer=request.role==="worker"&&!!request.writeSurfaces?.length&&!!request.candidate&&!!request.skillContext;
   const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,
-   ...(request.skillContext?["--no-extensions","--no-skills",...request.role==="worker"?[]:["--tools","read"],...(request.skillPaths??[]).flatMap(path=>["--skill",path])]:[])];
+   "--no-extensions","--no-skills","--tools",writer?"read,edit,write":"read",...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
   const timeoutMs=this.options.timeoutMs??120_000;
   const max=this.options.maxOutputBytes??1_000_000;
 
