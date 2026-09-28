@@ -60,7 +60,15 @@ for(const [role,phase] of roles){
  if(failure)throw failure;
  if(exit!==0)throw new Error(`Pi artifact process failed for ${role}: ${stderr.replaceAll(process.env.LLM7_API_KEY,"[redacted]")}`);
  assert.ok(loaded&&finished,"Pi artifact probe did not finish");
- const artifact=JSON.parse(extractPiArtifact(output,id));
+ let artifact;
+ try{artifact=JSON.parse(extractPiArtifact(output,id));}
+ catch(error){
+  const records=output.trim().split(/\\r?\\n/).flatMap(line=>{try{return [JSON.parse(line)];}catch{return [];}});
+  const final=records.filter(record=>record.type==="message_end"&&record.message?.role==="assistant").at(-1);
+  const text=final?.message?.content?.filter(item=>item.type==="text").map(item=>item.text).join("")??"";
+  console.error(JSON.stringify({role,assistantLength:text.length,assistantPrefix:text.replaceAll(process.env.LLM7_API_KEY,"[redacted]").slice(0,280)}));
+  throw error;
+ }
  for(const key of ["taskId","role","phase","repository","candidateId","revision","kind"])assert.equal(artifact[key],metadata[key],`Model artifact ${role} has wrong ${key}`);
  assert.equal(typeof artifact.content,"string");assert.ok(artifact.content.trim(),"Model artifact is empty");
  results.push({role,phase,skills:selected,kind:artifact.kind});
