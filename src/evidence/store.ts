@@ -3,6 +3,7 @@ import {open,readFile,rename,unlink} from "node:fs/promises";
 import {basename,dirname,join} from "node:path";
 import type { Candidate, Evidence } from "../core/types.js";
 import {isExecutedEvidence,type ExecutedEvidence} from "./execution.js";
+import {isExecutedReview,type ExecutedReview} from "./review-execution.js";
 interface Envelope{version:1;candidate:Candidate;items:Evidence[];}
 const kinds=new Set(["test","review","command","audit","tdd","route-decision","work-unit","scope","rollback"]);
 const statuses=new Set(["pass","fail","expected-fail"]);
@@ -14,6 +15,7 @@ export class EvidenceStore {
  readonly #items=new Map<string,Evidence>();
  add(candidate:Candidate,evidence:Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">):Evidence{
   if(evidence.status==="pass"&&(evidence.kind==="test"||evidence.kind==="tdd"))throw new Error(`Passing ${evidence.kind} evidence requires executed proof`);
+  if(evidence.status==="pass"&&evidence.kind==="review")throw new Error("Passing review evidence requires authenticated reviewer proof");
   return this.#insert(candidate,evidence);
  }
  addExecuted(candidate:Candidate,proof:ExecutedEvidence,evidence:Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">):Evidence{
@@ -25,9 +27,17 @@ export class EvidenceStore {
   const execution={command:[...proof.command],cwd:proof.cwd,exitCode:proof.exitCode,startedAt:proof.startedAt,finishedAt:proof.finishedAt};
   return this.#insert(candidate,{...evidence,execution});
  }
+ addReviewed(candidate:Candidate,proof:ExecutedReview):Evidence{
+  if(!isExecutedReview(proof)||proof.candidateRepository!==candidate.repository||proof.candidateId!==candidate.id||proof.candidateRevision!==candidate.revision)throw new Error("Review proof candidate mismatch or not ASEN-issued");
+  return this.#insert(candidate,{id:`review:${proof.reviewerId}:${candidate.id}:${candidate.revision}`,kind:"review",status:"pass",summary:"Independent reviewer process completed",createdAt:proof.finishedAt,review:{taskId:proof.taskId,reviewerId:proof.reviewerId,authorId:proof.authorId},execution:{command:[...proof.command],cwd:candidate.repository,exitCode:0,startedAt:proof.startedAt,finishedAt:proof.finishedAt}});
+ }
  #restoreVerified(candidate:Candidate,evidence:Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">):Evidence{
   if(evidence.status==="pass"&&(evidence.kind==="test"||evidence.kind==="tdd")){
    const x=evidence.execution;if(!x||x.exitCode!==0||!Array.isArray(x.command)||x.command.length===0||!x.cwd||!x.startedAt||!x.finishedAt)throw new Error("Recovered passing execution evidence lacks provenance");
+  }
+  if(evidence.status==="pass"&&evidence.kind==="review"){
+   const x=evidence.execution,r=evidence.review;
+   if(!x||x.exitCode!==0||x.cwd!==candidate.repository||!Array.isArray(x.command)||x.command.length===0||!x.startedAt||!x.finishedAt||!r||!r.taskId||!r.reviewerId||!r.authorId||r.taskId!==r.reviewerId||r.authorId===r.reviewerId)throw new Error("Recovered passing review evidence lacks authenticated provenance");
   }
   return this.#insert(candidate,evidence);
  }
@@ -42,7 +52,7 @@ export class EvidenceStore {
  const store=new EvidenceStore();
  for(const item of v.items){
   if(!item||item.candidateRepository!==candidate.repository||item.candidateId!==candidate.id||item.candidateRevision!==candidate.revision||typeof item.id!=="string"||!item.id||!kinds.has(item.kind)||!statuses.has(item.status)||typeof item.summary!=="string"||typeof item.createdAt!=="string")throw new Error("Evidence recovery item mismatch");
-  store.#restoreVerified(candidate,{id:item.id,kind:item.kind,status:item.status,summary:item.summary,createdAt:item.createdAt,...(item.execution?{execution:item.execution}:{})});
+  store.#restoreVerified(candidate,{id:item.id,kind:item.kind,status:item.status,summary:item.summary,createdAt:item.createdAt,...(item.execution?{execution:item.execution}:{}),...(item.review?{review:item.review}:{})});
  }
  return store;
 }
