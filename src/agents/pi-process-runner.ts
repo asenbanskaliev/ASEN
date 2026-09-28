@@ -102,7 +102,8 @@ export class PiProcessRunner implements AgentRunner{
      const line=buffer.slice(0,end).trim();buffer=buffer.slice(end+1);
      let record:unknown;try{record=JSON.parse(line);}catch{continue;}
      const response=record as {type?:string;id?:string;success?:boolean;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>}};
-     if(response.type==="agent_end"&&policyLoaded){child.stdin.end();continue;}\n     if(response.type!=="response"||response.id!==preflightId)continue;
+     if(response.type==="agent_end"&&policyLoaded){child.stdin.end();continue;}
+     if(response.type!=="response"||response.id!==preflightId)continue;
      const matches=response.data?.commands?.filter(item=>item.name==="asen-authority-status"&&item.source==="extension"&&item.sourceInfo?.path===policy)??[];
      if(response.success!==true||matches.length!==1){stop();finish({id:request.id,ok:false,output:"pi ASEN policy extension was not loaded"});return;}
      const canonical=(path:string)=>{try{return realpathSync(path);}catch{return resolvePath(path);}};
