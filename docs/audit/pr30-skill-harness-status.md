@@ -48,3 +48,17 @@ The exact PR head before these changes was `c75121c2342fd0e705ff8563346858fa42e3
 | Worker process isolation, reissued recovery authority, full authenticated lifecycle | NO PROBADO | Existing logical checks and fixture tests do not establish these process and model properties. |
 
 CAP-SKL-001 remains `specified`. No merge authorization follows from green workflows while the listed critical gaps remain.
+
+## Review and role authority checkpoint — 2026-09-28
+
+This section supersedes the earlier review and worker-tool rows where they differ; all results must be rechecked against the final PR HEAD.
+
+| Property | Status | Evidence and remaining limit |
+| --- | --- | --- |
+| Failed command relabeled PASS | PROBADO, blocked | `EvidenceStore.addExecuted` now enforces zero exit for PASS and nonzero exit for expected-fail. `tests/execution-revision.test.ts` reproduced the bypass before the fix. |
+| Plain review PASS | PROBADO, blocked | `EvidenceStore.add` rejects a caller-created passing review. `addReviewed` requires a proof minted after an actual reviewer subprocess returns a structured report for the exact Git candidate, ASEN-issued reviewer task and a different author identity. A signed legacy PASS without execution and reviewer metadata is rejected during recovery; adversarial tests cover mismatched candidate, reviewer, findings and fabricated proof. |
+| Independent reviewer provenance | PARCIAL | The reviewer process executes and its declared identity, role and result are checked. The subprocess can still be supplied by a caller, and a self-reported independent role is not a cryptographic or organizational attestation. A real, separately authorized Pi reviewer and host-controlled command source remain necessary. Do not count fixture subprocess output as an independent production review. |
+| Role tool and task restrictions | PARCIAL | Pi runner disables discovered extensions and Skills, injects only selected Skills, gives non-writers `read` and an authorized worker `read,edit,write`, and rejects tool/extension overrides including the CLI option terminator. Dispatcher and runner compare read-role task, repository and candidate. This removes the built-in shell from these turns; it does not impose an OS sandbox or prevent a host process from spawning another process outside Pi. |
+| End-to-end lifecycle and recovery with reissued authority | NO PROBADO | Nine-phase lifecycle tests still use fixture output; authenticated Pi reviewer/worker/verifier transitions and restart continuation under reissued authority remain outstanding. |
+
+CAP-SKL-001 remains `specified`; none of these partial guarantees authorize merging the PR.
