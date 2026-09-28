@@ -9,7 +9,7 @@ import {recoveryKeyFromEnvironment} from "../src/session/recovery-key.js";
 import {SkillLifecycle,saveLifecycle} from "../src/lifecycle/skill-lifecycle.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {saveEvidence} from "../src/evidence/persistence.js";
-import {passingEvidence,gitCandidate} from "./execution-evidence-helper.js";
+import {passingEvidence,passingReview,gitCandidate} from "./execution-evidence-helper.js";
 test("recovery signing key is supplied by host and survives process restart",()=>{
  const key=randomBytes(32),encoded=key.toString("base64url");
  assert.deepEqual(recoveryKeyFromEnvironment({ASEN_RECOVERY_KEY:encoded}),key);
@@ -29,7 +29,7 @@ test("new process restores signed lifecycle and evidence with host secret",async
  const key=randomBytes(32),encoded=key.toString("base64url"),flowPath=join(dir,"flow.json"),evidencePath=join(dir,"evidence.json");
  const evidence=new EvidenceStore();
  await passingEvidence(evidence,candidate,"test");
- evidence.add(candidate,{id:"review",kind:"review",status:"pass",summary:"reviewed",createdAt:"now"});
+ await passingReview(evidence,candidate,"review");
  await saveLifecycle(flowPath,new SkillLifecycle("task",candidate).state,key);
  await saveEvidence(evidencePath,candidate,evidence,key);
  const fixture=resolve("tests/fixtures/recover-lifecycle.ts");
