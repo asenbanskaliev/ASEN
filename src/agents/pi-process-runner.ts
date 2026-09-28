@@ -51,6 +51,11 @@ export class PiProcessRunner implements AgentRunner{
 
  run(request:AgentRequest):Promise<AgentResult>{
   if(request.candidate&&(!request.skillContext||!request.skillPaths))return Promise.resolve({id:request.id,ok:false,output:"Candidate-bound Pi execution requires issued skill context and exact paths"});
+  if(request.skillContext){
+   const requiredPhase=request.role==="explorer"?"explore":request.role==="reviewer"?"adversarial-review":request.role==="verifier"?"verify":undefined;
+   if(requiredPhase&&request.skillContext.phase!==requiredPhase)return Promise.resolve({id:request.id,ok:false,output:"Pi skill context phase does not match agent role"});
+  }
+  if(request.writeSurfaces?.length&&request.skillContext?.phase!=="apply")return Promise.resolve({id:request.id,ok:false,output:"Pi write authority requires issued apply phase"});
   const command=this.options.command??"pi";
   let message:string;
   try{message=promptWithSkills(request);}
