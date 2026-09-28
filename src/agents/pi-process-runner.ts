@@ -1,5 +1,6 @@
 import {spawn,type ChildProcess} from "node:child_process";
 import {resolve} from "node:path";
+import {realpathSync} from "node:fs";
 import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
 import {matchesIssuedSkillContext} from "../skills/context.js";
 import {selectSkills} from "../skills/registry.js";
@@ -98,6 +99,10 @@ export class PiProcessRunner implements AgentRunner{
      if(response.type!=="response"||response.id!==preflightId)continue;
      const matches=response.data?.commands?.filter(item=>item.name==="asen-authority-status"&&item.source==="extension"&&item.sourceInfo?.path===policy)??[];
      if(response.success!==true||matches.length!==1){stop();finish({id:request.id,ok:false,output:"pi ASEN policy extension was not loaded"});return;}
+     const canonical=(path:string)=>{try{return realpathSync(path);}catch{return resolve(path);}};
+     const expected=(request.skillPaths??[]).map(path=>canonical(resolve(request.repository,path)));
+     const observed=response.data?.commands?.filter(item=>item.source==="skill").map(item=>typeof item.sourceInfo?.path==="string"?canonical(item.sourceInfo.path):"")??[];
+     if(observed.length!==expected.length||observed.some((path,index)=>path!==expected[index])){stop();finish({id:request.id,ok:false,output:"pi native Skill paths do not match ASEN selection"});return;}
      policyLoaded=true;
      child.stdin.end(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
     }
