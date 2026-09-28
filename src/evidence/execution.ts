@@ -1,5 +1,8 @@
 import {spawn,execFileSync} from "node:child_process";
-import {realpathSync,watch} from "node:fs";
+import {realpathSync} from "node:fs";
+import {mkdtemp,rm} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import type {Candidate,Evidence} from "../core/types.js";
 import {EvidenceStore} from "./store.js";
 
@@ -36,27 +39,31 @@ export function isExecutedEvidence(value:unknown):value is ExecutedEvidence {
 
 export async function executeEvidenceCommand(candidate:Candidate,command:readonly [string,...string[]],options:{cwd?:string;timeoutMs?:number}={}):Promise<ExecutedEvidence>{
  if(!candidate.repository||!candidate.id||!candidate.revision)throw new Error("Execution evidence requires exact candidate identity");
- const cwd=options.cwd??candidate.repository;
- assertExactGitCandidate(candidate,cwd);
- const startedAt=new Date().toISOString();
- let contentChanged=false;
- // Watch the candidate while the command is alive. Pre/post Git checks alone
- // cannot see a tracked file that is changed, consumed and restored before exit.
- const watcher=watch(cwd,{recursive:true},(_event,filename)=>{
-  if(filename&&!filename.split(/[\\/]/).includes(".git"))contentChanged=true;
- });
- const exitCode=await new Promise<number>((resolve,reject)=>{
-  const child=spawn(command[0],command.slice(1),{cwd,stdio:"ignore",shell:false});
-  const timer=setTimeout(()=>{child.kill();reject(new Error("Execution evidence command timed out"));},options.timeoutMs??120000);
-  child.on("error",error=>{clearTimeout(timer);reject(error);});
-  child.on("close",code=>{clearTimeout(timer);resolve(code??-1);});
- });
- watcher.close();
- assertExactGitCandidate(candidate,cwd);
- if(contentChanged)throw new Error("Execution evidence candidate content changed during execution");
- const proof=Object.freeze({candidateRepository:candidate.repository,candidateId:candidate.id,candidateRevision:candidate.revision,command:Object.freeze([...command]),cwd,exitCode,startedAt,finishedAt:new Date().toISOString()});
- executed.add(proof);
- return proof;
+ const requestedCwd=options.cwd??candidate.repository;
+ assertExactGitCandidate(candidate,requestedCwd);
+ // Execute evidence against a detached, candidate-revision-only worktree. The
+ // mutable caller checkout is never the tree whose bytes receive authority.
+ const parent=await mkdtemp(join(tmpdir(),"asen-evidence-worktree-"));
+ const isolated=join(parent,"candidate");
+ try{
+  execFileSync("git",["-C",candidate.repository,"worktree","add","--detach",isolated,candidate.revision],{stdio:"ignore"});
+  assertExactGitCandidate({...candidate,repository:isolated},isolated);
+  const startedAt=new Date().toISOString();
+  const exitCode=await new Promise<number>((resolve,reject)=>{
+   const child=spawn(command[0],command.slice(1),{cwd:isolated,stdio:"ignore",shell:false});
+   const timer=setTimeout(()=>{child.kill();reject(new Error("Execution evidence command timed out"));},options.timeoutMs??120000);
+   child.on("error",error=>{clearTimeout(timer);reject(error);});
+   child.on("close",code=>{clearTimeout(timer);resolve(code??-1);});
+  });
+  assertExactGitCandidate({...candidate,repository:isolated},isolated);
+  assertExactGitCandidate(candidate,requestedCwd);
+  const proof=Object.freeze({candidateRepository:candidate.repository,candidateId:candidate.id,candidateRevision:candidate.revision,command:Object.freeze([...command]),cwd:isolated,exitCode,startedAt,finishedAt:new Date().toISOString()});
+  executed.add(proof);
+  return proof;
+ }finally{
+  try{execFileSync("git",["-C",candidate.repository,"worktree","remove","--force",isolated],{stdio:"ignore"});}catch{}
+  await rm(parent,{recursive:true,force:true});
+ }
 }
 
 export function addExecutedEvidence(store:EvidenceStore,candidate:Candidate,proof:ExecutedEvidence,evidence:{id:string;kind:"test"|"tdd";summary:string;expectFailure?:boolean}):Evidence{
