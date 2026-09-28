@@ -9,7 +9,7 @@ import {resolve} from "node:path";
 import {SkillLifecycle,lifecyclePhases,saveLifecycle,loadLifecycle,type LifecyclePhase,type LifecycleRole} from "../src/lifecycle/skill-lifecycle.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
-import {Dispatcher,type AgentRunner} from "../src/agents/dispatcher.js";
+import {Dispatcher,type AgentRequest,type AgentRunner} from "../src/agents/dispatcher.js";
 import {fixtureArtifactRunner} from "./lifecycle-pi-fixture.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {loadEvidence,saveEvidence} from "../src/evidence/persistence.js";
@@ -45,6 +45,19 @@ test("plain JSON from an arbitrary runner cannot advance lifecycle",async()=>{
  const fabricated:AgentRunner={run:async request=>({id:request.id,ok:true,output:JSON.stringify(selection.artifact)})};
  await assert.rejects(()=>flow.runPhase(new Dispatcher(fabricated,evidence),{phase:"context-init",context:selection.context,skillPaths:selection.skillPaths,prompt:"context",evidence,risk:"low"}),/Pi provenance/);
  assert.equal(flow.state.records.length,0);
+});
+test("worker lifecycle grant is one-use and bound to task, phase and candidate",async()=>{
+ const flow=new SkillLifecycle("task",candidate),selected=completion("context-init"),evidence=new EvidenceStore();
+ const fixture=fixtureArtifactRunner(()=>selected.artifact);let captured:AgentRequest|undefined;
+ const runner:AgentRunner={run:async request=>{captured=request;return fixture.run(request);}};
+ const dispatcher=new Dispatcher(runner,evidence);
+ await flow.runPhase(dispatcher,{phase:"context-init",context:selected.context,skillPaths:selected.skillPaths,prompt:"context",evidence,risk:"low"});
+ if(!captured?.phaseGrant)throw new Error("Lifecycle did not issue a worker phase grant");
+ const request:AgentRequest=captured;
+ await assert.rejects(()=>dispatcher.dispatch(request),/unused ASEN lifecycle grant/);
+ const other=issueSkillContext("other:worker",candidate.repository,candidate,{phase:"context-init"});
+ await assert.rejects(()=>dispatcher.dispatch({...request,id:"other:worker",skillContext:other}),/unused ASEN lifecycle grant/);
+ await assert.rejects(()=>dispatcher.dispatch({...request,phaseGrant:Object.freeze({})}),/unused ASEN lifecycle grant/);
 });
 test("lifecycle refuses wrong role, task, revision, routes and artifact",async()=>{
  const flow=new SkillLifecycle("task",candidate);
