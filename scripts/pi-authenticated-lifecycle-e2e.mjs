@@ -53,8 +53,13 @@ for(const [phase,role,kind] of phases){
   "Keep the result concise and machine-readable."
  ].join("\n");
  let state;
- try{state=await flow.runPhase(dispatcher,{phase,context,skillPaths,prompt,evidence,risk:"low",...(phase==="apply"?{writeSurfaces:["docs/audit/"]}:{})});}
- catch(error){throw new Error(`Authenticated lifecycle phase ${phase} failed: ${String(error)}`); }
+ const maxAttempts=provider==="llm7"?3:1;
+ let lastError;
+ for(let attempt=1;attempt<=maxAttempts;attempt++){
+  try{state=await flow.runPhase(dispatcher,{phase,context,skillPaths,prompt,evidence,risk:"low",...(phase==="apply"?{writeSurfaces:["docs/audit/"]}:{})});break;}
+  catch(error){lastError=error;const transient=String(error).includes("Pi artifact requires a completed successful assistant message");if(!transient||attempt===maxAttempts)break;await new Promise(resolve=>setTimeout(resolve,attempt*2000));}
+ }
+ if(!state)throw new Error(`Authenticated lifecycle phase ${phase} failed: ${String(lastError)}`);
  assert.equal(state.records.at(-1)?.phase,phase);
  assert.equal(state.records.at(-1)?.artifact.kind,kind);
  console.log(JSON.stringify({phase,role,skills:skillPaths,result:"PASS"}));
