@@ -6,7 +6,7 @@ import {join} from "node:path";
 import {randomBytes} from "node:crypto";
 import {spawnSync} from "node:child_process";
 import {resolve} from "node:path";
-import {SkillLifecycle,lifecyclePhases,saveLifecycle,loadLifecycle,type LifecyclePhase,type LifecycleRole} from "../src/lifecycle/skill-lifecycle.js";
+import {SkillLifecycle,authorizePiWriteGrant,lifecyclePhases,saveLifecycle,loadLifecycle,type LifecyclePhase,type LifecycleRole} from "../src/lifecycle/skill-lifecycle.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {Dispatcher,type AgentRequest,type AgentRunner} from "../src/agents/dispatcher.js";
@@ -94,6 +94,10 @@ test("task executes through dispatcher, resumes, verifies and archives",async t=
  const runner=fixtureArtifactRunner(request=>{
   rolesSeen.push(`${request.skillContext?.phase}:${request.role}`);
   const phase=request.skillContext?.phase as LifecyclePhase;
+  if(phase==="apply"){
+   assert.equal(authorizePiWriteGrant(request),true,"apply must have a live one-use writer grant");
+   assert.equal(authorizePiWriteGrant(request),false,"Pi writer grant must not be reused");
+  }
   return {kind:artifacts[phase],content:`completed ${phase}`,repository:candidate.repository,candidateId:candidate.id,revision:candidate.revision};
  });
  let dispatcher=new Dispatcher(runner,evidence);const flow=new SkillLifecycle("task",candidate);
