@@ -3,6 +3,7 @@ import test from "node:test";
 import { Dispatcher, type AgentRunner } from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
+import {selectSkills} from "../src/skills/registry.js";
 
 const candidate={id:"candidate",repository:"r",revision:"sha",createdAt:"now"};
 function authorized(){
@@ -156,4 +157,26 @@ test("worker cannot reuse authority from another lifecycle phase",async()=>{
   /context does not match agent role/
  );
  assert.equal(ran,false);
+});
+
+test("candidate-bound worker cannot replay an issued context by omitting expectedPhase",async()=>{
+ let ran=false;
+ const runner:AgentRunner={run:async r=>{ran=true;return{id:r.id,ok:true,output:"unauthorized"}}};
+ const context=issueSkillContext("phase-worker","r",candidate,{phase:"proposal"});
+ const paths=selectSkills(context).map(skill=>skill.path);
+ const request={id:"phase-worker",role:"worker" as const,prompt:"x",repository:"r",candidate,skillContext:context,skillPaths:paths};
+ await new Dispatcher(runner,new EvidenceStore()).dispatch(request);
+ ran=false;
+ await assert.rejects(()=>new Dispatcher(runner,new EvidenceStore()).dispatch(request),/used worker context/);
+ assert.equal(ran,false);
+});
+test("concurrent dispatchers cannot spend the same worker context twice",async()=>{
+ let started=0;
+ const runner:AgentRunner={run:async r=>{started++;return{id:r.id,ok:true,output:"ok"}}};
+ const context=issueSkillContext("parallel-worker","r",candidate,{phase:"proposal"});
+ const request={id:"parallel-worker",role:"worker" as const,prompt:"x",repository:"r",candidate,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)};
+ const results=await Promise.allSettled([new Dispatcher(runner,new EvidenceStore()).dispatch(request),new Dispatcher(runner,new EvidenceStore()).dispatch(request)]);
+ assert.equal(results.filter(r=>r.status==="fulfilled").length,1);
+ assert.equal(results.filter(r=>r.status==="rejected"&&/used worker context/.test(String(r.reason))).length,1);
+ assert.equal(started,1);
 });
