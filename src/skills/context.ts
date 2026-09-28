@@ -9,6 +9,12 @@ export type IssuedSkillContext=Readonly<SkillSelectionContext>&{
 };
 
 const issuedContexts=new WeakSet<object>();
+const consumedWorkerContexts=new WeakSet<object>();
+
+export function consumeIssuedWorkerContext(context:IssuedSkillContext):boolean{
+ if(!issuedContexts.has(context)||consumedWorkerContexts.has(context))return false;
+ consumedWorkerContexts.add(context);return true;
+}
 
 export function issueSkillContext(taskId:string,repository:string,candidate:Candidate|undefined,context:SkillSelectionContext):IssuedSkillContext {
  if(candidate&&candidate.repository!==repository) throw new Error("Skill context candidate repository mismatch");
