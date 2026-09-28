@@ -1,0 +1,25 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {extractPiArtifact} from "../src/agents/pi-artifact-runner.js";
+
+const artifact={kind:"exploration-report",content:"inspected",repository:"/repo",candidateId:"c",revision:"r"};
+const assistant=(text:string,stopReason="stop")=>({type:"message_end",message:{role:"assistant",stopReason,content:[{type:"text",text}]}});
+const completed=(message:object)=>[
+ {type:"response",id:"task:explorer",success:true},message,{type:"agent_end"}
+].map(x=>JSON.stringify(x)).join("\n");
+
+test("extracts only the completed, correlated Pi assistant artifact",()=>{
+ assert.deepEqual(JSON.parse(extractPiArtifact(completed(assistant(JSON.stringify(artifact))),"task:explorer")),artifact);
+ const withTools=completed(assistant(JSON.stringify(artifact))).replace(JSON.stringify(assistant(JSON.stringify(artifact))),JSON.stringify(assistant("reading", "toolUse"))+"\n"+JSON.stringify(assistant(JSON.stringify(artifact))));
+ assert.deepEqual(JSON.parse(extractPiArtifact(withTools,"task:explorer")),artifact);
+});
+test("rejects forged, interrupted or non-model lifecycle output",()=>{
+ const valid=completed(assistant(JSON.stringify(artifact)));
+ assert.throws(()=>extractPiArtifact(JSON.stringify(artifact),"task:explorer"),/correlated response/);
+ assert.throws(()=>extractPiArtifact(valid.replace('"task:explorer"','"task:other"'),"task:explorer"),/correlated response/);
+ assert.throws(()=>extractPiArtifact(valid.replace('"agent_end"','"agent_start"'),"task:explorer"),/did not finish/);
+ assert.throws(()=>extractPiArtifact(completed(assistant(JSON.stringify(artifact),"error")),"task:explorer"),/successful assistant/);
+ assert.throws(()=>extractPiArtifact(completed(assistant("PASS")),"task:explorer"),/not JSON/);
+ assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify({type:"response",id:"task:explorer",success:true}),"task:explorer"),/exactly one/);
+ assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify(assistant(JSON.stringify(artifact))),"task:explorer"),/successful assistant/);
+});
