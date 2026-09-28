@@ -95,3 +95,8 @@ CI and Release Gate results must be rechecked on the exact final HEAD after ever
 - **PROBADO locally, pending exact HEAD gates:** additional adversarial cases exercise an actual two-parent merge commit and candidate-id/repository substitution mid-cycle. They are rejected before stage evidence can authorize verification.
 - **PROBADO locally, pending exact HEAD gates:** an `expectedPhase` supplied by a caller previously overrode reviewer/verifier role phase checks. Dispatcher and PiProcessRunner now derive those read-role phases from the role itself and reject a conflicting override. **PARCIAL:** worker phase/replay authority still needs an ASEN-owned one-use lifecycle grant; its `expectedPhase` remains caller-controlled outside the lifecycle. Do not claim cross-phase replay solved.
 - **NO PROBADO:** model-authored full lifecycle, independent reviewer root, OS isolation and branch-name neutrality. CAP-SKL-001 remains `specified`.
+
+## Pi artifact provenance guard — 2026-09-28
+
+- **PROBADO localmente, pendiente de los gates del SHA publicado:** una respuesta RPC de Pi sin candidato exacto ya no se convierte en artefacto con prueba de procedencia. El caso adversarial se reprodujo en RED y pasó en GREEN. Los campos de identidad adicionales emitidos por el modelo, incluidos phase, role, taskId y skillPaths, se rechazan. La revisión, repositorio e ID finales proceden de la petición ASEN para el candidato.
+- **PARCIAL:** el modelo aún puede proponer `kind`; el lifecycle valida el tipo exigido por cada fase antes de avanzar. Esta prueba no demuestra que una tarea complete apply, verify y archive con Pi real ni establece una raíz independiente para review.
