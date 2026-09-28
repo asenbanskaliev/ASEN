@@ -93,3 +93,16 @@ test("read-only agents cannot exchange their phase authorities",async()=>{
  await assert.rejects(()=>new Dispatcher(runner,new EvidenceStore()).dispatch({...reviewer,skillContext:explorer.skillContext!,skillPaths:paths}),/does not match agent role/);
  assert.equal(ran,false);
 });
+test("read-only agent authority cannot cross tasks or revisions",async()=>{
+ const first=buildOrchestrationPlan({taskId:"first",repository:"repo",prompt:"inspect",candidate},routeOdd({filesTouched:4}));
+ const next={...candidate,revision:"next"};
+ const second=buildOrchestrationPlan({taskId:"second",repository:"repo",prompt:"inspect",candidate:next},routeOdd({filesTouched:4}));
+ const old=first.agents.find(agent=>agent.role==="explorer"),explorer=second.agents.find(agent=>agent.role==="explorer");
+ assert.ok(old?.skillContext&&old.skillPaths&&explorer);
+ let ran=false;
+ const dispatcher=new Dispatcher({run:async r=>{ran=true;return{id:r.id,ok:true,output:"unexpected"}}},new EvidenceStore());
+ await assert.rejects(()=>dispatcher.dispatch({...explorer,skillContext:old.skillContext!,skillPaths:old.skillPaths!}),/task\/candidate/);
+ const {candidate:omitted,...withoutCandidate}=explorer;
+ await assert.rejects(()=>dispatcher.dispatch(withoutCandidate),/task\/candidate/);
+ assert.equal(ran,false);
+});
