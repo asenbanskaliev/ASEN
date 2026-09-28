@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {extractPiArtifact} from "../src/agents/pi-artifact-runner.js";
+import {bindPiArtifactIdentity,extractPiArtifact} from "../src/agents/pi-artifact-runner.js";
 
 const artifact={kind:"exploration-report",content:"inspected",repository:"/repo",candidateId:"c",revision:"r"};
 const assistant=(text:string,stopReason="stop")=>({type:"message_end",message:{role:"assistant",stopReason,content:[{type:"text",text}]}});
@@ -22,4 +22,17 @@ test("rejects forged, interrupted or non-model lifecycle output",()=>{
  assert.throws(()=>extractPiArtifact(completed(assistant("PASS")),"task:explorer"),/not JSON/);
  assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify({type:"response",id:"task:explorer",success:true}),"task:explorer"),/exactly one/);
  assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify(assistant(JSON.stringify(artifact))),"task:explorer"),/successful assistant/);
+});
+
+test("ASEN binds candidate identity and rejects model identity spoofing",()=>{
+ const request={id:"task:explorer",role:"explorer" as const,prompt:"x",repository:"/repo",candidate:{id:"c",repository:"/repo",revision:"r",createdAt:"now"}};
+ const contentOnly=completed(assistant(JSON.stringify({content:"inspected"})));
+ assert.deepEqual(JSON.parse(bindPiArtifactIdentity(contentOnly,request)),{repository:"/repo",candidateId:"c",revision:"r",content:"inspected"});
+ const matching=completed(assistant(JSON.stringify(artifact)));
+ assert.deepEqual(JSON.parse(bindPiArtifactIdentity(matching,request)),artifact);
+ for(const forged of [
+  {...artifact,repository:"/other"},
+  {...artifact,candidateId:"other"},
+  {...artifact,revision:"other"}
+ ])assert.throws(()=>bindPiArtifactIdentity(completed(assistant(JSON.stringify(forged))),request),/mismatched/);
 });
