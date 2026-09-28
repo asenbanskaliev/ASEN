@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";import test from "node:test";
 import {EvidenceStore} from "../src/evidence/store.js";import {TddCycle} from "../src/test/tdd-cycle.js";import {verifyCandidate} from "../src/verify/verifier.js";
-import {executionProof,passingEvidence} from "./execution-evidence-helper.js";
-const c={id:"c",repository:"r",revision:"abc",createdAt:"now"};
+import {executionProof,passingEvidence,gitCandidate} from "./execution-evidence-helper.js";
+const c=gitCandidate("c");
 test("evidence is bound to exact revision",async()=>{
  const s=new EvidenceStore();await passingEvidence(s,c,"e");
  assert.equal(s.hasPassing({...c,revision:"def"},"test"),false);
