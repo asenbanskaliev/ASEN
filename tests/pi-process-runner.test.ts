@@ -27,7 +27,7 @@ process.stdout.write(JSON.stringify({type:"response",id:record.id,success:true,d
  return {d,p};
 }
 function runner(p:string,options:ConstructorParameters<typeof PiProcessRunner>[0]={}){return new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p],...options});}
-test("Pi RPC adapter correlates request id",async()=>{const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,command:"prompt",success:true,message:f.message}));});');const r=await runner(p,{validateResponseId:true}).run({id:"req-1",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,true);assert.match(r.output,/req-1/);});
+test("Pi RPC adapter correlates request id",async()=>{const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,command:"prompt",success:true,message:f.message}));});');const r=await runner(p,{}).run({id:"req-1",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,true);assert.match(r.output,/req-1/);});
 test("Pi runner refuses a candidate-supplied replacement authority extension",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
  await writeFile(join(d,"extensions/authority.ts"),'export default pi => pi.registerCommand("asen-authority-status", {handler: async () => {}});');
@@ -69,13 +69,18 @@ test("Pi child can be cancelled explicitly",async()=>{const {d,p}=await fixture(
 
 test("Pi cancellation terminates a spawned descendant",async()=>{const marker=join(tmpdir(),`asen-descendant-${process.pid}-${Date.now()}.txt`);const {d,p}=await fixture('import {spawn} from "node:child_process";import {writeFileSync} from "node:fs";const marker=process.argv[2];const c=spawn(process.execPath,["-e","setTimeout(()=>{},10000)"],{stdio:"ignore"});writeFileSync(marker,String(c.pid));setTimeout(()=>{},10000);');const controller=new AbortController();const pending=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p,marker],signal:controller.signal,timeoutMs:10000}).run({id:"tree",role:"explorer",prompt:"x",repository:d});const {readFile}=await import("node:fs/promises");let pid=0;for(let i=0;i<40&&!pid;i++){try{pid=Number(await readFile(marker,"utf8"));}catch{}if(!pid)await new Promise(r=>setTimeout(r,25));}assert.ok(pid>0,"descendant pid was not recorded");controller.abort();const r=await pending;assert.equal(r.ok,false);assert.match(r.output,/cancelled/);await new Promise(r=>setTimeout(r,250));let alive=true;try{process.kill(pid,0);}catch{alive=false;}assert.equal(alive,false,`descendant ${pid} survived cancellation`);});
 
-test("Pi RPC adapter rejects a mismatched response id",async()=>{const {d,p}=await fixture('console.log(JSON.stringify({type:"response",id:"other",command:"prompt",success:true}));');const r=await runner(p,{validateResponseId:true}).run({id:"req-expected",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/correlated response missing/);});
-test("Pi RPC adapter rejects malformed structured output",async()=>{const {d,p}=await fixture('console.log("not-json");');const r=await runner(p,{validateResponseId:true}).run({id:"req-json",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/envelope invalid/);});
+test("Pi RPC adapter rejects a mismatched response id",async()=>{const {d,p}=await fixture('console.log(JSON.stringify({type:"response",id:"other",command:"prompt",success:true}));');const r=await runner(p,{}).run({id:"req-expected",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/correlated response missing/);});
+test("Pi RPC correlation cannot be disabled by a runner option",async()=>{
+ const {d,p}=await fixture('console.log(JSON.stringify({type:"response",id:"other",success:true}));');
+ const result=await runner(p,{validateResponseId:false} as ConstructorParameters<typeof PiProcessRunner>[0]).run({id:"required",role:"explorer",prompt:"hello",repository:d});
+ assert.equal(result.ok,false);assert.match(result.output,/correlated response missing/);
+});
+test("Pi RPC adapter rejects malformed structured output",async()=>{const {d,p}=await fixture('console.log("not-json");');const r=await runner(p,{}).run({id:"req-json",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/envelope invalid/);});
 test("Pi RPC adapter requires a correlated response by default",async()=>{const {d,p}=await fixture('console.log(JSON.stringify({type:"event",id:"req-default"}));');const r=await runner(p).run({id:"req-default",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/correlated response missing/);});
 
 test("Pi RPC adapter injects exact issued skill paths before the task",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,message:f.message}));});');
- const r=await runner(p,{validateResponseId:true}).run({id:"skills",role:"explorer",prompt:"inspect this",repository:d,skillContext:issueSkillContext("skills",d,undefined,{phase:"explore"}),skillPaths:["skills/asen-phase-protocol/SKILL.md","skills/asen-explore/SKILL.md"]});
+ const r=await runner(p,{}).run({id:"skills",role:"explorer",prompt:"inspect this",repository:d,skillContext:issueSkillContext("skills",d,undefined,{phase:"explore"}),skillPaths:["skills/asen-phase-protocol/SKILL.md","skills/asen-explore/SKILL.md"]});
  assert.equal(r.ok,true);
  assert.match(r.output,/Load every SKILL\.md below before task-specific work/);
  assert.match(r.output,/skills\/asen-phase-protocol\/SKILL\.md/);
