@@ -2,11 +2,11 @@ import type {AgentArtifactProof,AgentRequest,AgentResult,AgentRunner} from "./di
 import {PiProcessRunner} from "./pi-process-runner.js";
 
 export function bindPiArtifactIdentity(output:string,request:AgentRequest):string{
+ if(!request.candidate||request.repository!==request.candidate.repository)throw new Error("Pi artifact provenance requires an exact candidate repository");
  const raw=JSON.parse(extractPiArtifact(output,request.id)) as unknown;
  if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Pi artifact content must be a JSON object");
  const record=raw as Record<string,unknown>;
  if(typeof record.content!=="string"||!record.content.trim())throw new Error("Pi artifact content must be a non-empty string");
- if(!request.candidate)return JSON.stringify(record);
  const expected={repository:request.repository,candidateId:request.candidate.id,revision:request.candidate.revision};
  for(const [key,value] of Object.entries(expected))if(record[key]!==undefined&&record[key]!==value)throw new Error(`Pi artifact supplied mismatched ${key}`);
  const allowed=new Set(["kind","content","repository","candidateId","revision"]);
