@@ -2,8 +2,8 @@ import {open,readFile,rename,unlink} from "node:fs/promises";
 import {dirname,basename,join} from "node:path";
 import {createHmac,randomUUID,timingSafeEqual} from "node:crypto";
 import type {Candidate,Risk} from "../core/types.js";
-import {matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
-import {selectSkills} from "../skills/registry.js";
+import {issueSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
+import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import type {Dispatcher,AgentRequest} from "../agents/dispatcher.js";
 import {EvidenceStore} from "../evidence/store.js";
 import {authorizeRelease,authorizeVerified} from "../verify/verifier.js";
@@ -21,9 +21,10 @@ const roleFor:Record<LifecyclePhase,LifecycleRole>={
 };
 export interface LifecycleArtifact{kind:string;content:string;repository:string;candidateId:string;revision:string;}
 export interface LifecycleRecord{phase:LifecyclePhase;role:LifecycleRole;artifact:LifecycleArtifact;skillPaths:string[];}
-export interface LifecycleSnapshot{version:1;taskId:string;candidate:Candidate;nextPhase:LifecyclePhase|null;records:LifecycleRecord[];}
+export interface LifecycleSnapshot{version:1;taskId:string;candidate:Candidate;nextPhase:LifecyclePhase|null;records:LifecycleRecord[];pendingAuthority?:{phase:LifecyclePhase;role:LifecycleRole;selection:SkillSelectionContext;skillPaths:string[]};}
 const isPhase=(value:unknown):value is LifecyclePhase=>typeof value==="string"&&lifecyclePhases.includes(value as LifecyclePhase);
 const copy=(snapshot:LifecycleSnapshot):LifecycleSnapshot=>structuredClone(snapshot);
+const verifiedRecovery=new WeakSet<SkillLifecycle>();
 
 export class SkillLifecycle{
  #snapshot:LifecycleSnapshot;
@@ -33,6 +34,26 @@ export class SkillLifecycle{
   if(snapshot) validateSnapshot(this.#snapshot,taskId,candidate);
  }
  get state():LifecycleSnapshot{return copy(this.#snapshot);}
+ preparePhase(context:IssuedSkillContext,skillPaths:string[]):void{
+  const s=this.#snapshot,phase=s.nextPhase;
+  if(!phase)throw new Error("Completed lifecycle cannot prepare another phase");
+  this.#assertAuthority(phase,roleFor[phase],context,skillPaths);
+  const selection:SkillSelectionContext={phase,
+   ...(context.risk===undefined?{}:{risk:context.risk}),
+   ...(context.codeChange===undefined?{}:{codeChange:context.codeChange}),
+   ...(context.behaviorChange===undefined?{}:{behaviorChange:context.behaviorChange}),
+   ...(context.filesTouched===undefined?{}:{filesTouched:context.filesTouched}),
+   ...(context.verification===undefined?{}:{verification:context.verification})};
+  this.#snapshot={...s,pendingAuthority:{phase,role:roleFor[phase],selection,skillPaths:[...skillPaths]}};
+ }
+ reissuePendingAuthority():{context:IssuedSkillContext;skillPaths:string[]}{
+  if(!verifiedRecovery.has(this))throw new Error("Reissuing phase authority requires cryptographically verified recovery");
+  const s=this.#snapshot,pending=s.pendingAuthority;
+  if(!pending)throw new Error("Recovery has no signed pending phase authority");
+  const context=issueSkillContext(`${s.taskId}:${pending.role}`,s.candidate.repository,s.candidate,pending.selection);
+  this.#assertAuthority(pending.phase,pending.role,context,pending.skillPaths);
+  return {context,skillPaths:[...pending.skillPaths]};
+ }
  async runPhase(dispatcher:Dispatcher,input:{phase:LifecyclePhase;context:IssuedSkillContext;skillPaths:string[];prompt:string;evidence:EvidenceStore;risk:Risk;writeSurfaces?:string[]}):Promise<LifecycleSnapshot>{
   const role=roleFor[input.phase],s=this.#snapshot;
   if(input.phase!==s.nextPhase)throw new Error("Lifecycle phase out of order");
@@ -68,7 +89,8 @@ export class SkillLifecycle{
   if(a.kind!==requiredArtifact[input.phase]||!a.content.trim()||a.repository!==s.candidate.repository||a.candidateId!==s.candidate.id||a.revision!==s.candidate.revision)throw new Error("Lifecycle required artifact missing or stale");
   const index=lifecyclePhases.indexOf(input.phase);
   const next=lifecyclePhases[index+1]??null;
-  this.#snapshot={...s,nextPhase:next,records:[...s.records,{phase:input.phase,role:input.role,artifact:structuredClone(a),skillPaths:[...input.skillPaths]}]};
+  const {pendingAuthority:_pending,...rest}=s;
+  this.#snapshot={...rest,nextPhase:next,records:[...s.records,{phase:input.phase,role:input.role,artifact:structuredClone(a),skillPaths:[...input.skillPaths]}]};
   return this.state;
  }
 }
@@ -83,6 +105,15 @@ function validateSnapshot(s:LifecycleSnapshot,taskId:string,candidate:Candidate)
   if(!Array.isArray(record.skillPaths)||record.skillPaths.some(path=>typeof path!=="string"||!/^skills\/asen-[a-z-]+\/SKILL\.md$/.test(path)))throw new Error("Lifecycle recovery skill routes invalid");
  }
  if(s.nextPhase!==(lifecyclePhases[s.records.length]??null))throw new Error("Lifecycle recovery next phase mismatch");
+ if(s.pendingAuthority){
+  const p=s.pendingAuthority,x=p.selection;
+  if(!s.nextPhase||p.phase!==s.nextPhase||p.role!==roleFor[p.phase]||!x||x.phase!==p.phase||!Array.isArray(p.skillPaths)||
+   x.risk!==undefined&&!(["low","medium","high","unknown"] as unknown[]).includes(x.risk)||
+   x.codeChange!==undefined&&typeof x.codeChange!=="boolean"||x.behaviorChange!==undefined&&typeof x.behaviorChange!=="boolean"||
+   x.verification!==undefined&&typeof x.verification!=="boolean"||x.filesTouched!==undefined&&(!Number.isInteger(x.filesTouched)||x.filesTouched<0))throw new Error("Lifecycle recovery pending authority invalid");
+  const expected=selectSkills(x).map(skill=>skill.path);
+  if(expected.length!==p.skillPaths.length||expected.some((path,index)=>path!==p.skillPaths[index]))throw new Error("Lifecycle recovery pending Skill routes mismatch");
+ }
 }
 function signature(snapshot:LifecycleSnapshot,key:Buffer):string{
  if(key.length<32)throw new Error("Lifecycle recovery requires a 32-byte secret");
@@ -100,5 +131,7 @@ export async function loadLifecycle(path:string,taskId:string,candidate:Candidat
  if(!parsed?.snapshot||typeof parsed.mac!=="string"||!/^[0-9a-f]{64}$/i.test(parsed.mac))throw new Error("Lifecycle recovery signature missing");
  const expected=Buffer.from(signature(parsed.snapshot,key),"hex"),actual=Buffer.from(parsed.mac,"hex");
  if(!timingSafeEqual(expected,actual))throw new Error("Lifecycle recovery integrity mismatch");
- return new SkillLifecycle(taskId,candidate,parsed.snapshot);
+ const flow=new SkillLifecycle(taskId,candidate,parsed.snapshot);
+ verifiedRecovery.add(flow);
+ return flow;
 }
