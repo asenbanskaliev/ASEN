@@ -21,10 +21,10 @@ export function assertExactGitCandidate(candidate:Candidate,cwd:string):void{
  catch{throw new Error("Execution evidence requires a Git repository with a checked-out HEAD");}
  if(prefix!==""||realpathSync(cwd)!==realpathSync(candidate.repository))throw new Error("Execution evidence repository mismatch");
  if(head!==candidate.revision)throw new Error("Execution evidence revision mismatch");
- let dirty:string;
- try{dirty=run("status","--porcelain=v1","--untracked-files=all","--ignore-submodules=all");}
- catch{throw new Error("Execution evidence could not inspect Git working tree");}
- if(dirty!=="")throw new Error("Execution evidence requires a clean Git working tree");
+ let untracked:string;
+ try{untracked=run("ls-files","--others","--exclude-standard");}
+ catch{throw new Error("Execution evidence could not inspect untracked Git files");}
+ if(untracked!=="")throw new Error("Execution evidence requires no untracked Git files");
  // HEAD alone does not identify the bytes executed from a modified checkout.
  try{execFileSync("git",["-C",cwd,"diff","--quiet","HEAD","--"],{stdio:"ignore"});}
  catch{throw new Error("Execution evidence requires unchanged tracked files at the candidate revision");}
