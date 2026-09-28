@@ -21,8 +21,9 @@ export class Dispatcher {
    if(request.writeSurfaces&&request.role!=="worker") throw new Error("Only worker agents may receive write authority");
    if(request.skillContext||request.skillPaths){
     if(!request.skillContext||!isIssuedSkillContext(request.skillContext)) throw new Error("Delegated skill paths require ASEN-issued skill selection context");
-    const requiredPhase=request.expectedPhase??(request.role==="explorer"?"explore":request.role==="reviewer"?"adversarial-review":request.role==="verifier"?"verify":undefined);
-    if(request.expectedPhase&&request.role!=="worker"&&request.expectedPhase!==requiredPhase)throw new Error("Delegated expected phase does not match agent role");
+    const rolePhase=request.role==="explorer"?"explore":request.role==="reviewer"?"adversarial-review":request.role==="verifier"?"verify":undefined;
+    if(request.expectedPhase&&rolePhase&&request.expectedPhase!==rolePhase)throw new Error("Delegated expected phase does not match agent role");
+    const requiredPhase=rolePhase??request.expectedPhase;
     if(requiredPhase&&request.skillContext.phase!==requiredPhase) throw new Error("Delegated skill context does not match agent role");
     if(!matchesIssuedSkillContext(request.skillContext,request.id,request.repository,request.candidate)) throw new Error("Delegated skill context does not match task/candidate");
     const expectedPaths=selectSkills(request.skillContext).map(skill=>skill.path);
