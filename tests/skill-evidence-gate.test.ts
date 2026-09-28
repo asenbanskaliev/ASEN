@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {execFileSync} from "node:child_process";
+import {mkdtemp,rm} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {authorizeRelease,verifyCandidate,verifySkillEvidence} from "../src/verify/verifier.js";
 import {issueSkillContext} from "../src/skills/context.js";
-import {passingEvidence} from "./execution-evidence-helper.js";
+import {passingEvidence,gitCandidate} from "./execution-evidence-helper.js";
 
-const c={id:"candidate",repository:"repo",revision:"sha",createdAt:"now"};
+const c=gitCandidate("candidate");
 
 test("TDD skill blocks verification without candidate-bound TDD evidence",async()=>{
  const store=new EvidenceStore();
@@ -16,9 +20,14 @@ test("TDD skill blocks verification without candidate-bound TDD evidence",async(
 });
 
 test("TDD evidence from another repository cannot satisfy the skill gate",async()=>{
- const store=new EvidenceStore(),other={...c,repository:"other"};
+ const store=new EvidenceStore(),dir=await mkdtemp(join(tmpdir(),"asen-other-repo-"));
+ try{
+ execFileSync("git",["init","-q",dir]);
+ execFileSync("git",["-C",dir,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m","initial"]);
+ const other=gitCandidate(c.id,dir);
  await passingEvidence(store,other,"tdd-other","tdd");
  assert.equal(verifySkillEvidence(c,["asen-tdd"],store,"verification").ok,false);
+ }finally{await rm(dir,{recursive:true,force:true});}
 });
 
 test("review skill blocks release without candidate-bound review evidence",()=>{
@@ -57,7 +66,7 @@ test("skill evidence from another revision cannot satisfy mutation or release",(
 
 
 test("release gate composes verification and release skill requirements",async()=>{
- const store=new EvidenceStore(),context=issueSkillContext("task","repo",c,{codeChange:true,risk:"high" as const});
+ const store=new EvidenceStore(),context=issueSkillContext("task",c.repository,c,{codeChange:true,risk:"high" as const});
  assert.equal(authorizeRelease(c,"high",store,context).ok,false);
  await passingEvidence(store,c,"test-release");
  store.add(c,{id:"review-release",kind:"review",status:"pass",summary:"independent",createdAt:"now"});
@@ -68,17 +77,25 @@ test("release gate composes verification and release skill requirements",async()
 });
 
 test("release rejects evidence from a previous candidate revision",async()=>{
- const store=new EvidenceStore(),old={...c,revision:"old"},context=issueSkillContext("task","repo",c,{codeChange:true,risk:"high" as const});
+ const dir=await mkdtemp(join(tmpdir(),"asen-old-revision-"));
+ try{
+ execFileSync("git",["init","-q",dir]);
+ const commit=(message:string)=>execFileSync("git",["-C",dir,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m",message]);
+ commit("old");
+ const store=new EvidenceStore(),old=gitCandidate(c.id,dir);
  await passingEvidence(store,old,"test-old");
  for(const [id,kind] of [["review-old","review"],["scope-old","scope"],["rollback-old","rollback"]] as const)
   store.add(old,{id,kind,status:"pass",summary:"old",createdAt:"now"});
- assert.equal(authorizeRelease(c,"high",store,context).ok,false);
+ commit("current");
+ const current=gitCandidate(c.id,dir),context=issueSkillContext("task",dir,current,{codeChange:true,risk:"high" as const});
+ assert.equal(authorizeRelease(current,"high",store,context).ok,false);
+ }finally{await rm(dir,{recursive:true,force:true});}
 });
 
 test("release fails closed when no skill selection is supplied",async()=>{
  const store=new EvidenceStore();
  await passingEvidence(store,c,"test-no-skills");
- assert.equal(authorizeRelease(c,"low",store,issueSkillContext("task","repo",c,{})).ok,false);
+ assert.equal(authorizeRelease(c,"low",store,issueSkillContext("task",c.repository,c,{})).ok,false);
 });
 
 
@@ -86,7 +103,7 @@ test("release cannot omit safe-change requirements for a code change",async()=>{
  const store=new EvidenceStore();
  await passingEvidence(store,c,"release-derived-test");
  store.add(c,{id:"release-derived-unit",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
- const result=authorizeRelease(c,"medium",store,issueSkillContext("task","repo",c,{codeChange:true}));
+ const result=authorizeRelease(c,"medium",store,issueSkillContext("task",c.repository,c,{codeChange:true}));
  assert.equal(result.ok,false);
  assert.match(result.reason,/asen-safe-change.*scope evidence/);
 });
@@ -101,7 +118,7 @@ test("release rejects caller-controlled mutable skill context",()=>{
 test("release rejects an issued context from another candidate revision",()=>{
  const old={...c,revision:"old-context"};
  const store=new EvidenceStore();
- const context=issueSkillContext("task","repo",old,{codeChange:true});
+ const context=issueSkillContext("task",c.repository,old,{codeChange:true});
  const result=authorizeRelease(c,"medium",store,context);
  assert.equal(result.ok,false);
  assert.match(result.reason,/does not match candidate/);
