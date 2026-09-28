@@ -79,3 +79,18 @@ test("execution isolates transient command mutations from the authoritative cand
  assert.equal(await (await import("node:fs/promises")).readFile(source,"utf8"),"original\n");
  assert.equal(execFileSync("git",["-C",repo,"status","--porcelain"],{encoding:"utf8"}).trim(),"");
 });
+
+
+test("execution rejects concurrent mutation of the isolated evidence checkout",async t=>{
+ const repo=await mkdtemp(join(tmpdir(),"asen-concurrent-execution-"));t.after(()=>rm(repo,{recursive:true,force:true}));
+ execFileSync("git",["init","-q",repo]);
+ const source=join(repo,"source.js");await writeFile(source,"original\n");
+ execFileSync("git",["-C",repo,"add","source.js"]);
+ execFileSync("git",["-C",repo,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","-m","initial"]);
+ const revision=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+ const candidate={repository:repo,id:"concurrent",revision,createdAt:"now"};
+ const mutate=[process.execPath,"-e",`const fs=require("fs");const p=require("path").join(process.cwd(),"source.js");setTimeout(()=>fs.writeFileSync(p,"concurrent\\n"),50);setTimeout(()=>process.exit(0),150)`] as const;
+ await assert.rejects(()=>executeEvidenceCommand(candidate,mutate),/unchanged tracked files/);
+ assert.equal(await (await import("node:fs/promises")).readFile(source,"utf8"),"original\n");
+ assert.equal(execFileSync("git",["-C",repo,"status","--porcelain"],{encoding:"utf8"}).trim(),"");
+});
