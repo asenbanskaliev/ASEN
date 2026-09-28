@@ -26,3 +26,14 @@ test("execution proof requires the candidate's exact Git repository and HEAD",as
  const store=new EvidenceStore();
  assert.throws(()=>addExecutedEvidence(store,{...candidate,id:"other"},proof,{id:"fake",kind:"test",summary:"fake"}),/candidate mismatch/);
 });
+test("a failed executed command cannot be relabeled as a passing test",async t=>{
+ const repo=await mkdtemp(join(tmpdir(),"asen-failed-execution-"));t.after(()=>rm(repo,{recursive:true,force:true}));
+ execFileSync("git",["init","-q",repo]);
+ execFileSync("git",["-C",repo,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m","initial"]);
+ const revision=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+ const candidate={repository:repo,id:"failed",revision,createdAt:"now"};
+ const proof=await executeEvidenceCommand(candidate,[process.execPath,"-e","process.exit(1)"]);
+ const store=new EvidenceStore();
+ assert.throws(()=>store.addExecuted(candidate,proof,{id:"forged",kind:"test",status:"pass",summary:"forged",createdAt:"now"}),/exit code 0/);
+ assert.equal(store.hasPassing(candidate,"test"),false);
+});
