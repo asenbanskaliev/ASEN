@@ -27,7 +27,7 @@ export function assertExactGitCandidate(candidate:Candidate,cwd:string):void{
  let untracked:string;
  try{untracked=run("ls-files","--others","--exclude-standard");}
  catch(error){throw new Error(`Execution evidence could not inspect untracked Git files: ${error instanceof Error?error.message:String(error)}`);}
- if(untracked!=="")throw new Error("Execution evidence requires no untracked Git files");
+ if(untracked!=="")throw new Error(`Execution evidence requires no untracked Git files: ${untracked.split("\n").slice(0,20).join(", ")}${untracked.split("\n").length>20?" …":""}`);
  // HEAD alone does not identify the bytes executed from a modified checkout.
  try{execFileSync("git",["-C",cwd,"diff","--quiet","HEAD","--"],{stdio:"ignore"});}
  catch{throw new Error("Execution evidence requires unchanged tracked files at the candidate revision");}
