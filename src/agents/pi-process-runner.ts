@@ -110,7 +110,7 @@ export class PiProcessRunner implements AgentRunner{
      const observed=response.data?.commands?.filter(item=>item.source==="skill").map(item=>typeof item.sourceInfo?.path==="string"?canonical(item.sourceInfo.path):"")??[];
      if(observed.length!==expected.length||observed.some((path,index)=>path!==expected[index])){stop();finish({id:request.id,ok:false,output:"pi native Skill paths do not match ASEN selection"});return;}
      policyLoaded=true;
-     child.stdin.end(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
+     child.stdin.write(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
     }
    });
    child.stderr.on("data",data=>stderr=append(stderr,data));
