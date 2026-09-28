@@ -12,8 +12,8 @@ function authorized(){
  evidence.add(candidate,{id:"rollback",kind:"rollback",status:"pass",summary:"ready",createdAt:"now"});
  return evidence;
 }
-const sealedCodeChange=(taskId="a")=>issueSkillContext(taskId,"r",candidate,{codeChange:true});
-const codeChangePaths=["skills/asen-work-unit/SKILL.md","skills/asen-safe-change/SKILL.md"];
+const sealedCodeChange=(taskId="a")=>issueSkillContext(taskId,"r",candidate,{phase:"apply",codeChange:true});
+const codeChangePaths=["skills/asen-phase-protocol/SKILL.md","skills/asen-work-unit/SKILL.md","skills/asen-safe-change/SKILL.md","skills/asen-apply/SKILL.md"];
 const writeRequest={id:"a",role:"worker" as const,prompt:"x",repository:"r",writeSurfaces:["src/a"],candidate,skillContext:sealedCodeChange(),skillPaths:codeChangePaths};
 
 test("dispatcher releases writer grant after completion", async()=>{
@@ -126,4 +126,12 @@ test("candidate-bound read roles cannot omit their issued context or exact skill
   await assert.rejects(()=>dispatcher.dispatch({id:"task:a",role,prompt:"x",repository:"r",candidate}),/issued skill context/);
   assert.equal(ran,false);
  }
+});
+test("worker cannot use an explore context to acquire write authority",async()=>{
+ let ran=false;
+ const runner:AgentRunner={run:async r=>{ran=true;return{id:r.id,ok:true,output:"bad"}}};
+ const context=issueSkillContext("a","r",candidate,{phase:"explore"});
+ const paths=["skills/asen-phase-protocol/SKILL.md","skills/asen-explore/SKILL.md"];
+ await assert.rejects(()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,skillContext:context,skillPaths:paths}),/apply phase/);
+ assert.equal(ran,false);
 });
