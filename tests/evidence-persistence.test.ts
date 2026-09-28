@@ -21,4 +21,4 @@ test("signed evidence survives restart only for exact candidate and signing key"
  await assert.rejects(()=>loadEvidence(path,candidate,key),/integrity mismatch/);
 });
 
-test("public restore rejects fabricated recovery proof",()=>{const store=new EvidenceStore();assert.throws(()=>store.restoreSigned(candidate,{value:{id:"fake",kind:"test",status:"pass",summary:"forged",createdAt:"now",execution:{command:["fake"],cwd:"repo",exitCode:0,startedAt:"now",finishedAt:"now"}}} as never),/verified signed proof/);});
+test("public restore rejects fabricated recovery proof",()=>{const store=new EvidenceStore();assert.throws(()=>store.restoreVerified(candidate,{id:"fake",kind:"test",status:"pass",summary:"forged",createdAt:"now",execution:{command:["fake"],cwd:"repo",exitCode:0,startedAt:"now",finishedAt:"now"}},false),/verified signed proof/);});

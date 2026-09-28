@@ -2,7 +2,7 @@ import {createHmac,timingSafeEqual,randomUUID} from "node:crypto";
 import {open,readFile,rename,unlink} from "node:fs/promises";
 import {basename,dirname,join} from "node:path";
 import type {Candidate,Evidence} from "../core/types.js";
-import {EvidenceStore,issueRecoveredEvidence} from "./store.js";
+import {EvidenceStore} from "./store.js";
 interface Envelope{version:1;candidate:Candidate;items:Evidence[];}
 const kinds=new Set(["test","review","command","audit","tdd","route-decision","work-unit","scope","rollback"]);
 const statuses=new Set(["pass","fail","expected-fail"]);
@@ -31,7 +31,7 @@ export async function loadEvidence(path:string,candidate:Candidate,key:Buffer):P
  const store=new EvidenceStore();
  for(const item of v.items){
   if(!item||item.candidateRepository!==candidate.repository||item.candidateId!==candidate.id||item.candidateRevision!==candidate.revision||typeof item.id!=="string"||!item.id||!kinds.has(item.kind)||!statuses.has(item.status)||typeof item.summary!=="string"||typeof item.createdAt!=="string")throw new Error("Evidence recovery item mismatch");
-  store.restoreSigned(candidate,issueRecoveredEvidence({id:item.id,kind:item.kind,status:item.status,summary:item.summary,createdAt:item.createdAt,...(item.execution?{execution:item.execution}:{})}));
+  store.restoreVerified(candidate,{id:item.id,kind:item.kind,status:item.status,summary:item.summary,createdAt:item.createdAt,...(item.execution?{execution:item.execution}:{})},true);
  }
  return store;
 }
