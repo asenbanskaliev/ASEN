@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {mkdtemp,rm} from "node:fs/promises";
+import {mkdtemp,mkdir,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {executeEvidenceCommand,addExecutedEvidence} from "../src/evidence/execution.js";
@@ -18,6 +18,8 @@ test("execution proof requires the candidate's exact Git repository and HEAD",as
  assert.equal(proof.candidateRevision,revision);
  await assert.rejects(()=>executeEvidenceCommand({...candidate,revision:"another"},command),/revision mismatch/);
  await assert.rejects(()=>executeEvidenceCommand(candidate,command,{cwd:process.cwd()}),/repository mismatch/);
+ const nested=join(repo,"nested");await mkdir(nested);
+ await assert.rejects(()=>executeEvidenceCommand({...candidate,repository:nested},command,{cwd:nested}),/repository mismatch/);
  const advance=[process.execPath,"-e",`require("child_process").execFileSync("git",["-C",${JSON.stringify(repo)},"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m","advance"])`] as const;
  await assert.rejects(()=>executeEvidenceCommand(candidate,advance),/revision mismatch/);
  await assert.rejects(()=>executeEvidenceCommand(candidate,command),/revision mismatch/);
