@@ -68,3 +68,8 @@ CI and Release Gate results must be rechecked on the exact final HEAD after ever
 
 - **PARCIAL pending final SHA gates:** the production Pi RPC runner now checks both the explicit ASEN authority extension and the exact ordered native Skills returned by Pi's `get_commands` in the same process, before sending its task. Its adversarial fixtures replace, omit or add a Skill; each mismatch must stop the turn. The real four-role LLM7 workflow independently checks selected native Skills and zero tool use.
 - **NO PROBADO:** this control is inside the Pi process, not an OS sandbox. Worker, reviewer and verifier have not yet produced independently trusted lifecycle artifacts in a complete real-model E2E. `CAP-SKL-001` stays `specified`.
+
+## Structured model artifact attempt — 2026-09-28
+
+- **PROBADO (rejection):** on candidate `e82d4af2e3d4d2a8b71b4ed33904509fb338a5c6`, authenticated Pi job 108952342261 completed the four role nonsemantic probes, then attempted a separate worker JSON artifact turn. LLM7 returned a fenced generic response without task, role, repository, candidate or revision. The strict `extractPiArtifact` parser rejected it as non-JSON and the job failed; no artifact was accepted and no authority was granted.
+- **NO PROBADO:** a real model producing valid structured worker, reviewer and verifier artifacts and advancing lifecycle. The experimental script remains available for diagnosis, but the existing four-role authenticated workflow keeps its original contract: exact Skills, completed model turns, nonempty text and zero tools. Do not construe its PASS as structured artifact proof. Do not relax the parser to accommodate model output. `CAP-SKL-001` remains `specified`.
