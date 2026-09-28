@@ -125,16 +125,14 @@ test("Pi RPC adapter supplies selected routes as native Pi flags",async()=>{
  assert.match(response.args[2],/[\\/]asen-policy-[^\\/]+[\\/]authority\.ts$/);
  assert.deepEqual([response.args[0],response.args[1],...response.args.slice(3)],["--no-extensions","--extension","--no-skills","--tools","read",...paths.flatMap(path=>["--skill",path])]);
 });
-test("Pi worker receives bounded file tools without process execution or delegation",async()=>{
+test("direct Pi worker cannot obtain file tools without a live lifecycle grant",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
  const candidate={id:"candidate",repository:d,revision:"revision",createdAt:"now"};
  const context=issueSkillContext("worker",d,candidate,{phase:"apply"});
  const paths=selectSkills(context).map(skill=>skill.path);
  const r=await runner(p).run({id:"worker",role:"worker",prompt:"implement",repository:d,candidate,writeSurfaces:["src"],skillContext:context,skillPaths:paths});
- assert.equal(r.ok,true);
- const args=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!).args as string[];
- assert.match(args[2]!,/[\\/]asen-policy-[^\\/]+[\\/]authority\.ts$/);
- assert.deepEqual([args[0],args[1],...args.slice(3)],["--no-extensions","--extension","--no-skills","--tools","read,edit,write",...paths.flatMap(path=>["--skill",path])]);
+ assert.equal(r.ok,false);
+ assert.match(r.output,/active ASEN lifecycle grant/);
 });
 test("direct Pi runner refuses a candidate-bound turn without issued selection",async()=>{
  const candidate={id:"candidate",repository:"missing-repo",revision:"revision",createdAt:"now"};
