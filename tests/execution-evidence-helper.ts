@@ -1,6 +1,6 @@
 import {execFileSync} from "node:child_process";
 import {resolve,join} from "node:path";
-import {mkdtempSync,writeFileSync} from "node:fs";
+import {mkdtempSync,writeFileSync,appendFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import type {Candidate} from "../src/core/types.js";
 import {addExecutedEvidence,executeEvidenceCommand,type ExecutedEvidence} from "../src/evidence/execution.js";
@@ -21,13 +21,20 @@ export function gitCandidate(id:string,repository?:string):Candidate{
  return {id,repository:root,revision,createdAt:"now"};
 }
 
+export function nextCandidateRevision(candidate:Candidate,label:string):Candidate{
+ appendFileSync(join(candidate.repository,"candidate.txt"),label+"\\n");
+ execFileSync("git",["-C",candidate.repository,"add","."]);
+ execFileSync("git",["-C",candidate.repository,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","-m",label]);
+ return {...candidate,revision:execFileSync("git",["-C",candidate.repository,"rev-parse","HEAD"],{encoding:"utf8"}).trim()};
+}
+
 export async function executionProof(candidate:Candidate,exitCode=0):Promise<ExecutedEvidence>{
  return executeEvidenceCommand(candidate,[process.execPath,"-e",`process.exit(${exitCode})`],{cwd:candidate.repository,timeoutMs:10000});
 }
 export async function passingEvidence(store:EvidenceStore,candidate:Candidate,id:string,kind:"test"|"tdd"="test"):Promise<void>{
  if(kind==="tdd"){
   const cycle=new TddCycle(candidate,store,id);
-  for(const stage of ["RED","GREEN","REFACTOR"] as const)cycle.record(stage,`${id}:${stage.toLowerCase()}`,"executed fixture",await executionProof(candidate,stage==="RED"?1:0));
+  cycle.record("RED",`${id}:red`,"executed fixture",await executionProof(candidate,1),candidate);\n  const green=nextCandidateRevision(candidate,`${id}-green`);cycle.record("GREEN",`${id}:green`,"executed fixture",await executionProof(green,0),green);\n  const refactor=nextCandidateRevision(green,`${id}-refactor`);cycle.record("REFACTOR",`${id}:refactor`,"executed fixture",await executionProof(refactor,0),refactor);
   return;
  }
  const proof=await executionProof(candidate,0);
