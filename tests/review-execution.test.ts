@@ -29,3 +29,18 @@ test("review process binds task, reviewer, candidate, result and execution",asyn
  store.addReviewed(candidate,proof);
  assert.equal(store.hasPassing(candidate,"review"),true);
 });
+
+
+test("independent review executes outside the mutable authoritative checkout",async t=>{
+ const repository=await mkdtemp(join(tmpdir(),"asen-review-isolated-"));t.after(()=>rm(repository,{recursive:true,force:true}));
+ execFileSync("git",["init","-q",repository]);
+ execFileSync("git",["-C",repository,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m","initial"]);
+ const revision=execFileSync("git",["-C",repository,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+ const candidate={id:"candidate",repository,revision,createdAt:"now"};
+ const context=issueSkillContext("task:reviewer",repository,candidate,{phase:"adversarial-review"});
+ const base={candidateRepository:repository,candidateId:candidate.id,candidateRevision:revision,reviewer:context.taskId,reviewerRole:"independent"};
+ const script=`const report=${JSON.stringify(base)};report.findings=process.cwd()===${JSON.stringify(repository)}?[{id:"mutable-checkout",severity:"high",message:"review ran in authoritative checkout"}]:[];process.stdout.write(JSON.stringify(report))`;
+ const proof=await executeIndependentReview(candidate,context,"author",[process.execPath,"-e",script]);
+ assert.equal(proof.report.findings.length,0);
+ assert.equal(execFileSync("git",["-C",repository,"status","--porcelain"],{encoding:"utf8"}).trim(),"");
+});
