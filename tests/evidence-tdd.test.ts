@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";import test from "node:test";
-import {EvidenceStore} from "../src/evidence/store.js";import {TddCycle} from "../src/test/tdd-cycle.js";import {verifyCandidate} from "../src/verify/verifier.js";
+import {EvidenceStore} from "../src/evidence/store.js";import {TddCycle} from "../src/test/tdd-cycle.js";import {verifyCandidate,verifySkillEvidence} from "../src/verify/verifier.js";
+import {addExecutedEvidence} from "../src/evidence/execution.js";
 import {executionProof,passingEvidence,gitCandidate} from "./execution-evidence-helper.js";
 const c=gitCandidate("c");
 test("evidence is bound to exact revision",async()=>{
@@ -24,3 +25,9 @@ test("an unresolved real failure still blocks verification",async()=>{const s=ne
 
 test("TDD rejects evidence from another logical cycle",async()=>{const t=new TddCycle(c,new EvidenceStore(),"cycle-a");await assert.rejects(async()=>t.record("RED","cycle-b:red","mixed",await executionProof(c,1)),/does not belong to this cycle/);});
 test("TDD requires a stable non-empty cycle id",()=>assert.throws(()=>new TddCycle(c,new EvidenceStore(),"   "),/stable cycle id/));
+
+test("a lone GREEN cannot satisfy the TDD verification gate",async()=>{
+ const store=new EvidenceStore(),proof=await executionProof(c,0);
+ addExecutedEvidence(store,c,proof,{id:"rogue:green",kind:"tdd",summary:"GREEN without RED or REFACTOR"});
+ assert.equal(verifySkillEvidence(c,["asen-tdd"],store,"verification").ok,false);
+});
