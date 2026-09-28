@@ -32,7 +32,9 @@ for(const [role,phase] of roles){
  "Your entire assistant response MUST be exactly the JSON object on the next line.",
  "Do not use Markdown fences. Do not add prose. Do not rename, omit, or add fields. Do not call tools.",
  JSON.stringify(metadata)
-].join("\\n");
+].join("\n");
+ assert.ok(message.includes("\n"),"Structured Pi prompt must contain real line breaks");
+ assert.ok(!message.includes("\\\\n"),"Structured Pi prompt must not contain escaped line-break text");
  let buffer="",output="",stderr="",failure=null,loaded=false,finished=false;
  const timeout=setTimeout(()=>child.kill(),180000);
  command({id:`load-${role}`,type:"get_commands"});
