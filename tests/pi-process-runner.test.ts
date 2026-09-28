@@ -105,6 +105,17 @@ test("direct Pi runner refuses a candidate-bound turn without issued selection",
   assert.match(result.output,/issued skill context and exact paths/);
  }
 });
+test("direct Pi runner rejects role phase substitution and writer authority outside apply",async()=>{
+ const candidate={id:"candidate",repository:"missing-repo",revision:"revision",createdAt:"now"};
+ const context=issueSkillContext("task:a",candidate.repository,candidate,{phase:"explore"});
+ const skillPaths=selectSkills(context).map(item=>item.path);
+ for(const role of ["reviewer","verifier"] as const){
+  const result=await new PiProcessRunner({command:"does-not-exist"}).run({id:"task:a",role,prompt:"inspect",repository:candidate.repository,candidate,skillContext:context,skillPaths});
+  assert.equal(result.ok,false);assert.match(result.output,/agent role/);
+ }
+ const writer=await new PiProcessRunner({command:"does-not-exist"}).run({id:"task:a",role:"worker",prompt:"write",repository:candidate.repository,candidate,skillContext:context,skillPaths,writeSurfaces:["src"]});
+ assert.equal(writer.ok,false);assert.match(writer.output,/apply phase/);
+});
 test("Pi preflight rejects omitted, added or replaced native Skill routes",async()=>{
  for(const mode of ["missing","extra","altered"] as const){
   const {d,p}=await fixture("setTimeout(()=>{},10000);",true,mode);
