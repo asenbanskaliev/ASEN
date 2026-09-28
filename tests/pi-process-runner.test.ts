@@ -34,6 +34,13 @@ test("Pi runner refuses a candidate-supplied replacement authority extension",as
  const result=await runner(p).run({id:"tampered",role:"explorer",prompt:"inspect",repository:d});
  assert.equal(result.ok,false);assert.match(result.output,/authority extension integrity/);
 });
+test("Pi policy digest accepts Windows checkout line endings",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
+ const {readFile}=await import("node:fs/promises"),path=join(d,"extensions/authority.ts");
+ await writeFile(path,(await readFile(path,"utf8")).replace(/\r?\n/g,"\r\n"));
+ const result=await runner(p).run({id:"crlf",role:"explorer",prompt:"inspect",repository:d});
+ assert.equal(result.ok,true);
+});
 test("Pi artifact runner passes only a completed assistant JSON artifact to lifecycle",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:JSON.stringify({kind:"exploration-report",content:"inspected",repository:process.cwd(),candidateId:"c",revision:"r"})}]}}));console.log(JSON.stringify({type:"agent_end"}));console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
  const candidate={id:"c",repository:d,revision:"r",createdAt:"now"};
