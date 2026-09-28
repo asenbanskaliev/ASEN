@@ -10,6 +10,7 @@ import {SkillLifecycle,lifecyclePhases,saveLifecycle,loadLifecycle,type Lifecycl
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {Dispatcher,type AgentRunner} from "../src/agents/dispatcher.js";
+import {fixtureArtifactRunner} from "./lifecycle-pi-fixture.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {loadEvidence,saveEvidence} from "../src/evidence/persistence.js";
 import {passingEvidence,passingReview,gitCandidate} from "./execution-evidence-helper.js";
@@ -28,7 +29,7 @@ async function advance(flow:SkillLifecycle,phase:LifecyclePhase,options:Paramete
   evidence.add(candidate,{id,kind,status:"pass",summary:id,createdAt:"now"});
  await passingReview(evidence,candidate,"review");
  await passingEvidence(evidence,candidate,"test");
- const runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:JSON.stringify(selected.artifact)})};
+ const runner=fixtureArtifactRunner(()=>selected.artifact);
  return flow.runPhase(new Dispatcher(runner,evidence),{phase,context:selected.context,skillPaths:selected.skillPaths,prompt:phase,evidence,risk:"high",...(phase==="apply"?{writeSurfaces:["src/"]}:{})});
 }
 test("lifecycle enforces nine ordered phases and mandatory artifacts",async()=>{
@@ -71,11 +72,11 @@ test("interruption resumes exact phase, artifacts and candidate; changed identit
 test("task executes through dispatcher, resumes, verifies and archives",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-lifecycle-e2e-"));t.after(()=>rm(dir,{recursive:true,force:true}));
  const path=join(dir,"flow.json"),evidencePath=join(dir,"evidence.json");let evidence=new EvidenceStore();const rolesSeen:string[]=[];
- const runner:AgentRunner={run:async request=>{
+ const runner=fixtureArtifactRunner(request=>{
   rolesSeen.push(`${request.skillContext?.phase}:${request.role}`);
   const phase=request.skillContext?.phase as LifecyclePhase;
-  return{id:request.id,ok:true,output:JSON.stringify({kind:artifacts[phase],content:`completed ${phase}`,repository:candidate.repository,candidateId:candidate.id,revision:candidate.revision})};
- }};
+  return {kind:artifacts[phase],content:`completed ${phase}`,repository:candidate.repository,candidateId:candidate.id,revision:candidate.revision};
+ });
  let dispatcher=new Dispatcher(runner,evidence);const flow=new SkillLifecycle("task",candidate);
  const execute=async(target:SkillLifecycle,phase:LifecyclePhase)=>{
   const issued=completion(phase);
@@ -112,7 +113,7 @@ test("signed pending phase reissues fresh authority after recovery",async t=>{
  const issued=restored.reissuePendingAuthority();
  assert.deepEqual(issued.skillPaths,selected.skillPaths);
  assert.notEqual(issued.context,selected.context);
- const runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:JSON.stringify(selected.artifact)})};
+ const runner=fixtureArtifactRunner(()=>selected.artifact);
  await restored.runPhase(new Dispatcher(runner,new EvidenceStore()),{phase:"design",context:issued.context,skillPaths:issued.skillPaths,prompt:"design",evidence:new EvidenceStore(),risk:"low"});
  assert.equal(restored.state.nextPhase,"tasks");
  const forged=new SkillLifecycle("task",candidate,flow.state);
