@@ -20,6 +20,8 @@ export class EvidenceStore {
   if(!isExecutedEvidence(proof))throw new Error("Executed evidence requires ASEN-issued execution proof");
   if(proof.candidateRepository!==candidate.repository||proof.candidateId!==candidate.id||proof.candidateRevision!==candidate.revision)throw new Error("Executed evidence candidate mismatch");
   if(evidence.kind!=="test"&&evidence.kind!=="tdd")throw new Error("Executed evidence only applies to test or tdd");
+  if(evidence.status==="pass"&&proof.exitCode!==0)throw new Error("Passing executed evidence requires exit code 0");
+  if(evidence.status==="expected-fail"&&proof.exitCode===0)throw new Error("Expected failing evidence requires a failing execution");
   const execution={command:[...proof.command],cwd:proof.cwd,exitCode:proof.exitCode,startedAt:proof.startedAt,finishedAt:proof.finishedAt};
   return this.#insert(candidate,{...evidence,execution});
  }
