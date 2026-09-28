@@ -65,17 +65,21 @@ for(const [role,phase] of roles){
  if(failure)throw failure;
  if(exit!==0)throw new Error(`Pi artifact process failed for ${role}: ${stderr.replaceAll(process.env.LLM7_API_KEY,"[redacted]")}`);
  assert.ok(loaded&&finished,"Pi artifact probe did not finish");
- let artifact;
- try{artifact=JSON.parse(extractPiArtifact(output,id));}
+ const records=output.trim().split(/\r?\n/).flatMap(line=>{try{return [JSON.parse(line)];}catch{return [];}});
+ const final=records.filter(record=>record.type==="message_end"&&record.message?.role==="assistant").at(-1);
+ const assistantText=final?.message?.content?.filter(item=>item.type==="text").map(item=>item.text).join("")??"";
+ let raw;
+ try{raw=JSON.parse(assistantText);}
  catch(error){
-  const records=output.trim().split(/\r?\n/).flatMap(line=>{try{return [JSON.parse(line)];}catch{return [];}});
-  const final=records.filter(record=>record.type==="message_end"&&record.message?.role==="assistant").at(-1);
-  const text=final?.message?.content?.filter(item=>item.type==="text").map(item=>item.text).join("")??"";
-  console.error(JSON.stringify({role,assistantLength:text.length,assistantPrefix:text.replaceAll(process.env.LLM7_API_KEY,"[redacted]").slice(0,280)}));
-  throw error;
+  console.error(JSON.stringify({role,assistantLength:assistantText.length,assistantPrefix:assistantText.replaceAll(process.env.LLM7_API_KEY,"[redacted]").slice(0,280)}));
+  throw new Error(`Model artifact ${role} is not strict JSON`,{cause:error});
  }
- for(const key of ["taskId","role","phase","repository","candidateId","revision","kind"])assert.equal(artifact[key],metadata[key],`Model artifact ${role} has wrong ${key}`);
- assert.equal(typeof artifact.content,"string");assert.ok(artifact.content.trim(),"Model artifact is empty");
+ assert.deepEqual(Object.keys(raw).sort(),Object.keys(metadata).sort(),`Model artifact ${role} has wrong fields`);
+ for(const key of ["taskId","role","phase","repository","candidateId","revision","kind"])assert.equal(raw[key],metadata[key],`Model artifact ${role} has wrong ${key}`);
+ assert.equal(typeof raw.content,"string");assert.ok(raw.content.trim(),"Model artifact is empty");
+ const artifact=JSON.parse(extractPiArtifact(output,id));
+ for(const key of ["repository","candidateId","revision","kind"])assert.equal(artifact[key],metadata[key],`ASEN artifact ${role} lost ${key}`);
+ assert.equal(artifact.content,raw.content,`ASEN artifact ${role} changed model content`);
  results.push({role,phase,skills:selected,kind:artifact.kind});
 }
 console.log(JSON.stringify({candidate:revision,model:"llm7/default",artifacts:results,result:"PASS"}));
