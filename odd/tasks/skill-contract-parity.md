@@ -68,7 +68,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Deterministic injection-safe Markdown and exact schema-1 cache validation bind the current discovery fingerprint, rendered content, and registry SHA-256; project or renderer changes regenerate, while valid hits avoid writes and still use current scan results.
       - Output paths are limited to the inspected real `.asen` directory under the canonical project root. Dynamic discovered paths are rendered data only and never enter static write-target candidate authority.
       - Optional mirroring is attempted after successful hit or regeneration, uses the exact bounded payload, and degrades to sanitized `failed` or `unavailable` persistence without rejecting local refresh.
-    - [x] Slice 3C3: Skill normalization and automated evidence.
+    - [x] Slice 3C3: Skill normalization and automated evidence. Commit: `6005595`.
       - Strict RED failed 5 contract tests against missing strict metadata, activation boundaries, semantic markers, complete output, and honest matrix evidence.
       - GREEN/REFACTOR normalized the registry Skill, added static runtime-route and contract evidence, and promoted SRC-SKILL-011 to PARTIAL with one bounded GSP-06 gap.
       - CAP-SKL-001 remains specified; GSP-03 and Slice 3D remain pending.
