@@ -22,11 +22,11 @@ Make Pi Free the sole current model-backed pull-request check while preserving h
   - Pi Free is now documented as the sole current model-backed PR check.
   - Prior OpenRouter results remain intact and are explicitly historical records for their stated SHAs, not current policy.
   - All architectural limitations remain recorded; `CAP-TST-001` and `CAP-SKL-001` remain `specified`.
-- [ ] PR30-FREE-03 — Verify, publish, and inspect the exact candidate.
-  - Run repository-defined local gates and package verification.
-  - Verify branch, HEAD, status, remote PR head, and `origin/main` before commit and push.
-  - Push without force only if the remote PR head has not advanced.
-  - Inspect Phase 0 Architecture, CI, Release Gate, and Pi Free Smoke for the exact pushed SHA.
+- [x] PR30-FREE-03 — Verify, publish, and inspect the exact candidate.
+  - Repository-defined local gates and package verification passed.
+  - Branch, HEAD, status, remote PR head, and `origin/main` were checked before commit and push.
+  - Commit `b839fc42f0b31770949c0cdcbd32b1315a835ddd` was pushed without force after confirming no remote advancement.
+  - Phase 0 Architecture, CI, Release Gate, and Pi Free Smoke all passed on that exact SHA.
 
 ## Acceptance criteria
 
@@ -46,3 +46,5 @@ Make Pi Free the sole current model-backed pull-request check while preserving h
 - `git diff --exit-code -- .github/workflows/pi-free-smoke.yml 'registry/capabilities/*.yaml'` passed with no output, confirming Pi Free Smoke and all capability YAMLs are unchanged.
 - Repository settings check: the `main` branch protection endpoint reports that the branch is not protected, and no repository ruleset requires the retired check. No external required-check cleanup is currently needed.
 - Independent verification passed: 203/203 tests, parity 6/6, 27 Skills, boundary 232 paths, package verification 61 files, and no changes to Pi Free or either capability record.
+- Exact published SHA `b839fc42f0b31770949c0cdcbd32b1315a835ddd`: Phase 0 Architecture run `36582598990`, CI run `36582598838`, Release Gate run `36582598882`, and Pi Free Smoke run `36582598867` all completed successfully. Exactly four workflow families ran; the retired OpenRouter workflow did not run.
+- PR #30 remained open and unmerged after publication.
