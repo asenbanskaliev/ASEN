@@ -196,8 +196,8 @@
       "outputs": ["AUTHOR-OUT-001"],
       "prohibited": ["AUTHOR-PRO-001"],
       "equivalentAdaptations": [{"contractId": "AUTHOR-RULE-001", "note": "ASEN uses its own names and registry path while retaining the same runtime-contract structure."}],
-      "gaps": [{"contractId": "AUTHOR-GATE-001", "note": "The guide is aligned, but authoring behavior and negative cases do not yet have automated evidence."}],
-      "evidence": ["Guide linkage is present; behavioral automation is pending GSP-03."]
+      "gaps": [{"contractId": "AUTHOR-OUT-001", "note": "Generated-output compliance still requires Pi Free positive and negative probes in GSP-06."}],
+      "evidence": ["tests/skill-authoring-audit.test.ts"]
     },
     {
       "sourceId": "SRC-SKILL-010",
@@ -209,8 +209,8 @@
       "outputs": ["AUDIT-OUT-001"],
       "prohibited": ["AUDIT-PRO-001"],
       "equivalentAdaptations": [{"contractId": "AUDIT-RULE-001", "note": "ASEN audits its native registry and exact local Skill paths."}],
-      "gaps": [{"contractId": "AUDIT-PRO-001", "note": "Audit-only, preservation, ambiguity, budget, and parity-claim negative cases lack automated evidence."}],
-      "evidence": ["Guide linkage is present; behavioral automation is pending GSP-03."]
+      "gaps": [{"contractId": "AUDIT-OUT-001", "note": "Generated-output compliance still requires Pi Free positive and negative probes in GSP-06."}],
+      "evidence": ["tests/skill-authoring-audit.test.ts"]
     },
     {
       "sourceId": "SRC-SKILL-011",

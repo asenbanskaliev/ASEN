@@ -54,10 +54,18 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
   - Matrix rows remain PARTIAL pending Pi Free positive and negative generated-output probes in GSP-06.
   - Commit: `7f085db`.
 - [ ] GSP-03 — Align Skill authoring, improvement, and registry.
+  - [x] Slice 3A: strict discovery parsing and document audit, normalized authoring/audit contracts, runtime route tests, and deterministic matrix evidence.
+  - [ ] Slice 3B: multi-source discovery and deterministic precedence/deduplication.
+  - [ ] Slice 3C: generated registry, cache, mirror, and configured persistence behavior.
+  - [ ] Slice 3D: Pi route and generated-output evidence.
   - Enforce exact frontmatter and 180–450 target / 1000 hard body budget.
   - Preserve long material under local `references/` or `assets/`.
   - Implement `.asen/skill-registry.md`, multi-source scanning, project precedence, deterministic deduplication, cache behavior, and configured memory persistence when available.
   - Provide automated positive and negative tests for discovery, duplicates, empty registries, refresh, and cache invalidation.
+  - Slice 3A RED: focused test failed because `src/skills/document.ts` did not exist.
+  - Slice 3A GREEN/REFACTOR: focused tests pass 15/15; typecheck, 27-Skill audit, 12-Skill parity audit, 241-path upstream-boundary audit, and diff check pass.
+  - Final bounded hardening adds the distinct >700 recommended-ceiling issue and rejects metadata children outside the exact `metadata` hierarchy.
+  - Slice 3A rows remain PARTIAL pending Pi Free positive and negative generated-output probes in GSP-06; the static 27-Skill runtime registry is unchanged.
 - [ ] GSP-04 — Align issue, branch, chained-PR, and work-unit behavior.
   - Approved-issue gate, credential/session gate, templates/forms, privacy, duplicate checks, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.

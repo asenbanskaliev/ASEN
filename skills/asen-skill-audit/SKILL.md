@@ -1,31 +1,44 @@
 ---
 name: asen-skill-audit
-description: "Trigger: audit skills, improve skills, skill quality. Audit Pi-native skills for activation clarity, executable gates, preserved intent and registry consistency."
+description: "Trigger: audit skills, improve skills, normalize skill contracts. Audit safely while preserving intent and activation."
+license: Apache-2.0
+metadata:
+  author: ASEN
+  version: "1.0.0"
 ---
 ## Activation Contract
-Use when reviewing or improving existing skill contracts.
+Activate for auditing, refactoring, normalizing, or improving an existing Skill contract. Default to audit-only. Do not modify files unless the user explicitly requests safe apply work. Read `docs/skill-style-guide.md` and use `.asen/skill-registry.md` as the exact project registry path.
+
 ## Hard Rules
-- Read and enforce `docs/skill-style-guide.md` as the normative contract.
-- Preserve meaningful behavior, activation semantics and author intent.
-- Default to audit-only unless modification is authorized.
-- Do not invent triggers or policy to make a Skill look complete.
-- Audit exact frontmatter, ordered sections, imperative rules, local support files, explicit prohibitions, the 180–450 body-token target and 1000-token hard maximum.
-- Use `.asen/skill-registry.md` as the project index; keep each `SKILL.md` authoritative.
-- Never claim FULL behavioral parity from structure, loading or file presence; require automated positive and negative evidence.
-- Move explanation/examples into local `references/` or `assets/` instead of silently deleting meaningful content.
+- Preserve author intent, meaningful behavior, activation semantics, prohibitions, and output obligations.
+- Audit exact frontmatter, kebab-case directory naming, trigger-first description, ordered sections, imperative rules, and local support paths.
+- Check the 180–450 body-word target, 700 recommended ceiling, and 1000 hard maximum.
+- Report ambiguity or conflict for human review instead of inventing triggers, policy, authority, or missing intent.
+- Never modify in audit-only mode. Apply only explicitly requested, bounded, safe corrections.
+- Move substantial rationale, examples, templates, schemas, or fixtures into local `references/` or `assets/`; do not silently delete meaningful material.
+- Keep each `SKILL.md` authoritative. Recommend a registry refresh after creation, removal, movement, rename, or trigger changes.
+- Do not infer behavioral parity from loading, structure, registry presence, or prose alone; require automated positive and negative evidence.
+
 ## Decision Gates
-| Situation | Action |
+| Finding | Action |
 | --- | --- |
-| Invalid metadata/sections | Correct structural defect |
-| Rule is ambiguous/conflicting | Report for decision |
-| Runtime rule lacks executable enforcement | Recommend/add gate when authorized |
+| Metadata or section structure is invalid | Report the exact deterministic defect |
+| Tutorial form or body budget hides rules | Recommend movement to the appropriate local support directory |
+| Branching is hidden in prose | Report the gate and propose a compact decision row |
+| Rule is ambiguous or conflicts with intent | Stop correction and record the ambiguity |
+| Safe apply was explicitly requested | Correct only evidenced defects and preserve behavior |
+| Runtime behavior changed | Recommend registry refresh and behavioral verification |
+
 ## Execution Steps
-1. Read the style guide, `.asen/skill-registry.md` when present and the exact `SKILL.md`.
-2. Audit frontmatter, activation, hard rules, gates, execution, outputs, prohibitions, budget and local references.
-3. Compare with executable enforcement/tests.
-4. Apply only authorized safe improvements.
-5. Refresh registry and re-run audits.
+1. Read the normative guide, target Skill, local support files, and project registry when present.
+2. Parse discovery metadata separately from strict conformance so old loadable Skills remain discoverable.
+3. Audit metadata, naming, activation, rules, gates, steps, outputs, prohibitions, budget, and reference locality.
+4. Classify findings by severity and distinguish deterministic defects from ambiguities.
+5. If safe apply is authorized, preserve intent while making only bounded corrections and moving long material without loss.
+6. Re-run strict audit and relevant behavior tests, then recommend registry refresh when indexing inputs changed.
+
 ## Output Contract
-Return skills audited, defects by severity, changes, enforcement gaps and unresolved decisions.
+Return audited paths, severity-grouped findings, applied changes or explicit no-write status, preserved or moved assets and references, registry refresh recommendation, verification results, enforcement gaps, parity limits, and ambiguities requiring human review.
+
 ## References
-- `docs/skill-style-guide.md` — normative ASEN LLM-runtime Skill contract.
+- `docs/skill-style-guide.md` — normative ASEN Skill contract.
