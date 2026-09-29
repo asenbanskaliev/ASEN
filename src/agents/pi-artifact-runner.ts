@@ -41,7 +41,7 @@ export function extractPiArtifact(output:string,requestId:string):string{
  if(events.some(x=>typeof x.type==="string"&&x.type.startsWith("tool_execution_")))throw new Error("Pi artifact assistant response must not contain tool calls");
  const messages=events.flatMap((x,index)=>x.type==="message_end"&&x.message?.role==="assistant"?[{index,record:x}]:[]);
  if(!messages.length||messages.some(x=>x.index>=ends[0]!||x.record.message?.stopReason==="error"))throw new Error("Pi artifact requires a completed successful assistant message");
- if(messages.some(x=>Array.isArray(x.record.message?.content)&&x.record.message.content.some(item=>!!item&&typeof item==="object"&&["toolCall","tool_call"].includes(String((item as {type?:unknown}).type)))))throw new Error("Pi artifact assistant response must not contain tool calls");
+ if(messages.some(x=>x.record.message?.stopReason==="toolUse"||Array.isArray(x.record.message?.content)&&x.record.message.content.some(item=>!!item&&typeof item==="object"&&["toolCall","tool_call"].includes(String((item as {type?:unknown}).type)))))throw new Error("Pi artifact assistant response must not contain tool calls");
  const final=messages.at(-1)!.record;
  if(final.message?.stopReason!=="stop")throw new Error("Pi artifact has no final assistant response");
  const contents=final.message?.content;
