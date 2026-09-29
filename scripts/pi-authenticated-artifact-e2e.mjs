@@ -76,7 +76,7 @@ for(const [role,phase] of roles){
  let raw;
  try{raw=JSON.parse(assistantText);}
  catch(error){
-  console.error(JSON.stringify({role,assistantLength:assistantText.length,assistantPrefix:assistantText.replaceAll(process.env.OPENROUTER_API_KEY,"[redacted]").slice(0,280)}));
+  console.error(JSON.stringify({role,assistantLength:assistantText.length}));
   throw new Error(`Model artifact ${role} is not strict JSON`,{cause:error});
  }
  assert.ok(Object.keys(raw).length>0,`Model artifact ${role} is empty`);
