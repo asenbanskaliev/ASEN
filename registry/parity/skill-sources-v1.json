@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "baseline": {
+    "repository": "Gentleman-Programming/gentle-shell",
+    "commit": "08de420ca29be16b6f6bee725a30b599b061df16"
+  },
+  "hashAlgorithm": "sha256",
+  "sources": [
+    {
+      "id": "SRC-SKILL-001",
+      "kind": "skill",
+      "path": "skills/branch-pr/SKILL.md",
+      "status": "present",
+      "bytes": 8448,
+      "sha256": "87033c416f0b05a44891d9474ac6420490605f2e3aa562aca2f965d2f9bc9421"
+    },
+    {
+      "id": "SRC-SKILL-002",
+      "kind": "skill",
+      "path": "skills/chained-pr/SKILL.md",
+      "status": "present",
+      "bytes": 4051,
+      "sha256": "696842b9e14afc8449fef2fc4814fd77e58e3edc87e699698252948d6a61b613"
+    },
+    {
+      "id": "SRC-SKILL-003",
+      "kind": "skill",
+      "path": "skills/cognitive-doc-design/SKILL.md",
+      "status": "present",
+      "bytes": 2388,
+      "sha256": "a06b276b512e457a1bc7434390017ac5f608033dc7882706afbd606bc260b19a"
+    },
+    {
+      "id": "SRC-SKILL-004",
+      "kind": "skill",
+      "path": "skills/comment-writer/SKILL.md",
+      "status": "present",
+      "bytes": 2490,
+      "sha256": "9408ad044b5745686b16756508ec4921a8f7f8ac2023ed492229825a4e974ff6"
+    },
+    {
+      "id": "SRC-SKILL-005",
+      "kind": "skill",
+      "path": "skills/gentle-ai/SKILL.md",
+      "status": "present",
+      "bytes": 3926,
+      "sha256": "4e723b8d883b3e9cc2d87617283f23f14c6c52452eee0f6af1dba7c26dad1296"
+    },
+    {
+      "id": "SRC-SKILL-006",
+      "kind": "skill",
+      "path": "skills/issue-creation/SKILL.md",
+      "status": "present",
+      "bytes": 9822,
+      "sha256": "dc737b4aa9342185358d1091326c5a3334ea53c3720e0165578852d861bc7659"
+    },
+    {
+      "id": "SRC-SKILL-007",
+      "kind": "skill",
+      "path": "skills/judgment-day/SKILL.md",
+      "status": "present",
+      "bytes": 5537,
+      "sha256": "da6442cca9cf3647ecf8da736b64820d90bdac8a77f1b8f34f7c18d687bf8ee0"
+    },
+    {
+      "id": "SRC-SKILL-008",
+      "kind": "skill",
+      "path": "skills/rdd-defect-workflow/SKILL.md",
+      "status": "present",
+      "bytes": 3820,
+      "sha256": "effba22db780a83362dc4c878de3e3c7ddd33b8935ea082f47758d90ae39df56"
+    },
+    {
+      "id": "SRC-SKILL-009",
+      "kind": "skill",
+      "path": "skills/skill-creator/SKILL.md",
+      "status": "present",
+      "bytes": 3216,
+      "sha256": "8d13eaf636f56f6b0be95422b5d57272c44498a3c511d2aec4c71da615c7eb35"
+    },
+    {
+      "id": "SRC-SKILL-010",
+      "kind": "skill",
+      "path": "skills/skill-improver/SKILL.md",
+      "status": "present",
+      "bytes": 2654,
+      "sha256": "83d41f4e3f5397e6916cdc8eb3773de142e5213753480fb95f289b50dc1a391c"
+    },
+    {
+      "id": "SRC-SKILL-011",
+      "kind": "skill",
+      "path": "skills/skill-registry/SKILL.md",
+      "status": "present",
+      "bytes": 2322,
+      "sha256": "93935162bd8a51f310eed432d40fb38229860d11d4c4103f2e8f6f5333cc90ae"
+    },
+    {
+      "id": "SRC-SKILL-012",
+      "kind": "skill",
+      "path": "skills/work-unit-commits/SKILL.md",
+      "status": "present",
+      "bytes": 4188,
+      "sha256": "076fdf3b297e91f2076cd0da3d73f4a59654572e37394ce0e8f08087356852ea"
+    },
+    {
+      "id": "SRC-SUPPORT-001",
+      "kind": "support-contract",
+      "path": "skills/_shared/review-ledger-contract.md",
+      "status": "present",
+      "bytes": 12459,
+      "sha256": "66954f0ec7b2e4429697a9a14cf0da896c1fea296df8d604a1c826e5fc34c47c"
+    },
+    {
+      "id": "SRC-SUPPORT-002",
+      "kind": "support-contract",
+      "path": "skills/chained-pr/references/chaining-details.md",
+      "status": "present",
+      "bytes": 4454,
+      "sha256": "47b8a8a282c16b2bcea1d7fbeca1b34caf4eaf0f8b90148dec8c596cb9fa552d"
+    },
+    {
+      "id": "SRC-SUPPORT-003",
+      "kind": "support-contract",
+      "path": "skills/issue-creation/references/delegated-workflow-actions.md",
+      "status": "present",
+      "bytes": 4197,
+      "sha256": "259cf32a8f6a8729ca3dc1f0a0647b1d1cdf6da6982de05757286a01b1534f9f"
+    },
+    {
+      "id": "SRC-SUPPORT-004",
+      "kind": "support-contract",
+      "path": "skills/judgment-day/references/prompts-and-formats.md",
+      "status": "present",
+      "bytes": 4759,
+      "sha256": "1bc7308b1bcfae6b010f85fada09ae77846c02dd0ec9f52df575a42a730a68b4"
+    },
+    {
+      "id": "SRC-SUPPORT-005",
+      "kind": "support-contract",
+      "path": "docs/skill-style-guide.md",
+      "status": "present",
+      "bytes": 3553,
+      "sha256": "2a2faeebaff581a2370cadf12d3c607ddea23af305d2f8c499309881c91ca204"
+    },
+    {
+      "id": "SRC-SUPPORT-006",
+      "kind": "support-contract",
+      "path": "skills/_shared/skill-resolver.md",
+      "status": "absent-at-baseline",
+      "bytes": null,
+      "sha256": null
+    }
+  ]
+}

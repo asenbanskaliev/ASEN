@@ -15,9 +15,11 @@ test("tracked boundary checks paths and text while excluding binary payloads",()
   const audit=()=>spawnSync(process.execPath,[join(root,"scripts/audit-upstream-boundary.mjs")],{cwd:root,encoding:"utf8"});
   const marker="gen"+"tle";
   writeFileSync(join(root,"binary.dat"),Buffer.from([0,71,101,110,116,108,101]));
+  mkdirSync(join(root,"registry","parity"),{recursive:true});
+  writeFileSync(join(root,"registry","parity","skill-sources-v1.json"),`{"repository":"${marker}"}`);
   stage();assert.equal(audit().status,0);
   writeFileSync(join(root,"notes.txt"),`Reference ${marker} detected`);
-  stage();assert.equal(audit().status,1);
+  stage();assert.equal(audit().status,1,"the provenance identifier must still fail outside the exact allowlisted manifest");
   rmSync(join(root,"notes.txt"));
   writeFileSync(join(root,`${marker}.txt`),"opaque data");
   stage();assert.equal(audit().status,1);

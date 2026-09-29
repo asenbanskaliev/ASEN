@@ -4,10 +4,12 @@ import {fileURLToPath} from "node:url";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const forbidden=new RegExp(["gen"+"tle","gen"+"tleman","eng"+"ram"].join("|"),"i");
+const provenanceAllowlist=new Set(["registry/parity/skill-sources-v1.json"]);
 const tracked=execFileSync("git",["ls-files","-z"],{cwd:root}).toString("utf8").split("\0").filter(Boolean);
 const violations=[];
 for(const path of tracked){
  if(forbidden.test(path)){violations.push(path);continue;}
+ if(provenanceAllowlist.has(path))continue;
  const bytes=readFileSync(new URL(`../${path.split("/").map(encodeURIComponent).join("/")}`,import.meta.url));
  if(bytes.includes(0))continue;
  let content;
