@@ -26,7 +26,7 @@ export function extractPiArtifact(output:string,requestId:string):string{
  try{records=output.trim().split(/\r?\n/).map(line=>JSON.parse(line) as unknown);}
  catch{throw new Error("Pi artifact RPC stream is malformed");}
  if(records.some(x=>!x||typeof x!=="object"||Array.isArray(x)))throw new Error("Pi artifact RPC record is invalid");
- const events=records as Array<{type?:unknown;id?:unknown;success?:unknown;message?:{role?:unknown;stopReason?:unknown;content?:unknown}}>;
+ const events=records as Array<{type?:unknown;id?:unknown;success?:unknown;message?:{role?:unknown;stopReason?:unknown;content?:unknown;errorMessage?:unknown}}>;
  const responses=events.filter(x=>x.type==="response"&&x.id===requestId);
  if(responses.length!==1||responses[0]?.success!==true)throw new Error("Pi artifact lacks exactly one successful correlated response");
  const ends=events.flatMap((x,index)=>x.type==="agent_end"?[index]:[]);
@@ -40,7 +40,13 @@ export function extractPiArtifact(output:string,requestId:string):string{
  }
  if(events.some(x=>typeof x.type==="string"&&x.type.startsWith("tool_execution_")))throw new Error("Pi artifact assistant response must not contain tool calls");
  const messages=events.flatMap((x,index)=>x.type==="message_end"&&x.message?.role==="assistant"?[{index,record:x}]:[]);
- if(!messages.length||messages.some(x=>x.index>=ends[0]!||x.record.message?.stopReason==="error"))throw new Error("Pi artifact requires a completed successful assistant message");
+ if(!messages.length||messages.some(x=>x.index>=ends[0]!))throw new Error("Pi artifact requires a completed successful assistant message");
+ const failedMessages=messages.filter(x=>x.record.message?.stopReason==="error");
+ if(failedMessages.length){
+  const retryableStatus=failedMessages.map(x=>x.record.message?.errorMessage).filter((value):value is string=>typeof value==="string").map(value=>value.match(/^(?:(?:[A-Za-z][A-Za-z0-9_-]{0,31} )?HTTP )?(429|502|503|504):/)?.[1]).find((value):value is string=>value!==undefined);
+  if(retryableStatus)throw new Error(`PI_ARTIFACT_RETRYABLE_STATUS=${retryableStatus}`);
+  throw new Error("Pi artifact requires a completed successful assistant message");
+ }
  if(messages.some(x=>x.record.message?.stopReason==="toolUse"||Array.isArray(x.record.message?.content)&&x.record.message.content.some(item=>!!item&&typeof item==="object"&&["toolCall","tool_call"].includes(String((item as {type?:unknown}).type)))))throw new Error("Pi artifact assistant response must not contain tool calls");
  const final=messages.at(-1)!.record;
  if(final.message?.stopReason!=="stop")throw new Error("Pi artifact has no final assistant response");

@@ -12,7 +12,7 @@ test("Pi authority rejects redelegation and writes beyond exact surfaces",async 
  const repo=await mkdtemp(join(tmpdir(),"asen-tool-authority-"));
  const outside=await mkdtemp(join(tmpdir(),"asen-tool-outside-"));
  t.after(async()=>{await rm(repo,{recursive:true,force:true});await rm(outside,{recursive:true,force:true});});
- await mkdir(join(repo,"src"));await symlink(outside,join(repo,"src","escape"));
+ await mkdir(join(repo,"src"));await symlink(outside,join(repo,"src","escape"),process.platform==="win32"?"junction":"dir");
  const worker={repository:repo,role:"worker" as const,writeSurfaces:["src"]};
  assert.equal(authorizeToolCall(worker,"write",{path:"src/new.ts"}),true);
  assert.equal(authorizeToolCall(worker,"edit",{path:"src/new.ts"}),true);

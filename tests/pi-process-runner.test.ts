@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";import test from "node:test";import {copyFile,mkdir,mkdtemp,realpath,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
+import assert from "node:assert/strict";import test from "node:test";import {access,copyFile,mkdir,mkdtemp,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {SkillLifecycle} from "../src/lifecycle/skill-lifecycle.js";
 import {Dispatcher} from "../src/agents/dispatcher.js";
@@ -34,6 +34,16 @@ test("Pi runner refuses a candidate-supplied replacement authority extension",as
  const result=await runner(p).run({id:"tampered",role:"explorer",prompt:"inspect",repository:d});
  assert.equal(result.ok,false);assert.match(result.output,/authority extension integrity/);
 });
+test("Pi rejects an untrusted provider extension without leaking a policy directory",async t=>{
+ const {d,p}=await fixture('setTimeout(()=>{},10000);');
+ const policyDirectories=async()=>new Set((await readdir(tmpdir(),{withFileTypes:true})).filter(entry=>entry.isDirectory()&&entry.name.startsWith("asen-policy-")).map(entry=>entry.name));
+ const before=await policyDirectories();
+ const result=await runner(p,{providerExtension:"file:untrusted-provider.ts"}).run({id:"untrusted-provider",role:"explorer",prompt:"inspect",repository:d});
+ const leaked=[...(await policyDirectories())].filter(name=>!before.has(name));
+ t.after(()=>Promise.all(leaked.map(name=>rm(join(tmpdir(),name),{recursive:true,force:true}))));
+ assert.equal(result.ok,false);assert.match(result.output,/untrusted Pi provider extension/);
+ assert.deepEqual(leaked,[]);
+});
 test("Pi policy digest accepts Windows checkout line endings",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
  const {readFile}=await import("node:fs/promises"),path=join(d,"extensions/authority.ts");
@@ -67,7 +77,26 @@ test("Pi child output is bounded",async()=>{const {d,p}=await fixture('console.l
 
 test("Pi child can be cancelled explicitly",async()=>{const {d,p}=await fixture("setTimeout(()=>{},10000);");const controller=new AbortController();const pending=runner(p,{signal:controller.signal,timeoutMs:10000}).run({id:"cancel",role:"explorer",prompt:"x",repository:d});controller.abort();const r=await pending;assert.equal(r.ok,false);assert.match(r.output,/cancelled/);});
 
-test("Pi cancellation terminates a spawned descendant",async()=>{const marker=join(tmpdir(),`asen-descendant-${process.pid}-${Date.now()}.txt`);const {d,p}=await fixture('import {spawn} from "node:child_process";import {writeFileSync} from "node:fs";const marker=process.argv[2];const c=spawn(process.execPath,["-e","setTimeout(()=>{},10000)"],{stdio:"ignore"});writeFileSync(marker,String(c.pid));setTimeout(()=>{},10000);');const controller=new AbortController();const pending=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p,marker],signal:controller.signal,timeoutMs:10000}).run({id:"tree",role:"explorer",prompt:"x",repository:d});const {readFile}=await import("node:fs/promises");let pid=0;for(let i=0;i<40&&!pid;i++){try{pid=Number(await readFile(marker,"utf8"));}catch{}if(!pid)await new Promise(r=>setTimeout(r,25));}assert.ok(pid>0,"descendant pid was not recorded");controller.abort();const r=await pending;assert.equal(r.ok,false);assert.match(r.output,/cancelled/);await new Promise(r=>setTimeout(r,250));let alive=true;try{process.kill(pid,0);}catch{alive=false;}assert.equal(alive,false,`descendant ${pid} survived cancellation`);});
+test("Pi child errors cannot replace an already requested cancellation",async()=>{
+ const {d}=await fixture("setTimeout(()=>{},10000);");
+ const controller=new AbortController();controller.abort();
+ const result=await new PiProcessRunner({command:join(d,"missing-pi-command"),signal:controller.signal,timeoutMs:10000}).run({id:"cancel-error",role:"explorer",prompt:"x",repository:d});
+ assert.equal(result.ok,false);assert.match(result.output,/cancelled/);
+});
+
+test("Pi cancellation settles its process tree and policy cleanup before returning",async t=>{
+ const marker=join(tmpdir(),`asen-descendant-${process.pid}-${Date.now()}.json`);t.after(()=>rm(marker,{force:true}));
+ const {d,p}=await fixture('import {spawn} from "node:child_process";import {writeFileSync} from "node:fs";const marker=process.argv[2],policy=process.argv[process.argv.indexOf("--extension")+1];const c=spawn(process.execPath,["-e","setTimeout(()=>{},10000)"],{stdio:"ignore"});writeFileSync(marker,JSON.stringify({pid:c.pid,policy}));setTimeout(()=>{},10000);');
+ const controller=new AbortController();
+ const pending=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p,marker],signal:controller.signal,timeoutMs:10000}).run({id:"tree",role:"explorer",prompt:"x",repository:d});
+ const {readFile}=await import("node:fs/promises");let state:{pid:number;policy:string}|undefined;
+ for(let i=0;i<40&&!state;i++){try{state=JSON.parse(await readFile(marker,"utf8"));}catch{/* Marker not written yet. */}if(!state)await new Promise(r=>setTimeout(r,25));}
+ assert.ok(state,"descendant and policy paths were not recorded");
+ controller.abort();const result=await pending;
+ assert.equal(result.ok,false);assert.match(result.output,/cancelled/);
+ await assert.rejects(()=>access(state.policy),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
+ let alive=true;try{process.kill(state.pid,0);}catch{alive=false;}assert.equal(alive,false,`descendant ${state.pid} survived cancellation settlement`);
+});
 
 test("Pi RPC adapter rejects a mismatched response id",async()=>{const {d,p}=await fixture('console.log(JSON.stringify({type:"response",id:"other",command:"prompt",success:true}));');const r=await runner(p,{}).run({id:"req-expected",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/correlated response missing/);});
 test("Pi RPC correlation cannot be disabled by a runner option",async()=>{

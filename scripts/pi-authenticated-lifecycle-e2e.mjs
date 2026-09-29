@@ -61,7 +61,11 @@ for(const [phase,role,kind] of phases){
   try{state=await flow.runPhase(dispatcher,{phase,context,skillPaths,prompt,evidence,risk:"low",...(phase==="apply"?{writeSurfaces:["docs/audit/"]}:{})});successfulSkillPaths=skillPaths;break;}
   catch(error){lastError=error;const transient=String(error).includes("Pi artifact requires a completed successful assistant message");if(!transient||attempt===maxAttempts)break;await new Promise(resolve=>setTimeout(resolve,attempt*2000));}
  }
- if(!state)throw new Error(`Authenticated lifecycle phase ${phase} failed: ${String(lastError)}`);
+ if(!state){
+  const retryableStatus=String(lastError).match(/: Error: PI_ARTIFACT_RETRYABLE_STATUS=(429|502|503|504)$/)?.[1];
+  if(retryableStatus)console.error(`ASEN_LIFECYCLE_RETRYABLE_STATUS=${retryableStatus}`);
+  throw new Error(`Authenticated lifecycle phase ${phase} failed`);
+ }
  assert.equal(state.records.at(-1)?.phase,phase);
  assert.equal(state.records.at(-1)?.artifact.kind,kind);
  console.log(JSON.stringify({phase,role,skills:successfulSkillPaths,result:"PASS"}));

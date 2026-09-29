@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {mkdtemp,mkdir,rm,writeFile} from "node:fs/promises";
+import {access,mkdtemp,mkdir,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {executeEvidenceCommand,addExecutedEvidence} from "../src/evidence/execution.js";
@@ -62,6 +62,23 @@ test("execution rejects an untracked candidate source file",async t=>{
  const candidate={repository:repo,id:"untracked",revision,createdAt:"now"};
  await writeFile(join(repo,"injected.js"),"throw new Error('injected')\n");
  await assert.rejects(()=>executeEvidenceCommand(candidate,[process.execPath,"-e","process.exit(0)"]),/no untracked Git files/);
+});
+
+test("execution timeout terminates spawned descendants",async t=>{
+ const repo=await mkdtemp(join(tmpdir(),"asen-timeout-tree-"));t.after(()=>rm(repo,{recursive:true,force:true}));
+ execFileSync("git",["init","-q",repo]);
+ execFileSync("git",["-C",repo,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m","initial"]);
+ const revision=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+ const nonce=`${process.pid}-${Date.now()}`,ready=join(tmpdir(),`asen-timeout-ready-${nonce}.txt`),marker=join(tmpdir(),`asen-timeout-descendant-${nonce}.txt`);
+ t.after(async()=>{await rm(ready,{force:true});await rm(marker,{force:true});});
+ const descendant=`require("fs").writeFileSync(${JSON.stringify(ready)},"ready");setTimeout(()=>require("fs").writeFileSync(${JSON.stringify(marker)},"survived"),4000);setTimeout(()=>{},10000)`;
+ const command=[process.execPath,"-e",`const child=require("child_process").spawn(process.execPath,["-e",${JSON.stringify(descendant)}],{stdio:"ignore",detached:process.platform==="win32"});child.unref();setTimeout(()=>{},10000)`] as const;
+ const pending=executeEvidenceCommand({repository:repo,id:"timeout-tree",revision,createdAt:"now"},command,{timeoutMs:3000});
+ let started=false;for(let i=0;i<80&&!started;i++){try{await access(ready);started=true;}catch{await new Promise(resolve=>setTimeout(resolve,25));}}
+ assert.equal(started,true,"descendant did not start before the timeout");
+ await assert.rejects(()=>pending,/timed out/);
+ await new Promise(resolve=>setTimeout(resolve,1500));
+ await assert.rejects(()=>access(marker),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
 });
 
 test("execution isolates transient command mutations from the authoritative candidate",async t=>{

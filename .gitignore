@@ -13,3 +13,5 @@ dist/
 # OS/editor noise
 .DS_Store
 Thumbs.db
+# Local Pi runtime state
+.atl/

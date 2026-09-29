@@ -37,6 +37,20 @@ test("rejects forged, interrupted or non-model lifecycle output",()=>{
  assert.deepEqual(JSON.parse(extractPiArtifact(responseLast,"task:explorer")),artifact);
 });
 
+test("normalizes only retryable provider failures without exposing provider output",()=>{
+ const secret="provider model text sk-secret";
+ for(const status of [429,502,503,504]){
+  for(const errorMessage of [`${status}: ${secret}`,`OpenRouter HTTP ${status}: ${secret}`]){
+   const failed={type:"message_end",message:{role:"assistant",stopReason:"error",content:[{type:"text",text:secret}],errorMessage}};
+   assert.throws(()=>extractPiArtifact(completed(failed),"task:explorer"),(error:unknown)=>error instanceof Error&&error.message===`PI_ARTIFACT_RETRYABLE_STATUS=${status}`&&!error.message.includes(secret));
+  }
+ }
+ for(const errorMessage of [`OpenRouter HTTP 401: model mentioned 429 and ${secret}`,`model output 503: ${secret}`]){
+  const nonRetryable={type:"message_end",message:{role:"assistant",stopReason:"error",content:[{type:"text",text:`PI_ARTIFACT_RETRYABLE_STATUS=504 ${secret}`}],errorMessage}};
+  assert.throws(()=>extractPiArtifact(completed(nonRetryable),"task:explorer"),(error:unknown)=>error instanceof Error&&error.message==="Pi artifact requires a completed successful assistant message"&&!error.message.includes("401")&&!error.message.includes("429")&&!error.message.includes("503")&&!error.message.includes("504")&&!error.message.includes(secret));
+ }
+});
+
 test("ASEN binds candidate identity and rejects model identity spoofing",()=>{
  const request={id:"task:explorer",role:"explorer" as const,prompt:"x",repository:"/repo",candidate:{id:"c",repository:"/repo",revision:"r",createdAt:"now"}};
  const contentOnly=completed(assistant(JSON.stringify({content:"inspected"})));

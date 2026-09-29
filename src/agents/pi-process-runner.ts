@@ -22,14 +22,18 @@ export interface PiProcessOptions{
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
 const authorityDigest="d8f2e3b139245e0230fa93569814fbd47195dc8fff7fca25175e94cf8ce2f9d2";
 
-function terminateTree(child:ChildProcess):void{
- if(!child.pid)return;
+async function terminateTree(child:ChildProcess,closed:Promise<void>):Promise<void>{
+ if(!child.pid){await closed;return;}
  if(process.platform==="win32"){
-  const killer=spawn("taskkill",["/pid",String(child.pid),"/T","/F"],{stdio:"ignore",windowsHide:true});
-  killer.on("error",()=>child.kill());
-  return;
+  await new Promise<void>(resolve=>{
+   const killer=spawn("taskkill",["/pid",String(child.pid),"/T","/F"],{stdio:"ignore",windowsHide:true});
+   killer.once("error",()=>{child.kill("SIGKILL");resolve();});
+   killer.once("close",code=>{if(code!==0)child.kill("SIGKILL");resolve();});
+  });
+ }else{
+  try{process.kill(-child.pid,"SIGKILL");}catch{child.kill("SIGKILL");}
  }
- try{process.kill(-child.pid,"SIGTERM");}catch{child.kill();}
+ await closed;
 }
 
 function promptWithSkills(request:AgentRequest):string{
@@ -75,6 +79,8 @@ export class PiProcessRunner implements AgentRunner{
   if(request.writeSurfaces?.length&&request.role!=="worker")return Promise.resolve({id:request.id,ok:false,output:"Only a worker may request write tools"});
   const writer=request.role==="worker"&&!!request.writeSurfaces?.length&&!!request.candidate&&!!request.skillContext;
   if(writer&&!authorizePiWriteGrant(request))return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an active ASEN lifecycle grant"});
+  const providerExtension=this.options.providerExtension;
+  if(providerExtension&&providerExtension!=="npm:pi-free")return Promise.resolve({id:request.id,ok:false,output:"untrusted Pi provider extension"});
   const candidatePolicy=resolvePath(request.repository,"extensions/authority.ts");
   let policySource:string;
   try{
@@ -91,8 +97,6 @@ export class PiProcessRunner implements AgentRunner{
    return Promise.resolve({id:request.id,ok:false,output:`pi authority extension preparation failed: ${String(error)}`});
   }
   const policy=join(policyDirectory,"authority.ts");
-  const providerExtension=this.options.providerExtension;
-  if(providerExtension&&providerExtension!=="npm:pi-free")return Promise.resolve({id:request.id,ok:false,output:"untrusted Pi provider extension"});
   const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,
    "--no-extensions","--extension",policy,...(providerExtension?["--extension",providerExtension]:[]),"--no-skills",...(this.options.noTools?["--no-tools"]:["--tools",writer?"read,edit,write":"read"]),...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
   const timeoutMs=this.options.timeoutMs??120_000;
@@ -105,21 +109,28 @@ export class PiProcessRunner implements AgentRunner{
     stdio:["pipe","pipe","pipe"],
     detached:process.platform!=="win32"
    });
-   let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false;
+   let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,stopResult:AgentResult|undefined;
    const preflightId=`asen-policy:${request.id}`;
+   const closed=new Promise<void>(resolveClosed=>{child.once("close",()=>resolveClosed());child.once("error",()=>{if(child.pid===undefined)resolveClosed();});});
+   let timer:ReturnType<typeof setTimeout>|undefined;
 
    const finish=(result:AgentResult)=>{
     if(settled)return;
     settled=true;
     clearTimeout(timer);
     this.options.signal?.removeEventListener("abort",onAbort);
+    rmSync(policyDirectory,{recursive:true,force:true});
     resolve(result);
    };
-   const stop=()=>terminateTree(child);
-   const onAbort=()=>{stop();finish({id:request.id,ok:false,output:"pi process cancelled"});};
+   const stop=(result:AgentResult)=>{
+    if(stopResult)return;
+    stopResult=result;
+    void terminateTree(child,closed).then(()=>finish(result));
+   };
+   const onAbort=()=>stop({id:request.id,ok:false,output:"pi process cancelled"});
    const append=(current:string,data:unknown)=>{
     const next=current+String(data);
-    if(Buffer.byteLength(next)>max){overflow=true;stop();return current;}
+    if(Buffer.byteLength(next)>max){overflow=true;stop({id:request.id,ok:false,output:`pi output exceeded ${max} bytes`});return current;}
     return next;
    };
 
@@ -132,19 +143,19 @@ export class PiProcessRunner implements AgentRunner{
      if(response.type==="agent_end"&&policyLoaded){child.stdin.end();continue;}
      if(response.type!=="response"||response.id!==preflightId)continue;
      const matches=response.data?.commands?.filter(item=>item.name==="asen-authority-status"&&item.source==="extension"&&item.sourceInfo?.path===policy)??[];
-     if(response.success!==true||matches.length!==1){stop();finish({id:request.id,ok:false,output:"pi ASEN policy extension was not loaded"});return;}
+     if(response.success!==true||matches.length!==1){stop({id:request.id,ok:false,output:"pi ASEN policy extension was not loaded"});return;}
      const canonical=(path:string)=>{try{return realpathSync(path);}catch{return resolvePath(path);}};
      const expected=(request.skillPaths??[]).map(path=>canonical(resolvePath(request.repository,path)));
      const observed=response.data?.commands?.filter(item=>item.source==="skill").map(item=>typeof item.sourceInfo?.path==="string"?canonical(item.sourceInfo.path):"")??[];
-     if(observed.length!==expected.length||observed.some((path,index)=>path!==expected[index])){stop();finish({id:request.id,ok:false,output:"pi native Skill paths do not match ASEN selection"});return;}
+     if(observed.length!==expected.length||observed.some((path,index)=>path!==expected[index])){stop({id:request.id,ok:false,output:"pi native Skill paths do not match ASEN selection"});return;}
      policyLoaded=true;
      child.stdin.write(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
     }
    });
    child.stderr.on("data",data=>stderr=append(stderr,data));
-   child.on("error",error=>finish({id:request.id,ok:false,output:`pi process error: ${String(error)}`}));
+   child.on("error",error=>{if(!stopResult)finish({id:request.id,ok:false,output:`pi process error: ${String(error)}`});});
    child.on("close",code=>{
-    rmSync(policyDirectory,{recursive:true,force:true});
+    if(stopResult)return;
     if(!policyLoaded)return finish({id:request.id,ok:false,output:"pi ASEN policy extension was not confirmed"});
     if(code===0&&!overflow){
      try{
@@ -165,15 +176,14 @@ export class PiProcessRunner implements AgentRunner{
     });
    });
 
-   const timer=setTimeout(()=>{
-    stop();
-    finish({id:request.id,ok:false,output:`pi process timed out after ${timeoutMs}ms`});
+   timer=setTimeout(()=>{
+    stop({id:request.id,ok:false,output:`pi process timed out after ${timeoutMs}ms`});
    },timeoutMs);
 
    if(this.options.signal?.aborted)onAbort();
    else this.options.signal?.addEventListener("abort",onAbort,{once:true});
 
-   child.stdin.on("error",error=>finish({id:request.id,ok:false,output:`pi stdin error: ${String(error)}`}));
+   child.stdin.on("error",error=>stop({id:request.id,ok:false,output:`pi stdin error: ${String(error)}`}));
    child.stdin.write(JSON.stringify({id:preflightId,type:"get_commands"})+"\n");
   });
  }

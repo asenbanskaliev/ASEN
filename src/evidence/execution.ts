@@ -1,4 +1,4 @@
-import {spawn,execFileSync} from "node:child_process";
+import {spawn,execFileSync,type ChildProcess} from "node:child_process";
 import {realpathSync} from "node:fs";
 import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
@@ -17,6 +17,30 @@ export interface ExecutedEvidence {
  readonly finishedAt:string;
 }
 const executed=new WeakSet<object>();
+
+function waitForProcessExit(child:ChildProcess):Promise<void>{
+ if(child.exitCode!==null||child.signalCode!==null)return Promise.resolve();
+ return new Promise(resolve=>{
+  const done=()=>{child.removeListener("close",done);child.removeListener("error",done);resolve();};
+  child.once("close",done);child.once("error",done);
+ });
+}
+
+async function terminateProcessTree(child:ChildProcess):Promise<void>{
+ if(!child.pid)return;
+ const exited=waitForProcessExit(child);
+ if(process.platform==="win32"){
+  await new Promise<void>(resolve=>{
+   const killer=spawn("taskkill",["/pid",String(child.pid),"/T","/F"],{stdio:"ignore",windowsHide:true});
+   killer.once("error",()=>{child.kill("SIGKILL");resolve();});
+   killer.once("close",code=>{if(code!==0)child.kill("SIGKILL");resolve();});
+  });
+ }else{
+  try{process.kill(-child.pid,"SIGKILL");}catch{child.kill("SIGKILL");}
+ }
+ await exited;
+}
+
 export function assertExactGitCandidate(candidate:Candidate,cwd:string):void{
  const run=(...args:string[])=>execFileSync("git",["-C",cwd,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"],maxBuffer:16*1024*1024}).trim();
  let prefix:string,head:string;
@@ -50,10 +74,14 @@ export async function executeEvidenceCommand(candidate:Candidate,command:readonl
   assertExactGitCandidate({...candidate,repository:isolated},isolated);
   const startedAt=new Date().toISOString();
   const exitCode=await new Promise<number>((resolve,reject)=>{
-   const child=spawn(command[0],command.slice(1),{cwd:isolated,stdio:"ignore",shell:false});
-   const timer=setTimeout(()=>{child.kill();reject(new Error("Execution evidence command timed out"));},options.timeoutMs??120000);
-   child.on("error",error=>{clearTimeout(timer);reject(error);});
-   child.on("close",code=>{clearTimeout(timer);resolve(code??-1);});
+   const child=spawn(command[0],command.slice(1),{cwd:isolated,stdio:"ignore",shell:false,detached:process.platform!=="win32"});
+   let timedOut=false;
+   const timer=setTimeout(()=>{
+    timedOut=true;
+    void terminateProcessTree(child).finally(()=>reject(new Error("Execution evidence command timed out")));
+   },options.timeoutMs??120000);
+   child.on("error",error=>{clearTimeout(timer);if(!timedOut)reject(error);});
+   child.on("close",code=>{clearTimeout(timer);if(!timedOut)resolve(code??-1);});
   });
   assertExactGitCandidate({...candidate,repository:isolated},isolated);
   assertExactGitCandidate(candidate,requestedCwd);
@@ -61,7 +89,8 @@ export async function executeEvidenceCommand(candidate:Candidate,command:readonl
   executed.add(proof);
   return proof;
  }finally{
-  try{execFileSync("git",["-C",candidate.repository,"worktree","remove","--force",isolated],{stdio:"ignore"});}catch{}
+  try{execFileSync("git",["-C",candidate.repository,"worktree","remove","--force",isolated],{stdio:"ignore"});}
+  catch{/* The recursive parent cleanup below remains authoritative. */}
   await rm(parent,{recursive:true,force:true});
  }
 }
