@@ -14,13 +14,14 @@ Baselines:
 
 `skill-contract-parity-v1.json` is the strict 12/12 behavioral matrix. Every row maps one manifest source ID to an ASEN Skill and declares nonempty activation, hard-rule, decision-gate, output, and prohibited-behavior contract IDs. Every gap and equivalent adaptation points to a declared contract. The initial baseline is deliberately non-final: 11 rows are `PARTIAL`, and the registry row is `MISSING` until its runtime behavior exists.
 
-Statuses: `FULL`, `PARTIAL`, `MISSING`, `N/A`.
+Statuses: `FULL`, `PARTIAL`, `MISSING`.
+
+Run `npm run audit:skill-parity` to validate the checked-in manifest, matrix, mapped Skills, evidence paths, registry boundary, and `CAP-SKL-001` status without reading the external source repository. Mutation tests cover invalid claims and references.
 
 Rules:
 1. `FULL` requires observable ASEN behavior plus automated positive and negative evidence; structure, loading, or file presence is insufficient.
 2. `PARTIAL` means the core mapping exists but relevant observable behavior or evidence is missing.
 3. `MISSING` means useful in-scope behavior has no ASEN implementation and evidence.
-4. `N/A` is an explicit architectural exclusion, not a failure.
-5. No external runtime dependency or source copying is permitted.
-6. Every remediation must preserve Pi as the execution, model, authentication, and session platform.
-7. The project Skill index path is `.asen/skill-registry.md`.
+4. No external runtime dependency or source copying is permitted.
+5. Every remediation must preserve Pi as the execution, model, authentication, and session platform.
+6. The project Skill index path is `.asen/skill-registry.md`.

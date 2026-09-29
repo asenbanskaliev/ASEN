@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "sourceManifest": "registry/parity/skill-sources-v1.json",
+  "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
   "registryPath": ".asen/skill-registry.md",
   "statusPolicy": {
     "FULL": "All declared behavior has automated positive and negative evidence.",
