@@ -75,7 +75,8 @@ The current PR head has substantial behavioral evidence, but a read-only audit f
   - Run native review/risk assessment as configured.
   - Re-fetch and reconcile any remote advancement without force.
   - Push only to the PR branch.
-  - Verify Phase 0 Architecture, CI, Release Gate, Pi Free Smoke, and ASEN Authenticated Pi Audit for the exact pushed SHA.
+  - Current policy requires Phase 0 Architecture, CI, Release Gate, and Pi Free Smoke for the exact pushed SHA. Pi Free Smoke is the sole current model-backed check.
+  - Historical note: ASEN Authenticated Pi Audit was required when the evidence below was collected, but it is retired and is not a current or future verification requirement.
   - Remote RED at exact SHA `b8ec552a63af5265397fb71eb7070626f66507ce`: Ubuntu CI job `109410973806` failed `Pi cancellation settles its process tree and policy cleanup before returning` because `process.kill(pid, 0)` succeeded for descendant PID 4201 after SIGKILL. On POSIX this probe also succeeds for a terminated zombie awaiting reaping by the container init process, so it did not prove that the descendant was genuinely running. The same failure made the Pi Free lifecycle isolated full tests exit non-zero; Windows and local tests passed.
   - Bounded correction: retain the Windows probe and, on POSIX only, use a one-second `ps -o stat=` observation. A `Z` state or the standard empty exit-1 absent-process result is treated as terminated; live states still fail, while empty successful output, stderr-bearing exit 1, timeouts, spawn failures, and other observation errors remain failures. This changes only test observation, not production termination behavior.
   - Exact-SHA confirmation at `bdff17239a9e735b20b4932dbf7800958fc64037`: CI run `36572500046` and Pi Free Smoke run `36572500113` passed on Ubuntu. Phase 0 Architecture run `36572500452` and Release Gate run `36572500099` also passed. ASEN Authenticated Pi Audit run `36572500151` recognized and retried three external OpenRouter 429 responses, then failed after exhausting its bounded retries.
@@ -103,6 +104,12 @@ The current PR head has substantial behavioral evidence, but a read-only audit f
 - Remote exact-SHA follow-up at `b8ec552a63af5265397fb71eb7070626f66507ce`: Ubuntu CI job `109410973806` exposed a test-observation defect where POSIX `kill(pid, 0)` classified zombie descendant PID 4201 as alive after SIGKILL. The bounded harness correction distinguishes `Z` from genuinely live `ps` states and preserves observation errors as failures.
 - Exact correction SHA `bdff17239a9e735b20b4932dbf7800958fc64037`: Phase 0 Architecture `36572500452`, CI `36572500046`, Release Gate `36572500099`, and Pi Free Smoke `36572500113` passed. ASEN Authenticated Pi Audit `36572500151` exercised all three bounded attempts and each received an external OpenRouter 429 for `qwen/qwen3.8-27b:free`; the retry path worked, but authenticated evidence remains externally blocked.
 
+## Current Pi Free-only policy
+
+For current and future PR #30 candidates, inspect only Phase 0 Architecture, CI, Release Gate, and Pi Free Smoke on the exact same SHA. Pi Free Smoke is the sole current model-backed check. The OpenRouter-backed ASEN Authenticated Pi Audit results retained above are historical evidence only and no longer gate publication, verification, or merge readiness. This policy change does not alter the `specified` status of `CAP-TST-001` or `CAP-SKL-001`, and it does not remove any architectural limitation recorded in this document or the audit status.
+
+External branch-protection settings are not stored in this repository. If ASEN Authenticated Pi Audit is configured there as a required check, a maintainer must remove that stale requirement after the workflow is retired.
+
 ## Next step
 
-Do not merge. Preserve the exact published history for review; authenticated provider evidence can be rerun when upstream free-model capacity is available.
+Do not merge. Preserve the exact published history for review. Under current policy, verify Phase 0 Architecture, CI, Release Gate, and Pi Free Smoke on the exact candidate SHA; do not rerun or require the retired OpenRouter-backed workflow.

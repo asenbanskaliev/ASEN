@@ -2,13 +2,19 @@
 
 Candidate evidence must be evaluated against the exact PR HEAD. A green workflow alone does not close CAP-SKL-001, which remains `specified`.
 
-## Exact HEAD checkpoint — 2026-09-29
+## Current verification policy — Pi Free only
+
+For current and future PR #30 candidates, the required workflow families are **Phase 0 Architecture, CI, Release Gate, and Pi Free Smoke** on the exact same SHA. Pi Free Smoke is the sole current model-backed check; it covers the role probes, structured artifacts, recovery, all nine lifecycle phases, behavioral tests, and typecheck. The former automatically triggered OpenRouter-backed ASEN Authenticated Pi Audit is retired and is not a current or future verification requirement.
+
+All OpenRouter and ASEN Authenticated Pi Audit results below are retained strictly as **historical evidence for their stated SHAs**. They do not define current policy and must not be required by branch protection or release decisions. `CAP-TST-001` and `CAP-SKL-001` remain `specified`; none of the architectural limitations documented below are relaxed by this policy change.
+
+## Historical exact HEAD checkpoint — 2026-09-29
 
 At `9a00a86468836e3f8ed1e32abaea3420c314035a`, Pi Free Smoke run 36536296321 demonstrated nine model-produced phases, including archive, and ended with `nextPhase=null`. The four role/Skill probes and artifact E2E passed on that SHA; 194 tests passed. Phase 0 Architecture, CI and Release Gate passed. ASEN Authenticated Pi Audit run 36536296341 failed on three external OpenRouter `429 upstream_provider_shared_pool` responses before its lifecycle ran. This is not evidence that the authenticated gate passed. The lifecycle's verification probe on this SHA checked only file presence and size, so its behavioral evidence remains weak. The subsequent change installs dependencies from a committed lockfile and executes typecheck and tests in the isolated candidate worktree; its CI result must be checked on the new SHA. This low-risk flow does not prove high-risk ODD, TDD or independent review. CAP-SKL-001 remains `specified`.
 
 Subsequent Pi Free attempts on `b741b013b17f106b828bb67432e2d84b59f8fe0a` and `ad899a50f17d4b882c6ef19f4c082d89fbee7876` passed the role probes but stopped at the artifact probe: its worker returned malformed JSON. The parser correctly rejected it. The model response prefix was removed from error logs on `43a84261e44690df466a0640313b26fa42d9f82a`. At that SHA, Pi Free Smoke run 36541321504 passed role probes, artifact E2E and all nine phases with `nextPhase=null`; its isolated verification ran lockfile installation, typecheck and behavioral tests successfully. Phase 0 Architecture and CI passed on the same SHA; Release Gate was still in progress and Authenticated Pi Audit failed on external `429` responses. The tracked-tree boundary migration retains audited hashes under opaque labels and disables upstream polling without an external source map; local parity registry, 27 Skill checks, typecheck, 194 tests and full-tree boundary check passed before publication. Final remote gates remain to be checked.
 
-## Final same-HEAD checkpoint — 2026-09-29
+## Historical final same-HEAD checkpoint — 2026-09-29
 
 At `6e9c97239857b1293f672848ebb23bd60c996120`, Phase 0 Architecture, CI, Release Gate, Pi Free Smoke and ASEN Authenticated Pi Audit all completed successfully on the exact same candidate. Pi Free executed 197 tests with zero failures, passed typecheck, exact native Skill role probes and artifact E2E, then completed all nine model-produced lifecycle phases through `archive` with `nextPhase=null`. Verification executed dependency installation from the committed lockfile, behavioral tests and typecheck in a detached exact-revision worktree. The full tracked-tree boundary gate also passed.
 
@@ -16,7 +22,7 @@ This closes the previously recorded provider-rate-limit and nine-phase lifecycle
 
 The current PR head branch name still contains a prohibited external reference. Renaming an open PR head branch can affect PR continuity, so that metadata issue remains open until it can be migrated without losing the review record. The tracked repository tree itself passes the full boundary audit.
 
-## Current audited checkpoint — 2026-09-29
+## Historical audited checkpoint — 2026-09-29
 
 At `6747bff85663756032d51b6855457b40b5cf9490`, Phase 0 Architecture, CI (Ubuntu, Windows, macOS), Release Gate (Ubuntu, Windows, macOS), and Pi Free Smoke passed. Pi Free executed 196 tests, role/Skill probes, artifact E2E, and nine model-produced phases ending with `nextPhase=null`; its verification ran behavioral tests and typecheck in a detached exact-revision worktree after lockfile installation. The RPC parser rejects actual tool activity and tool-use turns. The low-risk lifecycle E2E runs with `--no-tools` to maintain this artifact contract. The full tracked-tree boundary gate passed; the current tree uses opaque labels and preserves historical audit hashes. The Authenticated Pi Audit failed on three `429 upstream_provider_shared_pool` responses from its external model before its lifecycle ran. Do not count it as passing.
 
@@ -57,23 +63,23 @@ The Pi process runner now supplies selected paths as native `--skill` arguments 
 
 These findings are local until the final commit's CI, Architecture, Release Gate, and authenticated Pi workflow all finish on the same SHA and the three CI operating-system jobs are inspected.
 
-## Authenticated Pi attempt — 2026-09-27
+## Historical authenticated Pi attempt — 2026-09-27
 
 On PR #30 candidate `cee7db11d9108492e64f417b846ed110dfe8e0a9`, the GitHub Actions job `ASEN Authenticated Pi Audit` (run 36344614260, job 108691192883) received the repository secret, checked out the exact PR HEAD, and reached the real Pi model turn. OpenCode Zen rejected `opencode/mimo-v2.6-flash-free` with HTTP 403 `FreeTierError`: "OpenCode's free tier can only be used from within OpenCode". Pi could not produce a model response, so no authenticated behavior claim is supported. This is a provider restriction; do not reinterpret it as a code failure or make this gate PASS.
 
 The subsequent free OpenRouter run and its outcome are recorded below. No paid fallback was selected.
 
-## Authenticated Pi result — 2026-09-27
+## Historical authenticated Pi result — 2026-09-27
 
 The OpenRouter retry at exact PR HEAD `f992803da6b2798b1c4968bea38968d611307f17` passed in GitHub Actions run 36345025881, attempt 2, job 108692883709. The secret `OPENROUTER_API_KEY` was present and masked. ASEN selected `skills/asen-phase-protocol/SKILL.md` and `skills/asen-explore/SKILL.md` for the explorer on that revision; the real Pi RPC session with `openrouter/cohere/north-mini-code:free` reported precisely those loaded native Skills, invoked the read tool on each exact file once, used no other observed tool, and returned the unique marker. The script checked the PR SHA, selected routes, loaded routes, read paths and response. This proves a limited, authenticated read-only turn, not process isolation or enforcement of agent behavior in a full task.
 
 At the same HEAD, Phase 0 Architecture run 36345025884, CI run 36345025887 (Ubuntu, Windows and macOS jobs all succeeded), and Release Gate run 36345025885 passed. The original Zen attempt above remains a historical provider restriction; the OpenRouter attempt resolves that specific integration blocker. CAP-SKL-001 remains `specified`: the authenticated turn has not yet completed worker/reviewer/verifier phase transitions, durable model evidence, TDD, release and recovery. In-memory issuance and untrusted fixture output remain critical gaps.
 
-## Role tool restriction — 2026-09-27
+## Historical role tool restriction — 2026-09-27
 
 The authenticated explorer probe now launches Pi with `--tools read` in addition to the exact Skills. On candidate `4c512a1addce411e540439a377102da5d313a3ff`, run 36345285070 passed with a real OpenRouter model turn reading both files. The ASEN Pi process runner now supplies `--tools read` for issued explorer, reviewer and verifier turns, and rejects caller-provided skill/tool switches (including `--tools=bash`); `tests/pi-process-runner.test.ts` checks exact arguments and an adversarial override. Local typecheck and 137 tests passed for this change. The worker still has process command access, so this does not prevent subprocess redelegation or constitute OS-enforced write isolation. Full authenticated role lifecycle, recovery after restart and fabricated evidence prevention remain open. CAP-SKL-001 remains `specified`.
 
-## Four-role Pi checkpoint — 2026-09-28
+## Historical four-role Pi checkpoint — 2026-09-28
 
 - **PROBADO (limited):** on commit `912207d187defe83a921f88b5cc1ab1553454687`, authenticated workflow run 36427035007 completed a model turn for explorer, reviewer, verifier and worker with Pi + explicitly loaded pi-free + LLM7. Each turn checked its ASEN-issued selection against Pi's exact native SKILL.md list, produced nonempty assistant text and executed zero tools. These are four independent read-only probes with `--no-tools`; they do not prove model-produced phase artifacts or worker writes.
 - **PARCIAL:** `PiArtifactRunner` converts a completed, correlated Pi RPC transcript into JSON for the lifecycle. `SkillLifecycle` requires an in-memory provenance brand bound to task, role, repository, candidate revision and exact Skill paths. The existing lifecycle and recovery fixtures now simulate Pi RPC explicitly; the authenticated recovery initialization also uses a fixture, then starts a real explorer model turn in a second process. A caller that controls the PiProcessRunner implementation/command is still trusted; this brand alone is not an independent authentication root.
