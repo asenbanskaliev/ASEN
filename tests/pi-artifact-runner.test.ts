@@ -26,7 +26,7 @@ test("rejects forged, interrupted or non-model lifecycle output",()=>{
  assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify(assistant(JSON.stringify(artifact))),"task:explorer"),/agent activity after agent_end/);
  assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify({type:"agent_start"}),"task:explorer"),/agent activity after agent_end/);
  const responseLast=[assistant(JSON.stringify(artifact)),{type:"agent_end"},{type:"response",id:"task:explorer",success:true}].map(x=>JSON.stringify(x)).join("\n");
- const controlResponseLast=[assistant(JSON.stringify(artifact)),{type:"agent_end"},{type:"response",id:"asen-policy:task:explorer",success:true}].map(x=>JSON.stringify(x)).join("\n");
+ const controlResponseLast=[{type:"response",id:"task:explorer",success:true},assistant(JSON.stringify(artifact)),{type:"agent_end"},{type:"response",id:"asen-policy:task:explorer",success:true}].map(x=>JSON.stringify(x)).join("\n");
  assert.deepEqual(JSON.parse(extractPiArtifact(controlResponseLast,"task:explorer")),artifact);
  assert.deepEqual(JSON.parse(extractPiArtifact(responseLast,"task:explorer")),artifact);
 });
