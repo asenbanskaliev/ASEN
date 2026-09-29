@@ -51,7 +51,8 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
   - `asen-collaboration-message`: context language, warm/direct tone, 1–3 paragraph default, no em dash, and anti-pile-on priority.
   - RED: the focused communication test failed 6/6 against missing metadata, activation exclusions, contract markers, and matrix evidence.
   - GREEN/REFACTOR: focused tests pass 7/7, including runtime activation routing through `selectSkills`; Skill audit passes 27/27; parity, upstream-boundary, typecheck, and diff checks pass.
-  - Matrix rows remain PARTIAL pending Pi Free positive and negative generated-output probes in GSP-06. No commit was created per maintainer instruction.
+  - Matrix rows remain PARTIAL pending Pi Free positive and negative generated-output probes in GSP-06.
+  - Commit: `7f085db`.
 - [ ] GSP-03 — Align Skill authoring, improvement, and registry.
   - Enforce exact frontmatter and 180–450 target / 1000 hard body budget.
   - Preserve long material under local `references/` or `assets/`.
