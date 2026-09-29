@@ -153,7 +153,7 @@ export class PiProcessRunner implements AgentRunner{
       if(!responses.length)return finish({id:request.id,ok:false,output:"pi correlated response missing"});
       if(responses.length!==1)return finish({id:request.id,ok:false,output:"pi requires exactly one correlated response"});
       const envelope=responses[0];
-      if(envelope.success!==true)return finish({id:request.id,ok:false,output:`pi response failed: ${JSON.stringify(envelope)}`});
+      if(envelope.success!==true)return finish({id:request.id,ok:false,output:"pi correlated response failed"});
      }catch{
       return finish({id:request.id,ok:false,output:"pi response envelope invalid"});
      }
@@ -161,7 +161,7 @@ export class PiProcessRunner implements AgentRunner{
     finish({
      id:request.id,
      ok:code===0&&!overflow,
-     output:overflow?`pi output exceeded ${max} bytes`:(stdout||stderr)
+     output:overflow?`pi output exceeded ${max} bytes`:code===0?stdout:`pi process exited with code ${code??"unknown"}`
     });
    });
 
