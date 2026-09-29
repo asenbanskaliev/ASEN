@@ -33,7 +33,7 @@ export function extractPiArtifact(output:string,requestId:string):string{
  if(ends.length!==1)throw new Error("Pi artifact turn did not finish exactly once");
  const trailing=events.slice(ends[0]!+1);
  const allowedPostTurnEvents=new Set(["response","agent_settled","extension_ui_request"]);
- if(trailing.some(x=>!allowedPostTurnEvents.has(x.type)))throw new Error("Pi artifact turn contains agent activity after agent_end");
+ if(trailing.some(x=>typeof x.type!=="string"||!allowedPostTurnEvents.has(x.type)))throw new Error("Pi artifact turn contains agent activity after agent_end");
  const messages=events.flatMap((x,index)=>x.type==="message_end"&&x.message?.role==="assistant"?[{index,record:x}]:[]);
  if(!messages.length||messages.some(x=>x.index>=ends[0]!||x.record.message?.stopReason==="error"))throw new Error("Pi artifact requires a completed successful assistant message");
  const final=messages.at(-1)!.record;
