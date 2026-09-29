@@ -10,8 +10,8 @@ const completed=(message:object,id="task:explorer")=>[
 
 test("extracts only the completed, correlated Pi assistant artifact",()=>{
  assert.deepEqual(JSON.parse(extractPiArtifact(completed(assistant(JSON.stringify(artifact))),"task:explorer")),artifact);
- const withTools=completed(assistant(JSON.stringify(artifact))).replace(JSON.stringify(assistant(JSON.stringify(artifact))),JSON.stringify(assistant("reading", "toolUse"))+"\n"+JSON.stringify(assistant(JSON.stringify(artifact))));
- assert.deepEqual(JSON.parse(extractPiArtifact(withTools,"task:explorer")),artifact);
+ const withTools=completed(assistant(JSON.stringify(artifact))).replace(JSON.stringify(assistant(JSON.stringify(artifact))),JSON.stringify(assistant("reading", "toolUse"))+"\n"+JSON.stringify({type:"tool_execution_start",toolCallId:"call-1"})+"\n"+JSON.stringify(assistant(JSON.stringify(artifact))));
+ assert.throws(()=>extractPiArtifact(withTools,"task:explorer"),/tool calls/);
 });
 test("rejects forged, interrupted or non-model lifecycle output",()=>{
  const valid=completed(assistant(JSON.stringify(artifact)));
