@@ -31,6 +31,7 @@ export function extractPiArtifact(output:string,requestId:string):string{
  if(responses.length!==1||responses[0]?.success!==true)throw new Error("Pi artifact lacks exactly one successful correlated response");
  const ends=events.flatMap((x,index)=>x.type==="agent_end"?[index]:[]);
  if(ends.length!==1)throw new Error("Pi artifact turn did not finish exactly once");
+ if(ends[0]!==events.length-1)throw new Error("Pi artifact turn must finish with agent_end");
  const messages=events.flatMap((x,index)=>x.type==="message_end"&&x.message?.role==="assistant"?[{index,record:x}]:[]);
  if(!messages.length||messages.some(x=>x.index>=ends[0]!||x.record.message?.stopReason==="error"))throw new Error("Pi artifact requires a completed successful assistant message");
  const final=messages.at(-1)!.record;
