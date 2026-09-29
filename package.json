@@ -7,16 +7,16 @@
   "files": [
     "extensions/",
     "src/",
-    "skills/",
-    "registry/",
-    "docs/"
+    "skills/"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/**/*.test.ts",
-    "check": "npm run typecheck && npm test && npm run audit:parity",
+    "check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills && npm run audit:upstream-boundary",
     "verify:pack": "node scripts/verify-pack.mjs",
-    "audit:parity": "node scripts/validate-phase10-parity.mjs"
+    "audit:parity": "node scripts/validate-phase10-parity.mjs",
+    "audit:skills": "node scripts/audit-behavior-skills.mjs",
+    "audit:upstream-boundary": "node scripts/audit-upstream-boundary.mjs"
   },
   "pi": {
     "extensions": [
@@ -42,5 +42,9 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "exports": {
+    "./extensions": "./extensions/index.ts",
+    "./skills/*": "./skills/*/SKILL.md"
   }
 }

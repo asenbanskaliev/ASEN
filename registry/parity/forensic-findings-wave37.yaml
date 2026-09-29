@@ -1,5 +1,5 @@
 wave: 37
-focus: [engram-local-obligatory-surfaces]
+focus: [reference-c-local-obligatory-surfaces]
 new_contracts:
   - { id: PAR-447, area: legacy-null-project-session-claim-establishes-durable-owner-without-breaking-read-compatibility, status: MISSING, priority: P0 }
   - { id: PAR-448, area: session-identity-repair-rejects-unplanned-changed-ambiguous-or-shadowed-journal-before-commit, status: MISSING, priority: P0 }

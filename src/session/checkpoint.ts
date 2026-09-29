@@ -1,17 +1,21 @@
 import type {Candidate,TaskState} from "../core/types.js";
+import type {IssuedSkillContext} from "../skills/context.js";
 import {open,readFile,realpath,rename,unlink} from "node:fs/promises";
 import {dirname,basename,join} from "node:path";
 import {randomUUID} from "node:crypto";
-export interface SessionCheckpoint{version:1;projectId:string;sessionId:string;task:TaskState;candidate?:Candidate;piSessionFile?:string;savedAt:string;}
-export function createCheckpoint(projectId:string,sessionId:string,task:TaskState,candidate?:Candidate,piSessionFile?:string):SessionCheckpoint{
+export interface SessionCheckpoint{version:1;projectId:string;sessionId:string;task:TaskState;candidate?:Candidate;skillContext?:IssuedSkillContext;skillPaths?:string[];piSessionFile?:string;savedAt:string;}
+export function createCheckpoint(projectId:string,sessionId:string,task:TaskState,candidate?:Candidate,piSessionFile?:string,skillContext?:IssuedSkillContext,skillPaths?:string[]):SessionCheckpoint{
  if(task.candidateId&&(!candidate||candidate.id!==task.candidateId))throw new Error("Checkpoint candidate mismatch");
- return {version:1,projectId,sessionId,task:structuredClone(task),...(candidate?{candidate:structuredClone(candidate)}:{}),...(piSessionFile?{piSessionFile}:{}),savedAt:new Date().toISOString()};
+ if(skillContext&&(!candidate||skillContext.candidateId!==candidate.id||skillContext.candidateRevision!==candidate.revision||skillContext.repository!==candidate.repository))throw new Error("Checkpoint skill context mismatch");
+ if(skillPaths?.some(path=>!/^skills\/asen-[a-z-]+\/SKILL\.md$/.test(path)))throw new Error("Checkpoint invalid skill path");
+ return {version:1,projectId,sessionId,task:structuredClone(task),...(candidate?{candidate:structuredClone(candidate)}:{}),...(skillContext?{skillContext}:{}),...(skillPaths?{skillPaths:[...skillPaths]}:{}),...(piSessionFile?{piSessionFile}:{}),savedAt:new Date().toISOString()};
 }
-export function restoreCheckpoint(checkpoint:SessionCheckpoint,projectId:string):{task:TaskState;candidate?:Candidate}{
+export function restoreCheckpoint(checkpoint:SessionCheckpoint,projectId:string):{task:TaskState;candidate?:Candidate;skillContext?:IssuedSkillContext;skillPaths?:string[]}{
  if(checkpoint.version!==1)throw new Error("Unsupported checkpoint version");
  if(checkpoint.projectId!==projectId)throw new Error("Checkpoint project mismatch");
  if(checkpoint.task.candidateId&&checkpoint.candidate?.id!==checkpoint.task.candidateId)throw new Error("Checkpoint candidate mismatch");
- return {task:structuredClone(checkpoint.task),...(checkpoint.candidate?{candidate:structuredClone(checkpoint.candidate)}:{})};
+ if(checkpoint.skillContext&&(!checkpoint.candidate||checkpoint.skillContext.candidateId!==checkpoint.candidate.id||checkpoint.skillContext.candidateRevision!==checkpoint.candidate.revision||checkpoint.skillContext.repository!==checkpoint.candidate.repository))throw new Error("Checkpoint skill context mismatch");
+ return {task:structuredClone(checkpoint.task),...(checkpoint.candidate?{candidate:structuredClone(checkpoint.candidate)}:{}),...(checkpoint.skillContext?{skillContext:checkpoint.skillContext}:{}),...(checkpoint.skillPaths?{skillPaths:[...checkpoint.skillPaths]}:{})};
 }
 export function assertResumeRevision(candidate:Candidate,currentRevision:string):void{
  if(candidate.revision!==currentRevision)throw new Error("Repository revision changed since checkpoint");
@@ -35,7 +39,7 @@ export async function saveCheckpoint(path:string,checkpoint:SessionCheckpoint):P
  }
 }
 
-export async function loadCheckpoint(path:string,identity:ResumeIdentity):Promise<{task:TaskState;candidate:Candidate}>{
+export async function loadCheckpoint(path:string,identity:ResumeIdentity):Promise<{task:TaskState;candidate:Candidate;skillContext?:IssuedSkillContext;skillPaths?:string[]}>{
  const raw=JSON.parse(await readFile(path,"utf8")) as SessionCheckpoint;
  if(!raw||typeof raw!=="object"||!raw.task||!raw.candidate)throw new Error("Checkpoint missing candidate");
  if(raw.sessionId!==identity.sessionId)throw new Error("Checkpoint session mismatch");
@@ -47,5 +51,5 @@ export async function loadCheckpoint(path:string,identity:ResumeIdentity):Promis
  if(!candidate||!restored.task.candidateId||candidate.id!==restored.task.candidateId)throw new Error("Checkpoint candidate mismatch");
  if(candidate.repository!==identity.repository)throw new Error("Checkpoint repository mismatch");
  assertResumeRevision(candidate,identity.revision);
- return {task:restored.task,candidate};
+ return {task:restored.task,candidate,...(restored.skillContext?{skillContext:restored.skillContext}:{}),...(restored.skillPaths?{skillPaths:restored.skillPaths}:{})};
 }

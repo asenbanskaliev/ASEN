@@ -1,8 +1,8 @@
 source_pass: saturation-repeat-3b
 baseline:
-  gentle_ai: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
-  engram: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
-  gentle_shell: fe61793e7cb3e75462ba53c7631e87d78e989354
+  reference_b: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+  reference-c: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
+  reference_a: fe61793e7cb3e75462ba53c7631e87d78e989354
 candidates:
   - { area: git-subprocess-local-and-remote-timeouts-are-bounded-and-typed, priority: P0, source: internal/reviewtransaction/git_timeout_test.go }
   - { area: git-subprocess-stdout-stderr-are-separately-bounded-and-trace-cannot-contaminate-machine-output, priority: P0, source: internal/reviewtransaction/git_output_test.go, likely_duplicate: PAR-409 }

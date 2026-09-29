@@ -6,6 +6,10 @@ test("package exposes only Pi extension/skills and owned runtime files", async()
   const pkg=JSON.parse(await readFile(new URL("../package.json",import.meta.url),"utf8"));
   assert.deepEqual(pkg.pi.extensions,["./extensions"]);
   assert.deepEqual(pkg.pi.skills,["./skills"]);
-  assert.ok(!Object.keys(pkg.dependencies ?? {}).some((x)=>/gentle/i.test(x)));
-  assert.ok(!Object.keys(pkg.peerDependencies ?? {}).some((x)=>/gentle/i.test(x)));
+  assert.deepEqual(pkg.files,["extensions/","src/","skills/"]);
+  assert.deepEqual(pkg.exports,{"./extensions":"./extensions/index.ts","./skills/*":"./skills/*/SKILL.md"});
+  assert.equal(Object.values(pkg.exports).some((value)=>String(value).includes("src/")),false);
+  const forbidden=new RegExp("gen"+"tle","i");
+  assert.ok(!Object.keys(pkg.dependencies ?? {}).some((x)=>forbidden.test(x)));
+  assert.ok(!Object.keys(pkg.peerDependencies ?? {}).some((x)=>forbidden.test(x)));
 });

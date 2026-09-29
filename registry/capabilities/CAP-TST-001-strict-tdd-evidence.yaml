@@ -10,6 +10,9 @@ contract:
     - a relevant test is executed and fails before the production fix
     - the production change is applied
     - the relevant test passes
+    - >-
+      materially different paths are triangulated when the logic has more than
+      one meaningful path
     - final verification remains green after refactor
     - executed evidence is linked to the candidate
 tests: [contract, integration, e2e]

@@ -1,8 +1,8 @@
 audit:
   asen: 3c76ed7aa9be124288397ca8baf35ceacfe5889c
-  gentle_shell: fe61793e7cb3e75462ba53c7631e87d78e989354
-  gentle_ai: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
-  engram: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
+  reference_a: fe61793e7cb3e75462ba53c7631e87d78e989354
+  reference_b: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+  reference-c: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
 capabilities:
   - id: PAR-001
     area: pi-native-extension
@@ -37,7 +37,7 @@ capabilities:
     area: model-routing-policy
     status: PARTIAL
     priority: P1
-    gap: "Policy contract exists but lacks Gentle-level profile validation/fallback coverage."
+    gap: "Policy contract exists but lacks External-level profile validation/fallback coverage."
   - id: PAR-008
     area: pi-native-skills
     status: PARITY
@@ -47,7 +47,7 @@ capabilities:
     area: multi-source-skill-registry-cache
     status: N/A
     priority: P2
-    rationale: "ASEN v1 intentionally relies on Pi native skills rather than cloning Gentle Shell discovery across many agents."
+    rationale: "ASEN v1 intentionally relies on Pi native skills rather than cloning Reference A discovery across many agents."
   - id: PAR-010
     area: persistent-task-plan
     status: PARTIAL
@@ -77,7 +77,7 @@ capabilities:
     area: exact-candidate-snapshot
     status: PARTIAL
     priority: P0
-    gap: "Candidate-bound evidence exists; Git tree/object snapshot isolation is less complete than Gentle review snapshots."
+    gap: "Candidate-bound evidence exists; Git tree/object snapshot isolation is less complete than External review snapshots."
   - id: PAR-016
     area: independent-review
     status: PARTIAL
@@ -200,7 +200,7 @@ capabilities:
     area: full-installer-tui
     status: N/A
     priority: P2
-    rationale: "Pi remains the user-facing platform; ASEN will not clone Gentle AI's multi-agent installer TUI."
+    rationale: "Pi remains the user-facing platform; ASEN will not clone Reference B's multi-agent installer TUI."
   - id: PAR-041
     area: multi-agent-platform-adapters
     status: N/A

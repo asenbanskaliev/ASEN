@@ -1,13 +1,13 @@
 wave: 1
 baselines:
   asen: 3c76ed7aa9be124288397ca8baf35ceacfe5889c
-  gentle_shell: fe61793e7cb3e75462ba53c7631e87d78e989354
-  gentle_ai: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
-  engram: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
+  reference_a: fe61793e7cb3e75462ba53c7631e87d78e989354
+  reference_b: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+  reference-c: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
 inventory:
-  gentle_shell: { runtime_files: 138, test_surfaces: 325, contract_surfaces: 119, workflows: 4 }
-  gentle_ai: { runtime_files: 1352, test_surfaces: 959, contract_surfaces: 148, workflows: 7 }
-  engram: { runtime_files: 361, test_surfaces: 213, contract_surfaces: 8, workflows: 9 }
+  reference_a: { runtime_files: 138, test_surfaces: 325, contract_surfaces: 119, workflows: 4 }
+  reference_b: { runtime_files: 1352, test_surfaces: 959, contract_surfaces: 148, workflows: 7 }
+  reference-c: { runtime_files: 361, test_surfaces: 213, contract_surfaces: 8, workflows: 9 }
 corrections:
   - id: F-001
     capability: PAR-004
@@ -16,9 +16,9 @@ corrections:
     risk: P0
     reason: "ASEN rejects overlapping grants, but does not yet prove deterministic post-enqueue cancellation semantics, writer queue ownership, leases/locks, or ambiguous mutation outcome handling."
     upstream:
-      - "engram/internal/mcp/write_queue.go"
-      - "gentle-ai/internal/reviewtransaction/store_lock*.go"
-      - "gentle-shell/lib/agents-runner.ts"
+      - "reference-c/internal/mcp/write_queue.go"
+      - "reference-b/internal/reviewtransaction/store_lock*.go"
+      - "reference-a/lib/agents-runner.ts"
     asen:
       - "src/policies/scopes.ts"
   - id: F-002
@@ -27,9 +27,9 @@ corrections:
     risk: P0
     reason: "ASEN PiProcessRunner only spawns pi --mode rpc and collects process output. Missing strict RPC framing, queue/concurrency limits, inactivity/tool watchdogs, cancellation grace/process-group handling, query correlation, child notification ownership, mutation observation, bounded stderr, resume/session semantics and terminal quarantine."
     upstream:
-      - "gentle-shell/lib/agents-runner.ts"
-      - "gentle-shell/tests/agents-runner*.test.ts"
-      - "gentle-shell/tests/agents-session-transport*.test.ts"
+      - "reference-a/lib/agents-runner.ts"
+      - "reference-a/tests/agents-runner*.test.ts"
+      - "reference-a/tests/agents-session-transport*.test.ts"
     asen:
       - "src/agents/pi-process-runner.ts"
   - id: F-003
@@ -38,8 +38,8 @@ corrections:
     risk: P0
     reason: "Candidate ID binding is not equivalent to an immutable Git candidate. ASEN lacks isolated object store, base/complete/initial trees, intended-untracked inventory, policy hash and correction-tree lineage."
     upstream:
-      - "gentle-shell/lib/review-snapshot.ts"
-      - "gentle-ai/internal/reviewtransaction/snapshot.go"
+      - "reference-a/lib/review-snapshot.ts"
+      - "reference-b/internal/reviewtransaction/snapshot.go"
     asen:
       - "src/evidence/store.ts"
       - "src/review/review.ts"
@@ -49,9 +49,9 @@ corrections:
     risk: P0
     reason: "ASEN review report is ephemeral and severity-based. Missing durable ledger, lifecycle phases, finding disposition, correction scope, validation convergence, invalidation and recovery semantics."
     upstream:
-      - "gentle-shell/lib/review-transaction.ts"
-      - "gentle-ai/internal/reviewtransaction/transaction.go"
-      - "gentle-ai/internal/reviewtransaction/ledger.go"
+      - "reference-a/lib/review-transaction.ts"
+      - "reference-b/internal/reviewtransaction/transaction.go"
+      - "reference-b/internal/reviewtransaction/ledger.go"
     asen:
       - "src/review/review.ts"
   - id: F-005
@@ -59,11 +59,11 @@ corrections:
     previous: PARITY
     corrected: PARTIAL
     risk: P0
-    reason: "ASEN SQLite memory persists basic rows, but save is a two-step memory + FTS mutation without an explicit transaction. Engram includes migration locks, generation fences, diagnostics/repair and stronger crash/concurrency invariants."
+    reason: "ASEN SQLite memory persists basic rows, but save is a two-step memory + FTS mutation without an explicit transaction. Reference C includes migration locks, generation fences, diagnostics/repair and stronger crash/concurrency invariants."
     upstream:
-      - "engram/internal/store/generation_fence.go"
-      - "engram/internal/store/migration_lock*.go"
-      - "engram/internal/store/diagnostic*.go"
+      - "reference-c/internal/store/generation_fence.go"
+      - "reference-c/internal/store/migration_lock*.go"
+      - "reference-c/internal/store/diagnostic*.go"
     asen:
       - "src/memory/sqlite-store.ts"
   - id: F-006
@@ -77,9 +77,9 @@ corrections:
     risk: P0
     reason: "ASEN Doctor currently checks four booleans; upstream diagnostics inspect and sometimes safely repair store/filesystem/runtime state with explicit invariants."
     upstream:
-      - "engram/internal/diagnostic"
-      - "engram/cmd/engram/doctor.go"
-      - "gentle-ai/internal/verify"
+      - "reference-c/internal/diagnostic"
+      - "reference-c/cmd/reference-c/doctor.go"
+      - "reference-b/internal/verify"
     asen:
       - "src/lifecycle/doctor.ts"
   - id: F-008

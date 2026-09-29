@@ -1,0 +1,17 @@
+# Node.js dependencies
+node_modules/
+
+# Build and test output
+coverage/
+dist/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+# Local Pi runtime state
+.atl/

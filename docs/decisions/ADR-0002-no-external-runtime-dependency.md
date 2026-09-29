@@ -1,9 +1,9 @@
-# ADR-0002: No Gentle runtime dependency
+# ADR-0002: No External runtime dependency
 
 Status: Accepted (Phase 0)
 
 ## Decision
-ASEN will not depend at runtime on Gentle Shell, Gentle AI, or Engram.
+ASEN will not depend at runtime on Reference A, Reference B, or Reference C.
 
 ## Rationale
 They are reference implementations. Runtime coupling would prevent ASEN from evolving independently and would blur authority boundaries.
