@@ -92,7 +92,8 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
     - Strict RED failed because `src/repository/operation-policy.ts` did not exist.
     - GREEN/REFACTOR adds provenance-checked, normalized exact-binding authority; duplicate-live issuance prevention; one-use mutation and remote-read execution; immutable callback targets; sanitized one-attempt/readback outcomes; and deterministic case-insensitive protected-label plans.
     - Focused evidence covers normalized/trailing-dot hosts, immutable authority and callback bindings, duplicate issuance and post-consumption reissuance, forgery/mismatch/wrong-executor/second-use zero-call rejection, exact callback arguments, sanitized sync and async remote-read failures, explicit ambiguous 5xx/accepted unchanged outcomes, confirmed timeout/error outcomes with exact intended readback, array non-mutation, and case-variant label bypass attempts.
-    - Verification passes: focused tests 11/11, typecheck, 27-Skill audit, 12-Skill parity audit, 251-path upstream-boundary audit, and diff check. Authored implementation and test files total 233 lines, within the sub-400 slice budget. Commit intentionally deferred by the GSP-04A instruction.
+    - Verification passes: focused tests 11/11, typecheck, 27-Skill audit, 12-Skill parity audit, 251-path upstream-boundary audit, and diff check. Authored implementation and test files total 233 lines, within the sub-400 slice budget.
+    - Commit: `569b3a6`.
   - Approved-issue gate, credential/session gate, templates/forms, privacy, duplicate checks, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
   - 400-line/60-minute chain policy, one slicing pass, delivery strategy, tracker/draft semantics, dependency diagrams, and base validation.
