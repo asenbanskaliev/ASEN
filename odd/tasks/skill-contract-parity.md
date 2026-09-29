@@ -91,4 +91,5 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
 - Slice 1A verification: manifest and matrix parse; all 17 present upstream documents match exact bytes and SHA-256; the missing resolver is confirmed absent; boundary test 1/1, Skill audit 27/27, tracked boundary 233 paths, TypeScript typecheck, and diff check all pass.
 - Independent verification found only `.codegraph/.gitignore` outside the change scope; it existed before verification and remains an excluded local runtime artifact.
 - Slice 1B RED: focused tests failed because the validator module did not exist; the later missing-source-commit mutation also reproduced an acceptance gap.
+- Slice 1B commit: `e14142e`.
 - Slice 1B GREEN: 17/17 focused tests pass; `audit:skill-parity` passes for 12 Skills; typecheck, 27-Skill audit, 237-path boundary audit, and diff check pass. The checked-in matrix now binds the exact frozen source commit.
