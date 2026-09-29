@@ -77,7 +77,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
     - GREEN/REFACTOR: `/asen-skill-registry refresh` now canonicalizes project identity, scans four precedence-ordered and path-deduplicated roots, invokes the real generated-registry refresh, reports exact cache/diagnostic/mirror state, preserves `/asen`, and keeps dynamic entries outside static selection authority.
     - Behavioral evidence covers exact output bytes, cache files, unchanged hit bytes/mtime, content invalidation, empty output, usage/no-write behavior, sanitized rethrown failures, mirror states on misses and hits, the static 27-Skill boundary, and non-mutating Pi command registration.
     - Deterministic gates pass: focused registry suite 32 passed/1 Windows symlink-permission skip; extension regression 1/1; typecheck; full suite 284 passed/1 Windows symlink-permission skip; 27-Skill audit; 12-Skill parity audit; 250-path upstream-boundary audit; diff check; and Pi extension E2E. Pack verification remains deferred to GSP-06 as required.
-    - No commit was created because this slice explicitly forbids commit/push/pack.
+    - Commit: `637a0bc`.
   - Enforce exact frontmatter and 180–450 target / 1000 hard body budget.
   - Preserve long material under local `references/` or `assets/`.
   - Implement `.asen/skill-registry.md`, multi-source scanning, project precedence, deterministic deduplication, cache behavior, and configured memory persistence when available.
