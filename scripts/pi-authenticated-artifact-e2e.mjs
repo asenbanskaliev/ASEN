@@ -81,7 +81,13 @@ for(const [role,phase] of roles){
  }
  assert.ok(Object.keys(raw).length>0,`Model artifact ${role} is empty`);
  const artifactRequest={id,role,prompt:message,repository,candidate,skillContext:context,skillPaths:selected};
- const artifact=JSON.parse(bindPiArtifactIdentity(output,artifactRequest));
+ let boundArtifact;
+ try{boundArtifact=bindPiArtifactIdentity(output,artifactRequest);}
+ catch(error){
+  console.error(JSON.stringify({role,stream:records.map(record=>({type:record.type,id:record.id??null,role:record.message?.role??null,stopReason:record.message?.stopReason??null}))}));
+  throw error;
+ }
+ const artifact=JSON.parse(boundArtifact);
  assert.equal(artifact.repository,repository,`ASEN artifact ${role} lost repository`);
  assert.equal(artifact.candidateId,candidate.id,`ASEN artifact ${role} lost candidateId`);
  assert.equal(artifact.revision,revision,`ASEN artifact ${role} lost revision`);
