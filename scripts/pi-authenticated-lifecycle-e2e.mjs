@@ -40,8 +40,9 @@ for(const [phase,role,kind] of phases){
   for(const [id,evidenceKind] of [["real-pi-work-unit","work-unit"],["real-pi-scope","scope"],["real-pi-rollback","rollback"]])evidence.add(candidate,{id,kind:evidenceKind,status:"pass",summary:`Authenticated lifecycle ${evidenceKind}`,createdAt:new Date().toISOString()});
  }
  if(phase==="verify"){
-  const proof=await executeEvidenceCommand(candidate,[process.execPath,"-e","const fs=require(\"node:fs\");const required=[\"src/agents/pi-artifact-runner.ts\",\"src/lifecycle/skill-lifecycle.ts\",\"skills/asen-verify/SKILL.md\"];for(const file of required){const stat=fs.statSync(file);if(!stat.isFile()||stat.size===0)process.exit(1)}"],{cwd:repository,timeoutMs:120000});
-  addExecutedEvidence(evidence,candidate,proof,{id:"real-pi-lifecycle-test",kind:"test",summary:"Executed dependency-free exact-candidate verification probe"});
+  const probe='const {execFileSync}=require("node:child_process");const npm=process.platform==="win32"?"npm.cmd":"npm";execFileSync(npm,["ci","--ignore-scripts"],{stdio:"ignore"});execFileSync(npm,["run","typecheck"],{stdio:"ignore"});execFileSync(npm,["test"],{stdio:"ignore"});';
+  const proof=await executeEvidenceCommand(candidate,[process.execPath,"-e",probe],{cwd:repository,timeoutMs:300000});
+  addExecutedEvidence(evidence,candidate,proof,{id:"real-pi-lifecycle-test",kind:"test",summary:"Installed exact-candidate lockfile dependencies and executed typecheck and behavioral tests in isolated worktree"});
  }
  const prompt=[
   "Return the functional result required by the loaded Skill.",

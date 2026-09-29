@@ -2,6 +2,10 @@
 
 Candidate evidence must be evaluated against the exact PR HEAD. A green workflow alone does not close CAP-SKL-001, which remains `specified`.
 
+## Exact HEAD checkpoint — 2026-09-29
+
+At `9a00a86468836e3f8ed1e32abaea3420c314035a`, Pi Free Smoke run 36536296321 demonstrated nine model-produced phases, including archive, and ended with `nextPhase=null`. The four role/Skill probes and artifact E2E passed on that SHA; 194 tests passed. Phase 0 Architecture, CI and Release Gate passed. ASEN Authenticated Pi Audit run 36536296341 failed on three external OpenRouter `429 upstream_provider_shared_pool` responses before its lifecycle ran. This is not evidence that the authenticated gate passed. The lifecycle's verification probe on this SHA checked only file presence and size, so its behavioral evidence remains weak. The subsequent change installs dependencies from a committed lockfile and executes typecheck and tests in the isolated candidate worktree; its CI result must be checked on the new SHA. This low-risk flow does not prove high-risk ODD, TDD or independent review. CAP-SKL-001 remains `specified`.
+
 | Requirement | Status | Evidence and remaining limit |
 | --- | --- | --- |
 | 27 native Skills: selection and exact loading | PROBADO (scope: route integrity) | Registry selection and ordering tests; real Pi get_commands checks native SKILL.md routes in four authenticated role turns; PiProcessRunner now checks exact loaded routes in its own process before prompting. Complete phase-specific model behavior remains open. |
