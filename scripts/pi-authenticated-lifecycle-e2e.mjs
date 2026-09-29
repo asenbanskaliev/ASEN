@@ -40,7 +40,7 @@ for(const [phase,role,kind] of phases){
   for(const [id,evidenceKind] of [["real-pi-work-unit","work-unit"],["real-pi-scope","scope"],["real-pi-rollback","rollback"]])evidence.add(candidate,{id,kind:evidenceKind,status:"pass",summary:`Authenticated lifecycle ${evidenceKind}`,createdAt:new Date().toISOString()});
  }
  if(phase==="verify"){
-  const probe='const {execFileSync}=require("node:child_process");const npm=process.platform==="win32"?"npm.cmd":"npm";execFileSync(npm,["ci","--ignore-scripts"],{stdio:"ignore"});execFileSync(npm,["run","typecheck"],{stdio:"ignore"});execFileSync(npm,["test"],{stdio:"ignore"});';
+  const probe='const {execFileSync}=require("node:child_process");const {readdirSync}=require("node:fs");const {join}=require("node:path");const npm=process.platform==="win32"?"npm.cmd":"npm";execFileSync(npm,["ci","--ignore-scripts"],{stdio:"ignore"});execFileSync(npm,["run","typecheck"],{stdio:"ignore"});const tests=readdirSync("tests",{recursive:true}).filter(path=>path.endsWith(".test.ts")).map(path=>join("tests",path));if(!tests.length)process.exit(1);execFileSync(process.execPath,["--import","tsx","--test",...tests],{stdio:"ignore"});';
   const proof=await executeEvidenceCommand(candidate,[process.execPath,"-e",probe],{cwd:repository,timeoutMs:300000});
   addExecutedEvidence(evidence,candidate,proof,{id:"real-pi-lifecycle-test",kind:"test",summary:"Installed exact-candidate lockfile dependencies and executed typecheck and behavioral tests in isolated worktree"});
  }
