@@ -37,7 +37,9 @@ export async function executeIndependentReview(candidate:Candidate,context:Issue
   execFileSync("git",["-C",candidate.repository,"worktree","add","--detach",isolated,candidate.revision],{stdio:"ignore"});
   assertExactGitCandidate({...candidate,repository:isolated},isolated);
   const startedAt=new Date().toISOString();
-  const {stdout}=await run(command[0],command.slice(1),{cwd:isolated,timeout:120_000,maxBuffer:128*1024,encoding:"utf8",shell:false});
+  let stdout:string;
+  try{({stdout}=await run(command[0],command.slice(1),{cwd:isolated,timeout:120_000,maxBuffer:128*1024,encoding:"utf8",shell:false}));}
+  catch{throw new Error("Review process failed without valid evidence");}
   assertExactGitCandidate({...candidate,repository:isolated},isolated);
   assertExactGitCandidate(candidate,candidate.repository);
   let report:ReviewReport;

@@ -24,6 +24,8 @@ test("review process binds task, reviewer, candidate, result and execution",asyn
  await assert.rejects(()=>executeIndependentReview(candidate,context,"author",command({...report,reviewer:"task:other"})),/reviewer identity/);
  await assert.rejects(()=>executeIndependentReview(candidate,context,"author",command({...report,candidateId:"other"})),/revision mismatch/);
  await assert.rejects(()=>executeIndependentReview(candidate,context,"author",command({...report,findings:[{id:"blocking",severity:"high",message:"defect"}]})),/blocking findings/);
+ const privateOutput="PRIVATE_REVIEW_STDERR";
+ await assert.rejects(()=>executeIndependentReview(candidate,context,"author",[process.execPath,"-e",`process.stderr.write(${JSON.stringify(privateOutput)});process.exit(7)`]),(error:unknown)=>error instanceof Error&&!error.message.includes(privateOutput));
  const proof=await executeIndependentReview(candidate,context,"author",command(report));
  assert.throws(()=>store.addReviewed({...candidate,id:"other"},proof),/candidate mismatch/);
  store.addReviewed(candidate,proof);
