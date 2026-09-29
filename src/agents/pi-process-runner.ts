@@ -16,6 +16,7 @@ export interface PiProcessOptions{
  maxOutputBytes?:number;
  signal?:AbortSignal;
  providerExtension?:string;
+ noTools?:boolean;
 }
 
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
@@ -93,7 +94,7 @@ export class PiProcessRunner implements AgentRunner{
   const providerExtension=this.options.providerExtension;
   if(providerExtension&&providerExtension!=="npm:pi-free")return Promise.resolve({id:request.id,ok:false,output:"untrusted Pi provider extension"});
   const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,
-   "--no-extensions","--extension",policy,...(providerExtension?["--extension",providerExtension]:[]),"--no-skills","--tools",writer?"read,edit,write":"read",...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
+   "--no-extensions","--extension",policy,...(providerExtension?["--extension",providerExtension]:[]),"--no-skills",...(this.options.noTools?["--no-tools"]:["--tools",writer?"read,edit,write":"read"]),...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
   const timeoutMs=this.options.timeoutMs??120_000;
   const max=this.options.maxOutputBytes??1_000_000;
 

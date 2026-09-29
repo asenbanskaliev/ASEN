@@ -125,6 +125,14 @@ test("Pi RPC adapter supplies selected routes as native Pi flags",async()=>{
  assert.match(response.args[2],/[\\/]asen-policy-[^\\/]+[\\/]authority\.ts$/);
  assert.deepEqual([response.args[0],response.args[1],...response.args.slice(3)],["--no-extensions","--extension","--no-skills","--tools","read",...paths.flatMap(path=>["--skill",path])]);
 });
+test("read-only artifact audit disables every Pi tool",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
+ const context=issueSkillContext("audit",d,undefined,{phase:"explore"});
+ const r=await runner(p,{noTools:true}).run({id:"audit",role:"explorer",prompt:"artifact",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
+ assert.equal(r.ok,true);
+ const args=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!).args as string[];
+ assert.ok(args.includes("--no-tools"));assert.ok(!args.includes("--tools"));
+});
 test("direct Pi worker cannot obtain file tools without a live lifecycle grant",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
  const candidate={id:"candidate",repository:d,revision:"revision",createdAt:"now"};
