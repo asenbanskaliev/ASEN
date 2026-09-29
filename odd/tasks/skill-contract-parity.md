@@ -66,6 +66,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
   - Slice 3A GREEN/REFACTOR: focused tests pass 15/15; typecheck, 27-Skill audit, 12-Skill parity audit, 241-path upstream-boundary audit, and diff check pass.
   - Final bounded hardening adds the distinct >700 recommended-ceiling issue and rejects metadata children outside the exact `metadata` hierarchy.
   - Slice 3A rows remain PARTIAL pending Pi Free positive and negative generated-output probes in GSP-06; the static 27-Skill runtime registry is unchanged.
+  - Slice 3A commit: `ecd3c77`.
 - [ ] GSP-04 — Align issue, branch, chained-PR, and work-unit behavior.
   - Approved-issue gate, credential/session gate, templates/forms, privacy, duplicate checks, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
