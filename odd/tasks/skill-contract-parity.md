@@ -61,14 +61,17 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
     - Broken or racing paths are isolated as typed `unreadable-path` diagnostics, canonical escapes remain rejected before target-content reads, exact resolution and first-wins precedence remain fail-closed, and directory-link regressions cover outside-target invalidation and cycles.
     - Focused discovery verification passes 10 tests with the direct file-symlink escape test skipped only because Windows returned `EPERM`; an injected canonical-path regression proves escaping `SKILL.md` targets produce `path-outside-source` without invoking the content-read callback, while Windows junction regressions pass. The static 27-Skill registry and parity matrix remain unchanged.
     - Commit: `3398f55`.
-  - [ ] Slice 3C: generated registry, cache, mirror, and configured persistence behavior.
+  - [x] Slice 3C: generated registry, cache, mirror, and configured persistence behavior.
     - [x] Slice 3C1: reusable atomic text persistence with deterministic failure and cleanup coverage. Commit: `6fbf191`.
     - [x] Slice 3C2: registry generator, cache, mirror, and configured persistence behavior. Commit: `f6104ed`.
       - Strict RED proved the generated-registry module absent; GREEN/REFACTOR passes 10 focused tests, typecheck, all three required audits, and diff check.
       - Deterministic injection-safe Markdown and exact schema-1 cache validation bind the current discovery fingerprint, rendered content, and registry SHA-256; project or renderer changes regenerate, while valid hits avoid writes and still use current scan results.
       - Output paths are limited to the inspected real `.asen` directory under the canonical project root. Dynamic discovered paths are rendered data only and never enter static write-target candidate authority.
       - Optional mirroring is attempted after successful hit or regeneration, uses the exact bounded payload, and degrades to sanitized `failed` or `unavailable` persistence without rejecting local refresh.
-    - [ ] Slice 3C3: Skill normalization and automated evidence.
+    - [x] Slice 3C3: Skill normalization and automated evidence.
+      - Strict RED failed 5 contract tests against missing strict metadata, activation boundaries, semantic markers, complete output, and honest matrix evidence.
+      - GREEN/REFACTOR normalized the registry Skill, added static runtime-route and contract evidence, and promoted SRC-SKILL-011 to PARTIAL with one bounded GSP-06 gap.
+      - CAP-SKL-001 remains specified; GSP-03 and Slice 3D remain pending.
   - [ ] Slice 3D: Pi route and generated-output evidence.
   - Enforce exact frontmatter and 180–450 target / 1000 hard body budget.
   - Preserve long material under local `references/` or `assets/`.

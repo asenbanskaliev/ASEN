@@ -215,18 +215,15 @@
     {
       "sourceId": "SRC-SKILL-011",
       "asenSkill": "skills/asen-skill-registry/SKILL.md",
-      "status": "MISSING",
+      "status": "PARTIAL",
       "activation": ["REGISTRY-ACT-001"],
       "hardRules": ["REGISTRY-RULE-001"],
       "decisionGates": ["REGISTRY-GATE-001"],
       "outputs": ["REGISTRY-OUT-001"],
       "prohibited": ["REGISTRY-PRO-001"],
       "equivalentAdaptations": [{"contractId": "REGISTRY-OUT-001", "note": "The required ASEN registry path is .asen/skill-registry.md."}],
-      "gaps": [
-        {"contractId": "REGISTRY-RULE-001", "note": "No implemented multi-source registry, deterministic cache, or optional memory persistence is evidenced."},
-        {"contractId": "REGISTRY-GATE-001", "note": "Precedence, deduplication, empty output, refresh, and cache invalidation are not behavior-tested."}
-      ],
-      "evidence": ["A descriptive Skill exists, but the required registry behavior is absent; implementation is pending GSP-03."]
+      "gaps": [{"contractId": "REGISTRY-OUT-001", "note": "GSP-06 must add Pi Free activation, generated-output reporting, and exact-path delegation probes."}],
+      "evidence": ["tests/skill-discovery.test.ts", "tests/generated-skill-registry.test.ts", "tests/skill-registry-contract.test.ts"]
     },
     {
       "sourceId": "SRC-SKILL-012",
