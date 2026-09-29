@@ -3,7 +3,7 @@
 Phase 0 can close only when:
 
 - [x] product boundary: ASEN extends Pi
-- [x] no Gentle runtime dependency decision
+- [x] no External runtime dependency decision
 - [x] exact upstream audit baselines recorded
 - [x] initial provenance/license policy
 - [x] authority and threat model

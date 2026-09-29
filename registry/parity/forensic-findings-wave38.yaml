@@ -1,5 +1,5 @@
 wave: 38
-focus: [gentle-shell-mandatory-surfaces]
+focus: [reference-a-mandatory-surfaces]
 new_contracts:
   - { id: PAR-451, area: publication-gate-rechecks-exact-staged-or-remote-target-and-required-ci-before-publish, status: MISSING, priority: P0 }
   - { id: PAR-452, area: publication-gate-journal-and-child-claim-publish-atomically-across-faults, status: MISSING, priority: P0 }

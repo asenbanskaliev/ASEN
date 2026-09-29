@@ -3,7 +3,7 @@ import path from "node:path";
 
 const root=process.cwd();
 const parityDir=path.join(root,"registry","parity");
-const files=["gentle-ecosystem-v1.yaml",...fs.readdirSync(parityDir).filter(n=>/^forensic-findings-wave\d+\.yaml$/.test(n)).sort((a,b)=>Number(a.match(/\d+/)[0])-Number(b.match(/\d+/)[0]))];
+const files=["external-ecosystem-v1.yaml",...fs.readdirSync(parityDir).filter(n=>/^forensic-findings-wave\d+\.yaml$/.test(n)).sort((a,b)=>Number(a.match(/\d+/)[0])-Number(b.match(/\d+/)[0]))];
 const records=new Map();
 
 for(const file of files){

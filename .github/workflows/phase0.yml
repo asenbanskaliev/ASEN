@@ -21,18 +21,12 @@ jobs:
         env:
           ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
-      - name: Reject forbidden Gentle runtime dependencies
+      - name: Audit all tracked references
         shell: bash
-        run: |
-          set -euo pipefail
-          if grep -RIE --exclude-dir=.git --exclude='*.md' --exclude='*.yaml' --exclude='*.yml' '(from|require\(|import).*gentle-(pi|ai|engram)' src 2>/dev/null; then
-            echo "Forbidden Gentle runtime dependency detected."
-            exit 1
-          fi
-          echo "Architecture dependency gate passed."
+        run: node scripts/audit-upstream-boundary.mjs
       - name: Require frozen upstream baselines
         shell: bash
         run: |
-          test -f registry/upstream/gentle-shell.yaml
-          test -f registry/upstream/gentle-ai.yaml
-          test -f registry/upstream/engram.yaml
+          test -f registry/upstream/reference-a.yaml
+          test -f registry/upstream/reference-b.yaml
+          test -f registry/upstream/reference-c.yaml

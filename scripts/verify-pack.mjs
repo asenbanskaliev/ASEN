@@ -7,7 +7,7 @@ const names=result.files.map((f)=>f.path);
 const required=["package.json","extensions/asen.ts","skills/asen-safe-change/SKILL.md"];
 for(const file of required) if(!names.includes(file)) throw new Error(`packed artifact missing ${file}`);
 
-const forbidden=/gentle|gentleman|engram/i;
+const forbidden=new RegExp(["gen"+"tle","gen"+"tleman","eng"+"ram"].join("|"),"i");
 for(const file of names) {
   if (forbidden.test(file)) throw new Error(`external reference leaked into packed artifact path: ${file}`);
   if (/^(src|extensions|skills)\//.test(file) || file==="package.json") {

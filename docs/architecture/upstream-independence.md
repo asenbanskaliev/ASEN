@@ -1,13 +1,13 @@
 # Upstream Independence
 
-Gentle Shell, Gentle AI and Engram are upstream references used to learn observable engineering guarantees.
+Reference A, Reference B and Reference C are upstream references used to learn observable engineering guarantees.
 
 ASEN must continue operating if those repositories disappear.
 
 Forbidden runtime dependency classes:
-- gentle-pi / Gentle Shell runtime imports
-- gentle-ai runtime invocation as required authority
-- Engram as mandatory persistence engine
+- external-pi / Reference A runtime imports
+- reference-b runtime invocation as required authority
+- Reference C as mandatory persistence engine
 
 Permitted:
 - documented attribution and provenance
@@ -21,8 +21,6 @@ Upstream changes are never copied or adopted automatically. Radar detects; Regis
 
 ## Enforced boundary
 
-External names and provenance are permitted only on research/control-plane surfaces such as `registry/upstream/`, `registry/parity/`, audit records and provenance documentation. They exist so Radar can detect future upstream changes and the Registry can compare them with ASEN capabilities.
-
-They are forbidden from ASEN product surfaces: `src/`, `skills/`, `extensions/`, `package.json`, and the corresponding runtime/package contents. CI and package verification fail closed when a forbidden external reference crosses that boundary.
+The tracked tree uses opaque reference labels and retains audited hashes. Repository names, URLs and identifiers of the source projects are excluded from tracked paths and content. The full-tree CI audit and package verification enforce this boundary. Automated source monitoring needs separate configuration outside this tree.
 
 Detection never authorizes adoption. A detected delta must be normalized into an ASEN-owned capability, contract, test and, where appropriate, Pi-native skill before it can affect product behavior.

@@ -1,5 +1,5 @@
-id: upstream-engram
-repository: Gentleman-Programming/engram
+id: upstream-reference-c
+source_id: reference-c
 role: persistent-memory-reference
 audited:
   branch: main
@@ -8,5 +8,5 @@ audited:
 stable_reference:
   version: 2.2.1
 radar:
-  enabled: true
+  enabled: false
 runtime_dependency: optional-adapter-only

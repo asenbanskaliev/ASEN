@@ -1,5 +1,5 @@
 wave: 23
-focus: [engram-p0-family-exhaustion]
+focus: [reference-c-p0-family-exhaustion]
 new_contracts:
   - { id: PAR-322, area: project-owned-session-rejects-cross-project-memory-write-without-mutation, status: MISSING, priority: P0 }
   - { id: PAR-323, area: project-owned-session-rejects-cross-project-prompt-without-mutation, status: MISSING, priority: P0 }

@@ -1,24 +1,18 @@
-import {readFile,readdir} from "node:fs/promises";
-import {join,relative} from "node:path";
+import {execFileSync} from "node:child_process";
+import {readFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
-const forbidden=/gentle|gentleman|engram/i;
-const protectedRoots=["src","skills","extensions"];
+const forbidden=new RegExp(["gen"+"tle","gen"+"tleman","eng"+"ram"].join("|"),"i");
+const tracked=execFileSync("git",["ls-files","-z"],{cwd:root}).toString("utf8").split("\0").filter(Boolean);
 const violations=[];
-
-async function walk(dir){
- for(const entry of await readdir(dir,{withFileTypes:true})){
-  const path=join(dir,entry.name);
-  if(entry.isDirectory()) await walk(path);
-  else {
-   const text=await readFile(path,"utf8");
-   if(forbidden.test(entry.name)||forbidden.test(text)) violations.push(relative(root,path));
-  }
- }
+for(const path of tracked){
+ if(forbidden.test(path)){violations.push(path);continue;}
+ const bytes=readFileSync(new URL(`../${path.split("/").map(encodeURIComponent).join("/")}`,import.meta.url));
+ if(bytes.includes(0))continue;
+ let content;
+ try{content=new TextDecoder("utf-8",{fatal:true}).decode(bytes);}catch{continue;}
+ if(forbidden.test(content))violations.push(path);
 }
-for(const dir of protectedRoots) await walk(join(root,dir));
-const pkg=await readFile(join(root,"package.json"),"utf8");
-if(forbidden.test(pkg)) violations.push("package.json");
-if(violations.length){console.error("External reference leaked into ASEN product surface:\n"+violations.join("\n"));process.exit(1);}
-console.log("upstream boundary: PASS");
+if(violations.length){console.error("External reference in tracked tree:\n"+violations.join("\n"));process.exit(1);}
+console.log(`tracked boundary: PASS (${tracked.length} paths)`);

@@ -1,6 +1,6 @@
 source_pass: critical-file-saturation-A
 baseline:
-  gentle_ai: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+  reference_b: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
 candidates:
   - area: publication-gate-has-no-authority-write-path
     priority: P0

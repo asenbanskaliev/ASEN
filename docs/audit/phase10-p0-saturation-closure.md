@@ -2,9 +2,9 @@
 
 ## Frozen upstream baselines
 
-- Gentle Shell: `fe61793e7cb3e75462ba53c7631e87d78e989354`
-- Gentle AI: `a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b`
-- Engram: `618e30f68f0f2e3b736df91fcfbaaad279ccd3d2`
+- Reference A: `fe61793e7cb3e75462ba53c7631e87d78e989354`
+- Reference B: `a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b`
+- Reference C: `618e30f68f0f2e3b736df91fcfbaaad279ccd3d2`
 - ASEN base: `3c76ed7aa9be124288397ca8baf35ceacfe5889c`
 
 ## Result

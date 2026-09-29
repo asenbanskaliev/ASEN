@@ -1,5 +1,5 @@
-id: upstream-gentle-shell
-repository: Gentleman-Programming/gentle-shell
+id: upstream-reference-a
+source_id: reference-a
 role: pi-native-harness-reference
 audited:
   branch: main
@@ -9,5 +9,5 @@ stable_reference:
   version: 3.7.0
   commit: 59257bff7023b44837cd4ff3edc3807f777be458
 radar:
-  enabled: true
+  enabled: false
 runtime_dependency: forbidden

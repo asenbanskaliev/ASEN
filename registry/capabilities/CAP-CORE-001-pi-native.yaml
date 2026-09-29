@@ -10,7 +10,7 @@ contract:
   then:
     - Pi remains the runtime and model host
     - ASEN composes Pi extension APIs
-    - no Gentle runtime is required
+    - no External runtime is required
 tests:
   - architecture
   - pi-integration

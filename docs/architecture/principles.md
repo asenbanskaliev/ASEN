@@ -7,7 +7,7 @@ ASEN adds deterministic engineering workflow, orchestration policy, evidence, ve
 
 ## Non-negotiable invariants
 1. ASEN MUST NOT replace Pi or implement an independent LLM runtime.
-2. ASEN MUST NOT require Gentle Shell, Gentle AI, or Engram at runtime.
+2. ASEN MUST NOT require Reference A, Reference B, or Reference C at runtime.
 3. Upstream projects are behavioral references, not runtime authorities.
 4. Model statements are not evidence. Verification consumes observable artifacts/results.
 5. Evidence is bound to an exact candidate identity; a changed candidate invalidates prior verification.

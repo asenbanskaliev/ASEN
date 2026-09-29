@@ -1,5 +1,5 @@
 wave: 24
-focus: [gentle-shell-runtime-exhaustion]
+focus: [reference-a-runtime-exhaustion]
 new_contracts:
   - { id: PAR-333, area: child-agent-transport-clears-pending-on-timeout-late-reply-and-exit, status: MISSING, priority: P0 }
   - { id: PAR-334, area: child-agent-transport-bounds-unterminated-control-input, status: MISSING, priority: P0 }
