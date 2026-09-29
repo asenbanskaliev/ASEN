@@ -94,7 +94,17 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
     - Focused evidence covers normalized/trailing-dot hosts, immutable authority and callback bindings, duplicate issuance and post-consumption reissuance, forgery/mismatch/wrong-executor/second-use zero-call rejection, exact callback arguments, sanitized sync and async remote-read failures, explicit ambiguous 5xx/accepted unchanged outcomes, confirmed timeout/error outcomes with exact intended readback, array non-mutation, and case-variant label bypass attempts.
     - Verification passes: focused tests 11/11, typecheck, 27-Skill audit, 12-Skill parity audit, 251-path upstream-boundary audit, and diff check. Authored implementation and test files total 233 lines, within the sub-400 slice budget.
     - Commit: `569b3a6`.
-  - Approved-issue gate, credential/session gate, templates/forms, privacy, duplicate checks, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
+  - [ ] GSP-04B: issue preparation, publication, and evidence.
+    - [x] GSP-04B1: deterministic Issue Form selection/validation, duplicate-search decisions, and privacy-safe issue materialization.
+      - Strict RED failed because `src/issues/issue-preparation.ts` did not exist.
+      - GREEN/REFACTOR adds pure typed form selection, exact-schema answer rendering with safe dynamic fences, reviewed order-independent redaction, expanded final privacy scanning, NFC-stable SHA-256 identity, and complete fail-closed duplicate decisions.
+      - Independent-review hardening rejects non-plain or inherited inputs, malformed title/label metadata, single/multi-select violations, first-person bypasses, unsafe redactions, sensitive path/credential families, malformed evidence identities, and multiple duplicate classifications without mutating failure inputs.
+      - Final verifier hardening includes declared labels in reviewed redaction and generic sensitive-material rejection, revalidates redacted labels and fully materialized single-line titles, and binds normalized duplicate issue URLs to the searched host/owner/repository (with `github.com` as the documented `owner/repository` shorthand host).
+      - Adversarial Unicode/redaction hardening rejects U+2028/U+2029 title bypasses, detects first-person checkbox labels through rendered Markdown/emoji/zero-width prefixes, canonicalizes equivalent issue URLs before uniqueness and duplicate identity decisions, normalizes reviewed redaction values and all final output fields to NFC before identity hashing, and detects occurrence/overlap field-by-field without synthetic separators or input mutation.
+      - Focused tests pass 15/15; typecheck, 27-Skill audit, 12-Skill parity audit, 253-path upstream-boundary audit, and diff check pass. Current authored scope is 196 changed lines; the Issue Skill and parity matrix remain unchanged for GSP-04B3.
+    - [ ] GSP-04B2: one-shot issue publication and atomic post-publication mutation using shared repository authority.
+    - [ ] GSP-04B3: Issue Skill normalization, parity-matrix promotion, and generated behavioral evidence.
+  - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
   - 400-line/60-minute chain policy, one slicing pass, delivery strategy, tracker/draft semantics, dependency diagrams, and base validation.
   - Conventional work-unit commits, feature-task commit identity, and native review candidate boundaries.
