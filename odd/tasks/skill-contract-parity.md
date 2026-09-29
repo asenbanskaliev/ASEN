@@ -102,6 +102,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Final verifier hardening includes declared labels in reviewed redaction and generic sensitive-material rejection, revalidates redacted labels and fully materialized single-line titles, and binds normalized duplicate issue URLs to the searched host/owner/repository (with `github.com` as the documented `owner/repository` shorthand host).
       - Adversarial Unicode/redaction hardening rejects U+2028/U+2029 title bypasses, detects first-person checkbox labels through rendered Markdown/emoji/zero-width prefixes, canonicalizes equivalent issue URLs before uniqueness and duplicate identity decisions, normalizes reviewed redaction values and all final output fields to NFC before identity hashing, and detects occurrence/overlap field-by-field without synthetic separators or input mutation.
       - Focused tests pass 15/15; typecheck, 27-Skill audit, 12-Skill parity audit, 253-path upstream-boundary audit, and diff check pass. Current authored scope is 196 changed lines; the Issue Skill and parity matrix remain unchanged for GSP-04B3.
+      - Commit: `2b8a887`.
     - [ ] GSP-04B2: one-shot issue publication and atomic post-publication mutation using shared repository authority.
     - [ ] GSP-04B3: Issue Skill normalization, parity-matrix promotion, and generated behavioral evidence.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
