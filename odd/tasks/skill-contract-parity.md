@@ -62,7 +62,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
     - Focused discovery verification passes 10 tests with the direct file-symlink escape test skipped only because Windows returned `EPERM`; an injected canonical-path regression proves escaping `SKILL.md` targets produce `path-outside-source` without invoking the content-read callback, while Windows junction regressions pass. The static 27-Skill registry and parity matrix remain unchanged.
     - Commit: `3398f55`.
   - [ ] Slice 3C: generated registry, cache, mirror, and configured persistence behavior.
-    - [x] Slice 3C1: reusable atomic text persistence with deterministic failure and cleanup coverage.
+    - [x] Slice 3C1: reusable atomic text persistence with deterministic failure and cleanup coverage. Commit: `6fbf191`.
     - [ ] Slice 3C2: registry generator, cache, mirror, and configured persistence behavior.
     - [ ] Slice 3C3: Skill normalization and automated evidence.
   - [ ] Slice 3D: Pi route and generated-output evidence.
