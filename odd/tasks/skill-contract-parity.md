@@ -55,7 +55,11 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
   - Commit: `7f085db`.
 - [ ] GSP-03 — Align Skill authoring, improvement, and registry.
   - [x] Slice 3A: strict discovery parsing and document audit, normalized authoring/audit contracts, runtime route tests, and deterministic matrix evidence.
-  - [ ] Slice 3B: multi-source discovery and deterministic precedence/deduplication.
+  - [x] Slice 3B: multi-source discovery and deterministic precedence/deduplication.
+    - Strict RED proved the discovery module absent; GREEN/REFACTOR passes focused discovery tests, typecheck, all three required audits, and diff check.
+    - Discovery now rejects duplicate source IDs before I/O; deterministically orders traversal and diagnostics; prevents canonical directory cycles; and fingerprints traversal observations, diagnostics, canonical candidate paths, and candidate bytes without timestamps.
+    - Broken or racing paths are isolated as typed `unreadable-path` diagnostics, canonical escapes remain rejected before target-content reads, exact resolution and first-wins precedence remain fail-closed, and directory-link regressions cover outside-target invalidation and cycles.
+    - Focused discovery verification passes 10 tests with the direct file-symlink escape test skipped only because Windows returned `EPERM`; an injected canonical-path regression proves escaping `SKILL.md` targets produce `path-outside-source` without invoking the content-read callback, while Windows junction regressions pass. The static 27-Skill registry and parity matrix remain unchanged.
   - [ ] Slice 3C: generated registry, cache, mirror, and configured persistence behavior.
   - [ ] Slice 3D: Pi route and generated-output evidence.
   - Enforce exact frontmatter and 180–450 target / 1000 hard body budget.
