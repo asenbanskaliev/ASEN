@@ -40,8 +40,8 @@ for(const [phase,role,kind] of phases){
   for(const [id,evidenceKind] of [["real-pi-work-unit","work-unit"],["real-pi-scope","scope"],["real-pi-rollback","rollback"]])evidence.add(candidate,{id,kind:evidenceKind,status:"pass",summary:`Authenticated lifecycle ${evidenceKind}`,createdAt:new Date().toISOString()});
  }
  if(phase==="verify"){
-  const proof=await executeEvidenceCommand(candidate,[process.execPath,"-e","const fs=require(\"node:fs\");const required=[\"src/agents/pi-artifact-runner.ts\",\"src/lifecycle/skill-lifecycle.ts\",\"skills/asen-verify/SKILL.md\"];for(const file of required){const stat=fs.statSync(file);if(!stat.isFile()||stat.size===0)process.exit(1)}"],{cwd:repository,timeoutMs:120000});
-  addExecutedEvidence(evidence,candidate,proof,{id:"real-pi-lifecycle-test",kind:"test",summary:"Executed dependency-free exact-candidate verification probe"});
+  const proof=await executeEvidenceCommand(candidate,[process.execPath,"--import","tsx","--test","tests/pi-artifact-runner.test.ts"],{cwd:repository,timeoutMs:120000});
+  addExecutedEvidence(evidence,candidate,proof,{id:"real-pi-lifecycle-test",kind:"test",summary:"Executed artifact normalization tests on exact candidate"});
  }
  const prompt=[
   "Return the functional result required by the loaded Skill.",
