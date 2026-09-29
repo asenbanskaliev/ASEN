@@ -1,10 +1,33 @@
-import assert from "node:assert/strict";import test from "node:test";import {access,copyFile,mkdir,mkdtemp,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
+import assert from "node:assert/strict";import test from "node:test";import {execFile} from "node:child_process";import {access,copyFile,mkdir,mkdtemp,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {SkillLifecycle} from "../src/lifecycle/skill-lifecycle.js";
 import {Dispatcher} from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
+type PosixProcessObservation={exitCode:number;stdout:string;stderr:string};
+function isLivePosixProcess(pid:number,{exitCode,stdout,stderr}:PosixProcessObservation){
+ const state=stdout.trim(),errorOutput=stderr.trim();
+ if(exitCode===0){
+  if(errorOutput)throw new Error(`ps could not observe process ${pid} (exit 0: ${errorOutput})`);
+  if(!state)throw new Error(`ps returned no state for process ${pid}`);
+  if(!/^[DIRSTtWXZ](?:<|N)?L?s?l?\+?$/.test(state))throw new Error(`ps returned invalid state for process ${pid}`);
+  return state[0]!=="Z";
+ }
+ if(exitCode===1&&!state&&!errorOutput)return false;
+ throw new Error(`ps could not observe process ${pid} (exit ${exitCode}${errorOutput?`: ${errorOutput}`:""})`);
+}
+async function isLiveProcess(pid:number){
+ if(process.platform==="win32"){try{process.kill(pid,0);return true;}catch{return false;}}
+ const observation=await new Promise<PosixProcessObservation>((resolve,reject)=>{
+  execFile("ps",["-o","stat=","-p",String(pid)],{timeout:1000},(error,stdout,stderr)=>{
+   if(!error)return resolve({exitCode:0,stdout,stderr});
+   if(typeof error.code==="number")return resolve({exitCode:error.code,stdout,stderr});
+   reject(error);
+  });
+ });
+ return isLivePosixProcess(pid,observation);
+}
 async function fixture(body:string,policy=true,skillsMode:"exact"|"missing"|"extra"|"altered"="exact"){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-pi-"))),p=join(d,"pi-fixture.mjs"),scenario=join(d,"scenario.mjs");
  await mkdir(join(d,"extensions"));await copyFile(fileURLToPath(new URL("../extensions/authority.ts",import.meta.url)),join(d,"extensions/authority.ts"));
@@ -84,6 +107,23 @@ test("Pi child errors cannot replace an already requested cancellation",async()=
  assert.equal(result.ok,false);assert.match(result.output,/cancelled/);
 });
 
+test("POSIX process-state observation distinguishes live, zombie, and absent processes",()=>{
+ assert.equal(isLivePosixProcess(101,{exitCode:0,stdout:"R+\n",stderr:""}),true);
+ assert.equal(isLivePosixProcess(102,{exitCode:0,stdout:"Z\n",stderr:""}),false);
+ assert.equal(isLivePosixProcess(103,{exitCode:0,stdout:"Z+\n",stderr:""}),false);
+ assert.equal(isLivePosixProcess(104,{exitCode:0,stdout:"S<sl+\n",stderr:""}),true);
+ assert.equal(isLivePosixProcess(105,{exitCode:1,stdout:"",stderr:""}),false);
+ assert.throws(()=>isLivePosixProcess(106,{exitCode:1,stdout:"",stderr:"permission denied"}),/could not observe/);
+ assert.throws(()=>isLivePosixProcess(107,{exitCode:0,stdout:"",stderr:""}),/no state/);
+});
+
+test("POSIX process-state observation fails closed on invalid ps output",()=>{
+ assert.throws(()=>isLivePosixProcess(201,{exitCode:0,stdout:"ZOMBIE\n",stderr:""}),/invalid state/);
+ assert.throws(()=>isLivePosixProcess(202,{exitCode:0,stdout:"Z\nR+\n",stderr:""}),/invalid state/);
+ assert.throws(()=>isLivePosixProcess(203,{exitCode:0,stdout:"?\n",stderr:""}),/invalid state/);
+ assert.throws(()=>isLivePosixProcess(204,{exitCode:0,stdout:"Z\n",stderr:"warning"}),/could not observe/);
+});
+
 test("Pi cancellation settles its process tree and policy cleanup before returning",async t=>{
  const marker=join(tmpdir(),`asen-descendant-${process.pid}-${Date.now()}.json`);t.after(()=>rm(marker,{force:true}));
  const {d,p}=await fixture('import {spawn} from "node:child_process";import {writeFileSync} from "node:fs";const marker=process.argv[2],policy=process.argv[process.argv.indexOf("--extension")+1];const c=spawn(process.execPath,["-e","setTimeout(()=>{},10000)"],{stdio:"ignore"});writeFileSync(marker,JSON.stringify({pid:c.pid,policy}));setTimeout(()=>{},10000);');
@@ -95,7 +135,7 @@ test("Pi cancellation settles its process tree and policy cleanup before returni
  controller.abort();const result=await pending;
  assert.equal(result.ok,false);assert.match(result.output,/cancelled/);
  await assert.rejects(()=>access(state.policy),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
- let alive=true;try{process.kill(state.pid,0);}catch{alive=false;}assert.equal(alive,false,`descendant ${state.pid} survived cancellation settlement`);
+ assert.equal(await isLiveProcess(state.pid),false,`descendant ${state.pid} survived cancellation settlement`);
 });
 
 test("Pi RPC adapter rejects a mismatched response id",async()=>{const {d,p}=await fixture('console.log(JSON.stringify({type:"response",id:"other",command:"prompt",success:true}));');const r=await runner(p,{}).run({id:"req-expected",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/correlated response missing/);});

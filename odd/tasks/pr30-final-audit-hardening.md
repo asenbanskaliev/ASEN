@@ -76,6 +76,9 @@ The current PR head has substantial behavioral evidence, but a read-only audit f
   - Re-fetch and reconcile any remote advancement without force.
   - Push only to the PR branch.
   - Verify Phase 0 Architecture, CI, Release Gate, Pi Free Smoke, and ASEN Authenticated Pi Audit for the exact pushed SHA.
+  - Remote RED at exact SHA `b8ec552a63af5265397fb71eb7070626f66507ce`: Ubuntu CI job `109410973806` failed `Pi cancellation settles its process tree and policy cleanup before returning` because `process.kill(pid, 0)` succeeded for descendant PID 4201 after SIGKILL. On POSIX this probe also succeeds for a terminated zombie awaiting reaping by the container init process, so it did not prove that the descendant was genuinely running. The same failure made the Pi Free lifecycle isolated full tests exit non-zero; Windows and local tests passed.
+  - Bounded correction: retain the Windows probe and, on POSIX only, use a one-second `ps -o stat=` observation. A `Z` state or the standard empty exit-1 absent-process result is treated as terminated; live states still fail, while empty successful output, stderr-bearing exit 1, timeouts, spawn failures, and other observation errors remain failures. This changes only test observation, not production termination behavior.
+  - Ubuntu confirmation remains pending until the correction is pushed and exact-SHA CI runs.
 
 ## Acceptance criteria
 
@@ -97,6 +100,7 @@ The current PR head has substantial behavioral evidence, but a read-only audit f
 - Delegated implementation: PR30-01 awaits Windows taskkill completion; on POSIX it signals the group and awaits only direct-child close before isolated-worktree cleanup. Whole-group disappearance is not proven, and resistant or new-session/new-group descendants remain an explicit OS-isolation limitation.
 - Delegated implementation: PR30-02 rejects an untrusted provider extension before creating `asen-policy-*`; stop paths preserve their intended result through the platform-bounded termination step and policy cleanup. Spawn failure without a PID may settle on `error`, while an established PID requires actual `close`.
 - Required verification passed: execution revision 7/7, Pi process runner 34/34, and TypeScript typecheck.
+- Remote exact-SHA follow-up at `b8ec552a63af5265397fb71eb7070626f66507ce`: Ubuntu CI job `109410973806` exposed a test-observation defect where POSIX `kill(pid, 0)` classified zombie descendant PID 4201 as alive after SIGKILL. The bounded harness correction distinguishes `Z` from genuinely live `ps` states and preserves observation errors as failures; exact-SHA Ubuntu confirmation is pending publication and CI.
 
 ## Next step
 
