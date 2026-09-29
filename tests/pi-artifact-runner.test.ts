@@ -24,7 +24,7 @@ test("rejects forged, interrupted or non-model lifecycle output",()=>{
  assert.throws(()=>extractPiArtifact(completed(assistant("   ")),"task:explorer"),/non-empty/);
  assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify({type:"response",id:"task:explorer",success:true}),"task:explorer"),/exactly one/);
  assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify(assistant(JSON.stringify(artifact))),"task:explorer"),/successful assistant/);
- assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify({type:"agent_start"}),"task:explorer"),/finish with agent_end/);
+ assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify({type:"agent_start"}),"task:explorer"),/events after agent_end/);\n const responseLast=[assistant(JSON.stringify(artifact)),{type:"agent_end"},{type:"response",id:"task:explorer",success:true}].map(x=>JSON.stringify(x)).join("\\n");\n assert.deepEqual(JSON.parse(extractPiArtifact(responseLast,"task:explorer")),artifact);
 });
 
 test("ASEN binds candidate identity and rejects model identity spoofing",()=>{
