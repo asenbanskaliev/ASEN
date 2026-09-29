@@ -87,5 +87,6 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
 - Frozen upstream baseline for contract work: `08de420ca29be16b6f6bee725a30b599b061df16`. The referenced upstream `skills/_shared/skill-resolver.md` is absent at that baseline and must be recorded as `absent-at-baseline`, never fabricated.
 - Structural checks currently prove 27 Skill files and exact Pi loading, not detailed 12/12 behavior.
 - Current branch: `feat/gentle-skill-parity-contracts` at PR #30 head `bdcbe7a714a9d2f3a801afc221f1476ec9d45237`.
+- Slice 1A commit: `4a0107b` (`feat: freeze Gentle skill parity contracts`).
 - Slice 1A verification: manifest and matrix parse; all 17 present upstream documents match exact bytes and SHA-256; the missing resolver is confirmed absent; boundary test 1/1, Skill audit 27/27, tracked boundary 233 paths, TypeScript typecheck, and diff check all pass.
 - Independent verification found only `.codegraph/.gitignore` outside the change scope; it existed before verification and remains an excluded local runtime artifact.
