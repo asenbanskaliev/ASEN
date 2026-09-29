@@ -118,8 +118,8 @@
       "outputs": ["DOC-OUT-001"],
       "prohibited": ["DOC-PRO-001"],
       "equivalentAdaptations": [{"contractId": "DOC-RULE-001", "note": "ASEN expresses cognitive priority as purpose-first progressive disclosure."}],
-      "gaps": [{"contractId": "DOC-GATE-001", "note": "Review-first path, explicit exclusions, checklist shape, and quality evidence remain incomplete."}],
-      "evidence": ["Structural mapping only; behavioral automation is pending GSP-02."]
+      "gaps": [{"contractId": "DOC-OUT-001", "note": "Generated-output compliance still requires Pi Free positive and negative probes in GSP-06."}],
+      "evidence": ["tests/communication-skills.test.ts"]
     },
     {
       "sourceId": "SRC-SKILL-004",
@@ -131,8 +131,8 @@
       "outputs": ["COMMENT-OUT-001"],
       "prohibited": ["COMMENT-PRO-001"],
       "equivalentAdaptations": [{"contractId": "COMMENT-OUT-001", "note": "ASEN returns the message with supporting evidence rather than a fixed prose formula."}],
-      "gaps": [{"contractId": "COMMENT-RULE-001", "note": "Warm/direct voice, context language, short default, anti-pile-on priority, and punctuation prohibitions are not fully covered."}],
-      "evidence": ["Structural mapping only; behavioral automation is pending GSP-02."]
+      "gaps": [{"contractId": "COMMENT-OUT-001", "note": "Generated-output compliance still requires Pi Free positive and negative probes in GSP-06."}],
+      "evidence": ["tests/communication-skills.test.ts"]
     },
     {
       "sourceId": "SRC-SKILL-005",

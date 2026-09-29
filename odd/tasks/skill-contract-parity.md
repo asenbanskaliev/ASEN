@@ -46,9 +46,12 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
   - [x] Slice 1A: added the frozen 12-Skill/support source manifest, strict behavioral matrix, normative ASEN Skill style guide, authoring/audit references, and path-scoped provenance boundary test.
   - [x] Slice 1B: added deterministic validation for missing contracts, undocumented differences, unsupported FULL claims, invalid source references, exact source identity, and the ASEN registry path.
   - Slice 1A is 482 authored lines excluding this feature document after one honest split. The maintainer explicitly accepted `size:exception`; content was not compressed or weakened.
-- [ ] GSP-02 — Align communication and documentation Skills.
+- [x] GSP-02 — Align communication and documentation Skills.
   - `asen-doc-design`: review path, out-of-scope section, checklist/template behavior, and automated quality checks.
   - `asen-collaboration-message`: context language, warm/direct tone, 1–3 paragraph default, no em dash, and anti-pile-on priority.
+  - RED: the focused communication test failed 6/6 against missing metadata, activation exclusions, contract markers, and matrix evidence.
+  - GREEN/REFACTOR: focused tests pass 7/7, including runtime activation routing through `selectSkills`; Skill audit passes 27/27; parity, upstream-boundary, typecheck, and diff checks pass.
+  - Matrix rows remain PARTIAL pending Pi Free positive and negative generated-output probes in GSP-06. No commit was created per maintainer instruction.
 - [ ] GSP-03 — Align Skill authoring, improvement, and registry.
   - Enforce exact frontmatter and 180–450 target / 1000 hard body budget.
   - Preserve long material under local `references/` or `assets/`.
