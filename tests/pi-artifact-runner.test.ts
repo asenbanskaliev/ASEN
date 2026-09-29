@@ -25,6 +25,8 @@ test("rejects forged, interrupted or non-model lifecycle output",()=>{
  assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify({type:"response",id:"task:explorer",success:true}),"task:explorer"),/exactly one/);
  assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify(assistant(JSON.stringify(artifact))),"task:explorer"),/agent activity after agent_end/);
  assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify({type:"agent_start"}),"task:explorer"),/agent activity after agent_end/);
+ const secret="private model text";
+ assert.throws(()=>extractPiArtifact(valid+"\n"+JSON.stringify({type:"message_start",id:"next",message:{role:"assistant",stopReason:"stop",content:secret}}),"task:explorer"),(error:unknown)=>error instanceof Error&&error.message.includes('"type":"message_start"')&&error.message.includes('"id":"next"')&&!error.message.includes(secret));
  const responseLast=[assistant(JSON.stringify(artifact)),{type:"agent_end"},{type:"response",id:"task:explorer",success:true}].map(x=>JSON.stringify(x)).join("\n");
  const controlResponseLast=[{type:"response",id:"task:explorer",success:true},assistant(JSON.stringify(artifact)),{type:"agent_end"},{type:"response",id:"asen-policy:task:explorer",success:true}].map(x=>JSON.stringify(x)).join("\n");
  const settledControlLast=[{type:"response",id:"task:explorer",success:true},assistant(JSON.stringify(artifact)),{type:"agent_end"},{type:"agent_settled"},{type:"extension_ui_request",id:"ui-1"}].map(x=>JSON.stringify(x)).join("\n");
