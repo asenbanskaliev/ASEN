@@ -53,7 +53,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
   - GREEN/REFACTOR: focused tests pass 7/7, including runtime activation routing through `selectSkills`; Skill audit passes 27/27; parity, upstream-boundary, typecheck, and diff checks pass.
   - Matrix rows remain PARTIAL pending Pi Free positive and negative generated-output probes in GSP-06.
   - Commit: `7f085db`.
-- [ ] GSP-03 — Align Skill authoring, improvement, and registry.
+- [x] GSP-03 — Align Skill authoring, improvement, and registry.
   - [x] Slice 3A: strict discovery parsing and document audit, normalized authoring/audit contracts, runtime route tests, and deterministic matrix evidence.
   - [x] Slice 3B: multi-source discovery and deterministic precedence/deduplication.
     - Strict RED proved the discovery module absent; GREEN/REFACTOR passes focused discovery tests, typecheck, all three required audits, and diff check.
@@ -72,7 +72,12 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Strict RED failed 5 contract tests against missing strict metadata, activation boundaries, semantic markers, complete output, and honest matrix evidence.
       - GREEN/REFACTOR normalized the registry Skill, added static runtime-route and contract evidence, and promoted SRC-SKILL-011 to PARTIAL with one bounded GSP-06 gap.
       - CAP-SKL-001 remains specified; GSP-03 and Slice 3D remain pending.
-  - [ ] Slice 3D: Pi route and generated-output evidence.
+  - [x] Slice 3D: Pi route and generated-output evidence.
+    - Strict RED: the focused extension test failed because `createAsenExtension` was not exported.
+    - GREEN/REFACTOR: `/asen-skill-registry refresh` now canonicalizes project identity, scans four precedence-ordered and path-deduplicated roots, invokes the real generated-registry refresh, reports exact cache/diagnostic/mirror state, preserves `/asen`, and keeps dynamic entries outside static selection authority.
+    - Behavioral evidence covers exact output bytes, cache files, unchanged hit bytes/mtime, content invalidation, empty output, usage/no-write behavior, sanitized rethrown failures, mirror states on misses and hits, the static 27-Skill boundary, and non-mutating Pi command registration.
+    - Deterministic gates pass: focused registry suite 32 passed/1 Windows symlink-permission skip; extension regression 1/1; typecheck; full suite 284 passed/1 Windows symlink-permission skip; 27-Skill audit; 12-Skill parity audit; 250-path upstream-boundary audit; diff check; and Pi extension E2E. Pack verification remains deferred to GSP-06 as required.
+    - No commit was created because this slice explicitly forbids commit/push/pack.
   - Enforce exact frontmatter and 180–450 target / 1000 hard body budget.
   - Preserve long material under local `references/` or `assets/`.
   - Implement `.asen/skill-registry.md`, multi-source scanning, project precedence, deterministic deduplication, cache behavior, and configured memory persistence when available.
