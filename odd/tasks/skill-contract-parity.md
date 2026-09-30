@@ -216,7 +216,8 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Commit: `239a980`.
       - [x] GSP-05B1b: candidate/fact-bound organic/structured/blocked applicability.
         - Genuine candidate-bound route decisions now produce immutable organic, structured, or blocked applicability derived only from original ODD facts, exact caller bindings, and explicit lifecycle inputs; first-attempt and B2 claim provenance are one-use without phase or execution authority.
-        - Focused ODD/orchestration/applicability verification passes 32/32; typecheck, 27-Skill audit, 12-Skill parity audit, 285-path upstream-boundary audit, and diff check pass. No commit was created.
+        - Focused ODD/orchestration/applicability verification passes 32/32; typecheck, 27-Skill audit, 12-Skill parity audit, 285-path upstream-boundary audit, and diff check pass. The readable slice is 281 additions.
+        - Commit: `f9fb0b5`.
     - [ ] GSP-05B2: require genuine applicability before lifecycle construction.
   - [ ] GSP-05C: runtime-enforced conditional TDD triangulation.
   - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
