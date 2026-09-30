@@ -1,6 +1,12 @@
 import type { AgentRequest } from "../agents/dispatcher.js";
-import {claimOddRouteDecision,type OddRouteDecision} from "../flow/odd-routing.js";
-import type {Candidate} from "../core/types.js";
+import type { Candidate } from "../core/types.js";
+import {
+  claimedOddRouteFacts,
+  claimOddRouteDecision,
+  isClaimedOddRouteDecision,
+  type OddDerivedFacts,
+  type OddRouteDecision,
+} from "../flow/odd-routing.js";
 import {selectSkills,type SkillId,type SkillPhase,type SkillSelectionContext} from "../skills/registry.js";
 import {issueSkillContext} from "../skills/context.js";
 
@@ -14,8 +20,17 @@ export interface OrchestrationRouteEvidence {
   readonly verification:OddRouteDecision["verification"];
 }
 export interface OrchestrationPlan { decision:OddRouteDecision; agents:AgentRequest[]; skills:SkillId[]; routeEvidence?:OrchestrationRouteEvidence; }
+export interface ClaimedOrchestrationRouteContext {
+  readonly facts: OddDerivedFacts;
+  readonly candidate: Readonly<{
+    id: string;
+    repository: string;
+    revision: string;
+  }>;
+}
 
 const issuedRouteEvidence=new WeakSet<object>();
+const orchestrationContexts = new WeakMap<object, ClaimedOrchestrationRouteContext>();
 const claimedRouteEvidence=new WeakSet<object>();
 function issueRouteEvidence(input:OrchestrationInput,decision:OddRouteDecision):OrchestrationRouteEvidence|undefined{
   if(!input.candidate)return undefined;
@@ -24,6 +39,20 @@ function issueRouteEvidence(input:OrchestrationInput,decision:OddRouteDecision):
   issuedRouteEvidence.add(proof);
   return proof;
 }
+/** Reads immutable original facts and candidate only after successful candidate-bound orchestration. */
+export function claimedOrchestrationRouteContext(
+  decision: unknown,
+): ClaimedOrchestrationRouteContext {
+  if (!isClaimedOddRouteDecision(decision)) {
+    throw new Error("ODD route decision is not genuinely claimed");
+  }
+  const context = orchestrationContexts.get(decision);
+  if (!context) {
+    throw new Error("ODD route decision has no successful candidate-bound orchestration plan");
+  }
+  return context;
+}
+
 /** Burns genuine orchestration evidence before validating its exact candidate binding. */
 export function claimOrchestrationRouteEvidence(candidate:Candidate,proof:unknown):asserts proof is OrchestrationRouteEvidence{
   if(typeof proof!=="object"||proof===null||!issuedRouteEvidence.has(proof))throw new Error("Route evidence was not issued by orchestration");
@@ -35,12 +64,26 @@ export function claimOrchestrationRouteEvidence(candidate:Candidate,proof:unknow
 
 export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRouteDecision):OrchestrationPlan {
   claimOddRouteDecision(decision);
-  if(decision.taskIdentity!==input.taskId)throw new Error("ODD route decision task mismatch");
-  if(decision.repositoryIdentity!==input.repository)throw new Error("ODD route decision repository mismatch");
-  if(input.candidate&&input.candidate.repository!==input.repository)throw new Error("Orchestration candidate repository mismatch");
-  const routeEvidence=issueRouteEvidence(input,decision);
-  const planned=<T extends {decision:OddRouteDecision;agents:AgentRequest[];skills:SkillId[]}>(plan:T):T&{routeEvidence?:OrchestrationRouteEvidence}=>
-    routeEvidence?{...plan,routeEvidence}:plan;
+  const facts = claimedOddRouteFacts(decision);
+  if (decision.taskIdentity !== input.taskId) throw new Error("ODD route decision task mismatch");
+  if (decision.repositoryIdentity !== input.repository) throw new Error("ODD route decision repository mismatch");
+  if (input.candidate && input.candidate.repository !== input.repository) throw new Error("Orchestration candidate repository mismatch");
+  const candidateContext = input.candidate
+    ? Object.freeze({
+        id: input.candidate.id,
+        repository: input.candidate.repository,
+        revision: input.candidate.revision,
+      })
+    : undefined;
+  const routeEvidence = issueRouteEvidence(input, decision);
+  const planned = <T extends { decision: OddRouteDecision; agents: AgentRequest[]; skills: SkillId[] }>(
+    plan: T,
+  ): T & { routeEvidence?: OrchestrationRouteEvidence } => {
+    if (candidateContext) {
+      orchestrationContexts.set(decision, Object.freeze({ facts, candidate: candidateContext }));
+    }
+    return routeEvidence ? { ...plan, routeEvidence } : plan;
+  };
   const base={repository:input.repository,prompt:input.prompt,...(input.candidate?{candidate:input.candidate}:{})};
   const common:SkillSelectionContext={
     risk:decision.risk,

@@ -44,6 +44,7 @@ const issuedFacts = new WeakSet<object>();
 const plannedFacts = new WeakSet<object>();
 const issuedDecisions = new WeakSet<object>();
 const claimedDecisions = new WeakSet<object>();
+const decisionFacts = new WeakMap<object, OddDerivedFacts>();
 
 function record(value: unknown, keys: readonly string[], noun: string): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) throw new Error(`${noun} must be exact plain data`);
@@ -158,7 +159,16 @@ export function planOddRoute(facts: OddDerivedFacts): OddRouteDecision {
   const payload = { taskIdentity: facts.taskIdentity, repositoryIdentity: facts.repositoryIdentity, route, risk: facts.risk, verification: verificationLevel(facts.risk), reasons, requiresSingleWriter: route === "orchestrate" || route === "incident", requiresIsolatedChild: route === "orchestrate" || route === "incident" || route === "verify" };
   const decision = Object.freeze({ decisionId: createHash("sha256").update(JSON.stringify(payload)).digest("hex"), ...payload, reasons: Object.freeze(reasons) });
   issuedDecisions.add(decision);
+  decisionFacts.set(decision, facts);
   return decision;
+}
+
+/** Reports genuine claimed provenance without consuming or reissuing the decision. */
+export function isClaimedOddRouteDecision(value: unknown): value is OddRouteDecision {
+  return typeof value === "object"
+    && value !== null
+    && issuedDecisions.has(value)
+    && claimedDecisions.has(value);
 }
 
 /** Burns a genuine issued decision on its first A2 claim attempt. */
@@ -166,4 +176,16 @@ export function claimOddRouteDecision(value: unknown): asserts value is OddRoute
   if (typeof value !== "object" || value === null || !issuedDecisions.has(value)) throw new Error("ODD route decision was not issued here");
   if (claimedDecisions.has(value)) throw new Error("ODD route decision has already been claimed");
   claimedDecisions.add(value);
+}
+
+/** Returns immutable original facts only for a genuine claimed decision. */
+export function claimedOddRouteFacts(value: unknown): OddDerivedFacts {
+  if (!isClaimedOddRouteDecision(value)) {
+    throw new Error("ODD route decision is not genuinely claimed");
+  }
+  const facts = decisionFacts.get(value);
+  if (!facts) {
+    throw new Error("ODD route decision facts are unavailable");
+  }
+  return facts;
 }

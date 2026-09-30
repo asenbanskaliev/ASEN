@@ -210,6 +210,12 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Commit: `00164d2`.
         - Commit: intentionally not created under the task's no-commit constraint.
   - [ ] GSP-05B: optional structured-lifecycle applicability before lifecycle entry.
+    - [ ] GSP-05B1: candidate-bound organic/structured/blocked applicability decision.
+      - [x] GSP-05B1a: orchestration-authentic claimed route context and exact candidate binding.
+        - Successful candidate-bound orchestration privately records immutable original route facts and exact candidate identity. The read-only context rejects unclaimed, forged, cloned, candidate-less, failed, and rebound decisions without exposing authority.
+        - Focused ODD/orchestration verification passes 23/23; typecheck and all three audits pass. No commit was created under the task constraint.
+      - [ ] GSP-05B1b: candidate/fact-bound organic/structured/blocked applicability.
+    - [ ] GSP-05B2: require genuine applicability before lifecycle construction.
   - [ ] GSP-05C: runtime-enforced conditional TDD triangulation.
   - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
   - [ ] GSP-05E: ordinary native review controller bound to genuine work-unit candidates.

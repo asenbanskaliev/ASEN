@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {routeOdd} from "../src/flow/odd.js";
-import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
+import * as oddRouting from "../src/flow/odd-routing.js";
+import {
+  buildOrchestrationPlan,
+  claimedOrchestrationRouteContext,
+} from "../src/orchestration/orchestrator.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";
 
 const candidate={id:"c",repository:"r",revision:"sha",createdAt:"now"};
@@ -43,6 +47,43 @@ test("writer is bound to the exact orchestration candidate",()=>{
  assert.equal(worker?.skillContext?.codeChange,true);
 });
 
+test("successful orchestration exposes immutable exact claimed context", () => {
+ const decision = orchestrated();
+ assert.throws(() => claimedOrchestrationRouteContext(decision), /not genuinely claimed/);
+ assert.throws(() => claimedOrchestrationRouteContext({ route: "direct" }), /not genuinely claimed/);
+
+ buildOrchestrationPlan(
+  { taskId: "t", repository: "r", prompt: "p", candidate },
+  decision,
+ );
+ const context = claimedOrchestrationRouteContext(decision);
+ assert.deepEqual(context.candidate, { id: "c", repository: "r", revision: "sha" });
+ assert.equal(context.facts.taskIdentity, "t");
+ assert.ok(Object.isFrozen(context));
+ assert.ok(Object.isFrozen(context.candidate));
+ assert.ok(Object.isFrozen(context.facts));
+ assert.equal(JSON.stringify(context).match(/authority|readiness|verdict|callback/giu), null);
+ assert.throws(() => claimedOrchestrationRouteContext({ ...decision }), /not genuinely claimed/);
+ assert.throws(
+  () => buildOrchestrationPlan(
+   { taskId: "t", repository: "r", prompt: "p", candidate: { ...candidate, id: "other" } },
+   decision,
+  ),
+  /already been claimed/,
+ );
+ assert.deepEqual(claimedOrchestrationRouteContext(decision).candidate, context.candidate);
+ assert.equal(Object.keys(oddRouting).some(key => /bind.*candidate/iu.test(key)), false);
+});
+
+test("candidate-less orchestration has no claimed route context", () => {
+ const decision = issueOddDecision({ taskId: "candidate-less", repository: "r" });
+ buildOrchestrationPlan({ taskId: "candidate-less", repository: "r", prompt: "p" }, decision);
+ assert.throws(
+  () => claimedOrchestrationRouteContext(decision),
+  /no successful candidate-bound orchestration plan/,
+ );
+});
+
 test("writer orchestration fails closed without candidate and burns the decision",()=>{
  const decision=orchestrated();
  assert.throws(()=>buildOrchestrationPlan({taskId:"t",repository:"r",prompt:"p",codeChange:true,filesTouched:4,writeSurfaces:["src"]},decision),/exact candidate/);
@@ -51,6 +92,25 @@ test("writer orchestration fails closed without candidate and burns the decision
 
 test("writer orchestration refuses a non-apply phase before issuing authority",()=>{
  assert.throws(()=>buildOrchestrationPlan({taskId:"task",repository:"r",prompt:"write",skillPhase:"explore",writeSurfaces:["src"],candidate},orchestrated("task")),/apply phase/);
+});
+
+test("failed orchestration has no claimed route context", () => {
+ const decision = orchestrated("failed-context");
+ assert.throws(
+  () => buildOrchestrationPlan({
+   taskId: "failed-context",
+   repository: "r",
+   prompt: "write",
+   skillPhase: "explore",
+   writeSurfaces: ["src"],
+   candidate,
+  }, decision),
+  /apply phase/,
+ );
+ assert.throws(
+  () => claimedOrchestrationRouteContext(decision),
+  /no successful candidate-bound orchestration plan/,
+ );
 });
 
 test("orchestration passes exact selected SKILL.md paths to delegated agents",()=>{
