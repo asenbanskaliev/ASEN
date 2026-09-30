@@ -171,6 +171,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - [x] GSP-04E1a: deterministic boundary classification and opaque ready provenance.
           - Added readable pure exact-data validation and deterministic immutable branch, split, 401-line chain, and genuine opaque ready decisions with explicit branch facts, one-to-one behavior/rollback facts, canonical task-path scope, and no completion or authority surface.
           - Focused verification passes 11/11; typecheck, 27-Skill audit, 12-Skill parity audit, 273-path upstream-boundary audit, and diff check pass. The implementation and focused tests total 281 lines; the complete E1a slice is 288 additions.
+          - Commit: `b04aefa`.
         - [ ] GSP-04E1b: completed evidence, commit, and review-candidate recording.
       - [ ] GSP-04E2: Work Unit Skill normalization, matrix evidence, and generated behavioral checks.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
