@@ -26,10 +26,23 @@ export interface LifecycleApplicability {
   readonly outcome: "organic" | "structured" | "blocked";
   readonly reasons: readonly string[];
 }
+export interface TddObligation {
+  readonly requirementId: string;
+  readonly applicabilityId: string;
+  readonly taskIdentity: string;
+  readonly repositoryIdentity: string;
+  readonly candidate: Readonly<{ id: string; repository: string; revision: string }>;
+  readonly behaviorPaths: readonly string[];
+  readonly mode: "required" | "not-applicable";
+  readonly reason: "behavior-testing-required" | "behavior-testing-contradiction" | "no-behavior-writes";
+}
 
 const attempted = new WeakSet<object>();
 const issued = new WeakSet<object>();
 const claimed = new WeakSet<object>();
+const obligations = new WeakMap<object, TddObligation>();
+const issuedObligations = new WeakSet<object>();
+const claimedObligations = new WeakSet<object>();
 const inputKeys = ["taskIdentity", "repositoryIdentity", "candidate", "explicitMode", "affectedSubsystems", "expectedPaths", "requiredArtifacts"] as const;
 const artifacts = ["proposal", "specification", "design", "task_plan"] as const;
 const modes = ["organic", "structured", "unspecified"] as const;
@@ -115,8 +128,11 @@ export function decideLifecycleApplicability(claimedOddDecision: OddRouteDecisio
   if (context.facts.unresolvedDecisions.length) reasons.push("unresolved-decisions");
   if (context.facts.risk === "unknown") reasons.push("unknown-risk");
   if (contradictory) reasons.push("contradictory-change-facts");
+  const behaviorPaths = context.facts.writes.filter(write => write.changeKind === "behavior").map(write => write.path);
+  const testingContradiction = behaviorPaths.length > 0 && context.facts.testing.kind === "n_a";
   let outcome: LifecycleApplicability["outcome"];
   if (reasons.length) outcome = "blocked";
+  else if (testingContradiction) { outcome = "blocked"; reasons.push("behavior-testing-contradiction"); }
   else {
     const structuredTrigger = requiredArtifacts.length > 0 || claimedOddDecision.route === "orchestrate" || context.facts.risk === "high" || ["schema", "security", "migration"].includes(changeNature);
     const unsafeOrganic = mode === "organic" && structuredTrigger;
@@ -126,8 +142,32 @@ export function decideLifecycleApplicability(claimedOddDecision: OddRouteDecisio
   }
   const payload = { taskIdentity, repositoryIdentity, candidate, decisionId: claimedOddDecision.decisionId, changeNature, expectedPaths, affectedSubsystems: subsystems, requiredArtifacts, outcome, reasons };
   const result = Object.freeze({ applicabilityId: createHash("sha256").update(JSON.stringify(payload)).digest("hex"), ...payload, expectedPaths: Object.freeze(expectedPaths), affectedSubsystems: Object.freeze(subsystems), requiredArtifacts: Object.freeze(requiredArtifacts), reasons: Object.freeze(reasons) });
+  const obligationPayload = {
+    applicabilityId: result.applicabilityId, taskIdentity, repositoryIdentity, candidate,
+    behaviorPaths: Object.freeze(behaviorPaths),
+    mode: behaviorPaths.length > 0 && context.facts.testing.kind === "required" ? "required" as const : "not-applicable" as const,
+    reason: behaviorPaths.length === 0 ? "no-behavior-writes" as const : testingContradiction ? "behavior-testing-contradiction" as const : "behavior-testing-required" as const,
+  };
+  const obligation = Object.freeze({ requirementId: createHash("sha256").update(JSON.stringify(obligationPayload)).digest("hex"), ...obligationPayload });
   issued.add(result);
+  issuedObligations.add(obligation);
+  obligations.set(result, obligation);
   return result;
+}
+
+/** Retrieves the immutable TDD requirement paired with this exact issued applicability. */
+export function tddObligationFor(applicability: unknown): TddObligation {
+  if (typeof applicability !== "object" || applicability === null || !issued.has(applicability)) throw new Error("TDD obligation requires an exact issued applicability");
+  const obligation = obligations.get(applicability);
+  if (!obligation) throw new Error("TDD obligation is unavailable");
+  return obligation;
+}
+
+/** Burns a genuine TDD obligation on its first claim attempt. */
+export function claimTddObligation(value: unknown): asserts value is TddObligation {
+  if (typeof value !== "object" || value === null || !issuedObligations.has(value)) throw new Error("TDD obligation was not issued here");
+  if (claimedObligations.has(value)) throw new Error("TDD obligation has already been claimed");
+  claimedObligations.add(value);
 }
 
 /** Burns a genuine applicability result on its first B2 claim attempt. */
