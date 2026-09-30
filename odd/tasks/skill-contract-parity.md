@@ -228,9 +228,10 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Exact ordered behavior writes plus required testing derive a deeply immutable, deterministic candidate/applicability-bound obligation; non-behavior writes remain not applicable; and behavior plus testing N/A blocks before explicit structured or high-risk selection without granting lifecycle, phase, cycle, mutation, review, or delivery authority.
       - Independent focused verification passes 43/43; typecheck, 27-Skill audit, 12-Skill parity audit, 288-path upstream-boundary audit, and diff check pass. The readable slice is 190 additions.
       - Commit: `1b990d5`.
-    - [ ] GSP-05C2: require a genuine one-use obligation and structured stable test observation for an honest deterministic RED.
-      - Implementation candidate runs a fixed local Node test/TAP command in the exact detached candidate, derives assertion observations from bounded captured output, and admits them through a factory-only strict RED cycle without changing legacy `TddCycle` or evidence-store behavior.
-      - Focused evidence covers repeatable parsed assertions, executed strict-convention test-only direct-child Git lineage, provenance/burn semantics, discovery/runtime rejection, revision/candidate mismatches, construction hardening, and authority exclusion; raw runner output is not retained.
+    - [x] GSP-05C2: require a genuine one-use obligation and structured stable test observation for an honest deterministic RED.
+      - A fixed local Node test/TAP command runs in the exact detached candidate, derives assertion observations from bounded captured output, and admits them through a factory-only strict RED cycle without changing legacy `TddCycle` or evidence-store behavior.
+      - Independent focused verification passes 28/28 and covers repeatable parsed assertions, executed strict-convention test-only direct-child Git lineage, provenance/burn semantics, discovery/runtime rejection, revision/candidate mismatches, construction hardening, and authority exclusion; raw runner output is not retained. Typecheck, 27-Skill audit, 12-Skill parity audit, 289-path upstream-boundary audit, and diff check pass. The readable slice is 315 additions.
+      - Commit: `8647a67`.
       - Completion remains pending independent PASS; C3+ and persistence remain untouched.
     - [ ] GSP-05C3: enforce same-test minimum GREEN, materially distinct multi-path triangulation or narrow single-path N/A, and an explicit non-TDD alternative when meaningful RED is impossible.
     - [ ] GSP-05C4: require triangulation/N/A before performed-or-not-needed refactor completion and bind lifecycle revision promotion to the exact completion.
