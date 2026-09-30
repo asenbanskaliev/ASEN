@@ -58,6 +58,8 @@ export interface ChainPolicyPlan {
 const inputKeys = ["targetBranch", "integrationBranch", "candidateCommits", "authoredAdditions", "authoredDeletions", "chainingRequested", "integrationMode", "slicingPasses", "slices", "selectedStrategy", "trackerBranch"] as const;
 const sliceKeys = ["id", "purpose", "branch", "commits", "authoredAdditions", "authoredDeletions", "estimatedReviewMinutes", "baseBranch", "expectedDiffPaths", "observedDiffPaths", "dependencyIds", "verification", "docs", "rollbackBoundary", "startState", "endState", "followUpFacts", "outOfScopeFacts", "independentlyLandable", "cohesive", "focused"] as const;
 const verificationKeys = ["id", "command", "result"] as const;
+const issuedPlans = new WeakSet<object>();
+const claimedPlans = new WeakSet<object>();
 const shaPattern = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
 function exactRecord(value: unknown, keys: readonly string[], noun: string): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) {
@@ -152,6 +154,12 @@ function parseSlice(value: unknown): ChainSliceInput {
   });
 }
 const dependencyDiagram = (slices: readonly ChainSliceInput[], current: number) => slices.map((slice, index) => `${index === current ? "📍 " : ""}${slice.id}${slice.dependencyIds.length ? ` <- ${slice.dependencyIds.join(", ")}` : ""}`).join("\n");
+export function claimChainPolicyPlan(plan: ChainPolicyPlan): void {
+  if (typeof plan !== "object" || plan === null || !issuedPlans.has(plan)) throw new Error("Artifact accounting requires a genuine chain policy plan");
+  if (claimedPlans.has(plan)) throw new Error("Chain policy plan already claimed");
+  claimedPlans.add(plan);
+}
+
 /** Pure planning only: validates one honest slicing pass and performs no repository operation. */
 export function planChainDelivery(value: ChainPolicyInput): ChainPolicyPlan {
   const record = exactRecord(value, inputKeys, "chain policy input");
@@ -211,5 +219,7 @@ export function planChainDelivery(value: ChainPolicyInput): ChainPolicyPlan {
   })));
   const tracker = dependent ? Object.freeze({ state: "draft-no-merge" as const, branch: trackerBranch as string }) : Object.freeze({ state: "not_applicable" as const });
   const exception = strategy === "exception-required" ? Object.freeze({ state: "required" as const, recommendation: "size:exception" as const, rationaleRequired: true as const, publicationDisposition: "prohibited" as const, mergeDisposition: "prohibited" as const }) : Object.freeze({ state: "not_required" as const });
-  return Object.freeze({ strategy, targetBranch, integrationBranch, candidateCommits: Object.freeze(commits), authoredAdditions, authoredDeletions, authoredBudget, slicingPasses: 1, slices: plannedSlices, tracker, exception, publicationStatus: "pending", mergeStatus: "pending" });
+  const plan = Object.freeze({ strategy, targetBranch, integrationBranch, candidateCommits: Object.freeze(commits), authoredAdditions, authoredDeletions, authoredBudget, slicingPasses: 1 as const, slices: plannedSlices, tracker, exception, publicationStatus: "pending" as const, mergeStatus: "pending" as const });
+  issuedPlans.add(plan);
+  return plan;
 }

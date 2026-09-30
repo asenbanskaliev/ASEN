@@ -150,12 +150,15 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - SRC-SKILL-001 remains PARTIAL solely for Pi Free positive and negative generated-output probes in GSP-06. GSP-04C is complete; GSP-04D, GSP-04E, and parent GSP-04 remain open.
       - Commit: `2ed5733`.
    - [ ] GSP-04D: chained pull-request policy and behavioral evidence.
-     - [ ] GSP-04D1: deterministic chain strategy, slicing, dependency, and clean-diff planning.
+     - [x] GSP-04D1: deterministic chain strategy, slicing, dependency, and clean-diff planning.
        - [x] GSP-04D1a: core chain strategy and evidence planning.
          - Added a readable pure exact-data planner for one cohesive slicing pass, authored 400-line/60-minute budgets, deterministic single/stacked-main/feature-chain/exception selection, clean diffs, dependency diagrams, complete verification/docs/rollback/state/fact preservation, tracker planning, and pending publication/merge statuses without issuing authority.
          - Added isolated evidence for every strategy, focus/cohesion, exact slicing pass, commit partitions, authored totals, dependencies, clean diffs, complete immutable slice evidence, malformed facts, and absent readiness/mutation surfaces.
          - Commit: `e75dbc8`.
-       - [ ] GSP-04D1b: path-bound generated-artifact and changed-line accounting.
+       - [x] GSP-04D1b: path-bound generated-artifact and changed-line accounting.
+         - Genuine D1a plans are claimed once before exact path-bound accounting; forged or reused plans, malformed plain data, path partition failures, authored relabeling, generated artifact mismatches, and incomplete totals fail closed without mutation or authority.
+         - Immutable per-slice and candidate snapshots retain generated identities and classification evidence, include generated lines in complete budgets, and require replanning above 400 while publication and merge remain pending.
+         - Focused D1b/D1a verification passes 23/23, including isolated rejection of an otherwise valid-length uppercase SHA-256 identity; typecheck, 27-Skill audit, 12-Skill parity audit, 270-path upstream-boundary audit, and diff check pass. The D1b implementation and focused test files total 265 lines before the narrow D1a provenance and tracker additions, keeping the complete slice below 400 additions.
      - [ ] GSP-04D2: Delivery Chain Skill normalization, matrix evidence, and generated behavioral checks.
    - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
