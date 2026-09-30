@@ -149,8 +149,14 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Combined focused verification passes 38/38: 7 Skill-contract checks plus 7 C1 preparation, 6 C2 local delivery, 8 C3a remote publication, and 10 C3b label/check behaviors. Typecheck, 27-Skill audit, 12-Skill parity audit, 267-path upstream-boundary audit, and diff check pass.
       - SRC-SKILL-001 remains PARTIAL solely for Pi Free positive and negative generated-output probes in GSP-06. GSP-04C is complete; GSP-04D, GSP-04E, and parent GSP-04 remain open.
       - Commit: `2ed5733`.
-  - [ ] GSP-04D: chained pull-request policy and behavioral evidence.
-  - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
+   - [ ] GSP-04D: chained pull-request policy and behavioral evidence.
+     - [ ] GSP-04D1: deterministic chain strategy, slicing, dependency, and clean-diff planning.
+       - [x] GSP-04D1a: core chain strategy and evidence planning.
+         - Added a readable pure exact-data planner for one cohesive slicing pass, authored 400-line/60-minute budgets, deterministic single/stacked-main/feature-chain/exception selection, clean diffs, dependency diagrams, complete verification/docs/rollback/state/fact preservation, tracker planning, and pending publication/merge statuses without issuing authority.
+         - Added isolated evidence for every strategy, focus/cohesion, exact slicing pass, commit partitions, authored totals, dependencies, clean diffs, complete immutable slice evidence, malformed facts, and absent readiness/mutation surfaces.
+       - [ ] GSP-04D1b: path-bound generated-artifact and changed-line accounting.
+     - [ ] GSP-04D2: Delivery Chain Skill normalization, matrix evidence, and generated behavioral checks.
+   - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
   - 400-line/60-minute chain policy, one slicing pass, delivery strategy, tracker/draft semantics, dependency diagrams, and base validation.
