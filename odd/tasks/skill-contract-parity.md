@@ -193,6 +193,11 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
   - Conventional work-unit commits, feature-task commit identity, and native review candidate boundaries.
 - [ ] GSP-05 — Align orchestration, RDD, and Judgment Day behavior.
   - [ ] GSP-05A: derived ODD facts and opaque one-use route decisions.
+    - [x] GSP-05A1: exact request-fact derivation and deterministic one-use route planning.
+      - Exact plain request records now derive immutable scope, write, session, testing, review, uncertainty, risk, and routing facts without caller-supplied counts, routes, risk, or verification.
+      - Genuine facts plan once into deterministic SHA-256-identified decisions; genuine decisions claim once for A2, while structural forgeries and reuse fail closed without authority or execution surfaces.
+      - Focused new and legacy ODD verification passes 16/16; typecheck, 27-Skill audit, 12-Skill parity audit, and 280-path upstream-boundary audit pass. The implementation and focused tests total 287 lines, below the 400-addition slice budget.
+    - [ ] GSP-05A2: enforce genuine route provenance in orchestration and evidence admission.
   - [ ] GSP-05B: optional structured-lifecycle applicability before lifecycle entry.
   - [ ] GSP-05C: runtime-enforced conditional TDD triangulation.
   - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
