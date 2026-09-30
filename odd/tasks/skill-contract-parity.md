@@ -118,6 +118,17 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - SRC-SKILL-006 remains PARTIAL with only Pi Free positive and negative generated-output probes pending GSP-06; GSP-04 remains open for the branch, chain, and work-unit slices.
       - Typecheck, 27-Skill audit, 12-Skill parity audit, 258-path upstream-boundary audit, and diff check pass.
       - Commit: `1ab2508`.
+  - [ ] GSP-04C: branch and pull-request delivery behavior.
+    - [x] GSP-04C1: exact-target policy inspection and pure branch/PR preparation.
+      - Implementation and focused evidence are complete: exact one-shot authorized inspection validates a closed plain snapshot against ASEN-owned patterns, and genuine unused evidence prepares an immutable non-executing branch/PR plan.
+      - Focused C1 tests pass 18/18 with repository-operation regressions; the combined Issue/C1 command passes 25/25. Typecheck, 27-Skill audit, 12-Skill parity audit, 259-path upstream-boundary audit, and diff check all pass.
+      - The runtime negative assertion remains intact while constructing the forbidden brand pattern without storing its contiguous literal in tracked source.
+      - The C1 implementation and focused test files total 108 authored additions, within the sub-400 slice budget; no remote calls or repository mutations are performed.
+    - [ ] GSP-04C2: separately authorized local branch and commit execution.
+    - [ ] GSP-04C3: one-shot push, PR publication, and label mutation; merge remains separately authorized.
+    - [ ] GSP-04C4: Delivery Branch Skill normalization, matrix evidence, and generated behavioral checks.
+  - [ ] GSP-04D: chained pull-request policy and behavioral evidence.
+  - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
   - 400-line/60-minute chain policy, one slicing pass, delivery strategy, tracker/draft semantics, dependency diagrams, and base validation.

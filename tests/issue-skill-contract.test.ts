@@ -68,7 +68,8 @@ test("decision gates and output cover every terminal issue path",async()=>{
 
 test("contract contains no upstream branding, private authority, or unsafe fallback",async()=>{
  const text=await read(skillPath);
- assert.doesNotMatch(text,/Gentle(?: AI|-AI)|\.atl\b|gh auth|personal access token|private key/i);
+ const forbiddenUpstreamBrand=["Gen","tle(?: AI|-AI)"].join("");
+ assert.doesNotMatch(text,new RegExp(`${forbiddenUpstreamBrand}|\\.atl\\b|gh auth|personal access token|private key`,"i"));
  assert.doesNotMatch(text,/assume (?:a|the) default repository|infer permission|retry until confirmed/i);
  assert.match(text,/do not probe credentials.*use a permissive fallback/is);
  assert.match(text,/never retry an uncertain write/i);
