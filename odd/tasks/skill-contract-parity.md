@@ -149,7 +149,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Combined focused verification passes 38/38: 7 Skill-contract checks plus 7 C1 preparation, 6 C2 local delivery, 8 C3a remote publication, and 10 C3b label/check behaviors. Typecheck, 27-Skill audit, 12-Skill parity audit, 267-path upstream-boundary audit, and diff check pass.
       - SRC-SKILL-001 remains PARTIAL solely for Pi Free positive and negative generated-output probes in GSP-06. GSP-04C is complete; GSP-04D, GSP-04E, and parent GSP-04 remain open.
       - Commit: `2ed5733`.
-   - [ ] GSP-04D: chained pull-request policy and behavioral evidence.
+   - [x] GSP-04D: chained pull-request policy and behavioral evidence.
      - [x] GSP-04D1: deterministic chain strategy, slicing, dependency, and clean-diff planning.
        - [x] GSP-04D1a: core chain strategy and evidence planning.
          - Added a readable pure exact-data planner for one cohesive slicing pass, authored 400-line/60-minute budgets, deterministic single/stacked-main/feature-chain/exception selection, clean diffs, dependency diagrams, complete verification/docs/rollback/state/fact preservation, tracker planning, and pending publication/merge statuses without issuing authority.
@@ -160,7 +160,11 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
          - Immutable per-slice and candidate snapshots retain generated identities and classification evidence, include generated lines in complete budgets, and require replanning above 400 while publication and merge remain pending.
          - Focused D1b/D1a verification passes 23/23, including isolated rejection of an otherwise valid-length uppercase SHA-256 identity; typecheck, 27-Skill audit, 12-Skill parity audit, 270-path upstream-boundary audit, and diff check pass. The D1b implementation and focused test files total 265 lines before the narrow D1a provenance and tracker additions, keeping the complete slice below 400 additions.
          - Commit: `602e72c`.
-     - [ ] GSP-04D2: Delivery Chain Skill normalization, matrix evidence, and generated behavioral checks.
+     - [x] GSP-04D2: Delivery Chain Skill normalization, matrix evidence, and generated behavioral checks.
+       - Normalized `asen-delivery-chain` to strict metadata, ordered sections, and the 180–450 body-word contract while preserving ASEN naming and the committed D1a/D1b behavior.
+       - Added parser- and runtime-selection-backed evidence for activation boundaries, one-pass slicing, complete authored/generated budgets, explicit strategy and base rules, dependency diagrams, clean diffs, stop conditions, pending authority, and prohibited fallbacks.
+       - SRC-SKILL-002 remains PARTIAL solely for Pi Free positive and negative generated-output probes in GSP-06; its evidence now names deterministic D1a, D1b, and Skill-contract paths without volatile counts.
+       - Focused chain verification, typecheck, 27-Skill audit, 12-Skill parity audit, 272-path upstream-boundary audit, and diff check pass. GSP-04 remains open for GSP-04E.
    - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.

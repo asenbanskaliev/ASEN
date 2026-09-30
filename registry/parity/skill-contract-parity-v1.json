@@ -112,8 +112,12 @@
       "outputs": ["CHAIN-OUT-001"],
       "prohibited": ["CHAIN-PRO-001"],
       "equivalentAdaptations": [{"contractId": "CHAIN-GATE-001", "note": "ASEN names independent and dependent delivery while preserving equivalent landing constraints."}],
-      "gaps": [{"contractId": "CHAIN-RULE-001", "note": "Exact budgets, one-pass slicing, tracker semantics, and dependency-diagram behavior lack automated evidence."}],
-      "evidence": ["Structural mapping only; behavioral automation is pending GSP-04."]
+      "gaps": [{"contractId": "CHAIN-OUT-001", "note": "Generated-output compliance still requires Pi Free positive and negative probes in GSP-06."}],
+      "evidence": [
+        "tests/delivery-chain-skill-contract.test.ts — activation, parser/style, semantic, prohibited-behavior, and matrix evidence",
+        "tests/chain-policy.test.ts — deterministic strategy, slicing, dependency, clean-diff, and complete slice evidence",
+        "tests/chain-artifact-accounting.test.ts — deterministic path-bound generated-artifact and complete-budget evidence"
+      ]
     },
     {
       "sourceId": "SRC-SKILL-003",
