@@ -119,7 +119,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - SRC-SKILL-006 remains PARTIAL with only Pi Free positive and negative generated-output probes pending GSP-06; GSP-04 remains open for the branch, chain, and work-unit slices.
       - Typecheck, 27-Skill audit, 12-Skill parity audit, 258-path upstream-boundary audit, and diff check pass.
       - Commit: `1ab2508`.
-  - [ ] GSP-04C: branch and pull-request delivery behavior.
+  - [x] GSP-04C: branch and pull-request delivery behavior.
     - [x] GSP-04C1: exact-target policy inspection and pure branch/PR preparation.
       - Implementation and focused evidence are complete: exact one-shot authorized inspection validates a closed plain snapshot against ASEN-owned patterns, and genuine unused evidence prepares an immutable non-executing branch/PR plan.
       - Focused C1 tests pass 18/18 with repository-operation regressions; the combined Issue/C1 command passes 25/25. Typecheck, 27-Skill audit, 12-Skill parity audit, 259-path upstream-boundary audit, and diff check all pass.
@@ -143,7 +143,11 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Execution performs one authorized exact-shape snapshot read, one conditional combined protected-label mutation, and one readback with no retry. It preserves unrelated labels, binds an immutable baseline SHA-256 token, requires exact NFC/case-sensitive policy check identities while retaining NFC/case-insensitive label identities, reports canonical required and exact successful/missing checks, and emits only pending/stopped merge evidence without merge authority or callbacks.
         - Focused C3b/C3a/repository verification passes 31/31, including required/successful check case-drift regressions; typecheck, 27-Skill audit, 12-Skill parity audit, 265-path upstream-boundary audit, and diff check pass. The complete C3b slice remains below 400 authored additions including this tracker evidence; no network, Git, merge, or delivery-authorization implementation is present.
         - Commit: `e94e1e7`.
-    - [ ] GSP-04C4: Delivery Branch Skill normalization, matrix evidence, and generated behavioral checks.
+    - [x] GSP-04C4: Delivery Branch Skill normalization, matrix evidence, and generated behavioral checks.
+      - Normalized `asen-delivery-branch` to the strict frontmatter, ordered-section, and 427-word body contract with delivery-stage activation boundaries, exact candidate/policy facts, separate one-use remote-read and mutation authority, exact readback outcomes, empty-label PR publication, conditional label mutation, exact-case required checks, and pending merge authority.
+      - Added parser- and runtime-selection-backed positive/negative activation evidence, semantic/prohibited contract checks, and exact SRC-SKILL-001 matrix assertions without storing the forbidden upstream brand literal.
+      - Combined focused verification passes 38/38: 7 Skill-contract checks plus 7 C1 preparation, 6 C2 local delivery, 8 C3a remote publication, and 10 C3b label/check behaviors. Typecheck, 27-Skill audit, 12-Skill parity audit, 267-path upstream-boundary audit, and diff check pass.
+      - SRC-SKILL-001 remains PARTIAL solely for Pi Free positive and negative generated-output probes in GSP-06. GSP-04C is complete; GSP-04D, GSP-04E, and parent GSP-04 remain open.
   - [ ] GSP-04D: chained pull-request policy and behavioral evidence.
   - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.

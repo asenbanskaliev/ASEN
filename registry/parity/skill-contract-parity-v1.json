@@ -91,9 +91,16 @@
       "decisionGates": ["BRANCH-GATE-001"],
       "outputs": ["BRANCH-OUT-001"],
       "prohibited": ["BRANCH-PRO-001"],
-      "equivalentAdaptations": [{"contractId": "BRANCH-RULE-001", "note": "ASEN separates implementation and delivery authority using Pi-native repository operations."}],
-      "gaps": [{"contractId": "BRANCH-GATE-001", "note": "Approved-issue, exact type-label, naming, template, protected-label, and target-policy gates are not fully encoded or behavior-tested."}],
-      "evidence": ["Structural mapping only; behavioral automation is pending GSP-04."]
+      "equivalentAdaptations": [{"contractId": "BRANCH-RULE-001", "note": "ASEN separates implementation and each delivery action through one-use Pi-native repository-operation authority."}],
+      "gaps": [{"contractId": "BRANCH-OUT-001", "note": "Generated-output compliance still requires Pi Free positive and negative probes in GSP-06."}],
+      "evidence": [
+        "tests/delivery-branch-skill-contract.test.ts — activation, parser/style, semantic, prohibited-behavior, and matrix evidence",
+        "tests/branch-preparation.test.ts — deterministic exact-target policy and branch/PR preparation behavior",
+        "tests/local-delivery.test.ts — deterministic separately authorized branch and commit behavior",
+        "tests/remote-delivery.test.ts — deterministic push and empty-label PR publication behavior",
+        "tests/pr-label-publication.test.ts — deterministic conditional label, exact-check, and pending-merge behavior",
+        "tests/repository-operation-policy.test.ts — deterministic exact-operation authority and readback behavior"
+      ]
     },
     {
       "sourceId": "SRC-SKILL-002",
