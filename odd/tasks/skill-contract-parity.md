@@ -186,7 +186,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Added actual parser and runtime-selection evidence for implementation triggers, meaningful positive and negative phases, semantic obligations, prohibited fallbacks, and exact SRC-SKILL-012 matrix state without storing the contiguous forbidden upstream brand literal.
         - SRC-SKILL-012 remains PARTIAL solely for Pi Free positive and negative generated-output probes in GSP-06; deterministic evidence paths remain count-free.
         - Focused work-unit verification passes 37/37; typecheck, 27-Skill audit, 12-Skill parity audit, 279-path upstream-boundary audit, and diff check pass. GSP-04E and GSP-04 are complete.
-        - Commit: `086d3d6`.
+        - Commits: `086d3d6`, `f0888b4`.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
   - 400-line/60-minute chain policy, one slicing pass, delivery strategy, tracker/draft semantics, dependency diagrams, and base validation.
