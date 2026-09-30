@@ -124,16 +124,19 @@ test("read mismatch, forgery, and reader errors produce no extra reads and consu
 test("plans case-insensitive protected label changes without mutating caller arrays",()=>{
  const currentLabels=["Bug","keep","Type:Old"],add=["SIZE:Exception","Type:New"],remove=["TYPE:OLD"],protectedLabels=["size:exception","type:new","type:old"];
  const before=structuredClone({currentLabels,add,remove,protectedLabels});
- const plan=planProtectedLabelMutation({currentLabels,add,remove,protectedLabels,actorPermission:"WRITE",rationale:"Large generated evidence is required."});
- assert.deepEqual(plan,{add:["SIZE:Exception","Type:New"],remove:["TYPE:OLD"],expectedFinalLabels:["Bug","keep","SIZE:Exception","Type:New"]});assert.deepEqual({currentLabels,add,remove,protectedLabels},before);
- assert.equal(Object.isFrozen(plan)&&Object.isFrozen(plan.add)&&Object.isFrozen(plan.remove)&&Object.isFrozen(plan.expectedFinalLabels),true);
+ for(const actorPermission of ["MAINTAIN","ADMIN"] as const){
+  const plan=planProtectedLabelMutation({currentLabels,add,remove,protectedLabels,actorPermission,rationale:"Large generated evidence is required."});
+  assert.deepEqual(plan,{add:["SIZE:Exception","Type:New"],remove:["TYPE:OLD"],expectedFinalLabels:["Bug","keep","SIZE:Exception","Type:New"]});
+  assert.equal(Object.isFrozen(plan)&&Object.isFrozen(plan.add)&&Object.isFrozen(plan.remove)&&Object.isFrozen(plan.expectedFinalLabels),true);
+ }
+ assert.deepEqual({currentLabels,add,remove,protectedLabels},before);
 });
 
 test("rejects case and NFC-variant duplicate, overlap, protected-permission, and rationale bypasses",()=>{
- const base={currentLabels:["bug"],add:["Protected"],remove:[],protectedLabels:["protected"],actorPermission:"WRITE" as const},composed="café",decomposed="cafe\u0301";
+ const base={currentLabels:["bug"],add:["Protected"],remove:[],protectedLabels:["protected"],actorPermission:"MAINTAIN" as const},composed="café",decomposed="cafe\u0301";
  for(const duplicate of [{...base,add:["protected","PROTECTED"]},{...base,currentLabels:["bug","BUG"]},{...base,protectedLabels:["protected","PROTECTED"]},{...base,add:[composed,decomposed]}])assert.throws(()=>planProtectedLabelMutation(duplicate),/duplicate/);
  assert.throws(()=>planProtectedLabelMutation({...base,add:["Protected"],remove:["pRoTeCtEd"]}),/overlap/);assert.throws(()=>planProtectedLabelMutation({...base,add:[composed],remove:[decomposed]}),/overlap/);
- for(const actorPermission of ["READ","TRIAGE","UNVERIFIED"] as const){assert.throws(()=>planProtectedLabelMutation({...base,add:["PROTECTED"],actorPermission}),/permission/);assert.throws(()=>planProtectedLabelMutation({...base,add:[decomposed],protectedLabels:[composed],actorPermission}),/permission/);}
+ for(const actorPermission of ["WRITE","TRIAGE","READ","UNVERIFIED"] as const){assert.throws(()=>planProtectedLabelMutation({...base,add:["PROTECTED"],actorPermission}),/permission/);assert.throws(()=>planProtectedLabelMutation({...base,add:[decomposed],protectedLabels:[composed],actorPermission}),/permission/);}
  assert.throws(()=>planProtectedLabelMutation({...base,add:["SIZE:EXCEPTION"],protectedLabels:["size:exception"]}),/rationale/);
  assert.throws(()=>planProtectedLabelMutation({...base,add:["SIZE:EXCEPTION"],protectedLabels:["size:exception"],rationale:"   "}),/rationale/);
  const removal=planProtectedLabelMutation({currentLabels:["Bug","Keep"],add:[decomposed],remove:["bUG"],protectedLabels:[],actorPermission:"READ"});assert.deepEqual(removal.add,[composed]);assert.deepEqual(removal.expectedFinalLabels,[composed,"Keep"]);

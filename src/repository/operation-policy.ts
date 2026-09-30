@@ -91,7 +91,7 @@ export function planProtectedLabelMutation(input:ProtectedLabelMutationInput):Pr
  const removed=new Set(remove.map(labelKey)),protectedSet=new Set(protectedLabels.map(labelKey));
  if(add.some(label=>removed.has(labelKey(label))))throw new Error("Label add/remove overlap is not atomic");
  const protectedChange=[...add,...remove].some(label=>protectedSet.has(labelKey(label)));
- if(protectedChange&&!(["ADMIN","MAINTAIN","WRITE"] as readonly RepositoryPermission[]).includes(input.actorPermission))throw new Error("Actor permission does not authorize protected label changes");
+ if(protectedChange&&!(["ADMIN","MAINTAIN"] as readonly RepositoryPermission[]).includes(input.actorPermission))throw new Error("Actor permission does not authorize protected label changes");
  if(add.some(label=>labelKey(label)==="size:exception")&&(!input.rationale||!input.rationale.trim()))throw new Error("size:exception addition requires a nonblank rationale");
  const final=new Map(current.map(label=>[labelKey(label),label]));for(const label of remove)final.delete(labelKey(label));for(const label of add)final.set(labelKey(label),label);
  return Object.freeze({add:Object.freeze(sortedLabels(add)),remove:Object.freeze(sortedLabels(remove)),expectedFinalLabels:Object.freeze(sortedLabels(final.values()))});
