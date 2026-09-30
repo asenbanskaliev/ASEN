@@ -132,13 +132,16 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Focused evidence covers two-commit transcripts, provenance forgery/reuse, target/action/session mismatch, per-stage reuse, rejection/timeout/drift/malformed/throw classifications, callback/input immutability, sanitized failures, and the absence of push/PR/merge callbacks.
       - Verification passes: focused C2/C1/repository tests 26/26, typecheck, 27-Skill audit, 12-Skill parity audit, 261-path upstream-boundary audit, and diff check. No Git or remote operation implementation is present.
       - Commit: `b0d989f`.
-    - [ ] GSP-04C3: one-shot push, PR publication, and label mutation; merge remains separately authorized.
+    - [x] GSP-04C3: one-shot push, PR publication, and label mutation; merge remains separately authorized.
       - [x] GSP-04C3a: one-shot push and PR publication with exact readbacks.
         - Genuine final C2 evidence now carries private C1/local-plan provenance into one immutable, one-use remote plan; exact one-attempt push and PR-open ports classify only verified intended state as confirmed, authoritative rejection plus verified absence as `no_write`, and every ambiguity as `unknown`.
         - Focused evidence covers the positive push-to-PR transcript, frozen exact payloads, forgery/reuse/cross-target and authority mismatch rejection, transport/readback classifications, canonical PR URLs, exact title/body/issue/policy/head state, an explicit empty initial-label contract with candidate labels reserved for C3b, sanitized failures, caller-input preservation, and absence of label or merge callbacks.
         - Verification passes: focused C3a/C2/C1/repository tests 34/34, typecheck, 27-Skill audit, 12-Skill parity audit, 263-path upstream-boundary audit, and diff check. The complete C3a slice is 83 authored additions including tracker evidence, within the sub-400 budget; no Git or network implementation is present.
         - Commit: `769444c`.
-      - [ ] GSP-04C3b: conditional PR label mutation and pending-merge evidence.
+      - [x] GSP-04C3b: conditional PR label mutation and pending-merge evidence.
+        - Genuine C3a publication evidence is claimed exactly once into an immutable C3b plan carrying the exact PR, policy, candidate-label, permission, and required-check facts; forged, reused, cross-target, malformed, and mismatched authority data fail closed before mutation.
+        - Execution performs one authorized exact-shape snapshot read, one conditional combined protected-label mutation, and one readback with no retry. It preserves unrelated labels, binds an immutable baseline SHA-256 token, requires exact NFC/case-sensitive policy check identities while retaining NFC/case-insensitive label identities, reports canonical required and exact successful/missing checks, and emits only pending/stopped merge evidence without merge authority or callbacks.
+        - Focused C3b/C3a/repository verification passes 31/31, including required/successful check case-drift regressions; typecheck, 27-Skill audit, 12-Skill parity audit, 265-path upstream-boundary audit, and diff check pass. The complete C3b slice remains below 400 authored additions including this tracker evidence; no network, Git, merge, or delivery-authorization implementation is present.
     - [ ] GSP-04C4: Delivery Branch Skill normalization, matrix evidence, and generated behavioral checks.
   - [ ] GSP-04D: chained pull-request policy and behavioral evidence.
   - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
