@@ -179,13 +179,14 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
             - Commit: `7287942`.
           - [x] GSP-04E1b2: bind a review candidate to a genuine completed record.
             - Genuine completed records now carry first-attempt claim provenance into an immutable exact commit or repository-bound PR-slice candidate; malformed, forged, reused, cross-task, cross-repository, and commit/tree mismatch attempts fail closed and burn the completed provenance.
-            - Independent focused verification passes 28/28 with E1a/E1b1 regressions, including accessor-safe exact shapes, canonical PR identities, chain provenance, deep freeze, input preservation, and absence of verdict, readiness, authority, publication, merge, mutation, Git, or network surfaces. Typecheck, 27-Skill audit, 12-Skill parity audit, 277-path upstream-boundary audit, and diff check pass. GSP-04E2, GSP-04E, and GSP-04 remain open.
+            - Independent focused verification passes 28/28 with E1a/E1b1 regressions, including accessor-safe exact shapes, canonical PR identities, chain provenance, deep freeze, input preservation, and absence of verdict, readiness, authority, publication, merge, mutation, Git, or network surfaces. Typecheck, 27-Skill audit, 12-Skill parity audit, 277-path upstream-boundary audit, and diff check pass. GSP-04E2 remained the final GSP-04 work item.
             - Commit: `eaae342`.
       - [x] GSP-04E2: Work Unit Skill normalization, matrix evidence, and generated behavioral checks.
         - Normalized `asen-work-unit` to strict metadata, ordered sections, imperative ASEN-owned prose, and the 180–450 body-word contract while preserving the committed E1a/E1b boundary, evidence, commit-freeze, and review-candidate behavior.
         - Added actual parser and runtime-selection evidence for implementation triggers, meaningful positive and negative phases, semantic obligations, prohibited fallbacks, and exact SRC-SKILL-012 matrix state without storing the contiguous forbidden upstream brand literal.
         - SRC-SKILL-012 remains PARTIAL solely for Pi Free positive and negative generated-output probes in GSP-06; deterministic evidence paths remain count-free.
-        - Focused work-unit verification, typecheck, 27-Skill audit, 12-Skill parity audit, 279-path upstream-boundary audit, and diff check pass. GSP-04E and GSP-04 are complete.
+        - Focused work-unit verification passes 37/37; typecheck, 27-Skill audit, 12-Skill parity audit, 279-path upstream-boundary audit, and diff check pass. GSP-04E and GSP-04 are complete.
+        - Commit: `086d3d6`.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
   - 400-line/60-minute chain policy, one slicing pass, delivery strategy, tracker/draft semantics, dependency diagrams, and base validation.
