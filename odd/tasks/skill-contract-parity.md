@@ -201,12 +201,13 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
     - [x] GSP-05A2: enforce genuine route provenance in orchestration and evidence admission.
       - [x] GSP-05A2a: require genuine task-bound route decisions for orchestration plans.
         - Orchestration now claims a genuine A1 route decision immediately on entry, then enforces exact task and repository identity; malformed orchestration, cross-task, and cross-repository first attempts burn the decision, while legacy decisions, structural clones, forgeries, and reuse fail closed.
-        - Plans retain the claimed immutable decision and preserve existing agent, candidate, and Skill behavior without issuing route evidence, authority, verdicts, or mutation callbacks. Focused verification passes 34/34; typecheck, 27-Skill audit, 12-Skill parity audit, 282-path upstream-boundary audit, and diff check pass. GSP-05A2b, A2, A, and GSP-05 remain open.
+        - Plans retain the claimed immutable decision and preserve existing agent, candidate, and Skill behavior without issuing route evidence, authority, verdicts, or mutation callbacks. Focused verification passes 34/34; typecheck, 27-Skill audit, 12-Skill parity audit, 282-path upstream-boundary audit, and diff check pass. A2b remained the final GSP-05A item.
         - Commit: `f5fa872`.
       - [x] GSP-05A2b: admit only orchestration-issued route evidence for mutation gates.
         - Candidate-bound orchestration plans now issue deeply frozen one-use route provenance carrying the exact task, repository, candidate id/revision, decision, route, risk, and verification facts without authority, readiness, verdict, or mutation surfaces.
         - Generic evidence admission rejects every manual route-decision status. Dedicated admission claims genuine provenance before exact candidate and accessor-safe metadata validation, so reuse, binding mismatches, malformed metadata, clones, and forgeries fail closed and first-attempt failures burn genuine proofs.
         - Focused verification passes 58/58, including mutation-gate contribution, all provenance and metadata negatives, fixed evidence fields, and signed recovery. Typecheck, 27-Skill audit, 12-Skill parity audit, and 283-path upstream-boundary audit pass. The complete readable additions remain below 400 lines.
+        - Commit: `00164d2`.
         - Commit: intentionally not created under the task's no-commit constraint.
   - [ ] GSP-05B: optional structured-lifecycle applicability before lifecycle entry.
   - [ ] GSP-05C: runtime-enforced conditional TDD triangulation.
