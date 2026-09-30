@@ -43,6 +43,18 @@ export interface WorkUnitEvidenceInput {
 }
 export type CompletedWorkUnit = Readonly<WorkUnitEvidenceInput>;
 
+const completedRecords = new WeakSet<object>();
+const claimedCompletedRecords = new WeakSet<object>();
+
+/** Consumes genuine completed provenance on the first review-candidate attempt. */
+export function claimCompletedWorkUnit(value: unknown): asserts value is CompletedWorkUnit {
+  if (typeof value !== "object" || value === null || !completedRecords.has(value)) {
+    throw new Error("completed work unit was not recorded here");
+  }
+  if (claimedCompletedRecords.has(value)) throw new Error("completed work unit has already been claimed");
+  claimedCompletedRecords.add(value);
+}
+
 const inputKeys = [
   "featureIdentity", "taskIdentity", "taskDocumentPath", "boundaryId", "repositoryIdentity", "purpose",
   "deliveryRelationship", "previousReviewedBoundary", "rollbackBoundary", "commit", "authoredAdditions",
@@ -146,7 +158,7 @@ export function recordCompletedWorkUnit(ready: ReadyWorkUnitBoundary, evidence: 
   if (partitionInvalid || scopeMismatch) throw new Error("paths must exactly partition boundary scope");
 
   const commit = Object.freeze({ identity, treeIdentity, parentIdentity, message, currentTreeIdentity });
-  return Object.freeze({
+  const completed = Object.freeze({
     featureIdentity: ready.featureIdentity, taskIdentity: ready.taskIdentity, taskDocumentPath: ready.taskDocumentPath,
     boundaryId: ready.boundaryId, repositoryIdentity, purpose: ready.purpose, deliveryRelationship,
     previousReviewedBoundary: ready.previousReviewedBoundary, rollbackBoundary, commit, authoredAdditions, authoredDeletions,
@@ -158,4 +170,6 @@ export function recordCompletedWorkUnit(ready: ReadyWorkUnitBoundary, evidence: 
     documentation: documentation(input.documentation, ready.documentation, documentationPaths),
     taskDocumentCommitIdentity: identity,
   });
+  completedRecords.add(completed);
+  return completed;
 }

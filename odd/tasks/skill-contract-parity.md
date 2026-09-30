@@ -178,6 +178,8 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
             - Independent focused verification passes 18/18, including all-40/all-64 Git object snapshots and isolated mixed-width rejection; typecheck, 27-Skill audit, 12-Skill parity audit, 275-path upstream-boundary audit, and diff check pass. The complete readable E1b1 slice remains below 400 additions.
             - Commit: `7287942`.
           - [ ] GSP-04E1b2: bind a review candidate to a genuine completed record.
+            - Genuine completed records now carry first-attempt claim provenance into an immutable exact commit or repository-bound PR-slice candidate; malformed, forged, reused, cross-task, cross-repository, and commit/tree mismatch attempts fail closed and burn the completed provenance.
+            - Independent focused verification passes 28/28 with E1a/E1b1 regressions, including accessor-safe exact shapes, canonical PR identities, chain provenance, deep freeze, input preservation, and absence of verdict, readiness, authority, publication, merge, mutation, Git, or network surfaces. Typecheck, 27-Skill audit, 12-Skill parity audit, 277-path upstream-boundary audit, and diff check pass. The verified candidate remains pending commit; GSP-04E2, GSP-04E, and GSP-04 remain open.
       - [ ] GSP-04E2: Work Unit Skill normalization, matrix evidence, and generated behavioral checks.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
