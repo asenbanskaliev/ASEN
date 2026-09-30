@@ -166,7 +166,13 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
        - SRC-SKILL-002 remains PARTIAL solely for Pi Free positive and negative generated-output probes in GSP-06; its evidence now names deterministic D1a, D1b, and Skill-contract paths without volatile counts.
        - Focused chain verification, typecheck, 27-Skill audit, 12-Skill parity audit, 272-path upstream-boundary audit, and diff check pass. GSP-04 remains open for GSP-04E.
        - Commit: `377dfbc`.
-   - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
+    - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
+      - [ ] GSP-04E1: deterministic work-unit boundary, evidence, commit, and review-candidate planning.
+        - [x] GSP-04E1a: deterministic boundary classification and opaque ready provenance.
+          - Added readable pure exact-data validation and deterministic immutable branch, split, 401-line chain, and genuine opaque ready decisions with explicit branch facts, one-to-one behavior/rollback facts, canonical task-path scope, and no completion or authority surface.
+          - Focused verification passes 11/11; typecheck, 27-Skill audit, 12-Skill parity audit, 273-path upstream-boundary audit, and diff check pass. The implementation and focused tests total 281 lines; the complete E1a slice is 288 additions.
+        - [ ] GSP-04E1b: completed evidence, commit, and review-candidate recording.
+      - [ ] GSP-04E2: Work Unit Skill normalization, matrix evidence, and generated behavioral checks.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
   - 400-line/60-minute chain policy, one slicing pass, delivery strategy, tracker/draft semantics, dependency diagrams, and base validation.
