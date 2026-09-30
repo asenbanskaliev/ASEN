@@ -167,19 +167,20 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
        - Focused chain verification, typecheck, 27-Skill audit, 12-Skill parity audit, 272-path upstream-boundary audit, and diff check pass. GSP-04 remains open for GSP-04E.
        - Commit: `377dfbc`.
     - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
-      - [ ] GSP-04E1: deterministic work-unit boundary, evidence, commit, and review-candidate planning.
+      - [x] GSP-04E1: deterministic work-unit boundary, evidence, commit, and review-candidate planning.
         - [x] GSP-04E1a: deterministic boundary classification and opaque ready provenance.
           - Added readable pure exact-data validation and deterministic immutable branch, split, 401-line chain, and genuine opaque ready decisions with explicit branch facts, one-to-one behavior/rollback facts, canonical task-path scope, and no completion or authority surface.
           - Focused verification passes 11/11; typecheck, 27-Skill audit, 12-Skill parity audit, 273-path upstream-boundary audit, and diff check pass. The implementation and focused tests total 281 lines; the complete E1a slice is 288 additions.
           - Commit: `b04aefa`.
-        - [ ] GSP-04E1b: completed evidence and review-candidate recording.
+        - [x] GSP-04E1b: completed evidence and review-candidate recording.
           - [x] GSP-04E1b1: completed work-unit commit and evidence recording.
             - Added first-attempt opaque boundary claiming and immutable complete work-unit evidence for exact task, repository, commit, tree freeze, changed-path partitions, boundary-authorized generated identities, authored totals, focused/runtime/docs results, rollback, and task-document commit identity without exposing readiness, candidate, verdict, authority, or mutation surfaces.
             - Independent focused verification passes 18/18, including all-40/all-64 Git object snapshots and isolated mixed-width rejection; typecheck, 27-Skill audit, 12-Skill parity audit, 275-path upstream-boundary audit, and diff check pass. The complete readable E1b1 slice remains below 400 additions.
             - Commit: `7287942`.
-          - [ ] GSP-04E1b2: bind a review candidate to a genuine completed record.
+          - [x] GSP-04E1b2: bind a review candidate to a genuine completed record.
             - Genuine completed records now carry first-attempt claim provenance into an immutable exact commit or repository-bound PR-slice candidate; malformed, forged, reused, cross-task, cross-repository, and commit/tree mismatch attempts fail closed and burn the completed provenance.
-            - Independent focused verification passes 28/28 with E1a/E1b1 regressions, including accessor-safe exact shapes, canonical PR identities, chain provenance, deep freeze, input preservation, and absence of verdict, readiness, authority, publication, merge, mutation, Git, or network surfaces. Typecheck, 27-Skill audit, 12-Skill parity audit, 277-path upstream-boundary audit, and diff check pass. The verified candidate remains pending commit; GSP-04E2, GSP-04E, and GSP-04 remain open.
+            - Independent focused verification passes 28/28 with E1a/E1b1 regressions, including accessor-safe exact shapes, canonical PR identities, chain provenance, deep freeze, input preservation, and absence of verdict, readiness, authority, publication, merge, mutation, Git, or network surfaces. Typecheck, 27-Skill audit, 12-Skill parity audit, 277-path upstream-boundary audit, and diff check pass. GSP-04E2, GSP-04E, and GSP-04 remain open.
+            - Commit: `eaae342`.
       - [ ] GSP-04E2: Work Unit Skill normalization, matrix evidence, and generated behavioral checks.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
