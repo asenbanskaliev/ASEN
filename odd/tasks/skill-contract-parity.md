@@ -124,6 +124,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Focused C1 tests pass 18/18 with repository-operation regressions; the combined Issue/C1 command passes 25/25. Typecheck, 27-Skill audit, 12-Skill parity audit, 259-path upstream-boundary audit, and diff check all pass.
       - The runtime negative assertion remains intact while constructing the forbidden brand pattern without storing its contiguous literal in tracked source.
       - The C1 implementation and focused test files total 108 authored additions, within the sub-400 slice budget; no remote calls or repository mutations are performed.
+      - Commit: `f0da789`.
     - [ ] GSP-04C2: separately authorized local branch and commit execution.
     - [ ] GSP-04C3: one-shot push, PR publication, and label mutation; merge remains separately authorized.
     - [ ] GSP-04C4: Delivery Branch Skill normalization, matrix evidence, and generated behavioral checks.
