@@ -116,7 +116,8 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Added parser- and runtime-selection-backed evidence for positive issue activation, negative delivery/docs activation, style, semantic obligations, prohibited fallbacks, and matrix integrity.
       - Combined focused verification passes 44/44: 7 Skill-contract checks plus the existing 15 preparation, 11 publication, and 11 repository-operation checks.
       - SRC-SKILL-006 remains PARTIAL with only Pi Free positive and negative generated-output probes pending GSP-06; GSP-04 remains open for the branch, chain, and work-unit slices.
-      - Typecheck, 27-Skill audit, 12-Skill parity audit, 258-path upstream-boundary audit, and diff check pass. Commit intentionally deferred by the user for this slice.
+      - Typecheck, 27-Skill audit, 12-Skill parity audit, 258-path upstream-boundary audit, and diff check pass.
+      - Commit: `1ab2508`.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
   - 400-line/60-minute chain policy, one slicing pass, delivery strategy, tracker/draft semantics, dependency diagrams, and base validation.
