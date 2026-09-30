@@ -87,7 +87,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
   - Final bounded hardening adds the distinct >700 recommended-ceiling issue and rejects metadata children outside the exact `metadata` hierarchy.
   - Slice 3A rows remain PARTIAL pending Pi Free positive and negative generated-output probes in GSP-06; the static 27-Skill runtime registry is unchanged.
   - Slice 3A commit: `ecd3c77`.
-- [ ] GSP-04 — Align issue, branch, chained-PR, and work-unit behavior.
+- [x] GSP-04 — Align issue, branch, chained-PR, and work-unit behavior.
   - [x] GSP-04A: exact-target remote-operation authority and protected-label mutation policy.
     - Strict RED failed because `src/repository/operation-policy.ts` did not exist.
     - GREEN/REFACTOR adds provenance-checked, normalized exact-binding authority; duplicate-live issuance prevention; one-use mutation and remote-read execution; immutable callback targets; sanitized one-attempt/readback outcomes; and deterministic case-insensitive protected-label plans.
@@ -95,7 +95,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
     - Verification passes: focused tests 11/11, typecheck, 27-Skill audit, 12-Skill parity audit, 251-path upstream-boundary audit, and diff check. Authored implementation and test files total 233 lines, within the sub-400 slice budget.
     - Pre-C2 hardening aligns protected-label authorization with the frozen Issue contract: only MAINTAIN/ADMIN pass; WRITE and lower permissions fail closed, with NFC/case and size-exception rationale regressions preserved. The combined repository-operation, issue-publication, and Issue Skill regression command passes 29/29.
     - Commits: `569b3a6`, `da26253`.
-  - [ ] GSP-04B: issue preparation, publication, and evidence.
+  - [x] GSP-04B: issue preparation, publication, and evidence.
     - [x] GSP-04B1: deterministic Issue Form selection/validation, duplicate-search decisions, and privacy-safe issue materialization.
       - Strict RED failed because `src/issues/issue-preparation.ts` did not exist.
       - GREEN/REFACTOR adds pure typed form selection, exact-schema answer rendering with safe dynamic fences, reviewed order-independent redaction, expanded final privacy scanning, NFC-stable SHA-256 identity, and complete fail-closed duplicate decisions.
@@ -166,7 +166,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
        - SRC-SKILL-002 remains PARTIAL solely for Pi Free positive and negative generated-output probes in GSP-06; its evidence now names deterministic D1a, D1b, and Skill-contract paths without volatile counts.
        - Focused chain verification, typecheck, 27-Skill audit, 12-Skill parity audit, 272-path upstream-boundary audit, and diff check pass. GSP-04 remains open for GSP-04E.
        - Commit: `377dfbc`.
-    - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
+    - [x] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
       - [x] GSP-04E1: deterministic work-unit boundary, evidence, commit, and review-candidate planning.
         - [x] GSP-04E1a: deterministic boundary classification and opaque ready provenance.
           - Added readable pure exact-data validation and deterministic immutable branch, split, 401-line chain, and genuine opaque ready decisions with explicit branch facts, one-to-one behavior/rollback facts, canonical task-path scope, and no completion or authority surface.
@@ -181,7 +181,11 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
             - Genuine completed records now carry first-attempt claim provenance into an immutable exact commit or repository-bound PR-slice candidate; malformed, forged, reused, cross-task, cross-repository, and commit/tree mismatch attempts fail closed and burn the completed provenance.
             - Independent focused verification passes 28/28 with E1a/E1b1 regressions, including accessor-safe exact shapes, canonical PR identities, chain provenance, deep freeze, input preservation, and absence of verdict, readiness, authority, publication, merge, mutation, Git, or network surfaces. Typecheck, 27-Skill audit, 12-Skill parity audit, 277-path upstream-boundary audit, and diff check pass. GSP-04E2, GSP-04E, and GSP-04 remain open.
             - Commit: `eaae342`.
-      - [ ] GSP-04E2: Work Unit Skill normalization, matrix evidence, and generated behavioral checks.
+      - [x] GSP-04E2: Work Unit Skill normalization, matrix evidence, and generated behavioral checks.
+        - Normalized `asen-work-unit` to strict metadata, ordered sections, imperative ASEN-owned prose, and the 180–450 body-word contract while preserving the committed E1a/E1b boundary, evidence, commit-freeze, and review-candidate behavior.
+        - Added actual parser and runtime-selection evidence for implementation triggers, meaningful positive and negative phases, semantic obligations, prohibited fallbacks, and exact SRC-SKILL-012 matrix state without storing the contiguous forbidden upstream brand literal.
+        - SRC-SKILL-012 remains PARTIAL solely for Pi Free positive and negative generated-output probes in GSP-06; deterministic evidence paths remain count-free.
+        - Focused work-unit verification, typecheck, 27-Skill audit, 12-Skill parity audit, 279-path upstream-boundary audit, and diff check pass. GSP-04E and GSP-04 are complete.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
   - 400-line/60-minute chain policy, one slicing pass, delivery strategy, tracker/draft semantics, dependency diagrams, and base validation.

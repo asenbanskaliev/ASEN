@@ -251,8 +251,13 @@
       "outputs": ["UNIT-OUT-001"],
       "prohibited": ["UNIT-PRO-001"],
       "equivalentAdaptations": [{"contractId": "UNIT-RULE-001", "note": "ASEN names the reviewable boundary a work unit and binds it to candidate evidence."}],
-      "gaps": [{"contractId": "UNIT-OUT-001", "note": "Conventional history, task identity, exact command evidence, runtime evidence, line counts, and delivery relationship are incomplete."}],
-      "evidence": ["Structural mapping only; behavioral automation is pending GSP-04."]
+      "gaps": [{"contractId": "UNIT-OUT-001", "note": "Generated-output compliance still requires Pi Free positive and negative probes in GSP-06."}],
+      "evidence": [
+        "tests/work-unit-skill-contract.test.ts — activation, parser/style, semantic, prohibited-behavior, and matrix evidence",
+        "tests/work-unit-policy.test.ts — deterministic branch, split, line-budget, path, applicability, and boundary-provenance evidence",
+        "tests/work-unit-evidence.test.ts — deterministic one-shot evidence, exact partition, generated identity, commit, tree, task, and delivery-relation evidence",
+        "tests/work-unit-review-candidate.test.ts — deterministic exact commit or repository-bound PR-slice candidate evidence"
+      ]
     }
   ]
 }
