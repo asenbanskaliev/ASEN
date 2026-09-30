@@ -154,6 +154,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
        - [x] GSP-04D1a: core chain strategy and evidence planning.
          - Added a readable pure exact-data planner for one cohesive slicing pass, authored 400-line/60-minute budgets, deterministic single/stacked-main/feature-chain/exception selection, clean diffs, dependency diagrams, complete verification/docs/rollback/state/fact preservation, tracker planning, and pending publication/merge statuses without issuing authority.
          - Added isolated evidence for every strategy, focus/cohesion, exact slicing pass, commit partitions, authored totals, dependencies, clean diffs, complete immutable slice evidence, malformed facts, and absent readiness/mutation surfaces.
+         - Commit: `e75dbc8`.
        - [ ] GSP-04D1b: path-bound generated-artifact and changed-line accounting.
      - [ ] GSP-04D2: Delivery Chain Skill normalization, matrix evidence, and generated behavioral checks.
    - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
