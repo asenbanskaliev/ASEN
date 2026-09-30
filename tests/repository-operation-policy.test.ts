@@ -5,7 +5,7 @@ import {
  type RepositoryOperationAction,type RepositoryOperationBinding,type RepositoryOperationAuthority,
 } from "../src/repository/operation-policy.js";
 
-const actions:RepositoryOperationAction[]=["remote_read","issue_create","issue_update","branch_create","push","pr_open","pr_update","label_mutate","merge","force_update"];
+const actions:RepositoryOperationAction[]=["remote_read","issue_create","issue_update","branch_create","commit","push","pr_open","pr_update","label_mutate","merge","force_update"];
 let sequence=0;
 const binding=(action:RepositoryOperationAction="issue_update",sessionId=`session-${++sequence}`,host="github.example"):RepositoryOperationBinding=>({host,owner:"acme",repository:"app",sessionId,actor:"maintainer",action});
 const issue=(action:RepositoryOperationAction="issue_update",sessionId?:string,host?:string)=>authorizeRepositoryOperation(binding(action,sessionId,host));
@@ -30,6 +30,10 @@ test("issues immutable normalized exact targets and rejects ambiguous fields",as
   {...binding(),host:"git hub.example"},{...binding(),owner:"host/acme"},{...binding(),repository:"acme/app"},{...binding(),owner:"acme\\other"},{...binding(),actor:"two actors"},{...binding(),action:"issue"},
  ])assert.throws(()=>authorizeRepositoryOperation(invalid as never),/explicit|supported/);
  assert.equal(isRepositoryOperationAuthority({...binding()}),false);
+});
+
+test("rejects inherited, extra, symbol, and accessor bindings without invoking getters",()=>{
+ let gets=0;const accessor={...binding("commit")};Object.defineProperty(accessor,"actor",{enumerable:true,get(){gets++;return "maintainer";}});for(const invalid of [Object.assign(Object.create(binding("commit")),{}),{...binding("commit"),extra:true},Object.assign({...binding("commit")},{[Symbol("extra")]:true}),accessor])assert.throws(()=>authorizeRepositoryOperation(invalid as never),/plain/);assert.equal(gets,0);
 });
 
 test("normalizes host identity and prevents duplicate live issuance until consumption",async()=>{
@@ -88,6 +92,10 @@ test("classifies ambiguous 5xx, accepted unchanged, and ambiguous timeout or err
   assert.deepEqual(events,[`operation:${JSON.stringify(target)}`,`readback:${JSON.stringify(target)}`]);
   assert.equal(JSON.stringify(outcome).includes("SECRET"),false);
  }
+});
+
+test("malformed operation and readback records fail closed without invoking getters",async()=>{
+ let gets=0;const operation={status:"accepted",extra:true},observed={state:"intended"};Object.defineProperty(observed,"state",{enumerable:true,get(){gets++;return "intended";}});const result=await run(issue("commit"),operation,observed);assert.deepEqual(result,{classification:"unknown",operationReason:"malformed_operation",readBackReason:"malformed_readback"});assert.equal(gets,0);
 });
 
 test("preserves sanitized reason codes only",async()=>{

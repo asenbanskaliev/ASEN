@@ -1,4 +1,4 @@
-export const REPOSITORY_OPERATION_ACTIONS=["remote_read","issue_create","issue_update","branch_create","push","pr_open","pr_update","label_mutate","merge","force_update"] as const;
+export const REPOSITORY_OPERATION_ACTIONS=["remote_read","issue_create","issue_update","branch_create","commit","push","pr_open","pr_update","label_mutate","merge","force_update"] as const;
 export type RepositoryOperationAction=typeof REPOSITORY_OPERATION_ACTIONS[number];
 export type MutationAction=Exclude<RepositoryOperationAction,"remote_read">;
 export interface RepositoryOperationBinding{readonly host:string;readonly owner:string;readonly repository:string;readonly sessionId:string;readonly actor:string;readonly action:RepositoryOperationAction;}
@@ -18,10 +18,12 @@ function normalizedHost(value:unknown):string{
  return host;
 }
 function exactBinding(input:RepositoryOperationBinding):RepositoryOperationBinding{
- if(typeof input!=="object"||input===null)throw new Error("Binding must be an explicit structured value");
- const action=input.action;
- if(!(REPOSITORY_OPERATION_ACTIONS as readonly unknown[]).includes(action))throw new Error("Action must be supported and exact");
- return Object.freeze({host:normalizedHost(input.host),owner:explicit(input.owner,"owner",true),repository:explicit(input.repository,"repository",true),sessionId:explicit(input.sessionId,"sessionId",true),actor:explicit(input.actor,"actor",true),action});
+ const names=["host","owner","repository","sessionId","actor","action"] as const;
+ if(typeof input!=="object"||input===null||Array.isArray(input)||Object.getPrototypeOf(input)!==Object.prototype)throw new Error("Binding must be exact plain data");
+ const keys=Reflect.ownKeys(input);if(keys.length!==names.length||keys.some(key=>typeof key!=="string"||!names.includes(key as typeof names[number]))||names.some(key=>!Object.hasOwn(input,key)))throw new Error("Binding must be exact plain data");
+ const values:Record<string,unknown>={};for(const name of names){const descriptor=Object.getOwnPropertyDescriptor(input,name);if(!descriptor?.enumerable||!("value" in descriptor))throw new Error("Binding must be exact plain data");values[name]=descriptor.value;}
+ const action=values.action;if(!(REPOSITORY_OPERATION_ACTIONS as readonly unknown[]).includes(action))throw new Error("Action must be supported and exact");
+ return Object.freeze({host:normalizedHost(values.host),owner:explicit(values.owner,"owner",true),repository:explicit(values.repository,"repository",true),sessionId:explicit(values.sessionId,"sessionId",true),actor:explicit(values.actor,"actor",true),action}) as RepositoryOperationBinding;
 }
 function bindingKey(binding:RepositoryOperationBinding):string{return JSON.stringify([binding.host,binding.owner,binding.repository,binding.sessionId,binding.actor,binding.action]);}
 export function authorizeRepositoryOperation(input:RepositoryOperationBinding):RepositoryOperationAuthority{
@@ -55,20 +57,22 @@ function reason(value:unknown,fallback:string):string{
  if(typeof value==="string"&&/^[a-z0-9][a-z0-9_-]{0,63}$/u.test(value))return value;
  return value===undefined?fallback:"redacted";
 }
-function operationFallback(attempt:OperationAttempt):string{if(attempt?.status==="rejected")return "authoritative_rejection";if(attempt?.status==="accepted")return "accepted";return "ambiguous_operation";}
-function readBackFallback(observed:ExactTargetReadBack):string{if(observed?.state==="intended")return "exact_intended";if(observed?.state==="unchanged")return "exact_unchanged";if(observed?.state==="drift")return "state_drift";return "unconfirmed";}
+function exactOutcome(value:unknown,key:"status"|"state",allowed:readonly string[]):readonly [string,string|undefined]|null{
+ try{if(typeof value!=="object"||value===null||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)return null;const keys=Reflect.ownKeys(value);if(keys.some(k=>typeof k!=="string"||(k!==key&&k!=="reasonCode"))||!Object.hasOwn(value,key))return null;const d=Object.getOwnPropertyDescriptor(value,key),r=Object.getOwnPropertyDescriptor(value,"reasonCode");if(!d?.enumerable||!("value" in d)||r&&(!r.enumerable||!("value" in r))||!allowed.includes(d.value))return null;return [d.value,r?.value];}catch{return null;}
+}
+function exactAttempt(value:unknown):OperationAttempt{const out=exactOutcome(value,"status",["accepted","rejected","ambiguous"]);return out?{status:out[0] as OperationAttempt["status"],...(out[1]===undefined?{}:{reasonCode:out[1]})}:{status:"ambiguous",reasonCode:"malformed_operation"};}
+function exactReadBack(value:unknown):ExactTargetReadBack{const out=exactOutcome(value,"state",["intended","unchanged","drift","unconfirmed"]);return out?{state:out[0] as ExactTargetReadBack["state"],...(out[1]===undefined?{}:{reasonCode:out[1]})}:{state:"unconfirmed",reasonCode:"malformed_readback"};}
+function operationFallback(attempt:OperationAttempt):string{if(attempt.status==="rejected")return "authoritative_rejection";if(attempt.status==="accepted")return "accepted";return "ambiguous_operation";}
+function readBackFallback(observed:ExactTargetReadBack):string{if(observed.state==="intended")return "exact_intended";if(observed.state==="unchanged")return "exact_unchanged";if(observed.state==="drift")return "state_drift";return "unconfirmed";}
 export async function executeOneAttempt(
  authority:RepositoryOperationAuthority,expectedBinding:RepositoryOperationBinding,
  operation:(binding:RepositoryOperationBinding)=>OperationAttempt|Promise<OperationAttempt>,readBack:(binding:RepositoryOperationBinding)=>ExactTargetReadBack|Promise<ExactTargetReadBack>,
 ):Promise<OneAttemptOutcome>{
  const frozen=verifyConsumed(consume(authority,"Mutation"),expectedBinding,"mutation");
- let attempt:OperationAttempt;
- try{attempt=await operation(frozen);}catch{attempt={status:"ambiguous",reasonCode:"operation_threw"};}
- let observed:ExactTargetReadBack;
- try{observed=await readBack(frozen);}catch{observed={state:"unconfirmed",reasonCode:"readback_failed"};}
- const operationReason=reason(attempt?.reasonCode,operationFallback(attempt));
- const readBackReason=reason(observed?.reasonCode,readBackFallback(observed));
- let classification:OneAttemptOutcome["classification"]="unknown";if(observed?.state==="intended")classification="confirmed";else if(attempt?.status==="rejected"&&observed?.state==="unchanged")classification="no_write";
+ let attempt:OperationAttempt;try{attempt=exactAttempt(await operation(frozen));}catch{attempt={status:"ambiguous",reasonCode:"operation_threw"};}
+ let observed:ExactTargetReadBack;try{observed=exactReadBack(await readBack(frozen));}catch{observed={state:"unconfirmed",reasonCode:"readback_failed"};}
+ const operationReason=reason(attempt.reasonCode,operationFallback(attempt)),readBackReason=reason(observed.reasonCode,readBackFallback(observed));
+ let classification:OneAttemptOutcome["classification"]="unknown";if(observed.state==="intended")classification="confirmed";else if(attempt.status==="rejected"&&observed.state==="unchanged")classification="no_write";
  return Object.freeze({classification,operationReason,readBackReason});
 }
 export async function executeAuthorizedRead<T>(authority:RepositoryOperationAuthority,expectedBinding:RepositoryOperationBinding,reader:(binding:RepositoryOperationBinding)=>T|Promise<T>):Promise<T>{

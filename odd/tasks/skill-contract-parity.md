@@ -126,7 +126,11 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - The runtime negative assertion remains intact while constructing the forbidden brand pattern without storing its contiguous literal in tracked source.
       - The C1 implementation and focused test files total 108 authored additions, within the sub-400 slice budget; no remote calls or repository mutations are performed.
       - Commit: `f0da789`.
-    - [ ] GSP-04C2: separately authorized local branch and commit execution.
+    - [x] GSP-04C2: separately authorized local branch and commit execution.
+      - Genuine C1 plans are claimed once to prepare immutable local plans with exact base/tree SHA identities; opaque one-use progression gates one authorized branch creation and sequential, separately authorized commits.
+      - Exact frozen payload/readback contracts bind repository, worktree session, branch, base/parent, ordered message, and tree. Verified intended state confirms progress; authoritative rejection plus absence/unchanged state is `no_write`; every other outcome is `unknown` and blocks later steps.
+      - Focused evidence covers two-commit transcripts, provenance forgery/reuse, target/action/session mismatch, per-stage reuse, rejection/timeout/drift/malformed/throw classifications, callback/input immutability, sanitized failures, and the absence of push/PR/merge callbacks.
+      - Verification passes: focused C2/C1/repository tests 26/26, typecheck, 27-Skill audit, 12-Skill parity audit, 261-path upstream-boundary audit, and diff check. No Git or remote operation implementation is present.
     - [ ] GSP-04C3: one-shot push, PR publication, and label mutation; merge remains separately authorized.
     - [ ] GSP-04C4: Delivery Branch Skill normalization, matrix evidence, and generated behavioral checks.
   - [ ] GSP-04D: chained pull-request policy and behavioral evidence.
