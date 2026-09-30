@@ -148,6 +148,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Added parser- and runtime-selection-backed positive/negative activation evidence, semantic/prohibited contract checks, and exact SRC-SKILL-001 matrix assertions without storing the forbidden upstream brand literal.
       - Combined focused verification passes 38/38: 7 Skill-contract checks plus 7 C1 preparation, 6 C2 local delivery, 8 C3a remote publication, and 10 C3b label/check behaviors. Typecheck, 27-Skill audit, 12-Skill parity audit, 267-path upstream-boundary audit, and diff check pass.
       - SRC-SKILL-001 remains PARTIAL solely for Pi Free positive and negative generated-output probes in GSP-06. GSP-04C is complete; GSP-04D, GSP-04E, and parent GSP-04 remain open.
+      - Commit: `2ed5733`.
   - [ ] GSP-04D: chained pull-request policy and behavioral evidence.
   - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
