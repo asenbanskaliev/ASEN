@@ -208,12 +208,12 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Generic evidence admission rejects every manual route-decision status. Dedicated admission claims genuine provenance before exact candidate and accessor-safe metadata validation, so reuse, binding mismatches, malformed metadata, clones, and forgeries fail closed and first-attempt failures burn genuine proofs.
         - Focused verification passes 58/58, including mutation-gate contribution, all provenance and metadata negatives, fixed evidence fields, and signed recovery. Typecheck, 27-Skill audit, 12-Skill parity audit, and 283-path upstream-boundary audit pass. The complete readable additions remain below 400 lines.
         - Commit: `00164d2`.
-        - Commit: intentionally not created under the task's no-commit constraint.
   - [ ] GSP-05B: optional structured-lifecycle applicability before lifecycle entry.
     - [ ] GSP-05B1: candidate-bound organic/structured/blocked applicability decision.
       - [x] GSP-05B1a: orchestration-authentic claimed route context and exact candidate binding.
         - Successful candidate-bound orchestration privately records immutable original route facts and exact candidate identity. The read-only context rejects unclaimed, forged, cloned, candidate-less, failed, and rebound decisions without exposing authority.
-        - Focused ODD/orchestration verification passes 23/23; typecheck and all three audits pass. No commit was created under the task constraint.
+        - Focused ODD/orchestration verification passes 23/23; typecheck, 27-Skill audit, 12-Skill parity audit, 285-path upstream-boundary audit, and diff check pass. The readable slice is below 400 additions.
+        - Commit: `239a980`.
       - [ ] GSP-05B1b: candidate/fact-bound organic/structured/blocked applicability.
     - [ ] GSP-05B2: require genuine applicability before lifecycle construction.
   - [ ] GSP-05C: runtime-enforced conditional TDD triangulation.
