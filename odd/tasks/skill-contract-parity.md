@@ -142,6 +142,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Genuine C3a publication evidence is claimed exactly once into an immutable C3b plan carrying the exact PR, policy, candidate-label, permission, and required-check facts; forged, reused, cross-target, malformed, and mismatched authority data fail closed before mutation.
         - Execution performs one authorized exact-shape snapshot read, one conditional combined protected-label mutation, and one readback with no retry. It preserves unrelated labels, binds an immutable baseline SHA-256 token, requires exact NFC/case-sensitive policy check identities while retaining NFC/case-insensitive label identities, reports canonical required and exact successful/missing checks, and emits only pending/stopped merge evidence without merge authority or callbacks.
         - Focused C3b/C3a/repository verification passes 31/31, including required/successful check case-drift regressions; typecheck, 27-Skill audit, 12-Skill parity audit, 265-path upstream-boundary audit, and diff check pass. The complete C3b slice remains below 400 authored additions including this tracker evidence; no network, Git, merge, or delivery-authorization implementation is present.
+        - Commit: `e94e1e7`.
     - [ ] GSP-04C4: Delivery Branch Skill normalization, matrix evidence, and generated behavioral checks.
   - [ ] GSP-04D: chained pull-request policy and behavioral evidence.
   - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
