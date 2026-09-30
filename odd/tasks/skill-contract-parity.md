@@ -110,6 +110,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Independent-review hardening makes publication and mutation plans one-shot before authority use, binds conditional mutation to the exact baseline hash, rejects noncanonical issue URLs and inexact snapshot records, closes NFC label-identity bypasses, and requires B1-issued duplicate-decision provenance.
       - Final verifier hardening binds every genuine duplicate decision to normalized repository, query, and materialized candidate evidence; rejects cross-candidate and cross-repository reuse; and rebuilds publication bindings as exact plain frozen data without credentials, extras, symbols, accessors, inherited fields, or structured-field separators.
       - Verification passes: focused tests 37/37, typecheck, 27-Skill audit, 12-Skill parity audit, 256-path upstream-boundary audit, and diff check. The complete 04B2 candidate remains within the sub-400 addition budget. The Issue Skill and parity matrix remain unchanged for GSP-04B3.
+      - Commit: `ce270e8`.
     - [ ] GSP-04B3: Issue Skill normalization, parity-matrix promotion, and generated behavioral evidence.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
