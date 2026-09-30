@@ -14,6 +14,7 @@ import {fixtureArtifactRunner} from "./lifecycle-pi-fixture.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {loadEvidence,saveEvidence} from "../src/evidence/persistence.js";
 import {passingEvidence,passingReview,gitCandidate} from "./execution-evidence-helper.js";
+import {admitRouteEvidence} from "./helpers/route-evidence.js";
 const candidate=gitCandidate("candidate");
 const recoveryKey=randomBytes(32);
 const artifacts:Record<LifecyclePhase,string>={"context-init":"project-context",explore:"exploration",proposal:"proposal",specification:"specification",design:"design",tasks:"task-plan",apply:"apply-result",verify:"verification-report",archive:"archive-report"};
@@ -25,7 +26,8 @@ function completion(phase:LifecyclePhase,options:{task?:string;candidate?:typeof
 }
 async function advance(flow:SkillLifecycle,phase:LifecyclePhase,options:Parameters<typeof completion>[1]={}){
  const selected=completion(phase,options),evidence=new EvidenceStore();
- for(const [id,kind] of [["route","route-decision"],["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)
+ admitRouteEvidence(evidence,candidate);
+ for(const [id,kind] of [["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)
   evidence.add(candidate,{id,kind,status:"pass",summary:id,createdAt:"now"});
  await passingReview(evidence,candidate,"review");
  await passingEvidence(evidence,candidate,"test");
@@ -111,7 +113,8 @@ test("task executes through dispatcher, resumes, verifies and archives",async t=
  assert.equal(resumed.state.nextPhase,"apply");
  await assert.rejects(()=>execute(resumed,"verify"),/out of order/);
  await assert.rejects(()=>resumed.runPhase(dispatcher,{phase:"apply",context:completion("apply").context,skillPaths:completion("apply").skillPaths,prompt:"apply",evidence,risk:"high"}),/bounded write surfaces/);
- for(const [id,kind] of [["route","route-decision"],["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)
+ admitRouteEvidence(evidence,candidate);
+ for(const [id,kind] of [["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)
   evidence.add(candidate,{id,kind,status:"pass",summary:id,createdAt:"now"});
  await execute(resumed,"apply");
  await assert.rejects(()=>execute(resumed,"verify"),/Passing test evidence is required/);

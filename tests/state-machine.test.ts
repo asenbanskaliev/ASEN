@@ -5,11 +5,12 @@ import {EvidenceStore} from "../src/evidence/store.js";
 import {authorizeImplementation,authorizeVerified,type TransitionAuthorization} from "../src/verify/verifier.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {passingEvidence,passingReview,gitCandidate} from "./execution-evidence-helper.js";
+import {admitRouteEvidence} from "./helpers/route-evidence.js";
 
 const candidate=gitCandidate("c");
 function implementationAuthorization(){
  const evidence=new EvidenceStore();
- evidence.add(candidate,{id:"route",kind:"route-decision",status:"pass",summary:"route",createdAt:"now"});
+ admitRouteEvidence(evidence,candidate,{id:"route",summary:"route",createdAt:"now"});
  evidence.add(candidate,{id:"unit",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  evidence.add(candidate,{id:"scope",kind:"scope",status:"pass",summary:"scope",createdAt:"now"});
  evidence.add(candidate,{id:"rollback",kind:"rollback",status:"pass",summary:"rollback",createdAt:"now"});

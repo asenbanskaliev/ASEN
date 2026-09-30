@@ -6,7 +6,22 @@ import {isExecutedEvidence,type ExecutedEvidence} from "./execution.js";
 import {isExecutedReview,type ExecutedReview} from "./review-execution.js";
 import {isIssuedTddStage,type IssuedTddStage} from "../test/tdd-cycle.js";
 import {assertDirectGitParent,assertGitAncestor} from "./git-lineage.js";
+import {claimOrchestrationRouteEvidence,type OrchestrationRouteEvidence} from "../orchestration/orchestrator.js";
 interface Envelope{version:1;candidate:Candidate;items:Evidence[];}
+export interface RouteDecisionMetadata{readonly id:string;readonly summary:string;readonly createdAt:string;}
+function routeMetadata(value:RouteDecisionMetadata):RouteDecisionMetadata{
+ if(typeof value!=="object"||value===null||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)throw new Error("Route evidence metadata must be exact plain data");
+ const keys=["id","summary","createdAt"] as const,own=Reflect.ownKeys(value);
+ if(own.length!==keys.length||own.some(key=>typeof key!=="string"||!keys.includes(key as typeof keys[number]))||keys.some(key=>!Object.hasOwn(value,key)))throw new Error("Route evidence metadata shape is invalid");
+ const text=(key:typeof keys[number]):string=>{
+  const descriptor=Object.getOwnPropertyDescriptor(value,key);
+  if(!descriptor?.enumerable||!("value" in descriptor))throw new Error("Route evidence metadata shape is invalid");
+  const item=descriptor.value;
+  if(typeof item!=="string"||!item.trim()||item!==item.normalize("NFC")||/[\u0000-\u001f\u007f-\u009f]/u.test(item))throw new Error(`Route evidence metadata ${key} is malformed`);
+  return item;
+ };
+ return {id:text("id"),summary:text("summary"),createdAt:text("createdAt")};
+}
 const kinds=new Set(["test","review","command","audit","tdd","route-decision","work-unit","scope","rollback"]);
 const statuses=new Set(["pass","fail","expected-fail"]);
 function sign(value:Envelope,key:Buffer):string{
@@ -44,9 +59,15 @@ function validateTddHistory(candidate:Candidate,items:Evidence[]):void{
 export class EvidenceStore {
  readonly #items=new Map<string,Evidence>();
  add(candidate:Candidate,evidence:Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">):Evidence{
+  if(evidence.kind==="route-decision")throw new Error("Route-decision evidence requires genuine orchestration proof");
   if(evidence.status==="pass"&&(evidence.kind==="test"||evidence.kind==="tdd"))throw new Error(`Passing ${evidence.kind} evidence requires executed proof`);
   if(evidence.status==="pass"&&evidence.kind==="review")throw new Error("Passing review evidence requires authenticated reviewer proof");
   return this.#insert(candidate,evidence);
+ }
+ addRouteDecision(candidate:Candidate,proof:OrchestrationRouteEvidence,metadata:RouteDecisionMetadata):Evidence{
+  claimOrchestrationRouteEvidence(candidate,proof);
+  const exact=routeMetadata(metadata);
+  return this.#insert(candidate,{...exact,kind:"route-decision",status:"pass"});
  }
  addExecuted(candidate:Candidate,proof:ExecutedEvidence,evidence:Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">):Evidence{
   if(!isExecutedEvidence(proof))throw new Error("Executed evidence requires ASEN-issued execution proof");
@@ -89,7 +110,11 @@ export class EvidenceStore {
   return this.#insert(candidate,evidence);
  }
  static async loadVerified(path:string,candidate:Candidate,key:Buffer):Promise<EvidenceStore>{
- const raw=JSON.parse(await readFile(path,"utf8")) as {value:Envelope;mac:string};
+ let raw:{value:Envelope;mac:string};
+ try{
+  // SAFETY: the envelope is treated as untrusted and fully validated before use below.
+  raw=JSON.parse(await readFile(path,"utf8")) as {value:Envelope;mac:string};
+ }catch(error){throw error;}
  if(!raw?.value||typeof raw.mac!=="string"||!/^[0-9a-f]{64}$/i.test(raw.mac))throw new Error("Evidence recovery signature missing");
  const expected=Buffer.from(sign(raw.value,key),"hex"),actual=Buffer.from(raw.mac,"hex");
  if(!timingSafeEqual(expected,actual))throw new Error("Evidence recovery integrity mismatch");

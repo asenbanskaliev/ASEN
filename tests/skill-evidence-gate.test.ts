@@ -8,6 +8,7 @@ import {EvidenceStore} from "../src/evidence/store.js";
 import {authorizeRelease,verifyCandidate,verifySkillEvidence} from "../src/verify/verifier.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {passingEvidence,passingReview,gitCandidate} from "./execution-evidence-helper.js";
+import {admitRouteEvidence} from "./helpers/route-evidence.js";
 
 const c=gitCandidate("candidate");
 
@@ -41,7 +42,7 @@ test("review skill blocks release without candidate-bound review evidence",async
 test("mutation gate requires route decision and work-unit evidence",()=>{
  const store=new EvidenceStore();
  assert.equal(verifySkillEvidence(c,["asen-odd","asen-work-unit"],store,"mutation").ok,false);
- store.add(c,{id:"route",kind:"route-decision",status:"pass",summary:"route selected",createdAt:"now"});
+ admitRouteEvidence(store,c,{id:"route",summary:"route selected",createdAt:"now"});
  assert.equal(verifySkillEvidence(c,["asen-odd","asen-work-unit"],store,"mutation").ok,false);
  store.add(c,{id:"unit",kind:"work-unit",status:"pass",summary:"bounded unit",createdAt:"now"});
  assert.equal(verifySkillEvidence(c,["asen-odd","asen-work-unit"],store,"mutation").ok,true);

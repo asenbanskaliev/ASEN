@@ -4,6 +4,7 @@ import {Dispatcher,type AgentRunner} from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";
+import {admitRouteEvidence} from "./helpers/route-evidence.js";
 
 const candidate={id:"candidate",repository:"repo",revision:"sha",createdAt:"now"};
 const decisionFor=(taskId:string,repository="repo")=>issueOddDecision({
@@ -26,7 +27,8 @@ test("orchestrated writer cannot execute until its mutation evidence is complete
  await assert.rejects(()=>dispatcher.dispatch(worker),/requires passing .* evidence for mutation/);
  assert.equal(ran,false);
 
- evidence.add(candidate,{id:"route",kind:"route-decision",status:"pass",summary:"route",createdAt:"now"});
+ assert.ok(plan.routeEvidence);
+ evidence.addRouteDecision(candidate,plan.routeEvidence,{id:"route",summary:"route",createdAt:"now"});
  evidence.add(candidate,{id:"unit",kind:"work-unit",status:"pass",summary:"unit",createdAt:"now"});
  evidence.add(candidate,{id:"scope",kind:"scope",status:"pass",summary:"scope",createdAt:"now"});
  evidence.add(candidate,{id:"rollback",kind:"rollback",status:"pass",summary:"rollback",createdAt:"now"});
@@ -45,7 +47,8 @@ test("orchestrated writer cannot use evidence from another revision",async()=>{
  assert.ok(worker);
  const old={...candidate,revision:"old"};
  const evidence=new EvidenceStore();
- for(const [id,kind] of [["route","route-decision"],["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)
+ admitRouteEvidence(evidence,old,{id:"route",summary:"old",createdAt:"now"},"old-route");
+ for(const [id,kind] of [["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)
   evidence.add(old,{id,kind,status:"pass",summary:"old",createdAt:"now"});
  const runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:"bad"})};
  await assert.rejects(()=>new Dispatcher(runner,evidence).dispatch(worker),/requires passing .* evidence for mutation/);
