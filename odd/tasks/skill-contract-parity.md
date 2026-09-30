@@ -165,6 +165,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
        - Added parser- and runtime-selection-backed evidence for activation boundaries, one-pass slicing, complete authored/generated budgets, explicit strategy and base rules, dependency diagrams, clean diffs, stop conditions, pending authority, and prohibited fallbacks.
        - SRC-SKILL-002 remains PARTIAL solely for Pi Free positive and negative generated-output probes in GSP-06; its evidence now names deterministic D1a, D1b, and Skill-contract paths without volatile counts.
        - Focused chain verification, typecheck, 27-Skill audit, 12-Skill parity audit, 272-path upstream-boundary audit, and diff check pass. GSP-04 remains open for GSP-04E.
+       - Commit: `377dfbc`.
    - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
