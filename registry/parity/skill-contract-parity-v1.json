@@ -157,8 +157,13 @@
       "outputs": ["ISSUE-OUT-001"],
       "prohibited": ["ISSUE-PRO-001"],
       "equivalentAdaptations": [{"contractId": "ISSUE-OUT-001", "note": "ASEN uses Pi-authorized remote operations and the same readback outcome model."}],
-      "gaps": [{"contractId": "ISSUE-GATE-001", "note": "Form controls, protected labels, privacy, one-attempt outcomes, and post-publication atomicity are incomplete."}],
-      "evidence": ["Structural mapping only; behavioral automation is pending GSP-04."]
+      "gaps": [{"contractId": "ISSUE-OUT-001", "note": "Generated-output compliance still requires Pi Free positive and negative probes in GSP-06."}],
+      "evidence": [
+        "tests/issue-skill-contract.test.ts — activation, style, semantic, prohibited-behavior, and matrix evidence",
+        "tests/issue-preparation.test.ts — 15/15 deterministic form, privacy, and duplicate-decision behaviors",
+        "tests/issue-publication.test.ts — 11/11 deterministic publication and post-publication mutation behaviors",
+        "tests/repository-operation-policy.test.ts — 11/11 deterministic authority, one-attempt, and protected-label behaviors"
+      ]
     },
     {
       "sourceId": "SRC-SKILL-007",

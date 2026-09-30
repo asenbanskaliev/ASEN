@@ -111,7 +111,12 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Final verifier hardening binds every genuine duplicate decision to normalized repository, query, and materialized candidate evidence; rejects cross-candidate and cross-repository reuse; and rebuilds publication bindings as exact plain frozen data without credentials, extras, symbols, accessors, inherited fields, or structured-field separators.
       - Verification passes: focused tests 37/37, typecheck, 27-Skill audit, 12-Skill parity audit, 256-path upstream-boundary audit, and diff check. The complete 04B2 candidate remains within the sub-400 addition budget. The Issue Skill and parity matrix remain unchanged for GSP-04B3.
       - Commit: `ce270e8`.
-    - [ ] GSP-04B3: Issue Skill normalization, parity-matrix promotion, and generated behavioral evidence.
+    - [x] GSP-04B3: Issue Skill normalization, parity-matrix promotion, and generated behavioral evidence.
+      - Normalized `asen-issue-workflow` to the strict frontmatter, ordered-section, and 180–450 body-token contract while preserving ASEN naming and adding exact activation exclusions, fail-closed preparation, one-attempt publication, and atomic post-publication gates.
+      - Added parser- and runtime-selection-backed evidence for positive issue activation, negative delivery/docs activation, style, semantic obligations, prohibited fallbacks, and matrix integrity.
+      - Combined focused verification passes 44/44: 7 Skill-contract checks plus the existing 15 preparation, 11 publication, and 11 repository-operation checks.
+      - SRC-SKILL-006 remains PARTIAL with only Pi Free positive and negative generated-output probes pending GSP-06; GSP-04 remains open for the branch, chain, and work-unit slices.
+      - Typecheck, 27-Skill audit, 12-Skill parity audit, 258-path upstream-boundary audit, and diff check pass. Commit intentionally deferred by the user for this slice.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
   - 400-line/60-minute chain policy, one slicing pass, delivery strategy, tracker/draft semantics, dependency diagrams, and base validation.
