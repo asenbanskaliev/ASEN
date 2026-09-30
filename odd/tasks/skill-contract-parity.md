@@ -202,6 +202,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - [x] GSP-05A2a: require genuine task-bound route decisions for orchestration plans.
         - Orchestration now claims a genuine A1 route decision immediately on entry, then enforces exact task and repository identity; malformed orchestration, cross-task, and cross-repository first attempts burn the decision, while legacy decisions, structural clones, forgeries, and reuse fail closed.
         - Plans retain the claimed immutable decision and preserve existing agent, candidate, and Skill behavior without issuing route evidence, authority, verdicts, or mutation callbacks. Focused verification passes 34/34; typecheck, 27-Skill audit, 12-Skill parity audit, 282-path upstream-boundary audit, and diff check pass. GSP-05A2b, A2, A, and GSP-05 remain open.
+        - Commit: `f5fa872`.
       - [ ] GSP-05A2b: admit only orchestration-issued route evidence for mutation gates.
   - [ ] GSP-05B: optional structured-lifecycle applicability before lifecycle entry.
   - [ ] GSP-05C: runtime-enforced conditional TDD triangulation.
