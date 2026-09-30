@@ -1,5 +1,5 @@
 import type { AgentRequest } from "../agents/dispatcher.js";
-import type { OddDecision } from "../flow/odd.js";
+import {claimOddRouteDecision,type OddRouteDecision} from "../flow/odd-routing.js";
 import type {Candidate} from "../core/types.js";
 import {selectSkills,type SkillId,type SkillPhase,type SkillSelectionContext} from "../skills/registry.js";
 import {issueSkillContext} from "../skills/context.js";
@@ -8,9 +8,12 @@ export interface OrchestrationInput {
   taskId:string; repository:string; prompt:string; writeSurfaces?:string[];
   codeChange?:boolean; behaviorChange?:boolean; filesTouched?:number; candidate?:Candidate; skillPhase?:SkillPhase;
 }
-export interface OrchestrationPlan { decision:OddDecision; agents:AgentRequest[]; skills:SkillId[]; }
+export interface OrchestrationPlan { decision:OddRouteDecision; agents:AgentRequest[]; skills:SkillId[]; }
 
-export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddDecision):OrchestrationPlan {
+export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRouteDecision):OrchestrationPlan {
+  claimOddRouteDecision(decision);
+  if(decision.taskIdentity!==input.taskId)throw new Error("ODD route decision task mismatch");
+  if(decision.repositoryIdentity!==input.repository)throw new Error("ODD route decision repository mismatch");
   const base={repository:input.repository,prompt:input.prompt,...(input.candidate?{candidate:input.candidate}:{})};
   const common:SkillSelectionContext={
     risk:decision.risk,

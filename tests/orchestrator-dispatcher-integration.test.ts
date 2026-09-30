@@ -2,15 +2,20 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {Dispatcher,type AgentRunner} from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
-import {routeOdd} from "../src/flow/odd.js";
 import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
+import {issueOddDecision} from "./helpers/odd-routing.js";
 
 const candidate={id:"candidate",repository:"repo",revision:"sha",createdAt:"now"};
+const decisionFor=(taskId:string,repository="repo")=>issueOddDecision({
+ taskId,repository,
+ paths:["src/a.ts","src/b.ts"],
+ writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"behavior"}],
+});
 
 test("orchestrated writer cannot execute until its mutation evidence is complete",async()=>{
  const plan=buildOrchestrationPlan(
   {taskId:"task",repository:"repo",prompt:"change behavior",codeChange:true,behaviorChange:true,filesTouched:4,writeSurfaces:["src"],candidate},
-  routeOdd({filesTouched:4})
+  decisionFor("task")
  );
  const worker=plan.agents.find(agent=>agent.role==="worker");
  assert.ok(worker);
@@ -34,7 +39,7 @@ test("orchestrated writer cannot execute until its mutation evidence is complete
 test("orchestrated writer cannot use evidence from another revision",async()=>{
  const plan=buildOrchestrationPlan(
   {taskId:"task",repository:"repo",prompt:"change code",codeChange:true,filesTouched:4,writeSurfaces:["src"],candidate},
-  routeOdd({filesTouched:4})
+  decisionFor("task")
  );
  const worker=plan.agents.find(agent=>agent.role==="worker");
  assert.ok(worker);
@@ -46,11 +51,10 @@ test("orchestrated writer cannot use evidence from another revision",async()=>{
  await assert.rejects(()=>new Dispatcher(runner,evidence).dispatch(worker),/requires passing .* evidence for mutation/);
 });
 
-
 test("orchestrated writer skill context cannot be downgraded after planning",()=>{
  const plan=buildOrchestrationPlan(
   {taskId:"task",repository:"repo",prompt:"change code",codeChange:true,filesTouched:4,writeSurfaces:["src"],candidate},
-  routeOdd({filesTouched:4})
+  decisionFor("task")
  );
  const worker=plan.agents.find(agent=>agent.role==="worker");
  assert.ok(worker?.skillContext);
@@ -59,15 +63,14 @@ test("orchestrated writer skill context cannot be downgraded after planning",()=
  assert.equal(worker.skillContext.codeChange,true);
 });
 
-
 test("writer cannot reuse another task's issued skill context",async()=>{
  const first=buildOrchestrationPlan(
   {taskId:"first",repository:"repo",prompt:"change code",codeChange:true,writeSurfaces:["src"],candidate},
-  routeOdd({filesTouched:4})
+  decisionFor("first")
  );
  const second=buildOrchestrationPlan(
   {taskId:"second",repository:"repo",prompt:"change code",codeChange:true,writeSurfaces:["src"],candidate},
-  routeOdd({filesTouched:4})
+  decisionFor("second")
  );
  const firstWorker=first.agents.find(agent=>agent.role==="worker");
  const secondWorker=second.agents.find(agent=>agent.role==="worker");
@@ -83,7 +86,7 @@ test("writer cannot reuse another task's issued skill context",async()=>{
 });
 
 test("read-only agents cannot exchange their phase authorities",async()=>{
- const plan=buildOrchestrationPlan({taskId:"roles",repository:"repo",prompt:"inspect",candidate},routeOdd({filesTouched:4}));
+ const plan=buildOrchestrationPlan({taskId:"roles",repository:"repo",prompt:"inspect",candidate},decisionFor("roles"));
  const explorer=plan.agents.find(agent=>agent.role==="explorer");
  const reviewer=plan.agents.find(agent=>agent.role==="reviewer");
  assert.ok(explorer?.skillContext&&explorer.skillPaths&&reviewer?.skillContext);
@@ -93,10 +96,11 @@ test("read-only agents cannot exchange their phase authorities",async()=>{
  await assert.rejects(()=>new Dispatcher(runner,new EvidenceStore()).dispatch({...reviewer,skillContext:explorer.skillContext!,skillPaths:paths}),/does not match agent role/);
  assert.equal(ran,false);
 });
+
 test("read-only agent authority cannot cross tasks or revisions",async()=>{
- const first=buildOrchestrationPlan({taskId:"first",repository:"repo",prompt:"inspect",candidate},routeOdd({filesTouched:4}));
+ const first=buildOrchestrationPlan({taskId:"first",repository:"repo",prompt:"inspect",candidate},decisionFor("first"));
  const next={...candidate,revision:"next"};
- const second=buildOrchestrationPlan({taskId:"second",repository:"repo",prompt:"inspect",candidate:next},routeOdd({filesTouched:4}));
+ const second=buildOrchestrationPlan({taskId:"second",repository:"repo",prompt:"inspect",candidate:next},decisionFor("second"));
  const old=first.agents.find(agent=>agent.role==="explorer"),explorer=second.agents.find(agent=>agent.role==="explorer");
  assert.ok(old?.skillContext&&old.skillPaths&&explorer);
  let ran=false;
