@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {evaluateDuplicateSearch,materializeIssue,selectIssueForm,type IssueForm,type DuplicateSearchInput} from "../src/issues/issue-preparation.js";
+import {duplicateDecisionMatches,evaluateDuplicateSearch,isDuplicateDecision,materializeIssue,selectIssueForm,type IssueForm,type DuplicateSearchInput} from "../src/issues/issue-preparation.js";
 
 const form:IssueForm={id:"bug",titlePrefix:"[Bug] ",titleTemplate:"{{summary}}",labels:["type:bug","triage"],controls:[
  {type:"markdown",body:"Please provide exact evidence."},{type:"input",id:"summary",label:"Summary",required:true},{type:"textarea",id:"logs",label:"Logs",render:"shell",required:true},
@@ -81,16 +81,15 @@ test("detects expanded sensitive families without disclosing material",()=>{
 });
 
 test("validates all duplicate evidence before selecting the decision",()=>{
- const input=duplicate(),before=structuredClone(input);assert.deepEqual(evaluateDuplicateSearch(input),{status:"proceed",reason:"all_not_duplicate",duplicateIssue:null});assert.deepEqual(input,before);
+ const input=duplicate(),before=structuredClone(input),proceed=evaluateDuplicateSearch(input);assert.deepEqual(proceed,{status:"proceed",reason:"all_not_duplicate",duplicateIssue:null});assert.equal(isDuplicateDecision(proceed),true);assert.equal(isDuplicateDecision({...proceed}),false);assert.equal(duplicateDecisionMatches(proceed,{repository:"GITHUB.EXAMPLE/ACME/APP",candidateIdentity:sha}),true);assert.equal(duplicateDecisionMatches(proceed,{repository:"github.example/acme/other",candidateIdentity:sha}),false);assert.equal(duplicateDecisionMatches(proceed,{repository:"github.example/acme/app",candidateIdentity:`sha256:${"b".repeat(64)}`}),false);assert.deepEqual(input,before);
  const second={...input.results[0]!,issue:"https://github.example/acme/app/issues/2",classification:"duplicate" as const},one={...input.results[0]!,classification:"duplicate" as const};assert.deepEqual(evaluateDuplicateSearch(duplicate({results:[one,second]})),{status:"block",reason:"uncertain",duplicateIssue:null});assert.deepEqual(evaluateDuplicateSearch(duplicate({results:[one]})),{status:"block",reason:"duplicate",duplicateIssue:issueUrl});
  const malformedAfter={...second,issue:"bad"};assert.deepEqual(evaluateDuplicateSearch(duplicate({results:[one,malformedAfter]})),{status:"block",reason:"uncertain",duplicateIssue:null});
 });
 
-test("canonicalizes duplicate issue URL identity before decisions",()=>{
- const explicit=duplicate({results:[{...duplicate().results[0]!,issue:"https://GITHUB.EXAMPLE/Acme/App/issues/1",classification:"duplicate"}]});assert.deepEqual(evaluateDuplicateSearch(explicit),{status:"block",reason:"duplicate",duplicateIssue:"https://github.example/acme/app/issues/1"});
- const shorthand=duplicate({repository:"acme/app",results:[{...duplicate().results[0]!,repository:"acme/app",issue:"https://github.com/acme/app/issues/1",classification:"duplicate"}]});assert.deepEqual(evaluateDuplicateSearch(shorthand),{status:"block",reason:"duplicate",duplicateIssue:"https://github.com/acme/app/issues/1"});
- const equivalent=[{...duplicate().results[0]!,issue:"https://GITHUB.EXAMPLE/acme/app/issues/1"},{...duplicate().results[0]!,issue:"https://github.example/acme/other/../app/issues/1"}];assert.deepEqual(evaluateDuplicateSearch(duplicate({results:equivalent})),{status:"block",reason:"uncertain",duplicateIssue:null});
- for(const issue of ["https://other.example/acme/app/issues/2","https://github.example/other/app/issues/2","https://github.example/acme/other/issues/2"]){const input=duplicate({results:[duplicate().results[0]!,{...duplicate().results[0]!,issue,classification:"duplicate"}]});const before=structuredClone(input);assert.deepEqual(evaluateDuplicateSearch(input),{status:"block",reason:"uncertain",duplicateIssue:null});assert.deepEqual(input,before);}
+test("accepts only exact canonical duplicate issue URLs",()=>{
+ const exact=evaluateDuplicateSearch(duplicate({results:[{...duplicate().results[0]!,classification:"duplicate"}]}));assert.deepEqual(exact,{status:"block",reason:"duplicate",duplicateIssue:issueUrl});assert.equal(isDuplicateDecision(exact),true);
+ const shorthand=duplicate({repository:"acme/app",results:[{...duplicate().results[0]!,repository:"acme/app",issue:"https://github.com/acme/app/issues/1",classification:"duplicate"}]}),shorthandDecision=evaluateDuplicateSearch(shorthand);assert.deepEqual(shorthandDecision,{status:"block",reason:"duplicate",duplicateIssue:"https://github.com/acme/app/issues/1"});assert.equal(duplicateDecisionMatches(shorthandDecision,{repository:"github.com/acme/app",candidateIdentity:sha}),true);
+ for(const issue of ["https://GITHUB.EXAMPLE/acme/app/issues/1","https://github.example/Acme/app/issues/1","https://github.example/acme/other/../app/issues/1","https://github.example:443/acme/app/issues/1","https://user@github.example/acme/app/issues/1","https://github.example/acme/app/issues/1?x=1","https://github.example/acme/app/issues/1#x","https://github.example/acme/app/issues/01","https://other.example/acme/app/issues/2","https://github.example/other/app/issues/2","https://github.example/acme/other/issues/2"]){const input=duplicate({results:[{...duplicate().results[0]!,issue,classification:"duplicate"}]});const before=structuredClone(input);assert.deepEqual(evaluateDuplicateSearch(input),{status:"block",reason:"uncertain",duplicateIssue:null});assert.deepEqual(input,before);}
 });
 
 test("fails closed for malformed, incomplete, duplicate, or non-plain search evidence without mutation",()=>{

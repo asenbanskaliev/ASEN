@@ -51,7 +51,12 @@ function verifyConsumed(state:AuthorityState,expectedBinding:RepositoryOperation
 export type OperationAttempt={readonly status:"accepted"|"rejected"|"ambiguous";readonly reasonCode?:string};
 export type ExactTargetReadBack={readonly state:"intended"|"unchanged"|"drift"|"unconfirmed";readonly reasonCode?:string};
 export interface OneAttemptOutcome{readonly classification:"confirmed"|"no_write"|"unknown";readonly operationReason:string;readonly readBackReason:string;}
-function reason(value:unknown,fallback:string):string{return typeof value==="string"&&/^[a-z0-9][a-z0-9_-]{0,63}$/u.test(value)?value:value===undefined?fallback:"redacted";}
+function reason(value:unknown,fallback:string):string{
+ if(typeof value==="string"&&/^[a-z0-9][a-z0-9_-]{0,63}$/u.test(value))return value;
+ return value===undefined?fallback:"redacted";
+}
+function operationFallback(attempt:OperationAttempt):string{if(attempt?.status==="rejected")return "authoritative_rejection";if(attempt?.status==="accepted")return "accepted";return "ambiguous_operation";}
+function readBackFallback(observed:ExactTargetReadBack):string{if(observed?.state==="intended")return "exact_intended";if(observed?.state==="unchanged")return "exact_unchanged";if(observed?.state==="drift")return "state_drift";return "unconfirmed";}
 export async function executeOneAttempt(
  authority:RepositoryOperationAuthority,expectedBinding:RepositoryOperationBinding,
  operation:(binding:RepositoryOperationBinding)=>OperationAttempt|Promise<OperationAttempt>,readBack:(binding:RepositoryOperationBinding)=>ExactTargetReadBack|Promise<ExactTargetReadBack>,
@@ -61,9 +66,9 @@ export async function executeOneAttempt(
  try{attempt=await operation(frozen);}catch{attempt={status:"ambiguous",reasonCode:"operation_threw"};}
  let observed:ExactTargetReadBack;
  try{observed=await readBack(frozen);}catch{observed={state:"unconfirmed",reasonCode:"readback_failed"};}
- const operationReason=reason(attempt?.reasonCode,attempt?.status==="rejected"?"authoritative_rejection":attempt?.status==="accepted"?"accepted":"ambiguous_operation");
- const readBackReason=reason(observed?.reasonCode,observed?.state==="intended"?"exact_intended":observed?.state==="unchanged"?"exact_unchanged":observed?.state==="drift"?"state_drift":"unconfirmed");
- const classification=observed?.state==="intended"?"confirmed":attempt?.status==="rejected"&&observed?.state==="unchanged"?"no_write":"unknown";
+ const operationReason=reason(attempt?.reasonCode,operationFallback(attempt));
+ const readBackReason=reason(observed?.reasonCode,readBackFallback(observed));
+ let classification:OneAttemptOutcome["classification"]="unknown";if(observed?.state==="intended")classification="confirmed";else if(attempt?.status==="rejected"&&observed?.state==="unchanged")classification="no_write";
  return Object.freeze({classification,operationReason,readBackReason});
 }
 export async function executeAuthorizedRead<T>(authority:RepositoryOperationAuthority,expectedBinding:RepositoryOperationBinding,reader:(binding:RepositoryOperationBinding)=>T|Promise<T>):Promise<T>{
@@ -74,9 +79,9 @@ export async function executeAuthorizedRead<T>(authority:RepositoryOperationAuth
 export type RepositoryPermission="ADMIN"|"MAINTAIN"|"WRITE"|"TRIAGE"|"READ"|"UNVERIFIED";
 export interface ProtectedLabelMutationInput{readonly currentLabels:readonly string[];readonly add:readonly string[];readonly remove:readonly string[];readonly protectedLabels:readonly string[];readonly actorPermission:RepositoryPermission;readonly rationale?:string;}
 export interface ProtectedLabelMutationPlan{readonly add:readonly string[];readonly remove:readonly string[];readonly expectedFinalLabels:readonly string[];}
-const labelKey=(label:string)=>label.toLocaleLowerCase("en-US");
+const labelKey=(label:string)=>label.normalize("NFC").toLocaleLowerCase("en-US");
 function labels(values:readonly string[],field:string):string[]{
- const normalized=values.map(value=>explicit(value,`${field} label`)),identities=normalized.map(labelKey);
+ const normalized=values.map(value=>explicit(value,`${field} label`).normalize("NFC")),identities=normalized.map(labelKey);
  if(new Set(identities).size!==identities.length)throw new Error(`${field} contains duplicate labels`);
  return normalized;
 }
