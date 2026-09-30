@@ -192,11 +192,15 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
   - 400-line/60-minute chain policy, one slicing pass, delivery strategy, tracker/draft semantics, dependency diagrams, and base validation.
   - Conventional work-unit commits, feature-task commit identity, and native review candidate boundaries.
 - [ ] GSP-05 — Align orchestration, RDD, and Judgment Day behavior.
-  - Non-bypassable ODD fact derivation and routing.
-  - Optional SDD applicability selection before lifecycle entry.
-  - Runtime-enforced conditional TDD triangulation.
-  - RDD issue/current-main/conflict/worktree/size/journey/receipt contracts.
-  - Judgment Day schemas, immutable ledger, bounded sweep/fix rounds, hash-bound dispatch, informational rows, and dedicated controller.
+  - [ ] GSP-05A: derived ODD facts and opaque one-use route decisions.
+  - [ ] GSP-05B: optional structured-lifecycle applicability before lifecycle entry.
+  - [ ] GSP-05C: runtime-enforced conditional TDD triangulation.
+  - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
+  - [ ] GSP-05E: ordinary native review controller bound to genuine work-unit candidates.
+  - [ ] GSP-05F: one bounded correction, validation, recovery, and strict delivery separation.
+  - [ ] GSP-05G: Judgment Day immutable ledger and exactly-two blind dispatch.
+  - [ ] GSP-05H: Judgment Day bounded fix/re-judgment controller and terminal outcomes.
+  - [ ] GSP-05I: normalize ODD, defect, and adversarial-review Skills and matrix evidence.
   - Preserve explicit limits where authenticated principal, trust-root independence, or OS isolation remain unavailable.
 - [ ] GSP-06 — Verify strict parity and prepare delivery slices.
   - Run focused tests per work unit, full local gates, package verification, and independent verification.
