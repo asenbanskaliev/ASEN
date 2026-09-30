@@ -137,6 +137,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Genuine final C2 evidence now carries private C1/local-plan provenance into one immutable, one-use remote plan; exact one-attempt push and PR-open ports classify only verified intended state as confirmed, authoritative rejection plus verified absence as `no_write`, and every ambiguity as `unknown`.
         - Focused evidence covers the positive push-to-PR transcript, frozen exact payloads, forgery/reuse/cross-target and authority mismatch rejection, transport/readback classifications, canonical PR URLs, exact title/body/issue/policy/head state, an explicit empty initial-label contract with candidate labels reserved for C3b, sanitized failures, caller-input preservation, and absence of label or merge callbacks.
         - Verification passes: focused C3a/C2/C1/repository tests 34/34, typecheck, 27-Skill audit, 12-Skill parity audit, 263-path upstream-boundary audit, and diff check. The complete C3a slice is 83 authored additions including tracker evidence, within the sub-400 budget; no Git or network implementation is present.
+        - Commit: `769444c`.
       - [ ] GSP-04C3b: conditional PR label mutation and pending-merge evidence.
     - [ ] GSP-04C4: Delivery Branch Skill normalization, matrix evidence, and generated behavioral checks.
   - [ ] GSP-04D: chained pull-request policy and behavioral evidence.
