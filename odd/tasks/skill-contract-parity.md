@@ -172,7 +172,11 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
           - Added readable pure exact-data validation and deterministic immutable branch, split, 401-line chain, and genuine opaque ready decisions with explicit branch facts, one-to-one behavior/rollback facts, canonical task-path scope, and no completion or authority surface.
           - Focused verification passes 11/11; typecheck, 27-Skill audit, 12-Skill parity audit, 273-path upstream-boundary audit, and diff check pass. The implementation and focused tests total 281 lines; the complete E1a slice is 288 additions.
           - Commit: `b04aefa`.
-        - [ ] GSP-04E1b: completed evidence, commit, and review-candidate recording.
+        - [ ] GSP-04E1b: completed evidence and review-candidate recording.
+          - [x] GSP-04E1b1: completed work-unit commit and evidence recording.
+            - Added first-attempt opaque boundary claiming and immutable complete work-unit evidence for exact task, repository, commit, tree freeze, changed-path partitions, boundary-authorized generated identities, authored totals, focused/runtime/docs results, rollback, and task-document commit identity without exposing readiness, candidate, verdict, authority, or mutation surfaces.
+            - Independent focused verification passes 18/18, including all-40/all-64 Git object snapshots and isolated mixed-width rejection; typecheck, 27-Skill audit, 12-Skill parity audit, 275-path upstream-boundary audit, and diff check pass. The complete readable E1b1 slice is 371 additions.
+          - [ ] GSP-04E1b2: bind a review candidate to a genuine completed record.
       - [ ] GSP-04E2: Work Unit Skill normalization, matrix evidence, and generated behavioral checks.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.

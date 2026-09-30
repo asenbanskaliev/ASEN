@@ -2,6 +2,13 @@ import { createHash } from "node:crypto";
 export type DeliveryRelationship =
   | Readonly<{ kind: "single" }>
   | Readonly<{ kind: "chain_slice"; sliceId: string }>;
+export type BoundaryApplicability =
+  | Readonly<{ kind: "required" }>
+  | Readonly<{ kind: "n_a"; reason: string }>;
+export interface BoundaryGeneratedArtifact {
+  readonly path: string;
+  readonly contentIdentity: string;
+}
 export interface WorkUnitBoundaryInput {
   readonly featureIdentity: string;
   readonly taskIdentity: string;
@@ -14,6 +21,11 @@ export interface WorkUnitBoundaryInput {
   readonly authoredDeletions: number;
   readonly expectedChangedPaths: readonly string[];
   readonly rollbackBoundaries: readonly string[];
+  readonly generatedArtifacts: readonly BoundaryGeneratedArtifact[];
+  readonly previousReviewedBoundary: string | null;
+  readonly focusedTests: BoundaryApplicability;
+  readonly runtimeHarness: BoundaryApplicability;
+  readonly documentation: BoundaryApplicability;
   readonly deliveryRelationship: DeliveryRelationship;
 }
 export type ReadyWorkUnitBoundary = Readonly<WorkUnitBoundaryInput & {
@@ -28,9 +40,11 @@ export type WorkUnitBoundaryDecision =
 const inputKeys = [
   "featureIdentity", "taskIdentity", "taskDocumentPath", "purpose", "behaviorIds",
   "currentBranch", "defaultBranch", "authoredAdditions", "authoredDeletions",
-  "expectedChangedPaths", "rollbackBoundaries", "deliveryRelationship",
+  "expectedChangedPaths", "rollbackBoundaries", "generatedArtifacts", "previousReviewedBoundary",
+  "focusedTests", "runtimeHarness", "documentation", "deliveryRelationship",
 ] as const;
 const issuedBoundaries = new WeakSet<object>();
+const claimedBoundaries = new WeakSet<object>();
 function exactRecord(value: unknown, keys: readonly string[], noun: string): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new Error(`${noun} must be exact plain data`);
@@ -94,6 +108,31 @@ function count(value: unknown, noun: string): number {
   }
   return value;
 }
+function generatedArtifacts(value: unknown, expectedPaths: readonly string[], taskPath: string): readonly BoundaryGeneratedArtifact[] {
+  const artifacts = exactArray(value, "generated artifacts").map((value) => {
+    const item = exactRecord(value, ["path", "contentIdentity"], "generated artifact");
+    const contentIdentity = text(item.contentIdentity, "generated content identity");
+    if (!/^sha256:[0-9a-f]{64}$/u.test(contentIdentity)) throw new Error("generated content identity is malformed");
+    return Object.freeze({ path: path(item.path), contentIdentity });
+  });
+  const paths = artifacts.map((item) => item.path);
+  if (new Set(paths).size !== paths.length || paths.some((item) => item === taskPath || !expectedPaths.includes(item))) {
+    throw new Error("generated artifact paths must be distinct members of expected scope");
+  }
+  return Object.freeze(artifacts);
+}
+function applicability(value: unknown, noun: string): BoundaryApplicability {
+  const kind = typeof value === "object" && value !== null
+    ? Object.getOwnPropertyDescriptor(value, "kind")?.value
+    : undefined;
+  if (kind === "required") {
+    exactRecord(value, ["kind"], noun);
+    return Object.freeze({ kind });
+  }
+  const record = exactRecord(value, ["kind", "reason"], noun);
+  if (record.kind !== "n_a") throw new Error(`${noun} is malformed`);
+  return Object.freeze({ kind: "n_a", reason: text(record.reason, `${noun} reason`) });
+}
 function relationship(value: unknown): DeliveryRelationship {
   const kind = typeof value === "object" && value !== null
     ? Object.getOwnPropertyDescriptor(value, "kind")?.value
@@ -119,6 +158,13 @@ export function planWorkUnitBoundary(value: WorkUnitBoundaryInput): WorkUnitBoun
   if (!expectedChangedPaths.includes(taskDocumentPath)) {
     throw new Error("expected paths must include the task document");
   }
+  const deliveryRelationship = relationship(input.deliveryRelationship);
+  const previousReviewedBoundary = input.previousReviewedBoundary === null
+    ? null
+    : text(input.previousReviewedBoundary, "previous reviewed boundary");
+  if ((deliveryRelationship.kind === "single") !== (previousReviewedBoundary === null)) {
+    throw new Error("previous reviewed boundary does not match delivery relationship");
+  }
   const boundary = {
     featureIdentity: text(input.featureIdentity, "feature identity"),
     taskIdentity: text(input.taskIdentity, "task identity"),
@@ -131,7 +177,12 @@ export function planWorkUnitBoundary(value: WorkUnitBoundaryInput): WorkUnitBoun
     authoredDeletions: count(input.authoredDeletions, "authored deletions"),
     expectedChangedPaths: Object.freeze(expectedChangedPaths),
     rollbackBoundaries: Object.freeze(rollbackBoundaries),
-    deliveryRelationship: relationship(input.deliveryRelationship),
+    generatedArtifacts: generatedArtifacts(input.generatedArtifacts, expectedChangedPaths, taskDocumentPath),
+    previousReviewedBoundary,
+    focusedTests: applicability(input.focusedTests, "focused-test applicability"),
+    runtimeHarness: applicability(input.runtimeHarness, "runtime-harness applicability"),
+    documentation: applicability(input.documentation, "documentation applicability"),
+    deliveryRelationship,
   };
   if (boundary.currentBranch === boundary.defaultBranch) {
     return Object.freeze({
@@ -164,6 +215,13 @@ export function planWorkUnitBoundary(value: WorkUnitBoundaryInput): WorkUnitBoun
   issuedBoundaries.add(ready);
   return ready;
 }
+export { count, exactArray, exactRecord, path, relationship, text };
 export function isGenuineReadyWorkUnitBoundary(value: unknown): value is ReadyWorkUnitBoundary {
   return typeof value === "object" && value !== null && issuedBoundaries.has(value);
+}
+/** Consumes genuine ready provenance on the first completion attempt. */
+export function claimReadyWorkUnitBoundary(value: unknown): asserts value is ReadyWorkUnitBoundary {
+  if (!isGenuineReadyWorkUnitBoundary(value)) throw new Error("ready boundary was not issued here");
+  if (claimedBoundaries.has(value)) throw new Error("ready boundary has already been claimed");
+  claimedBoundaries.add(value);
 }

@@ -16,6 +16,11 @@ function input(overrides: Partial<WorkUnitBoundaryInput> = {}): WorkUnitBoundary
     authoredDeletions: 20,
     expectedChangedPaths: ["src/delivery/work-unit-policy.ts", "tests/work-unit-policy.test.ts", tracker],
     rollbackBoundaries: ["Revert E1a"],
+    generatedArtifacts: [],
+    previousReviewedBoundary: null,
+    focusedTests: { kind: "required" },
+    runtimeHarness: { kind: "required" },
+    documentation: { kind: "n_a", reason: "No user-facing contract changes" },
     deliveryRelationship: { kind: "single" },
     ...overrides,
   };
@@ -30,6 +35,9 @@ test("returns an exact immutable genuine ready boundary without mutating input",
   assert.equal(isGenuineReadyWorkUnitBoundary(result), true);
   assert.equal(isGenuineReadyWorkUnitBoundary(structuredClone(result)), false);
   assert.equal(Object.isFrozen(result) && Object.isFrozen(result.behaviorIds), true);
+  assert.equal(Object.isFrozen(result.generatedArtifacts), true);
+  assert.deepEqual(result.focusedTests, { kind: "required" });
+  assert.deepEqual(result.documentation, { kind: "n_a", reason: "No user-facing contract changes" });
 });
 test("requires a feature branch from explicit branch facts", () => {
   const result = planWorkUnitBoundary(input({ currentBranch: "main" }));
@@ -92,12 +100,15 @@ test("rejects sparse arrays, duplicates, and malformed relationships", () => {
   assert.throws(() => planWorkUnitBoundary(input({ behaviorIds: new Array(1) })));
   assert.throws(() => planWorkUnitBoundary(input({ behaviorIds: ["same", "same"], rollbackBoundaries: ["a", "b"] })));
   assert.throws(() => planWorkUnitBoundary(input({ deliveryRelationship: { kind: "chain_slice", sliceId: "" } })));
+  assert.throws(() => planWorkUnitBoundary(input({ previousReviewedBoundary: "prior" })), /relationship/u);
+  assert.throws(() => planWorkUnitBoundary(input({ deliveryRelationship: { kind: "chain_slice", sliceId: "E1b" } })), /relationship/u);
 });
 test("requires canonical NFC paths including the task document", () => {
   assert.throws(() => planWorkUnitBoundary(input({ expectedChangedPaths: ["src/a.ts"] })), /task document/u);
   for (const path of ["../tasks.md", "C:/tasks.md", "e\u0301.md"]) {
     assert.throws(() => planWorkUnitBoundary(input({ taskDocumentPath: path })));
   }
+  assert.throws(() => planWorkUnitBoundary(input({ generatedArtifacts: [{ path: "generated.json", contentIdentity: `sha256:${"a".repeat(64)}` }] })));
 });
 test("exposes no completion, review, authority, mutation, or readiness surface", async () => {
   const module = await import("../src/delivery/work-unit-policy.js");
