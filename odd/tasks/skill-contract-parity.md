@@ -224,9 +224,10 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Independent focused verification passes 60/60; typecheck, 27-Skill audit, 12-Skill parity audit, 287-path upstream-boundary audit, and diff check pass. The readable slice is 163 additions.
       - Commit: `57cefdb`.
   - [ ] GSP-05C: runtime-enforced conditional TDD triangulation.
-    - [ ] GSP-05C1: derive an opaque, exact candidate-bound TDD obligation from genuine B1 write and testing facts; behavior/testing contradictions block before any cycle authority.
-      - Local implementation and gates are complete: exact ordered behavior writes plus required testing derive a deeply immutable, deterministic candidate/applicability-bound obligation; non-behavior writes remain not applicable; and behavior plus testing N/A blocks before explicit structured or high-risk selection without granting lifecycle, phase, cycle, mutation, review, or delivery authority.
-      - Focused applicability/ODD/orchestration verification passes 43/43; typecheck, 27-Skill audit, 12-Skill parity audit, 288-path upstream-boundary audit, and diff check pass. Independent verification is pending, so GSP-05C1 remains open; GSP-05C2 and later slices are unchanged.
+    - [x] GSP-05C1: derive an opaque, exact candidate-bound TDD obligation from genuine B1 write and testing facts; behavior/testing contradictions block before any cycle authority.
+      - Exact ordered behavior writes plus required testing derive a deeply immutable, deterministic candidate/applicability-bound obligation; non-behavior writes remain not applicable; and behavior plus testing N/A blocks before explicit structured or high-risk selection without granting lifecycle, phase, cycle, mutation, review, or delivery authority.
+      - Independent focused verification passes 43/43; typecheck, 27-Skill audit, 12-Skill parity audit, 288-path upstream-boundary audit, and diff check pass. The readable slice is 190 additions.
+      - Commit: `1b990d5`.
     - [ ] GSP-05C2: require a genuine one-use obligation and structured stable test observation for an honest deterministic RED.
     - [ ] GSP-05C3: enforce same-test minimum GREEN, materially distinct multi-path triangulation or narrow single-path N/A, and an explicit non-TDD alternative when meaningful RED is impossible.
     - [ ] GSP-05C4: require triangulation/N/A before performed-or-not-needed refactor completion and bind lifecycle revision promotion to the exact completion.
