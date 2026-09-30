@@ -61,38 +61,43 @@ export function isExecutedEvidence(value:unknown):value is ExecutedEvidence {
  return typeof value==="object"&&value!==null&&executed.has(value);
 }
 
-export async function executeEvidenceCommand(candidate:Candidate,command:readonly [string,...string[]],options:{cwd?:string;timeoutMs?:number}={}):Promise<ExecutedEvidence>{
+type CapturedExecution={readonly proof:ExecutedEvidence;readonly stdout:string;readonly stderr:string};
+async function runEvidenceCommand(candidate:Candidate,command:readonly [string,...string[]],options:{cwd?:string;timeoutMs?:number},capture:boolean):Promise<CapturedExecution>{
  if(!candidate.repository||!candidate.id||!candidate.revision)throw new Error("Execution evidence requires exact candidate identity");
  const requestedCwd=options.cwd??candidate.repository;
  assertExactGitCandidate(candidate,requestedCwd);
- // Execute evidence against a detached, candidate-revision-only worktree. The
- // mutable caller checkout is never the tree whose bytes receive authority.
- const parent=await mkdtemp(join(tmpdir(),"asen-evidence-worktree-"));
- const isolated=join(parent,"candidate");
+ const parent=await mkdtemp(join(tmpdir(),"asen-evidence-worktree-")),isolated=join(parent,"candidate");
  try{
   execFileSync("git",["-C",candidate.repository,"worktree","add","--detach",isolated,candidate.revision],{stdio:"ignore"});
   assertExactGitCandidate({...candidate,repository:isolated},isolated);
-  const startedAt=new Date().toISOString();
+  const startedAt=new Date().toISOString(),stdout:Buffer[]=[],stderr:Buffer[]=[],limit=1024*1024;
   const exitCode=await new Promise<number>((resolve,reject)=>{
-   const child=spawn(command[0],command.slice(1),{cwd:isolated,stdio:"ignore",shell:false,detached:process.platform!=="win32"});
-   let timedOut=false;
-   const timer=setTimeout(()=>{
-    timedOut=true;
-    void terminateProcessTree(child).finally(()=>reject(new Error("Execution evidence command timed out")));
-   },options.timeoutMs??120000);
-   child.on("error",error=>{clearTimeout(timer);if(!timedOut)reject(error);});
-   child.on("close",code=>{clearTimeout(timer);if(!timedOut)resolve(code??-1);});
+   const env=capture?{...process.env,NODE_TEST_CONTEXT:undefined}:undefined;
+   const child=spawn(command[0],command.slice(1),{cwd:isolated,stdio:capture?["ignore","pipe","pipe"]:"ignore",shell:false,detached:process.platform!=="win32",env});
+   let stopped=false,size=0,timer:NodeJS.Timeout;
+   const fail=(error:Error)=>{if(stopped)return;stopped=true;if(timer)clearTimeout(timer);void terminateProcessTree(child).finally(()=>reject(error));};
+   const collect=(target:Buffer[])=>(chunk:Buffer)=>{size+=chunk.length;if(size>limit)fail(new Error("Execution evidence output exceeded its limit"));else target.push(chunk);};
+   if(capture){child.stdout?.on("data",collect(stdout));child.stderr?.on("data",collect(stderr));}
+   timer=setTimeout(()=>fail(new Error("Execution evidence command timed out")),options.timeoutMs??120000);
+   child.on("error",error=>fail(error));
+   child.on("close",code=>{clearTimeout(timer);if(!stopped){stopped=true;resolve(code??-1);}});
   });
-  assertExactGitCandidate({...candidate,repository:isolated},isolated);
-  assertExactGitCandidate(candidate,requestedCwd);
+  assertExactGitCandidate({...candidate,repository:isolated},isolated);assertExactGitCandidate(candidate,requestedCwd);
   const proof=Object.freeze({candidateRepository:candidate.repository,candidateId:candidate.id,candidateRevision:candidate.revision,command:Object.freeze([...command]),cwd:isolated,exitCode,startedAt,finishedAt:new Date().toISOString()});
   executed.add(proof);
-  return proof;
+  return Object.freeze({proof,stdout:Buffer.concat(stdout).toString("utf8"),stderr:Buffer.concat(stderr).toString("utf8")});
  }finally{
   try{execFileSync("git",["-C",candidate.repository,"worktree","remove","--force",isolated],{stdio:"ignore"});}
-  catch{/* The recursive parent cleanup below remains authoritative. */}
+  catch{/* Recursive parent cleanup below remains authoritative. */}
   await rm(parent,{recursive:true,force:true});
  }
+}
+export function executeEvidenceCommand(candidate:Candidate,command:readonly [string,...string[]],options:{cwd?:string;timeoutMs?:number}={}):Promise<ExecutedEvidence>{
+ return runEvidenceCommand(candidate,command,options,false).then(result=>result.proof);
+}
+/** Internal-facing bounded capture for parsers that issue stronger structured evidence. */
+export function executeCapturedEvidenceCommand(candidate:Candidate,command:readonly [string,...string[]],options:{cwd?:string;timeoutMs?:number}={}):Promise<CapturedExecution>{
+ return runEvidenceCommand(candidate,command,options,true);
 }
 
 export function addExecutedEvidence(store:EvidenceStore,candidate:Candidate,proof:ExecutedEvidence,evidence:{id:string;kind:"test"|"tdd";summary:string;expectFailure?:boolean}):Evidence{

@@ -229,6 +229,9 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Independent focused verification passes 43/43; typecheck, 27-Skill audit, 12-Skill parity audit, 288-path upstream-boundary audit, and diff check pass. The readable slice is 190 additions.
       - Commit: `1b990d5`.
     - [ ] GSP-05C2: require a genuine one-use obligation and structured stable test observation for an honest deterministic RED.
+      - Implementation candidate runs a fixed local Node test/TAP command in the exact detached candidate, derives assertion observations from bounded captured output, and admits them through a factory-only strict RED cycle without changing legacy `TddCycle` or evidence-store behavior.
+      - Focused evidence covers repeatable parsed assertions, executed strict-convention test-only direct-child Git lineage, provenance/burn semantics, discovery/runtime rejection, revision/candidate mismatches, construction hardening, and authority exclusion; raw runner output is not retained.
+      - Completion remains pending independent PASS; C3+ and persistence remain untouched.
     - [ ] GSP-05C3: enforce same-test minimum GREEN, materially distinct multi-path triangulation or narrow single-path N/A, and an explicit non-TDD alternative when meaningful RED is impossible.
     - [ ] GSP-05C4: require triangulation/N/A before performed-or-not-needed refactor completion and bind lifecycle revision promotion to the exact completion.
     - [ ] GSP-05C5: persist and verify exact requirement-bound TDD completion with fail-closed legacy migration and recovery.

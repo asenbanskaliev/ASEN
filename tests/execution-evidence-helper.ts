@@ -1,6 +1,6 @@
 import {execFileSync} from "node:child_process";
 import {resolve,join} from "node:path";
-import {mkdtempSync,writeFileSync,appendFileSync} from "node:fs";
+import {mkdtempSync,writeFileSync,appendFileSync,mkdirSync} from "node:fs";
 import {tmpdir} from "node:os";
 import type {Candidate} from "../src/core/types.js";
 import {addExecutedEvidence,executeEvidenceCommand,type ExecutedEvidence} from "../src/evidence/execution.js";
@@ -23,6 +23,13 @@ export function gitCandidate(id:string,repository?:string):Candidate{
 
 export function nextCandidateRevision(candidate:Candidate,label:string):Candidate{
  appendFileSync(join(candidate.repository,"candidate.txt"),label+"\\n");
+ execFileSync("git",["-C",candidate.repository,"add","."]);
+ execFileSync("git",["-C",candidate.repository,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","-m",label]);
+ return {...candidate,revision:execFileSync("git",["-C",candidate.repository,"rev-parse","HEAD"],{encoding:"utf8"}).trim()};
+}
+
+export function commitCandidateFiles(candidate:Candidate,files:Readonly<Record<string,string>>,label="candidate files"):Candidate{
+ for(const [path,content] of Object.entries(files)){const target=join(candidate.repository,path);mkdirSync(resolve(target,".."),{recursive:true});writeFileSync(target,content);}
  execFileSync("git",["-C",candidate.repository,"add","."]);
  execFileSync("git",["-C",candidate.repository,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","-m",label]);
  return {...candidate,revision:execFileSync("git",["-C",candidate.repository,"rev-parse","HEAD"],{encoding:"utf8"}).trim()};
