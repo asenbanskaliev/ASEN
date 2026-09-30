@@ -159,6 +159,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
          - Genuine D1a plans are claimed once before exact path-bound accounting; forged or reused plans, malformed plain data, path partition failures, authored relabeling, generated artifact mismatches, and incomplete totals fail closed without mutation or authority.
          - Immutable per-slice and candidate snapshots retain generated identities and classification evidence, include generated lines in complete budgets, and require replanning above 400 while publication and merge remain pending.
          - Focused D1b/D1a verification passes 23/23, including isolated rejection of an otherwise valid-length uppercase SHA-256 identity; typecheck, 27-Skill audit, 12-Skill parity audit, 270-path upstream-boundary audit, and diff check pass. The D1b implementation and focused test files total 265 lines before the narrow D1a provenance and tracker additions, keeping the complete slice below 400 additions.
+         - Commit: `602e72c`.
      - [ ] GSP-04D2: Delivery Chain Skill normalization, matrix evidence, and generated behavioral checks.
    - [ ] GSP-04E: work-unit commit and review-boundary policy and behavioral evidence.
   - Approved-issue gate, credential/session gate, protected labels, one-attempt/unknown outcomes, and atomic post-publication behavior.
