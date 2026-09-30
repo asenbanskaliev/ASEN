@@ -208,7 +208,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Generic evidence admission rejects every manual route-decision status. Dedicated admission claims genuine provenance before exact candidate and accessor-safe metadata validation, so reuse, binding mismatches, malformed metadata, clones, and forgeries fail closed and first-attempt failures burn genuine proofs.
         - Focused verification passes 58/58, including mutation-gate contribution, all provenance and metadata negatives, fixed evidence fields, and signed recovery. Typecheck, 27-Skill audit, 12-Skill parity audit, and 283-path upstream-boundary audit pass. The complete readable additions remain below 400 lines.
         - Commit: `00164d2`.
-  - [ ] GSP-05B: optional structured-lifecycle applicability before lifecycle entry.
+  - [x] GSP-05B: optional structured-lifecycle applicability before lifecycle entry.
     - [x] GSP-05B1: candidate-bound organic/structured/blocked applicability decision.
       - [x] GSP-05B1a: orchestration-authentic claimed route context and exact candidate binding.
         - Successful candidate-bound orchestration privately records immutable original route facts and exact candidate identity. The read-only context rejects unclaimed, forged, cloned, candidate-less, failed, and rebound decisions without exposing authority.
@@ -218,10 +218,11 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Genuine candidate-bound route decisions now produce immutable organic, structured, or blocked applicability derived only from original ODD facts, exact caller bindings, and explicit lifecycle inputs; first-attempt and B2 claim provenance are one-use without phase or execution authority.
         - Focused ODD/orchestration/applicability verification passes 32/32; typecheck, 27-Skill audit, 12-Skill parity audit, 285-path upstream-boundary audit, and diff check pass. The readable slice is 281 additions.
         - Commit: `f9fb0b5`.
-    - [ ] GSP-05B2: require genuine applicability before lifecycle construction.
+    - [x] GSP-05B2: require genuine applicability before lifecycle construction.
       - Fresh lifecycle construction immediately claims genuine structured B1 applicability and binds the initial nine-phase state to its exact task and candidate; organic, blocked, malformed, cloned, forged, and reused inputs fail closed, with genuine failed attempts burned.
       - Module-private one-use construction requests never escape through a public/static minting surface. Signed `loadLifecycle` remains the only verified-recovery path and the only source of pending-authority reissue eligibility.
-      - Local verification is recorded for the candidate, but B2 and B remain pending until independent PASS and commit evidence.
+      - Independent focused verification passes 60/60; typecheck, 27-Skill audit, 12-Skill parity audit, 287-path upstream-boundary audit, and diff check pass. The readable slice is 163 additions.
+      - Commit: `57cefdb`.
   - [ ] GSP-05C: runtime-enforced conditional TDD triangulation.
   - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
   - [ ] GSP-05E: ordinary native review controller bound to genuine work-unit candidates.
