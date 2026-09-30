@@ -224,6 +224,12 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Independent focused verification passes 60/60; typecheck, 27-Skill audit, 12-Skill parity audit, 287-path upstream-boundary audit, and diff check pass. The readable slice is 163 additions.
       - Commit: `57cefdb`.
   - [ ] GSP-05C: runtime-enforced conditional TDD triangulation.
+    - [ ] GSP-05C1: derive an opaque, exact candidate-bound TDD obligation from genuine B1 write and testing facts; behavior/testing contradictions block before any cycle authority.
+    - [ ] GSP-05C2: require a genuine one-use obligation and structured stable test observation for an honest deterministic RED.
+    - [ ] GSP-05C3: enforce same-test minimum GREEN, materially distinct multi-path triangulation or narrow single-path N/A, and an explicit non-TDD alternative when meaningful RED is impossible.
+    - [ ] GSP-05C4: require triangulation/N/A before performed-or-not-needed refactor completion and bind lifecycle revision promotion to the exact completion.
+    - [ ] GSP-05C5: persist and verify exact requirement-bound TDD completion with fail-closed legacy migration and recovery.
+    - [ ] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
   - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
   - [ ] GSP-05E: ordinary native review controller bound to genuine work-unit candidates.
   - [ ] GSP-05F: one bounded correction, validation, recovery, and strict delivery separation.
