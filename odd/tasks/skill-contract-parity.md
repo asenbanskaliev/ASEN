@@ -219,6 +219,9 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Focused ODD/orchestration/applicability verification passes 32/32; typecheck, 27-Skill audit, 12-Skill parity audit, 285-path upstream-boundary audit, and diff check pass. The readable slice is 281 additions.
         - Commit: `f9fb0b5`.
     - [ ] GSP-05B2: require genuine applicability before lifecycle construction.
+      - Fresh lifecycle construction immediately claims genuine structured B1 applicability and binds the initial nine-phase state to its exact task and candidate; organic, blocked, malformed, cloned, forged, and reused inputs fail closed, with genuine failed attempts burned.
+      - Module-private one-use construction requests never escape through a public/static minting surface. Signed `loadLifecycle` remains the only verified-recovery path and the only source of pending-authority reissue eligibility.
+      - Local verification is recorded for the candidate, but B2 and B remain pending until independent PASS and commit evidence.
   - [ ] GSP-05C: runtime-enforced conditional TDD triangulation.
   - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
   - [ ] GSP-05E: ordinary native review controller bound to genuine work-unit candidates.

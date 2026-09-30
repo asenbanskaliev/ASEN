@@ -6,7 +6,8 @@ import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {recoveryKeyFromEnvironment} from "../src/session/recovery-key.js";
-import {SkillLifecycle,saveLifecycle} from "../src/lifecycle/skill-lifecycle.js";
+import {saveLifecycle} from "../src/lifecycle/skill-lifecycle.js";
+import {createTestSkillLifecycle} from "./helpers/lifecycle-applicability.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {saveEvidence} from "../src/evidence/persistence.js";
 import {passingEvidence,passingReview,gitCandidate} from "./execution-evidence-helper.js";
@@ -30,7 +31,7 @@ test("new process restores signed lifecycle and evidence with host secret",async
  const evidence=new EvidenceStore();
  await passingEvidence(evidence,candidate,"test");
  await passingReview(evidence,candidate,"review");
- await saveLifecycle(flowPath,new SkillLifecycle("task",candidate).state,key);
+ await saveLifecycle(flowPath,createTestSkillLifecycle("task",candidate).state,key);
  await saveEvidence(evidencePath,candidate,evidence,key);
  const fixture=resolve("tests/fixtures/recover-lifecycle.ts");
  const run=(env:NodeJS.ProcessEnv,revision=candidate.revision)=>spawnSync(process.execPath,["--import","tsx",fixture,flowPath,evidencePath,dir,revision],{cwd:resolve("."),encoding:"utf8",env:{...process.env,...env},timeout:20000});

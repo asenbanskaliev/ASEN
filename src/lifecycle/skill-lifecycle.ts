@@ -9,6 +9,7 @@ import {isIssuedAgentArtifactProof} from "../agents/pi-artifact-runner.js";
 import {EvidenceStore} from "../evidence/store.js";
 import {authorizeRelease,authorizeVerified} from "../verify/verifier.js";
 import {assertDirectGitParent} from "../evidence/git-lineage.js";
+import {claimLifecycleApplicability,type LifecycleApplicability} from "./applicability.js";
 
 export const lifecyclePhases=["context-init","explore","proposal","specification","design","tasks","apply","verify","archive"] as const;
 export type LifecyclePhase=typeof lifecyclePhases[number];
@@ -27,6 +28,17 @@ export interface LifecycleSnapshot{version:1;taskId:string;candidate:Candidate;n
 const isPhase=(value:unknown):value is LifecyclePhase=>typeof value==="string"&&lifecyclePhases.includes(value as LifecyclePhase);
 const copy=(snapshot:LifecycleSnapshot):LifecycleSnapshot=>structuredClone(snapshot);
 const verifiedRecovery=new WeakSet<SkillLifecycle>();
+class LifecycleConstructionRequest{
+ readonly #brand=true;
+ constructor(readonly taskId:string,readonly candidate:Candidate,readonly snapshot?:LifecycleSnapshot){}
+ isValid():boolean{return this.#brand;}
+}
+const lifecycleConstructionRequests=new WeakSet<LifecycleConstructionRequest>();
+function constructLifecycle(taskId:string,candidate:Candidate,snapshot?:LifecycleSnapshot):SkillLifecycle{
+ const request=new LifecycleConstructionRequest(taskId,candidate,snapshot);
+ lifecycleConstructionRequests.add(request);
+ return new SkillLifecycle(request);
+}
 const phaseGrants=new WeakMap<object,{requestId:string;repository:string;candidateId:string;revision:string;phase:LifecyclePhase;used:boolean;active:boolean;piUsed:boolean}>();
 function issuePhaseGrant(requestId:string,candidate:Candidate,phase:LifecyclePhase):object{
  const grant=Object.freeze({});phaseGrants.set(grant,{requestId,repository:candidate.repository,candidateId:candidate.id,revision:candidate.revision,phase,used:false,active:false,piUsed:false});return grant;
@@ -48,7 +60,11 @@ export function retirePhaseGrant(request:AgentRequest):void{
 
 export class SkillLifecycle{
  #snapshot:LifecycleSnapshot;
- constructor(taskId:string,candidate:Candidate,snapshot?:LifecycleSnapshot){
+ constructor(request:LifecycleConstructionRequest){
+  if(typeof request!=="object"||request===null||!lifecycleConstructionRequests.has(request))throw new Error("SkillLifecycle construction requires genuine applicability or verified recovery");
+  lifecycleConstructionRequests.delete(request);
+  if(!request.isValid())throw new Error("SkillLifecycle construction request is invalid");
+  const {taskId,candidate,snapshot}=request;
   if(!taskId||!candidate.id||!candidate.repository||!candidate.revision)throw new Error("Lifecycle requires task and exact candidate");
   this.#snapshot=snapshot?copy(snapshot):{version:1,taskId,candidate:structuredClone(candidate),nextPhase:"context-init",records:[]};
   if(snapshot) validateSnapshot(this.#snapshot,taskId,candidate);
@@ -125,6 +141,12 @@ export class SkillLifecycle{
   return this.state;
  }
 }
+export function createSkillLifecycle(applicability:LifecycleApplicability):SkillLifecycle{
+ claimLifecycleApplicability(applicability);
+ if(applicability.outcome!=="structured")throw new Error("SkillLifecycle requires structured applicability");
+ const candidate:Candidate={...applicability.candidate,createdAt:"lifecycle-applicability"};
+ return constructLifecycle(applicability.taskIdentity,candidate);
+}
 function validateSnapshot(s:LifecycleSnapshot,taskId:string,candidate:Candidate):void{
  if(s.version!==1||s.taskId!==taskId||s.candidate.id!==candidate.id||s.candidate.repository!==candidate.repository||s.candidate.revision!==candidate.revision)throw new Error("Lifecycle recovery identity mismatch");
  if(!Array.isArray(s.records)||s.records.length>lifecyclePhases.length)throw new Error("Lifecycle recovery records invalid");
@@ -163,11 +185,13 @@ export async function saveLifecycle(path:string,snapshot:LifecycleSnapshot,key:B
  finally{if(handle)await handle.close();await unlink(temp).catch((error:NodeJS.ErrnoException)=>{if(error.code!=="ENOENT")throw error;});}
 }
 export async function loadLifecycle(path:string,taskId:string,candidate:Candidate,key:Buffer):Promise<SkillLifecycle>{
- const parsed=JSON.parse(await readFile(path,"utf8")) as {snapshot:LifecycleSnapshot;mac:string};
+ let parsed:{snapshot:LifecycleSnapshot;mac:string};
+ try{parsed=JSON.parse(await readFile(path,"utf8")) as {snapshot:LifecycleSnapshot;mac:string};}
+ catch{throw new Error("Lifecycle recovery data is malformed");}
  if(!parsed?.snapshot||typeof parsed.mac!=="string"||!/^[0-9a-f]{64}$/i.test(parsed.mac))throw new Error("Lifecycle recovery signature missing");
  const expected=Buffer.from(signature(parsed.snapshot,key),"hex"),actual=Buffer.from(parsed.mac,"hex");
  if(!timingSafeEqual(expected,actual))throw new Error("Lifecycle recovery integrity mismatch");
- const flow=new SkillLifecycle(taskId,candidate,parsed.snapshot);
+ const flow=constructLifecycle(taskId,candidate,parsed.snapshot);
  verifiedRecovery.add(flow);
  return flow;
 }

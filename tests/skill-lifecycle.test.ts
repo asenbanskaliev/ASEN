@@ -7,6 +7,7 @@ import {createHmac,randomBytes} from "node:crypto";
 import {spawnSync} from "node:child_process";
 import {resolve} from "node:path";
 import {SkillLifecycle,authorizePiWriteGrant,lifecyclePhases,saveLifecycle,loadLifecycle,type LifecyclePhase,type LifecycleRole} from "../src/lifecycle/skill-lifecycle.js";
+import {createTestSkillLifecycle} from "./helpers/lifecycle-applicability.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {Dispatcher,type AgentRequest,type AgentRunner} from "../src/agents/dispatcher.js";
@@ -35,7 +36,7 @@ async function advance(flow:SkillLifecycle,phase:LifecyclePhase,options:Paramete
  return flow.runPhase(new Dispatcher(runner,evidence),{phase,context:selected.context,skillPaths:selected.skillPaths,prompt:phase,evidence,risk:"high",...(phase==="apply"?{writeSurfaces:["src/"]}:{})});
 }
 test("lifecycle enforces nine ordered phases and mandatory artifacts",async()=>{
- const flow=new SkillLifecycle("task",candidate);
+ const flow=createTestSkillLifecycle("task",candidate);
  await assert.rejects(()=>advance(flow,"apply"),/out of order/);
  for(const phase of lifecyclePhases){assert.equal(flow.state.nextPhase,phase);await advance(flow,phase);}
  assert.equal(flow.state.nextPhase,null);
@@ -43,13 +44,13 @@ test("lifecycle enforces nine ordered phases and mandatory artifacts",async()=>{
  await assert.rejects(()=>advance(flow,"archive"),/out of order/);
 });
 test("plain JSON from an arbitrary runner cannot advance lifecycle",async()=>{
- const flow=new SkillLifecycle("task",candidate),selection=completion("context-init"),evidence=new EvidenceStore();
+ const flow=createTestSkillLifecycle("task",candidate),selection=completion("context-init"),evidence=new EvidenceStore();
  const fabricated:AgentRunner={run:async request=>({id:request.id,ok:true,output:JSON.stringify(selection.artifact)})};
  await assert.rejects(()=>flow.runPhase(new Dispatcher(fabricated,evidence),{phase:"context-init",context:selection.context,skillPaths:selection.skillPaths,prompt:"context",evidence,risk:"low"}),/Pi provenance/);
  assert.equal(flow.state.records.length,0);
 });
 test("worker lifecycle grant is one-use and bound to task, phase and candidate",async()=>{
- const flow=new SkillLifecycle("task",candidate),selected=completion("context-init"),evidence=new EvidenceStore();
+ const flow=createTestSkillLifecycle("task",candidate),selected=completion("context-init"),evidence=new EvidenceStore();
  const fixture=fixtureArtifactRunner(()=>selected.artifact);let captured:AgentRequest|undefined;
  const runner:AgentRunner={run:async request=>{captured=request;return fixture.run(request);}};
  const dispatcher=new Dispatcher(runner,evidence);
@@ -62,7 +63,7 @@ test("worker lifecycle grant is one-use and bound to task, phase and candidate",
  await assert.rejects(()=>dispatcher.dispatch({...request,phaseGrant:Object.freeze({})}),/unused ASEN lifecycle grant/);
 });
 test("lifecycle refuses wrong role, task, revision, routes and artifact",async()=>{
- const flow=new SkillLifecycle("task",candidate);
+ const flow=createTestSkillLifecycle("task",candidate);
  await assert.rejects(()=>advance(flow,"context-init",{role:"explorer"}),/context lacks/);
  await assert.rejects(()=>advance(flow,"context-init",{task:"other"}),/context lacks/);
  await assert.rejects(()=>advance(flow,"context-init",{candidate:{...candidate,revision:"old"}}),/context lacks/);
@@ -75,7 +76,7 @@ test("lifecycle refuses wrong role, task, revision, routes and artifact",async()
 });
 test("interruption resumes exact phase, artifacts and candidate; changed identity fails",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-lifecycle-"));t.after(()=>rm(dir,{recursive:true,force:true}));
- const path=join(dir,"state.json"),flow=new SkillLifecycle("task",candidate);
+ const path=join(dir,"state.json"),flow=createTestSkillLifecycle("task",candidate);
  for(const phase of lifecyclePhases.slice(0,4))await advance(flow,phase);
  await saveLifecycle(path,flow.state,recoveryKey);
  const resumed=await loadLifecycle(path,"task",candidate,recoveryKey);
@@ -102,7 +103,7 @@ test("task executes through dispatcher, resumes, verifies and archives",async t=
   }
   return {kind:artifacts[phase],content:`completed ${phase}`,repository:candidate.repository,candidateId:candidate.id,revision:candidate.revision};
  });
- let dispatcher=new Dispatcher(runner,evidence);const flow=new SkillLifecycle("task",candidate);
+ let dispatcher=new Dispatcher(runner,evidence);const flow=createTestSkillLifecycle("task",candidate);
  const execute=async(target:SkillLifecycle,phase:LifecyclePhase)=>{
   const issued=completion(phase);
   await target.runPhase(dispatcher,{phase,context:issued.context,skillPaths:issued.skillPaths,prompt:`perform ${phase}`,evidence,risk:"high",...(phase==="apply"?{writeSurfaces:["src/"]}:{})});
@@ -130,7 +131,7 @@ test("task executes through dispatcher, resumes, verifies and archives",async t=
 });
 test("signed pending phase reissues fresh authority after recovery",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-reissue-"));t.after(()=>rm(dir,{recursive:true,force:true}));
- const path=join(dir,"flow.json"),flow=new SkillLifecycle("task",candidate);
+ const path=join(dir,"flow.json"),flow=createTestSkillLifecycle("task",candidate);
  for(const phase of lifecyclePhases.slice(0,4))await advance(flow,phase);
  const selected=completion("design");
  flow.preparePhase(selected.context,selected.skillPaths);
@@ -142,8 +143,7 @@ test("signed pending phase reissues fresh authority after recovery",async t=>{
  const runner=fixtureArtifactRunner(()=>selected.artifact);
  await restored.runPhase(new Dispatcher(runner,new EvidenceStore()),{phase:"design",context:issued.context,skillPaths:issued.skillPaths,prompt:"design",evidence:new EvidenceStore(),risk:"low"});
  assert.equal(restored.state.nextPhase,"tasks");
- const forged=new SkillLifecycle("task",candidate,flow.state);
- assert.throws(()=>forged.reissuePendingAuthority(),/cryptographically verified recovery/);
+ assert.throws(()=>flow.reissuePendingAuthority(),/cryptographically verified recovery/);
  const script=resolve("tests/fixtures/resume-authority.ts"),run=(key:Buffer)=>spawnSync(process.execPath,["--import","tsx",script,path,candidate.repository,candidate.revision],{cwd:resolve("."),encoding:"utf8",env:{...process.env,ASEN_RECOVERY_KEY:key.toString("base64url")},timeout:20000});
  const continued=run(recoveryKey);
  assert.equal(continued.status,0,continued.stderr);
@@ -160,7 +160,7 @@ test("apply can advance to a direct Git child while signed recovery retains prio
   return spawnSync("git",["-C",dir,"rev-parse","HEAD"],{encoding:"utf8"}).stdout.trim();
  };
  const red=commit("pre-apply"),initial={...candidate,id:"git-lifecycle",repository:dir,revision:red};
- const flow=new SkillLifecycle("git-task",initial),evidence=new EvidenceStore();
+ const flow=createTestSkillLifecycle("git-task",initial),evidence=new EvidenceStore();
  for(const [id,kind] of [["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)evidence.add(initial,{id,kind,status:"pass",summary:id,createdAt:"now"});
  for(const phase of lifecyclePhases.slice(0,7)){
   const role=roles[phase],context=issueSkillContext(`git-task:${role}`,dir,initial,{phase,risk:"low"}),skillPaths=selectSkills(context).map(s=>s.path);

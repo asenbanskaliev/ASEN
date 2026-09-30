@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { decideLifecycleApplicability, claimLifecycleApplicability, type LifecycleApplicabilityInput } from "../src/lifecycle/applicability.js";
+import { createSkillLifecycle, SkillLifecycle, lifecyclePhases } from "../src/lifecycle/skill-lifecycle.js";
 import { buildOrchestrationPlan } from "../src/orchestration/orchestrator.js";
+import { issueStructuredLifecycleApplicability } from "./helpers/lifecycle-applicability.js";
 import { issueOddDecision } from "./helpers/odd-routing.js";
 
 type Fixture = Parameters<typeof issueOddDecision>[0];
@@ -120,6 +122,63 @@ test("rejects malformed exact data, Unicode, controls, duplicates, accessors, sy
   Object.defineProperty(accessor, "taskIdentity", { enumerable: true, get: () => { reads += 1; return "GSP-05B1b"; } }); invalid.push(accessor);
   for (const value of invalid) assert.throws(() => decideLifecycleApplicability(prepared(), value as LifecycleApplicabilityInput));
   assert.equal(reads, 0);
+});
+
+test("genuine structured applicability creates the exact initial nine-phase lifecycle", () => {
+  const applicability = issueStructuredLifecycleApplicability("GSP-05B2", candidate, ["src/lifecycle/skill-lifecycle.ts"]);
+  const lifecycle = createSkillLifecycle(applicability);
+  assert.equal(lifecycle.state.taskId, "GSP-05B2");
+  assert.deepEqual(
+    { id: lifecycle.state.candidate.id, repository: lifecycle.state.candidate.repository, revision: lifecycle.state.candidate.revision },
+    { id: candidate.id, repository: candidate.repository, revision: candidate.revision },
+  );
+  assert.equal(lifecycle.state.nextPhase, lifecyclePhases[0]);
+  assert.deepEqual(lifecycle.state.records, []);
+  assert.deepEqual(lifecyclePhases, ["context-init", "explore", "proposal", "specification", "design", "tasks", "apply", "verify", "archive"]);
+  assert.throws(() => lifecycle.reissuePendingAuthority(), /verified recovery/);
+  assert.equal(JSON.stringify(applicability).match(/phase|grant|write|review|release|git|delivery/giu), null);
+});
+
+test("organic and blocked applicability reject construction and burn their first genuine claim", () => {
+  for (const applicability of [
+    decideLifecycleApplicability(prepared(), input()),
+    decideLifecycleApplicability(prepared(), input({ explicitMode: "organic", requiredArtifacts: ["proposal"] })),
+  ]) {
+    assert.throws(() => createSkillLifecycle(applicability), /requires structured applicability/);
+    assert.throws(() => createSkillLifecycle(applicability), /already been claimed/);
+  }
+});
+
+test("fresh construction rejects clones, forgeries, malformed values, and reuse", () => {
+  const structured = issueStructuredLifecycleApplicability("GSP-05B2-clone", candidate);
+  assert.throws(() => createSkillLifecycle({ ...structured }), /not issued here/);
+  assert.throws(() => createSkillLifecycle({} as typeof structured), /not issued here/);
+  assert.throws(() => createSkillLifecycle(undefined as unknown as typeof structured), /not issued here/);
+  createSkillLifecycle(structured);
+  assert.throws(() => createSkillLifecycle(structured), /already been claimed/);
+});
+
+test("construction requests cannot be observed, forged, cloned, reused, or intercepted", () => {
+  assert.equal(Object.hasOwn(SkillLifecycle, "construct"), false);
+  assert.equal(Object.hasOwn(SkillLifecycle, "token"), false);
+  let intercepted = false;
+  Object.defineProperty(SkillLifecycle, "construct", { configurable: true, value: () => { intercepted = true; } });
+  Object.defineProperty(SkillLifecycle, "token", { configurable: true, value: Object.freeze({}) });
+  try {
+    const applicability = issueStructuredLifecycleApplicability("GSP-05B2-monkeypatch", candidate);
+    const lifecycle = createSkillLifecycle(applicability);
+    assert.equal(lifecycle.state.taskId, "GSP-05B2-monkeypatch");
+    assert.equal(intercepted, false);
+    const forged = Object.freeze({ taskId: "forged", candidate });
+    const RuntimeLifecycle = SkillLifecycle as unknown as new (request: unknown) => SkillLifecycle;
+    assert.throws(() => new RuntimeLifecycle(forged), /genuine applicability or verified recovery/);
+    assert.throws(() => new RuntimeLifecycle({ ...forged }), /genuine applicability or verified recovery/);
+    // @ts-expect-error The genuine module-private construction request type is not externally constructible.
+    assert.throws(() => new SkillLifecycle({}), /genuine applicability or verified recovery/);
+  } finally {
+    Reflect.deleteProperty(SkillLifecycle, "construct");
+    Reflect.deleteProperty(SkillLifecycle, "token");
+  }
 });
 
 test("is deterministic, deeply frozen, nonmutating, opaque, and claimable once", () => {
