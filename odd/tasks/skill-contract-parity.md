@@ -247,6 +247,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Commit: `b8d52fe`.
     - [ ] GSP-05C4: require triangulation/N/A before performed-or-not-needed refactor completion and bind lifecycle revision promotion to the exact completion.
       - [ ] GSP-05C4a: issue exact strict completion only after performed or explicitly unnecessary refactoring preserves planned behavior.
+        - Implementation candidate records one exact performed/not-needed finalization after genuine C3b terminal provenance and fresh runner-derived coverage, preserves planned cases and terminal tests, and exposes only one-use completion facts for C4b. The task remains unchecked pending independent PASS.
       - [ ] GSP-05C4b: promote TDD-required lifecycle candidates only from genuine strict completion or the exact verified non-TDD alternative; defer persisted authority to C5.
     - [ ] GSP-05C5: persist and verify exact requirement-bound TDD completion with fail-closed legacy migration and recovery.
     - [ ] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
