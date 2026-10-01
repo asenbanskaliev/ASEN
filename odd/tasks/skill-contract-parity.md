@@ -251,6 +251,8 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Independent focused verification passes 51/51; typecheck, 27-Skill audit, 12-Skill parity audit, 296-path upstream-boundary audit, and diff check pass. The readable slice is 60 additions.
         - Commit: `c934e77`.
       - [ ] GSP-05C4b: promote TDD-required lifecycle candidates only from genuine strict completion or the exact verified non-TDD alternative; defer persisted authority to C5.
+        - Implementation binds fresh lifecycles to their exact live TDD obligation, burns genuine strict or alternative results before validation, validates honest direct-parent chains, and leaves verify as the next phase without granting broader authority.
+        - Promoted state carries an explicit pending-persistence marker; C4 save/load fail closed while ordinary signed recovery remains available. Completion remains unchecked pending independent PASS.
     - [ ] GSP-05C5: persist and verify exact requirement-bound TDD completion with fail-closed legacy migration and recovery.
     - [ ] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
   - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.

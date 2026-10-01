@@ -15,16 +15,17 @@ export function issueStructuredLifecycleApplicability(
   taskIdentity: string,
   candidate: Candidate,
   expectedPaths: readonly string[] = ["src/feature.ts"],
+  testing: "required" | "not-applicable" = "required",
 ): LifecycleApplicability {
   const decision = planOddRoute(deriveOddFacts({
     taskIdentity,
     repositoryIdentity: candidate.repository,
     intent: "implementation",
     scope: { kind: "known", expectedPaths },
-    writes: expectedPaths.map(path => ({ path, changeKind: "behavior" as const })),
+    writes: expectedPaths.map(path => ({ path, changeKind: testing === "required" ? "behavior" as const : "documentation" as const })),
     riskOperations: [],
     session: { estimatedMinutes: 15, continuation: false },
-    testing: { kind: "required" },
+    testing: testing === "required" ? { kind: "required" } : { kind: "n_a", reason: "No behavior change" },
     review: { kind: "none", estimatedMinutes: 10 },
     unresolvedDecisions: [],
   }));
@@ -54,6 +55,7 @@ export function createTestSkillLifecycle(
   taskIdentity: string,
   candidate: Candidate,
   expectedPaths?: readonly string[],
+  testing?: "required" | "not-applicable",
 ): SkillLifecycle {
-  return createSkillLifecycle(issueStructuredLifecycleApplicability(taskIdentity, candidate, expectedPaths));
+  return createSkillLifecycle(issueStructuredLifecycleApplicability(taskIdentity, candidate, expectedPaths, testing));
 }

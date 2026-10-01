@@ -160,7 +160,7 @@ test("apply can advance to a direct Git child while signed recovery retains prio
   return spawnSync("git",["-C",dir,"rev-parse","HEAD"],{encoding:"utf8"}).stdout.trim();
  };
  const red=commit("pre-apply"),initial={...candidate,id:"git-lifecycle",repository:dir,revision:red};
- const flow=createTestSkillLifecycle("git-task",initial),evidence=new EvidenceStore();
+ const flow=createTestSkillLifecycle("git-task",initial,undefined,"not-applicable"),evidence=new EvidenceStore();
  for(const [id,kind] of [["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)evidence.add(initial,{id,kind,status:"pass",summary:id,createdAt:"now"});
  for(const phase of lifecyclePhases.slice(0,7)){
   const role=roles[phase],context=issueSkillContext(`git-task:${role}`,dir,initial,{phase,risk:"low"}),skillPaths=selectSkills(context).map(s=>s.path);
@@ -178,23 +178,14 @@ test("apply can advance to a direct Git child while signed recovery retains prio
  const path=join(stateDir,"lifecycle.json");await saveLifecycle(path,flow.state,recoveryKey);
  const restored=await loadLifecycle(path,"git-task",{...initial,revision:green},recoveryKey);
  assert.deepEqual(restored.state,flow.state);
- restored.promoteCandidateRevision(refactor);
- assert.deepEqual(restored.state.revisions,[red,green,refactor]);
+ assert.throws(()=>restored.promoteCandidateRevision(refactor),/recovery-unknown/);
+ const current={...initial,revision:green};
+ assert.equal(restored.state.nextPhase,"verify");
+ assert.equal(restored.state.records[6]?.artifact.revision,red);
  await saveLifecycle(path,restored.state,recoveryKey);
- const final=await loadLifecycle(path,"git-task",{...initial,revision:refactor},recoveryKey);
- assert.deepEqual(final.state,restored.state);
- const current={...initial,revision:refactor};
- await passingEvidence(evidence,current,"post-apply-test");
- for(const phase of ["verify","archive"] as const){
-  const role=roles[phase],context=issueSkillContext(`git-task:${role}`,dir,current,{phase,risk:"low"}),skillPaths=selectSkills(context).map(s=>s.path);
-  const runner=fixtureArtifactRunner(()=>({kind:artifacts[phase],content:phase,repository:dir,candidateId:current.id,revision:refactor}));
-  await final.runPhase(new Dispatcher(runner,evidence),{phase,context,skillPaths,prompt:phase,evidence,risk:"low"});
- }
- assert.equal(final.state.nextPhase,null);
- assert.equal(final.state.records[7]?.artifact.revision,refactor);
- await saveLifecycle(path,final.state,recoveryKey);
- assert.deepEqual((await loadLifecycle(path,"git-task",current,recoveryKey)).state,final.state);
+ assert.deepEqual((await loadLifecycle(path,"git-task",current,recoveryKey)).state,restored.state);
  const forged=JSON.parse(await readFile(path,"utf8"));
+ forged.snapshot.candidate.revision=refactor;
  forged.snapshot.revisions=[red,refactor];
  forged.mac=createHmac("sha256",recoveryKey).update(JSON.stringify(forged.snapshot)).digest("hex");
  await writeFile(path,JSON.stringify(forged));

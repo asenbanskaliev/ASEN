@@ -9,7 +9,9 @@ import {isIssuedAgentArtifactProof} from "../agents/pi-artifact-runner.js";
 import {EvidenceStore} from "../evidence/store.js";
 import {authorizeRelease,authorizeVerified} from "../verify/verifier.js";
 import {assertDirectGitParent} from "../evidence/git-lineage.js";
-import {claimLifecycleApplicability,type LifecycleApplicability} from "./applicability.js";
+import {claimLifecycleApplicability,tddObligationFor,type LifecycleApplicability,type TddObligation} from "./applicability.js";
+import {claimStrictTddCompletion,type StrictTddCompletion} from "../test/strict-tdd-cycle.js";
+import {claimNonTddAlternativeResult,type NonTddAlternativeResult} from "../test/non-tdd-alternative.js";
 
 export const lifecyclePhases=["context-init","explore","proposal","specification","design","tasks","apply","verify","archive"] as const;
 export type LifecyclePhase=typeof lifecyclePhases[number];
@@ -24,20 +26,29 @@ const roleFor:Record<LifecyclePhase,LifecycleRole>={
 };
 export interface LifecycleArtifact{kind:string;content:string;repository:string;candidateId:string;revision:string;}
 export interface LifecycleRecord{phase:LifecyclePhase;role:LifecycleRole;artifact:LifecycleArtifact;skillPaths:string[];}
-export interface LifecycleSnapshot{version:1;taskId:string;candidate:Candidate;nextPhase:LifecyclePhase|null;records:LifecycleRecord[];revisions?:string[];pendingAuthority?:{phase:LifecyclePhase;role:LifecycleRole;selection:SkillSelectionContext;skillPaths:string[]};}
-const isPhase=(value:unknown):value is LifecyclePhase=>typeof value==="string"&&lifecyclePhases.includes(value as LifecyclePhase);
+export interface LifecycleSnapshot{version:1;taskId:string;candidate:Candidate;nextPhase:LifecyclePhase|null;records:LifecycleRecord[];revisions?:string[];tddPromotion?:"strict-pending-persistence"|"alternative-pending-persistence";pendingAuthority?:{phase:LifecyclePhase;role:LifecycleRole;selection:SkillSelectionContext;skillPaths:string[]};}
 const copy=(snapshot:LifecycleSnapshot):LifecycleSnapshot=>structuredClone(snapshot);
+const sameStrings=(left:readonly string[],right:readonly string[])=>left.length===right.length&&left.every((item,index)=>item===right[index]);
+function honestRevisionChain(repository:string,revisions:readonly string[]):string[]{
+ const collapsed=revisions.filter((revision,index)=>index===0||revision!==revisions[index-1]);
+ if(!collapsed.length||collapsed.length>5||new Set(collapsed).size!==collapsed.length)throw new Error("TDD revision chain must contain at most five honest unique revisions");
+ for(let index=1;index<collapsed.length;index++)assertDirectGitParent(repository,collapsed[index-1]!,collapsed[index]!);
+ return collapsed;
+}
 const verifiedRecovery=new WeakSet<SkillLifecycle>();
+const liveObligations=new WeakMap<SkillLifecycle,TddObligation>();
 class LifecycleConstructionRequest{
  readonly #brand=true;
  constructor(readonly taskId:string,readonly candidate:Candidate,readonly snapshot?:LifecycleSnapshot){}
  isValid():boolean{return this.#brand;}
 }
 const lifecycleConstructionRequests=new WeakSet<LifecycleConstructionRequest>();
-function constructLifecycle(taskId:string,candidate:Candidate,snapshot?:LifecycleSnapshot):SkillLifecycle{
+function constructLifecycle(taskId:string,candidate:Candidate,snapshot?:LifecycleSnapshot,obligation?:TddObligation):SkillLifecycle{
  const request=new LifecycleConstructionRequest(taskId,candidate,snapshot);
  lifecycleConstructionRequests.add(request);
- return new SkillLifecycle(request);
+ const lifecycle=new SkillLifecycle(request);
+ if(obligation)liveObligations.set(lifecycle,obligation);
+ return lifecycle;
 }
 const phaseGrants=new WeakMap<object,{requestId:string;repository:string;candidateId:string;revision:string;phase:LifecyclePhase;used:boolean;active:boolean;piUsed:boolean}>();
 function issuePhaseGrant(requestId:string,candidate:Candidate,phase:LifecyclePhase):object{
@@ -71,12 +82,25 @@ export class SkillLifecycle{
  }
  get state():LifecycleSnapshot{return copy(this.#snapshot);}
  promoteCandidateRevision(revision:string):void{
-  const s=this.#snapshot;
+  const s=this.#snapshot,obligation=liveObligations.get(this);
+  if(!obligation)throw new Error("Raw revision promotion is unavailable for recovery-unknown TDD obligations");
+  if(obligation.mode!=="not-applicable")throw new Error("Raw revision promotion is unavailable when TDD is required");
   if(s.nextPhase!=="verify"||s.records.length!==7||s.pendingAuthority)throw new Error("Lifecycle revision can advance only after apply and before verify");
   const revisions=s.revisions??[s.candidate.revision];
   if(revisions.length>=3)throw new Error("Lifecycle apply supports at most two direct Git transitions");
   assertDirectGitParent(s.candidate.repository,s.candidate.revision,revision);
   this.#snapshot={...s,candidate:{...s.candidate,revision},revisions:[...revisions,revision]};
+ }
+ promoteCandidateFromTdd(completionOrAlternative:StrictTddCompletion|NonTddAlternativeResult):void{
+  const strict=completionOrAlternative?.state==="strict-completion";
+  const facts=strict?claimStrictTddCompletion(completionOrAlternative):claimNonTddAlternativeResult(completionOrAlternative);
+  const s=this.#snapshot,obligation=liveObligations.get(this);
+  if(!obligation||obligation.mode!=="required")throw new Error("TDD promotion requires the exact live required obligation");
+  if(s.nextPhase!=="verify"||s.records.length!==7||s.pendingAuthority||s.tddPromotion)throw new Error("TDD promotion requires completed apply with no pending authority");
+  if(facts.requirementId!==obligation.requirementId||("taskIdentity" in facts&&facts.taskIdentity!==s.taskId)||facts.repositoryIdentity!==s.candidate.repository||facts.candidateId!==s.candidate.id||facts.baselineRevision!==s.candidate.revision||!sameStrings(facts.behaviorPaths,obligation.behaviorPaths))throw new Error("TDD result does not bind the lifecycle task, repository, candidate, baseline, behavior, and requirement");
+  const revisions="redRevision" in facts?[facts.baselineRevision,facts.redRevision,facts.greenRevision,facts.terminalRevision,facts.finalRevision]:[facts.baselineRevision,facts.finalRevision];
+  const honest=honestRevisionChain(s.candidate.repository,revisions),final=honest.at(-1)!;
+  this.#snapshot={...s,candidate:{...s.candidate,revision:final},revisions:honest,tddPromotion:strict?"strict-pending-persistence":"alternative-pending-persistence"};
  }
  preparePhase(context:IssuedSkillContext,skillPaths:string[]):void{
   const s=this.#snapshot,phase=s.nextPhase;
@@ -142,12 +166,15 @@ export class SkillLifecycle{
  }
 }
 export function createSkillLifecycle(applicability:LifecycleApplicability):SkillLifecycle{
+ let obligation:TddObligation;
+ try{obligation=tddObligationFor(applicability);}catch{throw new Error("Lifecycle applicability was not issued here");}
  claimLifecycleApplicability(applicability);
  if(applicability.outcome!=="structured")throw new Error("SkillLifecycle requires structured applicability");
  const candidate:Candidate={...applicability.candidate,createdAt:"lifecycle-applicability"};
- return constructLifecycle(applicability.taskIdentity,candidate);
+ return constructLifecycle(applicability.taskIdentity,candidate,undefined,obligation);
 }
 function validateSnapshot(s:LifecycleSnapshot,taskId:string,candidate:Candidate):void{
+ if(s.tddPromotion!==undefined)throw new Error("TDD-promoted lifecycle persistence is unavailable until C5");
  if(s.version!==1||s.taskId!==taskId||s.candidate.id!==candidate.id||s.candidate.repository!==candidate.repository||s.candidate.revision!==candidate.revision)throw new Error("Lifecycle recovery identity mismatch");
  if(!Array.isArray(s.records)||s.records.length>lifecyclePhases.length)throw new Error("Lifecycle recovery records invalid");
  if(s.revisions!==undefined){
