@@ -292,6 +292,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
     - Delegated-direct route. D1 uses ordinary TypeScript test-first validation; no genuine required strict-TDD obligation has been issued for this implementation. Installed guide details are not promoted to frozen-source authority.
   - [ ] GSP-05E: ordinary native review controller bound to genuine work-unit candidates.
   - [ ] GSP-05F: one bounded correction, validation, recovery, and strict delivery separation.
+  - Local naming update: `530e3a7` establishes ASEN Dual Review while preserving the public Skill ID and frozen upstream provenance. Independent naming-only verification passed, with 27-Skill/12-Skill audits, typecheck, and diff check; 5 additions / 5 deletions. It does not activate G/H.
   - [ ] GSP-05G: ASEN Dual Review immutable ledger and exactly-two blind dispatch.
   - [ ] GSP-05H: ASEN Dual Review bounded fix/re-judgment controller and terminal outcomes.
   - [ ] GSP-05I: normalize ODD, defect, and adversarial-review Skills and matrix evidence.
@@ -304,6 +305,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
 
 ## Acceptance criteria
 
+- Global parity evidence applies to all ASEN components: tools, extensions, memory, Skills, flows, and ecosystem integrations. Bind each claim to a concrete reference/version and reproducible comparisons of applicable inputs, outputs, activation, persistence, errors, recovery, concurrency, security, permissions, side effects, packaging, and platform behavior. Record even small observable differences and missing/unavailable evidence; implementation or general green suites alone never justify FULL.
 - Every upstream Skill has a complete ASEN contract mapping and automated positive/negative evidence.
 - No FULL claim is based only on file presence, frontmatter, or exact Skill loading.
 - `.asen/skill-registry.md` provides the required registry behavior without `.atl` naming.
