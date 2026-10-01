@@ -35,13 +35,14 @@ async function advance(flow:SkillLifecycle,phase:LifecyclePhase,options:Paramete
  const runner=fixtureArtifactRunner(()=>selected.artifact);
  return flow.runPhase(new Dispatcher(runner,evidence),{phase,context:selected.context,skillPaths:selected.skillPaths,prompt:phase,evidence,risk:"high",...(phase==="apply"?{writeSurfaces:["src/"]}:{})});
 }
-test("lifecycle enforces nine ordered phases and mandatory artifacts",async()=>{
+test("lifecycle enforces nine ordered phases and mandatory artifacts",async t=>{
  const flow=createTestSkillLifecycle("task",candidate);
  await assert.rejects(()=>advance(flow,"apply"),/out of order/);
  for(const phase of lifecyclePhases){assert.equal(flow.state.nextPhase,phase);await advance(flow,phase);}
  assert.equal(flow.state.nextPhase,null);
  assert.equal(flow.state.records.length,9);
  await assert.rejects(()=>advance(flow,"archive"),/out of order/);
+ const dir=await mkdtemp(join(tmpdir(),"asen-v1-complete-"));t.after(()=>rm(dir,{recursive:true,force:true}));const path=join(dir,"flow.json");await saveLifecycle(path,flow.state,recoveryKey);const inspected=await loadLifecycle(path,"task",candidate,recoveryKey);assert.equal(inspected.state.nextPhase,null);await assert.rejects(()=>advance(inspected,"archive"),/out of order/);
 });
 test("plain JSON from an arbitrary runner cannot advance lifecycle",async()=>{
  const flow=createTestSkillLifecycle("task",candidate),selection=completion("context-init"),evidence=new EvidenceStore();
@@ -151,6 +152,8 @@ test("signed pending phase reissues fresh authority after recovery",async t=>{
  assert.match(run(randomBytes(32)).stderr,/integrity mismatch/);
 });
 
+test("continuing behavior-routed v1 recovery requires exact-applicability migration",async t=>{const dir=await mkdtemp(join(tmpdir(),"asen-v1-tdd-"));t.after(()=>rm(dir,{recursive:true,force:true}));const path=join(dir,"flow.json"),flow=createTestSkillLifecycle("task",candidate),context=issueSkillContext("task:worker",candidate.repository,candidate,{phase:"context-init",behaviorChange:true}),skillPaths=selectSkills(context).map(skill=>skill.path);flow.preparePhase(context,skillPaths);await saveLifecycle(path,flow.state,recoveryKey);await assert.rejects(()=>loadLifecycle(path,"task",candidate,recoveryKey),/migration required; restart exact applicability/);});
+
 test("apply can advance to a direct Git child while signed recovery retains prior artifacts",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-lifecycle-revisions-"));t.after(()=>rm(dir,{recursive:true,force:true}));
  spawnSync("git",["init","-q",dir],{encoding:"utf8"});
@@ -176,18 +179,6 @@ test("apply can advance to a direct Git child while signed recovery retains prio
  assert.equal(flow.state.records[6]?.artifact.revision,red);
  const stateDir=await mkdtemp(join(tmpdir(),"asen-lifecycle-state-"));t.after(()=>rm(stateDir,{recursive:true,force:true}));
  const path=join(stateDir,"lifecycle.json");await saveLifecycle(path,flow.state,recoveryKey);
- const restored=await loadLifecycle(path,"git-task",{...initial,revision:green},recoveryKey);
- assert.deepEqual(restored.state,flow.state);
- assert.throws(()=>restored.promoteCandidateRevision(refactor),/recovery-unknown/);
- const current={...initial,revision:green};
- assert.equal(restored.state.nextPhase,"verify");
- assert.equal(restored.state.records[6]?.artifact.revision,red);
- await saveLifecycle(path,restored.state,recoveryKey);
- assert.deepEqual((await loadLifecycle(path,"git-task",current,recoveryKey)).state,restored.state);
- const forged=JSON.parse(await readFile(path,"utf8"));
- forged.snapshot.candidate.revision=refactor;
- forged.snapshot.revisions=[red,refactor];
- forged.mac=createHmac("sha256",recoveryKey).update(JSON.stringify(forged.snapshot)).digest("hex");
- await writeFile(path,JSON.stringify(forged));
- await assert.rejects(()=>loadLifecycle(path,"git-task",{...initial,revision:refactor},recoveryKey),/direct Git parent/);
+ await assert.rejects(()=>loadLifecycle(path,"git-task",{...initial,revision:green},recoveryKey),/migration required; restart exact applicability/);
+ const forged=JSON.parse(await readFile(path,"utf8"));forged.snapshot.candidate.revision=refactor;forged.snapshot.revisions=[red,refactor];forged.mac=createHmac("sha256",recoveryKey).update(JSON.stringify(forged.snapshot)).digest("hex");await writeFile(path,JSON.stringify(forged));await assert.rejects(()=>loadLifecycle(path,"git-task",{...initial,revision:refactor},recoveryKey),/direct Git parent|migration required/);
 });

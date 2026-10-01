@@ -12,6 +12,7 @@ import {assertDirectGitParent} from "../evidence/git-lineage.js";
 import {claimLifecycleApplicability,tddObligationFor,type LifecycleApplicability,type TddObligation} from "./applicability.js";
 import {claimStrictTddCompletion,type StrictTddCompletion} from "../test/strict-tdd-cycle.js";
 import {claimNonTddAlternativeResult,type NonTddAlternativeResult} from "../test/non-tdd-alternative.js";
+import {validateTddCompletionRecord,type TddCompletionRecord} from "../test/tdd-completion-record.js";
 
 export const lifecyclePhases=["context-init","explore","proposal","specification","design","tasks","apply","verify","archive"] as const;
 export type LifecyclePhase=typeof lifecyclePhases[number];
@@ -26,7 +27,8 @@ const roleFor:Record<LifecyclePhase,LifecycleRole>={
 };
 export interface LifecycleArtifact{kind:string;content:string;repository:string;candidateId:string;revision:string;}
 export interface LifecycleRecord{phase:LifecyclePhase;role:LifecycleRole;artifact:LifecycleArtifact;skillPaths:string[];}
-export interface LifecycleSnapshot{version:1;taskId:string;candidate:Candidate;nextPhase:LifecyclePhase|null;records:LifecycleRecord[];revisions?:string[];tddPromotion?:"strict-pending-persistence"|"alternative-pending-persistence";pendingAuthority?:{phase:LifecyclePhase;role:LifecycleRole;selection:SkillSelectionContext;skillPaths:string[]};}
+interface LifecycleBase{taskId:string;candidate:Candidate;nextPhase:LifecyclePhase|null;records:LifecycleRecord[];revisions?:string[];pendingAuthority?:{phase:LifecyclePhase;role:LifecycleRole;selection:SkillSelectionContext;skillPaths:string[]};}
+export type LifecycleSnapshot=(LifecycleBase&{version:1})|(LifecycleBase&{version:2;baselineRevision:string;tddPromotion:{method:TddCompletionRecord["promotionMethod"];record:TddCompletionRecord}});
 const copy=(snapshot:LifecycleSnapshot):LifecycleSnapshot=>structuredClone(snapshot);
 const sameStrings=(left:readonly string[],right:readonly string[])=>left.length===right.length&&left.every((item,index)=>item===right[index]);
 function honestRevisionChain(repository:string,revisions:readonly string[]):string[]{
@@ -96,11 +98,11 @@ export class SkillLifecycle{
   const facts=strict?claimStrictTddCompletion(completionOrAlternative):claimNonTddAlternativeResult(completionOrAlternative);
   const s=this.#snapshot,obligation=liveObligations.get(this);
   if(!obligation||obligation.mode!=="required")throw new Error("TDD promotion requires the exact live required obligation");
-  if(s.nextPhase!=="verify"||s.records.length!==7||s.pendingAuthority||s.tddPromotion)throw new Error("TDD promotion requires completed apply with no pending authority");
+  if(s.nextPhase!=="verify"||s.records.length!==7||s.pendingAuthority||s.version===2)throw new Error("TDD promotion requires completed apply with no pending authority");
   if(facts.requirementId!==obligation.requirementId||("taskIdentity" in facts&&facts.taskIdentity!==s.taskId)||facts.repositoryIdentity!==s.candidate.repository||facts.candidateId!==s.candidate.id||facts.baselineRevision!==s.candidate.revision||!sameStrings(facts.behaviorPaths,obligation.behaviorPaths))throw new Error("TDD result does not bind the lifecycle task, repository, candidate, baseline, behavior, and requirement");
-  const revisions="redRevision" in facts?[facts.baselineRevision,facts.redRevision,facts.greenRevision,facts.terminalRevision,facts.finalRevision]:[facts.baselineRevision,facts.finalRevision];
+  const record=validateTddCompletionRecord(facts.record),revisions="redRevision" in facts?[facts.baselineRevision,facts.redRevision,facts.greenRevision,facts.terminalRevision,facts.finalRevision]:[facts.baselineRevision,facts.finalRevision];
   const honest=honestRevisionChain(s.candidate.repository,revisions),final=honest.at(-1)!;
-  this.#snapshot={...s,candidate:{...s.candidate,revision:final},revisions:honest,tddPromotion:strict?"strict-pending-persistence":"alternative-pending-persistence"};
+  this.#snapshot={...s,version:2,baselineRevision:s.candidate.revision,candidate:{...s.candidate,revision:final},revisions:honest,tddPromotion:{method:record.promotionMethod,record}};
  }
  preparePhase(context:IssuedSkillContext,skillPaths:string[]):void{
   const s=this.#snapshot,phase=s.nextPhase;
@@ -173,52 +175,38 @@ export function createSkillLifecycle(applicability:LifecycleApplicability):Skill
  const candidate:Candidate={...applicability.candidate,createdAt:"lifecycle-applicability"};
  return constructLifecycle(applicability.taskIdentity,candidate,undefined,obligation);
 }
-function validateSnapshot(s:LifecycleSnapshot,taskId:string,candidate:Candidate):void{
- if(s.tddPromotion!==undefined)throw new Error("TDD-promoted lifecycle persistence is unavailable until C5");
- if(s.version!==1||s.taskId!==taskId||s.candidate.id!==candidate.id||s.candidate.repository!==candidate.repository||s.candidate.revision!==candidate.revision)throw new Error("Lifecycle recovery identity mismatch");
- if(!Array.isArray(s.records)||s.records.length>lifecyclePhases.length)throw new Error("Lifecycle recovery records invalid");
- if(s.revisions!==undefined){
-  if(!Array.isArray(s.revisions)||s.revisions.length<2||s.revisions.length>3||s.revisions.at(-1)!==candidate.revision||s.records.length<7)throw new Error("Lifecycle recovery Git revisions invalid");
-  for(let i=1;i<s.revisions.length;i++)assertDirectGitParent(candidate.repository,s.revisions[i-1]!,s.revisions[i]!);
- }
- for(let i=0;i<s.records.length;i++){
-  const record=s.records[i],phase=lifecyclePhases[i];
-  if(!record||!phase||record.phase!==phase||record.role!==roleFor[phase])throw new Error("Lifecycle recovery phase gap");
-  const a=record.artifact;
-  const revision=s.revisions&&i<=6?s.revisions[0]:candidate.revision;
-  if(!a||a.kind!==requiredArtifact[phase]||typeof a.content!=="string"||!a.content.trim()||a.repository!==candidate.repository||a.candidateId!==candidate.id||a.revision!==revision)throw new Error("Lifecycle recovery artifact mismatch");
-  if(!Array.isArray(record.skillPaths)||record.skillPaths.some(path=>typeof path!=="string"||!/^skills\/asen-[a-z-]+\/SKILL\.md$/.test(path)))throw new Error("Lifecycle recovery skill routes invalid");
- }
- if(s.nextPhase!==(lifecyclePhases[s.records.length]??null))throw new Error("Lifecycle recovery next phase mismatch");
- if(s.pendingAuthority){
-  const p=s.pendingAuthority,x=p.selection;
-  if(!s.nextPhase||p.phase!==s.nextPhase||p.role!==roleFor[p.phase]||!x||x.phase!==p.phase||!Array.isArray(p.skillPaths)||
-   x.risk!==undefined&&!(["low","medium","high","unknown"] as unknown[]).includes(x.risk)||
-   x.codeChange!==undefined&&typeof x.codeChange!=="boolean"||x.behaviorChange!==undefined&&typeof x.behaviorChange!=="boolean"||
-   x.verification!==undefined&&typeof x.verification!=="boolean"||x.filesTouched!==undefined&&(!Number.isInteger(x.filesTouched)||x.filesTouched<0))throw new Error("Lifecycle recovery pending authority invalid");
-  const expected=selectSkills(x).map(skill=>skill.path);
-  if(expected.length!==p.skillPaths.length||expected.some((path,index)=>path!==p.skillPaths[index]))throw new Error("Lifecycle recovery pending Skill routes mismatch");
- }
+function exact(value:unknown,keys:readonly string[],noun:string):Record<string,unknown>{
+ if(typeof value!=="object"||value===null||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)throw new Error(`${noun} must be exact plain data`);
+ const own=Reflect.ownKeys(value);if(own.length!==keys.length||own.some(key=>typeof key!=="string"||!keys.includes(key))||keys.some(key=>!Object.hasOwn(value,key)))throw new Error(`${noun} shape is invalid`);
+ return Object.fromEntries(keys.map(key=>{const descriptor=Object.getOwnPropertyDescriptor(value,key);if(!descriptor?.enumerable||!("value" in descriptor))throw new Error(`${noun} shape is invalid`);return [key,descriptor.value];}));
 }
-function signature(snapshot:LifecycleSnapshot,key:Buffer):string{
- if(key.length<32)throw new Error("Lifecycle recovery requires a 32-byte secret");
- return createHmac("sha256",key).update(JSON.stringify(snapshot)).digest("hex");
+function exactArray(value:unknown,noun:string):unknown[]{if(!Array.isArray(value)||Object.getPrototypeOf(value)!==Array.prototype)throw new Error(`${noun} must be an exact array`);const indexes=Array.from({length:value.length},(_,i)=>String(i)),own=Reflect.ownKeys(value);if(own.some(key=>typeof key!=="string"||key!=="length"&&!indexes.includes(key))||indexes.some(key=>!Object.hasOwn(value,key)))throw new Error(`${noun} must be an exact array`);return indexes.map(key=>{const descriptor=Object.getOwnPropertyDescriptor(value,key);if(!descriptor?.enumerable||!("value" in descriptor))throw new Error(`${noun} must be an exact array`);return descriptor.value;});}
+function validateSnapshot(value:unknown,taskId:string,caller:Candidate):LifecycleSnapshot{
+ const version=typeof value==="object"&&value!==null?Object.getOwnPropertyDescriptor(value,"version")?.value:undefined,optional=(key:string)=>typeof value==="object"&&value!==null&&Object.hasOwn(value,key),keys=version===2?["version","taskId","candidate","baselineRevision","nextPhase","records","revisions","tddPromotion"]:["version","taskId","candidate","nextPhase","records",...(optional("revisions")?["revisions"]:[]),...(optional("pendingAuthority")?["pendingAuthority"]:[])];
+ // SAFETY: exact() just proved the complete Candidate own-data shape; scalar fields are checked below.
+ const raw=exact(value,keys,"lifecycle snapshot"),candidateRaw=exact(raw.candidate,["id","repository","revision","createdAt"],"lifecycle candidate"),candidate=candidateRaw as unknown as Candidate;
+ if((version!==1&&version!==2)||raw.taskId!==taskId||candidate.id!==caller.id||candidate.repository!==caller.repository||candidate.revision!==caller.revision||typeof candidate.createdAt!=="string"||!candidate.createdAt)throw new Error("Lifecycle recovery identity mismatch");
+ const records=exactArray(raw.records,"lifecycle records");if(records.length>lifecyclePhases.length)throw new Error("Lifecycle recovery records invalid");
+ const revisions=raw.revisions===undefined?undefined:exactArray(raw.revisions,"lifecycle revisions");if(revisions&&(!revisions.length||revisions.some(item=>typeof item!=="string")||revisions.at(-1)!==candidate.revision||records.length<7))throw new Error("Lifecycle recovery Git revisions invalid");
+ for(let i=0;i<records.length;i++){const phase=lifecyclePhases[i],record=exact(records[i],["phase","role","artifact","skillPaths"],"lifecycle record"),artifact=exact(record.artifact,["kind","content","repository","candidateId","revision"],"lifecycle artifact"),paths=exactArray(record.skillPaths,"lifecycle skill routes"),revision=revisions&&i<=6?revisions[0]:candidate.revision;if(!phase||record.phase!==phase||record.role!==roleFor[phase])throw new Error("Lifecycle recovery phase gap");if(artifact.kind!==requiredArtifact[phase]||typeof artifact.content!=="string"||!artifact.content.trim()||artifact.repository!==candidate.repository||artifact.candidateId!==candidate.id||artifact.revision!==revision)throw new Error("Lifecycle recovery artifact mismatch");if(paths.some(path=>typeof path!=="string"||!/^skills\/asen-[a-z-]+\/SKILL\.md$/.test(path)))throw new Error("Lifecycle recovery skill routes invalid");}
+ if(raw.nextPhase!==(lifecyclePhases[records.length]??null))throw new Error("Lifecycle recovery next phase mismatch");
+ if(version===2){const promotion=exact(raw.tddPromotion,["method","record"],"TDD promotion"),record=validateTddCompletionRecord(promotion.record),recordRevisions=record.promotionMethod==="strict-completion"?[record.revisions.baseline,record.revisions.red,record.revisions.green,record.revisions.terminal,record.revisions.final]:[record.revisions.baseline,record.revisions.final],honest=honestRevisionChain(candidate.repository,recordRevisions);if(raw.baselineRevision!==record.obligation.candidate.revision||promotion.method!==record.promotionMethod||raw.taskId!==record.obligation.taskIdentity||candidate.repository!==record.obligation.repositoryIdentity||candidate.id!==record.obligation.candidate.id||candidate.revision!==record.revisions.final||!revisions||!sameStrings(revisions as string[],honest)||raw.nextPhase!=="verify"&&raw.nextPhase!=="archive"&&raw.nextPhase!==null)throw new Error("Lifecycle TDD completion binding mismatch");}
+ else if(raw.pendingAuthority){const pending=exact(raw.pendingAuthority,["phase","role","selection","skillPaths"],"pending authority"),selectionValue=pending.selection,hasSelection=(key:string)=>typeof selectionValue==="object"&&selectionValue!==null&&Object.hasOwn(selectionValue,key),selectionKeys=["phase",...(["risk","codeChange","behaviorChange","filesTouched","verification"] as const).filter(hasSelection)];
+  // SAFETY: exact() proved every allowed SkillSelectionContext own field; the branch below validates each value.
+  const selection=exact(selectionValue,selectionKeys,"pending selection") as unknown as SkillSelectionContext,paths=exactArray(pending.skillPaths,"pending skill routes") as string[];if(!raw.nextPhase||pending.phase!==raw.nextPhase||pending.role!==roleFor[pending.phase as LifecyclePhase]||selection.phase!==pending.phase||selection.risk!==undefined&&!(["low","medium","high","unknown"] as unknown[]).includes(selection.risk)||selection.codeChange!==undefined&&typeof selection.codeChange!=="boolean"||selection.behaviorChange!==undefined&&typeof selection.behaviorChange!=="boolean"||selection.verification!==undefined&&typeof selection.verification!=="boolean"||selection.filesTouched!==undefined&&(!Number.isInteger(selection.filesTouched)||selection.filesTouched<0))throw new Error("Lifecycle recovery pending authority invalid");const expected=selectSkills(selection).map(skill=>skill.path);if(!sameStrings(expected,paths))throw new Error("Lifecycle recovery pending Skill routes mismatch");}
+ return value as LifecycleSnapshot;
 }
+function keyCheck(key:Buffer):void{if(key.length<32)throw new Error("Lifecycle recovery requires a 32-byte secret");}
+function signature(value:unknown,key:Buffer,domain=""):string{keyCheck(key);return createHmac("sha256",key).update(domain).update(JSON.stringify(value)).digest("hex");}
+function v2Envelope(snapshot:Extract<LifecycleSnapshot,{version:2}>){return {version:2 as const,taskIdentity:snapshot.taskId,repositoryIdentity:snapshot.candidate.repository,candidateId:snapshot.candidate.id,baselineRevision:snapshot.baselineRevision,currentRevision:snapshot.candidate.revision,nextPhase:snapshot.nextPhase,snapshot};}
 export async function saveLifecycle(path:string,snapshot:LifecycleSnapshot,key:Buffer):Promise<void>{
- validateSnapshot(snapshot,snapshot.taskId,snapshot.candidate);
- const temp=join(dirname(path),`.${basename(path)}.${randomUUID()}.tmp`);
- let handle;
- try{handle=await open(temp,"wx",0o600);await handle.writeFile(JSON.stringify({snapshot,mac:signature(snapshot,key)}),"utf8");await handle.sync();await handle.close();handle=undefined;await rename(temp,path);}
- finally{if(handle)await handle.close();await unlink(temp).catch((error:NodeJS.ErrnoException)=>{if(error.code!=="ENOENT")throw error;});}
+ const task=Object.getOwnPropertyDescriptor(snapshot,"taskId")?.value,candidate=Object.getOwnPropertyDescriptor(snapshot,"candidate")?.value,checked=validateSnapshot(snapshot,task,candidate),payload=checked.version===2?v2Envelope(checked):undefined,outer=payload?{...payload,mac:signature(payload,key,"asen.lifecycle.v2\0")}:{snapshot:checked,mac:signature(checked,key)};
+ const temp=join(dirname(path),`.${basename(path)}.${randomUUID()}.tmp`);let handle;try{handle=await open(temp,"wx",0o600);await handle.writeFile(JSON.stringify(outer),"utf8");await handle.sync();await handle.close();handle=undefined;await rename(temp,path);}finally{if(handle)await handle.close();await unlink(temp).catch((error:NodeJS.ErrnoException)=>{if(error.code!=="ENOENT")throw error;});}
 }
 export async function loadLifecycle(path:string,taskId:string,candidate:Candidate,key:Buffer):Promise<SkillLifecycle>{
- let parsed:{snapshot:LifecycleSnapshot;mac:string};
- try{parsed=JSON.parse(await readFile(path,"utf8")) as {snapshot:LifecycleSnapshot;mac:string};}
- catch{throw new Error("Lifecycle recovery data is malformed");}
- if(!parsed?.snapshot||typeof parsed.mac!=="string"||!/^[0-9a-f]{64}$/i.test(parsed.mac))throw new Error("Lifecycle recovery signature missing");
- const expected=Buffer.from(signature(parsed.snapshot,key),"hex"),actual=Buffer.from(parsed.mac,"hex");
- if(!timingSafeEqual(expected,actual))throw new Error("Lifecycle recovery integrity mismatch");
- const flow=constructLifecycle(taskId,candidate,parsed.snapshot);
- verifiedRecovery.add(flow);
- return flow;
+ let parsed:unknown;try{parsed=JSON.parse(await readFile(path,"utf8"));}catch{throw new Error("Lifecycle recovery data is malformed");}
+ const version=typeof parsed==="object"&&parsed!==null?Object.getOwnPropertyDescriptor(parsed,"version")?.value:undefined;let snapshot:LifecycleSnapshot,mac:string,expected:string;
+ if(version===2){const raw=exact(parsed,["version","taskIdentity","repositoryIdentity","candidateId","baselineRevision","currentRevision","nextPhase","snapshot","mac"],"lifecycle v2 envelope"),payload={version:raw.version,taskIdentity:raw.taskIdentity,repositoryIdentity:raw.repositoryIdentity,candidateId:raw.candidateId,baselineRevision:raw.baselineRevision,currentRevision:raw.currentRevision,nextPhase:raw.nextPhase,snapshot:raw.snapshot};mac=raw.mac as string;expected=signature(payload,key,"asen.lifecycle.v2\0");if(typeof mac!=="string"||!/^[0-9a-f]{64}$/iu.test(mac)||!timingSafeEqual(Buffer.from(expected,"hex"),Buffer.from(mac,"hex")))throw new Error("Lifecycle recovery integrity mismatch");snapshot=validateSnapshot(raw.snapshot,taskId,candidate);if(raw.taskIdentity!==taskId||raw.repositoryIdentity!==candidate.repository||raw.candidateId!==candidate.id||raw.currentRevision!==candidate.revision||raw.baselineRevision!==(snapshot.version===2?snapshot.baselineRevision:undefined)||raw.nextPhase!==snapshot.nextPhase)throw new Error("Lifecycle recovery identity mismatch");}
+ else{const raw=exact(parsed,["snapshot","mac"],"lifecycle v1 envelope");mac=raw.mac as string;expected=signature(raw.snapshot,key);if(typeof mac!=="string"||!/^[0-9a-f]{64}$/iu.test(mac)||!timingSafeEqual(Buffer.from(expected,"hex"),Buffer.from(mac,"hex")))throw new Error("Lifecycle recovery integrity mismatch");snapshot=validateSnapshot(raw.snapshot,taskId,candidate);if(snapshot.version!==1)throw new Error("Lifecycle recovery schema mismatch");const continuing=snapshot.nextPhase!==null,tddRoute=snapshot.records.some(record=>record.skillPaths.includes("skills/asen-tdd/SKILL.md"))||snapshot.pendingAuthority?.selection.behaviorChange===true;if(continuing&&(snapshot.revisions||tddRoute))throw new Error("migration required; restart exact applicability");}
+ const flow=constructLifecycle(taskId,candidate,snapshot);verifiedRecovery.add(flow);return flow;
 }
