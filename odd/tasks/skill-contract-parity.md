@@ -278,6 +278,18 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Independent parent spot check passes 7/7 and confirms only SRC-SKILL-005 changed in the matrix. The slice is 153 additions / 24 deletions (177 total changed lines); runtime C1–C5 evidence remains separately recorded above. No Pi Free generated-output, packaging, or platform completion is claimed here.
       - Commit: `0cad160`.
   - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
+    - User selected a repository-versioned `.asen/rdd-policy.json` contract with explicitly authorized locator and exact revision-bound inspection; no default policy, branch, approval label, or authority is inferred. Disabled receipt review retains ordinary defect safeguards and separate delivery policy.
+    - [x] GSP-05D1a: parse an exact bounded ASEN-owned policy document as descriptive data, not authority.
+      - Fixed locator `.asen/rdd-policy.json`, exact schema v1, explicit review mode and approval labels, bounded duplicate-key rejection (including escaped names), immutable output, deterministic UTF-8 label ordering, and callback-safe bounded arrays. Source-text content identity grants no authority; no actual policy/default label/base/runtime integration is created.
+      - Independent focused verification passes 10/10; repository-authority regressions pass 23/23. Typecheck, 27-Skill audit, 12-Skill parity audit, 302-path boundary audit, parity audit, and diff check pass. Slice: 206 additions, 0 deletions. Native assessment was unassessable; independent high-risk fallback verification passed.
+      - Nonblocking evidence gaps: near-limit valid-policy acceptance and disabled-specific authority rejection are not separately tested; raw invalid UTF-8 byte decoding is outside this string API and remains an ingestion concern for D1b. No complete Unicode homoglyph detection is claimed.
+      - Commit: `b31eb60`.
+    - [ ] GSP-05D1b: bind policy/approved-issue/current-base/conflict inspection to genuine one-use repository read authority.
+    - [ ] GSP-05D2: reproduce on clean current base with genuine execution and negative-control evidence.
+    - [ ] GSP-05D3: bind invariants, operator flows, actual runtime journey evidence, rollback, and forecast budget.
+    - [ ] GSP-05D4: admit genuine candidate-bound defect-intake evidence with exact persistence semantics.
+    - [ ] GSP-05D5: derive defect intent and enforce the mutation intake gate without changing the 27 static Skill IDs.
+    - Delegated-direct route. D1 uses ordinary TypeScript test-first validation; no genuine required strict-TDD obligation has been issued for this implementation. Installed guide details are not promoted to frozen-source authority.
   - [ ] GSP-05E: ordinary native review controller bound to genuine work-unit candidates.
   - [ ] GSP-05F: one bounded correction, validation, recovery, and strict delivery separation.
   - [ ] GSP-05G: Judgment Day immutable ledger and exactly-two blind dispatch.
