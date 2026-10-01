@@ -237,9 +237,10 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Exact canonical planned decision vectors and policy enter the frozen cycle identity, then one genuine direct-child GREEN is admitted only after the fixed runner passes every RED case with unchanged test blobs/modes and an exact behavior-path-only diff. Passing observations and RED/GREEN provenance are opaque, one-use, burn on first attempt, deeply frozen, and grant no lifecycle, evidence, mutation, review, or delivery authority.
         - Independent focused verification passes 34/34; typecheck, 27-Skill audit, 12-Skill parity audit, 292-path upstream-boundary audit, and diff check pass. The readable slice is 178 additions.
         - Commit: `16b763d`.
-      - [ ] GSP-05C3b: require runner-derived per-case coverage for materially distinct multi-path triangulation or exact single-path N/A.
-        - Implementation records exact test-only direct-child triangulation from harness-captured per-case Node/V8 byte ranges, or the bound structural single-path N/A, without granting authority.
-        - Local verification evidence is pending independent PASS; this item remains intentionally unchecked.
+      - [x] GSP-05C3b: require runner-derived per-case coverage for materially distinct multi-path triangulation or exact single-path N/A.
+        - Exact test-only direct-child triangulation is derived from bounded harness-captured per-case Node/V8 byte ranges, or from the bound structural single-path N/A, without granting authority. Coverage reads reject oversized, growing, shrinking, truncated, non-regular, missing, ambiguous, and outside-repository data before public admission.
+        - Independent focused verification passes 42/42; typecheck, 27-Skill audit, 12-Skill parity audit, 293-path upstream-boundary audit, and diff check pass. The readable slice is 162 additions.
+        - Commit: `5a56bdf`.
       - [ ] GSP-05C3c: admit a baseline-proven non-TDD alternative without reporting RED or granting generic authority.
     - [ ] GSP-05C4: require triangulation/N/A before performed-or-not-needed refactor completion and bind lifecycle revision promotion to the exact completion.
     - [ ] GSP-05C5: persist and verify exact requirement-bound TDD completion with fail-closed legacy migration and recovery.
