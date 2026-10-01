@@ -90,7 +90,8 @@ test("a lone GREEN cannot satisfy the TDD verification gate",async()=>{
  const green=nextCandidateRevision(c,"real-green");cycle.record("GREEN","real:green","passing",await executionProof(green,0),green);
  assert.equal(verifySkillEvidence(green,["asen-tdd"],store,"verification").ok,false,"GREEN alone is incomplete");
  const refactor=nextCandidateRevision(green,"real-refactor");cycle.record("REFACTOR","real:refactor","passing",await executionProof(refactor,0),refactor);
- assert.equal(verifySkillEvidence(refactor,["asen-tdd"],store,"verification").ok,true);
+ assert.equal(store.hasPassing(refactor,"tdd"),true,"generic completion remains available for audit");
+ assert.equal(verifySkillEvidence(refactor,["asen-tdd"],store,"verification").ok,false,"generic completion cannot satisfy the exact lifecycle gate");
 });
 
 test("signed recovery retains only a complete TDD cycle on the same revision",async t=>{
@@ -104,7 +105,12 @@ test("signed recovery retains only a complete TDD cycle on the same revision",as
  const refactor=nextCandidateRevision(green,"recovered-refactor");cycle.record("REFACTOR","recovered:refactor","passing",await executionProof(refactor,0),refactor);
  await saveEvidence(path,refactor,store,key);
  const finished=await loadEvidence(path,refactor,key);
- assert.equal(verifySkillEvidence(refactor,["asen-tdd"],finished,"verification").ok,true);
+ assert.equal(finished.hasPassing(refactor,"tdd"),true);
+ assert.equal(verifySkillEvidence(refactor,["asen-tdd"],finished,"verification").ok,false);
+ const envelope=JSON.parse(await readFile(path,"utf8"));envelope.value.version=1;envelope.mac=createHmac("sha256",key).update(JSON.stringify(envelope.value)).digest("hex");await writeFile(path,JSON.stringify(envelope));
+ const legacy=await loadEvidence(path,refactor,key);
+ assert.equal(legacy.hasPassing(refactor,"tdd"),true,"legacy v1 generic TDD remains audit-readable");
+ assert.equal(verifySkillEvidence(refactor,["asen-tdd"],legacy,"verification").ok,false,"legacy v1 generic TDD cannot satisfy the exact lifecycle gate");
  assert.equal(verifySkillEvidence({...refactor,revision:"different"},["asen-tdd"],finished,"verification").ok,false);
 });
 test("signed recovery rejects structurally forged TDD lineage and unrelated metadata",async t=>{

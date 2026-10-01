@@ -12,23 +12,21 @@ import {admitRouteEvidence} from "./helpers/route-evidence.js";
 
 const c=gitCandidate("candidate");
 
-test("TDD skill blocks verification without candidate-bound TDD evidence",async()=>{
+test("TDD skill fails closed without exact lifecycle completion",async()=>{
  const store=new EvidenceStore();
  await passingEvidence(store,c,"test");
  const result=verifyCandidate(c,"medium",store,["asen-tdd"]);
  assert.equal(result.ok,false);
- assert.match(result.reason,/asen-tdd.*tdd evidence/);
+ assert.equal(result.reason,"Skill asen-tdd requires passing lifecycle-completion evidence for verification");
 });
 
-test("TDD evidence from another repository cannot satisfy the skill gate",async()=>{
- const store=new EvidenceStore(),dir=await mkdtemp(join(tmpdir(),"asen-other-repo-"));
- try{
- execFileSync("git",["init","-q",dir]);
- execFileSync("git",["-C",dir,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m","initial"]);
- const other=gitCandidate(c.id,dir);
- await passingEvidence(store,other,"tdd-other","tdd");
- assert.equal(verifySkillEvidence(c,["asen-tdd"],store,"verification").ok,false);
- }finally{await rm(dir,{recursive:true,force:true});}
+test("generic executed TDD cannot satisfy the exact lifecycle gate",async t=>{
+ const store=new EvidenceStore(),base=gitCandidate("generic-tdd");
+ t.after(()=>rm(base.repository,{recursive:true,force:true}));
+ await passingEvidence(store,base,"generic","tdd");
+ const final=gitCandidate(base.id,base.repository);
+ assert.equal(store.hasPassing(final,"tdd"),true,"generic TDD remains audit-readable");
+ assert.equal(verifySkillEvidence(final,["asen-tdd"],store,"verification").ok,false);
 });
 
 test("review skill blocks release without candidate-bound review evidence",async()=>{

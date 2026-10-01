@@ -52,7 +52,7 @@ const contracts:readonly SkillContract[]=[
  {id:"asen-odd",path:"skills/asen-odd/SKILL.md",triggers:["high-risk","unknown-risk","multi-file"],requires:[],evidence:["route-decision"],blocks:["mutation"]},
  {id:"asen-work-unit",path:"skills/asen-work-unit/SKILL.md",triggers:["code-change","behavior-change","multi-file"],requires:[],evidence:["work-unit"],blocks:["mutation"]},
  {id:"asen-safe-change",path:"skills/asen-safe-change/SKILL.md",triggers:["code-change"],requires:["asen-work-unit"],evidence:["scope","rollback"],blocks:["mutation","release"]},
- {id:"asen-tdd",path:"skills/asen-tdd/SKILL.md",triggers:["behavior-change"],requires:["asen-work-unit"],evidence:["tdd"],blocks:["verification"]},
+ {id:"asen-tdd",path:"skills/asen-tdd/SKILL.md",triggers:["behavior-change"],requires:["asen-work-unit"],evidence:["lifecycle-completion"],blocks:["verification"]},
  {id:"asen-review",path:"skills/asen-review/SKILL.md",triggers:["high-risk","unknown-risk","verification"],requires:["asen-work-unit"],evidence:["review"],blocks:["verification","release"]}
 ] as const;
 export function listSkillContracts():readonly SkillContract[]{return contracts;}

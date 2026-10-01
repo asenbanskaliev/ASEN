@@ -268,7 +268,9 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Independent lifecycle suites pass 16/16 and evidence suites pass 20/20; typecheck, 27-Skill audit, 12-Skill parity audit, 301-path upstream-boundary audit, parity audit, and diff check pass. The readable slice is 95 additions.
         - Commit: `a426a6c`.
       - [ ] GSP-05C5d: require exact completion at the asen-tdd verification gate and document integrity versus rollback limits.
+        - Implementation is complete pending independent PASS: `asen-tdd` now requires exact `lifecycle-completion`; live strict, signed-recovered strict, and verified-alternative paths pass only that gate, while generic and legacy v1 TDD remain audit-only. Recovery documentation distinguishes HMAC integrity and exact current-revision binding from unavailable same-binding rollback detection.
     - [ ] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
+    - GSP-05C5 remains unchecked pending independent PASS for C5d; C6 remains open and no TDD Skill normalization is included here.
   - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
   - [ ] GSP-05E: ordinary native review controller bound to genuine work-unit candidates.
   - [ ] GSP-05F: one bounded correction, validation, recovery, and strict delivery separation.
