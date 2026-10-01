@@ -232,8 +232,10 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - A fixed local Node test/TAP command runs in the exact detached candidate, derives assertion observations from bounded captured output, and admits them through a factory-only strict RED cycle without changing legacy `TddCycle` or evidence-store behavior.
       - Independent focused verification passes 28/28 and covers repeatable parsed assertions, executed strict-convention test-only direct-child Git lineage, provenance/burn semantics, discovery/runtime rejection, revision/candidate mismatches, construction hardening, and authority exclusion; raw runner output is not retained. Typecheck, 27-Skill audit, 12-Skill parity audit, 289-path upstream-boundary audit, and diff check pass. The readable slice is 315 additions.
       - Commit: `8647a67`.
-      - Completion remains pending independent PASS; C3+ and persistence remain untouched.
     - [ ] GSP-05C3: enforce same-test minimum GREEN, materially distinct multi-path triangulation or narrow single-path N/A, and an explicit non-TDD alternative when meaningful RED is impossible.
+      - [ ] GSP-05C3a: bind immutable decision-path plans and require direct-child minimum GREEN with unchanged RED tests and behavior-only production changes.
+      - [ ] GSP-05C3b: require runner-derived per-case coverage for materially distinct multi-path triangulation or exact single-path N/A.
+      - [ ] GSP-05C3c: admit a baseline-proven non-TDD alternative without reporting RED or granting generic authority.
     - [ ] GSP-05C4: require triangulation/N/A before performed-or-not-needed refactor completion and bind lifecycle revision promotion to the exact completion.
     - [ ] GSP-05C5: persist and verify exact requirement-bound TDD completion with fail-closed legacy migration and recovery.
     - [ ] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
