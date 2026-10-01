@@ -234,6 +234,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Commit: `8647a67`.
     - [ ] GSP-05C3: enforce same-test minimum GREEN, materially distinct multi-path triangulation or narrow single-path N/A, and an explicit non-TDD alternative when meaningful RED is impossible.
       - [ ] GSP-05C3a: bind immutable decision-path plans and require direct-child minimum GREEN with unchanged RED tests and behavior-only production changes.
+        - Implementation records exact canonical planned decision vectors and policy in the frozen cycle identity, then admits one genuine direct-child GREEN only after the fixed runner passes every RED case with unchanged test blobs/modes and an exact behavior-path-only diff. Passing observations and RED/GREEN provenance are opaque, one-use, burn on first attempt, deeply frozen, and grant no lifecycle, evidence, mutation, review, or delivery authority. Independent PASS remains pending.
       - [ ] GSP-05C3b: require runner-derived per-case coverage for materially distinct multi-path triangulation or exact single-path N/A.
       - [ ] GSP-05C3c: admit a baseline-proven non-TDD alternative without reporting RED or granting generic authority.
     - [ ] GSP-05C4: require triangulation/N/A before performed-or-not-needed refactor completion and bind lifecycle revision promotion to the exact completion.

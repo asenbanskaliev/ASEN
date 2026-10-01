@@ -11,7 +11,7 @@ import { claimTestObservation, executeNodeTestObservation } from "../src/test/td
 import { commitCandidateFiles, gitCandidate } from "./execution-evidence-helper.js";
 import { issueOddDecision } from "./helpers/odd-routing.js";
 
-const testPath="tests/red.test.mjs",plan={expectedFailingCaseIds:["rejects invalid input"]} as const;
+const testPath="tests/red.test.mjs",plan={expectedFailingCaseIds:["rejects invalid input"],decisionPaths:[{caseId:"rejects invalid input",points:[{behaviorPath:"src/behavior.ts",startOffset:0,endOffset:1}]}],triangulationPolicy:{mode:"not-applicable",reason:"structurally-single-decision-path",rationale:"The obligation has one structural decision path."}} as const;
 const failingTest=`import test from 'node:test';import assert from 'node:assert/strict';test('rejects invalid input',()=>assert.equal(1,2));\n`;
 function obligation(base:Candidate,required=true){
  const task="GSP-05C2",paths=required?["src/behavior.ts"]:["docs/readme.md"];
@@ -29,7 +29,7 @@ test("records two identical genuine Node assertion runs at a direct-child test-o
  const value=await setup();t.after(()=>rmSync(value.base.repository,{recursive:true,force:true}));
  const result=value.cycle.recordRed(value.red,value.first,value.second);
  assert.deepEqual(result.failingCaseIds,plan.expectedFailingCaseIds);assert.ok(Object.isFrozen(result)&&Object.isFrozen(value.first.testPaths));
- assert.deepEqual(Object.keys(value.first),["adapterId","commandFingerprint","testPaths","executedCaseIds","failingCaseIds","assertionFingerprint","failureKind"]);
+ assert.deepEqual(Object.keys(value.first),["adapterId","commandFingerprint","testPaths","executedCaseIds","failingCaseIds","assertionFingerprint","failureKind"]);assert.deepEqual(result.testPaths,[testPath]);
  assert.equal(JSON.stringify(result).match(/authority|lifecycle|phase|mutation|review|release|delivery|callback|stdout|stderr/giu),null);
 });
 

@@ -11,6 +11,13 @@ export interface TestObservation {
   readonly assertionFingerprint: string;
   readonly failureKind: "assertion";
 }
+export interface PassingTestObservation {
+  readonly adapterId: "node-test";
+  readonly commandFingerprint: string;
+  readonly testPaths: readonly string[];
+  readonly executedCaseIds: readonly string[];
+  readonly failingCaseIds: readonly [];
+}
 const issued = new WeakMap<object, ExecutedEvidence>();
 const claimed = new WeakSet<object>();
 const testPathPattern=/(?:^|\/)[^/]+\.(?:test|spec)\.(?:js|mjs|cjs)$/u;
@@ -31,21 +38,21 @@ function strictTestPaths(value:unknown):string[]{
  if(new Set(paths).size!==paths.length)throw new Error("test paths contain duplicates");
  return paths;
 }
-function parseTap(stdout:string):{executed:string[];failing:string[];fingerprint:string}{
+function parseTap(stdout:string,passing=false):{executed:string[];failing:string[];fingerprint:string}{
  if(stdout!==stdout.normalize("NFC")||/[\u0000\u007f-\u009f]/u.test(stdout))throw new Error("Node test output is malformed");
  const lines=stdout.replace(/\r\n/gu,"\n").split("\n"),results:Array<{name:string;failed:boolean;diagnostic:string[]}>=[];
  for(let index=0;index<lines.length;index++){
   const match=/^(not )?ok \d+ - (.+)$/u.exec(lines[index]!);
   if(!match)continue;
   const name=text(match[2]!,"test case id");
-  if(/ # (?:SKIP|TODO)/u.test(name))throw new Error("skipped or todo tests cannot establish RED");
+  if(/ # (?:SKIP|TODO)/u.test(name))throw new Error("skipped or todo tests cannot establish strict TDD");
   const diagnostic:string[]=[];
   for(index++;index<lines.length&&!/^(?:not )?ok \d+ - /u.test(lines[index]!);index++)diagnostic.push(lines[index]!);
   index--;results.push({name,failed:Boolean(match[1]),diagnostic});
  }
  const summary=(label:string)=>{const line=lines.find(item=>item.startsWith(`# ${label} `));return line?Number(line.slice(label.length+3)):NaN;};
  const failing=results.filter(result=>result.failed);
- if(!results.length||summary("tests")!==results.length||summary("fail")!==failing.length||!failing.length)throw new Error("Node TAP did not report discovered failing tests");
+ if(!results.length||summary("tests")!==results.length||summary("fail")!==failing.length||passing&&(failing.length||summary("skipped")!==0||summary("todo")!==0)||!passing&&!failing.length)throw new Error(`Node TAP did not report discovered ${passing?"passing":"failing"} tests`);
  if(new Set(results.map(result=>result.name)).size!==results.length)throw new Error("Node TAP case ids are not unique");
  const assertions=failing.map(result=>{
   const field=(key:string)=>{const index=result.diagnostic.findIndex(line=>new RegExp(`^\\s+${key}:`).test(line));if(index<0)return undefined;const line=result.diagnostic[index]!,indent=line.search(/\S/u),values=[line.slice(line.indexOf(":")+1).trim()];for(let next=index+1;next<result.diagnostic.length&&result.diagnostic[next]!.search(/\S/u)>indent;next++)values.push(result.diagnostic[next]!.trimEnd());return values;};
@@ -66,8 +73,18 @@ export async function executeNodeTestObservation(candidate:Candidate,testPaths:r
  const observation=Object.freeze({adapterId:"node-test" as const,commandFingerprint:createHash("sha256").update(JSON.stringify(proof.command)).digest("hex"),testPaths:Object.freeze(paths),executedCaseIds:Object.freeze(parsed.executed),failingCaseIds:Object.freeze(parsed.failing),assertionFingerprint:parsed.fingerprint,failureKind:"assertion" as const});
  issued.set(observation,proof);return observation;
 }
-export function claimTestObservation(value:unknown):ExecutedEvidence{
- if(typeof value!=="object"||value===null||!issued.has(value))throw new Error("test observation was not issued here");
- if(claimed.has(value))throw new Error("test observation has already been claimed");
+export async function executeNodePassingObservation(candidate:Candidate,testPaths:readonly string[]):Promise<PassingTestObservation>{
+ const paths=strictTestPaths(testPaths),command=[process.execPath,"--test","--test-reporter=tap",...paths] as [string,...string[]];
+ const {proof,stdout,stderr}=await executeCapturedEvidenceCommand(candidate,command,{cwd:candidate.repository,timeoutMs:120000});
+ if(proof.exitCode!==0||stderr.trim())throw new Error("Node passing observation requires a clean test run");
+ const parsed=parseTap(stdout,true);if(parsed.executed.some(caseId=>{const normalized=caseId.replace(/\\/gu,"/");return testPathPattern.test(normalized)||paths.some(item=>normalized===item||normalized.endsWith(`/${item}`));}))throw new Error("Node TAP did not report an executed test case");
+ const observation=Object.freeze({adapterId:"node-test" as const,commandFingerprint:createHash("sha256").update(JSON.stringify(proof.command)).digest("hex"),testPaths:Object.freeze(paths),executedCaseIds:Object.freeze(parsed.executed),failingCaseIds:Object.freeze([]) as readonly []});
+ issued.set(observation,proof);return observation;
+}
+function claim(value:unknown,noun:string):ExecutedEvidence{
+ if(typeof value!=="object"||value===null||!issued.has(value))throw new Error(`${noun} was not issued here`);
+ if(claimed.has(value))throw new Error(`${noun} has already been claimed`);
  claimed.add(value);return issued.get(value)!;
 }
+export function claimTestObservation(value:unknown):ExecutedEvidence{return claim(value,"test observation");}
+export function claimPassingTestObservation(value:unknown):ExecutedEvidence{return claim(value,"passing test observation");}
