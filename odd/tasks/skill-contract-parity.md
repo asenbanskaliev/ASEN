@@ -263,9 +263,10 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Successful genuine promotion retains the exact C5a record, and domain-separated HMAC v2 persistence binds lifecycle identities, revisions, phase, method, and canonical completion semantics. Recovery is verify/archive-only; behavior-changing legacy v1 requires migration while safe nonbehavior v1 gains no TDD authority.
         - Independent focused verification passes 26/26 and atomic/recovery regressions pass 13/13; typecheck, 27-Skill audit, 12-Skill parity audit, 300-path upstream-boundary audit, parity audit, and diff check pass. The readable slice is 92 additions. No anti-rollback claim is made; same-binding replay remains GSP-05C5d scope.
         - Commit: `4cea9d5`.
-      - [ ] GSP-05C5c: persist evidence v2 exact completions while legacy generic TDD remains audit-only.
-        - Implementation complete pending independent PASS: genuine live or signed-recovered v2 lifecycles privately bridge the validated C5a record into one deterministic, idempotent `lifecycle-completion` item immediately before verification authorization.
-        - Evidence persistence now always writes exact domain-separated v2 envelopes; strict item/record semantics, candidate bindings, malformed-shape rejection, and v1 audit-only read/v2 resave behavior have focused regression coverage. Generic TDD and verified non-TDD alternatives remain observably distinct, and no runtime admission is serialized.
+      - [x] GSP-05C5c: persist evidence v2 exact completions while legacy generic TDD remains audit-only.
+        - Genuine live or signed-recovered v2 lifecycles privately bridge the validated C5a record into one deterministic, idempotent `lifecycle-completion` item immediately before verification authorization. Evidence persistence always writes exact domain-separated v2 envelopes; legacy generic TDD remains audit-only and verified alternatives remain explicitly non-TDD.
+        - Independent lifecycle suites pass 16/16 and evidence suites pass 20/20; typecheck, 27-Skill audit, 12-Skill parity audit, 301-path upstream-boundary audit, parity audit, and diff check pass. The readable slice is 95 additions.
+        - Commit: `a426a6c`.
       - [ ] GSP-05C5d: require exact completion at the asen-tdd verification gate and document integrity versus rollback limits.
     - [ ] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
   - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
