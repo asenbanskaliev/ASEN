@@ -208,13 +208,15 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Generic evidence admission rejects every manual route-decision status. Dedicated admission claims genuine provenance before exact candidate and accessor-safe metadata validation, so reuse, binding mismatches, malformed metadata, clones, and forgeries fail closed and first-attempt failures burn genuine proofs.
         - Focused verification passes 58/58, including mutation-gate contribution, all provenance and metadata negatives, fixed evidence fields, and signed recovery. Typecheck, 27-Skill audit, 12-Skill parity audit, and 283-path upstream-boundary audit pass. The complete readable additions remain below 400 lines.
         - Commit: `00164d2`.
-  - [x] GSP-05B: optional structured-lifecycle applicability before lifecycle entry.
-    - [x] GSP-05B1: candidate-bound organic/structured/blocked applicability decision.
+  - [ ] GSP-05B: optional structured-lifecycle applicability before lifecycle entry.
+    - Reopened on the ODD boundary audit: historical tests prove the implemented applicability/provenance mechanics, but bless implicit structured selection from complexity/risk/artifacts without genuine explicit workflow selection. No shipped automatic OpenSpec activation was demonstrated; the callable nine-phase internal lifecycle must still be reconciled with the explicit-choice contract.
+    - [ ] GSP-05B1: candidate-bound organic/structured/blocked applicability decision.
       - [x] GSP-05B1a: orchestration-authentic claimed route context and exact candidate binding.
         - Successful candidate-bound orchestration privately records immutable original route facts and exact candidate identity. The read-only context rejects unclaimed, forged, cloned, candidate-less, failed, and rebound decisions without exposing authority.
         - Focused ODD/orchestration verification passes 23/23; typecheck, 27-Skill audit, 12-Skill parity audit, 285-path upstream-boundary audit, and diff check pass. The readable slice is below 400 additions.
         - Commit: `239a980`.
-      - [x] GSP-05B1b: candidate/fact-bound organic/structured/blocked applicability.
+      - [ ] GSP-05B1b: candidate/fact-bound organic/structured/blocked applicability.
+        - Reopened for routing semantics: unspecified substantial/high-risk ODD must not automatically select the nine-phase lifecycle; explicit organic must not be blocked solely by complexity; plain caller `structured`/artifact fields do not prove accepted SDD selection. Preserve the tested one-use candidate/fact provenance and ambiguity/test-applicability gates.
         - Genuine candidate-bound route decisions now produce immutable organic, structured, or blocked applicability derived only from original ODD facts, exact caller bindings, and explicit lifecycle inputs; first-attempt and B2 claim provenance are one-use without phase or execution authority.
         - Focused ODD/orchestration/applicability verification passes 32/32; typecheck, 27-Skill audit, 12-Skill parity audit, 285-path upstream-boundary audit, and diff check pass. The readable slice is 281 additions.
         - Commit: `f9fb0b5`.
@@ -285,6 +287,12 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Nonblocking evidence gaps: near-limit valid-policy acceptance and disabled-specific authority rejection are not separately tested; raw invalid UTF-8 byte decoding is outside this string API and remains an ingestion concern for D1b. No complete Unicode homoglyph detection is claimed.
       - Commit: `b31eb60`.
     - [ ] GSP-05D1b: bind policy/approved-issue/current-base/conflict inspection to genuine one-use repository read authority.
+      - Frozen RDD source was retrieved from the exact baseline URL and independently byte-hashed: 3,820 bytes, SHA-256 `effba22db780a83362dc4c878de3e3c7ddd33b8935ea082f47758d90ae39df56`, matching SRC-SKILL-008. This supersedes earlier source-unavailable assumptions: `status:approved` and clean current `main` reproduction are source requirements, not merely installed-guide advice. Configured approval labels are additive; no inferred branch, policy, or authority. An open PR alone does not establish conflict.
+      - [x] GSP-05D1b1: ingest bounded fatal UTF-8 policy bytes with original-byte identity; descriptive output only.
+        - Independent target tests pass 7/7 and combined policy/authority tests pass 30/30; typecheck, 27-Skill audit, 12-Skill parity audit, 304-path upstream boundary, parity audit, and diff check pass. Slice: 152 additions, 0 deletions; new-file counts include both formerly untracked targets. Native assessment was unassessable; independent fallback passed.
+        - Intrinsic bounded snapshots, unsafe-view rejection, fatal UTF-8/BOM/roundtrip, exact source identity, and deeply immutable descriptive output are verified. No upstream host-allocation guarantee, exhaustive cross-realm/monkeypatch coverage, full concurrency proof, or FULL parity is claimed.
+        - Commit: `c7021ad`.
+      - [ ] GSP-05D1b2: execute one exact authorized repository inspection, enforce approved issue/current-main identity/complete PR audit, and burn malformed claims. Clean-worktree reproduction remains D2; no review or delivery authority is issued.
     - [ ] GSP-05D2: reproduce on clean current base with genuine execution and negative-control evidence.
     - [ ] GSP-05D3: bind invariants, operator flows, actual runtime journey evidence, rollback, and forecast budget.
     - [ ] GSP-05D4: admit genuine candidate-bound defect-intake evidence with exact persistence semantics.
@@ -296,6 +304,12 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
   - [ ] GSP-05G: ASEN Dual Review immutable ledger and exactly-two blind dispatch.
   - [ ] GSP-05H: ASEN Dual Review bounded fix/re-judgment controller and terminal outcomes.
   - [ ] GSP-05I: normalize ODD, defect, and adversarial-review Skills and matrix evidence.
+    - Critical ODD acceptance: prove ODD is default and complexity/risk/file counts select organic delegation/tracking/checks, not automatic SDD/OpenSpec. SDD requires explicit selection or accepted proposal under the applicable source/version contract. Internal structured applicability alone is not proof of shipped SDD activation. Audit identified implicit nine-phase selection; GSP-05B1b is reopened without invalidating historical provenance test results.
+    - [ ] GSP-05I1: correct implicit structured selection and require genuine task/repository-bound explicit workflow choice; substantial organic work remains ODD. Close reopened B1b only with positive/negative regression evidence.
+    - [ ] GSP-05I2: derive Skill facts from genuine ODD facts, rejecting omitted/understated files/code/behavior inputs; verify uniform bounded writer authorization across generic and Pi runners.
+    - [ ] GSP-05I3: prove ODD read-only no-artifact and substantial task/full-memory-mirror/TODO/resume contracts, coordinated with MEM/ECO owners. No tracking/recovery parity claim from generic memory or snapshot primitives alone.
+    - [ ] GSP-05I4: normalize local ODD/defect/dual-review Skills against proven runtime behavior and retain PARTIAL until Pi Free probes. Preserve delegation vs workflow-mode distinction.
+    - GSP-06 must exercise the actual Pi extension ODD/SDD activation boundary; absence of observed production callers is not proof that activation cannot occur. Proposal/spec/design were observed read-only, but generic writer enforcement still depends on runner implementation.
   - Preserve explicit limits where authenticated principal, trust-root independence, or OS isolation remain unavailable.
 - [ ] GSP-06 — Verify strict parity and prepare delivery slices.
   - Run focused tests per work unit, full local gates, package verification, and independent verification.
