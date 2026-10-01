@@ -256,6 +256,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Commit: `db6ac11`.
     - [ ] GSP-05C5: persist and verify exact requirement-bound TDD completion with fail-closed legacy migration and recovery.
       - [ ] GSP-05C5a: derive canonical strict/alternative completion records with exact plan, execution, obligation, and revision semantics.
+        - Implementation and bounded runtime evidence are complete: genuine strict and verified-alternative flows privately retain schema-1 deeply immutable records; exact parsing recomputes obligation and domain-separated identities, validates canonical plans/execution, discriminator-specific shapes, and direct-parent semantic revisions, and grants no live completion authority. The independent exact-union-shape blocker is corrected; pending independent re-PASS, with C5b–C5d open.
       - [ ] GSP-05C5b: persist lifecycle v2 completion records and recover verify/archive continuation while legacy behavior-changing v1 requires migration.
       - [ ] GSP-05C5c: persist evidence v2 exact completions while legacy generic TDD remains audit-only.
       - [ ] GSP-05C5d: require exact completion at the asen-tdd verification gate and document integrity versus rollback limits.

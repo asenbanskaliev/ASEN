@@ -5,6 +5,7 @@ import {assertExactGitCandidate} from "../evidence/execution.js";
 import {assertDirectGitParent} from "../evidence/git-lineage.js";
 import {claimTddObligation,type TddObligation} from "../lifecycle/applicability.js";
 import {claimNodeCoverageObservation,type NodeCoverageObservation} from "./tdd-observation.js";
+import {createVerifiedNonTddAlternativeRecord,type VerifiedNonTddAlternativeRecord} from "./tdd-completion-record.js";
 
 export interface NonTddDecisionPoint {readonly behaviorPath:string;readonly startOffset:number;readonly endOffset:number}
 export interface NonTddDecisionPath {readonly caseId:string;readonly points:readonly NonTddDecisionPoint[]}
@@ -16,7 +17,7 @@ export interface NonTddAlternativeResult {
 }
 export interface NonTddAlternativeController {readonly controllerId:string;readonly requirementId:string;readonly planId:string;readonly plan:NonTddAlternativePlan;record(baselineCoverage:NodeCoverageObservation,candidate:Candidate,candidateCoverage:NodeCoverageObservation):NonTddAlternativeResult}
 
-export interface NonTddAlternativeResultFacts {readonly result:NonTddAlternativeResult;readonly requirementId:string;readonly taskIdentity:string;readonly repositoryIdentity:string;readonly candidateId:string;readonly behaviorPaths:readonly string[];readonly testPaths:readonly string[];readonly caseIds:readonly string[];readonly baselineRevision:string;readonly finalRevision:string}
+export interface NonTddAlternativeResultFacts {readonly result:NonTddAlternativeResult;readonly record:VerifiedNonTddAlternativeRecord;readonly requirementId:string;readonly taskIdentity:string;readonly repositoryIdentity:string;readonly candidateId:string;readonly behaviorPaths:readonly string[];readonly testPaths:readonly string[];readonly caseIds:readonly string[];readonly baselineRevision:string;readonly finalRevision:string}
 const candidateKeys=["id","repository","revision","createdAt"] as const;
 const issuedResults=new WeakMap<object,NonTddAlternativeResultFacts>(),claimedResults=new WeakSet<object>();
 /** Burns one genuine result and returns only its descriptive provenance. */
@@ -53,7 +54,7 @@ export function beginNonTddAlternative(obligation:TddObligation,value:NonTddAlte
   for(const testPath of baselineCoverage.testPaths)if(treeIdentity(next.repository,baseline.revision,testPath)!==treeIdentity(next.repository,next.revision,testPath))throw new Error("test blobs and modes must be unchanged");const changed=changedPaths(next.repository,baseline.revision,next.revision);if(!changed.length)throw new Error("candidate diff must be nonempty");if(changed.some(item=>baselineCoverage.testPaths.includes(item)||!obligation.behaviorPaths.includes(item)))throw new Error("candidate diff must contain only exact obligation behavior paths");
   for(const observation of [baselineCoverage,candidateCoverage])for(const decision of plan.decisionPaths){if(decision.points.some(point=>!covers(observation,decision.caseId,point)))throw new Error("every declared point must have positive coverage");if(plan.decisionPaths.length>1&&!decision.points.some(point=>plan.decisionPaths.filter(other=>other.caseId!==decision.caseId).some(other=>!covers(observation,other.caseId,point))))throw new Error("multi-path cases must be materially distinct");}
   const result=Object.freeze({alternativeId:controllerId,requirementId:obligation.requirementId,planId,state:"verified-non-tdd-alternative" as const,method:"non-tdd-alternative" as const,reason:plan.reason,rationale:plan.rationale,binding:Object.freeze({candidateId:next.id,repository:next.repository}),revisions:Object.freeze({baseline:baseline.revision,candidate:next.revision}),caseIds:Object.freeze(caseIds)});
-  issuedResults.set(result,Object.freeze({result,requirementId:obligation.requirementId,taskIdentity:obligation.taskIdentity,repositoryIdentity:obligation.repositoryIdentity,candidateId:next.id,behaviorPaths:Object.freeze([...obligation.behaviorPaths]),testPaths:Object.freeze([...baselineCoverage.testPaths]),caseIds:Object.freeze([...caseIds]),baselineRevision:baseline.revision,finalRevision:next.revision}));return result;
+  const record=createVerifiedNonTddAlternativeRecord({obligation,plan,planId,controllerId,alternativeId:result.alternativeId,commandFingerprint:candidateCoverage.commandFingerprint,testPaths:baselineCoverage.testPaths,caseIds,baseline:baseline.revision,final:next.revision});issuedResults.set(result,Object.freeze({result,record,requirementId:obligation.requirementId,taskIdentity:obligation.taskIdentity,repositoryIdentity:obligation.repositoryIdentity,candidateId:next.id,behaviorPaths:Object.freeze([...obligation.behaviorPaths]),testPaths:Object.freeze([...baselineCoverage.testPaths]),caseIds:Object.freeze([...caseIds]),baselineRevision:baseline.revision,finalRevision:next.revision}));return result;
  };
  controller=Object.freeze({controllerId,requirementId:obligation.requirementId,planId,plan,record});return controller;
 }
