@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import {createHmac,randomBytes} from "node:crypto";
+import {spawnSync} from "node:child_process";
 import {mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {join,resolve} from "node:path";
 import test from "node:test";
 import type {Candidate} from "../src/core/types.js";
 import {tddObligationFor} from "../src/lifecycle/applicability.js";
@@ -54,8 +55,32 @@ test("promotes an exact verified non-TDD alternative and exposes narrow one-use 
 test("required v3 recovery before and after apply cannot bypass exact TDD promotion",async t=>{
  const generated=gitCandidate("lifecycle-required-recovery"),initial={...generated,repository:await realpath(generated.repository)},base=commitCandidateFiles(initial,{[behaviorPath]:baseBehavior});cleanup(t,initial);const key=randomBytes(32),dir=await mkdtemp(join(tmpdir(),"asen-required-v3-"));t.after(()=>rm(dir,{recursive:true,force:true}));
  const verifyBlocked=async(flow:SkillLifecycle,task:string)=>{const evidence=new EvidenceStore();admitRouteEvidence(evidence,base);for(const [id,kind] of [["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)evidence.add(base,{id,kind,status:"pass",summary:id,createdAt:"now"});await passingEvidence(evidence,base,"generic-test");await passingReview(evidence,base,"generic-review");const context=issueSkillContext(`${task}:verifier`,base.repository,base,{phase:"verify"}),skillPaths=selectSkills(context).map(skill=>skill.path),runner=fixtureArtifactRunner(()=>({kind:artifacts.verify,content:"verify",repository:base.repository,candidateId:base.id,revision:base.revision}));await assert.rejects(()=>flow.runPhase(new Dispatcher(runner,evidence),{phase:"verify",context,skillPaths,prompt:"verify",evidence,risk:"low"}),/exact TDD completion promotion|required TDD/i);assert.equal(flow.state.nextPhase,"verify");};
- const afterTask="required-after-apply",after=createSkillLifecycle(await applicability(base,afterTask));await advanceApply(after,base,afterTask);const afterPath=join(dir,"after.json");await saveLifecycle(afterPath,after.state,key);await verifyBlocked(await loadLifecycle(afterPath,afterTask,base,key),afterTask);
- const beforeTask="required-before-apply",before=createSkillLifecycle(await applicability(base,beforeTask)),beforePath=join(dir,"before.json");await saveLifecycle(beforePath,before.state,key);const recovered=await loadLifecycle(beforePath,beforeTask,base,key);await advanceApply(recovered,base,beforeTask);await verifyBlocked(recovered,beforeTask);
+ const fixture=resolve("tests/fixtures/recover-selected-lifecycle.ts");
+ const run=(path:string,task:string,mode:string)=>spawnSync(
+  process.execPath,["--import","tsx",fixture,path,task,base.id,base.repository,base.revision,mode],
+  {cwd:resolve("."),encoding:"utf8",env:{...process.env,ASEN_RECOVERY_KEY:key.toString("base64url")},timeout:20000},
+ );
+ const afterTask="required-after-apply",after=createSkillLifecycle(await applicability(base,afterTask));
+ await advanceApply(after,base,afterTask);
+ const afterPath=join(dir,"after.json");
+ await saveLifecycle(afterPath,after.state,key);
+ await verifyBlocked(await loadLifecycle(afterPath,afterTask,base,key),afterTask);
+ const afterChild=run(afterPath,afterTask,"required-after");
+ assert.equal(afterChild.status,0,afterChild.stderr);
+ const afterResult=JSON.parse(afterChild.stdout);
+ assert.equal(afterResult.phase,"verify");assert.equal(afterResult.records,7);
+ assert.match(afterResult.probeResults.genericVerify,/exact TDD completion promotion|required TDD/i);
+ const beforeTask="required-before-apply",before=createSkillLifecycle(await applicability(base,beforeTask));
+ const beforePath=join(dir,"before.json");
+ await saveLifecycle(beforePath,before.state,key);
+ const recovered=await loadLifecycle(beforePath,beforeTask,base,key);
+ await advanceApply(recovered,base,beforeTask);
+ await verifyBlocked(recovered,beforeTask);
+ const beforeChild=run(beforePath,beforeTask,"required-before");
+ assert.equal(beforeChild.status,0,beforeChild.stderr);
+ const beforeResult=JSON.parse(beforeChild.stdout);
+ assert.equal(beforeResult.phase,"verify");assert.equal(beforeResult.records,7);
+ assert.match(beforeResult.probeResults.genericVerify,/exact TDD completion promotion|required TDD/i);
 });
 
 test("rejects raw required promotion, continues genuine v3 revised N/A, and rejects legacy revised v1",async t=>{
@@ -75,6 +100,30 @@ test("burns genuine strict results before phase, pending-authority, and cross-li
 test("rejects alternative clones and reuse across lifecycles",async t=>{const value=await alternativeResult(t);assert.throws(()=>value.flow.promoteCandidateFromTdd({...value.result}),/not issued/);value.flow.promoteCandidateFromTdd(value.result);assert.throws(()=>value.flow.promoteCandidateFromTdd(value.result),/already been claimed/);const other=await alternativeResult(t),facts=claimNonTddAlternativeResult(other.result);assert.deepEqual({task:facts.taskIdentity,repository:facts.repositoryIdentity,candidate:facts.candidateId,behavior:facts.behaviorPaths,tests:facts.testPaths,cases:facts.caseIds,baseline:facts.baselineRevision,final:facts.finalRevision},{task:other.task,repository:other.base.repository,candidate:other.candidate.id,behavior:[behaviorPath],tests:[testPath],cases:[yes,no],baseline:other.base.revision,final:other.candidate.revision});assert.throws(()=>other.flow.promoteCandidateFromTdd(value.result),/already been claimed/);});
 
 test("persists exact promoted completion without granting later authority",async t=>{const value=await strictResult(t,{triangulate:true,refactor:true});value.flow.promoteCandidateFromTdd(value.result);const state=value.flow.state,dir=await mkdtemp(join(tmpdir(),"asen-c5b-record-"));t.after(()=>rm(dir,{recursive:true,force:true}));const path=join(dir,"state.json"),key=randomBytes(32);await saveLifecycle(path,state,key);const recovered=await loadLifecycle(path,state.taskId,state.candidate,key);assert.deepEqual(recovered.state,state);assert.equal(state.nextPhase,"verify");assert.equal(state.records.length,7);assert.equal("pendingAuthority" in state,false);assert.equal("review" in state||"release" in state||"delivery" in state,false);assert.throws(()=>recovered.promoteCandidateFromTdd(value.result),/already been claimed|exact live required obligation/);});
+
+test("new processes continue genuine strict and alternative v2 completion without upgrade or remint",async t=>{
+ for(const value of [await strictResult(t,{triangulate:true,refactor:true}),await alternativeResult(t)]){
+  value.flow.promoteCandidateFromTdd(value.result);
+  const state=value.flow.state,dir=await mkdtemp(join(tmpdir(),"asen-c3-v2-child-"));
+  t.after(()=>rm(dir,{recursive:true,force:true}));
+  const path=join(dir,"state.json"),key=randomBytes(32),unmarked=structuredClone(state);
+  await saveLifecycle(path,unmarked,key);
+  const fixture=resolve("tests/fixtures/recover-selected-lifecycle.ts");
+  const run=spawnSync(
+   process.execPath,["--import","tsx",fixture,path,state.taskId,state.candidate.id,state.candidate.repository,state.candidate.revision,"complete"],
+   {cwd:resolve("."),encoding:"utf8",env:{...process.env,ASEN_RECOVERY_KEY:key.toString("base64url")},timeout:20000},
+  );
+  assert.equal(run.status,0,run.stderr);
+  const result=JSON.parse(run.stdout);
+  assert.equal(result.phase,null);assert.equal(result.records,9);
+  assert.equal(result.descriptionPresence,false);assert.equal(result.envelopeVersion,2);
+  assert.match(result.probeResults.prepareApply,/out of order/i);
+  const raw=JSON.parse(await readFile(path,"utf8"));
+  assert.equal(raw.version,2);assert.equal(raw.snapshot.version,2);
+  assert.equal(raw.snapshot.tddPromotion.method,state.version===2?state.tddPromotion.method:undefined);
+  assert.equal("workflowSelection" in raw,false);
+ }
+});
 
 test("live strict and alternative verify insert deterministic exact non-generic completion",async t=>{for(const source of [await strictResult(t,{triangulate:false,refactor:false}),await alternativeResult(t)]){source.flow.promoteCandidateFromTdd(source.result);const candidate=source.flow.state.candidate,evidence=new EvidenceStore();admitRouteEvidence(evidence,candidate);for(const [id,kind] of [["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)evidence.add(candidate,{id,kind,status:"pass",summary:id,createdAt:"now"});await passingEvidence(evidence,candidate,"test");await passingReview(evidence,candidate,"review");const context=issueSkillContext(`${source.task}:verifier`,candidate.repository,candidate,{phase:"verify"}),skillPaths=selectSkills(context).map(skill=>skill.path),failed=new Dispatcher({run:async request=>({id:request.id,ok:false,output:"failed"})},evidence);await assert.rejects(()=>source.flow.runPhase(failed,{phase:"verify",context,skillPaths,prompt:"verify",evidence,risk:"low"}),/agent result failed/);const first=evidence.forCandidate(candidate).find(item=>item.kind==="lifecycle-completion")!;assert.ok(first);assert.equal(first.completion?.promotionMethod,source.flow.state.version===2?source.flow.state.tddPromotion.method:undefined);assert.equal(verifySkillEvidence(candidate,["asen-tdd"],evidence,"verification").ok,true);assert.equal(evidence.hasPassing(candidate,"tdd"),false);const dir=await mkdtemp(join(tmpdir(),"asen-c5c-evidence-"));t.after(()=>rm(dir,{recursive:true,force:true}));const path=join(dir,"evidence.json"),key=randomBytes(32);await saveEvidence(path,candidate,evidence,key);const restored=await loadEvidence(path,candidate,key);assert.deepEqual(restored.forCandidate(candidate).find(item=>item.kind==="lifecycle-completion"),first);const tampered=JSON.parse(await readFile(path,"utf8"));tampered.value.items.find((item:any)=>item.kind==="lifecycle-completion").completion.obligation.candidate.id="wrong";tampered.mac=createHmac("sha256",key).update("asen.evidence.v2\0").update(JSON.stringify(tampered.value)).digest("hex");await writeFile(path,JSON.stringify(tampered));await assert.rejects(()=>loadEvidence(path,candidate,key),/identity|hash|mismatch/);const retryContext=issueSkillContext(`${source.task}:verifier`,candidate.repository,candidate,{phase:"verify"}),retryPaths=selectSkills(retryContext).map(skill=>skill.path),runner=fixtureArtifactRunner(()=>({kind:artifacts.verify,content:"verify",repository:candidate.repository,candidateId:candidate.id,revision:candidate.revision}));await source.flow.runPhase(new Dispatcher(runner,evidence),{phase:"verify",context:retryContext,skillPaths:retryPaths,prompt:"verify",evidence,risk:"low"});assert.equal(evidence.forCandidate(candidate).filter(item=>item.kind==="lifecycle-completion").length,1);assert.equal(evidence.forCandidate(candidate).find(item=>item.kind==="lifecycle-completion")?.id,first.id);}}
 );
