@@ -255,6 +255,10 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Independent focused verification passes 51/51; typecheck, 27-Skill audit, 12-Skill parity audit, 297-path upstream-boundary audit, and diff check pass. The readable slice is 119 additions.
         - Commit: `db6ac11`.
     - [ ] GSP-05C5: persist and verify exact requirement-bound TDD completion with fail-closed legacy migration and recovery.
+      - [ ] GSP-05C5a: derive canonical strict/alternative completion records with exact plan, execution, obligation, and revision semantics.
+      - [ ] GSP-05C5b: persist lifecycle v2 completion records and recover verify/archive continuation while legacy behavior-changing v1 requires migration.
+      - [ ] GSP-05C5c: persist evidence v2 exact completions while legacy generic TDD remains audit-only.
+      - [ ] GSP-05C5d: require exact completion at the asen-tdd verification gate and document integrity versus rollback limits.
     - [ ] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
   - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
   - [ ] GSP-05E: ordinary native review controller bound to genuine work-unit candidates.
