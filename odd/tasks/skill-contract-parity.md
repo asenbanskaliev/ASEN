@@ -246,8 +246,10 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Independent focused verification passes 51/51 and covers exact canonical plans, unchanged test blobs/modes, fixed runner identity, positive materially distinct decision coverage on both revisions, provenance burn semantics, immutable descriptive output, and authority/RED terminology exclusion. Typecheck, 27-Skill audit, 12-Skill parity audit, 294-path upstream-boundary audit, and diff check pass. The readable slice is 96 additions.
         - Commit: `b8d52fe`.
     - [ ] GSP-05C4: require triangulation/N/A before performed-or-not-needed refactor completion and bind lifecycle revision promotion to the exact completion.
-      - [ ] GSP-05C4a: issue exact strict completion only after performed or explicitly unnecessary refactoring preserves planned behavior.
-        - Implementation candidate records one exact performed/not-needed finalization after genuine C3b terminal provenance and fresh runner-derived coverage, preserves planned cases and terminal tests, and exposes only one-use completion facts for C4b. The task remains unchecked pending independent PASS.
+      - [x] GSP-05C4a: issue exact strict completion only after performed or explicitly unnecessary refactoring preserves planned behavior.
+        - One exact performed/not-needed finalization follows genuine C3b terminal provenance and fresh runner-derived coverage, preserves planned cases and terminal tests, and exposes only one-use completion facts for C4b.
+        - Independent focused verification passes 51/51; typecheck, 27-Skill audit, 12-Skill parity audit, 296-path upstream-boundary audit, and diff check pass. The readable slice is 60 additions.
+        - Commit: `c934e77`.
       - [ ] GSP-05C4b: promote TDD-required lifecycle candidates only from genuine strict completion or the exact verified non-TDD alternative; defer persisted authority to C5.
     - [ ] GSP-05C5: persist and verify exact requirement-bound TDD completion with fail-closed legacy migration and recovery.
     - [ ] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
