@@ -254,7 +254,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Fresh lifecycles bind their exact live TDD obligation, burn genuine strict or alternative results before validation, validate honest direct-parent chains, and leave verify as the next phase without granting broader authority. Promoted state carries an explicit pending-persistence marker; C4 save/load fail closed while ordinary signed recovery remains available.
         - Independent focused verification passes 51/51; typecheck, 27-Skill audit, 12-Skill parity audit, 297-path upstream-boundary audit, and diff check pass. The readable slice is 119 additions.
         - Commit: `db6ac11`.
-    - [ ] GSP-05C5: persist and verify exact requirement-bound TDD completion with fail-closed legacy migration and recovery.
+    - [x] GSP-05C5: persist and verify exact requirement-bound TDD completion with fail-closed legacy migration and recovery.
       - [x] GSP-05C5a: derive canonical strict/alternative completion records with exact plan, execution, obligation, and revision semantics.
         - Genuine strict and verified-alternative flows privately retain schema-1 deeply immutable records; exact parsing recomputes obligation and domain-separated identities, validates canonical plans/execution, discriminator-specific shapes, and direct-parent semantic revisions, and grants no live completion authority.
         - Independent focused verification passes 42/42; typecheck, 27-Skill audit, 12-Skill parity audit, 298-path upstream-boundary audit, parity audit, and diff check pass. The readable slice is 76 additions.
@@ -267,10 +267,11 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Genuine live or signed-recovered v2 lifecycles privately bridge the validated C5a record into one deterministic, idempotent `lifecycle-completion` item immediately before verification authorization. Evidence persistence always writes exact domain-separated v2 envelopes; legacy generic TDD remains audit-only and verified alternatives remain explicitly non-TDD.
         - Independent lifecycle suites pass 16/16 and evidence suites pass 20/20; typecheck, 27-Skill audit, 12-Skill parity audit, 301-path upstream-boundary audit, parity audit, and diff check pass. The readable slice is 95 additions.
         - Commit: `a426a6c`.
-      - [ ] GSP-05C5d: require exact completion at the asen-tdd verification gate and document integrity versus rollback limits.
-        - Implementation is complete pending independent PASS: `asen-tdd` now requires exact `lifecycle-completion`; live strict, signed-recovered strict, and verified-alternative paths pass only that gate, while generic and legacy v1 TDD remain audit-only. Recovery documentation distinguishes HMAC integrity and exact current-revision binding from unavailable same-binding rollback detection.
+      - [x] GSP-05C5d: require exact completion at the asen-tdd verification gate and document integrity versus rollback limits.
+        - `asen-tdd` requires exact `lifecycle-completion`; live strict, signed-recovered strict, and verified-alternative paths pass only that gate, while generic and legacy v1 TDD remain audit-only. Recovery documentation distinguishes HMAC integrity and exact current-revision binding from unavailable same-binding rollback detection and makes no rollback-resistance claim.
+        - Independent focused verification passes 49/49; typecheck, 27-Skill audit, 12-Skill parity audit, 301-path upstream-boundary audit, parity audit, and diff check pass. The readable slice is 35 additions.
+        - Commit: `02c0049`.
     - [ ] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
-    - GSP-05C5 remains unchecked pending independent PASS for C5d; C6 remains open and no TDD Skill normalization is included here.
   - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
   - [ ] GSP-05E: ordinary native review controller bound to genuine work-unit candidates.
   - [ ] GSP-05F: one bounded correction, validation, recovery, and strict delivery separation.
