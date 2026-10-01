@@ -31,17 +31,92 @@ test("verification intent creates only verifier",()=>{
  assert.deepEqual(p.agents.map(a=>a.role),["verifier"]);
 });
 
-test("orchestration resolves mandatory skills for a high-risk behavior change",()=>{
- const decision=issueOddDecision({
-  taskId:"t",repository:"r",paths:["src/a.ts"],
-  writes:[{path:"src/a.ts",changeKind:"security"}],riskOperations:["security_boundary"],
- });
- const p=buildOrchestrationPlan({taskId:"t",repository:"r",prompt:"p",codeChange:true,behaviorChange:true,filesTouched:4,writeSurfaces:["src"],candidate},decision);
- assert.deepEqual(p.skills,["asen-phase-protocol","asen-work-unit","asen-safe-change","asen-apply","asen-odd","asen-tdd","asen-review"]);
+test("incident routing preserves its existing non-admitted worker role",()=>{
+ const plan=buildOrchestrationPlan(
+  {taskId:"incident",repository:"r",prompt:"diagnose",codeChange:true,behaviorChange:true,filesTouched:99,candidate},
+  issueOddDecision({taskId:"incident",repository:"r",intent:"incident"}),
+ );
+ assert.deepEqual(plan.agents.map(agent=>agent.role),["explorer","worker","reviewer","verifier"]);
+ assert.equal(plan.agents.find(agent=>agent.role==="worker")?.writeSurfaces,undefined);
+});
+
+test("orchestration derives mandatory skills from original high-risk behavior facts",()=>{
+ const fixture={
+  taskId:"t",repository:"r",paths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"],
+  writes:[{path:"src/a.ts",changeKind:"behavior" as const}],riskOperations:["security_boundary" as const],
+ };
+ const expected=["asen-phase-protocol","asen-work-unit","asen-safe-change","asen-apply","asen-odd","asen-tdd","asen-review"];
+ const understated=buildOrchestrationPlan(
+  {taskId:"t",repository:"r",prompt:"p",codeChange:false,behaviorChange:false,filesTouched:0,writeSurfaces:["src"],candidate},
+  issueOddDecision(fixture),
+ );
+ const omitted=buildOrchestrationPlan(
+  {taskId:"t",repository:"r",prompt:"p",writeSurfaces:["src"],candidate},
+  issueOddDecision(fixture),
+ );
+ assert.deepEqual(understated.skills,expected);
+ assert.deepEqual(omitted.skills,expected);
+});
+
+test("obsolete caller skill facts are never observed",()=>{
+ let reads=0;
+ const input={taskId:"getters",repository:"r",prompt:"p",writeSurfaces:["src"],candidate};
+ for(const field of ["codeChange","behaviorChange","filesTouched"] as const){
+  Object.defineProperty(input,field,{enumerable:true,get(){reads++;throw new Error("obsolete getter invoked");}});
+ }
+ const plan=buildOrchestrationPlan(input,issueOddDecision({
+  taskId:"getters",repository:"r",paths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"],
+  writes:[{path:"src/a.ts",changeKind:"behavior"}],
+ }));
+ assert.equal(reads,0);
+ const context=plan.agents.find(agent=>agent.role==="worker")?.skillContext;
+ assert.equal(context?.taskId,"getters:worker");
+ assert.equal(context?.repository,"r");
+ assert.equal(context?.candidateId,"c");
+ assert.equal(context?.candidateRevision,"sha");
+ assert.equal(context?.codeChange,true);
+ assert.equal(context?.behaviorChange,true);
+ assert.equal(context?.filesTouched,4);
+ assert.equal(context?.risk,"medium");
+});
+
+test("declared write kinds preserve exact code and behavior skill predicates",()=>{
+ const cases=["schema","security","migration"] as const;
+ for(const changeKind of cases){
+  const taskId=`kind-${changeKind}`;
+  const plan=buildOrchestrationPlan(
+   {taskId,repository:"r",prompt:"p"},
+   issueOddDecision({taskId,repository:"r",paths:["src/a.ts"],writes:[{path:"src/a.ts",changeKind}]}),
+  );
+  assert.equal(plan.skills.includes("asen-safe-change"),true);
+  assert.equal(plan.skills.includes("asen-tdd"),false);
+ }
+ const docs=buildOrchestrationPlan(
+  {taskId:"docs",repository:"r",prompt:"p",skillPhase:"apply"},
+  issueOddDecision({taskId:"docs",repository:"r",paths:["docs/a.md"],writes:[{path:"docs/a.md",changeKind:"documentation"}]}),
+ );
+ assert.deepEqual(docs.skills,["asen-phase-protocol","asen-work-unit","asen-safe-change","asen-apply"]);
+ assert.equal(docs.skills.includes("asen-tdd"),false);
+});
+
+test("unknown declared scope remains a bounded clarification plan",()=>{
+ const plan=buildOrchestrationPlan(
+  {taskId:"unknown",repository:"r",prompt:"p",codeChange:true,behaviorChange:true,filesTouched:99,writeSurfaces:["src"],candidate},
+  issueOddDecision({taskId:"unknown",repository:"r",scope:{kind:"unknown",reason:"needs mapping"},testingRequired:false}),
+ );
+ assert.equal(plan.decision.route,"plan");
+ assert.deepEqual(plan.agents,[]);
+ assert.equal(plan.skills.includes("asen-odd"),true);
+ assert.equal(plan.skills.includes("asen-review"),true);
+ assert.equal(plan.skills.includes("asen-tdd"),false);
 });
 
 test("writer is bound to the exact orchestration candidate",()=>{
- const p=buildOrchestrationPlan({taskId:"t",repository:"r",prompt:"p",codeChange:true,filesTouched:4,writeSurfaces:["src"],candidate},orchestrated());
+ const decision=issueOddDecision({
+  taskId:"t",repository:"r",paths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"],
+  writes:[{path:"src/a.ts",changeKind:"configuration"}],
+ });
+ const p=buildOrchestrationPlan({taskId:"t",repository:"r",prompt:"p",codeChange:false,filesTouched:0,writeSurfaces:["src"],candidate},decision);
  const worker=p.agents.find(a=>a.role==="worker");
  assert.deepEqual(worker?.candidate,candidate);
  assert.equal(worker?.skillContext?.codeChange,true);

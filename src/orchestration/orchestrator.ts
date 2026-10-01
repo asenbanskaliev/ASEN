@@ -32,6 +32,17 @@ export interface ClaimedOrchestrationRouteContext {
 const issuedRouteEvidence=new WeakSet<object>();
 const orchestrationContexts = new WeakMap<object, ClaimedOrchestrationRouteContext>();
 const claimedRouteEvidence=new WeakSet<object>();
+const codeChangeKinds=new Set(["behavior","schema","security","configuration","migration"]);
+
+function deriveSkillSelectionContext(facts:OddDerivedFacts):SkillSelectionContext{
+  const context:SkillSelectionContext={
+    risk:facts.risk,
+    codeChange:facts.writes.some(write=>codeChangeKinds.has(write.changeKind)),
+    behaviorChange:facts.writes.some(write=>write.changeKind==="behavior"),
+  };
+  if(facts.scope.kind==="known")context.filesTouched=facts.scope.expectedPaths.length;
+  return context;
+}
 function issueRouteEvidence(input:OrchestrationInput,decision:OddRouteDecision):OrchestrationRouteEvidence|undefined{
   if(!input.candidate)return undefined;
   const proof=Object.freeze({taskId:input.taskId,repository:input.repository,candidateId:input.candidate.id,candidateRevision:input.candidate.revision,
@@ -85,12 +96,7 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRou
     return routeEvidence ? { ...plan, routeEvidence } : plan;
   };
   const base={repository:input.repository,prompt:input.prompt,...(input.candidate?{candidate:input.candidate}:{})};
-  const common:SkillSelectionContext={
-    risk:decision.risk,
-    ...(input.codeChange===undefined?{}:{codeChange:input.codeChange}),
-    ...(input.behaviorChange===undefined?{}:{behaviorChange:input.behaviorChange}),
-    ...(input.filesTouched===undefined?{}:{filesTouched:input.filesTouched})
-  };
+  const common=deriveSkillSelectionContext(facts);
   const contextFor=(suffix:string,phase:SkillPhase,verification=false)=>{
     const context=issueSkillContext(`${input.taskId}:${suffix}`,input.repository,input.candidate,{...common,phase,...(verification?{verification:true}:{})});
     const selected=selectSkills(context);
