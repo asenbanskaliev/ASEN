@@ -4,12 +4,16 @@ import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {refreshSkillRegistry,type RefreshSkillRegistryOptions,type SkillRegistryMirror} from "../src/skills/generated-registry.js";
 import type {SkillSource} from "../src/skills/discovery.js";
-import {registerWorkflowSelectionCommand,type WorkflowSelectionConsumer} from "../src/lifecycle/workflow-selection.js";
+import {claimWorkflowSelection,readWorkflowSelection,registerWorkflowSelectionCommand} from "../src/lifecycle/workflow-selection.js";
+import {decideLifecycleApplicability,decideLifecycleApplicabilityWithSelection,type LifecycleApplicability,type LifecycleApplicabilityInput} from "../src/lifecycle/applicability.js";
+import type {OddRouteDecision} from "../src/flow/odd-routing.js";
+import {claimedOrchestrationRouteContext} from "../src/orchestration/orchestrator.js";
 
 type CommandContext={cwd:string;ui:{notify(message:string,level:"info"|"error"):void}};
 type PiLike={registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void};
 type Refresh=typeof refreshSkillRegistry;
 export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror}
+export interface AsenExtensionFacade {decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability}
 
 const usage="Usage: /asen-skill-registry refresh";
 const productionPackageRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
@@ -33,7 +37,7 @@ function safeErrorMessage(error:unknown):string{
  return error.message.replace(/[\u0000-\u001f\u007f]+/g," ").replace(/\s+/g," ").trim()||"Unknown error";
 }
 
-export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(pi:PiLike)=>WorkflowSelectionConsumer {
+export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(pi:PiLike)=>AsenExtensionFacade {
  const home=dependencies.homeDir??homedir,packageRoot=dependencies.packageRoot??productionPackageRoot,refresh=dependencies.refresh??refreshSkillRegistry;
  return pi=>{
   const register=pi.registerCommand?.bind(pi);
@@ -49,7 +53,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ctx.ui.notify(message,"info");return message;
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
-  return registerWorkflowSelectionCommand(register);
+  const consumer=registerWorkflowSelectionCommand(register);
+  return Object.freeze({decideLifecycleApplicability:(decision:OddRouteDecision,input:LifecycleApplicabilityInput)=>{
+   const original=claimedOrchestrationRouteContext(decision),binding={taskIdentity:original.facts.taskIdentity,repositoryIdentity:original.facts.repositoryIdentity},choice=readWorkflowSelection(consumer,binding);
+   if(!choice)return decideLifecycleApplicability(decision,input);
+   const claimed=claimWorkflowSelection(consumer,choice,binding);
+   return decideLifecycleApplicabilityWithSelection(decision,input,claimed);
+  }});
  };
 }
 

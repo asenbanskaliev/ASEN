@@ -90,7 +90,7 @@ test("Pi artifact runner passes only a completed assistant JSON artifact to life
 test("Pi RPC artifact advances one phase only with exact candidate output",async()=>{
  const source='let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:JSON.stringify({kind:"project-context",content:"context inspected",repository:process.cwd(),candidateId:"c",revision:"r"})}]}}));console.log(JSON.stringify({type:"agent_end"}));console.log(JSON.stringify({type:"response",id:f.id,success:true}));});';
  const {d,p}=await fixture(source),candidate={id:"c",repository:d,revision:"r",createdAt:"now"};
- const lifecycle=createTestSkillLifecycle("pi-task",candidate),ctx=issueSkillContext("pi-task:worker",d,candidate,{phase:"context-init"}),paths=selectSkills(ctx).map(x=>x.path);
+ const lifecycle=await createTestSkillLifecycle("pi-task",candidate),ctx=issueSkillContext("pi-task:worker",d,candidate,{phase:"context-init"}),paths=selectSkills(ctx).map(x=>x.path);
  const evidence=new EvidenceStore(),dispatcher=new Dispatcher(new PiArtifactRunner(runner(p)),evidence);
  const state=await lifecycle.runPhase(dispatcher,{phase:"context-init",context:ctx,skillPaths:paths,prompt:"inspect context",evidence,risk:"low"});
  assert.equal(state.records.length,1);assert.equal(state.nextPhase,"explore");

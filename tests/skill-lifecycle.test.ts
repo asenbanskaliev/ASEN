@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
+import {mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {createHmac,randomBytes} from "node:crypto";
@@ -16,7 +16,8 @@ import {EvidenceStore} from "../src/evidence/store.js";
 import {loadEvidence,saveEvidence} from "../src/evidence/persistence.js";
 import {passingEvidence,passingReview,gitCandidate} from "./execution-evidence-helper.js";
 import {admitRouteEvidence} from "./helpers/route-evidence.js";
-const candidate=gitCandidate("candidate");
+const generatedCandidate=gitCandidate("candidate");
+const candidate={...generatedCandidate,repository:await realpath(generatedCandidate.repository)};
 const recoveryKey=randomBytes(32);
 const artifacts:Record<LifecyclePhase,string>={"context-init":"project-context",explore:"exploration",proposal:"proposal",specification:"specification",design:"design",tasks:"task-plan",apply:"apply-result",verify:"verification-report",archive:"archive-report"};
 const roles:Record<LifecyclePhase,LifecycleRole>={"context-init":"worker",explore:"explorer",proposal:"worker",specification:"worker",design:"worker",tasks:"worker",apply:"worker",verify:"verifier",archive:"worker"};
@@ -36,7 +37,7 @@ async function advance(flow:SkillLifecycle,phase:LifecyclePhase,options:Paramete
  return flow.runPhase(new Dispatcher(runner,evidence),{phase,context:selected.context,skillPaths:selected.skillPaths,prompt:phase,evidence,risk:"high",...(phase==="apply"?{writeSurfaces:["src/"]}:{})});
 }
 test("lifecycle enforces nine ordered phases and mandatory artifacts",async t=>{
- const flow=createTestSkillLifecycle("task",candidate);
+ const flow=await createTestSkillLifecycle("task",candidate);
  await assert.rejects(()=>advance(flow,"apply"),/out of order/);
  for(const phase of lifecyclePhases){assert.equal(flow.state.nextPhase,phase);await advance(flow,phase);}
  assert.equal(flow.state.nextPhase,null);
@@ -45,13 +46,13 @@ test("lifecycle enforces nine ordered phases and mandatory artifacts",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-v1-complete-"));t.after(()=>rm(dir,{recursive:true,force:true}));const path=join(dir,"flow.json");await saveLifecycle(path,flow.state,recoveryKey);const inspected=await loadLifecycle(path,"task",candidate,recoveryKey);assert.equal(inspected.state.nextPhase,null);await assert.rejects(()=>advance(inspected,"archive"),/out of order/);
 });
 test("plain JSON from an arbitrary runner cannot advance lifecycle",async()=>{
- const flow=createTestSkillLifecycle("task",candidate),selection=completion("context-init"),evidence=new EvidenceStore();
+ const flow=await createTestSkillLifecycle("task",candidate),selection=completion("context-init"),evidence=new EvidenceStore();
  const fabricated:AgentRunner={run:async request=>({id:request.id,ok:true,output:JSON.stringify(selection.artifact)})};
  await assert.rejects(()=>flow.runPhase(new Dispatcher(fabricated,evidence),{phase:"context-init",context:selection.context,skillPaths:selection.skillPaths,prompt:"context",evidence,risk:"low"}),/Pi provenance/);
  assert.equal(flow.state.records.length,0);
 });
 test("worker lifecycle grant is one-use and bound to task, phase and candidate",async()=>{
- const flow=createTestSkillLifecycle("task",candidate),selected=completion("context-init"),evidence=new EvidenceStore();
+ const flow=await createTestSkillLifecycle("task",candidate),selected=completion("context-init"),evidence=new EvidenceStore();
  const fixture=fixtureArtifactRunner(()=>selected.artifact);let captured:AgentRequest|undefined;
  const runner:AgentRunner={run:async request=>{captured=request;return fixture.run(request);}};
  const dispatcher=new Dispatcher(runner,evidence);
@@ -64,7 +65,7 @@ test("worker lifecycle grant is one-use and bound to task, phase and candidate",
  await assert.rejects(()=>dispatcher.dispatch({...request,phaseGrant:Object.freeze({})}),/unused ASEN lifecycle grant/);
 });
 test("lifecycle refuses wrong role, task, revision, routes and artifact",async()=>{
- const flow=createTestSkillLifecycle("task",candidate);
+ const flow=await createTestSkillLifecycle("task",candidate);
  await assert.rejects(()=>advance(flow,"context-init",{role:"explorer"}),/context lacks/);
  await assert.rejects(()=>advance(flow,"context-init",{task:"other"}),/context lacks/);
  await assert.rejects(()=>advance(flow,"context-init",{candidate:{...candidate,revision:"old"}}),/context lacks/);
@@ -77,7 +78,7 @@ test("lifecycle refuses wrong role, task, revision, routes and artifact",async()
 });
 test("interruption resumes exact phase, artifacts and candidate; changed identity fails",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-lifecycle-"));t.after(()=>rm(dir,{recursive:true,force:true}));
- const path=join(dir,"state.json"),flow=createTestSkillLifecycle("task",candidate);
+ const path=join(dir,"state.json"),flow=await createTestSkillLifecycle("task",candidate);
  for(const phase of lifecyclePhases.slice(0,4))await advance(flow,phase);
  await saveLifecycle(path,flow.state,recoveryKey);
  const resumed=await loadLifecycle(path,"task",candidate,recoveryKey);
@@ -104,7 +105,7 @@ test("task executes through dispatcher, resumes, verifies and archives",async t=
   }
   return {kind:artifacts[phase],content:`completed ${phase}`,repository:candidate.repository,candidateId:candidate.id,revision:candidate.revision};
  });
- let dispatcher=new Dispatcher(runner,evidence);const flow=createTestSkillLifecycle("task",candidate);
+ let dispatcher=new Dispatcher(runner,evidence);const flow=await createTestSkillLifecycle("task",candidate);
  const execute=async(target:SkillLifecycle,phase:LifecyclePhase)=>{
   const issued=completion(phase);
   await target.runPhase(dispatcher,{phase,context:issued.context,skillPaths:issued.skillPaths,prompt:`perform ${phase}`,evidence,risk:"high",...(phase==="apply"?{writeSurfaces:["src/"]}:{})});
@@ -132,7 +133,7 @@ test("task executes through dispatcher, resumes, verifies and archives",async t=
 });
 test("signed pending phase reissues fresh authority after recovery",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-reissue-"));t.after(()=>rm(dir,{recursive:true,force:true}));
- const path=join(dir,"flow.json"),flow=createTestSkillLifecycle("task",candidate);
+ const path=join(dir,"flow.json"),flow=await createTestSkillLifecycle("task",candidate);
  for(const phase of lifecyclePhases.slice(0,4))await advance(flow,phase);
  const selected=completion("design");
  flow.preparePhase(selected.context,selected.skillPaths);
@@ -152,10 +153,10 @@ test("signed pending phase reissues fresh authority after recovery",async t=>{
  assert.match(run(randomBytes(32)).stderr,/integrity mismatch/);
 });
 
-test("continuing behavior-routed v1 recovery requires exact-applicability migration",async t=>{const dir=await mkdtemp(join(tmpdir(),"asen-v1-tdd-"));t.after(()=>rm(dir,{recursive:true,force:true}));const path=join(dir,"flow.json"),flow=createTestSkillLifecycle("task",candidate),context=issueSkillContext("task:worker",candidate.repository,candidate,{phase:"context-init",behaviorChange:true}),skillPaths=selectSkills(context).map(skill=>skill.path);flow.preparePhase(context,skillPaths);await saveLifecycle(path,flow.state,recoveryKey);await assert.rejects(()=>loadLifecycle(path,"task",candidate,recoveryKey),/migration required; restart exact applicability/);});
+test("continuing behavior-routed v1 recovery requires exact-applicability migration",async t=>{const dir=await mkdtemp(join(tmpdir(),"asen-v1-tdd-"));t.after(()=>rm(dir,{recursive:true,force:true}));const path=join(dir,"flow.json"),flow=await createTestSkillLifecycle("task",candidate),context=issueSkillContext("task:worker",candidate.repository,candidate,{phase:"context-init",behaviorChange:true}),skillPaths=selectSkills(context).map(skill=>skill.path);flow.preparePhase(context,skillPaths);await saveLifecycle(path,flow.state,recoveryKey);await assert.rejects(()=>loadLifecycle(path,"task",candidate,recoveryKey),/migration required; restart exact applicability/);});
 
 test("apply can advance to a direct Git child while signed recovery retains prior artifacts",async t=>{
- const dir=await mkdtemp(join(tmpdir(),"asen-lifecycle-revisions-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const generatedDir=await mkdtemp(join(tmpdir(),"asen-lifecycle-revisions-")),dir=await realpath(generatedDir);t.after(()=>rm(dir,{recursive:true,force:true}));
  spawnSync("git",["init","-q",dir],{encoding:"utf8"});
  const commit=(message:string)=>{
   const result=spawnSync("git",["-C",dir,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m",message],{encoding:"utf8"});
@@ -163,7 +164,7 @@ test("apply can advance to a direct Git child while signed recovery retains prio
   return spawnSync("git",["-C",dir,"rev-parse","HEAD"],{encoding:"utf8"}).stdout.trim();
  };
  const red=commit("pre-apply"),initial={...candidate,id:"git-lifecycle",repository:dir,revision:red};
- const flow=createTestSkillLifecycle("git-task",initial,undefined,"not-applicable"),evidence=new EvidenceStore();
+ const flow=await createTestSkillLifecycle("git-task",initial,undefined,"not-applicable"),evidence=new EvidenceStore();
  for(const [id,kind] of [["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)evidence.add(initial,{id,kind,status:"pass",summary:id,createdAt:"now"});
  for(const phase of lifecyclePhases.slice(0,7)){
   const role=roles[phase],context=issueSkillContext(`git-task:${role}`,dir,initial,{phase,risk:"low"}),skillPaths=selectSkills(context).map(s=>s.path);

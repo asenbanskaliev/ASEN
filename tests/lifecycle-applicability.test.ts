@@ -1,19 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {realpath} from "node:fs/promises";
 import { decideLifecycleApplicability, claimLifecycleApplicability, type LifecycleApplicabilityInput } from "../src/lifecycle/applicability.js";
 import { createSkillLifecycle, SkillLifecycle, lifecyclePhases } from "../src/lifecycle/skill-lifecycle.js";
 import { buildOrchestrationPlan } from "../src/orchestration/orchestrator.js";
 import { issueStructuredLifecycleApplicability } from "./helpers/lifecycle-applicability.js";
+import {createAsenExtension} from "../extensions/asen.js";
 import { issueOddDecision } from "./helpers/odd-routing.js";
 
 type Fixture = Parameters<typeof issueOddDecision>[0];
-const candidate = { id: "candidate-1", repository: "asen/repository", revision: "abc123", createdAt: "now" };
+const candidate = { id: "candidate-1", repository: await realpath("."), revision: "abc123", createdAt: "now" };
 function prepared(fixture: Partial<Fixture> = {}) {
   const full = { taskId: "GSP-05B1b", repository: candidate.repository, paths: ["src/a.ts"], writes: [{ path: "src/a.ts", changeKind: "behavior" as const }], ...fixture };
   const decision = issueOddDecision(full);
   buildOrchestrationPlan({ taskId: full.taskId, repository: full.repository, prompt: "apply", candidate }, decision);
   return decision;
 }
+function extension(){const commands=new Map<string,{handler:(args:string|undefined,context:{cwd:string;ui:{notify():void}})=>unknown}>();const facade=createAsenExtension()({registerCommand:(name,command)=>commands.set(name,command as never)});return {facade,select:(task="GSP-05B1b")=>commands.get("asen-workflow")!.handler(`sdd ${task}`,{cwd:candidate.repository,ui:{notify:()=>{}}})};}
 function input(overrides: Partial<LifecycleApplicabilityInput> = {}): LifecycleApplicabilityInput {
   return { taskIdentity: "GSP-05B1b", repositoryIdentity: candidate.repository, candidate: { id: candidate.id, repository: candidate.repository, revision: candidate.revision }, explicitMode: "unspecified", affectedSubsystems: ["lifecycle"], expectedPaths: ["src/a.ts"], requiredArtifacts: [], ...overrides };
 }
@@ -31,31 +34,53 @@ test("selects bounded organic analysis, documentation, and behavior from origina
   }
 });
 
-test("selects structured explicitly or from artifacts, orchestration, high risk, schema, security, and migration", () => {
+test("implicit complexity, orchestration, risk, schema, security, and migration remain organic", () => {
   const cases: [Partial<Fixture>, Partial<LifecycleApplicabilityInput>][] = [
-    [{}, { explicitMode: "structured" }],
-    [{}, { requiredArtifacts: ["proposal", "design"] }],
-    [{ paths: ["a", "b", "c", "d"], writes: [{ path: "a", changeKind: "behavior" }] }, { expectedPaths: ["a", "b", "c", "d"] }],
-    [{ riskOperations: ["external_write"] }, {}],
-    [{ writes: [{ path: "src/a.ts", changeKind: "schema" }] }, {}],
-    [{ writes: [{ path: "src/a.ts", changeKind: "security" }] }, {}],
-    [{ writes: [{ path: "src/a.ts", changeKind: "migration" }] }, {}],
+    [{ paths:["a","b","c","d"],writes:[{path:"a",changeKind:"behavior"}] }, {expectedPaths:["a","b","c","d"]}],
+    [{riskOperations:["external_write"]},{}],
+    [{writes:[{path:"src/a.ts",changeKind:"schema"}]},{}],
+    [{writes:[{path:"src/a.ts",changeKind:"security"}]},{}],
+    [{writes:[{path:"src/a.ts",changeKind:"migration"}]},{}],
   ];
-  for (const [fixture, overrides] of cases) assert.equal(decideLifecycleApplicability(prepared(fixture), input(overrides)).outcome, "structured");
+  for(const [fixture,overrides] of cases)assert.equal(decideLifecycleApplicability(prepared(fixture),input(overrides)).outcome,"organic");
 });
 
-test("unsafe explicit organic is blocked without structured fallback", () => {
-  for (const fixture of [
-    { paths: ["a", "b", "c", "d"], writes: [{ path: "a", changeKind: "behavior" as const }] },
-    { writes: [{ path: "src/a.ts", changeKind: "schema" as const }] },
-    { riskOperations: ["security_boundary" as const] },
-  ]) {
-    const paths = fixture.paths ?? ["src/a.ts"];
-    const result = decideLifecycleApplicability(prepared(fixture), input({ explicitMode: "organic", expectedPaths: paths }));
-    assert.equal(result.outcome, "blocked");
-    assert.deepEqual(result.reasons, ["explicit-organic-unsafe"]);
-  }
-  assert.equal(decideLifecycleApplicability(prepared(), input({ explicitMode: "organic", requiredArtifacts: ["task_plan"] })).outcome, "blocked");
+test("plain structured mode and artifact selectors block while explicit organic stays organic",()=>{
+ for(const overrides of [{explicitMode:"structured" as const},{requiredArtifacts:["proposal","design"] as const}]){
+  const result=decideLifecycleApplicability(prepared(),input(overrides));assert.equal(result.outcome,"blocked");assert.deepEqual(result.reasons,["sdd-selection-required"]);
+ }
+ for(const fixture of [{paths:["a","b","c","d"],writes:[{path:"a",changeKind:"behavior" as const}]},{writes:[{path:"src/a.ts",changeKind:"schema" as const}]},{riskOperations:["security_boundary" as const]}]){
+  const paths=fixture.paths??["src/a.ts"],result=decideLifecycleApplicability(prepared(fixture),input({explicitMode:"organic",expectedPaths:paths}));assert.equal(result.outcome,"organic");assert.deepEqual(result.reasons,["explicit-organic"]);
+ }
+});
+
+test("genuine extension selection is one-use, route-bound, and contradicts explicit organic",async()=>{
+ const first=extension();await first.select();assert.equal(first.facade.decideLifecycleApplicability(prepared(),input()).outcome,"structured");
+ assert.equal(first.facade.decideLifecycleApplicability(prepared(),input()).outcome,"organic","a used proof cannot select another route decision");
+ const malformed=extension();await malformed.select();assert.throws(()=>malformed.facade.decideLifecycleApplicability(prepared(),input({candidate:{...input().candidate,id:"other"}})),/candidate mismatch/);
+ const afterBurn=malformed.facade.decideLifecycleApplicability(prepared(),input({explicitMode:"structured"}));assert.deepEqual({outcome:afterBurn.outcome,reasons:afterBurn.reasons},{outcome:"blocked",reasons:["sdd-selection-required"]});
+ const contradiction=extension();await contradiction.select();const blocked=contradiction.facade.decideLifecycleApplicability(prepared(),input({explicitMode:"organic"}));assert.deepEqual({outcome:blocked.outcome,reasons:blocked.reasons},{outcome:"blocked",reasons:["workflow-selection-contradiction"]});
+ const owner=extension(),other=extension();await owner.select();assert.equal(other.facade.decideLifecycleApplicability(prepared(),input({explicitMode:"structured"})).outcome,"blocked");assert.equal(owner.facade.decideLifecycleApplicability(prepared(),input()).outcome,"structured");
+});
+
+test("malformed applicability burns only the original route's pending selection without invoking getters",async()=>{
+ const cases:Array<(read:()=>void)=>unknown>=[
+  ()=>null,
+  read=>Object.assign(Object.create(Object.defineProperties({}, {read:{get:()=>{read();return ()=>read();}},claim:{get:()=>{read();return ()=>read();}},factory:{get:()=>{read();return ()=>read();}}})),input()),
+  ()=>{const value={...input()} as Record<string,unknown>;delete value.taskIdentity;return value;},
+  ()=>{const value={...input()} as Record<string,unknown>;delete value.repositoryIdentity;return value;},
+  read=>Object.defineProperty(input(),"taskIdentity",{enumerable:true,get:()=>{read();return "GSP-05B1b";}}),
+  read=>Object.defineProperty(input(),"repositoryIdentity",{enumerable:true,get:()=>{read();return candidate.repository;}}),
+ ];
+ for(const make of cases){
+  const target=extension();await target.select();let reads=0;const malformed=make(()=>reads++);
+  assert.throws(()=>target.facade.decideLifecycleApplicability(prepared(),malformed as LifecycleApplicabilityInput));assert.equal(reads,0);
+  const retry=target.facade.decideLifecycleApplicability(prepared(),input({explicitMode:"structured"}));assert.deepEqual({outcome:retry.outcome,reasons:retry.reasons},{outcome:"blocked",reasons:["sdd-selection-required"]});
+ }
+ const scoped=extension();await scoped.select();await scoped.select("other-task");assert.throws(()=>scoped.facade.decideLifecycleApplicability(prepared(),null as never));
+ const otherInput=input({taskIdentity:"other-task"});const other=scoped.facade.decideLifecycleApplicability(prepared({taskId:"other-task"}),otherInput);assert.equal(other.outcome,"structured");
+ const deferred=extension();await deferred.select();const raw=issueOddDecision({taskId:"GSP-05B1b",repository:candidate.repository,paths:["src/a.ts"],writes:[{path:"src/a.ts",changeKind:"behavior"}]});assert.throws(()=>deferred.facade.decideLifecycleApplicability(raw,null as never),/not genuinely claimed/);
+ buildOrchestrationPlan({taskId:"GSP-05B1b",repository:candidate.repository,prompt:"apply",candidate},raw);assert.equal(deferred.facade.decideLifecycleApplicability(raw,input()).outcome,"structured");
 });
 
 test("blockers precede explicit structured selection", () => {
@@ -124,8 +149,8 @@ test("rejects malformed exact data, Unicode, controls, duplicates, accessors, sy
   assert.equal(reads, 0);
 });
 
-test("genuine structured applicability creates the exact initial nine-phase lifecycle", () => {
-  const applicability = issueStructuredLifecycleApplicability("GSP-05B2", candidate, ["src/lifecycle/skill-lifecycle.ts"]);
+test("genuine structured applicability creates the exact initial nine-phase lifecycle", async() => {
+  const applicability = await issueStructuredLifecycleApplicability("GSP-05B2", candidate, ["src/lifecycle/skill-lifecycle.ts"]);
   const lifecycle = createSkillLifecycle(applicability);
   assert.equal(lifecycle.state.taskId, "GSP-05B2");
   assert.deepEqual(
@@ -149,8 +174,8 @@ test("organic and blocked applicability reject construction and burn their first
   }
 });
 
-test("fresh construction rejects clones, forgeries, malformed values, and reuse", () => {
-  const structured = issueStructuredLifecycleApplicability("GSP-05B2-clone", candidate);
+test("fresh construction rejects clones, forgeries, malformed values, and reuse", async() => {
+  const structured = await issueStructuredLifecycleApplicability("GSP-05B2-clone", candidate);
   assert.throws(() => createSkillLifecycle({ ...structured }), /not issued here/);
   assert.throws(() => createSkillLifecycle({} as typeof structured), /not issued here/);
   assert.throws(() => createSkillLifecycle(undefined as unknown as typeof structured), /not issued here/);
@@ -158,14 +183,14 @@ test("fresh construction rejects clones, forgeries, malformed values, and reuse"
   assert.throws(() => createSkillLifecycle(structured), /already been claimed/);
 });
 
-test("construction requests cannot be observed, forged, cloned, reused, or intercepted", () => {
+test("construction requests cannot be observed, forged, cloned, reused, or intercepted", async() => {
   assert.equal(Object.hasOwn(SkillLifecycle, "construct"), false);
   assert.equal(Object.hasOwn(SkillLifecycle, "token"), false);
   let intercepted = false;
   Object.defineProperty(SkillLifecycle, "construct", { configurable: true, value: () => { intercepted = true; } });
   Object.defineProperty(SkillLifecycle, "token", { configurable: true, value: Object.freeze({}) });
   try {
-    const applicability = issueStructuredLifecycleApplicability("GSP-05B2-monkeypatch", candidate);
+    const applicability = await issueStructuredLifecycleApplicability("GSP-05B2-monkeypatch", candidate);
     const lifecycle = createSkillLifecycle(applicability);
     assert.equal(lifecycle.state.taskId, "GSP-05B2-monkeypatch");
     assert.equal(intercepted, false);

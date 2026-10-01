@@ -1,22 +1,24 @@
 import type { Candidate } from "../../src/core/types.js";
-import {
-  decideLifecycleApplicability,
-  type LifecycleApplicability,
-} from "../../src/lifecycle/applicability.js";
-import {
-  createSkillLifecycle,
-  type SkillLifecycle,
-} from "../../src/lifecycle/skill-lifecycle.js";
+import { createAsenExtension } from "../../extensions/asen.js";
+import type { LifecycleApplicability } from "../../src/lifecycle/applicability.js";
+import { createSkillLifecycle, type SkillLifecycle } from "../../src/lifecycle/skill-lifecycle.js";
 import { deriveOddFacts, planOddRoute } from "../../src/flow/odd-routing.js";
 import { buildOrchestrationPlan } from "../../src/orchestration/orchestrator.js";
 
-/** Builds the genuine ODD and candidate-bound orchestration facts required by B1. */
-export function issueStructuredLifecycleApplicability(
+type Command={handler:(args:string|undefined,context:{cwd:string;ui:{notify(message:string,level:"info"|"error"):void}})=>unknown};
+
+/** Builds genuine command and candidate-bound orchestration provenance required by B1. */
+export async function issueStructuredLifecycleApplicability(
   taskIdentity: string,
   candidate: Candidate,
   expectedPaths: readonly string[] = ["src/feature.ts"],
   testing: "required" | "not-applicable" = "required",
-): LifecycleApplicability {
+  explicitMode: "organic" | "structured" | "unspecified" = "structured",
+  affectedSubsystems:readonly string[]=["lifecycle"],
+): Promise<LifecycleApplicability> {
+  const commands=new Map<string,Command>();
+  const facade=createAsenExtension()({registerCommand:(name,command)=>commands.set(name,command as Command)});
+  await commands.get("asen-workflow")!.handler(`sdd ${taskIdentity}`,{cwd:candidate.repository,ui:{notify:()=>{}}});
   const decision = planOddRoute(deriveOddFacts({
     taskIdentity,
     repositoryIdentity: candidate.repository,
@@ -29,33 +31,20 @@ export function issueStructuredLifecycleApplicability(
     review: { kind: "none", estimatedMinutes: 10 },
     unresolvedDecisions: [],
   }));
-  buildOrchestrationPlan({
-    taskId: taskIdentity,
-    repository: candidate.repository,
-    prompt: "run structured lifecycle",
-    candidate,
-  }, decision);
-  return decideLifecycleApplicability(decision, {
-    taskIdentity,
-    repositoryIdentity: candidate.repository,
-    candidate: {
-      id: candidate.id,
-      repository: candidate.repository,
-      revision: candidate.revision,
-    },
-    explicitMode: "structured",
-    affectedSubsystems: ["lifecycle"],
-    expectedPaths,
-    requiredArtifacts: [],
+  buildOrchestrationPlan({taskId:taskIdentity,repository:candidate.repository,prompt:"run structured lifecycle",candidate},decision);
+  return facade.decideLifecycleApplicability(decision,{
+    taskIdentity, repositoryIdentity:candidate.repository,
+    candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},
+    explicitMode,affectedSubsystems,expectedPaths,requiredArtifacts:[],
   });
 }
 
 /** Creates a fresh lifecycle through the sole genuine structured-applicability path. */
-export function createTestSkillLifecycle(
+export async function createTestSkillLifecycle(
   taskIdentity: string,
   candidate: Candidate,
   expectedPaths?: readonly string[],
   testing?: "required" | "not-applicable",
-): SkillLifecycle {
-  return createSkillLifecycle(issueStructuredLifecycleApplicability(taskIdentity, candidate, expectedPaths, testing));
+): Promise<SkillLifecycle> {
+  return createSkillLifecycle(await issueStructuredLifecycleApplicability(taskIdentity,candidate,expectedPaths,testing));
 }

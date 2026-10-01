@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { OddRouteDecision } from "../flow/odd-routing.js";
 import { claimedOrchestrationRouteContext } from "../orchestration/orchestrator.js";
+import { consumeClaimedWorkflowSelection, type WorkflowSelectionChoice } from "./workflow-selection.js";
 
 export type LifecycleChangeNature = "unknown" | "analysis" | "documentation" | "behavior" | "schema" | "security" | "migration";
 export type LifecycleArtifact = "proposal" | "specification" | "design" | "task_plan";
@@ -96,8 +97,7 @@ function nature(writes: readonly Readonly<{ changeKind: string }>[], analysis: b
   return analysis && !writes.length ? "analysis" : undefined;
 }
 
-/** Consumes the exact route decision before validating caller data and returns no lifecycle authority. */
-export function decideLifecycleApplicability(claimedOddDecision: OddRouteDecision, value: LifecycleApplicabilityInput): LifecycleApplicability {
+function decide(claimedOddDecision:OddRouteDecision,value:LifecycleApplicabilityInput,selection?:WorkflowSelectionChoice):LifecycleApplicability {
   if (typeof claimedOddDecision !== "object" || claimedOddDecision === null) throw new Error("Applicability requires an exact decision object");
   if (attempted.has(claimedOddDecision)) throw new Error("Lifecycle applicability was already attempted");
   attempted.add(claimedOddDecision);
@@ -133,13 +133,10 @@ export function decideLifecycleApplicability(claimedOddDecision: OddRouteDecisio
   let outcome: LifecycleApplicability["outcome"];
   if (reasons.length) outcome = "blocked";
   else if (testingContradiction) { outcome = "blocked"; reasons.push("behavior-testing-contradiction"); }
-  else {
-    const structuredTrigger = requiredArtifacts.length > 0 || claimedOddDecision.route === "orchestrate" || context.facts.risk === "high" || ["schema", "security", "migration"].includes(changeNature);
-    const unsafeOrganic = mode === "organic" && structuredTrigger;
-    if (unsafeOrganic) { outcome = "blocked"; reasons.push("explicit-organic-unsafe"); }
-    else if (mode === "structured" || mode === "unspecified" && structuredTrigger) { outcome = "structured"; reasons.push(mode === "structured" ? "explicit-structured" : "structured-required"); }
-    else { outcome = "organic"; reasons.push(mode === "organic" ? "explicit-organic" : "bounded-organic"); }
-  }
+  else if (selection && mode === "organic") { outcome = "blocked"; reasons.push("workflow-selection-contradiction"); }
+  else if (selection) { outcome = "structured"; reasons.push("explicit-structured"); }
+  else if (mode === "structured" || requiredArtifacts.length > 0) { outcome = "blocked"; reasons.push("sdd-selection-required"); }
+  else { outcome = "organic"; reasons.push(mode === "organic" ? "explicit-organic" : "bounded-organic"); }
   const payload = { taskIdentity, repositoryIdentity, candidate, decisionId: claimedOddDecision.decisionId, changeNature, expectedPaths, affectedSubsystems: subsystems, requiredArtifacts, outcome, reasons };
   const result = Object.freeze({ applicabilityId: createHash("sha256").update(JSON.stringify(payload)).digest("hex"), ...payload, expectedPaths: Object.freeze(expectedPaths), affectedSubsystems: Object.freeze(subsystems), requiredArtifacts: Object.freeze(requiredArtifacts), reasons: Object.freeze(reasons) });
   const obligationPayload = {
@@ -154,6 +151,11 @@ export function decideLifecycleApplicability(claimedOddDecision: OddRouteDecisio
   obligations.set(result, obligation);
   return result;
 }
+
+/** Consumes the exact route decision before validating caller data and returns no lifecycle authority. */
+export function decideLifecycleApplicability(claimedOddDecision:OddRouteDecision,value:LifecycleApplicabilityInput):LifecycleApplicability{return decide(claimedOddDecision,value);}
+/** Extension-only integration path: burns genuine claimed command provenance before caller data validation. */
+export function decideLifecycleApplicabilityWithSelection(claimedOddDecision:OddRouteDecision,value:LifecycleApplicabilityInput,selection:unknown):LifecycleApplicability{return decide(claimedOddDecision,value,consumeClaimedWorkflowSelection(selection));}
 
 /** Retrieves the immutable TDD requirement paired with this exact issued applicability. */
 export function tddObligationFor(applicability: unknown): TddObligation {
