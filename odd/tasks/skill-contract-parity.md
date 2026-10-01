@@ -259,9 +259,10 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Genuine strict and verified-alternative flows privately retain schema-1 deeply immutable records; exact parsing recomputes obligation and domain-separated identities, validates canonical plans/execution, discriminator-specific shapes, and direct-parent semantic revisions, and grants no live completion authority.
         - Independent focused verification passes 42/42; typecheck, 27-Skill audit, 12-Skill parity audit, 298-path upstream-boundary audit, parity audit, and diff check pass. The readable slice is 76 additions.
         - Commit: `86bc58b`.
-      - [ ] GSP-05C5b: persist lifecycle v2 completion records and recover verify/archive continuation while legacy behavior-changing v1 requires migration.
-        - Implementation complete pending independent PASS: successful genuine promotion retains the exact C5a record, and domain-separated HMAC v2 persistence binds lifecycle identities, revisions, phase, method, and canonical completion semantics.
-        - Focused evidence covers strict triangulation/N/A and refactor performed/not-needed variants, the verified alternative, exact-shape and semantic tampering, verify/archive-only recovery, fail-closed v1 migration, safe nonbehavior v1 compatibility, atomic persistence, and C5a regressions. No anti-rollback claim is made; same-binding replay remains GSP-05C5d scope.
+      - [x] GSP-05C5b: persist lifecycle v2 completion records and recover verify/archive continuation while legacy behavior-changing v1 requires migration.
+        - Successful genuine promotion retains the exact C5a record, and domain-separated HMAC v2 persistence binds lifecycle identities, revisions, phase, method, and canonical completion semantics. Recovery is verify/archive-only; behavior-changing legacy v1 requires migration while safe nonbehavior v1 gains no TDD authority.
+        - Independent focused verification passes 26/26 and atomic/recovery regressions pass 13/13; typecheck, 27-Skill audit, 12-Skill parity audit, 300-path upstream-boundary audit, parity audit, and diff check pass. The readable slice is 92 additions. No anti-rollback claim is made; same-binding replay remains GSP-05C5d scope.
+        - Commit: `4cea9d5`.
       - [ ] GSP-05C5c: persist evidence v2 exact completions while legacy generic TDD remains audit-only.
       - [ ] GSP-05C5d: require exact completion at the asen-tdd verification gate and document integrity versus rollback limits.
     - [ ] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
