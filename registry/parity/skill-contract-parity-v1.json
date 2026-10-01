@@ -154,9 +154,27 @@
       "decisionGates": ["ODD-GATE-001"],
       "outputs": ["ODD-OUT-001"],
       "prohibited": ["ODD-PRO-001"],
-      "equivalentAdaptations": [{"contractId": "ODD-GATE-001", "note": "ASEN route names are Pi-native and preserve the direct, delegated, and verification distinctions."}],
-      "gaps": [{"contractId": "ODD-RULE-001", "note": "Non-bypassable fact derivation, tracking, test applicability, and delegation triggers are not behavior-tested end to end."}],
-      "evidence": ["Structural mapping only; runtime evidence is pending GSP-05 and GSP-06."]
+      "equivalentAdaptations": [
+        {"contractId": "ODD-GATE-001", "note": "ASEN route names are Pi-native and preserve the direct, delegated, and verification distinctions."},
+        {"contractId": "ODD-RULE-001", "note": "ASEN enforces conditional TDD through the separately selected asen-tdd Skill and exact lifecycle-completion evidence."}
+      ],
+      "gaps": [
+        {"contractId": "ODD-RULE-001", "note": "ODD Skill normalization remains pending GSP-05I."},
+        {"contractId": "ODD-OUT-001", "note": "Pi Free positive and negative generated-output, package, and platform evidence remains pending GSP-06."}
+      ],
+      "evidence": [
+        "tests/tdd-skill-contract.test.ts — runtime selection, parser/style, semantic, prohibited-behavior, and matrix evidence",
+        "tests/lifecycle-tdd-applicability.test.ts — genuine ODD fact-bound applicability and contradiction evidence",
+        "tests/tdd-deterministic-red.test.ts — fixed Node TAP runner and deterministic assertion-derived RED evidence",
+        "tests/tdd-strict-green.test.ts — exact direct-child minimum GREEN evidence",
+        "tests/tdd-strict-triangulation.test.ts — per-case V8 decision-path triangulation and structural N/A evidence",
+        "tests/tdd-refactor-completion.test.ts — performed-or-not-needed refactor completion evidence",
+        "tests/tdd-non-tdd-alternative.test.ts — baseline-already-passes verified non-TDD evidence",
+        "tests/tdd-completion-record.test.ts — exact strict and alternative completion-record evidence",
+        "tests/lifecycle-tdd-completion.test.ts — genuine one-use lifecycle promotion evidence",
+        "tests/lifecycle-tdd-persistence.test.ts — HMAC-bound v2 verify/archive recovery evidence",
+        "tests/evidence-tdd.test.ts — exact lifecycle-completion gate and legacy audit-only evidence"
+      ]
     },
     {
       "sourceId": "SRC-SKILL-006",
