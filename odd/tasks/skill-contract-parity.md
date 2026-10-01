@@ -223,7 +223,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Module-private one-use construction requests never escape through a public/static minting surface. Signed `loadLifecycle` remains the only verified-recovery path and the only source of pending-authority reissue eligibility.
       - Independent focused verification passes 60/60; typecheck, 27-Skill audit, 12-Skill parity audit, 287-path upstream-boundary audit, and diff check pass. The readable slice is 163 additions.
       - Commit: `57cefdb`.
-  - [ ] GSP-05C: runtime-enforced conditional TDD triangulation.
+  - [x] GSP-05C: runtime-enforced conditional TDD triangulation.
     - [x] GSP-05C1: derive an opaque, exact candidate-bound TDD obligation from genuine B1 write and testing facts; behavior/testing contradictions block before any cycle authority.
       - Exact ordered behavior writes plus required testing derive a deeply immutable, deterministic candidate/applicability-bound obligation; non-behavior writes remain not applicable; and behavior plus testing N/A blocks before explicit structured or high-risk selection without granting lifecycle, phase, cycle, mutation, review, or delivery authority.
       - Independent focused verification passes 43/43; typecheck, 27-Skill audit, 12-Skill parity audit, 288-path upstream-boundary audit, and diff check pass. The readable slice is 190 additions.
@@ -271,7 +271,12 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - `asen-tdd` requires exact `lifecycle-completion`; live strict, signed-recovered strict, and verified-alternative paths pass only that gate, while generic and legacy v1 TDD remain audit-only. Recovery documentation distinguishes HMAC integrity and exact current-revision binding from unavailable same-binding rollback detection and makes no rollback-resistance claim.
         - Independent focused verification passes 49/49; typecheck, 27-Skill audit, 12-Skill parity audit, 301-path upstream-boundary audit, parity audit, and diff check pass. The readable slice is 35 additions.
         - Commit: `02c0049`.
-    - [ ] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
+    - [x] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
+      - Delegated route: three-file Skill/matrix normalization and contract tests. Strict implementation TDD is not active for this documentation/matrix work; ordinary test-first validation observed 6 failures before implementation and 7/7 passes after normalization.
+      - Writer gates pass: typecheck, 27-Skill audit, 12-Skill parity audit, 301-path upstream boundary, parity audit, and diff check. SRC-SKILL-005 stays PARTIAL for GSP-05I/GSP-06.
+      - Native medium-risk reliability review `review-b2af581b2200fdfb` approved and was acknowledged; authority burned. Two informational advisories (`R3-activation-preconditions`, `R3-regression-checks`) are nonblocking follow-ups, not corrections.
+      - Independent parent spot check passes 7/7 and confirms only SRC-SKILL-005 changed in the matrix. The slice is 153 additions / 24 deletions (177 total changed lines); runtime C1–C5 evidence remains separately recorded above. No Pi Free generated-output, packaging, or platform completion is claimed here.
+      - Commit: `0cad160`.
   - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
   - [ ] GSP-05E: ordinary native review controller bound to genuine work-unit candidates.
   - [ ] GSP-05F: one bounded correction, validation, recovery, and strict delivery separation.
