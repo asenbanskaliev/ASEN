@@ -191,7 +191,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
   - 400-line/60-minute chain policy, one slicing pass, delivery strategy, tracker/draft semantics, dependency diagrams, and base validation.
   - Conventional work-unit commits, feature-task commit identity, and native review candidate boundaries.
-- [ ] GSP-05 — Align orchestration, RDD, and Judgment Day behavior.
+- [ ] GSP-05 — Align orchestration, RDD, and ASEN Dual Review behavior.
   - [x] GSP-05A: derived ODD facts and opaque one-use route decisions.
     - [x] GSP-05A1: exact request-fact derivation and deterministic one-use route planning.
       - Exact plain request records now derive immutable scope, write, session, testing, review, uncertainty, risk, and routing facts without caller-supplied counts, routes, risk, or verification.
@@ -292,8 +292,8 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
     - Delegated-direct route. D1 uses ordinary TypeScript test-first validation; no genuine required strict-TDD obligation has been issued for this implementation. Installed guide details are not promoted to frozen-source authority.
   - [ ] GSP-05E: ordinary native review controller bound to genuine work-unit candidates.
   - [ ] GSP-05F: one bounded correction, validation, recovery, and strict delivery separation.
-  - [ ] GSP-05G: Judgment Day immutable ledger and exactly-two blind dispatch.
-  - [ ] GSP-05H: Judgment Day bounded fix/re-judgment controller and terminal outcomes.
+  - [ ] GSP-05G: ASEN Dual Review immutable ledger and exactly-two blind dispatch.
+  - [ ] GSP-05H: ASEN Dual Review bounded fix/re-judgment controller and terminal outcomes.
   - [ ] GSP-05I: normalize ODD, defect, and adversarial-review Skills and matrix evidence.
   - Preserve explicit limits where authenticated principal, trust-root independence, or OS isolation remain unavailable.
 - [ ] GSP-06 — Verify strict parity and prepare delivery slices.
