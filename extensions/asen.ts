@@ -4,6 +4,7 @@ import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {refreshSkillRegistry,type RefreshSkillRegistryOptions,type SkillRegistryMirror} from "../src/skills/generated-registry.js";
 import type {SkillSource} from "../src/skills/discovery.js";
+import {registerWorkflowSelectionCommand,type WorkflowSelectionConsumer} from "../src/lifecycle/workflow-selection.js";
 
 type CommandContext={cwd:string;ui:{notify(message:string,level:"info"|"error"):void}};
 type PiLike={registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void};
@@ -32,9 +33,11 @@ function safeErrorMessage(error:unknown):string{
  return error.message.replace(/[\u0000-\u001f\u007f]+/g," ").replace(/\s+/g," ").trim()||"Unknown error";
 }
 
-export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(pi:PiLike)=>void {
+export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(pi:PiLike)=>WorkflowSelectionConsumer {
  const home=dependencies.homeDir??homedir,packageRoot=dependencies.packageRoot??productionPackageRoot,refresh=dependencies.refresh??refreshSkillRegistry;
  return pi=>{
+  const register=pi.registerCommand?.bind(pi);
+  if(!register)throw new Error("ASEN extension requires Pi command registration");
   pi.registerCommand?.("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
   pi.registerCommand?.("asen-skill-registry",{description:"Refresh the generated ASEN skill registry",handler:async(args:string|undefined,ctx:CommandContext)=>{
    if(args?.trim()!=="refresh"){ctx.ui.notify(usage,"info");return usage;}
@@ -46,6 +49,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ctx.ui.notify(message,"info");return message;
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
+  return registerWorkflowSelectionCommand(register);
  };
 }
 
