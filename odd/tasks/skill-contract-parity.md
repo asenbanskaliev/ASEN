@@ -242,6 +242,9 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Independent focused verification passes 42/42; typecheck, 27-Skill audit, 12-Skill parity audit, 293-path upstream-boundary audit, and diff check pass. The readable slice is 162 additions.
         - Commit: `5a56bdf`.
       - [ ] GSP-05C3c: admit a baseline-proven non-TDD alternative without reporting RED or granting generic authority.
+        - Implemented as a separate factory-only, one-use controller that competes with strict-cycle obligation claiming and verifies an exact already-passing baseline against its direct behavior-only child using genuine runner-derived per-case V8 observations.
+        - Exact canonical plans, unchanged test blobs/modes, fixed runner identity, positive materially distinct decision coverage on both revisions, provenance burn semantics, immutable descriptive output, and authority/RED terminology exclusion are covered by focused tests.
+        - Pending independent PASS; parent GSP-05C3 remains open.
     - [ ] GSP-05C4: require triangulation/N/A before performed-or-not-needed refactor completion and bind lifecycle revision promotion to the exact completion.
     - [ ] GSP-05C5: persist and verify exact requirement-bound TDD completion with fail-closed legacy migration and recovery.
     - [ ] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
