@@ -116,7 +116,7 @@ test("signed recovery rejects structurally forged TDD lineage and unrelated meta
  const refactor=nextCandidateRevision(green,"refactor");cycle.record("REFACTOR","signed:refactor","passes",await executionProof(refactor,0),refactor);
  await saveEvidence(path,refactor,store,key);
  const original=JSON.parse(await readFile(path,"utf8"));
- const corrupt=(change:(items:any[])=>void)=>{const value=structuredClone(original.value);change(value.items);return {value,mac:createHmac("sha256",key).update(JSON.stringify(value)).digest("hex")};};
+ const corrupt=(change:(items:any[])=>void)=>{const value=structuredClone(original.value);change(value.items);return {value,mac:createHmac("sha256",key).update("asen.evidence.v2\0").update(JSON.stringify(value)).digest("hex")};};
  const cases:Array<[(items:any[])=>void,RegExp]>=[
   [items=>{items[0].tdd.previousRevision=green.revision;},/stage structure/],
   [items=>{items[1].tdd.previousRevision=refactor.revision;},/previousRevision/],

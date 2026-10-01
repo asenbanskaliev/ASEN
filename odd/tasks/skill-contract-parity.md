@@ -264,6 +264,8 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Independent focused verification passes 26/26 and atomic/recovery regressions pass 13/13; typecheck, 27-Skill audit, 12-Skill parity audit, 300-path upstream-boundary audit, parity audit, and diff check pass. The readable slice is 92 additions. No anti-rollback claim is made; same-binding replay remains GSP-05C5d scope.
         - Commit: `4cea9d5`.
       - [ ] GSP-05C5c: persist evidence v2 exact completions while legacy generic TDD remains audit-only.
+        - Implementation complete pending independent PASS: genuine live or signed-recovered v2 lifecycles privately bridge the validated C5a record into one deterministic, idempotent `lifecycle-completion` item immediately before verification authorization.
+        - Evidence persistence now always writes exact domain-separated v2 envelopes; strict item/record semantics, candidate bindings, malformed-shape rejection, and v1 audit-only read/v2 resave behavior have focused regression coverage. Generic TDD and verified non-TDD alternatives remain observably distinct, and no runtime admission is serialized.
       - [ ] GSP-05C5d: require exact completion at the asen-tdd verification gate and document integrity versus rollback limits.
     - [ ] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
   - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.

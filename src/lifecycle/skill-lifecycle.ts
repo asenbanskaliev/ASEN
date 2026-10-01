@@ -39,6 +39,20 @@ function honestRevisionChain(repository:string,revisions:readonly string[]):stri
 }
 const verifiedRecovery=new WeakSet<SkillLifecycle>();
 const liveObligations=new WeakMap<SkillLifecycle,TddObligation>();
+type CompletionAdmission={lifecycle:SkillLifecycle;repository:string;candidateId:string;revision:string;record:TddCompletionRecord;used:boolean};
+const completionAdmissions=new WeakMap<object,CompletionAdmission>();
+function issueCompletionAdmission(lifecycle:SkillLifecycle,snapshot:LifecycleSnapshot):Readonly<Record<string,never>>{
+ if(snapshot.version!==2||snapshot.nextPhase!=="verify"||(!liveObligations.has(lifecycle)&&!verifiedRecovery.has(lifecycle)))throw new Error("Lifecycle completion admission requires a genuine v2 lifecycle at verify");
+ const claim=Object.freeze({}),record=validateTddCompletionRecord(snapshot.tddPromotion.record);
+ completionAdmissions.set(claim,{lifecycle,repository:snapshot.candidate.repository,candidateId:snapshot.candidate.id,revision:snapshot.candidate.revision,record,used:false});return claim;
+}
+export function claimLifecycleCompletionAdmission(claim:Readonly<Record<string,never>>,candidate:Candidate):TddCompletionRecord{
+ const admission=completionAdmissions.get(claim);
+ if(!admission)throw new Error("Lifecycle completion admission was not issued here");
+ if(admission.repository!==candidate.repository||admission.candidateId!==candidate.id||admission.revision!==candidate.revision)throw new Error("Lifecycle completion admission candidate mismatch");
+ if(admission.used)throw new Error("Lifecycle completion admission was already consumed");
+ admission.used=true;return admission.record;
+}
 class LifecycleConstructionRequest{
  readonly #brand=true;
  constructor(readonly taskId:string,readonly candidate:Candidate,readonly snapshot?:LifecycleSnapshot){}
@@ -134,7 +148,10 @@ export class SkillLifecycle{
   // Validate authority before invoking the agent, then validate its result before advancing.
   this.#assertAuthority(input.phase,role,input.context,input.skillPaths);
   request.phaseGrant=issuePhaseGrant(request.id,s.candidate,input.phase);
-  if(input.phase==="verify")authorizeVerified(s.candidate,input.risk,input.context,input.evidence);
+  if(input.phase==="verify"){
+   if(s.version===2)input.evidence.consumeLifecycleCompletion(s.candidate,issueCompletionAdmission(this,s));
+   authorizeVerified(s.candidate,input.risk,input.context,input.evidence);
+  }
   if(input.phase==="archive"){
    const release=authorizeRelease(s.candidate,input.risk,input.evidence,input.context);
    if(!release.ok)throw new Error(`Lifecycle archive blocked: ${release.reason}`);
