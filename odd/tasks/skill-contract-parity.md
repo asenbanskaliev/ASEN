@@ -232,7 +232,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - A fixed local Node test/TAP command runs in the exact detached candidate, derives assertion observations from bounded captured output, and admits them through a factory-only strict RED cycle without changing legacy `TddCycle` or evidence-store behavior.
       - Independent focused verification passes 28/28 and covers repeatable parsed assertions, executed strict-convention test-only direct-child Git lineage, provenance/burn semantics, discovery/runtime rejection, revision/candidate mismatches, construction hardening, and authority exclusion; raw runner output is not retained. Typecheck, 27-Skill audit, 12-Skill parity audit, 289-path upstream-boundary audit, and diff check pass. The readable slice is 315 additions.
       - Commit: `8647a67`.
-    - [ ] GSP-05C3: enforce same-test minimum GREEN, materially distinct multi-path triangulation or narrow single-path N/A, and an explicit non-TDD alternative when meaningful RED is impossible.
+    - [x] GSP-05C3: enforce same-test minimum GREEN, materially distinct multi-path triangulation or narrow single-path N/A, and an explicit non-TDD alternative when meaningful RED is impossible.
       - [x] GSP-05C3a: bind immutable decision-path plans and require direct-child minimum GREEN with unchanged RED tests and behavior-only production changes.
         - Exact canonical planned decision vectors and policy enter the frozen cycle identity, then one genuine direct-child GREEN is admitted only after the fixed runner passes every RED case with unchanged test blobs/modes and an exact behavior-path-only diff. Passing observations and RED/GREEN provenance are opaque, one-use, burn on first attempt, deeply frozen, and grant no lifecycle, evidence, mutation, review, or delivery authority.
         - Independent focused verification passes 34/34; typecheck, 27-Skill audit, 12-Skill parity audit, 292-path upstream-boundary audit, and diff check pass. The readable slice is 178 additions.
@@ -241,10 +241,10 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Exact test-only direct-child triangulation is derived from bounded harness-captured per-case Node/V8 byte ranges, or from the bound structural single-path N/A, without granting authority. Coverage reads reject oversized, growing, shrinking, truncated, non-regular, missing, ambiguous, and outside-repository data before public admission.
         - Independent focused verification passes 42/42; typecheck, 27-Skill audit, 12-Skill parity audit, 293-path upstream-boundary audit, and diff check pass. The readable slice is 162 additions.
         - Commit: `5a56bdf`.
-      - [ ] GSP-05C3c: admit a baseline-proven non-TDD alternative without reporting RED or granting generic authority.
-        - Implemented as a separate factory-only, one-use controller that competes with strict-cycle obligation claiming and verifies an exact already-passing baseline against its direct behavior-only child using genuine runner-derived per-case V8 observations.
-        - Exact canonical plans, unchanged test blobs/modes, fixed runner identity, positive materially distinct decision coverage on both revisions, provenance burn semantics, immutable descriptive output, and authority/RED terminology exclusion are covered by focused tests.
-        - Pending independent PASS; parent GSP-05C3 remains open.
+      - [x] GSP-05C3c: admit a baseline-proven non-TDD alternative without reporting RED or granting generic authority.
+        - A separate factory-only, one-use controller competes with strict-cycle obligation claiming and verifies an exact already-passing baseline against its direct behavior-only child using genuine runner-derived per-case V8 observations.
+        - Independent focused verification passes 51/51 and covers exact canonical plans, unchanged test blobs/modes, fixed runner identity, positive materially distinct decision coverage on both revisions, provenance burn semantics, immutable descriptive output, and authority/RED terminology exclusion. Typecheck, 27-Skill audit, 12-Skill parity audit, 294-path upstream-boundary audit, and diff check pass. The readable slice is 96 additions.
+        - Commit: `b8d52fe`.
     - [ ] GSP-05C4: require triangulation/N/A before performed-or-not-needed refactor completion and bind lifecycle revision promotion to the exact completion.
     - [ ] GSP-05C5: persist and verify exact requirement-bound TDD completion with fail-closed legacy migration and recovery.
     - [ ] GSP-05C6: normalize the TDD Skill and record positive, negative, recovery, and authority-exclusion evidence.
