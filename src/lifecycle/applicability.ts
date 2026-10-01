@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { OddRouteDecision } from "../flow/odd-routing.js";
 import { claimedOrchestrationRouteContext } from "../orchestration/orchestrator.js";
-import { consumeClaimedWorkflowSelection, type WorkflowSelectionChoice } from "./workflow-selection.js";
+import { consumeClaimedWorkflowSelection, type WorkflowSelectionChoice, type WorkflowSelectionDescription } from "./workflow-selection.js";
 
 export type LifecycleChangeNature = "unknown" | "analysis" | "documentation" | "behavior" | "schema" | "security" | "migration";
 export type LifecycleArtifact = "proposal" | "specification" | "design" | "task_plan";
@@ -44,6 +44,7 @@ const claimed = new WeakSet<object>();
 const obligations = new WeakMap<object, TddObligation>();
 const issuedObligations = new WeakSet<object>();
 const claimedObligations = new WeakSet<object>();
+const selectionDescriptions = new WeakMap<object, WorkflowSelectionDescription>();
 const inputKeys = ["taskIdentity", "repositoryIdentity", "candidate", "explicitMode", "affectedSubsystems", "expectedPaths", "requiredArtifacts"] as const;
 const artifacts = ["proposal", "specification", "design", "task_plan"] as const;
 const modes = ["organic", "structured", "unspecified"] as const;
@@ -109,6 +110,7 @@ function decide(claimedOddDecision:OddRouteDecision,value:LifecycleApplicability
   const candidate = Object.freeze({ id: text(candidateInput.id, "candidate id"), repository: text(candidateInput.repository, "candidate repository"), revision: text(candidateInput.revision, "candidate revision") });
   if (taskIdentity !== context.facts.taskIdentity || taskIdentity !== claimedOddDecision.taskIdentity) throw new Error("Applicability task mismatch");
   if (repositoryIdentity !== context.facts.repositoryIdentity || repositoryIdentity !== claimedOddDecision.repositoryIdentity) throw new Error("Applicability repository mismatch");
+  if (selection && (selection.taskIdentity !== context.facts.taskIdentity || selection.repositoryIdentity !== context.facts.repositoryIdentity)) throw new Error("Workflow selection route binding mismatch");
   if (candidate.id !== context.candidate.id || candidate.repository !== context.candidate.repository || candidate.revision !== context.candidate.revision) throw new Error("Applicability candidate mismatch");
   const mode = member(input.explicitMode, modes, "explicit mode");
   const subsystems = unique(input.affectedSubsystems, "affected subsystems", item => text(item, "affected subsystem"));
@@ -149,6 +151,7 @@ function decide(claimedOddDecision:OddRouteDecision,value:LifecycleApplicability
   issued.add(result);
   issuedObligations.add(obligation);
   obligations.set(result, obligation);
+  if (selection && outcome === "structured") selectionDescriptions.set(result, Object.freeze({ schemaVersion: 1, workflow: selection.workflow, source: selection.source, taskIdentity: selection.taskIdentity, repositoryIdentity: selection.repositoryIdentity }));
   return result;
 }
 
@@ -156,6 +159,11 @@ function decide(claimedOddDecision:OddRouteDecision,value:LifecycleApplicability
 export function decideLifecycleApplicability(claimedOddDecision:OddRouteDecision,value:LifecycleApplicabilityInput):LifecycleApplicability{return decide(claimedOddDecision,value);}
 /** Extension-only integration path: burns genuine claimed command provenance before caller data validation. */
 export function decideLifecycleApplicabilityWithSelection(claimedOddDecision:OddRouteDecision,value:LifecycleApplicabilityInput,selection:unknown):LifecycleApplicability{return decide(claimedOddDecision,value,consumeClaimedWorkflowSelection(selection));}
+
+/** Reads private command provenance by exact applicability identity without inspecting caller data. */
+export function workflowSelectionDescriptionForApplicability(value: unknown): WorkflowSelectionDescription | undefined {
+  return typeof value === "object" && value !== null ? selectionDescriptions.get(value) : undefined;
+}
 
 /** Retrieves the immutable TDD requirement paired with this exact issued applicability. */
 export function tddObligationFor(applicability: unknown): TddObligation {

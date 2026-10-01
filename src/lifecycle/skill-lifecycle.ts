@@ -9,7 +9,8 @@ import {isIssuedAgentArtifactProof} from "../agents/pi-artifact-runner.js";
 import {EvidenceStore} from "../evidence/store.js";
 import {authorizeRelease,authorizeVerified} from "../verify/verifier.js";
 import {assertDirectGitParent} from "../evidence/git-lineage.js";
-import {claimLifecycleApplicability,tddObligationFor,type LifecycleApplicability,type TddObligation} from "./applicability.js";
+import {claimLifecycleApplicability,tddObligationFor,workflowSelectionDescriptionForApplicability,type LifecycleApplicability,type TddObligation} from "./applicability.js";
+import type {WorkflowSelectionDescription} from "./workflow-selection.js";
 import {claimStrictTddCompletion,type StrictTddCompletion} from "../test/strict-tdd-cycle.js";
 import {claimNonTddAlternativeResult,type NonTddAlternativeResult} from "../test/non-tdd-alternative.js";
 import {validateTddCompletionRecord,type TddCompletionRecord} from "../test/tdd-completion-record.js";
@@ -39,6 +40,8 @@ function honestRevisionChain(repository:string,revisions:readonly string[]):stri
 }
 const verifiedRecovery=new WeakSet<SkillLifecycle>();
 const liveObligations=new WeakMap<SkillLifecycle,TddObligation>();
+const lifecycleDescriptions=new WeakMap<SkillLifecycle,WorkflowSelectionDescription>();
+const snapshotDescriptions=new WeakMap<object,WorkflowSelectionDescription>();
 type CompletionAdmission={lifecycle:SkillLifecycle;repository:string;candidateId:string;revision:string;record:TddCompletionRecord;used:boolean};
 const completionAdmissions=new WeakMap<object,CompletionAdmission>();
 function issueCompletionAdmission(lifecycle:SkillLifecycle,snapshot:LifecycleSnapshot):Readonly<Record<string,never>>{
@@ -59,11 +62,12 @@ class LifecycleConstructionRequest{
  isValid():boolean{return this.#brand;}
 }
 const lifecycleConstructionRequests=new WeakSet<LifecycleConstructionRequest>();
-function constructLifecycle(taskId:string,candidate:Candidate,snapshot?:LifecycleSnapshot,obligation?:TddObligation):SkillLifecycle{
+function constructLifecycle(taskId:string,candidate:Candidate,snapshot?:LifecycleSnapshot,obligation?:TddObligation,description?:WorkflowSelectionDescription):SkillLifecycle{
  const request=new LifecycleConstructionRequest(taskId,candidate,snapshot);
  lifecycleConstructionRequests.add(request);
  const lifecycle=new SkillLifecycle(request);
  if(obligation)liveObligations.set(lifecycle,obligation);
+ if(description)lifecycleDescriptions.set(lifecycle,description);
  return lifecycle;
 }
 const phaseGrants=new WeakMap<object,{requestId:string;repository:string;candidateId:string;revision:string;phase:LifecyclePhase;used:boolean;active:boolean;piUsed:boolean}>();
@@ -96,7 +100,7 @@ export class SkillLifecycle{
   this.#snapshot=snapshot?copy(snapshot):{version:1,taskId,candidate:structuredClone(candidate),nextPhase:"context-init",records:[]};
   if(snapshot) validateSnapshot(this.#snapshot,taskId,candidate);
  }
- get state():LifecycleSnapshot{return copy(this.#snapshot);}
+ get state():LifecycleSnapshot{const snapshot=copy(this.#snapshot),description=lifecycleDescriptions.get(this);if(description)snapshotDescriptions.set(snapshot,description);return snapshot;}
  promoteCandidateRevision(revision:string):void{
   const s=this.#snapshot,obligation=liveObligations.get(this);
   if(!obligation)throw new Error("Raw revision promotion is unavailable for recovery-unknown TDD obligations");
@@ -189,9 +193,12 @@ export function createSkillLifecycle(applicability:LifecycleApplicability):Skill
  try{obligation=tddObligationFor(applicability);}catch{throw new Error("Lifecycle applicability was not issued here");}
  claimLifecycleApplicability(applicability);
  if(applicability.outcome!=="structured")throw new Error("SkillLifecycle requires structured applicability");
+ const description=workflowSelectionDescriptionForApplicability(applicability);
  const candidate:Candidate={...applicability.candidate,createdAt:"lifecycle-applicability"};
- return constructLifecycle(applicability.taskIdentity,candidate,undefined,obligation);
+ return constructLifecycle(applicability.taskIdentity,candidate,undefined,obligation,description);
 }
+/** Reads private command provenance by exact snapshot identity without inspecting caller data. */
+export function workflowSelectionDescriptionForSnapshot(value:unknown):WorkflowSelectionDescription|undefined{return typeof value==="object"&&value!==null?snapshotDescriptions.get(value):undefined;}
 function exact(value:unknown,keys:readonly string[],noun:string):Record<string,unknown>{
  if(typeof value!=="object"||value===null||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)throw new Error(`${noun} must be exact plain data`);
  const own=Reflect.ownKeys(value);if(own.length!==keys.length||own.some(key=>typeof key!=="string"||!keys.includes(key))||keys.some(key=>!Object.hasOwn(value,key)))throw new Error(`${noun} shape is invalid`);

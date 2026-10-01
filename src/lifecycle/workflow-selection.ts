@@ -7,6 +7,7 @@ export interface WorkflowSelectionChoice {
  readonly taskIdentity:string;
  readonly repositoryIdentity:string;
 }
+export interface WorkflowSelectionDescription extends WorkflowSelectionChoice {readonly schemaVersion:1}
 export interface WorkflowSelectionBinding {readonly taskIdentity:string;readonly repositoryIdentity:string}
 declare const consumerBrand:unique symbol;
 /** An opaque registration identity. Only this module can associate it with consumer closures. */
