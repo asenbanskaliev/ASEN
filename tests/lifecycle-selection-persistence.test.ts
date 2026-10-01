@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import {mkdtemp,realpath,rm} from "node:fs/promises";
+import {mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {randomBytes} from "node:crypto";
+import {createHmac,randomBytes} from "node:crypto";
 import test from "node:test";
 import {decideLifecycleApplicability,decideLifecycleApplicabilityWithSelection,workflowSelectionDescriptionForApplicability,type LifecycleApplicabilityInput} from "../src/lifecycle/applicability.js";
 import {createSkillLifecycle,loadLifecycle,saveLifecycle,workflowSelectionDescriptionForSnapshot} from "../src/lifecycle/skill-lifecycle.js";
@@ -89,14 +89,30 @@ test("descriptive lookups reject clones and structural traps without observation
  assert.equal(invocations,0);
 });
 
-test("legacy recovery does not persist or remint private selection description",async t=>{
+test("selected lifecycle persists outer v3 and preserves descriptive provenance through recovery",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-selection-provenance-"));t.after(()=>rm(dir,{recursive:true,force:true}));
- const path=join(dir,"lifecycle.json"),key=randomBytes(32);
- const lifecycle=createSkillLifecycle(await issueStructuredLifecycleApplicability("GSP05I1-C1-recovery",candidate,["src/a.ts"],"not-applicable","unspecified"));
- const marked=lifecycle.state;assert.ok(workflowSelectionDescriptionForSnapshot(marked));
- await saveLifecycle(path,marked,key);
- const recovered=await loadLifecycle(path,"GSP05I1-C1-recovery",candidate,key),recoveredSnapshot=recovered.state;
- assert.equal(workflowSelectionDescriptionForSnapshot(recoveredSnapshot),undefined);
- assert.equal(workflowSelectionDescriptionForSnapshot(recovered.state),undefined);
- assert.deepEqual(Reflect.ownKeys(recoveredSnapshot),["version","taskId","candidate","nextPhase","records"]);
+ const path=join(dir,"lifecycle.json"),key=randomBytes(32),task="GSP05I1-C2-recovery";
+ const lifecycle=createSkillLifecycle(await issueStructuredLifecycleApplicability(task,candidate,["src/a.ts"],"not-applicable","unspecified")),marked=lifecycle.state;
+ await saveLifecycle(path,marked,key);const raw=JSON.parse(await readFile(path,"utf8"));
+ assert.deepEqual(Object.keys(raw),["version","taskIdentity","repositoryIdentity","candidateId","currentRevision","nextPhase","workflowSelection","testingBinding","snapshot","mac"]);assert.equal(raw.version,3);assert.deepEqual(raw.workflowSelection,{...description,taskIdentity:task});assert.equal(raw.testingBinding.mode,"not-applicable");
+ const recovered=await loadLifecycle(path,task,candidate,key);assert.deepEqual(workflowSelectionDescriptionForSnapshot(recovered.state),{...description,taskIdentity:task});
+ const context=issueSkillContext(`${task}:worker`,repository,candidate,{phase:"context-init"}),skillPaths=selectSkills(context).map(skill=>skill.path),runner=fixtureArtifactRunner(()=>({kind:"project-context",content:"context",repository,candidateId:candidate.id,revision:candidate.revision}));
+ const advanced=await recovered.runPhase(new Dispatcher(runner,new EvidenceStore()),{phase:"context-init",context,skillPaths,prompt:"context",evidence:new EvidenceStore(),risk:"low"});assert.ok(workflowSelectionDescriptionForSnapshot(advanced));await saveLifecycle(path,advanced,key);assert.equal(workflowSelectionDescriptionForSnapshot((await loadLifecycle(path,task,candidate,key)).state)?.taskIdentity,task);
+});
+
+test("only privately marked exact snapshots can emit v3",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-selection-mint-"));t.after(()=>rm(dir,{recursive:true,force:true}));const key=randomBytes(32),path=join(dir,"flow.json"),task="GSP05I1-C2-mint",flow=createSkillLifecycle(await issueStructuredLifecycleApplicability(task,candidate,["src/a.ts"],"not-applicable","unspecified")),state=flow.state;
+ for(const forged of [structuredClone(state),{...structuredClone(state),workflowSelection:{...description,taskIdentity:task}},{...structuredClone(state),extra:true}])await assert.rejects(()=>saveLifecycle(path,forged as typeof state,key),/migration required|shape/);
+ let reads=0;const trapped=structuredClone(state);Object.defineProperty(trapped,"taskId",{enumerable:true,get:()=>{reads++;return task;}});await assert.rejects(()=>saveLifecycle(path,trapped,key),/shape/);assert.equal(reads,0);
+});
+
+test("v3 exact envelope, bindings and domain fail closed even when re-signed",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-selection-v3-tamper-"));t.after(()=>rm(dir,{recursive:true,force:true}));const key=randomBytes(32),path=join(dir,"flow.json"),task="GSP05I1-C2-tamper",flow=createSkillLifecycle(await issueStructuredLifecycleApplicability(task,candidate,["src/a.ts"],"not-applicable","unspecified"));await saveLifecycle(path,flow.state,key);const original=JSON.parse(await readFile(path,"utf8"));
+ const resign=(raw:any,domain="asen.lifecycle.explicit-selection.v3\0")=>{const {mac:_,...payload}=raw;raw.mac=createHmac("sha256",key).update(domain).update(JSON.stringify(payload)).digest("hex");};
+ const unauthenticated=structuredClone(original);unauthenticated.workflowSelection.taskIdentity="other";await writeFile(path,JSON.stringify(unauthenticated));await assert.rejects(()=>loadLifecycle(path,task,candidate,key),/integrity/);
+ const mutations=[(r:any)=>r.taskIdentity="other",(r:any)=>r.repositoryIdentity="other",(r:any)=>r.candidateId="other",(r:any)=>r.currentRevision="other",(r:any)=>r.nextPhase="archive",(r:any)=>r.workflowSelection.taskIdentity="other",(r:any)=>r.workflowSelection.repositoryIdentity="other",(r:any)=>r.workflowSelection.extra=true,(r:any)=>r.testingBinding.taskIdentity="other",(r:any)=>r.testingBinding.repositoryIdentity="other",(r:any)=>r.testingBinding.mode="required",(r:any)=>delete r.testingBinding,(r:any)=>r.extra=true,(r:any)=>r.version=4];
+ for(const mutate of mutations){const raw=structuredClone(original);mutate(raw);resign(raw);await writeFile(path,JSON.stringify(raw));await assert.rejects(()=>loadLifecycle(path,task,candidate,key),/binding|identity|shape|schema|mismatch/);}
+ for(const domain of ["","asen.lifecycle.v2\0"]){const raw=structuredClone(original);resign(raw,domain);await writeFile(path,JSON.stringify(raw));await assert.rejects(()=>loadLifecycle(path,task,candidate,key),/integrity/);}
+ const upper=structuredClone(original);upper.mac=upper.mac.toUpperCase();await writeFile(path,JSON.stringify(upper));await assert.rejects(()=>loadLifecycle(path,task,candidate,key),/integrity/);
+ let reads=0;const caller=Object.defineProperty({...candidate},"id",{enumerable:true,get:()=>{reads++;return candidate.id;}});await assert.rejects(()=>loadLifecycle(path,task,caller,key),/shape/);assert.equal(reads,0);
 });

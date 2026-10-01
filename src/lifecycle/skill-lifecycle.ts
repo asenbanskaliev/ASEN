@@ -1,6 +1,6 @@
 import {open,readFile,rename,unlink} from "node:fs/promises";
 import {dirname,basename,join} from "node:path";
-import {createHmac,randomUUID,timingSafeEqual} from "node:crypto";
+import {createHash,createHmac,randomUUID,timingSafeEqual} from "node:crypto";
 import type {Candidate,Risk} from "../core/types.js";
 import {issueSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
@@ -40,8 +40,10 @@ function honestRevisionChain(repository:string,revisions:readonly string[]):stri
 }
 const verifiedRecovery=new WeakSet<SkillLifecycle>();
 const liveObligations=new WeakMap<SkillLifecycle,TddObligation>();
+const recoveredObligations=new WeakMap<SkillLifecycle,TddObligation>();
 const lifecycleDescriptions=new WeakMap<SkillLifecycle,WorkflowSelectionDescription>();
 const snapshotDescriptions=new WeakMap<object,WorkflowSelectionDescription>();
+const snapshotObligations=new WeakMap<object,TddObligation>();
 type CompletionAdmission={lifecycle:SkillLifecycle;repository:string;candidateId:string;revision:string;record:TddCompletionRecord;used:boolean};
 const completionAdmissions=new WeakMap<object,CompletionAdmission>();
 function issueCompletionAdmission(lifecycle:SkillLifecycle,snapshot:LifecycleSnapshot):Readonly<Record<string,never>>{
@@ -100,7 +102,7 @@ export class SkillLifecycle{
   this.#snapshot=snapshot?copy(snapshot):{version:1,taskId,candidate:structuredClone(candidate),nextPhase:"context-init",records:[]};
   if(snapshot) validateSnapshot(this.#snapshot,taskId,candidate);
  }
- get state():LifecycleSnapshot{const snapshot=copy(this.#snapshot),description=lifecycleDescriptions.get(this);if(description)snapshotDescriptions.set(snapshot,description);return snapshot;}
+ get state():LifecycleSnapshot{const snapshot=copy(this.#snapshot),description=lifecycleDescriptions.get(this),obligation=liveObligations.get(this)??recoveredObligations.get(this);if(description)snapshotDescriptions.set(snapshot,description);if(obligation)snapshotObligations.set(snapshot,obligation);return snapshot;}
  promoteCandidateRevision(revision:string):void{
   const s=this.#snapshot,obligation=liveObligations.get(this);
   if(!obligation)throw new Error("Raw revision promotion is unavailable for recovery-unknown TDD obligations");
@@ -153,6 +155,8 @@ export class SkillLifecycle{
   this.#assertAuthority(input.phase,role,input.context,input.skillPaths);
   request.phaseGrant=issuePhaseGrant(request.id,s.candidate,input.phase);
   if(input.phase==="verify"){
+   const obligation=liveObligations.get(this)??recoveredObligations.get(this);
+   if(obligation?.mode==="required"&&s.version!==2)throw new Error("Required TDD lifecycle needs exact TDD completion promotion before verify");
    if(s.version===2)input.evidence.consumeLifecycleCompletion(s.candidate,issueCompletionAdmission(this,s));
    authorizeVerified(s.candidate,input.risk,input.context,input.evidence);
   }
@@ -222,15 +226,37 @@ function validateSnapshot(value:unknown,taskId:string,caller:Candidate):Lifecycl
 }
 function keyCheck(key:Buffer):void{if(key.length<32)throw new Error("Lifecycle recovery requires a 32-byte secret");}
 function signature(value:unknown,key:Buffer,domain=""):string{keyCheck(key);return createHmac("sha256",key).update(domain).update(JSON.stringify(value)).digest("hex");}
+function validMac(mac:unknown,expected:string):boolean{return typeof mac==="string"&&/^[0-9a-f]{64}$/.test(mac)&&timingSafeEqual(Buffer.from(expected,"hex"),Buffer.from(mac,"hex"));}
+function candidateBinding(value:unknown):Candidate{const raw=exact(value,["id","repository","revision","createdAt"],"lifecycle candidate binding");if(typeof raw.id!=="string"||!raw.id||typeof raw.repository!=="string"||!raw.repository||typeof raw.revision!=="string"||!raw.revision||typeof raw.createdAt!=="string"||!raw.createdAt)throw new Error("Lifecycle recovery identity mismatch");
+ // SAFETY: exact() proved the full Candidate own-data shape and the branch above proved all scalar fields.
+ return raw as unknown as Candidate;}
+function selectionBinding(value:unknown,taskId:string,repository:string):WorkflowSelectionDescription{
+ const raw=exact(value,["schemaVersion","workflow","source","taskIdentity","repositoryIdentity"],"workflow selection");
+ if(raw.schemaVersion!==1||raw.workflow!=="sdd"||raw.source!=="pi-command"||raw.taskIdentity!==taskId||raw.repositoryIdentity!==repository)throw new Error("Lifecycle workflow selection binding mismatch");
+ // SAFETY: exact() and the literal checks above prove the complete immutable description schema.
+ return Object.freeze(raw) as unknown as WorkflowSelectionDescription;
+}
+function obligationBinding(value:unknown,snapshot:LifecycleSnapshot,description:WorkflowSelectionDescription):TddObligation{
+ const raw=exact(value,["requirementId","applicabilityId","taskIdentity","repositoryIdentity","candidate","behaviorPaths","mode","reason"],"TDD obligation binding"),candidate=exact(raw.candidate,["id","repository","revision"],"TDD obligation candidate"),paths=exactArray(raw.behaviorPaths,"TDD obligation behavior paths"),baseline=snapshot.version===2?snapshot.baselineRevision:snapshot.revisions?.[0]??snapshot.candidate.revision;
+ if(typeof raw.requirementId!=="string"||!/^[0-9a-f]{64}$/.test(raw.requirementId)||typeof raw.applicabilityId!=="string"||!/^[0-9a-f]{64}$/.test(raw.applicabilityId)||raw.taskIdentity!==snapshot.taskId||raw.taskIdentity!==description.taskIdentity||raw.repositoryIdentity!==snapshot.candidate.repository||raw.repositoryIdentity!==description.repositoryIdentity||candidate.id!==snapshot.candidate.id||candidate.repository!==snapshot.candidate.repository||candidate.revision!==baseline||paths.some(path=>typeof path!=="string"||!path)||raw.mode!=="required"&&raw.mode!=="not-applicable"||raw.mode==="required"&&(raw.reason!=="behavior-testing-required"||!paths.length)||raw.mode==="not-applicable"&&(raw.reason!=="no-behavior-writes"||paths.length!==0))throw new Error("Lifecycle TDD obligation binding mismatch");
+ const payload={applicabilityId:raw.applicabilityId,taskIdentity:raw.taskIdentity,repositoryIdentity:raw.repositoryIdentity,candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},behaviorPaths:paths,mode:raw.mode,reason:raw.reason},requirementId=createHash("sha256").update(JSON.stringify(payload)).digest("hex");if(raw.requirementId!==requirementId)throw new Error("Lifecycle TDD requirement hash mismatch");
+ const obligation={requirementId,...payload} as TddObligation;if(snapshot.version===2&&JSON.stringify(snapshot.tddPromotion.record.obligation)!==JSON.stringify(obligation))throw new Error("Lifecycle TDD completion obligation mismatch");return Object.freeze(obligation);
+}
 function v2Envelope(snapshot:Extract<LifecycleSnapshot,{version:2}>){return {version:2 as const,taskIdentity:snapshot.taskId,repositoryIdentity:snapshot.candidate.repository,candidateId:snapshot.candidate.id,baselineRevision:snapshot.baselineRevision,currentRevision:snapshot.candidate.revision,nextPhase:snapshot.nextPhase,snapshot};}
+function v3Envelope(snapshot:LifecycleSnapshot,description:WorkflowSelectionDescription,obligation:TddObligation){return {version:3 as const,taskIdentity:snapshot.taskId,repositoryIdentity:snapshot.candidate.repository,candidateId:snapshot.candidate.id,currentRevision:snapshot.candidate.revision,nextPhase:snapshot.nextPhase,workflowSelection:{schemaVersion:description.schemaVersion,workflow:description.workflow,source:description.source,taskIdentity:description.taskIdentity,repositoryIdentity:description.repositoryIdentity},testingBinding:structuredClone(obligation),snapshot};}
 export async function saveLifecycle(path:string,snapshot:LifecycleSnapshot,key:Buffer):Promise<void>{
- const task=Object.getOwnPropertyDescriptor(snapshot,"taskId")?.value,candidate=Object.getOwnPropertyDescriptor(snapshot,"candidate")?.value,checked=validateSnapshot(snapshot,task,candidate),payload=checked.version===2?v2Envelope(checked):undefined,outer=payload?{...payload,mac:signature(payload,key,"asen.lifecycle.v2\0")}:{snapshot:checked,mac:signature(checked,key)};
+ const task=Object.getOwnPropertyDescriptor(snapshot,"taskId")?.value,candidate=candidateBinding(Object.getOwnPropertyDescriptor(snapshot,"candidate")?.value),checked=validateSnapshot(snapshot,task,candidate),description=snapshotDescriptions.get(snapshot);let outer:unknown;
+ if(description){const selected=selectionBinding(description,checked.taskId,checked.candidate.repository),obligation=snapshotObligations.get(snapshot);if(!obligation)throw new Error("Lifecycle v3 persistence requires original testing binding");const testing=obligationBinding(obligation,checked,selected),payload=v3Envelope(checked,selected,testing);outer={...payload,mac:signature(payload,key,"asen.lifecycle.explicit-selection.v3\0")};}
+ else if(checked.version===2){const payload=v2Envelope(checked);outer={...payload,mac:signature(payload,key,"asen.lifecycle.v2\0")};}
+ else{if(checked.nextPhase!==null)throw new Error("migration required; restart exact applicability");outer={snapshot:checked,mac:signature(checked,key)};}
  const temp=join(dirname(path),`.${basename(path)}.${randomUUID()}.tmp`);let handle;try{handle=await open(temp,"wx",0o600);await handle.writeFile(JSON.stringify(outer),"utf8");await handle.sync();await handle.close();handle=undefined;await rename(temp,path);}finally{if(handle)await handle.close();await unlink(temp).catch((error:NodeJS.ErrnoException)=>{if(error.code!=="ENOENT")throw error;});}
 }
 export async function loadLifecycle(path:string,taskId:string,candidate:Candidate,key:Buffer):Promise<SkillLifecycle>{
  let parsed:unknown;try{parsed=JSON.parse(await readFile(path,"utf8"));}catch{throw new Error("Lifecycle recovery data is malformed");}
- const version=typeof parsed==="object"&&parsed!==null?Object.getOwnPropertyDescriptor(parsed,"version")?.value:undefined;let snapshot:LifecycleSnapshot,mac:string,expected:string;
- if(version===2){const raw=exact(parsed,["version","taskIdentity","repositoryIdentity","candidateId","baselineRevision","currentRevision","nextPhase","snapshot","mac"],"lifecycle v2 envelope"),payload={version:raw.version,taskIdentity:raw.taskIdentity,repositoryIdentity:raw.repositoryIdentity,candidateId:raw.candidateId,baselineRevision:raw.baselineRevision,currentRevision:raw.currentRevision,nextPhase:raw.nextPhase,snapshot:raw.snapshot};mac=raw.mac as string;expected=signature(payload,key,"asen.lifecycle.v2\0");if(typeof mac!=="string"||!/^[0-9a-f]{64}$/iu.test(mac)||!timingSafeEqual(Buffer.from(expected,"hex"),Buffer.from(mac,"hex")))throw new Error("Lifecycle recovery integrity mismatch");snapshot=validateSnapshot(raw.snapshot,taskId,candidate);if(raw.taskIdentity!==taskId||raw.repositoryIdentity!==candidate.repository||raw.candidateId!==candidate.id||raw.currentRevision!==candidate.revision||raw.baselineRevision!==(snapshot.version===2?snapshot.baselineRevision:undefined)||raw.nextPhase!==snapshot.nextPhase)throw new Error("Lifecycle recovery identity mismatch");}
- else{const raw=exact(parsed,["snapshot","mac"],"lifecycle v1 envelope");mac=raw.mac as string;expected=signature(raw.snapshot,key);if(typeof mac!=="string"||!/^[0-9a-f]{64}$/iu.test(mac)||!timingSafeEqual(Buffer.from(expected,"hex"),Buffer.from(mac,"hex")))throw new Error("Lifecycle recovery integrity mismatch");snapshot=validateSnapshot(raw.snapshot,taskId,candidate);if(snapshot.version!==1)throw new Error("Lifecycle recovery schema mismatch");const continuing=snapshot.nextPhase!==null,tddRoute=snapshot.records.some(record=>record.skillPaths.includes("skills/asen-tdd/SKILL.md"))||snapshot.pendingAuthority?.selection.behaviorChange===true;if(continuing&&(snapshot.revisions||tddRoute))throw new Error("migration required; restart exact applicability");}
- const flow=constructLifecycle(taskId,candidate,snapshot);verifiedRecovery.add(flow);return flow;
+ const caller=candidateBinding(candidate),version=typeof parsed==="object"&&parsed!==null?Object.getOwnPropertyDescriptor(parsed,"version")?.value:undefined;let snapshot:LifecycleSnapshot,description:WorkflowSelectionDescription|undefined,obligation:TddObligation|undefined,mac:unknown,expected:string;
+ if(version===3){const raw=exact(parsed,["version","taskIdentity","repositoryIdentity","candidateId","currentRevision","nextPhase","workflowSelection","testingBinding","snapshot","mac"],"lifecycle v3 envelope"),payload={version:raw.version,taskIdentity:raw.taskIdentity,repositoryIdentity:raw.repositoryIdentity,candidateId:raw.candidateId,currentRevision:raw.currentRevision,nextPhase:raw.nextPhase,workflowSelection:raw.workflowSelection,testingBinding:raw.testingBinding,snapshot:raw.snapshot};mac=raw.mac;expected=signature(payload,key,"asen.lifecycle.explicit-selection.v3\0");if(!validMac(mac,expected))throw new Error("Lifecycle recovery integrity mismatch");const selection=selectionBinding(raw.workflowSelection,taskId,caller.repository);snapshot=validateSnapshot(raw.snapshot,taskId,caller);if(raw.taskIdentity!==taskId||raw.repositoryIdentity!==caller.repository||raw.candidateId!==caller.id||raw.currentRevision!==caller.revision||raw.nextPhase!==snapshot.nextPhase||selection.taskIdentity!==snapshot.taskId||selection.repositoryIdentity!==snapshot.candidate.repository)throw new Error("Lifecycle recovery identity mismatch");description=selection;obligation=obligationBinding(raw.testingBinding,snapshot,selection);}
+ else if(version===2){const raw=exact(parsed,["version","taskIdentity","repositoryIdentity","candidateId","baselineRevision","currentRevision","nextPhase","snapshot","mac"],"lifecycle v2 envelope"),payload={version:raw.version,taskIdentity:raw.taskIdentity,repositoryIdentity:raw.repositoryIdentity,candidateId:raw.candidateId,baselineRevision:raw.baselineRevision,currentRevision:raw.currentRevision,nextPhase:raw.nextPhase,snapshot:raw.snapshot};mac=raw.mac;expected=signature(payload,key,"asen.lifecycle.v2\0");if(!validMac(mac,expected))throw new Error("Lifecycle recovery integrity mismatch");snapshot=validateSnapshot(raw.snapshot,taskId,caller);if(raw.taskIdentity!==taskId||raw.repositoryIdentity!==caller.repository||raw.candidateId!==caller.id||raw.currentRevision!==caller.revision||raw.baselineRevision!==(snapshot.version===2?snapshot.baselineRevision:undefined)||raw.nextPhase!==snapshot.nextPhase)throw new Error("Lifecycle recovery identity mismatch");}
+ else if(version===undefined){const raw=exact(parsed,["snapshot","mac"],"lifecycle v1 envelope");mac=raw.mac;expected=signature(raw.snapshot,key);if(!validMac(mac,expected))throw new Error("Lifecycle recovery integrity mismatch");snapshot=validateSnapshot(raw.snapshot,taskId,caller);if(snapshot.version!==1)throw new Error("Lifecycle recovery schema mismatch");if(snapshot.nextPhase!==null)throw new Error("migration required; restart exact applicability");}
+ else throw new Error("Lifecycle recovery schema mismatch");
+ const flow=constructLifecycle(taskId,caller,snapshot,undefined,description);if(obligation)recoveredObligations.set(flow,obligation);verifiedRecovery.add(flow);return flow;
 }
