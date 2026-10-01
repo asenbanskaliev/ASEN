@@ -1,6 +1,6 @@
 import {spawn,execFileSync,type ChildProcess} from "node:child_process";
 import {realpathSync} from "node:fs";
-import {mkdtemp,rm} from "node:fs/promises";
+import {mkdtemp,mkdir,open,readdir,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import type {Candidate,Evidence} from "../core/types.js";
@@ -62,7 +62,22 @@ export function isExecutedEvidence(value:unknown):value is ExecutedEvidence {
 }
 
 type CapturedExecution={readonly proof:ExecutedEvidence;readonly stdout:string;readonly stderr:string};
-async function runEvidenceCommand(candidate:Candidate,command:readonly [string,...string[]],options:{cwd?:string;timeoutMs?:number},capture:boolean):Promise<CapturedExecution>{
+type CoverageExecution=CapturedExecution&{readonly coverage:readonly unknown[]};
+async function readBoundedCoverageFile(filePath:string,remaining:number):Promise<Buffer>{
+ const handle=await open(filePath,"r");
+ try{
+  const stat=await handle.stat();
+  if(!stat.isFile()||!Number.isSafeInteger(stat.size)||stat.size<0||stat.size>remaining)throw new Error("Node coverage output exceeded its limit");
+  const bytes=Buffer.alloc(Math.min(remaining+1,stat.size+1));let offset=0;
+  while(offset<bytes.length){const {bytesRead}=await handle.read(bytes,offset,bytes.length-offset,offset);if(!bytesRead)break;offset+=bytesRead;}
+  if(offset>remaining)throw new Error("Node coverage output exceeded its limit");
+  if(offset!==stat.size)throw new Error("Node coverage output changed while reading");
+  const verified=await handle.stat();
+  if(!verified.isFile()||verified.size!==stat.size)throw new Error("Node coverage output changed while reading");
+  return bytes.subarray(0,offset);
+ }finally{await handle.close();}
+}
+async function runEvidenceCommand(candidate:Candidate,command:readonly [string,...string[]],options:{cwd?:string;timeoutMs?:number},capture:boolean,coverage=false):Promise<CapturedExecution|CoverageExecution>{
  if(!candidate.repository||!candidate.id||!candidate.revision)throw new Error("Execution evidence requires exact candidate identity");
  const requestedCwd=options.cwd??candidate.repository;
  assertExactGitCandidate(candidate,requestedCwd);
@@ -70,9 +85,10 @@ async function runEvidenceCommand(candidate:Candidate,command:readonly [string,.
  try{
   execFileSync("git",["-C",candidate.repository,"worktree","add","--detach",isolated,candidate.revision],{stdio:"ignore"});
   assertExactGitCandidate({...candidate,repository:isolated},isolated);
-  const startedAt=new Date().toISOString(),stdout:Buffer[]=[],stderr:Buffer[]=[],limit=1024*1024;
+  const startedAt=new Date().toISOString(),stdout:Buffer[]=[],stderr:Buffer[]=[],limit=1024*1024,coverageDirectory=join(parent,"coverage");
+  if(coverage)await mkdir(coverageDirectory);
   const exitCode=await new Promise<number>((resolve,reject)=>{
-   const env=capture?{...process.env,NODE_TEST_CONTEXT:undefined}:undefined;
+   const env=capture?{...process.env,NODE_TEST_CONTEXT:undefined,...(coverage?{NODE_V8_COVERAGE:coverageDirectory}:{})}:undefined;
    const child=spawn(command[0],command.slice(1),{cwd:isolated,stdio:capture?["ignore","pipe","pipe"]:"ignore",shell:false,detached:process.platform!=="win32",env});
    let stopped=false,size=0,timer:NodeJS.Timeout;
    const fail=(error:Error)=>{if(stopped)return;stopped=true;if(timer)clearTimeout(timer);void terminateProcessTree(child).finally(()=>reject(error));};
@@ -84,8 +100,11 @@ async function runEvidenceCommand(candidate:Candidate,command:readonly [string,.
   });
   assertExactGitCandidate({...candidate,repository:isolated},isolated);assertExactGitCandidate(candidate,requestedCwd);
   const proof=Object.freeze({candidateRepository:candidate.repository,candidateId:candidate.id,candidateRevision:candidate.revision,command:Object.freeze([...command]),cwd:isolated,exitCode,startedAt,finishedAt:new Date().toISOString()});
-  executed.add(proof);
-  return Object.freeze({proof,stdout:Buffer.concat(stdout).toString("utf8"),stderr:Buffer.concat(stderr).toString("utf8")});
+  executed.add(proof);const result={proof,stdout:Buffer.concat(stdout).toString("utf8"),stderr:Buffer.concat(stderr).toString("utf8")};
+  if(!coverage)return Object.freeze(result);
+  const names=(await readdir(coverageDirectory)).sort();if(!names.length||names.some(name=>!/^coverage-\d+-\d+-\d+\.json$/u.test(name)))throw new Error("Node coverage output is missing or ambiguous");
+  const coverageLimit=8*1024*1024;let size=0;const documents:unknown[]=[];for(const name of names){const bytes=await readBoundedCoverageFile(join(coverageDirectory,name),coverageLimit-size);size+=bytes.length;try{documents.push(JSON.parse(bytes.toString("utf8")));}catch{throw new Error("Node coverage output is malformed");}}
+  return Object.freeze({...result,coverage:Object.freeze(documents)});
  }finally{
   try{execFileSync("git",["-C",candidate.repository,"worktree","remove","--force",isolated],{stdio:"ignore"});}
   catch{/* Recursive parent cleanup below remains authoritative. */}
@@ -97,7 +116,11 @@ export function executeEvidenceCommand(candidate:Candidate,command:readonly [str
 }
 /** Internal-facing bounded capture for parsers that issue stronger structured evidence. */
 export function executeCapturedEvidenceCommand(candidate:Candidate,command:readonly [string,...string[]],options:{cwd?:string;timeoutMs?:number}={}):Promise<CapturedExecution>{
- return runEvidenceCommand(candidate,command,options,true);
+ return runEvidenceCommand(candidate,command,options,true) as Promise<CapturedExecution>;
+}
+/** Internal structured capture; coverage bytes never cross this boundary. */
+export function executeNodeCoverageCommand(candidate:Candidate,command:readonly [string,...string[]],options:{cwd?:string;timeoutMs?:number}={}):Promise<CoverageExecution>{
+ return runEvidenceCommand(candidate,command,options,true,true) as Promise<CoverageExecution>;
 }
 
 export function addExecutedEvidence(store:EvidenceStore,candidate:Candidate,proof:ExecutedEvidence,evidence:{id:string;kind:"test"|"tdd";summary:string;expectFailure?:boolean}):Evidence{

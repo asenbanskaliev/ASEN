@@ -238,6 +238,8 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
         - Independent focused verification passes 34/34; typecheck, 27-Skill audit, 12-Skill parity audit, 292-path upstream-boundary audit, and diff check pass. The readable slice is 178 additions.
         - Commit: `16b763d`.
       - [ ] GSP-05C3b: require runner-derived per-case coverage for materially distinct multi-path triangulation or exact single-path N/A.
+        - Implementation records exact test-only direct-child triangulation from harness-captured per-case Node/V8 byte ranges, or the bound structural single-path N/A, without granting authority.
+        - Local verification evidence is pending independent PASS; this item remains intentionally unchecked.
       - [ ] GSP-05C3c: admit a baseline-proven non-TDD alternative without reporting RED or granting generic authority.
     - [ ] GSP-05C4: require triangulation/N/A before performed-or-not-needed refactor completion and bind lifecycle revision promotion to the exact completion.
     - [ ] GSP-05C5: persist and verify exact requirement-bound TDD completion with fail-closed legacy migration and recovery.

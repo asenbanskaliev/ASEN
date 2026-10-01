@@ -4,7 +4,7 @@ import type { Candidate } from "../core/types.js";
 import { assertExactGitCandidate } from "../evidence/execution.js";
 import { assertDirectGitParent } from "../evidence/git-lineage.js";
 import { claimTddObligation, type TddObligation } from "../lifecycle/applicability.js";
-import { claimPassingTestObservation, claimTestObservation, type PassingTestObservation, type TestObservation } from "./tdd-observation.js";
+import { claimNodeCoverageObservation,claimPassingTestObservation, claimTestObservation,type NodeCoverageObservation, type PassingTestObservation, type TestObservation } from "./tdd-observation.js";
 
 export interface StrictDecisionPoint { readonly behaviorPath: string; readonly startOffset: number; readonly endOffset: number }
 export interface StrictDecisionPath { readonly caseId: string; readonly points: readonly StrictDecisionPoint[] }
@@ -28,14 +28,18 @@ export interface StrictGreenResult {
   readonly adapterId: "node-test"; readonly commandFingerprint: string; readonly testPaths: readonly string[];
   readonly executedCaseIds: readonly string[]; readonly expectedFailingCaseIds: readonly string[];
 }
+export interface StrictTriangulationResult {readonly cycleId:string;readonly requirementId:string;readonly planHash:string;readonly state:"triangulation-recorded";readonly candidate:Readonly<{id:string;repository:string;revision:string}>;readonly plannedCaseIds:readonly string[]}
+export interface StrictNotApplicableResult {readonly cycleId:string;readonly requirementId:string;readonly planHash:string;readonly state:"triangulation-not-applicable";readonly reason:"structurally-single-decision-path";readonly rationale:string}
 export interface StrictTddCycle {
   readonly cycleId: string; readonly requirementId: string; readonly planHash: string; readonly state: "awaiting-red"; readonly plan: StrictTddPlan;
   recordRed(redCandidate: Candidate, first: TestObservation, second: TestObservation): StrictRedResult;
   recordGreen(red: StrictRedResult, greenCandidate: Candidate, passing: PassingTestObservation): StrictGreenResult;
+  recordTriangulation(green:StrictGreenResult,candidate:Candidate,coverage:NodeCoverageObservation):StrictTriangulationResult;
+  recordSinglePathNotApplicable(green:StrictGreenResult):StrictNotApplicableResult;
 }
 
 const candidateKeys=["id","repository","revision","createdAt"] as const;
-const issuedRed=new WeakMap<object,object>(),claimedRed=new WeakSet<object>(),issuedGreen=new WeakMap<object,object>();
+const issuedRed=new WeakMap<object,object>(),claimedRed=new WeakSet<object>(),issuedGreen=new WeakMap<object,object>(),claimedGreen=new WeakSet<object>(),issuedCompletion=new WeakMap<object,object>();
 function exact(value:unknown,keys:readonly string[],noun:string):Record<string,unknown>{
  if(typeof value!=="object"||value===null||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)throw new Error(`${noun} must be exact plain data`);
  const own=Reflect.ownKeys(value);if(own.length!==keys.length||own.some(key=>typeof key!=="string"||!keys.includes(key))||keys.some(key=>!Object.hasOwn(value,key)))throw new Error(`${noun} shape is invalid`);
@@ -63,13 +67,13 @@ function parsePlan(value:StrictTddPlan,behaviorPaths:readonly string[]):StrictTd
    return Object.freeze({behaviorPath,startOffset:startOffset as number,endOffset:endOffset as number});});
   const keys=points.map(point=>JSON.stringify([point.behaviorPath,point.startOffset,point.endOffset])),compare=(left:StrictDecisionPoint,right:StrictDecisionPoint)=>left.behaviorPath<right.behaviorPath?-1:left.behaviorPath>right.behaviorPath?1:left.startOffset-right.startOffset||left.endOffset-right.endOffset;if(new Set(keys).size!==keys.length||points.some((point,index)=>index>0&&compare(points[index-1]!,point)>=0))throw new Error("decision points must be unique and canonical");
   return Object.freeze({caseId,points:Object.freeze(points)});});
- if(!same(decisions.map(item=>item.caseId),expected))throw new Error("every expected failing case must be mapped exactly once in canonical order");
+ const decisionIds=decisions.map(item=>item.caseId);if(new Set(decisionIds).size!==decisionIds.length||expected.some(item=>!decisionIds.includes(item))||!same(expected,decisionIds.filter(item=>expected.includes(item))))throw new Error("expected failing cases must be a canonical subset of unique decision paths");
  const vectors=decisions.map(item=>JSON.stringify(item.points));if(new Set(vectors).size!==vectors.length)throw new Error("decision path vectors must be unique");
  const policyValue=data.triangulationPolicy,policyKeys=typeof policyValue==="object"&&policyValue!==null&&Reflect.ownKeys(policyValue).length===1?["mode"]:["mode","reason","rationale"];
  const rawPolicy=exact(policyValue,policyKeys,"triangulation policy");
  let triangulationPolicy:StrictTriangulationPolicy;
- if(rawPolicy.mode==="required"){if(decisions.length<2)throw new Error("required triangulation needs at least two distinct decision paths");triangulationPolicy=Object.freeze({mode:"required"});}
- else if(rawPolicy.mode==="not-applicable"){if(decisions.length!==1||rawPolicy.reason!=="structurally-single-decision-path")throw new Error("not-applicable triangulation requires one structural decision path");triangulationPolicy=Object.freeze({mode:"not-applicable",reason:"structurally-single-decision-path",rationale:normalizedText(rawPolicy.rationale,"triangulation rationale")});}
+ if(rawPolicy.mode==="required"){if(decisions.length<2||decisions.every(item=>expected.includes(item.caseId)))throw new Error("required triangulation needs two distinct paths and a planned non-RED case");triangulationPolicy=Object.freeze({mode:"required"});}
+ else if(rawPolicy.mode==="not-applicable"){if(decisions.length!==1||expected.length!==1||expected[0]!==decisions[0]!.caseId||rawPolicy.reason!=="structurally-single-decision-path")throw new Error("not-applicable triangulation requires one structural path as the sole expected failure");triangulationPolicy=Object.freeze({mode:"not-applicable",reason:"structurally-single-decision-path",rationale:normalizedText(rawPolicy.rationale,"triangulation rationale")});}
  else throw new Error("triangulation policy mode is invalid");
  return Object.freeze({expectedFailingCaseIds:Object.freeze(expected),decisionPaths:Object.freeze(decisions),triangulationPolicy});
 }
@@ -84,7 +88,7 @@ function treeIdentity(repository:string,revision:string,testPath:string):string{
 /** Claims the genuine requirement before parsing any caller-controlled plan data. */
 export function beginStrictTddCycle(obligation:TddObligation,value:StrictTddPlan):StrictTddCycle{
  claimTddObligation(obligation);if(obligation.mode!=="required")throw new Error("strict TDD requires an applicable obligation");const plan=parsePlan(value,obligation.behaviorPaths);
- const binding=JSON.stringify({requirementId:obligation.requirementId,plan}),planHash=createHash("sha256").update(`plan\0${binding}`).digest("hex"),cycleId=createHash("sha256").update(`cycle\0${binding}`).digest("hex"),token={};let redAttempted=false,greenAttempted=false,cycle:StrictTddCycle;
+ const binding=JSON.stringify({requirementId:obligation.requirementId,plan}),planHash=createHash("sha256").update(`plan\0${binding}`).digest("hex"),cycleId=createHash("sha256").update(`cycle\0${binding}`).digest("hex"),token={};let redAttempted=false,greenAttempted=false,triangulationAttempted=false,naAttempted=false,cycle:StrictTddCycle;
  const recordRed=function(this:unknown,candidateValue:Candidate,first:TestObservation,second:TestObservation):StrictRedResult{
   if(this!==cycle)throw new Error("strict TDD cycle method requires the exact issued cycle");if(redAttempted)throw new Error("strict TDD RED was already attempted");redAttempted=true;
   let firstProof:ReturnType<typeof claimTestObservation>|undefined,secondProof:ReturnType<typeof claimTestObservation>|undefined,claimError:unknown;try{firstProof=claimTestObservation(first);}catch(error){claimError=error;}try{secondProof=claimTestObservation(second);}catch(error){claimError??=error;}if(claimError||!firstProof||!secondProof)throw claimError;
@@ -103,5 +107,15 @@ export function beginStrictTddCycle(obligation:TddObligation,value:StrictTddPlan
   const changed=changedPaths(green.repository,red.candidate.revision,green.revision);if(!changed.length)throw new Error("GREEN diff must be nonempty");if(changed.some(item=>passing.testPaths.includes(item)||!obligation.behaviorPaths.includes(item)))throw new Error("GREEN diff must contain only exact obligation behavior paths");
   const result=Object.freeze({cycleId,requirementId:obligation.requirementId,planHash,state:"green-recorded" as const,red,greenCandidate:Object.freeze({id:green.id,repository:green.repository,revision:green.revision}),adapterId:passing.adapterId,commandFingerprint:passing.commandFingerprint,testPaths:Object.freeze([...passing.testPaths]),executedCaseIds:Object.freeze([...passing.executedCaseIds]),expectedFailingCaseIds:Object.freeze([...plan.expectedFailingCaseIds])});issuedGreen.set(result,token);return result;
  };
- cycle=Object.freeze({cycleId,requirementId:obligation.requirementId,planHash,state:"awaiting-red" as const,plan,recordRed,recordGreen});return cycle;
+ const claimGreen=(green:StrictGreenResult)=>{if(typeof green!=="object"||green===null||!issuedGreen.has(green))throw new Error("GREEN result was not issued here");if(claimedGreen.has(green))throw new Error("GREEN result has already been claimed");claimedGreen.add(green);if(issuedGreen.get(green)!==token)throw new Error("GREEN result belongs to another strict TDD cycle");};
+ const recordTriangulation=function(this:unknown,green:StrictGreenResult,candidateValue:Candidate,coverage:NodeCoverageObservation):StrictTriangulationResult{
+  if(this!==cycle)throw new Error("strict TDD cycle method requires the exact issued cycle");if(triangulationAttempted)throw new Error("strict TDD triangulation was already attempted");triangulationAttempted=true;let claimError:unknown;try{claimGreen(green);}catch(error){claimError=error;}try{claimNodeCoverageObservation(coverage);}catch(error){claimError??=error;}if(claimError)throw claimError;if(plan.triangulationPolicy.mode!=="required")throw new Error("triangulation is not required by this plan");
+  const next=candidate(candidateValue,"triangulation candidate");if(next.id!==green.greenCandidate.id||next.repository!==green.greenCandidate.repository)throw new Error("triangulation candidate identity mismatch");assertExactGitCandidate(next,next.repository);assertDirectGitParent(next.repository,green.greenCandidate.revision,next.revision);if(coverage.candidate.id!==next.id||coverage.candidate.repository!==next.repository||coverage.candidate.revision!==next.revision)throw new Error("coverage observation candidate mismatch");
+  const changed=changedPaths(next.repository,green.greenCandidate.revision,next.revision);if(!changed.length||changed.some(item=>!green.testPaths.includes(item)))throw new Error("triangulation diff must change only exact GREEN test paths");for(const behaviorPath of obligation.behaviorPaths)if(treeIdentity(next.repository,green.greenCandidate.revision,behaviorPath)!==treeIdentity(next.repository,next.revision,behaviorPath))throw new Error("triangulation must preserve behavior blobs and modes");
+  const planned=plan.decisionPaths.map(item=>item.caseId);if(!same(coverage.testPaths,green.testPaths)||!same(coverage.plannedCaseIds,planned)||!same(coverage.cases.map(item=>item.caseId),planned)||planned.filter(item=>!green.executedCaseIds.includes(item)).length<1)throw new Error("triangulation must execute exact planned cases including a new non-RED case");
+  const covers=(caseId:string,point:StrictDecisionPoint)=>{const entry=coverage.cases.find(item=>item.caseId===caseId)?.behavior.find(item=>item.path===point.behaviorPath);return Boolean(entry?.ranges.some(range=>range.startOffset<point.endOffset&&point.startOffset<range.endOffset));};for(const decision of plan.decisionPaths){if(decision.points.some(point=>!covers(decision.caseId,point)))throw new Error("each decision point must overlap positive coverage for its case");if(!decision.points.some(point=>plan.decisionPaths.filter(other=>other.caseId!==decision.caseId).some(other=>!covers(other.caseId,point))))throw new Error("each case needs a decision point not covered by every other case");}
+  const result=Object.freeze({cycleId,requirementId:obligation.requirementId,planHash,state:"triangulation-recorded" as const,candidate:Object.freeze({id:next.id,repository:next.repository,revision:next.revision}),plannedCaseIds:Object.freeze(planned)});issuedCompletion.set(result,token);return result;
+ };
+ const recordSinglePathNotApplicable=function(this:unknown,green:StrictGreenResult):StrictNotApplicableResult{if(this!==cycle)throw new Error("strict TDD cycle method requires the exact issued cycle");if(naAttempted)throw new Error("strict TDD N/A was already attempted");naAttempted=true;claimGreen(green);if(plan.triangulationPolicy.mode!=="not-applicable")throw new Error("triangulation N/A is not allowed by this plan");const result=Object.freeze({cycleId,requirementId:obligation.requirementId,planHash,state:"triangulation-not-applicable" as const,reason:plan.triangulationPolicy.reason,rationale:plan.triangulationPolicy.rationale});issuedCompletion.set(result,token);return result;};
+ cycle=Object.freeze({cycleId,requirementId:obligation.requirementId,planHash,state:"awaiting-red" as const,plan,recordRed,recordGreen,recordTriangulation,recordSinglePathNotApplicable});return cycle;
 }
