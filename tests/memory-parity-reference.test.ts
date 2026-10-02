@@ -3,7 +3,7 @@ import {spawnSync} from "node:child_process";
 import {resolve} from "node:path";
 import test from "node:test";
 // @ts-expect-error Dependency-free offline JavaScript validator.
-import {loadCheckedInMemoryFoundation,loadCheckedInMemoryParity,validateMemoryFoundation,validateMemoryParity} from "../scripts/audit-memory-parity.mjs";
+import {loadCheckedInMemoryFoundation,loadCheckedInMemoryObservationWrites,loadCheckedInMemoryParity,validateMemoryFoundation,validateMemoryObservationWrites,validateMemoryParity} from "../scripts/audit-memory-parity.mjs";
 
 const baseline=loadCheckedInMemoryParity();
 const clone=()=>structuredClone(baseline);
@@ -163,6 +163,58 @@ test("foundation requires exact independently pinned evidence for every case",()
  reject(input=>{input.cases.find((item:any)=>item.id==="FND-06").evidence=[{sourceId:"SRC-FND-002",startLine:339,endLine:450}];});
  for(const item of foundation.cases)reject(input=>{input.cases.find((candidate:any)=>candidate.id===item.id).evidence[0].startLine++;});
  reject(input=>{input.cases[0].evidence.push({...input.cases[0].evidence[0]});});
+});
+
+test("observation-write fixture is source-inspected and complete",()=>{
+ const fixture=loadCheckedInMemoryObservationWrites();
+ assert.deepEqual(validateMemoryObservationWrites(fixture),[]);
+ assert.deepEqual(fixture.cases.map((item:any)=>item.id),["OBS-01","OBS-02","OBS-03","OBS-04","OBS-05"]);
+});
+
+test("observation-write guards reject missing cases, substituted evidence, and malformed schema",()=>{
+ const fixture=loadCheckedInMemoryObservationWrites();
+ const reject=(mutate:(input:any)=>void,pattern:RegExp)=>{const input=structuredClone(fixture);mutate(input);assert.match(validateMemoryObservationWrites(input).join("\n"),pattern);};
+ reject(input=>{input.cases.pop();},/exact OBS|five unique/);
+ reject(input=>{input.cases[0].id=["OBS-01"];},/case IDs must be strings/);
+ reject(input=>{input.sources[0].path=[input.sources[0].path];},/path must be a string/);
+ reject(input=>{input.sources[0].sha256="0".repeat(64);},/pinned byte\/hash tuple/);
+ reject(input=>{input.cases[2].evidence[0]={sourceId:"SRC-OBS-002",startLine:1447,endLine:1600};},/pinned evidence/);
+ reject(input=>{input.cases[0].evidence.push({...input.cases[0].evidence[0]});},/pinned evidence/);
+ reject(input=>{input.cases[0].transport=" ";},/transport/);
+ reject(input=>{input.cases[0].unexpected=true;},/unknown or missing properties/);
+});
+
+test("observation-write conditional HTTP authentication requires exact helper implementation evidence",()=>{
+ const fixture=loadCheckedInMemoryObservationWrites();
+ const reject=(mutate:(input:any,item:any)=>void,pattern:RegExp)=>{
+  const input=structuredClone(fixture),item=input.cases.find((candidate:any)=>candidate.id==="OBS-05");mutate(input,item);
+  assert.match(validateMemoryObservationWrites(input).join("\n"),pattern);
+ };
+ reject((_input,item)=>{item.evidence=item.evidence.filter((evidence:any)=>!(evidence.sourceId==="SRC-OBS-003"&&evidence.startLine===146&&evidence.endLine===180));},/pinned evidence/);
+ reject((_input,item)=>{const helper=item.evidence.find((evidence:any)=>evidence.sourceId==="SRC-OBS-003"&&evidence.startLine===146);helper.startLine=147;},/pinned evidence/);
+ reject((input,_item)=>{input.sources.find((source:any)=>source.id==="SRC-OBS-003").lineStart=431;},/declared line range|line range/);
+});
+
+test("observation-write critical facts protect counters, barriers, privacy, auth, and queue semantics",()=>{
+ const fixture=loadCheckedInMemoryObservationWrites();
+ const reject=(id:string,mutate:(item:any)=>void)=>{const input=structuredClone(fixture),item=input.cases.find((candidate:any)=>candidate.id===id);mutate(item);assert.match(validateMemoryObservationWrites(input).join("\n"),/critical values/);};
+ reject("OBS-01",item=>{item.criticalValues.newRow.duplicateCount=0;});
+ reject("OBS-01",item=>{item.criticalValues.privateTagReplacement="secret_detector";});
+ reject("OBS-02",item=>{item.criticalValues.duplicateDelta=1;});
+ reject("OBS-03",item=>{item.criticalValues.revisionDelta=1;});
+ reject("OBS-04",item=>{item.criticalValues.rejectionBarrier=["row"];});
+ reject("OBS-04",item=>{item.criticalValues.httpStatus.mismatch_or_project_change=401;});
+ reject("OBS-05",item=>{item.criticalValues.hard.relations="cascade";});
+ reject("OBS-05",item=>{item.criticalValues.sync.unenrolled="delete_queue_row";});
+ reject("OBS-05",item=>{item.criticalValues.http.authWrapper="tenant_authentication";});
+});
+
+test("observation-write limitations reject secret-detector, authentication, and automatic-retry claims",()=>{
+ const fixture=loadCheckedInMemoryObservationWrites();
+ for(const index of [1,2,3,4,5,6]){
+  const input=structuredClone(fixture);input.limitations[index]="replacement claim";
+  assert.match(validateMemoryObservationWrites(input).join("\n"),/limitations/);
+ }
 });
 
 test("CLI rejects flags instead of implying a live verifier",()=>{

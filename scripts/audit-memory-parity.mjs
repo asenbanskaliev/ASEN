@@ -6,6 +6,7 @@ import {fileURLToPath} from "node:url";
 const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),"..");
 const MANIFEST="registry/parity/memory-upstream-v3.json";
 const FOUNDATION_MANIFEST="registry/parity/memory-foundation-contracts-v1.json";
+const OBSERVATION_WRITE_MANIFEST="registry/parity/memory-observation-write-contracts-v1.json";
 const SHA40=/^[a-f0-9]{40}$/;
 const SHA64=/^[a-f0-9]{64}$/;
 const PATH=/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\/\/)[A-Za-z0-9._/-]+$/;
@@ -17,6 +18,10 @@ const FOUNDATION_TOP_FIELDS=["schemaVersion","scope","status","proofKind","limit
 const FOUNDATION_SOURCE_FIELDS=["id","path","bytes","sha256","commit","commitRole","lineStart","lineEnd"];
 const FOUNDATION_CASE_FIELDS=["id","summary","evidence","input","trigger","ordering","output","durableState","sideEffects","negativeControls","versionControl","criticalValues"];
 const FOUNDATION_EVIDENCE_FIELDS=["sourceId","startLine","endLine"];
+const OBSERVATION_TOP_FIELDS=["schemaVersion","scope","status","proofKind","limitations","sources","cases"];
+const OBSERVATION_SOURCE_FIELDS=["id","path","bytes","sha256","commit","commitRole","lineStart","lineEnd"];
+const OBSERVATION_CASE_FIELDS=["id","summary","evidence","inputs","triggers","preconditions","outputs","durableEffects","negativeControls","privacy","assertion","transport","versionControl","criticalValues"];
+const OBSERVATION_NARRATIVE_FIELDS=["summary","inputs","triggers","preconditions","outputs","durableEffects","negativeControls","privacy","assertion","transport"];
 const CORE_COMMIT="15a2f78885d7ad8ced23b2d1d88383e9bb472c17";
 const FOUNDATION_SOURCE_ANCHORS={
  "internal/store/store.go":[501321,"2ffd000ee7f8c8fc1ad0c3d130e88a8ab4878449866c9737215b3c6d8ffa555b",997,9363],
@@ -36,6 +41,34 @@ const FOUNDATION_CRITICAL_ANCHORS={
  "FND-08":{failedPostOpenClosesHandle:true,normalCloseClosesHandle:true,persistentWalPreserved:true,priorFilesystemStateRolledBack:false}
 };
 const FOUNDATION_ORDER_ANCHOR=["generation_check","version_read","future_gate","migration_lock","generation_recheck","version_reread","migrate_repair","stamp_if_older"];
+const OBSERVATION_LIMITATIONS=Object.freeze([
+ "These contracts record source inspection only; they do not prove ASEN runtime behavior or write parity.",
+ "Private-tag replacement is not a general secret detector.",
+ "expected_project is a caller ownership assertion, not authentication or tenant isolation.",
+ "Unknown write outcomes require readback and reconciliation; they must not be retried automatically.",
+ "Library UpdateObservation and DeleteObservation variants remain callable without expected_project.",
+ "Queue-helper invocation does not prove a durable queue row because local unenrolled projects skip insertion.",
+ "MCP forwards capture_prompt; the separately released Pi surface exposes but does not forward that option, and this core snapshot is not published-Pi proof."
+]);
+const OBSERVATION_SOURCE_ANCHORS=Object.freeze({
+ "internal/store/store.go":[501321,"2ffd000ee7f8c8fc1ad0c3d130e88a8ab4878449866c9737215b3c6d8ffa555b",3685,12492],
+ "internal/mcp/mcp.go":[147307,"613a6c74621cdae0c6b8af1fb79c5c121ba51ca4a9665621f9312c683199872d",500,1877],
+ "internal/server/server.go":[73752,"53caec2f14679d5c9a2558c06ce6183e740bb1b78b4cebc33219b60271a53c20",146,929]
+});
+const OBSERVATION_EVIDENCE_ANCHORS=Object.freeze({
+ "OBS-01":[["SRC-OBS-001",3685,3722],["SRC-OBS-001",3809,3860],["SRC-OBS-001",4335,4357],["SRC-OBS-001",12256,12275],["SRC-OBS-001",12483,12492],["SRC-OBS-002",500,550],["SRC-OBS-002",1447,1600],["SRC-OBS-003",630,673]],
+ "OBS-02":[["SRC-OBS-001",3719,3772],["SRC-OBS-001",12409,12424]],
+ "OBS-03":[["SRC-OBS-001",3774,3807]],
+ "OBS-04":[["SRC-OBS-001",4666,4809],["SRC-OBS-001",4828,4853],["SRC-OBS-002",554,595],["SRC-OBS-002",1661,1745],["SRC-OBS-003",783,830]],
+ "OBS-05":[["SRC-OBS-001",4858,4951],["SRC-OBS-001",10636,10713],["SRC-OBS-002",641,660],["SRC-OBS-002",1855,1877],["SRC-OBS-003",146,180],["SRC-OBS-003",431,439],["SRC-OBS-003",897,929]]
+});
+const OBSERVATION_CRITICAL_ANCHORS=Object.freeze({
+ "OBS-01":{admissionFields:["session_id","type","title","content","project","scope","tool_name","topic_key"],projectNormalized:true,privateTagReplacement:"[REDACTED]",contentLimit:"configured_bytes_utf8_safe_plus_marker",postPrivacyNonempty:["title","content"],newRow:{newId:true,revisionCount:1,duplicateCount:1,lastSeenAt:"now",updatedAt:"now"},queueEffect:"helper_invoked_enrollment_dependent",mcp:{contentAlias:"observation",typeDefault:"manual",capturePromptForwarded:true},http:{required:["session_id","title","content"],successStatus:201,response:["id","status_saved"]}},
+ "OBS-02":{matchOrder:"before_duplicate",matchingKeys:["normalized_topic_key","project","scope","undeleted"],selected:"latest_updated_then_created",sameId:true,replacedFields:["session_id","type","title","content","tool_name","topic_key","normalized_hash"],revisionDelta:1,duplicateDelta:0,lastSeenAt:"now",updatedAt:"now",queueEffect:"helper_invoked_enrollment_dependent"},
+ "OBS-03":{afterNoTopicMatch:true,matchingKeys:["normalized_content_hash","project","scope","type","title","undeleted","inside_configured_window"],selected:"newest_created",sameId:true,duplicateDelta:1,revisionDelta:0,contentMutated:false,lastSeenAt:"now",updatedAt:"now",queueEffect:"helper_invoked_enrollment_dependent",outsideOrDifferent:"insert_new"},
+ "OBS-04":{guardedEntry:"UpdateObservationForProject",expectedOwnerRequired:true,ownershipCheck:"inside_transaction",projectImmutable:true,atLeastOneUpdateField:"transport_validated",findReplace:{paired:true,withContent:false,pureMissWithoutMetadata:"unchanged_no_revision_no_queue"},validMutation:{revisionDelta:1,rehashContent:true,queueEffect:"helper_invoked_enrollment_dependent"},rejectionBarrier:["row","revision","queue"],httpStatus:{malformed:400,mismatch_or_project_change:409,other:404},mcpCurrentProjectCheck:true,unguardedLibraryVariant:"UpdateObservation"},
+ "OBS-05":{guardedEntry:"DeleteObservationForProject",expectedOwnerRequired:true,ownershipCheck:"inside_transaction",hardDefault:false,soft:{deletedAt:"now",updatedAt:"now"},hard:{tombstoneBeforePhysicalRemoval:true,relations:"orphan_not_cascade"},sync:{enrolled:"delete_queue_row",unenrolled:"supersede_prior_mutation_state"},rejectionBarrier:["row","relations","tombstone","queue"],mcpProfile:"admin",http:{authWrapper:"conditional_configuration",missingOwner:400,mismatch:409,missingRow:404},unguardedLibraryVariant:"DeleteObservation"}
+});
 const FOUNDATION_EVIDENCE_ANCHORS=Object.freeze({
  "FND-01":Object.freeze([["SRC-FND-001",1007,1010]]),
  "FND-02":Object.freeze([["SRC-FND-001",1011,1016],["SRC-FND-002",144,211],["SRC-FND-003",41,55]]),
@@ -82,6 +115,62 @@ export function loadCheckedInMemoryParity(root=ROOT){
 export function loadCheckedInMemoryFoundation(root=ROOT){
  try{return JSON.parse(readFileSync(resolve(root,FOUNDATION_MANIFEST),"utf8"));}
  catch(error){throw new Error(`cannot read memory foundation JSON ${FOUNDATION_MANIFEST}`,{cause:error});}
+}
+
+/** Load observation-write contracts without executing upstream code. */
+export function loadCheckedInMemoryObservationWrites(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,OBSERVATION_WRITE_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory observation-write JSON ${OBSERVATION_WRITE_MANIFEST}`,{cause:error});}
+}
+
+/** Pure structural and critical-value validation of source-inspected observation writes. */
+export function validateMemoryObservationWrites(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,OBSERVATION_TOP_FIELDS,"observation-write manifest",issues))return issues;
+ if(manifest.schemaVersion!==1)issues.push("observation-write schemaVersion must be 1");
+ if(manifest.scope!=="reference_only")issues.push("observation-write scope must be reference_only");
+ if(manifest.status!=="SOURCE_INSPECTED")issues.push("observation-write status must be SOURCE_INSPECTED");
+ if(manifest.proofKind!=="source_inspection")issues.push("observation-write proofKind must be source_inspection");
+ if(JSON.stringify(manifest.limitations)!==JSON.stringify(OBSERVATION_LIMITATIONS))issues.push("observation-write limitations must preserve the exact source-inspection boundaries");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],sourceIds=sources.map(source=>source?.id);
+ const expectedSources=["SRC-OBS-001","SRC-OBS-002","SRC-OBS-003"];
+ if(!sourceIds.every(id=>typeof id==="string"))issues.push("observation-write source IDs must be strings");
+ if(sources.length!==3||duplicates(sourceIds)||JSON.stringify(sourceIds)!==JSON.stringify(expectedSources))issues.push("observation-write sources must contain exact unique IDs in order");
+ const sourceById=new Map();
+ for(const source of sources){
+  if(!exactKeys(source,OBSERVATION_SOURCE_FIELDS,`observation-write source ${source?.id??"unknown"}`,issues))continue;
+  const pathIsString=typeof source.path==="string",anchor=pathIsString?OBSERVATION_SOURCE_ANCHORS[source.path]:undefined;
+  if(typeof source.id==="string")sourceById.set(source.id,source);
+  if(!pathIsString)issues.push(`observation-write source ${source.id} path must be a string`);
+  else if(!PATH.test(source.path))issues.push(`observation-write source ${source.id} path is invalid`);
+  if(!anchor||source.bytes!==anchor[0]||source.sha256!==anchor[1])issues.push(`observation-write source ${source.id} does not match its pinned byte/hash tuple`);
+  if(source.commit!==CORE_COMMIT||source.commitRole!=="CORE-15a")issues.push(`observation-write source ${source.id} has invalid commitRole or commit`);
+  if(!anchor||source.lineStart!==anchor[2]||source.lineEnd!==anchor[3])issues.push(`observation-write source ${source.id} has invalid declared line range`);
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],caseIds=cases.map(item=>item?.id);
+ const expectedCases=["OBS-01","OBS-02","OBS-03","OBS-04","OBS-05"];
+ if(!caseIds.every(id=>typeof id==="string"))issues.push("observation-write case IDs must be strings");
+ if(cases.length!==5||duplicates(caseIds)||JSON.stringify(caseIds)!==JSON.stringify(expectedCases))issues.push("observation-write cases must contain exact OBS-01 through OBS-05 as five unique IDs in order");
+ const covered=new Set();
+ for(const item of cases){
+  if(!exactKeys(item,OBSERVATION_CASE_FIELDS,`observation-write case ${item?.id??"unknown"}`,issues))continue;
+  for(const field of OBSERVATION_NARRATIVE_FIELDS)if(typeof item[field]!=="string"||!item[field].trim())issues.push(`observation-write case ${item.id} ${field} must be a nonempty string`);
+  if(item.versionControl!=="CORE-15a")issues.push(`observation-write case ${item.id} has invalid versionControl`);
+  const expectedEvidence=typeof item.id==="string"&&Object.hasOwn(OBSERVATION_EVIDENCE_ANCHORS,item.id)?OBSERVATION_EVIDENCE_ANCHORS[item.id]:undefined;
+  if(!Array.isArray(item.evidence)||!expectedEvidence||item.evidence.length!==expectedEvidence.length)issues.push(`observation-write case ${item.id} has invalid pinned evidence`);
+  else item.evidence.forEach((evidence,index)=>{
+   if(!exactKeys(evidence,FOUNDATION_EVIDENCE_FIELDS,`observation-write case ${item.id} evidence`,issues))return;
+   const source=sourceById.get(evidence.sourceId),anchor=expectedEvidence[index];
+   if(!source)issues.push(`observation-write case ${item.id} evidence has unknown sourceId`);
+   else if(!Number.isInteger(evidence.startLine)||!Number.isInteger(evidence.endLine)||evidence.startLine>evidence.endLine||evidence.startLine<source.lineStart||evidence.endLine>source.lineEnd)issues.push(`observation-write case ${item.id} evidence has invalid line range`);
+   else covered.add(evidence.sourceId);
+   if(!anchor||evidence.sourceId!==anchor[0]||evidence.startLine!==anchor[1]||evidence.endLine!==anchor[2])issues.push(`observation-write case ${item.id} has invalid pinned evidence`);
+  });
+  const critical=typeof item.id==="string"&&Object.hasOwn(OBSERVATION_CRITICAL_ANCHORS,item.id)?OBSERVATION_CRITICAL_ANCHORS[item.id]:undefined;
+  if(!object(item.criticalValues)||!critical||JSON.stringify(item.criticalValues)!==JSON.stringify(critical))issues.push(`observation-write case ${item.id} has invalid critical values`);
+ }
+ if(expectedSources.some(id=>!covered.has(id)))issues.push("observation-write cases must reference all pinned sources");
+ return issues;
 }
 
 /** Pure structural and critical-value validation of source-inspected foundation contracts. */
@@ -195,8 +284,8 @@ export function validateMemoryParity(manifest){
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(process.argv.length!==2){console.error("audit:memory-parity is offline-only and accepts no flags");process.exitCode=2;}
  else{
-  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation())];
+  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites())];
   if(issues.length){console.error(issues.join("\n"));process.exitCode=1;}
-  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 source-inspected foundation contracts; no runtime parity claim)");
+  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation and 5 observation-write source-inspected contracts; no runtime parity claim)");
  }
 }
