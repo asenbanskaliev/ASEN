@@ -55,7 +55,7 @@ Record whether proof is source inspection, a deterministic synthetic-store test,
   - E3-01a: separate frozen reference manifest plus 18-family baseline matrix and offline audit rejecting unsupported FULL claims. Source identifiers are provenance-only; forecast 280–360 changed lines, split before 390. No data-store mutation or live equality claim.
   - E3-01b: resolve source contradictions, fill precise behavior/event/transport contracts and corresponding fixture evidence. E3-01 remains open until these are validated; a broad family matrix is not the finished contract.
   - E3-01b1: eight source-inspected foundation cases in registry/parity/memory-foundation-contracts-v1.json, validated through the existing audit/reference test plus one exact metadata boundary exception. Four source paths; forecast 220–290 changed lines, entire candidate including tracked task changes below 390. No engine changes or runtime-proof promotion.
-  - [ ] E3-01b2 — In progress: five source-inspected observation-write contracts in `registry/parity/memory-observation-write-contracts-v1.json`: new save, topic revision, duplicate collapse, guarded update, and guarded soft/hard deletion. Extend only the existing memory audit, reference tests and exact metadata boundary entry. Independently pin source/range tuples and critical semantics; reject altered evidence, counters, mutation barriers, privacy/authentication claims and automatic retry of unknown writes. Forecast 256–316 source diff lines, task-inclusive 276–351; stop before 390 and split rather than compress. Preserve unguarded library variants and enrollment-dependent queue effects as explicit limitations. Observe meaningful validator RED/GREEN, applicable scoped checks and native review before closure; no engine or real-data mutation.
+  - [x] E3-01b2 — Complete as a SOURCE_INSPECTED reference-only slice: five observation-write contracts in `registry/parity/memory-observation-write-contracts-v1.json` cover new save, topic revision, duplicate collapse, guarded update, and guarded soft/hard deletion. The fixture preserves unguarded library variants, enrollment-dependent queue effects, unknown-write reconciliation, and the distinction between ownership assertions and authentication. This is not engine or runtime-parity evidence.
 - [ ] E3-02 — Establish a safe ASEN storage and migration foundation.
   - Derive schema, limits, journal/connection behavior and local-filesystem restrictions from source.
   - Preserve current rows, external IDs, project/session association and content. Human selected literal-future-crud: compatible future-version stores open and allow reads/writes while skipping startup migrations, matching pinned source. Do not add unrequested future-version rejection or read-only policy; malformed/incompatible data still follows source-backed errors.
@@ -181,9 +181,10 @@ The user authorized deeper acceleration analysis followed by plan adjustment wit
 ### Dependency gates and order
 
 - Retain the full E3-01 source/behavior contract gate before E3-02. Closing individual fixture slices does not close a major behavior family or permit early engine work.
-- Complete E3-01b2 unchanged, including independent verification, a parent semantic spot-check and applicable native review. Local commits require a fresh bounded human grant.
-- [ ] E3-01b3 — Map and freeze retrieval/search contracts for E3-06, using existing audit/reference-test surfaces after E3-01b2 closure. Research may run read-only before closure; implementation remains sequential.
-- [ ] E3-01b4 — Map and freeze project-identity contracts for E3-03 after E3-01b3. Research may run in the second non-overlapping read-only lane. Session registration for E3-04 remains a separate subsequent slice. Split units if readability or the diff ceiling is threatened.
+- E3-01b2 is closed only as the independently verified, natively approved source-inspection slice recorded below. Its passive documentation closure is intentionally a separate commit and tree.
+- [ ] E3-01b3a — Freeze retrieval source contracts for E3-06 next, using the existing audit/reference-test surfaces. Before any future writer, read-only hash all five sources and pin every tuple as canonical Git `commit:path` blob bytes; never mix working-tree raw and canonical representations or reuse burned metadata/caches.
+- [ ] E3-01b3b — Freeze context and timeline contracts only after E3-01b3a. Runtime whitespace, FTS behavior, configuration overrides, live envelopes, and read-side effects remain pending.
+- [ ] E3-01b4 — Freeze project-identity contracts for E3-03 after retrieval. Existing read-only maps prepare only session/store resolution and ambiguity recovery; they do not prove an implementation, detector, or complete project family. Session registration for E3-04 remains separate.
 - After E3-01 closes, the implementation critical path is E3-02 storage, E3-03 projects, E3-04 sessions, E3-05 save, E3-06 retrieval, E3-09 actual work timing, E3-10 Pi lifecycle and E3-11 recovery. E3-07 capture and E3-08 relations retain their dependencies and obligations.
 - Keep operational work E3-12 through E3-17 in later dependency-gated lanes: backup/repair after storage and identity; export/import after durable identities, revisions, prompts and relations; Cloud after local queue/export semantics; external interfaces after the core/host lifecycle; views after APIs/retrieval; packaging/platforms after runtime integration. Every lane still feeds comparative closure E3-18.
 
@@ -203,6 +204,18 @@ The user authorized deeper acceleration analysis followed by plan adjustment wit
 - No implicit commits, publication, main changes, PR/merge, real-data operations, installations, Cloud enrollment, model changes or provider consent. Optional services and platforms remain included, not silently deferred out of scope.
 
 Success signals are fewer repeated source interpretations and semantic correction loops, complete first handoffs, checks proportionate to actual changed surfaces, no overlapping writers and no hidden pending evidence. No new product decision is needed for this immediate schedule.
+
+## E3-01b2 observation-write checkpoint
+
+E3-01b2 is closed as a source-inspected reference slice in local commit `6e37637ad669d40ae6951b3f7197b07865817e02` (parent `48510c0a18691cb0b089dd5999f6d0011c0fc694`, tree `8e10229615de563d92f66f14ee0ed52f4b639b5a`). Its exact five-path candidate contained 287 insertions and 7 deletions, 294 native changed lines: 249 source lines plus this earlier planning document. The JSON contributes 97 lines and records five cases, three pinned sources, and 24 ordered source/range tuples.
+
+The initial writer observed three semantic guard failures before correction. The citation correction then observed RED 1/21 and GREEN 21/21; independent verification passed 21/21 plus the memory audit, boundary audit over 317 paths, typecheck, diff, and status checks. Native review `review-9bdbb764c9ce79ec` approved the exact five-path tree; acknowledgement consumed revision `67fd72dee9ef96fa0391e19be18119c7640a1a6b6c36e07b95c82a9bfe22bb68`. The burned acknowledgement was review evidence, while human decision `13718` separately authorized the two local checkpoints.
+
+Nonblocking advisory R3-unpinned-narratives at `scripts/audit-memory-parity.mjs:153` remains informational. Narrative text is not an immutable verified fact; a later scoped follow-up may address it without reopening or correcting this candidate.
+
+A helper investigation found `core.autocrlf=true` can expand checkout bytes without mutating Git content: `relations.go` was 61,191 raw bytes versus 59,527 canonical bytes, and the batch helper was 10,116 versus 9,798. External record `13717` retains the exact helper paths/ranges and raw/canonical hashes. Future E3-01b3 work must adopt the canonical Git-blob policy above, freshly hash all five sources, and must not repin old metadata or mix representations.
+
+E3-01 remains open. All 18 major families remain MISSING/PARTIAL, no engine output or FULL claim is promoted, and the source-only critical guards do not prove runtime behavior. The next work is E3-01b3a retrieval/source contracts, then E3-01b3b context/timeline, then E3-01b4 project identity; no new candidate starts in this checkpoint.
 
 ## Resume checkpoint
 
