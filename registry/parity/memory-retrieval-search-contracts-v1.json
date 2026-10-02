@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "scope": "reference_only",
+  "status": "SOURCE_INSPECTED",
+  "proofKind": "source_inspection",
+  "limitations": [
+    "These contracts record source inspection only; they do not prove ASEN runtime behavior or retrieval parity.",
+    "Whitespace and quote-only SQLite outcomes are unproved even though the generated empty expressions are source-inspected.",
+    "The configured search cap is not universally 20, and no runtime override or default-window behavior is proved here.",
+    "ID retrieval and all-project search are not authentication, authorization, tenant isolation, or implicit project isolation.",
+    "Read-side persistence is unproved; inspected SQL reads and in-memory activity or nudges do not establish zero persistent writes.",
+    "Retrieval does not redact legacy or imported data merely because normal writers replace private tags.",
+    "Live envelopes, actual SQLite matching, configuration overrides, privacy, and provenance remain pending runtime obligations."
+  ],
+  "sources": [
+    {"id":"SRC-RET-001","path":"internal/store/store.go","bytes":488121,"sha256":"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/store/store.go","representation":"git_blob","lineStart":375,"lineEnd":12509},
+    {"id":"SRC-RET-002","path":"internal/mcp/mcp.go","bytes":143683,"sha256":"72dc51bdf5c5ca93540cb678ad22cd314c439154f36315adba78db66080874bb","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/mcp/mcp.go","representation":"git_blob","lineStart":1207,"lineEnd":2314},
+    {"id":"SRC-RET-003","path":"internal/server/server.go","bytes":71547,"sha256":"b6bca0acfbdc11704637c6b0eb26032f0f66f377dd95be44e365c36a82c2123d","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/server/server.go","representation":"git_blob","lineStart":728,"lineEnd":781},
+    {"id":"SRC-RET-004","path":"internal/store/relations.go","bytes":59527,"sha256":"a4c34d7766c4a392164368aec39eea2f60b6436f6e94e1394559e6a2c7f2601e","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/store/relations.go","representation":"git_blob","lineStart":1106,"lineEnd":1113},
+    {"id":"SRC-RET-005","path":"internal/store/relations_scan_batch.go","bytes":9798,"sha256":"05f8695dd6602b7e697afd69a65d8681e8bd51e1f6c9f1cb3e53ea4e1460710b","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/store/relations_scan_batch.go","representation":"git_blob","lineStart":26,"lineEnd":54}
+  ],
+  "cases": [
+    {
+      "id":"RET-01","summary":"Get-by-ID is globally unscoped while ordinary search applies its separately resolved normalized project filter.",
+      "evidence":[{"sourceId":"SRC-RET-001","startLine":4654,"endLine":4664},{"sourceId":"SRC-RET-001","startLine":5080,"endLine":5227},{"sourceId":"SRC-RET-002","startLine":1207,"endLine":1461},{"sourceId":"SRC-RET-002","startLine":2266,"endLine":2314},{"sourceId":"SRC-RET-003","startLine":728,"endLine":781}],
+      "contract":"The store get selects a complete undeleted row by ID without project filtering. HTTP get follows that behavior. MCP resolves project only after retrieval for its response envelope. Normal MCP search resolves and normalizes a project; all_projects bypasses resolution, while personal scope without an explicit override clears the filter.",
+      "negativeControls":"No project authorization, tenant boundary, or implicit global isolation is claimed. Soft-deleted rows remain excluded.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "getFilter":"id_and_undeleted_only",
+        "getProjectGuard":false,
+        "mcpProjectResolution":"after_retrieval_for_envelope",
+        "searchProject":"normalized_filter",
+        "allProjects":"bypass_resolution_and_filter",
+        "personalWithoutExplicitProject":"clear_filter",
+        "httpGetProjectFilter":false,
+        "deletedExcluded":true
+      }
+    },
+    {
+      "id":"RET-02","summary":"Match mode is validated before query branching, with distinct all-term and any-term quoting helpers.",
+      "evidence":[{"sourceId":"SRC-RET-001","startLine":5085,"endLine":5091},{"sourceId":"SRC-RET-001","startLine":5237,"endLine":5241},{"sourceId":"SRC-RET-001","startLine":12495,"endLine":12509},{"sourceId":"SRC-RET-004","startLine":1106,"endLine":1113},{"sourceId":"SRC-RET-005","startLine":26,"endLine":54},{"sourceId":"SRC-RET-002","startLine":1218,"endLine":1224},{"sourceId":"SRC-RET-003","startLine":742,"endLine":746}],
+      "contract":"All/default uses whitespace fields, trims edge quotes, doubles every interior quote, quotes every resulting field, and does not drop quote-only fields. Any uses Unicode fields, drops edge-quote-only empties, preserves order and duplicates, doubles interior quotes while preserving already doubled pairs, and joins phrases with OR.",
+      "negativeControls":"The empty expression generated from whitespace or an any-mode quote-only query is pinned, but its actual SQLite error or zero-row outcome is not claimed.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "validationBeforeShortPath":true,
+        "validModes":["","all","any"],
+        "all":{"split":"unicode_whitespace_fields","trim":"edge_double_quotes","interiorQuotes":"double_every_quote","quoteOnly":"retained_as_empty_phrase","join":"space_implicit_AND"},
+        "any":{"split":"unicode_whitespace_fields","trim":"edge_double_quotes","quoteOnly":"dropped","order":"preserved","duplicates":"preserved","interiorQuotes":"double_unpaired_preserve_doubled_pairs","nonQuoteUtf8":"unchanged","join":" OR "},
+        "emptyExpressionBuilt":true,
+        "sqliteOutcome":"UNPROVED"
+      }
+    },
+    {
+      "id":"RET-03","summary":"Any term shorter than three Unicode runes switches the whole observation query to escaped literal LIKE matching.",
+      "evidence":[{"sourceId":"SRC-RET-001","startLine":2839,"endLine":2885},{"sourceId":"SRC-RET-001","startLine":5433,"endLine":5507}],
+      "contract":"The fallback searches six fields using literal contains patterns, escapes backslash then percent and underscore, combines fields with OR, combines terms with AND for all/default or OR for any, returns rank zero, and orders updated time then ID descending.",
+      "negativeControls":"The threshold counts Unicode runes rather than UTF-8 bytes. LIKE is not regexp, glob, raw SQL wildcard matching, or ordinary trigram FTS.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "shortThresholdRunes":3,
+        "switchScope":"whole_query",
+        "escapeOrder":["backslash","percent","underscore"],
+        "escapedCharacters":["\\","%","_"],
+        "fields":["title","content","tool_name","type","project","topic_key"],
+        "fieldJoin":"OR",
+        "allTermJoin":"AND",
+        "anyTermJoin":"OR",
+        "rank":0,
+        "order":["updated_at_DESC","id_DESC"],
+        "normalTokenizer":"trigram"
+      }
+    },
+    {
+      "id":"RET-04","summary":"Search defaults to ten and caps at configured MaxSearchResults while topic hits and FTS ranking retain distinct ordering rules.",
+      "evidence":[{"sourceId":"SRC-RET-001","startLine":792,"endLine":823},{"sourceId":"SRC-RET-001","startLine":5096,"endLine":5102},{"sourceId":"SRC-RET-001","startLine":5104,"endLine":5227},{"sourceId":"SRC-RET-001","startLine":5386,"endLine":5431},{"sourceId":"SRC-RET-002","startLine":1207,"endLine":1461}],
+      "contract":"A nonpositive request limit becomes ten and is capped by configuration, whose default is twenty. Slash-containing exact topic hits rank at negative one thousand, order newest updated first, and are deduplicated before normal results. FTS exposes raw BM25 but orders by a multiplicative composite and stable sync-or-ID then ID keys.",
+      "negativeControls":"Twenty is a default configuration value, not a universal cap. Default runtime configuration and overrides are not proved by this fixture.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "requestDefault":10,
+        "configDefaultMax":20,
+        "cap":"configured_MaxSearchResults",
+        "universal20":false,
+        "topicDirect":{"trigger":"query_contains_slash","match":"exact_topic_key","rank":-1000,"order":"updated_at_DESC","dedupeBeforeNormal":true},
+        "bm25Weights":{"title":5,"content":1,"topicKey":3},
+        "composite":{"form":"raw_bm25_multiply_one_plus_boosts","pinned":0.1,"recency":0.06,"recencyHalfScoreDays":30,"stability":0.04,"stabilityScale":4},
+        "sort":["composite_ASC","stable_sync_or_padded_id_ASC","id_ASC"],
+        "projectedRank":"raw_bm25"
+      }
+    },
+    {
+      "id":"RET-05","summary":"Preview search selects three hundred SQLite characters while full search and ID retrieval retain complete content.",
+      "evidence":[{"sourceId":"SRC-RET-001","startLine":5080,"endLine":5354},{"sourceId":"SRC-RET-002","startLine":1207,"endLine":1461},{"sourceId":"SRC-RET-002","startLine":2266,"endLine":2314}],
+      "contract":"SQLite substr and length define a 300-codepoint preview and truncation flag. MCP search uses previews, compact mode adds preview and truncated structured metadata, and full content requires the separate ID retrieval path.",
+      "negativeControls":"The bound is not UTF-8 bytes, full bodies are not clamped by search preview behavior, and automatic full-content follow-up is not proved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "previewLength":300,
+        "unit":"SQLite_Unicode_codepoints",
+        "truncated":"length_content_greater_than_300",
+        "storeSearch":"full_content",
+        "mcpSearch":"preview_only",
+        "compactAdds":["preview","truncated"],
+        "fullGetSeparate":true,
+        "automaticGetFetch":false
+      }
+    },
+    {
+      "id":"RET-06","summary":"Deleted filtering, optional metadata, project profiles, and relation-load error handling remain distinct read contracts.",
+      "evidence":[{"sourceId":"SRC-RET-001","startLine":4654,"endLine":4664},{"sourceId":"SRC-RET-001","startLine":5104,"endLine":5354},{"sourceId":"SRC-RET-002","startLine":1252,"endLine":1461},{"sourceId":"SRC-RET-004","startLine":1106,"endLine":1113},{"sourceId":"SRC-RET-005","startLine":26,"endLine":54}],
+      "contract":"Get, topic-direct, FTS, and LIKE paths exclude soft-deleted observations. MCP omits absent project, topic, and review metadata. Relation batch-load failures are swallowed unless cancellation or deadline expiry is observed.",
+      "negativeControls":"No zero-persistent-write claim is made. Read responses do not retroactively redact legacy data, and project-selection profiles do not establish authorization.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "deletedExcludedFrom":["get","topic_direct","fts","like"],
+        "optionalMetadataOmitted":["project","topic_key","review_after"],
+        "relationLoad":{"ordinaryError":"swallowed","canceled":"search_error","deadlineExceeded":"search_error"},
+        "persistentWrites":"UNPROVED",
+        "legacyReadRedaction":false,
+        "projectAuthorization":false
+      }
+    }
+  ]
+}

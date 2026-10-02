@@ -3,7 +3,7 @@ import {spawnSync} from "node:child_process";
 import {resolve} from "node:path";
 import test from "node:test";
 // @ts-expect-error Dependency-free offline JavaScript validator.
-import {loadCheckedInMemoryFoundation,loadCheckedInMemoryObservationWrites,loadCheckedInMemoryParity,validateMemoryFoundation,validateMemoryObservationWrites,validateMemoryParity} from "../scripts/audit-memory-parity.mjs";
+import {loadCheckedInMemoryFoundation,loadCheckedInMemoryObservationWrites,loadCheckedInMemoryParity,loadCheckedInMemoryRetrievalSearch,validateMemoryFoundation,validateMemoryObservationWrites,validateMemoryParity,validateMemoryRetrievalSearch} from "../scripts/audit-memory-parity.mjs";
 
 const baseline=loadCheckedInMemoryParity();
 const clone=()=>structuredClone(baseline);
@@ -215,6 +215,39 @@ test("observation-write limitations reject secret-detector, authentication, and 
   const input=structuredClone(fixture);input.limitations[index]="replacement claim";
   assert.match(validateMemoryObservationWrites(input).join("\n"),/limitations/);
  }
+});
+
+test("retrieval/search fixture is source-inspected and contains six contracts",()=>{
+ const fixture=loadCheckedInMemoryRetrievalSearch();
+ assert.deepEqual(validateMemoryRetrievalSearch(fixture),[]);
+ assert.deepEqual(fixture.cases.map((item:any)=>item.id),["RET-01","RET-02","RET-03","RET-04","RET-05","RET-06"]);
+ assert.equal(fixture.status,"SOURCE_INSPECTED");
+});
+
+test("retrieval/search guards reject semantic substitutions",()=>{
+ const fixture=loadCheckedInMemoryRetrievalSearch();
+ const mutations:[string,RegExp,(input:any)=>void][]=[
+  ["representation",/representation/,input=>{input.sources[0].representation="raw_checkout";}],
+  ["old raw hash",/byte\/hash tuple/,input=>{input.sources[0].sha256="2ffd000ee7f8c8fc1ad0c3d130e88a8ab4878449866c9737215b3c6d8ffa555b";}],
+  ["source identity",/source identity/,input=>{input.sources[0].sourceIdentity=input.sources[0].path;}],
+  ["missing any helper",/pinned evidence/,input=>{input.cases[1].evidence.splice(3,2);}],
+  ["all quote-only",/critical values/,input=>{input.cases[1].criticalValues.all.quoteOnly="dropped";}],
+  ["any doubled quotes",/critical values/,input=>{input.cases[1].criticalValues.any.interiorQuotes="double_every_quote";}],
+  ["byte threshold",/critical values/,input=>{input.cases[2].criticalValues.shortThresholdRunes="utf8_bytes";}],
+  ["wildcards",/critical values/,input=>{input.cases[2].criticalValues.escapedCharacters=["\\"]; }],
+  ["universal cap",/critical values/,input=>{input.cases[3].criticalValues.universal20=true;}],
+  ["preview bytes",/critical values/,input=>{input.cases[4].criticalValues.unit="utf8_bytes";}],
+  ["project isolation",/critical values/,input=>{input.cases[0].criticalValues.getProjectGuard=true;}],
+  ["global get",/critical values/,input=>{input.cases[0].criticalValues.getFilter="project_and_id";}],
+  ["deleted bypass",/critical values/,input=>{input.cases[5].criticalValues.deletedExcludedFrom=["fts"]; }],
+  ["tuple substitution",/pinned evidence/,input=>{input.cases[0].evidence[0]={...input.cases[0].evidence[1]};}]
+ ];
+ const failures:string[]=[];
+ for(const [name,pattern,mutate] of mutations){
+  const input=structuredClone(fixture);mutate(input);
+  if(!pattern.test(validateMemoryRetrievalSearch(input).join("\n")))failures.push(name);
+ }
+ assert.deepEqual(failures,[]);
 });
 
 test("CLI rejects flags instead of implying a live verifier",()=>{
