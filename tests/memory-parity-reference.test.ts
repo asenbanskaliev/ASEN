@@ -3,7 +3,7 @@ import {spawnSync} from "node:child_process";
 import {resolve} from "node:path";
 import test from "node:test";
 // @ts-expect-error Dependency-free offline JavaScript validator.
-import {loadCheckedInMemoryFoundation,loadCheckedInMemoryObservationWrites,loadCheckedInMemoryParity,loadCheckedInMemoryRetrievalSearch,validateMemoryFoundation,validateMemoryObservationWrites,validateMemoryParity,validateMemoryRetrievalSearch} from "../scripts/audit-memory-parity.mjs";
+import {loadCheckedInMemoryContextTimeline,loadCheckedInMemoryFoundation,loadCheckedInMemoryObservationWrites,loadCheckedInMemoryParity,loadCheckedInMemoryRetrievalSearch,validateMemoryContextTimeline,validateMemoryFoundation,validateMemoryObservationWrites,validateMemoryParity,validateMemoryRetrievalSearch} from "../scripts/audit-memory-parity.mjs";
 
 const baseline=loadCheckedInMemoryParity();
 const clone=()=>structuredClone(baseline);
@@ -248,6 +248,58 @@ test("retrieval/search guards reject semantic substitutions",()=>{
   if(!pattern.test(validateMemoryRetrievalSearch(input).join("\n")))failures.push(name);
  }
  assert.deepEqual(failures,[]);
+});
+
+test("context/timeline fixture is source-inspected and contains exactly five contracts",()=>{
+ const fixture=loadCheckedInMemoryContextTimeline();
+ assert.deepEqual(validateMemoryContextTimeline(fixture),[]);
+ assert.deepEqual(fixture.cases.map((item:any)=>item.id),["CTX-core-options","CTX-core-byte-helper","CTX-HTTP-context","CTX-MCP-complete-result","CTX-timeline"]);
+ assert.equal(fixture.status,"SOURCE_INSPECTED");
+ assert.equal(fixture.proofKind,"source_inspection");
+});
+
+test("context/timeline guards reject semantic substitutions",()=>{
+ const fixture=loadCheckedInMemoryContextTimeline();
+ const mutations:[string,(input:any)=>void][]=[
+  ["configured default made universal",input=>{input.cases[0].criticalValues.sectionCaps.zero.observations="universal_20";}],
+  ["pinned default capped",input=>{input.cases[0].criticalValues.sectionCaps.zero.pinned=20;}],
+  ["preview changed to bytes",input=>{input.cases[0].criticalValues.previews.unit="utf8_bytes";}],
+  ["preview hard ceiling",input=>{input.cases[0].criticalValues.previews.renderedHardCeiling=true;}],
+  ["compact drops prompts",input=>{input.cases[0].criticalValues.compact.omits.push("prompts");}],
+  ["zero byte budget bounded",input=>{input.cases[1].criticalValues.nonpositive="empty";}],
+  ["tiny budget gets marker",input=>{input.cases[1].criticalValues.tinyPositive="marker";}],
+  ["HTTP envelope included",input=>{input.cases[2].criticalValues.byteBudgetScope="json_envelope";}],
+  ["HTTP positive section uncapped",input=>{input.cases[2].criticalValues.sectionCeiling=0;}],
+  ["MCP fraction truncates",input=>{input.cases[3].criticalValues.invalidBudget.fractional="truncate";}],
+  ["MCP suffix order",input=>{input.cases[3].criticalValues.order.reverse();}],
+  ["MCP pin cap",input=>{input.cases[3].criticalValues.pinnedCap=0;}],
+  ["MCP project cap",input=>{input.cases[3].criticalValues.statsProjectCap=20;}],
+  ["timeline store project guard",input=>{input.cases[4].criticalValues.storeProjectGuard=true;}],
+  ["timeline includes deleted",input=>{input.cases[4].criticalValues.neighbors.deleted="included";}],
+  ["timeline order",input=>{input.cases[4].criticalValues.resultOrder.reverse();}],
+  ["timeline global authorization",input=>{input.cases[4].criticalValues.globalIdAuthorization=true;}],
+  ["timeline MCP full bodies",input=>{input.cases[4].criticalValues.mcpPreview.neighborRunes="full";}]
+ ];
+ const failures:string[]=[];
+ for(const [name,mutate] of mutations){
+  const input=structuredClone(fixture);mutate(input);
+  if(!/critical values/.test(validateMemoryContextTimeline(input).join("\n")))failures.push(name);
+ }
+ assert.deepEqual(failures,[]);
+});
+
+test("context/timeline guards pin schema, source tuples, evidence, and limitations",()=>{
+ const fixture=loadCheckedInMemoryContextTimeline();
+ const reject=(mutate:(input:any)=>void,pattern:RegExp)=>{const input=structuredClone(fixture);mutate(input);assert.match(validateMemoryContextTimeline(input).join("\n"),pattern);};
+ reject(input=>{input.cases.pop();},/exact five CTX cases/);
+ reject(input=>{input.sources[0].representation="raw_checkout";},/representation/);
+ reject(input=>{input.sources[0].sha256="0".repeat(64);},/byte\/hash tuple/);
+ reject(input=>{input.sources[1].sourceIdentity=input.sources[1].path;},/source identity/);
+ reject(input=>{input.cases[3].evidence[0]={...input.cases[2].evidence[0]};},/pinned evidence/);
+ reject(input=>{input.cases[4].evidence.pop();},/pinned evidence/);
+ reject(input=>{input.limitations=[];},/limitations/);
+ reject(input=>{input.cases[0].contract=" ";},/contract/);
+ reject(input=>{input.cases[0].unexpected=true;},/unknown or missing properties/);
 });
 
 test("CLI rejects flags instead of implying a live verifier",()=>{

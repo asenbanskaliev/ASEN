@@ -8,6 +8,7 @@ const MANIFEST="registry/parity/memory-upstream-v3.json";
 const FOUNDATION_MANIFEST="registry/parity/memory-foundation-contracts-v1.json";
 const OBSERVATION_WRITE_MANIFEST="registry/parity/memory-observation-write-contracts-v1.json";
 const RETRIEVAL_SEARCH_MANIFEST="registry/parity/memory-retrieval-search-contracts-v1.json";
+const CONTEXT_TIMELINE_MANIFEST="registry/parity/memory-context-timeline-contracts-v1.json";
 const SHA40=/^[a-f0-9]{40}$/;
 const SHA64=/^[a-f0-9]{64}$/;
 const PATH=/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\/\/)[A-Za-z0-9._/-]+$/;
@@ -26,6 +27,9 @@ const OBSERVATION_NARRATIVE_FIELDS=["summary","inputs","triggers","preconditions
 const RETRIEVAL_TOP_FIELDS=["schemaVersion","scope","status","proofKind","limitations","sources","cases"];
 const RETRIEVAL_SOURCE_FIELDS=["id","path","bytes","sha256","commit","sourceIdentity","representation","lineStart","lineEnd"];
 const RETRIEVAL_CASE_FIELDS=["id","summary","evidence","contract","negativeControls","versionControl","criticalValues"];
+const CONTEXT_TOP_FIELDS=["schemaVersion","scope","status","proofKind","limitations","sources","cases"];
+const CONTEXT_SOURCE_FIELDS=["id","path","bytes","sha256","commit","sourceIdentity","representation","lineStart","lineEnd"];
+const CONTEXT_CASE_FIELDS=["id","summary","evidence","contract","negativeControls","versionControl","criticalValues"];
 const CORE_COMMIT="15a2f78885d7ad8ced23b2d1d88383e9bb472c17";
 const FOUNDATION_SOURCE_ANCHORS={
  "internal/store/store.go":[501321,"2ffd000ee7f8c8fc1ad0c3d130e88a8ab4878449866c9737215b3c6d8ffa555b",997,9363],
@@ -89,6 +93,44 @@ const RETRIEVAL_EVIDENCE_ANCHORS=Object.freeze({
  "RET-04":[["SRC-RET-001",792,823],["SRC-RET-001",5096,5102],["SRC-RET-001",5104,5227],["SRC-RET-001",5386,5431],["SRC-RET-002",1207,1461]],
  "RET-05":[["SRC-RET-001",5080,5354],["SRC-RET-002",1207,1461],["SRC-RET-002",2266,2314]],
  "RET-06":[["SRC-RET-001",4654,4664],["SRC-RET-001",5104,5354],["SRC-RET-002",1252,1461],["SRC-RET-004",1106,1113],["SRC-RET-005",26,54]]
+});
+const CONTEXT_LIMITATIONS=Object.freeze([
+ "These contracts record source inspection only; they do not prove ASEN runtime behavior or context/timeline parity.",
+ "The configured observation default is not a universal cap, and configuration overrides are not exercised.",
+ "Core MaxBytes budgets only the rendered context body; HTTP JSON and MCP result envelopes have distinct boundaries.",
+ "MCP argument branches are source-inspected Go behavior; this does not claim that JSON transports accept NaN.",
+ "Timeline project checks are resolved-project equality gates, not authentication, tenant isolation, or global ID authorization.",
+ "Read-side persistence outside the inspected ranges, live HTTP/MCP envelopes, and actual database ordering remain unproved."
+]);
+const CONTEXT_SOURCE_ANCHORS=Object.freeze({
+ "internal/store/store.go":[488121,"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e",792,12254],
+ "internal/mcp/mcp.go":[143683,"72dc51bdf5c5ca93540cb678ad22cd314c439154f36315adba78db66080874bb",1950,3624],
+ "internal/server/server.go":[71547,"b6bca0acfbdc11704637c6b0eb26032f0f66f377dd95be44e365c36a82c2123d",928,2191]
+});
+const CONTEXT_EVIDENCE_ANCHORS=Object.freeze({
+ "CTX-core-options":[["SRC-CTX-001",792,824],["SRC-CTX-001",5647,5775],["SRC-CTX-001",5866,5879],["SRC-CTX-001",12248,12254]],
+ "CTX-core-byte-helper":[["SRC-CTX-001",5777,5802]],
+ "CTX-HTTP-context":[["SRC-CTX-003",1251,1338],["SRC-CTX-003",2183,2191]],
+ "CTX-MCP-complete-result":[["SRC-CTX-002",1950,2114]],
+ "CTX-timeline":[["SRC-CTX-001",4970,5067],["SRC-CTX-003",928,967],["SRC-CTX-002",2195,2263],["SRC-CTX-002",3618,3624]]
+});
+const CONTEXT_CRITICAL_ANCHORS=Object.freeze({
+ "CTX-core-options":{
+  sectionCaps:{zero:{sessions:5,prompts:10,observations:"configured_MaxContextResults",defaultConfigMaxContextResults:20,pinned:"unlimited"},positive:"cap",negative:"omit"},
+  previews:{unit:"Unicode_runes",sessionSummaryRunes:200,promptRunes:200,pinnedBodyRunes:300,observationBodyRunes:300,truncatedSuffix:"...",renderedHardCeiling:false},
+  compact:{omits:["pinned_body","observation_body"],preserves:["sessions","prompts"]},maxBytes:{nonpositive:"unbounded",budgetScope:"rendered_core_context_body"}
+ },
+ "CTX-core-byte-helper":{nonpositive:"unbounded",utf8SafePrefix:true,marker:"\n[truncated]\n",markerBudget:"reserved_then_appended_when_marker_fits",tinyPositive:"valid_prefix_only",budgetScope:"rendered_core_context_body"},
+ "CTX-HTTP-context":{sectionStates:{positive:"cap",zero:"default",negative:"omit"},sectionCeiling:500,maxBytes:{absent:0,empty:0,malformed:0,nonpositive:0,positiveCeiling:65536},byteBudgetScope:"core_body_before_json_envelope",response:"structured_context_string"},
+ "CTX-MCP-complete-result":{
+  defaultBytes:16384,ceilingBytes:65536,invalidBudget:{absent:"default",mistyped:"default",nonpositive:"default",NaN:"default",fractional:"default"},statsProjectCap:8,pinnedCap:20,contextBudgetFloor:1,
+  order:["load_stats","cap_displayed_projects_8","append_nudge","reserve_suffix_bytes","floor_context_budget_1","render_core_pinned_20","concatenate","final_complete_result_utf8_clamp"],marker:"\n[truncated]\n",tinyPositive:"valid_prefix_only",noContentMessageFinalClamp:true,budgetScope:"complete_MCP_text_result"
+ },
+ "CTX-timeline":{
+  defaults:{beforeNonpositive:5,afterNonpositive:5},storeProjectGuard:false,focus:"full_undeleted_observation",neighbors:{session:"same_as_focus",deleted:"excluded",before:"id_less_than_focus_desc_then_reversed",after:"id_greater_than_focus_ascending"},
+  resultOrder:["before_oldest_first","focus","after_oldest_first"],transportGate:{sequence:["resolve_project","global_id_focus_fetch","resolved_project_equality","Timeline"],httpAllowsEmptyResolvedProject:true,mcpRequiresEquality:true},globalIdAuthorization:false,httpOutput:"structured_full_timeline",
+  mcpPreview:{unit:"Unicode_runes",sessionSummaryRunes:100,neighborRunes:150,focusRunes:500,truncatedSuffix:"..."},readSidePersistence:"UNPROVED"
+ }
 });
 const RETRIEVAL_CRITICAL_ANCHORS=Object.freeze({
  "RET-01":{
@@ -194,6 +236,56 @@ export function loadCheckedInMemoryObservationWrites(root=ROOT){
 export function loadCheckedInMemoryRetrievalSearch(root=ROOT){
  try{return JSON.parse(readFileSync(resolve(root,RETRIEVAL_SEARCH_MANIFEST),"utf8"));}
  catch(error){throw new Error(`cannot read memory retrieval/search JSON ${RETRIEVAL_SEARCH_MANIFEST}`,{cause:error});}
+}
+
+/** Load context/timeline contracts without executing upstream code. */
+export function loadCheckedInMemoryContextTimeline(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,CONTEXT_TIMELINE_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory context/timeline JSON ${CONTEXT_TIMELINE_MANIFEST}`,{cause:error});}
+}
+
+/** Pure structural and critical-value validation of source-inspected context/timeline contracts. */
+export function validateMemoryContextTimeline(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,CONTEXT_TOP_FIELDS,"context/timeline manifest",issues))return issues;
+ if(manifest.schemaVersion!==1)issues.push("context/timeline schemaVersion must be 1");
+ if(manifest.scope!=="reference_only"||manifest.status!=="SOURCE_INSPECTED"||manifest.proofKind!=="source_inspection")issues.push("context/timeline metadata must remain reference-only source inspection");
+ if(!nonemptyStrings(manifest.limitations)||JSON.stringify(manifest.limitations)!==JSON.stringify(CONTEXT_LIMITATIONS))issues.push("context/timeline limitations must preserve exact unproved boundaries");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],sourceIds=sources.map(source=>source?.id),sourceById=new Map();
+ const expectedSources=["SRC-CTX-001","SRC-CTX-002","SRC-CTX-003"];
+ if(!sourceIds.every(id=>typeof id==="string"))issues.push("context/timeline source IDs must be strings");
+ if(sources.length!==3||duplicates(sourceIds)||JSON.stringify(sourceIds)!==JSON.stringify(expectedSources))issues.push("context/timeline sources must contain exact unique IDs in order");
+ for(const source of sources){
+  if(!exactKeys(source,CONTEXT_SOURCE_FIELDS,`context/timeline source ${source?.id??"unknown"}`,issues))continue;
+  const pathIsString=typeof source.path==="string",anchor=pathIsString?CONTEXT_SOURCE_ANCHORS[source.path]:undefined;
+  if(typeof source.id==="string")sourceById.set(source.id,source);
+  if(!pathIsString||!PATH.test(source.path))issues.push(`context/timeline source ${source.id} path is invalid`);
+  if(!anchor||source.bytes!==anchor[0]||source.sha256!==anchor[1])issues.push(`context/timeline source ${source.id} does not match its pinned byte/hash tuple`);
+  if(source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`)issues.push(`context/timeline source ${source.id} has invalid source identity`);
+  if(source.representation!=="git_blob")issues.push(`context/timeline source ${source.id} representation must be git_blob`);
+  if(!anchor||source.lineStart!==anchor[2]||source.lineEnd!==anchor[3])issues.push(`context/timeline source ${source.id} has invalid declared line range`);
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],caseIds=cases.map(item=>item?.id),expectedCases=Object.keys(CONTEXT_EVIDENCE_ANCHORS),covered=new Set();
+ if(!caseIds.every(id=>typeof id==="string"))issues.push("context/timeline case IDs must be strings");
+ if(cases.length!==5||duplicates(caseIds)||JSON.stringify(caseIds)!==JSON.stringify(expectedCases))issues.push("context/timeline cases must contain the exact five CTX cases in order");
+ for(const item of cases){
+  if(!exactKeys(item,CONTEXT_CASE_FIELDS,`context/timeline case ${item?.id??"unknown"}`,issues))continue;
+  for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`context/timeline case ${item.id} ${field} must be a nonempty string`);
+  if(item.versionControl!=="CORE-15a")issues.push(`context/timeline case ${item.id} has invalid versionControl`);
+  const expected=typeof item.id==="string"?CONTEXT_EVIDENCE_ANCHORS[item.id]:undefined;
+  if(!Array.isArray(item.evidence)||!expected||item.evidence.length!==expected.length)issues.push(`context/timeline case ${item.id} has invalid pinned evidence`);
+  else item.evidence.forEach((evidence,index)=>{
+   if(!exactKeys(evidence,FOUNDATION_EVIDENCE_FIELDS,`context/timeline case ${item.id} evidence`,issues))return;
+   const source=sourceById.get(evidence.sourceId),anchor=expected[index];
+   if(!source||!Number.isInteger(evidence.startLine)||!Number.isInteger(evidence.endLine)||evidence.startLine>evidence.endLine||evidence.startLine<source.lineStart||evidence.endLine>source.lineEnd)issues.push(`context/timeline case ${item.id} evidence has invalid line range`);
+   else covered.add(evidence.sourceId);
+   if(!anchor||evidence.sourceId!==anchor[0]||evidence.startLine!==anchor[1]||evidence.endLine!==anchor[2])issues.push(`context/timeline case ${item.id} has invalid pinned evidence`);
+  });
+  const critical=typeof item.id==="string"?CONTEXT_CRITICAL_ANCHORS[item.id]:undefined;
+  if(!object(item.criticalValues)||!critical||JSON.stringify(item.criticalValues)!==JSON.stringify(critical))issues.push(`context/timeline case ${item.id} has invalid critical values`);
+ }
+ if(expectedSources.some(id=>!covered.has(id)))issues.push("context/timeline cases must reference all pinned sources");
+ return issues;
 }
 
 /** Pure structural and critical-value validation of source-inspected retrieval/search contracts. */
@@ -402,8 +494,8 @@ export function validateMemoryParity(manifest){
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(process.argv.length!==2){console.error("audit:memory-parity is offline-only and accepts no flags");process.exitCode=2;}
  else{
-  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch())];
+  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline())];
   if(issues.length){console.error(issues.join("\n"));process.exitCode=1;}
-  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, and 6 retrieval/search source-inspected contracts; no runtime parity claim)");
+  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, and 5 context/timeline source-inspected contracts; no runtime parity claim)");
  }
 }
