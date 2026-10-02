@@ -1,29 +1,29 @@
-# ASEN memory parity with Engram v3.0.0
+# ASEN memory parity with the pinned upstream v3.0.0
 
 ## Goal and authorization
 
-The user explicitly authorized analyzing Engram v3.0.0 and implementing absolute observable memory parity in ASEN, including what is saved, why, when, how, retrieval, retention, integration, and failure behavior. Memory now takes priority over the unfinished ODD/Skill chain. This changes sequencing, not the evidence standard or publication policy.
+The user explicitly authorized analyzing the pinned upstream v3.0.0 and implementing absolute observable memory parity in ASEN, including what is saved, why, when, how, retrieval, retention, integration, and failure behavior. Memory now takes priority over the unfinished ODD/Skill chain. This changes sequencing, not the evidence standard or publication policy.
 
 Do not equate basic SQLite persistence, installing an upstream plugin, a tool-name match, or green isolated tests with parity. No complete parity claim is valid until every applicable observable obligation has version-bound evidence. Optional features are not silently excluded from the overall target.
 
 ## Version ownership and provenance
 
-- Reference: https://github.com/Gentleman-Programming/engram/releases/tag/v3.0.0.
+- Reference identity, owner, repository, and release URL: owner-controlled metadata in `registry/parity/memory-upstream-v3.json` for tag `v3.0.0`.
 - Core release published: `2026-10-01T22:30:47Z`.
 - Annotated tag object: `fcf2eb5b6fe445c19a2e5568612a0a421f0fd5e1`.
 - Exact core commit: `15a2f78885d7ad8ced23b2d1d88383e9bb472c17`.
 - GitHub reports the tag unsigned and the release non-immutable. The pinned observed commit is not a verified publisher signature.
-- The core binary v3.0.0 and Pi package `gentle-engram` 0.2.0 have separate release channels. Independently resolved `pi-v0.2.0`: annotated object `8795484df1725315d8bf2b9181afa67de78147b0`, commit `ce51810bd351f397e49728d6a5be81679cf18554`, also unsigned. Compare actual Pi files/published package rather than assuming the later core commit is its package release.
+- The core binary v3.0.0 and the Pi package named in `registry/parity/memory-upstream-v3.json` at version 0.2.0 have separate release channels. Independently resolved `pi-v0.2.0`: annotated object `8795484df1725315d8bf2b9181afa67de78147b0`, commit `ce51810bd351f397e49728d6a5be81679cf18554`, also unsigned. Compare actual Pi files/published package rather than assuming the later core commit is its package release.
 - Primary source cache: `C:/tmp/pi-github-repos/runtime-22jXZn/04c4844dbaf9c76aee10d313520deeac0cfb3c3d9a21f35f130b74092da29e7a`. A fresh verifier confirmed its HEAD equals the exact core commit. The cache is public-source research, not an ASEN candidate or a runtime installation.
 - Context7 is a navigation aid and currently points to main. Frozen implementation and tests outrank its snippets, release announcements, or stale prose.
-- Prior Engram baseline `3284dcc2f20278ea8d37277350be9d96155697a3` and `odd/tasks/memory-strict-parity.md` remain historical. Their local-first Cloud/sync/TUI deferrals do not narrow this new full target.
+- Prior upstream-memory baseline `3284dcc2f20278ea8d37277350be9d96155697a3` and `odd/tasks/memory-strict-parity.md` remain historical. Their local-first Cloud/sync/TUI deferrals do not narrow this new full target.
 
 ## Current work and isolation
 
-- Initial mapping worktree: `../ASEN-skill-parity`, branch `feat/gentle-skill-parity-contracts`, expected HEAD `56600974fe742d862d9e7fc65a1cf9f740a6c81f`.
+- Initial mapping worktree: `../ASEN-skill-parity`, its dedicated skill-parity feature branch, expected HEAD `56600974fe742d862d9e7fc65a1cf9f740a6c81f`.
 - Preserve the unrelated six-path V4-01a reference candidate: 279 changed lines, independent scoped PASS, native review not started. Do not combine it with memory changes or call it complete v4 parity.
-- Memory worktree prepared: `../ASEN-memory-v3-parity`, branch `feat/engram-v3-memory-parity`, HEAD `56600974fe742d862d9e7fc65a1cf9f740a6c81f`. Git materialized only the committed baseline; clean status was observed before this tracker was copied. No source edits, commits, stash/reset, network or installation occurred. Never combine the unrelated old-worktree changes with this feature.
-- This worktree's task file is canonical. The initial file in ASEN-skill-parity is a staging copy of the research plan, not a second authority. Reconcile this complete file and its full Engram mirror before the first source writer.
+- Memory worktree prepared: `../ASEN-memory-v3-parity`, on the dedicated memory feature branch identified by checkpoint record `13676`, HEAD `56600974fe742d862d9e7fc65a1cf9f740a6c81f`. Git materialized only the committed baseline; clean status was observed before this tracker was copied. No source edits, commits, stash/reset, network or installation occurred. Never combine the unrelated old-worktree changes with this feature.
+- This worktree's task file is canonical. The initial file in ASEN-skill-parity is a staging copy of the research plan, not a second authority. Reconcile this complete file and its full project-memory mirror before the first source writer.
 - The first source writer completed a partial reference-only candidate in six allowed paths; no production database migration, installation, server upgrade, Cloud enrollment or host-configuration change has occurred.
 
 ## Constraints and acceptance rules
@@ -54,6 +54,7 @@ Record whether proof is source inspection, a deterministic synthetic-store test,
   - Record version ownership and every accepted upstream limitation; verify actual code rather than release claims alone.
   - E3-01a: separate frozen reference manifest plus 18-family baseline matrix and offline audit rejecting unsupported FULL claims. Source identifiers are provenance-only; forecast 280–360 changed lines, split before 390. No data-store mutation or live equality claim.
   - E3-01b: resolve source contradictions, fill precise behavior/event/transport contracts and corresponding fixture evidence. E3-01 remains open until these are validated; a broad family matrix is not the finished contract.
+  - E3-01b1: eight source-inspected foundation cases in registry/parity/memory-foundation-contracts-v1.json, validated through the existing audit/reference test plus one exact metadata boundary exception. Four source paths; forecast 220–290 changed lines, entire candidate including tracked task changes below 390. No engine changes or runtime-proof promotion.
 - [ ] E3-02 — Establish a safe ASEN storage and migration foundation.
   - Derive schema, limits, journal/connection behavior and local-filesystem restrictions from source.
   - Preserve current rows, external IDs, project/session association and content. Human selected literal-future-crud: compatible future-version stores open and allow reads/writes while skipping startup migrations, matching pinned source. Do not add unrequested future-version rejection or read-only policy; malformed/incompatible data still follows source-backed errors.
@@ -102,7 +103,7 @@ Record whether proof is source inspection, a deterministic synthetic-store test,
   - Keep each host's registration, warning, restoration and configuration preservation behavior distinct. Do not claim a simulated hook proves a live host.
 - [ ] E3-16 — Match operational views and optional clients.
   - Inventory TUI, dashboard and Obsidian commands, snapshot handling, rendering/state/interaction and errors using ASEN-owned visual identity.
-  - Do not silently defer these while claiming complete Engram parity; platform/client availability is an explicit pending dimension.
+  - Do not silently defer these while claiming complete pinned-upstream parity; platform/client availability is an explicit pending dimension.
 - [ ] E3-17 — Match installation, runtime and platform behavior.
   - Determine standalone-binary versus ASEN package requirements and resolve substantive packaging differences before claiming equality.
   - Verify Windows/Linux/macOS and applicable architectures, installation/migration/uninstall preservation, release checksums and restart behavior where available.
@@ -112,7 +113,7 @@ Record whether proof is source inspection, a deterministic synthetic-store test,
 
 ## Initial evidence and research status
 
-- Historical memory plan and its Engram observation `13549` were read. Read-only ASEN mapper `muqqtqzs-8-hvn5` confirmed actual code: only tests use the memory store; no production integration, memory tools, session/project registry, default database path, or ASEN_DATA_DIR exists. Doctor merely checks store presence. All four memory capabilities remain specified.
+- Historical memory plan and its upstream-memory observation `13549` were read. Read-only ASEN mapper `muqqtqzs-8-hvn5` confirmed actual code: only tests use the memory store; no production integration, memory tools, session/project registry, default database path, or ASEN_DATA_DIR exists. Doctor merely checks store presence. All four memory capabilities remain specified.
 - Every current store open takes BEGIN IMMEDIATE and completely rewrites FTS. Existing rows use caller-supplied IDs, kinds, project/session strings, timestamps and nullable topics; those fields must survive migration. Search receives raw FTS syntax and limits to 20; get is unscoped by ID. These are implemented facts, not the more complete old plan.
 - Local mapper suggested a <=300-line schema/migration foundation in sqlite-store.ts and a new migration test. It remains a candidate, not permission to implement unsourced v3 behavior before contract mapping.
 - Pinned source core/API semantics mapper: `muqr2h3c-a-z265`.
@@ -142,4 +143,11 @@ Record whether proof is source inspection, a deterministic synthetic-store test,
 - Native review review-9d31856e1f6c1beb approved the exact six-file candidate, medium, one review-reliability lens. Target sha256:3559e05635e2388893ea7949c22ce2e4589032d7cab2090bee33fe47317912db; tree a662b10686942648999501d205fc48d5cc056b8c. Exact acknowledgement succeeded and burned authority at revision sha256:de2c6b93e50f7fb12f3ca3d093dbb113dd580614bf8900ab2f811dabf9416419. Do not issue further status/review operations for that burned transaction.
 - Informational nonblocking follow-ups: R3-null-target-crash (validator line 70) and R3-unpinned-family-claims (lines 103–105). These do not reopen the approved candidate; address in separate later scoped work and keep reference-only prose distinct from verified behavioral evidence.
 - Human permission decision `13674` (`authorize-memory-reference-local-commits`) authorized the two local checkpoint commits only, without push/PR/merge. The independently and natively reviewed 337-line E3-01a reference-only source unit is established in commit `d91ff1ff65b6b8483a79ad93092b84d2b8a1d23b` (tree `a662b10686942648999501d205fc48d5cc056b8c`). This checkpoint adds no datastore runtime behavior; native acknowledgement metadata remains distinct from Git history.
-- E3-01 remains open, with E3-01b detailed behavioral contracts next. No major source contract family is yet closed, and all 18 matrix families remain MISSING/PARTIAL; neither this reviewed reference-only checkpoint nor the metadata gate proves full memory parity.
+- E3-01b1 map mur27hux-t-de98 completed. Eight cases cover absolute path preflight, known remote rejection, unknown filesystem acceptance (not proved local), constructor/pragma/persistent-WAL ordering and retry schedule, internal schema 1 stamping/reopen, future-compatible CRUD with startup skip, migration lock/version reread/generation fencing, and connection cleanup. Structural fixture checks are not ASEN runtime equivalence.
+- Fresh source verifier confirmed feature HEAD 44149b8427489240e93985d7906ee50f55375a8a and core cache 15a2f78885d7ad8ced23b2d1d88383e9bb472c17. Five raw byte/hash tuples for store.go, startup_gate_test.go, filesystem_policy.go, generation_fence.go and migration_lock.go are in memory observation 13679 and feed this fixture.
+- Initial/final status contains only excluded untracked .codegraph/. Preserve it untouched and uninspected; do not stage it, infer provenance or claim the entire worktree is clean. The verifier performed no mutation.
+- Before the sole E3-01b1 writer: reconcile this document, full mirror and TODO. Source edits: new foundation JSON plus scripts/audit-memory-parity.mjs, tests/memory-parity-reference.test.ts and scripts/audit-upstream-boundary.mjs. Reuse the existing command; no package change, new validator program or engine write. Preserve E3-01a guards and all 18 MISSING/PARTIAL statuses. Documentation needs no fake RED; runnable validation guards use observed test-first controls.
+- E3-01b1 writer returned partial: structural guards observed RED 3 then GREEN 16/16, type/diff checks PASS; boundary FAIL because the now-tracked task filename contains the forbidden reference token. Independent diagnosis also requires exact per-case source/range citation pins, especially direct CRUD evidence for FND-06. Current source unit 222 additions/4 deletions; task-inclusive candidate 228 additions/5 deletions. No engine changes or native review start.
+- Human decision 13687 authorizes bounded local checkpoints for E3-01b1 only. The passive neutral tracker relocation to `odd/tasks/memory-v3-parity.md` preserves Git history and references through the canonical registry and foundation metadata. External project-memory observation `13639` and its stable topic remain unchanged; the parent updates only its mirror locator after this checkpoint. No broad boundary exemptions. Then correct citation guards and repeat independent/native checks before the source checkpoint. No push, PR, merge, main changes or real-store operations.
+- This relocation is based on checkpoint parent `44149b8427489240e93985d7906ee50f55375a8a`; its resulting commit identity is recorded externally rather than self-referenced here. The first approved reference source baseline remains `d91ff1ff65b6b8483a79ad93092b84d2b8a1d23b`, with no new runtime behavior. The four-path E3-01b1 foundation source delta remains pending and outside this documentation checkpoint.
+- E3-01 remains open. No major source contract family is closed; all 18 matrix families remain MISSING/PARTIAL. Neither this reference-only checkpoint nor the new structural fixture proves full memory parity.
