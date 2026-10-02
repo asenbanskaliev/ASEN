@@ -3,7 +3,7 @@ import {spawnSync} from "node:child_process";
 import {resolve} from "node:path";
 import test from "node:test";
 // @ts-expect-error Dependency-free offline JavaScript validator.
-import {loadCheckedInMemoryParity,validateMemoryParity} from "../scripts/audit-memory-parity.mjs";
+import {loadCheckedInMemoryFoundation,loadCheckedInMemoryParity,validateMemoryFoundation,validateMemoryParity} from "../scripts/audit-memory-parity.mjs";
 
 const baseline=loadCheckedInMemoryParity();
 const clone=()=>structuredClone(baseline);
@@ -105,6 +105,64 @@ test("requires exact 18-family coverage and documented honest states",()=>{
  const whitespaceLimitation=clone();whitespaceLimitation.families[0].limitations[0]=" \t ";expectError(whitespaceLimitation,/explicit limitations/);
  const whitespaceFact=clone();whitespaceFact.families[0].facts=[" \t "];expectError(whitespaceFact,/facts must be a string array/);
  const emptyFacts=clone();emptyFacts.families[0].facts=[];assert.deepEqual(errors(emptyFacts),[]);
+});
+
+test("checked-in foundation fixture is source-inspected, complete, and structurally valid",()=>{
+ const foundation=loadCheckedInMemoryFoundation();
+ assert.deepEqual(validateMemoryFoundation(foundation),[]);
+ assert.deepEqual(foundation.cases.map((item:any)=>item.id),Array.from({length:8},(_,i)=>`FND-${String(i+1).padStart(2,"0")}`));
+ assert.equal(foundation.status,"SOURCE_INSPECTED");
+ assert.equal(foundation.proofKind,"source_inspection");
+});
+
+test("foundation fixture rejects malformed identities, evidence, dimensions, and schema expansion",()=>{
+ const foundation=loadCheckedInMemoryFoundation();
+ const reject=(mutate:(input:any)=>void,pattern:RegExp)=>{
+  const input=structuredClone(foundation);mutate(input);
+  assert.match(validateMemoryFoundation(input).join("\n"),pattern);
+ };
+ reject(input=>{input.cases.pop();},/exact FND|eight unique/);
+ reject(input=>{input.cases[1].id="FND-01";},/exact FND|eight unique/);
+ reject(input=>{input.cases[0].id=["FND-01"];},/case IDs must be strings/);
+ reject(input=>{input.sources[0].id=["SRC-FND-001"];},/source IDs must be strings/);
+ reject(input=>{input.sources[0].commitRole="CORE-latest";},/commitRole/);
+ reject(input=>{input.sources[0].sha256="0".repeat(64);},/pinned byte\/hash tuple/);
+ reject(input=>{input.cases[0].evidence[0].endLine=9999;},/line range/);
+ reject(input=>{input.cases[0].evidence[0].sourceId="SRC-FND-999";},/sourceId/);
+ reject(input=>{input.cases[0].summary=" ";},/summary/);
+ reject(input=>{input.cases[0].ordering=[];},/ordering/);
+ reject(input=>{input.cases[0].unexpected=true;},/unknown or missing properties/);
+ reject(input=>{input.sources[0].unexpected=true;},/unknown or missing properties/);
+ reject(input=>{input.status="FULL";},/SOURCE_INSPECTED/);
+ reject(input=>{input.proofKind="runtime";},/source_inspection/);
+});
+
+test("foundation critical values and ordering are independently anchored",()=>{
+ const foundation=loadCheckedInMemoryFoundation();
+ const reject=(id:string,mutate:(item:any)=>void,pattern:RegExp=/critical values|ordering/)=>{
+  const input=structuredClone(foundation),item=input.cases.find((candidate:any)=>candidate.id===id);mutate(item);
+  assert.match(validateMemoryFoundation(input).join("\n"),pattern);
+ };
+ reject("FND-04",item=>{item.criticalValues.busyTimeoutMs=0;});
+ reject("FND-04",item=>{item.criticalValues.lockRetryBackoffMs=[10,20,40];});
+ reject("FND-05",item=>{item.criticalValues.schemaVersion=3;});
+ reject("FND-06",item=>{item.criticalValues.compatibleCrudPermitted=["GET"];});
+ reject("FND-06",item=>{item.criticalValues.readOnly=true;});
+ reject("FND-07",item=>{item.ordering.reverse();});
+ reject("FND-08",item=>{item.criticalValues.priorFilesystemStateRolledBack=true;});
+});
+
+test("foundation requires exact independently pinned evidence for every case",()=>{
+ const foundation=loadCheckedInMemoryFoundation();
+ const reject=(mutate:(input:any)=>void)=>{
+  const input=structuredClone(foundation);mutate(input);
+  assert.match(validateMemoryFoundation(input).join("\n"),/pinned evidence/);
+ };
+ reject(input=>{input.cases.find((item:any)=>item.id==="FND-06").evidence.splice(1,4);});
+ reject(input=>{input.cases.find((item:any)=>item.id==="FND-06").evidence=[{sourceId:"SRC-FND-001",startLine:1200,endLine:1210}];});
+ reject(input=>{input.cases.find((item:any)=>item.id==="FND-06").evidence=[{sourceId:"SRC-FND-002",startLine:339,endLine:450}];});
+ for(const item of foundation.cases)reject(input=>{input.cases.find((candidate:any)=>candidate.id===item.id).evidence[0].startLine++;});
+ reject(input=>{input.cases[0].evidence.push({...input.cases[0].evidence[0]});});
 });
 
 test("CLI rejects flags instead of implying a live verifier",()=>{

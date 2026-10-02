@@ -5,6 +5,7 @@ import {fileURLToPath} from "node:url";
 
 const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),"..");
 const MANIFEST="registry/parity/memory-upstream-v3.json";
+const FOUNDATION_MANIFEST="registry/parity/memory-foundation-contracts-v1.json";
 const SHA40=/^[a-f0-9]{40}$/;
 const SHA64=/^[a-f0-9]{64}$/;
 const PATH=/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\/\/)[A-Za-z0-9._/-]+$/;
@@ -12,6 +13,39 @@ const TOP_FIELDS=["schemaVersion","scope","statusModel","limitations","targets",
 const TARGET_FIELDS=["id","repository","version","tag","tagObject","commit","publishedAt","channel","apiRefUrl","tagUrl"];
 const SOURCE_FIELDS=["id","targetId","path","bytes","sha256","rawUrl"];
 const FAMILY_FIELDS=["id","title","status","facts","limitations"];
+const FOUNDATION_TOP_FIELDS=["schemaVersion","scope","status","proofKind","limitations","sources","cases"];
+const FOUNDATION_SOURCE_FIELDS=["id","path","bytes","sha256","commit","commitRole","lineStart","lineEnd"];
+const FOUNDATION_CASE_FIELDS=["id","summary","evidence","input","trigger","ordering","output","durableState","sideEffects","negativeControls","versionControl","criticalValues"];
+const FOUNDATION_EVIDENCE_FIELDS=["sourceId","startLine","endLine"];
+const CORE_COMMIT="15a2f78885d7ad8ced23b2d1d88383e9bb472c17";
+const FOUNDATION_SOURCE_ANCHORS={
+ "internal/store/store.go":[501321,"2ffd000ee7f8c8fc1ad0c3d130e88a8ab4878449866c9737215b3c6d8ffa555b",997,9363],
+ "internal/store/startup_gate_test.go":[24904,"d89e2f55fe5f33513902887ff8a150130f192773218b363383daf03f02205030",119,450],
+ "internal/store/filesystem_policy.go":[2330,"7bf87a28de234d8c5319d9d5b75a40f58ecd6d5f51ed32a677a2234092e3a3e0",26,67],
+ "internal/store/generation_fence.go":[12735,"39ca5c48d3843086867f64049894df2f218d165c1d28bdacd7ad4a31980a1865",16,110],
+ "internal/store/migration_lock.go":[2500,"5259721e35d46953bb325ae482eb7dceed7f09324ad19e3de9ac7992245e7b4c",10,69]
+};
+const FOUNDATION_CRITICAL_ANCHORS={
+ "FND-01":{absolutePathAccepted:true,relativePathRejected:true,rejectionBeforeMutation:true},
+ "FND-02":{classification:"known_remote",rejected:true,mutationBarrier:["data_directory","database_triplet","instance_metadata","migration_lock"]},
+ "FND-03":{unknown:"ALLOWED",inspectionFailure:"ALLOWED",unclassifiable:"ALLOWED",provedLocal:false,missingPathProbe:"closest_existing_ancestor"},
+ "FND-04":{maxOpenConnections:1,transactionLock:"immediate",busyTimeoutMs:5000,journalMode:"WAL",synchronous:"NORMAL",foreignKeys:1,persistentWalMode:1,lockRetryBackoffMs:[10,25,50,100,200]},
+ "FND-05":{schemaVersion:1,freshOrOlder:["migrate","repair","stamp_1"],currentVersion1:["migrate","repair","no_stamp"]},
+ "FND-06":{futureVersionCondition:">1",skipStartup:["migration","repair","stamp"],compatibleCrudPermitted:["GET","Add","Update","Delete"],preVersionPreparationPermitted:true,readOnly:false},
+ "FND-07":{processSerialization:true,versionRaceRecheck:true,replacementFence:true,lockFilePersists:true,startupWritesFenced:true},
+ "FND-08":{failedPostOpenClosesHandle:true,normalCloseClosesHandle:true,persistentWalPreserved:true,priorFilesystemStateRolledBack:false}
+};
+const FOUNDATION_ORDER_ANCHOR=["generation_check","version_read","future_gate","migration_lock","generation_recheck","version_reread","migrate_repair","stamp_if_older"];
+const FOUNDATION_EVIDENCE_ANCHORS=Object.freeze({
+ "FND-01":Object.freeze([["SRC-FND-001",1007,1010]]),
+ "FND-02":Object.freeze([["SRC-FND-001",1011,1016],["SRC-FND-002",144,211],["SRC-FND-003",41,55]]),
+ "FND-03":Object.freeze([["SRC-FND-003",41,67],["SRC-FND-002",190,211]]),
+ "FND-04":Object.freeze([["SRC-FND-001",1027,1112],["SRC-FND-002",119,143]]),
+ "FND-05":Object.freeze([["SRC-FND-001",1114,1188],["SRC-FND-002",238,293]]),
+ "FND-06":Object.freeze([["SRC-FND-001",1122,1179],["SRC-FND-001",3724,3853],["SRC-FND-001",4654,4663],["SRC-FND-001",4725,4809],["SRC-FND-001",4871,4951],["SRC-FND-002",339,450]]),
+ "FND-07":Object.freeze([["SRC-FND-001",1119,1164],["SRC-FND-004",16,93],["SRC-FND-005",10,69]]),
+ "FND-08":Object.freeze([["SRC-FND-001",1022,1056],["SRC-FND-002",119,143]])
+});
 // Pin repository identity without repeating external branding outside the provenance registry.
 const REPOSITORY_SHA256="7ead05522b4ff6e758946f5c4e80e860bfea93b10ed488f217dc5ae97cf5cab3";
 const TARGET_ANCHORS={
@@ -42,6 +76,64 @@ const duplicates=values=>new Set(values).size!==values.length;
 export function loadCheckedInMemoryParity(root=ROOT){
  try{return JSON.parse(readFileSync(resolve(root,MANIFEST),"utf8"));}
  catch(error){throw new Error(`cannot read memory parity JSON ${MANIFEST}`,{cause:error});}
+}
+
+/** Load the source-inspected foundation contracts without executing upstream code. */
+export function loadCheckedInMemoryFoundation(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,FOUNDATION_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory foundation JSON ${FOUNDATION_MANIFEST}`,{cause:error});}
+}
+
+/** Pure structural and critical-value validation of source-inspected foundation contracts. */
+export function validateMemoryFoundation(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,FOUNDATION_TOP_FIELDS,"foundation manifest",issues))return issues;
+ if(manifest.schemaVersion!==1)issues.push("foundation schemaVersion must be 1");
+ if(manifest.scope!=="reference_only")issues.push("foundation scope must be reference_only");
+ if(manifest.status!=="SOURCE_INSPECTED")issues.push("foundation status must be SOURCE_INSPECTED");
+ if(manifest.proofKind!=="source_inspection")issues.push("foundation proofKind must be source_inspection");
+ if(!nonemptyStrings(manifest.limitations)||manifest.limitations.length===0)issues.push("foundation limitations must be nonempty strings");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],sourceIds=sources.map(source=>source?.id);
+ const expectedSources=Array.from({length:5},(_,i)=>`SRC-FND-${String(i+1).padStart(3,"0")}`);
+ if(!sourceIds.every(id=>typeof id==="string"))issues.push("foundation source IDs must be strings");
+ if(sources.length!==5||duplicates(sourceIds)||[...sourceIds].sort().join("\n")!==expectedSources.join("\n"))issues.push("foundation sources must contain exact unique IDs");
+ const sourceById=new Map();
+ for(const source of sources){
+  if(!exactKeys(source,FOUNDATION_SOURCE_FIELDS,`foundation source ${source?.id??"unknown"}`,issues))continue;
+  const anchor=typeof source.path==="string"?FOUNDATION_SOURCE_ANCHORS[source.path]:undefined;
+  if(typeof source.id==="string")sourceById.set(source.id,source);
+  if(!PATH.test(source.path??""))issues.push(`foundation source ${source.id} path is invalid`);
+  if(!anchor||source.bytes!==anchor[0]||source.sha256!==anchor[1])issues.push(`foundation source ${source.id} does not match its pinned byte/hash tuple`);
+  if(source.commit!==CORE_COMMIT||source.commitRole!=="CORE-15a")issues.push(`foundation source ${source.id} has invalid commitRole or commit`);
+  if(!anchor||source.lineStart!==anchor[2]||source.lineEnd!==anchor[3])issues.push(`foundation source ${source.id} has invalid declared line range`);
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],caseIds=cases.map(item=>item?.id);
+ const expectedCases=Array.from({length:8},(_,i)=>`FND-${String(i+1).padStart(2,"0")}`);
+ if(!caseIds.every(id=>typeof id==="string"))issues.push("foundation case IDs must be strings");
+ if(cases.length!==8||duplicates(caseIds)||[...caseIds].sort().join("\n")!==expectedCases.join("\n"))issues.push("foundation cases must contain exact FND-01 through FND-08 as eight unique IDs");
+ const covered=new Set();
+ for(const item of cases){
+  if(!exactKeys(item,FOUNDATION_CASE_FIELDS,`foundation case ${item?.id??"unknown"}`,issues))continue;
+  for(const field of ["summary","input","trigger","output","durableState","sideEffects","negativeControls"])
+   if(typeof item[field]!=="string"||!item[field].trim())issues.push(`foundation case ${item.id} ${field} must be a nonempty string`);
+  if(item.versionControl!=="CORE-15a")issues.push(`foundation case ${item.id} has invalid versionControl`);
+  if(!nonemptyStrings(item.ordering)||item.ordering.length===0)issues.push(`foundation case ${item.id} ordering must be nonempty strings`);
+  if(!Array.isArray(item.evidence)||item.evidence.length===0)issues.push(`foundation case ${item.id} requires evidence`);
+  else for(const evidence of item.evidence){
+   if(!exactKeys(evidence,FOUNDATION_EVIDENCE_FIELDS,`foundation case ${item.id} evidence`,issues))continue;
+   const source=sourceById.get(evidence.sourceId);
+   if(!source)issues.push(`foundation case ${item.id} evidence has unknown sourceId`);
+   else if(!Number.isInteger(evidence.startLine)||!Number.isInteger(evidence.endLine)||evidence.startLine>evidence.endLine||evidence.startLine<source.lineStart||evidence.endLine>source.lineEnd)issues.push(`foundation case ${item.id} evidence has invalid line range`);
+   else covered.add(evidence.sourceId);
+  }
+  const evidenceAnchor=typeof item.id==="string"&&Object.hasOwn(FOUNDATION_EVIDENCE_ANCHORS,item.id)?FOUNDATION_EVIDENCE_ANCHORS[item.id]:undefined;
+  if(!evidenceAnchor||!Array.isArray(item.evidence)||item.evidence.length!==evidenceAnchor.length||!item.evidence.every((evidence,index)=>typeof evidence.sourceId==="string"&&evidence.sourceId===evidenceAnchor[index][0]&&Number.isInteger(evidence.startLine)&&evidence.startLine===evidenceAnchor[index][1]&&Number.isInteger(evidence.endLine)&&evidence.endLine===evidenceAnchor[index][2]))issues.push(`foundation case ${item.id} has invalid pinned evidence`);
+  const anchor=typeof item.id==="string"?FOUNDATION_CRITICAL_ANCHORS[item.id]:undefined;
+  if(!object(item.criticalValues)||!anchor||JSON.stringify(item.criticalValues)!==JSON.stringify(anchor))issues.push(`foundation case ${item.id} has invalid critical values`);
+  if(item.id==="FND-07"&&JSON.stringify(item.ordering)!==JSON.stringify(FOUNDATION_ORDER_ANCHOR))issues.push("foundation case FND-07 has invalid ordering");
+ }
+ if(expectedSources.some(id=>!covered.has(id)))issues.push("foundation cases must reference all pinned sources");
+ return issues;
 }
 
 /** Pure structural validation of a supplied manifest value. */
@@ -103,8 +195,8 @@ export function validateMemoryParity(manifest){
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(process.argv.length!==2){console.error("audit:memory-parity is offline-only and accepts no flags");process.exitCode=2;}
  else{
-  const issues=validateMemoryParity(loadCheckedInMemoryParity());
+  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation())];
   if(issues.length){console.error(issues.join("\n"));process.exitCode=1;}
-  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; no runtime parity claim)");
+  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 source-inspected foundation contracts; no runtime parity claim)");
  }
 }

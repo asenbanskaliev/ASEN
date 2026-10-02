@@ -13,7 +13,7 @@ if(provenanceIssues.length){
 }
 const referenceName=memoryManifest.targets[0].repository.split("/").at(-1);
 const forbidden=new RegExp(["gen"+"tle","gen"+"tleman",referenceName].filter(Boolean).join("|"),"i");
-const provenanceAllowlist=new Set(["registry/parity/skill-sources-v1.json",memoryManifestPath]);
+const provenanceAllowlist=new Set(["registry/parity/skill-sources-v1.json",memoryManifestPath,"registry/parity/memory-foundation-contracts-v1.json"]);
 const tracked=execFileSync("git",["ls-files","-z"],{cwd:root}).toString("utf8").split("\0").filter(Boolean);
 const preStageCandidates=["scripts/audit-memory-parity.mjs","tests/memory-parity-reference.test.ts"];
 const paths=[...new Set([...tracked,...preStageCandidates.filter(path=>existsSync(new URL(`../${path}`,import.meta.url)))])];
