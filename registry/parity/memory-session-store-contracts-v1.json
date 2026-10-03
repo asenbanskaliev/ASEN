@@ -14,6 +14,7 @@
     "Project normalization is only observed as a delegated call and result check; its internal algorithm is not asserted here.",
     "Queue-helper invocation and even an enrolled journal row do not prove durable synchronization or remote delivery.",
     "The ended legacy-ownership claim excludes resume, continuation, isolation, EndSession, terminal synchronization, callers, normalization internals, queue enrollment, remote delivery, and actual SQLite commit, rollback, concurrency, or durability; a returned ended error does not imply that no side effects occurred.",
+    "The isolation-root preflight excludes continuation selection, selected-ID checks, isolation success after the preflight, terminal synchronization, EndSession, normalization internals, callers, remote delivery, and runtime SQLite, concurrency, or durability behavior.",
     "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02."
   ],
   "sources": [
@@ -241,6 +242,24 @@
         "payloadSource":"persisted_row",
         "mutation":{"entity":"session","op":"upsert","source":"local"},
         "claimed":{"initial":false,"resetEachWithTxCallback":true,"setAfter":"enqueue_success","endedMapping":"only_after_successful_withTx","return":"ErrSessionAlreadyEnded","returnedEndedErrorImpliesNoSideEffects":false}
+      }
+    },
+    {
+      "id":"SES-store-isolation-root-preflight",
+      "summary":"Isolated registration checks the root session for an empty directory before entering any resume branch.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":3133,"endLine":3145},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3218,"endLine":3245}
+      ],
+      "contract":"RegisterIsolatedSession initializes its effective ID from the requested ID and delegates an empty directory, project-owned mode, the caller's resume value, and isolated true. Each withTx callback restores id from the root captured before withTx, then the isolation preflight queries that root's null-coalesced directory. A missing row or trimmed-blank directory passes, query errors propagate, and a trimmed-nonblank directory returns an error wrapping ErrSessionIsolationConflict. That rejection returns before the resume branch.",
+      "negativeControls":"Continuation selection, selected-ID checks, isolation success after the preflight, terminal synchronization, EndSession, normalization internals, callers, remote delivery, and runtime SQLite, concurrency, or durability behavior are not proved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "sentinel":{"name":"ErrSessionIsolationConflict","message":"isolated session registration requires an empty directory; existing runtime-bound sessions cannot be reused"},
+        "wrapper":{"entry":"RegisterIsolatedSession","directory":"empty","mode":"project_owned","resume":"forward","effective":"id","isolated":true},
+        "transaction":{"root":"id_before_withTx","eachAttemptReset":{"id":"root"},"ordering":["reset_id_to_root","validateIsolation(root)","resume_branch"]},
+        "preflight":{"operation":"query_only","query":"SELECT ifnull(directory, '') FROM sessions WHERE id = ?","argument":"root","missingRow":"allow","trimmedBlank":"allow","queryError":"propagate","trimmedNonblank":{"error":"wrap_ErrSessionIsolationConflict","sessionID":"quoted"}},
+        "rejection":{"returnBefore":"resume_branch"}
       }
     }
   ]
