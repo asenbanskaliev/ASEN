@@ -7,9 +7,11 @@
     "These contracts record public source inspection only; they do not prove ASEN runtime behavior or complete session-store parity.",
     "The ID rule covers only empty and strings.TrimSpace-blank values; it does not enumerate Unicode, canonicalize IDs, or prove every caller.",
     "The start SQL contract does not prove timestamp format, timezone, transaction defaults, retries, schema behavior, durability, synchronization, or actual SQLite execution.",
-    "Ownership constants and the helper acceptance check do not prove the full ownership matrix, authorization, tenant isolation, or security.",
+    "Ownership rules are caller assertions, not authentication, authorization, tenant isolation, or security.",
     "The local lease comment is informational source text, not proof of synchronization absence or runtime payload behavior.",
-    "Create SQL, ownership repair, create synchronization, full registration behavior, end-session transports, HTTP, MCP, Pi callers, and environment behavior remain pending.",
+    "Create contracts do not prove live registration races or conflicts, resume identity selection, terminal synchronization, HTTP, MCP, Pi callers, Cloud delivery, or runtime SQLite behavior.",
+    "Project normalization is only observed as a delegated call and result check; its internal algorithm is not asserted here.",
+    "Queue-helper invocation and even an enrolled journal row do not prove durable synchronization or remote delivery.",
     "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02."
   ],
   "sources": [
@@ -81,6 +83,73 @@
         "ownershipModes":["shared","project_owned"],
         "lease":{"duration":"+30 minutes","comment":"local_not_synchronized_and_nonterminal_informational"},
         "whitespace":{"binding":"sqlWhitespaceTrimSet","builder":"unicode.White_Space R16 then R32 ranges"}
+      }
+    },
+    {
+      "id": "SES-store-create-ownership",
+      "summary": "Session create validates requested identity and ownership before its transaction mutates the row.",
+      "evidence": [
+        {"sourceId":"SRC-SES-STORE-001","startLine":67,"endLine":75},
+        {"sourceId":"SRC-SES-STORE-001","startLine":135,"endLine":151},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3049,"endLine":3085},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10797,"endLine":10830}
+      ],
+      "contract": "CreateSession selects shared mode. CreateSessionWithOwnershipMode validates ID and mode, delegates project normalization, requires its trimmed result, then reads existing ownership inside withTx. Blank or same ownership is accepted; requested project-owned mismatch returns SessionProjectConflictError, while a shared request against a different existing project follows the persisted shared, project-owned, or unclassified ownership rule before createSessionTx.",
+      "negativeControls": "Ownership is not authentication or tenant isolation. NormalizeProject internals, concurrent registration outcomes, resume identity selection, callers, and runtime database behavior are not claimed.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "wrapper":{"entry":"CreateSession","mode":"shared"},
+        "validationOrder":["validateSessionID","validSessionOwnershipMode","NormalizeProject","trimmed_project_required","withTx"],
+        "sentinels":{"invalidMode":"ErrInvalidSessionOwnershipMode","projectRequired":"ErrProjectRequired","mismatch":"ErrSessionOwnershipMismatch","ambiguous":"ErrProjectOwnershipAmbiguous"},
+        "matrix":{"blankOrSameOwner":"allow","differentOwnerRequestedProjectOwned":"SessionProjectConflictError_unwraps_ErrSessionOwnershipMismatch","differentOwnerExistingSharedRequestedShared":"allow","differentOwnerExistingProjectOwnedRequestedShared":"ErrSessionOwnershipMismatch","differentOwnerUnclassifiedRequestedShared":"ErrProjectOwnershipAmbiguous"},
+        "transactionOrder":["sessionOwnershipTx","strict_project_owned_check","sessionProjectWriteError","createSessionTx"],
+        "normalization":"delegated_result_only"
+      }
+    },
+    {
+      "id": "SES-store-create-sql-state",
+      "summary": "Session create inserts six ordered columns and fills only blank identity fields on ID conflict.",
+      "evidence": [
+        {"sourceId":"SRC-SES-STORE-001","startLine":3049,"endLine":3085},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9387,"endLine":9400},
+        {"sourceId":"SRC-SES-STORE-001","startLine":11609,"endLine":11640}
+      ],
+      "contract": "createSessionTx inserts id, project, ownership_mode, directory, started_at, and local_creation_project with the exact ordered arguments. On conflict it replaces project, ownership mode, or directory only when the persisted value is blank under the inspected trim rules; populated identity remains unchanged and execution errors propagate.",
+      "negativeControls": "Now() and NormalizeProject are delegated values only. No timestamp, normalization algorithm, SQLite execution, retry, schema, durability, or concurrency behavior is claimed.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "columns":["id","project","ownership_mode","directory","started_at","local_creation_project"],
+        "arguments":["id","project","mode","directory","Now()","project","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet"],
+        "conflict":{"project":"fill_null_or_trimmed_blank","ownershipMode":"fill_null_or_trimmed_blank","directory":"fill_trimmed_blank","populatedIdentity":"preserve"},
+        "localCreationProject":"normalized_project_argument",
+        "errors":{"exec":"propagate"},
+        "normalization":"delegated_result_only"
+      }
+    },
+    {
+      "id": "SES-store-create-sync",
+      "summary": "Session create rereads the persisted row and conditionally enqueues its persisted payload in the same write transaction.",
+      "evidence": [
+        {"sourceId":"SRC-SES-STORE-001","startLine":347,"endLine":356},
+        {"sourceId":"SRC-SES-STORE-001","startLine":580,"endLine":590},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3069,"endLine":3106},
+        {"sourceId":"SRC-SES-STORE-001","startLine":8154,"endLine":8161},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9324,"endLine":9335},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10636,"endLine":10715}
+      ],
+      "contract": "Within the create withTx callback, createSessionTx runs before an exact persisted-row reread and enqueueSyncMutationTx. The session upsert payload is built from those persisted values. Local session upserts with a blank directory return before journaling, and local writes for a nonblank unenrolled project return without a mutation row; enrolled writes proceed through journal insertion before commit.",
+      "negativeControls": "Helper invocation is not durable synchronization. Cloud delivery, terminal sync, live enrollment, remote acknowledgement, retries, runtime SQLite behavior, and HTTP, MCP, or Pi caller behavior remain unproved.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "transaction":{"scope":"same_withTx_as_create","errors":"propagate_before_commit","rollback":"deferred"},
+        "ordering":["createSessionTx","persisted_row_reread","enqueueSyncMutationTx","commit"],
+        "persistedColumns":["id","ifnull(project, '')","ifnull(ownership_mode, '')","directory","started_at","ended_at","summary"],
+        "payloadFields":["ID","Project","OwnershipMode","Directory","StartedAt","EndedAt","Summary"],
+        "payloadSource":"persisted_row",
+        "mutation":{"entity":"session","op":"upsert","source":"local"},
+        "journal":{"blankDirectory":"no_row","unenrolledProject":"no_row","enrolledProject":"row_attempt"},
+        "helperInvocationDurableSync":false,
+        "cloudDelivery":"UNPROVED"
       }
     }
   ]
