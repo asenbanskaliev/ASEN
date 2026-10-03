@@ -13,6 +13,7 @@
     "Live-registration contracts exclude resume or continuation, isolation, ended-row legacy ownership claims at 3290–3333, postcommit terminal mapping at 3374+, EndSession, runtime SQLite, concurrency, durability, remote delivery, normalization internals, and HTTP, MCP, or Pi callers.",
     "Project normalization is only observed as a delegated call and result check; its internal algorithm is not asserted here.",
     "Queue-helper invocation and even an enrolled journal row do not prove durable synchronization or remote delivery.",
+    "The ended legacy-ownership claim excludes resume, continuation, isolation, EndSession, terminal synchronization, callers, normalization internals, queue enrollment, remote delivery, and actual SQLite commit, rollback, concurrency, or durability; a returned ended error does not imply that no side effects occurred.",
     "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02."
   ],
   "sources": [
@@ -211,6 +212,35 @@
         "payloadSource":"persisted_row",
         "mutation":{"entity":"session","op":"upsert","source":"local"},
         "helperInvocationDurableSync":false
+      }
+    },
+    {
+      "id":"SES-store-ended-legacy-ownership-claim",
+      "summary":"Ordinary project-owned registration may atomically claim a blank-owner ended legacy session before returning terminality.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":67,"endLine":75},
+        {"sourceId":"SRC-SES-STORE-001","startLine":135,"endLine":151},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3112,"endLine":3119},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3206,"endLine":3223},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3285,"endLine":3347},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3374,"endLine":3379},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10800,"endLine":10830},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10836,"endLine":10868}
+      ],
+      "contract":"Ordinary registration delegates resume false, effective nil, and isolated false. When ownership is found, the request is project-owned, the persisted owner is blank, and ended_at is nonnull, foreignRecordOwnerTx rejects a foreign child owner with SessionProjectConflictError. Otherwise a conditional UPDATE sets project and ownership_mode only for the ended blank-owner row, propagates execution and RowsAffected errors, and reports a lost claim unless exactly one row changed. The persisted row is then reread and offered as a session upsert in the same transaction callback before claimed becomes true. Only a successful withTx result maps claimed to ErrSessionAlreadyEnded, so that returned sentinel does not imply absence of side effects.",
+      "negativeControls":"Resume, continuation, isolation, EndSession, terminal synchronization, callers, normalization internals, queue enrollment, remote delivery, and actual SQLite commit, rollback, concurrency, or durability are not proved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "flags":{"resume":false,"effective":"nil","isolated":false},
+        "condition":{"found":true,"requestedMode":"project_owned","existingProject":"blank","endedAt":"nonnull"},
+        "foreignChildOwner":{"helper":"foreignRecordOwnerTx","conflictType":"SessionProjectConflictError","rejectionBeforeUpdate":true},
+        "update":{"columns":["project","ownership_mode"],"where":["ended_at IS NOT NULL","ifnull(trim(project, ?), '') = ''"],"arguments":["project","mode","id","sqlWhitespaceTrimSet"],"errors":{"exec":"propagate","rowsAffected":"propagate","rowsNotOne":"claim_lost_error"}},
+        "transaction":{"scope":"same_withTx_callback","ordering":["sessionOwnershipTx","ended_status_read","foreignRecordOwnerTx","conditional_ownership_update","rows_affected_exactly_one","persisted_row_reread","enqueueSyncMutationTx","claimed_true","commit","ErrSessionAlreadyEnded"]},
+        "persistedColumns":["id","ifnull(project, '')","ifnull(ownership_mode, '')","directory","started_at","ended_at","summary"],
+        "payloadFields":["ID","Project","OwnershipMode","Directory","StartedAt","EndedAt","Summary"],
+        "payloadSource":"persisted_row",
+        "mutation":{"entity":"session","op":"upsert","source":"local"},
+        "claimed":{"initial":false,"resetEachWithTxCallback":true,"setAfter":"enqueue_success","endedMapping":"only_after_successful_withTx","return":"ErrSessionAlreadyEnded","returnedEndedErrorImpliesNoSideEffects":false}
       }
     }
   ]
