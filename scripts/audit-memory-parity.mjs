@@ -11,6 +11,7 @@ const RETRIEVAL_SEARCH_MANIFEST="registry/parity/memory-retrieval-search-contrac
 const CONTEXT_TIMELINE_MANIFEST="registry/parity/memory-context-timeline-contracts-v1.json";
 const PROJECT_IDENTITY_MANIFEST="registry/parity/memory-project-identity-contracts-v1.json";
 export const SESSION_TRANSPORT_MANIFEST="registry/parity/memory-session-transport-contracts-v1.json";
+export const SESSION_STORE_MANIFEST="registry/parity/memory-session-store-contracts-v1.json";
 const SHA40=/^[a-f0-9]{40}$/;
 const SHA64=/^[a-f0-9]{64}$/;
 const PATH=/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\/\/)[A-Za-z0-9._/-]+$/;
@@ -151,6 +152,24 @@ const SESSION_EVIDENCE_ANCHORS=deepFreeze({
 const SESSION_CRITICAL_ANCHORS=deepFreeze({
  "SES-MCP-start-resolution":{schema:{id:"required_string",directory:"optional_string",project:"absent"},handler:{nonstringOrMissingId:"empty",directoryTransform:"trim_only"},explicitDirectory:{condition:"nonblank_trimmed",route:"DetectProjectFull"},omittedDirectory:{mode:"ResolutionCurrent",processOverride:"defaultProject",cwdGetwdFallback:".",projectExists:"store_callback",requireKnownProcess:false},runtimeDirectory:{blankFirst:"currentWorkingDirectory",then:"RuntimeWorktreeDirectory",claim:"call_routing_only"}},
  "SES-serialized-write-queue":{queue:{storage:"in_memory",workers:1,defaultCapacity:32,full:"nonblocking_error"},cancellation:{preEnqueue:"reject",beforeCallbackStart:"skip",afterEnqueue:"await_buffered_result",midCallback:"context_reaches_handler_and_waits",resultSelect:false},callback:{result:"forward",error:"forward",panic:"converted_to_error"},wrapper:{mappedToToolError:["queue_full","context_canceled","deadline_exceeded"],mappedGoError:null,other:"transport_error"},durableEnrollment:false}
+});
+const SESSION_STORE_LIMITATIONS=deepFreeze([
+ "These contracts record public source inspection only; they do not prove ASEN runtime behavior or complete session-store parity.",
+ "The ID rule covers only empty and strings.TrimSpace-blank values; it does not enumerate Unicode, canonicalize IDs, or prove every caller.",
+ "The start SQL contract does not prove timestamp format, timezone, transaction defaults, retries, schema behavior, durability, synchronization, or actual SQLite execution.",
+ "Ownership constants and the helper acceptance check do not prove the full ownership matrix, authorization, tenant isolation, or security.",
+ "The local lease comment is informational source text, not proof of synchronization absence or runtime payload behavior.",
+ "Create SQL, ownership repair, create synchronization, full registration behavior, end-session transports, HTTP, MCP, Pi callers, and environment behavior remain pending.",
+ "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02."
+]);
+const SESSION_STORE_SOURCE=deepFreeze(["SRC-SES-STORE-001","internal/store/store.go",488121,"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e","a396d5d8eb91b956a12c23cd5e936a2b74dd7760",59,11640,13200]);
+const SESSION_STORE_EVIDENCE=deepFreeze({
+ "SES-store-id-validation":[["SRC-SES-STORE-001",59,59],["SRC-SES-STORE-001",149,151],["SRC-SES-STORE-001",3049,3059],["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3209],["SRC-SES-STORE-001",11598,11600],["SRC-SES-STORE-001",11602,11607]],
+ "SES-store-start-sql-state":[["SRC-SES-STORE-001",60,60],["SRC-SES-STORE-001",149,151],["SRC-SES-STORE-001",3106,3108],["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3206],["SRC-SES-STORE-001",3347,3347],["SRC-SES-STORE-001",9402,9424],["SRC-SES-STORE-001",9426,9428],["SRC-SES-STORE-001",11609,11640]]
+});
+const SESSION_STORE_CRITICAL=deepFreeze({
+ "SES-store-id-validation":{sentinel:{name:"ErrSessionIDRequired",message:"session id is required"},blank:{operation:"strings.TrimSpace",comparison:"empty"},validation:{blank:"ErrSessionIDRequired",nonblank:"nil"},ownershipModes:{shared:"shared",projectOwned:"project_owned"},entrypoints:{create:["CreateSession","CreateSessionWithOwnershipMode","validateSessionID"],start:["StartSession","StartSessionWithOwnershipMode","startSessionRegistration","validateSessionID"]}},
+ "SES-store-start-sql-state":{sentinel:{name:"ErrSessionAlreadyEnded",message:"session has already ended",zeroRows:true},columns:["id","project","ownership_mode","directory","started_at","runtime_lease_expires_at","local_creation_project"],arguments:["id","project","mode","directory","Now()","runtimeSessionLeaseDuration","project","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet"],conflict:{project:"fill_null_or_trimmed_blank",ownershipMode:"fill_null_or_trimmed_blank",directory:"fill_trimmed_blank",populatedIdentity:"preserve",lease:"excluded_value",where:"sessions.ended_at IS NULL"},errors:{exec:"propagate",rowsAffected:"propagate",zeroRows:"ErrSessionAlreadyEnded"},ownershipModes:["shared","project_owned"],lease:{duration:"+30 minutes",comment:"local_not_synchronized_and_nonterminal_informational"},whitespace:{binding:"sqlWhitespaceTrimSet",builder:"unicode.White_Space R16 then R32 ranges"}}
 });
 const PROJECT_SOURCE_ANCHORS=Object.freeze({
  "internal/project/detect.go":[19835,"cd4e9a138d30dce1adde641a0bc080a7403056f1e3fcff209eac7e75692f422f",59,576,576],
@@ -345,6 +364,45 @@ export function validateMemorySessionTransport(manifest){
   if(!object(item.criticalValues)||!critical||JSON.stringify(item.criticalValues)!==JSON.stringify(critical))issues.push(`session-transport case ${item.id} has invalid critical values`);
  }
  if(["SRC-SES-001","SRC-SES-002","SRC-SES-003"].some(id=>!covered.has(id)))issues.push("session-transport cases must reference all pinned sources");
+ return issues;
+}
+
+/** Load source-inspected session-store contracts without executing upstream code. */
+export function loadCheckedInMemorySessionStore(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,SESSION_STORE_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory session-store JSON ${SESSION_STORE_MANIFEST}`,{cause:error});}
+}
+
+/** Pure structural validation of source-inspected session-store contracts. */
+export function validateMemorySessionStore(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,PROJECT_TOP_FIELDS,"session-store manifest",issues))return issues;
+ if(manifest.schemaVersion!==1||manifest.scope!=="reference_only"||manifest.status!=="SOURCE_INSPECTED"||manifest.proofKind!=="source_inspection")issues.push("session-store metadata must remain reference-only source inspection");
+ if(JSON.stringify(manifest.limitations)!==JSON.stringify(SESSION_STORE_LIMITATIONS))issues.push("session-store limitations must preserve exact unproved boundaries");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],source=sources[0];
+ if(sources.length!==1||!exactKeys(source,SESSION_SOURCE_FIELDS,"session-store source",issues))issues.push("session-store requires one exact source");
+ else{
+  const tuple=[source.id,source.path,source.bytes,source.sha256,source.gitBlob,source.lineStart,source.lineEnd,source.lineFeeds];
+  if(typeof source.path!=="string"||!PATH.test(source.path)||!SHA64.test(source.sha256)||!SHA40.test(source.gitBlob))issues.push("session-store source has invalid identity syntax");
+  if(JSON.stringify(tuple)!==JSON.stringify(SESSION_STORE_SOURCE)||source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`||source.representation!=="git_blob")issues.push("session-store source has invalid pinned identity");
+  if(source.carriageReturns!==0||source.utf8Bom!==false||source.utf8Valid!==true||source.finalLf!==true)issues.push("session-store source has invalid byte or line facts");
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],ids=cases.map(item=>item?.id);
+ if(JSON.stringify(ids)!==JSON.stringify(Object.keys(SESSION_STORE_EVIDENCE))||duplicates(ids))issues.push("session-store cases must contain exactly two ordered contracts");
+ for(const item of cases){
+  if(!exactKeys(item,PROJECT_CASE_FIELDS,`session-store case ${item?.id??"unknown"}`,issues))continue;
+  for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`session-store case ${item.id} ${field} must be nonempty`);
+  if(item.versionControl!=="CORE-15a")issues.push(`session-store case ${item.id} has invalid versionControl`);
+  const expected=SESSION_STORE_EVIDENCE[item.id];
+  if(!Array.isArray(item.evidence)||!expected||item.evidence.length!==expected.length)issues.push(`session-store case ${item.id} has invalid pinned evidence`);
+  else item.evidence.forEach((entry,index)=>{
+   const anchor=expected[index];
+   const exact=exactKeys(entry,FOUNDATION_EVIDENCE_FIELDS,`session-store case ${item.id} evidence`,issues);
+   if(!Number.isInteger(entry.startLine)||!Number.isInteger(entry.endLine)||entry.startLine>entry.endLine||entry.startLine<source?.lineStart||entry.endLine>source?.lineEnd)issues.push(`session-store case ${item.id} has invalid evidence range`);
+   if(!exact||!anchor||entry.sourceId!==source?.id||entry.sourceId!==anchor[0]||entry.startLine!==anchor[1]||entry.endLine!==anchor[2])issues.push(`session-store case ${item.id} has invalid pinned evidence`);
+  });
+  if(!object(item.criticalValues)||JSON.stringify(item.criticalValues)!==JSON.stringify(SESSION_STORE_CRITICAL[item.id]))issues.push(`session-store case ${item.id} has invalid critical values`);
+ }
  return issues;
 }
 
@@ -648,8 +706,8 @@ export function validateMemoryParity(manifest){
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(process.argv.length!==2){console.error("audit:memory-parity is offline-only and accepts no flags");process.exitCode=2;}
  else{
-  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline()),...validateMemoryProjectIdentity(loadCheckedInMemoryProjectIdentity()),...validateMemorySessionTransport(loadCheckedInMemorySessionTransport())];
+  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline()),...validateMemoryProjectIdentity(loadCheckedInMemoryProjectIdentity()),...validateMemorySessionTransport(loadCheckedInMemorySessionTransport()),...validateMemorySessionStore(loadCheckedInMemorySessionStore())];
   if(issues.length){console.error(issues.join("\n"));process.exitCode=1;}
-  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, and 2 session-transport source-inspected contracts; no runtime parity claim)");
+  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, 2 session-transport, and 2 session-store source-inspected contracts; no runtime parity claim)");
  }
 }

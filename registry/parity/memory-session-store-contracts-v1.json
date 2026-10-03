@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "scope": "reference_only",
+  "status": "SOURCE_INSPECTED",
+  "proofKind": "source_inspection",
+  "limitations": [
+    "These contracts record public source inspection only; they do not prove ASEN runtime behavior or complete session-store parity.",
+    "The ID rule covers only empty and strings.TrimSpace-blank values; it does not enumerate Unicode, canonicalize IDs, or prove every caller.",
+    "The start SQL contract does not prove timestamp format, timezone, transaction defaults, retries, schema behavior, durability, synchronization, or actual SQLite execution.",
+    "Ownership constants and the helper acceptance check do not prove the full ownership matrix, authorization, tenant isolation, or security.",
+    "The local lease comment is informational source text, not proof of synchronization absence or runtime payload behavior.",
+    "Create SQL, ownership repair, create synchronization, full registration behavior, end-session transports, HTTP, MCP, Pi callers, and environment behavior remain pending.",
+    "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02."
+  ],
+  "sources": [
+    {
+      "id": "SRC-SES-STORE-001",
+      "path": "internal/store/store.go",
+      "bytes": 488121,
+      "sha256": "6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e",
+      "gitBlob": "a396d5d8eb91b956a12c23cd5e936a2b74dd7760",
+      "commit": "15a2f78885d7ad8ced23b2d1d88383e9bb472c17",
+      "sourceIdentity": "15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/store/store.go",
+      "representation": "git_blob",
+      "lineStart": 59,
+      "lineEnd": 11640,
+      "lineFeeds": 13200,
+      "carriageReturns": 0,
+      "utf8Bom": false,
+      "utf8Valid": true,
+      "finalLf": true
+    }
+  ],
+  "cases": [
+    {
+      "id": "SES-store-id-validation",
+      "summary": "Create and start entry points share a helper that rejects empty or strings.TrimSpace-blank session IDs with ErrSessionIDRequired.",
+      "evidence": [
+        {"sourceId":"SRC-SES-STORE-001","startLine":59,"endLine":59},
+        {"sourceId":"SRC-SES-STORE-001","startLine":149,"endLine":151},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3049,"endLine":3059},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3112,"endLine":3119},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3206,"endLine":3209},
+        {"sourceId":"SRC-SES-STORE-001","startLine":11598,"endLine":11600},
+        {"sourceId":"SRC-SES-STORE-001","startLine":11602,"endLine":11607}
+      ],
+      "contract": "CreateSession delegates shared ownership to CreateSessionWithOwnershipMode, which calls validateSessionID. StartSession delegates shared ownership through StartSessionWithOwnershipMode to startSessionRegistration, whose first guard calls the same helper. isBlankSessionID uses strings.TrimSpace(id) == empty; validateSessionID returns ErrSessionIDRequired for blank and nil otherwise.",
+      "negativeControls": "No Unicode whitespace enumeration, ID canonicalization, uninspected caller behavior, authorization, persistence, storage, or runtime execution is claimed.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "sentinel":{"name":"ErrSessionIDRequired","message":"session id is required"},
+        "blank":{"operation":"strings.TrimSpace","comparison":"empty"},
+        "validation":{"blank":"ErrSessionIDRequired","nonblank":"nil"},
+        "ownershipModes":{"shared":"shared","projectOwned":"project_owned"},
+        "entrypoints":{"create":["CreateSession","CreateSessionWithOwnershipMode","validateSessionID"],"start":["StartSession","StartSessionWithOwnershipMode","startSessionRegistration","validateSessionID"]}
+      }
+    },
+    {
+      "id": "SES-store-start-sql-state",
+      "summary": "Session start uses one conflict update to fill only blank identity fields, renew the local lease, and refuse ended rows.",
+      "evidence": [
+        {"sourceId":"SRC-SES-STORE-001","startLine":60,"endLine":60},
+        {"sourceId":"SRC-SES-STORE-001","startLine":149,"endLine":151},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3106,"endLine":3108},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3112,"endLine":3119},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3206,"endLine":3206},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3347,"endLine":3347},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9402,"endLine":9424},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9426,"endLine":9428},
+        {"sourceId":"SRC-SES-STORE-001","startLine":11609,"endLine":11640}
+      ],
+      "contract": "startSessionRegistration calls startSessionTx with id, project, directory, and mode. Its INSERT columns and arguments are ordered exactly; on conflict it fills only trimmed/null-coalesced blank project and ownership mode and trimmed blank directory, preserves populated identity, renews the excluded lease only while ended_at is null, propagates exec and RowsAffected errors, and maps zero affected rows to ErrSessionAlreadyEnded.",
+      "negativeControls": "Now() is only an argument delegation fact. No timestamp format, timezone, durability, transaction defaults, retries, schema, canonicalization, full ownership behavior, synchronization, enrollment, or actual SQLite execution is claimed.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "sentinel":{"name":"ErrSessionAlreadyEnded","message":"session has already ended","zeroRows":true},
+        "columns":["id","project","ownership_mode","directory","started_at","runtime_lease_expires_at","local_creation_project"],
+        "arguments":["id","project","mode","directory","Now()","runtimeSessionLeaseDuration","project","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet"],
+        "conflict":{"project":"fill_null_or_trimmed_blank","ownershipMode":"fill_null_or_trimmed_blank","directory":"fill_trimmed_blank","populatedIdentity":"preserve","lease":"excluded_value","where":"sessions.ended_at IS NULL"},
+        "errors":{"exec":"propagate","rowsAffected":"propagate","zeroRows":"ErrSessionAlreadyEnded"},
+        "ownershipModes":["shared","project_owned"],
+        "lease":{"duration":"+30 minutes","comment":"local_not_synchronized_and_nonterminal_informational"},
+        "whitespace":{"binding":"sqlWhitespaceTrimSet","builder":"unicode.White_Space R16 then R32 ranges"}
+      }
+    }
+  ]
+}
