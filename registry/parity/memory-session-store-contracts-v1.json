@@ -9,7 +9,8 @@
     "The start SQL contract does not prove timestamp format, timezone, transaction defaults, retries, schema behavior, durability, synchronization, or actual SQLite execution.",
     "Ownership rules are caller assertions, not authentication, authorization, tenant isolation, or security.",
     "The local lease comment is informational source text, not proof of synchronization absence or runtime payload behavior.",
-    "Create contracts do not prove live registration races or conflicts, resume identity selection, terminal synchronization, HTTP, MCP, Pi callers, Cloud delivery, or runtime SQLite behavior.",
+    "Create contracts do not prove resume identity selection, terminal synchronization, HTTP, MCP, Pi callers, Cloud delivery, or runtime SQLite behavior.",
+    "Live-registration contracts exclude resume or continuation, isolation, ended-row legacy ownership claims at 3290–3333, postcommit terminal mapping at 3374+, EndSession, runtime SQLite, concurrency, durability, remote delivery, normalization internals, and HTTP, MCP, or Pi callers.",
     "Project normalization is only observed as a delegated call and result check; its internal algorithm is not asserted here.",
     "Queue-helper invocation and even an enrolled journal row do not prove durable synchronization or remote delivery.",
     "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02."
@@ -150,6 +151,66 @@
         "journal":{"blankDirectory":"no_row","unenrolledProject":"no_row","enrolledProject":"row_attempt"},
         "helperInvocationDurableSync":false,
         "cloudDelivery":"UNPROVED"
+      }
+    },
+    {
+      "id":"SES-store-live-registration-conflict",
+      "summary":"Ordinary live registration reads persisted ownership before start and rejects incompatible requested or persisted ownership with branch-specific errors.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":67,"endLine":75},
+        {"sourceId":"SRC-SES-STORE-001","startLine":135,"endLine":151},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3112,"endLine":3119},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3206,"endLine":3220},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3285,"endLine":3289},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3334,"endLine":3347},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10797,"endLine":10830}
+      ],
+      "contract":"StartSessionWithOwnershipMode delegates ordinary flags resume false, effective nil, and isolated false. In its transaction, sessionOwnershipTx precedes sessionRegistrationProjectError and startSessionTx. Blank or same ownership and a shared request against persisted shared ownership are allowed. A different owner with requested project-owned mode returns SessionProjectConflictError wrapping ErrSessionOwnershipMismatch; shared requests against different project-owned or unclassified persisted ownership return errors wrapping ErrSessionOwnershipMismatch or ErrProjectOwnershipAmbiguous respectively. Every conflict returns before startSessionTx.",
+      "negativeControls":"Resume, continuation, isolation, ended-row ownership claims, postcommit terminal mapping, callers, normalization internals, runtime concurrency, and runtime database behavior are not claimed.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "entry":{"wrapper":"StartSessionWithOwnershipMode","delegate":"startSessionRegistration"},
+        "flags":{"resume":false,"effective":"nil","isolated":false},
+        "ordering":["sessionOwnershipTx","sessionRegistrationProjectError","startSessionTx"],
+        "matrix":{
+          "blankOrSameOwner":"allow",
+          "differentOwnerRequestedProjectOwned":{"type":"SessionProjectConflictError","unwrap":"ErrSessionOwnershipMismatch"},
+          "differentOwnerExistingSharedRequestedShared":"allow",
+          "differentOwnerExistingProjectOwnedRequestedShared":{"type":"wrapped_error","sentinel":"ErrSessionOwnershipMismatch"},
+          "differentOwnerUnclassifiedRequestedShared":{"type":"wrapped_error","sentinel":"ErrProjectOwnershipAmbiguous"}
+        },
+        "rejectionBeforeStart":true
+      }
+    },
+    {
+      "id":"SES-store-live-identity-repair",
+      "summary":"Accepted ordinary live registration always starts the row, then only missing or blank live identity is reread and offered to the sync queue from the same transaction.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":3112,"endLine":3119},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3206,"endLine":3222},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3285,"endLine":3289},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3334,"endLine":3373},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9402,"endLine":9424}
+      ],
+      "contract":"For an accepted ordinary live identity, identityRepaired starts as !found and, for a found live row, becomes true when project or mode is empty or strings.TrimSpace(directory) is empty. startSessionTx is called after ownership acceptance in every missing, repair, or populated path. A fully populated identity returns without enqueue. A repaired identity is reread after start and its persisted row supplies the session upsert payload to enqueueSyncMutationTx in the same withTx callback.",
+      "negativeControls":"Calling the enqueue helper is not durability or enrollment proof. Resume, continuation, isolation, ended-row legacy ownership claims, postcommit terminal mapping, EndSession, terminal synchronization, remote delivery, normalization internals, callers, and runtime SQLite or concurrency are excluded.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "identityRepaired":{
+          "missingRow":"!found",
+          "foundLive":"existingProject_empty OR existingMode_empty OR strings.TrimSpace(existingDirectory)_empty"
+        },
+        "startSessionTx":"always_called_after_ownership_acceptance",
+        "populatedIdentity":{"enqueue":false,"return":"nil_after_startSessionTx"},
+        "transaction":{
+          "scope":"same_withTx_callback",
+          "ordering":["sessionOwnershipTx","identity_repair_predicate","startSessionTx","persisted_row_reread","enqueueSyncMutationTx","commit"]
+        },
+        "persistedColumns":["id","ifnull(project, '')","ifnull(ownership_mode, '')","directory","started_at","ended_at","summary"],
+        "payloadFields":["ID","Project","OwnershipMode","Directory","StartedAt","EndedAt","Summary"],
+        "payloadSource":"persisted_row",
+        "mutation":{"entity":"session","op":"upsert","source":"local"},
+        "helperInvocationDurableSync":false
       }
     }
   ]
