@@ -9,6 +9,7 @@ const FOUNDATION_MANIFEST="registry/parity/memory-foundation-contracts-v1.json";
 const OBSERVATION_WRITE_MANIFEST="registry/parity/memory-observation-write-contracts-v1.json";
 const RETRIEVAL_SEARCH_MANIFEST="registry/parity/memory-retrieval-search-contracts-v1.json";
 const CONTEXT_TIMELINE_MANIFEST="registry/parity/memory-context-timeline-contracts-v1.json";
+const PROJECT_IDENTITY_MANIFEST="registry/parity/memory-project-identity-contracts-v1.json";
 const SHA40=/^[a-f0-9]{40}$/;
 const SHA64=/^[a-f0-9]{64}$/;
 const PATH=/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\/\/)[A-Za-z0-9._/-]+$/;
@@ -30,6 +31,9 @@ const RETRIEVAL_CASE_FIELDS=["id","summary","evidence","contract","negativeContr
 const CONTEXT_TOP_FIELDS=["schemaVersion","scope","status","proofKind","limitations","sources","cases"];
 const CONTEXT_SOURCE_FIELDS=["id","path","bytes","sha256","commit","sourceIdentity","representation","lineStart","lineEnd"];
 const CONTEXT_CASE_FIELDS=["id","summary","evidence","contract","negativeControls","versionControl","criticalValues"];
+const PROJECT_TOP_FIELDS=["schemaVersion","scope","status","proofKind","limitations","sources","cases"];
+const PROJECT_SOURCE_FIELDS=["id","path","bytes","sha256","commit","sourceIdentity","representation","lineStart","lineEnd","lineFeeds","carriageReturns","utf8Bom","utf8Valid","finalLf"];
+const PROJECT_CASE_FIELDS=["id","summary","evidence","contract","negativeControls","versionControl","criticalValues"];
 const CORE_COMMIT="15a2f78885d7ad8ced23b2d1d88383e9bb472c17";
 const FOUNDATION_SOURCE_ANCHORS={
  "internal/store/store.go":[501321,"2ffd000ee7f8c8fc1ad0c3d130e88a8ab4878449866c9737215b3c6d8ffa555b",997,9363],
@@ -113,6 +117,36 @@ const CONTEXT_EVIDENCE_ANCHORS=Object.freeze({
  "CTX-HTTP-context":[["SRC-CTX-003",1251,1338],["SRC-CTX-003",2183,2191]],
  "CTX-MCP-complete-result":[["SRC-CTX-002",1950,2114]],
  "CTX-timeline":[["SRC-CTX-001",4970,5067],["SRC-CTX-003",928,967],["SRC-CTX-002",2195,2263],["SRC-CTX-002",3618,3624]]
+});
+const PROJECT_LIMITATIONS=Object.freeze([
+ "These contracts record public source inspection only; they do not prove ASEN runtime behavior or project-identity parity.",
+ "No real repository binding, Git configuration, private file, database, session store, or cloud service was inspected or executed.",
+ "Project existence callbacks and resolved-project comparisons are not authentication, authorization, tenant isolation, or security proofs.",
+ "Cloud CLI URL decoding is separate and unproved by these project-package sources; percent escapes remain literal in the inspected remote parser.",
+ "Source evidence does not prove SQLite behavior, configuration recovery, platform behavior, model behavior, or complete E3-01 behavior; E3-01 remains PARTIAL and the E3-02 gate remains pending."
+]);
+const PROJECT_SOURCE_ANCHORS=Object.freeze({
+ "internal/project/detect.go":[19835,"cd4e9a138d30dce1adde641a0bc080a7403056f1e3fcff209eac7e75692f422f",59,576,576],
+ "internal/project/identity.go":[4124,"610ca8b9c85bf1d7e94f0cd1dd41a2fb18536e46d25f6eb40a395ad5b17152d4",30,107,115],
+ "internal/project/resolution.go":[4282,"3e4da942e70b4b7a344c2c87a7394e159d53ee03fc3a1c86a3baaf2a82e7746a",48,134,138]
+});
+const PROJECT_EVIDENCE_ANCHORS=Object.freeze({
+ "PRJ-override":[["SRC-PRJ-003",48,106],["SRC-PRJ-001",59,82]],
+ "PRJ-config":[["SRC-PRJ-001",137,203],["SRC-PRJ-001",240,309],["SRC-PRJ-001",311,320],["SRC-PRJ-001",348,362],["SRC-PRJ-001",416,425],["SRC-PRJ-001",513,521],["SRC-PRJ-003",125,134]],
+ "PRJ-git-remote":[["SRC-PRJ-001",210,234],["SRC-PRJ-001",366,412],["SRC-PRJ-001",544,576],["SRC-PRJ-002",30,32],["SRC-PRJ-002",34,107],["SRC-PRJ-003",125,134]],
+ "PRJ-git-root":[["SRC-PRJ-001",210,234],["SRC-PRJ-001",366,412],["SRC-PRJ-002",30,32],["SRC-PRJ-002",34,107]],
+ "PRJ-child":[["SRC-PRJ-001",84,99],["SRC-PRJ-001",137,203],["SRC-PRJ-001",432,488]],
+ "PRJ-ambiguous":[["SRC-PRJ-001",172,192],["SRC-PRJ-001",432,488],["SRC-PRJ-001",525,531]],
+ "PRJ-basename":[["SRC-PRJ-001",137,203],["SRC-PRJ-001",432,488],["SRC-PRJ-001",498,509],["SRC-PRJ-001",513,521],["SRC-PRJ-001",533,539],["SRC-PRJ-003",125,134]]
+});
+const PROJECT_CRITICAL_ANCHORS=Object.freeze({
+ "PRJ-override":{priority:["all_bypass","explicit","process_override","cwd_detection"],allBypassesInputs:true,explicitEmpty:"ErrInvalidProjectName",knownChecks:{explicit:"RequireKnownExplicit",process:"RequireKnownProcess",onlyWhenRequired:true,nilWhenRequired:"error",callbackError:"propagate",false:"UnknownProjectError"}},
+ "PRJ-config":{dispatchBefore:["git_binding","child_scan","basename"],insideGit:"nearest_at_or_below_checkout_root",outsideGit:"current_directory_only",outsideParentLeak:false,invalid:{source:"config",error:"ErrInvalidConfig",project:"empty",conditions:["read","parse","empty","path","control"]},canonicalization:"lower_trim_collapse_repeated_double_hyphen_and_underscore"},
+ "PRJ-git-remote":{source:"git_remote",existingBindingWins:true,originUse:"seed_missing_binding_only",bindingScope:"git_common_dir",path:"canonical_primary_root",remote:{trimSuffix:".git",split:["/",":"],percentDecode:false},canonicalization:{lowercase:true,trim:true,collapseOnly:["--","__"]},creation:{onlyOnNotExist:true,canonicalSeedRequired:true,mode:"0600",temporaryExclusive:true,newline:true,publish:"hard_link_atomic",collision:"reread_winner"},invalidExisting:"ErrRepositoryBinding"},
+ "PRJ-git-root":{source:"git_root",bindingScope:"git_common_dir",path:"canonical_primary_root",seed:"root_basename_only_when_missing",existingBindingWins:true,rootFailure:"ErrRepositoryBinding",existingFailures:["unreadable","corrupt","wrong_version","invalid_id","noncanonical_project"],failClosed:true},
+ "PRJ-child":{depth:1,timeoutMs:200,skipHidden:true,noise:["node_modules","vendor",".venv","__pycache__","target","dist","build",".idea",".vscode"],single:"recursive_DetectProjectFull",error:"propagate",success:{source:"git_child",path:"child_result_path",warning:"auto-promoted child repository: <project>"}},
+ "PRJ-ambiguous":{threshold:2,shortCircuit:true,project:"empty",source:"ambiguous",error:"ErrAmbiguousProject",path:"absolute_input",available:{trim:true,lowercase:true,sorted:true,separatorCollapse:false}},
+ "PRJ-basename":{triggers:["no_repository","scan_timeout","scan_open_or_read_failure"],project:"normalized_input_basename",emptyDotOrPathLike:"unknown",path:"absolute_input",source:"dir_basename",error:null,warning:"empty"}
 });
 const CONTEXT_CRITICAL_ANCHORS=Object.freeze({
  "CTX-core-options":{
@@ -242,6 +276,56 @@ export function loadCheckedInMemoryRetrievalSearch(root=ROOT){
 export function loadCheckedInMemoryContextTimeline(root=ROOT){
  try{return JSON.parse(readFileSync(resolve(root,CONTEXT_TIMELINE_MANIFEST),"utf8"));}
  catch(error){throw new Error(`cannot read memory context/timeline JSON ${CONTEXT_TIMELINE_MANIFEST}`,{cause:error});}
+}
+
+/** Load project-identity contracts without executing upstream code. */
+export function loadCheckedInMemoryProjectIdentity(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,PROJECT_IDENTITY_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory project-identity JSON ${PROJECT_IDENTITY_MANIFEST}`,{cause:error});}
+}
+
+/** Pure structural and critical-value validation of source-inspected project identity contracts. */
+export function validateMemoryProjectIdentity(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,PROJECT_TOP_FIELDS,"project-identity manifest",issues))return issues;
+ if(manifest.schemaVersion!==1)issues.push("project-identity schemaVersion must be 1");
+ if(manifest.scope!=="reference_only"||manifest.status!=="SOURCE_INSPECTED"||manifest.proofKind!=="source_inspection")issues.push("project-identity metadata must remain reference-only source inspection");
+ if(!nonemptyStrings(manifest.limitations)||JSON.stringify(manifest.limitations)!==JSON.stringify(PROJECT_LIMITATIONS))issues.push("project-identity limitations must preserve exact unproved boundaries");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],sourceIds=sources.map(source=>source?.id),sourceById=new Map();
+ const expectedSources=["SRC-PRJ-001","SRC-PRJ-002","SRC-PRJ-003"];
+ if(!sourceIds.every(id=>typeof id==="string"))issues.push("project-identity source IDs must be strings");
+ if(sources.length!==3||duplicates(sourceIds)||JSON.stringify(sourceIds)!==JSON.stringify(expectedSources))issues.push("project-identity sources must contain exact unique IDs in order");
+ for(const source of sources){
+  if(!exactKeys(source,PROJECT_SOURCE_FIELDS,`project-identity source ${source?.id??"unknown"}`,issues))continue;
+  const pathIsString=typeof source.path==="string",anchor=pathIsString?PROJECT_SOURCE_ANCHORS[source.path]:undefined;
+  if(typeof source.id==="string")sourceById.set(source.id,source);
+  if(!pathIsString||!PATH.test(source.path))issues.push(`project-identity source ${source.id} path is invalid`);
+  if(!anchor||source.bytes!==anchor[0]||source.sha256!==anchor[1])issues.push(`project-identity source ${source.id} does not match its pinned byte/hash tuple`);
+  if(source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`)issues.push(`project-identity source ${source.id} has invalid source identity`);
+  if(source.representation!=="git_blob")issues.push(`project-identity source ${source.id} representation must be git_blob`);
+  if(!anchor||source.lineStart!==anchor[2]||source.lineEnd!==anchor[3]||source.lineFeeds!==anchor[4])issues.push(`project-identity source ${source.id} has invalid line anchors`);
+  if(source.carriageReturns!==0||source.utf8Bom!==false||source.utf8Valid!==true||source.finalLf!==true)issues.push(`project-identity source ${source.id} has invalid byte representation facts`);
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],caseIds=cases.map(item=>item?.id),expectedCases=Object.keys(PROJECT_EVIDENCE_ANCHORS),covered=new Set();
+ if(!caseIds.every(id=>typeof id==="string"))issues.push("project-identity case IDs must be strings");
+ if(cases.length!==7||duplicates(caseIds)||JSON.stringify(caseIds)!==JSON.stringify(expectedCases))issues.push("project-identity cases must contain the exact seven PRJ cases in order");
+ for(const item of cases){
+  if(!exactKeys(item,PROJECT_CASE_FIELDS,`project-identity case ${item?.id??"unknown"}`,issues))continue;
+  for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`project-identity case ${item.id} ${field} must be a nonempty string`);
+  if(item.versionControl!=="CORE-15a")issues.push(`project-identity case ${item.id} has invalid versionControl`);
+  const expected=typeof item.id==="string"?PROJECT_EVIDENCE_ANCHORS[item.id]:undefined;
+  if(!Array.isArray(item.evidence)||!expected||item.evidence.length!==expected.length)issues.push(`project-identity case ${item.id} has invalid pinned evidence`);
+  else item.evidence.forEach((evidence,index)=>{
+   if(!exactKeys(evidence,FOUNDATION_EVIDENCE_FIELDS,`project-identity case ${item.id} evidence`,issues))return;
+   const source=sourceById.get(evidence.sourceId),anchor=expected[index];
+   if(!source||!Number.isInteger(evidence.startLine)||!Number.isInteger(evidence.endLine)||evidence.startLine>evidence.endLine||evidence.startLine<source.lineStart||evidence.endLine>source.lineEnd)issues.push(`project-identity case ${item.id} evidence has invalid line range`);else covered.add(evidence.sourceId);
+   if(!anchor||evidence.sourceId!==anchor[0]||evidence.startLine!==anchor[1]||evidence.endLine!==anchor[2])issues.push(`project-identity case ${item.id} has invalid pinned evidence`);
+  });
+  const critical=typeof item.id==="string"?PROJECT_CRITICAL_ANCHORS[item.id]:undefined;
+  if(!object(item.criticalValues)||!critical||JSON.stringify(item.criticalValues)!==JSON.stringify(critical))issues.push(`project-identity case ${item.id} has invalid critical values`);
+ }
+ if(expectedSources.some(id=>!covered.has(id)))issues.push("project-identity cases must reference all pinned sources");
+ return issues;
 }
 
 /** Pure structural and critical-value validation of source-inspected context/timeline contracts. */
@@ -494,8 +578,8 @@ export function validateMemoryParity(manifest){
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(process.argv.length!==2){console.error("audit:memory-parity is offline-only and accepts no flags");process.exitCode=2;}
  else{
-  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline())];
+  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline()),...validateMemoryProjectIdentity(loadCheckedInMemoryProjectIdentity())];
   if(issues.length){console.error(issues.join("\n"));process.exitCode=1;}
-  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, and 5 context/timeline source-inspected contracts; no runtime parity claim)");
+  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, and 7 project-identity source-inspected contracts; no runtime parity claim)");
  }
 }

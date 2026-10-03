@@ -3,7 +3,7 @@ import {spawnSync} from "node:child_process";
 import {resolve} from "node:path";
 import test from "node:test";
 // @ts-expect-error Dependency-free offline JavaScript validator.
-import {loadCheckedInMemoryContextTimeline,loadCheckedInMemoryFoundation,loadCheckedInMemoryObservationWrites,loadCheckedInMemoryParity,loadCheckedInMemoryRetrievalSearch,validateMemoryContextTimeline,validateMemoryFoundation,validateMemoryObservationWrites,validateMemoryParity,validateMemoryRetrievalSearch} from "../scripts/audit-memory-parity.mjs";
+import {loadCheckedInMemoryContextTimeline,loadCheckedInMemoryFoundation,loadCheckedInMemoryObservationWrites,loadCheckedInMemoryParity,loadCheckedInMemoryProjectIdentity,loadCheckedInMemoryRetrievalSearch,validateMemoryContextTimeline,validateMemoryFoundation,validateMemoryObservationWrites,validateMemoryParity,validateMemoryProjectIdentity,validateMemoryRetrievalSearch} from "../scripts/audit-memory-parity.mjs";
 
 const baseline=loadCheckedInMemoryParity();
 const clone=()=>structuredClone(baseline);
@@ -300,6 +300,70 @@ test("context/timeline guards pin schema, source tuples, evidence, and limitatio
  reject(input=>{input.limitations=[];},/limitations/);
  reject(input=>{input.cases[0].contract=" ";},/contract/);
  reject(input=>{input.cases[0].unexpected=true;},/unknown or missing properties/);
+});
+
+test("project-identity fixture is source-inspected and contains seven ordered contracts",()=>{
+ const fixture=loadCheckedInMemoryProjectIdentity();
+ assert.deepEqual(validateMemoryProjectIdentity(fixture),[]);
+ assert.deepEqual(fixture.cases.map((item:any)=>item.id),["PRJ-override","PRJ-config","PRJ-git-remote","PRJ-git-root","PRJ-child","PRJ-ambiguous","PRJ-basename"]);
+ assert.equal(fixture.status,"SOURCE_INSPECTED");
+});
+
+test("project-identity claims cite each required direct helper definition",()=>{
+ const fixture=loadCheckedInMemoryProjectIdentity();
+ const required:[string,string,number,number][]=[
+  ["PRJ-child","SRC-PRJ-001",84,99],
+  ["PRJ-config","SRC-PRJ-001",311,320],["PRJ-config","SRC-PRJ-001",513,521],
+  ["PRJ-git-remote","SRC-PRJ-002",30,32],["PRJ-git-root","SRC-PRJ-002",30,32],
+  ["PRJ-basename","SRC-PRJ-001",513,521],["PRJ-basename","SRC-PRJ-003",125,134]
+ ];
+ const missing=required.filter(([caseId,sourceId,startLine,endLine])=>!fixture.cases.find((item:any)=>item.id===caseId)?.evidence.some((entry:any)=>entry.sourceId===sourceId&&entry.startLine===startLine&&entry.endLine===endLine));
+ assert.deepEqual(missing,[],`missing direct helper tuples: ${JSON.stringify(missing)}`);
+ for(const tuple of required)for(const mode of ["remove","substitute","alter"]){
+  const input=structuredClone(fixture),item=input.cases.find((candidate:any)=>candidate.id===tuple[0]);
+  const index=item.evidence.findIndex((entry:any)=>entry.sourceId===tuple[1]&&entry.startLine===tuple[2]&&entry.endLine===tuple[3]);
+  if(mode==="remove")item.evidence.splice(index,1);
+  else if(mode==="substitute")item.evidence[index]={sourceId:"SRC-PRJ-001",startLine:137,endLine:203};
+  else item.evidence[index].startLine++;
+  assert.notDeepEqual(validateMemoryProjectIdentity(input),[],`${mode} accepted ${tuple.join(":")}`);
+ }
+});
+
+test("project-identity guards reject 27 bounded semantic substitutions",()=>{
+ const fixture=loadCheckedInMemoryProjectIdentity(),cases=Object.fromEntries(fixture.cases.map((item:any)=>[item.id,item]));
+ const mutations:[string,(input:any)=>void][]=[
+  ["priority",input=>{input.cases[0].criticalValues.priority=["explicit","all_bypass","process_override","cwd_detection"];}],
+  ["all bypass",input=>{input.cases[0].criticalValues.allBypassesInputs=false;}],
+  ["explicit required",input=>{input.cases[0].criticalValues.explicitEmpty="detect_cwd";}],
+  ["known callback conditions",input=>{input.cases[0].criticalValues.knownChecks.onlyWhenRequired=false;}],
+  ["nearest config",input=>{input.cases[1].criticalValues.insideGit="checkout_root_only";}],
+  ["outside parent leak",input=>{input.cases[1].criticalValues.outsideParentLeak=true;}],
+  ["existing binding wins",input=>{input.cases[2].criticalValues.existingBindingWins=false;}],
+  ["creation permissions",input=>{input.cases[2].criticalValues.creation.mode="0644";}],
+  ["creation fail closed",input=>{input.cases[2].criticalValues.invalidExisting="replace_binding";}],
+  ["security scope",input=>{input.limitations[2]="Project callbacks prove tenant isolation.";}],
+  ["root seeding",input=>{input.cases[3].criticalValues.seed="every_detection";}],
+  ["root errors",input=>{input.cases[3].criticalValues.failClosed=false;}],
+  ["percent decode",input=>{input.cases[2].criticalValues.remote.percentDecode=true;}],
+  ["separator collapse",input=>{input.cases[2].criticalValues.canonicalization.collapseOnly=["-","_"];}],
+  ["ambiguity preserved",input=>{input.cases[5].criticalValues.available.separatorCollapse=true;}],
+  ["scan depth",input=>{input.cases[4].criticalValues.depth="recursive";}],
+  ["child errors",input=>{input.cases[4].criticalValues.error="basename_fallback";}],
+  ["child source",input=>{input.cases[4].criticalValues.success.source="git_remote";}],
+  ["child warning",input=>{input.cases[4].criticalValues.success.warning="empty";}],
+  ["fallback unknown",input=>{input.cases[6].criticalValues.emptyDotOrPathLike="empty";}],
+  ["fallback warning",input=>{input.cases[6].criticalValues.warning="scan failed";}],
+  ["source pin",input=>{input.sources[0].bytes=20411;}],
+  ["source identity",input=>{input.sources[1].sourceIdentity=input.sources[1].path;}],
+  ["evidence order",input=>{input.cases[1].evidence.reverse();}],
+  ["callsite only",input=>{input.cases[0].evidence.splice(1,1);}],
+  ["limitations",input=>{input.limitations.pop();}],
+  ["schema",input=>{input.cases[0].claim="runtime";}]
+ ];
+ assert.equal(Object.keys(cases).length,7);
+ const accepted:string[]=[];
+ for(const [name,mutate] of mutations){const input=structuredClone(fixture);mutate(input);if(validateMemoryProjectIdentity(input).length===0)accepted.push(name);}
+ assert.deepEqual(accepted,[],`accepted altered contracts: ${accepted.join(", ")}`);
 });
 
 test("CLI rejects flags instead of implying a live verifier",()=>{

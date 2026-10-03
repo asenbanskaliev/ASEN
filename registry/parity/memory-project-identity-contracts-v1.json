@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "scope": "reference_only",
+  "status": "SOURCE_INSPECTED",
+  "proofKind": "source_inspection",
+  "limitations": [
+    "These contracts record public source inspection only; they do not prove ASEN runtime behavior or project-identity parity.",
+    "No real repository binding, Git configuration, private file, database, session store, or cloud service was inspected or executed.",
+    "Project existence callbacks and resolved-project comparisons are not authentication, authorization, tenant isolation, or security proofs.",
+    "Cloud CLI URL decoding is separate and unproved by these project-package sources; percent escapes remain literal in the inspected remote parser.",
+    "Source evidence does not prove SQLite behavior, configuration recovery, platform behavior, model behavior, or complete E3-01 behavior; E3-01 remains PARTIAL and the E3-02 gate remains pending."
+  ],
+  "sources": [
+    {"id":"SRC-PRJ-001","path":"internal/project/detect.go","bytes":19835,"sha256":"cd4e9a138d30dce1adde641a0bc080a7403056f1e3fcff209eac7e75692f422f","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/project/detect.go","representation":"git_blob","lineStart":59,"lineEnd":576,"lineFeeds":576,"carriageReturns":0,"utf8Bom":false,"utf8Valid":true,"finalLf":true},
+    {"id":"SRC-PRJ-002","path":"internal/project/identity.go","bytes":4124,"sha256":"610ca8b9c85bf1d7e94f0cd1dd41a2fb18536e46d25f6eb40a395ad5b17152d4","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/project/identity.go","representation":"git_blob","lineStart":30,"lineEnd":107,"lineFeeds":115,"carriageReturns":0,"utf8Bom":false,"utf8Valid":true,"finalLf":true},
+    {"id":"SRC-PRJ-003","path":"internal/project/resolution.go","bytes":4282,"sha256":"3e4da942e70b4b7a344c2c87a7394e159d53ee03fc3a1c86a3baaf2a82e7746a","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/project/resolution.go","representation":"git_blob","lineStart":48,"lineEnd":134,"lineFeeds":138,"carriageReturns":0,"utf8Bom":false,"utf8Valid":true,"finalLf":true}
+  ],
+  "cases": [
+    {
+      "id":"PRJ-override",
+      "summary":"Resolution modes impose an explicit, process, then cwd precedence after an all-project bypass.",
+      "evidence":[{"sourceId":"SRC-PRJ-003","startLine":48,"endLine":106},{"sourceId":"SRC-PRJ-001","startLine":59,"endLine":82}],
+      "contract":"All-project resolution ignores every project input. Explicit mode rejects an empty trimmed value; otherwise explicit beats process override, which beats cwd detection. Known-project checks run only when the corresponding flag is set.",
+      "negativeControls":"A missing callback is an error only for a required known-project check. Callback errors propagate, false yields UnknownProjectError, and no store, tenant, or security behavior is proved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{"priority":["all_bypass","explicit","process_override","cwd_detection"],"allBypassesInputs":true,"explicitEmpty":"ErrInvalidProjectName","knownChecks":{"explicit":"RequireKnownExplicit","process":"RequireKnownProcess","onlyWhenRequired":true,"nilWhenRequired":"error","callbackError":"propagate","false":"UnknownProjectError"}}
+    },
+    {
+      "id":"PRJ-config",
+      "summary":"A nearest valid checkout-local config precedes Git and child detection without leaking from outside its boundary.",
+      "evidence":[{"sourceId":"SRC-PRJ-001","startLine":137,"endLine":203},{"sourceId":"SRC-PRJ-001","startLine":240,"endLine":309},{"sourceId":"SRC-PRJ-001","startLine":311,"endLine":320},{"sourceId":"SRC-PRJ-001","startLine":348,"endLine":362},{"sourceId":"SRC-PRJ-001","startLine":416,"endLine":425},{"sourceId":"SRC-PRJ-001","startLine":513,"endLine":521},{"sourceId":"SRC-PRJ-003","startLine":125,"endLine":134}],
+      "contract":"Inside Git, detection walks from the canonical cwd to the checkout root only and chooses the nearest config before Git or children. Outside Git, only the current directory is checked. Read, parse, empty, path-like, and control-character failures return SourceConfig with ErrInvalidConfig; accepted names are canonicalized.",
+      "negativeControls":"No parent config outside the checkout or arbitrary outside-Git ancestor is inherited, and recovery after malformed configuration is unproved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{"dispatchBefore":["git_binding","child_scan","basename"],"insideGit":"nearest_at_or_below_checkout_root","outsideGit":"current_directory_only","outsideParentLeak":false,"invalid":{"source":"config","error":"ErrInvalidConfig","project":"empty","conditions":["read","parse","empty","path","control"]},"canonicalization":"lower_trim_collapse_repeated_double_hyphen_and_underscore"}
+    },
+    {
+      "id":"PRJ-git-remote",
+      "summary":"A Git repository with origin reports the remote source while preserving or creating its clone-private canonical binding.",
+      "evidence":[{"sourceId":"SRC-PRJ-001","startLine":210,"endLine":234},{"sourceId":"SRC-PRJ-001","startLine":366,"endLine":412},{"sourceId":"SRC-PRJ-001","startLine":544,"endLine":576},{"sourceId":"SRC-PRJ-002","startLine":30,"endLine":32},{"sourceId":"SRC-PRJ-002","startLine":34,"endLine":107},{"sourceId":"SRC-PRJ-003","startLine":125,"endLine":134}],
+      "contract":"The common Git directory owns the binding and the canonical primary root owns Path. An existing valid binding wins over current origin metadata; origin seeds only a missing binding. URL parsing trims .git, splits slash or colon, preserves percent escapes, then canonicalizes the seed.",
+      "negativeControls":"The parser does not URL-decode, and repeated separator collapse applies only to repeated double hyphens and underscores. Cloud CLI decoding is not proved here.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{"source":"git_remote","existingBindingWins":true,"originUse":"seed_missing_binding_only","bindingScope":"git_common_dir","path":"canonical_primary_root","remote":{"trimSuffix":".git","split":["/",":"],"percentDecode":false},"canonicalization":{"lowercase":true,"trim":true,"collapseOnly":["--","__"]},"creation":{"onlyOnNotExist":true,"canonicalSeedRequired":true,"mode":"0600","temporaryExclusive":true,"newline":true,"publish":"hard_link_atomic","collision":"reread_winner"},"invalidExisting":"ErrRepositoryBinding"}
+    },
+    {
+      "id":"PRJ-git-root",
+      "summary":"A Git repository without origin uses the canonical primary root basename only to seed a missing private binding.",
+      "evidence":[{"sourceId":"SRC-PRJ-001","startLine":210,"endLine":234},{"sourceId":"SRC-PRJ-001","startLine":366,"endLine":412},{"sourceId":"SRC-PRJ-002","startLine":30,"endLine":32},{"sourceId":"SRC-PRJ-002","startLine":34,"endLine":107}],
+      "contract":"The common Git directory shares identity across linked worktrees while Path resolves to the canonical primary root. With no origin, root basename seeds only an absent binding; root or binding failures fail closed.",
+      "negativeControls":"Unreadable, corrupt, wrong-version, invalid-ID, or noncanonical existing bindings are not replaced, and inability to determine the repository root returns ErrRepositoryBinding.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{"source":"git_root","bindingScope":"git_common_dir","path":"canonical_primary_root","seed":"root_basename_only_when_missing","existingBindingWins":true,"rootFailure":"ErrRepositoryBinding","existingFailures":["unreadable","corrupt","wrong_version","invalid_id","noncanonical_project"],"failClosed":true}
+    },
+    {
+      "id":"PRJ-child",
+      "summary":"Exactly one bounded depth-one child repository is recursively resolved and relabeled as a child result.",
+      "evidence":[{"sourceId":"SRC-PRJ-001","startLine":84,"endLine":99},{"sourceId":"SRC-PRJ-001","startLine":137,"endLine":203},{"sourceId":"SRC-PRJ-001","startLine":432,"endLine":488}],
+      "contract":"The 200ms depth-one scan skips hidden and named noise directories. Exactly one child runs full recursive detection; errors propagate unchanged, while success preserves project and path and changes only source and warning.",
+      "negativeControls":"The scan is not recursive across every child, and a child detection error is never converted to a successful basename result.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{"depth":1,"timeoutMs":200,"skipHidden":true,"noise":["node_modules","vendor",".venv","__pycache__","target","dist","build",".idea",".vscode"],"single":"recursive_DetectProjectFull","error":"propagate","success":{"source":"git_child","path":"child_result_path","warning":"auto-promoted child repository: <project>"}}
+    },
+    {
+      "id":"PRJ-ambiguous",
+      "summary":"More than one bounded child repository yields a deterministic ambiguity result without selecting a project.",
+      "evidence":[{"sourceId":"SRC-PRJ-001","startLine":172,"endLine":192},{"sourceId":"SRC-PRJ-001","startLine":432,"endLine":488},{"sourceId":"SRC-PRJ-001","startLine":525,"endLine":531}],
+      "contract":"The scan stops after its second repository. Ambiguous names are trimmed, lowercased, sorted, and preserve distinct separator forms; Project is empty, Source is ambiguous, Path is absolute, and Error is ErrAmbiguousProject.",
+      "negativeControls":"Available names do not use full project canonicalization, so doubled hyphen or underscore forms are not collapsed into one choice.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{"threshold":2,"shortCircuit":true,"project":"empty","source":"ambiguous","error":"ErrAmbiguousProject","path":"absolute_input","available":{"trim":true,"lowercase":true,"sorted":true,"separatorCollapse":false}}
+    },
+    {
+      "id":"PRJ-basename",
+      "summary":"No discovered repository, a child-scan timeout, or a child-scan read failure falls back to the normalized input basename.",
+      "evidence":[{"sourceId":"SRC-PRJ-001","startLine":137,"endLine":203},{"sourceId":"SRC-PRJ-001","startLine":432,"endLine":488},{"sourceId":"SRC-PRJ-001","startLine":498,"endLine":509},{"sourceId":"SRC-PRJ-001","startLine":513,"endLine":521},{"sourceId":"SRC-PRJ-001","startLine":533,"endLine":539},{"sourceId":"SRC-PRJ-003","startLine":125,"endLine":134}],
+      "contract":"Fallback uses the absolute input as Path and the normalized input basename as Project. Empty, dot, or path-like fallback names become unknown. Source is dir_basename with no error or warning, including bounded scan timeout and read/open failure paths.",
+      "negativeControls":"Fallback does not claim a repository, binding, runtime platform equivalence, or successful child detection.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{"triggers":["no_repository","scan_timeout","scan_open_or_read_failure"],"project":"normalized_input_basename","emptyDotOrPathLike":"unknown","path":"absolute_input","source":"dir_basename","error":null,"warning":"empty"}
+    }
+  ]
+}
