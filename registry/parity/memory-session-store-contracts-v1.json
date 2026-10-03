@@ -15,6 +15,7 @@
     "Queue-helper invocation and even an enrolled journal row do not prove durable synchronization or remote delivery.",
     "The ended legacy-ownership claim excludes resume, continuation, isolation, EndSession, terminal synchronization, callers, normalization internals, queue enrollment, remote delivery, and actual SQLite commit, rollback, concurrency, or durability; a returned ended error does not imply that no side effects occurred.",
     "The isolation-root preflight excludes continuation selection, selected-ID checks, isolation success after the preflight, terminal synchronization, EndSession, normalization internals, callers, remote delivery, and runtime SQLite, concurrency, or durability behavior.",
+    "The selected-continuation isolation contract excludes the selection algorithm or ordinal, root ownership, successful continuation registration, repair, start, enqueue, terminal synchronization, EndSession, callers, and runtime SQLite behavior, absence of mutation, concurrency, durability, or remote delivery.",
     "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02."
   ],
   "sources": [
@@ -260,6 +261,26 @@
         "transaction":{"root":"id_before_withTx","eachAttemptReset":{"id":"root"},"ordering":["reset_id_to_root","validateIsolation(root)","resume_branch"]},
         "preflight":{"operation":"query_only","query":"SELECT ifnull(directory, '') FROM sessions WHERE id = ?","argument":"root","missingRow":"allow","trimmedBlank":"allow","queryError":"propagate","trimmedNonblank":{"error":"wrap_ErrSessionIsolationConflict","sessionID":"quoted"}},
         "rejection":{"returnBefore":"resume_branch"}
+      }
+    },
+    {
+      "id":"SES-store-isolation-selected-continuation",
+      "summary":"Resumed isolated registration validates a distinct selected continuation before reading its ownership.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":3133,"endLine":3145},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3218,"endLine":3245},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3274,"endLine":3289}
+      ],
+      "contract":"RegisterIsolatedSession initializes effective to the requested ID and delegates an empty directory, project-owned mode, the caller's resume value, and isolated true. Each withTx callback restores id from root and uses the same validateIsolation closure for root and any distinct selected ID. continuationSessionTx errors return; otherwise id receives the selection and effective receives that selected ID. Only id != root invokes validateIsolation again. Its query allows a missing row or trimmed-blank directory, propagates SQL errors, and returns an error wrapping ErrSessionIsolationConflict for a trimmed-nonblank directory. Selected-ID rejection returns before sessionOwnershipTx.",
+      "negativeControls":"The continuation selection algorithm or ordinal, root ownership, successful continuation registration, repair, start, enqueue, terminal synchronization, EndSession, callers, runtime SQLite behavior, absence of mutation, concurrency, durability, and remote delivery are not proved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "sentinel":{"name":"ErrSessionIsolationConflict","message":"isolated session registration requires an empty directory; existing runtime-bound sessions cannot be reused"},
+        "wrapper":{"entry":"RegisterIsolatedSession","directory":"empty","mode":"project_owned","resume":"forward","effective":"id","isolated":true},
+        "transaction":{"root":"id_before_withTx","eachAttemptReset":{"id":"root"},"sharedValidation":"validateIsolation","ordering":["reset_id_to_root","validateIsolation(root)","continuationSessionTx(tx,root)","effective=selected_id","validateIsolation(selected_id)_if_distinct","sessionOwnershipTx"]},
+        "continuation":{"call":"continuationSessionTx(tx,root)","error":"propagate","effective":"selected_id","selectionAlgorithm":"UNPROVED"},
+        "selectedCheck":{"condition":"id != root","invocation":"only_when_distinct","sameAsRootPreflight":true,"query":"SELECT ifnull(directory, '') FROM sessions WHERE id = ?","argument":"selected_id","missingRow":"allow","trimmedBlank":"allow","queryError":"propagate","trimmedNonblank":{"error":"wrap_ErrSessionIsolationConflict","sessionID":"quoted"}},
+        "rejection":{"returnBefore":"sessionOwnershipTx"}
       }
     }
   ]

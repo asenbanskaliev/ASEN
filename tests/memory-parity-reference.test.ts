@@ -443,7 +443,7 @@ test("session transport rejects semantic substitutions and unproved boundary cla
 });
 
 const expectedSessionStore=deepFreeze({
- caseIds:["SES-store-id-validation","SES-store-start-sql-state","SES-store-create-ownership","SES-store-create-sql-state","SES-store-create-sync","SES-store-live-registration-conflict","SES-store-live-identity-repair","SES-store-ended-legacy-ownership-claim","SES-store-isolation-root-preflight"],
+ caseIds:["SES-store-id-validation","SES-store-start-sql-state","SES-store-create-ownership","SES-store-create-sql-state","SES-store-create-sync","SES-store-live-registration-conflict","SES-store-live-identity-repair","SES-store-ended-legacy-ownership-claim","SES-store-isolation-root-preflight","SES-store-isolation-selected-continuation"],
  source:["SRC-SES-STORE-001","internal/store/store.go",488121,"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e","a396d5d8eb91b956a12c23cd5e936a2b74dd7760",59,11640,13200],
  evidence:{
   "SES-store-id-validation":[["SRC-SES-STORE-001",59,59],["SRC-SES-STORE-001",149,151],["SRC-SES-STORE-001",3049,3059],["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3209],["SRC-SES-STORE-001",11598,11600],["SRC-SES-STORE-001",11602,11607]],
@@ -454,7 +454,8 @@ const expectedSessionStore=deepFreeze({
   "SES-store-live-registration-conflict":[["SRC-SES-STORE-001",67,75],["SRC-SES-STORE-001",135,151],["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3220],["SRC-SES-STORE-001",3285,3289],["SRC-SES-STORE-001",3334,3347],["SRC-SES-STORE-001",10797,10830]],
   "SES-store-live-identity-repair":[["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3222],["SRC-SES-STORE-001",3285,3289],["SRC-SES-STORE-001",3334,3373],["SRC-SES-STORE-001",9402,9424]],
   "SES-store-ended-legacy-ownership-claim":[["SRC-SES-STORE-001",67,75],["SRC-SES-STORE-001",135,151],["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3223],["SRC-SES-STORE-001",3285,3347],["SRC-SES-STORE-001",3374,3379],["SRC-SES-STORE-001",10800,10830],["SRC-SES-STORE-001",10836,10868]],
-  "SES-store-isolation-root-preflight":[["SRC-SES-STORE-001",3133,3145],["SRC-SES-STORE-001",3218,3245]]
+  "SES-store-isolation-root-preflight":[["SRC-SES-STORE-001",3133,3145],["SRC-SES-STORE-001",3218,3245]],
+  "SES-store-isolation-selected-continuation":[["SRC-SES-STORE-001",3133,3145],["SRC-SES-STORE-001",3218,3245],["SRC-SES-STORE-001",3274,3289]]
  },
  facts:{
   idSentinel:["ErrSessionIDRequired","session id is required"],blank:["strings.TrimSpace","empty"],validation:["ErrSessionIDRequired","nil"],
@@ -503,13 +504,21 @@ const expectedSessionStore=deepFreeze({
    transaction:{root:"id_before_withTx",eachAttemptReset:{id:"root"},ordering:["reset_id_to_root","validateIsolation(root)","resume_branch"]},
    preflight:{operation:"query_only",query:"SELECT ifnull(directory, '') FROM sessions WHERE id = ?",argument:"root",missingRow:"allow",trimmedBlank:"allow",queryError:"propagate",trimmedNonblank:{error:"wrap_ErrSessionIsolationConflict",sessionID:"quoted"}},
    rejection:{returnBefore:"resume_branch"}
+  },
+  selectedIsolation:{
+   sentinel:{name:"ErrSessionIsolationConflict",message:"isolated session registration requires an empty directory; existing runtime-bound sessions cannot be reused"},
+   wrapper:{entry:"RegisterIsolatedSession",directory:"empty",mode:"project_owned",resume:"forward",effective:"id",isolated:true},
+   transaction:{root:"id_before_withTx",eachAttemptReset:{id:"root"},sharedValidation:"validateIsolation",ordering:["reset_id_to_root","validateIsolation(root)","continuationSessionTx(tx,root)","effective=selected_id","validateIsolation(selected_id)_if_distinct","sessionOwnershipTx"]},
+   continuation:{call:"continuationSessionTx(tx,root)",error:"propagate",effective:"selected_id",selectionAlgorithm:"UNPROVED"},
+   selectedCheck:{condition:"id != root",invocation:"only_when_distinct",sameAsRootPreflight:true,query:"SELECT ifnull(directory, '') FROM sessions WHERE id = ?",argument:"selected_id",missingRow:"allow",trimmedBlank:"allow",queryError:"propagate",trimmedNonblank:{error:"wrap_ErrSessionIsolationConflict",sessionID:"quoted"}},
+   rejection:{returnBefore:"sessionOwnershipTx"}
   }
  }
 });
 const storeFixture=()=>loadCheckedInMemorySessionStore();
 const storeTuples=(item:any)=>item.evidence.map((entry:any)=>[entry.sourceId,entry.startLine,entry.endLine]);
 
-test("session store fixture independently pins exactly nine contracts, one source, and critical facts",()=>{
+test("session store fixture independently pins exactly ten contracts, one source, and critical facts",()=>{
  const fixture=storeFixture(),id=fixture.cases[0].criticalValues,sql=fixture.cases[1].criticalValues,source=fixture.sources[0];
  assert.deepEqual(validateMemorySessionStore(fixture),[]);
  assert.deepEqual(fixture.cases.map((item:any)=>item.id),expectedSessionStore.caseIds);
@@ -533,8 +542,8 @@ test("session store fixture independently pins exactly nine contracts, one sourc
  assert.deepEqual(create.columns,expectedSessionStore.facts.createColumns);assert.deepEqual(create.arguments,expectedSessionStore.facts.createArguments);assert.deepEqual(Object.values(create.conflict),expectedSessionStore.facts.createConflict);
  assert.deepEqual(sync.ordering,expectedSessionStore.facts.syncOrder);assert.deepEqual(sync.persistedColumns,expectedSessionStore.facts.persistedColumns);assert.deepEqual(sync.payloadFields,expectedSessionStore.facts.payloadFields);
  assert.deepEqual([sync.journal.blankDirectory,sync.journal.unenrolledProject,sync.journal.enrolledProject,sync.helperInvocationDurableSync,sync.cloudDelivery],expectedSessionStore.facts.journal);
- assert.deepEqual(fixture.cases[5].criticalValues,expectedSessionStore.facts.liveConflict);assert.deepEqual(fixture.cases[6].criticalValues,expectedSessionStore.facts.liveRepair);assert.deepEqual(fixture.cases[7].criticalValues,expectedSessionStore.facts.endedClaim);assert.deepEqual(fixture.cases[8].criticalValues,expectedSessionStore.facts.isolationPreflight);
- assert.equal(Object.isFrozen(expectedSessionStore.evidence["SES-store-ended-legacy-ownership-claim"]),true);assert.equal(Object.isFrozen(expectedSessionStore.evidence["SES-store-isolation-root-preflight"]),true);assert.equal(Object.isFrozen(expectedSessionStore.evidence["SES-store-isolation-root-preflight"][0]),true);assert.equal(Object.isFrozen(expectedSessionStore.facts.endedClaim.update.arguments),true);assert.equal(Object.isFrozen(expectedSessionStore.facts.isolationPreflight.preflight.trimmedNonblank),true);
+ assert.deepEqual(fixture.cases[5].criticalValues,expectedSessionStore.facts.liveConflict);assert.deepEqual(fixture.cases[6].criticalValues,expectedSessionStore.facts.liveRepair);assert.deepEqual(fixture.cases[7].criticalValues,expectedSessionStore.facts.endedClaim);assert.deepEqual(fixture.cases[8].criticalValues,expectedSessionStore.facts.isolationPreflight);assert.deepEqual(fixture.cases[9].criticalValues,expectedSessionStore.facts.selectedIsolation);
+ assert.equal(Object.isFrozen(expectedSessionStore.evidence["SES-store-ended-legacy-ownership-claim"]),true);assert.equal(Object.isFrozen(expectedSessionStore.evidence["SES-store-isolation-root-preflight"]),true);assert.equal(Object.isFrozen(expectedSessionStore.evidence["SES-store-isolation-selected-continuation"]),true);assert.equal(Object.isFrozen(expectedSessionStore.evidence["SES-store-isolation-selected-continuation"][2]),true);assert.equal(Object.isFrozen(expectedSessionStore.facts.endedClaim.update.arguments),true);assert.equal(Object.isFrozen(expectedSessionStore.facts.isolationPreflight.preflight.trimmedNonblank),true);assert.equal(Object.isFrozen(expectedSessionStore.facts.selectedIsolation.selectedCheck.trimmedNonblank),true);
 });
 
 test("session store rejects absence, substitution, range, and order changes for every direct tuple",()=>{
@@ -559,7 +568,7 @@ test("session store validator rejects every critical fact, limitation, identity,
  const fixture=storeFixture(),accepted:string[]=[],mutateLeaves=(value:any,visit:(path:(string|number)[])=>void,path:(string|number)[]=[]):void=>{
   if(value&&typeof value==="object")for(const [key,nested] of Object.entries(value))mutateLeaves(nested,visit,[...path,key]);else visit(path);
  },set=(root:any,path:(string|number)[])=>{let owner=root;for(const key of path.slice(0,-1))owner=owner[key];const key=path.at(-1)!;owner[key]=typeof owner[key]==="boolean"?!owner[key]:typeof owner[key]==="number"?owner[key]+1:`${owner[key]}_altered`;};
- for(const caseIndex of [5,6,7,8])mutateLeaves(fixture.cases[caseIndex].criticalValues,path=>{const input=structuredClone(fixture);set(input.cases[caseIndex].criticalValues,path);assert.notDeepEqual(validateMemorySessionStore(input),[],`critical leaf accepted ${caseIndex}:${path.join(".")}`);});
+ for(const caseIndex of [5,6,7,8,9])mutateLeaves(fixture.cases[caseIndex].criticalValues,path=>{const input=structuredClone(fixture);set(input.cases[caseIndex].criticalValues,path);assert.notDeepEqual(validateMemorySessionStore(input),[],`critical leaf accepted ${caseIndex}:${path.join(".")}`);});
  for(let index=0;index<fixture.limitations.length;index++){const input=structuredClone(fixture);input.limitations[index]="altered limitation";assert.notDeepEqual(validateMemorySessionStore(input),[],`limitation accepted ${index}`);}
  const mutations:[string,(input:any)=>void][]=[
   ["git blob",input=>{input.sources[0].gitBlob="0".repeat(40);}], ["source hash",input=>{input.sources[0].sha256="0".repeat(64);}], ["representation",input=>{input.sources[0].representation="checkout";}],
