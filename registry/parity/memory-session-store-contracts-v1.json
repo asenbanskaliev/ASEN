@@ -16,6 +16,7 @@
     "The ended legacy-ownership claim excludes resume, continuation, isolation, EndSession, terminal synchronization, callers, normalization internals, queue enrollment, remote delivery, and actual SQLite commit, rollback, concurrency, or durability; a returned ended error does not imply that no side effects occurred.",
     "The isolation-root preflight excludes continuation selection, selected-ID checks, isolation success after the preflight, terminal synchronization, EndSession, normalization internals, callers, remote delivery, and runtime SQLite, concurrency, or durability behavior.",
     "The selected-continuation isolation contract excludes the selection algorithm or ordinal, root ownership, successful continuation registration, repair, start, enqueue, terminal synchronization, EndSession, callers, and runtime SQLite behavior, absence of mutation, concurrency, durability, or remote delivery.",
+    "The resume-selection contract excludes terminal-root ownership guard semantics, isolation success, selected-continuation isolation, ownership, repair, start, enqueue, terminal synchronization, EndSession, callers, and runtime SQLite, collation, concurrency, durability, or Cloud behavior.",
     "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02."
   ],
   "sources": [
@@ -281,6 +282,27 @@
         "continuation":{"call":"continuationSessionTx(tx,root)","error":"propagate","effective":"selected_id","selectionAlgorithm":"UNPROVED"},
         "selectedCheck":{"condition":"id != root","invocation":"only_when_distinct","sameAsRootPreflight":true,"query":"SELECT ifnull(directory, '') FROM sessions WHERE id = ?","argument":"selected_id","missingRow":"allow","trimmedBlank":"allow","queryError":"propagate","trimmedNonblank":{"error":"wrap_ErrSessionIsolationConflict","sessionID":"quoted"}},
         "rejection":{"returnBefore":"sessionOwnershipTx"}
+      }
+    },
+    {
+      "id":"SES-store-resume-selection",
+      "summary":"Resume selects the root, the first BINARY-ordered lowest-numeric live continuation, or the next arbitrary-precision ordinal with ordered error propagation.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":3121,"endLine":3131},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3147,"endLine":3204},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3274,"endLine":3280}
+      ],
+      "contract":"ResumeSessionWithOwnershipMode initializes effective to the requested ID, invokes registration with resume true and isolated false, returns an empty ID with any error, and returns effective only on success. continuationSessionTx returns the root when its row is missing or live. Only an ended root scans the half-open continuation range from root+:resume:0 through root+:resume::, ordered by ID under the source-declared BINARY collation. It accepts nonempty ASCII-digit suffixes, including leading zeros, parsed base 10 with arbitrary-precision big.Int. It tracks the greatest numeric suffix and lowest numeric live suffix; live replacement uses strict numeric less-than, so equal numeric values retain the first BINARY-ordered live ID, such as :resume:02 before :resume:2. It returns that live ID when present, or max plus one from an initial max of 1, so no accepted suffix yields :resume:2. Root-query, continuation-query, row-scan, and rows.Err failures propagate in execution order; registration returns selector errors before assigning effective.",
+      "negativeControls":"Terminal-root ownership guard semantics, isolation success, selected-continuation isolation, ownership, repair, start, enqueue, terminal synchronization, EndSession, callers, and runtime SQLite, collation, concurrency, durability, or Cloud behavior are not proved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "wrapper":{"entry":"ResumeSessionWithOwnershipMode","effectiveInitial":"id","registration":{"resume":true,"effective":"pointer","isolated":false},"error":{"id":"empty","error":"propagate"},"success":{"id":"effective","error":"nil"}},
+        "root":{"query":"SELECT ended_at FROM sessions WHERE id = ?","argument":"root","missing":"return_root","live":"return_root","ended":"scan_continuations","queryError":"propagate"},
+        "range":{"prefix":"root+:resume:","lower":"prefix+0","upper":"prefix+:","interval":"half_open","order":"ORDER BY id","collation":"source_declared_BINARY"},
+        "suffix":{"required":"nonempty","accepted":"ASCII_digits_only","leadingZeros":"accepted","parse":{"type":"big.Int","base":10,"arbitraryPrecision":true},"rejected":"continue"},
+        "selection":{"maxInitial":"1","maxTracks":"greatest_numeric_suffix","liveTracks":"lowest_numeric_live_suffix","liveCondition":"ended_is_nil","liveReplacementComparison":"strict_numeric_less_than","numericTie":"retain_first_source_declared_BINARY_ordered_live_ID","tieExample":{"first":"root+:resume:02","later":"root+:resume:2","selected":"root+:resume:02"},"returnLive":"liveID","returnNew":"prefix+(max+1)","noAcceptedSuffix":"root+:resume:2"},
+        "errors":{"order":["root_query_scan","continuation_query","row_scan","rows.Err"],"behavior":"propagate"},
+        "invocation":{"call":"continuationSessionTx(tx,root)","selectorError":"return_before_effective_assignment","success":"effective=selected_id"}
       }
     }
   ]
