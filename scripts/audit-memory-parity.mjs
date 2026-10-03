@@ -10,6 +10,7 @@ const OBSERVATION_WRITE_MANIFEST="registry/parity/memory-observation-write-contr
 const RETRIEVAL_SEARCH_MANIFEST="registry/parity/memory-retrieval-search-contracts-v1.json";
 const CONTEXT_TIMELINE_MANIFEST="registry/parity/memory-context-timeline-contracts-v1.json";
 const PROJECT_IDENTITY_MANIFEST="registry/parity/memory-project-identity-contracts-v1.json";
+export const SESSION_TRANSPORT_MANIFEST="registry/parity/memory-session-transport-contracts-v1.json";
 const SHA40=/^[a-f0-9]{40}$/;
 const SHA64=/^[a-f0-9]{64}$/;
 const PATH=/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\/\/)[A-Za-z0-9._/-]+$/;
@@ -34,6 +35,11 @@ const CONTEXT_CASE_FIELDS=["id","summary","evidence","contract","negativeControl
 const PROJECT_TOP_FIELDS=["schemaVersion","scope","status","proofKind","limitations","sources","cases"];
 const PROJECT_SOURCE_FIELDS=["id","path","bytes","sha256","commit","sourceIdentity","representation","lineStart","lineEnd","lineFeeds","carriageReturns","utf8Bom","utf8Valid","finalLf"];
 const PROJECT_CASE_FIELDS=["id","summary","evidence","contract","negativeControls","versionControl","criticalValues"];
+const SESSION_SOURCE_FIELDS=["id","path","bytes","sha256","gitBlob","commit","sourceIdentity","representation","lineStart","lineEnd","lineFeeds","carriageReturns","utf8Bom","utf8Valid","finalLf"];
+const deepFreeze=value=>{
+ if(value&&typeof value==="object")for(const nested of Object.values(value))deepFreeze(nested);
+ return value&&typeof value==="object"?Object.freeze(value):value;
+};
 const CORE_COMMIT="15a2f78885d7ad8ced23b2d1d88383e9bb472c17";
 const FOUNDATION_SOURCE_ANCHORS={
  "internal/store/store.go":[501321,"2ffd000ee7f8c8fc1ad0c3d130e88a8ab4878449866c9737215b3c6d8ffa555b",997,9363],
@@ -125,6 +131,27 @@ const PROJECT_LIMITATIONS=Object.freeze([
  "Cloud CLI URL decoding is separate and unproved by these project-package sources; percent escapes remain literal in the inspected remote parser.",
  "Source evidence does not prove SQLite behavior, configuration recovery, platform behavior, model behavior, or complete E3-01 behavior; E3-01 remains PARTIAL and the E3-02 gate remains pending."
 ]);
+const SESSION_LIMITATIONS=Object.freeze([
+ "These contracts record public source inspection only; they do not prove ASEN runtime behavior or complete session-transport parity.",
+ "Session-start source inspection does not prove store ID validation, persistence, a live 30-minute lease, ended-session behavior, ownership, synchronization, or HTTP session-end and caller behavior.",
+ "Directory routing does not prove project detection or runtime-worktree internals, environment-to-default-project configuration, authentication, authorization, tenant isolation, or security.",
+ "The write queue is in-memory admission and serialization only; enqueue is not durable enrollment, registration, persistence, or cloud synchronization.",
+ "Source evidence does not prove native database, live SQLite, privacy, platform, cloud, model, or Pi-integration behavior.",
+ "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02."
+]);
+const SESSION_SOURCE_ANCHORS=deepFreeze({
+ "internal/mcp/mcp.go":[143683,"72dc51bdf5c5ca93540cb678ad22cd314c439154f36315adba78db66080874bb","a9aed618bd0d24bb996add8984ca99267974bcd4",187,3326,3624],
+ "internal/project/resolution.go":[4282,"3e4da942e70b4b7a344c2c87a7394e159d53ee03fc3a1c86a3baaf2a82e7746a","52d758a315ee5273840ddb2d305559837f837268",12,104,138],
+ "internal/mcp/write_queue.go":[2634,"15ee24135108c1ce75b605f538e6d1e51107d8211e590ef63b06c546695a44ef","7d0a3da0366f133e8641267c620d548127498238",11,104,104]
+});
+const SESSION_EVIDENCE_ANCHORS=deepFreeze({
+ "SES-MCP-start-resolution":[["SRC-SES-001",187,193],["SRC-SES-001",199,205],["SRC-SES-001",887,907],["SRC-SES-001",2397,2404],["SRC-SES-001",2411,2411],["SRC-SES-001",2431,2440],["SRC-SES-001",2826,2828],["SRC-SES-001",3297,3326],["SRC-SES-002",12,20],["SRC-SES-002",48,82],["SRC-SES-002",68,76],["SRC-SES-002",90,104]],
+ "SES-serialized-write-queue":[["SRC-SES-001",433,433],["SRC-SES-001",887,907],["SRC-SES-003",11,14],["SRC-SES-003",16,29],["SRC-SES-003",31,38],["SRC-SES-003",40,49],["SRC-SES-003",52,61],["SRC-SES-003",63,89],["SRC-SES-003",91,104]]
+});
+const SESSION_CRITICAL_ANCHORS=deepFreeze({
+ "SES-MCP-start-resolution":{schema:{id:"required_string",directory:"optional_string",project:"absent"},handler:{nonstringOrMissingId:"empty",directoryTransform:"trim_only"},explicitDirectory:{condition:"nonblank_trimmed",route:"DetectProjectFull"},omittedDirectory:{mode:"ResolutionCurrent",processOverride:"defaultProject",cwdGetwdFallback:".",projectExists:"store_callback",requireKnownProcess:false},runtimeDirectory:{blankFirst:"currentWorkingDirectory",then:"RuntimeWorktreeDirectory",claim:"call_routing_only"}},
+ "SES-serialized-write-queue":{queue:{storage:"in_memory",workers:1,defaultCapacity:32,full:"nonblocking_error"},cancellation:{preEnqueue:"reject",beforeCallbackStart:"skip",afterEnqueue:"await_buffered_result",midCallback:"context_reaches_handler_and_waits",resultSelect:false},callback:{result:"forward",error:"forward",panic:"converted_to_error"},wrapper:{mappedToToolError:["queue_full","context_canceled","deadline_exceeded"],mappedGoError:null,other:"transport_error"},durableEnrollment:false}
+});
 const PROJECT_SOURCE_ANCHORS=Object.freeze({
  "internal/project/detect.go":[19835,"cd4e9a138d30dce1adde641a0bc080a7403056f1e3fcff209eac7e75692f422f",59,576,576],
  "internal/project/identity.go":[4124,"610ca8b9c85bf1d7e94f0cd1dd41a2fb18536e46d25f6eb40a395ad5b17152d4",30,107,115],
@@ -276,6 +303,49 @@ export function loadCheckedInMemoryRetrievalSearch(root=ROOT){
 export function loadCheckedInMemoryContextTimeline(root=ROOT){
  try{return JSON.parse(readFileSync(resolve(root,CONTEXT_TIMELINE_MANIFEST),"utf8"));}
  catch(error){throw new Error(`cannot read memory context/timeline JSON ${CONTEXT_TIMELINE_MANIFEST}`,{cause:error});}
+}
+
+/** Load session-transport contracts without executing upstream code. */
+export function loadCheckedInMemorySessionTransport(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,SESSION_TRANSPORT_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory session-transport JSON ${SESSION_TRANSPORT_MANIFEST}`,{cause:error});}
+}
+
+/** Pure structural validation of source-inspected session transport contracts. */
+export function validateMemorySessionTransport(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,PROJECT_TOP_FIELDS,"session-transport manifest",issues))return issues;
+ if(manifest.schemaVersion!==1||manifest.scope!=="reference_only"||manifest.status!=="SOURCE_INSPECTED"||manifest.proofKind!=="source_inspection")issues.push("session-transport metadata must remain reference-only source inspection");
+ if(JSON.stringify(manifest.limitations)!==JSON.stringify(SESSION_LIMITATIONS))issues.push("session-transport limitations must preserve exact unproved boundaries");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],sourceIds=sources.map(source=>source?.id),sourceById=new Map();
+ if(JSON.stringify(sourceIds)!==JSON.stringify(["SRC-SES-001","SRC-SES-002","SRC-SES-003"])||duplicates(sourceIds))issues.push("session-transport sources must contain exact unique IDs in order");
+ for(const source of sources){
+  if(!exactKeys(source,SESSION_SOURCE_FIELDS,`session-transport source ${source?.id??"unknown"}`,issues))continue;
+  const anchor=typeof source.path==="string"?SESSION_SOURCE_ANCHORS[source.path]:undefined;
+  if(typeof source.id==="string")sourceById.set(source.id,source);
+  if(!anchor||!PATH.test(source.path)||source.bytes!==anchor[0]||source.sha256!==anchor[1]||source.gitBlob!==anchor[2])issues.push(`session-transport source ${source.id} has invalid pinned identity`);
+  if(source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`||source.representation!=="git_blob")issues.push(`session-transport source ${source.id} has invalid source representation`);
+  if(!anchor||source.lineStart!==anchor[3]||source.lineEnd!==anchor[4]||source.lineFeeds!==anchor[5]||source.carriageReturns!==0||source.utf8Bom!==false||source.utf8Valid!==true||source.finalLf!==true)issues.push(`session-transport source ${source.id} has invalid byte or line facts`);
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],caseIds=cases.map(item=>item?.id),covered=new Set();
+ if(JSON.stringify(caseIds)!==JSON.stringify(Object.keys(SESSION_EVIDENCE_ANCHORS))||duplicates(caseIds))issues.push("session-transport cases must contain the exact two SES cases in order");
+ for(const item of cases){
+  if(!exactKeys(item,PROJECT_CASE_FIELDS,`session-transport case ${item?.id??"unknown"}`,issues))continue;
+  for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`session-transport case ${item.id} ${field} must be nonempty`);
+  if(item.versionControl!=="CORE-15a")issues.push(`session-transport case ${item.id} has invalid versionControl`);
+  const expected=SESSION_EVIDENCE_ANCHORS[item.id];
+  if(!Array.isArray(item.evidence)||!expected||item.evidence.length!==expected.length)issues.push(`session-transport case ${item.id} has invalid pinned evidence`);
+  else item.evidence.forEach((entry,index)=>{
+   if(!exactKeys(entry,FOUNDATION_EVIDENCE_FIELDS,`session-transport case ${item.id} evidence`,issues))return;
+   const source=sourceById.get(entry.sourceId),anchor=expected[index];
+   if(!source||entry.startLine<source.lineStart||entry.endLine>source.lineEnd||!Number.isInteger(entry.startLine)||!Number.isInteger(entry.endLine)||entry.startLine>entry.endLine)issues.push(`session-transport case ${item.id} has invalid evidence range`);else covered.add(entry.sourceId);
+   if(!anchor||entry.sourceId!==anchor[0]||entry.startLine!==anchor[1]||entry.endLine!==anchor[2])issues.push(`session-transport case ${item.id} has invalid pinned evidence`);
+  });
+  const critical=SESSION_CRITICAL_ANCHORS[item.id];
+  if(!object(item.criticalValues)||!critical||JSON.stringify(item.criticalValues)!==JSON.stringify(critical))issues.push(`session-transport case ${item.id} has invalid critical values`);
+ }
+ if(["SRC-SES-001","SRC-SES-002","SRC-SES-003"].some(id=>!covered.has(id)))issues.push("session-transport cases must reference all pinned sources");
+ return issues;
 }
 
 /** Load project-identity contracts without executing upstream code. */
@@ -578,8 +648,8 @@ export function validateMemoryParity(manifest){
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(process.argv.length!==2){console.error("audit:memory-parity is offline-only and accepts no flags");process.exitCode=2;}
  else{
-  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline()),...validateMemoryProjectIdentity(loadCheckedInMemoryProjectIdentity())];
+  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline()),...validateMemoryProjectIdentity(loadCheckedInMemoryProjectIdentity()),...validateMemorySessionTransport(loadCheckedInMemorySessionTransport())];
   if(issues.length){console.error(issues.join("\n"));process.exitCode=1;}
-  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, and 7 project-identity source-inspected contracts; no runtime parity claim)");
+  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, and 2 session-transport source-inspected contracts; no runtime parity claim)");
  }
 }

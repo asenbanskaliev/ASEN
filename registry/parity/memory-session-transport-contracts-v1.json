@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "scope": "reference_only",
+  "status": "SOURCE_INSPECTED",
+  "proofKind": "source_inspection",
+  "limitations": [
+    "These contracts record public source inspection only; they do not prove ASEN runtime behavior or complete session-transport parity.",
+    "Session-start source inspection does not prove store ID validation, persistence, a live 30-minute lease, ended-session behavior, ownership, synchronization, or HTTP session-end and caller behavior.",
+    "Directory routing does not prove project detection or runtime-worktree internals, environment-to-default-project configuration, authentication, authorization, tenant isolation, or security.",
+    "The write queue is in-memory admission and serialization only; enqueue is not durable enrollment, registration, persistence, or cloud synchronization.",
+    "Source evidence does not prove native database, live SQLite, privacy, platform, cloud, model, or Pi-integration behavior.",
+    "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02."
+  ],
+  "sources": [
+    {"id":"SRC-SES-001","path":"internal/mcp/mcp.go","bytes":143683,"sha256":"72dc51bdf5c5ca93540cb678ad22cd314c439154f36315adba78db66080874bb","gitBlob":"a9aed618bd0d24bb996add8984ca99267974bcd4","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/mcp/mcp.go","representation":"git_blob","lineStart":187,"lineEnd":3326,"lineFeeds":3624,"carriageReturns":0,"utf8Bom":false,"utf8Valid":true,"finalLf":true},
+    {"id":"SRC-SES-002","path":"internal/project/resolution.go","bytes":4282,"sha256":"3e4da942e70b4b7a344c2c87a7394e159d53ee03fc3a1c86a3baaf2a82e7746a","gitBlob":"52d758a315ee5273840ddb2d305559837f837268","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/project/resolution.go","representation":"git_blob","lineStart":12,"lineEnd":104,"lineFeeds":138,"carriageReturns":0,"utf8Bom":false,"utf8Valid":true,"finalLf":true},
+    {"id":"SRC-SES-003","path":"internal/mcp/write_queue.go","bytes":2634,"sha256":"15ee24135108c1ce75b605f538e6d1e51107d8211e590ef63b06c546695a44ef","gitBlob":"7d0a3da0366f133e8641267c620d548127498238","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/mcp/write_queue.go","representation":"git_blob","lineStart":11,"lineEnd":104,"lineFeeds":104,"carriageReturns":0,"utf8Bom":false,"utf8Valid":true,"finalLf":true}
+  ],
+  "cases": [
+    {
+      "id": "SES-MCP-start-resolution",
+      "summary": "MCP session start accepts a required string ID and optional directory, then routes project and runtime-directory resolution without a project argument.",
+      "evidence": [
+        {"sourceId":"SRC-SES-001","startLine":187,"endLine":193},
+        {"sourceId":"SRC-SES-001","startLine":199,"endLine":205},
+        {"sourceId":"SRC-SES-001","startLine":887,"endLine":907},
+        {"sourceId":"SRC-SES-001","startLine":2397,"endLine":2404},
+        {"sourceId":"SRC-SES-001","startLine":2411,"endLine":2411},
+        {"sourceId":"SRC-SES-001","startLine":2431,"endLine":2440},
+        {"sourceId":"SRC-SES-001","startLine":2826,"endLine":2828},
+        {"sourceId":"SRC-SES-001","startLine":3297,"endLine":3326},
+        {"sourceId":"SRC-SES-002","startLine":12,"endLine":20},
+        {"sourceId":"SRC-SES-002","startLine":48,"endLine":82},
+        {"sourceId":"SRC-SES-002","startLine":68,"endLine":76},
+        {"sourceId":"SRC-SES-002","startLine":90,"endLine":104}
+      ],
+      "contract": "The handler casts nonstring or missing id to empty and trims only directory. A nonblank directory calls DetectProjectFull; omission uses current resolution with process default, current cwd (dot on Getwd failure), ProjectExists, and RequireKnownProcess false. Blank runtime directory obtains currentWorkingDirectory before RuntimeWorktreeDirectory.",
+      "negativeControls": "The MCP schema has no project field. Routing does not prove store validation or rejection of an empty ID, persistence, authentication, detection internals, runtime-worktree internals, or environment-to-default-project configuration.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "schema":{"id":"required_string","directory":"optional_string","project":"absent"},
+        "handler":{"nonstringOrMissingId":"empty","directoryTransform":"trim_only"},
+        "explicitDirectory":{"condition":"nonblank_trimmed","route":"DetectProjectFull"},
+        "omittedDirectory":{"mode":"ResolutionCurrent","processOverride":"defaultProject","cwdGetwdFallback":".","projectExists":"store_callback","requireKnownProcess":false},
+        "runtimeDirectory":{"blankFirst":"currentWorkingDirectory","then":"RuntimeWorktreeDirectory","claim":"call_routing_only"}
+      }
+    },
+    {
+      "id": "SES-serialized-write-queue",
+      "summary": "MCP mutations share a bounded in-memory worker that serializes admitted callbacks and deterministically waits for their result.",
+      "evidence": [
+        {"sourceId":"SRC-SES-001","startLine":433,"endLine":433},
+        {"sourceId":"SRC-SES-001","startLine":887,"endLine":907},
+        {"sourceId":"SRC-SES-003","startLine":11,"endLine":14},
+        {"sourceId":"SRC-SES-003","startLine":16,"endLine":29},
+        {"sourceId":"SRC-SES-003","startLine":31,"endLine":38},
+        {"sourceId":"SRC-SES-003","startLine":40,"endLine":49},
+        {"sourceId":"SRC-SES-003","startLine":52,"endLine":61},
+        {"sourceId":"SRC-SES-003","startLine":63,"endLine":89},
+        {"sourceId":"SRC-SES-003","startLine":91,"endLine":104}
+      ],
+      "contract": "The default capacity is 32. Pre-enqueue cancellation or deadline returns immediately; a full queue rejects nonblockingly. The worker skips cancellation observed before callback start, but after enqueue Do always awaits the buffered result with no cancellation select. Started callbacks receive the context and their result or error is returned through the wrapper; panics become errors.",
+      "negativeControls": "Mid-callback cancellation can reach the handler and Do still waits for callback return; no claim forbids a callback from returning context.Canceled. Full, canceled, and deadline errors become MCP tool errors with nil Go error, while other errors remain transport errors. Enqueue is not durable enrollment or cloud-sync registration.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "queue":{"storage":"in_memory","workers":1,"defaultCapacity":32,"full":"nonblocking_error"},
+        "cancellation":{"preEnqueue":"reject","beforeCallbackStart":"skip","afterEnqueue":"await_buffered_result","midCallback":"context_reaches_handler_and_waits","resultSelect":false},
+        "callback":{"result":"forward","error":"forward","panic":"converted_to_error"},
+        "wrapper":{"mappedToToolError":["queue_full","context_canceled","deadline_exceeded"],"mappedGoError":null,"other":"transport_error"},
+        "durableEnrollment":false
+      }
+    }
+  ]
+}
