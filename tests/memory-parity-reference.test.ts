@@ -450,7 +450,7 @@ const expectedSessionStore=deepFreeze({
   "SES-store-start-sql-state":[["SRC-SES-STORE-001",60,60],["SRC-SES-STORE-001",149,151],["SRC-SES-STORE-001",3106,3108],["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3206],["SRC-SES-STORE-001",3347,3347],["SRC-SES-STORE-001",9402,9424],["SRC-SES-STORE-001",9426,9428],["SRC-SES-STORE-001",11609,11640]],
   "SES-store-create-ownership":[["SRC-SES-STORE-001",67,75],["SRC-SES-STORE-001",135,151],["SRC-SES-STORE-001",3049,3085],["SRC-SES-STORE-001",10797,10830]],
   "SES-store-create-sql-state":[["SRC-SES-STORE-001",3049,3085],["SRC-SES-STORE-001",9387,9400],["SRC-SES-STORE-001",11609,11640]],
-  "SES-store-create-sync":[["SRC-SES-STORE-001",347,356],["SRC-SES-STORE-001",580,590],["SRC-SES-STORE-001",3069,3106],["SRC-SES-STORE-001",8154,8161],["SRC-SES-STORE-001",9324,9335],["SRC-SES-STORE-001",10636,10715]],
+  "SES-store-create-sync":[["SRC-SES-STORE-001",347,356],["SRC-SES-STORE-001",580,590],["SRC-SES-STORE-001",3069,3106],["SRC-SES-STORE-001",8154,8161],["SRC-SES-STORE-001",9324,9336],["SRC-SES-STORE-001",10636,10715]],
   "SES-store-live-registration-conflict":[["SRC-SES-STORE-001",67,75],["SRC-SES-STORE-001",135,151],["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3220],["SRC-SES-STORE-001",3285,3289],["SRC-SES-STORE-001",3334,3347],["SRC-SES-STORE-001",10797,10830]],
   "SES-store-live-identity-repair":[["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3222],["SRC-SES-STORE-001",3285,3289],["SRC-SES-STORE-001",3334,3373],["SRC-SES-STORE-001",9402,9424]],
   "SES-store-ended-legacy-ownership-claim":[["SRC-SES-STORE-001",67,75],["SRC-SES-STORE-001",135,151],["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3223],["SRC-SES-STORE-001",3285,3347],["SRC-SES-STORE-001",3374,3379],["SRC-SES-STORE-001",10800,10830],["SRC-SES-STORE-001",10836,10868]],
@@ -550,6 +550,15 @@ test("session store requires the complete withTx definition",()=>{
  const input=storeFixture(),terminal=input.cases[11];
  terminal.evidence[2].endLine=9335;
  assert.notDeepEqual(validateMemorySessionStore(input),[],"withTx closing brace truncation accepted");
+});
+
+test("session store create sync rejects a truncated withTx definition",()=>{
+ const input=storeFixture(),createSync=input.cases.find((item:any)=>item.id==="SES-store-create-sync");
+ assert.ok(createSync,"create-sync contract missing");
+ const withTxDefinition=createSync.evidence.find((entry:any)=>entry.sourceId==="SRC-SES-STORE-001"&&entry.startLine===9324);
+ assert.ok(withTxDefinition,"create-sync withTx definition citation missing");
+ withTxDefinition.endLine=9335;
+ assert.notDeepEqual(validateMemorySessionStore(input),[],"create-sync withTx closing brace truncation accepted");
 });
 
 test("session store pins leading-zero live tie retention",()=>{

@@ -140,7 +140,7 @@
         {"sourceId":"SRC-SES-STORE-001","startLine":580,"endLine":590},
         {"sourceId":"SRC-SES-STORE-001","startLine":3069,"endLine":3106},
         {"sourceId":"SRC-SES-STORE-001","startLine":8154,"endLine":8161},
-        {"sourceId":"SRC-SES-STORE-001","startLine":9324,"endLine":9335},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9324,"endLine":9336},
         {"sourceId":"SRC-SES-STORE-001","startLine":10636,"endLine":10715}
       ],
       "contract": "Within the create withTx callback, createSessionTx runs before an exact persisted-row reread and enqueueSyncMutationTx. The session upsert payload is built from those persisted values. Local session upserts with a blank directory return before journaling, and local writes for a nonblank unenrolled project return without a mutation row; enrolled writes proceed through journal insertion before commit.",
