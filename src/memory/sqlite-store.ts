@@ -1,9 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
 import {createHash,randomUUID} from "node:crypto";
 import {existsSync,rmSync} from "node:fs";
-import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemoryRelation, MemoryRelationInput, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
+import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemoryRelation, MemoryRelationInput, MemorySessionSummary, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
 
-const CURRENT_SCHEMA_VERSION=6;
+const CURRENT_SCHEMA_VERSION=7;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
 const DEFAULT_DEDUPE_WINDOW_MS=15*60_000;
 type Migration={readonly version:number;apply(db:DatabaseSync):void};
@@ -266,6 +266,22 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   const sql=observationId?"SELECT * FROM memory_relations WHERE project_id=? AND (source_id=? OR target_id=?) ORDER BY created_at,id":"SELECT * FROM memory_relations WHERE project_id=? ORDER BY created_at,id";
   const rows=(observationId?this.#db.prepare(sql).all(projectId,observationId,observationId):this.#db.prepare(sql).all(projectId)) as Array<Record<string,unknown>>;
   return rows.map(r=>({id:String(r.id),sourceId:String(r.source_id),targetId:String(r.target_id),relation:String(r.relation) as MemoryRelation["relation"],projectId:String(r.project_id),createdAt:String(r.created_at)}));
+ }
+ saveSessionSummary(projectId:string,sessionId:string,content:string):MemorySessionSummary{
+  this.#requireIdentity(projectId,sessionId);const prepared=prepareStoredContent(content);if(!prepared)throw new Error("Memory session summary is required");
+  return this.#transaction(()=>{
+   const session=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(sessionId) as {project_id:string;status:string}|undefined;
+   if(!session||session.project_id!==projectId)throw new Error("Memory session identity conflict");
+   if(session.status!=="ended")throw new Error("Memory session must be ended before summary");
+   const existing=this.#db.prepare("SELECT * FROM memory_session_summaries WHERE project_id=? AND session_id=?").get(projectId,sessionId) as {project_id:string;session_id:string;content:string;created_at:string}|undefined;
+   if(existing){if(existing.content!==prepared)throw new Error("Memory session summary already persisted");return {projectId:existing.project_id,sessionId:existing.session_id,content:existing.content,createdAt:existing.created_at};}
+   const createdAt=new Date().toISOString();this.#db.prepare("INSERT INTO memory_session_summaries(project_id,session_id,content,created_at) VALUES(?,?,?,?)").run(projectId,sessionId,prepared,createdAt);
+   return {projectId,sessionId,content:prepared,createdAt};
+  });
+ }
+ getSessionSummary(projectId:string,sessionId:string):MemorySessionSummary|undefined{
+  const r=this.#db.prepare("SELECT * FROM memory_session_summaries WHERE project_id=? AND session_id=?").get(projectId,sessionId) as {project_id:string;session_id:string;content:string;created_at:string}|undefined;
+  return r?{projectId:r.project_id,sessionId:r.session_id,content:r.content,createdAt:r.created_at}:undefined;
  }
  get(id:string):MemoryItem|undefined{const r=this.#db.prepare("SELECT * FROM memory WHERE id=? AND deleted_at IS NULL").get(id) as Record<string,unknown>|undefined;return r?row(r):undefined;}
  search(projectId:string,query:string):MemoryItem[]{return this.searchWithOptions(projectId,query);}
