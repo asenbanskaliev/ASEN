@@ -2,6 +2,7 @@ import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
 import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
+import {additionalParitySlices,validateAdditionalParitySlices} from "./memory-parity/additional-slices.mjs";
 
 const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),"..");
 const MANIFEST="registry/parity/memory-upstream-v3.json";
@@ -887,8 +888,11 @@ export function validateMemoryParity(manifest){
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(process.argv.length!==2){console.error("audit:memory-parity is offline-only and accepts no flags");process.exitCode=2;}
  else{
-  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline()),...validateMemoryProjectIdentity(loadCheckedInMemoryProjectIdentity()),...validateMemorySessionTransport(loadCheckedInMemorySessionTransport()),...validateMemorySessionStore(loadCheckedInMemorySessionStore()),...validateMemoryPassiveCapture(loadCheckedInMemoryPassiveCapture()),...validateMemoryRelations(loadCheckedInMemoryRelations())];
+  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline()),...validateMemoryProjectIdentity(loadCheckedInMemoryProjectIdentity()),...validateMemorySessionTransport(loadCheckedInMemorySessionTransport()),...validateMemorySessionStore(loadCheckedInMemorySessionStore()),...validateMemoryPassiveCapture(loadCheckedInMemoryPassiveCapture()),...validateMemoryRelations(loadCheckedInMemoryRelations()),...validateAdditionalParitySlices(ROOT)];
   if(issues.length){console.error(issues.join("\n"));process.exitCode=1;}
-  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, 3 session-transport, 15 session-store, 3 passive-capture, and 1 relation source-inspected contracts; no runtime parity claim)");
+  else{
+   const extra=additionalParitySlices.map(slice=>slice.successLabel);
+   console.log(`memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, 3 session-transport, 15 session-store, 3 passive-capture, and 1 relation source-inspected contracts${extra.length?`; ${extra.join(", ")}`:""}; no runtime parity claim)`);
+  }
  }
 }
