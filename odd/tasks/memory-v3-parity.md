@@ -604,3 +604,98 @@ Pin delegates `true`, unpin delegates `false`, mapping to integers 1 and 0. The 
 Closure evidence: isolated commit `e8a313abaff46398bee21ef2a8b9d7968e0bc3c9` retained tree `c802232a4ac9213cd7bd8433b290c875736bc7e8`, with native lineage `review-8354fa0d964473da` approved and acknowledged; serial integration produced commit `6c718db9cec13a921d425165308383ac6301a20d`. Final integration correction `fae773733d51317daff7b432a5f81e0be49a035e` retained tree `a5d5bf5d45b78ccdd3d8f474a75db2b1ad4c5194`, with native lineage `review-f2f6733079f9e482` approved and acknowledged. Combined verification passed protocol 7/7, pin 5/5, composition 7/7, reference 60/60, boundary 1/1 and 147 TypeScript files with zero diagnostics; memory, upstream-boundary, behavior-skills, Skill-parity and phase-10 audits also passed. Advisories `R3-dynamic-success-label-oracle` and `R3-writer-b-coverage` remain non-blocking later work.
 
 The transient upstream checkout disappeared after the earlier independent raw pin. Final composite verification reconciled the current fixture against the already recorded immutable commit/blob/SHA/tuple evidence and did not freshly hash raw bytes. Serial integration made the pin commit four paths because the identical generic composition change was already present from protocol; the audit-boundary conflict was minimally combined to copy both fixtures. The claim remains SOURCE_INSPECTED only. Next work is a repository-native Codex handoff/roadmap for runtime implementation, not a FULL parity claim.
+
+## Codex/GitHub continuation after PR #30 update
+
+**Resume action:** query GitHub for PR #30's `headRefName` and head SHA, fetch that ref, check it out, and confirm local `HEAD` equals the fetched remote head. Run `git merge-base --is-ancestor 5a49a261dadfc4ccdd41ff47b51f271f01f5b71d HEAD`, then read this tracker and inspect the repository implementation before writing. The closed checkpoint chain currently reaches `5a49a261dadfc4ccdd41ff47b51f271f01f5b71d`; the handoff commit and fetched head must descend from it, not replace it.
+
+This section is the repository-native continuation view of this canonical tracker, not another plan authority. It is self-contained for Codex operating from GitHub and does not depend on persistent memory, local worktrees, local absolute paths, transient source caches, or `.codegraph`.
+
+### Runtime truth and claim boundary
+
+The current runtime memory core is `src/memory/types.ts`, `src/memory/context.ts`, and `src/memory/sqlite-store.ts`: a small synchronous `MemoryStore`, a context that supplies project/session IDs, and a SQLite table plus FTS save/get/search implementation. `extensions/asen.ts` has no memory tool or lifecycle integration. `src/session/checkpoint.ts`, `src/session/pi-resume.ts`, and `src/lifecycle/doctor.ts` are adjacent existing entry points, not proof of memory integration.
+
+Files under `registry/parity/` and their validators/tests are frozen **SOURCE_INSPECTED** evidence. They can constrain implementation and tests but never prove ASEN runtime behavior, host integration, persistence, security, platform support, or FULL parity. Promote a claim only from an independently observed acceptance scenario at the relevant boundary.
+
+### Portable quick path
+
+1. Derive PR #30's head ref from GitHub; verify fetched-remote/local HEAD equality, checkpoint ancestry, and `git status --short`. Do not inspect or modify `.codegraph`, and keep it outside every candidate.
+2. Read this tracker, the three runtime memory files, adjacent entry points named above, relevant tests, `package.json`, and `package-lock.json` before designing changes.
+3. Install only according to the checked-in lockfile and project policy (`npm ci` when a clean install is required); do not change dependencies or lockfiles incidentally.
+4. Establish the focused baseline: protocol 7/7, pin 5/5, composition 7/7, reference 60/60, boundary 1/1, the 147-file compiler check, and the repository audits. The historical broad `npm test` hit the 180-second timeout; it remains unresolved and must not be reported as passed.
+5. Select exactly one work unit below. Observe applicable behavior-level RED before implementation, then GREEN; documentation-only changes may record that no meaningful RED applies.
+6. Independently verify the focused behavior, negative/restart cases, typecheck and applicable audits. Keep fixtures classified as source evidence only.
+7. Make one Conventional Commit containing the bounded behavior, tests and documentation, then update this same tracker with observed evidence. Codex has no automatic authority to push, merge, release, publish, or modify PR state.
+
+Focused baseline commands are `npm exec -- tsx --test tests/memory-parity-protocol.test.ts`, `npm exec -- tsx --test tests/memory-parity-observation-pin.test.ts`, `npm exec -- tsx --test tests/memory-parity-composition.test.ts`, `npm exec -- tsx --test tests/memory-parity-reference.test.ts`, `npm exec -- tsx --test tests/audit-boundary.test.ts`, `npm run typecheck`, `npm run audit:memory-parity`, `npm run audit:upstream-boundary`, `npm run audit:parity`, `npm run audit:skills`, and `npm run audit:skill-parity`. Report actual counts and failures; do not infer success from this historical baseline.
+
+### Stable dependency order
+
+| Unit | Scope | Depends on |
+| --- | --- | --- |
+| R01 | Versioned storage and migrations | — |
+| R02 | Project/session identity and continuation | R01 |
+| R03 | Observation CRUD, revisions, delete, pin and privacy | R02 |
+| R04 | Search, timeline, progressive context, relationships, contradictions and review | R03 |
+| R05 | Prompt, tool-result and passive-capture timing | R03, R04 |
+| R06 | Pi/MCP tools and lifecycle | R02–R05 |
+| R07 | Compaction, summary and recovery | R02, R03, R05 |
+| R08 | Doctor, backup, repair, import/export and Git sync | R01, R03, R04, R05, R07 |
+| R09 | Runtime, cross-platform and final parity | R01–R08 plus the full 18-family matrix |
+
+### Work-unit cards
+
+#### E3-R01 — versioned storage and migrations
+- **Entry/surfaces:** `SqliteMemoryStore` construction and `#repairFts` in `src/memory/sqlite-store.ts`; likely `src/memory/sqlite-store.ts`, `src/memory/types.ts`, `tests/memory-persistence.test.ts`, and `tests/memory-durability.test.ts`.
+- **Acceptance:** synthetic legacy/current/future stores prove ordered idempotent migration, preservation, rollback, repeated/open-restart behavior, and the selected compatible-future CRUD/startup-skip policy; run the two named tests plus `npm run typecheck`.
+- **Ceiling:** no real-store migration, identity/CRUD-family completion, operational repair, platform, or FULL claim.
+
+#### E3-R02 — project/session identity and continuation
+- **First gate/surfaces:** discover and admit the required API before implementation; no callable API or module is assumed beyond existing `MemoryStore.save/get/search/close`. Inspect only `src/memory/**`, `src/session/**`, and existing tests until evidence justifies a narrower admitted surface.
+- **Acceptance:** synthetic explicit/configured/repository identity and ambiguous/mismatched cases register before classified writes; ended roots allocate/reuse one live continuation across restart and races without mutating a conflicting session.
+- **Ceiling:** no observation semantics, host hook timing, authentication, or full lifecycle claim.
+
+#### E3-R03 — observation CRUD, revisions, delete, pin and privacy
+- **First gate/surfaces:** discover and admit the required API before implementation; no callable API or module is assumed beyond existing `MemoryStore.save/get/search/close`. Inspect only `src/memory/**` and existing tests until evidence justifies a narrower admitted surface.
+- **Acceptance:** one synthetic project exercises create, duplicate/topic revision, guarded update, soft/hard delete, pin/unpin and private-content exclusion with wrong-owner/no-op negatives and restart proof.
+- **Ceiling:** parity fixtures and pin references guide expectations only; no search, transport, general secret detection, authorization, or FULL claim.
+
+#### E3-R04 — search, timeline, progressive context, relationships, contradictions and review
+- **First gate/surfaces:** discover and admit the required API before implementation; no callable API or module is assumed beyond existing `MemoryStore.save/get/search/close`. Inspect only `src/memory/**` and existing tests until evidence justifies a narrower admitted surface.
+- **Acceptance:** a deterministic synthetic corpus covers project-scoped ID/search distinction, query/ranking/limit/privacy behavior, timeline and byte budgets, plus pending relationships, contradiction judgments, provenance/confidence, stale review and deleted-target behavior across restart.
+- **Ceiling:** no model-semantic correctness, capture timing, host integration, remote service, or complete retrieval/relation/review claim beyond observed cases.
+
+#### E3-R05 — prompt, tool-result and passive-capture timing
+- **First gate/surfaces:** discover and admit the required API before implementation; no callable API or module is assumed. Inspect only `extensions/asen.ts`, `src/memory/**`, and existing tests until evidence justifies a narrower admitted surface; protocol/passive fixtures are not execution.
+- **Acceptance:** a fake host proves registration precedes prompt/tool-result capture, recursive memory tools are excluded, private tags and eligibility gates apply, failures do not suppress the user result, and ordering survives restart where applicable.
+- **Ceiling:** no live Pi/MCP, redaction-completeness, model judgment, raw transcript capture, persistence-from-POST, or FULL claim.
+
+#### E3-R06 — Pi/MCP tools and lifecycle
+- **First gate/surfaces:** discover and admit the required API before implementation; no callable API or module is assumed. Inspect only `extensions/asen.ts`, `src/memory/**`, `src/session/**`, and existing tests until evidence justifies a narrower admitted surface; no memory tools are currently registered.
+- **Acceptance:** fake Pi/MCP adapters prove tool schemas/results, explicit-project isolation, startup registration, reload/cleanup, capability errors and session binding over one authoritative core; each failure returns an honest unavailable/unknown outcome.
+- **Ceiling:** no configuration overwrite, legacy adapter install, live-host equivalence, remote delivery, authentication, or FULL claim.
+
+#### E3-R07 — compaction, summary and recovery
+- **First gate/surfaces:** discover and admit the required API before implementation; no callable API or module is assumed. Inspect only `src/session/**`, `src/memory/**`, `extensions/asen.ts`, and existing tests until evidence justifies a narrower admitted surface.
+- **Acceptance:** synthetic compaction/close/restart scenarios persist one summary at the actual event, reconcile confirmed/unknown/rejected/unavailable writes, avoid blind replay/duplicates/stale-session writes, and always preserve the user response.
+- **Ceiling:** checkpoint data is a recovery hint, not verified evidence; no real key/data use, backup/import, remote sync, or FULL claim.
+
+#### E3-R08 — doctor, backup, repair, import/export and Git sync
+- **First gate/surfaces:** discover and admit the required API and complete exported state before implementation; no callable API or module is assumed. Inspect only `src/lifecycle/doctor.ts`, `src/memory/**`, `src/session/**`, `extensions/asen.ts`, and existing tests until evidence justifies a narrower admitted surface.
+- **Acceptance:** temp-store tests prove diagnosis plus preview-before-apply, backup-before-repair, refusal without side effects, lossless export/import of all admitted R01/R03/R04/R05/R07 state, and interrupted/repeated Git-sync recovery; commands must name synthetic paths only.
+- **Ceiling:** no automatic real-store repair, credentials, real user data, network publication, Cloud enrollment, merge/push, or operational-completeness claim outside tested cases.
+
+#### E3-R09 — runtime, cross-platform and final parity
+- **First gate/surfaces:** discover and admit the final runtime/package/platform surface; no callable API or module is assumed. Inspect the completed R01–R08 repository state and existing tests first, then edit only surfaces justified by a freshly inspected gap.
+- **Acceptance:** all prior focused suites, audits and compiler checks plus authorized process-isolated/runtime journeys must pass where available, **and** every applicable obligation in the full 18-family matrix must close with the required evidence. Report unavailable platforms and the unresolved broad-suite timeout rather than normalizing them away.
+- **Ceiling:** commands alone cannot establish final parity; no FULL, standalone, cross-platform, live-service or release claim while any applicable matrix row lacks runtime evidence, and no publish, release, merge or real-data operation.
+
+### Work-unit and GitHub handoff guardrails
+
+- One bounded behavior per commit; keep tests and tracker evidence with that behavior. Pause, reforecast and split before 390 whole-candidate changed lines.
+- Native review applies only when the user has enabled and owns the RDD transaction. Codex must not create, infer or consume review authority on its own.
+- Never promote fixture/source inspection to runtime or FULL evidence. Use synthetic data only; no secrets, credentials, real user data, publication, or `.codegraph` inspection/modification.
+- Before handing PR #30 back: confirm the remote branch contains both code and this tracker update; verify rather than invent exactly one type label and approved issue linkage; report CI state and the unresolved broad-test timeout; do not merge or release.
+- The next Codex prompt must name only the first work unit above and no competing lane.
+
+**Single next action:** begin the first work unit above — versioned storage and migration foundation.
