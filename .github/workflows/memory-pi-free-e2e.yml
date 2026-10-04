@@ -15,10 +15,8 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - name: Install Pi Free
-        run: |
-          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
-          pi install npm:pi-free
+      - name: Install Pi provider
+        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
       - name: Execute synthetic memory restart and model recall
         env:
           LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
