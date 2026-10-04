@@ -65,7 +65,7 @@ export interface MemoryStore {
   markRelationReviewed(id:string,expectedProject:string):MemoryRelation;
   saveSessionSummary(projectId:string,sessionId:string,content:string):MemorySessionSummary;
   getSessionSummary(projectId:string,sessionId:string):MemorySessionSummary|undefined;
-  exportProject(projectId:string):MemoryExport;
+  exportProject(projectId:string):MemoryExport;\n  integrityCheck():{ok:boolean;detail:string};
   close(): void;
 }
 export interface MemorySessionRegistry {
