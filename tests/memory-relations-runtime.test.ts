@@ -23,3 +23,5 @@ test("relations reject missing, deleted, self and duplicate edges",()=>{
  assert.throws(()=>s.addRelation({id:"r3",sourceId:"a",targetId:"b",relation:"compatible",expectedProject:"p"}),/not found/);
  s.close();
 });
+
+test("relation review is project guarded and idempotent",()=>{const s=new SqliteMemoryStore(":memory:");seed(s,"p","s1","a");seed(s,"p","s2","b");s.addRelation({id:"r",sourceId:"a",targetId:"b",relation:"conflicts_with",expectedProject:"p"});assert.throws(()=>s.markRelationReviewed("r","q"),/ownership/);const first=s.markRelationReviewed("r","p");const second=s.markRelationReviewed("r","p");assert.ok(first.reviewedAt);assert.equal(second.reviewedAt,first.reviewedAt);s.close();});
