@@ -32,7 +32,7 @@ export function resolveDiscoveredMemoryProject(input:MemoryProjectDiscovery):Mem
   if(root)return {project:root,source:"git_root"};
 
   const children=[...new Set((input.childProjects??[]).map(value=>requiredName(value,"child")).filter((value):value is string=>value!==undefined))].sort();
-  if(children.length===1)return {project:children[0],source:"git_child"};
+  if(children.length===1)return {project:children[0]!,source:"git_child"};
   if(children.length>1)return {source:"ambiguous",availableProjects:children};
 
   const directory=requiredName(input.directoryProject,"directory");
