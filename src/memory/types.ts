@@ -45,6 +45,9 @@ export interface MemoryObservationUpdate {
 }
 export interface MemorySearchOptions { matchMode?:"all"|"any"; limit?:number; }
 export interface MemoryContextOptions { observations?:number; pinned?:number; maxBytes?:number; compact?:boolean; }
+export type MemoryRelationType = "related"|"compatible"|"scoped"|"conflicts_with"|"supersedes"|"not_conflict";
+export interface MemoryRelation { id:string; sourceId:string; targetId:string; relation:MemoryRelationType; projectId:string; createdAt:string; }
+export interface MemoryRelationInput { id:string; sourceId:string; targetId:string; relation:MemoryRelationType; expectedProject:string; }
 export interface MemorySearchPreview { id:string; kind:MemoryKind; title?:string; preview:string; truncated:boolean; topicKey?:string; }
 export interface MemoryStore {
   save(item: MemoryItem): void;
@@ -55,6 +58,8 @@ export interface MemoryStore {
   formatContext(projectId:string,options?:MemoryContextOptions):string;
   setPinned(id: string, pinned: boolean): void;
   deleteObservation(id: string, expectedProject: string, hardDelete?: boolean): void;
+  addRelation(input:MemoryRelationInput):MemoryRelation;
+  listRelations(projectId:string,observationId?:string):MemoryRelation[];
   close(): void;
 }
 export interface MemorySessionRegistry {
