@@ -1,0 +1,5 @@
+import assert from "node:assert/strict";import test from "node:test";import {SqliteMemoryStore} from "../src/memory/sqlite-store.js";import {assertMemoryImportSafe,previewMemoryImport} from "../src/lifecycle/doctor.js";
+test("export contains admitted observations relations and summaries and preview does not mutate",()=>{
+ const s=new SqliteMemoryStore(":memory:");s.registerSession("p","s1");s.save({id:"a",projectId:"p",sessionId:"s1",kind:"decision",content:"alpha",createdAt:"2026-01-01T00:00:00Z"});s.registerSession("p","s2");s.save({id:"b",projectId:"p",sessionId:"s2",kind:"decision",content:"beta",createdAt:"2026-01-01T00:00:01Z"});s.addRelation({id:"r",sourceId:"a",targetId:"b",relation:"related",expectedProject:"p"});s.endSession("p","s1");s.saveSessionSummary("p","s1","summary");
+ const data=s.exportProject("p");assert.deepEqual([data.observations.length,data.relations.length,data.summaries.length],[2,1,1]);const preview=previewMemoryImport(s,data);assert.deepEqual(preview.conflicts,[]);assert.doesNotThrow(()=>assertMemoryImportSafe(preview));assert.equal(s.exportProject("p").observations.length,2);s.close();
+});
