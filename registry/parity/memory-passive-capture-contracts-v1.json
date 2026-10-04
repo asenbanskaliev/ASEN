@@ -11,10 +11,10 @@
     "A successful AddObservation call increments Saved; this does not prove creation of a new row identity or expose AddObservation internals.",
     "Atomicity, rollback, callers, privacy, security, concurrency, platform behavior, Cloud delivery, and Pi integration remain unproved.",
     "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and no FULL parity claim is made.",
-    "Hook initialization, project detection, session registration, lifecycle construction, conflict warnings, redaction internals, and warning delivery are delegated or excluded.",
-    "HTTP endpoint and store effects, SQLite, authentication, privacy completeness, concurrency, platform behavior, Cloud delivery, and live Pi behavior remain unproved.",
-    "JSON.stringify edge semantics and manual, prompt, compaction, session-end, or other-agent capture paths are outside this bounded caller contract.",
-    "A returned transport failure is not a null-return guarantee, and a successful POST does not prove that an observation was saved; the core snapshot is not published-Pi-package equivalence."
+    "Hook initialization, project detection, session registration, lifecycle construction, conflict warnings, redaction internals, helper correctness, and warning delivery are delegated or excluded.",
+    "Post-redaction nonemptiness, byte or Unicode-safe prompt truncation, persistence, HTTP or store semantics, SQLite, authentication, privacy completeness, concurrency, platform behavior, Cloud delivery, and live Pi behavior remain unproved.",
+    "JSON.stringify edge semantics and manual transport, protocol injection, compaction, session-end, or other-agent capture paths are outside these bounded caller contracts.",
+    "A returned transport failure is not a null-return guarantee, successful POSTs prove neither saved observations nor prompts, and neither FULL/runtime parity nor published-Pi-package equivalence is claimed."
   ],
   "sources": [
     {
@@ -113,6 +113,30 @@
         "post":{"path":"/observations/passive","method":"POST","transport":"bestEffortEngramFetch"},
         "transport":{"returnedFailure":"warn_and_return_result.data","thrownError":"warn_and_return_null","postSuccessSavedProof":false},
         "warning":{"helper":"warnEngramFailure","failure":"swallowed"}
+      }
+    },
+    {
+      "id": "CAP-pi-agent-start-prompt-trigger",
+      "summary": "Pi best-effort captures an eligible agent-start prompt after successful initialization, project refresh, and effective-session registration while preserving its precomputed system-prompt result.",
+      "evidence": [
+        {"sourceId":"SRC-CAP-002","startLine":229,"endLine":234},
+        {"sourceId":"SRC-CAP-002","startLine":683,"endLine":685},
+        {"sourceId":"SRC-CAP-002","startLine":692,"endLine":694},
+        {"sourceId":"SRC-CAP-002","startLine":2131,"endLine":2172}
+      ],
+      "contract": "The before_agent_start hook accepts an optional prompt and snapshots runtime session identity, lifecycle state, and epoch before async initialization. After successful initialization it refreshes project detection, trims the raw prompt, and proceeds only with a session, no pending project detection or resolution error, and more than 10 JavaScript code units. Effective-session registration uses a dedicated project-conflict warning and a /sessions warning for other errors, then rejects a closing effective ID. Content is stripped and trimmed before truncation at 2000 JavaScript code units; the ellipsis can make the result 2003 code units. The /prompts POST body contains only the effective session ID, processed content, and resolved project. A closing observed state or epoch drift gates the best-effort POST. Every path returns the precomputed system-prompt result.",
+      "negativeControls": "This contract does not prove post-redaction nonemptiness, redaction or helper correctness, byte or Unicode safety, persistence, HTTP, store, warning, authentication, privacy, SQLite, concurrency, platform, Cloud, live Pi, published-package, protocol-injection, compaction, manual-transport, FULL-parity, or runtime behavior.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "trigger":{"event":"before_agent_start","prompt":"optional_string","observeBeforeAsync":["runtime_session_id","lifecycle_state","lifecycle_epoch"]},
+        "result":{"precomputed":"system_prompt_result","callback":"always_returns_precomputed_result"},
+        "readiness":{"order":["successful_initialize","project_refresh"],"initialize":"initOnceForHook(ctx.cwd)","initializationFailure":"return_result","projectRefresh":"refreshProjectDetection(ctx.cwd)"},
+        "eligibility":{"rawPrompt":"trim","require":["session_id","no_project_detection_pending","no_project_resolution_error","javascript_length_gt_10"]},
+        "registration":{"call":"registerEffectiveSession(ctx,project,appendEntry)","projectConflict":"warnSessionProjectConflictOnce_then_return_result","otherError":"warnEngramFailure_/sessions_then_return_result","closingEffectiveID":"return_result"},
+        "content":{"order":["stripPrivateTags","truncate"],"stripPrivateTags":"redactPrivateTags(str).trim","truncate":{"maxJavaScriptCodeUnits":2000,"possibleResultLength":2003}},
+        "body":{"session_id":"effective_ID","content":"truncate(stripPrivateTags(trimmed_prompt),2000)","project":"resolved_project"},
+        "prePostGate":{"condition":"observed_state_exists_and_closing_or_epoch_drift","action":"return_result"},
+        "post":{"path":"/prompts","method":"POST","transport":"bestEffortEngramFetch"}
       }
     }
   ]

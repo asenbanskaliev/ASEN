@@ -644,13 +644,37 @@ const expectedPiPassiveCaller=deepFreeze({
   warning:{helper:"warn"+"En"+"gramFailure",failure:"swallowed"}
  }
 });
+const expectedPiAgentStartPrompt=deepFreeze({
+ caseId:"CAP-pi-agent-start-prompt-trigger",
+ evidence:[["SRC-CAP-002",229,234],["SRC-CAP-002",683,685],["SRC-CAP-002",692,694],["SRC-CAP-002",2131,2172]],
+ criticalValues:{
+  trigger:{event:"before_agent_start",prompt:"optional_string",observeBeforeAsync:["runtime_session_id","lifecycle_state","lifecycle_epoch"]},
+  result:{precomputed:"system_prompt_result",callback:"always_returns_precomputed_result"},
+  readiness:{order:["successful_initialize","project_refresh"],initialize:"initOnceForHook(ctx.cwd)",initializationFailure:"return_result",projectRefresh:"refreshProjectDetection(ctx.cwd)"},
+  eligibility:{rawPrompt:"trim",require:["session_id","no_project_detection_pending","no_project_resolution_error","javascript_length_gt_10"]},
+  registration:{call:"registerEffectiveSession(ctx,project,appendEntry)",projectConflict:"warnSessionProjectConflictOnce_then_return_result",otherError:"warn"+"En"+"gramFailure_/sessions_then_return_result",closingEffectiveID:"return_result"},
+  content:{order:["stripPrivateTags","truncate"],stripPrivateTags:"redactPrivateTags(str).trim",truncate:{maxJavaScriptCodeUnits:2000,possibleResultLength:2003}},
+  body:{session_id:"effective_ID",content:"truncate(stripPrivateTags(trimmed_prompt),2000)",project:"resolved_project"},
+  prePostGate:{condition:"observed_state_exists_and_closing_or_epoch_drift",action:"return_result"},
+  post:{path:"/prompts",method:"POST",transport:"bestEffort"+"En"+"gramFetch"}
+ }
+});
 const passiveFixture=()=>loadCheckedInMemoryPassiveCapture();
 const passiveTuples=(fixture:any,caseIndex=0)=>fixture.cases[caseIndex].evidence.map((entry:any)=>[entry.sourceId,entry.startLine,entry.endLine]);
+
+test("passive capture requires the missing Pi agent-start prompt case before fixture implementation",()=>{
+ const fixture=passiveFixture(),item=fixture.cases.find((candidate:any)=>candidate.id===expectedPiAgentStartPrompt.caseId);
+ assert.deepEqual(fixture.cases.map((candidate:any)=>candidate.id),[expectedPassiveCapture.caseId,expectedPiPassiveCaller.caseId,expectedPiAgentStartPrompt.caseId]);
+ assert.deepEqual(item?.evidence.map((entry:any)=>[entry.sourceId,entry.startLine,entry.endLine]),expectedPiAgentStartPrompt.evidence);
+ assert.deepEqual(item?.criticalValues,expectedPiAgentStartPrompt.criticalValues);
+ assert.equal(Object.isFrozen(expectedPiAgentStartPrompt.evidence[0]),true);
+ assert.equal(Object.isFrozen(expectedPiAgentStartPrompt.criticalValues.content.truncate),true);
+});
 
 test("passive capture requires the independently expected Pi caller source and facts",()=>{
  const fixture=passiveFixture();
  assert.deepEqual(validateMemoryPassiveCapture(fixture),[],"existing passive fixture must remain valid during RED");
- assert.deepEqual(fixture.cases.map((item:any)=>item.id),[expectedPassiveCapture.caseId,expectedPiPassiveCaller.caseId]);
+ assert.deepEqual(fixture.cases.map((item:any)=>item.id),[expectedPassiveCapture.caseId,expectedPiPassiveCaller.caseId,expectedPiAgentStartPrompt.caseId]);
  assert.deepEqual(fixture.sources[1]&&[fixture.sources[1].id,fixture.sources[1].path,fixture.sources[1].bytes,fixture.sources[1].sha256,fixture.sources[1].gitBlob,fixture.sources[1].lineStart,fixture.sources[1].lineEnd,fixture.sources[1].lineFeeds],expectedPiPassiveCaller.source);
  assert.deepEqual(passiveTuples(fixture,1),expectedPiPassiveCaller.evidence);
  assert.deepEqual(fixture.cases[1]?.criticalValues,expectedPiPassiveCaller.criticalValues);
@@ -661,7 +685,7 @@ test("passive capture requires the independently expected Pi caller source and f
 test("passive capture fixture independently pins its exact case ID and complete facts",()=>{
  const fixture=passiveFixture(),source=fixture.sources[0];
  assert.deepEqual(validateMemoryPassiveCapture(fixture),[]);
- assert.deepEqual(fixture.cases.map((item:any)=>item.id),[expectedPassiveCapture.caseId,expectedPiPassiveCaller.caseId]);
+ assert.deepEqual(fixture.cases.map((item:any)=>item.id),[expectedPassiveCapture.caseId,expectedPiPassiveCaller.caseId,expectedPiAgentStartPrompt.caseId]);
  assert.deepEqual([source.id,source.path,source.bytes,source.sha256,source.gitBlob,source.lineStart,source.lineEnd,source.lineFeeds],expectedPassiveCapture.source);
  assert.deepEqual(passiveTuples(fixture),expectedPassiveCapture.evidence);
  assert.deepEqual(fixture.cases[0].criticalValues,expectedPassiveCapture.criticalValues);
@@ -698,6 +722,28 @@ test("passive capture Pi caller rejects every tuple mutation, reversal, and dire
   const input=passiveFixture();input.cases[1].evidence[index].endLine=endLine;
   assert.notDeepEqual(validateMemoryPassiveCapture(input),[],`truncated Pi evidence accepted at ${endLine}`);
  }
+});
+
+test("passive capture agent-start prompt rejects every tuple mutation, reversal, and truncation",()=>{
+ for(let index=0;index<expectedPiAgentStartPrompt.evidence.length;index++)for(const mode of ["remove","substitute","alter"]){
+  const input=passiveFixture(),evidence=input.cases[2].evidence;
+  if(mode==="remove")evidence.splice(index,1);
+  else if(mode==="substitute"){const next=expectedPiAgentStartPrompt.evidence[(index+1)%expectedPiAgentStartPrompt.evidence.length]!;evidence[index]={sourceId:next[0],startLine:next[1],endLine:next[2]};}
+  else evidence[index].endLine++;
+  assert.notDeepEqual(validateMemoryPassiveCapture(input),[],`${mode} accepted prompt tuple ${index}`);
+ }
+ const reversed=passiveFixture();reversed.cases[2].evidence.reverse();assert.notDeepEqual(validateMemoryPassiveCapture(reversed),[],"reversed prompt evidence accepted");
+ for(const [index,endLine] of [[0,233],[1,684],[2,693],[3,2171]]){const input=passiveFixture();input.cases[2].evidence[index].endLine=endLine;assert.notDeepEqual(validateMemoryPassiveCapture(input),[],`truncated prompt evidence accepted at ${endLine}`);}
+});
+
+test("passive capture agent-start prompt pins every critical leaf and preserves prior identities",()=>{
+ const mutateLeaves=(value:any,path:(string|number)[]=[],result:(string|number)[][]=[]):any=>{if(value&&typeof value==="object")for(const [key,nested] of Object.entries(value))mutateLeaves(nested,[...path,key],result);else result.push(path);return result;};
+ const set=(root:any,path:(string|number)[])=>{let owner=root;for(const key of path.slice(0,-1))owner=owner[key];const key=path.at(-1)!;owner[key]=typeof owner[key]==="boolean"?!owner[key]:typeof owner[key]==="number"?owner[key]+1:`${owner[key]}_altered`;};
+ for(const path of mutateLeaves(expectedPiAgentStartPrompt.criticalValues)){const input=passiveFixture();set(input.cases[2].criticalValues,path);assert.notDeepEqual(validateMemoryPassiveCapture(input),[],`prompt critical leaf accepted: ${path.join(".")}`);}
+ const fixture=passiveFixture();
+ assert.deepEqual(fixture.cases[0].criticalValues,expectedPassiveCapture.criticalValues);
+ assert.deepEqual(fixture.cases[1].criticalValues,expectedPiPassiveCaller.criticalValues);
+ assert.deepEqual(baseline.sources.find((source:any)=>source.id==="SRC-MEM-007"),{id:"SRC-MEM-007",targetId:"core",path:"plugin/pi/index.ts",bytes:105598,sha256:"090e0fc8b6a30d36cff1259764aad093c432e5cfa65e28e687683795057ed431",rawUrl:"https://raw."+"githubusercontent.com/Gen"+"tleman-Programming/en"+"gram/15a2f78885d7ad8ced23b2d1d88383e9bb472c17/plugin/pi/index.ts"});
 });
 
 test("passive capture Pi caller rejects every critical leaf and raw source mutation",()=>{

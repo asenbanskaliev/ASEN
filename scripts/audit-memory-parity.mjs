@@ -185,10 +185,10 @@ const PASSIVE_CAPTURE_LIMITATIONS=deepFreeze([
  "A successful AddObservation call increments Saved; this does not prove creation of a new row identity or expose AddObservation internals.",
  "Atomicity, rollback, callers, privacy, security, concurrency, platform behavior, Cloud delivery, and Pi integration remain unproved.",
  "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and no FULL parity claim is made.",
- "Hook initialization, project detection, session registration, lifecycle construction, conflict warnings, redaction internals, and warning delivery are delegated or excluded.",
- "HTTP endpoint and store effects, SQLite, authentication, privacy completeness, concurrency, platform behavior, Cloud delivery, and live Pi behavior remain unproved.",
- "JSON.stringify edge semantics and manual, prompt, compaction, session-end, or other-agent capture paths are outside this bounded caller contract.",
- "A returned transport failure is not a null-return guarantee, and a successful POST does not prove that an observation was saved; the core snapshot is not published-Pi-package equivalence."
+ "Hook initialization, project detection, session registration, lifecycle construction, conflict warnings, redaction internals, helper correctness, and warning delivery are delegated or excluded.",
+ "Post-redaction nonemptiness, byte or Unicode-safe prompt truncation, persistence, HTTP or store semantics, SQLite, authentication, privacy completeness, concurrency, platform behavior, Cloud delivery, and live Pi behavior remain unproved.",
+ "JSON.stringify edge semantics and manual transport, protocol injection, compaction, session-end, or other-agent capture paths are outside these bounded caller contracts.",
+ "A returned transport failure is not a null-return guarantee, successful POSTs prove neither saved observations nor prompts, and neither FULL/runtime parity nor published-Pi-package equivalence is claimed."
 ]);
 const PASSIVE_CAPTURE_SOURCES=deepFreeze({
  "SRC-CAP-001":["SRC-CAP-001","internal/store/store.go",488121,"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e","a396d5d8eb91b956a12c23cd5e936a2b74dd7760",12515,12655,13200],
@@ -196,7 +196,8 @@ const PASSIVE_CAPTURE_SOURCES=deepFreeze({
 });
 const PASSIVE_CAPTURE_EVIDENCE=deepFreeze({
  "CAP-store-passive-learning-extraction":[["SRC-CAP-001",12515,12520],["SRC-CAP-001",12523,12527],["SRC-CAP-001",12529,12537],["SRC-CAP-001",12539,12589],["SRC-CAP-001",12591,12597],["SRC-CAP-001",12599,12655]],
- "CAP-pi-tool-result-passive-trigger":[["SRC-CAP-002",45,70],["SRC-CAP-002",193,198],["SRC-CAP-002",242,245],["SRC-CAP-002",410,425],["SRC-CAP-002",427,436],["SRC-CAP-002",692,694],["SRC-CAP-002",2174,2209]]
+ "CAP-pi-tool-result-passive-trigger":[["SRC-CAP-002",45,70],["SRC-CAP-002",193,198],["SRC-CAP-002",242,245],["SRC-CAP-002",410,425],["SRC-CAP-002",427,436],["SRC-CAP-002",692,694],["SRC-CAP-002",2174,2209]],
+ "CAP-pi-agent-start-prompt-trigger":[["SRC-CAP-002",229,234],["SRC-CAP-002",683,685],["SRC-CAP-002",692,694],["SRC-CAP-002",2131,2172]]
 });
 const PASSIVE_CAPTURE_CRITICAL=deepFreeze({
  "CAP-store-passive-learning-extraction":{
@@ -213,6 +214,17 @@ const PASSIVE_CAPTURE_CRITICAL=deepFreeze({
   body:{session_id:"effective_ID",content:"stripPrivateTags(serialized_content)",project:"resolved_project",source:"original_tool_name"},redaction:{stripPrivateTags:"redactPrivateTags(str).trim",algorithm:"UNPROVED"},
   prePostGate:{condition:"observed_state_exists_and_closing_or_epoch_drift",action:"return"},post:{path:"/observations/passive",method:"POST",transport:"bestEffort"+"En"+"gramFetch"},
   transport:{returnedFailure:"warn_and_return_result.data",thrownError:"warn_and_return_null",postSuccessSavedProof:false},warning:{helper:"warn"+"En"+"gramFailure",failure:"swallowed"}
+ },
+ "CAP-pi-agent-start-prompt-trigger":{
+  trigger:{event:"before_agent_start",prompt:"optional_string",observeBeforeAsync:["runtime_session_id","lifecycle_state","lifecycle_epoch"]},
+  result:{precomputed:"system_prompt_result",callback:"always_returns_precomputed_result"},
+  readiness:{order:["successful_initialize","project_refresh"],initialize:"initOnceForHook(ctx.cwd)",initializationFailure:"return_result",projectRefresh:"refreshProjectDetection(ctx.cwd)"},
+  eligibility:{rawPrompt:"trim",require:["session_id","no_project_detection_pending","no_project_resolution_error","javascript_length_gt_10"]},
+  registration:{call:"registerEffectiveSession(ctx,project,appendEntry)",projectConflict:"warnSessionProjectConflictOnce_then_return_result",otherError:"warn"+"En"+"gramFailure_/sessions_then_return_result",closingEffectiveID:"return_result"},
+  content:{order:["stripPrivateTags","truncate"],stripPrivateTags:"redactPrivateTags(str).trim",truncate:{maxJavaScriptCodeUnits:2000,possibleResultLength:2003}},
+  body:{session_id:"effective_ID",content:"truncate(stripPrivateTags(trimmed_prompt),2000)",project:"resolved_project"},
+  prePostGate:{condition:"observed_state_exists_and_closing_or_epoch_drift",action:"return_result"},
+  post:{path:"/prompts",method:"POST",transport:"bestEffort"+"En"+"gramFetch"}
  }
 });
 const SESSION_STORE_SOURCE=deepFreeze(["SRC-SES-STORE-001","internal/store/store.go",488121,"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e","a396d5d8eb91b956a12c23cd5e936a2b74dd7760",59,12280,13200]);
@@ -506,8 +518,8 @@ export function validateMemoryPassiveCapture(manifest){
   if(!anchor||JSON.stringify(tuple)!==JSON.stringify(anchor)||source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`||source.representation!=="git_blob")issues.push("passive-capture source has invalid pinned identity");
   if(source.carriageReturns!==0||source.utf8Bom!==false||source.utf8Valid!==true||source.finalLf!==true)issues.push("passive-capture source has invalid byte or line facts");
  }
- const cases=Array.isArray(manifest.cases)?manifest.cases:[],ids=cases.map(item=>item?.id),expectedIds=["CAP-store-passive-learning-extraction","CAP-pi-tool-result-passive-trigger"];
- if(JSON.stringify(ids)!==JSON.stringify(expectedIds)||duplicates(ids))issues.push("passive-capture cases must contain the exact two ordered contracts");
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],ids=cases.map(item=>item?.id),expectedIds=["CAP-store-passive-learning-extraction","CAP-pi-tool-result-passive-trigger","CAP-pi-agent-start-prompt-trigger"];
+ if(JSON.stringify(ids)!==JSON.stringify(expectedIds)||duplicates(ids))issues.push("passive-capture cases must contain the exact three ordered contracts");
  for(const item of cases){
   if(!exactKeys(item,PROJECT_CASE_FIELDS,`passive-capture case ${item?.id??"unknown"}`,issues))continue;
   for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`passive-capture case ${item.id} ${field} must be nonempty`);
@@ -826,6 +838,6 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  else{
   const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline()),...validateMemoryProjectIdentity(loadCheckedInMemoryProjectIdentity()),...validateMemorySessionTransport(loadCheckedInMemorySessionTransport()),...validateMemorySessionStore(loadCheckedInMemorySessionStore()),...validateMemoryPassiveCapture(loadCheckedInMemoryPassiveCapture())];
   if(issues.length){console.error(issues.join("\n"));process.exitCode=1;}
-  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, 3 session-transport, 15 session-store, and 2 passive-capture source-inspected contracts; no runtime parity claim)");
+  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, 3 session-transport, 15 session-store, and 3 passive-capture source-inspected contracts; no runtime parity claim)");
  }
 }
