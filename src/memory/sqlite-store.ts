@@ -292,6 +292,10 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   const r=this.#db.prepare("SELECT * FROM memory_session_summaries WHERE project_id=? AND session_id=?").get(projectId,sessionId) as {project_id:string;session_id:string;content:string;created_at:string}|undefined;
   return r?{projectId:r.project_id,sessionId:r.session_id,content:r.content,createdAt:r.created_at}:undefined;
  }
+ integrityCheck():{ok:boolean;detail:string}{
+  const result=this.#db.prepare("PRAGMA integrity_check").get() as Record<string,unknown>|undefined,value=String(result?Object.values(result)[0]:"missing");
+  return {ok:value==="ok",detail:value};
+ }
  exportProject(projectId:string):MemoryExport{
   if(!projectId.trim())throw new Error("Memory project is required");
   const observations=(this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NULL ORDER BY created_at,id").all(projectId) as Record<string,unknown>[]).map(row);
