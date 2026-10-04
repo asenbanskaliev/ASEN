@@ -2,7 +2,6 @@ name: Memory Pi Free E2E
 on:
   workflow_dispatch:
   push:
-    branches: [feat/engram-v3-memory-parity]
 permissions:
   contents: read
 jobs:
@@ -15,8 +14,10 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - name: Install Pi provider
-        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
+      - name: Install Pi and provider
+        run: |
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
+          pi install npm:pi-free
       - name: Execute synthetic memory restart and model recall
         env:
           LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
