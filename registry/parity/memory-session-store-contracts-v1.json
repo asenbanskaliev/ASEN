@@ -18,7 +18,8 @@
     "The selected-continuation isolation contract excludes the selection algorithm or ordinal, root ownership, successful continuation registration, repair, start, enqueue, terminal synchronization, EndSession, callers, and runtime SQLite behavior, absence of mutation, concurrency, durability, or remote delivery.",
     "The resume-selection contract excludes terminal-root ownership guard semantics, isolation success, selected-continuation isolation, ownership, repair, start, enqueue, terminal synchronization, EndSession, callers, and runtime SQLite, collation, concurrency, durability, or Cloud behavior.",
     "The end-session contract excludes runtime SQLite timestamp and RowsAffected behavior, retry, rollback, concurrency, durability, enrollment implementation, remote acknowledgement or delivery, callers, ownership, resume, and isolated-registration success.",
-    "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02."
+    "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02.",
+    "The resume terminal-root ownership guard excludes isolated-registration success, selected-identity ownership claims, continuation selection details, live-registration conflict, post-selection start, enqueue, EndSession, callers, runtime SQLite, retries, rollback, concurrency, durability, ownership security, and Cloud behavior."
   ],
   "sources": [
     {
@@ -330,6 +331,33 @@
         "payloadSource":{"ID":"request_id","Project":"persisted","OwnershipMode":"persisted","Directory":"persisted","StartedAt":"persisted","EndedAt":"persisted_pointer","Summary":"persisted_nullable"},
         "mutation":{"entity":"session","entityKey":"id","op":"upsert","source":"local"},
         "queueGates":{"blankDirectory":"may_return_before_journal_row","unenrolledProject":"may_return_without_mutation_row","scope":"direct_helper_gates_only","durableSync":false,"enrollmentProtocol":"UNPROVED","remoteDelivery":"UNPROVED"}
+      }
+    },
+    {
+      "id":"SES-store-resume-root-ownership-guard",
+      "summary":"Resume rejects an incompatible ended root owner before continuation selection or effective-ID assignment.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":67,"endLine":75},
+        {"sourceId":"SRC-SES-STORE-001","startLine":135,"endLine":151},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3121,"endLine":3131},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3206,"endLine":3244},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3246,"endLine":3273},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3274,"endLine":3280},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9324,"endLine":9336},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10797,"endLine":10830},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10836,"endLine":10868}
+      ],
+      "contract":"ResumeSessionWithOwnershipMode initializes effective to id and delegates resume true, an effective pointer, and isolated false. Each withTx callback resets claimed false and id to root; non-isolated validation is a no-op before the root ended_at query. Query errors other than sql.ErrNoRows propagate, while a missing or live root skips the terminal ownership guard. For an ended root, sessionOwnershipTx supplies normalized ownership and sessionRegistrationProjectError is applied to root before continuationSessionTx. Ownership mismatch is remapped to SessionProjectConflictError for root; ambiguity and other errors propagate. A project-owned request against a blank root owner scans foreign observation owners before prompt owners, excluding deleted observations and blank projects, normalizes owners, returns the first owner different from the requested project, and propagates query, scan, and rows errors. A foreign owner becomes a root SessionProjectConflictError. Only guard acceptance permits continuation selection and effective assignment.",
+      "negativeControls":"Isolated-registration success, selected-identity ownership claims, continuation choice or ordinal, live-registration conflict, post-selection start or enqueue, EndSession, callers, runtime SQLite, retries, rollback, concurrency, durability, ownership security, and Cloud behavior are not proved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "wrapper":{"entry":"ResumeSessionWithOwnershipMode","effectiveInitial":"id","registration":{"resume":true,"effective":"pointer","isolated":false}},
+        "transaction":{"scope":"same_withTx_callback","eachAttemptReset":{"claimed":false,"id":"root"},"ordering":["reset_claimed_false","reset_id_to_root","validateIsolation(root)_noop","query_root_ended_at","ended_root_ownership_guard","continuationSessionTx","effective_assignment"]},
+        "root":{"isolation":"noop_when_nonisolated","query":"SELECT ended_at FROM sessions WHERE id = ?","argument":"root","missingOrLive":"skip_guard","ended":"check_normalized_ownership","queryError":"propagate_except_NoRows"},
+        "ownership":{"read":"sessionOwnershipTx(tx,root)","normalization":"NormalizeProject(strings.TrimSpace(rawProject.String))","registrationCheck":"sessionRegistrationProjectError(root,owner,ownerMode,project,mode)","mismatch":{"type":"SessionProjectConflictError","sessionID":"root","ownerProject":"owner","requestedProject":"project"},"ambiguousOrOtherError":"propagate"},
+        "foreignRecords":{"condition":{"requestedMode":"project_owned","normalizedRootOwner":"blank"},"helper":"foreignRecordOwnerTx(tx,root,project)","scanOrder":["observations","user_prompts"],"observations":{"nonblankProject":true,"deleted":"excluded"},"prompts":{"nonblankProject":true},"ownerNormalization":"NormalizeProject(strings.TrimSpace(raw.String))","selection":"first_nonblank_owner_different_from_requested_project","errors":{"query":"propagate","scan":"propagate","rows":"propagate"},"conflict":{"type":"SessionProjectConflictError","sessionID":"root","ownerProject":"foreignOwner","requestedProject":"project"}},
+        "rejection":{"before":["continuationSessionTx","effective_assignment"]},
+        "acceptance":{"continuation":"continuationSessionTx(tx,root)","selectorError":"propagate_before_effective_assignment","effective":"selected_id_only_after_success"}
       }
     }
   ]
