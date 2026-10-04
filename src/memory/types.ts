@@ -48,7 +48,8 @@ export interface MemoryContextOptions { observations?:number; pinned?:number; ma
 export type MemoryRelationType = "related"|"compatible"|"scoped"|"conflicts_with"|"supersedes"|"not_conflict";
 export interface MemoryRelation { id:string; sourceId:string; targetId:string; relation:MemoryRelationType; projectId:string; createdAt:string; reviewedAt?:string; }
 export interface MemorySessionSummary { projectId:string; sessionId:string; content:string; createdAt:string; }
-export interface MemoryExport { version:1; projectId:string; observations:MemoryItem[]; relations:MemoryRelation[]; summaries:MemorySessionSummary[]; }
+export interface MemorySessionState { projectId:string; sessionId:string; rootSessionId:string; parentSessionId?:string; status:"live"|"ended"; }
+export interface MemoryExport { version:1; projectId:string; observations:MemoryItem[]; relations:MemoryRelation[]; summaries:MemorySessionSummary[]; sessions?:MemorySessionState[]; }
 export interface MemoryRelationInput { id:string; sourceId:string; targetId:string; relation:MemoryRelationType; expectedProject:string; }
 export interface MemorySearchPreview { id:string; kind:MemoryKind; title?:string; preview:string; truncated:boolean; topicKey?:string; }
 export interface MemoryStore {
@@ -66,6 +67,7 @@ export interface MemoryStore {
   saveSessionSummary(projectId:string,sessionId:string,content:string):MemorySessionSummary;
   getSessionSummary(projectId:string,sessionId:string):MemorySessionSummary|undefined;
   exportProject(projectId:string):MemoryExport;
+  importProject(data:MemoryExport):void;
   integrityCheck():{ok:boolean;detail:string};
   close(): void;
 }
