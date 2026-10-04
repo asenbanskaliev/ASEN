@@ -8,6 +8,27 @@ export interface MemoryItem {
   content: string;
   createdAt: string;
   pinned?: boolean;
+  title?: string;
+  scope?: string;
+  toolName?: string;
+  topicKey?: string;
+  revisionCount?: number;
+  duplicateCount?: number;
+  lastSeenAt?: string;
+  updatedAt?: string;
+}
+export interface MemoryObservationInput {
+  projectId: string;
+  sessionId: string;
+  kind: MemoryKind;
+  title: string;
+  content: string;
+  topic?: string;
+  scope?: string;
+  toolName?: string;
+}
+export interface MemoryObservationStore {
+  addObservation(input: MemoryObservationInput): string;
 }
 export interface MemoryStore {
   save(item: MemoryItem): void;

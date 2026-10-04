@@ -1,9 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
-import {randomUUID} from "node:crypto";
+import {createHash,randomUUID} from "node:crypto";
 import {existsSync,rmSync} from "node:fs";
-import type { MemoryItem, MemorySessionRegistry, MemoryStore } from "./types.js";
+import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemorySessionRegistry, MemoryStore } from "./types.js";
 
-const CURRENT_SCHEMA_VERSION=4;
+const CURRENT_SCHEMA_VERSION=5;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
 type Migration={readonly version:number;apply(db:DatabaseSync):void};
 const migrations:readonly Migration[]=[
@@ -27,6 +27,18 @@ const migrations:readonly Migration[]=[
   `);}},
  {version:4,apply(db){db.exec(`
    CREATE TABLE memory_tombstones(id TEXT PRIMARY KEY,project_id TEXT NOT NULL,deleted_at TEXT NOT NULL);
+  `);}},
+ {version:5,apply(db){db.exec(`
+   ALTER TABLE memory ADD COLUMN title TEXT;
+   ALTER TABLE memory ADD COLUMN tool_name TEXT;
+   ALTER TABLE memory ADD COLUMN scope TEXT NOT NULL DEFAULT 'project';
+   ALTER TABLE memory ADD COLUMN topic_key TEXT;
+   ALTER TABLE memory ADD COLUMN normalized_hash TEXT;
+   ALTER TABLE memory ADD COLUMN revision_count INTEGER NOT NULL DEFAULT 1;
+   ALTER TABLE memory ADD COLUMN duplicate_count INTEGER NOT NULL DEFAULT 1;
+   ALTER TABLE memory ADD COLUMN last_seen_at TEXT;
+   ALTER TABLE memory ADD COLUMN updated_at TEXT;
+   UPDATE memory SET last_seen_at=created_at,updated_at=created_at;
   `);}}
 ];
 function schemaVersion(db:DatabaseSync):number{
@@ -65,7 +77,7 @@ function migrate(db:DatabaseSync,path:string,existingFile:boolean):void{
  if(version!==CURRENT_SCHEMA_VERSION)throw new Error(`Memory schema version ${version} is unsupported`);
 }
 
-export class SqliteMemoryStore implements MemoryStore,MemorySessionRegistry {
+export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,MemorySessionRegistry {
  readonly #db:DatabaseSync;
  constructor(path:string){
   const existingFile=path!==":memory:"&&path!==""&&existsSync(path);
@@ -133,6 +145,25 @@ export class SqliteMemoryStore implements MemoryStore,MemorySessionRegistry {
     .run(item.id,item.projectId,item.sessionId,item.kind,item.topic??null,content,item.createdAt);
   });
  }
+ addObservation(item:MemoryObservationInput):string{
+  this.#requireIdentity(item.projectId,item.sessionId);
+  const title=stripPrivateTags(item.title);
+  if(!title)throw new Error("Memory observation title is required");
+  const content=prepareStoredContent(item.content);
+  if(!content)throw new Error("Memory observation content is required");
+  const id=randomUUID(),scope=normalizeScope(item.scope),topicKey=normalizeTopicKey(item.topic??"");
+  const normalizedHash=createHash("sha256").update(content.toLowerCase().split(/\s+/u).filter(Boolean).join(" ")).digest("hex");
+  const now=new Date().toISOString();
+  this.#transaction(()=>{
+   const session=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(item.sessionId) as {project_id:string;status:string}|undefined;
+   if(!session||session.project_id!==item.projectId)throw new Error("Memory session identity conflict");
+   if(session.status!=="live")throw new Error("Memory session is ended");
+   this.#db.prepare(`INSERT INTO memory(id,project_id,session_id,kind,topic,content,created_at,title,tool_name,scope,topic_key,normalized_hash,revision_count,duplicate_count,last_seen_at,updated_at)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,1,1,?,?)`)
+    .run(id,item.projectId,item.sessionId,item.kind,item.topic??null,content,now,title,item.toolName??null,scope,topicKey||null,normalizedHash,now,now);
+  });
+  return id;
+ }
  setPinned(id:string,pinned:boolean):void{
   this.#transaction(()=>{
    const result=this.#db.prepare("UPDATE memory SET pinned=? WHERE id=? AND deleted_at IS NULL").run(pinned?1:0,id);
@@ -159,11 +190,26 @@ export class SqliteMemoryStore implements MemoryStore,MemorySessionRegistry {
  close():void{this.#db.close();}
 }
 function prepareStoredContent(content:string):string{
- const redacted=content.replace(/<private>.*?<\/private>/gis,"[REDACTED]").trim();
+ const redacted=stripPrivateTags(content);
  const bytes=Buffer.from(redacted,"utf8");
  if(bytes.length<=MAX_OBSERVATION_LENGTH_BYTES)return redacted;
  let end=MAX_OBSERVATION_LENGTH_BYTES;
  while(end>0&&(bytes[end]!&0xc0)===0x80)end--;
  return bytes.subarray(0,end).toString("utf8")+"... [truncated]";
 }
-function row(r:Record<string,unknown>):MemoryItem{const i:MemoryItem={id:String(r.id),projectId:String(r.project_id),sessionId:String(r.session_id),kind:String(r.kind) as MemoryItem["kind"],content:String(r.content),createdAt:String(r.created_at)};if(r.topic!=null)i.topic=String(r.topic);if(Number(r.pinned)===1)i.pinned=true;return i;}
+function stripPrivateTags(value:string):string{return value.replace(/<private>.*?<\/private>/gis,"[REDACTED]").trim();}
+function normalizeScope(scope:string|undefined):string{const value=(scope??"").trim().toLowerCase();return value==="personal"||value==="global"?value:"project";}
+function normalizeTopicKey(topic:string):string{
+ const normalized=topic.trim().toLowerCase().split(/\s+/u).filter(Boolean).join("-");
+ const bytes=Buffer.from(normalized,"utf8");
+ if(bytes.length<=120)return normalized;
+ let end=120;while(end>0&&(bytes[end]!&0xc0)===0x80)end--;
+ return bytes.subarray(0,end).toString("utf8");
+}
+function row(r:Record<string,unknown>):MemoryItem{
+ const i:MemoryItem={id:String(r.id),projectId:String(r.project_id),sessionId:String(r.session_id),kind:String(r.kind) as MemoryItem["kind"],content:String(r.content),createdAt:String(r.created_at)};
+ if(r.topic!=null)i.topic=String(r.topic);if(Number(r.pinned)===1)i.pinned=true;
+ if(r.title!=null){i.title=String(r.title);i.scope=String(r.scope);i.revisionCount=Number(r.revision_count);i.duplicateCount=Number(r.duplicate_count);i.lastSeenAt=String(r.last_seen_at);i.updatedAt=String(r.updated_at);}
+ if(r.tool_name!=null)i.toolName=String(r.tool_name);if(r.topic_key!=null)i.topicKey=String(r.topic_key);
+ return i;
+}
