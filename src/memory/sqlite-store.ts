@@ -119,6 +119,8 @@ export class SqliteMemoryStore implements MemoryStore,MemorySessionRegistry {
  #requireIdentity(projectId:string,sessionId:string):void{if(!projectId.trim()||!sessionId.trim())throw new Error("Memory project and session IDs must be nonblank");}
  save(item:MemoryItem):void{
   this.#requireIdentity(item.projectId,item.sessionId);
+  const content=prepareStoredContent(item.content);
+  if(!content)throw new Error("Memory observation content is empty");
   this.#transaction(()=>{
    const session=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(item.sessionId) as {project_id:string;status:string}|undefined;
    if(!session||session.project_id!==item.projectId)throw new Error("Memory session identity conflict");
@@ -127,7 +129,7 @@ export class SqliteMemoryStore implements MemoryStore,MemorySessionRegistry {
    if(existing&&existing.project_id!==item.projectId) throw new Error("Memory ownership mismatch");
    this.#db.prepare(`INSERT INTO memory(id,project_id,session_id,kind,topic,content,created_at) VALUES(?,?,?,?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET session_id=excluded.session_id,kind=excluded.kind,topic=excluded.topic,content=excluded.content,created_at=excluded.created_at`)
-    .run(item.id,item.projectId,item.sessionId,item.kind,item.topic??null,item.content,item.createdAt);
+    .run(item.id,item.projectId,item.sessionId,item.kind,item.topic??null,content,item.createdAt);
   });
  }
  setPinned(id:string,pinned:boolean):void{
@@ -155,4 +157,5 @@ export class SqliteMemoryStore implements MemoryStore,MemorySessionRegistry {
  search(projectId:string,query:string):MemoryItem[]{const rows=this.#db.prepare(`SELECT m.* FROM memory_fts f JOIN memory m ON m.id=f.id WHERE f.project_id=? AND m.deleted_at IS NULL AND memory_fts MATCH ? ORDER BY rank LIMIT 20`).all(projectId,query) as Record<string,unknown>[];return rows.map(row);}
  close():void{this.#db.close();}
 }
+function prepareStoredContent(content:string):string{return content.replace(/<private>.*?<\/private>/gis,"[REDACTED]").trim();}
 function row(r:Record<string,unknown>):MemoryItem{const i:MemoryItem={id:String(r.id),projectId:String(r.project_id),sessionId:String(r.session_id),kind:String(r.kind) as MemoryItem["kind"],content:String(r.content),createdAt:String(r.created_at)};if(r.topic!=null)i.topic=String(r.topic);if(Number(r.pinned)===1)i.pinned=true;return i;}
