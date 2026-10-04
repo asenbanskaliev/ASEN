@@ -15,6 +15,7 @@ test("guarded soft deletion hides an observation and rejects wrong owners withou
   assert.equal(store.search("project-a", "private").length, 1);
   store.deleteObservation("observation-a", "project-a");
   assert.equal(store.search("project-a", "private").length, 0);
+  assert.equal(store.get("observation-a"), undefined);
   assert.throws(() => store.setPinned("observation-a", true), /observation not found/i);
   assert.throws(() => store.deleteObservation("missing", "project-a"), /observation not found/i);
   store.close();
