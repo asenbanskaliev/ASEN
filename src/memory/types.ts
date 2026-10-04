@@ -68,6 +68,7 @@ export interface MemoryStore {
   getSessionSummary(projectId:string,sessionId:string):MemorySessionSummary|undefined;
   exportProject(projectId:string):MemoryExport;
   importProject(data:MemoryExport):void;
+  repairIndexesWithBackup(backupPath:string):{backupPath:string;integrity:{ok:boolean;detail:string}};
   integrityCheck():{ok:boolean;detail:string};
   close(): void;
 }
