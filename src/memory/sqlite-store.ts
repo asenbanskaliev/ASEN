@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import {createHash,randomUUID} from "node:crypto";
 import {existsSync,rmSync} from "node:fs";
-import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemoryExport, MemoryRelation, MemoryRelationInput, MemorySessionSummary, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
+import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemoryExport, MemoryRelation, MemoryRelationInput, MemorySessionState, MemorySessionSummary, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
 
 const CURRENT_SCHEMA_VERSION=8;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
@@ -321,7 +321,37 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   const observations=(this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NULL ORDER BY created_at,id").all(projectId) as Record<string,unknown>[]).map(row);
   const relations=this.listRelations(projectId);
   const summaries=(this.#db.prepare("SELECT * FROM memory_session_summaries WHERE project_id=? ORDER BY created_at,session_id").all(projectId) as Array<{project_id:string;session_id:string;content:string;created_at:string}>).map(r=>({projectId:r.project_id,sessionId:r.session_id,content:r.content,createdAt:r.created_at}));
-  return {version:1,projectId,observations,relations,summaries};
+  const sessions=(this.#db.prepare("SELECT * FROM memory_sessions WHERE project_id=? ORDER BY session_id").all(projectId) as Array<{project_id:string;session_id:string;root_session_id:string;parent_session_id:string|null;status:"live"|"ended"}>).map(r=>({projectId:r.project_id,sessionId:r.session_id,rootSessionId:r.root_session_id,...(r.parent_session_id?{parentSessionId:r.parent_session_id}:{}),status:r.status} satisfies MemorySessionState));
+  return {version:1,projectId,observations,relations,summaries,sessions};
+ }
+ importProject(data:MemoryExport):void{
+  if(data.version!==1||!data.projectId.trim())throw new Error("Unsupported memory export");
+  const sessions=data.sessions??inferExportSessions(data);
+  validateMemoryImport(data,sessions);
+  this.#transaction(()=>{
+   for(const session of sessions){
+    const existing=this.#db.prepare("SELECT project_id,root_session_id,parent_session_id,status FROM memory_sessions WHERE session_id=?").get(session.sessionId) as {project_id:string;root_session_id:string;parent_session_id:string|null;status:string}|undefined;
+    if(existing){
+     if(existing.project_id!==session.projectId||existing.root_session_id!==session.rootSessionId||(existing.parent_session_id??undefined)!==session.parentSessionId||existing.status!==session.status)throw new Error("Memory import session conflict");
+    }else this.#db.prepare("INSERT INTO memory_sessions(session_id,project_id,root_session_id,parent_session_id,status) VALUES(?,?,?,?,?)").run(session.sessionId,session.projectId,session.rootSessionId,session.parentSessionId??null,session.status);
+   }
+   for(const item of data.observations){
+    const existing=this.#db.prepare("SELECT * FROM memory WHERE id=?").get(item.id) as Record<string,unknown>|undefined;
+    if(existing){const current=row(existing);if(JSON.stringify(current)!==JSON.stringify(item))throw new Error("Memory import observation conflict");continue;}
+    this.#db.prepare(`INSERT INTO memory(id,project_id,session_id,kind,topic,content,created_at,pinned,title,tool_name,scope,topic_key,normalized_hash,revision_count,duplicate_count,last_seen_at,updated_at)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(item.id,item.projectId,item.sessionId,item.kind,item.topic??null,item.content,item.createdAt,item.pinned?1:0,item.title??null,item.toolName??null,item.scope??"project",item.topicKey??null,hashNormalizedContent(item.content),item.revisionCount??1,item.duplicateCount??1,item.lastSeenAt??item.createdAt,item.updatedAt??item.createdAt);
+   }
+   for(const relation of data.relations){
+    const existing=this.#db.prepare("SELECT * FROM memory_relations WHERE id=?").get(relation.id) as Record<string,unknown>|undefined;
+    if(existing){if(JSON.stringify(relationRow(existing))!==JSON.stringify(relation))throw new Error("Memory import relation conflict");continue;}
+    this.#db.prepare("INSERT INTO memory_relations(id,source_id,target_id,relation,project_id,created_at,reviewed_at) VALUES(?,?,?,?,?,?,?)").run(relation.id,relation.sourceId,relation.targetId,relation.relation,relation.projectId,relation.createdAt,relation.reviewedAt??null);
+   }
+   for(const summary of data.summaries){
+    const existing=this.#db.prepare("SELECT content,created_at FROM memory_session_summaries WHERE project_id=? AND session_id=?").get(summary.projectId,summary.sessionId) as {content:string;created_at:string}|undefined;
+    if(existing){if(existing.content!==summary.content||existing.created_at!==summary.createdAt)throw new Error("Memory import summary conflict");continue;}
+    this.#db.prepare("INSERT INTO memory_session_summaries(project_id,session_id,content,created_at) VALUES(?,?,?,?)").run(summary.projectId,summary.sessionId,summary.content,summary.createdAt);
+   }
+  });
  }
  get(id:string):MemoryItem|undefined{const r=this.#db.prepare("SELECT * FROM memory WHERE id=? AND deleted_at IS NULL").get(id) as Record<string,unknown>|undefined;return r?row(r):undefined;}
  search(projectId:string,query:string):MemoryItem[]{return this.searchWithOptions(projectId,query);}
@@ -406,3 +436,17 @@ function row(r:Record<string,unknown>):MemoryItem{
 }
 
 function relationRow(r:Record<string,unknown>):MemoryRelation{return {id:String(r.id),sourceId:String(r.source_id),targetId:String(r.target_id),relation:String(r.relation) as MemoryRelation["relation"],projectId:String(r.project_id),createdAt:String(r.created_at),...(r.reviewed_at==null?{}:{reviewedAt:String(r.reviewed_at)})};}
+
+function inferExportSessions(data:MemoryExport):MemorySessionState[]{
+ const ids=new Set<string>();for(const item of data.observations)ids.add(item.sessionId);for(const summary of data.summaries)ids.add(summary.sessionId);
+ return [...ids].sort().map(sessionId=>({projectId:data.projectId,sessionId,rootSessionId:sessionId,status:data.summaries.some(s=>s.sessionId===sessionId)?"ended":"live"}));
+}
+function validateMemoryImport(data:MemoryExport,sessions:MemorySessionState[]):void{
+ const sessionIds=new Set<string>();
+ for(const s of sessions){if(s.projectId!==data.projectId||!s.sessionId.trim()||!s.rootSessionId.trim()||sessionIds.has(s.sessionId))throw new Error("Invalid memory import session");sessionIds.add(s.sessionId);}
+ for(const s of sessions)if(s.parentSessionId&&!sessionIds.has(s.parentSessionId))throw new Error("Invalid memory import session ancestry");
+ const observationIds=new Set<string>();
+ for(const item of data.observations){if(item.projectId!==data.projectId||!sessionIds.has(item.sessionId)||observationIds.has(item.id))throw new Error("Invalid memory import observation");observationIds.add(item.id);}
+ for(const relation of data.relations)if(relation.projectId!==data.projectId||!observationIds.has(relation.sourceId)||!observationIds.has(relation.targetId))throw new Error("Invalid memory import relation");
+ for(const summary of data.summaries)if(summary.projectId!==data.projectId||!sessionIds.has(summary.sessionId))throw new Error("Invalid memory import summary");
+}
