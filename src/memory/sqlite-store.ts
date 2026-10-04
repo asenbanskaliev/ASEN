@@ -5,6 +5,7 @@ import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, Memory
 
 const CURRENT_SCHEMA_VERSION=5;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
+const DEFAULT_DEDUPE_WINDOW_MS=15*60_000;
 type Migration={readonly version:number;apply(db:DatabaseSync):void};
 const migrations:readonly Migration[]=[
  {version:1,apply(db){db.exec(`
@@ -79,7 +80,10 @@ function migrate(db:DatabaseSync,path:string,existingFile:boolean):void{
 
 export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,MemorySessionRegistry {
  readonly #db:DatabaseSync;
- constructor(path:string){
+ readonly #dedupeWindowMs:number;
+ constructor(path:string,dedupeWindowMs=DEFAULT_DEDUPE_WINDOW_MS){
+  if(!Number.isFinite(dedupeWindowMs))throw new Error("Memory dedupe window must be finite");
+  this.#dedupeWindowMs=dedupeWindowMs;
   const existingFile=path!==":memory:"&&path!==""&&existsSync(path);
   this.#db=new DatabaseSync(path);
   try{
@@ -170,6 +174,14 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
      return;
     }
    }
+   const duplicate=this.#db.prepare(`SELECT id FROM memory WHERE normalized_hash=? AND project_id=? AND scope=? AND kind=? AND title=? AND deleted_at IS NULL
+    AND datetime(created_at)>=datetime('now',?) ORDER BY created_at DESC LIMIT 1`)
+    .get(normalizedHash,item.projectId,scope,item.kind,title,dedupeWindowExpression(this.#dedupeWindowMs)) as {id:string}|undefined;
+   if(duplicate){
+    id=duplicate.id;
+    this.#db.prepare("UPDATE memory SET duplicate_count=duplicate_count+1,last_seen_at=?,updated_at=? WHERE id=?").run(now,now,id);
+    return;
+   }
    this.#db.prepare(`INSERT INTO memory(id,project_id,session_id,kind,topic,content,created_at,title,tool_name,scope,topic_key,normalized_hash,revision_count,duplicate_count,last_seen_at,updated_at)
     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,1,1,?,?)`)
     .run(id,item.projectId,item.sessionId,item.kind,item.topic??null,content,now,title,item.toolName??null,scope,topicKey||null,normalizedHash,now,now);
@@ -217,6 +229,12 @@ function normalizeTopicKey(topic:string):string{
  if(bytes.length<=120)return normalized;
  let end=120;while(end>0&&(bytes[end]!&0xc0)===0x80)end--;
  return bytes.subarray(0,end).toString("utf8");
+}
+function dedupeWindowExpression(windowMs:number):string{
+ if(windowMs<=0)windowMs=DEFAULT_DEDUPE_WINDOW_MS;
+ let minutes=Math.trunc(windowMs/60_000);
+ if(minutes<1)minutes=1;
+ return `-${minutes} minutes`;
 }
 function row(r:Record<string,unknown>):MemoryItem{
  const i:MemoryItem={id:String(r.id),projectId:String(r.project_id),sessionId:String(r.session_id),kind:String(r.kind) as MemoryItem["kind"],content:String(r.content),createdAt:String(r.created_at)};
