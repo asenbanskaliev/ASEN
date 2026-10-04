@@ -35,3 +35,32 @@ test("saving an observation rejects content that is empty after trimming", () =>
   assert.equal(store.get("observation-empty"), undefined);
   store.close();
 });
+
+test("observation content truncates at the byte limit without splitting UTF-8", () => {
+  const store = new SqliteMemoryStore(":memory:");
+  store.registerSession("project-a", "session-a");
+  const prefix = "a".repeat(49_999);
+  store.save({
+    id: "observation-truncated",
+    projectId: "project-a",
+    sessionId: "session-a",
+    kind: "observation",
+    content: `${prefix}😀tail`,
+    createdAt: "now",
+  });
+
+  assert.equal(store.get("observation-truncated")?.content, `${prefix}... [truncated]`);
+  assert.equal(store.search("project-a", "tail").length, 0);
+  assert.equal(store.search("project-a", "truncated").length, 1);
+  store.close();
+});
+
+test("observation content at exactly the byte limit is not truncated", () => {
+  const store = new SqliteMemoryStore(":memory:");
+  store.registerSession("project-a", "session-a");
+  const content = "b".repeat(50_000);
+  store.save({ id: "observation-at-limit", projectId: "project-a", sessionId: "session-a", kind: "observation", content, createdAt: "now" });
+
+  assert.equal(store.get("observation-at-limit")?.content, content);
+  store.close();
+});

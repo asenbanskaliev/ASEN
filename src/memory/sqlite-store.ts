@@ -4,6 +4,7 @@ import {existsSync,rmSync} from "node:fs";
 import type { MemoryItem, MemorySessionRegistry, MemoryStore } from "./types.js";
 
 const CURRENT_SCHEMA_VERSION=4;
+const MAX_OBSERVATION_LENGTH_BYTES=50_000;
 type Migration={readonly version:number;apply(db:DatabaseSync):void};
 const migrations:readonly Migration[]=[
  {version:1,apply(db){db.exec(`
@@ -157,5 +158,12 @@ export class SqliteMemoryStore implements MemoryStore,MemorySessionRegistry {
  search(projectId:string,query:string):MemoryItem[]{const rows=this.#db.prepare(`SELECT m.* FROM memory_fts f JOIN memory m ON m.id=f.id WHERE f.project_id=? AND m.deleted_at IS NULL AND memory_fts MATCH ? ORDER BY rank LIMIT 20`).all(projectId,query) as Record<string,unknown>[];return rows.map(row);}
  close():void{this.#db.close();}
 }
-function prepareStoredContent(content:string):string{return content.replace(/<private>.*?<\/private>/gis,"[REDACTED]").trim();}
+function prepareStoredContent(content:string):string{
+ const redacted=content.replace(/<private>.*?<\/private>/gis,"[REDACTED]").trim();
+ const bytes=Buffer.from(redacted,"utf8");
+ if(bytes.length<=MAX_OBSERVATION_LENGTH_BYTES)return redacted;
+ let end=MAX_OBSERVATION_LENGTH_BYTES;
+ while(end>0&&(bytes[end]!&0xc0)===0x80)end--;
+ return bytes.subarray(0,end).toString("utf8")+"... [truncated]";
+}
 function row(r:Record<string,unknown>):MemoryItem{const i:MemoryItem={id:String(r.id),projectId:String(r.project_id),sessionId:String(r.session_id),kind:String(r.kind) as MemoryItem["kind"],content:String(r.content),createdAt:String(r.created_at)};if(r.topic!=null)i.topic=String(r.topic);if(Number(r.pinned)===1)i.pinned=true;return i;}
