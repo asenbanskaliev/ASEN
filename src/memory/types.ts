@@ -34,8 +34,12 @@ export interface MemoryObservationStore {
 export interface MemoryObservationUpdate {
   id: string;
   expectedProject: string;
+  projectId?: string;
+  kind?: MemoryKind;
   title?: string;
   content?: string;
+  scope?: string;
+  topicKey?: string;
   find?: string;
   replace?: string;
 }

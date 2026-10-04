@@ -190,10 +190,11 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  }
  updateObservation(input:MemoryObservationUpdate):MemoryItem{
   if(!input.expectedProject.trim())throw new Error("Expected memory project must be nonblank");
-  const hasTitle=input.title!==undefined,hasContent=input.content!==undefined;
+  const hasKind=input.kind!==undefined,hasTitle=input.title!==undefined,hasContent=input.content!==undefined,hasProjectId=input.projectId!==undefined;
+  const hasScope=input.scope!==undefined,hasTopicKey=input.topicKey!==undefined;
   const hasFind=input.find!==undefined,hasReplace=input.replace!==undefined;
   if(hasFind!==hasReplace||hasContent&&(hasFind||hasReplace))throw new Error("Find and replace must be paired and cannot be combined with content");
-  if(!hasTitle&&!hasContent&&!hasFind)throw new Error("Memory observation update requires a field");
+  if(!hasKind&&!hasTitle&&!hasContent&&!hasProjectId&&!hasScope&&!hasTopicKey&&!hasFind)throw new Error("Memory observation update requires a field");
   const title=hasTitle?stripPrivateTags(input.title!):undefined;
   if(title!==undefined&&!title)throw new Error("Memory observation title is required");
   if(hasFind&&(Buffer.byteLength(input.find!,"utf8")>MAX_OBSERVATION_LENGTH_BYTES||Buffer.byteLength(input.replace!,"utf8")>MAX_OBSERVATION_LENGTH_BYTES))throw new Error("Find and replace values exceed the observation byte limit");
@@ -203,17 +204,22 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
    const existing=this.#db.prepare("SELECT * FROM memory WHERE id=?").get(input.id) as Record<string,unknown>|undefined;
    if(!existing||existing.deleted_at!==null||existing.title===null)throw new Error("Memory observation not found");
    if(String(existing.project_id)!==input.expectedProject)throw new Error("Memory ownership mismatch");
+   if(hasProjectId&&input.projectId!==String(existing.project_id))throw new Error("Memory project is immutable");
+   const kind=hasKind?input.kind!:String(existing.kind);
    let content=directContent??String(existing.content);
+   const hasMetadata=hasKind||hasTitle||hasProjectId||hasScope||hasTopicKey;
    if(hasFind){
     const replaced=replaceObservationContent(content,input.find!,input.replace!);
-    if(replaced.noop&&!hasTitle)return row(existing);
+    if(replaced.noop&&!hasMetadata)return row(existing);
     content=replaced.content;
    }
    const nextTitle=title??String(existing.title??"");
-   const hash=hasContent||hasFind?hashNormalizedContent(content):String(existing.normalized_hash??"");
+   const scope=hasScope?normalizeScope(input.scope):String(existing.scope);
+   const topicKey=hasTopicKey?normalizeTopicKey(input.topicKey!):(existing.topic_key==null?null:String(existing.topic_key));
+   const hash=hashNormalizedContent(content);
    const now=new Date().toISOString();
-   this.#db.prepare("UPDATE memory SET title=?,content=?,normalized_hash=?,revision_count=revision_count+1,updated_at=? WHERE id=?")
-    .run(nextTitle,content,hash,now,input.id);
+   this.#db.prepare("UPDATE memory SET kind=?,title=?,content=?,scope=?,topic_key=?,normalized_hash=?,revision_count=revision_count+1,updated_at=? WHERE id=?")
+    .run(kind,nextTitle,content,scope,topicKey||null,hash,now,input.id);
    const updated=this.#db.prepare("SELECT * FROM memory WHERE id=?").get(input.id) as Record<string,unknown>;
    return row(updated);
   });

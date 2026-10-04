@@ -32,6 +32,7 @@ test("a guarded update rejects missing and mismatched owners without changing th
   store.save({ id: "generic-summary", projectId: "project-a", sessionId: "session-a", kind: "summary", content: "generic content", createdAt: new Date().toISOString() });
 
   assert.throws(() => store.updateObservation({ id, expectedProject: "project-b", content: "must not write" }), /ownership mismatch/i);
+  assert.throws(() => store.updateObservation({ id, expectedProject: "project-a", projectId: "project-b" }), /project is immutable/i);
   assert.throws(() => store.updateObservation({ id: "missing", expectedProject: "project-a", title: "absent" }), /not found/i);
   assert.throws(() => store.updateObservation({ id: "generic-summary", expectedProject: "project-a", content: "must not write" }), /not found/i);
   assert.throws(() => store.updateObservation({ id, expectedProject: " ", content: "must not write" }), /project/i);
@@ -101,5 +102,31 @@ test("literal content ending with the truncation marker remains replaceable", ()
   const revised = store.updateObservation({ id, expectedProject: "project-a", find: "truncated", replace: "ordinary" });
   assert.equal(revised.content, "literal ... [ordinary]");
   assert.equal(revised.revisionCount, 2);
+  store.close();
+});
+
+test("guarded metadata updates normalize kind, scope, and topic key", () => {
+  const { store, id } = seed();
+  const revised = store.updateObservation({ id, expectedProject: "project-a", kind: "summary", scope: " PERSONAL ", topicKey: "Architecture decision" });
+
+  assert.equal(revised.kind, "summary");
+  assert.equal(revised.scope, "personal");
+  assert.equal(revised.topicKey, "architecture-decision");
+  assert.equal(revised.revisionCount, 2);
+  const cleared = store.updateObservation({ id, expectedProject: "project-a", scope: "unknown", topicKey: "  " });
+  assert.equal(cleared.scope, "project");
+  assert.equal(cleared.topicKey, undefined);
+  assert.equal(cleared.revisionCount, 3);
+  store.close();
+});
+
+test("an unchanged project assertion is allowed while project mutation is rejected", () => {
+  const { store, id } = seed();
+  const sameProject = store.updateObservation({ id, expectedProject: "project-a", projectId: "project-a" });
+  assert.equal(sameProject.projectId, "project-a");
+  assert.equal(sameProject.revisionCount, 2);
+  assert.throws(() => store.updateObservation({ id, expectedProject: "project-a", projectId: "project-b", title: "must roll back" }), /project is immutable/i);
+  assert.equal(store.get(id)?.title, "Original title");
+  assert.equal(store.get(id)?.revisionCount, 2);
   store.close();
 });
