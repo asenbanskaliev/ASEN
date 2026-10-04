@@ -3,7 +3,7 @@ import {createHash,randomUUID} from "node:crypto";
 import {existsSync,rmSync} from "node:fs";
 import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemoryExport, MemoryRelation, MemoryRelationInput, MemorySessionSummary, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
 
-const CURRENT_SCHEMA_VERSION=7;
+const CURRENT_SCHEMA_VERSION=8;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
 const DEFAULT_DEDUPE_WINDOW_MS=15*60_000;
 type Migration={readonly version:number;apply(db:DatabaseSync):void};
@@ -265,7 +265,16 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  listRelations(projectId:string,observationId?:string):MemoryRelation[]{
   const sql=observationId?"SELECT * FROM memory_relations WHERE project_id=? AND (source_id=? OR target_id=?) ORDER BY created_at,id":"SELECT * FROM memory_relations WHERE project_id=? ORDER BY created_at,id";
   const rows=(observationId?this.#db.prepare(sql).all(projectId,observationId,observationId):this.#db.prepare(sql).all(projectId)) as Array<Record<string,unknown>>;
-  return rows.map(r=>({id:String(r.id),sourceId:String(r.source_id),targetId:String(r.target_id),relation:String(r.relation) as MemoryRelation["relation"],projectId:String(r.project_id),createdAt:String(r.created_at)}));
+  return rows.map(r=>relationRow(r));
+ }
+ markRelationReviewed(id:string,expectedProject:string):MemoryRelation{
+  if(!id.trim()||!expectedProject.trim())throw new Error("Memory relation identity is required");
+  return this.#transaction(()=>{
+   const current=this.#db.prepare("SELECT * FROM memory_relations WHERE id=?").get(id) as Record<string,unknown>|undefined;
+   if(!current)throw new Error("Memory relation not found");if(String(current.project_id)!==expectedProject)throw new Error("Memory ownership mismatch");
+   if(current.reviewed_at==null)this.#db.prepare("UPDATE memory_relations SET reviewed_at=? WHERE id=?").run(new Date().toISOString(),id);
+   return relationRow(this.#db.prepare("SELECT * FROM memory_relations WHERE id=?").get(id) as Record<string,unknown>);
+  });
  }
  saveSessionSummary(projectId:string,sessionId:string,content:string):MemorySessionSummary{
   this.#requireIdentity(projectId,sessionId);const prepared=prepareStoredContent(content);if(!prepared)throw new Error("Memory session summary is required");
@@ -371,3 +380,5 @@ function row(r:Record<string,unknown>):MemoryItem{
  if(r.tool_name!=null)i.toolName=String(r.tool_name);if(r.topic_key!=null)i.topicKey=String(r.topic_key);
  return i;
 }
+
+function relationRow(r:Record<string,unknown>):MemoryRelation{return {id:String(r.id),sourceId:String(r.source_id),targetId:String(r.target_id),relation:String(r.relation) as MemoryRelation["relation"],projectId:String(r.project_id),createdAt:String(r.created_at),...(r.reviewed_at==null?{}:{reviewedAt:String(r.reviewed_at)})};}
