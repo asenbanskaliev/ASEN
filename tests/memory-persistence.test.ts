@@ -9,9 +9,11 @@ test("memory survives store restart", async()=>{
   const dir=await mkdtemp(join(tmpdir(),"asen-memory-"));
   const db=join(dir,"memory.db");
   let store=new SqliteMemoryStore(db);
+  store.registerSession("p","s");
   store.save({id:"persist",projectId:"p",sessionId:"s",kind:"decision",content:"candidate evidence is immutable",createdAt:"now"});
   store.close();
   store=new SqliteMemoryStore(db);
+  store.registerSession("p","s");
   assert.equal(store.get("persist")?.content,"candidate evidence is immutable");
   assert.equal(store.search("p","immutable")[0]?.id,"persist");
   store.close();

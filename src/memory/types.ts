@@ -14,3 +14,8 @@ export interface MemoryStore {
   search(projectId: string, query: string): MemoryItem[];
   close(): void;
 }
+export interface MemorySessionRegistry {
+  registerSession(projectId:string,sessionId:string):void;
+  endSession(projectId:string,sessionId:string):void;
+  continueSession(projectId:string,endedSessionId:string,proposedSessionId:string):string;
+}
