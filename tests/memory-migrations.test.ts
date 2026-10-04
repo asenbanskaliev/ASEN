@@ -26,7 +26,7 @@ test("versions and backs up an existing legacy store before its ordered migratio
  const legacyBackup=backups.find(name=>name.includes("v0-to-v1"))!,versionOneBackup=backups.find(name=>name.includes("v1-to-v2"))!;
  const backup=new DatabaseSync(join(dir,legacyBackup));try{assert.equal(version(join(dir,legacyBackup)),0);assert.equal((backup.prepare("SELECT content FROM memory WHERE id=?").get("legacy-id") as {content:string}).content,"preserve this memory");assert.equal(backup.prepare("SELECT name FROM sqlite_master WHERE name='memory_fts'").get(),undefined);}finally{backup.close();}
  const beforeSessions=new DatabaseSync(join(dir,versionOneBackup));try{assert.equal(version(join(dir,versionOneBackup)),1);assert.equal(beforeSessions.prepare("SELECT name FROM sqlite_master WHERE name='memory_sessions'").get(),undefined);}finally{beforeSessions.close();}
- store=new SqliteMemoryStore(path);assert.equal(store.get("legacy-id")?.content,"preserve this memory");store.close();assert.equal(backupFiles(path).length,9);
+ store=new SqliteMemoryStore(path);assert.equal(store.get("legacy-id")?.content,"preserve this memory");store.close();assert.equal(backupFiles(path).length,8);
 });
 
 test("rejects a future schema version before changing its database",async t=>{
