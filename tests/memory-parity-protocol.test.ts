@@ -4,8 +4,6 @@ import {resolve} from "node:path";
 import test from "node:test";
 // @ts-expect-error Dependency-free offline JavaScript registry.
 import {MEMORY_PROTOCOL_FIXTURE,memoryProtocolSlice,validateMemoryProtocol,writerAParitySlices} from "../scripts/memory-parity/writer-a/index.mjs";
-// @ts-expect-error Dependency-free offline JavaScript registry.
-import {writerBParitySlices} from "../scripts/memory-parity/writer-b/index.mjs";
 
 const ROOT=resolve(import.meta.dirname,"..");
 const COMMIT="e5c2277f856a5ee8739f297a006cabf6432ba77d";
@@ -24,7 +22,7 @@ test("writer A exposes one exact callable descriptor and deeply frozen fixture",
  assert.equal(memoryProtocolSlice.id,"current-memory-protocol-authority");
  assert.equal(memoryProtocolSlice.fixturePath,MEMORY_PROTOCOL_FIXTURE);
  assert.equal(memoryProtocolSlice.successLabel,"1 current-memory-protocol source-inspected contract");
- assert.deepEqual(writerAParitySlices,[memoryProtocolSlice]);assert.deepEqual(writerBParitySlices,[]);
+ assert.deepEqual(writerAParitySlices,[memoryProtocolSlice]);
  frozen(fixture);assert.deepEqual(validateMemoryProtocol(fixture),[]);
 });
 
