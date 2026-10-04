@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 6112)
+Total output lines: 157
+
 Warning: truncated output (original token count: 10858)
 Total output lines: 275
 
@@ -74,41 +77,7 @@ Record whether proof is source inspection, a deterministic synthetic-store test,
   - Prove transaction rollback, repeated migration, simultaneous opens and restart consistency using synthetic copies.
 - [ ] E3-03 — Match project identity and ambiguity handling.
   - Reproduce explicit/config/session/Git/worktree/directory resolution and existing binding reuse. Pinned Git detection preserves percent encoding; explicit Cloud CLI input independently unescapes exactly one layer unless literal mode is selected. Do not implement universal remote-name decoding from the broader release wording.
-  - Cover ambiguous project lists/recovery, child projects, malformed config, collisions and explicitly backed cross-project choices.
-- [ ] E3-04 — Match session registration, continuation and isolation.
-  - Confirm host registration before binding classified writes or prompts; do not invent a session ID from a task name.
-  - Preserve ended sessions and atomically allocate/reuse live resume continuations instead of reopening them.
-  - Prove directory-conflicting isolated registration fails without changing the original session; cover races, reloads, detached/manual calls and mismatched acknowledgements.
-- [ ] E3-05 — Match observation save, update, deletion and revisions.
-  - Match normalized content, fields, scopes, type defaults, topic updates, duplicates, revision/last-seen counters, timestamps, pins, and staleness.
-  - Match explicit expected-project update/delete results, including missing/invalid input, wrong owner and absent ID, with no rejected mutation to rows, revisions or sync queue.
-  - Reproduce soft/hard deletion and privacy behavior without overstating authentication.
-- [ ] E3-06 — Match retrieval, search and progressive context.
-  - Match ID-based retrieval and response-context selection separately from project-filtered search.
-  - Derive FTS matching, ranking, all/any behavior, escaping, short-query handling, limits, previews, timelines and byte budgets from actual code/tests.
-- [ ] E3-07 — Match prompts, summaries and curated passive capture.
-  - Define exactly what is captured, at which trigger, and with which opt-out/redaction/provenance rules.
-  - Preserve prompt inbox and deleted identities across export/import and sync; do not turn curated memory into a raw transcript sink.
-- [ ] E3-08 — Match relationships, contradictions and review.
-  - Reproduce pending candidates, semantic judgments, direct comparisons, confidence/provenance, stale review and deleted-target behavior.
-  - Distinguish model judgment from lexical detection; enforce source-backed cross-project restrictions and idempotency.
-- [ ] E3-09 — Integrate memory into actual ASEN work timing.
-  - Recover project/history before related work and save significant knowled…4858 tokens truncated…memory/**` and existing tests until evidence justifies a narrower admitted surface.
-- **Acceptance:** a deterministic synthetic corpus covers project-scoped ID/search distinction, query/ranking/limit/privacy behavior, timeline and byte budgets, plus pending relationships, contradiction judgments, provenance/confidence, stale review and deleted-target behavior across restart.
-- **Ceiling:** no model-semantic correctness, capture timing, host integration, remote service, or complete retrieval/relation/review claim beyond observed cases.
-
-#### E3-R05 — prompt, tool-result and passive-capture timing
-- **First gate/surfaces:** discover and admit the required API before implementation; no callable API or module is assumed. Inspect only `extensions/asen.ts`, `src/memory/**`, and existing tests until evidence justifies a narrower admitted surface; protocol/passive fixtures are not execution.
-- **Acceptance:** a fake host proves registration precedes prompt/tool-result capture, recursive memory tools are excluded, private tags and eligibility gates apply, failures do not suppress the user result, and ordering survives restart where applicable.
-- **Ceiling:** no live Pi/MCP, redaction-completeness, model judgment, raw transcript capture, persistence-from-POST, or FULL claim.
-
-#### E3-R06 — Pi/MCP tools and lifecycle
-- **First gate/surfaces:** discover and admit the required API before implementation; no callable API or module is assumed. Inspect only `extensions/asen.ts`, `src/memory/**`, `src/session/**`, and existing tests until evidence justifies a narrower admitted surface; no memory tools are currently registered.
-- **Acceptance:** fake Pi/MCP adapters prove tool schemas/results, explicit-project isolation, startup registration, reload/cleanup, capability errors and session binding over one authoritative core; each failure returns an honest unavailable/unknown outcome.
-- **Ceiling:** no configuration overwrite, legacy adapter install, live-host equivalence, remote delivery, authentication, or FULL claim.
-
-#### E3-R07 — compaction, summary and recovery
-- **First gate/surfaces:** discover and admit the required API before implementation; no callable API or module is assumed. Inspect only `src/session/**`, `src/memory/**`, `extensions/asen.ts`, and existing tests until evidence justifies a narrower admitted surface.
+  - Cover ambiguous project lists/recovery, child projects, malformed config, collisions and explicitly backed cross…1112 tokens truncated… admitted surface.
 - **Acceptance:** synthetic compaction/close/restart scenarios persist one summary at the actual event, reconcile confirmed/unknown/rejected/unavailable writes, avoid blind replay/duplicates/stale-session writes, and always preserve the user response.
 - **Ceiling:** checkpoint data is a recovery hint, not verified evidence; no real key/data use, backup/import, remote sync, or FULL claim.
 
@@ -130,7 +99,7 @@ Record whether proof is source inspection, a deterministic synthetic-store test,
 - Before handing PR #30 back: confirm the remote branch contains both code and this tracker update; verify rather than invent exactly one type label and approved issue linkage; report CI state and the unresolved broad-test timeout; do not merge or release.
 - The next Codex prompt must name only the first work unit above and no competing lane.
 
-**Next work unit:** E3-R02 — project/session identity and continuation.
+**Next work unit:** E3-R03 — observation CRUD, revisions, delete, pin and privacy.
 
 ## Cross-platform CI repair — candidate verification
 
@@ -154,4 +123,4 @@ Implemented the admitted runtime API after confirming there was no project resol
 
 Schema v2 adds the durable session table and a unique partial index for one live continuation per parent. `continueMemoryContext` requires an ended session, reuses an existing live child, or inserts the proposed child in one transaction. Restart tests prove child reuse; two worker threads race distinct child IDs and receive the same persisted child. Conflicting project/session IDs fail without changing the reserved session. The v1-to-v2 migration retains the pre-migration backup behavior from E3-R01.
 
-RED/GREEN: before implementation, the five new focused tests failed because the admitted APIs did not exist. Two additional regression checks then ran RED against the unguarded write path (unregistered writes and writes after session end); both passed after `save` validated the matching live session and wrote atomically. Final focused command `npm exec -- tsx --test tests/memory-session-identity.test.ts tests/memory-migrations.test.ts tests/memory-persistence.test.ts tests/memory-durability.test.ts tests/memory.test.ts` — 17/17 passed, zero skipped. `npm run typecheck` — PASS; `npm run audit:memory-parity` — PASS with no runtime parity claim; `npm run audit:upstream-boundary` — PASS (337 tracked/exact paths); `git diff --check` — PASS. This establishes only the tested synthetic storage behavior. No host registration, Git/worktree/path discovery, Pi lifecycle, or FULL parity is claimed. The historical 180-second broad-test timeout remains unresolved as described above. E3-R02 focused acceptance is complete; remote verification is pending.
+RED/GREEN: before implementation, the five new focused tests failed because the admitted APIs did not exist. Two additional regression checks then ran RED against the unguarded write path (unregistered writes and writes after session end); both passed after `save` validated the matching live session and wrote atomically. Final focused command `npm exec -- tsx --test tests/memory-session-identity.test.ts tests/memory-migrations.test.ts tests/memory-persistence.test.ts tests/memory-durability.test.ts tests/memory.test.ts` — 17/17 passed, zero skipped. `npm run typecheck` — PASS; `npm run audit:memory-parity` — PASS with no runtime parity claim; `npm run audit:upstream-boundary` — PASS (337 tracked/exact paths); `git diff --check` — PASS. Remote Actions run `37216195255` for `e7ab6ba0be598e73d3415c073c8691e0509e8858` completed successfully on architecture, Ubuntu, macOS, and Windows. Its `npm run check` test step took 78.828 seconds on Ubuntu, 265.111 seconds on macOS, and 424.479 seconds on Windows. The workflow completed, but test-step times above 180 seconds show the separately noted broad-test timeout remains unresolved; no standalone broad-suite pass is claimed. This establishes only the tested synthetic storage behavior. No host event integration, Git/worktree/path discovery, Pi lifecycle, or FULL parity is claimed. E3-R02 focused acceptance is complete.
