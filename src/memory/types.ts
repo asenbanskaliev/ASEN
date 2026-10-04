@@ -61,7 +61,8 @@ export interface MemoryStore {
   setPinned(id: string, pinned: boolean): void;
   deleteObservation(id: string, expectedProject: string, hardDelete?: boolean): void;
   addRelation(input:MemoryRelationInput):MemoryRelation;
-  listRelations(projectId:string,observationId?:string):MemoryRelation[];\n  markRelationReviewed(id:string,expectedProject:string):MemoryRelation;
+  listRelations(projectId:string,observationId?:string):MemoryRelation[];
+  markRelationReviewed(id:string,expectedProject:string):MemoryRelation;
   saveSessionSummary(projectId:string,sessionId:string,content:string):MemorySessionSummary;
   getSessionSummary(projectId:string,sessionId:string):MemorySessionSummary|undefined;
   exportProject(projectId:string):MemoryExport;
