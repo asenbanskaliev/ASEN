@@ -184,32 +184,35 @@ const PASSIVE_CAPTURE_LIMITATIONS=deepFreeze([
  "The dedupe query's handling of non-nil Scan errors is source-inspected, but SQLite behavior and safety under query errors are not proved.",
  "A successful AddObservation call increments Saved; this does not prove creation of a new row identity or expose AddObservation internals.",
  "Atomicity, rollback, callers, privacy, security, concurrency, platform behavior, Cloud delivery, and Pi integration remain unproved.",
- "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and no FULL parity claim is made."
+ "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and no FULL parity claim is made.",
+ "Hook initialization, project detection, session registration, lifecycle construction, conflict warnings, redaction internals, and warning delivery are delegated or excluded.",
+ "HTTP endpoint and store effects, SQLite, authentication, privacy completeness, concurrency, platform behavior, Cloud delivery, and live Pi behavior remain unproved.",
+ "JSON.stringify edge semantics and manual, prompt, compaction, session-end, or other-agent capture paths are outside this bounded caller contract.",
+ "A returned transport failure is not a null-return guarantee, and a successful POST does not prove that an observation was saved; the core snapshot is not published-Pi-package equivalence."
 ]);
-const PASSIVE_CAPTURE_SOURCE=deepFreeze(["SRC-CAP-001","internal/store/store.go",488121,"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e","a396d5d8eb91b956a12c23cd5e936a2b74dd7760",12515,12655,13200]);
-const PASSIVE_CAPTURE_EVIDENCE=deepFreeze([
- ["SRC-CAP-001",12515,12520],
- ["SRC-CAP-001",12523,12527],
- ["SRC-CAP-001",12529,12537],
- ["SRC-CAP-001",12539,12589],
- ["SRC-CAP-001",12591,12597],
- ["SRC-CAP-001",12599,12655]
-]);
+const PASSIVE_CAPTURE_SOURCES=deepFreeze({
+ "SRC-CAP-001":["SRC-CAP-001","internal/store/store.go",488121,"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e","a396d5d8eb91b956a12c23cd5e936a2b74dd7760",12515,12655,13200],
+ "SRC-CAP-002":["SRC-CAP-002","plugin/pi/index.ts",103389,"387555a903d64f2d4c9145499bd34d3f5c616f310e0bc89f49c23e2f2189880f","53da52b93319fb38e2054586a38f5bdaf95ae260",45,2209,2209]
+});
+const PASSIVE_CAPTURE_EVIDENCE=deepFreeze({
+ "CAP-store-passive-learning-extraction":[["SRC-CAP-001",12515,12520],["SRC-CAP-001",12523,12527],["SRC-CAP-001",12529,12537],["SRC-CAP-001",12539,12589],["SRC-CAP-001",12591,12597],["SRC-CAP-001",12599,12655]],
+ "CAP-pi-tool-result-passive-trigger":[["SRC-CAP-002",45,70],["SRC-CAP-002",193,198],["SRC-CAP-002",242,245],["SRC-CAP-002",410,425],["SRC-CAP-002",427,436],["SRC-CAP-002",692,694],["SRC-CAP-002",2174,2209]]
+});
 const PASSIVE_CAPTURE_CRITICAL=deepFreeze({
- params:{orderedFields:[["SessionID","string","session_id"],["Content","string","content"],["Project","string","project,omitempty"],["Source","string","source,omitempty"]]},
- resultFields:{orderedFields:[["Extracted","int","extracted"],["Saved","int","saved"],["Duplicates","int","duplicates"]]},
- extraction:{
-  headerPattern:"(?im)^#{2,3}\\s+(?:Aprendizajes(?:\\s+Clave)?|Key\\s+Learnings?|Learnings?):?\\s*$",
-  headers:{levels:[2,3],languages:["English","Spanish"],caseInsensitive:true,latestValidSection:true,nextHeadingCutoff:"levels_1_through_3"},
-  items:{numbered:["dot","paren"],numberedPreferred:true,bulletFallback:"only_when_no_valid_numbered",minimumBytes:20,minimumFields:4},
-  cleanupOrder:["bold","inline_code","italic","collapse_whitespace"],none:"nil"
+ "CAP-store-passive-learning-extraction":{
+  params:{orderedFields:[["SessionID","string","session_id"],["Content","string","content"],["Project","string","project,omitempty"],["Source","string","source,omitempty"]]},resultFields:{orderedFields:[["Extracted","int","extracted"],["Saved","int","saved"],["Duplicates","int","duplicates"]]},
+  extraction:{headerPattern:"(?im)^#{2,3}\\s+(?:Aprendizajes(?:\\s+Clave)?|Key\\s+Learnings?|Learnings?):?\\s*$",headers:{levels:[2,3],languages:["English","Spanish"],caseInsensitive:true,latestValidSection:true,nextHeadingCutoff:"levels_1_through_3"},items:{numbered:["dot","paren"],numberedPreferred:true,bulletFallback:"only_when_no_valid_numbered",minimumBytes:20,minimumFields:4},cleanupOrder:["bold","inline_code","italic","collapse_whitespace"],none:"nil"},
+  capture:{normalization:{call:"NormalizeProject",warning:"discarded",algorithm:"UNPROVED"},result:{extracted:"learning_count",saved:"successful_AddObservation_calls",duplicates:"nil_scan_count",zeroLearnings:"return_zero_result_nil_error"},dedupe:{hash:"hashNormalized(learning)",projectArgument:"nullableString(normalized_project)",queryPredicates:["normalized_hash = ?","ifnull(project, '') = ifnull(?, '')","deleted_at IS NULL"],limit:1,excludedKeys:["scope","type","title","session","ordering"],nilScan:"increment_duplicate_and_continue",queryError:"proceed_to_AddObservation"},title:"first_60_bytes_plus_ellipsis",addObservation:{fields:{SessionID:"input_session_id",Type:"passive",Title:"derived_title",Content:"learning",Project:"normalized_project",Scope:"project",ToolName:"input_source"},success:"Saved_increment",error:"return_partial_result_and_wrap_passive_capture_save"}}
  },
- capture:{
-  normalization:{call:"NormalizeProject",warning:"discarded",algorithm:"UNPROVED"},
-  result:{extracted:"learning_count",saved:"successful_AddObservation_calls",duplicates:"nil_scan_count",zeroLearnings:"return_zero_result_nil_error"},
-  dedupe:{hash:"hashNormalized(learning)",projectArgument:"nullableString(normalized_project)",queryPredicates:["normalized_hash = ?","ifnull(project, '') = ifnull(?, '')","deleted_at IS NULL"],limit:1,excludedKeys:["scope","type","title","session","ordering"],nilScan:"increment_duplicate_and_continue",queryError:"proceed_to_AddObservation"},
-  title:"first_60_bytes_plus_ellipsis",
-  addObservation:{fields:{SessionID:"input_session_id",Type:"passive",Title:"derived_title",Content:"learning",Project:"normalized_project",Scope:"project",ToolName:"input_source"},success:"Saved_increment",error:"return_partial_result_and_wrap_passive_capture_save"}
+ "CAP-pi-tool-result-passive-trigger":{
+  trigger:{event:"tool_execution_end",observeBeforeAsync:["runtime_session_id","lifecycle_state","lifecycle_epoch"],missingToolName:"empty_string",recursionGuard:{comparison:"lowercase_exact_set_membership",before:["initialization","registration","tool_count","capture"]}},
+  readiness:{initialize:"initOnceForHook(ctx.cwd)",initializationFailure:"return",projectRefresh:"refreshProjectDetection(ctx.cwd)",rejectAfterRefresh:["missing_session_id","project_detection_pending","project_resolution_error"]},
+  registration:{call:"registerEffectiveSession(ctx,project,appendEntry)",projectConflict:"warnSessionProjectConflictOnce_then_return",otherError:"warn"+"En"+"gramFailure_/sessions_then_return",closingEffectiveID:"return"},
+  counting:{operation:"toolCounts_effective_ID_plus_one",order:"before_result_presence_serialization_and_content_eligibility"},
+  content:{undefinedResult:"return",stringResult:"unchanged",otherResult:"JSON.stringify",serializationThrow:"return",reject:["empty","javascript_length_lte_50","newly_closing_effective_ID"]},
+  body:{session_id:"effective_ID",content:"stripPrivateTags(serialized_content)",project:"resolved_project",source:"original_tool_name"},redaction:{stripPrivateTags:"redactPrivateTags(str).trim",algorithm:"UNPROVED"},
+  prePostGate:{condition:"observed_state_exists_and_closing_or_epoch_drift",action:"return"},post:{path:"/observations/passive",method:"POST",transport:"bestEffort"+"En"+"gramFetch"},
+  transport:{returnedFailure:"warn_and_return_result.data",thrownError:"warn_and_return_null",postSuccessSavedProof:false},warning:{helper:"warn"+"En"+"gramFailure",failure:"swallowed"}
  }
 });
 const SESSION_STORE_SOURCE=deepFreeze(["SRC-SES-STORE-001","internal/store/store.go",488121,"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e","a396d5d8eb91b956a12c23cd5e936a2b74dd7760",59,12280,13200]);
@@ -494,27 +497,29 @@ export function validateMemoryPassiveCapture(manifest){
  if(!exactKeys(manifest,PROJECT_TOP_FIELDS,"passive-capture manifest",issues))return issues;
  if(manifest.schemaVersion!==1||manifest.scope!=="reference_only"||manifest.status!=="SOURCE_INSPECTED"||manifest.proofKind!=="source_inspection")issues.push("passive-capture metadata must remain reference-only source inspection");
  if(JSON.stringify(manifest.limitations)!==JSON.stringify(PASSIVE_CAPTURE_LIMITATIONS))issues.push("passive-capture limitations must preserve exact unproved boundaries");
- const sources=Array.isArray(manifest.sources)?manifest.sources:[],source=sources[0];
- if(sources.length!==1||!exactKeys(source,SESSION_SOURCE_FIELDS,"passive-capture source",issues))issues.push("passive-capture requires one exact source");
- else{
-  const tuple=[source.id,source.path,source.bytes,source.sha256,source.gitBlob,source.lineStart,source.lineEnd,source.lineFeeds];
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],sourceIds=sources.map(source=>source?.id);
+ if(JSON.stringify(sourceIds)!==JSON.stringify(["SRC-CAP-001","SRC-CAP-002"])||duplicates(sourceIds))issues.push("passive-capture requires two exact ordered sources");
+ for(const source of sources){
+  if(!exactKeys(source,SESSION_SOURCE_FIELDS,"passive-capture source",issues))continue;
+  const tuple=[source.id,source.path,source.bytes,source.sha256,source.gitBlob,source.lineStart,source.lineEnd,source.lineFeeds],anchor=PASSIVE_CAPTURE_SOURCES[source.id];
   if(typeof source.path!=="string"||!PATH.test(source.path)||!SHA64.test(source.sha256)||!SHA40.test(source.gitBlob))issues.push("passive-capture source has invalid identity syntax");
-  if(JSON.stringify(tuple)!==JSON.stringify(PASSIVE_CAPTURE_SOURCE)||source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`||source.representation!=="git_blob")issues.push("passive-capture source has invalid pinned identity");
+  if(!anchor||JSON.stringify(tuple)!==JSON.stringify(anchor)||source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`||source.representation!=="git_blob")issues.push("passive-capture source has invalid pinned identity");
   if(source.carriageReturns!==0||source.utf8Bom!==false||source.utf8Valid!==true||source.finalLf!==true)issues.push("passive-capture source has invalid byte or line facts");
  }
- const cases=Array.isArray(manifest.cases)?manifest.cases:[],ids=cases.map(item=>item?.id);
- if(JSON.stringify(ids)!==JSON.stringify(["CAP-store-passive-learning-extraction"])||duplicates(ids))issues.push("passive-capture cases must contain the exact CAP-store-passive-learning-extraction contract");
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],ids=cases.map(item=>item?.id),expectedIds=["CAP-store-passive-learning-extraction","CAP-pi-tool-result-passive-trigger"];
+ if(JSON.stringify(ids)!==JSON.stringify(expectedIds)||duplicates(ids))issues.push("passive-capture cases must contain the exact two ordered contracts");
  for(const item of cases){
   if(!exactKeys(item,PROJECT_CASE_FIELDS,`passive-capture case ${item?.id??"unknown"}`,issues))continue;
   for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`passive-capture case ${item.id} ${field} must be nonempty`);
   if(item.versionControl!=="CORE-15a")issues.push(`passive-capture case ${item.id} has invalid versionControl`);
-  if(!Array.isArray(item.evidence)||item.evidence.length!==PASSIVE_CAPTURE_EVIDENCE.length)issues.push(`passive-capture case ${item.id} has invalid pinned evidence`);
+  const expected=PASSIVE_CAPTURE_EVIDENCE[item.id];
+  if(!Array.isArray(item.evidence)||!expected||item.evidence.length!==expected.length)issues.push(`passive-capture case ${item.id} has invalid pinned evidence`);
   else item.evidence.forEach((entry,index)=>{
-   const anchor=PASSIVE_CAPTURE_EVIDENCE[index],exact=exactKeys(entry,FOUNDATION_EVIDENCE_FIELDS,`passive-capture case ${item.id} evidence`,issues);
+   const anchor=expected[index],source=sources.find(candidate=>candidate?.id===entry?.sourceId),exact=exactKeys(entry,FOUNDATION_EVIDENCE_FIELDS,`passive-capture case ${item.id} evidence`,issues);
    if(!Number.isInteger(entry.startLine)||!Number.isInteger(entry.endLine)||entry.startLine>entry.endLine||entry.startLine<source?.lineStart||entry.endLine>source?.lineEnd)issues.push(`passive-capture case ${item.id} has invalid evidence range`);
-   if(!exact||entry.sourceId!==source?.id||entry.sourceId!==anchor[0]||entry.startLine!==anchor[1]||entry.endLine!==anchor[2])issues.push(`passive-capture case ${item.id} has invalid pinned evidence`);
+   if(!exact||!anchor||entry.sourceId!==anchor[0]||entry.startLine!==anchor[1]||entry.endLine!==anchor[2])issues.push(`passive-capture case ${item.id} has invalid pinned evidence`);
   });
-  if(!object(item.criticalValues)||JSON.stringify(item.criticalValues)!==JSON.stringify(PASSIVE_CAPTURE_CRITICAL))issues.push(`passive-capture case ${item.id} has invalid critical values`);
+  if(!object(item.criticalValues)||JSON.stringify(item.criticalValues)!==JSON.stringify(PASSIVE_CAPTURE_CRITICAL[item.id]))issues.push(`passive-capture case ${item.id} has invalid critical values`);
  }
  return issues;
 }
@@ -821,6 +826,6 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  else{
   const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline()),...validateMemoryProjectIdentity(loadCheckedInMemoryProjectIdentity()),...validateMemorySessionTransport(loadCheckedInMemorySessionTransport()),...validateMemorySessionStore(loadCheckedInMemorySessionStore()),...validateMemoryPassiveCapture(loadCheckedInMemoryPassiveCapture())];
   if(issues.length){console.error(issues.join("\n"));process.exitCode=1;}
-  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, 3 session-transport, 15 session-store, and 1 passive-capture source-inspected contracts; no runtime parity claim)");
+  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, 3 session-transport, 15 session-store, and 2 passive-capture source-inspected contracts; no runtime parity claim)");
  }
 }

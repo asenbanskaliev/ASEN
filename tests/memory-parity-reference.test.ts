@@ -626,13 +626,42 @@ const expectedPassiveCapture=deepFreeze({
   capture:{normalization:{call:"NormalizeProject",warning:"discarded",algorithm:"UNPROVED"},result:{extracted:"learning_count",saved:"successful_AddObservation_calls",duplicates:"nil_scan_count",zeroLearnings:"return_zero_result_nil_error"},dedupe:{hash:"hashNormalized(learning)",projectArgument:"nullableString(normalized_project)",queryPredicates:["normalized_hash = ?","ifnull(project, '') = ifnull(?, '')","deleted_at IS NULL"],limit:1,excludedKeys:["scope","type","title","session","ordering"],nilScan:"increment_duplicate_and_continue",queryError:"proceed_to_AddObservation"},title:"first_60_bytes_plus_ellipsis",addObservation:{fields:{SessionID:"input_session_id",Type:"passive",Title:"derived_title",Content:"learning",Project:"normalized_project",Scope:"project",ToolName:"input_source"},success:"Saved_increment",error:"return_partial_result_and_wrap_passive_capture_save"}}
  }
 });
+const expectedPiPassiveCaller=deepFreeze({
+ caseId:"CAP-pi-tool-result-passive-trigger",
+ source:["SRC-CAP-002","plugin/pi/index.ts",103389,"387555a903d64f2d4c9145499bd34d3f5c616f310e0bc89f49c23e2f2189880f","53da52b93319fb38e2054586a38f5bdaf95ae260",45,2209,2209],
+ evidence:[["SRC-CAP-002",45,70],["SRC-CAP-002",193,198],["SRC-CAP-002",242,245],["SRC-CAP-002",410,425],["SRC-CAP-002",427,436],["SRC-CAP-002",692,694],["SRC-CAP-002",2174,2209]],
+ criticalValues:{
+  trigger:{event:"tool_execution_end",observeBeforeAsync:["runtime_session_id","lifecycle_state","lifecycle_epoch"],missingToolName:"empty_string",recursionGuard:{comparison:"lowercase_exact_set_membership",before:["initialization","registration","tool_count","capture"]}},
+  readiness:{initialize:"initOnceForHook(ctx.cwd)",initializationFailure:"return",projectRefresh:"refreshProjectDetection(ctx.cwd)",rejectAfterRefresh:["missing_session_id","project_detection_pending","project_resolution_error"]},
+  registration:{call:"registerEffectiveSession(ctx,project,appendEntry)",projectConflict:"warnSessionProjectConflictOnce_then_return",otherError:"warn"+"En"+"gramFailure_/sessions_then_return",closingEffectiveID:"return"},
+  counting:{operation:"toolCounts_effective_ID_plus_one",order:"before_result_presence_serialization_and_content_eligibility"},
+  content:{undefinedResult:"return",stringResult:"unchanged",otherResult:"JSON.stringify",serializationThrow:"return",reject:["empty","javascript_length_lte_50","newly_closing_effective_ID"]},
+  body:{session_id:"effective_ID",content:"stripPrivateTags(serialized_content)",project:"resolved_project",source:"original_tool_name"},
+  redaction:{stripPrivateTags:"redactPrivateTags(str).trim",algorithm:"UNPROVED"},
+  prePostGate:{condition:"observed_state_exists_and_closing_or_epoch_drift",action:"return"},
+  post:{path:"/observations/passive",method:"POST",transport:"bestEffort"+"En"+"gramFetch"},
+  transport:{returnedFailure:"warn_and_return_result.data",thrownError:"warn_and_return_null",postSuccessSavedProof:false},
+  warning:{helper:"warn"+"En"+"gramFailure",failure:"swallowed"}
+ }
+});
 const passiveFixture=()=>loadCheckedInMemoryPassiveCapture();
-const passiveTuples=(fixture:any)=>fixture.cases[0].evidence.map((entry:any)=>[entry.sourceId,entry.startLine,entry.endLine]);
+const passiveTuples=(fixture:any,caseIndex=0)=>fixture.cases[caseIndex].evidence.map((entry:any)=>[entry.sourceId,entry.startLine,entry.endLine]);
+
+test("passive capture requires the independently expected Pi caller source and facts",()=>{
+ const fixture=passiveFixture();
+ assert.deepEqual(validateMemoryPassiveCapture(fixture),[],"existing passive fixture must remain valid during RED");
+ assert.deepEqual(fixture.cases.map((item:any)=>item.id),[expectedPassiveCapture.caseId,expectedPiPassiveCaller.caseId]);
+ assert.deepEqual(fixture.sources[1]&&[fixture.sources[1].id,fixture.sources[1].path,fixture.sources[1].bytes,fixture.sources[1].sha256,fixture.sources[1].gitBlob,fixture.sources[1].lineStart,fixture.sources[1].lineEnd,fixture.sources[1].lineFeeds],expectedPiPassiveCaller.source);
+ assert.deepEqual(passiveTuples(fixture,1),expectedPiPassiveCaller.evidence);
+ assert.deepEqual(fixture.cases[1]?.criticalValues,expectedPiPassiveCaller.criticalValues);
+ assert.equal(Object.isFrozen(expectedPiPassiveCaller.evidence[0]),true);
+ assert.equal(Object.isFrozen(expectedPiPassiveCaller.criticalValues.trigger.recursionGuard.before),true);
+});
 
 test("passive capture fixture independently pins its exact case ID and complete facts",()=>{
  const fixture=passiveFixture(),source=fixture.sources[0];
  assert.deepEqual(validateMemoryPassiveCapture(fixture),[]);
- assert.deepEqual(fixture.cases.map((item:any)=>item.id),[expectedPassiveCapture.caseId]);
+ assert.deepEqual(fixture.cases.map((item:any)=>item.id),[expectedPassiveCapture.caseId,expectedPiPassiveCaller.caseId]);
  assert.deepEqual([source.id,source.path,source.bytes,source.sha256,source.gitBlob,source.lineStart,source.lineEnd,source.lineFeeds],expectedPassiveCapture.source);
  assert.deepEqual(passiveTuples(fixture),expectedPassiveCapture.evidence);
  assert.deepEqual(fixture.cases[0].criticalValues,expectedPassiveCapture.criticalValues);
@@ -654,6 +683,28 @@ test("passive capture rejects tuple removal, next substitution, end alteration, 
   const input=passiveFixture();input.cases[0].evidence[index].endLine=endLine;
   assert.notDeepEqual(validateMemoryPassiveCapture(input),[],`truncated evidence accepted at ${endLine}`);
  }
+});
+
+test("passive capture Pi caller rejects every tuple mutation, reversal, and direct-definition truncation",()=>{
+ for(let index=0;index<expectedPiPassiveCaller.evidence.length;index++)for(const mode of ["remove","substitute","alter"]){
+  const input=passiveFixture(),evidence=input.cases[1].evidence;
+  if(mode==="remove")evidence.splice(index,1);
+  else if(mode==="substitute"){const next=expectedPiPassiveCaller.evidence[(index+1)%expectedPiPassiveCaller.evidence.length]!;evidence[index]={sourceId:next[0],startLine:next[1],endLine:next[2]};}
+  else evidence[index].endLine++;
+  assert.notDeepEqual(validateMemoryPassiveCapture(input),[],`${mode} accepted Pi tuple ${index}`);
+ }
+ const reversed=passiveFixture();reversed.cases[1].evidence.reverse();assert.notDeepEqual(validateMemoryPassiveCapture(reversed),[],"reversed Pi evidence accepted");
+ for(const [index,endLine] of [[0,69],[1,197],[2,244],[3,424],[4,435],[5,693],[6,2208]]){
+  const input=passiveFixture();input.cases[1].evidence[index].endLine=endLine;
+  assert.notDeepEqual(validateMemoryPassiveCapture(input),[],`truncated Pi evidence accepted at ${endLine}`);
+ }
+});
+
+test("passive capture Pi caller rejects every critical leaf and raw source mutation",()=>{
+ const mutateLeaves=(value:any,path:(string|number)[]=[],result:(string|number)[][]=[]):any=>{if(value&&typeof value==="object")for(const [key,nested] of Object.entries(value))mutateLeaves(nested,[...path,key],result);else result.push(path);return result;};
+ const set=(root:any,path:(string|number)[])=>{let owner=root;for(const key of path.slice(0,-1))owner=owner[key];const key=path.at(-1)!;owner[key]=typeof owner[key]==="boolean"?!owner[key]:typeof owner[key]==="number"?owner[key]+1:`${owner[key]}_altered`;};
+ for(const path of mutateLeaves(expectedPiPassiveCaller.criticalValues)){const input=passiveFixture();set(input.cases[1].criticalValues,path);assert.notDeepEqual(validateMemoryPassiveCapture(input),[],`Pi critical leaf accepted: ${path.join(".")}`);}
+ for(const mutate of [(input:any)=>{input.sources[1].bytes++;},(input:any)=>{input.sources[1].sha256="0".repeat(64);},(input:any)=>{input.sources[1].gitBlob="0".repeat(40);},(input:any)=>{input.sources[1].sourceIdentity=input.sources[1].path;},(input:any)=>{input.sources[1].lineEnd=2208;},(input:any)=>{input.sources.reverse();},(input:any)=>{input.cases.reverse();}]){const input=passiveFixture();mutate(input);assert.notDeepEqual(validateMemoryPassiveCapture(input),[]);}
 });
 
 test("passive capture rejects every critical leaf, limitation, source identity, and overclaim",()=>{
