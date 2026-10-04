@@ -7,11 +7,13 @@ export interface MemoryItem {
   topic?: string;
   content: string;
   createdAt: string;
+  pinned?: boolean;
 }
 export interface MemoryStore {
   save(item: MemoryItem): void;
   get(id: string): MemoryItem | undefined;
   search(projectId: string, query: string): MemoryItem[];
+  setPinned(id: string, pinned: boolean): void;
   close(): void;
 }
 export interface MemorySessionRegistry {

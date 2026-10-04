@@ -3,7 +3,7 @@ import {randomUUID} from "node:crypto";
 import {existsSync,rmSync} from "node:fs";
 import type { MemoryItem, MemorySessionRegistry, MemoryStore } from "./types.js";
 
-const CURRENT_SCHEMA_VERSION=2;
+const CURRENT_SCHEMA_VERSION=3;
 type Migration={readonly version:number;apply(db:DatabaseSync):void};
 const migrations:readonly Migration[]=[
  {version:1,apply(db){db.exec(`
@@ -19,6 +19,10 @@ const migrations:readonly Migration[]=[
  {version:2,apply(db){db.exec(`
    CREATE TABLE IF NOT EXISTS memory_sessions(session_id TEXT PRIMARY KEY,project_id TEXT NOT NULL,root_session_id TEXT NOT NULL,parent_session_id TEXT REFERENCES memory_sessions(session_id),status TEXT NOT NULL CHECK(status IN ('live','ended')));
    CREATE UNIQUE INDEX IF NOT EXISTS memory_one_live_continuation ON memory_sessions(parent_session_id) WHERE parent_session_id IS NOT NULL AND status='live';
+  `);}},
+ {version:3,apply(db){db.exec(`
+   ALTER TABLE memory ADD COLUMN deleted_at TEXT;
+   ALTER TABLE memory ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0 CHECK(pinned IN (0,1));
   `);}}
 ];
 function schemaVersion(db:DatabaseSync):number{
@@ -123,8 +127,14 @@ export class SqliteMemoryStore implements MemoryStore,MemorySessionRegistry {
     .run(item.id,item.projectId,item.sessionId,item.kind,item.topic??null,item.content,item.createdAt);
   });
  }
+ setPinned(id:string,pinned:boolean):void{
+  this.#transaction(()=>{
+   const result=this.#db.prepare("UPDATE memory SET pinned=? WHERE id=? AND deleted_at IS NULL").run(pinned?1:0,id);
+   if(Number(result.changes)===0)throw new Error("Memory observation not found");
+  });
+ }
  get(id:string):MemoryItem|undefined{const r=this.#db.prepare("SELECT * FROM memory WHERE id=?").get(id) as Record<string,unknown>|undefined;return r?row(r):undefined;}
  search(projectId:string,query:string):MemoryItem[]{const rows=this.#db.prepare(`SELECT m.* FROM memory_fts f JOIN memory m ON m.id=f.id WHERE f.project_id=? AND memory_fts MATCH ? ORDER BY rank LIMIT 20`).all(projectId,query) as Record<string,unknown>[];return rows.map(row);}
  close():void{this.#db.close();}
 }
-function row(r:Record<string,unknown>):MemoryItem{const i:MemoryItem={id:String(r.id),projectId:String(r.project_id),sessionId:String(r.session_id),kind:String(r.kind) as MemoryItem["kind"],content:String(r.content),createdAt:String(r.created_at)};if(r.topic!=null)i.topic=String(r.topic);return i;}
+function row(r:Record<string,unknown>):MemoryItem{const i:MemoryItem={id:String(r.id),projectId:String(r.project_id),sessionId:String(r.session_id),kind:String(r.kind) as MemoryItem["kind"],content:String(r.content),createdAt:String(r.created_at)};if(r.topic!=null)i.topic=String(r.topic);if(Number(r.pinned)===1)i.pinned=true;return i;}
