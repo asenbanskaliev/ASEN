@@ -132,8 +132,8 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  #requireIdentity(projectId:string,sessionId:string):void{if(!projectId.trim()||!sessionId.trim())throw new Error("Memory project and session IDs must be nonblank");}
  save(item:MemoryItem):void{
   this.#requireIdentity(item.projectId,item.sessionId);
-  const content=prepareStoredContent(item.content);
-  if(!content)throw new Error("Memory observation content is empty");
+  const content=stripPrivateTags(item.content);
+  if(!content)throw new Error("Memory content is empty");
   this.#transaction(()=>{
    const session=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(item.sessionId) as {project_id:string;status:string}|undefined;
    if(!session||session.project_id!==item.projectId)throw new Error("Memory session identity conflict");

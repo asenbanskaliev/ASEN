@@ -40,16 +40,15 @@ test("observation content truncates at the byte limit without splitting UTF-8", 
   const store = new SqliteMemoryStore(":memory:");
   store.registerSession("project-a", "session-a");
   const prefix = "a".repeat(49_999);
-  store.save({
-    id: "observation-truncated",
+  const id = store.addObservation({
     projectId: "project-a",
     sessionId: "session-a",
     kind: "observation",
+    title: "Unicode boundary",
     content: `${prefix}😀tail`,
-    createdAt: "now",
   });
 
-  assert.equal(store.get("observation-truncated")?.content, `${prefix}... [truncated]`);
+  assert.equal(store.get(id)?.content, `${prefix}... [truncated]`);
   assert.equal(store.search("project-a", "tail").length, 0);
   assert.equal(store.search("project-a", "truncated").length, 1);
   store.close();
@@ -59,8 +58,19 @@ test("observation content at exactly the byte limit is not truncated", () => {
   const store = new SqliteMemoryStore(":memory:");
   store.registerSession("project-a", "session-a");
   const content = "b".repeat(50_000);
-  store.save({ id: "observation-at-limit", projectId: "project-a", sessionId: "session-a", kind: "observation", content, createdAt: "now" });
+  const id = store.addObservation({ projectId: "project-a", sessionId: "session-a", kind: "observation", title: "At byte limit", content });
 
-  assert.equal(store.get("observation-at-limit")?.content, content);
+  assert.equal(store.get(id)?.content, content);
+  store.close();
+});
+
+test("generic memory saves do not apply the observation byte limit", () => {
+  const store = new SqliteMemoryStore(":memory:");
+  store.registerSession("project-a", "session-a");
+  const content = `${"c".repeat(50_000)} tail`;
+  store.save({ id: "summary-large", projectId: "project-a", sessionId: "session-a", kind: "summary", content, createdAt: "now" });
+
+  assert.equal(Buffer.byteLength(store.get("summary-large")?.content ?? ""), Buffer.byteLength(content));
+  assert.equal(store.get("summary-large")?.content.endsWith(" tail"), true);
   store.close();
 });
