@@ -275,7 +275,7 @@ const contextTruncationMarker="\\n[truncated]\\n";
 function limitContextBytes(value:string,maxBytes:number):string{if(maxBytes<=0||Buffer.byteLength(value,"utf8")<=maxBytes)return value;const marker=Buffer.from(contextTruncationMarker);if(maxBytes<marker.length)return truncateUtf8Bytes(value,maxBytes);return truncateUtf8Bytes(value,maxBytes-marker.length)+contextTruncationMarker;}
 function truncateUtf8Bytes(value:string,maxBytes:number):string{if(maxBytes<=0)return "";const bytes=Buffer.from(value,"utf8");if(bytes.length<=maxBytes)return value;return bytes.subarray(0,maxBytes).toString("utf8").replace(/\\uFFFD$/u,"");}
 function memoryFtsQuery(query:string,mode:"all"|"any"):string{
- const terms=query.trim().split(/\\s+/u).map(term=>term.replace(/"/g,'""')).filter(Boolean);
+ const terms=query.trim().split(/\s+/u).map(term=>term.replace(/"/g,'""')).filter(Boolean);
  if(terms.length===0)return "";
  if(mode==="any")return terms.map(term=>`"${term}"`).join(" OR ");
  return terms.map(term=>`"${term}"`).join(" AND ");
