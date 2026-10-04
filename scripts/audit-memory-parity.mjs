@@ -10,6 +10,7 @@ const OBSERVATION_WRITE_MANIFEST="registry/parity/memory-observation-write-contr
 const RETRIEVAL_SEARCH_MANIFEST="registry/parity/memory-retrieval-search-contracts-v1.json";
 const CONTEXT_TIMELINE_MANIFEST="registry/parity/memory-context-timeline-contracts-v1.json";
 const PROJECT_IDENTITY_MANIFEST="registry/parity/memory-project-identity-contracts-v1.json";
+export const RELATION_MANIFEST="registry/parity/memory-relation-contracts-v1.json";
 export const SESSION_TRANSPORT_MANIFEST="registry/parity/memory-session-transport-contracts-v1.json";
 export const SESSION_STORE_MANIFEST="registry/parity/memory-session-store-contracts-v1.json";
 export const PASSIVE_CAPTURE_MANIFEST="registry/parity/memory-passive-capture-contracts-v1.json";
@@ -37,12 +38,30 @@ const CONTEXT_CASE_FIELDS=["id","summary","evidence","contract","negativeControl
 const PROJECT_TOP_FIELDS=["schemaVersion","scope","status","proofKind","limitations","sources","cases"];
 const PROJECT_SOURCE_FIELDS=["id","path","bytes","sha256","commit","sourceIdentity","representation","lineStart","lineEnd","lineFeeds","carriageReturns","utf8Bom","utf8Valid","finalLf"];
 const PROJECT_CASE_FIELDS=["id","summary","evidence","contract","negativeControls","versionControl","criticalValues"];
+const RELATION_SOURCE_FIELDS=["id","path","mode","bytes","sha256","gitBlob","commit","sourceIdentity","representation","lineStart","lineEnd","lineFeeds","carriageReturns","utf8Bom","utf8Valid","finalLf"];
 const SESSION_SOURCE_FIELDS=["id","path","bytes","sha256","gitBlob","commit","sourceIdentity","representation","lineStart","lineEnd","lineFeeds","carriageReturns","utf8Bom","utf8Valid","finalLf"];
 const deepFreeze=value=>{
  if(value&&typeof value==="object")for(const nested of Object.values(value))deepFreeze(nested);
  return value&&typeof value==="object"?Object.freeze(value):value;
 };
 const CORE_COMMIT="15a2f78885d7ad8ced23b2d1d88383e9bb472c17";
+const RELATION_LIMITATIONS=deepFreeze([
+ "This contract records source inspection only; it does not prove runtime SQLite behavior, durability, concurrency, rollback, or complete E3-08 parity.",
+ "SaveRelation does not provide upsert behavior, caller validation, blank or malformed validation, endpoint-existence checks, deletion checks, ownership or project checks, or cross-project checks.",
+ "No unique-constraint behavior is claimed without schema evidence.",
+ "The inspected create path does not check affected rows and does not prove atomicity or timestamp equality.",
+ "Synchronization, Cloud delivery, judgment, contradiction, semantic validation, authentication, and authorization remain unproved.",
+ "Relation annotation fields are defined but are not populated by SaveRelation or GetRelation; comments delegate enrichment to GetRelationsForObservations.",
+ "This bounded contract is SOURCE_INSPECTED only; it does not claim FULL parity, runtime parity, or complete E3-08 coverage."
+]);
+const RELATION_SOURCE=deepFreeze(["SRC-REL-001","internal/store/relations.go","100644",59527,"a4c34d7766c4a392164368aec39eea2f60b6436f6e94e1394559e6a2c7f2601e","185c4c7026cf99e79353e841b3650f0d00738c3d",279,541,1664]);
+const RELATION_EVIDENCE=deepFreeze([["SRC-REL-001",279,304],["SRC-REL-001",316,323],["SRC-REL-001",499,509],["SRC-REL-001",514,541]]);
+const RELATION_CRITICAL=deepFreeze({
+ params:{orderedFields:["SyncID","SourceID","TargetID"]},
+ save:{operation:"plain_INSERT",columns:["sync_id","source_id","target_id","relation","judgment_status","created_at","updated_at"],arguments:["SyncID","SourceID","TargetID"],fixed:{relation:"pending",judgmentStatus:"pending"},timestamps:{createdAt:"datetime('now')",updatedAt:"datetime('now')",separateExpressions:true},insertError:"SaveRelation: insert",affectedRowsChecked:false,success:{call:"GetRelation",argument:"supplied_SyncID"}},
+ get:{filter:{only:"sync_id",argument:"supplied_syncID"},selectedFields:["id","sync_id","ifnull(source_id,'')","ifnull(target_id,'')","relation","reason","evidence","confidence","judgment_status","marked_by_actor","marked_by_kind","marked_by_model","session_id","created_at","updated_at"],scannedFields:["ID","SyncID","sourceID","targetID","Relation","Reason","Evidence","Confidence","JudgmentStatus","MarkedByActor","MarkedByKind","MarkedByModel","SessionID","CreatedAt","UpdatedAt"],nullEndpoints:"empty_strings",errors:{missing:"GetRelation: relation %q not found",scan:"GetRelation: %w",distinct:true},assignments:["SourceID=sourceID","TargetID=targetID"],returns:"relation_pointer"},
+ annotations:{fields:["SourceIntID","SourceTitle","SourceMissing","TargetIntID","TargetTitle","TargetMissing"],populatedHere:false,enrichment:"GetRelationsForObservations_LEFT_JOIN_comments"}
+});
 const FOUNDATION_SOURCE_ANCHORS={
  "internal/store/store.go":[501321,"2ffd000ee7f8c8fc1ad0c3d130e88a8ab4878449866c9737215b3c6d8ffa555b",997,9363],
  "internal/store/startup_gate_test.go":[24904,"d89e2f55fe5f33513902887ff8a150130f192773218b363383daf03f02205030",119,450],
@@ -458,6 +477,38 @@ export function validateMemorySessionTransport(manifest){
  return issues;
 }
 
+/** Load source-inspected pending-relation create/readback contracts. */
+export function loadCheckedInMemoryRelations(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,RELATION_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory relation JSON ${RELATION_MANIFEST}`,{cause:error});}
+}
+
+/** Pure validation of the source-inspected pending-relation create/readback contract. */
+export function validateMemoryRelations(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,PROJECT_TOP_FIELDS,"relation manifest",issues))return issues;
+ if(manifest.schemaVersion!==1||manifest.scope!=="reference_only"||manifest.status!=="SOURCE_INSPECTED"||manifest.proofKind!=="source_inspection")issues.push("relation metadata must remain reference-only SOURCE_INSPECTED source inspection");
+ if(JSON.stringify(manifest.limitations)!==JSON.stringify(RELATION_LIMITATIONS))issues.push("relation limitations must preserve exact unproved boundaries");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],source=sources[0];
+ if(sources.length!==1||!exactKeys(source,RELATION_SOURCE_FIELDS,"relation source",issues))issues.push("relation contract requires one exact source");
+ else{
+  const tuple=[source.id,source.path,source.mode,source.bytes,source.sha256,source.gitBlob,source.lineStart,source.lineEnd,source.lineFeeds];
+  if(typeof source.path!=="string"||!PATH.test(source.path)||source.mode!=="100644"||!SHA64.test(source.sha256)||!SHA40.test(source.gitBlob))issues.push("relation source has malformed identity");
+  if(JSON.stringify(tuple)!==JSON.stringify(RELATION_SOURCE)||source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`||source.representation!=="git_blob")issues.push("relation source has invalid pinned Git-blob identity");
+  if(source.carriageReturns!==0||source.utf8Bom!==false||source.utf8Valid!==true||source.finalLf!==true)issues.push("relation source has invalid canonical byte facts");
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],item=cases[0];
+ if(cases.length!==1||item?.id!=="REL-store-pending-create-readback"||!exactKeys(item,PROJECT_CASE_FIELDS,"relation case",issues))issues.push("relation cases must contain exactly the pending create/readback contract");
+ else{
+  for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`relation case ${field} must be nonempty`);
+  if(item.versionControl!=="CORE-15a")issues.push("relation case has invalid versionControl");
+  if(!Array.isArray(item.evidence)||item.evidence.length!==RELATION_EVIDENCE.length)issues.push("relation case has invalid pinned evidence");
+  else item.evidence.forEach((entry,index)=>{const anchor=RELATION_EVIDENCE[index],exact=exactKeys(entry,FOUNDATION_EVIDENCE_FIELDS,"relation evidence",issues);if(!exact||!anchor||entry.sourceId!==anchor[0]||entry.startLine!==anchor[1]||entry.endLine!==anchor[2]||entry.startLine<source?.lineStart||entry.endLine>source?.lineEnd)issues.push("relation case has invalid pinned evidence");});
+  if(!object(item.criticalValues)||JSON.stringify(item.criticalValues)!==JSON.stringify(RELATION_CRITICAL))issues.push("relation case has invalid critical values");
+ }
+ return issues;
+}
+
 /** Load source-inspected session-store contracts without executing upstream code. */
 export function loadCheckedInMemorySessionStore(root=ROOT){
  try{return JSON.parse(readFileSync(resolve(root,SESSION_STORE_MANIFEST),"utf8"));}
@@ -836,8 +887,8 @@ export function validateMemoryParity(manifest){
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(process.argv.length!==2){console.error("audit:memory-parity is offline-only and accepts no flags");process.exitCode=2;}
  else{
-  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline()),...validateMemoryProjectIdentity(loadCheckedInMemoryProjectIdentity()),...validateMemorySessionTransport(loadCheckedInMemorySessionTransport()),...validateMemorySessionStore(loadCheckedInMemorySessionStore()),...validateMemoryPassiveCapture(loadCheckedInMemoryPassiveCapture())];
+  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline()),...validateMemoryProjectIdentity(loadCheckedInMemoryProjectIdentity()),...validateMemorySessionTransport(loadCheckedInMemorySessionTransport()),...validateMemorySessionStore(loadCheckedInMemorySessionStore()),...validateMemoryPassiveCapture(loadCheckedInMemoryPassiveCapture()),...validateMemoryRelations(loadCheckedInMemoryRelations())];
   if(issues.length){console.error(issues.join("\n"));process.exitCode=1;}
-  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, 3 session-transport, 15 session-store, and 3 passive-capture source-inspected contracts; no runtime parity claim)");
+  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, 3 session-transport, 15 session-store, 3 passive-capture, and 1 relation source-inspected contracts; no runtime parity claim)");
  }
 }

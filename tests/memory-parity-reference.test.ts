@@ -3,7 +3,7 @@ import {spawnSync} from "node:child_process";
 import {resolve} from "node:path";
 import test from "node:test";
 // @ts-expect-error Dependency-free offline JavaScript validator.
-import {loadCheckedInMemoryContextTimeline,loadCheckedInMemoryFoundation,loadCheckedInMemoryObservationWrites,loadCheckedInMemoryParity,loadCheckedInMemoryPassiveCapture,loadCheckedInMemoryProjectIdentity,loadCheckedInMemoryRetrievalSearch,loadCheckedInMemorySessionStore,loadCheckedInMemorySessionTransport,validateMemoryContextTimeline,validateMemoryFoundation,validateMemoryObservationWrites,validateMemoryParity,validateMemoryPassiveCapture,validateMemoryProjectIdentity,validateMemoryRetrievalSearch,validateMemorySessionStore,validateMemorySessionTransport} from "../scripts/audit-memory-parity.mjs";
+import {loadCheckedInMemoryContextTimeline,loadCheckedInMemoryFoundation,loadCheckedInMemoryObservationWrites,loadCheckedInMemoryParity,loadCheckedInMemoryPassiveCapture,loadCheckedInMemoryProjectIdentity,loadCheckedInMemoryRelations,loadCheckedInMemoryRetrievalSearch,loadCheckedInMemorySessionStore,loadCheckedInMemorySessionTransport,validateMemoryContextTimeline,validateMemoryFoundation,validateMemoryObservationWrites,validateMemoryParity,validateMemoryPassiveCapture,validateMemoryProjectIdentity,validateMemoryRelations,validateMemoryRetrievalSearch,validateMemorySessionStore,validateMemorySessionTransport} from "../scripts/audit-memory-parity.mjs";
 
 const baseline=loadCheckedInMemoryParity();
 const clone=()=>structuredClone(baseline);
@@ -370,6 +370,42 @@ const deepFreeze=<T>(value:T):T=>{
  if(value&&typeof value==="object")for(const nested of Object.values(value))deepFreeze(nested);
  return value&&typeof value==="object"?Object.freeze(value):value;
 };
+const expectedRelation=deepFreeze({
+ evidence:[["SRC-REL-001",279,304],["SRC-REL-001",316,323],["SRC-REL-001",499,509],["SRC-REL-001",514,541]],
+ critical:{
+  params:{orderedFields:["SyncID","SourceID","TargetID"]},
+  save:{operation:"plain_INSERT",columns:["sync_id","source_id","target_id","relation","judgment_status","created_at","updated_at"],arguments:["SyncID","SourceID","TargetID"],fixed:{relation:"pending",judgmentStatus:"pending"},timestamps:{createdAt:"datetime('now')",updatedAt:"datetime('now')",separateExpressions:true},insertError:"SaveRelation: insert",affectedRowsChecked:false,success:{call:"GetRelation",argument:"supplied_SyncID"}},
+  get:{filter:{only:"sync_id",argument:"supplied_syncID"},selectedFields:["id","sync_id","ifnull(source_id,'')","ifnull(target_id,'')","relation","reason","evidence","confidence","judgment_status","marked_by_actor","marked_by_kind","marked_by_model","session_id","created_at","updated_at"],scannedFields:["ID","SyncID","sourceID","targetID","Relation","Reason","Evidence","Confidence","JudgmentStatus","MarkedByActor","MarkedByKind","MarkedByModel","SessionID","CreatedAt","UpdatedAt"],nullEndpoints:"empty_strings",errors:{missing:"GetRelation: relation %q not found",scan:"GetRelation: %w",distinct:true},assignments:["SourceID=sourceID","TargetID=targetID"],returns:"relation_pointer"},
+  annotations:{fields:["SourceIntID","SourceTitle","SourceMissing","TargetIntID","TargetTitle","TargetMissing"],populatedHere:false,enrichment:"GetRelationsForObservations_LEFT_JOIN_comments"}
+ }
+});
+const relationFixture=()=>loadCheckedInMemoryRelations();
+const relationReject=(mutate:(input:any)=>void,message:string)=>{const input=structuredClone(relationFixture());mutate(input);assert.notDeepEqual(validateMemoryRelations(input),[],message);};
+
+test("relation fixture pins exactly one pending create/readback contract and nested facts",()=>{
+ const fixture=relationFixture(),source=fixture.sources[0];
+ assert.deepEqual(validateMemoryRelations(fixture),[]);
+ assert.deepEqual(fixture.cases.map((item:any)=>item.id),["REL-store-pending-create-readback"]);
+ assert.deepEqual(fixture.cases[0].evidence.map((entry:any)=>[entry.sourceId,entry.startLine,entry.endLine]),expectedRelation.evidence);
+ assert.deepEqual(fixture.cases[0].criticalValues,expectedRelation.critical);
+ assert.deepEqual([source.id,source.path,source.mode,source.bytes,source.sha256,source.gitBlob,source.commit,source.lineFeeds,source.carriageReturns,source.utf8Bom,source.utf8Valid,source.finalLf],["SRC-REL-001","internal/store/relations.go","100644",59527,"a4c34d7766c4a392164368aec39eea2f60b6436f6e94e1394559e6a2c7f2601e","185c4c7026cf99e79353e841b3650f0d00738c3d","15a2f78885d7ad8ced23b2d1d88383e9bb472c17",1664,0,false,true,true]);
+ assert.equal(Object.isFrozen(expectedRelation.critical.get.errors),true);assert.equal(Object.isFrozen(expectedRelation.evidence[0]),true);
+});
+
+test("relation validator rejects every evidence mutation and closing truncation",()=>{
+ for(let index=0;index<expectedRelation.evidence.length;index++)for(const mode of ["remove","substitute","start","end"]){relationReject(input=>{const evidence=input.cases[0].evidence;if(mode==="remove")evidence.splice(index,1);else if(mode==="substitute"){const next=expectedRelation.evidence[(index+1)%4]!;evidence[index]={sourceId:next[0],startLine:next[1],endLine:next[2]};}else evidence[index][mode==="start"?"startLine":"endLine"]++;},`${mode} accepted at ${index}`);}
+ relationReject(input=>{input.cases[0].evidence.reverse();},"evidence reversal accepted");
+ for(const [index,end] of [303,322,508,540].entries())relationReject(input=>{input.cases[0].evidence[index].endLine=end;},`closing truncation ${end} accepted`);
+});
+
+test("relation validator rejects every critical leaf, limitation, and boundary overclaim",()=>{
+ const fixture=relationFixture(),visit=(value:any,path:(string|number)[]=[]):void=>{if(value&&typeof value==="object")for(const [key,nested] of Object.entries(value))visit(nested,[...path,key]);else relationReject(input=>{let owner=input.cases[0].criticalValues;for(const key of path.slice(0,-1))owner=owner[key];const key=path.at(-1)!;owner[key]=typeof owner[key]==="boolean"?!owner[key]:typeof owner[key]==="number"?owner[key]+1:`${owner[key]}_altered`;},`critical leaf accepted: ${path.join(".")}`);};
+ visit(expectedRelation.critical);
+ for(let index=0;index<fixture.limitations.length;index++)relationReject(input=>{input.limitations[index]="altered";},`limitation ${index} accepted`);
+ const mutations:[string,(input:any)=>void][]=[["FULL",input=>{input.status="FULL";}],["runtime",input=>{input.proofKind="runtime";}],["extra top",input=>{input.runtime=true;}],["extra source",input=>{input.sources[0].checkout=true;}],["extra case",input=>{input.cases[0].claim="FULL";}],["path substitution",input=>{input.sources[0].path="internal/store/store.go";}],["checkout bytes",input=>{input.sources[0].bytes=59528;}],["commit",input=>{input.sources[0].commit="0".repeat(40);}],["blob",input=>{input.sources[0].gitBlob="0".repeat(40);}],["identity",input=>{input.sources[0].sourceIdentity=input.sources[0].path;}],["representation",input=>{input.sources[0].representation="checkout";}],["case order",input=>{input.cases.push(structuredClone(input.cases[0]));}]];
+ for(const [name,mutate] of mutations)relationReject(mutate,`${name} accepted`);
+});
+
 const expectedSessionTransport=deepFreeze({
  caseIds:["SES-MCP-start-resolution","SES-serialized-write-queue","SES-MCP-omitted-session-fallback"],
  sources:[

@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "scope": "reference_only",
+  "status": "SOURCE_INSPECTED",
+  "proofKind": "source_inspection",
+  "limitations": [
+    "This contract records source inspection only; it does not prove runtime SQLite behavior, durability, concurrency, rollback, or complete E3-08 parity.",
+    "SaveRelation does not provide upsert behavior, caller validation, blank or malformed validation, endpoint-existence checks, deletion checks, ownership or project checks, or cross-project checks.",
+    "No unique-constraint behavior is claimed without schema evidence.",
+    "The inspected create path does not check affected rows and does not prove atomicity or timestamp equality.",
+    "Synchronization, Cloud delivery, judgment, contradiction, semantic validation, authentication, and authorization remain unproved.",
+    "Relation annotation fields are defined but are not populated by SaveRelation or GetRelation; comments delegate enrichment to GetRelationsForObservations.",
+    "This bounded contract is SOURCE_INSPECTED only; it does not claim FULL parity, runtime parity, or complete E3-08 coverage."
+  ],
+  "sources": [{
+    "id": "SRC-REL-001",
+    "path": "internal/store/relations.go",
+    "mode": "100644",
+    "bytes": 59527,
+    "sha256": "a4c34d7766c4a392164368aec39eea2f60b6436f6e94e1394559e6a2c7f2601e",
+    "gitBlob": "185c4c7026cf99e79353e841b3650f0d00738c3d",
+    "commit": "15a2f78885d7ad8ced23b2d1d88383e9bb472c17",
+    "sourceIdentity": "15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/store/relations.go",
+    "representation": "git_blob",
+    "lineStart": 279,
+    "lineEnd": 541,
+    "lineFeeds": 1664,
+    "carriageReturns": 0,
+    "utf8Bom": false,
+    "utf8Valid": true,
+    "finalLf": true
+  }],
+  "cases": [{
+    "id": "REL-store-pending-create-readback",
+    "summary": "SaveRelation inserts one pending relation and reads it back by the supplied sync ID.",
+    "evidence": [
+      {"sourceId":"SRC-REL-001","startLine":279,"endLine":304},
+      {"sourceId":"SRC-REL-001","startLine":316,"endLine":323},
+      {"sourceId":"SRC-REL-001","startLine":499,"endLine":509},
+      {"sourceId":"SRC-REL-001","startLine":514,"endLine":541}
+    ],
+    "contract": "The three supplied IDs feed a plain pending INSERT; success calls GetRelation with SyncID, whose sync_id-only query scans the explicit relation field order, distinguishes a missing row from other scan errors, assigns normalized endpoint IDs, and returns the relation.",
+    "negativeControls": "No upsert, validation, endpoint or ownership checks, affected-row check, annotation enrichment, runtime SQLite, synchronization, judgment, semantic, authentication, or FULL-parity behavior is claimed.",
+    "versionControl": "CORE-15a",
+    "criticalValues": {
+      "params": {"orderedFields":["SyncID","SourceID","TargetID"]},
+      "save": {"operation":"plain_INSERT","columns":["sync_id","source_id","target_id","relation","judgment_status","created_at","updated_at"],"arguments":["SyncID","SourceID","TargetID"],"fixed":{"relation":"pending","judgmentStatus":"pending"},"timestamps":{"createdAt":"datetime('now')","updatedAt":"datetime('now')","separateExpressions":true},"insertError":"SaveRelation: insert","affectedRowsChecked":false,"success":{"call":"GetRelation","argument":"supplied_SyncID"}},
+      "get": {"filter":{"only":"sync_id","argument":"supplied_syncID"},"selectedFields":["id","sync_id","ifnull(source_id,'')","ifnull(target_id,'')","relation","reason","evidence","confidence","judgment_status","marked_by_actor","marked_by_kind","marked_by_model","session_id","created_at","updated_at"],"scannedFields":["ID","SyncID","sourceID","targetID","Relation","Reason","Evidence","Confidence","JudgmentStatus","MarkedByActor","MarkedByKind","MarkedByModel","SessionID","CreatedAt","UpdatedAt"],"nullEndpoints":"empty_strings","errors":{"missing":"GetRelation: relation %q not found","scan":"GetRelation: %w","distinct":true},"assignments":["SourceID=sourceID","TargetID=targetID"],"returns":"relation_pointer"},
+      "annotations": {"fields":["SourceIntID","SourceTitle","SourceMissing","TargetIntID","TargetTitle","TargetMissing"],"populatedHere":false,"enrichment":"GetRelationsForObservations_LEFT_JOIN_comments"}
+    }
+  }]
+}
