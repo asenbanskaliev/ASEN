@@ -18,3 +18,8 @@ test("invalid import refuses atomically without side effects",()=>{
  const invalid={version:1 as const,projectId:"p",sessions:[{projectId:"p",sessionId:"s",rootSessionId:"s",status:"live" as const}],observations:[{id:"a",projectId:"other",sessionId:"s",kind:"decision" as const,content:"bad",createdAt:"2026-01-01T00:00:00Z"}],relations:[],summaries:[]};
  assert.throws(()=>target.importProject(invalid),/Invalid memory import observation/);assert.deepEqual(target.exportProject("p"),before);target.close();
 });
+
+test("import restores continuation ancestry even when child sorts before parent",()=>{
+ const source=new SqliteMemoryStore(":memory:");source.registerSession("p","z-parent");source.endSession("p","z-parent","parent summary");assert.equal(source.continueSession("p","z-parent","a-child"),"a-child");source.save({id:"child-item",projectId:"p",sessionId:"a-child",kind:"decision",content:"continued",createdAt:"2026-01-01T00:00:00Z"});const exported=source.exportProject("p");
+ const target=new SqliteMemoryStore(":memory:");target.importProject(exported);assert.deepEqual(target.exportProject("p"),exported);source.close();target.close();
+});
