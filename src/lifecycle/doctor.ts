@@ -8,7 +8,8 @@ export function runDoctor(deps: DoctorDeps): DoctorCheck[] {
     {name:"Pi",ok:deps.piAvailable,detail:deps.piAvailable?"available":"not detected"},
     {name:"Git",ok:deps.gitAvailable,detail:deps.gitAvailable?"available":"not detected"},
     {name:"Registry",ok:deps.registryAvailable,detail:deps.registryAvailable?"available":"missing"},
-    {name:"Memory",ok:Boolean(deps.memory),detail:deps.memory?"configured":"not configured"},\n    ...(deps.memory?[(()=>{const result=deps.memory!.integrityCheck();return {name:"Memory integrity",ok:result.ok,detail:result.detail};})()]:[])
+    {name:"Memory",ok:Boolean(deps.memory),detail:deps.memory?"configured":"not configured"},
+    ...(deps.memory?[(()=>{const result=deps.memory!.integrityCheck();return {name:"Memory integrity",ok:result.ok,detail:result.detail};})()]:[])
   ];
 }
 
