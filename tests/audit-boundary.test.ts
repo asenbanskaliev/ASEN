@@ -17,6 +17,7 @@ test("tracked boundary checks paths and text while excluding binary payloads",()
   copyFileSync(resolve("scripts/memory-parity/writer-a/index.mjs"),join(root,"scripts","memory-parity","writer-a","index.mjs"));
   copyFileSync(resolve("scripts/memory-parity/writer-b/index.mjs"),join(root,"scripts","memory-parity","writer-b","index.mjs"));
   copyFileSync(resolve("registry/parity/memory-protocol-contracts-v1.json"),join(root,"registry","parity","memory-protocol-contracts-v1.json"));
+  copyFileSync(resolve("registry/parity/memory-observation-pin-contracts-v1.json"),join(root,"registry","parity","memory-observation-pin-contracts-v1.json"));
   copyFileSync(resolve("registry/parity/memory-upstream-v3.json"),join(root,"registry","parity","memory-upstream-v3.json"));
   execFileSync("git",["init","-q",root]);
   const stage=()=>execFileSync("git",["-C",root,"add","-A"]);
