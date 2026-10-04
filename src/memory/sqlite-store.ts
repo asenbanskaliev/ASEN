@@ -336,7 +336,7 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   const sessions=data.sessions??inferExportSessions(data);
   validateMemoryImport(data,sessions);
   this.#transaction(()=>{
-   for(const session of sessions){
+   for(const session of orderImportSessions(sessions)){
     const existing=this.#db.prepare("SELECT project_id,root_session_id,parent_session_id,status FROM memory_sessions WHERE session_id=?").get(session.sessionId) as {project_id:string;root_session_id:string;parent_session_id:string|null;status:string}|undefined;
     if(existing){
      if(existing.project_id!==session.projectId||existing.root_session_id!==session.rootSessionId||(existing.parent_session_id??undefined)!==session.parentSessionId||existing.status!==session.status)throw new Error("Memory import session conflict");
@@ -456,4 +456,10 @@ function validateMemoryImport(data:MemoryExport,sessions:MemorySessionState[]):v
  for(const item of data.observations){if(item.projectId!==data.projectId||!sessionIds.has(item.sessionId)||observationIds.has(item.id))throw new Error("Invalid memory import observation");observationIds.add(item.id);}
  for(const relation of data.relations)if(relation.projectId!==data.projectId||!observationIds.has(relation.sourceId)||!observationIds.has(relation.targetId))throw new Error("Invalid memory import relation");
  for(const summary of data.summaries)if(summary.projectId!==data.projectId||!sessionIds.has(summary.sessionId))throw new Error("Invalid memory import summary");
+}
+
+function orderImportSessions(sessions:MemorySessionState[]):MemorySessionState[]{
+ const pending=new Map(sessions.map(s=>[s.sessionId,s])),ordered:MemorySessionState[]=[];
+ while(pending.size){let progressed=false;for(const [id,s] of [...pending])if(!s.parentSessionId||!pending.has(s.parentSessionId)){ordered.push(s);pending.delete(id);progressed=true;}if(!progressed)throw new Error("Invalid memory import session ancestry");}
+ return ordered;
 }
