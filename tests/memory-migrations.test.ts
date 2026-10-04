@@ -26,7 +26,7 @@ test("versions and backs up an existing legacy store before its ordered migratio
  const legacyBackup=backups.find(name=>name.includes("v0-to-v1"))!,versionOneBackup=backups.find(name=>name.includes("v1-to-v2"))!;
  const backup=new DatabaseSync(join(dir,legacyBackup));try{assert.equal(version(join(dir,legacyBackup)),0);assert.equal((backup.prepare("SELECT content FROM memory WHERE id=?").get("legacy-id") as {content:string}).content,"preserve this memory");assert.equal(backup.prepare("SELECT name FROM sqlite_master WHERE name='memory_fts'").get(),undefined);}finally{backup.close();}
  const beforeSessions=new DatabaseSync(join(dir,versionOneBackup));try{assert.equal(version(join(dir,versionOneBackup)),1);assert.equal(beforeSessions.prepare("SELECT name FROM sqlite_master WHERE name='memory_sessions'").get(),undefined);}finally{beforeSessions.close();}
- store=new SqliteMemoryStore(path);assert.equal(store.get("legacy-id")?.content,"preserve this memory");store.close();assert.equal(backupFiles(path).length,7);
+ store=new SqliteMemoryStore(path);assert.equal(store.get("legacy-id")?.content,"preserve this memory");store.close();assert.equal(backupFiles(path).length,6);
 });
 
 test("rejects a future schema version before changing its database",async t=>{
@@ -44,7 +44,7 @@ test("rolls back every schema change when a legacy migration fails",async t=>{
  const check=new DatabaseSync(path);try{assert.equal(version(path),0);assert.equal(check.prepare("SELECT name FROM sqlite_master WHERE name='memory_fts'").get(),undefined);assert.deepEqual((check.prepare("PRAGMA table_info(memory)").all() as Array<{name:string}>).map(column=>column.name),["id"]);}finally{check.close();}
  assert.equal(backupFiles(path).length,1);
  const repaired=new DatabaseSync(path);repaired.exec("ALTER TABLE memory ADD COLUMN project_id TEXT; ALTER TABLE memory ADD COLUMN session_id TEXT; ALTER TABLE memory ADD COLUMN kind TEXT; ALTER TABLE memory ADD COLUMN topic TEXT; ALTER TABLE memory ADD COLUMN content TEXT; ALTER TABLE memory ADD COLUMN created_at TEXT;");repaired.close();
- const store=new SqliteMemoryStore(path);assert.equal(version(path),6);store.close();assert.equal(backupFiles(path).length,6);
+ const store=new SqliteMemoryStore(path);assert.equal(version(path),6);store.close();assert.equal(backupFiles(path).length,7);
 });
 
 test("serializes simultaneous opens and commits one migration before either store writes",async t=>{
