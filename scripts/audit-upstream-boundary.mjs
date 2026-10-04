@@ -11,6 +11,7 @@ const contextTimelineManifestPath="registry/parity/memory-context-timeline-contr
 const projectIdentityManifestPath="registry/parity/memory-project-identity-contracts-v1.json";
 const sessionTransportManifestPath="registry/parity/memory-session-transport-contracts-v1.json";
 const sessionStoreManifestPath="registry/parity/memory-session-store-contracts-v1.json";
+const passiveCaptureManifestPath="registry/parity/memory-passive-capture-contracts-v1.json";
 const memoryManifest=loadCheckedInMemoryParity(root);
 const provenanceIssues=validateMemoryParity(memoryManifest);
 if(provenanceIssues.length){
@@ -22,13 +23,13 @@ const forbidden=new RegExp(["gen"+"tle","gen"+"tleman",referenceName].filter(Boo
 const provenanceAllowlist=new Set([
  "registry/parity/skill-sources-v1.json",memoryManifestPath,"registry/parity/memory-foundation-contracts-v1.json",
  observationWriteManifestPath,retrievalSearchManifestPath,contextTimelineManifestPath,projectIdentityManifestPath,
- sessionTransportManifestPath,sessionStoreManifestPath
+ sessionTransportManifestPath,sessionStoreManifestPath,passiveCaptureManifestPath
 ]);
 const tracked=execFileSync("git",["ls-files","-z"],{cwd:root}).toString("utf8").split("\0").filter(Boolean);
 const preStageCandidates=[
  "scripts/audit-memory-parity.mjs","tests/memory-parity-reference.test.ts",observationWriteManifestPath,
  retrievalSearchManifestPath,contextTimelineManifestPath,projectIdentityManifestPath,sessionTransportManifestPath,
- sessionStoreManifestPath
+ sessionStoreManifestPath,passiveCaptureManifestPath
 ];
 const paths=[...new Set([...tracked,...preStageCandidates.filter(path=>existsSync(new URL(`../${path}`,import.meta.url)))])];
 const violations=[];

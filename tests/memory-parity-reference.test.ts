@@ -3,7 +3,7 @@ import {spawnSync} from "node:child_process";
 import {resolve} from "node:path";
 import test from "node:test";
 // @ts-expect-error Dependency-free offline JavaScript validator.
-import {loadCheckedInMemoryContextTimeline,loadCheckedInMemoryFoundation,loadCheckedInMemoryObservationWrites,loadCheckedInMemoryParity,loadCheckedInMemoryProjectIdentity,loadCheckedInMemoryRetrievalSearch,loadCheckedInMemorySessionStore,loadCheckedInMemorySessionTransport,validateMemoryContextTimeline,validateMemoryFoundation,validateMemoryObservationWrites,validateMemoryParity,validateMemoryProjectIdentity,validateMemoryRetrievalSearch,validateMemorySessionStore,validateMemorySessionTransport} from "../scripts/audit-memory-parity.mjs";
+import {loadCheckedInMemoryContextTimeline,loadCheckedInMemoryFoundation,loadCheckedInMemoryObservationWrites,loadCheckedInMemoryParity,loadCheckedInMemoryPassiveCapture,loadCheckedInMemoryProjectIdentity,loadCheckedInMemoryRetrievalSearch,loadCheckedInMemorySessionStore,loadCheckedInMemorySessionTransport,validateMemoryContextTimeline,validateMemoryFoundation,validateMemoryObservationWrites,validateMemoryParity,validateMemoryPassiveCapture,validateMemoryProjectIdentity,validateMemoryRetrievalSearch,validateMemorySessionStore,validateMemorySessionTransport} from "../scripts/audit-memory-parity.mjs";
 
 const baseline=loadCheckedInMemoryParity();
 const clone=()=>structuredClone(baseline);
@@ -614,6 +614,55 @@ const expectedSessionStore=deepFreeze({
 });
 const storeFixture=()=>loadCheckedInMemorySessionStore();
 const storeTuples=(item:any)=>item.evidence.map((entry:any)=>[entry.sourceId,entry.startLine,entry.endLine]);
+
+const expectedPassiveCapture=deepFreeze({
+ caseId:"CAP-store-passive-learning-extraction",
+ source:["SRC-CAP-001","internal/store/store.go",488121,"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e","a396d5d8eb91b956a12c23cd5e936a2b74dd7760",12515,12655,13200],
+ evidence:[["SRC-CAP-001",12515,12520],["SRC-CAP-001",12523,12527],["SRC-CAP-001",12529,12537],["SRC-CAP-001",12539,12589],["SRC-CAP-001",12591,12597],["SRC-CAP-001",12599,12655]],
+ criticalValues:{
+  params:{orderedFields:[["SessionID","string","session_id"],["Content","string","content"],["Project","string","project,omitempty"],["Source","string","source,omitempty"]]},
+  resultFields:{orderedFields:[["Extracted","int","extracted"],["Saved","int","saved"],["Duplicates","int","duplicates"]]},
+  extraction:{headerPattern:"(?im)^#{2,3}\\s+(?:Aprendizajes(?:\\s+Clave)?|Key\\s+Learnings?|Learnings?):?\\s*$",headers:{levels:[2,3],languages:["English","Spanish"],caseInsensitive:true,latestValidSection:true,nextHeadingCutoff:"levels_1_through_3"},items:{numbered:["dot","paren"],numberedPreferred:true,bulletFallback:"only_when_no_valid_numbered",minimumBytes:20,minimumFields:4},cleanupOrder:["bold","inline_code","italic","collapse_whitespace"],none:"nil"},
+  capture:{normalization:{call:"NormalizeProject",warning:"discarded",algorithm:"UNPROVED"},result:{extracted:"learning_count",saved:"successful_AddObservation_calls",duplicates:"nil_scan_count",zeroLearnings:"return_zero_result_nil_error"},dedupe:{hash:"hashNormalized(learning)",projectArgument:"nullableString(normalized_project)",queryPredicates:["normalized_hash = ?","ifnull(project, '') = ifnull(?, '')","deleted_at IS NULL"],limit:1,excludedKeys:["scope","type","title","session","ordering"],nilScan:"increment_duplicate_and_continue",queryError:"proceed_to_AddObservation"},title:"first_60_bytes_plus_ellipsis",addObservation:{fields:{SessionID:"input_session_id",Type:"passive",Title:"derived_title",Content:"learning",Project:"normalized_project",Scope:"project",ToolName:"input_source"},success:"Saved_increment",error:"return_partial_result_and_wrap_passive_capture_save"}}
+ }
+});
+const passiveFixture=()=>loadCheckedInMemoryPassiveCapture();
+const passiveTuples=(fixture:any)=>fixture.cases[0].evidence.map((entry:any)=>[entry.sourceId,entry.startLine,entry.endLine]);
+
+test("passive capture fixture independently pins its exact case ID and complete facts",()=>{
+ const fixture=passiveFixture(),source=fixture.sources[0];
+ assert.deepEqual(validateMemoryPassiveCapture(fixture),[]);
+ assert.deepEqual(fixture.cases.map((item:any)=>item.id),[expectedPassiveCapture.caseId]);
+ assert.deepEqual([source.id,source.path,source.bytes,source.sha256,source.gitBlob,source.lineStart,source.lineEnd,source.lineFeeds],expectedPassiveCapture.source);
+ assert.deepEqual(passiveTuples(fixture),expectedPassiveCapture.evidence);
+ assert.deepEqual(fixture.cases[0].criticalValues,expectedPassiveCapture.criticalValues);
+ assert.equal(Object.isFrozen(expectedPassiveCapture),true);
+ assert.equal(Object.isFrozen(expectedPassiveCapture.evidence[0]),true);
+ assert.equal(Object.isFrozen(expectedPassiveCapture.criticalValues.capture.dedupe.queryPredicates),true);
+});
+
+test("passive capture rejects tuple removal, next substitution, end alteration, reversal, and closing-brace truncation",()=>{
+ for(let index=0;index<expectedPassiveCapture.evidence.length;index++)for(const mode of ["remove","substitute","alter"]){
+  const input=passiveFixture(),evidence=input.cases[0].evidence;
+  if(mode==="remove")evidence.splice(index,1);
+  else if(mode==="substitute"){const next=expectedPassiveCapture.evidence[(index+1)%expectedPassiveCapture.evidence.length]!;evidence[index]={sourceId:next[0],startLine:next[1],endLine:next[2]};}
+  else evidence[index].endLine++;
+  assert.notDeepEqual(validateMemoryPassiveCapture(input),[],`${mode} accepted tuple ${index}`);
+ }
+ const reversed=passiveFixture();reversed.cases[0].evidence.reverse();assert.notDeepEqual(validateMemoryPassiveCapture(reversed),[],"reversed evidence accepted");
+ for(const [index,endLine] of [[0,12519],[1,12526],[3,12588],[4,12596],[5,12654]]){
+  const input=passiveFixture();input.cases[0].evidence[index].endLine=endLine;
+  assert.notDeepEqual(validateMemoryPassiveCapture(input),[],`truncated evidence accepted at ${endLine}`);
+ }
+});
+
+test("passive capture rejects every critical leaf, limitation, source identity, and overclaim",()=>{
+ const fixture=passiveFixture(),mutateLeaves=(value:any,path:(string|number)[]=[],result:(string|number)[][]=[]):any=>{if(value&&typeof value==="object")for(const [key,nested] of Object.entries(value))mutateLeaves(nested,[...path,key],result);else result.push(path);return result;};
+ const set=(root:any,path:(string|number)[])=>{let owner=root;for(const key of path.slice(0,-1))owner=owner[key];const key=path.at(-1)!;owner[key]=typeof owner[key]==="boolean"?!owner[key]:typeof owner[key]==="number"?owner[key]+1:`${owner[key]}_altered`;};
+ for(const path of mutateLeaves(expectedPassiveCapture.criticalValues)){const input=passiveFixture();set(input.cases[0].criticalValues,path);assert.notDeepEqual(validateMemoryPassiveCapture(input),[],`critical leaf accepted: ${path.join(".")}`);}
+ for(let index=0;index<fixture.limitations.length;index++){const input=passiveFixture();input.limitations[index]="overclaim";assert.notDeepEqual(validateMemoryPassiveCapture(input),[],`limitation accepted: ${index}`);}
+ for(const mutate of [(input:any)=>{input.sources[0].sha256="0".repeat(64);},(input:any)=>{input.sources[0].gitBlob="0".repeat(40);},(input:any)=>{input.sources[0].lineFeeds++;},(input:any)=>{input.status="FULL";},(input:any)=>{input.cases[0].unexpected=true;}]){const input=passiveFixture();mutate(input);assert.notDeepEqual(validateMemoryPassiveCapture(input),[]);}
+});
 
 test("session store expects resume selection as the eleventh contract",()=>{
  assert.equal(storeFixture().cases[10]?.id,"SES-store-resume-selection");
