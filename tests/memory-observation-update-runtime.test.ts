@@ -11,12 +11,14 @@ function seed() {
 
 test("guarded content update revises the same row, refreshes its hash, and updates FTS", () => {
   const { store, id } = seed();
+  const originalLastSeen = store.get(id)?.lastSeenAt;
   const revised = store.updateObservation({ id, expectedProject: "project-a", content: "replacement body" });
 
   assert.equal(revised.id, id);
   assert.equal(revised.content, "replacement body");
   assert.equal(revised.revisionCount, 2);
   assert.equal(revised.duplicateCount, 1);
+  assert.equal(revised.lastSeenAt, originalLastSeen);
   assert.deepEqual(store.search("project-a", "original"), []);
   assert.equal(store.search("project-a", "replacement")[0]?.id, id);
   assert.equal(store.addObservation({ projectId: "project-a", sessionId: "session-a", kind: "decision", title: "Original title", content: "replacement body" }), id);
@@ -44,6 +46,7 @@ test("an unmatched literal replacement without other fields is a true no-op", ()
 
   assert.deepEqual(result, before);
   assert.equal(store.get(id)?.revisionCount, 1);
+  assert.deepEqual(store.updateObservation({ id, expectedProject: "project-a", find: "", replace: "replacement" }), before);
   store.close();
 });
 
@@ -75,6 +78,17 @@ test("literal find and replacement are each limited by UTF-8 bytes", () => {
 
   assert.throws(() => store.updateObservation({ id, expectedProject: "project-a", find: "body", replace: "é".repeat(25_001) }), /byte limit/i);
   assert.throws(() => store.updateObservation({ id, expectedProject: "project-a", find: "é".repeat(25_001), replace: "text" }), /byte limit/i);
+  assert.deepEqual(store.get(id), before);
+  store.close();
+});
+
+test("literal replacement rejects output growth beyond the observation byte limit", () => {
+  const store = new SqliteMemoryStore(":memory:");
+  store.registerSession("project-a", "session-a");
+  const id = store.addObservation({ projectId: "project-a", sessionId: "session-a", kind: "decision", title: "Many matches", content: "o".repeat(1_000) });
+  const before = store.get(id);
+
+  assert.throws(() => store.updateObservation({ id, expectedProject: "project-a", find: "o", replace: "x".repeat(25_000) }), /byte limit/i);
   assert.deepEqual(store.get(id), before);
   store.close();
 });

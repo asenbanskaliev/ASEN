@@ -196,7 +196,6 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   if(!hasTitle&&!hasContent&&!hasFind)throw new Error("Memory observation update requires a field");
   const title=hasTitle?stripPrivateTags(input.title!):undefined;
   if(title!==undefined&&!title)throw new Error("Memory observation title is required");
-  if(hasFind&&!input.find)throw new Error("Memory observation find text is required");
   if(hasFind&&(Buffer.byteLength(input.find!,"utf8")>MAX_OBSERVATION_LENGTH_BYTES||Buffer.byteLength(input.replace!,"utf8")>MAX_OBSERVATION_LENGTH_BYTES))throw new Error("Find and replace values exceed the observation byte limit");
   const directContent=hasContent?prepareStoredContent(input.content!):undefined;
   if(directContent!==undefined&&!directContent)throw new Error("Memory observation content is required");
@@ -206,16 +205,15 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
    if(String(existing.project_id)!==input.expectedProject)throw new Error("Memory ownership mismatch");
    let content=directContent??String(existing.content);
    if(hasFind){
-    const replaced=content.split(input.find!).join(input.replace!);
-    if(replaced===content&&!hasTitle)return row(existing);
-    content=prepareStoredContent(replaced);
-    if(!content)throw new Error("Memory observation content is required");
+    const replaced=replaceObservationContent(content,input.find!,input.replace!);
+    if(replaced.noop&&!hasTitle)return row(existing);
+    content=replaced.content;
    }
    const nextTitle=title??String(existing.title??"");
    const hash=hasContent||hasFind?hashNormalizedContent(content):String(existing.normalized_hash??"");
    const now=new Date().toISOString();
-   this.#db.prepare("UPDATE memory SET title=?,content=?,normalized_hash=?,revision_count=revision_count+1,last_seen_at=?,updated_at=? WHERE id=?")
-    .run(nextTitle,content,hash,now,now,input.id);
+   this.#db.prepare("UPDATE memory SET title=?,content=?,normalized_hash=?,revision_count=revision_count+1,updated_at=? WHERE id=?")
+    .run(nextTitle,content,hash,now,input.id);
    const updated=this.#db.prepare("SELECT * FROM memory WHERE id=?").get(input.id) as Record<string,unknown>;
    return row(updated);
   });
@@ -255,6 +253,21 @@ function prepareStoredContent(content:string):string{
 }
 function stripPrivateTags(value:string):string{return value.replace(/<private>.*?<\/private>/gis,"[REDACTED]").trim();}
 function hashNormalizedContent(content:string):string{return createHash("sha256").update(content.toLowerCase().split(/\s+/u).filter(Boolean).join(" ")).digest("hex");}
+function replaceObservationContent(content:string,find:string,replacement:string):{content:string;noop:boolean}{
+ const marker="... [truncated]";
+ let prefix=content,truncationMarker="";
+ if(content.endsWith(marker)){truncationMarker=marker;prefix=content.slice(0,-marker.length);}
+ if(find===""||!prefix.includes(find))return {content,noop:true};
+ if(Buffer.byteLength(prefix,"utf8")>MAX_OBSERVATION_LENGTH_BYTES)throw new Error("Existing observation content exceeds the byte limit");
+ const matches=prefix.split(find).length-1;
+ const growth=Buffer.byteLength(replacement,"utf8")-Buffer.byteLength(find,"utf8");
+ if(growth>0&&matches>Math.floor((MAX_OBSERVATION_LENGTH_BYTES-Buffer.byteLength(prefix,"utf8"))/growth))throw new Error("Find and replace result exceeds the observation byte limit");
+ const replaced=stripPrivateTags(prefix.split(find).join(replacement));
+ if(!replaced)throw new Error("Memory observation content is required");
+ if(Buffer.byteLength(replaced,"utf8")>MAX_OBSERVATION_LENGTH_BYTES)throw new Error("Find and replace result exceeds the observation byte limit");
+ const result=replaced+truncationMarker;
+ return {content:result,noop:result===content};
+}
 function normalizeScope(scope:string|undefined):string{const value=(scope??"").trim().toLowerCase();return value==="personal"||value==="global"?value:"project";}
 function normalizeTopicKey(topic:string):string{
  const normalized=topic.trim().toLowerCase().split(/\s+/u).filter(Boolean).join("-");
