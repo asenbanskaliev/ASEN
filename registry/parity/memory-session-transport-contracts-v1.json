@@ -9,10 +9,11 @@
     "Directory routing does not prove project detection or runtime-worktree internals, environment-to-default-project configuration, authentication, authorization, tenant isolation, or security.",
     "The write queue is in-memory admission and serialization only; enqueue is not durable enrollment, registration, persistence, or cloud synchronization.",
     "Source evidence does not prove native database, live SQLite, privacy, platform, cloud, model, or Pi-integration behavior.",
+    "Omitted-session fallback source inspection does not prove downstream ensure, create, or save mutation, explicit-ID validation, project normalization, runtime SQLite, warning delivery, authentication, authorization, concurrency, platform, Cloud, or live Pi behavior.",
     "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02."
   ],
   "sources": [
-    {"id":"SRC-SES-001","path":"internal/mcp/mcp.go","bytes":143683,"sha256":"72dc51bdf5c5ca93540cb678ad22cd314c439154f36315adba78db66080874bb","gitBlob":"a9aed618bd0d24bb996add8984ca99267974bcd4","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/mcp/mcp.go","representation":"git_blob","lineStart":187,"lineEnd":3326,"lineFeeds":3624,"carriageReturns":0,"utf8Bom":false,"utf8Valid":true,"finalLf":true},
+    {"id":"SRC-SES-001","path":"internal/mcp/mcp.go","bytes":143683,"sha256":"72dc51bdf5c5ca93540cb678ad22cd314c439154f36315adba78db66080874bb","gitBlob":"a9aed618bd0d24bb996add8984ca99267974bcd4","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/mcp/mcp.go","representation":"git_blob","lineStart":187,"lineEnd":3600,"lineFeeds":3624,"carriageReturns":0,"utf8Bom":false,"utf8Valid":true,"finalLf":true},
     {"id":"SRC-SES-002","path":"internal/project/resolution.go","bytes":4282,"sha256":"3e4da942e70b4b7a344c2c87a7394e159d53ee03fc3a1c86a3baaf2a82e7746a","gitBlob":"52d758a315ee5273840ddb2d305559837f837268","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/project/resolution.go","representation":"git_blob","lineStart":12,"lineEnd":104,"lineFeeds":138,"carriageReturns":0,"utf8Bom":false,"utf8Valid":true,"finalLf":true},
     {"id":"SRC-SES-003","path":"internal/mcp/write_queue.go","bytes":2634,"sha256":"15ee24135108c1ce75b605f538e6d1e51107d8211e590ef63b06c546695a44ef","gitBlob":"7d0a3da0366f133e8641267c620d548127498238","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/mcp/write_queue.go","representation":"git_blob","lineStart":11,"lineEnd":104,"lineFeeds":104,"carriageReturns":0,"utf8Bom":false,"utf8Valid":true,"finalLf":true}
   ],
@@ -68,6 +69,27 @@
         "callback":{"result":"forward","error":"forward","panic":"converted_to_error"},
         "wrapper":{"mappedToToolError":["queue_full","context_canceled","deadline_exceeded"],"mappedGoError":null,"other":"transport_error"},
         "durableEnrollment":false
+      }
+    },
+    {
+      "id": "SES-MCP-omitted-session-fallback",
+      "summary": "Four MCP save paths resolve an omitted session ID to one unambiguous active runtime session or a project-scoped manual-save default.",
+      "evidence": [
+        {"sourceId":"SRC-SES-001","startLine":1501,"endLine":1506},
+        {"sourceId":"SRC-SES-001","startLine":1920,"endLine":1925},
+        {"sourceId":"SRC-SES-001","startLine":2357,"endLine":2362},
+        {"sourceId":"SRC-SES-001","startLine":2494,"endLine":2500},
+        {"sourceId":"SRC-SES-001","startLine":3572,"endLine":3600}
+      ],
+      "contract": "mem_save, prompt save, session summary, and passive capture call the fallback resolver only when sessionID is empty. The resolver queries ActiveRuntimeSessions for the resolved project and runtimeSessionDirectory(\"\"). A nil store or query error silently returns the project-scoped default with nil error; zero candidates also returns that default, one returns the exact candidate ID, and more than one returns an empty ID with the pinned actionable ambiguity error. The default is literal manual-save for an empty project and manual-save- plus the project otherwise.",
+      "negativeControls": "A nonempty explicit session ID bypasses this resolver and makes no ownership claim. Directory/worktree helper behavior is delegated to SES-MCP-start-resolution, while ActiveRuntimeSessions query semantics are delegated to the session-store active-runtime-candidates contract. This contract excludes downstream ensure, create, or save mutation, explicit-ID validation, project normalization, runtime SQLite, warning delivery, authentication, authorization, concurrency, platform, Cloud, and live Pi behavior.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "guards":{"memSave":"sessionID == empty","promptSave":"sessionID == empty","sessionSummary":"sessionID == empty","passiveCapture":"sessionID == empty"},
+        "explicitSessionId":{"resolverCalled":false,"ownershipClaim":false},
+        "defaultSessionId":{"emptyProject":"manual-save","nonemptyProject":"manual-save-+project"},
+        "resolver":{"query":"ActiveRuntimeSessions(project,runtimeSessionDirectory(empty))","nilStore":"default_nil_error","queryError":"default_nil_error","cardinality":{"zero":"default","one":"exact_id","moreThanOne":"empty_id_actionable_ambiguity_error"}},
+        "ambiguity":{"prefixes":["Failed to save: ","Failed to save prompt: ","Failed to save session summary: ","Passive capture failed: "],"exactError":"multiple active runtime sessions match the current project and directory; provide session_id, end other active matching sessions, or save independently with engram save. The resolved project is %q; pass that exact name as the --project value and never invent another. This writes to an independent project manual-save session and does not bind it to this MCP session"}
       }
     }
   ]

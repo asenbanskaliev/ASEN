@@ -138,20 +138,23 @@ const SESSION_LIMITATIONS=Object.freeze([
  "Directory routing does not prove project detection or runtime-worktree internals, environment-to-default-project configuration, authentication, authorization, tenant isolation, or security.",
  "The write queue is in-memory admission and serialization only; enqueue is not durable enrollment, registration, persistence, or cloud synchronization.",
  "Source evidence does not prove native database, live SQLite, privacy, platform, cloud, model, or Pi-integration behavior.",
+ "Omitted-session fallback source inspection does not prove downstream ensure, create, or save mutation, explicit-ID validation, project normalization, runtime SQLite, warning delivery, authentication, authorization, concurrency, platform, Cloud, or live Pi behavior.",
  "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02."
 ]);
 const SESSION_SOURCE_ANCHORS=deepFreeze({
- "internal/mcp/mcp.go":[143683,"72dc51bdf5c5ca93540cb678ad22cd314c439154f36315adba78db66080874bb","a9aed618bd0d24bb996add8984ca99267974bcd4",187,3326,3624],
+ "internal/mcp/mcp.go":[143683,"72dc51bdf5c5ca93540cb678ad22cd314c439154f36315adba78db66080874bb","a9aed618bd0d24bb996add8984ca99267974bcd4",187,3600,3624],
  "internal/project/resolution.go":[4282,"3e4da942e70b4b7a344c2c87a7394e159d53ee03fc3a1c86a3baaf2a82e7746a","52d758a315ee5273840ddb2d305559837f837268",12,104,138],
  "internal/mcp/write_queue.go":[2634,"15ee24135108c1ce75b605f538e6d1e51107d8211e590ef63b06c546695a44ef","7d0a3da0366f133e8641267c620d548127498238",11,104,104]
 });
 const SESSION_EVIDENCE_ANCHORS=deepFreeze({
  "SES-MCP-start-resolution":[["SRC-SES-001",187,193],["SRC-SES-001",199,205],["SRC-SES-001",887,907],["SRC-SES-001",2397,2404],["SRC-SES-001",2411,2411],["SRC-SES-001",2431,2440],["SRC-SES-001",2826,2828],["SRC-SES-001",3297,3326],["SRC-SES-002",12,20],["SRC-SES-002",48,82],["SRC-SES-002",68,76],["SRC-SES-002",90,104]],
- "SES-serialized-write-queue":[["SRC-SES-001",433,433],["SRC-SES-001",887,907],["SRC-SES-003",11,14],["SRC-SES-003",16,29],["SRC-SES-003",31,38],["SRC-SES-003",40,49],["SRC-SES-003",52,61],["SRC-SES-003",63,89],["SRC-SES-003",91,104]]
+ "SES-serialized-write-queue":[["SRC-SES-001",433,433],["SRC-SES-001",887,907],["SRC-SES-003",11,14],["SRC-SES-003",16,29],["SRC-SES-003",31,38],["SRC-SES-003",40,49],["SRC-SES-003",52,61],["SRC-SES-003",63,89],["SRC-SES-003",91,104]],
+ "SES-MCP-omitted-session-fallback":[["SRC-SES-001",1501,1506],["SRC-SES-001",1920,1925],["SRC-SES-001",2357,2362],["SRC-SES-001",2494,2500],["SRC-SES-001",3572,3600]]
 });
 const SESSION_CRITICAL_ANCHORS=deepFreeze({
  "SES-MCP-start-resolution":{schema:{id:"required_string",directory:"optional_string",project:"absent"},handler:{nonstringOrMissingId:"empty",directoryTransform:"trim_only"},explicitDirectory:{condition:"nonblank_trimmed",route:"DetectProjectFull"},omittedDirectory:{mode:"ResolutionCurrent",processOverride:"defaultProject",cwdGetwdFallback:".",projectExists:"store_callback",requireKnownProcess:false},runtimeDirectory:{blankFirst:"currentWorkingDirectory",then:"RuntimeWorktreeDirectory",claim:"call_routing_only"}},
- "SES-serialized-write-queue":{queue:{storage:"in_memory",workers:1,defaultCapacity:32,full:"nonblocking_error"},cancellation:{preEnqueue:"reject",beforeCallbackStart:"skip",afterEnqueue:"await_buffered_result",midCallback:"context_reaches_handler_and_waits",resultSelect:false},callback:{result:"forward",error:"forward",panic:"converted_to_error"},wrapper:{mappedToToolError:["queue_full","context_canceled","deadline_exceeded"],mappedGoError:null,other:"transport_error"},durableEnrollment:false}
+ "SES-serialized-write-queue":{queue:{storage:"in_memory",workers:1,defaultCapacity:32,full:"nonblocking_error"},cancellation:{preEnqueue:"reject",beforeCallbackStart:"skip",afterEnqueue:"await_buffered_result",midCallback:"context_reaches_handler_and_waits",resultSelect:false},callback:{result:"forward",error:"forward",panic:"converted_to_error"},wrapper:{mappedToToolError:["queue_full","context_canceled","deadline_exceeded"],mappedGoError:null,other:"transport_error"},durableEnrollment:false},
+ "SES-MCP-omitted-session-fallback":{guards:{memSave:"sessionID == empty",promptSave:"sessionID == empty",sessionSummary:"sessionID == empty",passiveCapture:"sessionID == empty"},explicitSessionId:{resolverCalled:false,ownershipClaim:false},defaultSessionId:{emptyProject:"manual-save",nonemptyProject:"manual-save-+project"},resolver:{query:"ActiveRuntimeSessions(project,runtimeSessionDirectory(empty))",nilStore:"default_nil_error",queryError:"default_nil_error",cardinality:{zero:"default",one:"exact_id",moreThanOne:"empty_id_actionable_ambiguity_error"}},ambiguity:{prefixes:["Failed to save: ","Failed to save prompt: ","Failed to save session summary: ","Passive capture failed: "],exactError:"multiple active runtime sessions match the current project and directory; provide session_id, end other active matching sessions, or save independently with en"+"gram save. The resolved project is %q; pass that exact name as the --project value and never invent another. This writes to an independent project manual-save session and does not bind it to this MCP session"}}
 });
 const SESSION_STORE_LIMITATIONS=deepFreeze([
  "These contracts record public source inspection only; they do not prove ASEN runtime behavior or complete session-store parity.",
@@ -384,7 +387,7 @@ export function validateMemorySessionTransport(manifest){
   if(!anchor||source.lineStart!==anchor[3]||source.lineEnd!==anchor[4]||source.lineFeeds!==anchor[5]||source.carriageReturns!==0||source.utf8Bom!==false||source.utf8Valid!==true||source.finalLf!==true)issues.push(`session-transport source ${source.id} has invalid byte or line facts`);
  }
  const cases=Array.isArray(manifest.cases)?manifest.cases:[],caseIds=cases.map(item=>item?.id),covered=new Set();
- if(JSON.stringify(caseIds)!==JSON.stringify(Object.keys(SESSION_EVIDENCE_ANCHORS))||duplicates(caseIds))issues.push("session-transport cases must contain the exact two SES cases in order");
+ if(JSON.stringify(caseIds)!==JSON.stringify(Object.keys(SESSION_EVIDENCE_ANCHORS))||duplicates(caseIds))issues.push("session-transport cases must contain the exact three SES cases in order");
  for(const item of cases){
   if(!exactKeys(item,PROJECT_CASE_FIELDS,`session-transport case ${item?.id??"unknown"}`,issues))continue;
   for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`session-transport case ${item.id} ${field} must be nonempty`);
@@ -745,6 +748,6 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  else{
   const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline()),...validateMemoryProjectIdentity(loadCheckedInMemoryProjectIdentity()),...validateMemorySessionTransport(loadCheckedInMemorySessionTransport()),...validateMemorySessionStore(loadCheckedInMemorySessionStore())];
   if(issues.length){console.error(issues.join("\n"));process.exitCode=1;}
-  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, 2 session-transport, and 15 session-store source-inspected contracts; no runtime parity claim)");
+  else console.log("memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, 3 session-transport, and 15 session-store source-inspected contracts; no runtime parity claim)");
  }
 }

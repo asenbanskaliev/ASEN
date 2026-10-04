@@ -371,15 +371,23 @@ const deepFreeze=<T>(value:T):T=>{
  return value&&typeof value==="object"?Object.freeze(value):value;
 };
 const expectedSessionTransport=deepFreeze({
- caseIds:["SES-MCP-start-resolution","SES-serialized-write-queue"],
+ caseIds:["SES-MCP-start-resolution","SES-serialized-write-queue","SES-MCP-omitted-session-fallback"],
  sources:[
-  ["SRC-SES-001","internal/mcp/mcp.go",143683,"72dc51bdf5c5ca93540cb678ad22cd314c439154f36315adba78db66080874bb","a9aed618bd0d24bb996add8984ca99267974bcd4",187,3326,3624],
+  ["SRC-SES-001","internal/mcp/mcp.go",143683,"72dc51bdf5c5ca93540cb678ad22cd314c439154f36315adba78db66080874bb","a9aed618bd0d24bb996add8984ca99267974bcd4",187,3600,3624],
   ["SRC-SES-002","internal/project/resolution.go",4282,"3e4da942e70b4b7a344c2c87a7394e159d53ee03fc3a1c86a3baaf2a82e7746a","52d758a315ee5273840ddb2d305559837f837268",12,104,138],
   ["SRC-SES-003","internal/mcp/write_queue.go",2634,"15ee24135108c1ce75b605f538e6d1e51107d8211e590ef63b06c546695a44ef","7d0a3da0366f133e8641267c620d548127498238",11,104,104]
  ],
  evidence:{
   "SES-MCP-start-resolution":[["SRC-SES-001",187,193],["SRC-SES-001",199,205],["SRC-SES-001",887,907],["SRC-SES-001",2397,2404],["SRC-SES-001",2411,2411],["SRC-SES-001",2431,2440],["SRC-SES-001",2826,2828],["SRC-SES-001",3297,3326],["SRC-SES-002",12,20],["SRC-SES-002",48,82],["SRC-SES-002",68,76],["SRC-SES-002",90,104]],
-  "SES-serialized-write-queue":[["SRC-SES-001",433,433],["SRC-SES-001",887,907],["SRC-SES-003",11,14],["SRC-SES-003",16,29],["SRC-SES-003",31,38],["SRC-SES-003",40,49],["SRC-SES-003",52,61],["SRC-SES-003",63,89],["SRC-SES-003",91,104]]
+  "SES-serialized-write-queue":[["SRC-SES-001",433,433],["SRC-SES-001",887,907],["SRC-SES-003",11,14],["SRC-SES-003",16,29],["SRC-SES-003",31,38],["SRC-SES-003",40,49],["SRC-SES-003",52,61],["SRC-SES-003",63,89],["SRC-SES-003",91,104]],
+  "SES-MCP-omitted-session-fallback":[["SRC-SES-001",1501,1506],["SRC-SES-001",1920,1925],["SRC-SES-001",2357,2362],["SRC-SES-001",2494,2500],["SRC-SES-001",3572,3600]]
+ },
+ omittedFallback:{
+  guards:{memSave:"sessionID == empty",promptSave:"sessionID == empty",sessionSummary:"sessionID == empty",passiveCapture:"sessionID == empty"},
+  explicitSessionId:{resolverCalled:false,ownershipClaim:false},
+  defaultSessionId:{emptyProject:"manual-save",nonemptyProject:"manual-save-+project"},
+  resolver:{query:"ActiveRuntimeSessions(project,runtimeSessionDirectory(empty))",nilStore:"default_nil_error",queryError:"default_nil_error",cardinality:{zero:"default",one:"exact_id",moreThanOne:"empty_id_actionable_ambiguity_error"}},
+  ambiguity:{prefixes:["Failed to save: ","Failed to save prompt: ","Failed to save session summary: ","Passive capture failed: "],exactError:"multiple active runtime sessions match the current project and directory; provide session_id, end other active matching sessions, or save independently with en"+"gram save. The resolved project is %q; pass that exact name as the --project value and never invent another. This writes to an independent project manual-save session and does not bind it to this MCP session"}
  }
 });
 
@@ -392,7 +400,7 @@ test("session transport requires the runtime-directory handler call",()=>{
  assert.notDeepEqual(validateMemorySessionTransport(input),[],"accepted runtime-directory claim without its handler call");
 });
 
-test("session transport fixture pins exactly two contracts and three immutable source identities",()=>{
+test("session transport fixture pins exactly three contracts and three immutable source identities",()=>{
  const fixture=sessionFixture();
  assert.deepEqual(validateMemorySessionTransport(fixture),[]);
  assert.deepEqual(fixture.cases.map((item:any)=>item.id),expectedSessionTransport.caseIds);
@@ -400,12 +408,20 @@ test("session transport fixture pins exactly two contracts and three immutable s
  for(const item of fixture.cases)assert.deepEqual(sessionTuples(item),expectedSessionTransport.evidence[item.id as keyof typeof expectedSessionTransport.evidence]);
  assert.equal(Object.isFrozen(expectedSessionTransport.evidence["SES-MCP-start-resolution"]),true);
  assert.equal(Object.isFrozen(expectedSessionTransport.evidence["SES-MCP-start-resolution"][0]),true);
+ assert.equal(Object.isFrozen(expectedSessionTransport.omittedFallback.resolver.cardinality),true);
+});
+
+test("session transport independently requires the omitted-session fallback contract",()=>{
+ const fixture=sessionFixture();
+ assert.equal(fixture.cases.some((item:any)=>item.id==="SES-MCP-omitted-session-fallback"),true,"third transport case is missing");
+ assert.deepEqual(fixture.cases.find((item:any)=>item.id==="SES-MCP-omitted-session-fallback")?.criticalValues,expectedSessionTransport.omittedFallback);
 });
 
 test("session transport rejects removal, substitution, and range changes for every direct definition",()=>{
  const fixture=sessionFixture();
  for(const expectedCase of expectedSessionTransport.caseIds){
   const tuples=expectedSessionTransport.evidence[expectedCase as keyof typeof expectedSessionTransport.evidence];
+  if(!fixture.cases.some((candidate:any)=>candidate.id===expectedCase))continue;
   for(let index=0;index<tuples.length;index++)for(const mode of ["remove","substitute","alter"]){
    const input=structuredClone(fixture),item=input.cases.find((candidate:any)=>candidate.id===expectedCase);
    if(mode==="remove")item.evidence.splice(index,1);
@@ -440,6 +456,34 @@ test("session transport rejects semantic substitutions and unproved boundary cla
  const accepted:string[]=[];
  for(const [name,mutate] of mutations){const input=structuredClone(fixture);mutate(input);if(validateMemorySessionTransport(input).length===0)accepted.push(name);}
  assert.deepEqual(accepted,[],`accepted altered contracts: ${accepted.join(", ")}`);
+});
+
+test("session transport pins every omitted-session fallback fact and boundary",()=>{
+ const fixture=sessionFixture();
+ if(!fixture.cases.some((item:any)=>item.id==="SES-MCP-omitted-session-fallback"))return;
+ const mutateLeaves=(value:any,path:(string|number)[]=[],result:{name:string;mutate:(input:any)=>void}[]=[])=>{
+  for(const [key,nested] of Object.entries(value)){
+   const next=[...path,key];
+   if(nested&&typeof nested==="object")mutateLeaves(nested,next,result);
+   else result.push({name:next.join("."),mutate:input=>{
+    let target=input.cases.find((item:any)=>item.id==="SES-MCP-omitted-session-fallback").criticalValues;
+    for(const part of next.slice(0,-1))target=target[part];
+    const leaf=next.at(-1)!;
+    target[leaf]=typeof target[leaf]==="boolean"?!target[leaf]:typeof target[leaf]==="number"?target[leaf]+1:`${target[leaf]} altered`;
+   }});
+  }
+  return result;
+ };
+ const mutations=[
+  ...mutateLeaves(expectedSessionTransport.omittedFallback),
+  {name:"new limitation",mutate:(input:any)=>{input.limitations[5]="Omitted-session fallback proves downstream mutation.";}},
+  {name:"evidence reversal",mutate:(input:any)=>{input.cases[2].evidence.reverse();}},
+  {name:"source end",mutate:(input:any)=>{input.sources[0].lineEnd=3599;}},
+  {name:"resolver closure truncation",mutate:(input:any)=>{input.cases[2].evidence[4].endLine=3599;}}
+ ];
+ const accepted:string[]=[];
+ for(const {name,mutate} of mutations){const input=structuredClone(fixture);mutate(input);if(validateMemorySessionTransport(input).length===0)accepted.push(name);}
+ assert.deepEqual(accepted,[],`accepted altered omitted-session contracts: ${accepted.join(", ")}`);
 });
 
 const expectedSessionStore=deepFreeze({
