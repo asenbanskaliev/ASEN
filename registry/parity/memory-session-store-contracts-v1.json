@@ -20,7 +20,8 @@
     "The end-session contract excludes runtime SQLite timestamp and RowsAffected behavior, retry, rollback, concurrency, durability, enrollment implementation, remote acknowledgement or delivery, callers, ownership, resume, and isolated-registration success.",
     "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02.",
     "The resume terminal-root ownership guard excludes isolated-registration success, selected-identity ownership claims, continuation selection details, live-registration conflict, post-selection start, enqueue, EndSession, callers, runtime SQLite, retries, rollback, concurrency, durability, ownership security, and Cloud behavior.",
-    "The isolated missing-root success contract delegates NormalizeProject, Now, transaction hooks, retries, enrollment, SQLite execution, commit, rollback, durability, security, concurrency, Cloud, and callers; other isolation, resume, live-repair, and ownership branches remain unproved."
+    "The isolated missing-root success contract delegates NormalizeProject, Now, transaction hooks, retries, enrollment, SQLite execution, commit, rollback, durability, security, concurrency, Cloud, and callers; other isolation, resume, live-repair, and ownership branches remain unproved.",
+    "The active-runtime candidate contract excludes canonicalizer internals and warning delivery, caller cardinality and fallback choice, runtime SQLite datetime, collation, and query planning, close errors, actual read-only guarantees, persistence, mutation, concurrency, platform, security, and Cloud behavior."
   ],
   "sources": [
     {
@@ -33,7 +34,7 @@
       "sourceIdentity": "15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/store/store.go",
       "representation": "git_blob",
       "lineStart": 59,
-      "lineEnd": 12246,
+      "lineEnd": 12280,
       "lineFeeds": 13200,
       "carriageReturns": 0,
       "utf8Bom": false,
@@ -392,6 +393,27 @@
         "transaction":{"eachAttemptReset":{"claimed":false,"id":"root"},"ordering":["validation","withTx","reset","isolation_missing_allow","ownership_missing","startSessionTx","persisted_reread","enqueue_blank_directory_return","callback_nil","commitHook"],"callback":"nil","withTx":"delegate_commit","internals":"UNPROVED"},
         "result":{"claimed":false,"registrationError":"nil","effective":"unchanged_root","wrapper":{"id":"root","error":"nil"}},
         "delegated":{"normalizeProjectAlgorithm":"UNPROVED","nowRepresentation":"UNPROVED","beginCommitHooks":"UNPROVED","retryTimingActual":"UNPROVED","enrollmentImplementation":"UNPROVED","sqliteExecutionRollbackDurability":"UNPROVED","securityConcurrencyCloudCallers":"UNPROVED"}
+      }
+    },
+    {
+      "id":"SES-store-active-runtime-candidates",
+      "summary":"ActiveRuntimeSessions resolves ordered active non-manual session IDs for a normalized project and exact runtime-directory set.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":3447,"endLine":3447},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3476,"endLine":3553},
+        {"sourceId":"SRC-SES-STORE-001","startLine":12271,"endLine":12280}
+      ],
+      "contract":"ActiveRuntimeSessions discards NormalizeProject's warning and returns nil before querying when the normalized project or exact nonempty-directory set is empty. It removes only exact empty directory strings, retains whitespace, and exactly deduplicates nonempty values. Project is the first argument and each unique directory contributes one placeholder and argument, while map iteration promises no directory or argument order. The query scopes LOWER(project), exact directory membership, unended rows, and non-manual-save IDs, groups by session ID, and uses the latest observation created_at without a deleted filter, falling back to started_at. A nonnull nonempty lease qualifies only when its datetime is strictly after now; malformed or expired nonempty leases cannot use the legacy path. Null or empty leases qualify at the inclusive seven-day activity boundary only when no live lease exists in the same directory. IDs are ordered by candidate ID; query, Scan, and rows.Err errors propagate, rows are deferred closed without a close-error claim, and no rows returns nil.",
+      "negativeControls":"NormalizeProject internals and warning delivery, caller cardinality or fallback selection, runtime SQLite datetime, collation, or query planning, close errors, actual read-only guarantees, persistence, mutation, concurrency, platform, security, and Cloud behavior are not proved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "entry":{"method":"ActiveRuntimeSessions","normalizeProject":{"warning":"discarded","emptyResult":"nil_before_query"}},
+        "directories":{"empty":"discard_exact_empty_only","whitespace":"retain","deduplicate":"exact_nonempty","emptySet":"nil_before_query","iterationOrder":"unordered","argumentOrder":"unpromised"},
+        "arguments":{"project":"first","directory":"one_per_unique_nonempty","placeholder":"one_per_unique_nonempty"},
+        "query":{"project":"LOWER(s.project) = ?","directory":"s.directory IN","ended":"s.ended_at IS NULL","manualSave":"s.id NOT LIKE 'manual-save%'","groupBy":"s.id","activity":"COALESCE(MAX(o.created_at), s.started_at)","observationDeletedFilter":false},
+        "lease":{"live":"nonnull_nonempty_datetime_strictly_after_now","expiredOrMalformedNonempty":"exclude_without_legacy_fallback","unleased":["NULL","empty"],"activityThreshold":"inclusive_7_days","suppression":"same_directory_live_lease"},
+        "errors":{"query":"propagate","scan":"propagate","rowsErr":"propagate","close":"deferred_no_error_claim"},
+        "result":{"order":"candidate.id","collected":"ids","none":"nil"}
       }
     }
   ]
