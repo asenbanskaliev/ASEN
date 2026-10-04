@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import {createHash,randomUUID} from "node:crypto";
 import {existsSync,rmSync} from "node:fs";
-import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
+import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
 
 const CURRENT_SCHEMA_VERSION=5;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
@@ -257,8 +257,23 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  searchPreviews(projectId:string,query:string,options:MemorySearchOptions={}):MemorySearchPreview[]{
   return this.searchWithOptions(projectId,query,options).map(item=>{const chars=Array.from(item.content),preview=chars.slice(0,300).join("");return {id:item.id,kind:item.kind,...(item.title!==undefined?{title:item.title}:{}),preview,truncated:chars.length>300,...(item.topicKey!==undefined?{topicKey:item.topicKey}:{})};});
  }
+ formatContext(projectId:string,options:MemoryContextOptions={}):string{
+  const pinnedLimit=boundedContextLimit(options.pinned,Number.MAX_SAFE_INTEGER),recentLimit=boundedContextLimit(options.observations,20);
+  const pinned=this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NULL AND pinned=1 ORDER BY created_at DESC,id DESC LIMIT ?").all(projectId,pinnedLimit) as Record<string,unknown>[];
+  const recent=this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NULL AND pinned=0 ORDER BY created_at DESC,id DESC LIMIT ?").all(projectId,recentLimit) as Record<string,unknown>[];
+  if(pinned.length===0&&recent.length===0)return "";
+  let out="## Memory from Previous Sessions\\n\\n";
+  if(pinned.length){out+="### Pinned\\n"+pinned.map(r=>contextBullet(row(r),options.compact??false)).join("")+"\\n";}
+  if(recent.length){out+="### Recent Observations\\n"+recent.map(r=>contextBullet(row(r),options.compact??false)).join("")+"\\n";}
+  return limitContextBytes(out,options.maxBytes??0);
+ }
  close():void{this.#db.close();}
 }
+function boundedContextLimit(value:number|undefined,fallback:number):number{if(value===undefined||value===0)return fallback;if(value<0)return 0;return Math.min(Math.trunc(value),1000);}
+function contextBullet(item:MemoryItem,compact:boolean):string{const title=item.title?.trim()||item.topicKey||item.id;return compact?`- [${item.kind}] **${title}**\\n`:`- [${item.kind}] **${title}**: ${Array.from(item.content).slice(0,300).join("")}\\n`;}
+const contextTruncationMarker="\\n[truncated]\\n";
+function limitContextBytes(value:string,maxBytes:number):string{if(maxBytes<=0||Buffer.byteLength(value,"utf8")<=maxBytes)return value;const marker=Buffer.from(contextTruncationMarker);if(maxBytes<marker.length)return truncateUtf8Bytes(value,maxBytes);return truncateUtf8Bytes(value,maxBytes-marker.length)+contextTruncationMarker;}
+function truncateUtf8Bytes(value:string,maxBytes:number):string{if(maxBytes<=0)return "";const bytes=Buffer.from(value,"utf8");if(bytes.length<=maxBytes)return value;return bytes.subarray(0,maxBytes).toString("utf8").replace(/\\uFFFD$/u,"");}
 function memoryFtsQuery(query:string,mode:"all"|"any"):string{
  const terms=query.trim().split(/\\s+/u).map(term=>term.replace(/"/g,'""')).filter(Boolean);
  if(terms.length===0)return "";

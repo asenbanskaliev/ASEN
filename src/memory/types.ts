@@ -44,6 +44,7 @@ export interface MemoryObservationUpdate {
   replace?: string;
 }
 export interface MemorySearchOptions { matchMode?:"all"|"any"; limit?:number; }
+export interface MemoryContextOptions { observations?:number; pinned?:number; maxBytes?:number; compact?:boolean; }
 export interface MemorySearchPreview { id:string; kind:MemoryKind; title?:string; preview:string; truncated:boolean; topicKey?:string; }
 export interface MemoryStore {
   save(item: MemoryItem): void;
@@ -51,6 +52,7 @@ export interface MemoryStore {
   search(projectId: string, query: string): MemoryItem[];
   searchWithOptions(projectId:string,query:string,options?:MemorySearchOptions):MemoryItem[];
   searchPreviews(projectId:string,query:string,options?:MemorySearchOptions):MemorySearchPreview[];
+  formatContext(projectId:string,options?:MemoryContextOptions):string;
   setPinned(id: string, pinned: boolean): void;
   deleteObservation(id: string, expectedProject: string, hardDelete?: boolean): void;
   close(): void;

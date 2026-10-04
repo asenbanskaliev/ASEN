@@ -1,4 +1,4 @@
-import type { MemoryItem, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
+import type { MemoryContextOptions, MemoryItem, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
 
 export interface MemoryProjectIdentity { explicit?:string; configured?:string; repository?:string; }
 const contextAdmission=Symbol("memory-session-admission");
@@ -21,6 +21,7 @@ export class MemoryContext {
   search(query: string): MemoryItem[] { return this.store.search(this.projectId,query); }
   searchWithOptions(query:string,options:MemorySearchOptions={}):MemoryItem[]{return this.store.searchWithOptions(this.projectId,query,options);}
   searchPreviews(query:string,options:MemorySearchOptions={}):MemorySearchPreview[]{return this.store.searchPreviews(this.projectId,query,options);}
+  formatContext(options:MemoryContextOptions={}):string{return this.store.formatContext(this.projectId,options);}
 }
 
 export function createMemoryContext(store:MemoryStore&MemorySessionRegistry,identity:MemoryProjectIdentity,sessionId:string):MemoryContext {
