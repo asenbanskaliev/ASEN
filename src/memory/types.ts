@@ -46,7 +46,7 @@ export interface MemoryObservationUpdate {
 export interface MemorySearchOptions { matchMode?:"all"|"any"; limit?:number; }
 export interface MemoryContextOptions { observations?:number; pinned?:number; maxBytes?:number; compact?:boolean; }
 export type MemoryRelationType = "related"|"compatible"|"scoped"|"conflicts_with"|"supersedes"|"not_conflict";
-export interface MemoryRelation { id:string; sourceId:string; targetId:string; relation:MemoryRelationType; projectId:string; createdAt:string; }
+export interface MemoryRelation { id:string; sourceId:string; targetId:string; relation:MemoryRelationType; projectId:string; createdAt:string; reviewedAt?:string; }
 export interface MemorySessionSummary { projectId:string; sessionId:string; content:string; createdAt:string; }
 export interface MemoryExport { version:1; projectId:string; observations:MemoryItem[]; relations:MemoryRelation[]; summaries:MemorySessionSummary[]; }
 export interface MemoryRelationInput { id:string; sourceId:string; targetId:string; relation:MemoryRelationType; expectedProject:string; }
@@ -61,7 +61,7 @@ export interface MemoryStore {
   setPinned(id: string, pinned: boolean): void;
   deleteObservation(id: string, expectedProject: string, hardDelete?: boolean): void;
   addRelation(input:MemoryRelationInput):MemoryRelation;
-  listRelations(projectId:string,observationId?:string):MemoryRelation[];
+  listRelations(projectId:string,observationId?:string):MemoryRelation[];\n  markRelationReviewed(id:string,expectedProject:string):MemoryRelation;
   saveSessionSummary(projectId:string,sessionId:string,content:string):MemorySessionSummary;
   getSessionSummary(projectId:string,sessionId:string):MemorySessionSummary|undefined;
   exportProject(projectId:string):MemoryExport;
