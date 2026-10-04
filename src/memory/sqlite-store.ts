@@ -277,7 +277,7 @@ function truncateUtf8Bytes(value:string,maxBytes:number):string{if(maxBytes<=0)r
 function memoryFtsQuery(query:string,mode:"all"|"any"):string{
  const terms=query.trim().split(/\\s+/u).map(term=>term.replace(/"/g,'""')).filter(Boolean);
  if(terms.length===0)return "";
- if(mode==="any")return `{${terms.map(term=>`"${term}"`).join(" ")}}`;
+ if(mode==="any")return terms.map(term=>`"${term}"`).join(" OR ");
  return terms.map(term=>`"${term}"`).join(" AND ");
 }
 function prepareStoredContent(content:string):string{
