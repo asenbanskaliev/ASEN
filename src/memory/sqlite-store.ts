@@ -1,9 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
 import {createHash,randomUUID} from "node:crypto";
 import {existsSync,rmSync} from "node:fs";
-import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
+import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemoryRelation, MemoryRelationInput, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
 
-const CURRENT_SCHEMA_VERSION=5;
+const CURRENT_SCHEMA_VERSION=6;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
 const DEFAULT_DEDUPE_WINDOW_MS=15*60_000;
 type Migration={readonly version:number;apply(db:DatabaseSync):void};
@@ -40,6 +40,10 @@ const migrations:readonly Migration[]=[
    ALTER TABLE memory ADD COLUMN last_seen_at TEXT;
    ALTER TABLE memory ADD COLUMN updated_at TEXT;
    UPDATE memory SET last_seen_at=created_at,updated_at=created_at;
+  `);}},
+ {version:6,apply(db){db.exec(`
+   CREATE TABLE memory_relations(id TEXT PRIMARY KEY,source_id TEXT NOT NULL,target_id TEXT NOT NULL,relation TEXT NOT NULL,project_id TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(source_id,target_id,relation));
+   CREATE INDEX memory_relations_project ON memory_relations(project_id,created_at);
   `);}}
 ];
 function schemaVersion(db:DatabaseSync):number{
@@ -244,6 +248,24 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
     this.#db.prepare("UPDATE memory SET deleted_at=? WHERE id=? AND deleted_at IS NULL").run(deletedAt,id);
    }
   });
+ }
+ addRelation(input:MemoryRelationInput):MemoryRelation{
+  const valid=new Set(["related","compatible","scoped","conflicts_with","supersedes","not_conflict"]);
+  if(!input.id.trim()||!input.expectedProject.trim()||!valid.has(input.relation))throw new Error("Invalid memory relation");
+  if(input.sourceId===input.targetId)throw new Error("Memory relation endpoints must differ");
+  return this.#transaction(()=>{
+   const rows=this.#db.prepare("SELECT id,project_id,deleted_at FROM memory WHERE id IN (?,?)").all(input.sourceId,input.targetId) as Array<{id:string;project_id:string;deleted_at:string|null}>;
+   if(rows.length!==2||rows.some(r=>r.deleted_at!==null))throw new Error("Memory relation endpoint not found");
+   if(rows.some(r=>r.project_id!==input.expectedProject))throw new Error("Memory ownership mismatch");
+   const createdAt=new Date().toISOString();
+   this.#db.prepare("INSERT INTO memory_relations(id,source_id,target_id,relation,project_id,created_at) VALUES(?,?,?,?,?,?)").run(input.id,input.sourceId,input.targetId,input.relation,input.expectedProject,createdAt);
+   return {id:input.id,sourceId:input.sourceId,targetId:input.targetId,relation:input.relation,projectId:input.expectedProject,createdAt};
+  });
+ }
+ listRelations(projectId:string,observationId?:string):MemoryRelation[]{
+  const sql=observationId?"SELECT * FROM memory_relations WHERE project_id=? AND (source_id=? OR target_id=?) ORDER BY created_at,id":"SELECT * FROM memory_relations WHERE project_id=? ORDER BY created_at,id";
+  const rows=(observationId?this.#db.prepare(sql).all(projectId,observationId,observationId):this.#db.prepare(sql).all(projectId)) as Array<Record<string,unknown>>;
+  return rows.map(r=>({id:String(r.id),sourceId:String(r.source_id),targetId:String(r.target_id),relation:String(r.relation) as MemoryRelation["relation"],projectId:String(r.project_id),createdAt:String(r.created_at)}));
  }
  get(id:string):MemoryItem|undefined{const r=this.#db.prepare("SELECT * FROM memory WHERE id=? AND deleted_at IS NULL").get(id) as Record<string,unknown>|undefined;return r?row(r):undefined;}
  search(projectId:string,query:string):MemoryItem[]{return this.searchWithOptions(projectId,query);}
