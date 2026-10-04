@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import {createHash,randomUUID} from "node:crypto";
 import {existsSync,rmSync} from "node:fs";
-import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemoryRelation, MemoryRelationInput, MemorySessionSummary, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
+import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemoryExport, MemoryRelation, MemoryRelationInput, MemorySessionSummary, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
 
 const CURRENT_SCHEMA_VERSION=7;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
@@ -282,6 +282,13 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  getSessionSummary(projectId:string,sessionId:string):MemorySessionSummary|undefined{
   const r=this.#db.prepare("SELECT * FROM memory_session_summaries WHERE project_id=? AND session_id=?").get(projectId,sessionId) as {project_id:string;session_id:string;content:string;created_at:string}|undefined;
   return r?{projectId:r.project_id,sessionId:r.session_id,content:r.content,createdAt:r.created_at}:undefined;
+ }
+ exportProject(projectId:string):MemoryExport{
+  if(!projectId.trim())throw new Error("Memory project is required");
+  const observations=(this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NULL ORDER BY created_at,id").all(projectId) as Record<string,unknown>[]).map(row);
+  const relations=this.listRelations(projectId);
+  const summaries=(this.#db.prepare("SELECT * FROM memory_session_summaries WHERE project_id=? ORDER BY created_at,session_id").all(projectId) as Array<{project_id:string;session_id:string;content:string;created_at:string}>).map(r=>({projectId:r.project_id,sessionId:r.session_id,content:r.content,createdAt:r.created_at}));
+  return {version:1,projectId,observations,relations,summaries};
  }
  get(id:string):MemoryItem|undefined{const r=this.#db.prepare("SELECT * FROM memory WHERE id=? AND deleted_at IS NULL").get(id) as Record<string,unknown>|undefined;return r?row(r):undefined;}
  search(projectId:string,query:string):MemoryItem[]{return this.searchWithOptions(projectId,query);}
