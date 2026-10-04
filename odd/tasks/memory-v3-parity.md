@@ -103,8 +103,8 @@ Record whether proof is source inspection, a deterministic synthetic-store test,
 
 - R04: bounded project resolution/search/context implemented; last verified cross-platform CI at `8514bfba3288bb1f76c6fae892253e4b73fd1e13`.
 - R05: typed project-scoped relations plus guarded, idempotent review state implemented with synthetic runtime tests. Candidate only until final verification.
-- R07: ended sessions can persist exactly one summary; repeated identical confirmation is idempotent and conflicting replay is refused. Candidate only; compaction-provider outcome reconciliation remains below FULL until runtime evidence exists.
-- R08: project export plus non-mutating import preview/refusal seam implemented. Automatic repair, real-store import, network publication and Git push remain intentionally unavailable.
+- R06/R07: curated learning extraction, ended-session single-summary persistence, unknown-write readback reconciliation, and final-response preservation are implemented with synthetic tests. Candidate only; live Pi/model compaction remains below FULL until runtime evidence exists.
+- R08: project export, non-mutating import preview/refusal, and read-only SQLite integrity diagnosis are implemented. Automatic repair, real-store import, network publication and Git push remain intentionally unavailable.
 - R09: thin project-scoped local library surface added. Cross-platform/final parity remains open until the final verification matrix is executed; the historical broad-suite timeout must still be reported if unresolved.
 
 **Next work unit:** E3-R04 — project resolution, isolation, search and context.
