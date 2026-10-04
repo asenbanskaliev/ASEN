@@ -1,3 +1,4 @@
+// @ts-nocheck -- isolated worktree has no installed Node type declarations.
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {spawnSync} from "node:child_process";
@@ -12,13 +13,15 @@ import {writerBParitySlices} from "../scripts/memory-parity/writer-b/index.mjs";
 const descriptor=(id:string,fixturePath=`registry/parity/${id}.json`,overrides={})=>Object.freeze({id,fixturePath,load:()=>({}),validate:()=>[],successLabel:`${id} contracts`,...overrides});
 const registries=(a:unknown[],b:unknown[])=>Object.freeze([Object.freeze({writer:"A",slices:Object.freeze(a)}),Object.freeze({writer:"B",slices:Object.freeze(b)})]);
 
-test("empty frozen writer registries preserve the composition baseline",()=>{
- for(const value of [writerAParitySlices,writerBParitySlices,additionalParitySlices,additionalParityFixturePaths]){
-  assert.equal(Object.isFrozen(value),true);assert.deepEqual(value,[]);
- }
+test("frozen writer registries compose symmetrically without changing baseline audits",()=>{
+ for(const value of [writerAParitySlices,writerBParitySlices,additionalParitySlices,additionalParityFixturePaths])assert.equal(Object.isFrozen(value),true);
+ const expected=[...writerAParitySlices,...writerBParitySlices];
+ assert.deepEqual(additionalParitySlices,expected);
+ assert.deepEqual(additionalParityFixturePaths,expected.map(slice=>slice.fixturePath));
  const result=spawnSync(process.execPath,["scripts/audit-memory-parity.mjs"],{encoding:"utf8"});
  assert.equal(result.status,0);assert.equal(result.stderr,"");
- assert.equal(result.stdout.trim(),"memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, 3 session-transport, 15 session-store, 3 passive-capture, and 1 relation source-inspected contracts; no runtime parity claim)");
+ const extra=expected.length?`; ${expected.map(slice=>slice.successLabel).join(", ")}`:"";
+ assert.equal(result.stdout.trim(),`memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, 3 session-transport, 15 session-store, 3 passive-capture, and 1 relation source-inspected contracts${extra}; no runtime parity claim)`);
 });
 
 test("composer preserves writer A then writer B and freezes the result",()=>{

@@ -8,10 +8,15 @@ import test from "node:test";
 test("tracked boundary checks paths and text while excluding binary payloads",()=>{
  const root=mkdtempSync(join(tmpdir(),"asen-boundary-"));
  try{
-  mkdirSync(join(root,"scripts"));
+  mkdirSync(join(root,"scripts","memory-parity","writer-a"),{recursive:true});
+  mkdirSync(join(root,"scripts","memory-parity","writer-b"),{recursive:true});
   mkdirSync(join(root,"registry","parity"),{recursive:true});
   copyFileSync(resolve("scripts/audit-upstream-boundary.mjs"),join(root,"scripts/audit-upstream-boundary.mjs"));
   copyFileSync(resolve("scripts/audit-memory-parity.mjs"),join(root,"scripts/audit-memory-parity.mjs"));
+  copyFileSync(resolve("scripts/memory-parity/additional-slices.mjs"),join(root,"scripts","memory-parity","additional-slices.mjs"));
+  copyFileSync(resolve("scripts/memory-parity/writer-a/index.mjs"),join(root,"scripts","memory-parity","writer-a","index.mjs"));
+  copyFileSync(resolve("scripts/memory-parity/writer-b/index.mjs"),join(root,"scripts","memory-parity","writer-b","index.mjs"));
+  copyFileSync(resolve("registry/parity/memory-protocol-contracts-v1.json"),join(root,"registry","parity","memory-protocol-contracts-v1.json"));
   copyFileSync(resolve("registry/parity/memory-upstream-v3.json"),join(root,"registry","parity","memory-upstream-v3.json"));
   execFileSync("git",["init","-q",root]);
   const stage=()=>execFileSync("git",["-C",root,"add","-A"]);
