@@ -43,10 +43,14 @@ export interface MemoryObservationUpdate {
   find?: string;
   replace?: string;
 }
+export interface MemorySearchOptions { matchMode?:"all"|"any"; limit?:number; }
+export interface MemorySearchPreview { id:string; kind:MemoryKind; title?:string; preview:string; truncated:boolean; topicKey?:string; }
 export interface MemoryStore {
   save(item: MemoryItem): void;
   get(id: string): MemoryItem | undefined;
   search(projectId: string, query: string): MemoryItem[];
+  searchWithOptions(projectId:string,query:string,options?:MemorySearchOptions):MemoryItem[];
+  searchPreviews(projectId:string,query:string,options?:MemorySearchOptions):MemorySearchPreview[];
   setPinned(id: string, pinned: boolean): void;
   deleteObservation(id: string, expectedProject: string, hardDelete?: boolean): void;
   close(): void;

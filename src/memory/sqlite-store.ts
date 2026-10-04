@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import {createHash,randomUUID} from "node:crypto";
 import {existsSync,rmSync} from "node:fs";
-import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemorySessionRegistry, MemoryStore } from "./types.js";
+import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
 
 const CURRENT_SCHEMA_VERSION=5;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
@@ -246,8 +246,23 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   });
  }
  get(id:string):MemoryItem|undefined{const r=this.#db.prepare("SELECT * FROM memory WHERE id=? AND deleted_at IS NULL").get(id) as Record<string,unknown>|undefined;return r?row(r):undefined;}
- search(projectId:string,query:string):MemoryItem[]{const rows=this.#db.prepare(`SELECT m.* FROM memory_fts f JOIN memory m ON m.id=f.id WHERE f.project_id=? AND m.deleted_at IS NULL AND memory_fts MATCH ? ORDER BY rank LIMIT 20`).all(projectId,query) as Record<string,unknown>[];return rows.map(row);}
+ search(projectId:string,query:string):MemoryItem[]{return this.searchWithOptions(projectId,query);}
+ searchWithOptions(projectId:string,query:string,options:MemorySearchOptions={}):MemoryItem[]{
+  const matchMode=options.matchMode??"all";if(matchMode!=="all"&&matchMode!=="any")throw new Error("Invalid memory search match mode");
+  const limit=Math.min(Math.max(Math.trunc(options.limit??10),1),20),fts=memoryFtsQuery(query,matchMode);
+  if(!fts)return [];
+  const rows=this.#db.prepare(`SELECT m.* FROM memory_fts f JOIN memory m ON m.id=f.id WHERE f.project_id=? AND m.deleted_at IS NULL AND memory_fts MATCH ? ORDER BY rank LIMIT ?`).all(projectId,fts,limit) as Record<string,unknown>[];
+  return rows.map(row);
+ }
+ searchPreviews(projectId:string,query:string,options:MemorySearchOptions={}):MemorySearchPreview[]{
+  return this.searchWithOptions(projectId,query,options).map(item=>{const chars=Array.from(item.content),preview=chars.slice(0,300).join("");return {id:item.id,kind:item.kind,...(item.title!==undefined?{title:item.title}:{}),preview,truncated:chars.length>300,...(item.topicKey!==undefined?{topicKey:item.topicKey}:{})};});
+ }
  close():void{this.#db.close();}
+}
+function memoryFtsQuery(query:string,mode:"all"|"any"):string{
+ const terms=query.trim().split(/\\s+/u).map(term=>term.replace(/"/g,'""')).filter(Boolean);
+ if(terms.length===0)return "";
+ return terms.map(term=>`"${term}"`).join(mode==="any"?" OR ":" AND ");
 }
 function prepareStoredContent(content:string):string{
  const redacted=stripPrivateTags(content);
