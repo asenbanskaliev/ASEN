@@ -62,7 +62,7 @@ export function isExecutedEvidence(value:unknown):value is ExecutedEvidence {
 }
 
 type CapturedExecution={readonly proof:ExecutedEvidence;readonly stdout:string;readonly stderr:string};
-type CoverageExecution=CapturedExecution&{readonly coverage:readonly unknown[]};
+type CoverageExecution=CapturedExecution&{readonly coverage:readonly unknown[];readonly coverageRoot:string};
 async function readBoundedCoverageFile(filePath:string,remaining:number):Promise<Buffer>{
  const handle=await open(filePath,"r");
  try{
@@ -84,7 +84,7 @@ async function runEvidenceCommand(candidate:Candidate,command:readonly [string,.
  const parent=await mkdtemp(join(tmpdir(),"asen-evidence-worktree-")),isolated=join(parent,"candidate");
  try{
   execFileSync("git",["-C",candidate.repository,"worktree","add","--detach",isolated,candidate.revision],{stdio:"ignore"});
-  assertExactGitCandidate({...candidate,repository:isolated},isolated);
+  assertExactGitCandidate({...candidate,repository:isolated},isolated);const coverageRoot=realpathSync(isolated);
   const startedAt=new Date().toISOString(),stdout:Buffer[]=[],stderr:Buffer[]=[],limit=1024*1024,coverageDirectory=join(parent,"coverage");
   if(coverage)await mkdir(coverageDirectory);
   const exitCode=await new Promise<number>((resolve,reject)=>{
@@ -104,7 +104,7 @@ async function runEvidenceCommand(candidate:Candidate,command:readonly [string,.
   if(!coverage)return Object.freeze(result);
   const names=(await readdir(coverageDirectory)).sort();if(!names.length||names.some(name=>!/^coverage-\d+-\d+-\d+\.json$/u.test(name)))throw new Error("Node coverage output is missing or ambiguous");
   const coverageLimit=8*1024*1024;let size=0;const documents:unknown[]=[];for(const name of names){const bytes=await readBoundedCoverageFile(join(coverageDirectory,name),coverageLimit-size);size+=bytes.length;try{documents.push(JSON.parse(bytes.toString("utf8")));}catch{throw new Error("Node coverage output is malformed");}}
-  return Object.freeze({...result,coverage:Object.freeze(documents)});
+  return Object.freeze({...result,coverage:Object.freeze(documents),coverageRoot});
  }finally{
   try{execFileSync("git",["-C",candidate.repository,"worktree","remove","--force",isolated],{stdio:"ignore"});}
   catch{/* Recursive parent cleanup below remains authoritative. */}
