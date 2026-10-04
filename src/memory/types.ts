@@ -14,6 +14,7 @@ export interface MemoryStore {
   get(id: string): MemoryItem | undefined;
   search(projectId: string, query: string): MemoryItem[];
   setPinned(id: string, pinned: boolean): void;
+  deleteObservation(id: string, expectedProject: string, hardDelete?: boolean): void;
   close(): void;
 }
 export interface MemorySessionRegistry {

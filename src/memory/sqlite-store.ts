@@ -3,7 +3,7 @@ import {randomUUID} from "node:crypto";
 import {existsSync,rmSync} from "node:fs";
 import type { MemoryItem, MemorySessionRegistry, MemoryStore } from "./types.js";
 
-const CURRENT_SCHEMA_VERSION=3;
+const CURRENT_SCHEMA_VERSION=4;
 type Migration={readonly version:number;apply(db:DatabaseSync):void};
 const migrations:readonly Migration[]=[
  {version:1,apply(db){db.exec(`
@@ -23,6 +23,9 @@ const migrations:readonly Migration[]=[
  {version:3,apply(db){db.exec(`
    ALTER TABLE memory ADD COLUMN deleted_at TEXT;
    ALTER TABLE memory ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0 CHECK(pinned IN (0,1));
+  `);}},
+ {version:4,apply(db){db.exec(`
+   CREATE TABLE memory_tombstones(id TEXT PRIMARY KEY,project_id TEXT NOT NULL,deleted_at TEXT NOT NULL);
   `);}}
 ];
 function schemaVersion(db:DatabaseSync):number{
@@ -133,8 +136,23 @@ export class SqliteMemoryStore implements MemoryStore,MemorySessionRegistry {
    if(Number(result.changes)===0)throw new Error("Memory observation not found");
   });
  }
+ deleteObservation(id:string,expectedProject:string,hardDelete=false):void{
+  if(!expectedProject.trim())throw new Error("Expected memory project must be nonblank");
+  this.#transaction(()=>{
+   const existing=this.#db.prepare("SELECT project_id FROM memory WHERE id=?").get(id) as {project_id:string}|undefined;
+   if(!existing)throw new Error("Memory observation not found");
+   if(existing.project_id!==expectedProject)throw new Error("Memory ownership mismatch");
+   const deletedAt=new Date().toISOString();
+   if(hardDelete){
+    this.#db.prepare("INSERT INTO memory_tombstones(id,project_id,deleted_at) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET project_id=excluded.project_id,deleted_at=excluded.deleted_at").run(id,expectedProject,deletedAt);
+    this.#db.prepare("DELETE FROM memory WHERE id=?").run(id);
+   }else{
+    this.#db.prepare("UPDATE memory SET deleted_at=? WHERE id=? AND deleted_at IS NULL").run(deletedAt,id);
+   }
+  });
+ }
  get(id:string):MemoryItem|undefined{const r=this.#db.prepare("SELECT * FROM memory WHERE id=?").get(id) as Record<string,unknown>|undefined;return r?row(r):undefined;}
- search(projectId:string,query:string):MemoryItem[]{const rows=this.#db.prepare(`SELECT m.* FROM memory_fts f JOIN memory m ON m.id=f.id WHERE f.project_id=? AND memory_fts MATCH ? ORDER BY rank LIMIT 20`).all(projectId,query) as Record<string,unknown>[];return rows.map(row);}
+ search(projectId:string,query:string):MemoryItem[]{const rows=this.#db.prepare(`SELECT m.* FROM memory_fts f JOIN memory m ON m.id=f.id WHERE f.project_id=? AND m.deleted_at IS NULL AND memory_fts MATCH ? ORDER BY rank LIMIT 20`).all(projectId,query) as Record<string,unknown>[];return rows.map(row);}
  close():void{this.#db.close();}
 }
 function row(r:Record<string,unknown>):MemoryItem{const i:MemoryItem={id:String(r.id),projectId:String(r.project_id),sessionId:String(r.session_id),kind:String(r.kind) as MemoryItem["kind"],content:String(r.content),createdAt:String(r.created_at)};if(r.topic!=null)i.topic=String(r.topic);if(Number(r.pinned)===1)i.pinned=true;return i;}
