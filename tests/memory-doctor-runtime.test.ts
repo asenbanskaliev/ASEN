@@ -1,0 +1,2 @@
+import assert from "node:assert/strict";import test from "node:test";import {SqliteMemoryStore} from "../src/memory/sqlite-store.js";import {runDoctor} from "../src/lifecycle/doctor.js";
+test("doctor reports actual sqlite integrity without repair side effects",()=>{const s=new SqliteMemoryStore(":memory:");assert.deepEqual(s.integrityCheck(),{ok:true,detail:"ok"});const checks=runDoctor({memory:s,gitAvailable:true,registryAvailable:true,piAvailable:true});assert.equal(checks.find(x=>x.name==="Memory integrity")?.ok,true);s.close();});
