@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import {createHash,randomUUID} from "node:crypto";
 import {existsSync,rmSync} from "node:fs";
-import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemorySessionRegistry, MemoryStore } from "./types.js";
+import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemorySessionRegistry, MemoryStore } from "./types.js";
 
 const CURRENT_SCHEMA_VERSION=5;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
@@ -157,7 +157,7 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   if(!content)throw new Error("Memory observation content is required");
   let id:string=randomUUID();
   const scope=normalizeScope(item.scope),topicKey=normalizeTopicKey(item.topic??"");
-  const normalizedHash=createHash("sha256").update(content.toLowerCase().split(/\s+/u).filter(Boolean).join(" ")).digest("hex");
+  const normalizedHash=hashNormalizedContent(content);
   const now=new Date().toISOString();
   this.#transaction(()=>{
    const session=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(item.sessionId) as {project_id:string;status:string}|undefined;
@@ -187,6 +187,38 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
     .run(id,item.projectId,item.sessionId,item.kind,item.topic??null,content,now,title,item.toolName??null,scope,topicKey||null,normalizedHash,now,now);
   });
   return id;
+ }
+ updateObservation(input:MemoryObservationUpdate):MemoryItem{
+  if(!input.expectedProject.trim())throw new Error("Expected memory project must be nonblank");
+  const hasTitle=input.title!==undefined,hasContent=input.content!==undefined;
+  const hasFind=input.find!==undefined,hasReplace=input.replace!==undefined;
+  if(hasFind!==hasReplace||hasContent&&(hasFind||hasReplace))throw new Error("Find and replace must be paired and cannot be combined with content");
+  if(!hasTitle&&!hasContent&&!hasFind)throw new Error("Memory observation update requires a field");
+  const title=hasTitle?stripPrivateTags(input.title!):undefined;
+  if(title!==undefined&&!title)throw new Error("Memory observation title is required");
+  if(hasFind&&!input.find)throw new Error("Memory observation find text is required");
+  if(hasFind&&(Buffer.byteLength(input.find!,"utf8")>MAX_OBSERVATION_LENGTH_BYTES||Buffer.byteLength(input.replace!,"utf8")>MAX_OBSERVATION_LENGTH_BYTES))throw new Error("Find and replace values exceed the observation byte limit");
+  const directContent=hasContent?prepareStoredContent(input.content!):undefined;
+  if(directContent!==undefined&&!directContent)throw new Error("Memory observation content is required");
+  return this.#transaction(()=>{
+   const existing=this.#db.prepare("SELECT * FROM memory WHERE id=?").get(input.id) as Record<string,unknown>|undefined;
+   if(!existing||existing.deleted_at!==null||existing.title===null)throw new Error("Memory observation not found");
+   if(String(existing.project_id)!==input.expectedProject)throw new Error("Memory ownership mismatch");
+   let content=directContent??String(existing.content);
+   if(hasFind){
+    const replaced=content.split(input.find!).join(input.replace!);
+    if(replaced===content&&!hasTitle)return row(existing);
+    content=prepareStoredContent(replaced);
+    if(!content)throw new Error("Memory observation content is required");
+   }
+   const nextTitle=title??String(existing.title??"");
+   const hash=hasContent||hasFind?hashNormalizedContent(content):String(existing.normalized_hash??"");
+   const now=new Date().toISOString();
+   this.#db.prepare("UPDATE memory SET title=?,content=?,normalized_hash=?,revision_count=revision_count+1,last_seen_at=?,updated_at=? WHERE id=?")
+    .run(nextTitle,content,hash,now,now,input.id);
+   const updated=this.#db.prepare("SELECT * FROM memory WHERE id=?").get(input.id) as Record<string,unknown>;
+   return row(updated);
+  });
  }
  setPinned(id:string,pinned:boolean):void{
   this.#transaction(()=>{
@@ -222,6 +254,7 @@ function prepareStoredContent(content:string):string{
  return bytes.subarray(0,end).toString("utf8")+"... [truncated]";
 }
 function stripPrivateTags(value:string):string{return value.replace(/<private>.*?<\/private>/gis,"[REDACTED]").trim();}
+function hashNormalizedContent(content:string):string{return createHash("sha256").update(content.toLowerCase().split(/\s+/u).filter(Boolean).join(" ")).digest("hex");}
 function normalizeScope(scope:string|undefined):string{const value=(scope??"").trim().toLowerCase();return value==="personal"||value==="global"?value:"project";}
 function normalizeTopicKey(topic:string):string{
  const normalized=topic.trim().toLowerCase().split(/\s+/u).filter(Boolean).join("-");

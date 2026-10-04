@@ -29,6 +29,15 @@ export interface MemoryObservationInput {
 }
 export interface MemoryObservationStore {
   addObservation(input: MemoryObservationInput): string;
+  updateObservation(input: MemoryObservationUpdate): MemoryItem;
+}
+export interface MemoryObservationUpdate {
+  id: string;
+  expectedProject: string;
+  title?: string;
+  content?: string;
+  find?: string;
+  replace?: string;
 }
 export interface MemoryStore {
   save(item: MemoryItem): void;
