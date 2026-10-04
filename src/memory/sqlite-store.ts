@@ -44,6 +44,12 @@ const migrations:readonly Migration[]=[
  {version:6,apply(db){db.exec(`
    CREATE TABLE memory_relations(id TEXT PRIMARY KEY,source_id TEXT NOT NULL,target_id TEXT NOT NULL,relation TEXT NOT NULL,project_id TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(source_id,target_id,relation));
    CREATE INDEX memory_relations_project ON memory_relations(project_id,created_at);
+  `);}},
+ {version:7,apply(db){db.exec(`
+   CREATE TABLE memory_session_summaries(project_id TEXT NOT NULL,session_id TEXT NOT NULL,content TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(project_id,session_id));
+  `);}},
+ {version:8,apply(db){db.exec(`
+   ALTER TABLE memory_relations ADD COLUMN reviewed_at TEXT;
   `);}}
 ];
 function schemaVersion(db:DatabaseSync):number{
