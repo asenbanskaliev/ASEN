@@ -262,7 +262,8 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
 function memoryFtsQuery(query:string,mode:"all"|"any"):string{
  const terms=query.trim().split(/\\s+/u).map(term=>term.replace(/"/g,'""')).filter(Boolean);
  if(terms.length===0)return "";
- return terms.map(term=>`"${term}"`).join(mode==="any"?" OR ":" AND ");
+ if(mode==="any")return terms.map(term=>`"${term}"`).join(" OR ");
+ return terms.map(term=>`"${term}"`).join(" AND ");
 }
 function prepareStoredContent(content:string):string{
  const redacted=stripPrivateTags(content);
