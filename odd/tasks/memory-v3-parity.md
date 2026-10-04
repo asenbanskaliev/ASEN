@@ -99,6 +99,14 @@ Record whether proof is source inspection, a deterministic synthetic-store test,
 - Before handing PR #30 back: confirm the remote branch contains both code and this tracker update; verify rather than invent exactly one type label and approved issue linkage; report CI state and the unresolved broad-test timeout; do not merge or release.
 - The next Codex prompt must name only the first work unit above and no competing lane.
 
+### E3 implementation status — candidate evidence
+
+- R04: bounded project resolution/search/context implemented; last verified cross-platform CI at `8514bfba3288bb1f76c6fae892253e4b73fd1e13`.
+- R05: typed project-scoped relations plus guarded, idempotent review state implemented with synthetic runtime tests. Candidate only until final verification.
+- R07: ended sessions can persist exactly one summary; repeated identical confirmation is idempotent and conflicting replay is refused. Candidate only; compaction-provider outcome reconciliation remains below FULL until runtime evidence exists.
+- R08: project export plus non-mutating import preview/refusal seam implemented. Automatic repair, real-store import, network publication and Git push remain intentionally unavailable.
+- R09: thin project-scoped local library surface added. Cross-platform/final parity remains open until the final verification matrix is executed; the historical broad-suite timeout must still be reported if unresolved.
+
 **Next work unit:** E3-R04 — project resolution, isolation, search and context.
 
 ## Cross-platform CI repair — candidate verification
