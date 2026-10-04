@@ -18,14 +18,15 @@ test("versions and backs up an existing legacy store before its ordered migratio
  const dir=await directory();t.after(()=>cleanup(dir));
  const path=join(dir,"memory.db"),legacy=new DatabaseSync(path);legacy.exec(legacyTable);legacy.prepare("INSERT INTO memory VALUES(?,?,?,?,?,?,?)").run("legacy-id","project-a","session-b","decision","topic-c","preserve this memory","2026-10-04T00:00:00Z");legacy.close();
  let store=new SqliteMemoryStore(path);
- assert.equal(version(path),5);
+ assert.equal(version(path),6);
  assert.deepEqual(store.get("legacy-id"),{id:"legacy-id",projectId:"project-a",sessionId:"session-b",kind:"decision",topic:"topic-c",content:"preserve this memory",createdAt:"2026-10-04T00:00:00Z"});
  assert.equal(store.search("project-a","preserve")[0]?.id,"legacy-id");store.close();
- const backups=backupFiles(path);assert.equal(backups.length,5);
+ const migrated=new DatabaseSync(path);try{assert.notEqual(migrated.prepare("SELECT name FROM sqlite_master WHERE name='memory_relations'").get(),undefined);}finally{migrated.close();}
+ const backups=backupFiles(path);assert.equal(backups.length,6);
  const legacyBackup=backups.find(name=>name.includes("v0-to-v1"))!,versionOneBackup=backups.find(name=>name.includes("v1-to-v2"))!;
  const backup=new DatabaseSync(join(dir,legacyBackup));try{assert.equal(version(join(dir,legacyBackup)),0);assert.equal((backup.prepare("SELECT content FROM memory WHERE id=?").get("legacy-id") as {content:string}).content,"preserve this memory");assert.equal(backup.prepare("SELECT name FROM sqlite_master WHERE name='memory_fts'").get(),undefined);}finally{backup.close();}
  const beforeSessions=new DatabaseSync(join(dir,versionOneBackup));try{assert.equal(version(join(dir,versionOneBackup)),1);assert.equal(beforeSessions.prepare("SELECT name FROM sqlite_master WHERE name='memory_sessions'").get(),undefined);}finally{beforeSessions.close();}
- store=new SqliteMemoryStore(path);assert.equal(store.get("legacy-id")?.content,"preserve this memory");store.close();assert.equal(backupFiles(path).length,5);
+ store=new SqliteMemoryStore(path);assert.equal(store.get("legacy-id")?.content,"preserve this memory");store.close();assert.equal(backupFiles(path).length,7);
 });
 
 test("rejects a future schema version before changing its database",async t=>{
@@ -43,7 +44,7 @@ test("rolls back every schema change when a legacy migration fails",async t=>{
  const check=new DatabaseSync(path);try{assert.equal(version(path),0);assert.equal(check.prepare("SELECT name FROM sqlite_master WHERE name='memory_fts'").get(),undefined);assert.deepEqual((check.prepare("PRAGMA table_info(memory)").all() as Array<{name:string}>).map(column=>column.name),["id"]);}finally{check.close();}
  assert.equal(backupFiles(path).length,1);
  const repaired=new DatabaseSync(path);repaired.exec("ALTER TABLE memory ADD COLUMN project_id TEXT; ALTER TABLE memory ADD COLUMN session_id TEXT; ALTER TABLE memory ADD COLUMN kind TEXT; ALTER TABLE memory ADD COLUMN topic TEXT; ALTER TABLE memory ADD COLUMN content TEXT; ALTER TABLE memory ADD COLUMN created_at TEXT;");repaired.close();
- const store=new SqliteMemoryStore(path);assert.equal(version(path),5);store.close();assert.equal(backupFiles(path).length,6);
+ const store=new SqliteMemoryStore(path);assert.equal(version(path),6);store.close();assert.equal(backupFiles(path).length,6);
 });
 
 test("serializes simultaneous opens and commits one migration before either store writes",async t=>{
@@ -55,6 +56,6 @@ test("serializes simultaneous opens and commits one migration before either stor
   worker.once("message",resolve);worker.once("error",reject);worker.once("exit",code=>{if(code!==0)reject(new Error(`memory open worker exited ${code}`));});
  });
  assert.deepEqual(await Promise.all([open("worker-a"),open("worker-b")]),[{ok:true},{ok:true}]);
- assert.equal(version(path),5);assert.equal(backupFiles(path).length,5);
+ assert.equal(version(path),6);assert.equal(backupFiles(path).length,6);
  const store=new SqliteMemoryStore(path);assert.deepEqual([store.get("worker-a")?.content,store.get("worker-b")?.content],["worker-a","worker-b"]);store.close();
 });
