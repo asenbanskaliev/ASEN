@@ -151,13 +151,25 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   if(!title)throw new Error("Memory observation title is required");
   const content=prepareStoredContent(item.content);
   if(!content)throw new Error("Memory observation content is required");
-  const id=randomUUID(),scope=normalizeScope(item.scope),topicKey=normalizeTopicKey(item.topic??"");
+  let id:string=randomUUID();
+  const scope=normalizeScope(item.scope),topicKey=normalizeTopicKey(item.topic??"");
   const normalizedHash=createHash("sha256").update(content.toLowerCase().split(/\s+/u).filter(Boolean).join(" ")).digest("hex");
   const now=new Date().toISOString();
   this.#transaction(()=>{
    const session=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(item.sessionId) as {project_id:string;status:string}|undefined;
    if(!session||session.project_id!==item.projectId)throw new Error("Memory session identity conflict");
    if(session.status!=="live")throw new Error("Memory session is ended");
+   if(topicKey){
+    const existing=this.#db.prepare(`SELECT id FROM memory WHERE topic_key=? AND project_id=? AND scope=? AND deleted_at IS NULL
+     ORDER BY updated_at DESC,created_at DESC LIMIT 1`).get(topicKey,item.projectId,scope) as {id:string}|undefined;
+    if(existing){
+     id=existing.id;
+     this.#db.prepare(`UPDATE memory SET session_id=?,kind=?,topic=?,content=?,title=?,tool_name=?,topic_key=?,normalized_hash=?,
+      revision_count=revision_count+1,last_seen_at=?,updated_at=? WHERE id=?`)
+      .run(item.sessionId,item.kind,item.topic??null,content,title,item.toolName??null,topicKey,normalizedHash,now,now,id);
+     return;
+    }
+   }
    this.#db.prepare(`INSERT INTO memory(id,project_id,session_id,kind,topic,content,created_at,title,tool_name,scope,topic_key,normalized_hash,revision_count,duplicate_count,last_seen_at,updated_at)
     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,1,1,?,?)`)
     .run(id,item.projectId,item.sessionId,item.kind,item.topic??null,content,now,title,item.toolName??null,scope,topicKey||null,normalizedHash,now,now);
