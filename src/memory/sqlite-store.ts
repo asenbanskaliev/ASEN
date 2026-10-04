@@ -121,13 +121,30 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
    this.#db.prepare("INSERT INTO memory_sessions(session_id,project_id,root_session_id,parent_session_id,status) VALUES(?,?,?,NULL,'live')").run(sessionId,projectId,sessionId);
   });
  }
- endSession(projectId:string,sessionId:string):void{
+ endSession(projectId:string,sessionId:string,summary?:string):void{
   this.#requireIdentity(projectId,sessionId);
+  const prepared=summary===undefined?undefined:prepareStoredContent(summary);
+  if(summary!==undefined&&!prepared)throw new Error("Memory session summary is required");
   this.#transaction(()=>{
-   const existing=this.#db.prepare("SELECT project_id FROM memory_sessions WHERE session_id=?").get(sessionId) as {project_id:string}|undefined;
+   const existing=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(sessionId) as {project_id:string;status:string}|undefined;
    if(!existing||existing.project_id!==projectId)throw new Error("Memory session identity conflict");
+   if(existing.status==="ended"){
+    if(prepared!==undefined)this.#persistSessionSummary(projectId,sessionId,prepared);
+    return;
+   }
    this.#db.prepare("UPDATE memory_sessions SET status='ended' WHERE session_id=?").run(sessionId);
+   if(prepared!==undefined)this.#persistSessionSummary(projectId,sessionId,prepared);
   });
+ }
+ #persistSessionSummary(projectId:string,sessionId:string,prepared:string):MemorySessionSummary{
+  const existing=this.#db.prepare("SELECT * FROM memory_session_summaries WHERE project_id=? AND session_id=?").get(projectId,sessionId) as {project_id:string;session_id:string;content:string;created_at:string}|undefined;
+  if(existing){
+   if(existing.content!==prepared)throw new Error("Memory session summary already persisted");
+   return {projectId:existing.project_id,sessionId:existing.session_id,content:existing.content,createdAt:existing.created_at};
+  }
+  const createdAt=new Date().toISOString();
+  this.#db.prepare("INSERT INTO memory_session_summaries(project_id,session_id,content,created_at) VALUES(?,?,?,?)").run(projectId,sessionId,prepared,createdAt);
+  return {projectId,sessionId,content:prepared,createdAt};
  }
  continueSession(projectId:string,endedSessionId:string,proposedSessionId:string):string{
   this.#requireIdentity(projectId,endedSessionId);this.#requireIdentity(projectId,proposedSessionId);
@@ -288,10 +305,7 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
    const session=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(sessionId) as {project_id:string;status:string}|undefined;
    if(!session||session.project_id!==projectId)throw new Error("Memory session identity conflict");
    if(session.status!=="ended")throw new Error("Memory session must be ended before summary");
-   const existing=this.#db.prepare("SELECT * FROM memory_session_summaries WHERE project_id=? AND session_id=?").get(projectId,sessionId) as {project_id:string;session_id:string;content:string;created_at:string}|undefined;
-   if(existing){if(existing.content!==prepared)throw new Error("Memory session summary already persisted");return {projectId:existing.project_id,sessionId:existing.session_id,content:existing.content,createdAt:existing.created_at};}
-   const createdAt=new Date().toISOString();this.#db.prepare("INSERT INTO memory_session_summaries(project_id,session_id,content,created_at) VALUES(?,?,?,?)").run(projectId,sessionId,prepared,createdAt);
-   return {projectId,sessionId,content:prepared,createdAt};
+   return this.#persistSessionSummary(projectId,sessionId,prepared);
   });
  }
  getSessionSummary(projectId:string,sessionId:string):MemorySessionSummary|undefined{
