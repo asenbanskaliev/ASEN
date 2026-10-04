@@ -92,3 +92,14 @@ test("literal replacement rejects output growth beyond the observation byte limi
   assert.deepEqual(store.get(id), before);
   store.close();
 });
+
+test("literal content ending with the truncation marker remains replaceable", () => {
+  const store = new SqliteMemoryStore(":memory:");
+  store.registerSession("project-a", "session-a");
+  const id = store.addObservation({ projectId: "project-a", sessionId: "session-a", kind: "decision", title: "Literal marker", content: "literal ... [truncated]" });
+
+  const revised = store.updateObservation({ id, expectedProject: "project-a", find: "truncated", replace: "ordinary" });
+  assert.equal(revised.content, "literal ... [ordinary]");
+  assert.equal(revised.revisionCount, 2);
+  store.close();
+});

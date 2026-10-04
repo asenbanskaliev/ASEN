@@ -256,7 +256,7 @@ function hashNormalizedContent(content:string):string{return createHash("sha256"
 function replaceObservationContent(content:string,find:string,replacement:string):{content:string;noop:boolean}{
  const marker="... [truncated]";
  let prefix=content,truncationMarker="";
- if(content.endsWith(marker)){truncationMarker=marker;prefix=content.slice(0,-marker.length);}
+ if(Buffer.byteLength(content,"utf8")>MAX_OBSERVATION_LENGTH_BYTES&&content.endsWith(marker)){truncationMarker=marker;prefix=content.slice(0,-marker.length);}
  if(find===""||!prefix.includes(find))return {content,noop:true};
  if(Buffer.byteLength(prefix,"utf8")>MAX_OBSERVATION_LENGTH_BYTES)throw new Error("Existing observation content exceeds the byte limit");
  const matches=prefix.split(find).length-1;
