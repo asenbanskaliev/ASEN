@@ -31,7 +31,6 @@ export class Dispatcher {
     if(!request.skillPaths||request.skillPaths.length!==expectedPaths.length||request.skillPaths.some((path,index)=>path!==expectedPaths[index])) throw new Error("Delegated skill paths do not match issued context");
    }
    if(request.writeSurfaces){
-    const receiver=consumeWriterAdmission(request.writerAdmission,request);if(!receiver)throw new Error("Write authority requires unused exact writer admission");const {writerAdmission:_writerAdmission,...forwarded}=request;runnerRequest={...forwarded,runnerWriteReceiver:receiver};
     if(!request.candidate) throw new Error("Write authority requires an exact candidate");
     if(request.candidate.repository!==request.repository) throw new Error("Write candidate repository mismatch");
     if(!request.skillContext) throw new Error("Write authority requires skill selection context");
@@ -43,6 +42,7 @@ export class Dispatcher {
     if(!skills.length) throw new Error("Write authority requires mandatory skills");
     const gate=verifySkillEvidence(request.candidate,skills,this.evidence,"mutation");
     if(!gate.ok) throw new Error(`Write authority blocked: ${gate.reason}`);
+    const receiver=consumeWriterAdmission(request.writerAdmission,request);if(!receiver)throw new Error("Write authority requires unused exact writer admission");const {writerAdmission:_writerAdmission,...forwarded}=request;runnerRequest={...forwarded,runnerWriteReceiver:receiver};
     grant={agentId:request.id,repository:request.repository,surfaces:request.writeSurfaces};
     if(request.isolationKey)grant.isolationKey=request.isolationKey;
     validateWriteGrant(grant,this.#active);this.#active.push(grant);
