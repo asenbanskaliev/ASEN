@@ -5,6 +5,8 @@ import {EvidenceStore} from "../src/evidence/store.js";
 import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";
 import {admitRouteEvidence} from "./helpers/route-evidence.js";
+import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";
+import {issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";
 
 const candidate={id:"candidate",repository:"repo",revision:"sha",createdAt:"now"};
 const decisionFor=(taskId:string,repository="repo")=>issueOddDecision({
@@ -12,6 +14,7 @@ const decisionFor=(taskId:string,repository="repo")=>issueOddDecision({
  paths:["src/a.ts","src/b.ts"],
  writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"behavior"}],
 });
+const writerAdmissionFor=(plan:ReturnType<typeof buildOrchestrationPlan>,taskId:string)=>issueOrganicWriterAdmission(decideLifecycleApplicability(plan.decision,{taskIdentity:taskId,repositoryIdentity:"repo",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"unspecified",affectedSubsystems:["orchestration"],expectedPaths:["src/a.ts","src/b.ts"],requiredArtifacts:[]}),["src"]);
 
 test("orchestrated writer cannot execute until its mutation evidence is complete",async()=>{
  const plan=buildOrchestrationPlan(
@@ -33,7 +36,7 @@ test("orchestrated writer cannot execute until its mutation evidence is complete
  evidence.add(candidate,{id:"scope",kind:"scope",status:"pass",summary:"scope",createdAt:"now"});
  evidence.add(candidate,{id:"rollback",kind:"rollback",status:"pass",summary:"rollback",createdAt:"now"});
 
- const result=await dispatcher.dispatch(worker);
+ const result=await dispatcher.dispatch({...worker,writerAdmission:writerAdmissionFor(plan,"task")});
  assert.equal(result.ok,true);
  assert.equal(ran,true);
 });
