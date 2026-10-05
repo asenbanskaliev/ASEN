@@ -40,16 +40,16 @@ Esta matriz no sustituye los contratos SOURCE_INSPECTED ni convierte pruebas sin
 
 ## Resultado 4R
 
-El candidato final verificado es `eae2864421f83ddfe8aa2558ab04ceafffc8c98d`.
+El candidato final verificado es `5f3a723208ca2ad861ed9d02290cf25c1f12b472`.
 
 Evidencia remota sobre ese mismo HEAD:
 
-- Phase 0 Architecture — PASS, run `37285255762`.
-- CI — PASS, run `37285255798`.
-- Release Gate — PASS, run `37285254955`.
-- Memory OpenRouter E2E — PASS, run `37285255912`: Pi real reinicia el almacén sintético, recupera `COBALT-731` y el modelo real lo recuerda correctamente.
-- Memory Pi Free E2E (`llm7`) — FAIL, run `37285255905`, por cuota diaria externa agotada. No se utiliza ese fallo como evidencia negativa del núcleo de memoria.
-- Pi Free Smoke — `skipped`, run `37285255861`.
+- Phase 0 Architecture — PASS, run `37288725501`.
+- CI — PASS, run `37288725522`.
+- Release Gate — PASS, run `37288725495`.
+- Memory OpenRouter E2E — PASS, run `37288725534`: Pi real reinicia el almacén sintético, recupera `COBALT-731` y el modelo real lo recuerda correctamente.
+- Memory Pi Free E2E (`llm7`) — FAIL, run `37288725512`, exclusivamente por `429 quota_exceeded`; el contexto recuperado contiene correctamente `COBALT-731`. No se utiliza ese fallo externo como evidencia negativa del núcleo de memoria.
+- Pi Free Smoke — `skipped`, run `37288725487`.
 
 El histórico timeout de 180 segundos del `npm test` independiente **no se declara resuelto**. El CI final verde demuestra el candidato en los recorridos configurados, pero no borra esa evidencia histórica.
 
