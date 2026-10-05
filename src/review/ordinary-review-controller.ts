@@ -1,3 +1,6 @@
+import {execFileSync} from "node:child_process";
+import {realpathSync} from "node:fs";
+import {assertExactGitCandidate} from "../evidence/execution.js";
 import {createHash} from "node:crypto";
 import {isProxy} from "node:util/types";
 import {claimWorkUnitReviewCandidate,type WorkUnitReviewCandidate} from "../delivery/work-unit-review-candidate.js";
@@ -28,4 +31,23 @@ export function claimOrdinaryReviewRequest(value:unknown,sessionId:string):Ordin
  consumed.add(value);const request=value as OrdinaryReviewRequest;
  if(typeof sessionId!=="string"||sessionId!==request.participants.sessionId)throw new Error("La sesión de preparación no coincide");
  return request;
+}
+
+export interface OrdinaryReviewCheckout{
+ readonly request:OrdinaryReviewRequest;
+ readonly repository:string;readonly revision:string;readonly treeIdentity:string;readonly parentIdentity:string;
+}
+/** Observa Git local; la relación URL→directorio sigue siendo una declaración del llamante. */
+export function bindOrdinaryReviewCheckout(value:OrdinaryReviewRequest,sessionId:string,repository:string):OrdinaryReviewCheckout{
+ const request=claimOrdinaryReviewRequest(value,sessionId);
+ const root=text(repository,"repositorio local");let observed:string[];
+ try{
+  if(realpathSync(root)!==root)throw new Error("ruta no canónica");
+  const candidate={id:request.candidate.identity,repository:root,revision:request.candidate.revision,createdAt:"preparación de revisión"};
+  assertExactGitCandidate(candidate,root);
+  observed=execFileSync("git",["--no-replace-objects","-C",root,"rev-parse","HEAD^{tree}","HEAD^"],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim().split("\n");
+  assertExactGitCandidate(candidate,root);
+ }catch{throw new Error("No se pudo verificar el checkout exacto de revisión");}
+ if(observed.length!==2||observed[0]!==request.candidate.treeIdentity||observed[1]!==request.candidate.completedWorkUnit.commit.parentIdentity)throw new Error("Árbol o padre de revisión no coincide");
+ return Object.freeze({request,repository:root,revision:request.candidate.revision,treeIdentity:observed[0]!,parentIdentity:observed[1]!});
 }
