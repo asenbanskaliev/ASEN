@@ -329,7 +329,10 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   const relations=this.listRelations(projectId);
   const summaries=(this.#db.prepare("SELECT * FROM memory_session_summaries WHERE project_id=? ORDER BY created_at,session_id").all(projectId) as Array<{project_id:string;session_id:string;content:string;created_at:string}>).map(r=>({projectId:r.project_id,sessionId:r.session_id,content:r.content,createdAt:r.created_at}));
   const sessions=(this.#db.prepare("SELECT * FROM memory_sessions WHERE project_id=? ORDER BY session_id").all(projectId) as Array<{project_id:string;session_id:string;root_session_id:string;parent_session_id:string|null;status:"live"|"ended"}>).map(r=>({projectId:r.project_id,sessionId:r.session_id,rootSessionId:r.root_session_id,...(r.parent_session_id?{parentSessionId:r.parent_session_id}:{}),status:r.status} satisfies MemorySessionState));
-  return {version:1,projectId,observations,relations,summaries,sessions};
+  const soft=(this.#db.prepare("SELECT id,project_id,deleted_at FROM memory WHERE project_id=? AND deleted_at IS NOT NULL").all(projectId) as Array<{id:string;project_id:string;deleted_at:string}>);
+  const hard=(this.#db.prepare("SELECT id,project_id,deleted_at FROM memory_tombstones WHERE project_id=?").all(projectId) as Array<{id:string;project_id:string;deleted_at:string}>);
+  const deletions=[...soft,...hard].map(r=>({id:r.id,projectId:r.project_id,deletedAt:r.deleted_at})).sort((a,b)=>a.id.localeCompare(b.id));
+  return {version:1,projectId,observations,relations,summaries,sessions,deletions};
  }
  importProject(data:MemoryExport):void{
   if(data.version!==1||!data.projectId.trim())throw new Error("Unsupported memory export");
@@ -357,6 +360,11 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
     const existing=this.#db.prepare("SELECT content,created_at FROM memory_session_summaries WHERE project_id=? AND session_id=?").get(summary.projectId,summary.sessionId) as {content:string;created_at:string}|undefined;
     if(existing){if(existing.content!==summary.content||existing.created_at!==summary.createdAt)throw new Error("Memory import summary conflict");continue;}
     this.#db.prepare("INSERT INTO memory_session_summaries(project_id,session_id,content,created_at) VALUES(?,?,?,?)").run(summary.projectId,summary.sessionId,summary.content,summary.createdAt);
+   }
+   for(const deletion of data.deletions??[]){
+    const live=this.#db.prepare("SELECT project_id FROM memory WHERE id=? AND deleted_at IS NULL").get(deletion.id) as {project_id:string}|undefined;
+    if(live)throw new Error("Memory import deletion conflict");
+    this.#db.prepare("INSERT INTO memory_tombstones(id,project_id,deleted_at) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET project_id=excluded.project_id,deleted_at=excluded.deleted_at").run(deletion.id,deletion.projectId,deletion.deletedAt);
    }
   });
  }
@@ -456,6 +464,7 @@ function validateMemoryImport(data:MemoryExport,sessions:MemorySessionState[]):v
  for(const item of data.observations){if(item.projectId!==data.projectId||!sessionIds.has(item.sessionId)||observationIds.has(item.id))throw new Error("Invalid memory import observation");observationIds.add(item.id);}
  for(const relation of data.relations)if(relation.projectId!==data.projectId||!observationIds.has(relation.sourceId)||!observationIds.has(relation.targetId))throw new Error("Invalid memory import relation");
  for(const summary of data.summaries)if(summary.projectId!==data.projectId||!sessionIds.has(summary.sessionId))throw new Error("Invalid memory import summary");
+ for(const deletion of data.deletions??[])if(deletion.projectId!==data.projectId||!deletion.id.trim()||!deletion.deletedAt.trim()||observationIds.has(deletion.id))throw new Error("Invalid memory import deletion");
 }
 
 function orderImportSessions(sessions:MemorySessionState[]):MemorySessionState[]{
