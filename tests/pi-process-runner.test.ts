@@ -218,7 +218,7 @@ test("direct Pi worker cannot obtain file tools without a live lifecycle grant",
  const paths=selectSkills(context).map(skill=>skill.path);
  const r=await runner(p).run({id:"worker",role:"worker",prompt:"implement",repository:d,candidate,writeSurfaces:["src"],skillContext:context,skillPaths:paths});
  assert.equal(r.ok,false);
- assert.match(r.output,/active ASEN lifecycle grant/);
+ assert.match(r.output,/exact dispatcher receiver/);
 });
 test("direct Pi runner refuses a candidate-bound turn without issued selection",async()=>{
  const candidate={id:"candidate",repository:"missing-repo",revision:"revision",createdAt:"now"};
