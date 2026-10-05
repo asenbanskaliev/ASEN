@@ -109,3 +109,9 @@ test("D3 requires the complete invariant set and burns genuine evidence on rejec
   const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input as {invariantIds:string[]}).invariantIds=input.invariantIds.filter(id=>id!==missing);assert.throws(()=>bindRddDefectEvidence(evidence,input),/required invariant/i);assert.throws(()=>bindRddDefectEvidence(evidence,d3Input(value)),/consumed/i);
  }
 });
+
+test("D3 requires a distinct fail-closed operator destination",async(t:TestContext)=>{
+ for(const flow of [{id:"unsafe",from:"approved issue",to:"reproduced defect",failureTo:"continue"},{id:"same",from:"approved issue",to:"reproduced defect",failureTo:"reproduced defect"}]){
+  const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input as {operatorFlows:typeof flow[]}).operatorFlows=[flow];assert.throws(()=>bindRddDefectEvidence(evidence,input),/blocked|destinations/i);
+ }
+});
