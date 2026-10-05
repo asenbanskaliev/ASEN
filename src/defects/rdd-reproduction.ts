@@ -60,3 +60,22 @@ export function claimRddReproductionEvidence(value:unknown):RddReproductionEvide
  if(typeof value!=="object"||value===null||!issuedReproductions.has(value))throw new Error("Defect binding requires genuine reproduction evidence");
  if(claimedReproductions.has(value))throw new Error("Reproduction evidence already consumed");claimedReproductions.add(value);return value as RddReproductionEvidence;
 }
+
+/** Recupera datos descriptivos exactos; nunca emite procedencia viva. */
+export function parseRddReproductionRecord(value:unknown):RddReproductionEvidence {
+ const data=record(value,["schemaVersion","repositoryUrl","issueUrl","mainCommitIdentity","candidate","reproductionCaseIds","negativeControlCaseIds","observation","repeatedRuns"],"defect reproduction record");
+ if(data.schemaVersion!==1||data.repeatedRuns!==2)throw new Error("Defect reproduction schema mismatch");
+ const repositoryUrl=text(data.repositoryUrl,"repository URL"),issueUrl=text(data.issueUrl,"issue URL");
+ let url:URL;try{url=new URL(repositoryUrl);}catch{throw new Error("Defect repository URL is invalid");}
+ if(url.protocol!=="https:"||url.username||url.password||url.port||url.search||url.hash||url.href!==repositoryUrl||!/^\/[^/]+\/[^/]+$/u.test(url.pathname)||!issueUrl.startsWith(repositoryUrl+"/issues/")||!/^[1-9]\d*$/u.test(issueUrl.slice((repositoryUrl+"/issues/").length))||issueUrl.endsWith("/0"))throw new Error("Defect issue repository mismatch");
+ const c=record(data.candidate,candidateKeys,"defect candidate"),candidate=Object.freeze({id:text(c.id,"candidate id"),repository:text(c.repository,"candidate repository"),revision:sha(c.revision,"candidate revision")}),mainCommitIdentity=sha(data.mainCommitIdentity,"main commit");
+ if(candidate.revision===mainCommitIdentity||candidate.revision.length!==mainCommitIdentity.length)throw new Error("Defect revision lineage is invalid");
+ const reproductionCaseIds=strings(data.reproductionCaseIds,"reproduction cases"),negativeControlCaseIds=strings(data.negativeControlCaseIds,"control cases");
+ if(reproductionCaseIds.some(id=>negativeControlCaseIds.includes(id)))throw new Error("Defect cases must be disjoint");
+ const o=record(data.observation,["adapterId","commandFingerprint","testPaths","executedCaseIds","failingCaseIds","assertionFingerprint","failureKind"],"defect observation"),testPaths=strings(o.testPaths,"test paths"),executedCaseIds=strings(o.executedCaseIds,"executed cases"),failingCaseIds=strings(o.failingCaseIds,"failing cases");
+ if(o.adapterId!=="node-test"||o.failureKind!=="assertion"||!same(executedCaseIds,[...reproductionCaseIds,...negativeControlCaseIds])||!same(failingCaseIds,reproductionCaseIds))throw new Error("Defect observation cases mismatch");
+ for(const path of testPaths)if(path.startsWith("/")||path.includes("\\")||path.includes(":")||path.split("/").some(part=>!part||part==="."||part==="..")||!/(?:^|\/)[^/]+\.(?:test|spec)\.(?:js|mjs|cjs)$/u.test(path))throw new Error("Defect test path is invalid");
+ const commandFingerprint=text(o.commandFingerprint,"command fingerprint"),assertionFingerprint=text(o.assertionFingerprint,"assertion fingerprint");
+ if(!/^[0-9a-f]{64}$/u.test(commandFingerprint)||!/^[0-9a-f]{64}$/u.test(assertionFingerprint))throw new Error("Defect fingerprint is invalid");
+ return Object.freeze({schemaVersion:1,repositoryUrl,issueUrl,mainCommitIdentity,candidate,reproductionCaseIds:Object.freeze(reproductionCaseIds),negativeControlCaseIds:Object.freeze(negativeControlCaseIds),observation:Object.freeze({adapterId:"node-test",commandFingerprint,testPaths:Object.freeze(testPaths),executedCaseIds:Object.freeze(executedCaseIds),failingCaseIds:Object.freeze(failingCaseIds),assertionFingerprint,failureKind:"assertion"}),repeatedRuns:2});
+}

@@ -1,7 +1,7 @@
 import {createHash} from "node:crypto";
 import {isProxy} from "node:util/types";
 import type {RddReproductionEvidence} from "./rdd-reproduction.js";
-import {claimRddReproductionEvidence} from "./rdd-reproduction.js";
+import {claimRddReproductionEvidence,parseRddReproductionRecord} from "./rdd-reproduction.js";
 
 export interface RddDefectBindingInput {
  readonly invariantIds:readonly string[];
@@ -39,8 +39,8 @@ function list(value:unknown,noun:string,min=1,max=32):string[]{
  if(new Set(out).size!==out.length)throw new Error(`${noun} contains duplicates`);return out;
 }
 const freezeStrings=(value:string[])=>Object.freeze([...value]);
-export function bindRddDefectEvidence(reproduction:RddReproductionEvidence,input:RddDefectBindingInput):RddDefectBinding {
- const evidence=claimRddReproductionEvidence(reproduction),data=plain(input,inputKeys,"defect binding");
+function materialize(evidence:RddReproductionEvidence,input:RddDefectBindingInput):RddDefectBinding {
+ const data=plain(input,inputKeys,"defect binding");
  const invariantIds=list(data.invariantIds,"invariant ids");if(!["approved-issue","current-main","deterministic-reproduction"].every(id=>invariantIds.includes(id)))throw new Error("defect binding is missing a required invariant");
  const rawFlows=array(data.operatorFlows,"operator flows",1,16);
  const flows=rawFlows.map(raw=>{const f=plain(raw,["id","from","to","failureTo"],"operator flow");return Object.freeze({id:text(f.id,"flow id"),from:text(f.from,"flow source"),to:text(f.to,"flow target"),failureTo:text(f.failureTo,"flow failure")});});
@@ -53,4 +53,20 @@ export function bindRddDefectEvidence(reproduction:RddReproductionEvidence,input
  if(typeof forecast.changedLines!=="number"||!Number.isSafeInteger(forecast.changedLines)||forecast.changedLines<1||forecast.changedLines>=390)throw new Error("forecast changed lines must stay below 390");
  const result:RddDefectBinding={schemaVersion:1,reproduction:evidence,invariantIds:freezeStrings(invariantIds),operatorFlows:Object.freeze(flows),runtimeJourney:Object.freeze({command:freezeStrings(journeyCommand),commandFingerprint:text(journey.commandFingerprint,"journey fingerprint"),result:"reproduced",candidateId:text(journey.candidateId,"journey candidate id"),candidateRevision:text(journey.candidateRevision,"journey revision"),limitations:freezeStrings(list(journey.limitations,"journey limitations",1,16))}),rollback:Object.freeze({boundary:"candidate",targetRevision:text(rollback.targetRevision,"rollback target revision"),procedure:freezeStrings(list(rollback.procedure,"rollback procedure",1,16))}),forecast:Object.freeze({changedLines:forecast.changedLines,verificationEffort:text(forecast.verificationEffort,"verification effort"),remainingUncertainty:freezeStrings(list(forecast.remainingUncertainty,"remaining uncertainty",1,16)),deferredVerification:freezeStrings(list(forecast.deferredVerification,"deferred verification",1,16))})};
  return Object.freeze(result);
+}
+
+const bindings=new WeakSet<object>(),consumedBindings=new WeakSet<object>();
+export function bindRddDefectEvidence(reproduction:RddReproductionEvidence,input:RddDefectBindingInput):RddDefectBinding {
+ const bound=materialize(claimRddReproductionEvidence(reproduction),input);bindings.add(bound);return bound;
+}
+/** Handoff de un uso; los datos recuperados no obtienen este marcador. */
+export function claimRddDefectBinding(value:unknown):RddDefectBinding {
+ if(typeof value!=="object"||value===null||!bindings.has(value))throw new Error("Defect intake requires genuine binding");
+ if(consumedBindings.has(value))throw new Error("Defect binding already consumed");consumedBindings.add(value);return value as RddDefectBinding;
+}
+export function parseRddDefectRecord(value:unknown):RddDefectBinding {
+ const data=plain(value,["schemaVersion","reproduction",...inputKeys],"defect record");
+ if(data.schemaVersion!==1)throw new Error("Defect record schema mismatch");
+ const input=Object.fromEntries(inputKeys.map(key=>[key,data[key]]));
+ return materialize(parseRddReproductionRecord(data.reproduction),input as unknown as RddDefectBindingInput);
 }

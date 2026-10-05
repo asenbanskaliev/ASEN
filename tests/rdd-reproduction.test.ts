@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import {createHash} from "node:crypto";
-import {mkdtemp,rm,writeFile} from "node:fs/promises";
+import {createHash,createHmac,randomBytes} from "node:crypto";
+import {mkdtemp,rm,writeFile,readFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import test,{type TestContext} from "node:test";
+import {EvidenceStore,saveEvidence,loadEvidence} from "../src/evidence/store.js";
 import type {Candidate} from "../src/core/types.js";
 import {executeRddRepositoryInspection,prepareRddRepositoryInspection,type RddRepositoryInspectionSnapshot} from "../src/defects/rdd-repository-inspection.js";
 import {recordRddReproduction,type RddReproductionInput} from "../src/defects/rdd-reproduction.js";
@@ -143,4 +144,66 @@ test("D3 rejects a runtime command unrelated to the observed test path",async(t:
   assert.throws(()=>bindRddDefectEvidence(e,i));assert.equal(llamadas,0);
   assert.throws(()=>bindRddDefectEvidence(e,d3Input(v)),/consumed/i);
  }
+});
+
+async function d4Bound(t:TestContext){
+ const v=await fixture(t),reproduction=recordRddReproduction(v.snapshot,v.input,v.first,v.second);
+ return {v,bound:bindRddDefectEvidence(reproduction,d3Input(v))};
+}
+test("D4 admite binding genuino una vez y recupera datos sin emitir procedencia",async(t:TestContext)=>{
+ const {v,bound}=await d4Bound(t),store=new EvidenceStore(),item=store.addDefectIntake(v.candidate,bound);
+ assert.equal(item.kind,"defect-intake");
+ assert.equal(item.status,"pass");
+ assert.deepEqual(item.defect,bound);
+ assert.throws(()=>store.addDefectIntake(v.candidate,bound),/consumed/);
+ const path=join(v.repository,"../",`intake-${sequence}.json`),key=randomBytes(32);
+ t.after(()=>rm(path,{force:true}));
+ await saveEvidence(path,v.candidate,store,key);
+ const restored=await loadEvidence(path,v.candidate,key);
+ assert.deepEqual(restored.forCandidate(v.candidate),store.forCandidate(v.candidate));
+ assert.throws(()=>new EvidenceStore().addDefectIntake(v.candidate,restored.forCandidate(v.candidate)[0]!.defect!),/genuine/);
+ for(const other of [{...v.candidate,id:"otro"},{...v.candidate,repository:"otro"},{...v.candidate,revision:"f".repeat(40)},{...v.candidate,createdAt:"otro"}])await assert.rejects(()=>loadEvidence(path,other,key),/mismatch/);
+ await assert.rejects(()=>loadEvidence(path,v.candidate,randomBytes(32)),/integrity/);
+ assert.equal(Object.isFrozen(restored.forCandidate(v.candidate)[0]!.defect!.runtimeJourney.command),true);
+ const hook='data:text/javascript,import{registerHooks}from"node:module";registerHooks({resolve(s,c,n){try{return n(s,c)}catch(e){if(s.endsWith(".js"))return n(s.slice(0,-3)+".ts",c);throw e}}})';
+ const childCode=`import assert from "node:assert/strict";import{EvidenceStore,loadEvidence}from ${JSON.stringify(new URL("../src/evidence/store.ts",import.meta.url).href)};
+ const c=JSON.parse(process.env.ASEN_D4_CANDIDATE);
+ const s=await loadEvidence(process.env.ASEN_D4_PATH,c,Buffer.from(process.env.ASEN_D4_KEY,"hex"));
+ const item=s.forCandidate(c)[0];
+ assert.throws(()=>new EvidenceStore().addDefectIntake(c,item.defect),/genuine/);console.log(JSON.stringify({items:s.forCandidate(c).length,kind:item.kind,live:false}));`;
+ const output=execFileSync(process.execPath,["--experimental-transform-types","--import",hook,"--input-type=module","-e",childCode],{encoding:"utf8",stdio:["ignore","pipe","pipe"],env:{...process.env,ASEN_D4_CANDIDATE:JSON.stringify(v.candidate),ASEN_D4_PATH:path,ASEN_D4_KEY:key.toString("hex")}});
+ assert.deepEqual(JSON.parse(output),{items:1,kind:"defect-intake",live:false});
+});
+test("D4 consume el binding antes de rechazar identidad inválida",async(t:TestContext)=>{
+ for(const tipo of ["identidad","proxy","accessor"]){
+  const {v,bound}=await d4Bound(t),store=new EvidenceStore();let llamadas=0;
+  let candidate:Candidate={...v.candidate,id:"otro"};
+  if(tipo==="proxy")candidate=new Proxy(v.candidate,{getPrototypeOf(){llamadas++;
+ return Object.prototype;}});
+  if(tipo==="accessor"){candidate={...v.candidate};Object.defineProperty(candidate,"id",{enumerable:true,get(){llamadas++;
+ return v.candidate.id;}});}
+  assert.throws(()=>store.addDefectIntake(candidate,bound),/mismatch|plain|shape/);
+ assert.equal(llamadas,0);
+  assert.throws(()=>store.addDefectIntake(v.candidate,bound),/consumed/);
+ assert.equal(store.forCandidate(v.candidate).length,0);
+ }
+});
+test("D4 rechaza clones y registros firmados con deriva semántica",async(t:TestContext)=>{
+ const {v,bound}=await d4Bound(t),store=new EvidenceStore();
+ assert.throws(()=>store.addDefectIntake(v.candidate,structuredClone(bound)),/genuine/);
+ store.addDefectIntake(v.candidate,bound);
+ const path=join(v.repository,"../",`intake-tamper-${sequence}.json`),key=randomBytes(32);
+ t.after(()=>rm(path,{force:true}));
+ await saveEvidence(path,v.candidate,store,key);
+ const original=JSON.parse(await readFile(path,"utf8"));
+ const mutations=[(r:any)=>r.value.items[0].defect.extra=true,(r:any)=>r.value.items[0].defect.reproduction.observation.extra=true,(r:any)=>r.value.items[0].defect.reproduction.candidate.id="otro",(r:any)=>r.value.items[0].defect.runtimeJourney.command=["falso"],(r:any)=>r.value.items[0].defect.operatorFlows[0].failureTo="continuar",(r:any)=>r.value.items[0].defect.rollback.targetRevision="f".repeat(40),(r:any)=>r.value.items[0].defect.forecast.changedLines=390,(r:any)=>r.value.items[0].status="fail",(r:any)=>r.value.items[0].id="falso",(r:any)=>r.value.items[0].defect.reproduction.issueUrl+="0",(r:any)=>r.value.items[0].defect.reproduction.observation.assertionFingerprint="falso",(r:any)=>r.value.items[0].defect.reproduction.observation.failingCaseIds=["negative control"]];
+ for(const mutate of mutations){const raw=structuredClone(original);mutate(raw);
+ raw.mac=createHmac("sha256",key).update("asen.evidence.v2\0").update(JSON.stringify(raw.value)).digest("hex");
+ await writeFile(path,JSON.stringify(raw));
+ await assert.rejects(()=>loadEvidence(path,v.candidate,key));}
+ const legacy=structuredClone(original);
+ legacy.value.version=1;
+ legacy.mac=createHmac("sha256",key).update(JSON.stringify(legacy.value)).digest("hex");
+ await writeFile(path,JSON.stringify(legacy));
+ await assert.rejects(()=>loadEvidence(path,v.candidate,key),/semantics|legacy/);
 });
