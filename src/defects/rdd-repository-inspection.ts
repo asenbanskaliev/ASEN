@@ -11,7 +11,9 @@ export interface RddRepositoryInspectionPort{read(binding:RepositoryOperationBin
 export interface RddRepositoryInspectionClaim{readonly binding:RepositoryOperationBinding;readonly request:RddRepositoryInspectionRequest;}
 
 interface ClaimState{readonly binding:RepositoryOperationBinding;readonly request:RddRepositoryInspectionRequest;readonly policy:RddPolicyV1;}
+export interface RddRepositoryInspectionFacts{readonly repositoryUrl:string;readonly issueUrl:string;readonly mainCommitIdentity:string;}
 const claims=new WeakMap<object,ClaimState>(),consumed=new WeakSet<object>();
+const issuedSnapshots=new WeakMap<object,RddRepositoryInspectionFacts>(),claimedSnapshots=new WeakSet<object>();
 const inputKeys=["binding","repositoryUrl","branch","observedMainCommitIdentity","expectedMainCommitIdentity","issueUrl","policyLocator"] as const;
 const snapshotKeys=["repositoryUrl","branch","observedMainCommitIdentity","issueUrl","issueNumber","issueState","issueLabels","policyLocator","policyBytes","policyContentIdentity","pullRequestAudit"] as const;
 const auditKeys=["complete","truncated","saturated","totalCount","rows"] as const;
@@ -63,5 +65,10 @@ export function prepareRddRepositoryInspection(input:RddRepositoryInspectionInpu
  Object.assign(state,{binding:readBinding,policy:source.policy,request:Object.freeze({repositoryUrl,branch:"main",observedMainCommitIdentity:observed,expectedMainCommitIdentity:expected,issueUrl:issueSource,policyLocator:RDD_POLICY_LOCATOR,expectedPolicyContentIdentity:source.contentIdentity})});if(item.repositoryUrl!==repositoryUrl||item.branch!=="main"||item.policyLocator!==RDD_POLICY_LOCATOR||observed!==expected)throw new Error("inspection claim main, policy, repository, or identity is invalid");canonical(issueSource,state,"issue",issueNumber);const claim=Object.freeze({binding:readBinding,request:state.request});claims.set(claim,state);return claim;
 }
 export async function executeRddRepositoryInspection(claim:RddRepositoryInspectionClaim,authority:RepositoryOperationAuthority,expectedBinding:RepositoryOperationBinding,port:RddRepositoryInspectionPort):Promise<RddRepositoryInspectionSnapshot>{
- const state=typeof claim==="object"&&claim!==null?claims.get(claim):undefined;if(!state)throw new Error("Inspection requires a genuine opaque claim");if(consumed.has(claim))throw new Error("Inspection claim already consumed");consumed.add(claim);const expected=binding(expectedBinding);if(!sameBinding(state.binding,expected))throw new Error("Inspection authority binding mismatch");const reader=exactPort(port),raw=await executeAuthorizedRead(authority,expected,current=>reader.read(current,state.request));return exactSnapshot(raw,state);
+ const state=typeof claim==="object"&&claim!==null?claims.get(claim):undefined;if(!state)throw new Error("Inspection requires a genuine opaque claim");if(consumed.has(claim))throw new Error("Inspection claim already consumed");consumed.add(claim);const expected=binding(expectedBinding);if(!sameBinding(state.binding,expected))throw new Error("Inspection authority binding mismatch");const reader=exactPort(port),raw=await executeAuthorizedRead(authority,expected,current=>reader.read(current,state.request)),snapshot=exactSnapshot(raw,state);issuedSnapshots.set(snapshot,Object.freeze({repositoryUrl:snapshot.repositoryUrl,issueUrl:snapshot.issueUrl,mainCommitIdentity:snapshot.observedMainCommitIdentity}));return snapshot;
+}
+/** One-use internal provenance handoff for the bounded D2 reproduction consumer. */
+export function claimRddRepositoryInspectionSnapshot(value:unknown):RddRepositoryInspectionFacts{
+ if(typeof value!=="object"||value===null||!issuedSnapshots.has(value))throw new Error("Reproduction requires a genuine issued inspection snapshot");
+ if(claimedSnapshots.has(value))throw new Error("Inspection snapshot already consumed");claimedSnapshots.add(value);return issuedSnapshots.get(value)!;
 }
