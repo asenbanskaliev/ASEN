@@ -22,7 +22,7 @@ jobs:
       - name: Execute synthetic memory restart and model recall
         env:
           LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
-          ASEN_EXPECTED_SHA: ${{ github.sha }}
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           ASEN_PI_PROVIDER: llm7
           ASEN_PI_MODEL: default
         run: |
