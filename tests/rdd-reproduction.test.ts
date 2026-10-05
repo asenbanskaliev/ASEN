@@ -8,6 +8,7 @@ import test,{type TestContext} from "node:test";
 import type {Candidate} from "../src/core/types.js";
 import {executeRddRepositoryInspection,prepareRddRepositoryInspection,type RddRepositoryInspectionSnapshot} from "../src/defects/rdd-repository-inspection.js";
 import {recordRddReproduction,type RddReproductionInput} from "../src/defects/rdd-reproduction.js";
+import {bindRddDefectEvidence,type RddDefectBindingInput} from "../src/defects/rdd-defect-binding.js";
 import {parseRddPolicyBytes} from "../src/defects/rdd-policy-source.js";
 import {authorizeRepositoryOperation,type RepositoryOperationBinding} from "../src/repository/operation-policy.js";
 import {executeNodePassingObservation,executeNodeTestObservation,type TestObservation} from "../src/test/tdd-observation.js";
@@ -86,3 +87,19 @@ test("correction RED: rejects caller proxies without invoking traps",async (t:Te
 });
 
 test("correction RED: sanitizes candidate inspection failures",async (t:TestContext)=>{const value=await fixture(t),secret="private-filename.js";await writeFile(join(value.repository,secret),"secret\n");assert.throws(()=>recordRddReproduction(value.snapshot,value.input,value.first,value.second),(error:unknown)=>error instanceof Error&&error.message==="Reproduction candidate inspection failed"&&!error.message.includes(secret));});
+
+
+function d3Input(value:Awaited<ReturnType<typeof fixture>>):RddDefectBindingInput{
+ return {invariantIds:["approved-issue","current-main","deterministic-reproduction"],operatorFlows:[{id:"inspect-reproduce",from:"approved issue",to:"reproduced defect",failureTo:"blocked"}],runtimeJourney:{commandFingerprint:value.first.commandFingerprint,result:"reproduced",candidateRevision:value.candidate.revision,limitations:["review and delivery remain outside D3"]},rollback:{boundary:"candidate",procedure:["discard the direct-child reproduction candidate"]},forecast:{changedLines:240,verificationEffort:"focused deterministic verification",remainingUncertainty:["independent HIGH verification pending"]}};
+}
+test("D3 binds genuine D2 evidence once and preserves descriptive-only authority",async(t:TestContext)=>{
+ const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),bound=bindRddDefectEvidence(evidence,d3Input(value));
+ assert.equal(bound.reproduction,evidence);assert.equal(bound.runtimeJourney.commandFingerprint,value.first.commandFingerprint);assert.equal(bound.runtimeJourney.candidateRevision,value.candidate.revision);assert.equal(bound.rollback.boundary,"candidate");assert.ok(bound.forecast.changedLines<390);
+ for(const forbidden of ["authority","review","mutation","delivery","merge","readiness","persistence"])assert.equal(forbidden in bound,false);
+ assert.throws(()=>bindRddDefectEvidence(evidence,d3Input(value)),/consumed/i);
+});
+test("D3 rejects journey drift, unsafe rollback, and over-budget plans after consuming genuine evidence",async(t:TestContext)=>{
+ for(const mutate of [(v:RddDefectBindingInput)=>{(v.runtimeJourney as {candidateRevision:string}).candidateRevision="f".repeat(40);},(v:RddDefectBindingInput)=>{(v.runtimeJourney as {commandFingerprint:string}).commandFingerprint="other";},(v:RddDefectBindingInput)=>{(v.rollback as {boundary:string}).boundary="workspace";},(v:RddDefectBindingInput)=>{(v.forecast as {changedLines:number}).changedLines=390;}]){
+  const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);mutate(input);assert.throws(()=>bindRddDefectEvidence(evidence,input),/journey|rollback|390|forecast/i);assert.throws(()=>bindRddDefectEvidence(evidence,d3Input(value)),/consumed/i);
+ }
+});
