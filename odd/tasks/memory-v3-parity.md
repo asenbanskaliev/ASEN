@@ -102,12 +102,12 @@ Record whether proof is source inspection, a deterministic synthetic-store test,
 ### E3 implementation status — candidate evidence
 
 - R04: bounded project resolution/search/context implemented; last verified cross-platform CI at `8514bfba3288bb1f76c6fae892253e4b73fd1e13`.
-- R05: typed project-scoped relations plus guarded, idempotent review state implemented with synthetic runtime tests. Candidate only until final verification.
-- R06/R07: curated learning extraction, ended-session single-summary persistence, unknown-write readback reconciliation, and final-response preservation are implemented with synthetic tests. Candidate only; live Pi/model compaction remains below FULL until runtime evidence exists.
-- R08: exportación de proyecto con round-trip de borrado suave/duro, vista previa/rechazo de conflictos sin mutación, diagnóstico SQLite y recuperación de sincronización local están implementados. La reparación automática de almacenes reales, publicación en red y Git push permanecen intencionadamente fuera de alcance.
-- R09: thin project-scoped local library surface added. Cross-platform/final parity remains open until the final verification matrix is executed; the historical broad-suite timeout must still be reported if unresolved.
+- R05: CERRADO para el alcance local admitido; relaciones tipadas y revisión idempotente verificadas.
+- R06/R07: CERRADOS para el núcleo local; extracción curada, resumen único al cierre, reconciliación de escrituras y preservación de respuesta verificadas.
+- R08: CERRADO para el núcleo local; export/import conserva borrados suaves/duros, rechaza conflictos antes de aplicar, diagnostica/copia y recupera sync local. Cloud y publicación en red no aplican al cierre.
+- R09: CERRADO para núcleo local y plataformas configuradas en `bbd5ad32156076a28bac266c9bbbd1081a19fefb`: Phase 0 `37270621122`, CI `37270621121` y Release Gate `37270621059` PASS en Ubuntu, macOS y Windows. Pi Free específico permanece como evidencia externa no observable; no se afirma FULL de host/modelo.
 
-**Siguiente unidad de trabajo:** E3-R09 — verificación final 4R, ejecución Pi Free cuando esté disponible y revalidación multiplataforma del candidato final.
+**Siguiente unidad de trabajo:** ninguna para el núcleo local R01–R09. Solo queda evidencia externa Pi Free si se desea elevar la afirmación a integración host/modelo.
 
 ## Cross-platform CI repair — candidate verification
 
