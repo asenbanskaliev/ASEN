@@ -94,7 +94,7 @@ GSP-05D3 is closed only when all of the following are true:
 Use this protocol for D3 and then repeat it for each later unit only after its predecessor closes.
 
 1. **Synchronize and inspect:** check out the remote canonical branch, record authoritative HEAD and clean/dirty status, then read the owning tracker and relevant current implementation. Preserve unrelated tracked and untracked files.
-2. **Derive scope:** identify the smallest exact source/test surfaces and acceptance boundaries from repository evidence. Do not reuse a stale local worktree, cache, Engram memory, temporary directory, or undocumented path list.
+2. **Derive scope:** identify the smallest exact source/test surfaces and acceptance boundaries from repository evidence. Do not reuse a stale local worktree, cache, external memory, temporary directory, or undocumented path list.
 3. **Budget:** forecast all candidate additions and deletions. Stop and split before writes if the whole candidate could reach 390 changed lines.
 4. **RED:** for behavior changes, add the smallest semantic test and observe the intended behavior failure. Do not relabel resolution, fixture, prose, or harness failures as RED.
 5. **GREEN and triangulate:** implement the minimum behavior, pass the focused test, then exercise material negative, alternate, failure, recovery, and provenance cases.
@@ -116,7 +116,7 @@ Use this protocol for D3 and then repeat it for each later unit only after its p
 
 ## Portable Codex bootstrap
 
-Run from a normal repository clone. These commands use the remote canonical branch and make no assumption about a local worktree, cache, Engram state, or temporary path.
+Run from a normal repository clone. These commands use the remote canonical branch and make no assumption about a local worktree, cache, external memory state, or temporary path.
 
 ```bash
 git fetch --no-tags origin refs/heads/feat/strict-parity-prerequisites:refs/remotes/origin/feat/strict-parity-prerequisites
