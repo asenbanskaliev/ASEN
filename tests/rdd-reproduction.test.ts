@@ -119,3 +119,13 @@ test("D3 requires a distinct fail-closed operator destination",async(t:TestConte
 test("D3 budget must state deferred verification explicitly",async(t:TestContext)=>{
  const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input.forecast as {deferredVerification:string[]}).deferredVerification=[];assert.throws(()=>bindRddDefectEvidence(evidence,input),/deferred verification|bounded exact array/i);
 });
+
+test("D3 rejects decorated caller containers without invoking proxy traps",async(t:TestContext)=>{
+ const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value),counter={value:0};
+ const proxy=new Proxy(input,{getPrototypeOf(){counter.value++;return Object.prototype;},ownKeys(){counter.value++;return [];},get(){counter.value++;return undefined;}});
+ assert.throws(()=>bindRddDefectEvidence(evidence,proxy),/proxy|plain/i);assert.equal(counter.value,0);
+});
+test("D3 output is deeply immutable descriptive evidence",async(t:TestContext)=>{
+ const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),bound=bindRddDefectEvidence(evidence,d3Input(value));
+ const visit=(item:unknown):void=>{if(typeof item!=="object"||item===null)return;assert.equal(Object.isFrozen(item),true);for(const child of Object.values(item))visit(child);};visit(bound);
+});
