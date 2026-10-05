@@ -56,3 +56,10 @@ test("importación rechaza marcador suave manipulado sin efectos",()=>{
  const invalid={version:1 as const,projectId:"p",sessions:[{projectId:"p",sessionId:"s",rootSessionId:"s",status:"live" as const}],observations:[],relations:[],summaries:[],deletions:[{id:"x",projectId:"p",deletedAt:"1",mode:"soft" as const,item:{id:"x",projectId:"otro",sessionId:"s",kind:"decision" as const,content:"no",createdAt:"1"}}]};
  assert.throws(()=>target.importProject(invalid),/Invalid memory import deletion/);assert.deepEqual(target.exportProject("p"),before);target.close();
 });
+
+test("exportación queda aislada por proyecto también para borrados",()=>{
+ const s=new SqliteMemoryStore(":memory:");s.registerSession("p","sp");s.registerSession("q","sq");
+ s.save({id:"p-soft",projectId:"p",sessionId:"sp",kind:"decision",content:"p",createdAt:"1"});s.save({id:"q-hard",projectId:"q",sessionId:"sq",kind:"decision",content:"q",createdAt:"2"});
+ s.deleteObservation("p-soft","p");s.deleteObservation("q-hard","q",true);
+ assert.deepEqual(s.exportProject("p").deletions?.map(x=>x.id),["p-soft"]);assert.deepEqual(s.exportProject("q").deletions?.map(x=>x.id),["q-hard"]);s.close();
+});
