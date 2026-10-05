@@ -49,7 +49,7 @@ Do not equate basic SQLite persistence, installing an upstream plugin, a tool-na
 - Keep one source writer at a time, exact allowed edit surfaces, applicable observed test-first behavior, and readable work units under 400 changed lines. Split rather than compress logic, documentation or tests.
 - Preserve unfinished ODD work and its legacy-inspection-only decision. Neither a stored memory nor an authenticated old snapshot grants current file-write, review, delivery or publication permission.
 - User-selected Pi Free remains the model-backed verification provider. Deterministic tests, public-source hashing and runtime model journeys are different evidence classes.
-- Local storage remains usable without optional Cloud or synchronization. Optional surfaces still need their own proof before full-system parity; unavailable external accounts/platforms remain pending.
+- El almacenamiento local debe seguir funcionando sin servicios remotos. Cloud queda fuera de ASEN por decisión explícita de arquitectura y no bloquea R09. Las demás superficies opcionales aplicables necesitan evidencia propia antes de cualquier afirmación amplia.
 - `expected_project` in v3 is an ownership assertion, not authentication or tenant isolation. Keep hook limitations, ID-based reads, and accepted upstream limitations explicit rather than inventing stronger guarantees.
 - Distinguish model guidance from code-enforced automation. A protocol instructing the model to save after a fix does not prove the integration automatically observed or saved that fix.
 - Memory write outcomes are confirmed, rejected, unknown or unavailable. Unknown outcomes are read back/reconciled, never blindly repeated. Memory failure must not suppress the user's final response.
@@ -104,7 +104,7 @@ Record whether proof is source inspection, a deterministic synthetic-store test,
 - R04: bounded project resolution/search/context implemented; last verified cross-platform CI at `8514bfba3288bb1f76c6fae892253e4b73fd1e13`.
 - R05: typed project-scoped relations plus guarded, idempotent review state implemented with synthetic runtime tests. Candidate only until final verification.
 - R06/R07: curated learning extraction, ended-session single-summary persistence, unknown-write readback reconciliation, and final-response preservation are implemented with synthetic tests. Candidate only; live Pi/model compaction remains below FULL until runtime evidence exists.
-- R08: project export, non-mutating import preview/refusal, and read-only SQLite integrity diagnosis are implemented. Automatic repair, real-store import, network publication and Git push remain intentionally unavailable.
+- R08: exportación de proyecto, marcadores de borrado, vista previa/rechazo de importación sin mutación, diagnóstico SQLite y recuperación de sincronización local están implementados. La reparación automática de almacenes reales, publicación en red y Git push permanecen intencionadamente fuera de alcance.
 - R09: thin project-scoped local library surface added. Cross-platform/final parity remains open until the final verification matrix is executed; the historical broad-suite timeout must still be reported if unresolved.
 
 **Siguiente unidad de trabajo:** E3-R09 — verificación final 4R, ejecución Pi Free cuando esté disponible y revalidación multiplataforma del candidato final.
