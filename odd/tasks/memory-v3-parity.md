@@ -104,7 +104,7 @@ Record whether proof is source inspection, a deterministic synthetic-store test,
 - R04: bounded project resolution/search/context implemented; last verified cross-platform CI at `8514bfba3288bb1f76c6fae892253e4b73fd1e13`.
 - R05: typed project-scoped relations plus guarded, idempotent review state implemented with synthetic runtime tests. Candidate only until final verification.
 - R06/R07: curated learning extraction, ended-session single-summary persistence, unknown-write readback reconciliation, and final-response preservation are implemented with synthetic tests. Candidate only; live Pi/model compaction remains below FULL until runtime evidence exists.
-- R08: exportación de proyecto, marcadores de borrado, vista previa/rechazo de importación sin mutación, diagnóstico SQLite y recuperación de sincronización local están implementados. La reparación automática de almacenes reales, publicación en red y Git push permanecen intencionadamente fuera de alcance.
+- R08: exportación de proyecto con round-trip de borrado suave/duro, vista previa/rechazo de conflictos sin mutación, diagnóstico SQLite y recuperación de sincronización local están implementados. La reparación automática de almacenes reales, publicación en red y Git push permanecen intencionadamente fuera de alcance.
 - R09: thin project-scoped local library surface added. Cross-platform/final parity remains open until the final verification matrix is executed; the historical broad-suite timeout must still be reported if unresolved.
 
 **Siguiente unidad de trabajo:** E3-R09 — verificación final 4R, ejecución Pi Free cuando esté disponible y revalidación multiplataforma del candidato final.
