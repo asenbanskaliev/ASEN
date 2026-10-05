@@ -466,7 +466,7 @@ function validateMemoryImport(data:MemoryExport,sessions:MemorySessionState[]):v
  for(const item of data.observations){if(item.projectId!==data.projectId||!sessionIds.has(item.sessionId)||observationIds.has(item.id))throw new Error("Invalid memory import observation");observationIds.add(item.id);}
  for(const relation of data.relations)if(relation.projectId!==data.projectId||!observationIds.has(relation.sourceId)||!observationIds.has(relation.targetId))throw new Error("Invalid memory import relation");
  for(const summary of data.summaries)if(summary.projectId!==data.projectId||!sessionIds.has(summary.sessionId))throw new Error("Invalid memory import summary");
- for(const deletion of data.deletions??[])if(deletion.projectId!==data.projectId||!deletion.id.trim()||!deletion.deletedAt.trim()||observationIds.has(deletion.id))throw new Error("Invalid memory import deletion");
+ for(const deletion of data.deletions??[]){if(deletion.projectId!==data.projectId||!deletion.id.trim()||!deletion.deletedAt.trim()||observationIds.has(deletion.id))throw new Error("Invalid memory import deletion");if(deletion.mode==="soft"&&(!deletion.item||deletion.item.id!==deletion.id||deletion.item.projectId!==data.projectId||!sessionIds.has(deletion.item.sessionId)))throw new Error("Invalid memory import deletion");if(deletion.mode==="hard"&&deletion.item)throw new Error("Invalid memory import deletion");}
 }
 
 function orderImportSessions(sessions:MemorySessionState[]):MemorySessionState[]{
