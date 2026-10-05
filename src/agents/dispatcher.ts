@@ -18,7 +18,7 @@ export class Dispatcher {
  async #acquire():Promise<void>{if(this.#running<this.maxConcurrency){this.#running++;return;}await new Promise<void>(resolve=>this.#waiters.push(resolve));this.#running++;}
  #release():void{this.#running--;this.#waiters.shift()?.();}
  async dispatch(request:AgentRequest):Promise<AgentResult>{
-  await this.#acquire();let grant:WriteGrant|undefined;
+  await this.#acquire();let grant:WriteGrant|undefined,runnerRequest=request;
   try{
    if(request.writeSurfaces&&request.role!=="worker") throw new Error("Only worker agents may receive write authority");
    if(request.skillContext||request.skillPaths){
@@ -32,7 +32,7 @@ export class Dispatcher {
     if(!request.skillPaths||request.skillPaths.length!==expectedPaths.length||request.skillPaths.some((path,index)=>path!==expectedPaths[index])) throw new Error("Delegated skill paths do not match issued context");
    }
    if(request.writeSurfaces){
-    const receiver=consumeWriterAdmission(request.writerAdmission,request);if(!receiver)throw new Error("Write authority requires unused exact writer admission");request.runnerWriteReceiver=receiver;
+    const receiver=consumeWriterAdmission(request.writerAdmission,request);if(!receiver)throw new Error("Write authority requires unused exact writer admission");const {writerAdmission:_writerAdmission,...forwarded}=request;runnerRequest={...forwarded,runnerWriteReceiver:receiver};
     if(!request.candidate) throw new Error("Write authority requires an exact candidate");
     if(request.candidate.repository!==request.repository) throw new Error("Write candidate repository mismatch");
     if(!request.skillContext) throw new Error("Write authority requires skill selection context");
@@ -51,7 +51,7 @@ export class Dispatcher {
    if(request.candidate&&(!request.skillContext||!request.skillPaths))throw new Error("Candidate-bound delegation requires issued skill context and exact paths");
    if(request.role==="worker"&&request.expectedPhase&&!consumePhaseGrant(request))throw new Error("Worker phase requires unused ASEN lifecycle grant");
    if(request.role==="worker"&&request.candidate&&!consumeIssuedWorkerContext(request.skillContext!))throw new Error("Candidate-bound worker requires unused worker context");
-   return await this.runner.run(request);
+   return await this.runner.run(runnerRequest);
   } finally {retirePhaseGrant(request);if(grant){const i=this.#active.indexOf(grant);if(i>=0)this.#active.splice(i,1);}this.#release();}
  }
 }

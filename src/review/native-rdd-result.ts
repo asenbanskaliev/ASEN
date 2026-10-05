@@ -9,7 +9,7 @@ function exact(value:unknown):NativeRddResult{
  if(typeof value!=="object"||value===null||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)throw new Error("RDD result must be exact plain data");
  const keys=["schemaVersion","requestId","sessionId","revision","treeIdentity","parentIdentity","reviewerId","verdict","summary"] as const,own=Reflect.ownKeys(value);
  if(own.length!==keys.length||own.some(k=>typeof k!=="string"||!keys.includes(k as typeof keys[number]))||keys.some(k=>!Object.hasOwn(value,k)))throw new Error("RDD result shape is invalid");
- const r=value as Record<string,unknown>;if(r.schemaVersion!==1||(r.verdict!=="pass"&&r.verdict!=="fail"))throw new Error("RDD result value is invalid");
+ const r=Object.fromEntries(keys.map(k=>{const d=Object.getOwnPropertyDescriptor(value,k);if(!d?.enumerable||!("value" in d))throw new Error("RDD result shape is invalid");return [k,d.value];}));if(r.schemaVersion!==1||(r.verdict!=="pass"&&r.verdict!=="fail"))throw new Error("RDD result value is invalid");
  return {schemaVersion:1,requestId:text(r.requestId,"request"),sessionId:text(r.sessionId,"session"),revision:text(r.revision,"revision"),treeIdentity:text(r.treeIdentity,"tree"),parentIdentity:text(r.parentIdentity,"parent"),reviewerId:text(r.reviewerId,"reviewer"),verdict:r.verdict,summary:text(r.summary,"summary")};
 }
 /** Creates a one-use receiver from genuine checkout provenance; it creates no RDD authority. */
