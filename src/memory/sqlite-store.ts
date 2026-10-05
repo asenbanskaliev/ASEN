@@ -455,7 +455,7 @@ function row(r:Record<string,unknown>):MemoryItem{
 function relationRow(r:Record<string,unknown>):MemoryRelation{return {id:String(r.id),sourceId:String(r.source_id),targetId:String(r.target_id),relation:String(r.relation) as MemoryRelation["relation"],projectId:String(r.project_id),createdAt:String(r.created_at),...(r.reviewed_at==null?{}:{reviewedAt:String(r.reviewed_at)})};}
 
 function inferExportSessions(data:MemoryExport):MemorySessionState[]{
- const ids=new Set<string>();for(const item of data.observations)ids.add(item.sessionId);for(const summary of data.summaries)ids.add(summary.sessionId);
+ const ids=new Set<string>();for(const item of data.observations)ids.add(item.sessionId);for(const summary of data.summaries)ids.add(summary.sessionId);for(const deletion of data.deletions??[])if(deletion.mode==="soft"&&deletion.item)ids.add(deletion.item.sessionId);
  return [...ids].sort().map(sessionId=>({projectId:data.projectId,sessionId,rootSessionId:sessionId,status:data.summaries.some(s=>s.sessionId===sessionId)?"ended":"live"}));
 }
 function validateMemoryImport(data:MemoryExport,sessions:MemorySessionState[]):void{
