@@ -107,7 +107,7 @@ Record whether proof is source inspection, a deterministic synthetic-store test,
 - R08: project export, non-mutating import preview/refusal, and read-only SQLite integrity diagnosis are implemented. Automatic repair, real-store import, network publication and Git push remain intentionally unavailable.
 - R09: thin project-scoped local library surface added. Cross-platform/final parity remains open until the final verification matrix is executed; the historical broad-suite timeout must still be reported if unresolved.
 
-**Next work unit:** E3-R04 — project resolution, isolation, search and context.
+**Siguiente unidad de trabajo:** E3-R09 — verificación final 4R, ejecución Pi Free cuando esté disponible y revalidación multiplataforma del candidato final.
 
 ## Cross-platform CI repair — candidate verification
 
