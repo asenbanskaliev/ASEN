@@ -16,7 +16,9 @@ export function runDoctor(deps: DoctorDeps): DoctorCheck[] {
 export interface MemoryImportPreview {projectId:string;observations:number;relations:number;summaries:number;deletions:number;conflicts:string[];}
 export function previewMemoryImport(store:MemoryStore,data:MemoryExport):MemoryImportPreview{
  if(data.version!==1||!data.projectId.trim())throw new Error("Unsupported memory export");
- const conflicts=data.observations.filter(item=>{const current=store.get(item.id);return Boolean(current&&current.projectId!==data.projectId);}).map(item=>item.id);
- return {projectId:data.projectId,observations:data.observations.length,relations:data.relations.length,summaries:data.summaries.length,conflicts};
+ const observationConflicts=data.observations.filter(item=>{const current=store.get(item.id);return Boolean(current&&current.projectId!==data.projectId);}).map(item=>item.id);
+ const deletionConflicts=(data.deletions??[]).filter(item=>Boolean(store.get(item.id))).map(item=>item.id);
+ const conflicts=[...new Set([...observationConflicts,...deletionConflicts])].sort();
+ return {projectId:data.projectId,observations:data.observations.length,relations:data.relations.length,summaries:data.summaries.length,deletions:data.deletions?.length??0,conflicts};
 }
 export function assertMemoryImportSafe(preview:MemoryImportPreview):void{if(preview.conflicts.length)throw new Error("Memory import refused: identity conflicts");}
