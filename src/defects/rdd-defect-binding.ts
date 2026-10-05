@@ -5,7 +5,7 @@ import {claimRddReproductionEvidence} from "./rdd-reproduction.js";
 export interface RddDefectBindingInput {
  readonly invariantIds:readonly string[];
  readonly operatorFlows:readonly {readonly id:string;readonly from:string;readonly to:string;readonly failureTo:string}[];
- readonly runtimeJourney:Readonly<{commandFingerprint:string;result:"reproduced";candidateRevision:string;limitations:readonly string[]}>;
+ readonly runtimeJourney:Readonly<{command:readonly string[];commandFingerprint:string;result:"reproduced";candidateId:string;candidateRevision:string;limitations:readonly string[]}>;
  readonly rollback:Readonly<{boundary:"candidate";procedure:readonly string[]}>;
  readonly forecast:Readonly<{changedLines:number;verificationEffort:string;remainingUncertainty:readonly string[]}>;
 }
@@ -14,7 +14,7 @@ export interface RddDefectBinding {
  readonly reproduction:RddReproductionEvidence;
  readonly invariantIds:readonly string[];
  readonly operatorFlows:readonly Readonly<{id:string;from:string;to:string;failureTo:string}>[];
- readonly runtimeJourney:Readonly<{commandFingerprint:string;result:"reproduced";candidateRevision:string;limitations:readonly string[]}>;
+ readonly runtimeJourney:Readonly<{command:readonly string[];commandFingerprint:string;result:"reproduced";candidateId:string;candidateRevision:string;limitations:readonly string[]}>;
  readonly rollback:Readonly<{boundary:"candidate";procedure:readonly string[]}>;
  readonly forecast:Readonly<{changedLines:number;verificationEffort:string;remainingUncertainty:readonly string[]}>;
 }
@@ -39,11 +39,11 @@ export function bindRddDefectEvidence(reproduction:RddReproductionEvidence,input
  const rawFlows=data.operatorFlows;if(isProxy(rawFlows)||!Array.isArray(rawFlows)||Object.getPrototypeOf(rawFlows)!==Array.prototype||rawFlows.length<1||rawFlows.length>16)throw new Error("operator flows must be a bounded exact array");
  const flows=rawFlows.map(raw=>{const f=plain(raw,["id","from","to","failureTo"],"operator flow");return Object.freeze({id:text(f.id,"flow id"),from:text(f.from,"flow source"),to:text(f.to,"flow target"),failureTo:text(f.failureTo,"flow failure")});});
  if(new Set(flows.map(f=>f.id)).size!==flows.length)throw new Error("operator flow ids contain duplicates");if(!flows.some(f=>f.failureTo==="blocked"))throw new Error("operator flows require an explicit blocked failure destination");if(flows.some(f=>f.to===f.failureTo))throw new Error("operator flow success and failure destinations must differ");
- const journey=plain(data.runtimeJourney,["commandFingerprint","result","candidateRevision","limitations"],"runtime journey");
- if(journey.result!=="reproduced"||journey.commandFingerprint!==evidence.observation.commandFingerprint||journey.candidateRevision!==evidence.candidate.revision)throw new Error("runtime journey is not bound to the reproduction");
+ const journey=plain(data.runtimeJourney,["command","commandFingerprint","result","candidateId","candidateRevision","limitations"],"runtime journey");
+ if(journey.result!=="reproduced"||journey.commandFingerprint!==evidence.observation.commandFingerprint||journey.candidateId!==evidence.candidate.id||journey.candidateRevision!==evidence.candidate.revision)throw new Error("runtime journey is not bound to the reproduction");
  const rollback=plain(data.rollback,["boundary","procedure"],"rollback");if(rollback.boundary!=="candidate")throw new Error("rollback must stay at the candidate boundary");
  const forecast=plain(data.forecast,["changedLines","verificationEffort","remainingUncertainty"],"forecast");
  if(typeof forecast.changedLines!=="number"||!Number.isSafeInteger(forecast.changedLines)||forecast.changedLines<1||forecast.changedLines>=390)throw new Error("forecast changed lines must stay below 390");
- const result:RddDefectBinding={schemaVersion:1,reproduction:evidence,invariantIds:freezeStrings(invariantIds),operatorFlows:Object.freeze(flows),runtimeJourney:Object.freeze({commandFingerprint:text(journey.commandFingerprint,"journey fingerprint"),result:"reproduced",candidateRevision:text(journey.candidateRevision,"journey revision"),limitations:freezeStrings(list(journey.limitations,"journey limitations",1,16))}),rollback:Object.freeze({boundary:"candidate",procedure:freezeStrings(list(rollback.procedure,"rollback procedure",1,16))}),forecast:Object.freeze({changedLines:forecast.changedLines,verificationEffort:text(forecast.verificationEffort,"verification effort"),remainingUncertainty:freezeStrings(list(forecast.remainingUncertainty,"remaining uncertainty",1,16))})};
+ const result:RddDefectBinding={schemaVersion:1,reproduction:evidence,invariantIds:freezeStrings(invariantIds),operatorFlows:Object.freeze(flows),runtimeJourney:Object.freeze({command:freezeStrings(list(journey.command,"journey command",1,32)),commandFingerprint:text(journey.commandFingerprint,"journey fingerprint"),result:"reproduced",candidateId:text(journey.candidateId,"journey candidate id"),candidateRevision:text(journey.candidateRevision,"journey revision"),limitations:freezeStrings(list(journey.limitations,"journey limitations",1,16))}),rollback:Object.freeze({boundary:"candidate",procedure:freezeStrings(list(rollback.procedure,"rollback procedure",1,16))}),forecast:Object.freeze({changedLines:forecast.changedLines,verificationEffort:text(forecast.verificationEffort,"verification effort"),remainingUncertainty:freezeStrings(list(forecast.remainingUncertainty,"remaining uncertainty",1,16))})};
  return Object.freeze(result);
 }
