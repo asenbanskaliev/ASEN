@@ -23,3 +23,14 @@ test("import restores continuation ancestry even when child sorts before parent"
  const source=new SqliteMemoryStore(":memory:");source.registerSession("p","z-parent");source.endSession("p","z-parent","parent summary");assert.equal(source.continueSession("p","z-parent","a-child"),"a-child");source.save({id:"child-item",projectId:"p",sessionId:"a-child",kind:"decision",content:"continued",createdAt:"2026-01-01T00:00:00Z"});const exported=source.exportProject("p");
  const target=new SqliteMemoryStore(":memory:");target.importProject(exported);assert.deepEqual(target.exportProject("p"),exported);source.close();target.close();
 });
+
+test("exportación e importación conservan borrados sin reactivar memoria",()=>{
+ const source=new SqliteMemoryStore(":memory:");source.registerSession("p","s");
+ source.save({id:"soft",projectId:"p",sessionId:"s",kind:"decision",content:"borrado suave",createdAt:"2026-01-01T00:00:00Z"});
+ source.save({id:"hard",projectId:"p",sessionId:"s",kind:"decision",content:"borrado duro",createdAt:"2026-01-01T00:00:01Z"});
+ source.deleteObservation("soft","p");source.deleteObservation("hard","p",true);
+ const exported=source.exportProject("p");assert.deepEqual(exported.deletions?.map(x=>x.id),["hard","soft"]);assert.equal(exported.observations.length,0);
+ const target=new SqliteMemoryStore(":memory:");target.importProject(exported);
+ assert.equal(target.get("soft"),undefined);assert.equal(target.get("hard"),undefined);assert.deepEqual(target.exportProject("p"),exported);
+ source.close();target.close();
+});
