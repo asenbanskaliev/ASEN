@@ -1,7 +1,6 @@
 # Cierre de memoria v3 — auditoría 4R de R09
 
 Fecha: 2026-10-05
-Rama: `feat/engram-v3-memory-parity`
 PR de verificación: #31
 Base de referencia: contratos de memoria v3 fijados en `registry/parity/` y versión de Pi fijada por el proyecto.
 
