@@ -315,7 +315,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Implementación preparada, todavía NO cerrada: D2 entrega procedencia genuina de un solo uso; D3 exige invariantes aprobados/base actual/reproducción determinista, flujo con destino de fallo `blocked`, viaje ligado a fingerprint/candidate id/revision, rollback al commit base y presupuesto menor de 390.
       - Cobertura añadida: falsificación/clonado, reutilización, deriva de candidato/fingerprint, rollback fuera de límite, invariantes incompletos, flujo inseguro, presupuesto inválido, contenedores proxy e inmutabilidad profunda.
       - Validación diferida deliberadamente para ahorrar consumo: no se afirma PASS de CI, Pi Free, OpenRouter, typecheck ni verificación HIGH. D4 permanece bloqueado hasta cerrar esas evidencias.
-      - Pendiente antes del cierre: ligar además el comando textual del viaje a una ruta de test ejecutada; el intento de escritura fue rechazado por el control del conector y no se considera implementado.
+      - El comando textual del viaje queda ligado a una ruta de test realmente observada; existe negativa específica para un comando ajeno. Pendiente de cierre únicamente la revalidación ejecutada y la verificación independiente exigidas por el gate.
     - [ ] GSP-05D4: admit genuine candidate-bound defect-intake evidence with exact persistence semantics.
     - [ ] GSP-05D5: derive defect intent and enforce the mutation intake gate without changing the 27 static Skill IDs.
     - Delegated-direct route. D1 uses ordinary TypeScript test-first validation; no genuine required strict-TDD obligation has been issued for this implementation. Installed guide details are not promoted to frozen-source authority.
