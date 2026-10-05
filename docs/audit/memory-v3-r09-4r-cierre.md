@@ -40,19 +40,26 @@ Esta matriz no sustituye los contratos SOURCE_INSPECTED ni convierte pruebas sin
 
 ## Resultado 4R
 
-El núcleo local admitido R01–R08 dispone de evidencia sintética y remota. El PR #31, HEAD `54914a7f21eb62da3c0e75966b03ea8bb91b2b3f`, pasó CI, Phase 0 Architecture y Release Gate en las plataformas configuradas. La prueba `Memory Pi Free E2E` no se ejecutó en ese PR porque su workflow actual responde a `push` y `workflow_dispatch`, no a `pull_request`.
+El candidato final verificado es `bbd5ad32156076a28bac266c9bbbd1081a19fefb`.
 
-El histórico timeout de 180 segundos del `npm test` independiente **no se declara resuelto**. Que `npm run check` haya pasado en CI no borra esa evidencia histórica.
+Evidencia remota sobre ese mismo HEAD:
+
+- Phase 0 Architecture — PASS, run `37270621122`.
+- CI — PASS, run `37270621121`: architecture, Ubuntu 24.04, macOS y Windows en verde.
+- Release Gate — PASS, run `37270621059`: Ubuntu 24.04, macOS y Windows en verde.
+- Pi Free Smoke — `skipped`, run `37270621103`.
+
+El conector disponible para esta auditoría solo enumera ejecuciones asociadas a pull request. Por ello no se afirma ni se niega una ejecución separada del workflow de memoria disparado por `push`. La prueba Pi Free específica permanece sin evidencia observable desde esta auditoría.
+
+El histórico timeout de 180 segundos del `npm test` independiente **no se declara resuelto**. El CI final verde demuestra el candidato en los recorridos configurados, pero no borra esa evidencia histórica.
 
 ## Decisión de cierre
 
-- R01–R06: cierre del alcance admitido respaldado por las pruebas existentes.
-- R07: implementación local cerrada y cubierta para cierre, resumen, captura curada, reconciliación y preservación de respuesta; la prueba Pi/modelo pertenece a la validación E2E final.
-- R08: cierre del alcance local admitido, incluido round-trip exacto de borrados suaves/duros, vista previa de conflictos y sync reanudable; no incluye red/push. Cloud no aplica por decisión de arquitectura.
-- R09: **NO CERRADO todavía**. Para cerrarlo honestamente faltan:
-  1. ejecutar la prueba Pi Free de memoria sobre el candidato final, si el proveedor/secretos están disponibles;
-  2. revalidar el HEAD final después de esta evidencia con CI multiplataforma;
-  3. no convertir interfaces o vistas opcionales fuera del núcleo local en deuda de R09; si se incorporan en el futuro tendrán alcance y evidencia propios;
-  4. no declarar resuelto el timeout histórico sin una ejecución específica que lo pruebe.
+- R01–R06: CERRADOS para el alcance admitido.
+- R07: CERRADO para el núcleo local: cierre, resumen, captura curada, reconciliación y preservación de respuesta.
+- R08: CERRADO para el núcleo local: export/import con round-trip de borrados suaves/duros, vista previa de conflictos, diagnóstico/copia y sync reanudable. No incluye red/push. Cloud no aplica.
+- R09: CERRADO para el **núcleo local y multiplataforma configurado** sobre el HEAD anterior. E3-10/E3-18 conservan como evidencia externa pendiente la prueba Pi Free específica; esto impide afirmar equivalencia de host/modelo o FULL global, pero no reabre el núcleo local.
+- Interfaces/vistas opcionales y Cloud no son deuda de este cierre. Si se incorporan en el futuro necesitarán alcance y evidencia propios.
+- El timeout histórico queda registrado como limitación histórica, no como evidencia de fallo del candidato final verificado.
 
-No autoriza merge, release, publicación, reparación de datos reales ni operaciones de red.
+Este cierre no autoriza merge, release, publicación, reparación de datos reales ni operaciones de red.
