@@ -13,7 +13,7 @@ export function runDoctor(deps: DoctorDeps): DoctorCheck[] {
   ];
 }
 
-export interface MemoryImportPreview {projectId:string;observations:number;relations:number;summaries:number;conflicts:string[];}
+export interface MemoryImportPreview {projectId:string;observations:number;relations:number;summaries:number;deletions:number;conflicts:string[];}
 export function previewMemoryImport(store:MemoryStore,data:MemoryExport):MemoryImportPreview{
  if(data.version!==1||!data.projectId.trim())throw new Error("Unsupported memory export");
  const conflicts=data.observations.filter(item=>{const current=store.get(item.id);return Boolean(current&&current.projectId!==data.projectId);}).map(item=>item.id);
