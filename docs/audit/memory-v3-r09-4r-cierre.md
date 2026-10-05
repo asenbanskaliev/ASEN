@@ -33,11 +33,11 @@ Esta matriz no sustituye los contratos SOURCE_INSPECTED ni convierte pruebas sin
 | E3-11 cierre/fallos/reanudación | CERRADO | resumen único, reconciliación unknown y preservación de respuesta | sin afirmar compactación real |
 | E3-12 doctor/copia/reparación | CERRADO | integrity check y copia previa a reparación en almacén temporal | reparación automática de almacén real prohibida |
 | E3-13 export/import/sync Git | CERRADO | export/import sin pérdida, rechazo atómico y sync reanudable/corrupto | sin push/publicación de red |
-| E3-14 Cloud/autosync | PARCIAL | no necesario para memoria local | servicio Cloud real no implementado/demostrado |
+| E3-14 Cloud/autosync | NO APLICA | decisión explícita de arquitectura: la memoria de ASEN será local | Cloud queda fuera del producto y no bloquea R09 |
 | E3-15 interfaces externas | PARCIAL | biblioteca local acotada | CLI/HTTP/MCP completos no demostrados |
 | E3-16 vistas/clientes opcionales | PARCIAL | no requerido para núcleo local | TUI/dashboard/Obsidian no demostrados |
 | E3-17 runtime/plataformas | CERRADO para paquete actual | CI Ubuntu 24.04, macOS y Windows en PR #31 | no equivale a distribución standalone |
-| E3-18 verificación independiente | PARCIAL | CI, auditorías, reinicios, concurrencia, privacidad y corrupción sintética | Pi Free real y servicios externos pendientes |
+| E3-18 verificación independiente | PARCIAL | CI, auditorías, reinicios, concurrencia, privacidad y corrupción sintética | Pi Free real pendiente; Cloud no aplica |
 
 ## Resultado 4R
 
@@ -49,11 +49,11 @@ El histórico timeout de 180 segundos del `npm test` independiente **no se decla
 
 - R01–R06: cierre del alcance admitido respaldado por las pruebas existentes.
 - R07: implementación local cerrada; equivalencia de compactación Pi/modelo permanece PARCIAL.
-- R08: cierre del alcance local admitido, incluido sync reanudable; no incluye red/push/Cloud.
+- R08: cierre del alcance local admitido, incluido sync reanudable; no incluye red/push. Cloud no aplica por decisión de arquitectura.
 - R09: **NO CERRADO todavía**. Para cerrarlo honestamente faltan:
   1. ejecutar la prueba Pi Free de memoria sobre el candidato final, si el proveedor/secretos están disponibles;
   2. revalidar el HEAD final después de esta evidencia con CI multiplataforma;
-  3. conservar como PARCIAL, no como fallo, las superficies externas/optativas no implementadas o no autorizadas;
+  3. conservar como PARCIAL, no como fallo, las superficies externas/optativas aplicables no implementadas o no autorizadas; Cloud se clasifica como NO APLICA;
   4. no declarar resuelto el timeout histórico sin una ejecución específica que lo pruebe.
 
 No autoriza merge, release, publicación, reparación de datos reales ni operaciones de red.
