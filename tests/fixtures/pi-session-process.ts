@@ -5,6 +5,7 @@ import {dirname,join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {createCheckpoint,saveCheckpoint} from "../../src/session/checkpoint.js";
 import {resumePiSession} from "../../src/session/pi-resume.js";
+import {issueSkillContext} from "../../src/skills/context.js";
 
 const [mode,dir,project,repository,revision]=process.argv.slice(2);
 if(!mode||!dir||!project||!repository||!revision)throw new Error("Missing fixture arguments");
@@ -18,7 +19,8 @@ if(mode==="write"){
  const sessionFile=session.getSessionFile();if(!sessionFile)throw new Error("Pi session file missing");
  const task={id:"task",title:"Pi recovery",phase:"VERIFYING" as const,candidateId:"candidate",blockers:["needs review"]};
  const candidate={id:"candidate",repository,revision,createdAt:"now"};
- await saveCheckpoint(checkpoint,createCheckpoint(project,session.getSessionId(),task,candidate,sessionFile));
+ const skillContext=issueSkillContext("task",repository,candidate,{phase:"verify",verification:true});
+ await saveCheckpoint(checkpoint,createCheckpoint(project,session.getSessionId(),task,candidate,sessionFile,skillContext,["skills/asen-phase-protocol/SKILL.md","skills/asen-verify/SKILL.md"]));
  writeFileSync(metadata,JSON.stringify({sessionFile,sessionId:session.getSessionId()}));
 }else if(mode==="resume"){
  const expected=JSON.parse(readFileSync(metadata,"utf8"));
@@ -30,5 +32,5 @@ if(mode==="write"){
  const response=responses.find(record=>record.type==="response"&&record.id==="state-request"&&record.command==="get_state");
  if(!response?.success)throw new Error("Pi RPC state response missing");
  const recovered=await resumePiSession(checkpoint,{projectId:project,repository,revision,sessionId:expected.sessionId,sessionFile:expected.sessionFile},response.data);
- process.stdout.write(JSON.stringify({task:recovered.task,candidate:recovered.candidate,piSessionId:response.data.sessionId,piSessionFile:response.data.sessionFile}));
+ process.stdout.write(JSON.stringify({task:recovered.task,candidate:recovered.candidate,skillContext:recovered.skillContext,skillPaths:recovered.skillPaths,piSessionId:response.data.sessionId,piSessionFile:response.data.sessionFile}));
 }else throw new Error(`Unknown mode ${mode}`);

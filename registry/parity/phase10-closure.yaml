@@ -3,9 +3,9 @@ status: CLOSED_READY_TO_MERGE
 validated_head: fe28cd89dbb334f1bd606d12b1d5f043f2643ab8
 frozen_universe: PAR-001..PAR-500
 upstream_baselines:
-  gentle_shell: fe61793e7cb3e75462ba53c7631e87d78e989354
-  gentle_ai: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
-  engram: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
+  reference_a: fe61793e7cb3e75462ba53c7631e87d78e989354
+  reference_b: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+  reference-c: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
 discovery:
   saturation: true
   additional_zero_p0_passes: 12

@@ -1,0 +1,32 @@
+name: Memory Pi Free E2E
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  memory-pi-free:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm install
+      - name: Install Pi and provider
+        run: |
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
+          pi install npm:pi-free
+      - name: Execute synthetic memory restart and model recall
+        env:
+          LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          ASEN_PI_PROVIDER: llm7
+          ASEN_PI_MODEL: default
+        run: |
+          test -n "$LLM7_API_KEY"
+          node --import tsx scripts/pi-free-memory-e2e.mjs

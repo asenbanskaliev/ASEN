@@ -1,0 +1,248 @@
+audit:
+  asen: 3c76ed7aa9be124288397ca8baf35ceacfe5889c
+  reference_a: fe61793e7cb3e75462ba53c7631e87d78e989354
+  reference_b: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+  reference-c: 618e30f68f0f2e3b736df91fcfbaaad279ccd3d2
+capabilities:
+  - id: PAR-001
+    area: pi-native-extension
+    status: PARITY
+    priority: P0
+    evidence: [extensions/asen.ts, tests/extension.test.ts, scripts/pi-extension-e2e.mjs]
+  - id: PAR-002
+    area: bounded-delegation
+    status: PARTIAL
+    priority: P0
+    gap: "Needs broader child-agent lifecycle, cancellation, transcript/history and failure recovery contracts."
+  - id: PAR-003
+    area: isolated-pi-child-agents
+    status: PARTIAL
+    priority: P0
+    gap: "Pi process runner exists; session transport and lifecycle parity are incomplete."
+  - id: PAR-004
+    area: single-writer-and-write-scope
+    status: PARTIAL
+    priority: P0
+    evidence: [src/policies/scopes.ts, tests/scopes.test.ts]
+    gap: "In-process overlap rejection exists; deterministic queued writer ownership, cross-process locking and ambiguous write outcomes are not proven."
+  - id: PAR-005
+    area: worktree-isolation
+    status: MISSING
+    priority: P1
+  - id: PAR-006
+    area: foreign-repository-session-consent
+    status: MISSING
+    priority: P1
+  - id: PAR-007
+    area: model-routing-policy
+    status: PARTIAL
+    priority: P1
+    gap: "Policy contract exists but lacks External-level profile validation/fallback coverage."
+  - id: PAR-008
+    area: pi-native-skills
+    status: PARITY
+    priority: P0
+    evidence: [skills/asen-safe-change/SKILL.md]
+  - id: PAR-009
+    area: multi-source-skill-registry-cache
+    status: N/A
+    priority: P2
+    rationale: "ASEN v1 intentionally relies on Pi native skills rather than cloning Reference A discovery across many agents."
+  - id: PAR-010
+    area: persistent-task-plan
+    status: PARTIAL
+    priority: P1
+    gap: "Task state exists; session replay/staleness and richer plan recovery are incomplete."
+  - id: PAR-011
+    area: adaptive-odd-routing
+    status: PARTIAL
+    priority: P0
+    gap: "Risk/complexity primitives exist but the complete routing ladder and automatic phase orchestration are not yet evidenced."
+  - id: PAR-012
+    area: optional-sdd
+    status: MISSING
+    priority: P1
+  - id: PAR-013
+    area: strict-tdd-red-green-refactor
+    status: PARTIAL
+    priority: P0
+    gap: "Evidence contracts exist; explicit RED -> GREEN -> REFACTOR transition enforcement needs stronger automated proof."
+  - id: PAR-014
+    area: risk-proportional-verification
+    status: PARTIAL
+    priority: P0
+    evidence: [src/flow/risk.ts, src/verify/verifier.ts, tests/verification.test.ts]
+    gap: "Risk tiers exist; evidence freshness, immutable candidate binding and effect authorization are not proven."
+  - id: PAR-015
+    area: exact-candidate-snapshot
+    status: PARTIAL
+    priority: P0
+    gap: "Candidate-bound evidence exists; Git tree/object snapshot isolation is less complete than External review snapshots."
+  - id: PAR-016
+    area: independent-review
+    status: PARTIAL
+    priority: P0
+    evidence: [src/review/review.ts, tests/review.test.ts]
+    gap: "Review reduction exists; independent durable authority, immutable snapshot binding and reviewer lifecycle are not proven."
+  - id: PAR-017
+    area: multi-lens-review
+    status: MISSING
+    priority: P1
+  - id: PAR-018
+    area: findings-ledger-correction-revalidation
+    status: PARTIAL
+    priority: P0
+    gap: "Review/verify exists; durable findings ledger and correction lineage are incomplete."
+  - id: PAR-019
+    area: review-receipt
+    status: PARTIAL
+    priority: P1
+    gap: "Evidence is candidate-bound but a canonical signed/hashable review receipt is not yet complete."
+  - id: PAR-020
+    area: publication-gate
+    status: PARTIAL
+    priority: P0
+    gap: "Release Gate exists in CI; runtime publication authority/consent contract is incomplete."
+  - id: PAR-021
+    area: destructive-git-guard
+    status: PARITY
+    priority: P0
+    evidence: [registry/capabilities/CAP-GIT-001-destructive-git-guard.yaml]
+  - id: PAR-022
+    area: sqlite-memory
+    status: PARTIAL
+    priority: P0
+    evidence: [src/memory/sqlite-store.ts, tests/memory-persistence.test.ts]
+    gap: "SQLite/WAL persistence exists; atomic row+FTS writes, writer serialization, migration locks, generation fencing and repair are not proven."
+  - id: PAR-023
+    area: memory-fts-search
+    status: PARITY
+    priority: P0
+    evidence: [src/memory/sqlite-store.ts, tests/memory.test.ts]
+  - id: PAR-024
+    area: memory-relations
+    status: PARTIAL
+    priority: P1
+    evidence: [src/memory/types.ts, src/memory/sqlite-store.ts]
+    gap: "Types suggest relations but the current reverse audit does not prove the full relation persistence/replay/ownership lifecycle."
+  - id: PAR-025
+    area: compaction-recovery
+    status: PARTIAL
+    priority: P0
+    gap: "Context API exists; real Pi compaction lifecycle E2E recovery is not fully evidenced."
+  - id: PAR-026
+    area: memory-topic-key-lifecycle
+    status: MISSING
+    priority: P1
+  - id: PAR-027
+    area: memory-review-judgment-conflicts
+    status: MISSING
+    priority: P2
+  - id: PAR-028
+    area: memory-git-sync
+    status: N/A
+    priority: P2
+    rationale: "Deferred; local-first memory is the v1 contract."
+  - id: PAR-029
+    area: memory-cloud
+    status: N/A
+    priority: P2
+    rationale: "Cloud service is intentionally outside ASEN core."
+  - id: PAR-030
+    area: transactional-apply-verify-rollback
+    status: PARTIAL
+    priority: P0
+    evidence: [src/lifecycle/transaction.ts, tests/transaction.test.ts]
+    gap: "Control flow exists; filesystem-safe mutation journal, crash recovery, path ownership and complete rollback are not proven."
+  - id: PAR-031
+    area: doctor
+    status: PARTIAL
+    priority: P0
+    gap: "Read-only doctor exists; coverage of Pi/runtime/database/permissions/registry diagnostics is narrower."
+  - id: PAR-032
+    area: backup-restore
+    status: MISSING
+    priority: P1
+  - id: PAR-033
+    area: migration
+    status: MISSING
+    priority: P1
+  - id: PAR-034
+    area: clean-uninstall
+    status: MISSING
+    priority: P2
+  - id: PAR-035
+    area: dry-run-change-plan
+    status: PARTIAL
+    priority: P1
+    gap: "Transactional model exists but full deterministic planned-diff dry run is incomplete."
+  - id: PAR-036
+    area: upstream-radar
+    status: PARTIAL
+    priority: P0
+    gap: "Radar primitives exist; automated commit/release/changelog classification and persistent last-audited SHA workflow are incomplete."
+  - id: PAR-037
+    area: capability-registry
+    status: PARITY
+    priority: P0
+    evidence: [registry/capabilities/README.md]
+  - id: PAR-038
+    area: behavioral-parity-tests
+    status: PARTIAL
+    priority: P0
+    gap: "Architecture/unit/E2E tests exist but not all upstream-observable contracts have vectors."
+  - id: PAR-039
+    area: architecture-independence
+    status: PARITY
+    priority: P0
+    evidence: [.github/workflows/ci.yml, docs/architecture/upstream-independence.md]
+  - id: PAR-040
+    area: full-installer-tui
+    status: N/A
+    priority: P2
+    rationale: "Pi remains the user-facing platform; ASEN will not clone Reference B's multi-agent installer TUI."
+  - id: PAR-041
+    area: multi-agent-platform-adapters
+    status: N/A
+    priority: P2
+    rationale: "ASEN targets Pi, not 16 coding-agent platforms."
+  - id: PAR-042
+    area: own-llm-runtime
+    status: N/A
+    priority: P0
+    rationale: "Architecturally prohibited; Pi owns model execution and authentication."
+  - id: PAR-043
+    area: background-agents
+    status: MISSING
+    priority: P2
+  - id: PAR-044
+    area: inter-agent-messaging
+    status: MISSING
+    priority: P1
+  - id: PAR-045
+    area: agent-history-transcripts
+    status: MISSING
+    priority: P1
+  - id: PAR-046
+    area: runtime-metrics
+    status: MISSING
+    priority: P2
+  - id: PAR-047
+    area: windows-session-transport
+    status: PARTIAL
+    priority: P1
+    gap: "Windows CI/package execution is green; dedicated child-session transport parity is incomplete."
+  - id: PAR-048
+    area: exact-candidate-ci
+    status: PARITY
+    priority: P0
+    evidence: [.github/workflows/release-gate.yml]
+  - id: PAR-049
+    area: packaged-pi-install-e2e
+    status: PARITY
+    priority: P0
+    evidence: [.github/workflows/release-gate.yml, scripts/pi-extension-e2e.mjs]
+  - id: PAR-050
+    area: network-none-runtime-verification
+    status: MISSING
+    priority: P1

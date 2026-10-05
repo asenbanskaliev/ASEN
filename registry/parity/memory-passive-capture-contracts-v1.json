@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "scope": "reference_only",
+  "status": "SOURCE_INSPECTED",
+  "proofKind": "source_inspection",
+  "limitations": [
+    "These contracts record public source inspection only; they do not prove ASEN runtime behavior or passive-capture parity.",
+    "NormalizeProject, hashNormalized, nullableString, AddObservation, and regular-expression engine internals are delegated or excluded; their algorithms and effects are not asserted here.",
+    "Byte thresholds and title slicing reflect inspected Go len and slice operations; Unicode correctness and UTF-8-safe truncation are not proved.",
+    "The dedupe query's handling of non-nil Scan errors is source-inspected, but SQLite behavior and safety under query errors are not proved.",
+    "A successful AddObservation call increments Saved; this does not prove creation of a new row identity or expose AddObservation internals.",
+    "Atomicity, rollback, callers, privacy, security, concurrency, platform behavior, Cloud delivery, and Pi integration remain unproved.",
+    "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and no FULL parity claim is made.",
+    "Hook initialization, project detection, session registration, lifecycle construction, conflict warnings, redaction internals, helper correctness, and warning delivery are delegated or excluded.",
+    "Post-redaction nonemptiness, byte or Unicode-safe prompt truncation, persistence, HTTP or store semantics, SQLite, authentication, privacy completeness, concurrency, platform behavior, Cloud delivery, and live Pi behavior remain unproved.",
+    "JSON.stringify edge semantics and manual transport, protocol injection, compaction, session-end, or other-agent capture paths are outside these bounded caller contracts.",
+    "A returned transport failure is not a null-return guarantee, successful POSTs prove neither saved observations nor prompts, and neither FULL/runtime parity nor published-Pi-package equivalence is claimed."
+  ],
+  "sources": [
+    {
+      "id": "SRC-CAP-001",
+      "path": "internal/store/store.go",
+      "bytes": 488121,
+      "sha256": "6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e",
+      "gitBlob": "a396d5d8eb91b956a12c23cd5e936a2b74dd7760",
+      "commit": "15a2f78885d7ad8ced23b2d1d88383e9bb472c17",
+      "sourceIdentity": "15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/store/store.go",
+      "representation": "git_blob",
+      "lineStart": 12515,
+      "lineEnd": 12655,
+      "lineFeeds": 13200,
+      "carriageReturns": 0,
+      "utf8Bom": false,
+      "utf8Valid": true,
+      "finalLf": true
+    },
+    {
+      "id": "SRC-CAP-002",
+      "path": "plugin/pi/index.ts",
+      "bytes": 103389,
+      "sha256": "387555a903d64f2d4c9145499bd34d3f5c616f310e0bc89f49c23e2f2189880f",
+      "gitBlob": "53da52b93319fb38e2054586a38f5bdaf95ae260",
+      "commit": "15a2f78885d7ad8ced23b2d1d88383e9bb472c17",
+      "sourceIdentity": "15a2f78885d7ad8ced23b2d1d88383e9bb472c17:plugin/pi/index.ts",
+      "representation": "git_blob",
+      "lineStart": 45,
+      "lineEnd": 2209,
+      "lineFeeds": 2209,
+      "carriageReturns": 0,
+      "utf8Bom": false,
+      "utf8Valid": true,
+      "finalLf": true
+    }
+  ],
+  "cases": [
+    {
+      "id": "CAP-store-passive-learning-extraction",
+      "summary": "Passive capture extracts the latest valid bilingual learning section, cleans and filters its items, deduplicates by normalized content hash and normalized project, and delegates saves as passive project observations.",
+      "evidence": [
+        {"sourceId":"SRC-CAP-001","startLine":12515,"endLine":12520},
+        {"sourceId":"SRC-CAP-001","startLine":12523,"endLine":12527},
+        {"sourceId":"SRC-CAP-001","startLine":12529,"endLine":12537},
+        {"sourceId":"SRC-CAP-001","startLine":12539,"endLine":12589},
+        {"sourceId":"SRC-CAP-001","startLine":12591,"endLine":12597},
+        {"sourceId":"SRC-CAP-001","startLine":12599,"endLine":12655}
+      ],
+      "contract": "The parameter and result field tuples are fixed. Extraction recognizes case-insensitive level-two or level-three English and Spanish learning headers, examines matching sections newest-first until one yields valid items, cuts a candidate at the next level-one through level-three heading, prefers valid numbered dot or parenthesis items, falls back to bullets only when no valid numbered items remain, cleans bold then inline code then italic and collapses whitespace, and admits cleaned values with at least 20 bytes and four strings.Fields fields. Capture discards the NormalizeProject warning, reports the extracted count, returns early for zero items, and for each learning queries normalized hash plus nullable normalized project and undeleted state with LIMIT 1. A nil Scan error increments Duplicates and skips; every non-nil Scan error proceeds to AddObservation. Titles use the first 60 bytes plus an ellipsis when longer. AddObservation receives session, passive type, title, content, normalized project, project scope, and source tool; each successful call increments Saved, while the first save error returns the partial result wrapped with passive capture save.",
+      "negativeControls": "This contract does not assert helper algorithms, regex-engine or UTF-8 semantics, SQLite execution or query-error safety, atomicity or rollback, AddObservation internals, new-row identity, callers, privacy, security, concurrency, platform, Cloud, Pi, or FULL parity.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "params":{"orderedFields":[["SessionID","string","session_id"],["Content","string","content"],["Project","string","project,omitempty"],["Source","string","source,omitempty"]]},
+        "resultFields":{"orderedFields":[["Extracted","int","extracted"],["Saved","int","saved"],["Duplicates","int","duplicates"]]},
+        "extraction":{
+          "headerPattern":"(?im)^#{2,3}\\s+(?:Aprendizajes(?:\\s+Clave)?|Key\\s+Learnings?|Learnings?):?\\s*$",
+          "headers":{"levels":[2,3],"languages":["English","Spanish"],"caseInsensitive":true,"latestValidSection":true,"nextHeadingCutoff":"levels_1_through_3"},
+          "items":{"numbered":["dot","paren"],"numberedPreferred":true,"bulletFallback":"only_when_no_valid_numbered","minimumBytes":20,"minimumFields":4},
+          "cleanupOrder":["bold","inline_code","italic","collapse_whitespace"],
+          "none":"nil"
+        },
+        "capture":{
+          "normalization":{"call":"NormalizeProject","warning":"discarded","algorithm":"UNPROVED"},
+          "result":{"extracted":"learning_count","saved":"successful_AddObservation_calls","duplicates":"nil_scan_count","zeroLearnings":"return_zero_result_nil_error"},
+          "dedupe":{"hash":"hashNormalized(learning)","projectArgument":"nullableString(normalized_project)","queryPredicates":["normalized_hash = ?","ifnull(project, '') = ifnull(?, '')","deleted_at IS NULL"],"limit":1,"excludedKeys":["scope","type","title","session","ordering"],"nilScan":"increment_duplicate_and_continue","queryError":"proceed_to_AddObservation"},
+          "title":"first_60_bytes_plus_ellipsis",
+          "addObservation":{"fields":{"SessionID":"input_session_id","Type":"passive","Title":"derived_title","Content":"learning","Project":"normalized_project","Scope":"project","ToolName":"input_source"},"success":"Saved_increment","error":"return_partial_result_and_wrap_passive_capture_save"}
+        }
+      }
+    },
+    {
+      "id": "CAP-pi-tool-result-passive-trigger",
+      "summary": "Pi automatically offers eligible non-memory tool results to passive capture only after successful initialization, project refresh, and effective-session registration, with lifecycle and recursion guards.",
+      "evidence": [
+        {"sourceId":"SRC-CAP-002","startLine":45,"endLine":70},
+        {"sourceId":"SRC-CAP-002","startLine":193,"endLine":198},
+        {"sourceId":"SRC-CAP-002","startLine":242,"endLine":245},
+        {"sourceId":"SRC-CAP-002","startLine":410,"endLine":425},
+        {"sourceId":"SRC-CAP-002","startLine":427,"endLine":436},
+        {"sourceId":"SRC-CAP-002","startLine":692,"endLine":694},
+        {"sourceId":"SRC-CAP-002","startLine":2174,"endLine":2209}
+      ],
+      "contract": "The hook observes runtime session identity and lifecycle epoch before async work. It normalizes a missing tool name to empty, suppresses the exact lowercase Engram tool set before initialization, then requires hook initialization, project refresh, a settled project, a session, and successful effective-session registration. Registration conflicts use their dedicated warning; other registration errors warn against /sessions. Closing sessions are rejected. The effective-session tool count increments before result filtering. Undefined results, serialization failures, empty content, JavaScript string lengths at most 50, newly closing sessions, and pre-POST closing or epoch drift return without capture. Strings remain unchanged; other results use JSON.stringify. The POST body contains the effective session ID, stripPrivateTags content, resolved project, and original tool name. Passive POST uses bestEffortEngramFetch; returned transport failures warn and still return result.data, while thrown errors warn and return null, and warning failures are swallowed.",
+      "negativeControls": "This contract delegates initialization, project detection, registration, lifecycle construction, conflict-warning and redaction internals. It does not prove HTTP/store effects, SQLite, authentication, complete privacy, concurrency, platform, Cloud, live Pi behavior, JSON.stringify edge semantics, other capture hooks, successful persistence, or published-package equivalence.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "trigger":{"event":"tool_execution_end","observeBeforeAsync":["runtime_session_id","lifecycle_state","lifecycle_epoch"],"missingToolName":"empty_string","recursionGuard":{"comparison":"lowercase_exact_set_membership","before":["initialization","registration","tool_count","capture"]}},
+        "readiness":{"initialize":"initOnceForHook(ctx.cwd)","initializationFailure":"return","projectRefresh":"refreshProjectDetection(ctx.cwd)","rejectAfterRefresh":["missing_session_id","project_detection_pending","project_resolution_error"]},
+        "registration":{"call":"registerEffectiveSession(ctx,project,appendEntry)","projectConflict":"warnSessionProjectConflictOnce_then_return","otherError":"warnEngramFailure_/sessions_then_return","closingEffectiveID":"return"},
+        "counting":{"operation":"toolCounts_effective_ID_plus_one","order":"before_result_presence_serialization_and_content_eligibility"},
+        "content":{"undefinedResult":"return","stringResult":"unchanged","otherResult":"JSON.stringify","serializationThrow":"return","reject":["empty","javascript_length_lte_50","newly_closing_effective_ID"]},
+        "body":{"session_id":"effective_ID","content":"stripPrivateTags(serialized_content)","project":"resolved_project","source":"original_tool_name"},
+        "redaction":{"stripPrivateTags":"redactPrivateTags(str).trim","algorithm":"UNPROVED"},
+        "prePostGate":{"condition":"observed_state_exists_and_closing_or_epoch_drift","action":"return"},
+        "post":{"path":"/observations/passive","method":"POST","transport":"bestEffortEngramFetch"},
+        "transport":{"returnedFailure":"warn_and_return_result.data","thrownError":"warn_and_return_null","postSuccessSavedProof":false},
+        "warning":{"helper":"warnEngramFailure","failure":"swallowed"}
+      }
+    },
+    {
+      "id": "CAP-pi-agent-start-prompt-trigger",
+      "summary": "Pi best-effort captures an eligible agent-start prompt after successful initialization, project refresh, and effective-session registration while preserving its precomputed system-prompt result.",
+      "evidence": [
+        {"sourceId":"SRC-CAP-002","startLine":229,"endLine":234},
+        {"sourceId":"SRC-CAP-002","startLine":683,"endLine":685},
+        {"sourceId":"SRC-CAP-002","startLine":692,"endLine":694},
+        {"sourceId":"SRC-CAP-002","startLine":2131,"endLine":2172}
+      ],
+      "contract": "The before_agent_start hook accepts an optional prompt and snapshots runtime session identity, lifecycle state, and epoch before async initialization. After successful initialization it refreshes project detection, trims the raw prompt, and proceeds only with a session, no pending project detection or resolution error, and more than 10 JavaScript code units. Effective-session registration uses a dedicated project-conflict warning and a /sessions warning for other errors, then rejects a closing effective ID. Content is stripped and trimmed before truncation at 2000 JavaScript code units; the ellipsis can make the result 2003 code units. The /prompts POST body contains only the effective session ID, processed content, and resolved project. A closing observed state or epoch drift gates the best-effort POST. Every path returns the precomputed system-prompt result.",
+      "negativeControls": "This contract does not prove post-redaction nonemptiness, redaction or helper correctness, byte or Unicode safety, persistence, HTTP, store, warning, authentication, privacy, SQLite, concurrency, platform, Cloud, live Pi, published-package, protocol-injection, compaction, manual-transport, FULL-parity, or runtime behavior.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "trigger":{"event":"before_agent_start","prompt":"optional_string","observeBeforeAsync":["runtime_session_id","lifecycle_state","lifecycle_epoch"]},
+        "result":{"precomputed":"system_prompt_result","callback":"always_returns_precomputed_result"},
+        "readiness":{"order":["successful_initialize","project_refresh"],"initialize":"initOnceForHook(ctx.cwd)","initializationFailure":"return_result","projectRefresh":"refreshProjectDetection(ctx.cwd)"},
+        "eligibility":{"rawPrompt":"trim","require":["session_id","no_project_detection_pending","no_project_resolution_error","javascript_length_gt_10"]},
+        "registration":{"call":"registerEffectiveSession(ctx,project,appendEntry)","projectConflict":"warnSessionProjectConflictOnce_then_return_result","otherError":"warnEngramFailure_/sessions_then_return_result","closingEffectiveID":"return_result"},
+        "content":{"order":["stripPrivateTags","truncate"],"stripPrivateTags":"redactPrivateTags(str).trim","truncate":{"maxJavaScriptCodeUnits":2000,"possibleResultLength":2003}},
+        "body":{"session_id":"effective_ID","content":"truncate(stripPrivateTags(trimmed_prompt),2000)","project":"resolved_project"},
+        "prePostGate":{"condition":"observed_state_exists_and_closing_or_epoch_drift","action":"return_result"},
+        "post":{"path":"/prompts","method":"POST","transport":"bestEffortEngramFetch"}
+      }
+    }
+  ]
+}

@@ -1,0 +1,420 @@
+{
+  "schemaVersion": 1,
+  "scope": "reference_only",
+  "status": "SOURCE_INSPECTED",
+  "proofKind": "source_inspection",
+  "limitations": [
+    "These contracts record public source inspection only; they do not prove ASEN runtime behavior or complete session-store parity.",
+    "The ID rule covers only empty and strings.TrimSpace-blank values; it does not enumerate Unicode, canonicalize IDs, or prove every caller.",
+    "The start SQL contract does not prove timestamp format, timezone, transaction defaults, retries, schema behavior, durability, synchronization, or actual SQLite execution.",
+    "Ownership rules are caller assertions, not authentication, authorization, tenant isolation, or security.",
+    "The local lease comment is informational source text, not proof of synchronization absence or runtime payload behavior.",
+    "Create contracts do not prove resume identity selection, terminal synchronization, HTTP, MCP, Pi callers, Cloud delivery, or runtime SQLite behavior.",
+    "Live-registration contracts exclude resume or continuation, isolation, ended-row legacy ownership claims at 3290–3333, postcommit terminal mapping at 3374+, EndSession, runtime SQLite, concurrency, durability, remote delivery, normalization internals, and HTTP, MCP, or Pi callers.",
+    "Project normalization is only observed as a delegated call and result check; its internal algorithm is not asserted here.",
+    "Queue-helper invocation and even an enrolled journal row do not prove durable synchronization or remote delivery.",
+    "The ended legacy-ownership claim excludes resume, continuation, isolation, EndSession, terminal synchronization, callers, normalization internals, queue enrollment, remote delivery, and actual SQLite commit, rollback, concurrency, or durability; a returned ended error does not imply that no side effects occurred.",
+    "The isolation-root preflight excludes continuation selection, selected-ID checks, isolation success after the preflight, terminal synchronization, EndSession, normalization internals, callers, remote delivery, and runtime SQLite, concurrency, or durability behavior.",
+    "The selected-continuation isolation contract excludes the selection algorithm or ordinal, root ownership, successful continuation registration, repair, start, enqueue, terminal synchronization, EndSession, callers, and runtime SQLite behavior, absence of mutation, concurrency, durability, or remote delivery.",
+    "The resume-selection contract excludes terminal-root ownership guard semantics, isolation success, selected-continuation isolation, ownership, repair, start, enqueue, terminal synchronization, EndSession, callers, and runtime SQLite, collation, concurrency, durability, or Cloud behavior.",
+    "The end-session contract excludes runtime SQLite timestamp and RowsAffected behavior, retry, rollback, concurrency, durability, enrollment implementation, remote acknowledgement or delivery, callers, ownership, resume, and isolated-registration success.",
+    "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02.",
+    "The resume terminal-root ownership guard excludes isolated-registration success, selected-identity ownership claims, continuation selection details, live-registration conflict, post-selection start, enqueue, EndSession, callers, runtime SQLite, retries, rollback, concurrency, durability, ownership security, and Cloud behavior.",
+    "The isolated missing-root success contract delegates NormalizeProject, Now, transaction hooks, retries, enrollment, SQLite execution, commit, rollback, durability, security, concurrency, Cloud, and callers; other isolation, resume, live-repair, and ownership branches remain unproved.",
+    "The active-runtime candidate contract excludes canonicalizer internals and warning delivery, caller cardinality and fallback choice, runtime SQLite datetime, collation, and query planning, close errors, actual read-only guarantees, persistence, mutation, concurrency, platform, security, and Cloud behavior."
+  ],
+  "sources": [
+    {
+      "id": "SRC-SES-STORE-001",
+      "path": "internal/store/store.go",
+      "bytes": 488121,
+      "sha256": "6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e",
+      "gitBlob": "a396d5d8eb91b956a12c23cd5e936a2b74dd7760",
+      "commit": "15a2f78885d7ad8ced23b2d1d88383e9bb472c17",
+      "sourceIdentity": "15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/store/store.go",
+      "representation": "git_blob",
+      "lineStart": 59,
+      "lineEnd": 12280,
+      "lineFeeds": 13200,
+      "carriageReturns": 0,
+      "utf8Bom": false,
+      "utf8Valid": true,
+      "finalLf": true
+    }
+  ],
+  "cases": [
+    {
+      "id": "SES-store-id-validation",
+      "summary": "Create and start entry points share a helper that rejects empty or strings.TrimSpace-blank session IDs with ErrSessionIDRequired.",
+      "evidence": [
+        {"sourceId":"SRC-SES-STORE-001","startLine":59,"endLine":59},
+        {"sourceId":"SRC-SES-STORE-001","startLine":149,"endLine":151},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3049,"endLine":3059},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3112,"endLine":3119},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3206,"endLine":3209},
+        {"sourceId":"SRC-SES-STORE-001","startLine":11598,"endLine":11600},
+        {"sourceId":"SRC-SES-STORE-001","startLine":11602,"endLine":11607}
+      ],
+      "contract": "CreateSession delegates shared ownership to CreateSessionWithOwnershipMode, which calls validateSessionID. StartSession delegates shared ownership through StartSessionWithOwnershipMode to startSessionRegistration, whose first guard calls the same helper. isBlankSessionID uses strings.TrimSpace(id) == empty; validateSessionID returns ErrSessionIDRequired for blank and nil otherwise.",
+      "negativeControls": "No Unicode whitespace enumeration, ID canonicalization, uninspected caller behavior, authorization, persistence, storage, or runtime execution is claimed.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "sentinel":{"name":"ErrSessionIDRequired","message":"session id is required"},
+        "blank":{"operation":"strings.TrimSpace","comparison":"empty"},
+        "validation":{"blank":"ErrSessionIDRequired","nonblank":"nil"},
+        "ownershipModes":{"shared":"shared","projectOwned":"project_owned"},
+        "entrypoints":{"create":["CreateSession","CreateSessionWithOwnershipMode","validateSessionID"],"start":["StartSession","StartSessionWithOwnershipMode","startSessionRegistration","validateSessionID"]}
+      }
+    },
+    {
+      "id": "SES-store-start-sql-state",
+      "summary": "Session start uses one conflict update to fill only blank identity fields, renew the local lease, and refuse ended rows.",
+      "evidence": [
+        {"sourceId":"SRC-SES-STORE-001","startLine":60,"endLine":60},
+        {"sourceId":"SRC-SES-STORE-001","startLine":149,"endLine":151},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3106,"endLine":3108},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3112,"endLine":3119},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3206,"endLine":3206},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3347,"endLine":3347},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9402,"endLine":9424},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9426,"endLine":9428},
+        {"sourceId":"SRC-SES-STORE-001","startLine":11609,"endLine":11640}
+      ],
+      "contract": "startSessionRegistration calls startSessionTx with id, project, directory, and mode. Its INSERT columns and arguments are ordered exactly; on conflict it fills only trimmed/null-coalesced blank project and ownership mode and trimmed blank directory, preserves populated identity, renews the excluded lease only while ended_at is null, propagates exec and RowsAffected errors, and maps zero affected rows to ErrSessionAlreadyEnded.",
+      "negativeControls": "Now() is only an argument delegation fact. No timestamp format, timezone, durability, transaction defaults, retries, schema, canonicalization, full ownership behavior, synchronization, enrollment, or actual SQLite execution is claimed.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "sentinel":{"name":"ErrSessionAlreadyEnded","message":"session has already ended","zeroRows":true},
+        "columns":["id","project","ownership_mode","directory","started_at","runtime_lease_expires_at","local_creation_project"],
+        "arguments":["id","project","mode","directory","Now()","runtimeSessionLeaseDuration","project","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet"],
+        "conflict":{"project":"fill_null_or_trimmed_blank","ownershipMode":"fill_null_or_trimmed_blank","directory":"fill_trimmed_blank","populatedIdentity":"preserve","lease":"excluded_value","where":"sessions.ended_at IS NULL"},
+        "errors":{"exec":"propagate","rowsAffected":"propagate","zeroRows":"ErrSessionAlreadyEnded"},
+        "ownershipModes":["shared","project_owned"],
+        "lease":{"duration":"+30 minutes","comment":"local_not_synchronized_and_nonterminal_informational"},
+        "whitespace":{"binding":"sqlWhitespaceTrimSet","builder":"unicode.White_Space R16 then R32 ranges"}
+      }
+    },
+    {
+      "id": "SES-store-create-ownership",
+      "summary": "Session create validates requested identity and ownership before its transaction mutates the row.",
+      "evidence": [
+        {"sourceId":"SRC-SES-STORE-001","startLine":67,"endLine":75},
+        {"sourceId":"SRC-SES-STORE-001","startLine":135,"endLine":151},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3049,"endLine":3085},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10797,"endLine":10830}
+      ],
+      "contract": "CreateSession selects shared mode. CreateSessionWithOwnershipMode validates ID and mode, delegates project normalization, requires its trimmed result, then reads existing ownership inside withTx. Blank or same ownership is accepted; requested project-owned mismatch returns SessionProjectConflictError, while a shared request against a different existing project follows the persisted shared, project-owned, or unclassified ownership rule before createSessionTx.",
+      "negativeControls": "Ownership is not authentication or tenant isolation. NormalizeProject internals, concurrent registration outcomes, resume identity selection, callers, and runtime database behavior are not claimed.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "wrapper":{"entry":"CreateSession","mode":"shared"},
+        "validationOrder":["validateSessionID","validSessionOwnershipMode","NormalizeProject","trimmed_project_required","withTx"],
+        "sentinels":{"invalidMode":"ErrInvalidSessionOwnershipMode","projectRequired":"ErrProjectRequired","mismatch":"ErrSessionOwnershipMismatch","ambiguous":"ErrProjectOwnershipAmbiguous"},
+        "matrix":{"blankOrSameOwner":"allow","differentOwnerRequestedProjectOwned":"SessionProjectConflictError_unwraps_ErrSessionOwnershipMismatch","differentOwnerExistingSharedRequestedShared":"allow","differentOwnerExistingProjectOwnedRequestedShared":"ErrSessionOwnershipMismatch","differentOwnerUnclassifiedRequestedShared":"ErrProjectOwnershipAmbiguous"},
+        "transactionOrder":["sessionOwnershipTx","strict_project_owned_check","sessionProjectWriteError","createSessionTx"],
+        "normalization":"delegated_result_only"
+      }
+    },
+    {
+      "id": "SES-store-create-sql-state",
+      "summary": "Session create inserts six ordered columns and fills only blank identity fields on ID conflict.",
+      "evidence": [
+        {"sourceId":"SRC-SES-STORE-001","startLine":3049,"endLine":3085},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9387,"endLine":9400},
+        {"sourceId":"SRC-SES-STORE-001","startLine":11609,"endLine":11640}
+      ],
+      "contract": "createSessionTx inserts id, project, ownership_mode, directory, started_at, and local_creation_project with the exact ordered arguments. On conflict it replaces project, ownership mode, or directory only when the persisted value is blank under the inspected trim rules; populated identity remains unchanged and execution errors propagate.",
+      "negativeControls": "Now() and NormalizeProject are delegated values only. No timestamp, normalization algorithm, SQLite execution, retry, schema, durability, or concurrency behavior is claimed.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "columns":["id","project","ownership_mode","directory","started_at","local_creation_project"],
+        "arguments":["id","project","mode","directory","Now()","project","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet"],
+        "conflict":{"project":"fill_null_or_trimmed_blank","ownershipMode":"fill_null_or_trimmed_blank","directory":"fill_trimmed_blank","populatedIdentity":"preserve"},
+        "localCreationProject":"normalized_project_argument",
+        "errors":{"exec":"propagate"},
+        "normalization":"delegated_result_only"
+      }
+    },
+    {
+      "id": "SES-store-create-sync",
+      "summary": "Session create rereads the persisted row and conditionally enqueues its persisted payload in the same write transaction.",
+      "evidence": [
+        {"sourceId":"SRC-SES-STORE-001","startLine":347,"endLine":356},
+        {"sourceId":"SRC-SES-STORE-001","startLine":580,"endLine":590},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3069,"endLine":3106},
+        {"sourceId":"SRC-SES-STORE-001","startLine":8154,"endLine":8161},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9324,"endLine":9336},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10636,"endLine":10715}
+      ],
+      "contract": "Within the create withTx callback, createSessionTx runs before an exact persisted-row reread and enqueueSyncMutationTx. The session upsert payload is built from those persisted values. Local session upserts with a blank directory return before journaling, and local writes for a nonblank unenrolled project return without a mutation row; enrolled writes proceed through journal insertion before commit.",
+      "negativeControls": "Helper invocation is not durable synchronization. Cloud delivery, terminal sync, live enrollment, remote acknowledgement, retries, runtime SQLite behavior, and HTTP, MCP, or Pi caller behavior remain unproved.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "transaction":{"scope":"same_withTx_as_create","errors":"propagate_before_commit","rollback":"deferred"},
+        "ordering":["createSessionTx","persisted_row_reread","enqueueSyncMutationTx","commit"],
+        "persistedColumns":["id","ifnull(project, '')","ifnull(ownership_mode, '')","directory","started_at","ended_at","summary"],
+        "payloadFields":["ID","Project","OwnershipMode","Directory","StartedAt","EndedAt","Summary"],
+        "payloadSource":"persisted_row",
+        "mutation":{"entity":"session","op":"upsert","source":"local"},
+        "journal":{"blankDirectory":"no_row","unenrolledProject":"no_row","enrolledProject":"row_attempt"},
+        "helperInvocationDurableSync":false,
+        "cloudDelivery":"UNPROVED"
+      }
+    },
+    {
+      "id":"SES-store-live-registration-conflict",
+      "summary":"Ordinary live registration reads persisted ownership before start and rejects incompatible requested or persisted ownership with branch-specific errors.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":67,"endLine":75},
+        {"sourceId":"SRC-SES-STORE-001","startLine":135,"endLine":151},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3112,"endLine":3119},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3206,"endLine":3220},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3285,"endLine":3289},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3334,"endLine":3347},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10797,"endLine":10830}
+      ],
+      "contract":"StartSessionWithOwnershipMode delegates ordinary flags resume false, effective nil, and isolated false. In its transaction, sessionOwnershipTx precedes sessionRegistrationProjectError and startSessionTx. Blank or same ownership and a shared request against persisted shared ownership are allowed. A different owner with requested project-owned mode returns SessionProjectConflictError wrapping ErrSessionOwnershipMismatch; shared requests against different project-owned or unclassified persisted ownership return errors wrapping ErrSessionOwnershipMismatch or ErrProjectOwnershipAmbiguous respectively. Every conflict returns before startSessionTx.",
+      "negativeControls":"Resume, continuation, isolation, ended-row ownership claims, postcommit terminal mapping, callers, normalization internals, runtime concurrency, and runtime database behavior are not claimed.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "entry":{"wrapper":"StartSessionWithOwnershipMode","delegate":"startSessionRegistration"},
+        "flags":{"resume":false,"effective":"nil","isolated":false},
+        "ordering":["sessionOwnershipTx","sessionRegistrationProjectError","startSessionTx"],
+        "matrix":{
+          "blankOrSameOwner":"allow",
+          "differentOwnerRequestedProjectOwned":{"type":"SessionProjectConflictError","unwrap":"ErrSessionOwnershipMismatch"},
+          "differentOwnerExistingSharedRequestedShared":"allow",
+          "differentOwnerExistingProjectOwnedRequestedShared":{"type":"wrapped_error","sentinel":"ErrSessionOwnershipMismatch"},
+          "differentOwnerUnclassifiedRequestedShared":{"type":"wrapped_error","sentinel":"ErrProjectOwnershipAmbiguous"}
+        },
+        "rejectionBeforeStart":true
+      }
+    },
+    {
+      "id":"SES-store-live-identity-repair",
+      "summary":"Accepted ordinary live registration always starts the row, then only missing or blank live identity is reread and offered to the sync queue from the same transaction.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":3112,"endLine":3119},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3206,"endLine":3222},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3285,"endLine":3289},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3334,"endLine":3373},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9402,"endLine":9424}
+      ],
+      "contract":"For an accepted ordinary live identity, identityRepaired starts as !found and, for a found live row, becomes true when project or mode is empty or strings.TrimSpace(directory) is empty. startSessionTx is called after ownership acceptance in every missing, repair, or populated path. A fully populated identity returns without enqueue. A repaired identity is reread after start and its persisted row supplies the session upsert payload to enqueueSyncMutationTx in the same withTx callback.",
+      "negativeControls":"Calling the enqueue helper is not durability or enrollment proof. Resume, continuation, isolation, ended-row legacy ownership claims, postcommit terminal mapping, EndSession, terminal synchronization, remote delivery, normalization internals, callers, and runtime SQLite or concurrency are excluded.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "identityRepaired":{
+          "missingRow":"!found",
+          "foundLive":"existingProject_empty OR existingMode_empty OR strings.TrimSpace(existingDirectory)_empty"
+        },
+        "startSessionTx":"always_called_after_ownership_acceptance",
+        "populatedIdentity":{"enqueue":false,"return":"nil_after_startSessionTx"},
+        "transaction":{
+          "scope":"same_withTx_callback",
+          "ordering":["sessionOwnershipTx","identity_repair_predicate","startSessionTx","persisted_row_reread","enqueueSyncMutationTx","commit"]
+        },
+        "persistedColumns":["id","ifnull(project, '')","ifnull(ownership_mode, '')","directory","started_at","ended_at","summary"],
+        "payloadFields":["ID","Project","OwnershipMode","Directory","StartedAt","EndedAt","Summary"],
+        "payloadSource":"persisted_row",
+        "mutation":{"entity":"session","op":"upsert","source":"local"},
+        "helperInvocationDurableSync":false
+      }
+    },
+    {
+      "id":"SES-store-ended-legacy-ownership-claim",
+      "summary":"Ordinary project-owned registration may atomically claim a blank-owner ended legacy session before returning terminality.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":67,"endLine":75},
+        {"sourceId":"SRC-SES-STORE-001","startLine":135,"endLine":151},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3112,"endLine":3119},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3206,"endLine":3223},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3285,"endLine":3347},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3374,"endLine":3379},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10800,"endLine":10830},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10836,"endLine":10868}
+      ],
+      "contract":"Ordinary registration delegates resume false, effective nil, and isolated false. When ownership is found, the request is project-owned, the persisted owner is blank, and ended_at is nonnull, foreignRecordOwnerTx rejects a foreign child owner with SessionProjectConflictError. Otherwise a conditional UPDATE sets project and ownership_mode only for the ended blank-owner row, propagates execution and RowsAffected errors, and reports a lost claim unless exactly one row changed. The persisted row is then reread and offered as a session upsert in the same transaction callback before claimed becomes true. Only a successful withTx result maps claimed to ErrSessionAlreadyEnded, so that returned sentinel does not imply absence of side effects.",
+      "negativeControls":"Resume, continuation, isolation, EndSession, terminal synchronization, callers, normalization internals, queue enrollment, remote delivery, and actual SQLite commit, rollback, concurrency, or durability are not proved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "flags":{"resume":false,"effective":"nil","isolated":false},
+        "condition":{"found":true,"requestedMode":"project_owned","existingProject":"blank","endedAt":"nonnull"},
+        "foreignChildOwner":{"helper":"foreignRecordOwnerTx","conflictType":"SessionProjectConflictError","rejectionBeforeUpdate":true},
+        "update":{"columns":["project","ownership_mode"],"where":["ended_at IS NOT NULL","ifnull(trim(project, ?), '') = ''"],"arguments":["project","mode","id","sqlWhitespaceTrimSet"],"errors":{"exec":"propagate","rowsAffected":"propagate","rowsNotOne":"claim_lost_error"}},
+        "transaction":{"scope":"same_withTx_callback","ordering":["sessionOwnershipTx","ended_status_read","foreignRecordOwnerTx","conditional_ownership_update","rows_affected_exactly_one","persisted_row_reread","enqueueSyncMutationTx","claimed_true","commit","ErrSessionAlreadyEnded"]},
+        "persistedColumns":["id","ifnull(project, '')","ifnull(ownership_mode, '')","directory","started_at","ended_at","summary"],
+        "payloadFields":["ID","Project","OwnershipMode","Directory","StartedAt","EndedAt","Summary"],
+        "payloadSource":"persisted_row",
+        "mutation":{"entity":"session","op":"upsert","source":"local"},
+        "claimed":{"initial":false,"resetEachWithTxCallback":true,"setAfter":"enqueue_success","endedMapping":"only_after_successful_withTx","return":"ErrSessionAlreadyEnded","returnedEndedErrorImpliesNoSideEffects":false}
+      }
+    },
+    {
+      "id":"SES-store-isolation-root-preflight",
+      "summary":"Isolated registration checks the root session for an empty directory before entering any resume branch.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":3133,"endLine":3145},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3218,"endLine":3245}
+      ],
+      "contract":"RegisterIsolatedSession initializes its effective ID from the requested ID and delegates an empty directory, project-owned mode, the caller's resume value, and isolated true. Each withTx callback restores id from the root captured before withTx, then the isolation preflight queries that root's null-coalesced directory. A missing row or trimmed-blank directory passes, query errors propagate, and a trimmed-nonblank directory returns an error wrapping ErrSessionIsolationConflict. That rejection returns before the resume branch.",
+      "negativeControls":"Continuation selection, selected-ID checks, isolation success after the preflight, terminal synchronization, EndSession, normalization internals, callers, remote delivery, and runtime SQLite, concurrency, or durability behavior are not proved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "sentinel":{"name":"ErrSessionIsolationConflict","message":"isolated session registration requires an empty directory; existing runtime-bound sessions cannot be reused"},
+        "wrapper":{"entry":"RegisterIsolatedSession","directory":"empty","mode":"project_owned","resume":"forward","effective":"id","isolated":true},
+        "transaction":{"root":"id_before_withTx","eachAttemptReset":{"id":"root"},"ordering":["reset_id_to_root","validateIsolation(root)","resume_branch"]},
+        "preflight":{"operation":"query_only","query":"SELECT ifnull(directory, '') FROM sessions WHERE id = ?","argument":"root","missingRow":"allow","trimmedBlank":"allow","queryError":"propagate","trimmedNonblank":{"error":"wrap_ErrSessionIsolationConflict","sessionID":"quoted"}},
+        "rejection":{"returnBefore":"resume_branch"}
+      }
+    },
+    {
+      "id":"SES-store-isolation-selected-continuation",
+      "summary":"Resumed isolated registration validates a distinct selected continuation before reading its ownership.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":3133,"endLine":3145},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3218,"endLine":3245},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3274,"endLine":3289}
+      ],
+      "contract":"RegisterIsolatedSession initializes effective to the requested ID and delegates an empty directory, project-owned mode, the caller's resume value, and isolated true. Each withTx callback restores id from root and uses the same validateIsolation closure for root and any distinct selected ID. continuationSessionTx errors return; otherwise id receives the selection and effective receives that selected ID. Only id != root invokes validateIsolation again. Its query allows a missing row or trimmed-blank directory, propagates SQL errors, and returns an error wrapping ErrSessionIsolationConflict for a trimmed-nonblank directory. Selected-ID rejection returns before sessionOwnershipTx.",
+      "negativeControls":"The continuation selection algorithm or ordinal, root ownership, successful continuation registration, repair, start, enqueue, terminal synchronization, EndSession, callers, runtime SQLite behavior, absence of mutation, concurrency, durability, and remote delivery are not proved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "sentinel":{"name":"ErrSessionIsolationConflict","message":"isolated session registration requires an empty directory; existing runtime-bound sessions cannot be reused"},
+        "wrapper":{"entry":"RegisterIsolatedSession","directory":"empty","mode":"project_owned","resume":"forward","effective":"id","isolated":true},
+        "transaction":{"root":"id_before_withTx","eachAttemptReset":{"id":"root"},"sharedValidation":"validateIsolation","ordering":["reset_id_to_root","validateIsolation(root)","continuationSessionTx(tx,root)","effective=selected_id","validateIsolation(selected_id)_if_distinct","sessionOwnershipTx"]},
+        "continuation":{"call":"continuationSessionTx(tx,root)","error":"propagate","effective":"selected_id","selectionAlgorithm":"UNPROVED"},
+        "selectedCheck":{"condition":"id != root","invocation":"only_when_distinct","sameAsRootPreflight":true,"query":"SELECT ifnull(directory, '') FROM sessions WHERE id = ?","argument":"selected_id","missingRow":"allow","trimmedBlank":"allow","queryError":"propagate","trimmedNonblank":{"error":"wrap_ErrSessionIsolationConflict","sessionID":"quoted"}},
+        "rejection":{"returnBefore":"sessionOwnershipTx"}
+      }
+    },
+    {
+      "id":"SES-store-resume-selection",
+      "summary":"Resume selects the root, the first BINARY-ordered lowest-numeric live continuation, or the next arbitrary-precision ordinal with ordered error propagation.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":3121,"endLine":3131},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3147,"endLine":3204},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3274,"endLine":3280}
+      ],
+      "contract":"ResumeSessionWithOwnershipMode initializes effective to the requested ID, invokes registration with resume true and isolated false, returns an empty ID with any error, and returns effective only on success. continuationSessionTx returns the root when its row is missing or live. Only an ended root scans the half-open continuation range from root+:resume:0 through root+:resume::, ordered by ID under the source-declared BINARY collation. It accepts nonempty ASCII-digit suffixes, including leading zeros, parsed base 10 with arbitrary-precision big.Int. It tracks the greatest numeric suffix and lowest numeric live suffix; live replacement uses strict numeric less-than, so equal numeric values retain the first BINARY-ordered live ID, such as :resume:02 before :resume:2. It returns that live ID when present, or max plus one from an initial max of 1, so no accepted suffix yields :resume:2. Root-query, continuation-query, row-scan, and rows.Err failures propagate in execution order; registration returns selector errors before assigning effective.",
+      "negativeControls":"Terminal-root ownership guard semantics, isolation success, selected-continuation isolation, ownership, repair, start, enqueue, terminal synchronization, EndSession, callers, and runtime SQLite, collation, concurrency, durability, or Cloud behavior are not proved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "wrapper":{"entry":"ResumeSessionWithOwnershipMode","effectiveInitial":"id","registration":{"resume":true,"effective":"pointer","isolated":false},"error":{"id":"empty","error":"propagate"},"success":{"id":"effective","error":"nil"}},
+        "root":{"query":"SELECT ended_at FROM sessions WHERE id = ?","argument":"root","missing":"return_root","live":"return_root","ended":"scan_continuations","queryError":"propagate"},
+        "range":{"prefix":"root+:resume:","lower":"prefix+0","upper":"prefix+:","interval":"half_open","order":"ORDER BY id","collation":"source_declared_BINARY"},
+        "suffix":{"required":"nonempty","accepted":"ASCII_digits_only","leadingZeros":"accepted","parse":{"type":"big.Int","base":10,"arbitraryPrecision":true},"rejected":"continue"},
+        "selection":{"maxInitial":"1","maxTracks":"greatest_numeric_suffix","liveTracks":"lowest_numeric_live_suffix","liveCondition":"ended_is_nil","liveReplacementComparison":"strict_numeric_less_than","numericTie":"retain_first_source_declared_BINARY_ordered_live_ID","tieExample":{"first":"root+:resume:02","later":"root+:resume:2","selected":"root+:resume:02"},"returnLive":"liveID","returnNew":"prefix+(max+1)","noAcceptedSuffix":"root+:resume:2"},
+        "errors":{"order":["root_query_scan","continuation_query","row_scan","rows.Err"],"behavior":"propagate"},
+        "invocation":{"call":"continuationSessionTx(tx,root)","selectorError":"return_before_effective_assignment","success":"effective=selected_id"}
+      }
+    },
+    {
+      "id":"SES-store-end-terminal-upsert",
+      "summary":"EndSession validates its ID, updates any existing session terminal state, rereads persisted values, and offers a local session upsert before commit.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":59,"endLine":59},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3381,"endLine":3424},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9324,"endLine":9336},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10636,"endLine":10738},
+        {"sourceId":"SRC-SES-STORE-001","startLine":11598,"endLine":11607},
+        {"sourceId":"SRC-SES-STORE-001","startLine":12241,"endLine":12246}
+      ],
+      "contract":"EndSession validates id before withTx begins. The callback executes exactly UPDATE sessions SET ended_at = datetime('now'), summary = ? WHERE id = ? with nullableString(summary) and id, then checks RowsAffected. Zero rows return nil from the callback; a changed row is reread for persisted project, ownership mode, directory, start, end, and stored summary, and those values plus the request ID form a local session upsert offered to enqueueSyncMutationTx before commit. An empty summary maps to NULL while nonempty whitespace remains unchanged. Because the UPDATE has no ended predicate, an already-ended existing row is updated and offered again. Validation, begin, execution, RowsAffected, reread, enqueue, and commit errors propagate in their applicable order.",
+      "negativeControls":"Runtime SQLite timestamp and RowsAffected behavior, retry, rollback, concurrency, durability, enrollment implementation, remote acknowledgement or delivery, callers, ownership, resume, and isolated-registration success are not proved. Enqueue invocation alone is not a durable journal or synchronization claim.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "entry":{"method":"EndSession","validation":"validateSessionID","validationBefore":"withTx","blank":"ErrSessionIDRequired"},
+        "update":{"sql":"UPDATE sessions SET ended_at = datetime('now'), summary = ? WHERE id = ?","arguments":["nullableString(summary)","id"],"endedPredicate":false,"alreadyEnded":"update_and_offer_enqueue_again"},
+        "summary":{"empty":"NULL","nonemptyWhitespace":"preserved_unchanged"},
+        "transaction":{"scope":"same_withTx_callback","ordering":["validateSessionID","beginTxHook","UPDATE","RowsAffected","zero_rows_nil_OR_persisted_row_reread","enqueueSyncMutationTx","commitHook"],"zeroRows":"callback_nil_then_commit","errors":{"validation":"propagate_before_begin","begin":"propagate","exec":"propagate","rowsAffected":"propagate","reread":"propagate","enqueue":"propagate","commit":"propagate"}},
+        "persistedColumns":["ifnull(project, '')","ifnull(ownership_mode, '')","directory","started_at","ended_at","summary"],
+        "payloadFields":["ID","Project","OwnershipMode","Directory","StartedAt","EndedAt","Summary"],
+        "payloadSource":{"ID":"request_id","Project":"persisted","OwnershipMode":"persisted","Directory":"persisted","StartedAt":"persisted","EndedAt":"persisted_pointer","Summary":"persisted_nullable"},
+        "mutation":{"entity":"session","entityKey":"id","op":"upsert","source":"local"},
+        "queueGates":{"blankDirectory":"may_return_before_journal_row","unenrolledProject":"may_return_without_mutation_row","scope":"direct_helper_gates_only","durableSync":false,"enrollmentProtocol":"UNPROVED","remoteDelivery":"UNPROVED"}
+      }
+    },
+    {
+      "id":"SES-store-resume-root-ownership-guard",
+      "summary":"Resume rejects an incompatible ended root owner before continuation selection or effective-ID assignment.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":67,"endLine":75},
+        {"sourceId":"SRC-SES-STORE-001","startLine":135,"endLine":151},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3121,"endLine":3131},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3206,"endLine":3244},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3246,"endLine":3273},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3274,"endLine":3280},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9324,"endLine":9336},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10797,"endLine":10830},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10836,"endLine":10868}
+      ],
+      "contract":"ResumeSessionWithOwnershipMode initializes effective to id and delegates resume true, an effective pointer, and isolated false. Each withTx callback resets claimed false and id to root; non-isolated validation is a no-op before the root ended_at query. Query errors other than sql.ErrNoRows propagate, while a missing or live root skips the terminal ownership guard. For an ended root, sessionOwnershipTx supplies normalized ownership and sessionRegistrationProjectError is applied to root before continuationSessionTx. Ownership mismatch is remapped to SessionProjectConflictError for root; ambiguity and other errors propagate. A project-owned request against a blank root owner scans foreign observation owners before prompt owners, excluding deleted observations and blank projects, normalizes owners, returns the first owner different from the requested project, and propagates query, scan, and rows errors. A foreign owner becomes a root SessionProjectConflictError. Only guard acceptance permits continuation selection and effective assignment.",
+      "negativeControls":"Isolated-registration success, selected-identity ownership claims, continuation choice or ordinal, live-registration conflict, post-selection start or enqueue, EndSession, callers, runtime SQLite, retries, rollback, concurrency, durability, ownership security, and Cloud behavior are not proved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "wrapper":{"entry":"ResumeSessionWithOwnershipMode","effectiveInitial":"id","registration":{"resume":true,"effective":"pointer","isolated":false}},
+        "transaction":{"scope":"same_withTx_callback","eachAttemptReset":{"claimed":false,"id":"root"},"ordering":["reset_claimed_false","reset_id_to_root","validateIsolation(root)_noop","query_root_ended_at","ended_root_ownership_guard","continuationSessionTx","effective_assignment"]},
+        "root":{"isolation":"noop_when_nonisolated","query":"SELECT ended_at FROM sessions WHERE id = ?","argument":"root","missingOrLive":"skip_guard","ended":"check_normalized_ownership","queryError":"propagate_except_NoRows"},
+        "ownership":{"read":"sessionOwnershipTx(tx,root)","normalization":"NormalizeProject(strings.TrimSpace(rawProject.String))","registrationCheck":"sessionRegistrationProjectError(root,owner,ownerMode,project,mode)","mismatch":{"type":"SessionProjectConflictError","sessionID":"root","ownerProject":"owner","requestedProject":"project"},"ambiguousOrOtherError":"propagate"},
+        "foreignRecords":{"condition":{"requestedMode":"project_owned","normalizedRootOwner":"blank"},"helper":"foreignRecordOwnerTx(tx,root,project)","scanOrder":["observations","user_prompts"],"observations":{"nonblankProject":true,"deleted":"excluded"},"prompts":{"nonblankProject":true},"ownerNormalization":"NormalizeProject(strings.TrimSpace(raw.String))","selection":"first_nonblank_owner_different_from_requested_project","errors":{"query":"propagate","scan":"propagate","rows":"propagate"},"conflict":{"type":"SessionProjectConflictError","sessionID":"root","ownerProject":"foreignOwner","requestedProject":"project"}},
+        "rejection":{"before":["continuationSessionTx","effective_assignment"]},
+        "acceptance":{"continuation":"continuationSessionTx(tx,root)","selectorError":"propagate_before_effective_assignment","effective":"selected_id_only_after_success"}
+      }
+    },
+    {
+      "id":"SES-store-isolated-root-success",
+      "summary":"Isolated non-resume registration of a missing root starts and rereads that unchanged root, while its blank persisted directory suppresses local session journaling.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":59,"endLine":59},
+        {"sourceId":"SRC-SES-STORE-001","startLine":135,"endLine":151},
+        {"sourceId":"SRC-SES-STORE-001","startLine":347,"endLine":356},
+        {"sourceId":"SRC-SES-STORE-001","startLine":580,"endLine":591},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3133,"endLine":3145},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3206,"endLine":3379},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9324,"endLine":9336},
+        {"sourceId":"SRC-SES-STORE-001","startLine":9402,"endLine":9428},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10636,"endLine":10738},
+        {"sourceId":"SRC-SES-STORE-001","startLine":10797,"endLine":10811},
+        {"sourceId":"SRC-SES-STORE-001","startLine":11598,"endLine":11607}
+      ],
+      "contract":"For RegisterIsolatedSession with resume false, a nonblank ID, valid normalized project, and missing root, the wrapper fixes empty directory, project-owned mode, isolated true, and returns the unchanged root on success. Validation precedes withTx. Each callback resets claimed false and id to root; missing-root isolation is accepted, resume and distinct-selected checks are skipped, and missing ownership yields found false so identityRepaired is true. startSessionTx receives the root, normalized project, empty directory, and project-owned mode with its exact SQL argument order. The persisted row is reread and all session-upsert fields come from it. The local session upsert reaches the blank-directory gate and returns before tombstone clearing, encoding, enrollment, or journal work. The callback returns nil; withTx delegates commit, claimed stays false, registration returns nil, and the wrapper returns the unchanged root.",
+      "negativeControls":"NormalizeProject and Now internals, transaction begin or commit hooks, retries or timing, enrollment, SQLite execution, rollback, durability, security, concurrency, Cloud delivery, callers, and every other isolation, resume, live-repair, or ownership branch are unproved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "sentinels":{"idRequired":"ErrSessionIDRequired","invalidMode":"ErrInvalidSessionOwnershipMode","projectRequired":"ErrProjectRequired","isolationConflict":"ErrSessionIsolationConflict","alreadyEnded":"ErrSessionAlreadyEnded"},
+        "constants":{"validOwnershipModes":["shared","project_owned"],"ownershipMode":"project_owned","entity":"session","op":"upsert","source":"local"},
+        "wrapper":{"entry":"RegisterIsolatedSession","effectiveInitial":"id","directory":"empty","mode":"project_owned","resumeInput":false,"resumeForward":"caller","isolated":true,"errorID":"empty","successID":"unchanged_root"},
+        "validation":{"order":["validateSessionID","validSessionOwnershipMode","NormalizeProject","trimmed_project_required","withTx"],"id":{"blank":"ErrSessionIDRequired","nonblank":"nil"},"mode":"valid","project":"normalized_nonblank"},
+        "path":{"validationBeforeTransaction":true,"rootMissing":"sql.ErrNoRows_allow","resumeBranch":"skip","selectedValidation":"skip_unchanged_id","ownership":{"found":false,"values":["empty_project","empty_mode"],"error":"nil","identityRepaired":true}},
+        "start":{"call":"startSessionTx(tx,root,normalized_project,empty,project_owned)","columns":["id","project","ownership_mode","directory","started_at","runtime_lease_expires_at","local_creation_project"],"arguments":["id","project","mode","directory","Now()","runtimeSessionLeaseDuration","project","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet"],"bindings":{"id":"root","project":"normalized_project","mode":"project_owned","directory":"empty"},"errors":"propagate","zeroRows":"ErrSessionAlreadyEnded"},
+        "persisted":{"columns":["id","ifnull(project, '')","ifnull(ownership_mode, '')","directory","started_at","ended_at","summary"],"payloadFields":["ID","Project","OwnershipMode","Directory","StartedAt","EndedAt","Summary"],"source":"persisted_row"},
+        "queue":{"call":"enqueueSyncMutationTx","identity":{"entity":"session","entityKey":"persisted.ID","op":"upsert","source":"local"},"blankDirectory":"return_nil","before":["clear_tombstone","encode_payload","enrollment_lookup","journal_write"],"durableSync":false},
+        "transaction":{"eachAttemptReset":{"claimed":false,"id":"root"},"ordering":["validation","withTx","reset","isolation_missing_allow","ownership_missing","startSessionTx","persisted_reread","enqueue_blank_directory_return","callback_nil","commitHook"],"callback":"nil","withTx":"delegate_commit","internals":"UNPROVED"},
+        "result":{"claimed":false,"registrationError":"nil","effective":"unchanged_root","wrapper":{"id":"root","error":"nil"}},
+        "delegated":{"normalizeProjectAlgorithm":"UNPROVED","nowRepresentation":"UNPROVED","beginCommitHooks":"UNPROVED","retryTimingActual":"UNPROVED","enrollmentImplementation":"UNPROVED","sqliteExecutionRollbackDurability":"UNPROVED","securityConcurrencyCloudCallers":"UNPROVED"}
+      }
+    },
+    {
+      "id":"SES-store-active-runtime-candidates",
+      "summary":"ActiveRuntimeSessions resolves ordered active non-manual session IDs for a normalized project and exact runtime-directory set.",
+      "evidence":[
+        {"sourceId":"SRC-SES-STORE-001","startLine":3447,"endLine":3447},
+        {"sourceId":"SRC-SES-STORE-001","startLine":3476,"endLine":3553},
+        {"sourceId":"SRC-SES-STORE-001","startLine":12271,"endLine":12280}
+      ],
+      "contract":"ActiveRuntimeSessions discards NormalizeProject's warning and returns nil before querying when the normalized project or exact nonempty-directory set is empty. It removes only exact empty directory strings, retains whitespace, and exactly deduplicates nonempty values. Project is the first argument and each unique directory contributes one placeholder and argument, while map iteration promises no directory or argument order. The query scopes LOWER(project), exact directory membership, unended rows, and non-manual-save IDs, groups by session ID, and uses the latest observation created_at without a deleted filter, falling back to started_at. A nonnull nonempty lease qualifies only when its datetime is strictly after now; malformed or expired nonempty leases cannot use the legacy path. Null or empty leases qualify at the inclusive seven-day activity boundary only when no live lease exists in the same directory. IDs are ordered by candidate ID; query, Scan, and rows.Err errors propagate, rows are deferred closed without a close-error claim, and no rows returns nil.",
+      "negativeControls":"NormalizeProject internals and warning delivery, caller cardinality or fallback selection, runtime SQLite datetime, collation, or query planning, close errors, actual read-only guarantees, persistence, mutation, concurrency, platform, security, and Cloud behavior are not proved.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{
+        "entry":{"method":"ActiveRuntimeSessions","normalizeProject":{"warning":"discarded","emptyResult":"nil_before_query"}},
+        "directories":{"empty":"discard_exact_empty_only","whitespace":"retain","deduplicate":"exact_nonempty","emptySet":"nil_before_query","iterationOrder":"unordered","argumentOrder":"unpromised"},
+        "arguments":{"project":"first","directory":"one_per_unique_nonempty","placeholder":"one_per_unique_nonempty"},
+        "query":{"project":"LOWER(s.project) = ?","directory":"s.directory IN","ended":"s.ended_at IS NULL","manualSave":"s.id NOT LIKE 'manual-save%'","groupBy":"s.id","activity":"COALESCE(MAX(o.created_at), s.started_at)","observationDeletedFilter":false},
+        "lease":{"live":"nonnull_nonempty_datetime_strictly_after_now","expiredOrMalformedNonempty":"exclude_without_legacy_fallback","unleased":["NULL","empty"],"activityThreshold":"inclusive_7_days","suppression":"same_directory_live_lease"},
+        "errors":{"query":"propagate","scan":"propagate","rowsErr":"propagate","close":"deferred_no_error_claim"},
+        "result":{"order":"candidate.id","collected":"ids","none":"nil"}
+      }
+    }
+  ]
+}

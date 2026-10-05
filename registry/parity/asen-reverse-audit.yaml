@@ -1,5 +1,5 @@
 audit: asen-reverse
-asen_branch: audit/gentle-parity
+asen_branch: audit/external-parity
 purpose: "Map every current ASEN runtime module to what it actually proves; prohibit capability inflation."
 modules:
   src/agents/dispatcher.ts:
@@ -46,5 +46,5 @@ test_quality:
     - "No exact Git candidate snapshot tests."
     - "No behavioral contract fixtures against frozen upstream baselines."
 conclusion:
-  - "ASEN v1 skeleton is architecturally clean but substantially earlier than Gentle's hardened behavioral guarantees."
+  - "ASEN v1 skeleton is architecturally clean but substantially earlier than External's hardened behavioral guarantees."
   - "No current P0 parity claim should be accepted solely from module presence."

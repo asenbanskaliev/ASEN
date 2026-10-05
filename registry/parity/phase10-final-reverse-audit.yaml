@@ -1,5 +1,5 @@
 audit: phase10-final-reverse
-branch: audit/gentle-parity
+branch: audit/external-parity
 frozen_universe: PAR-001..PAR-500
 result: NO_NEW_P0
 observations:

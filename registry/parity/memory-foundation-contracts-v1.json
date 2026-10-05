@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "scope": "reference_only",
+  "status": "SOURCE_INSPECTED",
+  "proofKind": "source_inspection",
+  "limitations": [
+    "This fixture records source-inspected contracts, not observed Go execution or ASEN engine parity.",
+    "English narrative dimensions are source-only and unsealed; validation anchors structure and selected critical values.",
+    "The offline JSON.parse loader does not independently detect duplicate property names, NUL-byte substitution, symlink substitution, or filesystem races.",
+    "Pinned hashes identify inspected bytes but do not authenticate their publisher.",
+    "Runtime filesystem, locking, SQLite, FTS, authentication, and authorization behavior remains unproved."
+  ],
+  "sources": [
+    {"id":"SRC-FND-001","path":"internal/store/store.go","bytes":501321,"sha256":"2ffd000ee7f8c8fc1ad0c3d130e88a8ab4878449866c9737215b3c6d8ffa555b","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","commitRole":"CORE-15a","lineStart":997,"lineEnd":9363},
+    {"id":"SRC-FND-002","path":"internal/store/startup_gate_test.go","bytes":24904,"sha256":"d89e2f55fe5f33513902887ff8a150130f192773218b363383daf03f02205030","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","commitRole":"CORE-15a","lineStart":119,"lineEnd":450},
+    {"id":"SRC-FND-003","path":"internal/store/filesystem_policy.go","bytes":2330,"sha256":"7bf87a28de234d8c5319d9d5b75a40f58ecd6d5f51ed32a677a2234092e3a3e0","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","commitRole":"CORE-15a","lineStart":26,"lineEnd":67},
+    {"id":"SRC-FND-004","path":"internal/store/generation_fence.go","bytes":12735,"sha256":"39ca5c48d3843086867f64049894df2f218d165c1d28bdacd7ad4a31980a1865","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","commitRole":"CORE-15a","lineStart":16,"lineEnd":110},
+    {"id":"SRC-FND-005","path":"internal/store/migration_lock.go","bytes":2500,"sha256":"5259721e35d46953bb325ae482eb7dceed7f09324ad19e3de9ac7992245e7b4c","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","commitRole":"CORE-15a","lineStart":10,"lineEnd":69}
+  ],
+  "cases": [
+    {
+      "id":"FND-01","summary":"Startup accepts an absolute data path and rejects a relative path before mutation.",
+      "evidence":[{"sourceId":"SRC-FND-001","startLine":1007,"endLine":1010}],
+      "input":"A configured data-directory path.","trigger":"Construct the store.",
+      "ordering":["Validate path absoluteness before filesystem policy checks and creation."],
+      "output":"Relative input returns an error; absolute input continues.","durableState":"No state is created for a relative path.","sideEffects":"Absolute input may proceed to later startup effects.","negativeControls":"This does not prove every absolute path is usable.","versionControl":"CORE-15a",
+      "criticalValues":{"absolutePathAccepted":true,"relativePathRejected":true,"rejectionBeforeMutation":true}
+    },
+    {
+      "id":"FND-02","summary":"A positively identified remote filesystem is rejected before database-triplet or metadata mutation.",
+      "evidence":[{"sourceId":"SRC-FND-001","startLine":1011,"endLine":1016},{"sourceId":"SRC-FND-002","startLine":144,"endLine":211},{"sourceId":"SRC-FND-003","startLine":41,"endLine":55}],
+      "input":"An absolute data path classified as a known remote filesystem.","trigger":"Run the filesystem policy during construction.",
+      "ordering":["Classify filesystem before creating the data directory, instance metadata, migration lock, or SQLite files."],
+      "output":"Return the typed remote-filesystem rejection.","durableState":"Existing database, WAL, and shared-memory bytes remain unchanged.","sideEffects":"Inspection only precedes rejection.","negativeControls":"No blanket cloud-sync path-name ban is asserted.","versionControl":"CORE-15a",
+      "criticalValues":{"classification":"known_remote","rejected":true,"mutationBarrier":["data_directory","database_triplet","instance_metadata","migration_lock"]}
+    },
+    {
+      "id":"FND-03","summary":"Unknown, failed, or unclassifiable filesystem inspection remains allowed without claiming locality.",
+      "evidence":[{"sourceId":"SRC-FND-003","startLine":41,"endLine":67},{"sourceId":"SRC-FND-002","startLine":190,"endLine":211}],
+      "input":"A path with unknown classification, inspection failure, or missing leaf directories.","trigger":"Evaluate filesystem policy.",
+      "ordering":["Walk to the closest existing ancestor for a missing path before inspection."],
+      "output":"Continue startup unless the filesystem is positively remote.","durableState":"Later startup may create the requested directory.","sideEffects":"Ancestor lookup is read-only; subsequent startup effects remain permitted.","negativeControls":"Allowed does not mean proved local.","versionControl":"CORE-15a",
+      "criticalValues":{"unknown":"ALLOWED","inspectionFailure":"ALLOWED","unclassifiable":"ALLOWED","provedLocal":false,"missingPathProbe":"closest_existing_ancestor"}
+    },
+    {
+      "id":"FND-04","summary":"A one-connection pool is primed with fixed SQLite and persistent-WAL settings before version reads.",
+      "evidence":[{"sourceId":"SRC-FND-001","startLine":1027,"endLine":1112},{"sourceId":"SRC-FND-002","startLine":119,"endLine":143}],
+      "input":"A database file opened during store construction.","trigger":"Configure and prime the first physical connection.",
+      "ordering":["Set pool size, prime with bounded lock retries, require persistent WAL, then run startup migrations and version reads."],
+      "output":"Construction continues only when persistent-WAL mode reports active.","durableState":"Persistent WAL is configured to survive normal close.","sideEffects":"Connection opening can create SQLite WAL state.","negativeControls":"The fixture does not execute SQLite or prove replacement-connection behavior.","versionControl":"CORE-15a",
+      "criticalValues":{"maxOpenConnections":1,"transactionLock":"immediate","busyTimeoutMs":5000,"journalMode":"WAL","synchronous":"NORMAL","foreignKeys":1,"persistentWalMode":1,"lockRetryBackoffMs":[10,25,50,100,200]}
+    },
+    {
+      "id":"FND-05","summary":"Schema version 1 gates migration, repair, and conditional stamping rather than tracking release major 3.",
+      "evidence":[{"sourceId":"SRC-FND-001","startLine":1114,"endLine":1188},{"sourceId":"SRC-FND-002","startLine":238,"endLine":293}],
+      "input":"A fresh, older, or current-version database.","trigger":"Run startup migrations after connection priming.",
+      "ordering":["Fresh or older databases migrate and repair before stamping version 1; current version 1 still migrates and repairs without stamping."],
+      "output":"Successful older startup records schema version 1; current startup preserves version 1.","durableState":"Migration and repair writes persist; stamping occurs only for versions below 1.","sideEffects":"Current-version startup may still perform repair writes.","negativeControls":"Repeat-open FTS and migration idempotence remain runtime-proof pending.","versionControl":"CORE-15a",
+      "criticalValues":{"schemaVersion":1,"freshOrOlder":["migrate","repair","stamp_1"],"currentVersion1":["migrate","repair","no_stamp"]}
+    },
+    {
+      "id":"FND-06","summary":"A schema version above 1 skips startup migration, repair, and stamping while ordinary memory CRUD remains permitted.",
+      "evidence":[{"sourceId":"SRC-FND-001","startLine":1122,"endLine":1179},{"sourceId":"SRC-FND-001","startLine":3724,"endLine":3853},{"sourceId":"SRC-FND-001","startLine":4654,"endLine":4663},{"sourceId":"SRC-FND-001","startLine":4725,"endLine":4809},{"sourceId":"SRC-FND-001","startLine":4871,"endLine":4951},{"sourceId":"SRC-FND-002","startLine":339,"endLine":450}],
+      "input":"A database whose user_version is greater than 1.","trigger":"Open the store, then invoke compatible memory operations.",
+      "ordering":["Pre-version filesystem and WAL preparation may occur; the future-version gate precedes migration, repair, and stamping."],
+      "output":"Open succeeds without startup schema writes and compatible GET, Add, Update, and Delete remain permitted.","durableState":"The future user_version is preserved.","sideEffects":"Pre-version preparation and requested compatible CRUD writes may occur.","negativeControls":"No read-only, zero-side-effect, application-id, or raw-database interoperability claim is made.","versionControl":"CORE-15a",
+      "criticalValues":{"futureVersionCondition":">1","skipStartup":["migration","repair","stamp"],"compatibleCrudPermitted":["GET","Add","Update","Delete"],"preVersionPreparationPermitted":true,"readOnly":false}
+    },
+    {
+      "id":"FND-07","summary":"Startup combines generation fencing, a persistent process lock file, and a version recheck around migration decisions.",
+      "evidence":[{"sourceId":"SRC-FND-001","startLine":1119,"endLine":1164},{"sourceId":"SRC-FND-004","startLine":16,"endLine":93},{"sourceId":"SRC-FND-005","startLine":10,"endLine":69}],
+      "input":"Concurrent startup against database files that may be migrated or replaced.","trigger":"Enter startup checks and contend for the migration lock.",
+      "ordering":["generation_check","version_read","future_gate","migration_lock","generation_recheck","version_reread","migrate_repair","stamp_if_older"],
+      "output":"Processes serialize migration; replacement detection returns a generation-changed error.","durableState":"The lock file remains after unlock to preserve inode identity.","sideEffects":"Startup writes remain generation-fenced while redundant startup read probes are suppressed.","negativeControls":"An unobserved WAL or SHM file may remain absent until first observed; this is not a blanket missing-file failure.","versionControl":"CORE-15a",
+      "criticalValues":{"processSerialization":true,"versionRaceRecheck":true,"replacementFence":true,"lockFilePersists":true,"startupWritesFenced":true}
+    },
+    {
+      "id":"FND-08","summary":"Constructor failure after database open closes its handle, while normal close preserves persistent WAL.",
+      "evidence":[{"sourceId":"SRC-FND-001","startLine":1022,"endLine":1056},{"sourceId":"SRC-FND-002","startLine":119,"endLine":143}],
+      "input":"A constructor that has opened a database and then either succeeds or fails later.","trigger":"Complete or unwind post-open startup.",
+      "ordering":["Arm failure cleanup after open; disarm it only after startup migrations succeed."],
+      "output":"Post-open failure closes the handle; successful construction exposes normal Close.","durableState":"Persistent WAL survives normal close when active.","sideEffects":"Directories, metadata, or files created before failure can remain.","negativeControls":"Cleanup is not a transaction rollback of prior filesystem state.","versionControl":"CORE-15a",
+      "criticalValues":{"failedPostOpenClosesHandle":true,"normalCloseClosesHandle":true,"persistentWalPreserved":true,"priorFilesystemStateRolledBack":false}
+    }
+  ]
+}

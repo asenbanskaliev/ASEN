@@ -1,0 +1,72 @@
+name: Pi Free Smoke
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+jobs:
+  authenticated-free-model:
+    if: github.event.pull_request.number == 30 && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install Pi and pi-free
+        run: |
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
+          pi install npm:pi-free
+      - name: Inspect pi-free registered models
+        run: pi --list-models
+      - name: Verify LLM7 registration
+        run: |
+          set -euo pipefail
+          pi --list-models | tee "$RUNNER_TEMP/models.txt"
+          grep -Ei 'llm7' "$RUNNER_TEMP/models.txt" | head -n 1
+      - name: Execute authenticated LLM7 turn
+        shell: bash
+        env:
+          LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$LLM7_API_KEY"
+          OUTPUT=""
+          for attempt in 1 2 3; do
+            if OUTPUT=$(pi --no-session --provider llm7 --model default --print "Reply with exactly ASEN_PI_FREE_OK"); then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -q ASEN_PI_FREE_OK
+      - name: Run repository tests while authenticated provider audit is rate-limited
+        run: |
+          npm install
+          npm test
+          npm run typecheck
+      - name: Restore pi-free after repository dependency install
+        run: pi install npm:pi-free
+      - name: Execute authenticated ASEN contracts with Pi Free
+        shell: bash
+        env:
+          LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          ASEN_PI_PROVIDER: llm7
+          ASEN_PI_MODEL: default
+          ASEN_PI_PROVIDER_EXTENSION: npm:pi-free
+        run: |
+          set -euo pipefail
+          export ASEN_RECOVERY_FILE="$(mktemp)"
+          export ASEN_RECOVERY_KEY="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("base64url"))')"
+          trap 'rm -f "$ASEN_RECOVERY_FILE"' EXIT
+          node --import tsx scripts/pi-authenticated-recovery-init.mjs
+          node --import tsx scripts/pi-authenticated-skill-e2e.mjs
+          node --import tsx scripts/pi-authenticated-artifact-e2e.mjs
+          node --import tsx scripts/pi-authenticated-lifecycle-e2e.mjs

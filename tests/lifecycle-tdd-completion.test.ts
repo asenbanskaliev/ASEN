@@ -1,0 +1,133 @@
+import assert from "node:assert/strict";
+import {createHmac,randomBytes} from "node:crypto";
+import {spawnSync} from "node:child_process";
+import {mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join,resolve} from "node:path";
+import test from "node:test";
+import type {Candidate} from "../src/core/types.js";
+import {tddObligationFor} from "../src/lifecycle/applicability.js";
+import {createSkillLifecycle,lifecyclePhases,loadLifecycle,saveLifecycle,type LifecyclePhase,type SkillLifecycle} from "../src/lifecycle/skill-lifecycle.js";
+import {issueSkillContext} from "../src/skills/context.js";
+import {selectSkills} from "../src/skills/registry.js";
+import {beginNonTddAlternative,claimNonTddAlternativeResult} from "../src/test/non-tdd-alternative.js";
+import {beginStrictTddCycle,type StrictTddPlan} from "../src/test/strict-tdd-cycle.js";
+import {executeNodeCoverageObservation,executeNodePassingObservation,executeNodeTestObservation} from "../src/test/tdd-observation.js";
+import {Dispatcher} from "../src/agents/dispatcher.js";
+import {EvidenceStore,loadEvidence,saveEvidence} from "../src/evidence/store.js";
+import {verifyCandidate,verifySkillEvidence} from "../src/verify/verifier.js";
+import {commitCandidateFiles,gitCandidate,passingEvidence,passingReview} from "./execution-evidence-helper.js";
+import {fixtureArtifactRunner} from "./lifecycle-pi-fixture.js";
+import {issueStructuredLifecycleApplicability} from "./helpers/lifecycle-applicability.js";
+import {admitRouteEvidence} from "./helpers/route-evidence.js";
+
+const behaviorPath="src/classify.mjs",otherPath="src/other.mjs",testPath="tests/classify.test.mjs",yes="accepts yes",no="rejects other";
+const behavior="export function classify(value){if(value==='yes'){return 1;}return 2;}\n",baseBehavior="export function classify(){return 0;}\n";
+const oneTest=`import test from 'node:test';import assert from 'node:assert/strict';import {classify} from '../src/classify.mjs';test('${yes}',()=>assert.equal(classify('yes'),1));\n`;
+const twoTests=`${oneTest}test('${no}',()=>assert.equal(classify('no'),2));\n`;
+export const artifacts:Record<LifecyclePhase,string>={"context-init":"project-context",explore:"exploration",proposal:"proposal",specification:"specification",design:"design",tasks:"task-plan",apply:"apply-result",verify:"verification-report",archive:"archive-report"};
+export const roles:Record<LifecyclePhase,"explorer"|"worker"|"verifier">={"context-init":"worker",explore:"explorer",proposal:"worker",specification:"worker",design:"worker",tasks:"worker",apply:"worker",verify:"verifier",archive:"worker"};
+const point=(source:string,path=behaviorPath)=>({behaviorPath:path,startOffset:behavior.indexOf(source),endOffset:behavior.indexOf(source)+source.length});
+const multi={expectedFailingCaseIds:[yes],decisionPaths:[{caseId:yes,points:[point("return 1;")]},{caseId:no,points:[point("return 2;")]}],triangulationPolicy:{mode:"required"}} as const;
+const single={expectedFailingCaseIds:[yes],decisionPaths:[{caseId:yes,points:[point("return 1;")]}],triangulationPolicy:{mode:"not-applicable",reason:"structurally-single-decision-path",rationale:"Only one structural path exists."}} as const;
+
+function applicability(base:Candidate,task:string,paths:readonly string[]=[behaviorPath],required=true){return issueStructuredLifecycleApplicability(task,base,paths,required?"required":"not-applicable","structured",["tdd"]);}
+async function advanceApply(flow:SkillLifecycle,base:Candidate,task:string){
+ const evidence=new EvidenceStore();admitRouteEvidence(evidence,base);for(const [id,kind] of [["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)evidence.add(base,{id,kind,status:"pass",summary:id,createdAt:"now"});await passingReview(evidence,base,"review");await passingEvidence(evidence,base,"test");
+ for(const phase of lifecyclePhases.slice(0,7)){const role=roles[phase]!,context=issueSkillContext(`${task}:${role}`,base.repository,base,{phase}),skillPaths=selectSkills(context).map(skill=>skill.path),runner=fixtureArtifactRunner(()=>({kind:artifacts[phase]!,content:phase,repository:base.repository,candidateId:base.id,revision:base.revision}));await flow.runPhase(new Dispatcher(runner,evidence),{phase,context,skillPaths,prompt:phase,evidence,risk:"low",...(phase==="apply"?{writeSurfaces:["src/"]}:{})});}
+}
+const cleanup=(t:test.TestContext,candidate:Candidate)=>t.after(()=>rm(candidate.repository,{recursive:true,force:true}));
+export async function strictResult(t:test.TestContext,options:{triangulate:boolean;refactor:boolean;task?:string}={triangulate:true,refactor:true}){
+ const generated=gitCandidate("lifecycle-tdd"),initial={...generated,repository:await realpath(generated.repository)},base=commitCandidateFiles(initial,{[behaviorPath]:baseBehavior,[otherPath]:"export const other=1;\n"});cleanup(t,initial);const task=options.task??"GSP-05C4b",app=await applicability(base,task),obligation=tddObligationFor(app),flow=createSkillLifecycle(app);await advanceApply(flow,base,task);
+ const plan:StrictTddPlan=options.triangulate?multi:single,cycle=beginStrictTddCycle(obligation,plan),red=commitCandidateFiles(base,{[testPath]:oneTest},"RED"),redResult=cycle.recordRed(red,await executeNodeTestObservation(red,[testPath]),await executeNodeTestObservation(red,[testPath])),green=commitCandidateFiles(red,{[behaviorPath]:behavior},"GREEN"),greenResult=cycle.recordGreen(redResult,green,await executeNodePassingObservation(green,[testPath]));
+ let terminal,candidate=green,cases=[yes];if(options.triangulate){candidate=commitCandidateFiles(green,{[testPath]:twoTests},"TRIANGULATE");cases=[yes,no];terminal=cycle.recordTriangulation(greenResult,candidate,await executeNodeCoverageObservation(candidate,[testPath],cases,[behaviorPath]));}else terminal=cycle.recordSinglePathNotApplicable(greenResult);
+ const terminalRevision=candidate.revision;if(options.refactor)candidate=commitCandidateFiles(candidate,{[behaviorPath]:`${behavior}// refactored\n`},"REFACTOR");const coverage=await executeNodeCoverageObservation(candidate,[testPath],cases,[behaviorPath]),result=options.refactor?cycle.recordRefactorPerformed(terminal,candidate,coverage):cycle.recordRefactorNotNeeded(terminal,coverage,"Structure is already minimal.");
+ return {initial,base,red,green,terminalRevision,candidate,result,flow,task};
+}
+export async function alternativeResult(t:test.TestContext){
+ const generated=gitCandidate("lifecycle-alternative"),initial={...generated,repository:await realpath(generated.repository)},base=commitCandidateFiles(initial,{[behaviorPath]:behavior,[testPath]:twoTests});cleanup(t,initial);const task="GSP-05C4b-alt",app=await applicability(base,task),obligation=tddObligationFor(app),flow=createSkillLifecycle(app);await advanceApply(flow,base,task);const plan={reason:"baseline-already-passes",rationale:"The baseline already passes both planned cases.",decisionPaths:[{caseId:yes,points:[point("return 1;")]},{caseId:no,points:[point("return 2;")]}]} as const,controller=beginNonTddAlternative(obligation,plan),baselineCoverage=await executeNodeCoverageObservation(base,[testPath],[yes,no],[behaviorPath]),candidate=commitCandidateFiles(base,{[behaviorPath]:`${behavior}// candidate\n`}),candidateCoverage=await executeNodeCoverageObservation(candidate,[testPath],[yes,no],[behaviorPath]),result=controller.record(baselineCoverage,candidate,candidateCoverage);return {initial,base,candidate,result,flow,task};
+}
+
+for(const triangulate of [true,false])for(const refactor of [true,false])test(`promotes exact strict chain (${triangulate?"triangulation":"N/A"}, ${refactor?"performed":"not-needed"})`,async t=>{const value=await strictResult(t,{triangulate,refactor});value.flow.promoteCandidateFromTdd(value.result);const expected=[value.base.revision,value.red.revision,value.green.revision,...(triangulate?[value.terminalRevision]:[]),...(refactor?[value.candidate.revision]:[])];assert.deepEqual(value.flow.state.revisions,expected);assert.equal(value.flow.state.candidate.revision,value.candidate.revision);assert.equal(value.flow.state.version,2);assert.equal(value.flow.state.version===2&&value.flow.state.tddPromotion.method,"strict-completion");assert.equal(value.flow.state.nextPhase,"verify");assert.equal(value.flow.state.records.length,7);});
+
+test("promotes an exact verified non-TDD alternative and exposes narrow one-use facts",async t=>{const value=await alternativeResult(t);assert.throws(()=>claimNonTddAlternativeResult({...value.result}),/not issued/);value.flow.promoteCandidateFromTdd(value.result);assert.deepEqual(value.flow.state.revisions,[value.base.revision,value.candidate.revision]);assert.equal(value.flow.state.version,2);assert.equal(value.flow.state.version===2&&value.flow.state.tddPromotion.method,"verified-non-tdd-alternative");assert.throws(()=>claimNonTddAlternativeResult(value.result),/already been claimed/);});
+
+test("required v3 recovery before and after apply cannot bypass exact TDD promotion",async t=>{
+ const generated=gitCandidate("lifecycle-required-recovery"),initial={...generated,repository:await realpath(generated.repository)},base=commitCandidateFiles(initial,{[behaviorPath]:baseBehavior});cleanup(t,initial);const key=randomBytes(32),dir=await mkdtemp(join(tmpdir(),"asen-required-v3-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const verifyBlocked=async(flow:SkillLifecycle,task:string)=>{const evidence=new EvidenceStore();admitRouteEvidence(evidence,base);for(const [id,kind] of [["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)evidence.add(base,{id,kind,status:"pass",summary:id,createdAt:"now"});await passingEvidence(evidence,base,"generic-test");await passingReview(evidence,base,"generic-review");const context=issueSkillContext(`${task}:verifier`,base.repository,base,{phase:"verify"}),skillPaths=selectSkills(context).map(skill=>skill.path),runner=fixtureArtifactRunner(()=>({kind:artifacts.verify,content:"verify",repository:base.repository,candidateId:base.id,revision:base.revision}));await assert.rejects(()=>flow.runPhase(new Dispatcher(runner,evidence),{phase:"verify",context,skillPaths,prompt:"verify",evidence,risk:"low"}),/exact TDD completion promotion|required TDD/i);assert.equal(flow.state.nextPhase,"verify");};
+ const fixture=resolve("tests/fixtures/recover-selected-lifecycle.ts");
+ const run=(path:string,task:string,mode:string)=>spawnSync(
+  process.execPath,["--import","tsx",fixture,path,task,base.id,base.repository,base.revision,mode],
+  {cwd:resolve("."),encoding:"utf8",env:{...process.env,ASEN_RECOVERY_KEY:key.toString("base64url")},timeout:20000},
+ );
+ const afterTask="required-after-apply",after=createSkillLifecycle(await applicability(base,afterTask));
+ await advanceApply(after,base,afterTask);
+ const afterPath=join(dir,"after.json");
+ await saveLifecycle(afterPath,after.state,key);
+ await verifyBlocked(await loadLifecycle(afterPath,afterTask,base,key),afterTask);
+ const afterChild=run(afterPath,afterTask,"required-after");
+ assert.equal(afterChild.status,0,afterChild.stderr);
+ const afterResult=JSON.parse(afterChild.stdout);
+ assert.equal(afterResult.phase,"verify");assert.equal(afterResult.records,7);
+ assert.match(afterResult.probeResults.genericVerify,/exact TDD completion promotion|required TDD/i);
+ const beforeTask="required-before-apply",before=createSkillLifecycle(await applicability(base,beforeTask));
+ const beforePath=join(dir,"before.json");
+ await saveLifecycle(beforePath,before.state,key);
+ const recovered=await loadLifecycle(beforePath,beforeTask,base,key);
+ await advanceApply(recovered,base,beforeTask);
+ await verifyBlocked(recovered,beforeTask);
+ const beforeChild=run(beforePath,beforeTask,"required-before");
+ assert.equal(beforeChild.status,0,beforeChild.stderr);
+ const beforeResult=JSON.parse(beforeChild.stdout);
+ assert.equal(beforeResult.phase,"verify");assert.equal(beforeResult.records,7);
+ assert.match(beforeResult.probeResults.genericVerify,/exact TDD completion promotion|required TDD/i);
+});
+
+test("rejects raw required promotion, continues genuine v3 revised N/A, and rejects legacy revised v1",async t=>{
+ const required=await strictResult(t,{triangulate:false,refactor:false}),child=commitCandidateFiles(required.candidate,{[behaviorPath]:`${behavior}// raw\n`});
+ assert.throws(()=>required.flow.promoteCandidateRevision(child.revision),/TDD is required/);
+ const generated=gitCandidate("lifecycle-na"),initial={...generated,repository:await realpath(generated.repository)},base=commitCandidateFiles(initial,{"README.md":"base\n"});cleanup(t,initial);
+ const task="GSP-05C4b-na",flow=createSkillLifecycle(await applicability(base,task,["README.md"],false));await advanceApply(flow,base,task);
+ const next=commitCandidateFiles(base,{"README.md":"next\n"});flow.promoteCandidateRevision(next.revision);assert.equal(flow.state.candidate.revision,next.revision);
+ const dir=await mkdtemp(join(tmpdir(),"asen-c4b-"));t.after(()=>rm(dir,{recursive:true,force:true}));const path=join(dir,"state.json"),key=randomBytes(32);
+ await saveLifecycle(path,flow.state,key);assert.equal(JSON.parse(await readFile(path,"utf8")).version,3);
+ const recovered=await loadLifecycle(path,task,next,key),recoveredState=recovered.state;assert.equal(recoveredState.version,1);assert.equal(recoveredState.nextPhase,"verify");assert.equal("pendingAuthority" in recoveredState,false);assert.equal("tddPromotion" in recoveredState,false);assert.throws(()=>recovered.reissuePendingAuthority(),/no signed pending phase authority/);
+ const legacy=structuredClone(flow.state);await writeFile(path,JSON.stringify({snapshot:legacy,mac:createHmac("sha256",key).update(JSON.stringify(legacy)).digest("hex")}));await assert.rejects(()=>loadLifecycle(path,task,next,key),/migration required; restart exact applicability/);
+});
+
+test("burns genuine strict results before phase, pending-authority, and cross-lifecycle validation",async t=>{const early=await strictResult(t,{triangulate:false,refactor:false});const fresh=createSkillLifecycle(await applicability(early.base,"early"));assert.throws(()=>fresh.promoteCandidateFromTdd(early.result),/completed apply/);assert.throws(()=>early.flow.promoteCandidateFromTdd(early.result),/already been claimed/);const pending=await strictResult(t,{triangulate:false,refactor:false,task:"pending"}),context=issueSkillContext("pending:verifier",pending.base.repository,pending.base,{phase:"verify"}),paths=selectSkills(context).map(skill=>skill.path);pending.flow.preparePhase(context,paths);assert.throws(()=>pending.flow.promoteCandidateFromTdd(pending.result),/no pending authority/);const source=await strictResult(t,{triangulate:false,refactor:false,task:"source"}),other=await strictResult(t,{triangulate:false,refactor:false,task:"other"});assert.throws(()=>other.flow.promoteCandidateFromTdd(source.result),/does not bind/);assert.throws(()=>source.flow.promoteCandidateFromTdd({...source.result}),/not issued/);});
+
+test("rejects alternative clones and reuse across lifecycles",async t=>{const value=await alternativeResult(t);assert.throws(()=>value.flow.promoteCandidateFromTdd({...value.result}),/not issued/);value.flow.promoteCandidateFromTdd(value.result);assert.throws(()=>value.flow.promoteCandidateFromTdd(value.result),/already been claimed/);const other=await alternativeResult(t),facts=claimNonTddAlternativeResult(other.result);assert.deepEqual({task:facts.taskIdentity,repository:facts.repositoryIdentity,candidate:facts.candidateId,behavior:facts.behaviorPaths,tests:facts.testPaths,cases:facts.caseIds,baseline:facts.baselineRevision,final:facts.finalRevision},{task:other.task,repository:other.base.repository,candidate:other.candidate.id,behavior:[behaviorPath],tests:[testPath],cases:[yes,no],baseline:other.base.revision,final:other.candidate.revision});assert.throws(()=>other.flow.promoteCandidateFromTdd(value.result),/already been claimed/);});
+
+test("persists exact promoted completion without granting later authority",async t=>{const value=await strictResult(t,{triangulate:true,refactor:true});value.flow.promoteCandidateFromTdd(value.result);const state=value.flow.state,dir=await mkdtemp(join(tmpdir(),"asen-c5b-record-"));t.after(()=>rm(dir,{recursive:true,force:true}));const path=join(dir,"state.json"),key=randomBytes(32);await saveLifecycle(path,state,key);const recovered=await loadLifecycle(path,state.taskId,state.candidate,key);assert.deepEqual(recovered.state,state);assert.equal(state.nextPhase,"verify");assert.equal(state.records.length,7);assert.equal("pendingAuthority" in state,false);assert.equal("review" in state||"release" in state||"delivery" in state,false);assert.throws(()=>recovered.promoteCandidateFromTdd(value.result),/already been claimed|exact live required obligation/);});
+
+test("new processes continue genuine strict and alternative v2 completion without upgrade or remint",async t=>{
+ for(const value of [await strictResult(t,{triangulate:true,refactor:true}),await alternativeResult(t)]){
+  value.flow.promoteCandidateFromTdd(value.result);
+  const state=value.flow.state,dir=await mkdtemp(join(tmpdir(),"asen-c3-v2-child-"));
+  t.after(()=>rm(dir,{recursive:true,force:true}));
+  const path=join(dir,"state.json"),key=randomBytes(32),unmarked=structuredClone(state);
+  await saveLifecycle(path,unmarked,key);
+  const fixture=resolve("tests/fixtures/recover-selected-lifecycle.ts");
+  const run=spawnSync(
+   process.execPath,["--import","tsx",fixture,path,state.taskId,state.candidate.id,state.candidate.repository,state.candidate.revision,"complete"],
+   {cwd:resolve("."),encoding:"utf8",env:{...process.env,ASEN_RECOVERY_KEY:key.toString("base64url")},timeout:20000},
+  );
+  assert.equal(run.status,0,run.stderr);
+  const result=JSON.parse(run.stdout);
+  assert.equal(result.phase,null);assert.equal(result.records,9);
+  assert.equal(result.descriptionPresence,false);assert.equal(result.envelopeVersion,2);
+  assert.match(result.probeResults.prepareApply,/out of order/i);
+  const raw=JSON.parse(await readFile(path,"utf8"));
+  assert.equal(raw.version,2);assert.equal(raw.snapshot.version,2);
+  assert.equal(raw.snapshot.tddPromotion.method,state.version===2?state.tddPromotion.method:undefined);
+  assert.equal("workflowSelection" in raw,false);
+ }
+});
+
+test("live strict and alternative verify insert deterministic exact non-generic completion",async t=>{for(const source of [await strictResult(t,{triangulate:false,refactor:false}),await alternativeResult(t)]){source.flow.promoteCandidateFromTdd(source.result);const candidate=source.flow.state.candidate,evidence=new EvidenceStore();admitRouteEvidence(evidence,candidate);for(const [id,kind] of [["unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)evidence.add(candidate,{id,kind,status:"pass",summary:id,createdAt:"now"});await passingEvidence(evidence,candidate,"test");await passingReview(evidence,candidate,"review");const context=issueSkillContext(`${source.task}:verifier`,candidate.repository,candidate,{phase:"verify"}),skillPaths=selectSkills(context).map(skill=>skill.path),failed=new Dispatcher({run:async request=>({id:request.id,ok:false,output:"failed"})},evidence);await assert.rejects(()=>source.flow.runPhase(failed,{phase:"verify",context,skillPaths,prompt:"verify",evidence,risk:"low"}),/agent result failed/);const first=evidence.forCandidate(candidate).find(item=>item.kind==="lifecycle-completion")!;assert.ok(first);assert.equal(first.completion?.promotionMethod,source.flow.state.version===2?source.flow.state.tddPromotion.method:undefined);assert.equal(verifySkillEvidence(candidate,["asen-tdd"],evidence,"verification").ok,true);assert.equal(evidence.hasPassing(candidate,"tdd"),false);const dir=await mkdtemp(join(tmpdir(),"asen-c5c-evidence-"));t.after(()=>rm(dir,{recursive:true,force:true}));const path=join(dir,"evidence.json"),key=randomBytes(32);await saveEvidence(path,candidate,evidence,key);const restored=await loadEvidence(path,candidate,key);assert.deepEqual(restored.forCandidate(candidate).find(item=>item.kind==="lifecycle-completion"),first);const tampered=JSON.parse(await readFile(path,"utf8"));tampered.value.items.find((item:any)=>item.kind==="lifecycle-completion").completion.obligation.candidate.id="wrong";tampered.mac=createHmac("sha256",key).update("asen.evidence.v2\0").update(JSON.stringify(tampered.value)).digest("hex");await writeFile(path,JSON.stringify(tampered));await assert.rejects(()=>loadEvidence(path,candidate,key),/identity|hash|mismatch/);const retryContext=issueSkillContext(`${source.task}:verifier`,candidate.repository,candidate,{phase:"verify"}),retryPaths=selectSkills(retryContext).map(skill=>skill.path),runner=fixtureArtifactRunner(()=>({kind:artifacts.verify,content:"verify",repository:candidate.repository,candidateId:candidate.id,revision:candidate.revision}));await source.flow.runPhase(new Dispatcher(runner,evidence),{phase:"verify",context:retryContext,skillPaths:retryPaths,prompt:"verify",evidence,risk:"low"});assert.equal(evidence.forCandidate(candidate).filter(item=>item.kind==="lifecycle-completion").length,1);assert.equal(evidence.forCandidate(candidate).find(item=>item.kind==="lifecycle-completion")?.id,first.id);}}
+);
+
+test("verified alternative satisfies only the narrow lifecycle-completion gate",async t=>{const source=await alternativeResult(t);source.flow.promoteCandidateFromTdd(source.result);const candidate=source.flow.state.candidate,evidence=new EvidenceStore(),context=issueSkillContext(`${source.task}:verifier`,candidate.repository,candidate,{phase:"verify"}),skillPaths=selectSkills(context).map(skill=>skill.path),failed=new Dispatcher({run:async request=>({id:request.id,ok:false,output:"failed"})},evidence);await assert.rejects(()=>source.flow.runPhase(failed,{phase:"verify",context,skillPaths,prompt:"verify",evidence,risk:"low"}),/agent result failed/);const completion=evidence.forCandidate(candidate).find(item=>item.kind==="lifecycle-completion")!;assert.equal(completion.summary,"Verified non-TDD lifecycle alternative");assert.equal(completion.completion?.promotionMethod,"verified-non-tdd-alternative");assert.equal(verifySkillEvidence(candidate,["asen-tdd"],evidence,"verification").ok,true);assert.equal(evidence.hasPassing(candidate,"tdd"),false);assert.equal(verifyCandidate(candidate,"medium",evidence).reason,"Passing test evidence is required");assert.equal(verifySkillEvidence(candidate,["asen-review"],evidence,"verification").ok,false);assert.equal(verifySkillEvidence(candidate,["asen-review"],evidence,"release").ok,false);assert.equal(verifySkillEvidence(candidate,["asen-safe-change"],evidence,"mutation").ok,false);assert.equal(verifySkillEvidence(candidate,["asen-safe-change"],evidence,"release").ok,false);});
+
+test("generic and plain admission cannot forge lifecycle completion",()=>{const store=new EvidenceStore(),candidate={id:"c",repository:"r",revision:"f".repeat(40),createdAt:"now"};assert.throws(()=>store.add(candidate,{id:"fake",kind:"lifecycle-completion",status:"pass",summary:"fake",createdAt:"now"}),/genuine lifecycle admission/);assert.throws(()=>store.consumeLifecycleCompletion(candidate,{}),/not issued/);assert.throws(()=>store.consumeLifecycleCompletion(candidate,structuredClone({})),/not issued/);});

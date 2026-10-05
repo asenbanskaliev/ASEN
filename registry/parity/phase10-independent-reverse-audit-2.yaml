@@ -1,6 +1,6 @@
 audit: phase10-independent-reverse-audit-after-second-six
 date: 2026-09-27
-branch: audit/gentle-parity
+branch: audit/external-parity
 frozen_universe: PAR-001..PAR-500
 trigger:
   second_six_pass_series: [0,0,0,0,0,0]

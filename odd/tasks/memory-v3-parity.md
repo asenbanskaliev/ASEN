@@ -1,0 +1,215 @@
+Warning: truncated output (original token count: 6112)
+Total output lines: 157
+
+Warning: truncated output (original token count: 10858)
+Total output lines: 275
+
+Warning: truncated output (original token count: 30530)
+Total output lines: 547
+
+Warning: truncated output (original token count: 30063)
+Total output lines: 538
+
+Warning: truncated output (original token count: 47072)
+Total output lines: 709
+
+# ASEN memory parity with the pinned upstream v3.0.0
+
+## Goal and authorization
+
+The user explicitly authorized analyzing the pinned upstream v3.0.0 and implementing absolute observable memory parity in ASEN, including what is saved, why, when, how, retrieval, retention, integration, and failure behavior. Memory now takes priority over the unfinished ODD/Skill chain. This changes sequencing, not the evidence standard or publication policy.
+
+Do not equate basic SQLite persistence, installing an upstream plugin, a tool-name match, or green isolated tests with parity. No complete parity claim is valid until every applicable observable obligation has version-bound evidence. Optional features are not silently excluded from the overall target.
+
+## Version ownership and provenance
+
+- Reference identity, owner, repository, and release URL: owner-controlled metadata in `registry/parity/memory-upstream-v3.json` for tag `v3.0.0`.
+- Core release published: `2026-10-01T22:30:47Z`.
+- Annotated tag object: `fcf2eb5b6fe445c19a2e5568612a0a421f0fd5e1`.
+- Exact core commit: `15a2f78885d7ad8ced23b2d1d88383e9bb472c17`.
+- GitHub reports the tag unsigned and the release non-immutable. The pinned observed commit is not a verified publisher signature.
+- The core binary v3.0.0 and the Pi package named in `registry/parity/memory-upstream-v3.json` at version 0.2.0 have separate release channels. Independently resolved `pi-v0.2.0`: annotated object `8795484df1725315d8bf2b9181afa67de78147b0`, commit `ce51810bd351f397e49728d6a5be81679cf18554`, also unsigned. Compare actual Pi files/published package rather than assuming the later core commit is its package release.
+- Primary source cache: `C:/tmp/pi-github-repos/runtime-22jXZn/04c4844dbaf9c76aee10d313520deeac0cfb3c3d9a21f35f130b74092da29e7a`. A fresh verifier confirmed its HEAD equals the exact core commit. The cache is public-source research, not an ASEN candidate or a runtime installation.
+- Context7 is a navigation aid and currently points to main. Frozen implementation and tests outrank its snippets, release announcements, or stale prose.
+- Prior upstream-memory baseline `3284dcc2f20278ea8d37277350be9d96155697a3` and `odd/tasks/memory-strict-parity.md` remain historical. Their local-first Cloud/sync/TUI deferrals do not narrow this new full target.
+
+## Current work and isolation
+
+- Initial mapping worktree: `../ASEN-skill-parity`, its dedicated skill-parity feature branch, expected HEAD `56600974fe742d862d9e7fc65a1cf9f740a6c81f`.
+- Preserve the unrelated six-path V4-01a reference candidate: 279 changed lines, independent scoped PASS, native review not started. Do not combine it with memory changes or call it complete v4 parity.
+- Memory worktree prepared: `../ASEN-memory-v3-parity`, on the dedicated memory feature branch identified by checkpoint record `13676`, HEAD `56600974fe742d862d9e7fc65a1cf9f740a6c81f`. Git materialized only the committed baseline; clean status was observed before this tracker was copied. No source edits, commits, stash/reset, network or installation occurred. Never combine the unrelated old-worktree changes with this feature.
+- This worktree's task file is canonical. The initial file in ASEN-skill-parity is a staging copy of the research plan, not a second authority. Reconcile this complete file and its full project-memory mirror before the first source writer.
+- The first source writer completed a partial reference-only candidate in six allowed paths; no production database migration, installation, server upgrade, Cloud enrollment or host-configuration change has occurred.
+
+## Constraints and acceptance rules
+
+- Preserve ASEN-owned names, `.asen` paths, all 27 static Skill IDs, and existing ASEN memory identities/data. External protocol identifiers and dependency identities are preserved where compatibility requires them; no upstream logos, artwork, protected prose, or private authority copying.
+- Do not inspect or alter excluded `.codegraph/`, `asen-0.1.0.tgz`, real user databases, private logs, credentials, or public-repository memory chunks containing unrelated observations.
+- Use synthetic isolated stores for comparison, migration and failure tests. Any real data migration or repair requires a preview, backup, exact scope and fresh human authorization.
+- Keep one source writer at a time, exact allowed edit surfaces, applicable observed test-first behavior, and readable work units under 400 changed lines. Split rather than compress logic, documentation or tests.
+- Preserve unfinished ODD work and its legacy-inspection-only decision. Neither a stored memory nor an authenticated old snapshot grants current file-write, review, delivery or publication permission.
+- User-selected Pi Free remains the model-backed verification provider. Deterministic tests, public-source hashing and runtime model journeys are different evidence classes.
+- El almacenamiento local debe seguir funcionando sin servicios remotos. Cloud queda fuera de ASEN por decisión explícita de arquitectura y no bloquea R09. Las demás superficies opcionales aplicables necesitan evidencia propia antes de cualquier afirmación amplia.
+- `expected_project` in v3 is an ownership assertion, not authentication or tenant isolation. Keep hook limitations, ID-based reads, and accepted upstream limitations explicit rather than inventing stronger guarantees.
+- Distinguish model guidance from code-enforced automation. A protocol instructing the model to save after a fix does not prove the integration automatically observed or saved that fix.
+- Memory write outcomes are confirmed, rejected, unknown or unavailable. Unknown outcomes are read back/reconciled, never blindly repeated. Memory failure must not suppress the user's final response.
+- Do not silently narrow absolute parity to local CRUD, silently replace the ASEN core with a connector, or claim standalone/platform parity from a Node-only development environment.
+
+## Evidence format
+
+Each behavior needs its owner/version/source path and hash, ASEN candidate identity, input, trigger and event ordering, expected outputs, durable state and side effects, exact runnable command/journey, observed result, and applicable positive, negative, recovery, restart, concurrency, privacy, permission, transport and platform controls.
+
+Record whether proof is source inspection, a deterministic synthetic-store test, process-isolated comparison, real host integration, or live external service. Every FULL claim must identify all applicable evidence; skipped or unavailable cases remain open. ID, time, path and ASEN-name differences require explicit normalization, not hidden removal of a substantive difference.
+
+## Tasks
+
+- [ ] E3-01 — Freeze the full source and behavioral contract.
+  - Hash selected implementation, protocol, test and packaging references at the exact core and Pi commits.
+  - Inventory complete tool/API/CLI, storage, agent, operational, UI and optional-service surfaces. Create a granular honest comparison matrix without overwriting historical records.
+  - Record version ownership and every accepted upstream limitation; verify actual code rather than release claims alone.
+  - E3-01a: separate frozen reference manifest plus 18-family baseline matrix and offline audit rejecting unsupported FULL claims. Source identifiers are provenance-only; forecast 280–360 changed lines, split before 390. No data-store mutation or live equality claim.
+  - E3-01b: resolve source contradictions, fill precise behavior/event/transport contracts and corresponding fixture evidence. E3-01 remains open until these are validated; a broad family matrix is not the finished contract.
+  - E3-01b1: eight source-inspected foundation cases in registry/parity/memory-foundation-contracts-v1.json, validated through the existing audit/reference test plus one exact metadata boundary exception. Four source paths; forecast 220–290 changed lines, entire candidate including tracked task changes below 390. No engine changes or runtime-proof promotion.
+  - [x] E3-01b2 — Complete as a SOURCE_INSPECTED reference-only slice: five observation-write contracts in `registry/parity/memory-observation-write-contracts-v1.json` cover new save, topic revision, duplicate collapse, guarded update, and guarded soft/hard deletion. The fixture preserves unguarded library variants, enrollment-dependent queue effects, unknown-write reconciliation, and the distinction between ownership assertions and authentication. This is not engine or runtime-parity evidence.
+- [ ] E3-02 — Establish a safe ASEN storage and migration foundation.
+  - Derive schema, limits, journal/connection behavior and local-filesystem restrictions from source.
+  - Preserve current rows, external IDs, project/session association and content. Per the user's explicit E3-R01 instruction, reject a future schema version before migration or mutation. This intentionally diverges from the pinned source's compatible-future CRUD behavior; document the difference and do not claim parity for that edge. Malformed/incompatible data follows the migration error contract established by tests.
+  - Prove transaction rollback, repeated migration, simultaneous opens and restart consistency using synthetic copies.
+- [ ] E3-03 — Match project identity and ambiguity handling.
+  - Reproduce explicit/config/session/Git/worktree/directory resolution and existing binding reuse. Pinned Git detection preserves percent encoding; explicit Cloud CLI input independently unescapes exactly one layer unless literal mode is selected. Do not implement universal remote-name decoding from the broader release wording.
+  - Cover ambiguous project lists/recovery, child projects, malformed config, collisions and explicitly backed cross…1112 tokens truncated… admitted surface.
+- **Acceptance:** synthetic compaction/close/restart scenarios persist one summary at the actual event, reconcile confirmed/unknown/rejected/unavailable writes, avoid blind replay/duplicates/stale-session writes, and always preserve the user response.
+- **Ceiling:** checkpoint data is a recovery hint, not verified evidence; no real key/data use, backup/import, remote sync, or FULL claim.
+
+#### E3-R08 — doctor, backup, repair, import/export and Git sync
+- **First gate/surfaces:** discover and admit the required API and complete exported state before implementation; no callable API or module is assumed. Inspect only `src/lifecycle/doctor.ts`, `src/memory/**`, `src/session/**`, `extensions/asen.ts`, and existing tests until evidence justifies a narrower admitted surface.
+- **Acceptance:** temp-store tests prove diagnosis plus preview-before-apply, backup-before-repair, refusal without side effects, lossless export/import of all admitted R01/R03/R04/R05/R07 state, and interrupted/repeated Git-sync recovery; commands must name synthetic paths only.
+- **Ceiling:** no automatic real-store repair, credentials, real user data, network publication, Cloud enrollment, merge/push, or operational-completeness claim outside tested cases.
+
+#### E3-R09 — runtime, cross-platform and final parity
+- **First gate/surfaces:** discover and admit the final runtime/package/platform surface; no callable API or module is assumed. Inspect the completed R01–R08 repository state and existing tests first, then edit only surfaces justified by a freshly inspected gap.
+- **Acceptance:** all prior focused suites, audits and compiler checks plus authorized process-isolated/runtime journeys must pass where available, **and** every applicable obligation in the full 18-family matrix must close with the required evidence. Report unavailable platforms and the unresolved broad-suite timeout rather than normalizing them away.
+- **Ceiling:** commands alone cannot establish final parity; no FULL, standalone, cross-platform, live-service or release claim while any applicable matrix row lacks runtime evidence, and no publish, release, merge or real-data operation.
+
+### Work-unit and GitHub handoff guardrails
+
+- One bounded behavior per commit; keep tests and tracker evidence with that behavior. Pause, reforecast and split before 390 whole-candidate changed lines.
+- Native review applies only when the user has enabled and owns the RDD transaction. Codex must not create, infer or consume review authority on its own.
+- Never promote fixture/source inspection to runtime or FULL evidence. Use synthetic data only; no secrets, credentials, real user data, publication, or `.codegraph` inspection/modification.
+- Before handing PR #30 back: confirm the remote branch contains both code and this tracker update; verify rather than invent exactly one type label and approved issue linkage; report CI state and the unresolved broad-test timeout; do not merge or release.
+- The next Codex prompt must name only the first work unit above and no competing lane.
+
+
+
+### Cierre final R09 — evidencia Pi/modelo
+
+- Candidato con E2E real: `eae2864421f83ddfe8aa2558ab04ceafffc8c98d`.
+- Memory OpenRouter E2E `37285255912` — PASS: reinicio de memoria sintética, recuperación del contexto y recuerdo correcto de `COBALT-731` mediante Pi y modelo real.
+- Phase 0 Architecture `37285255762`, CI `37285255798` y Release Gate `37285254955` — PASS sobre el mismo candidato.
+- E3-10 y E3-18 quedan CERRADOS para el alcance admitido. El proveedor `llm7` continúa temporalmente bloqueado por cuota externa y no invalida la evidencia equivalente obtenida con OpenRouter.
+- R01–R09 quedan cerrados para el núcleo local, plataformas configuradas e integración Pi/modelo probada. Cloud sigue siendo NO APLICA por decisión de arquitectura.
+- Este cierre no autoriza merge, release, publicación ni operaciones con datos reales.
+
+### E3 implementation status — candidate evidence
+
+- R04: bounded project resolution/search/context implemented; last verified cross-platform CI at `8514bfba3288bb1f76c6fae892253e4b73fd1e13`.
+- R05: CERRADO para el alcance local admitido; relaciones tipadas y revisión idempotente verificadas.
+- R06/R07: CERRADOS para el núcleo local; extracción curada, resumen único al cierre, reconciliación de escrituras y preservación de respuesta verificadas.
+- R08: CERRADO para el núcleo local; export/import conserva borrados suaves/duros, rechaza conflictos antes de aplicar, diagnostica/copia y recupera sync local. Cloud y publicación en red no aplican al cierre.
+- R09: CERRADO para núcleo local y plataformas configuradas en `bbd5ad32156076a28bac266c9bbbd1081a19fefb`: Phase 0 `37270621122`, CI `37270621121` y Release Gate `37270621059` PASS en Ubuntu, macOS y Windows. Pi Free específico permanece como evidencia externa no observable; no se afirma FULL de host/modelo.
+
+**Siguiente unidad de trabajo:** ninguna para el núcleo local R01–R09. Solo queda evidencia externa Pi Free si se desea elevar la afirmación a integración host/modelo.
+
+## Cross-platform CI repair — candidate verification
+
+The branch started at `0a88b48e226758c897f151350ef4174f835e2bf5`, matching the requested SHA and GitHub Actions run `37211340841`. Ubuntu and architecture passed; macOS reported 35 failures in 672 tests and Windows was cancelled. The failing path was `coverageRanges` in `src/test/tdd-observation.ts`: Node V8 coverage reports file URLs through the resolved filesystem path while the execution proof retained the temporary-directory alias. The lexical `relative()` check therefore rejected valid scripts from the isolated candidate on macOS. The isolation assertion itself was correct.
+
+The bounded fix captures the isolated worktree's canonical root with `realpathSync` while it exists and uses that root only to interpret coverage file paths after the temporary worktree has been removed. The existing relative-path, absolute-path, and resolved-target checks remain active. `tests/tdd-coverage-path.test.ts` runs a complete coverage observation through an aliased temporary root. Before the fix, the regression failed with `Node coverage script is outside the isolated candidate`; after the fix it passed and verified positive coverage for the candidate behavior file. Existing outside-path rejection checks remain in the adjacent suite.
+
+Observed local evidence: `npm exec -- tsx --test tests/tdd-coverage-path.test.ts tests/tdd-refactor-completion.test.ts tests/tdd-strict-triangulation.test.ts` — 18/18 passed, zero skipped; `npm run typecheck` — PASS; `npm run audit:upstream-boundary` — PASS (332 tracked or exact pre-staging paths); `npm run audit:parity` — PASS (500 IDs, 350 P0 contracts, six-pass 6/6, reverse audit clean). `git diff --check` — PASS. Remote CI run `37212895776` on repair commit `ef5679ec49d7b35d08a4427d3c72603a8dea9ba4`: architecture, Ubuntu, macOS and Windows all completed with `success`. The configured workflow ran `npm run check`; this status records that workflow result and does not relabel the separately recorded historical broad-suite timeout as resolved.
+
+## E3-R01 — versioned storage and migration foundation
+
+Implemented explicit `PRAGMA user_version` schema state and a version-ordered migration list in `SqliteMemoryStore`. Existing database files are snapshotted with SQLite `VACUUM INTO` before each migration. `BEGIN IMMEDIATE` serializes competing openers; the version is re-read while holding the write lock, and migration DDL plus version advancement commit atomically. Failures roll back and close the opening connection. Reopening a migrated store is idempotent. A future version is rejected before schema mutation. Synthetic malformed-schema failure and repair/reopen exercise recovery; two worker threads exercise simultaneous opens and writes.
+
+RED/GREEN: `tests/memory-migrations.test.ts` first failed 3/3 against the prior runtime (missing schema version, accepted future version, and migration DDL left behind on failure). After implementation, the suite passed 4/4, including preserved row/backup checks, restart idempotence, future-version no-mutation, rollback/recovery, and concurrent open serialization. The fixture assertions establish runtime behavior only for these synthetic SQLite cases. `registry/parity/*` remains SOURCE_INSPECTED contract evidence, not runtime proof.
+
+Observed verification: `npm exec -- tsx --test tests/memory-migrations.test.ts tests/memory-persistence.test.ts tests/memory-durability.test.ts tests/memory.test.ts` — 9/9 passed, zero skipped; `npm run typecheck` — PASS; `npm run audit:memory-parity` — PASS and explicitly reports no runtime parity claim; `npm run audit:upstream-boundary` — PASS (333 tracked/exact pre-staging paths). These are focused checks, not a report that the historical broad `npm test` timeout is resolved. No real user store was migrated. E3-R01 is complete. Remote Actions run `37214349816` on `ffc054f60ce1afa102fb7db0ec884f358fcbac81` completed successfully on architecture, Ubuntu, macOS and Windows. Its `npm run check` test step took 78.688 seconds on Ubuntu, 201.119 seconds on macOS, and 387.124 seconds on Windows. The workflow result is recorded, but this does not establish resolution of the separately noted 180-second broad-test timeout, and no standalone broad-suite pass is claimed.
+
+## E3-R02 — project/session identity and continuation
+
+Implemented the admitted runtime API after confirming there was no project resolver or memory-session registry. `resolveMemoryProjectId` accepts explicit, configured, and repository IDs only when all supplied values are nonblank and identical; values remain opaque and unchanged. `createMemoryContext` registers a live root session before returning a context. The public context constructor requires an internal admission token, and `SqliteMemoryStore.save` atomically requires a matching live project/session binding. Ending a session and saving are serialized in immediate transactions.
+
+Schema v2 adds the durable session table and a unique partial index for one live continuation per parent. `continueMemoryContext` requires an ended session, reuses an existing live child, or inserts the proposed child in one transaction. Restart tests prove child reuse; two worker threads race distinct child IDs and receive the same persisted child. Conflicting project/session IDs fail without changing the reserved session. The v1-to-v2 migration retains the pre-migration backup behavior from E3-R01.
+
+RED/GREEN: before implementation, the five new focused tests failed because the admitted APIs did not exist. Two additional regression checks then ran RED against the unguarded write path (unregistered writes and writes after session end); both passed after `save` validated the matching live session and wrote atomically. Final focused command `npm exec -- tsx --test tests/memory-session-identity.test.ts tests/memory-migrations.test.ts tests/memory-persistence.test.ts tests/memory-durability.test.ts tests/memory.test.ts` — 17/17 passed, zero skipped. `npm run typecheck` — PASS; `npm run audit:memory-parity` — PASS with no runtime parity claim; `npm run audit:upstream-boundary` — PASS (337 tracked/exact paths); `git diff --check` — PASS. Remote Actions run `37216195255` for `e7ab6ba0be598e73d3415c073c8691e0509e8858` completed successfully on architecture, Ubuntu, macOS, and Windows. Its `npm run check` test step took 78.828 seconds on Ubuntu, 265.111 seconds on macOS, and 424.479 seconds on Windows. The workflow completed, but test-step times above 180 seconds show the separately noted broad-test timeout remains unresolved; no standalone broad-suite pass is claimed. This establishes only the tested synthetic storage behavior. No host event integration, Git/worktree/path discovery, Pi lifecycle, or FULL parity is claimed. E3-R02 focused acceptance is complete.
+
+## E3-R03a — observation pin/unpin runtime slice
+
+Added schema v3 migration fields for pin state and soft-deletion state, plus the atomic `setPinned` store operation. Pin and unpin update only `pinned`; a missing or soft-deleted observation returns a not-found error. The reference contract in `registry/parity/memory-observation-pin-contracts-v1.json` remains SOURCE_INSPECTED evidence only; the new tests exercise ASEN's synthetic SQLite runtime and do not establish authorization, concurrency, sync, or family parity. E3-R03 remains in progress; observation admission/privacy, revisions/deduplication, guarded update/delete and their restart/negative cases remain open.
+
+RED/GREEN: the two new cases failed before implementation (`setPinned` was absent; the schema had no `deleted_at`). After implementation, `node --import tsx tests/memory-observation-pin-runtime.test.ts` passed 2/2. Related suites each passed independently: `tests/memory-migrations.test.ts` 4/4, `tests/memory-durability.test.ts` 3/3, `tests/memory-persistence.test.ts` 1/1, and `tests/memory.test.ts` 1/1. `npm run typecheck` — PASS; `npm run audit:memory-parity` — PASS and reports no runtime parity claim; `npm run audit:upstream-boundary` — PASS (337 tracked or exact pre-staging paths). The broad `npm test` was not run and no timeout resolution is claimed.
+
+## E3-R03b — guarded observation deletion runtime slice
+
+Added schema v4 tombstones and `deleteObservation(id, expectedProject, hardDelete?)`. The expected project is checked inside the write transaction; it is an ownership assertion, not authentication. Soft deletion sets `deleted_at`, hides the row from search, and makes pinning reject it. Hard deletion writes a tombstone before physical removal. The current runtime has no relation table, so relationship orphaning/cascade behavior is not implemented or claimed. These checks use synthetic SQLite data; `registry/parity/*` remains SOURCE_INSPECTED contract evidence only.
+
+RED/GREEN: the new focused cases failed before implementation because `deleteObservation` was absent. After implementation and correcting a test-only SQLite row-prototype assertion, `node --import tsx tests/memory-observation-delete-runtime.test.ts` passed 2/2. The R03a pin tests and migration suite were rerun and passed 2/2 and 4/4. `npm run typecheck` — PASS. Broader search/privacy, revision/deduplication, guarded update/no-op, and full R03 acceptance remain open; no broad `npm test` or parity claim is reported.
+
+## E3-R03c — hide soft-deleted records from ID lookup
+
+Read-only review found `get(id)` returned soft-deleted observations, despite the source-inspected retrieval contract requiring deleted rows to be excluded. Added a regression assertion and filtered `get` by `deleted_at IS NULL`; the evidence class remains a focused ASEN runtime test, not proof of source equivalence. RED/GREEN: `node --import tsx tests/memory-observation-delete-runtime.test.ts` first failed on the soft-deleted lookup, then passed 2/2 after the fix. `npm run typecheck` — PASS. This is a correction to the in-progress R03 slice; full R03 acceptance remains open.
+
+## E3-R03d — private-block redaction on observation save
+
+Added a save-path preparation step that replaces case-insensitive, multiline `<private>…</private>` blocks with `[REDACTED]`, trims the resulting content, and rejects content that is empty after trimming. Redaction occurs before the SQLite write, so the existing insert/update trigger indexes only the prepared content. This implements only the observed admission/privacy slice; title validation, byte-limit truncation, topic revisions, duplicate-window semantics, guarded update, and wider privacy exclusions remain open. The pinned source-inspection contract describes the redaction marker and private-tag behavior; that source evidence is SOURCE_INSPECTED only and the checks below prove ASEN behavior only for these synthetic inputs.
+
+RED/GREEN: `node --import tsx tests/memory-observation-privacy-runtime.test.ts` failed 2/2 before the runtime change: private text was stored/indexed and whitespace-only content was accepted. After the change it passed 2/2, confirming persisted content `Visible [REDACTED] still visible`, no search hit for the secret phrase, a hit for the redaction marker, and rejection without row creation for whitespace-only content. Focused regressions passed: privacy 2/2, pin 2/2, delete 2/2, migrations 4/4, durability 3/3, persistence 1/1, memory search 1/1, and session identity 8/8. `npm run typecheck` — PASS; `npm run audit:memory-parity` — PASS and reports no runtime parity claim; `npm run audit:upstream-boundary` — PASS (339 tracked or exact pre-staging paths); `git diff --check` — PASS. The historical broad `npm test` was not run and its timeout is unresolved. No FULL/runtime parity claim is made.
+
+## E3-R03e — byte-bounded content truncation
+
+Added byte-based UTF-8 truncation at the pinned source default of 50,000 bytes with marker `... [truncated]`, backing off to a valid rune boundary. The later review correction below scopes this cap to the dedicated observation-admission API; generic `MemoryStore.save` does not impose the observation byte limit. Source evidence is SOURCE_INSPECTED only: pinned `internal/store/store.go` at `15a2f78885d7ad8ced23b2d1d88383e9bb472c17`, `DefaultConfig` lines 800–805, `prepareStoredContent`/`truncateContent` lines 4335–4357. ASEN synthetic runtime tests establish only the covered boundary examples; prompt-specific source behavior is not claimed.
+
+RED/GREEN: `node --import tsx tests/memory-observation-privacy-runtime.test.ts` first failed 1/4 on the multibyte boundary case while the exact-limit case passed; after implementation it passed 4/4, including a cut through a four-byte rune, exclusion of discarded suffix text from FTS, searchability of the marker, and an unchanged 50,000-byte value. Related focused regressions passed: pin 2/2, delete 2/2, migrations 4/4, durability 3/3, persistence 1/1, memory search 1/1, and session identity 8/8. `npm run typecheck` — PASS; `npm run audit:memory-parity` — PASS and reports no runtime parity claim; `npm run audit:upstream-boundary` — PASS (340 tracked or exact pre-staging paths); `git diff --check` — PASS. The historical broad `npm test` was not run and its timeout is unresolved. No FULL/runtime parity claim is made.
+
+## E3-R03f — versioned observation admission and creation
+
+Added schema v5 observation metadata columns and the separate `MemoryObservationStore.addObservation` API. New records require nonblank title and content after private-tag handling, receive a generated UUID, normalize scope and topic key, store a normalized-content hash and initial revision/duplicate counts of 1, and persist tool/title/topic metadata. Existing `MemoryStore.save` remains available for the current generic memory path. The insert checks the registered live session in the same transaction and uses the existing FTS trigger. Migration v5 fills legacy `last_seen_at`/`updated_at` from `created_at`; backup and restart tests cover this schema step.
+
+The contract evidence is SOURCE_INSPECTED only at pinned core commit `15a2f78885d7ad8ced23b2d1d88383e9bb472c17`: `AddObservation` validates post-redaction title/content before the transaction and prepares scope/hash/topic key at `internal/store/store.go` lines 3700–3720; new rows initialize counters and timestamps at 3819–3860; `normalizeScope`, `normalizeTopicKey`, and `hashNormalized` are at 12256–12265, 12409–12418, and 12423–12427. ASEN preserves its registered-session project identity for this API; project canonicalization and ownership adoption remain separate unresolved behavior. Topic revision and duplicate collapse are not implemented by this slice.
+
+RED/GREEN: `node --import tsx tests/memory-observation-admission-runtime.test.ts` failed 2/2 before the API existed, then passed 2/2 after implementation, including generated identity, title redaction, scope/topic metadata, FTS lookup, restart persistence, and rejection of blank title/content. `node --import tsx tests/memory-migrations.test.ts` passed 4/4 after moving the synthetic schema expectations and backup count to v5. Focused regressions passed: privacy 4/4, pin 2/2, delete 2/2, durability 3/3, persistence 1/1, memory search 1/1, and session identity 8/8. `npm run typecheck` — PASS; `npm run audit:memory-parity` — PASS and reports no runtime parity claim; `npm run audit:upstream-boundary` — PASS (340 tracked or exact pre-staging paths); `git diff --check` — PASS. The historical broad `npm test` was not run; no FULL/runtime parity claim is made.
+
+## E3-R03f1 — scope truncation to observation admission
+
+Read-only review found the R03e cap also changed generic summary/prompt writes because both APIs shared the same preparation helper. Added a regression for an oversized generic summary and moved the cap to `addObservation`; generic `save` continues private-block redaction and blank-content rejection without observation-specific truncation. This keeps the 50,000-byte cap on the explicit observation admission path.
+
+RED/GREEN: `node --import tsx tests/memory-observation-privacy-runtime.test.ts` first failed 1/5 with generic summary length `50015` instead of the original `50005`; after narrowing the cap, it passed 5/5. The observation truncation and exact-limit cases now exercise `addObservation`. `node --import tsx tests/memory-observation-admission-runtime.test.ts` passed 2/2; migrations 4/4, pin 2/2, delete 2/2, durability 3/3, persistence 1/1, memory search 1/1, and session identity 8/8 passed. `npm run typecheck` — PASS; `npm run audit:memory-parity` — PASS and reports no runtime parity claim; `npm run audit:upstream-boundary` — PASS (341 tracked or exact pre-staging paths); `git diff --check` — PASS. The source contract remains SOURCE_INSPECTED only; these synthetic tests establish ASEN behavior for covered values and do not prove broad privacy or parity.
+
+## E3-R03g — revise observations by normalized topic
+
+`addObservation` now checks a nonempty normalized topic key inside its write transaction before creating a row. It matches only undeleted observations with the same project and scope, selecting the newest by full-precision stored `updated_at` and then `created_at` ordering. A match retains the existing ID and `created_at`, replaces session/kind/title/content/tool/topic/hash, increments `revision_count`, refreshes last-seen/update timestamps, and leaves `duplicate_count` intact. The existing SQLite update trigger refreshes FTS in the same transaction. Project/scope isolation, normalized topic matching, FTS replacement, timestamp ordering, and restart persistence are covered by synthetic runtime tests. Exact upstream behavior is SOURCE_INSPECTED only at pinned `internal/store/store.go` lines 3729–3771; duplicate collapse remains a separate unimplemented behavior.
+
+RED/GREEN: `node --import tsx tests/memory-observation-revision-runtime.test.ts` first failed 1/2 because a matching normalized topic returned a new ID; after implementation it passed 2/2. Read-only review then found `datetime()` discarded milliseconds on ASEN's ISO timestamps. A seeded 100 ms/900 ms regression failed against that ordering by selecting the older candidate; after switching to full-precision timestamp ordering, the suite passed 4/4. Evidence covers restart before and after revision, preserved creation time/duplicate count, updated fields/revision count, FTS removal of old content and searchability of new content, project/scope isolation, and topic-revision priority when an exact duplicate candidate exists. Related focused suites passed: admission 2/2, privacy 5/5, pin 2/2, delete 2/2, migrations 4/4, durability 3/3, persistence 1/1, memory search 1/1, and session identity 8/8. `npm run typecheck` — PASS; `npm run audit:memory-parity` — PASS with no runtime parity claim; `npm run audit:upstream-boundary` — PASS (342 tracked or exact pre-staging paths); `git diff --check` — PASS. The broad `npm test` was not run. No duplicate-window collapse, no-topic dedupe, or FULL/runtime parity claim is made.
+
+## E3-R03h — collapse recent exact observation duplicates
+
+After topic revision misses, `addObservation` now searches for a recent undeleted row matching normalized content hash, project, scope, kind, and title. It returns that row's ID and increments only `duplicate_count`, `last_seen_at`, and `updated_at`; original content, session, revision count, and creation time remain intact. The default window is 15 minutes. A configured nonpositive value falls back to the default, and fractional-minute windows use the source's whole-minute representation with a one-minute minimum. A topic match still takes priority. Pinned source evidence is SOURCE_INSPECTED only: `internal/store/store.go` at commit `15a2f78885d7ad8ced23b2d1d88383e9bb472c17`, `AddObservation` lines 3774–3817, default config lines 800–805, and dedupe-window helper lines 12429–12437. Synthetic tests establish only the covered ASEN SQLite cases; they do not establish broader parity.
+
+RED/GREEN: the initial three-case `node --import tsx tests/memory-observation-dedupe-runtime.test.ts` run failed 1/3 because an in-window exact duplicate received a new UUID; after implementation that subset passed 3/3. Added regressions also verify deleted-row exclusion and the one-minute minimum. Final command `node --import tsx --test tests/memory-observation-dedupe-runtime.test.ts tests/memory-observation-revision-runtime.test.ts tests/memory-observation-admission-runtime.test.ts tests/memory-observation-privacy-runtime.test.ts tests/memory-observation-pin-runtime.test.ts tests/memory-observation-delete-runtime.test.ts tests/memory-migrations.test.ts tests/memory-durability.test.ts tests/memory-persistence.test.ts tests/memory.test.ts tests/memory-session-identity.test.ts` — 11/11 test files passed, zero skipped; the dedupe suite itself passed 5/5. `npm run typecheck` — PASS; `npm run audit:memory-parity` — PASS and reports no runtime parity claim; `npm run audit:upstream-boundary` — PASS (342 tracked or exact pre-staging paths; first sandboxed attempt failed with `spawnSync git EPERM`); `git diff --check` — PASS. The historical broad `npm test` was not run and its timeout is unresolved. Remote Actions run `37222480108` on combined E3-R03g/h head `39d12311abcb56715083f4e16712b589d0ff3d23` completed successfully; it did not include E3-R03i. No FULL/runtime parity claim is made.
+
+## E3-R03i — guarded observation update and literal no-op
+
+Added the typed `updateObservation` store API for guarded title/content updates and paired literal find/replace. It checks nonblank `expectedProject` and matching ownership within the write transaction, rejects absent, deleted, or non-observation rows, and does not expose project mutation. Title/content inputs receive existing private-tag handling; find and replacement values are checked against the 50,000-byte UTF-8 limit before the transaction, and a growth calculation rejects oversized replacement results before allocating them. Content mutations recalculate the normalized hash; successful mutations increment revision and refresh `updated_at` while retaining `last_seen_at`. The SQLite trigger refreshes FTS. An empty or unmatched literal find with no metadata update returns the unchanged row without incrementing revision. To avoid mistaking legitimate short user text ending with `... [truncated]` for generated metadata, ASEN strips that marker only when stored content also exceeds the observation limit; the pinned helper checks the suffix alone, so this is an intentional unverified divergence. This slice intentionally has no transport or sync queue integration, and does not implement the broader upstream update field set. Direct source evidence for `OBS-04` is SOURCE_INSPECTED only: pinned core commit `15a2f78885d7ad8ced23b2d1d88383e9bb472c17`, `internal/store/store.go` lines 4700–4854. Tests establish only synthetic ASEN SQLite behavior.
+
+RED/GREEN: `node --import tsx tests/memory-observation-update-runtime.test.ts` first failed 5/5 because `updateObservation` was absent; the first implementation passed 5/5. Read-only review found the source contract's 50,000-byte UTF-8 limit for each literal find/replace value; that boundary regression failed 1/1 before adding the pre-transaction guard and passed after it. A second regression for a literal body ending with the truncation marker failed 1/8 against suffix-only detection; it passed after limiting marker treatment to over-limit content. The final update suite passes 8/8, including oversized-result rejection before allocation and empty-find no-op. Final focused command `node --import tsx --test tests/memory-observation-update-runtime.test.ts tests/memory-observation-revision-runtime.test.ts tests/memory-observation-dedupe-runtime.test.ts tests/memory-observation-admission-runtime.test.ts tests/memory-observation-privacy-runtime.test.ts tests/memory-observation-pin-runtime.test.ts tests/memory-observation-delete-runtime.test.ts tests/memory-migrations.test.ts tests/memory-durability.test.ts tests/memory-persistence.test.ts tests/memory.test.ts tests/memory-session-identity.test.ts` — 12/12 test files passed, zero skipped. `npm run typecheck` — PASS; `npm run audit:memory-parity` — PASS with no runtime parity claim; `npm run audit:upstream-boundary` — PASS (344 tracked or exact pre-staging paths); `git diff --check` — PASS. The historical broad `npm test` was not run and its timeout is unresolved. Remote CI run `37223586525` passed architecture, Ubuntu, macOS and Windows for E3-R03i plus its input-size and marker corrections on head `c3323d894cbc35cc67f6b7b75ca5a8d8a5802398`; it did not include E3-R03j. No FULL/runtime parity claim is made.
+
+## E3-R03j — guarded observation metadata and project immutability
+
+Extended the guarded update input with `kind`, `scope`, `topicKey`, and an optional `projectId` assertion. Kind is replaced directly; scope and topic key use ASEN's existing normalizers; an optional project value may equal the exact stored ASEN identity but cannot change it. Project matching remains exact because E3-R02 treats ASEN project IDs as opaque; no normalization parity is claimed. Ownership and project-immutability checks run inside the write transaction before mutation. Metadata fields count as a real update when a paired literal replacement has no match. Source support is SOURCE_INSPECTED only at pinned `internal/store/store.go` lines 4723–4779; this API does not add transport, sync queue, or broader lifecycle behavior.
+
+RED/GREEN: after writing the metadata regression first, `node --import tsx tests/memory-observation-update-runtime.test.ts` failed 1/9 because metadata-only updates were rejected as an empty update. After implementation, the suite passed 10/10, covering kind/scope/topic normalization and clearing, exact project assertion, attempted project mutation rollback, and all prior guarded content/no-op limits. Final combined command `node --import tsx --test tests/memory-observation-update-runtime.test.ts tests/memory-observation-revision-runtime.test.ts tests/memory-observation-dedupe-runtime.test.ts tests/memory-observation-admission-runtime.test.ts tests/memory-observation-privacy-runtime.test.ts tests/memory-observation-pin-runtime.test.ts tests/memory-observation-delete-runtime.test.ts tests/memory-migrations.test.ts tests/memory-durability.test.ts tests/memory-persistence.test.ts tests/memory.test.ts tests/memory-session-identity.test.ts` — 12/12 test files passed, zero skipped. `npm run typecheck` — PASS; `npm run audit:memory-parity` — PASS with no runtime parity claim; `npm run audit:upstream-boundary` — PASS (344 tracked or exact pre-staging paths); `git diff --check` — PASS. The historical broad `npm test` was not run. Remote CI run `37223586525` passed on parent head `c3323d894cbc35cc67f6b7b75ca5a8d8a5802398`; R03j awaits the next batch. No FULL/runtime parity claim is made.
+
+## E3-R03 — CLOSED
+
+E3-R03 is closed for its admitted observation CRUD/revision/delete/pin/privacy scope. Final remote verification: GitHub Actions CI run `37225351682` on exact head `70ef602bb332ec9599d222336617e61fd482f962` completed successfully for architecture, Ubuntu 24.04, macOS and Windows. This closure does not promote source-inspected fixtures to FULL parity, does not resolve the historical standalone broad-suite timeout, and does not claim transport, sync, lifecycle, or final 18-family parity. Those remain assigned to later work units.

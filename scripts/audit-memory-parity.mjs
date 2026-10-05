@@ -1,0 +1,898 @@
+import {createHash} from "node:crypto";
+import {readFileSync} from "node:fs";
+import {dirname,resolve} from "node:path";
+import {fileURLToPath} from "node:url";
+import {additionalParitySlices,validateAdditionalParitySlices} from "./memory-parity/additional-slices.mjs";
+
+const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),"..");
+const MANIFEST="registry/parity/memory-upstream-v3.json";
+const FOUNDATION_MANIFEST="registry/parity/memory-foundation-contracts-v1.json";
+const OBSERVATION_WRITE_MANIFEST="registry/parity/memory-observation-write-contracts-v1.json";
+const RETRIEVAL_SEARCH_MANIFEST="registry/parity/memory-retrieval-search-contracts-v1.json";
+const CONTEXT_TIMELINE_MANIFEST="registry/parity/memory-context-timeline-contracts-v1.json";
+const PROJECT_IDENTITY_MANIFEST="registry/parity/memory-project-identity-contracts-v1.json";
+export const RELATION_MANIFEST="registry/parity/memory-relation-contracts-v1.json";
+export const SESSION_TRANSPORT_MANIFEST="registry/parity/memory-session-transport-contracts-v1.json";
+export const SESSION_STORE_MANIFEST="registry/parity/memory-session-store-contracts-v1.json";
+export const PASSIVE_CAPTURE_MANIFEST="registry/parity/memory-passive-capture-contracts-v1.json";
+const SHA40=/^[a-f0-9]{40}$/;
+const SHA64=/^[a-f0-9]{64}$/;
+const PATH=/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\/\/)[A-Za-z0-9._/-]+$/;
+const TOP_FIELDS=["schemaVersion","scope","statusModel","limitations","targets","sources","families"];
+const TARGET_FIELDS=["id","repository","version","tag","tagObject","commit","publishedAt","channel","apiRefUrl","tagUrl"];
+const SOURCE_FIELDS=["id","targetId","path","bytes","sha256","rawUrl"];
+const FAMILY_FIELDS=["id","title","status","facts","limitations"];
+const FOUNDATION_TOP_FIELDS=["schemaVersion","scope","status","proofKind","limitations","sources","cases"];
+const FOUNDATION_SOURCE_FIELDS=["id","path","bytes","sha256","commit","commitRole","lineStart","lineEnd"];
+const FOUNDATION_CASE_FIELDS=["id","summary","evidence","input","trigger","ordering","output","durableState","sideEffects","negativeControls","versionControl","criticalValues"];
+const FOUNDATION_EVIDENCE_FIELDS=["sourceId","startLine","endLine"];
+const OBSERVATION_TOP_FIELDS=["schemaVersion","scope","status","proofKind","limitations","sources","cases"];
+const OBSERVATION_SOURCE_FIELDS=["id","path","bytes","sha256","commit","commitRole","lineStart","lineEnd"];
+const OBSERVATION_CASE_FIELDS=["id","summary","evidence","inputs","triggers","preconditions","outputs","durableEffects","negativeControls","privacy","assertion","transport","versionControl","criticalValues"];
+const OBSERVATION_NARRATIVE_FIELDS=["summary","inputs","triggers","preconditions","outputs","durableEffects","negativeControls","privacy","assertion","transport"];
+const RETRIEVAL_TOP_FIELDS=["schemaVersion","scope","status","proofKind","limitations","sources","cases"];
+const RETRIEVAL_SOURCE_FIELDS=["id","path","bytes","sha256","commit","sourceIdentity","representation","lineStart","lineEnd"];
+const RETRIEVAL_CASE_FIELDS=["id","summary","evidence","contract","negativeControls","versionControl","criticalValues"];
+const CONTEXT_TOP_FIELDS=["schemaVersion","scope","status","proofKind","limitations","sources","cases"];
+const CONTEXT_SOURCE_FIELDS=["id","path","bytes","sha256","commit","sourceIdentity","representation","lineStart","lineEnd"];
+const CONTEXT_CASE_FIELDS=["id","summary","evidence","contract","negativeControls","versionControl","criticalValues"];
+const PROJECT_TOP_FIELDS=["schemaVersion","scope","status","proofKind","limitations","sources","cases"];
+const PROJECT_SOURCE_FIELDS=["id","path","bytes","sha256","commit","sourceIdentity","representation","lineStart","lineEnd","lineFeeds","carriageReturns","utf8Bom","utf8Valid","finalLf"];
+const PROJECT_CASE_FIELDS=["id","summary","evidence","contract","negativeControls","versionControl","criticalValues"];
+const RELATION_SOURCE_FIELDS=["id","path","mode","bytes","sha256","gitBlob","commit","sourceIdentity","representation","lineStart","lineEnd","lineFeeds","carriageReturns","utf8Bom","utf8Valid","finalLf"];
+const SESSION_SOURCE_FIELDS=["id","path","bytes","sha256","gitBlob","commit","sourceIdentity","representation","lineStart","lineEnd","lineFeeds","carriageReturns","utf8Bom","utf8Valid","finalLf"];
+const deepFreeze=value=>{
+ if(value&&typeof value==="object")for(const nested of Object.values(value))deepFreeze(nested);
+ return value&&typeof value==="object"?Object.freeze(value):value;
+};
+const CORE_COMMIT="15a2f78885d7ad8ced23b2d1d88383e9bb472c17";
+const RELATION_LIMITATIONS=deepFreeze([
+ "This contract records source inspection only; it does not prove runtime SQLite behavior, durability, concurrency, rollback, or complete E3-08 parity.",
+ "SaveRelation does not provide upsert behavior, caller validation, blank or malformed validation, endpoint-existence checks, deletion checks, ownership or project checks, or cross-project checks.",
+ "No unique-constraint behavior is claimed without schema evidence.",
+ "The inspected create path does not check affected rows and does not prove atomicity or timestamp equality.",
+ "Synchronization, Cloud delivery, judgment, contradiction, semantic validation, authentication, and authorization remain unproved.",
+ "Relation annotation fields are defined but are not populated by SaveRelation or GetRelation; comments delegate enrichment to GetRelationsForObservations.",
+ "This bounded contract is SOURCE_INSPECTED only; it does not claim FULL parity, runtime parity, or complete E3-08 coverage."
+]);
+const RELATION_SOURCE=deepFreeze(["SRC-REL-001","internal/store/relations.go","100644",59527,"a4c34d7766c4a392164368aec39eea2f60b6436f6e94e1394559e6a2c7f2601e","185c4c7026cf99e79353e841b3650f0d00738c3d",279,541,1664]);
+const RELATION_EVIDENCE=deepFreeze([["SRC-REL-001",279,304],["SRC-REL-001",316,323],["SRC-REL-001",499,509],["SRC-REL-001",514,541]]);
+const RELATION_CRITICAL=deepFreeze({
+ params:{orderedFields:["SyncID","SourceID","TargetID"]},
+ save:{operation:"plain_INSERT",columns:["sync_id","source_id","target_id","relation","judgment_status","created_at","updated_at"],arguments:["SyncID","SourceID","TargetID"],fixed:{relation:"pending",judgmentStatus:"pending"},timestamps:{createdAt:"datetime('now')",updatedAt:"datetime('now')",separateExpressions:true},insertError:"SaveRelation: insert",affectedRowsChecked:false,success:{call:"GetRelation",argument:"supplied_SyncID"}},
+ get:{filter:{only:"sync_id",argument:"supplied_syncID"},selectedFields:["id","sync_id","ifnull(source_id,'')","ifnull(target_id,'')","relation","reason","evidence","confidence","judgment_status","marked_by_actor","marked_by_kind","marked_by_model","session_id","created_at","updated_at"],scannedFields:["ID","SyncID","sourceID","targetID","Relation","Reason","Evidence","Confidence","JudgmentStatus","MarkedByActor","MarkedByKind","MarkedByModel","SessionID","CreatedAt","UpdatedAt"],nullEndpoints:"empty_strings",errors:{missing:"GetRelation: relation %q not found",scan:"GetRelation: %w",distinct:true},assignments:["SourceID=sourceID","TargetID=targetID"],returns:"relation_pointer"},
+ annotations:{fields:["SourceIntID","SourceTitle","SourceMissing","TargetIntID","TargetTitle","TargetMissing"],populatedHere:false,enrichment:"GetRelationsForObservations_LEFT_JOIN_comments"}
+});
+const FOUNDATION_SOURCE_ANCHORS={
+ "internal/store/store.go":[501321,"2ffd000ee7f8c8fc1ad0c3d130e88a8ab4878449866c9737215b3c6d8ffa555b",997,9363],
+ "internal/store/startup_gate_test.go":[24904,"d89e2f55fe5f33513902887ff8a150130f192773218b363383daf03f02205030",119,450],
+ "internal/store/filesystem_policy.go":[2330,"7bf87a28de234d8c5319d9d5b75a40f58ecd6d5f51ed32a677a2234092e3a3e0",26,67],
+ "internal/store/generation_fence.go":[12735,"39ca5c48d3843086867f64049894df2f218d165c1d28bdacd7ad4a31980a1865",16,110],
+ "internal/store/migration_lock.go":[2500,"5259721e35d46953bb325ae482eb7dceed7f09324ad19e3de9ac7992245e7b4c",10,69]
+};
+const FOUNDATION_CRITICAL_ANCHORS={
+ "FND-01":{absolutePathAccepted:true,relativePathRejected:true,rejectionBeforeMutation:true},
+ "FND-02":{classification:"known_remote",rejected:true,mutationBarrier:["data_directory","database_triplet","instance_metadata","migration_lock"]},
+ "FND-03":{unknown:"ALLOWED",inspectionFailure:"ALLOWED",unclassifiable:"ALLOWED",provedLocal:false,missingPathProbe:"closest_existing_ancestor"},
+ "FND-04":{maxOpenConnections:1,transactionLock:"immediate",busyTimeoutMs:5000,journalMode:"WAL",synchronous:"NORMAL",foreignKeys:1,persistentWalMode:1,lockRetryBackoffMs:[10,25,50,100,200]},
+ "FND-05":{schemaVersion:1,freshOrOlder:["migrate","repair","stamp_1"],currentVersion1:["migrate","repair","no_stamp"]},
+ "FND-06":{futureVersionCondition:">1",skipStartup:["migration","repair","stamp"],compatibleCrudPermitted:["GET","Add","Update","Delete"],preVersionPreparationPermitted:true,readOnly:false},
+ "FND-07":{processSerialization:true,versionRaceRecheck:true,replacementFence:true,lockFilePersists:true,startupWritesFenced:true},
+ "FND-08":{failedPostOpenClosesHandle:true,normalCloseClosesHandle:true,persistentWalPreserved:true,priorFilesystemStateRolledBack:false}
+};
+const FOUNDATION_ORDER_ANCHOR=["generation_check","version_read","future_gate","migration_lock","generation_recheck","version_reread","migrate_repair","stamp_if_older"];
+const OBSERVATION_LIMITATIONS=Object.freeze([
+ "These contracts record source inspection only; they do not prove ASEN runtime behavior or write parity.",
+ "Private-tag replacement is not a general secret detector.",
+ "expected_project is a caller ownership assertion, not authentication or tenant isolation.",
+ "Unknown write outcomes require readback and reconciliation; they must not be retried automatically.",
+ "Library UpdateObservation and DeleteObservation variants remain callable without expected_project.",
+ "Queue-helper invocation does not prove a durable queue row because local unenrolled projects skip insertion.",
+ "MCP forwards capture_prompt; the separately released Pi surface exposes but does not forward that option, and this core snapshot is not published-Pi proof."
+]);
+const OBSERVATION_SOURCE_ANCHORS=Object.freeze({
+ "internal/store/store.go":[501321,"2ffd000ee7f8c8fc1ad0c3d130e88a8ab4878449866c9737215b3c6d8ffa555b",3685,12492],
+ "internal/mcp/mcp.go":[147307,"613a6c74621cdae0c6b8af1fb79c5c121ba51ca4a9665621f9312c683199872d",500,1877],
+ "internal/server/server.go":[73752,"53caec2f14679d5c9a2558c06ce6183e740bb1b78b4cebc33219b60271a53c20",146,929]
+});
+const OBSERVATION_EVIDENCE_ANCHORS=Object.freeze({
+ "OBS-01":[["SRC-OBS-001",3685,3722],["SRC-OBS-001",3809,3860],["SRC-OBS-001",4335,4357],["SRC-OBS-001",12256,12275],["SRC-OBS-001",12483,12492],["SRC-OBS-002",500,550],["SRC-OBS-002",1447,1600],["SRC-OBS-003",630,673]],
+ "OBS-02":[["SRC-OBS-001",3719,3772],["SRC-OBS-001",12409,12424]],
+ "OBS-03":[["SRC-OBS-001",3774,3807]],
+ "OBS-04":[["SRC-OBS-001",4666,4809],["SRC-OBS-001",4828,4853],["SRC-OBS-002",554,595],["SRC-OBS-002",1661,1745],["SRC-OBS-003",783,830]],
+ "OBS-05":[["SRC-OBS-001",4858,4951],["SRC-OBS-001",10636,10713],["SRC-OBS-002",641,660],["SRC-OBS-002",1855,1877],["SRC-OBS-003",146,180],["SRC-OBS-003",431,439],["SRC-OBS-003",897,929]]
+});
+const RETRIEVAL_LIMITATIONS=Object.freeze([
+ "These contracts record source inspection only; they do not prove ASEN runtime behavior or retrieval parity.",
+ "Whitespace and quote-only SQLite outcomes are unproved even though the generated empty expressions are source-inspected.",
+ "The configured search cap is not universally 20, and no runtime override or default-window behavior is proved here.",
+ "ID retrieval and all-project search are not authentication, authorization, tenant isolation, or implicit project isolation.",
+ "Read-side persistence is unproved; inspected SQL reads and in-memory activity or nudges do not establish zero persistent writes.",
+ "Retrieval does not redact legacy or imported data merely because normal writers replace private tags.",
+ "Live envelopes, actual SQLite matching, configuration overrides, privacy, and provenance remain pending runtime obligations."
+]);
+const RETRIEVAL_SOURCE_ANCHORS=Object.freeze({
+ "internal/store/store.go":[488121,"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e",375,12509],
+ "internal/mcp/mcp.go":[143683,"72dc51bdf5c5ca93540cb678ad22cd314c439154f36315adba78db66080874bb",1207,2314],
+ "internal/server/server.go":[71547,"b6bca0acfbdc11704637c6b0eb26032f0f66f377dd95be44e365c36a82c2123d",728,781],
+ "internal/store/relations.go":[59527,"a4c34d7766c4a392164368aec39eea2f60b6436f6e94e1394559e6a2c7f2601e",1106,1113],
+ "internal/store/relations_scan_batch.go":[9798,"05f8695dd6602b7e697afd69a65d8681e8bd51e1f6c9f1cb3e53ea4e1460710b",26,54]
+});
+const RETRIEVAL_EVIDENCE_ANCHORS=Object.freeze({
+ "RET-01":[["SRC-RET-001",4654,4664],["SRC-RET-001",5080,5227],["SRC-RET-002",1207,1461],["SRC-RET-002",2266,2314],["SRC-RET-003",728,781]],
+ "RET-02":[["SRC-RET-001",5085,5091],["SRC-RET-001",5237,5241],["SRC-RET-001",12495,12509],["SRC-RET-004",1106,1113],["SRC-RET-005",26,54],["SRC-RET-002",1218,1224],["SRC-RET-003",742,746]],
+ "RET-03":[["SRC-RET-001",2839,2885],["SRC-RET-001",5433,5507]],
+ "RET-04":[["SRC-RET-001",792,823],["SRC-RET-001",5096,5102],["SRC-RET-001",5104,5227],["SRC-RET-001",5386,5431],["SRC-RET-002",1207,1461]],
+ "RET-05":[["SRC-RET-001",5080,5354],["SRC-RET-002",1207,1461],["SRC-RET-002",2266,2314]],
+ "RET-06":[["SRC-RET-001",4654,4664],["SRC-RET-001",5104,5354],["SRC-RET-002",1252,1461],["SRC-RET-004",1106,1113],["SRC-RET-005",26,54]]
+});
+const CONTEXT_LIMITATIONS=Object.freeze([
+ "These contracts record source inspection only; they do not prove ASEN runtime behavior or context/timeline parity.",
+ "The configured observation default is not a universal cap, and configuration overrides are not exercised.",
+ "Core MaxBytes budgets only the rendered context body; HTTP JSON and MCP result envelopes have distinct boundaries.",
+ "MCP argument branches are source-inspected Go behavior; this does not claim that JSON transports accept NaN.",
+ "Timeline project checks are resolved-project equality gates, not authentication, tenant isolation, or global ID authorization.",
+ "Read-side persistence outside the inspected ranges, live HTTP/MCP envelopes, and actual database ordering remain unproved."
+]);
+const CONTEXT_SOURCE_ANCHORS=Object.freeze({
+ "internal/store/store.go":[488121,"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e",792,12254],
+ "internal/mcp/mcp.go":[143683,"72dc51bdf5c5ca93540cb678ad22cd314c439154f36315adba78db66080874bb",1950,3624],
+ "internal/server/server.go":[71547,"b6bca0acfbdc11704637c6b0eb26032f0f66f377dd95be44e365c36a82c2123d",928,2191]
+});
+const CONTEXT_EVIDENCE_ANCHORS=Object.freeze({
+ "CTX-core-options":[["SRC-CTX-001",792,824],["SRC-CTX-001",5647,5775],["SRC-CTX-001",5866,5879],["SRC-CTX-001",12248,12254]],
+ "CTX-core-byte-helper":[["SRC-CTX-001",5777,5802]],
+ "CTX-HTTP-context":[["SRC-CTX-003",1251,1338],["SRC-CTX-003",2183,2191]],
+ "CTX-MCP-complete-result":[["SRC-CTX-002",1950,2114]],
+ "CTX-timeline":[["SRC-CTX-001",4970,5067],["SRC-CTX-003",928,967],["SRC-CTX-002",2195,2263],["SRC-CTX-002",3618,3624]]
+});
+const PROJECT_LIMITATIONS=Object.freeze([
+ "These contracts record public source inspection only; they do not prove ASEN runtime behavior or project-identity parity.",
+ "No real repository binding, Git configuration, private file, database, session store, or cloud service was inspected or executed.",
+ "Project existence callbacks and resolved-project comparisons are not authentication, authorization, tenant isolation, or security proofs.",
+ "Cloud CLI URL decoding is separate and unproved by these project-package sources; percent escapes remain literal in the inspected remote parser.",
+ "Source evidence does not prove SQLite behavior, configuration recovery, platform behavior, model behavior, or complete E3-01 behavior; E3-01 remains PARTIAL and the E3-02 gate remains pending."
+]);
+const SESSION_LIMITATIONS=Object.freeze([
+ "These contracts record public source inspection only; they do not prove ASEN runtime behavior or complete session-transport parity.",
+ "Session-start source inspection does not prove store ID validation, persistence, a live 30-minute lease, ended-session behavior, ownership, synchronization, or HTTP session-end and caller behavior.",
+ "Directory routing does not prove project detection or runtime-worktree internals, environment-to-default-project configuration, authentication, authorization, tenant isolation, or security.",
+ "The write queue is in-memory admission and serialization only; enqueue is not durable enrollment, registration, persistence, or cloud synchronization.",
+ "Source evidence does not prove native database, live SQLite, privacy, platform, cloud, model, or Pi-integration behavior.",
+ "Omitted-session fallback source inspection does not prove downstream ensure, create, or save mutation, explicit-ID validation, project normalization, runtime SQLite, warning delivery, authentication, authorization, concurrency, platform, Cloud, or live Pi behavior.",
+ "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02."
+]);
+const SESSION_SOURCE_ANCHORS=deepFreeze({
+ "internal/mcp/mcp.go":[143683,"72dc51bdf5c5ca93540cb678ad22cd314c439154f36315adba78db66080874bb","a9aed618bd0d24bb996add8984ca99267974bcd4",187,3600,3624],
+ "internal/project/resolution.go":[4282,"3e4da942e70b4b7a344c2c87a7394e159d53ee03fc3a1c86a3baaf2a82e7746a","52d758a315ee5273840ddb2d305559837f837268",12,104,138],
+ "internal/mcp/write_queue.go":[2634,"15ee24135108c1ce75b605f538e6d1e51107d8211e590ef63b06c546695a44ef","7d0a3da0366f133e8641267c620d548127498238",11,104,104]
+});
+const SESSION_EVIDENCE_ANCHORS=deepFreeze({
+ "SES-MCP-start-resolution":[["SRC-SES-001",187,193],["SRC-SES-001",199,205],["SRC-SES-001",887,907],["SRC-SES-001",2397,2404],["SRC-SES-001",2411,2411],["SRC-SES-001",2431,2440],["SRC-SES-001",2826,2828],["SRC-SES-001",3297,3326],["SRC-SES-002",12,20],["SRC-SES-002",48,82],["SRC-SES-002",68,76],["SRC-SES-002",90,104]],
+ "SES-serialized-write-queue":[["SRC-SES-001",433,433],["SRC-SES-001",887,907],["SRC-SES-003",11,14],["SRC-SES-003",16,29],["SRC-SES-003",31,38],["SRC-SES-003",40,49],["SRC-SES-003",52,61],["SRC-SES-003",63,89],["SRC-SES-003",91,104]],
+ "SES-MCP-omitted-session-fallback":[["SRC-SES-001",1501,1506],["SRC-SES-001",1920,1925],["SRC-SES-001",2357,2362],["SRC-SES-001",2494,2500],["SRC-SES-001",3572,3600]]
+});
+const SESSION_CRITICAL_ANCHORS=deepFreeze({
+ "SES-MCP-start-resolution":{schema:{id:"required_string",directory:"optional_string",project:"absent"},handler:{nonstringOrMissingId:"empty",directoryTransform:"trim_only"},explicitDirectory:{condition:"nonblank_trimmed",route:"DetectProjectFull"},omittedDirectory:{mode:"ResolutionCurrent",processOverride:"defaultProject",cwdGetwdFallback:".",projectExists:"store_callback",requireKnownProcess:false},runtimeDirectory:{blankFirst:"currentWorkingDirectory",then:"RuntimeWorktreeDirectory",claim:"call_routing_only"}},
+ "SES-serialized-write-queue":{queue:{storage:"in_memory",workers:1,defaultCapacity:32,full:"nonblocking_error"},cancellation:{preEnqueue:"reject",beforeCallbackStart:"skip",afterEnqueue:"await_buffered_result",midCallback:"context_reaches_handler_and_waits",resultSelect:false},callback:{result:"forward",error:"forward",panic:"converted_to_error"},wrapper:{mappedToToolError:["queue_full","context_canceled","deadline_exceeded"],mappedGoError:null,other:"transport_error"},durableEnrollment:false},
+ "SES-MCP-omitted-session-fallback":{guards:{memSave:"sessionID == empty",promptSave:"sessionID == empty",sessionSummary:"sessionID == empty",passiveCapture:"sessionID == empty"},explicitSessionId:{resolverCalled:false,ownershipClaim:false},defaultSessionId:{emptyProject:"manual-save",nonemptyProject:"manual-save-+project"},resolver:{query:"ActiveRuntimeSessions(project,runtimeSessionDirectory(empty))",nilStore:"default_nil_error",queryError:"default_nil_error",cardinality:{zero:"default",one:"exact_id",moreThanOne:"empty_id_actionable_ambiguity_error"}},ambiguity:{prefixes:["Failed to save: ","Failed to save prompt: ","Failed to save session summary: ","Passive capture failed: "],exactError:"multiple active runtime sessions match the current project and directory; provide session_id, end other active matching sessions, or save independently with en"+"gram save. The resolved project is %q; pass that exact name as the --project value and never invent another. This writes to an independent project manual-save session and does not bind it to this MCP session"}}
+});
+const SESSION_STORE_LIMITATIONS=deepFreeze([
+ "These contracts record public source inspection only; they do not prove ASEN runtime behavior or complete session-store parity.",
+ "The ID rule covers only empty and strings.TrimSpace-blank values; it does not enumerate Unicode, canonicalize IDs, or prove every caller.",
+ "The start SQL contract does not prove timestamp format, timezone, transaction defaults, retries, schema behavior, durability, synchronization, or actual SQLite execution.",
+ "Ownership rules are caller assertions, not authentication, authorization, tenant isolation, or security.",
+ "The local lease comment is informational source text, not proof of synchronization absence or runtime payload behavior.",
+ "Create contracts do not prove resume identity selection, terminal synchronization, HTTP, MCP, Pi callers, Cloud delivery, or runtime SQLite behavior.",
+ "Live-registration contracts exclude resume or continuation, isolation, ended-row legacy ownership claims at 3290–3333, postcommit terminal mapping at 3374+, EndSession, runtime SQLite, concurrency, durability, remote delivery, normalization internals, and HTTP, MCP, or Pi callers.",
+ "Project normalization is only observed as a delegated call and result check; its internal algorithm is not asserted here.",
+ "Queue-helper invocation and even an enrolled journal row do not prove durable synchronization or remote delivery.",
+ "The ended legacy-ownership claim excludes resume, continuation, isolation, EndSession, terminal synchronization, callers, normalization internals, queue enrollment, remote delivery, and actual SQLite commit, rollback, concurrency, or durability; a returned ended error does not imply that no side effects occurred.",
+ "The isolation-root preflight excludes continuation selection, selected-ID checks, isolation success after the preflight, terminal synchronization, EndSession, normalization internals, callers, remote delivery, and runtime SQLite, concurrency, or durability behavior.",
+ "The selected-continuation isolation contract excludes the selection algorithm or ordinal, root ownership, successful continuation registration, repair, start, enqueue, terminal synchronization, EndSession, callers, and runtime SQLite behavior, absence of mutation, concurrency, durability, or remote delivery.",
+ "The resume-selection contract excludes terminal-root ownership guard semantics, isolation success, selected-continuation isolation, ownership, repair, start, enqueue, terminal synchronization, EndSession, callers, and runtime SQLite, collation, concurrency, durability, or Cloud behavior.",
+ "The end-session contract excludes runtime SQLite timestamp and RowsAffected behavior, retry, rollback, concurrency, durability, enrollment implementation, remote acknowledgement or delivery, callers, ownership, resume, and isolated-registration success.",
+ "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and must complete before E3-02.",
+ "The resume terminal-root ownership guard excludes isolated-registration success, selected-identity ownership claims, continuation selection details, live-registration conflict, post-selection start, enqueue, EndSession, callers, runtime SQLite, retries, rollback, concurrency, durability, ownership security, and Cloud behavior.",
+ "The isolated missing-root success contract delegates NormalizeProject, Now, transaction hooks, retries, enrollment, SQLite execution, commit, rollback, durability, security, concurrency, Cloud, and callers; other isolation, resume, live-repair, and ownership branches remain unproved.",
+ "The active-runtime candidate contract excludes canonicalizer internals and warning delivery, caller cardinality and fallback choice, runtime SQLite datetime, collation, and query planning, close errors, actual read-only guarantees, persistence, mutation, concurrency, platform, security, and Cloud behavior."
+]);
+const PASSIVE_CAPTURE_LIMITATIONS=deepFreeze([
+ "These contracts record public source inspection only; they do not prove ASEN runtime behavior or passive-capture parity.",
+ "NormalizeProject, hashNormalized, nullableString, AddObservation, and regular-expression engine internals are delegated or excluded; their algorithms and effects are not asserted here.",
+ "Byte thresholds and title slicing reflect inspected Go len and slice operations; Unicode correctness and UTF-8-safe truncation are not proved.",
+ "The dedupe query's handling of non-nil Scan errors is source-inspected, but SQLite behavior and safety under query errors are not proved.",
+ "A successful AddObservation call increments Saved; this does not prove creation of a new row identity or expose AddObservation internals.",
+ "Atomicity, rollback, callers, privacy, security, concurrency, platform behavior, Cloud delivery, and Pi integration remain unproved.",
+ "All 18 memory families remain MISSING or PARTIAL; E3-01 remains incomplete and no FULL parity claim is made.",
+ "Hook initialization, project detection, session registration, lifecycle construction, conflict warnings, redaction internals, helper correctness, and warning delivery are delegated or excluded.",
+ "Post-redaction nonemptiness, byte or Unicode-safe prompt truncation, persistence, HTTP or store semantics, SQLite, authentication, privacy completeness, concurrency, platform behavior, Cloud delivery, and live Pi behavior remain unproved.",
+ "JSON.stringify edge semantics and manual transport, protocol injection, compaction, session-end, or other-agent capture paths are outside these bounded caller contracts.",
+ "A returned transport failure is not a null-return guarantee, successful POSTs prove neither saved observations nor prompts, and neither FULL/runtime parity nor published-Pi-package equivalence is claimed."
+]);
+const PASSIVE_CAPTURE_SOURCES=deepFreeze({
+ "SRC-CAP-001":["SRC-CAP-001","internal/store/store.go",488121,"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e","a396d5d8eb91b956a12c23cd5e936a2b74dd7760",12515,12655,13200],
+ "SRC-CAP-002":["SRC-CAP-002","plugin/pi/index.ts",103389,"387555a903d64f2d4c9145499bd34d3f5c616f310e0bc89f49c23e2f2189880f","53da52b93319fb38e2054586a38f5bdaf95ae260",45,2209,2209]
+});
+const PASSIVE_CAPTURE_EVIDENCE=deepFreeze({
+ "CAP-store-passive-learning-extraction":[["SRC-CAP-001",12515,12520],["SRC-CAP-001",12523,12527],["SRC-CAP-001",12529,12537],["SRC-CAP-001",12539,12589],["SRC-CAP-001",12591,12597],["SRC-CAP-001",12599,12655]],
+ "CAP-pi-tool-result-passive-trigger":[["SRC-CAP-002",45,70],["SRC-CAP-002",193,198],["SRC-CAP-002",242,245],["SRC-CAP-002",410,425],["SRC-CAP-002",427,436],["SRC-CAP-002",692,694],["SRC-CAP-002",2174,2209]],
+ "CAP-pi-agent-start-prompt-trigger":[["SRC-CAP-002",229,234],["SRC-CAP-002",683,685],["SRC-CAP-002",692,694],["SRC-CAP-002",2131,2172]]
+});
+const PASSIVE_CAPTURE_CRITICAL=deepFreeze({
+ "CAP-store-passive-learning-extraction":{
+  params:{orderedFields:[["SessionID","string","session_id"],["Content","string","content"],["Project","string","project,omitempty"],["Source","string","source,omitempty"]]},resultFields:{orderedFields:[["Extracted","int","extracted"],["Saved","int","saved"],["Duplicates","int","duplicates"]]},
+  extraction:{headerPattern:"(?im)^#{2,3}\\s+(?:Aprendizajes(?:\\s+Clave)?|Key\\s+Learnings?|Learnings?):?\\s*$",headers:{levels:[2,3],languages:["English","Spanish"],caseInsensitive:true,latestValidSection:true,nextHeadingCutoff:"levels_1_through_3"},items:{numbered:["dot","paren"],numberedPreferred:true,bulletFallback:"only_when_no_valid_numbered",minimumBytes:20,minimumFields:4},cleanupOrder:["bold","inline_code","italic","collapse_whitespace"],none:"nil"},
+  capture:{normalization:{call:"NormalizeProject",warning:"discarded",algorithm:"UNPROVED"},result:{extracted:"learning_count",saved:"successful_AddObservation_calls",duplicates:"nil_scan_count",zeroLearnings:"return_zero_result_nil_error"},dedupe:{hash:"hashNormalized(learning)",projectArgument:"nullableString(normalized_project)",queryPredicates:["normalized_hash = ?","ifnull(project, '') = ifnull(?, '')","deleted_at IS NULL"],limit:1,excludedKeys:["scope","type","title","session","ordering"],nilScan:"increment_duplicate_and_continue",queryError:"proceed_to_AddObservation"},title:"first_60_bytes_plus_ellipsis",addObservation:{fields:{SessionID:"input_session_id",Type:"passive",Title:"derived_title",Content:"learning",Project:"normalized_project",Scope:"project",ToolName:"input_source"},success:"Saved_increment",error:"return_partial_result_and_wrap_passive_capture_save"}}
+ },
+ "CAP-pi-tool-result-passive-trigger":{
+  trigger:{event:"tool_execution_end",observeBeforeAsync:["runtime_session_id","lifecycle_state","lifecycle_epoch"],missingToolName:"empty_string",recursionGuard:{comparison:"lowercase_exact_set_membership",before:["initialization","registration","tool_count","capture"]}},
+  readiness:{initialize:"initOnceForHook(ctx.cwd)",initializationFailure:"return",projectRefresh:"refreshProjectDetection(ctx.cwd)",rejectAfterRefresh:["missing_session_id","project_detection_pending","project_resolution_error"]},
+  registration:{call:"registerEffectiveSession(ctx,project,appendEntry)",projectConflict:"warnSessionProjectConflictOnce_then_return",otherError:"warn"+"En"+"gramFailure_/sessions_then_return",closingEffectiveID:"return"},
+  counting:{operation:"toolCounts_effective_ID_plus_one",order:"before_result_presence_serialization_and_content_eligibility"},
+  content:{undefinedResult:"return",stringResult:"unchanged",otherResult:"JSON.stringify",serializationThrow:"return",reject:["empty","javascript_length_lte_50","newly_closing_effective_ID"]},
+  body:{session_id:"effective_ID",content:"stripPrivateTags(serialized_content)",project:"resolved_project",source:"original_tool_name"},redaction:{stripPrivateTags:"redactPrivateTags(str).trim",algorithm:"UNPROVED"},
+  prePostGate:{condition:"observed_state_exists_and_closing_or_epoch_drift",action:"return"},post:{path:"/observations/passive",method:"POST",transport:"bestEffort"+"En"+"gramFetch"},
+  transport:{returnedFailure:"warn_and_return_result.data",thrownError:"warn_and_return_null",postSuccessSavedProof:false},warning:{helper:"warn"+"En"+"gramFailure",failure:"swallowed"}
+ },
+ "CAP-pi-agent-start-prompt-trigger":{
+  trigger:{event:"before_agent_start",prompt:"optional_string",observeBeforeAsync:["runtime_session_id","lifecycle_state","lifecycle_epoch"]},
+  result:{precomputed:"system_prompt_result",callback:"always_returns_precomputed_result"},
+  readiness:{order:["successful_initialize","project_refresh"],initialize:"initOnceForHook(ctx.cwd)",initializationFailure:"return_result",projectRefresh:"refreshProjectDetection(ctx.cwd)"},
+  eligibility:{rawPrompt:"trim",require:["session_id","no_project_detection_pending","no_project_resolution_error","javascript_length_gt_10"]},
+  registration:{call:"registerEffectiveSession(ctx,project,appendEntry)",projectConflict:"warnSessionProjectConflictOnce_then_return_result",otherError:"warn"+"En"+"gramFailure_/sessions_then_return_result",closingEffectiveID:"return_result"},
+  content:{order:["stripPrivateTags","truncate"],stripPrivateTags:"redactPrivateTags(str).trim",truncate:{maxJavaScriptCodeUnits:2000,possibleResultLength:2003}},
+  body:{session_id:"effective_ID",content:"truncate(stripPrivateTags(trimmed_prompt),2000)",project:"resolved_project"},
+  prePostGate:{condition:"observed_state_exists_and_closing_or_epoch_drift",action:"return_result"},
+  post:{path:"/prompts",method:"POST",transport:"bestEffort"+"En"+"gramFetch"}
+ }
+});
+const SESSION_STORE_SOURCE=deepFreeze(["SRC-SES-STORE-001","internal/store/store.go",488121,"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e","a396d5d8eb91b956a12c23cd5e936a2b74dd7760",59,12280,13200]);
+const SESSION_STORE_EVIDENCE=deepFreeze({
+ "SES-store-id-validation":[["SRC-SES-STORE-001",59,59],["SRC-SES-STORE-001",149,151],["SRC-SES-STORE-001",3049,3059],["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3209],["SRC-SES-STORE-001",11598,11600],["SRC-SES-STORE-001",11602,11607]],
+ "SES-store-start-sql-state":[["SRC-SES-STORE-001",60,60],["SRC-SES-STORE-001",149,151],["SRC-SES-STORE-001",3106,3108],["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3206],["SRC-SES-STORE-001",3347,3347],["SRC-SES-STORE-001",9402,9424],["SRC-SES-STORE-001",9426,9428],["SRC-SES-STORE-001",11609,11640]],
+ "SES-store-create-ownership":[["SRC-SES-STORE-001",67,75],["SRC-SES-STORE-001",135,151],["SRC-SES-STORE-001",3049,3085],["SRC-SES-STORE-001",10797,10830]],
+ "SES-store-create-sql-state":[["SRC-SES-STORE-001",3049,3085],["SRC-SES-STORE-001",9387,9400],["SRC-SES-STORE-001",11609,11640]],
+ "SES-store-create-sync":[["SRC-SES-STORE-001",347,356],["SRC-SES-STORE-001",580,590],["SRC-SES-STORE-001",3069,3106],["SRC-SES-STORE-001",8154,8161],["SRC-SES-STORE-001",9324,9336],["SRC-SES-STORE-001",10636,10715]],
+ "SES-store-live-registration-conflict":[["SRC-SES-STORE-001",67,75],["SRC-SES-STORE-001",135,151],["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3220],["SRC-SES-STORE-001",3285,3289],["SRC-SES-STORE-001",3334,3347],["SRC-SES-STORE-001",10797,10830]],
+ "SES-store-live-identity-repair":[["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3222],["SRC-SES-STORE-001",3285,3289],["SRC-SES-STORE-001",3334,3373],["SRC-SES-STORE-001",9402,9424]],
+ "SES-store-ended-legacy-ownership-claim":[["SRC-SES-STORE-001",67,75],["SRC-SES-STORE-001",135,151],["SRC-SES-STORE-001",3112,3119],["SRC-SES-STORE-001",3206,3223],["SRC-SES-STORE-001",3285,3347],["SRC-SES-STORE-001",3374,3379],["SRC-SES-STORE-001",10800,10830],["SRC-SES-STORE-001",10836,10868]],
+ "SES-store-isolation-root-preflight":[["SRC-SES-STORE-001",3133,3145],["SRC-SES-STORE-001",3218,3245]],
+ "SES-store-isolation-selected-continuation":[["SRC-SES-STORE-001",3133,3145],["SRC-SES-STORE-001",3218,3245],["SRC-SES-STORE-001",3274,3289]],
+ "SES-store-resume-selection":[["SRC-SES-STORE-001",3121,3131],["SRC-SES-STORE-001",3147,3204],["SRC-SES-STORE-001",3274,3280]],
+ "SES-store-end-terminal-upsert":[["SRC-SES-STORE-001",59,59],["SRC-SES-STORE-001",3381,3424],["SRC-SES-STORE-001",9324,9336],["SRC-SES-STORE-001",10636,10738],["SRC-SES-STORE-001",11598,11607],["SRC-SES-STORE-001",12241,12246]],
+ "SES-store-resume-root-ownership-guard":[["SRC-SES-STORE-001",67,75],["SRC-SES-STORE-001",135,151],["SRC-SES-STORE-001",3121,3131],["SRC-SES-STORE-001",3206,3244],["SRC-SES-STORE-001",3246,3273],["SRC-SES-STORE-001",3274,3280],["SRC-SES-STORE-001",9324,9336],["SRC-SES-STORE-001",10797,10830],["SRC-SES-STORE-001",10836,10868]],
+ "SES-store-isolated-root-success":[["SRC-SES-STORE-001",59,59],["SRC-SES-STORE-001",135,151],["SRC-SES-STORE-001",347,356],["SRC-SES-STORE-001",580,591],["SRC-SES-STORE-001",3133,3145],["SRC-SES-STORE-001",3206,3379],["SRC-SES-STORE-001",9324,9336],["SRC-SES-STORE-001",9402,9428],["SRC-SES-STORE-001",10636,10738],["SRC-SES-STORE-001",10797,10811],["SRC-SES-STORE-001",11598,11607]],
+ "SES-store-active-runtime-candidates":[["SRC-SES-STORE-001",3447,3447],["SRC-SES-STORE-001",3476,3553],["SRC-SES-STORE-001",12271,12280]]
+});
+const SESSION_STORE_CRITICAL=deepFreeze({
+ "SES-store-id-validation":{sentinel:{name:"ErrSessionIDRequired",message:"session id is required"},blank:{operation:"strings.TrimSpace",comparison:"empty"},validation:{blank:"ErrSessionIDRequired",nonblank:"nil"},ownershipModes:{shared:"shared",projectOwned:"project_owned"},entrypoints:{create:["CreateSession","CreateSessionWithOwnershipMode","validateSessionID"],start:["StartSession","StartSessionWithOwnershipMode","startSessionRegistration","validateSessionID"]}},
+ "SES-store-start-sql-state":{sentinel:{name:"ErrSessionAlreadyEnded",message:"session has already ended",zeroRows:true},columns:["id","project","ownership_mode","directory","started_at","runtime_lease_expires_at","local_creation_project"],arguments:["id","project","mode","directory","Now()","runtimeSessionLeaseDuration","project","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet"],conflict:{project:"fill_null_or_trimmed_blank",ownershipMode:"fill_null_or_trimmed_blank",directory:"fill_trimmed_blank",populatedIdentity:"preserve",lease:"excluded_value",where:"sessions.ended_at IS NULL"},errors:{exec:"propagate",rowsAffected:"propagate",zeroRows:"ErrSessionAlreadyEnded"},ownershipModes:["shared","project_owned"],lease:{duration:"+30 minutes",comment:"local_not_synchronized_and_nonterminal_informational"},whitespace:{binding:"sqlWhitespaceTrimSet",builder:"unicode.White_Space R16 then R32 ranges"}},
+ "SES-store-create-ownership":{wrapper:{entry:"CreateSession",mode:"shared"},validationOrder:["validateSessionID","validSessionOwnershipMode","NormalizeProject","trimmed_project_required","withTx"],sentinels:{invalidMode:"ErrInvalidSessionOwnershipMode",projectRequired:"ErrProjectRequired",mismatch:"ErrSessionOwnershipMismatch",ambiguous:"ErrProjectOwnershipAmbiguous"},matrix:{blankOrSameOwner:"allow",differentOwnerRequestedProjectOwned:"SessionProjectConflictError_unwraps_ErrSessionOwnershipMismatch",differentOwnerExistingSharedRequestedShared:"allow",differentOwnerExistingProjectOwnedRequestedShared:"ErrSessionOwnershipMismatch",differentOwnerUnclassifiedRequestedShared:"ErrProjectOwnershipAmbiguous"},transactionOrder:["sessionOwnershipTx","strict_project_owned_check","sessionProjectWriteError","createSessionTx"],normalization:"delegated_result_only"},
+ "SES-store-create-sql-state":{columns:["id","project","ownership_mode","directory","started_at","local_creation_project"],arguments:["id","project","mode","directory","Now()","project","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet"],conflict:{project:"fill_null_or_trimmed_blank",ownershipMode:"fill_null_or_trimmed_blank",directory:"fill_trimmed_blank",populatedIdentity:"preserve"},localCreationProject:"normalized_project_argument",errors:{exec:"propagate"},normalization:"delegated_result_only"},
+ "SES-store-create-sync":{transaction:{scope:"same_withTx_as_create",errors:"propagate_before_commit",rollback:"deferred"},ordering:["createSessionTx","persisted_row_reread","enqueueSyncMutationTx","commit"],persistedColumns:["id","ifnull(project, '')","ifnull(ownership_mode, '')","directory","started_at","ended_at","summary"],payloadFields:["ID","Project","OwnershipMode","Directory","StartedAt","EndedAt","Summary"],payloadSource:"persisted_row",mutation:{entity:"session",op:"upsert",source:"local"},journal:{blankDirectory:"no_row",unenrolledProject:"no_row",enrolledProject:"row_attempt"},helperInvocationDurableSync:false,cloudDelivery:"UNPROVED"},
+ "SES-store-live-registration-conflict":{entry:{wrapper:"StartSessionWithOwnershipMode",delegate:"startSessionRegistration"},flags:{resume:false,effective:"nil",isolated:false},ordering:["sessionOwnershipTx","sessionRegistrationProjectError","startSessionTx"],matrix:{blankOrSameOwner:"allow",differentOwnerRequestedProjectOwned:{type:"SessionProjectConflictError",unwrap:"ErrSessionOwnershipMismatch"},differentOwnerExistingSharedRequestedShared:"allow",differentOwnerExistingProjectOwnedRequestedShared:{type:"wrapped_error",sentinel:"ErrSessionOwnershipMismatch"},differentOwnerUnclassifiedRequestedShared:{type:"wrapped_error",sentinel:"ErrProjectOwnershipAmbiguous"}},rejectionBeforeStart:true},
+ "SES-store-live-identity-repair":{identityRepaired:{missingRow:"!found",foundLive:"existingProject_empty OR existingMode_empty OR strings.TrimSpace(existingDirectory)_empty"},startSessionTx:"always_called_after_ownership_acceptance",populatedIdentity:{enqueue:false,return:"nil_after_startSessionTx"},transaction:{scope:"same_withTx_callback",ordering:["sessionOwnershipTx","identity_repair_predicate","startSessionTx","persisted_row_reread","enqueueSyncMutationTx","commit"]},persistedColumns:["id","ifnull(project, '')","ifnull(ownership_mode, '')","directory","started_at","ended_at","summary"],payloadFields:["ID","Project","OwnershipMode","Directory","StartedAt","EndedAt","Summary"],payloadSource:"persisted_row",mutation:{entity:"session",op:"upsert",source:"local"},helperInvocationDurableSync:false},
+ "SES-store-ended-legacy-ownership-claim":{flags:{resume:false,effective:"nil",isolated:false},condition:{found:true,requestedMode:"project_owned",existingProject:"blank",endedAt:"nonnull"},foreignChildOwner:{helper:"foreignRecordOwnerTx",conflictType:"SessionProjectConflictError",rejectionBeforeUpdate:true},update:{columns:["project","ownership_mode"],where:["ended_at IS NOT NULL","ifnull(trim(project, ?), '') = ''"],arguments:["project","mode","id","sqlWhitespaceTrimSet"],errors:{exec:"propagate",rowsAffected:"propagate",rowsNotOne:"claim_lost_error"}},transaction:{scope:"same_withTx_callback",ordering:["sessionOwnershipTx","ended_status_read","foreignRecordOwnerTx","conditional_ownership_update","rows_affected_exactly_one","persisted_row_reread","enqueueSyncMutationTx","claimed_true","commit","ErrSessionAlreadyEnded"]},persistedColumns:["id","ifnull(project, '')","ifnull(ownership_mode, '')","directory","started_at","ended_at","summary"],payloadFields:["ID","Project","OwnershipMode","Directory","StartedAt","EndedAt","Summary"],payloadSource:"persisted_row",mutation:{entity:"session",op:"upsert",source:"local"},claimed:{initial:false,resetEachWithTxCallback:true,setAfter:"enqueue_success",endedMapping:"only_after_successful_withTx",return:"ErrSessionAlreadyEnded",returnedEndedErrorImpliesNoSideEffects:false}},
+ "SES-store-isolation-root-preflight":{sentinel:{name:"ErrSessionIsolationConflict",message:"isolated session registration requires an empty directory; existing runtime-bound sessions cannot be reused"},wrapper:{entry:"RegisterIsolatedSession",directory:"empty",mode:"project_owned",resume:"forward",effective:"id",isolated:true},transaction:{root:"id_before_withTx",eachAttemptReset:{id:"root"},ordering:["reset_id_to_root","validateIsolation(root)","resume_branch"]},preflight:{operation:"query_only",query:"SELECT ifnull(directory, '') FROM sessions WHERE id = ?",argument:"root",missingRow:"allow",trimmedBlank:"allow",queryError:"propagate",trimmedNonblank:{error:"wrap_ErrSessionIsolationConflict",sessionID:"quoted"}},rejection:{returnBefore:"resume_branch"}},
+ "SES-store-isolation-selected-continuation":{sentinel:{name:"ErrSessionIsolationConflict",message:"isolated session registration requires an empty directory; existing runtime-bound sessions cannot be reused"},wrapper:{entry:"RegisterIsolatedSession",directory:"empty",mode:"project_owned",resume:"forward",effective:"id",isolated:true},transaction:{root:"id_before_withTx",eachAttemptReset:{id:"root"},sharedValidation:"validateIsolation",ordering:["reset_id_to_root","validateIsolation(root)","continuationSessionTx(tx,root)","effective=selected_id","validateIsolation(selected_id)_if_distinct","sessionOwnershipTx"]},continuation:{call:"continuationSessionTx(tx,root)",error:"propagate",effective:"selected_id",selectionAlgorithm:"UNPROVED"},selectedCheck:{condition:"id != root",invocation:"only_when_distinct",sameAsRootPreflight:true,query:"SELECT ifnull(directory, '') FROM sessions WHERE id = ?",argument:"selected_id",missingRow:"allow",trimmedBlank:"allow",queryError:"propagate",trimmedNonblank:{error:"wrap_ErrSessionIsolationConflict",sessionID:"quoted"}},rejection:{returnBefore:"sessionOwnershipTx"}},
+ "SES-store-resume-selection":{wrapper:{entry:"ResumeSessionWithOwnershipMode",effectiveInitial:"id",registration:{resume:true,effective:"pointer",isolated:false},error:{id:"empty",error:"propagate"},success:{id:"effective",error:"nil"}},root:{query:"SELECT ended_at FROM sessions WHERE id = ?",argument:"root",missing:"return_root",live:"return_root",ended:"scan_continuations",queryError:"propagate"},range:{prefix:"root+:resume:",lower:"prefix+0",upper:"prefix+:",interval:"half_open",order:"ORDER BY id",collation:"source_declared_BINARY"},suffix:{required:"nonempty",accepted:"ASCII_digits_only",leadingZeros:"accepted",parse:{type:"big.Int",base:10,arbitraryPrecision:true},rejected:"continue"},selection:{maxInitial:"1",maxTracks:"greatest_numeric_suffix",liveTracks:"lowest_numeric_live_suffix",liveCondition:"ended_is_nil",liveReplacementComparison:"strict_numeric_less_than",numericTie:"retain_first_source_declared_BINARY_ordered_live_ID",tieExample:{first:"root+:resume:02",later:"root+:resume:2",selected:"root+:resume:02"},returnLive:"liveID",returnNew:"prefix+(max+1)",noAcceptedSuffix:"root+:resume:2"},errors:{order:["root_query_scan","continuation_query","row_scan","rows.Err"],behavior:"propagate"},invocation:{call:"continuationSessionTx(tx,root)",selectorError:"return_before_effective_assignment",success:"effective=selected_id"}},
+ "SES-store-end-terminal-upsert":{entry:{method:"EndSession",validation:"validateSessionID",validationBefore:"withTx",blank:"ErrSessionIDRequired"},update:{sql:"UPDATE sessions SET ended_at = datetime('now'), summary = ? WHERE id = ?",arguments:["nullableString(summary)","id"],endedPredicate:false,alreadyEnded:"update_and_offer_enqueue_again"},summary:{empty:"NULL",nonemptyWhitespace:"preserved_unchanged"},transaction:{scope:"same_withTx_callback",ordering:["validateSessionID","beginTxHook","UPDATE","RowsAffected","zero_rows_nil_OR_persisted_row_reread","enqueueSyncMutationTx","commitHook"],zeroRows:"callback_nil_then_commit",errors:{validation:"propagate_before_begin",begin:"propagate",exec:"propagate",rowsAffected:"propagate",reread:"propagate",enqueue:"propagate",commit:"propagate"}},persistedColumns:["ifnull(project, '')","ifnull(ownership_mode, '')","directory","started_at","ended_at","summary"],payloadFields:["ID","Project","OwnershipMode","Directory","StartedAt","EndedAt","Summary"],payloadSource:{ID:"request_id",Project:"persisted",OwnershipMode:"persisted",Directory:"persisted",StartedAt:"persisted",EndedAt:"persisted_pointer",Summary:"persisted_nullable"},mutation:{entity:"session",entityKey:"id",op:"upsert",source:"local"},queueGates:{blankDirectory:"may_return_before_journal_row",unenrolledProject:"may_return_without_mutation_row",scope:"direct_helper_gates_only",durableSync:false,enrollmentProtocol:"UNPROVED",remoteDelivery:"UNPROVED"}},
+ "SES-store-resume-root-ownership-guard":{wrapper:{entry:"ResumeSessionWithOwnershipMode",effectiveInitial:"id",registration:{resume:true,effective:"pointer",isolated:false}},transaction:{scope:"same_withTx_callback",eachAttemptReset:{claimed:false,id:"root"},ordering:["reset_claimed_false","reset_id_to_root","validateIsolation(root)_noop","query_root_ended_at","ended_root_ownership_guard","continuationSessionTx","effective_assignment"]},root:{isolation:"noop_when_nonisolated",query:"SELECT ended_at FROM sessions WHERE id = ?",argument:"root",missingOrLive:"skip_guard",ended:"check_normalized_ownership",queryError:"propagate_except_NoRows"},ownership:{read:"sessionOwnershipTx(tx,root)",normalization:"NormalizeProject(strings.TrimSpace(rawProject.String))",registrationCheck:"sessionRegistrationProjectError(root,owner,ownerMode,project,mode)",mismatch:{type:"SessionProjectConflictError",sessionID:"root",ownerProject:"owner",requestedProject:"project"},ambiguousOrOtherError:"propagate"},foreignRecords:{condition:{requestedMode:"project_owned",normalizedRootOwner:"blank"},helper:"foreignRecordOwnerTx(tx,root,project)",scanOrder:["observations","user_prompts"],observations:{nonblankProject:true,deleted:"excluded"},prompts:{nonblankProject:true},ownerNormalization:"NormalizeProject(strings.TrimSpace(raw.String))",selection:"first_nonblank_owner_different_from_requested_project",errors:{query:"propagate",scan:"propagate",rows:"propagate"},conflict:{type:"SessionProjectConflictError",sessionID:"root",ownerProject:"foreignOwner",requestedProject:"project"}},rejection:{before:["continuationSessionTx","effective_assignment"]},acceptance:{continuation:"continuationSessionTx(tx,root)",selectorError:"propagate_before_effective_assignment",effective:"selected_id_only_after_success"}},
+ "SES-store-isolated-root-success":{sentinels:{idRequired:"ErrSessionIDRequired",invalidMode:"ErrInvalidSessionOwnershipMode",projectRequired:"ErrProjectRequired",isolationConflict:"ErrSessionIsolationConflict",alreadyEnded:"ErrSessionAlreadyEnded"},constants:{validOwnershipModes:["shared","project_owned"],ownershipMode:"project_owned",entity:"session",op:"upsert",source:"local"},wrapper:{entry:"RegisterIsolatedSession",effectiveInitial:"id",directory:"empty",mode:"project_owned",resumeInput:false,resumeForward:"caller",isolated:true,errorID:"empty",successID:"unchanged_root"},validation:{order:["validateSessionID","validSessionOwnershipMode","NormalizeProject","trimmed_project_required","withTx"],id:{blank:"ErrSessionIDRequired",nonblank:"nil"},mode:"valid",project:"normalized_nonblank"},path:{validationBeforeTransaction:true,rootMissing:"sql.ErrNoRows_allow",resumeBranch:"skip",selectedValidation:"skip_unchanged_id",ownership:{found:false,values:["empty_project","empty_mode"],error:"nil",identityRepaired:true}},start:{call:"startSessionTx(tx,root,normalized_project,empty,project_owned)",columns:["id","project","ownership_mode","directory","started_at","runtime_lease_expires_at","local_creation_project"],arguments:["id","project","mode","directory","Now()","runtimeSessionLeaseDuration","project","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet","sqlWhitespaceTrimSet"],bindings:{id:"root",project:"normalized_project",mode:"project_owned",directory:"empty"},errors:"propagate",zeroRows:"ErrSessionAlreadyEnded"},persisted:{columns:["id","ifnull(project, '')","ifnull(ownership_mode, '')","directory","started_at","ended_at","summary"],payloadFields:["ID","Project","OwnershipMode","Directory","StartedAt","EndedAt","Summary"],source:"persisted_row"},queue:{call:"enqueueSyncMutationTx",identity:{entity:"session",entityKey:"persisted.ID",op:"upsert",source:"local"},blankDirectory:"return_nil",before:["clear_tombstone","encode_payload","enrollment_lookup","journal_write"],durableSync:false},transaction:{eachAttemptReset:{claimed:false,id:"root"},ordering:["validation","withTx","reset","isolation_missing_allow","ownership_missing","startSessionTx","persisted_reread","enqueue_blank_directory_return","callback_nil","commitHook"],callback:"nil",withTx:"delegate_commit",internals:"UNPROVED"},result:{claimed:false,registrationError:"nil",effective:"unchanged_root",wrapper:{id:"root",error:"nil"}},delegated:{normalizeProjectAlgorithm:"UNPROVED",nowRepresentation:"UNPROVED",beginCommitHooks:"UNPROVED",retryTimingActual:"UNPROVED",enrollmentImplementation:"UNPROVED",sqliteExecutionRollbackDurability:"UNPROVED",securityConcurrencyCloudCallers:"UNPROVED"}},
+ "SES-store-active-runtime-candidates":{entry:{method:"ActiveRuntimeSessions",normalizeProject:{warning:"discarded",emptyResult:"nil_before_query"}},directories:{empty:"discard_exact_empty_only",whitespace:"retain",deduplicate:"exact_nonempty",emptySet:"nil_before_query",iterationOrder:"unordered",argumentOrder:"unpromised"},arguments:{project:"first",directory:"one_per_unique_nonempty",placeholder:"one_per_unique_nonempty"},query:{project:"LOWER(s.project) = ?",directory:"s.directory IN",ended:"s.ended_at IS NULL",manualSave:"s.id NOT LIKE 'manual-save%'",groupBy:"s.id",activity:"COALESCE(MAX(o.created_at), s.started_at)",observationDeletedFilter:false},lease:{live:"nonnull_nonempty_datetime_strictly_after_now",expiredOrMalformedNonempty:"exclude_without_legacy_fallback",unleased:["NULL","empty"],activityThreshold:"inclusive_7_days",suppression:"same_directory_live_lease"},errors:{query:"propagate",scan:"propagate",rowsErr:"propagate",close:"deferred_no_error_claim"},result:{order:"candidate.id",collected:"ids",none:"nil"}}
+});
+const PROJECT_SOURCE_ANCHORS=Object.freeze({
+ "internal/project/detect.go":[19835,"cd4e9a138d30dce1adde641a0bc080a7403056f1e3fcff209eac7e75692f422f",59,576,576],
+ "internal/project/identity.go":[4124,"610ca8b9c85bf1d7e94f0cd1dd41a2fb18536e46d25f6eb40a395ad5b17152d4",30,107,115],
+ "internal/project/resolution.go":[4282,"3e4da942e70b4b7a344c2c87a7394e159d53ee03fc3a1c86a3baaf2a82e7746a",48,134,138]
+});
+const PROJECT_EVIDENCE_ANCHORS=Object.freeze({
+ "PRJ-override":[["SRC-PRJ-003",48,106],["SRC-PRJ-001",59,82]],
+ "PRJ-config":[["SRC-PRJ-001",137,203],["SRC-PRJ-001",240,309],["SRC-PRJ-001",311,320],["SRC-PRJ-001",348,362],["SRC-PRJ-001",416,425],["SRC-PRJ-001",513,521],["SRC-PRJ-003",125,134]],
+ "PRJ-git-remote":[["SRC-PRJ-001",210,234],["SRC-PRJ-001",366,412],["SRC-PRJ-001",544,576],["SRC-PRJ-002",30,32],["SRC-PRJ-002",34,107],["SRC-PRJ-003",125,134]],
+ "PRJ-git-root":[["SRC-PRJ-001",210,234],["SRC-PRJ-001",366,412],["SRC-PRJ-002",30,32],["SRC-PRJ-002",34,107]],
+ "PRJ-child":[["SRC-PRJ-001",84,99],["SRC-PRJ-001",137,203],["SRC-PRJ-001",432,488]],
+ "PRJ-ambiguous":[["SRC-PRJ-001",172,192],["SRC-PRJ-001",432,488],["SRC-PRJ-001",525,531]],
+ "PRJ-basename":[["SRC-PRJ-001",137,203],["SRC-PRJ-001",432,488],["SRC-PRJ-001",498,509],["SRC-PRJ-001",513,521],["SRC-PRJ-001",533,539],["SRC-PRJ-003",125,134]]
+});
+const PROJECT_CRITICAL_ANCHORS=Object.freeze({
+ "PRJ-override":{priority:["all_bypass","explicit","process_override","cwd_detection"],allBypassesInputs:true,explicitEmpty:"ErrInvalidProjectName",knownChecks:{explicit:"RequireKnownExplicit",process:"RequireKnownProcess",onlyWhenRequired:true,nilWhenRequired:"error",callbackError:"propagate",false:"UnknownProjectError"}},
+ "PRJ-config":{dispatchBefore:["git_binding","child_scan","basename"],insideGit:"nearest_at_or_below_checkout_root",outsideGit:"current_directory_only",outsideParentLeak:false,invalid:{source:"config",error:"ErrInvalidConfig",project:"empty",conditions:["read","parse","empty","path","control"]},canonicalization:"lower_trim_collapse_repeated_double_hyphen_and_underscore"},
+ "PRJ-git-remote":{source:"git_remote",existingBindingWins:true,originUse:"seed_missing_binding_only",bindingScope:"git_common_dir",path:"canonical_primary_root",remote:{trimSuffix:".git",split:["/",":"],percentDecode:false},canonicalization:{lowercase:true,trim:true,collapseOnly:["--","__"]},creation:{onlyOnNotExist:true,canonicalSeedRequired:true,mode:"0600",temporaryExclusive:true,newline:true,publish:"hard_link_atomic",collision:"reread_winner"},invalidExisting:"ErrRepositoryBinding"},
+ "PRJ-git-root":{source:"git_root",bindingScope:"git_common_dir",path:"canonical_primary_root",seed:"root_basename_only_when_missing",existingBindingWins:true,rootFailure:"ErrRepositoryBinding",existingFailures:["unreadable","corrupt","wrong_version","invalid_id","noncanonical_project"],failClosed:true},
+ "PRJ-child":{depth:1,timeoutMs:200,skipHidden:true,noise:["node_modules","vendor",".venv","__pycache__","target","dist","build",".idea",".vscode"],single:"recursive_DetectProjectFull",error:"propagate",success:{source:"git_child",path:"child_result_path",warning:"auto-promoted child repository: <project>"}},
+ "PRJ-ambiguous":{threshold:2,shortCircuit:true,project:"empty",source:"ambiguous",error:"ErrAmbiguousProject",path:"absolute_input",available:{trim:true,lowercase:true,sorted:true,separatorCollapse:false}},
+ "PRJ-basename":{triggers:["no_repository","scan_timeout","scan_open_or_read_failure"],project:"normalized_input_basename",emptyDotOrPathLike:"unknown",path:"absolute_input",source:"dir_basename",error:null,warning:"empty"}
+});
+const CONTEXT_CRITICAL_ANCHORS=Object.freeze({
+ "CTX-core-options":{
+  sectionCaps:{zero:{sessions:5,prompts:10,observations:"configured_MaxContextResults",defaultConfigMaxContextResults:20,pinned:"unlimited"},positive:"cap",negative:"omit"},
+  previews:{unit:"Unicode_runes",sessionSummaryRunes:200,promptRunes:200,pinnedBodyRunes:300,observationBodyRunes:300,truncatedSuffix:"...",renderedHardCeiling:false},
+  compact:{omits:["pinned_body","observation_body"],preserves:["sessions","prompts"]},maxBytes:{nonpositive:"unbounded",budgetScope:"rendered_core_context_body"}
+ },
+ "CTX-core-byte-helper":{nonpositive:"unbounded",utf8SafePrefix:true,marker:"\n[truncated]\n",markerBudget:"reserved_then_appended_when_marker_fits",tinyPositive:"valid_prefix_only",budgetScope:"rendered_core_context_body"},
+ "CTX-HTTP-context":{sectionStates:{positive:"cap",zero:"default",negative:"omit"},sectionCeiling:500,maxBytes:{absent:0,empty:0,malformed:0,nonpositive:0,positiveCeiling:65536},byteBudgetScope:"core_body_before_json_envelope",response:"structured_context_string"},
+ "CTX-MCP-complete-result":{
+  defaultBytes:16384,ceilingBytes:65536,invalidBudget:{absent:"default",mistyped:"default",nonpositive:"default",NaN:"default",fractional:"default"},statsProjectCap:8,pinnedCap:20,contextBudgetFloor:1,
+  order:["load_stats","cap_displayed_projects_8","append_nudge","reserve_suffix_bytes","floor_context_budget_1","render_core_pinned_20","concatenate","final_complete_result_utf8_clamp"],marker:"\n[truncated]\n",tinyPositive:"valid_prefix_only",noContentMessageFinalClamp:true,budgetScope:"complete_MCP_text_result"
+ },
+ "CTX-timeline":{
+  defaults:{beforeNonpositive:5,afterNonpositive:5},storeProjectGuard:false,focus:"full_undeleted_observation",neighbors:{session:"same_as_focus",deleted:"excluded",before:"id_less_than_focus_desc_then_reversed",after:"id_greater_than_focus_ascending"},
+  resultOrder:["before_oldest_first","focus","after_oldest_first"],transportGate:{sequence:["resolve_project","global_id_focus_fetch","resolved_project_equality","Timeline"],httpAllowsEmptyResolvedProject:true,mcpRequiresEquality:true},globalIdAuthorization:false,httpOutput:"structured_full_timeline",
+  mcpPreview:{unit:"Unicode_runes",sessionSummaryRunes:100,neighborRunes:150,focusRunes:500,truncatedSuffix:"..."},readSidePersistence:"UNPROVED"
+ }
+});
+const RETRIEVAL_CRITICAL_ANCHORS=Object.freeze({
+ "RET-01":{
+  getFilter:"id_and_undeleted_only",getProjectGuard:false,
+  mcpProjectResolution:"after_retrieval_for_envelope",searchProject:"normalized_filter",
+  allProjects:"bypass_resolution_and_filter",personalWithoutExplicitProject:"clear_filter",
+  httpGetProjectFilter:false,deletedExcluded:true
+ },
+ "RET-02":{
+  validationBeforeShortPath:true,validModes:["","all","any"],
+  all:{split:"unicode_whitespace_fields",trim:"edge_double_quotes",interiorQuotes:"double_every_quote",quoteOnly:"retained_as_empty_phrase",join:"space_implicit_AND"},
+  any:{split:"unicode_whitespace_fields",trim:"edge_double_quotes",quoteOnly:"dropped",order:"preserved",duplicates:"preserved",interiorQuotes:"double_unpaired_preserve_doubled_pairs",nonQuoteUtf8:"unchanged",join:" OR "},
+  emptyExpressionBuilt:true,sqliteOutcome:"UNPROVED"
+ },
+ "RET-03":{
+  shortThresholdRunes:3,switchScope:"whole_query",
+  escapeOrder:["backslash","percent","underscore"],escapedCharacters:["\\","%","_"],
+  fields:["title","content","tool_name","type","project","topic_key"],fieldJoin:"OR",
+  allTermJoin:"AND",anyTermJoin:"OR",rank:0,
+  order:["updated_at_DESC","id_DESC"],normalTokenizer:"trigram"
+ },
+ "RET-04":{
+  requestDefault:10,configDefaultMax:20,cap:"configured_MaxSearchResults",universal20:false,
+  topicDirect:{trigger:"query_contains_slash",match:"exact_topic_key",rank:-1000,order:"updated_at_DESC",dedupeBeforeNormal:true},
+  bm25Weights:{title:5,content:1,topicKey:3},
+  composite:{form:"raw_bm25_multiply_one_plus_boosts",pinned:0.1,recency:0.06,recencyHalfScoreDays:30,stability:0.04,stabilityScale:4},
+  sort:["composite_ASC","stable_sync_or_padded_id_ASC","id_ASC"],projectedRank:"raw_bm25"
+ },
+ "RET-05":{
+  previewLength:300,unit:"SQLite_Unicode_codepoints",truncated:"length_content_greater_than_300",
+  storeSearch:"full_content",mcpSearch:"preview_only",compactAdds:["preview","truncated"],
+  fullGetSeparate:true,automaticGetFetch:false
+ },
+ "RET-06":{
+  deletedExcludedFrom:["get","topic_direct","fts","like"],
+  optionalMetadataOmitted:["project","topic_key","review_after"],
+  relationLoad:{ordinaryError:"swallowed",canceled:"search_error",deadlineExceeded:"search_error"},
+  persistentWrites:"UNPROVED",legacyReadRedaction:false,projectAuthorization:false
+ }
+});
+const OBSERVATION_CRITICAL_ANCHORS=Object.freeze({
+ "OBS-01":{admissionFields:["session_id","type","title","content","project","scope","tool_name","topic_key"],projectNormalized:true,privateTagReplacement:"[REDACTED]",contentLimit:"configured_bytes_utf8_safe_plus_marker",postPrivacyNonempty:["title","content"],newRow:{newId:true,revisionCount:1,duplicateCount:1,lastSeenAt:"now",updatedAt:"now"},queueEffect:"helper_invoked_enrollment_dependent",mcp:{contentAlias:"observation",typeDefault:"manual",capturePromptForwarded:true},http:{required:["session_id","title","content"],successStatus:201,response:["id","status_saved"]}},
+ "OBS-02":{matchOrder:"before_duplicate",matchingKeys:["normalized_topic_key","project","scope","undeleted"],selected:"latest_updated_then_created",sameId:true,replacedFields:["session_id","type","title","content","tool_name","topic_key","normalized_hash"],revisionDelta:1,duplicateDelta:0,lastSeenAt:"now",updatedAt:"now",queueEffect:"helper_invoked_enrollment_dependent"},
+ "OBS-03":{afterNoTopicMatch:true,matchingKeys:["normalized_content_hash","project","scope","type","title","undeleted","inside_configured_window"],selected:"newest_created",sameId:true,duplicateDelta:1,revisionDelta:0,contentMutated:false,lastSeenAt:"now",updatedAt:"now",queueEffect:"helper_invoked_enrollment_dependent",outsideOrDifferent:"insert_new"},
+ "OBS-04":{guardedEntry:"UpdateObservationForProject",expectedOwnerRequired:true,ownershipCheck:"inside_transaction",projectImmutable:true,atLeastOneUpdateField:"transport_validated",findReplace:{paired:true,withContent:false,pureMissWithoutMetadata:"unchanged_no_revision_no_queue"},validMutation:{revisionDelta:1,rehashContent:true,queueEffect:"helper_invoked_enrollment_dependent"},rejectionBarrier:["row","revision","queue"],httpStatus:{malformed:400,mismatch_or_project_change:409,other:404},mcpCurrentProjectCheck:true,unguardedLibraryVariant:"UpdateObservation"},
+ "OBS-05":{guardedEntry:"DeleteObservationForProject",expectedOwnerRequired:true,ownershipCheck:"inside_transaction",hardDefault:false,soft:{deletedAt:"now",updatedAt:"now"},hard:{tombstoneBeforePhysicalRemoval:true,relations:"orphan_not_cascade"},sync:{enrolled:"delete_queue_row",unenrolled:"supersede_prior_mutation_state"},rejectionBarrier:["row","relations","tombstone","queue"],mcpProfile:"admin",http:{authWrapper:"conditional_configuration",missingOwner:400,mismatch:409,missingRow:404},unguardedLibraryVariant:"DeleteObservation"}
+});
+const FOUNDATION_EVIDENCE_ANCHORS=Object.freeze({
+ "FND-01":Object.freeze([["SRC-FND-001",1007,1010]]),
+ "FND-02":Object.freeze([["SRC-FND-001",1011,1016],["SRC-FND-002",144,211],["SRC-FND-003",41,55]]),
+ "FND-03":Object.freeze([["SRC-FND-003",41,67],["SRC-FND-002",190,211]]),
+ "FND-04":Object.freeze([["SRC-FND-001",1027,1112],["SRC-FND-002",119,143]]),
+ "FND-05":Object.freeze([["SRC-FND-001",1114,1188],["SRC-FND-002",238,293]]),
+ "FND-06":Object.freeze([["SRC-FND-001",1122,1179],["SRC-FND-001",3724,3853],["SRC-FND-001",4654,4663],["SRC-FND-001",4725,4809],["SRC-FND-001",4871,4951],["SRC-FND-002",339,450]]),
+ "FND-07":Object.freeze([["SRC-FND-001",1119,1164],["SRC-FND-004",16,93],["SRC-FND-005",10,69]]),
+ "FND-08":Object.freeze([["SRC-FND-001",1022,1056],["SRC-FND-002",119,143]])
+});
+// Pin repository identity without repeating external branding outside the provenance registry.
+const REPOSITORY_SHA256="7ead05522b4ff6e758946f5c4e80e860bfea93b10ed488f217dc5ae97cf5cab3";
+const TARGET_ANCHORS={
+ core:{version:"3.0.0",tag:"v3.0.0",tagObject:"fcf2eb5b6fe445c19a2e5568612a0a421f0fd5e1",commit:"15a2f78885d7ad8ced23b2d1d88383e9bb472c17",publishedAt:"2026-10-01T22:30:47Z",channel:"core release"},
+ pi:{version:"0.2.0",tag:"pi-v0.2.0",tagObject:"8795484df1725315d8bf2b9181afa67de78147b0",commit:"ce51810bd351f397e49728d6a5be81679cf18554",publishedAt:null,channel:"separate npm channel"}
+};
+const SOURCE_ANCHORS={
+ "internal/store/store.go":[501321,"2ffd000ee7f8c8fc1ad0c3d130e88a8ab4878449866c9737215b3c6d8ffa555b"],
+ "internal/store/store_migration_test.go":[39990,"70b196a0903c7690b7ae0a93295d9482345416ec5abae23c47bd5ce279ddacdc"],
+ "internal/project/detect.go":[20411,"5ab182e6718761e0a759ff8c96336de359210ecf564b10f88f4a3aea45424300"],
+ "internal/project/detect_test.go":[44643,"4d8a25a04a46f47ca23e2dd32dc468cef8b9cbe43fa7f9e72ca54ca762289741"],
+ "internal/server/server.go":[73752,"53caec2f14679d5c9a2558c06ce6183e740bb1b78b4cebc33219b60271a53c20"],
+ "internal/mcp/mcp.go":[147307,"613a6c74621cdae0c6b8af1fb79c5c121ba51ca4a9665621f9312c683199872d"],
+ "plugin/pi/index.ts":[105598,"090e0fc8b6a30d36cff1259764aad093c432e5cfa65e28e687683795057ed431"]
+};
+
+const object=value=>value!==null&&typeof value==="object"&&!Array.isArray(value);
+const exactKeys=(value,expected,label,issues)=>{
+ if(!object(value)){issues.push(`${label} must be an object`);return false;}
+ const actual=Object.keys(value).sort(),wanted=[...expected].sort();
+ if(actual.join("\n")!==wanted.join("\n"))issues.push(`${label} has unknown or missing properties`);
+ return true;
+};
+const nonemptyStrings=value=>Array.isArray(value)&&value.every(item=>typeof item==="string"&&item.trim().length>0);
+const duplicates=values=>new Set(values).size!==values.length;
+
+/** Load the checked-in reference without network, database, or source execution. */
+export function loadCheckedInMemoryParity(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory parity JSON ${MANIFEST}`,{cause:error});}
+}
+
+/** Load the source-inspected foundation contracts without executing upstream code. */
+export function loadCheckedInMemoryFoundation(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,FOUNDATION_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory foundation JSON ${FOUNDATION_MANIFEST}`,{cause:error});}
+}
+
+/** Load observation-write contracts without executing upstream code. */
+export function loadCheckedInMemoryObservationWrites(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,OBSERVATION_WRITE_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory observation-write JSON ${OBSERVATION_WRITE_MANIFEST}`,{cause:error});}
+}
+
+/** Load retrieval/search contracts without executing upstream code. */
+export function loadCheckedInMemoryRetrievalSearch(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,RETRIEVAL_SEARCH_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory retrieval/search JSON ${RETRIEVAL_SEARCH_MANIFEST}`,{cause:error});}
+}
+
+/** Load context/timeline contracts without executing upstream code. */
+export function loadCheckedInMemoryContextTimeline(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,CONTEXT_TIMELINE_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory context/timeline JSON ${CONTEXT_TIMELINE_MANIFEST}`,{cause:error});}
+}
+
+/** Load session-transport contracts without executing upstream code. */
+export function loadCheckedInMemorySessionTransport(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,SESSION_TRANSPORT_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory session-transport JSON ${SESSION_TRANSPORT_MANIFEST}`,{cause:error});}
+}
+
+/** Pure structural validation of source-inspected session transport contracts. */
+export function validateMemorySessionTransport(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,PROJECT_TOP_FIELDS,"session-transport manifest",issues))return issues;
+ if(manifest.schemaVersion!==1||manifest.scope!=="reference_only"||manifest.status!=="SOURCE_INSPECTED"||manifest.proofKind!=="source_inspection")issues.push("session-transport metadata must remain reference-only source inspection");
+ if(JSON.stringify(manifest.limitations)!==JSON.stringify(SESSION_LIMITATIONS))issues.push("session-transport limitations must preserve exact unproved boundaries");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],sourceIds=sources.map(source=>source?.id),sourceById=new Map();
+ if(JSON.stringify(sourceIds)!==JSON.stringify(["SRC-SES-001","SRC-SES-002","SRC-SES-003"])||duplicates(sourceIds))issues.push("session-transport sources must contain exact unique IDs in order");
+ for(const source of sources){
+  if(!exactKeys(source,SESSION_SOURCE_FIELDS,`session-transport source ${source?.id??"unknown"}`,issues))continue;
+  const anchor=typeof source.path==="string"?SESSION_SOURCE_ANCHORS[source.path]:undefined;
+  if(typeof source.id==="string")sourceById.set(source.id,source);
+  if(!anchor||!PATH.test(source.path)||source.bytes!==anchor[0]||source.sha256!==anchor[1]||source.gitBlob!==anchor[2])issues.push(`session-transport source ${source.id} has invalid pinned identity`);
+  if(source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`||source.representation!=="git_blob")issues.push(`session-transport source ${source.id} has invalid source representation`);
+  if(!anchor||source.lineStart!==anchor[3]||source.lineEnd!==anchor[4]||source.lineFeeds!==anchor[5]||source.carriageReturns!==0||source.utf8Bom!==false||source.utf8Valid!==true||source.finalLf!==true)issues.push(`session-transport source ${source.id} has invalid byte or line facts`);
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],caseIds=cases.map(item=>item?.id),covered=new Set();
+ if(JSON.stringify(caseIds)!==JSON.stringify(Object.keys(SESSION_EVIDENCE_ANCHORS))||duplicates(caseIds))issues.push("session-transport cases must contain the exact three SES cases in order");
+ for(const item of cases){
+  if(!exactKeys(item,PROJECT_CASE_FIELDS,`session-transport case ${item?.id??"unknown"}`,issues))continue;
+  for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`session-transport case ${item.id} ${field} must be nonempty`);
+  if(item.versionControl!=="CORE-15a")issues.push(`session-transport case ${item.id} has invalid versionControl`);
+  const expected=SESSION_EVIDENCE_ANCHORS[item.id];
+  if(!Array.isArray(item.evidence)||!expected||item.evidence.length!==expected.length)issues.push(`session-transport case ${item.id} has invalid pinned evidence`);
+  else item.evidence.forEach((entry,index)=>{
+   if(!exactKeys(entry,FOUNDATION_EVIDENCE_FIELDS,`session-transport case ${item.id} evidence`,issues))return;
+   const source=sourceById.get(entry.sourceId),anchor=expected[index];
+   if(!source||entry.startLine<source.lineStart||entry.endLine>source.lineEnd||!Number.isInteger(entry.startLine)||!Number.isInteger(entry.endLine)||entry.startLine>entry.endLine)issues.push(`session-transport case ${item.id} has invalid evidence range`);else covered.add(entry.sourceId);
+   if(!anchor||entry.sourceId!==anchor[0]||entry.startLine!==anchor[1]||entry.endLine!==anchor[2])issues.push(`session-transport case ${item.id} has invalid pinned evidence`);
+  });
+  const critical=SESSION_CRITICAL_ANCHORS[item.id];
+  if(!object(item.criticalValues)||!critical||JSON.stringify(item.criticalValues)!==JSON.stringify(critical))issues.push(`session-transport case ${item.id} has invalid critical values`);
+ }
+ if(["SRC-SES-001","SRC-SES-002","SRC-SES-003"].some(id=>!covered.has(id)))issues.push("session-transport cases must reference all pinned sources");
+ return issues;
+}
+
+/** Load source-inspected pending-relation create/readback contracts. */
+export function loadCheckedInMemoryRelations(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,RELATION_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory relation JSON ${RELATION_MANIFEST}`,{cause:error});}
+}
+
+/** Pure validation of the source-inspected pending-relation create/readback contract. */
+export function validateMemoryRelations(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,PROJECT_TOP_FIELDS,"relation manifest",issues))return issues;
+ if(manifest.schemaVersion!==1||manifest.scope!=="reference_only"||manifest.status!=="SOURCE_INSPECTED"||manifest.proofKind!=="source_inspection")issues.push("relation metadata must remain reference-only SOURCE_INSPECTED source inspection");
+ if(JSON.stringify(manifest.limitations)!==JSON.stringify(RELATION_LIMITATIONS))issues.push("relation limitations must preserve exact unproved boundaries");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],source=sources[0];
+ if(sources.length!==1||!exactKeys(source,RELATION_SOURCE_FIELDS,"relation source",issues))issues.push("relation contract requires one exact source");
+ else{
+  const tuple=[source.id,source.path,source.mode,source.bytes,source.sha256,source.gitBlob,source.lineStart,source.lineEnd,source.lineFeeds];
+  if(typeof source.path!=="string"||!PATH.test(source.path)||source.mode!=="100644"||!SHA64.test(source.sha256)||!SHA40.test(source.gitBlob))issues.push("relation source has malformed identity");
+  if(JSON.stringify(tuple)!==JSON.stringify(RELATION_SOURCE)||source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`||source.representation!=="git_blob")issues.push("relation source has invalid pinned Git-blob identity");
+  if(source.carriageReturns!==0||source.utf8Bom!==false||source.utf8Valid!==true||source.finalLf!==true)issues.push("relation source has invalid canonical byte facts");
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],item=cases[0];
+ if(cases.length!==1||item?.id!=="REL-store-pending-create-readback"||!exactKeys(item,PROJECT_CASE_FIELDS,"relation case",issues))issues.push("relation cases must contain exactly the pending create/readback contract");
+ else{
+  for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`relation case ${field} must be nonempty`);
+  if(item.versionControl!=="CORE-15a")issues.push("relation case has invalid versionControl");
+  if(!Array.isArray(item.evidence)||item.evidence.length!==RELATION_EVIDENCE.length)issues.push("relation case has invalid pinned evidence");
+  else item.evidence.forEach((entry,index)=>{const anchor=RELATION_EVIDENCE[index],exact=exactKeys(entry,FOUNDATION_EVIDENCE_FIELDS,"relation evidence",issues);if(!exact||!anchor||entry.sourceId!==anchor[0]||entry.startLine!==anchor[1]||entry.endLine!==anchor[2]||entry.startLine<source?.lineStart||entry.endLine>source?.lineEnd)issues.push("relation case has invalid pinned evidence");});
+  if(!object(item.criticalValues)||JSON.stringify(item.criticalValues)!==JSON.stringify(RELATION_CRITICAL))issues.push("relation case has invalid critical values");
+ }
+ return issues;
+}
+
+/** Load source-inspected session-store contracts without executing upstream code. */
+export function loadCheckedInMemorySessionStore(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,SESSION_STORE_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory session-store JSON ${SESSION_STORE_MANIFEST}`,{cause:error});}
+}
+
+/** Pure structural validation of source-inspected session-store contracts. */
+export function validateMemorySessionStore(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,PROJECT_TOP_FIELDS,"session-store manifest",issues))return issues;
+ if(manifest.schemaVersion!==1||manifest.scope!=="reference_only"||manifest.status!=="SOURCE_INSPECTED"||manifest.proofKind!=="source_inspection")issues.push("session-store metadata must remain reference-only source inspection");
+ if(JSON.stringify(manifest.limitations)!==JSON.stringify(SESSION_STORE_LIMITATIONS))issues.push("session-store limitations must preserve exact unproved boundaries");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],source=sources[0];
+ if(sources.length!==1||!exactKeys(source,SESSION_SOURCE_FIELDS,"session-store source",issues))issues.push("session-store requires one exact source");
+ else{
+  const tuple=[source.id,source.path,source.bytes,source.sha256,source.gitBlob,source.lineStart,source.lineEnd,source.lineFeeds];
+  if(typeof source.path!=="string"||!PATH.test(source.path)||!SHA64.test(source.sha256)||!SHA40.test(source.gitBlob))issues.push("session-store source has invalid identity syntax");
+  if(JSON.stringify(tuple)!==JSON.stringify(SESSION_STORE_SOURCE)||source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`||source.representation!=="git_blob")issues.push("session-store source has invalid pinned identity");
+  if(source.carriageReturns!==0||source.utf8Bom!==false||source.utf8Valid!==true||source.finalLf!==true)issues.push("session-store source has invalid byte or line facts");
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],ids=cases.map(item=>item?.id);
+ if(JSON.stringify(ids)!==JSON.stringify(Object.keys(SESSION_STORE_EVIDENCE))||duplicates(ids))issues.push("session-store cases must contain exactly fifteen ordered contracts");
+ for(const item of cases){
+  if(!exactKeys(item,PROJECT_CASE_FIELDS,`session-store case ${item?.id??"unknown"}`,issues))continue;
+  for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`session-store case ${item.id} ${field} must be nonempty`);
+  if(item.versionControl!=="CORE-15a")issues.push(`session-store case ${item.id} has invalid versionControl`);
+  const expected=SESSION_STORE_EVIDENCE[item.id];
+  if(!Array.isArray(item.evidence)||!expected||item.evidence.length!==expected.length)issues.push(`session-store case ${item.id} has invalid pinned evidence`);
+  else item.evidence.forEach((entry,index)=>{
+   const anchor=expected[index];
+   const exact=exactKeys(entry,FOUNDATION_EVIDENCE_FIELDS,`session-store case ${item.id} evidence`,issues);
+   if(!Number.isInteger(entry.startLine)||!Number.isInteger(entry.endLine)||entry.startLine>entry.endLine||entry.startLine<source?.lineStart||entry.endLine>source?.lineEnd)issues.push(`session-store case ${item.id} has invalid evidence range`);
+   if(!exact||!anchor||entry.sourceId!==source?.id||entry.sourceId!==anchor[0]||entry.startLine!==anchor[1]||entry.endLine!==anchor[2])issues.push(`session-store case ${item.id} has invalid pinned evidence`);
+  });
+  if(!object(item.criticalValues)||JSON.stringify(item.criticalValues)!==JSON.stringify(SESSION_STORE_CRITICAL[item.id]))issues.push(`session-store case ${item.id} has invalid critical values`);
+ }
+ return issues;
+}
+
+/** Load source-inspected passive-capture contracts without executing upstream code. */
+export function loadCheckedInMemoryPassiveCapture(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,PASSIVE_CAPTURE_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory passive-capture JSON ${PASSIVE_CAPTURE_MANIFEST}`,{cause:error});}
+}
+
+/** Pure structural and critical-value validation of source-inspected passive capture. */
+export function validateMemoryPassiveCapture(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,PROJECT_TOP_FIELDS,"passive-capture manifest",issues))return issues;
+ if(manifest.schemaVersion!==1||manifest.scope!=="reference_only"||manifest.status!=="SOURCE_INSPECTED"||manifest.proofKind!=="source_inspection")issues.push("passive-capture metadata must remain reference-only source inspection");
+ if(JSON.stringify(manifest.limitations)!==JSON.stringify(PASSIVE_CAPTURE_LIMITATIONS))issues.push("passive-capture limitations must preserve exact unproved boundaries");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],sourceIds=sources.map(source=>source?.id);
+ if(JSON.stringify(sourceIds)!==JSON.stringify(["SRC-CAP-001","SRC-CAP-002"])||duplicates(sourceIds))issues.push("passive-capture requires two exact ordered sources");
+ for(const source of sources){
+  if(!exactKeys(source,SESSION_SOURCE_FIELDS,"passive-capture source",issues))continue;
+  const tuple=[source.id,source.path,source.bytes,source.sha256,source.gitBlob,source.lineStart,source.lineEnd,source.lineFeeds],anchor=PASSIVE_CAPTURE_SOURCES[source.id];
+  if(typeof source.path!=="string"||!PATH.test(source.path)||!SHA64.test(source.sha256)||!SHA40.test(source.gitBlob))issues.push("passive-capture source has invalid identity syntax");
+  if(!anchor||JSON.stringify(tuple)!==JSON.stringify(anchor)||source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`||source.representation!=="git_blob")issues.push("passive-capture source has invalid pinned identity");
+  if(source.carriageReturns!==0||source.utf8Bom!==false||source.utf8Valid!==true||source.finalLf!==true)issues.push("passive-capture source has invalid byte or line facts");
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],ids=cases.map(item=>item?.id),expectedIds=["CAP-store-passive-learning-extraction","CAP-pi-tool-result-passive-trigger","CAP-pi-agent-start-prompt-trigger"];
+ if(JSON.stringify(ids)!==JSON.stringify(expectedIds)||duplicates(ids))issues.push("passive-capture cases must contain the exact three ordered contracts");
+ for(const item of cases){
+  if(!exactKeys(item,PROJECT_CASE_FIELDS,`passive-capture case ${item?.id??"unknown"}`,issues))continue;
+  for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`passive-capture case ${item.id} ${field} must be nonempty`);
+  if(item.versionControl!=="CORE-15a")issues.push(`passive-capture case ${item.id} has invalid versionControl`);
+  const expected=PASSIVE_CAPTURE_EVIDENCE[item.id];
+  if(!Array.isArray(item.evidence)||!expected||item.evidence.length!==expected.length)issues.push(`passive-capture case ${item.id} has invalid pinned evidence`);
+  else item.evidence.forEach((entry,index)=>{
+   const anchor=expected[index],source=sources.find(candidate=>candidate?.id===entry?.sourceId),exact=exactKeys(entry,FOUNDATION_EVIDENCE_FIELDS,`passive-capture case ${item.id} evidence`,issues);
+   if(!Number.isInteger(entry.startLine)||!Number.isInteger(entry.endLine)||entry.startLine>entry.endLine||entry.startLine<source?.lineStart||entry.endLine>source?.lineEnd)issues.push(`passive-capture case ${item.id} has invalid evidence range`);
+   if(!exact||!anchor||entry.sourceId!==anchor[0]||entry.startLine!==anchor[1]||entry.endLine!==anchor[2])issues.push(`passive-capture case ${item.id} has invalid pinned evidence`);
+  });
+  if(!object(item.criticalValues)||JSON.stringify(item.criticalValues)!==JSON.stringify(PASSIVE_CAPTURE_CRITICAL[item.id]))issues.push(`passive-capture case ${item.id} has invalid critical values`);
+ }
+ return issues;
+}
+
+/** Load project-identity contracts without executing upstream code. */
+export function loadCheckedInMemoryProjectIdentity(root=ROOT){
+ try{return JSON.parse(readFileSync(resolve(root,PROJECT_IDENTITY_MANIFEST),"utf8"));}
+ catch(error){throw new Error(`cannot read memory project-identity JSON ${PROJECT_IDENTITY_MANIFEST}`,{cause:error});}
+}
+
+/** Pure structural and critical-value validation of source-inspected project identity contracts. */
+export function validateMemoryProjectIdentity(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,PROJECT_TOP_FIELDS,"project-identity manifest",issues))return issues;
+ if(manifest.schemaVersion!==1)issues.push("project-identity schemaVersion must be 1");
+ if(manifest.scope!=="reference_only"||manifest.status!=="SOURCE_INSPECTED"||manifest.proofKind!=="source_inspection")issues.push("project-identity metadata must remain reference-only source inspection");
+ if(!nonemptyStrings(manifest.limitations)||JSON.stringify(manifest.limitations)!==JSON.stringify(PROJECT_LIMITATIONS))issues.push("project-identity limitations must preserve exact unproved boundaries");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],sourceIds=sources.map(source=>source?.id),sourceById=new Map();
+ const expectedSources=["SRC-PRJ-001","SRC-PRJ-002","SRC-PRJ-003"];
+ if(!sourceIds.every(id=>typeof id==="string"))issues.push("project-identity source IDs must be strings");
+ if(sources.length!==3||duplicates(sourceIds)||JSON.stringify(sourceIds)!==JSON.stringify(expectedSources))issues.push("project-identity sources must contain exact unique IDs in order");
+ for(const source of sources){
+  if(!exactKeys(source,PROJECT_SOURCE_FIELDS,`project-identity source ${source?.id??"unknown"}`,issues))continue;
+  const pathIsString=typeof source.path==="string",anchor=pathIsString?PROJECT_SOURCE_ANCHORS[source.path]:undefined;
+  if(typeof source.id==="string")sourceById.set(source.id,source);
+  if(!pathIsString||!PATH.test(source.path))issues.push(`project-identity source ${source.id} path is invalid`);
+  if(!anchor||source.bytes!==anchor[0]||source.sha256!==anchor[1])issues.push(`project-identity source ${source.id} does not match its pinned byte/hash tuple`);
+  if(source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`)issues.push(`project-identity source ${source.id} has invalid source identity`);
+  if(source.representation!=="git_blob")issues.push(`project-identity source ${source.id} representation must be git_blob`);
+  if(!anchor||source.lineStart!==anchor[2]||source.lineEnd!==anchor[3]||source.lineFeeds!==anchor[4])issues.push(`project-identity source ${source.id} has invalid line anchors`);
+  if(source.carriageReturns!==0||source.utf8Bom!==false||source.utf8Valid!==true||source.finalLf!==true)issues.push(`project-identity source ${source.id} has invalid byte representation facts`);
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],caseIds=cases.map(item=>item?.id),expectedCases=Object.keys(PROJECT_EVIDENCE_ANCHORS),covered=new Set();
+ if(!caseIds.every(id=>typeof id==="string"))issues.push("project-identity case IDs must be strings");
+ if(cases.length!==7||duplicates(caseIds)||JSON.stringify(caseIds)!==JSON.stringify(expectedCases))issues.push("project-identity cases must contain the exact seven PRJ cases in order");
+ for(const item of cases){
+  if(!exactKeys(item,PROJECT_CASE_FIELDS,`project-identity case ${item?.id??"unknown"}`,issues))continue;
+  for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`project-identity case ${item.id} ${field} must be a nonempty string`);
+  if(item.versionControl!=="CORE-15a")issues.push(`project-identity case ${item.id} has invalid versionControl`);
+  const expected=typeof item.id==="string"?PROJECT_EVIDENCE_ANCHORS[item.id]:undefined;
+  if(!Array.isArray(item.evidence)||!expected||item.evidence.length!==expected.length)issues.push(`project-identity case ${item.id} has invalid pinned evidence`);
+  else item.evidence.forEach((evidence,index)=>{
+   if(!exactKeys(evidence,FOUNDATION_EVIDENCE_FIELDS,`project-identity case ${item.id} evidence`,issues))return;
+   const source=sourceById.get(evidence.sourceId),anchor=expected[index];
+   if(!source||!Number.isInteger(evidence.startLine)||!Number.isInteger(evidence.endLine)||evidence.startLine>evidence.endLine||evidence.startLine<source.lineStart||evidence.endLine>source.lineEnd)issues.push(`project-identity case ${item.id} evidence has invalid line range`);else covered.add(evidence.sourceId);
+   if(!anchor||evidence.sourceId!==anchor[0]||evidence.startLine!==anchor[1]||evidence.endLine!==anchor[2])issues.push(`project-identity case ${item.id} has invalid pinned evidence`);
+  });
+  const critical=typeof item.id==="string"?PROJECT_CRITICAL_ANCHORS[item.id]:undefined;
+  if(!object(item.criticalValues)||!critical||JSON.stringify(item.criticalValues)!==JSON.stringify(critical))issues.push(`project-identity case ${item.id} has invalid critical values`);
+ }
+ if(expectedSources.some(id=>!covered.has(id)))issues.push("project-identity cases must reference all pinned sources");
+ return issues;
+}
+
+/** Pure structural and critical-value validation of source-inspected context/timeline contracts. */
+export function validateMemoryContextTimeline(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,CONTEXT_TOP_FIELDS,"context/timeline manifest",issues))return issues;
+ if(manifest.schemaVersion!==1)issues.push("context/timeline schemaVersion must be 1");
+ if(manifest.scope!=="reference_only"||manifest.status!=="SOURCE_INSPECTED"||manifest.proofKind!=="source_inspection")issues.push("context/timeline metadata must remain reference-only source inspection");
+ if(!nonemptyStrings(manifest.limitations)||JSON.stringify(manifest.limitations)!==JSON.stringify(CONTEXT_LIMITATIONS))issues.push("context/timeline limitations must preserve exact unproved boundaries");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],sourceIds=sources.map(source=>source?.id),sourceById=new Map();
+ const expectedSources=["SRC-CTX-001","SRC-CTX-002","SRC-CTX-003"];
+ if(!sourceIds.every(id=>typeof id==="string"))issues.push("context/timeline source IDs must be strings");
+ if(sources.length!==3||duplicates(sourceIds)||JSON.stringify(sourceIds)!==JSON.stringify(expectedSources))issues.push("context/timeline sources must contain exact unique IDs in order");
+ for(const source of sources){
+  if(!exactKeys(source,CONTEXT_SOURCE_FIELDS,`context/timeline source ${source?.id??"unknown"}`,issues))continue;
+  const pathIsString=typeof source.path==="string",anchor=pathIsString?CONTEXT_SOURCE_ANCHORS[source.path]:undefined;
+  if(typeof source.id==="string")sourceById.set(source.id,source);
+  if(!pathIsString||!PATH.test(source.path))issues.push(`context/timeline source ${source.id} path is invalid`);
+  if(!anchor||source.bytes!==anchor[0]||source.sha256!==anchor[1])issues.push(`context/timeline source ${source.id} does not match its pinned byte/hash tuple`);
+  if(source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`)issues.push(`context/timeline source ${source.id} has invalid source identity`);
+  if(source.representation!=="git_blob")issues.push(`context/timeline source ${source.id} representation must be git_blob`);
+  if(!anchor||source.lineStart!==anchor[2]||source.lineEnd!==anchor[3])issues.push(`context/timeline source ${source.id} has invalid declared line range`);
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],caseIds=cases.map(item=>item?.id),expectedCases=Object.keys(CONTEXT_EVIDENCE_ANCHORS),covered=new Set();
+ if(!caseIds.every(id=>typeof id==="string"))issues.push("context/timeline case IDs must be strings");
+ if(cases.length!==5||duplicates(caseIds)||JSON.stringify(caseIds)!==JSON.stringify(expectedCases))issues.push("context/timeline cases must contain the exact five CTX cases in order");
+ for(const item of cases){
+  if(!exactKeys(item,CONTEXT_CASE_FIELDS,`context/timeline case ${item?.id??"unknown"}`,issues))continue;
+  for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`context/timeline case ${item.id} ${field} must be a nonempty string`);
+  if(item.versionControl!=="CORE-15a")issues.push(`context/timeline case ${item.id} has invalid versionControl`);
+  const expected=typeof item.id==="string"?CONTEXT_EVIDENCE_ANCHORS[item.id]:undefined;
+  if(!Array.isArray(item.evidence)||!expected||item.evidence.length!==expected.length)issues.push(`context/timeline case ${item.id} has invalid pinned evidence`);
+  else item.evidence.forEach((evidence,index)=>{
+   if(!exactKeys(evidence,FOUNDATION_EVIDENCE_FIELDS,`context/timeline case ${item.id} evidence`,issues))return;
+   const source=sourceById.get(evidence.sourceId),anchor=expected[index];
+   if(!source||!Number.isInteger(evidence.startLine)||!Number.isInteger(evidence.endLine)||evidence.startLine>evidence.endLine||evidence.startLine<source.lineStart||evidence.endLine>source.lineEnd)issues.push(`context/timeline case ${item.id} evidence has invalid line range`);
+   else covered.add(evidence.sourceId);
+   if(!anchor||evidence.sourceId!==anchor[0]||evidence.startLine!==anchor[1]||evidence.endLine!==anchor[2])issues.push(`context/timeline case ${item.id} has invalid pinned evidence`);
+  });
+  const critical=typeof item.id==="string"?CONTEXT_CRITICAL_ANCHORS[item.id]:undefined;
+  if(!object(item.criticalValues)||!critical||JSON.stringify(item.criticalValues)!==JSON.stringify(critical))issues.push(`context/timeline case ${item.id} has invalid critical values`);
+ }
+ if(expectedSources.some(id=>!covered.has(id)))issues.push("context/timeline cases must reference all pinned sources");
+ return issues;
+}
+
+/** Pure structural and critical-value validation of source-inspected retrieval/search contracts. */
+export function validateMemoryRetrievalSearch(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,RETRIEVAL_TOP_FIELDS,"retrieval/search manifest",issues))return issues;
+ if(manifest.schemaVersion!==1)issues.push("retrieval/search schemaVersion must be 1");
+ if(manifest.scope!=="reference_only"||manifest.status!=="SOURCE_INSPECTED"||manifest.proofKind!=="source_inspection")issues.push("retrieval/search metadata must remain reference-only source inspection");
+ if(JSON.stringify(manifest.limitations)!==JSON.stringify(RETRIEVAL_LIMITATIONS))issues.push("retrieval/search limitations must preserve exact unproved boundaries");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],sourceIds=sources.map(source=>source?.id);
+ const expectedSources=Array.from({length:5},(_,i)=>`SRC-RET-${String(i+1).padStart(3,"0")}`),sourceById=new Map();
+ if(!sourceIds.every(id=>typeof id==="string"))issues.push("retrieval/search source IDs must be strings");
+ if(sources.length!==5||duplicates(sourceIds)||JSON.stringify(sourceIds)!==JSON.stringify(expectedSources))issues.push("retrieval/search sources must contain exact unique IDs in order");
+ for(const source of sources){
+  if(!exactKeys(source,RETRIEVAL_SOURCE_FIELDS,`retrieval/search source ${source?.id??"unknown"}`,issues))continue;
+  const pathIsString=typeof source.path==="string",anchor=pathIsString?RETRIEVAL_SOURCE_ANCHORS[source.path]:undefined;
+  if(typeof source.id==="string")sourceById.set(source.id,source);
+  if(!pathIsString||!PATH.test(source.path))issues.push(`retrieval/search source ${source.id} path is invalid`);
+  if(!anchor||source.bytes!==anchor[0]||source.sha256!==anchor[1])issues.push(`retrieval/search source ${source.id} does not match its pinned byte/hash tuple`);
+  if(source.commit!==CORE_COMMIT||source.sourceIdentity!==`${CORE_COMMIT}:${source.path}`)issues.push(`retrieval/search source ${source.id} has invalid source identity`);
+  if(source.representation!=="git_blob")issues.push(`retrieval/search source ${source.id} representation must be git_blob`);
+  if(!anchor||source.lineStart!==anchor[2]||source.lineEnd!==anchor[3])issues.push(`retrieval/search source ${source.id} has invalid declared line range`);
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],caseIds=cases.map(item=>item?.id);
+ const expectedCases=Array.from({length:6},(_,i)=>`RET-${String(i+1).padStart(2,"0")}`),covered=new Set();
+ if(!caseIds.every(id=>typeof id==="string"))issues.push("retrieval/search case IDs must be strings");
+ if(cases.length!==6||duplicates(caseIds)||JSON.stringify(caseIds)!==JSON.stringify(expectedCases))issues.push("retrieval/search cases must contain exact RET-01 through RET-06 in order");
+ for(const item of cases){
+  if(!exactKeys(item,RETRIEVAL_CASE_FIELDS,`retrieval/search case ${item?.id??"unknown"}`,issues))continue;
+  for(const field of ["summary","contract","negativeControls"])if(typeof item[field]!=="string"||!item[field].trim())issues.push(`retrieval/search case ${item.id} ${field} must be a nonempty string`);
+  if(item.versionControl!=="CORE-15a")issues.push(`retrieval/search case ${item.id} has invalid versionControl`);
+  const expected=typeof item.id==="string"?RETRIEVAL_EVIDENCE_ANCHORS[item.id]:undefined;
+  if(!Array.isArray(item.evidence)||!expected||item.evidence.length!==expected.length)issues.push(`retrieval/search case ${item.id} has invalid pinned evidence`);
+  else item.evidence.forEach((evidence,index)=>{
+   if(!exactKeys(evidence,FOUNDATION_EVIDENCE_FIELDS,`retrieval/search case ${item.id} evidence`,issues))return;
+   const source=sourceById.get(evidence.sourceId),anchor=expected[index];
+   if(!source||!Number.isInteger(evidence.startLine)||!Number.isInteger(evidence.endLine)||evidence.startLine>evidence.endLine||evidence.startLine<source.lineStart||evidence.endLine>source.lineEnd)issues.push(`retrieval/search case ${item.id} evidence has invalid line range`);
+   else covered.add(evidence.sourceId);
+   if(!anchor||evidence.sourceId!==anchor[0]||evidence.startLine!==anchor[1]||evidence.endLine!==anchor[2])issues.push(`retrieval/search case ${item.id} has invalid pinned evidence`);
+  });
+  const critical=typeof item.id==="string"?RETRIEVAL_CRITICAL_ANCHORS[item.id]:undefined;
+  if(!object(item.criticalValues)||!critical||JSON.stringify(item.criticalValues)!==JSON.stringify(critical))issues.push(`retrieval/search case ${item.id} has invalid critical values`);
+ }
+ if(expectedSources.some(id=>!covered.has(id)))issues.push("retrieval/search cases must reference all pinned sources");
+ return issues;
+}
+
+/** Pure structural and critical-value validation of source-inspected observation writes. */
+export function validateMemoryObservationWrites(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,OBSERVATION_TOP_FIELDS,"observation-write manifest",issues))return issues;
+ if(manifest.schemaVersion!==1)issues.push("observation-write schemaVersion must be 1");
+ if(manifest.scope!=="reference_only")issues.push("observation-write scope must be reference_only");
+ if(manifest.status!=="SOURCE_INSPECTED")issues.push("observation-write status must be SOURCE_INSPECTED");
+ if(manifest.proofKind!=="source_inspection")issues.push("observation-write proofKind must be source_inspection");
+ if(JSON.stringify(manifest.limitations)!==JSON.stringify(OBSERVATION_LIMITATIONS))issues.push("observation-write limitations must preserve the exact source-inspection boundaries");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],sourceIds=sources.map(source=>source?.id);
+ const expectedSources=["SRC-OBS-001","SRC-OBS-002","SRC-OBS-003"];
+ if(!sourceIds.every(id=>typeof id==="string"))issues.push("observation-write source IDs must be strings");
+ if(sources.length!==3||duplicates(sourceIds)||JSON.stringify(sourceIds)!==JSON.stringify(expectedSources))issues.push("observation-write sources must contain exact unique IDs in order");
+ const sourceById=new Map();
+ for(const source of sources){
+  if(!exactKeys(source,OBSERVATION_SOURCE_FIELDS,`observation-write source ${source?.id??"unknown"}`,issues))continue;
+  const pathIsString=typeof source.path==="string",anchor=pathIsString?OBSERVATION_SOURCE_ANCHORS[source.path]:undefined;
+  if(typeof source.id==="string")sourceById.set(source.id,source);
+  if(!pathIsString)issues.push(`observation-write source ${source.id} path must be a string`);
+  else if(!PATH.test(source.path))issues.push(`observation-write source ${source.id} path is invalid`);
+  if(!anchor||source.bytes!==anchor[0]||source.sha256!==anchor[1])issues.push(`observation-write source ${source.id} does not match its pinned byte/hash tuple`);
+  if(source.commit!==CORE_COMMIT||source.commitRole!=="CORE-15a")issues.push(`observation-write source ${source.id} has invalid commitRole or commit`);
+  if(!anchor||source.lineStart!==anchor[2]||source.lineEnd!==anchor[3])issues.push(`observation-write source ${source.id} has invalid declared line range`);
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],caseIds=cases.map(item=>item?.id);
+ const expectedCases=["OBS-01","OBS-02","OBS-03","OBS-04","OBS-05"];
+ if(!caseIds.every(id=>typeof id==="string"))issues.push("observation-write case IDs must be strings");
+ if(cases.length!==5||duplicates(caseIds)||JSON.stringify(caseIds)!==JSON.stringify(expectedCases))issues.push("observation-write cases must contain exact OBS-01 through OBS-05 as five unique IDs in order");
+ const covered=new Set();
+ for(const item of cases){
+  if(!exactKeys(item,OBSERVATION_CASE_FIELDS,`observation-write case ${item?.id??"unknown"}`,issues))continue;
+  for(const field of OBSERVATION_NARRATIVE_FIELDS)if(typeof item[field]!=="string"||!item[field].trim())issues.push(`observation-write case ${item.id} ${field} must be a nonempty string`);
+  if(item.versionControl!=="CORE-15a")issues.push(`observation-write case ${item.id} has invalid versionControl`);
+  const expectedEvidence=typeof item.id==="string"&&Object.hasOwn(OBSERVATION_EVIDENCE_ANCHORS,item.id)?OBSERVATION_EVIDENCE_ANCHORS[item.id]:undefined;
+  if(!Array.isArray(item.evidence)||!expectedEvidence||item.evidence.length!==expectedEvidence.length)issues.push(`observation-write case ${item.id} has invalid pinned evidence`);
+  else item.evidence.forEach((evidence,index)=>{
+   if(!exactKeys(evidence,FOUNDATION_EVIDENCE_FIELDS,`observation-write case ${item.id} evidence`,issues))return;
+   const source=sourceById.get(evidence.sourceId),anchor=expectedEvidence[index];
+   if(!source)issues.push(`observation-write case ${item.id} evidence has unknown sourceId`);
+   else if(!Number.isInteger(evidence.startLine)||!Number.isInteger(evidence.endLine)||evidence.startLine>evidence.endLine||evidence.startLine<source.lineStart||evidence.endLine>source.lineEnd)issues.push(`observation-write case ${item.id} evidence has invalid line range`);
+   else covered.add(evidence.sourceId);
+   if(!anchor||evidence.sourceId!==anchor[0]||evidence.startLine!==anchor[1]||evidence.endLine!==anchor[2])issues.push(`observation-write case ${item.id} has invalid pinned evidence`);
+  });
+  const critical=typeof item.id==="string"&&Object.hasOwn(OBSERVATION_CRITICAL_ANCHORS,item.id)?OBSERVATION_CRITICAL_ANCHORS[item.id]:undefined;
+  if(!object(item.criticalValues)||!critical||JSON.stringify(item.criticalValues)!==JSON.stringify(critical))issues.push(`observation-write case ${item.id} has invalid critical values`);
+ }
+ if(expectedSources.some(id=>!covered.has(id)))issues.push("observation-write cases must reference all pinned sources");
+ return issues;
+}
+
+/** Pure structural and critical-value validation of source-inspected foundation contracts. */
+export function validateMemoryFoundation(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,FOUNDATION_TOP_FIELDS,"foundation manifest",issues))return issues;
+ if(manifest.schemaVersion!==1)issues.push("foundation schemaVersion must be 1");
+ if(manifest.scope!=="reference_only")issues.push("foundation scope must be reference_only");
+ if(manifest.status!=="SOURCE_INSPECTED")issues.push("foundation status must be SOURCE_INSPECTED");
+ if(manifest.proofKind!=="source_inspection")issues.push("foundation proofKind must be source_inspection");
+ if(!nonemptyStrings(manifest.limitations)||manifest.limitations.length===0)issues.push("foundation limitations must be nonempty strings");
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[],sourceIds=sources.map(source=>source?.id);
+ const expectedSources=Array.from({length:5},(_,i)=>`SRC-FND-${String(i+1).padStart(3,"0")}`);
+ if(!sourceIds.every(id=>typeof id==="string"))issues.push("foundation source IDs must be strings");
+ if(sources.length!==5||duplicates(sourceIds)||[...sourceIds].sort().join("\n")!==expectedSources.join("\n"))issues.push("foundation sources must contain exact unique IDs");
+ const sourceById=new Map();
+ for(const source of sources){
+  if(!exactKeys(source,FOUNDATION_SOURCE_FIELDS,`foundation source ${source?.id??"unknown"}`,issues))continue;
+  const anchor=typeof source.path==="string"?FOUNDATION_SOURCE_ANCHORS[source.path]:undefined;
+  if(typeof source.id==="string")sourceById.set(source.id,source);
+  if(!PATH.test(source.path??""))issues.push(`foundation source ${source.id} path is invalid`);
+  if(!anchor||source.bytes!==anchor[0]||source.sha256!==anchor[1])issues.push(`foundation source ${source.id} does not match its pinned byte/hash tuple`);
+  if(source.commit!==CORE_COMMIT||source.commitRole!=="CORE-15a")issues.push(`foundation source ${source.id} has invalid commitRole or commit`);
+  if(!anchor||source.lineStart!==anchor[2]||source.lineEnd!==anchor[3])issues.push(`foundation source ${source.id} has invalid declared line range`);
+ }
+ const cases=Array.isArray(manifest.cases)?manifest.cases:[],caseIds=cases.map(item=>item?.id);
+ const expectedCases=Array.from({length:8},(_,i)=>`FND-${String(i+1).padStart(2,"0")}`);
+ if(!caseIds.every(id=>typeof id==="string"))issues.push("foundation case IDs must be strings");
+ if(cases.length!==8||duplicates(caseIds)||[...caseIds].sort().join("\n")!==expectedCases.join("\n"))issues.push("foundation cases must contain exact FND-01 through FND-08 as eight unique IDs");
+ const covered=new Set();
+ for(const item of cases){
+  if(!exactKeys(item,FOUNDATION_CASE_FIELDS,`foundation case ${item?.id??"unknown"}`,issues))continue;
+  for(const field of ["summary","input","trigger","output","durableState","sideEffects","negativeControls"])
+   if(typeof item[field]!=="string"||!item[field].trim())issues.push(`foundation case ${item.id} ${field} must be a nonempty string`);
+  if(item.versionControl!=="CORE-15a")issues.push(`foundation case ${item.id} has invalid versionControl`);
+  if(!nonemptyStrings(item.ordering)||item.ordering.length===0)issues.push(`foundation case ${item.id} ordering must be nonempty strings`);
+  if(!Array.isArray(item.evidence)||item.evidence.length===0)issues.push(`foundation case ${item.id} requires evidence`);
+  else for(const evidence of item.evidence){
+   if(!exactKeys(evidence,FOUNDATION_EVIDENCE_FIELDS,`foundation case ${item.id} evidence`,issues))continue;
+   const source=sourceById.get(evidence.sourceId);
+   if(!source)issues.push(`foundation case ${item.id} evidence has unknown sourceId`);
+   else if(!Number.isInteger(evidence.startLine)||!Number.isInteger(evidence.endLine)||evidence.startLine>evidence.endLine||evidence.startLine<source.lineStart||evidence.endLine>source.lineEnd)issues.push(`foundation case ${item.id} evidence has invalid line range`);
+   else covered.add(evidence.sourceId);
+  }
+  const evidenceAnchor=typeof item.id==="string"&&Object.hasOwn(FOUNDATION_EVIDENCE_ANCHORS,item.id)?FOUNDATION_EVIDENCE_ANCHORS[item.id]:undefined;
+  if(!evidenceAnchor||!Array.isArray(item.evidence)||item.evidence.length!==evidenceAnchor.length||!item.evidence.every((evidence,index)=>typeof evidence.sourceId==="string"&&evidence.sourceId===evidenceAnchor[index][0]&&Number.isInteger(evidence.startLine)&&evidence.startLine===evidenceAnchor[index][1]&&Number.isInteger(evidence.endLine)&&evidence.endLine===evidenceAnchor[index][2]))issues.push(`foundation case ${item.id} has invalid pinned evidence`);
+  const anchor=typeof item.id==="string"?FOUNDATION_CRITICAL_ANCHORS[item.id]:undefined;
+  if(!object(item.criticalValues)||!anchor||JSON.stringify(item.criticalValues)!==JSON.stringify(anchor))issues.push(`foundation case ${item.id} has invalid critical values`);
+  if(item.id==="FND-07"&&JSON.stringify(item.ordering)!==JSON.stringify(FOUNDATION_ORDER_ANCHOR))issues.push("foundation case FND-07 has invalid ordering");
+ }
+ if(expectedSources.some(id=>!covered.has(id)))issues.push("foundation cases must reference all pinned sources");
+ return issues;
+}
+
+/** Pure structural validation of a supplied manifest value. */
+export function validateMemoryParity(manifest){
+ const issues=[];
+ if(!exactKeys(manifest,TOP_FIELDS,"manifest",issues))return issues;
+ if(manifest.schemaVersion!==1)issues.push("schemaVersion must be 1");
+ if(manifest.scope!=="reference_only")issues.push("scope must be reference_only");
+ if(JSON.stringify(manifest.statusModel)!==JSON.stringify(["MISSING","PARTIAL"]))issues.push("statusModel must allow only MISSING and PARTIAL");
+ if(!nonemptyStrings(manifest.limitations)||manifest.limitations.length===0)issues.push("manifest limitations must be nonempty strings");
+ const targets=Array.isArray(manifest.targets)?manifest.targets:[];
+ if(targets.length!==2||duplicates(targets.map(target=>target?.id)))issues.push("targets must contain exactly two unique IDs");
+ for(const target of targets){
+  if(!exactKeys(target,TARGET_FIELDS,`target ${target?.id??"unknown"}`,issues))continue;
+  if(typeof target.id!=="string")issues.push("target ID must be a string");
+  const anchor=typeof target.id==="string"&&Object.hasOwn(TARGET_ANCHORS,target.id)?TARGET_ANCHORS[target.id]:undefined;
+  if(!anchor)issues.push(`unknown target ID ${target.id}`);
+  else for(const [field,value] of Object.entries(anchor))if(target[field]!==value)issues.push(`target ${target.id} has invalid ${field}`);
+  if(typeof target.repository!=="string"||!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(target.repository))issues.push(`target ${target.id} has invalid repository`);
+  else if(createHash("sha256").update(target.repository).digest("hex")!==REPOSITORY_SHA256)issues.push(`target ${target.id} has invalid repository identity`);
+  if(!SHA40.test(target.tagObject)||!SHA40.test(target.commit))issues.push(`target ${target.id} requires full lowercase Git hashes`);
+  const base=`https://github.com/${target.repository}`;
+  if(target.apiRefUrl!==`https://api.github.com/repos/${target.repository}/git/ref/tags/${target.tag}`)issues.push(`target ${target.id} API URL is not bound to its repository and tag`);
+  if(target.tagUrl!==`${base}/releases/tag/${target.tag}`)issues.push(`target ${target.id} tag URL is not bound to its repository and tag`);
+ }
+ const targetById=new Map(targets.map(target=>[target.id,target]));
+ const sources=Array.isArray(manifest.sources)?manifest.sources:[];
+ const sourceIds=sources.map(source=>source?.id);
+ const expectedSourceIds=Array.from({length:7},(_,index)=>`SRC-MEM-${String(index+1).padStart(3,"0")}`);
+ if(!sourceIds.every(id=>typeof id==="string"))issues.push("source IDs must be strings");
+ if(sources.length!==7||duplicates(sourceIds)||duplicates(sources.map(source=>source?.path))||duplicates(sources.map(source=>source?.rawUrl))||[...sourceIds].sort().join("\n")!==expectedSourceIds.join("\n"))issues.push("sources must contain exact unique IDs, paths, and URLs");
+ for(const source of sources){
+  if(!exactKeys(source,SOURCE_FIELDS,`source ${source?.id??"unknown"}`,issues))continue;
+  const target=targetById.get(source.targetId),pathIsString=typeof source.path==="string";
+  const anchor=pathIsString?SOURCE_ANCHORS[source.path]:undefined;
+  if(!target)issues.push(`source ${source.id} has unknown targetId`);
+  if(source.targetId!=="core")issues.push(`source ${source.id} must belong to the core snapshot`);
+  if(!pathIsString)issues.push(`source ${source.id} path must be a string`);
+  else if(!PATH.test(source.path))issues.push(`source ${source.id} path is not canonical relative syntax`);
+  if(!Number.isInteger(source.bytes)||source.bytes<=0||source.bytes>2*1024*1024||!SHA64.test(source.sha256))issues.push(`source ${source.id} has invalid byte/hash tuple`);
+  if(!anchor||source.bytes!==anchor[0]||source.sha256!==anchor[1])issues.push(`source ${source.id} does not match its pinned byte/hash tuple`);
+  if(target&&pathIsString&&source.rawUrl!==`https://raw.githubusercontent.com/${target.repository}/${target.commit}/${source.path}`)issues.push(`source ${source.id} raw URL is not bound to owner, commit, and path`);
+ }
+ const families=Array.isArray(manifest.families)?manifest.families:[];
+ const expectedIds=Array.from({length:18},(_,index)=>`E3-${String(index+1).padStart(2,"0")}`);
+ const ids=families.map(family=>family?.id);
+ if(!ids.every(id=>typeof id==="string"))issues.push("family IDs must be strings");
+ if(families.length!==18||duplicates(ids)||[...ids].sort().join("\n")!==expectedIds.join("\n"))issues.push("families must cover exactly E3-01 through E3-18");
+ for(const family of families){
+  if(!exactKeys(family,FAMILY_FIELDS,`family ${family?.id??"unknown"}`,issues))continue;
+  if(typeof family.title!=="string"||family.title.trim().length===0)issues.push(`family ${family.id} title must be a nonempty string`);
+  if(!new Set(["MISSING","PARTIAL"]).has(family.status))issues.push(`family ${family.id} has invalid status; FULL is unsupported by this reference-only schema`);
+  if(!nonemptyStrings(family.facts))issues.push(`family ${family.id} facts must be a string array`);
+  if(!nonemptyStrings(family.limitations)||family.limitations.length===0)issues.push(`family ${family.id} requires explicit limitations`);
+ }
+ return issues;
+}
+
+if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+ if(process.argv.length!==2){console.error("audit:memory-parity is offline-only and accepts no flags");process.exitCode=2;}
+ else{
+  const issues=[...validateMemoryParity(loadCheckedInMemoryParity()),...validateMemoryFoundation(loadCheckedInMemoryFoundation()),...validateMemoryObservationWrites(loadCheckedInMemoryObservationWrites()),...validateMemoryRetrievalSearch(loadCheckedInMemoryRetrievalSearch()),...validateMemoryContextTimeline(loadCheckedInMemoryContextTimeline()),...validateMemoryProjectIdentity(loadCheckedInMemoryProjectIdentity()),...validateMemorySessionTransport(loadCheckedInMemorySessionTransport()),...validateMemorySessionStore(loadCheckedInMemorySessionStore()),...validateMemoryPassiveCapture(loadCheckedInMemoryPassiveCapture()),...validateMemoryRelations(loadCheckedInMemoryRelations()),...validateAdditionalParitySlices(ROOT)];
+  if(issues.length){console.error(issues.join("\n"));process.exitCode=1;}
+  else{
+   const extra=additionalParitySlices.map(slice=>slice.successLabel);
+   console.log(`memory parity reference: PASS (2 targets, 7 sources, 18 baseline families; 8 foundation, 5 observation-write, 6 retrieval/search, 5 context/timeline, 7 project-identity, 3 session-transport, 15 session-store, 3 passive-capture, and 1 relation source-inspected contracts${extra.length?`; ${extra.join(", ")}`:""}; no runtime parity claim)`);
+  }
+ }
+}

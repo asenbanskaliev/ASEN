@@ -1,0 +1,10 @@
+import {loadLifecycle} from "../../src/lifecycle/skill-lifecycle.js";
+import {loadEvidence} from "../../src/evidence/persistence.js";
+import {recoveryKeyFromEnvironment} from "../../src/session/recovery-key.js";
+const [phasePath,evidencePath,repository,revision]=process.argv.slice(2);
+if(!phasePath||!evidencePath||!repository||!revision)throw new Error("Recovery fixture arguments missing");
+const candidate={id:"candidate",repository,revision,createdAt:"now"};
+const key=recoveryKeyFromEnvironment();
+const flow=await loadLifecycle(phasePath,"task",candidate,key);
+const evidence=await loadEvidence(evidencePath,candidate,key);
+process.stdout.write(JSON.stringify({phase:flow.state.nextPhase,records:flow.state.records.length,hasTest:evidence.hasPassing(candidate,"test"),hasReview:evidence.hasPassing(candidate,"review")}));

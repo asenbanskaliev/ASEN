@@ -1,0 +1,102 @@
+export const REPOSITORY_OPERATION_ACTIONS=["remote_read","issue_create","issue_update","branch_create","commit","push","pr_open","pr_update","label_mutate","merge","force_update"] as const;
+export type RepositoryOperationAction=typeof REPOSITORY_OPERATION_ACTIONS[number];
+export type MutationAction=Exclude<RepositoryOperationAction,"remote_read">;
+export interface RepositoryOperationBinding{readonly host:string;readonly owner:string;readonly repository:string;readonly sessionId:string;readonly actor:string;readonly action:RepositoryOperationAction;}
+declare const authorityBrand:unique symbol;
+export interface RepositoryOperationAuthority extends RepositoryOperationBinding{readonly [authorityBrand]:true;}
+interface AuthorityState{readonly binding:RepositoryOperationBinding;readonly key:string;consumed:boolean;}
+const authorities=new WeakMap<object,AuthorityState>();
+const liveAuthorities=new Map<string,object>();
+
+function explicit(value:unknown,field:string,separators=false):string{
+ if(typeof value!=="string"||!value||value.trim()!==value||/\s/u.test(value)||(separators&&(/[\\/]/u.test(value)||value==="."||value==="..")))throw new Error(`${field} must be an explicit structured value`);
+ return value;
+}
+function normalizedHost(value:unknown):string{
+ const raw=explicit(value,"host",true).toLowerCase(),host=raw.endsWith(".")?raw.slice(0,-1):raw;
+ if(raw.includes(":")||raw.endsWith("..")||!host.split(".").every(part=>/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/u.test(part)))throw new Error("host must be an explicit structured value");
+ return host;
+}
+function exactBinding(input:RepositoryOperationBinding):RepositoryOperationBinding{
+ const names=["host","owner","repository","sessionId","actor","action"] as const;
+ if(typeof input!=="object"||input===null||Array.isArray(input)||Object.getPrototypeOf(input)!==Object.prototype)throw new Error("Binding must be exact plain data");
+ const keys=Reflect.ownKeys(input);if(keys.length!==names.length||keys.some(key=>typeof key!=="string"||!names.includes(key as typeof names[number]))||names.some(key=>!Object.hasOwn(input,key)))throw new Error("Binding must be exact plain data");
+ const values:Record<string,unknown>={};for(const name of names){const descriptor=Object.getOwnPropertyDescriptor(input,name);if(!descriptor?.enumerable||!("value" in descriptor))throw new Error("Binding must be exact plain data");values[name]=descriptor.value;}
+ const action=values.action;if(!(REPOSITORY_OPERATION_ACTIONS as readonly unknown[]).includes(action))throw new Error("Action must be supported and exact");
+ return Object.freeze({host:normalizedHost(values.host),owner:explicit(values.owner,"owner",true),repository:explicit(values.repository,"repository",true),sessionId:explicit(values.sessionId,"sessionId",true),actor:explicit(values.actor,"actor",true),action}) as RepositoryOperationBinding;
+}
+function bindingKey(binding:RepositoryOperationBinding):string{return JSON.stringify([binding.host,binding.owner,binding.repository,binding.sessionId,binding.actor,binding.action]);}
+export function authorizeRepositoryOperation(input:RepositoryOperationBinding):RepositoryOperationAuthority{
+ const binding=exactBinding(input),key=bindingKey(binding);
+ if(liveAuthorities.has(key))throw new Error("A live authority already exists for this binding");
+ const authority=Object.freeze({...binding}) as RepositoryOperationAuthority;
+ authorities.set(authority,{binding,key,consumed:false});liveAuthorities.set(key,authority);
+ return authority;
+}
+export function isRepositoryOperationAuthority(value:unknown):value is RepositoryOperationAuthority{return typeof value==="object"&&value!==null&&authorities.has(value);}
+function matches(left:RepositoryOperationBinding,right:RepositoryOperationBinding):boolean{return left.host===right.host&&left.owner===right.owner&&left.repository===right.repository&&left.sessionId===right.sessionId&&left.actor===right.actor&&left.action===right.action;}
+function consume(authority:RepositoryOperationAuthority,noun:string):AuthorityState{
+ const state=typeof authority==="object"&&authority!==null?authorities.get(authority):undefined;
+ if(!state)throw new Error("Operation requires ASEN-issued authority");
+ if(state.consumed)throw new Error(`${noun} authority already consumed`);
+ state.consumed=true;if(liveAuthorities.get(state.key)===authority)liveAuthorities.delete(state.key);
+ return state;
+}
+function verifyConsumed(state:AuthorityState,expectedBinding:RepositoryOperationBinding,action:"read"|"mutation"):RepositoryOperationBinding{
+ const expected=exactBinding(expectedBinding);
+ if(!matches(state.binding,expected))throw new Error("Authority binding mismatch");
+ if(action==="read"&&state.binding.action!=="remote_read")throw new Error("Authorized read requires remote_read authority");
+ if(action==="mutation"&&state.binding.action==="remote_read")throw new Error("One-attempt execution requires mutation authority");
+ return state.binding;
+}
+
+export type OperationAttempt={readonly status:"accepted"|"rejected"|"ambiguous";readonly reasonCode?:string};
+export type ExactTargetReadBack={readonly state:"intended"|"unchanged"|"drift"|"unconfirmed";readonly reasonCode?:string};
+export interface OneAttemptOutcome{readonly classification:"confirmed"|"no_write"|"unknown";readonly operationReason:string;readonly readBackReason:string;}
+function reason(value:unknown,fallback:string):string{
+ if(typeof value==="string"&&/^[a-z0-9][a-z0-9_-]{0,63}$/u.test(value))return value;
+ return value===undefined?fallback:"redacted";
+}
+function exactOutcome(value:unknown,key:"status"|"state",allowed:readonly string[]):readonly [string,string|undefined]|null{
+ try{if(typeof value!=="object"||value===null||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)return null;const keys=Reflect.ownKeys(value);if(keys.some(k=>typeof k!=="string"||(k!==key&&k!=="reasonCode"))||!Object.hasOwn(value,key))return null;const d=Object.getOwnPropertyDescriptor(value,key),r=Object.getOwnPropertyDescriptor(value,"reasonCode");if(!d?.enumerable||!("value" in d)||r&&(!r.enumerable||!("value" in r))||!allowed.includes(d.value))return null;return [d.value,r?.value];}catch{return null;}
+}
+function exactAttempt(value:unknown):OperationAttempt{const out=exactOutcome(value,"status",["accepted","rejected","ambiguous"]);return out?{status:out[0] as OperationAttempt["status"],...(out[1]===undefined?{}:{reasonCode:out[1]})}:{status:"ambiguous",reasonCode:"malformed_operation"};}
+function exactReadBack(value:unknown):ExactTargetReadBack{const out=exactOutcome(value,"state",["intended","unchanged","drift","unconfirmed"]);return out?{state:out[0] as ExactTargetReadBack["state"],...(out[1]===undefined?{}:{reasonCode:out[1]})}:{state:"unconfirmed",reasonCode:"malformed_readback"};}
+function operationFallback(attempt:OperationAttempt):string{if(attempt.status==="rejected")return "authoritative_rejection";if(attempt.status==="accepted")return "accepted";return "ambiguous_operation";}
+function readBackFallback(observed:ExactTargetReadBack):string{if(observed.state==="intended")return "exact_intended";if(observed.state==="unchanged")return "exact_unchanged";if(observed.state==="drift")return "state_drift";return "unconfirmed";}
+export async function executeOneAttempt(
+ authority:RepositoryOperationAuthority,expectedBinding:RepositoryOperationBinding,
+ operation:(binding:RepositoryOperationBinding)=>OperationAttempt|Promise<OperationAttempt>,readBack:(binding:RepositoryOperationBinding)=>ExactTargetReadBack|Promise<ExactTargetReadBack>,
+):Promise<OneAttemptOutcome>{
+ const frozen=verifyConsumed(consume(authority,"Mutation"),expectedBinding,"mutation");
+ let attempt:OperationAttempt;try{attempt=exactAttempt(await operation(frozen));}catch{attempt={status:"ambiguous",reasonCode:"operation_threw"};}
+ let observed:ExactTargetReadBack;try{observed=exactReadBack(await readBack(frozen));}catch{observed={state:"unconfirmed",reasonCode:"readback_failed"};}
+ const operationReason=reason(attempt.reasonCode,operationFallback(attempt)),readBackReason=reason(observed.reasonCode,readBackFallback(observed));
+ let classification:OneAttemptOutcome["classification"]="unknown";if(observed.state==="intended")classification="confirmed";else if(attempt.status==="rejected"&&observed.state==="unchanged")classification="no_write";
+ return Object.freeze({classification,operationReason,readBackReason});
+}
+export async function executeAuthorizedRead<T>(authority:RepositoryOperationAuthority,expectedBinding:RepositoryOperationBinding,reader:(binding:RepositoryOperationBinding)=>T|Promise<T>):Promise<T>{
+ const frozen=verifyConsumed(consume(authority,"Read"),expectedBinding,"read");
+ try{return await reader(frozen);}catch{throw new Error("Authorized read failed");}
+}
+
+export type RepositoryPermission="ADMIN"|"MAINTAIN"|"WRITE"|"TRIAGE"|"READ"|"UNVERIFIED";
+export interface ProtectedLabelMutationInput{readonly currentLabels:readonly string[];readonly add:readonly string[];readonly remove:readonly string[];readonly protectedLabels:readonly string[];readonly actorPermission:RepositoryPermission;readonly rationale?:string;}
+export interface ProtectedLabelMutationPlan{readonly add:readonly string[];readonly remove:readonly string[];readonly expectedFinalLabels:readonly string[];}
+const labelKey=(label:string)=>label.normalize("NFC").toLocaleLowerCase("en-US");
+function labels(values:readonly string[],field:string):string[]{
+ const normalized=values.map(value=>explicit(value,`${field} label`).normalize("NFC")),identities=normalized.map(labelKey);
+ if(new Set(identities).size!==identities.length)throw new Error(`${field} contains duplicate labels`);
+ return normalized;
+}
+function sortedLabels(values:Iterable<string>):string[]{return [...values].sort((left,right)=>labelKey(left).localeCompare(labelKey(right),"en-US")||left.localeCompare(right,"en-US"));}
+export function planProtectedLabelMutation(input:ProtectedLabelMutationInput):ProtectedLabelMutationPlan{
+ const current=labels(input.currentLabels,"currentLabels"),add=labels(input.add,"add"),remove=labels(input.remove,"remove"),protectedLabels=labels(input.protectedLabels,"protectedLabels");
+ const removed=new Set(remove.map(labelKey)),protectedSet=new Set(protectedLabels.map(labelKey));
+ if(add.some(label=>removed.has(labelKey(label))))throw new Error("Label add/remove overlap is not atomic");
+ const protectedChange=[...add,...remove].some(label=>protectedSet.has(labelKey(label)));
+ if(protectedChange&&!(["ADMIN","MAINTAIN"] as readonly RepositoryPermission[]).includes(input.actorPermission))throw new Error("Actor permission does not authorize protected label changes");
+ if(add.some(label=>labelKey(label)==="size:exception")&&(!input.rationale||!input.rationale.trim()))throw new Error("size:exception addition requires a nonblank rationale");
+ const final=new Map(current.map(label=>[labelKey(label),label]));for(const label of remove)final.delete(labelKey(label));for(const label of add)final.set(labelKey(label),label);
+ return Object.freeze({add:Object.freeze(sortedLabels(add)),remove:Object.freeze(sortedLabels(remove)),expectedFinalLabels:Object.freeze(sortedLabels(final.values()))});
+}

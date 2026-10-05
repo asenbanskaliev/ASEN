@@ -20,7 +20,7 @@ const providerExtension=process.env.ASEN_PI_PROVIDER_EXTENSION;
 const candidate={id:"pr30-real-pi-lifecycle",repository,revision,createdAt:new Date().toISOString()};
 const taskId="pr30-real-pi-lifecycle";
 const evidence=new EvidenceStore();
-const runner=new PiArtifactRunner(new PiProcessRunner({extraArgs:["--no-session","--provider",provider,"--model",model],providerExtension,timeoutMs:180000}));
+const runner=new PiArtifactRunner(new PiProcessRunner({extraArgs:["--no-session","--provider",provider,"--model",model],providerExtension,timeoutMs:180000,noTools:true}));
 const dispatcher=new Dispatcher(runner,evidence,1);
 const flow=new SkillLifecycle(taskId,candidate);
 const phases=[
@@ -40,8 +40,9 @@ for(const [phase,role,kind] of phases){
   for(const [id,evidenceKind] of [["real-pi-work-unit","work-unit"],["real-pi-scope","scope"],["real-pi-rollback","rollback"]])evidence.add(candidate,{id,kind:evidenceKind,status:"pass",summary:`Authenticated lifecycle ${evidenceKind}`,createdAt:new Date().toISOString()});
  }
  if(phase==="verify"){
-  const proof=await executeEvidenceCommand(candidate,[process.execPath,"--import","tsx","--test","tests/pi-artifact-runner.test.ts"],{cwd:repository,timeoutMs:120000});
-  addExecutedEvidence(evidence,candidate,proof,{id:"real-pi-lifecycle-test",kind:"test",summary:"Executed artifact normalization tests on exact candidate"});
+  const probe='const {execFileSync}=require("node:child_process");const {readdirSync}=require("node:fs");const {join}=require("node:path");const npm=process.platform==="win32"?"npm.cmd":"npm";execFileSync(npm,["ci","--ignore-scripts"],{stdio:"ignore"});execFileSync(npm,["run","typecheck"],{stdio:"ignore"});const tests=readdirSync("tests",{recursive:true}).filter(path=>path.endsWith(".test.ts")).map(path=>join("tests",path));if(!tests.length)process.exit(1);execFileSync(process.execPath,["--import","tsx","--test",...tests],{stdio:"ignore"});';
+  const proof=await executeEvidenceCommand(candidate,[process.execPath,"-e",probe],{cwd:repository,timeoutMs:300000});
+  addExecutedEvidence(evidence,candidate,proof,{id:"real-pi-lifecycle-test",kind:"test",summary:"Installed exact-candidate lockfile dependencies and executed typecheck and behavioral tests in isolated worktree"});
  }
  const prompt=[
   "Return the functional result required by the loaded Skill.",
@@ -60,7 +61,11 @@ for(const [phase,role,kind] of phases){
   try{state=await flow.runPhase(dispatcher,{phase,context,skillPaths,prompt,evidence,risk:"low",...(phase==="apply"?{writeSurfaces:["docs/audit/"]}:{})});successfulSkillPaths=skillPaths;break;}
   catch(error){lastError=error;const transient=String(error).includes("Pi artifact requires a completed successful assistant message");if(!transient||attempt===maxAttempts)break;await new Promise(resolve=>setTimeout(resolve,attempt*2000));}
  }
- if(!state)throw new Error(`Authenticated lifecycle phase ${phase} failed: ${String(lastError)}`);
+ if(!state){
+  const retryableStatus=String(lastError).match(/: Error: PI_ARTIFACT_RETRYABLE_STATUS=(429|502|503|504)$/)?.[1];
+  if(retryableStatus)console.error(`ASEN_LIFECYCLE_RETRYABLE_STATUS=${retryableStatus}`);
+  throw new Error(`Authenticated lifecycle phase ${phase} failed`);
+ }
  assert.equal(state.records.at(-1)?.phase,phase);
  assert.equal(state.records.at(-1)?.artifact.kind,kind);
  console.log(JSON.stringify({phase,role,skills:successfulSkillPaths,result:"PASS"}));

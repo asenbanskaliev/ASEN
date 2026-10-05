@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "scope": "reference_only",
+  "status": "SOURCE_INSPECTED",
+  "proofKind": "source_inspection",
+  "limitations": [
+    "These contracts record source inspection only; they do not prove ASEN runtime behavior or context/timeline parity.",
+    "The configured observation default is not a universal cap, and configuration overrides are not exercised.",
+    "Core MaxBytes budgets only the rendered context body; HTTP JSON and MCP result envelopes have distinct boundaries.",
+    "MCP argument branches are source-inspected Go behavior; this does not claim that JSON transports accept NaN.",
+    "Timeline project checks are resolved-project equality gates, not authentication, tenant isolation, or global ID authorization.",
+    "Read-side persistence outside the inspected ranges, live HTTP/MCP envelopes, and actual database ordering remain unproved."
+  ],
+  "sources": [
+    {"id":"SRC-CTX-001","path":"internal/store/store.go","bytes":488121,"sha256":"6c52f5e8f71e8d00e1ff5c5f10361142b89b500786b181c825e1d69ad31ee15e","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/store/store.go","representation":"git_blob","lineStart":792,"lineEnd":12254},
+    {"id":"SRC-CTX-002","path":"internal/mcp/mcp.go","bytes":143683,"sha256":"72dc51bdf5c5ca93540cb678ad22cd314c439154f36315adba78db66080874bb","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/mcp/mcp.go","representation":"git_blob","lineStart":1950,"lineEnd":3624},
+    {"id":"SRC-CTX-003","path":"internal/server/server.go","bytes":71547,"sha256":"b6bca0acfbdc11704637c6b0eb26032f0f66f377dd95be44e365c36a82c2123d","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","sourceIdentity":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17:internal/server/server.go","representation":"git_blob","lineStart":928,"lineEnd":2191}
+  ],
+  "cases": [
+    {
+      "id": "CTX-core-options",
+      "summary": "Core context options preserve independent section tri-states, configured observation defaults, previews, compact rendering, and a body-only byte budget.",
+      "evidence": [
+        {"sourceId":"SRC-CTX-001","startLine":792,"endLine":824},
+        {"sourceId":"SRC-CTX-001","startLine":5647,"endLine":5775},
+        {"sourceId":"SRC-CTX-001","startLine":5866,"endLine":5879},
+        {"sourceId":"SRC-CTX-001","startLine":12248,"endLine":12254}
+      ],
+      "contract": "Zero applies section defaults, a positive value caps, and a negative value omits; pinned zero stays unlimited. Rune previews append an ellipsis after truncation, compact removes only observation-shaped bodies, and nonpositive MaxBytes leaves the rendered core body unbounded.",
+      "negativeControls": "Twenty is only the default configuration value for MaxContextResults. A 300-rune preview can render beyond 300 runes because truncation appends an ellipsis, and the body budget is not a complete transport envelope budget.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "sectionCaps":{"zero":{"sessions":5,"prompts":10,"observations":"configured_MaxContextResults","defaultConfigMaxContextResults":20,"pinned":"unlimited"},"positive":"cap","negative":"omit"},
+        "previews":{"unit":"Unicode_runes","sessionSummaryRunes":200,"promptRunes":200,"pinnedBodyRunes":300,"observationBodyRunes":300,"truncatedSuffix":"...","renderedHardCeiling":false},
+        "compact":{"omits":["pinned_body","observation_body"],"preserves":["sessions","prompts"]},
+        "maxBytes":{"nonpositive":"unbounded","budgetScope":"rendered_core_context_body"}
+      }
+    },
+    {
+      "id": "CTX-core-byte-helper",
+      "summary": "The core byte helper truncates to a UTF-8-safe prefix and reserves an exact visible marker only when that marker fits.",
+      "evidence": [{"sourceId":"SRC-CTX-001","startLine":5777,"endLine":5802}],
+      "contract": "A nonpositive budget is unbounded. A smaller positive budget never splits UTF-8; it reserves and appends the exact newline-delimited marker when possible, while a budget smaller than the marker returns only a valid prefix.",
+      "negativeControls": "The helper limits the rendered core body, not an HTTP JSON envelope or the complete MCP result.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "nonpositive":"unbounded",
+        "utf8SafePrefix":true,
+        "marker":"\n[truncated]\n",
+        "markerBudget":"reserved_then_appended_when_marker_fits",
+        "tinyPositive":"valid_prefix_only",
+        "budgetScope":"rendered_core_context_body"
+      }
+    },
+    {
+      "id": "CTX-HTTP-context",
+      "summary": "HTTP context preserves section tri-state values, caps positive sections and byte budgets, and wraps the core body after budgeting.",
+      "evidence": [
+        {"sourceId":"SRC-CTX-003","startLine":1251,"endLine":1338},
+        {"sourceId":"SRC-CTX-003","startLine":2183,"endLine":2191}
+      ],
+      "contract": "Positive section values are capped at 500, zero keeps defaults, and negatives pass through to omit. max_bytes absent, empty, malformed, or nonpositive resolves to zero; positive decimal input is capped at 65536. The resulting context body is then placed in a JSON object.",
+      "negativeControls": "Zero means unbounded core output rather than an empty response. The JSON envelope is outside the core MaxBytes budget.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "sectionStates":{"positive":"cap","zero":"default","negative":"omit"},
+        "sectionCeiling":500,
+        "maxBytes":{"absent":0,"empty":0,"malformed":0,"nonpositive":0,"positiveCeiling":65536},
+        "byteBudgetScope":"core_body_before_json_envelope",
+        "response":"structured_context_string"
+      }
+    },
+    {
+      "id": "CTX-MCP-complete-result",
+      "summary": "MCP context reserves a bounded suffix before core rendering and finally clamps the complete textual result.",
+      "evidence": [{"sourceId":"SRC-CTX-002","startLine":1950,"endLine":2114}],
+      "contract": "The handler resolves a 16384-byte default and 65536-byte ceiling; mistyped, nonpositive, NaN, and fractional Go arguments use the default. It loads stats, caps displayed projects at eight, adds the nudge, reserves suffix bytes, floors the core budget at one, caps pinned rows at twenty, concatenates, and UTF-8 clamps the complete result. The fixed no-content message is also finally clamped.",
+      "negativeControls": "The NaN branch describes the inspected handler value, not JSON acceptance. The MCP complete-result budget is distinct from the core body and HTTP envelope boundaries.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "defaultBytes":16384,
+        "ceilingBytes":65536,
+        "invalidBudget":{"absent":"default","mistyped":"default","nonpositive":"default","NaN":"default","fractional":"default"},
+        "statsProjectCap":8,
+        "pinnedCap":20,
+        "contextBudgetFloor":1,
+        "order":["load_stats","cap_displayed_projects_8","append_nudge","reserve_suffix_bytes","floor_context_budget_1","render_core_pinned_20","concatenate","final_complete_result_utf8_clamp"],
+        "marker":"\n[truncated]\n",
+        "tinyPositive":"valid_prefix_only",
+        "noContentMessageFinalClamp":true,
+        "budgetScope":"complete_MCP_text_result"
+      }
+    },
+    {
+      "id": "CTX-timeline",
+      "summary": "Timeline returns undeleted same-session neighbors chronologically, while transports gate the globally fetched focus by resolved project before calling the core method.",
+      "evidence": [
+        {"sourceId":"SRC-CTX-001","startLine":4970,"endLine":5067},
+        {"sourceId":"SRC-CTX-003","startLine":928,"endLine":967},
+        {"sourceId":"SRC-CTX-002","startLine":2195,"endLine":2263},
+        {"sourceId":"SRC-CTX-002","startLine":3618,"endLine":3624}
+      ],
+      "contract": "Core before and after defaults are five for nonpositive inputs. The focus is complete, neighbors share its session, deleted neighbors are excluded, and output order is before-oldest-first, focus, then after-oldest-first. HTTP and MCP first fetch by global ID, compare focus project with the resolved project, and only then call Timeline. HTTP emits the structured result; MCP emits rune previews with ellipses when truncated.",
+      "negativeControls": "Core Timeline has no project guard. Transport equality checks are not global ID authorization, and no read-side persistence claim is made.",
+      "versionControl": "CORE-15a",
+      "criticalValues": {
+        "defaults":{"beforeNonpositive":5,"afterNonpositive":5},
+        "storeProjectGuard":false,
+        "focus":"full_undeleted_observation",
+        "neighbors":{"session":"same_as_focus","deleted":"excluded","before":"id_less_than_focus_desc_then_reversed","after":"id_greater_than_focus_ascending"},
+        "resultOrder":["before_oldest_first","focus","after_oldest_first"],
+        "transportGate":{"sequence":["resolve_project","global_id_focus_fetch","resolved_project_equality","Timeline"],"httpAllowsEmptyResolvedProject":true,"mcpRequiresEquality":true},
+        "globalIdAuthorization":false,
+        "httpOutput":"structured_full_timeline",
+        "mcpPreview":{"unit":"Unicode_runes","sessionSummaryRunes":100,"neighborRunes":150,"focusRunes":500,"truncatedSuffix":"..."},
+        "readSidePersistence":"UNPROVED"
+      }
+    }
+  ]
+}

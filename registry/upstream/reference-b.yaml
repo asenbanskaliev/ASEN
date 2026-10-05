@@ -1,0 +1,10 @@
+id: upstream-reference-b
+source_id: reference-b
+role: lifecycle-provisioning-review-reference
+audited:
+  branch: main
+  commit: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b
+  date: 2026-09-27
+radar:
+  enabled: false
+runtime_dependency: forbidden

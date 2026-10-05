@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "scope": "reference_only",
+  "statusModel": ["MISSING", "PARTIAL"],
+  "limitations": [
+    "This manifest records provenance and an ASEN code-inspection baseline; it is not runtime, receipt, compatibility, publisher-authentication, or remote-content proof.",
+    "The tags were reported unsigned. A pinned tag object and commit do not authenticate a publisher.",
+    "All source hashes are file-byte observations at the core commit, including plugin/pi/index.ts; they do not prove the separately published Pi artifact.",
+    "The offline loader uses JSON.parse, so duplicate JSON property names are not independently detected.",
+    "Model save guidance is not automatic capture, and expected_project is an ownership assertion rather than authentication.",
+    "Git project detection retains percent-encoded names; no universal remote-name decoding behavior is asserted here."
+  ],
+  "targets": [
+    {"id":"core","repository":"Gentleman-Programming/engram","version":"3.0.0","tag":"v3.0.0","tagObject":"fcf2eb5b6fe445c19a2e5568612a0a421f0fd5e1","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","publishedAt":"2026-10-01T22:30:47Z","channel":"core release","apiRefUrl":"https://api.github.com/repos/Gentleman-Programming/engram/git/ref/tags/v3.0.0","tagUrl":"https://github.com/Gentleman-Programming/engram/releases/tag/v3.0.0"},
+    {"id":"pi","repository":"Gentleman-Programming/engram","version":"0.2.0","tag":"pi-v0.2.0","tagObject":"8795484df1725315d8bf2b9181afa67de78147b0","commit":"ce51810bd351f397e49728d6a5be81679cf18554","publishedAt":null,"channel":"separate npm channel","apiRefUrl":"https://api.github.com/repos/Gentleman-Programming/engram/git/ref/tags/pi-v0.2.0","tagUrl":"https://github.com/Gentleman-Programming/engram/releases/tag/pi-v0.2.0"}
+  ],
+  "sources": [
+    {"id":"SRC-MEM-001","targetId":"core","path":"internal/store/store.go","bytes":501321,"sha256":"2ffd000ee7f8c8fc1ad0c3d130e88a8ab4878449866c9737215b3c6d8ffa555b","rawUrl":"https://raw.githubusercontent.com/Gentleman-Programming/engram/15a2f78885d7ad8ced23b2d1d88383e9bb472c17/internal/store/store.go"},
+    {"id":"SRC-MEM-002","targetId":"core","path":"internal/store/store_migration_test.go","bytes":39990,"sha256":"70b196a0903c7690b7ae0a93295d9482345416ec5abae23c47bd5ce279ddacdc","rawUrl":"https://raw.githubusercontent.com/Gentleman-Programming/engram/15a2f78885d7ad8ced23b2d1d88383e9bb472c17/internal/store/store_migration_test.go"},
+    {"id":"SRC-MEM-003","targetId":"core","path":"internal/project/detect.go","bytes":20411,"sha256":"5ab182e6718761e0a759ff8c96336de359210ecf564b10f88f4a3aea45424300","rawUrl":"https://raw.githubusercontent.com/Gentleman-Programming/engram/15a2f78885d7ad8ced23b2d1d88383e9bb472c17/internal/project/detect.go"},
+    {"id":"SRC-MEM-004","targetId":"core","path":"internal/project/detect_test.go","bytes":44643,"sha256":"4d8a25a04a46f47ca23e2dd32dc468cef8b9cbe43fa7f9e72ca54ca762289741","rawUrl":"https://raw.githubusercontent.com/Gentleman-Programming/engram/15a2f78885d7ad8ced23b2d1d88383e9bb472c17/internal/project/detect_test.go"},
+    {"id":"SRC-MEM-005","targetId":"core","path":"internal/server/server.go","bytes":73752,"sha256":"53caec2f14679d5c9a2558c06ce6183e740bb1b78b4cebc33219b60271a53c20","rawUrl":"https://raw.githubusercontent.com/Gentleman-Programming/engram/15a2f78885d7ad8ced23b2d1d88383e9bb472c17/internal/server/server.go"},
+    {"id":"SRC-MEM-006","targetId":"core","path":"internal/mcp/mcp.go","bytes":147307,"sha256":"613a6c74621cdae0c6b8af1fb79c5c121ba51ca4a9665621f9312c683199872d","rawUrl":"https://raw.githubusercontent.com/Gentleman-Programming/engram/15a2f78885d7ad8ced23b2d1d88383e9bb472c17/internal/mcp/mcp.go"},
+    {"id":"SRC-MEM-007","targetId":"core","path":"plugin/pi/index.ts","bytes":105598,"sha256":"090e0fc8b6a30d36cff1259764aad093c432e5cfa65e28e687683795057ed431","rawUrl":"https://raw.githubusercontent.com/Gentleman-Programming/engram/15a2f78885d7ad8ced23b2d1d88383e9bb472c17/plugin/pi/index.ts"}
+  ],
+  "families": [
+    {"id":"E3-01","title":"Freeze the full source and behavioral contract","status":"PARTIAL","facts":["Two release targets and seven core-snapshot files are pinned for offline structural audit."],"limitations":["E3-01b behavior, event, transport, and fixture contracts remain open; this broad matrix is not the finished contract."]},
+    {"id":"E3-02","title":"Establish a safe ASEN storage and migration foundation","status":"PARTIAL","facts":["SqliteMemoryStore creates a memory table and FTS5 table, enables WAL and foreign keys, and rebuilds FTS inside BEGIN IMMEDIATE on every open."],"limitations":["There is no versioned v3 schema, safe migration, backup, synthetic rollback, concurrency, or restart parity proof."]},
+    {"id":"E3-03","title":"Match project identity and ambiguity handling","status":"MISSING","facts":[],"limitations":["ASEN has no project registry or source-matched ambiguity and binding behavior."]},
+    {"id":"E3-04","title":"Match session registration, continuation and isolation","status":"MISSING","facts":[],"limitations":["ASEN has no memory session registry, registration, continuation, or isolation lifecycle."]},
+    {"id":"E3-05","title":"Match observation save, update, deletion and revisions","status":"PARTIAL","facts":["MemoryContext supplies caller project/session values; SqliteMemoryStore inserts caller ID, kind, content, timestamp and optional topic, upserts by ID, and rejects an existing ID owned by another project."],"limitations":["There are no production memory tools, normalization, revisions, last-seen state, pins, staleness, expected_project operations, soft deletion, or privacy behavior."]},
+    {"id":"E3-06","title":"Match retrieval, search and progressive context","status":"PARTIAL","facts":["The store gets by raw unscoped ID and performs project-filtered content-only FTS search using caller syntax, rank ordering, and limit 20."],"limitations":["There is no source-matched search parsing, previews, timelines, response context, byte budget, or production integration."]},
+    {"id":"E3-07","title":"Match prompts, summaries and curated passive capture","status":"MISSING","facts":[],"limitations":["No production capture exists; model guidance must not be represented as automatic capture."]},
+    {"id":"E3-08","title":"Match relationships, contradictions and review","status":"MISSING","facts":[],"limitations":["There are no relation, contradiction, judgment, confidence, provenance, or review workflows."]},
+    {"id":"E3-09","title":"Integrate memory into actual ASEN work timing","status":"MISSING","facts":[],"limitations":["Only tests use the memory store; no actual ASEN workflow recovers or saves memory."]},
+    {"id":"E3-10","title":"Match Pi-native tools and host lifecycle","status":"MISSING","facts":[],"limitations":["There are no production memory tools, host registration, capability negotiation, startup, reload, or cleanup integration."]},
+    {"id":"E3-11","title":"Match compaction, close, failures and resumption","status":"MISSING","facts":[],"limitations":["There is no memory handoff persistence, outcome reconciliation, or replay-safe resumption."]},
+    {"id":"E3-12","title":"Match doctor, backup, repair and project merge","status":"MISSING","facts":["Doctor reports only whether a MemoryStore object is configured."],"limitations":["Presence is not a diagnostic; no backup, preview/apply repair, integrity check, or project merge exists."]},
+    {"id":"E3-13","title":"Match export, import and Git synchronization","status":"MISSING","facts":[],"limitations":["There is no memory export, import, tombstone handling, or Git synchronization."]},
+    {"id":"E3-14","title":"Match optional Cloud and autosynchronization","status":"MISSING","facts":[],"limitations":["There is no Cloud enrollment, allowlist, queue, replay, conflict, or autosynchronization implementation."]},
+    {"id":"E3-15","title":"Match remaining agent and external interfaces","status":"PARTIAL","facts":["ASEN exposes only a bare MemoryStore interface and MemoryContext library wrapper."],"limitations":["There is no memory CLI, HTTP, MCP, or live external-agent setup and hook integration."]},
+    {"id":"E3-16","title":"Match operational views and optional clients","status":"MISSING","facts":[],"limitations":["There is no memory TUI, dashboard, Obsidian client, or snapshot view."]},
+    {"id":"E3-17","title":"Match installation, runtime and platform behavior","status":"MISSING","facts":[],"limitations":["No standalone/package equivalence or Windows, Linux, macOS, architecture, checksum, install, migration, uninstall, or restart proof exists."]},
+    {"id":"E3-18","title":"Complete independent comparative verification","status":"MISSING","facts":[],"limitations":["No comparative runtime, platform, real Pi Free, privacy, concurrency, corruption, or restart verification has been completed."]}
+  ]
+}

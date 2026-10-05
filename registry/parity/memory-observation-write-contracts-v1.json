@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "scope": "reference_only",
+  "status": "SOURCE_INSPECTED",
+  "proofKind": "source_inspection",
+  "limitations": [
+    "These contracts record source inspection only; they do not prove ASEN runtime behavior or write parity.",
+    "Private-tag replacement is not a general secret detector.",
+    "expected_project is a caller ownership assertion, not authentication or tenant isolation.",
+    "Unknown write outcomes require readback and reconciliation; they must not be retried automatically.",
+    "Library UpdateObservation and DeleteObservation variants remain callable without expected_project.",
+    "Queue-helper invocation does not prove a durable queue row because local unenrolled projects skip insertion.",
+    "MCP forwards capture_prompt; the separately released Pi surface exposes but does not forward that option, and this core snapshot is not published-Pi proof."
+  ],
+  "sources": [
+    {"id":"SRC-OBS-001","path":"internal/store/store.go","bytes":501321,"sha256":"2ffd000ee7f8c8fc1ad0c3d130e88a8ab4878449866c9737215b3c6d8ffa555b","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","commitRole":"CORE-15a","lineStart":3685,"lineEnd":12492},
+    {"id":"SRC-OBS-002","path":"internal/mcp/mcp.go","bytes":147307,"sha256":"613a6c74621cdae0c6b8af1fb79c5c121ba51ca4a9665621f9312c683199872d","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","commitRole":"CORE-15a","lineStart":500,"lineEnd":1877},
+    {"id":"SRC-OBS-003","path":"internal/server/server.go","bytes":73752,"sha256":"53caec2f14679d5c9a2558c06ce6183e740bb1b78b4cebc33219b60271a53c20","commit":"15a2f78885d7ad8ced23b2d1d88383e9bb472c17","commitRole":"CORE-15a","lineStart":146,"lineEnd":929}
+  ],
+  "cases": [
+    {
+      "id":"OBS-01","summary":"A newly admitted observation is normalized, privacy-filtered, bounded, inserted with initial counters, and offered to the enrollment-aware queue helper.",
+      "evidence":[{"sourceId":"SRC-OBS-001","startLine":3685,"endLine":3722},{"sourceId":"SRC-OBS-001","startLine":3809,"endLine":3860},{"sourceId":"SRC-OBS-001","startLine":4335,"endLine":4357},{"sourceId":"SRC-OBS-001","startLine":12256,"endLine":12275},{"sourceId":"SRC-OBS-001","startLine":12483,"endLine":12492},{"sourceId":"SRC-OBS-002","startLine":500,"endLine":550},{"sourceId":"SRC-OBS-002","startLine":1447,"endLine":1600},{"sourceId":"SRC-OBS-003","startLine":630,"endLine":673}],
+      "inputs":"Session, type, title, content, project, scope, optional tool name and optional topic key; MCP also accepts legacy observation content.",
+      "triggers":"Invoke AddObservation directly, MCP mem_save, or HTTP POST /observations.",
+      "preconditions":"Post-redaction title and bounded content must be nonempty, and session ownership resolution must succeed.",
+      "outputs":"A new row returns its ID; HTTP returns 201 with id and saved status, while MCP reports the saved memory.",
+      "durableEffects":"A fresh sync ID and row use revision_count=1 and duplicate_count=1 with last-seen and update times; queue persistence depends on enrollment.",
+      "negativeControls":"Rejected empty post-redaction title or content creates no observation; queue-helper invocation alone is not durable queue evidence.",
+      "privacy":"Project is canonicalized, private-tag regions become [REDACTED], and content is UTF-8-safe truncated at the configured byte limit with a marker.",
+      "assertion":"Session ownership resolution precedes persistence; this case does not establish authentication.",
+      "transport":"MCP defaults type to manual, scope normalizes to project unless personal/global, may capture the current prompt, and HTTP requires session_id, title, and content.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{"admissionFields":["session_id","type","title","content","project","scope","tool_name","topic_key"],"projectNormalized":true,"privateTagReplacement":"[REDACTED]","contentLimit":"configured_bytes_utf8_safe_plus_marker","postPrivacyNonempty":["title","content"],"newRow":{"newId":true,"revisionCount":1,"duplicateCount":1,"lastSeenAt":"now","updatedAt":"now"},"queueEffect":"helper_invoked_enrollment_dependent","mcp":{"contentAlias":"observation","typeDefault":"manual","capturePromptForwarded":true},"http":{"required":["session_id","title","content"],"successStatus":201,"response":["id","status_saved"]}}
+    },
+    {
+      "id":"OBS-02","summary":"A normalized topic key revises the latest undeleted row in the same project and scope.",
+      "evidence":[{"sourceId":"SRC-OBS-001","startLine":3719,"endLine":3772},{"sourceId":"SRC-OBS-001","startLine":12409,"endLine":12424}],
+      "inputs":"An admitted save with a nonempty topic key plus session, type, title, content, tool, project, and scope.",
+      "triggers":"AddObservation finds the latest undeleted matching normalized topic in the same project and scope.",
+      "preconditions":"Topic normalization yields a value and the ownership resolution and admission checks have succeeded.",
+      "outputs":"The existing observation ID is returned rather than allocating a new row.",
+      "durableEffects":"Session, type, title, content, tool, topic and normalized hash are replaced; revision increments while duplicate count does not.",
+      "negativeControls":"Deleted rows and same-topic rows under another project or scope do not match; no topic match continues to duplicate matching.",
+      "privacy":"Replacement title and content have already passed private-tag replacement and content bounding.",
+      "assertion":"Matching keys are normalized topic, project and scope, not title or content similarity.",
+      "transport":"The store behavior underlies admitted library, MCP, and HTTP saves; this fixture makes no live transport claim.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{"matchOrder":"before_duplicate","matchingKeys":["normalized_topic_key","project","scope","undeleted"],"selected":"latest_updated_then_created","sameId":true,"replacedFields":["session_id","type","title","content","tool_name","topic_key","normalized_hash"],"revisionDelta":1,"duplicateDelta":0,"lastSeenAt":"now","updatedAt":"now","queueEffect":"helper_invoked_enrollment_dependent"}
+    },
+    {
+      "id":"OBS-03","summary":"After no topic match, an in-window exact normalized-content identity collapses to the existing observation.",
+      "evidence":[{"sourceId":"SRC-OBS-001","startLine":3774,"endLine":3807}],
+      "inputs":"An admitted save whose normalized content hash and exact project, scope, type, and title identify a recent undeleted row.",
+      "triggers":"Duplicate lookup runs only after topic lookup does not return a row.",
+      "preconditions":"The candidate creation time is inside the configured dedupe window.",
+      "outputs":"The newest matching existing ID is returned.",
+      "durableEffects":"Duplicate count increments with last-seen and update times; revision count and content remain unchanged.",
+      "negativeControls":"Outside-window, deleted, or differing hash, project, scope, type, or title candidates proceed to insertion.",
+      "privacy":"The compared hash is derived from already privacy-filtered and bounded content.",
+      "assertion":"Duplicate collapse uses all exact matching keys and does not replace the topic revision rule.",
+      "transport":"This store rule applies beneath admitted save transports; transport retries are not authorized by the rule.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{"afterNoTopicMatch":true,"matchingKeys":["normalized_content_hash","project","scope","type","title","undeleted","inside_configured_window"],"selected":"newest_created","sameId":true,"duplicateDelta":1,"revisionDelta":0,"contentMutated":false,"lastSeenAt":"now","updatedAt":"now","queueEffect":"helper_invoked_enrollment_dependent","outsideOrDifferent":"insert_new"}
+    },
+    {
+      "id":"OBS-04","summary":"The guarded update asserts owner inside the transaction and applies only valid project-immutable mutations.",
+      "evidence":[{"sourceId":"SRC-OBS-001","startLine":4666,"endLine":4809},{"sourceId":"SRC-OBS-001","startLine":4828,"endLine":4853},{"sourceId":"SRC-OBS-002","startLine":554,"endLine":595},{"sourceId":"SRC-OBS-002","startLine":1661,"endLine":1745},{"sourceId":"SRC-OBS-003","startLine":783,"endLine":830}],
+      "inputs":"A row ID, required expected owner, and at least one supported field or paired literal find/replace mutation.",
+      "triggers":"Invoke UpdateObservationForProject through a guarded caller after transport validation.",
+      "preconditions":"Expected project resolves, row exists and matches it, project remains immutable, and find/replace is paired and not combined with content.",
+      "outputs":"A valid mutation returns the updated row; pure unmatched find/replace without metadata returns the unchanged row.",
+      "durableEffects":"A mutation updates selected values and normalized hash, increments revision and invokes enrollment-aware upsert; pure no-op does none.",
+      "negativeControls":"Invalid post-redaction values, absent owner, mismatch, absent row, project change, or malformed mutation leaves row, revision, and queue unchanged.",
+      "privacy":"Changed title/content and replacement results pass private-tag and nonempty checks; this is not general secret detection.",
+      "assertion":"expected_project is checked against stored normalized ownership inside the transaction and is not authentication.",
+      "transport":"MCP also checks current resolved project and directory fallback; HTTP maps malformed input to 400, mismatch or immutability to 409, and other misses to 404.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{"guardedEntry":"UpdateObservationForProject","expectedOwnerRequired":true,"ownershipCheck":"inside_transaction","projectImmutable":true,"atLeastOneUpdateField":"transport_validated","findReplace":{"paired":true,"withContent":false,"pureMissWithoutMetadata":"unchanged_no_revision_no_queue"},"validMutation":{"revisionDelta":1,"rehashContent":true,"queueEffect":"helper_invoked_enrollment_dependent"},"rejectionBarrier":["row","revision","queue"],"httpStatus":{"malformed":400,"mismatch_or_project_change":409,"other":404},"mcpCurrentProjectCheck":true,"unguardedLibraryVariant":"UpdateObservation"}
+    },
+    {
+      "id":"OBS-05","summary":"The guarded delete asserts owner atomically, then soft-deletes or tombstones before hard removal with enrollment-aware sync handling.",
+      "evidence":[{"sourceId":"SRC-OBS-001","startLine":4858,"endLine":4951},{"sourceId":"SRC-OBS-001","startLine":10636,"endLine":10713},{"sourceId":"SRC-OBS-002","startLine":641,"endLine":660},{"sourceId":"SRC-OBS-002","startLine":1855,"endLine":1877},{"sourceId":"SRC-OBS-003","startLine":146,"endLine":180},{"sourceId":"SRC-OBS-003","startLine":431,"endLine":439},{"sourceId":"SRC-OBS-003","startLine":897,"endLine":929}],
+      "inputs":"A row ID, required expected owner, and optional hard-delete flag defaulting false.",
+      "triggers":"Invoke DeleteObservationForProject through MCP admin profile or authenticated-wrapper HTTP delete.",
+      "preconditions":"Expected project resolves and the selected row exists and belongs to it inside the transaction.",
+      "outputs":"Soft deletion records timestamps; hard deletion removes the observation after recording a tombstone and returns success.",
+      "durableEffects":"Hard delete orphans related memory relations instead of cascading; enrolled projects queue deletion, while unenrolled projects supersede prior mutation state.",
+      "negativeControls":"Missing owner, missing ID, absent row, or owner mismatch rolls back row, relation, tombstone, and queue changes.",
+      "privacy":"Deletion ownership is a caller assertion; conditional HTTP authentication wrapping is distinct and does not prove tenant isolation.",
+      "assertion":"The guarded entry requires expected_project, while the separate DeleteObservation library variant remains unguarded.",
+      "transport":"MCP exposes delete only in the admin profile and queues writes; HTTP delete uses requireAuth and maps malformed owner to 400, mismatch to 409, and missing row to 404.",
+      "versionControl":"CORE-15a",
+      "criticalValues":{"guardedEntry":"DeleteObservationForProject","expectedOwnerRequired":true,"ownershipCheck":"inside_transaction","hardDefault":false,"soft":{"deletedAt":"now","updatedAt":"now"},"hard":{"tombstoneBeforePhysicalRemoval":true,"relations":"orphan_not_cascade"},"sync":{"enrolled":"delete_queue_row","unenrolled":"supersede_prior_mutation_state"},"rejectionBarrier":["row","relations","tombstone","queue"],"mcpProfile":"admin","http":{"authWrapper":"conditional_configuration","missingOwner":400,"mismatch":409,"missingRow":404},"unguardedLibraryVariant":"DeleteObservation"}
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+import {execFileSync} from "node:child_process";
+import {resolve,join} from "node:path";
+import {mkdtempSync,writeFileSync,appendFileSync,mkdirSync} from "node:fs";
+import {tmpdir} from "node:os";
+import type {Candidate} from "../src/core/types.js";
+import {addExecutedEvidence,executeEvidenceCommand,type ExecutedEvidence} from "../src/evidence/execution.js";
+import {EvidenceStore} from "../src/evidence/store.js";
+import {TddCycle} from "../src/test/tdd-cycle.js";
+import {issueSkillContext} from "../src/skills/context.js";
+import {executeIndependentReview} from "../src/evidence/review-execution.js";
+
+export function gitCandidate(id:string,repository?:string):Candidate{
+ const root=repository??mkdtempSync(join(tmpdir(),"asen-candidate-"));
+ if(!repository){
+  execFileSync("git",["init","-q",root]);
+  writeFileSync(join(root,"candidate.txt"),"ASEN candidate\n");
+  execFileSync("git",["-C",root,"add","candidate.txt"]);
+  execFileSync("git",["-C",root,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","-m","candidate"]);
+ }
+ const revision=execFileSync("git",["-C",root,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+ return {id,repository:root,revision,createdAt:"now"};
+}
+
+export function nextCandidateRevision(candidate:Candidate,label:string):Candidate{
+ appendFileSync(join(candidate.repository,"candidate.txt"),label+"\\n");
+ execFileSync("git",["-C",candidate.repository,"add","."]);
+ execFileSync("git",["-C",candidate.repository,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","-m",label]);
+ return {...candidate,revision:execFileSync("git",["-C",candidate.repository,"rev-parse","HEAD"],{encoding:"utf8"}).trim()};
+}
+
+export function commitCandidateFiles(candidate:Candidate,files:Readonly<Record<string,string>>,label="candidate files"):Candidate{
+ for(const [path,content] of Object.entries(files)){const target=join(candidate.repository,path);mkdirSync(resolve(target,".."),{recursive:true});writeFileSync(target,content);}
+ execFileSync("git",["-C",candidate.repository,"add","."]);
+ execFileSync("git",["-C",candidate.repository,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","-m",label]);
+ return {...candidate,revision:execFileSync("git",["-C",candidate.repository,"rev-parse","HEAD"],{encoding:"utf8"}).trim()};
+}
+
+export async function executionProof(candidate:Candidate,exitCode=0):Promise<ExecutedEvidence>{
+ return executeEvidenceCommand(candidate,[process.execPath,"-e",`process.exit(${exitCode})`],{cwd:candidate.repository,timeoutMs:10000});
+}
+export async function passingEvidence(store:EvidenceStore,candidate:Candidate,id:string,kind:"test"|"tdd"="test"):Promise<void>{
+ if(kind==="tdd"){
+  const cycle=new TddCycle(candidate,store,id);
+  cycle.record("RED",`${id}:red`,"executed fixture",await executionProof(candidate,1),candidate);
+  const green=nextCandidateRevision(candidate,`${id}-green`);cycle.record("GREEN",`${id}:green`,"executed fixture",await executionProof(green,0),green);
+  const refactor=nextCandidateRevision(green,`${id}-refactor`);cycle.record("REFACTOR",`${id}:refactor`,"executed fixture",await executionProof(refactor,0),refactor);
+  return;
+ }
+ const proof=await executionProof(candidate,0);
+ addExecutedEvidence(store,candidate,proof,{id,kind,summary:"executed test proof"});
+}
+export async function passingReview(store:EvidenceStore,candidate:Candidate,id:string):Promise<void>{
+ const reviewerId=`${id}:reviewer`,context=issueSkillContext(reviewerId,candidate.repository,candidate,{phase:"adversarial-review"});
+ const report={candidateRepository:candidate.repository,candidateId:candidate.id,candidateRevision:candidate.revision,reviewer:reviewerId,reviewerRole:"independent",findings:[]};
+ const proof=await executeIndependentReview(candidate,context,`${id}:author`,[process.execPath,"-e",`process.stdout.write(${JSON.stringify(JSON.stringify(report))})`]);
+ store.addReviewed(candidate,proof);
+}

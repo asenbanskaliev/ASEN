@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "evidenceLevel": "SOURCE_INSPECTED",
+  "authority": {
+    "commit": "e5c2277f856a5ee8739f297a006cabf6432ba77d",
+    "canonicalSource": "canonical-docs",
+    "direction": "DOCS canonical prose governs behavioral alignment, not byte equality",
+    "olderStoreAuthority": "15a2f78885d7ad8ced23b2d1d88383e9bb472c17 remains authoritative for older store contracts",
+    "canonicalProtocolBoundary": {"completeInclusive": [1366, 1471], "firstNonProtocolStructuralBoundary": 1473}
+  },
+  "sourceTupleFields": ["id", "path", "mode", "blob", "sha256", "bytes", "lf", "completeSpan", "immediateBoundaries"],
+  "sourceInvariants": {"encoding": "UTF-8", "bom": false, "cr": 0, "finalLf": true},
+  "sources": [
+    ["canonical-docs", "DOCS.md", "100644", "5654ae39474073aca691342330c1e294ce9fc65d", "c739d4d7f24b7b8e0406863ba305a692f1c03a58fd8bb0625d46e143e788cb5e", 156804, 1998, [1366, 1471], [1365, 1472]],
+    ["contributor-skill", "skills/memory-protocol/SKILL.md", "100644", "da961af2a4187ea1e958b28cd0d91549df1329d5", "79ecd2fc110e2aea42bcfae2204da16e8f431c0bf94ddc1d12c2576c59251e0b", 1547, 63, [1, 63], [null, null]],
+    ["setup-template", "internal/setup/setup.go", "100644", "1460c2020aba715aae19f9a62729312b6d59169c", "231a616f939f7c80dae9f7882bd2bdcd70e328444f14ff88649b70cc5622e82f", 65250, 1848, [151, 249], [150, 250]],
+    ["claude-skill", "plugin/claude-code/skills/memory/SKILL.md", "100644", "ba0beacdd1bd7ba1bd9cbb58846398584534896c", "e18bd65be4debf8ab07c10c2a55f7f981eb9283efde156ecca690c9b3c8e538b", 6798, 133, [1, 133], [null, null]],
+    ["codex-skill", "plugin/codex/skills/memory/SKILL.md", "100644", "11714cd96422bce98352d857edb411ecdab67093", "f323e402f1c25b0eb78494f2c8f784adf641a79cf4b2c8adfb0fbb0bb71fbc13", 6141, 127, [1, 127], [null, null]],
+    ["pi-runtime", "plugin/pi/index.ts", "100644", "6d5d0ed7847952c4554b5f5052aa3d425882d50d", "b55c8c76b36cc35884972d951b10ed477a08b9c939755215dc1b86e1d0e884fa", 114496, 2384, [73, 126], [72, 127]],
+    ["opencode-setup-source", "internal/setup/plugins/opencode/engram.ts", "100644", "c5098bcc6a42093cb83f1f320a47c692a1e93663", "e55ea696adb30f026e384348f5365c13a88e4329483b721e12db493b5491b999", 54660, 1218, [65, 146], [64, 147]],
+    ["opencode-generated-plugin", "plugin/opencode/engram.ts", "100644", "c5098bcc6a42093cb83f1f320a47c692a1e93663", "e55ea696adb30f026e384348f5365c13a88e4329483b721e12db493b5491b999", 54660, 1218, [65, 146], [64, 147]]
+  ],
+  "ruleTupleFields": ["id", "heading", "evidence", "contract"],
+  "rules": [
+    ["save", "WHEN TO SAVE (mandatory)", ["canonical-docs", 1372, 1396, 1371, 1397], "Call mem_save immediately after a completed bug fix, architecture/design decision, non-obvious discovery, configuration/environment setup, established pattern, or learned user preference/constraint. Use a short Verb + what title; type bugfix/decision/architecture/discovery/pattern/config/preference; project(default)/personal/global scope; optional stable topic_key; and structured What/Why/Where/Learned content."],
+    ["topic", "Topic update rules (mandatory)", ["canonical-docs", 1398, 1403, 1397, 1404], "Keep different topics separate; reuse topic_key as a topic evolves; suggest a key when unsure; use mem_update with an exact observation ID for corrections."],
+    ["delivery", "DELIVERY GUARANTEE", ["canonical-docs", 1405, 1407, 1404, 1408], "Finish memory bookkeeping before composing the completed-task reply, make that reply the final message, and still reply if memory work fails."],
+    ["recall", "WHEN TO SEARCH MEMORY", ["canonical-docs", 1409, 1420, 1408, 1421], "For recall, run mem_context then mem_search then mem_get_observation for a hit; also search proactively for possibly repeated work or unfamiliar referenced topics."],
+    ["session-close", "SESSION CLOSE PROTOCOL (mandatory)", ["canonical-docs", 1422, 1446, 1421, 1447], "Before ending, call mem_session_summary with Goal, Instructions, Discoveries, Accomplished, Next Steps, and Relevant Files."],
+    ["passive", "PASSIVE CAPTURE", ["canonical-docs", 1448, 1461, 1447, 1462], "End completed-task responses with numbered items under Key Learnings for automatic extraction. Canonical prose also directs mem_capture_passive for text containing a learning section; this is not a tool-availability claim."],
+    ["post-compaction", "AFTER COMPACTION", ["canonical-docs", 1463, 1471, 1462, 1473], "On compaction, persist the compacted summary with mem_session_summary, recover with mem_context, and only then continue; do not skip summary persistence because pre-compaction memory would be lost."]
+  ],
+  "companions": [
+    {"id": "contributor-skill", "classification": "adapted", "evidence": [[22, 36], [40, 44], [48, 57], [61, 63]], "additions": ["first-message proactive search"], "omissions": ["canonical title/type/scope formatting", "topic suggestion and exact-ID correction detail", "mem_get_observation", "session-summary Instructions", "passive capture"]},
+    {"id": "setup-template", "classification": "adapted", "evidence": [[155, 185], [187, 197], [199, 225], [227, 239], [241, 248]], "additions": ["mem_session_end after summary", "task-or-subtask passive capture wording", "direct passive capture safety net", "FIRST ACTION REQUIRED compaction trigger"], "omissions": []},
+    {"id": "claude-skill", "classification": "adapted", "evidence": [[11, 31], [33, 98], [100, 132]], "additions": ["tool inventory and fallback", "authoritative session binding", "expanded triggers", "first-message proactive search"], "omissions": ["passive Key Learnings behavior"]},
+    {"id": "codex-skill", "classification": "adapted", "evidence": [[11, 25], [27, 92], [94, 126]], "additions": ["tool inventory and fallback", "expanded triggers", "first-message proactive search"], "omissions": ["passive Key Learnings behavior"]},
+    {"id": "pi-runtime", "classification": "adapted", "evidence": [[73, 76], [78, 101], [103, 119], [121, 126]], "additions": ["authoritative Pi provider and tool-name guidance", "project-scoped search fallback", "project recovery for failed session summary", "outcome-specific compaction precedence"], "omissions": ["topic update and correction rules", "proactive search", "passive capture"]},
+    {"id": "opencode-pair", "classification": "generated-byte-copy", "evidence": [["opencode-setup-source", 65, 146], ["opencode-generated-plugin", 65, 146]], "additions": ["first-message proactive search", "session-only compaction context", "FIRST ACTION REQUIRED compaction trigger"], "additionEvidence": [{"addition": "FIRST ACTION REQUIRED compaction trigger", "sources": [["opencode-setup-source", 140, 140], ["opencode-generated-plugin", 140, 140]]}], "omissions": ["passive capture", "automatic post-compaction mem_context"]}
+  ],
+  "limitations": [
+    "Prose or source presence does not establish tool availability.",
+    "SOURCE_INSPECTED evidence does not establish prompt injection.",
+    "SOURCE_INSPECTED evidence does not establish lifecycle execution or persistence.",
+    "This contract does not establish host or runtime parity.",
+    "This contract does not establish FULL parity.",
+    "E3-09, E3-10, and E3-11 remain open.",
+    "Current-main protocol authority does not retarget older store contracts."
+  ]
+}
