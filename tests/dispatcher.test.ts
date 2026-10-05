@@ -4,6 +4,7 @@ import { Dispatcher, type AgentRunner } from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
+import {issueOddDecision} from "./helpers/odd-routing.js";import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";import {issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";
 
 const candidate={id:"candidate",repository:"r",revision:"sha",createdAt:"now"};
 function authorized(){
@@ -16,12 +17,13 @@ function authorized(){
 const sealedCodeChange=(taskId="a")=>issueSkillContext(taskId,"r",candidate,{phase:"apply",codeChange:true});
 const codeChangePaths=["skills/asen-phase-protocol/SKILL.md","skills/asen-work-unit/SKILL.md","skills/asen-safe-change/SKILL.md","skills/asen-apply/SKILL.md"];
 const writeRequest={id:"a",role:"worker" as const,prompt:"x",repository:"r",writeSurfaces:["src/a"],candidate,skillContext:sealedCodeChange(),skillPaths:codeChangePaths};
+function organicAdmission(taskId="a"){const decision=issueOddDecision({taskId,repository:"r",paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});buildOrchestrationPlan({taskId,repository:"r",prompt:"write",candidate},decision);const applicability=decideLifecycleApplicability(decision,{taskIdentity:taskId,repositoryIdentity:"r",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"organic",affectedSubsystems:["dispatcher"],expectedPaths:["src/a"],requiredArtifacts:[]});return issueOrganicWriterAdmission(applicability,["src/a"]);}
 
 test("dispatcher releases writer grant after completion", async()=>{
   const runner: AgentRunner={run:async r=>({id:r.id,ok:true,output:"ok"})};
   const d=new Dispatcher(runner,authorized());
-  await d.dispatch({...writeRequest,skillContext:sealedCodeChange()});
-  const second=await d.dispatch({...writeRequest,id:"b",skillContext:sealedCodeChange("b")});
+  await d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:organicAdmission()});
+  const second=await d.dispatch({...writeRequest,id:"b",skillContext:sealedCodeChange("b"),writerAdmission:organicAdmission("b")});
   assert.equal(second.ok,true);
 });
 
