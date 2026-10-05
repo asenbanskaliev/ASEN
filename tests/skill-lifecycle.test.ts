@@ -182,3 +182,9 @@ test("apply can advance to a direct Git child while signed recovery retains prio
  const path=join(stateDir,"lifecycle.json");await saveLifecycle(path,flow.state,recoveryKey);
  const recovered=await loadLifecycle(path,"git-task",{...initial,revision:green},recoveryKey);assert.equal(recovered.state.nextPhase,"verify");assert.equal(recovered.state.records[6]?.artifact.revision,red);
 });
+test("D5 preparar fase conserva selección de defecto en el snapshot",async()=>{
+ const flow=await createTestSkillLifecycle("d5",candidate,["README.md"],"not-applicable");
+ const context=issueSkillContext("d5:worker",candidate.repository,candidate,{phase:"context-init",defect:true}),paths=selectSkills(context).map(s=>s.path);
+ flow.preparePhase(context,paths);assert.equal(flow.state.pendingAuthority?.selection.defect,true);
+ assert.ok(flow.state.pendingAuthority?.skillPaths.includes("skills/asen-defect-workflow/SKILL.md"));
+});

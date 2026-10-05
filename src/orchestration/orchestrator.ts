@@ -8,7 +8,7 @@ import {
   type OddRouteDecision,
 } from "../flow/odd-routing.js";
 import {selectSkills,type SkillId,type SkillPhase,type SkillSelectionContext} from "../skills/registry.js";
-import {issueSkillContext} from "../skills/context.js";
+import {issueSkillContext,type IssuedSkillContext} from "../skills/context.js";
 
 export interface OrchestrationInput {
   taskId:string; repository:string; prompt:string; writeSurfaces?:string[];
@@ -19,7 +19,7 @@ export interface OrchestrationRouteEvidence {
   readonly decisionId:string; readonly route:OddRouteDecision["route"]; readonly risk:OddRouteDecision["risk"];
   readonly verification:OddRouteDecision["verification"];
 }
-export interface OrchestrationPlan { decision:OddRouteDecision; agents:AgentRequest[]; skills:SkillId[]; routeEvidence?:OrchestrationRouteEvidence; }
+export interface OrchestrationPlan { decision:OddRouteDecision; agents:AgentRequest[]; skills:SkillId[]; skillContext?:IssuedSkillContext; routeEvidence?:OrchestrationRouteEvidence; }
 export interface ClaimedOrchestrationRouteContext {
   readonly facts: OddDerivedFacts;
   readonly candidate: Readonly<{
@@ -37,6 +37,7 @@ const codeChangeKinds=new Set(["behavior","schema","security","configuration","m
 function deriveSkillSelectionContext(facts:OddDerivedFacts):SkillSelectionContext{
   const context:SkillSelectionContext={
     risk:facts.risk,
+    defect:facts.intent==="defect",
     codeChange:facts.writes.some(write=>codeChangeKinds.has(write.changeKind)),
     behaviorChange:facts.writes.some(write=>write.changeKind==="behavior"),
   };
@@ -107,7 +108,8 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRou
   const primary=contextFor("worker",requestedPhase,decision.verification==="independent");
   const skills=primary.skills;
   const agents:AgentRequest[]=[];
-  if(decision.route==="direct"||decision.route==="plan") return planned({decision,agents,skills});
+  if(decision.route==="direct") return planned({decision,agents,skills,skillContext:primary.context});
+  if(decision.route==="plan") return planned({decision,agents,skills});
   if(decision.route==="verify"){
     const verifier=contextFor("verify","verify",true);
     agents.push({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext:verifier.context,skillPaths:verifier.skillPaths});
