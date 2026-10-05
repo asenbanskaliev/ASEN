@@ -8,7 +8,7 @@ Use when scope, uncertainty, risk or task size requires a routing decision befor
 - Establish task, repository, scope and constraints from evidence.
 - Use the smallest safe route; narrative confidence never implies VERIFIED.
 - Keep write authority single-threaded unless surfaces are proven isolated.
-- Candidate-changing work invalidates stale evidence.
+- Candidate-changing work invalidates stale evidence.\n- ODD routing and SDD workflow selection are separate: substantial work does not imply SDD; SDD requires explicit genuine selection.\n- Read-only ODD routes create no artifact or write authority. Substantial routes carry full-memory-mirror, TODO and resume obligations until their owning runtime evidence exists.\n- A writer needs a genuine one-use admission; Skill selection alone is never write authority.
 ## Decision Gates
 | Situation | Action |
 | --- | --- |

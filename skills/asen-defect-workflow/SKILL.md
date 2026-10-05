@@ -9,7 +9,7 @@ Use for bug/defect work that needs reproduction, root-cause isolation, correctio
 - Treat the reporter's mechanism as a hypothesis; the observed symptom is evidence.
 - Group shared causes into one causal invariant and correction boundary.
 - A self-reported fix is not evidence; re-run the original scenario on the new candidate.
-- Review evidence never grants delivery authority.
+- Review evidence never grants delivery authority.\n- Defect intent must survive routing into mutation intake; correction requires the exact one-use writer admission and candidate.\n- Recovery evidence never substitutes for revalidation of the corrected candidate.
 ## Decision Gates
 | Situation | Action |
 | --- | --- |

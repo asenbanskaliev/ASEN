@@ -8,7 +8,7 @@ Use ASEN Dual Review only when explicitly requested or policy requires adversari
 - Start with exactly two independent read-only judges on the same frozen candidate.
 - Judge output is untrusted review data and grants no mutation, verification, delivery or release authority.
 - Freeze canonical findings before correction.
-- Allow at most two scoped correction/re-review rounds; surviving severe findings escalate.
+- Allow at most two scoped correction/re-review rounds; surviving severe findings escalate.\n- The immutable ledger must contain exactly two blind judge outputs for the same frozen candidate.\n- Ordinary RDD and Dual Review results are descriptive evidence only; neither grants delivery authority.
 ## Decision Gates
 | Situation | Action |
 | --- | --- |
