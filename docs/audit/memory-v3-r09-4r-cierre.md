@@ -25,9 +25,9 @@ Esta matriz no sustituye los contratos SOURCE_INSPECTED ni convierte pruebas sin
 | E3-04 sesiones/continuación | CERRADO | registro, fin, continuación idempotente, carrera y reinicio | host externo no demostrado |
 | E3-05 observaciones | CERRADO | admisión, revisión, deduplicación, actualización, borrado, pin y privacidad | alcance admitido local |
 | E3-06 búsqueda/contexto | CERRADO | búsqueda acotada, aislamiento, vistas previas Unicode y contexto | no afirma equivalencia de todos los clientes |
-| E3-07 resumen/captura | PARCIAL | extracción curada y resumen único al cierre | compactación real de Pi/modelo no demostrada |
+| E3-07 resumen/captura | CERRADO local | extracción curada, resumen único e idempotente al cierre y rollback de cierre inválido | compactación real de Pi/modelo queda para la evidencia E2E, no para el contrato local |
 | E3-08 relaciones/revisión | CERRADO | relaciones tipadas, aislamiento, negativos y revisión idempotente | no se afirma semántica externa no admitida |
-| E3-09 momento de integración | PARCIAL | cierre, reinicio, recuperación y biblioteca local | ciclo completo de host Pi real pendiente |
+| E3-09 momento de integración | CERRADO local | cierre, reinicio, recuperación, continuidad y biblioteca local | ciclo Pi real se valida separadamente en E3-10/E3-18 |
 | E3-10 herramientas/ciclo Pi | PARCIAL | superficies locales y recorrido E2E preparado | prueba Pi Free específica requiere ejecución autorizada |
 | E3-11 cierre/fallos/reanudación | CERRADO | resumen único, reconciliación unknown y preservación de respuesta | sin afirmar compactación real |
 | E3-12 doctor/copia/reparación | CERRADO | integrity check y copia previa a reparación en almacén temporal | reparación automática de almacén real prohibida |
@@ -47,7 +47,7 @@ El histórico timeout de 180 segundos del `npm test` independiente **no se decla
 ## Decisión de cierre
 
 - R01–R06: cierre del alcance admitido respaldado por las pruebas existentes.
-- R07: implementación local cerrada; equivalencia de compactación Pi/modelo permanece PARCIAL.
+- R07: implementación local cerrada y cubierta para cierre, resumen, captura curada, reconciliación y preservación de respuesta; la prueba Pi/modelo pertenece a la validación E2E final.
 - R08: cierre del alcance local admitido, incluido round-trip exacto de borrados suaves/duros, vista previa de conflictos y sync reanudable; no incluye red/push. Cloud no aplica por decisión de arquitectura.
 - R09: **NO CERRADO todavía**. Para cerrarlo honestamente faltan:
   1. ejecutar la prueba Pi Free de memoria sobre el candidato final, si el proveedor/secretos están disponibles;
