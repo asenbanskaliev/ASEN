@@ -41,3 +41,18 @@ test("vista previa detecta conflicto de borrado antes de aplicar",()=>{
  const before=target.exportProject("p");const preview=previewMemoryImport(target,data);assert.deepEqual(preview.conflicts,["x"]);assert.equal(preview.deletions,1);assert.throws(()=>assertMemoryImportSafe(preview),/refused/);assert.deepEqual(target.exportProject("p"),before);
  source.close();target.close();
 });
+
+test("round-trip conserva por separado borrado suave y duro",()=>{
+ const source=new SqliteMemoryStore(":memory:");source.registerSession("p","s");
+ source.save({id:"soft",projectId:"p",sessionId:"s",kind:"decision",content:"contenido suave",createdAt:"1"});
+ source.save({id:"hard",projectId:"p",sessionId:"s",kind:"decision",content:"contenido duro",createdAt:"2"});
+ source.deleteObservation("soft","p");source.deleteObservation("hard","p",true);
+ const exported=source.exportProject("p");assert.deepEqual(exported.deletions?.map(x=>[x.id,x.mode]),[["hard","hard"],["soft","soft"]]);assert.equal(exported.deletions?.find(x=>x.id==="soft")?.item?.content,"contenido suave");assert.equal(exported.deletions?.find(x=>x.id==="hard")?.item,undefined);
+ const target=new SqliteMemoryStore(":memory:");target.importProject(exported);assert.deepEqual(target.exportProject("p"),exported);
+ source.close();target.close();
+});
+test("importación rechaza marcador suave manipulado sin efectos",()=>{
+ const target=new SqliteMemoryStore(":memory:");target.registerSession("p","s");const before=target.exportProject("p");
+ const invalid={version:1 as const,projectId:"p",sessions:[{projectId:"p",sessionId:"s",rootSessionId:"s",status:"live" as const}],observations:[],relations:[],summaries:[],deletions:[{id:"x",projectId:"p",deletedAt:"1",mode:"soft" as const,item:{id:"x",projectId:"otro",sessionId:"s",kind:"decision" as const,content:"no",createdAt:"1"}}]};
+ assert.throws(()=>target.importProject(invalid),/Invalid memory import deletion/);assert.deepEqual(target.exportProject("p"),before);target.close();
+});
