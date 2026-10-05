@@ -17,6 +17,10 @@ import {bindRddDefectEvidence,type RddDefectBindingInput} from "../src/defects/r
 import {parseRddPolicyBytes} from "../src/defects/rdd-policy-source.js";
 import {authorizeRepositoryOperation,type RepositoryOperationBinding} from "../src/repository/operation-policy.js";
 import {executeNodePassingObservation,executeNodeTestObservation,type TestObservation} from "../src/test/tdd-observation.js";
+import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
+import {issueOddDecision} from "./helpers/odd-routing.js";
+import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";
+import {issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";
 
 const repositoryUrl="https://github.example/acme/app",issueUrl=`${repositoryUrl}/issues/17`,testPath="reproduction.test.mjs";
 const policyBytes=[...new TextEncoder().encode('{"schemaVersion":1,"reviewMode":"enabled","issueApproval":{"requiredLabels":["kind:defect","status:approved"]}}')];
@@ -214,7 +218,7 @@ test("D4 rechaza clones y registros firmados con deriva semántica",async(t:Test
 test("D5 exige intake genuino para autorización y Dispatcher; recuperación conserva el gate",async(t:TestContext)=>{
  const v=await fixture(t),store=new EvidenceStore();
  for(const kind of ["work-unit","scope","rollback"] as const)store.add(v.candidate,{id:kind,kind,status:"pass",summary:"acotada",createdAt:"ahora"});
- const context=issueSkillContext("d5-worker",v.repository,v.candidate,{phase:"apply",defect:true}),skills=selectSkills(context),request={id:"d5-worker",role:"worker" as const,repository:v.repository,candidate:v.candidate,skillContext:context,skillPaths:skills.map(s=>s.path),writeSurfaces:["src/"],prompt:"corregir"};
+ const context=issueSkillContext("d5-worker",v.repository,v.candidate,{phase:"apply",defect:true}),skills=selectSkills(context),decision=issueOddDecision({taskId:"d5-worker",repository:v.repository,paths:["src/"],writes:[{path:"src/",changeKind:"behavior"}]}),plan=buildOrchestrationPlan({taskId:"d5-worker",repository:v.repository,prompt:"corregir",candidate:v.candidate},decision),applicability=decideLifecycleApplicability(plan.decision,{taskIdentity:"d5-worker",repositoryIdentity:v.repository,candidate:{id:v.candidate.id,repository:v.candidate.repository,revision:v.candidate.revision},explicitMode:"unspecified",affectedSubsystems:["defect"],expectedPaths:["src/"],requiredArtifacts:[]}),writerAdmission=issueOrganicWriterAdmission(applicability,["src/"]),request={id:"d5-worker",role:"worker" as const,repository:v.repository,candidate:v.candidate,skillContext:context,skillPaths:skills.map(s=>s.path),writeSurfaces:["src/"],writerAdmission,prompt:"corregir"};
  let llamadas=0;const dispatcher=new Dispatcher({run:async r=>{llamadas++;return{id:r.id,ok:true,output:"observado"};}},store);
  assert.throws(()=>authorizeImplementation(v.candidate,context,store),/defect-intake/);
  await assert.rejects(()=>dispatcher.dispatch(request),/defect-intake/);assert.equal(llamadas,0);
