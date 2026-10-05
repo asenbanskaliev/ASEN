@@ -7,6 +7,7 @@ import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
 import {matchesIssuedSkillContext} from "../skills/context.js";
 import {selectSkills} from "../skills/registry.js";
 import {authorizePiWriteGrant} from "../lifecycle/skill-lifecycle.js";
+import {consumeRunnerWriteReceiver} from "../lifecycle/applicability.js";
 
 export interface PiProcessOptions{
  command?:string;
@@ -78,7 +79,8 @@ export class PiProcessRunner implements AgentRunner{
    return Promise.resolve({id:request.id,ok:false,output:"pi skill and tool arguments must be issued by ASEN"});
   if(request.writeSurfaces?.length&&request.role!=="worker")return Promise.resolve({id:request.id,ok:false,output:"Only a worker may request write tools"});
   const writer=request.role==="worker"&&!!request.writeSurfaces?.length&&!!request.candidate&&!!request.skillContext;
-  if(writer&&!authorizePiWriteGrant(request))return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an active ASEN lifecycle grant"});
+  if(writer&&!consumeRunnerWriteReceiver(request.runnerWriteReceiver,request.id))return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
+  if(writer&&request.expectedPhase&&!authorizePiWriteGrant(request))return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an active ASEN lifecycle grant"});
   const providerExtension=this.options.providerExtension;
   if(providerExtension&&providerExtension!=="npm:pi-free")return Promise.resolve({id:request.id,ok:false,output:"untrusted Pi provider extension"});
   const candidatePolicy=resolvePath(request.repository,"extensions/authority.ts");

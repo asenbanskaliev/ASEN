@@ -41,6 +41,7 @@ export interface TddObligation {
 const attempted = new WeakSet<object>();
 const issued = new WeakSet<object>();
 const claimed = new WeakSet<object>();
+const writerAdmissions=new WeakMap<object,{task:string;repository:string;candidateId:string;revision:string;surfaces:readonly string[];used:boolean}>(),runnerReceivers=new WeakMap<object,{requestId:string;used:boolean}>();
 const obligations = new WeakMap<object, TddObligation>();
 const defectIntents=new WeakSet<object>();
 const issuedObligations = new WeakSet<object>();
@@ -193,3 +194,18 @@ export function claimLifecycleApplicability(value: unknown): asserts value is Li
 export function hasOriginalDefectIntent(value:unknown):boolean{
  return typeof value==="object"&&value!==null&&issued.has(value)&&defectIntents.has(value);
 }
+
+/** Issues exact one-use writer admission only from an already claimed genuine applicability. */
+export function issueWriterAdmission(applicability:LifecycleApplicability,surfaces:readonly string[]):object{
+ if(!claimed.has(applicability))throw new Error("Writer admission requires claimed genuine applicability");
+ if(!Array.isArray(surfaces)||!surfaces.length||surfaces.some(v=>typeof v!=="string"||!v||v.includes("..")))throw new Error("Writer admission requires bounded surfaces");
+ const token=Object.freeze({});writerAdmissions.set(token,{task:applicability.taskIdentity,repository:applicability.repositoryIdentity,candidateId:applicability.candidate.id,revision:applicability.candidate.revision,surfaces:Object.freeze([...surfaces]),used:false});return token;
+}
+/** Dispatcher-only consumption by exact request facts; structural clones and replay fail closed. */
+export function consumeWriterAdmission(token:unknown,request:{id:string;repository:string;candidate?:Readonly<{id:string;revision:string}>;writeSurfaces?:string[]}):object|undefined{
+ const a=typeof token==="object"&&token!==null?writerAdmissions.get(token):undefined;if(!a||a.used||!request.candidate||!request.writeSurfaces)return undefined;
+ if(a.task!==request.id.replace(/:worker$/u,"")&&a.task!==request.id||a.repository!==request.repository||a.candidateId!==request.candidate.id||a.revision!==request.candidate.revision||a.surfaces.length!==request.writeSurfaces.length||a.surfaces.some((v,i)=>v!==request.writeSurfaces![i]))return undefined;
+ a.used=true;const receiver=Object.freeze({});runnerReceivers.set(receiver,{requestId:request.id,used:false});return receiver;
+}
+/** Exact-call runner receiver: one use, unforgeable by structure. */
+export function consumeRunnerWriteReceiver(receiver:unknown,requestId:string):boolean{const r=typeof receiver==="object"&&receiver!==null?runnerReceivers.get(receiver):undefined;if(!r||r.used||r.requestId!==requestId)return false;r.used=true;return true;}

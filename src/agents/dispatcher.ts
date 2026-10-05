@@ -5,8 +5,9 @@ import {selectSkills} from "../skills/registry.js";
 import {consumeIssuedWorkerContext,isIssuedSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {verifySkillEvidence} from "../verify/verifier.js";
 import {consumePhaseGrant,retirePhaseGrant} from "../lifecycle/skill-lifecycle.js";
+import {consumeWriterAdmission} from "../lifecycle/applicability.js";
 
-export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; }
+export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; writerAdmission?:object; runnerWriteReceiver?:object; }
 export interface AgentArtifactProof { readonly requestId:string; readonly role:AgentRequest["role"]; readonly repository:string; readonly candidateId?:string; readonly candidateRevision?:string; readonly skillPaths:readonly string[]; }
 export interface AgentResult { id:string; ok:boolean; output:string; artifactProof?:AgentArtifactProof; }
 export interface AgentRunner { run(request:AgentRequest):Promise<AgentResult>; }
@@ -31,6 +32,7 @@ export class Dispatcher {
     if(!request.skillPaths||request.skillPaths.length!==expectedPaths.length||request.skillPaths.some((path,index)=>path!==expectedPaths[index])) throw new Error("Delegated skill paths do not match issued context");
    }
    if(request.writeSurfaces){
+    const receiver=consumeWriterAdmission(request.writerAdmission,request);if(!receiver)throw new Error("Write authority requires unused exact writer admission");request.runnerWriteReceiver=receiver;
     if(!request.candidate) throw new Error("Write authority requires an exact candidate");
     if(request.candidate.repository!==request.repository) throw new Error("Write candidate repository mismatch");
     if(!request.skillContext) throw new Error("Write authority requires skill selection context");
