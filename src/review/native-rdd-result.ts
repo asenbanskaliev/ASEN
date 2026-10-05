@@ -19,7 +19,7 @@ export function bindNativeRddResult(handle:unknown,value:unknown):BoundOrdinaryR
  if(typeof handle!=="object"||handle===null||!live.has(handle)||used.has(handle))throw new Error("RDD observation handle is not live");
  used.add(handle);const checkout=live.get(handle)!,result=exact(value),q=checkout.request;
  if(result.requestId!==q.requestId||result.sessionId!==q.participants.sessionId||result.reviewerId!==q.participants.reviewerId||result.revision!==checkout.revision||result.treeIdentity!==checkout.treeIdentity||result.parentIdentity!==checkout.parentIdentity)throw new Error("RDD result does not bind the exact review candidate");
- const payload={...result,status:"observed" as const};return Object.freeze({...payload,resultId:createHash("sha256").update("asen.native-rdd-result.v1\0").update(JSON.stringify(payload)).digest("hex")});
+ const payload={...result,status:"observed" as const},bound=Object.freeze({...payload,resultId:createHash("sha256").update("asen.native-rdd-result.v1\0").update(JSON.stringify(payload)).digest("hex")});issuedResults.add(bound);return bound;
 }
 
 /** One-use provenance handoff to correction/review controllers. */
