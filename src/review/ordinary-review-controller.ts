@@ -12,7 +12,7 @@ export interface OrdinaryReviewRequest{
  readonly schemaVersion:1;readonly requestId:string;readonly status:"prepared";
  readonly candidate:WorkUnitReviewCandidate;readonly participants:Readonly<OrdinaryReviewInput>;
 }
-const issued=new WeakSet<object>(),consumed=new WeakSet<object>();
+const issued=new WeakSet<object>(),consumed=new WeakSet<object>(),issuedCheckouts=new WeakSet<object>(),consumedCheckouts=new WeakSet<object>();
 /** Preparación descriptiva: IDs declarados no autentican al usuario o al revisor. */
 export function prepareOrdinaryReview(value:WorkUnitReviewCandidate,input:OrdinaryReviewInput):OrdinaryReviewRequest{
  const candidate=claimWorkUnitReviewCandidate(value);
@@ -56,5 +56,12 @@ export function bindOrdinaryReviewCheckout(value:OrdinaryReviewRequest,sessionId
   assertCheckout();
  }catch{throw new Error("No se pudo verificar el checkout exacto de revisión");}
  if(observed.length!==2||observed[0]!==request.candidate.treeIdentity||observed[1]!==request.candidate.completedWorkUnit.commit.parentIdentity)throw new Error("Árbol o padre de revisión no coincide");
- return Object.freeze({request,repository:root,revision:request.candidate.revision,treeIdentity:observed[0]!,parentIdentity:observed[1]!});
+ const checkout=Object.freeze({request,repository:root,revision:request.candidate.revision,treeIdentity:observed[0]!,parentIdentity:observed[1]!});issuedCheckouts.add(checkout);return checkout;
+}
+
+/** Consumes genuine checkout provenance for an external review transaction. */
+export function claimOrdinaryReviewCheckout(value:unknown):OrdinaryReviewCheckout{
+ if(typeof value!=="object"||value===null||!issuedCheckouts.has(value))throw new Error("Se requiere checkout de revisión genuino");
+ if(consumedCheckouts.has(value))throw new Error("El checkout de revisión ya fue consumido");
+ consumedCheckouts.add(value);return value as OrdinaryReviewCheckout;
 }
