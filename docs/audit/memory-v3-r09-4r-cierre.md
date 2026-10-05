@@ -3,7 +3,7 @@
 Fecha: 2026-10-05
 Rama: `feat/engram-v3-memory-parity`
 PR de verificación: #31
-Base de referencia: core `15a2f78885d7ad8ced23b2d1d88383e9bb472c17`; Pi `ce51810bd351f397e49728d6a5be81679cf18554`.
+Base de referencia: contratos de memoria v3 fijados en `registry/parity/` y versión de Pi fijada por el proyecto.
 
 ## Regla de cierre
 
