@@ -103,3 +103,9 @@ test("D3 rejects journey drift, unsafe rollback, and over-budget plans after con
   const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);mutate(input);assert.throws(()=>bindRddDefectEvidence(evidence,input),/journey|rollback|390|forecast/i);assert.throws(()=>bindRddDefectEvidence(evidence,d3Input(value)),/consumed/i);
  }
 });
+
+test("D3 requires the complete invariant set and burns genuine evidence on rejection",async(t:TestContext)=>{
+ for(const missing of ["approved-issue","current-main","deterministic-reproduction"]){
+  const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input as {invariantIds:string[]}).invariantIds=input.invariantIds.filter(id=>id!==missing);assert.throws(()=>bindRddDefectEvidence(evidence,input),/required invariant/i);assert.throws(()=>bindRddDefectEvidence(evidence,d3Input(value)),/consumed/i);
+ }
+});
