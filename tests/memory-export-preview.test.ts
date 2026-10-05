@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";import test from "node:test";import {SqliteMemoryStore} from "../src/memory/sqlite-store.js";import {assertMemoryImportSafe,previewMemoryImport} from "../src/lifecycle/doctor.js";
 test("export contains admitted observations relations and summaries and preview does not mutate",()=>{
  const s=new SqliteMemoryStore(":memory:");s.registerSession("p","s1");s.save({id:"a",projectId:"p",sessionId:"s1",kind:"decision",content:"alpha",createdAt:"2026-01-01T00:00:00Z"});s.registerSession("p","s2");s.save({id:"b",projectId:"p",sessionId:"s2",kind:"decision",content:"beta",createdAt:"2026-01-01T00:00:01Z"});s.addRelation({id:"r",sourceId:"a",targetId:"b",relation:"related",expectedProject:"p"});s.endSession("p","s1");s.saveSessionSummary("p","s1","summary");
- const data=s.exportProject("p");assert.deepEqual([data.observations.length,data.relations.length,data.summaries.length],[2,1,1]);const preview=previewMemoryImport(s,data);assert.deepEqual(preview.conflicts,[]);assert.doesNotThrow(()=>assertMemoryImportSafe(preview));assert.equal(s.exportProject("p").observations.length,2);s.close();
+ const data=s.exportProject("p");assert.deepEqual([data.observations.length,data.relations.length,data.summaries.length],[2,1,1]);const preview=previewMemoryImport(s,data);assert.equal(preview.deletions,0);assert.deepEqual(preview.conflicts,[]);assert.doesNotThrow(()=>assertMemoryImportSafe(preview));assert.equal(s.exportProject("p").observations.length,2);s.close();
 });
 test("validated export imports losslessly and repeated import is idempotent",()=>{
  const source=new SqliteMemoryStore(":memory:");source.registerSession("p","s1");source.registerSession("p","s2");
@@ -32,5 +32,12 @@ test("exportación e importación conservan borrados sin reactivar memoria",()=>
  const exported=source.exportProject("p");assert.deepEqual(exported.deletions?.map(x=>x.id),["hard","soft"]);assert.equal(exported.observations.length,0);
  const target=new SqliteMemoryStore(":memory:");target.importProject(exported);
  assert.equal(target.get("soft"),undefined);assert.equal(target.get("hard"),undefined);assert.deepEqual(target.exportProject("p"),exported);
+ source.close();target.close();
+});
+
+test("vista previa detecta conflicto de borrado antes de aplicar",()=>{
+ const source=new SqliteMemoryStore(":memory:");source.registerSession("p","s");source.save({id:"x",projectId:"p",sessionId:"s",kind:"decision",content:"origen",createdAt:"1"});source.deleteObservation("x","p",true);const data=source.exportProject("p");
+ const target=new SqliteMemoryStore(":memory:");target.registerSession("p","t");target.save({id:"x",projectId:"p",sessionId:"t",kind:"decision",content:"destino activo",createdAt:"2"});
+ const before=target.exportProject("p");const preview=previewMemoryImport(target,data);assert.deepEqual(preview.conflicts,["x"]);assert.equal(preview.deletions,1);assert.throws(()=>assertMemoryImportSafe(preview),/refused/);assert.deepEqual(target.exportProject("p"),before);
  source.close();target.close();
 });
