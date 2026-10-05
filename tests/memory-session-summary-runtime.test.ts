@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";import test from "node:test";import {SqliteMemoryStore} from "../src/memory/sqlite-store.js";
+import assert from "node:assert/strict";import test from "node:test";import {SqliteMemoryStore} from "../src/memory/sqlite-store.js";import {extractKeyLearnings} from "../src/memory/passive-capture.js";
 test("ended session persists exactly one durable summary",()=>{
  const s=new SqliteMemoryStore(":memory:");s.registerSession("p","s");assert.throws(()=>s.saveSessionSummary("p","s","done"),/ended/);s.endSession("p","s");
  const a=s.saveSessionSummary("p","s","done");const b=s.saveSessionSummary("p","s","done");assert.equal(a.createdAt,b.createdAt);assert.equal(s.getSessionSummary("p","s")?.content,"done");
@@ -18,3 +18,4 @@ test("invalid close summary leaves session live",()=>{
  s.save({id:"still-live",projectId:"p",sessionId:"rollback",kind:"decision",content:"write after refused close",createdAt:"2026-01-01T00:00:00Z"});
  assert.equal(s.get("still-live")?.content,"write after refused close");s.close();
 });
+\ntest("extracción curada usa el último bloque válido y no captura texto ajeno",()=>{const text=["## Aprendizajes","- Este aprendizaje anterior contiene suficientes palabras para guardarse correctamente.","## Resultado","ok","## Aprendizajes Clave","1. La decisión final debe conservarse entre sesiones sin duplicar información.","2. Los datos privados nunca deben convertirse en aprendizaje persistente automáticamente."].join("\\n");assert.deepEqual(extractKeyLearnings(text),["La decisión final debe conservarse entre sesiones sin duplicar información.","Los datos privados nunca deben convertirse en aprendizaje persistente automáticamente."]);assert.deepEqual(extractKeyLearnings("## Aprendizajes\\n- corto\\n## Otro\\n- Este texto largo no pertenece a aprendizajes y no debe capturarse."),[]);});\n
