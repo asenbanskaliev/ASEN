@@ -39,7 +39,7 @@ test("dispatcher blocks writes when mandatory mutation evidence is missing",asyn
  const evidence=new EvidenceStore();
  evidence.add(candidate,{id:"work-unit",kind:"work-unit",status:"pass",summary:"bounded",createdAt:"now"});
  const d=new Dispatcher(runner,evidence);
- await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange()}),/asen-safe-change.*scope evidence/);
+ await assert.rejects(()=>d.dispatch({...writeRequest,writerAdmission:organicAdmission(),skillContext:sealedCodeChange()}),/asen-safe-change.*scope evidence/);
  assert.equal(ran,false);
 });
 
@@ -49,7 +49,7 @@ test("evidence from another revision cannot authorize writes",async()=>{
  evidence.add(old,{id:"old-scope",kind:"scope",status:"pass",summary:"old",createdAt:"now"});
  evidence.add(old,{id:"old-rollback",kind:"rollback",status:"pass",summary:"old",createdAt:"now"});
  const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
- await assert.rejects(()=>new Dispatcher(runner,evidence).dispatch({...writeRequest,skillContext:sealedCodeChange()}),/work-unit evidence/);
+ await assert.rejects(()=>new Dispatcher(runner,evidence).dispatch({...writeRequest,writerAdmission:organicAdmission(),skillContext:sealedCodeChange()}),/work-unit evidence/);
 });
 
 test("non-worker agents cannot receive write authority",async()=>{
@@ -66,7 +66,7 @@ test("caller cannot omit mandatory safe-change skill from a code mutation",async
  evidence.add(candidate,{id:"only-unit",kind:"work-unit",status:"pass",summary:"bounded",createdAt:"now"});
  const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
  await assert.rejects(
-  ()=>new Dispatcher(runner,evidence).dispatch({...writeRequest,skillContext:sealedCodeChange()}),
+  ()=>new Dispatcher(runner,evidence).dispatch({...writeRequest,writerAdmission:organicAdmission(),skillContext:sealedCodeChange()}),
   /asen-safe-change.*scope evidence/
  );
 });
@@ -75,7 +75,7 @@ test("caller cannot omit mandatory safe-change skill from a code mutation",async
 test("dispatcher rejects mutable skill context even when its values look valid",async()=>{
  const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
  await assert.rejects(
-  ()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,skillContext:{codeChange:true} as unknown as import("../src/skills/context.js").IssuedSkillContext}),
+  ()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,writerAdmission:organicAdmission(),skillContext:{codeChange:true} as unknown as import("../src/skills/context.js").IssuedSkillContext}),
   /ASEN-issued skill selection context/
  );
 });
@@ -85,7 +85,7 @@ test("dispatcher rejects a forged frozen skill context",async()=>{
  const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
  const forged=Object.freeze({codeChange:false});
  await assert.rejects(
-  ()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,skillContext:forged as unknown as import("../src/skills/context.js").IssuedSkillContext}),
+  ()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,writerAdmission:organicAdmission(),skillContext:forged as unknown as import("../src/skills/context.js").IssuedSkillContext}),
   /ASEN-issued skill selection context/
  );
 });
@@ -99,7 +99,7 @@ test("dispatcher rejects forged skill paths for an issued writer context",async(
   ["skills/asen-safe-change/SKILL.md","skills/asen-work-unit/SKILL.md"],
   ["skills/asen-work-unit/SKILL.md","skills/asen-safe-change/SKILL.md","skills/asen-safe-change/SKILL.md"]
  ]){
-  await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),skillPaths}),/skill paths do not match issued context/);
+  await assert.rejects(()=>d.dispatch({...writeRequest,writerAdmission:organicAdmission(),skillContext:sealedCodeChange(),skillPaths}),/skill paths do not match issued context/);
  }
 });
 
