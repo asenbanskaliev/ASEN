@@ -7,7 +7,7 @@ import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
 import {matchesIssuedSkillContext} from "../skills/context.js";
 import {selectSkills} from "../skills/registry.js";
 import {authorizePiWriteGrant} from "../lifecycle/skill-lifecycle.js";
-import {consumeRunnerWriteReceiver} from "../lifecycle/applicability.js";
+import {consumeRunnerWriteReceiver} from "../lifecycle/skill-lifecycle.js";
 
 export interface PiProcessOptions{
  command?:string;

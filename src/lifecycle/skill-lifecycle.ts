@@ -9,7 +9,7 @@ import {isIssuedAgentArtifactProof} from "../agents/pi-artifact-runner.js";
 import {EvidenceStore} from "../evidence/store.js";
 import {authorizeRelease,authorizeVerified} from "../verify/verifier.js";
 import {assertDirectGitParent} from "../evidence/git-lineage.js";
-import {claimLifecycleApplicability,issueWriterAdmission,tddObligationFor,hasOriginalDefectIntent,workflowSelectionDescriptionForApplicability,type LifecycleApplicability,type TddObligation} from "./applicability.js";
+import {claimLifecycleApplicability,tddObligationFor,hasOriginalDefectIntent,workflowSelectionDescriptionForApplicability,type LifecycleApplicability,type TddObligation} from "./applicability.js";
 import type {WorkflowSelectionDescription} from "./workflow-selection.js";
 import {claimStrictTddCompletion,type StrictTddCompletion} from "../test/strict-tdd-cycle.js";
 import {claimNonTddAlternativeResult,type NonTddAlternativeResult} from "../test/non-tdd-alternative.js";
@@ -45,7 +45,11 @@ const lifecycleDescriptions=new WeakMap<SkillLifecycle,WorkflowSelectionDescript
 const snapshotDescriptions=new WeakMap<object,WorkflowSelectionDescription>();
 const snapshotObligations=new WeakMap<object,TddObligation>();
 const lifecycleDefects=new WeakSet<SkillLifecycle>(),snapshotDefects=new WeakSet<object>();
-const lifecycleApplicabilities=new WeakMap<SkillLifecycle,LifecycleApplicability>();
+const writerAdmissions=new WeakMap<object,{task:string;repository:string;candidateId:string;revision:string;surfaces:readonly string[];used:boolean}>(),runnerReceivers=new WeakMap<object,{requestId:string;used:boolean}>();
+function writerAdmission(task:string,candidate:Candidate,surfaces:readonly string[]):object{if(!surfaces.length)throw new Error("Writer admission requires bounded surfaces");const token=Object.freeze({});writerAdmissions.set(token,{task,repository:candidate.repository,candidateId:candidate.id,revision:candidate.revision,surfaces:Object.freeze([...surfaces]),used:false});return token;}
+export function issueOrganicWriterAdmission(applicability:LifecycleApplicability,surfaces:readonly string[]):object{if(applicability.outcome!=="organic")throw new Error("Organic writer admission requires organic applicability");claimLifecycleApplicability(applicability);return writerAdmission(applicability.taskIdentity,{...applicability.candidate,createdAt:"organic-applicability"},surfaces);}
+export function consumeWriterAdmission(token:unknown,request:AgentRequest):object|undefined{const a=typeof token==="object"&&token!==null?writerAdmissions.get(token):undefined;if(!a||a.used||!request.candidate||!request.writeSurfaces)return undefined;const task=request.id.replace(/:worker$/u,"");if(a.task!==task&&a.task!==request.id||a.repository!==request.repository||a.candidateId!==request.candidate.id||a.revision!==request.candidate.revision||a.surfaces.length!==request.writeSurfaces.length||a.surfaces.some((v,i)=>v!==request.writeSurfaces![i]))return undefined;a.used=true;const receiver=Object.freeze({});runnerReceivers.set(receiver,{requestId:request.id,used:false});return receiver;}
+export function consumeRunnerWriteReceiver(receiver:unknown,requestId:string):boolean{const r=typeof receiver==="object"&&receiver!==null?runnerReceivers.get(receiver):undefined;if(!r||r.used||r.requestId!==requestId)return false;r.used=true;return true;}
 type CompletionAdmission={lifecycle:SkillLifecycle;repository:string;candidateId:string;revision:string;record:TddCompletionRecord;used:boolean};
 const completionAdmissions=new WeakMap<object,CompletionAdmission>();
 function issueCompletionAdmission(lifecycle:SkillLifecycle,snapshot:LifecycleSnapshot):Readonly<Record<string,never>>{
@@ -154,7 +158,7 @@ export class SkillLifecycle{
   if(input.phase==="apply"&&(!input.writeSurfaces||!input.writeSurfaces.length))throw new Error("Lifecycle apply requires bounded write surfaces");
   if(input.phase!=="apply"&&input.writeSurfaces?.length)throw new Error("Lifecycle write authority only available in apply");
   const request:AgentRequest={id:`${s.taskId}:${role}`,role,expectedPhase:input.phase,prompt:input.prompt,repository:s.candidate.repository,candidate:s.candidate,skillContext:input.context,skillPaths:input.skillPaths,
-   ...(input.phase==="apply"?{writeSurfaces:input.writeSurfaces!,writerAdmission:issueWriterAdmission(lifecycleApplicabilities.get(this)!,input.writeSurfaces!)}:{})};
+   ...(input.phase==="apply"?{writeSurfaces:input.writeSurfaces!,writerAdmission:writerAdmission(s.taskId,s.candidate,input.writeSurfaces!)}:{})};
   // Validate authority before invoking the agent, then validate its result before advancing.
   this.#assertAuthority(input.phase,role,input.context,input.skillPaths);
   request.phaseGrant=issuePhaseGrant(request.id,s.candidate,input.phase);
@@ -204,7 +208,7 @@ export function createSkillLifecycle(applicability:LifecycleApplicability):Skill
  if(applicability.outcome!=="structured")throw new Error("SkillLifecycle requires structured applicability");
  const description=workflowSelectionDescriptionForApplicability(applicability);
  const candidate:Candidate={...applicability.candidate,createdAt:"lifecycle-applicability"};
- const lifecycle=constructLifecycle(applicability.taskIdentity,candidate,undefined,obligation,description,hasOriginalDefectIntent(applicability));lifecycleApplicabilities.set(lifecycle,applicability);return lifecycle;
+ return constructLifecycle(applicability.taskIdentity,candidate,undefined,obligation,description,hasOriginalDefectIntent(applicability));
 }
 /** Reads private command provenance by exact snapshot identity without inspecting caller data. */
 export function workflowSelectionDescriptionForSnapshot(value:unknown):WorkflowSelectionDescription|undefined{return typeof value==="object"&&value!==null?snapshotDescriptions.get(value):undefined;}
