@@ -1,3 +1,4 @@
+import {prepareOrdinaryReview,claimOrdinaryReviewRequest} from "../src/review/ordinary-review-controller.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { planWorkUnitBoundary, type ReadyWorkUnitBoundary, type WorkUnitBoundaryInput } from "../src/delivery/work-unit-policy.js";
@@ -130,4 +131,34 @@ test("exposes no verdict, readiness, authority, publication, merge, or mutation 
   for (const name of ["verdict", "approved", "ready", "readiness", "authority", "authorityToken", "publication", "merge", "mutation", "callback", "adapter", "git", "network"]) {
     assert.equal(name in result, false);
   }
+});
+test("E rechaza Proxy del candidato antes de ejecutar traps y consume el completed",()=>{
+ const record=completed(),input=candidate(record);let llamadas=0;
+ const proxy=new Proxy(input,{getPrototypeOf(){llamadas++;return Object.prototype;}});
+ assert.throws(()=>recordWorkUnitReviewCandidate(record,proxy));assert.equal(llamadas,0);
+ assert.throws(()=>recordWorkUnitReviewCandidate(record,input),/claimed/);
+});
+test("E prepara candidato genuino una vez sin emitir autoridad ni aceptar clones",()=>{
+ const record=completed(),c=recordWorkUnitReviewCandidate(record,candidate(record)),input={authorId:"autor",reviewerId:"revisor",sessionId:"sesion"};
+ const request=prepareOrdinaryReview(c,input);assert.equal(request.candidate,c);assert.equal(request.status,"prepared");
+ assert.equal(Object.isFrozen(request)&&Object.isFrozen(request.participants),true);
+ for(const key of ["authority","verdict","approved","mutation","delivery","merge"])assert.equal(key in request,false);
+ assert.throws(()=>prepareOrdinaryReview(c,input),/consumido/);assert.throws(()=>prepareOrdinaryReview({...c},input),/genuino/);
+ assert.throws(()=>claimOrdinaryReviewRequest(structuredClone(request),"sesion"),/genuina/);
+ assert.equal(claimOrdinaryReviewRequest(request,"sesion"),request);assert.throws(()=>claimOrdinaryReviewRequest(request,"sesion"),/consumida/);
+});
+test("E consume el candidato antes del rechazo de metadatos malformados",()=>{
+ for(const caso of ["proxy","accesor","autor-igual","extra"]){
+  const record=completed(),c=recordWorkUnitReviewCandidate(record,candidate(record));let llamadas=0;
+  let input:any={authorId:"autor",reviewerId:"revisor",sessionId:"sesion"};
+  if(caso==="proxy")input=new Proxy(input,{getPrototypeOf(){llamadas++;return Object.prototype;}});
+  if(caso==="accesor")Object.defineProperty(input,"authorId",{enumerable:true,get(){llamadas++;return "autor";}});
+  if(caso==="autor-igual")input.reviewerId="autor";if(caso==="extra")input.authority=true;
+  assert.throws(()=>prepareOrdinaryReview(c,input));assert.equal(llamadas,0);
+  assert.throws(()=>prepareOrdinaryReview(c,{authorId:"autor",reviewerId:"revisor",sessionId:"sesion"}),/consumido/);
+ }
+});
+test("E rechaza sesión ajena y consume preparación antes del rechazo",()=>{
+ const record=completed(),c=recordWorkUnitReviewCandidate(record,candidate(record)),request=prepareOrdinaryReview(c,{authorId:"autor",reviewerId:"revisor",sessionId:"sesion"});
+ assert.throws(()=>claimOrdinaryReviewRequest(request,"otra"),/sesión/);assert.throws(()=>claimOrdinaryReviewRequest(request,"sesion"),/consumida/);
 });
