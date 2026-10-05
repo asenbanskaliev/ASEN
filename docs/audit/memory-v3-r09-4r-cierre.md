@@ -33,8 +33,8 @@ Esta matriz no sustituye los contratos SOURCE_INSPECTED ni convierte pruebas sin
 | E3-12 doctor/copia/reparación | CERRADO | integrity check y copia previa a reparación en almacén temporal | reparación automática de almacén real prohibida |
 | E3-13 export/import/sync Git | CERRADO | export/import conserva sesiones, observaciones activas, relaciones, resúmenes y borrados suaves/duros sin reactivar datos; rechazo atómico y sync reanudable/corrupto | sin push/publicación de red |
 | E3-14 Cloud/autosync | NO APLICA | decisión explícita de arquitectura: la memoria de ASEN será local | Cloud queda fuera del producto y no bloquea R09 |
-| E3-15 interfaces externas | PARCIAL | biblioteca local acotada | CLI/HTTP/MCP completos no demostrados |
-| E3-16 vistas/clientes opcionales | PARCIAL | no requerido para núcleo local | TUI/dashboard/Obsidian no demostrados |
+| E3-15 interfaces externas | NO APLICA al núcleo local | biblioteca local acotada y aislada por proyecto | CLI/HTTP/MCP no forman parte del cierre local; requerirían decisión de producto separada |
+| E3-16 vistas/clientes opcionales | NO APLICA al núcleo local | no requerido para la memoria local | cualquier cliente adicional requerirá alcance y evidencia propios |
 | E3-17 runtime/plataformas | CERRADO para paquete actual | CI Ubuntu 24.04, macOS y Windows en PR #31 | no equivale a distribución standalone |
 | E3-18 verificación independiente | PARCIAL | CI, auditorías, reinicios, concurrencia, privacidad y corrupción sintética | Pi Free real pendiente; Cloud no aplica |
 
@@ -52,7 +52,7 @@ El histórico timeout de 180 segundos del `npm test` independiente **no se decla
 - R09: **NO CERRADO todavía**. Para cerrarlo honestamente faltan:
   1. ejecutar la prueba Pi Free de memoria sobre el candidato final, si el proveedor/secretos están disponibles;
   2. revalidar el HEAD final después de esta evidencia con CI multiplataforma;
-  3. conservar como PARCIAL, no como fallo, las superficies externas/optativas aplicables no implementadas o no autorizadas; Cloud se clasifica como NO APLICA;
+  3. no convertir interfaces o vistas opcionales fuera del núcleo local en deuda de R09; si se incorporan en el futuro tendrán alcance y evidencia propios;
   4. no declarar resuelto el timeout histórico sin una ejecución específica que lo pruebe.
 
 No autoriza merge, release, publicación, reparación de datos reales ni operaciones de red.
