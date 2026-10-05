@@ -28,7 +28,7 @@ Esta matriz no sustituye los contratos SOURCE_INSPECTED ni convierte pruebas sin
 | E3-07 resumen/captura | CERRADO local | extracción curada, resumen único e idempotente al cierre y rollback de cierre inválido | compactación real de Pi/modelo queda para la evidencia E2E, no para el contrato local |
 | E3-08 relaciones/revisión | CERRADO | relaciones tipadas, aislamiento, negativos y revisión idempotente | no se afirma semántica externa no admitida |
 | E3-09 momento de integración | CERRADO local | cierre, reinicio, recuperación, continuidad y biblioteca local | ciclo Pi real se valida separadamente en E3-10/E3-18 |
-| E3-10 herramientas/ciclo Pi | PARCIAL | superficies locales y recorrido E2E preparado | prueba Pi Free específica requiere ejecución autorizada |
+| E3-10 herramientas/ciclo Pi | CERRADO | recorrido E2E real con Pi y OpenRouter: reinicio, recuperación de memoria y recuerdo correcto del token sintético | validado con proveedor/modelo real; `llm7` permanece temporalmente limitado por cuota |
 | E3-11 cierre/fallos/reanudación | CERRADO | resumen único, reconciliación unknown y preservación de respuesta | sin afirmar compactación real |
 | E3-12 doctor/copia/reparación | CERRADO | integrity check y copia previa a reparación en almacén temporal | reparación automática de almacén real prohibida |
 | E3-13 export/import/sync Git | CERRADO | export/import conserva sesiones, observaciones activas, relaciones, resúmenes y borrados suaves/duros sin reactivar datos; rechazo atómico y sync reanudable/corrupto | sin push/publicación de red |
@@ -36,20 +36,20 @@ Esta matriz no sustituye los contratos SOURCE_INSPECTED ni convierte pruebas sin
 | E3-15 interfaces externas | NO APLICA al núcleo local | biblioteca local acotada y aislada por proyecto | CLI/HTTP/MCP no forman parte del cierre local; requerirían decisión de producto separada |
 | E3-16 vistas/clientes opcionales | NO APLICA al núcleo local | no requerido para la memoria local | cualquier cliente adicional requerirá alcance y evidencia propios |
 | E3-17 runtime/plataformas | CERRADO para paquete actual | CI Ubuntu 24.04, macOS y Windows en PR #31 | no equivale a distribución standalone |
-| E3-18 verificación independiente | PARCIAL | CI, auditorías, reinicios, concurrencia, privacidad y corrupción sintética | Pi Free real pendiente; Cloud no aplica |
+| E3-18 verificación independiente | CERRADO | CI, auditorías y E2E real con Pi + OpenRouter sobre el candidato exacto | Cloud no aplica; el fallo actual de `llm7` es únicamente de cuota externa |
 
 ## Resultado 4R
 
-El candidato final verificado es `bbd5ad32156076a28bac266c9bbbd1081a19fefb`.
+El candidato final verificado es `eae2864421f83ddfe8aa2558ab04ceafffc8c98d`.
 
 Evidencia remota sobre ese mismo HEAD:
 
-- Phase 0 Architecture — PASS, run `37270621122`.
-- CI — PASS, run `37270621121`: architecture, Ubuntu 24.04, macOS y Windows en verde.
-- Release Gate — PASS, run `37270621059`: Ubuntu 24.04, macOS y Windows en verde.
-- Pi Free Smoke — `skipped`, run `37270621103`.
-
-El conector disponible para esta auditoría solo enumera ejecuciones asociadas a pull request. Por ello no se afirma ni se niega una ejecución separada del workflow de memoria disparado por `push`. La prueba Pi Free específica permanece sin evidencia observable desde esta auditoría.
+- Phase 0 Architecture — PASS, run `37285255762`.
+- CI — PASS, run `37285255798`.
+- Release Gate — PASS, run `37285254955`.
+- Memory OpenRouter E2E — PASS, run `37285255912`: Pi real reinicia el almacén sintético, recupera `COBALT-731` y el modelo real lo recuerda correctamente.
+- Memory Pi Free E2E (`llm7`) — FAIL, run `37285255905`, por cuota diaria externa agotada. No se utiliza ese fallo como evidencia negativa del núcleo de memoria.
+- Pi Free Smoke — `skipped`, run `37285255861`.
 
 El histórico timeout de 180 segundos del `npm test` independiente **no se declara resuelto**. El CI final verde demuestra el candidato en los recorridos configurados, pero no borra esa evidencia histórica.
 
@@ -58,7 +58,7 @@ El histórico timeout de 180 segundos del `npm test` independiente **no se decla
 - R01–R06: CERRADOS para el alcance admitido.
 - R07: CERRADO para el núcleo local: cierre, resumen, captura curada, reconciliación y preservación de respuesta.
 - R08: CERRADO para el núcleo local: export/import con round-trip de borrados suaves/duros, vista previa de conflictos, diagnóstico/copia y sync reanudable. No incluye red/push. Cloud no aplica.
-- R09: CERRADO para el **núcleo local y multiplataforma configurado** sobre el HEAD anterior. E3-10/E3-18 conservan como evidencia externa pendiente la prueba Pi Free específica; esto impide afirmar equivalencia de host/modelo o FULL global, pero no reabre el núcleo local.
+- R09: CERRADO para el **núcleo local, multiplataforma configurado e integración Pi/modelo probada** sobre el HEAD anterior. E3-10 y E3-18 quedan cerrados con el E2E real de OpenRouter. El bloqueo temporal de cuota de `llm7` no reabre el cierre.nterior. E3-10/E3-18 conservan como evidencia externa pendiente la prueba Pi Free específica; esto impide afirmar equivalencia de host/modelo o FULL global, pero no reabre el núcleo local.
 - Interfaces/vistas opcionales y Cloud no son deuda de este cierre. Si se incorporan en el futuro necesitarán alcance y evidencia propios.
 - El timeout histórico queda registrado como limitación histórica, no como evidencia de fallo del candidato final verificado.
 
