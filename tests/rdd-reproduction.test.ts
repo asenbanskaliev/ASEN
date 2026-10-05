@@ -90,11 +90,11 @@ test("correction RED: sanitizes candidate inspection failures",async (t:TestCont
 
 
 function d3Input(value:Awaited<ReturnType<typeof fixture>>):RddDefectBindingInput{
- return {invariantIds:["approved-issue","current-main","deterministic-reproduction"],operatorFlows:[{id:"inspect-reproduce",from:"approved issue",to:"reproduced defect",failureTo:"blocked"}],runtimeJourney:{command:[...value.first.command],commandFingerprint:value.first.commandFingerprint,result:"reproduced",candidateId:value.candidate.id,candidateRevision:value.candidate.revision,limitations:["review and delivery remain outside D3"]},rollback:{boundary:"candidate",targetRevision:value.input.mainCommitIdentity,procedure:["discard the direct-child reproduction candidate"]},forecast:{changedLines:240,verificationEffort:"focused deterministic verification",remainingUncertainty:["independent HIGH verification pending"],deferredVerification:["Pi Free and OpenRouter reserved for final verification","full CI reserved for the large-batch gate"]}};
+ return {invariantIds:["approved-issue","current-main","deterministic-reproduction"],operatorFlows:[{id:"inspect-reproduce",from:"approved issue",to:"reproduced defect",failureTo:"blocked"}],runtimeJourney:{command:["node","--test",...value.first.testPaths],commandFingerprint:value.first.commandFingerprint,result:"reproduced",candidateId:value.candidate.id,candidateRevision:value.candidate.revision,limitations:["review and delivery remain outside D3"]},rollback:{boundary:"candidate",targetRevision:value.input.mainCommitIdentity,procedure:["discard the direct-child reproduction candidate"]},forecast:{changedLines:240,verificationEffort:"focused deterministic verification",remainingUncertainty:["independent HIGH verification pending"],deferredVerification:["Pi Free and OpenRouter reserved for final verification","full CI reserved for the large-batch gate"]}};
 }
 test("D3 binds genuine D2 evidence once and preserves descriptive-only authority",async(t:TestContext)=>{
  const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),bound=bindRddDefectEvidence(evidence,d3Input(value));
- assert.equal(bound.reproduction,evidence);assert.deepEqual(bound.runtimeJourney.command,value.first.command);assert.equal(bound.runtimeJourney.commandFingerprint,value.first.commandFingerprint);assert.equal(bound.runtimeJourney.candidateId,value.candidate.id);assert.equal(bound.runtimeJourney.candidateRevision,value.candidate.revision);assert.equal(bound.rollback.boundary,"candidate");assert.equal(bound.rollback.targetRevision,value.input.mainCommitIdentity);assert.ok(bound.forecast.changedLines<390);
+ assert.equal(bound.reproduction,evidence);assert.deepEqual(bound.runtimeJourney.command,["node","--test",...value.first.testPaths]);assert.equal(bound.runtimeJourney.commandFingerprint,value.first.commandFingerprint);assert.equal(bound.runtimeJourney.candidateId,value.candidate.id);assert.equal(bound.runtimeJourney.candidateRevision,value.candidate.revision);assert.equal(bound.rollback.boundary,"candidate");assert.equal(bound.rollback.targetRevision,value.input.mainCommitIdentity);assert.ok(bound.forecast.changedLines<390);
  for(const forbidden of ["authority","review","mutation","delivery","merge","readiness","persistence"])assert.equal(forbidden in bound,false);
  assert.throws(()=>bindRddDefectEvidence(evidence,d3Input(value)),/consumed/i);
 });
@@ -106,18 +106,18 @@ test("D3 rejects journey drift, unsafe rollback, and over-budget plans after con
 
 test("D3 requires the complete invariant set and burns genuine evidence on rejection",async(t:TestContext)=>{
  for(const missing of ["approved-issue","current-main","deterministic-reproduction"]){
-  const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input as {invariantIds:string[]}).invariantIds=input.invariantIds.filter(id=>id!==missing);assert.throws(()=>bindRddDefectEvidence(evidence,input),/required invariant/i);assert.throws(()=>bindRddDefectEvidence(evidence,d3Input(value)),/consumed/i);
+  const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input as unknown as {invariantIds:string[]}).invariantIds=input.invariantIds.filter(id=>id!==missing);assert.throws(()=>bindRddDefectEvidence(evidence,input),/required invariant/i);assert.throws(()=>bindRddDefectEvidence(evidence,d3Input(value)),/consumed/i);
  }
 });
 
 test("D3 requires a distinct fail-closed operator destination",async(t:TestContext)=>{
  for(const flow of [{id:"unsafe",from:"approved issue",to:"reproduced defect",failureTo:"continue"},{id:"same",from:"approved issue",to:"reproduced defect",failureTo:"reproduced defect"}]){
-  const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input as {operatorFlows:typeof flow[]}).operatorFlows=[flow];assert.throws(()=>bindRddDefectEvidence(evidence,input),/blocked|destinations/i);
+  const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input as unknown as {operatorFlows:typeof flow[]}).operatorFlows=[flow];assert.throws(()=>bindRddDefectEvidence(evidence,input),/blocked|destinations/i);
  }
 });
 
 test("D3 budget must state deferred verification explicitly",async(t:TestContext)=>{
- const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input.forecast as {deferredVerification:string[]}).deferredVerification=[];assert.throws(()=>bindRddDefectEvidence(evidence,input),/deferred verification|bounded exact array/i);
+ const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input.forecast as unknown as {deferredVerification:string[]}).deferredVerification=[];assert.throws(()=>bindRddDefectEvidence(evidence,input),/deferred verification|bounded exact array/i);
 });
 
 test("D3 rejects decorated caller containers without invoking proxy traps",async(t:TestContext)=>{
@@ -130,4 +130,4 @@ test("D3 output is deeply immutable descriptive evidence",async(t:TestContext)=>
  const visit=(item:unknown):void=>{if(typeof item!=="object"||item===null)return;assert.equal(Object.isFrozen(item),true);for(const child of Object.values(item))visit(child);};visit(bound);
 });
 
-test("D3 rejects a runtime command unrelated to the observed test path",async(t:TestContext)=>{const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input.runtimeJourney as {command:string[]}).command=["node","--test","different.mjs"];assert.throws(()=>bindRddDefectEvidence(evidence,input),/executed test path/i);});
+test("D3 rejects a runtime command unrelated to the observed test path",async(t:TestContext)=>{const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input.runtimeJourney as unknown as {command:string[]}).command=["node","--test","different.mjs"];assert.throws(()=>bindRddDefectEvidence(evidence,input),/executed test path/i);});
