@@ -6,7 +6,7 @@ export interface RddDefectBindingInput {
  readonly invariantIds:readonly string[];
  readonly operatorFlows:readonly {readonly id:string;readonly from:string;readonly to:string;readonly failureTo:string}[];
  readonly runtimeJourney:Readonly<{command:readonly string[];commandFingerprint:string;result:"reproduced";candidateId:string;candidateRevision:string;limitations:readonly string[]}>;
- readonly rollback:Readonly<{boundary:"candidate";procedure:readonly string[]}>;
+ readonly rollback:Readonly<{boundary:"candidate";targetRevision:string;procedure:readonly string[]}>;
  readonly forecast:Readonly<{changedLines:number;verificationEffort:string;remainingUncertainty:readonly string[]}>;
 }
 export interface RddDefectBinding {
@@ -15,7 +15,7 @@ export interface RddDefectBinding {
  readonly invariantIds:readonly string[];
  readonly operatorFlows:readonly Readonly<{id:string;from:string;to:string;failureTo:string}>[];
  readonly runtimeJourney:Readonly<{command:readonly string[];commandFingerprint:string;result:"reproduced";candidateId:string;candidateRevision:string;limitations:readonly string[]}>;
- readonly rollback:Readonly<{boundary:"candidate";procedure:readonly string[]}>;
+ readonly rollback:Readonly<{boundary:"candidate";targetRevision:string;procedure:readonly string[]}>;
  readonly forecast:Readonly<{changedLines:number;verificationEffort:string;remainingUncertainty:readonly string[]}>;
 }
 const inputKeys=["invariantIds","operatorFlows","runtimeJourney","rollback","forecast"] as const;
@@ -41,9 +41,9 @@ export function bindRddDefectEvidence(reproduction:RddReproductionEvidence,input
  if(new Set(flows.map(f=>f.id)).size!==flows.length)throw new Error("operator flow ids contain duplicates");if(!flows.some(f=>f.failureTo==="blocked"))throw new Error("operator flows require an explicit blocked failure destination");if(flows.some(f=>f.to===f.failureTo))throw new Error("operator flow success and failure destinations must differ");
  const journey=plain(data.runtimeJourney,["command","commandFingerprint","result","candidateId","candidateRevision","limitations"],"runtime journey");
  if(journey.result!=="reproduced"||journey.commandFingerprint!==evidence.observation.commandFingerprint||journey.candidateId!==evidence.candidate.id||journey.candidateRevision!==evidence.candidate.revision)throw new Error("runtime journey is not bound to the reproduction");
- const rollback=plain(data.rollback,["boundary","procedure"],"rollback");if(rollback.boundary!=="candidate")throw new Error("rollback must stay at the candidate boundary");
+ const rollback=plain(data.rollback,["boundary","targetRevision","procedure"],"rollback");if(rollback.boundary!=="candidate"||rollback.targetRevision!==evidence.mainCommitIdentity)throw new Error("rollback must stay at the candidate boundary");
  const forecast=plain(data.forecast,["changedLines","verificationEffort","remainingUncertainty"],"forecast");
  if(typeof forecast.changedLines!=="number"||!Number.isSafeInteger(forecast.changedLines)||forecast.changedLines<1||forecast.changedLines>=390)throw new Error("forecast changed lines must stay below 390");
- const result:RddDefectBinding={schemaVersion:1,reproduction:evidence,invariantIds:freezeStrings(invariantIds),operatorFlows:Object.freeze(flows),runtimeJourney:Object.freeze({command:freezeStrings(list(journey.command,"journey command",1,32)),commandFingerprint:text(journey.commandFingerprint,"journey fingerprint"),result:"reproduced",candidateId:text(journey.candidateId,"journey candidate id"),candidateRevision:text(journey.candidateRevision,"journey revision"),limitations:freezeStrings(list(journey.limitations,"journey limitations",1,16))}),rollback:Object.freeze({boundary:"candidate",procedure:freezeStrings(list(rollback.procedure,"rollback procedure",1,16))}),forecast:Object.freeze({changedLines:forecast.changedLines,verificationEffort:text(forecast.verificationEffort,"verification effort"),remainingUncertainty:freezeStrings(list(forecast.remainingUncertainty,"remaining uncertainty",1,16))})};
+ const result:RddDefectBinding={schemaVersion:1,reproduction:evidence,invariantIds:freezeStrings(invariantIds),operatorFlows:Object.freeze(flows),runtimeJourney:Object.freeze({command:freezeStrings(list(journey.command,"journey command",1,32)),commandFingerprint:text(journey.commandFingerprint,"journey fingerprint"),result:"reproduced",candidateId:text(journey.candidateId,"journey candidate id"),candidateRevision:text(journey.candidateRevision,"journey revision"),limitations:freezeStrings(list(journey.limitations,"journey limitations",1,16))}),rollback:Object.freeze({boundary:"candidate",targetRevision:text(rollback.targetRevision,"rollback target revision"),procedure:freezeStrings(list(rollback.procedure,"rollback procedure",1,16))}),forecast:Object.freeze({changedLines:forecast.changedLines,verificationEffort:text(forecast.verificationEffort,"verification effort"),remainingUncertainty:freezeStrings(list(forecast.remainingUncertainty,"remaining uncertainty",1,16))})};
  return Object.freeze(result);
 }
