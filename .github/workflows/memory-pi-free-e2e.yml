@@ -2,6 +2,7 @@ name: Memory Pi Free E2E
 on:
   workflow_dispatch:
   push:
+  pull_request:
 permissions:
   contents: read
 jobs:
