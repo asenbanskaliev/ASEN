@@ -35,7 +35,7 @@ function list(value:unknown,noun:string,min=1,max=32):string[]{
 const freezeStrings=(value:string[])=>Object.freeze([...value]);
 export function bindRddDefectEvidence(reproduction:RddReproductionEvidence,input:RddDefectBindingInput):RddDefectBinding {
  const evidence=claimRddReproductionEvidence(reproduction),data=plain(input,inputKeys,"defect binding");
- const invariantIds=list(data.invariantIds,"invariant ids");
+ const invariantIds=list(data.invariantIds,"invariant ids");if(!["approved-issue","current-main","deterministic-reproduction"].every(id=>invariantIds.includes(id)))throw new Error("defect binding is missing a required invariant");
  const rawFlows=data.operatorFlows;if(isProxy(rawFlows)||!Array.isArray(rawFlows)||Object.getPrototypeOf(rawFlows)!==Array.prototype||rawFlows.length<1||rawFlows.length>16)throw new Error("operator flows must be a bounded exact array");
  const flows=rawFlows.map(raw=>{const f=plain(raw,["id","from","to","failureTo"],"operator flow");return Object.freeze({id:text(f.id,"flow id"),from:text(f.from,"flow source"),to:text(f.to,"flow target"),failureTo:text(f.failureTo,"flow failure")});});
  if(new Set(flows.map(f=>f.id)).size!==flows.length)throw new Error("operator flow ids contain duplicates");
