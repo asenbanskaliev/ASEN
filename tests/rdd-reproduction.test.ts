@@ -129,3 +129,5 @@ test("D3 output is deeply immutable descriptive evidence",async(t:TestContext)=>
  const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),bound=bindRddDefectEvidence(evidence,d3Input(value));
  const visit=(item:unknown):void=>{if(typeof item!=="object"||item===null)return;assert.equal(Object.isFrozen(item),true);for(const child of Object.values(item))visit(child);};visit(bound);
 });
+
+test("D3 rejects a runtime command unrelated to the observed test path",async(t:TestContext)=>{const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input.runtimeJourney as {command:string[]}).command=["node","--test","different.mjs"];assert.throws(()=>bindRddDefectEvidence(evidence,input),/executed test path/i);});
