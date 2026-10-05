@@ -181,4 +181,18 @@ test("E liga revisión al HEAD, árbol y padre reales; rechaza cambios y consume
  const dirty=prepare();writeFileSync(join(root,"no-rastreado.txt"),"dato sintético");
  assert.throws(()=>bindOrdinaryReviewCheckout(dirty,"sesion",root),/checkout/);assert.throws(()=>bindOrdinaryReviewCheckout(dirty,"sesion",root),/consumida/);
  rmSync(join(root,"no-rastreado.txt"));const drift=prepare();commitLocal();assert.throws(()=>bindOrdinaryReviewCheckout(drift,"sesion",root),/checkout/);
+ writeFileSync(join(root,"tracked.txt"),"original");git("add","tracked.txt");commitLocal();
+ const original={identity:git("rev-parse","HEAD"),treeIdentity:git("rev-parse","HEAD^{tree}"),parentIdentity:git("rev-parse","HEAD^")};
+ writeFileSync(join(root,"tracked.txt"),"modificado");git("add","tracked.txt");commitLocal();const replacement=git("rev-parse","HEAD");
+ git("reset","--hard",original.identity);writeFileSync(join(root,"tracked.txt"),"modificado");git("add","tracked.txt");git("replace",original.identity,replacement);
+ const replaced=prepare(original);assert.throws(()=>bindOrdinaryReviewCheckout(replaced,"sesion",root),/checkout/);
+ assert.throws(()=>bindOrdinaryReviewCheckout(replaced,"sesion",root),/consumida/);
+ git("replace","-d",original.identity);git("reset","--hard",original.identity);
+ for(const flag of ["assume-unchanged","skip-worktree"]){
+  const hidden=prepare(original);git("update-index",`--${flag}`,"tracked.txt");writeFileSync(join(root,"tracked.txt"),"modificado");
+  assert.throws(()=>bindOrdinaryReviewCheckout(hidden,"sesion",root),/checkout/);assert.throws(()=>bindOrdinaryReviewCheckout(hidden,"sesion",root),/consumida/);
+  git("update-index",`--no-${flag}`,"tracked.txt");git("reset","--hard",original.identity);
+ }
+
+
 });

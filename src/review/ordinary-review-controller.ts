@@ -44,9 +44,16 @@ export function bindOrdinaryReviewCheckout(value:OrdinaryReviewRequest,sessionId
  try{
   if(realpathSync(root)!==root)throw new Error("ruta no canónica");
   const candidate={id:request.candidate.identity,repository:root,revision:request.candidate.revision,createdAt:"preparación de revisión"};
-  assertExactGitCandidate(candidate,root);
+  const assertCheckout=()=>{
+   const args=["--no-replace-objects","-C",root];
+   const tags=execFileSync("git",[...args,"ls-files","-v","-z"],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).split("\0").filter(Boolean);
+   if(tags.some(line=>line[0]!=="H"))throw new Error("flags del índice no verificables");
+   if(execFileSync("git",[...args,"status","--porcelain=v1","--untracked-files=all"],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim())throw new Error("checkout modificado");
+   assertExactGitCandidate(candidate,root);
+  };
+  assertCheckout();
   observed=execFileSync("git",["--no-replace-objects","-C",root,"rev-parse","HEAD^{tree}","HEAD^"],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim().split("\n");
-  assertExactGitCandidate(candidate,root);
+  assertCheckout();
  }catch{throw new Error("No se pudo verificar el checkout exacto de revisión");}
  if(observed.length!==2||observed[0]!==request.candidate.treeIdentity||observed[1]!==request.candidate.completedWorkUnit.commit.parentIdentity)throw new Error("Árbol o padre de revisión no coincide");
  return Object.freeze({request,repository:root,revision:request.candidate.revision,treeIdentity:observed[0]!,parentIdentity:observed[1]!});
