@@ -1,3 +1,4 @@
+import {createHash} from "node:crypto";
 import {isProxy} from "node:util/types";
 import type {RddReproductionEvidence} from "./rdd-reproduction.js";
 import {claimRddReproductionEvidence} from "./rdd-reproduction.js";
@@ -27,21 +28,26 @@ function plain(value:unknown,keys:readonly string[],noun:string):Record<string,u
 function text(value:unknown,noun:string,max=512):string{
  if(typeof value!=="string"||!value||value.length>max||value.trim()!==value||value.normalize("NFC")!==value||/[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u.test(value))throw new Error(`${noun} is malformed`);return value;
 }
-function list(value:unknown,noun:string,min=1,max=32):string[]{
+function array(value:unknown,noun:string,min=1,max=32):unknown[]{
  if(isProxy(value)||!Array.isArray(value)||Object.getPrototypeOf(value)!==Array.prototype||value.length<min||value.length>max)throw new Error(`${noun} must be a bounded exact array`);
- const out=value.map((_,i)=>{const d=Object.getOwnPropertyDescriptor(value,String(i));if(!d?.enumerable||!("value" in d))throw new Error(`${noun} must be dense plain data`);return text(d.value,noun.slice(0,-1));});
+ const indexes=Array.from({length:value.length},(_,i)=>String(i)),keys=Reflect.ownKeys(value);
+ if(keys.length!==indexes.length+1||keys.some(k=>typeof k!=="string"||k!=="length"&&!indexes.includes(k)))throw new Error(`${noun} must be dense exact data`);
+ return indexes.map(k=>{const d=Object.getOwnPropertyDescriptor(value,k);if(!d?.enumerable||!("value" in d))throw new Error(`${noun} must contain plain values`);return d.value;});
+}
+function list(value:unknown,noun:string,min=1,max=32):string[]{
+ const out=array(value,noun,min,max).map(v=>text(v,noun.slice(0,-1)));
  if(new Set(out).size!==out.length)throw new Error(`${noun} contains duplicates`);return out;
 }
 const freezeStrings=(value:string[])=>Object.freeze([...value]);
 export function bindRddDefectEvidence(reproduction:RddReproductionEvidence,input:RddDefectBindingInput):RddDefectBinding {
  const evidence=claimRddReproductionEvidence(reproduction),data=plain(input,inputKeys,"defect binding");
  const invariantIds=list(data.invariantIds,"invariant ids");if(!["approved-issue","current-main","deterministic-reproduction"].every(id=>invariantIds.includes(id)))throw new Error("defect binding is missing a required invariant");
- const rawFlows=data.operatorFlows;if(isProxy(rawFlows)||!Array.isArray(rawFlows)||Object.getPrototypeOf(rawFlows)!==Array.prototype||rawFlows.length<1||rawFlows.length>16)throw new Error("operator flows must be a bounded exact array");
+ const rawFlows=array(data.operatorFlows,"operator flows",1,16);
  const flows=rawFlows.map(raw=>{const f=plain(raw,["id","from","to","failureTo"],"operator flow");return Object.freeze({id:text(f.id,"flow id"),from:text(f.from,"flow source"),to:text(f.to,"flow target"),failureTo:text(f.failureTo,"flow failure")});});
- if(new Set(flows.map(f=>f.id)).size!==flows.length)throw new Error("operator flow ids contain duplicates");if(!flows.some(f=>f.failureTo==="blocked"))throw new Error("operator flows require an explicit blocked failure destination");if(flows.some(f=>f.to===f.failureTo))throw new Error("operator flow success and failure destinations must differ");
+ if(new Set(flows.map(f=>f.id)).size!==flows.length)throw new Error("operator flow ids contain duplicates");if(flows.some(f=>f.failureTo!=="blocked"))throw new Error("operator flows require an explicit blocked failure destination");if(flows.some(f=>f.to===f.failureTo))throw new Error("operator flow success and failure destinations must differ");
  const journey=plain(data.runtimeJourney,["command","commandFingerprint","result","candidateId","candidateRevision","limitations"],"runtime journey");
  if(journey.result!=="reproduced"||journey.commandFingerprint!==evidence.observation.commandFingerprint||journey.candidateId!==evidence.candidate.id||journey.candidateRevision!==evidence.candidate.revision)throw new Error("runtime journey is not bound to the reproduction");
- const journeyCommand=list(journey.command,"journey command",1,32);if(!journeyCommand.some(part=>evidence.observation.testPaths.includes(part)))throw new Error("runtime journey command must include an executed test path");
+ const journeyCommand=list(journey.command,"journey command",1,32);if(createHash("sha256").update(JSON.stringify(journeyCommand)).digest("hex")!==evidence.observation.commandFingerprint)throw new Error("runtime journey command must exactly match the executed test path command");
  const rollback=plain(data.rollback,["boundary","targetRevision","procedure"],"rollback");if(rollback.boundary!=="candidate"||rollback.targetRevision!==evidence.mainCommitIdentity)throw new Error("rollback must stay at the candidate boundary");
  const forecast=plain(data.forecast,["changedLines","verificationEffort","remainingUncertainty","deferredVerification"],"forecast");
  if(typeof forecast.changedLines!=="number"||!Number.isSafeInteger(forecast.changedLines)||forecast.changedLines<1||forecast.changedLines>=390)throw new Error("forecast changed lines must stay below 390");
