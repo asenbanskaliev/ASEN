@@ -2,7 +2,7 @@ import type { Candidate } from "../../src/core/types.js";
 import { createAsenExtension } from "../../extensions/asen.js";
 import type { LifecycleApplicability } from "../../src/lifecycle/applicability.js";
 import { createSkillLifecycle, type SkillLifecycle } from "../../src/lifecycle/skill-lifecycle.js";
-import { deriveOddFacts, planOddRoute } from "../../src/flow/odd-routing.js";
+import { deriveOddFacts, planOddRoute, type OddIntent } from "../../src/flow/odd-routing.js";
 import { buildOrchestrationPlan } from "../../src/orchestration/orchestrator.js";
 
 type Command={handler:(args:string|undefined,context:{cwd:string;ui:{notify(message:string,level:"info"|"error"):void}})=>unknown};
@@ -15,6 +15,7 @@ export async function issueStructuredLifecycleApplicability(
   testing: "required" | "not-applicable" = "required",
   explicitMode: "organic" | "structured" | "unspecified" = "structured",
   affectedSubsystems:readonly string[]=["lifecycle"],
+  intent:OddIntent="implementation",
 ): Promise<LifecycleApplicability> {
   const commands=new Map<string,Command>();
   const facade=createAsenExtension()({registerCommand:(name,command)=>commands.set(name,command as Command)});
@@ -22,7 +23,7 @@ export async function issueStructuredLifecycleApplicability(
   const decision = planOddRoute(deriveOddFacts({
     taskIdentity,
     repositoryIdentity: candidate.repository,
-    intent: "implementation",
+    intent,
     scope: { kind: "known", expectedPaths },
     writes: expectedPaths.map(path => ({ path, changeKind: testing === "required" ? "behavior" as const : "documentation" as const })),
     riskOperations: [],
@@ -45,6 +46,7 @@ export async function createTestSkillLifecycle(
   candidate: Candidate,
   expectedPaths?: readonly string[],
   testing?: "required" | "not-applicable",
+  intent:OddIntent="implementation",
 ): Promise<SkillLifecycle> {
-  return createSkillLifecycle(await issueStructuredLifecycleApplicability(taskIdentity,candidate,expectedPaths,testing));
+  return createSkillLifecycle(await issueStructuredLifecycleApplicability(taskIdentity,candidate,expectedPaths,testing,"structured",["lifecycle"],intent));
 }
