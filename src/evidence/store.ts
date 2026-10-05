@@ -40,6 +40,12 @@ function exact(value:unknown,keys:readonly string[],noun:string):Record<string,u
 }
 function array(value:unknown,noun:string):unknown[]{if(!Array.isArray(value)||Object.getPrototypeOf(value)!==Array.prototype)throw new Error(`${noun} must be an exact array`);const indexes=Array.from({length:value.length},(_,i)=>String(i)),own=Reflect.ownKeys(value);if(own.some(key=>typeof key!=="string"||key!=="length"&&!indexes.includes(key))||indexes.some(key=>!Object.hasOwn(value,key)))throw new Error(`${noun} must be an exact array`);return indexes.map(key=>{const descriptor=Object.getOwnPropertyDescriptor(value,key);if(!descriptor?.enumerable||!("value" in descriptor))throw new Error(`${noun} must be an exact array`);return descriptor.value;});}
 function candidateData(value:unknown):Candidate{if(isProxy(value))throw new Error("Evidence candidate must be plain data");const raw=exact(value,["id","repository","revision","createdAt"],"evidence candidate");for(const key of ["id","repository","revision","createdAt"] as const)if(typeof raw[key]!=="string"||!raw[key])throw new Error("Evidence recovery candidate mismatch");/* SAFETY: exact() and the loop prove the complete Candidate data shape. */return raw as unknown as Candidate;}
+function evidenceData(value:unknown):Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">{
+ if(isProxy(value)||typeof value!=="object"||value===null)throw new Error("Los metadatos de evidencia deben ser datos planos exactos");
+ const optional=["execution","review","tdd","completion","defect"].filter(key=>Object.hasOwn(value,key));
+ // Los descriptores fijan una instantánea sin ejecutar accesores del llamante.
+ return exact(value,["id","kind","status","summary","createdAt",...optional],"evidence metadata") as unknown as Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">;
+}
 function defectId(record:RddDefectBinding):string{return `defect-intake:${createHash("sha256").update("asen.evidence.defect-intake.v1\0").update(JSON.stringify(record)).digest("hex")}`;}
 function completionId(record:unknown):string{return `lifecycle-completion:${createHash("sha256").update("asen.evidence.lifecycle-completion.v1\0").update(JSON.stringify(record)).digest("hex")}`;}
 function validateItem(value:unknown,candidate:Candidate,allowLifecycle:boolean):Evidence{
@@ -95,6 +101,7 @@ function validateTddHistory(candidate:Candidate,items:Evidence[]):void{
 export class EvidenceStore {
  readonly #items=new Map<string,Evidence>();
  add(candidate:Candidate,evidence:Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">):Evidence{
+  evidence=evidenceData(evidence);
   if(evidence.kind==="defect-intake"||evidence.defect!==undefined)throw new Error("Defect intake requires genuine binding");
   if(evidence.kind==="lifecycle-completion")throw new Error("Lifecycle-completion evidence requires genuine lifecycle admission");
   if(evidence.kind==="route-decision")throw new Error("Route-decision evidence requires genuine orchestration proof");
@@ -120,6 +127,8 @@ export class EvidenceStore {
  addExecuted(candidate:Candidate,proof:ExecutedEvidence,evidence:Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">):Evidence{
   if(!isExecutedEvidence(proof))throw new Error("Executed evidence requires ASEN-issued execution proof");
   if(proof.candidateRepository!==candidate.repository||proof.candidateId!==candidate.id||proof.candidateRevision!==candidate.revision)throw new Error("Executed evidence candidate mismatch");
+  evidence=evidenceData(evidence);
+  if(evidence.defect!==undefined)throw new Error("Defect intake requires genuine binding");
   if(evidence.kind!=="test")throw new Error("TDD evidence requires an ordered TddCycle");
   if(evidence.status==="pass"&&proof.exitCode!==0)throw new Error("Passing executed evidence requires exit code 0");
   if(evidence.status==="expected-fail"&&proof.exitCode===0)throw new Error("Expected failing evidence requires a failing execution");
