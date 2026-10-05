@@ -5,6 +5,7 @@ import {join} from "node:path";
 import {prepareOrdinaryReview,claimOrdinaryReviewRequest,bindOrdinaryReviewCheckout} from "../src/review/ordinary-review-controller.js";
 import assert from "node:assert/strict";
 import test from "node:test";
+import {createAsenExtension} from "../extensions/asen.js";
 import { planWorkUnitBoundary, type ReadyWorkUnitBoundary, type WorkUnitBoundaryInput } from "../src/delivery/work-unit-policy.js";
 import { recordCompletedWorkUnit, type CompletedWorkUnit, type WorkUnitEvidenceInput } from "../src/delivery/work-unit-evidence.js";
 import { recordWorkUnitReviewCandidate, type WorkUnitReviewCandidateInput } from "../src/delivery/work-unit-review-candidate.js";
@@ -195,4 +196,25 @@ test("E liga revisión al HEAD, árbol y padre reales; rechaza cambios y consume
  }
 
 
+});
+
+test("E registra entrada ASEN, separa instancias y consume fallos de host y sesión",t=>{
+ const root=realpathSync(mkdtempSync(join(tmpdir(),"asen-review-command-")));t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim();
+ git("init","-q");for(let i=0;i<2;i++)git("-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m","test(review): entrada sintética");
+ const snapshot={identity:git("rev-parse","HEAD"),treeIdentity:git("rev-parse","HEAD^{tree}"),parentIdentity:git("rev-parse","HEAD^")};
+ const setup=()=>{const commands=new Map<string,any>();const facade=createAsenExtension()({registerCommand:(name,command)=>commands.set(name,command)});return {facade,handler:commands.get("asen-review").handler};};
+ const one=setup(),two=setup(),notifications:string[]=[];
+ const context=(session="sesion",cwd=root)=>({cwd,sessionManager:{getSessionId:()=>session},ui:{notify:(message:string)=>notifications.push(message)}});
+ const prepare=()=>{const r=completed(false,snapshot);return one.facade.review.prepare(recordWorkUnitReviewCandidate(r,candidate(r)),{authorId:"autor",reviewerId:"revisor",sessionId:"sesion"});};
+ const request=prepare();assert.equal(one.handler("",context()),"Uso: /asen-review <solicitud-id>");
+ assert.throws(()=>two.handler(request.requestId,context()),/instancia/);
+ const checkout=one.handler(request.requestId,context());assert.equal(checkout.request,request);assert.equal(checkout.revision,snapshot.identity);
+ assert.ok(notifications.some(message=>message.includes("RDD pendiente")));assert.equal("verdict" in checkout,false);
+ assert.throws(()=>one.handler(request.requestId,context()),/pendiente/);
+ for(const bad of [context("otra"),context("sesion",join(root,"ausente")),{...context(),sessionManager:{getSessionId(){throw new Error("host no disponible");}}}]){
+  const rejected=prepare();assert.throws(()=>one.handler(rejected.requestId,bad),/rechazada/);
+  assert.throws(()=>one.handler(rejected.requestId,context()),/pendiente/);
+  assert.throws(()=>claimOrdinaryReviewRequest(rejected,"sesion"),/consumida/);
+ }
 });

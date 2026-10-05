@@ -8,12 +8,13 @@ import {claimWorkflowSelection,readWorkflowSelection,registerWorkflowSelectionCo
 import {decideLifecycleApplicability,decideLifecycleApplicabilityWithSelection,type LifecycleApplicability,type LifecycleApplicabilityInput} from "../src/lifecycle/applicability.js";
 import type {OddRouteDecision} from "../src/flow/odd-routing.js";
 import {claimedOrchestrationRouteContext} from "../src/orchestration/orchestrator.js";
+import {registerOrdinaryReviewCommand,type OrdinaryReviewCommandController} from "../src/review/ordinary-review-command.js";
 
 type CommandContext={cwd:string;ui:{notify(message:string,level:"info"|"error"):void}};
 type PiLike={registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void};
 type Refresh=typeof refreshSkillRegistry;
 export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror}
-export interface AsenExtensionFacade {decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability}
+export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability}
 
 const usage="Usage: /asen-skill-registry refresh";
 const productionPackageRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
@@ -54,7 +55,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
   const consumer=registerWorkflowSelectionCommand(register);
-  return Object.freeze({decideLifecycleApplicability:(decision:OddRouteDecision,input:LifecycleApplicabilityInput)=>{
+  const review=registerOrdinaryReviewCommand(register);
+  return Object.freeze({review,decideLifecycleApplicability:(decision:OddRouteDecision,input:LifecycleApplicabilityInput)=>{
    const original=claimedOrchestrationRouteContext(decision),binding={taskIdentity:original.facts.taskIdentity,repositoryIdentity:original.facts.repositoryIdentity},choice=readWorkflowSelection(consumer,binding);
    if(!choice)return decideLifecycleApplicability(decision,input);
    const claimed=claimWorkflowSelection(consumer,choice,binding);
