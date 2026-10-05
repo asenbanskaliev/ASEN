@@ -99,6 +99,17 @@ Record whether proof is source inspection, a deterministic synthetic-store test,
 - Before handing PR #30 back: confirm the remote branch contains both code and this tracker update; verify rather than invent exactly one type label and approved issue linkage; report CI state and the unresolved broad-test timeout; do not merge or release.
 - The next Codex prompt must name only the first work unit above and no competing lane.
 
+
+
+### Cierre final R09 — evidencia Pi/modelo
+
+- Candidato con E2E real: `eae2864421f83ddfe8aa2558ab04ceafffc8c98d`.
+- Memory OpenRouter E2E `37285255912` — PASS: reinicio de memoria sintética, recuperación del contexto y recuerdo correcto de `COBALT-731` mediante Pi y modelo real.
+- Phase 0 Architecture `37285255762`, CI `37285255798` y Release Gate `37285254955` — PASS sobre el mismo candidato.
+- E3-10 y E3-18 quedan CERRADOS para el alcance admitido. El proveedor `llm7` continúa temporalmente bloqueado por cuota externa y no invalida la evidencia equivalente obtenida con OpenRouter.
+- R01–R09 quedan cerrados para el núcleo local, plataformas configuradas e integración Pi/modelo probada. Cloud sigue siendo NO APLICA por decisión de arquitectura.
+- Este cierre no autoriza merge, release, publicación ni operaciones con datos reales.
+
 ### E3 implementation status — candidate evidence
 
 - R04: bounded project resolution/search/context implemented; last verified cross-platform CI at `8514bfba3288bb1f76c6fae892253e4b73fd1e13`.
