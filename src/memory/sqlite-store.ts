@@ -329,9 +329,9 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   const relations=this.listRelations(projectId);
   const summaries=(this.#db.prepare("SELECT * FROM memory_session_summaries WHERE project_id=? ORDER BY created_at,session_id").all(projectId) as Array<{project_id:string;session_id:string;content:string;created_at:string}>).map(r=>({projectId:r.project_id,sessionId:r.session_id,content:r.content,createdAt:r.created_at}));
   const sessions=(this.#db.prepare("SELECT * FROM memory_sessions WHERE project_id=? ORDER BY session_id").all(projectId) as Array<{project_id:string;session_id:string;root_session_id:string;parent_session_id:string|null;status:"live"|"ended"}>).map(r=>({projectId:r.project_id,sessionId:r.session_id,rootSessionId:r.root_session_id,...(r.parent_session_id?{parentSessionId:r.parent_session_id}:{}),status:r.status} satisfies MemorySessionState));
-  const soft=(this.#db.prepare("SELECT id,project_id,deleted_at FROM memory WHERE project_id=? AND deleted_at IS NOT NULL").all(projectId) as Array<{id:string;project_id:string;deleted_at:string}>);
-  const hard=(this.#db.prepare("SELECT id,project_id,deleted_at FROM memory_tombstones WHERE project_id=?").all(projectId) as Array<{id:string;project_id:string;deleted_at:string}>);
-  const deletions=[...soft,...hard].map(r=>({id:r.id,projectId:r.project_id,deletedAt:r.deleted_at})).sort((a,b)=>a.id.localeCompare(b.id));
+  const soft=(this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NOT NULL").all(projectId) as Record<string,unknown>[]).map(r=>({id:String(r.id),projectId:String(r.project_id),deletedAt:String(r.deleted_at),mode:"soft" as const,item:row(r)}));
+  const hard=(this.#db.prepare("SELECT id,project_id,deleted_at FROM memory_tombstones WHERE project_id=?").all(projectId) as Array<{id:string;project_id:string;deleted_at:string}>).map(r=>({id:r.id,projectId:r.project_id,deletedAt:r.deleted_at,mode:"hard" as const}));
+  const deletions=[...soft,...hard].sort((a,b)=>a.id.localeCompare(b.id));
   return {version:1,projectId,observations,relations,summaries,sessions,deletions};
  }
  importProject(data:MemoryExport):void{
@@ -364,8 +364,10 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
    for(const deletion of data.deletions??[]){
     const live=this.#db.prepare("SELECT project_id FROM memory WHERE id=? AND deleted_at IS NULL").get(deletion.id) as {project_id:string}|undefined;
     if(live)throw new Error("Memory import deletion conflict");
+    if(deletion.mode==="soft"&&deletion.item){const item=deletion.item;this.#db.prepare(`INSERT INTO memory(id,project_id,session_id,kind,topic,content,created_at,pinned,title,tool_name,scope,topic_key,normalized_hash,revision_count,duplicate_count,last_seen_at,updated_at,deleted_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(item.id,item.projectId,item.sessionId,item.kind,item.topic??null,item.content,item.createdAt,item.pinned?1:0,item.title??null,item.toolName??null,item.scope??"project",item.topicKey??null,hashNormalizedContent(item.content),item.revisionCount??1,item.duplicateCount??1,item.lastSeenAt??item.createdAt,item.updatedAt??item.createdAt,deletion.deletedAt);continue;}
     this.#db.prepare("INSERT INTO memory_tombstones(id,project_id,deleted_at) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET project_id=excluded.project_id,deleted_at=excluded.deleted_at").run(deletion.id,deletion.projectId,deletion.deletedAt);
    }
+
   });
  }
  get(id:string):MemoryItem|undefined{const r=this.#db.prepare("SELECT * FROM memory WHERE id=? AND deleted_at IS NULL").get(id) as Record<string,unknown>|undefined;return r?row(r):undefined;}
