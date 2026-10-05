@@ -90,7 +90,7 @@ test("correction RED: sanitizes candidate inspection failures",async (t:TestCont
 
 
 function d3Input(value:Awaited<ReturnType<typeof fixture>>):RddDefectBindingInput{
- return {invariantIds:["approved-issue","current-main","deterministic-reproduction"],operatorFlows:[{id:"inspect-reproduce",from:"approved issue",to:"reproduced defect",failureTo:"blocked"}],runtimeJourney:{command:[...value.first.command],commandFingerprint:value.first.commandFingerprint,result:"reproduced",candidateId:value.candidate.id,candidateRevision:value.candidate.revision,limitations:["review and delivery remain outside D3"]},rollback:{boundary:"candidate",targetRevision:value.input.mainCommitIdentity,procedure:["discard the direct-child reproduction candidate"]},forecast:{changedLines:240,verificationEffort:"focused deterministic verification",remainingUncertainty:["independent HIGH verification pending"]}};
+ return {invariantIds:["approved-issue","current-main","deterministic-reproduction"],operatorFlows:[{id:"inspect-reproduce",from:"approved issue",to:"reproduced defect",failureTo:"blocked"}],runtimeJourney:{command:[...value.first.command],commandFingerprint:value.first.commandFingerprint,result:"reproduced",candidateId:value.candidate.id,candidateRevision:value.candidate.revision,limitations:["review and delivery remain outside D3"]},rollback:{boundary:"candidate",targetRevision:value.input.mainCommitIdentity,procedure:["discard the direct-child reproduction candidate"]},forecast:{changedLines:240,verificationEffort:"focused deterministic verification",remainingUncertainty:["independent HIGH verification pending"],deferredVerification:["Pi Free and OpenRouter reserved for final verification","full CI reserved for the large-batch gate"]}};
 }
 test("D3 binds genuine D2 evidence once and preserves descriptive-only authority",async(t:TestContext)=>{
  const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),bound=bindRddDefectEvidence(evidence,d3Input(value));
@@ -114,4 +114,8 @@ test("D3 requires a distinct fail-closed operator destination",async(t:TestConte
  for(const flow of [{id:"unsafe",from:"approved issue",to:"reproduced defect",failureTo:"continue"},{id:"same",from:"approved issue",to:"reproduced defect",failureTo:"reproduced defect"}]){
   const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input as {operatorFlows:typeof flow[]}).operatorFlows=[flow];assert.throws(()=>bindRddDefectEvidence(evidence,input),/blocked|destinations/i);
  }
+});
+
+test("D3 budget must state deferred verification explicitly",async(t:TestContext)=>{
+ const value=await fixture(t),evidence=recordRddReproduction(value.snapshot,value.input,value.first,value.second),input=d3Input(value);(input.forecast as {deferredVerification:string[]}).deferredVerification=[];assert.throws(()=>bindRddDefectEvidence(evidence,input),/deferred verification|bounded exact array/i);
 });
