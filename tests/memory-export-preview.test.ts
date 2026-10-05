@@ -63,3 +63,4 @@ test("exportación queda aislada por proyecto también para borrados",()=>{
  s.deleteObservation("p-soft","p");s.deleteObservation("q-hard","q",true);
  assert.deepEqual(s.exportProject("p").deletions?.map(x=>x.id),["p-soft"]);assert.deepEqual(s.exportProject("q").deletions?.map(x=>x.id),["q-hard"]);s.close();
 });
+\ntest("exportación antigua sin sesiones infiere sesión desde borrado suave",()=>{const source=new SqliteMemoryStore(":memory:");source.registerSession("p","s");source.save({id:"soft",projectId:"p",sessionId:"s",kind:"decision",content:"suave",createdAt:"1"});source.deleteObservation("soft","p");const data=source.exportProject("p");delete data.sessions;const target=new SqliteMemoryStore(":memory:");target.importProject(data);assert.deepEqual(target.exportProject("p").deletions?.map(x=>[x.id,x.mode]),[["soft","soft"]]);source.close();target.close();});\n
