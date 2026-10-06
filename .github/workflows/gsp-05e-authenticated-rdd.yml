@@ -2,17 +2,7 @@ name: GSP 05E authenticated RDD
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
-    paths:
-      - ".github/workflows/gsp-05e-authenticated-rdd.yml"
-      - ".github/gsp-05e-trigger"
-      - "src/review/**"
-      - "tests/native-rdd-result.test.ts"
-      - "tests/review-chain.test.ts"
-      - "src/review/bounded-correction.ts"
-      - "src/review/dual-review.ts"
-      - "src/review/dual-rejudgment.ts"
+  # Model-backed evidence is requested explicitly; automatic PR updates must not retry exhausted quotas.
 
 permissions:
   contents: read
