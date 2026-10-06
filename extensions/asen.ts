@@ -12,11 +12,13 @@ import {registerOrdinaryReviewCommand,type OrdinaryReviewCommandController} from
 import {deriveOddExecutionContract,type OddExecutionContract} from "../src/flow/odd-execution-contract.js";
 import {trackOddTask,resumeOddTask,type OddProgress} from "../src/flow/odd-task-tracking.js";
 import type {MemoryContext} from "../src/memory/context.js";import type {MemoryStore} from "../src/memory/types.js";
+import {registerInteractionTools} from "../src/interaction/pi-tools.js";
+import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
 
 type CommandContext={cwd:string;ui:{notify(message:string,level:"info"|"error"):void}};
-type PiLike={registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void};
+type PiLike={registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
 type Refresh=typeof refreshSkillRegistry;
-export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror}
+export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number}
 export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">):ReturnType<typeof resumeOddTask>}
 
 const usage="Usage: /asen-skill-registry refresh";
@@ -46,6 +48,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
  return pi=>{
   const register=pi.registerCommand?.bind(pi);
   if(!register)throw new Error("ASEN extension requires Pi command registration");
+  registerInteractionTools(pi,dependencies.interactionTimeoutMs);
   pi.registerCommand?.("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
   pi.registerCommand?.("asen-skill-registry",{description:"Refresh the generated ASEN skill registry",handler:async(args:string|undefined,ctx:CommandContext)=>{
    if(args?.trim()!=="refresh"){ctx.ui.notify(usage,"info");return usage;}

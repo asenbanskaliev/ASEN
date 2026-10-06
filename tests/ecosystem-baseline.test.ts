@@ -84,6 +84,7 @@ test("literal references never escape lexical scope or override parameters",()=>
     assert.ok(sourceReferences("ui.ts",Buffer.from(source)).every((r:any)=>r.target===null));
   }
   assert.equal(sourceReferences("ui.ts",Buffer.from('pi.registerTool({"name":"probe"});'))[0].target,"probe");
+  for(const source of ['const n="outer"; function f(){if(true){var n="inner";} pi.registerCommand(n,{})}','const n="outer"; const f=function n(){pi.registerCommand(n,{})};'])assert.ok(sourceReferences("ui.ts",Buffer.from(source)).every((r:any)=>r.target===null));
 });
 
 test("command docs invalidate transitively and complete contract anchors cannot be malformed",t=>{

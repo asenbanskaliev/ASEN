@@ -92,15 +92,21 @@
     },
     {
       "id": "ECO-03",
-      "status": "MISSING",
+      "status": "PARTIAL",
       "sourceHashes": [
         "531c776df94e59bec803a196f90af454498d1c013b6cbbdd94a28bd3077b800b",
         "9871535787a8178bf962fa1e9da862492868940b9a34f0490f937304d2a26e2e"
       ],
-      "implementation": [],
-      "tests": [],
+      "implementation": [
+        "src/interaction/ask-user.ts",
+        "src/interaction/pi-tools.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/ask-user.test.ts"
+      ],
       "remaining": [
-        "Choice/question public tools, accessible TUI/RPC, cancellation and fail-closed interaction are absent."
+        "Core choice/question native-dialog registration, validation, cancel/timeout and concurrency are implemented. Real TUI/RPC and cross-platform journeys, full questionnaire presentation and integration with genuine human-only mutation consumers remain unverified."
       ],
       "stateful": false,
       "platformSensitive": true,

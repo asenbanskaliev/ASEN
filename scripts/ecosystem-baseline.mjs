@@ -39,26 +39,20 @@ export function sourceReferences(filename, bytes) {
     for(const match of text.matchAll(/`\/(\w[\w-]*)(?:\s[^`]*)?`/g))references.push({kind:"command-reference",target:match[1]});
   } else {
     const source = ts.createSourceFile(filename, text, ts.ScriptTarget.Latest, true);
-    const scopes=new Map();
-    const isScope=node=>ts.isSourceFile(node)||ts.isBlock(node)||ts.isFunctionLike(node)||ts.isForStatement(node)||ts.isForOfStatement(node)||ts.isForInStatement(node)||ts.isCatchClause(node);
-    const scopeOf=node=>{for(let current=node.parent;current;current=current.parent)if(isScope(current))return current;return source;};
-    const bind=(node,name,value)=>{const scope=scopeOf(node);if(!scopes.has(scope))scopes.set(scope,new Map());const bindings=scopes.get(scope);bindings.set(name,bindings.has(name)?null:value);};
-    const collect=node=>{
-      if((ts.isVariableDeclaration(node)||ts.isParameter(node))&&ts.isIdentifier(node.name)){
-        const value=ts.isVariableDeclaration(node)&&ts.isVariableDeclarationList(node.parent)&&(node.parent.flags&ts.NodeFlags.Const)&&node.initializer&&ts.isStringLiteralLike(node.initializer)?node.initializer.text:null;
-        bind(node,node.name.text,value);
-      }
-      if((ts.isVariableDeclaration(node)||ts.isParameter(node))&&(ts.isObjectBindingPattern(node.name)||ts.isArrayBindingPattern(node.name))){
-        const names=pattern=>{if(ts.isIdentifier(pattern))bind(node,pattern.text,null);else if(ts.isObjectBindingPattern(pattern)||ts.isArrayBindingPattern(pattern))for(const element of pattern.elements)if(ts.isBindingElement(element))names(element.name);};names(node.name);
-      }
-      if((ts.isFunctionDeclaration(node)||ts.isClassDeclaration(node))&&node.name)bind(node,node.name.text,null);
-      ts.forEachChild(node,collect);
-    };collect(source);
+    // Bind symbols with TypeScript rather than approximating lexical/hoisting rules.
+    // This virtual host reads no checkout files, libraries or dependency modules.
+    const host={getSourceFile:name=>name===filename?source:undefined,getDefaultLibFileName:()=>"lib.d.ts",writeFile(){},
+      getCurrentDirectory:()=>"",getDirectories:()=>[],fileExists:name=>name===filename,readFile:name=>name===filename?text:undefined,
+      getCanonicalFileName:name=>name,useCaseSensitiveFileNames:()=>true,getNewLine:()=>"\n"};
+    const checker=ts.createProgram([filename],{noLib:true,noResolve:true},host).getTypeChecker();
     const literal=node=>{
       if(node&&ts.isStringLiteralLike(node))return node.text;
       if(!node||!ts.isIdentifier(node))return null;
-      for(let current=node.parent;current;current=current.parent){const bindings=scopes.get(current);if(bindings?.has(node.text))return bindings.get(node.text);}
-      return null;
+      const declarations=checker.getSymbolAtLocation(node)?.declarations;
+      if(declarations?.length!==1)return null;
+      const declaration=declarations[0];
+      return ts.isVariableDeclaration(declaration)&&ts.isVariableDeclarationList(declaration.parent)&&(declaration.parent.flags&ts.NodeFlags.Const)&&
+        declaration.initializer&&ts.isStringLiteralLike(declaration.initializer)?declaration.initializer.text:null;
     };
     const visit = node => {
       if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier)
