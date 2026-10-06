@@ -83,6 +83,28 @@ The original basic-SQLite baseline in this tracker is superseded by the complete
   - Unit, migration, integration, multi-process, security, restart, corruption, and Pi Free lifecycle tests.
   - Promote CAP-MEM-001/002 and parity rows only after exact automated evidence; keep cloud/TUI/sync deferrals explicit.
 
+## MEM to completed R01-R09 audit map — 2026-10-06
+
+| MEM item | Existing evidence | Audit result |
+| --- | --- | --- |
+| MEM-01 | Frozen v3 provenance, contract manifests, parity audit and reference tests already exist. | Covered by the completed v3 evidence; do not recreate. |
+| MEM-02 | R01 implements versioned SQLite migrations, future-version rejection, rollback/reopen, backups and concurrent-open coverage. Current schema is v8. | Covered for the admitted local core. |
+| MEM-03 | R02-R03 cover project/session identity, continuation and bounded resolution/ambiguity behavior. | Covered for the admitted local core. |
+| MEM-04 | R03-R04 cover observation lifecycle, dedupe/topic behavior, update/delete/pin and private-content/size handling. | Covered for the admitted local core. |
+| MEM-05 | R04 and later slices cover project-scoped FTS search, previews and bounded context, including UTF-8 context limits. | Covered for the admitted local core. |
+| MEM-06 | R05 closes typed relationships and idempotent review for the admitted local scope. | Covered for the admitted local core. |
+| MEM-07 | R06-R07 close curated capture, session summaries, write reconciliation and lifecycle integration for the admitted local core. | Covered; do not add a second lifecycle implementation. |
+| MEM-08 | R07-R08 cover exactly-once close/summary behavior, unknown-write reconciliation, final-response preservation, doctor/repair, backup and validated export/import. | Covered for the admitted local core. |
+| MEM-09 | R09 records configured-platform verification; final evidence records a real Pi/model restart E2E. | Core verification covered. Optional interface/provider claims remain bounded by their recorded evidence. |
+
+### Real gaps after reconciliation
+
+No reproduced defect in the existing local memory core was found by this reconciliation. Therefore no runtime or schema change is authorized from this checklist alone.
+
+Items named only by the older checklist, such as adding extra CLI/HTTP/MCP surfaces, are not automatically gaps: the completed v3 scope and its explicit exclusions take precedence. Likewise, unavailable historical Pi Free evidence remains unavailable and must not be converted into a PASS. Capability/parity labels may only be promoted when their own exact evidence supports the promotion.
+
+If a later audit reproduces a concrete behavioral failure, open a bounded fix against that failure rather than reopening MEM-01 through MEM-09 wholesale.
+
 ## Required adversarial evidence
 
 - New, legacy, repeated, concurrent, and future-schema startup.
