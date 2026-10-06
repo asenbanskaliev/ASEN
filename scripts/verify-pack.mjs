@@ -14,12 +14,15 @@ try {
 const raw=npm(["pack","--json","--pack-destination",temp]);
 const result=JSON.parse(raw)[0];
 const names=result.files.map((f)=>f.path);
-const required=["package.json","extensions/asen.ts","skills/asen-safe-change/SKILL.md"];
+const required=["package.json","src/cli.ts","extensions/asen.ts","skills/asen-safe-change/SKILL.md"];
 for(const file of required) if(!names.includes(file)) throw new Error(`packed artifact missing ${file}`);
 const installation=join(temp,"install");mkdirSync(installation);
 writeFileSync(join(installation,"package.json"),JSON.stringify({private:true}));
 npm(["install","--offline","--ignore-scripts","--omit=peer","--no-audit","--no-fund","--package-lock=false",join(temp,result.filename)],{cwd:installation});
 const checked=verifyPublicExports(installation),installed=join(installation,"node_modules","asen");
+const installedPackage=JSON.parse(readFileSync(join(installed,"package.json"),"utf8"));
+if(installedPackage.bin?.asen!=="./src/cli.ts")throw new Error("packed artifact missing ASEN executable mapping");
+const cliBytes=readFileSync(join(installed,"src","cli.ts"),"utf8");if(!cliBytes.startsWith("#!/usr/bin/env node"))throw new Error("packed ASEN executable missing node shebang");
 
 const forbidden=new RegExp(["gen"+"tle","gen"+"tleman","eng"+"ram"].join("|"),"i");
 for(const file of names) {
