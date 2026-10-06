@@ -279,3 +279,23 @@ test("Pi RPC adapter blocks caller-supplied skill overrides",async()=>{
  const r=await runner(p,{extraArgs:[p,"--skill","skills/asen-review/SKILL.md"]}).run({id:"override",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
  assert.equal(r.ok,false);assert.match(r.output,/issued by ASEN/);
 });
+
+test("organic writer reaches Pi adapter through one exact Dispatcher receiver without SDD",async t=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2),authority:JSON.parse(process.env.ASEN_PI_AUTHORITY)}));});');
+ t.after(()=>rm(d,{recursive:true,force:true}));
+ const {issueOddDecision}=await import("./helpers/odd-routing.js"),{buildOrchestrationPlan}=await import("../src/orchestration/orchestrator.js"),{decideLifecycleApplicability}=await import("../src/lifecycle/applicability.js"),{issueOrganicWriterAdmission}=await import("../src/lifecycle/skill-lifecycle.js");
+ const candidate={id:"organic",repository:d,revision:"revision",createdAt:"now"},decision=issueOddDecision({taskId:"organic",repository:d,paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});
+ buildOrchestrationPlan({taskId:"organic",repository:d,candidate,prompt:"write"},decision);
+ const app=decideLifecycleApplicability(decision,{taskIdentity:"organic",repositoryIdentity:d,candidate:{id:candidate.id,repository:d,revision:candidate.revision},explicitMode:"unspecified",affectedSubsystems:["Pi"],expectedPaths:["src/a"],requiredArtifacts:[]});
+ assert.equal(app.outcome,"organic");
+ const skillContext=issueSkillContext("organic:worker",d,candidate,{phase:"apply",codeChange:true}),evidence=new EvidenceStore();
+ for(const kind of ["work-unit","scope","rollback"] as const)evidence.add(candidate,{id:kind,kind,status:"pass",createdAt:"now",summary:"bounded"});
+ const request={id:"organic:worker",role:"worker" as const,prompt:"write",repository:d,candidate,skillContext,skillPaths:selectSkills(skillContext).map(s=>s.path),writeSurfaces:["src/a"],writerAdmission:issueOrganicWriterAdmission(app,["src/a"])};
+ let captured:import("../src/agents/dispatcher.js").AgentRequest|undefined;
+ const pi=runner(p),dispatcher=new Dispatcher({run:async call=>{captured=call;return pi.run(call);}},evidence);
+ const result=await dispatcher.dispatch(request);assert.equal(result.ok,true,result.output);
+ const observed=JSON.parse(result.output.trim().split(/\r?\n/).at(-1)!);
+ assert.ok(observed.args.includes("read,edit,write"));assert.deepEqual(observed.authority.writeSurfaces,["src/a"]);
+ assert.equal(captured?.phaseGrant,undefined);assert.ok(captured);
+ const replay=await pi.run(captured);assert.equal(replay.ok,false);assert.match(replay.output,/exact dispatcher receiver/);
+});

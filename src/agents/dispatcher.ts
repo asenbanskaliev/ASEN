@@ -1,3 +1,4 @@
+import {types} from "node:util";
 import { validateWriteGrant, type WriteGrant } from "../policies/scopes.js";
 import type {Candidate} from "../core/types.js";
 import {EvidenceStore} from "../evidence/store.js";
@@ -11,13 +12,43 @@ export interface AgentArtifactProof { readonly requestId:string; readonly role:A
 export interface AgentResult { id:string; ok:boolean; output:string; artifactProof?:AgentArtifactProof; }
 export interface AgentRunner { run(request:AgentRequest):Promise<AgentResult>; }
 
+function plainData(value:unknown):Record<string,unknown>{
+ if(typeof value!=="object"||value===null||types.isProxy(value)||Object.getPrototypeOf(value)!==Object.prototype)throw new Error("Agent request requires plain data");
+ const descriptors=Object.getOwnPropertyDescriptors(value);
+ if(Reflect.ownKeys(descriptors).some(key=>typeof key!=="string"||!descriptors[key]?.enumerable||!("value" in descriptors[key]!)))throw new Error("Agent request requires plain data fields");
+ return Object.fromEntries(Object.entries(descriptors).map(([key,d])=>[key,d.value]));
+}
+function requestArray(value:unknown):string[]{
+ if(typeof value!=="object"||value===null||types.isProxy(value)||!Array.isArray(value)||Object.getPrototypeOf(value)!==Array.prototype||value.length>256)throw new Error("Agent request requires bounded array data");
+ const keys=Reflect.ownKeys(value);
+ if(keys.length!==value.length+1)throw new Error("Agent request requires exact array data");
+ return Array.from({length:value.length},(_,i)=>{
+  const d=Object.getOwnPropertyDescriptor(value,String(i));
+  if(!d?.enumerable||!("value" in d)||typeof d.value!=="string")throw new Error("Agent request requires exact string array data");
+  return d.value;
+ });
+}
+
 export class Dispatcher {
  readonly #active:WriteGrant[]=[]; #running=0; readonly #waiters:Array<()=>void>=[];
  constructor(private readonly runner:AgentRunner,private readonly evidence:EvidenceStore,private readonly maxConcurrency=4){if(!Number.isInteger(maxConcurrency)||maxConcurrency<1)throw new Error("maxConcurrency must be a positive integer");}
  async #acquire():Promise<void>{if(this.#running<this.maxConcurrency){this.#running++;return;}await new Promise<void>(resolve=>this.#waiters.push(resolve));this.#running++;}
  #release():void{this.#running--;this.#waiters.shift()?.();}
  async dispatch(request:AgentRequest):Promise<AgentResult>{
-  await this.#acquire();let grant:WriteGrant|undefined,runnerRequest=request;
+  const token=typeof request==="object"&&request!==null&&!types.isProxy(request)?Object.getOwnPropertyDescriptor(request,"writerAdmission")?.value:undefined;
+  let runnerRequest:AgentRequest;
+  try{
+   const data=plainData(request),{writerAdmission:_admission,runnerWriteReceiver:_receiver,...forwarded}=data;
+   runnerRequest={...forwarded,
+    ...(data.candidate?{candidate:Object.freeze(plainData(data.candidate))}:{}),
+    ...(data.writeSurfaces?{writeSurfaces:Object.freeze(requestArray(data.writeSurfaces))}:{}),
+    ...(data.skillPaths?{skillPaths:Object.freeze(requestArray(data.skillPaths))}:{}),
+   } as unknown as AgentRequest;
+  }catch(error){consumeWriterAdmission(token,{id:"",role:"worker",prompt:"",repository:""});throw error;}
+  const receiver=consumeWriterAdmission(token,runnerRequest);
+  if(receiver)runnerRequest.runnerWriteReceiver=receiver;
+  Object.freeze(runnerRequest);request=runnerRequest;
+  await this.#acquire();let grant:WriteGrant|undefined;
   try{
    if(request.writeSurfaces&&request.role!=="worker") throw new Error("Only worker agents may receive write authority");
    if(request.skillContext||request.skillPaths){
@@ -42,7 +73,7 @@ export class Dispatcher {
     if(!skills.length) throw new Error("Write authority requires mandatory skills");
     const gate=verifySkillEvidence(request.candidate,skills,this.evidence,"mutation");
     if(!gate.ok) throw new Error(`Write authority blocked: ${gate.reason}`);
-    const receiver=consumeWriterAdmission(request.writerAdmission,request);if(!receiver)throw new Error("Write authority requires unused exact writer admission");const {writerAdmission:_writerAdmission,...forwarded}=request;runnerRequest={...forwarded,runnerWriteReceiver:receiver};
+    if(!receiver)throw new Error("Write authority requires unused exact writer admission");
     grant={agentId:request.id,repository:request.repository,surfaces:request.writeSurfaces};
     if(request.isolationKey)grant.isolationKey=request.isolationKey;
     validateWriteGrant(grant,this.#active);this.#active.push(grant);

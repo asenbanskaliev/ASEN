@@ -188,7 +188,7 @@ test("writer admission is opaque, one-use, and burns on a mismatched first claim
  const admission=organicAdmission();
  assert.deepEqual(Reflect.ownKeys(admission),[]);
  const d=new Dispatcher({run:async request=>({id:request.id,ok:true,output:"ok"})},authorized());
- await assert.rejects(()=>d.dispatch({...writeRequest,id:"wrong:worker",skillContext:sealedCodeChange("wrong"),writerAdmission:admission}),/unused exact writer admission/);
+ await assert.rejects(()=>d.dispatch({...writeRequest,id:"wrong",skillContext:sealedCodeChange("wrong"),writerAdmission:admission}),/unused exact writer admission/);
  await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:admission}),/unused exact writer admission/);
 });
 
@@ -212,8 +212,8 @@ test("dispatcher strips admission and conveys one exact-call runner receiver",as
   observed=true;
   assert.equal(request.writerAdmission,undefined);
   assert.ok(request.runnerWriteReceiver);
-  assert.equal(consumeRunnerWriteReceiver(request.runnerWriteReceiver,request.id),true);
-  assert.equal(consumeRunnerWriteReceiver(request.runnerWriteReceiver,request.id),false);
+  assert.equal(consumeRunnerWriteReceiver(request.runnerWriteReceiver,request),true);
+  assert.equal(consumeRunnerWriteReceiver(request.runnerWriteReceiver,request),false);
   return{id:request.id,ok:true,output:"ok"};
  }};
  const d=new Dispatcher(runner,authorized());
@@ -228,6 +228,6 @@ test("runner receiver burns on a mismatched first claim",async()=>{
  const d=new Dispatcher(runner,authorized());
  await d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:organicAdmission()});
  assert.ok(receiver);
- assert.equal(consumeRunnerWriteReceiver(receiver,"wrong"),false);
- assert.equal(consumeRunnerWriteReceiver(receiver,writeRequest.id),false);
+ assert.equal(consumeRunnerWriteReceiver(receiver,{...writeRequest,id:"wrong"}),false);
+ assert.equal(consumeRunnerWriteReceiver(receiver,writeRequest),false);
 });

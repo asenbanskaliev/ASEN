@@ -1,6 +1,8 @@
 import {open,readFile,rename,unlink} from "node:fs/promises";
 import {dirname,basename,join} from "node:path";
 import {createHash,createHmac,randomUUID,timingSafeEqual} from "node:crypto";
+import {types} from "node:util";
+import {validateWriteGrant} from "../policies/scopes.js";
 import type {Candidate,Risk} from "../core/types.js";
 import {issueSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
@@ -9,7 +11,7 @@ import {isIssuedAgentArtifactProof} from "../agents/pi-artifact-runner.js";
 import {EvidenceStore} from "../evidence/store.js";
 import {authorizeRelease,authorizeVerified} from "../verify/verifier.js";
 import {assertDirectGitParent} from "../evidence/git-lineage.js";
-import {claimLifecycleApplicability,tddObligationFor,hasOriginalDefectIntent,workflowSelectionDescriptionForApplicability,type LifecycleApplicability,type TddObligation} from "./applicability.js";
+import {claimLifecycleApplicability,hasOriginalWriterIntent,tddObligationFor,hasOriginalDefectIntent,workflowSelectionDescriptionForApplicability,type LifecycleApplicability,type TddObligation} from "./applicability.js";
 import type {WorkflowSelectionDescription} from "./workflow-selection.js";
 import {claimStrictTddCompletion,type StrictTddCompletion} from "../test/strict-tdd-cycle.js";
 import {claimNonTddAlternativeResult,type NonTddAlternativeResult} from "../test/non-tdd-alternative.js";
@@ -45,11 +47,54 @@ const lifecycleDescriptions=new WeakMap<SkillLifecycle,WorkflowSelectionDescript
 const snapshotDescriptions=new WeakMap<object,WorkflowSelectionDescription>();
 const snapshotObligations=new WeakMap<object,TddObligation>();
 const lifecycleDefects=new WeakSet<SkillLifecycle>(),snapshotDefects=new WeakSet<object>();
-const writerAdmissions=new WeakMap<object,{task:string;repository:string;candidateId:string;revision:string;surfaces:readonly string[];used:boolean}>(),runnerReceivers=new WeakMap<object,{requestId:string;used:boolean}>();
-function writerAdmission(task:string,candidate:Candidate,surfaces:readonly string[]):object{const exact=(value:unknown,label:string)=>{if(typeof value!=="string"||!value||value!==value.trim()||value!==value.normalize("NFC")||/[\u0000-\u001f\u007f-\u009f]/u.test(value))throw new Error(`Invalid ${label}`);return value;};if(!Array.isArray(surfaces))throw new Error("Writer admission requires bounded surfaces");const bounded=surfaces.map(value=>exact(value,"writer surface"));if(!bounded.length||new Set(bounded).size!==bounded.length)throw new Error("Writer admission requires unique bounded surfaces");const token=Object.freeze({});writerAdmissions.set(token,{task:exact(task,"writer task"),repository:exact(candidate.repository,"writer repository"),candidateId:exact(candidate.id,"writer candidate id"),revision:exact(candidate.revision,"writer revision"),surfaces:Object.freeze(bounded),used:false});return token;}
-export function issueOrganicWriterAdmission(applicability:LifecycleApplicability,surfaces:readonly string[]):object{if(applicability.outcome!=="organic")throw new Error("Organic writer admission requires organic applicability");claimLifecycleApplicability(applicability);return writerAdmission(applicability.taskIdentity,{...applicability.candidate,createdAt:"organic-applicability"},surfaces);}
-export function consumeWriterAdmission(token:unknown,request:AgentRequest):object|undefined{const a=typeof token==="object"&&token!==null?writerAdmissions.get(token):undefined;if(!a||a.used)return undefined;a.used=true;if(!request.candidate||!request.writeSurfaces)return undefined;const task=request.id.replace(/:worker$/u,"");if(a.task!==task&&a.task!==request.id||a.repository!==request.repository||a.candidateId!==request.candidate.id||a.revision!==request.candidate.revision||a.surfaces.length!==request.writeSurfaces.length||a.surfaces.some((v,i)=>v!==request.writeSurfaces![i]))return undefined;const receiver=Object.freeze({});runnerReceivers.set(receiver,{requestId:request.id,used:false});return receiver;}
-export function consumeRunnerWriteReceiver(receiver:unknown,requestId:string):boolean{const r=typeof receiver==="object"&&receiver!==null?runnerReceivers.get(receiver):undefined;if(!r||r.used)return false;r.used=true;return r.requestId===requestId;}
+type WriterAdmission={task:string;repository:string;candidateId:string;revision:string;surfaces:readonly string[];used:boolean};
+const writerAdmissions=new WeakMap<object,WriterAdmission>();
+const runnerReceivers=new WeakMap<object,{request:AgentRequest;used:boolean}>();
+function writerText(value:unknown,label:string):string{
+ if(typeof value!=="string"||!value||value.length>4096||value!==value.trim()||value!==value.normalize("NFC")||/[\u0000-\u001f\u007f-\u009f]/u.test(value))throw new Error(`Invalid ${label}`);
+ return value;
+}
+function writerSurfaces(value:unknown):string[]{
+ if(typeof value!=="object"||value===null||types.isProxy(value)||!Array.isArray(value)||Object.getPrototypeOf(value)!==Array.prototype||!value.length||value.length>256)throw new Error("Writer admission requires bounded surfaces");
+ const keys=Reflect.ownKeys(value);
+ if(keys.length!==value.length+1||keys.some(key=>typeof key!=="string"||key!=="length"&&!/^(0|[1-9][0-9]*)$/u.test(key)))throw new Error("Writer admission requires exact surfaces");
+ const surfaces=Array.from({length:value.length},(_,i)=>{
+  const descriptor=Object.getOwnPropertyDescriptor(value,String(i));
+  if(!descriptor?.enumerable||!("value" in descriptor))throw new Error("Writer admission requires exact surfaces");
+  const surface=writerText(descriptor.value,"writer surface"),path=surface.replace(/\/$/u,"");
+  if(path.startsWith("/")||path.includes("\\")||path.includes(":")||path.includes("*")||path.split("/").some(part=>!part||part==="."||part===".."))throw new Error("Writer admission requires bounded surfaces");
+  return surface;
+ });
+ if(new Set(surfaces.map(v=>v.replace(/\/$/u,""))).size!==surfaces.length)throw new Error("Writer admission requires unique bounded surfaces");
+ validateWriteGrant({agentId:"admission",repository:"admission",surfaces},[]);
+ return surfaces;
+}
+function writerAdmission(task:string,candidate:Candidate,surfaces:readonly string[]):object{
+ const bounded=writerSurfaces(surfaces),token=Object.freeze({});
+ writerAdmissions.set(token,{task:writerText(task,"writer task"),repository:writerText(candidate.repository,"writer repository"),candidateId:writerText(candidate.id,"writer candidate id"),revision:writerText(candidate.revision,"writer revision"),surfaces:Object.freeze(bounded),used:false});
+ return token;
+}
+export function issueOrganicWriterAdmission(applicability:LifecycleApplicability,surfaces:readonly string[]):object{
+ claimLifecycleApplicability(applicability);
+ if(applicability.outcome!=="organic"||!hasOriginalWriterIntent(applicability))throw new Error("Organic writer admission requires organic write applicability");
+ return writerAdmission(applicability.taskIdentity,{...applicability.candidate,createdAt:"organic-applicability"},surfaces);
+}
+/** Burn before any Dispatcher identity, Skill, evidence, or scope gate. */
+export function consumeWriterAdmission(token:unknown,request:AgentRequest):object|undefined{
+ const a=typeof token==="object"&&token!==null?writerAdmissions.get(token):undefined;
+ if(!a||a.used)return undefined;
+ a.used=true;
+ if(!request.candidate||!request.writeSurfaces||request.role!=="worker"||request.candidate.repository!==request.repository)return undefined;
+ const task=request.id.replace(/:worker$/u,"");
+ if((a.task!==task&&a.task!==request.id)||a.repository!==request.repository||a.candidateId!==request.candidate.id||a.revision!==request.candidate.revision||a.surfaces.length!==request.writeSurfaces.length||a.surfaces.some((v,i)=>v!==request.writeSurfaces![i]))return undefined;
+ const receiver=Object.freeze({});runnerReceivers.set(receiver,{request,used:false});return receiver;
+}
+/** Receiver accepts the exact immutable forwarded call, never an ID or structural clone. */
+export function consumeRunnerWriteReceiver(receiver:unknown,request:AgentRequest):boolean{
+ const r=typeof receiver==="object"&&receiver!==null?runnerReceivers.get(receiver):undefined;
+ if(!r||r.used)return false;
+ r.used=true;return r.request===request&&Object.isFrozen(request);
+}
 type CompletionAdmission={lifecycle:SkillLifecycle;repository:string;candidateId:string;revision:string;record:TddCompletionRecord;used:boolean};
 const completionAdmissions=new WeakMap<object,CompletionAdmission>();
 function issueCompletionAdmission(lifecycle:SkillLifecycle,snapshot:LifecycleSnapshot):Readonly<Record<string,never>>{

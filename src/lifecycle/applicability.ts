@@ -41,7 +41,7 @@ export interface TddObligation {
 const attempted = new WeakSet<object>();
 const issued = new WeakSet<object>();
 const claimed = new WeakSet<object>();
-const writerAdmissions=new WeakMap<object,{task:string;repository:string;candidateId:string;revision:string;surfaces:readonly string[];used:boolean}>(),runnerReceivers=new WeakMap<object,{requestId:string;used:boolean}>();
+const originalWriters=new WeakSet<object>();
 const obligations = new WeakMap<object, TddObligation>();
 const defectIntents=new WeakSet<object>();
 const issuedObligations = new WeakSet<object>();
@@ -151,6 +151,7 @@ function decide(claimedOddDecision:OddRouteDecision,value:LifecycleApplicability
   };
   const obligation = Object.freeze({ requirementId: createHash("sha256").update(JSON.stringify(obligationPayload)).digest("hex"), ...obligationPayload });
   issued.add(result);
+  if(context.facts.writes.length)originalWriters.add(result);
   if(context.facts.intent==="defect")defectIntents.add(result);
   issuedObligations.add(obligation);
   obligations.set(result, obligation);
@@ -195,3 +196,6 @@ export function hasOriginalDefectIntent(value:unknown):boolean{
  return typeof value==="object"&&value!==null&&issued.has(value)&&defectIntents.has(value);
 }
 
+
+/** Immutable original write intent; read-only applicability cannot mint writer admission. */
+export function hasOriginalWriterIntent(value:unknown):boolean{return typeof value==="object"&&value!==null&&originalWriters.has(value);}
