@@ -16,8 +16,8 @@ function contract(repository:string,readOnly=false,revision="sha",taskId="task")
  buildOrchestrationPlan({taskId,repository,candidate,prompt:"inspect"},decision);
  return deriveOddExecutionContract(decision);
 }
-async function fixture(t:{after:(f:()=>Promise<void>)=>void}){
- const root=await realpath(await mkdtemp(join(tmpdir(),"asen-odd-tracking-")));t.after(()=>rm(root,{recursive:true,force:true}));
+async function fixture(t:{after:(f:()=>Promise<void>)=>void},close:()=>void=()=>{}){
+ const root=await realpath(await mkdtemp(join(tmpdir(),"asen-odd-tracking-")));t.after(async()=>{close();await rm(root,{recursive:true,force:true});});
  await mkdir(join(root,"odd/tasks"),{recursive:true});await writeFile(join(root,"odd/tasks/task.md"),"# Task\n\nScope, acceptance, constraints, TODO and resume context.\n");
  return root;
 }
@@ -30,13 +30,14 @@ test("read-only substantial ODD produces no artifact and invokes no memory callb
  assert.deepEqual(await readdir(root),before);
 });
 test("full task mirror, TODO and exact resume survive SQLite close/reopen",async t=>{
- const root=await fixture(t),path=join(root,"memory.db"),store=new SqliteMemoryStore(path),context=createMemoryContext(store,{repository:root},"first");
+ let openStore:SqliteMemoryStore|undefined;
+ const root=await fixture(t,()=>openStore?.close()),path=join(root,"memory.db"),store=openStore=new SqliteMemoryStore(path),context=createMemoryContext(store,{repository:root},"first");
  const original=await readFile(join(root,"odd/tasks/task.md"),"utf8"),c=contract(root);
  assert.ok(c.requiresFullMemoryMirror&&c.requiresTodo&&c.requiresResume);
  const saved=await trackOddTask(c,context,"odd/tasks/task.md",progress);assert.ok(saved);
  assert.equal(JSON.parse(saved.content).document,original);
  await assert.rejects(()=>trackOddTask(c,context,"odd/tasks/task.md",progress),/consumed/);
- store.close();const reopened=new SqliteMemoryStore(path);t.after(async()=>reopened.close());
+ store.close();openStore=undefined;const reopened=openStore=new SqliteMemoryStore(path);
  const resumed=await resumeOddTask(contract(root),reopened);assert.ok(resumed);
  assert.equal(resumed.document,original);assert.deepEqual(resumed.todos,progress.todos);assert.equal(resumed.nextStep,progress.nextStep);
  assert.ok(Object.isFrozen(resumed)&&Object.isFrozen(resumed.todos)&&Object.isFrozen(resumed.todos[0]));
@@ -46,7 +47,8 @@ test("full task mirror, TODO and exact resume survive SQLite close/reopen",async
  await writeFile(join(root,"odd/tasks/task.md"),"# Changed\n");await assert.rejects(()=>resumeOddTask(contract(root),reopened),/document changed/);
 });
 test("tracking rejects forgery, wrong project, duplicate TODO and extras without document writes",async t=>{
- const root=await fixture(t),store=new SqliteMemoryStore(join(root,"memory.db"));t.after(async()=>store.close());
+ let openStore:SqliteMemoryStore|undefined;
+ const root=await fixture(t,()=>openStore?.close()),store=openStore=new SqliteMemoryStore(join(root,"memory.db"));
  const context=createMemoryContext(store,{repository:root},"first"),original=await readFile(join(root,"odd/tasks/task.md"),"utf8");
  await assert.rejects(()=>trackOddTask({...contract(root)},context,"odd/tasks/task.md",progress),/genuine/);
  const wrong=createMemoryContext(store,{repository:"other"},"second");await assert.rejects(()=>trackOddTask(contract(root),wrong,"odd/tasks/task.md",progress),/project mismatch/);
