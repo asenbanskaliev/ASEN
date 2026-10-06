@@ -6,13 +6,13 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"skills",name:"asen-skill-registry",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-profiles",implemented:false,owner:"ECO-11"},
  {group:"configuration",name:"asen-customize",implemented:false,owner:"ECO-14"},
- {group:"configuration",name:"asen-commands",implemented:false,owner:"ECO-14"},
+ {group:"configuration",name:"asen-commands",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-changes",implemented:false,owner:"ECO-10"},
  {group:"session",name:"asen-agents",implemented:false,owner:"ECO-05/10"},
  {group:"session",name:"asen-history",implemented:false,owner:"ECO-12"},
  {group:"session",name:"asen-usage",implemented:false,owner:"ECO-13"},
- {group:"diagnostics",name:"asen-status",implemented:false,owner:"ECO-15"},
- {group:"diagnostics",name:"asen-doctor",implemented:false,owner:"ECO-15"}
+ {group:"diagnostics",name:"asen-status",implemented:true,owner:"extensions/asen.ts"},
+ {group:"diagnostics",name:"asen-doctor",implemented:true,owner:"extensions/asen.ts"}
 ] as const;
 export function implementedCommands(){return ASEN_COMMAND_CATALOG.filter(c=>c.implemented).map(c=>c.name);}
 export function missingCommands(){return ASEN_COMMAND_CATALOG.filter(c=>!c.implemented).map(c=>c.name);}
