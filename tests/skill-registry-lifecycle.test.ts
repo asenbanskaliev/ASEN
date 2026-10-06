@@ -49,7 +49,7 @@ test("shutdown waits for preparation/in-flight refresh; concurrent starts retain
  await Promise.all([lifecycle.start(ctx),lifecycle.start(ctx)]);assert.equal(calls,2);assert.equal(watchers,1);await lifecycle.shutdown();
 });
 
-test("native recursive watcher invalidates real temporary registry and shutdown preserves last bytes",{timeout:12000},async t=>{
+test("native recursive watcher invalidates real temporary registry and shutdown preserves last bytes",{skip:process.platform==="win32"?"recursive fs.watch delivery is not a portable Windows contract":false,timeout:12000},async t=>{
  const {writeFile,readFile}=await import("node:fs/promises");const {refreshSkillRegistry}=await import("../src/skills/generated-registry.js");
  const root=await mkdtemp(join(tmpdir(),"asen-registry-native-"));t.after(()=>rm(root,{recursive:true,force:true}));
  const skills=join(root,"skills"),skill=join(skills,"one");await mkdir(skill,{recursive:true});const file=join(skill,"SKILL.md");
