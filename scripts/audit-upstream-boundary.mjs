@@ -23,7 +23,7 @@ if(provenanceIssues.length){
 const referenceName=memoryManifest.targets[0].repository.split("/").at(-1);
 const forbidden=new RegExp(["gen"+"tle","gen"+"tleman",referenceName].filter(Boolean).join("|"),"i");
 const provenanceAllowlist=new Set([
- "registry/parity/skill-sources-v1.json",memoryManifestPath,"registry/parity/memory-foundation-contracts-v1.json",
+ "registry/parity/skill-sources-v1.json","registry/parity/ecosystem-sources-v1.json","registry/parity/ecosystem-media-v1.json",memoryManifestPath,"registry/parity/memory-foundation-contracts-v1.json",
  observationWriteManifestPath,retrievalSearchManifestPath,contextTimelineManifestPath,projectIdentityManifestPath,
  sessionTransportManifestPath,sessionStoreManifestPath,passiveCaptureManifestPath,relationManifestPath,
  ...additionalParityFixturePaths

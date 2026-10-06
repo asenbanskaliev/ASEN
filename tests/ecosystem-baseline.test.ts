@@ -1,0 +1,95 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {execFileSync} from "node:child_process";
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync} from "node:fs";
+import {join} from "node:path";
+import {tmpdir} from "node:os";
+// @ts-expect-error Research-only JavaScript baseline collector, outside the runtime package.
+import {collectBaseline,validateBaseline,verifyBaselineObjects,detectBaselineDrift,sourceReferences} from "../scripts/ecosystem-baseline.mjs";
+
+function fixture(t:test.TestContext) {
+  const root=mkdtempSync(join(tmpdir(),"asen-ecosystem-"));
+  t.after(()=>rmSync(root,{recursive:true,force:true}));
+  const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8"}).trim();
+  git("init","-q");git("config","user.name","Fixture");git("config","user.email","fixture@example.test");
+  mkdirSync(join(root,"extensions"));mkdirSync(join(root,"lib"));mkdirSync(join(root,"docs"));
+  writeFileSync(join(root,"package.json"),JSON.stringify({dependencies:{"dep-one":"1"}}));
+  writeFileSync(join(root,"extensions","entry.ts"),'import {x} from "../lib/core.js";\nimport "node:fs";\nimport "dep-one";\nconst variable="v"; import(variable);\nexport const main=x;\n');
+  writeFileSync(join(root,"lib","core.ts"),'import "../extensions/entry.js";\nexport const x="á😀";\r\n');
+  writeFileSync(join(root,"docs","guide.md"),'# Guide\n[read](../README.md#start)\n[absent](missing.md)\n[external](https://example.test)\n[escape](../../secret)\n');
+  writeFileSync(join(root,"README.md"),"# Start\n");
+  git("add",".");git("commit","-qm","fixture");
+  return {root,git,commit:git("rev-parse","HEAD")};
+}
+
+test("Git-object baseline preserves exact bytes, closes cycles and ignores dirty/untracked state",t=>{
+  const f=fixture(t), baseline=collectBaseline(f.root,f.commit);
+  assert.deepEqual(validateBaseline(baseline),[]);
+  const core=baseline.files.find((row:any)=>row.path==="lib/core.ts");
+  assert.equal(core.bytes,Buffer.byteLength('import "../extensions/entry.js";\nexport const x="á😀";\r\n'));
+  writeFileSync(join(f.root,"lib","core.ts"),"dirty");
+  writeFileSync(join(f.root,"extensions","untracked.ts"),"untracked");
+  assert.deepEqual(collectBaseline(f.root,f.commit),baseline);
+  assert.equal(verifyBaselineObjects(f.root,baseline),true);
+  assert.ok(baseline.files.some((row:any)=>row.references.some((ref:any)=>ref.status==="outside-root")));
+  for(const status of ["dependency","builtin","unresolved","absent","external"])
+    assert.ok(baseline.files.some((row:any)=>row.references.some((ref:any)=>ref.status===status)),status);
+});
+
+test("rejects malformed identities, duplicate/escape paths, dangling closure and altered byte identities",t=>{
+  const f=fixture(t), baseline=collectBaseline(f.root,f.commit);
+  for(const mutate of [
+    (b:any)=>{b.commit="HEAD";},(b:any)=>{b.files[0].path="../outside";},
+    (b:any)=>{b.files.push(b.files[0]);},(b:any)=>{b.files[0].sha256="wrong";},
+    (b:any)=>{b.files[0].bytes=-1;},(b:any)=>{b.files[0].anchors={};},
+    (b:any)=>{b.files[0].references=[{kind:"import",target:"./none",path:"none.ts",status:"tracked"}];},
+  ]) {const changed=structuredClone(baseline);mutate(changed);assert.ok(validateBaseline(changed).length);}
+  const changed=structuredClone(baseline);changed.files[0].sha256="a".repeat(64);
+  assert.throws(()=>verifyBaselineObjects(f.root,changed),/pinned Git objects/);
+  assert.throws(()=>collectBaseline(f.root,"HEAD"),/exact/);
+  assert.throws(()=>collectBaseline(f.root,"a".repeat(40)));
+});
+
+test("static imports use syntax nodes; computed imports remain explicitly unresolved",()=>{
+  const refs=sourceReferences("entry.ts",Buffer.from('// import "./fake"\nimport "./real"; export * from "./export"; import("./dynamic"); import(name);'));
+  assert.deepEqual(refs.map((r:any)=>r.target).sort(),[null,"./dynamic","./export","./real"].sort());
+});
+
+test("drift reports edits, unique renames, additions, removals and reference/anchor changes without adoption",t=>{
+  const f=fixture(t), before=collectBaseline(f.root,f.commit);
+  f.git("mv","docs/guide.md","docs/renamed.md");
+  writeFileSync(join(f.root,"README.md"),"# Changed\n[link](docs/renamed.md)\n");
+  writeFileSync(join(f.root,"extensions","added.ts"),"export const added=1;\n");
+  writeFileSync(join(f.root,"package.json"),JSON.stringify({dependencies:{"dep-one":"2"}}));
+  f.git("add",".");f.git("commit","-qm","change");
+  const after=collectBaseline(f.root,f.git("rev-parse","HEAD")), report=detectBaselineDrift(before,after);
+  assert.equal(report.autoAdopt,false);
+  for(const kind of ["RENAMED","CONTENT_CHANGED","ANCHORS_CHANGED","REFERENCES_CHANGED","ADDED","DEPENDENCIES_CHANGED"])
+    assert.ok(report.changes.some((c:any)=>c.kind===kind),kind);
+  assert.ok(report.invalidatedPaths.includes("docs/guide.md"));
+  assert.ok(report.invalidatedPaths.includes("docs/renamed.md"));
+  assert.deepEqual(detectBaselineDrift(before,before).changes,[]);
+});
+
+test("library changes invalidate importing roots and ambiguous hashes are never called renames",t=>{
+  const f=fixture(t), before=collectBaseline(f.root,f.commit);
+  writeFileSync(join(f.root,"lib","core.ts"),'export const x="changed";\n');
+  f.git("add",".");f.git("commit","-qm","library change");
+  const after=collectBaseline(f.root,f.git("rev-parse","HEAD"));
+  assert.ok(detectBaselineDrift(before,after).invalidatedPaths.includes("extensions/entry.ts"));
+  const renamed=structuredClone(before),original=renamed.files.find((row:any)=>row.path==="README.md");
+  renamed.files=renamed.files.filter((row:any)=>row.path!=="README.md");
+  renamed.roots=renamed.roots.filter((p:string)=>p!=="README.md");
+  for(const name of ["docs/copy1.md","docs/copy2.md"]){renamed.files.push({...original,path:name,references:[]});renamed.roots.push(name);}
+  for(const row of renamed.files) row.references=row.references.filter((ref:any)=>ref.path!=="README.md");
+  const report=detectBaselineDrift(before,renamed);
+  assert.equal(report.changes.some((c:any)=>c.kind==="RENAMED"&&c.path==="README.md"),false);
+  assert.ok(report.changes.some((c:any)=>c.kind==="REMOVED"&&c.path==="README.md"));
+});
+
+test("checked-in ecosystem manifest is valid research evidence",()=>{
+  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
+  assert.deepEqual(validateBaseline(baseline),[]);
+  assert.equal(baseline.files.filter((r:any)=>r.path.startsWith("extensions/")).length,20);
+  assert.equal(baseline.commit,"08de420ca29be16b6f6bee725a30b599b061df16");
+});
