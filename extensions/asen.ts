@@ -11,7 +11,7 @@ import {claimedOrchestrationRouteContext} from "../src/orchestration/orchestrato
 import {registerOrdinaryReviewCommand,type OrdinaryReviewCommandController} from "../src/review/ordinary-review-command.js";
 import {deriveOddExecutionContract,type OddExecutionContract} from "../src/flow/odd-execution-contract.js";
 import {trackOddTask,resumeOddTask,type OddProgress} from "../src/flow/odd-task-tracking.js";
-import type {MemoryContext} from "../src/memory/context.js";import type {MemoryStore} from "../src/memory/store.js";
+import type {MemoryContext} from "../src/memory/context.js";import type {MemoryStore} from "../src/memory/types.js";
 
 type CommandContext={cwd:string;ui:{notify(message:string,level:"info"|"error"):void}};
 type PiLike={registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void};
