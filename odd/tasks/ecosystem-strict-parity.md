@@ -29,7 +29,7 @@ The current unit-by-unit comparison is `odd/tasks/ecosystem-reconciliation.md`; 
 | Family | Status | Current limitation |
 | --- | --- | --- |
 | Ask-user | `PARTIAL` | Native dialog tools, bounded validation, cancel/timeout and concurrency exist. Full TUI/RPC journeys and mutation-consumer integration remain unverified. |
-| CodeGraph | `MISSING` | No equivalent secure-root, shell-free, cross-platform integration. |
+| CodeGraph | `PARTIAL` | Read-only adapter and fault fixtures pass locally; real CLI/index lifecycle and cross-platform host evidence remain open. |
 | Agents | `PARTIAL` | Public tools and lifecycle/transport/activity behavior are incomplete. |
 | Primary orchestrator | `PARTIAL` | Prompt, status, doctor, and review-boundary behavior are incomplete. |
 | Workspace | `MISSING` | Workspace interaction and UI are absent. |
@@ -54,7 +54,7 @@ The current unit-by-unit comparison is `odd/tasks/ecosystem-reconciliation.md`; 
 | History | `MISSING` | No behavior-backed guide. |
 | Usage and telemetry | `MISSING` | No adopted contract or behavior-backed guide. |
 
-Current strict claims are 11 PARTIAL / 5 MISSING / 0 FULL. `npm run audit:ecosystem` rejects unsupported FULL, unaccepted exclusions, absent source/implementation references, stale candidate/source bindings, drifted source rows and missing executed evidence receipts. Legacy historical labels are not current strict claims.
+Current strict claims are 12 PARTIAL / 4 MISSING / 0 FULL. `npm run audit:ecosystem` rejects unsupported FULL, unaccepted exclusions, absent source/implementation references, stale candidate/source bindings, drifted source rows and missing executed evidence receipts. Legacy historical labels are not current strict claims.
 
 ## Evidence and claim rules
 

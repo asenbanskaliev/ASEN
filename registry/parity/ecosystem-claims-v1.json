@@ -103,10 +103,11 @@
         "extensions/asen.ts"
       ],
       "tests": [
-        "tests/ask-user.test.ts"
+        "tests/ask-user.test.ts",
+        "tests/ask-user-rpc.test.ts"
       ],
       "remaining": [
-        "Core choice/question native-dialog registration, validation, cancel/timeout and concurrency are implemented. Real TUI/RPC and cross-platform journeys, full questionnaire presentation and integration with genuine human-only mutation consumers remain unverified."
+        "Core choice/question validation, cancellation and timeout are implemented. Real offline Pi RPC choice and cancellation pass on Linux with zero model calls. Full TUI/questionnaire presentation, cross-platform journeys and genuine human-only mutation consumers remain unverified."
       ],
       "stateful": false,
       "platformSensitive": true,
@@ -116,14 +117,19 @@
     },
     {
       "id": "ECO-04",
-      "status": "MISSING",
+      "status": "PARTIAL",
       "sourceHashes": [
         "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7"
       ],
-      "implementation": [],
-      "tests": [],
+      "implementation": [
+        "src/interaction/code-intelligence.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/code-intelligence.test.ts"
+      ],
       "remaining": [
-        "Secure read-only code-intelligence tools/process adapter are absent."
+        "Read-only query/explore registration, canonical Git roots, literal arguments, bounded output/time, cancellation and npm entry containment pass with synthetic subprocesses. Real installed CodeGraph CLI, permitted initialization lifecycle, index behavior and cross-platform host journeys remain unverified; no index was inspected."
       ],
       "stateful": false,
       "platformSensitive": true,
