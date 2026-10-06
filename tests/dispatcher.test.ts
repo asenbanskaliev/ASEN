@@ -4,7 +4,7 @@ import { Dispatcher, type AgentRunner } from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
-import {issueOddDecision} from "./helpers/odd-routing.js";import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";import {issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";
+import {issueOddDecision} from "./helpers/odd-routing.js";import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";import {issueOrganicWriterAdmission,consumeRunnerWriteReceiver} from "../src/lifecycle/skill-lifecycle.js";
 
 const candidate={id:"candidate",repository:"r",revision:"sha",createdAt:"now"};
 function authorized(){
@@ -199,4 +199,20 @@ test("writer admission rejects structural forgery and duplicate or malformed sur
  buildOrchestrationPlan({taskId:"surface",repository:"r",prompt:"write",candidate},decision);
  const applicability=decideLifecycleApplicability(decision,{taskIdentity:"surface",repositoryIdentity:"r",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"organic",affectedSubsystems:["dispatcher"],expectedPaths:["src/a"],requiredArtifacts:[]});
  assert.throws(()=>issueOrganicWriterAdmission(applicability,["src/a","src/a"]),/unique bounded surfaces/);
+});
+
+
+test("dispatcher strips admission and conveys one exact-call runner receiver",async()=>{
+ let observed=false;
+ const runner:AgentRunner={run:async request=>{
+  observed=true;
+  assert.equal(request.writerAdmission,undefined);
+  assert.ok(request.runnerWriteReceiver);
+  assert.equal(consumeRunnerWriteReceiver(request.runnerWriteReceiver,request.id),true);
+  assert.equal(consumeRunnerWriteReceiver(request.runnerWriteReceiver,request.id),false);
+  return{id:request.id,ok:true,output:"ok"};
+ }};
+ const d=new Dispatcher(runner,authorized());
+ await d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:organicAdmission()});
+ assert.equal(observed,true);
 });
