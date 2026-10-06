@@ -10,7 +10,7 @@ const commands=new Map();
 const pi={
   registerCommand(name,command){commands.set(name,command);}
 };
-module.default(pi);
+const facade=module.default(pi);
 const command=commands.get("asen"),registryCommand=commands.get("asen-skill-registry");
 if(!command) throw new Error("ASEN command was not registered");
 if(!registryCommand) throw new Error("ASEN skill registry command was not registered");
@@ -18,4 +18,5 @@ const result=await command.handler();
 if(result?.product!=="ASEN" || result?.mode!=="pi-native" || result?.status!=="ready") {
   throw new Error("ASEN command returned an invalid runtime contract");
 }
-console.log(JSON.stringify({loaded:true,commands:["asen","asen-skill-registry"],result}));
+if(typeof facade?.deriveOddExecutionContract!=="function") throw new Error("ASEN ODD execution bridge missing from live extension facade");
+console.log(JSON.stringify({loaded:true,commands:["asen","asen-skill-registry"],oddExecutionBridge:true,result}));
