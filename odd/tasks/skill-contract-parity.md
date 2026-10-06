@@ -445,6 +445,15 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
 
 - Final I3 mirror hardening: source commit `fb10ceb66922c496945d5a6408d565f4691beb8e` changes exactly 2 added / 2 removed lines. A BOM + CRLF + accented/astral UTF-8 document reproduced silent BOM loss (RED); fatal UTF-8 decoding now preserves the BOM (GREEN, focused tracking 3/3 and typecheck). Full local suite remains 846/847 because the sandbox ps observer fails; no assertion was weakened. CI `37441667068` is observed green at predecessor `b813260e4a2cab730d01631c7e7d803ce5804d7f`, not evidence for the new HEAD. Rollback is the two-line decoder/fixture change; formal I3 closure still requires the existing Pi host/session integration and contract-specific MEM/ECO evidence. All downstream formal dependency gates remain open.
 
+## GSP-06 verification status — 2026-10-06
+
+- Candidate `7be1456b833004efaf54b70ebda8f0c61db2c5f3`: CI PASS, Phase 0 Architecture PASS, and Release Gate PASS.
+- GSP-06 deterministic preflight PASS: TypeScript, 12-Skill parity validator, and package verification.
+- The model-backed GSP-06 probe did not execute because OpenRouter returned HTTP 429 before the first `odd-positive` probe: the free-model daily quota was exhausted. This is recorded as an external availability limitation, not as a parity PASS and not as an ASEN product failure.
+- Pi Free Smoke was SKIPPED; no Pi Free PASS is claimed.
+- GSP-06 remains formally open. The model-backed verification and required independent HIGH verification remain outstanding; this note does not promote parity rows to FULL.
+- Memory source implementation remains dependency-gated by formal GSP-06 closure. Until that evidence is available, only MEM-01 planning/frozen-contract preparation may proceed under the memory tracker sequencing rule.
+
 ## Acceptance criteria
 
 - Global parity evidence applies to all ASEN components: tools, extensions, memory, Skills, flows, and ecosystem integrations. Bind each claim to a concrete reference/version and reproducible comparisons of applicable inputs, outputs, activation, persistence, errors, recovery, concurrency, security, permissions, side effects, packaging, and platform behavior. Record even small observable differences and missing/unavailable evidence; implementation or general green suites alone never justify FULL.
