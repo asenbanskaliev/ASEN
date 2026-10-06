@@ -198,7 +198,7 @@ test("writer admission rejects structural forgery and duplicate or malformed sur
  const decision=issueOddDecision({taskId:"surface",repository:"r",paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});
  buildOrchestrationPlan({taskId:"surface",repository:"r",prompt:"write",candidate},decision);
  const applicability=decideLifecycleApplicability(decision,{taskIdentity:"surface",repositoryIdentity:"r",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"organic",affectedSubsystems:["dispatcher"],expectedPaths:["src/a"],requiredArtifacts:[]});
- assert.throws(()=>issueOrganicWriterAdmission(applicability,["src/a","src/a"]),/unique bounded surfaces/);
+ assert.throws(()=>issueOrganicWriterAdmission(applicability,["src/a","src/a"]),/unique bounded surfaces/);\n const malformedDecision=issueOddDecision({taskId:"surface-control",repository:"r",paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});\n buildOrchestrationPlan({taskId:"surface-control",repository:"r",prompt:"write",candidate},malformedDecision);\n const malformedApplicability=decideLifecycleApplicability(malformedDecision,{taskIdentity:"surface-control",repositoryIdentity:"r",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"organic",affectedSubsystems:["dispatcher"],expectedPaths:["src/a"],requiredArtifacts:[]});\n assert.throws(()=>issueOrganicWriterAdmission(malformedApplicability,[" src/a"]),/Invalid writer surface/);
 });
 
 
