@@ -1,0 +1,4 @@
+import test from "node:test";import assert from "node:assert/strict";import {applyTaskEvent,replayTask} from "../src/runtime/task-replay.js";
+const e=(revision:number,state:any,at=`2026-10-06T00:00:0${revision}Z`)=>({taskId:"t",sessionId:"s",projectId:"p",revision,state,at});
+test("task replay is deterministic and rejects conflicts/stale transitions",()=>{const p=applyTaskEvent(undefined,e(1,"planned")),r=applyTaskEvent(p,e(2,"running")),d=applyTaskEvent(r,e(3,"done"));assert.equal(replayTask([p,r,d])?.state,"done");assert.throws(()=>applyTaskEvent(r,e(4,"done")),/revision conflict/);assert.throws(()=>applyTaskEvent(d,e(4,"running")),/Invalid task transition/);});
+test("task replay isolates session and project identity",()=>{const p=applyTaskEvent(undefined,e(1,"planned"));assert.throws(()=>applyTaskEvent(p,{...e(2,"running"),sessionId:"other"}),/identity/);});
