@@ -5,6 +5,11 @@ on:
   pull_request:
     paths:
       - "extensions/**"
+      - "src/agents/**"
+      - "src/lifecycle/**"
+      - "src/flow/odd-*.ts"
+      - "tests/writer-admission-4r.test.ts"
+      - "tests/odd-task-tracking.test.ts"
       - "src/review/**"
       - "src/delivery/**"
       - "tests/work-unit-review-candidate.test.ts"
@@ -46,7 +51,7 @@ jobs:
         run: npm run typecheck
 
       - name: Focused GSP-05E deterministic tests
-        run: npx tsx --test tests/work-unit-review-candidate.test.ts
+        run: node --import tsx --test tests/work-unit-review-candidate.test.ts tests/writer-admission-4r.test.ts tests/odd-task-tracking.test.ts
 
       - name: Exercise ASEN extension inside real Pi 1.0 RPC runtime
         env:
