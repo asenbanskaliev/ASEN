@@ -1,0 +1,54 @@
+# Ecosystem reconciliation and final-candidate audit
+
+## Scope and observation
+
+Audited starting candidate: `f5a3f95294bd4017674bfddec27e64dfe4259391`, PR #32, `feat/strict-parity-prerequisites`. The GitHub PR head matched the checkout. Memory R01–R09 and GSP-06 retain their accepted closure. No additional provider execution is authorized solely to improve GSP-06 evidence. Missing ecosystem implementation is not covered by that provider-evidence exception.
+
+Classification: COVERED means the named admitted behavior exists with corresponding evidence, not overall FULL parity. PARTIAL separates implemented primitives from unfinished integration or evidence. MISSING means the required surface has no implementation. OUT-OF-SCOPE applies only to explicit branding/private-authority/cloud differences. Documentation age alone cannot establish a code defect.
+
+## Complete ECO comparison before implementation
+
+| Unit | Requirement | Existing implementation and tests/evidence | Real status and necessary action |
+| --- | --- | --- | --- |
+| ECO-01A | Exact tracked extension baseline | Skill manifest pins the same source commit; no ecosystem Git-object manifest or validator. | MISSING: freeze extension objects and anchors. |
+| ECO-01B | Documentation/media identity and inspection | Directional inventory only; no exact ecosystem media manifest. | MISSING: hash tracked docs/media and inspect assets without copying them. |
+| ECO-01C | Import/reference closure | No ecosystem closure manifest. Source imports include substantial supporting libraries beyond the 20 entry files. | MISSING: resolve tracked local closure and classify external/optional/unresolved edges. |
+| ECO-01D | Baseline adversarial validation | Skill/memory validators exist but do not validate ecosystem objects. | MISSING: object, path, integrity, duplicate, closure and malformed-input fixtures. |
+| ECO-01E | Drift and invalidation | `src/radar/radar.ts`, `tests/radar.test.ts` classify broad paths; no ecosystem hash/anchor/dependency invalidation. | PARTIAL: add report-only exact drift detection, no automatic adoption. |
+| ECO-02A | Packed public exports | `scripts/verify-pack.mjs`, `tests/package.test.ts`, Release Gate pack/install smoke. Declared `./extensions` targets absent `extensions/index.ts`; existing tests assert the broken declaration. | PARTIAL / PRODUCT DEFECT: reproduce installed export resolution, repair target and enforce packed resolution. |
+| ECO-02B | Evidence-linked claims with fail-closed FULL | Skill/memory matrices exist; `external-ecosystem-v1.yaml` is an older broad comparison with unsupported PARITY labels. | PARTIAL: ecosystem-specific evidence requirements and rejection tests. |
+| ECO-02C | Honest maturity and claims | README still says architecture bootstrap. Old ecosystem rows call registry N/A although discovery/refresh now exists. | PARTIAL / DOCUMENTATION: reconcile current behavior without promoting general parity. |
+| ECO-03 | Ask-user choice/question TUI and RPC | `CAP-INT-001` describes a contract; `extensions/asen.ts` registers status/registry/workflow/review commands only. No choice/question tool or accessible interaction. | MISSING: actual tool/UI/RPC behavior, cancellation/unavailable host and mutation gate. |
+| ECO-04 | Secure read-only code intelligence | Canonical tool-path authority exists in `extensions/authority.ts`, tested by `tests/pi-authority.test.ts`. No code-intelligence registration/process adapter. | MISSING: shell-free bounded secure-root integration; do not inspect local index state. |
+| ECO-05 | Public agent lifecycle | Dispatcher and Pi process/artifact runners; dispatcher/process/cancellation/authority tests. Queue/concurrency in-process exists. No public queue/continue/status/history/session transport or durable agent lifecycle. | PARTIAL: preserve tested authority; implement missing public lifecycle and restart composition. |
+| ECO-06 | Primary orchestration | ODD facts, orchestration, workflow selection, doctor, review controller; routing, applicability, writer-admission and integration tests. Pi facade exposes functions, not automatic user-task execution. | PARTIAL: status/doctor/prompt and actual entry integration remain; private review authority stays OUT-OF-SCOPE. |
+| ECO-07 | Durable todo/replay | `odd-task-tracking.ts` mirrors full task/TODO/next-step with SQLite reopen and exact revision/document checks. `EngineeringTask` state is in-process. | PARTIAL: existing mirror is COVERED; public transitions, replay/conflicts/crash recovery and session lifecycle are not. |
+| ECO-08 | Registry lifecycle | Discovery, cache, mirror, explicit refresh command; discovery/generated-registry/extension tests. | PARTIAL: refresh is COVERED; startup/watch/debounce/disable/shutdown integration is absent. |
+| ECO-09 | Launcher/home/setup | Pi package metadata and packed/Pi install smoke; no ASEN executable or managed setup/link lifecycle. | PARTIAL: package registration is COVERED; launcher/setup/rollback/permission contracts are not. |
+| ECO-10 | Attribution/workspace UI | Candidate/repository identities and write scopes exist; no actor attribution/change workspace UI. | MISSING: concurrent attribution and accessible workspace interactions. |
+| ECO-11 | Profiles/customization | `CAP-MOD-001` is a policy declaration, not runtime profile parsing/routing. | MISSING: schema/precedence/diagnostics/rollback and live/restart integration. |
+| ECO-12 | Opt-in private prompt history | Curated memory/passive capture is implemented; this is not prompt-history UI/storage. | MISSING: separate opt-in history lifecycle and privacy/tombstone/retention behavior; do not redesign memory. |
+| ECO-13 | Usage/one-shot telemetry | No metrics extension, consent/preview sender or local usage projection. | MISSING: privacy-preserving adopted local/opt-in contract. Hidden delivery is prohibited. |
+| ECO-14 | Resume/startup/presentation | Signed checkpoint and exact Pi session reconciliation; session-recovery/process tests. No banner/pretty/quiet/full startup UI. | PARTIAL: recovery primitives are COVERED; startup/presentation and corresponding real-host journeys remain. |
+| ECO-15A | Core behavior-backed docs | `docs/architecture`, existing authority/recovery docs and Skills. | PARTIAL: link each shipped claim to evidence and supported interfaces/platforms. |
+| ECO-15B | Feature docs | No shipped launcher/workspace/history/usage/profile features to document. | MISSING: follows implemented feature contracts; do not document proposed features as shipped. |
+| ECO-15C | Documentation validation | Skill document/parser audits, but no ecosystem link/command/claim/media validator. | PARTIAL: add checks against shipped command/export/claim inventory. |
+| ECO-16 | Final ecosystem verification | General CI/Release/architecture suites exist; no complete ECO matrix or cross-host vectors. | PARTIAL: final closure requires implemented units and applicable evidence, not general green CI. |
+
+## Transversal chain
+
+User → Pi registration is demonstrated by real offline RPC/package probes. Pi → ASEN exposes registered commands and facade methods; it does not yet compose all ecosystem runtime surfaces. ASEN ODD → selection → Dispatcher → Pi tools has genuine one-use provenance, exact candidate/Skill bindings, replay/forgery/mismatch tests and fail-closed direct-Pi writer checks. Generic runner admission is not filesystem confinement. Tool denial is enforced by the reviewed Pi authority extension; same-process hostile code and OS isolation are not claimed.
+
+Evidence → persistence → recovery uses signed envelopes and synthetic child-process tests. Signing-key ownership and rollback limits remain explicit. Memory project/session isolation, close summaries, export/import and operational safety retain R01–R09 evidence; `preserveFinalResponse` guards memory errors. Existing passing memory tests do not establish newly missing history/todo/agent lifecycle behavior. Release Gate does not authorize publication or merge.
+
+Starting exact-head GitHub observations: CI `37482424354`, Phase 0 `37482424349`, Release Gate `37482424011` PASS; Pi Free Smoke `37482424504` SKIPPED. GSP-06 `37482424286` failed externally after deterministic preflight; inspect the failed job before classifying exact cause. Earlier recorded HTTP 429 is historical until the exact logs are checked. No provider run is retried.
+
+## Dependency plan and rollback
+
+Checkpoint A records this comparison. Checkpoint B freezes baseline/closure and adds deterministic validators/drift. Checkpoint C fixes demonstrated package/claim defects, prevents automatic excluded-provider invocation, and reconciles descriptions. Essential runtime ECO-03–08 follows the frozen contract, then ECO-09–14, behavior-backed documentation and final verification. Independent review must try to refute claims; no green suite can substitute for absent implementation.
+
+Commit/push each coherent locally checked checkpoint. Use skipped CI for interim checkpoints; reserve one consolidated exact-candidate deterministic CI after 4R. Never merge, publish a release, modify main or auto-adopt upstream. New baseline records are research metadata, not runtime dependencies; rollback removes their validator/registration without touching memory data. Package rollback is a single reviewed target/verification change.
+
+## Completion ceiling
+
+This comparison demonstrates genuine ecosystem implementation gaps. It does not authorize narrowing them away, declaring overall parity or marking the PR merge-ready. Accepted provider-limited PARTIAL Skill rows remain separate from MISSING ecosystem runtime. The final candidate must report unfinished units honestly.
