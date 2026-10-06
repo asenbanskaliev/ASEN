@@ -35,7 +35,7 @@
       "height": 506,
       "frames": 140,
       "mode": "P",
-      "alpha": false,
+      "alpha": true,
       "objectId": "262ddfb438047ad55ea5721b012fe73341a6c836",
       "sha256": "a6dcfeb0f3d0873e4ca5915c26902296cc9cd3c9c100eae70e2b72757748ad1f",
       "bytes": 3272222,

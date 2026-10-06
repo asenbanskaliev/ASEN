@@ -103,7 +103,10 @@
   ],
   "files": [
     {
+      "id": "ECO-SRC-c693279643b8cd5d",
       "path": "LICENSE",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "b0a8e9b81083294360c69b4ec45d3d39a2b28197",
@@ -113,7 +116,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-b335630551682c19",
       "path": "README.md",
+      "family": "documentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "a3541ac85a980e8a3e329a29cd5b9d1667611c30",
@@ -429,7 +435,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-9431126dfa5aa0ad",
       "path": "TRADEMARKS.md",
+      "family": "documentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "c62398d41e4df75afeddcce4d19921745a5b96b8",
@@ -483,7 +492,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-4372cb78bf85326d",
       "path": "assets/gentle-logo-only.png",
+      "family": "media",
+      "visibility": "media-comparison-only",
       "mode": "100644",
       "type": "blob",
       "objectId": "5405e2905ff9db53cc170390c1ede65b686824f6",
@@ -493,7 +505,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-6a14fc0f30199f89",
       "path": "bin/gentle-shell.mjs",
+      "family": "launcher",
+      "visibility": "supporting-source",
       "mode": "100755",
       "type": "blob",
       "objectId": "e3d53d844ad0349d180bd950ff5338882c82803f",
@@ -589,7 +604,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-2b873347ab8293e9",
       "path": "contracts/telemetry/runtime-aggregate-v1.schema.json",
+      "family": "metrics",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "86cb821758395493f1cc81269dae3d665627903d",
@@ -599,7 +617,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-5d83f40699c1ca56",
       "path": "docs/assets/brand/gentle-pi-banner.svg",
+      "family": "media",
+      "visibility": "media-comparison-only",
       "mode": "100644",
       "type": "blob",
       "objectId": "93047c2c7906e61f81cf2d1e45b1a31994d3b517",
@@ -609,7 +630,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-8b55e6467a33ab4a",
       "path": "docs/assets/brand/gentle-shell-banner.gif",
+      "family": "media",
+      "visibility": "media-comparison-only",
       "mode": "100644",
       "type": "blob",
       "objectId": "262ddfb438047ad55ea5721b012fe73341a6c836",
@@ -619,7 +643,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-53e5e3f4b566da77",
       "path": "docs/assets/brand/terminal-divider.svg",
+      "family": "media",
+      "visibility": "media-comparison-only",
       "mode": "100644",
       "type": "blob",
       "objectId": "4f10c2aa6f48cdbef8ca9acf4d5975e64f48efa8",
@@ -629,7 +656,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-bbb3e8a9cfa44ac7",
       "path": "docs/assets/diagrams/agent-orchestration.svg",
+      "family": "media",
+      "visibility": "media-comparison-only",
       "mode": "100644",
       "type": "blob",
       "objectId": "efe15b162218743de1f924bfc14db6e3f5c9aeaf",
@@ -639,7 +669,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-e840f1787683003e",
       "path": "docs/assets/diagrams/gentleman-workflow.svg",
+      "family": "media",
+      "visibility": "media-comparison-only",
       "mode": "100644",
       "type": "blob",
       "objectId": "1a66b20486bdbb29b9b6e55b9b8080916c4c020c",
@@ -649,7 +682,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-651e1d32f65c3fbe",
       "path": "docs/assets/diagrams/native-review.svg",
+      "family": "media",
+      "visibility": "media-comparison-only",
       "mode": "100644",
       "type": "blob",
       "objectId": "dea55239db7adabc20de9c788aa2691210a02f18",
@@ -659,7 +695,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-d1d8a8935b1b105d",
       "path": "docs/assets/diagrams/odd-workflow.svg",
+      "family": "media",
+      "visibility": "media-comparison-only",
       "mode": "100644",
       "type": "blob",
       "objectId": "7521e2b80464581e54eb3e9b35dcfab41b3a406e",
@@ -669,7 +708,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-a1449adc07dde7a4",
       "path": "docs/assets/features/agents-view.png",
+      "family": "media",
+      "visibility": "media-comparison-only",
       "mode": "100644",
       "type": "blob",
       "objectId": "99dce1d43a735ceb7d3eb9e09967a2805e44089b",
@@ -679,7 +721,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-3138e4bae26f2afc",
       "path": "docs/assets/features/changes-view.png",
+      "family": "media",
+      "visibility": "media-comparison-only",
       "mode": "100644",
       "type": "blob",
       "objectId": "18be1ca6b1c3b4ed71a20a47727726f5d4314374",
@@ -689,7 +734,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-0f65cdb073e2f2ec",
       "path": "docs/assets/features/command-palette.png",
+      "family": "media",
+      "visibility": "media-comparison-only",
       "mode": "100644",
       "type": "blob",
       "objectId": "5e7d850036d3c410dfeb9bd04629a22a4f27a736",
@@ -699,7 +747,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-2dad59abfe1bdad9",
       "path": "docs/assets/features/gentle-shell.png",
+      "family": "media",
+      "visibility": "media-comparison-only",
       "mode": "100644",
       "type": "blob",
       "objectId": "ed724f65690bf22ffcd9022f4f1ef13ee295e41f",
@@ -709,7 +760,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-b2d6e505b166c67e",
       "path": "docs/assets/features/profiles-routing.png",
+      "family": "media",
+      "visibility": "media-comparison-only",
       "mode": "100644",
       "type": "blob",
       "objectId": "c35ca0e0f8b4a9331a60986f7481c04fa37060e5",
@@ -719,7 +773,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-74371bc6f9a4501b",
       "path": "docs/delegated-verification.md",
+      "family": "documentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "c69947a2ec1f410ea8b62f65e240fc5e169cccc7",
@@ -742,7 +799,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-1016fbb6ea82ad95",
       "path": "docs/gentle-agents-activity.md",
+      "family": "documentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "8f82591b12dcdbad7bb8bc159b4a27c508d1c3f0",
@@ -796,7 +856,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-fe4cbd3c4b0d4552",
       "path": "docs/gentle-shell.md",
+      "family": "documentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "2e3ddd4971e38ce84eebbdeff2033e628106a7f3",
@@ -934,7 +997,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-f9507c3fa0d169a1",
       "path": "docs/native-authority-architecture.md",
+      "family": "documentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "19b8e7c8e18eb5f69633642c9573b2ee5b9316b5",
@@ -998,7 +1064,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-f5249077264b287a",
       "path": "docs/prompt-history.md",
+      "family": "documentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "b798794b6869287ea27f15910d83f6bdcd11836c",
@@ -1065,7 +1134,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-9567c6b3d33d78cb",
       "path": "docs/readme-reference.md",
+      "family": "documentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
@@ -1415,7 +1487,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-479c5e5653c69b70",
       "path": "docs/review-integration.md",
+      "family": "documentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "7c1200d273212e2d85f1127479f10402edcddb28",
@@ -1471,7 +1546,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-6fecc2039b6511de",
       "path": "docs/skill-style-guide.md",
+      "family": "documentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "05c0d731f41bd897207979eac7f4945d14b1988f",
@@ -1518,7 +1596,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-fd2f3e43dd11fcf5",
       "path": "docs/telemetry.md",
+      "family": "documentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "49a6889af9424fc250166d29622792fb77240f04",
@@ -1566,7 +1647,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-844ef834d74233b4",
       "path": "docs/windows-startup-console-visibility.md",
+      "family": "documentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "059912cca487f8537e23de11a8aaa3ea4ba762f3",
@@ -1593,7 +1677,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-b7d0b58c95538f4f",
       "path": "extensions/ask-user-choice.ts",
+      "family": "ask-user",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "4f078eb4e18cdb7019fec6583de68dca6ec7f57a",
@@ -1659,7 +1746,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-de7f33c138bf4aa4",
       "path": "extensions/ask-user-question.ts",
+      "family": "ask-user",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "ad0e38e63635d4b68067378370ea3c968dca4eb3",
@@ -1731,7 +1821,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-625c38e8637ad8b0",
       "path": "extensions/codegraph-tools.ts",
+      "family": "code-intelligence",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "39f21cca79a50f02b25472e48d68c2a97e04a073",
@@ -1819,7 +1912,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-af1edc66cbd9834c",
       "path": "extensions/gentle-agents.ts",
+      "family": "agents",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "c6bf814ca8934bd26af5f0efb0c229029ca07155",
@@ -2261,7 +2357,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-1f527249710bd9bf",
       "path": "extensions/gentle-ai.ts",
+      "family": "orchestrator",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "a0fed68c1cd897700a3857cbe7ea4851891eddd0",
@@ -2665,7 +2764,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-f25fcbecafe905e1",
       "path": "extensions/gentle-shell.ts",
+      "family": "workspace",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "ef22678c9621f95d450079ec3aae02f02eccb37c",
@@ -3117,7 +3219,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-91b70c5973297fbd",
       "path": "extensions/gentle-todo.ts",
+      "family": "todo",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "6f627072f868d6b0fcd46e61e94f4f48612ae935",
@@ -3207,7 +3312,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-12f9ada0dd8fcae5",
       "path": "extensions/history/atomic-write.ts",
+      "family": "history",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "cc6ae81474c342fdb1a8bfe5880f566237530283",
@@ -3235,7 +3343,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-e7463b7384c92f7e",
       "path": "extensions/history/hide-prompts.ts",
+      "family": "history",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "e948e6d22fd889d392452a7456e05973f421795e",
@@ -3309,7 +3420,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-b631c3ca7fad570d",
       "path": "extensions/history/index.ts",
+      "family": "history",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "66b1814a1c8570c9c86107fa67ae52a3e86639c3",
@@ -3409,7 +3523,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-c65d631f8447d951",
       "path": "extensions/history/load-shared-history.ts",
+      "family": "history",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "79ef12f7d03cf9659e19aec0558e8432f350d415",
@@ -3431,7 +3548,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-872a5ca31e8c92d5",
       "path": "extensions/history/selector-helpers.ts",
+      "family": "history",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "c0b288f5640c3bd33f45485636a0204a4e6d855b",
@@ -3614,7 +3734,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-2ced978dd94675dd",
       "path": "extensions/history/session-scan.ts",
+      "family": "history",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "accd302c7e8a0004e0f573539a8cdc987cf7b211",
@@ -3658,7 +3781,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-1d4036c43d653569",
       "path": "extensions/history/store.ts",
+      "family": "history",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "aaba0a693488b808f716224c43d1ddbbddf24ebc",
@@ -3804,7 +3930,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-5b76c3108525e35f",
       "path": "extensions/pi-pretty.ts",
+      "family": "presentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "741df6c19b4896caa509f1e6f260443a115e2c16",
@@ -3856,7 +3985,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-080c377111a31497",
       "path": "extensions/quiet-tools.ts",
+      "family": "presentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "884db1eb993cbb7d924e8564ef28667ca134c97c",
@@ -3986,7 +4118,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-52cd9c79d535e027",
       "path": "extensions/resume-hint.ts",
+      "family": "resume",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "62b0d238e5be905210dc2a79346057cf8659dbef",
@@ -4028,7 +4163,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-784d73735882ca1d",
       "path": "extensions/runtime-metrics.ts",
+      "family": "metrics",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "6b978ea1b0ab7a8b68350c3e39dded9d907b96ed",
@@ -4124,7 +4262,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-5a67352cd4badb81",
       "path": "extensions/skill-registry.ts",
+      "family": "skill-registry",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "3b889b0443654d9adfd13cb593c4234ba92f426e",
@@ -4198,7 +4339,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-6c28d7b99a511610",
       "path": "extensions/startup-banner.ts",
+      "family": "presentation",
+      "visibility": "public-interface",
       "mode": "100644",
       "type": "blob",
       "objectId": "44de38b41e2199f31cffbe60887456ab9324d185",
@@ -4328,7 +4472,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-b739ab592bf5a9d4",
       "path": "lib/agent-assets.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "abc6060fd338b5882e6d5c7f4d1e52d052ae144b",
@@ -4394,7 +4541,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-ad7552f317e3745a",
       "path": "lib/agent-home.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "085302a82d423907b1b33257704895bbfef8281d",
@@ -4426,7 +4576,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-e0cb838adc1cbe33",
       "path": "lib/agent-profile-pin.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "4cb769e4d648e0dfb6fa2b9fd436dc1be27a2cdf",
@@ -4576,7 +4729,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-a495fb043722ac5e",
       "path": "lib/agent-profiles.ts",
+      "family": "orchestrator",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "f4c953460160b7198dd8d6293f9cb43050826ea6",
@@ -4804,7 +4960,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-f044cc7474adbf04",
       "path": "lib/agents-completion-delivery.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "90a8f4d997e458c563a83c450bc2384cdc42788a",
@@ -4831,7 +4990,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-3042f3f3b753a8d3",
       "path": "lib/agents-config.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "258818d1a8006a71fc45d2c6e0f7c9162aba2407",
@@ -4977,7 +5139,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-8f747258e5cd5fc4",
       "path": "lib/agents-history.ts",
+      "family": "history",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "a7638b87502e3faa39f2561b606406c10acf0305",
@@ -5031,7 +5196,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-4097ac975cd8fca5",
       "path": "lib/agents-keys.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "de0f58804bc5272bdaf02b634bc66edee93fde5e",
@@ -5054,7 +5222,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-b32a0bfafff88182",
       "path": "lib/agents-message-delivery.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "86f3f9caa011892f8c5ae8d6e97ad1b4a16c7cc2",
@@ -5085,7 +5256,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-357b640ab1fbb65f",
       "path": "lib/agents-messaging.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "cf0e048e2306b76b368d509a4fa8dbe768c86d4d",
@@ -5168,7 +5342,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-a1452e158fb20a1c",
       "path": "lib/agents-protocol.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "5b4b3aae9258c5273caad5d461cfc854f8854bfb",
@@ -5370,7 +5547,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-8c146311af2b9ff3",
       "path": "lib/agents-rpc-publisher.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "cb049668efffebf8abff04ea9a2ac3d0c96d108d",
@@ -5456,7 +5636,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-05ae6f74af0b12dc",
       "path": "lib/agents-runner.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "d24074716657234ee5e751915fda308cd20e5ae0",
@@ -5620,7 +5803,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-d0c20c116792d973",
       "path": "lib/agents-session-transport.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "6316c32b61305f3667b72d218c8d6c27c31087b4",
@@ -5780,7 +5966,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-e5d7b72768d01ec0",
       "path": "lib/agents-thread-view.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "ff0c30536700f419fe3be8d13d2c3bd7caba0db4",
@@ -5812,7 +6001,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-ce63289458bab66e",
       "path": "lib/agents-transcript.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "e03eb477f54768a5dfe601c132075e5272084f54",
@@ -5838,7 +6030,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-5be33a2439fdeddc",
       "path": "lib/agents-view-layout.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "22e9200a729adb3ce4e2eedabbb15edfd12c4340",
@@ -5873,7 +6068,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-139e320c1e466b18",
       "path": "lib/agents-view.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "af005598ad6f5eb715ef6615167ed6b8778bdbbf",
@@ -5963,7 +6161,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-3053182afb5f36ea",
       "path": "lib/agents-widget.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "abaaed204a132bb6549059a6b455edd006319da2",
@@ -6027,7 +6228,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-99f45ace32d38853",
       "path": "lib/animation-policy.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "4d1eef8567da4c5846256836bd480da1c89f8819",
@@ -6091,7 +6295,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-37ec6c146ff8e16f",
       "path": "lib/append-system-prompt.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "0e4f98b7807deb9c57e6c629c228d6f3760fbe90",
@@ -6110,7 +6317,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-07c319019274eca7",
       "path": "lib/background-cache-warming.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "a5c59e41c7fa8d2991dba1011998202b73b58839",
@@ -6140,7 +6350,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-b16429b2f1c43e80",
       "path": "lib/background-subagents-policy.ts",
+      "family": "agents",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "51f7e03d5b2f0efa5983393d20148b991049aee0",
@@ -6206,7 +6419,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-98e5e729257403ae",
       "path": "lib/command-palette-catalog.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "4efa095b06339b3a3a872d41e396ebcfcfae76cb",
@@ -6240,7 +6456,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-c8407746046895cf",
       "path": "lib/command-palette.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "a4c1089424b7ef6c37f70d1859789065df1a3357",
@@ -6304,7 +6523,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-14fbaaebad5fbf58",
       "path": "lib/double-esc-cancel-policy.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "1cb10b8ad700cefe849d9d9e11435093ecbd5d53",
@@ -6378,7 +6600,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-b3ae7557c2dce71b",
       "path": "lib/foreign-target-grants.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "8d85ca33d3563efcab7e80d853a969db8cefda0c",
@@ -6406,7 +6631,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-ecb5b4ebbaf005aa",
       "path": "lib/gentle-ai-binary.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "780805490645c357be10b179ff1edd460038f21f",
@@ -6530,7 +6758,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-124a660ab40eddc9",
       "path": "lib/gentle-ai-elapsed-store.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "60b5ed984edab75cbaeba96151174ea5d83e580d",
@@ -6577,7 +6808,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-34cca5007aee487f",
       "path": "lib/gentle-ai-renderer.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "3f1d254d5bfb73197edc536ac809b661e9c78c6d",
@@ -6661,7 +6895,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-98db307d097b87f6",
       "path": "lib/gentle-shell-launcher.ts",
+      "family": "launcher",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "36e04eb87ebe21d39315d8be140a107e2e9b846e",
@@ -6927,7 +7164,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-c0df3403ccece61c",
       "path": "lib/gentle-shell-resume-hint.ts",
+      "family": "resume",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "db770d6f8389ab3ebcbb223b11be785505cb9be9",
@@ -7003,7 +7243,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-478700c7727f3fa5",
       "path": "lib/history-capture-policy.ts",
+      "family": "history",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "3aa09bb83cf41caf6ad8dccf0ab0912e690ff43b",
@@ -7087,7 +7330,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-f4f6b335bf2cf4e9",
       "path": "lib/inprocess-reviewer.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "beea157aa1ad2f2c4e9e6c303e6064ea725aaaab",
@@ -7157,7 +7403,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-5c593be3e5de37fc",
       "path": "lib/model-routing-authority.ts",
+      "family": "orchestrator",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "ee2a30c021e622853338e293506e5875b1a11be7",
@@ -7237,7 +7486,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-26d5fa23b79a88a3",
       "path": "lib/native-choice-list.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "69d8d3cf198c1541f96f69c85034368a3a4ad8c9",
@@ -7273,7 +7525,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-40d55f462a42411d",
       "path": "lib/native-fullscreen-interaction.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "58464b5d1d9c24653e18caa4a9a07656f0d7d568",
@@ -7307,7 +7562,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-127847a2288daf8d",
       "path": "lib/native-pointer-region.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "0e5ad27547c760fc020d5bb6573766d9cf636786",
@@ -7349,7 +7607,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-738813b955c2e1e8",
       "path": "lib/native-review-cli.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "315284eb7d16f48ea6dd69d40f508ca8875b7f77",
@@ -7847,7 +8108,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-c37b834d3f71e965",
       "path": "lib/odd-phase-inference.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "da74885ee76017a2c40dec65325ad2256d1154e6",
@@ -7869,7 +8133,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-fda7fb60edb383ed",
       "path": "lib/odd-phase.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "3fb1c805d1dea71ed7129b142808639a5c539f3e",
@@ -7908,7 +8175,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-bd0d68a93cfceaa9",
       "path": "lib/orchestrator-presence.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "23274be37ecf2b8bf7b151183904de906dde697d",
@@ -7992,7 +8262,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-13bd09ae9b16ad70",
       "path": "lib/overlay-repaint.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "664a556dd022f7f94614cf868fc81ac0e807f8c5",
@@ -8014,7 +8287,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-4a33c59c669b865a",
       "path": "lib/pi-tui-keys.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "6b6883d913c2021cf8aa994a54119d594fde45df",
@@ -8036,7 +8312,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-95f9e4bcb7349c6c",
       "path": "lib/profiles-orchestrator.ts",
+      "family": "orchestrator",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "ab880646610be52c963c4daf0703503ac62ba7dd",
@@ -8104,7 +8383,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-ac407f1767e7a41f",
       "path": "lib/questionnaire/questionnaire-view.ts",
+      "family": "ask-user",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "61284f0110522f2e65a43271f9e23f5bfe350a72",
@@ -8152,7 +8434,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-02dac40f872bfbdd",
       "path": "lib/questionnaire/schema.ts",
+      "family": "ask-user",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "13913bd6d1eac5650ca483f6ed687b4a67b5769f",
@@ -8210,7 +8495,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-4434256e09ad1147",
       "path": "lib/questionnaire/validate.ts",
+      "family": "ask-user",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "5bf7d031bf9338b204cd69cbba0b197706721f2b",
@@ -8236,7 +8524,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-8fab6f4cd5483f15",
       "path": "lib/quiet-tools-config.ts",
+      "family": "presentation",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "4f68932a58248e4ed7c0fcb5e4c4c21647418d87",
@@ -8263,7 +8554,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-396d124d7d28739b",
       "path": "lib/review-candidate-view-owner.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "2ac65650a16603251e322167f416d30e37fbe404",
@@ -8385,7 +8679,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-ee431194e4155110",
       "path": "lib/review-candidate-view.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "d803af7e0263dd8df374d1c7f18b4a60b93b5cb5",
@@ -8565,7 +8862,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-b803adf7c895aa2d",
       "path": "lib/review-canonical.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "3fb23595e8afbefeea609122972bccd333dee340",
@@ -8607,7 +8907,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-d693bd24cc5a9c14",
       "path": "lib/review-consent-component.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "64d4f33845b97116feaff2b7f6f28b16eddb9f20",
@@ -8645,7 +8948,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-5a4ce96a9b96c5d5",
       "path": "lib/review-consent-ui.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "914520f6733f681e543a7b59beaa7c73b80c6696",
@@ -8699,7 +9005,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-d11d22be652fe702",
       "path": "lib/review-graph-schema.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "0bde78d513fce368d5018b19f41f9ed1df91a87b",
@@ -8749,7 +9058,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-f82f20c4df0dcdff",
       "path": "lib/review-host-relay.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "5ca12848c9031d7f199e939c27f483cacc7a8884",
@@ -8987,7 +9299,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-53ab06edc910a50d",
       "path": "lib/review-integration-v2.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "df83ce0f7601ae8534d1f2b648e4b4c6a89cb1ad",
@@ -9494,7 +9809,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-4413bbd706faa29f",
       "path": "lib/review-last-event-controller.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "2fa0c79d90814a1f5cdecdd176b696d7f91b0f52",
@@ -9526,7 +9844,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-23149aba854d628d",
       "path": "lib/review-legacy-detector.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "aa8bca0e7affdc356315fa670e9a113ea83d8fee",
@@ -9592,7 +9913,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-3e823342741ef5c0",
       "path": "lib/review-lock.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "18ed57d65f3b87936d83a94754a31d2c6611e0e0",
@@ -9656,7 +9980,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-f186dd2c4db26151",
       "path": "lib/review-object-store.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "6a01687406b163cb94065943ce16b618090a7109",
@@ -9726,7 +10053,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-50f6f61842304335",
       "path": "lib/review-policy-judgment-day.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "0981caebe9251ce56c387311aec7602dd5918773",
@@ -9788,7 +10118,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-0924677fe56bf7f1",
       "path": "lib/review-policy-ordinary.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "e2109809d622994f63b93674b39c4e0b6bc760d8",
@@ -9880,7 +10213,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-8338f1005d2601bb",
       "path": "lib/review-publication-gate.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "8650cc69daef2197b7bd8703ff36b330e3b06589",
@@ -10038,7 +10374,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-f685429b56aac6b7",
       "path": "lib/review-relay-contract.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "ebfe77192a68c5b20b45731deac9ed6a4ef447c4",
@@ -10061,7 +10400,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-df90bab53e7a5e0d",
       "path": "lib/review-reminder-receipt.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "7ebe47eda805c271bf9347670685d978ab89f822",
@@ -10103,7 +10445,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-d2566aa6315eb18e",
       "path": "lib/review-repository.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "4f24a0a5d78c92e2398c19c65d20bb8a85031f19",
@@ -10195,7 +10540,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-c3668ec4852ba47a",
       "path": "lib/review-risk-assessment.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "f90d56cd131c210b27acbb88703b7382cdd1772f",
@@ -10298,7 +10646,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-c5eb3e394b40d016",
       "path": "lib/review-risk.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "35174cbfd9592674295d2880e40c43641e454f78",
@@ -10372,7 +10723,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-5e205f7a04df4100",
       "path": "lib/review-session-standing-permission-ipc.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "734fa6b2ceb916e29f82a8601d98d74f08becee4",
@@ -10460,7 +10814,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-a2369f5dcfa4c2e0",
       "path": "lib/review-session-standing-permission.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "ad23fe9e51fe9394070fd4043eddf8453175efab",
@@ -10580,7 +10937,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-ed0837aea2dc5718",
       "path": "lib/review-sidebar-state.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "a1d60e4f9429d6f9eb261a6b5351942308f7b109",
@@ -10644,7 +11004,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-0e66f5a77cddefce",
       "path": "lib/review-snapshot.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "f22fc173a74e7161e3cc19fa4c660a558512cf88",
@@ -10788,7 +11151,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-8a0b546982ab494f",
       "path": "lib/review-transaction.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "c1b2da06f269106f5da4cd9acb7db6ee17f9f905",
@@ -11134,7 +11500,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-cf3d97bdc1bb2292",
       "path": "lib/review-triggers.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "7dfeecadc366d504a043a8e74a3766096aba57b5",
@@ -11205,7 +11574,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-2f6f5c128cc8c3c8",
       "path": "lib/rpc-host.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "5248b2bb0821169ac7898ec8574ca961f61e1450",
@@ -11232,7 +11604,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-6058ca4d664d9095",
       "path": "lib/runtime-metrics-children.ts",
+      "family": "metrics",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "af5a725bad0b3841179e0572429fdcab1eb3189b",
@@ -11318,7 +11693,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-9c4e535cb8bb6042",
       "path": "lib/runtime-metrics-delivery.ts",
+      "family": "metrics",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "7b6e14e02d0c502faa03f35649a403848a203c5b",
@@ -11333,7 +11711,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-c510a9e48362e2e8",
       "path": "lib/runtime-metrics-native.ts",
+      "family": "metrics",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "056be6b4da896cb9db5d1ad5f7a8eeb4532abed2",
@@ -11425,7 +11806,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-b090b3146cf2310c",
       "path": "lib/runtime-metrics-policy.ts",
+      "family": "metrics",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "a9bcf98b7e8f33f838810b39579e9b6f6e5f7040",
@@ -11461,7 +11845,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-dbf31123d00902ed",
       "path": "lib/runtime-metrics.ts",
+      "family": "metrics",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "8c8fe7c8bb2af81a00fbffe7589c4fbc758806df",
@@ -11543,7 +11930,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-1b4e8eb9128734d6",
       "path": "lib/selection-engine.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "00a7423d32c1a83a8d7d1614d4b4632b51803dbb",
@@ -11599,7 +11989,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-8420ca03583cfe7b",
       "path": "lib/session-change-capture.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "6ed00aef22da1cfaa2d2d6dcaf9746ad758cc64f",
@@ -11685,7 +12078,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-78eec0f5293fb026",
       "path": "lib/session-changes.ts",
+      "family": "workspace",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "100ce096d1d43f49ee7d9dc28ab27201e957e104",
@@ -11777,7 +12173,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-f81690acca3d95a6",
       "path": "lib/session-messaging-grants.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "e1b6be42cb73c7e3db191d1d1e3c94f5d8a620c1",
@@ -11823,7 +12222,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-c0e3bd887ee83766",
       "path": "lib/session-worktree-registry.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "84e6d4f689b04f097f6b426544dd5fbd220aeaed",
@@ -11895,7 +12297,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-95684d96641a0066",
       "path": "lib/shell-bar.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "44beb58995da4d8a1e8c76f1123c10a468c92dae",
@@ -12021,7 +12426,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-0438788bb1b91e57",
       "path": "lib/shell-card.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "7d63130b613fae08ae715bc8e1af65e17b6d4bc5",
@@ -12083,7 +12491,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-e9b169049c44da8b",
       "path": "lib/shell-changes-view.ts",
+      "family": "workspace",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "7ad70b2d1f621363ecbeaa092d1350a98a3b2fb6",
@@ -12149,7 +12560,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-5cd4f0120ded723e",
       "path": "lib/shell-changes.ts",
+      "family": "workspace",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "06d4aff578d1959a8c3ca52188d8625733273aaf",
@@ -12263,7 +12677,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-0573e96e04d456ad",
       "path": "lib/shell-gauge.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "3daebd55526a9ec8906c2f661210aee783f515f2",
@@ -12298,7 +12715,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-4005f2ec1b3bc829",
       "path": "lib/shell-hover.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "4f22239edea2a33a925fcfd405564c1d64f57382",
@@ -12321,7 +12741,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-9b4bfe5f151ea181",
       "path": "lib/shell-prompt.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "56fdea1c21f6bdda263246ed80fc613fee0fe6ca",
@@ -12405,7 +12828,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-bcca6a4f9a79674e",
       "path": "lib/shell-sidebar-banner.ts",
+      "family": "presentation",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "a57bae9283c2f6f990627e429318fe9b62d01a8d",
@@ -12433,7 +12859,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-9e3e4c90238b42f6",
       "path": "lib/shell-sidebar-layout.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "981958c2ddf3f1f4f102ae000b823e9bddae7d5c",
@@ -12507,7 +12936,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-61fbe14806d42883",
       "path": "lib/shell-sidebar.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "bf76a8eb37bd468932e78c1c6db1431e2e886c33",
@@ -12549,7 +12981,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-b2ced3a9f88509cf",
       "path": "lib/shell-todo.ts",
+      "family": "todo",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "28737c9b4cc065b905db017d94034c0a8513e63b",
@@ -12673,7 +13108,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-bfd859fe42cc0af3",
       "path": "lib/shell-usage-view.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "94972a9bd0996dafb0a79bf8384bf2d56a9b3266",
@@ -12711,7 +13149,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-b868c3727493eea0",
       "path": "lib/shell-usage.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "a446f75ada6927765c7140666f04d5ba7c9fa199",
@@ -12889,7 +13330,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-300e38fb7847273e",
       "path": "lib/telemetry-trigger.ts",
+      "family": "metrics",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "3249817621c2d78633e7caf73f730e61e88814e5",
@@ -12971,7 +13415,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-addbdd0406d602cc",
       "path": "lib/terminal-theme.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "f62b8eb3502fd1ca70121e9dead850f5564faf14",
@@ -12990,7 +13437,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-e844fa5bcd5ca643",
       "path": "lib/theme-customization.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "447728a1a64d277f20392d1577a4df56286e4100",
@@ -13018,7 +13468,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-da8c260177ee40e0",
       "path": "lib/vim-editor-adapter.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "e73868d9eb42b2e19ebf3844f33ce24e6c1e0c55",
@@ -13046,7 +13499,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-8308d6b349b05bc1",
       "path": "lib/vim-normal-engine.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "8a6ef93fbe6309f1aa97cd8e4851134ce4842a4f",
@@ -13069,7 +13525,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-5af20d89bfc29410",
       "path": "lib/vim-operator-engine.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "3440c8313086c0717ad2b93034a5eff1f5053a05",
@@ -13105,7 +13564,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-8a7376c1ab550d82",
       "path": "lib/vim-policy.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "264e702e5f0830a117935e2e142ddfd2093eeb8b",
@@ -13169,7 +13631,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-97ecfb892ae514ea",
       "path": "lib/vim-visual-engine.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "3a49890956985d02d079c6df06a5d6e525a3aeaf",
@@ -13195,7 +13660,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-fef2126c68c668d3",
       "path": "lib/visual-customization-policy.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "b8106722a7551a8348717751fd365e458f1412ff",
@@ -13299,7 +13767,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-bb8f1616cf5eebff",
       "path": "lib/visual-customize-view.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "d275bf23f764877e838290def69b99a7b6ec4b7c",
@@ -13355,7 +13826,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-74e3f9200d8b4726",
       "path": "lib/visual-profiles.ts",
+      "family": "orchestrator",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "253dff6a518ba13c869b60a3a443649f35feb2fc",
@@ -13453,7 +13927,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-ffa7bd65c5c6f063",
       "path": "lib/windows-session-transport.ts",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "543d555598d26df835322223609d8e7e0f3f0753",
@@ -13585,7 +14062,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-7ae45ad102eab3b6",
       "path": "package.json",
+      "family": "package",
+      "visibility": "package-metadata",
       "mode": "100644",
       "type": "blob",
       "objectId": "5b3ba5d4a31b5fe92b097e77e9171cac1af6718b",
@@ -13595,7 +14075,10 @@
       "references": []
     },
     {
+      "id": "ECO-SRC-8745033959a82ed0",
       "path": "runtime/gentle-ai-binary.mjs",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "c3c8cd439aaae8fd6b775c190660f37341e3ef5e",
@@ -13711,7 +14194,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-5c44841b7f9918b9",
       "path": "runtime/gentle-shell-launcher.mjs",
+      "family": "launcher",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "3658bec966239c4a6918fc3426ab058a8bb81a61",
@@ -13861,7 +14347,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-2d64d9e6488c03e6",
       "path": "runtime/gentle-shell-resume-hint.mjs",
+      "family": "resume",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "d2232f933ad1b3fddc7006b01e7cc5f9a78eac5d",
@@ -13925,7 +14414,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-7fb85a620f260291",
       "path": "scripts/gentle-ai-installer.mjs",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "c6b15ce14dbcbf1e3a367358638f6b782d71ec96",
@@ -14109,7 +14601,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-2f0030e8503c730c",
       "path": "scripts/install-tui-mode-setting.mjs",
+      "family": "support",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "e89e83730e2b35a521d83ebe2fc61da217c9c671",
@@ -14177,7 +14672,10 @@
       ]
     },
     {
+      "id": "ECO-SRC-cedae2b917fe3648",
       "path": "tests/fixtures/runtime-metrics-native-batches.json",
+      "family": "metrics",
+      "visibility": "supporting-source",
       "mode": "100644",
       "type": "blob",
       "objectId": "6b2e841ade5e46da354430467dfb281469de6465",

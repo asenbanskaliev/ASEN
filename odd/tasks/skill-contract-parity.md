@@ -42,6 +42,8 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
 
 ## Tasks
 
+Parent checkboxes describe current admitted completion; dated entries below retain historical execution and pending-state observations. GSP-06 is CLOSED under explicit accepted provider-limited scope. All 12 matrix rows remain PARTIAL where generated-output evidence is absent; neither historical notes nor deterministic closure imply FULL.
+
 - [x] GSP-01 — Freeze contracts and build the 12/12 parity harness.
   - [x] Slice 1A: added the frozen 12-Skill/support source manifest, strict behavioral matrix, normative ASEN Skill style guide, authoring/audit references, and path-scoped provenance boundary test.
   - [x] Slice 1B: added deterministic validation for missing contracts, undocumented differences, unsupported FULL claims, invalid source references, exact source identity, and the ASEN registry path.
@@ -191,7 +193,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
   - Branch/commit naming, exactly one `type:*` label, protected-label behavior, size exception, templates/checks, and remote authorization before reads.
   - 400-line/60-minute chain policy, one slicing pass, delivery strategy, tracker/draft semantics, dependency diagrams, and base validation.
   - Conventional work-unit commits, feature-task commit identity, and native review candidate boundaries.
-- [ ] GSP-05 — Align orchestration, RDD, and ASEN Dual Review behavior.
+- [x] GSP-05 — Align orchestration, RDD, and ASEN Dual Review behavior within admitted deterministic/runtime scope.
   - [x] GSP-05A: derived ODD facts and opaque one-use route decisions.
     - [x] GSP-05A1: exact request-fact derivation and deterministic one-use route planning.
       - Exact plain request records now derive immutable scope, write, session, testing, review, uncertainty, risk, and routing facts without caller-supplied counts, routes, risk, or verification.
@@ -284,7 +286,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Native medium-risk reliability review `review-b2af581b2200fdfb` approved and was acknowledged; authority burned. Two informational advisories (`R3-activation-preconditions`, `R3-regression-checks`) are nonblocking follow-ups, not corrections.
       - Independent parent spot check passes 7/7 and confirms only SRC-SKILL-005 changed in the matrix. The slice is 153 additions / 24 deletions (177 total changed lines); runtime C1–C5 evidence remains separately recorded above. No Pi Free generated-output, packaging, or platform completion is claimed here.
       - Commit: `0cad160`.
-  - [ ] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
+  - [x] GSP-05D: RDD issue, current-base, conflict, invariant, flow, worktree, journey, and budget intake.
     - User selected a repository-versioned `.asen/rdd-policy.json` contract with explicitly authorized locator and exact revision-bound inspection; no default policy, branch, approval label, or authority is inferred. Disabled receipt review retains ordinary defect safeguards and separate delivery policy.
     - [x] GSP-05D1a: parse an exact bounded ASEN-owned policy document as descriptive data, not authority.
       - Fixed locator `.asen/rdd-policy.json`, exact schema v1, explicit review mode and approval labels, bounded duplicate-key rejection (including escaped names), immutable output, deterministic UTF-8 label ordering, and callback-safe bounded arrays. Source-text content identity grants no authority; no actual policy/default label/base/runtime integration is created.
@@ -371,7 +373,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
   - Local naming update: `530e3a7` establishes ASEN Dual Review while preserving the public Skill ID and frozen upstream provenance. Independent naming-only verification passed, with 27-Skill/12-Skill audits, typecheck, and diff check; 5 additions / 5 deletions. It does not activate G/H.
   - [x] GSP-05G: ASEN Dual Review immutable ledger and exactly-two blind dispatch.\n    - Cierre exacto en `ec9ae408f52ad81d0cab6d61c9d8ea0780bf9277`: CI multiplataforma 847/847 PASS. Dos jueces reciben el mismo target congelado; identidades iguales, duplicados y desacuerdo canónico fallan; ledger y findings quedan congelados y el candidato genuino se consume incluso ante salida inválida. Los jueces producen datos de revisión, no autoridad de entrega.
   - [x] GSP-05H: ASEN Dual Review bounded fix/re-judgment controller and terminal outcomes.\n    - Cierre exacto en `ec9ae408f52ad81d0cab6d61c9d8ea0780bf9277`: CI multiplataforma 847/847 PASS. Solo findings high/critical abren corrección; cada token es de un uso, regresiones pasan a segunda ronda, IDs duplicados/solapados se rechazan y no existe tercera ronda. Terminales approved/escalated siguen siendo juicio de revisión, no permiso de merge/release.
-  - [ ] GSP-05I: normalize ODD, defect, and adversarial-review Skills and matrix evidence.
+  - [x] GSP-05I: normalize ODD, defect, and adversarial-review Skills and matrix evidence within admitted scope.
     - Critical ODD acceptance: prove ODD is default and complexity/risk/file counts select organic delegation/tracking/checks, not automatic SDD/OpenSpec. SDD requires explicit selection or accepted proposal under the applicable source/version contract. Internal structured applicability alone is not proof of shipped SDD activation. Audit identified implicit nine-phase selection; GSP-05B1b was reopened and its fresh-entry routing correction closed by I1-B, without invalidating historical provenance test results. Historical continuation consent remains pending I1-C.
      - [x] GSP-05I1: correct implicit structured selection and require genuine task/repository-bound explicit workflow choice; substantial organic work remains ODD. Close reopened B1b only with positive/negative regression evidence.
        - Local I1-A/B/C contract closed through independently verified issuance, fresh applicability, exact private provenance, authenticated persistence/migration, and process-isolated recovery. Actual live-Pi/GSP-06 and remaining I2–I4 evidence are separate; no FULL-parity claim.
@@ -403,7 +405,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
            - Independent PASS: recovery/selection 14/14; lifecycle/process 45/45; lifecycle TDD 26/26; workflow/applicability 22/22 (107 total); typecheck and all audits (27 Skills/12 parity Skills/309 paths/500 IDs), diff check pass. Reviewer independently pinned parent HEAD `d79ebc572f6d0877c3fa6b7bb1cf4c2e5b1e9721` before commit. Commit `7e0d767`: 288 additions/3 deletions, 291 changed lines across three test/fixture files; production unchanged.
            - Accounting correction: fixture 73 + new test 163 + tracked 52 additions/3 deletions = 291 candidate lines, not 292. Separate parent-owned tracker +1 produced 292 workspace lines; it was declared and excluded from the code commit, not a worker source/isolation mutation. All historical failure and count discrepancies remain recorded.
            - Local process contract only: no human authorization, unauthenticated same-process resistance, antirollback, parent-directory crash durability, live-Pi/live-user-session, or FULL-parity claim.
-     - [ ] GSP-05I2: derive Skill facts from genuine ODD facts, rejecting omitted/understated files/code/behavior inputs; verify uniform bounded writer authorization across generic and Pi runners.
+     - [x] GSP-05I2: derive Skill facts from genuine ODD facts, rejecting omitted/understated files/code/behavior inputs; verify uniform bounded writer authorization across generic and Pi runners.
        - [x] I2-A: derive pre-write Skill triggers from original immutable claimed route facts, never secondary caller flags/counts. Current ODD facts authenticate validated declarations, not observed Git/filesystem bytes; preserve exact behavior/TDD predicate and canonical hashes. No actual-diff claim from this prerequisite.
          - Independent PASS: routing/orchestration/integration 33/33; Dispatcher/lifecycle/Pi 64/64; applicability/TDD/workflow selection 29/29 (126 total, no failures/skips). Typecheck; Skills 27; Skill parity 12; upstream boundary 311; registry parity 500 IDs/350 actionable contracts; diff check pass. Parent HEAD independently pinned `5f7a9435df7b057f05f68ff0e5718cbb368b56f6`. Commit `7e063b9`: 95 additions/14 deletions across two files, 109 changed lines.
          - Known scope count, code-kind predicates, behavior-only TDD predicate, original risk, and route verification now derive from claimed original facts. Secondary caller flags/counts remain interface-compatible but unread, including getters; missing/false/zero values cannot downgrade Skills. Unknown scope remains clarification-only with no worker authority; docs avoid TDD; incident/verify role boundaries and no implicit SDD remain intact.
@@ -422,7 +424,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
   - Recompute the 12/12 matrix; promote only rows with observable automated evidence.
   - Record commit identities, exact changed-line counts, rollback boundaries, and dependency diagrams for every slice.
 
-## Continuation evidence — 2026-10-06 (preparation, no formal closure)
+## Historical continuation evidence — 2026-10-06 (superseded by subsequent closure records)
 
 - Verified remote starting HEAD `f698cc2c5fc762fb0e31a7ad05f96bf21b05d35a`; exact expected SHA. Read tracker completely before edits. No main, PR #30, merge or release changes.
 - Exact-head logs: CI `37437962159`/job `112184354613`, Pi runtime `37437962174`/job `112184354564`, Release Gate `37437962201`/job `112184354504` failed with TS1517. Authenticated review `37437962366`/job `112184355347` passed deterministic tests then failed with OpenRouter 429/free-models-per-day. No manual model calls or retries were made. The first consolidated push unexpectedly retriggered authenticated run `37440013869` via PR path filtering; the automatic PR trigger is removed in the following corrective commit to prevent further quota retries. That run is not closure evidence.

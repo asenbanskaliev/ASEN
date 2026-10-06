@@ -2,6 +2,8 @@
 
 ## Purpose and current truth
 
+Active continuation is ecosystem, not GSP-05D3. GSP-06 retains its explicit provider-limited closure and admitted memory R01–R09 remain closed. Current implementation comparison: `odd/tasks/ecosystem-reconciliation.md`; current claims: `registry/parity/ecosystem-claims-v1.json`; current work queue: `odd/tasks/ecosystem-strict-parity.md`. The original protocol/bootstrap/copy-ready D3 prompt below is historical and superseded by these current trackers and the user's large-batch instructions.
+
 This is the portable continuation map for the remaining strict-parity program. The canonical branch is `feat/strict-parity-prerequisites`.
 
 | Boundary | Exact identity |
@@ -122,9 +124,9 @@ Current exact candidate at the start of this audit: `8111c4819e87b0f06c7e3c48487
 
 Exact-head observation after the documentation closures: Phase 0 Architecture PASS. CI and Release Gate were still running when this audit was recorded. GSP-06 Pi Free parity again reached and passed its deterministic gate, then failed only at the generated-output provider step; Pi Free Smoke was skipped. Per the user's accepted scope, neither result reopens GSP-06, but neither may be called provider PASS.
 
-Final pre-main gate: do not merge while CI or Release Gate for the exact final HEAD is pending or failed. When both finish, inspect their exact-head results. If green, update stale PR description/tracker wording that still describes I2-B/I3/I4/GSP-06 as formally open, perform one final diff/status audit, and only then present the merge candidate. No extra provider run is required by the accepted scope.
+Final pre-main gate: do not merge while CI or Release Gate for the exact final HEAD is pending or failed. Green CI is necessary, but insufficient: the ecosystem comparison identifies genuine unimplemented features and PARTIAL evidence. Finish the accepted ecosystem runtime and verification scope before declaring a merge candidate. No extra GSP-06 provider run is required by the accepted scope. Historical CI PASS must not be transferred to newer checkpoint SHAs.
 
-## Portable Codex bootstrap
+## Historical portable Codex bootstrap (superseded)
 
 Run from a normal repository clone. These commands use the remote canonical branch and make no assumption about a local worktree, cache, external memory state, or temporary path.
 
@@ -166,6 +168,6 @@ git grep -n -E 'GSP-05D(1b|2|3)|RDD|runtime journey|rollback|forecast budget' --
 
 If a listed search root does not exist, remove only that nonexistent root and rerun. Derive exact D3 source/test paths from the tracker hits and current implementation before editing. Do not inspect `.codegraph`.
 
-## Copy-ready Codex instruction
+## Historical copy-ready Codex instruction (superseded)
 
 > Continue **GSP-05D3 only** on `feat/strict-parity-prerequisites`: read `odd/tasks/skill-contract-parity.md` and the current D1b/D2 implementation, derive exact source/test surfaces read-only before writes, then bind invariants, operator flows, actual runtime journey evidence, rollback, and forecast budget. Keep the whole candidate under 390 changed lines, use honest applicable semantic RED/GREEN, obtain independent HIGH verification, and leave every later unit untouched.

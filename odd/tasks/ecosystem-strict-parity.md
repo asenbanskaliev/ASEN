@@ -16,9 +16,11 @@ Deliver evidence-backed parity with Reference A for every non-branding observabl
 
 ## Frozen baseline and confidence
 
-Reference A is pinned to commit `08de420ca29be16b6f6bee725a30b599b061df16`. The completed audit is directional, not a baseline freeze: tracked inventory, Git-object hashes, import closure, normative anchors, and raster inspection remain unverified.
+Reference A is pinned to commit `08de420ca29be16b6f6bee725a30b599b061df16`. `registry/parity/ecosystem-sources-v1.json` now freezes 166 tracked regular Git blobs and 46 roots with exact object IDs, byte SHA-256, family/visibility/source IDs, anchor-line hashes, dependency versions and 647 parsed import/Markdown-link edges. `ecosystem-media-v1.json` records dimensions/frame/alpha metadata and visual inspection without shipping source artwork. Exact-object verification checks every media record. These are SOURCE_INSPECTED records, not runtime parity. Asset/command references beyond the parsed edge kinds and full normative contracts still need their own closure.
 
-Observed inventory is 20 visible extension files, including seven history files; one README plus ten Markdown documents; seven SVGs; and one GIF plus five PNGs. Counts, tracked paths, exact bytes, and image findings must be established from Git objects in ECO-01 rather than assumed from a checkout or audit notes.
+Verified selected inventory includes 20 extension files, including seven history files; one README plus ten documentation files; seven SVGs; one GIF and six PNGs across docs and root assets. Five PNGs belong to docs; the sixth is the root logo. Exact objects were re-collected from the pinned source clone and matched the manifest. Static AST import/re-export/dynamic-literal and Markdown-link closure reaches 166 blobs; this does not imply every runtime-computed asset/command reference has been resolved.
+
+The current unit-by-unit comparison is `odd/tasks/ecosystem-reconciliation.md`; machine-checked current claims are `registry/parity/ecosystem-claims-v1.json`. GSP-06 is CLOSED at accepted provider-limited scope, while the 12 Skill rows stay PARTIAL where output evidence is absent. Memory R01–R09 retain admitted closure. Historical arrow-by-arrow text does not reopen either track. The old Phase 10 inventory's primitive PARITY labels do not establish strict ecosystem FULL.
 
 ## Honest current status
 
@@ -38,7 +40,7 @@ Observed inventory is 20 visible extension files, including seven history files;
 | Runtime metrics | `MISSING` | Usage and telemetry decisions/behavior are absent. |
 | Skill registry | `PARTIAL` | GSP work covers a subset; startup/watch/disable/shutdown remain. |
 | Banner | `MISSING` | Presentation behavior is absent. |
-| Package exports | `DEFECT` | Published export resolution is not valid and must be fixed before claims. |
+| Package exports | `PARTIAL` | Absent export target repaired to the shipped entry. Local actual packed install resolves all 28 public exports and rejects private paths; exact new-candidate multiplatform/Pi packaging evidence is still required. |
 
 ### Documentation families
 
@@ -52,7 +54,7 @@ Observed inventory is 20 visible extension files, including seven history files;
 | History | `MISSING` | No behavior-backed guide. |
 | Usage and telemetry | `MISSING` | No adopted contract or behavior-backed guide. |
 
-Broad current parity claims are inflated. ECO-02 must narrow them before any new `FULL` promotions.
+Current strict claims are 10 PARTIAL / 6 MISSING / 0 FULL. `npm run audit:ecosystem` rejects unsupported FULL, unaccepted exclusions, absent source/implementation references, stale candidate/source bindings, drifted source rows and missing executed evidence receipts. Legacy historical labels are not current strict claims.
 
 ## Evidence and claim rules
 
@@ -103,16 +105,23 @@ ECO-15 behavior-backed documentation -> ECO-16 final verification
 ### Audit and baseline
 
 - [x] **ECO-00 — Complete read-only ecosystem audit.** Record directional extension/doc statuses and visible inventory; make no freeze or parity claim.
-- [ ] **ECO-01A — Freeze extension source manifest.** Read exact tracked paths and bytes from Reference A Git objects; record commit, path, blob identity, SHA-256, family, normative anchors, and visibility; reject worktree-only/untracked inputs.
-- [ ] **ECO-01B — Freeze documentation and media manifests.** Record README/docs/media paths and hashes; inspect every SVG and raster asset, dimensions/frames/alpha where relevant, and human visual findings without copying excluded artwork.
+- [x] **ECO-01A — Freeze extension source manifest.** Read exact tracked paths and bytes from Reference A Git objects; record commit, path, blob identity, SHA-256, family, normative anchors, and visibility; reject worktree-only/untracked inputs.
+  - Initial exact objects/anchor index verified in `c6f120222089da2626e0da86a69b5c53c62564c2`; subsequent checkpoint adds stable IDs, family/visibility and validation. Anchor identities are navigation to frozen source, not implemented behavior or complete semantic contracts.
+- [x] **ECO-01B — Freeze documentation and media manifests.** Record README/docs/media paths and hashes; inspect every SVG and raster asset, dimensions/frames/alpha where relevant, and human visual findings without copying excluded artwork.
+  - Every source/media identity was verified from exact objects; rendered SVG and raster frames were inspected. Synthetic PNG/GIF/SVG parser fixtures and metadata/hash/identity negative tests now pass. GIF alpha is inspected over all frame control records, correcting the initial first-frame-only observation.
 - [ ] **ECO-01C — Freeze import and reference closure.** Resolve static/dynamic imports, assets, docs links, command/tool references, dependencies, and normative anchors; classify absent, optional, generated, external, and unresolved edges.
+  - Parsed AST imports/re-exports/dynamic-literal imports and Markdown links are closed. Runtime assets/commands and complete normative obligations remain open. No unresolved parsed edge was silently excluded.
 - [ ] **ECO-01D — Add baseline validators and fixtures.** Use synthetic Git repositories/objects and image fixtures to prove exact-byte hashing, malformed manifests, missing blobs, path escapes, cycles, duplicate IDs, broken closure, and deterministic rendering.
+  - Git-object, drift and synthetic media fixtures implemented. Independent adversarial review reproduced three metadata defects; repair observed 3/3 RED then GREEN. Complete contract/asset closure remains separately assigned to ECO-01C.
 - [ ] **ECO-01E — Add automatic drift detection.** Report `ADDED`, `REMOVED`, unique-hash `RENAMED`, `CONTENT_CHANGED`, dependency/reference changes, and normative-anchor changes. A scheduled/manual candidate-source check may propose a report but never adopt changes automatically; changed sources invalidate affected `FULL` rows until re-audited.
+  - Report-only detector supports these classifications plus transitive importer invalidation; manual exact-commit comparison is available through `scripts/ecosystem-baseline.mjs`. Full contract/asset-edge invalidation awaits their completed mapping.
 
 ### Honest package and claims
 
 - [ ] **ECO-02A — Repair package exports.** Add install/pack fixtures proving every declared public export resolves from the packed artifact and undeclared paths fail as designed.
+  - Functional defect repaired in `d7af2f3d80bf782ed4b2995205475e915243eb1e`: true Node resolution RED before correction, then GREEN; `verify:pack` now verifies actual offline installed tarball bytes and all 28 exports. Exact final multiplatform packaging checks remain pending.
 - [ ] **ECO-02B — Establish claim registry and validator.** Replace broad prose with evidence-linked rows and reject `FULL` without required positive, negative, failure, platform, restart/session, and Pi evidence.
+  - Current registry/validator added with all 16 aggregate units, source hashes, implementation/test mappings, explicit gaps and required boundaries. FULL requires applicable executed receipt classes, exact candidate/source, receipt byte identities and no source invalidation. Remaining ECO units are not promoted by general green tests.
 - [ ] **ECO-02C — Correct current claims and README maturity.** Narrow Pi-native extension, Skills, destructive-Git safety, basic FTS, compaction, review, authority, Windows, and package-install claims to observed scope; label roadmap behavior explicitly.
 
 ### Essential ecosystem runtime

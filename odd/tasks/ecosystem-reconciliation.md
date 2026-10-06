@@ -8,6 +8,8 @@ Classification: COVERED means the named admitted behavior exists with correspond
 
 ## Complete ECO comparison before implementation
 
+This table is the starting audit at the named starting SHA. Subsequent checkpoint records below and the canonical tracker supersede individual starting limitations; the machine-checked claim registry is the current aggregate status.
+
 | Unit | Requirement | Existing implementation and tests/evidence | Real status and necessary action |
 | --- | --- | --- | --- |
 | ECO-01A | Exact tracked extension baseline | Skill manifest pins the same source commit; no ecosystem Git-object manifest or validator. | MISSING: freeze extension objects and anchors. |
@@ -50,6 +52,9 @@ Starting exact-head GitHub observations: CI `37482424354`, Phase 0 `37482424349`
 - Six synthetic Git-object/drift tests PASS; local typecheck PASS; exact-object re-collection PASS; upstream boundary PASS. Tests cover dirty/untracked checkout exclusion, exact UTF-8 bytes, cycles, malformed identities/arrays, missing objects, static versus computed imports, additions/removals, unique versus ambiguous renames, dependency-version drift and transitive importer invalidation. An absent module/fixture is not claimed as semantic RED. Media parsing/image-fixture and command/asset/reference coverage beyond parsed imports/Markdown links remain open; this is research evidence, not runtime parity.
 - Package correction observed semantic RED: public Node resolution failed for absent `extensions/index.ts`. GREEN after targeting existing `extensions/asen.ts`: resolution and negative private-path checks PASS. `npm run verify:pack` installs the actual tarball offline without scripts, checks all 28 public exports and reads packed bytes for boundary scanning. No package publication occurred.
 - GSP-06 automatic PR trigger is removed. Manual invocation is restricted to the canonical branch and an explicitly matching exact HEAD; no invocation was made. This enforces the accepted quota-saving scope without recording provider PASS.
+- Independent audit of exact tree `6a411895c5e835afc5f6056f559fe302d90b4df9` / checkpoint `d7af2f3d80bf782ed4b2995205475e915243eb1e`: 19/19 focused checks PASS, but three baseline metadata defects reproduced. They admitted null dependency names, name/spec contradictions and tracked references without a literal target. New regressions observed 3/3 semantic RED, then GREEN after fail-closed name/spec/reference-binding validation. The independent global verdict correctly rejected FULL/merge-readiness because ecosystem runtime is unfinished.
+- Following checkpoint completes family/visibility/stable source IDs, adds byte-bound PNG/GIF/SVG metadata validation and synthetic malformed-image/identity fixtures, and establishes the 16-unit current claim registry. Exact-object verification of every media record corrected GIF transparency from first-frame false to whole-animation true. This was inspection metadata correction, not a runtime memory defect. Fifteen focused baseline/media/claim tests and typecheck PASS; all existing deterministic audits PASS. Current claims remain 10 PARTIAL / 6 MISSING / 0 FULL.
+- Canonical tracker, README and registry documentation now distinguish shipped primitives, remaining runtime, historical Phase 10 labels, accepted provider-limited GSP-06 closure and admitted memory closure. GSP parent checkboxes are reconciled with their already-recorded child closures; no Skill row is promoted to FULL.
 
 ## Dependency plan and rollback
 

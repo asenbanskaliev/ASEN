@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync} from "node:fs";
@@ -41,7 +42,7 @@ test("rejects malformed identities, duplicate/escape paths, dangling closure and
   for(const mutate of [
     (b:any)=>{b.commit="HEAD";},(b:any)=>{b.files[0].path="../outside";},
     (b:any)=>{b.files.push(b.files[0]);},(b:any)=>{b.files[0].sha256="wrong";},
-    (b:any)=>{b.files[0].bytes=-1;},(b:any)=>{b.files[0].anchors={};},
+    (b:any)=>{b.files[0].bytes=-1;},(b:any)=>{b.files[0].anchors={};},(b:any)=>{b.files[0].visibility="runtime-installed";},
     (b:any)=>{b.files[0].references=[{kind:"import",target:"./none",path:"none.ts",status:"tracked"}];},
   ]) {const changed=structuredClone(baseline);mutate(changed);assert.ok(validateBaseline(changed).length);}
   const changed=structuredClone(baseline);changed.files[0].sha256="a".repeat(64);
@@ -80,7 +81,7 @@ test("library changes invalidate importing roots and ambiguous hashes are never 
   const renamed=structuredClone(before),original=renamed.files.find((row:any)=>row.path==="README.md");
   renamed.files=renamed.files.filter((row:any)=>row.path!=="README.md");
   renamed.roots=renamed.roots.filter((p:string)=>p!=="README.md");
-  for(const name of ["docs/copy1.md","docs/copy2.md"]){renamed.files.push({...original,path:name,references:[]});renamed.roots.push(name);}
+  for(const name of ["docs/copy1.md","docs/copy2.md"]){renamed.files.push({...original,id:"ECO-SRC-"+createHash("sha256").update(name).digest("hex").slice(0,16),path:name,references:[]});renamed.roots.push(name);}
   for(const row of renamed.files) row.references=row.references.filter((ref:any)=>ref.path!=="README.md");
   const report=detectBaselineDrift(before,renamed);
   assert.equal(report.changes.some((c:any)=>c.kind==="RENAMED"&&c.path==="README.md"),false);
@@ -92,4 +93,14 @@ test("checked-in ecosystem manifest is valid research evidence",()=>{
   assert.deepEqual(validateBaseline(baseline),[]);
   assert.equal(baseline.files.filter((r:any)=>r.path.startsWith("extensions/")).length,20);
   assert.equal(baseline.commit,"08de420ca29be16b6f6bee725a30b599b061df16");
+});
+
+for(const [name,mutate] of [
+  ["rejects non-string dependency names",(b:any)=>{b.dependencyNames=[null];}],
+  ["rejects omitted dependency names contradicting version specs",(b:any)=>{b.dependencyNames=[];}],
+  ["rejects a tracked reference without a literal source target",(b:any)=>{b.files.find((r:any)=>r.references.some((x:any)=>x.status==="tracked")).references.find((x:any)=>x.status==="tracked").target=null;}],
+] as const) test(name,()=>{
+  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
+  mutate(baseline);assert.ok(validateBaseline(baseline).length);
+  assert.throws(()=>detectBaselineDrift(baseline,baseline),/malformed/);
 });

@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import ts from "typescript";
+import {validateMediaManifest,verifyMediaBytes} from "./ecosystem-media.mjs";
 
 const digest = value => createHash("sha256").update(value).digest("hex");
 const objectId = value => typeof value === "string" && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value);
@@ -11,6 +12,18 @@ const safePath = value => typeof value === "string" && value.length > 0 && value
   !/[\\\u0000-\u001f\u007f]/.test(value) && !path.posix.isAbsolute(value) &&
   value.split("/").every(part => part && part !== "." && part !== "..");
 const sortedUnique = values => [...new Set(values)].sort();
+const families = ["ask-user","code-intelligence","agents","orchestrator","workspace","todo","history","presentation","resume","metrics","skill-registry","launcher","documentation","media","package","support"];
+const visibilities = ["public-interface","supporting-source","media-comparison-only","package-metadata"];
+function sourceClassification(filename) {
+  if (/\.(?:svg|png|gif)$/.test(filename)) return {family:"media",visibility:"media-comparison-only"};
+  if (filename === "package.json") return {family:"package",visibility:"package-metadata"};
+  if (filename.endsWith(".md")) return {family:"documentation",visibility:"public-interface"};
+  const rules = [[/ask-user|questionnaire/,"ask-user"],[/codegraph/,"code-intelligence"],[/history/,"history"],
+    [/skill-registry/,"skill-registry"],[/metrics|telemetry/,"metrics"],[/profiles|routing|-ai\.ts$/,"orchestrator"],
+    [/agents|agent-/,"agents"],[/todo/,"todo"],[/resume/,"resume"],[/banner|pretty|quiet/,"presentation"],
+    [/launcher|^bin\//,"launcher"],[/-shell\.ts$|workspace|changes/,"workspace"]];
+  return {family:rules.find(([pattern]) => pattern.test(filename))?.[1] ?? "support",visibility:filename.startsWith("extensions/") ? "public-interface" : "supporting-source"};
+}
 const git = (repository, args) => execFileSync("git", ["-C", repository, ...args], {
   env: {...process.env, GIT_NO_REPLACE_OBJECTS: "1"}, maxBuffer: 32 * 1024 * 1024,
 });
@@ -93,7 +106,7 @@ export function collectBaseline(repository, commit) {
       throw new Error("Only tracked regular source blobs may enter the baseline");
     const bytes = git(repository, ["cat-file", "blob", entry.objectId]);
     const references = sourceReferences(filename, bytes).map(reference => resolveReference(filename, reference, inventory, new Set(dependencyNames)));
-    rows.set(filename, {path:filename, ...entry, bytes:bytes.length, sha256:digest(bytes), anchors:anchors(filename, bytes), references});
+    rows.set(filename, {id:`ECO-SRC-${digest(filename).slice(0,16)}`,path:filename,...sourceClassification(filename), ...entry, bytes:bytes.length, sha256:digest(bytes), anchors:anchors(filename, bytes), references});
     for (const reference of references) if (reference.status === "tracked" && !rows.has(reference.path)) pending.push(reference.path);
   }
   return {version:1, commit, tree:git(repository, ["rev-parse", `${commit}^{tree}`]).toString().trim(),
@@ -106,11 +119,19 @@ export function validateBaseline(value) {
       !Array.isArray(value.files) || !value.files.length || !Array.isArray(value.roots) || !Array.isArray(value.dependencyNames) || !Array.isArray(value.dependencySpecs))
     return ["Invalid ecosystem baseline envelope"];
   const files = new Map();
+  const sourceIds = new Set();
+  const dependencyName = name => typeof name === "string" && /^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/i.test(name);
+  if (value.dependencyNames.some(name => !dependencyName(name)) ||
+      JSON.stringify(sortedUnique(value.dependencyNames)) !== JSON.stringify(value.dependencyNames)) issues.push("Invalid dependency names");
   if (value.dependencySpecs.some(row => !row || !["dependencies","devDependencies","peerDependencies","optionalDependencies"].includes(row.kind) ||
-      typeof row.name !== "string" || typeof row.spec !== "string")) issues.push("Invalid dependency specification");
+      !dependencyName(row.name) || typeof row.spec !== "string" || !row.spec.trim())) issues.push("Invalid dependency specification");
+  if (new Set(value.dependencySpecs.map(row => `${row?.kind}:${row?.name}`)).size !== value.dependencySpecs.length) issues.push("Duplicate dependency specification");
+  if (JSON.stringify(sortedUnique(value.dependencySpecs.map(row => row?.name))) !== JSON.stringify(value.dependencyNames)) issues.push("Dependency name/specification mismatch");
   for (const row of value.files) {
     if (!row || !safePath(row.path) || files.has(row.path)) { issues.push("Unsafe or duplicate source path"); continue; }
     files.set(row.path,row);
+    if(row.id!==`ECO-SRC-${digest(row.path).slice(0,16)}`||sourceIds.has(row.id)||!families.includes(row.family)||!visibilities.includes(row.visibility))issues.push(`Invalid source classification/ID: ${row.path}`);
+    sourceIds.add(row.id);
     if (row.type !== "blob" || !["100644", "100755"].includes(row.mode) || !objectId(row.objectId) ||
         !Number.isSafeInteger(row.bytes) || row.bytes < 0 || !/^[a-f0-9]{64}$/.test(row.sha256) ||
         !Array.isArray(row.anchors) || !Array.isArray(row.references)) issues.push(`Invalid source identity: ${row.path}`);
@@ -122,8 +143,11 @@ export function validateBaseline(value) {
   for (const row of files.values()) for (const ref of Array.isArray(row.references) ? row.references : []) {
     if (!ref || !statuses.has(ref.status) || !["import", "dynamic-import", "document"].includes(ref.kind) ||
         ref.target !== null && typeof ref.target !== "string") { issues.push("Invalid source reference"); continue; }
+    if (ref.target === null && (ref.kind !== "dynamic-import" || ref.status !== "unresolved")) issues.push("Only unresolved computed imports may omit a literal target");
     if (ref.status === "tracked" && (!safePath(ref.path) || !files.has(ref.path))) issues.push(`Broken tracked closure: ${row.path}`);
     if (ref.status === "fragment" && ref.path !== row.path) issues.push("Invalid fragment binding");
+    const expected = resolveReference(row.path,ref,files,new Set(value.dependencyNames));
+    if (expected.status !== ref.status || expected.path !== ref.path) issues.push(`Reference resolution mismatch: ${row.path}`);
   }
   const reachable = new Set(), pending = [...value.roots];
   while (pending.length) {
@@ -179,8 +203,16 @@ export function verifyBaselineObjects(repository, baseline) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const baseline = JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
   const issues = validateBaseline(baseline);
+  const media = JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-media-v1.json",import.meta.url),"utf8"));
+  issues.push(...validateMediaManifest(baseline,media));
   if (issues.length) throw new Error(issues.join("\n"));
-  if (process.argv[2]) verifyBaselineObjects(process.argv[2],baseline);
+  if (process.argv[2]) {
+    verifyBaselineObjects(process.argv[2],baseline);
+    for (const row of media.sources) {
+      const source=baseline.files.find(file=>file.path===row.path);
+      verifyMediaBytes(source,row,git(process.argv[2],["cat-file","blob",source.objectId]));
+    }
+  }
   if (process.argv[3]) console.log(JSON.stringify(detectBaselineDrift(baseline,collectBaseline(process.argv[2],process.argv[3])),null,2));
   console.log(`ecosystem baseline: PASS (${baseline.files.length} tracked objects; SOURCE_INSPECTED, not runtime parity)`);
 }
