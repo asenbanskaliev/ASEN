@@ -46,7 +46,7 @@
     "node": ">=22"
   },
   "exports": {
-    "./extensions": "./extensions/index.ts",
+    "./extensions": "./extensions/asen.ts",
     "./skills/*": "./skills/*/SKILL.md"
   }
 }
