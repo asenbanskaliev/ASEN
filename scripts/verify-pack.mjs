@@ -23,14 +23,17 @@ const checked=verifyPublicExports(installation),installed=join(installation,"nod
 const installedPackage=JSON.parse(readFileSync(join(installed,"package.json"),"utf8"));
 if(installedPackage.bin?.asen!=="./dist/cli.js")throw new Error("packed artifact missing ASEN executable mapping");
 const cliBytes=readFileSync(join(installed,"dist","cli.js"),"utf8");if(!cliBytes.startsWith("#!/usr/bin/env node"))throw new Error("packed ASEN executable missing node shebang");
-const bin=process.platform==="win32"?join(installation,"node_modules",".bin","asen.cmd"):join(installation,"node_modules",".bin","asen");
-const help=execFileSync(bin,["--help"],{encoding:"utf8",cwd:installation});if(!/Usage: asen/.test(help))throw new Error("packed ASEN executable did not run help");
-const version=execFileSync(bin,["--version"],{encoding:"utf8",cwd:installation}).trim();if(version!=="0.1.0")throw new Error("packed ASEN executable version mismatch");
+const bin=process.platform==="win32"?process.execPath:join(installation,"node_modules",".bin","asen");
+const binPrefix=process.platform==="win32"?[join(installed,"dist","cli.js")]:[];
+const runBin=(args,options={})=>execFileSync(bin,[...binPrefix,...args],{encoding:"utf8",cwd:installation,...options});
+const spawnBin=(args,options={})=>spawnSync(bin,[...binPrefix,...args],{encoding:"utf8",cwd:installation,...options});
+const help=runBin(["--help"]);if(!/Usage: asen/.test(help))throw new Error("packed ASEN executable did not run help");
+const version=runBin(["--version"]).trim();if(version!=="0.1.0")throw new Error("packed ASEN executable version mismatch");
 
 const cleanEnv={...process.env};delete cleanEnv.ASEN_PI;delete cleanEnv.ASEN_PI_ON_PATH;
-const spaced=join(installation,"hóme dir ñ"),homeOut=execFileSync(bin,["home"],{encoding:"utf8",cwd:installation,env:{...cleanEnv,ASEN_HOME:spaced}}).trim();
+const spaced=join(installation,"hóme dir ñ"),homeOut=runBin(["home"],{env:{...cleanEnv,ASEN_HOME:spaced}}).trim();
 if(homeOut!==spaced)throw new Error("packed ASEN executable home mismatch for spaces/Unicode path");
-const missing=spawnSync(bin,["--home",spaced],{encoding:"utf8",cwd:installation,env:cleanEnv});
+const missing=spawnBin(["--home",spaced],{env:cleanEnv});
 if(missing.status!==1||!/Pi runtime not found/.test(missing.stderr))throw new Error("packed ASEN executable did not report missing Pi clearly");
 if(process.platform!=="win32"){
   const fake=join(installation,"fake pi.mjs");writeFileSync(fake,"#!/usr/bin/env node\nconsole.log(JSON.stringify({args:process.argv.slice(2),dir:process.env.PI_CODING_AGENT_DIR}));\n");chmodSync(fake,0o755);
