@@ -6,7 +6,8 @@ test("package exposes only Pi extension/skills and owned runtime files", async()
   const pkg=JSON.parse(await readFile(new URL("../package.json",import.meta.url),"utf8"));
   assert.deepEqual(pkg.pi.extensions,["./extensions"]);
   assert.deepEqual(pkg.pi.skills,["./skills"]);
-  assert.deepEqual(pkg.files,["extensions/","src/","skills/"]);
+  assert.deepEqual(pkg.files,["dist/","extensions/","src/","skills/"]);
+  assert.equal(pkg.bin.asen,"./dist/cli.js");
   assert.deepEqual(pkg.exports,{"./extensions":"./extensions/asen.ts","./skills/*":"./skills/*/SKILL.md"});
   assert.equal(Object.values(pkg.exports).some((value)=>String(value).includes("src/")),false);
   const forbidden=new RegExp("gen"+"tle","i");

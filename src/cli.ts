@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import {spawn} from "node:child_process";
-import {existsSync} from "node:fs";
+import {existsSync,realpathSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 import path from "node:path";
 import {homedir} from "node:os";
@@ -28,4 +28,5 @@ export async function runAsen(argv=process.argv.slice(2),env:Record<string,strin
   child.once("exit",(code:number|null)=>resolve(code??1));
  });
 }
-if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))process.exitCode=await runAsen();
+function isMain():boolean{if(!process.argv[1])return false;try{return realpathSync(process.argv[1])===realpathSync(fileURLToPath(import.meta.url));}catch{return false;}}
+if(isMain())process.exitCode=await runAsen();
