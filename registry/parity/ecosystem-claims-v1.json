@@ -152,7 +152,7 @@
         "tests/pi-process-runner.test.ts"
       ],
       "remaining": [
-        "Public lifecycle/session transport, durable queue/cancel/continue/status/history/restart composition are incomplete."
+        "Dispatcher FIFO/concurrency handoff defect is repaired and regression-tested. Public lifecycle/session transport, durable queue/cancel/continue/status/history/restart composition remain incomplete."
       ],
       "stateful": true,
       "platformSensitive": true,
@@ -215,15 +215,18 @@
       ],
       "implementation": [
         "src/skills/discovery.ts",
-        "src/skills/generated-registry.ts"
+        "src/skills/generated-registry.ts",
+        "src/skills/registry-lifecycle.ts",
+        "extensions/asen.ts"
       ],
       "tests": [
         "tests/skill-discovery.test.ts",
         "tests/generated-skill-registry.test.ts",
-        "tests/skill-registry-extension.test.ts"
+        "tests/skill-registry-extension.test.ts",
+        "tests/skill-registry-lifecycle.test.ts"
       ],
       "remaining": [
-        "Startup/watch/debounce/disable/shutdown/restart integration is absent."
+        "Startup refresh, serialized existing-cache writes, recursive watch/debounce, dirty-again coalescing, disable, shutdown and stale-generation protection are implemented and locally tested. Real cross-platform Pi startup/restart journeys and complete missing-source/recreated-watch behavior remain unverified."
       ],
       "stateful": true,
       "platformSensitive": true,

@@ -1,8 +1,9 @@
+import {RegistryLifecycle,registryStartupDisabled,type RegistryLifecycleOptions} from "../src/skills/registry-lifecycle.js";
 import {realpath} from "node:fs/promises";
 import {homedir} from "node:os";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
-import {refreshSkillRegistry,type RefreshSkillRegistryOptions,type SkillRegistryMirror} from "../src/skills/generated-registry.js";
+import {refreshSkillRegistry,type SkillRegistryMirror} from "../src/skills/generated-registry.js";
 import type {SkillSource} from "../src/skills/discovery.js";
 import {claimWorkflowSelection,readWorkflowSelection,registerWorkflowSelectionCommand} from "../src/lifecycle/workflow-selection.js";
 import {decideLifecycleApplicability,decideLifecycleApplicabilityWithSelection,type LifecycleApplicability,type LifecycleApplicabilityInput} from "../src/lifecycle/applicability.js";
@@ -17,9 +18,9 @@ import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
 import {createCodeIntelligenceTool,type CodeIntelligenceOptions} from "../src/interaction/code-intelligence.js";
 
 type CommandContext={cwd:string;ui:{notify(message:string,level:"info"|"error"):void}};
-type PiLike={registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
+type PiLike={on?:(event:string,handler:(...args:any[])=>unknown)=>void;registerFlag?:(name:string,options:any)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
 type Refresh=typeof refreshSkillRegistry;
-export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions}
+export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">}
 export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">):ReturnType<typeof resumeOddTask>}
 
 const usage="Usage: /asen-skill-registry refresh";
@@ -49,15 +50,20 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
  return pi=>{
   const register=pi.registerCommand?.bind(pi);
   if(!register)throw new Error("ASEN extension requires Pi command registration");
+  const lifecycle=new RegistryLifecycle({refresh,prepare:async cwd=>{
+   const projectRoot=await realpath(path.resolve(cwd)),sources=await sourcesFor(projectRoot,home(),packageRoot);
+   return {projectRoot,projectId:projectRoot,sources,...(dependencies.mirror?{mirror:dependencies.mirror}:{})};
+  },...dependencies.registryLifecycle});
+  pi.registerFlag?.("asen-no-skill-registry",{description:"Disable ASEN skill registry startup refresh and watchers",type:"boolean",default:false});
+  pi.on?.("session_start",(_event,ctx)=>lifecycle.start(ctx,registryStartupDisabled(pi.getFlag?.("asen-no-skill-registry"))));
+  pi.on?.("session_shutdown",()=>lifecycle.shutdown());
   registerInteractionTools(pi,dependencies.interactionTimeoutMs);
   pi.registerTool?.(createCodeIntelligenceTool(dependencies.codeIntelligence));
   pi.registerCommand?.("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
   pi.registerCommand?.("asen-skill-registry",{description:"Refresh the generated ASEN skill registry",handler:async(args:string|undefined,ctx:CommandContext)=>{
    if(args?.trim()!=="refresh"){ctx.ui.notify(usage,"info");return usage;}
    try{
-    const projectRoot=await realpath(path.resolve(ctx.cwd)),sources=await sourcesFor(projectRoot,home(),packageRoot);
-    const options:RefreshSkillRegistryOptions={projectRoot,projectId:projectRoot,sources,...(dependencies.mirror?{mirror:dependencies.mirror}:{})};
-    const result=await refresh(options),empty=result.count===0?" (empty when zero)":"",memory=result.persistence.status;
+    const result=await lifecycle.refresh(ctx.cwd),empty=result.count===0?" (empty when zero)":"",memory=result.persistence.status;
     const message=`ASEN skill registry refreshed: path=${result.path}; skills=${result.count}${empty}; cache=${result.cache}; diagnostics=${result.skipped.length}; memory=${memory}.`;
     ctx.ui.notify(message,"info");return message;
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}

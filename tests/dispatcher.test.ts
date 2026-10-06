@@ -232,3 +232,14 @@ test("runner receiver burns on a mismatched first claim",async()=>{
  assert.equal(consumeRunnerWriteReceiver(receiver,{...writeRequest,id:"wrong"}),false);
  assert.equal(consumeRunnerWriteReceiver(receiver,writeRequest),false);
 });
+
+test("queued slot transfer preserves FIFO and concurrency against microtask arrivals",async()=>{
+ const started:string[]=[],finish=new Map<string,()=>void>();let active=0,max=0;
+ const runner:AgentRunner={run:r=>{started.push(r.id);max=Math.max(max,++active);return new Promise(resolve=>finish.set(r.id,()=>{active--;resolve({id:r.id,ok:true,output:"ok"});}));}};
+ const d=new Dispatcher(runner,new EvidenceStore(),1),request=(id:string)=>({id,role:"explorer" as const,prompt:"x",repository:"r"});
+ const a=d.dispatch(request("a"));await Promise.resolve();const b=d.dispatch(request("b"));
+ finish.get("a")!();let c:Promise<unknown>|undefined;queueMicrotask(()=>{c=d.dispatch(request("c"));});
+ await new Promise(resolve=>setImmediate(resolve));const order=[...started],maximum=max;
+ finish.get("b")!();await new Promise(resolve=>setImmediate(resolve));finish.get("c")!();await Promise.all([a,b,c]);
+ assert.equal(maximum,1);assert.deepEqual(order,["a","b"]);assert.deepEqual(started,["a","b","c"]);
+});

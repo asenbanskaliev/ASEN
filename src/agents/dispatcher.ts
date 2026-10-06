@@ -41,8 +41,8 @@ function requestArray(value:unknown):string[]{
 export class Dispatcher {
  readonly #active:WriteGrant[]=[]; #running=0; readonly #waiters:Array<()=>void>=[];
  constructor(private readonly runner:AgentRunner,private readonly evidence:EvidenceStore,private readonly maxConcurrency=4){if(!Number.isInteger(maxConcurrency)||maxConcurrency<1)throw new Error("maxConcurrency must be a positive integer");}
- async #acquire():Promise<void>{if(this.#running<this.maxConcurrency){this.#running++;return;}await new Promise<void>(resolve=>this.#waiters.push(resolve));this.#running++;}
- #release():void{this.#running--;this.#waiters.shift()?.();}
+ async #acquire():Promise<void>{if(this.#running<this.maxConcurrency){this.#running++;return;}await new Promise<void>(resolve=>this.#waiters.push(resolve));}
+ #release():void{const next=this.#waiters.shift();if(next)next();else this.#running--;}
  async dispatch(request:AgentRequest):Promise<AgentResult>{
   const token=typeof request==="object"&&request!==null&&!types.isProxy(request)?Object.getOwnPropertyDescriptor(request,"writerAdmission")?.value:undefined;
   let runnerRequest:AgentRequest;
