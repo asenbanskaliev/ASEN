@@ -114,6 +114,16 @@ Use this protocol for D3 and then repeat it for each later unit only after its p
 - Do not merge, release, or touch unrelated PR #30.
 - Do not infer authenticated principals, trust-root independence, OS isolation, rollback resistance, crash durability, platform coverage, Pi Free behavior, or delivery authority.
 
+## Final reconciliation audit — 2026-10-06
+
+This roadmap's original strict arrow-by-arrow sequencing is historical for the current branch state. The repository subsequently completed the admitted local memory R01-R09 work and reconciled it into `odd/tasks/memory-strict-parity.md`. On 2026-10-06 the user also explicitly accepted closure of GSP-06 without another model-provider execution. That decision does not fabricate Pi Free/provider evidence and does not promote PARTIAL Skill rows to FULL.
+
+Current exact candidate at the start of this audit: `8111c4819e87b0f06c7e3c48487e6b2666cea07d`, 157 commits ahead of and 0 behind merged-main base `e67d2618f466ecee757a519e1b68049588a2db1e`. PR #32 is open, draft, unmerged and reported mergeable. The PR-wide diff is 62 files, 2229 additions and 94 deletions; this aggregate is not a single work-unit candidate and must not be misrepresented as satisfying the historical per-unit 390-line rule.
+
+Exact-head observation after the documentation closures: Phase 0 Architecture PASS. CI and Release Gate were still running when this audit was recorded. GSP-06 Pi Free parity again reached and passed its deterministic gate, then failed only at the generated-output provider step; Pi Free Smoke was skipped. Per the user's accepted scope, neither result reopens GSP-06, but neither may be called provider PASS.
+
+Final pre-main gate: do not merge while CI or Release Gate for the exact final HEAD is pending or failed. When both finish, inspect their exact-head results. If green, update stale PR description/tracker wording that still describes I2-B/I3/I4/GSP-06 as formally open, perform one final diff/status audit, and only then present the merge candidate. No extra provider run is required by the accepted scope.
+
 ## Portable Codex bootstrap
 
 Run from a normal repository clone. These commands use the remote canonical branch and make no assumption about a local worktree, cache, external memory state, or temporary path.
