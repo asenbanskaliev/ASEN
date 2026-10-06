@@ -33,7 +33,7 @@ async function run(p){
    const actual=record.data.commands.filter(x=>x.source==="skill").map(x=>realpathSync(x.sourceInfo.path));
    assert.deepEqual(actual,expected,p.name+" loaded unexpected Skills");
    observed.loaded=true;
-   command({id:"gsp06-turn",type:"prompt",message:p.prompt});
+   command({id:"gsp06-turn",type:"prompt",message:"Respond with plain text only. Do not call, request, simulate, or suggest any tool. Do not emit tool-call syntax. "+p.prompt});
   }
   if(record.type==="tool_execution_start")throw new Error(p.name+" executed a prohibited tool");
   if(record.type==="message_end"&&record.message?.role==="assistant"){
