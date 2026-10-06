@@ -416,7 +416,7 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
       - Exact candidate `9833ed74e72b143567e85824d2ee74522a13f899`: normalized ODD/defect/dual-review contracts remain PARTIAL; deterministic gaps now identify GSP-06 Pi Free output evidence rather than claiming FULL parity. Delegation and workflow selection remain distinct. CI and package gates above are green; no Pi Free PASS is claimed.
     - GSP-06 must exercise the actual Pi extension ODD/SDD activation boundary; absence of observed production callers is not proof that activation cannot occur. Proposal/spec/design were observed read-only, but generic writer enforcement still depends on runner implementation.
   - Preserve explicit limits where authenticated principal, trust-root independence, or OS isolation remain unavailable.
-- [ ] GSP-06 — Verify strict parity and prepare delivery slices.
+- [x] GSP-06 — Verify strict parity and prepare delivery slices.
   - Run focused tests per work unit, full local gates, package verification, and independent verification.
   - Run Pi Free behavioral probes for the affected Skill families.
   - Recompute the 12/12 matrix; promote only rows with observable automated evidence.
@@ -451,8 +451,10 @@ The tracker remains draft/no-merge if PRs are later created. Each child targets 
 - GSP-06 deterministic preflight PASS: TypeScript, 12-Skill parity validator, and package verification.
 - The model-backed GSP-06 probe did not execute because OpenRouter returned HTTP 429 before the first `odd-positive` probe: the free-model daily quota was exhausted. This is recorded as an external availability limitation, not as a parity PASS and not as an ASEN product failure.
 - Pi Free Smoke was SKIPPED; no Pi Free PASS is claimed.
-- GSP-06 remains formally open. The model-backed verification and required independent HIGH verification remain outstanding; this note does not promote parity rows to FULL.
-- Memory source implementation remains dependency-gated by formal GSP-06 closure. Until that evidence is available, only MEM-01 planning/frozen-contract preparation may proceed under the memory tracker sequencing rule.
+- The model-backed verification was unavailable because the configured free provider exhausted its external quota. No Pi Free PASS is claimed and no parity row is promoted to FULL from that unavailable evidence.
+- On 2026-10-06 the user explicitly authorized closing GSP-06 without executing any additional provider. GSP-06 is therefore CLOSED for the admitted deterministic/runtime scope using the recorded exact-candidate CI, Phase 0, Release Gate, TypeScript, 12-Skill parity-validator and package evidence. This is an explicit acceptance-scope decision, not fabricated provider evidence.
+- Independent/model-provider evidence remains unavailable rather than PASS. Any future claim specifically requiring Pi Free or another model provider must still obtain its own evidence.
+- The prior GSP-06 dependency no longer blocks the already-completed memory reconciliation.
 
 ## Acceptance criteria
 
