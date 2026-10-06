@@ -18,7 +18,7 @@ function contract(repository:string,readOnly=false,revision="sha",taskId="task")
 }
 async function fixture(t:{after:(f:()=>Promise<void>)=>void},close:()=>void=()=>{}){
  const root=await realpath(await mkdtemp(join(tmpdir(),"asen-odd-tracking-")));t.after(async()=>{close();await rm(root,{recursive:true,force:true});});
- await mkdir(join(root,"odd/tasks"),{recursive:true});await writeFile(join(root,"odd/tasks/task.md"),"# Task\n\nScope, acceptance, constraints, TODO and resume context.\n");
+ await mkdir(join(root,"odd/tasks"),{recursive:true});await writeFile(join(root,"odd/tasks/task.md"),"\ufeff# Task\r\n\r\nScope, acceptance, constraints, TODO and resume context: á 🚛.\r\n");
  return root;
 }
 test("read-only substantial ODD produces no artifact and invokes no memory callbacks",async t=>{

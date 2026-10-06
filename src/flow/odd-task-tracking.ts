@@ -38,7 +38,7 @@ async function documentBytes(repository:string,path:string):Promise<string>{
  if(actual!==target||relative(root,actual).split(sep).join("/")!==path)throw new Error("ODD task document canonical binding mismatch");
  const info=await stat(actual);if(!info.isFile()||info.size>1_000_000)throw new Error("ODD task document must be a bounded file");
  const bytes=await readFile(actual);if(bytes.length>1_000_000)throw new Error("ODD task document too large");
- const decoded=new TextDecoder("utf-8",{fatal:true}).decode(bytes);if(!decoded.trim())throw new Error("ODD task document empty");return decoded;
+ const decoded=new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(bytes);if(!decoded.trim())throw new Error("ODD task document empty");return decoded;
 }
 /** Uses the existing project/session MemoryContext; mirrors the entire task document, not a summary. */
 export async function trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):Promise<MemoryItem|undefined>{
