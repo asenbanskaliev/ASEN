@@ -18,5 +18,40 @@ const probes=[
  {name:"registry-positive",skills:["skills/asen-skill-registry/SKILL.md"],prompt:"Describe a registry refresh result with exact path, cache state, duplicates, skips and persistence.",must:[".asen/skill-registry.md","cache"],mustNot:["merge authorized"]},
  {name:"unit-negative",skills:["skills/asen-work-unit/SKILL.md"],prompt:"A task checkbox is complete but candidate evidence and rollback are missing. Explain whether the work unit is complete.",must:["not"],mustNot:["merge authorized"]}
 ];
-async function run(p){const expected=p.skills.map(x=>realpathSync(resolve(repo,x)));const args=[cli,"--mode","rpc","--no-session","--no-extensions",...(extension?["--extension",extension]:[]),"--no-skills","--no-tools","--provider",provider,"--model",model,...p.skills.flatMap(x=>["--skill",x])],child=spawn(process.execPath,args,{cwd:repo,env:process.env,stdio:["pipe","pipe","pipe"]});let buf="",text="",err="",done=false,loaded=false;const timer=setTimeout(()=>child.kill(),180000);child.stdin.write(JSON.stringify({id:"load",type:"get_commands"})+"\n");child.stdout.on("data",c=>{buf+=String(c);let i;while((i=buf.indexOf("\n"))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+1);if(!line)continue;const r=JSON.parse(line);if(r.type==="response"&&r.id==="load"){assert.equal(r.success,true);const actual=r.data.commands.filter(x=>x.source==="skill").map(x=>realpathSync(x.sourceInfo.path));assert.deepEqual(actual,expected,p.name+" loaded unexpected Skills");loaded=true;child.stdin.write(JSON.stringify({id:"turn",type:"prompt",message:p.prompt})+"\n");}if(r.type==="tool_execution_start")throw new Error("GSP-06 probe executed a tool");if(r.type==="message_end"&&r.message?.role==="assistant")for(const x of r.message.content??[])if(x.type==="text")text+=x.text+"\n";if(r.type==="agent_end"){done=true;child.stdin.end();}}});child.stderr.on("data",c=>err=(err+String(c)).slice(-2000));const code=await new Promise((ok,no)=>{child.on("error",no);child.on("close",ok)});clearTimeout(timer);assert.equal(code,0,err);assert.ok(loaded&&done&&text.trim());const lower=text.toLowerCase();for(const x of p.must)assert.ok(lower.includes(x.toLowerCase()),p.name+" missing "+x);for(const x of p.mustNot)assert.ok(!lower.includes(x.toLowerCase()),p.name+" prohibited "+x);return {name:p.name,bytes:text.length};}
+async function run(p){
+ const expected=p.skills.map(x=>realpathSync(resolve(repo,x)));
+ const args=[cli,"--mode","rpc","--no-session","--no-extensions",...(extension?["--extension",extension]:[]),"--no-skills","--no-tools","--provider",provider,"--model",model,...p.skills.flatMap(x=>["--skill",x])];
+ const child=spawn(process.execPath,args,{cwd:repo,env:process.env,stdio:["pipe","pipe","pipe"]});
+ const command=value=>child.stdin.write(JSON.stringify(value)+"\n");
+ const observed={loaded:false,finished:false,text:[],error:null};
+ let buffer="",stderr="",bytes=0;
+ const timeout=setTimeout(()=>child.kill(),180000);
+ command({id:"gsp06-load",type:"get_commands"});
+ const handle=record=>{
+  if(record.type==="response"&&record.id==="gsp06-load"){
+   assert.equal(record.success,true,p.name+" could not list loaded Skills");
+   const actual=record.data.commands.filter(x=>x.source==="skill").map(x=>realpathSync(x.sourceInfo.path));
+   assert.deepEqual(actual,expected,p.name+" loaded unexpected Skills");
+   observed.loaded=true;
+   command({id:"gsp06-turn",type:"prompt",message:p.prompt});
+  }
+  if(record.type==="tool_execution_start")throw new Error(p.name+" executed a prohibited tool");
+  if(record.type==="message_end"&&record.message?.role==="assistant"){
+   if(record.message.stopReason==="error")throw new Error(p.name+" provider turn failed");
+   for(const x of record.message.content??[])if(x.type==="text")observed.text.push(x.text);
+  }
+  if(record.type==="agent_end"){observed.finished=true;child.stdin.end();}
+  if(record.type==="response"&&record.id==="gsp06-turn"&&record.success===false)throw new Error(p.name+" prompt was rejected");
+ };
+ child.stdout.on("data",chunk=>{try{bytes+=chunk.length;if(bytes>1000000)throw new Error(p.name+" output exceeded limit");buffer+=String(chunk);let e;while((e=buffer.indexOf("\n"))>=0){const line=buffer.slice(0,e).trim();buffer=buffer.slice(e+1);if(line)handle(JSON.parse(line));}}catch(error){observed.error=error;child.kill();}});
+ child.stderr.on("data",chunk=>{stderr=(stderr+String(chunk)).slice(-2000);});
+ const code=await new Promise((ok,no)=>{child.on("error",no);child.on("close",ok)});clearTimeout(timeout);
+ if(observed.error)throw observed.error;
+ assert.equal(code,0,p.name+" Pi exit failed: "+stderr);
+ assert.equal(observed.loaded,true,p.name+" never confirmed native Skill loading");
+ assert.equal(observed.finished,true,p.name+" did not finish");
+ const text=observed.text.join("\n").trim();assert.ok(text.length>0,p.name+" returned no assistant text");
+ const lower=text.toLowerCase();for(const x of p.must)assert.ok(lower.includes(x.toLowerCase()),p.name+" missing "+x);for(const x of p.mustNot)assert.ok(!lower.includes(x.toLowerCase()),p.name+" prohibited "+x);
+ return {name:p.name,bytes:text.length,nativeSkillLoadCount:expected.length,toolCalls:0};
+}
 const results=[];for(const p of probes)results.push(await run(p));console.log(JSON.stringify({candidate:revision,provider,model,result:"PASS",probes:results}));
