@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/gsp-05e-authenticated-rdd.yml"
+      - ".github/gsp-05e-trigger"
       - "src/review/**"
       - "tests/native-rdd-result.test.ts"
 
