@@ -1,0 +1,61 @@
+name: GSP 05E authenticated RDD
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  authenticated-rdd:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/strict-parity-prerequisites
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+      - name: Assert PR 32 branch
+        run: |
+          test "$(git branch --show-current)" = "feat/strict-parity-prerequisites"
+          git status --porcelain=v1 | test ! -s /dev/stdin
+      - name: Install dependencies and Pi Free
+        run: |
+          npm install --ignore-scripts
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.0
+          pi install npm:pi-free
+      - name: Run focused deterministic E tests
+        run: npx tsx --test tests/native-rdd-result.test.ts tests/work-unit-review-candidate.test.ts
+      - name: Execute one independent authenticated review
+        shell: bash
+        env:
+          LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$LLM7_API_KEY"
+          git diff --exit-code
+          REVIEW_PROMPT='You are the independent reviewer. Read-only review only. Inspect the current repository candidate for GSP-05E, especially src/review/native-rdd-result.ts, src/review/ordinary-review-controller.ts, src/review/ordinary-review-command.ts, tests/native-rdd-result.test.ts and odd/tasks/skill-contract-parity.md. Do not edit files and do not call tools. Return exactly one JSON object, no markdown, with keys verdict and summary. verdict must be pass or fail. Use pass only if the implementation safely binds externally observed review data to the exact prepared candidate, rejects replay/forgery, and grants no delivery authority.'
+          OUT="$(pi --no-session --no-tools --provider llm7 --model default --print "$REVIEW_PROMPT")"
+          printf '%s\n' "$OUT" > authenticated-rdd-output.json
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const raw=fs.readFileSync("authenticated-rdd-output.json","utf8").trim();
+          let value;try{value=JSON.parse(raw)}catch{throw new Error("Reviewer did not return strict JSON")}
+          if(!value||Object.getPrototypeOf(value)!==Object.prototype)throw new Error("Review output is not plain JSON");
+          const keys=Object.keys(value).sort();
+          if(JSON.stringify(keys)!==JSON.stringify(["summary","verdict"]))throw new Error("Unexpected review output shape");
+          if(value.verdict!=="pass"&&value.verdict!=="fail")throw new Error("Invalid review verdict");
+          if(typeof value.summary!=="string"||!value.summary.trim())throw new Error("Missing review summary");
+          console.log(JSON.stringify({verdict:value.verdict,summary:value.summary}));
+          if(value.verdict!=="pass")process.exit(2);
+          NODE
+          git diff --exit-code
+      - name: Preserve authenticated review evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: gsp-05e-authenticated-rdd
+          path: authenticated-rdd-output.json
+          if-no-files-found: error
