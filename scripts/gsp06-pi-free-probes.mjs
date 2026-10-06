@@ -35,7 +35,7 @@ async function run(p){
    observed.loaded=true;
    command({id:"gsp06-turn",type:"prompt",message:"This is a text-only contract-reading task. Reply using ordinary text characters only. The runtime has no tools available. Do not produce function calls, tool calls, JSON tool syntax, XML tool syntax, or action requests. "+p.prompt});
   }
-  if(record.type==="tool_execution_start")throw new Error(p.name+" executed a prohibited tool");
+  if(record.type==="tool_execution_start")throw new Error(p.name+" attempted a prohibited tool");
   if(record.type==="message_end"&&record.message?.role==="assistant"){
    if(record.message.stopReason==="error"){const detail=redact(record.message.errorMessage??"No provider detail supplied");if(/tool choice is none, but model called a tool/i.test(detail))throw new Error(p.name+" provider violated the no-tool boundary: "+detail);throw new Error(p.name+" provider turn failed: "+detail);}
    for(const x of record.message.content??[])if(x.type==="text")observed.text.push(x.text);
