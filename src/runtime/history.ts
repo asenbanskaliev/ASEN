@@ -1,0 +1,6 @@
+export interface HistoryEntry{id:string;sessionId:string;projectId:string;text:string;createdAt:string;redacted:boolean}
+export interface HistoryPolicy{enabled:boolean;maxEntries:number}
+export function redactHistoryText(text:string):{text:string;redacted:boolean}{let out=text,redacted=false;const rules=[/\bsk-[A-Za-z0-9_-]{12,}\b/g,/\bBearer\s+[A-Za-z0-9._~-]{8,}\b/gi,/\b(?:password|passwd|token|secret)\s*[:=]\s*\S+/gi];for(const r of rules)out=out.replace(r,m=>{redacted=true;return m.split(/[:=\s]/,1)[0]+" [REDACTED]"});return {text:out,redacted};}
+export function captureHistory(policy:HistoryPolicy,entry:Omit<HistoryEntry,"redacted">):HistoryEntry|undefined{if(!policy.enabled)return undefined;if(policy.maxEntries<1||policy.maxEntries>10000)throw new Error("Invalid history retention");const r=redactHistoryText(entry.text);return {...entry,...r};}
+export function trimHistory(policy:HistoryPolicy,entries:readonly HistoryEntry[]):HistoryEntry[]{if(!policy.enabled)return [];return entries.slice(-policy.maxEntries).map(e=>structuredClone(e));}
+export function exportHistory(entries:readonly HistoryEntry[],projectId:string):string{return JSON.stringify(entries.filter(e=>e.projectId===projectId),null,2)+"\n";}
