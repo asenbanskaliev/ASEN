@@ -193,13 +193,15 @@
       ],
       "implementation": [
         "src/flow/odd-task-tracking.ts",
-        "src/tasks/task.ts"
+        "src/tasks/task.ts",
+        "src/runtime/task-replay.ts"
       ],
       "tests": [
-        "tests/odd-task-tracking.test.ts"
+        "tests/odd-task-tracking.test.ts",
+        "tests/task-replay.test.ts"
       ],
       "remaining": [
-        "Public durable transitions/replay/conflicts/staleness/crash/session lifecycle remain beyond the existing exact mirror."
+        "Deterministic public transition/replay/conflict/staleness and session/project isolation core is implemented. Durable persistence, crash/restart integration and Pi-facing lifecycle composition remain."
       ],
       "stateful": true,
       "platformSensitive": true,
