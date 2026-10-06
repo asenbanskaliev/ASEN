@@ -9,6 +9,10 @@ on:
       - ".github/gsp-05e-trigger"
       - "src/review/**"
       - "tests/native-rdd-result.test.ts"
+      - "tests/review-chain.test.ts"
+      - "src/review/bounded-correction.ts"
+      - "src/review/dual-review.ts"
+      - "src/review/dual-rejudgment.ts"
 
 permissions:
   contents: read
@@ -34,7 +38,7 @@ jobs:
           npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.0
           pi install npm:pi-free
       - name: Run focused deterministic E tests
-        run: npx tsx --test tests/native-rdd-result.test.ts tests/work-unit-review-candidate.test.ts
+        run: npx tsx --test tests/native-rdd-result.test.ts tests/work-unit-review-candidate.test.ts tests/review-chain.test.ts
       - name: Execute one independent authenticated review
         shell: bash
         env:
@@ -43,7 +47,7 @@ jobs:
           set -euo pipefail
           test -n "$LLM7_API_KEY"
           git diff --exit-code
-          REVIEW_PROMPT='You are the independent reviewer. Read-only review only. Inspect the current repository candidate for GSP-05E, especially src/review/native-rdd-result.ts, src/review/ordinary-review-controller.ts, src/review/ordinary-review-command.ts, tests/native-rdd-result.test.ts and odd/tasks/skill-contract-parity.md. You may use read-only tools to inspect those repository files and tests. Do not edit files. Return exactly one JSON object, no markdown, with keys verdict and summary. verdict must be pass or fail. First run and inspect tests/native-rdd-result.test.ts. Trace the actual provenance chain: recordCompletedWorkUnit -> recordWorkUnitReviewCandidate -> prepareOrdinaryReview -> bindOrdinaryReviewCheckout -> awaitNativeRddResult -> bindNativeRddResult. Distinguish an untrusted plain external result from the bound result issued only after exact identity checks. Verify the one-use WeakSet/WeakMap provenance guards and that the bound result has no delivery/merge/release authority. Use fail only for a concrete defect you can cite from the inspected code or failing test; do not infer authority from plain input data.'
+          REVIEW_PROMPT='You are the independent reviewer. Also audit GSP-05F, GSP-05G and GSP-05H by inspecting src/review/bounded-correction.ts, src/review/dual-review.ts, src/review/dual-rejudgment.ts and tests/review-chain.test.ts. Require one-use correction provenance, exactly two blind judges with immutable canonical ledger, bounded two-round re-judgment, replay/forgery rejection, and no delivery/merge/release authority.  Read-only review only. Inspect the current repository candidate for GSP-05E, especially src/review/native-rdd-result.ts, src/review/ordinary-review-controller.ts, src/review/ordinary-review-command.ts, tests/native-rdd-result.test.ts and odd/tasks/skill-contract-parity.md. You may use read-only tools to inspect those repository files and tests. Do not edit files. Return exactly one JSON object, no markdown, with keys verdict and summary. verdict must be pass or fail. First run and inspect tests/native-rdd-result.test.ts. Trace the actual provenance chain: recordCompletedWorkUnit -> recordWorkUnitReviewCandidate -> prepareOrdinaryReview -> bindOrdinaryReviewCheckout -> awaitNativeRddResult -> bindNativeRddResult. Distinguish an untrusted plain external result from the bound result issued only after exact identity checks. Verify the one-use WeakSet/WeakMap provenance guards and that the bound result has no delivery/merge/release authority. Use fail only for a concrete defect you can cite from the inspected code or failing test; do not infer authority from plain input data.'
           OUT="$(pi --no-session --provider llm7 --model default --print "$REVIEW_PROMPT")"
           printf '%s\n' "$OUT" > authenticated-rdd-output.json
           node --input-type=module <<'NODE'
