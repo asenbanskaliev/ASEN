@@ -12,6 +12,15 @@ export interface AgentArtifactProof { readonly requestId:string; readonly role:A
 export interface AgentResult { id:string; ok:boolean; output:string; artifactProof?:AgentArtifactProof; }
 export interface AgentRunner { run(request:AgentRequest):Promise<AgentResult>; }
 
+// Only successful Dispatcher gates register receivers; public admission consumption cannot mint one.
+const runnerReceivers=new WeakMap<object,{request:AgentRequest;used:boolean}>();
+export function consumeRunnerWriteReceiver(receiver:unknown,request:AgentRequest):boolean{
+ const r=typeof receiver==="object"&&receiver!==null?runnerReceivers.get(receiver):undefined;
+ if(!r||r.used)return false;
+ r.used=true;return r.request===request&&Object.isFrozen(request);
+}
+function retireRunnerWriteReceiver(receiver:unknown):void{const r=typeof receiver==="object"&&receiver!==null?runnerReceivers.get(receiver):undefined;if(r)r.used=true;}
+
 function plainData(value:unknown):Record<string,unknown>{
  if(typeof value!=="object"||value===null||types.isProxy(value)||Object.getPrototypeOf(value)!==Object.prototype)throw new Error("Agent request requires plain data");
  const descriptors=Object.getOwnPropertyDescriptors(value);
@@ -45,7 +54,7 @@ export class Dispatcher {
     ...(data.skillPaths?{skillPaths:Object.freeze(requestArray(data.skillPaths))}:{}),
    } as unknown as AgentRequest;
   }catch(error){consumeWriterAdmission(token,{id:"",role:"worker",prompt:"",repository:""});throw error;}
-  const receiver=consumeWriterAdmission(token,runnerRequest);
+  const admitted=consumeWriterAdmission(token,runnerRequest),receiver=admitted?Object.freeze({}):undefined;
   if(receiver)runnerRequest.runnerWriteReceiver=receiver;
   Object.freeze(runnerRequest);request=runnerRequest;
   await this.#acquire();let grant:WriteGrant|undefined;
@@ -81,7 +90,8 @@ export class Dispatcher {
    if(request.candidate&&(!request.skillContext||!request.skillPaths))throw new Error("Candidate-bound delegation requires issued skill context and exact paths");
    if(request.role==="worker"&&request.expectedPhase&&!consumePhaseGrant(request))throw new Error("Worker phase requires unused ASEN lifecycle grant");
    if(request.role==="worker"&&request.candidate&&!consumeIssuedWorkerContext(request.skillContext!))throw new Error("Candidate-bound worker requires unused worker context");
+   if(receiver)runnerReceivers.set(receiver,{request:runnerRequest,used:false});
    return await this.runner.run(runnerRequest);
-  } finally {retirePhaseGrant(request);if(grant){const i=this.#active.indexOf(grant);if(i>=0)this.#active.splice(i,1);}this.#release();}
+  } finally {retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);if(grant){const i=this.#active.indexOf(grant);if(i>=0)this.#active.splice(i,1);}this.#release();}
  }
 }

@@ -7,7 +7,7 @@ import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
 import {matchesIssuedSkillContext} from "../skills/context.js";
 import {selectSkills} from "../skills/registry.js";
 import {authorizePiWriteGrant} from "../lifecycle/skill-lifecycle.js";
-import {consumeRunnerWriteReceiver} from "../lifecycle/skill-lifecycle.js";
+import {consumeRunnerWriteReceiver} from "./dispatcher.js";
 
 export interface PiProcessOptions{
  command?:string;
@@ -62,6 +62,8 @@ export class PiProcessRunner implements AgentRunner{
  constructor(private readonly options:PiProcessOptions={}){}
 
  run(request:AgentRequest):Promise<AgentResult>{
+  const receiverValid=request.runnerWriteReceiver!==undefined&&consumeRunnerWriteReceiver(request.runnerWriteReceiver,request);
+  if(request.runnerWriteReceiver!==undefined&&!receiverValid)return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
   if(request.candidate&&(!request.skillContext||!request.skillPaths))return Promise.resolve({id:request.id,ok:false,output:"Candidate-bound Pi execution requires issued skill context and exact paths"});
   if(request.skillContext){
    const rolePhase=request.role==="explorer"?"explore":request.role==="reviewer"?"adversarial-review":request.role==="verifier"?"verify":undefined;
@@ -79,7 +81,7 @@ export class PiProcessRunner implements AgentRunner{
    return Promise.resolve({id:request.id,ok:false,output:"pi skill and tool arguments must be issued by ASEN"});
   if(request.writeSurfaces?.length&&request.role!=="worker")return Promise.resolve({id:request.id,ok:false,output:"Only a worker may request write tools"});
   const writer=request.role==="worker"&&!!request.writeSurfaces?.length&&!!request.candidate&&!!request.skillContext;
-  if(writer&&!consumeRunnerWriteReceiver(request.runnerWriteReceiver,request))return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
+  if(writer&&!receiverValid)return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
   if(writer&&request.expectedPhase&&!authorizePiWriteGrant(request))return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an active ASEN lifecycle grant"});
   const providerExtension=this.options.providerExtension;
   if(providerExtension&&providerExtension!=="npm:pi-free")return Promise.resolve({id:request.id,ok:false,output:"untrusted Pi provider extension"});

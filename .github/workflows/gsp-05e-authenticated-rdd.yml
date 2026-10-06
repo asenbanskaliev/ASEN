@@ -14,13 +14,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: feat/strict-parity-prerequisites
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v7
         with:
           node-version: "22.19.0"
       - name: Assert PR 32 branch
         run: |
-          test "$(git branch --show-current)" = "feat/strict-parity-prerequisites"
+          test "$GITHUB_REF_NAME" = "feat/strict-parity-prerequisites"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           git status --porcelain=v1 | test ! -s /dev/stdin
       - name: Install dependencies and Pi Free
         run: |

@@ -1,10 +1,11 @@
+import {consumeRunnerWriteReceiver} from "../src/agents/dispatcher.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Dispatcher, type AgentRunner } from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
-import {issueOddDecision} from "./helpers/odd-routing.js";import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";import {issueOrganicWriterAdmission,consumeRunnerWriteReceiver} from "../src/lifecycle/skill-lifecycle.js";
+import {issueOddDecision} from "./helpers/odd-routing.js";import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";import {issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";
 
 const candidate={id:"candidate",repository:"r",revision:"sha",createdAt:"now"};
 function authorized(){

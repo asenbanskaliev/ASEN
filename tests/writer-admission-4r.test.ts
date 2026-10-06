@@ -1,10 +1,11 @@
+import {consumeRunnerWriteReceiver} from "../src/agents/dispatcher.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {Dispatcher,type AgentRequest} from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
-import {issueOrganicWriterAdmission,consumeWriterAdmission,consumeRunnerWriteReceiver} from "../src/lifecycle/skill-lifecycle.js";
+import {issueOrganicWriterAdmission,consumeWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";
 import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";
 import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";
@@ -28,10 +29,10 @@ test("R1 organic admission rejects genuine read-only and forged applicability wi
 });
 test("R2 first-call candidate/revision/repository/surfaces mismatch burns admission",()=>{
  for(const change of [{candidate:{...candidate,id:"other"}},{candidate:{...candidate,revision:"other"}},{repository:"other"},{candidate:{...candidate,repository:"other"}},{writeSurfaces:["src/b"]},{writeSurfaces:[]},{id:"other"}]){
-  const a=admission();assert.equal(consumeWriterAdmission(a,{...request(),...change}),undefined);
-  assert.equal(consumeWriterAdmission(a,request()),undefined);
+  const a=admission();assert.equal(consumeWriterAdmission(a,{...request(),...change}),false);
+  assert.equal(consumeWriterAdmission(a,request()),false);
  }
- for(const fake of [{},structuredClone(admission()),new Proxy(admission(),{})])assert.equal(consumeWriterAdmission(fake,request()),undefined);
+ for(const fake of [{},structuredClone(admission()),new Proxy(admission(),{})])assert.equal(consumeWriterAdmission(fake,request()),false);
 });
 test("R3 exact canonical bounded arrays reject malformed/control strings without callbacks",()=>{
  const getter:string[]=[];Object.defineProperty(getter,"0",{enumerable:true,get(){throw new Error("getter executed");}});
@@ -45,10 +46,10 @@ test("R2 Dispatcher burns admission before failed identity, context and evidence
  for(const modify of [(r:AgentRequest)=>({...r,id:"wrong"}),(r:AgentRequest)=>({...r,candidate:{...candidate,revision:"wrong"}}),(r:AgentRequest)=>{const {skillContext:_context,...rest}=r;return rest;}]){
   const a=admission(),dispatcher=new Dispatcher({run:async()=>{throw new Error("must not run");}},evidence());
   await assert.rejects(()=>dispatcher.dispatch({...modify(request()),writerAdmission:a}));
-  assert.equal(consumeWriterAdmission(a,request()),undefined);
+  assert.equal(consumeWriterAdmission(a,request()),false);
  }
  const a=admission();await assert.rejects(()=>new Dispatcher({run:async()=>{throw new Error("must not run");}},new EvidenceStore()).dispatch({...request(),writerAdmission:a}));
- assert.equal(consumeWriterAdmission(a,request()),undefined);
+ assert.equal(consumeWriterAdmission(a,request()),false);
 });
 test("R2/R4 receiver binds immutable exact call; ID-preserving structural changes burn it",async()=>{
  for(const change of [{},{candidate:{...candidate,revision:"other"}},{repository:"other"},{writeSurfaces:["src/b"]},{prompt:"other"},{role:"reviewer" as const},{expectedPhase:"apply"}]){
@@ -66,4 +67,25 @@ test("R2 concurrent dispatchers admit one organic writer and one receiver consum
  const runner={run:async (call:AgentRequest)=>{calls++;assert.equal(consumeRunnerWriteReceiver(call.runnerWriteReceiver,call),true);assert.equal(consumeRunnerWriteReceiver(call.runnerWriteReceiver,call),false);return{id:call.id,ok:true,output:"ok"};}};
  const results=await Promise.allSettled([new Dispatcher(runner,evidence()).dispatch(r),new Dispatcher(runner,evidence()).dispatch(r)]);
  assert.equal(calls,1);assert.equal(results.filter(r=>r.status==="fulfilled").length,1);
+});
+test("R4 unused receiver expires when its dispatched call finishes",async()=>{
+ let captured:AgentRequest|undefined;
+ await new Dispatcher({run:async r=>{captured=r;return{id:r.id,ok:false,output:"failed"};}},evidence()).dispatch({...request(),writerAdmission:admission()});
+ assert.ok(captured);assert.equal(consumeRunnerWriteReceiver(captured.runnerWriteReceiver,captured),false);
+});
+test("R2 Pi burns receiver before rejecting a wrong-ID call at earlier identity gates",async()=>{
+ const {PiProcessRunner}=await import("../src/agents/pi-process-runner.js");
+ const pi=new PiProcessRunner({command:"must-not-spawn"});
+ await new Dispatcher({run:async r=>{
+  const wrong=await pi.run({...r,id:"wrong"});assert.equal(wrong.ok,false);
+  const retry=await pi.run(r);assert.equal(retry.ok,false);assert.match(retry.output,/exact dispatcher receiver/);
+  return {id:r.id,ok:true,output:"ok"};
+ }},evidence()).dispatch({...request(),writerAdmission:admission()});
+});
+test("R1 public admission consumption cannot mint a direct Pi receiver",async()=>{
+ const {PiProcessRunner}=await import("../src/agents/pi-process-runner.js");
+ const call=request(),result=consumeWriterAdmission(admission(),call);
+ assert.equal(result,true);assert.equal(typeof result,"boolean");
+ const direct=await new PiProcessRunner({command:"must-not-spawn"}).run(Object.freeze({...call,runnerWriteReceiver:Object.freeze({})}));
+ assert.equal(direct.ok,false);assert.match(direct.output,/exact dispatcher receiver/);
 });

@@ -1,6 +1,6 @@
 import {createHash} from "node:crypto";
 import {readFile,realpath,stat} from "node:fs/promises";
-import {relative,resolve} from "node:path";
+import {relative,resolve,sep} from "node:path";
 import {types} from "node:util";
 import type {MemoryItem,MemoryStore} from "../memory/types.js";
 import {MemoryContext} from "../memory/context.js";
@@ -35,7 +35,7 @@ function progress(value:unknown):OddProgress{
 async function documentBytes(repository:string,path:string):Promise<string>{
  text(path);if(!/^odd\/tasks\/[a-z0-9][a-z0-9-]*\.md$/u.test(path))throw new Error("ODD task document must be bounded under odd/tasks");
  const root=await realpath(repository),target=resolve(root,path),actual=await realpath(target);
- if(actual!==target||relative(root,actual)!==path)throw new Error("ODD task document canonical binding mismatch");
+ if(actual!==target||relative(root,actual).split(sep).join("/")!==path)throw new Error("ODD task document canonical binding mismatch");
  const info=await stat(actual);if(!info.isFile()||info.size>1_000_000)throw new Error("ODD task document must be a bounded file");
  const bytes=await readFile(actual);if(bytes.length>1_000_000)throw new Error("ODD task document too large");
  const decoded=new TextDecoder("utf-8",{fatal:true}).decode(bytes);if(!decoded.trim())throw new Error("ODD task document empty");return decoded;

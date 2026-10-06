@@ -49,7 +49,6 @@ const snapshotObligations=new WeakMap<object,TddObligation>();
 const lifecycleDefects=new WeakSet<SkillLifecycle>(),snapshotDefects=new WeakSet<object>();
 type WriterAdmission={task:string;repository:string;candidateId:string;revision:string;surfaces:readonly string[];used:boolean};
 const writerAdmissions=new WeakMap<object,WriterAdmission>();
-const runnerReceivers=new WeakMap<object,{request:AgentRequest;used:boolean}>();
 function writerText(value:unknown,label:string):string{
  if(typeof value!=="string"||!value||value.length>4096||value!==value.trim()||value!==value.normalize("NFC")||/[\u0000-\u001f\u007f-\u009f]/u.test(value))throw new Error(`Invalid ${label}`);
  return value;
@@ -80,20 +79,13 @@ export function issueOrganicWriterAdmission(applicability:LifecycleApplicability
  return writerAdmission(applicability.taskIdentity,{...applicability.candidate,createdAt:"organic-applicability"},surfaces);
 }
 /** Burn before any Dispatcher identity, Skill, evidence, or scope gate. */
-export function consumeWriterAdmission(token:unknown,request:AgentRequest):object|undefined{
+export function consumeWriterAdmission(token:unknown,request:AgentRequest):boolean{
  const a=typeof token==="object"&&token!==null?writerAdmissions.get(token):undefined;
- if(!a||a.used)return undefined;
+ if(!a||a.used)return false;
  a.used=true;
- if(!request.candidate||!request.writeSurfaces||request.role!=="worker"||request.candidate.repository!==request.repository)return undefined;
+ if(!request.candidate||!request.writeSurfaces||request.role!=="worker"||request.candidate.repository!==request.repository)return false;
  const task=request.id.replace(/:worker$/u,"");
- if((a.task!==task&&a.task!==request.id)||a.repository!==request.repository||a.candidateId!==request.candidate.id||a.revision!==request.candidate.revision||a.surfaces.length!==request.writeSurfaces.length||a.surfaces.some((v,i)=>v!==request.writeSurfaces![i]))return undefined;
- const receiver=Object.freeze({});runnerReceivers.set(receiver,{request,used:false});return receiver;
-}
-/** Receiver accepts the exact immutable forwarded call, never an ID or structural clone. */
-export function consumeRunnerWriteReceiver(receiver:unknown,request:AgentRequest):boolean{
- const r=typeof receiver==="object"&&receiver!==null?runnerReceivers.get(receiver):undefined;
- if(!r||r.used)return false;
- r.used=true;return r.request===request&&Object.isFrozen(request);
+ return (a.task===task||a.task===request.id)&&a.repository===request.repository&&a.candidateId===request.candidate.id&&a.revision===request.candidate.revision&&a.surfaces.length===request.writeSurfaces.length&&a.surfaces.every((v,i)=>v===request.writeSurfaces![i]);
 }
 type CompletionAdmission={lifecycle:SkillLifecycle;repository:string;candidateId:string;revision:string;record:TddCompletionRecord;used:boolean};
 const completionAdmissions=new WeakMap<object,CompletionAdmission>();
