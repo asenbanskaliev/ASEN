@@ -56,6 +56,48 @@ test("static imports use syntax nodes; computed imports remain explicitly unreso
   assert.deepEqual(refs.map((r:any)=>r.target).sort(),[null,"./dynamic","./export","./real"].sort());
 });
 
+test("asset and public registration references participate in frozen closure and drift",t=>{
+  const f=fixture(t);
+  mkdirSync(join(f.root,"art"));writeFileSync(join(f.root,"art","icon.svg"),'<svg></svg>');
+  writeFileSync(join(f.root,"extensions","ui.ts"),'const NAME="asen_probe"; pi.registerTool({name:NAME,execute(){return 1}}); pi.registerCommand("probe",{}); pi.on("session_start",()=>{}); const icon=new URL("../art/icon.svg",import.meta.url);');
+  f.git("add",".");f.git("commit","-qm","asset fixture");
+  const before=collectBaseline(f.root,f.git("rev-parse","HEAD"));
+  assert.ok(before.files.some((r:any)=>r.path==="art/icon.svg"),"non-root asset must enter closure");
+  const refs=before.files.find((r:any)=>r.path==="extensions/ui.ts").references;
+  for(const [kind,target] of [["tool","asen_probe"],["command","probe"],["event","session_start"]])assert.ok(refs.some((r:any)=>r.kind===kind&&r.target===target&&r.status==="declared"));
+  assert.deepEqual(validateBaseline(before),[]);
+  writeFileSync(join(f.root,"art","icon.svg"),'<svg width="2"></svg>');f.git("add",".");f.git("commit","-qm","asset change");
+  const report=detectBaselineDrift(before,collectBaseline(f.root,f.git("rev-parse","HEAD")));
+  assert.ok(report.invalidatedPaths.includes("extensions/ui.ts"));
+});
+
+test("public contract anchors bind complete registration bodies and computed assets stay unresolved",()=>{
+  const refs=sourceReferences("ui.ts",Buffer.from('pi.registerTool({name:computed}); new URL(asset,import.meta.url); // pi.registerCommand("fake",{})'));
+  assert.ok(refs.some((r:any)=>r.kind==="tool"&&r.target===null));
+  assert.ok(refs.some((r:any)=>r.kind==="asset"&&r.target===null));
+  assert.equal(refs.some((r:any)=>r.target==="fake"),false);
+  assert.equal(sourceReferences("ui.ts",Buffer.from('let name="old"; name="new"; pi.registerCommand(name,{});'))[0].target,null);
+});
+
+test("literal references never escape lexical scope or override parameters",()=>{
+  for(const source of ['function setup(){const ASSET="../art/icon.svg";} new URL(ASSET,import.meta.url);','const NAME="probe"; function setup(NAME){pi.registerCommand(NAME,{});}','const NAME="probe"; function setup({value:NAME}){pi.registerCommand(NAME,{});}']){
+    assert.ok(sourceReferences("ui.ts",Buffer.from(source)).every((r:any)=>r.target===null));
+  }
+  assert.equal(sourceReferences("ui.ts",Buffer.from('pi.registerTool({"name":"probe"});'))[0].target,"probe");
+});
+
+test("command docs invalidate transitively and complete contract anchors cannot be malformed",t=>{
+  const f=fixture(t);writeFileSync(join(f.root,"extensions","ui.ts"),'pi.registerCommand("probe",{handler(){return 1}});');
+  writeFileSync(join(f.root,"README.md"),'# Start\nRun `/probe`.\n<img src="/outside.svg">');
+  f.git("add",".");f.git("commit","-qm","commands");const before=collectBaseline(f.root,f.git("rev-parse","HEAD"));
+  const readme=before.files.find((r:any)=>r.path==="README.md");assert.ok(readme.references.some((r:any)=>r.status==="registered"&&r.path==="extensions/ui.ts"));
+  assert.ok(readme.references.some((r:any)=>r.status==="outside-root"));
+  const ui=before.files.find((r:any)=>r.path==="extensions/ui.ts");assert.ok(ui.anchors.some((a:any)=>a.kind==="public-contract"));
+  const malformed=structuredClone(before);malformed.files.find((r:any)=>r.path===ui.path).anchors.find((a:any)=>a.kind==="public-contract").endLine=0;assert.ok(validateBaseline(malformed).length);
+  writeFileSync(join(f.root,"extensions","ui.ts"),'pi.registerCommand("probe",{handler(){throw Error("blocked")}});');f.git("add",".");f.git("commit","-qm","contract change");
+  const report=detectBaselineDrift(before,collectBaseline(f.root,f.git("rev-parse","HEAD")));assert.ok(report.invalidatedPaths.includes("README.md"));assert.ok(report.changes.some((r:any)=>r.kind==="ANCHORS_CHANGED"&&r.path===ui.path));
+});
+
 test("drift reports edits, unique renames, additions, removals and reference/anchor changes without adoption",t=>{
   const f=fixture(t), before=collectBaseline(f.root,f.commit);
   f.git("mv","docs/guide.md","docs/renamed.md");

@@ -73,3 +73,12 @@ Commit/push each coherent locally checked checkpoint. Use skipped CI for interim
 ## Completion ceiling
 
 This comparison demonstrates genuine ecosystem implementation gaps. It does not authorize narrowing them away, declaring overall parity or marking the PR merge-ready. Accepted provider-limited PARTIAL Skill rows remain separate from MISSING ecosystem runtime. The final candidate must report unfinished units honestly.
+
+
+## ECO-01 closure expansion — continuation from 218be239
+
+GitHub confirmed the exact starting HEAD, main 49129b616c5349fbf323b74860136fc1593f9b2a, 164 ahead / 0 behind and no subsequent commits. Existing ECO-02 export/claim corrections were retained. No memory implementation or provider execution changed.
+
+4R reproduced two semantic RED cases: missing non-root asset closure and missing public registration inventory. GREEN adds AST registrations, source-relative URL resources, HTML src/srcset and inline command references, plus full registration-body anchor hashes and transitive command/asset invalidation. The exact-object baseline now has 167 blobs and 988 edges: 361 tracked, 34 external, 8 fragments, 163 unresolved, 145 declared, 208 builtins, 68 dependencies and one outside-root. The additional blob is tracked platform transport source, not an installed dependency or copied artwork. Cwd-dependent reads, computed expressions and unregistered prose commands are not guessed.
+
+Independent adversarial review found lexical-shadowing false resolution, quoted tool-name omission and missing srcset references. One new semantic RED regression reproduced shadowing; repairs use lexical scopes, reject parameter/destructuring shadow guesses and include quoted property names/srcset. Current focused baseline/media/claims/package/provider-scope checks: 23/23 PASS; exact Git/media verification, ecosystem audit and typecheck PASS. Runtime parity, platform CI and FULL are not established by this source inspection. ECO-01C retains semantic-contract/unresolved-reference work; no unit is silently narrowed to declare closure.

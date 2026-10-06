@@ -16,7 +16,7 @@ Deliver evidence-backed parity with Reference A for every non-branding observabl
 
 ## Frozen baseline and confidence
 
-Reference A is pinned to commit `08de420ca29be16b6f6bee725a30b599b061df16`. `registry/parity/ecosystem-sources-v1.json` now freezes 166 tracked regular Git blobs and 46 roots with exact object IDs, byte SHA-256, family/visibility/source IDs, anchor-line hashes, dependency versions and 647 parsed import/Markdown-link edges. `ecosystem-media-v1.json` records dimensions/frame/alpha metadata and visual inspection without shipping source artwork. Exact-object verification checks every media record. These are SOURCE_INSPECTED records, not runtime parity. Asset/command references beyond the parsed edge kinds and full normative contracts still need their own closure.
+Reference A is pinned to commit `08de420ca29be16b6f6bee725a30b599b061df16`. `registry/parity/ecosystem-sources-v1.json` now freezes 166 tracked regular Git blobs and 46 roots with exact object IDs, byte SHA-256, family/visibility/source IDs, anchor-line hashes, dependency versions and 647 parsed import/Markdown-link edges. `ecosystem-media-v1.json` records dimensions/frame/alpha metadata and visual inspection without shipping source artwork. Exact-object verification checks every media record. These are SOURCE_INSPECTED records, not runtime parity. The subsequent closure expansion is recorded below; complete normative semantics and explicit unresolved-reference adjudication still remain.
 
 Verified selected inventory includes 20 extension files, including seven history files; one README plus ten documentation files; seven SVGs; one GIF and six PNGs across docs and root assets. Five PNGs belong to docs; the sixth is the root logo. Exact objects were re-collected from the pinned source clone and matched the manifest. Static AST import/re-export/dynamic-literal and Markdown-link closure reaches 166 blobs; this does not imply every runtime-computed asset/command reference has been resolved.
 
@@ -33,7 +33,7 @@ The current unit-by-unit comparison is `odd/tasks/ecosystem-reconciliation.md`; 
 | Agents | `PARTIAL` | Public tools and lifecycle/transport/activity behavior are incomplete. |
 | Primary orchestrator | `PARTIAL` | Prompt, status, doctor, and review-boundary behavior are incomplete. |
 | Workspace | `MISSING` | Workspace interaction and UI are absent. |
-| Todo | `MISSING` | Todo, replay, and staleness behavior are absent. |
+| Todo | `PARTIAL` | Exact durable task mirror exists; public transitions, replay and staleness remain incomplete. |
 | History | `MISSING` | Prompt history lifecycle is absent. |
 | Pretty/quiet | `MISSING` | Required presentation modes/tools are not implemented. |
 | Resume | `PARTIAL` | Restart, Windows, and session restoration evidence is incomplete. |
@@ -110,7 +110,7 @@ ECO-15 behavior-backed documentation -> ECO-16 final verification
 - [x] **ECO-01B — Freeze documentation and media manifests.** Record README/docs/media paths and hashes; inspect every SVG and raster asset, dimensions/frames/alpha where relevant, and human visual findings without copying excluded artwork.
   - Every source/media identity was verified from exact objects; rendered SVG and raster frames were inspected. Synthetic PNG/GIF/SVG parser fixtures and metadata/hash/identity negative tests now pass. GIF alpha is inspected over all frame control records, correcting the initial first-frame-only observation.
 - [ ] **ECO-01C — Freeze import and reference closure.** Resolve static/dynamic imports, assets, docs links, command/tool references, dependencies, and normative anchors; classify absent, optional, generated, external, and unresolved edges.
-  - Parsed AST imports/re-exports/dynamic-literal imports and Markdown links are closed. Runtime assets/commands and complete normative obligations remain open. No unresolved parsed edge was silently excluded.
+  - AST imports, source-relative URL assets, HTML src/srcset, commands/tools/events and inline command references are inventoried; complete registration bodies have hash-bound anchors. Cwd-dependent resources and computed names remain explicitly unresolved. Full semantic obligations and generated/optional reference adjudication remain open; no parsed edge is silently excluded.
 - [ ] **ECO-01D — Add baseline validators and fixtures.** Use synthetic Git repositories/objects and image fixtures to prove exact-byte hashing, malformed manifests, missing blobs, path escapes, cycles, duplicate IDs, broken closure, and deterministic rendering.
   - Git-object, drift and synthetic media fixtures implemented. Independent adversarial review reproduced three metadata defects; repair observed 3/3 RED then GREEN. Complete contract/asset closure remains separately assigned to ECO-01C.
 - [ ] **ECO-01E — Add automatic drift detection.** Report `ADDED`, `REMOVED`, unique-hash `RENAMED`, `CONTENT_CHANGED`, dependency/reference changes, and normative-anchor changes. A scheduled/manual candidate-source check may propose a report but never adopt changes automatically; changed sources invalidate affected `FULL` rows until re-audited.

@@ -229,6 +229,186 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": "docs/assets/brand/gentle-shell-banner.gif",
+          "status": "tracked",
+          "path": "docs/assets/brand/gentle-shell-banner.gif"
+        },
+        {
+          "kind": "asset",
+          "target": "docs/assets/brand/terminal-divider.svg",
+          "status": "tracked",
+          "path": "docs/assets/brand/terminal-divider.svg"
+        },
+        {
+          "kind": "asset",
+          "target": "docs/assets/brand/terminal-divider.svg",
+          "status": "tracked",
+          "path": "docs/assets/brand/terminal-divider.svg"
+        },
+        {
+          "kind": "asset",
+          "target": "docs/assets/brand/terminal-divider.svg",
+          "status": "tracked",
+          "path": "docs/assets/brand/terminal-divider.svg"
+        },
+        {
+          "kind": "asset",
+          "target": "docs/assets/brand/terminal-divider.svg",
+          "status": "tracked",
+          "path": "docs/assets/brand/terminal-divider.svg"
+        },
+        {
+          "kind": "asset",
+          "target": "docs/assets/brand/terminal-divider.svg",
+          "status": "tracked",
+          "path": "docs/assets/brand/terminal-divider.svg"
+        },
+        {
+          "kind": "asset",
+          "target": "docs/assets/brand/terminal-divider.svg",
+          "status": "tracked",
+          "path": "docs/assets/brand/terminal-divider.svg"
+        },
+        {
+          "kind": "asset",
+          "target": "docs/assets/diagrams/agent-orchestration.svg",
+          "status": "tracked",
+          "path": "docs/assets/diagrams/agent-orchestration.svg"
+        },
+        {
+          "kind": "asset",
+          "target": "docs/assets/diagrams/native-review.svg",
+          "status": "tracked",
+          "path": "docs/assets/diagrams/native-review.svg"
+        },
+        {
+          "kind": "asset",
+          "target": "docs/assets/diagrams/odd-workflow.svg",
+          "status": "tracked",
+          "path": "docs/assets/diagrams/odd-workflow.svg"
+        },
+        {
+          "kind": "asset",
+          "target": "docs/assets/features/agents-view.png",
+          "status": "tracked",
+          "path": "docs/assets/features/agents-view.png"
+        },
+        {
+          "kind": "asset",
+          "target": "docs/assets/features/changes-view.png",
+          "status": "tracked",
+          "path": "docs/assets/features/changes-view.png"
+        },
+        {
+          "kind": "asset",
+          "target": "docs/assets/features/profiles-routing.png",
+          "status": "tracked",
+          "path": "docs/assets/features/profiles-routing.png"
+        },
+        {
+          "kind": "asset",
+          "target": "https://api.star-history.com/chart?repos=Gentleman-Programming%2Fgentle-pi&type=date&legend=top-left&sealed_token=zwrd_DfwYZeJU7nhGYNtREEheKWYEslW_uzrqORlZ36v-JSMepdqGLkKExp1M-xbNq6t-ebVS5iM3WoPDO26tXbSGkjXC2Jo3kHQ3uNzlRkCrWoqRHkPVQXvosKciY109ObiwGV1z8aajyedcloppmekCGrvVKJb6KWxGLXW_mHcRAVIBZUOa4SzW75D",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://api.star-history.com/chart?repos=Gentleman-Programming%2Fgentle-pi&type=date&legend=top-left&sealed_token=zwrd_DfwYZeJU7nhGYNtREEheKWYEslW_uzrqORlZ36v-JSMepdqGLkKExp1M-xbNq6t-ebVS5iM3WoPDO26tXbSGkjXC2Jo3kHQ3uNzlRkCrWoqRHkPVQXvosKciY109ObiwGV1z8aajyedcloppmekCGrvVKJb6KWxGLXW_mHcRAVIBZUOa4SzW75D",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://api.star-history.com/chart?repos=Gentleman-Programming%2Fgentle-pi&type=date&theme=dark&legend=top-left&sealed_token=zwrd_DfwYZeJU7nhGYNtREEheKWYEslW_uzrqORlZ36v-JSMepdqGLkKExp1M-xbNq6t-ebVS5iM3WoPDO26tXbSGkjXC2Jo3kHQ3uNzlRkCrWoqRHkPVQXvosKciY109ObiwGV1z8aajyedcloppmekCGrvVKJb6KWxGLXW_mHcRAVIBZUOa4SzW75D",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://contrib.rocks/image?repo=Gentleman-Programming/gentle-shell",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://github.com/user-attachments/assets/5d9eefc2-7b2a-48f8-b212-1439834ce195",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://img.shields.io/badge/Contributors-thank%20you-D7A0B8?style=for-the-badge&labelColor=1A1218",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://img.shields.io/badge/Discord-Gentleman%20Programming-F095C8?style=for-the-badge&labelColor=1A1218",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://img.shields.io/badge/GitHub-Gentleman--Programming-F095C8?style=for-the-badge&labelColor=1A1218",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://img.shields.io/badge/Issues-join%20the%20conversation-F095C8?style=for-the-badge&labelColor=1A1218",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://img.shields.io/badge/License-MIT-F095C8?style=for-the-badge&labelColor=1A1218",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://img.shields.io/badge/Pi-native-F095C8?style=for-the-badge&labelColor=1A1218",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://img.shields.io/badge/Website-Gentleman%20Programming-F095C8?style=for-the-badge&labelColor=1A1218",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://img.shields.io/badge/YouTube-Gentleman%20Programming-D7A0B8?style=for-the-badge&labelColor=1A1218",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://img.shields.io/github/last-commit/Gentleman-Programming/gentle-shell?style=for-the-badge&labelColor=1A1218&color=D7A0B8",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://img.shields.io/github/stars/Gentleman-Programming/gentle-shell?style=for-the-badge&labelColor=1A1218&color=F095C8",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://img.shields.io/npm/l/gentle-pi?style=for-the-badge&labelColor=1A1218&color=F095C8",
+          "status": "external",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": "https://img.shields.io/npm/v/gentle-pi?style=for-the-badge&labelColor=1A1218&color=F095C8",
+          "status": "external",
+          "path": null
+        },
+        {
           "kind": "document",
           "target": "#odd--the-everyday-workflow",
           "status": "fragment",
@@ -538,9 +718,117 @@
         {
           "line": 1270,
           "sha256": "d549871122c4ac1ea51fe2cac102f4c20eab8d7e95fb3e38a567a260bddaa72e"
+        },
+        {
+          "line": 364,
+          "endLine": 364,
+          "kind": "public-contract",
+          "sha256": "3c519f60b85642fd6b2281940d4a56ef162b7e8290c489d2d5cfd2ec7265a7f8"
+        },
+        {
+          "line": 371,
+          "endLine": 374,
+          "kind": "public-contract",
+          "sha256": "6169057826c40d9be096b682e6077069433e8d7ed0df9c3834d8fe19e7eaf850"
+        },
+        {
+          "line": 375,
+          "endLine": 391,
+          "kind": "public-contract",
+          "sha256": "cc6f5a65a015211a682432b641cf4fab041f169d4a415c0c41da364e3ce1d18e"
+        },
+        {
+          "line": 1261,
+          "endLine": 1264,
+          "kind": "public-contract",
+          "sha256": "416b1acbcd5e931f4130608332ca405591b5fa732d1c1b465303ebfd639c4d7a"
+        },
+        {
+          "line": 1266,
+          "endLine": 1269,
+          "kind": "public-contract",
+          "sha256": "fbed176902c77edc4795e5c112e397b5b28e7005443eab4fc0729242f978e4c8"
+        },
+        {
+          "line": 1270,
+          "endLine": 1293,
+          "kind": "public-contract",
+          "sha256": "d3e539dceca96ed908a7223944ae9bf28ae8a1b047d017c902e8a06721eacd10"
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "bin/gentle-shell.mjs"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "bin/gentle-shell.mjs"
+        },
+        {
+          "kind": "event",
+          "target": "exit",
+          "status": "declared",
+          "path": "bin/gentle-shell.mjs"
+        },
+        {
+          "kind": "event",
+          "target": "exit",
+          "status": "declared",
+          "path": "bin/gentle-shell.mjs"
+        },
+        {
+          "kind": "event",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "event",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "../runtime/gentle-ai-binary.mjs",
@@ -917,6 +1205,18 @@
       ],
       "references": [
         {
+          "kind": "command-reference",
+          "target": "new",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "resume",
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "document",
           "target": "../extensions/gentle-agents.ts",
           "status": "tracked",
@@ -1050,6 +1350,48 @@
       ],
       "references": [
         {
+          "kind": "command-reference",
+          "target": "v1",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "v1",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "v1",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "v2",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "v2",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "v2",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "v2",
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "document",
           "target": "../README.md",
           "status": "tracked",
@@ -1131,7 +1473,14 @@
           "sha256": "7dfdd03713d4d93d6227bd7212a01bf3a42e7bd3fd076b9df4ef8eb1a2d65d5b"
         }
       ],
-      "references": []
+      "references": [
+        {
+          "kind": "command-reference",
+          "target": "name",
+          "status": "unresolved",
+          "path": null
+        }
+      ]
     },
     {
       "id": "ECO-SRC-9567c6b3d33d78cb",
@@ -1370,6 +1719,108 @@
         }
       ],
       "references": [
+        {
+          "kind": "command-reference",
+          "target": "fork",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "login",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "reload",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "reload",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "settings",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "skill-creation",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "skill-creation",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "skill-creation",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "skill-creation",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "tree",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "tree",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "v1",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "v1",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "v2",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "v2",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "v2",
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command-reference",
+          "target": "v2",
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "document",
           "target": "../README.md",
@@ -1698,9 +2149,27 @@
         {
           "line": 330,
           "sha256": "9f262ed3632705564702beeb27551973a5e913b848530fd64390594fbb2da825"
+        },
+        {
+          "line": 217,
+          "endLine": 328,
+          "kind": "public-contract",
+          "sha256": "78459efc5be8eeb3a2be8f9a1b8ea609032f8752bf85a9f33fda9721a183ec88"
+        },
+        {
+          "line": 330,
+          "endLine": 332,
+          "kind": "public-contract",
+          "sha256": "8df7058bc824f2e0d5c224347bdf61cc68e87b31b44e3624ee8f280f8fd6664a"
         }
       ],
       "references": [
+        {
+          "kind": "event",
+          "target": "before_agent_start",
+          "status": "declared",
+          "path": "extensions/ask-user-choice.ts"
+        },
         {
           "kind": "import",
           "target": "../lib/native-choice-list.ts",
@@ -1742,6 +2211,12 @@
           "target": "typebox",
           "status": "dependency",
           "path": null
+        },
+        {
+          "kind": "tool",
+          "target": "ask_user_choice",
+          "status": "declared",
+          "path": "extensions/ask-user-choice.ts"
         }
       ]
     },
@@ -1767,6 +2242,12 @@
         {
           "line": 243,
           "sha256": "fb3dd05a1a3f9dc5ae44817ad6ecff8bd838590b4419dc278a60891bdd2e4a17"
+        },
+        {
+          "line": 243,
+          "endLine": 337,
+          "kind": "public-contract",
+          "sha256": "4c8169732de9f1c8faf90845d12f8110875e68d7ba13fdffc42f54c0fd4341ec"
         }
       ],
       "references": [
@@ -1817,6 +2298,12 @@
           "target": "@earendil-works/pi-tui",
           "status": "dependency",
           "path": null
+        },
+        {
+          "kind": "tool",
+          "target": "ask_user_question",
+          "status": "declared",
+          "path": "extensions/ask-user-question.ts"
         }
       ]
     },
@@ -1870,9 +2357,21 @@
         {
           "line": 326,
           "sha256": "33c99b4c1a85e712b7686d33ee47cef5ac24656c0c486775fd07199ed37c9c69"
+        },
+        {
+          "line": 323,
+          "endLine": 323,
+          "kind": "public-contract",
+          "sha256": "671a877552a7a6c6134ec7efab0fd92bea6ac767d72068b493ccfe80d1b22af1"
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "@earendil-works/pi-coding-agent",
@@ -1907,6 +2406,12 @@
           "kind": "import",
           "target": "node:util",
           "status": "builtin",
+          "path": null
+        },
+        {
+          "kind": "tool",
+          "target": null,
+          "status": "unresolved",
           "path": null
         }
       ]
@@ -2081,9 +2586,207 @@
         {
           "line": 1460,
           "sha256": "fcc488b7fdf5dc34d3025387e76ed8b26980c2e3680d3997ef6c793d5aae576c"
+        },
+        {
+          "line": 169,
+          "endLine": 185,
+          "kind": "public-contract",
+          "sha256": "ccb4a5df87d307487260c3eca31ba04daed6adf4ef5d4d7aca6fccc9e4bf90f9"
+        },
+        {
+          "line": 287,
+          "endLine": 287,
+          "kind": "public-contract",
+          "sha256": "759139d31ee5b18de3dde81f7b5678f6a4827194ea1a4929ae646915274ac062"
+        },
+        {
+          "line": 304,
+          "endLine": 306,
+          "kind": "public-contract",
+          "sha256": "73508b23e87acdf9a30efc2d152a189a7cc14565af1cdff24e05721eaaa41e42"
+        },
+        {
+          "line": 364,
+          "endLine": 370,
+          "kind": "public-contract",
+          "sha256": "d429a44686a110de69327aff2f055d023ee2aa9879c0f4d0633af6cd54d21cce"
+        },
+        {
+          "line": 376,
+          "endLine": 376,
+          "kind": "public-contract",
+          "sha256": "2f574d3720577b464565f5b1eb1ea34464b383eb96f4e6a8e671a823e778f398"
+        },
+        {
+          "line": 377,
+          "endLine": 380,
+          "kind": "public-contract",
+          "sha256": "6345d7adf2fbd085a08d24588312617fcc0993f96095202454cc4efcd771787b"
+        },
+        {
+          "line": 613,
+          "endLine": 613,
+          "kind": "public-contract",
+          "sha256": "f0e17b09af9f77c9ac7cb964505dc6d334abd70e011a5470276f056e91ce7e9a"
+        },
+        {
+          "line": 614,
+          "endLine": 617,
+          "kind": "public-contract",
+          "sha256": "435cde074cfcf1490959642f379af3c6a4f6cf1a647c7baf29a6f34b38efc703"
+        },
+        {
+          "line": 618,
+          "endLine": 618,
+          "kind": "public-contract",
+          "sha256": "4e8c6dff3825ad005a1e9056a9beaaaf8cb39986c64b8f3ec57b459423863226"
+        },
+        {
+          "line": 619,
+          "endLine": 619,
+          "kind": "public-contract",
+          "sha256": "879e735237c4b9718b1a33182e983ebd1534e2b4d985b6acb07a3c569d8ac5b8"
+        },
+        {
+          "line": 943,
+          "endLine": 948,
+          "kind": "public-contract",
+          "sha256": "7408f2e3b4affc4334f351b441ef0920efc35c049feeba74a8ed34bbaa278a13"
+        },
+        {
+          "line": 1152,
+          "endLine": 1178,
+          "kind": "public-contract",
+          "sha256": "6e9b9f9bb1944d9bb072c37c3453645427df4f94ba033317a0723723f4771d94"
+        },
+        {
+          "line": 1181,
+          "endLine": 1190,
+          "kind": "public-contract",
+          "sha256": "3bed8ef7735d52b13f6fdfd4f3c4847197f7b278258b29dfc5865dc8e1fa416b"
+        },
+        {
+          "line": 1191,
+          "endLine": 1207,
+          "kind": "public-contract",
+          "sha256": "9912ac541a8e89ee9769279214919a507c220c929eb8155f573994d3cf69de70"
+        },
+        {
+          "line": 1208,
+          "endLine": 1274,
+          "kind": "public-contract",
+          "sha256": "748e1712a1c3082da4377c9b50a95ff5826d0dca95e1e4acc5c21fd61f35c4ce"
+        },
+        {
+          "line": 1393,
+          "endLine": 1396,
+          "kind": "public-contract",
+          "sha256": "0cee39581807a6860cc31e81c079f8aac164c1491ffdb832f15f94751cf6f669"
+        },
+        {
+          "line": 1410,
+          "endLine": 1459,
+          "kind": "public-contract",
+          "sha256": "df38a8d48ea9d9b9766167ae7f76933c716241e9f19bea5d70346ac3a2abf2e8"
+        },
+        {
+          "line": 1460,
+          "endLine": 1480,
+          "kind": "public-contract",
+          "sha256": "b3be7f9450867db92edd4c7cc81a4915a6a5892025af9e469d02e95bd7402ba7"
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command",
+          "target": "gentle:agents",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "event",
+          "target": "agent_end",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "event",
+          "target": "agent_settled",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "event",
+          "target": "agent_start",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_shutdown",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_shutdown",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_start",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_start",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_start",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "event",
+          "target": "tool_call",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "event",
+          "target": "turn_end",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "event",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "event",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "../lib/agent-home.ts",
@@ -2353,6 +3056,36 @@
           "target": "node:path",
           "status": "builtin",
           "path": null
+        },
+        {
+          "kind": "tool",
+          "target": "orchestrator_list",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "tool",
+          "target": "orchestrator_send_message",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "tool",
+          "target": "orchestrator_session_id",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "tool",
+          "target": "subagent_parent_message",
+          "status": "declared",
+          "path": "extensions/gentle-agents.ts"
+        },
+        {
+          "kind": "tool",
+          "target": null,
+          "status": "unresolved",
+          "path": null
         }
       ]
     },
@@ -2506,9 +3239,441 @@
         {
           "line": 9708,
           "sha256": "4b03626c1d5596143b54e4c2e2b4c72c875a1bd129d3d070ab97e15cad12f664"
+        },
+        {
+          "line": 1714,
+          "endLine": 1718,
+          "kind": "public-contract",
+          "sha256": "7e8125d5a5d380f7478e39d8c802fe8f89232bff71f2a2766ed73ab9489dc978"
+        },
+        {
+          "line": 1720,
+          "endLine": 1724,
+          "kind": "public-contract",
+          "sha256": "86005b6e7577b2c6da4a4a293525223eb3b957e3c1e489df10dc14ff84f3e14b"
+        },
+        {
+          "line": 8834,
+          "endLine": 8834,
+          "kind": "public-contract",
+          "sha256": "71b116d1e7d1eda6ddc2feb46ebca5724bdd23bfdf9978f108c19c19449f4fb7"
+        },
+        {
+          "line": 8837,
+          "endLine": 8853,
+          "kind": "public-contract",
+          "sha256": "74a722ec35412cea6701a4679ade2a2cdf99d08c8c6b5fb6023574cf12cd87b1"
+        },
+        {
+          "line": 8865,
+          "endLine": 8915,
+          "kind": "public-contract",
+          "sha256": "9330c3f58dde94f8458b4b9a432d6f108c4d5e39b5a6afe20b722258357a25b0"
+        },
+        {
+          "line": 8927,
+          "endLine": 8927,
+          "kind": "public-contract",
+          "sha256": "f943b2cc20c52198717c2802675885e82be932b91ed8a656bef74626ffbdf316"
+        },
+        {
+          "line": 8928,
+          "endLine": 8928,
+          "kind": "public-contract",
+          "sha256": "aece7304ed4a27d43c0ed9833f8abd6c2043de11e1cc8d45f0757ad891d8782d"
+        },
+        {
+          "line": 8932,
+          "endLine": 8954,
+          "kind": "public-contract",
+          "sha256": "a563e470bdf70f356a1cbbab7e2ea1b9973f6f710886576134a043bbf0dfd2fc"
+        },
+        {
+          "line": 8975,
+          "endLine": 9013,
+          "kind": "public-contract",
+          "sha256": "7c5383d216229800f5feb4a42c90581c3aa0ddf51c41b86e46386f1599b1b352"
+        },
+        {
+          "line": 9015,
+          "endLine": 9059,
+          "kind": "public-contract",
+          "sha256": "6146399a267543ea81376c95b57e6f4918f1cb1969ed56f4e44b854e8589f21a"
+        },
+        {
+          "line": 9061,
+          "endLine": 9207,
+          "kind": "public-contract",
+          "sha256": "ced1ceaf362863e92e81f35b22bb2fc879cef213b5513ed455cd8c299fbfa7df"
+        },
+        {
+          "line": 9209,
+          "endLine": 9262,
+          "kind": "public-contract",
+          "sha256": "a1b90171715a7c2f1a53e9ed1859f15b1e6695fff631a1713833fc05bd0e64e0"
+        },
+        {
+          "line": 9264,
+          "endLine": 9324,
+          "kind": "public-contract",
+          "sha256": "ea5f42c1cadc2c4d7a930e2e141d7d6e007f13177b8d882049185f256a174a5f"
+        },
+        {
+          "line": 9332,
+          "endLine": 9364,
+          "kind": "public-contract",
+          "sha256": "e4f7658d0ff1cd4fd0c2886f6fa437051a6cde0000ee79812ca7f677f8de6238"
+        },
+        {
+          "line": 9366,
+          "endLine": 9373,
+          "kind": "public-contract",
+          "sha256": "4333b8fba95db748263f8a323a0a2c642b71eb7ac375ec0b7b40a6042940e304"
+        },
+        {
+          "line": 9375,
+          "endLine": 9401,
+          "kind": "public-contract",
+          "sha256": "2464cfa9b7947f87a90f49a619e540d3de2e68dbef9a444b45fe0405f90883d8"
+        },
+        {
+          "line": 9405,
+          "endLine": 9415,
+          "kind": "public-contract",
+          "sha256": "89163053d2180074e44c1ae33b03540952a81a2c5d78ad73301cd0ca77cc5bbb"
+        },
+        {
+          "line": 9418,
+          "endLine": 9423,
+          "kind": "public-contract",
+          "sha256": "5a8357c58e3f3b1d9300d630209ede1be52fbcc64ab74ebb707f26007bfd20d1"
+        },
+        {
+          "line": 9425,
+          "endLine": 9430,
+          "kind": "public-contract",
+          "sha256": "42bee84d00e738de507a3c13131719f6badbad31dddf85fc6d4439b5ab551d47"
+        },
+        {
+          "line": 9432,
+          "endLine": 9437,
+          "kind": "public-contract",
+          "sha256": "96c4f3082a080b79ee1b04a247018b54abd91d529d75e8a477326ada3892bb45"
+        },
+        {
+          "line": 9474,
+          "endLine": 9497,
+          "kind": "public-contract",
+          "sha256": "7052e5464d12a5d9e7a0c0bc4037e187e9aa7fef9cf0808e5408fafc4dbc60e4"
+        },
+        {
+          "line": 9499,
+          "endLine": 9528,
+          "kind": "public-contract",
+          "sha256": "9325329c5334a06e6dcf02ccc516ccdeae03d11f6a32da4a05281593033a2147"
+        },
+        {
+          "line": 9530,
+          "endLine": 9552,
+          "kind": "public-contract",
+          "sha256": "f71554a08864613b92435596f88a44d1a0b5aefb1d7149b15a4c8006221b82f8"
+        },
+        {
+          "line": 9554,
+          "endLine": 9597,
+          "kind": "public-contract",
+          "sha256": "a9a1304265f10342fbe2787d7b455e5f82e1d7a4ff985284cfb338897999d0a6"
+        },
+        {
+          "line": 9603,
+          "endLine": 9647,
+          "kind": "public-contract",
+          "sha256": "6d0477621605b15ed8c9387acdb42a7ab9eeeac6ae18d6b2de76685d979d3d90"
+        },
+        {
+          "line": 9653,
+          "endLine": 9679,
+          "kind": "public-contract",
+          "sha256": "fb1890c37dbefc84c90e2a94170d2252159a232b89976b048105edc0ea757b09"
+        },
+        {
+          "line": 9681,
+          "endLine": 9704,
+          "kind": "public-contract",
+          "sha256": "d5e4b06e904f5606f9c669afc4ef179ce27f7b5b31421874c36767b7e45854f2"
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command",
+          "target": "gentle:background-subagents",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:dev-binary",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:doctor",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:models",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:persona",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:profiles",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:review-mode",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:review-session-permission",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:status",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:telemetry",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "command",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "event",
+          "target": "agent_end",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "event",
+          "target": "before_agent_start",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "event",
+          "target": "gentle-pi:ask-user-choice:blocked",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "event",
+          "target": "rpiv:ask-user:blocked",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_shutdown",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_start",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_tree",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "event",
+          "target": "tool_call",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "event",
+          "target": "tool_execution_end",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "event",
+          "target": "tool_execution_start",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "event",
+          "target": "tool_result",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
         {
           "kind": "import",
           "target": "../lib/agent-assets.ts",
@@ -2760,6 +3925,36 @@
           "target": "node:url",
           "status": "builtin",
           "path": null
+        },
+        {
+          "kind": "tool",
+          "target": "gentle_odd_phase",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "tool",
+          "target": "gentle_review_scope",
+          "status": "declared",
+          "path": "extensions/gentle-ai.ts"
+        },
+        {
+          "kind": "tool",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "tool",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "tool",
+          "target": null,
+          "status": "unresolved",
+          "path": null
         }
       ]
     },
@@ -2937,9 +4132,231 @@
         {
           "line": 2268,
           "sha256": "dddeb5f774c55b862d95587514e1b0110f321354a5e4c9a3c9122d9cafeed2e6"
+        },
+        {
+          "line": 1579,
+          "endLine": 1588,
+          "kind": "public-contract",
+          "sha256": "408efe56c1d9067a953892d1dc2c42665138ed04c92a7e2994c03204a964c9af"
+        },
+        {
+          "line": 1589,
+          "endLine": 1598,
+          "kind": "public-contract",
+          "sha256": "b83c5974e3306a43ef1cfb70de894dbde51721611b06011e5ea51aa0ee2d9bcc"
+        },
+        {
+          "line": 1625,
+          "endLine": 1628,
+          "kind": "public-contract",
+          "sha256": "72d16e9724a272e000899d8d10db8b766996af27e2daf09f82626096874c4c05"
+        },
+        {
+          "line": 1683,
+          "endLine": 1689,
+          "kind": "public-contract",
+          "sha256": "e7f9a3aa89ccd4acc59aa95e5adc297497a04ddd2e4fd530929062eb8903befc"
+        },
+        {
+          "line": 1690,
+          "endLine": 1693,
+          "kind": "public-contract",
+          "sha256": "d2d1c73f56951e439f6cba2db4798ada84a72dbaa007eca5aa7be8003687d772"
+        },
+        {
+          "line": 1708,
+          "endLine": 1713,
+          "kind": "public-contract",
+          "sha256": "b22ae661d68cdf1ba367e152953a0ef9921ff420dbf2bcd64cdbe2ca5cbdb0b3"
+        },
+        {
+          "line": 1714,
+          "endLine": 1726,
+          "kind": "public-contract",
+          "sha256": "6a36af85dc9a512d765f532ea6213e3ec43b9549a242530a90df6c97c7c80231"
+        },
+        {
+          "line": 1727,
+          "endLine": 1834,
+          "kind": "public-contract",
+          "sha256": "17c828011fc40efde86b3adf6e3b9b0e3c53f0211a368adfbf18923bfdd3ada1"
+        },
+        {
+          "line": 1835,
+          "endLine": 1858,
+          "kind": "public-contract",
+          "sha256": "5ffce3190c7b3c1b83a02537628b3b1612c5fef7730bf643a203c6c337705ce1"
+        },
+        {
+          "line": 1869,
+          "endLine": 1872,
+          "kind": "public-contract",
+          "sha256": "d5afa518e494cc815b2cf47d867ecb4fd610e18add336b18277a792d31685863"
+        },
+        {
+          "line": 1880,
+          "endLine": 1883,
+          "kind": "public-contract",
+          "sha256": "e1638351299e812920b1958f3f3224e90cd3df29718a031b4fbb6d9480a6d879"
+        },
+        {
+          "line": 1891,
+          "endLine": 2121,
+          "kind": "public-contract",
+          "sha256": "724dd265417a17950892c94cad70ff9f5604cc865775cdd10114654fe149e11e"
+        },
+        {
+          "line": 2122,
+          "endLine": 2145,
+          "kind": "public-contract",
+          "sha256": "c9ba574568cf14787c2427dcfa78fe525fc9fe91861de8ef7f533fa05c0839bd"
+        },
+        {
+          "line": 2146,
+          "endLine": 2175,
+          "kind": "public-contract",
+          "sha256": "5bde2962f8a1a366560ef397eb68af325b2395b247646717c379980c9d2e4da0"
+        },
+        {
+          "line": 2180,
+          "endLine": 2210,
+          "kind": "public-contract",
+          "sha256": "4e61e26363a4ac9065f973512474b13f12ad9bb766665e46ffcc2802247e53f3"
+        },
+        {
+          "line": 2211,
+          "endLine": 2224,
+          "kind": "public-contract",
+          "sha256": "2bce18f2dea9076b0060d6f77bf97733d33d8b7bbb12a6d6167660bfc5248894"
+        },
+        {
+          "line": 2225,
+          "endLine": 2239,
+          "kind": "public-contract",
+          "sha256": "b68ca39bfb06523f4adfba39c3f7811d05df54d207da75cb238169c23ce54e9c"
+        },
+        {
+          "line": 2240,
+          "endLine": 2267,
+          "kind": "public-contract",
+          "sha256": "dc008609d313de9e8adaa9429734e31d51806d1606c38198eb35756c47ce003c"
+        },
+        {
+          "line": 2268,
+          "endLine": 2271,
+          "kind": "public-contract",
+          "sha256": "44f67a2152d6fc5a6d4c44968eb7914c8e447be4d927726bed7db71faf77a549"
         }
       ],
       "references": [
+        {
+          "kind": "command",
+          "target": "gentle:animations",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:changes",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:commands",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:customize",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:double-esc-cancel",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:usage",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "command",
+          "target": "gentle:vim",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "event",
+          "target": "after_provider_response",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "event",
+          "target": "agent_end",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "event",
+          "target": "agent_settled",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "event",
+          "target": "agent_start",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_shutdown",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_start",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_tree",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "event",
+          "target": "tool_execution_start",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
+        },
+        {
+          "kind": "event",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "event",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "event",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "../lib/agent-home.ts",
@@ -3215,6 +4632,12 @@
           "target": "node:url",
           "status": "builtin",
           "path": null
+        },
+        {
+          "kind": "tool",
+          "target": "session_worktree_register",
+          "status": "declared",
+          "path": "extensions/gentle-shell.ts"
         }
       ]
     },
@@ -3264,9 +4687,75 @@
         {
           "line": 251,
           "sha256": "44010abb74857baeda855b4d395dddb95ba1ece258eec43ee98f7d2e2f0efd5f"
+        },
+        {
+          "line": 168,
+          "endLine": 203,
+          "kind": "public-contract",
+          "sha256": "7b7b9741c8c64923d00278bae81b920b2395d132082845cd5ac84a84a3006236"
+        },
+        {
+          "line": 214,
+          "endLine": 223,
+          "kind": "public-contract",
+          "sha256": "2465aaac5bc37df55f3ef739c9066fade5ef3f20e3219ef5e82ad179f191cc2f"
+        },
+        {
+          "line": 225,
+          "endLine": 227,
+          "kind": "public-contract",
+          "sha256": "40db3156337b63b9b4be457b5874c8824f890b8c719f9f44be938b34e81e2258"
+        },
+        {
+          "line": 229,
+          "endLine": 244,
+          "kind": "public-contract",
+          "sha256": "e0bfb9cf00e6ea669a670c8fcd590e5aefb29946112801903ba34a9a718c8f17"
+        },
+        {
+          "line": 246,
+          "endLine": 249,
+          "kind": "public-contract",
+          "sha256": "583631c3e89e68354a9a981775a8aa4cdaff4f730d90f9b25175834bbe1286cf"
+        },
+        {
+          "line": 251,
+          "endLine": 255,
+          "kind": "public-contract",
+          "sha256": "372271e0a9ff2f26f174f633666918846a476794078fbbcaff4f09d783ba7428"
         }
       ],
       "references": [
+        {
+          "kind": "event",
+          "target": "agent_end",
+          "status": "declared",
+          "path": "extensions/gentle-todo.ts"
+        },
+        {
+          "kind": "event",
+          "target": "before_agent_start",
+          "status": "declared",
+          "path": "extensions/gentle-todo.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_shutdown",
+          "status": "declared",
+          "path": "extensions/gentle-todo.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_start",
+          "status": "declared",
+          "path": "extensions/gentle-todo.ts"
+        },
+        {
+          "kind": "event",
+          "target": "tool_execution_end",
+          "status": "declared",
+          "path": "extensions/gentle-todo.ts"
+        },
         {
           "kind": "import",
           "target": "../lib/append-system-prompt.ts",
@@ -3307,6 +4796,12 @@
           "kind": "import",
           "target": "@earendil-works/pi-tui",
           "status": "dependency",
+          "path": null
+        },
+        {
+          "kind": "tool",
+          "target": null,
+          "status": "unresolved",
           "path": null
         }
       ]
@@ -3388,6 +4883,12 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "./atomic-write.ts",
           "status": "tracked",
@@ -3457,9 +4958,57 @@
         {
           "line": 1415,
           "sha256": "3db5dd643432ec7418a94e78be9575d07cdb2af5253edb47570bd640eda68bfb"
+        },
+        {
+          "line": 1376,
+          "endLine": 1385,
+          "kind": "public-contract",
+          "sha256": "fca5a111a6d8755968cc03ebdedfe53db4cc377606fc66ce382189655f53d6e1"
+        },
+        {
+          "line": 1390,
+          "endLine": 1399,
+          "kind": "public-contract",
+          "sha256": "c6b3e3b54afc5d56ee838b0c87013a5e2890ac9d8a8c4103e497a9c88b6b3f42"
+        },
+        {
+          "line": 1403,
+          "endLine": 1405,
+          "kind": "public-contract",
+          "sha256": "a082d51d512c339ccc3e268619f30a27b86be4f1dcb2e12fd530fd76b9054b53"
+        },
+        {
+          "line": 1415,
+          "endLine": 1418,
+          "kind": "public-contract",
+          "sha256": "dfffad7176944ca5c7ce3b267cb18740f972f09df701750d9e1a702d0d2fa72a"
         }
       ],
       "references": [
+        {
+          "kind": "command",
+          "target": "history",
+          "status": "declared",
+          "path": "extensions/history/index.ts"
+        },
+        {
+          "kind": "event",
+          "target": "before_agent_start",
+          "status": "declared",
+          "path": "extensions/history/index.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_shutdown",
+          "status": "declared",
+          "path": "extensions/history/index.ts"
+        },
+        {
+          "kind": "event",
+          "target": "tool_call",
+          "status": "declared",
+          "path": "extensions/history/index.ts"
+        },
         {
           "kind": "import",
           "target": "../../lib/agent-home.ts",
@@ -3539,6 +5088,12 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "node:fs",
@@ -3767,6 +5322,12 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "node:fs",
           "status": "builtin",
@@ -3898,6 +5459,36 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "./hide-prompts.ts",
           "status": "tracked",
@@ -3955,6 +5546,24 @@
         {
           "line": 83,
           "sha256": "ffce7fa8b1e2fa631d3870b9a53141c8ed013940f9a03b5de45a67b21c094a5a"
+        },
+        {
+          "line": 52,
+          "endLine": 60,
+          "kind": "public-contract",
+          "sha256": "f6009f1ffb836220c030a9d9fab59efe80b5574ce2cb499aa8ce98d2c4b71869"
+        },
+        {
+          "line": 80,
+          "endLine": 82,
+          "kind": "public-contract",
+          "sha256": "ab5fe19078484db5de0d653713e6593bf77606c2c38525d67628e020900001c9"
+        },
+        {
+          "line": 83,
+          "endLine": 88,
+          "kind": "public-contract",
+          "sha256": "39182bef7155a2cd7666630d3e8557387fb9fd95be5dc3e20b70c96124b8b22c"
         }
       ],
       "references": [
@@ -3962,6 +5571,24 @@
           "kind": "dynamic-import",
           "target": "@heyhuynhgiabuu/pi-pretty",
           "status": "dependency",
+          "path": null
+        },
+        {
+          "kind": "event",
+          "target": "session_shutdown",
+          "status": "declared",
+          "path": "extensions/pi-pretty.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_start",
+          "status": "declared",
+          "path": "extensions/pi-pretty.ts"
+        },
+        {
+          "kind": "event",
+          "target": null,
+          "status": "unresolved",
           "path": null
         },
         {
@@ -4046,9 +5673,51 @@
         {
           "line": 776,
           "sha256": "89fe11c5d14b325b11f0d008f79c395f4514c25867409f88298fea725c6f2128"
+        },
+        {
+          "line": 683,
+          "endLine": 756,
+          "kind": "public-contract",
+          "sha256": "ec30d378fd20cc1e0b8affebcc70854fec6bd8e192a35146f91c5a59585fb07a"
+        },
+        {
+          "line": 762,
+          "endLine": 764,
+          "kind": "public-contract",
+          "sha256": "022d973a122b9f271ed8ed1b3306ccf620fd13c32dd640d468250402cebcff04"
+        },
+        {
+          "line": 775,
+          "endLine": 775,
+          "kind": "public-contract",
+          "sha256": "c635b2ed55227b26da6d2f9d0fca3b9064b0ebf796674fc619399b0c8030e2aa"
+        },
+        {
+          "line": 776,
+          "endLine": 776,
+          "kind": "public-contract",
+          "sha256": "70b7604541eaab2e2d954ab123654c54f550c51bfee85951aa310e52979e1ba2"
         }
       ],
       "references": [
+        {
+          "kind": "event",
+          "target": "session_start",
+          "status": "declared",
+          "path": "extensions/quiet-tools.ts"
+        },
+        {
+          "kind": "event",
+          "target": "tool_execution_end",
+          "status": "declared",
+          "path": "extensions/quiet-tools.ts"
+        },
+        {
+          "kind": "event",
+          "target": "tool_execution_start",
+          "status": "declared",
+          "path": "extensions/quiet-tools.ts"
+        },
         {
           "kind": "import",
           "target": "../lib/gentle-ai-binary.ts",
@@ -4114,6 +5783,12 @@
           "target": "node:path",
           "status": "builtin",
           "path": null
+        },
+        {
+          "kind": "tool",
+          "target": null,
+          "status": "unresolved",
+          "path": null
         }
       ]
     },
@@ -4139,9 +5814,21 @@
         {
           "line": 39,
           "sha256": "e9895e38017f25d5d497ba0d9cc0fed332a60c66ecce7aaa481d622e1998372f"
+        },
+        {
+          "line": 39,
+          "endLine": 59,
+          "kind": "public-contract",
+          "sha256": "593c798477edd4ce68f3121335ae77aac9c6b367efaca71354aec83b2ee79b69"
         }
       ],
       "references": [
+        {
+          "kind": "event",
+          "target": "session_shutdown",
+          "status": "declared",
+          "path": "extensions/resume-hint.ts"
+        },
         {
           "kind": "import",
           "target": "../lib/gentle-shell-resume-hint.ts",
@@ -4220,9 +5907,141 @@
         {
           "line": 97,
           "sha256": "6ef1883761378f3bf7d308973644beda5a28fd0f38527ba93fee9f7ce31d80e2"
+        },
+        {
+          "line": 46,
+          "endLine": 55,
+          "kind": "public-contract",
+          "sha256": "95cf8ddc222f3653b0dd74df70030438025e8155716c571045f2de846415018f"
+        },
+        {
+          "line": 56,
+          "endLine": 62,
+          "kind": "public-contract",
+          "sha256": "f19f3a3b411cac99ff4c61b7b9279f8a6a9531cb0329ea3b86a2768bd24ac9d6"
+        },
+        {
+          "line": 63,
+          "endLine": 68,
+          "kind": "public-contract",
+          "sha256": "e9159b55b5cab68cb0c6c0c6fdcb47b5744bd4c3b6e9b61b3fa9d365ea0ad297"
+        },
+        {
+          "line": 69,
+          "endLine": 74,
+          "kind": "public-contract",
+          "sha256": "3579c781e99a0930aa2f78a4217a22bec85f82621a74f27ccf49cc67d2d47dbc"
+        },
+        {
+          "line": 75,
+          "endLine": 75,
+          "kind": "public-contract",
+          "sha256": "05bad8139440761fe1605177bf06501bdcc9a266fa411852ff64c883fd70c77f"
+        },
+        {
+          "line": 76,
+          "endLine": 76,
+          "kind": "public-contract",
+          "sha256": "64b9cc0987e7c9484c58d10a82c8fe5e044eb927a5dec3241d559eab06baf27c"
+        },
+        {
+          "line": 77,
+          "endLine": 77,
+          "kind": "public-contract",
+          "sha256": "dcb222a91a51d9ecd7b4a7fa164dc43f63eb0271f74045fa168f4018856d4efe"
+        },
+        {
+          "line": 78,
+          "endLine": 78,
+          "kind": "public-contract",
+          "sha256": "b9131f270724f094626f1973a12de7b0194712620255600a46f84e30763dee08"
+        },
+        {
+          "line": 79,
+          "endLine": 79,
+          "kind": "public-contract",
+          "sha256": "e26165f36e6bc698d28b1e3f5b3838a1f583af1cc2ce0709538f09e92e603685"
+        },
+        {
+          "line": 80,
+          "endLine": 92,
+          "kind": "public-contract",
+          "sha256": "e0fa017d96f2d42c76e10376b32c568d02fb5d11abd5f376e5adef9cf9f97df6"
+        },
+        {
+          "line": 97,
+          "endLine": 120,
+          "kind": "public-contract",
+          "sha256": "0c90e52c939f966f13459cd4ffc21ba4227183d91aee3fc9c63aa917355ce224"
         }
       ],
       "references": [
+        {
+          "kind": "event",
+          "target": "agent_end",
+          "status": "declared",
+          "path": "extensions/runtime-metrics.ts"
+        },
+        {
+          "kind": "event",
+          "target": "before_provider_request",
+          "status": "declared",
+          "path": "extensions/runtime-metrics.ts"
+        },
+        {
+          "kind": "event",
+          "target": "message_end",
+          "status": "declared",
+          "path": "extensions/runtime-metrics.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_before_compact",
+          "status": "declared",
+          "path": "extensions/runtime-metrics.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_before_tree",
+          "status": "declared",
+          "path": "extensions/runtime-metrics.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_shutdown",
+          "status": "declared",
+          "path": "extensions/runtime-metrics.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_start",
+          "status": "declared",
+          "path": "extensions/runtime-metrics.ts"
+        },
+        {
+          "kind": "event",
+          "target": "turn_end",
+          "status": "declared",
+          "path": "extensions/runtime-metrics.ts"
+        },
+        {
+          "kind": "event",
+          "target": "turn_start",
+          "status": "declared",
+          "path": "extensions/runtime-metrics.ts"
+        },
+        {
+          "kind": "event",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "event",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "../lib/runtime-metrics-children.ts",
@@ -4291,9 +6110,75 @@
         {
           "line": 609,
           "sha256": "fba79b616b1c3fa9dc4085caace0f8751e9a3c91b0aef317af9ab417513e8cc9"
+        },
+        {
+          "line": 553,
+          "endLine": 555,
+          "kind": "public-contract",
+          "sha256": "ef6c6662583b0920d249a78230b465172e095f8b137f0caae99a6277518f2080"
+        },
+        {
+          "line": 563,
+          "endLine": 607,
+          "kind": "public-contract",
+          "sha256": "cad649fb58df6585d278c27a69d69dc73594c1c0e7a6994a570f64c98bea4aed"
+        },
+        {
+          "line": 609,
+          "endLine": 624,
+          "kind": "public-contract",
+          "sha256": "c96b772c6675ca0dce53d48b4b42e712bbf4a87c717a66d167e7675a0ecc66ce"
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command",
+          "target": "skill-registry:refresh",
+          "status": "declared",
+          "path": "extensions/skill-registry.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_shutdown",
+          "status": "declared",
+          "path": "extensions/skill-registry.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_start",
+          "status": "declared",
+          "path": "extensions/skill-registry.ts"
+        },
         {
           "kind": "import",
           "target": "@earendil-works/pi-coding-agent",
@@ -4412,9 +6297,111 @@
         {
           "line": 791,
           "sha256": "0d371830bde203b51c0f3fd439884936192ed2af3a8b5c999a3824fe628e39e3"
+        },
+        {
+          "line": 579,
+          "endLine": 579,
+          "kind": "public-contract",
+          "sha256": "f3c843c53d9cd6b95f6a3d7ba2ff3916dccdc3c212dd7a95dca39dbd29f48657"
+        },
+        {
+          "line": 592,
+          "endLine": 612,
+          "kind": "public-contract",
+          "sha256": "47f828d37049ad42a931ff3cf687aa77a51949f01534b00f232ea762b82c6941"
+        },
+        {
+          "line": 615,
+          "endLine": 623,
+          "kind": "public-contract",
+          "sha256": "683f2f05a24bdf69fe6d474a6674a54b092a8be938f2160dbb14ce241fad73fe"
+        },
+        {
+          "line": 626,
+          "endLine": 641,
+          "kind": "public-contract",
+          "sha256": "1d268c6440ac547add1a0f4024b0f77d626bb174313dd0f2138a69e272071414"
+        },
+        {
+          "line": 648,
+          "endLine": 1104,
+          "kind": "public-contract",
+          "sha256": "9b5c42cd54d7c5c9dcb953cecac192732aeab2be2fc306fd0a6951e6484bce57"
+        },
+        {
+          "line": 791,
+          "endLine": 791,
+          "kind": "public-contract",
+          "sha256": "a9a761b868831ca1a422c919345caecc69caec422e6eefb7505d84ea6f974493"
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "command",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "event",
+          "target": "resize",
+          "status": "declared",
+          "path": "extensions/startup-banner.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_shutdown",
+          "status": "declared",
+          "path": "extensions/startup-banner.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_start",
+          "status": "declared",
+          "path": "extensions/startup-banner.ts"
+        },
         {
           "kind": "import",
           "target": "../lib/animation-policy.ts",
@@ -4508,6 +6495,54 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "./agent-home.ts",
@@ -4696,6 +6731,12 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "./agent-profiles.ts",
@@ -4934,6 +6975,18 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "./model-routing-authority.ts",
           "status": "tracked",
@@ -5119,6 +7172,18 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "./model-routing-authority.ts",
           "status": "tracked",
@@ -5175,6 +7240,18 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "./agents-protocol.ts",
@@ -5337,9 +7414,34 @@
         {
           "line": 127,
           "sha256": "ef154c37a61171f9d5d8f15df7b18d5bddb68bfb5a5d3769f30366fec8642050"
+        },
+        {
+          "line": 126,
+          "endLine": 126,
+          "kind": "public-contract",
+          "sha256": "bb8a6b6ba47459b5b23f34f546c9ebd87048c24a44dd832432cf5e51822b29c1"
+        },
+        {
+          "line": 127,
+          "endLine": 127,
+          "kind": "public-contract",
+          "sha256": "3de71808bc7a4d5ab41610d7d9a5bb6dd468a412bcedfb680c1990af92cec492"
         }
       ],
-      "references": []
+      "references": [
+        {
+          "kind": "event",
+          "target": "disconnect",
+          "status": "declared",
+          "path": "lib/agents-messaging.ts"
+        },
+        {
+          "kind": "event",
+          "target": "message",
+          "status": "declared",
+          "path": "lib/agents-messaging.ts"
+        }
+      ]
     },
     {
       "id": "ECO-SRC-a1452e158fb20a1c",
@@ -5749,9 +7851,105 @@
         {
           "line": 949,
           "sha256": "9932f6e1f1e27226077958ec7a8a096ba95c35a2db2a97fcf87e57da49dd754d"
+        },
+        {
+          "line": 494,
+          "endLine": 494,
+          "kind": "public-contract",
+          "sha256": "47ca3c0c11c800d3b262b5f93b05cad2ab07e9f5486834060318e29d245a068f"
+        },
+        {
+          "line": 495,
+          "endLine": 495,
+          "kind": "public-contract",
+          "sha256": "55a19b99083746348042a685fc508622d6858c8b51f2ec34ca81bd37f4464d9d"
+        },
+        {
+          "line": 496,
+          "endLine": 496,
+          "kind": "public-contract",
+          "sha256": "ec35410e4531b63f96f2cbc6652ab2a196e374d35ce446d1cc06a8139f4b934f"
+        },
+        {
+          "line": 498,
+          "endLine": 503,
+          "kind": "public-contract",
+          "sha256": "8a3bb2de0106fa0741c9401f39ed83cf248d0f66f09948598d57b21823ab6756"
+        },
+        {
+          "line": 504,
+          "endLine": 504,
+          "kind": "public-contract",
+          "sha256": "944f075ac90ca640ce01e93cd3ed9854447ad8c069640e94e3d00324687eaa77"
+        },
+        {
+          "line": 508,
+          "endLine": 508,
+          "kind": "public-contract",
+          "sha256": "fd00e445379464e312a1e368572546ec6644c6713a881a956180452ecb3b4cc9"
+        },
+        {
+          "line": 510,
+          "endLine": 513,
+          "kind": "public-contract",
+          "sha256": "865d94bc774f37f9ca290970d58db36e45bb9f48af88cfb4c74b737ce6b98075"
+        },
+        {
+          "line": 514,
+          "endLine": 514,
+          "kind": "public-contract",
+          "sha256": "174cc7a826c6f39fb98bad42f2b9a7e6b2731b9cd3e3fa87e3e99ab831283c6c"
         }
       ],
       "references": [
+        {
+          "kind": "event",
+          "target": "data",
+          "status": "declared",
+          "path": "lib/agents-runner.ts"
+        },
+        {
+          "kind": "event",
+          "target": "data",
+          "status": "declared",
+          "path": "lib/agents-runner.ts"
+        },
+        {
+          "kind": "event",
+          "target": "disconnect",
+          "status": "declared",
+          "path": "lib/agents-runner.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/agents-runner.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/agents-runner.ts"
+        },
+        {
+          "kind": "event",
+          "target": "exit",
+          "status": "declared",
+          "path": "lib/agents-runner.ts"
+        },
+        {
+          "kind": "event",
+          "target": "message",
+          "status": "declared",
+          "path": "lib/agents-runner.ts"
+        },
+        {
+          "kind": "event",
+          "target": "spawn",
+          "status": "declared",
+          "path": "lib/agents-runner.ts"
+        },
         {
           "kind": "import",
           "target": "./agents-config.ts",
@@ -5936,9 +8134,117 @@
         {
           "line": 687,
           "sha256": "a0c40cefddc3f77658313bf8d3234f3375a7dc31c048d7c0a8da58a037cafced"
+        },
+        {
+          "line": 435,
+          "endLine": 435,
+          "kind": "public-contract",
+          "sha256": "7056f77dc53c678fec72d410496ee13eacd652e34c6135bb6de9debfb325f133"
+        },
+        {
+          "line": 475,
+          "endLine": 486,
+          "kind": "public-contract",
+          "sha256": "ab08ca887e29b9b2238b3dab38733ef554cdae44c686c65725930edaadcb9442"
+        },
+        {
+          "line": 487,
+          "endLine": 490,
+          "kind": "public-contract",
+          "sha256": "d555172d54834ec5ccb06410d3f1762432835bd12fa58291469ae7d6b6770dad"
+        },
+        {
+          "line": 491,
+          "endLine": 491,
+          "kind": "public-contract",
+          "sha256": "8bf0c35e499e1668de7ead414a17680ecfc09cdddcee41397088b243b131f5d2"
+        },
+        {
+          "line": 492,
+          "endLine": 492,
+          "kind": "public-contract",
+          "sha256": "28655bc1df027486ef95797cf0c6a1f0acf959207c918eda185ccd465f567ca1"
+        },
+        {
+          "line": 667,
+          "endLine": 667,
+          "kind": "public-contract",
+          "sha256": "0a7ce49beaeeb304439ff64cf3d6b86c71f82ca8698dcd2d78c8b663424677d9"
+        },
+        {
+          "line": 685,
+          "endLine": 685,
+          "kind": "public-contract",
+          "sha256": "2c744444b88680710121a47532e6f3a12c447149f9581134d8b1403798449138"
+        },
+        {
+          "line": 686,
+          "endLine": 686,
+          "kind": "public-contract",
+          "sha256": "674ee181d5c8fbb052ec466bcac73d2aaff17e4a1bfb0a5bd2464e77c6a7e121"
+        },
+        {
+          "line": 687,
+          "endLine": 687,
+          "kind": "public-contract",
+          "sha256": "4bffb278c3288be6aa653865776651a8b9c9fa1b7d8ed2527f616b4b1c9aef1f"
         }
       ],
       "references": [
+        {
+          "kind": "event",
+          "target": "close",
+          "status": "declared",
+          "path": "lib/agents-session-transport.ts"
+        },
+        {
+          "kind": "event",
+          "target": "close",
+          "status": "declared",
+          "path": "lib/agents-session-transport.ts"
+        },
+        {
+          "kind": "event",
+          "target": "data",
+          "status": "declared",
+          "path": "lib/agents-session-transport.ts"
+        },
+        {
+          "kind": "event",
+          "target": "data",
+          "status": "declared",
+          "path": "lib/agents-session-transport.ts"
+        },
+        {
+          "kind": "event",
+          "target": "end",
+          "status": "declared",
+          "path": "lib/agents-session-transport.ts"
+        },
+        {
+          "kind": "event",
+          "target": "end",
+          "status": "declared",
+          "path": "lib/agents-session-transport.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/agents-session-transport.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/agents-session-transport.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/agents-session-transport.ts"
+        },
         {
           "kind": "import",
           "target": "node:crypto",
@@ -6269,6 +8575,12 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "./agent-home.ts",
           "status": "tracked",
@@ -6338,9 +8650,21 @@
         {
           "line": 26,
           "sha256": "7bccb010ae421478386ae57df6cfc92c3eab1b09f59b63ec01bbd32cb7b0c08c"
+        },
+        {
+          "line": 26,
+          "endLine": 37,
+          "kind": "public-contract",
+          "sha256": "8035bb9dc14b6e9dccf758065110d5909dc3457b1b7c395a4aedff4826852c8e"
         }
       ],
       "references": [
+        {
+          "kind": "event",
+          "target": "cache_warming_decision",
+          "status": "declared",
+          "path": "lib/background-cache-warming.ts"
+        },
         {
           "kind": "import",
           "target": "./agents-protocol.ts",
@@ -6398,6 +8722,12 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "./agent-home.ts",
@@ -6580,6 +8910,12 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "./agent-home.ts",
           "status": "tracked",
@@ -6719,6 +9055,24 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "../scripts/gentle-ai-installer.mjs",
@@ -7304,6 +9658,12 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "./agent-home.ts",
           "status": "tracked",
@@ -7382,6 +9742,12 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "./model-routing-authority.ts",
@@ -7471,6 +9837,18 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "node:fs",
@@ -8357,6 +10735,18 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "./model-routing-authority.ts",
           "status": "tracked",
@@ -8647,6 +11037,48 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "./review-lock.ts",
           "status": "tracked",
@@ -8811,6 +11243,12 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "./review-candidate-view-owner.ts",
@@ -9239,9 +11677,69 @@
         {
           "line": 865,
           "sha256": "6af892375b15ba97e4c9e2f6cc9709be91eaad03108b9bac8e307d46036af7a6"
+        },
+        {
+          "line": 518,
+          "endLine": 518,
+          "kind": "public-contract",
+          "sha256": "3784ab5a2547176778945c4d0ce268487039839a6051f4b70216d7608f0ea70b"
+        },
+        {
+          "line": 519,
+          "endLine": 519,
+          "kind": "public-contract",
+          "sha256": "3c00cb741a3ff0eff3f95b14c9f63fcfeecb02f23c7c7a030aafca32b63e7753"
+        },
+        {
+          "line": 520,
+          "endLine": 525,
+          "kind": "public-contract",
+          "sha256": "3a5fd885f11bc5f934fafc433938c9aa44b9a17e62e446ab285b5392987092a1"
+        },
+        {
+          "line": 526,
+          "endLine": 531,
+          "kind": "public-contract",
+          "sha256": "27edc12b1891e6a64fa91fdd03a5cd8263893d290afc683469d6fd79e15ce4a9"
+        },
+        {
+          "line": 535,
+          "endLine": 535,
+          "kind": "public-contract",
+          "sha256": "87686037a9a1a533eec6ba46204850919c1a06e57d4e8a17247a689cc6c793fa"
         }
       ],
       "references": [
+        {
+          "kind": "event",
+          "target": "close",
+          "status": "declared",
+          "path": "lib/review-host-relay.ts"
+        },
+        {
+          "kind": "event",
+          "target": "data",
+          "status": "declared",
+          "path": "lib/review-host-relay.ts"
+        },
+        {
+          "kind": "event",
+          "target": "data",
+          "status": "declared",
+          "path": "lib/review-host-relay.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/review-host-relay.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/review-host-relay.ts"
+        },
         {
           "kind": "import",
           "target": "./gentle-ai-binary.ts",
@@ -9881,6 +12379,12 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "./review-canonical.ts",
           "status": "tracked",
@@ -9954,6 +12458,18 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "./review-canonical.ts",
           "status": "tracked",
@@ -10020,6 +12536,48 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "./review-canonical.ts",
@@ -10514,6 +13072,12 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "./review-canonical.ts",
           "status": "tracked",
@@ -10796,9 +13360,81 @@
         {
           "line": 247,
           "sha256": "52b4527a9d3ea4b9fe00f6ba538caf3196d6681dd1dc9c5424f2199010db1147"
+        },
+        {
+          "line": 110,
+          "endLine": 110,
+          "kind": "public-contract",
+          "sha256": "5657440eb8db87d7d759e80eb35d44911f1b82873e4001d7942101a6dffc84a7"
+        },
+        {
+          "line": 142,
+          "endLine": 142,
+          "kind": "public-contract",
+          "sha256": "de3c8eba023656329eb8509ace7081049eae7b309e7b0e48d9ea45d5b42fcb31"
+        },
+        {
+          "line": 143,
+          "endLine": 143,
+          "kind": "public-contract",
+          "sha256": "c5a6fd9877fbeb6fb973a17ca2f1bcb1495d63e603e170dbb01489c0f482ae91"
+        },
+        {
+          "line": 144,
+          "endLine": 144,
+          "kind": "public-contract",
+          "sha256": "3f97a530bdfe30b4fbfe43863ed71aead2d991ee00046579f0c1819558e7cacb"
+        },
+        {
+          "line": 145,
+          "endLine": 145,
+          "kind": "public-contract",
+          "sha256": "ce44b58635050847b7b4219f247a8c19e2b96bbad80f2b9b3de73b4a24a0efb9"
+        },
+        {
+          "line": 146,
+          "endLine": 146,
+          "kind": "public-contract",
+          "sha256": "e02fe62d2b87b07cd7a5535d65a047abd3737659898ec034fe88bfdc188f6a0c"
         }
       ],
       "references": [
+        {
+          "kind": "event",
+          "target": "close",
+          "status": "declared",
+          "path": "lib/review-session-standing-permission-ipc.ts"
+        },
+        {
+          "kind": "event",
+          "target": "close",
+          "status": "declared",
+          "path": "lib/review-session-standing-permission-ipc.ts"
+        },
+        {
+          "kind": "event",
+          "target": "data",
+          "status": "declared",
+          "path": "lib/review-session-standing-permission-ipc.ts"
+        },
+        {
+          "kind": "event",
+          "target": "end",
+          "status": "declared",
+          "path": "lib/review-session-standing-permission-ipc.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/review-session-standing-permission-ipc.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/review-session-standing-permission-ipc.ts"
+        },
         {
           "kind": "import",
           "target": "node:net",
@@ -11100,6 +13736,12 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "./review-repository.ts",
@@ -11661,6 +14303,24 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": "../assets/agents/",
+          "status": "outside-root",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "./agents-config.ts",
           "status": "tracked",
@@ -11764,9 +14424,81 @@
         {
           "line": 155,
           "sha256": "9bc83b16a2d261dec9947ddd287adb27b883ea9e49b926fc7d6ca55af165bf3f"
+        },
+        {
+          "line": 129,
+          "endLine": 129,
+          "kind": "public-contract",
+          "sha256": "ec8491140c310450eeed9a55663c61b3d67f42efc3827743177dcfe8bdc0a23d"
+        },
+        {
+          "line": 147,
+          "endLine": 147,
+          "kind": "public-contract",
+          "sha256": "91bfcfa9edb5c922d1b8c5fae332b697a41960cf2a9d0d3ea712203ea9f0be2a"
+        },
+        {
+          "line": 148,
+          "endLine": 148,
+          "kind": "public-contract",
+          "sha256": "93efe0e7c0e0ac8b6be84693e8ff47c87705918e265303b4ed7119df8479e56b"
+        },
+        {
+          "line": 149,
+          "endLine": 153,
+          "kind": "public-contract",
+          "sha256": "5c7c355ff11e823701c220711fe00a373fa8d6b0ddaa2b6d3115307614c8e258"
+        },
+        {
+          "line": 154,
+          "endLine": 154,
+          "kind": "public-contract",
+          "sha256": "db941cbc61cca544c736758bbeee1f2b9c66948651b9a02791b9876ad1c5fdbe"
+        },
+        {
+          "line": 155,
+          "endLine": 165,
+          "kind": "public-contract",
+          "sha256": "12995b902670b9f2da0957a1b45c0a173ce170f0029375b0eded7535c54adf79"
         }
       ],
       "references": [
+        {
+          "kind": "event",
+          "target": "close",
+          "status": "declared",
+          "path": "lib/runtime-metrics-native.ts"
+        },
+        {
+          "kind": "event",
+          "target": "data",
+          "status": "declared",
+          "path": "lib/runtime-metrics-native.ts"
+        },
+        {
+          "kind": "event",
+          "target": "data",
+          "status": "declared",
+          "path": "lib/runtime-metrics-native.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/runtime-metrics-native.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/runtime-metrics-native.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/runtime-metrics-native.ts"
+        },
         {
           "kind": "import",
           "target": "../contracts/telemetry/runtime-aggregate-v1.schema.json",
@@ -11922,6 +14654,18 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": "../contracts/telemetry/runtime-aggregate-v1.schema.json",
+          "status": "tracked",
+          "path": "contracts/telemetry/runtime-aggregate-v1.schema.json"
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "node:fs",
           "status": "builtin",
@@ -12030,9 +14774,81 @@
         {
           "line": 96,
           "sha256": "75f93792c4d219d4ecd5a56cc57cd6e919515c5ac522b18e9ec7af82381a789a"
+        },
+        {
+          "line": 35,
+          "endLine": 38,
+          "kind": "public-contract",
+          "sha256": "0d8555a6a52e5d3df2eb9c3b5f3aebec881b528ef55aa87854e4321281aa45fb"
+        },
+        {
+          "line": 39,
+          "endLine": 47,
+          "kind": "public-contract",
+          "sha256": "1fabb2e0222b136344144b5634d4954bef9bae285608f1d6809730c6168824a4"
+        },
+        {
+          "line": 48,
+          "endLine": 69,
+          "kind": "public-contract",
+          "sha256": "d76c0af60d8bacc22e063d9264b471a0f3443285556d12a545a9a48a38cdd0b5"
+        },
+        {
+          "line": 70,
+          "endLine": 89,
+          "kind": "public-contract",
+          "sha256": "3d2296d81080ff9cb99e671ce3aa97b4c52dd2bcf0c32c8a2a43843fb56b06ee"
+        },
+        {
+          "line": 90,
+          "endLine": 95,
+          "kind": "public-contract",
+          "sha256": "b63fe5d83056122b1dedaaffcc18d03fcb3a9f360bc2082e243ee4f2c56dc186"
+        },
+        {
+          "line": 96,
+          "endLine": 96,
+          "kind": "public-contract",
+          "sha256": "88d7094d2ca9b6c742919d898d3b6d043472ba10d3aa3837c180f6b6924d1812"
         }
       ],
       "references": [
+        {
+          "kind": "event",
+          "target": "session_shutdown",
+          "status": "declared",
+          "path": "lib/session-change-capture.ts"
+        },
+        {
+          "kind": "event",
+          "target": "session_start",
+          "status": "declared",
+          "path": "lib/session-change-capture.ts"
+        },
+        {
+          "kind": "event",
+          "target": "tool_call",
+          "status": "declared",
+          "path": "lib/session-change-capture.ts"
+        },
+        {
+          "kind": "event",
+          "target": "tool_execution_end",
+          "status": "declared",
+          "path": "lib/session-change-capture.ts"
+        },
+        {
+          "kind": "event",
+          "target": "tool_result",
+          "status": "declared",
+          "path": "lib/session-change-capture.ts"
+        },
+        {
+          "kind": "event",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "./session-changes.ts",
@@ -13403,9 +16219,21 @@
         {
           "line": 136,
           "sha256": "e557b84d25748480feb07f2c74f68b55b67d5ae1e1b51f2424b6e13b9e8c3df1"
+        },
+        {
+          "line": 136,
+          "endLine": 139,
+          "kind": "public-contract",
+          "sha256": "7e6f58415fe7a13a0880d6308ec77229f9e7b5619b3d9551a3c244251acb4a8b"
         }
       ],
       "references": [
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/telemetry-trigger.ts"
+        },
         {
           "kind": "import",
           "target": "node:child_process",
@@ -13453,6 +16281,12 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "node:fs",
@@ -13605,6 +16439,12 @@
       ],
       "references": [
         {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
           "kind": "import",
           "target": "./agent-home.ts",
           "status": "tracked",
@@ -13740,6 +16580,12 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "./agent-home.ts",
@@ -13882,6 +16728,12 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "../extensions/startup-banner.ts",
@@ -14032,9 +16884,87 @@
         {
           "line": 864,
           "sha256": "fc3d8ec6bf4d33be35f46d3322181accbe1961da982c9188629f4ca2796a5a70"
+        },
+        {
+          "line": 151,
+          "endLine": 151,
+          "kind": "public-contract",
+          "sha256": "273021ad108eeec7bddd3d7639594c6691de71712299a8a67102a89b9922dc5f"
+        },
+        {
+          "line": 306,
+          "endLine": 306,
+          "kind": "public-contract",
+          "sha256": "d630a24e502041841db9c5b9058e4fef64b7b676b5b634822867025ab768a8b8"
+        },
+        {
+          "line": 307,
+          "endLine": 307,
+          "kind": "public-contract",
+          "sha256": "6b5361a045c2831aa51dd718b06fe42d5f845c0a34f252963ab142f035fe7764"
+        },
+        {
+          "line": 308,
+          "endLine": 308,
+          "kind": "public-contract",
+          "sha256": "7b50494eb5a124bf912fa460757dfefd91980b236c065121d134571c8dd3c6c7"
+        },
+        {
+          "line": 309,
+          "endLine": 309,
+          "kind": "public-contract",
+          "sha256": "6a1de77f2733f41985f8b11a8292b93b286d278e4f4d2c988359bb0d40d789da"
+        },
+        {
+          "line": 864,
+          "endLine": 864,
+          "kind": "public-contract",
+          "sha256": "7bb1b2da29917d17497a6e3f918d35bd296012b517d61918a234b87e6e06d2d8"
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": "../runtime/windows-session-transport.ps1",
+          "status": "tracked",
+          "path": "runtime/windows-session-transport.ps1"
+        },
+        {
+          "kind": "event",
+          "target": "data",
+          "status": "declared",
+          "path": "lib/windows-session-transport.ts"
+        },
+        {
+          "kind": "event",
+          "target": "data",
+          "status": "declared",
+          "path": "lib/windows-session-transport.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/windows-session-transport.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/windows-session-transport.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/windows-session-transport.ts"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "lib/windows-session-transport.ts"
+        },
         {
           "kind": "import",
           "target": "./agents-session-transport.ts",
@@ -14155,6 +17085,24 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "../scripts/gentle-ai-installer.mjs",
@@ -14414,6 +17362,19 @@
       ]
     },
     {
+      "id": "ECO-SRC-1f36abef15d24304",
+      "path": "runtime/windows-session-transport.ps1",
+      "family": "support",
+      "visibility": "supporting-source",
+      "mode": "100644",
+      "type": "blob",
+      "objectId": "abea461e69a062227524b700147beb414c1dcdf3",
+      "bytes": 69515,
+      "sha256": "f0b7adc97ba81045e9c3c891d12c080d0f772c36dbfdae3317301201492b4548",
+      "anchors": [],
+      "references": []
+    },
+    {
       "id": "ECO-SRC-7fb85a620f260291",
       "path": "scripts/gentle-ai-installer.mjs",
       "family": "support",
@@ -14547,9 +17508,105 @@
         {
           "line": 684,
           "sha256": "b143548ff31b43943359c5f7a327a023689617e7a1e10c95e09e6a1b52a07566"
+        },
+        {
+          "line": 189,
+          "endLine": 189,
+          "kind": "public-contract",
+          "sha256": "7547afa5adfffe3f6e82d5b2d7d80db5fa5281a80cfcee87982292a65bb9bacf"
+        },
+        {
+          "line": 202,
+          "endLine": 202,
+          "kind": "public-contract",
+          "sha256": "be0575457a831e6bc98001f17a4aa8351f28ebf1bd3f7c7848a1de0e92355bee"
+        },
+        {
+          "line": 203,
+          "endLine": 203,
+          "kind": "public-contract",
+          "sha256": "2b90aeb3356fd95d91ab3d5920bfcd248851d600dcf12d42d45ef56d35a2f80c"
+        },
+        {
+          "line": 204,
+          "endLine": 204,
+          "kind": "public-contract",
+          "sha256": "98d8f995511897bd112dadd0b1fe9dc6955e132da041add32f3dba1b9c80561d"
+        },
+        {
+          "line": 204,
+          "endLine": 204,
+          "kind": "public-contract",
+          "sha256": "2c8b8934b18b1a1cffb5b2627257438eb24e765cd38635e91bf97faf08c2d84a"
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
+        {
+          "kind": "event",
+          "target": "data",
+          "status": "declared",
+          "path": "scripts/gentle-ai-installer.mjs"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "scripts/gentle-ai-installer.mjs"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "scripts/gentle-ai-installer.mjs"
+        },
+        {
+          "kind": "event",
+          "target": "error",
+          "status": "declared",
+          "path": "scripts/gentle-ai-installer.mjs"
+        },
+        {
+          "kind": "event",
+          "target": "finish",
+          "status": "declared",
+          "path": "scripts/gentle-ai-installer.mjs"
+        },
         {
           "kind": "import",
           "target": "node:child_process",
@@ -14633,6 +17690,12 @@
         }
       ],
       "references": [
+        {
+          "kind": "asset",
+          "target": null,
+          "status": "unresolved",
+          "path": null
+        },
         {
           "kind": "import",
           "target": "node:crypto",

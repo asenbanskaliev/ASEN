@@ -34,8 +34,32 @@ export function sourceReferences(filename, bytes) {
   if (filename.endsWith(".md")) {
     for (const match of text.matchAll(/!?\[[^\]]*\]\(([^\s)]+)(?:\s+[^)]*)?\)/g))
       references.push({kind:"document", target:match[1]});
+    for(const match of text.matchAll(/<(?:img|source)\b[^>]*\bsrc=["']([^"']+)["']/gi))references.push({kind:"asset",target:match[1]});
+    for(const match of text.matchAll(/<(?:img|source)\b[^>]*\bsrcset=["']([^"']+)["']/gi))for(const item of match[1].split(","))references.push({kind:"asset",target:item.trim().split(/\s+/)[0]??null});
+    for(const match of text.matchAll(/`\/(\w[\w-]*)(?:\s[^`]*)?`/g))references.push({kind:"command-reference",target:match[1]});
   } else {
     const source = ts.createSourceFile(filename, text, ts.ScriptTarget.Latest, true);
+    const scopes=new Map();
+    const isScope=node=>ts.isSourceFile(node)||ts.isBlock(node)||ts.isFunctionLike(node)||ts.isForStatement(node)||ts.isForOfStatement(node)||ts.isForInStatement(node)||ts.isCatchClause(node);
+    const scopeOf=node=>{for(let current=node.parent;current;current=current.parent)if(isScope(current))return current;return source;};
+    const bind=(node,name,value)=>{const scope=scopeOf(node);if(!scopes.has(scope))scopes.set(scope,new Map());const bindings=scopes.get(scope);bindings.set(name,bindings.has(name)?null:value);};
+    const collect=node=>{
+      if((ts.isVariableDeclaration(node)||ts.isParameter(node))&&ts.isIdentifier(node.name)){
+        const value=ts.isVariableDeclaration(node)&&ts.isVariableDeclarationList(node.parent)&&(node.parent.flags&ts.NodeFlags.Const)&&node.initializer&&ts.isStringLiteralLike(node.initializer)?node.initializer.text:null;
+        bind(node,node.name.text,value);
+      }
+      if((ts.isVariableDeclaration(node)||ts.isParameter(node))&&(ts.isObjectBindingPattern(node.name)||ts.isArrayBindingPattern(node.name))){
+        const names=pattern=>{if(ts.isIdentifier(pattern))bind(node,pattern.text,null);else if(ts.isObjectBindingPattern(pattern)||ts.isArrayBindingPattern(pattern))for(const element of pattern.elements)if(ts.isBindingElement(element))names(element.name);};names(node.name);
+      }
+      if((ts.isFunctionDeclaration(node)||ts.isClassDeclaration(node))&&node.name)bind(node,node.name.text,null);
+      ts.forEachChild(node,collect);
+    };collect(source);
+    const literal=node=>{
+      if(node&&ts.isStringLiteralLike(node))return node.text;
+      if(!node||!ts.isIdentifier(node))return null;
+      for(let current=node.parent;current;current=current.parent){const bindings=scopes.get(current);if(bindings?.has(node.text))return bindings.get(node.text);}
+      return null;
+    };
     const visit = node => {
       if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier)
         references.push({kind:"import", target:node.moduleSpecifier.text});
@@ -43,6 +67,22 @@ export function sourceReferences(filename, bytes) {
           ts.isIdentifier(node.expression) && node.expression.text === "require")) {
         const value = node.arguments[0];
         references.push({kind:"dynamic-import", target:value && ts.isStringLiteralLike(value) ? value.text : null});
+      }
+      if(ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)){
+        const name=node.expression.name.text;
+        if(name==="registerCommand"||name==="on")references.push({kind:name==="on"?"event":"command",target:literal(node.arguments[0])});
+        if(name==="registerTool"){
+          const arg=node.arguments[0],property=arg&&ts.isObjectLiteralExpression(arg)?arg.properties.find(p=>ts.isPropertyAssignment(p)&&(ts.isIdentifier(p.name)||ts.isStringLiteralLike(p.name))&&p.name.text==="name"):null;
+          references.push({kind:"tool",target:property?literal(property.initializer):null});
+        }
+      }
+      if(ts.isNewExpression(node)&&ts.isIdentifier(node.expression)&&node.expression.text==="URL"){
+        const base=node.arguments?.[1]?.getText(source);
+        references.push({kind:"asset",target:base==="import.meta.url"?literal(node.arguments?.[0]):null});
+      }
+      if(ts.isCallExpression(node)&&["readFile","readFileSync","createReadStream"].includes(ts.isPropertyAccessExpression(node.expression)?node.expression.name.text:ts.isIdentifier(node.expression)?node.expression.text:"")){
+        // A cwd-dependent file expression is inventoried, never guessed as a source-relative path.
+        references.push({kind:"asset",target:null});
       }
       ts.forEachChild(node, visit);
     };
@@ -54,17 +94,30 @@ export function sourceReferences(filename, bytes) {
 function anchors(filename, bytes) {
   if (!/\.(?:[cm]?[jt]s|md)$/.test(filename)) return [];
   const text = new TextDecoder("utf-8", {fatal:true}).decode(bytes);
-  return text.split(/\r?\n/).flatMap((line, index) =>
+  const result=text.split(/\r?\n/).flatMap((line, index) =>
     /^(?:#{1,6}\s|export\s)|\b(?:registerTool|registerCommand|\.on)\s*\(/.test(line)
       ? [{line:index + 1, sha256:digest(line)}] : []);
+  if(!filename.endsWith(".md")){
+    const source=ts.createSourceFile(filename,text,ts.ScriptTarget.Latest,true);
+    const visit=node=>{
+      if(ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&["registerTool","registerCommand","on"].includes(node.expression.name.text)){
+        const start=node.getStart(source),end=node.getEnd();
+        result.push({line:source.getLineAndCharacterOfPosition(start).line+1,endLine:source.getLineAndCharacterOfPosition(end).line+1,kind:"public-contract",sha256:digest(text.slice(start,end))});
+      }
+      ts.forEachChild(node,visit);
+    };visit(source);
+  }
+  return result;
 }
 
-function resolveReference(from, reference, inventory, dependencies) {
+function resolveReference(from, reference, inventory, dependencies,commands=new Map()) {
   if (reference.target === null) return {...reference, status:"unresolved", path:null};
   const target = reference.target;
+  if(["command","tool","event"].includes(reference.kind))return {...reference,status:"declared",path:from};
+  if(reference.kind==="command-reference")return {...reference,status:commands.has(target)?"registered":"unresolved",path:commands.get(target)??null};
   if (target.startsWith("#")) return {...reference, status:"fragment", path:from};
   if (/^(?:https?:|mailto:|data:)/.test(target)) return {...reference, status:"external", path:null};
-  if (reference.kind !== "document" && !target.startsWith(".")) {
+  if (["import","dynamic-import"].includes(reference.kind) && !target.startsWith(".")) {
     const name = target.startsWith("@") ? target.split("/").slice(0,2).join("/") : target.split("/")[0];
     const status = target.startsWith("node:") ? "builtin" : dependencies.has(name) ? "dependency" : "unresolved";
     return {...reference, status, path:null};
@@ -72,6 +125,7 @@ function resolveReference(from, reference, inventory, dependencies) {
   let decoded;
   try { decoded = decodeURIComponent(target.split(/[?#]/)[0]); }
   catch { return {...reference, status:"unresolved", path:null}; }
+  if(path.posix.isAbsolute(decoded)||/^[A-Za-z]:/.test(decoded)||decoded.includes("\\"))return {...reference,status:"outside-root",path:null};
   const relative = path.posix.normalize(path.posix.join(path.posix.dirname(from), decoded));
   if (!safePath(relative)) return {...reference, status:"outside-root", path:null};
   const candidates = [relative, relative.replace(/\.js$/, ".ts"), ...[".ts", ".mjs", ".js", "/index.ts", "/index.js"].map(suffix => relative + suffix)];
@@ -109,6 +163,9 @@ export function collectBaseline(repository, commit) {
     rows.set(filename, {id:`ECO-SRC-${digest(filename).slice(0,16)}`,path:filename,...sourceClassification(filename), ...entry, bytes:bytes.length, sha256:digest(bytes), anchors:anchors(filename, bytes), references});
     for (const reference of references) if (reference.status === "tracked" && !rows.has(reference.path)) pending.push(reference.path);
   }
+  const commands=new Map();
+  for(const row of [...rows.values()].sort((a,b)=>a.path.localeCompare(b.path,"en")))for(const ref of row.references)if(ref.kind==="command"&&ref.target!==null&&!commands.has(ref.target))commands.set(ref.target,row.path);
+  for(const row of rows.values())row.references=row.references.map(ref=>resolveReference(row.path,ref,inventory,new Set(dependencyNames),commands));
   return {version:1, commit, tree:git(repository, ["rev-parse", `${commit}^{tree}`]).toString().trim(),
     dependencyNames, dependencySpecs, roots, files:[...rows.values()].sort((a,b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)};
 }
@@ -135,18 +192,20 @@ export function validateBaseline(value) {
     if (row.type !== "blob" || !["100644", "100755"].includes(row.mode) || !objectId(row.objectId) ||
         !Number.isSafeInteger(row.bytes) || row.bytes < 0 || !/^[a-f0-9]{64}$/.test(row.sha256) ||
         !Array.isArray(row.anchors) || !Array.isArray(row.references)) issues.push(`Invalid source identity: ${row.path}`);
-    for (const anchor of Array.isArray(row.anchors) ? row.anchors : []) if (!anchor || !Number.isSafeInteger(anchor.line) || anchor.line < 1 || !/^[a-f0-9]{64}$/.test(anchor.sha256)) issues.push(`Invalid anchor: ${row.path}`);
+    for (const anchor of Array.isArray(row.anchors) ? row.anchors : []) if (!anchor || !Number.isSafeInteger(anchor.line) || anchor.line < 1 || !/^[a-f0-9]{64}$/.test(anchor.sha256)||
+      anchor.kind!==undefined&&(anchor.kind!=="public-contract"||!Number.isSafeInteger(anchor.endLine)||anchor.endLine<anchor.line)) issues.push(`Invalid anchor: ${row.path}`);
   }
   for (const root of value.roots) if (!safePath(root) || !files.has(root)) issues.push("Missing root source");
   if (sortedUnique(value.roots).length !== value.roots.length) issues.push("Duplicate source roots");
-  const statuses = new Set(["tracked", "fragment", "external", "builtin", "dependency", "unresolved", "outside-root", "absent"]);
+  const commands=new Map();for(const row of files.values())for(const ref of Array.isArray(row.references)?row.references:[])if(ref?.kind==="command"&&typeof ref.target==="string"&&!commands.has(ref.target))commands.set(ref.target,row.path);
+  const statuses = new Set(["tracked", "fragment", "external", "builtin", "dependency", "unresolved", "outside-root", "absent","declared","registered"]);
   for (const row of files.values()) for (const ref of Array.isArray(row.references) ? row.references : []) {
-    if (!ref || !statuses.has(ref.status) || !["import", "dynamic-import", "document"].includes(ref.kind) ||
+    if (!ref || !statuses.has(ref.status) || !["import", "dynamic-import", "document","asset","command","tool","event","command-reference"].includes(ref.kind) ||
         ref.target !== null && typeof ref.target !== "string") { issues.push("Invalid source reference"); continue; }
-    if (ref.target === null && (ref.kind !== "dynamic-import" || ref.status !== "unresolved")) issues.push("Only unresolved computed imports may omit a literal target");
+    if (ref.target === null && (ref.kind === "import"||ref.kind === "document"||ref.status !== "unresolved")) issues.push("Only unresolved computed references may omit a literal target");
     if (ref.status === "tracked" && (!safePath(ref.path) || !files.has(ref.path))) issues.push(`Broken tracked closure: ${row.path}`);
     if (ref.status === "fragment" && ref.path !== row.path) issues.push("Invalid fragment binding");
-    const expected = resolveReference(row.path,ref,files,new Set(value.dependencyNames));
+    const expected = resolveReference(row.path,ref,files,new Set(value.dependencyNames),commands);
     if (expected.status !== ref.status || expected.path !== ref.path) issues.push(`Reference resolution mismatch: ${row.path}`);
   }
   const reachable = new Set(), pending = [...value.roots];
@@ -185,7 +244,7 @@ export function detectBaselineDrift(before, after) {
   while (addedDependent) {
     addedDependent = false;
     for (const row of [...before.files,...after.files]) if (!invalidated.has(row.path) &&
-      (invalidated.has("package.json") || row.references.some(ref => ref.status === "tracked" && invalidated.has(ref.path)))) {
+      (invalidated.has("package.json") || row.references.some(ref => ["tracked","registered"].includes(ref.status) && invalidated.has(ref.path)))) {
       invalidated.add(row.path); addedDependent = true;
     }
   }
