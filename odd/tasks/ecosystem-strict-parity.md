@@ -28,7 +28,7 @@ The current unit-by-unit comparison is `odd/tasks/ecosystem-reconciliation.md`; 
 
 | Family | Status | Current limitation |
 | --- | --- | --- |
-| Ask-user | `PARTIAL` | Native dialog tools, bounded validation, cancel/timeout and concurrency exist. Full TUI/RPC journeys and mutation-consumer integration remain unverified. |
+| Ask-user | `PARTIAL` | Native dialog tools, bounded validation, cancel/timeout and concurrency exist. Linux offline RPC choice/cancellation passes; full TUI/questionnaire/platform journeys and mutation-consumer integration remain unverified. |
 | CodeGraph | `PARTIAL` | Read-only adapter and fault fixtures pass locally; real CLI/index lifecycle and cross-platform host evidence remain open. |
 | Agents | `PARTIAL` | Public tools and lifecycle/transport/activity behavior are incomplete. |
 | Primary orchestrator | `PARTIAL` | Prompt, status, doctor, and review-boundary behavior are incomplete. |
@@ -38,7 +38,7 @@ The current unit-by-unit comparison is `odd/tasks/ecosystem-reconciliation.md`; 
 | Pretty/quiet | `MISSING` | Required presentation modes/tools are not implemented. |
 | Resume | `PARTIAL` | Restart, Windows, and session restoration evidence is incomplete. |
 | Runtime metrics | `MISSING` | Usage and telemetry decisions/behavior are absent. |
-| Skill registry | `PARTIAL` | GSP work covers a subset; startup/watch/disable/shutdown remain. |
+| Skill registry | `PARTIAL` | Startup/watch/debounce/disable/shutdown core is locally verified; missing/recreated-source watchers and real all-platform Pi lifecycle evidence remain. |
 | Banner | `MISSING` | Presentation behavior is absent. |
 | Package exports | `PARTIAL` | Absent export target repaired to the shipped entry. Local actual packed install resolves all 28 public exports and rejects private paths; exact new-candidate multiplatform/Pi packaging evidence is still required. |
 
@@ -111,8 +111,8 @@ ECO-15 behavior-backed documentation -> ECO-16 final verification
   - Every source/media identity was verified from exact objects; rendered SVG and raster frames were inspected. Synthetic PNG/GIF/SVG parser fixtures and metadata/hash/identity negative tests now pass. GIF alpha is inspected over all frame control records, correcting the initial first-frame-only observation.
 - [ ] **ECO-01C — Freeze import and reference closure.** Resolve static/dynamic imports, assets, docs links, command/tool references, dependencies, and normative anchors; classify absent, optional, generated, external, and unresolved edges.
   - AST imports, source-relative URL assets, HTML src/srcset, commands/tools/events and inline command references are inventoried; complete registration bodies have hash-bound anchors. Cwd-dependent resources and computed names remain explicitly unresolved. Full semantic obligations and generated/optional reference adjudication remain open; no parsed edge is silently excluded.
-- [ ] **ECO-01D — Add baseline validators and fixtures.** Use synthetic Git repositories/objects and image fixtures to prove exact-byte hashing, malformed manifests, missing blobs, path escapes, cycles, duplicate IDs, broken closure, and deterministic rendering.
-  - Git-object, drift and synthetic media fixtures implemented. Independent adversarial review reproduced three metadata defects; repair observed 3/3 RED then GREEN. Complete contract/asset closure remains separately assigned to ECO-01C.
+- [x] **ECO-01D — Add baseline validators and fixtures.** Use synthetic Git repositories/objects and image fixtures to prove exact-byte hashing, malformed manifests, missing blobs, path escapes, cycles, duplicate IDs, broken closure, and deterministic rendering.
+  - Git-object, drift and synthetic media fixtures implemented. Independent adversarial review reproduced three metadata defects; repair observed 3/3 RED then GREEN. All named validator/fixture obligations are locally verified, including lexical-shadowing and registration-anchor negatives. Complete semantic contract/asset closure remains separately assigned to ECO-01C.
 - [ ] **ECO-01E — Add automatic drift detection.** Report `ADDED`, `REMOVED`, unique-hash `RENAMED`, `CONTENT_CHANGED`, dependency/reference changes, and normative-anchor changes. A scheduled/manual candidate-source check may propose a report but never adopt changes automatically; changed sources invalidate affected `FULL` rows until re-audited.
   - Report-only detector supports these classifications plus transitive importer invalidation; manual exact-commit comparison is available through `scripts/ecosystem-baseline.mjs`. Full contract/asset-edge invalidation awaits their completed mapping.
 
@@ -120,8 +120,8 @@ ECO-15 behavior-backed documentation -> ECO-16 final verification
 
 - [ ] **ECO-02A — Repair package exports.** Add install/pack fixtures proving every declared public export resolves from the packed artifact and undeclared paths fail as designed.
   - Functional defect repaired in `d7af2f3d80bf782ed4b2995205475e915243eb1e`: true Node resolution RED before correction, then GREEN; `verify:pack` now verifies actual offline installed tarball bytes and all 28 exports. Exact final multiplatform packaging checks remain pending.
-- [ ] **ECO-02B — Establish claim registry and validator.** Replace broad prose with evidence-linked rows and reject `FULL` without required positive, negative, failure, platform, restart/session, and Pi evidence.
-  - Current registry/validator added with all 16 aggregate units, source hashes, implementation/test mappings, explicit gaps and required boundaries. FULL requires applicable executed receipt classes, exact candidate/source, receipt byte identities and no source invalidation. Remaining ECO units are not promoted by general green tests.
+- [x] **ECO-02B — Establish claim registry and validator.** Replace broad prose with evidence-linked rows and reject `FULL` without required positive, negative, failure, platform, restart/session, and Pi evidence.
+  - Current registry/validator added with all 16 aggregate units, source hashes, implementation/test mappings, explicit gaps and required boundaries. FULL requires applicable executed receipt classes, exact candidate/source, receipt byte identities and no source invalidation. Positive/negative receipt and invalidation fixtures pass; independent review repaired editable flags that could lower fixed evidence minimums. Receipt consistency is not execution authenticity. This validator subunit is IMPLEMENTED / VERIFIED; remaining ECO units are not promoted by general green tests.
 - [ ] **ECO-02C — Correct current claims and README maturity.** Narrow Pi-native extension, Skills, destructive-Git safety, basic FTS, compaction, review, authority, Windows, and package-install claims to observed scope; label roadmap behavior explicitly.
 
 ### Essential ecosystem runtime
