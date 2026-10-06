@@ -225,7 +225,7 @@ test("D5 exige intake genuino para autorización y Dispatcher; recuperación con
  const binding=bindRddDefectEvidence(recordRddReproduction(v.snapshot,v.input,v.first,v.second),d3Input(v));store.addDefectIntake(v.candidate,binding);
  assert.equal(authorizeImplementation(v.candidate,context,store).target,"IMPLEMENTING");
  assert.equal((await dispatcher.dispatch(request)).ok,true);assert.equal(llamadas,1);
- await assert.rejects(()=>dispatcher.dispatch(request),/unused worker context/);assert.equal(llamadas,1);
+ await assert.rejects(()=>dispatcher.dispatch(request),/unused exact writer admission/);assert.equal(llamadas,1);
  const path=join(v.repository,"d5-evidence.json"),key=randomBytes(32);await saveEvidence(path,v.candidate,store,key);const recovered=await loadEvidence(path,v.candidate,key);
  assert.equal(verifySkillEvidence(v.candidate,skills.map(s=>s.id),recovered,"mutation").ok,true);
  for(const other of [{...v.candidate,id:"otro"},{...v.candidate,repository:"otro"},{...v.candidate,revision:"f".repeat(40)}])assert.equal(verifySkillEvidence(other,skills.map(s=>s.id),recovered,"mutation").ok,false);
