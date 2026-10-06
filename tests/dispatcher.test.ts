@@ -216,3 +216,14 @@ test("dispatcher strips admission and conveys one exact-call runner receiver",as
  await d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:organicAdmission()});
  assert.equal(observed,true);
 });
+
+
+test("runner receiver burns on a mismatched first claim",async()=>{
+ let receiver:object|undefined;
+ const runner:AgentRunner={run:async request=>{receiver=request.runnerWriteReceiver;return{id:request.id,ok:true,output:"ok"};}};
+ const d=new Dispatcher(runner,authorized());
+ await d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:organicAdmission()});
+ assert.ok(receiver);
+ assert.equal(consumeRunnerWriteReceiver(receiver,"wrong"),false);
+ assert.equal(consumeRunnerWriteReceiver(receiver,writeRequest.id),false);
+});
