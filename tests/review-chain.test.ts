@@ -1,0 +1,32 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {execFileSync} from "node:child_process";
+import {mkdtempSync,realpathSync,rmSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {planWorkUnitBoundary,type ReadyWorkUnitBoundary} from "../src/delivery/work-unit-policy.js";
+import {recordCompletedWorkUnit} from "../src/delivery/work-unit-evidence.js";
+import {recordWorkUnitReviewCandidate} from "../src/delivery/work-unit-review-candidate.js";
+import {prepareOrdinaryReview,bindOrdinaryReviewCheckout} from "../src/review/ordinary-review-controller.js";
+import {awaitNativeRddResult,bindNativeRddResult} from "../src/review/native-rdd-result.js";
+import {openBoundedCorrection,validateBoundedCorrection} from "../src/review/bounded-correction.js";
+import {runDualReview} from "../src/review/dual-review.js";
+import {startDualRejudgment,recordDualRejudgment} from "../src/review/dual-rejudgment.js";
+
+function candidate(t:any){
+ const root=realpathSync(mkdtempSync(join(tmpdir(),"asen-review-chain-")));t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const git=(...a:string[])=>execFileSync("git",["-C",root,...a],{encoding:"utf8"}).trim();git("init","-q");for(let i=0;i<2;i++)git("-c","user.name=T","-c","user.email=t@example.invalid","commit","-q","--allow-empty","-m","x");
+ const revision=git("rev-parse","HEAD"),tree=git("rev-parse","HEAD^{tree}"),parent=git("rev-parse","HEAD^");
+ const b=planWorkUnitBoundary({featureIdentity:"GSP-05",taskIdentity:"review-chain",taskDocumentPath:"odd/tasks/skill-contract-parity.md",purpose:"review chain",behaviorIds:["review"],currentBranch:"feat/x",defaultBranch:"main",authoredAdditions:1,authoredDeletions:0,expectedChangedPaths:["src/review/native-rdd-result.ts","tests/review-chain.test.ts","odd/tasks/skill-contract-parity.md"],rollbackBoundaries:["revert"],generatedArtifacts:[],previousReviewedBoundary:null,focusedTests:{kind:"required"},runtimeHarness:{kind:"required"},documentation:{kind:"n_a",reason:"none"},deliveryRelationship:{kind:"single"}}) as ReadyWorkUnitBoundary;
+ const e=recordCompletedWorkUnit(b,{featureIdentity:b.featureIdentity,taskIdentity:b.taskIdentity,taskDocumentPath:b.taskDocumentPath,boundaryId:b.boundaryId,repositoryIdentity:"https://github.com/acme/asen",purpose:b.purpose,deliveryRelationship:b.deliveryRelationship,previousReviewedBoundary:null,rollbackBoundary:"revert",commit:{identity:revision,treeIdentity:tree,parentIdentity:parent,message:"feat(review): chain",currentTreeIdentity:tree},authoredAdditions:1,authoredDeletions:0,changedPaths:["src/review/native-rdd-result.ts","tests/review-chain.test.ts","odd/tasks/skill-contract-parity.md"],behaviorPaths:["src/review/native-rdd-result.ts"],focusedTestPaths:["tests/review-chain.test.ts"],documentationPaths:[],generatedArtifacts:[],focusedTests:{status:"pass",command:"test",scenario:"chain",exitCode:0,summary:"pass"},runtimeHarness:{status:"pass",command:"runtime",scenario:"chain",exitCode:0,summary:"pass"},documentation:{status:"n_a",reason:"none"},taskDocumentCommitIdentity:revision});
+ return {root,revision,tree,parent,c:recordWorkUnitReviewCandidate(e,{kind:"commit",identity:revision,revision,treeIdentity:tree,repositoryIdentity:e.repositoryIdentity,featureIdentity:e.featureIdentity,taskIdentity:e.taskIdentity,taskDocumentPath:e.taskDocumentPath,boundaryId:e.boundaryId,previousReviewedBoundary:null,deliveryRelationship:e.deliveryRelationship})};
+}
+function failedReview(t:any){const f=candidate(t),q=prepareOrdinaryReview(f.c,{authorId:"author",reviewerId:"reviewer",sessionId:"s"}),checkout=bindOrdinaryReviewCheckout(q,"s",f.root),h=awaitNativeRddResult(checkout);return bindNativeRddResult(h,{schemaVersion:1,requestId:q.requestId,sessionId:"s",revision:f.revision,treeIdentity:f.tree,parentIdentity:f.parent,reviewerId:"reviewer",verdict:"fail",summary:"finding"});}
+
+test("F allows one bounded correction from genuine failed review and grants no delivery authority",t=>{const r=failedReview(t),q=openBoundedCorrection(r),v=validateBoundedCorrection(q,{priorRevision:r.revision,correctedRevision:r.revision+"x",validation:"pass"});assert.equal(v.status,"validated");for(const k of ["delivery","merge","release","authority","approved"])assert.equal(k in v,false);assert.throws(()=>validateBoundedCorrection(q,{priorRevision:r.revision,correctedRevision:"other",validation:"pass"}),/not live/);assert.throws(()=>openBoundedCorrection(r),/already consumed/);});
+
+test("G dispatches exactly two blind judges and freezes a canonical ledger",async t=>{const f=candidate(t);let calls=0;const seen:any[]=[];const judge=(id:string,findings:any[])=>async (target:any)=>{calls++;seen.push(target);assert(Object.isFrozen(target));return {judgeId:id,findings};};const ledger=await runDualReview(f.c,judge("a",[{id:"x",severity:"high",summary:"x"}]),judge("b",[{id:"x",severity:"high",summary:"x"}]));assert.equal(calls,2);assert.equal(seen[0],seen[1]);assert(Object.isFrozen(ledger));assert.equal(ledger.findings.length,1);});
+
+test("G rejects duplicate judge identity and conflicting canonical finding data",async t=>{let f=candidate(t);await assert.rejects(()=>runDualReview(f.c,async()=>({judgeId:"same",findings:[]}),async()=>({judgeId:"same",findings:[]})),/distinct/);f=candidate(t);await assert.rejects(()=>runDualReview(f.c,async()=>({judgeId:"a",findings:[{id:"x",severity:"high",summary:"a"}]}),async()=>({judgeId:"b",findings:[{id:"x",severity:"critical",summary:"b"}]})),/disagree/);});
+
+test("H approves clean ledger and caps severe correction at two rounds",async t=>{let f=candidate(t);let ledger=await runDualReview(f.c,async()=>({judgeId:"a",findings:[]}),async()=>({judgeId:"b",findings:[]}));assert.deepEqual(startDualRejudgment(ledger).status,"approved");f=candidate(t);ledger=await runDualReview(f.c,async()=>({judgeId:"a",findings:[{id:"x",severity:"critical",summary:"x"}]}),async()=>({judgeId:"b",findings:[{id:"x",severity:"critical",summary:"x"}]}));const r1=startDualRejudgment(ledger);assert.equal(r1.status,"correction");const r2=recordDualRejudgment(r1,{resolved:[],regressions:[]});assert.equal(r2.status,"correction");const terminal=recordDualRejudgment(r2,{resolved:[],regressions:[]});assert.equal(terminal.status,"escalated");assert.equal(terminal.roundsUsed,2);assert.throws(()=>recordDualRejudgment(r2,{resolved:[],regressions:[]}),/not live/);});
