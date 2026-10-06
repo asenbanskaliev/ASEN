@@ -23,6 +23,9 @@ const checked=verifyPublicExports(installation),installed=join(installation,"nod
 const installedPackage=JSON.parse(readFileSync(join(installed,"package.json"),"utf8"));
 if(installedPackage.bin?.asen!=="./src/cli.ts")throw new Error("packed artifact missing ASEN executable mapping");
 const cliBytes=readFileSync(join(installed,"src","cli.ts"),"utf8");if(!cliBytes.startsWith("#!/usr/bin/env node"))throw new Error("packed ASEN executable missing node shebang");
+const bin=process.platform==="win32"?join(installation,"node_modules",".bin","asen.cmd"):join(installation,"node_modules",".bin","asen");
+const help=execFileSync(bin,["--help"],{encoding:"utf8",cwd:installation});if(!/Usage: asen/.test(help))throw new Error("packed ASEN executable did not run help");
+const version=execFileSync(bin,["--version"],{encoding:"utf8",cwd:installation}).trim();if(version!=="0.1.0")throw new Error("packed ASEN executable version mismatch");
 
 const forbidden=new RegExp(["gen"+"tle","gen"+"tleman","eng"+"ram"].join("|"),"i");
 for(const file of names) {
