@@ -12,7 +12,7 @@ function fixture(t:test.TestContext) {
   const root=mkdtempSync(join(tmpdir(),"asen-ecosystem-"));
   t.after(()=>rmSync(root,{recursive:true,force:true}));
   const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8"}).trim();
-  git("init","-q");git("config","user.name","Fixture");git("config","user.email","fixture@example.test");
+  git("init","-q");git("config","core.autocrlf","false");git("config","user.name","Fixture");git("config","user.email","fixture@example.test");
   mkdirSync(join(root,"extensions"));mkdirSync(join(root,"lib"));mkdirSync(join(root,"docs"));
   writeFileSync(join(root,"package.json"),JSON.stringify({dependencies:{"dep-one":"1"}}));
   writeFileSync(join(root,"extensions","entry.ts"),'import {x} from "../lib/core.js";\nimport "node:fs";\nimport "dep-one";\nconst variable="v"; import(variable);\nexport const main=x;\n');
@@ -146,4 +146,11 @@ for(const [name,mutate] of [
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
   mutate(baseline);assert.ok(validateBaseline(baseline).length);
   assert.throws(()=>detectBaselineDrift(baseline,baseline),/malformed/);
+});
+
+test("Git normalization is recorded as committed bytes instead of worktree bytes",t=>{
+ const f=fixture(t);f.git("config","core.autocrlf","true");
+ const source='import "../extensions/entry.js";\nexport const x="á😀";\r\n';writeFileSync(join(f.root,"lib","core.ts"),source);
+ f.git("add","--renormalize","lib/core.ts");f.git("commit","-qm","normalize");const commit=f.git("rev-parse","HEAD"),baseline=collectBaseline(f.root,commit),core=baseline.files.find((row:any)=>row.path==="lib/core.ts");
+ assert.equal(core.bytes,Buffer.byteLength(source.replaceAll("\r\n","\n")));assert.notEqual(core.bytes,Buffer.byteLength(readFileSync(join(f.root,"lib","core.ts"))));assert.equal(verifyBaselineObjects(f.root,baseline),true);
 });

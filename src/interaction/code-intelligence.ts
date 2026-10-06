@@ -8,10 +8,10 @@ import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
 export interface CodeIntelligenceOptions {executable?:string;script?:string;timeoutMs?:number;maxOutputBytes?:number}
 const execute=promisify(execFile);
 function contained(root:string,file:string):boolean {const suffix=relative(root,file);return suffix!==".."&&!/^\.\.[/\\]/.test(suffix)&&!isAbsolute(suffix);}
-function regular(file:string):string {const canonical=realpathSync(file);if(!statSync(canonical).isFile())throw Error("Invalid executable");return canonical;}
+function regular(file:string):string {const canonical=realpathSync.native(file);if(!statSync(canonical).isFile())throw Error("Invalid executable");return canonical;}
 /** Resolve npm Windows shims to their real JS entry; never execute cmd/PowerShell. */
 export function resolveCodeGraphEntry(packageRoot:string):string {
-  const root=realpathSync(packageRoot),metadata=regular(join(root,"package.json"));if(!contained(root,metadata))throw Error("Escaping package metadata");if(statSync(metadata).size>32768)throw Error("Oversized package metadata");
+  const root=realpathSync.native(packageRoot),metadata=regular(join(root,"package.json"));if(!contained(root,metadata))throw Error("Escaping package metadata");if(statSync(metadata).size>32768)throw Error("Oversized package metadata");
   const pkg=JSON.parse(readFileSync(metadata,"utf8")),target=typeof pkg.bin==="string"?pkg.bin:pkg.bin?.codegraph;
   if(typeof target!=="string"||!target||isAbsolute(target)||/^[A-Za-z]:/.test(target)||target.split(/[/\\]/).some(part=>part===".."))throw Error("Invalid package entry");
   const script=regular(resolve(root,target));if(!contained(root,script)||! /\.[cm]?js$/.test(script))throw Error("Escaping package entry");return script;
@@ -32,10 +32,10 @@ function command(options:CodeIntelligenceOptions):{executable:string;prefix:stri
   throw Object.assign(Error("Unavailable"),{code:"ENOENT"});
 }
 function rootFor(cwd:string):string {
-  const root=realpathSync(cwd);if(!statSync(root).isDirectory()||root===realpathSync(homedir())||root===realpathSync(tmpdir()))throw Error("Invalid root");
+  const root=realpathSync.native(cwd);if(!statSync(root).isDirectory()||root===realpathSync.native(homedir())||root===realpathSync.native(tmpdir()))throw Error("Invalid root");
   const env={...process.env};for(const key of Object.keys(env))if(key.startsWith("GIT_"))delete env[key];
-  const observed=execFileSync("git",["-C",root,"rev-parse","--show-toplevel"],{env,encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:5000,maxBuffer:16384,windowsHide:true}).trim();
-  if(realpathSync(observed)!==root)throw Error("Current directory must be the canonical Git root");return root;
+  const observed=execFileSync("git",["-c","core.quotepath=false","-C",root,"rev-parse","--show-toplevel"],{env,encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:5000,maxBuffer:16384,windowsHide:true}).trim();
+  if(realpathSync.native(observed)!==root)throw Error("Current directory must be the canonical Git root");return root;
 }
 function parameters(value:unknown):{operation:"query"|"explore";query:string;limit:number}|null {
   if(!value||typeof value!=="object"||types.isProxy(value)||Object.getPrototypeOf(value)!==Object.prototype)return null;

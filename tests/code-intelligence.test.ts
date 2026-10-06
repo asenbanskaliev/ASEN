@@ -8,7 +8,7 @@ import {createCodeIntelligenceTool,resolveCodeGraphEntry} from "../src/interacti
 import {createAsenExtension} from "../extensions/asen.js";
 
 function fixture(t:test.TestContext,body='console.log(JSON.stringify({args:process.argv.slice(2),cwd:process.cwd()}))'){
-  const root=realpathSync(mkdtempSync(join(tmpdir(),"asen graph á ")));t.after(()=>rmSync(root,{recursive:true,force:true}));
+  const root=realpathSync.native(mkdtempSync(join(tmpdir(),"asen graph á ")));t.after(()=>rmSync(root,{recursive:true,force:true}));
   execFileSync("git",["init","-q",root]);const script=join(root,"fixture.mjs");writeFileSync(script,body);mkdirSync(join(root,"child"));
   const tools=new Map<string,any>();createAsenExtension({codeIntelligence:{executable:process.execPath,script}} as any)({registerCommand(){},registerTool(tool:any){tools.set(tool.name,tool);}} as any);
   return {root,script,tool:tools.get("asen_code_intelligence")};
@@ -18,9 +18,11 @@ const call=(tool:any,root:string,input:any,signal?:AbortSignal)=>tool.execute("p
 test("registered read-only CodeGraph adapter keeps malicious query as one literal argument",async t=>{
   const f=fixture(t);assert.ok(f.tool,"public code-intelligence tool must exist");
   const query='--help; $(touch forbidden) & "á"';const result=await call(f.tool,f.root,{operation:"query",query,limit:2});
-  assert.equal(result.details.status,"completed");const data=JSON.parse(result.content[0].text);
+  assert.equal(result.details.status,"completed",JSON.stringify({status:result.details.status,root:f.root,gitRoot:execFileSync("git",["-C",f.root,"rev-parse","--show-toplevel"],{encoding:"utf8"}).trim()}));const data=JSON.parse(result.content[0].text);
   assert.deepEqual(data.args,["query","--path",f.root,"--limit","2","--",query]);assert.equal(data.cwd,f.root);
   assert.equal((await call(f.tool,f.root,{operation:"explore",query:"symbol"})).details.status,"completed");
+  const alias=join(f.root,"root-alias");symlinkSync(f.root,alias,"junction");
+  const aliased=await call(f.tool,alias,{operation:"query",query:"symbol"});assert.equal(aliased.details.status,"completed");assert.equal(JSON.parse(aliased.content[0].text).args[2],f.root);rmSync(alias);
 });
 test("model cannot change roots, executable, limits or initialize an index",async t=>{
   const f=fixture(t,'throw Error("runner must never execute")');assert.ok(f.tool);
