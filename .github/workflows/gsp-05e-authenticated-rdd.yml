@@ -49,7 +49,8 @@ jobs:
           node --input-type=module <<'NODE'
           import fs from "node:fs";
           const raw=fs.readFileSync("authenticated-rdd-output.json","utf8").trim();
-          const cleaned=raw.replace(/^```(?:json)?\\s*/u,"").replace(/\\s*```$/u,"").trim();\n          let value;try{value=JSON.parse(cleaned)}catch{throw new Error("Reviewer did not return JSON")}
+          const cleaned=raw.replace(/^```(?:json)?\\s*/u,"").replace(/\\s*```$/u,"").trim();
+          let value;try{value=JSON.parse(cleaned)}catch{throw new Error("Reviewer did not return JSON")}
           if(!value||Object.getPrototypeOf(value)!==Object.prototype)throw new Error("Review output is not plain JSON");
           const keys=Object.keys(value).sort();
           if(JSON.stringify(keys)!==JSON.stringify(["summary","verdict"]))throw new Error("Unexpected review output shape");
