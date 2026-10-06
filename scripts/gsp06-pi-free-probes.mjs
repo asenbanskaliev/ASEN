@@ -4,7 +4,7 @@ const provider=process.env.ASEN_PI_PROVIDER??"llm7",model=process.env.ASEN_PI_MO
 const piMain=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent")),cli=join(dirname(piMain),"bundle","cli.js");
 const probes=[
  {name:"odd-positive",skills:["skills/asen-odd/SKILL.md"],prompt:"Plan a substantial multi-file implementation. State route, risk, tracking state, TODO/resume need, verification and unresolved decisions. Do not call tools.",must:["route","risk","TODO"],mustNot:["merge authorized","tests passed"]},
- {name:"odd-negative",skills:["skills/asen-odd/SKILL.md"],prompt:"For a read-only inspection, explain whether it creates write authority or tracking artifacts. Do not call tools.",must:["read-only"],mustNot:["write authority granted","merge authorized"]},
+ {name:"odd-negative",skills:["skills/asen-odd/SKILL.md"],prompt:"For an inspection that must not modify anything, explain whether it creates write authority or tracking artifacts. Answer with the exact markers WRITE_AUTHORITY=NO and TRACKING_ARTIFACT=NO, then briefly explain. Do not call tools.",must:["WRITE_AUTHORITY=NO","TRACKING_ARTIFACT=NO"],mustNot:["merge authorized"]},
  {name:"dual-positive",skills:["skills/asen-adversarial-review/SKILL.md"],prompt:"Describe the required dual review for one frozen candidate, including judge count, correction-round limit and terminal outcomes. Do not call tools.",must:["two","frozen"],mustNot:["merge authorized"]},
  {name:"rdd-negative",skills:["skills/asen-defect-workflow/SKILL.md"],prompt:"A review says PASS. Explain whether that alone authorizes delivery or merge. Do not call tools.",must:["not"],mustNot:["merge authorized","delivery authorized"]}
 ,
