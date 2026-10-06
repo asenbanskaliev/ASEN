@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";import {spawn,execFileSync} from "node:child_process";import {resolve,dirname,join} from "node:path";import {realpathSync} from "node:fs";import {fileURLToPath} from "node:url";
 const repo=resolve("."),revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repo,encoding:"utf8"}).trim();if(process.env.ASEN_EXPECTED_SHA&&revision!==process.env.ASEN_EXPECTED_SHA)throw new Error("GSP-06 candidate mismatch");
-const provider=process.env.ASEN_PI_PROVIDER??"llm7",model=process.env.ASEN_PI_MODEL??"default",extension=process.env.ASEN_PI_PROVIDER_EXTENSION;
+const provider=process.env.ASEN_PI_PROVIDER??"llm7",model=process.env.ASEN_PI_MODEL??"default",extension=process.env.ASEN_PI_PROVIDER_EXTENSION;const redact=value=>{let out=String(value);for(const key of ["LLM7_API_KEY","OPENROUTER_API_KEY","GROQ_API_KEY"]){const secret=process.env[key];if(secret)out=out.replaceAll(secret,"[redacted]");}return out.slice(0,700);};
 const piMain=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent")),cli=join(dirname(piMain),"bundle","cli.js");
 const probes=[
  {name:"odd-positive",skills:["skills/asen-odd/SKILL.md"],prompt:"Plan a substantial multi-file implementation. State route, risk, tracking state, TODO/resume need, verification and unresolved decisions. Do not call tools.",must:["route","risk","TODO"],mustNot:["merge authorized","tests passed"]},
@@ -37,7 +37,7 @@ async function run(p){
   }
   if(record.type==="tool_execution_start")throw new Error(p.name+" executed a prohibited tool");
   if(record.type==="message_end"&&record.message?.role==="assistant"){
-   if(record.message.stopReason==="error"){const detail=String(record.message.errorMessage??"No provider detail supplied").replaceAll(process.env.LLM7_API_KEY??"","[redacted]").slice(0,700);throw new Error(p.name+" provider turn failed: "+detail);}
+   if(record.message.stopReason==="error"){const detail=redact(record.message.errorMessage??"No provider detail supplied");throw new Error(p.name+" provider turn failed: "+detail);}
    for(const x of record.message.content??[])if(x.type==="text")observed.text.push(x.text);
   }
   if(record.type==="agent_end"){observed.finished=true;child.stdin.end();}
