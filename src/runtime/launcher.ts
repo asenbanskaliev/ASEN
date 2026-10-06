@@ -4,7 +4,7 @@ export const PI_SUBCOMMANDS=["install","remove","uninstall","update","list","con
 export type AsenHomeMode="link"|"isolated"|"path";
 export type AsenHomeSource="flag"|"config"|"default";
 export type AsenLauncherConfig={mode:"link"}|{mode:"isolated"}|{mode:"path";dir:string};
-export interface ParsedAsenArgs{link:boolean;isolated:boolean;home?:string;packageRoot?:string;help:boolean;version:boolean;command?:"home"|"setup";commandArgs:string[];passthrough:string[];piSubcommand?:string;error?:string}
+export interface ParsedAsenArgs{link:boolean;isolated:boolean;home?:string|undefined;packageRoot?:string|undefined;help:boolean;version:boolean;command?:"home"|"setup"|undefined;commandArgs:string[];passthrough:string[];piSubcommand?:string|undefined;error?:string|undefined}
 const isPiCommand=(v:string)=>(PI_SUBCOMMANDS as readonly string[]).includes(v);
 export function parseAsenArgs(argv:readonly string[]):ParsedAsenArgs{
  if(argv[0]==="home")return {link:false,isolated:false,help:false,version:false,command:"home",commandArgs:[...argv.slice(1)],passthrough:[]};
