@@ -49,5 +49,8 @@
   "exports": {
     "./extensions": "./extensions/asen.ts",
     "./skills/*": "./skills/*/SKILL.md"
+  },
+  "bin": {
+    "asen": "./src/cli.ts"
   }
 }
