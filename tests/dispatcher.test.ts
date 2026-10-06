@@ -182,3 +182,21 @@ test("concurrent dispatchers cannot spend the same worker context twice",async()
  assert.equal(results.filter(r=>r.status==="rejected"&&/used worker context/.test(String(r.reason))).length,1);
  assert.equal(started,1);
 });
+
+
+test("writer admission is opaque, one-use, and burns on a mismatched first claim",async()=>{
+ const admission=organicAdmission();
+ assert.deepEqual(Reflect.ownKeys(admission),[]);
+ const d=new Dispatcher({run:async request=>({id:request.id,ok:true,output:"ok"})},authorized());
+ await assert.rejects(()=>d.dispatch({...writeRequest,id:"wrong:worker",skillContext:sealedCodeChange("wrong"),writerAdmission:admission}),/unused exact writer admission/);
+ await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:admission}),/unused exact writer admission/);
+});
+
+test("writer admission rejects structural forgery and duplicate or malformed surfaces",async()=>{
+ const d=new Dispatcher({run:async request=>({id:request.id,ok:true,output:"ok"})},authorized());
+ await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:Object.freeze({})}),/unused exact writer admission/);
+ const decision=issueOddDecision({taskId:"surface",repository:"r",paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});
+ buildOrchestrationPlan({taskId:"surface",repository:"r",prompt:"write",candidate},decision);
+ const applicability=decideLifecycleApplicability(decision,{taskIdentity:"surface",repositoryIdentity:"r",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"organic",affectedSubsystems:["dispatcher"],expectedPaths:["src/a"],requiredArtifacts:[]});
+ assert.throws(()=>issueOrganicWriterAdmission(applicability,["src/a","src/a"]),/unique bounded surfaces/);
+});
