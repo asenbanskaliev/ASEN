@@ -113,7 +113,7 @@ export class PiProcessRunner implements AgentRunner{
     stdio:["pipe","pipe","pipe"],
     detached:process.platform!=="win32"
    });
-   let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,stopResult:AgentResult|undefined;
+   let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,stopResult:AgentResult|undefined;
    const preflightId=`asen-policy:${request.id}`;
    const closed=new Promise<void>(resolveClosed=>{child.once("close",()=>resolveClosed());child.once("error",()=>{if(child.pid===undefined)resolveClosed();});});
    let timer:ReturnType<typeof setTimeout>|undefined;
@@ -144,7 +144,7 @@ export class PiProcessRunner implements AgentRunner{
      const line=buffer.slice(0,end).trim();buffer=buffer.slice(end+1);
      let record:unknown;try{record=JSON.parse(line);}catch{continue;}
      const response=record as {type?:string;id?:string;success?:boolean;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>}};
-     if(response.type==="agent_end"&&policyLoaded){child.stdin.end();continue;}
+     if(response.type==="tool_execution_start"&&this.options.noTools){toolAttempted=true;stop({id:request.id,ok:false,output:"pi model attempted a tool while tools were disabled"});return;}\n     if(response.type==="agent_end"&&policyLoaded){child.stdin.end();continue;}
      if(response.type!=="response"||response.id!==preflightId)continue;
      const matches=response.data?.commands?.filter(item=>item.name==="asen-authority-status"&&item.source==="extension"&&item.sourceInfo?.path===policy)??[];
      if(response.success!==true||matches.length!==1){stop({id:request.id,ok:false,output:"pi ASEN policy extension was not loaded"});return;}
@@ -165,7 +165,7 @@ export class PiProcessRunner implements AgentRunner{
      try{
       const records=stdout.trim().split(/\r?\n/).filter(Boolean).map(line=>JSON.parse(line));
       const responses=records.filter(record=>record?.type==="response"&&record?.id===request.id);
-      if(!responses.length)return finish({id:request.id,ok:false,output:"pi correlated response missing"});
+      if(toolAttempted)return finish({id:request.id,ok:false,output:"pi model attempted a tool while tools were disabled"});\n      if(!responses.length)return finish({id:request.id,ok:false,output:"pi correlated response missing"});
       if(responses.length!==1)return finish({id:request.id,ok:false,output:"pi requires exactly one correlated response"});
       const envelope=responses[0];
       if(envelope.success!==true)return finish({id:request.id,ok:false,output:"pi correlated response failed"});
