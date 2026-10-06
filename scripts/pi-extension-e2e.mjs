@@ -18,5 +18,5 @@ const result=await command.handler();
 if(result?.product!=="ASEN" || result?.mode!=="pi-native" || result?.status!=="ready") {
   throw new Error("ASEN command returned an invalid runtime contract");
 }
-if(typeof facade?.deriveOddExecutionContract!=="function") throw new Error("ASEN ODD execution bridge missing from live extension facade");
+for(const method of ["deriveOddExecutionContract","trackOddTask","resumeOddTask"]) if(typeof facade?.[method]!=="function") throw new Error(`ASEN ODD execution bridge missing from live extension facade: ${method}`);
 console.log(JSON.stringify({loaded:true,commands:["asen","asen-skill-registry"],oddExecutionBridge:true,result}));

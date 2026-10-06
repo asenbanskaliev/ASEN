@@ -10,12 +10,14 @@ import type {OddRouteDecision} from "../src/flow/odd-routing.js";
 import {claimedOrchestrationRouteContext} from "../src/orchestration/orchestrator.js";
 import {registerOrdinaryReviewCommand,type OrdinaryReviewCommandController} from "../src/review/ordinary-review-command.js";
 import {deriveOddExecutionContract,type OddExecutionContract} from "../src/flow/odd-execution-contract.js";
+import {trackOddTask,resumeOddTask,type OddProgress} from "../src/flow/odd-task-tracking.js";
+import type {MemoryContext} from "../src/memory/context.js";import type {MemoryStore} from "../src/memory/store.js";
 
 type CommandContext={cwd:string;ui:{notify(message:string,level:"info"|"error"):void}};
 type PiLike={registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void};
 type Refresh=typeof refreshSkillRegistry;
 export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror}
-export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract}
+export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">):ReturnType<typeof resumeOddTask>}
 
 const usage="Usage: /asen-skill-registry refresh";
 const productionPackageRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
@@ -57,7 +59,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   }});
   const consumer=registerWorkflowSelectionCommand(register);
   const review=registerOrdinaryReviewCommand(register);
-  return Object.freeze({review,deriveOddExecutionContract,decideLifecycleApplicability:(decision:OddRouteDecision,input:LifecycleApplicabilityInput)=>{
+  return Object.freeze({review,deriveOddExecutionContract,trackOddTask,resumeOddTask,decideLifecycleApplicability:(decision:OddRouteDecision,input:LifecycleApplicabilityInput)=>{
    const original=claimedOrchestrationRouteContext(decision),binding={taskIdentity:original.facts.taskIdentity,repositoryIdentity:original.facts.repositoryIdentity},choice=readWorkflowSelection(consumer,binding);
    if(!choice)return decideLifecycleApplicability(decision,input);
    const claimed=claimWorkflowSelection(consumer,choice,binding);
