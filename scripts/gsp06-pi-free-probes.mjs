@@ -37,7 +37,7 @@ async function run(p){
   }
   if(record.type==="tool_execution_start")throw new Error(p.name+" executed a prohibited tool");
   if(record.type==="message_end"&&record.message?.role==="assistant"){
-   if(record.message.stopReason==="error"){const detail=redact(record.message.errorMessage??"No provider detail supplied");throw new Error(p.name+" provider turn failed: "+detail);}
+   if(record.message.stopReason==="error"){const detail=redact(record.message.errorMessage??"No provider detail supplied");if(/tool choice is none, but model called a tool/i.test(detail))throw new Error(p.name+" provider violated the no-tool boundary: "+detail);throw new Error(p.name+" provider turn failed: "+detail);}
    for(const x of record.message.content??[])if(x.type==="text")observed.text.push(x.text);
   }
   if(record.type==="agent_end"){observed.finished=true;child.stdin.end();}
