@@ -244,13 +244,19 @@
         "e63420a56dd37757fb9c1bca3f3fcb299c65ea2d25df992a94fc9aade756c051"
       ],
       "implementation": [
-        "scripts/verify-pack.mjs"
+        "scripts/verify-pack.mjs",
+        "src/runtime/launcher.ts",
+        "src/runtime/setup.ts",
+        "src/runtime/command-catalog.ts"
       ],
       "tests": [
-        "tests/package.test.ts"
+        "tests/package.test.ts",
+        "tests/launcher.test.ts",
+        "tests/setup.test.ts",
+        "tests/command-catalog.test.ts"
       ],
       "remaining": [
-        "Executable/setup/link/home resolution and rollback/permission behavior are absent."
+        "Launcher/home precedence and transactional idempotent setup are implemented deterministically. Real executable wiring, permissions and final cross-platform packed-Pi installation remain."
       ],
       "stateful": true,
       "platformSensitive": true,
@@ -260,15 +266,21 @@
     },
     {
       "id": "ECO-10",
-      "status": "MISSING",
+      "status": "PARTIAL",
       "sourceHashes": [
         "dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",
         "ec64bc54484b4a597ffa16aba5aed950cd9eb1ecf0a1caf0c1405dbbb721d4d9"
       ],
-      "implementation": [],
-      "tests": [],
+      "implementation": [
+        "src/runtime/workspace-attribution.ts",
+        "src/runtime/agent-lifecycle.ts"
+      ],
+      "tests": [
+        "tests/workspace-attribution.test.ts",
+        "tests/agent-lifecycle.test.ts"
+      ],
       "remaining": [
-        "Actor/change attribution and concurrent accessible workspace UI are absent."
+        "Actor/session/project/worktree attribution and bounded status projections are implemented. Durable concurrent workspace UI integration, conflict handling, restart and real Pi host evidence remain."
       ],
       "stateful": true,
       "platformSensitive": true,
@@ -278,7 +290,7 @@
     },
     {
       "id": "ECO-11",
-      "status": "MISSING",
+      "status": "PARTIAL",
       "sourceHashes": [
         "1cdbb3968664e3f3dd5d1ca9eae757e3e37ea12c345861fc2b6c57c7533231d9",
         "554ddea751d636ee35e9d06babb9bf4513930d7186fcf1fe23599b767e6c844a",
@@ -286,10 +298,14 @@
         "7a4a83c3f215f34868b375293af33c183322cc610f674ef5fa6ef825ae0eca1c",
         "831db959b54c8a660da3adfba2a57ad7cc869abc2254ce9e981ff29f15435faf"
       ],
-      "implementation": [],
-      "tests": [],
+      "implementation": [
+        "src/runtime/profiles.ts"
+      ],
+      "tests": [
+        "tests/runtime-profiles.test.ts"
+      ],
       "remaining": [
-        "Runtime profile schema/precedence/customization/fallback/rollback integration is absent."
+        "Strict profile schema, session/project/global precedence, fallback and deterministic mutations are implemented. Persistence/rollback integration, public command/UI wiring and real Pi/model routing evidence remain."
       ],
       "stateful": true,
       "platformSensitive": true,
@@ -299,7 +315,7 @@
     },
     {
       "id": "ECO-12",
-      "status": "MISSING",
+      "status": "PARTIAL",
       "sourceHashes": [
         "250a3db46eb790fefc794473d20a31e9dd9c6ea11887a343b808fe8e9757a7f6",
         "408736bcf2eb97214d4622854df361674f5b8eab95eb270a19911e2e8af59789",
@@ -309,10 +325,14 @@
         "f8b00b31f1c7cd7d08d99cf65e566ae74a865e3542fda91f67f8c7275d8fd09a",
         "fef309cda80d61010d459bbfb80a232e8f92c1d9149395ad117f1473665d369f"
       ],
-      "implementation": [],
-      "tests": [],
+      "implementation": [
+        "src/runtime/history.ts"
+      ],
+      "tests": [
+        "tests/history-usage.test.ts"
+      ],
       "remaining": [
-        "Opt-in private history UI/store, tombstones, concurrency, retention, export/delete and recovery are absent."
+        "Opt-in capture, redact-before-write, bounded retention and project-scoped export policy core are implemented. Durable private store, concurrency, tombstones, delete/recovery and UI integration remain."
       ],
       "stateful": true,
       "platformSensitive": true,
@@ -322,7 +342,7 @@
     },
     {
       "id": "ECO-13",
-      "status": "MISSING",
+      "status": "PARTIAL",
       "sourceHashes": [
         "30b974055e03a2d584da910fb4e8365c649d3ffd93301f7b5afed09ce12e5e2d",
         "57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",
@@ -335,10 +355,14 @@
         "d9cfc54a6c8d6b2b93e21213b69cbed25272793ae110e31a54b663008b1ddb6c",
         "eb0f2993d9271f55cb42eca343e6fbb601a733fb90bd40daeebc92ee60ae1ba9"
       ],
-      "implementation": [],
-      "tests": [],
+      "implementation": [
+        "src/runtime/usage.ts"
+      ],
+      "tests": [
+        "tests/history-usage.test.ts"
+      ],
       "remaining": [
-        "Local usage and explicit one-shot opt-in consent/preview/disable/delete telemetry are absent."
+        "Local usage counters and fail-closed explicit consent plus preview gate are implemented. Durable settings, disable/delete UI and any real telemetry transport proof remain; no transport is authorized by this core."
       ],
       "stateful": true,
       "platformSensitive": true,
@@ -363,14 +387,16 @@
       ],
       "implementation": [
         "src/session/pi-resume.ts",
-        "src/session/checkpoint.ts"
+        "src/session/checkpoint.ts",
+        "src/runtime/presentation.ts"
       ],
       "tests": [
         "tests/pi-session-recovery-e2e.test.ts",
-        "tests/session-recovery.test.ts"
+        "tests/session-recovery.test.ts",
+        "tests/presentation.test.ts"
       ],
       "remaining": [
-        "Full startup/banner/pretty/quiet/terminal presentation and host lifecycle evidence are absent."
+        "Presentation policy now covers theme selection, color/no-color, banner, pretty/quiet, non-TTY and narrow terminals. Pi startup/UI command integration, keyboard/action inventory and cross-platform host lifecycle evidence remain."
       ],
       "stateful": true,
       "platformSensitive": true,
