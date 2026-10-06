@@ -10,6 +10,16 @@ Implement local-first persistent memory parity for ASEN after the Skill parity c
 - Memory planning and frozen provenance may proceed now; runtime implementation starts only after the Skill chain is complete and verified.
 - Memory work is a separate feature branch chain based on the final Skill-parity slice.
 
+## Reconciliation with completed memory-v3 work — 2026-10-06
+
+This tracker predates the completed memory-v3 implementation. It must not be used to rebuild or replace that work. The canonical implementation and evidence record is `odd/tasks/memory-v3-parity.md`.
+
+R01-R09 already cover the admitted local core: versioned SQLite migrations; project/session identity; observation lifecycle and privacy; bounded project-scoped retrieval/context; typed relationships and review; curated capture; close/compaction summaries and write recovery; doctor/backup/repair; validated export/import; and configured-platform verification. The recorded final evidence also includes a real Pi/model restart journey recovering the synthetic marker `COBALT-731`.
+
+MEM-01 through MEM-09 below are therefore an audit map, not a new implementation queue. Preserve the existing memory architecture, schema, identifiers and behavior. Map each MEM item to existing R01-R09 evidence before changing runtime code, and modify runtime behavior only for a concrete reproduced gap. Cloud remains outside the admitted local-core architecture. Earlier unavailable Pi Free evidence must not be relabelled as PASS.
+
+The user explicitly authorized this reconciliation to continue while GSP-06 remains formally open. This sequencing exception does not close GSP-06 and does not transfer evidence between tracks.
+
 ## Product decisions
 
 - Local SQLite is authoritative; cloud is never required for local operation.
@@ -27,10 +37,7 @@ Implement local-first persistent memory parity for ASEN after the Skill parity c
 
 ## Current ASEN baseline
 
-- `src/memory/sqlite-store.ts`: SQLite WAL, project/session columns, basic ID upsert, FTS triggers, restart repair, project-filtered content search.
-- `src/memory/context.ts`: basic remember/search wrapper, not a full context API.
-- Tests cover restart persistence, basic project search isolation, ownership mismatch by ID, and FTS update/rebuild.
-- CAP-MEM-001 and CAP-MEM-002 remain `specified`.
+The original basic-SQLite baseline in this tracker is superseded by the completed memory-v3 work. Current code includes schema version 8, persistent project/session handling, observation lifecycle, FTS retrieval/context, relationships, summaries/recovery, doctor/repair, and validated export/import. Exact closure and test evidence remains in `odd/tasks/memory-v3-parity.md`.
 
 ## Tasks
 
@@ -99,5 +106,6 @@ Implement local-first persistent memory parity for ASEN after the Skill parity c
 
 ## Audit evidence
 
-- Frozen upstream analysis identified SQLite/FTS as local authority with sessions, observations, prompts, relationships, topic upserts, dedupe, scopes, lifecycle review, project detection, compaction hooks, doctor, and multiple thin interfaces.
-- ASEN currently implements only the basic SQLite/FTS persistence subset; project detection, persistent sessions, full context, relations, compaction integration, operational repair, and public interfaces remain partial or missing.
+- Frozen upstream analysis identified SQLite/FTS as local authority with sessions, observations, prompts, relationships, topic upserts, dedupe, scopes, lifecycle review, project detection, compaction hooks, doctor, and thin interfaces.
+- The previous statement that ASEN implemented only basic SQLite/FTS is obsolete. The completed memory-v3 tracker records R01-R09 implementation and verification.
+- Remaining work in this tracker is evidence reconciliation unless a concrete runtime gap is reproduced.
