@@ -218,12 +218,21 @@ test("D4 rechaza clones y registros firmados con deriva semántica",async(t:Test
 test("D5 exige intake genuino para autorización y Dispatcher; recuperación conserva el gate",async(t:TestContext)=>{
  const v=await fixture(t),store=new EvidenceStore();
  for(const kind of ["work-unit","scope","rollback"] as const)store.add(v.candidate,{id:kind,kind,status:"pass",summary:"acotada",createdAt:"ahora"});
- const context=issueSkillContext("d5-worker",v.repository,v.candidate,{phase:"apply",defect:true}),skills=selectSkills(context),decision=issueOddDecision({taskId:"d5-worker",repository:v.repository,paths:["src/a.ts"],writes:[{path:"src/a.ts",changeKind:"behavior"}]}),plan=buildOrchestrationPlan({taskId:"d5-worker",repository:v.repository,prompt:"corregir",candidate:v.candidate},decision),applicability=decideLifecycleApplicability(plan.decision,{taskIdentity:"d5-worker",repositoryIdentity:v.repository,candidate:{id:v.candidate.id,repository:v.candidate.repository,revision:v.candidate.revision},explicitMode:"unspecified",affectedSubsystems:["defect"],expectedPaths:["src/a.ts"],requiredArtifacts:[]}),writerAdmission=issueOrganicWriterAdmission(applicability,["src/"]),request={id:"d5-worker",role:"worker" as const,repository:v.repository,candidate:v.candidate,skillContext:context,skillPaths:skills.map(s=>s.path),writeSurfaces:["src/"],writerAdmission,prompt:"corregir"};
+ const context=issueSkillContext("d5-worker",v.repository,v.candidate,{phase:"apply",defect:true}),skills=selectSkills(context);
+ const admissionFor=()=>{
+  const decision=issueOddDecision({taskId:"d5-worker",repository:v.repository,intent:"defect",paths:["src/a.ts"],writes:[{path:"src/a.ts",changeKind:"behavior"}]});
+  const plan=buildOrchestrationPlan({taskId:"d5-worker",repository:v.repository,prompt:"corregir",candidate:v.candidate},decision);
+  const applicability=decideLifecycleApplicability(plan.decision,{taskIdentity:"d5-worker",repositoryIdentity:v.repository,candidate:{id:v.candidate.id,repository:v.candidate.repository,revision:v.candidate.revision},explicitMode:"unspecified",affectedSubsystems:["defect"],expectedPaths:["src/a.ts"],requiredArtifacts:[]});
+  return issueOrganicWriterAdmission(applicability,["src/"]);
+ };
+ const request={id:"d5-worker",role:"worker" as const,repository:v.repository,candidate:v.candidate,skillContext:context,skillPaths:skills.map(s=>s.path),writeSurfaces:["src/"],writerAdmission:admissionFor(),prompt:"corregir"};
  let llamadas=0;const dispatcher=new Dispatcher({run:async r=>{llamadas++;return{id:r.id,ok:true,output:"observado"};}},store);
  assert.throws(()=>authorizeImplementation(v.candidate,context,store),/defect-intake/);
  await assert.rejects(()=>dispatcher.dispatch(request),/defect-intake/);assert.equal(llamadas,0);
  const binding=bindRddDefectEvidence(recordRddReproduction(v.snapshot,v.input,v.first,v.second),d3Input(v));store.addDefectIntake(v.candidate,binding);
  assert.equal(authorizeImplementation(v.candidate,context,store).target,"IMPLEMENTING");
+ await assert.rejects(()=>dispatcher.dispatch(request),/unused exact writer admission/);assert.equal(llamadas,0);
+ request.writerAdmission=admissionFor();
  assert.equal((await dispatcher.dispatch(request)).ok,true);assert.equal(llamadas,1);
  await assert.rejects(()=>dispatcher.dispatch(request),/unused exact writer admission/);assert.equal(llamadas,1);
  const path=join(v.repository,"d5-evidence.json"),key=randomBytes(32);await saveEvidence(path,v.candidate,store,key);const recovered=await loadEvidence(path,v.candidate,key);
