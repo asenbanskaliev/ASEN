@@ -5,12 +5,14 @@
   "license": "MIT",
   "type": "module",
   "files": [
+    "dist/",
     "extensions/",
     "src/",
     "skills/"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
     "test": "tsx --test tests/**/*.test.ts",
     "check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills && npm run audit:skill-parity && npm run audit:memory-parity && npm run audit:ecosystem && npm run audit:upstream-boundary",
     "verify:pack": "node scripts/verify-pack.mjs",
@@ -19,7 +21,8 @@
     "audit:skill-parity": "node scripts/validate-skill-contract-parity.mjs",
     "audit:memory-parity": "node scripts/audit-memory-parity.mjs",
     "audit:upstream-boundary": "node scripts/audit-upstream-boundary.mjs",
-    "audit:ecosystem": "node scripts/ecosystem-baseline.mjs && node scripts/validate-ecosystem-claims.mjs"
+    "audit:ecosystem": "node scripts/ecosystem-baseline.mjs && node scripts/validate-ecosystem-claims.mjs",
+    "prepack": "npm run build"
   },
   "pi": {
     "extensions": [
@@ -51,6 +54,6 @@
     "./skills/*": "./skills/*/SKILL.md"
   },
   "bin": {
-    "asen": "./src/cli.ts"
+    "asen": "./dist/cli.js"
   }
 }
