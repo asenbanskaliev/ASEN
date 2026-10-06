@@ -7,15 +7,17 @@ export function inspectMedia(bytes,filename) {
     if(bytes.length<33||!bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))||bytes.readUInt32BE(8)!==13||bytes.toString("ascii",12,16)!=="IHDR")throw new Error("Malformed PNG header");
     const width=bytes.readUInt32BE(16),height=bytes.readUInt32BE(20),color=bytes[25];
     if(!width||!height||![0,2,3,4,6].includes(color))throw new Error("Invalid PNG dimensions/color");
-    let offset=8,alpha=color===4||color===6,ended=false;
+    let offset=8,alpha=color===4||color===6,ended=false,imageData=false;
     while(offset<bytes.length){
       if(offset+12>bytes.length)throw new Error("Truncated PNG chunk");
       const size=bytes.readUInt32BE(offset),type=bytes.toString("ascii",offset+4,offset+8);
       if(size>bytes.length-offset-12)throw new Error("Truncated PNG data");
+      if(type==="IHDR"&&offset!==8)throw new Error("Duplicate PNG header");
+      if(type==="IDAT"&&size>0)imageData=true;
       if(type==="tRNS")alpha=true;
       offset+=size+12;if(type==="IEND"){if(size!==0)throw new Error("Invalid PNG ending");ended=true;break;}
     }
-    if(!ended||offset!==bytes.length)throw new Error("Missing or trailing PNG ending");
+    if(!ended||offset!==bytes.length||!imageData)throw new Error("Missing PNG image data or invalid ending");
     return {type:"png",width,height,frames:1,alpha};
   }
   if(filename.endsWith(".gif")){
@@ -45,8 +47,23 @@ export function inspectMedia(bytes,filename) {
   if(filename.endsWith(".svg")){
     const text=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
     if(/<!DOCTYPE|<!ENTITY/i.test(text))throw new Error("External SVG entities are forbidden");
-    const root=/<svg\b([^>]*)>/i.exec(text);
-    if(!root||!/<\/svg\s*>/i.test(text))throw new Error("Malformed SVG document");
+    // Structural metadata inspection, not a raster decoder or full SVG semantic validator.
+    const tokens=/<!--[\s\S]*?-->|<\?[\s\S]*?\?>|<!\[CDATA\[[\s\S]*?\]\]>|<\/?[A-Za-z_][\w:.-]*(?:[^<>"']|"[^"]*"|'[^']*')*>|[^<]+/gy;
+    const stack=[];let token,offset=0,root=null,closed=false;
+    while((token=tokens.exec(text))){
+      if(token.index!==offset)throw new Error("Malformed SVG document");offset=tokens.lastIndex;
+      const value=token[0];
+      if(value.startsWith("<!--")||value.startsWith("<?"))continue;
+      if(value.startsWith("<![CDATA[")){if(!stack.length)throw new Error("SVG data outside root");continue;}
+      if(!value.startsWith("<")){if(!stack.length&&value.trim())throw new Error("SVG text outside root");continue;}
+      const closing=value.startsWith("</"),name=/^<\/?([\w:.-]+)/.exec(value)[1];
+      if(closing){if(!/^<\/[\w:.-]+\s*>$/.test(value)||stack.pop()!==name)throw new Error("Unbalanced SVG tags");if(!stack.length)closed=true;}
+      else {
+        if(!stack.length){if(root||closed||name!=="svg")throw new Error("Invalid SVG root");root=[value,value.slice(4,-1)];}
+        if(!/\/\s*>$/.test(value))stack.push(name);else if(!stack.length)closed=true;
+      }
+    }
+    if(offset!==text.length||!root||!closed||stack.length)throw new Error("Malformed SVG document");
     const attr=name=>new RegExp(`\\b${name}\\s*=\\s*["']([^"']*)["']`,"i").exec(root[1])?.[1]??null;
     const viewBox=attr("viewBox");
     if(viewBox!==null&&(!/^\s*[-+\d.e]+(?:[\s,]+[-+\d.e]+){3}\s*$/i.test(viewBox)||viewBox.trim().split(/[\s,]+/).some(value=>!Number.isFinite(Number(value)))))throw new Error("Invalid SVG viewBox");

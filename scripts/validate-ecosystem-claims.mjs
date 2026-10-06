@@ -6,12 +6,18 @@ import path from "node:path";
 import {validateBaseline} from "./ecosystem-baseline.mjs";
 
 const units=Array.from({length:16},(_,index)=>`ECO-${String(index+1).padStart(2,"0")}`);
+// Minimum obligations derived from the canonical ECO contract, independent of claim flags.
+// Flags may add obligations but cannot remove these fixed unit boundaries.
+const minimums=Object.freeze(Object.fromEntries(units.map((id,index)=>[id,Object.freeze({
+  stateful:![2,3,4,15].includes(index+1),platformSensitive:true,
+  piBoundary:index!==0,modelBoundary:[5,6,11,16].includes(index+1),
+})])));
 const hash=value=>typeof value==="string"&&/^[a-f0-9]{64}$/.test(value);
 const candidate=value=>typeof value==="string"&&/^[a-f0-9]{40}$/.test(value);
 const safePath=value=>typeof value==="string"&&/^(?:src|extensions|tests|scripts|docs|odd|registry)\//.test(value)&&
   !/[\\\u0000-\u001f]/.test(value)&&value.split("/").every(part=>part&&part!=="."&&part!=="..");
 
-/** Static validation checks evidence contracts; it does not mint authority or execute evidence. */
+/** Checks receipt/content consistency, not authenticity of execution; independent CI/audit must verify execution. */
 export function validateEcosystemClaims({baseline,registry,existingPaths,observedHead,invalidatedPaths=[],recordDigests=new Map(),records=new Map()}) {
   const issues=validateBaseline(baseline);
   if(issues.length)return issues;
@@ -44,8 +50,9 @@ export function validateEcosystemClaims({baseline,registry,existingPaths,observe
     if(row.remaining?.length)issues.push(`${label}: FULL cannot retain gaps`);
     if(!row.implementation?.length||!row.tests?.length)issues.push(`${label}: FULL needs implemented behavior and tests`);
     if(Array.isArray(row.sourceHashes)&&row.sourceHashes.some(id=>invalidatedPaths.includes(sources.get(id))))issues.push(`${label}: source drift invalidates FULL`);
-    const requirements=["positive","negative","failure","recovery",...(row.stateful?["restart","cross-session"]:[]),
-      ...(row.platformSensitive?["linux","windows","macos"]:[]),...(row.piBoundary?["pi-host"]:[]),...(row.modelBoundary?["pi-model"]:[])];
+    const boundaries=Object.fromEntries(Object.keys(minimums[row.id]).map(key=>[key,minimums[row.id][key]||row[key]]));
+    const requirements=["positive","negative","failure","recovery",...(boundaries.stateful?["restart","cross-session"]:[]),
+      ...(boundaries.platformSensitive?["linux","windows","macos"]:[]),...(boundaries.piBoundary?["pi-host"]:[]),...(boundaries.modelBoundary?["pi-model"]:[])];
     if(!Array.isArray(row.evidence)){issues.push(`${label}: FULL lacks executed evidence`);continue;}
     const evidenceIds=new Set();
     for(const proof of row.evidence){

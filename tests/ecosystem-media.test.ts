@@ -5,6 +5,15 @@ import {readFileSync} from "node:fs";
 import {inspectMedia,validateMediaManifest,verifyMediaBytes} from "../scripts/ecosystem-media.mjs";
 import {createHash} from "node:crypto";
 
+test("metadata inspection rejects PNG without image data and SVG hidden in comments",()=>{
+  const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jQdQAAAAASUVORK5CYII=","base64");
+  const chunks=[png.subarray(0,8)];
+  for(let offset=8;offset<png.length;){const end=offset+png.readUInt32BE(offset)+12;if(png.toString("ascii",offset+4,offset+8)!=="IDAT")chunks.push(png.subarray(offset,end));offset=end;}
+  assert.throws(()=>inspectMedia(Buffer.concat(chunks),"empty.png"));
+  assert.throws(()=>inspectMedia(Buffer.from('<!-- <svg width="99" height="99"></svg> -->'),"comment.svg"));
+  assert.throws(()=>inspectMedia(Buffer.from('<svg><g></svg>'),"unbalanced.svg"));
+});
+
 test("synthetic PNG/GIF/SVG metadata is bounded and malformed images fail closed",()=>{
   const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jQdQAAAAASUVORK5CYII=","base64");
   assert.deepEqual(inspectMedia(png,"one.png"),{type:"png",width:1,height:1,frames:1,alpha:true});

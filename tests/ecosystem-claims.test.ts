@@ -4,6 +4,17 @@ import assert from "node:assert/strict";
 import {loadEcosystemClaims,validateEcosystemClaims} from "../scripts/validate-ecosystem-claims.mjs";
 
 const load=()=>loadEcosystemClaims();
+test("FULL cannot lower fixed ECO obligations through editable claim flags",()=>{
+  const input=load(),row=input.registry.rows.find((r:any)=>r.id==="ECO-05");
+  row.status="FULL";row.remaining=[];row.candidate=input.observedHead;
+  for(const flag of ["stateful","platformSensitive","piBoundary","modelBoundary"])row[flag]=false;
+  row.evidence=["positive","negative","failure","recovery"].map(kind=>{
+    const proof={id:kind,kind,result:"PASS",class:"DETERMINISTIC_EXECUTION",candidate:row.candidate,sourceCommit:input.baseline.commit,command:"tests",observation:"declared",recordPath:`registry/evidence/ecosystem/${kind}.json`,recordSha256:"a".repeat(64)};
+    input.existingPaths.add(proof.recordPath);input.recordDigests.set(proof.recordPath,proof.recordSha256);input.records.set(proof.recordPath,proof);return proof;
+  });
+  const issues=validateEcosystemClaims(input).join("\n");
+  for(const kind of ["restart","cross-session","linux","windows","macos","pi-host","pi-model"])assert.match(issues,new RegExp("missing "+kind));
+});
 test("every current ECO claim is honest and no row silently claims FULL",()=>{
   const input=load();assert.deepEqual(validateEcosystemClaims(input),[]);
   assert.equal(input.registry.rows.length,16);

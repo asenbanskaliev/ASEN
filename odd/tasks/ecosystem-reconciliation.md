@@ -58,6 +58,14 @@ Starting exact-head GitHub observations: CI `37482424354`, Phase 0 `37482424349`
 
 ## Dependency plan and rollback
 
+### Independent adversarial follow-up
+
+Audit of checkpoint `38361d53a958f673b126ec39b38619595b2a829a` passed 15 focused checks and reproduced two additional validator defects: PNG without image data/comment-only SVG acceptance, and editable claim flags lowering mandatory FULL evidence. Two new regressions observed semantic RED. Repairs require PNG image data, balanced actual SVG root structure and fixed per-unit minimum boundaries independent of claim flags. Eight media/claim tests then passed; exact frozen-object/media verification passed. Metadata inspection is bounded structural inspection, not a complete image decoder. Receipt hashes/content binding establish consistency, not execution authenticity; independent CI/audit must establish actual execution.
+
+Full local suite on that checkpoint: 865 tests, 864 PASS, one infrastructure failure in the Pi process cancellation observation (`ps`: `fatal library error, lookup self`). This is not a product RED and is not recorded as PASS. No provider or remote CI was invoked for these checkpoints. Ecosystem remains 10 PARTIAL / 6 MISSING / 0 FULL; these missing implementations are not covered by the accepted GSP-06 provider exception.
+
+After repairs, typecheck, all six deterministic registry/boundary audits and installed package verification (102 files, 28 public exports) passed. Isolated Pi process suite repeated the same infrastructure failure (37 PASS / 1 failure). `npm run check` stopped after typecheck because the `tsx` CLI could not create its IPC pipe (`listen EPERM`); the full suite above used `node --import tsx --test` without altering tests. No complete local/remote CI PASS is claimed for this checkpoint.
+
 Checkpoint A records this comparison. Checkpoint B freezes baseline/closure and adds deterministic validators/drift. Checkpoint C fixes demonstrated package/claim defects, prevents automatic excluded-provider invocation, and reconciles descriptions. Essential runtime ECO-03–08 follows the frozen contract, then ECO-09–14, behavior-backed documentation and final verification. Independent review must try to refute claims; no green suite can substitute for absent implementation.
 
 Commit/push each coherent locally checked checkpoint. Use skipped CI for interim checkpoints; reserve one consolidated exact-candidate deterministic CI after 4R. Never merge, publish a release, modify main or auto-adopt upstream. New baseline records are research metadata, not runtime dependencies; rollback removes their validator/registration without touching memory data. Package rollback is a single reviewed target/verification change.
