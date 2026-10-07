@@ -1,24 +1,26 @@
 import type {Candidate,TaskState} from "../core/types.js";
 import type {IssuedSkillContext} from "../skills/context.js";
-import type {PublicAgentRecord} from "../runtime/agent-lifecycle.js";
+import {createAgentRecord,transitionAgent,type PublicAgentRecord} from "../runtime/agent-lifecycle.js";
 import {open,readFile,realpath,rename,unlink} from "node:fs/promises";
 import {dirname,basename,join} from "node:path";
 import {randomUUID} from "node:crypto";
+const MAX_CHECKPOINT_AGENTS=256;
+function validateLifecycle(records:readonly PublicAgentRecord[]|undefined,sessionId:string,repository:string|undefined):PublicAgentRecord[]|undefined{if(!records)return undefined;if(records.length>MAX_CHECKPOINT_AGENTS)throw new Error("Checkpoint agent lifecycle exceeds limit");const ids=new Set<string>();return records.map(record=>{if(ids.has(record.id))throw new Error("Checkpoint agent lifecycle contains duplicate id");ids.add(record.id);if(record.sessionId!==sessionId||record.projectId!==repository)throw new Error("Checkpoint agent lifecycle identity mismatch");const queued=createAgentRecord({id:record.id,role:record.role,owner:record.owner,sessionId:record.sessionId,projectId:record.projectId,createdAt:record.createdAt});if(record.state==="queued"){if(record.updatedAt!==record.createdAt)throw new Error("Invalid queued lifecycle timestamp");return queued;}const running=record.state==="running"?transitionAgent(queued,"running",record.updatedAt,record.summary):undefined;if(running)return running;const intermediate=transitionAgent(queued,"running",record.createdAt);return transitionAgent(intermediate,record.state,record.updatedAt,record.summary);});}
 export interface SessionCheckpoint{version:1;projectId:string;sessionId:string;task:TaskState;candidate?:Candidate;skillContext?:IssuedSkillContext;skillPaths?:string[];piSessionFile?:string;agentLifecycle?:PublicAgentRecord[];savedAt:string;}
 export function createCheckpoint(projectId:string,sessionId:string,task:TaskState,candidate?:Candidate,piSessionFile?:string,skillContext?:IssuedSkillContext,skillPaths?:string[],agentLifecycle?:readonly PublicAgentRecord[]):SessionCheckpoint{
  if(task.candidateId&&(!candidate||candidate.id!==task.candidateId))throw new Error("Checkpoint candidate mismatch");
  if(skillContext&&(!candidate||skillContext.candidateId!==candidate.id||skillContext.candidateRevision!==candidate.revision||skillContext.repository!==candidate.repository))throw new Error("Checkpoint skill context mismatch");
  if(skillPaths?.some(path=>!/^skills\/asen-[a-z-]+\/SKILL\.md$/.test(path)))throw new Error("Checkpoint invalid skill path");
- if(agentLifecycle?.some(record=>record.projectId!==candidate?.repository||record.sessionId!==sessionId))throw new Error("Checkpoint agent lifecycle identity mismatch");
- return {version:1,projectId,sessionId,task:structuredClone(task),...(candidate?{candidate:structuredClone(candidate)}:{}),...(skillContext?{skillContext}:{}),...(skillPaths?{skillPaths:[...skillPaths]}:{}),...(piSessionFile?{piSessionFile}:{}),...(agentLifecycle?{agentLifecycle:structuredClone([...agentLifecycle])}:{}),savedAt:new Date().toISOString()};
+ const checkedLifecycle=validateLifecycle(agentLifecycle,sessionId,candidate?.repository);
+ return {version:1,projectId,sessionId,task:structuredClone(task),...(candidate?{candidate:structuredClone(candidate)}:{}),...(skillContext?{skillContext}:{}),...(skillPaths?{skillPaths:[...skillPaths]}:{}),...(piSessionFile?{piSessionFile}:{}),...(checkedLifecycle?{agentLifecycle:structuredClone(checkedLifecycle)}:{}),savedAt:new Date().toISOString()};
 }
 export function restoreCheckpoint(checkpoint:SessionCheckpoint,projectId:string):{task:TaskState;candidate?:Candidate;skillContext?:IssuedSkillContext;skillPaths?:string[];agentLifecycle?:PublicAgentRecord[]}{
  if(checkpoint.version!==1)throw new Error("Unsupported checkpoint version");
  if(checkpoint.projectId!==projectId)throw new Error("Checkpoint project mismatch");
  if(checkpoint.task.candidateId&&checkpoint.candidate?.id!==checkpoint.task.candidateId)throw new Error("Checkpoint candidate mismatch");
  if(checkpoint.skillContext&&(!checkpoint.candidate||checkpoint.skillContext.candidateId!==checkpoint.candidate.id||checkpoint.skillContext.candidateRevision!==checkpoint.candidate.revision||checkpoint.skillContext.repository!==checkpoint.candidate.repository))throw new Error("Checkpoint skill context mismatch");
- if(checkpoint.agentLifecycle?.some(record=>record.projectId!==checkpoint.candidate?.repository||record.sessionId!==checkpoint.sessionId))throw new Error("Checkpoint agent lifecycle identity mismatch");
- return {task:structuredClone(checkpoint.task),...(checkpoint.candidate?{candidate:structuredClone(checkpoint.candidate)}:{}),...(checkpoint.skillContext?{skillContext:checkpoint.skillContext}:{}),...(checkpoint.skillPaths?{skillPaths:[...checkpoint.skillPaths]}:{}),...(checkpoint.agentLifecycle?{agentLifecycle:structuredClone(checkpoint.agentLifecycle)}:{})};
+ const checkedLifecycle=validateLifecycle(checkpoint.agentLifecycle,checkpoint.sessionId,checkpoint.candidate?.repository);
+ return {task:structuredClone(checkpoint.task),...(checkpoint.candidate?{candidate:structuredClone(checkpoint.candidate)}:{}),...(checkpoint.skillContext?{skillContext:checkpoint.skillContext}:{}),...(checkpoint.skillPaths?{skillPaths:[...checkpoint.skillPaths]}:{}),...(checkedLifecycle?{agentLifecycle:structuredClone(checkedLifecycle)}:{})};
 }
 export function assertResumeRevision(candidate:Candidate,currentRevision:string):void{
  if(candidate.revision!==currentRevision)throw new Error("Repository revision changed since checkpoint");
