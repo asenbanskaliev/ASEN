@@ -86,9 +86,10 @@ export async function appendOddTaskEvent(contract:OddExecutionContract,context:M
  const value=exact(raw,legacy?["version","task","repository","candidateId","revision","documentPath","document","todos","nextStep"]:["version","task","repository","candidateId","revision","documentPath","document","todos","nextStep","taskEvents"]);
  if((value.version!==1&&value.version!==2)||value.task!==facts.taskIdentity||value.repository!==facts.repositoryIdentity||value.candidateId!==candidate.id||value.revision!==candidate.revision)throw new Error("ODD tracking exact candidate mismatch");
  const document=await documentBytes(facts.repositoryIdentity,text(value.documentPath));if(document!==value.document)throw new Error("ODD tracking task document changed; revalidate before resume");
- const state=progress({todos:value.todos,nextStep:value.nextStep,...("taskEvents" in value?{taskEvents:value.taskEvents}:{})},facts.taskIdentity,facts.repositoryIdentity),current=replayTask(state.taskEvents??[]);
- if(!current&&event.sessionId!==context.sessionId)throw new Error("ODD task event session mismatch");
- const next=applyTaskEvent(current,event);
+ const state=progress({todos:value.todos,nextStep:value.nextStep,...("taskEvents" in value?{taskEvents:value.taskEvents}:{})},facts.taskIdentity,facts.repositoryIdentity),current=replayTask(state.taskEvents??[]),next=applyTaskEvent(current,event);
+ if(next.taskId!==facts.taskIdentity)throw new Error("ODD task event task identity mismatch");
+ if(next.projectId!==facts.repositoryIdentity)throw new Error("ODD task event project identity mismatch");
+ if(!current&&next.sessionId!==context.sessionId)throw new Error("ODD task event session mismatch");
  const updated:TrackingRecord={version:2,task:facts.taskIdentity,repository:facts.repositoryIdentity,candidateId:candidate.id,revision:candidate.revision,documentPath:value.documentPath as string,document,todos:state.todos,nextStep:state.nextStep,taskEvents:Object.freeze([...(state.taskEvents??[]),next])};
  context.remember({id:item.id,kind:item.kind,topic:item.topic,content:JSON.stringify(updated),createdAt:item.createdAt});
  return Object.freeze(updated);
