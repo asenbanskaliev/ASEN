@@ -1,40 +1,95 @@
-YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíß^ûN‹Z–‹­¦ëeŠw¬Õ¥µÁ½ÉÐíI•¥ÍÑÉå1¥™•å±”±É•¥ÍÑÉåMÑ…ÉÑÕÁ¥Í…‰±•±ÑåÁ”I•¥ÍÑÉå1¥™•å±•=ÁÑ¥½¹Íô™É½´€ˆ¸¸½ÍÉŒ½Í­¥±±Ì½É•¥ÍÑÉäµ±¥™•å±”¹©Ìˆì)¥µÁ½ÉÐíÉ•…±Á…Ñ¡ô™É½´€‰¹½‘”é™Ì½ÁÉ½µ¥Í•Ìˆì)¥µÁ½ÉÐí¡½µ•‘¥Éô™É½´€‰¹½‘”é½Ìˆì)¥µÁ½ÉÐÁ…Ñ ™É½´€‰¹½‘”éÁ…Ñ ˆì)¥µÁ½ÉÐí™¥±•UI1Q½A…Ñ¡ô™É½´€‰¹½‘”éÕÉ°ˆì)¥µÁ½ÉÐíÉ•™É•Í¡M­¥±±I•¥ÍÑÉä±ÑåÁ”M­¥±±I•¥ÍÑÉå5¥ÉÉ½Éô™É½´€ˆ¸¸½ÍÉŒ½Í­¥±±Ì½•¹•É…Ñ•µÉ•¥ÍÑÉä¹©Ìˆì)¥µÁ½ÉÐÑåÁ”íM­¥±±M½ÕÉ•ô™É½´€ˆ¸¸½ÍÉŒ½Í­¥±±Ì½‘¥Í½Ù•Éä¹©Ìˆì)¥µÁ½ÉÐí±…¥µ]½É­™±½ÝM•±•Ñ¥½¸±É•…‘]½É­™±½ÝM•±•Ñ¥½¸±É•¥ÍÑ•É]½É­™±½ÝM•±•Ñ¥½¹½µµ…¹‘ô™É½´€ˆ¸¸½ÍÉŒ½±¥™•å±”½Ý½É­™±½ÜµÍ•±•Ñ¥½¸¹©Ìˆì)¥µÁ½ÉÐí‘•¥‘•1¥™•å±•ÁÁ±¥…‰¥±¥Ñä±‘•¥‘•1¥™•å±•ÁÁ±¥…‰¥±¥Ñå]¥Ñ¡M•±•Ñ¥½¸±ÑåÁ”1¥™•å±•ÁÁ±¥…‰¥±¥Ñä±ÑåÁ”1¥™•å±•ÁÁ±¥…‰¥±¥Ñå%¹ÁÕÑô™É½´€ˆ¸¸½ÍÉŒ½±¥™•å±”½…ÁÁ±¥…‰¥±¥Ñä¹©Ìˆì)¥µÁ½ÉÐÑåÁ”í=‘‘I½ÕÑ••¥Í¥½¹ô™É½´€ˆ¸¸½ÍÉŒ½™±½Ü½½‘µÉ½ÕÑ¥¹œ¹©Ìˆì)¥µÁ½ÉÐí±…¥µ•‘=É¡•ÍÑÉ…Ñ¥½¹I½ÕÑ•½¹Ñ•áÑô™É½´€ˆ¸¸½ÍÉŒ½½É¡•ÍÑÉ…Ñ¥½¸½½É¡•ÍÑÉ…Ñ½È¹©Ìˆì)¥µÁ½ÉÐíÉ•¥ÍÑ•É=É‘¥¹…ÉåI•Ù¥•Ý½µµ…¹±ÑåÁ”=É‘¥¹…ÉåI•Ù¥•Ý½µµ…¹‘½¹ÑÉ½±±•Éô™É½´€ˆ¸¸½ÍÉŒ½É•Ù¥•Ü½½É‘¥¹…ÉäµÉ•Ù¥•Üµ½µµ…¹¹©Ìˆì)¥µÁ½ÉÐí‘•É¥Ù•=‘‘á•ÕÑ¥½¹½¹ÑÉ…Ð±ÑåÁ”=‘‘á•ÕÑ¥½¹½¹ÑÉ…Ñô™É½´€ˆ¸¸½ÍÉŒ½™±½Ü½½‘µ•á•ÕÑ¥½¸µ½¹ÑÉ…Ð¹©Ìˆì)¥µÁ½ÉÐíÑÉ…­=‘‘Q…Í¬±É•ÍÕµ•=‘‘Q…Í¬±…ÁÁ•¹‘=‘‘Q…Í­Ù•¹Ð±ÑåÁ”=‘‘AÉ½É•ÍÍô™É½´€ˆ¸¸½ÍÉŒ½™±½Ü½½‘µÑ…Í¬µÑÉ…­¥¹œ¹©Ìˆì)¥µÁ½ÉÐÑåÁ”í5•µ½Éå½¹Ñ•áÑô™É½´€ˆ¸¸½ÍÉŒ½µ•µ½Éä½½¹Ñ•áÐ¹©Ìˆí¥µÁ½ÉÐÑåÁ”í5•µ½ÉåMÑ½É•ô™É½´€ˆ¸¸½ÍÉŒ½µ•µ½Éä½ÑåÁ•Ì¹©Ìˆì)¥µÁ½ÉÐÑåÁ”íQ…Í­Ù•¹Ñô™É½´€ˆ¸¸½ÍÉŒ½ÉÕ¹Ñ¥µ”½Ñ…Í¬µÉ•Á±…ä¹©Ìˆì)¥µÁ½ÉÐíÉ•¥ÍÑ•É%¹Ñ•É…Ñ¥½¹Q½½±Íô™É½´€ˆ¸¸½ÍÉŒ½¥¹Ñ•É…Ñ¥½¸½Á¤µÑ½½±Ì¹©Ìˆì)¥µÁ½ÉÐÑåÁ”íQ½½±•™¥¹¥Ñ¥½¹ô™É½´€‰•…É•¹‘¥°µÝ½É­Ì½Á¤µ½‘¥¹œµ…•¹Ðˆì)¥µÁ½ÉÐíÉ•…Ñ•½‘•%¹Ñ•±±¥•¹•Q½½°±ÑåÁ”½‘•%¹Ñ•±±¥•¹•=ÁÑ¥½¹Íô™É½´€ˆ¸¸½ÍÉŒ½¥¹Ñ•É…Ñ¥½¸½½‘”µ¥¹Ñ•±±¥•¹”¹©Ìˆì)¥µÁ½ÉÐíÍÑ…ÑÕÍ1¥¹•Ì±ÑåÁ”Í•¹MÑ…ÑÕÍ%¹ÁÕÑô™É½´€ˆ¸¸½ÍÉŒ½ÉÕ¹Ñ¥µ”½ÍÑ…ÑÕÌ¹©Ìˆì)¥µÁ½ÉÐí‘½Ñ½É¡•­Ì±‘½Ñ½Éá¥Ñ½‘•ô™É½´€ˆ¸¸½ÍÉŒ½ÉÕ¹Ñ¥µ”½‘½Ñ½È¹©Ìˆì)¥µÁ½ÉÐíM9}=559}Q1=ô™É½´€ˆ¸¸½ÍÉŒ½ÉÕ¹Ñ¥µ”½½µµ…¹µ…Ñ…±½œ¹©Ìˆì)¥µÁ½ÉÐí…•¹ÑMÑ…ÑÕÍI½ÝÌ±ÑåÁ”AÕ‰±¥•¹ÑI•½É‘ô™É½´€ˆ¸¸½ÍÉŒ½ÉÕ¹Ñ¥µ”½…•¹Ðµ±¥™•å±”¹©Ìˆì)¥µÁ½ÉÐíÙ¥Í¥‰±•]½É­ÍÁ…•I½ÝÌ±ÑåÁ”]½É­ÍÁ…•¡…¹•ô™É½´€ˆ¸¸½ÍÉŒ½ÉÕ¹Ñ¥µ”½Ý½É­ÍÁ…”µ…ÑÑÉ¥‰ÕÑ¥½¸¹©Ìˆì)¥µÁ½ÉÐíÉ•…‘AÉ½™¥±•Í¥±•ô™É½´€ˆ¸¸½ÍÉŒ½ÉÕ¹Ñ¥µ”½ÁÉ½™¥±”µÍÑ½É”¹©Ìˆì()ÑåÁ”½µµ…¹‘½¹Ñ•áÐõíÝéÍÑÉ¥¹œíÕ¤éí¹½Ñ¥™ä¡µ•ÍÍ…”éÍÑÉ¥¹œ±±•Ù•°è‰¥¹™¼‰ð‰•ÉÉ½Èˆ¤éÙ½¥‘õôì)ÑåÁ”A¥1¥­”õí½¸üè¡•Ù•¹ÐéÍÑÉ¥¹œ±¡…¹‘±•Èè ¸¸¹…ÉÌé…¹åmt¤ôùÕ¹­¹½Ý¸¤ôùÙ½¥íÉ•¥ÍÑ•É±…œüè¡¹…µ”éÍÑÉ¥¹œ±½ÁÑ¥½¹Ìé…¹ä¤ôùÙ½¥í•Ñ±…œüè¡¹…µ”éÍÑÉ¥¹œ¤ôùÕ¹­¹½Ý¸íÉ•¥ÍÑ•É½µµ…¹üè¡¹…µ”éÍÑÉ¥¹œ±½µµ…¹éí‘•ÍÉ¥ÁÑ¥½¸éÍÑÉ¥¹œí¡…¹‘±•Èè ¸¸¹…ÉÌé…¹åmt¤ôùÕ¹­¹½Ý¹ô¤ôùÙ½¥íÉ•¥ÍÑ•ÉQ½½°üè¡Ñ½½°éQ½½±•™¥¹¥Ñ¥½¸ñ…¹äø¤ôùÙ½¥‘ôì)ÑåÁ”I•™É•Í õÑåÁ•½˜É•™É•Í¡M­¥±±I•¥ÍÑÉäì)•áÁ½ÉÐ¥¹Ñ•É™…”Í•¹áÑ•¹Í¥½¹•Á•¹‘•¹¥•Ìí¡½µ•¥Èüè ¤ôùÍÑÉ¥¹œíÁ…­…•I½½ÐüéÍÑÉ¥¹œíÉ•™É•Í üéI•™É•Í íµ¥ÉÉ½ÈüéM­¥±±I•¥ÍÑÉå5¥ÉÉ½Èí¥¹Ñ•É…Ñ¥½¹Q¥µ•½ÕÑ5Ìüé¹Õµ‰•Èí½‘•%¹Ñ•±±¥•¹”üé½‘•%¹Ñ•±±¥•¹•=ÁÑ¥½¹ÌíÉ•¥ÍÑÉå1¥™•å±”üéA¥¬ñI•¥ÍÑÉå1¥™•å±•=ÁÑ¥½¹Ì°‰Ý…Ñ ‰ð‰‘•‰½Õ¹•5ÌˆøíÍÑ…ÑÕÌüè ¤ôùÍ•¹MÑ…ÑÕÍ%¹ÁÕÐí‘½Ñ½Èüè ¤ôùA…É…µ•Ñ•ÉÌñÑåÁ•½˜‘½Ñ½É¡•­ÌùlÁtí…•¹ÑÌüè ¤ôùÉ•…‘½¹±äAÕ‰±¥•¹ÑI•½É‘mtí¡…¹•Ìüè ¤ôùÉ•…‘½¹±ä]½É­ÍÁ…•¡…¹•mtíÁÉ½™¥±•Í¥±”üéÍÑÉ¥¹ô)•áÁ½ÉÐ¥¹Ñ•É™…”Í•¹áÑ•¹Í¥½¹……‘”íÉ•Ù¥•Üé=É‘¥¹…ÉåI•Ù¥•Ý½µµ…¹‘½¹ÑÉ½±±•Èí‘•¥‘•1¥™•å±•ÁÁ±¥…‰¥±¥Ñä¡‘•¥Í¥½¸é=‘‘I½ÕÑ••¥Í¥½¸±¥¹ÁÕÐé1¥™•å±•ÁÁ±¥…‰¥±¥Ñå%¹ÁÕÐ¤é1¥™•å±•ÁÁ±¥…‰¥±¥Ñäí‘•É¥Ù•=‘‘á•ÕÑ¥½¹½¹ÑÉ…Ð¡‘•¥Í¥½¸é=‘‘I½ÕÑ••¥Í¥½¸¤é=‘‘á•ÕÑ¥½¹½¹ÑÉ…ÐíÑÉ…­=‘‘Q…Í¬¡½¹ÑÉ…Ðé=‘‘á•ÕÑ¥½¹½¹ÑÉ…Ð±½¹Ñ•áÐé5•µ½Éå½¹Ñ•áÐ±‘½Õµ•¹ÑA…Ñ éÍÑÉ¥¹œ±¥¹ÁÕÐé=‘‘AÉ½É•ÍÌ¤éI•ÑÕÉ¹QåÁ”ñÑåÁ•½˜ÑÉ…­=‘‘Q…Í¬øíÉ•ÍÕµ•=‘‘Q…Í¬¡½¹ÑÉ…Ðé=‘‘á•ÕÑ¥½¹½¹ÑÉ…Ð±ÍÑ½É”éA¥¬ñ5•µ½ÉåMÑ½É”°‰•Ðˆø¤éI•ÑÕÉ¹QåÁ”ñÑåÁ•½˜É•ÍÕµ•=‘‘Q…Í¬øí…ÁÁ•¹‘=‘‘Q…Í­Ù•¹Ð¡½¹ÑÉ…Ðé=‘‘á•ÕÑ¥½¹½¹ÑÉ…Ð±½¹Ñ•áÐé5•µ½Éå½¹Ñ•áÐ±ÍÑ½É”éA¥¬ñ5•µ½ÉåMÑ½É”°‰•Ðˆø±•Ù•¹ÐéQ…Í­Ù•¹Ð¤éI•ÑÕÉ¹QåÁ”ñÑåÁ•½˜…ÁÁ•¹‘=‘‘Q…Í­Ù•¹Ðùô()½¹ÍÐÕÍ…”ô‰UÍ…”è€½…Í•¸µÍ­¥±°µÉ•¥ÍÑÉäÉ•™É•Í ˆì)½¹ÍÐÁÉ½‘ÕÑ¥½¹A…­…•I½½ÐõÁ…Ñ ¹É•Í½±Ù”¡Á…Ñ ¹‘¥É¹…µ”¡™¥±•UI1Q½A…Ñ ¡¥µÁ½ÉÐ¹µ•Ñ„¹ÕÉ°¤¤°ˆ¸¸ˆ¤ì)…Íå¹Œ™Õ¹Ñ¥½¸…¹½¹¥…°¡Ù…±Õ”éÍÑÉ¥¹œ¤éAÉ½µ¥Í”ñÍÑÉ¥¹œùì(½¹ÍÐÉ•Í½±Ù•õÁ…Ñ ¹É•Í½±Ù”¡Ù…±Õ”¤íÑÉåíÉ•ÑÕÉ¸Á…Ñ ¹¹½Éµ…±¥é”¡…Ý…¥ÐÉ•…±Á…Ñ ¡É•Í½±Ù•¤¤íõ…Ñ¡íÉ•ÑÕÉ¸Á…Ñ ¹¹½Éµ…±¥é”¡É•Í½±Ù•¤íô)ô)…Íå¹Œ™Õ¹Ñ¥½¸Í½ÕÉ•Í½È¡ÁÉ½©•ÑI½½ÐéÍÑÉ¥¹œ±¡½µ•I½½ÐéÍÑÉ¥¹œ±Á…­…•I½½ÐéÍÑÉ¥¹œ¤éAÉ½µ¥Í”ñM­¥±±M½ÕÉ•mtùì(½¹ÍÐm…¹½¹¥…±!½µ”±…¹½¹¥…±A…­…•tõ…Ý…¥ÐAÉ½µ¥Í”¹…±°¡m…¹½¹¥…°¡¡½µ•I½½Ð¤±…¹½¹¥…°¡Á…­…•I½½Ð¥t¤ì(½¹ÍÐ½¹™¥ÕÉ•éM­¥±±M½ÕÉ•mtõl(€í¥è‰ÁÉ½©•ÐµÍ­¥±±Ìˆ±Í½Á”è‰ÁÉ½©•Ðˆ±É½½ÐéÁ…Ñ ¹©½¥¸¡ÁÉ½©•ÑI½½Ð°‰Í­¥±±Ìˆ¥ô°(€í¥è‰ÁÉ½©•Ðµ…•¹ÑÌµÍ­¥±±Ìˆ±Í½Á”è‰ÁÉ½©•Ðˆ±É½½ÐéÁ…Ñ ¹©½¥¸¡ÁÉ½©•ÑI½½Ð°ˆ¹…•¹ÑÌˆ°‰Í­¥±±Ìˆ¥ô°(€í¥è‰ÕÍ•Èµ…•¹ÑÌµÍ­¥±±Ìˆ±Í½Á”è‰ÕÍ•Èˆ±É½½ÐéÁ…Ñ ¹©½¥¸£^û¶‰žËkºwµçZÛ›ÝÛˆ\œ›ÜˆŽÂŸB‚™^Ü[˜Ý[ÛˆÜ™X]P\Ù[‘^[œÚ[ÛŠ\[™[˜ÚY\Î\Ù[‘^[œÚ[Û‘\[™[˜ÚY\Ï^ßJNŠN”SZÙJOO\Ù[‘^[œÚ[Û‘˜XØYHÂˆÛÛœÝÛYOY\[™[˜ÚY\ËšÛYQ\ÏÚÛYY\‹XÚØYÙT›ÛÝY\[™[˜ÚY\ËœXÚØYÙT›ÛÝÏÜ›ÙXÝ[Û”XÚØYÙT›ÛÝ™Yœ™\ÚY\[™[˜ÚY\Ëœ™Yœ™\ÚÏÜ™Yœ™\ÚÚÚ[™YÚ\ÝžNÂˆ™]\›ˆOOžÂˆÛÛœÝ™YÚ\Ý\\Kœ™YÚ\Ý\ÛÛ[X[™Ë˜š[™
-JNÂˆYŠ\™YÚ\Ý\Š]›ÝÈ™]È\œ›ÜŠTÑSˆ^[œÚ[Ûˆ™\]Z\™\ÈHÛÛ[X[™™YÚ\Ý˜][ÛˆŠNÂˆÛÛœÝY™XÞXÛO[™]È™YÚ\ÝžSY™XÞXÛJÜ™Yœ™\Ú™\\™N˜\Þ[˜ÈÝÙOžÂˆÛÛœÝ›Ú™XÝ›ÛÝX]ØZ]™X[]
-]œ™\ÛÛ™JÝÙ
-JKÛÝ\˜Ù\ÏX]ØZ]ÛÝ\˜Ù\Ñ›ÜŠ›Ú™XÝ›ÛÝÛYJ
-KXÚØYÙT›ÛÝ
-NÂˆ™]\›ˆÜ›Ú™XÝ›ÛÝ›Ú™XÝYœ›Ú™XÝ›ÛÝÛÝ\˜Ù\Ë‹‹Š\[™[˜ÚY\Ë›Z\œ›ÜÞÛZ\œ›ÜŽ™\[™[˜ÚY\Ë›Z\œ›ÜŸNžßJ_NÂˆK‹‹™\[™[˜ÚY\Ëœ™YÚ\ÝžSY™XÞXÛ_JNÂˆKœ™YÚ\Ý\‘›YÏËŠ˜\Ù[‹[›Ë\ÚÚ[\™YÚ\ÝžH‹Ù\ØÜš\[ÛŽˆ‘\ØX›HTÑSˆÚÚ[™YÚ\ÝžHÝ\\™Yœ™\Ú[™Ø]Ú\œÈ‹\Nˆ˜›ÛÛX[ˆ‹Y˜][™˜[Ù_JNÂˆK›ÛËŠœÙ\ÜÚ[Û—ÜÝ\‹
-Ù]™[Ý
-OO›Y™XÞXÛKœÝ\
-Ý™YÚ\ÝžTÝ\\\ØX›Y
-K™Ù]›YÏËŠ˜\Ù[‹[›Ë\ÚÚ[\™YÚ\ÝžHŠJJJNÂˆK›ÛËŠœÙ\ÜÚ[Û—ÜÚ]ÝÛˆ‹
+import {RegistryLifecycle,registryStartupDisabled,type RegistryLifecycleOptions} from "../src/skills/registry-lifecycle.js";
+import {realpath} from "node:fs/promises";
+import {homedir} from "node:os";
+import path from "node:path";
+import {fileURLToPath} from "node:url";
+import {refreshSkillRegistry,type SkillRegistryMirror} from "../src/skills/generated-registry.js";
+import type {SkillSource} from "../src/skills/discovery.js";
+import {claimWorkflowSelection,readWorkflowSelection,registerWorkflowSelectionCommand} from "../src/lifecycle/workflow-selection.js";
+import {decideLifecycleApplicability,decideLifecycleApplicabilityWithSelection,type LifecycleApplicability,type LifecycleApplicabilityInput} from "../src/lifecycle/applicability.js";
+import type {OddRouteDecision} from "../src/flow/odd-routing.js";
+import {claimedOrchestrationRouteContext} from "../src/orchestration/orchestrator.js";
+import {registerOrdinaryReviewCommand,type OrdinaryReviewCommandController} from "../src/review/ordinary-review-command.js";
+import {deriveOddExecutionContract,type OddExecutionContract} from "../src/flow/odd-execution-contract.js";
+import {trackOddTask,resumeOddTask,appendOddTaskEvent,type OddProgress} from "../src/flow/odd-task-tracking.js";
+import type {MemoryContext} from "../src/memory/context.js";import type {MemoryStore} from "../src/memory/types.js";
+import type {TaskEvent} from "../src/runtime/task-replay.js";
+import {registerInteractionTools} from "../src/interaction/pi-tools.js";
+import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
+import {createCodeIntelligenceTool,type CodeIntelligenceOptions} from "../src/interaction/code-intelligence.js";
+import {statusLines,type AsenStatusInput} from "../src/runtime/status.js";
+import {doctorChecks,doctorExitCode} from "../src/runtime/doctor.js";
+import {ASEN_COMMAND_CATALOG} from "../src/runtime/command-catalog.js";
+import {agentStatusRows,type PublicAgentRecord} from "../src/runtime/agent-lifecycle.js";
+import {visibleWorkspaceRows,type WorkspaceChange} from "../src/runtime/workspace-attribution.js";
+import {readProfilesFile} from "../src/runtime/profile-store.js";
 
-OO›Y™XÞXÛKœÚ]ÝÛŠ
-JNÂˆ™YÚ\Ý\’[\˜XÝ[Û•ÛÛÊK\[™[˜ÚY\Ëš[\˜XÝ[Û•[Y[Ý]\ÊNÂˆKœ™YÚ\Ý\•ÛÛËŠÜ™X]PÛÙR[[YÙ[˜ÙUÛÛ
-\[™[˜ÚY\Ë˜ÛÙR[[YÙ[˜ÙJJNÂˆKœ™YÚ\Ý\ÛÛ[X[™ËŠ˜\Ù[ˆ‹Ù\ØÜš\[ÛŽˆ”ÚÝÈTÑSˆ\›™\ÜÈÝ]\È‹[™\ŽŠ
-OOŠÜ›ÙXÝˆTÑSˆ‹[ÙNˆœK[˜]]™H‹Ý]\Îˆœ™XYH‹š[˜Ú\NˆTÑSˆ^[™ÈNÈ]Ù\È›Ý™\XÙHKˆŸJ_JNÂˆKœ™YÚ\Ý\ÛÛ[X[™ËŠ˜\Ù[‹XÛÛ[X[™È‹Ù\ØÜš\[ÛŽˆ“\ÝTÑSˆX›XÈÛÛ[X[™È‹[™\ŽŠ
-OOTÑS—ÐÓÓSPS‘ÐÐUSÑË›X\
-ÏOŠÛ˜[YN˜Ë›˜[YKÜ›Ý\˜Ë™Ü›Ý\[\[Y[Y˜Ëš[\[Y[YJJ_JNÂˆKœ™YÚ\Ý\ÛÛ[X[™ËŠ˜\Ù[‹\Ý]\È‹Ù\ØÜš\[ÛŽˆ”ÚÝÈ›Ý[™YØØ[TÑSˆÝ]\È‹[™\ŽŠ
-OO™\[™[˜ÚY\ËœÝ]\ÏÜÝ]\Ó[™\Ê\[™[˜ÚY\ËœÝ]\Ê
-JN–ÈTÑSˆÝ]\È[˜]˜Z[X›Nˆ›ÈØØ[Ý]\È›ÝšY\ˆÛÛ™šYÝ\™Yˆ—_JNÂˆKœ™YÚ\Ý\ÛÛ[X[™ËŠ˜\Ù[‹YØÝÜˆ‹Ù\ØÜš\[ÛŽˆÚXÚÈØØ[TÑSˆ[˜\šX[È‹[™\ŽŠ
-OOžÚYŠY\[™[˜ÚY\Ë™ØÝÜŠ\™]\›ˆÙ^]ÛÙNŒKÚXÚÜÎ–×KY\ÜØYÙNˆTÑSˆØÝÜˆ[˜]˜Z[X›Nˆ›ÈØØ[XYÛ›ÜÝXÜÈ›ÝšY\ˆÛÛ™šYÝ\™YˆŸNØÛÛœÝÚXÚÜÏYØÝÜÚXÚÜÊ\[™[˜ÚY\Ë™ØÝÜŠ
-JNÜ™]\›ˆÙ^]ÛÙN™ØÝÜ‘^]ÛÙJÚXÚÜÊKÚXÚÜßNß_JNÂˆKœ™YÚ\Ý\ÛÛ[X[™ËŠ˜\Ù[‹XYÙ[È‹Ù\ØÜš\[ÛŽˆ”ÚÝÈ]šX]YTÑSˆYÙ[Y™XÞXÛH‹[™\ŽŠ
-OO™\[™[˜ÚY\Ë˜YÙ[ÏØYÙ[Ý]\Ô›ÝÜÊ\[™[˜ÚY\Ë˜YÙ[Ê
-JN–ÈTÑSˆYÙ[È[˜]˜Z[X›Nˆ›ÈØØ[YÙ[›ÝšY\ˆÛÛ™šYÝ\™Yˆ—_JNÂˆKœ™YÚ\Ý\ÛÛ[X[™ËŠ˜\Ù[‹XÚ[™Ù\È‹Ù\ØÜš\[ÛŽˆ”ÚÝÈ]šX]YÛÜšÜÜXÙHÚ[™Ù\È‹[™\ŽŠ
-OO™\[™[˜ÚY\Ë˜Ú[™Ù\ÏÝš\ÚX›UÛÜšÜÜXÙT›ÝÜÊ\[™[˜ÚY\Ë˜Ú[™Ù\Ê
-JN–ÈTÑSˆÛÜšÜÜXÙHÚ[™Ù\È[˜]˜Z[X›Nˆ›ÈØØ[Ú[™ÙH›ÝšY\ˆÛÛ™šYÝ\™Yˆ—_JNÂˆKœ™YÚ\Ý\ÛÛ[X[™ËŠ˜\Ù[‹\›Ùš[\È‹Ù\ØÜš\[ÛŽˆ”ÚÝÈØØ[[[YH›Ùš[\È‹[™\Ž˜\Þ[˜Ê
-OOžÚYŠY\[™[˜ÚY\Ëœ›Ùš[\Ñš[J\™]\›ˆØXÝ]™Nˆ™Y˜][‹›Ùš[\Î–×K]˜Z[X›N™˜[Ù_NØÛÛœÝ˜[YOX]ØZ]™XY›Ùš[\Ñš[J\[™[˜ÚY\Ëœ›Ùš[\Ñš[JNÜ™]\›ˆØXÝ]™N˜[YK˜XÝ]™OÏÈ™Y˜][‹›Ùš[\Î˜[YKœ›Ùš[\Ë›X\
-Oœ›˜[YJK]˜Z[X›NY_Nß_JNÂˆKœ™YÚ\Ý\ÛÛ[X[™ËŠ˜\Ù[‹\ÚÚ[\™YÚ\ÝžH‹Ù\ØÜš\[ÛŽˆ”™Yœ™\ÚHÙ[™\˜]YTÑSˆÚÚ[™YÚ\ÝžH‹[™\Ž˜\Þ[˜Ê\™ÜÎœÝš[™ß[™Yš[™YÝÛÛ[X[™ÛÛ^
-OOžÂˆYŠ\™ÜÏËš[J
-HOOHœ™Yœ™\ÚŠ^ØÝZK››ÝYžJ\ØYÙKš[™›ÈŠNÜ™]\›ˆ\ØYÙNßBˆž^ÂˆÛÛœÝ™\Ý[X]ØZ]Y™XÞXÛKœ™Yœ™\Ú
-Ý˜ÝÙ
-K[\O\™\Ý[˜ÛÝ[OOLÈˆ
-[\HÚ[ˆ™\›ÊHŽˆˆ‹Y[[ÜžO\™\Ý[œ\œÚ\Ý[˜ÙKœÝ]\ÎÂˆÛÛœÝY\ÜØYÙOXTÑSˆÚÚ[™YÚ\ÝžH™Yœ™\ÚYˆ]IÜ™\Ý[œ]NÈÚÚ[ÏIÜ™\Ý[˜ÛÝ[IÙ[\_NÈØXÚOIÜ™\Ý[˜ØXÚ_NÈXYÛ›ÜÝXÜÏIÜ™\Ý[œÚÚ\Y›[™ÝNÈY[[ÜžOIÛY[[Üž_K˜ÂˆÝZK››ÝYžJY\ÜØYÙKš[™›ÈŠNÜ™]\›ˆY\ÜØYÙNÂˆXØ]Ú
-\œ›ÜŠ^ØÝZK››ÝYžJTÑSˆÚÚ[™YÚ\ÝžH™Yœ™\Ú˜Z[Yˆ	ÜØY™Q\œ›Ü“Y\ÜØYÙJ\œ›ÜŠ_X™\œ›ÜˆŠNÝ›ÝÈ\œ›ÜŽßBˆ_JNÂˆÛÛœÝÛÛœÝ[Y\\™YÚ\Ý\•ÛÜšÙ›ÝÔÙ[XÝ[ÛÛÛ[X[™
-™YÚ\Ý\ŠNÂˆÛÛœÝ™]šY]Ï\™YÚ\Ý\“Ü™[˜\žT™]šY]ÐÛÛ[X[™
-™YÚ\Ý\ŠNÂˆ™]\›ˆØš™XÝ™œ™Y^™JÜ™]šY]Ë\š]™SÙ^XÝ][ÛÛÛ˜XÝ˜XÚÓÙ\ÚË™\Ý[YSÙ\ÚË\[™Ù\ÚÑ]™[XÚYSY™XÞXÛP\XØXš[]NŠXÚ\Ú[ÛŽ“Ù›Ý]QXÚ\Ú[Û‹[œ]“Y™XÞXÛP\XØXš[]R[œ]
-OOžÂˆÛÛœÝÜšYÚ[˜[XÛZ[YYÜ˜Ú\Ý˜][Û”›Ý]PÛÛ^
-XÚ\Ú[ÛŠKš[™[™Ï^Ý\ÚÒY[]N›ÜšYÚ[˜[™˜XÝË\ÚÒY[]K™\ÜÚ]ÜžRY[]N›ÜšYÚ[˜[™˜XÝËœ™\ÜÚ]ÜžRY[]_KÚÚXÙO\™XYÛÜšÙ›ÝÔÙ[XÝ[ÛŠÛÛœÝ[Y\‹š[™[™ÊNÂˆYŠXÚÚXÙJ\™]\›ˆXÚYSY™XÞXÛP\XØXš[]JXÚ\Ú[Û‹[œ]
-NÂˆÛÛœÝÛZ[YYXÛZ[UÛÜšÙ›ÝÔÙ[XÝ[ÛŠÛÛœÝ[Y\‹ÚÚXÙKš[™[™ÊNÂˆ™]\›ˆXÚYSY™XÞXÛP\XØXš[]UÚ]Ù[XÝ[ÛŠXÚ\Ú[Û‹[œ]ÛZ[YY
-NÂˆ_JNÂˆNÂŸB‚™^ÜY˜][Ü™X]P\Ù[‘^[œÚ[ÛŠ
-NÂ
+type CommandContext={cwd:string;ui:{notify(message:string,level:"info"|"error"):void}};
+type PiLike={on?:(event:string,handler:(...args:any[])=>unknown)=>void;registerFlag?:(name:string,options:any)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
+type Refresh=typeof refreshSkillRegistry;
+export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string}
+export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
+
+const usage="Usage: /asen-skill-registry refresh";
+const productionPackageRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
+async function canonical(value:string):Promise<string>{
+ const resolved=path.resolve(value);try{return path.normalize(await realpath(resolved));}catch{return path.normalize(resolved);}
+}
+async function sourcesFor(projectRoot:string,homeRoot:string,packageRoot:string):Promise<SkillSource[]>{
+ const [canonicalHome,canonicalPackage]=await Promise.all([canonical(homeRoot),canonical(packageRoot)]);
+ const configured:SkillSource[]=[
+  {id:"project-skills",scope:"project",root:path.join(projectRoot,"skills")},
+  {id:"project-agents-skills",scope:"project",root:path.join(projectRoot,".agents","skills")},
+  {id:"user-agents-skills",scope:"user",root:path.join(canonicalHome,".agents","skills")},
+  {id:"package-skills",scope:"global",root:path.join(canonicalPackage,"skills")},
+ ];
+ const unique:SkillSource[]=[],seen=new Set<string>();
+ for(const source of configured){const root=await canonical(source.root);if(!seen.has(root)){seen.add(root);unique.push({...source,root});}}
+ return unique;
+}
+function safeErrorMessage(error:unknown):string{
+ if(!(error instanceof Error))return "Unknown error";
+ return error.message.replace(/[\u0000-\u001f\u007f]+/g," ").replace(/\s+/g," ").trim()||"Unknown error";
+}
+
+export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(pi:PiLike)=>AsenExtensionFacade {
+ const home=dependencies.homeDir??homedir,packageRoot=dependencies.packageRoot??productionPackageRoot,refresh=dependencies.refresh??refreshSkillRegistry;
+ return pi=>{
+  const register=pi.registerCommand?.bind(pi);
+  if(!register)throw new Error("ASEN extension requires Pi command registration");
+  const lifecycle=new RegistryLifecycle({refresh,prepare:async cwd=>{
+   const projectRoot=await realpath(path.resolve(cwd)),sources=await sourcesFor(projectRoot,home(),packageRoot);
+   return {projectRoot,projectId:projectRoot,sources,...(dependencies.mirror?{mirror:dependencies.mirror}:{})};
+  },...dependencies.registryLifecycle});
+  pi.registerFlag?.("asen-no-skill-registry",{description:"Disable ASEN skill registry startup refresh and watchers",type:"boolean",default:false});
+  pi.on?.("session_start",(_event,ctx)=>lifecycle.start(ctx,registryStartupDisabled(pi.getFlag?.("asen-no-skill-registry"))));
+  pi.on?.("session_shutdown",()=>lifecycle.shutdown());
+  registerInteractionTools(pi,dependencies.interactionTimeoutMs);
+  pi.registerTool?.(createCodeIntelligenceTool(dependencies.codeIntelligence));
+  pi.registerCommand?.("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
+  pi.registerCommand?.("asen-commands",{description:"List ASEN public commands",handler:()=>ASEN_COMMAND_CATALOG.map(c=>({name:c.name,group:c.group,implemented:c.implemented}))});
+  pi.registerCommand?.("asen-status",{description:"Show bounded local ASEN status",handler:()=>dependencies.status?statusLines(dependencies.status()):["ASEN status unavailable: no local status provider configured."]});
+  pi.registerCommand?.("asen-doctor",{description:"Check local ASEN invariants",handler:()=>{if(!dependencies.doctor)return {exitCode:1,checks:[],message:"ASEN doctor unavailable: no local diagnostics provider configured."};const checks=doctorChecks(dependencies.doctor());return {exitCode:doctorExitCode(checks),checks};}});
+  pi.registerCommand?.("asen-agents",{description:"Show attributed ASEN agent lifecycle",handler:()=>dependencies.agents?agentStatusRows(dependencies.agents()):["ASEN agents unavailable: no local agent provider configured."]});
+  pi.registerCommand?.("asen-changes",{description:"Show attributed workspace changes",handler:()=>dependencies.changes?visibleWorkspaceRows(dependencies.changes()):["ASEN workspace changes unavailable: no local change provider configured."]});
+  pi.registerCommand?.("asen-profiles",{description:"Show local runtime profiles",handler:async()=>{if(!dependencies.profilesFile)return {active:"default",profiles:[],available:false};const value=await readProfilesFile(dependencies.profilesFile);return {active:value.active??"default",profiles:value.profiles.map(p=>p.name),available:true};}});
+  pi.registerCommand?.("asen-skill-registry",{description:"Refresh the generated ASEN skill registry",handler:async(args:string|undefined,ctx:CommandContext)=>{
+   if(args?.trim()!=="refresh"){ctx.ui.notify(usage,"info");return usage;}
+   try{
+    const result=await lifecycle.refresh(ctx.cwd),empty=result.count===0?" (empty when zero)":"",memory=result.persistence.status;
+    const message=`ASEN skill registry refreshed: path=${result.path}; skills=${result.count}${empty}; cache=${result.cache}; diagnostics=${result.skipped.length}; memory=${memory}.`;
+    ctx.ui.notify(message,"info");return message;
+   }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
+  }});
+  const consumer=registerWorkflowSelectionCommand(register);
+  const review=registerOrdinaryReviewCommand(register);
+  return Object.freeze({review,deriveOddExecutionContract,trackOddTask,resumeOddTask,appendOddTaskEvent,decideLifecycleApplicability:(decision:OddRouteDecision,input:LifecycleApplicabilityInput)=>{
+   const original=claimedOrchestrationRouteContext(decision),binding={taskIdentity:original.facts.taskIdentity,repositoryIdentity:original.facts.repositoryIdentity},choice=readWorkflowSelection(consumer,binding);
+   if(!choice)return decideLifecycleApplicability(decision,input);
+   const claimed=claimWorkflowSelection(consumer,choice,binding);
+   return decideLifecycleApplicabilityWithSelection(decision,input,claimed);
+  }});
+ };
+}
+
+export default createAsenExtension();

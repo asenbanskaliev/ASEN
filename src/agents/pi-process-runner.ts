@@ -1,4 +1,129 @@
-YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíãn:N‹Z–‹­¦ëeŠw¬Õ¥µÁ½ÉÐíÍÁ…Ý¸±ÑåÁ”¡¥±‘AÉ½•ÍÍô™É½´€‰¹½‘”é¡¥±‘}ÁÉ½•ÍÌˆì)¥µÁ½ÉÐí©½¥¸±É•Í½±Ù”…ÌÉ•Í½±Ù•A…Ñ¡ô™É½´€‰¹½‘”éÁ…Ñ ˆì)¥µÁ½ÉÐíµ­‘Ñ•µÁMå¹Œ±É•…‘¥±•Må¹Œ±É•…±Á…Ñ¡Må¹Œ±ÉµMå¹Œ±ÝÉ¥Ñ•¥±•Må¹ô™É½´€‰¹½‘”é™Ìˆì)¥µÁ½ÉÐíÑµÁ‘¥Éô™É½´€‰¹½‘”é½Ìˆì)¥µÁ½ÉÐíÉ•…Ñ•!…Í¡ô™É½´€‰¹½‘”éÉåÁÑ¼ˆì)¥µÁ½ÉÐÑåÁ”í•¹ÑI•ÅÕ•ÍÐ±•¹ÑI•ÍÕ±Ð±•¹ÑIÕ¹¹•Éô™É½´€ˆ¸½‘¥ÍÁ…Ñ¡•È¹©Ìˆì)¥µÁ½ÉÐíµ…Ñ¡•Í%ÍÍÕ•‘M­¥±±½¹Ñ•áÑô™É½´€ˆ¸¸½Í­¥±±Ì½½¹Ñ•áÐ¹©Ìˆì)¥µÁ½ÉÐíÍ•±•ÑM­¥±±Íô™É½´€ˆ¸¸½Í­¥±±Ì½É•¥ÍÑÉä¹©Ìˆì)¥µÁ½ÉÐí…ÕÑ¡½É¥é•A¥]É¥Ñ•É…¹Ñô™É½´€ˆ¸¸½±¥™•å±”½Í­¥±°µ±¥™•å±”¹©Ìˆì)¥µÁ½ÉÐí½¹ÍÕµ•IÕ¹¹•É]É¥Ñ•I••¥Ù•Éô™É½´€ˆ¸½‘¥ÍÁ…Ñ¡•È¹©Ìˆì()•áÁ½ÉÐ¥¹Ñ•É™…”A¥AÉ½•ÍÍ=ÁÑ¥½¹Íì(½µµ…¹üéÍÑÉ¥¹œì(ÉÁÉÌüéÍÑÉ¥¹mtì(•áÑÉ…ÉÌüéÍÑÉ¥¹mtì(Ñ¥µ•½ÕÑ5Ìüé¹Õµ‰•Èì(µ…á=ÕÑÁÕÑ	åÑ•Ìüé¹Õµ‰•Èì(Í¥¹…°üé‰½ÉÑM¥¹…°ì(ÁÉ½Ù¥‘•ÉáÑ•¹Í¥½¸üéÍÑÉ¥¹œì(¹½Q½½±Ìüé‰½½±•…¸ì)ô()•áÁ½ÉÐ™Õ¹Ñ¥½¸Á¥IÕ¹Ñ¥µ•I½ÕÑ•ÉÌ¡É•ÅÕ•ÍÐéA¥¬ñ•¹ÑI•ÅÕ•ÍÐ°‰µ½‘•°‰ð‰Ñ¡¥¹­¥¹œˆø¤éÍÑÉ¥¹muì(½¹ÍÐ…ÉÌéÍÑÉ¥¹mtõmtì(¥˜¡É•ÅÕ•ÍÐ¹µ½‘•°„ôõÕ¹‘•™¥¹•¥í¥˜¡ÑåÁ•½˜É•ÅÕ•ÍÐ¹µ½‘•°„ôô‰ÍÑÉ¥¹œ‰ñð…É•ÅÕ•ÍÐ¹µ½‘•°¹ÑÉ¥´ ¥ññÉ•ÅÕ•ÍÐ¹µ½‘•°„ôõÉ•ÅÕ•ÍÐ¹µ½‘•°¹ÑÉ¥´ ¥ññÉ•ÅÕ•ÍÐ¹µ½‘•°¹±•¹Ñ øÈÔÙñð½mqÔÀÀÀÀµqÔÀÀÅ™qÔÀÀÝ™t½Ô¹Ñ•ÍÐ¡É•ÅÕ•ÍÐ¹µ½‘•°¤¥Ñ¡É½Ü¹•ÜÉÉ½È ‰%¹Ù…±¥É½ÕÑ•A¤µ½‘•°ˆ¤í…ÉÌ¹ÁÕÍ  ˆ´µµ½‘•°ˆ±É•ÅÕ•ÍÐ¹µ½‘•°¤íô(¥˜¡É•ÅÕ•ÍÐ¹Ñ¡¥¹­¥¹œ„ôõÕ¹‘•™¥¹•¥í¥˜ …l‰½™˜ˆ°‰µ¥¹¥µ…°ˆ°‰±½Üˆ°‰µ•‘¥Õ´ˆ°‰¡¥ ‰t¹¥¹±Õ‘•Ì¡É•ÅÕ•ÍÐ¹Ñ¡¥¹­¥¹œ¤¥Ñ¡É½Ü¹•ÜÉÉ½È ‰%¹Ù…±¥É½ÕÑ•A¤Ñ¡¥¹­¥¹œ±•Ù•°ˆ¤í…ÉÌ¹ÁÕÍ  ˆ´µÑ¡¥¹­¥¹œˆ±É•ÅÕ•ÍÐ¹Ñ¡¥¹­¥¹œ¤íô(É•ÑÕÉ¸…ÉÌì)ô((¼¼Q¡¥Ì‘¥•ÍÐÁ¥¹ÌÑ¡”É•Ù¥•Ý•Á½±¥äÍ½ÕÉ”¸UÁ‘…Ñ”¥Ð½¹±ä…™Ñ•È…Õ‘¥Ñ¥¹œ•áÑ•¹Í¥½¹Ì½…ÕÑ¡½É¥Ñä¹ÑÌ¸)½¹ÍÐ…ÕÑ¡½É¥Ñå¥•ÍÐô‰á˜É”ÍˆÄÌäÈÐÕ”ÀÈÌÁ™„äÌÔØäàÄÑ™‰ÐÜÄäÕ‘Œá™™˜Ý™„ÈÔÄÜÕ”äÑ˜á”É˜åÈˆì()…Íå¹Œ™Õ¹Ñ¥½¸Ñ•Éµ¥¹…Ñ•QÉ•”¡¡¥±é¡¥±‘AÉ½•ÍÌ±±½Í•éAÉ½µ¥Í”ñÙ½¥ø¤éAÉ½µ¥Í”ñÙ½¥ùì(¥˜ …¡¥±¹Á¥¥í…Ý…¥Ð±½Í•íÉ•ÑÕÉ¸íô(¥˜¡ÁÉ½•ÍÌ¹Á±…Ñ™½É´ôôô‰Ý¥¸ÌÈˆ¥ì(€…Ý…¥Ð¹•ÜAÉ½µ¥Í”ñÙ½¥ø¡É•Í½±Ù”ôùì(€€½¹ÍÐ­¥±±•ÈõÍÁ…Ý¸ ‰Ñ…Í­­¥±°ˆ±lˆ½Á¥ˆ±MÑÉ¥¹œ¡¡¥±¹Á¥¤°ˆ½Pˆ°ˆ½‰t±íÍÑ‘¥¼è‰¥¹½É”ˆ±Ý¥¹‘½ÝÍ!¥‘”éÑÉÕ•ô¤ì(€€­¥±±•È¹½¹” ‰•ÉÉ½Èˆ° ¤ôùí¡¥±¹­¥±° ‰M%-%10ˆ¤íÉ•Í½±Ù” ¤íô¤ì(€€­¥±±•È¹½¹” ‰±½Í”ˆ±½‘”ôùí¥˜¡½‘”„ôôÀ¥¡¥±¹­¥±° ‰M%-%10ˆ¤íÉ•Í½±Ù” ¤íô¤ì(€ô¤ì(õ•±Í•ì(€ÑÉåíÁÉ½•ÍÌ¹­¥±° µ¡¥±¹Á¥°‰M%-%10ˆ¤íõ…Ñ¡í¡¥±¹­¥±° ‰M%-%10ˆ¤íô(ô(…Ý…¥Ð±½Í•ì)ô()™Õ¹Ñ¥½¸ÁÉ½µÁÑ]¥Ñ¡M­¥±±Ì¡É•ÅÕ•ÍÐé•¹ÑI•ÅÕ•ÍÐ¤éÍÑÉ¥¹ì(½¹ÍÐÁ…Ñ¡ÌõÉ•ÅÕ•ÍÐ¹Í­¥±±A…Ñ¡Ìüýmtì(¥˜¡Á…Ñ¡Ì¹±•¹Ñ¡ññÉ•ÅÕ•ÍÐ¹Í­¥±±½¹Ñ•áÐ¥ì(€¥˜ …É•ÅÕ•ÍÐ¹Í­¥±±½¹Ñ•áÑñð…µ…Ñ¡•Í%ÍÍÕ•‘M­¥±±½¹Ñ•áÐ¡É•ÅÕ•ÍÐ¹Í­¥±±½¹Ñ•áÐ±É•ÅÕ•ÍÐ¹¥±É•ÅÕ•ÍÐ¹É•Á½Í¥Ñ½Éä±É•ÅÕ•ÍÐ¹…¹‘¥‘…Ñ”¤¤Ñ¡É½Ü¹•ÜÉÉ½È ‰A¤Í­¥±°Á…Ñ¡ÌÉ•ÅÕ¥É”µ…Ñ¡¥¹œM8µ¥ÍÍÕ•½¹Ñ•áÐ…¹…¹‘¥‘…Ñ”ˆ¤ì(€½¹ÍÐÍ•±•Ñ•õÍ•±•ÑM­¥±±Ì¡É•ÅÕ•ÍÐ¹Í­¥±±½¹Ñ•áÐ¤¹µ…À¡Í­¥±°ôùÍ­¥±°¹Á…Ñ ¤ì(€¥˜¡Í•±•Ñ•¹±•¹Ñ „ôõÁ…Ñ¡Ì¹±•¹Ñ¡ññÍ•±•Ñ•¹Í½µ” ¡Á…Ñ ±¥¹‘•à¤ôùÁ…Ñ „ôõÁ…Ñ¡Ím¥¹‘•át¤¤Ñ¡É½Ü¹•ÜÉÉ½È ‰A¤Í­¥±°Á…Ñ¡Ì‘¼¹½Ðµ…Ñ ¥ÍÍÕ•½¹Ñ•áÐˆ¤ì(ô(¥˜ …Á…Ñ¡Ì¹±•¹Ñ ¥É•ÑÕÉ¸É•ÅÕ•ÍÐ¹ÁÉ½µÁÐì(¥˜¡Á…Ñ¡Ì¹Í½µ”¡Á…Ñ ôø„½yÍ­¥±±Íp½…Í•¸µm„µèµt­p½M-%11p¹µ¼¹Ñ•ÍÐ¡Á…Ñ ¤¤¥ì(€Ñ¡É½Ü¹•ÜÉÉ½È ‰%¹Ù…±¥A¤µ¹…Ñ¥Ù”Í­¥±°Á…Ñ ˆ¤ì(ô(É•ÑÕÉ¸l(€€‰M8¥ÍÍÕ•Ñ¡•Í”•á…ÐA¤µ¹…Ñ¥Ù”Í­¥±°½¹ÑÉ…ÑÌ™½ÈÑ¡¥ÌÑ…Í¬¸ˆ°(€€‰1½…•Ù•ÉäM-%10¹µ‰•±½Ü‰•™½É”Ñ…Í¬µÍÁ•¥™¥ŒÝ½É¬¸QÉ•…ÐÑ¡•¥ÈÉÕ¹Ñ¥µ”ÉÕ±•Ì…Ì…ÕÑ¡½É¥Ñ…Ñ¥Ù”ì‘¼¹½ÐÉ•Á±…”Ñ¡•´Ý¥Ñ ÍÕµµ…É¥•Ì¸ˆ°(€€¸¸¹Á…Ñ¡Ì¹µ…À¡Á…Ñ ôøˆ´€ˆ­Á…Ñ ¤°(€€ˆˆ°(€€‰Q…Í¬èˆ°(€É•ÅÕ•ÍÐ¹ÁÉ½µÁÐ(t¹©½¥¸ ‰q¸ˆ¤ì)ô()•áÁ½ÉÐ±…ÍÌA¥AÉ½•ÍÍIÕ¹¹•È¥µÁ±•µ•¹ÑÌ•¹ÑIÕ¹¹•Éì(½¹ÍÑÉÕÑ½È¡ÁÉ¥Ù…Ñ”É•…‘½¹±ä½ÁÑ¥½¹ÌéA¥AÉ½•ÍÍ=ÁÑ¥½¹Ìõíô¥íô((ÉÕ¸¡É•ÅÕ•ÍÐé•¹ÑI•ÅÕ•ÍÐ¤éAÉ½µ¥Í”ñ•¹ÑI•ÍÕ±Ðùì(€½¹ÍÐÉ••¥Ù•ÉY…±¥õÉ•ÅÕ•ÍÐ¹ÉÕ¹¹•É]É¥Ñ•I••¥Ù•È„ôõÕ¹‘•™¥¹•˜™½¹ÍÕµ•IÕ¹¹•É]É¥Ñ•I••¥Ù•È¡É•ÅÕ•ÍÐ¹ÉÕ¹¹•É]É¥Ñ•I••¥Ù•È±É•ÅÕ•ÍÐ¤ì(€¥˜¡É•ÅÕ•ÍÐ¹ÉÕ¹¹•É]É¥Ñ•I••¥Ù•È„ôõÕ¹‘•™¥¹•˜˜…É••¥Ù•ÉY…±¥¥É•ÑÕÉ¸AÉ½µ¥Í”¹É•Í½±Ù”¡í¥éÉ•ÅÕ•ÍÐ¹¥±½¬é™…±Í”±½ÕÑÁÕÐè‰A¤ÝÉ¥Ñ”Ñ½½±ÌÉ•ÅÕ¥É”…¸•á…Ð‘¥ÍÁ…Ñ¡•ÈÉ••¥Ù•È‰ô¤ì(€¥˜¡É•ÅÕ•ÍÐ¹…¹‘¥‘…Ñ”˜˜ …É•ÅÕ•ÍÐ¹Í­¥±±½¹Ñ•áÑñð…É•ÅÕ•ÍÐ¹Í­¥±±A…Ñ¡Ì¤¥É•ÑÕÉ¸AÉ½µ¥Í”¹É•Í½±Ù”¡í¥éÉ•ÅÕ•ÍÐ¹¥±½¬é™…±Í”±½ÕÑÁÕÐè‰…¹‘¥‘…Ñ”µ‰½Õ¹A¤•á•ÕÑ¥½¸É•ÅÕ¥É•Ì¥ÍÍÕ•Í­¥±°½¹Ñ•áÐ…¹•á…ÐÁ…Ñ¡Ì‰ô¤ì(€¥˜¡É•ÅÕ•ÍÐ¹Í­¥±±½¹Ñ•áÐ¥ì(€€½¹ÍÐÉ½±•A¡…Í”õÉ•ÅÕ•ÍÐ¹É½±”ôôô‰•áÁ±½É•Èˆü‰•áÁ±½É”ˆéÉ•ÅÕ•ÍÐ¹É½±”ôôô‰É•Ù¥•Ý•Èˆü‰…‘Ù•ÉÍ…É¥…°µÉ•Ù¥•ÜˆéÉ•ÅÕ•ÍÐ¹É½±”ôôô‰Ù•É¥™¥•Èˆü‰Ù•É¥™äˆéÕ¹‘•™¥¹•ì(€€¥˜¡É•ÅÕ•ÍÐ¹•áÁ•Ñ•‘A¡…Í”˜™É½±•A¡…Í”˜™É•ÅÕ•ÍÐ¹•áÁ•Ñ•‘A¡…Í”„ôõÉ½±•A¡…Í”¥É•ÑÕÉ¸AÉ½µ¥Í”¹É•Í½±Ù”¡í¥éÉ•ÅÕ•ÍÐ¹¥±½¬é™…±Í”±½ÕÑÁÕÐè‰A¤•áÁ•Ñ•Á¡…Í”‘½•Ì¹½Ðµ…Ñ …•¹ÐÉ½±”‰ô¤ì(€€½¹ÍÐÉ•ÅÕ¥É•‘A¡…Í”õÉ½±•A¡…Í”üýÉ•ÅÕ•ÍÐ¹•áÁ•Ñ•‘A¡…Í”ì(€€¥˜¡É•ÅÕ¥É•‘A¡…Í”˜™É•ÅÕ•ÍÐ¹Í­¥±±½¹Ñ•áÐ¹Á¡…Í”„ôõÉ•ÅÕ¥É•‘A¡…Í”¥É•ÑÕÉ¸AÉ½µ¥Í”¹É•Í½±Ù”¡í¥éÉ•ÅÕ•ÍÐ¹¥±½¬é™…±Í”±½ÕÑÁÕÐè‰A¤Í­¥±°½¹Ñ•áÐÁ¡…Í”‘½•Ì¹½Ðµ…Ñ …•¹ÐÉ½±”‰ô¤ì(€ô(€¥˜¡É•ÅÕ•ÍÐ¹ÝÉ¥Ñ•MÕÉ™…•Ìü¹±•¹Ñ ˜™É•ÅÕ—]¸êÚ$z{-®éÜj×losed());child.once("error",()=>{if(child.pid===undefined)resolveClosed();});});
+import {spawn,type ChildProcess} from "node:child_process";
+import {join,resolve as resolvePath} from "node:path";
+import {mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {createHash} from "node:crypto";
+import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
+import {matchesIssuedSkillContext} from "../skills/context.js";
+import {selectSkills} from "../skills/registry.js";
+import {authorizePiWriteGrant} from "../lifecycle/skill-lifecycle.js";
+import {consumeRunnerWriteReceiver} from "./dispatcher.js";
+
+export interface PiProcessOptions{
+ command?:string;
+ rpcArgs?:string[];
+ extraArgs?:string[];
+ timeoutMs?:number;
+ maxOutputBytes?:number;
+ signal?:AbortSignal;
+ providerExtension?:string;
+ noTools?:boolean;
+}
+
+export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">):string[]{
+ const args:string[]=[];
+ if(request.model!==undefined){if(typeof request.model!=="string"||!request.model.trim()||request.model!==request.model.trim()||request.model.length>256||/[\u0000-\u001f\u007f]/u.test(request.model))throw new Error("Invalid routed Pi model");args.push("--model",request.model);}
+ if(request.thinking!==undefined){if(!["off","minimal","low","medium","high"].includes(request.thinking))throw new Error("Invalid routed Pi thinking level");args.push("--thinking",request.thinking);}
+ return args;
+}
+
+// This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
+const authorityDigest="d8f2e3b139245e0230fa93569814fbd47195dc8fff7fca25175e94cf8ce2f9d2";
+
+async function terminateTree(child:ChildProcess,closed:Promise<void>):Promise<void>{
+ if(!child.pid){await closed;return;}
+ if(process.platform==="win32"){
+  await new Promise<void>(resolve=>{
+   const killer=spawn("taskkill",["/pid",String(child.pid),"/T","/F"],{stdio:"ignore",windowsHide:true});
+   killer.once("error",()=>{child.kill("SIGKILL");resolve();});
+   killer.once("close",code=>{if(code!==0)child.kill("SIGKILL");resolve();});
+  });
+ }else{
+  try{process.kill(-child.pid,"SIGKILL");}catch{child.kill("SIGKILL");}
+ }
+ await closed;
+}
+
+function promptWithSkills(request:AgentRequest):string{
+ const paths=request.skillPaths??[];
+ if(paths.length||request.skillContext){
+  if(!request.skillContext||!matchesIssuedSkillContext(request.skillContext,request.id,request.repository,request.candidate)) throw new Error("Pi skill paths require matching ASEN-issued context and candidate");
+  const selected=selectSkills(request.skillContext).map(skill=>skill.path);
+  if(selected.length!==paths.length||selected.some((path,index)=>path!==paths[index])) throw new Error("Pi skill paths do not match issued context");
+ }
+ if(!paths.length)return request.prompt;
+ if(paths.some(path=>!/^skills\/asen-[a-z-]+\/SKILL\.md$/.test(path))){
+  throw new Error("Invalid Pi-native skill path");
+ }
+ return [
+  "ASEN issued these exact Pi-native skill contracts for this task.",
+  "Load every SKILL.md below before task-specific work. Treat their runtime rules as authoritative; do not replace them with summaries.",
+  ...paths.map(path=>"- "+path),
+  "",
+  "Task:",
+  request.prompt
+ ].join("\n");
+}
+
+export class PiProcessRunner implements AgentRunner{
+ constructor(private readonly options:PiProcessOptions={}){}
+
+ run(request:AgentRequest):Promise<AgentResult>{
+  const receiverValid=request.runnerWriteReceiver!==undefined&&consumeRunnerWriteReceiver(request.runnerWriteReceiver,request);
+  if(request.runnerWriteReceiver!==undefined&&!receiverValid)return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
+  if(request.candidate&&(!request.skillContext||!request.skillPaths))return Promise.resolve({id:request.id,ok:false,output:"Candidate-bound Pi execution requires issued skill context and exact paths"});
+  if(request.skillContext){
+   const rolePhase=request.role==="explorer"?"explore":request.role==="reviewer"?"adversarial-review":request.role==="verifier"?"verify":undefined;
+   if(request.expectedPhase&&rolePhase&&request.expectedPhase!==rolePhase)return Promise.resolve({id:request.id,ok:false,output:"Pi expected phase does not match agent role"});
+   const requiredPhase=rolePhase??request.expectedPhase;
+   if(requiredPhase&&request.skillContext.phase!==requiredPhase)return Promise.resolve({id:request.id,ok:false,output:"Pi skill context phase does not match agent role"});
+  }
+  if(request.writeSurfaces?.length&&request.skillContext?.phase!=="apply")return Promise.resolve({id:request.id,ok:false,output:"Pi write authority requires issued apply phase"});
+  const command=this.options.command??"pi";
+  let message:string;
+  try{message=promptWithSkills(request);}
+  catch(error){return Promise.resolve({id:request.id,ok:false,output:`pi skill path error: ${String(error)}`});}
+  const extra=this.options.extraArgs??[];
+  if([...(this.options.rpcArgs??[]),...extra].some(arg=>arg==="--"||arg.startsWith("-t")&&!arg.startsWith("--")||arg.startsWith("-e")&&!arg.startsWith("--")||["--skill","--no-skills","-ns","--extension","--tools","--no-tools","-nt","--no-builtin-tools","-nbt"].some(flag=>arg===flag||arg.startsWith(flag+"="))))
+   return Promise.resolve({id:request.id,ok:false,output:"pi skill and tool arguments must be issued by ASEN"});
+  if(request.writeSurfaces?.length&&request.role!=="worker")return Promise.resolve({id:request.id,ok:false,output:"Only a worker may request write tools"});
+  const writer=request.role==="worker"&&!!request.writeSurfaces?.length&&!!request.candidate&&!!request.skillContext;
+  if(writer&&!receiverValid)return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
+  if(writer&&request.expectedPhase&&!authorizePiWriteGrant(request))return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an active ASEN lifecycle grant"});
+  let routeArgs:string[];try{routeArgs=piRuntimeRouteArgs(request);}catch(error){return Promise.resolve({id:request.id,ok:false,output:String(error)});}
+  const providerExtension=this.options.providerExtension;
+  if(providerExtension&&providerExtension!=="npm:pi-free")return Promise.resolve({id:request.id,ok:false,output:"untrusted Pi provider extension"});
+  const candidatePolicy=resolvePath(request.repository,"extensions/authority.ts");
+  let policySource:string;
+  try{
+   policySource=readFileSync(candidatePolicy,"utf8").replace(/\r\n/g,"\n");
+   const digest=createHash("sha256").update(policySource).digest("hex");
+   if(digest!==authorityDigest)throw new Error("mismatch");
+  }catch{return Promise.resolve({id:request.id,ok:false,output:"pi authority extension integrity check failed"});}
+  let policyDirectory:string;
+  try{
+   policyDirectory=mkdtempSync(join(tmpdir(),"asen-policy-"));
+   writeFileSync(join(policyDirectory,"authority.ts"),policySource,{mode:0o400,flag:"wx"});
+  }catch(error){
+   if(policyDirectory!)rmSync(policyDirectory,{recursive:true,force:true});
+   return Promise.resolve({id:request.id,ok:false,output:`pi authority extension preparation failed: ${String(error)}`});
+  }
+  const policy=join(policyDirectory,"authority.ts");
+  const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,...routeArgs,
+   "--no-extensions","--extension",policy,...(providerExtension?["--extension",providerExtension]:[]),"--no-skills",...(this.options.noTools?["--no-tools"]:["--tools",writer?"read,edit,write":"read"]),...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
+  const timeoutMs=this.options.timeoutMs??120_000;
+  const max=this.options.maxOutputBytes??1_000_000;
+
+  return new Promise(resolve=>{
+   const child=spawn(command,args,{
+    cwd:request.repository,
+    env:{...process.env,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[]})},
+    stdio:["pipe","pipe","pipe"],
+    detached:process.platform!=="win32"
+   });
+   let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,stopResult:AgentResult|undefined;
+   const preflightId=`asen-policy:${request.id}`;
+   const closed=new Promise<void>(resolveClosed=>{child.once("close",()=>resolveClosed());child.once("error",()=>{if(child.pid===undefined)resolveClosed();});});
    let timer:ReturnType<typeof setTimeout>|undefined;
 
    const finish=(result:AgentResult)=>{
