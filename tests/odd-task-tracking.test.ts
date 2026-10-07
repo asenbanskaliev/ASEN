@@ -62,7 +62,9 @@ test("task replay appends to the same ODD memory record and resumes after restar
  assert.equal(reopened.exportProject(root).observations.length,1);
 });
 test("first durable replay event must bind the current ODD task and project",async t=>{
- const root=await fixture(t);let openStore:SqliteMemoryStore|undefined;const store=openStore=new SqliteMemoryStore(join(root,"memory.db")),context=createMemoryContext(store,{repository:root},"first"),c=contract(root);
+ let openStore:SqliteMemoryStore|undefined;
+ const root=await fixture(t,()=>openStore?.close());
+ const store=openStore=new SqliteMemoryStore(join(root,"memory.db")),context=createMemoryContext(store,{repository:root},"first"),c=contract(root);
  await trackOddTask(c,context,"odd/tasks/task.md",progress);
  const base={sessionId:"first",projectId:root,revision:1,state:"planned" as const,at:"2026-10-06T00:00:01Z"};
  await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,taskId:"other"}),/task identity/i);
