@@ -16,7 +16,7 @@ import type {MemoryContext} from "../src/memory/context.js";import type {MemoryS
 import type {TaskEvent} from "../src/runtime/task-replay.js";
 import {registerInteractionTools} from "../src/interaction/pi-tools.js";
 import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
-import {createCodeIntelligenceTool,type CodeIntelligenceOptions} from "../src/interaction/code-intelligence.js";
+import {registerCodeGraphTools,type CodeIntelligenceOptions} from "../src/interaction/code-intelligence.js";
 import {statusLines,type AsenStatusInput} from "../src/runtime/status.js";
 import {doctorChecks,doctorExitCode} from "../src/runtime/doctor.js";
 import {ASEN_COMMAND_CATALOG} from "../src/runtime/command-catalog.js";
@@ -78,7 +78,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   });
   pi.on?.("turn_start",async()=>{try{await incrementUsageFile(usageFile,"agentRuns");}catch{}});
   registerInteractionTools(pi,dependencies.interactionTimeoutMs);
-  pi.registerTool?.(createCodeIntelligenceTool(dependencies.codeIntelligence));
+  if(pi.registerTool)registerCodeGraphTools({registerTool:pi.registerTool.bind(pi)},dependencies.codeIntelligence);
   pi.registerCommand?.("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
   pi.registerCommand?.("asen-commands",{description:"List ASEN public commands",handler:()=>ASEN_COMMAND_CATALOG.map(c=>({name:c.name,group:c.group,implemented:c.implemented}))});
   pi.registerCommand?.("asen-status",{description:"Show bounded local ASEN status",handler:()=>dependencies.status?statusLines(dependencies.status()):["ASEN status unavailable: no local status provider configured."]});

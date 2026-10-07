@@ -10,13 +10,15 @@ These interfaces are registered by the shipped primary extension (`asen/extensio
 
 The native Pi select/input primitives carry interaction. Offline Linux RPC choice/cancellation has been tested with zero model turns. Full TUI/questionnaire presentation and integration with genuine human-only mutation consumers remain open. Timed-out hosts that ignore abort stay quarantined until the old dialog settles.
 
-## Read-only code intelligence
+## Code intelligence
 
-`asen_code_intelligence` accepts `operation` (`query` or `explore`), a nonempty query of at most 2,000 characters and an integer `limit` from 1 to 20 (default 10). The current working directory must be the canonical Git project root. Home/temp roots and nested working directories are rejected.
+The canonical `codegraph` tool matches the upstream extension contract. It accepts `operation` (`init`, `query` or `explore`), an optional integer `limit` from 1 to 20 (default 10), and a nonempty query of at most 2,000 characters for query/explore. `init` is the only operation that may create or update `.codegraph`, and it runs only when explicitly requested; query/explore never initialize or retry automatically.
 
-The host resolves an installed CodeGraph executable. On Windows, npm package metadata resolves a contained JS entry through Node rather than executing cmd/PowerShell shims. Process arguments are passed separately, with the query after `--`; the model cannot set a path, executable, initialization or permissions. Output and duration are bounded. Missing CLI, stale/error exit, timeout, cancellation and oversized output return bounded status results; failures do not trigger indexing or retries.
+`asen_code_intelligence` remains the read-only compatibility contract. It accepts only `query` or `explore`, requires the query, preserves its existing bounded statuses, and cannot initialize an index. Both tools require the current working directory to be the canonical Git project root. Home/temp roots and nested working directories are rejected. Both check existing `.codegraph` entries with `lstat`; symbolic links and non-directories are rejected without reading index contents.
 
-Tests use synthetic subprocesses, including spaces/Unicode paths and hostile queries. No real index was inspected. Real CLI/version compatibility, permitted initialization lifecycle and cross-platform host behavior remain open. The installed CLI is trusted local code; this is not OS confinement. Existing authority gates still determine whether a tool may execute.
+Both names share hardened execution. The host resolves an installed CodeGraph executable; on Windows, npm package metadata resolves a contained JavaScript entry through Node rather than executing cmd/PowerShell shims. Processes use separate arguments, a constrained environment, no shell, bounded duration and bounded output. Queries follow `--`, so they remain one literal argument. Canonical output is truncated with an explicit marker; canonical failures include operation, workspace and fallback metadata. Compatibility failures remain sanitized and do not expose subprocess error output.
+
+Tests use injected subprocesses and disposable Git fixture projects, including spaces/Unicode paths, hostile queries and unsafe synthetic index entries. No canonical `init` is invoked against an ambient workspace. Real CLI/version compatibility, initialization against a disposable real-CLI project, and cross-platform host behavior remain open. The installed CLI is trusted local code; this is not OS confinement. Existing authority gates still determine whether a tool may execute.
 
 ## Skill registry lifecycle
 
