@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdtemp,readFile,writeFile} from "node:fs/promises";
+import {AsyncLocalStorage} from "node:async_hooks";
+import fsPromises,{mkdtemp,readFile,writeFile} from "node:fs/promises";
+import {syncBuiltinESMExports} from "node:module";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {captureHistory,exportHistory,searchHistory,trimHistory} from "../src/runtime/history.js";
@@ -9,6 +11,42 @@ import {readHistoryStore} from "../src/runtime/history-store.js";
 import {emptyUsage,incrementUsage,maySendTelemetry,telemetryPreview} from "../src/runtime/usage.js";
 import {incrementUsageFile,parseUsageFile,readUsageFile,updateUsageFile} from "../src/runtime/usage-store.js";
 import {runUsageCommand} from "../src/runtime/usage-command.js";
+
+type OpenCall=(...args:Parameters<typeof fsPromises.open>)=>ReturnType<typeof fsPromises.open>;
+type LstatCall=(...args:Parameters<typeof fsPromises.lstat>)=>ReturnType<typeof fsPromises.lstat>;
+
+function createUsageLockOpenObserver(originalOpen:OpenCall,originalLstat:LstatCall,ownedLockPath:string,emit:(line:string)=>void){
+ const calls=new AsyncLocalStorage<{wxAttempts:number;sameCallPriorEEXIST:boolean;wxSucceeded:boolean}>();
+ const codeOf=(error:unknown)=>typeof error==="object"&&error!==null&&"code" in error&&typeof error.code==="string"?error.code:"UNKNOWN";
+ const open=(...args:Parameters<typeof originalOpen>)=>{
+  const call=calls.getStore();if(!call||args[0]!==ownedLockPath||args[1]!=="wx")return originalOpen(...args);call.wxAttempts++;
+  return originalOpen(...args).then((handle:Awaited<ReturnType<typeof originalOpen>>)=>{call.wxSucceeded=true;return handle;},async(error:unknown)=>{
+   const errorCode=codeOf(error);if(errorCode==="EEXIST"){call.sameCallPriorEEXIST=true;throw error;}if(errorCode!=="EPERM"&&errorCode!=="EACCES")throw error;
+   let metadata:{present:true;isFile:boolean;isSymlink:boolean}|{present:false;errorCode:string};
+   try{const snapshot=await originalLstat(ownedLockPath);metadata={present:true,isFile:snapshot.isFile(),isSymlink:snapshot.isSymbolicLink()};}catch(metadataError){metadata={present:false,errorCode:codeOf(metadataError)};}
+   const line=JSON.stringify({node:process.versions.node,libuv:process.versions.uv,platform:process.platform,errorCode,wxAttempts:call.wxAttempts,sameCallPriorEEXIST:call.sameCallPriorEEXIST,wxSucceeded:call.wxSucceeded,metadata});try{emit(line);}catch(diagnosticError){void diagnosticError;}throw error;
+  });
+ };
+ return {open,run:<T>(operation:()=>Promise<T>)=>calls.run({wxAttempts:0,sameCallPriorEEXIST:false,wxSucceeded:false},operation)};
+}
+
+function permissionError(code:"EEXIST"|"EPERM"|"ENOENT"){return Object.assign(new Error(code),{code});}
+
+test("usage lock observer preserves initial permission failure and records absent metadata",async()=>{
+ const ownedLockPath="SENSITIVE_ROOT/token-value/usage.json.lock",original=permissionError("EPERM"),missing=permissionError("ENOENT"),lines:string[]=[];
+ const observer=createUsageLockOpenObserver(async()=>{throw original;},async()=>{throw missing;},ownedLockPath,line=>lines.push(line));
+ await assert.rejects(()=>observer.run(()=>observer.open(ownedLockPath,"wx")),(error:unknown)=>error===original);
+ assert.equal(lines.length,1);assert.ok(lines[0]!.length<512);assert.doesNotMatch(lines[0]!,/SENSITIVE_ROOT|token-value/);
+ const diagnostic=JSON.parse(lines[0]!);assert.equal(diagnostic.errorCode,"EPERM");assert.equal(diagnostic.wxAttempts,1);assert.equal(diagnostic.sameCallPriorEEXIST,false);assert.equal(diagnostic.wxSucceeded,false);assert.deepEqual(diagnostic.metadata,{present:false,errorCode:"ENOENT"});
+});
+
+test("usage lock observer records same-call contention and stays silent after success",async()=>{
+ const directory=await mkdtemp(path.join(tmpdir(),"asen-usage-observer-")),ownedLockPath=path.join(directory,"usage.json.lock"),original=permissionError("EPERM"),exists=permissionError("EEXIST"),lines:string[]=[];await writeFile(ownedLockPath,"");
+ let attempts=0;const attemptedOpen:OpenCall=async()=>{throw attempts++===0?exists:original;};const observer=createUsageLockOpenObserver(attemptedOpen,fsPromises.lstat.bind(fsPromises),ownedLockPath,line=>lines.push(line));
+ await observer.run(async()=>{await assert.rejects(()=>observer.open(ownedLockPath,"wx"),(error:unknown)=>typeof error==="object"&&error!==null&&"code" in error&&error.code==="EEXIST");await assert.rejects(()=>observer.open(ownedLockPath,"wx"),(error:unknown)=>error===original);});
+ assert.equal(lines.length,1);const diagnostic=JSON.parse(lines[0]!);assert.equal(diagnostic.wxAttempts,2);assert.equal(diagnostic.sameCallPriorEEXIST,true);assert.deepEqual(diagnostic.metadata,{present:true,isFile:true,isSymlink:false});assert.doesNotMatch(lines[0]!,new RegExp(directory.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")));
+ const successPath=path.join(directory,"success.lock"),successLines:string[]=[],success=createUsageLockOpenObserver(fsPromises.open.bind(fsPromises),fsPromises.lstat.bind(fsPromises),successPath,line=>successLines.push(line));const handle=await success.run(()=>success.open(successPath,"wx"));await handle.close();assert.deepEqual(successLines,[]);
+});
 
 test("history capture is opt-in, redacts before persistence and scopes search/export",()=>{
  const raw={id:"1",sessionId:"s",projectId:"p",text:"token=abc123456789 password=hunter2",createdAt:"2026-10-06T00:00:00Z"};
@@ -43,9 +81,11 @@ test("corrupt history recovers only through confirmed full-store reset",async()=
  assert.deepEqual(recovered.entries,[]);assert.equal(recovered.policy.enabled,false);
 });
 
-test("usage counters persist and concurrent increments do not lose updates",async()=>{
- const directory=await mkdtemp(path.join(tmpdir(),"asen-usage-")),file=path.join(directory,"usage.json");
- await Promise.all(Array.from({length:30},()=>incrementUsageFile(file,"commands")));
+test("usage counters persist and concurrent increments do not lose updates",{concurrency:false},async t=>{
+ const directory=await mkdtemp(path.join(tmpdir(),"asen-usage-")),file=path.join(directory,"usage.json"),lock=`${file}.lock`;
+ const originalOpen=fsPromises.open.bind(fsPromises),originalLstat=fsPromises.lstat.bind(fsPromises),observer=createUsageLockOpenObserver(originalOpen,originalLstat,lock,line=>console.error(line));
+ if(process.platform==="win32"){t.mock.method(fsPromises,"open",observer.open);syncBuiltinESMExports();t.after(()=>{t.mock.restoreAll();syncBuiltinESMExports();});}
+ const results=await Promise.allSettled(Array.from({length:30},()=>observer.run(()=>incrementUsageFile(file,"commands"))));const failure=results.find((result):result is PromiseRejectedResult=>result.status==="rejected");if(failure)throw failure.reason;
  const value=await readUsageFile(file);assert.equal(value.snapshot.commands,30);assert.equal(value.revision,30);assert.equal((await readUsageFile(file)).snapshot.commands,30);
 });
 
