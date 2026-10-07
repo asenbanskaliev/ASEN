@@ -36,7 +36,7 @@ Allowed statuses are `FULL`, `PARTIAL`, `MISSING`, `OUT_OF_SCOPE`, and `PARTIAL_
 | R16 | public package/API/extension exports | ECO-02/15 | PARTIAL | packed artifact and private-path rejection on final candidate/platforms |
 | R17 | docs, links, examples, command references and media provenance | ECO-01/15 | PARTIAL | behavior-backed docs and automated link/command/claim/media validation |
 | R18 | reverse inventory completeness | ECO-01C/01E/16 | PARTIAL | every frozen command/tool/event/config/asset/reference adjudicated; drift invalidates affected claims |
-| R19 | memory integration with ecosystem | MEM R01-R09 + ECO composition | COVERED/PARTIAL integration | do not redesign memory; prove only ecosystem-facing composition |
+| R19 | memory integration with ecosystem | MEM R01-R09 + ECO composition | PARTIAL | do not redesign memory; prove only ecosystem-facing composition |
 | R20 | failure/recovery/platform matrix | ECO-16 | PARTIAL | positive, rejection, failure, recovery, restart and applicable Windows/macOS/Linux evidence |
 
 ## Dependency-optimized implementation order
