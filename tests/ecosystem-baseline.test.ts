@@ -31,6 +31,7 @@ test("Git-object baseline preserves exact bytes, closes cycles and ignores dirty
   writeFileSync(join(f.root,"lib","core.ts"),"dirty");
   writeFileSync(join(f.root,"extensions","untracked.ts"),"untracked");
   assert.deepEqual(collectBaseline(f.root,f.commit),baseline);
+  assert.ok(baseline.files.every((row:any)=>row.references.every((ref:any)=>!("reason" in ref))));
   assert.equal(verifyBaselineObjects(f.root,baseline),true);
   assert.ok(baseline.files.some((row:any)=>row.references.some((ref:any)=>ref.status==="outside-root")));
   for(const status of ["dependency","builtin","unresolved","absent","external"])
@@ -54,6 +55,35 @@ test("rejects malformed identities, duplicate/escape paths, dangling closure and
 test("static imports use syntax nodes; computed imports remain explicitly unresolved",()=>{
   const refs=sourceReferences("entry.ts",Buffer.from('// import "./fake"\nimport "./real"; export * from "./export"; import("./dynamic"); import(name);'));
   assert.deepEqual(refs.map((r:any)=>r.target).sort(),[null,"./dynamic","./export","./real"].sort());
+});
+
+test("scanner diagnostics distinguish computed names from cwd-dependent file reads",()=>{
+  const refs=sourceReferences("entry.ts",Buffer.from(`
+    import(variable);
+    pi.registerCommand(variable, {});
+    pi.registerTool({name});
+    pi.on(eventName, () => {});
+    new URL(variable, import.meta.url);
+    readFileSync("source-relative.txt");
+    fs.readFile("source-relative.txt", () => {});
+    createReadStream(variable);
+  `));
+  for(const kind of ["dynamic-import","command","tool","event"])
+    assert.ok(refs.some((ref:any)=>ref.kind===kind&&ref.target===null&&ref.reason==="computed"),kind);
+  assert.equal(refs.filter((ref:any)=>ref.kind==="asset"&&ref.reason==="computed").length,1);
+  assert.equal(refs.filter((ref:any)=>ref.kind==="asset"&&ref.reason==="cwd-dependent").length,3);
+});
+
+test("literal source-relative scanner references have no unresolved diagnostic",()=>{
+  const refs=sourceReferences("entry.ts",Buffer.from(`
+    import("./module.js");
+    pi.registerCommand("probe", {});
+    pi.registerTool({name:"probe_tool"});
+    pi.on("session_start", () => {});
+    new URL("./icon.svg", import.meta.url);
+  `));
+  assert.ok(refs.every((ref:any)=>ref.target!==null));
+  assert.ok(refs.every((ref:any)=>!("reason" in ref)));
 });
 
 test("asset and public registration references participate in frozen closure and drift",t=>{
@@ -136,6 +166,7 @@ test("checked-in ecosystem manifest is valid research evidence",()=>{
   assert.deepEqual(validateBaseline(baseline),[]);
   assert.equal(baseline.files.filter((r:any)=>r.path.startsWith("extensions/")).length,20);
   assert.equal(baseline.commit,"08de420ca29be16b6f6bee725a30b599b061df16");
+  assert.ok(baseline.files.every((row:any)=>row.references.every((ref:any)=>!("reason" in ref))));
 });
 
 for(const [name,mutate] of [

@@ -45,6 +45,7 @@ export function sourceReferences(filename, bytes) {
       getCurrentDirectory:()=>"",getDirectories:()=>[],fileExists:name=>name===filename,readFile:name=>name===filename?text:undefined,
       getCanonicalFileName:name=>name,useCaseSensitiveFileNames:()=>true,getNewLine:()=>"\n"};
     const checker=ts.createProgram([filename],{noLib:true,noResolve:true},host).getTypeChecker();
+    const diagnosticReference=(kind,target,reason="computed")=>target===null?{kind,target,reason}:{kind,target};
     const literal=node=>{
       if(node&&ts.isStringLiteralLike(node))return node.text;
       if(!node||!ts.isIdentifier(node))return null;
@@ -60,23 +61,23 @@ export function sourceReferences(filename, bytes) {
       if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
           ts.isIdentifier(node.expression) && node.expression.text === "require")) {
         const value = node.arguments[0];
-        references.push({kind:"dynamic-import", target:value && ts.isStringLiteralLike(value) ? value.text : null});
+        references.push(diagnosticReference("dynamic-import",value&&ts.isStringLiteralLike(value)?value.text:null));
       }
       if(ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)){
         const name=node.expression.name.text;
-        if(name==="registerCommand"||name==="on")references.push({kind:name==="on"?"event":"command",target:literal(node.arguments[0])});
+        if(name==="registerCommand"||name==="on")references.push(diagnosticReference(name==="on"?"event":"command",literal(node.arguments[0])));
         if(name==="registerTool"){
           const arg=node.arguments[0],property=arg&&ts.isObjectLiteralExpression(arg)?arg.properties.find(p=>ts.isPropertyAssignment(p)&&(ts.isIdentifier(p.name)||ts.isStringLiteralLike(p.name))&&p.name.text==="name"):null;
-          references.push({kind:"tool",target:property?literal(property.initializer):null});
+          references.push(diagnosticReference("tool",property?literal(property.initializer):null));
         }
       }
       if(ts.isNewExpression(node)&&ts.isIdentifier(node.expression)&&node.expression.text==="URL"){
         const base=node.arguments?.[1]?.getText(source);
-        references.push({kind:"asset",target:base==="import.meta.url"?literal(node.arguments?.[0]):null});
+        references.push(diagnosticReference("asset",base==="import.meta.url"?literal(node.arguments?.[0]):null));
       }
       if(ts.isCallExpression(node)&&["readFile","readFileSync","createReadStream"].includes(ts.isPropertyAccessExpression(node.expression)?node.expression.name.text:ts.isIdentifier(node.expression)?node.expression.text:"")){
-        // A cwd-dependent file expression is inventoried, never guessed as a source-relative path.
-        references.push({kind:"asset",target:null});
+        // Even a literal argument is resolved against runtime cwd, not the source file.
+        references.push(diagnosticReference("asset",null,"cwd-dependent"));
       }
       ts.forEachChild(node, visit);
     };
@@ -153,7 +154,7 @@ export function collectBaseline(repository, commit) {
     if (!entry || entry.type !== "blob" || entry.mode !== "100644" && entry.mode !== "100755")
       throw new Error("Only tracked regular source blobs may enter the baseline");
     const bytes = git(repository, ["cat-file", "blob", entry.objectId]);
-    const references = sourceReferences(filename, bytes).map(reference => resolveReference(filename, reference, inventory, new Set(dependencyNames)));
+    const references = sourceReferences(filename, bytes).map(({kind,target}) => resolveReference(filename, {kind,target}, inventory, new Set(dependencyNames)));
     rows.set(filename, {id:`ECO-SRC-${digest(filename).slice(0,16)}`,path:filename,...sourceClassification(filename), ...entry, bytes:bytes.length, sha256:digest(bytes), anchors:anchors(filename, bytes), references});
     for (const reference of references) if (reference.status === "tracked" && !rows.has(reference.path)) pending.push(reference.path);
   }
