@@ -5,7 +5,7 @@ import { Dispatcher, type AgentRunner } from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
-import {issueOddDecision} from "./helpers/odd-routing.js";import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";import {issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";
+import {issueOddDecision} from "./helpers/odd-routing.js";import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";import {issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";import {createAgentLifecycleSink} from "../src/runtime/agent-lifecycle.js";
 
 const candidate={id:"candidate",repository:"r",revision:"sha",createdAt:"now"};
 function authorized(){
@@ -243,3 +243,5 @@ test("queued slot transfer preserves FIFO and concurrency against microtask arri
  finish.get("b")!();await new Promise(resolve=>setImmediate(resolve));finish.get("c")!();await Promise.all([a,b,c]);
  assert.equal(maximum,1);assert.deepEqual(order,["a","b"]);assert.deepEqual(started,["a","b","c"]);
 });
+
+test("dispatcher lifecycle projection covers queued running completed and failed without granting authority",async()=>{let tick=0;const now=()=>`2026-10-06T00:00:0${tick++}Z`,sink=createAgentLifecycleSink(now);const runner:AgentRunner={run:async r=>({id:r.id,ok:r.id==="ok",output:r.id==="ok"?"done":"runner failed"})};const d=new Dispatcher(runner,new EvidenceStore(),1,sink);assert.equal((await d.dispatch({id:"ok",role:"explorer",prompt:"x",repository:"r",isolationKey:"session"})).ok,true);assert.equal((await d.dispatch({id:"bad",role:"explorer",prompt:"x",repository:"r",isolationKey:"session"})).ok,false);const records=sink.snapshot();assert.deepEqual(records.map(r=>[r.id,r.state,r.sessionId,r.projectId]),[["ok","completed","session","r"],["bad","failed","session","r"]]);assert.equal(records[0]?.owner.id,"asen-dispatcher");});
