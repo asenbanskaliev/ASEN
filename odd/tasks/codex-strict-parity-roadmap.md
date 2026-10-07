@@ -1,173 +1,113 @@
-# Codex strict-parity continuation after GSP-05D2
+# Portable GitHub/Codex strict-parity handoff
 
-## Purpose and current truth
+## Purpose
 
-Active continuation is ecosystem, not GSP-05D3. GSP-06 retains its explicit provider-limited closure and admitted memory R01–R09 remain closed. Current implementation comparison: `odd/tasks/ecosystem-reconciliation.md`; current claims: `registry/parity/ecosystem-claims-v1.json`; current work queue: `odd/tasks/ecosystem-strict-parity.md`. The original protocol/bootstrap/copy-ready D3 prompt below is historical and superseded by these current trackers and the user's large-batch instructions.
+This document is a portable continuation route, not a backlog. `odd/tasks/ecosystem-strict-parity.md` is the sole execution backlog and owns every ECO checkbox. Do not recreate GSP, MEM, ECO, or `EP-*` tasks here; contradictory historical instructions remain available through Git history.
 
-This is the portable continuation map for the remaining strict-parity program. The canonical branch is `feat/strict-parity-prerequisites`.
+The branch is `feat/strict-parity-prerequisites`. At this handoff checkpoint, `git rev-parse HEAD` returned `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200`. After synchronization, run `git rev-parse HEAD` and treat its output—not a predicted future SHA—as the current identity.
 
-| Boundary | Exact identity |
+## Current truth
+
+- Global Shell / Gentle AI work is closed through GSP-06 at the explicitly accepted provider-limited scope. The provider probe was unavailable, Pi Free was skipped, and no provider PASS may be inferred.
+- All 12 frozen Skill rows remain `PARTIAL` where generated-output evidence is absent. GSP closure does not promote them to `FULL`.
+- Engram/local memory R01-R09 is closed for the admitted local core. `MEM-01..09` is an audit map, not an implementation queue; do not rebuild the memory architecture.
+- The checked-in ecosystem claim registry is 16 `PARTIAL`, 0 `MISSING`, 0 `FULL`.
+- The frozen Reference A manifest is 167 tracked regular Git blobs, 46 roots, and 988 persisted reference records at `08de420ca29be16b6f6bee725a30b599b061df16`.
+- The comparison at `6e681f1d08fff3092273cf305206094d15cacd18` is supplemental extension analysis. It is not a refreeze, source adoption, runtime proof, or `FULL` evidence.
+- NaN/EP-030 is excluded until explicit reauthorization. Transcript import, telemetry, HERDR, third-party presentation, and similar privacy/product/security/license choices remain future gates; do not infer consent.
+
+### Completed and pending evidence
+
+ECO-01C-1 is closed at source commit `95ad615a04c60b6947e1bfa813be77984efb397f`. That commit contains exactly:
+
+- `scripts/ecosystem-baseline.mjs`
+- `tests/ecosystem-baseline.test.ts`
+
+Recorded evidence is focused 16/16, claims 5/5, manifest audit 167 objects, claim audit 16 `PARTIAL`/0 `FULL`, and approved native review with authority burned. This is historical evidence for that exact commit, not a claim that current or future candidates passed.
+
+CodeGraph's canonical `init`/`query`/`explore` tool and read-only compatibility alias are committed at `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200` (4 files, 353 additions / 46 deletions), with the same four blobs as the prior approved candidate. Pre-push verification reran 11/11 plus extension registration 6/6. Exact committed-range review `review-093f38eea8f16cb4` approved and acknowledged; authority burned for `sha256:6d320e0e09873df6d1708ad4909830a2bbafebbc5fc571497b86d2ff1812dcc9`. The old review and its nine advisories remain historical evidence; five new advisories in the same classes are nonblocking and do not reopen approval. Real CLI/index lifecycle, restart, host, and platform evidence remain open.
+
+Historical local typecheck/build were unavailable in the extension slice because required local runners/types were absent and installation was prohibited. The source and handoff documents were independently verified, but no remote CI result is claimed. Remaining delivery work is limited to documentation commits and the authorized feature-branch push.
+
+## Canonical source-of-truth route
+
+| Read in order | Authority |
 | --- | --- |
-| Merged-main base | `e67d2618f466ecee757a519e1b68049588a2db1e` |
-| Sealed handoff baseline | `57cd2b791e1bd611f9114d1a4e7c4a712fed2b7d` |
-| GSP-05D2 source | `909aef32e10025f477c53e6a87d732b706a12486` |
-| GSP-05D1b source | `09e38b8d09c8c0bcb724360c186b2f012a003f24` |
+| `odd/tasks/ecosystem-strict-parity.md` | Sole execution backlog, dependency order, acceptance, status, and ECO closure evidence. |
+| `odd/tasks/ecosystem-final-parity-map.md` | Reverse audit of 20 observable routes, R01-R20; every adopted surface needs implementation, deterministic evidence, host/platform evidence, or an honest disposition. |
+| `registry/parity/ecosystem-sources-v1.json` | Frozen source/object/hash/reference identities for `08de420...`. |
+| `registry/parity/ecosystem-media-v1.json` | Frozen media identities and inspection metadata. |
+| `registry/parity/ecosystem-claims-v1.json` | Machine-checked current claims; currently 16 `PARTIAL`, 0 `MISSING`, 0 `FULL`. |
+| `odd/tasks/gentle-shell-extension-parity.md` | Supplemental 25-file comparison and `EP-*` design aliases only; no execution checkboxes. |
+| `odd/tasks/skill-contract-parity.md` | GSP-06 accepted provider-limited closure and the still-`PARTIAL` 12-Skill evidence boundary. |
+| `odd/tasks/memory-strict-parity.md` and `odd/tasks/memory-v3-parity.md` | MEM audit map and canonical R01-R09 implementation/evidence record. |
 
-The roadmap commit is later than the sealed handoff baseline. After checking out the remote canonical branch, `git rev-parse HEAD` is therefore the authoritative continuation identity; do not expect HEAD to equal the sealed baseline.
+For each of the final map's 20 routes, preserve the chain:
 
-The active tracker is `odd/tasks/skill-contract-parity.md`. The next program trackers are `odd/tasks/memory-strict-parity.md` and `odd/tasks/ecosystem-strict-parity.md`. Read tracker state and the current implementation before planning. Do not infer evidence, paths, APIs, authority, or completion from this map.
+`reference surface -> ASEN surface -> implementation -> deterministic evidence -> host/platform evidence -> status`
 
-## Dependency route and gates
+Keep implementation, production wiring, and evidence separate. Source presence or unit-tested implementation does not prove wiring; wiring does not prove host/platform behavior; scanner output does not establish normative semantics.
 
-The canonical remainder is exactly:
+## Dependency route
+
+The actual next unit is **ECO-01C-2 only**: recover exact frozen bytes and adjudicate the remaining optional, generated, external, command/tool/event, computed, and other unresolved reference semantics. Then complete ECO-01E invalidation coverage for the verified mappings.
+
+The canonical order is:
 
 ```text
-GSP-05D3 -> GSP-05D4 -> GSP-05D5 -> GSP-05E -> GSP-05F
--> GSP-05G -> GSP-05H -> GSP-05I2-B -> GSP-05I3 -> GSP-05I4
--> GSP-06
--> MEM-01 -> MEM-02 -> MEM-03 -> MEM-04 -> MEM-05 -> MEM-06 -> MEM-07 -> MEM-08 -> MEM-09
--> ECO-01A -> ECO-01B -> ECO-01C -> ECO-01D -> ECO-01E
--> ECO-02A -> ECO-02B -> ECO-02C
--> ECO-03 -> ECO-04 -> ECO-05 -> ECO-06 -> ECO-07 -> ECO-08
--> ECO-09 -> ECO-10 -> ECO-11 -> ECO-12 -> ECO-13 -> ECO-14
+ECO-01C-2 -> complete ECO-01E -> complete remaining ECO-01/ECO-02
+-> ECO-03..ECO-08 -> ECO-09..ECO-14
 -> ECO-15A -> ECO-15B -> ECO-15C -> ECO-16
 ```
 
-Do not skip, merge, or reorder units.
+Do not reorder runtime work ahead of reference closure and invalidation. Do not create another queue. ECO-01C-2 may classify an edge only after recovering bytes from the exact frozen public Git object and verifying object identity plus SHA-256 against the manifest. Then inspect the actual surrounding contract and adjudicate semantics. Scanner guesses, a current checkout, a newer snapshot, a matching filename, or file presence are insufficient.
 
-Gates between every arrow:
+Do not change the frozen manifest merely to fit scanner output. A baseline/refreeze occurs only after explicit human review and authorization. ECO-01E must invalidate every affected claim for verified dependency/reference/anchor changes and must never auto-adopt a candidate source.
 
-1. Close only the current unit's tracker acceptance criteria with observed evidence.
-2. Keep the whole review candidate under **390 changed lines**. Split before writing if the cohesive candidate cannot fit; do not compress evidence or take an exception.
-3. Use applicable semantic RED/GREEN. A loader, import, fixture, or setup failure is not semantic RED.
-4. Obtain independent **HIGH** verification for the exact candidate.
-5. Native review may occur only through user-owned RDD. Codex must not self-issue, infer, or bypass review authority.
-6. Commit source/test closure and tracker closure separately, using Conventional Commits. Record exact commit identities in the owning tracker.
-7. Start the next unit only after the current unit is closed. GSP-06 gates all memory work; MEM-09 gates ECO-01A.
+## Portable clean-clone bootstrap
 
-## First and only immediate unit: GSP-05D3
-
-### Entry criteria
-
-- The checked-out remote branch is `feat/strict-parity-prerequisites`, the worktree status is understood, and current HEAD is recorded.
-- `odd/tasks/skill-contract-parity.md` still names GSP-05D3 as the next open D unit.
-- D1b and D2 evidence is read from the tracker and checked against the current implementation.
-- Exact source and test surfaces are derived read-only from the tracker and current implementation **before any write**. They are intentionally not listed here because they remain unknown.
-- The planned whole candidate, including tests and source closure, forecasts fewer than 390 changed lines.
-
-### Deliverables
-
-Bind, as one reviewable behavior unit:
-
-- the applicable RDD invariants;
-- operator flows and their fail-closed transitions;
-- actual runtime journey evidence, clearly distinguished from fixtures, prose, and source inspection;
-- a specific rollback boundary and procedure; and
-- a forecast budget covering candidate lines, verification effort, and remaining uncertainty.
-
-Add semantic positive and negative evidence for each applicable binding. Preserve exact candidate/revision provenance and existing one-use/fail-closed boundaries. Update the active tracker only in the separate tracker-closure commit after source/test closure and required verification.
-
-### Non-goals
-
-GSP-05D3 does not:
-
-- implement or begin D4, D5, E, F, G, H, I, GSP-06, memory, or ecosystem work;
-- guess source paths, tests, APIs, runtime calls, labels, branches, authority, or missing evidence;
-- promote fixture output, prose, `SOURCE_INSPECTED`, file presence, or mocked shape to runtime evidence or `FULL`;
-- claim Pi Free, packaging, platform, typecheck, review, delivery, persistence, or rollback resistance without direct applicable evidence;
-- change the 27 static Skill IDs or touch PR #30.
-
-### Exit criteria
-
-GSP-05D3 is closed only when all of the following are true:
-
-- invariant and operator-flow bindings have executable positive and negative evidence;
-- an actual runtime journey was observed and recorded with its exact command, result, candidate identity, and limitations;
-- rollback and forecast budget are explicit, bounded, and consistent with the implementation;
-- applicable semantic RED and GREEN are recorded honestly;
-- every focused required check passes, except a precisely disclosed environmental limitation;
-- independent HIGH verification passes for the exact candidate;
-- native review, if required, was performed only through user-owned RDD;
-- source/test closure and tracker closure are separate Conventional Commits; and
-- exact diff, changed-line count, and SHA-256 identities are recorded without claiming broader parity.
-
-## Repeatable per-unit protocol
-
-Use this protocol for D3 and then repeat it for each later unit only after its predecessor closes.
-
-1. **Synchronize and inspect:** check out the remote canonical branch, record authoritative HEAD and clean/dirty status, then read the owning tracker and relevant current implementation. Preserve unrelated tracked and untracked files.
-2. **Derive scope:** identify the smallest exact source/test surfaces and acceptance boundaries from repository evidence. Do not reuse a stale local worktree, cache, external memory, temporary directory, or undocumented path list.
-3. **Budget:** forecast all candidate additions and deletions. Stop and split before writes if the whole candidate could reach 390 changed lines.
-4. **RED:** for behavior changes, add the smallest semantic test and observe the intended behavior failure. Do not relabel resolution, fixture, prose, or harness failures as RED.
-5. **GREEN and triangulate:** implement the minimum behavior, pass the focused test, then exercise material negative, alternate, failure, recovery, and provenance cases.
-6. **Verify:** run focused checks first. Run broader checks only when authorized and available. Preserve exact commands and observed results.
-7. **Independent check:** submit the exact candidate for independent HIGH verification. Treat findings as evidence; correct only within the same bounded unit.
-8. **Review boundary:** use native review only when the user exercises the RDD path. No model or local artifact may create review authority.
-9. **Close source:** inspect the exact diff and line count, compute relevant SHA-256 identities, then create one Conventional Commit for source/tests.
-10. **Close tracker:** update only the owning tracker with honest evidence, limits, counts, and source commit identity; create a separate Conventional Commit for tracker closure.
-11. **Delivery decision:** do not merge or release. Push is currently allowed only for `feat/strict-parity-prerequisites`; every future push remains a human decision.
-
-## Verification limitations and standing constraints
-
-- Broad `npm test` has an unresolved historical timeout. Do not present it as a passing gate; use focused commands and report the limitation exactly.
-- Claim typecheck only when the runner is available and the command actually passes. Missing local `tsc`, typings, or runner support is an environmental limitation, not a pass.
-- Runtime and `FULL` claims require applicable observed runtime evidence. Fixtures, prose, source inspection, `SOURCE_INSPECTED`, mocked registration, and file presence are insufficient.
-- Do not inspect or alter `.codegraph`; do not read secrets or real user data; do not install packages; and do not change unrelated configuration.
-- Do not merge, release, or touch unrelated PR #30.
-- Do not infer authenticated principals, trust-root independence, OS isolation, rollback resistance, crash durability, platform coverage, Pi Free behavior, or delivery authority.
-
-## Final reconciliation audit — 2026-10-06
-
-This roadmap's original strict arrow-by-arrow sequencing is historical for the current branch state. The repository subsequently completed the admitted local memory R01-R09 work and reconciled it into `odd/tasks/memory-strict-parity.md`. On 2026-10-06 the user also explicitly accepted closure of GSP-06 without another model-provider execution. That decision does not fabricate Pi Free/provider evidence and does not promote PARTIAL Skill rows to FULL.
-
-Current exact candidate at the start of this audit: `8111c4819e87b0f06c7e3c48487e6b2666cea07d`, 157 commits ahead of and 0 behind merged-main base `e67d2618f466ecee757a519e1b68049588a2db1e`. PR #32 is open, draft, unmerged and reported mergeable. The PR-wide diff is 62 files, 2229 additions and 94 deletions; this aggregate is not a single work-unit candidate and must not be misrepresented as satisfying the historical per-unit 390-line rule.
-
-Exact-head observation after the documentation closures: Phase 0 Architecture PASS. CI and Release Gate were still running when this audit was recorded. GSP-06 Pi Free parity again reached and passed its deterministic gate, then failed only at the generated-output provider step; Pi Free Smoke was skipped. Per the user's accepted scope, neither result reopens GSP-06, but neither may be called provider PASS.
-
-Final pre-main gate: do not merge while CI or Release Gate for the exact final HEAD is pending or failed. Green CI is necessary, but insufficient: the ecosystem comparison identifies genuine unimplemented features and PARTIAL evidence. Finish the accepted ecosystem runtime and verification scope before declaring a merge candidate. No extra GSP-06 provider run is required by the accepted scope. Historical CI PASS must not be transferred to newer checkpoint SHAs.
-
-## Historical portable Codex bootstrap (superseded)
-
-Run from a normal repository clone. These commands use the remote canonical branch and make no assumption about a local worktree, cache, external memory state, or temporary path.
+Run in an ordinary clone with an `origin` remote. This sequence refuses dirty state and local divergence; it never resets, cleans, rebases, forces, or discards work.
 
 ```bash
-git fetch --no-tags origin refs/heads/feat/strict-parity-prerequisites:refs/remotes/origin/feat/strict-parity-prerequisites
-if git show-ref --verify --quiet refs/heads/feat/strict-parity-prerequisites; then
-  git switch feat/strict-parity-prerequisites
+set -eu
+branch=feat/strict-parity-prerequisites
+test -z "$(git status --porcelain)" || { echo "dirty worktree: stop" >&2; exit 1; }
+git fetch --no-tags origin "refs/heads/$branch:refs/remotes/origin/$branch"
+if git show-ref --verify --quiet "refs/heads/$branch"; then
+  git switch "$branch"
+  test -z "$(git status --porcelain)" || { echo "dirty worktree after switch: stop" >&2; exit 1; }
+  git merge --ff-only "origin/$branch"
 else
-  git switch --track -c feat/strict-parity-prerequisites origin/feat/strict-parity-prerequisites
+  git switch --track -c "$branch" "origin/$branch"
 fi
-test "$(git rev-parse HEAD)" = "$(git rev-parse origin/feat/strict-parity-prerequisites)"
+test "$(git rev-parse HEAD)" = "$(git rev-parse "origin/$branch")" || {
+  echo "local/remote divergence: stop" >&2; exit 1;
+}
 git status --short --branch
 git rev-parse HEAD
-git rev-parse e67d2618f466ecee757a519e1b68049588a2db1e
-git rev-parse 57cd2b791e1bd611f9114d1a4e7c4a712fed2b7d
-git rev-parse 909aef32e10025f477c53e6a87d732b706a12486
-git rev-parse 09e38b8d09c8c0bcb724360c186b2f012a003f24
-git diff --check
-git diff --stat
 ```
 
-Then read, without writing:
+If any guard fails, stop for a human decision. Never repair with `reset`, `clean`, force push, or automatic conflict resolution.
 
-```bash
-python - <<'PY'
-from pathlib import Path
-for name in (
-    "odd/tasks/skill-contract-parity.md",
-    "odd/tasks/memory-strict-parity.md",
-    "odd/tasks/ecosystem-strict-parity.md",
-):
-    print(f"\n===== {name} =====")
-    print(Path(name).read_text(encoding="utf-8"))
-PY
+## Execution and evidence rules
 
-git grep -n -E 'GSP-05D(1b|2|3)|RDD|runtime journey|rollback|forecast budget' -- \
-  odd/tasks/skill-contract-parity.md src test tests extensions
-```
+- Before a write, read the canonical tracker and current implementation, derive the exact smallest edit paths, print them, and keep all writes inside the explicitly authorized list. Preserve all unrelated tracked and untracked files.
+- Recover Reference A only through public Git objects addressed by the frozen commit/blob IDs. Verify bytes and hashes before semantic inspection. Do not use machine caches, persistent memory state, absolute user paths, temp-file evidence, or a pre-existing worktree as authority.
+- Start behavior work with the smallest meaningful failing semantic test. Resolution, loader, fixture, setup, or source-availability failures are not semantic RED. Documentation-only work has no meaningful RED; use ordinary structural checks.
+- Derive every available runner from the checked-out `package.json`. Execute in a clean, explicitly bounded environment. Do not invent commands from an old handoff, install dependencies, or treat unavailable local runners as passing.
+- Obtain independent verification of the exact candidate. RDD/native review is allowed only when the user owns/enables that mode and the provider's public review capability is actually available. Codex must not fabricate Pi-only tools, review authority, acknowledgements, or provider results.
+- Freeze or promote evidence only after explicit review. Record exact candidate identity, command, observed result, limitations, changed paths, and rollback boundary; never transfer a result from another SHA.
+- No secrets, credentials, real user data, private repositories, package installation, or new dependencies without a separate explicit grant.
+- The user's commit/push grant applies only to delivery of this handoff/current authorized work on `feat/strict-parity-prerequisites`. It is not standing authority for ECO-01C-2 or later autonomous delivery. No merge, release, publication, PR mutation, force operation, or unrelated remote change is authorized.
 
-If a listed search root does not exist, remove only that nonexistent root and rerun. Derive exact D3 source/test paths from the tracker hits and current implementation before editing. Do not inspect `.codegraph`.
+## Copy-ready Codex prompt: ECO-01C-2 only
 
-## Historical copy-ready Codex instruction (superseded)
+> Work only on **ECO-01C-2** in `feat/strict-parity-prerequisites`. Read `odd/tasks/ecosystem-strict-parity.md`, `odd/tasks/ecosystem-final-parity-map.md`, `registry/parity/ecosystem-sources-v1.json`, and the current baseline implementation/tests. Record `git rev-parse HEAD` and dirty state. Before writing, recover the exact `08de420ca29be16b6f6bee725a30b599b061df16` public Git objects named by the frozen manifest, verify each object ID and SHA-256, inspect the bytes, and derive the smallest exact edit-path list from repository evidence. Print that list and stop for authorization if it differs from the authorized surfaces; preserve unrelated files.
+>
+> Add the smallest semantic tests first for the remaining optional/generated/external/reference adjudication. A scanner guess, current-source presence, or the supplemental `6e681f...` snapshot is not semantic evidence. Keep implementation, production wiring, and evidence distinct; do not refreeze, promote a claim, start ECO-01E/runtime work, or add an `EP-*` queue. Derive runners from the checked-out `package.json` and use only available clean-environment commands; do not install dependencies or claim unavailable checks passed. Obtain independent exact-candidate verification. Use RDD/native review only if the user enabled that mode and a public provider capability is available; do not invent Pi tools or authority in Codex.
+>
+> Do not access secrets or real user data. Do not use machine caches, Engram state, absolute user paths, or temporary files as evidence. Do not commit, push, mutate a PR, merge, publish, release, or begin a later unit without a new explicit human grant. Report observed RED/GREEN where meaningful, exact commands/results, paths, candidate identity, limits, and rollback boundary.
 
-> Continue **GSP-05D3 only** on `feat/strict-parity-prerequisites`: read `odd/tasks/skill-contract-parity.md` and the current D1b/D2 implementation, derive exact source/test surfaces read-only before writes, then bind invariants, operator flows, actual runtime journey evidence, rollback, and forecast budget. Keep the whole candidate under 390 changed lines, use honest applicable semantic RED/GREEN, obtain independent HIGH verification, and leave every later unit untouched.
+## Handoff boundary
+
+This document changes no runtime behavior; it records the exact committed source, review, and pre-push evidence above. Validate documentation changes only with ordinary structural checks (line count, required sections/identities, stale D3 absence, and diff hygiene). The remaining documentation commits and feature-branch push are authorized for this handoff only; later ECO work remains a separate human decision.
