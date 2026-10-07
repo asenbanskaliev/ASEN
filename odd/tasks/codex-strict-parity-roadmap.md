@@ -4,7 +4,7 @@
 
 This document is a portable continuation route, not a backlog. `odd/tasks/ecosystem-strict-parity.md` is the sole execution backlog and owns every ECO checkbox. Do not recreate GSP, MEM, ECO, or `EP-*` tasks here; contradictory historical instructions remain available through Git history.
 
-The branch is `feat/strict-parity-prerequisites`. At this handoff checkpoint, `git rev-parse HEAD` returned `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200`. After synchronization, run `git rev-parse HEAD` and treat its output—not a predicted future SHA—as the current identity.
+The branch is `feat/strict-parity-prerequisites`. The historical pre-seal checkpoint is `35127605b20a46f4653259c9513718f298f2dd0f`. The metadata-seal commit SHA is intentionally not predicted; after synchronization, run `git rev-parse HEAD` and treat its output as the authoritative current identity.
 
 ## Current truth
 
@@ -27,7 +27,7 @@ Recorded evidence is focused 16/16, claims 5/5, manifest audit 167 objects, clai
 
 CodeGraph's canonical `init`/`query`/`explore` tool and read-only compatibility alias are committed at `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200` (4 files, 353 additions / 46 deletions), with the same four blobs as the prior approved candidate. Pre-push verification reran 11/11 plus extension registration 6/6. Exact committed-range review `review-093f38eea8f16cb4` approved and acknowledged; authority burned for `sha256:6d320e0e09873df6d1708ad4909830a2bbafebbc5fc571497b86d2ff1812dcc9`. The old review and its nine advisories remain historical evidence; five new advisories in the same classes are nonblocking and do not reopen approval. Real CLI/index lifecycle, restart, host, and platform evidence remain open.
 
-Historical local typecheck/build were unavailable in the extension slice because required local runners/types were absent and installation was prohibited. The source and handoff documents were independently verified, but no remote CI result is claimed. Remaining delivery work is limited to documentation commits and the authorized feature-branch push.
+Historical local typecheck/build were unavailable in the extension slice because required local runners/types were absent and installation was prohibited. The source and handoff documents were independently verified, but no remote CI result is claimed. The documentation work units are committed at `54bd5f730a4bd1bfd35dd21588f19da900e49760`, `d54326acb9ddf963edfde70a00619c7fac41359d`, and `35127605b20a46f4653259c9513718f298f2dd0f`; this final metadata seal needs no predicted SHA. After the seal, only the feature-branch push, exact remote-SHA confirmation, and exact-SHA CI remain pending.
 
 ## Canonical source-of-truth route
 
@@ -98,7 +98,7 @@ If any guard fails, stop for a human decision. Never repair with `reset`, `clean
 - Obtain independent verification of the exact candidate. RDD/native review is allowed only when the user owns/enables that mode and the provider's public review capability is actually available. Codex must not fabricate Pi-only tools, review authority, acknowledgements, or provider results.
 - Freeze or promote evidence only after explicit review. Record exact candidate identity, command, observed result, limitations, changed paths, and rollback boundary; never transfer a result from another SHA.
 - No secrets, credentials, real user data, private repositories, package installation, or new dependencies without a separate explicit grant.
-- The user's commit/push grant applies only to delivery of this handoff/current authorized work on `feat/strict-parity-prerequisites`. It is not standing authority for ECO-01C-2 or later autonomous delivery. No merge, release, publication, PR mutation, force operation, or unrelated remote change is authorized.
+- Delivery authority is bounded to the parent-controlled metadata-seal commit and push of `feat/strict-parity-prerequisites`. It is not standing authority for ECO-01C-2, later commits, or autonomous delivery. No merge, release, publication, PR mutation, force operation, or unrelated remote change is authorized.
 
 ## Copy-ready Codex prompt: ECO-01C-2 only
 
@@ -110,4 +110,4 @@ If any guard fails, stop for a human decision. Never repair with `reset`, `clean
 
 ## Handoff boundary
 
-This document changes no runtime behavior; it records the exact committed source, review, and pre-push evidence above. Validate documentation changes only with ordinary structural checks (line count, required sections/identities, stale D3 absence, and diff hygiene). The remaining documentation commits and feature-branch push are authorized for this handoff only; later ECO work remains a separate human decision.
+This document changes no runtime behavior; it records the exact committed source, documentation work units, review, and pre-push evidence above. Validate this final metadata seal only with ordinary structural checks (line count, required sections/identities, stale D3 absence, and diff hygiene). After its parent-controlled commit, only the feature-branch push, exact remote-SHA confirmation, and exact-SHA CI remain pending; later ECO work remains a separate human decision.

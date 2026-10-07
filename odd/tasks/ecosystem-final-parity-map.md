@@ -62,7 +62,7 @@ Nonadopted optional features do not gate adopted-scope closure. Explicit exclusi
 - ECO-05 child lifecycle does not wait for ECO-06 primary safety: the existing pinned child authority and exact tool exclusion remain mandatory before prompt dispatch. Child shell/background support remains disabled by default and requires a separate user decision plus its own recognizer, destructive-command, wrapper and job constraints.
 - Forbidden tools: zero executions. A blocked attempt may be recorded only as an attempt.
 - Prefer deterministic/local evidence; use consolidated remote CI only for platform/host boundaries.
-- Keep every stable work block independently reviewable. Historically, reconciliation and verification granted no delivery authority. For the current handoff only, the user has now authorized the remaining documentation commits and feature-branch push; this is not standing authority for later work.
+- Keep every stable work block independently reviewable. The reconciliation and portable-handoff documentation units are already committed; do not duplicate them. The parent-controlled metadata seal needs no predicted SHA, and delivery authority ends with the feature-branch push. It is not standing authority for later commits or work.
 
 ## Task replay ownership and evidence
 
@@ -80,7 +80,7 @@ Replay survives close/reopen through the ODD tracking MemoryStore item. A change
 
 ## Current handoff evidence
 
-CodeGraph source commit `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200` contains the same four blobs as the prior approved candidate (4 files, 353 additions / 46 deletions). Pre-push verification reran 11/11 focused tests plus 6/6 extension registration tests. Exact committed-range native review `review-093f38eea8f16cb4` approved; acknowledgement burned authority for `sha256:6d320e0e09873df6d1708ad4909830a2bbafebbc5fc571497b86d2ff1812dcc9`. The earlier review and its nine advisories remain historical evidence; five new advisories in the same classes are nonblocking and do not reopen approval. Remaining delivery work is documentation commits and the authorized feature-branch push, not another feature unit. ECO-01C-1 remains closed at `95ad615a04c60b6947e1bfa813be77984efb397f`; ECO-01C-2 is next.
+Scanner source commit `95ad615a04c60b6947e1bfa813be77984efb397f` and CodeGraph source commit `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200` are complete. CodeGraph contains the same four blobs as the prior approved candidate (4 files, 353 additions / 46 deletions); pre-push verification reran 11/11 focused tests plus 6/6 extension registration tests. Exact committed-range native review `review-093f38eea8f16cb4` approved; acknowledgement burned authority for `sha256:6d320e0e09873df6d1708ad4909830a2bbafebbc5fc571497b86d2ff1812dcc9`. The earlier review and its nine advisories remain historical evidence; five new advisories in the same classes are nonblocking and do not reopen approval. Documentation work units are committed at `54bd5f730a4bd1bfd35dd21588f19da900e49760`, `d54326acb9ddf963edfde70a00619c7fac41359d`, and `35127605b20a46f4653259c9513718f298f2dd0f`. After the parent-controlled metadata seal, only the feature-branch push, exact remote-SHA confirmation, and exact-SHA CI remain; none is claimed complete here. ECO-01C-1 remains closed; ECO-01C-2 is next under a separate human decision.
 
 ## Historical platform defect
 

@@ -27,7 +27,7 @@ Implement CodeGraph parity first, then deeply inspect every TypeScript file unde
   - Canonical `codegraph` tool exposes init/query/explore, upstream schema, argv, prompt guidance and presentation metadata.
   - Existing `asen_code_intelligence` remains compatible; shared hardened execution, explicit initialization, safe index-directory checks, limits and cancellation.
   - Original export-not-found failure is not semantic RED. Index-safety correction observed semantic RED before its fix, then independent focused GREEN; typecheck/build availability and native review evidence are recorded below.
-  - Host/real CLI limitations disclosed. The exact source is committed at `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200`; the user authorized the remaining handoff commits and feature-branch push for this handoff only.
+  - Host/real CLI limitations disclosed. The exact source is committed at `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200`; the extension-audit documentation is committed at `54bd5f730a4bd1bfd35dd21588f19da900e49760`.
 - [x] EXT-02 — Deeply compare all 25 upstream extension TypeScript files with ASEN. **Source audit complete for all 25 extension bodies, supplemented by critical direct helpers; transitive/runtime limitations remain explicit.**
   - Read implementation bodies, registrations/events, dependencies, lifecycle, state/persistence, error/security paths, UI and headless behavior.
   - Record per-file evidence, actual ASEN wiring, gaps and evidence limitations; distinguish absent behavior from missing verification.
@@ -60,11 +60,11 @@ EXT-01 candidate touches `src/interaction/code-intelligence.ts`, `tests/code-int
 - The prior candidate review `review-def8871f9b2af02e` remains historical evidence with its nine nonblocking advisories. The same four source blobs are now committed at `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200` (4 files, 353 additions / 46 deletions).
 - Exact committed-range native review `review-093f38eea8f16cb4` approved that source commit; exact acknowledgement completed and authority burned for target `sha256:6d320e0e09873df6d1708ad4909830a2bbafebbc5fc571497b86d2ff1812dcc9`.
 - Five new nonblocking advisories are in the same already-disclosed classes. They do not reopen the approval or replace the nine historical advisories.
-- The user authorized the remaining GitHub/Codex handoff commits and feature-branch push for this handoff only. This does not grant future autonomous delivery.
+- The documentation work units are committed at `54bd5f730a4bd1bfd35dd21588f19da900e49760`, `d54326acb9ddf963edfde70a00619c7fac41359d`, and `35127605b20a46f4653259c9513718f298f2dd0f`. The parent-controlled metadata seal needs no predicted SHA; only the feature-branch push, exact remote-SHA confirmation, and exact-SHA CI remain afterward. This does not grant later commits or future autonomous delivery.
 
 ## Next step
 
-Continue only from the existing canonical ecosystem backlog: ECO-01C-1 remains closed at `95ad615a04c60b6947e1bfa813be77984efb397f`; the next feature unit is ECO-01C-2, followed by ECO-01E drift obligations before dependent runtime work. EXT-04 verification is already complete. EP aliases are design references, not a second execution list. Remaining documentation commits and the feature-branch push are authorized for this handoff only; future delivery remains a separate human decision.
+Continue only from the existing canonical ecosystem backlog: ECO-01C-1 remains closed at `95ad615a04c60b6947e1bfa813be77984efb397f`; the next feature unit is ECO-01C-2, followed by ECO-01E drift obligations before dependent runtime work. EXT-04 verification is already complete. EP aliases are design references, not a second execution list. Do not recreate the committed documentation units; after the parent-controlled metadata seal, only the feature-branch push, exact remote-SHA confirmation, and exact-SHA CI remain. Future delivery remains a separate human decision.
 
 ---
 
@@ -316,4 +316,4 @@ Aggregate effort is **multi-release / XL**. Critical-path risk is concentrated i
 - The plan remains source-derived: no new runtime, dependency-closure, environmental, test, network, install, CodeGraph, or ambient-index evidence was collected, and no source-evidence status was promoted.
 - Helper contracts remain discovery-gated, including public review contracts, agent messaging/history/writer registry and Windows transport, Pi host/TUI internals, launcher execution, telemetry transport/schema, visual components, and third-party `pi-pretty`.
 - EXT-01 remains approved with nine nonblocking advisories; EXT-02 remains a source audit rather than runtime parity. Accepted GSP-06 provider-limited closure and MEM R01–R09 closure remain intact; public review gaps belong to ECO-06 without reopening provider-private authority or GSP execution.
-- **Next action:** continue ECO-01C-2 from `codex-strict-parity-roadmap.md` and the canonical ecosystem tracker. EXT-04 verification is already complete. The user authorized the remaining documentation commits and feature-branch push for this handoff only; that grant does not authorize future autonomous delivery.
+- **Next action:** after the parent-controlled metadata seal, push only `feat/strict-parity-prerequisites`, confirm its exact remote SHA, and observe exact-SHA CI. Then continue ECO-01C-2 only under a separate human decision from `codex-strict-parity-roadmap.md` and the canonical ecosystem tracker. EXT-04 verification and its documentation commit are already complete.
