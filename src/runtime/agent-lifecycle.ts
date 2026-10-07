@@ -1,6 +1,6 @@
 export type PublicAgentState="queued"|"running"|"cancelled"|"failed"|"completed";
 export interface PublicAgentRecord{id:string;role:string;owner:{kind:"user"|"agent"|"system";id:string};sessionId:string;projectId:string;state:PublicAgentState;createdAt:string;updatedAt:string;summary?:string}
-export interface AgentLifecycleSink{queued(input:Omit<PublicAgentRecord,"state"|"updatedAt">):void;running(id:string,at?:string):void;completed(id:string,summary?:string,at?:string):void;failed(id:string,summary?:string,at?:string):void;cancelled(id:string,summary?:string,at?:string):void;snapshot():readonly PublicAgentRecord[]}
+export interface AgentLifecycleSink{createdAt():string;queued(input:Omit<PublicAgentRecord,"state"|"updatedAt">):void;running(id:string,at?:string):void;completed(id:string,summary?:string,at?:string):void;failed(id:string,summary?:string,at?:string):void;cancelled(id:string,summary?:string,at?:string):void;snapshot():readonly PublicAgentRecord[]}
 const terminal=new Set<PublicAgentState>(["cancelled","failed","completed"]);
 function safeIdentity(value:unknown):value is string{return typeof value==="string"&&value.length>0&&value.length<=256&&value===value.trim()&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);}
 export function createAgentRecord(input:Omit<PublicAgentRecord,"state"|"updatedAt">):PublicAgentRecord{if(!safeIdentity(input.id)||!safeIdentity(input.role)||!safeIdentity(input.owner?.id)||!safeIdentity(input.sessionId)||!safeIdentity(input.projectId))throw new Error("Agent identity is incomplete or invalid");if(!["user","agent","system"].includes(input.owner.kind))throw new Error("Invalid agent owner kind");if(!Number.isFinite(Date.parse(input.createdAt)))throw new Error("Invalid timestamp");return {...structuredClone(input),state:"queued",updatedAt:input.createdAt};}
@@ -10,6 +10,7 @@ export function createAgentLifecycleSink(now:()=>string=()=>new Date().toISOStri
  const records=new Map<string,PublicAgentRecord>();
  const move=(id:string,state:Exclude<PublicAgentState,"queued">,summary?:string,at=now())=>{const current=records.get(id);if(!current)throw new Error("Agent lifecycle record does not exist");records.set(id,transitionAgent(current,state,at,summary));};
  return Object.freeze({
+  createdAt(){return now();},
   queued(input:Omit<PublicAgentRecord,"state"|"updatedAt">){if(records.has(input.id))throw new Error("Agent lifecycle record already exists");records.set(input.id,createAgentRecord(input));},
   running(id:string,at?:string){move(id,"running",undefined,at);},
   completed(id:string,summary?:string,at?:string){move(id,"completed",summary,at);},
