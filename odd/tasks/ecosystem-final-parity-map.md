@@ -20,7 +20,7 @@ Allowed statuses are `FULL`, `PARTIAL`, `MISSING`, `OUT_OF_SCOPE`, and `PARTIAL_
 | --- | --- | --- | --- | --- |
 | R01 | install, executable, package root, project/user homes, setup/link | ECO-09 | PARTIAL | clean install, idempotency, rollback, permissions, spaces/Unicode, Windows/macOS/Linux |
 | R02 | public commands, arguments, errors and availability | ECO-09/14/15 | PARTIAL | exact command inventory and behavior-backed validation |
-| R03 | configuration, settings, precedence and invalid values | ECO-11 | MISSING | schema, deterministic precedence, diagnostics, rollback, live/restart semantics |
+| R03 | configuration, settings, precedence and invalid values | ECO-11 | PARTIAL | schema, deterministic precedence, diagnostics, rollback, live/restart semantics |
 | R04 | profiles, routing and customization | ECO-11 | PARTIAL | safe overrides/fallbacks and exact routing evidence |
 | R05 | actor/owner/session attribution for changes | ECO-10 | PARTIAL | exact actor/session/project/worktree attribution without authority inflation |
 | R06 | workspace state/actions and concurrent updates | ECO-10 | PARTIAL | accessible narrow-terminal UI, conflicts, restart and isolation |

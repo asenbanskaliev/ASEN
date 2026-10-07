@@ -1,8 +1,9 @@
 import path from "node:path";
+import {readFile} from "node:fs/promises";
 
 export const PI_SUBCOMMANDS=["install","remove","uninstall","update","list","config","auth"] as const;
 export type AsenHomeMode="link"|"isolated"|"path";
-export type AsenHomeSource="flag"|"config"|"default";
+export type AsenHomeSource="flag"|"config"|"environment"|"default";
 export type AsenLauncherConfig={mode:"link"}|{mode:"isolated"}|{mode:"path";dir:string};
 export interface ParsedAsenArgs{link:boolean;isolated:boolean;home?:string|undefined;packageRoot?:string|undefined;help:boolean;version:boolean;command?:"home"|"setup"|undefined;commandArgs:string[];passthrough:string[];piSubcommand?:string|undefined;error?:string|undefined}
 const isPiCommand=(v:string)=>(PI_SUBCOMMANDS as readonly string[]).includes(v);
@@ -24,14 +25,17 @@ export function parseAsenArgs(argv:readonly string[]):ParsedAsenArgs{
 }
 export function parseAsenLauncherConfig(text:string):AsenLauncherConfig|undefined{
  let value:unknown;try{value=JSON.parse(text);}catch{return undefined;} if(!value||typeof value!=="object"||Array.isArray(value))return undefined;
- const home=(value as Record<string,unknown>).home;if(typeof home!=="string"||!home)return undefined;if(home==="link")return {mode:"link"};if(home==="isolated")return {mode:"isolated"};return {mode:"path",dir:home};
+ const record=value as Record<string,unknown>;if(Object.keys(record).length!==1||typeof record.home!=="string")return undefined;
+ const home=record.home;if(!home||home.length>4096||home!==home.trim()||/[\u0000-\u001f\u007f-\u009f]/u.test(home))return undefined;
+ if(home==="link")return {mode:"link"};if(home==="isolated")return {mode:"isolated"};return {mode:"path",dir:home};
 }
 export function asenLauncherConfigPath(home:string){return path.join(home,".asen","config.json");}
+export async function readAsenLauncherConfig(home:string):Promise<AsenLauncherConfig|undefined>{try{return parseAsenLauncherConfig(await readFile(asenLauncherConfigPath(home),"utf8"));}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;}}
 export function resolveAsenHome(input:{args:ParsedAsenArgs;env:Record<string,string|undefined>;homedir:string;config?:AsenLauncherConfig}):{mode:AsenHomeMode;dir:string;source:AsenHomeSource}{
  const linked=input.env.PI_CODING_AGENT_DIR||path.join(input.homedir,".pi","agent"),isolated=input.env.ASEN_HOME||path.join(input.homedir,".asen","agent");
  if(input.args.link)return {mode:"link",dir:linked,source:"flag"};if(input.args.isolated)return {mode:"isolated",dir:isolated,source:"flag"};if(input.args.home)return {mode:"path",dir:input.args.home,source:"flag"};
  if(input.config?.mode==="link")return {mode:"link",dir:linked,source:"config"};if(input.config?.mode==="isolated")return {mode:"isolated",dir:isolated,source:"config"};if(input.config?.mode==="path")return {mode:"path",dir:input.config.dir,source:"config"};
- return {mode:"isolated",dir:isolated,source:"default"};
+ return {mode:"isolated",dir:isolated,source:input.env.ASEN_HOME?"environment":"default"};
 }
 export function asenHomeSelectorFlags(home:{mode:AsenHomeMode;dir:string}):string[]{return home.mode==="link"?["--link"]:home.mode==="path"?["--home",home.dir]:[];}
 export function resolvePiRuntime(input:{env:Record<string,string|undefined>;bundled?:string;onPath?:string;nodeExecPath:string}):{kind:"env"|"bundled"|"path";command:string;args:string[]}|undefined{
