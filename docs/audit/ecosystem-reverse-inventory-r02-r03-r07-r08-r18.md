@@ -2,13 +2,13 @@
 
 ## Scope and method
 
-Reference A is the frozen `Gentleman-Programming/gentle-shell` tree at `08de420ca29be16b6f6bee725a30b599b061df16`. This audit uses its extension registrations and observable user-facing behavior only; it does not treat upstream internals as requirements. ASEN evidence is the candidate tree at audit time, deterministic tests, and the exact-SHA host workflows. Source presence alone is not closure evidence.
+Reference A is pinned at `08de420ca29be16b6f6bee725a30b599b061df16` in `registry/parity/ecosystem-sources-v1.json`. This audit uses extension registrations and observable user-facing behavior only; it does not treat upstream internals as requirements. ASEN evidence is the candidate tree at audit time, deterministic tests, and the exact-SHA host workflows. Source presence alone is not closure evidence.
 
 The baseline snapshot at `registry/parity/ecosystem-sources-v1.json` pins the source commit and records 167 files, 127 event references, 16 tool references, 24 command references, 147 assets, 76 documents, 570 imports, and 27 command references. Its static reference resolver still reports 164 unresolved, absent, or outside-root references. These counts describe scanner output, not adjudicated parity; the resolver is not yet sufficient to prove a complete semantic inventory.
 
 ## R02 — commands, arguments, errors, availability
 
-Reference A exposes these 26 commands from its extension registrations, including names generated from bounded registration loops: `gentle:agents`, `gentle:animations`, `gentle:background-subagents`, `gentle:banner`, `gentle:banner-color`, `gentle:changes`, `gentle:commands`, `gentle:customize`, `gentle:dev-binary`, `gentle:doctor`, `gentle:double-esc-cancel`, `gentle:install-delegation`, `gentle:install-review`, `gentle:models`, `gentle:persona`, `gentle:profiles`, `gentle:review-mode`, `gentle:review-session-permission`, `gentle:status`, `gentle:telemetry`, `gentle:toggle-rose`, `gentle:toggle-text-logo`, `gentle:usage`, `gentle:vim`, `history`, and `skill-registry:refresh`.
+Reference A exposes 26 commands from its extension registrations, including names generated from bounded registration loops. The functional inventory is: agent view; animation setting; background-agent policy; banner; banner color; workspace changes; command inventory; customization; development binary selection; diagnostics; double-Escape cancellation; delegated setup for two roles; model selection; persona selection; profile selection; review mode; review-session permission; status; telemetry; usage; editor mode; history; and skill-registry refresh. This inventory deliberately records behavior without importing upstream command names or identity.
 
 ASEN's shipped command catalog is `src/runtime/command-catalog.ts`; the Pi registrations are in `extensions/asen.ts`, `extensions/authority.ts`, `src/lifecycle/workflow-selection.ts`, and `src/review/ordinary-review-command.ts`. `asen-authority-status` was registered publicly but omitted from the catalog. The candidate fixes that inventory omission and adds a deterministic host-double check that catalogued implemented commands equal the commands actually registered by the extension plus authority policy. This is inventory consistency evidence, not command-behavior equivalence.
 
@@ -21,7 +21,7 @@ ASEN's shipped command catalog is `src/runtime/command-catalog.ts`; the Pi regis
 | Profiles/models/persona | `/asen-profiles` | Read-only profile listing; profile editing/model selection/routing behavior is not represented by this command. |
 | Remaining visual, history, usage, review-mode and permission controls | No equivalent public behavior demonstrated | `PARTIAL`; do not infer equivalence from internal helpers or similarly named code. |
 
-ASEN-specific `/asen-workflow`, `/asen-review`, and authority diagnostics remain ASEN surfaces; their existence does not close unmatched Reference A behavior. R02 stays `PARTIAL`.
+ASEN-specific workflow, review, and authority diagnostics remain ASEN surfaces; their existence does not close unmatched Reference A behavior. R02 stays `PARTIAL`.
 
 ## R03 — configuration and settings
 
