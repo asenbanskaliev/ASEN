@@ -26,7 +26,7 @@ test("an existing-lock inspection permission race retries once and reacquires",{
  const directory=await mkdtemp(path.join(tmpdir(),"asen-lock-inspect-race-")),target=path.join(directory,"data.json"),lock=`${target}.lock`;
  await writeFile(lock,JSON.stringify({pid:process.pid,token:"released",createdAt:Date.now()}));
  const originalReadFile=fsPromises.readFile.bind(fsPromises);let lockReads=0,operations=0;
- t.mock.method(fsPromises,"readFile",async(file,...args)=>{
+ t.mock.method(fsPromises,"readFile",async(file:Parameters<typeof originalReadFile>[0],...args:Parameters<typeof originalReadFile> extends [unknown,...infer Rest]?Rest:never)=>{
   if(file.toString()===lock&&lockReads++===0){await rm(lock);throw permissionError("EPERM");}
   return originalReadFile(file,...args);
  });
@@ -43,7 +43,7 @@ for(const code of ["EPERM","EACCES"] as const)test(`persistent existing-lock ins
  const directory=await mkdtemp(path.join(tmpdir(),"asen-lock-inspect-denied-")),target=path.join(directory,"data.json"),lock=`${target}.lock`;
  const content=JSON.stringify({pid:process.pid,token:"live",createdAt:Date.now()}),original=permissionError(code);await writeFile(lock,content);
  const originalReadFile=fsPromises.readFile.bind(fsPromises);let lockReads=0,operations=0;
- t.mock.method(fsPromises,"readFile",async(file,...args)=>{if(file.toString()===lock){lockReads++;throw original;}return originalReadFile(file,...args);});
+ t.mock.method(fsPromises,"readFile",async(file:Parameters<typeof originalReadFile>[0],...args:Parameters<typeof originalReadFile> extends [unknown,...infer Rest]?Rest:never)=>{if(file.toString()===lock){lockReads++;throw original;}return originalReadFile(file,...args);});
  syncBuiltinESMExports();
  try{
   await assert.rejects(()=>withExclusiveFileLock(target,async()=>{operations++;}),error=>error===original&&(error as NodeJS.ErrnoException).code===code);
