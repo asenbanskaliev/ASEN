@@ -18,6 +18,13 @@ export type CodeGraphRunner=(args:readonly string[],options:CodeGraphRunOptions)
 
 type CompatibilityRequest={operation:"query"|"explore";query:string;limit:number};
 type ExecutableCommand={executable:string;prefix:string[]};
+type ToolAnnotations={readOnlyHint:boolean;destructiveHint:boolean;idempotentHint:boolean;openWorldHint:boolean};
+type AnnotatedToolDefinition=ToolDefinition<any>&{
+  annotations:ToolAnnotations;
+  renderShell?:"self";
+  promptSnippet?:string;
+  promptGuidelines?:readonly string[];
+};
 
 const execute=promisify(execFile);
 const DEFAULT_LIMIT=10;
@@ -192,7 +199,7 @@ function fallbackStatus(error:unknown):"unavailable"|"failed" {
 }
 
 /** Canonical upstream-compatible CodeGraph tool. Only explicit `init` can create an index. */
-export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner()):ToolDefinition<any> {
+export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner()):AnnotatedToolDefinition {
   return {
     name:"codegraph",
     renderShell:"self",
@@ -212,7 +219,7 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
       assertSafeIndexDirectory(root);
       const args=commandArguments(request,root);
       try{
-        const observed=await runner(args,{cwd:root,signal,maxBuffer:PROCESS_MAX_BUFFER});
+        const observed=await runner(args,{cwd:root,maxBuffer:PROCESS_MAX_BUFFER,...(signal===undefined?{}:{signal})});
         const output=truncateOutput([observed.stdout,observed.stderr].filter(Boolean).join("\n"));
         return {content:[{type:"text" as const,text:output||"CodeGraph completed without output."}],details:{operation:request.operation,cwd:root,args}};
       }catch(error){
@@ -229,9 +236,9 @@ export function registerCodeGraphTool(pi:{registerTool(tool:ToolDefinition<any>)
 }
 
 /** Installed CLI is trusted local code. Argument/root policy is not OS confinement. No index is inspected here. */
-export function createCodeIntelligenceTool(options:CodeIntelligenceOptions={}):ToolDefinition<any> {
+export function createCodeIntelligenceTool(options:CodeIntelligenceOptions={},injectedRunner?:CodeGraphRunner):AnnotatedToolDefinition {
   const configuration=Object.freeze({...options});
-  const runner=createCodeGraphRunner(configuration);
+  const runner=injectedRunner??createCodeGraphRunner(configuration);
   return {
     name:"asen_code_intelligence",
     label:"ASEN code intelligence",
@@ -250,7 +257,7 @@ export function createCodeIntelligenceTool(options:CodeIntelligenceOptions={}):T
       try{maxBuffer=boundedConfiguration(configuration).maxBuffer;}catch{return compatibilityResult("invalid");}
       try{
         const args=commandArguments(request,root);
-        const observed=await runner(args,{cwd:root,signal,maxBuffer});
+        const observed=await runner(args,{cwd:root,maxBuffer,...(signal===undefined?{}:{signal})});
         const output=[observed.stdout,observed.stderr].filter(Boolean).join("\n");
         if(Buffer.byteLength(output)>maxBuffer)return compatibilityResult("output_limit");
         return compatibilityResult("completed",output||"No matches.");
@@ -266,6 +273,6 @@ export function createCodeIntelligenceTool(options:CodeIntelligenceOptions={}):T
 /** Register canonical and compatibility names against the same hardened subprocess policy. */
 export function registerCodeGraphTools(pi:{registerTool(tool:ToolDefinition<any>):void},options:CodeIntelligenceOptions={}):void {
   const runner=createCodeGraphRunner(options);
-  pi.registerTool(createCodeIntelligenceTool(options));
+  pi.registerTool(createCodeIntelligenceTool(options,runner));
   registerCodeGraphTool(pi,runner);
 }

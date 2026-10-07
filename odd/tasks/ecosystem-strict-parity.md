@@ -229,11 +229,23 @@ No row above changes an ECO checkbox or promotes source-only evidence. Accepted 
 
 ## GitHub/Codex handoff preparation
 
-The documentation work units are complete; do not recreate or duplicate them. This final metadata seal is parent-controlled and its commit SHA is intentionally not predicted. Delivery authority ends with the feature-branch push and does not authorize merge, release, unrelated PR changes, package installation, later commits, or future autonomous delivery.
+The documentation work units are complete; do not recreate or duplicate them. The prior handoff push completed at `e11b6a4`: local and remote SHAs were verified equal, but exact-SHA CI is currently red. That historical delivery restriction is superseded only by the bounded authorization below.
 
 - **Verified source:** scanner classification is committed at `95ad615a04c60b6947e1bfa813be77984efb397f`; CodeGraph is committed at `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200` (4 files, 353 additions / 46 deletions), with identical blobs to the prior approved candidate, pre-push 11/11 plus 6/6, and approved exact committed-range review `review-093f38eea8f16cb4`.
 - **Verified documentation:** extension audit/design map `54bd5f730a4bd1bfd35dd21588f19da900e49760`, canonical ownership reconciliation/reverse map `d54326acb9ddf963edfde70a00619c7fac41359d`, and portable ECO-01C-2 route `35127605b20a46f4653259c9513718f298f2dd0f` are committed work units. Their checks preserved the 25-file coverage, 34-owner mapping, statuses, limits, source pins, and strict order.
-- **Pending after the metadata seal:** push only `feat/strict-parity-prerequisites`, confirm the exact remote SHA, and observe exact-SHA CI. No push, remote-SHA match, CI result, pre-main readiness, or FULL claim is asserted here.
+- **Current delivery state:** source candidate `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200` retains its review approval, but the later CI typecheck is RED; therefore no `FULL` or functional runtime closure is claimed. ECO-01C-2 may continue only after the CI prerequisites are repaired and exact-HEAD required CI is green.
+
+## CI prerequisites
+
+These bounded unblockers sit under the existing CI gates. They are not new top-level ECO owners and do not duplicate the canonical backlog.
+
+- **CI-PREQ-01 — Pi CodeGraph type compatibility — IMPLEMENTED; EXACT-SHA CI PENDING.** A narrow annotation intersection preserves older/modern host compatibility; absent signals are omitted and provided signals preserved. Independent CodeGraph 12/12 and extension 6/6 passed; isolated compatibility probes passed, not full repository typechecking. Original CI provided type RED; the first added regression failed on call count, then a supplementary post-fix exact-baseline probe demonstrated the direct absent-signal assertion RED. Full typecheck requires CI because local dependencies are absent and installation is not authorized. Work-unit commit and native review evidence are recorded after sealing; do not close this prerequisite before exact-HEAD CI passes.
+- **CI-PREQ-02 — Preserve, rename, and neutralize the 25-file / 34-alias supplement and restore its upstream boundary — PENDING.** Preserve all historical source/documentation commit proof and all existing counts, pins, statuses, closures, and the accepted NaN exclusion. Commit evidence: parent fills after verification.
+- **CI-PREQ-03 — Repair literal newlines in the Pi host workflow and add deterministic contract tests — PENDING.** Keep the workflow correction bounded to the invalid-YAML failure and its deterministic regression boundary. Commit evidence: parent fills after verification.
+
+Observed exact-SHA failures for `e11b6a4` are architecture run `37648646120`, CI runs `37648646046` and `37648638871`, release-gate run `37648646086` for the type/boundary failures, and run `37648636784` for invalid YAML with zero jobs.
+
+The user authorizes automatic bounded commits and normal pushes for these CI repairs on `feat/strict-parity-prerequisites`, and—only after exact-HEAD required CI is green—the canonical continuation on that feature branch. This supersedes the prior handoff-only delivery restriction. It does not authorize force-push, merge, release, PR mutation, installation, secrets access, unrelated scope, or any new parity claim.
 
 ## CI, rollback, and delivery gates
 

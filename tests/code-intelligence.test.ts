@@ -14,6 +14,11 @@ function fixture(t:test.TestContext,body='console.log(JSON.stringify({args:proce
   return {root,script,tool:tools.get("asen_code_intelligence")};
 }
 const call=(tool:any,root:string,input:any,signal?:AbortSignal)=>tool.execute("probe",input,signal,undefined,{cwd:root});
+function textOf(content:{type:"text";text:string}|{type:"image"}|undefined):string {
+  assert.equal(content?.type,"text");
+  if(content?.type!=="text")throw new Error("Expected text tool content");
+  return content.text;
+}
 
 test("registered read-only CodeGraph adapter keeps malicious query as one literal argument",async t=>{
   const f=fixture(t);assert.ok(f.tool,"public code-intelligence tool must exist");
@@ -80,6 +85,28 @@ test("npm entry resolution rejects escaping metadata, entries and shell shims",t
   }
 });
 
+test("tools omit an absent AbortSignal from injected runner options and preserve a provided signal",async t=>{
+  const f=fixture(t);
+  const calls:Array<{signal:AbortSignal|undefined;hasSignal:boolean}>=[];
+  const runner:CodeGraphRunner=async(_args,options)=>{
+    calls.push({signal:options.signal,hasSignal:Object.hasOwn(options,"signal")});
+    return {stdout:"ok",stderr:""};
+  };
+  const canonical=createCodeGraphTool(runner);
+  const readOnly=createCodeIntelligenceTool({},runner);
+  await call(canonical,f.root,{operation:"query",query:"symbol"});
+  assert.equal(calls[0]?.hasSignal,false,"canonical runner options must omit an absent signal");
+  assert.equal(calls[0]?.signal,undefined);
+  await call(readOnly,f.root,{operation:"query",query:"symbol"});
+  const controller=new AbortController();
+  await call(canonical,f.root,{operation:"query",query:"symbol"},controller.signal);
+  await call(readOnly,f.root,{operation:"query",query:"symbol"},controller.signal);
+  assert.equal(calls.length,4,"both facades must use the injected runner");
+  assert.deepEqual(calls.map(call=>call.hasSignal),[false,false,true,true]);
+  assert.ok(calls.slice(0,2).every(call=>call.signal===undefined));
+  assert.ok(calls.slice(2).every(call=>call.signal===controller.signal));
+});
+
 test("canonical CodeGraph tool exposes upstream metadata and exact scoped argv without automatic init",async t=>{
   const f=fixture(t);
   const calls:Array<{args:readonly string[];cwd:string;maxBuffer:number}>=[];
@@ -143,11 +170,11 @@ test("canonical CodeGraph tool truncates output and returns upstream-compatible 
   const f=fixture(t);
   const large=createCodeGraphTool(async()=>({stdout:"x".repeat(100001),stderr:""}));
   const truncated=await large.execute("probe",{operation:"query",query:"symbol"},undefined,undefined,{cwd:f.root} as any);
-  assert.match(truncated.content[0]!.text,/\[CodeGraph output truncated\]$/);
+  assert.match(textOf(truncated.content[0]),/\[CodeGraph output truncated\]$/);
   const unavailable=createCodeGraphTool(async()=>{throw Object.assign(new Error("missing"),{code:"ENOENT"});});
   const fallback=await unavailable.execute("probe",{operation:"explore",query:"symbol"},undefined,undefined,{cwd:f.root} as any);
   assert.deepEqual(fallback.details,{status:"unavailable",operation:"explore",cwd:f.root,fallback:"Use read, grep, and find for this exploration."});
-  assert.match(fallback.content[0]!.text,/binary was not found/);
+  assert.match(textOf(fallback.content[0]),/binary was not found/);
 });
 
 test("canonical registration and ASEN integration expose both contracts with correct annotations",t=>{
