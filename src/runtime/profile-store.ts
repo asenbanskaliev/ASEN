@@ -1,5 +1,14 @@
-import {mkdir,readFile,rename,rm,writeFile} from "node:fs/promises";import path from "node:path";import {randomUUID} from "node:crypto";import {ASEN_PROFILES_SCHEMA,parseRuntimeProfiles,serializeRuntimeProfiles,type RuntimeProfilesFile} from "./profiles.js";
+import {mkdir,readFile} from "node:fs/promises";
+import path from "node:path";
+import {atomicWriteText} from "../io/atomic-write.js";
+import {withExclusiveFileLock} from "../io/exclusive-file-lock.js";
+import {ASEN_PROFILES_SCHEMA,parseRuntimeProfiles,serializeRuntimeProfiles,type RuntimeProfilesFile} from "./profiles.js";
+
 export function emptyProfiles():RuntimeProfilesFile{return {schema:ASEN_PROFILES_SCHEMA,profiles:[]};}
 export async function readProfilesFile(file:string):Promise<RuntimeProfilesFile>{try{const parsed=parseRuntimeProfiles(await readFile(file,"utf8"));if(!parsed)throw new Error("Invalid profiles file");return parsed;}catch(e){if((e as NodeJS.ErrnoException).code==="ENOENT")return emptyProfiles();throw e;}}
-export async function writeProfilesFile(file:string,value:RuntimeProfilesFile):Promise<void>{const body=serializeRuntimeProfiles(value);await mkdir(path.dirname(file),{recursive:true});const temp=`${file}.${randomUUID()}.tmp`;try{await writeFile(temp,body,{flag:"wx",mode:0o600});await rename(temp,file);}catch(e){await rm(temp,{force:true});throw e;}}
-export async function mutateProfilesFile(file:string,change:(current:RuntimeProfilesFile)=>RuntimeProfilesFile):Promise<RuntimeProfilesFile>{const current=await readProfilesFile(file),next=change(current);await writeProfilesFile(file,next);return next;}
+async function writeUnlocked(file:string,value:RuntimeProfilesFile):Promise<void>{await atomicWriteText(file,serializeRuntimeProfiles(value));}
+export async function writeProfilesFile(file:string,value:RuntimeProfilesFile):Promise<void>{await mkdir(path.dirname(file),{recursive:true});await withExclusiveFileLock(file,()=>writeUnlocked(file,value));}
+export async function mutateProfilesFile(file:string,change:(current:RuntimeProfilesFile)=>RuntimeProfilesFile):Promise<RuntimeProfilesFile>{
+ await mkdir(path.dirname(file),{recursive:true});
+ return withExclusiveFileLock(file,async()=>{const current=await readProfilesFile(file),next=change(current);await writeUnlocked(file,next);return next;});
+}
