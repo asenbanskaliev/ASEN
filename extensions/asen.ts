@@ -23,8 +23,11 @@ import {ASEN_COMMAND_CATALOG} from "../src/runtime/command-catalog.js";
 import {agentStatusRows,type PublicAgentRecord} from "../src/runtime/agent-lifecycle.js";
 import {visibleWorkspaceRows,type WorkspaceChange} from "../src/runtime/workspace-attribution.js";
 import {readProfilesFile} from "../src/runtime/profile-store.js";
+import {runHistoryCommand,recordHistoryInput} from "../src/runtime/history-command.js";
+import {runUsageCommand} from "../src/runtime/usage-command.js";
+import {incrementUsageFile} from "../src/runtime/usage-store.js";
 
-type CommandContext={cwd:string;ui:{notify(message:string,level:"info"|"error"):void}};
+type CommandContext={cwd:string;hasUI?:boolean;sessionManager?:{getSessionId?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;confirm?:(title:string,message:string)=>Promise<boolean>}};
 type PiLike={on?:(event:string,handler:(...args:any[])=>unknown)=>void;registerFlag?:(name:string,options:any)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
 type Refresh=typeof refreshSkillRegistry;
 export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string}
@@ -62,8 +65,18 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return {projectRoot,projectId:projectRoot,sources,...(dependencies.mirror?{mirror:dependencies.mirror}:{})};
   },...dependencies.registryLifecycle});
   pi.registerFlag?.("asen-no-skill-registry",{description:"Disable ASEN skill registry startup refresh and watchers",type:"boolean",default:false});
-  pi.on?.("session_start",(_event,ctx)=>lifecycle.start(ctx,registryStartupDisabled(pi.getFlag?.("asen-no-skill-registry"))));
+  const historyFile=path.join(home(),".asen","history.json"),usageFile=path.join(home(),".asen","usage.json");
+  pi.on?.("session_start",async(_event,ctx)=>{await lifecycle.start(ctx,registryStartupDisabled(pi.getFlag?.("asen-no-skill-registry")));try{await incrementUsageFile(usageFile,"sessions");}catch{try{ctx.ui.notify("ASEN local usage could not be saved.","error");}catch{}}});
   pi.on?.("session_shutdown",()=>lifecycle.shutdown());
+  pi.on?.("input",async(event,ctx)=>{
+   const text=typeof event?.text==="string"?event.text:"",sessionId=ctx.sessionManager?.getSessionId?.();
+   if(event?.source!=="interactive"&&event?.source!=="rpc")return;
+   if(text.startsWith("/")){try{await incrementUsageFile(usageFile,"commands");}catch{try{ctx.ui.notify("ASEN local usage could not be saved.","error");}catch{}}return;}
+   if(!sessionId)return;
+   try{await recordHistoryInput({storePath:historyFile,projectId:await canonical(ctx.cwd),sessionId,hasUI:ctx.hasUI===true},text);}
+   catch{try{ctx.ui.notify("ASEN private history could not be saved; your input was not changed.","error");}catch{}}
+  });
+  pi.on?.("turn_start",async()=>{try{await incrementUsageFile(usageFile,"agentRuns");}catch{}});
   registerInteractionTools(pi,dependencies.interactionTimeoutMs);
   pi.registerTool?.(createCodeIntelligenceTool(dependencies.codeIntelligence));
   pi.registerCommand?.("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
@@ -73,6 +86,15 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   pi.registerCommand?.("asen-agents",{description:"Show attributed ASEN agent lifecycle",handler:()=>dependencies.agents?agentStatusRows(dependencies.agents()):["ASEN agents unavailable: no local agent provider configured."]});
   pi.registerCommand?.("asen-changes",{description:"Show attributed workspace changes",handler:()=>dependencies.changes?visibleWorkspaceRows(dependencies.changes()):["ASEN workspace changes unavailable: no local change provider configured."]});
   pi.registerCommand?.("asen-profiles",{description:"Show local runtime profiles",handler:async()=>{if(!dependencies.profilesFile)return {active:"default",profiles:[],available:false};const value=await readProfilesFile(dependencies.profilesFile);return {active:value.active??"default",profiles:value.profiles.map(p=>p.name),available:true};}});
+  pi.registerCommand?.("asen-history",{description:"Manage opt-in, redacted, project-scoped local prompt history",handler:async(args:string,ctx:CommandContext)=>{
+   const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId){ctx.ui.notify("ASEN history is unavailable without a current session.","error");return;}
+   try{const result=await runHistoryCommand(args,{storePath:historyFile,projectId:await canonical(ctx.cwd),sessionId,hasUI:ctx.hasUI===true,...(ctx.ui.confirm?{confirm:ctx.ui.confirm.bind(ctx.ui)}:{})});ctx.ui.notify(result,"info");return result;}
+   catch(error){ctx.ui.notify(`ASEN history failed: ${safeErrorMessage(error)}`,"error");throw error;}
+  }});
+  pi.registerCommand?.("asen-usage",{description:"Show, delete and review local ASEN usage and telemetry consent",handler:async(args:string,ctx:CommandContext)=>{
+   try{const result=await runUsageCommand(args,{storePath:usageFile,hasUI:ctx.hasUI===true,...(ctx.ui.confirm?{confirm:ctx.ui.confirm.bind(ctx.ui)}:{})});ctx.ui.notify(result,"info");return result;}
+   catch(error){ctx.ui.notify(`ASEN usage failed: ${safeErrorMessage(error)}`,"error");throw error;}
+  }});
   pi.registerCommand?.("asen-skill-registry",{description:"Refresh the generated ASEN skill registry",handler:async(args:string|undefined,ctx:CommandContext)=>{
    if(args?.trim()!=="refresh"){ctx.ui.notify(usage,"info");return usage;}
    try{

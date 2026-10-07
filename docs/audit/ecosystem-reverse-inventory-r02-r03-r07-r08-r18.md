@@ -19,7 +19,8 @@ ASEN's shipped command catalog is `src/runtime/command-catalog.ts`; the Pi regis
 | Commands inventory | `/asen-commands` | ASEN-owned inventory; registration/catalog equality now has a deterministic test. |
 | Agents and changes views | `/asen-agents`, `/asen-changes` | Bounded attributed projections; no equivalent interactive overlay, controls, or cross-session transport claim. |
 | Profiles/models/persona | `/asen-profiles` | Read-only profile listing; profile editing/model selection/routing behavior is not represented by this command. |
-| Remaining visual, history, usage, review-mode and permission controls | No equivalent public behavior demonstrated | `PARTIAL`; do not infer equivalence from internal helpers or similarly named code. |
+| History and usage controls | `/asen-history`, `/asen-usage` | Pi registration, opt-in redacted local history, project search/export/delete, local usage preview/reset and explicit consent are wired and tested. Keyboard shortcuts and any one-shot external telemetry delivery remain unverified; no transport is present. |
+| Remaining visual, review-mode and permission controls | No equivalent public behavior demonstrated | `PARTIAL`; do not infer equivalence from internal helpers or similarly named code. |
 
 ASEN-specific workflow, review, and authority diagnostics remain ASEN surfaces; their existence does not close unmatched Reference A behavior. R02 stays `PARTIAL`.
 

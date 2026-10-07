@@ -25,7 +25,9 @@ At candidate `1f46630d32bbbf5544db866716322585717fbd65`, Phase 0 succeeded; CI a
 
 ## R14 and R15 evidence
 
-The history store already has atomic writes, revision conflicts, tombstones and retention. Its policy helpers redact before capture; the current extension does not expose a complete history flow, and the store does not provide cross-process serialization. Usage has local counters and requires both explicit consent and preview acceptance before sending; counters are not yet a durable public feature. These are `PARTIAL`, not `FULL`.
+The Pi extension now exposes `/asen-history` for opt-in capture of interactive/RPC text, redaction before persistence, project-scoped search/export/delete, retention, disable, and tombstones. The private JSON store uses atomic writes and a bounded cross-process lock; deterministic tests cover concurrent updates, stale-lock recovery, confirmed reset after corruption, close/reopen, and project isolation. Keyboard integration and complete cross-platform user journeys remain open.
+
+`/asen-usage` persists only local counters, supports preview/reset/disable, and requires a confirmation after showing the exact preview before recording telemetry consent. It sends no data; there is no telemetry transport. The Reference A one-shot delivery behavior and cross-platform consent journey are still unverified, so neither route is `FULL`.
 
 ## Work in this batch
 

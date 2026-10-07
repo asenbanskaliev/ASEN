@@ -328,13 +328,21 @@
         "fef309cda80d61010d459bbfb80a232e8f92c1d9149395ad117f1473665d369f"
       ],
       "implementation": [
-        "src/runtime/history.ts"
+        "src/runtime/history.ts",
+        "src/runtime/history-store.ts",
+        "src/runtime/history-command.ts",
+        "src/io/exclusive-file-lock.ts",
+        "src/io/private-file.ts",
+        "extensions/asen.ts"
       ],
       "tests": [
-        "tests/history-usage.test.ts"
+        "tests/history-store.test.ts",
+        "tests/history-usage.test.ts",
+        "tests/extension-runtime-commands.test.ts",
+        "tests/exclusive-file-lock.test.ts"
       ],
       "remaining": [
-        "Opt-in capture, redact-before-write, bounded retention and project-scoped export policy core are implemented. Durable private store, concurrency, tombstones, delete/recovery and UI integration remain."
+        "Private durable storage, process-safe serialization, opt-in redacted Pi input capture, project-scoped search/export/delete, tombstones, retention, confirmed corrupt-store reset and reopen behavior have deterministic coverage. Reference keyboard shortcut behavior and full cross-platform interactive history journeys remain unverified."
       ],
       "stateful": true,
       "platformSensitive": true,
@@ -358,13 +366,20 @@
         "eb0f2993d9271f55cb42eca343e6fbb601a733fb90bd40daeebc92ee60ae1ba9"
       ],
       "implementation": [
-        "src/runtime/usage.ts"
+        "src/runtime/usage.ts",
+        "src/runtime/usage-store.ts",
+        "src/runtime/usage-command.ts",
+        "src/io/exclusive-file-lock.ts",
+        "src/io/private-file.ts",
+        "extensions/asen.ts"
       ],
       "tests": [
-        "tests/history-usage.test.ts"
+        "tests/history-usage.test.ts",
+        "tests/extension-runtime-commands.test.ts",
+        "tests/exclusive-file-lock.test.ts"
       ],
       "remaining": [
-        "Local usage counters and fail-closed explicit consent plus preview gate are implemented. Durable settings, disable/delete UI and any real telemetry transport proof remain; no transport is authorized by this core."
+        "Local usage counters persist and expose preview, reset, and explicit consent/revocation through Pi; no data is sent and no transport exists. The reference one-shot telemetry delivery behavior and full cross-platform consent journey remain unverified; do not add an external transport without separate evidence and explicit consent."
       ],
       "stateful": true,
       "platformSensitive": true,
