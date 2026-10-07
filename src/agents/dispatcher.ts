@@ -7,7 +7,7 @@ import {consumeIssuedWorkerContext,isIssuedSkillContext,matchesIssuedSkillContex
 import {verifySkillEvidence} from "../verify/verifier.js";
 import {consumePhaseGrant,retirePhaseGrant,consumeWriterAdmission} from "../lifecycle/skill-lifecycle.js";
 
-export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; writerAdmission?:object; runnerWriteReceiver?:object; }
+export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; model?:string; thinking?:"off"|"minimal"|"low"|"medium"|"high"; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; writerAdmission?:object; runnerWriteReceiver?:object; }
 export interface AgentArtifactProof { readonly requestId:string; readonly role:AgentRequest["role"]; readonly repository:string; readonly candidateId?:string; readonly candidateRevision?:string; readonly skillPaths:readonly string[]; }
 export interface AgentResult { id:string; ok:boolean; output:string; artifactProof?:AgentArtifactProof; }
 export interface AgentRunner { run(request:AgentRequest):Promise<AgentResult>; }

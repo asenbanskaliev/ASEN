@@ -1,67 +1,35 @@
-import {createHash} from "node:crypto";
-import {readFile,realpath,stat} from "node:fs/promises";
-import {relative,resolve,sep} from "node:path";
-import {types} from "node:util";
-import type {MemoryItem,MemoryStore} from "../memory/types.js";
-import {MemoryContext} from "../memory/context.js";
-import {oddExecutionBinding,type OddExecutionContract} from "./odd-execution-contract.js";
-
-export interface OddTodo {readonly id:string;readonly text:string;readonly status:"pending"|"done";}
-export interface OddProgress {readonly todos:readonly OddTodo[];readonly nextStep:string;}
-interface TrackingRecord {version:1;task:string;repository:string;candidateId:string;revision:string;documentPath:string;document:string;todos:readonly OddTodo[];nextStep:string;}
-const claims=new WeakSet<object>();
-const digest=(value:string)=>createHash("sha256").update(value).digest("hex");
-function text(value:unknown):string{
- if(typeof value!=="string"||!value||value.length>8192||value!==value.trim()||value!==value.normalize("NFC")||/[\u0000-\u001f\u007f-\u009f]/u.test(value))throw new Error("Invalid ODD tracking text");return value;
-}
-function exact(value:unknown,keys:readonly string[]):Record<string,unknown>{
- if(typeof value!=="object"||value===null||types.isProxy(value)||Object.getPrototypeOf(value)!==Object.prototype)throw new Error("ODD tracking requires exact plain data");
- const own=Reflect.ownKeys(value);
- if(own.length!==keys.length||own.some(k=>typeof k!=="string"||!keys.includes(k)))throw new Error("ODD tracking shape mismatch");
- return Object.fromEntries(keys.map(k=>{const d=Object.getOwnPropertyDescriptor(value,k);if(!d?.enumerable||!("value" in d))throw new Error("ODD tracking accessor rejected");return[k,d.value];}));
-}
-function progress(value:unknown):OddProgress{
- const input=exact(value,["todos","nextStep"]),todos=input.todos;
- if(typeof todos!=="object"||todos===null||types.isProxy(todos)||!Array.isArray(todos)||Object.getPrototypeOf(todos)!==Array.prototype||!todos.length||todos.length>256||Reflect.ownKeys(todos).length!==todos.length+1)throw new Error("ODD tracking requires exact bounded TODOs");
- const parsed=Array.from({length:todos.length},(_,i)=>{
-  const d=Object.getOwnPropertyDescriptor(todos,String(i));if(!d?.enumerable||!("value" in d))throw new Error("ODD TODO accessor rejected");
-  const item=exact(d.value,["id","text","status"]);
-  if(item.status!=="pending"&&item.status!=="done")throw new Error("ODD TODO status invalid");
-  return Object.freeze({id:text(item.id),text:text(item.text),status:item.status});
- });
- if(new Set(parsed.map(item=>item.id)).size!==parsed.length)throw new Error("ODD TODO IDs must be unique");
- return Object.freeze({todos:Object.freeze(parsed),nextStep:text(input.nextStep)});
-}
-async function documentBytes(repository:string,path:string):Promise<string>{
- text(path);if(!/^odd\/tasks\/[a-z0-9][a-z0-9-]*\.md$/u.test(path))throw new Error("ODD task document must be bounded under odd/tasks");
- const root=await realpath(repository),target=resolve(root,path),actual=await realpath(target);
- if(actual!==target||relative(root,actual).split(sep).join("/")!==path)throw new Error("ODD task document canonical binding mismatch");
- const info=await stat(actual);if(!info.isFile()||info.size>1_000_000)throw new Error("ODD task document must be a bounded file");
- const bytes=await readFile(actual);if(bytes.length>1_000_000)throw new Error("ODD task document too large");
- const decoded=new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(bytes);if(!decoded.trim())throw new Error("ODD task document empty");return decoded;
-}
-/** Uses the existing project/session MemoryContext; mirrors the entire task document, not a summary. */
-export async function trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):Promise<MemoryItem|undefined>{
- const binding=oddExecutionBinding(contract);
- if(claims.has(contract))throw new Error("ODD tracking contract already consumed");claims.add(contract);
- // Read-only work never reads a task artifact or invokes persistence, even when substantial.
- if(contract.readOnly||!contract.substantial)return undefined;
- if(!(context instanceof MemoryContext)||context.projectId!==binding.facts.repositoryIdentity)throw new Error("ODD tracking memory project mismatch");
- const state=progress(input),document=await documentBytes(binding.facts.repositoryIdentity,documentPath);
- const payload:TrackingRecord={version:1,task:binding.facts.taskIdentity,repository:binding.facts.repositoryIdentity,candidateId:binding.candidate.id,revision:binding.candidate.revision,documentPath,document,...state};
- const item:MemoryItem={id:`odd-task-${digest(JSON.stringify([payload.repository,payload.task,payload.candidateId]))}`,projectId:context.projectId,sessionId:context.sessionId,kind:"decision",topic:"odd-task-tracking-v1",content:JSON.stringify(payload),createdAt:new Date().toISOString()};
- context.remember(item);return Object.freeze({...item});
-}
-/** Reconstructs TODO/resume only after exact live binding and task-document byte validation. No authority is restored. */
-export async function resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">):Promise<Readonly<TrackingRecord>|undefined>{
- const binding=oddExecutionBinding(contract);
- if(contract.readOnly||!contract.substantial)return undefined;
- const {facts,candidate}=binding,id=`odd-task-${digest(JSON.stringify([facts.repositoryIdentity,facts.taskIdentity,candidate.id]))}`,item=store.get(id);
- if(!item)return undefined;
- if(item.id!==id||item.projectId!==facts.repositoryIdentity||item.kind!=="decision"||item.topic!=="odd-task-tracking-v1")throw new Error("ODD tracking memory binding mismatch");
- const value=exact(JSON.parse(item.content),["version","task","repository","candidateId","revision","documentPath","document","todos","nextStep"]);
- if(value.version!==1||value.task!==facts.taskIdentity||value.repository!==facts.repositoryIdentity||value.candidateId!==candidate.id||value.revision!==candidate.revision)throw new Error("ODD tracking exact candidate mismatch");
- const document=await documentBytes(facts.repositoryIdentity,text(value.documentPath));if(document!==value.document)throw new Error("ODD tracking task document changed; revalidate before resume");
- const state=progress({todos:value.todos,nextStep:value.nextStep});
- return Object.freeze({version:1,task:facts.taskIdentity,repository:facts.repositoryIdentity,candidateId:candidate.id,revision:candidate.revision,documentPath:value.documentPath as string,document,...state});
-}
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíß½9N‹Z–‹­¦ëeŠw¬Õ¥µÁ½ÉĞíÉ•…Ñ•!…Í¡ô™É½´€‰¹½‘”éÉåÁÑ¼ˆì)¥µÁ½ÉĞíÉ•…‘¥±”±É•…±Á…Ñ ±ÍÑ…Ñô™É½´€‰¹½‘”é™Ì½ÁÉ½µ¥Í•Ìˆì)¥µÁ½ÉĞíÉ•±…Ñ¥Ù”±É•Í½±Ù”±Í•Áô™É½´€‰¹½‘”éÁ…Ñ ˆì)¥µÁ½ÉĞíÑåÁ•Íô™É½´€‰¹½‘”éÕÑ¥°ˆì)¥µÁ½ÉĞÑåÁ”í5•µ½Éå%Ñ•´±5•µ½ÉåMÑ½É•ô™É½´€ˆ¸¸½µ•µ½Éä½ÑåÁ•Ì¹©Ìˆì)¥µÁ½ÉĞí5•µ½Éå½¹Ñ•áÑô™É½´€ˆ¸¸½µ•µ½Éä½½¹Ñ•áĞ¹©Ìˆì)¥µÁ½ÉĞí…ÁÁ±åQ…Í­Ù•¹Ğ±É•Á±…åQ…Í¬±ÑåÁ”Q…Í­Ù•¹Ñô™É½´€ˆ¸¸½ÉÕ¹Ñ¥µ”½Ñ…Í¬µÉ•Á±…ä¹©Ìˆì)¥µÁ½ÉĞí½‘‘á•ÕÑ¥½¹	¥¹‘¥¹œ±ÑåÁ”=‘‘á•ÕÑ¥½¹½¹ÑÉ…Ñô™É½´€ˆ¸½½‘µ•á•ÕÑ¥½¸µ½¹ÑÉ…Ğ¹©Ìˆì()•áÁ½ÉĞ¥¹Ñ•É™…”=‘‘Q½‘¼íÉ•…‘½¹±ä¥éÍÑÉ¥¹œíÉ•…‘½¹±äÑ•áĞéÍÑÉ¥¹œíÉ•…‘½¹±äÍÑ…ÑÕÌè‰Á•¹‘¥¹œ‰ğ‰‘½¹”ˆíô)•áÁ½ÉĞ¥¹Ñ•É™…”=‘‘AÉ½É•ÍÌíÉ•…‘½¹±äÑ½‘½ÌéÉ•…‘½¹±ä=‘‘Q½‘½mtíÉ•…‘½¹±ä¹•áÑMÑ•ÀéÍÑÉ¥¹œíÉ•…‘½¹±äÑ…Í­Ù•¹ÑÌüéÉ•…‘½¹±äQ…Í­Ù•¹Ñmtíô)¥¹Ñ•É™…”QÉ…­¥¹I•½ÉíÙ•ÉÍ¥½¸èÈíÑ…Í¬éÍÑÉ¥¹œíÉ•Á½Í¥Ñ½ÉäéÍÑÉ¥¹œí…¹‘¥‘…Ñ•%éÍÑÉ¥¹œíÉ•Ù¥Í¥½¸éÍÑÉ¥¹œí‘½Õµ•¹ÑA…Ñ éÍÑÉ¥¹œí‘½Õµ•¹ĞéÍÑÉ¥¹œíÑ½‘½ÌéÉ•…‘½¹±ä=‘‘Q½‘½mtí¹•áÑMÑ•ÀéÍÑÉ¥¹œíÑ…Í­Ù•¹ÑÌéÉ•…‘½¹±äQ…Í­Ù•¹Ñmtíô)½¹ÍĞ±…¥µÌõ¹•Ü]•…­M•Ğñ½‰©•Ğø ¤ì)½¹ÍĞ‘¥•ÍĞô¡Ù…±Õ”éÍÑÉ¥¹œ¤ôùÉ•…Ñ•!…Í  ‰Í¡„ÈÔØˆ¤¹ÕÁ‘…Ñ”¡Ù…±Õ”¤¹‘¥•ÍĞ ‰¡•àˆ¤ì)™Õ¹Ñ¥½¸Ñ•áĞ¡Ù…±Õ”éÕ¹­¹½İ¸¤éÍÑÉ¥¹ì(¥˜¡ÑåÁ•½˜Ù…±Õ”„ôô‰ÍÑÉ¥¹œ‰ñğ…Ù…±Õ•ññÙ…±Õ”¹±•¹Ñ øàÄäÉññÙ…±Õ”„ôõÙ…±Õ”¹ÑÉ¥´ ¥ññÙ…±Õ”„ôõÙ…±Õ”¹¹½Éµ…±¥é” ‰9ˆ¥ñğ½mqÔÀÀÀÀµqÔÀÀÅ™qÔÀÀİ˜µqÔÀÀå™t½Ô¹Ñ•ÍĞ¡Ù…±Õ”¤¥Ñ¡É½Ü¹•ÜÉÉ½È ‰%¹Ù…±¥=ÑÉ…­¥¹œÑ•áĞˆ¤íÉ•ÑÕÉ¸Ù…±Õ”ì)ô)™Õ¹Ñ¥½¸•á…Ğ¡Ù…±Õ”éÕ¹­¹½İ¸±­•åÌéÉ•…‘½¹±äÍÑÉ¥¹mt¤éI•½ÉñÍÑÉ¥¹œ±Õ¹­¹½İ¸ùì(¥˜¡ÑåÁ•½˜Ù…±Õ”„ôô‰½‰©•Ğ‰ññÙ…±Õ”ôôõ¹Õ±±ññÑåÁ•Ì¹¥ÍAÉ½áä¡Ù…±Õ”¥ññ=‰©•Ğ¹•ÑAÉ½Ñ½ÑåÁ•=˜¡Ù…±Õ”¤„ôõ=‰©•Ğ¹ÁÉ½Ñ½ÑåÁ”¥Ñ¡É½Ü¹•ÜÉÉ½È ‰=ÑÉ…­¥¹œÉ•ÅÕ¥É•Ì•á…ĞÁ±…¥¸‘…Ñ„ˆ¤ì(½¹ÍĞ½İ¸õI•™±•Ğ¹½İ¹-•åÌ¡Ù…±Õ”¤ì(¥˜¡½İ¸¹±•¹Ñ „ôõ­•åÌ¹±•¹Ñ¡ññ½İ¸¹Í½µ”¡¬ôùÑåÁ•½˜¬„ôô‰ÍÑÉ¥¹œ‰ñğ…­•åÌ¹¥¹±Õ‘•Ì¡¬¤¤¥Ñ¡É½Ü¹•ÜÉÉ½È ‰=ÑÉ…­¥¹œÍ¡…Á”µ¥Íµ…Ñ ˆ¤ì(É•ÑÕÉ¸=‰©•Ğ¹™É½µ¹ÑÉ¥•Ì¡­•åÌ¹µ…À¡¬ôùí½¹ÍĞõ=‰©•Ğ¹•Ñ=İ¹AÉ½Á•ÉÑå•ÍÉ¥ÁÑ½È¡Ù…±Õ”±¬¤í¥˜ …ü¹•¹Õµ•É…‰±•ñğ„ ‰Ù…±Õ”ˆ¥¸¤¥Ñ¡É½Ü¹•ÜÉÉ½È ‰=ÑÉ…­¥¹œ…•ÍÍ½ÈÉ•©•Ñ•ˆ¤íÉ•ÑÕÉ¹m¬±¹Ù…±Õ•tíô¤¤ì)ô)™Õ¹Ñ¥½¸Ñ…Í­Ù•¹ÑÌ¡Ù…±Õ”éÕ¹­¹½İ¸±Ñ…Í¬éÍÑÉ¥¹œ±É•Á½Í¥Ñ½ÉäéÍÑÉ¥¹œ¤éÉ•…‘½¹±äQ…Í­Ù•¹Ñmuì(¥˜¡Ù…±Õ”ôôõÕ¹‘•™¥¹•¥É•ÑÕÉ¸=‰©•Ğ¹™É••é”¡mt¤ì(¥˜ …ÉÉ…ä¹¥ÍÉÉ…ä¡Ù…±Õ”¥ññÑåÁ•Ì¹¥ÍAÉ½áä¡Ù…±Õ”¥ññ=‰©•Ğ¹•ÑAÉ½Ñ½ÑåÁ•=˜¡Ù…±Õ”¤„ôõÉÉ…ä¹ÁÉ½Ñ½ÑåÁ•ññÙ…±Õ”¹±•¹Ñ øÔÄÉññI•™±•Ğ¹½İ¹-•åÌ¡Ù…±Õ”¤¹±•¹Ñ „ôõÙ…±Õ”¹±•¹Ñ ¬Ä¥Ñ¡É½Ü¹•ÜÉÉ½È ‰=Ñ…Í¬•Ù•¹ÑÌµÕÍĞ‰”…¸•á…Ğ‰½Õ¹‘•…ÉÉ…äˆ¤ì(½¹ÍĞ•Ù•¹ÑÌõÉÉ…ä¹™É½´¡í±•¹Ñ éÙ…±Õ”¹±•¹Ñ¡ô°¡|±¤¤ôùí½¹ÍĞõ=‰©•Ğ¹•Ñ=İ¹AÉ½Á•ÉÑå•ÍÉ¥ÁÑ½È¡Ù…±Õ”±MÑÉ¥¹œ¡¤¤¤í¥˜ …ü¹•¹Õµ•É…‰±•ñğ„ ‰Ù…±Õ”ˆ¥¸¤¥Ñ¡É½Ü¹•ÜÉÉ½È ‰=Ñ…Í¬•Ù•¹Ğ…•ÍÍ½ÈÉ•©•Ñ•ˆ¤í¥˜ …É•½É‘1¥­”¡¹Ù…±Õ”¤¥Ñ¡É½Ü¹•ÜÉÉ½È ‰=Ñ…Í¬•Ù•¹ĞµÕÍĞ‰”•á…ĞÁ±…¥¸‘…Ñ„ˆ¤í½¹ÍĞ”õ•á…Ğ¡¹Ù…±Õ”±l‰Ñ…Í­%ˆ°‰Í•ÍÍ¥½¹%ˆ°‰ÁÉ½©•Ñ%ˆ°‰É•Ù¥Í¥½¸ˆ°‰ÍÑ…Ñ”ˆ°‰…Ğˆ°¸¸¸¡=‰©•Ğ¹¡…Í=İ¸¡¹Ù…±Õ”°‰É•…Í½¸ˆ¤ıl‰É•…Í½¸‰témt¥t¤í¥˜¡”¹Ñ…Í­%„ôõÑ…Í­ññ”¹ÁÉ½©•Ñ%„ôõÉ•Á½Í¥Ñ½Éä¥Ñ¡É½Ü¹•ÜÉÉ½È ‰=Ñ…Í¬•Ù•¹Ğ¥‘•¹Ñ¥Ñäµ¥Íµ…Ñ ˆ¤íÉ•ÑÕÉ¸ÍÑÉÕÑÕÉ•‘±½¹”¡”¤…ÌÕ¹­¹½İ¸…ÌQ…Í­Ù•¹Ğíô¤ì(É•Á±…åQ…Í¬¡•Ù•¹ÑÌ¤íÉ•ÑÕÉ¸=‰©•Ğ¹™É••é”¡•Ù•¹ÑÌ¤ì)ô)™Õ¹Ñ¥½¸ÁÉ½É•ÍÌ¡Ù…±Õ”éÕ¹­¹½İ¸±Ñ…Í¬éÍÑÉ¥¹œ±É•Á½Í¥Ñ½ÉäéÍÑÉ¥¹œ¤é=‘‘AÉ½É•ÍÍì(½¹ÍĞ¥¹ÁÕĞõ•á…Ğ¡Ù…±Õ”±l‰Ñ½‘½Ìˆ°‰¹•áÑMÑ•Àˆ°¸¸¸¡É•½É‘1¥­”¡Ù…±Õ”¤˜˜‰Ñ…Í­Ù•¹ÑÌˆ¥¸Ù…±Õ”ıl‰Ñ…Í­Ù•¹ÑÌ‰témt¥t¤±Ñ½‘½Ìõ¥¹ÁÕĞ¹Ñ½‘½Ìì(¥˜¡ÑåÁ•½˜Ñ½‘½Ì„ôô‰½‰©•Ğ‰ññÑ½‘½Ìôôõ¹Õ±±ññÑåÁ•Ì¹¥ÍAÉ½áä¡Ñ½‘½Ì¥ñğ…ÉÉ…ä¹¥ÍÉÉ…ä¡Ñ½‘½Ì¥ññ=‰©•Ğ¹•ÑAÉ½Ñ½ÑåÁ•=˜¡Ñ½‘½Ì¤„ôõÉÉ…ä¹ÁÉ½Ñ½ÑåÁ•ñğ…Ñ½‘½Ì¹±•¹Ñ¡ññÑ½‘½Ì¹±•¹Ñ øÈÔÙññI•™±•Ğ¹½İ¹-•åÌ¡Ñ½‘½Ì¤¹±•¹Ñ „ôõÑ½‘½Ì¹±•¹Ñ ¬Ä¥Ñ¡É½Ü¹•ÜÉÉ½È ‰=ÑÉ…­¥¹œÉ•ÅÕ¥É•Ì•á…Ğ‰½Õ¹‘•Q==Ìˆ¤ì(½¹ÍĞÁ…ÉÍ•õÉÉ…ä¹™É½´¡í±•¹Ñ éÑ½‘½Ì¹±•¹Ñ¡ô°¡|±¤¤ôùì(€½¹ÍĞõ=‰©•Ğ¹•Ñ=İ¹AÉ½Á•ÉÑå•ÍÉ¥ÁÑ½È¡Ñ½‘½Ì±MÑÉ¥¹œ¡¤¤¤í¥˜ …ü¹•¹Õµ•É…‰±•ñğ„ ‰Ù…±Õ”ˆ¥¸¤¥Ñ¡É½Ü¹•ÜÉÉ½È ‰=Q=<…•ÍÍ½ÈÉ•©•Ñ•ˆ¤ì(€½¹ÍĞ¥Ñ•´õ•á…Ğ¡¹Ù…±Õ”±l‰¥ˆ°‰Ñ•áĞˆ°‰ÍÑ…ÑÕÌ‰t¤ì(€¥˜¡¥Ñ•´¹ÍÑ…ÑÕÌ„ôô‰Á•¹‘¥¹œˆ˜™¥Ñ•´¹ÍÑ…ÑÕÌ„ôô‰‘½¹”ˆ¥Ñ¡É½Ü¹•ÜÉÉ½È ‰=Q=<ÍÑ…ÑÕÌ¥¹Ù…±¥ˆ¤ì(€É•ÑÕÉ¸=‰©•Ğ¹™É••é”¡í¥éÑ•áĞ¡¥Ñ•´¹¥¤±Ñ•áĞéÑ•áĞ¡¥Ñ•´¹Ñ•áĞ¤±ÍÑ…ÑÕÌé¥Ñ•´¹ÍÑ…ÑÕÍô¤ì(ô¤ì(¥˜¡¹•ÜM•Ğ¡Á…ÉÍ•¹µ…À¡¥Ñ•´ôù¥Ñ•´¹¥¤¤¹Í¥é”„ôõÁ…ÉÍ•¹±•¹Ñ ¥Ñ¡É½Ü¹•ÜÉÉ½È ‰=Q=<%ÌµÕÍĞ‰”Õ¹¥ÅÕ”ˆ¤ì(É•ÑÕÉ¸=‰©•Ğ¹™É••é”¡íÑ½‘½Ìé=‰©•Ğ¹™É••é”¡Á…ÉÍ•¤±¹•áÑMÑ•ÀéÑ•áĞ¡¥¹ÁÕĞ¹¹•áÑMÑ•À¤±Ñ…Í­Ù•¹ÑÌéÑ…Í­Ù•¹ÑÌ¡¥¹ÁÕĞ¹Ñ…Í­Ù•¹ÑÌ±Ñ…Í¬±É•Á½Í¥Ñ½Éä¥ô¤ì)ô)™Õ¹Ñ¥½¸É•½É‘1¥­”¡Ù…±Õ”éÕ¹­¹½İ¸¤éÙ…±Õ”¥ÌI•½ÉñÍÑÉ¥¹œ±Õ¹­¹½İ¸ùíÉ•ÑÕÉ¸ÑåÁ•½˜Ù…±Õ”ôôô‰½‰©•Ğˆ˜™Ù…±Õ”„ôõ¹Õ±°˜˜…ÉÉ…ä¹¥ÍÉÉ…ä¡Ù…±Õ”¤íô)…Íå¹Œ™Õ¹Ñ¥½¸‘½Õµ•¹Ñ	åÑ•Ì¡É•Á½Í¥Ñ½ÉäéÍÑÉ¥¹œ±Á…Ñ éÍÑÉ¥¹œ¤éAÉ½µ¥Í”ñÍÑÉ¥¹œùì(Ñ•áĞ¡Á…Ñ ¤í¥˜ „½y½‘‘p½Ñ…Í­Íp½m„µèÀ´åum„µèÀ´äµt©p¹µ½Ô¹Ñ•ÍĞ¡Á…Ñ ¤¥Ñ¡É½Ü¹•ÜÉÉ½È ‰=Ñ…Í¬‘½Õµ•¹ĞµÕÍĞ‰”‰½Õ¹‘•Õ¹‘•È½‘½Ñ…Í­Ìˆ¤ì(½¹ÍĞÉ½½Ğõ…İ…¥ĞÉ•…±Á…Ñ ¡É•Á½Í¥Ñ½Éä¤±Ñ…É•ĞõÉ•Í½±Ù”¡É½½Ğ±Á…Ñ ¤±…ÑÕ…°õ…İ…¥ĞÉ•…±Á…Ñ ¡Ñ…É•Ğ¤ì(¥˜¡…Ñ×½9¶‰Ëkºwµç\š[™Ê
+_NÂˆÛÛ^œ™[Y[X™\Š][JNÜ™]\›ˆØš™Xİ™œ™Y^™JË‹‹š][_JNÂŸB‹ÊŠˆ™XÛÛœİXİÈÑËÜ™\İ[YHÛ›HY\ˆ^Xİ]™Hš[™[™È[™\ÚËYØİ[Y[]H˜[Y][Û‹ˆ›È]]Üš]H\È™\İÜ™Yˆ
+‹Â™^Ü\Ş[˜È[˜İ[Ûˆ™\İ[YSÙ\ÚÊÛÛ˜Xİ“Ù^Xİ][ÛÛÛ˜XİİÜ™N”XÚÏY[[ÜTİÜ™K™Ù]ŠN”›ÛZ\ÙO™XYÛ›O˜XÚÚ[™Ô™XÛÜ™Ÿ[™Yš[™YÂˆÛÛœİš[™[™Ï[Ù^Xİ][Ûš[™[™ÊÛÛ˜Xİ
+NÂˆYŠÛÛ˜Xİœ™XYÛ›_XÛÛ˜XİœİXœİ[X[
+\™]\›ˆ[™Yš[™YÂˆÛÛœİÙ˜XİËØ[™Y]_OXš[™[™ËYXÙ]\ÚËIÙYÙ\İ
+”ÓÓ‹œİš[™ÚYJÙ˜XİËœ™\ÜÚ]ÜRY[]K˜XİË\ÚÒY[]KØ[™Y]KšYJJ_X][O\İÜ™K™Ù]
+Y
+NÂˆYŠZ][J\™]\›ˆ[™Yš[™YÂˆYŠ][KšYOOZY][Kœ›Ú™XİYOOY˜XİËœ™\ÜÚ]ÜRY[]_][KšÚ[™OOH™XÚ\Ú[ÛˆŸ][KÜXÈOOH›Ù]\ÚË]˜XÚÚ[™Ë]ŒHŠ]›İÈ™]È\œ›ÜŠ“Ñ˜XÚÚ[™ÈY[[ÜHš[™[™ÈZ\ÛX]ÚŠNÂˆÛÛœİ\œÙY[šÛ›İÛR”ÓÓ‹œ\œÙJ][K˜ÛÛ[
+KYØXŞO\™XÛÜ™ZÙJ\œÙY
+I‰œ\œÙY™\œÚ[ÛOOLNÂˆÛÛœİ˜[YOY^Xİ
+\œÙYYØXŞOÖÈ™\œÚ[Ûˆ‹\ÚÈ‹œ™\ÜÚ]ÜH‹˜Ø[™Y]RY‹œ™]š\Ú[Ûˆ‹™Øİ[Y[]‹™Øİ[Y[‹ÙÜÈ‹›™^İ\—N–È™\œÚ[Ûˆ‹\ÚÈ‹œ™\ÜÚ]ÜH‹˜Ø[™Y]RY‹œ™]š\Ú[Ûˆ‹™Øİ[Y[]‹™Øİ[Y[‹ÙÜÈ‹›™^İ\‹\ÚÑ]™[È—JNÂˆYŠ
+˜[YK™\œÚ[ÛˆOOLI‰˜[YK™\œÚ[ÛˆOOLŠ_˜[YK\ÚÈOOY˜XİË\ÚÒY[]_˜[YKœ™\ÜÚ]ÜHOOY˜XİËœ™\ÜÚ]ÜRY[]_˜[YK˜Ø[™Y]RYOOXØ[™Y]KšY˜[YKœ™]š\Ú[ÛˆOOXØ[™Y]Kœ™]š\Ú[ÛŠ]›İÈ™]È\œ›ÜŠ“Ñ˜XÚÚ[™È^XİØ[™Y]HZ\ÛX]ÚŠNÂˆÛÛœİØİ[Y[X]ØZ]Øİ[Y[]\Ê˜XİËœ™\ÜÚ]ÜRY[]K^
+˜[YK™Øİ[Y[]
+JNÚYŠØİ[Y[OO]˜[YK™Øİ[Y[
+]›İÈ™]È\œ›ÜŠ“Ñ˜XÚÚ[™È\ÚÈØİ[Y[Ú[™ÙYÈ™]˜[Y]H™Y›Ü™H™\İ[YHŠNÂˆÛÛœİİ]O\›ÙÜ™\ÜÊİÙÜÎ˜[YKÙÜË™^İ\˜[YK›™^İ\‹‹Š\ÚÑ]™[Èˆ[ˆ˜[YOŞİ\ÚÑ]™[Î˜[YK\ÚÑ]™[ßNßJ_K˜XİË\ÚÒY[]K˜XİËœ™\ÜÚ]ÜRY[]JNÂˆ™]\›ˆØš™Xİ™œ™Y^™Jİ™\œÚ[ÛŒ‹\ÚÎ™˜XİË\ÚÒY[]K™\ÜÚ]ÜN™˜XİËœ™\ÜÚ]ÜRY[]KØ[™Y]RY˜Ø[™Y]KšY™]š\Ú[Û˜Ø[™Y]Kœ™]š\Ú[Û‹Øİ[Y[]˜[YK™Øİ[Y[]\Èİš[™ËØİ[Y[ÙÜÎœİ]KÙÜË™^İ\œİ]K›™^İ\\ÚÑ]™[Îœİ]K\ÚÑ]™[ÏÏÖ×_JNÂŸB‚‹ÊŠˆ\[™H˜[Y]Y™\^H]™[ÈHØ[YH\˜X›HY[[ÜTİÜ™H™XÛÜ™\ÙYHÑ™\İ[YKˆ
+‹Â™^Ü\Ş[˜È[˜İ[Ûˆ\[™Ù\ÚÑ]™[
+ÛÛ˜Xİ“Ù^Xİ][ÛÛÛ˜XİÛÛ^“Y[[ÜPÛÛ^İÜ™N”XÚÏY[[ÜTİÜ™K™Ù]‹]™[•\ÚÑ]™[
+N”›ÛZ\ÙO™XYÛ›O˜XÚÚ[™Ô™XÛÜ™Ÿ[™Yš[™YÂˆÛÛœİš[™[™Ï[Ù^Xİ][Ûš[™[™ÊÛÛ˜Xİ
+NÚYŠÛÛ˜Xİœ™XYÛ›_XÛÛ˜XİœİXœİ[X[
+\™]\›ˆ[™Yš[™YÂˆYŠJÛÛ^[œİ[˜Ù[ÙˆY[[ÜPÛÛ^
+_ÛÛ^œ›Ú™XİYOOXš[™[™Ë™˜XİËœ™\ÜÚ]ÜRY[]J]›İÈ™]È\œ›ÜŠ“Ñ˜XÚÚ[™ÈY[[ÜH›Ú™XİZ\ÛX]ÚŠNÂˆÛÛœİÙ˜XİËØ[™Y]_OXš[™[™ËYXÙ]\ÚËIÙYÙ\İ
+”ÓÓ‹œİš[™ÚYJÙ˜XİËœ™\ÜÚ]ÜRY[]K˜XİË\ÚÒY[]KØ[™Y]KšYJJ_X][O\İÜ™K™Ù]
+Y
+NÂˆYŠZ][_][Kœ›Ú™XİYOOXÛÛ^œ›Ú™XİY][KšÚ[™OOH™XÚ\Ú[ÛˆŸ][KÜXÈOOH›Ù]\ÚË]˜XÚÚ[™Ë]ŒHŠ]›İÈ™]È\œ›ÜŠ“Ñ\ÚÈ™XÛÜ™\È[˜]˜Z[X›HŠNÂˆÛÛœİ˜]Î[šÛ›İÛR”ÓÓ‹œ\œÙJ][K˜ÛÛ[
+KYØXŞO\™XÛÜ™ZÙJ˜]ÊI‰œ˜]Ë™\œÚ[ÛOOLNÂˆÛÛœİ˜[YOY^Xİ
+˜]ËYØXŞOÖÈ™\œÚ[Ûˆ‹\ÚÈ‹œ™\ÜÚ]ÜH‹˜Ø[™Y]RY‹œ™]š\Ú[Ûˆ‹™Øİ[Y[]‹™Øİ[Y[‹ÙÜÈ‹›™^İ\—N–È™\œÚ[Ûˆ‹\ÚÈ‹œ™\ÜÚ]ÜH‹˜Ø[™Y]RY‹œ™]š\Ú[Ûˆ‹™Øİ[Y[]‹™Øİ[Y[‹ÙÜÈ‹›™^İ\‹\ÚÑ]™[È—JNÂˆYŠ
+˜[YK™\œÚ[ÛˆOOLI‰˜[YK™\œÚ[ÛˆOOLŠ_˜[YK\ÚÈOOY˜XİË\ÚÒY[]_˜[YKœ™\ÜÚ]ÜHOOY˜XİËœ™\ÜÚ]ÜRY[]_˜[YK˜Ø[™Y]RYOOXØ[™Y]KšY˜[YKœ™]š\Ú[ÛˆOOXØ[™Y]Kœ™]š\Ú[ÛŠ]›İÈ™]È\œ›ÜŠ“Ñ˜XÚÚ[™È^XİØ[™Y]HZ\ÛX]ÚŠNÂˆÛÛœİØİ[Y[X]ØZ]Øİ[Y[]\Ê˜XİËœ™\ÜÚ]ÜRY[]K^
+˜[YK™Øİ[Y[]
+JNÚYŠØİ[Y[OO]˜[YK™Øİ[Y[
+]›İÈ™]È\œ›ÜŠ“Ñ˜XÚÚ[™È\ÚÈØİ[Y[Ú[™ÙYÈ™]˜[Y]H™Y›Ü™H™\İ[YHŠNÂˆÛÛœİİ]O\›ÙÜ™\ÜÊİÙÜÎ˜[YKÙÜË™^İ\˜[YK›™^İ\‹‹Š\ÚÑ]™[Èˆ[ˆ˜[YOŞİ\ÚÑ]™[Î˜[YK\ÚÑ]™[ßNßJ_K˜XİË\ÚÒY[]K˜XİËœ™\ÜÚ]ÜRY[]JKİ\œ™[\™\^U\ÚÊİ]K\ÚÑ]™[ÏÏÖ×JNÂˆYŠXİ\œ™[	‰™]™[œÙ\ÜÚ[Û’YOOXÛÛ^œÙ\ÜÚ[Û’Y
+]›İÈ™]È\œ›ÜŠ“Ñ\ÚÈ]™[Ù\ÜÚ[ÛˆZ\ÛX]ÚŠNÂˆÛÛœİ™^X\U\ÚÑ]™[
+İ\œ™[]™[
+NÂˆÛÛœİ\]Y•˜XÚÚ[™Ô™XÛÜ™^İ™\œÚ[ÛŒ‹\ÚÎ™˜XİË\ÚÒY[]K™\ÜÚ]ÜN™˜XİËœ™\ÜÚ]ÜRY[]KØ[™Y]RY˜Ø[™Y]KšY™]š\Ú[Û˜Ø[™Y]Kœ™]š\Ú[Û‹Øİ[Y[]˜[YK™Øİ[Y[]\Èİš[™ËØİ[Y[ÙÜÎœİ]KÙÜË™^İ\œİ]K›™^İ\\ÚÑ]™[Î“Øš™Xİ™œ™Y^™JË‹‹Šİ]K\ÚÑ]™[ÏÏÖ×JK™^J_NÂˆÛÛ^œ™[Y[X™\ŠÚYš][KšYÚ[™š][KšÚ[™ÜXÎš][KÜXËÛÛ[’”ÓÓ‹œİš[™ÚYJ\]Y
+KÜ™X]Y]š][K˜Ü™X]Y]JNÂˆ™]\›ˆØš™Xİ™œ™Y^™J\]Y
+NÂŸB

@@ -21,9 +21,9 @@ Allowed statuses are `FULL`, `PARTIAL`, `MISSING`, `OUT_OF_SCOPE`, and `PARTIAL_
 | R01 | install, executable, package root, project/user homes, setup/link | ECO-09 | PARTIAL | clean install, idempotency, rollback, permissions, spaces/Unicode, Windows/macOS/Linux |
 | R02 | public commands, arguments, errors and availability | ECO-09/14/15 | PARTIAL | exact command inventory and behavior-backed validation |
 | R03 | configuration, settings, precedence and invalid values | ECO-11 | MISSING | schema, deterministic precedence, diagnostics, rollback, live/restart semantics |
-| R04 | profiles, routing and customization | ECO-11 | MISSING | safe overrides/fallbacks and exact routing evidence |
-| R05 | actor/owner/session attribution for changes | ECO-10 | MISSING | exact actor/session/project/worktree attribution without authority inflation |
-| R06 | workspace state/actions and concurrent updates | ECO-10 | MISSING | accessible narrow-terminal UI, conflicts, restart and isolation |
+| R04 | profiles, routing and customization | ECO-11 | PARTIAL | safe overrides/fallbacks and exact routing evidence |
+| R05 | actor/owner/session attribution for changes | ECO-10 | PARTIAL | exact actor/session/project/worktree attribution without authority inflation |
+| R06 | workspace state/actions and concurrent updates | ECO-10 | PARTIAL | accessible narrow-terminal UI, conflicts, restart and isolation |
 | R07 | theme, colors, banner, pretty/quiet and non-TTY presentation | ECO-14 | PARTIAL | ASEN-owned presentation contract; width/color/accessibility snapshots and host evidence |
 | R08 | keyboard/interaction/dialog behavior | ECO-03/14 | PARTIAL | choice/question plus applicable shortcuts/actions, cancel/error/unavailable behavior |
 | R09 | agent lifecycle/UI/RPC | ECO-05/06 | PARTIAL | queue/cancel/continue/status/history/ownership/restart and orchestrator composition |
@@ -31,8 +31,8 @@ Allowed statuses are `FULL`, `PARTIAL`, `MISSING`, `OUT_OF_SCOPE`, and `PARTIAL_
 | R11 | Skill discovery/registry lifecycle | ECO-08 | PARTIAL | missing/recreated sources and cross-platform startup/restart evidence |
 | R12 | tools and authority | ECO-03/04/05/06 | PARTIAL | complete public inventory, fail-closed forbidden calls, no acquired authority |
 | R13 | sessions/resume/recovery | ECO-14 | PARTIAL | startup/restart/corruption recovery and presentation integration |
-| R14 | private prompt history | ECO-12 | MISSING | explicit opt-in, redact-before-write, retention/search/export/delete/tombstones/recovery |
-| R15 | local usage and optional telemetry | ECO-13 | MISSING | local-first metrics, explicit one-shot consent/preview, minimization, disable/delete, no hidden send |
+| R14 | private prompt history | ECO-12 | PARTIAL | explicit opt-in, redact-before-write, retention/search/export/delete/tombstones/recovery |
+| R15 | local usage and optional telemetry | ECO-13 | PARTIAL | local-first metrics, explicit one-shot consent/preview, minimization, disable/delete, no hidden send |
 | R16 | public package/API/extension exports | ECO-02/15 | PARTIAL | packed artifact and private-path rejection on final candidate/platforms |
 | R17 | docs, links, examples, command references and media provenance | ECO-01/15 | PARTIAL | behavior-backed docs and automated link/command/claim/media validation |
 | R18 | reverse inventory completeness | ECO-01C/01E/16 | PARTIAL | every frozen command/tool/event/config/asset/reference adjudicated; drift invalidates affected claims |
@@ -63,9 +63,23 @@ Allowed statuses are `FULL`, `PARTIAL`, `MISSING`, `OUT_OF_SCOPE`, and `PARTIAL_
 - Prefer deterministic/local evidence; use consolidated remote CI only for platform/host boundaries.
 - Every stable work block is committed and pushed before beginning another large block.
 
-## Immediate reproduced platform defect
+## Task replay ownership and evidence
 
-Candidate `74defb28a77dd028da56c3870fbd60661818689c` passes macOS and Ubuntu but Windows fails the native recursive Skill-registry watcher test after the full 8-second observation window. The registry remains on the initial `First` bytes. This is no longer classified as mere timer latency. Before changing product behavior, determine whether recursive `fs.watch` delivery for this directory tree is a supported Windows contract and whether the intended behavior requires a platform fallback/rescan. Repair the smallest reproduced product/test-contract gap, then require the same exact SHA to pass Linux/macOS/Windows.
+Current route-by-route evidence and remaining gaps are recorded in `docs/audit/ecosystem-current-state-r03-r10.md`.
+
+These three surfaces have separate responsibilities and do not create competing sources of truth:
+
+| Surface | Responsibility | Durable source |
+| --- | --- | --- |
+| `src/runtime/task-replay.ts` | Validate ordered task state transitions and reject stale revisions or identity changes. | None by itself; pure validation/projection only. |
+| `src/flow/odd-task-tracking.ts` | Mirror the complete bound ODD task document and TODO/resume data; append validated task events to that same record. | Existing project/session `MemoryStore`, under the existing ODD tracking item. |
+| `src/tasks/task.ts` (`EngineeringTask`) | Track ASEN's own in-process engineering phase while running. | Process memory only; it is not the user task or its replay log. |
+
+Replay survives close/reopen through the ODD tracking MemoryStore item. A changed task document or mismatched task/project/candidate remains a hard resume rejection. Memory internals are unchanged.
+
+## Historical platform defect
+
+Candidate `74defb28a77dd028da56c3870fbd60661818689c` previously failed the recursive Skill-registry watcher test on Windows. This is historical evidence, not a current blocker: at `46c81fa67ce39aee9186c481d278cbd7e398d448`, CI's Windows job completed `npm run check` successfully (run `37523687820`, job `112475190061`). Do not add a second watcher unless a later exact-SHA run reproduces a failure.
 
 ## Final definition
 

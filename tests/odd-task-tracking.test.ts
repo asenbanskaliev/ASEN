@@ -6,7 +6,7 @@ import {join} from "node:path";
 import {SqliteMemoryStore} from "../src/memory/sqlite-store.js";
 import {createMemoryContext} from "../src/memory/context.js";
 import {deriveOddExecutionContract} from "../src/flow/odd-execution-contract.js";
-import {trackOddTask,resumeOddTask} from "../src/flow/odd-task-tracking.js";
+import {trackOddTask,resumeOddTask,appendOddTaskEvent} from "../src/flow/odd-task-tracking.js";
 import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";
 const progress={todos:[{id:"one",text:"Implement contract",status:"pending" as const}],nextStep:"Run focused tests"};
@@ -45,6 +45,21 @@ test("full task mirror, TODO and exact resume survive SQLite close/reopen",async
  await assert.rejects(()=>resumeOddTask(contract(root,false,"different"),reopened),/candidate mismatch/);
  assert.equal(await resumeOddTask(contract(root,false,"sha","other"),reopened),undefined);
  await writeFile(join(root,"odd/tasks/task.md"),"# Changed\n");await assert.rejects(()=>resumeOddTask(contract(root),reopened),/document changed/);
+});
+test("task replay appends to the same ODD memory record and resumes after restart",async t=>{
+ let openStore:SqliteMemoryStore|undefined;
+ const root=await fixture(t,()=>openStore?.close()),db=join(root,"memory.db"),store=openStore=new SqliteMemoryStore(db),context=createMemoryContext(store,{repository:root},"first");
+ const c=contract(root),saved=await trackOddTask(c,context,"odd/tasks/task.md",progress);assert.ok(saved);
+ const base={taskId:"task",sessionId:"first",projectId:root,at:"2026-10-06T00:00:01Z"};
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,sessionId:"forged",revision:1,state:"planned"}),/session mismatch/);
+ await appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned"});
+ await appendOddTaskEvent(c,context,store,{...base,revision:2,state:"running",at:"2026-10-06T00:00:02Z"});
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:2,state:"running",at:"2026-10-06T00:00:03Z"}),/revision conflict/);
+ store.close();openStore=undefined;
+ const reopened=openStore=new SqliteMemoryStore(db),continued=createMemoryContext(reopened,{repository:root},"continued"),resumed=await resumeOddTask(contract(root),reopened);
+ assert.equal(resumed?.taskEvents.length,2);assert.equal(resumed?.taskEvents[1]?.state,"running");
+ const finished=await appendOddTaskEvent(contract(root),continued,reopened,{...base,revision:3,state:"done",at:"2026-10-06T00:00:03Z"});assert.equal(finished?.taskEvents.length,3);
+ assert.equal(reopened.exportProject(root).observations.length,1);
 });
 test("tracking rejects forgery, wrong project, duplicate TODO and extras without document writes",async t=>{
  let openStore:SqliteMemoryStore|undefined;
