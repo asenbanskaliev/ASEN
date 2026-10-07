@@ -1,0 +1,82 @@
+# A4R experimental roadmap
+
+## Purpose and status
+
+Evaluate whether **A4R (Audit → Reduce → Break → Repair → Revalidate)** improves ASEN engineering outcomes at reasonable cost. This is an experimental method, not an ASEN product feature.
+
+- **Gent&#108;e** = behavioral reference.
+- **A4R** = an independently developed experimental method for evaluating and improving ASEN.
+- This document does not claim that Gent&#108;e uses A4R.
+- Baseline branch: `feat/strict-parity-prerequisites`
+- Validated baseline HEAD: `f03bcfa529340b7a13ba9131cc7e3e2e09d28f0c`
+- Isolated experiment branch: `experiment/a4r-validation`
+- Tracking draft PR: #35, targeting the baseline branch; do not merge.
+- Execution environment: GitHub Actions clean checkouts; no local test execution is attributed to this experiment.
+- No new workflow was added. Existing CI, Phase 0 Architecture, Release Gate, and Pi smoke workflows were reused.
+- External model/provider budget: 0. No model provider calls were made.
+
+## Hypothesis
+
+For high-risk changes to recovery, authority, persistence, or isolation, an explicit audit and adversarial reproduction before implementation can expose defects missed by existing checks; a minimum repair followed by exact-SHA revalidation can improve confidence without duplicating ASEN mechanisms.
+
+The hypothesis is not that every task needs all five phases or that more tests/commits imply better outcomes.
+
+## Phases and gates
+
+1. **Audit** — identify actual contracts, authority, source of truth, implementation, tests, persistence, recovery, and existing safeguards. Gate: describe the guarantee and evidence before proposing a change.
+2. **Reduce** — reuse, compose, simplify, or choose NO_CHANGE where evidence supports it. Gate: no new parallel mechanism without a demonstrated need.
+3. **Break** — run deterministic adversarial probes tied to a real guarantee. Gate: state the violated invariant and reproduce the failure.
+4. **Repair** — change only the reproduced defect, minimally. Gate: confirm no existing mechanism already handles it.
+5. **Revalidate** — rerun the defect test and related suites/workflows on the exact new SHA. Gate: report outcomes by SHA and preserve skipped as skipped.
+
+A valid outcome can be NO_CHANGE. Unknown measurements remain UNKNOWN.
+
+## Selected cases
+
+Cases were selected from existing ASEN tests and contracts, not from a synthetic benchmark. The complete inventory, evidence, and mapping to existing mechanisms are in [the experiment audit](../../docs/audit/a4r-experiment.md).
+
+| Area | Existing evidence selected |
+|---|---|
+| Deterministic defect | `tests/rdd-reproduction.test.ts` |
+| Authority and permissions | `tests/writer-admission-4r.test.ts`, `tests/dispatcher.test.ts` |
+| Agent lifecycle and runner failure | `tests/agent-lifecycle.test.ts` |
+| Session recovery/restart | `tests/session-recovery.test.ts`, `tests/pi-session-recovery-e2e.test.ts` |
+| Profiles/routing | `tests/runtime-profiles.test.ts`, `tests/profile-store.test.ts` |
+| Concurrency | `tests/exclusive-file-lock.test.ts`, existing simultaneous Memory migration test |
+| Corruption/invalid state | `tests/history-store.test.ts`, new checkpoint corruption probe |
+| NO_CHANGE | No parallel Memory/store/coordinator/orchestrator was justified |
+| Duplication temptation | Existing checkpoint, session recovery, and lifecycle mechanisms were composed |
+| Real Pi/model frontier | No model-dependent property was needed; Pi package/runtime smoke was used where existing Release Gate required it. Model behavior remains out of scope. |
+
+## Metrics
+
+Record when GitHub provides evidence:
+
+- defects detected/reproduced, false positives, regressions;
+- changes and tests added/removed, files changed, useful tests;
+- duplicated mechanisms considered and avoided;
+- iterations and Actions executions/jobs;
+- duration only where an authoritative Actions measurement is available;
+- provider calls and actual model providers;
+- recovery/authority/isolation outcomes;
+- failures found before versus only at CI.
+
+Unmeasurable values are UNKNOWN. A repeatable test failure and an unrelated one-off CI failure are reported separately.
+
+## Gates and progress
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Reconcile source branch and isolate work | Complete | Source branch remained exactly at baseline SHA; experiment is an isolated descendant |
+| Baseline A inventory | Complete | Existing tests plus historical Actions attached to baseline SHA |
+| Audit and reduce | Complete | No parallel architecture justified; one checkpoint validation gap found |
+| Adversarial reproduction | Complete | Invalid persisted task phase failed closed assertion on SHA `96314441ae67f9331f62f18b5a04c01c2beaf727` |
+| Minimal repair | Complete | Checkpoint task phase validation added; typed exhaustive allowlist on SHA `764c0f6282522b723274fb5cb11cba9eb1b7bb93` |
+| Revalidation and exact-SHA workflows | Complete for the code candidate; documentation commit checks are reported in the execution handoff | The one-time Memory concurrency failure and macOS watcher failure each passed a same-SHA retry; see exact job IDs in the audit |
+| A/B comparison and self-audit | Complete with limitations | Only one new defect was tested; no randomized matched task cohort |
+| Documentation boundary regression | Repaired | First documentation commit failed the upstream boundary audit; the required reference is now rendered from a character entity without changing the audit or allowlist |
+| Decision | **REVISE** | See conclusion in the audit |
+
+## Decision
+
+**REVISE.** The experiment found and minimally repaired one real fail-open checkpoint recovery defect. The evidence supports further evaluation for high-risk state-recovery work, but the sample is too small and A/B comparison too unmatched to adopt A4R generally or establish a repeatable quality/cost improvement. The methodology also needs a clearer proportionality rule to avoid redundant CI runs for a narrowly scoped change. Do not productize A4R in ASEN based on this experiment.
