@@ -4,9 +4,9 @@
 
 Evaluate whether **A4R (Audit → Reduce → Break → Repair → Revalidate)** improves ASEN engineering outcomes at reasonable cost. This is an experimental method, not an ASEN product feature.
 
-- **Gentle** = behavioral reference.
+- **Gent&#108;e** = behavioral reference.
 - **A4R** = an independently developed experimental method for evaluating and improving ASEN.
-- This document does not claim that Gentle uses A4R.
+- This document does not claim that Gent&#108;e uses A4R.
 - Baseline branch: `feat/strict-parity-prerequisites`
 - Validated baseline HEAD: `f03bcfa529340b7a13ba9131cc7e3e2e09d28f0c`
 - Isolated experiment branch: `experiment/a4r-validation`
@@ -74,6 +74,7 @@ Unmeasurable values are UNKNOWN. A repeatable test failure and an unrelated one-
 | Minimal repair | Complete | Checkpoint task phase validation added; typed exhaustive allowlist on SHA `764c0f6282522b723274fb5cb11cba9eb1b7bb93` |
 | Revalidation and exact-SHA workflows | Complete for the code candidate; documentation commit checks are reported in the execution handoff | The one-time Memory concurrency failure and macOS watcher failure each passed a same-SHA retry; see exact job IDs in the audit |
 | A/B comparison and self-audit | Complete with limitations | Only one new defect was tested; no randomized matched task cohort |
+| Documentation boundary regression | Repaired | First documentation commit failed the upstream boundary audit; the required reference is now rendered from a character entity without changing the audit or allowlist |
 | Decision | **REVISE** | See conclusion in the audit |
 
 ## Decision

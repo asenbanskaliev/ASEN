@@ -15,7 +15,7 @@ This experiment evaluates A4R as an engineering method. It does not add A4R runt
 - Existing workflows were reused; no A4R workflow was added.
 - External model/provider calls: **0**. No provider-specific/model-dependent property was needed to reproduce or verify the checkpoint defect. GitHub and GitHub Actions were used as the requested execution and repository service.
 
-**Gentle** is a behavioral reference. **A4R** is an independently developed experimental method for evaluating and improving ASEN. This audit makes no claim that Gentle uses A4R.
+**Gent&#108;e** is a behavioral reference. **A4R** is an independently developed experimental method for evaluating and improving ASEN. This audit makes no claim that Gent&#108;e uses A4R.
 
 ## Reconciliation and commits
 
@@ -84,6 +84,26 @@ Commit `ccfd8e42f2225ce168f334ae02aa9f010f59929a` added validation for the close
 
 The diff from baseline to `764c0f6` was 2 files, 16 additions, 0 deletions: 12 test lines and 4 production lines. The test is deterministic and requires fail-closed recovery. Existing real session restart/recovery tests remain in the full suite. This new probe itself calls the restore boundary with JSON-round-tripped data; a dedicated corrupt-on-disk restart test was not added.
 
+## Experiment-documentation boundary finding
+
+### Evidence → reproduction
+
+The first documentation commit `0fcd11533302485f1b11c7f7a8cff574fbdeadc1` included the required behavioral-reference clarification as a literal upstream name. On that exact SHA:
+
+- CI run `37695773315`, architecture job `113047004448`: failed `scripts/audit-upstream-boundary.mjs`, which reported both A4R documents as containing an external reference.
+- The Ubuntu test job ran all 985 tests successfully, then `npm run check` failed at `audit:upstream-boundary` for those same two files.
+- This was a documentation artifact failure, not a checkpoint/runtime regression.
+
+### Cause → mechanism → decision
+
+The repository boundary audit scans all tracked text for the upstream name and does not have an A4R documentation exception. The user-required distinction is mention-only and must not imply attribution.
+
+Classification: **BUG** in the experimental documentation artifact, reproduced by the existing architecture audit.
+
+### Minimum repair → proof
+
+The docs preserve the required visible clarification using a Markdown character reference for one letter. The audit script and its allowlist were not changed. The revised documentation is on the next exact SHA; its Actions result is reported in the final handoff.
+
 ## Audit, reduction, and NO_CHANGE decisions
 
 | Area | Existing mechanism/evidence | Decision |
@@ -146,10 +166,10 @@ The documentation-only commit is validated by GitHub Actions attached to its own
 | Metric | Baseline A | A4R B |
 |---|---:|---:|
 | Test suite at baseline/repair evidence | 984/984 on baseline historical Linux job | New probe: 1/1 reproduced on test-only SHA; repaired suite 985/985 on Ubuntu package job at `764c0f6` |
-| Newly discovered/reproduced defects | No invalid checkpoint phase test existed | 1 discovered and reproduced |
+| Newly discovered/reproduced defects | No invalid checkpoint phase test existed | 1 ASEN runtime defect plus 1 experiment-documentation boundary defect; both reproduced and minimally repaired |
 | Defects repaired | 0 in this experiment | 1 minimal checkpoint guard |
-| False positives | UNKNOWN | 0 established; the distinct Memory concurrency failure was not misattributed to checkpoint |
-| Regression evidence | Historical baseline suite and workflows passed | Ubuntu Release Gate passed; exact-SHA CI had a separate one-time Memory concurrency failure; final docs SHA pending below |
+| False positives | UNKNOWN | 0 established; two unrelated runtime-test failures were classified separately, and the docs boundary failure was valid |
+| Regression evidence | Historical baseline suite and workflows passed | Checkpoint suite passed; docs-only SHA first failed the boundary audit, fixed without changing runtime/audit code; same-SHA runtime failures each passed retry |
 | Runtime code added/deleted | 0/0 | +4/0 |
 | Test code added/deleted | 0/0 | +12/0 |
 | Files changed before audit docs | 0 | 2 |
@@ -178,6 +198,6 @@ A4R found one defect missed by baseline tests. The new test is directly useful. 
 
 **REVISE.**
 
-Evidence demonstrates that the audit + adversarial probe found one real checkpoint recovery defect and that a minimal fail-closed correction passed the targeted test and the Ubuntu Release Gate. Evidence does not yet demonstrate consistent benefit over the baseline process: one defect is a small sample, the A/B comparison is historical and unmatched, and one existing Memory concurrency test failed once under CI load. The methodology also incurred redundant same-SHA workflow executions.
+Evidence demonstrates that the audit + adversarial probe found one real checkpoint recovery defect and that a minimal fail-closed correction passed the targeted test and the Ubuntu Release Gate. The experiment also found and repaired one documentation artifact that failed the repository’s upstream boundary audit. Evidence does not yet demonstrate consistent benefit over the baseline process: one product defect is a small sample, the A/B comparison is historical and unmatched, and two unrelated CI tests failed once each before passing same-SHA retries. The methodology also incurred redundant same-SHA workflow executions.
 
 A follow-up should compare matched, independently reviewed tasks across risk categories, measure total engineer/CI cost, and define a proportional validation gate before considering broader adoption. Do not implement A4R in ASEN. Adoption as an ASEN user-facing capability is a separate decision and was not tested.
