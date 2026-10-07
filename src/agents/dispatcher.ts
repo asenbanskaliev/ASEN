@@ -58,7 +58,7 @@ export class Dispatcher {
   const admitted=consumeWriterAdmission(token,runnerRequest),receiver=admitted?Object.freeze({}):undefined;
   if(receiver)runnerRequest.runnerWriteReceiver=receiver;
   Object.freeze(runnerRequest);request=runnerRequest;
-  const lifecycleInput={id:request.id,role:request.role,owner:{kind:"system" as const,id:"asen-dispatcher"},sessionId:request.isolationKey??"default",projectId:request.repository,createdAt:new Date().toISOString()};
+  const lifecycleInput={id:request.id,role:request.role,owner:{kind:"system" as const,id:"asen-dispatcher"},sessionId:request.isolationKey??"default",projectId:request.repository,createdAt:this.lifecycle?.createdAt()??new Date().toISOString()};
   try{this.lifecycle?.queued(lifecycleInput);}catch(error){retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);throw error;}
   await this.#acquire();let grant:WriteGrant|undefined,lifecycleRunning=false;
   try{
