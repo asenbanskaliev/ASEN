@@ -1,7 +1,20 @@
 export type PublicAgentState="queued"|"running"|"cancelled"|"failed"|"completed";
 export interface PublicAgentRecord{id:string;role:string;owner:{kind:"user"|"agent"|"system";id:string};sessionId:string;projectId:string;state:PublicAgentState;createdAt:string;updatedAt:string;summary?:string}
+export interface AgentLifecycleSink{queued(input:Omit<PublicAgentRecord,"state"|"updatedAt">):void;running(id:string,at?:string):void;completed(id:string,summary?:string,at?:string):void;failed(id:string,summary?:string,at?:string):void;cancelled(id:string,summary?:string,at?:string):void;snapshot():readonly PublicAgentRecord[]}
 const terminal=new Set<PublicAgentState>(["cancelled","failed","completed"]);
 function safeIdentity(value:unknown):value is string{return typeof value==="string"&&value.length>0&&value.length<=256&&value===value.trim()&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);}
 export function createAgentRecord(input:Omit<PublicAgentRecord,"state"|"updatedAt">):PublicAgentRecord{if(!safeIdentity(input.id)||!safeIdentity(input.role)||!safeIdentity(input.owner?.id)||!safeIdentity(input.sessionId)||!safeIdentity(input.projectId))throw new Error("Agent identity is incomplete or invalid");if(!["user","agent","system"].includes(input.owner.kind))throw new Error("Invalid agent owner kind");if(!Number.isFinite(Date.parse(input.createdAt)))throw new Error("Invalid timestamp");return {...structuredClone(input),state:"queued",updatedAt:input.createdAt};}
 export function transitionAgent(record:PublicAgentRecord,next:PublicAgentState,at:string,summary?:string):PublicAgentRecord{if(terminal.has(record.state))throw new Error("Terminal agent cannot transition");const allowed:Record<PublicAgentState,PublicAgentState[]>={queued:["running","cancelled","failed"],running:["cancelled","failed","completed"],cancelled:[],failed:[],completed:[]};if(!allowed[record.state].includes(next))throw new Error("Invalid agent transition");const nextTime=Date.parse(at),currentTime=Date.parse(record.updatedAt);if(!Number.isFinite(nextTime)||!Number.isFinite(currentTime))throw new Error("Invalid agent transition timestamp");if(nextTime<currentTime)throw new Error("Agent transition is stale");return {...structuredClone(record),state:next,updatedAt:at,...(summary!==undefined?{summary}:record.summary!==undefined?{summary:record.summary}:{})};}
 export function agentStatusRows(records:readonly PublicAgentRecord[],width=100):string[]{return records.map(r=>{const p=`${r.state.padEnd(9)} ${r.role} ${r.owner.kind}:${r.owner.id} `,room=Math.max(4,width-p.length),id=r.id.length>room?"…"+r.id.slice(-(room-1)):r.id;return (p+id).slice(0,width);});}
+export function createAgentLifecycleSink(now:()=>string=()=>new Date().toISOString()):AgentLifecycleSink{
+ const records=new Map<string,PublicAgentRecord>();
+ const move=(id:string,state:Exclude<PublicAgentState,"queued">,summary?:string,at=now())=>{const current=records.get(id);if(!current)throw new Error("Agent lifecycle record does not exist");records.set(id,transitionAgent(current,state,at,summary));};
+ return Object.freeze({
+  queued(input){if(records.has(input.id))throw new Error("Agent lifecycle record already exists");records.set(input.id,createAgentRecord(input));},
+  running(id,at){move(id,"running",undefined,at);},
+  completed(id,summary,at){move(id,"completed",summary,at);},
+  failed(id,summary,at){move(id,"failed",summary,at);},
+  cancelled(id,summary,at){move(id,"cancelled",summary,at);},
+  snapshot(){return [...records.values()].map(record=>structuredClone(record));}
+ });
+}
