@@ -4,7 +4,7 @@
 
 This is the controlling reverse-audit map for final ASEN ecosystem closure; `ecosystem-strict-parity.md` remains the sole execution backlog. A numbered ECO unit is not sufficient evidence by itself. Closure requires every observable Reference A surface to map to an ASEN behavior, an automated/runtime proof, or an honestly disclosed disposition.
 
-The authoritative machine snapshot of Reference A remains pinned to `08de420ca29be16b6f6bee725a30b599b061df16`. The extension comparison at `6e681f1d08fff3092273cf305206094d15cacd18` is supplemental source analysis only—not an automatic rebaseline, drift adoption, runtime proof or `FULL` claim. Existing registry records and snapshot counts remain untouched. Do not copy branding, artwork, prose, names or provider-private authority.
+The authoritative machine snapshot of Reference A remains pinned to `08de420ca29be16b6f6bee725a30b599b061df16`. The [Reference B extension comparison](reference-extension-parity.md) at `6e681f1d08fff3092273cf305206094d15cacd18` is supplemental source analysis only—not an automatic rebaseline, drift adoption, runtime proof or `FULL` claim. Existing registry records and snapshot counts remain untouched. Do not copy branding, artwork, prose, names or provider-private authority.
 
 ## Closure rule
 

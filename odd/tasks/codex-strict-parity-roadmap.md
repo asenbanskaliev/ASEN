@@ -8,9 +8,9 @@ The branch is `feat/strict-parity-prerequisites`. The historical pre-seal checkp
 
 ## Current truth
 
-- Global Shell / Gentle AI work is closed through GSP-06 at the explicitly accepted provider-limited scope. The provider probe was unavailable, Pi Free was skipped, and no provider PASS may be inferred.
+- The GSP shell/orchestration track is closed through GSP-06 at the explicitly accepted provider-limited scope. The provider probe was unavailable, Pi Free was skipped, and no provider PASS may be inferred.
 - All 12 frozen Skill rows remain `PARTIAL` where generated-output evidence is absent. GSP closure does not promote them to `FULL`.
-- Engram/local memory R01-R09 is closed for the admitted local core. `MEM-01..09` is an audit map, not an implementation queue; do not rebuild the memory architecture.
+- Local memory R01-R09 is closed for the admitted local core. `MEM-01..09` is an audit map, not an implementation queue; do not rebuild the memory architecture.
 - The checked-in ecosystem claim registry is 16 `PARTIAL`, 0 `MISSING`, 0 `FULL`.
 - The frozen Reference A manifest is 167 tracked regular Git blobs, 46 roots, and 988 persisted reference records at `08de420ca29be16b6f6bee725a30b599b061df16`.
 - The comparison at `6e681f1d08fff3092273cf305206094d15cacd18` is supplemental extension analysis. It is not a refreeze, source adoption, runtime proof, or `FULL` evidence.
@@ -38,7 +38,7 @@ Historical local typecheck/build were unavailable in the extension slice because
 | `registry/parity/ecosystem-sources-v1.json` | Frozen source/object/hash/reference identities for `08de420...`. |
 | `registry/parity/ecosystem-media-v1.json` | Frozen media identities and inspection metadata. |
 | `registry/parity/ecosystem-claims-v1.json` | Machine-checked current claims; currently 16 `PARTIAL`, 0 `MISSING`, 0 `FULL`. |
-| `odd/tasks/gentle-shell-extension-parity.md` | Supplemental 25-file comparison and `EP-*` design aliases only; no execution checkboxes. |
+| [`reference-extension-parity.md`](reference-extension-parity.md) | Supplemental 25-file Reference B comparison and `EP-*` design aliases only; no execution checkboxes. |
 | `odd/tasks/skill-contract-parity.md` | GSP-06 accepted provider-limited closure and the still-`PARTIAL` 12-Skill evidence boundary. |
 | `odd/tasks/memory-strict-parity.md` and `odd/tasks/memory-v3-parity.md` | MEM audit map and canonical R01-R09 implementation/evidence record. |
 
@@ -106,7 +106,7 @@ If any guard fails, stop for a human decision. Never repair with `reset`, `clean
 >
 > Add the smallest semantic tests first for the remaining optional/generated/external/reference adjudication. A scanner guess, current-source presence, or the supplemental `6e681f...` snapshot is not semantic evidence. Keep implementation, production wiring, and evidence distinct; do not refreeze, promote a claim, start ECO-01E/runtime work, or add an `EP-*` queue. Derive runners from the checked-out `package.json` and use only available clean-environment commands; do not install dependencies or claim unavailable checks passed. Obtain independent exact-candidate verification. Use RDD/native review only if the user enabled that mode and a public provider capability is available; do not invent Pi tools or authority in Codex.
 >
-> Do not access secrets or real user data. Do not use machine caches, Engram state, absolute user paths, or temporary files as evidence. Do not commit, push, mutate a PR, merge, publish, release, or begin a later unit without a new explicit human grant. Report observed RED/GREEN where meaningful, exact commands/results, paths, candidate identity, limits, and rollback boundary.
+> Do not access secrets or real user data. Do not use machine caches, persistent-memory state, absolute user paths, or temporary files as evidence. Do not commit, push, mutate a PR, merge, publish, release, or begin a later unit without a new explicit human grant. Report observed RED/GREEN where meaningful, exact commands/results, paths, candidate identity, limits, and rollback boundary.
 
 ## Handoff boundary
 
