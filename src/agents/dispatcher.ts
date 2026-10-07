@@ -6,6 +6,7 @@ import {selectSkills} from "../skills/registry.js";
 import {consumeIssuedWorkerContext,isIssuedSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {verifySkillEvidence} from "../verify/verifier.js";
 import {consumePhaseGrant,retirePhaseGrant,consumeWriterAdmission} from "../lifecycle/skill-lifecycle.js";
+import type {AgentLifecycleSink} from "../runtime/agent-lifecycle.js";
 
 export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; model?:string; thinking?:"off"|"minimal"|"low"|"medium"|"high"; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; writerAdmission?:object; runnerWriteReceiver?:object; }
 export interface AgentArtifactProof { readonly requestId:string; readonly role:AgentRequest["role"]; readonly repository:string; readonly candidateId?:string; readonly candidateRevision?:string; readonly skillPaths:readonly string[]; }
@@ -40,7 +41,7 @@ function requestArray(value:unknown):string[]{
 
 export class Dispatcher {
  readonly #active:WriteGrant[]=[]; #running=0; readonly #waiters:Array<()=>void>=[];
- constructor(private readonly runner:AgentRunner,private readonly evidence:EvidenceStore,private readonly maxConcurrency=4){if(!Number.isInteger(maxConcurrency)||maxConcurrency<1)throw new Error("maxConcurrency must be a positive integer");}
+ constructor(private readonly runner:AgentRunner,private readonly evidence:EvidenceStore,private readonly maxConcurrency=4,private readonly lifecycle?:AgentLifecycleSink){if(!Number.isInteger(maxConcurrency)||maxConcurrency<1)throw new Error("maxConcurrency must be a positive integer");}
  async #acquire():Promise<void>{if(this.#running<this.maxConcurrency){this.#running++;return;}await new Promise<void>(resolve=>this.#waiters.push(resolve));}
  #release():void{const next=this.#waiters.shift();if(next)next();else this.#running--;}
  async dispatch(request:AgentRequest):Promise<AgentResult>{
@@ -57,8 +58,11 @@ export class Dispatcher {
   const admitted=consumeWriterAdmission(token,runnerRequest),receiver=admitted?Object.freeze({}):undefined;
   if(receiver)runnerRequest.runnerWriteReceiver=receiver;
   Object.freeze(runnerRequest);request=runnerRequest;
-  await this.#acquire();let grant:WriteGrant|undefined;
+  const lifecycleInput={id:request.id,role:request.role,owner:{kind:"system" as const,id:"asen-dispatcher"},sessionId:request.isolationKey??"default",projectId:request.repository,createdAt:new Date().toISOString()};
+  try{this.lifecycle?.queued(lifecycleInput);}catch(error){retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);throw error;}
+  await this.#acquire();let grant:WriteGrant|undefined,lifecycleRunning=false;
   try{
+   this.lifecycle?.running(request.id);lifecycleRunning=true;
    if(request.writeSurfaces&&request.role!=="worker") throw new Error("Only worker agents may receive write authority");
    if(request.skillContext||request.skillPaths){
     if(!request.skillContext||!isIssuedSkillContext(request.skillContext)) throw new Error("Delegated skill paths require ASEN-issued skill selection context");
@@ -91,7 +95,10 @@ export class Dispatcher {
    if(request.role==="worker"&&request.expectedPhase&&!consumePhaseGrant(request))throw new Error("Worker phase requires unused ASEN lifecycle grant");
    if(request.role==="worker"&&request.candidate&&!consumeIssuedWorkerContext(request.skillContext!))throw new Error("Candidate-bound worker requires unused worker context");
    if(receiver)runnerReceivers.set(receiver,{request:runnerRequest,used:false});
-   return await this.runner.run(runnerRequest);
+   const result=await this.runner.run(runnerRequest);
+   if(result.ok)this.lifecycle?.completed(request.id,result.output);else this.lifecycle?.failed(request.id,result.output);
+   lifecycleRunning=false;return result;
+  } catch(error){if(lifecycleRunning){try{this.lifecycle?.failed(request.id,error instanceof Error?error.message:String(error));}catch{}}throw error;
   } finally {retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);if(grant){const i=this.#active.indexOf(grant);if(i>=0)this.#active.splice(i,1);}this.#release();}
  }
 }
