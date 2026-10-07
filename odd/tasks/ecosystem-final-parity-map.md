@@ -80,9 +80,11 @@ Replay survives close/reopen through the ODD tracking MemoryStore item. A change
 
 ## Current handoff evidence
 
-Scanner source commit `95ad615a04c60b6947e1bfa813be77984efb397f` and CodeGraph source commit `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200` retain their recorded evidence. The latest bounded CI repair chain is `7246966cb2d3aef6ad95f4317a96eba3a7f076b9` (source compatibility and probes), `37faf7022fd0e6b8a563bbf7d920fd6e6934b46e` (neutral documentation boundary and audit), and current local HEAD `1237e3d81705886203fead7785c4ff32daece99a` (workflow and YAML contract). None is pushed; remote `e11b6a4` remains red.
+The last fully observed pre-batch candidate is `ce417c9c72f36566c7c9eddd00cb558467f06e5f`. Its pull-request workflows completed with Phase 0 Architecture PASS, CI PASS, Release Gate PASS, and Pi 1.0 runtime evidence PASS. Pi Free Smoke was SKIPPED and is not a PASS. The branch was 227 commits ahead of `main` and 0 behind at that observation.
 
-Native combined review `review-7dc163635532f99f` approved the immutable `7246966..1237e3d` CI slice; exact acknowledgement succeeded and burned authority for target `sha256:3e1dd3fee1113a8dc5b92c798cac012791a4955eea944629bd0845cbb8222792` at revision `88d498d557d2173797e2d036e6866c8bd22440f2f0a751806dd09502f72e7ce6`. Earlier `review-7078f73f836ff282` remains historically approved but unacknowledged; no old-target burn is claimed. Four latest-review advisories—link coverage, policy coupling, source locators and relative commit links—are nonblocking; only relative ASEN links are corrected here. The next gate is CI-PREQ-04 plus exact-HEAD required CI. Only then may ECO-01C-2 continue, followed by ECO-01E, remaining ECO-01/02, ECO-03..08, ECO-09..14, ECO-15 and ECO-16. Feature-branch-only delivery does not authorize install, force, merge, release, PR mutation, secrets access, NaN work or unrelated changes.
+The previous CI-repair handoff text referring to local `1237e3d...` and remote `e11b6a4...` is historical and no longer controls execution. Scanner source commit `95ad615a04c60b6947e1bfa813be77984efb397f` and CodeGraph source commit `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200` retain their recorded source evidence, but current closure decisions must use the real feature-branch HEAD and exact-HEAD workflow results.
+
+The current implementation batch starts after that green candidate and must earn fresh exact-HEAD evidence before any route promotion. Delivery authority remains feature-branch-only; it does not authorize install outside test sandboxes, force updates, merge, release, PR mutation, secrets access, NaN work or unrelated changes.
 
 ## Historical platform defect
 
