@@ -10,11 +10,11 @@ export function createAgentLifecycleSink(now:()=>string=()=>new Date().toISOStri
  const records=new Map<string,PublicAgentRecord>();
  const move=(id:string,state:Exclude<PublicAgentState,"queued">,summary?:string,at=now())=>{const current=records.get(id);if(!current)throw new Error("Agent lifecycle record does not exist");records.set(id,transitionAgent(current,state,at,summary));};
  return Object.freeze({
-  queued(input){if(records.has(input.id))throw new Error("Agent lifecycle record already exists");records.set(input.id,createAgentRecord(input));},
-  running(id,at){move(id,"running",undefined,at);},
-  completed(id,summary,at){move(id,"completed",summary,at);},
-  failed(id,summary,at){move(id,"failed",summary,at);},
-  cancelled(id,summary,at){move(id,"cancelled",summary,at);},
+  queued(input:Omit<PublicAgentRecord,"state"|"updatedAt">){if(records.has(input.id))throw new Error("Agent lifecycle record already exists");records.set(input.id,createAgentRecord(input));},
+  running(id:string,at?:string){move(id,"running",undefined,at);},
+  completed(id:string,summary?:string,at?:string){move(id,"completed",summary,at);},
+  failed(id:string,summary?:string,at?:string){move(id,"failed",summary,at);},
+  cancelled(id:string,summary?:string,at?:string){move(id,"cancelled",summary,at);},
   snapshot(){return [...records.values()].map(record=>structuredClone(record));}
  });
 }
