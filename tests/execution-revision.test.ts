@@ -72,7 +72,10 @@ test("execution timeout terminates spawned descendants",async t=>{
  const nonce=`${process.pid}-${Date.now()}`,ready=join(tmpdir(),`asen-timeout-ready-${nonce}.txt`),marker=join(tmpdir(),`asen-timeout-descendant-${nonce}.txt`);
  t.after(async()=>{await rm(ready,{force:true});await rm(marker,{force:true});});
  const descendant=`require("fs").writeFileSync(${JSON.stringify(ready)},"ready");setTimeout(()=>require("fs").writeFileSync(${JSON.stringify(marker)},"survived"),4000);setTimeout(()=>{},10000)`;
- const command=[process.execPath,"-e",`const child=require("child_process").spawn(process.execPath,["-e",${JSON.stringify(descendant)}],{stdio:"ignore",detached:process.platform==="win32"});child.unref();setTimeout(()=>{},10000)`] as const;
+ // Keep the parent alive well beyond the unchanged 3-second evidence timeout.
+ // Windows runners can delay timer delivery under the full parallel test load;
+ // the process lifetime must not race the timeout being tested.
+ const command=[process.execPath,"-e",`const child=require("child_process").spawn(process.execPath,["-e",${JSON.stringify(descendant)}],{stdio:"ignore",detached:process.platform==="win32"});child.unref();setTimeout(()=>{},30000)`] as const;
  const pending=executeEvidenceCommand({repository:repo,id:"timeout-tree",revision,createdAt:"now"},command,{timeoutMs:3000});
  let started=false;for(let i=0;i<80&&!started;i++){try{await access(ready);started=true;}catch{await new Promise(resolve=>setTimeout(resolve,25));}}
  assert.equal(started,true,"descendant did not start before the timeout");
