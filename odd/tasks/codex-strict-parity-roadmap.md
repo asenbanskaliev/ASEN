@@ -13,7 +13,7 @@ The branch is `feat/strict-parity-prerequisites`. The historical pre-seal checkp
 - Local memory R01-R09 is closed for the admitted local core. `MEM-01..09` is an audit map, not an implementation queue; do not rebuild the memory architecture.
 - The checked-in ecosystem claim registry is 16 `PARTIAL`, 0 `MISSING`, 0 `FULL`.
 - The frozen Reference A manifest is 167 tracked regular Git blobs, 46 roots, and 988 persisted reference records at `08de420ca29be16b6f6bee725a30b599b061df16`.
-- The comparison at `6e681f1d08fff3092273cf305206094d15cacd18` is supplemental extension analysis. It is not a refreeze, source adoption, runtime proof, or `FULL` evidence.
+- The comparison at `6e681f1d08fff3092273cf305206094d15cacd18` is a supplemental version of the same Reference A product. It is not a second provider/memory source, refreeze, source adoption, runtime proof, or `FULL` evidence.
 - NaN/EP-030 is excluded until explicit reauthorization. Transcript import, telemetry, HERDR, third-party presentation, and similar privacy/product/security/license choices remain future gates; do not infer consent.
 
 ### Completed and pending evidence
@@ -27,7 +27,9 @@ Recorded evidence is focused 16/16, claims 5/5, manifest audit 167 objects, clai
 
 CodeGraph's canonical `init`/`query`/`explore` tool and read-only compatibility alias are committed at `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200` (4 files, 353 additions / 46 deletions), with the same four blobs as the prior approved candidate. Pre-push verification reran 11/11 plus extension registration 6/6. Exact committed-range review `review-093f38eea8f16cb4` approved and acknowledged; authority burned for `sha256:6d320e0e09873df6d1708ad4909830a2bbafebbc5fc571497b86d2ff1812dcc9`. The old review and its nine advisories remain historical evidence; five new advisories in the same classes are nonblocking and do not reopen approval. Real CLI/index lifecycle, restart, host, and platform evidence remain open.
 
-Historical local typecheck/build were unavailable in the extension slice because required local runners/types were absent and installation was prohibited. The source and handoff documents were independently verified, but no remote CI result is claimed. The documentation work units are committed at `54bd5f730a4bd1bfd35dd21588f19da900e49760`, `d54326acb9ddf963edfde70a00619c7fac41359d`, and `35127605b20a46f4653259c9513718f298f2dd0f`; this final metadata seal needs no predicted SHA. After the seal, only the feature-branch push, exact remote-SHA confirmation, and exact-SHA CI remain pending.
+The latest bounded CI repair chain is local and unpushed: `7246966cb2d3aef6ad95f4317a96eba3a7f076b9` (source compatibility plus probes), `37faf7022fd0e6b8a563bbf7d920fd6e6934b46e` (neutral documentation boundary plus audit), and current HEAD `1237e3d81705886203fead7785c4ff32daece99a` (workflow plus YAML contract). Remote `e11b6a4` remains red. Native combined review `review-7dc163635532f99f` approved the immutable `7246966..1237e3d` slice; exact acknowledgement succeeded and burned authority for target `sha256:3e1dd3fee1113a8dc5b92c798cac012791a4955eea944629bd0845cbb8222792` at revision `88d498d557d2173797e2d036e6866c8bd22440f2f0a751806dd09502f72e7ce6`. Review `review-7078f73f836ff282` remains historically approved but unacknowledged; no old-target burn is claimed. The latest review's link-coverage, policy-coupling, source-locator and relative-link advisories are nonblocking; only relative ASEN links are corrected here.
+
+The 23-page user-provided product brief (`SHA-256 143bf702ea5150c2a100679806097e8aadd52a367c7dcca8aad741b8a47782c0`) contributes only prioritization/evidence metadata to existing ECO owners. Pages 9 and 21 describe v4.0.0 while this repository tracks unreleased main; one-to-three-run performance figures are directional, and Windows end-to-end behavior remains unverified. It is not a frozen source, refreeze, installed-feature inventory, `FULL` proof, or authority source.
 
 ## Canonical source-of-truth route
 
@@ -38,7 +40,7 @@ Historical local typecheck/build were unavailable in the extension slice because
 | `registry/parity/ecosystem-sources-v1.json` | Frozen source/object/hash/reference identities for `08de420...`. |
 | `registry/parity/ecosystem-media-v1.json` | Frozen media identities and inspection metadata. |
 | `registry/parity/ecosystem-claims-v1.json` | Machine-checked current claims; currently 16 `PARTIAL`, 0 `MISSING`, 0 `FULL`. |
-| [`reference-extension-parity.md`](reference-extension-parity.md) | Supplemental 25-file Reference B comparison and `EP-*` design aliases only; no execution checkboxes. |
+| [`reference-extension-parity.md`](reference-extension-parity.md) | Supplemental 25-file comparison from a later Reference A version and `EP-*` design aliases only; no execution checkboxes. |
 | `odd/tasks/skill-contract-parity.md` | GSP-06 accepted provider-limited closure and the still-`PARTIAL` 12-Skill evidence boundary. |
 | `odd/tasks/memory-strict-parity.md` and `odd/tasks/memory-v3-parity.md` | MEM audit map and canonical R01-R09 implementation/evidence record. |
 
@@ -50,12 +52,13 @@ Keep implementation, production wiring, and evidence separate. Source presence o
 
 ## Dependency route
 
-The actual next unit is **ECO-01C-2 only**: recover exact frozen bytes and adjudicate the remaining optional, generated, external, command/tool/event, computed, and other unresolved reference semantics. Then complete ECO-01E invalidation coverage for the verified mappings.
+The next gate is **CI-PREQ-04 plus exact-HEAD required CI**; native review of the committed CI slice is closed and acknowledged. Only after those remaining gates are green may **ECO-01C-2** recover exact frozen bytes and adjudicate remaining optional, generated, external, command/tool/event, computed, and other unresolved reference semantics. Then complete ECO-01E invalidation coverage for the verified mappings.
 
 The canonical order is:
 
 ```text
-ECO-01C-2 -> complete ECO-01E -> complete remaining ECO-01/ECO-02
+CI-PREQ-04 + exact-HEAD CI -> ECO-01C-2
+-> complete ECO-01E -> complete remaining ECO-01/ECO-02
 -> ECO-03..ECO-08 -> ECO-09..ECO-14
 -> ECO-15A -> ECO-15B -> ECO-15C -> ECO-16
 ```
@@ -110,4 +113,4 @@ If any guard fails, stop for a human decision. Never repair with `reset`, `clean
 
 ## Handoff boundary
 
-This document changes no runtime behavior; it records the exact committed source, documentation work units, review, and pre-push evidence above. Validate this final metadata seal only with ordinary structural checks (line count, required sections/identities, stale D3 absence, and diff hygiene). After its parent-controlled commit, only the feature-branch push, exact remote-SHA confirmation, and exact-SHA CI remain pending; later ECO work remains a separate human decision.
+This document changes no runtime behavior. Validate this annotation only with ordinary structural checks and diff hygiene. Native review is closed, but exact-HEAD required CI must be green before any feature-branch push or ECO continuation; CI-PREQ-04 remains pending. No install, force, merge, release, PR mutation, secrets access, NaN work or unrelated delivery is authorized.
