@@ -1,3 +1,4 @@
+# yamllint disable rule:line-length
 name: Pi 1.0 runtime evidence
 
 on:
@@ -6,10 +7,12 @@ on:
     paths:
       - "extensions/**"
       - "src/agents/**"
+      - "src/interaction/**"
       - "src/lifecycle/**"
       - "src/flow/odd-*.ts"
       - "tests/writer-admission-4r.test.ts"
       - "tests/odd-task-tracking.test.ts"
+      - "tests/code-intelligence.test.ts"
       - "src/review/**"
       - "src/delivery/**"
       - "tests/work-unit-review-candidate.test.ts"
@@ -53,7 +56,10 @@ jobs:
       - name: Focused GSP-05E deterministic tests
         run: node --import tsx --test tests/work-unit-review-candidate.test.ts tests/writer-admission-4r.test.ts tests/odd-task-tracking.test.ts
 
-      - name: Exercise ASEN extension facade with real Pi package\n        run: node scripts/pi-extension-e2e.mjs ./extensions/asen.ts\n\n      - name: Exercise ASEN extension inside real Pi 1.0 RPC runtime
+      - name: Exercise ASEN extension facade with real Pi package
+        run: node scripts/pi-extension-e2e.mjs ./extensions/asen.ts
+
+      - name: Exercise ASEN extension inside real Pi 1.0 RPC runtime
         env:
           PI_OFFLINE: "1"
           PI_TELEMETRY: "0"
