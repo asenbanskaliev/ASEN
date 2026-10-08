@@ -278,6 +278,66 @@ The evidence supports conditional intensity, not five heavyweight mandatory phas
 
 This is a proposal for another evaluation, not a new product mode. The sample does not demonstrate that risk-scoped A4R outperforms ordinary careful development.
 
-## Final decision after phase two
+## Decision after phase two (historical)
 
 **REVISE.** A4R demonstrated one useful recovery defect discovery and a minimum fix validated cross-platform. It did not produce an independent matched eight-case trial, per-case cost data, or a second product defect to establish consistency. Risk-scoped benefit remains plausible but unproven; do not adopt or productize A4R in ASEN. No R01–R20 state changes are justified.
+
+
+## Final controlled evaluation: preregistration and stop
+
+### Reconciliation at start
+
+| Ref | Start SHA | End SHA | Observed status |
+|---|---|---|---|
+| `experiment/a4r-validation` / PR #35 | `5f510c6b08e40a3f057ee0ae1a196581ac0dffb8` | Same; documentation closeout commit follows | No remote advance before update |
+| `feat/strict-parity-prerequisites` / PR #32 | `a4a9862d4d52c4130e0622110d91b6c7c49ac647` | Same | No change during experiment |
+| `main` | `49129b616c5349fbf323b74860136fc1593f9b2a` | Same | No change |
+
+GitHub confirmed the refs and PR states. PR #32 remains open/draft. PR #35 remains open/draft and GitHub reports it not mergeable; it was not rebased or merged. No later commits on either branch were found. The latest prior source-fix checks belong only to `a4a9862...`; they are historical evidence and are not results of this final evaluation.
+
+### Four preregistered tasks
+
+These candidate tasks do not reuse the known invalid phase in `restoreCheckpoint()`. They were selected from current code/tests at development SHA `a4a9862...`. No defect is presumed.
+
+| ID | Proposed task / guarantee under test | Acceptance criteria |
+|---|---|---|
+| T1 Recovery/persistence | Restart reading a truncated or malformed durable checkpoint | Malformed data fails closed; a valid checkpoint still resumes; no verified evidence or authority is minted; no unsafe overwrite during failed recovery |
+| T2 Authority/isolation | Writer admission bound to request, candidate, revision and project | Forged, reused or mismatched admission invokes no runner/write; a valid admission succeeds at most once for its bound request |
+| T3 Concurrency/lifecycle | Concurrent durable profile mutations and interrupted mutation | Every successful concurrent update persists; no lost update or invalid intermediate file; a thrown mutation leaves previous durable state readable |
+| T4 Profiles/routing/validation | Strict profile parsing and layered route selection | Malformed file/dangling active profile is rejected; valid precedence session → project → global → default is deterministic |
+
+Difficulty equivalence is **UNKNOWN** because no pilot execution was allowed after the control gate failed. Existing tests informed these contracts: `tests/pi-session-recovery-e2e.test.ts`, `tests/writer-admission-4r.test.ts`, `tests/profile-store.test.ts`, and `tests/runtime-profiles.test.ts`.
+
+### Intended A/B protocol
+
+- **A — usual ASEN method:** inspect task contract and relevant code/tests; implement the smallest justified change; run affected tests and relevant existing validation. No mandated five-phase checklist.
+- **B — A4R:** Audit → Reduce → Break → Repair → Revalidate, scaled to risk; NO_CHANGE allowed.
+- Common initial SHA: `a4a9862d4d52c4130e0622110d91b6c7c49ac647). Intended design: four A branches and four B branches, each task branch created from the same exact parent.
+- Equal conditions: identical task text, acceptance criteria, fixtures, runtime, workflow set, time/cost cap and provider budget (zero); no cherry-picks; freeze both results before sharing.
+- Metrics: per task defects found/reproduced, false positives, regressions, code added/deleted, unnecessary changes, useful tests, iterations, Actions runs/minutes, elapsed time, provider calls, preserved guarantees, and correct NO_CHANGE.
+
+### Why execution stopped
+
+A/B requires information isolation as well as branch isolation. The available GitHub execution is controlled from one shared reasoning context. If A is implemented or its Actions output inspected first, that knowledge is available to B; reversing order only reverses the contamination. Distinct refs do not hide reasoning or results. No independent isolated operator/evaluator is available in this execution. Consequently we could not guarantee reasonable independence.
+
+Following the stop rule, we did not create A/B branches, inspect one arm's outcomes, implement candidate tasks, or run Actions. We did not produce an observational substitute or claim causal results.
+
+### Final-evaluation measurements
+
+| Metric | A | B | Status |
+|---|---:|---:|---|
+| Tasks executed | 0 | 0 | Stopped before execution |
+| Defects found/reproduced | UNKNOWN | UNKNOWN | No task probes run |
+| Regressions / false positives | UNKNOWN | UNKNOWN | No task changes |
+| Code/tests added or removed | 0 | 0 | In this final evaluation |
+| Unnecessary changes / useful tests / NO_CHANGE | UNKNOWN | UNKNOWN | No arms run |
+| Iterations / elapsed time | UNKNOWN | UNKNOWN | No arm execution |
+| Workflow executions / CI minutes | 0 / 0 | 0 / 0 | No Actions launched in this phase |
+| Provider calls/cost | 0 / 0 | 0 / 0 | No external provider |
+| Branches created | 0 | 0 | Avoided after stop gate |
+
+The documentation closeout changes only these experiment records. It does not trigger CI; a skipped or absent workflow is not a pass. Prior successful workflows at `a4a9862...` and `8a3435b...` remain attached only to those SHAs.
+
+### Final evaluation decision
+
+**INSUFFICIENT_EVIDENCE.** The earlier experiments found one genuine checkpoint recovery defect, but do not show that A4R outperforms the ordinary ASEN process. This final, preregistered attempt could not provide independent paired execution and therefore stopped before testing. This is absence of comparative evidence, not evidence that A4R is ineffective. No ASEN integration is proposed. This closes the A4R experiment series.

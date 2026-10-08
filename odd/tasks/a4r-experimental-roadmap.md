@@ -92,6 +92,49 @@ Unmeasurable values are UNKNOWN. A repeatable test failure and an unrelated one-
 - Phase-two cost: five existing workflow executions at `a4a9862...` (CI, Release Gate, Phase 0, Pi 1.0 runtime, Pi Free); all required workflows succeeded, Pi Free was SKIPPED. No external model/provider calls. The final docs-only commit skips CI.
 - Proportionality proposal: brief audit and reuse check for nontrivial changes; adversarial probes only for material invariants; full platform/release validation for recovery, authority, persistence, concurrency or release changes; focused tests first for narrow code fixes; no broad reruns for docs-only edits or without new evidence.
 
-## Final decision
+## Second-phase decision (historical)
 
 **REVISE.** A4R found a real recovery defect and its minimal repair passed cross-platform validation. The eight-area comparison is not matched and the evidence does not demonstrate repeatable quality/cost superiority, including risk-scoped superiority. Keep A4R experimental; do not integrate it into ASEN or promote R01–R20.
+
+
+## Final controlled evaluation — closed without A/B execution
+
+### Reconciliation
+
+- Initial experiment HEAD: `5f510c6b08e40a3f057ee0ae1a196581ac0dffb8`.
+- Initial development HEAD: `a4a9862d4d52c4130e0622110d91b6c7c49ac647`.
+- Initial `main`: `49129b616c5349fbf323b74860136fc1593f9b2a`.
+- GitHub refs still match those SHAs. No later commits were found on either working branch.
+- The development branch remains a 250-commit descendant of main; the experiment branch is kept separate. PR #32 was not changed.
+
+### Preregistered task set and criteria
+
+These four candidate tasks deliberately avoid the already-known invalid-phase defect in `restoreCheckpoint()`. The exact contracts and criteria are preregistered in the audit. They were **not executed**.
+
+1. Recovery: corrupt/truncated persisted checkpoint read after process restart must fail closed; valid recovery remains compatible; no verified result or authority is recreated from malformed data.
+2. Authority/isolation: forged, reused, or mismatched candidate/revision/project-bound writer admission must invoke no runner/write; a valid admission is usable only once by its bound request.
+3. Concurrency/lifecycle: simultaneous durable profile mutations must preserve every successful update; an interrupted/throwing mutation must leave the prior durable value readable.
+4. Profiles/routing/validation: malformed profile data and dangling active names are rejected; valid session → project → global → default precedence is deterministic.
+
+Difficulty equivalence is UNKNOWN; these cases were not piloted.
+
+### Comparison protocol fixed before execution
+
+- A: ordinary ASEN workflow—inspect the contract and relevant implementation/tests, make the smallest justified change, run affected tests and the existing relevant validation.
+- B: proportionate A4R—Audit → Reduce → Break → Repair → Revalidate, with NO_CHANGE permitted.
+- Planned common start: exact development SHA `a4a9862d4d52c4130e0622110d91b6c7c49ac647`; four task-specific A branches and four B branches would be created from that same commit.
+- Planned controls: identical issue statements, acceptance criteria, fixtures, runtime and Actions workflows; no providers; separate branch histories; no cherry-picking or sharing findings until both arms were frozen.
+- Stop gate: require isolated execution contexts/operators so neither arm can observe the other arm's reasoning, patch, or test output.
+
+### Stop result
+
+The available execution context is a single shared reasoning session with GitHub access. It cannot keep A's findings/results hidden while B is performed, or vice versa. Separate Git branches alone would isolate files but not the operator's information. Creating branches and proceeding anyway would repeat the prior observational design and would not resolve the identified limitation. Therefore no A/B branches were created, no task code was changed, and no Actions workflow was launched.
+
+- This is a control-design blockage, not evidence that A4R works or fails.
+- No test, defect, regression, or task-level result is attributed to this final evaluation.
+- This is the last A4R experiment in this series; no third observational comparison is proposed.
+- No product integration proposal is justified without adoption evidence. A4R remains an external experimental method, not an ASEN runtime feature.
+
+## Final series decision
+
+**INSUFFICIENT_EVIDENCE.** The experiments demonstrate one real recovery defect, but cannot determine whether A4R is superior to the usual ASEN process. The final controlled comparison stopped before execution because independent A/B operation could not be guaranteed.
