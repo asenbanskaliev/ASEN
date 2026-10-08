@@ -80,11 +80,9 @@ Replay survives close/reopen through the ODD tracking MemoryStore item. A change
 
 ## Current handoff evidence
 
-The last fully observed pre-batch candidate is `ce417c9c72f36566c7c9eddd00cb558467f06e5f`. Its pull-request workflows completed with Phase 0 Architecture PASS, CI PASS, Release Gate PASS, and Pi 1.0 runtime evidence PASS. Pi Free Smoke was SKIPPED and is not a PASS. The branch was 227 commits ahead of `main` and 0 behind at that observation.
+The current fully observed checkpoint is `bc6160d598dfd4e9a5b369d15177bf0c8d6a17e6`. CI push `37734698587`, PR `37734702290`, Release Gate `37734702429` (Ubuntu/macOS/Windows), Pi `37734702301`, and Architecture `37734702361` passed. Pi Free Smoke `37734702356` was intentionally SKIPPED, not PASS. CI-PREQ-04 implementation and exact-current CI are therefore verified at this checkpoint, without proving permanent elimination of the race class.
 
-The previous CI-repair handoff text referring to local `1237e3d...` and remote `e11b6a4...` is historical and no longer controls execution. Scanner source commit `95ad615a04c60b6947e1bfa813be77984efb397f` and CodeGraph source commit `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200` retain their recorded source evidence, but current closure decisions must use the real feature-branch HEAD and exact-HEAD workflow results.
-
-The current implementation batch starts after that green candidate and must earn fresh exact-HEAD evidence before any route promotion. Delivery authority remains feature-branch-only; it does not authorize install outside test sandboxes, force updates, merge, release, PR mutation, secrets access, NaN work or unrelated changes.
+Older handoff SHAs and pending-CI statements are historical and no longer control execution. Scanner source commit `95ad615a04c60b6947e1bfa813be77984efb397f` and CodeGraph source commit `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200` retain their recorded source evidence. The current passive ECO-01C-2 U1 metadata candidate inherits no green result; later units must earn exact-candidate evidence before route promotion. Delivery authority remains feature-branch-only and excludes install outside test sandboxes, force updates, merge, release, PR mutation, secrets access, NaN work, or unrelated changes.
 
 ## Historical platform defect
 

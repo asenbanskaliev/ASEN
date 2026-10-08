@@ -27,7 +27,7 @@ Recorded evidence is focused 16/16, claims 5/5, manifest audit 167 objects, clai
 
 CodeGraph's canonical `init`/`query`/`explore` tool and read-only compatibility alias are committed at `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200` (4 files, 353 additions / 46 deletions), with the same four blobs as the prior approved candidate. Pre-push verification reran 11/11 plus extension registration 6/6. Exact committed-range review `review-093f38eea8f16cb4` approved and acknowledged; authority burned for `sha256:6d320e0e09873df6d1708ad4909830a2bbafebbc5fc571497b86d2ff1812dcc9`. The old review and its nine advisories remain historical evidence; five new advisories in the same classes are nonblocking and do not reopen approval. Real CLI/index lifecycle, restart, host, and platform evidence remain open.
 
-The latest bounded CI repair chain is local and unpushed: `7246966cb2d3aef6ad95f4317a96eba3a7f076b9` (source compatibility plus probes), `37faf7022fd0e6b8a563bbf7d920fd6e6934b46e` (neutral documentation boundary plus audit), and current HEAD `1237e3d81705886203fead7785c4ff32daece99a` (workflow plus YAML contract). Remote `e11b6a4` remains red. Native combined review `review-7dc163635532f99f` approved the immutable `7246966..1237e3d` slice; exact acknowledgement succeeded and burned authority for target `sha256:3e1dd3fee1113a8dc5b92c798cac012791a4955eea944629bd0845cbb8222792` at revision `88d498d557d2173797e2d036e6866c8bd22440f2f0a751806dd09502f72e7ce6`. Review `review-7078f73f836ff282` remains historically approved but unacknowledged; no old-target burn is claimed. The latest review's link-coverage, policy-coupling, source-locator and relative-link advisories are nonblocking; only relative ASEN links are corrected here.
+The current fully observed checkpoint is `bc6160d598dfd4e9a5b369d15177bf0c8d6a17e6`. CI push `37734698587`, PR `37734702290`, Release Gate `37734702429` (Ubuntu/macOS/Windows), Pi `37734702301`, and Architecture `37734702361` passed; Pi Free Smoke `37734702356` was intentionally SKIPPED, not PASS. CI-PREQ-04 implementation and current exact CI are verified at that checkpoint without proving permanent elimination of the race class. Earlier local/unpushed and red-remote statements are historical; native review evidence remains bound only to its recorded immutable targets.
 
 The 23-page user-provided product brief (`SHA-256 143bf702ea5150c2a100679806097e8aadd52a367c7dcca8aad741b8a47782c0`) contributes only prioritization/evidence metadata to existing ECO owners. Pages 9 and 21 describe v4.0.0 while this repository tracks unreleased main; one-to-three-run performance figures are directional, and Windows end-to-end behavior remains unverified. It is not a frozen source, refreeze, installed-feature inventory, `FULL` proof, or authority source.
 
@@ -52,12 +52,12 @@ Keep implementation, production wiring, and evidence separate. Source presence o
 
 ## Dependency route
 
-The next gate is **CI-PREQ-04 plus exact-HEAD required CI**; native review of the committed CI slice is closed and acknowledged. Only after those remaining gates are green may **ECO-01C-2** recover exact frozen bytes and adjudicate remaining optional, generated, external, command/tool/event, computed, and other unresolved reference semantics. Then complete ECO-01E invalidation coverage for the verified mappings.
+CI-PREQ-04 and exact-current CI are verified at checkpoint `bc6160d`; those results do not transfer to the current uncommitted passive metadata candidate. **ECO-01C-2** is now open with canonical U1 checkpoint/byte-proof reconciliation IN PROGRESS and later U2/U3 work still pending. Real adjudication must recover exact frozen bytes first; then ECO-01E completes invalidation coverage for verified mappings.
 
 The canonical order is:
 
 ```text
-CI-PREQ-04 + exact-HEAD CI -> ECO-01C-2
+ECO-01C-2 U1 -> U2 -> U3
 -> complete ECO-01E -> complete remaining ECO-01/ECO-02
 -> ECO-03..ECO-08 -> ECO-09..ECO-14
 -> ECO-15A -> ECO-15B -> ECO-15C -> ECO-16
@@ -113,4 +113,4 @@ If any guard fails, stop for a human decision. Never repair with `reset`, `clean
 
 ## Handoff boundary
 
-This document changes no runtime behavior. Validate this annotation only with ordinary structural checks and diff hygiene. Native review is closed, but exact-HEAD required CI must be green before any feature-branch push or ECO continuation; CI-PREQ-04 remains pending. No install, force, merge, release, PR mutation, secrets access, NaN work or unrelated delivery is authorized.
+This document changes no runtime behavior. Validate this annotation only with ordinary structural checks and diff hygiene. Checkpoint `bc6160d` has exact-current CI and CI-PREQ-04 verification, but that evidence does not transfer to this uncommitted passive U1 metadata candidate; U1 remains incomplete until parent independent checks and committed identity are observed. No install, force, merge, release, PR mutation, secrets access, NaN work or unrelated delivery is authorized.
