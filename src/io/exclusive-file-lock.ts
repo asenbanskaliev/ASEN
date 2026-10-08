@@ -30,7 +30,7 @@ function createAndClaimSync(lock:string,token:string):void{
 }
 
 /** A bounded cross-process lock for small private JSON transactions. */
-export async function withExclusiveFileLock<T>(target:string,operation:()=>Promise<T>,timeoutMs=5000):Promise<T>{
+export async function withExclusiveFileLock<T>(target:string,operation:()=>Promise<T>,timeoutMs=15000):Promise<T>{
  validateTimeout(timeoutMs);
  const lock=`${target}.lock`,token=randomUUID(),deadline=Date.now()+timeoutMs;let held=false,sawContention=false,createRaceRetried=false,inspectionPermissionError:NodeJS.ErrnoException|undefined;
  while(!held){
