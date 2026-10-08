@@ -266,7 +266,7 @@ test("four-source overlay rejects identity, ordering, binding, span and authorit
     ["third disposition",(_b,o)=>{o.adjudications[20].disposition="ignore";},"Unsupported reference adjudication classification or disposition"],
     ["third extra field",(_b,o)=>{o.adjudications[20].rationale="trust me";},"Malformed reference adjudication authority fields"],
     ["third span extra",(_b,o)=>{o.adjudications[20].span.note="extra";},"Malformed reference adjudication authority fields"],
-    ["fourth source",(_b,o)=>{o.adjudications[27].sourceId="ECO-SRC-396d124d7d28739b";},"Reference adjudication row identity mismatch"],
+    ["fourth source",(_b,o)=>{o.adjudications[27].sourceId="ECO-SRC-0000000000000000";},"Reference adjudication row identity mismatch"],
     ["fourth duplicate",(_b,o)=>{o.adjudications[28].referenceIndex=0;},"Duplicate or out-of-order reference adjudication index"],
     ["fourth index",(_b,o)=>{o.adjudications[33].referenceIndex=7;},"Duplicate or out-of-order reference adjudication index"],
     ["fourth raw status",(b,_o)=>{b.files.find((r:any)=>r.id==="ECO-SRC-f186dd2c4db26151").references[0].status="declared";},"Malformed ecosystem baseline"],
