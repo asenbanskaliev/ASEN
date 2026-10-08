@@ -6,6 +6,7 @@ import {withExclusiveFileLockSync} from "../io/exclusive-file-lock.js";
 import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemoryExport, MemoryRelation, MemoryRelationInput, MemorySessionState, MemorySessionSummary, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
 
 const CURRENT_SCHEMA_VERSION=8;
+const SQLITE_STARTUP_LOCK_TIMEOUT_MS=30_000;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
 const DEFAULT_DEDUPE_WINDOW_MS=15*60_000;
 type Migration={readonly version:number;apply(db:DatabaseSync):void};
@@ -111,7 +112,7 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
     return db;
    }catch(error){try{db.close();}catch{/* Preserve the startup failure. */}throw error;}
   };
-  this.#db=path===":memory:"||path===""?initialize():withExclusiveFileLockSync(path,initialize);
+  this.#db=path===":memory:"||path===""?initialize():withExclusiveFileLockSync(path,initialize,SQLITE_STARTUP_LOCK_TIMEOUT_MS);
  }
  #repairFts():void{repairFts(this.#db);}
  #transaction<T>(operation:()=>T):T{

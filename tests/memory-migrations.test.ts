@@ -83,6 +83,8 @@ test("a holder worker serializes the complete migration startup before an opener
  Atomics.store(new Int32Array(openerGate),0,1);Atomics.notify(new Int32Array(openerGate),0);
  assert.deepEqual(await entered,{phase:"startup:enter-constructor"});
  assert.equal(await Promise.race([completed.then(()=>"completed"),new Promise(resolve=>setTimeout(()=>resolve("blocked"),500))]),"blocked","the scheduled opener cannot migrate or write while the holder owns the startup lock");
+ await new Promise(resolve=>setTimeout(resolve,5_500));
+ assert.equal(await Promise.race([completed.then(()=>"completed"),new Promise(resolve=>setTimeout(()=>resolve("blocked"),0))]),"blocked","the opener must keep waiting while a live startup owner holds the lock beyond five seconds");
  assert.equal(version(path),0);assert.equal(backupFiles(path).length,0);
  Atomics.store(new Int32Array(holderGate),0,1);Atomics.notify(new Int32Array(holderGate),0);
  assert.deepEqual(await workerMessage(holder,message=>message.phase==="holder:released"),{phase:"holder:released"});
