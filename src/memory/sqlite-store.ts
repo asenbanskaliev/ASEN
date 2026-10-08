@@ -1,6 +1,8 @@
+import {Buffer} from "node:buffer";
 import { DatabaseSync } from "node:sqlite";
 import {createHash,randomUUID} from "node:crypto";
 import {existsSync,rmSync} from "node:fs";
+import {withExclusiveFileLockSync} from "../io/exclusive-file-lock.js";
 import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemoryExport, MemoryRelation, MemoryRelationInput, MemorySessionState, MemorySessionSummary, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
 
 const CURRENT_SCHEMA_VERSION=8;
@@ -87,6 +89,11 @@ function migrate(db:DatabaseSync,path:string,existingFile:boolean):void{
  }
  if(version!==CURRENT_SCHEMA_VERSION)throw new Error(`Memory schema version ${version} is unsupported`);
 }
+function repairFts(db:DatabaseSync):void{
+ db.exec("BEGIN IMMEDIATE");
+ try{db.exec("DELETE FROM memory_fts; INSERT INTO memory_fts(id,project_id,content) SELECT id,project_id,content FROM memory; COMMIT");}
+ catch(error){try{db.exec("ROLLBACK");}catch{/* Preserve the repair failure. */}throw error;}
+}
 
 export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,MemorySessionRegistry {
  readonly #db:DatabaseSync;
@@ -94,20 +101,19 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  constructor(path:string,dedupeWindowMs=DEFAULT_DEDUPE_WINDOW_MS){
   if(!Number.isFinite(dedupeWindowMs))throw new Error("Memory dedupe window must be finite");
   this.#dedupeWindowMs=dedupeWindowMs;
-  const existingFile=path!==":memory:"&&path!==""&&existsSync(path);
-  this.#db=new DatabaseSync(path);
-  try{
-   this.#db.exec("PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;");
-   migrate(this.#db,path,existingFile);
-   this.#db.exec("PRAGMA journal_mode=WAL;");
-   this.#repairFts();
-  }catch(error){try{this.#db.close();}catch{/* Preserve the startup failure. */}throw error;}
+  const initialize=()=>{
+   const existingFile=existsSync(path),db=new DatabaseSync(path);
+   try{
+    db.exec("PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;");
+    migrate(db,path,existingFile);
+    db.exec("PRAGMA journal_mode=WAL;");
+    repairFts(db);
+    return db;
+   }catch(error){try{db.close();}catch{/* Preserve the startup failure. */}throw error;}
+  };
+  this.#db=path===":memory:"||path===""?initialize():withExclusiveFileLockSync(path,initialize);
  }
- #repairFts():void{
-  this.#db.exec("BEGIN IMMEDIATE");
-  try{this.#db.exec("DELETE FROM memory_fts; INSERT INTO memory_fts(id,project_id,content) SELECT id,project_id,content FROM memory; COMMIT");}
-  catch(e){this.#db.exec("ROLLBACK");throw e;}
- }
+ #repairFts():void{repairFts(this.#db);}
  #transaction<T>(operation:()=>T):T{
   this.#db.exec("BEGIN IMMEDIATE");
   try{const result=operation();this.#db.exec("COMMIT");return result;}
