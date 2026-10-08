@@ -23,6 +23,11 @@ jobs:
         with:
           node-version: 22
       - run: npm install
+      - name: Prepare frozen ecosystem Git objects
+        env:
+          FROZEN_SOURCE_COMMIT: 08de420ca29be16b6f6bee725a30b599b061df16
+          FROZEN_SOURCE_TREE: 9af648106ed75fa270476e9d474bad93aa38af6b
+        run: node -e "const cp=require('node:child_process'),fs=require('node:fs'),path=require('node:path'),os=require('node:os');const repository=path.join(process.env.RUNNER_TEMP,'asen-ecosystem-baseline.git');cp.execFileSync('git',['init','--bare',repository],{stdio:'inherit'});cp.execFileSync('git',['--git-dir',repository,'fetch','--no-tags','--depth=1','https://github.com/asenbanskaliev/ASEN.git',process.env.FROZEN_SOURCE_COMMIT],{stdio:'inherit'});const git=(...args)=>cp.execFileSync('git',['--git-dir',repository,...args],{encoding:'utf8'}).trim();if(git('rev-parse','FETCH_HEAD')!==process.env.FROZEN_SOURCE_COMMIT)throw Error('Frozen source commit mismatch');if(git('rev-parse',process.env.FROZEN_SOURCE_COMMIT+'^{tree}')!==process.env.FROZEN_SOURCE_TREE)throw Error('Frozen source tree mismatch');fs.appendFileSync(process.env.GITHUB_ENV,'ECOSYSTEM_BASELINE_REPOSITORY='+repository+os.EOL)"
       - run: npm run check
   architecture:
     runs-on: ubuntu-24.04

@@ -192,6 +192,7 @@ test("thirty-four-reference overlay adjudicates four frozen filesystem sources w
   {skip:!retainedBaselineRepository},()=>{
   assert.equal(typeof baselineModule.verifyReferenceAdjudications,"function");
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
+  assert.equal(verifyBaselineObjects(retainedBaselineRepository,baseline),true);
   const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
   const baselineBefore=structuredClone(baseline);
   const selected=baseline.files.find((row:any)=>row.id==="ECO-SRC-5a67352cd4badb81");
