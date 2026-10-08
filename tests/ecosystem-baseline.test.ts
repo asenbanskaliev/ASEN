@@ -188,7 +188,7 @@ test("Git normalization is recorded as committed bytes instead of worktree bytes
  assert.equal(core.bytes,Buffer.byteLength(source.replaceAll("\r\n","\n")));assert.notEqual(core.bytes,Buffer.byteLength(readFileSync(join(f.root,"lib","core.ts"))));assert.equal(verifyBaselineObjects(f.root,baseline),true);
 });
 
-test("thirty-four-reference overlay adjudicates four frozen filesystem sources without mutating scanner evidence",
+test("fifty-reference overlay adjudicates five frozen filesystem sources without mutating scanner evidence",
   {skip:!retainedBaselineRepository},()=>{
   assert.equal(typeof baselineModule.verifyReferenceAdjudications,"function");
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
@@ -199,11 +199,18 @@ test("thirty-four-reference overlay adjudicates four frozen filesystem sources w
   const second=baseline.files.find((row:any)=>row.id==="ECO-SRC-1f527249710bd9bf");
   const third=baseline.files.find((row:any)=>row.id==="ECO-SRC-396d124d7d28739b");
   const fourth=baseline.files.find((row:any)=>row.id==="ECO-SRC-f186dd2c4db26151");
-  const referencesBefore=structuredClone([selected.references.slice(0,5),second.references.slice(5,20),third.references.slice(0,7),fourth.references.slice(0,7)]);
+  const fifth=baseline.files.find((row:any)=>row.id==="ECO-SRC-b739ab592bf5a9d4");
+  const referencesBefore=structuredClone([
+    selected.references.slice(0,5),second.references.slice(0,5),second.references.slice(5,20),second.references.slice(20,23),
+    third.references.slice(0,7),fourth.references.slice(0,7),fifth.references.slice(0,8),
+  ]);
   assert.deepEqual((baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,overlay),
-    {scannerUnresolved:164,adjudicated:34,remaining:130});
+    {scannerUnresolved:164,adjudicated:50,remaining:114});
   assert.deepEqual(baseline,baselineBefore);
-  assert.deepEqual([selected.references.slice(0,5),second.references.slice(5,20),third.references.slice(0,7),fourth.references.slice(0,7)],referencesBefore);
+  assert.deepEqual([
+    selected.references.slice(0,5),second.references.slice(0,5),second.references.slice(5,20),second.references.slice(20,23),
+    third.references.slice(0,7),fourth.references.slice(0,7),fifth.references.slice(0,8),
+  ],referencesBefore);
   assert.ok(referencesBefore.flat().every((ref:any)=>
     JSON.stringify(ref)===JSON.stringify({kind:"asset",target:null,status:"unresolved",path:null})));
   const withAbsent=structuredClone(baseline);
@@ -212,10 +219,10 @@ test("thirty-four-reference overlay adjudicates four frozen filesystem sources w
   });
   assert.deepEqual(validateBaseline(withAbsent),[]);
   assert.deepEqual((baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,withAbsent,overlay),
-    {scannerUnresolved:165,adjudicated:34,remaining:131});
+    {scannerUnresolved:165,adjudicated:50,remaining:115});
 });
 
-test("four-source overlay rejects identity, ordering, binding, span and authority mutations",
+test("five-source overlay rejects identity, ordering, binding, span and authority mutations",
   {skip:!retainedBaselineRepository},()=>{
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
   const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
@@ -240,44 +247,61 @@ test("four-source overlay rejects identity, ordering, binding, span and authorit
     ["span field",(_b,o)=>{o.adjudications[0].span.note="extra";},"Malformed reference adjudication authority fields"],
     ["envelope field",(_b,o)=>{o.note="extra";},"Invalid reference adjudication envelope"],
     ["selected identity",(b,_o)=>{b.files.find((r:any)=>r.id===overlay.adjudications[0].sourceId).objectId=b.files.find((r:any)=>r.path==="README.md").objectId;},"Reference adjudication source identity mismatch"],
-    ["second source",(_b,o)=>{o.adjudications[5].sourceId=o.adjudications[0].sourceId;},"Reference adjudication row identity mismatch"],
-    ["second duplicate",(_b,o)=>{o.adjudications[6].referenceIndex=5;},"Duplicate or out-of-order reference adjudication index"],
-    ["second order",(_b,o)=>{[o.adjudications[5],o.adjudications[6]]=[o.adjudications[6],o.adjudications[5]];},"Duplicate or out-of-order reference adjudication index"],
-    ["second index",(_b,o)=>{o.adjudications[19].referenceIndex=20;},"Duplicate or out-of-order reference adjudication index"],
-    ["second raw status",(b,_o)=>{b.files.find((r:any)=>r.id===overlay.adjudications[5].sourceId).references[5].status="declared";},"Malformed ecosystem baseline"],
-    ["second import binding",(b,_o)=>{b.files.find((r:any)=>r.id===overlay.adjudications[5].sourceId).references.find((r:any)=>r.kind==="import"&&r.target==="node:fs/promises").target="node:assert";},"Frozen scanner/source reference mismatch"],
-    ["second call association",(_b,o)=>{o.adjudications[5].callLine++;},"Invalid reference adjudication call or span"],
-    ["second span start",(_b,o)=>{o.adjudications[5].span.startLine++;},"Invalid reference adjudication call or span"],
-    ["second span text",(_b,o)=>{o.adjudications[5].span.endLine--;},"Invalid reference adjudication call or span"],
-    ["second span hash",(_b,o)=>{o.adjudications[5].span.sha256="a".repeat(64);},"Frozen readFile call/span binding mismatch"],
-    ["second class",(_b,o)=>{o.adjudications[5].classification="generated-cache";},"Unsupported reference adjudication classification or disposition"],
-    ["second disposition",(_b,o)=>{o.adjudications[5].disposition="ignore";},"Unsupported reference adjudication classification or disposition"],
-    ["second extra authority",(_b,o)=>{o.adjudications[5].rationale="trust me";},"Malformed reference adjudication authority fields"],
-    ["third source",(_b,o)=>{o.adjudications[20].sourceId="ECO-SRC-0000000000000000";},"Reference adjudication row identity mismatch"],
-    ["third duplicate",(_b,o)=>{o.adjudications[21].referenceIndex=0;},"Duplicate or out-of-order reference adjudication index"],
-    ["third order",(_b,o)=>{[o.adjudications[20],o.adjudications[21]]=[o.adjudications[21],o.adjudications[20]];},"Duplicate or out-of-order reference adjudication index"],
-    ["third index",(_b,o)=>{o.adjudications[26].referenceIndex=7;},"Duplicate or out-of-order reference adjudication index"],
+    ["second source",(_b,o)=>{o.adjudications[10].sourceId=o.adjudications[0].sourceId;},"Reference adjudication row identity mismatch"],
+    ["second duplicate",(_b,o)=>{o.adjudications[11].referenceIndex=5;},"Duplicate or out-of-order reference adjudication index"],
+    ["second order",(_b,o)=>{[o.adjudications[10],o.adjudications[11]]=[o.adjudications[11],o.adjudications[10]];},"Duplicate or out-of-order reference adjudication index"],
+    ["second index",(_b,o)=>{o.adjudications[24].referenceIndex=20;},"Duplicate or out-of-order reference adjudication index"],
+    ["second raw status",(b,_o)=>{b.files.find((r:any)=>r.id===overlay.adjudications[10].sourceId).references[5].status="declared";},"Malformed ecosystem baseline"],
+    ["second import binding",(b,_o)=>{b.files.find((r:any)=>r.id===overlay.adjudications[10].sourceId).references.find((r:any)=>r.kind==="import"&&r.target==="node:fs/promises").target="node:assert";},"Frozen scanner/source reference mismatch"],
+    ["second call association",(_b,o)=>{o.adjudications[10].callLine++;},"Invalid reference adjudication call or span"],
+    ["second span start",(_b,o)=>{o.adjudications[10].span.startLine++;},"Invalid reference adjudication call or span"],
+    ["second span text",(_b,o)=>{o.adjudications[10].span.endLine--;},"Invalid reference adjudication call or span"],
+    ["second span hash",(_b,o)=>{o.adjudications[10].span.sha256="a".repeat(64);},"Frozen readFile call/span binding mismatch"],
+    ["second class",(_b,o)=>{o.adjudications[10].classification="generated-cache";},"Unsupported reference adjudication classification or disposition"],
+    ["second disposition",(_b,o)=>{o.adjudications[10].disposition="ignore";},"Unsupported reference adjudication classification or disposition"],
+    ["second extra authority",(_b,o)=>{o.adjudications[10].rationale="trust me";},"Malformed reference adjudication authority fields"],
+    ["third source",(_b,o)=>{o.adjudications[28].sourceId="ECO-SRC-0000000000000000";},"Reference adjudication row identity mismatch"],
+    ["third duplicate",(_b,o)=>{o.adjudications[29].referenceIndex=0;},"Duplicate or out-of-order reference adjudication index"],
+    ["third order",(_b,o)=>{[o.adjudications[28],o.adjudications[29]]=[o.adjudications[29],o.adjudications[28]];},"Duplicate or out-of-order reference adjudication index"],
+    ["third index",(_b,o)=>{o.adjudications[34].referenceIndex=7;},"Duplicate or out-of-order reference adjudication index"],
     ["third raw status",(b,_o)=>{b.files.find((r:any)=>r.id==="ECO-SRC-396d124d7d28739b").references[0].status="declared";},"Malformed ecosystem baseline"],
     ["third import binding",(b,_o)=>{b.files.find((r:any)=>r.id==="ECO-SRC-396d124d7d28739b").references.find((r:any)=>r.kind==="import"&&r.target==="node:fs").target="node:crypto";},"Frozen scanner/source reference mismatch"],
-    ["third call",(_b,o)=>{o.adjudications[20].callLine++;},"Invalid reference adjudication call or span"],
-    ["third span start",(_b,o)=>{o.adjudications[20].span.startLine++;},"Invalid reference adjudication call or span"],
-    ["third span hash",(_b,o)=>{o.adjudications[20].span.sha256="a".repeat(64);},"Frozen readFile call/span binding mismatch"],
-    ["third class",(_b,o)=>{o.adjudications[20].classification="generated-cache";},"Unsupported reference adjudication classification or disposition"],
-    ["third disposition",(_b,o)=>{o.adjudications[20].disposition="ignore";},"Unsupported reference adjudication classification or disposition"],
-    ["third extra field",(_b,o)=>{o.adjudications[20].rationale="trust me";},"Malformed reference adjudication authority fields"],
-    ["third span extra",(_b,o)=>{o.adjudications[20].span.note="extra";},"Malformed reference adjudication authority fields"],
-    ["fourth source",(_b,o)=>{o.adjudications[27].sourceId="ECO-SRC-0000000000000000";},"Reference adjudication row identity mismatch"],
-    ["fourth duplicate",(_b,o)=>{o.adjudications[28].referenceIndex=0;},"Duplicate or out-of-order reference adjudication index"],
-    ["fourth index",(_b,o)=>{o.adjudications[33].referenceIndex=7;},"Duplicate or out-of-order reference adjudication index"],
+    ["third call",(_b,o)=>{o.adjudications[28].callLine++;},"Invalid reference adjudication call or span"],
+    ["third span start",(_b,o)=>{o.adjudications[28].span.startLine++;},"Invalid reference adjudication call or span"],
+    ["third span hash",(_b,o)=>{o.adjudications[28].span.sha256="a".repeat(64);},"Frozen readFile call/span binding mismatch"],
+    ["third class",(_b,o)=>{o.adjudications[28].classification="generated-cache";},"Unsupported reference adjudication classification or disposition"],
+    ["third disposition",(_b,o)=>{o.adjudications[28].disposition="ignore";},"Unsupported reference adjudication classification or disposition"],
+    ["third extra field",(_b,o)=>{o.adjudications[28].rationale="trust me";},"Malformed reference adjudication authority fields"],
+    ["third span extra",(_b,o)=>{o.adjudications[28].span.note="extra";},"Malformed reference adjudication authority fields"],
+    ["fourth source",(_b,o)=>{o.adjudications[35].sourceId="ECO-SRC-0000000000000000";},"Reference adjudication row identity mismatch"],
+    ["fourth duplicate",(_b,o)=>{o.adjudications[36].referenceIndex=0;},"Duplicate or out-of-order reference adjudication index"],
+    ["fourth index",(_b,o)=>{o.adjudications[41].referenceIndex=7;},"Duplicate or out-of-order reference adjudication index"],
     ["fourth raw status",(b,_o)=>{b.files.find((r:any)=>r.id==="ECO-SRC-f186dd2c4db26151").references[0].status="declared";},"Malformed ecosystem baseline"],
     ["fourth import binding",(b,_o)=>{b.files.find((r:any)=>r.id==="ECO-SRC-f186dd2c4db26151").references.find((r:any)=>r.kind==="import"&&r.target==="node:fs").target="node:crypto";},"Frozen scanner/source reference mismatch"],
-    ["fourth call",(_b,o)=>{o.adjudications[27].callLine++;},"Invalid reference adjudication call or span"],
-    ["fourth span end",(_b,o)=>{o.adjudications[27].span.endLine--; },"Invalid reference adjudication call or span"],
-    ["fourth span hash",(_b,o)=>{o.adjudications[27].span.sha256="a".repeat(64);},"Frozen readFile call/span binding mismatch"],
-    ["fourth class",(_b,o)=>{o.adjudications[27].classification="generated-cache";},"Unsupported reference adjudication classification or disposition"],
-    ["fourth disposition",(_b,o)=>{o.adjudications[27].disposition="ignore";},"Unsupported reference adjudication classification or disposition"],
-    ["fourth extra field",(_b,o)=>{o.adjudications[27].rationale="trust me";},"Malformed reference adjudication authority fields"],
-    ["fourth span extra",(_b,o)=>{o.adjudications[27].span.note="extra";},"Malformed reference adjudication authority fields"],
+    ["fourth call",(_b,o)=>{o.adjudications[35].callLine++;},"Invalid reference adjudication call or span"],
+    ["fourth span end",(_b,o)=>{o.adjudications[35].span.endLine--; },"Invalid reference adjudication call or span"],
+    ["fourth span hash",(_b,o)=>{o.adjudications[35].span.sha256="a".repeat(64);},"Frozen readFile call/span binding mismatch"],
+    ["fourth class",(_b,o)=>{o.adjudications[35].classification="generated-cache";},"Unsupported reference adjudication classification or disposition"],
+    ["fourth disposition",(_b,o)=>{o.adjudications[35].disposition="ignore";},"Unsupported reference adjudication classification or disposition"],
+    ["fourth extra field",(_b,o)=>{o.adjudications[35].rationale="trust me";},"Malformed reference adjudication authority fields"],
+    ["fourth span extra",(_b,o)=>{o.adjudications[35].span.note="extra";},"Malformed reference adjudication authority fields"],
+    ["fifth source",(_b,o)=>{o.adjudications[42].sourceId="ECO-SRC-0000000000000000";},"Reference adjudication row identity mismatch"],
+    ["fifth blob",(_b,o)=>{o.adjudications[42].objectId="a".repeat(40);},"Reference adjudication row identity mismatch"],
+    ["fifth size",(_b,o)=>{o.adjudications[42].bytes++;},"Reference adjudication row identity mismatch"],
+    ["fifth source hash",(_b,o)=>{o.adjudications[42].sha256="a".repeat(64);},"Reference adjudication row identity mismatch"],
+    ["fifth baseline identity",(b,_o)=>{b.files.find((r:any)=>r.id==="ECO-SRC-b739ab592bf5a9d4").objectId="a".repeat(40);},"Reference adjudication source identity mismatch"],
+    ["fifth duplicate",(_b,o)=>{o.adjudications[43].referenceIndex=0;},"Duplicate or out-of-order reference adjudication index"],
+    ["fifth order",(_b,o)=>{[o.adjudications[42],o.adjudications[43]]=[o.adjudications[43],o.adjudications[42]];},"Duplicate or out-of-order reference adjudication index"],
+    ["fifth index",(_b,o)=>{o.adjudications[49].referenceIndex=8;},"Duplicate or out-of-order reference adjudication index"],
+    ["fifth raw reference",(b,_o)=>{b.files.find((r:any)=>r.id==="ECO-SRC-b739ab592bf5a9d4").references[0].status="declared";},"Malformed ecosystem baseline"],
+    ["fifth import binding",(b,_o)=>{b.files.find((r:any)=>r.id==="ECO-SRC-b739ab592bf5a9d4").references.find((r:any)=>r.kind==="builtin"&&r.target==="node:fs").target="node:assert";},"Frozen scanner/source reference mismatch"],
+    ["fifth call",(_b,o)=>{o.adjudications[42].callLine++;},"Invalid reference adjudication call or span"],
+    ["fifth span",(_b,o)=>{o.adjudications[42].span.endLine--; },"Invalid reference adjudication call or span"],
+    ["fifth span hash",(_b,o)=>{o.adjudications[42].span.sha256="a".repeat(64);},"Frozen readFile call/span binding mismatch"],
+    ["fifth class",(_b,o)=>{o.adjudications[42].classification="source-dependency";},"Unsupported reference adjudication classification or disposition"],
+    ["fifth disposition",(_b,o)=>{o.adjudications[42].disposition="ignore";},"Unsupported reference adjudication classification or disposition"],
+    ["fifth extra field",(_b,o)=>{o.adjudications[42].rationale="trust me";},"Malformed reference adjudication authority fields"],
+    ["fifth span extra",(_b,o)=>{o.adjudications[42].span.note="extra";},"Malformed reference adjudication authority fields"],
   ];
   for(const [name,mutate,expected] of cases){const b=structuredClone(baseline),o=structuredClone(overlay);mutate(b,o);
     assert.throws(()=>(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,b,o),exactErrorMessage(expected),name);}
@@ -324,17 +348,3 @@ test("immutable source reader verifies the selected blob byte identity",(t:test.
 });
 
 
-test("RED: next 16 frozen asset references require semantic adjudication",
-  {skip:!retainedBaselineRepository},()=>{
-  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
-  const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
-  const sourceIds=["ECO-SRC-1f527249710bd9bf","ECO-SRC-b739ab592bf5a9d4"];
-  const verifiedSourceContext=sourceIds.map(id=>{
-    const row=baseline.files.find((candidate:any)=>candidate.id===id);
-    const bytes=(baselineModule as any).readBaselineSourceBytes(retainedBaselineRepository,baseline,id);
-    return `===== ${row.path} (${row.objectId}, ${row.bytes} bytes, ${row.sha256}) =====\\n${bytes.toString("utf8")}`;
-  }).join("\\n");
-  const result=(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,overlay);
-  assert.deepEqual(result,{scannerUnresolved:164,adjudicated:50,remaining:114},
-    `RED: expected the selected 16-reference asset-read cohort; exact verified frozen source follows:\\n${verifiedSourceContext}`);
-});
