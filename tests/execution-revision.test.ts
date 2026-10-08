@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {execFileSync} from "node:child_process";
+import {execFileSync,spawn} from "node:child_process";
 import {access,mkdtemp,mkdir,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
@@ -70,7 +70,10 @@ test("execution timeout terminates spawned descendants",async t=>{
  execFileSync("git",["-C",repo,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m","initial"]);
  const revision=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
  const nonce=`${process.pid}-${Date.now()}`,ready=join(tmpdir(),`asen-timeout-ready-${nonce}.txt`),marker=join(tmpdir(),`asen-timeout-descendant-${nonce}.txt`);
- t.after(async()=>{await rm(ready,{force:true});await rm(marker,{force:true});});
+ const siblingReady=join(tmpdir(),`asen-timeout-sibling-${nonce}.txt`),sibling=spawn(process.execPath,["-e",`require("fs").writeFileSync(${JSON.stringify(siblingReady)},"ready");setInterval(()=>{},1000)`],{stdio:"ignore"});
+ t.after(async()=>{if(sibling.exitCode===null)sibling.kill("SIGKILL");await rm(ready,{force:true});await rm(marker,{force:true});await rm(siblingReady,{force:true});});
+ let siblingStarted=false;for(let i=0;i<80&&!siblingStarted;i++){try{await access(siblingReady);siblingStarted=true;}catch{await new Promise(resolve=>setTimeout(resolve,25));}}
+ assert.equal(siblingStarted,true,"independent sentinel did not start before the timeout");
  const descendant=`require("fs").writeFileSync(${JSON.stringify(ready)},"ready");setTimeout(()=>require("fs").writeFileSync(${JSON.stringify(marker)},"survived"),4000);setTimeout(()=>{},10000)`;
  // Keep the parent alive well beyond the unchanged 3-second evidence timeout.
  // Windows runners can delay timer delivery under the full parallel test load;
@@ -82,6 +85,7 @@ test("execution timeout terminates spawned descendants",async t=>{
  await assert.rejects(()=>pending,/timed out/);
  await new Promise(resolve=>setTimeout(resolve,1500));
  await assert.rejects(()=>access(marker),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
+ assert.equal(sibling.exitCode,null,"termination escaped the evidence command's process containment");
 });
 
 test("execution isolates transient command mutations from the authoritative candidate",async t=>{

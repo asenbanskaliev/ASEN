@@ -46,5 +46,24 @@ test("FULL requires every platform, restart, cross-session and real Pi boundary;
     assert.match(issues,new RegExp("missing "+kind));
   assert.match(issues,/invalid executed evidence record/);assert.match(issues,/receipt\/content binding/);
   const path=input.baseline.files.find((r:any)=>r.sha256===row.sourceHashes[0]).path;
-  input.invalidatedPaths=[path];assert.match(validateEcosystemClaims(input).join("\n"),/drift invalidates FULL/);
+  input.driftReport={from:input.baseline.commit,to:row.sourceSnapshotCommit,autoAdopt:false,changes:[],invalidatedPaths:[path]};
+  assert.match(validateEcosystemClaims(input).join("\n"),/drift invalidates FULL/);
+});
+
+test("FULL fails closed without a drift report bound to its exact frozen source candidate",()=>{
+ const input=load(),row=input.registry.rows.find((r:any)=>r.id==="ECO-05");
+ row.status="FULL";row.candidate=input.observedHead;row.sourceSnapshotCommit=input.baseline.commit;row.remaining=[];
+ assert.match(validateEcosystemClaims(input).join("\n"),/exact baseline-to-source-candidate drift report/);
+ input.driftReport={from:input.baseline.commit,to:"a".repeat(40),autoAdopt:false,changes:[],invalidatedPaths:[]};
+ assert.match(validateEcosystemClaims(input).join("\n"),/exact baseline-to-source-candidate drift report/);
+ input.driftReport={from:input.baseline.commit,to:row.sourceSnapshotCommit,autoAdopt:true,changes:[],invalidatedPaths:[]};
+ assert.match(validateEcosystemClaims(input).join("\n"),/exact baseline-to-source-candidate drift report/);
+});
+
+test("a duplicate frozen-source hash invalidates FULL when any matching path drifts",()=>{
+ const input=load(),row=input.registry.rows.find((r:any)=>r.id==="ECO-05");
+ const first=input.baseline.files[0],second=input.baseline.files[1];second.sha256=first.sha256;
+ row.status="FULL";row.candidate=input.observedHead;row.sourceSnapshotCommit=input.baseline.commit;row.sourceHashes=[first.sha256];row.remaining=[];
+ input.driftReport={from:input.baseline.commit,to:row.sourceSnapshotCommit,autoAdopt:false,changes:[],invalidatedPaths:[second.path]};
+ assert.match(validateEcosystemClaims(input).join("\n"),/source drift invalidates FULL/);
 });

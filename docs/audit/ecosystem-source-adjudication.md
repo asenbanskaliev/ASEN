@@ -1,5 +1,13 @@
 # ECO-01C-2 source-adjudication evidence
 
+## Superseding reconciliation — 2026-10-08
+
+The earlier 34-row / 130-remaining status below is historical. Recalculation against frozen source commit `08de420ca29be16b6f6bee725a30b599b061df16` confirms 167 tracked manifest objects, 988 scanner references, 164 raw unresolved/absent/outside-root references, and **164 adjudicated / 0 remaining** in `ecosystem-reference-adjudications-v1.json`. Raw reference evidence and the source manifest are unchanged. Claims remain 16 PARTIAL / 0 FULL; no route is promoted.
+
+The 25 adjudications classified `source-runtime-edge` now have separate span-bound dispositions in `registry/parity/ecosystem-runtime-edge-mappings-v1.json`: 1 exact tracked file, 2 direct-child Markdown selectors, 12 self-owned code contracts, and 10 external/dynamic runtime inputs. The `assets/agents/*.md` selector is verified from the frozen Git tree (10 direct regular Markdown blobs at the pinned commit); those bytes are not copied into ASEN and the raw directory reference is not rewritten. External, generated, candidate-tree, and network inputs are categorized as such and are not asserted equivalent to a tracked source file.
+
+The latest published parent `5e6049d17d25371bf217e9000616151f6ff8b259` passed CI, Phase 0 Architecture, and Pi 1.0 runtime evidence; its Release Gate failed only on Windows process-tree timeout cleanup (`execution timeout terminates spawned descendants`). The local follow-up adds a Job Object launcher that assigns the command while suspended, a kill-on-close boundary, and an unrelated-sibling regression. Local consolidated checks passed (1,010 tests; build; 28-export packed install). GitHub checks for that follow-up remain pending. Pi Free Smoke on the published parent was SKIPPED, not PASS; no real Pi Free/model verification is claimed.
+
 ## Scope and identity
 
 - Repository: `asenbanskaliev/ASEN`

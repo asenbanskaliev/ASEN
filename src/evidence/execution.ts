@@ -3,6 +3,7 @@ import {realpathSync} from "node:fs";
 import {mkdtemp,mkdir,open,readdir,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
+import {spawnContained} from "./spawn-contained.js";
 import type {Candidate,Evidence} from "../core/types.js";
 import {EvidenceStore} from "./store.js";
 
@@ -89,7 +90,7 @@ async function runEvidenceCommand(candidate:Candidate,command:readonly [string,.
   if(coverage)await mkdir(coverageDirectory);
   const exitCode=await new Promise<number>((resolve,reject)=>{
    const env=capture?{...process.env,NODE_TEST_CONTEXT:undefined,...(coverage?{NODE_V8_COVERAGE:coverageDirectory}:{})}:undefined;
-   const child=spawn(command[0],command.slice(1),{cwd:isolated,stdio:capture?["ignore","pipe","pipe"]:"ignore",shell:false,detached:process.platform!=="win32",env});
+   const child=spawnContained(command[0],command.slice(1),{cwd:isolated,stdio:capture?["ignore","pipe","pipe"]:"ignore",shell:false,detached:process.platform!=="win32",env});
    let stopped=false,size=0,timer:NodeJS.Timeout;
    const fail=(error:Error)=>{if(stopped)return;stopped=true;if(timer)clearTimeout(timer);void terminateProcessTree(child).finally(()=>reject(error));};
    const collect=(target:Buffer[])=>(chunk:Buffer)=>{size+=chunk.length;if(size>limit)fail(new Error("Execution evidence output exceeded its limit"));else target.push(chunk);};

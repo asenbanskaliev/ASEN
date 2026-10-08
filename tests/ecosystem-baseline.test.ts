@@ -7,7 +7,7 @@ import {join} from "node:path";
 import {tmpdir} from "node:os";
 // @ts-expect-error Research-only JavaScript baseline collector, outside the runtime package.
 import * as baselineModule from "../scripts/ecosystem-baseline.mjs";
-const {collectBaseline,validateBaseline,verifyBaselineObjects,detectBaselineDrift,sourceReferences}=baselineModule;
+const {collectBaseline,validateBaseline,verifyBaselineObjects,detectBaselineDrift,detectMappedBaselineDrift,sourceReferences,verifyRuntimeEdgeMappings,collectRuntimeEdgeFiles}=baselineModule;
 const retainedBaselineRepository=process.env.ECOSYSTEM_BASELINE_REPOSITORY??"";
 
 function fixture(t:test.TestContext) {
@@ -163,6 +163,20 @@ test("library changes invalidate importing roots and ambiguous hashes are never 
   assert.ok(report.changes.some((c:any)=>c.kind==="REMOVED"&&c.path==="README.md"));
 });
 
+test("explicit runtime file edges invalidate their owner and transitive importers",t=>{
+  const f=fixture(t),before=collectBaseline(f.root,f.commit);
+  writeFileSync(join(f.root,"extensions","entry.ts"),'import "../lib/core.js";\nimport {readFileSync} from "node:fs";\nexport const main=readFileSync("../docs/guide.md");\n');
+  f.git("add",".");f.git("commit","-qm","runtime reader");
+  const mappedBefore=collectBaseline(f.root,f.git("rev-parse","HEAD"));
+  writeFileSync(join(f.root,"docs","guide.md"),'# Changed runtime input\n');f.git("add",".");f.git("commit","-qm","runtime input change");
+  const after=collectBaseline(f.root,f.git("rev-parse","HEAD"));
+  const report=detectBaselineDrift(mappedBefore,after,{runtimeEdges:[{sourcePath:"extensions/entry.ts",targetPaths:["docs/guide.md"]}]});
+  assert.ok(report.invalidatedPaths.includes("extensions/entry.ts"));
+  assert.ok(report.invalidatedPaths.includes("lib/core.ts"));
+  assert.deepEqual(detectBaselineDrift(before,before,{runtimeEdges:[{sourcePath:"extensions/entry.ts",targetPaths:["docs/guide.md"]}]}),
+    detectBaselineDrift(before,before));
+});
+
 test("checked-in ecosystem manifest is valid research evidence",()=>{
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
   assert.deepEqual(validateBaseline(baseline),[]);
@@ -194,6 +208,18 @@ test("164-reference overlay adjudicates every frozen unresolved reference withou
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
   assert.equal(verifyBaselineObjects(retainedBaselineRepository,baseline),true);
   const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
+  const edgeMappings=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-runtime-edge-mappings-v1.json",import.meta.url),"utf8"));
+  assert.deepEqual(verifyRuntimeEdgeMappings(retainedBaselineRepository,baseline,overlay,edgeMappings),{mapped:25,tracked:3,codeContracts:12,externalRuntime:10});
+  const agentFiles=collectRuntimeEdgeFiles(retainedBaselineRepository,baseline.commit,"assets/agents/*.md");
+  assert.equal(agentFiles.length,10);assert.ok(agentFiles.every((row:any)=>row.path.startsWith("assets/agents/")&&row.path.endsWith(".md")));
+  const brokenMappings=structuredClone(edgeMappings);brokenMappings.mappings[5].span.sha256="0".repeat(64);
+  assert.throws(()=>verifyRuntimeEdgeMappings(retainedBaselineRepository,baseline,overlay,brokenMappings),/source identity mismatch/);
+  for(const mutate of [
+    (value:any)=>{value.mappings.pop();},
+    (value:any)=>{value.mappings.find((row:any)=>row.mappingKind==="tracked-file").targets[0]="docs/unrelated.md";},
+    (value:any)=>{value.mappings.find((row:any)=>row.mappingKind==="external-runtime").targets.push("README.md");},
+    (value:any)=>{value.mappings[0].unexpected=true;},
+  ]){const changed=structuredClone(edgeMappings);mutate(changed);assert.throws(()=>verifyRuntimeEdgeMappings(retainedBaselineRepository,baseline,overlay,changed));}
   const baselineBefore=structuredClone(baseline);
   const referencesBefore=structuredClone(baseline.files.map((row:any)=>row.references));
   assert.deepEqual((baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,overlay),
@@ -333,6 +359,26 @@ test("asset overlay rejects identity, ordering, binding, span and authority muta
     exactErrorMessage("Frozen semantic-reference call/span binding mismatch"),"outside-root directory span");
   assert.throws(()=>(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,undefined),
     exactErrorMessage("Invalid reference adjudication envelope"));
+});
+
+test("mapped Markdown runtime directory reports additions and content changes without adoption",{skip:!retainedBaselineRepository},t=>{
+  const repo=mkdtempSync(join(tmpdir(),"asen-runtime-edge-source-"));t.after(()=>rmSync(repo,{recursive:true,force:true}));
+  execFileSync("git",["init","-q",repo]);execFileSync("git",["-C",repo,"fetch","-q","--update-shallow",retainedBaselineRepository,"08de420ca29be16b6f6bee725a30b599b061df16"]);
+  execFileSync("git",["-C",repo,"checkout","-q","--detach","FETCH_HEAD"]);
+  execFileSync("git",["-C",repo,"config","user.name","Fixture"]);execFileSync("git",["-C",repo,"config","user.email","fixture@example.test"]);
+  const before=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
+  const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
+  const mappings=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-runtime-edge-mappings-v1.json",import.meta.url),"utf8"));
+  const selected=collectRuntimeEdgeFiles(repo,before.commit,"assets/agents/*.md")[0].path,assetDirectory=selected.slice(0,selected.lastIndexOf("/"));
+  writeFileSync(join(repo,selected),"# changed input\n");
+  writeFileSync(join(repo,assetDirectory,"new-worker.md"),"# added input\n");
+  execFileSync("git",["-C",repo,"add",assetDirectory]);execFileSync("git",["-C",repo,"commit","-qm","change mapped runtime asset set"]);
+  const after=collectBaseline(repo,execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim());
+  const report=detectMappedBaselineDrift(repo,before,after,overlay,mappings);
+  assert.equal(report.autoAdopt,false);
+  assert.ok(report.changes.some((row:any)=>row.kind==="CONTENT_CHANGED"&&row.path===selected));
+  assert.ok(report.changes.some((row:any)=>row.kind==="ADDED"&&row.path===`${assetDirectory}/new-worker.md`));
+  assert.ok(report.invalidatedPaths.includes("lib/runtime-metrics-children.ts"));
 });
 
 test("immutable source reader returns the manifest-selected committed bytes",(t:test.TestContext)=>{

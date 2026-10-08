@@ -1,4 +1,4 @@
-import {spawn,type ChildProcess} from "node:child_process";
+import {spawn,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";
 import {join,resolve as resolvePath} from "node:path";
 import {mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
@@ -8,6 +8,7 @@ import {matchesIssuedSkillContext} from "../skills/context.js";
 import {selectSkills} from "../skills/registry.js";
 import {authorizePiWriteGrant} from "../lifecycle/skill-lifecycle.js";
 import {consumeRunnerWriteReceiver} from "./dispatcher.js";
+import {spawnContained} from "../evidence/spawn-contained.js";
 
 export interface PiProcessOptions{
  command?:string;
@@ -115,12 +116,12 @@ export class PiProcessRunner implements AgentRunner{
   const max=this.options.maxOutputBytes??1_000_000;
 
   return new Promise(resolve=>{
-   const child=spawn(command,args,{
+   const child=spawnContained(command,args,{
     cwd:request.repository,
     env:{...process.env,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[]})},
     stdio:["pipe","pipe","pipe"],
     detached:process.platform!=="win32"
-   });
+   }) as ChildProcessWithoutNullStreams;
    let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,stopResult:AgentResult|undefined;
    const preflightId=`asen-policy:${request.id}`;
    const closed=new Promise<void>(resolveClosed=>{child.once("close",()=>resolveClosed());child.once("error",()=>{if(child.pid===undefined)resolveClosed();});});

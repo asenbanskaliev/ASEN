@@ -1,0 +1,437 @@
+{
+  "version": 1,
+  "baselineCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "adjudicationFile": "registry/parity/ecosystem-reference-adjudications-v1.json",
+  "mappings": [
+    {
+      "sourceId": "ECO-SRC-625c38e8637ad8b0",
+      "referenceIndex": 0,
+      "objectId": "39f21cca79a50f02b25472e48d68c2a97e04a073",
+      "bytes": 10707,
+      "sha256": "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",
+      "callLine": 214,
+      "span": {
+        "startLine": 208,
+        "endLine": 231,
+        "sha256": "d58f1cf373161a361aed434e47ad5154064cd5d0495ae4e43b6c136db12f73c5"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "installed-package-discovery",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-ecb5b4ebbaf005aa",
+      "referenceIndex": 0,
+      "objectId": "780805490645c357be10b179ff1edd460038f21f",
+      "bytes": 15683,
+      "sha256": "afe1984c6334ff774fbf69961675f2ccc9ea034cd36b3aa3b17632958a0cd553",
+      "callLine": 133,
+      "span": {
+        "startLine": 120,
+        "endLine": 138,
+        "sha256": "14bab5abdbf5dac6cf61794cf1e70ba2627f05710ba518aa8ec3ed7e2e32d384"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "user-selected-absolute-file",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-ecb5b4ebbaf005aa",
+      "referenceIndex": 2,
+      "objectId": "780805490645c357be10b179ff1edd460038f21f",
+      "bytes": 15683,
+      "sha256": "afe1984c6334ff774fbf69961675f2ccc9ea034cd36b3aa3b17632958a0cd553",
+      "callLine": 297,
+      "span": {
+        "startLine": 271,
+        "endLine": 310,
+        "sha256": "25ae5e1512512fa0c618189180bd6ded5f0081db312f6c88e0597b0b5ca298a9"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "generated-install-manifest-and-binary",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-f4f6b335bf2cf4e9",
+      "referenceIndex": 0,
+      "objectId": "beea157aa1ad2f2c4e9e6c303e6064ea725aaaab",
+      "bytes": 17838,
+      "sha256": "3f26a3bfe12e962bf968fcc546c0cdf4d700d3a9a8c180626f4e3729da2d4bf3",
+      "callLine": 169,
+      "span": {
+        "startLine": 169,
+        "endLine": 169,
+        "sha256": "5cbf226fe65f0208f81fc38f7a89780c4e8dab6eb190227968351f873e8f2859"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "configured-provider-url",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-ee431194e4155110",
+      "referenceIndex": 0,
+      "objectId": "d803af7e0263dd8df374d1c7f18b4a60b93b5cb5",
+      "bytes": 111266,
+      "sha256": "8f4ce05940375a03b24cefb517c9329b6a34bf2d978513dea6b784916012f15b",
+      "callLine": 619,
+      "span": {
+        "startLine": 606,
+        "endLine": 620,
+        "sha256": "bc093b37701720074b431c53b825c33002b942786d4e9ee4f09dcbd9b79b56ac"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "caller-selected-candidate-tree",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-6058ca4d664d9095",
+      "referenceIndex": 1,
+      "objectId": "af5a725bad0b3841179e0572429fdcab1eb3189b",
+      "bytes": 12081,
+      "sha256": "57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",
+      "callLine": 33,
+      "span": {
+        "startLine": 32,
+        "endLine": 38,
+        "sha256": "0d4bd0f5d54216487e19a60575abadf65ba1621b4370a8ddbbfbb9855717af4f"
+      },
+      "mappingKind": "tracked-glob",
+      "mappingReason": "direct-markdown-children",
+      "targets": [
+        "assets/agents/*.md"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-dbf31123d00902ed",
+      "referenceIndex": 1,
+      "objectId": "8c8fe7c8bb2af81a00fbffe7589c4fbc758806df",
+      "bytes": 15942,
+      "sha256": "740b7b6f5e97f70caac1077beb0a652edfcaf4ecf2a9f892ca6ee6ff505f7f81",
+      "callLine": 3,
+      "span": {
+        "startLine": 1,
+        "endLine": 6,
+        "sha256": "82710160f01d8d291894e1e372f5a7d9247433129f93f945db203c991ece738e"
+      },
+      "mappingKind": "tracked-file",
+      "mappingReason": "exact-source-file",
+      "targets": [
+        "contracts/telemetry/runtime-aggregate-v1.schema.json"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-8745033959a82ed0",
+      "referenceIndex": 0,
+      "objectId": "c3c8cd439aaae8fd6b775c190660f37341e3ef5e",
+      "bytes": 15444,
+      "sha256": "cbdf5deac8b7a85ab1253dbd049953aeb192a7d1f7987f9206916ab449c10a92",
+      "callLine": 134,
+      "span": {
+        "startLine": 121,
+        "endLine": 139,
+        "sha256": "77b4bcfa14a46e5572e13a0baefcddfeb51f64d727e38c4a8028137a935c7185"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "user-selected-absolute-file",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-8745033959a82ed0",
+      "referenceIndex": 2,
+      "objectId": "c3c8cd439aaae8fd6b775c190660f37341e3ef5e",
+      "bytes": 15444,
+      "sha256": "cbdf5deac8b7a85ab1253dbd049953aeb192a7d1f7987f9206916ab449c10a92",
+      "callLine": 298,
+      "span": {
+        "startLine": 272,
+        "endLine": 311,
+        "sha256": "10539dce99600450e289398ecf8444e87f14e028954e329880d8012e97e7b94a"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "generated-install-manifest-and-binary",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-7fb85a620f260291",
+      "referenceIndex": 2,
+      "objectId": "c6b15ce14dbcbf1e3a367358638f6b782d71ec96",
+      "bytes": 40972,
+      "sha256": "3b897818fbf8aef7ef22c9c11c5f8a8118453fbcb67d69ea1c8cf7d608d20547",
+      "callLine": 166,
+      "span": {
+        "startLine": 165,
+        "endLine": 167,
+        "sha256": "6ec3ca5a6596cd808154081dbe34c98ee69d5f13b2c8b1563ddcdfb9e64f39d4"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "downloaded-or-staged-content",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-7fb85a620f260291",
+      "referenceIndex": 0,
+      "objectId": "c6b15ce14dbcbf1e3a367358638f6b782d71ec96",
+      "bytes": 40972,
+      "sha256": "3b897818fbf8aef7ef22c9c11c5f8a8118453fbcb67d69ea1c8cf7d608d20547",
+      "callLine": 176,
+      "span": {
+        "startLine": 176,
+        "endLine": 176,
+        "sha256": "405ea65219a981feba5f4dcc4c551023a1fa6d22ed61ce6f40747a1078405797"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "https-download-url",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-7fb85a620f260291",
+      "referenceIndex": 1,
+      "objectId": "c6b15ce14dbcbf1e3a367358638f6b782d71ec96",
+      "bytes": 40972,
+      "sha256": "3b897818fbf8aef7ef22c9c11c5f8a8118453fbcb67d69ea1c8cf7d608d20547",
+      "callLine": 185,
+      "span": {
+        "startLine": 185,
+        "endLine": 185,
+        "sha256": "c8ba63ced71ecc91cc85212692b256f85e441d0a75a60fbcfb12eece360b46b0"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "https-redirect-location",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-625c38e8637ad8b0",
+      "referenceIndex": 7,
+      "objectId": "39f21cca79a50f02b25472e48d68c2a97e04a073",
+      "bytes": 10707,
+      "sha256": "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",
+      "callLine": 323,
+      "span": {
+        "startLine": 323,
+        "endLine": 323,
+        "sha256": "a4e951dfbf0364d42620121c654f3f4d1842059c6f0ec6778b19280635a9c8be"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "extensions/codegraph-tools.ts"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-af1edc66cbd9834c",
+      "referenceIndex": 64,
+      "objectId": "c6bf814ca8934bd26af5f0efb0c229029ca07155",
+      "bytes": 81559,
+      "sha256": "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388",
+      "callLine": 1152,
+      "span": {
+        "startLine": 1152,
+        "endLine": 1178,
+        "sha256": "2d2504228419e852849ce25dd30410645c68f8357be7f362474b583b94130eb0"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "extensions/gentle-agents.ts"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 33,
+      "objectId": "a0fed68c1cd897700a3857cbe7ea4851891eddd0",
+      "bytes": 467267,
+      "sha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "callLine": 9405,
+      "span": {
+        "startLine": 9405,
+        "endLine": 9415,
+        "sha256": "910ae33c8132730a0cbac13e6dd41b7f7b21f594cba766c03b20ab438ac2457f"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "extensions/gentle-ai.ts"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 89,
+      "objectId": "a0fed68c1cd897700a3857cbe7ea4851891eddd0",
+      "bytes": 467267,
+      "sha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "callLine": 8975,
+      "span": {
+        "startLine": 8975,
+        "endLine": 9013,
+        "sha256": "b79c2071260a75206d9a1675b0da7dd9932be168883993fb4f394c60cc65886b"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "extensions/gentle-ai.ts"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 90,
+      "objectId": "a0fed68c1cd897700a3857cbe7ea4851891eddd0",
+      "bytes": 467267,
+      "sha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "callLine": 9015,
+      "span": {
+        "startLine": 9015,
+        "endLine": 9059,
+        "sha256": "46a4e717c96aaeef7e31b2f8152f8f2efc7bd0bc1ac383a7070d2b1953baf517"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "extensions/gentle-ai.ts"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 91,
+      "objectId": "a0fed68c1cd897700a3857cbe7ea4851891eddd0",
+      "bytes": 467267,
+      "sha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "callLine": 9061,
+      "span": {
+        "startLine": 9061,
+        "endLine": 9207,
+        "sha256": "5b63cd9e60d08d8513e1e8e129c6e9a4033699ee538742685ef293812f4dcb04"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "extensions/gentle-ai.ts"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-f25fcbecafe905e1",
+      "referenceIndex": 17,
+      "objectId": "ef22678c9621f95d450079ec3aae02f02eccb37c",
+      "bytes": 114585,
+      "sha256": "dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",
+      "callLine": 1708,
+      "span": {
+        "startLine": 1708,
+        "endLine": 1713,
+        "sha256": "4fdc0bdefe5526e4cb8e7bf4c9c35fce16361d635e82b013e9854facdcc12f6b"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "extensions/gentle-shell.ts"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-91b70c5973297fbd",
+      "referenceIndex": 12,
+      "objectId": "6f627072f868d6b0fcd46e61e94f4f48612ae935",
+      "bytes": 9934,
+      "sha256": "db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d",
+      "callLine": 168,
+      "span": {
+        "startLine": 168,
+        "endLine": 203,
+        "sha256": "7d73a31a69f345bdd676a260d1a01a8c480cb792249fc7b8fe3bcc679324da2c"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "extensions/gentle-todo.ts"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 5,
+      "objectId": "44de38b41e2199f31cffbe60887456ab9324d185",
+      "bytes": 42261,
+      "sha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+      "callLine": 592,
+      "span": {
+        "startLine": 592,
+        "endLine": 612,
+        "sha256": "a00e5f7cfc64f8610e295254186593f4c7328203aaec992b137b4336d91f05ab"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "extensions/startup-banner.ts"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 6,
+      "objectId": "44de38b41e2199f31cffbe60887456ab9324d185",
+      "bytes": 42261,
+      "sha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+      "callLine": 615,
+      "span": {
+        "startLine": 615,
+        "endLine": 623,
+        "sha256": "87c1b3e88577f75920c26f27effc97ec78f42136af1bced582e8f41086bb63bd"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "extensions/startup-banner.ts"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 7,
+      "objectId": "44de38b41e2199f31cffbe60887456ab9324d185",
+      "bytes": 42261,
+      "sha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+      "callLine": 626,
+      "span": {
+        "startLine": 626,
+        "endLine": 641,
+        "sha256": "adcb5bf7008634f80311fe6e231c896e0d712d359280a42b643e7a31b4657c0d"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "extensions/startup-banner.ts"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-6058ca4d664d9095",
+      "referenceIndex": 0,
+      "objectId": "af5a725bad0b3841179e0572429fdcab1eb3189b",
+      "bytes": 12081,
+      "sha256": "57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",
+      "callLine": 31,
+      "span": {
+        "startLine": 31,
+        "endLine": 31,
+        "sha256": "abcebbb1bb7acd5e06af7a3670c3a102be0aedf349bf6dc01436a279e0dbf6e7"
+      },
+      "mappingKind": "tracked-glob",
+      "mappingReason": "direct-markdown-children",
+      "targets": [
+        "assets/agents/*.md"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-8420ca03583cfe7b",
+      "referenceIndex": 5,
+      "objectId": "6ed00aef22da1cfaa2d2d6dcaf9746ad758cc64f",
+      "bytes": 6833,
+      "sha256": "dd3fe029f18791462344a0ac0fc87aab0f8a657d0226d8f676aad4c724f8658d",
+      "callLine": 39,
+      "span": {
+        "startLine": 39,
+        "endLine": 47,
+        "sha256": "1123875c62b7b65b57c7abd6546401d32d55a5cd7c976ef387674d92c18c0c5e"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "lib/session-change-capture.ts"
+      ]
+    }
+  ]
+}

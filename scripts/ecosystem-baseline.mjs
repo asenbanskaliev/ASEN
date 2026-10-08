@@ -696,6 +696,78 @@ export function verifyReferenceAdjudications(repository, baseline, overlay) {
   return {scannerUnresolved,adjudicated:overlay.adjudications.length,remaining:scannerUnresolved-overlay.adjudications.length};
 }
 
+/** Checks that every runtime-edge mapping is bound to one exact adjudicated source span. */
+export function verifyRuntimeEdgeMappings(repository,baseline,adjudications,mapping) {
+  if(validateBaseline(baseline).length||!mapping||!exactKeys(mapping,["version","baselineCommit","adjudicationFile","mappings"])||mapping.version!==1||mapping.baselineCommit!==baseline.commit||
+    mapping.adjudicationFile!=="registry/parity/ecosystem-reference-adjudications-v1.json"||!Array.isArray(mapping.mappings)||
+    adjudications?.version!==1||adjudications.baselineCommit!==baseline.commit||!Array.isArray(adjudications.adjudications))throw new Error("Invalid runtime edge mapping envelope");
+  if(repository)verifyReferenceAdjudications(repository,baseline,adjudications);
+  const expected=adjudications.adjudications.filter(row=>row.classification==="source-runtime-edge"),rows=mapping.mappings;
+  if(rows.length!==expected.length)throw new Error("Runtime edge mapping coverage mismatch");
+  const ownerById=new Map(baseline.files.map(row=>[row.id,row])),seen=new Set();
+  for(let index=0;index<expected.length;index++){
+    const source=expected[index],row=rows[index],owner=ownerById.get(source.sourceId),key=`${row?.sourceId}:${row?.referenceIndex}`;
+    if(!row||!exactKeys(row,["sourceId","referenceIndex","objectId","bytes","sha256","callLine","span","mappingKind","mappingReason","targets"])||
+      !exactKeys(row.span,["startLine","endLine","sha256"])||!owner||seen.has(key)||row.sourceId!==source.sourceId||row.referenceIndex!==source.referenceIndex||
+      row.objectId!==source.objectId||row.bytes!==source.bytes||row.sha256!==source.sha256||row.callLine!==source.callLine||
+      JSON.stringify(row.span)!==JSON.stringify(source.span))throw new Error("Runtime edge mapping source identity mismatch");
+    seen.add(key);
+    if(!["tracked-file","tracked-glob","code-contract","external-runtime"].includes(row.mappingKind)||typeof row.mappingReason!=="string"||!row.mappingReason.trim()||!Array.isArray(row.targets))
+      throw new Error("Malformed runtime edge mapping disposition");
+    if(row.mappingKind==="tracked-file"&&(row.targets.length!==1||!ownerById.has(owner.id)||!baseline.files.some(file=>file.path===row.targets[0])))
+      throw new Error("Runtime edge target is not a tracked source file");
+    if(row.mappingKind==="tracked-glob"&&(row.targets.length!==1||row.targets[0]!=="assets/agents/*.md"))
+      throw new Error("Unsupported runtime edge selector");
+    if(row.mappingKind==="code-contract"&&(row.targets.length!==1||row.targets[0]!==owner.path))
+      throw new Error("Code contract mapping must point to its owning source");
+    if(row.mappingKind==="external-runtime"&&row.targets.length!==0)
+      throw new Error("External runtime mapping cannot claim a repository source target");
+  }
+  if(repository){
+    for(const row of rows.filter(item=>item.mappingKind==="tracked-glob")){
+      const files=collectRuntimeEdgeFiles(repository,baseline.commit,row.targets[0]);
+      if(!files.length)throw new Error("Runtime edge selector has no frozen tracked inputs");
+    }
+  }
+  return {mapped:rows.length,tracked:rows.filter(row=>["tracked-file","tracked-glob"].includes(row.mappingKind)).length,
+    codeContracts:rows.filter(row=>row.mappingKind==="code-contract").length,externalRuntime:rows.filter(row=>row.mappingKind==="external-runtime").length};
+}
+
+/** Reads the explicitly supported direct-child Markdown selector from exact Git objects. */
+export function collectRuntimeEdgeFiles(repository,commit,selector) {
+  if(selector!=="assets/agents/*.md"||!objectId(commit)||git(repository,["cat-file","-t",commit]).toString().trim()!=="commit")
+    throw new Error("Unsupported runtime edge selector or source commit");
+  const rows=git(repository,["ls-tree","-rz","-r","--full-tree",commit,"--","assets/agents/"]).toString("utf8").split("\0").filter(Boolean),files=[];
+  for(const entry of rows){
+    const match=/^(\d+) (\w+) ([a-f0-9]+)\t(.+)$/.exec(entry);if(!match)throw new Error("Malformed Git tree entry for runtime edge selector");
+    const [,mode,type,id,filename]=match;
+    if(!filename.startsWith("assets/agents/")||filename.slice("assets/agents/".length).includes("/")||!filename.endsWith(".md"))continue;
+    if(type!=="blob"||mode!=="100644")throw new Error("Runtime edge selector rejects non-regular files");
+    const bytes=git(repository,["cat-file","blob",id]);
+    files.push({path:filename,objectId:id,bytes:bytes.length,sha256:digest(bytes)});
+  }
+  return files.sort((a,b)=>a.path.localeCompare(b.path,"en"));
+}
+
+/** Includes mapped runtime-only inputs in the source drift report; it never adopts them. */
+export function detectMappedBaselineDrift(repository,before,after,adjudications,mapping) {
+  verifyRuntimeEdgeMappings(repository,before,adjudications,mapping);
+  const runtimeEdges=[],additionalChanges=[];
+  for(const row of mapping.mappings){
+    const owner=before.files.find(file=>file.id===row.sourceId);if(!owner)throw new Error("Runtime edge owner is missing");
+    if(row.mappingKind==="tracked-file")runtimeEdges.push({sourcePath:owner.path,targetPaths:row.targets});
+    else if(row.mappingKind==="tracked-glob"){
+      const oldFiles=collectRuntimeEdgeFiles(repository,before.commit,row.targets[0]),newFiles=collectRuntimeEdgeFiles(repository,after.commit,row.targets[0]);
+      const oldByPath=new Map(oldFiles.map(file=>[file.path,file])),newByPath=new Map(newFiles.map(file=>[file.path,file]));
+      for(const file of oldFiles)if(!newByPath.has(file.path))additionalChanges.push({kind:"REMOVED",path:file.path});
+      for(const file of newFiles)if(!oldByPath.has(file.path))additionalChanges.push({kind:"ADDED",path:file.path});
+      for(const file of newFiles)if(oldByPath.has(file.path)&&oldByPath.get(file.path).sha256!==file.sha256)additionalChanges.push({kind:"CONTENT_CHANGED",path:file.path});
+      runtimeEdges.push({sourcePath:owner.path,targetPaths:[...new Set([...oldFiles,...newFiles].map(file=>file.path))]});
+    }
+  }
+  return detectBaselineDrift(before,after,{runtimeEdges,additionalChanges});
+}
+
 /** Reads one manifest-selected immutable blob; use verifyBaselineObjects for whole-baseline commit/tree provenance. */
 export function readBaselineSourceBytes(repository, baseline, sourceId) {
   if (validateBaseline(baseline).length) throw new Error("Malformed ecosystem baseline");
@@ -708,8 +780,12 @@ export function readBaselineSourceBytes(repository, baseline, sourceId) {
 }
 
 /** Rename is reported only for an unambiguous one-to-one exact-content match. Never mutates or adopts a source. */
-export function detectBaselineDrift(before, after) {
+export function detectBaselineDrift(before, after, {runtimeEdges=[],additionalChanges=[]}={}) {
   for (const value of [before,after]) if (validateBaseline(value).length) throw new Error("Cannot compare malformed baselines");
+  if(!Array.isArray(runtimeEdges)||runtimeEdges.some(edge=>!edge||!safePath(edge.sourcePath)||!Array.isArray(edge.targetPaths)||!edge.targetPaths.length||edge.targetPaths.some(target=>!safePath(target))))
+    throw new Error("Malformed runtime edge mapping");
+  if(!Array.isArray(additionalChanges)||additionalChanges.some(change=>!change||!['ADDED','REMOVED','CONTENT_CHANGED'].includes(change.kind)||!safePath(change.path)))
+    throw new Error("Malformed runtime edge drift changes");
   const old = new Map(before.files.map(row => [row.path,row])), next = new Map(after.files.map(row => [row.path,row]));
   const removed = before.files.filter(row => !next.has(row.path)), added = after.files.filter(row => !old.has(row.path)), changes = [];
   const renamedOld = new Set(), renamedNew = new Set();
@@ -728,12 +804,14 @@ export function detectBaselineDrift(before, after) {
     if (JSON.stringify(previous.references) !== JSON.stringify(row.references)) changes.push({kind:"REFERENCES_CHANGED",path:row.path});
   }
   if (JSON.stringify(before.dependencySpecs) !== JSON.stringify(after.dependencySpecs)) changes.push({kind:"DEPENDENCIES_CHANGED",path:"package.json"});
+  changes.push(...additionalChanges);
   const invalidated = new Set(changes.flatMap(change => [change.path,...(change.to ? [change.to] : [])]));
   let addedDependent = true;
   while (addedDependent) {
     addedDependent = false;
     for (const row of [...before.files,...after.files]) if (!invalidated.has(row.path) &&
-      (invalidated.has("package.json") || row.references.some(ref => ["tracked","registered"].includes(ref.status) && invalidated.has(ref.path)))) {
+      (invalidated.has("package.json") || row.references.some(ref => ["tracked","registered"].includes(ref.status) && invalidated.has(ref.path)) ||
+        runtimeEdges.some(edge=>edge.sourcePath===row.path&&edge.targetPaths.some(target=>invalidated.has(target))))) {
       invalidated.add(row.path); addedDependent = true;
     }
   }
@@ -761,6 +839,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       verifyMediaBytes(source,row,git(process.argv[2],["cat-file","blob",source.objectId]));
     }
   }
-  if (process.argv[3]) console.log(JSON.stringify(detectBaselineDrift(baseline,collectBaseline(process.argv[2],process.argv[3])),null,2));
+  if (process.argv[3]) {
+    const overlay=parseJson(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"),"reference adjudications");
+    const mappings=parseJson(readFileSync(new URL("../registry/parity/ecosystem-runtime-edge-mappings-v1.json",import.meta.url),"utf8"),"runtime edge mappings");
+    console.log(JSON.stringify(detectMappedBaselineDrift(process.argv[2],baseline,collectBaseline(process.argv[2],process.argv[3]),overlay,mappings),null,2));
+  }
   console.log(`ecosystem baseline: PASS (${baseline.files.length} tracked objects; SOURCE_INSPECTED, not runtime parity)`);
 }

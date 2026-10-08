@@ -3,7 +3,7 @@ import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {fileURLToPath} from "node:url";
 import path from "node:path";
-import {validateBaseline} from "./ecosystem-baseline.mjs";
+import {collectBaseline,detectMappedBaselineDrift,validateBaseline} from "./ecosystem-baseline.mjs";
 
 const units=Array.from({length:16},(_,index)=>`ECO-${String(index+1).padStart(2,"0")}`);
 // Minimum obligations derived from the canonical ECO contract, independent of claim flags.
@@ -18,14 +18,15 @@ const safePath=value=>typeof value==="string"&&/^(?:src|extensions|tests|scripts
   !/[\\\u0000-\u001f]/.test(value)&&value.split("/").every(part=>part&&part!=="."&&part!=="..");
 
 /** Checks receipt/content consistency, not authenticity of execution; independent CI/audit must verify execution. */
-export function validateEcosystemClaims({baseline,registry,existingPaths,observedHead,invalidatedPaths=[],recordDigests=new Map(),records=new Map()}) {
+export function validateEcosystemClaims({baseline,registry,existingPaths,observedHead,driftReport,recordDigests=new Map(),records=new Map()}) {
   const issues=validateBaseline(baseline);
   if(issues.length)return issues;
   if(!registry||registry.version!==1||registry.sourceCommit!==baseline.commit||!Array.isArray(registry.rows))
     return ["Invalid ecosystem claims envelope or frozen source identity"];
   const ids=registry.rows.map(row=>row?.id);
   if(ids.length!==units.length||new Set(ids).size!==units.length||units.some(id=>!ids.includes(id)))issues.push("Every ECO unit requires exactly one claim row");
-  const sources=new Map(baseline.files.map(row=>[row.sha256,row.path]));
+  const sources=new Map();
+  for(const row of baseline.files){const paths=sources.get(row.sha256)??[];paths.push(row.path);sources.set(row.sha256,paths);}
   for(const row of registry.rows) {
     if(!row||!units.includes(row.id)||!["FULL","PARTIAL","MISSING","OUT-OF-SCOPE"].includes(row.status)) {issues.push("Invalid ecosystem claim row");continue;}
     const label=row.id;
@@ -47,9 +48,12 @@ export function validateEcosystemClaims({baseline,registry,existingPaths,observe
     }
     if(row.status!=="FULL")continue;
     if(!candidate(row.candidate)||row.candidate!==observedHead)issues.push(`${label}: FULL must name the exact observed candidate`);
+    if(!candidate(row.sourceSnapshotCommit)||!driftReport||driftReport.from!==baseline.commit||driftReport.to!==row.sourceSnapshotCommit||driftReport.autoAdopt!==false||
+      !Array.isArray(driftReport.changes)||!Array.isArray(driftReport.invalidatedPaths)||driftReport.invalidatedPaths.some(value=>typeof value!=="string"))
+      issues.push(`${label}: FULL requires an exact baseline-to-source-candidate drift report`);
     if(row.remaining?.length)issues.push(`${label}: FULL cannot retain gaps`);
     if(!row.implementation?.length||!row.tests?.length)issues.push(`${label}: FULL needs implemented behavior and tests`);
-    if(Array.isArray(row.sourceHashes)&&row.sourceHashes.some(id=>invalidatedPaths.includes(sources.get(id))))issues.push(`${label}: source drift invalidates FULL`);
+    if(Array.isArray(row.sourceHashes)&&row.sourceHashes.some(id=>(sources.get(id)??[]).some(path=>driftReport?.invalidatedPaths?.includes(path))))issues.push(`${label}: source drift invalidates FULL`);
     const boundaries=Object.fromEntries(Object.keys(minimums[row.id]).map(key=>[key,minimums[row.id][key]||row[key]]));
     const requirements=["positive","negative","failure","recovery",...(boundaries.stateful?["restart","cross-session"]:[]),
       ...(boundaries.platformSensitive?["linux","windows","macos"]:[]),...(boundaries.piBoundary?["pi-host"]:[]),...(boundaries.modelBoundary?["pi-model"]:[])];
@@ -77,6 +81,14 @@ export function validateEcosystemClaims({baseline,registry,existingPaths,observe
 export function loadEcosystemClaims(root=fileURLToPath(new URL("../",import.meta.url))) {
   const baseline=JSON.parse(readFileSync(path.join(root,"registry/parity/ecosystem-sources-v1.json"),"utf8"));
   const registry=JSON.parse(readFileSync(path.join(root,"registry/parity/ecosystem-claims-v1.json"),"utf8"));
+  const sourceRepository=process.env.ECOSYSTEM_SOURCE_REPOSITORY,sourceSnapshotCommit=process.env.ECOSYSTEM_SOURCE_CANDIDATE;
+  if(Boolean(sourceRepository)!==Boolean(sourceSnapshotCommit))throw new Error("An exact source repository and candidate commit must be supplied together");
+  let driftReport;
+  if(sourceRepository&&sourceSnapshotCommit){
+    const overlay=JSON.parse(readFileSync(path.join(root,"registry/parity/ecosystem-reference-adjudications-v1.json"),"utf8"));
+    const mappings=JSON.parse(readFileSync(path.join(root,"registry/parity/ecosystem-runtime-edge-mappings-v1.json"),"utf8"));
+    driftReport=detectMappedBaselineDrift(sourceRepository,baseline,collectBaseline(sourceRepository,sourceSnapshotCommit),overlay,mappings);
+  }
   const paths=registry.rows.flatMap(row=>[...(row.implementation??[]),...(row.tests??[]),...(row.evidence??[]).map(proof=>proof.recordPath)]);
   const existingPaths=new Set(paths.filter(value=>safePath(value)&&existsSync(path.join(root,value)))),recordDigests=new Map(),records=new Map();
   for(const filename of existingPaths)if(/^registry\/evidence\/ecosystem\/[^/]+\.json$/.test(filename)){
@@ -86,7 +98,7 @@ export function loadEcosystemClaims(root=fileURLToPath(new URL("../",import.meta
     records.set(filename,JSON.parse(bytes.toString("utf8")));
   }
   const observedHead=execFileSync("git",["-C",root,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
-  return {baseline,registry,existingPaths,recordDigests,records,observedHead};
+  return {baseline,registry,existingPaths,recordDigests,records,observedHead,driftReport};
 }
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
