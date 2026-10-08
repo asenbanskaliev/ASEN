@@ -294,7 +294,7 @@ test("five-source overlay rejects identity, ordering, binding, span and authorit
     ["fifth order",(_b,o)=>{[o.adjudications[42],o.adjudications[43]]=[o.adjudications[43],o.adjudications[42]];},"Duplicate or out-of-order reference adjudication index"],
     ["fifth index",(_b,o)=>{o.adjudications[49].referenceIndex=8;},"Duplicate or out-of-order reference adjudication index"],
     ["fifth raw reference",(b,_o)=>{b.files.find((r:any)=>r.id==="ECO-SRC-b739ab592bf5a9d4").references[0].status="declared";},"Malformed ecosystem baseline"],
-    ["fifth import binding",(b,_o)=>{b.files.find((r:any)=>r.id==="ECO-SRC-b739ab592bf5a9d4").references.find((r:any)=>r.kind==="builtin"&&r.target==="node:fs").target="node:assert";},"Frozen scanner/source reference mismatch"],
+    ["fifth import binding",(b,_o)=>{b.files.find((r:any)=>r.id==="ECO-SRC-b739ab592bf5a9d4").references.find((r:any)=>r.kind==="import"&&r.status==="builtin"&&r.target==="node:fs").target="node:assert";},"Frozen scanner/source reference mismatch"],
     ["fifth call",(_b,o)=>{o.adjudications[42].callLine++;},"Invalid reference adjudication call or span"],
     ["fifth span",(_b,o)=>{o.adjudications[42].span.endLine--; },"Invalid reference adjudication call or span"],
     ["fifth span hash",(_b,o)=>{o.adjudications[42].span.sha256="a".repeat(64);},"Frozen readFile call/span binding mismatch"],
