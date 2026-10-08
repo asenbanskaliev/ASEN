@@ -402,16 +402,171 @@ export const adjudicationSources=Object.freeze([
       [0,84,77,89,"runtime-state-read"],
     ]},
 ]);
+export const referenceSources=Object.freeze([
+  {id:"ECO-SRC-fe4cbd3c4b0d4552",objectId:"2e3ddd4971e38ce84eebbdeff2033e628106a7f3",bytes:39576,
+    sha256:"485ab76d54832f3806438eb8aaf9abfe37e58e1be936438c6e31ba655b957e91",references:[
+      [0,190,190,190,"external-manual-command-reference","no-ashen-command-equivalence","command-reference"],
+      [1,190,190,190,"external-manual-command-reference","no-ashen-command-equivalence","command-reference"],
+    ]},
+  {id:"ECO-SRC-f9507c3fa0d169a1",objectId:"19b8e7c8e18eb5f69633642c9573b2ee5b9316b5",bytes:12184,
+    sha256:"b2189d32a9115f57a3b75f8393a00ef89bcf352d522d836d542ef80845bdc7c1",references:[
+      [0,31,31,31,"scanner-version-token","not-a-command-reference","command-reference"],
+      [1,91,91,91,"scanner-version-token","not-a-command-reference","command-reference"],
+      [2,91,91,91,"scanner-version-token","not-a-command-reference","command-reference"],
+      [3,25,25,25,"scanner-version-token","not-a-command-reference","command-reference"],
+      [4,27,27,27,"scanner-version-token","not-a-command-reference","command-reference"],
+      [5,32,32,32,"scanner-version-token","not-a-command-reference","command-reference"],
+      [6,34,34,34,"scanner-version-token","not-a-command-reference","command-reference"],
+    ]},
+  {id:"ECO-SRC-f5249077264b287a",objectId:"b798794b6869287ea27f15910d83f6bdcd11836c",bytes:13763,
+    sha256:"9ff54b948dc2593bfcc9e59d9edac9588f6e3e3cdb1d8873e703fdbdb20958c7",references:[
+      [0,96,96,96,"external-manual-command-reference","no-ashen-command-equivalence","command-reference"],
+    ]},
+  {id:"ECO-SRC-9567c6b3d33d78cb",objectId:"848bdee78ec77316de4cefc6244621d632c59337",bytes:124152,
+    sha256:"62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",references:[
+      [0,915,915,915,"external-manual-command-reference","no-ashen-command-equivalence","command-reference"],
+      [1,348,348,348,"external-manual-command-reference","no-ashen-command-equivalence","command-reference"],
+      [2,680,680,680,"external-manual-command-reference","no-ashen-command-equivalence","command-reference"],
+      [3,972,972,972,"external-manual-command-reference","no-ashen-command-equivalence","command-reference"],
+      [4,170,170,170,"external-manual-command-reference","no-ashen-command-equivalence","command-reference"],
+      [5,102,102,102,"external-manual-command-reference","no-ashen-command-equivalence","command-reference"],
+      [6,645,645,645,"external-manual-command-reference","no-ashen-command-equivalence","command-reference"],
+      [7,867,867,867,"external-manual-command-reference","no-ashen-command-equivalence","command-reference"],
+      [8,1049,1049,1049,"external-manual-command-reference","no-ashen-command-equivalence","command-reference"],
+      [9,564,564,564,"external-manual-command-reference","no-ashen-command-equivalence","command-reference"],
+      [10,915,915,915,"external-manual-command-reference","no-ashen-command-equivalence","command-reference"],
+      [11,496,496,496,"scanner-version-token","not-a-command-reference","command-reference"],
+      [12,496,496,496,"scanner-version-token","not-a-command-reference","command-reference"],
+      [13,496,496,496,"scanner-version-token","not-a-command-reference","command-reference"],
+      [14,496,496,496,"scanner-version-token","not-a-command-reference","command-reference"],
+      [15,496,496,496,"scanner-version-token","not-a-command-reference","command-reference"],
+      [16,1037,1037,1037,"scanner-version-token","not-a-command-reference","command-reference"],
+    ]},
+  {id:"ECO-SRC-6a14fc0f30199f89",objectId:"e3d53d844ad0349d180bd950ff5338882c82803f",bytes:61683,
+    sha256:"a29669355e55c663c06ae91a0f026e1a5a5f7465ce7438b74a70f4024b25fd84",references:[
+      [10,364,364,364,"host-process-event","host-process-event-flow","event"],
+      [11,1261,1261,1264,"host-process-event","host-process-event-flow","event"],
+    ]},
+  {id:"ECO-SRC-625c38e8637ad8b0",objectId:"39f21cca79a50f02b25472e48d68c2a97e04a073",bytes:10707,
+    sha256:"7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",references:[
+      [7,323,323,323,"source-runtime-edge","source-edge-requires-route-mapping","tool"],
+    ]},
+  {id:"ECO-SRC-af1edc66cbd9834c",objectId:"c6bf814ca8934bd26af5f0efb0c229029ca07155",bytes:81559,
+    sha256:"ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388",references:[
+      [13,364,364,370,"runtime-side-channel-event","no-accepted-equivalence","event"],
+      [14,943,943,948,"internal-runtime-event","no-public-equivalent","event"],
+      [64,1152,1152,1178,"source-runtime-edge","source-edge-requires-route-mapping","tool"],
+    ]},
+  {id:"ECO-SRC-1f527249710bd9bf",objectId:"a0fed68c1cd897700a3857cbe7ea4851891eddd0",bytes:467267,
+    sha256:"c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",references:[
+      [33,9405,9405,9415,"source-runtime-edge","source-edge-requires-route-mapping","command"],
+      [89,8975,8975,9013,"source-runtime-edge","source-edge-requires-route-mapping","tool"],
+      [90,9015,9015,9059,"source-runtime-edge","source-edge-requires-route-mapping","tool"],
+      [91,9061,9061,9207,"source-runtime-edge","source-edge-requires-route-mapping","tool"],
+    ]},
+  {id:"ECO-SRC-f25fcbecafe905e1",objectId:"ef22678c9621f95d450079ec3aae02f02eccb37c",bytes:114585,
+    sha256:"dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",references:[
+      [15,1579,1579,1588,"internal-runtime-event","no-public-equivalent","event"],
+      [16,1683,1683,1689,"internal-runtime-event","no-public-equivalent","event"],
+      [17,1708,1708,1713,"source-runtime-edge","source-edge-requires-route-mapping","event"],
+    ]},
+  {id:"ECO-SRC-91b70c5973297fbd",objectId:"6f627072f868d6b0fcd46e61e94f4f48612ae935",bytes:9934,
+    sha256:"db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d",references:[
+      [12,168,168,203,"source-runtime-edge","source-edge-requires-route-mapping","tool"],
+    ]},
+  {id:"ECO-SRC-5b76c3108525e35f",objectId:"741df6c19b4896caa509f1e6f260443a115e2c16",bytes:3652,
+    sha256:"2db784c9d70b806c41cf5bb5abc3253acabad108b60c2299cec9eeab107fdf53",references:[
+      [3,52,52,60,"generic-host-api-proxy","no-single-static-event-target","event"],
+    ]},
+  {id:"ECO-SRC-080c377111a31497",objectId:"884db1eb993cbb7d924e8564ef28667ca134c97c",bytes:32345,
+    sha256:"34ed34719141571ab1d0cbe2cc28dd66da6c9f4c30aa612239b018c1af66ca2e",references:[
+      [14,683,683,756,"host-tool-wrapper","host-framework-only","tool"],
+    ]},
+  {id:"ECO-SRC-784d73735882ca1d",objectId:"6b978ea1b0ab7a8b68350c3e39dded9d907b96ed",bytes:7173,
+    sha256:"71c2cf89e92bda9a7f549e60312b45f6b45a3c7f4a0c22772c379f5d9b946ee9",references:[
+      [9,46,46,55,"runtime-side-channel-event","no-accepted-equivalence","event"],
+      [10,56,56,62,"runtime-side-channel-event","no-accepted-equivalence","event"],
+    ]},
+  {id:"ECO-SRC-6c28d7b99a511610",objectId:"44de38b41e2199f31cffbe60887456ab9324d185",bytes:42261,
+    sha256:"209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",references:[
+      [5,592,592,612,"source-runtime-edge","source-edge-requires-route-mapping","command"],
+      [6,615,615,623,"source-runtime-edge","source-edge-requires-route-mapping","command"],
+      [7,626,626,641,"source-runtime-edge","source-edge-requires-route-mapping","command"],
+    ]},
+  {id:"ECO-SRC-6058ca4d664d9095",objectId:"af5a725bad0b3841179e0572429fdcab1eb3189b",bytes:12081,
+    sha256:"57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",references:[
+      [0,31,31,31,"source-runtime-edge","source-edge-requires-route-mapping","asset"],
+    ]},
+  {id:"ECO-SRC-8420ca03583cfe7b",objectId:"6ed00aef22da1cfaa2d2d6dcaf9746ad758cc64f",bytes:6833,
+    sha256:"dd3fe029f18791462344a0ac0fc87aab0f8a657d0226d8f676aad4c724f8658d",references:[
+      [5,39,39,47,"source-runtime-edge","source-edge-requires-route-mapping","event"],
+    ]},
+]);
 const exactKeys = (value, keys) => value && typeof value === "object" && !Array.isArray(value) &&
   JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
+
+function semanticReferenceCandidates(filename,text){
+  if(filename.endsWith(".md")){
+    const rows=[];
+    for(const match of text.matchAll(/`\/(\w[\w-]*)(?:\s[^`]*)?`/g)){
+      const start=match.index,line=text.slice(0,start).split("\n").length,
+        lineStart=text.lastIndexOf("\n",start)+1,lineEnd=text.indexOf("\n",start),end=lineEnd<0?text.length:lineEnd+1;
+      rows.push({reference:{kind:"command-reference",target:match[1]},line,startLine:line,endLine:line,start,end});
+    }
+    return rows.sort((a,b)=>JSON.stringify(a.reference).localeCompare(JSON.stringify(b.reference),"en"));
+  }
+  const isJavaScript=/\.[cm]?js$/.test(filename),parsed=ts.createSourceFile(filename,text,ts.ScriptTarget.Latest,true,
+    isJavaScript?ts.ScriptKind.JS:ts.ScriptKind.TS);
+  if(parsed.parseDiagnostics.length)throw new Error("Frozen semantic-reference source does not parse completely");
+  const host={getSourceFile:name=>name===filename?parsed:undefined,getDefaultLibFileName:()=>"lib.d.ts",writeFile(){},getCurrentDirectory:()=>"",
+    getDirectories:()=>[],fileExists:name=>name===filename,readFile:name=>name===filename?text:undefined,getCanonicalFileName:name=>name,
+    useCaseSensitiveFileNames:()=>true,getNewLine:()=>"\n"};
+  const checker=ts.createProgram([filename],{noLib:true,noResolve:true,...(isJavaScript?{allowJs:true}:{})},host).getTypeChecker();
+  const literal=node=>{
+    if(node&&ts.isStringLiteralLike(node))return node.text;
+    if(!node||!ts.isIdentifier(node))return null;
+    const declarations=checker.getSymbolAtLocation(node)?.declarations;
+    if(declarations?.length!==1)return null;
+    const declaration=declarations[0];
+    return ts.isVariableDeclaration(declaration)&&ts.isVariableDeclarationList(declaration.parent)&&
+      (declaration.parent.flags&ts.NodeFlags.Const)&&declaration.initializer&&ts.isStringLiteralLike(declaration.initializer)
+      ?declaration.initializer.text:null;
+  };
+  const rows=[],add=(node,kind,target)=>{
+    const start=node.getStart(parsed),end=node.getEnd(),line=parsed.getLineAndCharacterOfPosition(start).line+1,
+      endLine=parsed.getLineAndCharacterOfPosition(Math.max(start,end-1)).line+1;
+    rows.push({reference:target===null?{kind,target,reason:"computed"}:{kind,target},line,startLine:line,endLine,start,end});
+  };
+  const visit=node=>{
+    if(ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)){
+      const name=node.expression.name.text;
+      if(name==="registerCommand"||name==="on")add(node,name==="on"?"event":"command",literal(node.arguments[0]));
+      if(name==="registerTool"){
+        const arg=node.arguments[0],property=arg&&ts.isObjectLiteralExpression(arg)?arg.properties.find(item=>
+          ts.isPropertyAssignment(item)&&(ts.isIdentifier(item.name)||ts.isStringLiteralLike(item.name))&&item.name.text==="name"):null;
+        add(node,"tool",property?literal(property.initializer):null);
+      }
+    }
+    if(ts.isNewExpression(node)&&ts.isIdentifier(node.expression)&&node.expression.text==="URL"){
+      const base=node.arguments?.[1]?.getText(parsed);
+      add(node,"asset",base==="import.meta.url"?literal(node.arguments?.[0]):null);
+    }
+    ts.forEachChild(node,visit);
+  };
+  visit(parsed);
+  return rows.sort((a,b)=>JSON.stringify(a.reference).localeCompare(JSON.stringify(b.reference),"en"));
+}
 
 /** Verifies frozen filesystem-read and dynamic-URL adjudications without altering scanner evidence. */
 export function verifyReferenceAdjudications(repository, baseline, overlay) {
   if (validateBaseline(baseline).length) throw new Error("Malformed ecosystem baseline");
-  const expectedRows=adjudicationSources.flatMap(source=>[
-  ...(source.calls??[]).map(call=>({source,call,referenceType:"filesystem-read"})),
-  ...(source.urlCalls??[]).map(call=>({source,call,referenceType:"dynamic-url"})),
-]);
+  const expectedRows=[
+    ...adjudicationSources.flatMap(source=>[
+      ...(source.calls??[]).map(call=>({source,call,referenceType:"filesystem-read"})),
+      ...(source.urlCalls??[]).map(call=>({source,call,referenceType:"dynamic-url"})),
+    ]),
+    ...referenceSources.flatMap(source=>source.references.map(call=>({source,call,referenceType:"semantic-reference"}))),
+  ];
   if (!exactKeys(overlay,["version","baselineCommit","adjudications"]) || overlay.version !== 1 ||
       overlay.baselineCommit !== baseline.commit || baseline.commit !== adjudicationCommit ||
       !Array.isArray(overlay.adjudications) || overlay.adjudications.length !== expectedRows.length)
@@ -423,6 +578,12 @@ export function verifyReferenceAdjudications(repository, baseline, overlay) {
       throw new Error("Reference adjudication source identity mismatch");
     selected.set(authority.id,source);
   }
+  for(const authority of referenceSources){
+    const source=baseline.files.find(row=>row.id===authority.id);
+    if(!source||source.objectId!==authority.objectId||source.bytes!==authority.bytes||source.sha256!==authority.sha256)
+      throw new Error("Semantic reference source identity mismatch");
+    selected.set(authority.id,source);
+  }
   const rowKeys=["sourceId","referenceIndex","objectId","bytes","sha256","callLine","span","classification","disposition"];
   const spanKeys=["startLine","endLine","sha256"],seen=new Set();
   for(let index=0;index<expectedRows.length;index++){
@@ -432,8 +593,10 @@ export function verifyReferenceAdjudications(repository, baseline, overlay) {
     if(!Number.isSafeInteger(row.referenceIndex)||seen.has(key)||row.referenceIndex!==call[0])throw new Error("Duplicate or out-of-order reference adjudication index");
     seen.add(key);
     const reference=source.references[row.referenceIndex];
-    if(!reference||reference.kind!=="asset"||reference.target!==null||reference.status!=="unresolved"||reference.path!==null)
-      throw new Error("Adjudicated reference is not an unresolved scanner asset");
+    const isAssetCall=expectedRows[index].referenceType!=="semantic-reference";
+    if(!reference||isAssetCall&&(reference.kind!=="asset"||reference.target!==null||reference.status!=="unresolved"||reference.path!==null)||
+       !isAssetCall&&(reference.kind!==call[6]||!["unresolved","absent","outside-root"].includes(reference.status)))
+      throw new Error("Adjudicated reference does not match its frozen unresolved scanner reference");
     if(row.sourceId!==source.id||row.objectId!==source.objectId||row.bytes!==source.bytes||row.sha256!==source.sha256)
       throw new Error("Reference adjudication row identity mismatch");
     if(row.classification!==call[4]||row.disposition!==(call[5]??"runtime-state-not-source-edge"))
@@ -499,7 +662,8 @@ export function verifyReferenceAdjudications(repository, baseline, overlay) {
     if(candidateCalls.length+candidateUrls.length!==rawAssets.length)
       throw new Error(`Unexpected frozen asset binding: ${source.id} ${candidateCalls.length}+${candidateUrls.length}/${rawAssets.length}`);
     const lines=text.split(/(?<=\n)/);
-    for(const row of overlay.adjudications.filter(row=>row.sourceId===source.id)){
+    for(const row of overlay.adjudications.filter(row=>row.sourceId===source.id&&
+      expectedRows.some(item=>item.source.id===source.id&&item.call[0]===row.referenceIndex&&item.referenceType!=="semantic-reference"))){
       const expected=expectedRows.find(({source:authority,call})=>authority.id===source.id&&call[0]===row.referenceIndex);
       const candidates=expected?.referenceType==="dynamic-url"?candidateUrls:candidateCalls;
       const call=candidates.find(node=>parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line+1===row.callLine);
@@ -508,6 +672,24 @@ export function verifyReferenceAdjudications(repository, baseline, overlay) {
       const span=lines.slice(row.span.startLine-1,row.span.endLine).join("");
       if(callLine!==row.callLine||row.callLine<row.span.startLine||row.callLine>row.span.endLine||digest(span)!==row.span.sha256)
         throw new Error("Frozen readFile call/span binding mismatch");
+    }
+  }
+  for(const authority of referenceSources){
+    const source=selected.get(authority.id),bytes=readBaselineSourceBytes(repository,baseline,source.id),
+      text=new TextDecoder("utf-8",{fatal:true}).decode(bytes),scanned=sourceReferences(source.path,bytes).map(({kind,target})=>({kind,target})),
+      recorded=source.references.slice(0,scanned.length).map(({kind,target})=>({kind,target}));
+    if(source.references.length<scanned.length||JSON.stringify(scanned)!==JSON.stringify(recorded))
+      throw new Error("Frozen scanner/source reference mismatch");
+    const candidates=semanticReferenceCandidates(source.path,text),lines=text.split(/(?<=\n)/);
+    for(const callSpec of authority.references){
+      const row=overlay.adjudications.find(item=>item.sourceId===source.id&&item.referenceIndex===callSpec[0]),
+        reference=source.references[callSpec[0]],key=JSON.stringify({kind:reference.kind,target:reference.target}),
+        ordinal=source.references.slice(0,callSpec[0]).filter(item=>JSON.stringify({kind:item.kind,target:item.target})===key).length,
+        call=candidates.filter(item=>JSON.stringify({kind:item.reference.kind,target:item.reference.target})===key)[ordinal];
+      if(!row||!call||call.line!==row.callLine||call.startLine!==row.span.startLine||call.endLine!==row.span.endLine)
+        throw new Error("Frozen semantic-reference call binding mismatch");
+      const span=lines.slice(row.span.startLine-1,row.span.endLine).join("");
+      if(digest(span)!==row.span.sha256)throw new Error("Frozen semantic-reference call/span binding mismatch");
     }
   }
   const scannerUnresolved=baseline.files.flatMap(row=>row.references).filter(reference=>["unresolved","absent","outside-root"].includes(reference.status)).length;

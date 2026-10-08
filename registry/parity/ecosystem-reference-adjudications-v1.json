@@ -1711,6 +1711,756 @@
       },
       "classification": "runtime-state-read",
       "disposition": "runtime-state-not-source-edge"
+    },
+    {
+      "sourceId": "ECO-SRC-fe4cbd3c4b0d4552",
+      "referenceIndex": 0,
+      "objectId": "2e3ddd4971e38ce84eebbdeff2033e628106a7f3",
+      "bytes": 39576,
+      "sha256": "485ab76d54832f3806438eb8aaf9abfe37e58e1be936438c6e31ba655b957e91",
+      "callLine": 190,
+      "span": {
+        "startLine": 190,
+        "endLine": 190,
+        "sha256": "e194ce0e02fcb565e91c399bbd157811989ee5275097af9a96fd3928c4270a99"
+      },
+      "classification": "external-manual-command-reference",
+      "disposition": "no-ashen-command-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-fe4cbd3c4b0d4552",
+      "referenceIndex": 1,
+      "objectId": "2e3ddd4971e38ce84eebbdeff2033e628106a7f3",
+      "bytes": 39576,
+      "sha256": "485ab76d54832f3806438eb8aaf9abfe37e58e1be936438c6e31ba655b957e91",
+      "callLine": 190,
+      "span": {
+        "startLine": 190,
+        "endLine": 190,
+        "sha256": "e194ce0e02fcb565e91c399bbd157811989ee5275097af9a96fd3928c4270a99"
+      },
+      "classification": "external-manual-command-reference",
+      "disposition": "no-ashen-command-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-f9507c3fa0d169a1",
+      "referenceIndex": 0,
+      "objectId": "19b8e7c8e18eb5f69633642c9573b2ee5b9316b5",
+      "bytes": 12184,
+      "sha256": "b2189d32a9115f57a3b75f8393a00ef89bcf352d522d836d542ef80845bdc7c1",
+      "callLine": 31,
+      "span": {
+        "startLine": 31,
+        "endLine": 31,
+        "sha256": "6ec08a2aaf7cf421cc9ec0f7c5266a9f5fe9bdfc9edc0f77409299f06e322772"
+      },
+      "classification": "scanner-version-token",
+      "disposition": "not-a-command-reference"
+    },
+    {
+      "sourceId": "ECO-SRC-f9507c3fa0d169a1",
+      "referenceIndex": 1,
+      "objectId": "19b8e7c8e18eb5f69633642c9573b2ee5b9316b5",
+      "bytes": 12184,
+      "sha256": "b2189d32a9115f57a3b75f8393a00ef89bcf352d522d836d542ef80845bdc7c1",
+      "callLine": 91,
+      "span": {
+        "startLine": 91,
+        "endLine": 91,
+        "sha256": "1ba615a36f7562e3fe8e3cffcfdbee3b14be7bc2857cad6d0efa5bdf399fff85"
+      },
+      "classification": "scanner-version-token",
+      "disposition": "not-a-command-reference"
+    },
+    {
+      "sourceId": "ECO-SRC-f9507c3fa0d169a1",
+      "referenceIndex": 2,
+      "objectId": "19b8e7c8e18eb5f69633642c9573b2ee5b9316b5",
+      "bytes": 12184,
+      "sha256": "b2189d32a9115f57a3b75f8393a00ef89bcf352d522d836d542ef80845bdc7c1",
+      "callLine": 91,
+      "span": {
+        "startLine": 91,
+        "endLine": 91,
+        "sha256": "1ba615a36f7562e3fe8e3cffcfdbee3b14be7bc2857cad6d0efa5bdf399fff85"
+      },
+      "classification": "scanner-version-token",
+      "disposition": "not-a-command-reference"
+    },
+    {
+      "sourceId": "ECO-SRC-f9507c3fa0d169a1",
+      "referenceIndex": 3,
+      "objectId": "19b8e7c8e18eb5f69633642c9573b2ee5b9316b5",
+      "bytes": 12184,
+      "sha256": "b2189d32a9115f57a3b75f8393a00ef89bcf352d522d836d542ef80845bdc7c1",
+      "callLine": 25,
+      "span": {
+        "startLine": 25,
+        "endLine": 25,
+        "sha256": "4fb97c62607b9dd699a68e529aed31d6c958d9a8494270a1d3a0c57df9237577"
+      },
+      "classification": "scanner-version-token",
+      "disposition": "not-a-command-reference"
+    },
+    {
+      "sourceId": "ECO-SRC-f9507c3fa0d169a1",
+      "referenceIndex": 4,
+      "objectId": "19b8e7c8e18eb5f69633642c9573b2ee5b9316b5",
+      "bytes": 12184,
+      "sha256": "b2189d32a9115f57a3b75f8393a00ef89bcf352d522d836d542ef80845bdc7c1",
+      "callLine": 27,
+      "span": {
+        "startLine": 27,
+        "endLine": 27,
+        "sha256": "e703f39d620288c8d603aa35bc7019c122b39f750e86fc212c5b0307eb21d25b"
+      },
+      "classification": "scanner-version-token",
+      "disposition": "not-a-command-reference"
+    },
+    {
+      "sourceId": "ECO-SRC-f9507c3fa0d169a1",
+      "referenceIndex": 5,
+      "objectId": "19b8e7c8e18eb5f69633642c9573b2ee5b9316b5",
+      "bytes": 12184,
+      "sha256": "b2189d32a9115f57a3b75f8393a00ef89bcf352d522d836d542ef80845bdc7c1",
+      "callLine": 32,
+      "span": {
+        "startLine": 32,
+        "endLine": 32,
+        "sha256": "f63a8ef9e97aac0b5728d89ab8151832200dfdf739d05ddc737402276a234adb"
+      },
+      "classification": "scanner-version-token",
+      "disposition": "not-a-command-reference"
+    },
+    {
+      "sourceId": "ECO-SRC-f9507c3fa0d169a1",
+      "referenceIndex": 6,
+      "objectId": "19b8e7c8e18eb5f69633642c9573b2ee5b9316b5",
+      "bytes": 12184,
+      "sha256": "b2189d32a9115f57a3b75f8393a00ef89bcf352d522d836d542ef80845bdc7c1",
+      "callLine": 34,
+      "span": {
+        "startLine": 34,
+        "endLine": 34,
+        "sha256": "2f252df29eb205551a05594739896fa6967278408592f1b52a6633420b2f3d52"
+      },
+      "classification": "scanner-version-token",
+      "disposition": "not-a-command-reference"
+    },
+    {
+      "sourceId": "ECO-SRC-f5249077264b287a",
+      "referenceIndex": 0,
+      "objectId": "b798794b6869287ea27f15910d83f6bdcd11836c",
+      "bytes": 13763,
+      "sha256": "9ff54b948dc2593bfcc9e59d9edac9588f6e3e3cdb1d8873e703fdbdb20958c7",
+      "callLine": 96,
+      "span": {
+        "startLine": 96,
+        "endLine": 96,
+        "sha256": "77d0a5c0ce0ce288710db7e2f4930bce80086ab178b7323bb494ff79a758705f"
+      },
+      "classification": "external-manual-command-reference",
+      "disposition": "no-ashen-command-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 0,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 915,
+      "span": {
+        "startLine": 915,
+        "endLine": 915,
+        "sha256": "16341f01cae594a16df5ddeb950bf8d8ac4233603b1e6436c058ea70fcf30cc8"
+      },
+      "classification": "external-manual-command-reference",
+      "disposition": "no-ashen-command-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 1,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 348,
+      "span": {
+        "startLine": 348,
+        "endLine": 348,
+        "sha256": "498a7117252117515dd0a22785655f9bd87703989ff640690bb96f8c96310417"
+      },
+      "classification": "external-manual-command-reference",
+      "disposition": "no-ashen-command-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 2,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 680,
+      "span": {
+        "startLine": 680,
+        "endLine": 680,
+        "sha256": "0862eea1f0c3ec839667fe30fd009d0fb6592f068a09f16547954862b7b9f7b1"
+      },
+      "classification": "external-manual-command-reference",
+      "disposition": "no-ashen-command-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 3,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 972,
+      "span": {
+        "startLine": 972,
+        "endLine": 972,
+        "sha256": "4a71d29a7f397d8e263601d593bfdfd2c76fe573e1ed519b0db9baa40f0c01d4"
+      },
+      "classification": "external-manual-command-reference",
+      "disposition": "no-ashen-command-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 4,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 170,
+      "span": {
+        "startLine": 170,
+        "endLine": 170,
+        "sha256": "5674c52104f4debae303e6f314f7480a79c80bdfc8088d90f89cfd20f0ceaf07"
+      },
+      "classification": "external-manual-command-reference",
+      "disposition": "no-ashen-command-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 5,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 102,
+      "span": {
+        "startLine": 102,
+        "endLine": 102,
+        "sha256": "aff2291ad37054cb4683f36eb91e06226eb830576669aba4e78b47d921fb3ef0"
+      },
+      "classification": "external-manual-command-reference",
+      "disposition": "no-ashen-command-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 6,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 645,
+      "span": {
+        "startLine": 645,
+        "endLine": 645,
+        "sha256": "61a950ae96f2c738d9b7944fec179dbca36c32aa2562ee11bcb1d89c154da07a"
+      },
+      "classification": "external-manual-command-reference",
+      "disposition": "no-ashen-command-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 7,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 867,
+      "span": {
+        "startLine": 867,
+        "endLine": 867,
+        "sha256": "a12286ce0c5b8f75249c9c9120cdb8e60a1e76f8c4db44f5cc1e7a95c1e320cb"
+      },
+      "classification": "external-manual-command-reference",
+      "disposition": "no-ashen-command-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 8,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 1049,
+      "span": {
+        "startLine": 1049,
+        "endLine": 1049,
+        "sha256": "3eeb2716c8dc5e9198cda383fb638bb2eb3ffd1550744e1df40de94535a23221"
+      },
+      "classification": "external-manual-command-reference",
+      "disposition": "no-ashen-command-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 9,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 564,
+      "span": {
+        "startLine": 564,
+        "endLine": 564,
+        "sha256": "98125cc7ac234be0ed3270cdb4e50f5b1ac28c74705151cc079dcfd88908e083"
+      },
+      "classification": "external-manual-command-reference",
+      "disposition": "no-ashen-command-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 10,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 915,
+      "span": {
+        "startLine": 915,
+        "endLine": 915,
+        "sha256": "16341f01cae594a16df5ddeb950bf8d8ac4233603b1e6436c058ea70fcf30cc8"
+      },
+      "classification": "external-manual-command-reference",
+      "disposition": "no-ashen-command-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 11,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 496,
+      "span": {
+        "startLine": 496,
+        "endLine": 496,
+        "sha256": "1061d4e77185c0ec22e9418136ea93e51626aa82d8027f41cce4618af77b69bf"
+      },
+      "classification": "scanner-version-token",
+      "disposition": "not-a-command-reference"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 12,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 496,
+      "span": {
+        "startLine": 496,
+        "endLine": 496,
+        "sha256": "1061d4e77185c0ec22e9418136ea93e51626aa82d8027f41cce4618af77b69bf"
+      },
+      "classification": "scanner-version-token",
+      "disposition": "not-a-command-reference"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 13,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 496,
+      "span": {
+        "startLine": 496,
+        "endLine": 496,
+        "sha256": "1061d4e77185c0ec22e9418136ea93e51626aa82d8027f41cce4618af77b69bf"
+      },
+      "classification": "scanner-version-token",
+      "disposition": "not-a-command-reference"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 14,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 496,
+      "span": {
+        "startLine": 496,
+        "endLine": 496,
+        "sha256": "1061d4e77185c0ec22e9418136ea93e51626aa82d8027f41cce4618af77b69bf"
+      },
+      "classification": "scanner-version-token",
+      "disposition": "not-a-command-reference"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 15,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 496,
+      "span": {
+        "startLine": 496,
+        "endLine": 496,
+        "sha256": "1061d4e77185c0ec22e9418136ea93e51626aa82d8027f41cce4618af77b69bf"
+      },
+      "classification": "scanner-version-token",
+      "disposition": "not-a-command-reference"
+    },
+    {
+      "sourceId": "ECO-SRC-9567c6b3d33d78cb",
+      "referenceIndex": 16,
+      "objectId": "848bdee78ec77316de4cefc6244621d632c59337",
+      "bytes": 124152,
+      "sha256": "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+      "callLine": 1037,
+      "span": {
+        "startLine": 1037,
+        "endLine": 1037,
+        "sha256": "5e89aa651534e517e07d4a0a7fda2e3050b8105b0012beb10f4eb8dbc625855e"
+      },
+      "classification": "scanner-version-token",
+      "disposition": "not-a-command-reference"
+    },
+    {
+      "sourceId": "ECO-SRC-6a14fc0f30199f89",
+      "referenceIndex": 10,
+      "objectId": "e3d53d844ad0349d180bd950ff5338882c82803f",
+      "bytes": 61683,
+      "sha256": "a29669355e55c663c06ae91a0f026e1a5a5f7465ce7438b74a70f4024b25fd84",
+      "callLine": 364,
+      "span": {
+        "startLine": 364,
+        "endLine": 364,
+        "sha256": "c44d9f0553d2abbd9b6ab02346e9bfc5cf4c1b94af992f39a8b1d9fe01dfedcc"
+      },
+      "classification": "host-process-event",
+      "disposition": "host-process-event-flow"
+    },
+    {
+      "sourceId": "ECO-SRC-6a14fc0f30199f89",
+      "referenceIndex": 11,
+      "objectId": "e3d53d844ad0349d180bd950ff5338882c82803f",
+      "bytes": 61683,
+      "sha256": "a29669355e55c663c06ae91a0f026e1a5a5f7465ce7438b74a70f4024b25fd84",
+      "callLine": 1261,
+      "span": {
+        "startLine": 1261,
+        "endLine": 1264,
+        "sha256": "d34c652e50de0ac384a6f901ce889e18f8998d3f7b6fd1a42dd80ec2b4baf41e"
+      },
+      "classification": "host-process-event",
+      "disposition": "host-process-event-flow"
+    },
+    {
+      "sourceId": "ECO-SRC-625c38e8637ad8b0",
+      "referenceIndex": 7,
+      "objectId": "39f21cca79a50f02b25472e48d68c2a97e04a073",
+      "bytes": 10707,
+      "sha256": "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",
+      "callLine": 323,
+      "span": {
+        "startLine": 323,
+        "endLine": 323,
+        "sha256": "a4e951dfbf0364d42620121c654f3f4d1842059c6f0ec6778b19280635a9c8be"
+      },
+      "classification": "source-runtime-edge",
+      "disposition": "source-edge-requires-route-mapping"
+    },
+    {
+      "sourceId": "ECO-SRC-af1edc66cbd9834c",
+      "referenceIndex": 13,
+      "objectId": "c6bf814ca8934bd26af5f0efb0c229029ca07155",
+      "bytes": 81559,
+      "sha256": "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388",
+      "callLine": 364,
+      "span": {
+        "startLine": 364,
+        "endLine": 370,
+        "sha256": "27b159e9053874bfcfa8aa19b605835c2f91f908b2cba3940e84dbb99534b721"
+      },
+      "classification": "runtime-side-channel-event",
+      "disposition": "no-accepted-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-af1edc66cbd9834c",
+      "referenceIndex": 14,
+      "objectId": "c6bf814ca8934bd26af5f0efb0c229029ca07155",
+      "bytes": 81559,
+      "sha256": "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388",
+      "callLine": 943,
+      "span": {
+        "startLine": 943,
+        "endLine": 948,
+        "sha256": "f43157554ca99ade5dfa5bb46131b90a6fa51edbed5bb358b38266d3a69dbdff"
+      },
+      "classification": "internal-runtime-event",
+      "disposition": "no-public-equivalent"
+    },
+    {
+      "sourceId": "ECO-SRC-af1edc66cbd9834c",
+      "referenceIndex": 64,
+      "objectId": "c6bf814ca8934bd26af5f0efb0c229029ca07155",
+      "bytes": 81559,
+      "sha256": "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388",
+      "callLine": 1152,
+      "span": {
+        "startLine": 1152,
+        "endLine": 1178,
+        "sha256": "2d2504228419e852849ce25dd30410645c68f8357be7f362474b583b94130eb0"
+      },
+      "classification": "source-runtime-edge",
+      "disposition": "source-edge-requires-route-mapping"
+    },
+    {
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 33,
+      "objectId": "a0fed68c1cd897700a3857cbe7ea4851891eddd0",
+      "bytes": 467267,
+      "sha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "callLine": 9405,
+      "span": {
+        "startLine": 9405,
+        "endLine": 9415,
+        "sha256": "910ae33c8132730a0cbac13e6dd41b7f7b21f594cba766c03b20ab438ac2457f"
+      },
+      "classification": "source-runtime-edge",
+      "disposition": "source-edge-requires-route-mapping"
+    },
+    {
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 89,
+      "objectId": "a0fed68c1cd897700a3857cbe7ea4851891eddd0",
+      "bytes": 467267,
+      "sha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "callLine": 8975,
+      "span": {
+        "startLine": 8975,
+        "endLine": 9013,
+        "sha256": "b79c2071260a75206d9a1675b0da7dd9932be168883993fb4f394c60cc65886b"
+      },
+      "classification": "source-runtime-edge",
+      "disposition": "source-edge-requires-route-mapping"
+    },
+    {
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 90,
+      "objectId": "a0fed68c1cd897700a3857cbe7ea4851891eddd0",
+      "bytes": 467267,
+      "sha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "callLine": 9015,
+      "span": {
+        "startLine": 9015,
+        "endLine": 9059,
+        "sha256": "46a4e717c96aaeef7e31b2f8152f8f2efc7bd0bc1ac383a7070d2b1953baf517"
+      },
+      "classification": "source-runtime-edge",
+      "disposition": "source-edge-requires-route-mapping"
+    },
+    {
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 91,
+      "objectId": "a0fed68c1cd897700a3857cbe7ea4851891eddd0",
+      "bytes": 467267,
+      "sha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "callLine": 9061,
+      "span": {
+        "startLine": 9061,
+        "endLine": 9207,
+        "sha256": "5b63cd9e60d08d8513e1e8e129c6e9a4033699ee538742685ef293812f4dcb04"
+      },
+      "classification": "source-runtime-edge",
+      "disposition": "source-edge-requires-route-mapping"
+    },
+    {
+      "sourceId": "ECO-SRC-f25fcbecafe905e1",
+      "referenceIndex": 15,
+      "objectId": "ef22678c9621f95d450079ec3aae02f02eccb37c",
+      "bytes": 114585,
+      "sha256": "dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",
+      "callLine": 1579,
+      "span": {
+        "startLine": 1579,
+        "endLine": 1588,
+        "sha256": "5d3cf35e7966df25e13e6a31d2cc59314a359d914bcb4006c72c4927830459a3"
+      },
+      "classification": "internal-runtime-event",
+      "disposition": "no-public-equivalent"
+    },
+    {
+      "sourceId": "ECO-SRC-f25fcbecafe905e1",
+      "referenceIndex": 16,
+      "objectId": "ef22678c9621f95d450079ec3aae02f02eccb37c",
+      "bytes": 114585,
+      "sha256": "dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",
+      "callLine": 1683,
+      "span": {
+        "startLine": 1683,
+        "endLine": 1689,
+        "sha256": "b6b4a382f81946156dd16d832b24a036bbe4b089bd38e5cb65e39144dc44f256"
+      },
+      "classification": "internal-runtime-event",
+      "disposition": "no-public-equivalent"
+    },
+    {
+      "sourceId": "ECO-SRC-f25fcbecafe905e1",
+      "referenceIndex": 17,
+      "objectId": "ef22678c9621f95d450079ec3aae02f02eccb37c",
+      "bytes": 114585,
+      "sha256": "dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",
+      "callLine": 1708,
+      "span": {
+        "startLine": 1708,
+        "endLine": 1713,
+        "sha256": "4fdc0bdefe5526e4cb8e7bf4c9c35fce16361d635e82b013e9854facdcc12f6b"
+      },
+      "classification": "source-runtime-edge",
+      "disposition": "source-edge-requires-route-mapping"
+    },
+    {
+      "sourceId": "ECO-SRC-91b70c5973297fbd",
+      "referenceIndex": 12,
+      "objectId": "6f627072f868d6b0fcd46e61e94f4f48612ae935",
+      "bytes": 9934,
+      "sha256": "db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d",
+      "callLine": 168,
+      "span": {
+        "startLine": 168,
+        "endLine": 203,
+        "sha256": "7d73a31a69f345bdd676a260d1a01a8c480cb792249fc7b8fe3bcc679324da2c"
+      },
+      "classification": "source-runtime-edge",
+      "disposition": "source-edge-requires-route-mapping"
+    },
+    {
+      "sourceId": "ECO-SRC-5b76c3108525e35f",
+      "referenceIndex": 3,
+      "objectId": "741df6c19b4896caa509f1e6f260443a115e2c16",
+      "bytes": 3652,
+      "sha256": "2db784c9d70b806c41cf5bb5abc3253acabad108b60c2299cec9eeab107fdf53",
+      "callLine": 52,
+      "span": {
+        "startLine": 52,
+        "endLine": 60,
+        "sha256": "a5dea63314fcfabc597a3c378cf588c2e1889c06f424705c1b0fd2bf2a71eaa5"
+      },
+      "classification": "generic-host-api-proxy",
+      "disposition": "no-single-static-event-target"
+    },
+    {
+      "sourceId": "ECO-SRC-080c377111a31497",
+      "referenceIndex": 14,
+      "objectId": "884db1eb993cbb7d924e8564ef28667ca134c97c",
+      "bytes": 32345,
+      "sha256": "34ed34719141571ab1d0cbe2cc28dd66da6c9f4c30aa612239b018c1af66ca2e",
+      "callLine": 683,
+      "span": {
+        "startLine": 683,
+        "endLine": 756,
+        "sha256": "bcff57e6e69840dc4acde454b49d781ecbe42e56f34ffd27bfb499b9a991700e"
+      },
+      "classification": "host-tool-wrapper",
+      "disposition": "host-framework-only"
+    },
+    {
+      "sourceId": "ECO-SRC-784d73735882ca1d",
+      "referenceIndex": 9,
+      "objectId": "6b978ea1b0ab7a8b68350c3e39dded9d907b96ed",
+      "bytes": 7173,
+      "sha256": "71c2cf89e92bda9a7f549e60312b45f6b45a3c7f4a0c22772c379f5d9b946ee9",
+      "callLine": 46,
+      "span": {
+        "startLine": 46,
+        "endLine": 55,
+        "sha256": "7db27de47904f210290c36dc10cfb273524cec64dec047de853a4c3ffb79fa53"
+      },
+      "classification": "runtime-side-channel-event",
+      "disposition": "no-accepted-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-784d73735882ca1d",
+      "referenceIndex": 10,
+      "objectId": "6b978ea1b0ab7a8b68350c3e39dded9d907b96ed",
+      "bytes": 7173,
+      "sha256": "71c2cf89e92bda9a7f549e60312b45f6b45a3c7f4a0c22772c379f5d9b946ee9",
+      "callLine": 56,
+      "span": {
+        "startLine": 56,
+        "endLine": 62,
+        "sha256": "bfd8c0751f552b40e6d27e4966cca7706431afad28d78de5d11a8253b056cf41"
+      },
+      "classification": "runtime-side-channel-event",
+      "disposition": "no-accepted-equivalence"
+    },
+    {
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 5,
+      "objectId": "44de38b41e2199f31cffbe60887456ab9324d185",
+      "bytes": 42261,
+      "sha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+      "callLine": 592,
+      "span": {
+        "startLine": 592,
+        "endLine": 612,
+        "sha256": "a00e5f7cfc64f8610e295254186593f4c7328203aaec992b137b4336d91f05ab"
+      },
+      "classification": "source-runtime-edge",
+      "disposition": "source-edge-requires-route-mapping"
+    },
+    {
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 6,
+      "objectId": "44de38b41e2199f31cffbe60887456ab9324d185",
+      "bytes": 42261,
+      "sha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+      "callLine": 615,
+      "span": {
+        "startLine": 615,
+        "endLine": 623,
+        "sha256": "87c1b3e88577f75920c26f27effc97ec78f42136af1bced582e8f41086bb63bd"
+      },
+      "classification": "source-runtime-edge",
+      "disposition": "source-edge-requires-route-mapping"
+    },
+    {
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 7,
+      "objectId": "44de38b41e2199f31cffbe60887456ab9324d185",
+      "bytes": 42261,
+      "sha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+      "callLine": 626,
+      "span": {
+        "startLine": 626,
+        "endLine": 641,
+        "sha256": "adcb5bf7008634f80311fe6e231c896e0d712d359280a42b643e7a31b4657c0d"
+      },
+      "classification": "source-runtime-edge",
+      "disposition": "source-edge-requires-route-mapping"
+    },
+    {
+      "sourceId": "ECO-SRC-6058ca4d664d9095",
+      "referenceIndex": 0,
+      "objectId": "af5a725bad0b3841179e0572429fdcab1eb3189b",
+      "bytes": 12081,
+      "sha256": "57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",
+      "callLine": 31,
+      "span": {
+        "startLine": 31,
+        "endLine": 31,
+        "sha256": "abcebbb1bb7acd5e06af7a3670c3a102be0aedf349bf6dc01436a279e0dbf6e7"
+      },
+      "classification": "source-runtime-edge",
+      "disposition": "source-edge-requires-route-mapping"
+    },
+    {
+      "sourceId": "ECO-SRC-8420ca03583cfe7b",
+      "referenceIndex": 5,
+      "objectId": "6ed00aef22da1cfaa2d2d6dcaf9746ad758cc64f",
+      "bytes": 6833,
+      "sha256": "dd3fe029f18791462344a0ac0fc87aab0f8a657d0226d8f676aad4c724f8658d",
+      "callLine": 39,
+      "span": {
+        "startLine": 39,
+        "endLine": 47,
+        "sha256": "1123875c62b7b65b57c7abd6546401d32d55a5cd7c976ef387674d92c18c0c5e"
+      },
+      "classification": "source-runtime-edge",
+      "disposition": "source-edge-requires-route-mapping"
     }
   ]
 }

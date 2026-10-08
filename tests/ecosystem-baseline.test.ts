@@ -188,7 +188,7 @@ test("Git normalization is recorded as committed bytes instead of worktree bytes
  assert.equal(core.bytes,Buffer.byteLength(source.replaceAll("\r\n","\n")));assert.notEqual(core.bytes,Buffer.byteLength(readFileSync(join(f.root,"lib","core.ts"))));assert.equal(verifyBaselineObjects(f.root,baseline),true);
 });
 
-test("114-reference overlay adjudicates 38 frozen asset sources without mutating scanner evidence",
+test("164-reference overlay adjudicates every frozen unresolved reference without mutating scanner evidence",
   {skip:!retainedBaselineRepository},()=>{
   assert.equal(typeof baselineModule.verifyReferenceAdjudications,"function");
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
@@ -197,17 +197,19 @@ test("114-reference overlay adjudicates 38 frozen asset sources without mutating
   const baselineBefore=structuredClone(baseline);
   const referencesBefore=structuredClone(baseline.files.map((row:any)=>row.references));
   assert.deepEqual((baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,overlay),
-    {scannerUnresolved:164,adjudicated:114,remaining:50});
+    {scannerUnresolved:164,adjudicated:164,remaining:0});
   assert.deepEqual(baseline,baselineBefore);
   assert.deepEqual(baseline.files.map((row:any)=>row.references),referencesBefore);
-  assert.equal(overlay.adjudications.filter((row:any)=>row.classification==="source-runtime-edge").length,12);
+  assert.equal(overlay.adjudications.filter((row:any)=>row.classification==="source-runtime-edge").length,25);
+  assert.equal(overlay.adjudications.filter((row:any)=>row.classification==="external-manual-command-reference").length,14);
+  assert.equal(overlay.adjudications.filter((row:any)=>row.classification==="scanner-version-token").length,13);
   const withAbsent=structuredClone(baseline);
   withAbsent.files.find((row:any)=>row.id==="ECO-SRC-5a67352cd4badb81").references.push({
     kind:"asset",target:"./adjudication-count-probe",status:"absent",path:"extensions/adjudication-count-probe",
   });
   assert.deepEqual(validateBaseline(withAbsent),[]);
   assert.deepEqual((baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,withAbsent,overlay),
-    {scannerUnresolved:165,adjudicated:114,remaining:51});
+    {scannerUnresolved:165,adjudicated:164,remaining:1});
 });
 
 test("asset overlay rejects identity, ordering, binding, span and authority mutations",
@@ -305,6 +307,30 @@ test("asset overlay rejects identity, ordering, binding, span and authority muta
   urlRow.span.sha256="a".repeat(64);
   assert.throws(()=>(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,urlOverlay),
     exactErrorMessage("Frozen readFile call/span binding mismatch"),"dynamic URL span");
+  const documentationOverlay=structuredClone(overlay);
+  const documentationRow=documentationOverlay.adjudications.find((row:any)=>row.sourceId==="ECO-SRC-fe4cbd3c4b0d4552");
+  assert.ok(documentationRow);
+  documentationRow.span.sha256="a".repeat(64);
+  assert.throws(()=>(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,documentationOverlay),
+    exactErrorMessage("Frozen semantic-reference call/span binding mismatch"),"documentation command span");
+  const documentationCallOverlay=structuredClone(overlay);
+  const documentationCall=documentationCallOverlay.adjudications.find((row:any)=>row.sourceId==="ECO-SRC-fe4cbd3c4b0d4552");
+  assert.ok(documentationCall);
+  documentationCall.callLine++;
+  assert.throws(()=>(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,documentationCallOverlay),
+    exactErrorMessage("Invalid reference adjudication call or span"),"documentation command call line");
+  const eventCallOverlay=structuredClone(overlay);
+  const eventCall=eventCallOverlay.adjudications.find((row:any)=>row.classification==="host-process-event");
+  assert.ok(eventCall);
+  eventCall.callLine++;
+  assert.throws(()=>(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,eventCallOverlay),
+    exactErrorMessage("Invalid reference adjudication call or span"),"host event call line");
+  const outsideRootOverlay=structuredClone(overlay);
+  const outsideRootRow=outsideRootOverlay.adjudications.find((row:any)=>row.sourceId==="ECO-SRC-6058ca4d664d9095"&&row.referenceIndex===0);
+  assert.ok(outsideRootRow);
+  outsideRootRow.span.sha256="a".repeat(64);
+  assert.throws(()=>(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,outsideRootOverlay),
+    exactErrorMessage("Frozen semantic-reference call/span binding mismatch"),"outside-root directory span");
   assert.throws(()=>(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,undefined),
     exactErrorMessage("Invalid reference adjudication envelope"));
 });
