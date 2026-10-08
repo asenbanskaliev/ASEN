@@ -211,24 +211,36 @@ test("five-reference overlay adjudicates frozen runtime reads without mutating s
     {scannerUnresolved:165,adjudicated:5,remaining:160});
 });
 
-test("five-reference overlay rejects identity, ordering, bounds and authority mutations",()=>{
+test("five-reference overlay rejects identity, ordering, bounds and authority mutations",
+  {skip:!retainedBaselineRepository},()=>{
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
   const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
-  const cases:[string,(b:any,o:any)=>void][]=[
-    ["commit",(_b,o)=>{o.baselineCommit="a".repeat(40);}],["source",(_b,o)=>{o.adjudications[0].sourceId="ECO-SRC-0000000000000000";}],
-    ["blob",(_b,o)=>{o.adjudications[0].objectId="a".repeat(40);}],["size",(_b,o)=>{o.adjudications[0].bytes++;}],
-    ["source hash",(_b,o)=>{o.adjudications[0].sha256="a".repeat(64);}],["duplicate",(_b,o)=>{o.adjudications[1].referenceIndex=0;}],
-    ["order",(_b,o)=>{[o.adjudications[0],o.adjudications[1]]=[o.adjudications[1],o.adjudications[0]];}],
-    ["index",(_b,o)=>{o.adjudications[4].referenceIndex=99;}],["raw status",(b,_o)=>{b.files.find((r:any)=>r.id===overlay.adjudications[0].sourceId).references[0].status="declared";}],
-    ["call",(_b,o)=>{o.adjudications[0].callLine++;}],["span start",(_b,o)=>{o.adjudications[0].span.startLine++;}],
-    ["span hash",(_b,o)=>{o.adjudications[0].span.sha256="a".repeat(64);}],["class",(_b,o)=>{o.adjudications[0].classification="source-dependency";}],
-    ["disposition",(_b,o)=>{o.adjudications[0].disposition="ignore";}],["row field",(_b,o)=>{o.adjudications[0].rationale="trust me";}],
-    ["span field",(_b,o)=>{o.adjudications[0].span.note="extra";}],["envelope field",(_b,o)=>{o.note="extra";}],
-    ["selected identity",(b,_o)=>{b.files.find((r:any)=>r.id===overlay.adjudications[0].sourceId).objectId=b.files.find((r:any)=>r.path==="README.md").objectId;}],
+  const exactErrorMessage=(message:string)=>(error:unknown):error is Error=>
+    error instanceof Error&&error.message===message;
+  const cases:[string,(b:any,o:any)=>void,string][]=[
+    ["commit",(_b,o)=>{o.baselineCommit="a".repeat(40);},"Invalid reference adjudication envelope"],
+    ["source",(_b,o)=>{o.adjudications[0].sourceId="ECO-SRC-0000000000000000";},"Reference adjudication row identity mismatch"],
+    ["blob",(_b,o)=>{o.adjudications[0].objectId="a".repeat(40);},"Reference adjudication row identity mismatch"],
+    ["size",(_b,o)=>{o.adjudications[0].bytes++;},"Reference adjudication row identity mismatch"],
+    ["source hash",(_b,o)=>{o.adjudications[0].sha256="a".repeat(64);},"Reference adjudication row identity mismatch"],
+    ["duplicate",(_b,o)=>{o.adjudications[1].referenceIndex=0;},"Duplicate or out-of-order reference adjudication index"],
+    ["order",(_b,o)=>{[o.adjudications[0],o.adjudications[1]]=[o.adjudications[1],o.adjudications[0]];},"Duplicate or out-of-order reference adjudication index"],
+    ["index",(_b,o)=>{o.adjudications[4].referenceIndex=99;},"Duplicate or out-of-order reference adjudication index"],
+    ["raw status",(b,_o)=>{b.files.find((r:any)=>r.id===overlay.adjudications[0].sourceId).references[0].status="declared";},"Malformed ecosystem baseline"],
+    ["call",(_b,o)=>{o.adjudications[0].callLine++;},"Invalid reference adjudication call or span"],
+    ["span start",(_b,o)=>{o.adjudications[0].span.startLine++;},"Invalid reference adjudication call or span"],
+    ["span hash",(_b,o)=>{o.adjudications[0].span.sha256="a".repeat(64);},"Frozen readFile call/span binding mismatch"],
+    ["class",(_b,o)=>{o.adjudications[0].classification="source-dependency";},"Unsupported reference adjudication classification or disposition"],
+    ["disposition",(_b,o)=>{o.adjudications[0].disposition="ignore";},"Unsupported reference adjudication classification or disposition"],
+    ["row field",(_b,o)=>{o.adjudications[0].rationale="trust me";},"Malformed reference adjudication authority fields"],
+    ["span field",(_b,o)=>{o.adjudications[0].span.note="extra";},"Malformed reference adjudication authority fields"],
+    ["envelope field",(_b,o)=>{o.note="extra";},"Invalid reference adjudication envelope"],
+    ["selected identity",(b,_o)=>{b.files.find((r:any)=>r.id===overlay.adjudications[0].sourceId).objectId=b.files.find((r:any)=>r.path==="README.md").objectId;},"Reference adjudication source identity mismatch"],
   ];
-  for(const [name,mutate] of cases){const b=structuredClone(baseline),o=structuredClone(overlay);mutate(b,o);
-    assert.throws(()=>(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,b,o),undefined,name);}
-  assert.throws(()=>(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,undefined));
+  for(const [name,mutate,expected] of cases){const b=structuredClone(baseline),o=structuredClone(overlay);mutate(b,o);
+    assert.throws(()=>(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,b,o),exactErrorMessage(expected),name);}
+  assert.throws(()=>(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,undefined),
+    exactErrorMessage("Invalid reference adjudication envelope"));
 });
 
 test("immutable source reader returns the manifest-selected committed bytes",(t:test.TestContext)=>{
