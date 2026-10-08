@@ -232,6 +232,26 @@ const adjudicationSources=Object.freeze([
       [14,2167,2162,2177,"optional-discovered-input"],[15,2364,2355,2386,"generated-local-control"],[16,2397,2388,2419,"generated-local-control"],
       [17,2467,2464,2471,"generated-local-control"],[18,2502,2497,2533,"legacy-generated-state"],[19,2573,2550,2598,"optional-discovered-input"],
     ]},
+  {id:"ECO-SRC-396d124d7d28739b",path:"lib/review-candidate-view-owner.ts",objectId:"2ac65650a16603251e322167f416d30e37fbe404",bytes:25429,
+    sha256:"537f4c57ff4b0a80c053a74ffd7df3305a62e41d3f0da200e54dc836789b578f",imports:[["node:fs","readFileSync"]],calls:[
+      [0,88,83,94,"runtime-state-read"],
+      [1,242,235,248,"runtime-state-read"],
+      [2,376,372,381,"runtime-state-read"],
+      [3,398,389,410,"runtime-state-read"],
+      [4,406,389,410,"runtime-state-read"],
+      [5,408,389,410,"runtime-state-read"],
+      [6,428,427,429,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-f186dd2c4db26151",path:"lib/review-object-store.ts",objectId:"6a01687406b163cb94065943ce16b618090a7109",bytes:14486,
+    sha256:"b723adb820da6c38abf4a0879e86405f1fa7cdaa7feb437187d42851d1c2c8c7",imports:[["node:fs","readFileSync"]],calls:[
+      [0,74,73,75,"runtime-state-read"],
+      [1,107,105,111,"runtime-state-read"],
+      [2,117,113,122,"runtime-state-read"],
+      [3,192,190,205,"runtime-state-read"],
+      [4,202,190,205,"runtime-state-read"],
+      [5,207,206,208,"runtime-state-read"],
+      [6,219,219,219,"runtime-state-read"],
+    ]},
 ]);
 const exactKeys = (value, keys) => value && typeof value === "object" && !Array.isArray(value) &&
   JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());

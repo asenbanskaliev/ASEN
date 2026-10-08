@@ -8,6 +8,22 @@ Deliver evidence-backed parity with Reference A for every non-branding observabl
 
 ## Current exact-HEAD checkpoint — 2026-10-08
 
+### Latest verified prerequisite checkpoint before the next ECO-01C-2 slice
+
+- Exact verified predecessor HEAD: `e0ae54fd0838853ccbfd242b2fd7c76932e17f9d`; branch and PR #32 matched. The lock wait default changed from 15,000 to 30,000 ms, equal to the existing validator maximum; the lock ownership protocol and explicit timeout callers did not change.
+- Exact-SHA evidence at that predecessor: push CI `37805402205`, PR CI `37805413425`, Phase 0 Architecture `37805413484`, Pi 1.0 runtime `37805413421`, and Release Gate `37805413446` all succeeded. CI and Release Gate Ubuntu/macOS/Windows matrices succeeded. Pi Free Smoke `37805413414` was SKIPPED, not PASS.
+- Windows push CI ran 1,006 tests: 1,002 passed, zero failed, four skipped. The 40-write History serialization test completed in 17.46 seconds, explaining the reproducible 15-second timeout on the preceding SHA. This is evidence for the bounded timeout correction, not permanent elimination of every Windows race.
+- These results apply only to `e0ae54f`; they do not transfer to the source-adjudication candidate below.
+
+### ECO-01C-2 next source-adjudication slice — in progress, not closed
+
+- The unchanged frozen source manifest identifies 164 unresolved/absent/outside-root references; the preceding overlay has 20 adjudications and 144 remaining.
+- The candidate batch contains 14 unresolved filesystem-read references in two frozen files: seven in `lib/review-candidate-view-owner.ts` and seven in `lib/review-object-store.ts`. The frozen commit `08de420ca29be16b6f6bee725a30b599b061df16`, root tree `9af648106ed75fa270476e9d474bad93aa38af6b`, each tree path/blob ID, byte length, and SHA-256 were checked against the manifest. The two blobs were placed as Git objects in a temporary bare repository and were not executed.
+- The scanner rows are all unresolved `asset` references bound to imported `node:fs` `readFileSync` calls. reference indices follow the existing scanner's AST traversal/source-order model, and still require execution by the retained-source verifier; the proposed closed classification is `runtime-state-read`, with disposition `runtime-state-not-source-edge`. The raw source manifest and its reference objects remain byte-for-byte unchanged.
+- The proposed overlay has 34 total rows and a provisional remainder of 130. These are candidate counts only; they become adjudicated counts only after the retained-source verifier and its adversarial tests execute successfully.
+- The retained-source integration tests depend on `ECOSYSTEM_BASELINE_REPOSITORY`; the existing CI workflows do not provide that variable. Therefore their skip is unavailable evidence, never PASS. This environment has no ASEN checkout for local project tests. No project-level semantic RED/GREEN is claimed for this slice, and ECO-01C-2 remains open until the exact source-bound test can run against the bare frozen repository. Do not start ECO-01E or runtime work.
+
+
 - La primera revisión documental `32cf9f0477095fd5f5a341469942e80971407c45` falló CI arquitectura y Phase 0 en `audit-upstream-boundary` por el localizador externo añadido. Se registra como regresión documental, no como defecto de producto; esta continuación lo elimina y exige ejecutar workflows otra vez sobre su propio SHA.
 This checkpoint supersedes older “current delivery” and pending-CI statements below; those entries remain historical evidence. No implementation, source inventory, authority, or route status changes are implied.
 
