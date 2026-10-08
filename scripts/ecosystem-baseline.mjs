@@ -218,7 +218,7 @@ export function validateBaseline(value) {
 }
 
 const adjudicationCommit="08de420ca29be16b6f6bee725a30b599b061df16";
-const adjudicationSources=Object.freeze([
+export const adjudicationSources=Object.freeze([
   {id:"ECO-SRC-5a67352cd4badb81",path:"extensions/skill-registry.ts",objectId:"3b889b0443654d9adfd13cb593c4234ba92f426e",bytes:19264,
     sha256:"c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66",imports:[["node:fs/promises","readFile"]],calls:[
       [0,195,192,207,"optional-discovered-input"],[1,257,250,269,"optional-discovered-input"],
@@ -268,14 +268,150 @@ const adjudicationSources=Object.freeze([
       [0,90,88,104,"generated-local-control"],[1,291,287,301,"runtime-state-read"],[2,666,663,672,"runtime-state-read"],
       [3,725,720,734,"legacy-generated-state"],[4,795,789,807,"runtime-state-read"],
     ]},
+  {id:"ECO-SRC-625c38e8637ad8b0",path:"extensions/codegraph-tools.ts",objectId:"39f21cca79a50f02b25472e48d68c2a97e04a073",bytes:10707,
+    sha256:"7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",imports:[["node:fs","readFileSync"]],calls:[
+      [0,214,208,231,"source-runtime-edge","source-edge-requires-route-mapping"],
+    ]},
+  {id:"ECO-SRC-af1edc66cbd9834c",path:["extensions/","gen","tle-agents.ts"].join(""),objectId:"c6bf814ca8934bd26af5f0efb0c229029ca07155",bytes:81559,
+    sha256:"ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388",imports:[["node:fs","readFileSync"],["node:fs/promises","readFile"]],calls:[
+      [0,143,139,148,"runtime-state-read"],[1,924,921,928,"optional-discovered-input"],
+    ]},
+  {id:"ECO-SRC-e7463b7384c92f7e",path:"extensions/history/hide-prompts.ts",objectId:"e948e6d22fd889d392452a7456e05973f421795e",bytes:7347,
+    sha256:"b7cdfe192e91f1557133a5c80ba96e41cdb5b1c4d1dbb5d42f5e7103103ed301",imports:[],namespaceMembers:[["node:fs","fs","readFileSync"]],calls:[
+      [0,105,102,136,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-c65d631f8447d951",path:"extensions/history/load-shared-history.ts",objectId:"79ef12f7d03cf9659e19aec0558e8432f350d415",bytes:1130,
+    sha256:"408736bcf2eb97214d4622854df361674f5b8eab95eb270a19911e2e8af59789",imports:[],namespaceMembers:[["node:fs","fs","readFileSync"]],calls:[
+      [0,30,26,39,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-2ced978dd94675dd",path:"extensions/history/session-scan.ts",objectId:"accd302c7e8a0004e0f573539a8cdc987cf7b211",bytes:7692,
+    sha256:"250a3db46eb790fefc794473d20a31e9dd9c6ea11887a343b808fe8e9757a7f6",imports:[],namespaceMembers:[["node:fs","fs","readFileSync"]],calls:[
+      [0,153,150,196,"optional-discovered-input"],
+    ]},
+  {id:"ECO-SRC-e0cb838adc1cbe33",path:"lib/agent-profile-pin.ts",objectId:"4cb769e4d648e0dfb6fa2b9fd436dc1be27a2cdf",bytes:12682,
+    sha256:"b52386805e6df3e15cf6a260cd0b7a1c3c6ec0113e90596fc2652b0dc4159576",imports:[["node:fs","readFileSync"]],calls:[
+      [0,164,161,169,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-a495fb043722ac5e",path:"lib/agent-profiles.ts",objectId:"f4c953460160b7198dd8d6293f9cb43050826ea6",bytes:18518,
+    sha256:"6541e3da65f7f5576eec6edbabda6756ab3caafaae0d6560ceb3b2c5f08827f4",imports:[["node:fs","readFileSync"]],calls:[
+      [0,503,499,512,"runtime-state-read"],[1,527,521,566,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-3042f3f3b753a8d3",path:"lib/agents-config.ts",objectId:"258818d1a8006a71fc45d2c6e0f7c9162aba2407",bytes:13456,
+    sha256:"b9ecc81dd6c81950c43267176194c6f579288f934d8364da4e760b9089521975",imports:[["node:fs","readFileSync"]],calls:[
+      [0,228,221,234,"optional-discovered-input"],[1,289,286,294,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-8f747258e5cd5fc4",path:"lib/agents-history.ts",objectId:"a7638b87502e3faa39f2561b606406c10acf0305",bytes:3248,
+    sha256:"4c68989e2be7f511592c816e8fe685488eca5b0af048df65b3fccfc5e1e3be15",imports:[["node:fs/promises","readFile"]],calls:[
+      [0,54,51,58,"runtime-state-read"],[1,70,70,70,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-99f45ace32d38853",path:"lib/animation-policy.ts",objectId:"4d1eef8567da4c5846256836bd480da1c89f8819",bytes:2602,
+    sha256:"62096a8ab25d6dd475891ffc293cd1d104b044b2e01724b37db4402dc57b6370",imports:[["node:fs","readFileSync"]],calls:[
+      [0,31,28,37,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-b16429b2f1c43e80",path:"lib/background-subagents-policy.ts",objectId:"51f7e03d5b2f0efa5983393d20148b991049aee0",bytes:5604,
+    sha256:"69511d493640bdfa9dde7acfa341dbe291b2baf70da9de588ae5ea6b9b8f7920",imports:[["node:fs","readFileSync"]],calls:[
+      [0,111,89,137,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-14fbaaebad5fbf58",path:"lib/double-esc-cancel-policy.ts",objectId:"1cb10b8ad700cefe849d9d9e11435093ecbd5d53",bytes:5901,
+    sha256:"164e6a02fc420ca22b4a49c5d19fb66d154f4f1b9f93dd375d86a82e53341e08",imports:[["node:fs","readFileSync"]],calls:[
+      [0,98,85,115,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-ecb5b4ebbaf005aa",path:["lib/","gen","tle-ai-binary.ts"].join(""),objectId:"780805490645c357be10b179ff1edd460038f21f",bytes:15683,
+    sha256:"afe1984c6334ff774fbf69961675f2ccc9ea034cd36b3aa3b17632958a0cd553",imports:[["node:fs","readFileSync"]],calls:[
+      [0,133,120,138,"source-runtime-edge","source-edge-requires-route-mapping"],[1,143,140,160,"generated-local-control"],
+      [2,297,271,310,"source-runtime-edge","source-edge-requires-route-mapping"],
+    ]},
+  {id:"ECO-SRC-478700c7727f3fa5",path:"lib/history-capture-policy.ts",objectId:"3aa09bb83cf41caf6ad8dccf0ab0912e690ff43b",bytes:4766,
+    sha256:"7c2c96859f2cff9888c0eec678ba414362af3954e08459ce96c05db2e48727a3",imports:[["node:fs","readFileSync"]],calls:[
+      [0,51,48,57,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-f4f6b335bf2cf4e9",path:"lib/inprocess-reviewer.ts",objectId:"beea157aa1ad2f2c4e9e6c303e6064ea725aaaab",bytes:17838,
+    sha256:"3f26a3bfe12e962bf968fcc546c0cdf4d700d3a9a8c180626f4e3729da2d4bf3",imports:[],calls:[],urlCalls:[
+      [0,169,169,169,"source-runtime-edge","source-edge-requires-route-mapping"],
+    ]},
+  {id:"ECO-SRC-5c593be3e5de37fc",path:"lib/model-routing-authority.ts",objectId:"ee2a30c021e622853338e293506e5875b1a11be7",bytes:4062,
+    sha256:"831db959b54c8a660da3adfba2a57ad7cc869abc2254ce9e981ff29f15435faf",imports:[["node:fs","readFileSync"],["node:fs/promises","readFile"]],calls:[
+      [0,100,97,106,"runtime-state-read"],[1,113,108,119,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-95f9e4bcb7349c6c",path:"lib/profiles-orchestrator.ts",objectId:"ab880646610be52c963c4daf0703503ac62ba7dd",bytes:7469,
+    sha256:"554ddea751d636ee35e9d06babb9bf4513930d7186fcf1fe23599b767e6c844a",imports:[["node:fs","readFileSync"]],calls:[
+      [0,72,68,88,"runtime-state-read"],[1,137,135,141,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-ee431194e4155110",path:"lib/review-candidate-view.ts",objectId:"d803af7e0263dd8df374d1c7f18b4a60b93b5cb5",bytes:111266,
+    sha256:"8f4ce05940375a03b24cefb517c9329b6a34bf2d978513dea6b784916012f15b",imports:[["node:fs","readFileSync"]],calls:[
+      [0,619,606,620,"source-runtime-edge","source-edge-requires-route-mapping"],
+    ]},
+  {id:"ECO-SRC-23149aba854d628d",path:"lib/review-legacy-detector.ts",objectId:"aa8bca0e7affdc356315fa670e9a113ea83d8fee",bytes:5971,
+    sha256:"973c48700ccc00e39f9109b977b7f9646878413031e8589b53baabc8ea100071",imports:[["node:fs","readFileSync"]],calls:[
+      [0,63,38,69,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-3e823342741ef5c0",path:"lib/review-lock.ts",objectId:"18ed57d65f3b87936d83a94754a31d2c6611e0e0",bytes:11849,
+    sha256:"593fc786e4e59d1c28bb94be918fb18a541a033e947dd97a0f3fe01c60f841e6",imports:[["node:fs","readFileSync"]],calls:[
+      [0,208,202,213,"generated-local-control"],[1,218,215,225,"generated-local-control"],
+    ]},
+  {id:"ECO-SRC-d2566aa6315eb18e",path:"lib/review-repository.ts",objectId:"4f24a0a5d78c92e2398c19c65d20bb8a85031f19",bytes:15675,
+    sha256:"3a4da310dddcde073ec5c935535594fdf0f3f7586c047692d623834345ca68d3",imports:[["node:fs","readFileSync"]],calls:[
+      [0,170,166,190,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-0e66f5a77cddefce",path:"lib/review-snapshot.ts",objectId:"f22fc173a74e7161e3cc19fa4c660a558512cf88",bytes:15923,
+    sha256:"c897b6245ff0da46db6de8016d3c797aaa79467d947a38074cae14283f644d7c",imports:[["node:fs","readFileSync"]],calls:[
+      [0,266,262,289,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-6058ca4d664d9095",path:"lib/runtime-metrics-children.ts",objectId:"af5a725bad0b3841179e0572429fdcab1eb3189b",bytes:12081,
+    sha256:"57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",imports:[["node:fs","readFileSync"]],calls:[
+      [2,34,32,38,"optional-discovered-input"],
+    ],urlCalls:[
+      [1,33,32,38,"source-runtime-edge","source-edge-requires-route-mapping"],
+    ]},
+  {id:"ECO-SRC-dbf31123d00902ed",path:"lib/runtime-metrics.ts",objectId:"8c8fe7c8bb2af81a00fbffe7589c4fbc758806df",bytes:15942,
+    sha256:"740b7b6f5e97f70caac1077beb0a652edfcaf4ecf2a9f892ca6ee6ff505f7f81",imports:[["node:fs","readFileSync"]],calls:[
+      [1,3,1,6,"source-runtime-edge","source-edge-requires-route-mapping"],
+    ]},
+  {id:"ECO-SRC-e844fa5bcd5ca643",path:"lib/theme-customization.ts",objectId:"447728a1a64d277f20392d1577a4df56286e4100",bytes:2817,
+    sha256:"e57ebcdffb1566356550c7a7ada86a7245abd283fcd64fbb841186d0c13f582a",imports:[["node:fs","readFileSync"]],calls:[
+      [0,19,9,44,"optional-discovered-input"],
+    ]},
+  {id:"ECO-SRC-8a7376c1ab550d82",path:"lib/vim-policy.ts",objectId:"264e702e5f0830a117935e2e142ddfd2093eeb8b",bytes:2191,
+    sha256:"836041792bc056ac4d6279eae057fdd0f5279f897c2062d9ad026096c9e1294b",imports:[["node:fs","readFileSync"]],calls:[
+      [0,29,26,35,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-fef2126c68c668d3",path:"lib/visual-customization-policy.ts",objectId:"b8106722a7551a8348717751fd365e458f1412ff",bytes:5549,
+    sha256:"56f97118696aa52dfaa527ecf0494fbcd60f12a06f7c6f89c216ed704cc775e5",imports:[["node:fs","readFileSync"]],calls:[
+      [0,87,84,93,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-74e3f9200d8b4726",path:"lib/visual-profiles.ts",objectId:"253dff6a518ba13c869b60a3a443649f35feb2fc",bytes:8080,
+    sha256:"7a4a83c3f215f34868b375293af33c183322cc610f674ef5fa6ef825ae0eca1c",imports:[["node:fs","readFileSync"]],calls:[
+      [0,127,103,145,"optional-discovered-input"],
+    ]},
+  {id:"ECO-SRC-8745033959a82ed0",path:["runtime/","gen","tle-ai-binary.mjs"].join(""),objectId:"c3c8cd439aaae8fd6b775c190660f37341e3ef5e",bytes:15444,
+    sha256:"cbdf5deac8b7a85ab1253dbd049953aeb192a7d1f7987f9206916ab449c10a92",imports:[["node:fs","readFileSync"]],calls:[
+      [0,134,121,139,"source-runtime-edge","source-edge-requires-route-mapping"],[1,144,141,161,"generated-local-control"],
+      [2,298,272,311,"source-runtime-edge","source-edge-requires-route-mapping"],
+    ]},
+  {id:"ECO-SRC-7fb85a620f260291",path:["scripts/","gen","tle-ai-installer.mjs"].join(""),objectId:"c6b15ce14dbcbf1e3a367358638f6b782d71ec96",bytes:40972,
+    sha256:"3b897818fbf8aef7ef22c9c11c5f8a8118453fbcb67d69ea1c8cf7d608d20547",imports:[["node:fs/promises","readFile"]],calls:[
+      [2,166,165,167,"source-runtime-edge","source-edge-requires-route-mapping"],
+      [3,412,409,416,"generated-local-control"],[4,421,418,431,"generated-local-control"],
+      [5,450,442,457,"generated-local-control"],
+    ],urlCalls:[
+      [0,176,176,176,"source-runtime-edge","source-edge-requires-route-mapping"],
+      [1,185,185,185,"source-runtime-edge","source-edge-requires-route-mapping"],
+    ]},
+  {id:"ECO-SRC-2f0030e8503c730c",path:"scripts/install-tui-mode-setting.mjs",objectId:"e89e83730e2b35a521d83ebe2fc61da217c9c671",bytes:10256,
+    sha256:"756e6a538e13c7216a5ad9111091f63061ecb79f604457bf303010de0d64aa81",imports:[["node:fs","readFileSync"]],calls:[
+      [0,84,77,89,"runtime-state-read"],
+    ]},
 ]);
 const exactKeys = (value, keys) => value && typeof value === "object" && !Array.isArray(value) &&
   JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
 
-/** Verifies frozen filesystem-read adjudications without altering scanner evidence. */
+/** Verifies frozen filesystem-read and dynamic-URL adjudications without altering scanner evidence. */
 export function verifyReferenceAdjudications(repository, baseline, overlay) {
   if (validateBaseline(baseline).length) throw new Error("Malformed ecosystem baseline");
-  const expectedRows=adjudicationSources.flatMap(source=>source.calls.map(call=>({source,call})));
+  const expectedRows=adjudicationSources.flatMap(source=>[
+  ...(source.calls??[]).map(call=>({source,call,referenceType:"filesystem-read"})),
+  ...(source.urlCalls??[]).map(call=>({source,call,referenceType:"dynamic-url"})),
+]);
   if (!exactKeys(overlay,["version","baselineCommit","adjudications"]) || overlay.version !== 1 ||
       overlay.baselineCommit !== baseline.commit || baseline.commit !== adjudicationCommit ||
       !Array.isArray(overlay.adjudications) || overlay.adjudications.length !== expectedRows.length)
@@ -300,7 +436,7 @@ export function verifyReferenceAdjudications(repository, baseline, overlay) {
       throw new Error("Adjudicated reference is not an unresolved scanner asset");
     if(row.sourceId!==source.id||row.objectId!==source.objectId||row.bytes!==source.bytes||row.sha256!==source.sha256)
       throw new Error("Reference adjudication row identity mismatch");
-    if(row.classification!==call[4]||row.disposition!=="runtime-state-not-source-edge")
+    if(row.classification!==call[4]||row.disposition!==(call[5]??"runtime-state-not-source-edge"))
       throw new Error("Unsupported reference adjudication classification or disposition");
     if(row.callLine!==call[1]||row.span.startLine!==call[2]||row.span.endLine!==call[3]||!/^[a-f0-9]{64}$/.test(row.span.sha256))
       throw new Error("Invalid reference adjudication call or span");
@@ -334,7 +470,17 @@ export function verifyReferenceAdjudications(repository, baseline, overlay) {
     const namespaceSymbols=namespaceBindings.map(binding=>({member:binding.member,symbol:checker.getSymbolAtLocation(binding.node)}));
     if(symbols.has(undefined)||namespaceSymbols.some(binding=>!binding.symbol))
       throw new Error("Frozen filesystem import symbol could not be resolved");
-    const candidateCalls=[];
+    const candidateCalls=[],candidateUrls=[];
+    const literal=node=>{
+      if(node&&ts.isStringLiteralLike(node))return node.text;
+      if(!node||!ts.isIdentifier(node))return null;
+      const declarations=checker.getSymbolAtLocation(node)?.declarations;
+      if(declarations?.length!==1)return null;
+      const declaration=declarations[0];
+      return ts.isVariableDeclaration(declaration)&&ts.isVariableDeclarationList(declaration.parent)&&
+        (declaration.parent.flags&ts.NodeFlags.Const)&&declaration.initializer&&ts.isStringLiteralLike(declaration.initializer)
+        ?declaration.initializer.text:null;
+    };
     const visit=node=>{
       if(ts.isCallExpression(node)){
         if(ts.isIdentifier(node.expression)&&symbols.has(checker.getSymbolAtLocation(node.expression)))candidateCalls.push(node);
@@ -342,15 +488,23 @@ export function verifyReferenceAdjudications(repository, baseline, overlay) {
           namespaceSymbols.some(binding=>binding.member===node.expression.name.text&&
             binding.symbol===checker.getSymbolAtLocation(node.expression.expression)))candidateCalls.push(node);
       }
+      if(ts.isNewExpression(node)&&ts.isIdentifier(node.expression)&&node.expression.text==="URL"){
+        const base=node.arguments?.[1]?.getText(parsed);
+        if(base!=="import.meta.url"||literal(node.arguments?.[0])===null)candidateUrls.push(node);
+      }
       ts.forEachChild(node,visit);
     };
     visit(parsed);
-    const boundCalls=candidateCalls;
     const rawAssets=source.references.filter(reference=>reference.kind==="asset"&&reference.target===null&&reference.status==="unresolved"&&reference.path===null);
-    if(boundCalls.length!==rawAssets.length)throw new Error(`Unexpected frozen filesystem call binding: ${source.id} ${boundCalls.length}/${rawAssets.length}`);
+    if(candidateCalls.length+candidateUrls.length!==rawAssets.length)
+      throw new Error(`Unexpected frozen asset binding: ${source.id} ${candidateCalls.length}+${candidateUrls.length}/${rawAssets.length}`);
     const lines=text.split(/(?<=\n)/);
     for(const row of overlay.adjudications.filter(row=>row.sourceId===source.id)){
-      const call=boundCalls[row.referenceIndex],callLine=parsed.getLineAndCharacterOfPosition(call.getStart(parsed)).line+1;
+      const expected=expectedRows.find(({source:authority,call})=>authority.id===source.id&&call[0]===row.referenceIndex);
+      const candidates=expected?.referenceType==="dynamic-url"?candidateUrls:candidateCalls;
+      const call=candidates.find(node=>parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line+1===row.callLine);
+      if(!call)throw new Error("Frozen source-reference call binding mismatch");
+      const callLine=parsed.getLineAndCharacterOfPosition(call.getStart(parsed)).line+1;
       const span=lines.slice(row.span.startLine-1,row.span.endLine).join("");
       if(callLine!==row.callLine||row.callLine<row.span.startLine||row.callLine>row.span.endLine||digest(span)!==row.span.sha256)
         throw new Error("Frozen readFile call/span binding mismatch");
