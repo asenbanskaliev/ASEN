@@ -55,7 +55,7 @@ test("async failed initialization never removes a replacement canonical owner",{
  t.mock.method(fsPromises,"open",async(...args:Parameters<typeof fsPromises.open>)=>{
   const handle=await originalOpen(...args);if(first){first=false;const originalHandleStat=handle.stat.bind(handle),originalClose=handle.close.bind(handle);t.mock.method(handle,"stat",async()=>identity=await originalHandleStat());t.mock.method(handle,"writeFile",async()=>{throw failure;});t.mock.method(handle,"close",async()=>{await originalClose();await writeFile(lock,replacement);});}return handle;
  });
- t.mock.method(fsPromises,"stat",async(file,...args)=>file.toString()===lock&&identity?identity:originalStat(file,...args));syncBuiltinESMExports();
+ t.mock.method(fsPromises,"stat",async(file:Parameters<typeof originalStat>[0],...args:Parameters<typeof originalStat> extends [unknown,...infer Rest]?Rest:never)=>file.toString()===lock&&identity?identity:originalStat(file,...args));syncBuiltinESMExports();
  try{await assert.rejects(()=>withExclusiveFileLock(target,async()=>"unreachable"),error=>error===failure);assert.equal(await readFile(lock,"utf8"),replacement);}
  finally{t.mock.restoreAll();syncBuiltinESMExports();}
 });
