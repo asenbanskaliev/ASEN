@@ -29,14 +29,8 @@ jobs:
       # Same checks and order as npm run check, split into timed Actions steps.
       - name: Typecheck
         run: npm run typecheck
-      - name: Full test suite (Ubuntu baseline)
-        if: runner.os == 'Linux'
+      - name: Full test suite
         run: npm test
-      # Controlled concurrency experiment: all test files and assertions remain enabled.
-      # Release Gate independently retains the original unmodified npm run check.
-      - name: Full test suite (Windows/macOS concurrency trial)
-        if: runner.os != 'Linux'
-        run: npx tsx --test --test-concurrency=4 tests/**/*.test.ts
       - name: Phase parity audit
         run: npm run audit:parity
       - name: Skills audit
