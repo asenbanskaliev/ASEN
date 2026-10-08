@@ -322,3 +322,19 @@ test("immutable source reader verifies the selected blob byte identity",(t:test.
     assert.throws(()=>readBaselineSourceBytes(f.root,changed,row.id),/baseline source byte identity/i);
   }
 });
+
+
+test("RED: next 16 frozen asset references require semantic adjudication",
+  {skip:!retainedBaselineRepository},()=>{
+  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
+  const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
+  const sourceIds=["ECO-SRC-1f527249710bd9bf","ECO-SRC-b739ab592bf5a9d4"];
+  const verifiedSourceContext=sourceIds.map(id=>{
+    const row=baseline.files.find((candidate:any)=>candidate.id===id);
+    const bytes=(baselineModule as any).readBaselineSourceBytes(retainedBaselineRepository,baseline,id);
+    return `===== ${row.path} (${row.objectId}, ${row.bytes} bytes, ${row.sha256}) =====\\n${bytes.toString("utf8")}`;
+  }).join("\\n");
+  const result=(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,overlay);
+  assert.deepEqual(result,{scannerUnresolved:164,adjudicated:50,remaining:114},
+    `RED: expected the selected 16-reference asset-read cohort; exact verified frozen source follows:\\n${verifiedSourceContext}`);
+});
