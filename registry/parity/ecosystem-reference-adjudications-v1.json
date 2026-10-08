@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "baselineCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "adjudications": [
+    {
+      "sourceId": "ECO-SRC-5a67352cd4badb81",
+      "referenceIndex": 0,
+      "objectId": "3b889b0443654d9adfd13cb593c4234ba92f426e",
+      "bytes": 19264,
+      "sha256": "c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66",
+      "callLine": 195,
+      "span": {"startLine": 192, "endLine": 207, "sha256": "472c0f0bfcc1509da8bb6b4aaa1f79993925de0391a7b1eeb7ddb1d07da9b480"},
+      "classification": "optional-discovered-input",
+      "disposition": "runtime-state-not-source-edge"
+    },
+    {
+      "sourceId": "ECO-SRC-5a67352cd4badb81",
+      "referenceIndex": 1,
+      "objectId": "3b889b0443654d9adfd13cb593c4234ba92f426e",
+      "bytes": 19264,
+      "sha256": "c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66",
+      "callLine": 257,
+      "span": {"startLine": 250, "endLine": 269, "sha256": "da7863cecfc28df714bf8b828fbfb4be23d1feaae2277d455c3e3d8344c602e5"},
+      "classification": "optional-discovered-input",
+      "disposition": "runtime-state-not-source-edge"
+    },
+    {
+      "sourceId": "ECO-SRC-5a67352cd4badb81",
+      "referenceIndex": 2,
+      "objectId": "3b889b0443654d9adfd13cb593c4234ba92f426e",
+      "bytes": 19264,
+      "sha256": "c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66",
+      "callLine": 320,
+      "span": {"startLine": 316, "endLine": 330, "sha256": "06bb2432a4f996ccc0eee927e2d285bb4389abb2254fc5963a1c5ff640b62361"},
+      "classification": "generated-local-control",
+      "disposition": "runtime-state-not-source-edge"
+    },
+    {
+      "sourceId": "ECO-SRC-5a67352cd4badb81",
+      "referenceIndex": 3,
+      "objectId": "3b889b0443654d9adfd13cb593c4234ba92f426e",
+      "bytes": 19264,
+      "sha256": "c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66",
+      "callLine": 363,
+      "span": {"startLine": 358, "endLine": 373, "sha256": "d35d49a407a5ac08c26d3e5feeb3dcab06fc380bd27fc8fdfaee7194aa3cd856"},
+      "classification": "legacy-generated-state",
+      "disposition": "runtime-state-not-source-edge"
+    },
+    {
+      "sourceId": "ECO-SRC-5a67352cd4badb81",
+      "referenceIndex": 4,
+      "objectId": "3b889b0443654d9adfd13cb593c4234ba92f426e",
+      "bytes": 19264,
+      "sha256": "c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66",
+      "callLine": 395,
+      "span": {"startLine": 386, "endLine": 402, "sha256": "f1fed5b38f1f79fda835f64550220a2eb3b92f2e832be99dd9135cd7c27be91a"},
+      "classification": "generated-cache",
+      "disposition": "runtime-state-not-source-edge"
+    }
+  ]
+}

@@ -27,6 +27,10 @@ function sourceClassification(filename) {
 const git = (repository, args) => execFileSync("git", ["-C", repository, ...args], {
   env: {...process.env, GIT_NO_REPLACE_OBJECTS: "1"}, maxBuffer: 32 * 1024 * 1024,
 });
+const parseJson = (value, label) => {
+  try { return JSON.parse(value); }
+  catch { throw new Error(`Invalid ${label} JSON`); }
+};
 
 export function sourceReferences(filename, bytes) {
   if (!/\.(?:[cm]?[jt]s|md)$/.test(filename)) return [];
@@ -139,7 +143,7 @@ export function collectBaseline(repository, commit) {
     inventory.set(match[4], {mode:match[1], type:match[2], objectId:match[3]});
   }
   const packageEntry = inventory.get("package.json");
-  const metadata = packageEntry ? JSON.parse(git(repository, ["cat-file", "blob", packageEntry.objectId])) : {};
+  const metadata = packageEntry ? parseJson(git(repository, ["cat-file", "blob", packageEntry.objectId]),"package metadata") : {};
   const dependencyNames = sortedUnique(["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"].flatMap(key => Object.keys(metadata[key] ?? {})));
   const dependencySpecs = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"].flatMap(kind =>
     Object.entries(metadata[kind] ?? {}).sort(([a],[b]) => a < b ? -1 : a > b ? 1 : 0).map(([name,spec]) => ({kind,name,spec})));
@@ -213,6 +217,87 @@ export function validateBaseline(value) {
   return issues;
 }
 
+const adjudicationSource = Object.freeze({
+  commit:"08de420ca29be16b6f6bee725a30b599b061df16", id:"ECO-SRC-5a67352cd4badb81",
+  path:"extensions/skill-registry.ts", objectId:"3b889b0443654d9adfd13cb593c4234ba92f426e", bytes:19264,
+  sha256:"c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66",
+});
+const adjudicationCalls = Object.freeze([
+  [195,192,207,"optional-discovered-input"], [257,250,269,"optional-discovered-input"],
+  [320,316,330,"generated-local-control"], [363,358,373,"legacy-generated-state"],
+  [395,386,402,"generated-cache"],
+]);
+const exactKeys = (value, keys) => value && typeof value === "object" && !Array.isArray(value) &&
+  JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
+
+/** Verifies the one frozen five-read adjudication; it does not alter scanner evidence. */
+export function verifyReferenceAdjudications(repository, baseline, overlay) {
+  if (validateBaseline(baseline).length) throw new Error("Malformed ecosystem baseline");
+  if (!exactKeys(overlay,["version","baselineCommit","adjudications"]) || overlay.version !== 1 ||
+      overlay.baselineCommit !== baseline.commit || baseline.commit !== adjudicationSource.commit ||
+      !Array.isArray(overlay.adjudications) || overlay.adjudications.length !== adjudicationCalls.length)
+    throw new Error("Invalid reference adjudication envelope");
+  const source = baseline.files.find(row => row.id === adjudicationSource.id);
+  if (!source || source.path !== adjudicationSource.path || source.objectId !== adjudicationSource.objectId ||
+      source.bytes !== adjudicationSource.bytes || source.sha256 !== adjudicationSource.sha256)
+    throw new Error("Reference adjudication source identity mismatch");
+  const rowKeys=["sourceId","referenceIndex","objectId","bytes","sha256","callLine","span","classification","disposition"];
+  const spanKeys=["startLine","endLine","sha256"];
+  const classes=new Set(["optional-discovered-input","generated-local-control","legacy-generated-state","generated-cache"]);
+  const seen=new Set();
+  for (let index=0; index<overlay.adjudications.length; index++) {
+    const row=overlay.adjudications[index], expected=adjudicationCalls[index];
+    if (!exactKeys(row,rowKeys) || !exactKeys(row.span,spanKeys)) throw new Error("Malformed reference adjudication authority fields");
+    if (!Number.isSafeInteger(row.referenceIndex) || seen.has(row.referenceIndex) || row.referenceIndex !== index)
+      throw new Error("Duplicate or out-of-order reference adjudication index");
+    seen.add(row.referenceIndex);
+    const reference=source.references[row.referenceIndex];
+    if (!reference || reference.kind !== "asset" || reference.target !== null || reference.status !== "unresolved" || reference.path !== null)
+      throw new Error("Adjudicated reference is not an unresolved scanner asset");
+    if (row.sourceId !== source.id || row.objectId !== source.objectId || row.bytes !== source.bytes || row.sha256 !== source.sha256)
+      throw new Error("Reference adjudication row identity mismatch");
+    if (!classes.has(row.classification) || row.classification !== expected[3] || row.disposition !== "runtime-state-not-source-edge")
+      throw new Error("Unsupported reference adjudication classification or disposition");
+    if (row.callLine !== expected[0] || row.span.startLine !== expected[1] || row.span.endLine !== expected[2] ||
+        !/^[a-f0-9]{64}$/.test(row.span.sha256)) throw new Error("Invalid reference adjudication call or span");
+  }
+  const bytes=readBaselineSourceBytes(repository,baseline,source.id);
+  const text=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+  const parsed=ts.createSourceFile(source.path,text,ts.ScriptTarget.Latest,true);
+  if (parsed.parseDiagnostics.length) throw new Error("Frozen adjudication source does not parse completely");
+  const host={getSourceFile:name=>name===source.path?parsed:undefined,getDefaultLibFileName:()=>"lib.d.ts",writeFile(){},
+    getCurrentDirectory:()=>"",getDirectories:()=>[],fileExists:name=>name===source.path,readFile:name=>name===source.path?text:undefined,
+    getCanonicalFileName:name=>name,useCaseSensitiveFileNames:()=>true,getNewLine:()=>"\n"};
+  const checker=ts.createProgram([source.path],{noLib:true,noResolve:true},host).getTypeChecker();
+  let importedReadFile;
+  const calls=[];
+  const visit=node=>{
+    if (ts.isImportDeclaration(node) && node.moduleSpecifier.text === "node:fs/promises") {
+      const named=node.importClause?.namedBindings;
+      if (named && ts.isNamedImports(named)) for (const element of named.elements)
+        if ((element.propertyName?.text ?? element.name.text) === "readFile" && element.name.text === "readFile") importedReadFile=element.name;
+    }
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "readFile") calls.push(node);
+    ts.forEachChild(node,visit);
+  };
+  visit(parsed);
+  if (!importedReadFile) throw new Error("readFile must be a named node:fs/promises import");
+  const symbol=checker.getSymbolAtLocation(importedReadFile);
+  const boundCalls=calls.filter(call=>checker.getSymbolAtLocation(call.expression)===symbol);
+  if (boundCalls.length !== overlay.adjudications.length) throw new Error("Unexpected frozen readFile call binding");
+  const lines=text.split(/(?<=\n)/);
+  for (let index=0; index<overlay.adjudications.length; index++) {
+    const row=overlay.adjudications[index], call=boundCalls[index];
+    const callLine=parsed.getLineAndCharacterOfPosition(call.getStart(parsed)).line+1;
+    const span=lines.slice(row.span.startLine-1,row.span.endLine).join("");
+    if (callLine !== row.callLine || row.callLine < row.span.startLine || row.callLine > row.span.endLine || digest(span) !== row.span.sha256)
+      throw new Error("Frozen readFile call/span binding mismatch");
+  }
+  const scannerUnresolved=baseline.files.flatMap(row=>row.references).filter(reference=>
+    ["unresolved","absent","outside-root"].includes(reference.status)).length;
+  return {scannerUnresolved,adjudicated:overlay.adjudications.length,remaining:scannerUnresolved-overlay.adjudications.length};
+}
+
 /** Reads one manifest-selected immutable blob; use verifyBaselineObjects for whole-baseline commit/tree provenance. */
 export function readBaselineSourceBytes(repository, baseline, sourceId) {
   if (validateBaseline(baseline).length) throw new Error("Malformed ecosystem baseline");
@@ -266,9 +351,9 @@ export function verifyBaselineObjects(repository, baseline) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const baseline = JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
+  const baseline = parseJson(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"),"ecosystem baseline");
   const issues = validateBaseline(baseline);
-  const media = JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-media-v1.json",import.meta.url),"utf8"));
+  const media = parseJson(readFileSync(new URL("../registry/parity/ecosystem-media-v1.json",import.meta.url),"utf8"),"ecosystem media manifest");
   issues.push(...validateMediaManifest(baseline,media));
   if (issues.length) throw new Error(issues.join("\n"));
   if (process.argv[2]) {

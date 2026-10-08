@@ -8,6 +8,7 @@ import {tmpdir} from "node:os";
 // @ts-expect-error Research-only JavaScript baseline collector, outside the runtime package.
 import * as baselineModule from "../scripts/ecosystem-baseline.mjs";
 const {collectBaseline,validateBaseline,verifyBaselineObjects,detectBaselineDrift,sourceReferences}=baselineModule;
+const retainedBaselineRepository=process.env.ECOSYSTEM_BASELINE_REPOSITORY??"";
 
 function fixture(t:test.TestContext) {
   const root=mkdtempSync(join(tmpdir(),"asen-ecosystem-"));
@@ -155,7 +156,7 @@ test("library changes invalidate importing roots and ambiguous hashes are never 
   const renamed=structuredClone(before),original=renamed.files.find((row:any)=>row.path==="README.md");
   renamed.files=renamed.files.filter((row:any)=>row.path!=="README.md");
   renamed.roots=renamed.roots.filter((p:string)=>p!=="README.md");
-  for(const name of ["docs/copy1.md","docs/copy2.md"]){renamed.files.push({...original,id:"ECO-SRC-"+createHash("sha256").update(name).digest("hex").slice(0,16),path:name,references:[]});renamed.roots.push(name);}
+  for(const name of ["docs/copy1.md","docs/copy2.md"]){renamed.files.push({...original,id:`ECO-SRC-${createHash("sha256").update(name).digest("hex").slice(0,16)}`,path:name,references:[]});renamed.roots.push(name);}
   for(const row of renamed.files) row.references=row.references.filter((ref:any)=>ref.path!=="README.md");
   const report=detectBaselineDrift(before,renamed);
   assert.equal(report.changes.some((c:any)=>c.kind==="RENAMED"&&c.path==="README.md"),false);
@@ -185,6 +186,49 @@ test("Git normalization is recorded as committed bytes instead of worktree bytes
  const source='import "../extensions/entry.js";\nexport const x="á😀";\r\n';writeFileSync(join(f.root,"lib","core.ts"),source);
  f.git("add","--renormalize","lib/core.ts");f.git("commit","-qm","normalize");const commit=f.git("rev-parse","HEAD"),baseline=collectBaseline(f.root,commit),core=baseline.files.find((row:any)=>row.path==="lib/core.ts");
  assert.equal(core.bytes,Buffer.byteLength(source.replaceAll("\r\n","\n")));assert.notEqual(core.bytes,Buffer.byteLength(readFileSync(join(f.root,"lib","core.ts"))));assert.equal(verifyBaselineObjects(f.root,baseline),true);
+});
+
+test("five-reference overlay adjudicates frozen runtime reads without mutating scanner evidence",
+  {skip:!retainedBaselineRepository},()=>{
+  assert.equal(typeof baselineModule.verifyReferenceAdjudications,"function");
+  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
+  const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
+  const baselineBefore=structuredClone(baseline);
+  const selected=baseline.files.find((row:any)=>row.id==="ECO-SRC-5a67352cd4badb81");
+  const referencesBefore=structuredClone(selected.references.slice(0,5));
+  assert.deepEqual((baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,overlay),
+    {scannerUnresolved:164,adjudicated:5,remaining:159});
+  assert.deepEqual(baseline,baselineBefore);
+  assert.deepEqual(selected.references.slice(0,5),referencesBefore);
+  assert.ok(selected.references.slice(0,5).every((ref:any)=>
+    JSON.stringify(ref)===JSON.stringify({kind:"asset",target:null,status:"unresolved",path:null})));
+  const withAbsent=structuredClone(baseline);
+  withAbsent.files.find((row:any)=>row.id===selected.id).references.push({
+    kind:"asset",target:"./adjudication-count-probe",status:"absent",path:"extensions/adjudication-count-probe",
+  });
+  assert.deepEqual(validateBaseline(withAbsent),[]);
+  assert.deepEqual((baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,withAbsent,overlay),
+    {scannerUnresolved:165,adjudicated:5,remaining:160});
+});
+
+test("five-reference overlay rejects identity, ordering, bounds and authority mutations",()=>{
+  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
+  const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
+  const cases:[string,(b:any,o:any)=>void][]=[
+    ["commit",(_b,o)=>{o.baselineCommit="a".repeat(40);}],["source",(_b,o)=>{o.adjudications[0].sourceId="ECO-SRC-0000000000000000";}],
+    ["blob",(_b,o)=>{o.adjudications[0].objectId="a".repeat(40);}],["size",(_b,o)=>{o.adjudications[0].bytes++;}],
+    ["source hash",(_b,o)=>{o.adjudications[0].sha256="a".repeat(64);}],["duplicate",(_b,o)=>{o.adjudications[1].referenceIndex=0;}],
+    ["order",(_b,o)=>{[o.adjudications[0],o.adjudications[1]]=[o.adjudications[1],o.adjudications[0]];}],
+    ["index",(_b,o)=>{o.adjudications[4].referenceIndex=99;}],["raw status",(b,_o)=>{b.files.find((r:any)=>r.id===overlay.adjudications[0].sourceId).references[0].status="declared";}],
+    ["call",(_b,o)=>{o.adjudications[0].callLine++;}],["span start",(_b,o)=>{o.adjudications[0].span.startLine++;}],
+    ["span hash",(_b,o)=>{o.adjudications[0].span.sha256="a".repeat(64);}],["class",(_b,o)=>{o.adjudications[0].classification="source-dependency";}],
+    ["disposition",(_b,o)=>{o.adjudications[0].disposition="ignore";}],["row field",(_b,o)=>{o.adjudications[0].rationale="trust me";}],
+    ["span field",(_b,o)=>{o.adjudications[0].span.note="extra";}],["envelope field",(_b,o)=>{o.note="extra";}],
+    ["selected identity",(b,_o)=>{b.files.find((r:any)=>r.id===overlay.adjudications[0].sourceId).objectId=b.files.find((r:any)=>r.path==="README.md").objectId;}],
+  ];
+  for(const [name,mutate] of cases){const b=structuredClone(baseline),o=structuredClone(overlay);mutate(b,o);
+    assert.throws(()=>(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,b,o),undefined,name);}
+  assert.throws(()=>(baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,baseline,undefined));
 });
 
 test("immutable source reader returns the manifest-selected committed bytes",(t:test.TestContext)=>{
