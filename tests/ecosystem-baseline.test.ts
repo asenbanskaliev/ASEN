@@ -252,7 +252,7 @@ test("five-source overlay rejects identity, ordering, binding, span and authorit
     ["second order",(_b,o)=>{[o.adjudications[10],o.adjudications[11]]=[o.adjudications[11],o.adjudications[10]];},"Duplicate or out-of-order reference adjudication index"],
     ["second index",(_b,o)=>{o.adjudications[24].referenceIndex=20;},"Duplicate or out-of-order reference adjudication index"],
     ["second raw status",(b,_o)=>{b.files.find((r:any)=>r.id===overlay.adjudications[10].sourceId).references[5].status="declared";},"Malformed ecosystem baseline"],
-    ["second import binding",(b,_o)=>{b.files.find((r:any)=>r.id===overlay.adjudications[10].sourceId).references.find((r:any)=>r.kind==="builtin"&&r.target==="node:fs/promises").target="node:assert";},"Frozen scanner/source reference mismatch"],
+    ["second import binding",(b,_o)=>{b.files.find((r:any)=>r.id===overlay.adjudications[10].sourceId).references.find((r:any)=>r.kind==="import"&&r.status==="builtin"&&r.target==="node:fs/promises").target="node:assert";},"Frozen scanner/source reference mismatch"],
     ["second call association",(_b,o)=>{o.adjudications[10].callLine++;},"Invalid reference adjudication call or span"],
     ["second span start",(_b,o)=>{o.adjudications[10].span.startLine++;},"Invalid reference adjudication call or span"],
     ["second span text",(_b,o)=>{o.adjudications[10].span.endLine--;},"Invalid reference adjudication call or span"],
