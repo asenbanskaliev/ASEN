@@ -214,7 +214,7 @@
       "mappingKind": "code-contract",
       "mappingReason": "self-owned-registration",
       "targets": [
-        "extensions/codegraph-tools.ts"
+        "ECO-SRC-625c38e8637ad8b0"
       ]
     },
     {
@@ -232,7 +232,7 @@
       "mappingKind": "code-contract",
       "mappingReason": "self-owned-registration",
       "targets": [
-        "extensions/gentle-agents.ts"
+        "ECO-SRC-af1edc66cbd9834c"
       ]
     },
     {
@@ -250,7 +250,7 @@
       "mappingKind": "code-contract",
       "mappingReason": "self-owned-registration",
       "targets": [
-        "extensions/gentle-ai.ts"
+        "ECO-SRC-1f527249710bd9bf"
       ]
     },
     {
@@ -268,7 +268,7 @@
       "mappingKind": "code-contract",
       "mappingReason": "self-owned-registration",
       "targets": [
-        "extensions/gentle-ai.ts"
+        "ECO-SRC-1f527249710bd9bf"
       ]
     },
     {
@@ -286,7 +286,7 @@
       "mappingKind": "code-contract",
       "mappingReason": "self-owned-registration",
       "targets": [
-        "extensions/gentle-ai.ts"
+        "ECO-SRC-1f527249710bd9bf"
       ]
     },
     {
@@ -304,7 +304,7 @@
       "mappingKind": "code-contract",
       "mappingReason": "self-owned-registration",
       "targets": [
-        "extensions/gentle-ai.ts"
+        "ECO-SRC-1f527249710bd9bf"
       ]
     },
     {
@@ -322,7 +322,7 @@
       "mappingKind": "code-contract",
       "mappingReason": "self-owned-registration",
       "targets": [
-        "extensions/gentle-shell.ts"
+        "ECO-SRC-f25fcbecafe905e1"
       ]
     },
     {
@@ -340,7 +340,7 @@
       "mappingKind": "code-contract",
       "mappingReason": "self-owned-registration",
       "targets": [
-        "extensions/gentle-todo.ts"
+        "ECO-SRC-91b70c5973297fbd"
       ]
     },
     {
@@ -358,7 +358,7 @@
       "mappingKind": "code-contract",
       "mappingReason": "self-owned-registration",
       "targets": [
-        "extensions/startup-banner.ts"
+        "ECO-SRC-6c28d7b99a511610"
       ]
     },
     {
@@ -376,7 +376,7 @@
       "mappingKind": "code-contract",
       "mappingReason": "self-owned-registration",
       "targets": [
-        "extensions/startup-banner.ts"
+        "ECO-SRC-6c28d7b99a511610"
       ]
     },
     {
@@ -394,7 +394,7 @@
       "mappingKind": "code-contract",
       "mappingReason": "self-owned-registration",
       "targets": [
-        "extensions/startup-banner.ts"
+        "ECO-SRC-6c28d7b99a511610"
       ]
     },
     {
@@ -430,7 +430,7 @@
       "mappingKind": "code-contract",
       "mappingReason": "self-owned-registration",
       "targets": [
-        "lib/session-change-capture.ts"
+        "ECO-SRC-8420ca03583cfe7b"
       ]
     }
   ]

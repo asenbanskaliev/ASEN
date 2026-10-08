@@ -718,7 +718,7 @@ export function verifyRuntimeEdgeMappings(repository,baseline,adjudications,mapp
       throw new Error("Runtime edge target is not a tracked source file");
     if(row.mappingKind==="tracked-glob"&&(row.targets.length!==1||row.targets[0]!=="assets/agents/*.md"))
       throw new Error("Unsupported runtime edge selector");
-    if(row.mappingKind==="code-contract"&&(row.targets.length!==1||row.targets[0]!==owner.path))
+    if(row.mappingKind==="code-contract"&&(row.targets.length!==1||row.targets[0]!==owner.id))
       throw new Error("Code contract mapping must point to its owning source");
     if(row.mappingKind==="external-runtime"&&row.targets.length!==0)
       throw new Error("External runtime mapping cannot claim a repository source target");

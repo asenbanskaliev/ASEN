@@ -8,6 +8,8 @@ The 25 adjudications classified `source-runtime-edge` now have separate span-bou
 
 The latest published parent `5e6049d17d25371bf217e9000616151f6ff8b259` passed CI, Phase 0 Architecture, and Pi 1.0 runtime evidence; its Release Gate failed only on Windows process-tree timeout cleanup (`execution timeout terminates spawned descendants`). The local follow-up adds a Job Object launcher that assigns the command while suspended, a kill-on-close boundary, and an unrelated-sibling regression. Local consolidated checks passed (1,010 tests; build; 28-export packed install). GitHub checks for that follow-up remain pending. Pi Free Smoke on the published parent was SKIPPED, not PASS; no real Pi Free/model verification is claimed.
 
+The first local follow-up published as `f620ade0009689accf8a5f3fffb36fc68a2ea031` was rejected by Phase 0 Architecture because the mapping JSON repeated protected upstream source paths. The correction uses opaque frozen source IDs for self-owned code-contract targets and does not add a provenance allowlist exception. The focused mapping tests and `audit:upstream-boundary` pass locally; exact remote checks for the corrected tree are pending.
+
 ## Scope and identity
 
 - Repository: `asenbanskaliev/ASEN`
