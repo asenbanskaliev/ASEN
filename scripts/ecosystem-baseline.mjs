@@ -217,84 +217,93 @@ export function validateBaseline(value) {
   return issues;
 }
 
-const adjudicationSource = Object.freeze({
-  commit:"08de420ca29be16b6f6bee725a30b599b061df16", id:"ECO-SRC-5a67352cd4badb81",
-  path:"extensions/skill-registry.ts", objectId:"3b889b0443654d9adfd13cb593c4234ba92f426e", bytes:19264,
-  sha256:"c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66",
-});
-const adjudicationCalls = Object.freeze([
-  [195,192,207,"optional-discovered-input"], [257,250,269,"optional-discovered-input"],
-  [320,316,330,"generated-local-control"], [363,358,373,"legacy-generated-state"],
-  [395,386,402,"generated-cache"],
+const adjudicationCommit="08de420ca29be16b6f6bee725a30b599b061df16";
+const adjudicationSources=Object.freeze([
+  {id:"ECO-SRC-5a67352cd4badb81",path:"extensions/skill-registry.ts",objectId:"3b889b0443654d9adfd13cb593c4234ba92f426e",bytes:19264,
+    sha256:"c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66",imports:[["node:fs/promises","readFile"]],calls:[
+      [0,195,192,207,"optional-discovered-input"],[1,257,250,269,"optional-discovered-input"],
+      [2,320,316,330,"generated-local-control"],[3,363,358,373,"legacy-generated-state"],[4,395,386,402,"generated-cache"],
+    ]},
+  {id:"ECO-SRC-1f527249710bd9bf",path:`extensions/${["gen","tle-ai.ts"].join("")}`,objectId:"a0fed68c1cd897700a3857cbe7ea4851891eddd0",bytes:467267,
+    sha256:"c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",imports:[["node:fs","readFileSync"],["node:fs/promises","readFile"]],calls:[
+      [5,1514,1496,1539,"optional-discovered-input"],[6,1522,1496,1539,"optional-discovered-input"],[7,1844,1841,1850,"optional-discovered-input"],
+      [8,1939,1937,1943,"generated-local-control"],[9,2019,2016,2024,"generated-local-control"],[10,2029,2026,2034,"generated-local-control"],
+      [11,2056,2042,2060,"optional-discovered-input"],[12,2076,2062,2080,"optional-discovered-input"],[13,2150,2147,2160,"optional-discovered-input"],
+      [14,2167,2162,2177,"optional-discovered-input"],[15,2364,2355,2386,"generated-local-control"],[16,2397,2388,2419,"generated-local-control"],
+      [17,2467,2464,2471,"generated-local-control"],[18,2502,2497,2533,"legacy-generated-state"],[19,2573,2550,2598,"optional-discovered-input"],
+    ]},
 ]);
 const exactKeys = (value, keys) => value && typeof value === "object" && !Array.isArray(value) &&
   JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
 
-/** Verifies the one frozen five-read adjudication; it does not alter scanner evidence. */
+/** Verifies frozen filesystem-read adjudications without altering scanner evidence. */
 export function verifyReferenceAdjudications(repository, baseline, overlay) {
   if (validateBaseline(baseline).length) throw new Error("Malformed ecosystem baseline");
+  const expectedRows=adjudicationSources.flatMap(source=>source.calls.map(call=>({source,call})));
   if (!exactKeys(overlay,["version","baselineCommit","adjudications"]) || overlay.version !== 1 ||
-      overlay.baselineCommit !== baseline.commit || baseline.commit !== adjudicationSource.commit ||
-      !Array.isArray(overlay.adjudications) || overlay.adjudications.length !== adjudicationCalls.length)
+      overlay.baselineCommit !== baseline.commit || baseline.commit !== adjudicationCommit ||
+      !Array.isArray(overlay.adjudications) || overlay.adjudications.length !== expectedRows.length)
     throw new Error("Invalid reference adjudication envelope");
-  const source = baseline.files.find(row => row.id === adjudicationSource.id);
-  if (!source || source.path !== adjudicationSource.path || source.objectId !== adjudicationSource.objectId ||
-      source.bytes !== adjudicationSource.bytes || source.sha256 !== adjudicationSource.sha256)
-    throw new Error("Reference adjudication source identity mismatch");
+  const selected=new Map();
+  for(const authority of adjudicationSources){
+    const source=baseline.files.find(row=>row.id===authority.id);
+    if(!source||source.path!==authority.path||source.objectId!==authority.objectId||source.bytes!==authority.bytes||source.sha256!==authority.sha256)
+      throw new Error("Reference adjudication source identity mismatch");
+    selected.set(authority.id,source);
+  }
   const rowKeys=["sourceId","referenceIndex","objectId","bytes","sha256","callLine","span","classification","disposition"];
-  const spanKeys=["startLine","endLine","sha256"];
-  const classes=new Set(["optional-discovered-input","generated-local-control","legacy-generated-state","generated-cache"]);
-  const seen=new Set();
-  for (let index=0; index<overlay.adjudications.length; index++) {
-    const row=overlay.adjudications[index], expected=adjudicationCalls[index];
-    if (!exactKeys(row,rowKeys) || !exactKeys(row.span,spanKeys)) throw new Error("Malformed reference adjudication authority fields");
-    if (!Number.isSafeInteger(row.referenceIndex) || seen.has(row.referenceIndex) || row.referenceIndex !== index)
-      throw new Error("Duplicate or out-of-order reference adjudication index");
-    seen.add(row.referenceIndex);
+  const spanKeys=["startLine","endLine","sha256"],seen=new Set();
+  for(let index=0;index<expectedRows.length;index++){
+    const row=overlay.adjudications[index],{source:authority,call}=expectedRows[index],source=selected.get(authority.id);
+    if(!exactKeys(row,rowKeys)||!exactKeys(row.span,spanKeys))throw new Error("Malformed reference adjudication authority fields");
+    const key=`${row.sourceId}:${row.referenceIndex}`;
+    if(!Number.isSafeInteger(row.referenceIndex)||seen.has(key)||row.referenceIndex!==call[0])throw new Error("Duplicate or out-of-order reference adjudication index");
+    seen.add(key);
     const reference=source.references[row.referenceIndex];
-    if (!reference || reference.kind !== "asset" || reference.target !== null || reference.status !== "unresolved" || reference.path !== null)
+    if(!reference||reference.kind!=="asset"||reference.target!==null||reference.status!=="unresolved"||reference.path!==null)
       throw new Error("Adjudicated reference is not an unresolved scanner asset");
-    if (row.sourceId !== source.id || row.objectId !== source.objectId || row.bytes !== source.bytes || row.sha256 !== source.sha256)
+    if(row.sourceId!==source.id||row.objectId!==source.objectId||row.bytes!==source.bytes||row.sha256!==source.sha256)
       throw new Error("Reference adjudication row identity mismatch");
-    if (!classes.has(row.classification) || row.classification !== expected[3] || row.disposition !== "runtime-state-not-source-edge")
+    if(row.classification!==call[4]||row.disposition!=="runtime-state-not-source-edge")
       throw new Error("Unsupported reference adjudication classification or disposition");
-    if (row.callLine !== expected[0] || row.span.startLine !== expected[1] || row.span.endLine !== expected[2] ||
-        !/^[a-f0-9]{64}$/.test(row.span.sha256)) throw new Error("Invalid reference adjudication call or span");
+    if(row.callLine!==call[1]||row.span.startLine!==call[2]||row.span.endLine!==call[3]||!/^[a-f0-9]{64}$/.test(row.span.sha256))
+      throw new Error("Invalid reference adjudication call or span");
   }
-  const bytes=readBaselineSourceBytes(repository,baseline,source.id);
-  const text=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
-  const parsed=ts.createSourceFile(source.path,text,ts.ScriptTarget.Latest,true);
-  if (parsed.parseDiagnostics.length) throw new Error("Frozen adjudication source does not parse completely");
-  const host={getSourceFile:name=>name===source.path?parsed:undefined,getDefaultLibFileName:()=>"lib.d.ts",writeFile(){},
-    getCurrentDirectory:()=>"",getDirectories:()=>[],fileExists:name=>name===source.path,readFile:name=>name===source.path?text:undefined,
-    getCanonicalFileName:name=>name,useCaseSensitiveFileNames:()=>true,getNewLine:()=>"\n"};
-  const checker=ts.createProgram([source.path],{noLib:true,noResolve:true},host).getTypeChecker();
-  let importedReadFile;
-  const calls=[];
-  const visit=node=>{
-    if (ts.isImportDeclaration(node) && node.moduleSpecifier.text === "node:fs/promises") {
-      const named=node.importClause?.namedBindings;
-      if (named && ts.isNamedImports(named)) for (const element of named.elements)
-        if ((element.propertyName?.text ?? element.name.text) === "readFile" && element.name.text === "readFile") importedReadFile=element.name;
+  for(const authority of adjudicationSources){
+    const source=selected.get(authority.id),bytes=readBaselineSourceBytes(repository,baseline,source.id);
+    const scanned=sourceReferences(source.path,bytes).map(({kind,target})=>({kind,target}));
+    const recorded=source.references.slice(0,scanned.length).map(({kind,target})=>({kind,target}));
+    if(source.references.length<scanned.length||JSON.stringify(scanned)!==JSON.stringify(recorded))
+      throw new Error("Frozen scanner/source reference mismatch");
+    const text=new TextDecoder("utf-8",{fatal:true}).decode(bytes),parsed=ts.createSourceFile(source.path,text,ts.ScriptTarget.Latest,true);
+    if(parsed.parseDiagnostics.length)throw new Error("Frozen adjudication source does not parse completely");
+    const host={getSourceFile:name=>name===source.path?parsed:undefined,getDefaultLibFileName:()=>"lib.d.ts",writeFile(){},getCurrentDirectory:()=>"",
+      getDirectories:()=>[],fileExists:name=>name===source.path,readFile:name=>name===source.path?text:undefined,getCanonicalFileName:name=>name,
+      useCaseSensitiveFileNames:()=>true,getNewLine:()=>"\n"};
+    const checker=ts.createProgram([source.path],{noLib:true,noResolve:true},host).getTypeChecker(),imported=new Map(),candidateCalls=[];
+    const visit=node=>{
+      if(ts.isImportDeclaration(node)){
+        const required=authority.imports.filter(([module])=>module===node.moduleSpecifier.text),named=node.importClause?.namedBindings;
+        if(required.length&&named&&ts.isNamedImports(named))for(const element of named.elements)for(const [,name]of required)
+          if((element.propertyName?.text??element.name.text)===name&&element.name.text===name)imported.set(name,element.name);
+      }
+      if(ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&authority.imports.some(([,name])=>name===node.expression.text))candidateCalls.push(node);
+      ts.forEachChild(node,visit);
+    };
+    visit(parsed);
+    if(authority.imports.some(([,name])=>!imported.has(name)))throw new Error("Frozen filesystem import binding mismatch");
+    const symbols=new Set([...imported.values()].map(node=>checker.getSymbolAtLocation(node))),boundCalls=candidateCalls.filter(call=>symbols.has(checker.getSymbolAtLocation(call.expression)));
+    const rawAssets=source.references.filter(reference=>reference.kind==="asset"&&reference.target===null&&reference.status==="unresolved"&&reference.path===null);
+    if(boundCalls.length!==rawAssets.length)throw new Error("Unexpected frozen filesystem call binding");
+    const lines=text.split(/(?<=\n)/);
+    for(const row of overlay.adjudications.filter(row=>row.sourceId===source.id)){
+      const call=boundCalls[row.referenceIndex],callLine=parsed.getLineAndCharacterOfPosition(call.getStart(parsed)).line+1;
+      const span=lines.slice(row.span.startLine-1,row.span.endLine).join("");
+      if(callLine!==row.callLine||row.callLine<row.span.startLine||row.callLine>row.span.endLine||digest(span)!==row.span.sha256)
+        throw new Error("Frozen readFile call/span binding mismatch");
     }
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "readFile") calls.push(node);
-    ts.forEachChild(node,visit);
-  };
-  visit(parsed);
-  if (!importedReadFile) throw new Error("readFile must be a named node:fs/promises import");
-  const symbol=checker.getSymbolAtLocation(importedReadFile);
-  const boundCalls=calls.filter(call=>checker.getSymbolAtLocation(call.expression)===symbol);
-  if (boundCalls.length !== overlay.adjudications.length) throw new Error("Unexpected frozen readFile call binding");
-  const lines=text.split(/(?<=\n)/);
-  for (let index=0; index<overlay.adjudications.length; index++) {
-    const row=overlay.adjudications[index], call=boundCalls[index];
-    const callLine=parsed.getLineAndCharacterOfPosition(call.getStart(parsed)).line+1;
-    const span=lines.slice(row.span.startLine-1,row.span.endLine).join("");
-    if (callLine !== row.callLine || row.callLine < row.span.startLine || row.callLine > row.span.endLine || digest(span) !== row.span.sha256)
-      throw new Error("Frozen readFile call/span binding mismatch");
   }
-  const scannerUnresolved=baseline.files.flatMap(row=>row.references).filter(reference=>
-    ["unresolved","absent","outside-root"].includes(reference.status)).length;
+  const scannerUnresolved=baseline.files.flatMap(row=>row.references).filter(reference=>["unresolved","absent","outside-root"].includes(reference.status)).length;
   return {scannerUnresolved,adjudicated:overlay.adjudications.length,remaining:scannerUnresolved-overlay.adjudications.length};
 }
 
