@@ -6,7 +6,7 @@ import {fileURLToPath} from "node:url";
 import ts from "typescript";
 import {validateMediaManifest,verifyMediaBytes} from "./ecosystem-media.mjs";
 
-const digest = value => createHash("sha256").update(value).digest("hex");
+export const digest = value => createHash("sha256").update(value).digest("hex");
 const objectId = value => typeof value === "string" && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value);
 const safePath = value => typeof value === "string" && value.length > 0 && value.length < 1024 &&
   !/[\\\u0000-\u001f\u007f]/.test(value) && !path.posix.isAbsolute(value) &&
@@ -211,6 +211,17 @@ export function validateBaseline(value) {
   }
   if ([...files.keys()].some(filename => !reachable.has(filename))) issues.push("Unreachable source in closure");
   return issues;
+}
+
+/** Reads one manifest-selected immutable blob; use verifyBaselineObjects for whole-baseline commit/tree provenance. */
+export function readBaselineSourceBytes(repository, baseline, sourceId) {
+  if (validateBaseline(baseline).length) throw new Error("Malformed ecosystem baseline");
+  const row = baseline.files.find(candidate => candidate.id === sourceId);
+  if (!row) throw new Error(`Unknown baseline source ID: ${sourceId}`);
+  const bytes = git(repository, ["cat-file", "blob", row.objectId]);
+  if (bytes.length !== row.bytes || digest(bytes) !== row.sha256)
+    throw new Error(`Baseline source byte identity mismatch: ${sourceId}`);
+  return bytes;
 }
 
 /** Rename is reported only for an unambiguous one-to-one exact-content match. Never mutates or adopts a source. */

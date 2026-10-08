@@ -6,7 +6,8 @@ import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 // @ts-expect-error Research-only JavaScript baseline collector, outside the runtime package.
-import {collectBaseline,validateBaseline,verifyBaselineObjects,detectBaselineDrift,sourceReferences} from "../scripts/ecosystem-baseline.mjs";
+import * as baselineModule from "../scripts/ecosystem-baseline.mjs";
+const {collectBaseline,validateBaseline,verifyBaselineObjects,detectBaselineDrift,sourceReferences}=baselineModule;
 
 function fixture(t:test.TestContext) {
   const root=mkdtempSync(join(tmpdir(),"asen-ecosystem-"));
@@ -184,4 +185,42 @@ test("Git normalization is recorded as committed bytes instead of worktree bytes
  const source='import "../extensions/entry.js";\nexport const x="á😀";\r\n';writeFileSync(join(f.root,"lib","core.ts"),source);
  f.git("add","--renormalize","lib/core.ts");f.git("commit","-qm","normalize");const commit=f.git("rev-parse","HEAD"),baseline=collectBaseline(f.root,commit),core=baseline.files.find((row:any)=>row.path==="lib/core.ts");
  assert.equal(core.bytes,Buffer.byteLength(source.replaceAll("\r\n","\n")));assert.notEqual(core.bytes,Buffer.byteLength(readFileSync(join(f.root,"lib","core.ts"))));assert.equal(verifyBaselineObjects(f.root,baseline),true);
+});
+
+test("immutable source reader returns the manifest-selected committed bytes",(t:test.TestContext)=>{
+  assert.equal(typeof baselineModule.readBaselineSourceBytes,"function");
+  const f=fixture(t),baseline=collectBaseline(f.root,f.commit);
+  const readBaselineSourceBytes=(baselineModule as any).readBaselineSourceBytes;
+  const row=baseline.files.find((candidate:any)=>candidate.path==="README.md");
+  writeFileSync(join(f.root,"README.md"),"# Dirty\r\n");
+  writeFileSync(join(f.root,"extensions","untracked.ts"),"untracked\r\n");
+  const bytes=readBaselineSourceBytes(f.root,baseline,row.id);
+  assert.ok(Buffer.isBuffer(bytes));
+  assert.deepEqual(bytes,Buffer.from("# Start\n"));
+  assert.equal((baselineModule as any).digest(bytes),row.sha256);
+});
+
+test("immutable source reader rejects malformed baselines and unknown source IDs",(t:test.TestContext)=>{
+  assert.equal(typeof baselineModule.readBaselineSourceBytes,"function");
+  const readBaselineSourceBytes=(baselineModule as any).readBaselineSourceBytes;
+  assert.throws(()=>readBaselineSourceBytes(join(tmpdir(),"repository-must-not-be-read"),{},"ECO-SRC-missing"),/Malformed ecosystem baseline/);
+  const f=fixture(t),baseline=collectBaseline(f.root,f.commit);
+  assert.throws(()=>readBaselineSourceBytes(f.root,baseline,"ECO-SRC-0000000000000000"),/Unknown baseline source ID/);
+});
+
+test("immutable source reader verifies the selected blob byte identity",(t:test.TestContext)=>{
+  assert.equal(typeof baselineModule.readBaselineSourceBytes,"function");
+  assert.equal(typeof baselineModule.digest,"function");
+  assert.equal((baselineModule as any).digest("abc"),"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+  const readBaselineSourceBytes=(baselineModule as any).readBaselineSourceBytes;
+  const f=fixture(t),baseline=collectBaseline(f.root,f.commit),row=baseline.files.find((candidate:any)=>candidate.path==="README.md");
+  const other=baseline.files.find((candidate:any)=>candidate.path==="package.json");
+  for(const mutate of [
+    (changed:any)=>{changed.files.find((candidate:any)=>candidate.id===row.id).objectId=other.objectId;},
+    (changed:any)=>{changed.files.find((candidate:any)=>candidate.id===row.id).bytes++;},
+    (changed:any)=>{changed.files.find((candidate:any)=>candidate.id===row.id).sha256="a".repeat(64);},
+  ]){
+    const changed=structuredClone(baseline);mutate(changed);
+    assert.throws(()=>readBaselineSourceBytes(f.root,changed,row.id),/baseline source byte identity/i);
+  }
 });
