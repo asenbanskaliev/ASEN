@@ -10,7 +10,7 @@ Deliver evidence-backed parity with Reference A for every non-branding observabl
 
 ### ECO-01C-2 source-adjudication slice — delivery validated at exact SHA
 
-- Current branch and PR #32 HEAD: `47e9d0fcb6dca57215f1e024b4a1bd7417b5c3f8`; parent baseline: `8d6a8b51a687b6df8fe73d3b85cb6beba9eb5fd8`. Main remains `49129b616c5349fbf323b74860136fc1593f9b2a`. PR #32 remains open/draft; no merge or release.
+- Source-adjudication candidate validated: `47e9d0fcb6dca57215f1e024b4a1bd7417b5c3f8` (parent `8d6a8b51a687b6df8fe73d3b85cb6beba9eb5fd8`). Its exact-SHA workflow evidence is recorded below and in `docs/audit/ecosystem-source-adjudication.md`. Documentation commit `27119ced471ad2abfcd0b08542423fcdbf8386b7` records that result. Current validated code candidate: `863c2d903b978c44938969d0be33fed5828118d1`; main remains `49129b616c5349fbf323b74860136fc1593f9b2a`; PR #32 is open/draft.
 - The unchanged frozen manifest pins source commit `08de420ca29be16b6f6bee725a30b599b061df16`, tree `9af648106ed75fa270476e9d474bad93aa38af6b`, 167 tracked objects and 988 scanner references. It still contains 164 unresolved/absent/outside-root raw references. The 34 exact identity-bound overlay rows leave 130 semantic adjudications outstanding. The raw manifest and raw reference objects remain unchanged.
 - The current 14-row slice covers unresolved filesystem `asset` reads in `lib/review-candidate-view-owner.ts` and `lib/review-object-store.ts`; the closed classification is `runtime-state-read`, disposition `runtime-state-not-source-edge`. Source objects were obtained in CI's temporary bare repository, checked against frozen identities and not executed.
 - Exact-SHA CI push run `37812221460` and PR run `37812227887` succeeded. Ubuntu and macOS each report 1,006 passed, 0 failed, 0 skipped. Windows reports 1,004 passed, 0 failed, 2 skipped: POSIX private-mode/symlink behavior and recursive `fs.watch` delivery are intentionally nonportable there. Tests 138 and 139, the retained-source adjudication and adversarial mutation tests, passed on all three operating systems. The baseline guard reports 167 objects; claims validation remains 16 PARTIAL.
@@ -20,6 +20,17 @@ Deliver evidence-backed parity with Reference A for every non-branding observabl
 - No local project tests ran and no external model/provider was called. No claim or route is promoted: 16 claims remain PARTIAL, 0 FULL; R01–R20 remain PARTIAL. ECO-01C-2 remains the current workstream; do not start ECO-01E or runtime work before the next bounded semantic-adjudication unit is closed.
 
 This checkpoint supersedes older “current delivery” and pending-CI statements below; those entries remain historical evidence. No implementation, source inventory, authority, or route status changes are implied.
+
+
+### Windows SQLite startup-lock correction — exact candidate `863c2d9`
+
+- Exact candidate commit: `863c2d903b978c44938969d0be33fed5828118d1`, parent `27119ced471ad2abfcd0b08542423fcdbf8386b7`.
+- Evidence RED: push CI run `37814092433`, attempt 1, Windows test 356 (`serializes simultaneous opens and commits one migration before either store writes`) failed because one constructor timed out waiting for the private store lock at `src/io/exclusive-file-lock.ts:97`; the other opener succeeded. On the same SHA, PR CI Windows passed this test, confirming intermittent behavior; push CI attempt 2 also passed. Both original fail and retry are retained.
+- Cause: SQLite constructor held the startup lock across full schema migration, but called `withExclusiveFileLockSync` with its 5-second default. The lock validator already permits up to 30 seconds, and the asynchronous default is 30 seconds. The Windows failure showed that this startup transition can exceed five seconds.
+- Minimal correction: `src/memory/sqlite-store.ts` now passes a SQLite-specific 30-second timeout. `tests/memory-migrations.test.ts` extends the existing valid-owner test to hold the lock beyond five seconds and asserts the opener remains blocked until release. Ownership, token, stale-lock, permission and atomic-claim behavior are unchanged.
+- Exact-SHA GREEN for `863c2d9`: push CI `37817879842` and PR CI `37817887694` succeeded. Ubuntu/macOS each ran 1,006 tests: 1,006 passed, 0 failed, 0 skipped. Windows ran 1,006: 1,004 passed, 0 failed, 2 platform-specific skips; test 356 passed. Phase 0 `37817887689`, Pi runtime `37817887809`, and Release Gate `37817887842` succeeded; Release Gate passed Ubuntu, macOS and Windows. Pi Free `37817887821` was SKIPPED, not PASS.
+- No claim or route status changed. This bounded reliability fix does not close any R01–R20 route or change the remaining 130 ecosystem semantic adjudications.
+
 
 ### Canonical ECO-01C-2 continuation checkpoint
 
