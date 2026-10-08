@@ -253,6 +253,21 @@ const adjudicationSources=Object.freeze([
       [3,335,312,365,"runtime-state-read"],[4,387,376,393,"generated-cache"],[5,431,396,483,"optional-discovered-input"],
       [6,441,396,483,"runtime-state-read"],[7,525,510,546,"runtime-state-read"],
     ]},
+  {id:"ECO-SRC-6a14fc0f30199f89",path:["bin/","gen","tle-shell.mjs"].join(""),objectId:"e3d53d844ad0349d180bd950ff5338882c82803f",bytes:61683,
+    sha256:"a29669355e55c663c06ae91a0f026e1a5a5f7465ce7438b74a70f4024b25fd84",imports:[["node:fs","readFileSync"]],calls:[
+      [0,76,74,81,"runtime-state-read"],[1,119,118,122,"runtime-state-read"],[2,144,139,149,"optional-discovered-input"],
+      [3,216,205,221,"optional-discovered-input"],[4,492,484,499,"runtime-state-read"],[5,517,501,527,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-6c28d7b99a511610",path:"extensions/startup-banner.ts",objectId:"44de38b41e2199f31cffbe60887456ab9324d185",bytes:42261,
+    sha256:"209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",imports:[["node:fs/promises","readFile"]],calls:[
+      [0,95,91,107,"generated-local-control"],[1,112,110,116,"legacy-generated-state"],[2,541,535,549,"optional-discovered-input"],
+      [3,687,684,698,"optional-discovered-input"],[4,704,700,718,"runtime-state-read"],
+    ]},
+  {id:"ECO-SRC-1d4036c43d653569",path:"extensions/history/store.ts",objectId:"aaba0a693488b808f716224c43d1ddbbddf24ebc",bytes:38071,
+    sha256:"42d9cd663a79b0cd7bc39aa01b92cb76dbadc2a5310102a0ec2cd9d9359a2f0c",imports:[],namespaceMembers:[["node:fs","fs","readFileSync"]],calls:[
+      [0,90,88,104,"generated-local-control"],[1,291,287,301,"runtime-state-read"],[2,666,663,672,"runtime-state-read"],
+      [3,725,720,734,"legacy-generated-state"],[4,795,789,807,"runtime-state-read"],
+    ]},
 ]);
 const exactKeys = (value, keys) => value && typeof value === "object" && !Array.isArray(value) &&
   JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
@@ -296,26 +311,43 @@ export function verifyReferenceAdjudications(repository, baseline, overlay) {
     const recorded=source.references.slice(0,scanned.length).map(({kind,target})=>({kind,target}));
     if(source.references.length<scanned.length||JSON.stringify(scanned)!==JSON.stringify(recorded))
       throw new Error("Frozen scanner/source reference mismatch");
-    const text=new TextDecoder("utf-8",{fatal:true}).decode(bytes),parsed=ts.createSourceFile(source.path,text,ts.ScriptTarget.Latest,true);
+    const text=new TextDecoder("utf-8",{fatal:true}).decode(bytes),isJavaScript=/\.[cm]?js$/.test(source.path),
+      parsed=ts.createSourceFile(source.path,text,ts.ScriptTarget.Latest,true,isJavaScript?ts.ScriptKind.JS:ts.ScriptKind.TS);
     if(parsed.parseDiagnostics.length)throw new Error("Frozen adjudication source does not parse completely");
     const host={getSourceFile:name=>name===source.path?parsed:undefined,getDefaultLibFileName:()=>"lib.d.ts",writeFile(){},getCurrentDirectory:()=>"",
       getDirectories:()=>[],fileExists:name=>name===source.path,readFile:name=>name===source.path?text:undefined,getCanonicalFileName:name=>name,
       useCaseSensitiveFileNames:()=>true,getNewLine:()=>"\n"};
-    const checker=ts.createProgram([source.path],{noLib:true,noResolve:true},host).getTypeChecker(),imported=new Map(),candidateCalls=[];
+    const checker=ts.createProgram([source.path],{noLib:true,noResolve:true,...(isJavaScript?{allowJs:true}:{})},host).getTypeChecker(),imported=new Map(),namespaceBindings=[];
+    for(const node of parsed.statements){
+      if(!ts.isImportDeclaration(node)||!ts.isStringLiteralLike(node.moduleSpecifier))continue;
+      const required=authority.imports.filter(([module])=>module===node.moduleSpecifier.text),named=node.importClause?.namedBindings;
+      if(required.length&&named&&ts.isNamedImports(named))for(const element of named.elements)for(const [,name]of required)
+        if((element.propertyName?.text??element.name.text)===name&&element.name.text===name)imported.set(name,element.name);
+      for(const [module,local,member]of authority.namespaceMembers??[])
+        if(module===node.moduleSpecifier.text&&node.importClause?.name?.text===local)
+          namespaceBindings.push({member,node:node.importClause.name});
+    }
+    if(authority.imports.some(([,name])=>!imported.has(name))||
+      (authority.namespaceMembers??[]).some(([,local,member])=>!namespaceBindings.some(binding=>binding.node.text===local&&binding.member===member)))
+      throw new Error("Frozen filesystem import binding mismatch");
+    const symbols=new Set([...imported.values()].map(node=>checker.getSymbolAtLocation(node)));
+    const namespaceSymbols=namespaceBindings.map(binding=>({member:binding.member,symbol:checker.getSymbolAtLocation(binding.node)}));
+    if(symbols.has(undefined)||namespaceSymbols.some(binding=>!binding.symbol))
+      throw new Error("Frozen filesystem import symbol could not be resolved");
+    const candidateCalls=[];
     const visit=node=>{
-      if(ts.isImportDeclaration(node)){
-        const required=authority.imports.filter(([module])=>module===node.moduleSpecifier.text),named=node.importClause?.namedBindings;
-        if(required.length&&named&&ts.isNamedImports(named))for(const element of named.elements)for(const [,name]of required)
-          if((element.propertyName?.text??element.name.text)===name&&element.name.text===name)imported.set(name,element.name);
+      if(ts.isCallExpression(node)){
+        if(ts.isIdentifier(node.expression)&&symbols.has(checker.getSymbolAtLocation(node.expression)))candidateCalls.push(node);
+        else if(ts.isPropertyAccessExpression(node.expression)&&ts.isIdentifier(node.expression.expression)&&
+          namespaceSymbols.some(binding=>binding.member===node.expression.name.text&&
+            binding.symbol===checker.getSymbolAtLocation(node.expression.expression)))candidateCalls.push(node);
       }
-      if(ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&authority.imports.some(([,name])=>name===node.expression.text))candidateCalls.push(node);
       ts.forEachChild(node,visit);
     };
     visit(parsed);
-    if(authority.imports.some(([,name])=>!imported.has(name)))throw new Error("Frozen filesystem import binding mismatch");
-    const symbols=new Set([...imported.values()].map(node=>checker.getSymbolAtLocation(node))),boundCalls=candidateCalls.filter(call=>symbols.has(checker.getSymbolAtLocation(call.expression)));
+    const boundCalls=candidateCalls;
     const rawAssets=source.references.filter(reference=>reference.kind==="asset"&&reference.target===null&&reference.status==="unresolved"&&reference.path===null);
-    if(boundCalls.length!==rawAssets.length)throw new Error("Unexpected frozen filesystem call binding");
+    if(boundCalls.length!==rawAssets.length)throw new Error(`Unexpected frozen filesystem call binding: ${source.id} ${boundCalls.length}/${rawAssets.length}`);
     const lines=text.split(/(?<=\n)/);
     for(const row of overlay.adjudications.filter(row=>row.sourceId===source.id)){
       const call=boundCalls[row.referenceIndex],callLine=parsed.getLineAndCharacterOfPosition(call.getStart(parsed)).line+1;
