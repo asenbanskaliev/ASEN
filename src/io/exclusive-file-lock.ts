@@ -1,5 +1,5 @@
 import {randomUUID} from "node:crypto";
-import {lstat,open,readFile,rm,stat} from "node:fs/promises";
+import {lstat,open,readFile,rename,rm,stat} from "node:fs/promises";
 
 const delay=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 function alive(pid:number):boolean{try{process.kill(pid,0);return true;}catch(error){return (error as NodeJS.ErrnoException).code==="EPERM";}}
@@ -39,5 +39,5 @@ export async function withExclusiveFileLock<T>(target:string,operation:()=>Promi
   }
  }
  try{return await operation();}
- finally{try{const owner=JSON.parse(await readFile(lock,"utf8")) as {token?:unknown};if(owner.token===token)await rm(lock,{force:true});}catch{}}
+ finally{try{const owner=JSON.parse(await readFile(lock,"utf8")) as {token?:unknown};if(owner.token===token){const released=`${lock}.release-${token}`;await rename(lock,released);await rm(released,{force:true});}}catch(error){void error;}}
 }

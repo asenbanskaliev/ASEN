@@ -81,6 +81,33 @@ test("wx permission after contention still fails closed while the lock remains",
  }finally{t.mock.restoreAll();syncBuiltinESMExports();}
 });
 
+test("a waiting invocation starts after its predecessor exits even while predecessor cleanup is pending",{concurrency:false,timeout:5000},async t=>{
+ const directory=await mkdtemp(path.join(tmpdir(),"asen-lock-release-")),target=path.join(directory,"data.json"),lock=`${target}.lock`;
+ const originalOpen=fsPromises.open.bind(fsPromises),originalRm=fsPromises.rm.bind(fsPromises);
+ let allowFirstExit!:()=>void,firstStarted!:()=>void,contenderObserved!:()=>void,cleanupStarted!:()=>void,allowCleanup!:()=>void;
+ const firstExit=new Promise<void>(resolve=>{allowFirstExit=resolve;}),started=new Promise<void>(resolve=>{firstStarted=resolve;}),contended=new Promise<void>(resolve=>{contenderObserved=resolve;}),cleanupPending=new Promise<void>(resolve=>{cleanupStarted=resolve;}),finishCleanup=new Promise<void>(resolve=>{allowCleanup=resolve;});
+ let firstRemoval=true,active=0,maxActive=0,firstSettled=false;const events:string[]=[];
+ t.mock.method(fsPromises,"open",async(...args:Parameters<typeof fsPromises.open>)=>{
+  try{return await originalOpen(...args);}catch(error){if(args[0].toString()===lock&&args[1]==="wx"&&(error as NodeJS.ErrnoException).code==="EEXIST")contenderObserved();throw error;}
+ });
+ t.mock.method(fsPromises,"rm",async(...args:Parameters<typeof fsPromises.rm>)=>{
+  if(firstRemoval){firstRemoval=false;cleanupStarted();await finishCleanup;}
+  return originalRm(...args);
+ });
+ syncBuiltinESMExports();
+ const first=withExclusiveFileLock(target,async()=>{events.push("first:start");active++;maxActive=Math.max(maxActive,active);firstStarted();await firstExit;active--;events.push("first:end");return "first";});
+ void first.then(()=>{firstSettled=true;},()=>{firstSettled=true;});
+ let second:Promise<string>|undefined;
+ try{
+  await started;
+  second=withExclusiveFileLock(target,async()=>{events.push("second:start");active++;maxActive=Math.max(maxActive,active);active--;events.push("second:end");return "second";},500);
+  await contended;allowFirstExit();await cleanupPending;
+  assert.equal(await second,"second");
+  assert.equal(firstSettled,false,"the predecessor is still waiting for cleanup");
+  assert.equal(maxActive,1);assert.deepEqual(events,["first:start","first:end","second:start","second:end"]);
+ }finally{allowFirstExit();allowCleanup();await Promise.allSettled([first,...second?[second]:[]]);t.mock.restoreAll();syncBuiltinESMExports();}
+});
+
 test("initial lock-create permission errors propagate without inspection",{concurrency:false},async t=>{
  const directory=await mkdtemp(path.join(tmpdir(),"asen-lock-create-denied-")),target=path.join(directory,"data.json"),original=permissionError("EPERM");
  let inspections=0,operations=0;
