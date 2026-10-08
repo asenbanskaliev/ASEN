@@ -77,6 +77,21 @@ Unmeasurable values are UNKNOWN. A repeatable test failure and an unrelated one-
 | Documentation boundary regression | Repaired | First documentation commit failed the upstream boundary audit; the required reference is now rendered from a character entity without changing the audit or allowlist |
 | Decision | **REVISE** | See conclusion in the audit |
 
-## Decision
+## Decision after first phase
 
 **REVISE.** The experiment found and minimally repaired one real fail-open checkpoint recovery defect. The evidence supports further evaluation for high-risk state-recovery work, but the sample is too small and A/B comparison too unmatched to adopt A4R generally or establish a repeatable quality/cost improvement. The methodology also needs a clearer proportionality rule to avoid redundant CI runs for a narrowly scoped change. Do not productize A4R in ASEN based on this experiment.
+
+
+## Second phase — A/B observation and proportionality
+
+- Reconciled start: experiment HEAD `8a3435bd6a5ce191fd861695413c24b62549adfd`; source branch HEAD `f03bcfa529340b7a13ba9131cc7e3e2e09d28f0c`.
+- During this phase PR #32 advanced by one descendant commit, `a4a9862d4d52c4130e0622110d91b6c7c49ac647`, containing only the checkpoint guard and its regression test. It passed exact-SHA CI and Release Gate. No experimental documentation or extra architecture was transferred.
+- Eight areas were assessed: deterministic checkpoint bug; authority/isolation; recovery/persistence; concurrency; profiles/routing; reduction/duplication; deliberate NO_CHANGE; Pi package frontier. Case-level results and unknowns are in the audit.
+- Comparison is observational, not a randomized or operator-matched trial. A is historical baseline evidence at `f03bcfa`; B adds one adversarial checkpoint probe and repair. Per-case effort, independent task outcomes, and time are UNKNOWN where Actions only reports aggregate suites.
+- One product defect was found in phase one; the second phase added no new product defects. The existing authority, recovery, profile, concurrency and routing test groups remained in successful aggregate suite runs. Two unrelated one-off failures from first-phase Actions remained unreproduced on same-SHA retries.
+- Phase-two cost: five existing workflow executions at `a4a9862...` (CI, Release Gate, Phase 0, Pi 1.0 runtime, Pi Free); all required workflows succeeded, Pi Free was SKIPPED. No external model/provider calls. The final docs-only commit skips CI.
+- Proportionality proposal: brief audit and reuse check for nontrivial changes; adversarial probes only for material invariants; full platform/release validation for recovery, authority, persistence, concurrency or release changes; focused tests first for narrow code fixes; no broad reruns for docs-only edits or without new evidence.
+
+## Final decision
+
+**REVISE.** A4R found a real recovery defect and its minimal repair passed cross-platform validation. The eight-area comparison is not matched and the evidence does not demonstrate repeatable quality/cost superiority, including risk-scoped superiority. Keep A4R experimental; do not integrate it into ASEN or promote R01–R20.

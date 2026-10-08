@@ -10,7 +10,7 @@ This experiment evaluates A4R as an engineering method. It does not add A4R runt
 - GitHub compare confirmed source branch identical to that SHA immediately before documentation work (ahead 0, behind 0).
 - Experimental branch: `experiment/a4r-validation`
 - Draft PR: [#35](https://github.com/asenbanskaliev/ASEN/pull/35), base is `feat/strict-parity-prerequisites`, not to be merged as part of this experiment.
-- `main`, the source branch, and PR #32 were not modified.
+- At first-phase close, `main`, the source branch, and PR #32 were unchanged. In phase two, the minimal checkpoint patch was separately committed to PR #32's branch at `a4a9862d4d52c4130e0622110d91b6c7c49ac647`; no experimental documentation was transferred. `main` remains untouched.
 - Clean execution was performed only by GitHub Actions checkouts. No local test result is claimed.
 - Existing workflows were reused; no A4R workflow was added.
 - External model/provider calls: **0**. No provider-specific/model-dependent property was needed to reproduce or verify the checkpoint defect. GitHub and GitHub Actions were used as the requested execution and repository service.
@@ -201,3 +201,83 @@ A4R found one defect missed by baseline tests. The new test is directly useful. 
 Evidence demonstrates that the audit + adversarial probe found one real checkpoint recovery defect and that a minimal fail-closed correction passed the targeted test and the Ubuntu Release Gate. The experiment also found and repaired one documentation artifact that failed the repository’s upstream boundary audit. Evidence does not yet demonstrate consistent benefit over the baseline process: one product defect is a small sample, the A/B comparison is historical and unmatched, and two unrelated CI tests failed once each before passing same-SHA retries. The methodology also incurred redundant same-SHA workflow executions.
 
 A follow-up should compare matched, independently reviewed tasks across risk categories, measure total engineer/CI cost, and define a proportional validation gate before considering broader adoption. Do not implement A4R in ASEN. Adoption as an ASEN user-facing capability is a separate decision and was not tested.
+
+
+## Second phase: reconciliation and safe patch transfer
+
+At the second-phase start, GitHub reported:
+
+| Ref | Exact SHA | Relationship |
+|---|---|---|
+| Experiment branch / PR #35 | `8a3435bd6a5ce191fd861695413c24b62549adfd` | Five commits ahead of baseline, zero behind |
+| Source branch / PR #32 | `f03bcfa529340b7a13ba9131cc7e3e2e09d28f0c` | Historical baseline |
+| `main` | `49129b616c5349fbf323b74860136fc1593f9b2a` | Unchanged |
+
+The source branch then advanced by one commit to `a4a9862d4d52c4130e0622110d91b6c7c49ac647`; compare confirmed it is a direct descendant of the baseline. Its complete diff is two files: four production lines in `src/session/checkpoint.ts` and the same 12-line regression test. The runtime allowlist matches the closed `TaskState.phase` union and is checked at create and restore. Valid checkpoint/restart tests remain in the suite. No authority path, persistence format, or recovery ownership changed. The patch was transferred using an expected-head update without force. PR #32 remains open/draft; no merge occurred. The experimental branch was not rebased or overwritten and remains isolated.
+
+The test rejects an invalid phase after JSON roundtrip at the restore boundary. It does not simulate a process restart from a physically corrupted checkpoint file; this remains a specific coverage limit.
+
+## Second-phase A/B case matrix
+
+A uses historical baseline suite/workflow evidence on `f03bcfa529340b7a13ba9131cc7e3e2e09d28f0c`. B uses the A4R experiment from that same source SHA, including exact-SHA checks on `8a3435bd6a5ce191fd861695413c24b62549adfd`. The source-branch validation at `a4a9862...` additionally checks the minimal transferred repair. Tasks were not assigned blindly to independent operators; therefore this is structured observation, not causal proof.
+
+| Case | A: baseline evidence | B: A4R evidence | Findings / decision |
+|---|---|---|---|
+| 1. Deterministic bug: invalid checkpoint phase | Historical CI passed 984/984; no test for an invalid deserialized phase | Probe failed on test-only SHA `9631444...`; repair; full suite on `8a3435b` passed 985 Linux/macOS; Windows 983 passed, 2 skipped | 1 real BUG reproduced and repaired; no false positive established |
+| 2. Authority and isolation | Existing writer-admission/dispatcher cases in the baseline suite | Same existing contracts included in passing full suite; no authority mutation in A4R | No new defect or change; per-case counts UNKNOWN |
+| 3. Recovery and persistence | Valid restore/restart passed; malformed phase absent | Invalid phase rejected after repair; valid restore/restart remained green in aggregate suite | 1 recovery defect; minimal existing-boundary guard; corrupted-on-disk restart not independently exercised |
+| 4. Concurrency | Existing lock and simultaneous-migration coverage | Full suite plus one SQLite simultaneous-open failure on `764c0f6...`; same-SHA retry passed 985/985. Separate macOS watcher failure also passed its same-SHA retry | 2 non-reproduced CI-only failures; no confirmed regression or repair |
+| 5. Profiles/routing | Existing profile/store/routing cases in 984-test baseline suite | Included in successful aggregate runs on `8a3435b` | No new defect or change; individual counts UNKNOWN |
+| 6. Reduction/duplication | Existing checkpoint, dispatcher, session, lifecycle and Memory ownership | Composed existing restore/recovery mechanisms; no parallel store, coordinator, orchestrator, memory or authority system | One parallel-recovery direction explicitly rejected; 0 production lines deleted, no duplicate created |
+| 7. Deliberate NO_CHANGE | Existing Memory, authority, lifecycle and profile ownership | Left Memory core, authority architecture and profile routing unchanged | NO_CHANGE justified; no evidence required edits |
+| 8. Pi frontier | Baseline Pi runtime and Release Gate succeeded; Pi Free skipped | Existing package/packed-install smoke succeeded on the experiment; Pi 1.0 runtime workflow succeeded at source-fix SHA; Pi Free skipped | No model-dependent property required and no model call made; SKIPPED is not PASS |
+
+### Metrics and unknowns
+
+| Metric | A: baseline | B: A4R | Evidence limits |
+|---|---:|---:|---|
+| Product defects found / reproduced | 0 / 0 in recorded baseline checks | 1 / 1 | Does not prove ordinary development could never find it |
+| Confirmed false positives | UNKNOWN | 0 | Two transient test failures passed same-SHA retries; not silently discarded |
+| Confirmed regressions | 0 reported | 0 reproduced | Two intermittent CI observations remain recorded |
+| Unnecessary production changes | 0 | 0 demonstrated | Four-line guard had a reproduced cause |
+| Runtime lines added / deleted | 0 / 0 | +4 / 0 | Same minimal repair transferred to PR #32 |
+| Test lines added / deleted | 0 / 0 | +12 / 0 | One deterministic test failed before the guard and passed after |
+| Fix files changed | 0 | 2 | Source plus regression test; docs are separately counted |
+| Duplications avoided | UNKNOWN | 1 proposed parallel recovery direction rejected | No duplicate mechanism in final code |
+| Iterations to targeted PASS | UNKNOWN | UNKNOWN | Sequence: failing probe, minimal repair, later exhaustive typing refinement; no consistent iteration unit was defined |
+| Per-case useful test counts / CI runs | UNKNOWN | UNKNOWN | Workflows report aggregate suites, not test-to-case attribution |
+| Phase-two workflow executions | Historical evidence, not experiment cost | 5 at `a4a9862...` | CI, Release Gate, Phase 0, Pi 1.0 runtime and Pi Free |
+| Engineer time / CI minutes | UNKNOWN | UNKNOWN | No reliable comparable timing measure |
+| External model/provider calls | UNKNOWN historically | 0 | No external model was used |
+| Pi Free | SKIPPED historically | SKIPPED | Never counted as pass |
+
+## Phase-two exact-SHA workflow results
+
+Source-fix SHA `a4a9862d4d52c4130e0622110d91b6c7c49ac647`:
+
+- CI run `37729892795`: success. Ubuntu job `113156392403`, macOS `113156392581`, Windows `113156392614`, architecture `113156392622`: all success.
+- Release Gate run `37729892739`: success. Ubuntu `113156392563`, macOS `113156392539`, Windows `113156392354`: all success, including pack verification and Pi package smoke where applicable.
+- Phase 0 Architecture `37729892685`: success.
+- Pi 1.0 runtime evidence `37729892673`: success.
+- Pi Free Smoke `37729892697`: SKIPPED.
+- No retries were needed in phase two. Prior same-SHA duplicate runs and first-phase transient failures remain recorded above.
+
+Experiment SHA `8a3435bd6a5ce191fd861695413c24b62549adfd`: CI `37696303690`, Release Gate `37696303540` and Phase 0 `37696303534` succeeded; Pi Free `37696303569` was SKIPPED. CI reported Linux 985/985, macOS 985/985, Windows 983 passed / 2 skipped / 0 failed. Release Gate succeeded on all three OS jobs; inapplicable OS-specific steps were skipped.
+
+The final commit changes only these two documents and uses the CI skip marker. No workflow result is attributed to that docs-only SHA.
+
+## A4R self-audit and proportionality
+
+The evidence supports conditional intensity, not five heavyweight mandatory phases for every task:
+
+- **Audit:** retain a short contract, ownership and source-of-truth check for nontrivial work; go deeper for authority, recovery and durable state.
+- **Reduce:** make an explicit reuse/composition decision; do not require code deletion or an optimization.
+- **Break:** probe only material invariants. The checkpoint probe was valuable because persisted JSON crossed a typed boundary.
+- **Repair:** keep the reproduced-defect gate and minimum-fix rule.
+- **Revalidate:** focused tests first; existing platform/release matrix when code touches recovery, authority, persistence, concurrency or release behavior. Avoid broad reruns for documentation-only edits or without new evidence.
+
+This is a proposal for another evaluation, not a new product mode. The sample does not demonstrate that risk-scoped A4R outperforms ordinary careful development.
+
+## Final decision after phase two
+
+**REVISE.** A4R demonstrated one useful recovery defect discovery and a minimum fix validated cross-platform. It did not produce an independent matched eight-case trial, per-case cost data, or a second product defect to establish consistency. Risk-scoped benefit remains plausible but unproven; do not adopt or productize A4R in ASEN. No R01–R20 state changes are justified.
