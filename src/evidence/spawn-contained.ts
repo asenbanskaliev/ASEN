@@ -1,7 +1,8 @@
 import {spawn,type ChildProcess,type SpawnOptions} from "node:child_process";
 import {mkdtempSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {join,resolve} from "node:path";
+import {fileURLToPath} from "node:url";
 
 const windowsJobSource=String.raw`
 using System;
@@ -48,7 +49,7 @@ public static class AsenContainedProcess {
     }
     result.Append('\\',slashes*2); result.Append('\"'); return result.ToString();
   }
-  public static int Run(string executable,string[] args) {
+  public static int Run(string executable,string cwd,string[] args) {
     IntPtr job=CreateJobObject(IntPtr.Zero,null); if(job==IntPtr.Zero) throw LastError("CreateJobObject failed");
     PROCESS_INFORMATION pi=new PROCESS_INFORMATION(); bool created=false;
     try {
@@ -58,7 +59,7 @@ public static class AsenContainedProcess {
       var line=new StringBuilder(Quote(executable)); foreach(string arg in args) line.Append(' ').Append(Quote(arg));
       STARTUPINFO si=new STARTUPINFO(); si.cb=Marshal.SizeOf(typeof(STARTUPINFO)); si.dwFlags=(int)STARTF_USESTDHANDLES;
       si.hStdInput=GetStdHandle(-10);si.hStdOutput=GetStdHandle(-11);si.hStdError=GetStdHandle(-12);
-      if(!CreateProcess(null,line,IntPtr.Zero,IntPtr.Zero,true,CREATE_SUSPENDED|CREATE_UNICODE_ENVIRONMENT,IntPtr.Zero,Environment.CurrentDirectory,ref si,out pi)) throw LastError("CreateProcess failed");
+      if(!CreateProcess(null,line,IntPtr.Zero,IntPtr.Zero,true,CREATE_SUSPENDED|CREATE_UNICODE_ENVIRONMENT,IntPtr.Zero,cwd,ref si,out pi)) throw LastError("CreateProcess failed");
       created=true;
       if(!AssignProcessToJobObject(job,pi.hProcess)) { TerminateProcess(pi.hProcess,1); throw LastError("AssignProcessToJobObject failed"); }
       if(ResumeThread(pi.hThread)==0xffffffff) { TerminateProcess(pi.hProcess,1); throw LastError("ResumeThread failed"); }
@@ -73,9 +74,10 @@ public static class AsenContainedProcess {
 
 function spawnWindowsJobCommand(command:string,args:readonly string[],options:SpawnOptions):ChildProcess {
   const payloadDirectory=mkdtempSync(join(tmpdir(),"asen-contained-job-")),payloadPath=join(payloadDirectory,"command.json");
-  writeFileSync(payloadPath,JSON.stringify({command,args}),{encoding:"utf8",mode:0o600,flag:"wx"});
+  const cwd=options.cwd===undefined?process.cwd():options.cwd instanceof URL?fileURLToPath(options.cwd):resolve(options.cwd);
+  writeFileSync(payloadPath,JSON.stringify({command,args,cwd}),{encoding:"utf8",mode:0o600,flag:"wx"});
   const source=Buffer.from(windowsJobSource,"utf8").toString("base64"),file=Buffer.from(payloadPath,"utf8").toString("base64");
-  const script=`$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; try { $s=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${source}')); Add-Type -TypeDefinition $s; $f=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${file}')); $p=Get-Content -Raw -LiteralPath $f | ConvertFrom-Json; $c=[AsenContainedProcess]::Run([string]$p.command,[string[]]$p.args); exit $c } catch { [Console]::Error.WriteLine($_.Exception.ToString()); exit 1 }`;
+  const script=`$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; try { $s=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${source}')); Add-Type -TypeDefinition $s; $f=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${file}')); $p=Get-Content -Raw -LiteralPath $f | ConvertFrom-Json; $c=[AsenContainedProcess]::Run([string]$p.command,[string]$p.cwd,[string[]]$p.args); exit $c } catch { [Console]::Error.WriteLine($_.Exception.ToString()); exit 1 }`;
   const encoded=Buffer.from(script,"utf16le").toString("base64");
   try{
     const child=spawn("powershell.exe",["-NoLogo","-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-EncodedCommand",encoded],{...options,detached:false,windowsHide:true});

@@ -216,7 +216,7 @@ test("164-reference overlay adjudicates every frozen unresolved reference withou
   assert.throws(()=>verifyRuntimeEdgeMappings(retainedBaselineRepository,baseline,overlay,brokenMappings),/source identity mismatch/);
   for(const mutate of [
     (value:any)=>{value.mappings.pop();},
-    (value:any)=>{value.mappings.find((row:any)=>row.mappingKind==="tracked-file").targets[0]="extensions/asen.ts";},
+    (value:any)=>{value.mappings.find((row:any)=>row.mappingKind==="tracked-file").targets[0]="README.md";},
     (value:any)=>{const row=value.mappings.find((row:any)=>row.mappingKind==="tracked-glob");row.mappingKind="code-contract";row.mappingReason="self-owned-registration";row.targets=[row.sourceId];},
     (value:any)=>{const row=value.mappings.find((row:any)=>row.mappingKind==="code-contract");row.mappingKind="external-runtime";row.mappingReason="installed-package-discovery";row.targets=[];},
     (value:any)=>{value.mappings[0].mappingReason="some-other-nonempty-reason";},
