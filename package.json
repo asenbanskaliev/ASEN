@@ -13,7 +13,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
-    "test": "tsx --test tests/**/*.test.ts",
+    "test": "node scripts/run-tests.mjs",
     "check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills && npm run audit:skill-parity && npm run audit:memory-parity && npm run audit:ecosystem && npm run audit:upstream-boundary",
     "verify:pack": "node scripts/verify-pack.mjs",
     "audit:parity": "node scripts/validate-phase10-parity.mjs",

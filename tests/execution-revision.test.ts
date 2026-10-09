@@ -80,9 +80,10 @@ test("execution timeout terminates spawned descendants",async t=>{
  // the process lifetime must not race the timeout being tested.
  const command=[process.execPath,"-e",`const child=require("child_process").spawn(process.execPath,["-e",${JSON.stringify(descendant)}],{stdio:"ignore",detached:process.platform==="win32"});child.unref();setTimeout(()=>{},30000)`] as const;
  const pending=executeEvidenceCommand({repository:repo,id:"timeout-tree",revision,createdAt:"now"},command,{timeoutMs:3000});
+ const rejected=assert.rejects(pending,/timed out/);
  let started=false;for(let i=0;i<80&&!started;i++){try{await access(ready);started=true;}catch{await new Promise(resolve=>setTimeout(resolve,25));}}
  assert.equal(started,true,"descendant did not start before the timeout");
- await assert.rejects(()=>pending,/timed out/);
+ await rejected;
  await new Promise(resolve=>setTimeout(resolve,1500));
  await assert.rejects(()=>access(marker),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
  assert.equal(sibling.exitCode,null,"termination escaped the evidence command's process containment");

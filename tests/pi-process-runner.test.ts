@@ -211,11 +211,18 @@ test("read-only artifact audit disables every Pi tool",async()=>{
  const args=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!).args as string[];
  assert.ok(args.includes("--no-tools"));assert.ok(!args.includes("--tools"));
 });
-test("read-only Pi runner fails closed when a model attempts a tool",async()=>{
- const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"tool_execution_start",toolName:"write",toolCallId:"forbidden"}));setTimeout(()=>{},10000);});');
+test("read-only Pi runner fails closed when a model attempts a tool",{timeout:process.platform==="win32"?15_000:5_000},async t=>{
+ const marker=join(tmpdir(),`asen-denied-tool-${process.pid}-${Date.now()}`);t.after(()=>rm(marker,{force:true}));
+ const {d,p}=await fixture(`import {writeFileSync} from "node:fs";const marker=${JSON.stringify(marker)};let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{JSON.parse(x.trim());console.log(JSON.stringify({type:"tool_execution_start",toolName:"write",toolCallId:"forbidden"}));setTimeout(()=>writeFileSync(marker,"tool side effect"),1500);});`);
+ await new Promise<void>(resolve=>{const control=execFile(process.execPath,[p],{timeout:4_000},()=>resolve());control.stdin?.end('{"id":"positive-control"}\n');});
+ await assert.doesNotReject(()=>access(marker),"positive control did not write the side-effect marker");
+ await rm(marker,{force:true});
  const context=issueSkillContext("blocked-tool",d,undefined,{phase:"explore"});
- const result=await runner(p,{noTools:true,timeoutMs:1000}).run({id:"blocked-tool",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
+ const timeoutMs=process.platform==="win32"?10_000:1_000;
+ const result=await runner(p,{noTools:true,timeoutMs}).run({id:"blocked-tool",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
  assert.equal(result.ok,false);assert.equal(result.output,"pi model attempted a tool while tools were disabled");
+ await new Promise(resolve=>setTimeout(resolve,1_750));
+ await assert.rejects(()=>access(marker),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
 });
 test("direct Pi worker cannot obtain file tools without a live lifecycle grant",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');

@@ -1,16 +1,29 @@
 # ECO-01C-2 source-adjudication evidence
 
-## Superseding reconciliation — 2026-10-08
+## Superseding reconciliation — 2026-10-09
 
-The earlier 34-row / 130-remaining status below is historical. Recalculation against frozen source commit `08de420ca29be16b6f6bee725a30b599b061df16` confirms 167 tracked manifest objects, 988 scanner references, 164 raw unresolved/absent/outside-root references, and **164 adjudicated / 0 remaining** in `ecosystem-reference-adjudications-v1.json`. Raw reference evidence and the source manifest are unchanged. Claims remain 16 PARTIAL / 0 FULL; no route is promoted.
+The production source/runtime candidate remains unchanged at `c5964f0c0dabc7c1abc0ce8c831caf6efa6831ce`; the current B0 working tree additionally changes only the test harness, focused tests, and matching audit/task records. Frozen source commit `08de420ca29be16b6f6bee725a30b599b061df16` still has 167 tracked manifest objects and 988 scanner references. Its 164 raw unresolved/absent/outside-root references are covered by **164 adjudications / 0 remaining** without changing the manifest or raw references. Claims remain 16 PARTIAL / 0 FULL; ECO-01C remains `PARTIAL` because complete normative semantics remain open.
 
-The 25 adjudications classified `source-runtime-edge` now have separate span-bound dispositions in `registry/parity/ecosystem-runtime-edge-mappings-v1.json`: 1 exact tracked file, 2 direct-child Markdown selectors, 12 self-owned code contracts, and 10 external/dynamic runtime inputs. The `assets/agents/*.md` selector is verified from the frozen Git tree (10 direct regular Markdown blobs at the pinned commit); those bytes are not copied into ASEN and the raw directory reference is not rewritten. External, generated, candidate-tree, and network inputs are categorized as such and are not asserted equivalent to a tracked source file.
+The 25 `source-runtime-edge` adjudications have exact span-bound dispositions in `registry/parity/ecosystem-runtime-edge-mappings-v1.json`: 3 tracked file/set edges, 12 self-owned code contracts, and 10 external/dynamic runtime inputs. The two selector rows refer to the same `assets/agents/*.md` direct-child set; the pinned tree contains 10 regular Markdown blobs. Drift behavior includes report-only classifications, reverse invalidation, unique-hash-only renames, all-path invalidation for duplicate hashes, and changed/added/removed tracked-selector fixtures. No source change is auto-adopted or asserted equivalent merely because it is mapped.
 
-The latest published parent `5e6049d17d25371bf217e9000616151f6ff8b259` passed CI, Phase 0 Architecture, and Pi 1.0 runtime evidence; its Release Gate failed only on Windows process-tree timeout cleanup (`execution timeout terminates spawned descendants`). The local follow-up adds a Job Object launcher that assigns the command while suspended, a kill-on-close boundary, and an unrelated-sibling regression. Local consolidated checks passed (1,010 tests; build; 28-export packed install). GitHub checks for that follow-up remain pending. Pi Free Smoke on the published parent was SKIPPED, not PASS; no real Pi Free/model verification is claimed.
+Initial exact-SHA GitHub evidence for `c5964f0` is green: CI runs `37894164914` and `37894160142`, Phase 0 Architecture `37894164830`, Pi 1.0 runtime evidence `37894164801`, and Release Gate `37894164816` succeeded. Pi Free Smoke `37894164792` was SKIPPED, not PASS. The branch is 305 ahead / 0 behind `main` `49129b616c5349fbf323b74860136fc1593f9b2a`; PR #32 is OPEN + DRAFT with CLEAN merge state. These observations do not transfer to another SHA or promote a claim.
 
-The first local follow-up published as `f620ade0009689accf8a5f3fffb36fc68a2ea031` was rejected by Phase 0 Architecture because the mapping JSON repeated protected upstream source paths. The correction uses opaque frozen source IDs for self-owned code-contract targets and does not add a provenance allowlist exception. The focused mapping tests and `audit:upstream-boundary` pass locally; exact remote checks for the corrected tree are pending.
+## Reproduction boundary and fresh local result
 
-## Scope and identity
+- Runtime contract: Node 22.19 or newer and Git. The observed fresh Windows run used Node 24.14.0 and npm 11.9.0.
+- Dependency setup: `npm ci --ignore-scripts` and the subsequent ordinary `npm ci` both succeeded and materialized 150 packages. npm reported one high-severity audit advisory; it remains pending investigation, and no dependency change is included here.
+- Retained source: use the existing `.github/scripts/prepare-frozen-ecosystem-baseline.mjs` workflow helper to create the frozen bare Git repository, then provide its path as `ECOSYSTEM_BASELINE_REPOSITORY`. The source is read as Git objects, not checked out or executed.
+- Windows containment: Windows PowerShell, `Add-Type`, and Job Object support are prerequisites; the environment must permit assigning the suspended child process to the kill-on-close job.
+- Fresh baseline: retained-source `npm run check` **FAILED** after about 28 minutes with 1,012 total, 1,004 passed, 4 failed, 1 cancelled, and 3 skipped. The reported failures were the offline Pi RPC timeout, the execution-descendant start assertion, Pi cancellation descendant handling, and the policy/read-only Pi runner timing out instead of reporting the disabled tool. The contained-process test was cancelled at 10 seconds. No environmental cause is inferred.
+- Delivery consequence: this Windows/Node 24 failure is distinct from the historical exact-SHA GitHub green runs. B0 Windows process isolation/fix is in progress; B1 awaits its isolated baseline, B2 remains pending, and publication is blocked. No fresh full-suite passing count or B1 completion is claimed.
+- Independent 4R evidence before this correction reported the retained-source baseline 23/23, `npm run build`, and `npm run verify:pack` passing. The install summary separately reported one high-severity audit advisory, but its exact `npm audit` identity was not established in this bounded unit. This discrepancy remains open; no dependency or lockfile change is authorized.
+- B0 now has deterministic focused RED/GREEN coverage for complete discovery, Windows batch separation, serial orchestration, option ordering, import safety, and first-failure propagation. The focused execution-timeout fixture passes with its rejection handler attached before marker polling. The expensive full `npm test`/`npm run check` remains delegated to independent verification, so B0, B1, and B2 stay unchecked.
+
+## Historical evidence below
+
+The remaining sections preserve the earlier 34-row / 130-remaining slice and subsequent correction chronology. Their counts and pending-work statements are historical, not the current closure state above.
+
+## Historical scope and identity
 
 - Repository: `asenbanskaliev/ASEN`
 - Branch: `feat/strict-parity-prerequisites`
@@ -21,7 +34,7 @@ The first local follow-up published as `f620ade0009689accf8a5f3fffb36fc68a2ea031
 - Frozen source identity: commit `08de420ca29be16b6f6bee725a30b599b061df16`, tree `9af648106ed75fa270476e9d474bad93aa38af6b`.
 - Source inputs were fetched as Git objects into a temporary bare repository in Actions. The workflow checked the frozen commit and tree before running the retained-source verifier. Source was not checked out or executed.
 
-## Slice
+## Historical 34-row slice
 
 The slice adjudicates 14 unresolved `asset` references in two frozen source files:
 
@@ -32,7 +45,7 @@ The rows bind to imported `node:fs` `readFileSync` calls. Classification: `runti
 
 The overlay now has 34 rows. The raw manifest is unchanged: 167 tracked objects, 988 references, 164 raw unresolved/absent/outside-root references. After subtracting overlay adjudications, 130 semantic adjudications remain. Claims remain 16 PARTIAL, 0 FULL. No R01–R20 claim changed.
 
-## Workflow evidence for exact SHA
+## Historical workflow evidence for exact SHA
 
 | Workflow | Run | Result | Detail |
 | --- | ---: | --- | --- |
@@ -57,7 +70,7 @@ These results apply only to `47e9d0f`; no PASS is transferred to another SHA. No
 
 The earlier candidate was committed while the retained-source tests skipped because `ECOSYSTEM_BASELINE_REPOSITORY` was unavailable in CI. CI was then changed to resolve the frozen public Git commit by exact SHA and fetch it into a bare repository. When the semantic tests finally ran, the proposed overlay passed. No meaningful semantic RED was observed before the overlay implementation; the only observed RED was the incorrect adversarial-test expectation at `993c0db`. This report does not present that test failure as a reproduced source-adjudication bug or claim a complete historical TDD cycle.
 
-## Cost and remaining work
+## Historical cost and then-remaining work
 
 - External model/provider calls: 0.
 - New CI runs for the correction: push, PR, Phase 0, Pi runtime, Release Gate and Pi Free Smoke at the exact candidate SHA; no reruns of the successful final SHA.
