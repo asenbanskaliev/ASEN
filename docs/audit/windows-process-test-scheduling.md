@@ -2,7 +2,7 @@
 
 ## Outcome
 
-The npm test entry point now discovers every `tests/**/*.test.ts` file itself. On Windows it runs the ordinary files first, then runs these process-heavy files in one separate batch with `--test-concurrency=1`:
+B0 is DONE at exact work-unit commit `2b3a83938fd4a54923c7da351a5f93ba2602d035`. The npm test entry point discovers every `tests/**/*.test.ts` file itself. On Windows it runs the ordinary files first, then runs these process-heavy files in one separate batch with `--test-concurrency=1`:
 
 - `tests/ask-user-rpc.test.ts`
 - `tests/execution-revision.test.ts`
@@ -45,11 +45,19 @@ npm run typecheck
 git diff --check
 ```
 
-The independent pre-correction 4R check also reported the retained-source baseline 23/23, `npm run build`, and `npm run verify:pack` passing. Those results are prior evidence, not results from this bounded self-check. The clean-install summary reported one high-severity audit advisory; its exact `npm audit` identity was not established here, so the discrepancy remains open and no dependency or lockfile change is included.
+### Exact checkpoint
 
-Independent focused GREEN ran once: 8/8 runner-contract tests passed, with zero failures, cancellations or skips. The entire six-file batch then ran once with `--test-concurrency=1`: 50/50 passed, with zero failures, cancellations or skips, in 157,537.6142 ms. The exact-denial marker control passed, and the independent production timeout contract retained its explicit 50 ms deadline. These are focused Windows results on `5a41c34` plus the sealed classification follow-up, not full-suite closure. Historical marker-RED reconstructability remains a disclosed evidence limitation.
+The two-commit slice `c5964f0` → `5a41c34` → `2b3a839` changes 10 paths (+308/-27), with exact tree `e5f5d3899b3fa55452f9c1b4b7dcb464bf679926` and diff identity `842c34d98f2879b2fdbb0cf8490ef12b5848aee4`.
 
-The full 1020-test suite and six audits remain pending against the new frozen parent commit. The full `npm run check` is delegated once to the independent verifier because it is expensive and is the test of whether scheduling resolves the observed full-load failure. No full gate is inferred from the focused results.
+A single full `npm run check` selected 1,020 tests. The core selected 970: 967 passed, 3 platform skips, 0 failed or cancelled in 1,167,285.3485 ms. The serial six-file family passed 50/50 with no skips, failures, or cancellations in 156,842.0789 ms. Combined: 1,017 passed, 3 skips, 0 failures, 0 cancellations. The skips were POSIX private-mode/symlink behavior, Windows symlink `EPERM`, and nonportable recursive `fs.watch` delivery.
+
+Typecheck, six audits, prepack/typecheck, and `verify:pack` passed; the package contained 225 files, exposed 28 exports, and passed isolated-install verification. `npm audit --json` reported 0 advisories. The earlier install report of one high advisory remains unexplained rather than fixed. Exact-candidate R1/R2/R3/R4 passed. Full log SHA-256: `7f6bf2396dcdb7407e4c4d63a49806b070bb950afb2fe0bd4b5ba3d9247e0f24`.
+
+Classification evidence is reconstructable from RED 8 total / 7 passed / 1 failed to GREEN 8/8 and serial 50/50. The original marker RED remains unavailable and disclosed. Parent facade invocation for exact candidate `2b3a839` returned pre-native `operation_timeout` / `not_started`; the independent functional verifier performed no native call. Native authority creation did not start, so no lineage, acknowledgement, approval, or native PASS exists. Review `review-c947795ac6dafe15` remains a separate historically stopped, manually unapproved transaction.
+
+### Historical failed candidate
+
+At `5a41c34`, the full check stopped after the 970-test core reported one failure; the 50-test serial family and six audits did not run. That failed result remains historical and is not rewritten as a pass. Its later focused 8/8 and 50/50 admission evidence preceded the exact `2b3a839` full gate.
 
 ## Limits and rollback
 
