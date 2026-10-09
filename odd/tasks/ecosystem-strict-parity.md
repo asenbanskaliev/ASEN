@@ -17,7 +17,7 @@ The native GitHub review list was empty. The earlier independent review was inco
 
 ### Authorized base corrections
 
-- Pi Free is pinned to verified `pi-free@2.8.4`, matching both installation and extension selection. OpenRouter is the configured provider and requires `OPENROUTER_API_KEY`; the workflow no longer maps LLM7 or Groq secrets. The script gives Git an explicit runtime-only environment and Pi only the runtime allowlist plus the selected provider credential. Four focused child-process/workflow tests passed; no provider workflow or model was run.
+- Pi Free is pinned to verified `pi-free@2.8.4`, matching both installation and extension selection. OpenRouter is the configured provider and requires `OPENROUTER_API_KEY`; the workflow no longer maps LLM7 or Groq secrets. The script gives Git an explicit runtime-only environment and Pi only the runtime allowlist plus the selected provider credential. Five focused process/workflow tests passed, including the offline verifier boundary; no provider workflow or model was run.
 - The `verify:pack` contract now fails if the optional Pi peer resolves from the isolated packed installation. The actual packed tarball installed with `--omit=peer` also passed `verify-pi-package.mjs` on the exact Pi `0.85.1` CLI under Linux RPC: seven visible commands, zero model invocations. This does not claim support across every host/platform combination.
 - `git diff --check`'s extra-blank-line failure in `tests/ecosystem-baseline.test.ts` was removed. Current-candidate tests, audits, full-suite verification, independent review, and automatic Actions remain required.
 

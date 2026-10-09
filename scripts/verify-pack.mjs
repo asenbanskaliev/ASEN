@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from "node:fs";
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
@@ -23,14 +23,9 @@ writeFileSync(join(installation,"package.json"),JSON.stringify({private:true}));
 npm(["install","--offline","--ignore-scripts","--omit=peer","--no-audit","--no-fund","--package-lock=false",join(temp,result.filename)],{cwd:installation});
 const checked=verifyPublicExports(installation),installed=join(installation,"node_modules","asen");
 const requireFromInstalled=createRequire(join(installed,"package.json"));
-let optionalPeerResolved=false;
-try {
-  requireFromInstalled.resolve("@earendil-works/pi-coding-agent");
-  optionalPeerResolved=true;
-} catch(error) {
-  if(error?.code!=="MODULE_NOT_FOUND")throw error;
-}
-if(optionalPeerResolved)throw new Error("packed installation unexpectedly resolved the optional Pi peer");
+const peerSearchPaths=requireFromInstalled.resolve.paths("@earendil-works/pi-coding-agent")??[];
+if(peerSearchPaths.some(directory=>existsSync(join(directory,"@earendil-works","pi-coding-agent"))))
+  throw new Error("packed installation unexpectedly contains the optional Pi peer");
 execFileSync(process.execPath,[fileURLToPath(new URL("./verify-pi-package.mjs",import.meta.url)),installed],{encoding:"utf8",stdio:"inherit",timeout:60000});
 const installedPackage=JSON.parse(readFileSync(join(installed,"package.json"),"utf8"));
 if(installedPackage.bin?.asen!=="./dist/cli.js")throw new Error("packed artifact missing ASEN executable mapping");

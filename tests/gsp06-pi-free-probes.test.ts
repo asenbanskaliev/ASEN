@@ -65,7 +65,7 @@ test("Pi Free receives only the selected provider credential and required runtim
   }
 });
 
-test("intermediate git environment retains runtime paths but strips every provider credential", () => {
+test("Pi runtime environment retains runtime paths but strips every provider credential", () => {
   const source: Record<string, string | undefined> = {
     ...process.env,
     PATH: process.env.PATH ?? "",
