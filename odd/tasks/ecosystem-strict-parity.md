@@ -1,6 +1,27 @@
 # Ecosystem strict behavioral parity
 
-## Current handoff reconciliation — 2026-10-09
+## Exact baseline candidate and gate reconciliation — 2026-10-09
+
+The pre-change candidate was remote HEAD `90515eb76f9ac3d21e04a97bee0bbcbad4db3e5f`, matching PR #32 (OPEN/DRAFT). Full Git history confirms it descends from `main` `49129b616c5349fbf323b74860136fc1593f9b2a`, 315 commits ahead and 0 behind. These gate results are bound only to that SHA:
+
+| Gate | Exact evidence | Result |
+| --- | --- | --- |
+| CI push | `37953616675` | PASS |
+| CI pull request | `37953624466`; Linux, macOS, Windows, and architecture jobs succeeded | PASS |
+| Release Gate | `37953624370`; package jobs succeeded on Ubuntu, macOS, and Windows | PASS |
+| Pi 1.1 runtime | `37953624367`; real Pi RPC without a model run | PASS |
+| Phase 0 Architecture | `37953624363` | PASS |
+| Pi Free Smoke | `37953624492` | SKIPPED by policy, not provider PASS |
+
+The native GitHub review list was empty. The earlier independent review was incomplete and does not approve this candidate. The follow-on changes below require their own review and exact-SHA Actions; none inherits these results. No ECO-03 work is admitted.
+
+### Authorized base corrections
+
+- Pi Free is pinned to verified `pi-free@2.8.4`, matching both installation and extension selection. OpenRouter is the configured provider and requires `OPENROUTER_API_KEY`; the workflow no longer maps LLM7 or Groq secrets. The script gives Git an explicit runtime-only environment and Pi only the runtime allowlist plus the selected provider credential. Four focused child-process/workflow tests passed; no provider workflow or model was run.
+- The `verify:pack` contract now fails if the optional Pi peer resolves from the isolated packed installation. The actual packed tarball installed with `--omit=peer` also passed `verify-pi-package.mjs` on the exact Pi `0.85.1` CLI under Linux RPC: seven visible commands, zero model invocations. This does not claim support across every host/platform combination.
+- `git diff --check`'s extra-blank-line failure in `tests/ecosystem-baseline.test.ts` was removed. Current-candidate tests, audits, full-suite verification, independent review, and automatic Actions remain required.
+
+### Prior handoff checkpoint (superseded)
 
 Published branch / OPEN-DRAFT PR #32 head is `4290f7da71c586b3f69509bee959740228a9831f`, 311 ahead / 0 behind main `49129b616c5349fbf323b74860136fc1593f9b2a`. The user authorized push with verification pending and cancelled the full local suite in favor of Actions. Publication occurred; approval did not. The local native review remains incomplete and unapproved.
 
@@ -17,9 +38,11 @@ Dependency graph: **B0 exact-candidate verification/4R -> B1 structural reconcil
 - [x] **B0 — Isolate and fix the Windows process failures.** DONE at exact work-unit commit `2b3a83938fd4a54923c7da351a5f93ba2602d035`. The two-commit slice `c5964f0` → `5a41c34` → `2b3a839` changes 10 paths (+308/-27); exact tree `e5f5d3899b3fa55452f9c1b4b7dcb464bf679926`, diff identity `842c34d98f2879b2fdbb0cf8490ef12b5848aee4`. One full `npm run check` selected 1,020 tests: the 970-test core passed 967 with three disclosed platform skips and the serial process batch passed 50/50; zero failures or cancellations. R1/R2/R3/R4 passed for this exact candidate. This closes only the scheduling work unit, not broad ecosystem semantics. Rollback: test runner/plan, package test command, focused scheduling tests, rejection-handler/tool-denial fixtures and matching evidence only.
 - [x] **B1 — Reconcile ECO-01C-2/ECO-01E closure and reproducible baseline.** DONE in metadata work-unit commit `894c6fdf15190762462f5818c6307fd7b8ba1d14`: independent structural assertions passed 12/12, `git diff --check` passed, and R1/R2/R3/R4 metadata review passed. All code remained byte-identical to the fully verified B0 candidate `2b3a839`; its full test results are not transferred to this documentation commit. The retained 164-reference adjudication is complete while ECO-01C/ECO-01E remain `PARTIAL`: all 988 source semantics are not thereby closed. Passive evidence metadata has no runtime behavior under test, so no meaningful behavioral RED exists; structural verification is applicable and required. Rollback: only this batch's tracker/audit wording.
 - [x] **Publication — Publish the verified reliability batch.** Published exact SHA `fcbe90576339bd9486ca3ba17ce9fe2e8481c58b` by non-force push after fresh remote/ancestry reconciliation; remote and draft PR #32 head matched. Automatic CI and Release Gate are in progress; Phase 0 Architecture and Pi 1.0 runtime evidence passed; Pi Free Smoke was skipped. No manual or duplicate workflow dispatch. Full local evidence remains bound to source candidate `2b3a839`, not the later documentation SHA. Native review remains unavailable and unapproved.
-- [ ] **B2 — Add the publicly supported ECO-02A preflight slice.** PAUSED until the approved [Pi 1.1 runtime alignment](pi-1-1-runtime-alignment.md) base is verified; the user explicitly selected this prerequisite before preflight. From published base `fcbe905`, the parent fetched exact npm `0.85.1` metadata and its package-exported root declaration; line 2 publicly exports `VERSION`. This proves the declared public surface, not runtime host execution. Keep the synchronous factory and peer floor unchanged. One isolated writer handles two reviewable units:
-  - [ ] **B2a — Deterministic guard core.** Reuse the existing version parser; prove unknown/old versions and missing callable `on`, `registerCommand`, `registerTool`, `registerFlag`, `getFlag` fail before registration, without calling runtime getters. Observe behavioral RED/GREEN and independent focused checks before the parent work-unit commit.
-  - [ ] **B2b — Factory wiring and host evidence.** Invoke the guard before the first Pi API access, add the bounded `hostVersion` seam/default public SDK export and a shared test-host helper across the 13 mapped surfaces. Keep collision, mode, missing-peer loader and untested platform limits explicit. No async factory conversion or invented public inventories. Observe deterministic RED/GREEN for the verified version/capability boundary, preserve existing registration behavior, and add real packed-host evidence where available. Missing public flag inventory/factory mode must remain an explicit limitation, not fabricated authority. Rollback: scoped preflight helper, extension wiring, focused tests and matching evidence only.
+- [ ] **B2 — Complete the supported ECO-02A preflight slice.** The exact base candidate passed Pi 1.1, architecture, required CI, and Release Gate; the native/independent review gate was not satisfied. The authorized preflight work now has exact public-host evidence below, but ECO-02A remains open for unavailable factory-time mode/inventory/collision proof.
+  - [x] **B2a — Deterministic guard core.** `src/runtime/pi-host.ts` reuses the existing version parser and validates known versions plus callable `on`, `registerCommand`, `registerTool`, `registerFlag`, and `getFlag` before production registration. `tests/pi-host-preflight.test.ts` verifies unknown/old versions, missing methods, accessors and proxies fail without registration or getter execution.
+  - [x] **B2b — Factory wiring and host evidence, bounded to demonstrated behavior.** `extensions/asen.ts` calls the preflight before API registration and preserves the synchronous factory and optional `>=0.85.1` peer. `verify:pack` installs the packed package with `--omit=peer`, confirms the SDK cannot be resolved from that installation, then verifies the installed extension and seven visible RPC commands without model invocations. Additionally, the same packed/peerless artifact passed `scripts/verify-pi-package.mjs` against the exact published Pi `0.85.1` CLI on Linux; seven commands were visible and zero models ran. This single-host check is not a full minimum-version/platform matrix. The public factory receives no mode or command/flag inventory; registration-collision behavior at admission is not established. No inference or duplicate guard is added.
+
+ECO-02A remains unchecked: Pi's public `mode` is available later through `ExtensionContext`, not at the synchronous factory boundary; public inventories are not yet initialized there, and the observed registration API supplies no admission-time collision inventory. Preserve these limits and the synchronous factory.
 
 Each functional candidate requires local focused/full checks, independent R1 requirements / R2 safety / R3 regressions / R4 evidence review, native review under the user-owned switch, exact commit identity and fresh remote ancestry validation before push. Record failed/skipped/pending checks rather than borrowing previous-SHA results. Publication may activate existing workflows once; do not dispatch duplicates. The failed fresh baseline is historical; B0 is complete at its exact candidate, while B1 structural verification and exact-SHA publication have passed; automatic CI/Release Gate remain pending. Public-contract discovery may continue independently. No new source implementation or broad ecosystem closure is claimed.
 
@@ -130,7 +153,7 @@ The current unit-by-unit comparison is `odd/tasks/ecosystem-reconciliation.md`; 
 | Primary orchestrator | `PARTIAL` | Prompt, status, doctor, and review-boundary behavior are incomplete. |
 | Workspace | `MISSING` | Workspace interaction and UI are absent. |
 | Todo | `PARTIAL` | Exact durable task mirror exists; public transitions, replay and staleness remain incomplete. |
-| History | `PARTIAL` | Opt-in capture, redaction-before-write, private files/locks, bounded search, export and confirmed reset are wired; selector UI, transcript/shared import, migration/scale behavior and host/platform evidence remain open. |
+| History | `PARTIAL` | Production opt-in capture, redaction-before-write, private files/locks, bounded search, export, command and confirmed reset are wired and locally tested; selector UI, transcript/shared import, migration/scale behavior and broader host/platform evidence remain open. |
 | Pretty/quiet | `MISSING` | Required presentation modes/tools are not implemented. |
 | Resume | `PARTIAL` | Restart, Windows, and session restoration evidence is incomplete. |
 | Runtime metrics | `PARTIAL` | Privacy-preserving local usage is wired. Telemetry transport, dual authorization, preview/revocation and host/network evidence are absent and decision-gated. |
@@ -147,7 +170,7 @@ The current unit-by-unit comparison is `odd/tasks/ecosystem-reconciliation.md`; 
 | Change attribution | `MISSING` | No behavior-backed guide. |
 | Agent UI and RPC | `MISSING` | No behavior-backed guide. |
 | Profiles and customization | `MISSING` | No behavior-backed guide. |
-| History | `PARTIAL` | Existing capture/store behavior can be documented; selector/import/host behavior cannot yet be described as shipped. |
+| History | `PARTIAL` | Production capture/store/command behavior can be documented; selector/import/migration and broader host/platform behavior cannot yet be described as shipped. |
 | Usage and telemetry | `PARTIAL` | Local usage has shipped behavior; telemetry remains decision-gated with no transport-backed guide. |
 
 The current checked-in machine claim registry validates 16 PARTIAL / 0 MISSING / 0 FULL; the previously quoted 12 PARTIAL / 4 MISSING totals were historical. these are snapshot counts, not totals recomputed from the narrative tables above. `npm run audit:ecosystem` rejects unsupported FULL, unaccepted exclusions, absent source/implementation references, stale candidate/source bindings, drifted source rows and missing executed evidence receipts. This documentation reconciliation does not mutate or promote registry claims. Legacy historical labels are not current strict claims.
@@ -284,7 +307,7 @@ This overlay is evidence metadata on existing owners, not an execution checklist
   - **Remaining/evidence:** ECO-02A is explicitly incomplete. Public host version/capability preflight implementation and exact final multiplatform packed-install/real-host registration evidence remain pending. Factory-time collision behavior and authoritative flag/mode inventory are unavailable through the currently observed public host surface and must not be inferred or fabricated. Existing package evidence is the seam; no duplicate package registry.
 - [x] **ECO-02B — Establish claim registry and validator.** Replace broad prose with evidence-linked rows and reject `FULL` without required positive, negative, failure, platform, restart/session, and Pi evidence.
   - Current registry/validator added with all 16 aggregate units, source hashes, implementation/test mappings, explicit gaps and required boundaries. FULL requires applicable executed receipt classes, exact candidate/source, receipt byte identities and no source invalidation. Positive/negative receipt and invalidation fixtures pass; independent review repaired editable flags that could lower fixed evidence minimums. Receipt consistency is not execution authenticity. This validator subunit is IMPLEMENTED / VERIFIED; remaining ECO units are not promoted by general green tests.
-- [ ] **ECO-02C — Correct current claims and README maturity.** Narrow Pi-native extension, Skills, destructive-Git safety, basic FTS, compaction, review, authority, Windows, and package-install claims to observed scope; label roadmap behavior explicitly.
+- [x] **ECO-02C — Correct current claims and README maturity.** README and this reconciliation distinguish implemented primitives, production wiring and observed Pi host behavior. They do not treat internal facade or RPC output as end-to-end ODD or TUI evidence; unconfigured status/doctor/agents/changes/profile providers remain unavailable. Ecosystem claims remain 16 `PARTIAL` / 0 `FULL`; no frozen sources or historical receipts were changed.
 
 ### Essential ecosystem runtime
 

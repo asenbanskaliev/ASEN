@@ -1,14 +1,31 @@
 # Pi 1.1 runtime alignment
 
+## Exact baseline candidate observation — 2026-10-09
+
+Before this follow-on, PR #32's remote HEAD was `90515eb76f9ac3d21e04a97bee0bbcbad4db3e5f`; full history confirmed 315 commits ahead and 0 behind `main` `49129b616c5349fbf323b74860136fc1593f9b2a`. Exact-SHA GitHub Actions reported:
+
+| Gate | Run | Result |
+| --- | --- | --- |
+| CI push | `37953616675` | PASS |
+| CI pull request | `37953624466` | PASS: Ubuntu, macOS, Windows, architecture |
+| Release Gate | `37953624370` | PASS: Ubuntu, macOS, Windows package jobs |
+| Pi 1.1 runtime | `37953624367` | PASS: real RPC, no model run |
+| Phase 0 Architecture | `37953624363` | PASS |
+| Pi Free Smoke | `37953624492` | SKIPPED, not provider PASS |
+
+The GitHub native-review list was empty; the earlier independent review was incomplete and is not approval. This baseline green does not transfer to follow-on commits. The follow-on is allowed to correct the base R2 finding and document/prove the publicly supported B2 scope, but ECO-03 remains gated.
+
+The exact published Pi `0.85.1` package exports the public `VERSION` and extension loader APIs. A locally packed ASEN tarball installed with the optional peer omitted loaded in the real Pi `0.85.1` CLI on Linux; its seven RPC commands were visible and no model was invoked. This is one real-host minimum-version observation, not a full compatibility or platform matrix. `verify:pack` now asserts the peer is absent from the installed artifact before its Pi-host checks.
+
 ## Windows CI repair batch — 2026-10-09
 
 Published HEAD `b977e55` passed Pi, architecture and three-platform package/install gates, but both CI events failed the Windows evidence/TDD timeout. The bounded candidate moves that file into the existing serial Windows contained-process group without raising timeouts or omitting tests. See the [exact CI and repair evidence](../../odd/tasks/pi-1-1-runtime-alignment.md). One publication includes source, tests and metadata; no Markdown-only CI dispatch. U2, independent review and B2/ECO-02A remain open; 16 PARTIAL / 0 FULL is unchanged.
 
-## Implementation follow-up — 2026-10-09
+## Historical implementation follow-up — 2026-10-09
 
 The original Pi 1.1 candidate now has successful CI and package/install gates on Ubuntu, Windows and macOS after the bounded Ubuntu retry. The user authorized correcting reproduced installed-package/API defects on this same PR. See the [canonical follow-up](../../odd/tasks/pi-1-1-runtime-alignment.md) for exact identities and remaining gates. New source candidates do not inherit earlier CI. U2 and final independent review remain open; B2/ECO-02A and production orchestration integration stay pending. Optional peer `>=0.85.1`, frozen/historical evidence and 16 PARTIAL / 0 FULL remain unchanged.
 
-## Current handoff reconciliation — 2026-10-09
+## Prior handoff reconciliation (superseded) — 2026-10-09
 
 Published branch / OPEN-DRAFT PR #32 head is `4290f7da71c586b3f69509bee959740228a9831f`, 311 ahead / 0 behind main `49129b616c5349fbf323b74860136fc1593f9b2a`. The user authorized push with verification pending and cancelled the full local suite in favor of Actions. Publication occurred; approval did not. The local native review remains incomplete and unapproved.
 
@@ -40,7 +57,7 @@ Before this unit, the development SDK and lockfile resolved 0.87.1 and current-r
 
 The `pi-1-runtime-evidence.yml` filename is intentionally unchanged. Its current-runtime name, install step, version assertion, RPC label, and PASS text now say Pi 1.1. Triggers, pull-request filters, permissions, secrets, environment policy, offline/network boundaries, models, jobs, and release policy were not changed.
 
-## Current evidence
+## Historical U1 evidence
 
 - Deterministic RED selected 6 tests: 1 passed and 5 failed because the old SDK metadata, workflow pins, and Pi 1.0 labels remained. There were no loader errors.
 - After alignment, the focused contracts passed 20/20, including the Node and unchanged optional-peer checks.
@@ -75,7 +92,7 @@ The dependency transition includes Pi-family 0.87.1 to 1.1.0 and broader npm-man
 - The new Windows memory pass does not establish a correction for either historical failure. No new native macOS proof exists.
 - Ecosystem status remains 16 `PARTIAL` and 0 `FULL`; the frozen baseline and historical evidence are unchanged.
 
-## Pending gates
+## Historical U1 pending-gate snapshot
 
 - [x] Freeze and commit the U1 implementation: `a413e7e4b1306d3557f0ac1a991f1ecf4eaae885` (published through `4290f7d`; U2 remains pending).
 - [ ] Run the complete frozen Pi 1.1 validation gate.
