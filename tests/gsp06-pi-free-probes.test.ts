@@ -39,6 +39,11 @@ test("Pi Free receives only the selected provider credential and required runtim
 
   assert.equal(child.status, 0, child.stderr);
   const observed = JSON.parse(child.stdout) as Record<string, string>;
+  const control = spawnSync(process.execPath, ["-e", "process.stdout.write(JSON.stringify(process.env))"],
+    {encoding: "utf8", env: createPiRuntimeEnvironment(source)});
+  assert.equal(control.status, 0, control.stderr);
+  const systemEnvironment = JSON.parse(control.stdout) as Record<string, string>;
+
   assert.equal(observed.PATH, source.PATH);
   assert.equal(observed.HOME, source.HOME);
   assert.equal(observed.PI_CODING_AGENT_DIR, source.PI_CODING_AGENT_DIR);
@@ -58,7 +63,13 @@ test("Pi Free receives only the selected provider credential and required runtim
     if (allowed.has(name) || (process.platform === "win32" && [...allowed].some(key => key.toUpperCase() === name.toUpperCase()))) continue;
     assert.equal(Object.hasOwn(environment, name), false, `${name} must not be inherited by Pi`);
     // macOS may synthesize this non-secret variable even when absent from env.
-    if (process.platform === "darwin" && name === "__CF_USER_TEXT_ENCODING") continue;
+    // Node 22.19.0 libuv required_vars adds these absent Windows values.
+    const systemGenerated = (process.platform === "darwin" && name === "__CF_USER_TEXT_ENCODING") ||
+      (process.platform === "win32" && ["HOMEDRIVE", "HOMEPATH", "LOGONSERVER", "SYSTEMDRIVE", "USERDOMAIN", "USERNAME"].includes(name.toUpperCase()));
+    if (systemGenerated) {
+      assert.equal(observed[name], systemEnvironment[name], `${name} must match the credential-free control`);
+      continue;
+    }
     assert.equal(Object.hasOwn(observed, name), false, `${name} must not reach Pi`);
   }
 });

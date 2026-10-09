@@ -7,6 +7,8 @@ export const WINDOWS_PROCESS_TESTS=Object.freeze([
  // Retain 40 competing writes and multiprocess fixtures without unrelated
  // Windows test files contending for the private-store filesystem operations.
  "tests/history-store.test.ts",
+ "tests/memory-migrations.test.ts",
+ "tests/memory-session-identity.test.ts",
  // Uses the same contained-process launch path as execution-revision; keep its
  // cold Windows startup out of the concurrently running ordinary test files.
  "tests/evidence-tdd.test.ts",

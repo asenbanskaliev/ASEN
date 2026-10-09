@@ -1,5 +1,17 @@
 # Pi 1.1 runtime alignment
 
+## Windows worker and spawned-environment batch — 2026-10-09
+
+Exact baseline `5265f0ece6076d496a80dc1bb970f11d6eebbc72` failed Windows PR CI `37971613716` in the migration holder/opener worker phase; push CI `37971606226` and Release Gate `37971614050` failed the environment fixture on HOMEDRIVE. Linux/macOS CI and package/install, Pi 1.1 and architecture passed. Pi Free stayed SKIPPED. No prior PASS is transferred to the follow-on.
+
+Node 22.19.0's [libuv Windows process implementation](https://github.com/nodejs/node/blob/v22.19.0/deps/uv/src/win/process.c) declares eleven required runtime variables and inserts absent values when constructing a child environment. The environment test still asserts that excluded names are absent from the supplied env, and still rejects provider/unrelated-secret inheritance. Only known OS/libuv-added runtime names are compared against a second subprocess with the same runtime-only env and no credentials; macOS's generated encoding variable uses the same control. Production filtering and provider configuration are unchanged.
+
+Migration and session-identity files use worker threads with bounded startup phases and internal concurrent opens. Fourteen worker tests passed in isolation. Both files join the existing serial Windows group, preserving their worker concurrency, wait windows and timeouts. Exact test selection remains covered by the runner regression; the Windows timeout cause remains unproven pending the new Actions. No migration/store/lock implementation was changed.
+
+Validation: 14 isolated worker tests PASS; final environment/runner tests 14/14 PASS with zero skips; typecheck PASS. The full frozen-baseline suite selected 1,033 tests: 1,032 PASS, one FAIL, zero skips/cancellations. The sole failure is the known local `ps: fatal library error, lookup self` process-cancellation observation; it is not PASS. All six audits passed separately after the suite blocked npm run check. Diff hygiene passed. No pack/install surface changed and no provider/model or manual workflow ran.
+
+Own code/test review covers the test env boundary, Windows/POSIX selection and preserved internal concurrency, not independent/native approval. U2/ECO-02A stay open, ECO-03 is not admitted, and claims remain 16 PARTIAL / 0 FULL. Rollback is limited to the two worker filenames in the test plan/selection fixture, environment test assertions and these notes. New exact-SHA Actions must establish platform results.
+
 ## Windows environment and History batch — 2026-10-09
 
 Baseline `1ac4feecdaefcc8575493b56e8a9eb75c521d4e5` passed Linux/macOS CI and package/install, Pi 1.1 and architecture, but Windows CI push `37967700255` and PR `37967705877` failed the environment fixture (`SYSTEMROOT` compared with undefined). Windows Release Gate `37967705883` failed the History 40-write lock timeout. Pi Free stayed SKIPPED.

@@ -12,6 +12,8 @@ const processFiles=[
  "tests/ask-user-rpc.test.ts",
  "tests/gsp06-pi-free-probes.test.ts",
  "tests/history-store.test.ts",
+ "tests/memory-migrations.test.ts",
+ "tests/memory-session-identity.test.ts",
  "tests/evidence-tdd.test.ts",
  "tests/execution-revision.test.ts",
  "tests/pi-native-skill-load.test.ts",
