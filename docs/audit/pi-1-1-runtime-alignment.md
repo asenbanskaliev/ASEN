@@ -1,6 +1,6 @@
 # Pi 1.1 runtime alignment
 
-The current candidate aligns development and current-runtime CI with Pi 1.1.0 while preserving the optional peer floor. U1 remains in progress until the parent records the work-unit commit; frozen-candidate validation and publication are still pending.
+The current candidate aligns development and current-runtime CI with Pi 1.1.0 while preserving the optional peer floor. U1 implementation is recorded in local work-unit commit `a413e7e4b1306d3557f0ac1a991f1ecf4eaae885`; complete frozen-candidate validation and publication are still pending.
 
 ## Review path
 
@@ -61,7 +61,7 @@ The dependency transition includes Pi-family 0.87.1 to 1.1.0 and broader npm-man
 
 ## Pending gates
 
-- [ ] Freeze and commit the U1 work unit with its exact identity.
+- [x] Freeze and commit the U1 implementation: `a413e7e4b1306d3557f0ac1a991f1ecf4eaae885` (not pushed).
 - [ ] Run the complete frozen Pi 1.1 validation gate.
 - [ ] Build, pack, and verify isolated installation.
 - [ ] Complete independent R1/R2/R3/R4 and applicable native review.
