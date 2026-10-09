@@ -75,7 +75,7 @@ function spawnWindowsJobCommand(command:string,args:readonly string[],options:Sp
   const payloadDirectory=mkdtempSync(join(tmpdir(),"asen-contained-job-")),payloadPath=join(payloadDirectory,"command.json");
   writeFileSync(payloadPath,JSON.stringify({command,args}),{encoding:"utf8",mode:0o600,flag:"wx"});
   const source=Buffer.from(windowsJobSource,"utf8").toString("base64"),file=Buffer.from(payloadPath,"utf8").toString("base64");
-  const script=`$ErrorActionPreference='Stop'; try { $s=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${source}')); Add-Type -TypeDefinition $s; $f=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${file}')); $p=Get-Content -Raw -LiteralPath $f | ConvertFrom-Json; $c=[AsenContainedProcess]::Run([string]$p.command,[string[]]$p.args); exit $c } catch { [Console]::Error.WriteLine($_.Exception.ToString()); exit 1 }`;
+  const script=`$ErrorActionPreference='Stop'; try { $s=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${source}')); Add-Type -TypeDefinition $s -WarningAction SilentlyContinue; $f=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${file}')); $p=Get-Content -Raw -LiteralPath $f | ConvertFrom-Json; $c=[AsenContainedProcess]::Run([string]$p.command,[string[]]$p.args); exit $c } catch { [Console]::Error.WriteLine($_.Exception.ToString()); exit 1 }`;
   const encoded=Buffer.from(script,"utf16le").toString("base64");
   try{
     const child=spawn("powershell.exe",["-NoLogo","-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-EncodedCommand",encoded],{...options,detached:false,windowsHide:true});
