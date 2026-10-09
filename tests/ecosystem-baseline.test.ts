@@ -187,6 +187,22 @@ test("empty mapped runtime sets are valid and never auto-adopt changes",t=>{
   assert.throws(()=>detectBaselineDrift(before,before,{runtimeEdges:[{sourcePath:"extensions/entry.ts",targetPaths:"docs/guide.md" as any}]}),/Malformed runtime edge mapping/);
 });
 
+test("mapped rename reports invalidate old and new paths and reject unsafe destinations",t=>{
+  const f=fixture(t),baseline=collectBaseline(f.root,f.commit);
+  const runtimeEdges=[{sourcePath:"extensions/entry.ts",targetPaths:["docs/guide.md"]}];
+  const report=detectBaselineDrift(baseline,baseline,{runtimeEdges,additionalChanges:[{kind:"RENAMED",path:"docs/guide.md",to:"docs/moved.md"}]});
+  assert.deepEqual(report.changes,[{kind:"RENAMED",path:"docs/guide.md",to:"docs/moved.md"}]);
+  assert.equal(report.autoAdopt,false);
+  for(const path of ["docs/guide.md","docs/moved.md","extensions/entry.ts","lib/core.ts"])
+    assert.ok(report.invalidatedPaths.includes(path),path);
+  for(const invalid of [
+    {kind:"RENAMED",path:"docs/guide.md",to:"../escape"},
+    {kind:"RENAMED",path:"docs/guide.md"},
+    {kind:"ADDED",path:"docs/guide.md",to:"docs/moved.md"},
+    {kind:"IGNORED",path:"docs/guide.md"},
+  ])assert.throws(()=>detectBaselineDrift(baseline,baseline,{additionalChanges:[invalid]}),/Malformed runtime edge drift changes/);
+});
+
 test("checked-in ecosystem manifest is valid research evidence",()=>{
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
   assert.deepEqual(validateBaseline(baseline),[]);
@@ -403,6 +419,45 @@ test("mapped Markdown runtime directory reports additions, removals and content 
   assert.ok(report.invalidatedPaths.includes(trackedOwner.path),"tracked-file target invalidates its exact owner");
   assert.ok(report.invalidatedPaths.includes(contractOwner.path),"code-contract owner change remains invalidated");
   for(const importer of contractImporters)assert.ok(report.invalidatedPaths.includes(importer.path),`code-contract change invalidates importer ${importer.path}`);
+  const globOwners=[...new Set(mappings.mappings.filter((row:any)=>row.mappingKind==="tracked-glob").map((row:any)=>before.files.find((file:any)=>file.id===row.sourceId).path))];
+  for(const path of [selected,removed,`${assetDirectory}/new-worker.md`])
+    assert.equal(report.changes.filter((row:any)=>row.path===path).length,1,`duplicate glob change: ${path}`);
+  for(const owner of globOwners)assert.ok(report.invalidatedPaths.includes(owner),`mapped glob owner: ${owner}`);
+
+  const unique=selectedFiles.find((file:any)=>file.path!==selected&&file.path!==removed&&selectedFiles.filter((candidate:any)=>candidate.sha256===file.sha256).length===1);
+  assert.ok(unique,"a unique frozen agent byte identity is required for rename classification");
+  const renamedPath=`${assetDirectory}/renamed-source.md`;
+  execFileSync("git",["-C",repo,"mv",unique.path,renamedPath]);
+  execFileSync("git",["-C",repo,"commit","-qm","rename mapped runtime input"]);
+  const renamedCommit=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+  const renamedBaseline=collectBaseline(repo,renamedCommit);
+  const renameReport=detectMappedBaselineDrift(repo,before,renamedBaseline,overlay,mappings);
+  assert.ok(renameReport.changes.some((row:any)=>row.kind==="RENAMED"&&row.path===unique.path&&row.to===renamedPath));
+  assert.equal(renameReport.changes.filter((row:any)=>row.path===unique.path).length,1);
+  for(const owner of globOwners)assert.ok(renameReport.invalidatedPaths.includes(owner));
+
+  const duplicateBytes=readFileSync(join(repo,renamedPath));
+  for(const file of collectRuntimeEdgeFiles(repo,renamedCommit,"assets/agents/*.md"))rmSync(join(repo,file.path));
+  execFileSync("git",["-C",repo,"add","-A"]);execFileSync("git",["-C",repo,"commit","-qm","remove all mapped runtime inputs"]);
+  const emptyCommit=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+  const emptyBaseline=collectBaseline(repo,emptyCommit);
+  const emptyReport=detectMappedBaselineDrift(repo,before,emptyBaseline,overlay,mappings);
+  assert.equal(emptyReport.changes.filter((row:any)=>row.kind==="REMOVED"&&row.path.startsWith(`${assetDirectory}/`)).length,selectedFiles.length);
+  assert.equal(emptyReport.changes.filter((row:any)=>row.kind==="RENAMED"&&row.path.startsWith(`${assetDirectory}/`)).length,0);
+  assert.equal(emptyReport.autoAdopt,false);
+  for(const owner of globOwners)assert.ok(emptyReport.invalidatedPaths.includes(owner));
+
+  for(const name of ["duplicate-a.md","duplicate-b.md"])writeFileSync(join(repo,assetDirectory,name),duplicateBytes);
+  execFileSync("git",["-C",repo,"add","-A"]);execFileSync("git",["-C",repo,"commit","-qm","replace with ambiguous mapped inputs"]);
+  const replacedCommit=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+  const replacedBaseline=collectBaseline(repo,replacedCommit);
+  const replacedReport=detectMappedBaselineDrift(repo,before,replacedBaseline,overlay,mappings);
+  assert.ok(!replacedReport.changes.some((row:any)=>row.kind==="RENAMED"&&row.path===unique.path),"ambiguous duplicate bytes cannot claim a rename");
+  for(const name of ["duplicate-a.md","duplicate-b.md"])
+    assert.equal(replacedReport.changes.filter((row:any)=>row.kind==="ADDED"&&row.path===`${assetDirectory}/${name}`).length,1);
+  assert.equal(replacedReport.changes.filter((row:any)=>row.kind==="REMOVED"&&row.path===unique.path).length,1);
+  assert.equal(replacedReport.autoAdopt,false);
+  for(const owner of globOwners)assert.ok(replacedReport.invalidatedPaths.includes(owner));
 });
 
 test("immutable source reader returns the manifest-selected committed bytes",(t:test.TestContext)=>{

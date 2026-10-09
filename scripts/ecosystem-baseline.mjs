@@ -758,17 +758,30 @@ export function collectRuntimeEdgeFiles(repository,commit,selector) {
 /** Includes mapped runtime-only inputs in the source drift report; it never adopts them. */
 export function detectMappedBaselineDrift(repository,before,after,adjudications,mapping) {
   verifyRuntimeEdgeMappings(repository,before,adjudications,mapping);
-  const runtimeEdges=[],additionalChanges=[];
+  const runtimeEdges=[],additionalChanges=[],globTargets=new Map();
   for(const row of mapping.mappings){
     const owner=before.files.find(file=>file.id===row.sourceId);if(!owner)throw new Error("Runtime edge owner is missing");
     if(row.mappingKind==="tracked-file")runtimeEdges.push({sourcePath:owner.path,targetPaths:row.targets});
     else if(row.mappingKind==="tracked-glob"){
-      const oldFiles=collectRuntimeEdgeFiles(repository,before.commit,row.targets[0]),newFiles=collectRuntimeEdgeFiles(repository,after.commit,row.targets[0]);
-      const oldByPath=new Map(oldFiles.map(file=>[file.path,file])),newByPath=new Map(newFiles.map(file=>[file.path,file]));
-      for(const file of oldFiles)if(!newByPath.has(file.path))additionalChanges.push({kind:"REMOVED",path:file.path});
-      for(const file of newFiles)if(!oldByPath.has(file.path))additionalChanges.push({kind:"ADDED",path:file.path});
-      for(const file of newFiles)if(oldByPath.has(file.path)&&oldByPath.get(file.path).sha256!==file.sha256)additionalChanges.push({kind:"CONTENT_CHANGED",path:file.path});
-      runtimeEdges.push({sourcePath:owner.path,targetPaths:[...new Set([...oldFiles,...newFiles].map(file=>file.path))]});
+      const selector=row.targets[0];
+      if(!globTargets.has(selector)){
+        const oldFiles=collectRuntimeEdgeFiles(repository,before.commit,selector),newFiles=collectRuntimeEdgeFiles(repository,after.commit,selector);
+        const oldByPath=new Map(oldFiles.map(file=>[file.path,file])),newByPath=new Map(newFiles.map(file=>[file.path,file]));
+        const removed=oldFiles.filter(file=>!newByPath.has(file.path)),added=newFiles.filter(file=>!oldByPath.has(file.path));
+        const renamedOld=new Set(),renamedNew=new Set();
+        for(const file of removed){
+          const matches=added.filter(candidate=>candidate.sha256===file.sha256);
+          if(matches.length===1&&removed.filter(candidate=>candidate.sha256===file.sha256).length===1){
+            additionalChanges.push({kind:"RENAMED",path:file.path,to:matches[0].path});
+            renamedOld.add(file.path);renamedNew.add(matches[0].path);
+          }
+        }
+        for(const file of removed)if(!renamedOld.has(file.path))additionalChanges.push({kind:"REMOVED",path:file.path});
+        for(const file of added)if(!renamedNew.has(file.path))additionalChanges.push({kind:"ADDED",path:file.path});
+        for(const file of newFiles)if(oldByPath.has(file.path)&&oldByPath.get(file.path).sha256!==file.sha256)additionalChanges.push({kind:"CONTENT_CHANGED",path:file.path});
+        globTargets.set(selector,[...new Set([...oldFiles,...newFiles].map(file=>file.path))]);
+      }
+      runtimeEdges.push({sourcePath:owner.path,targetPaths:globTargets.get(selector)});
     }
   }
   return detectBaselineDrift(before,after,{runtimeEdges,additionalChanges});
@@ -790,7 +803,7 @@ export function detectBaselineDrift(before, after, {runtimeEdges=[],additionalCh
   for (const value of [before,after]) if (validateBaseline(value).length) throw new Error("Cannot compare malformed baselines");
   if(!Array.isArray(runtimeEdges)||runtimeEdges.some(edge=>!edge||!safePath(edge.sourcePath)||!Array.isArray(edge.targetPaths)||edge.targetPaths.some(target=>!safePath(target))))
     throw new Error("Malformed runtime edge mapping");
-  if(!Array.isArray(additionalChanges)||additionalChanges.some(change=>!change||!['ADDED','REMOVED','CONTENT_CHANGED'].includes(change.kind)||!safePath(change.path)))
+  if(!Array.isArray(additionalChanges)||additionalChanges.some(change=>!change||!["ADDED","REMOVED","CONTENT_CHANGED","RENAMED"].includes(change.kind)||!safePath(change.path)||(change.kind==="RENAMED"?!safePath(change.to):change.to!==undefined)))
     throw new Error("Malformed runtime edge drift changes");
   const old = new Map(before.files.map(row => [row.path,row])), next = new Map(after.files.map(row => [row.path,row]));
   const removed = before.files.filter(row => !next.has(row.path)), added = after.files.filter(row => !old.has(row.path)), changes = [];
