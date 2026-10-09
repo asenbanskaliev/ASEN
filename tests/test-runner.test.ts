@@ -10,6 +10,7 @@ import {runTestPlan} from "../scripts/run-tests.mjs";
 
 const processFiles=[
  "tests/ask-user-rpc.test.ts",
+ "tests/gsp06-pi-free-probes.test.ts",
  "tests/evidence-tdd.test.ts",
  "tests/execution-revision.test.ts",
  "tests/pi-native-skill-load.test.ts",

@@ -22,7 +22,7 @@ jobs:
           node-version: "22.19.0"
       - run: npm install --ignore-scripts
       - run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0
-      - run: pi install npm:pi-free
+      - run: pi install npm:pi-free@2.8.4
       - name: Exact candidate and deterministic gates
         run: |
           test "$(git rev-parse HEAD)" = "${{ inputs.expected_sha }}"
@@ -31,12 +31,10 @@ jobs:
           npm run verify:pack
       - name: Pi Free generated-output probes
         env:
-          LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
           ASEN_EXPECTED_SHA: ${{ inputs.expected_sha }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           ASEN_PI_PROVIDER: openrouter
           ASEN_PI_MODEL: nvidia/nemotron-3.5-lightning:free
-          ASEN_PI_PROVIDER_EXTENSION: npm:pi-free
+          ASEN_PI_PROVIDER_EXTENSION: npm:pi-free@2.8.4
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           test -n "$OPENROUTER_API_KEY"
