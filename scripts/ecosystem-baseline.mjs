@@ -805,6 +805,11 @@ export function detectBaselineDrift(before, after, {runtimeEdges=[],additionalCh
     throw new Error("Malformed runtime edge mapping");
   if(!Array.isArray(additionalChanges)||additionalChanges.some(change=>!change||!["ADDED","REMOVED","CONTENT_CHANGED","RENAMED"].includes(change.kind)||!safePath(change.path)||(change.kind==="RENAMED"?!safePath(change.to):change.to!==undefined)))
     throw new Error("Malformed runtime edge drift changes");
+  if(additionalChanges.some(change=>change.kind==="RENAMED"&&change.path===change.to))throw new Error("Malformed runtime edge drift changes");
+  const keys=additionalChanges.map(change=>`${change.kind}:${change.path}:${change.to??""}`);
+  if(new Set(keys).size!==keys.length)throw new Error("Duplicate runtime edge drift change");
+  const owners=new Set([...before.files,...after.files].map(row=>row.path));
+  if(runtimeEdges.some(edge=>!owners.has(edge.sourcePath)))throw new Error("Runtime edge owner is missing from compared baselines");
   const old = new Map(before.files.map(row => [row.path,row])), next = new Map(after.files.map(row => [row.path,row]));
   const removed = before.files.filter(row => !next.has(row.path)), added = after.files.filter(row => !old.has(row.path)), changes = [];
   const renamedOld = new Set(), renamedNew = new Set();
