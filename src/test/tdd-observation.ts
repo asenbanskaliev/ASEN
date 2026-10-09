@@ -111,9 +111,10 @@ function filteredTap(stdout:string,target:string,planned:readonly string[]):void
  const summary=(label:string)=>Number(lines.find(line=>line.startsWith(`# ${label} `))?.slice(label.length+3));if(targetPass!==1||new Set(seen).size!==seen.length||summary("tests")!==seen.length||summary("fail")!==0||summary("todo")!==0)throw new Error("filtered Node TAP did not run the target exactly once");
 }
 type Range={startOffset:number;endOffset:number};type RawRange=Range&{count:number};
-function coverageRelativePath(cwd:string,absolute:string,canonicalRoot=realpathSync(cwd)):string{
- const relativePath=relative(canonicalRoot,absolute).replace(/\\/gu,"/");
- if(isAbsolute(relativePath)||relativePath.startsWith("../")||relativePath===".."||resolve(canonicalRoot,relativePath)!==resolve(absolute))throw new Error("Node coverage script is outside the isolated candidate");
+function coverageRelativePath(cwd:string,absolute:string,canonicalRoot=realpathSync(cwd)):string|undefined{
+ const canonicalAbsolute=realpathSync(absolute),relativePath=relative(canonicalRoot,canonicalAbsolute).replace(/\\/gu,"/");
+ if(isAbsolute(relativePath)||relativePath.startsWith("../")||relativePath==="..")return undefined;
+ if(resolve(canonicalRoot,relativePath)!==canonicalAbsolute)throw new Error("Node coverage script path is ambiguous");
  return relativePath;
 }
 function coverageRanges(documents:readonly unknown[],cwd:string,behaviorPaths:readonly string[]):Map<string,Range[]>{
@@ -127,7 +128,7 @@ function coverageRanges(documents:readonly unknown[],cwd:string,behaviorPaths:re
    if(!url.startsWith("file:"))continue;
    let absolute:string;try{absolute=fileURLToPath(url);}catch{throw new Error("Node coverage file URL is malformed");}
    const relativePath=coverageRelativePath(cwd,absolute,cwd);
-   if(!behaviorPaths.includes(relativePath))continue;
+   if(relativePath===undefined||!behaviorPaths.includes(relativePath))continue;
    if(found.has(relativePath))throw new Error("Node coverage contains duplicate or ambiguous behavior scripts");
    const raw:RawRange[]=[];
    for(const fn of functions){
