@@ -1,5 +1,9 @@
 # Portable GitHub/Codex strict-parity handoff
 
+## Windows CI repair batch — 2026-10-09
+
+Published HEAD `b977e55` passed Pi, architecture and three-platform package/install gates, but both CI events failed the Windows evidence/TDD timeout. The bounded candidate moves that file into the existing serial Windows contained-process group without raising timeouts or omitting tests. See the [exact CI and repair evidence](pi-1-1-runtime-alignment.md). One publication includes source, tests and metadata; no Markdown-only CI dispatch. U2, independent review and B2/ECO-02A remain open; 16 PARTIAL / 0 FULL is unchanged.
+
 ## Implementation follow-up — 2026-10-09
 
 The original Pi 1.1 candidate now has successful CI and package/install gates on Ubuntu, Windows and macOS after the bounded Ubuntu retry. The user authorized correcting reproduced installed-package/API defects on this same PR. See the [canonical follow-up](pi-1-1-runtime-alignment.md) for exact identities and remaining gates. New source candidates do not inherit earlier CI. U2 and final independent review remain open; B2/ECO-02A and production orchestration integration stay pending. Optional peer `>=0.85.1`, frozen/historical evidence and 16 PARTIAL / 0 FULL remain unchanged.

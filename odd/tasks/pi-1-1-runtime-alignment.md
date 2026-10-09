@@ -1,5 +1,15 @@
 # Pi 1.1 runtime alignment
 
+## Windows CI repair batch — 2026-10-09
+
+The installed/API correction batch was published as `950a025524edb2e3775249f78793ed920d29c2fe` and `b977e550bead88dc852cd92a2f4289b91ed28b4d`. For that exact HEAD, Pi 1.1 runtime `37950030652`, architecture `37950030621`, and Release Gate `37950030604` passed; the latter includes Linux, Windows and macOS package/install gates. CI PR `37950030561` and push `37950024388` failed only their Windows full-suite job; Linux and macOS passed. Pi Free `37950030502` was SKIPPED.
+
+Both failed Windows jobs (`113886113741`, `113886089683`) report `evidence is bound to exact revision` in tests/evidence-tdd.test.ts: `Execution evidence command timed out` at src/evidence/execution.ts:110 after about 20 seconds. The same revision passed Windows Release Gate, so the cause is not established. This is separate from the local full-suite `ps` observer limitation. No failed-job rerun or duplicate workflow was dispatched.
+
+Bounded repair: move tests/evidence-tdd.test.ts into the existing Windows-only serial contained-process group, alongside execution-revision.test.ts. Preserve the 20-second fixture limit, production containment/authority, every selected test and Linux/macOS planning. Keep ordinary Windows tests concurrent; no global serialization or performance improvement is claimed. Deterministic planner RED is selected 8, passed 7, failed 1; isolated evidence/TDD Linux observation is 14/14 PASS, not a Windows reproduction. The regression verifies the exact Windows partition and that every repository test is selected once. Local focused GREEN and audits are recorded in the ecosystem tracker after observation.
+
+The user requested larger verified batches to avoid repeated long CI. This repair, its tests and all handoff reconciliation are prepared locally and published together once. Runtime/provider/ODD feature work remains behind U2 and independent review, so it is not bundled across that admission gate. No U2/B2 closure or claim promotion follows from publication.
+
 ## Implementation follow-up — 2026-10-09
 
 This follow-up supersedes the pending Actions observations below, without changing their historical evidence. The original Pi 1.1 candidate remains `4290f7da71c586b3f69509bee959740228a9831f`; documentation reconciliation was published separately at `58c1e8fc6b76de56cdb1bcd206afc455b45a23be`.
