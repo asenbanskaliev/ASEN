@@ -4,7 +4,7 @@ import {createHash,createHmac,randomUUID,timingSafeEqual} from "node:crypto";
 import {types} from "node:util";
 import {validateWriteGrant} from "../policies/scopes.js";
 import type {Candidate,Risk} from "../core/types.js";
-import {issueSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
+import {issueSkillContext,isIssuedSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import type {Dispatcher,AgentRequest} from "../agents/dispatcher.js";
 import {isIssuedAgentArtifactProof} from "../agents/pi-artifact-runner.js";
@@ -47,7 +47,7 @@ const lifecycleDescriptions=new WeakMap<SkillLifecycle,WorkflowSelectionDescript
 const snapshotDescriptions=new WeakMap<object,WorkflowSelectionDescription>();
 const snapshotObligations=new WeakMap<object,TddObligation>();
 const lifecycleDefects=new WeakSet<SkillLifecycle>(),snapshotDefects=new WeakSet<object>();
-type WriterAdmission={task:string;repository:string;candidateId:string;revision:string;surfaces:readonly string[];used:boolean};
+type WriterAdmission={task:string;repository:string;candidateId:string;revision:string;surfaces:readonly string[];originalDefect:boolean;used:boolean};
 const writerAdmissions=new WeakMap<object,WriterAdmission>();
 function writerText(value:unknown,label:string):string{
  if(typeof value!=="string"||!value||value.length>4096||value!==value.trim()||value!==value.normalize("NFC")||/[\u0000-\u001f\u007f-\u009f]/u.test(value))throw new Error(`Invalid ${label}`);
@@ -68,21 +68,23 @@ function writerSurfaces(value:unknown):string[]{
  validateWriteGrant({agentId:"admission",repository:"admission",surfaces},[]);
  return surfaces;
 }
-function writerAdmission(task:string,candidate:Candidate,surfaces:readonly string[]):object{
+function writerAdmission(task:string,candidate:Candidate,surfaces:readonly string[],original?:LifecycleApplicability):object{
  const bounded=writerSurfaces(surfaces),token=Object.freeze({});
- writerAdmissions.set(token,{task:writerText(task,"writer task"),repository:writerText(candidate.repository,"writer repository"),candidateId:writerText(candidate.id,"writer candidate id"),revision:writerText(candidate.revision,"writer revision"),surfaces:Object.freeze(bounded),used:false});
+ if(original&&bounded.some(surface=>!original.expectedPaths.includes(surface)))throw new Error("Writer surfaces exceed the original declared scope");
+ writerAdmissions.set(token,{task:writerText(task,"writer task"),repository:writerText(candidate.repository,"writer repository"),candidateId:writerText(candidate.id,"writer candidate id"),revision:writerText(candidate.revision,"writer revision"),surfaces:Object.freeze(bounded),originalDefect:original?hasOriginalDefectIntent(original):false,used:false});
  return token;
 }
 export function issueOrganicWriterAdmission(applicability:LifecycleApplicability,surfaces:readonly string[]):object{
  claimLifecycleApplicability(applicability);
  if(applicability.outcome!=="organic"||!hasOriginalWriterIntent(applicability))throw new Error("Organic writer admission requires organic write applicability");
- return writerAdmission(applicability.taskIdentity,{...applicability.candidate,createdAt:"organic-applicability"},surfaces);
+ return writerAdmission(applicability.taskIdentity,{...applicability.candidate,createdAt:"organic-applicability"},surfaces,applicability);
 }
 /** Burn before any Dispatcher identity, Skill, evidence, or scope gate. */
 export function consumeWriterAdmission(token:unknown,request:AgentRequest):boolean{
  const a=typeof token==="object"&&token!==null?writerAdmissions.get(token):undefined;
  if(!a||a.used)return false;
  a.used=true;
+ if(a.originalDefect&&(!isIssuedSkillContext(request.skillContext)||request.skillContext.defect!==true))return false;
  if(!request.candidate||!request.writeSurfaces||request.role!=="worker"||request.candidate.repository!==request.repository)return false;
  const task=request.id.replace(/:worker$/u,"");
  return (a.task===task||a.task===request.id)&&a.repository===request.repository&&a.candidateId===request.candidate.id&&a.revision===request.candidate.revision&&a.surfaces.length===request.writeSurfaces.length&&a.surfaces.every((v,i)=>v===request.writeSurfaces![i]);

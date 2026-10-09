@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {AsyncLocalStorage} from "node:async_hooks";
-import fsPromises,{mkdtemp,readFile,writeFile} from "node:fs/promises";
+import fsPromises,{mkdtemp,readFile,writeFile,rm} from "node:fs/promises";
 import {syncBuiltinESMExports} from "node:module";
 import {tmpdir} from "node:os";
 import path from "node:path";
-import {captureHistory,exportHistory,searchHistory,trimHistory} from "../src/runtime/history.js";
+import {captureHistory,exportHistory,searchHistory,trimHistory,redactHistoryText} from "../src/runtime/history.js";
 import {runHistoryCommand,recordHistoryInput} from "../src/runtime/history-command.js";
 import {readHistoryStore} from "../src/runtime/history-store.js";
 import {emptyUsage,incrementUsage,maySendTelemetry,telemetryPreview} from "../src/runtime/usage.js";
@@ -54,6 +54,32 @@ test("history capture is opt-in, redacts before persistence and scopes search/ex
  assert.equal(saved.redacted,true);assert.doesNotMatch(saved.text,/abc123456789|hunter2/);assert.equal(JSON.parse(exportHistory([saved,{...saved,id:"2",projectId:"other"}],"p")).length,1);
  assert.equal(searchHistory([saved,{...saved,id:"2",projectId:"other"}],"p","redacted").length,1);
  assert.equal(trimHistory({enabled:true,maxEntries:1},[saved,{...saved,id:"2"}])[0]?.id,"2");assert.throws(()=>searchHistory([saved],"p","x",0),/search/);
+});
+
+test("history removes recognized credentials completely and redaction is idempotent",()=>{
+ const token="sk-ASENSyntheticKey123456789",openrouter="sk-or-v1-ASENSyntheticKey123456789";
+ for(const text of [token,openrouter,`OPENROUTER_API_KEY=${openrouter}`,`Bearer ${token}`,`password=${token}`]){
+  const first=redactHistoryText(text);
+  assert.equal(first.redacted,true);
+  assert.ok(!first.text.includes(token)&&!first.text.includes(openrouter),"no recognized credential may survive redaction");
+  assert.equal(redactHistoryText(first.text).text,first.text);
+ }
+});
+
+test("opt-in history never persists or exposes recognized provider credentials",async t=>{
+ const directory=await mkdtemp(path.join(tmpdir(),"asen-history-credential-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ const storePath=path.join(directory,"history.json"),context={storePath,projectId:"p",sessionId:"s",hasUI:true,confirm:async()=>true};
+ await runHistoryCommand("enable",context);
+ const secrets=["sk-ASENSyntheticKey123456789","sk-or-v1-ASENSyntheticKey987654321"];
+ for(const secret of secrets)await recordHistoryInput(context,`Prompt ${secret} remains useful`);
+ const outputs=[await readFile(storePath,"utf8"),await runHistoryCommand("search",context),await runHistoryCommand("export",context)];
+ for(const output of outputs){
+  for(const secret of secrets)assert.ok(!output.includes(secret),"persistence/search/export must exclude the credential");
+  assert.match(output,/Prompt/);assert.match(output,/REDACTED/);
+ }
+ const store=await readHistoryStore(storePath);
+ assert.equal(store.entries.length,2);assert.ok(store.entries.every(entry=>entry.redacted));
 });
 
 test("public history commands require explicit opt-in and keep captures project scoped",async()=>{

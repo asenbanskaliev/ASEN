@@ -14,11 +14,11 @@ const decisionFor=(taskId:string,repository="repo")=>issueOddDecision({
  paths:["src/a.ts","src/b.ts"],
  writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"behavior"}],
 });
-const writerAdmissionFor=(plan:ReturnType<typeof buildOrchestrationPlan>,taskId:string)=>issueOrganicWriterAdmission(decideLifecycleApplicability(plan.decision,{taskIdentity:taskId,repositoryIdentity:"repo",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"unspecified",affectedSubsystems:["orchestration"],expectedPaths:["src/a.ts","src/b.ts"],requiredArtifacts:[]}),["src"]);
+const writerAdmissionFor=(plan:ReturnType<typeof buildOrchestrationPlan>,taskId:string)=>issueOrganicWriterAdmission(decideLifecycleApplicability(plan.decision,{taskIdentity:taskId,repositoryIdentity:"repo",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"unspecified",affectedSubsystems:["orchestration"],expectedPaths:["src/a.ts","src/b.ts"],requiredArtifacts:[]}),["src/a.ts","src/b.ts"]);
 
 test("orchestrated writer cannot execute until its mutation evidence is complete",async()=>{
  const plan=buildOrchestrationPlan(
-  {taskId:"task",repository:"repo",prompt:"change behavior",codeChange:true,behaviorChange:true,filesTouched:4,writeSurfaces:["src"],candidate},
+  {taskId:"task",repository:"repo",prompt:"change behavior",codeChange:true,behaviorChange:true,filesTouched:4,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
   decisionFor("task")
  );
  const worker=plan.agents.find(agent=>agent.role==="worker");
@@ -43,7 +43,7 @@ test("orchestrated writer cannot execute until its mutation evidence is complete
 
 test("orchestrated writer cannot use evidence from another revision",async()=>{
  const plan=buildOrchestrationPlan(
-  {taskId:"task",repository:"repo",prompt:"change code",codeChange:true,filesTouched:4,writeSurfaces:["src"],candidate},
+  {taskId:"task",repository:"repo",prompt:"change code",codeChange:true,filesTouched:4,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
   decisionFor("task")
  );
  const worker=plan.agents.find(agent=>agent.role==="worker");
@@ -59,7 +59,7 @@ test("orchestrated writer cannot use evidence from another revision",async()=>{
 
 test("orchestrated writer skill context cannot be downgraded after planning",()=>{
  const plan=buildOrchestrationPlan(
-  {taskId:"task",repository:"repo",prompt:"change code",codeChange:true,filesTouched:4,writeSurfaces:["src"],candidate},
+  {taskId:"task",repository:"repo",prompt:"change code",codeChange:true,filesTouched:4,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
   decisionFor("task")
  );
  const worker=plan.agents.find(agent=>agent.role==="worker");
@@ -71,11 +71,11 @@ test("orchestrated writer skill context cannot be downgraded after planning",()=
 
 test("writer cannot reuse another task's issued skill context",async()=>{
  const first=buildOrchestrationPlan(
-  {taskId:"first",repository:"repo",prompt:"change code",codeChange:true,writeSurfaces:["src"],candidate},
+  {taskId:"first",repository:"repo",prompt:"change code",codeChange:true,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
   decisionFor("first")
  );
  const second=buildOrchestrationPlan(
-  {taskId:"second",repository:"repo",prompt:"change code",codeChange:true,writeSurfaces:["src"],candidate},
+  {taskId:"second",repository:"repo",prompt:"change code",codeChange:true,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
   decisionFor("second")
  );
  const firstWorker=first.agents.find(agent=>agent.role==="worker");

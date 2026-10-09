@@ -10,10 +10,10 @@ import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";
 import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";
 const candidate={id:"candidate",repository:"r",revision:"sha",createdAt:"now"};
-function applicability(writes=true){
- const decision=issueOddDecision({taskId:"task",repository:"r",intent:writes?"implementation":"analysis",paths:["src/a"],writes:writes?[{path:"src/a",changeKind:"behavior"}]:[]});
+function applicability(writes=true,paths=["src/a"],defect=false){
+ const decision=issueOddDecision({taskId:"task",repository:"r",intent:writes?(defect?"defect":"implementation"):"analysis",paths,writes:writes?[{path:paths[0]!,changeKind:"behavior"}]:[]});
  buildOrchestrationPlan({taskId:"task",repository:"r",candidate,prompt:"task"},decision);
- return decideLifecycleApplicability(decision,{taskIdentity:"task",repositoryIdentity:"r",candidate:{id:candidate.id,repository:"r",revision:"sha"},explicitMode:"unspecified",affectedSubsystems:["runtime"],expectedPaths:["src/a"],requiredArtifacts:[]});
+ return decideLifecycleApplicability(decision,{taskIdentity:"task",repositoryIdentity:"r",candidate:{id:candidate.id,repository:"r",revision:"sha"},explicitMode:"unspecified",affectedSubsystems:["runtime"],expectedPaths:paths,requiredArtifacts:[]});
 }
 function request():AgentRequest{
  const skillContext=issueSkillContext("task:worker","r",candidate,{phase:"apply",codeChange:true});
@@ -40,7 +40,36 @@ test("R3 exact canonical bounded arrays reject malformed/control strings without
  const cases:unknown[]=[[],[""],[" src/a"],["src/a "],["src/e\u0301"],["src/a","src/a"],["src/a","src/a/"],["/"],["."],[".."],["src/../a"],["src//a"],["C:/a"],["src\\a"],["src/*"],[42],Array(1),getter,extra,new Proxy(["src/a"],{}),Array(257).fill("src/a"),["a".repeat(4097)]];
  for(let code=0;code<=159;code++)if(code<=31||code>=127)cases.push([`src/a${String.fromCharCode(code)}b`]);
  for(const surfaces of cases){const app=applicability();assert.throws(()=>issueOrganicWriterAdmission(app,surfaces as string[]));assert.throws(()=>issueOrganicWriterAdmission(app,["src/a"]),/claimed/);}
- assert.ok(issueOrganicWriterAdmission(applicability(),["src/é"]));
+ assert.ok(issueOrganicWriterAdmission(applicability(true,["src/é"]),["src/é"]));
+});
+test("organic issuance rejects scope expansion and burns the original applicability",()=>{
+ for(const surfaces of [["secrets/"],["src/"],["src"],["src/a/"],["src/a","secrets/key"]]){
+  const original=applicability();
+  assert.throws(()=>issueOrganicWriterAdmission(original,surfaces),/original.*scope/);
+  assert.throws(()=>issueOrganicWriterAdmission(original,["src/a"]),/claimed/);
+ }
+ assert.ok(issueOrganicWriterAdmission(applicability(true,["src/a","src/b"]),["src/a"]));
+});
+test("organic admission cannot drop genuine original defect intent before dispatch",async()=>{
+ const token=issueOrganicWriterAdmission(applicability(true,["src/a"],true),["src/a"]);
+ let calls=0;
+ const dispatcher=new Dispatcher({run:async r=>{calls++;return{id:r.id,ok:true,output:"must not run"};}},evidence());
+ await assert.rejects(()=>dispatcher.dispatch({...request(),writerAdmission:token}),/admission/);
+ assert.equal(calls,0);assert.equal(consumeWriterAdmission(token,request()),false);
+ const genuineDefectContext=issueSkillContext("task:worker","r",candidate,{phase:"apply",codeChange:true,defect:true});
+ const preserved={...request(),skillContext:genuineDefectContext,skillPaths:selectSkills(genuineDefectContext).map(s=>s.path)};
+ const second=issueOrganicWriterAdmission(applicability(true,["src/a"],true),["src/a"]);
+ await assert.rejects(()=>dispatcher.dispatch({...preserved,writerAdmission:second}),/defect-intake/);
+ assert.equal(calls,0);assert.equal(consumeWriterAdmission(second,preserved),false);
+});
+for(const kind of ["forged","getter","proxy"] as const)test(`organic defect admission rejects ${kind} contexts without callbacks`,()=>{
+ let callbacks=0;
+ const supplied=kind==="forged"?{defect:true}:kind==="getter"?{get defect(){callbacks++;return true;}}:new Proxy({defect:true},{get(target,key){callbacks++;return Reflect.get(target,key);}});
+ const token=issueOrganicWriterAdmission(applicability(true,["src/a"],true),["src/a"]);
+ assert.equal(consumeWriterAdmission(token,{...request(),skillContext:supplied as never}),false);
+ assert.equal(callbacks,0);
+ const genuine=issueSkillContext("task:worker","r",candidate,{phase:"apply",codeChange:true,defect:true});
+ assert.equal(consumeWriterAdmission(token,{...request(),skillContext:genuine}),false,"a rejected context must burn admission");
 });
 test("R2 Dispatcher burns admission before failed identity, context and evidence gates",async()=>{
  for(const modify of [(r:AgentRequest)=>({...r,id:"wrong"}),(r:AgentRequest)=>({...r,candidate:{...candidate,revision:"wrong"}}),(r:AgentRequest)=>{const {skillContext:_context,...rest}=r;return rest;}]){

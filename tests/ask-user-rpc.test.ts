@@ -5,19 +5,24 @@ import {mkdtemp,writeFile,rm} from "node:fs/promises";
 import {join,dirname,resolve} from "node:path";
 import {tmpdir} from "node:os";
 import {fileURLToPath,pathToFileURL} from "node:url";
+import {createPiVerifierEnvironment} from "../scripts/gsp06-pi-free-environment.mjs";
 
 test("real offline Pi RPC transports ASEN choice and cancellation without any model invocation",{timeout:20000},async t=>{
   const root=await mkdtemp(join(tmpdir(),"asen-interaction-rpc-"));
   const extension=join(root,"probe.ts"),source=pathToFileURL(resolve("extensions/asen.ts")).href;
+  const credentialNames=["OPENROUTER_API_KEY","LLM7_API_KEY","GROQ_API_KEY","GITHUB_TOKEN","ASEN_TEST_UNRELATED_SECRET"];
+  const ambient={...process.env,...Object.fromEntries(credentialNames.map(name=>[name,"ASEN-SYNTHETIC-CREDENTIAL"]))};
   await writeFile(extension,`import {createAsenExtension} from ${JSON.stringify(source)};
 export default function(pi){const tools=new Map();createAsenExtension()({registerCommand:(...args)=>pi.registerCommand(...args),registerTool:tool=>{tools.set(tool.name,tool);pi.registerTool(tool);}});
 pi.registerCommand("asen-interaction-probe",{description:"Synthetic offline interaction",handler:async(args,ctx)=>{
 const params={question:"Synthetic choice",options:[{label:"A",description:"First",value:"a"},{label:"B",description:"Second",value:"b"}]};
-const result=await tools.get("asen_ask_choice").execute("probe",params,undefined,undefined,ctx);ctx.ui.notify("ASEN_PROBE:"+JSON.stringify(result.details),"info");}});}
+const result=await tools.get("asen_ask_choice").execute("probe",params,undefined,undefined,ctx);
+const credentialNames=${JSON.stringify(credentialNames)}.filter(name=>process.env[name]!==undefined);
+ctx.ui.notify("ASEN_PROBE:"+JSON.stringify({...result.details,credentialNames}),"info");}});}
 `);
   const main=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent")),cli=join(dirname(main),"bundle","cli.js");
   const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--extension",extension,"--no-skills","--no-tools"],{
-    cwd:root,env:{...process.env,PI_CODING_AGENT_DIR:join(root,"agent"),PI_OFFLINE:"1",PI_TELEMETRY:"0",PI_SKIP_VERSION_CHECK:"1"},stdio:["pipe","pipe","pipe"],
+    cwd:root,env:createPiVerifierEnvironment({...ambient,PI_CODING_AGENT_DIR:join(root,"agent")}),stdio:["pipe","pipe","pipe"],
   });
   const closed=new Promise<void>(done=>child.once("close",()=>done()));
   t.after(async()=>{child.kill();await closed;await rm(root,{recursive:true,force:true});});
@@ -51,5 +56,6 @@ const result=await tools.get("asen_ask_choice").execute("probe",params,undefined
     send({id:"commands",type:"get_commands"});
   });
   assert.equal(dialogs,2);assert.equal(models,0,"extension commands must never fall through to model execution");
+  for(const outcome of outcomes)assert.deepEqual(outcome.credentialNames,[],"the real Pi extension must receive no ambient credentials");
   assert.equal(outcomes[0].status,"answered");assert.equal(outcomes[0].selection.value,"b");assert.equal(outcomes[1].status,"cancelled");
 });

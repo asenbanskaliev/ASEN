@@ -223,9 +223,9 @@ test("D5 exige intake genuino para autorización y Dispatcher; recuperación con
   const decision=issueOddDecision({taskId:"d5-worker",repository:v.repository,intent:"defect",paths:["src/a.ts"],writes:[{path:"src/a.ts",changeKind:"behavior"}]});
   const plan=buildOrchestrationPlan({taskId:"d5-worker",repository:v.repository,prompt:"corregir",candidate:v.candidate},decision);
   const applicability=decideLifecycleApplicability(plan.decision,{taskIdentity:"d5-worker",repositoryIdentity:v.repository,candidate:{id:v.candidate.id,repository:v.candidate.repository,revision:v.candidate.revision},explicitMode:"unspecified",affectedSubsystems:["defect"],expectedPaths:["src/a.ts"],requiredArtifacts:[]});
-  return issueOrganicWriterAdmission(applicability,["src/"]);
+  return issueOrganicWriterAdmission(applicability,["src/a.ts"]);
  };
- const request={id:"d5-worker",role:"worker" as const,repository:v.repository,candidate:v.candidate,skillContext:context,skillPaths:skills.map(s=>s.path),writeSurfaces:["src/"],writerAdmission:admissionFor(),prompt:"corregir"};
+ const request={id:"d5-worker",role:"worker" as const,repository:v.repository,candidate:v.candidate,skillContext:context,skillPaths:skills.map(s=>s.path),writeSurfaces:["src/a.ts"],writerAdmission:admissionFor(),prompt:"corregir"};
  let llamadas=0;const dispatcher=new Dispatcher({run:async r=>{llamadas++;return{id:r.id,ok:true,output:"observado"};}},store);
  assert.throws(()=>authorizeImplementation(v.candidate,context,store),/defect-intake/);
  await assert.rejects(()=>dispatcher.dispatch(request),/defect-intake/);assert.equal(llamadas,0);

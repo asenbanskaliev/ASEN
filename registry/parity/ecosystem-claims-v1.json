@@ -75,14 +75,17 @@
       ],
       "implementation": [
         "scripts/package-exports.mjs",
-        "scripts/verify-pack.mjs"
+        "scripts/verify-pack.mjs",
+        "src/runtime/pi-host.ts",
+        "extensions/asen.ts"
       ],
       "tests": [
         "tests/package-exports.test.ts",
-        "tests/package.test.ts"
+        "tests/package.test.ts",
+        "tests/pi-host-preflight.test.ts"
       ],
       "remaining": [
-        "Public host version/capability preflight implementation plus exact new-candidate multiplatform packed-Pi installation and real-host registration evidence remain required. Factory-time collision behavior and authoritative flag/mode inventory are unavailable through the observed public host surface."
+        "Public version/callable-capability preflight is implemented before production registration. Packed Pi 1.1 installation and real-host RPC registration passed on Linux/macOS/Windows for be209b98f9d8df4b4cba34f38657a9cf38d7bdf9 only; subsequent candidates require fresh exact-SHA evidence. Factory-time mode/inventory/collision admission and a complete minimum-version/platform matrix remain unproven. No internal facade/RPC check establishes production ODD/TUI integration."
       ],
       "stateful": false,
       "platformSensitive": true,
@@ -301,13 +304,15 @@
         "831db959b54c8a660da3adfba2a57ad7cc869abc2254ce9e981ff29f15435faf"
       ],
       "implementation": [
-        "src/runtime/profiles.ts"
+        "src/runtime/profiles.ts",
+        "src/runtime/profile-store.ts"
       ],
       "tests": [
-        "tests/runtime-profiles.test.ts"
+        "tests/runtime-profiles.test.ts",
+        "tests/profile-store.test.ts"
       ],
       "remaining": [
-        "Strict profile schema, session/project/global precedence, fallback and deterministic mutations are implemented. Persistence/rollback integration, public command/UI wiring and real Pi/model routing evidence remain."
+        "Strict profile schema, session/project/global precedence, fallback, deterministic mutations and persisted/reloaded profile storage are implemented and tested internally. Production profile-provider/command/model-routing integration, real Pi/platform journeys and rollback evidence remain incomplete. No full production routing parity is claimed. The internal resolver still treats prototype-named missing roles as inherited routes; this confirmed review limitation must be corrected before admitting production profile routing."
       ],
       "stateful": true,
       "platformSensitive": true,
