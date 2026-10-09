@@ -27,6 +27,7 @@ test("concurrent writes serialize without lost updates and preserve project isol
  await commitHistory(file,0,value=>({...value,revision:1,policy:{enabled:true,maxEntries:100}}));
  await Promise.all(Array.from({length:40},(_,index)=>appendHistoryEntry(file,entry(`p-${index}`))));
  const all=await readHistoryStore(file);assert.equal(all.entries.length,40);assert.equal(all.revision,41);
+ await assert.rejects(()=>stat(`${file}.lock`),{code:"ENOENT"});
  const next=await commitHistory(file,all.revision,value=>deleteProjectHistory(value,"p"));assert.equal(next.entries.length,0);assert.equal(next.tombstones.length,40);
 });
 

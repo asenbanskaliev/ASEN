@@ -47,7 +47,7 @@ test("Pi Free receives only the selected provider credential and required runtim
   assert.equal(observed.PI_TELEMETRY, "0");
   assert.equal(observed.OPENROUTER_API_KEY, source.OPENROUTER_API_KEY);
   for (const name of ["SYSTEMROOT", "WINDIR", "TEMP", "TMPDIR", "COMSPEC", "PATHEXT", "LANG", "LC_ALL", "LC_CTYPE", "TZ"]) {
-    assert.equal(observed[name], source[name], `${name} must remain available to Pi`);
+    assert.equal(observed[name], environment[name], `${name} must remain available to Pi`);
   }
   const allowed = new Set([
     "PATH", "HOME", "USERPROFILE", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT", "WINDIR",
@@ -55,7 +55,7 @@ test("Pi Free receives only the selected provider credential and required runtim
     "PI_PACKAGE_DIR", "PI_OFFLINE", "PI_SKIP_VERSION_CHECK", "OPENROUTER_API_KEY", "PI_TELEMETRY",
   ]);
   for (const name of Object.keys(source)) {
-    if (allowed.has(name)) continue;
+    if (allowed.has(name) || (process.platform === "win32" && [...allowed].some(key => key.toUpperCase() === name.toUpperCase()))) continue;
     assert.equal(Object.hasOwn(environment, name), false, `${name} must not be inherited by Pi`);
     // macOS may synthesize this non-secret variable even when absent from env.
     if (process.platform === "darwin" && name === "__CF_USER_TEXT_ENCODING") continue;
@@ -130,4 +130,13 @@ test("Pi child environment fails closed for an unsupported or unconfigured provi
   assert.throws(() => createPiProbeEnvironment({}, "unknown"), /Unsupported GSP-06 provider/);
   assert.throws(() => createPiProbeEnvironment({}, "toString"), /Unsupported GSP-06 provider/);
   assert.throws(() => createPiProbeEnvironment({}, "openrouter"), /credential is unavailable/);
+});
+
+
+test("Windows runtime snapshots preserve mixed-case system paths without inheriting secrets", () => {
+  const source = {Path: "C:\\runtime", SystemRoot: "C:\\Windows", windir: "C:\\Windows", ComSpec: "C:\\Windows\\System32\\cmd.exe", Other_Secret: "excluded", OPENROUTER_API_KEY: "excluded"};
+  assert.deepEqual(createPiRuntimeEnvironment(source, "win32"), {
+    PATH: source.Path, SYSTEMROOT: source.SystemRoot, WINDIR: source.windir, COMSPEC: source.ComSpec,
+  });
+  assert.deepEqual(createPiRuntimeEnvironment(source, "linux"), {});
 });

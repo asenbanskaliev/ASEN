@@ -25,10 +25,14 @@ export const PROVIDER_CREDENTIALS = Object.freeze({
   groq: "GROQ_API_KEY",
 });
 
-export function createPiRuntimeEnvironment(source) {
+export function createPiRuntimeEnvironment(source, platform = process.platform) {
+  // Plain snapshots lose Windows process.env case-insensitive lookup.
+  const values = platform === "win32"
+    ? Object.fromEntries(Object.entries(source).map(([name, value]) => [name.toUpperCase(), value]))
+    : source;
   const environment = {};
   for (const name of RUNTIME_ENVIRONMENT) {
-    if (typeof source[name] === "string") environment[name] = source[name];
+    if (typeof values[name] === "string") environment[name] = values[name];
   }
   return environment;
 }

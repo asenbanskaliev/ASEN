@@ -1,5 +1,17 @@
 # Pi 1.1 runtime alignment
 
+## Windows environment and History batch — 2026-10-09
+
+Baseline `1ac4feecdaefcc8575493b56e8a9eb75c521d4e5` passed Linux/macOS CI and package/install, Pi 1.1 and architecture, but Windows CI push `37967700255` and PR `37967705877` failed the environment fixture (`SYSTEMROOT` compared with undefined). Windows Release Gate `37967705883` failed the History 40-write lock timeout. Pi Free stayed SKIPPED.
+
+Plain copies of Windows process.env lose its case-insensitive property lookup. The runtime-only allowlist now normalizes source names on Windows, preserving mixed-case Path/SystemRoot/ComSpec while still excluding provider and unrelated secrets. POSIX remains case-sensitive. A platform-injected regression covers both behaviors; the subprocess test compares canonical runtime values and continues asserting secret exclusion.
+
+History's existing 40 concurrent writes and multiprocess tests are retained. The file joins the existing serial Windows group so unrelated test files do not compete for filesystem operations. The test additionally asserts that the canonical lock is absent after the 40 writes. The exact-selection regression passes. The Windows timeout cause is not established; this bounded scheduling intervention requires new Windows Actions and does not change the lock protocol or timeouts.
+
+Validation of this batch: 41 focused tests passed with zero skips; typecheck passed. Full frozen-baseline suite selected 1,033 tests: 1,032 PASS, 1 FAIL, zero skips/cancellations. The sole failure is the existing local process-observation error `ps: fatal library error, lookup self` in `Pi cancellation settles its process tree and policy cleanup before returning`; it is not PASS. Environment, History, RPC and the three formerly skipped frozen-baseline cases passed. All six audits passed separately after `npm run check` stopped at the suite failure. Packed-install verification passed (28 exports, seven visible RPC commands, zero model invocations); diff hygiene passed.
+
+Own code/test review checked requirements, credential filtering, POSIX/Windows regression boundaries and exact test selection. It is not independent/native approval. New exact-SHA CI remains required. U2/ECO-02A remain open, ECO-03 is not admitted, and 16 PARTIAL / 0 FULL remains unchanged. Rollback is limited to the environment helper/declaration, focused fixtures, History scheduling/lock assertion and these evidence notes.
+
 ## Follow-on CI fixture repair — 2026-10-09
 
 The nine-commit follow-on was transferred without rewriting from the Copilot branch to PR #32 at `f69d56d327dcf6a7d777a669c34e5909451a6fe9`. Its exact CI push (`37964631169`) and PR (`37964638499`) failed on macOS and Windows; Release Gate (`37964638533`) failed on macOS and cancelled Windows. Linux, Pi 1.1 and architecture passed. Pi Free was SKIPPED, not provider PASS.

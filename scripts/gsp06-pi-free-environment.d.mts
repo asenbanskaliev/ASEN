@@ -6,6 +6,7 @@ export declare const PROVIDER_CREDENTIALS: Readonly<{
 
 export declare function createPiRuntimeEnvironment(
   source: NodeJS.ProcessEnv,
+  platform?: NodeJS.Platform,
 ): NodeJS.ProcessEnv;
 
 export declare function createPiProbeEnvironment(
