@@ -788,7 +788,7 @@ export function readBaselineSourceBytes(repository, baseline, sourceId) {
 /** Rename is reported only for an unambiguous one-to-one exact-content match. Never mutates or adopts a source. */
 export function detectBaselineDrift(before, after, {runtimeEdges=[],additionalChanges=[]}={}) {
   for (const value of [before,after]) if (validateBaseline(value).length) throw new Error("Cannot compare malformed baselines");
-  if(!Array.isArray(runtimeEdges)||runtimeEdges.some(edge=>!edge||!safePath(edge.sourcePath)||!Array.isArray(edge.targetPaths)||!edge.targetPaths.length||edge.targetPaths.some(target=>!safePath(target))))
+  if(!Array.isArray(runtimeEdges)||runtimeEdges.some(edge=>!edge||!safePath(edge.sourcePath)||!Array.isArray(edge.targetPaths)||edge.targetPaths.some(target=>!safePath(target))))
     throw new Error("Malformed runtime edge mapping");
   if(!Array.isArray(additionalChanges)||additionalChanges.some(change=>!change||!['ADDED','REMOVED','CONTENT_CHANGED'].includes(change.kind)||!safePath(change.path)))
     throw new Error("Malformed runtime edge drift changes");
