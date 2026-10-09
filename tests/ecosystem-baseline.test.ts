@@ -177,6 +177,16 @@ test("explicit runtime file edges invalidate their owner and transitive importer
     detectBaselineDrift(before,before));
 });
 
+test("empty mapped runtime sets are valid and never auto-adopt changes",t=>{
+  const f=fixture(t),before=collectBaseline(f.root,f.commit);
+  const empty=detectBaselineDrift(before,before,{runtimeEdges:[{sourcePath:"extensions/entry.ts",targetPaths:[]}]});
+  assert.deepEqual(empty.changes,[]);
+  assert.deepEqual(empty.invalidatedPaths,[]);
+  assert.equal(empty.autoAdopt,false);
+  assert.throws(()=>detectBaselineDrift(before,before,{runtimeEdges:[{sourcePath:"extensions/entry.ts",targetPaths:["../outside"]}]}),/Malformed runtime edge mapping/);
+  assert.throws(()=>detectBaselineDrift(before,before,{runtimeEdges:[{sourcePath:"extensions/entry.ts",targetPaths:"docs/guide.md" as any}]}),/Malformed runtime edge mapping/);
+});
+
 test("checked-in ecosystem manifest is valid research evidence",()=>{
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
   assert.deepEqual(validateBaseline(baseline),[]);
