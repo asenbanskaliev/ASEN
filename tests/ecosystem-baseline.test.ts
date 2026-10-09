@@ -374,9 +374,9 @@ test("mapped Markdown runtime directory reports additions, removals and content 
   const mappings=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-runtime-edge-mappings-v1.json",import.meta.url),"utf8"));
   const selectedFiles=collectRuntimeEdgeFiles(repo,before.commit,"assets/agents/*.md"),selected=selectedFiles[0].path,removed=selectedFiles[1].path,assetDirectory=selected.slice(0,selected.lastIndexOf("/"));
   const trackedFile=mappings.mappings.find((row:any)=>row.mappingKind==="tracked-file"),trackedOwner=before.files.find((row:any)=>row.id===trackedFile.sourceId);
-  const codeContract=mappings.mappings.find((row:any)=>row.mappingKind==="code-contract"),contractOwner=before.files.find((row:any)=>row.id===codeContract.sourceId);
+  const codeContract=mappings.mappings.find((row:any)=>row.mappingKind==="code-contract"&&row.sourceId==="ECO-SRC-af1edc66cbd9834c"),contractOwner=before.files.find((row:any)=>row.id===codeContract.sourceId);
   const contractImporters=before.files.filter((row:any)=>row.references.some((reference:any)=>reference.status==="tracked"&&reference.path===contractOwner.path));
-  assert.ok(contractImporters.length>0,"a mapped code-contract owner has tracked importers");
+  assert.ok(contractImporters.length>0,"the mapped agent contract owner has tracked importers");
   writeFileSync(join(repo,selected),"# changed input\n");
   rmSync(join(repo,removed));
   writeFileSync(join(repo,assetDirectory,"new-worker.md"),"# added input\n");

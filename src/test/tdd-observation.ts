@@ -119,7 +119,7 @@ function coverageRelativePath(cwd:string,absolute:string,canonicalRoot=realpathS
  return relativePath;
 }
 function coverageRanges(documents:readonly unknown[],cwd:string,behaviorPaths:readonly string[]):Map<string,Range[]>{
- const found=new Map<string,Range[]>();
+ const found=new Map<string,Range[]>(),observedScripts=new Set<string>();
  for(const document of documents){
   const scripts=(document as {result?:unknown})?.result;
   if(!Array.isArray(scripts))throw new Error("Node coverage output is malformed");
@@ -129,6 +129,7 @@ function coverageRanges(documents:readonly unknown[],cwd:string,behaviorPaths:re
    if(!url.startsWith("file:"))continue;
    let absolute:string;try{absolute=fileURLToPath(url);}catch{throw new Error("Node coverage file URL is malformed");}
    const relativePath=coverageRelativePath(cwd,absolute,cwd);
+   observedScripts.add(relativePath??"<outside-root>");
    if(relativePath===undefined||!behaviorPaths.includes(relativePath))continue;
    if(found.has(relativePath))throw new Error("Node coverage contains duplicate or ambiguous behavior scripts");
    const raw:RawRange[]=[];
@@ -149,7 +150,11 @@ function coverageRanges(documents:readonly unknown[],cwd:string,behaviorPaths:re
    found.set(relativePath,positive);
   }
  }
- for(const path of behaviorPaths)if(!found.get(path)?.length)throw new Error("Node coverage is missing positive behavior coverage");
+ for(const path of behaviorPaths)if(!found.get(path)?.length){
+  const state=found.has(path)?"script-found-with-zero-positive-ranges":"script-not-found";
+  const observed=[...observedScripts].sort().slice(0,20).join(",")||"none";
+  throw new Error(`Node coverage is missing positive behavior coverage: ${path}; ${state}; observed relative scripts: ${observed}`);
+ }
  return found;
 }
 /** Runs full and per-case fixed Node TAP commands and returns only normalized positive V8 ranges. */
