@@ -32,7 +32,7 @@ try {
     assert.equal(messages.length,1,`${name} must publish one visible result`);
     assert.ok(messages[0].length>0,`${name} must publish nonempty output`);
   }
-  const cli=path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");
+  const cli=process.argv[3]?path.resolve(process.argv[3]):path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");
   const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--extension",path.join(packageRoot,"extensions","asen.ts"),"--no-skills","--no-tools"],{
     cwd:root,env:{...process.env,PI_OFFLINE:"1",PI_TELEMETRY:"0",PI_SKIP_VERSION_CHECK:"1"},stdio:["pipe","pipe","pipe"]});
   const closed=new Promise(resolve=>child.once("close",resolve));
