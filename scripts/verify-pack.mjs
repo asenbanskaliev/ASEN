@@ -4,6 +4,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {verifyPublicExports} from "./package-exports.mjs";
+import {createPiVerifierEnvironment} from "./gsp06-pi-free-environment.mjs";
 
 const temp=mkdtempSync(join(tmpdir(),"asen-packed-exports-"));
 function npm(args,options={}) {
@@ -27,7 +28,7 @@ const peerLocations=[
 ];
 if(peerLocations.some(location=>existsSync(location)))
   throw new Error("packed installation unexpectedly contains the optional Pi peer");
-execFileSync(process.execPath,[fileURLToPath(new URL("./verify-pi-package.mjs",import.meta.url)),installed],{encoding:"utf8",stdio:"inherit",timeout:60000});
+execFileSync(process.execPath,[fileURLToPath(new URL("./verify-pi-package.mjs",import.meta.url)),installed],{encoding:"utf8",stdio:"inherit",timeout:60000,env:createPiVerifierEnvironment(process.env)});
 const installedPackage=JSON.parse(readFileSync(join(installed,"package.json"),"utf8"));
 if(installedPackage.bin?.asen!=="./dist/cli.js")throw new Error("packed artifact missing ASEN executable mapping");
 const cliBytes=readFileSync(join(installed,"dist","cli.js"),"utf8");if(!cliBytes.startsWith("#!/usr/bin/env node"))throw new Error("packed ASEN executable missing node shebang");

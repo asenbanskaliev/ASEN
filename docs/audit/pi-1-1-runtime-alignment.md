@@ -1,5 +1,26 @@
 # Pi 1.1 runtime alignment
 
+## Verified platform checkpoint and packed-verifier boundary — 2026-10-09
+
+The exact remote candidate `1cc7e6aae7433f6c4892b0bc5d36d56254c1db02` passed all applicable jobs, including every Ubuntu/macOS/Windows matrix entry:
+
+| Gate | Exact Actions run | Conclusion |
+| --- | --- | --- |
+| CI push | [37974542058](https://github.com/asenbanskaliev/ASEN/actions/runs/37974542058) | completed/success |
+| CI pull_request | [37974550002](https://github.com/asenbanskaliev/ASEN/actions/runs/37974550002) | completed/success |
+| Release Gate | [37974550029](https://github.com/asenbanskaliev/ASEN/actions/runs/37974550029) | completed/success |
+| Phase 0 architecture | [37974549961](https://github.com/asenbanskaliev/ASEN/actions/runs/37974549961) | completed/success |
+| Pi 1.1 runtime | [37974550127](https://github.com/asenbanskaliev/ASEN/actions/runs/37974550127) | completed/success |
+| Pi Free Smoke | [37974549935](https://github.com/asenbanskaliev/ASEN/actions/runs/37974549935) | intentionally skipped; not provider PASS |
+
+This resolves the preceding Windows scheduling/environment checkpoint for this SHA only. PR #32 remains open/draft. Native GitHub reviews were empty on observation; the earlier independent review remains incomplete. CI PASS is not U2 approval. Earlier headers and pending-gate statements below are historical checkpoints, not the current candidate's gate state.
+
+The next source delta fixes a reproduced R2 gap: `verify:pack` previously launched `verify-pi-package.mjs` with inherited credentials before its SDK/resource loader imported the packed extension. A real packed-install negative witness failed with `verifier must receive an explicit environment`. The launch now reuses `createPiVerifierEnvironment`; the existing `npm run verify:pack` executes a reusable synthetic-credential witness that intercepts the actual launch, requires one invocation and rejects OpenRouter/LLM7/Groq/GitHub credentials. The verifier stays offline and telemetry-disabled; no workflow permissions/secrets, provider probes, paid models or dependencies changed. RPC verification continues through the real installed package, not a facade-only substitute.
+
+Local evidence for this delta: 17 focused preflight/environment/test-plan tests passed; typecheck passed. The frozen-baseline full suite executed 1,033 tests: 1,032 passed, one failed, zero skipped/cancelled. The sole failure was `Pi cancellation settles its process tree and policy cleanup before returning`: `ps could not observe process ... (exit 1: fatal library error, lookup self)`. This is a local observation failure, not PASS. All six audits passed separately; no frozen sources were refreshed. Real packed installation passed with 28 exports, seven visible RPC commands, zero model invocations and `PACK_ENV_BOUNDARY_PASS`; diff hygiene passed. New source requires its own automatic exact-SHA Actions and inherits none of the table's gates.
+
+Own R1/R2/R3/R4 inspection covers the explicit launch boundary, negative-before-fix evidence, runtime allowlist reuse, preserved real host checks, unchanged test selection/timeouts and honest evidence binding. It does not complete independent/native review. U2 and ECO-02A remain open: factory-time mode/inventories/collision admission and a complete minimum-version/platform matrix are unproven. Production ODD/TUI integration is not established by these RPC checks. ECO-03 is not admitted; retain 16 PARTIAL / 0 FULL, optional peer `>=0.85.1`, private hash-pinned child authority and historical evidence. The ecosystem tracker remains the sole queue. Rollback is bounded to `package.json`, `scripts/verify-pack.mjs`, `scripts/verify-pack-environment.mjs` and these reconciliation notes.
+
 ## Windows worker and spawned-environment batch — 2026-10-09
 
 Exact baseline `5265f0ece6076d496a80dc1bb970f11d6eebbc72` failed Windows PR CI `37971613716` in the migration holder/opener worker phase; push CI `37971606226` and Release Gate `37971614050` failed the environment fixture on HOMEDRIVE. Linux/macOS CI and package/install, Pi 1.1 and architecture passed. Pi Free stayed SKIPPED. No prior PASS is transferred to the follow-on.
