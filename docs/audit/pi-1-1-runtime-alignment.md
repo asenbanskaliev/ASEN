@@ -1,5 +1,13 @@
 # Pi 1.1 runtime alignment
 
+## Current handoff reconciliation — 2026-10-09
+
+Published branch / OPEN-DRAFT PR #32 head is `4290f7da71c586b3f69509bee959740228a9831f`, 311 ahead / 0 behind main `49129b616c5349fbf323b74860136fc1593f9b2a`. The user authorized push with verification pending and cancelled the full local suite in favor of Actions. Publication occurred; approval did not. The local native review remains incomplete and unapproved.
+
+[Canonical Pi 1.1 handoff and exact Actions evidence](../../odd/tasks/pi-1-1-runtime-alignment.md) records Pi RPC/architecture PASS, macOS CI PASS, Linux/macOS pack/install PASS, Windows still running, and Ubuntu CI dependency-install `ECONNRESET`. No duplicate execution started. U2 remains open; finish the already running gates, then retry only the failed Ubuntu job and complete final review before B2/ECO-02A. Optional peer `>=0.85.1`, frozen/historical evidence and 16 PARTIAL / 0 FULL remain unchanged.
+
+This is the current execution route. Conflicting checkpoints, publication restrictions and dependency statements below are historical; they do not override the present user handoff or create additional backlogs. No new Markdown-only CI dispatch is needed.
+
 The current candidate aligns development and current-runtime CI with Pi 1.1.0 while preserving the optional peer floor. U1 implementation is recorded in local work-unit commit `a413e7e4b1306d3557f0ac1a991f1ecf4eaae885`; complete frozen-candidate validation and publication are still pending.
 
 ## Review path
@@ -61,7 +69,7 @@ The dependency transition includes Pi-family 0.87.1 to 1.1.0 and broader npm-man
 
 ## Pending gates
 
-- [x] Freeze and commit the U1 implementation: `a413e7e4b1306d3557f0ac1a991f1ecf4eaae885` (not pushed).
+- [x] Freeze and commit the U1 implementation: `a413e7e4b1306d3557f0ac1a991f1ecf4eaae885` (published through `4290f7d`; U2 remains pending).
 - [ ] Run the complete frozen Pi 1.1 validation gate.
 - [ ] Build, pack, and verify isolated installation.
 - [ ] Complete independent R1/R2/R3/R4 and applicable native review.

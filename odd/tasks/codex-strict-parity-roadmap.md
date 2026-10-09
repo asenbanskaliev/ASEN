@@ -1,5 +1,13 @@
 # Portable GitHub/Codex strict-parity handoff
 
+## Current handoff reconciliation — 2026-10-09
+
+Published branch / OPEN-DRAFT PR #32 head is `4290f7da71c586b3f69509bee959740228a9831f`, 311 ahead / 0 behind main `49129b616c5349fbf323b74860136fc1593f9b2a`. The user authorized push with verification pending and cancelled the full local suite in favor of Actions. Publication occurred; approval did not. The local native review remains incomplete and unapproved.
+
+[Canonical Pi 1.1 handoff and exact Actions evidence](pi-1-1-runtime-alignment.md) records Pi RPC/architecture PASS, macOS CI PASS, Linux/macOS pack/install PASS, Windows still running, and Ubuntu CI dependency-install `ECONNRESET`. No duplicate execution started. U2 remains open; finish the already running gates, then retry only the failed Ubuntu job and complete final review before B2/ECO-02A. Optional peer `>=0.85.1`, frozen/historical evidence and 16 PARTIAL / 0 FULL remain unchanged.
+
+This is the current execution route. Conflicting checkpoints, publication restrictions and dependency statements below are historical; they do not override the present user handoff or create additional backlogs. No new Markdown-only CI dispatch is needed.
+
 ## Purpose
 
 This document is a portable continuation route, not a backlog. `odd/tasks/ecosystem-strict-parity.md` is the sole execution backlog and owns every ECO checkbox. Do not recreate GSP, MEM, ECO, or `EP-*` tasks here; contradictory historical instructions remain available through Git history.

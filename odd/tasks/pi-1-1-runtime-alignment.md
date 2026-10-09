@@ -1,5 +1,31 @@
 # Pi 1.1 runtime alignment
 
+## Current handoff reconciliation — 2026-10-09
+
+The published candidate is `4290f7da71c586b3f69509bee959740228a9831f`, confirmed as the remote branch and OPEN/DRAFT PR #32 head. It descends from U1 source commit `a413e7e4b1306d3557f0ac1a991f1ecf4eaae885`; their only differences are four lines in the two Pi alignment Markdown reports. Non-Markdown source is identical. Main is `49129b616c5349fbf323b74860136fc1593f9b2a`; the published candidate is 311 ahead / 0 behind.
+
+The user authorized publication with verification pending and cancelled the complete local suite in favor of Actions. Therefore publication has occurred, but U2 approval and B2 admission have not. Earlier statements that publication is pending or must follow completed U2 are historical and superseded by this handoff authorization. The local native review was incomplete and remains unapproved.
+
+Observed exact-candidate Actions:
+
+| Gate | Exact observed evidence | Disposition |
+| --- | --- | --- |
+| Pi 1.1 runtime, run `37942891132` | Completed successfully; real Pi RPC evidence without an LLM run | PASS |
+| Phase 0 Architecture, run `37942891142` | Completed successfully | PASS |
+| CI, run `37942891031`, macOS job `113861546121` | Typecheck, 1,023/1,023 tests and all six audits passed | PASS |
+| CI, same run, Ubuntu job `113861545953` | `npm install` failed with network `ECONNRESET`, exit 152; tests/audits skipped | FAIL at dependency installation, no test verdict |
+| CI, same run, Windows job `113861546150` | Full test suite still running at observation | PENDING |
+| Release Gate, run `37942891079`, Ubuntu job `113861541361` | Check: 1,023 selected, 1,020 passed, zero failed, three platform skips; pack and both applicable install smokes passed | PASS |
+| Release Gate, same run, macOS job `113861541709` | Check: 1,023 selected, 1,020 passed, zero failed, three platform skips; pack and both applicable install smokes passed | PASS |
+| Release Gate, same run, Windows job `113861541620` | `npm run check` still running at observation; pack/install pending | PENDING |
+| Pi Free Smoke, run `37942891087` | Intentionally skipped | SKIPPED, not PASS |
+
+Ubuntu and macOS `verify:pack` each reported 225 files, 28 public exports, `packedInstallVerified: true`, and identical tarball integrity `sha512-l/6lrGF2dPCmvm97F+stGF/hKCSXd4Ntlxlp8Z9Pu2YGF38XgqyQRBPK2mac7wLzmuyANi4Quywvw5oi5fxPNg==`. These are Actions installation results, not a new local installation claim. Applicable Windows/Linux/macOS skips remain disclosed; no all-platform approval follows yet. macOS CI provides current watcher-suite evidence, not proof that the historical intermittent failure class is permanently fixed.
+
+First pending unit is U2: observe the already running Windows jobs, retry only the completed Ubuntu installation failure once its containing workflow finishes, inspect the result, and complete exact-candidate final review. GitHub refused the targeted Ubuntu job retry while the containing workflow remained running; no duplicate execution started. No runtime source fix is justified by the observed network reset. Do not close U2/U3 or resume B2/ECO-02A until the base is approved. No paid-model run, merge, release, force push, frozen-manifest change, or claim promotion occurred. Optional peer remains `>=0.85.1`; ecosystem remains 16 `PARTIAL` / 0 `FULL`.
+
+Rollback boundary: this reconciliation changes only the four Markdown handoff/tracker reports; all runtime, tests, workflows, lockfile, manifests, claims and historical reports remain untouched. Validate this metadata with structural assertions and diff hygiene, without a new Markdown-only CI dispatch.
+
 ## Authorization and scope
 
 The user explicitly selected upgrading Pi 1.1 first before resuming ECO-02A preflight. Start from published `fcbe90576339bd9486ca3ba17ce9fe2e8481c58b`. Parent alone commits and publishes to `feat/strict-parity-prerequisites` / draft PR #32. No force push, main mutation, merge, release, paid-model probes, or manual duplicate CI. Use one isolated writer and one CPU-heavy verification at a time.
