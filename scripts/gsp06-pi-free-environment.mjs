@@ -54,8 +54,10 @@ export function createPiProbeEnvironment(source, provider) {
 }
 
 export function createPiVerifierEnvironment(source) {
+  const isolated = createPiRuntimeEnvironment(source);
+  delete isolated.PI_PACKAGE_DIR;
   return {
-    ...createPiRuntimeEnvironment(source),
+    ...isolated,
     PI_OFFLINE: "1",
     PI_TELEMETRY: "0",
     PI_SKIP_VERSION_CHECK: "1",
