@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";import {spawn,execFileSync} from "node:child_process";import {resolve,dirname,join} from "node:path";import {realpathSync} from "node:fs";import {fileURLToPath} from "node:url";
-import {createPiProbeEnvironment,createPiRuntimeEnvironment} from "./gsp06-pi-free-environment.mjs";
+import {createPiProbeEnvironment,createPiRuntimeEnvironment,PROVIDER_CREDENTIALS} from "./gsp06-pi-free-environment.mjs";
 const provider=process.env.ASEN_PI_PROVIDER??"llm7",model=process.env.ASEN_PI_MODEL??"default",extension=process.env.ASEN_PI_PROVIDER_EXTENSION;const runtimeEnvironment=createPiRuntimeEnvironment(process.env),piEnvironment=createPiProbeEnvironment(process.env,provider);
 const repo=resolve("."),revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repo,encoding:"utf8",env:runtimeEnvironment}).trim();if(process.env.ASEN_EXPECTED_SHA&&revision!==process.env.ASEN_EXPECTED_SHA)throw new Error("GSP-06 candidate mismatch");
-const redact=value=>{let out=String(value);for(const key of ["LLM7_API_KEY","OPENROUTER_API_KEY","GROQ_API_KEY"]){const secret=process.env[key];if(secret)out=out.replaceAll(secret,"[redacted]");}return out.slice(0,700);};
+const redact=value=>{let out=String(value);for(const key of Object.values(PROVIDER_CREDENTIALS)){const secret=process.env[key];if(secret)out=out.replaceAll(secret,"[redacted]");}return out.slice(0,700);};
 const piMain=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent")),cli=join(dirname(piMain),"bundle","cli.js");
 const probes=[
  {name:"odd-positive",skills:["skills/asen-odd/SKILL.md"],prompt:"Plan substantial multi-file work. Include labels ROUTE, RISK, TRACKING, TODO_REQUIRED, RESUME_REQUIRED, VERIFICATION and UNRESOLVED.",must:["ROUTE","RISK","TRACKING","TODO_REQUIRED","RESUME_REQUIRED","VERIFICATION","UNRESOLVED"],mustNot:["merge authorized","tests passed"]},

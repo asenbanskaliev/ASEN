@@ -7,6 +7,7 @@ import {fileURLToPath} from "node:url";
 import {DefaultResourceLoader,SettingsManager} from "@earendil-works/pi-coding-agent";
 
 // Run in a separate process: no credentials, models, user homes or ambient indexes.
+if(!process.argv[2])throw new Error("Usage: node scripts/verify-pi-package.mjs <installed-package-root> [pi-cli-path]");
 const packageRoot=path.resolve(process.argv[2]);
 const root=mkdtempSync(path.join(tmpdir(),"asen-installed-pi-"));
 try {
@@ -32,7 +33,8 @@ try {
     assert.equal(messages.length,1,`${name} must publish one visible result`);
     assert.ok(messages[0].length>0,`${name} must publish nonempty output`);
   }
-  const cli=process.argv[3]?path.resolve(process.argv[3]):path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");
+  const defaultPiCli=path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");
+  const cli=process.argv[3]?path.resolve(process.argv[3]):defaultPiCli;
   const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--extension",path.join(packageRoot,"extensions","asen.ts"),"--no-skills","--no-tools"],{
     cwd:root,env:{...process.env,PI_OFFLINE:"1",PI_TELEMETRY:"0",PI_SKIP_VERSION_CHECK:"1"},stdio:["pipe","pipe","pipe"]});
   const closed=new Promise(resolve=>child.once("close",resolve));
