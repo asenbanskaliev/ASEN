@@ -432,5 +432,3 @@ test("immutable source reader verifies the selected blob byte identity",(t:test.
     assert.throws(()=>readBaselineSourceBytes(f.root,changed,row.id),/baseline source byte identity/i);
   }
 });
-
-
