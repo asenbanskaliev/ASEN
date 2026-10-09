@@ -25,8 +25,12 @@ jobs:
       - run: npm install
       - run: npm run check
       - run: npm run verify:pack
-      - name: Install official Pi CLI
-        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0
+      - name: Use installed official Pi CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e 'const p=require("./node_modules/@earendil-works/pi-coding-agent/package.json"); if (!p.version.startsWith("1.1.")) throw new Error(`Unexpected Pi version: ${p.version}`); console.log(`Using installed Pi ${p.version}`)'
+          echo "$GITHUB_WORKSPACE/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Real Pi package install smoke
         shell: bash
         if: runner.os != 'Windows'
