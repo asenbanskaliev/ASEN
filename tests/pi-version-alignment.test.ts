@@ -67,6 +67,14 @@ await test("package and lock metadata align the development SDK and Node floor",
 
 await test("all seven current-runtime workflows pin Pi 1.1.0", () => {
   for (const [path, workflow] of workflowTexts) {
+    if (path === "release-gate.yml") {
+      // Release Gate reuses the lockfile-installed SDK to avoid an unpinned second npm resolution.
+      assert.match(workflow, /npm install/);
+      assert.match(workflow, /p\.version !== "1\.1\.0"/);
+      assert.match(workflow, /GITHUB_WORKSPACE\/node_modules\/\.bin/);
+      assert.equal(workflow.includes("npm install -g"), false);
+      continue;
+    }
     const pins = [...workflow.matchAll(/@earendil-works\/pi-coding-agent@(\d+\.\d+\.\d+)/g)]
       .map((match) => match[1]);
     assert.deepEqual(pins, ["1.1.0"], `${path} must have one current Pi runtime pin`);
