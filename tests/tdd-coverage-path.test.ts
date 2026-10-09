@@ -8,7 +8,7 @@ import {commitCandidateFiles,gitCandidate} from "./execution-evidence-helper.js"
 
 test("V8 coverage from a temporary directory alias stays bound to the candidate",async t=>{
  const initial=gitCandidate("coverage-path-alias");t.after(()=>rmSync(initial.repository,{recursive:true,force:true}));
- const behavior="export function classify(value){if(value==='yes'){return 1;}return 2;}\n",testFile="import test from 'node:test';import assert from 'node:assert/strict';import {pathToFileURL} from 'node:url';import {classify} from '../src/classify.mjs';const external=await import(pathToFileURL(process.env.ASEN_COVERAGE_EXTERNAL_SCRIPT!).href);test('accepts yes',()=>{external.touch();assert.equal(classify('yes'),1)});\n";
+ const behavior="export function classify(value){if(value==='yes'){return 1;}return 2;}\n",testFile="import test from 'node:test';import assert from 'node:assert/strict';import {pathToFileURL} from 'node:url';import {classify} from '../src/classify.mjs';const external=await import(pathToFileURL(process.env.ASEN_COVERAGE_EXTERNAL_SCRIPT).href);test('accepts yes',()=>{external.touch();assert.equal(classify('yes'),1)});\n";
  const candidate=commitCandidateFiles(initial,{"src/classify.mjs":behavior,"tests/classify.test.mjs":testFile});
  const root=mkdtempSync(join(tmpdir(),"asen-coverage-alias-")),alias=join(root,"temporary-alias"),externalRoot=mkdtempSync(join(tmpdir(),"asen-coverage-external-")),externalScript=join(externalRoot,"outside.mjs");writeFileSync(externalScript,"export function touch(){return 'external';}\n");t.after(()=>{rmSync(root,{recursive:true,force:true});rmSync(externalRoot,{recursive:true,force:true});});
  symlinkSync(root,alias,process.platform==="win32"?"junction":"dir");assert.notEqual(alias,realpathSync(alias));
