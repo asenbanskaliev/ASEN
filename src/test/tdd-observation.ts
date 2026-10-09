@@ -112,9 +112,10 @@ function filteredTap(stdout:string,target:string,planned:readonly string[]):void
 }
 type Range={startOffset:number;endOffset:number};type RawRange=Range&{count:number};
 function coverageRelativePath(cwd:string,absolute:string,canonicalRoot=realpathSync(cwd)):string|undefined{
- const canonicalAbsolute=realpathSync(absolute),relativePath=relative(canonicalRoot,canonicalAbsolute).replace(/\\/gu,"/");
+ const relativePath=relative(canonicalRoot,absolute).replace(/\\/gu,"/");
  if(isAbsolute(relativePath)||relativePath.startsWith("../")||relativePath==="..")return undefined;
- if(resolve(canonicalRoot,relativePath)!==canonicalAbsolute)throw new Error("Node coverage script path is ambiguous");
+ const expected=resolve(canonicalRoot,relativePath),actual=resolve(absolute);
+ if(process.platform==="win32"?expected.toLowerCase()!==actual.toLowerCase():expected!==actual)throw new Error("Node coverage script path is ambiguous");
  return relativePath;
 }
 function coverageRanges(documents:readonly unknown[],cwd:string,behaviorPaths:readonly string[]):Map<string,Range[]>{
