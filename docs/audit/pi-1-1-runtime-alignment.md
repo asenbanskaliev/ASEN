@@ -1,5 +1,15 @@
 # Pi 1.1 runtime alignment
 
+## Follow-on CI fixture repair — 2026-10-09
+
+The nine-commit follow-on was transferred without rewriting from the Copilot branch to PR #32 at `f69d56d327dcf6a7d777a669c34e5909451a6fe9`. Its exact CI push (`37964631169`) and PR (`37964638499`) failed on macOS and Windows; Release Gate (`37964638533`) failed on macOS and cancelled Windows. Linux, Pi 1.1 and architecture passed. Pi Free was SKIPPED, not provider PASS.
+
+The new environment test replaced Windows system paths with nonexistent fixture paths, causing Node CSPRNG initialization to abort. macOS synthesized `__CF_USER_TEXT_ENCODING` in the child even though it was excluded from the supplied environment. The bounded correction preserves actual runtime paths, asserts exclusion on the exact supplied environment, and allows only that macOS-generated non-secret variable in child observations. Provider and unrelated-secret exclusion remains asserted in the real subprocess; production filtering and timeouts are unchanged.
+
+Local checks: 13 focused environment/test-runner tests passed; the final environment fixture passed 5/5. With the existing frozen-object preparation mechanism, baseline/environment tests passed 28/28 with zero skips, including the three previously omitted baseline tests. Typecheck, all six audits, packed installation (28 exports, seven visible RPC commands, zero model invocations), and diff hygiene passed. The full suite was started with the frozen baseline available; its overall result must be reported separately. Its offline interaction RPC test timed out at 15 seconds, then passed when isolated; this is not a full-suite PASS.
+
+CodeRabbit installation was blocked by automatic security review of an unverified PostHog telemetry request. No independent approval or native review is claimed. New-source CI must be observed for its exact SHA. U2, ECO-02A and independent review stay open; ECO-03 remains gated and ecosystem claims stay 16 PARTIAL / 0 FULL.
+
 ## Exact baseline candidate observation — 2026-10-09
 
 Before this follow-on, PR #32's remote HEAD was `90515eb76f9ac3d21e04a97bee0bbcbad4db3e5f`; full history confirmed 315 commits ahead and 0 behind `main` `49129b616c5349fbf323b74860136fc1593f9b2a`. Exact-SHA GitHub Actions reported:

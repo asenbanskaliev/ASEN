@@ -19,12 +19,6 @@ test("Pi Free receives only the selected provider credential and required runtim
     PI_CODING_AGENT_DIR: "/isolated/pi",
     PI_PACKAGE_DIR: "/isolated/packages",
     PI_OFFLINE: "1",
-    SYSTEMROOT: "/isolated/windows",
-    WINDIR: "/isolated/windows",
-    TEMP: "/isolated/temp",
-    TMPDIR: "/isolated/tmp",
-    COMSPEC: "/isolated/system/cmd",
-    PATHEXT: ".COM;.EXE",
     LANG: "C.UTF-8",
     LC_ALL: "C.UTF-8",
     LC_CTYPE: "C.UTF-8",
@@ -34,6 +28,7 @@ test("Pi Free receives only the selected provider credential and required runtim
     GROQ_API_KEY: "unselected-groq-key",
     GITHUB_TOKEN: "runner-token",
     OTHER_SECRET: "unrelated-secret",
+    __CF_USER_TEXT_ENCODING: "untrusted-inherited-value",
   };
   const environment = createPiProbeEnvironment(source, "openrouter");
   const child = spawnSync(
@@ -61,6 +56,9 @@ test("Pi Free receives only the selected provider credential and required runtim
   ]);
   for (const name of Object.keys(source)) {
     if (allowed.has(name)) continue;
+    assert.equal(Object.hasOwn(environment, name), false, `${name} must not be inherited by Pi`);
+    // macOS may synthesize this non-secret variable even when absent from env.
+    if (process.platform === "darwin" && name === "__CF_USER_TEXT_ENCODING") continue;
     assert.equal(Object.hasOwn(observed, name), false, `${name} must not reach Pi`);
   }
 });
