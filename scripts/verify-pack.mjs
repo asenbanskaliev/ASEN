@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
+import {fileURLToPath} from "node:url";
 import {verifyPublicExports} from "./package-exports.mjs";
 
 const temp=mkdtempSync(join(tmpdir(),"asen-packed-exports-"));
@@ -20,6 +21,7 @@ const installation=join(temp,"install");mkdirSync(installation);
 writeFileSync(join(installation,"package.json"),JSON.stringify({private:true}));
 npm(["install","--offline","--ignore-scripts","--omit=peer","--no-audit","--no-fund","--package-lock=false",join(temp,result.filename)],{cwd:installation});
 const checked=verifyPublicExports(installation),installed=join(installation,"node_modules","asen");
+execFileSync(process.execPath,[fileURLToPath(new URL("./verify-pi-package.mjs",import.meta.url)),installed],{encoding:"utf8",stdio:"inherit",timeout:60000});
 const installedPackage=JSON.parse(readFileSync(join(installed,"package.json"),"utf8"));
 if(installedPackage.bin?.asen!=="./dist/cli.js")throw new Error("packed artifact missing ASEN executable mapping");
 const cliBytes=readFileSync(join(installed,"dist","cli.js"),"utf8");if(!cliBytes.startsWith("#!/usr/bin/env node"))throw new Error("packed ASEN executable missing node shebang");

@@ -33,3 +33,7 @@ Disable automatic startup/watch with any of:
 - Pi `--no-skills` or `-ns`.
 
 `/asen-skill-registry refresh` remains an explicit manual command. Startup/watch failure is diagnostic; it does not cancel the user's final response. Local native Linux watch invalidation, restart generation, shutdown, disable and project isolation are tested. Real all-platform Pi startup/restart journeys remain open.
+
+## Primary installation and child policy
+
+The Pi package manifest selects `extensions/asen.ts` explicitly. `extensions/authority.ts` is a private, hash-pinned policy loaded explicitly by the existing child runner; ordinary installation must not apply it to the primary session. `verify:pack` now loads the installed tarball through the real Pi SDK resource loader and rejects accidental child-policy activation. This offline registration check does not execute tools or models, and does not prove complete ecosystem integration.
