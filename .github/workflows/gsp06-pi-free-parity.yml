@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: "22.19.0"
       - run: npm install --ignore-scripts
-      - run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.0
+      - run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0
       - run: pi install npm:pi-free
       - name: Exact candidate and deterministic gates
         run: |

@@ -36,7 +36,7 @@ await test("Pi facade evidence is represented by physical step keys", () => {
   assert.equal(lines[nameIndex + 2]?.trim(), "");
   assert.equal(
     lines[nameIndex + 3]?.trim(),
-    "- name: Exercise ASEN extension inside real Pi 1.0 RPC runtime",
+    "- name: Exercise ASEN extension inside real Pi 1.1 RPC runtime",
   );
 });
 
@@ -58,7 +58,7 @@ await test("runtime evidence keeps its trigger, pinning, offline, and permission
   assert.equal(workflow.includes("contents: write"), false);
 
   assert.match(workflow, /uses: actions\/checkout@v7[\s\S]*?ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
-  assert.match(workflow, /npm install -g --ignore-scripts @earendil-works\/pi-coding-agent@1\.0\.0/);
+  assert.match(workflow, /npm install -g --ignore-scripts @earendil-works\/pi-coding-agent@1\.1\.0/);
   assert.match(workflow, /PI_OFFLINE: "1"/);
   assert.match(workflow, /PI_TELEMETRY: "0"/);
   assert.match(workflow, /PI_SKIP_VERSION_CHECK: "1"/);

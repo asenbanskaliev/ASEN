@@ -16,7 +16,7 @@ jobs:
           node-version: 22
       - run: npm install
       - name: Install Pi
-        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.0
+        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0
       - name: Execute synthetic memory restart and model recall
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

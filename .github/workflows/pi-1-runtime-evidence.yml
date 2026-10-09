@@ -1,5 +1,5 @@
 # yamllint disable rule:line-length
-name: Pi 1.0 runtime evidence
+name: Pi 1.1 runtime evidence
 
 on:
   workflow_dispatch:
@@ -41,14 +41,14 @@ jobs:
       - name: Install ASEN dependencies
         run: npm install --ignore-scripts
 
-      - name: Install current stable Pi 1.0.0
-        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.0
+      - name: Install current stable Pi 1.1.0
+        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0
 
       - name: Record Pi and Node versions
         run: |
           node --version
           pi --version
-          test "$(pi --version | tr -d '\r')" = "1.0.0"
+          test "$(pi --version | tr -d '\r')" = "1.1.0"
 
       - name: Typecheck against repository dependencies
         run: npm run typecheck
@@ -59,7 +59,7 @@ jobs:
       - name: Exercise ASEN extension facade with real Pi package
         run: node scripts/pi-extension-e2e.mjs ./extensions/asen.ts
 
-      - name: Exercise ASEN extension inside real Pi 1.0 RPC runtime
+      - name: Exercise ASEN extension inside real Pi 1.1 RPC runtime
         env:
           PI_OFFLINE: "1"
           PI_TELEMETRY: "0"
@@ -86,7 +86,7 @@ jobs:
           if(!review?.success||review.data?.disposition!=="handled"){
             throw new Error("Pi did not handle /asen-review as an extension command");
           }
-          console.log("PASS: Pi 1.0.0 loaded ASEN and handled /asen-review without an LLM run.");
+          console.log("PASS: Pi 1.1.0 loaded ASEN and handled /asen-review without an LLM run.");
           NODE
 
       - name: Preserve Pi runtime evidence

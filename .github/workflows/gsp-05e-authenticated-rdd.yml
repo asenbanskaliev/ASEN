@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies and Pi Free
         run: |
           npm install --ignore-scripts
-          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.0
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0
           pi install npm:pi-free
       - name: Run focused deterministic E tests
         run: npx tsx --test tests/native-rdd-result.test.ts tests/work-unit-review-candidate.test.ts tests/review-chain.test.ts

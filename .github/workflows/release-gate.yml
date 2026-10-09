@@ -26,7 +26,7 @@ jobs:
       - run: npm run check
       - run: npm run verify:pack
       - name: Install official Pi CLI
-        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
+        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0
       - name: Real Pi package install smoke
         shell: bash
         if: runner.os != 'Windows'
