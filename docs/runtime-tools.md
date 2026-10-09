@@ -37,3 +37,9 @@ Disable automatic startup/watch with any of:
 ## Primary installation and child policy
 
 The Pi package manifest selects `extensions/asen.ts` explicitly. `extensions/authority.ts` is a private, hash-pinned policy loaded explicitly by the existing child runner; ordinary installation must not apply it to the primary session. `verify:pack` now loads the installed tarball through the real Pi SDK resource loader and rejects accidental child-policy activation. This offline registration check does not execute tools or models, and does not prove complete ecosystem integration.
+
+## Public Pi command boundary
+
+The production factory validates the SDK version and callable registration/event/flag API before registering anything. This preserves the declared `>=0.85.1` minimum; it is not proof of a full minimum-version runtime matrix. Preflight does not query tool/command inventories that Pi initializes later.
+
+The seven data commands publish through `ctx.ui.notify`; their production handlers fulfill Pi's `Promise<void>` contract. Internal `createAsenExtension` handlers retain their returned data for composition/tests. `verify:pack` verifies actual installed registration and seven visible command results through offline Pi RPC with zero model invocations. Missing status, diagnostics, agents or changes providers remain explicitly unavailable; visible output does not establish production provider or ODD integration.

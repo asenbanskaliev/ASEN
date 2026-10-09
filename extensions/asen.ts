@@ -26,6 +26,8 @@ import {readProfilesFile} from "../src/runtime/profile-store.js";
 import {runHistoryCommand,recordHistoryInput} from "../src/runtime/history-command.js";
 import {runUsageCommand} from "../src/runtime/usage-command.js";
 import {incrementUsageFile} from "../src/runtime/usage-store.js";
+import {VERSION,type ExtensionAPI} from "@earendil-works/pi-coding-agent";
+import {validatePiHost} from "../src/runtime/pi-host.js";
 
 type CommandContext={cwd:string;hasUI?:boolean;sessionManager?:{getSessionId?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;confirm?:(title:string,message:string)=>Promise<boolean>}};
 type PiLike={on?:(event:string,handler:(...args:any[])=>unknown)=>void;registerFlag?:(name:string,options:any)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
@@ -60,6 +62,20 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
  return pi=>{
   const register=pi.registerCommand?.bind(pi);
   if(!register)throw new Error("ASEN extension requires Pi command registration");
+  const registerData=(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>register(name,{
+   ...command,handler:(...args:any[])=>{
+    const publish=(result:unknown)=>{
+     const ctx=args[1] as CommandContext|undefined;
+     if(ctx?.ui?.notify){
+      const message=typeof result==="string"?result:Array.isArray(result)&&result.every(row=>typeof row==="string")?result.join("\n"):JSON.stringify(result,null,2);
+      ctx.ui.notify(message||"No entries.","info");
+     }
+     return result;
+    };
+    const result=command.handler(...args);
+    return result instanceof Promise?result.then(publish):publish(result);
+   }
+  });
   const lifecycle=new RegistryLifecycle({refresh,prepare:async cwd=>{
    const projectRoot=await realpath(path.resolve(cwd)),sources=await sourcesFor(projectRoot,home(),packageRoot);
    return {projectRoot,projectId:projectRoot,sources,...(dependencies.mirror?{mirror:dependencies.mirror}:{})};
@@ -79,13 +95,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   pi.on?.("turn_start",async()=>{try{await incrementUsageFile(usageFile,"agentRuns");}catch{}});
   registerInteractionTools(pi,dependencies.interactionTimeoutMs);
   if(pi.registerTool)registerCodeGraphTools({registerTool:pi.registerTool.bind(pi)},dependencies.codeIntelligence);
-  pi.registerCommand?.("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
-  pi.registerCommand?.("asen-commands",{description:"List ASEN public commands",handler:()=>ASEN_COMMAND_CATALOG.map(c=>({name:c.name,group:c.group,implemented:c.implemented}))});
-  pi.registerCommand?.("asen-status",{description:"Show bounded local ASEN status",handler:()=>dependencies.status?statusLines(dependencies.status()):["ASEN status unavailable: no local status provider configured."]});
-  pi.registerCommand?.("asen-doctor",{description:"Check local ASEN invariants",handler:()=>{if(!dependencies.doctor)return {exitCode:1,checks:[],message:"ASEN doctor unavailable: no local diagnostics provider configured."};const checks=doctorChecks(dependencies.doctor());return {exitCode:doctorExitCode(checks),checks};}});
-  pi.registerCommand?.("asen-agents",{description:"Show attributed ASEN agent lifecycle",handler:()=>dependencies.agents?agentStatusRows(dependencies.agents()):["ASEN agents unavailable: no local agent provider configured."]});
-  pi.registerCommand?.("asen-changes",{description:"Show attributed workspace changes",handler:()=>dependencies.changes?visibleWorkspaceRows(dependencies.changes()):["ASEN workspace changes unavailable: no local change provider configured."]});
-  pi.registerCommand?.("asen-profiles",{description:"Show local runtime profiles",handler:async()=>{if(!dependencies.profilesFile)return {active:"default",profiles:[],available:false};const value=await readProfilesFile(dependencies.profilesFile);return {active:value.active??"default",profiles:value.profiles.map(p=>p.name),available:true};}});
+  registerData("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
+  registerData("asen-commands",{description:"List ASEN public commands",handler:()=>ASEN_COMMAND_CATALOG.map(c=>({name:c.name,group:c.group,implemented:c.implemented}))});
+  registerData("asen-status",{description:"Show bounded local ASEN status",handler:()=>dependencies.status?statusLines(dependencies.status()):["ASEN status unavailable: no local status provider configured."]});
+  registerData("asen-doctor",{description:"Check local ASEN invariants",handler:()=>{if(!dependencies.doctor)return {exitCode:1,checks:[],message:"ASEN doctor unavailable: no local diagnostics provider configured."};const checks=doctorChecks(dependencies.doctor());return {exitCode:doctorExitCode(checks),checks};}});
+  registerData("asen-agents",{description:"Show attributed ASEN agent lifecycle",handler:()=>dependencies.agents?agentStatusRows(dependencies.agents()):["ASEN agents unavailable: no local agent provider configured."]});
+  registerData("asen-changes",{description:"Show attributed workspace changes",handler:()=>dependencies.changes?visibleWorkspaceRows(dependencies.changes()):["ASEN workspace changes unavailable: no local change provider configured."]});
+  registerData("asen-profiles",{description:"Show local runtime profiles",handler:async()=>{if(!dependencies.profilesFile)return {active:"default",profiles:[],available:false};const value=await readProfilesFile(dependencies.profilesFile);return {active:value.active??"default",profiles:value.profiles.map(p=>p.name),available:true};}});
   pi.registerCommand?.("asen-history",{description:"Manage opt-in, redacted, project-scoped local prompt history",handler:async(args:string,ctx:CommandContext)=>{
    const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId){ctx.ui.notify("ASEN history is unavailable without a current session.","error");return;}
    try{const result=await runHistoryCommand(args,{storePath:historyFile,projectId:await canonical(ctx.cwd),sessionId,hasUI:ctx.hasUI===true,...(ctx.ui.confirm?{confirm:ctx.ui.confirm.bind(ctx.ui)}:{})});ctx.ui.notify(result,"info");return result;}
@@ -114,4 +130,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
  };
 }
 
-export default createAsenExtension();
+/** Production entry uses the real public Pi contract; the injectable core remains a test/composition seam. */
+export default function asen(pi:ExtensionAPI):void{
+ validatePiHost(pi,VERSION);
+ createAsenExtension()({
+  on:(event,handler)=>pi.on(event as any,handler),
+  registerFlag:(name,options)=>pi.registerFlag(name,options),
+  getFlag:name=>pi.getFlag(name),
+  registerTool:tool=>pi.registerTool(tool),
+  registerCommand:(name,command)=>pi.registerCommand(name,{description:command.description,handler:async(args,ctx)=>{await command.handler(args,ctx);}}),
+ });
+}

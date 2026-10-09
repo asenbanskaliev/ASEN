@@ -1,5 +1,15 @@
 # Pi 1.1 runtime alignment
 
+## Implementation follow-up — 2026-10-09
+
+This follow-up supersedes the pending Actions observations below, without changing their historical evidence. The original Pi 1.1 candidate remains `4290f7da71c586b3f69509bee959740228a9831f`; documentation reconciliation was published separately at `58c1e8fc6b76de56cdb1bcd206afc455b45a23be`.
+
+Only the completed Ubuntu dependency-install failure was retried. Latest-attempt CI run `37942891031` now reports SUCCESS: Ubuntu `113876739742`, Windows `113876741213`, macOS `113876780938`, architecture `113876791998`; typecheck, full suite and all audits passed on each applicable platform. Release Gate `37942891079` also completed SUCCESS on Linux, macOS and Windows, including package/install verification. Existing Pi runtime and architecture PASS remain; Pi Free remains SKIPPED. These results belong to the original SHA, not to the new code below.
+
+The user subsequently authorized implementing the deep API audit proposal. Bounded, reproduced primary-installation and command-adapter defects are corrected first on this same branch/PR. Normal package discovery must exclude the unchanged child authority policy; data commands must publish through the public UI because Pi discards handler return values; production admission must check the known SDK version and required callable API before registration. The injectable core and its facade remain composition/test surfaces, not proof of production ODD wiring.
+
+U2 remains open: the new code requires its own checks, all-platform Actions and final independent review. The earlier native review was incomplete; no independent PASS is claimed. B2/ECO-02A, production state/doctor/profile providers, launcher/setup integration, and real ODD→agents→tasks→review→recovery remain pending until the aligned base is approved. Preserve optional peer `>=0.85.1`, historical/frozen evidence and 16 PARTIAL / 0 FULL.
+
 ## Current handoff reconciliation — 2026-10-09
 
 The published candidate is `4290f7da71c586b3f69509bee959740228a9831f`, confirmed as the remote branch and OPEN/DRAFT PR #32 head. It descends from U1 source commit `a413e7e4b1306d3557f0ac1a991f1ecf4eaae885`; their only differences are four lines in the two Pi alignment Markdown reports. Non-Markdown source is identical. Main is `49129b616c5349fbf323b74860136fc1593f9b2a`; the published candidate is 311 ahead / 0 behind.

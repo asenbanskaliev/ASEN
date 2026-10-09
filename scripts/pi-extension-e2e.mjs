@@ -10,7 +10,8 @@ const commands=new Map();
 const pi={
   registerCommand(name,command){commands.set(name,command);}
 };
-const facade=module.default(pi);
+// The production factory returns void to Pi. The injectable facade is a separate internal seam.
+const facade=module.createAsenExtension()(pi);
 const command=commands.get("asen"),registryCommand=commands.get("asen-skill-registry");
 if(!command) throw new Error("ASEN command was not registered");
 if(!registryCommand) throw new Error("ASEN skill registry command was not registered");
