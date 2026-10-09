@@ -11,7 +11,9 @@ import {runTestPlan} from "../scripts/run-tests.mjs";
 const processFiles=[
  "tests/ask-user-rpc.test.ts",
  "tests/execution-revision.test.ts",
+ "tests/pi-native-skill-load.test.ts",
  "tests/pi-process-runner.test.ts",
+ "tests/pi-session-recovery-e2e.test.ts",
  "tests/spawn-contained.test.ts",
 ];
 

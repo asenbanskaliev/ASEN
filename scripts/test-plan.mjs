@@ -4,7 +4,9 @@ import {join,relative,sep} from "node:path";
 export const WINDOWS_PROCESS_TESTS=Object.freeze([
  "tests/ask-user-rpc.test.ts",
  "tests/execution-revision.test.ts",
+ "tests/pi-native-skill-load.test.ts",
  "tests/pi-process-runner.test.ts",
+ "tests/pi-session-recovery-e2e.test.ts",
  "tests/spawn-contained.test.ts",
 ]);
 

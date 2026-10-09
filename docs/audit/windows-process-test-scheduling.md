@@ -6,7 +6,9 @@ The npm test entry point now discovers every `tests/**/*.test.ts` file itself. O
 
 - `tests/ask-user-rpc.test.ts`
 - `tests/execution-revision.test.ts`
+- `tests/pi-native-skill-load.test.ts`
 - `tests/pi-process-runner.test.ts`
+- `tests/pi-session-recovery-e2e.test.ts`
 - `tests/spawn-contained.test.ts`
 
 The batches are awaited sequentially, so they cannot overlap. On other platforms all discovered files remain in one Node test run with default concurrency. Caller-supplied Node test options precede file arguments in every run.
@@ -14,6 +16,8 @@ The batches are awaited sequentially, so they cannot overlap. On other platforms
 ## Why this is bounded
 
 A fresh Windows/Node 24 full suite reported four failures and one cancellation in process/RPC scenarios. All five scenarios then passed in isolated sequential reproduction at their unchanged deadlines. That supports a scheduling correction but does not identify or claim removal of a production bottleneck.
+
+The runner-contract RED was independently observed with `node --import tsx --test tests/test-runner.test.ts`: 8 tests total, 7 passed, 1 failed, with no cancellations or skips and exit code 1. The assertion at `tests/test-runner.test.ts:38` showed that the four-file plan misclassified `pi-native-skill-load` and `pi-session-recovery-e2e` into the remaining parallel batch instead of the serial process-heavy batch.
 
 This change does not alter process containment, runtime defaults, CI workflows, or production timeout behavior. The execution-timeout fixture now attaches its expected rejection before polling the descendant marker, preventing the expected late rejection from being observed first as unhandled.
 
@@ -43,7 +47,9 @@ git diff --check
 
 The independent pre-correction 4R check also reported the retained-source baseline 23/23, `npm run build`, and `npm run verify:pack` passing. Those results are prior evidence, not results from this bounded self-check. The clean-install summary reported one high-severity audit advisory; its exact `npm audit` identity was not established here, so the discrepancy remains open and no dependency or lockfile change is included.
 
-The full `npm test`/`npm run check` is intentionally delegated to the independent verifier because it is expensive and is the test of whether scheduling resolves the observed full-load failure.
+Independent focused GREEN ran once: 8/8 runner-contract tests passed, with zero failures, cancellations or skips. The entire six-file batch then ran once with `--test-concurrency=1`: 50/50 passed, with zero failures, cancellations or skips, in 157,537.6142 ms. The exact-denial marker control passed, and the independent production timeout contract retained its explicit 50 ms deadline. These are focused Windows results on `5a41c34` plus the sealed classification follow-up, not full-suite closure. Historical marker-RED reconstructability remains a disclosed evidence limitation.
+
+The full 1020-test suite and six audits remain pending against the new frozen parent commit. The full `npm run check` is delegated once to the independent verifier because it is expensive and is the test of whether scheduling resolves the observed full-load failure. No full gate is inferred from the focused results.
 
 ## Limits and rollback
 
