@@ -5,7 +5,7 @@ import path from "node:path";
 import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {DefaultResourceLoader,SettingsManager} from "@earendil-works/pi-coding-agent";
-import {createPiRuntimeEnvironment} from "./gsp06-pi-free-environment.mjs";
+import {createPiVerifierEnvironment} from "./gsp06-pi-free-environment.mjs";
 
 // Run in a separate process: no credentials, models, user homes or ambient indexes.
 if(!process.argv[2])throw new Error("Usage: node scripts/verify-pi-package.mjs <installed-package-root> [pi-cli-path]");
@@ -37,7 +37,7 @@ try {
   const defaultPiCli=path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");
   const cli=process.argv[3]?path.resolve(process.argv[3]):defaultPiCli;
   const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--extension",path.join(packageRoot,"extensions","asen.ts"),"--no-skills","--no-tools"],{
-    cwd:root,env:{...createPiRuntimeEnvironment(process.env),PI_OFFLINE:"1",PI_TELEMETRY:"0",PI_SKIP_VERSION_CHECK:"1"},stdio:["pipe","pipe","pipe"]});
+    cwd:root,env:createPiVerifierEnvironment(process.env),stdio:["pipe","pipe","pipe"]});
   const closed=new Promise(resolve=>child.once("close",resolve));
   let models=0,visible=0;
   try{

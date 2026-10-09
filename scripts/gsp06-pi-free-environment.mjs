@@ -48,3 +48,12 @@ export function createPiProbeEnvironment(source, provider) {
     PI_TELEMETRY: "0",
   };
 }
+
+export function createPiVerifierEnvironment(source) {
+  return {
+    ...createPiRuntimeEnvironment(source),
+    PI_OFFLINE: "1",
+    PI_TELEMETRY: "0",
+    PI_SKIP_VERSION_CHECK: "1",
+  };
+}

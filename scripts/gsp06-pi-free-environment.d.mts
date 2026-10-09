@@ -12,3 +12,7 @@ export declare function createPiProbeEnvironment(
   source: NodeJS.ProcessEnv | Record<string, string | undefined>,
   provider: string,
 ): NodeJS.ProcessEnv;
+
+export declare function createPiVerifierEnvironment(
+  source: NodeJS.ProcessEnv | Record<string, string | undefined>,
+): NodeJS.ProcessEnv;
