@@ -85,7 +85,7 @@
         "tests/pi-host-preflight.test.ts"
       ],
       "remaining": [
-        "Public version/callable-capability preflight is implemented before production registration. Packed Pi 1.1 installation and real-host RPC registration passed on Linux/macOS/Windows for be209b98f9d8df4b4cba34f38657a9cf38d7bdf9 only; subsequent candidates require fresh exact-SHA evidence. Factory-time mode/inventory/collision admission and a complete minimum-version/platform matrix remain unproven. No internal facade/RPC check establishes production ODD/TUI integration."
+        "Public version/callable-capability preflight is implemented before production registration. Packed Pi 1.1 installation and real-host RPC registration passed on Linux/macOS/Windows for be209b98f9d8df4b4cba34f38657a9cf38d7bdf9 only; subsequent candidates require fresh exact-SHA evidence. The packed verifier observes initialized public RPC mode and seven installed-source canonical commands at session_start, with tools disabled; this is not factory-time admission or universal collision prevention. Factory-time mode/inventory/collision admission and a complete minimum-version/platform matrix remain unproven. No internal facade/RPC check establishes production ODD/TUI integration."
       ],
       "stateful": false,
       "platformSensitive": true,

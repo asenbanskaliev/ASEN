@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {mkdtempSync,rmSync} from "node:fs";
+import {mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {spawn} from "node:child_process";
@@ -36,10 +36,19 @@ try {
   }
   const defaultPiCli=path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");
   const cli=process.argv[3]?path.resolve(process.argv[3]):defaultPiCli;
-  const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--extension",path.join(packageRoot,"extensions","asen.ts"),"--no-skills","--no-tools"],{
+  const primary=path.join(packageRoot,"extensions","asen.ts"),probe=path.join(root,"public-host-probe.ts");
+  writeFileSync(probe,`export default function(pi){
+    pi.on("session_start",(_event,ctx)=>{
+      const commands=pi.getCommands().map(row=>({name:row.name,source:row.source,path:row.sourceInfo.path}));
+      const tools=pi.getAllTools().map(row=>({name:row.name,path:row.sourceInfo.path}));
+      ctx.ui.notify("ASEN_PUBLIC_HOST:"+JSON.stringify({mode:ctx.mode,hasUI:ctx.hasUI,commands,tools}),"info");
+    });
+  }`);
+  const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--extension",primary,"--extension",probe,"--no-skills","--no-tools"],{
     cwd:root,env:createPiVerifierEnvironment(process.env),stdio:["pipe","pipe","pipe"]});
   const closed=new Promise(resolve=>child.once("close",resolve));
   let models=0,visible=0;
+  const hostObservations=[];
   try{
     await new Promise((resolve,reject)=>{
       const names=["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-profiles"];
@@ -58,7 +67,9 @@ try {
           try{
             const row=JSON.parse(line);
             if(row.type==="agent_start"){models++;throw Error("Installed command unexpectedly invoked a model");}
-            if(row.type==="response"&&row.id==="commands"){
+            if(row.type==="extension_ui_request"&&row.method==="notify"&&row.message.startsWith("ASEN_PUBLIC_HOST:")){
+              hostObservations.push(JSON.parse(row.message.slice("ASEN_PUBLIC_HOST:".length)));
+            }else if(row.type==="response"&&row.id==="commands"){
               assert.equal(row.success,true);
               for(const name of names)assert.ok(row.data.commands.some(c=>c.name===name));
               prompt();
@@ -76,5 +87,14 @@ try {
     });
   }finally{child.kill();await closed;}
   assert.equal(models,0);assert.equal(visible,7);
-  console.log(JSON.stringify({installedPiPackageVerified:true,primaryExtensions:["asen.ts"],childAuthorityAutoLoaded:false,visibleRpcCommands:visible,modelInvocations:models}));
+  assert.equal(hostObservations.length,1,"public host inventories must be observed once after initialization");
+  const host=hostObservations[0];
+  assert.equal(host.mode,"rpc");assert.equal(typeof host.hasUI,"boolean");
+  const fromPrimary=row=>realpathSync(row.path)===realpathSync(primary);
+  for(const name of ["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-profiles"]){
+    const matches=host.commands.filter(row=>row.name===name&&row.source==="extension"&&fromPrimary(row));
+    assert.equal(matches.length,1,`${name} must have one canonical installed-source registration`);
+  }
+  assert.deepEqual(host.tools,[],"--no-tools must leave the initialized public tool inventory empty");
+  console.log(JSON.stringify({installedPiPackageVerified:true,primaryExtensions:["asen.ts"],childAuthorityAutoLoaded:false,visibleRpcCommands:visible,modelInvocations:models,publicHost:{mode:host.mode,hasUI:host.hasUI,canonicalCommands:7,toolsDisabled:true,visibleTools:0}}));
 } finally {rmSync(root,{recursive:true,force:true});}
