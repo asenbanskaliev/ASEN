@@ -1,6 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync, existsSync } from "node:fs";
-import { createRequire } from "node:module";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -22,9 +21,11 @@ const installation=join(temp,"install");mkdirSync(installation);
 writeFileSync(join(installation,"package.json"),JSON.stringify({private:true}));
 npm(["install","--offline","--ignore-scripts","--omit=peer","--no-audit","--no-fund","--package-lock=false",join(temp,result.filename)],{cwd:installation});
 const checked=verifyPublicExports(installation),installed=join(installation,"node_modules","asen");
-const requireFromInstalled=createRequire(join(installed,"package.json"));
-const peerSearchPaths=requireFromInstalled.resolve.paths("@earendil-works/pi-coding-agent")??[];
-if(peerSearchPaths.some(directory=>existsSync(join(directory,"@earendil-works","pi-coding-agent"))))
+const peerLocations=[
+  join(installation,"node_modules","@earendil-works","pi-coding-agent"),
+  join(installed,"node_modules","@earendil-works","pi-coding-agent"),
+];
+if(peerLocations.some(location=>existsSync(location)))
   throw new Error("packed installation unexpectedly contains the optional Pi peer");
 execFileSync(process.execPath,[fileURLToPath(new URL("./verify-pi-package.mjs",import.meta.url)),installed],{encoding:"utf8",stdio:"inherit",timeout:60000});
 const installedPackage=JSON.parse(readFileSync(join(installed,"package.json"),"utf8"));

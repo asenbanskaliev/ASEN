@@ -12,7 +12,7 @@ import {
 const repository = process.cwd();
 
 test("Pi Free receives only the selected provider credential and required runtime settings", () => {
-  const source: Record<string, string | undefined> = {
+  const source: NodeJS.ProcessEnv = {
     ...process.env,
     PATH: process.env.PATH ?? "",
     HOME: "/isolated/home",
@@ -66,7 +66,7 @@ test("Pi Free receives only the selected provider credential and required runtim
 });
 
 test("Pi runtime environment retains runtime paths but strips every provider credential", () => {
-  const source: Record<string, string | undefined> = {
+  const source: NodeJS.ProcessEnv = {
     ...process.env,
     PATH: process.env.PATH ?? "",
     HOME: "/isolated/home",
@@ -92,7 +92,7 @@ test("Pi runtime environment retains runtime paths but strips every provider cre
 });
 
 test("Pi verifier subprocess is offline and excludes ambient credentials", () => {
-  const source: Record<string, string | undefined> = {
+  const source: NodeJS.ProcessEnv = {
     ...process.env,
     OPENROUTER_API_KEY: "provider-key",
     GITHUB_TOKEN: "runner-token",

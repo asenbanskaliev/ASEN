@@ -5,14 +5,14 @@ export declare const PROVIDER_CREDENTIALS: Readonly<{
 }>;
 
 export declare function createPiRuntimeEnvironment(
-  source: NodeJS.ProcessEnv | Record<string, string | undefined>,
+  source: NodeJS.ProcessEnv,
 ): NodeJS.ProcessEnv;
 
 export declare function createPiProbeEnvironment(
-  source: NodeJS.ProcessEnv | Record<string, string | undefined>,
+  source: NodeJS.ProcessEnv,
   provider: string,
 ): NodeJS.ProcessEnv;
 
 export declare function createPiVerifierEnvironment(
-  source: NodeJS.ProcessEnv | Record<string, string | undefined>,
+  source: NodeJS.ProcessEnv,
 ): NodeJS.ProcessEnv;
