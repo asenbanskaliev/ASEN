@@ -216,7 +216,10 @@ test("164-reference overlay adjudicates every frozen unresolved reference withou
   assert.throws(()=>verifyRuntimeEdgeMappings(retainedBaselineRepository,baseline,overlay,brokenMappings),/source identity mismatch/);
   for(const mutate of [
     (value:any)=>{value.mappings.pop();},
-    (value:any)=>{value.mappings.find((row:any)=>row.mappingKind==="tracked-file").targets[0]="docs/unrelated.md";},
+    (value:any)=>{value.mappings.find((row:any)=>row.mappingKind==="tracked-file").targets[0]="extensions/asen.ts";},
+    (value:any)=>{const row=value.mappings.find((row:any)=>row.mappingKind==="tracked-glob");row.mappingKind="code-contract";row.mappingReason="self-owned-registration";row.targets=[row.sourceId];},
+    (value:any)=>{const row=value.mappings.find((row:any)=>row.mappingKind==="code-contract");row.mappingKind="external-runtime";row.mappingReason="installed-package-discovery";row.targets=[];},
+    (value:any)=>{value.mappings[0].mappingReason="some-other-nonempty-reason";},
     (value:any)=>{value.mappings.find((row:any)=>row.mappingKind==="external-runtime").targets.push("README.md");},
     (value:any)=>{value.mappings[0].unexpected=true;},
   ]){const changed=structuredClone(edgeMappings);mutate(changed);assert.throws(()=>verifyRuntimeEdgeMappings(retainedBaselineRepository,baseline,overlay,changed));}
@@ -361,7 +364,7 @@ test("asset overlay rejects identity, ordering, binding, span and authority muta
     exactErrorMessage("Invalid reference adjudication envelope"));
 });
 
-test("mapped Markdown runtime directory reports additions and content changes without adoption",{skip:!retainedBaselineRepository},t=>{
+test("mapped Markdown runtime directory reports additions, removals and content changes without adoption",{skip:!retainedBaselineRepository},t=>{
   const repo=mkdtempSync(join(tmpdir(),"asen-runtime-edge-source-"));t.after(()=>rmSync(repo,{recursive:true,force:true}));
   execFileSync("git",["init","-q",repo]);execFileSync("git",["-C",repo,"fetch","-q","--update-shallow",retainedBaselineRepository,"08de420ca29be16b6f6bee725a30b599b061df16"]);
   execFileSync("git",["-C",repo,"checkout","-q","--detach","FETCH_HEAD"]);
@@ -369,16 +372,27 @@ test("mapped Markdown runtime directory reports additions and content changes wi
   const before=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
   const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
   const mappings=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-runtime-edge-mappings-v1.json",import.meta.url),"utf8"));
-  const selected=collectRuntimeEdgeFiles(repo,before.commit,"assets/agents/*.md")[0].path,assetDirectory=selected.slice(0,selected.lastIndexOf("/"));
+  const selectedFiles=collectRuntimeEdgeFiles(repo,before.commit,"assets/agents/*.md"),selected=selectedFiles[0].path,removed=selectedFiles[1].path,assetDirectory=selected.slice(0,selected.lastIndexOf("/"));
+  const trackedFile=mappings.mappings.find((row:any)=>row.mappingKind==="tracked-file"),trackedOwner=before.files.find((row:any)=>row.id===trackedFile.sourceId);
+  const codeContract=mappings.mappings.find((row:any)=>row.mappingKind==="code-contract"),contractOwner=before.files.find((row:any)=>row.id===codeContract.sourceId);
+  const contractImporters=before.files.filter((row:any)=>row.references.some((reference:any)=>reference.status==="tracked"&&reference.path===contractOwner.path));
+  assert.ok(contractImporters.length>0,"a mapped code-contract owner has tracked importers");
   writeFileSync(join(repo,selected),"# changed input\n");
+  rmSync(join(repo,removed));
   writeFileSync(join(repo,assetDirectory,"new-worker.md"),"# added input\n");
-  execFileSync("git",["-C",repo,"add",assetDirectory]);execFileSync("git",["-C",repo,"commit","-qm","change mapped runtime asset set"]);
+  writeFileSync(join(repo,trackedFile.targets[0]),JSON.stringify({changed:true})+"\n");
+  writeFileSync(join(repo,contractOwner.path),readFileSync(join(repo,contractOwner.path),"utf8")+"\n// contract invalidation fixture\n");
+  execFileSync("git",["-C",repo,"add","-A"]);execFileSync("git",["-C",repo,"commit","-qm","change mapped runtime asset set"]);
   const after=collectBaseline(repo,execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim());
   const report=detectMappedBaselineDrift(repo,before,after,overlay,mappings);
   assert.equal(report.autoAdopt,false);
   assert.ok(report.changes.some((row:any)=>row.kind==="CONTENT_CHANGED"&&row.path===selected));
+  assert.ok(report.changes.some((row:any)=>row.kind==="REMOVED"&&row.path===removed));
   assert.ok(report.changes.some((row:any)=>row.kind==="ADDED"&&row.path===`${assetDirectory}/new-worker.md`));
   assert.ok(report.invalidatedPaths.includes("lib/runtime-metrics-children.ts"));
+  assert.ok(report.invalidatedPaths.includes(trackedOwner.path),"tracked-file target invalidates its exact owner");
+  assert.ok(report.invalidatedPaths.includes(contractOwner.path),"code-contract owner change remains invalidated");
+  for(const importer of contractImporters)assert.ok(report.invalidatedPaths.includes(importer.path),`code-contract change invalidates importer ${importer.path}`);
 });
 
 test("immutable source reader returns the manifest-selected committed bytes",(t:test.TestContext)=>{

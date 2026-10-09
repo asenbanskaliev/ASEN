@@ -696,6 +696,9 @@ export function verifyReferenceAdjudications(repository, baseline, overlay) {
   return {scannerUnresolved,adjudicated:overlay.adjudications.length,remaining:scannerUnresolved-overlay.adjudications.length};
 }
 
+// Exact semantic dispositions are code-reviewed authority; the JSON overlay is a projection.
+const expectedRuntimeEdgeSemantics=[["ECO-SRC-625c38e8637ad8b0",0,"external-runtime","installed-package-discovery",[]],["ECO-SRC-ecb5b4ebbaf005aa",0,"external-runtime","user-selected-absolute-file",[]],["ECO-SRC-ecb5b4ebbaf005aa",2,"external-runtime","generated-install-manifest-and-binary",[]],["ECO-SRC-f4f6b335bf2cf4e9",0,"external-runtime","configured-provider-url",[]],["ECO-SRC-ee431194e4155110",0,"external-runtime","caller-selected-candidate-tree",[]],["ECO-SRC-6058ca4d664d9095",1,"tracked-glob","direct-markdown-children",["assets/agents/*.md"]],["ECO-SRC-dbf31123d00902ed",1,"tracked-file","exact-source-file",["contracts/telemetry/runtime-aggregate-v1.schema.json"]],["ECO-SRC-8745033959a82ed0",0,"external-runtime","user-selected-absolute-file",[]],["ECO-SRC-8745033959a82ed0",2,"external-runtime","generated-install-manifest-and-binary",[]],["ECO-SRC-7fb85a620f260291",2,"external-runtime","downloaded-or-staged-content",[]],["ECO-SRC-7fb85a620f260291",0,"external-runtime","https-download-url",[]],["ECO-SRC-7fb85a620f260291",1,"external-runtime","https-redirect-location",[]],["ECO-SRC-625c38e8637ad8b0",7,"code-contract","self-owned-registration",["ECO-SRC-625c38e8637ad8b0"]],["ECO-SRC-af1edc66cbd9834c",64,"code-contract","self-owned-registration",["ECO-SRC-af1edc66cbd9834c"]],["ECO-SRC-1f527249710bd9bf",33,"code-contract","self-owned-registration",["ECO-SRC-1f527249710bd9bf"]],["ECO-SRC-1f527249710bd9bf",89,"code-contract","self-owned-registration",["ECO-SRC-1f527249710bd9bf"]],["ECO-SRC-1f527249710bd9bf",90,"code-contract","self-owned-registration",["ECO-SRC-1f527249710bd9bf"]],["ECO-SRC-1f527249710bd9bf",91,"code-contract","self-owned-registration",["ECO-SRC-1f527249710bd9bf"]],["ECO-SRC-f25fcbecafe905e1",17,"code-contract","self-owned-registration",["ECO-SRC-f25fcbecafe905e1"]],["ECO-SRC-91b70c5973297fbd",12,"code-contract","self-owned-registration",["ECO-SRC-91b70c5973297fbd"]],["ECO-SRC-6c28d7b99a511610",5,"code-contract","self-owned-registration",["ECO-SRC-6c28d7b99a511610"]],["ECO-SRC-6c28d7b99a511610",6,"code-contract","self-owned-registration",["ECO-SRC-6c28d7b99a511610"]],["ECO-SRC-6c28d7b99a511610",7,"code-contract","self-owned-registration",["ECO-SRC-6c28d7b99a511610"]],["ECO-SRC-6058ca4d664d9095",0,"tracked-glob","direct-markdown-children",["assets/agents/*.md"]],["ECO-SRC-8420ca03583cfe7b",5,"code-contract","self-owned-registration",["ECO-SRC-8420ca03583cfe7b"]]];
+
 /** Checks that every runtime-edge mapping is bound to one exact adjudicated source span. */
 export function verifyRuntimeEdgeMappings(repository,baseline,adjudications,mapping) {
   if(validateBaseline(baseline).length||!mapping||!exactKeys(mapping,["version","baselineCommit","adjudicationFile","mappings"])||mapping.version!==1||mapping.baselineCommit!==baseline.commit||
@@ -703,7 +706,7 @@ export function verifyRuntimeEdgeMappings(repository,baseline,adjudications,mapp
     adjudications?.version!==1||adjudications.baselineCommit!==baseline.commit||!Array.isArray(adjudications.adjudications))throw new Error("Invalid runtime edge mapping envelope");
   if(repository)verifyReferenceAdjudications(repository,baseline,adjudications);
   const expected=adjudications.adjudications.filter(row=>row.classification==="source-runtime-edge"),rows=mapping.mappings;
-  if(rows.length!==expected.length)throw new Error("Runtime edge mapping coverage mismatch");
+  if(rows.length!==expected.length||rows.length!==expectedRuntimeEdgeSemantics.length)throw new Error("Runtime edge mapping coverage mismatch");
   const ownerById=new Map(baseline.files.map(row=>[row.id,row])),seen=new Set();
   for(let index=0;index<expected.length;index++){
     const source=expected[index],row=rows[index],owner=ownerById.get(source.sourceId),key=`${row?.sourceId}:${row?.referenceIndex}`;
@@ -712,6 +715,9 @@ export function verifyRuntimeEdgeMappings(repository,baseline,adjudications,mapp
       row.objectId!==source.objectId||row.bytes!==source.bytes||row.sha256!==source.sha256||row.callLine!==source.callLine||
       JSON.stringify(row.span)!==JSON.stringify(source.span))throw new Error("Runtime edge mapping source identity mismatch");
     seen.add(key);
+    const semantic=expectedRuntimeEdgeSemantics[index];
+    if(JSON.stringify([row.sourceId,row.referenceIndex,row.mappingKind,row.mappingReason,row.targets])!==JSON.stringify(semantic))
+      throw new Error("Runtime edge mapping semantic authority mismatch");
     if(!["tracked-file","tracked-glob","code-contract","external-runtime"].includes(row.mappingKind)||typeof row.mappingReason!=="string"||!row.mappingReason.trim()||!Array.isArray(row.targets))
       throw new Error("Malformed runtime edge mapping disposition");
     if(row.mappingKind==="tracked-file"&&(row.targets.length!==1||!ownerById.has(owner.id)||!baseline.files.some(file=>file.path===row.targets[0])))
