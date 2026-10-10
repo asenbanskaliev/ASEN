@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import test from "node:test";
 import {mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
+import {spawnSync} from "node:child_process";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {join,resolve} from "node:path";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import type {AgentRequest,AgentRunner} from "../src/agents/dispatcher.js";
 import {PersistentAgentStore,parseAgentStore} from "../src/runtime/agent-store.js";
@@ -13,13 +14,21 @@ const owner={kind:"user" as const,id:"pi:session-a"};
 function req(id:string,sessionId="session-a",repository="/repo"):AgentRequest{return {id,role:"explorer",prompt:`inspect ${id}`,repository,isolationKey:sessionId,owner};}
 async function until(check:()=>boolean){for(let i=0;i<200;i++){if(check())return;await new Promise(resolve=>setTimeout(resolve,5));}assert.fail("condition did not become true");}
 
-test("persistent queue survives reopen, interrupted work is quarantined and queued work stays pending",async t=>{
+test("persistent queue survives reopen and both queued and running work are quarantined for explicit review",async t=>{
  const file=await fixture(t),{store}=await PersistentAgentStore.open(file,()=>"2026-10-10T10:00:00.000Z"),pending=req("pending"),running=req("running");
  await store.enqueue(pending,owner);await store.enqueue(running,owner);await store.running("running","2026-10-10T10:00:00.000Z");
  const reopened=await PersistentAgentStore.open(file,()=>"2026-10-10T10:01:00.000Z");
- const rows=await reopened.store.list("session-a","/repo");assert.equal(rows.find(x=>x.id==="pending")?.state,"queued");assert.equal(rows.find(x=>x.id==="running")?.state,"interrupted");
+ const rows=await reopened.store.list("session-a","/repo");assert.equal(rows.find(x=>x.id==="pending")?.state,"interrupted");assert.match(rows.find(x=>x.id==="pending")?.summary??"",/not dispatched before process restart/);assert.equal(rows.find(x=>x.id==="running")?.state,"interrupted");
  assert.match((await reopened.store.history("running","session-a","/repo")).at(-1)?.summary??"",/explicit authorization required/);
  assert.equal(await reopened.store.get("pending","session-b","/repo"),undefined);assert.equal(await reopened.store.get("pending","session-a","/other"),undefined);
+});
+
+test("a process crash after durable dispatch is recovered as interrupted without replay",async t=>{
+ const file=await fixture(t),child=spawnSync(process.execPath,["--import","tsx",resolve("tests/fixtures/agent-crash-process.ts"),file,"running"],{encoding:"utf8",timeout:30000});
+ assert.equal(child.status,0,`${child.error?.message??""}\n${child.stderr}`);
+ const recovered=await PersistentAgentStore.open(file,()=>"2026-10-10T10:00:02.000Z"),entry=await recovered.store.get("crash-recovery-task","session-crash","/repo");
+ assert.equal(entry?.record.state,"interrupted");assert.match(entry?.record.summary??"",/explicit authorization required/);
+ assert.equal(entry?.result,undefined);assert.equal(entry?.events.at(-1)?.state,"interrupted");
 });
 
 test("completed result and history survive restart only with a bound execution receipt",async t=>{
@@ -41,6 +50,18 @@ test("only read-only explorer tasks can continue, and each continuation has a ne
  const recovered=await PersistentAgentStore.open(file,()=>"2026-10-10T10:00:02.000Z"),entry=await recovered.store.get("interrupted","session-a","/repo");assert.ok(entry);const resumed=recovered.store.resumable(entry!);assert.ok(resumed);assert.notEqual(resumed.id,request.id);assert.equal(resumed.parentId,request.id);assert.equal(resumed.role,"explorer");
  await assert.rejects(()=>recovered.store.enqueue({...resumed,writeSurfaces:["src/"]},owner),/Authority-bearing agent requests cannot be serialized/);
  await assert.rejects(()=>recovered.store.queued({...ownerInput,role:"worker"}),/record|Invalid/);
+});
+
+test("concurrent continuation requests atomically create at most one replacement execution",async t=>{
+ const file=await fixture(t),request=req("crashed"),session={sessionId:"session-a",projectId:"/repo"},initial=await PersistentAgentStore.open(file,()=>"2026-10-10T10:00:00.000Z");
+ await initial.store.enqueue(request,owner);await initial.store.running(request.id,"2026-10-10T10:00:01.000Z");
+ const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:`continued:${r.id}`})},runtimes=await Promise.all([AgentRuntime.open({storeFile:file,runner}),AgentRuntime.open({storeFile:file,runner})]);
+ const attempts=await Promise.allSettled(runtimes.map(runtime=>runtime.continue("crashed",session)));
+ assert.equal(attempts.filter(result=>result.status==="fulfilled").length,1);assert.equal(attempts.filter(result=>result.status==="rejected").length,1);
+ const continuation=attempts.find((result):result is PromiseFulfilledResult<string>=>result.status==="fulfilled")!.value;
+ await until(()=>runtimes.some(runtime=>runtime.snapshot().find(record=>record.id===continuation)?.state==="completed"));
+ const entries=(await runtimes[0]!.store.list(session.sessionId,session.projectId)).filter(record=>record.id===continuation);
+ assert.equal(entries.length,1);assert.equal(entries[0]?.state,"completed");
 });
 
 test("running cancellation reaches the child runner; session and project boundaries reject cancellation",async t=>{

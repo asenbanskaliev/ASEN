@@ -29,9 +29,7 @@ export class AgentRuntime{
   return false;
  }
  async continue(id:string,identity:AgentSessionIdentity):Promise<string>{
-  const entry=await this.store.get(id,identity.sessionId,identity.projectId);if(!entry)throw new Error("Agent task is unavailable to this session or project");
-  const request=this.store.resumable(entry);if(!request)throw new Error("This task cannot be resumed safely; create a new task with fresh authority");
-  await this.store.enqueue(request,{kind:"user",id:`pi:${identity.sessionId}`});
+  const request=await this.store.enqueueContinuation(id,identity.sessionId,identity.projectId,{kind:"user",id:`pi:${identity.sessionId}`});
   void this.dispatcher.dispatch(request).catch(()=>{});
   return request.id;
  }

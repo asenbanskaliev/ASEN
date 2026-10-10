@@ -31,7 +31,7 @@ function specValue(v:unknown):v is AgentTaskSpec{
 }
 function receiptDigest(key:Buffer,entry:AgentStoreEntry,output:string):string{return createHmac("sha256",key).update(JSON.stringify([entry.record.id,entry.record.owner,entry.record.sessionId,entry.record.projectId,entry.request,output])).digest("hex");}
 function validAgentHistory(events:AgentStateEvent[],record:PublicAgentRecord):boolean{
- const transitions:Record<PublicAgentRecord["state"],PublicAgentRecord["state"][]>={queued:["running","cancelled","failed"],running:["interrupted","cancelled","failed","completed"],interrupted:["cancelled"],cancelled:[],failed:[],completed:["interrupted"]};
+ const transitions:Record<PublicAgentRecord["state"],PublicAgentRecord["state"][]>={queued:["running","interrupted","cancelled","failed"],running:["interrupted","cancelled","failed","completed"],interrupted:["cancelled"],cancelled:[],failed:[],completed:["interrupted"]};
  for(let i=0;i<events.length;i++){const current=events[i]!;if(current.revision!==i+1||current.id!==record.id||typeof current.at!=="string"||!Number.isFinite(Date.parse(current.at)))return false;if(i===0){if(current.state!=="queued"||current.at!==record.createdAt)return false;}else{const previous=events[i-1]!;if(!transitions[previous.state]?.includes(current.state)||Date.parse(current.at)<Date.parse(previous.at))return false;if(previous.state==="completed"&&(current.state!=="interrupted"||current.summary!=="Unverified completion after restart; explicit review is required"))return false;}}
  const last=events.at(-1);return !!last&&last.state===record.state&&last.at===record.updatedAt&&last.summary===record.summary;
 }
@@ -48,7 +48,7 @@ function entryValue(v:unknown,receiptKey?:Buffer,allowUnverifiedCompletion=false
 }
 export function parseAgentStore(raw:string,receiptKey?:Buffer,allowUnverifiedCompletion=false):AgentStoreFile{
  const value:unknown=JSON.parse(raw);if(!exact(value,["schema","revision","entries"])||value.schema!==SCHEMA||!Number.isSafeInteger(value.revision)||Number(value.revision)<0||!Array.isArray(value.entries)||value.entries.length>MAX_RECORDS||!value.entries.every(entry=>entryValue(entry,receiptKey)||allowUnverifiedCompletion&&entryValue(entry,receiptKey,true)))throw new Error("Invalid ASEN agent store");
- const entries=(value.entries as unknown[]).map(rawEntry=>{const trusted=entryValue(rawEntry,receiptKey),entry=structuredClone(rawEntry) as AgentStoreEntry;if(allowUnverifiedCompletion&&!trusted){delete entry.result;}return entry;}),ids=new Set<string>();for(const entry of entries){if(ids.has(entry.record.id))throw new Error("Duplicate ASEN agent task id");ids.add(entry.record.id);}
+ const entries=(value.entries as unknown[]).map(rawEntry=>{const trusted=entryValue(rawEntry,receiptKey),entry=structuredClone(rawEntry) as AgentStoreEntry;if(allowUnverifiedCompletion&&!trusted){delete entry.result;}return entry;}),byId=new Map<string,AgentStoreEntry>(),continuations=new Set<string>();for(const entry of entries){if(byId.has(entry.record.id))throw new Error("Duplicate ASEN agent task id");byId.set(entry.record.id,entry);}for(const entry of entries){const parentId=entry.request.continuationOf;if(!parentId)continue;const parent=byId.get(parentId);if(!parent||parent.record.sessionId!==entry.record.sessionId||parent.record.projectId!==entry.record.projectId||parent.record.role!=="explorer"||entry.record.role!=="explorer"||continuations.has(parentId))throw new Error("Invalid or duplicate ASEN agent continuation");continuations.add(parentId);}
  return {schema:SCHEMA,revision:Number(value.revision),entries:entries.map(entry=>structuredClone(entry))};
 }
 function empty():AgentStoreFile{return {schema:SCHEMA,revision:0,entries:[]};}
@@ -88,8 +88,24 @@ export class PersistentAgentStore implements AgentLifecycleSink{
  async history(id:string,sessionId:string,projectId:string):Promise<readonly AgentStateEvent[]>{const data=await read(this.path,this.#receiptKey),entry=data.entries.find(x=>x.record.id===id&&x.record.sessionId===sessionId&&x.record.projectId===projectId);return entry?entry.events.map(x=>structuredClone(x)):[];}
  async get(id:string,sessionId:string,projectId:string):Promise<AgentStoreEntry|undefined>{const data=await read(this.path,this.#receiptKey),entry=data.entries.find(x=>x.record.id===id&&x.record.sessionId===sessionId&&x.record.projectId===projectId);return entry?structuredClone(entry):undefined;}
  async enqueue(request:AgentRequest,owner:PublicAgentRecord["owner"]):Promise<void>{
-  const createdAt=this.now(),spec=specFrom(request,createdAt),input={id:spec.id,role:spec.role,owner,sessionId:spec.isolationKey,projectId:spec.repository,createdAt},record=createAgentRecord(input),first=event(record,1),entry:AgentStoreEntry={record,request:spec,events:[first]};
+  const createdAt=this.now(),spec=specFrom(request,createdAt);if(spec.continuationOf)throw new Error("Continuation tasks must use the atomic interrupted-task claim");const input={id:spec.id,role:spec.role,owner,sessionId:spec.isolationKey,projectId:spec.repository,createdAt},record=createAgentRecord(input),first=event(record,1),entry:AgentStoreEntry={record,request:spec,events:[first]};
   await this.#mutate(data=>{if(data.entries.some(x=>x.record.id===spec.id))throw new Error("Agent task id already exists");data.entries.push(entry);});this.#records.set(record.id,structuredClone(record));
+ }
+ /** Atomically claims one interrupted parent and persists its fresh continuation identity. */
+ async enqueueContinuation(parentId:string,sessionId:string,projectId:string,owner:PublicAgentRecord["owner"]):Promise<AgentRequest>{
+  if(!identifier(parentId)||!identifier(sessionId)||!identifier(projectId))throw new Error("Invalid continuation identity");
+  const createdAt=this.now();let continuation:AgentRequest|undefined;let queued:PublicAgentRecord|undefined;
+  await this.#mutate(data=>{
+   const parent=data.entries.find(entry=>entry.record.id===parentId&&entry.record.sessionId===sessionId&&entry.record.projectId===projectId);
+   if(!parent)throw new Error("Agent task is unavailable to this session or project");
+   if(parent.record.state!=="interrupted"||parent.record.role!=="explorer"||parent.request.role!=="explorer"||parent.request.prompt==="Queued task payload unavailable")throw new Error("This task cannot be resumed safely; create a new task with fresh authority");
+   if(data.entries.some(entry=>entry.request.continuationOf===parentId))throw new Error("This interrupted task already has a continuation");
+   const request:AgentRequest={id:`agent-${randomUUID()}`,role:"explorer",prompt:parent.request.prompt,repository:projectId,isolationKey:sessionId,parentId,owner,...(parent.request.model?{model:parent.request.model}:{}),...(parent.request.thinking?{thinking:parent.request.thinking}:{})};
+   const spec=specFrom(request,createdAt),record=createAgentRecord({id:spec.id,role:spec.role,owner,sessionId,projectId,createdAt}),entry:AgentStoreEntry={record,request:spec,events:[event(record,1)]};
+   data.entries.push(entry);continuation=request;queued=record;
+  });
+  if(queued)this.#records.set(queued.id,structuredClone(queued));
+  return continuation!;
  }
  async queued(input:Omit<PublicAgentRecord,"state"|"updatedAt">):Promise<void>{
   const existing=await this.get(input.id,input.sessionId,input.projectId);if(existing){if(existing.record.state!=="queued"||!sameIdentity(existing.record,input))throw new Error("Agent lifecycle record already exists or has conflicting identity");return;}
@@ -106,11 +122,11 @@ export class PersistentAgentStore implements AgentLifecycleSink{
  async cancelled(id:string,summary?:string,at=this.now()):Promise<void>{await this.#move(id,"cancelled",summary,at);}
  async #move(id:string,state:Exclude<PublicAgentRecord["state"],"queued"|"completed">,summary:string|undefined,at:string):Promise<void>{let updated:PublicAgentRecord|undefined;await this.#mutate(data=>{const entry=data.entries.find(x=>x.record.id===id);if(!entry)throw new Error("Agent lifecycle record does not exist");updated=transitionAgent(entry.record,state,at,summary);entry.record=updated;entry.events.push(event(updated,entry.events.length+1));});if(updated)this.#records.set(id,structuredClone(updated));}
  async #mutate(change:(data:AgentStoreFile)=>void):Promise<void>{await preparePrivateFile(this.path,true);await withExclusiveFileLock(this.path,async()=>{const data=await read(this.path,this.#receiptKey);change(data);if(data.entries.length>MAX_RECORDS)throw new Error("ASEN agent store has reached its record limit");const next=parseAgentStore(JSON.stringify({...data,revision:data.revision+1}),this.#receiptKey);await write(this.path,next);});}
- async #recover():Promise<void>{let recovered:PublicAgentRecord[]|undefined;await this.#mutate(data=>{const at=this.now();for(const entry of data.entries){const record=entry.record;if(record.state==="running"){const next=recoverAgentLifecycleRecords([record],at)[0]!;entry.record=next;entry.events.push(event(next,entry.events.length+1));}
+ async #recover():Promise<void>{let recovered:PublicAgentRecord[]|undefined;await this.#mutate(data=>{const at=this.now();for(const entry of data.entries){const record=entry.record;if(record.state==="running"||record.state==="queued"){const next=record.state==="running"?recoverAgentLifecycleRecords([record],at)[0]!:transitionAgent(record,"interrupted",at,"Queued task was not dispatched before process restart; explicit authorization required to resume");entry.record=next;entry.events.push(event(next,entry.events.length+1));}
   }recovered=data.entries.map(x=>x.record);});for(const record of recovered??[])this.#records.set(record.id,structuredClone(record));}
  /** Returns a request that is safe to resume; authority-bearing requests always need fresh admission. */
  resumable(entry:AgentStoreEntry):AgentRequest|undefined{
-  const {request,record}=entry;if(record.state!=="queued"&&record.state!=="interrupted")return undefined;
+  const {request,record}=entry;if(record.state!=="interrupted")return undefined;
   if(request.role!=="explorer"||record.role!=="explorer"||request.repository!==record.projectId||request.isolationKey!==record.sessionId||request.prompt==="Queued task payload unavailable")return undefined;
   return {id:`${record.id}:continue:${entry.events.length}`,role:"explorer",prompt:request.prompt,repository:request.repository,isolationKey:request.isolationKey,...(request.model?{model:request.model}:{}),...(request.thinking?{thinking:request.thinking}:{}),parentId:record.id};
  }
