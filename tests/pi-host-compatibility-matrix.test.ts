@@ -199,3 +199,8 @@ test("execution contexts admit only documented public modes and boolean UI capab
  let reads=0;const publicContext={get mode(){reads++;return "rpc";},get hasUI(){return false;}};
  assert.doesNotThrow(()=>validatePiExecutionContext(publicContext));assert.equal(reads,1,"Pi exposes execution-context properties through public getters");
 });
+
+test("unsafe numeric Pi versions fail closed",()=>{
+ for(const version of ["9007199254740992.0.0","1.9007199254740992.0","1.1.9007199254740992"])
+  assert.throws(()=>validatePiHost(makeHost(),version),/known Pi version/);
+});
