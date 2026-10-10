@@ -1,4 +1,4 @@
-Warning: truncated output (original token count: 29591)
+Warning: truncated output (original token count: 29623)
 Total output lines: 487
 
 # Ecosystem strict behavioral parity
@@ -11,7 +11,7 @@ Pi admission now validates callable public APIs at factory time, then checks mod
 
 Local evidence for the first implementation batch: focused ECO-01E report tests, Pi preflight/lifecycle tests, full local test suite, repository audits, typecheck and packed-install verification passed. Follow-up verification is recorded below. CI was not queried or run. Pending external validation: workflow schedule/manual dispatch and artifact retrieval, full declared Pi-version range, Windows/macOS hosts, and TUI/JSON/print mode journeys. Remaining functional scope: semantic review of normative-anchor inventory and the Pi host's late dynamic-registration collision edge, which the current public Pi API cannot veto. The source/claims registries remain unchanged and no ecosystem claim is promoted to `FULL`.
 
-Follow-up implementation on the same branch separates `PERMISSIONS_CHANGED` from byte-content drift, binds exact before/after anchor snapshots into reproducible reports, and marks every ECO row for audit when any changed source has no explicit source-map entry. FULL validation applies the same conservative fallback to newly added or otherwise unmapped paths. Verification on this follow-up workspace: focused ECO tests 35 passed / 0 failed / 3 skipped; full suite 1,101 passed / 0 failed / 3 skipped (1,104 total); ecosystem baseline/claims audits PASS (167 source objects, 16 PARTIAL); tracked-boundary PASS (494 paths); typecheck and `git diff --check` PASS. CI remains unqueried and unrun.
+Follow-up implementation on the same branch emits report schema v2, separates `PERMISSIONS_CHANGED` from byte-content drift, binds exact before/after anchor snapshots into reproducible reports, and marks every ECO row for audit when any changed source has no explicit source-map entry. FULL validation applies the same conservative fallback to newly added or otherwise unmapped paths. Verification on the follow-up workspace before the schema-version-only correction: focused ECO tests 35 passed / 0 failed / 3 skipped; full suite 1,101 passed / 0 failed / 3 skipped (1,104 total); ecosystem baseline/claims audits PASS (167 source objects, 16 PARTIAL); tracked-boundary PASS (494 paths); typecheck and `git diff --check` PASS. The schema-version correction has its own focused test pending. CI remains unqueried and unrun.
 
 ## Windows timeout observation and initialized public host — 2026-10-09
 
@@ -199,7 +199,7 @@ Annotation work is based on published local/remote HEAD `f8fbb9820219c2affe34fae
 
 ## Frozen baseline and confidence
 
-Reference A's authoritative machine snapshot is pinned to commit `08de420ca29be16b6f6bee725a30b599b061df16`. `registry/parity/ecosystem-sources-v1.json` currently freezes 167 tracked regular Git blobs and 46 roots from that snapshot with exact object IDs, byte SHA-256, family/visibility/source IDs, a…4591 tokens truncated…ll resolves public surfaces; collision/permission/ambiguous-home cases refuse safely; rollback preserves prior state; Windows/macOS/Linux hosts are observed. |
+Reference A's authoritative machine snapshot is pinned to commit `08de420ca29be16b6f6bee725a30b599b061df16`. `registry/parity/ecosystem-sources-v1.json` currently freezes 1…4623 tokens truncated…ll resolves public surfaces; collision/permission/ambiguous-home cases refuse safely; rollback preserves prior state; Windows/macOS/Linux hosts are observed. |
 | Constraint | 5, 17–19 | All owners / ECO-16 | Reuse each owner's receipts; latency, token, cost and error-detection figures need proportional, repeatable measurement rather than a new runtime feature. | Baseline and candidate are measured under the same workload; regressions/invalid samples are rejected; interrupted runs remain distinguishable; host receipts report distributions and limits, not promises from one-to-three runs. |
 | Lower attention, required | 15 | ECO-14 | Reuse checkpoint validation and pure presentation projections; adopted pretty/quiet, startup/resume and accessible terminal behavior lack production wiring and host evidence. | Chosen modes render deterministically; non-TTY/narrow/control-text cases degrade safely; restart/corruption restores or diagnoses; real TTY/non-TTY behavior is observable. |
 

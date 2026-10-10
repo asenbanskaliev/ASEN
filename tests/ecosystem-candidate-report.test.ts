@@ -70,6 +70,8 @@ test("report validation rejects identity edits, evidence edits and auto-adoption
  const mappings=JSON.stringify({version:1,baselineCommit:baseline.commit,mappings:[]}),adjudications=JSON.stringify({version:1,baselineCommit:baseline.commit,adjudications:[]});
  const report=bindEcosystemDriftReport({baseline,after,drift,mappingBytes:mappings,adjudicationBytes:adjudications,claimsBytes});
  assert.equal(validateEcosystemCandidateReport(report),true);
+ assert.equal(report.schema,"asen.ecosystem-drift-report.v2");
+ assert.equal(validateEcosystemCandidateReport({...report,schema:"asen.ecosystem-drift-report.v1"}),false,"the expanded report contract has an explicit schema version");
  assert.equal(validateEcosystemCandidateReport({...report,autoAdopt:true}),false);
  assert.equal(validateEcosystemCandidateReport({...report,inputs:{...report.inputs,candidateCommit:"0".repeat(40)}}),false);
  assert.equal(validateEcosystemCandidateReport({...report,affectedRequirements:[...report.affectedRequirements,{requirementId:"ECO-99",claimStatus:"FULL",invalidatedSourcePaths:[],evidence:[]}]}),false);

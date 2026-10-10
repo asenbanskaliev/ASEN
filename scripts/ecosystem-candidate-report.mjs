@@ -64,7 +64,7 @@ export function bindEcosystemDriftReport({baseline,after,drift,baselineBytes=JSO
    effectiveStatus:row.status==="FULL"?"INVALIDATED":"REVIEW_REQUIRED",invalidatedSourcePaths:impacted,evidence});
  }
  affectedRequirements.sort((a,b)=>a.requirementId.localeCompare(b.requirementId,"en"));
- const unsigned={schema:"asen.ecosystem-drift-report.v1",autoAdopt:false,
+ const unsigned={schema:"asen.ecosystem-drift-report.v2",autoAdopt:false,
   inputs:{baselineCommit:baseline.commit,baselineTree:baseline.tree,baselineSha256:sha256(baselineBytes),candidateCommit:after.commit,candidateTree:after.tree,
    runtimeEdgeMapSha256:sha256(mappingBytes),referenceAdjudicationSha256:sha256(adjudicationBytes),requirementEvidenceMapSha256:sha256(claimsBytes)},
   changes:drift.changes,invalidatedPaths:drift.invalidatedPaths,anchorDiffs,unmappedImpactPaths,affectedRequirements};
@@ -82,7 +82,7 @@ export function createEcosystemCandidateReport(repository,candidateCommit,{basel
 }
 
 export function validateEcosystemCandidateReport(report){
- if(!report||report.schema!=="asen.ecosystem-drift-report.v1"||report.autoAdopt!==false||!report.inputs||
+ if(!report||report.schema!=="asen.ecosystem-drift-report.v2"||report.autoAdopt!==false||!report.inputs||
   !/^[a-f0-9]{40}$/.test(report.inputs.baselineCommit??"")||!/^[a-f0-9]{40}$/.test(report.inputs.candidateCommit??"")||
   !["baselineSha256","runtimeEdgeMapSha256","referenceAdjudicationSha256","requirementEvidenceMapSha256"].every(key=>/^[a-f0-9]{64}$/.test(report.inputs[key]??""))||
   !/^[a-f0-9]{40}$/.test(report.inputs.baselineTree??"")||!/^[a-f0-9]{40}$/.test(report.inputs.candidateTree??"")||
