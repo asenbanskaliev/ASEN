@@ -54,11 +54,13 @@ function readInventory(host:object,methodName:"getCommands"|"getAllTools",label:
  return rows;
 }
 function validateInventory(host:object,methodName:"getCommands"|"getAllTools",names:readonly string[],label:string):void{
- const reserved=reservationNames(names,label),rows=readInventory(host,methodName,label);
+ const reserved=reservationNames(names,label),rows=readInventory(host,methodName,label),seen=new Set<string>();
  for(const row of rows){
   if(typeof row!=="object"||row===null||types.isProxy(row))throw new Error(`ASEN Pi ${label} inventory is malformed`);
   const entry=Object.getOwnPropertyDescriptor(row,"name");
   if(!entry||!("value" in entry)||typeof entry.value!=="string"||!entry.value||entry.value!==entry.value.trim()||/[\u0000-\u001f\u007f]/.test(entry.value))throw new Error(`ASEN Pi ${label} inventory is malformed`);
+  if(seen.has(entry.value))throw new Error(`ASEN Pi ${label} inventory is malformed`);
+  seen.add(entry.value);
   if(reserved.has(entry.value))throw new Error(`ASEN ${label} registration collision: ${entry.value}`);
  }
 }
