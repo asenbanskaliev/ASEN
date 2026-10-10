@@ -42,3 +42,7 @@ test("public inventory preflight rejects malformed and accessor-backed rows",()=
 test("duplicate command reservations are rejected",()=>{
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[]},["asen","asen"]),/reservation list is invalid/);
 });
+
+test("empty command reservations are rejected",()=>{
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[]},["asen",""]),/reservation list is invalid/);
+});
