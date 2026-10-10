@@ -1,4 +1,4 @@
-import test from "node:test";import assert from "node:assert/strict";import {agentStatusRows,createAgentLifecycleSink,createAgentRecord,transitionAgent} from "../src/runtime/agent-lifecycle.js";
+import test from "node:test";import assert from "node:assert/strict";import {agentStatusRows,createAgentLifecycleSink,createAgentRecord,transitionAgent,recoverAgentLifecycleRecords} from "../src/runtime/agent-lifecycle.js";
 test("public agent lifecycle binds owner/session/project and is monotonic",()=>{const q=createAgentRecord({id:"a",role:"worker",owner:{kind:"user",id:"u"},sessionId:"s",projectId:"p",createdAt:"2026-10-06T00:00:00Z"});const r=transitionAgent(q,"running","2026-10-06T00:00:01Z"),d=transitionAgent(r,"completed","2026-10-06T00:00:02Z","done");assert.equal(d.summary,"done");assert.throws(()=>transitionAgent(d,"running","2026-10-06T00:00:03Z"),/Terminal/);assert.throws(()=>transitionAgent(r,"completed","2026-10-05T00:00:00Z"),/stale/);});
 test("agent status is bounded for narrow terminals",()=>{const q=createAgentRecord({id:"very-long-agent-id",role:"worker",owner:{kind:"agent",id:"parent"},sessionId:"s",projectId:"p",createdAt:"2026-10-06T00:00:00Z"});assert.ok(agentStatusRows([q],30)[0]!.length<=30);});
 test("agent lifecycle rejects invalid transition timestamps",()=>{const q=createAgentRecord({id:"a",role:"worker",owner:{kind:"user",id:"u"},sessionId:"s",projectId:"p",createdAt:"2026-10-06T00:00:00Z"});assert.throws(()=>transitionAgent(q,"running","not-a-time"),/timestamp/i);assert.throws(()=>transitionAgent({...q,updatedAt:"broken"},"running","2026-10-06T00:00:01Z"),/timestamp/i);});
@@ -30,4 +30,15 @@ test("agent transitions reject missing records and unknown states",()=>{
  assert.throws(()=>transitionAgent(null as unknown as ReturnType<typeof createAgentRecord>,"running","2026-10-07T00:00:00Z"),/Invalid agent state/);
  const record=createAgentRecord({id:"state",role:"worker",owner:{kind:"system",id:"asen"},sessionId:"s",projectId:"p",createdAt:"2026-10-07T00:00:00Z"});
  assert.throws(()=>transitionAgent({...record,state:"unknown" as "queued"},"running","2026-10-07T00:00:01Z"),/Invalid agent state/);
+});
+
+test("restart recovery fails in-flight agents and preserves completed records",()=>{
+ const base=createAgentRecord({id:"inflight",role:"worker",owner:{kind:"system",id:"asen"},sessionId:"s",projectId:"p",createdAt:"2026-10-07T00:00:00Z"});
+ const running=transitionAgent(base,"running","2026-10-07T00:00:01Z");
+ const completed=transitionAgent(transitionAgent({...base,id:"done"},"running","2026-10-07T00:00:01Z"),"completed","2026-10-07T00:00:02Z","ok");
+ const recovered=recoverAgentLifecycleRecords([running,completed],"2026-10-07T00:00:03Z");
+ assert.deepEqual(recovered.map(r=>r.state),["failed","completed"]);
+ assert.match(recovered[0]?.summary??"",/Interrupted/);
+ assert.equal(recovered[1]?.summary,"ok");
+ assert.throws(()=>recoverAgentLifecycleRecords([running,running],"2026-10-07T00:00:03Z"),/Invalid lifecycle recovery record/);
 });
