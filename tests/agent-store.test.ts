@@ -79,9 +79,9 @@ test("concurrent writers preserve every unique task under the cross-process file
 
 test("a completed task missing its receipt is interrupted without losing verified completed results",async t=>{
  const file=await fixture(t),runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:`valid:${request.id}`})},runtime=await AgentRuntime.open({storeFile:file,runner}),session={sessionId:"session-a",projectId:"/repo"};
- const ids=await Promise.all(["unverified","verified"].map(prompt=>runtime.startExplorer({prompt,session,owner})));await until(()=>runtime.snapshot().filter(row=>ids.includes(row.id)).every(row=>row.state==="completed"));
- const parsed=JSON.parse(await readFile(file,"utf8"));delete parsed.entries.find((entry:{record:{id:string}})=>entry.record.id===ids[0])!.result;await writeFile(file,`${JSON.stringify(parsed)}\n`,{mode:0o600});
- const reopened=await PersistentAgentStore.open(file),rows=await reopened.store.list(session.sessionId,session.projectId),unverified=await reopened.store.get(ids[0]!,session.sessionId,session.projectId),verified=await reopened.store.get(ids[1]!,session.sessionId,session.projectId);
- assert.equal(rows.find(row=>row.id===ids[0])?.state,"interrupted");assert.match(unverified?.record.summary??"",/Unverified completion after restart/);assert.equal(unverified?.result,undefined);
- assert.equal(verified?.record.state,"completed");assert.equal(verified?.result?.output,`valid:${ids[1]}`);
+ const ids=await Promise.all(["missing-receipt","invalid-receipt","verified"].map(prompt=>runtime.startExplorer({prompt,session,owner})));await until(()=>runtime.snapshot().filter(row=>ids.includes(row.id)).every(row=>row.state==="completed"));
+ const parsed=JSON.parse(await readFile(file,"utf8"));delete parsed.entries.find((entry:{record:{id:string}})=>entry.record.id===ids[0])!.result;parsed.entries.find((entry:{record:{id:string}})=>entry.record.id===ids[1])!.result.sha256="0".repeat(64);await writeFile(file,`${JSON.stringify(parsed)}\n`,{mode:0o600});
+ const reopened=await PersistentAgentStore.open(file),rows=await reopened.store.list(session.sessionId,session.projectId),unverified=await reopened.store.get(ids[0]!,session.sessionId,session.projectId),invalid=await reopened.store.get(ids[1]!,session.sessionId,session.projectId),verified=await reopened.store.get(ids[2]!,session.sessionId,session.projectId);
+ for(const id of ids.slice(0,2))assert.equal(rows.find(row=>row.id===id)?.state,"interrupted");for(const entry of [unverified,invalid]){assert.match(entry?.record.summary??"",/Unverified completion after restart/);assert.equal(entry?.result,undefined);}
+ assert.equal(verified?.record.state,"completed");assert.equal(verified?.result?.output,`valid:${ids[2]}`);
 });

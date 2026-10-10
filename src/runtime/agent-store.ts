@@ -35,19 +35,20 @@ function validAgentHistory(events:AgentStateEvent[],record:PublicAgentRecord):bo
  for(let i=0;i<events.length;i++){const current=events[i]!;if(current.revision!==i+1||current.id!==record.id||typeof current.at!=="string"||!Number.isFinite(Date.parse(current.at)))return false;if(i===0){if(current.state!=="queued"||current.at!==record.createdAt)return false;}else{const previous=events[i-1]!;if(!transitions[previous.state]?.includes(current.state)||Date.parse(current.at)<Date.parse(previous.at))return false;if(previous.state==="completed"&&(current.state!=="interrupted"||current.summary!=="Unverified completion after restart; explicit review is required"))return false;}}
  const last=events.at(-1);return !!last&&last.state===record.state&&last.at===record.updatedAt&&last.summary===record.summary;
 }
-function entryValue(v:unknown,receiptKey?:Buffer):v is AgentStoreEntry{
+function entryValue(v:unknown,receiptKey?:Buffer,allowUnverifiedCompletion=false):v is AgentStoreEntry{
  if(!v||typeof v!=="object"||Array.isArray(v))return false;const keys=["record","request","events",...(Object.hasOwn(v,"result")?["result"]:[])];if(!exact(v,keys))return false;
  const x=v as unknown as AgentStoreEntry,r=x.record;if(!r||!exact(r,["id","role","owner","sessionId","projectId","state","createdAt","updatedAt",...(Object.hasOwn(r,"summary")?["summary"]:[])])||!exact(r.owner,["kind","id"])||!specValue(x.request)||x.request.id!==r.id||x.request.role!==r.role||x.request.isolationKey!==r.sessionId||x.request.repository!==r.projectId||!Array.isArray(x.events)||x.events.length<1||x.events.length>MAX_EVENTS)return false;
  try{createAgentRecord({id:r.id,role:r.role,owner:r.owner,sessionId:r.sessionId,projectId:r.projectId,createdAt:r.createdAt});}catch{return false;}
  if(!identifier(r.id)||!(["queued","running","interrupted","cancelled","failed","completed"] as unknown[]).includes(r.state)||typeof r.updatedAt!=="string"||!Number.isFinite(Date.parse(r.updatedAt))||(r.summary!==undefined&&(typeof r.summary!=="string"||r.summary.length>MAX_OUTPUT)))return false;
  if(x.events.some((event,i)=>!exact(event,["id","revision","state","at",...(Object.hasOwn(event,"summary")?["summary"]:[])])||event.id!==r.id||event.revision!==i+1||!(["queued","running","interrupted","cancelled","failed","completed"] as unknown[]).includes(event.state)||typeof event.at!=="string"||!Number.isFinite(Date.parse(event.at))||(event.summary!==undefined&&(typeof event.summary!=="string"||event.summary.length>MAX_OUTPUT))))return false;
  if(!validAgentHistory(x.events,r))return false;
- if(x.result!==undefined){const result=x.result;if(!receiptKey||!exact(result,["id","ok","output","sha256"])||result.id!==r.id||result.ok!==true||typeof result.output!=="string"||result.output.length>MAX_OUTPUT||typeof result.sha256!=="string"||!/^[a-f0-9]{64}$/u.test(result.sha256))return false;const expected=Buffer.from(receiptDigest(receiptKey,x,result.output),"hex"),actual=Buffer.from(result.sha256,"hex");if(actual.length!==expected.length||!timingSafeEqual(actual,expected))return false;}
- return x.result===undefined?r.state!=="completed"||x.events.at(-1)?.state==="completed":r.state==="completed"&&x.events.at(-1)?.state==="completed";
+ if(x.result!==undefined){const result=x.result,shape=!!receiptKey&&exact(result,["id","ok","output","sha256"])&&result.id===r.id&&result.ok===true&&typeof result.output==="string"&&result.output.length<=MAX_OUTPUT&&typeof result.sha256==="string"&&/^[a-f0-9]{64}$/u.test(result.sha256);let authenticated=false;if(shape){const expected=Buffer.from(receiptDigest(receiptKey!,x,result.output),"hex"),actual=Buffer.from(result.sha256,"hex");authenticated=actual.length===expected.length&&timingSafeEqual(actual,expected);}if(!authenticated&&!(allowUnverifiedCompletion&&r.state==="completed"))return false;}
+ if(allowUnverifiedCompletion&&r.state==="completed"&&x.events.at(-1)?.state==="completed")return true;
+ return x.result===undefined?r.state!=="completed":r.state==="completed"&&x.events.at(-1)?.state==="completed";
 }
-export function parseAgentStore(raw:string,receiptKey?:Buffer):AgentStoreFile{
- const value:unknown=JSON.parse(raw);if(!exact(value,["schema","revision","entries"])||value.schema!==SCHEMA||!Number.isSafeInteger(value.revision)||Number(value.revision)<0||!Array.isArray(value.entries)||value.entries.length>MAX_RECORDS||!value.entries.every(entry=>entryValue(entry,receiptKey)))throw new Error("Invalid ASEN agent store");
- const entries=value.entries as unknown as AgentStoreEntry[],ids=new Set<string>();for(const entry of entries){if(ids.has(entry.record.id))throw new Error("Duplicate ASEN agent task id");ids.add(entry.record.id);}
+export function parseAgentStore(raw:string,receiptKey?:Buffer,allowUnverifiedCompletion=false):AgentStoreFile{
+ const value:unknown=JSON.parse(raw);if(!exact(value,["schema","revision","entries"])||value.schema!==SCHEMA||!Number.isSafeInteger(value.revision)||Number(value.revision)<0||!Array.isArray(value.entries)||value.entries.length>MAX_RECORDS||!value.entries.every(entry=>entryValue(entry,receiptKey)||allowUnverifiedCompletion&&entryValue(entry,receiptKey,true)))throw new Error("Invalid ASEN agent store");
+ const entries=(value.entries as unknown[]).map(rawEntry=>{const trusted=entryValue(rawEntry,receiptKey),entry=structuredClone(rawEntry) as AgentStoreEntry;if(allowUnverifiedCompletion&&!trusted){delete entry.result;}return entry;}),ids=new Set<string>();for(const entry of entries){if(ids.has(entry.record.id))throw new Error("Duplicate ASEN agent task id");ids.add(entry.record.id);}
  return {schema:SCHEMA,revision:Number(value.revision),entries:entries.map(entry=>structuredClone(entry))};
 }
 function empty():AgentStoreFile{return {schema:SCHEMA,revision:0,entries:[]};}
@@ -72,11 +73,13 @@ export class PersistentAgentStore implements AgentLifecycleSink{
  readonly #receiptKey:Buffer;
  private constructor(readonly path:string,private readonly now:()=>string,receiptKey:Buffer,initial:AgentStoreFile){this.#receiptKey=receiptKey;for(const entry of initial.entries)this.#records.set(entry.record.id,structuredClone(entry.record));}
  static async open(path:string,now:()=>string=()=>new Date().toISOString()):Promise<{store:PersistentAgentStore;quarantined?:string}>{
-  await preparePrivateFile(path,true);const receiptKey=await openReceiptKey(path);let initial=empty(),quarantined:string|undefined;
+  await preparePrivateFile(path,true);const receiptKey=await openReceiptKey(path);let initial=empty(),quarantined:string|undefined,normalized=false;
   try{initial=await read(path,receiptKey);}catch(error){
    if(!(error instanceof SyntaxError)&&!(error instanceof Error&&error.message==="Invalid ASEN agent store"))throw error;
-   const target=`${path}.corrupt-${Date.now()}-${randomUUID()}`;await rename(path,target);quarantined=target;
+   try{initial=parseAgentStore(await readFile(path,"utf8"),receiptKey,true);normalized=true;for(const entry of initial.entries){if(entry.record.state!=="completed"||entry.result)continue;const recovered=recoverAgentLifecycleRecords([entry.record],now())[0]!;entry.record={...recovered,summary:"Unverified completion after restart; explicit review is required"};entry.events.push(event(entry.record,entry.events.length+1));}}
+   catch{const target=`${path}.corrupt-${Date.now()}-${randomUUID()}`;await rename(path,target);quarantined=target;}
   }
+  if(normalized)await write(path,initial);
   const store=new PersistentAgentStore(path,now,receiptKey,initial);await store.#recover();return {store,...(quarantined?{quarantined}:{})};
  }
  createdAt():string{return this.now();}
@@ -104,7 +107,6 @@ export class PersistentAgentStore implements AgentLifecycleSink{
  async #move(id:string,state:Exclude<PublicAgentRecord["state"],"queued"|"completed">,summary:string|undefined,at:string):Promise<void>{let updated:PublicAgentRecord|undefined;await this.#mutate(data=>{const entry=data.entries.find(x=>x.record.id===id);if(!entry)throw new Error("Agent lifecycle record does not exist");updated=transitionAgent(entry.record,state,at,summary);entry.record=updated;entry.events.push(event(updated,entry.events.length+1));});if(updated)this.#records.set(id,structuredClone(updated));}
  async #mutate(change:(data:AgentStoreFile)=>void):Promise<void>{await preparePrivateFile(this.path,true);await withExclusiveFileLock(this.path,async()=>{const data=await read(this.path,this.#receiptKey);change(data);if(data.entries.length>MAX_RECORDS)throw new Error("ASEN agent store has reached its record limit");const next=parseAgentStore(JSON.stringify({...data,revision:data.revision+1}),this.#receiptKey);await write(this.path,next);});}
  async #recover():Promise<void>{let recovered:PublicAgentRecord[]|undefined;await this.#mutate(data=>{const at=this.now();for(const entry of data.entries){const record=entry.record;if(record.state==="running"){const next=recoverAgentLifecycleRecords([record],at)[0]!;entry.record=next;entry.events.push(event(next,entry.events.length+1));}
-   else if(record.state==="completed"&&!entry.result){const recovered=recoverAgentLifecycleRecords([record],at)[0]!,next={...recovered,summary:"Unverified completion after restart; explicit review is required"};entry.record=next;entry.events.push(event(next,entry.events.length+1));}
   }recovered=data.entries.map(x=>x.record);});for(const record of recovered??[])this.#records.set(record.id,structuredClone(record));}
  /** Returns a request that is safe to resume; authority-bearing requests always need fresh admission. */
  resumable(entry:AgentStoreEntry):AgentRequest|undefined{
