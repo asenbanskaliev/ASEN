@@ -107,3 +107,10 @@ test("candidate ancestry ignores malicious Git replacement objects",t=>{
  assert.throws(()=>assertExactCandidate(f.root,unrelated,f.commit),/not a descendant/);
  assert.doesNotThrow(()=>assertExactCandidate(f.root,descendant,f.commit));
 });
+
+test("frozen source ancestry requires a full exact baseline SHA",t=>{
+ const f=fixture(t);
+ for(const invalid of ["HEAD","main",f.commit.slice(0,12),"", "0".repeat(39), "G".repeat(40)])
+  assert.throws(()=>assertExactCandidate(f.root,f.commit,invalid),/Frozen source must be an exact full Git commit SHA/);
+ assert.doesNotThrow(()=>assertExactCandidate(f.root,f.commit,f.commit));
+});
