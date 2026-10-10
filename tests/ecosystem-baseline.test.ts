@@ -424,6 +424,20 @@ test("mapped Markdown runtime directory reports additions, removals and content 
     assert.equal(report.changes.filter((row:any)=>row.path===path).length,1,`duplicate glob change: ${path}`);
   for(const owner of globOwners)assert.ok(report.invalidatedPaths.includes(owner),`mapped glob owner: ${owner}`);
 
+  // A mode-only change must be visible even when the committed blob bytes are identical.
+  const modeBefore=collectRuntimeEdgeFiles(repo,after.commit,"assets/agents/*.md").find((file:any)=>file.path===selected);
+  assert.ok(modeBefore);
+  execFileSync("git",["-C",repo,"update-index","--chmod="+(modeBefore.mode==="100644"?"+x":"-x"),selected]);
+  execFileSync("git",["-C",repo,"commit","-qm","change runtime agent executable bit only"]);
+  const modeCommit=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+  const modeAfter=collectRuntimeEdgeFiles(repo,modeCommit,"assets/agents/*.md").find((file:any)=>file.path===selected);
+  assert.equal(modeAfter.sha256,modeBefore.sha256);
+  assert.notEqual(modeAfter.mode,modeBefore.mode);
+  const modeReport=detectMappedBaselineDrift(repo,after,collectBaseline(repo,modeCommit),overlay,mappings);
+  assert.ok(modeReport.changes.some((row:any)=>row.kind==="CONTENT_CHANGED"&&row.path===selected));
+  assert.equal(modeReport.autoAdopt,false);
+  for(const owner of globOwners)assert.ok(modeReport.invalidatedPaths.includes(owner));
+
   const unique=selectedFiles.find((file:any)=>file.path!==selected&&file.path!==removed&&selectedFiles.filter((candidate:any)=>candidate.sha256===file.sha256).length===1);
   assert.ok(unique,"a unique frozen agent byte identity is required for rename classification");
   const renamedPath=`${assetDirectory}/renamed-source.md`;
