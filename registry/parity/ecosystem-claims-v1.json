@@ -148,14 +148,21 @@
       ],
       "implementation": [
         "src/agents/dispatcher.ts",
-        "src/agents/pi-process-runner.ts"
+        "src/agents/pi-process-runner.ts",
+        "src/agents/agent-runtime.ts",
+        "src/runtime/agent-store.ts",
+        "src/agents/pi-agent-tools.ts",
+        "src/runtime/agent-lifecycle.ts"
       ],
       "tests": [
         "tests/dispatcher.test.ts",
-        "tests/pi-process-runner.test.ts"
+        "tests/pi-process-runner.test.ts",
+        "tests/agent-store.test.ts",
+        "tests/agent-lifecycle.test.ts",
+        "tests/pi-agent-runtime.test.ts"
       ],
       "remaining": [
-        "Dispatcher FIFO/concurrency handoff defect is repaired and regression-tested. Public lifecycle/session transport, durable queue/cancel/continue/status/history/restart composition remain incomplete."
+        "Persistent public queue, cancel/continue/status, ownership, bounded concurrency and interrupted-work quarantine are implemented and tested. Real Pi delivery/restoration across process restart and platforms, hostile child-process cleanup and public grant/transport contracts remain unverified or incomplete."
       ],
       "stateful": true,
       "platformSensitive": true,
@@ -201,10 +208,12 @@
       ],
       "tests": [
         "tests/odd-task-tracking.test.ts",
-        "tests/task-replay.test.ts"
+        "tests/task-replay.test.ts",
+        "tests/todo-store.test.ts",
+        "tests/pi-agent-runtime.test.ts"
       ],
       "remaining": [
-        "Deterministic public transition/replay/conflict/staleness and session/project isolation core is implemented. Durable persistence, crash/restart integration and Pi-facing lifecycle composition remain."
+        "Durable session/project-isolated Todo projection, validated replay, registered Pi tools and safe running-to-blocked recovery are implemented and tested. Abrupt process-crash injection, real Pi restart/reopen journeys and cross-platform host evidence remain."
       ],
       "stateful": true,
       "platformSensitive": true,
