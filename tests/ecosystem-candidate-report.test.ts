@@ -90,3 +90,20 @@ test("candidate identity must resolve to an exact descendant commit",t=>{
  assert.throws(()=>assertExactCandidate(f.root,candidate,f.git("rev-parse","HEAD")),/descendant/);
  assert.throws(()=>assertExactCandidate(f.root,"not-a-sha",f.commit),/exact full Git commit SHA/);
 });
+
+test("candidate ancestry ignores malicious Git replacement objects",t=>{
+ const f=fixture(t);
+ writeFileSync(join(f.root,"extensions","a.ts"),"export const value = 3;\n");
+ f.git("add",".");f.git("commit","-qm","descendant");
+ const descendant=f.git("rev-parse","HEAD");
+ f.git("checkout","--orphan","independent");f.git("rm","-rf",".");
+ mkdirSync(join(f.root,"extensions"));
+ writeFileSync(join(f.root,"package.json"),JSON.stringify({name:"fixture",version:"1.0.0"}));
+ writeFileSync(join(f.root,"extensions","a.ts"),"export const independent = true;\n");
+ f.git("add",".");f.git("commit","-qm","independent");
+ const unrelated=f.git("rev-parse","HEAD");
+ // A replace ref can make a disconnected commit appear to have descendant ancestry.
+ f.git("replace",unrelated,descendant);
+ assert.throws(()=>assertExactCandidate(f.root,unrelated,f.commit),/not a descendant/);
+ assert.doesNotThrow(()=>assertExactCandidate(f.root,descendant,f.commit));
+});
