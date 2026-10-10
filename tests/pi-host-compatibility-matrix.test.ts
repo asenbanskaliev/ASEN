@@ -84,3 +84,7 @@ test("host inventory accessor names are not evaluated",()=>{
 test("host command inventory method must be callable",()=>{
  assert.throws(()=>validatePiCommandCollisions({getCommands:null},["asen"]),/inventory must be callable/);
 });
+
+test("host command inventory rejects primitive rows",()=>{
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>["asen"]},["asen"]),/inventory is malformed/);
+});
