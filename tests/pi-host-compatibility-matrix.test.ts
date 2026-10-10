@@ -152,3 +152,7 @@ test("undefined inventory entry is rejected",()=>{
 test("duplicate reservations fail before invoking host inventory",()=>{
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>{throw Error("unexpected inventory access");}},["asen","asen"]),/reservation list is invalid/);
 });
+
+test("inventory errors are propagated",()=>{
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>{throw Error("inventory error");}},["asen"]),/inventory error/);
+});
