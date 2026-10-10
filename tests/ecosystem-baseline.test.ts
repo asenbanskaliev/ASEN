@@ -433,7 +433,7 @@ test("mapped Markdown runtime directory reports additions, removals and content 
   const modeAfter=collectRuntimeEdgeFiles(repo,modeCommit,"assets/agents/*.md").find((file:any)=>file.path===selected);
   assert.equal(modeAfter.sha256,modeBefore.sha256);
   assert.notEqual(modeAfter.mode,modeBefore.mode);
-  const modeReport=detectMappedBaselineDrift(repo,after,collectBaseline(repo,modeCommit),overlay,mappings);
+  const modeReport=detectMappedBaselineDrift(repo,before,collectBaseline(repo,modeCommit),overlay,mappings);
   assert.ok(modeReport.changes.some((row:any)=>row.kind==="PERMISSIONS_CHANGED"&&row.path===selected&&row.fromMode!==row.toMode));
   assert.equal(modeReport.changes.some((row:any)=>row.kind==="CONTENT_CHANGED"&&row.path===selected),false,"mode-only drift is not mislabeled as content drift");
   assert.equal(modeReport.autoAdopt,false);
@@ -450,7 +450,7 @@ test("mapped Markdown runtime directory reports additions, removals and content 
   const movedWithMode=collectRuntimeEdgeFiles(repo,modeRenameCommit,"assets/agents/*.md").find((file:any)=>file.path===movedWithModePath);
   assert.equal(movedWithMode.sha256,modeRenameSource.sha256);
   assert.notEqual(movedWithMode.mode,modeRenameSource.mode);
-  const modeRenameReport=detectMappedBaselineDrift(repo,after,collectBaseline(repo,modeRenameCommit),overlay,mappings);
+  const modeRenameReport=detectMappedBaselineDrift(repo,before,collectBaseline(repo,modeRenameCommit),overlay,mappings);
   assert.ok(modeRenameReport.changes.some((row:any)=>row.kind==="REMOVED"&&row.path===modeRenameSource.path));
   assert.ok(modeRenameReport.changes.some((row:any)=>row.kind==="ADDED"&&row.path===movedWithModePath));
   assert.ok(!modeRenameReport.changes.some((row:any)=>row.kind==="RENAMED"&&row.path===modeRenameSource.path));
