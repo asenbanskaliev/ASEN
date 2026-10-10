@@ -80,3 +80,13 @@ test("corrupt Todo storage is preserved in quarantine and malformed replays fail
 test("Todo project identity is bound even when the Pi session id matches",async t=>{
  const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Build",one);assert.deepEqual(await store.list({sessionId:one.sessionId,projectId:"/other"}),[]);await assert.rejects(()=>store.update(todo.taskId,{sessionId:one.sessionId,projectId:"/other"},1,"running"),/unavailable to this session or project/);
 });
+
+test("Todo recovery lookup accepts Windows case aliases for the same project root",async t=>{
+ const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Windows path alias",{sessionId:"same-session",projectId:"C:\\Work\\ASEN"});
+ const context={sessionId:"same-session",projectId:"c:/work/asen"},alias=await store.list(context);
+ assert.equal(alias.some(row=>row.taskId===todo.taskId),process.platform==="win32");
+ if(process.platform==="win32"){
+  await store.update(todo.taskId,context,1,"running");
+  assert.deepEqual((await store.history(todo.taskId,context)).map(event=>event.projectId),["C:\\Work\\ASEN","C:\\Work\\ASEN"]);
+ }
+});

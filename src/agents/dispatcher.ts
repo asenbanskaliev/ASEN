@@ -7,6 +7,7 @@ import {consumeIssuedWorkerContext,isIssuedSkillContext,matchesIssuedSkillContex
 import {verifySkillEvidence} from "../verify/verifier.js";
 import {consumePhaseGrant,retirePhaseGrant,consumeWriterAdmission} from "../lifecycle/skill-lifecycle.js";
 import type {AgentLifecycleSink} from "../runtime/agent-lifecycle.js";
+import {sameWorkspaceIdentityPath} from "../runtime/workspace-store.js";
 
 export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; model?:string; thinking?:"off"|"minimal"|"low"|"medium"|"high"; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; writerAdmission?:object; runnerWriteReceiver?:object; owner?:{kind:"user"|"agent"|"system";id:string};parentId?:string; }
 export interface AgentArtifactProof { readonly requestId:string; readonly role:AgentRequest["role"]; readonly repository:string; readonly candidateId?:string; readonly candidateRevision?:string; readonly skillPaths:readonly string[]; }
@@ -67,7 +68,7 @@ export class Dispatcher {
   this.#running--;
  }
  /** Cancel a queued or running task. The runner receives the abort signal and must stop its owned work. */
- cancel(id:string,sessionId:string,projectId:string):boolean{const control=this.#controls.get(id);if(!control||control.sessionId!==sessionId||control.projectId!==projectId||control.controller.signal.aborted)return false;control.controller.abort();return true;}
+ cancel(id:string,sessionId:string,projectId:string):boolean{const control=this.#controls.get(id);if(!control||control.sessionId!==sessionId||!sameWorkspaceIdentityPath(control.projectId,projectId)||control.controller.signal.aborted)return false;control.controller.abort();return true;}
  async dispatch(request:AgentRequest):Promise<AgentResult>{
   const token=typeof request==="object"&&request!==null&&!types.isProxy(request)?Object.getOwnPropertyDescriptor(request,"writerAdmission")?.value:undefined;
   let runnerRequest:AgentRequest;

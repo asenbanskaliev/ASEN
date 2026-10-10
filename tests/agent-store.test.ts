@@ -29,6 +29,13 @@ test("opening a second runtime in a live process does not mark its queued or run
  assert.equal(rows.find(row=>row.id===queued.id)?.state,"queued");assert.equal(rows.find(row=>row.id===running.id)?.state,"running");
 });
 
+test("agent recovery lookup accepts Windows case aliases for the same project root",async t=>{
+ const file=await fixture(t),{store}=await PersistentAgentStore.open(file),request=req("case-alias","session-case","C:\\Work\\ASEN");
+ await store.enqueue(request,owner);
+ const alias=await store.list("session-case","c:/work/asen");
+ assert.equal(alias.some(row=>row.id===request.id),process.platform==="win32");
+});
+
 test("a process crash after durable dispatch is recovered as interrupted without replay",async t=>{
  const file=await fixture(t),child=spawnSync(process.execPath,["--import","tsx",resolve("tests/fixtures/agent-crash-process.ts"),file,"running"],{encoding:"utf8",timeout:30000});
  assert.equal(child.status,0,`${child.error?.message??""}\n${child.stderr}`);

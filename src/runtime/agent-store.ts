@@ -5,6 +5,7 @@ import {atomicWriteText} from "../io/atomic-write.js";
 import {withExclusiveFileLock} from "../io/exclusive-file-lock.js";
 import {preparePrivateFile} from "../io/private-file.js";
 import {completeAgentRecord,createAgentRecord,recoverAgentLifecycleRecords,transitionAgent,type AgentLifecycleSink,type PublicAgentRecord} from "./agent-lifecycle.js";
+import {sameWorkspaceIdentityPath} from "./workspace-store.js";
 
 const SCHEMA="asen.agents/v1" as const,MAX_RECORDS=2000,MAX_EVENTS=20000,MAX_PROMPT=32000,MAX_OUTPUT=1_000_000;
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted){const error=new Error("Agent task cancelled");error.name="AbortError";throw error;}}
@@ -88,9 +89,9 @@ export class PersistentAgentStore implements AgentLifecycleSink{
  }
  createdAt():string{return this.now();}
  snapshot():readonly PublicAgentRecord[]{return [...this.#records.values()].map(record=>structuredClone(record));}
- async list(sessionId:string,projectId:string):Promise<readonly PublicAgentRecord[]>{const data=await read(this.path,this.#receiptKey);return data.entries.map(x=>x.record).filter(x=>x.sessionId===sessionId&&x.projectId===projectId).map(x=>structuredClone(x));}
- async history(id:string,sessionId:string,projectId:string):Promise<readonly AgentStateEvent[]>{const data=await read(this.path,this.#receiptKey),entry=data.entries.find(x=>x.record.id===id&&x.record.sessionId===sessionId&&x.record.projectId===projectId);return entry?entry.events.map(x=>structuredClone(x)):[];}
- async get(id:string,sessionId:string,projectId:string):Promise<AgentStoreEntry|undefined>{const data=await read(this.path,this.#receiptKey),entry=data.entries.find(x=>x.record.id===id&&x.record.sessionId===sessionId&&x.record.projectId===projectId);return entry?structuredClone(entry):undefined;}
+ async list(sessionId:string,projectId:string):Promise<readonly PublicAgentRecord[]>{const data=await read(this.path,this.#receiptKey);return data.entries.map(x=>x.record).filter(x=>x.sessionId===sessionId&&sameWorkspaceIdentityPath(x.projectId,projectId)).map(x=>structuredClone(x));}
+ async history(id:string,sessionId:string,projectId:string):Promise<readonly AgentStateEvent[]>{const data=await read(this.path,this.#receiptKey),entry=data.entries.find(x=>x.record.id===id&&x.record.sessionId===sessionId&&sameWorkspaceIdentityPath(x.record.projectId,projectId));return entry?entry.events.map(x=>structuredClone(x)):[];}
+ async get(id:string,sessionId:string,projectId:string):Promise<AgentStoreEntry|undefined>{const data=await read(this.path,this.#receiptKey),entry=data.entries.find(x=>x.record.id===id&&x.record.sessionId===sessionId&&sameWorkspaceIdentityPath(x.record.projectId,projectId));return entry?structuredClone(entry):undefined;}
  async enqueue(request:AgentRequest,owner:PublicAgentRecord["owner"],signal?:AbortSignal):Promise<void>{
   throwIfCancelled(signal);const createdAt=this.now(),spec=specFrom(request,createdAt);if(spec.continuationOf)throw new Error("Continuation tasks must use the atomic interrupted-task claim");const input={id:spec.id,role:spec.role,owner,sessionId:spec.isolationKey,projectId:spec.repository,createdAt},record=createAgentRecord(input),first=event(record,1),entry:AgentStoreEntry={record,request:spec,events:[first]};
   await this.#mutate(data=>{throwIfCancelled(signal);if(data.entries.some(x=>x.record.id===spec.id))throw new Error("Agent task id already exists");data.entries.push(entry);},signal);this.#records.set(record.id,structuredClone(record));
@@ -102,12 +103,12 @@ export class PersistentAgentStore implements AgentLifecycleSink{
   const createdAt=this.now();let continuation:AgentRequest|undefined;let queued:PublicAgentRecord|undefined;
   await this.#mutate(data=>{
    throwIfCancelled(signal);
-   const parent=data.entries.find(entry=>entry.record.id===parentId&&entry.record.sessionId===sessionId&&entry.record.projectId===projectId);
+   const parent=data.entries.find(entry=>entry.record.id===parentId&&entry.record.sessionId===sessionId&&sameWorkspaceIdentityPath(entry.record.projectId,projectId));
    if(!parent)throw new Error("Agent task is unavailable to this session or project");
    if(parent.record.state!=="interrupted"||parent.record.role!=="explorer"||parent.request.role!=="explorer"||parent.request.prompt==="Queued task payload unavailable")throw new Error("This task cannot be resumed safely; create a new task with fresh authority");
    if(data.entries.some(entry=>entry.request.continuationOf===parentId))throw new Error("This interrupted task already has a continuation");
-   const request:AgentRequest={id:`agent-${randomUUID()}`,role:"explorer",prompt:parent.request.prompt,repository:projectId,isolationKey:sessionId,parentId,owner,...(parent.request.model?{model:parent.request.model}:{}),...(parent.request.thinking?{thinking:parent.request.thinking}:{})};
-   const spec=specFrom(request,createdAt),record=createAgentRecord({id:spec.id,role:spec.role,owner,sessionId,projectId,createdAt}),entry:AgentStoreEntry={record,request:spec,events:[event(record,1)]};
+   const request:AgentRequest={id:`agent-${randomUUID()}`,role:"explorer",prompt:parent.request.prompt,repository:parent.record.projectId,isolationKey:sessionId,parentId,owner,...(parent.request.model?{model:parent.request.model}:{}),...(parent.request.thinking?{thinking:parent.request.thinking}:{})};
+   const spec=specFrom(request,createdAt),record=createAgentRecord({id:spec.id,role:spec.role,owner,sessionId,projectId:parent.record.projectId,createdAt}),entry:AgentStoreEntry={record,request:spec,events:[event(record,1)]};
    data.entries.push(entry);continuation=request;queued=record;
   },signal);
   if(queued)this.#records.set(queued.id,structuredClone(queued));
