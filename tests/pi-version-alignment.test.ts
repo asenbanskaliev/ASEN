@@ -55,12 +55,12 @@ await test("package and lock metadata align the development SDK and Node floor",
 
   assert.equal(packageJson.devDependencies?.[sdkName], "^1.1.0");
   assert.equal(packageJson.engines?.node, ">=22.19.0");
-  assert.equal(packageJson.peerDependencies?.[sdkName], ">=0.85.1");
+  assert.equal(packageJson.peerDependencies?.[sdkName], ">=0.85.1 <2.0.0");
   assert.equal(packageJson.peerDependenciesMeta?.[sdkName]?.optional, true);
 
   assert.equal(lockRoot?.devDependencies?.[sdkName], "^1.1.0");
   assert.equal(lockRoot?.engines?.node, ">=22.19.0");
-  assert.equal(lockRoot?.peerDependencies?.[sdkName], ">=0.85.1");
+  assert.equal(lockRoot?.peerDependencies?.[sdkName], ">=0.85.1 <2.0.0");
   assert.equal(lockRoot?.peerDependenciesMeta?.[sdkName]?.optional, true);
   assert.equal(lockedSdk?.version, "1.1.0");
 });

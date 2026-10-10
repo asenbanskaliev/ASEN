@@ -1,12 +1,19 @@
 import {types} from "node:util";
 import {checkPiVersion} from "./launcher.js";
 
-const required=["on","registerCommand","registerTool","registerFlag","getFlag"] as const;
+const required=["on","registerCommand","registerTool","getCommands","getAllTools"] as const;
 export const ASEN_PI_MINIMUM_VERSION="0.85.1";
+export const ASEN_PI_MAXIMUM_VERSION_EXCLUSIVE="2.0.0";
+export const ASEN_PI_SUPPORTED_MODES=Object.freeze(["tui","rpc","json","print"] as const);
+function compareVersion(left:string,right:string):number{
+ const a=left.split(".").map(Number),b=right.split(".").map(Number);
+ for(let index=0;index<3;index++)if(a[index]!==b[index])return a[index]!<b[index]!?-1:1;
+ return 0;
+}
 /** Validate the public factory boundary without invoking untrusted host getters. */
 export function validatePiHost(host:unknown,version:unknown):void{
- if(typeof version!=="string"||!/^\d+\.\d+\.\d+$/.test(version)||!checkPiVersion(version,ASEN_PI_MINIMUM_VERSION).ok)
-  throw new Error("ASEN requires a known Pi version >=0.85.1");
+ if(typeof version!=="string"||!/^\d+\.\d+\.\d+$/.test(version)||!checkPiVersion(version,ASEN_PI_MINIMUM_VERSION).ok||compareVersion(version,ASEN_PI_MAXIMUM_VERSION_EXCLUSIVE)>=0)
+  throw new Error("ASEN requires a known Pi version >=0.85.1 and <2.0.0");
  if(typeof host!=="object"||host===null||types.isProxy(host))throw new Error("ASEN requires the public Pi extension API");
  for(const name of required){
   const descriptor=Object.getOwnPropertyDescriptor(host,name);
@@ -16,24 +23,53 @@ export function validatePiHost(host:unknown,version:unknown):void{
 }
 
 /** Check public command inventory before registration when the host exposes it. */
+function reservationNames(names:readonly string[],label:string):Set<string>{
+ if(!Array.isArray(names)||types.isProxy(names)||names.length===0||names.some(name=>typeof name!=="string"||!name||name!==name.trim())||new Set(names).size!==names.length)throw new Error(`ASEN ${label} reservation list is invalid`);
+ return new Set(names);
+}
+function readInventory(host:object,methodName:"getCommands"|"getAllTools",label:string):unknown[]{
+ const descriptor=Object.getOwnPropertyDescriptor(host,methodName);
+ if(!descriptor)throw new Error(`ASEN Pi ${label} inventory is unavailable`);
+ if(!("value" in descriptor)||typeof descriptor.value!=="function")throw new Error(`ASEN Pi ${label} inventory must be callable`);
+ const inventory=descriptor.value.call(host) as unknown;
+ if(!Array.isArray(inventory)||types.isProxy(inventory))throw new Error(`ASEN Pi ${label} inventory is malformed`);
+ const length=Object.getOwnPropertyDescriptor(inventory,"length");
+ if(!length||!("value" in length)||!Number.isSafeInteger(length.value)||length.value>100000)throw new Error(`ASEN Pi ${label} inventory is malformed`);
+ const rows:unknown[]=[];
+ for(let index=0;index<inventory.length;index++){
+  const row=Object.getOwnPropertyDescriptor(inventory,String(index));
+  if(!row||!("value" in row))throw new Error(`ASEN Pi ${label} inventory is malformed`);
+  rows.push(row.value);
+ }
+ return rows;
+}
+function validateInventory(host:object,methodName:"getCommands"|"getAllTools",names:readonly string[],label:string):void{
+ const reserved=reservationNames(names,label),rows=readInventory(host,methodName,label);
+ for(const row of rows){
+  if(typeof row!=="object"||row===null||types.isProxy(row))throw new Error(`ASEN Pi ${label} inventory is malformed`);
+  const entry=Object.getOwnPropertyDescriptor(row,"name");
+  if(!entry||!("value" in entry)||typeof entry.value!=="string"||!entry.value)throw new Error(`ASEN Pi ${label} inventory is malformed`);
+  if(reserved.has(entry.value))throw new Error(`ASEN ${label} registration collision: ${entry.value}`);
+ }
+}
+/** Require complete public inventories and reject all collisions before the first host mutation. */
+export function validatePiRegistrationCollisions(host:unknown,commands:readonly string[],tools:readonly string[]):void{
+ if(typeof host!=="object"||host===null||types.isProxy(host))throw new Error("ASEN requires the public Pi extension API");
+ validateInventory(host,"getCommands",commands,"command");
+ validateInventory(host,"getAllTools",tools,"tool");
+}
+
+/** Backward-compatible command-only helper; production admission uses both public inventories. */
 export function validatePiCommandCollisions(host:unknown,names:readonly string[]):void{
  if(typeof host!=="object"||host===null||types.isProxy(host))throw new Error("ASEN requires the public Pi extension API");
- if(!Array.isArray(names)||types.isProxy(names)||names.length===0||names.some(name=>typeof name!=="string"||!name)||new Set(names).size!==names.length)throw new Error("ASEN command reservation list is invalid");
- const descriptor=Object.getOwnPropertyDescriptor(host,"getCommands");
- if(!descriptor)return; // Inventory unavailable at factory time: no collision-free claim is possible.
- if(!("value" in descriptor)||typeof descriptor.value!=="function")throw new Error("ASEN host command inventory must be callable");
- const inventory=descriptor.value.call(host) as unknown;
- if(!Array.isArray(inventory)||types.isProxy(inventory))throw new Error("ASEN host command inventory is malformed");
- const length=Object.getOwnPropertyDescriptor(inventory,"length");
- if(!length||!("value" in length)||!Number.isSafeInteger(length.value)||length.value>100000)throw new Error("ASEN host command inventory is malformed");
- const reserved=new Set(names);
- for(let index=0;index<inventory.length;index++){
-  const descriptor=Object.getOwnPropertyDescriptor(inventory,String(index));
-  if(!descriptor||!("value" in descriptor))throw new Error("ASEN host command inventory is malformed");
-  const item=descriptor.value;
-  if(typeof item!=="object"||item===null||types.isProxy(item))throw new Error("ASEN host command inventory is malformed");
-  const entry=Object.getOwnPropertyDescriptor(item,"name");
-  if(!entry||!("value" in entry)||typeof entry.value!=="string")throw new Error("ASEN host command inventory is malformed");
-  if(reserved.has(entry.value))throw new Error("ASEN command registration collision: "+entry.value);
- }
+ validateInventory(host,"getCommands",names,"command");
+}
+
+export function validatePiExecutionContext(context:unknown):asserts context is {mode:(typeof ASEN_PI_SUPPORTED_MODES)[number];hasUI:boolean}{
+ if(typeof context!=="object"||context===null||types.isProxy(context))throw new Error("ASEN requires a public Pi execution context");
+ // Pi's public ExtensionContext exposes these properties through trusted getters.
+ let mode:unknown,hasUI:unknown;
+ try{mode=(context as {mode?:unknown}).mode;hasUI=(context as {hasUI?:unknown}).hasUI;}catch{throw new Error("ASEN does not support this Pi execution mode or context");}
+ if(!ASEN_PI_SUPPORTED_MODES.includes(mode as (typeof ASEN_PI_SUPPORTED_MODES)[number])||typeof hasUI!=="boolean")
+  throw new Error("ASEN does not support this Pi execution mode or context");
 }

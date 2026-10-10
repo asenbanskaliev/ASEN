@@ -4,6 +4,7 @@ import {createHash} from "node:crypto";
 import {fileURLToPath} from "node:url";
 import path from "node:path";
 import {collectBaseline,detectMappedBaselineDrift,validateBaseline} from "./ecosystem-baseline.mjs";
+import {verifyEcosystemCandidateReport} from "./ecosystem-candidate-report.mjs";
 
 const units=Array.from({length:16},(_,index)=>`ECO-${String(index+1).padStart(2,"0")}`);
 // Minimum obligations derived from the canonical ECO contract, independent of claim flags.
@@ -78,15 +79,25 @@ export function validateEcosystemClaims({baseline,registry,existingPaths,observe
   return issues;
 }
 
-export function loadEcosystemClaims(root=fileURLToPath(new URL("../",import.meta.url))) {
-  const baseline=JSON.parse(readFileSync(path.join(root,"registry/parity/ecosystem-sources-v1.json"),"utf8"));
-  const registry=JSON.parse(readFileSync(path.join(root,"registry/parity/ecosystem-claims-v1.json"),"utf8"));
-  const sourceRepository=process.env.ECOSYSTEM_SOURCE_REPOSITORY,sourceSnapshotCommit=process.env.ECOSYSTEM_SOURCE_CANDIDATE;
-  if(Boolean(sourceRepository)!==Boolean(sourceSnapshotCommit))throw new Error("An exact source repository and candidate commit must be supplied together");
+export function loadEcosystemClaims(root=fileURLToPath(new URL("../",import.meta.url)),{verifyCandidateReport:verifyReport=verifyEcosystemCandidateReport}={}) {
+  const baselineBytes=readFileSync(path.join(root,"registry/parity/ecosystem-sources-v1.json"));
+  const claimsBytes=readFileSync(path.join(root,"registry/parity/ecosystem-claims-v1.json"));
+  const adjudicationBytes=readFileSync(path.join(root,"registry/parity/ecosystem-reference-adjudications-v1.json"));
+  const mappingBytes=readFileSync(path.join(root,"registry/parity/ecosystem-runtime-edge-mappings-v1.json"));
+  const baseline=JSON.parse(baselineBytes.toString("utf8"));
+  const registry=JSON.parse(claimsBytes.toString("utf8"));
+  const sourceRepository=process.env.ECOSYSTEM_SOURCE_REPOSITORY,sourceSnapshotCommit=process.env.ECOSYSTEM_SOURCE_CANDIDATE,candidateReportPath=process.env.ECOSYSTEM_CANDIDATE_REPORT;
+  if(Boolean(sourceRepository)!==Boolean(sourceSnapshotCommit)&&!candidateReportPath)throw new Error("An exact source repository and candidate commit must be supplied together");
+  if(candidateReportPath&&!sourceRepository)throw new Error("Verifying a candidate report requires its exact source Git repository");
   let driftReport;
-  if(sourceRepository&&sourceSnapshotCommit){
-    const overlay=JSON.parse(readFileSync(path.join(root,"registry/parity/ecosystem-reference-adjudications-v1.json"),"utf8"));
-    const mappings=JSON.parse(readFileSync(path.join(root,"registry/parity/ecosystem-runtime-edge-mappings-v1.json"),"utf8"));
+  if(candidateReportPath){
+    const report=JSON.parse(readFileSync(candidateReportPath,"utf8"));
+    if(sourceSnapshotCommit&&sourceSnapshotCommit!==report.inputs?.candidateCommit)throw new Error("Candidate report and source candidate commit disagree");
+    const verified=verifyReport(sourceRepository,report,{baselineBytes,mappingBytes,adjudicationBytes,claimsBytes});
+    driftReport={from:verified.inputs.baselineCommit,to:verified.inputs.candidateCommit,autoAdopt:false,changes:verified.changes,invalidatedPaths:verified.invalidatedPaths};
+  }else if(sourceRepository&&sourceSnapshotCommit){
+    const overlay=JSON.parse(adjudicationBytes.toString("utf8"));
+    const mappings=JSON.parse(mappingBytes.toString("utf8"));
     driftReport=detectMappedBaselineDrift(sourceRepository,baseline,collectBaseline(sourceRepository,sourceSnapshotCommit),overlay,mappings);
   }
   const paths=registry.rows.flatMap(row=>[...(row.implementation??[]),...(row.tests??[]),...(row.evidence??[]).map(proof=>proof.recordPath)]);

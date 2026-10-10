@@ -1,19 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {validatePiHost,validatePiCommandCollisions,ASEN_PI_MINIMUM_VERSION} from "../src/runtime/pi-host.js";
+import {validatePiHost,validatePiCommandCollisions,validatePiRegistrationCollisions,validatePiExecutionContext,ASEN_PI_MINIMUM_VERSION,ASEN_PI_MAXIMUM_VERSION_EXCLUSIVE,ASEN_PI_SUPPORTED_MODES} from "../src/runtime/pi-host.js";
 
-const makeHost=()=>Object.fromEntries(["on","registerCommand","registerTool","registerFlag","getFlag"].map(name=>[name,()=>undefined]));
+const makeHost=()=>Object.assign(Object.fromEntries(["on","registerCommand","registerTool","getFlag","getCommands","getAllTools"].map(name=>[name,()=>name==="getCommands"||name==="getAllTools"?[]:undefined])));
 
 test("Pi host minimum-version boundary and platform-neutral public methods",()=>{
  assert.equal(ASEN_PI_MINIMUM_VERSION,"0.85.1");
- for(const version of ["0.85.1","0.86.0","0.99.9","1.0.0","1.1.0","2.0.0"])
+ assert.equal(ASEN_PI_MAXIMUM_VERSION_EXCLUSIVE,"2.0.0");
+ for(const version of ["0.85.1","0.86.0","0.99.9","1.0.0","1.1.0","1.99.9"])
   assert.doesNotThrow(()=>validatePiHost(makeHost(),version),version);
- for(const version of ["0.85.0","0.84.99","0.0.0","invalid","1.1.0-rc.1",undefined,null,1])
+ for(const version of ["0.85.0","0.84.99","0.0.0","2.0.0","9.1.0","invalid","1.1.0-rc.1",undefined,null,1])
   assert.throws(()=>validatePiHost(makeHost(),version),/known Pi version/);
 });
 
 test("Pi host preflight rejects missing or accessor-backed registration methods",()=>{
- for(const name of ["on","registerCommand","registerTool","registerFlag","getFlag"]){
+ for(const name of ["on","registerCommand","registerTool","getCommands","getAllTools"]){
   const missing=makeHost();delete missing[name];
   assert.throws(()=>validatePiHost(missing,"1.1.0"),/requires callable Pi/);
   const accessor=makeHost();Object.defineProperty(accessor,name,{get(){throw Error("host getter invoked");}});
@@ -26,7 +27,7 @@ test("public inventory collision preflight rejects reserved commands before regi
  const host={getCommands:()=>[{name:"asen"},{name:"other"}]};
  assert.throws(()=>validatePiCommandCollisions(host,["asen","asen-status"]),/registration collision: asen/);
  assert.doesNotThrow(()=>validatePiCommandCollisions({getCommands:()=>[{name:"other"}]},["asen"]));
- assert.doesNotThrow(()=>validatePiCommandCollisions({},["asen"]));
+ assert.throws(()=>validatePiCommandCollisions({},["asen"]),/inventory is unavailable/);
 });
 
 test("public inventory preflight rejects malformed and accessor-backed rows",()=>{
@@ -72,7 +73,7 @@ test("host inventory rejects missing name descriptor",()=>{
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[{}]},["asen"]),/inventory is malformed/);
 });
 
-test("empty host command inventory is accepted",()=>{
+test("empty complete host command inventory is collision-free",()=>{
  assert.doesNotThrow(()=>validatePiCommandCollisions({getCommands:()=>[]},["asen"]));
 });
 
@@ -120,12 +121,12 @@ test("local reservations are checked even without host inventory",()=>{
 });
 
 test("oversized host command inventories are rejected",()=>{
- const rows=[];rows.length=100001;
+ const rows:any[]=[];rows.length=100001;
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>rows},["asen"]),/inventory is malformed/);
 });
 
 test("sparse command inventory fails closed",()=>{
- const rows=new Array(2);rows[1]={name:"other"};
+ const rows:any[]=new Array(2);rows[1]={name:"other"};
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>rows},["asen"]),/inventory is malformed/);
 });
 
@@ -168,6 +169,33 @@ test("proxied command reservation arrays are rejected",()=>{
 });
 
 test("indexed inventory accessor is rejected without execution",()=>{
- const rows=[];Object.defineProperty(rows,"0",{get(){throw Error("accessor executed");}});
+ const rows:any[]=[];Object.defineProperty(rows,"0",{get(){throw Error("accessor executed");}});
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>rows},["asen"]),/inventory is malformed/);
+});
+
+test("registration admission checks command and tool inventories before mutation",()=>{
+ const host:any=makeHost();host.getCommands=()=>[{name:"existing"}];host.getAllTools=()=>[{name:"existing_tool"}];
+ assert.doesNotThrow(()=>validatePiRegistrationCollisions(host,["asen"],["asen_probe"]));
+ host.getCommands=()=>[{name:"asen"}];
+ assert.throws(()=>validatePiRegistrationCollisions(host,["asen"],["asen_probe"]),/command registration collision/);
+ host.getCommands=()=>[];host.getAllTools=()=>[{name:"asen_probe"}];
+ assert.throws(()=>validatePiRegistrationCollisions(host,["asen"],["asen_probe"]),/tool registration collision/);
+});
+
+test("missing and incomplete command/tool inventories fail closed",()=>{
+ const host:any=makeHost();host.getCommands=undefined;
+ assert.throws(()=>validatePiRegistrationCollisions(host,["asen"],["asen_probe"]),/command inventory must be callable/);
+ host.getCommands=()=>[];host.getAllTools=()=>new Array(1);
+ assert.throws(()=>validatePiRegistrationCollisions(host,["asen"],["asen_probe"]),/tool inventory is malformed/);
+ const accessor={};Object.defineProperty(accessor,"name",{get(){throw Error("getter ran");}});
+ host.getAllTools=()=>[];host.getCommands=()=>[accessor];
+ assert.throws(()=>validatePiRegistrationCollisions(host,["asen"],["asen_probe"]),/command inventory is malformed/);
+});
+
+test("execution contexts admit only documented public modes and boolean UI capability",()=>{
+ for(const mode of ASEN_PI_SUPPORTED_MODES)assert.doesNotThrow(()=>validatePiExecutionContext({mode,hasUI:mode==="tui"||mode==="rpc"}));
+ for(const context of [{mode:"unknown",hasUI:false},{mode:"rpc"},{mode:"rpc",hasUI:"yes"},null,{}])
+  assert.throws(()=>validatePiExecutionContext(context),/public Pi execution context|execution mode or context/);
+ let reads=0;const publicContext={get mode(){reads++;return "rpc";},get hasUI(){return false;}};
+ assert.doesNotThrow(()=>validatePiExecutionContext(publicContext));assert.equal(reads,1,"Pi exposes execution-context properties through public getters");
 });

@@ -26,11 +26,12 @@ Startup refresh reuses `.asen/skill-registry.md`, its existing cache and optiona
 
 Interactive hosts watch existing source roots recursively, debounce changes and serialize writes per canonical project. Changes during refresh coalesce into a follow-up refresh. Project switching/shutdown invalidates old callbacks; shutdown closes watchers, cancels scheduled refresh and waits for in-flight work. Unsupported watchers produce a diagnostic and leave manual refresh available. Missing or recreated source roots may require manual refresh or restart.
 
-Disable automatic startup/watch with any of:
+Disable automatic startup/watch with either of:
 
-- Pi flag `--asen-no-skill-registry`;
 - environment variable `ASEN_NO_SKILL_REGISTRY=1` (`true`, `yes` and `on` also apply);
 - Pi `--no-skills` or `-ns`.
+
+ASEN does not register a separate CLI flag because Pi's public extension API has no complete flag inventory for collision checks.
 
 `/asen-skill-registry refresh` remains an explicit manual command. Startup/watch failure is diagnostic; it does not cancel the user's final response. Local native Linux watch invalidation, restart generation, shutdown, disable and project isolation are tested. Real all-platform Pi startup/restart journeys remain open.
 
@@ -40,6 +41,6 @@ The Pi package manifest selects `extensions/asen.ts` explicitly. `extensions/aut
 
 ## Public Pi command boundary
 
-The production factory validates the public SDK version and callable registration/event/flag API before registering anything. A packed ASEN artifact with the peer omitted was also loaded by the exact published Pi `0.85.1` CLI on Linux; seven RPC commands were visible without invoking a model. This is one minimum-version host observation, not a full version/platform matrix. Preflight does not query tool/command inventories that Pi initializes later. The factory has no public mode value; registration collisions are not established at admission and must not be inferred.
+The production factory accepts the declared Pi range `>=0.85.1 <2.0.0` and validates its public registration APIs before adding a bootstrap session handler. At the first `session_start`, after Pi initializes its public inventories, ASEN validates the execution mode and complete command/tool inventories before exposing commands or tools. Missing, malformed or colliding inventories fail closed and may retry on a later session; a host error after partial registration leaves those handlers inert and requires a Pi reload. Pi does not expose a complete public flag inventory, so ASEN registers no private CLI flag. Command, tool and event handlers validate the public execution context mode (`tui`, `rpc`, `json` or `print`) before running. The current packed artifact was installed and exercised on Linux against real Pi `0.85.1` and `1.1.0` CLIs: seven visible RPC commands, four canonical tools, and zero model calls. Windows/macOS and the full supported version range still need external host validation. Pi has no public registration veto; extensions that add a colliding name after ASEN's session-start inventory check cannot be prevented by ASEN and remain a host-level limitation.
 
 The seven data commands publish through `ctx.ui.notify`; their production handlers fulfill Pi's `Promise<void>` contract. Internal `createAsenExtension` handlers retain their returned data for composition/tests. `verify:pack` verifies actual installed registration and seven visible command results through offline Pi RPC with zero model invocations. Missing status, diagnostics, agents or changes providers remain explicitly unavailable; visible output does not establish production provider or ODD integration.

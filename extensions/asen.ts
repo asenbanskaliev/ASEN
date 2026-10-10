@@ -14,9 +14,9 @@ import {deriveOddExecutionContract,type OddExecutionContract} from "../src/flow/
 import {trackOddTask,resumeOddTask,appendOddTaskEvent,type OddProgress} from "../src/flow/odd-task-tracking.js";
 import type {MemoryContext} from "../src/memory/context.js";import type {MemoryStore} from "../src/memory/types.js";
 import type {TaskEvent} from "../src/runtime/task-replay.js";
-import {registerInteractionTools} from "../src/interaction/pi-tools.js";
+import {ASEN_INTERACTION_TOOL_NAMES,registerInteractionTools} from "../src/interaction/pi-tools.js";
 import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
-import {registerCodeGraphTools,type CodeIntelligenceOptions} from "../src/interaction/code-intelligence.js";
+import {ASEN_CODEGRAPH_TOOL_NAME,ASEN_CODE_INTELLIGENCE_TOOL_NAME,registerCodeGraphTools,type CodeIntelligenceOptions} from "../src/interaction/code-intelligence.js";
 import {statusLines,type AsenStatusInput} from "../src/runtime/status.js";
 import {doctorChecks,doctorExitCode} from "../src/runtime/doctor.js";
 import {ASEN_COMMAND_CATALOG} from "../src/runtime/command-catalog.js";
@@ -27,13 +27,13 @@ import {runHistoryCommand,recordHistoryInput} from "../src/runtime/history-comma
 import {runUsageCommand} from "../src/runtime/usage-command.js";
 import {incrementUsageFile} from "../src/runtime/usage-store.js";
 import {VERSION,type ExtensionAPI} from "@earendil-works/pi-coding-agent";
-import {validatePiHost,validatePiCommandCollisions} from "../src/runtime/pi-host.js";
+import {validatePiHost,validatePiRegistrationCollisions,validatePiExecutionContext} from "../src/runtime/pi-host.js";
 
 type CommandContext={cwd:string;hasUI?:boolean;sessionManager?:{getSessionId?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;confirm?:(title:string,message:string)=>Promise<boolean>}};
-type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;registerFlag?:(name:string,options:any)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
+type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
 type Refresh=typeof refreshSkillRegistry;
-export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string}
-export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
+export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;deferSessionStart?:boolean}
+export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;startSession(context:CommandContext):Promise<void>;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
 
 const usage="Usage: /asen-skill-registry refresh";
 const productionPackageRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
@@ -80,9 +80,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const projectRoot=await realpath(path.resolve(cwd)),sources=await sourcesFor(projectRoot,home(),packageRoot);
    return {projectRoot,projectId:projectRoot,sources,...(dependencies.mirror?{mirror:dependencies.mirror}:{})};
   },...dependencies.registryLifecycle});
-  pi.registerFlag?.("asen-no-skill-registry",{description:"Disable ASEN skill registry startup refresh and watchers",type:"boolean",default:false});
   const historyFile=path.join(home(),".asen","history.json"),usageFile=path.join(home(),".asen","usage.json");
-  pi.on?.("session_start",async(_event,ctx)=>{await lifecycle.start(ctx,registryStartupDisabled(pi.getFlag?.("asen-no-skill-registry")));try{await incrementUsageFile(usageFile,"sessions");}catch{try{ctx.ui.notify("ASEN local usage could not be saved.","error");}catch{}}});
+  const startSession=async(ctx:CommandContext)=>{await lifecycle.start(ctx,registryStartupDisabled(undefined));try{await incrementUsageFile(usageFile,"sessions");}catch{try{ctx.ui.notify("ASEN local usage could not be saved.","error");}catch{}}};
+  if(!dependencies.deferSessionStart)pi.on?.("session_start",async(_event,ctx)=>startSession(ctx));
   pi.on?.("session_shutdown",()=>lifecycle.shutdown());
   pi.on?.("input",async(event,ctx)=>{
    const text=typeof event?.text==="string"?event.text:"",sessionId=ctx.sessionManager?.getSessionId?.();
@@ -121,7 +121,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   }});
   const consumer=registerWorkflowSelectionCommand(register);
   const review=registerOrdinaryReviewCommand(register);
-  return Object.freeze({review,deriveOddExecutionContract,trackOddTask,resumeOddTask,appendOddTaskEvent,decideLifecycleApplicability:(decision:OddRouteDecision,input:LifecycleApplicabilityInput)=>{
+  return Object.freeze({review,startSession,deriveOddExecutionContract,trackOddTask,resumeOddTask,appendOddTaskEvent,decideLifecycleApplicability:(decision:OddRouteDecision,input:LifecycleApplicabilityInput)=>{
    const original=claimedOrchestrationRouteContext(decision),binding={taskIdentity:original.facts.taskIdentity,repositoryIdentity:original.facts.repositoryIdentity},choice=readWorkflowSelection(consumer,binding);
    if(!choice)return decideLifecycleApplicability(decision,input);
    const claimed=claimWorkflowSelection(consumer,choice,binding);
@@ -130,15 +130,53 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
  };
 }
 
-/** Production entry uses the real public Pi contract; the injectable core remains a test/composition seam. */
-export default function asen(pi:ExtensionAPI):void{
+/** Production entry uses the real public Pi contract; dependency injection keeps lifecycle tests isolated. */
+export function createPiExtension(dependencies:AsenExtensionDependencies={}){
+ return (pi:ExtensionAPI):void=>{
  validatePiHost(pi,VERSION);
- validatePiCommandCollisions(pi,ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name));
- createAsenExtension()({
-  on:(event,handler)=>pi.on(event as any,handler),
-  registerFlag:(name,options)=>pi.registerFlag(name,options),
-  getFlag:name=>pi.getFlag(name),
-  registerTool:tool=>pi.registerTool(tool),
-  registerCommand:(name,command)=>pi.registerCommand(name,{description:command.description,handler:async(args,ctx)=>{await command.handler(args,ctx);}}),
+ const commandNames=ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name);
+ const toolNames=[...ASEN_INTERACTION_TOOL_NAMES,ASEN_CODE_INTELLIGENCE_TOOL_NAME,ASEN_CODEGRAPH_TOOL_NAME];
+ let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext)=>Promise<void>)|undefined;
+ pi.on("session_start",async(_event,ctx)=>{
+  if(attempted){if(registrationsReady)await sessionStart?.(ctx);return;}
+  attempted=true;
+  const token=++generation;let publicWrites=0;
+  try{
+   validatePiExecutionContext(ctx);
+   // Pi's public inventory methods can exist before their runtime is initialized; read them only here.
+   validatePiRegistrationCollisions(pi,commandNames,toolNames);
+   const facade=createAsenExtension({...dependencies,deferSessionStart:true})({
+    on:(event,handler)=>pi.on(event as any,(...args:any[])=>{
+     if(token!==generation||!registrationsReady)return undefined;
+     validatePiExecutionContext(args[1]);
+     return handler(...args);
+    }),
+    getFlag:name=>pi.getFlag(name),
+    registerTool:tool=>{publicWrites++;pi.registerTool({...tool,execute:async(...args:any[])=>{
+     if(!registrationsReady)throw new Error("ASEN registrations are disabled after an incomplete host setup");
+     validatePiExecutionContext(args[4]);
+     return (tool.execute as any)(...args);
+    }});},
+    registerCommand:(name,command)=>{publicWrites++;pi.registerCommand(name,{description:command.description,handler:async(args,commandContext)=>{
+     if(!registrationsReady)throw new Error("ASEN registrations are disabled after an incomplete host setup");
+     validatePiExecutionContext(commandContext);
+     await command.handler(args,commandContext);
+    }});},
+   });
+   registrationsReady=true;
+   sessionStart=facade.startSession;
+   await sessionStart(ctx);
+  }catch(error){
+   registrationsReady=false;
+   if(publicWrites===0){attempted=false;generation++;}
+   const message=safeErrorMessage(error);
+   const recovery=publicWrites===0?"a later session start may retry":"partial registrations remain inert; reload Pi to recover";
+   try{ctx.ui.notify(`ASEN host preflight failed; ${recovery}: ${message}`,"error");}catch{}
+  }
  });
+ };
+}
+
+export default function asen(pi:ExtensionAPI):void{
+ createPiExtension()(pi);
 }

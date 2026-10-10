@@ -15,6 +15,8 @@ export interface CodeGraphToolParameters {operation:"init"|"query"|"explore";que
 export interface CodeGraphCommandResult {stdout:string;stderr:string}
 export interface CodeGraphRunOptions {cwd:string;signal?:AbortSignal;maxBuffer:number}
 export type CodeGraphRunner=(args:readonly string[],options:CodeGraphRunOptions)=>Promise<CodeGraphCommandResult>;
+export const ASEN_CODE_INTELLIGENCE_TOOL_NAME="asen_code_intelligence" as const;
+export const ASEN_CODEGRAPH_TOOL_NAME="codegraph" as const;
 
 type CompatibilityRequest={operation:"query"|"explore";query:string;limit:number};
 type ExecutableCommand={executable:string;prefix:string[]};
@@ -201,7 +203,7 @@ function fallbackStatus(error:unknown):"unavailable"|"failed" {
 /** Canonical upstream-compatible CodeGraph tool. Only explicit `init` can create an index. */
 export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner()):AnnotatedToolDefinition {
   return {
-    name:"codegraph",
+    name:ASEN_CODEGRAPH_TOOL_NAME,
     renderShell:"self",
     label:"CodeGraph",
     description:"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.",
@@ -240,7 +242,7 @@ export function createCodeIntelligenceTool(options:CodeIntelligenceOptions={},in
   const configuration=Object.freeze({...options});
   const runner=injectedRunner??createCodeGraphRunner(configuration);
   return {
-    name:"asen_code_intelligence",
+    name:ASEN_CODE_INTELLIGENCE_TOOL_NAME,
     label:"ASEN code intelligence",
     description:"Read-only query/explore of the current canonical Git root. No path, executable, shell, init or permission override is accepted.",
     annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:false},

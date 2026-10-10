@@ -20,6 +20,25 @@ test("every current ECO claim is honest and no row silently claims FULL",()=>{
   assert.equal(input.registry.rows.length,16);
   assert.equal(input.registry.rows.some((row:any)=>row.status==="FULL"),false);
 });
+test("candidate report integration passes the supplied root metadata to the verifier before producing drift state",()=>{
+ const baselineCommit=load().baseline.commit;
+ const previousRepository=process.env.ECOSYSTEM_SOURCE_REPOSITORY,previousCandidate=process.env.ECOSYSTEM_SOURCE_CANDIDATE,previousReport=process.env.ECOSYSTEM_CANDIDATE_REPORT;
+ process.env.ECOSYSTEM_SOURCE_REPOSITORY=process.cwd();delete process.env.ECOSYSTEM_SOURCE_CANDIDATE;
+ process.env.ECOSYSTEM_CANDIDATE_REPORT="registry/parity/ecosystem-claims-v1.json";
+ let received:any;
+ try{
+  const input=loadEcosystemClaims(process.cwd(),{verifyCandidateReport:(repository:string,report:any,metadata:any)=>{
+   received={repository,report,metadata};return {inputs:{baselineCommit, candidateCommit:"a".repeat(40)},changes:[],invalidatedPaths:[]};
+  }});
+  assert.equal(received.repository,process.cwd());assert.equal(received.metadata.baselineBytes.toString("utf8").includes(baselineCommit),true);
+  assert.equal(received.metadata.claimsBytes.toString("utf8").includes('"ECO-01"'),true);
+  assert.equal(input.driftReport.to,"a".repeat(40));
+ }finally{
+  if(previousRepository===undefined)delete process.env.ECOSYSTEM_SOURCE_REPOSITORY;else process.env.ECOSYSTEM_SOURCE_REPOSITORY=previousRepository;
+  if(previousCandidate===undefined)delete process.env.ECOSYSTEM_SOURCE_CANDIDATE;else process.env.ECOSYSTEM_SOURCE_CANDIDATE=previousCandidate;
+  if(previousReport===undefined)delete process.env.ECOSYSTEM_CANDIDATE_REPORT;else process.env.ECOSYSTEM_CANDIDATE_REPORT=previousReport;
+ }
+});
 test("rejects omitted/duplicated units, unknown sources, missing implementation and undocumented gaps",()=>{
   for(const mutate of [
     (x:any)=>{x.registry.rows.pop();},(x:any)=>{x.registry.rows[1].id=x.registry.rows[0].id;},
