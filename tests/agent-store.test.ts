@@ -66,11 +66,18 @@ test("concurrent continuation requests atomically create at most one replacement
 });
 
 test("running cancellation reaches the child runner; session and project boundaries reject cancellation",async t=>{
- const file=await fixture(t);let finish!:()=>void;const runner:AgentRunner={run:async r=>new Promise(resolve=>{finish=()=>resolve({id:r.id,ok:true,output:"late"});})};
+ const file=await fixture(t);let cleaned=false;const runner:AgentRunner={run:async (r,signal)=>new Promise(resolve=>{signal?.addEventListener("abort",()=>setTimeout(()=>{cleaned=true;resolve({id:r.id,ok:false,output:"closed"});},10),{once:true});})};
  const runtime=await AgentRuntime.open({storeFile:file,runner,maxConcurrency:1}),id=await runtime.startExplorer({prompt:"long",session:{sessionId:"session-a",projectId:"/repo"},owner});
  await until(()=>runtime.snapshot().find(x=>x.id===id)?.state==="running");
  assert.equal(await runtime.cancel(id,{sessionId:"other-session",projectId:"/repo"}),false);assert.equal(await runtime.cancel(id,{sessionId:"session-a",projectId:"/other"}),false);assert.equal(await runtime.cancel(id,{sessionId:"session-a",projectId:"/repo"}),true);
- finish();await until(()=>runtime.snapshot().find(x=>x.id===id)?.state==="cancelled");
+ assert.equal(cleaned,true);assert.equal(runtime.snapshot().find(x=>x.id===id)?.state,"cancelled");
+});
+
+test("session shutdown waits for every cancelled runner to release its resources",async t=>{
+ const file=await fixture(t);let cleaned=0,release!:()=>void;const runner:AgentRunner={run:async(request,signal)=>new Promise(resolve=>{const onAbort=()=>setTimeout(()=>{cleaned++;resolve({id:request.id,ok:false,output:"closed"});},15);signal?.addEventListener("abort",onAbort,{once:true});release=()=>resolve({id:request.id,ok:true,output:"late"});})};
+ const runtime=await AgentRuntime.open({storeFile:file,runner,maxConcurrency:2}),session={sessionId:"session-a",projectId:"/repo"},ids=await Promise.all(["first","second"].map(prompt=>runtime.startExplorer({prompt,session,owner})));
+ await until(()=>runtime.snapshot().filter(row=>ids.includes(row.id)).every(row=>row.state==="running"));await runtime.cancelSession(session);
+ assert.equal(cleaned,2);assert.ok(runtime.snapshot().filter(row=>ids.includes(row.id)).every(row=>row.state==="cancelled"));release();
 });
 
 test("concurrent Pi tasks obey the configured limit, keep result ownership and persist failures",async t=>{
