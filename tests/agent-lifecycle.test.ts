@@ -20,3 +20,8 @@ test("agent lifecycle fails safely for absent or invalid owner data",()=>{
  assert.throws(()=>createAgentRecord({...base,owner:undefined as unknown as {kind:"user";id:string}}),/Invalid agent owner kind|Agent identity/);
  assert.throws(()=>createAgentRecord({...base,owner:{kind:"invalid" as "user",id:"a"}}),/Invalid agent owner kind/);
 });
+
+test("agent lifecycle rejects absent input without dereferencing it",()=>{
+ assert.throws(()=>createAgentRecord(undefined as unknown as Parameters<typeof createAgentRecord>[0]),/Agent identity is incomplete or invalid/);
+ assert.throws(()=>createAgentRecord(null as unknown as Parameters<typeof createAgentRecord>[0]),/Agent identity is incomplete or invalid/);
+});
