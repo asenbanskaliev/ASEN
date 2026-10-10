@@ -69,7 +69,7 @@ function promptWithSkills(request:AgentRequest):string{
 export class PiProcessRunner implements AgentRunner{
  constructor(private readonly options:PiProcessOptions={}){}
 
- run(request:AgentRequest):Promise<AgentResult>{
+ run(request:AgentRequest,runSignal?:AbortSignal):Promise<AgentResult>{
   const receiverValid=request.runnerWriteReceiver!==undefined&&consumeRunnerWriteReceiver(request.runnerWriteReceiver,request);
   if(request.runnerWriteReceiver!==undefined&&!receiverValid)return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
   if(request.candidate&&(!request.skillContext||!request.skillPaths))return Promise.resolve({id:request.id,ok:false,output:"Candidate-bound Pi execution requires issued skill context and exact paths"});
@@ -114,6 +114,7 @@ export class PiProcessRunner implements AgentRunner{
    "--no-extensions","--extension",policy,...(providerExtension?["--extension",providerExtension]:[]),"--no-skills",...(this.options.noTools?["--no-tools"]:["--tools",writer?"read,edit,write":"read"]),...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
   const timeoutMs=this.options.timeoutMs??120_000;
   const max=this.options.maxOutputBytes??1_000_000;
+  const signal=runSignal&&this.options.signal?AbortSignal.any([runSignal,this.options.signal]):runSignal??this.options.signal;
 
   return new Promise(resolve=>{
    const child=spawnContained(command,args,{
@@ -131,7 +132,7 @@ export class PiProcessRunner implements AgentRunner{
     if(settled)return;
     settled=true;
     clearTimeout(timer);
-    this.options.signal?.removeEventListener("abort",onAbort);
+    signal?.removeEventListener("abort",onAbort);
     rmSync(policyDirectory,{recursive:true,force:true});
     resolve(result);
    };
@@ -195,8 +196,8 @@ export class PiProcessRunner implements AgentRunner{
     stop({id:request.id,ok:false,output:`pi process timed out after ${timeoutMs}ms`});
    },timeoutMs);
 
-   if(this.options.signal?.aborted)onAbort();
-   else this.options.signal?.addEventListener("abort",onAbort,{once:true});
+   if(signal?.aborted)onAbort();
+   else signal?.addEventListener("abort",onAbort,{once:true});
 
    child.stdin.on("error",error=>stop({id:request.id,ok:false,output:`pi stdin error: ${String(error)}`}));
    child.stdin.write(JSON.stringify({id:preflightId,type:"get_commands"})+"\n");

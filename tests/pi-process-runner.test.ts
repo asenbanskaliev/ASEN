@@ -3,6 +3,7 @@ import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {createTestSkillLifecycle} from "./helpers/lifecycle-applicability.js";
 import {Dispatcher} from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
+import {createAgentLifecycleSink} from "../src/runtime/agent-lifecycle.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 type PosixProcessObservation={exitCode:number;stdout:string;stderr:string};
@@ -98,7 +99,13 @@ test("Pi RPC artifact advances one phase only with exact candidate output",async
 test("Pi child times out",async()=>{const {d,p}=await fixture("setTimeout(()=>{},10000);");const r=await runner(p,{timeoutMs:50}).run({id:"t",role:"explorer",prompt:"x",repository:d});assert.equal(r.ok,false);assert.match(r.output,/timed out/);});
 test("Pi child output is bounded",async()=>{const {d,p}=await fixture('console.log("x".repeat(10000));');const r=await runner(p,{maxOutputBytes:100}).run({id:"o",role:"explorer",prompt:"x",repository:d});assert.equal(r.ok,false);assert.match(r.output,/exceeded/);});
 
-test("Pi child can be cancelled explicitly",async()=>{const {d,p}=await fixture("setTimeout(()=>{},10000);");const controller=new AbortController();const pending=runner(p,{signal:controller.signal,timeoutMs:10000}).run({id:"cancel",role:"explorer",prompt:"x",repository:d});controller.abort();const r=await pending;assert.equal(r.ok,false);assert.match(r.output,/cancelled/);});
+test("Dispatcher cancellation reaches Pi and records a cancelled terminal state",async()=>{
+ const {d,p}=await fixture("setTimeout(()=>{},10000);");const lifecycle=createAgentLifecycleSink(),dispatcher=new Dispatcher(runner(p,{timeoutMs:10000}),new EvidenceStore(),1,lifecycle);
+ const pending=dispatcher.dispatch({id:"cancel",role:"explorer",prompt:"x",repository:d});
+ for(let i=0;i<100&&lifecycle.snapshot()[0]?.state!=="running";i++)await new Promise(resolve=>setTimeout(resolve,5));
+ assert.equal(lifecycle.snapshot()[0]?.state,"running");assert.equal(dispatcher.cancel("cancel","default",d),true);
+ const r=await pending;assert.equal(r.ok,false);assert.match(r.output,/cancellation requested/i);assert.equal(lifecycle.snapshot()[0]?.state,"cancelled");
+});
 
 test("Pi child errors cannot replace an already requested cancellation",async()=>{
  const {d}=await fixture("setTimeout(()=>{},10000);");

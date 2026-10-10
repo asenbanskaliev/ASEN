@@ -61,6 +61,59 @@ test("non-worker agents cannot receive write authority",async()=>{
 test("dispatcher bounds concurrent agent executions",async()=>{let active=0,max=0;const runner:AgentRunner={run:async r=>{active++;max=Math.max(max,active);await new Promise(resolve=>setTimeout(resolve,30));active--;return{id:r.id,ok:true,output:"ok"};}};const d=new Dispatcher(runner,new EvidenceStore(),2);await Promise.all(Array.from({length:6},(_,i)=>d.dispatch({id:String(i),role:"explorer",prompt:"x",repository:"r"})));assert.equal(max,2);});
 test("dispatcher rejects invalid concurrency limits",()=>{const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"ok"})};assert.throws(()=>new Dispatcher(runner,new EvidenceStore(),0),/positive integer/);});
 
+test("dispatcher cancellation stops a running runner and records a cancelled terminal state",async()=>{
+ const lifecycle=createAgentLifecycleSink();let observedSignal:AbortSignal|undefined;
+ const runner:AgentRunner={run:async(request,signal)=>{observedSignal=signal;return await new Promise((resolve,reject)=>{
+  const onAbort=()=>resolve({id:request.id,ok:false,output:"runner stopped"});
+  if(signal?.aborted)onAbort();else signal?.addEventListener("abort",onAbort,{once:true});
+  setTimeout(()=>{signal?.removeEventListener("abort",onAbort);resolve({id:request.id,ok:true,output:"done"});},1000);
+ })}};
+ const dispatcher=new Dispatcher(runner,new EvidenceStore(),1,lifecycle),pending=dispatcher.dispatch({id:"cancel-running",role:"explorer",prompt:"x",repository:"project",isolationKey:"session"});
+ for(let i=0;i<20&&lifecycle.snapshot()[0]?.state!=="running";i++)await new Promise(resolve=>setTimeout(resolve,1));
+ assert.equal(dispatcher.cancel("cancel-running","other-session","project"),false);assert.equal(dispatcher.cancel("cancel-running","session","other-project"),false);
+ assert.equal(dispatcher.cancel("cancel-running","session","project"),true);assert.equal(dispatcher.cancel("cancel-running","session","project"),false);
+ const result=await pending;assert.equal(result.ok,false);assert.equal(observedSignal?.aborted,true);
+ assert.equal(lifecycle.snapshot()[0]?.state,"cancelled");assert.equal(lifecycle.snapshot()[0]?.sessionId,"session");
+});
+
+test("dispatcher removes cancelled queued work without consuming a slot or blocking FIFO handoff",async()=>{
+ const lifecycle=createAgentLifecycleSink();let starts=0;const runner:AgentRunner={run:async(request,signal)=>{starts++;return await new Promise(resolve=>{
+  const done=()=>resolve({id:request.id,ok:false,output:"stopped"});
+  if(signal?.aborted)done();else signal?.addEventListener("abort",done,{once:true});
+ })}};
+ const dispatcher=new Dispatcher(runner,new EvidenceStore(),1,lifecycle);
+ const first=dispatcher.dispatch({id:"running",role:"explorer",prompt:"x",repository:"project"});
+ for(let i=0;i<20&&starts===0;i++)await new Promise(resolve=>setTimeout(resolve,1));
+ const cancelled=dispatcher.dispatch({id:"queued-cancel",role:"explorer",prompt:"x",repository:"project"});
+ assert.equal(dispatcher.cancel("queued-cancel","default","project"),true);await assert.rejects(cancelled,/cancelled while queued/);
+ assert.equal(lifecycle.snapshot().find(row=>row.id==="queued-cancel")?.state,"cancelled");assert.equal(starts,1);
+ const next=dispatcher.dispatch({id:"next",role:"explorer",prompt:"x",repository:"project"});
+ assert.equal(dispatcher.cancel("running","default","project"),true);await first;
+ for(let i=0;i<20&&starts<2;i++)await new Promise(resolve=>setTimeout(resolve,1));
+ assert.equal(starts,2);assert.equal(dispatcher.cancel("next","default","project"),true);await next;
+ assert.equal(lifecycle.snapshot().find(row=>row.id==="next")?.state,"cancelled");
+});
+
+test("dispatcher rejects a late successful result after cancellation",async()=>{
+ const lifecycle=createAgentLifecycleSink();let finish:(value:{id:string;ok:boolean;output:string})=>void=()=>{};
+ const runner:AgentRunner={run:async request=>new Promise(resolve=>{finish=resolve;})};
+ const dispatcher=new Dispatcher(runner,new EvidenceStore(),1,lifecycle),pending=dispatcher.dispatch({id:"late-success",role:"explorer",prompt:"x",repository:"project",isolationKey:"session"});
+ for(let i=0;i<20&&lifecycle.snapshot()[0]?.state!=="running";i++)await new Promise(resolve=>setTimeout(resolve,1));
+ assert.equal(dispatcher.cancel("late-success","session","project"),true);
+ finish({id:"late-success",ok:true,output:"late output"});
+ const result=await pending;assert.equal(result.ok,false);assert.match(result.output,/completion was not accepted/);
+ assert.equal(lifecycle.snapshot()[0]?.state,"cancelled");
+});
+
+test("validated runner results cannot complete another sink or another session/project",async()=>{
+ const firstLifecycle=createAgentLifecycleSink();const firstDispatcher=new Dispatcher({run:async request=>({id:request.id,ok:true,output:"real run"})},new EvidenceStore(),1,firstLifecycle);
+ const result=await firstDispatcher.dispatch({id:"shared-id",role:"explorer",prompt:"x",repository:"project-A",isolationKey:"session-A"});
+ assert.equal(firstLifecycle.snapshot()[0]?.state,"completed");
+ const otherLifecycle=createAgentLifecycleSink();otherLifecycle.queued({id:"shared-id",role:"explorer",owner:{kind:"system",id:"asen-dispatcher"},sessionId:"session-B",projectId:"project-B",createdAt:otherLifecycle.createdAt()});otherLifecycle.running("shared-id");
+ assert.throws(()=>otherLifecycle.completed("shared-id",result),/unused Dispatcher result for this sink and task identity/);
+ assert.equal(otherLifecycle.snapshot()[0]?.state,"running");
+});
+
 
 test("caller cannot omit mandatory safe-change skill from a code mutation",async()=>{
  const evidence=new EvidenceStore();

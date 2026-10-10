@@ -11,7 +11,15 @@ import type {AgentLifecycleSink} from "../runtime/agent-lifecycle.js";
 export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; model?:string; thinking?:"off"|"minimal"|"low"|"medium"|"high"; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; writerAdmission?:object; runnerWriteReceiver?:object; }
 export interface AgentArtifactProof { readonly requestId:string; readonly role:AgentRequest["role"]; readonly repository:string; readonly candidateId?:string; readonly candidateRevision?:string; readonly skillPaths:readonly string[]; }
 export interface AgentResult { id:string; ok:boolean; output:string; artifactProof?:AgentArtifactProof; }
-export interface AgentRunner { run(request:AgentRequest):Promise<AgentResult>; }
+export interface AgentRunner { run(request:AgentRequest,signal?:AbortSignal):Promise<AgentResult>; }
+const validatedRunnerResults=new WeakMap<object,{lifecycle:AgentLifecycleSink|undefined;id:string;sessionId:string;projectId:string;consumed:boolean}>();
+/** Lifecycle code consumes a dispatcher result once, bound to one sink and exact task identity. */
+export function consumeValidatedAgentResult(value:unknown,lifecycle:unknown,id:string,sessionId:string,projectId:string):value is AgentResult{
+ if(typeof value!=="object"||value===null)return false;
+ const proof=validatedRunnerResults.get(value);
+ if(!proof||proof.consumed||proof.lifecycle!==lifecycle||proof.id!==id||proof.sessionId!==sessionId||proof.projectId!==projectId)return false;
+ proof.consumed=true;return true;
+}
 
 // Only successful Dispatcher gates register receivers; public admission consumption cannot mint one.
 const runnerReceivers=new WeakMap<object,{request:AgentRequest;used:boolean}>();
@@ -40,10 +48,25 @@ function requestArray(value:unknown):string[]{
 }
 
 export class Dispatcher {
- readonly #active:WriteGrant[]=[]; #running=0; readonly #waiters:Array<()=>void>=[];
+ readonly #active:WriteGrant[]=[]; #running=0;
+ readonly #waiters:Array<{resolve:()=>void;reject:(error:Error)=>void;signal:AbortSignal;onAbort:()=>void}>=[];
+ readonly #controls=new Map<string,{controller:AbortController;sessionId:string;projectId:string}>();
  constructor(private readonly runner:AgentRunner,private readonly evidence:EvidenceStore,private readonly maxConcurrency=4,private readonly lifecycle?:AgentLifecycleSink){if(!Number.isInteger(maxConcurrency)||maxConcurrency<1)throw new Error("maxConcurrency must be a positive integer");}
- async #acquire():Promise<void>{if(this.#running<this.maxConcurrency){this.#running++;return;}await new Promise<void>(resolve=>this.#waiters.push(resolve));}
- #release():void{const next=this.#waiters.shift();if(next)next();else this.#running--;}
+ async #acquire(signal:AbortSignal):Promise<void>{
+  if(signal.aborted)throw new Error("Agent dispatch cancelled before execution");
+  if(this.#running<this.maxConcurrency){this.#running++;return;}
+  await new Promise<void>((resolve,reject)=>{
+   const waiter={resolve,reject,signal,onAbort:()=>{const index=this.#waiters.indexOf(waiter);if(index>=0)this.#waiters.splice(index,1);reject(new Error("Agent dispatch cancelled while queued"));}};
+   this.#waiters.push(waiter);signal.addEventListener("abort",waiter.onAbort,{once:true});
+   if(signal.aborted)waiter.onAbort();
+  });
+ }
+ #release():void{
+  while(this.#waiters.length){const next=this.#waiters.shift()!;next.signal.removeEventListener("abort",next.onAbort);if(next.signal.aborted){next.reject(new Error("Agent dispatch cancelled while queued"));continue;}next.resolve();return;}
+  this.#running--;
+ }
+ /** Cancel a queued or running task. The runner receives the abort signal and must stop its owned work. */
+ cancel(id:string,sessionId:string,projectId:string):boolean{const control=this.#controls.get(id);if(!control||control.sessionId!==sessionId||control.projectId!==projectId||control.controller.signal.aborted)return false;control.controller.abort();return true;}
  async dispatch(request:AgentRequest):Promise<AgentResult>{
   const token=typeof request==="object"&&request!==null&&!types.isProxy(request)?Object.getOwnPropertyDescriptor(request,"writerAdmission")?.value:undefined;
   let runnerRequest:AgentRequest;
@@ -58,10 +81,14 @@ export class Dispatcher {
   const admitted=consumeWriterAdmission(token,runnerRequest),receiver=admitted?Object.freeze({}):undefined;
   if(receiver)runnerRequest.runnerWriteReceiver=receiver;
   Object.freeze(runnerRequest);request=runnerRequest;
+  if(this.#controls.has(request.id))throw new Error("Agent task is already queued or running");
+  const controller=new AbortController();this.#controls.set(request.id,{controller,sessionId:request.isolationKey??"default",projectId:request.repository});
   const lifecycleInput={id:request.id,role:request.role,owner:{kind:"system" as const,id:"asen-dispatcher"},sessionId:request.isolationKey??"default",projectId:request.repository,createdAt:this.lifecycle?.createdAt()??new Date().toISOString()};
-  try{this.lifecycle?.queued(lifecycleInput);}catch(error){retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);throw error;}
-  await this.#acquire();let grant:WriteGrant|undefined,lifecycleRunning=false;
+  try{this.lifecycle?.queued(lifecycleInput);}catch(error){this.#controls.delete(request.id);retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);throw error;}
+  let grant:WriteGrant|undefined,lifecycleRunning=false,acquired=false,terminalState=false;
   try{
+   await this.#acquire(controller.signal);acquired=true;
+   if(controller.signal.aborted)throw new Error("Agent dispatch cancelled before execution");
    this.lifecycle?.running(request.id);lifecycleRunning=true;
    if(request.writeSurfaces&&request.role!=="worker") throw new Error("Only worker agents may receive write authority");
    if(request.skillContext||request.skillPaths){
@@ -95,11 +122,13 @@ export class Dispatcher {
    if(request.role==="worker"&&request.expectedPhase&&!consumePhaseGrant(request))throw new Error("Worker phase requires unused ASEN lifecycle grant");
    if(request.role==="worker"&&request.candidate&&!consumeIssuedWorkerContext(request.skillContext!))throw new Error("Candidate-bound worker requires unused worker context");
    if(receiver)runnerReceivers.set(receiver,{request:runnerRequest,used:false});
-   const result=await this.runner.run(runnerRequest);
+   const result=await this.runner.run(runnerRequest,controller.signal);
    if(!result||result.id!==request.id||typeof result.ok!=="boolean"||typeof result.output!=="string")throw new Error("Agent runner returned an invalid or mismatched result");
-   if(result.ok)this.lifecycle?.completed(request.id,result.output);else this.lifecycle?.failed(request.id,result.output);
-   lifecycleRunning=false;return result;
-  } catch(error){if(lifecycleRunning){try{this.lifecycle?.failed(request.id,error instanceof Error?error.message:String(error));}catch{}}throw error;
-  } finally {retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);if(grant){const i=this.#active.indexOf(grant);if(i>=0)this.#active.splice(i,1);}this.#release();}
+   const acceptedResult=Object.freeze({...result});validatedRunnerResults.set(acceptedResult,{lifecycle:this.lifecycle,id:request.id,sessionId:request.isolationKey??"default",projectId:request.repository,consumed:false});
+   if(controller.signal.aborted){this.lifecycle?.cancelled(request.id,result.output);terminalState=true;lifecycleRunning=false;return {id:request.id,ok:false,output:"Cancellation requested; completion was not accepted"};}
+   if(acceptedResult.ok)this.lifecycle?.completed(request.id,acceptedResult);else this.lifecycle?.failed(request.id,acceptedResult.output);
+   terminalState=true;lifecycleRunning=false;return acceptedResult;
+  } catch(error){if(!terminalState){try{if(controller.signal.aborted)this.lifecycle?.cancelled(request.id,error instanceof Error?error.message:String(error));else this.lifecycle?.failed(request.id,error instanceof Error?error.message:String(error));}catch{}}throw error;
+  } finally {this.#controls.delete(request.id);retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);if(grant){const i=this.#active.indexOf(grant);if(i>=0)this.#active.splice(i,1);}if(acquired)this.#release();}
  }
 }

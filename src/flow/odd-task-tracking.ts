@@ -62,12 +62,15 @@ export async function trackOddTask(contract:OddExecutionContract,context:MemoryC
  context.remember(item);return Object.freeze({...item});
 }
 /** Reconstructs TODO/resume only after exact live binding and task-document byte validation. No authority is restored. */
-export async function resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">):Promise<Readonly<TrackingRecord>|undefined>{
+export async function resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):Promise<Readonly<TrackingRecord>|undefined>{
  const binding=oddExecutionBinding(contract);
  if(contract.readOnly||!contract.substantial)return undefined;
+ if(!(context instanceof MemoryContext)||context.projectId!==binding.facts.repositoryIdentity)throw new Error("ODD tracking memory project mismatch");
+ const sessionId=context.sessionId;
  const {facts,candidate}=binding,id=`odd-task-${digest(JSON.stringify([facts.repositoryIdentity,facts.taskIdentity,candidate.id]))}`,item=store.get(id);
  if(!item)return undefined;
  if(item.id!==id||item.projectId!==facts.repositoryIdentity||item.kind!=="decision"||item.topic!=="odd-task-tracking-v1")throw new Error("ODD tracking memory binding mismatch");
+ if(item.sessionId!==sessionId)throw new Error("ODD tracking session mismatch");
  const parsed:unknown=JSON.parse(item.content),legacy=recordLike(parsed)&&parsed.version===1;
  const value=exact(parsed,legacy?["version","task","repository","candidateId","revision","documentPath","document","todos","nextStep"]:["version","task","repository","candidateId","revision","documentPath","document","todos","nextStep","taskEvents"]);
  if((value.version!==1&&value.version!==2)||value.task!==facts.taskIdentity||value.repository!==facts.repositoryIdentity||value.candidateId!==candidate.id||value.revision!==candidate.revision)throw new Error("ODD tracking exact candidate mismatch");
@@ -82,6 +85,7 @@ export async function appendOddTaskEvent(contract:OddExecutionContract,context:M
  if(!(context instanceof MemoryContext)||context.projectId!==binding.facts.repositoryIdentity)throw new Error("ODD tracking memory project mismatch");
  const {facts,candidate}=binding,id=`odd-task-${digest(JSON.stringify([facts.repositoryIdentity,facts.taskIdentity,candidate.id]))}`,item=store.get(id);
  if(!item||item.projectId!==context.projectId||item.kind!=="decision"||item.topic!=="odd-task-tracking-v1")throw new Error("ODD task record is unavailable");
+ if(item.sessionId!==context.sessionId)throw new Error("ODD task session mismatch; continue the source session explicitly before updating it");
  const raw:unknown=JSON.parse(item.content),legacy=recordLike(raw)&&raw.version===1;
  const value=exact(raw,legacy?["version","task","repository","candidateId","revision","documentPath","document","todos","nextStep"]:["version","task","repository","candidateId","revision","documentPath","document","todos","nextStep","taskEvents"]);
  if((value.version!==1&&value.version!==2)||value.task!==facts.taskIdentity||value.repository!==facts.repositoryIdentity||value.candidateId!==candidate.id||value.revision!==candidate.revision)throw new Error("ODD tracking exact candidate mismatch");
