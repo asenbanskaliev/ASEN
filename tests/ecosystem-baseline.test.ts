@@ -438,6 +438,27 @@ test("mapped Markdown runtime directory reports additions, removals and content 
   assert.equal(modeReport.autoAdopt,false);
   for(const owner of globOwners)assert.ok(modeReport.invalidatedPaths.includes(owner));
 
+  // A relocation with identical bytes but different Git modes must remain ADDED + REMOVED.
+  const modeRenameSource=selectedFiles.find((file:any)=>file.path!==selected&&file.path!==removed);
+  assert.ok(modeRenameSource);
+  const movedWithModePath=`${assetDirectory}/mode-moved-agent.md`;
+  execFileSync("git",["-C",repo,"mv",modeRenameSource.path,movedWithModePath]);
+  execFileSync("git",["-C",repo,"update-index","--chmod="+(modeRenameSource.mode==="100644"?"+x":"-x"),movedWithModePath]);
+  execFileSync("git",["-C",repo,"commit","-qm","relocate runtime input with changed Git mode"]);
+  const modeRenameCommit=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+  const movedWithMode=collectRuntimeEdgeFiles(repo,modeRenameCommit,"assets/agents/*.md").find((file:any)=>file.path===movedWithModePath);
+  assert.equal(movedWithMode.sha256,modeRenameSource.sha256);
+  assert.notEqual(movedWithMode.mode,modeRenameSource.mode);
+  const modeRenameReport=detectMappedBaselineDrift(repo,after,collectBaseline(repo,modeRenameCommit),overlay,mappings);
+  assert.ok(modeRenameReport.changes.some((row:any)=>row.kind==="REMOVED"&&row.path===modeRenameSource.path));
+  assert.ok(modeRenameReport.changes.some((row:any)=>row.kind==="ADDED"&&row.path===movedWithModePath));
+  assert.ok(!modeRenameReport.changes.some((row:any)=>row.kind==="RENAMED"&&row.path===modeRenameSource.path));
+  assert.equal(modeRenameReport.autoAdopt,false);
+  for(const owner of globOwners)assert.ok(modeRenameReport.invalidatedPaths.includes(owner));
+  execFileSync("git",["-C",repo,"mv",movedWithModePath,modeRenameSource.path]);
+  execFileSync("git",["-C",repo,"update-index","--chmod="+(modeRenameSource.mode==="100644"?"-x":"+x"),modeRenameSource.path]);
+  execFileSync("git",["-C",repo,"commit","-qm","restore runtime fixture for subsequent rename checks"]);
+
   const unique=selectedFiles.find((file:any)=>file.path!==selected&&file.path!==removed&&selectedFiles.filter((candidate:any)=>candidate.sha256===file.sha256).length===1);
   assert.ok(unique,"a unique frozen agent byte identity is required for rename classification");
   const renamedPath=`${assetDirectory}/renamed-source.md`;
