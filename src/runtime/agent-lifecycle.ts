@@ -19,3 +19,21 @@ export function createAgentLifecycleSink(now:()=>string=()=>new Date().toISOStri
   snapshot(){return [...records.values()].map(record=>structuredClone(record));}
  });
 }
+
+/** Recover a persisted lifecycle snapshot after a process restart. In-flight work is
+ * marked failed rather than falsely reported complete or silently restarted. */
+export function recoverAgentLifecycleRecords(records:readonly PublicAgentRecord[],at:string):PublicAgentRecord[]{
+ if(!Array.isArray(records)||typeof at!=="string"||!Number.isFinite(Date.parse(at)))throw new Error("Invalid lifecycle recovery input");
+ const ids=new Set<string>();
+ return records.map(record=>{
+  if(!record||typeof record!=="object"||!safeIdentity(record.id)||ids.has(record.id)||!["queued","running","cancelled","failed","completed"].includes(record.state))throw new Error("Invalid lifecycle recovery record");
+  ids.add(record.id);
+  const base=createAgentRecord({id:record.id,role:record.role,owner:record.owner,sessionId:record.sessionId,projectId:record.projectId,createdAt:record.createdAt});
+  if(typeof record.updatedAt!=="string"||!Number.isFinite(Date.parse(record.updatedAt))||Date.parse(record.updatedAt)<Date.parse(base.createdAt))throw new Error("Invalid lifecycle recovery timestamp");
+  if(record.state==="queued"||record.state==="running")return transitionAgent(base,"failed",at,"Interrupted by process restart");
+  if(record.state==="failed")return transitionAgent(base,"failed",record.updatedAt,record.summary);
+  if(record.state==="cancelled")return transitionAgent(base,"cancelled",record.updatedAt,record.summary);
+  const running=transitionAgent(base,"running",record.updatedAt);
+  return transitionAgent(running,"completed",record.updatedAt,record.summary);
+ });
+}
