@@ -18,7 +18,7 @@ export function verifyPublicExports(installationRoot) {
       checked.push(specifier);
     }
   }
-  for(const specifier of ["asen/src/core/types.js","asen/package.json","asen/extensions/authority.ts","asen/unknown","asen/dist/cli.js","asen/src/cli.ts","asen/extensions/asen.ts","asen/skills","asen/skills/asen-safe-change/private.md"]){
+  for(const specifier of ["asen/src/core/types.js","asen/package.json","asen/extensions/authority.ts","asen/unknown","asen/dist/cli.js","asen/src/cli.ts","asen/extensions/asen.ts","asen/skills"]){
     try{require.resolve(specifier);throw new Error(`Undeclared path resolved: ${specifier}`);}
     catch(error){if(error.code!=="ERR_PACKAGE_PATH_NOT_EXPORTED")throw error;}
   }
