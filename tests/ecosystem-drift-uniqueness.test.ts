@@ -21,3 +21,9 @@ test("rename classification preserves Git mode and never hides permission change
  const sameMode=[{...changed[0],mode:"100644"}];
  assert.deepEqual(classifyUniqueContentRenames(old,sameMode,old,sameMode),[{path:"old.md",to:"new.md"}]);
 });
+
+test("mode equality cannot override ambiguous duplicate hashes",()=>{
+ const old=[{path:"old.md",sha256:"same",mode:"100644"},{path:"other.md",sha256:"same",mode:"100755"}];
+ const next=[{path:"new.md",sha256:"same",mode:"100644"},{path:"other.md",sha256:"same",mode:"100755"}];
+ assert.deepEqual(classifyUniqueContentRenames([old[0]],[next[0]],old,next),[]);
+});
