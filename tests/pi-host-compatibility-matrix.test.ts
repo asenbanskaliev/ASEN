@@ -92,3 +92,7 @@ test("host command inventory rejects primitive rows",()=>{
 test("unrelated command names preserve case-sensitive matching",()=>{
  assert.doesNotThrow(()=>validatePiCommandCollisions({getCommands:()=>[{name:"ASEN"}]},["asen"]));
 });
+
+test("version parser rejects prefixed release strings",()=>{
+ assert.throws(()=>validatePiHost(makeHost(),"v1.1.0"),/known Pi version/);
+});
