@@ -241,3 +241,11 @@ test("reservation validation accepts frozen ordinary arrays",()=>{
 test("reservation validation rejects empty frozen arrays",()=>{
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[]},Object.freeze([])),/reservation list is invalid/);
 });
+
+test("registration inventories reject duplicate public names",()=>{
+ const host:any=makeHost();
+ host.getCommands=()=>[{name:"existing"},{name:"existing"}];
+ assert.throws(()=>validatePiRegistrationCollisions(host,["asen"],["asen_probe"]),/command inventory is malformed/);
+ host.getCommands=()=>[];host.getAllTools=()=>[{name:"existing_tool"},{name:"existing_tool"}];
+ assert.throws(()=>validatePiRegistrationCollisions(host,["asen"],["asen_probe"]),/tool inventory is malformed/);
+});
