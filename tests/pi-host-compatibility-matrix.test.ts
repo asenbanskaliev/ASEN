@@ -59,3 +59,7 @@ test("exact reserved names collide without prefix matching",()=>{
  assert.doesNotThrow(()=>validatePiCommandCollisions({getCommands:()=>[{name:"asen-extra"}]},["asen"]));
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[{name:"asen"}]},["asen"]),/registration collision/);
 });
+
+test("host inventory rejects null entries",()=>{
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[null]},["asen"]),/inventory is malformed/);
+});
