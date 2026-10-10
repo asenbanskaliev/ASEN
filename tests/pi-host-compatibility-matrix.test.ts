@@ -104,3 +104,7 @@ test("version parser rejects surrounding whitespace",()=>{
 test("version parser rejects incomplete versions",()=>{
  assert.throws(()=>validatePiHost(makeHost(),"1.1"),/known Pi version/);
 });
+
+test("version parser rejects release metadata",()=>{
+ assert.throws(()=>validatePiHost(makeHost(),"1.1.0+build"),/known Pi version/);
+});
