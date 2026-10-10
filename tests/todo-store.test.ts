@@ -17,7 +17,15 @@ test("Todo task state, history and session isolation survive a process reopen",a
 
 test("running Todo work becomes blocked after restart and is never resumed automatically",async t=>{
  const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Validate deployment",one);await store.update(todo.taskId,one,1,"running");
- const reopened=await SessionTodoStore.open(file),current=(await reopened.list(one))[0]!.current;assert.equal(current.state,"blocked");assert.match(current.reason!,/restarted.*explicit review/i);assert.equal(current.revision,3);assert.equal((await reopened.history(todo.taskId,one)).at(-1)?.state,"blocked");
+ const reopened=await SessionTodoStore.open(file);await reopened.recover(one);const current=(await reopened.list(one))[0]!.current;assert.equal(current.state,"blocked");assert.match(current.reason!,/restarted.*explicit review/i);assert.equal(current.revision,3);assert.equal((await reopened.history(todo.taskId,one)).at(-1)?.state,"blocked");
+});
+
+test("session startup recovery changes only the matching session and project",async t=>{
+ const file=await fixture(t),store=await SessionTodoStore.open(file),first=await store.add("First session",one),second=await store.add("Other session",other),third=await store.add("Other project",{sessionId:one.sessionId,projectId:"/other-project"});
+ await store.update(first.taskId,one,1,"running");await store.update(second.taskId,other,1,"running");await store.update(third.taskId,{sessionId:one.sessionId,projectId:"/other-project"},1,"running");
+ const reopened=await SessionTodoStore.open(file);await reopened.recover(one);
+ assert.equal((await reopened.list(one))[0]?.current.state,"blocked");assert.equal((await reopened.list(other))[0]?.current.state,"running");assert.equal((await reopened.list({sessionId:one.sessionId,projectId:"/other-project"}))[0]?.current.state,"running");
+ await reopened.recover(other);assert.equal((await reopened.list(other))[0]?.current.state,"blocked");assert.equal((await reopened.list({sessionId:one.sessionId,projectId:"/other-project"}))[0]?.current.state,"running");
 });
 
 test("Todo rejects stale revisions and impossible transitions under concurrent updates",async t=>{

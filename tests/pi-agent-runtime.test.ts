@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {mkdtemp,rm} from "node:fs/promises";
+import {mkdtemp,realpath,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {createPiExtension} from "../extensions/asen.js";
@@ -8,6 +8,7 @@ import type {AgentRunner} from "../src/agents/dispatcher.js";
 import {ASEN_AGENT_TOOL_NAMES} from "../src/agents/pi-agent-tools.js";
 import {PersistentAgentStore} from "../src/runtime/agent-store.js";
 import {ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-tools.js";
+import {SessionTodoStore} from "../src/runtime/todo-store.js";
 
 function host(){
  const events=new Map<string,Function[]>(),commands=new Map<string,any>(),tools=new Map<string,any>(),messages:string[]=[];
@@ -35,6 +36,16 @@ test("production Pi extension runs and restores session-scoped agent status usin
   const restored=await second.tools.get("asen_agent_status").execute("status",{},new AbortController().signal,()=>{},second.context());assert.ok(restored.details.some((row:any)=>row.id===id&&row.state==="completed"&&row.summary==="read-only result"));
   const restoredTodo=await second.tools.get("asen_todo_list").execute("todo-list",{},new AbortController().signal,()=>{},second.context());assert.equal(restoredTodo.details[0]?.current.state,"done");
  }finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;}
+});
+
+test("Pi session lifecycle recovers only its own running Todo tasks",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-todo-session-recovery-"));t.after(()=>rm(home,{recursive:true,force:true}));const file=join(home,".asen","todos.json"),projectId=await realpath(process.cwd()),seed=await SessionTodoStore.open(file);
+ const active=await seed.add("Active session task",{sessionId:"session-a",projectId}),foreign=await seed.add("Foreign session task",{sessionId:"session-b",projectId});
+ await seed.update(active.taskId,{sessionId:"session-a",projectId},1,"running");await seed.update(foreign.taskId,{sessionId:"session-b",projectId},1,"running");
+ const state=host();createPiExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:true,todoStoreFile:file})(state.pi as any);await state.events.get("session_start")![0]!({},state.context("session-a"));
+ const recovered=await SessionTodoStore.open(file);assert.equal((await recovered.list({sessionId:"session-a",projectId}))[0]?.current.state,"blocked");assert.equal((await recovered.list({sessionId:"session-b",projectId}))[0]?.current.state,"running");
+ const closing=await recovered.add("Task active at shutdown",{sessionId:"session-a",projectId});await recovered.update(closing.taskId,{sessionId:"session-a",projectId},1,"running");await state.events.get("session_shutdown")![0]!({},state.context("session-a"));
+ const afterShutdown=await SessionTodoStore.open(file);assert.equal((await afterShutdown.history(closing.taskId,{sessionId:"session-a",projectId})).at(-1)?.state,"blocked");assert.equal((await afterShutdown.list({sessionId:"session-b",projectId}))[0]?.current.state,"running");
 });
 
 test("Pi continue tool requires explicit UI confirmation and cannot cross project/session identity",async t=>{
