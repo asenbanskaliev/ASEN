@@ -75,3 +75,8 @@ test("host inventory rejects missing name descriptor",()=>{
 test("empty host command inventory is accepted",()=>{
  assert.doesNotThrow(()=>validatePiCommandCollisions({getCommands:()=>[]},["asen"]));
 });
+
+test("host inventory accessor names are not evaluated",()=>{
+ const entry={};Object.defineProperty(entry,"name",{get(){throw Error("unexpected access");}});
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[entry]},["asen"]),/inventory is malformed/);
+});
