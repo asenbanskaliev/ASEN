@@ -21,6 +21,19 @@ export interface PiProcessOptions{
  noTools?:boolean;
  attributionFile?:string;
  policyRoot?:string;
+ providerCredential?:PiProviderCredential;
+}
+export type PiProviderCredential="OPENROUTER_API_KEY"|"LLM7_API_KEY"|"GROQ_API_KEY";
+const providerCredentialNames=new Set<PiProviderCredential>(["OPENROUTER_API_KEY","LLM7_API_KEY","GROQ_API_KEY"]);
+const runtimeEnvironmentNames=["PATH","HOME","USERPROFILE","TMPDIR","TMP","TEMP","SYSTEMROOT","WINDIR","COMSPEC","PATHEXT","LANG","LC_ALL","LC_CTYPE","TZ","PI_CODING_AGENT_DIR","PI_PACKAGE_DIR","PI_OFFLINE","PI_SKIP_VERSION_CHECK"] as const;
+/** Preserve Pi's runtime configuration while keeping unrelated ambient credentials out of child tasks. */
+export function piRuntimeEnvironment(source:NodeJS.ProcessEnv,providerCredential?:PiProviderCredential,platform:NodeJS.Platform=process.platform):NodeJS.ProcessEnv{
+ if(providerCredential!==undefined&&!providerCredentialNames.has(providerCredential))throw new Error("Unsupported Pi provider credential selection");
+ const values=platform==="win32"?Object.fromEntries(Object.entries(source).map(([name,value])=>[name.toUpperCase(),value])):source,environment:NodeJS.ProcessEnv={};
+ for(const name of runtimeEnvironmentNames){const value=values[name];if(typeof value==="string")environment[name]=value;}
+ if(providerCredential){const value=values[providerCredential];if(typeof value==="string"&&value.length)environment[providerCredential]=value;}
+ environment.PI_TELEMETRY="0";
+ return environment;
 }
 
 export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">):string[]{
@@ -90,6 +103,7 @@ export class PiProcessRunner implements AgentRunner{
   }
   if(request.writeSurfaces?.length&&request.skillContext?.phase!=="apply")return Promise.resolve({id:request.id,ok:false,output:"Pi write authority requires issued apply phase"});
   const command=this.options.command??"pi";
+  let childEnvironment:NodeJS.ProcessEnv;try{childEnvironment=piRuntimeEnvironment(process.env,this.options.providerCredential);}catch(error){return Promise.resolve({id:request.id,ok:false,output:error instanceof Error?error.message:"Invalid Pi runtime environment"});}
   let message:string;
   try{message=promptWithSkills(request);}
   catch(error){return Promise.resolve({id:request.id,ok:false,output:`pi skill path error: ${String(error)}`});}
@@ -132,7 +146,7 @@ export class PiProcessRunner implements AgentRunner{
   return new Promise(resolve=>{
    const child=spawnContained(command,args,{
     cwd:request.repository,
-    env:{...process.env,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{})})},
+    env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{})})},
     stdio:["pipe","pipe","pipe"],
     detached:process.platform!=="win32"
    }) as ChildProcessWithoutNullStreams;

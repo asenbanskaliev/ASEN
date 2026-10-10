@@ -49,6 +49,7 @@ test("only read-only explorer tasks can continue, and each continuation has a ne
  await store.enqueue(request,owner);await store.running(request.id,"2026-10-10T10:00:01.000Z");
  const recovered=await PersistentAgentStore.open(file,()=>"2026-10-10T10:00:02.000Z"),entry=await recovered.store.get("interrupted","session-a","/repo");assert.ok(entry);const resumed=recovered.store.resumable(entry!);assert.ok(resumed);assert.notEqual(resumed.id,request.id);assert.equal(resumed.parentId,request.id);assert.equal(resumed.role,"explorer");
  await assert.rejects(()=>recovered.store.enqueue({...resumed,writeSurfaces:["src/"]},owner),/Authority-bearing agent requests cannot be serialized/);
+ await assert.rejects(()=>recovered.store.enqueue(resumed,owner),/atomic interrupted-task claim/);
  await assert.rejects(()=>recovered.store.queued({...ownerInput,role:"worker"}),/record|Invalid/);
 });
 
