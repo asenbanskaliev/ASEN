@@ -27,7 +27,10 @@ export function validatePiCommandCollisions(host:unknown,names:readonly string[]
  const length=Object.getOwnPropertyDescriptor(inventory,"length");
  if(!length||!("value" in length)||!Number.isSafeInteger(length.value)||length.value>100000)throw new Error("ASEN host command inventory is malformed");
  const reserved=new Set(names);
- for(const item of inventory){
+ for(let index=0;index<inventory.length;index++){
+  const descriptor=Object.getOwnPropertyDescriptor(inventory,String(index));
+  if(!descriptor||!("value" in descriptor))throw new Error("ASEN host command inventory is malformed");
+  const item=descriptor.value;
   if(typeof item!=="object"||item===null||types.isProxy(item))throw new Error("ASEN host command inventory is malformed");
   const entry=Object.getOwnPropertyDescriptor(item,"name");
   if(!entry||!("value" in entry)||typeof entry.value!=="string")throw new Error("ASEN host command inventory is malformed");
