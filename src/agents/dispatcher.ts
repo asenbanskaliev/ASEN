@@ -96,6 +96,7 @@ export class Dispatcher {
    if(request.role==="worker"&&request.candidate&&!consumeIssuedWorkerContext(request.skillContext!))throw new Error("Candidate-bound worker requires unused worker context");
    if(receiver)runnerReceivers.set(receiver,{request:runnerRequest,used:false});
    const result=await this.runner.run(runnerRequest);
+   if(!result||result.id!==request.id||typeof result.ok!=="boolean"||typeof result.output!=="string")throw new Error("Agent runner returned an invalid or mismatched result");
    if(result.ok)this.lifecycle?.completed(request.id,result.output);else this.lifecycle?.failed(request.id,result.output);
    lifecycleRunning=false;return result;
   } catch(error){if(lifecycleRunning){try{this.lifecycle?.failed(request.id,error instanceof Error?error.message:String(error));}catch{}}throw error;
