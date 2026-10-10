@@ -18,7 +18,7 @@ export function validatePiHost(host:unknown,version:unknown):void{
 /** Check public command inventory before registration when the host exposes it. */
 export function validatePiCommandCollisions(host:unknown,names:readonly string[]):void{
  if(typeof host!=="object"||host===null||types.isProxy(host))throw new Error("ASEN requires the public Pi extension API");
- if(names.some(name=>!name||typeof name!=="string"))throw new Error("ASEN command reservation list is invalid");
+ if(names.some(name=>typeof name!=="string"||!name)||new Set(names).size!==names.length)throw new Error("ASEN command reservation list is invalid");
  const descriptor=Object.getOwnPropertyDescriptor(host,"getCommands");
  if(!descriptor){
   if(names.length!==new Set(names).size||names.some(name=>typeof name!=="string"||!name))throw new Error("ASEN command reservation list is invalid");
