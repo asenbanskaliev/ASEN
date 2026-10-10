@@ -24,6 +24,7 @@ export function validatePiCommandCollisions(host:unknown,names:readonly string[]
  const inventory=descriptor.value.call(host) as unknown;
  if(!Array.isArray(inventory))throw new Error("ASEN host command inventory is malformed");
  const reserved=new Set(names);
+ if(reserved.size!==names.length||names.some(name=>typeof name!=="string"||!name))throw new Error("ASEN command reservation list is invalid");
  for(const item of inventory){
   if(typeof item!=="object"||item===null||types.isProxy(item))throw new Error("ASEN host command inventory is malformed");
   const entry=Object.getOwnPropertyDescriptor(item,"name");
