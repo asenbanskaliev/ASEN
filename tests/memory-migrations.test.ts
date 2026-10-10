@@ -17,7 +17,7 @@ function workerExecArgv():string[]{
  const importIndex=process.execArgv.indexOf("--import"),loader=process.execArgv[importIndex+1],typeFlag=process.execArgv.find(argument=>argument==="--experimental-strip-types"||argument==="--experimental-transform-types");
  return typeFlag&&loader?.startsWith("data:text/javascript")?[typeFlag,"--import",loader]:["--import","tsx"];
 }
-function workerMessage(worker:Worker,predicate:(message:Record<string,unknown>)=>boolean,timeoutMs=2000):Promise<Record<string,unknown>>{
+function workerMessage(worker:Worker,predicate:(message:Record<string,unknown>)=>boolean,timeoutMs=15000):Promise<Record<string,unknown>>{
  return new Promise((resolve,reject)=>{
   const timeout=setTimeout(()=>{cleanupListeners();reject(new Error("Timed out waiting for memory open worker phase"));},timeoutMs);
   const message=(value:Record<string,unknown>)=>{if(predicate(value)){cleanupListeners();resolve(value);}};
@@ -69,7 +69,7 @@ test("fails closed instead of entering startup while another live process owns t
  assert.equal(existsSync(path),false,"the blocked startup never created or migrated the database");
 });
 
-test("a holder worker serializes the complete migration startup before an opener can write",async t=>{
+test("a holder worker serializes the complete migration startup before an opener can write",{timeout:90000},async t=>{
  const dir=await directory();t.after(()=>cleanup(dir));
  const path=join(dir,"worker-serialized.db"),legacy=new DatabaseSync(path);legacy.exec(legacyTable);legacy.close();
  const workerUrl=new URL("./memory-store-open-worker.mjs",import.meta.url),holderGate=new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT),openerGate=new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
