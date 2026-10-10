@@ -96,3 +96,7 @@ test("unrelated command names preserve case-sensitive matching",()=>{
 test("version parser rejects prefixed release strings",()=>{
  assert.throws(()=>validatePiHost(makeHost(),"v1.1.0"),/known Pi version/);
 });
+
+test("version parser rejects surrounding whitespace",()=>{
+ assert.throws(()=>validatePiHost(makeHost()," 1.1.0 "),/known Pi version/);
+});
