@@ -80,3 +80,7 @@ test("host inventory accessor names are not evaluated",()=>{
  const entry={};Object.defineProperty(entry,"name",{get(){throw Error("unexpected access");}});
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[entry]},["asen"]),/inventory is malformed/);
 });
+
+test("host command inventory method must be callable",()=>{
+ assert.throws(()=>validatePiCommandCollisions({getCommands:null},["asen"]),/inventory must be callable/);
+});
