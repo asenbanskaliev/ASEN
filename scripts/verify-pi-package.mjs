@@ -46,12 +46,13 @@ try {
   const hostObservations=[];
   try{
     await new Promise((resolve,reject)=>{
-      const names=["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles"];
+      const names=["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles","asen-route"];
       let buffer="",stdout="",stderr="",index=0,notifications=0;
       const timer=setTimeout(()=>fail(Error(`Installed RPC commands timed out: ${stderr.slice(-1000)}`)),20000);
       const fail=error=>{clearTimeout(timer);reject(error);};
       const send=value=>child.stdin.write(JSON.stringify(value)+"\n");
-      const prompt=()=>send({id:names[index],type:"prompt",message:`/${names[index]}`});
+      const routeFacts={taskIdentity:"package-route",intent:"analysis",scope:{kind:"known",expectedPaths:[]},writes:[],riskOperations:[],session:{estimatedMinutes:1,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]};
+      const prompt=()=>send({id:names[index],type:"prompt",message:names[index]==="asen-route"?`/asen-route ${JSON.stringify(routeFacts)}`:`/${names[index]}`});
       child.once("error",fail);
       child.once("close",(code,signal)=>{if(index!==names.length)fail(Error(`Installed RPC closed before completion (code=${code}, signal=${signal}): stdout=${stdout.slice(-2000)} stderr=${stderr.slice(-1000)}`));});
       child.stderr.on("data",chunk=>{stderr=(stderr+chunk.toString()).slice(-2000);});
@@ -80,12 +81,12 @@ try {
       });
     });
   }finally{child.kill();await closed;}
-  assert.equal(models,0);assert.equal(visible,8);
+  assert.equal(models,0);assert.equal(visible,9);
   assert.equal(hostObservations.length,1,"public host inventories must be observed once after initialization");
   const host=hostObservations[0];
   assert.equal(host.mode,"rpc");assert.equal(typeof host.hasUI,"boolean");
   const fromPrimary=row=>realpathSync(row.path)===realpathSync(primary);
-  for(const name of ["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles"]){
+  for(const name of ["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles","asen-route"]){
     const matches=host.commands.filter(row=>row.name===name&&row.source==="extension"&&fromPrimary(row));
     assert.equal(matches.length,1,`${name} must have one canonical installed-source registration`);
   }
@@ -94,5 +95,5 @@ try {
     const matches=host.tools.filter(row=>row.name===name&&realpathSync(row.path)===realpathSync(primary));
     assert.equal(matches.length,1,`${name} must have one canonical installed-source registration`);
   }
-  console.log(JSON.stringify({installedPiPackageVerified:true,primaryExtensions:["asen.ts"],childAuthorityAutoLoaded:false,visibleRpcCommands:visible,modelInvocations:models,publicHost:{mode:host.mode,hasUI:host.hasUI,canonicalCommands:8,canonicalTools:toolNames.length,toolsEnabled:true}}));
+  console.log(JSON.stringify({installedPiPackageVerified:true,primaryExtensions:["asen.ts"],childAuthorityAutoLoaded:false,visibleRpcCommands:visible,modelInvocations:models,publicHost:{mode:host.mode,hasUI:host.hasUI,canonicalCommands:9,canonicalTools:toolNames.length,toolsEnabled:true}}));
 } finally {rmSync(root,{recursive:true,force:true});}

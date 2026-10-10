@@ -15,11 +15,20 @@ test("asen-changes reads reopened workspace history only for the active session 
  const messages:string[]=[],rows=await h.commands.get("asen-changes")!.handler("",{cwd:project,sessionManager:{getSessionId:()=>"session-ui"},ui:{notify:(message:string)=>messages.push(message)}}) as string[];
  assert.equal(rows.length,1);assert.match(rows[0]!,/src\/owned\.ts/);assert.ok(!rows.join("\n").includes("foreign"));assert.deepEqual(messages,[rows.join("\n")]);
 });
+test("asen-route previews exact ODD facts from the active session without dispatching agents",async()=>{
+ const h=host();createAsenExtension()(h.pi);const command=h.commands.get("asen-route")!;
+ const facts={taskIdentity:"task-1",intent:"implementation",scope:{kind:"known",expectedPaths:["src/a.ts"]},writes:[{path:"src/a.ts",changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:10,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]};
+ const context={cwd:process.cwd(),sessionManager:{getSessionId:()=>"route-session"}},preview=await command.handler(JSON.stringify(facts),context) as string;
+ assert.match(preview,/route: direct/);assert.match(preview,/Preview only: no agent was dispatched and no write permission was granted/);
+ await assert.rejects(async()=>await command.handler(JSON.stringify({...facts,repositoryIdentity:"/foreign/project"}),context),/exactly/);
+ await assert.rejects(async()=>await command.handler(JSON.stringify({...facts,scope:{kind:"known",expectedPaths:["../secret"]}}),context),/canonical relative/);
+ await assert.rejects(async()=>await command.handler(JSON.stringify(facts),{cwd:process.cwd()}),/active Pi session/);
+});
 test("public data commands publish their result through the Pi UI",async()=>{
  const h=host();createAsenExtension()(h.pi);
- for(const name of ["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles"]){
+ for(const [name,args,context] of [["asen","",{}],["asen-commands","",{}],["asen-status","",{}],["asen-doctor","",{}],["asen-agents","",{}],["asen-changes","",{}],["asen-todos","",{}],["asen-profiles","",{}],["asen-route",JSON.stringify({taskIdentity:"task-2",intent:"analysis",scope:{kind:"known",expectedPaths:[]},writes:[],riskOperations:[],session:{estimatedMinutes:1,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]}),{cwd:process.cwd(),sessionManager:{getSessionId:()=>"route-session"}}]] as const){
   const messages:string[]=[];
-  const result=await h.commands.get(name)!.handler("",{ui:{notify:(message:string)=>messages.push(message)}});
+  const result=await h.commands.get(name)!.handler(args,{...context,ui:{notify:(message:string)=>messages.push(message)}});
   assert.equal(messages.length,1,`${name} must publish exactly one result`);
   assert.equal(messages[0],typeof result==="string"?result:Array.isArray(result)&&result.every(x=>typeof x==="string")?result.join("\n"):JSON.stringify(result,null,2));
  }
