@@ -27,3 +27,11 @@ test("mode equality cannot override ambiguous duplicate hashes",()=>{
  const next=[{path:"new.md",sha256:"same",mode:"100644"},{path:"other.md",sha256:"same",mode:"100755"}];
  assert.deepEqual(classifyUniqueContentRenames([old[0]],[next[0]],old,next),[]);
 });
+
+test("executable runtime blobs rename only when both sides retain mode 100755",()=>{
+ const old=[{path:"agent-a.md",sha256:"unique",mode:"100755"}];
+ const renamed=[{path:"agent-b.md",sha256:"unique",mode:"100755"}];
+ assert.deepEqual(classifyUniqueContentRenames(old,renamed,old,renamed),[{path:"agent-a.md",to:"agent-b.md"}]);
+ const changedMode=[{...renamed[0],mode:"100644"}];
+ assert.deepEqual(classifyUniqueContentRenames(old,changedMode,old,changedMode),[]);
+});
