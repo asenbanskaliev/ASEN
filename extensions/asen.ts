@@ -27,7 +27,7 @@ import {runHistoryCommand,recordHistoryInput} from "../src/runtime/history-comma
 import {runUsageCommand} from "../src/runtime/usage-command.js";
 import {incrementUsageFile} from "../src/runtime/usage-store.js";
 import {VERSION,type ExtensionAPI} from "@earendil-works/pi-coding-agent";
-import {validatePiHost} from "../src/runtime/pi-host.js";
+import {validatePiHost,validatePiCommandCollisions} from "../src/runtime/pi-host.js";
 
 type CommandContext={cwd:string;hasUI?:boolean;sessionManager?:{getSessionId?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;confirm?:(title:string,message:string)=>Promise<boolean>}};
 type PiLike={on?:(event:string,handler:(...args:any[])=>unknown)=>void;registerFlag?:(name:string,options:any)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
@@ -133,6 +133,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
 /** Production entry uses the real public Pi contract; the injectable core remains a test/composition seam. */
 export default function asen(pi:ExtensionAPI):void{
  validatePiHost(pi,VERSION);
+ validatePiCommandCollisions(pi,ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name));
  createAsenExtension()({
   on:(event,handler)=>pi.on(event as any,handler),
   registerFlag:(name,options)=>pi.registerFlag(name,options),
