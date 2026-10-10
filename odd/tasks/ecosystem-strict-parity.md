@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 29623)
-Total output lines: 487
-
 # Ecosystem strict behavioral parity
 
 ## ECO-01E / ECO-02A implementation batch — 2026-10-10
@@ -199,7 +196,146 @@ Annotation work is based on published local/remote HEAD `f8fbb9820219c2affe34fae
 
 ## Frozen baseline and confidence
 
-Reference A's authoritative machine snapshot is pinned to commit `08de420ca29be16b6f6bee725a30b599b061df16`. `registry/parity/ecosystem-sources-v1.json` currently freezes 1…4623 tokens truncated…ll resolves public surfaces; collision/permission/ambiguous-home cases refuse safely; rollback preserves prior state; Windows/macOS/Linux hosts are observed. |
+Reference A's authoritative machine snapshot is pinned to commit `08de420ca29be16b6f6bee725a30b599b061df16`. `registry/parity/ecosystem-sources-v1.json` currently freezes 167 tracked regular Git blobs and 46 roots from that snapshot with exact object IDs, byte SHA-256, family/visibility/source IDs, anchor-line hashes, dependency versions and 988 persisted reference records. These totals were mechanically verified against the current checked-in JSON during ECO-01C-1; the previous 166/647 counts described an earlier inventory expansion. The later extension comparison at `6e681f1d08fff3092273cf305206094d15cacd18` is supplemental source analysis only; it is not an automatic rebaseline, drift adoption, runtime proof, or `FULL` claim. Existing registry records remain authoritative and untouched by this reconciliation. `ecosystem-media-v1.json` records dimensions/frame/alpha metadata and visual inspection without shipping source artwork. Exact-object verification checks every media record. These are SOURCE_INSPECTED records, not runtime parity. The subsequent closure expansion is recorded below; complete normative semantics and explicit unresolved-reference adjudication still remain.
+
+Verified selected inventory includes 20 extension files, including seven history files; one README plus ten documentation files; seven SVGs; one GIF and six PNGs across docs and root assets. Five PNGs belong to docs; the sixth is the root logo. Exact objects were re-collected from the pinned source clone and matched the manifest. Static AST import/re-export/dynamic-literal and Markdown-link current closure inventory reaches 167 blobs; this does not imply every runtime-computed asset/command reference has been resolved.
+
+The current unit-by-unit comparison is `odd/tasks/ecosystem-reconciliation.md`; machine-checked current claims are `registry/parity/ecosystem-claims-v1.json`. GSP-06 is CLOSED at accepted provider-limited scope, while the 12 Skill rows stay PARTIAL where output evidence is absent. Memory R01–R09 retain admitted closure. Historical arrow-by-arrow text does not reopen either track. The old Phase 10 inventory's primitive PARITY labels do not establish strict ecosystem FULL.
+
+## Honest current status
+
+### Extension families
+
+| Family | Status | Current limitation |
+| --- | --- | --- |
+| Ask-user | `PARTIAL` | Native dialog tools, bounded validation, cancel/timeout and concurrency exist. Linux offline RPC choice/cancellation passes; full TUI/questionnaire/platform journeys and mutation-consumer integration remain unverified. |
+| CodeGraph | `PARTIAL` | Canonical explicit opt-in `init` plus `query`/`explore` and the read-only compatibility alias are committed at `7538e8681d4037cc2bce8ef2f483ba0b6fcbc200` and exact-range review-approved (pre-push 11/11 plus registration 6/6). Alias operations remain read-only and never auto-initialize. Real CLI/index lifecycle, restart, platform and host evidence remain open; the prior nine and new five nonblocking advisories remain bounded hardening in the same disclosed classes and do not reopen approval. |
+| Agents | `PARTIAL` | Public tools and lifecycle/transport/activity behavior are incomplete. |
+| Primary orchestrator | `PARTIAL` | Prompt, status, doctor, and review-boundary behavior are incomplete. |
+| Workspace | `MISSING` | Workspace interaction and UI are absent. |
+| Todo | `PARTIAL` | Exact durable task mirror exists; public transitions, replay and staleness remain incomplete. |
+| History | `PARTIAL` | Production opt-in capture, redaction-before-write, private files/locks, bounded search, export, command and confirmed reset are wired and locally tested; selector UI, transcript/shared import, migration/scale behavior and broader host/platform evidence remain open. |
+| Pretty/quiet | `MISSING` | Required presentation modes/tools are not implemented. |
+| Resume | `PARTIAL` | Restart, Windows, and session restoration evidence is incomplete. |
+| Runtime metrics | `PARTIAL` | Privacy-preserving local usage is wired. Telemetry transport, dual authorization, preview/revocation and host/network evidence are absent and decision-gated. |
+| Skill registry | `PARTIAL` | Startup/watch/debounce/disable/shutdown core is locally verified; missing/recreated-source watchers and real all-platform Pi lifecycle evidence remain. |
+| Banner | `PARTIAL` | A pure bounded presentation/banner projection exists; no production header/customization UI, lifecycle or host evidence exists. |
+| Package exports | `PARTIAL` | Absent export target repaired to the shipped entry. Local actual packed install resolves all 28 public exports and rejects private paths; exact new-candidate multiplatform/Pi packaging evidence is still required. |
+
+### Documentation families
+
+| Family | Status | Current limitation |
+| --- | --- | --- |
+| ODD, delegation, Skills, review, authority, Windows, package install | `PARTIAL` | Existing material is incomplete or broader than evidence. |
+| Launcher and workspace UI | `MISSING` | No behavior-backed guide. |
+| Change attribution | `MISSING` | No behavior-backed guide. |
+| Agent UI and RPC | `MISSING` | No behavior-backed guide. |
+| Profiles and customization | `MISSING` | No behavior-backed guide. |
+| History | `PARTIAL` | Production capture/store/command behavior can be documented; selector/import/migration and broader host/platform behavior cannot yet be described as shipped. |
+| Usage and telemetry | `PARTIAL` | Local usage has shipped behavior; telemetry remains decision-gated with no transport-backed guide. |
+
+The current checked-in machine claim registry validates 16 PARTIAL / 0 MISSING / 0 FULL; the previously quoted 12 PARTIAL / 4 MISSING totals were historical. these are snapshot counts, not totals recomputed from the narrative tables above. `npm run audit:ecosystem` rejects unsupported FULL, unaccepted exclusions, absent source/implementation references, stale candidate/source bindings, drifted source rows and missing executed evidence receipts. This documentation reconciliation does not mutate or promote registry claims. Legacy historical labels are not current strict claims.
+
+## Evidence and claim rules
+
+A row may be `FULL` only when automated evidence covers:
+
+1. positive behavior;
+2. negative/rejection behavior;
+3. failure and recovery behavior;
+4. restart and cross-session behavior where state or lifecycle is observable;
+5. Windows, POSIX, and macOS where path, process, terminal, packaging, or filesystem semantics matter; and
+6. real Pi host plus Pi Free execution where mocks cannot prove registration, TUI, RPC, model-backed routing, compaction, transport, or session lifecycle.
+
+Deterministic tests own pure parsing, state machines, manifests, hashes, path policy, claim validation, fixtures, snapshots, privacy filters, and mocked fault injection. Pi-host/Pi-Free probes must be minimal and used only for host/model boundaries. File presence, copied shape, mocked registration, or a passing happy path alone never proves `FULL`.
+
+Every claim records source IDs, implementation IDs, evidence IDs, platform scope, Pi boundary, status, differences, and invalidation state. Missing required evidence forces `PARTIAL` or `MISSING`.
+
+Every authored audit, runtime, test, documentation, workflow, and validator slice must stay below 400 additions. If a cohesive unit cannot meet that limit, split it into independently reviewable slices before writing; never compress the work or take an implicit or explicit exception.
+
+## Dependency order
+
+Implementation order is strict and cannot be changed by research or planning discoveries:
+
+```text
+GSP-04 -> GSP-05 -> GSP-06
+                    |
+                    v
+MEM-01..MEM-09 strict local memory parity
+                    |
+                    v
+ECO-01 baseline -> ECO-02 honest claims/package correction
+                    |
+                    v
+ECO-03..ECO-08 essential runtime -> ECO-09..ECO-14 complete runtime
+                    |
+                    v
+ECO-15 behavior-backed documentation -> ECO-16 final verification
+```
+
+- Finish GSP-04–06 first so public repository workflows, orchestration/review contracts, and verified Skill behavior are complete.
+- Complete strict local memory parity second. Its canonical projects, sessions, privacy, recovery, and compaction behavior are prerequisites for ecosystem implementation.
+- Only after Skills and memory are complete may ECO-01 freeze the immutable source identity and invalidation baseline, ECO-02 correct package behavior and existing claims, and ECO-03–16 implement and document the ecosystem.
+- Current ecosystem research may inform plans, task boundaries, and acceptance criteria, but it never authorizes or reorders implementation ahead of GSP-04–06 and strict memory parity.
+- Essential runtime establishes interaction, secure code intelligence, agent lifecycle, orchestration, todo, and registry lifecycle before launcher/workspace and customization surfaces compose them.
+- Feature documentation follows implemented behavior; contract and verification documentation may land with the behavior slice it governs.
+
+## EXT-04 ownership reconciliation
+
+This tracker is the **sole execution backlog**. The `EP-*` identifiers in [`reference-extension-parity.md`](reference-extension-parity.md) are design aliases only and carry no execution checkboxes. Every alias has exactly one primary owner or an explicit deferred/excluded disposition:
+
+| EP alias | Primary ECO owner or disposition | Reuse, remaining behavior and evidence boundary |
+| --- | --- | --- |
+| EP-001 | ECO-02A | Add only minimal package/host version, mode and registration-collision preflight before ECO-03–08. It must not wait for the future ECO-09 launcher. Reuse existing package evidence; final host/platform packaging evidence remains pending. |
+| EP-002 | ECO-06 | Reuse ODD routing/tracking; add primary lifecycle and host evidence without another ODD core. |
+| EP-003 | ECO-06 | Add the future primary-session sensitive-path/shell admission hook and host evidence. It is not the owner or prerequisite for the existing child authority boundary. |
+| EP-004 | ECO-06 | Discover published/provider-issued contracts, then add the strict public review decoder/state machine; provider-private authority stays excluded. |
+| EP-005 | ECO-06 | Add immutable candidate-view binding through public contracts and prove restart/drift behavior. |
+| EP-006 | ECO-06 | Add public read-only provider status/assessment integration; absence or mismatch remains nonauthority. |
+| EP-007 | ECO-06 | Add public consent/start execution through provider-issued transitions with session/TTL binding. |
+| EP-008 | ECO-06 | Add public capture/recovery/collect/acknowledgement and exact burn criteria. Accepted GSP-06 provider-limited closure remains closed and is not reopened. |
+| EP-009 | ECO-11 | Reuse the existing profile store; add deterministic live/restart routing, compensation and host evidence. |
+| EP-010 | ECO-07 | Reuse the durable ODD task mirror without conflating it with session Todo; add the validated Todo reducer/replay. |
+| EP-011 | ECO-07 | Add Todo public lifecycle and host evidence without creating a second ODD core. |
+| EP-012 | ECO-05 | Reuse the existing local child isolation boundary: the runner disables package extensions/skills, supplies exact tools, and confirms the pinned authority extension before prompt dispatch; the authority excludes non-`read`/`edit`/`write` tools and confines writes. Add the public agent protocol/store/tools without depending on EP-003, and keep authority/tool-exclusion tests mandatory. |
+| EP-013 | ECO-05 | Reuse the bounded runner; add hostile-stream/process cleanup and platform evidence. |
+| EP-014 | ECO-05 | Add completion/query delivery, restoration and session transport over the owned lifecycle. |
+| EP-015 | ECO-05 | Add foreign-root grants and mutation attribution without duplicate dispatch/authority cores. |
+| EP-016 | Deferred under ECO-05 | No work while isolated children do not load package context. If package context is admitted, ECO-05 owns the filter and evidence. |
+| EP-017 | Deferred under ECO-05 | Default remains no child shell and expansion requires an explicit user decision. If admitted, ECO-05 owns child-only admission, recognizer, destructive-command, wrapper and background-job prerequisites and evidence; this deferred capability does not depend on primary-session EP-003. |
+| EP-018 | ECO-03 | Reuse hardened ask-user validation; add canonical compatibility, balanced host events and TUI/RPC/headless/platform evidence. |
+| EP-019 | ECO-14 | Reuse pure status/presentation projections; add sanitized shell status/footer behavior without duplicating usage storage. |
+| EP-020 | ECO-14 | Add minimal TUI shell/header lifecycle over the existing pure projection. |
+| EP-021 | ECO-14 | Add overlays/commands and queued prompt/cancel behavior with deterministic cleanup. |
+| EP-022 | ECO-14 | Add quiet rendering/wrappers only after host factory discovery preserves execution identity. |
+| EP-023 | ECO-14, product/security/license gated | Optional third-party pretty integration is nonadopted until approved and does not gate adopted scope; if adopted, ECO-14 owns it. Its absence keeps full-reference parity incomplete unless explicitly adjudicated. |
+| EP-024 | ECO-08 | Reuse the wired hardened skill-registry lifecycle; add tracked-output/duplicate-load protection and missing host/platform/restart evidence without another registry. |
+| EP-025 | ECO-13 | Keep local usage storage; add a distinct read-only Pi-history stats collector and host evidence without replacing the private usage store. |
+| EP-026 | ECO-12 | Reuse opt-in private history capture/store/search/export; add selector UI/structured fallback and host evidence. |
+| EP-027 | ECO-12 | Add bounded schema/tombstone migration and platform evidence without a second private store. |
+| EP-028 | ECO-12, privacy/import gated | Optional transcript/shared-history import requires an explicit home/privacy decision. It is not an incidental prerequisite and does not gate adopted scope while unadopted. |
+| EP-029 | ECO-14, using ECO-09 launcher | Reuse checkpoint identity; implement the one-shot handoff only after launcher surfaces exist, then prove quit/restart/platform behavior. |
+| EP-030 | **EXCLUDED by user** | NaN has no prerequisite, gate, API/credential/dependency work, or execution owner until explicit reauthorization. This narrows adopted scope only and prevents a full-reference parity claim. |
+| EP-031 | ECO-13, privacy/product decision-gated | Local usage remains useful without transport. Telemetry requires dual authorization, preview/minimization/revocation and zero-network/host evidence; do not infer consent from the local store. |
+| EP-032 | ECO-09 | Reconcile launcher/config/history home boundaries and migration refusal; reuse existing stores rather than creating new ones. |
+| EP-033 | Deferred under ECO-13 | HERDR remains nonadopted pending external-integration/privacy approval. If adopted, ECO-13 owns the minimized transport and evidence. |
+| EP-034 | ECO-16 | Run only after ECO-15A/B/C and every adopted in-scope owner. Record unsupported cells honestly; excluded/deferred optional features do not gate adopted scope, but disclosed exclusions keep full-reference parity incomplete. |
+
+No row above changes an ECO checkbox or promotes source-only evidence. Accepted GSP-06 provider-limited and MEM R01–R09 closure remain explicit. Reconciliation must reuse existing stores, usage, registry, dispatcher and ODD cores; it must not build duplicate private infrastructure.
+
+## Product-brief prioritization overlay
+
+This overlay is evidence metadata on existing owners, not an execution checklist or dependency change. “Host” means observable real-host behavior; every row still requires the broader acceptance matrix where applicable. ECO-03 public dialogs and ECO-08 registry lifecycle remain minimum core prerequisites even though the brief does not emphasize them.
+
+| Priority | Brief pages | Existing owner | Existing core to reuse / evidence gap | Observable acceptance boundary (positive; negative; recovery; host) |
+| --- | --- | --- | --- | --- |
+| Critical | 4, 5, 8 | ECO-06 | Reuse ODD routing, task tracking, and accepted GSP-06 boundary; public authorize/explore/classify, risk-scaled verification, logbook-plus-memory and provider-issued review lifecycle remain unproved. | Correct bounded route and durable record; reject prose/expired/mismatched authority; recover from interruption/unknown outcome without replay; real primary-session lifecycle is visible. |
+| Critical | 6, 10, 21 | ECO-05 | Reuse dispatcher, bounded runner, pinned child authority and exact tool exclusion; durable background lifecycle, cancel/continue/restart and write-conflict handling remain open. | Isolated task completes with owned evidence; foreign/conflicting mutation is denied; cancellation/crash releases or quarantines capacity; real child/session restoration is observable. |
+| High | 11 | ECO-10 / ECO-07 | Reuse project/session identity, mutation evidence, ODD mirror and replay validation; workspace attribution and session Todo composition remain open. | Correct actor/worktree/Todo state is shown; stale/cross-session/conflicting state is rejected; replay restores deterministically; host UI exposes attribution without authority inflation. |
+| High | 12 | ECO-11 | Reuse the profile store; actual model/effort choices, precedence, live application, rollback and restart semantics lack host evidence. | Selected route follows documented precedence; unknown/partial settings fail safely; compensation restores the prior profile; live and restarted host agree. |
+| Critical | 13 | ECO-04 | Reuse approved canonical and compatibility tools; real CLI/workspace index lifecycle, stale/error recovery, executable resolution and restart/platform evidence remain open. | Init/query/explore work in the intended workspace; traversal, alias auto-init and stale misuse fail closed; interrupted/stale index recovers explicitly; real CLI host result is observable. |
+| High | 14 | ECO-12 / ECO-13 | Reuse private opt-in redacted history and transport-free local usage; selector/scale evidence and separately dual-consented telemetry remain open. | Opted-in local history/usage is inspectable; no capture/send occurs without the relevant consent; corrupt/revoked state recovers or fails closed; host/network observation proves privacy boundaries. |
+| High | 3, 22 | ECO-02 / ECO-09 | Reuse packed-export checks and checkpoint identity; isolated-home install/setup, rollback and cross-platform paths remain unproved. | Clean isolated-home install resolves public surfaces; collision/permission/ambiguous-home cases refuse safely; rollback preserves prior state; Windows/macOS/Linux hosts are observed. |
 | Constraint | 5, 17–19 | All owners / ECO-16 | Reuse each owner's receipts; latency, token, cost and error-detection figures need proportional, repeatable measurement rather than a new runtime feature. | Baseline and candidate are measured under the same workload; regressions/invalid samples are rejected; interrupted runs remain distinguishable; host receipts report distributions and limits, not promises from one-to-three runs. |
 | Lower attention, required | 15 | ECO-14 | Reuse checkpoint validation and pure presentation projections; adopted pretty/quiet, startup/resume and accessible terminal behavior lack production wiring and host evidence. | Chosen modes render deterministically; non-TTY/narrow/control-text cases degrade safely; restart/corruption restores or diagnoses; real TTY/non-TTY behavior is observable. |
 
