@@ -256,3 +256,13 @@ test("Pi version comparison handles differing components without missing-index r
  for(const version of ["0.85.0","0.84.999","2.0.0","2.0.1"])
   assert.throws(()=>validatePiHost(makeHost(),version),/known Pi version/);
 });
+
+test("Pi inventories reject inherited and dangerous names before registration",()=>{
+ const host:any=makeHost();
+ for(const name of ["__proto__","constructor","prototype"]){
+  host.getCommands=()=>[{name}];
+  assert.throws(()=>validatePiRegistrationCollisions(host,[name],["asen_probe"]),/command registration collision/);
+  host.getCommands=()=>[];host.getAllTools=()=>[{name}];
+  assert.throws(()=>validatePiRegistrationCollisions(host,["asen"],[name]),/tool registration collision/);
+ }
+});
