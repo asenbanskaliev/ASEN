@@ -10,7 +10,13 @@ const SCHEMA="asen.workspace/v1" as const,MAX_CHANGES=20000;
 export interface StoredWorkspaceChange{revision:number;id:string;change:WorkspaceChange}
 export interface WorkspaceFile{schema:typeof SCHEMA;revision:number;changes:StoredWorkspaceChange[]}
 export interface WorkspaceIdentity{sessionId:string;projectId:string;worktree:string}
-function samePath(left:string,right:string):boolean{return process.platform==="win32"?path.win32.normalize(left.replace(/\//g,"\\")).toLowerCase()===path.win32.normalize(right.replace(/\//g,"\\")).toLowerCase():left===right;}
+function comparablePath(value:string):string{
+ let normalized=value.replace(/\//g,"\\");
+ if(/^\\\\\?\\UNC\\/iu.test(normalized))normalized=`\\\\${normalized.slice(8)}`;
+ else if(/^\\\\\?\\/u.test(normalized))normalized=normalized.slice(4);
+ return path.win32.normalize(normalized).replace(/\\+$/u,"").toLowerCase();
+}
+export function sameWorkspaceIdentityPath(left:string,right:string,platform:NodeJS.Platform=process.platform):boolean{return platform==="win32"?comparablePath(left)===comparablePath(right):left===right;}
 const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
 function empty():WorkspaceFile{return {schema:SCHEMA,revision:0,changes:[]};}
 function validChange(value:unknown):value is WorkspaceChange{if(!exact(value,["path","actor","sessionId","projectId","worktree","operation","at"]))return false;try{recordWorkspaceChange(value as unknown as WorkspaceChange);return true;}catch{return false;}}
@@ -28,5 +34,5 @@ export class PersistentWorkspaceStore{
  static async open(path:string):Promise<PersistentWorkspaceStore>{await preparePrivateFile(path,true);let quarantined:string|undefined;try{await read(path);}catch(error){if(!(error instanceof SyntaxError)&&!(error instanceof Error&&["Invalid ASEN workspace store","Invalid ASEN workspace revision"].includes(error.message)))throw error;quarantined=`${path}.corrupt-${Date.now()}-${randomUUID()}`;await rename(path,quarantined);}return new PersistentWorkspaceStore(path,quarantined);}
  diagnostics(){return this.quarantined?{quarantined:this.quarantined}:undefined;}
  async append(change:WorkspaceChange):Promise<StoredWorkspaceChange>{const checked=recordWorkspaceChange(change);let saved:StoredWorkspaceChange|undefined;await preparePrivateFile(this.path,true);await withExclusiveFileLock(this.path,async()=>{const current=await read(this.path);if(current.changes.length>=MAX_CHANGES)throw new Error("ASEN workspace history has reached its limit");saved={revision:current.revision+1,id:`change-${randomUUID()}`,change:checked};const next=parseWorkspaceFile(JSON.stringify({schema:SCHEMA,revision:current.revision+1,changes:[...current.changes,saved]}));await write(this.path,next);});return structuredClone(saved!);}
- async list(identity:WorkspaceIdentity):Promise<readonly StoredWorkspaceChange[]>{const value=await read(this.path);return value.changes.filter(item=>item.change.sessionId===identity.sessionId&&samePath(item.change.projectId,identity.projectId)&&samePath(item.change.worktree,identity.worktree)).map(item=>structuredClone(item));}
+ async list(identity:WorkspaceIdentity):Promise<readonly StoredWorkspaceChange[]>{const value=await read(this.path);return value.changes.filter(item=>item.change.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(item.change.projectId,identity.projectId)&&sameWorkspaceIdentityPath(item.change.worktree,identity.worktree)).map(item=>structuredClone(item));}
 }
