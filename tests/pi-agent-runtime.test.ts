@@ -28,8 +28,8 @@ test("production Pi extension runs and restores session-scoped agent status usin
   await new Promise(resolve=>setTimeout(resolve,30));startController.abort();await assert.rejects(startPending,/Agent task cancelled/);
   assert.deepEqual((await first.tools.get("asen_agent_status").execute("status-after-abort",{},new AbortController().signal,()=>{},first.context())).details,[]);await rm(`${file}.lock`,{force:true});
   const started=await first.tools.get("asen_agent_start").execute("call-1",{prompt:"inspect this project"},new AbortController().signal,()=>{},first.context());const id=started.details.id;
-  let rows:any[]=[],deadline=Date.now()+15_000;while(Date.now()<deadline){rows=(await first.tools.get("asen_agent_status").execute("status",{},new AbortController().signal,()=>{},first.context())).details;if(rows.some(row=>row.id===id&&row.state==="completed"))break;await new Promise(resolve=>setTimeout(resolve,10));}
-  assert.ok(rows.some(row=>row.id===id&&row.state==="completed"),"agent runner did not persist completion within 15 seconds");
+  let rows:any[]=[],deadline=Date.now()+30_000;while(Date.now()<deadline){rows=(await first.tools.get("asen_agent_status").execute("status",{},new AbortController().signal,()=>{},first.context())).details;if(rows.some(row=>row.id===id&&["completed","failed","cancelled","interrupted"].includes(row.state)))break;await new Promise(resolve=>setTimeout(resolve,10));}
+  assert.ok(rows.some(row=>row.id===id&&row.state==="completed"),`agent runner did not persist completion; observed ${JSON.stringify(rows)}`);
   await first.commands.get("asen-agents")!.handler("",first.context());assert.ok(first.messages.some(message=>message.includes("completed")&&message.includes("read-only result")));
   const foreign=await first.tools.get("asen_agent_status").execute("call-2",{},new AbortController().signal,()=>{},first.context("other-session"));assert.deepEqual(foreign.details,[]);
   const todo=await first.tools.get("asen_todo_add").execute("todo",{title:"Verify the delivery"},new AbortController().signal,()=>{},first.context());

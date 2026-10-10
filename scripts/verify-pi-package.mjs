@@ -33,12 +33,28 @@ try {
   const sessionId="asen-package-reopen-session",projectId=realpathSync(root),asenHome=path.join(root,".asen"),stamp="2026-10-10T00:00:00.000Z";
   mkdirSync(asenHome,{recursive:true,mode:0o700});
   const todoId="todo-package-reopen",foreignTodoId="todo-package-foreign";
+  const agentId="agent-package-interrupted";
   const todoEvent=(taskId,session,state,revision,at,reason)=>({taskId,sessionId:session,projectId,revision,state,at,...(reason?{reason}:{})});
   writeFileSync(path.join(asenHome,"todos.json"),JSON.stringify({schema:"asen.todo/v1",revision:1,items:[
     {taskId:todoId,title:"Pi restart recovery",events:[todoEvent(todoId,sessionId,"planned",1,stamp),todoEvent(todoId,sessionId,"running",2,stamp)]},
     {taskId:foreignTodoId,title:"Foreign session task",events:[todoEvent(foreignTodoId,"asen-package-foreign-session","planned",1,stamp)]}
   ]}),{mode:0o600});
+  const interruptedReason="Interrupted; explicit review is required before continuing";
+  writeFileSync(path.join(asenHome,"agents.json"),JSON.stringify({schema:"asen.agents/v1",revision:1,entries:[{
+    record:{id:agentId,role:"explorer",owner:{kind:"user",id:`pi:${sessionId}`},sessionId,projectId,state:"interrupted",createdAt:stamp,updatedAt:stamp,summary:interruptedReason},
+    request:{id:agentId,role:"explorer",prompt:"Inspect the project without changing files",repository:projectId,isolationKey:sessionId,createdAt:stamp},
+    events:[
+      {id:agentId,revision:1,state:"queued",at:stamp},
+      {id:agentId,revision:2,state:"running",at:stamp},
+      {id:agentId,revision:3,state:"interrupted",at:stamp,summary:interruptedReason}
+    ]
+  }]}),{mode:0o600});
   const workspaceChange=(session,path,actor)=>({path,actor:{kind:"user",id:actor},sessionId:session,projectId,worktree:projectId,operation:"modify",at:stamp});
+  const assertInterruptedAgentVisible=message=>{
+    assert.ok(message.includes(agentId),`restored agent identity must be visible: ${message}`);
+    assert.ok(message.includes("interrupted"),`restored agent state must be visible: ${message}`);
+    assert.ok(message.includes("explicit review"),`interrupted work must require review before continuation: ${message}`);
+  };
   writeFileSync(path.join(asenHome,"workspace.json"),JSON.stringify({schema:"asen.workspace/v1",revision:2,changes:[
     {revision:1,id:"change-package-owned",change:workspaceChange(sessionId,"src/owned.ts","user-owned")},
     {revision:2,id:"change-package-foreign",change:workspaceChange("asen-package-foreign-session","src/foreign.ts","user-foreign")}
@@ -56,7 +72,7 @@ try {
   child.stdin.write(JSON.stringify({id:"commands",type:"get_commands"})+"\n");
   const closed=new Promise(resolve=>child.once("close",resolve));
   let models=0,visible=0;
-  const hostObservations=[];
+  const hostObservations=[];let startupRecoveryNotice="";
   try{
     await new Promise((resolve,reject)=>{
       const names=["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles","asen-route"];
@@ -83,11 +99,14 @@ try {
               for(const name of names)assert.ok(row.data.commands.some(c=>c.name===name));
               prompt();
             }else if(row.type==="extension_ui_request"&&row.method==="notify"){
-              assert.equal(row.notifyType,"info");assert.ok(row.message.length>0);lastNotification=row.message;notifications++;
+              assert.equal(row.notifyType,"info");assert.ok(row.message.length>0);
+              if(row.message.includes("queued or interrupted task(s)"))startupRecoveryNotice=row.message;
+              else{lastNotification=row.message;notifications++;}
             }else if(row.type==="response"&&row.id===names[index]){
               assert.equal(row.success,true);assert.equal(notifications,1,`${names[index]} must be visible over RPC`);
               if(names[index]==="asen-todos")assert.match(lastNotification,/blocked.*Pi restart recovery.*explicit review is required/i);
               if(names[index]==="asen-todos")assert.ok(!lastNotification.includes(foreignTodoId),"Todo projection must exclude foreign sessions");
+              if(names[index]==="asen-agents")assertInterruptedAgentVisible(lastNotification);
               if(names[index]==="asen-changes")assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);
               if(names[index]==="asen-changes")assert.ok(!lastNotification.includes("foreign"),"workspace projection must exclude foreign sessions");
               visible++;index++;notifications=0;
@@ -99,6 +118,7 @@ try {
     });
   }finally{child.kill();await closed;}
   assert.equal(models,0);assert.equal(visible,9);
+  assert.match(startupRecoveryNotice,/1 queued or interrupted task\(s\).*asen-agents/u);
   assert.equal(hostObservations.length,1,"public host inventories must be observed once after initialization");
   const host=hostObservations[0];
   assert.equal(host.mode,"rpc");assert.equal(typeof host.hasUI,"boolean");
@@ -116,9 +136,9 @@ try {
   const reopened=spawn(process.execPath,[cli,"--mode","rpc","--session-id",sessionId,"--no-extensions","--extension",primary,"--no-skills"],{
     cwd:root,env:createPiVerifierEnvironment(process.env),stdio:["pipe","pipe","pipe"]});
   const reopenedClosed=new Promise(resolve=>reopened.once("close",resolve));
-  const seen=[];
+  const seen=[];let reopenedRecoveryNotice="";
   await new Promise((resolve,reject)=>{
-    const names=["asen-todos","asen-changes"];let buffer="",stderr="",index=-1,notifications=0,lastNotification="";
+    const names=["asen-agents","asen-todos","asen-changes"];let buffer="",stderr="",index=-1,notifications=0,lastNotification="";
     const timer=setTimeout(()=>fail(Error(`Reopened Pi session timed out: ${stderr.slice(-1000)}`)),20000);
     const fail=error=>{clearTimeout(timer);reject(error);};
     const send=value=>reopened.stdin.write(JSON.stringify(value)+"\n");
@@ -128,12 +148,13 @@ try {
     reopened.stdout.on("data",chunk=>{buffer+=chunk.toString();if(buffer.length>100000){fail(Error("Oversized reopened RPC output"));return;}let end;while((end=buffer.indexOf("\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;try{
       const row=JSON.parse(line);if(row.type==="agent_start")throw Error("Reopened ASEN state query invoked a model");
       if(row.type==="response"&&row.id==="reopen-commands"){assert.equal(row.success,true);for(const name of names)assert.ok(row.data.commands.some(command=>command.name===name));requestNext();}
-      else if(row.type==="extension_ui_request"&&row.method==="notify"){assert.equal(row.notifyType,"info");lastNotification=row.message;notifications++;}
-      else if(row.type==="response"&&row.id===`reopen-${names[index]}`){assert.equal(row.success,true);assert.equal(notifications,1);if(names[index]==="asen-todos"){assert.match(lastNotification,/blocked.*Pi restart recovery.*explicit review is required/i);assert.ok(!lastNotification.includes(foreignTodoId));}else{assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);assert.ok(!lastNotification.includes("foreign"));}seen.push(names[index]);notifications=0;requestNext();}
+      else if(row.type==="extension_ui_request"&&row.method==="notify"){assert.equal(row.notifyType,"info");if(row.message.includes("queued or interrupted task(s)"))reopenedRecoveryNotice=row.message;else{lastNotification=row.message;notifications++;}}
+      else if(row.type==="response"&&row.id===`reopen-${names[index]}`){assert.equal(row.success,true);assert.equal(notifications,1);if(names[index]==="asen-agents")assertInterruptedAgentVisible(lastNotification);else if(names[index]==="asen-todos"){assert.match(lastNotification,/blocked.*Pi restart recovery.*explicit review is required/i);assert.ok(!lastNotification.includes(foreignTodoId));}else{assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);assert.ok(!lastNotification.includes("foreign"));}seen.push(names[index]);notifications=0;requestNext();}
     }catch(error){fail(error);}}});
     send({id:"reopen-commands",type:"get_commands"});
   }).finally(()=>{reopened.kill();});
   await reopenedClosed;
-  assert.deepEqual(seen,["asen-todos","asen-changes"]);
+  assert.match(reopenedRecoveryNotice,/1 queued or interrupted task\(s\).*asen-agents/u);
+  assert.deepEqual(seen,["asen-agents","asen-todos","asen-changes"]);
   console.log(JSON.stringify({installedPiPackageVerified:true,primaryExtensions:["asen.ts"],childAuthorityAutoLoaded:false,visibleRpcCommands:visible,modelInvocations:models,publicHost:{mode:host.mode,hasUI:host.hasUI,canonicalCommands:9,canonicalTools:toolNames.length,toolsEnabled:true}}));
 } finally {rmSync(root,{recursive:true,force:true});}

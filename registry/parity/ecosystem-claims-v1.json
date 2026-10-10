@@ -164,7 +164,7 @@
         "tests/scopes.test.ts"
       ],
       "remaining": [
-        "Persistent public queue, cancel/continue/status, ownership, bounded concurrency, interrupted-work quarantine and rejection of overlapping writers on a shared repository root (including across session IDs) are implemented and tested. Real Pi delivery/restoration across process restart and platforms, hostile child-process cleanup and public grant/transport contracts remain unverified or incomplete."
+        "The installed Pi RPC journey restores an interrupted read-only agent's identity and review-required status after reopening the same named session in a second process without a model invocation. Cross-platform installed-Pi restoration, normal completion delivery after a real child run, hostile child-process cleanup under all stop modes, and the remaining public grant/transport contracts are not yet established."
       ],
       "stateful": true,
       "platformSensitive": true,
@@ -224,7 +224,7 @@
         "scripts/verify-pi-package.mjs"
       ],
       "remaining": [
-        "Durable session/project-isolated Todo state, validated replay, Pi tools, the read-only /asen-todos view, abrupt process-exit recovery and preservation of completed work are implemented and tested. An installed-package Linux Pi RPC journey now reopens the same named session in a second process and verifies recovered state without a model. Windows/macOS run evidence and broader real-host compatibility remain."
+        "Durable session/project-isolated Todo state, validated replay, Pi tools, the read-only /asen-todos view, abrupt process-exit recovery and preservation of completed work are implemented and tested. The installed-package Pi RPC journey reopens the same named session in a second process and verifies recovered state without a model. Windows/macOS installed-Pi recovery runs and broader stale-plan/conflict behavior remain to be established."
       ],
       "stateful": true,
       "platformSensitive": true,
