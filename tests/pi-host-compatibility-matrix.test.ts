@@ -118,3 +118,8 @@ test("local reservations are checked even without host inventory",()=>{
  assert.throws(()=>validatePiCommandCollisions({},["asen","asen"]),/reservation list is invalid/);
  assert.throws(()=>validatePiCommandCollisions({},[""]),/reservation list is invalid/);
 });
+
+test("oversized host command inventories are rejected",()=>{
+ const rows=[];rows.length=100001;
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>rows},["asen"]),/inventory is malformed/);
+});
