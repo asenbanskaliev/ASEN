@@ -54,3 +54,8 @@ test("proxied command inventory arrays are rejected",()=>{
 test("an unrelated command does not collide with reserved names",()=>{
  assert.doesNotThrow(()=>validatePiCommandCollisions({getCommands:()=>[{name:"external-command"}]},["asen"]));
 });
+
+test("exact reserved names collide without prefix matching",()=>{
+ assert.doesNotThrow(()=>validatePiCommandCollisions({getCommands:()=>[{name:"asen-extra"}]},["asen"]));
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[{name:"asen"}]},["asen"]),/registration collision/);
+});
