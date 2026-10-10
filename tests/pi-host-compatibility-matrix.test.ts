@@ -88,3 +88,7 @@ test("host command inventory method must be callable",()=>{
 test("host command inventory rejects primitive rows",()=>{
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>["asen"]},["asen"]),/inventory is malformed/);
 });
+
+test("unrelated command names preserve case-sensitive matching",()=>{
+ assert.doesNotThrow(()=>validatePiCommandCollisions({getCommands:()=>[{name:"ASEN"}]},["asen"]));
+});
