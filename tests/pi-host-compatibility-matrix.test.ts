@@ -46,3 +46,7 @@ test("duplicate command reservations are rejected",()=>{
 test("empty command reservations are rejected",()=>{
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[]},["asen",""]),/reservation list is invalid/);
 });
+
+test("proxied command inventory arrays are rejected",()=>{
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>new Proxy([],{})},["asen"]),/inventory is malformed/);
+});
