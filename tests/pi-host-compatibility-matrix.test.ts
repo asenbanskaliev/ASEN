@@ -162,3 +162,7 @@ test("empty reservation fails before inventory access",()=>{
 test("empty command reservation list is rejected",()=>{
  assert.throws(()=>validatePiCommandCollisions({},[]),/reservation list is invalid/);
 });
+
+test("proxied command reservation arrays are rejected",()=>{
+ assert.throws(()=>validatePiCommandCollisions({},new Proxy(["asen"],{})),/reservation list is invalid/);
+});
