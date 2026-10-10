@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {validatePiHost,ASEN_PI_MINIMUM_VERSION} from "../src/runtime/pi-host.js";
+import {validatePiHost,validatePiCommandCollisions,ASEN_PI_MINIMUM_VERSION} from "../src/runtime/pi-host.js";
 
 const makeHost=()=>Object.fromEntries(["on","registerCommand","registerTool","registerFlag","getFlag"].map(name=>[name,()=>undefined]));
 
@@ -20,4 +20,21 @@ test("Pi host preflight rejects missing or accessor-backed registration methods"
   assert.throws(()=>validatePiHost(accessor,"1.1.0"),/requires callable Pi/);
  }
  assert.throws(()=>validatePiHost(new Proxy(makeHost(),{}),"1.1.0"),/public Pi extension API/);
+});
+
+test("public inventory collision preflight rejects reserved commands before registration",()=>{
+ const host={getCommands:()=>[{name:"asen"},{name:"other"}]};
+ assert.throws(()=>validatePiCommandCollisions(host,["asen","asen-status"]),/registration collision: asen/);
+ assert.doesNotThrow(()=>validatePiCommandCollisions({getCommands:()=>[{name:"other"}]},["asen"]));
+ assert.doesNotThrow(()=>validatePiCommandCollisions({},["asen"]));
+});
+
+test("public inventory preflight rejects malformed and accessor-backed rows",()=>{
+ for(const inventory of [null,{},[{name:123}],[{}],[new Proxy({name:"asen"},{})]]){
+  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>inventory},["asen"]),/inventory is malformed/);
+ }
+ const row={};Object.defineProperty(row,"name",{get(){throw Error("must not invoke getter");}});
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[row]},["asen"]),/inventory is malformed/);
+ const host={};Object.defineProperty(host,"getCommands",{get(){throw Error("must not invoke getter");}});
+ assert.throws(()=>validatePiCommandCollisions(host,["asen"]),/inventory must be callable/);
 });
