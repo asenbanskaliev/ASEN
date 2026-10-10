@@ -52,7 +52,7 @@ test("running cancellation reaches the child runner; session and project boundar
 });
 
 test("concurrent Pi tasks obey the configured limit, keep result ownership and persist failures",async t=>{
- const file=await fixture(t);let active=0,maxActive=0;const runner:AgentRunner={run:async request=>{active++;maxActive=Math.max(maxActive,active);await new Promise(resolve=>setTimeout(resolve,20));active--;if(request.prompt.includes("fail-"))throw new Error("injected runner failure");return {id:request.id,ok:true,output:`owned:${request.id}`};}};
+ const file=await fixture(t);let active=0,maxActive=0,started=0,release!:()=>void;const bothStarted=new Promise<void>(resolve=>{release=resolve;});const runner:AgentRunner={run:async request=>{active++;started++;maxActive=Math.max(maxActive,active);if(started===2)release();await bothStarted;active--;if(request.prompt.includes("fail-"))throw new Error("injected runner failure");return {id:request.id,ok:true,output:`owned:${request.id}`};}};
  const runtime=await AgentRuntime.open({storeFile:file,runner,maxConcurrency:2}),session={sessionId:"session-a",projectId:"/repo"},ids=await Promise.all(["one","fail-two","three","four"].map(prompt=>runtime.startExplorer({prompt,session,owner})));
  await until(()=>runtime.snapshot().filter(record=>ids.includes(record.id)).every(record=>["completed","failed"].includes(record.state)));
  assert.ok(maxActive<=2);assert.equal(maxActive,2);const entries=await Promise.all(ids.map(id=>runtime.store.get(id,session.sessionId,session.projectId)));
