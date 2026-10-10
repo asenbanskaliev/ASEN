@@ -247,3 +247,13 @@ test("queued slot transfer preserves FIFO and concurrency against microtask arri
 test("dispatcher lifecycle projection covers queued running completed and failed without granting authority",async()=>{let tick=0;const now=()=>`2026-10-06T00:00:0${tick++}Z`,sink=createAgentLifecycleSink(now);const runner:AgentRunner={run:async r=>({id:r.id,ok:r.id==="ok",output:r.id==="ok"?"done":"runner failed"})};const d=new Dispatcher(runner,new EvidenceStore(),1,sink);assert.equal((await d.dispatch({id:"ok",role:"explorer",prompt:"x",repository:"r",isolationKey:"session"})).ok,true);assert.equal((await d.dispatch({id:"bad",role:"explorer",prompt:"x",repository:"r",isolationKey:"session"})).ok,false);const records=sink.snapshot();assert.deepEqual(records.map(r=>[r.id,r.state,r.sessionId,r.projectId]),[["ok","completed","session","r"],["bad","failed","session","r"]]);assert.equal(records[0]?.owner.id,"asen-dispatcher");});
 
 test("dispatcher records thrown runner failures without leaking execution authority",async()=>{let tick=0;const sink=createAgentLifecycleSink(()=>`2026-10-07T00:00:0${tick++}Z`);const d=new Dispatcher({run:async()=>{throw new Error("boom");}},new EvidenceStore(),1,sink);await assert.rejects(()=>d.dispatch({id:"throws",role:"explorer",prompt:"x",repository:"r",isolationKey:"session"}),/boom/);const record=sink.snapshot()[0];assert.equal(record?.state,"failed");assert.equal(record?.summary,"boom");});
+
+test("dispatcher rejects a result belonging to another task and records failure",async()=>{
+ let completed=false,failed=false;
+ const lifecycle={createdAt:()=>new Date().toISOString(),queued:()=>{},running:()=>{},completed:()=>{completed=true;},failed:()=>{failed=true;}};
+ const runner:AgentRunner={run:async()=>({id:"other-task",ok:true,output:"incorrect"})};
+ const dispatcher=new Dispatcher(runner,new EvidenceStore(),1,lifecycle);
+ await assert.rejects(()=>dispatcher.dispatch({id:"requested-task",role:"explorer",prompt:"inspect",repository:"r"}),/invalid or mismatched result/);
+ assert.equal(completed,false);
+ assert.equal(failed,true);
+});
