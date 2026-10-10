@@ -158,3 +158,7 @@ test("inventory errors are propagated",()=>{
 test("empty reservation fails before inventory access",()=>{
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>{throw Error("should not run");}},[""]),/reservation list is invalid/);
 });
+
+test("empty command reservation list is rejected",()=>{
+ assert.throws(()=>validatePiCommandCollisions({},[]),/reservation list is invalid/);
+});
