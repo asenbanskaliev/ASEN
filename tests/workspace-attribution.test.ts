@@ -16,6 +16,15 @@ test("workspace conflict review conservatively identifies different actors on on
  assert.equal(conflicts[0]?.earlier.actor.id,"agent-a");assert.equal(conflicts[0]?.later.actor.id,"user-1");
  assert.match(visibleWorkspaceConflictRows(conflicts)[0]!,/potential conflict agent:agent-a -> user:user-1 src\/shared\.ts/);
 });
+test("workspace conflict review folds case on Windows and macOS, while preserving Linux path identity",()=>{
+ const changes=[
+  recordWorkspaceChange({...base,path:"src/Foo.ts",actor:{kind:"agent",id:"agent-a"}}),
+  recordWorkspaceChange({...base,path:"SRC/foo.ts",actor:{kind:"user",id:"user-1"}})
+ ];
+ assert.equal(findPotentialWorkspaceConflicts(changes,"win32").length,1);
+ assert.equal(findPotentialWorkspaceConflicts(changes,"darwin").length,1);
+ assert.equal(findPotentialWorkspaceConflicts(changes,"linux").length,0);
+});
 test("workspace change paths use portable separators and reject Windows absolute paths",()=>{assert.equal(recordWorkspaceChange({...base,path:"src\\nested\\file.ts"}).path,"src/nested/file.ts");assert.throws(()=>recordWorkspaceChange({...base,path:"C:\\secrets\\token"}),/escapes/);});
 test("workspace identity compares Win32 realpath and extended-length forms",()=>{
  assert.equal(sameWorkspaceIdentityPath("\\\\?\\C:\\Work\\ASEN","c:/work/asen","win32"),true);

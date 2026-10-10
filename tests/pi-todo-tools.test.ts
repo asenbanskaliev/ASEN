@@ -22,3 +22,18 @@ test("resuming a restart-blocked Todo requires explicit active Pi UI approval",a
  const result=await execute("call-3",params,undefined,undefined,{...host,hasUI:true,ui:{confirm:async(title:string,message:string)=>{questions.push(`${title}\n${message}`);return true;}}});
  assert.equal((await store.list(session))[0]?.current.state,"running");assert.equal((await store.history(todo.taskId,session)).at(-1)?.reason,"User confirmed blocked-task resume in Pi UI");assert.equal(questions.length,2);assert.match(questions[1]!,/Continue implementation[\s\S]*ASEN restarted.*explicit review/);assert.ok(result);
 });
+
+test("cancelling a pending blocked-task confirmation prevents a late approval from changing Todo state",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-todo-abort-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const project=await realpath(root),session={sessionId:"session-abort",projectId:project},store=await SessionTodoStore.open(path.join(root,"todos.json")),todo=await store.add("Continue safely",session);
+ await store.update(todo.taskId,session,1,"running");await store.recover(session);
+ const tools=new Map<string,any>();registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>store);
+ const execute=tools.get("asen_todo_update")!.execute as (...args:any[])=>Promise<unknown>,controller=new AbortController(),host={cwd:project,sessionManager:{getSessionId:()=>session.sessionId},hasUI:true};
+ let resolveConfirmation!:(confirmed:boolean)=>void,confirmStarted!:()=>void;
+ const started=new Promise<void>(resolve=>{confirmStarted=resolve;}),confirmation=new Promise<boolean>(resolve=>{resolveConfirmation=resolve;});
+ const pending=execute("call-abort",{id:todo.taskId,revision:3,state:"running"},controller.signal,undefined,{...host,ui:{confirm:()=>{confirmStarted();return confirmation;}}});
+ await started;controller.abort();await assert.rejects(pending,/Todo update cancelled/);
+ resolveConfirmation(true);await Promise.resolve();
+ assert.equal((await store.list(session))[0]?.current.state,"blocked");
+ assert.deepEqual((await store.history(todo.taskId,session)).map(event=>event.state),["planned","running","blocked"]);
+});

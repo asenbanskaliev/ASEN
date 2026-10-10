@@ -12,12 +12,12 @@ export interface PotentialWorkspaceConflict{path:string;earlier:WorkspaceChange;
  * attribution log does not contain file contents, so this is a review signal, not proof
  * of a lost update or a resolution decision. A later write never silently clears it.
  */
-export function findPotentialWorkspaceConflicts(changes:readonly WorkspaceChange[]):PotentialWorkspaceConflict[]{
+export function findPotentialWorkspaceConflicts(changes:readonly WorkspaceChange[],platform:NodeJS.Platform=process.platform):PotentialWorkspaceConflict[]{
  const latest=new Map<string,WorkspaceChange>(),conflicts=new Map<string,PotentialWorkspaceConflict>();
  for(const raw of changes){
-  const change=recordWorkspaceChange(raw),previous=latest.get(change.path);
-  if(previous&&(previous.actor.kind!==change.actor.kind||previous.actor.id!==change.actor.id))conflicts.set(change.path,{path:change.path,earlier:previous,later:change});
-  latest.set(change.path,change);
+  const change=recordWorkspaceChange(raw),key=platform==="win32"||platform==="darwin"?change.path.normalize("NFC").toLowerCase().normalize("NFC"):change.path,previous=latest.get(key);
+  if(previous&&(previous.actor.kind!==change.actor.kind||previous.actor.id!==change.actor.id))conflicts.set(key,{path:change.path,earlier:previous,later:change});
+  latest.set(key,change);
  }
  return [...conflicts.values()].map(conflict=>structuredClone(conflict));
 }
