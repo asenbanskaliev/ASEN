@@ -35,3 +35,22 @@ test("executable runtime blobs rename only when both sides retain mode 100755",(
  const changedMode=[{...renamed[0],mode:"100644"}];
  assert.deepEqual(classifyUniqueContentRenames(old,changedMode,old,changedMode),[]);
 });
+
+test("mode matrix: only exact mode matches may rename unique content",()=>{
+ for(const sourceMode of ["100644","100755"]){
+  for(const destinationMode of ["100644","100755"]){
+   const source={path:"old.md",sha256:"unique",mode:sourceMode};
+   const destination={path:"new.md",sha256:"unique",mode:destinationMode};
+   const expected=sourceMode===destinationMode?[{path:"old.md",to:"new.md"}]:[];
+   assert.deepEqual(classifyUniqueContentRenames([source],[destination],[source],[destination]),expected);
+  }
+ }
+});
+
+test("a same-hash stable file makes rename ambiguous even if its Git mode differs",()=>{
+ const removed={path:"old.md",sha256:"duplicate",mode:"100644"};
+ const added={path:"new.md",sha256:"duplicate",mode:"100644"};
+ const stableOld={path:"stable.md",sha256:"duplicate",mode:"100755"};
+ const stableNew={...stableOld};
+ assert.deepEqual(classifyUniqueContentRenames([removed],[added],[removed,stableOld],[added,stableNew]),[]);
+});
