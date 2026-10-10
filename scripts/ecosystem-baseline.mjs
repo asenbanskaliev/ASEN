@@ -748,9 +748,9 @@ export function collectRuntimeEdgeFiles(repository,commit,selector) {
     const match=/^(\d+) (\w+) ([a-f0-9]+)\t(.+)$/.exec(entry);if(!match)throw new Error("Malformed Git tree entry for runtime edge selector");
     const [,mode,type,id,filename]=match;
     if(!filename.startsWith("assets/agents/")||filename.slice("assets/agents/".length).includes("/")||!filename.endsWith(".md"))continue;
-    if(type!=="blob"||mode!=="100644")throw new Error("Runtime edge selector rejects non-regular files");
+    if(type!=="blob"||!["100644","100755"].includes(mode))throw new Error("Runtime edge selector rejects non-regular files");
     const bytes=git(repository,["cat-file","blob",id]);
-    files.push({path:filename,objectId:id,bytes:bytes.length,sha256:digest(bytes)});
+    files.push({path:filename,objectId:id,mode,bytes:bytes.length,sha256:digest(bytes)});
   }
   return files.sort((a,b)=>a.path.localeCompare(b.path,"en"));
 }
@@ -759,8 +759,8 @@ export function collectRuntimeEdgeFiles(repository,commit,selector) {
 export function classifyUniqueContentRenames(removed,added,oldRows,newRows) {
   const count=rows=>{const result=new Map();for(const row of rows)result.set(row.sha256,(result.get(row.sha256)??0)+1);return result;};
   const oldCount=count(oldRows),newCount=count(newRows),addedByHash=new Map(added.map(row=>[row.sha256,row]));
-  return removed.flatMap(row=>oldCount.get(row.sha256)===1&&newCount.get(row.sha256)===1&&addedByHash.has(row.sha256)
-    ?[{path:row.path,to:addedByHash.get(row.sha256).path}]:[]);
+  return removed.flatMap(row=>{const target=addedByHash.get(row.sha256);return oldCount.get(row.sha256)===1&&newCount.get(row.sha256)===1&&target&&row.mode===target.mode
+    ?[{path:row.path,to:target.path}]:[];});
 }
 
 /** Includes mapped runtime-only inputs in the source drift report; it never adopts them. */
@@ -783,7 +783,7 @@ export function detectMappedBaselineDrift(repository,before,after,adjudications,
         }
         for(const file of removed)if(!renamedOld.has(file.path))additionalChanges.push({kind:"REMOVED",path:file.path});
         for(const file of added)if(!renamedNew.has(file.path))additionalChanges.push({kind:"ADDED",path:file.path});
-        for(const file of newFiles)if(oldByPath.has(file.path)&&oldByPath.get(file.path).sha256!==file.sha256)additionalChanges.push({kind:"CONTENT_CHANGED",path:file.path});
+        for(const file of newFiles)if(oldByPath.has(file.path)&&(oldByPath.get(file.path).sha256!==file.sha256||oldByPath.get(file.path).mode!==file.mode))additionalChanges.push({kind:"CONTENT_CHANGED",path:file.path});
         globTargets.set(selector,[...new Set([...oldFiles,...newFiles].map(file=>file.path))]);
       }
       runtimeEdges.push({sourcePath:owner.path,targetPaths:globTargets.get(selector)});
