@@ -132,3 +132,7 @@ test("sparse command inventory fails closed",()=>{
 test("host version rejects negative major number",()=>{
  assert.throws(()=>validatePiHost(makeHost(),"-1.1.0"),/known Pi version/);
 });
+
+test("command inventory accepts multiple distinct registered commands",()=>{
+ assert.doesNotThrow(()=>validatePiCommandCollisions({getCommands:()=>[{name:"one"},{name:"two"}]},["asen"]));
+});
