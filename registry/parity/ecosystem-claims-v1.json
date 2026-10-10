@@ -296,14 +296,16 @@
       "implementation": [
         "src/runtime/workspace-attribution.ts",
         "src/runtime/workspace-store.ts",
-        "src/runtime/agent-lifecycle.ts"
+        "src/runtime/agent-lifecycle.ts",
+        "extensions/asen.ts"
       ],
       "tests": [
         "tests/workspace-attribution.test.ts",
-        "tests/agent-lifecycle.test.ts"
+        "tests/agent-lifecycle.test.ts",
+        "tests/extension-state-commands.test.ts"
       ],
       "remaining": [
-        "Actor/session/project/worktree attribution and bounded status projections are implemented. Durable concurrent workspace UI integration, conflict handling, restart and real Pi host evidence remain."
+        "Actor/session/project/worktree attribution, bounded projections, concurrent durable appends, reopen persistence and the session/project-filtered /asen-changes command are implemented and tested. Workspace conflict semantics and real Pi restart/host evidence remain."
       ],
       "stateful": true,
       "platformSensitive": true,
