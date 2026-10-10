@@ -50,3 +50,7 @@ test("empty command reservations are rejected",()=>{
 test("proxied command inventory arrays are rejected",()=>{
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>new Proxy([],{})},["asen"]),/inventory is malformed/);
 });
+
+test("an unrelated command does not collide with reserved names",()=>{
+ assert.doesNotThrow(()=>validatePiCommandCollisions({getCommands:()=>[{name:"external-command"}]},["asen"]));
+});
