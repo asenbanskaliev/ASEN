@@ -14,6 +14,7 @@ const changeKinds=["ADDED","REMOVED","RENAMED","CONTENT_CHANGED","PERMISSIONS_CH
 
 export function assertExactCandidate(repository,commit,baselineCommit){
  if(typeof commit!=="string"||!/^[a-f0-9]{40}$/.test(commit))throw new Error("Candidate must be an exact full Git commit SHA");
+ if(typeof baselineCommit!=="string"||!/^[a-f0-9]{40}$/.test(baselineCommit))throw new Error("Frozen source must be an exact full Git commit SHA");
  const git=(...args)=>execFileSync("git",["-C",repository,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"],env:{...process.env,GIT_NO_REPLACE_OBJECTS:"1"},maxBuffer:32*1024*1024}).trim();
  if(git("cat-file","-t",commit)!=="commit")throw new Error("Candidate SHA is unavailable as a commit object");
  try{git("merge-base","--is-ancestor",baselineCommit,commit);}catch{throw new Error("Candidate is not a descendant of the frozen source commit");}
