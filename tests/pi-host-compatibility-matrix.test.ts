@@ -67,3 +67,7 @@ test("host inventory rejects null entries",()=>{
 test("host inventory rejects nonstring command names",()=>{
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[{name:42}]},["asen"]),/inventory is malformed/);
 });
+
+test("host inventory rejects missing name descriptor",()=>{
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[{}]},["asen"]),/inventory is malformed/);
+});
