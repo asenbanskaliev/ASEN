@@ -5,31 +5,36 @@
   "license": "MIT",
   "type": "module",
   "files": [
+    "dist/",
     "extensions/",
     "src/",
     "skills/"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/**/*.test.ts",
-    "check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills && npm run audit:skill-parity && npm run audit:memory-parity && npm run audit:upstream-boundary",
-    "verify:pack": "node scripts/verify-pack.mjs",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "node scripts/run-tests.mjs",
+    "check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills && npm run audit:skill-parity && npm run audit:memory-parity && npm run audit:ecosystem && npm run audit:upstream-boundary",
+    "verify:pack": "node scripts/verify-pack-environment.mjs",
     "audit:parity": "node scripts/validate-phase10-parity.mjs",
     "audit:skills": "node scripts/audit-behavior-skills.mjs",
     "audit:skill-parity": "node scripts/validate-skill-contract-parity.mjs",
     "audit:memory-parity": "node scripts/audit-memory-parity.mjs",
-    "audit:upstream-boundary": "node scripts/audit-upstream-boundary.mjs"
+    "audit:upstream-boundary": "node scripts/audit-upstream-boundary.mjs",
+    "audit:ecosystem": "node scripts/ecosystem-baseline.mjs && node scripts/validate-ecosystem-claims.mjs",
+    "audit:ecosystem-candidate": "node scripts/ecosystem-candidate-report.mjs",
+    "prepack": "npm run build"
   },
   "pi": {
     "extensions": [
-      "./extensions"
+      "./extensions/asen.ts"
     ],
     "skills": [
       "./skills"
     ]
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": ">=0.85.1"
+    "@earendil-works/pi-coding-agent": ">=0.85.1 <2.0.0"
   },
   "peerDependenciesMeta": {
     "@earendil-works/pi-coding-agent": {
@@ -37,16 +42,19 @@
     }
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "^0.87.1",
+    "@earendil-works/pi-coding-agent": "^1.1.0",
     "@types/node": "^24.0.0",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.19.0"
   },
   "exports": {
-    "./extensions": "./extensions/index.ts",
+    "./extensions": "./extensions/asen.ts",
     "./skills/*": "./skills/*/SKILL.md"
+  },
+  "bin": {
+    "asen": "./dist/cli.js"
   }
 }

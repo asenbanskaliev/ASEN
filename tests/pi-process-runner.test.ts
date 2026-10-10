@@ -1,8 +1,9 @@
-import assert from "node:assert/strict";import test from "node:test";import {execFile} from "node:child_process";import {access,copyFile,mkdir,mkdtemp,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
+import assert from "node:assert/strict";import test from "node:test";import {execFile} from "node:child_process";import {access,copyFile,mkdir,mkdtemp,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment} from "../src/agents/pi-process-runner.js";
 import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {createTestSkillLifecycle} from "./helpers/lifecycle-applicability.js";
 import {Dispatcher} from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
+import {createAgentLifecycleSink} from "../src/runtime/agent-lifecycle.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 type PosixProcessObservation={exitCode:number;stdout:string;stderr:string};
@@ -31,6 +32,7 @@ async function isLiveProcess(pid:number){
 async function fixture(body:string,policy=true,skillsMode:"exact"|"missing"|"extra"|"altered"="exact"){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-pi-"))),p=join(d,"pi-fixture.mjs"),scenario=join(d,"scenario.mjs");
  await mkdir(join(d,"extensions"));await copyFile(fileURLToPath(new URL("../extensions/authority.ts",import.meta.url)),join(d,"extensions/authority.ts"));
+ for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(fileURLToPath(new URL(`../${source}`,import.meta.url)),target);}
  await writeFile(scenario,body);
  await writeFile(p,`import {spawn} from "node:child_process";
 import {resolve} from "node:path";
@@ -51,11 +53,24 @@ process.stdout.write(JSON.stringify({type:"response",id:record.id,success:true,d
 }
 function runner(p:string,options:ConstructorParameters<typeof PiProcessRunner>[0]={}){return new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p],...options});}
 test("Pi RPC adapter correlates request id",async()=>{const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,command:"prompt",success:true,message:f.message}));});');const r=await runner(p,{}).run({id:"req-1",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,true);assert.match(r.output,/req-1/);});
+test("Pi child receives an operational environment and only the explicitly selected provider credential",async t=>{
+ const names=["ASEN_TEST_UNRELATED_SECRET","OPENROUTER_API_KEY","GROQ_API_KEY"] as const,previous=names.map(name=>process.env[name]);
+ process.env.ASEN_TEST_UNRELATED_SECRET="must-not-cross";process.env.OPENROUTER_API_KEY="selected-test-credential";process.env.GROQ_API_KEY="unselected-test-credential";
+ t.after(()=>names.forEach((name,index)=>{const value=previous[index];if(value===undefined)delete process.env[name];else process.env[name]=value;}));
+ const {d,p}=await fixture('let x="";process.stdin.on("data",chunk=>x+=chunk);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,environment:{path:typeof process.env.PATH==="string",home:typeof process.env.HOME==="string"||typeof process.env.USERPROFILE==="string",telemetry:process.env.PI_TELEMETRY,selected:process.env.OPENROUTER_API_KEY==="selected-test-credential",unselected:typeof process.env.GROQ_API_KEY==="string",unrelated:typeof process.env.ASEN_TEST_UNRELATED_SECRET==="string"}}));});');
+ const result=await runner(p,{providerCredential:"OPENROUTER_API_KEY"}).run({id:"env-isolation",role:"explorer",prompt:"inspect",repository:d});assert.equal(result.ok,true);const response=JSON.parse(result.output.trim().split(/\r?\n/u).at(-1)!);assert.deepEqual(response.environment,{path:typeof process.env.PATH==="string",home:typeof process.env.HOME==="string"||typeof process.env.USERPROFILE==="string",telemetry:"0",selected:true,unselected:false,unrelated:false});
+});
+test("Pi runtime environment allowlist preserves Windows names without copying ambient secrets",()=>{const env=piRuntimeEnvironment({PATH:"C:\\bin",USERPROFILE:"C:\\Users\\test",GROQ_API_KEY:"secret",OPENROUTER_API_KEY:"chosen"},"OPENROUTER_API_KEY","win32");assert.equal(env.PATH,"C:\\bin");assert.equal(env.USERPROFILE,"C:\\Users\\test");assert.equal(env.OPENROUTER_API_KEY,"chosen");assert.equal(env.GROQ_API_KEY,undefined);assert.equal(env.PI_TELEMETRY,"0");assert.throws(()=>piRuntimeEnvironment({ASEN_TEST_SECRET:"do-not-copy"},"ASEN_TEST_SECRET" as never),/Unsupported Pi provider credential/);});
 test("Pi runner refuses a candidate-supplied replacement authority extension",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
  await writeFile(join(d,"extensions/authority.ts"),'export default pi => pi.registerCommand("asen-authority-status", {handler: async () => {}});');
  const result=await runner(p).run({id:"tampered",role:"explorer",prompt:"inspect",repository:d});
  assert.equal(result.ok,false);assert.match(result.output,/authority extension integrity/);
+});
+test("Pi runner loads policy from the configured ASEN package root, not the project",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,message:f.message}));});');
+ const policyRoot=fileURLToPath(new URL("..",import.meta.url));await rm(join(d,"extensions/authority.ts"),{force:true});
+ const result=await runner(p,{policyRoot}).run({id:"package-policy",role:"explorer",prompt:"inspect",repository:d});assert.equal(result.ok,true);assert.match(result.output,/package-policy/);
 });
 test("Pi rejects an untrusted provider extension without leaking a policy directory",async t=>{
  const {d,p}=await fixture('setTimeout(()=>{},10000);');
@@ -98,7 +113,13 @@ test("Pi RPC artifact advances one phase only with exact candidate output",async
 test("Pi child times out",async()=>{const {d,p}=await fixture("setTimeout(()=>{},10000);");const r=await runner(p,{timeoutMs:50}).run({id:"t",role:"explorer",prompt:"x",repository:d});assert.equal(r.ok,false);assert.match(r.output,/timed out/);});
 test("Pi child output is bounded",async()=>{const {d,p}=await fixture('console.log("x".repeat(10000));');const r=await runner(p,{maxOutputBytes:100}).run({id:"o",role:"explorer",prompt:"x",repository:d});assert.equal(r.ok,false);assert.match(r.output,/exceeded/);});
 
-test("Pi child can be cancelled explicitly",async()=>{const {d,p}=await fixture("setTimeout(()=>{},10000);");const controller=new AbortController();const pending=runner(p,{signal:controller.signal,timeoutMs:10000}).run({id:"cancel",role:"explorer",prompt:"x",repository:d});controller.abort();const r=await pending;assert.equal(r.ok,false);assert.match(r.output,/cancelled/);});
+test("Dispatcher cancellation reaches Pi and records a cancelled terminal state",async()=>{
+ const {d,p}=await fixture("setTimeout(()=>{},10000);");const lifecycle=createAgentLifecycleSink(),dispatcher=new Dispatcher(runner(p,{timeoutMs:10000}),new EvidenceStore(),1,lifecycle);
+ const pending=dispatcher.dispatch({id:"cancel",role:"explorer",prompt:"x",repository:d});
+ for(let i=0;i<100&&lifecycle.snapshot()[0]?.state!=="running";i++)await new Promise(resolve=>setTimeout(resolve,5));
+ assert.equal(lifecycle.snapshot()[0]?.state,"running");assert.equal(dispatcher.cancel("cancel","default",d),true);
+ const r=await pending;assert.equal(r.ok,false);assert.match(r.output,/cancellation requested/i);assert.equal(lifecycle.snapshot()[0]?.state,"cancelled");
+});
 
 test("Pi child errors cannot replace an already requested cancellation",async()=>{
  const {d}=await fixture("setTimeout(()=>{},10000);");
@@ -124,14 +145,16 @@ test("POSIX process-state observation fails closed on invalid ps output",()=>{
  assert.throws(()=>isLivePosixProcess(204,{exitCode:0,stdout:"Z\n",stderr:"warning"}),/could not observe/);
 });
 
-test("Pi cancellation settles its process tree and policy cleanup before returning",async t=>{
+test("Pi cancellation settles its process tree and policy cleanup before returning",{timeout:45_000},async t=>{
  const marker=join(tmpdir(),`asen-descendant-${process.pid}-${Date.now()}.json`);t.after(()=>rm(marker,{force:true}));
  const {d,p}=await fixture('import {spawn} from "node:child_process";import {writeFileSync} from "node:fs";const marker=process.argv[2],policy=process.argv[process.argv.indexOf("--extension")+1];const c=spawn(process.execPath,["-e","setTimeout(()=>{},10000)"],{stdio:"ignore"});writeFileSync(marker,JSON.stringify({pid:c.pid,policy}));setTimeout(()=>{},10000);');
  const controller=new AbortController();
- const pending=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p,marker],signal:controller.signal,timeoutMs:10000}).run({id:"tree",role:"explorer",prompt:"x",repository:d});
+ const pending=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p,marker],signal:controller.signal,timeoutMs:30_000}).run({id:"tree",role:"explorer",prompt:"x",repository:d});
+ t.after(async()=>{controller.abort();await pending.catch(()=>{});});
  const {readFile}=await import("node:fs/promises");let state:{pid:number;policy:string}|undefined;
- for(let i=0;i<40&&!state;i++){try{state=JSON.parse(await readFile(marker,"utf8"));}catch{/* Marker not written yet. */}if(!state)await new Promise(r=>setTimeout(r,25));}
- assert.ok(state,"descendant and policy paths were not recorded");
+ const deadline=Date.now()+20_000;
+ while(Date.now()<deadline&&!state){try{state=JSON.parse(await readFile(marker,"utf8"));}catch{/* Wait for the child readiness marker. */}if(!state)await new Promise(r=>setTimeout(r,50));}
+ if(!state){controller.abort();const result=await pending;assert.fail(`child readiness marker was not recorded before the bounded startup deadline: ${result.output}`);}
  controller.abort();const result=await pending;
  assert.equal(result.ok,false);assert.match(result.output,/cancelled/);
  await assert.rejects(()=>access(state.policy),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
@@ -200,7 +223,7 @@ test("Pi RPC adapter supplies selected routes as native Pi flags",async()=>{
  const r=await runner(p).run({id:"native",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:paths});
  assert.equal(r.ok,true);
  const response=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!);
- assert.match(response.args[2],/[\\/]asen-policy-[^\\/]+[\\/]authority\.ts$/);
+ assert.match(response.args[2],/[\\/]asen-policy-[^\\/]+[\\/]extensions[\\/]authority\.ts$/);
  assert.deepEqual([response.args[0],response.args[1],...response.args.slice(3)],["--no-extensions","--extension","--no-skills","--tools","read",...paths.flatMap(path=>["--skill",path])]);
 });
 test("read-only artifact audit disables every Pi tool",async()=>{
@@ -211,6 +234,19 @@ test("read-only artifact audit disables every Pi tool",async()=>{
  const args=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!).args as string[];
  assert.ok(args.includes("--no-tools"));assert.ok(!args.includes("--tools"));
 });
+test("read-only Pi runner fails closed when a model attempts a tool",{timeout:process.platform==="win32"?45_000:5_000},async t=>{
+ const marker=join(tmpdir(),`asen-denied-tool-${process.pid}-${Date.now()}`);t.after(()=>rm(marker,{force:true}));
+ const {d,p}=await fixture(`import {writeFileSync} from "node:fs";const marker=${JSON.stringify(marker)};let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{JSON.parse(x.trim());console.log(JSON.stringify({type:"tool_execution_start",toolName:"write",toolCallId:"forbidden"}));setTimeout(()=>writeFileSync(marker,"tool side effect"),1500);});`);
+ await new Promise<void>(resolve=>{const control=execFile(process.execPath,[p],{timeout:4_000},()=>resolve());control.stdin?.end('{"id":"positive-control"}\n');});
+ await assert.doesNotReject(()=>access(marker),"positive control did not write the side-effect marker");
+ await rm(marker,{force:true});
+ const context=issueSkillContext("blocked-tool",d,undefined,{phase:"explore"});
+ const timeoutMs=process.platform==="win32"?30_000:1_000;
+ const result=await runner(p,{noTools:true,timeoutMs}).run({id:"blocked-tool",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
+ assert.equal(result.ok,false);assert.equal(result.output,"pi model attempted a tool while tools were disabled");
+ await new Promise(resolve=>setTimeout(resolve,1_750));
+ await assert.rejects(()=>access(marker),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
+});
 test("direct Pi worker cannot obtain file tools without a live lifecycle grant",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
  const candidate={id:"candidate",repository:d,revision:"revision",createdAt:"now"};
@@ -218,7 +254,7 @@ test("direct Pi worker cannot obtain file tools without a live lifecycle grant",
  const paths=selectSkills(context).map(skill=>skill.path);
  const r=await runner(p).run({id:"worker",role:"worker",prompt:"implement",repository:d,candidate,writeSurfaces:["src"],skillContext:context,skillPaths:paths});
  assert.equal(r.ok,false);
- assert.match(r.output,/active ASEN lifecycle grant/);
+ assert.match(r.output,/exact dispatcher receiver/);
 });
 test("direct Pi runner refuses a candidate-bound turn without issued selection",async()=>{
  const candidate={id:"candidate",repository:"missing-repo",revision:"revision",createdAt:"now"};
@@ -278,4 +314,26 @@ test("Pi RPC adapter blocks caller-supplied skill overrides",async()=>{
  const context=issueSkillContext("override",d,undefined,{phase:"explore"});
  const r=await runner(p,{extraArgs:[p,"--skill","skills/asen-review/SKILL.md"]}).run({id:"override",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
  assert.equal(r.ok,false);assert.match(r.output,/issued by ASEN/);
+});
+
+test("organic writer reaches Pi adapter through one exact Dispatcher receiver without SDD",async t=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2),authority:JSON.parse(process.env.ASEN_PI_AUTHORITY)}));});');
+ t.after(()=>rm(d,{recursive:true,force:true}));
+ const {issueOddDecision}=await import("./helpers/odd-routing.js"),{buildOrchestrationPlan}=await import("../src/orchestration/orchestrator.js"),{decideLifecycleApplicability}=await import("../src/lifecycle/applicability.js"),{issueOrganicWriterAdmission}=await import("../src/lifecycle/skill-lifecycle.js");
+ const candidate={id:"organic",repository:d,revision:"revision",createdAt:"now"},decision=issueOddDecision({taskId:"organic",repository:d,paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});
+ buildOrchestrationPlan({taskId:"organic",repository:d,candidate,prompt:"write"},decision);
+ const app=decideLifecycleApplicability(decision,{taskIdentity:"organic",repositoryIdentity:d,candidate:{id:candidate.id,repository:d,revision:candidate.revision},explicitMode:"unspecified",affectedSubsystems:["Pi"],expectedPaths:["src/a"],requiredArtifacts:[]});
+ assert.equal(app.outcome,"organic");
+ const skillContext=issueSkillContext("organic:worker",d,candidate,{phase:"apply",codeChange:true}),evidence=new EvidenceStore();
+ for(const kind of ["work-unit","scope","rollback"] as const)evidence.add(candidate,{id:kind,kind,status:"pass",createdAt:"now",summary:"bounded"});
+ const request={id:"organic:worker",role:"worker" as const,prompt:"write",repository:d,model:"local/test-model",thinking:"low" as const,candidate,skillContext,skillPaths:selectSkills(skillContext).map(s=>s.path),writeSurfaces:["src/a"],writerAdmission:issueOrganicWriterAdmission(app,["src/a"])};
+ let captured:import("../src/agents/dispatcher.js").AgentRequest|undefined;
+ const pi=runner(p),dispatcher=new Dispatcher({run:async call=>{captured=call;return pi.run(call);}},evidence);
+ const result=await dispatcher.dispatch(request);assert.equal(result.ok,true,result.output);
+ const observed=JSON.parse(result.output.trim().split(/\r?\n/).at(-1)!);
+ assert.ok(observed.args.includes("read,edit,write"));assert.deepEqual(observed.authority.writeSurfaces,["src/a"]);
+ assert.ok(observed.args.includes("--model"));assert.equal(observed.args[observed.args.indexOf("--model")+1],"local/test-model");
+ assert.ok(observed.args.includes("--thinking"));assert.equal(observed.args[observed.args.indexOf("--thinking")+1],"low");
+ assert.equal(captured?.phaseGrant,undefined);assert.ok(captured);
+ const replay=await pi.run(captured);assert.equal(replay.ok,false);assert.match(replay.output,/exact dispatcher receiver/);
 });

@@ -33,6 +33,9 @@ test("real Pi session file and ASEN checkpoint resume across processes",t=>{
  assert.equal(state.skillContext.phase,"verify");
  assert.equal(state.skillContext.candidateRevision,"revision-A");
  assert.deepEqual(state.skillPaths,["skills/asen-phase-protocol/SKILL.md","skills/asen-verify/SKILL.md"]);
+ // The fixture deliberately has no runner receipt, so recovery must quarantine
+ // its asserted completion instead of treating fixture data as execution proof.
+ assert.deepEqual(state.agentLifecycle.map((record:{id:string;state:string;sessionId:string;projectId:string})=>[record.id,record.state,record.sessionId,record.projectId]),[["task:verify","interrupted",state.piSessionId,dir]]);
  for(const [args,reason] of [
   [["resume","project-B"],/project mismatch/],
   [["resume","project-A","other-repo"],/repository mismatch/],

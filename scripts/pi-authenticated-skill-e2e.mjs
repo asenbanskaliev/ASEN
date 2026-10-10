@@ -13,7 +13,7 @@ const repo=resolve(".");
 const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repo,encoding:"utf8"}).trim();
 if(process.env.ASEN_EXPECTED_SHA&&revision!==process.env.ASEN_EXPECTED_SHA)throw new Error("Authenticated Pi candidate does not match the PR HEAD");
 const provider=process.env.ASEN_PI_PROVIDER??"openrouter";
-const model=process.env.ASEN_PI_MODEL??"qwen/qwen3.8-27b:free";
+const model=process.env.ASEN_PI_MODEL??"nvidia/nemotron-3.5-lightning:free";
 const providerExtension=process.env.ASEN_PI_PROVIDER_EXTENSION;
 const candidate={id:"pr30-authenticated-pi",repository:repo,revision,createdAt:new Date().toISOString()};
 const recovered=process.env.ASEN_RECOVERY_FILE?await loadLifecycle(process.env.ASEN_RECOVERY_FILE,"pr30-authenticated-pi",candidate,recoveryKeyFromEnvironment()):undefined;

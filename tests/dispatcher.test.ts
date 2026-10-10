@@ -1,9 +1,11 @@
+import {consumeRunnerWriteReceiver} from "../src/agents/dispatcher.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Dispatcher, type AgentRunner } from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
+import {issueOddDecision} from "./helpers/odd-routing.js";import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";import {issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";import {createAgentLifecycleSink} from "../src/runtime/agent-lifecycle.js";
 
 const candidate={id:"candidate",repository:"r",revision:"sha",createdAt:"now"};
 function authorized(){
@@ -16,12 +18,13 @@ function authorized(){
 const sealedCodeChange=(taskId="a")=>issueSkillContext(taskId,"r",candidate,{phase:"apply",codeChange:true});
 const codeChangePaths=["skills/asen-phase-protocol/SKILL.md","skills/asen-work-unit/SKILL.md","skills/asen-safe-change/SKILL.md","skills/asen-apply/SKILL.md"];
 const writeRequest={id:"a",role:"worker" as const,prompt:"x",repository:"r",writeSurfaces:["src/a"],candidate,skillContext:sealedCodeChange(),skillPaths:codeChangePaths};
+function organicAdmission(taskId="a"){const decision=issueOddDecision({taskId,repository:"r",paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});buildOrchestrationPlan({taskId,repository:"r",prompt:"write",candidate},decision);const applicability=decideLifecycleApplicability(decision,{taskIdentity:taskId,repositoryIdentity:"r",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"organic",affectedSubsystems:["dispatcher"],expectedPaths:["src/a"],requiredArtifacts:[]});return issueOrganicWriterAdmission(applicability,["src/a"]);}
 
 test("dispatcher releases writer grant after completion", async()=>{
   const runner: AgentRunner={run:async r=>({id:r.id,ok:true,output:"ok"})};
   const d=new Dispatcher(runner,authorized());
-  await d.dispatch({...writeRequest,skillContext:sealedCodeChange()});
-  const second=await d.dispatch({...writeRequest,id:"b",skillContext:sealedCodeChange("b")});
+  await d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:organicAdmission()});
+  const second=await d.dispatch({...writeRequest,id:"b",skillContext:sealedCodeChange("b"),writerAdmission:organicAdmission("b")});
   assert.equal(second.ok,true);
 });
 
@@ -37,7 +40,7 @@ test("dispatcher blocks writes when mandatory mutation evidence is missing",asyn
  const evidence=new EvidenceStore();
  evidence.add(candidate,{id:"work-unit",kind:"work-unit",status:"pass",summary:"bounded",createdAt:"now"});
  const d=new Dispatcher(runner,evidence);
- await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange()}),/asen-safe-change.*scope evidence/);
+ await assert.rejects(()=>d.dispatch({...writeRequest,writerAdmission:organicAdmission(),skillContext:sealedCodeChange()}),/asen-safe-change.*scope evidence/);
  assert.equal(ran,false);
 });
 
@@ -47,7 +50,7 @@ test("evidence from another revision cannot authorize writes",async()=>{
  evidence.add(old,{id:"old-scope",kind:"scope",status:"pass",summary:"old",createdAt:"now"});
  evidence.add(old,{id:"old-rollback",kind:"rollback",status:"pass",summary:"old",createdAt:"now"});
  const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
- await assert.rejects(()=>new Dispatcher(runner,evidence).dispatch({...writeRequest,skillContext:sealedCodeChange()}),/work-unit evidence/);
+ await assert.rejects(()=>new Dispatcher(runner,evidence).dispatch({...writeRequest,writerAdmission:organicAdmission(),skillContext:sealedCodeChange()}),/work-unit evidence/);
 });
 
 test("non-worker agents cannot receive write authority",async()=>{
@@ -58,13 +61,66 @@ test("non-worker agents cannot receive write authority",async()=>{
 test("dispatcher bounds concurrent agent executions",async()=>{let active=0,max=0;const runner:AgentRunner={run:async r=>{active++;max=Math.max(max,active);await new Promise(resolve=>setTimeout(resolve,30));active--;return{id:r.id,ok:true,output:"ok"};}};const d=new Dispatcher(runner,new EvidenceStore(),2);await Promise.all(Array.from({length:6},(_,i)=>d.dispatch({id:String(i),role:"explorer",prompt:"x",repository:"r"})));assert.equal(max,2);});
 test("dispatcher rejects invalid concurrency limits",()=>{const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"ok"})};assert.throws(()=>new Dispatcher(runner,new EvidenceStore(),0),/positive integer/);});
 
+test("dispatcher cancellation stops a running runner and records a cancelled terminal state",async()=>{
+ const lifecycle=createAgentLifecycleSink();let observedSignal:AbortSignal|undefined;
+ const runner:AgentRunner={run:async(request,signal)=>{observedSignal=signal;return await new Promise((resolve,reject)=>{
+  const onAbort=()=>resolve({id:request.id,ok:false,output:"runner stopped"});
+  if(signal?.aborted)onAbort();else signal?.addEventListener("abort",onAbort,{once:true});
+  setTimeout(()=>{signal?.removeEventListener("abort",onAbort);resolve({id:request.id,ok:true,output:"done"});},1000);
+ })}};
+ const dispatcher=new Dispatcher(runner,new EvidenceStore(),1,lifecycle),pending=dispatcher.dispatch({id:"cancel-running",role:"explorer",prompt:"x",repository:"project",isolationKey:"session"});
+ for(let i=0;i<20&&lifecycle.snapshot()[0]?.state!=="running";i++)await new Promise(resolve=>setTimeout(resolve,1));
+ assert.equal(dispatcher.cancel("cancel-running","other-session","project"),false);assert.equal(dispatcher.cancel("cancel-running","session","other-project"),false);
+ assert.equal(dispatcher.cancel("cancel-running","session","project"),true);assert.equal(dispatcher.cancel("cancel-running","session","project"),false);
+ const result=await pending;assert.equal(result.ok,false);assert.equal(observedSignal?.aborted,true);
+ assert.equal(lifecycle.snapshot()[0]?.state,"cancelled");assert.equal(lifecycle.snapshot()[0]?.sessionId,"session");
+});
+
+test("dispatcher removes cancelled queued work without consuming a slot or blocking FIFO handoff",async()=>{
+ const lifecycle=createAgentLifecycleSink();let starts=0;const runner:AgentRunner={run:async(request,signal)=>{starts++;return await new Promise(resolve=>{
+  const done=()=>resolve({id:request.id,ok:false,output:"stopped"});
+  if(signal?.aborted)done();else signal?.addEventListener("abort",done,{once:true});
+ })}};
+ const dispatcher=new Dispatcher(runner,new EvidenceStore(),1,lifecycle);
+ const first=dispatcher.dispatch({id:"running",role:"explorer",prompt:"x",repository:"project"});
+ for(let i=0;i<20&&starts===0;i++)await new Promise(resolve=>setTimeout(resolve,1));
+ const cancelled=dispatcher.dispatch({id:"queued-cancel",role:"explorer",prompt:"x",repository:"project"});
+ assert.equal(dispatcher.cancel("queued-cancel","default","project"),true);await assert.rejects(cancelled,/cancelled while queued/);
+ assert.equal(lifecycle.snapshot().find(row=>row.id==="queued-cancel")?.state,"cancelled");assert.equal(starts,1);
+ const next=dispatcher.dispatch({id:"next",role:"explorer",prompt:"x",repository:"project"});
+ assert.equal(dispatcher.cancel("running","default","project"),true);await first;
+ for(let i=0;i<20&&starts<2;i++)await new Promise(resolve=>setTimeout(resolve,1));
+ assert.equal(starts,2);assert.equal(dispatcher.cancel("next","default","project"),true);await next;
+ assert.equal(lifecycle.snapshot().find(row=>row.id==="next")?.state,"cancelled");
+});
+
+test("dispatcher rejects a late successful result after cancellation",async()=>{
+ const lifecycle=createAgentLifecycleSink();let finish:(value:{id:string;ok:boolean;output:string})=>void=()=>{};
+ const runner:AgentRunner={run:async request=>new Promise(resolve=>{finish=resolve;})};
+ const dispatcher=new Dispatcher(runner,new EvidenceStore(),1,lifecycle),pending=dispatcher.dispatch({id:"late-success",role:"explorer",prompt:"x",repository:"project",isolationKey:"session"});
+ for(let i=0;i<20&&lifecycle.snapshot()[0]?.state!=="running";i++)await new Promise(resolve=>setTimeout(resolve,1));
+ assert.equal(dispatcher.cancel("late-success","session","project"),true);
+ finish({id:"late-success",ok:true,output:"late output"});
+ const result=await pending;assert.equal(result.ok,false);assert.match(result.output,/completion was not accepted/);
+ assert.equal(lifecycle.snapshot()[0]?.state,"cancelled");
+});
+
+test("validated runner results cannot complete another sink or another session/project",async()=>{
+ const firstLifecycle=createAgentLifecycleSink();const firstDispatcher=new Dispatcher({run:async request=>({id:request.id,ok:true,output:"real run"})},new EvidenceStore(),1,firstLifecycle);
+ const result=await firstDispatcher.dispatch({id:"shared-id",role:"explorer",prompt:"x",repository:"project-A",isolationKey:"session-A"});
+ assert.equal(firstLifecycle.snapshot()[0]?.state,"completed");
+ const otherLifecycle=createAgentLifecycleSink();otherLifecycle.queued({id:"shared-id",role:"explorer",owner:{kind:"system",id:"asen-dispatcher"},sessionId:"session-B",projectId:"project-B",createdAt:otherLifecycle.createdAt()});otherLifecycle.running("shared-id");
+ assert.throws(()=>otherLifecycle.completed("shared-id",result),/unused Dispatcher result for this sink and task identity/);
+ assert.equal(otherLifecycle.snapshot()[0]?.state,"running");
+});
+
 
 test("caller cannot omit mandatory safe-change skill from a code mutation",async()=>{
  const evidence=new EvidenceStore();
  evidence.add(candidate,{id:"only-unit",kind:"work-unit",status:"pass",summary:"bounded",createdAt:"now"});
  const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
  await assert.rejects(
-  ()=>new Dispatcher(runner,evidence).dispatch({...writeRequest,skillContext:sealedCodeChange()}),
+  ()=>new Dispatcher(runner,evidence).dispatch({...writeRequest,writerAdmission:organicAdmission(),skillContext:sealedCodeChange()}),
   /asen-safe-change.*scope evidence/
  );
 });
@@ -73,7 +129,7 @@ test("caller cannot omit mandatory safe-change skill from a code mutation",async
 test("dispatcher rejects mutable skill context even when its values look valid",async()=>{
  const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
  await assert.rejects(
-  ()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,skillContext:{codeChange:true} as unknown as import("../src/skills/context.js").IssuedSkillContext}),
+  ()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,writerAdmission:organicAdmission(),skillContext:{codeChange:true} as unknown as import("../src/skills/context.js").IssuedSkillContext}),
   /ASEN-issued skill selection context/
  );
 });
@@ -83,7 +139,7 @@ test("dispatcher rejects a forged frozen skill context",async()=>{
  const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:"bad"})};
  const forged=Object.freeze({codeChange:false});
  await assert.rejects(
-  ()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,skillContext:forged as unknown as import("../src/skills/context.js").IssuedSkillContext}),
+  ()=>new Dispatcher(runner,authorized()).dispatch({...writeRequest,writerAdmission:organicAdmission(),skillContext:forged as unknown as import("../src/skills/context.js").IssuedSkillContext}),
   /ASEN-issued skill selection context/
  );
 });
@@ -97,7 +153,7 @@ test("dispatcher rejects forged skill paths for an issued writer context",async(
   ["skills/asen-safe-change/SKILL.md","skills/asen-work-unit/SKILL.md"],
   ["skills/asen-work-unit/SKILL.md","skills/asen-safe-change/SKILL.md","skills/asen-safe-change/SKILL.md"]
  ]){
-  await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),skillPaths}),/skill paths do not match issued context/);
+  await assert.rejects(()=>d.dispatch({...writeRequest,writerAdmission:organicAdmission(),skillContext:sealedCodeChange(),skillPaths}),/skill paths do not match issued context/);
  }
 });
 
@@ -179,4 +235,78 @@ test("concurrent dispatchers cannot spend the same worker context twice",async()
  assert.equal(results.filter(r=>r.status==="fulfilled").length,1);
  assert.equal(results.filter(r=>r.status==="rejected"&&/used worker context/.test(String(r.reason))).length,1);
  assert.equal(started,1);
+});
+
+
+test("writer admission is opaque, one-use, and burns on a mismatched first claim",async()=>{
+ const admission=organicAdmission();
+ assert.deepEqual(Reflect.ownKeys(admission),[]);
+ const d=new Dispatcher({run:async request=>({id:request.id,ok:true,output:"ok"})},authorized());
+ await assert.rejects(()=>d.dispatch({...writeRequest,id:"wrong",skillContext:sealedCodeChange("wrong"),writerAdmission:admission}),/unused exact writer admission/);
+ await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:admission}),/unused exact writer admission/);
+});
+
+test("writer admission rejects structural forgery and duplicate or malformed surfaces",async()=>{
+ const d=new Dispatcher({run:async request=>({id:request.id,ok:true,output:"ok"})},authorized());
+ await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:Object.freeze({})}),/unused exact writer admission/);
+ const decision=issueOddDecision({taskId:"surface",repository:"r",paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});
+ buildOrchestrationPlan({taskId:"surface",repository:"r",prompt:"write",candidate},decision);
+ const applicability=decideLifecycleApplicability(decision,{taskIdentity:"surface",repositoryIdentity:"r",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"organic",affectedSubsystems:["dispatcher"],expectedPaths:["src/a"],requiredArtifacts:[]});
+ assert.throws(()=>issueOrganicWriterAdmission(applicability,["src/a","src/a"]),/unique bounded surfaces/);
+ const malformedDecision=issueOddDecision({taskId:"surface-control",repository:"r",paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});
+ buildOrchestrationPlan({taskId:"surface-control",repository:"r",prompt:"write",candidate},malformedDecision);
+ const malformedApplicability=decideLifecycleApplicability(malformedDecision,{taskIdentity:"surface-control",repositoryIdentity:"r",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"organic",affectedSubsystems:["dispatcher"],expectedPaths:["src/a"],requiredArtifacts:[]});
+ assert.throws(()=>issueOrganicWriterAdmission(malformedApplicability,[" src/a"]),/Invalid writer surface/);
+});
+
+
+test("dispatcher strips admission and conveys one exact-call runner receiver",async()=>{
+ let observed=false;
+ const runner:AgentRunner={run:async request=>{
+  observed=true;
+  assert.equal(request.writerAdmission,undefined);
+  assert.ok(request.runnerWriteReceiver);
+  assert.equal(consumeRunnerWriteReceiver(request.runnerWriteReceiver,request),true);
+  assert.equal(consumeRunnerWriteReceiver(request.runnerWriteReceiver,request),false);
+  return{id:request.id,ok:true,output:"ok"};
+ }};
+ const d=new Dispatcher(runner,authorized());
+ await d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:organicAdmission()});
+ assert.equal(observed,true);
+});
+
+
+test("runner receiver burns on a mismatched first claim",async()=>{
+ let receiver:object|undefined;
+ const runner:AgentRunner={run:async request=>{receiver=request.runnerWriteReceiver;return{id:request.id,ok:true,output:"ok"};}};
+ const d=new Dispatcher(runner,authorized());
+ await d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:organicAdmission()});
+ assert.ok(receiver);
+ assert.equal(consumeRunnerWriteReceiver(receiver,{...writeRequest,id:"wrong"}),false);
+ assert.equal(consumeRunnerWriteReceiver(receiver,writeRequest),false);
+});
+
+test("queued slot transfer preserves FIFO and concurrency against microtask arrivals",async()=>{
+ const started:string[]=[],finish=new Map<string,()=>void>();let active=0,max=0;
+ const runner:AgentRunner={run:r=>{started.push(r.id);max=Math.max(max,++active);return new Promise(resolve=>finish.set(r.id,()=>{active--;resolve({id:r.id,ok:true,output:"ok"});}));}};
+ const d=new Dispatcher(runner,new EvidenceStore(),1),request=(id:string)=>({id,role:"explorer" as const,prompt:"x",repository:"r"});
+ const a=d.dispatch(request("a"));await Promise.resolve();const b=d.dispatch(request("b"));
+ finish.get("a")!();let c:Promise<unknown>|undefined;queueMicrotask(()=>{c=d.dispatch(request("c"));});
+ await new Promise(resolve=>setImmediate(resolve));const order=[...started],maximum=max;
+ finish.get("b")!();await new Promise(resolve=>setImmediate(resolve));finish.get("c")!();await Promise.all([a,b,c]);
+ assert.equal(maximum,1);assert.deepEqual(order,["a","b"]);assert.deepEqual(started,["a","b","c"]);
+});
+
+test("dispatcher lifecycle projection covers queued running completed and failed without granting authority",async()=>{let tick=0;const now=()=>`2026-10-06T00:00:0${tick++}Z`,sink=createAgentLifecycleSink(now);const runner:AgentRunner={run:async r=>({id:r.id,ok:r.id==="ok",output:r.id==="ok"?"done":"runner failed"})};const d=new Dispatcher(runner,new EvidenceStore(),1,sink);assert.equal((await d.dispatch({id:"ok",role:"explorer",prompt:"x",repository:"r",isolationKey:"session"})).ok,true);assert.equal((await d.dispatch({id:"bad",role:"explorer",prompt:"x",repository:"r",isolationKey:"session"})).ok,false);const records=sink.snapshot();assert.deepEqual(records.map(r=>[r.id,r.state,r.sessionId,r.projectId]),[["ok","completed","session","r"],["bad","failed","session","r"]]);assert.equal(records[0]?.owner.id,"asen-dispatcher");});
+
+test("dispatcher records thrown runner failures without leaking execution authority",async()=>{let tick=0;const sink=createAgentLifecycleSink(()=>`2026-10-07T00:00:0${tick++}Z`);const d=new Dispatcher({run:async()=>{throw new Error("boom");}},new EvidenceStore(),1,sink);await assert.rejects(()=>d.dispatch({id:"throws",role:"explorer",prompt:"x",repository:"r",isolationKey:"session"}),/boom/);const record=sink.snapshot()[0];assert.equal(record?.state,"failed");assert.equal(record?.summary,"boom");});
+
+test("dispatcher rejects a result belonging to another task and records failure",async()=>{
+ let completed=false,failed=false;
+ const lifecycle={createdAt:()=>new Date().toISOString(),queued:()=>{},running:()=>{},completed:()=>{completed=true;},failed:()=>{failed=true;},cancelled:()=>{},snapshot:()=>[]};
+ const runner:AgentRunner={run:async()=>({id:"other-task",ok:true,output:"incorrect"})};
+ const dispatcher=new Dispatcher(runner,new EvidenceStore(),1,lifecycle);
+ await assert.rejects(()=>dispatcher.dispatch({id:"requested-task",role:"explorer",prompt:"inspect",repository:"r"}),/invalid or mismatched result/);
+ assert.equal(completed,false);
+ assert.equal(failed,true);
 });

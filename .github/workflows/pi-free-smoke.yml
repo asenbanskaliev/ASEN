@@ -18,7 +18,7 @@ jobs:
           node-version: 22
       - name: Install Pi and pi-free
         run: |
-          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0
           pi install npm:pi-free
       - name: Inspect pi-free registered models
         run: pi --list-models

@@ -182,3 +182,43 @@ test("apply can advance to a direct Git child while signed recovery retains prio
  const path=join(stateDir,"lifecycle.json");await saveLifecycle(path,flow.state,recoveryKey);
  const recovered=await loadLifecycle(path,"git-task",{...initial,revision:green},recoveryKey);assert.equal(recovered.state.nextPhase,"verify");assert.equal(recovered.state.records[6]?.artifact.revision,red);
 });
+test("D5 preparar fase conserva selección de defecto en el snapshot",async()=>{
+ const flow=await createTestSkillLifecycle("d5",candidate,["README.md"],"not-applicable");
+ const context=issueSkillContext("d5:worker",candidate.repository,candidate,{phase:"context-init",defect:true}),paths=selectSkills(context).map(s=>s.path);
+ flow.preparePhase(context,paths);assert.equal(flow.state.pendingAuthority?.selection.defect,true);
+ assert.ok(flow.state.pendingAuthority?.skillPaths.includes("skills/asen-defect-workflow/SKILL.md"));
+});
+test("D5 un lifecycle de defecto genuino rechaza omisión y downgrade",async()=>{
+ const flow=await createTestSkillLifecycle("d5-original",candidate,["README.md"],"not-applicable","defect");
+ for(const defect of [undefined,false]){
+  const context=issueSkillContext("d5-original:worker",candidate.repository,candidate,{phase:"context-init",...(defect===undefined?{}:{defect})});
+  assert.throws(()=>flow.preparePhase(context,selectSkills(context).map(s=>s.path)),/defecto/);
+ }
+});
+test("D5 recuperación firmada y proceso nuevo conservan el guard original de defecto",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-d5-recuperacion-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const path=join(dir,"flow.json"),key=randomBytes(32),flow=await createTestSkillLifecycle("d5-recuperado",candidate,["README.md"],"not-applicable","defect");
+ const context=issueSkillContext("d5-recuperado:worker",candidate.repository,candidate,{phase:"context-init",defect:true}),paths=selectSkills(context).map(s=>s.path);
+ flow.preparePhase(context,paths);await saveLifecycle(path,flow.state,key);
+ const original=JSON.parse(await readFile(path,"utf8"));assert.equal(original.defectIntent,true);assert.equal(original.version,3);
+ const artifact=completion("context-init",{task:"d5-recuperado"}).artifact;
+ await flow.runPhase(new Dispatcher(fixtureArtifactRunner(()=>artifact),new EvidenceStore()),{phase:"context-init",context,skillPaths:paths,prompt:"inspección",evidence:new EvidenceStore(),risk:"low"});
+ const nextPath=join(dir,"siguiente.json");await saveLifecycle(nextPath,flow.state,key);const next=await loadLifecycle(nextPath,"d5-recuperado",candidate,key);
+ const nextBad=issueSkillContext("d5-recuperado:explorer",candidate.repository,candidate,{phase:"explore"});assert.throws(()=>next.preparePhase(nextBad,selectSkills(nextBad).map(s=>s.path)),/defecto/);
+ const recovered=await loadLifecycle(path,"d5-recuperado",candidate,key),issued=recovered.reissuePendingAuthority();assert.equal(issued.context.defect,true);
+ const omitido=issueSkillContext("d5-recuperado:worker",candidate.repository,candidate,{phase:"context-init"});
+ assert.throws(()=>recovered.preparePhase(omitido,selectSkills(omitido).map(s=>s.path)),/defecto/);
+ const hook='data:text/javascript,import{registerHooks}from"node:module";registerHooks({resolve(s,c,n){try{return n(s,c)}catch(e){if(s.endsWith(".js"))return n(s.slice(0,-3)+".ts",c);throw e}}})';
+ const child=`import assert from 'node:assert/strict';import {loadLifecycle} from ${JSON.stringify(new URL('../src/lifecycle/skill-lifecycle.ts',import.meta.url).href)};import {issueSkillContext} from ${JSON.stringify(new URL('../src/skills/context.ts',import.meta.url).href)};import {selectSkills} from ${JSON.stringify(new URL('../src/skills/registry.ts',import.meta.url).href)};
+ const c=JSON.parse(process.env.ASEN_D5_CANDIDATE),f=await loadLifecycle(process.env.ASEN_D5_PATH,'d5-recuperado',c,Buffer.from(process.env.ASEN_D5_KEY,'hex')),good=f.reissuePendingAuthority();assert.equal(good.context.defect,true);
+ const bad=issueSkillContext('d5-recuperado:worker',c.repository,c,{phase:'context-init',defect:false});assert.throws(()=>f.preparePhase(bad,selectSkills(bad).map(s=>s.path)),/defecto/);process.stdout.write(JSON.stringify({guard:true,phase:f.state.nextPhase}));`;
+ const result=spawnSync(process.execPath,["--experimental-transform-types","--import",hook,"--input-type=module","-e",child],{encoding:"utf8",env:{...process.env,ASEN_D5_PATH:path,ASEN_D5_KEY:key.toString("hex"),ASEN_D5_CANDIDATE:JSON.stringify(candidate)},timeout:20000});
+ assert.equal(result.status,0,result.stderr);assert.deepEqual(JSON.parse(result.stdout),{guard:true,phase:"context-init"});assert.equal((result.stdout+result.stderr).includes(key.toString("hex")),false);
+ const unsigned=structuredClone(original);delete unsigned.defectIntent;await writeFile(path,JSON.stringify(unsigned));await assert.rejects(()=>loadLifecycle(path,"d5-recuperado",candidate,key),/integrity/);
+ for(const defectIntent of [false,"true",null]){
+  const modified={...original,defectIntent};const {mac:_mac,...payload}=modified;
+  modified.mac=createHmac("sha256",key).update("asen.lifecycle.explicit-selection.v3\0").update(JSON.stringify(payload)).digest("hex");
+  await writeFile(path,JSON.stringify(modified));await assert.rejects(()=>loadLifecycle(path,"d5-recuperado",candidate,key),/defecto/);
+ }
+ await writeFile(path,JSON.stringify(original));await assert.rejects(()=>loadLifecycle(path,"d5-recuperado",candidate,randomBytes(32)),/integrity/);
+});

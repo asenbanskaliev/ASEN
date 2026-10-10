@@ -7,6 +7,11 @@ import {
   claimedOrchestrationRouteContext,
 } from "../src/orchestration/orchestrator.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";
+import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
+import {mkdtemp,rm} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import path from "node:path";
+import {readProfilesFile,writeProfilesFile} from "../src/runtime/profile-store.js";
 
 const candidate={id:"c",repository:"r",revision:"sha",createdAt:"now"};
 const orchestrated=(taskId="t",repository="r")=>issueOddDecision({
@@ -23,6 +28,24 @@ test("orchestration uses one writer and read-only reviewer/verifier",()=>{
  assert.equal(p.decision,decision);
  assert.equal(Object.isFrozen(p.decision),true);
  assert.equal(JSON.stringify(p).match(/evidenceToken|authority|verdict|mutationCallback/giu),null);
+});
+
+test("persisted session/project/global routes reach each agent request after reload",async t=>{
+ const dir=await mkdtemp(path.join(tmpdir(),"asen-profile-route-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const layer=(routes:Record<string,{model:string;thinking?:"off"|"minimal"|"low"|"medium"|"high"}>)=>({schema:ASEN_PROFILES_SCHEMA,active:"active",profiles:[{name:"active",routes}]});
+ const values={global:layer({worker:{model:"global/worker"},explorer:{model:"global/explorer"},verifier:{model:"global/verifier"}}),project:layer({worker:{model:"project/worker"},explorer:{model:"project/explorer",thinking:"low"}}),session:layer({worker:{model:"session/worker",thinking:"high"}})};
+ for(const [scope,value] of Object.entries(values))await writeProfilesFile(path.join(dir,`${scope}.json`),value);
+ const runtimeProfiles={global:await readProfilesFile(path.join(dir,"global.json")),project:await readProfilesFile(path.join(dir,"project.json")),session:await readProfilesFile(path.join(dir,"session.json"))};
+ const p=buildOrchestrationPlan({taskId:"profiled",repository:"r",prompt:"p",candidate,runtimeProfiles},orchestrated("profiled"));
+ assert.deepEqual(p.agents.map(a=>[a.role,a.model,a.thinking]),[
+  ["explorer","project/explorer","low"],["worker","session/worker","high"],
+  ["reviewer",undefined,undefined],["verifier","global/verifier",undefined],
+ ]);
+});
+
+test("invalid profile routing fails closed before Pi dispatch",()=>{
+ const route={schema:ASEN_PROFILES_SCHEMA,active:"active",profiles:[{name:"active",routes:{worker:{model:"bad\nmodel"}}}]};
+ assert.throws(()=>buildOrchestrationPlan({taskId:"bad-profile",repository:"r",prompt:"p",runtimeProfiles:{global:route}},orchestrated("bad-profile")),/Invalid routed model profile/);
 });
 
 test("verification intent creates only verifier",()=>{

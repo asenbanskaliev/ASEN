@@ -1,0 +1,98 @@
+# yamllint disable rule:line-length
+name: Pi 1.1 runtime evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "extensions/**"
+      - "src/agents/**"
+      - "src/interaction/**"
+      - "src/lifecycle/**"
+      - "src/flow/odd-*.ts"
+      - "tests/writer-admission-4r.test.ts"
+      - "tests/odd-task-tracking.test.ts"
+      - "tests/code-intelligence.test.ts"
+      - "src/review/**"
+      - "src/delivery/**"
+      - "tests/work-unit-review-candidate.test.ts"
+      - ".github/workflows/pi-1-runtime-evidence.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  pi-runtime-evidence:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Assert exact candidate checkout
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node -e "const {execFileSync}=require('node:child_process');if(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==process.env.ASEN_EXPECTED_SHA)process.exit(1)"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+
+      - name: Install ASEN dependencies
+        run: npm install --ignore-scripts
+
+      - name: Install current stable Pi 1.1.0
+        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0
+
+      - name: Record Pi and Node versions
+        run: |
+          node --version
+          pi --version
+          test "$(pi --version | tr -d '\r')" = "1.1.0"
+
+      - name: Typecheck against repository dependencies
+        run: npm run typecheck
+
+      - name: Focused GSP-05E deterministic tests
+        run: node --import tsx --test tests/work-unit-review-candidate.test.ts tests/writer-admission-4r.test.ts tests/odd-task-tracking.test.ts
+
+      - name: Exercise ASEN extension facade with real Pi package
+        run: node scripts/pi-extension-e2e.mjs ./extensions/asen.ts
+
+      - name: Exercise ASEN extension inside real Pi 1.1 RPC runtime
+        env:
+          PI_OFFLINE: "1"
+          PI_TELEMETRY: "0"
+          PI_SKIP_VERSION_CHECK: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf '%s\n' '{"id":"commands","type":"get_commands"}'
+            printf '%s\n' '{"id":"review-usage","type":"prompt","message":"/asen-review"}'
+          } | timeout 30s pi -e ./extensions/asen.ts --mode rpc --no-session --no-tools --no-approve > pi-rpc.jsonl
+
+          cat pi-rpc.jsonl
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const rows=fs.readFileSync("pi-rpc.jsonl","utf8").trim().split("\n").filter(Boolean).map(JSON.parse);
+          const commands=rows.find(r=>r.type==="response"&&r.id==="commands");
+          if(!commands?.success) throw new Error("Pi get_commands did not succeed");
+          const names=(commands.data?.commands??[]).filter(c=>c.source==="extension").map(c=>c.name);
+          for(const required of ["asen","asen-skill-registry","asen-review"]){
+            if(!names.includes(required)) throw new Error(`Missing ASEN command in real Pi runtime: ${required}`);
+          }
+          const review=rows.find(r=>r.type==="response"&&r.id==="review-usage");
+          if(!review?.success||review.data?.disposition!=="handled"){
+            throw new Error("Pi did not handle /asen-review as an extension command");
+          }
+          console.log("PASS: Pi 1.1.0 loaded ASEN and handled /asen-review without an LLM run.");
+          NODE
+
+      - name: Preserve Pi runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: pi-1-runtime-evidence
+          path: pi-rpc.jsonl
+          if-no-files-found: error

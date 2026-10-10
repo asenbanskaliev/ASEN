@@ -1,0 +1,64 @@
+name: GSP 05E authenticated RDD
+
+on:
+  workflow_dispatch:
+  # Model-backed evidence is requested explicitly; automatic PR updates must not retry exhausted quotas.
+
+permissions:
+  contents: read
+
+jobs:
+  authenticated-rdd:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+      - name: Assert PR 32 branch
+        run: |
+          test "$GITHUB_REF_NAME" = "feat/strict-parity-prerequisites"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git status --porcelain=v1 | test ! -s /dev/stdin
+      - name: Install dependencies and Pi Free
+        run: |
+          npm install --ignore-scripts
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0
+          pi install npm:pi-free
+      - name: Run focused deterministic E tests
+        run: npx tsx --test tests/native-rdd-result.test.ts tests/work-unit-review-candidate.test.ts tests/review-chain.test.ts
+      - name: Execute one independent authenticated review
+        shell: bash
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$OPENROUTER_API_KEY"
+          git diff --exit-code
+          REVIEW_PROMPT='You are the independent reviewer. Also audit GSP-05F, GSP-05G and GSP-05H by inspecting src/review/bounded-correction.ts, src/review/dual-review.ts, src/review/dual-rejudgment.ts and tests/review-chain.test.ts. Require one-use correction provenance, exactly two blind judges with immutable canonical ledger, bounded two-round re-judgment, replay/forgery rejection, and no delivery/merge/release authority.  Read-only review only. Inspect the current repository candidate for GSP-05E, especially src/review/native-rdd-result.ts, src/review/ordinary-review-controller.ts, src/review/ordinary-review-command.ts, tests/native-rdd-result.test.ts and odd/tasks/skill-contract-parity.md. You may use read-only tools to inspect those repository files and tests. Do not edit files. Return exactly one JSON object, no markdown, with keys verdict and summary. verdict must be pass or fail. First run and inspect tests/native-rdd-result.test.ts. Trace the actual provenance chain: recordCompletedWorkUnit -> recordWorkUnitReviewCandidate -> prepareOrdinaryReview -> bindOrdinaryReviewCheckout -> awaitNativeRddResult -> bindNativeRddResult. Distinguish an untrusted plain external result from the bound result issued only after exact identity checks. Verify the one-use WeakSet/WeakMap provenance guards and that the bound result has no delivery/merge/release authority. Use fail only for a concrete defect you can cite from the inspected code or failing test; do not infer authority from plain input data.'
+          OUT="$(pi --no-session --provider openrouter --model nvidia/nemotron-3.5-lightning:free --print "$REVIEW_PROMPT")"
+          printf '%s\n' "$OUT" > authenticated-rdd-output.json
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const raw=fs.readFileSync("authenticated-rdd-output.json","utf8").trim();
+          const cleaned=raw.replace(/^```(?:json)?\s*/u,"").replace(/\s*```$/u,"").trim();
+          let value;try{value=JSON.parse(cleaned)}catch{throw new Error("Reviewer did not return JSON")}
+          if(!value||Object.getPrototypeOf(value)!==Object.prototype)throw new Error("Review output is not plain JSON");
+          const keys=Object.keys(value).sort();
+          if(JSON.stringify(keys)!==JSON.stringify(["summary","verdict"]))throw new Error("Unexpected review output shape");
+          if(value.verdict!=="pass"&&value.verdict!=="fail")throw new Error("Invalid review verdict");
+          if(typeof value.summary!=="string"||!value.summary.trim())throw new Error("Missing review summary");
+          console.log(JSON.stringify({verdict:value.verdict,summary:value.summary}));
+          if(value.verdict!=="pass")process.exit(2);
+          NODE
+          git diff --exit-code
+      - name: Preserve authenticated review evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: gsp-05e-authenticated-rdd
+          path: authenticated-rdd-output.json
+          if-no-files-found: error

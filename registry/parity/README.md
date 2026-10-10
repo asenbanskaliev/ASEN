@@ -1,6 +1,8 @@
 # ASEN External ecosystem parity audit
 
-This registry measures observable capability parity. It does not measure file count or source-code similarity.
+This registry measures observable capability parity. It does not measure file count or source-code similarity. The Phase 10 YAML inventory is historical and its primitive PARITY labels are not current strict ecosystem FULL claims.
+
+Current strict ecosystem claims live in `ecosystem-claims-v1.json`, tied to exact Git-object and media research manifests. Run `npm run audit:ecosystem`; valid metadata alone never proves runtime parity. The complete ECO comparison and unfinished units are in `odd/tasks/ecosystem-reconciliation.md` and `odd/tasks/ecosystem-strict-parity.md`.
 
 Baselines:
 - ASEN: `3c76ed7aa9be124288397ca8baf35ceacfe5889c`
@@ -12,7 +14,7 @@ Baselines:
 
 `skill-sources-v1.json` freezes one exact repository commit by byte SHA-256. It contains all 12 source `SKILL.md` documents, their present local support contracts, and the support contract that is explicitly absent at that baseline. The manifest records provenance and hashes only; it does not copy source text.
 
-`skill-contract-parity-v1.json` is the strict 12/12 behavioral matrix. Every row maps one manifest source ID to an ASEN Skill and declares nonempty activation, hard-rule, decision-gate, output, and prohibited-behavior contract IDs. Every gap and equivalent adaptation points to a declared contract. The initial baseline is deliberately non-final: 11 rows are `PARTIAL`, and the registry row is `MISSING` until its runtime behavior exists.
+`skill-contract-parity-v1.json` is the strict 12/12 behavioral matrix. Every row maps one manifest source ID to an ASEN Skill and declares nonempty activation, hard-rule, decision-gate, output, and prohibited-behavior contract IDs. Every gap and equivalent adaptation points to a declared contract. All 12 rows currently remain PARTIAL; registry discovery/refresh is implemented. GSP-06 is closed at the user's accepted provider-limited scope without manufacturing output evidence or FULL.
 
 Statuses: `FULL`, `PARTIAL`, `MISSING`.
 

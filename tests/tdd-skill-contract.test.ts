@@ -81,7 +81,7 @@ test("SRC-SKILL-005 binds deterministic TDD evidence while remaining PARTIAL",as
  assert.equal(row.asenSkill,"skills/asen-odd/SKILL.md");
  assert.equal(row.status,"PARTIAL");
  assert.deepEqual(row.gaps,[
-  {contractId:"ODD-RULE-001",note:"ODD Skill normalization remains pending GSP-05I."},
+  {contractId:"ODD-RULE-001",note:"Deterministic ODD normalization and Pi-host tracking bridge are implemented; Pi Free generated-output evidence remains pending GSP-06."},
   {contractId:"ODD-OUT-001",note:"Pi Free positive and negative generated-output, package, and platform evidence remains pending GSP-06."}
  ]);
  assert.deepEqual(row.evidence,[

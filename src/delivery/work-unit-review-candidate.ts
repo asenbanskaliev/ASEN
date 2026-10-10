@@ -1,3 +1,4 @@
+import {isProxy} from "node:util/types";
 import {
   claimCompletedWorkUnit,
   type CompletedWorkUnit,
@@ -27,6 +28,7 @@ export type WorkUnitReviewCandidate = Readonly<WorkUnitReviewCandidateInput & {
   completedWorkUnit: CompletedWorkUnit;
 }>;
 
+const issuedCandidates=new WeakSet<object>(),claimedCandidates=new WeakSet<object>();
 const candidateKeys = [
   "kind", "identity", "revision", "treeIdentity", "repositoryIdentity", "featureIdentity",
   "taskIdentity", "taskDocumentPath", "boundaryId", "previousReviewedBoundary", "deliveryRelationship",
@@ -60,7 +62,9 @@ export function recordWorkUnitReviewCandidate(
   candidate: WorkUnitReviewCandidateInput,
 ): WorkUnitReviewCandidate {
   claimCompletedWorkUnit(completed);
+  if(isProxy(candidate))throw new Error("El candidato de revisión debe contener datos planos");
   const input = exactRecord(candidate, candidateKeys, "review candidate");
+  if(isProxy(input.deliveryRelationship))throw new Error("La relación de entrega debe contener datos planos");
   if (input.kind !== "commit" && input.kind !== "pr_slice") throw new Error("review candidate kind is invalid");
   const kind: ReviewCandidateKind = input.kind;
   const facts = {
@@ -90,5 +94,13 @@ export function recordWorkUnitReviewCandidate(
     : !canonicalPullRequest(facts.identity, completed.repositoryIdentity)) {
     throw new Error("candidate identity does not match its kind and repository");
   }
-  return Object.freeze({ completedWorkUnit: completed, ...facts });
+  const result=Object.freeze({ completedWorkUnit: completed, ...facts });
+  issuedCandidates.add(result);return result;
+}
+
+/** Admisión de un uso; no emite revisión, autenticación ni entrega. */
+export function claimWorkUnitReviewCandidate(value:unknown):WorkUnitReviewCandidate{
+ if(typeof value!=="object"||value===null||!issuedCandidates.has(value))throw new Error("Se requiere un candidato de work-unit genuino");
+ if(claimedCandidates.has(value))throw new Error("El candidato de revisión ya fue consumido");
+ claimedCandidates.add(value);return value as WorkUnitReviewCandidate;
 }

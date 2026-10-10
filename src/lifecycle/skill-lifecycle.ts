@@ -1,15 +1,17 @@
 import {open,readFile,rename,unlink} from "node:fs/promises";
 import {dirname,basename,join} from "node:path";
 import {createHash,createHmac,randomUUID,timingSafeEqual} from "node:crypto";
+import {types} from "node:util";
+import {validateWriteGrant} from "../policies/scopes.js";
 import type {Candidate,Risk} from "../core/types.js";
-import {issueSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
+import {issueSkillContext,isIssuedSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import type {Dispatcher,AgentRequest} from "../agents/dispatcher.js";
 import {isIssuedAgentArtifactProof} from "../agents/pi-artifact-runner.js";
 import {EvidenceStore} from "../evidence/store.js";
 import {authorizeRelease,authorizeVerified} from "../verify/verifier.js";
 import {assertDirectGitParent} from "../evidence/git-lineage.js";
-import {claimLifecycleApplicability,tddObligationFor,workflowSelectionDescriptionForApplicability,type LifecycleApplicability,type TddObligation} from "./applicability.js";
+import {claimLifecycleApplicability,hasOriginalWriterIntent,tddObligationFor,hasOriginalDefectIntent,workflowSelectionDescriptionForApplicability,type LifecycleApplicability,type TddObligation} from "./applicability.js";
 import type {WorkflowSelectionDescription} from "./workflow-selection.js";
 import {claimStrictTddCompletion,type StrictTddCompletion} from "../test/strict-tdd-cycle.js";
 import {claimNonTddAlternativeResult,type NonTddAlternativeResult} from "../test/non-tdd-alternative.js";
@@ -44,6 +46,49 @@ const recoveredObligations=new WeakMap<SkillLifecycle,TddObligation>();
 const lifecycleDescriptions=new WeakMap<SkillLifecycle,WorkflowSelectionDescription>();
 const snapshotDescriptions=new WeakMap<object,WorkflowSelectionDescription>();
 const snapshotObligations=new WeakMap<object,TddObligation>();
+const lifecycleDefects=new WeakSet<SkillLifecycle>(),snapshotDefects=new WeakSet<object>();
+type WriterAdmission={task:string;repository:string;candidateId:string;revision:string;surfaces:readonly string[];originalDefect:boolean;used:boolean};
+const writerAdmissions=new WeakMap<object,WriterAdmission>();
+function writerText(value:unknown,label:string):string{
+ if(typeof value!=="string"||!value||value.length>4096||value!==value.trim()||value!==value.normalize("NFC")||/[\u0000-\u001f\u007f-\u009f]/u.test(value))throw new Error(`Invalid ${label}`);
+ return value;
+}
+function writerSurfaces(value:unknown):string[]{
+ if(typeof value!=="object"||value===null||types.isProxy(value)||!Array.isArray(value)||Object.getPrototypeOf(value)!==Array.prototype||!value.length||value.length>256)throw new Error("Writer admission requires bounded surfaces");
+ const keys=Reflect.ownKeys(value);
+ if(keys.length!==value.length+1||keys.some(key=>typeof key!=="string"||key!=="length"&&!/^(0|[1-9][0-9]*)$/u.test(key)))throw new Error("Writer admission requires exact surfaces");
+ const surfaces=Array.from({length:value.length},(_,i)=>{
+  const descriptor=Object.getOwnPropertyDescriptor(value,String(i));
+  if(!descriptor?.enumerable||!("value" in descriptor))throw new Error("Writer admission requires exact surfaces");
+  const surface=writerText(descriptor.value,"writer surface"),path=surface.replace(/\/$/u,"");
+  if(path.startsWith("/")||path.includes("\\")||path.includes(":")||path.includes("*")||path.split("/").some(part=>!part||part==="."||part===".."))throw new Error("Writer admission requires bounded surfaces");
+  return surface;
+ });
+ if(new Set(surfaces.map(v=>v.replace(/\/$/u,""))).size!==surfaces.length)throw new Error("Writer admission requires unique bounded surfaces");
+ validateWriteGrant({agentId:"admission",repository:"admission",surfaces},[]);
+ return surfaces;
+}
+function writerAdmission(task:string,candidate:Candidate,surfaces:readonly string[],original?:LifecycleApplicability):object{
+ const bounded=writerSurfaces(surfaces),token=Object.freeze({});
+ if(original&&bounded.some(surface=>!original.expectedPaths.includes(surface)))throw new Error("Writer surfaces exceed the original declared scope");
+ writerAdmissions.set(token,{task:writerText(task,"writer task"),repository:writerText(candidate.repository,"writer repository"),candidateId:writerText(candidate.id,"writer candidate id"),revision:writerText(candidate.revision,"writer revision"),surfaces:Object.freeze(bounded),originalDefect:original?hasOriginalDefectIntent(original):false,used:false});
+ return token;
+}
+export function issueOrganicWriterAdmission(applicability:LifecycleApplicability,surfaces:readonly string[]):object{
+ claimLifecycleApplicability(applicability);
+ if(applicability.outcome!=="organic"||!hasOriginalWriterIntent(applicability))throw new Error("Organic writer admission requires organic write applicability");
+ return writerAdmission(applicability.taskIdentity,{...applicability.candidate,createdAt:"organic-applicability"},surfaces,applicability);
+}
+/** Burn before any Dispatcher identity, Skill, evidence, or scope gate. */
+export function consumeWriterAdmission(token:unknown,request:AgentRequest):boolean{
+ const a=typeof token==="object"&&token!==null?writerAdmissions.get(token):undefined;
+ if(!a||a.used)return false;
+ a.used=true;
+ if(a.originalDefect&&(!isIssuedSkillContext(request.skillContext)||request.skillContext.defect!==true))return false;
+ if(!request.candidate||!request.writeSurfaces||request.role!=="worker"||request.candidate.repository!==request.repository)return false;
+ const task=request.id.replace(/:worker$/u,"");
+ return (a.task===task||a.task===request.id)&&a.repository===request.repository&&a.candidateId===request.candidate.id&&a.revision===request.candidate.revision&&a.surfaces.length===request.writeSurfaces.length&&a.surfaces.every((v,i)=>v===request.writeSurfaces![i]);
+}
 type CompletionAdmission={lifecycle:SkillLifecycle;repository:string;candidateId:string;revision:string;record:TddCompletionRecord;used:boolean};
 const completionAdmissions=new WeakMap<object,CompletionAdmission>();
 function issueCompletionAdmission(lifecycle:SkillLifecycle,snapshot:LifecycleSnapshot):Readonly<Record<string,never>>{
@@ -64,12 +109,13 @@ class LifecycleConstructionRequest{
  isValid():boolean{return this.#brand;}
 }
 const lifecycleConstructionRequests=new WeakSet<LifecycleConstructionRequest>();
-function constructLifecycle(taskId:string,candidate:Candidate,snapshot?:LifecycleSnapshot,obligation?:TddObligation,description?:WorkflowSelectionDescription):SkillLifecycle{
+function constructLifecycle(taskId:string,candidate:Candidate,snapshot?:LifecycleSnapshot,obligation?:TddObligation,description?:WorkflowSelectionDescription,defect=false):SkillLifecycle{
  const request=new LifecycleConstructionRequest(taskId,candidate,snapshot);
  lifecycleConstructionRequests.add(request);
  const lifecycle=new SkillLifecycle(request);
  if(obligation)liveObligations.set(lifecycle,obligation);
  if(description)lifecycleDescriptions.set(lifecycle,description);
+ if(defect)lifecycleDefects.add(lifecycle);
  return lifecycle;
 }
 const phaseGrants=new WeakMap<object,{requestId:string;repository:string;candidateId:string;revision:string;phase:LifecyclePhase;used:boolean;active:boolean;piUsed:boolean}>();
@@ -102,7 +148,7 @@ export class SkillLifecycle{
   this.#snapshot=snapshot?copy(snapshot):{version:1,taskId,candidate:structuredClone(candidate),nextPhase:"context-init",records:[]};
   if(snapshot) validateSnapshot(this.#snapshot,taskId,candidate);
  }
- get state():LifecycleSnapshot{const snapshot=copy(this.#snapshot),description=lifecycleDescriptions.get(this),obligation=liveObligations.get(this)??recoveredObligations.get(this);if(description)snapshotDescriptions.set(snapshot,description);if(obligation)snapshotObligations.set(snapshot,obligation);return snapshot;}
+ get state():LifecycleSnapshot{const snapshot=copy(this.#snapshot),description=lifecycleDescriptions.get(this),obligation=liveObligations.get(this)??recoveredObligations.get(this);if(description)snapshotDescriptions.set(snapshot,description);if(obligation)snapshotObligations.set(snapshot,obligation);if(lifecycleDefects.has(this))snapshotDefects.add(snapshot);return snapshot;}
  promoteCandidateRevision(revision:string):void{
   const s=this.#snapshot,obligation=liveObligations.get(this);
   if(!obligation)throw new Error("Raw revision promotion is unavailable for recovery-unknown TDD obligations");
@@ -131,6 +177,7 @@ export class SkillLifecycle{
   const selection:SkillSelectionContext={phase,
    ...(context.risk===undefined?{}:{risk:context.risk}),
    ...(context.codeChange===undefined?{}:{codeChange:context.codeChange}),
+   ...(context.defect===undefined?{}:{defect:context.defect}),
    ...(context.behaviorChange===undefined?{}:{behaviorChange:context.behaviorChange}),
    ...(context.filesTouched===undefined?{}:{filesTouched:context.filesTouched}),
    ...(context.verification===undefined?{}:{verification:context.verification})};
@@ -150,7 +197,7 @@ export class SkillLifecycle{
   if(input.phase==="apply"&&(!input.writeSurfaces||!input.writeSurfaces.length))throw new Error("Lifecycle apply requires bounded write surfaces");
   if(input.phase!=="apply"&&input.writeSurfaces?.length)throw new Error("Lifecycle write authority only available in apply");
   const request:AgentRequest={id:`${s.taskId}:${role}`,role,expectedPhase:input.phase,prompt:input.prompt,repository:s.candidate.repository,candidate:s.candidate,skillContext:input.context,skillPaths:input.skillPaths,
-   ...(input.phase==="apply"?{writeSurfaces:input.writeSurfaces!}:{})};
+   ...(input.phase==="apply"?{writeSurfaces:input.writeSurfaces!,writerAdmission:writerAdmission(s.taskId,s.candidate,input.writeSurfaces!)}:{})};
   // Validate authority before invoking the agent, then validate its result before advancing.
   this.#assertAuthority(input.phase,role,input.context,input.skillPaths);
   request.phaseGrant=issuePhaseGrant(request.id,s.candidate,input.phase);
@@ -176,6 +223,7 @@ export class SkillLifecycle{
   const s=this.#snapshot;
   if(role!==roleFor[phase])throw new Error("Lifecycle role lacks authority");
   if(!matchesIssuedSkillContext(context,`${s.taskId}:${role}`,s.candidate.repository,s.candidate)||context.phase!==phase)throw new Error("Lifecycle context lacks phase/task/candidate authority");
+  if(lifecycleDefects.has(this)&&context.defect!==true)throw new Error("El contexto no puede omitir la intención original de defecto");
   const expected=selectSkills(context).map(skill=>skill.path);
   if(expected.length!==paths.length||expected.some((path,index)=>path!==paths[index]))throw new Error("Lifecycle skill routes mismatch");
  }
@@ -199,7 +247,7 @@ export function createSkillLifecycle(applicability:LifecycleApplicability):Skill
  if(applicability.outcome!=="structured")throw new Error("SkillLifecycle requires structured applicability");
  const description=workflowSelectionDescriptionForApplicability(applicability);
  const candidate:Candidate={...applicability.candidate,createdAt:"lifecycle-applicability"};
- return constructLifecycle(applicability.taskIdentity,candidate,undefined,obligation,description);
+ return constructLifecycle(applicability.taskIdentity,candidate,undefined,obligation,description,hasOriginalDefectIntent(applicability));
 }
 /** Reads private command provenance by exact snapshot identity without inspecting caller data. */
 export function workflowSelectionDescriptionForSnapshot(value:unknown):WorkflowSelectionDescription|undefined{return typeof value==="object"&&value!==null?snapshotDescriptions.get(value):undefined;}
@@ -219,9 +267,9 @@ function validateSnapshot(value:unknown,taskId:string,caller:Candidate):Lifecycl
  for(let i=0;i<records.length;i++){const phase=lifecyclePhases[i],record=exact(records[i],["phase","role","artifact","skillPaths"],"lifecycle record"),artifact=exact(record.artifact,["kind","content","repository","candidateId","revision"],"lifecycle artifact"),paths=exactArray(record.skillPaths,"lifecycle skill routes"),revision=revisions&&i<=6?revisions[0]:candidate.revision;if(!phase||record.phase!==phase||record.role!==roleFor[phase])throw new Error("Lifecycle recovery phase gap");if(artifact.kind!==requiredArtifact[phase]||typeof artifact.content!=="string"||!artifact.content.trim()||artifact.repository!==candidate.repository||artifact.candidateId!==candidate.id||artifact.revision!==revision)throw new Error("Lifecycle recovery artifact mismatch");if(paths.some(path=>typeof path!=="string"||!/^skills\/asen-[a-z-]+\/SKILL\.md$/.test(path)))throw new Error("Lifecycle recovery skill routes invalid");}
  if(raw.nextPhase!==(lifecyclePhases[records.length]??null))throw new Error("Lifecycle recovery next phase mismatch");
  if(version===2){const promotion=exact(raw.tddPromotion,["method","record"],"TDD promotion"),record=validateTddCompletionRecord(promotion.record),recordRevisions=record.promotionMethod==="strict-completion"?[record.revisions.baseline,record.revisions.red,record.revisions.green,record.revisions.terminal,record.revisions.final]:[record.revisions.baseline,record.revisions.final],honest=honestRevisionChain(candidate.repository,recordRevisions);if(raw.baselineRevision!==record.obligation.candidate.revision||promotion.method!==record.promotionMethod||raw.taskId!==record.obligation.taskIdentity||candidate.repository!==record.obligation.repositoryIdentity||candidate.id!==record.obligation.candidate.id||candidate.revision!==record.revisions.final||!revisions||!sameStrings(revisions as string[],honest)||raw.nextPhase!=="verify"&&raw.nextPhase!=="archive"&&raw.nextPhase!==null)throw new Error("Lifecycle TDD completion binding mismatch");}
- else if(raw.pendingAuthority){const pending=exact(raw.pendingAuthority,["phase","role","selection","skillPaths"],"pending authority"),selectionValue=pending.selection,hasSelection=(key:string)=>typeof selectionValue==="object"&&selectionValue!==null&&Object.hasOwn(selectionValue,key),selectionKeys=["phase",...(["risk","codeChange","behaviorChange","filesTouched","verification"] as const).filter(hasSelection)];
+ else if(raw.pendingAuthority){const pending=exact(raw.pendingAuthority,["phase","role","selection","skillPaths"],"pending authority"),selectionValue=pending.selection,hasSelection=(key:string)=>typeof selectionValue==="object"&&selectionValue!==null&&Object.hasOwn(selectionValue,key),selectionKeys=["phase",...(["risk","codeChange","behaviorChange","defect","filesTouched","verification"] as const).filter(hasSelection)];
   // SAFETY: exact() proved every allowed SkillSelectionContext own field; the branch below validates each value.
-  const selection=exact(selectionValue,selectionKeys,"pending selection") as unknown as SkillSelectionContext,paths=exactArray(pending.skillPaths,"pending skill routes") as string[];if(!raw.nextPhase||pending.phase!==raw.nextPhase||pending.role!==roleFor[pending.phase as LifecyclePhase]||selection.phase!==pending.phase||selection.risk!==undefined&&!(["low","medium","high","unknown"] as unknown[]).includes(selection.risk)||selection.codeChange!==undefined&&typeof selection.codeChange!=="boolean"||selection.behaviorChange!==undefined&&typeof selection.behaviorChange!=="boolean"||selection.verification!==undefined&&typeof selection.verification!=="boolean"||selection.filesTouched!==undefined&&(!Number.isInteger(selection.filesTouched)||selection.filesTouched<0))throw new Error("Lifecycle recovery pending authority invalid");const expected=selectSkills(selection).map(skill=>skill.path);if(!sameStrings(expected,paths))throw new Error("Lifecycle recovery pending Skill routes mismatch");}
+  const selection=exact(selectionValue,selectionKeys,"pending selection") as unknown as SkillSelectionContext,paths=exactArray(pending.skillPaths,"pending skill routes") as string[];if(!raw.nextPhase||pending.phase!==raw.nextPhase||pending.role!==roleFor[pending.phase as LifecyclePhase]||selection.phase!==pending.phase||selection.risk!==undefined&&!(["low","medium","high","unknown"] as unknown[]).includes(selection.risk)||selection.codeChange!==undefined&&typeof selection.codeChange!=="boolean"||selection.behaviorChange!==undefined&&typeof selection.behaviorChange!=="boolean"||selection.defect!==undefined&&typeof selection.defect!=="boolean"||selection.verification!==undefined&&typeof selection.verification!=="boolean"||selection.filesTouched!==undefined&&(!Number.isInteger(selection.filesTouched)||selection.filesTouched<0))throw new Error("Lifecycle recovery pending authority invalid");const expected=selectSkills(selection).map(skill=>skill.path);if(!sameStrings(expected,paths))throw new Error("Lifecycle recovery pending Skill routes mismatch");}
  return value as LifecycleSnapshot;
 }
 function keyCheck(key:Buffer):void{if(key.length<32)throw new Error("Lifecycle recovery requires a 32-byte secret");}
@@ -243,20 +291,20 @@ function obligationBinding(value:unknown,snapshot:LifecycleSnapshot,description:
  const obligation={requirementId,...payload} as TddObligation;if(snapshot.version===2&&JSON.stringify(snapshot.tddPromotion.record.obligation)!==JSON.stringify(obligation))throw new Error("Lifecycle TDD completion obligation mismatch");return Object.freeze(obligation);
 }
 function v2Envelope(snapshot:Extract<LifecycleSnapshot,{version:2}>){return {version:2 as const,taskIdentity:snapshot.taskId,repositoryIdentity:snapshot.candidate.repository,candidateId:snapshot.candidate.id,baselineRevision:snapshot.baselineRevision,currentRevision:snapshot.candidate.revision,nextPhase:snapshot.nextPhase,snapshot};}
-function v3Envelope(snapshot:LifecycleSnapshot,description:WorkflowSelectionDescription,obligation:TddObligation){return {version:3 as const,taskIdentity:snapshot.taskId,repositoryIdentity:snapshot.candidate.repository,candidateId:snapshot.candidate.id,currentRevision:snapshot.candidate.revision,nextPhase:snapshot.nextPhase,workflowSelection:{schemaVersion:description.schemaVersion,workflow:description.workflow,source:description.source,taskIdentity:description.taskIdentity,repositoryIdentity:description.repositoryIdentity},testingBinding:structuredClone(obligation),snapshot};}
+function v3Envelope(snapshot:LifecycleSnapshot,description:WorkflowSelectionDescription,obligation:TddObligation,defect=false){return {version:3 as const,taskIdentity:snapshot.taskId,repositoryIdentity:snapshot.candidate.repository,candidateId:snapshot.candidate.id,currentRevision:snapshot.candidate.revision,nextPhase:snapshot.nextPhase,workflowSelection:{schemaVersion:description.schemaVersion,workflow:description.workflow,source:description.source,taskIdentity:description.taskIdentity,repositoryIdentity:description.repositoryIdentity},testingBinding:structuredClone(obligation),...(defect?{defectIntent:true}:{}),snapshot};}
 export async function saveLifecycle(path:string,snapshot:LifecycleSnapshot,key:Buffer):Promise<void>{
  const task=Object.getOwnPropertyDescriptor(snapshot,"taskId")?.value,candidate=candidateBinding(Object.getOwnPropertyDescriptor(snapshot,"candidate")?.value),checked=validateSnapshot(snapshot,task,candidate),description=snapshotDescriptions.get(snapshot);let outer:unknown;
- if(description){const selected=selectionBinding(description,checked.taskId,checked.candidate.repository),obligation=snapshotObligations.get(snapshot);if(!obligation)throw new Error("Lifecycle v3 persistence requires original testing binding");const testing=obligationBinding(obligation,checked,selected),payload=v3Envelope(checked,selected,testing);outer={...payload,mac:signature(payload,key,"asen.lifecycle.explicit-selection.v3\0")};}
+ if(description){const selected=selectionBinding(description,checked.taskId,checked.candidate.repository),obligation=snapshotObligations.get(snapshot);if(!obligation)throw new Error("Lifecycle v3 persistence requires original testing binding");const testing=obligationBinding(obligation,checked,selected),payload=v3Envelope(checked,selected,testing,snapshotDefects.has(snapshot));outer={...payload,mac:signature(payload,key,"asen.lifecycle.explicit-selection.v3\0")};}
  else if(checked.version===2){const payload=v2Envelope(checked);outer={...payload,mac:signature(payload,key,"asen.lifecycle.v2\0")};}
  else{if(checked.nextPhase!==null)throw new Error("migration required; restart exact applicability");outer={snapshot:checked,mac:signature(checked,key)};}
  const temp=join(dirname(path),`.${basename(path)}.${randomUUID()}.tmp`);let handle;try{handle=await open(temp,"wx",0o600);await handle.writeFile(JSON.stringify(outer),"utf8");await handle.sync();await handle.close();handle=undefined;await rename(temp,path);}finally{if(handle)await handle.close();await unlink(temp).catch((error:NodeJS.ErrnoException)=>{if(error.code!=="ENOENT")throw error;});}
 }
 export async function loadLifecycle(path:string,taskId:string,candidate:Candidate,key:Buffer):Promise<SkillLifecycle>{
  let parsed:unknown;try{parsed=JSON.parse(await readFile(path,"utf8"));}catch{throw new Error("Lifecycle recovery data is malformed");}
- const caller=candidateBinding(candidate),version=typeof parsed==="object"&&parsed!==null?Object.getOwnPropertyDescriptor(parsed,"version")?.value:undefined;let snapshot:LifecycleSnapshot,description:WorkflowSelectionDescription|undefined,obligation:TddObligation|undefined,mac:unknown,expected:string;
- if(version===3){const raw=exact(parsed,["version","taskIdentity","repositoryIdentity","candidateId","currentRevision","nextPhase","workflowSelection","testingBinding","snapshot","mac"],"lifecycle v3 envelope"),payload={version:raw.version,taskIdentity:raw.taskIdentity,repositoryIdentity:raw.repositoryIdentity,candidateId:raw.candidateId,currentRevision:raw.currentRevision,nextPhase:raw.nextPhase,workflowSelection:raw.workflowSelection,testingBinding:raw.testingBinding,snapshot:raw.snapshot};mac=raw.mac;expected=signature(payload,key,"asen.lifecycle.explicit-selection.v3\0");if(!validMac(mac,expected))throw new Error("Lifecycle recovery integrity mismatch");const selection=selectionBinding(raw.workflowSelection,taskId,caller.repository);snapshot=validateSnapshot(raw.snapshot,taskId,caller);if(raw.taskIdentity!==taskId||raw.repositoryIdentity!==caller.repository||raw.candidateId!==caller.id||raw.currentRevision!==caller.revision||raw.nextPhase!==snapshot.nextPhase||selection.taskIdentity!==snapshot.taskId||selection.repositoryIdentity!==snapshot.candidate.repository)throw new Error("Lifecycle recovery identity mismatch");description=selection;obligation=obligationBinding(raw.testingBinding,snapshot,selection);}
+ const caller=candidateBinding(candidate),version=typeof parsed==="object"&&parsed!==null?Object.getOwnPropertyDescriptor(parsed,"version")?.value:undefined;let snapshot:LifecycleSnapshot,description:WorkflowSelectionDescription|undefined,obligation:TddObligation|undefined,mac:unknown,expected:string,defect=false;
+ if(version===3){const hasDefect=Object.hasOwn(parsed as object,"defectIntent"),raw=exact(parsed,["version","taskIdentity","repositoryIdentity","candidateId","currentRevision","nextPhase","workflowSelection","testingBinding","snapshot","mac",...(hasDefect?["defectIntent"]:[])],"lifecycle v3 envelope"),payload={version:raw.version,taskIdentity:raw.taskIdentity,repositoryIdentity:raw.repositoryIdentity,candidateId:raw.candidateId,currentRevision:raw.currentRevision,nextPhase:raw.nextPhase,workflowSelection:raw.workflowSelection,testingBinding:raw.testingBinding,...(hasDefect?{defectIntent:raw.defectIntent}:{}),snapshot:raw.snapshot};mac=raw.mac;expected=signature(payload,key,"asen.lifecycle.explicit-selection.v3\0");if(!validMac(mac,expected))throw new Error("Lifecycle recovery integrity mismatch");if(hasDefect&&raw.defectIntent!==true)throw new Error("La intención firmada de defecto no es válida");defect=hasDefect;const selection=selectionBinding(raw.workflowSelection,taskId,caller.repository);snapshot=validateSnapshot(raw.snapshot,taskId,caller);if(raw.taskIdentity!==taskId||raw.repositoryIdentity!==caller.repository||raw.candidateId!==caller.id||raw.currentRevision!==caller.revision||raw.nextPhase!==snapshot.nextPhase||selection.taskIdentity!==snapshot.taskId||selection.repositoryIdentity!==snapshot.candidate.repository)throw new Error("Lifecycle recovery identity mismatch");description=selection;obligation=obligationBinding(raw.testingBinding,snapshot,selection);}
  else if(version===2){const raw=exact(parsed,["version","taskIdentity","repositoryIdentity","candidateId","baselineRevision","currentRevision","nextPhase","snapshot","mac"],"lifecycle v2 envelope"),payload={version:raw.version,taskIdentity:raw.taskIdentity,repositoryIdentity:raw.repositoryIdentity,candidateId:raw.candidateId,baselineRevision:raw.baselineRevision,currentRevision:raw.currentRevision,nextPhase:raw.nextPhase,snapshot:raw.snapshot};mac=raw.mac;expected=signature(payload,key,"asen.lifecycle.v2\0");if(!validMac(mac,expected))throw new Error("Lifecycle recovery integrity mismatch");snapshot=validateSnapshot(raw.snapshot,taskId,caller);if(raw.taskIdentity!==taskId||raw.repositoryIdentity!==caller.repository||raw.candidateId!==caller.id||raw.currentRevision!==caller.revision||raw.baselineRevision!==(snapshot.version===2?snapshot.baselineRevision:undefined)||raw.nextPhase!==snapshot.nextPhase)throw new Error("Lifecycle recovery identity mismatch");}
  else if(version===undefined){const raw=exact(parsed,["snapshot","mac"],"lifecycle v1 envelope");mac=raw.mac;expected=signature(raw.snapshot,key);if(!validMac(mac,expected))throw new Error("Lifecycle recovery integrity mismatch");snapshot=validateSnapshot(raw.snapshot,taskId,caller);if(snapshot.version!==1)throw new Error("Lifecycle recovery schema mismatch");if(snapshot.nextPhase!==null)throw new Error("migration required; restart exact applicability");}
  else throw new Error("Lifecycle recovery schema mismatch");
- const flow=constructLifecycle(taskId,caller,snapshot,undefined,description);if(obligation)recoveredObligations.set(flow,obligation);verifiedRecovery.add(flow);return flow;
+ const flow=constructLifecycle(taskId,caller,snapshot,undefined,description,defect);if(obligation)recoveredObligations.set(flow,obligation);verifiedRecovery.add(flow);return flow;
 }

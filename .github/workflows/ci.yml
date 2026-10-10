@@ -2,12 +2,13 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, "feat/**"]
+    branches: [main]
 permissions:
   contents: read
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-24.04, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
@@ -23,7 +24,25 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - run: npm run check
+      - name: Prepare frozen ecosystem Git objects
+        run: node .github/scripts/prepare-frozen-ecosystem-baseline.mjs
+      # Same checks and order as npm run check, split into timed Actions steps.
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Full test suite
+        run: npm test
+      - name: Phase parity audit
+        run: npm run audit:parity
+      - name: Skills audit
+        run: npm run audit:skills
+      - name: Skill parity audit
+        run: npm run audit:skill-parity
+      - name: Memory parity audit
+        run: npm run audit:memory-parity
+      - name: Ecosystem audit
+        run: npm run audit:ecosystem
+      - name: Upstream boundary audit
+        run: npm run audit:upstream-boundary
   architecture:
     runs-on: ubuntu-24.04
     steps:

@@ -159,7 +159,7 @@
         {"contractId": "ODD-RULE-001", "note": "ASEN enforces conditional TDD through the separately selected asen-tdd Skill and exact lifecycle-completion evidence."}
       ],
       "gaps": [
-        {"contractId": "ODD-RULE-001", "note": "ODD Skill normalization remains pending GSP-05I."},
+        {"contractId": "ODD-RULE-001", "note": "Deterministic ODD normalization and Pi-host tracking bridge are implemented; Pi Free generated-output evidence remains pending GSP-06."},
         {"contractId": "ODD-OUT-001", "note": "Pi Free positive and negative generated-output, package, and platform evidence remains pending GSP-06."}
       ],
       "evidence": [
@@ -204,7 +204,7 @@
       "outputs": ["JUDGE-OUT-001"],
       "prohibited": ["JUDGE-PRO-001"],
       "equivalentAdaptations": [{"contractId": "JUDGE-OUT-001", "note": "ASEN uses Pi-native judge dispatch while preserving frozen candidate and terminal judgment semantics."}],
-      "gaps": [{"contractId": "JUDGE-RULE-001", "note": "Schemas, immutable ledger, hash-bound dispatch, sweep limits, informational rows, and dedicated controller need enforcement evidence."}],
+      "gaps": [{"contractId": "JUDGE-RULE-001", "note": "Deterministic immutable dual-review and bounded re-judgment controller evidence is implemented; Pi Free generated-output evidence remains pending GSP-06."}],
       "evidence": ["Structural mapping only; runtime evidence is pending GSP-05 and GSP-06."]
     },
     {
@@ -217,7 +217,7 @@
       "outputs": ["RDD-OUT-001"],
       "prohibited": ["RDD-PRO-001"],
       "equivalentAdaptations": [{"contractId": "RDD-RULE-001", "note": "ASEN centers the same causal-invariant and rollback boundary in its defect workflow."}],
-      "gaps": [{"contractId": "RDD-OUT-001", "note": "Issue authority, current-base conflict checks, worktree isolation, journey proof, receipts, and complete output evidence remain incomplete."}],
+      "gaps": [{"contractId": "RDD-OUT-001", "note": "Deterministic ordinary RDD binding and bounded correction evidence is implemented; Pi Free generated-output evidence remains pending GSP-06."}],
       "evidence": ["Structural mapping only; runtime evidence is pending GSP-05 and GSP-06."]
     },
     {

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { Risk } from "../core/types.js";
 import { verificationLevel } from "./risk.js";
 
-export type OddIntent = "implementation" | "analysis" | "incident" | "verification";
+export type OddIntent = "implementation" | "analysis" | "incident" | "verification" | "defect";
 export type OddChangeKind = "behavior" | "schema" | "security" | "configuration" | "migration" | "documentation" | "format" | "generated";
 export type OddRiskOperation = "destructive_git" | "external_write" | "credential_or_auth" | "security_boundary";
 export type OddReviewKind = "none" | "ordinary" | "dual_explicit";
@@ -35,7 +35,7 @@ export interface OddRouteDecision {
 }
 
 const requestKeys = ["taskIdentity", "repositoryIdentity", "intent", "scope", "writes", "riskOperations", "session", "testing", "review", "unresolvedDecisions"] as const;
-const intents = ["implementation", "analysis", "incident", "verification"] as const;
+const intents = ["implementation", "analysis", "incident", "verification", "defect"] as const;
 const changeKinds = ["behavior", "schema", "security", "configuration", "migration", "documentation", "format", "generated"] as const;
 const riskOperations = ["destructive_git", "external_write", "credential_or_auth", "security_boundary"] as const;
 const reviewKinds = ["none", "ordinary", "dual_explicit"] as const;

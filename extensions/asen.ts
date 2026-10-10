@@ -1,19 +1,47 @@
+import {RegistryLifecycle,registryStartupDisabled,type RegistryLifecycleOptions} from "../src/skills/registry-lifecycle.js";
 import {realpath} from "node:fs/promises";
 import {homedir} from "node:os";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
-import {refreshSkillRegistry,type RefreshSkillRegistryOptions,type SkillRegistryMirror} from "../src/skills/generated-registry.js";
+import {refreshSkillRegistry,type SkillRegistryMirror} from "../src/skills/generated-registry.js";
 import type {SkillSource} from "../src/skills/discovery.js";
 import {claimWorkflowSelection,readWorkflowSelection,registerWorkflowSelectionCommand} from "../src/lifecycle/workflow-selection.js";
 import {decideLifecycleApplicability,decideLifecycleApplicabilityWithSelection,type LifecycleApplicability,type LifecycleApplicabilityInput} from "../src/lifecycle/applicability.js";
 import type {OddRouteDecision} from "../src/flow/odd-routing.js";
 import {claimedOrchestrationRouteContext} from "../src/orchestration/orchestrator.js";
+import {registerOrdinaryReviewCommand,type OrdinaryReviewCommandController} from "../src/review/ordinary-review-command.js";
+import {deriveOddExecutionContract,type OddExecutionContract} from "../src/flow/odd-execution-contract.js";
+import {trackOddTask,resumeOddTask,appendOddTaskEvent,type OddProgress} from "../src/flow/odd-task-tracking.js";
+import type {MemoryContext} from "../src/memory/context.js";import type {MemoryStore} from "../src/memory/types.js";
+import type {TaskEvent} from "../src/runtime/task-replay.js";
+import {ASEN_INTERACTION_TOOL_NAMES,registerInteractionTools} from "../src/interaction/pi-tools.js";
+import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
+import {ASEN_CODEGRAPH_TOOL_NAME,ASEN_CODE_INTELLIGENCE_TOOL_NAME,registerCodeGraphTools,type CodeIntelligenceOptions} from "../src/interaction/code-intelligence.js";
+import {statusLines,type AsenStatusInput} from "../src/runtime/status.js";
+import {doctorChecks,doctorExitCode} from "../src/runtime/doctor.js";
+import {ASEN_COMMAND_CATALOG} from "../src/runtime/command-catalog.js";
+import {agentStatusRows,type PublicAgentRecord} from "../src/runtime/agent-lifecycle.js";
+import {visibleWorkspaceRows,type WorkspaceChange} from "../src/runtime/workspace-attribution.js";
+import {readProfilesFile} from "../src/runtime/profile-store.js";
+import {runHistoryCommand,recordHistoryInput} from "../src/runtime/history-command.js";
+import {runUsageCommand} from "../src/runtime/usage-command.js";
+import {incrementUsageFile} from "../src/runtime/usage-store.js";
+import {VERSION,type ExtensionAPI} from "@earendil-works/pi-coding-agent";
+import {validatePiHost,validatePiRegistrationCollisions,validatePiExecutionContext} from "../src/runtime/pi-host.js";
+import {AgentRuntime} from "../src/agents/agent-runtime.js";
+import {PiProcessRunner,type PiProviderCredential} from "../src/agents/pi-process-runner.js";
+import type {AgentRunner} from "../src/agents/dispatcher.js";
+import {registerAgentTools,ASEN_AGENT_TOOL_NAMES} from "../src/agents/pi-agent-tools.js";
+import {SessionTodoStore} from "../src/runtime/todo-store.js";
+import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-tools.js";
+import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
+import {todoStatusRows} from "../src/runtime/todo-presentation.js";
 
-type CommandContext={cwd:string;ui:{notify(message:string,level:"info"|"error"):void}};
-type PiLike={registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void};
+type CommandContext={cwd:string;hasUI?:boolean;sessionManager?:{getSessionId?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;confirm?:(title:string,message:string)=>Promise<boolean>}};
+type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
 type Refresh=typeof refreshSkillRegistry;
-export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror}
-export interface AsenExtensionFacade {decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability}
+export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;deferSessionStart?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>}
+export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;startSession(context:CommandContext):Promise<void>;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
 
 const usage="Usage: /asen-skill-registry refresh";
 const productionPackageRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
@@ -42,19 +70,75 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
  return pi=>{
   const register=pi.registerCommand?.bind(pi);
   if(!register)throw new Error("ASEN extension requires Pi command registration");
-  pi.registerCommand?.("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
+  const registerData=(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>register(name,{
+   ...command,handler:(...args:any[])=>{
+    const publish=(result:unknown)=>{
+     const ctx=args[1] as CommandContext|undefined;
+     if(ctx?.ui?.notify){
+      const message=typeof result==="string"?result:Array.isArray(result)&&result.every(row=>typeof row==="string")?result.join("\n"):JSON.stringify(result,null,2);
+      ctx.ui.notify(message||"No entries.","info");
+     }
+     return result;
+    };
+    const result=command.handler(...args);
+    return result instanceof Promise?result.then(publish):publish(result);
+   }
+  });
+  const lifecycle=new RegistryLifecycle({refresh,prepare:async cwd=>{
+   const projectRoot=await realpath(path.resolve(cwd)),sources=await sourcesFor(projectRoot,home(),packageRoot);
+   return {projectRoot,projectId:projectRoot,sources,...(dependencies.mirror?{mirror:dependencies.mirror}:{})};
+  },...dependencies.registryLifecycle});
+  const historyFile=path.join(home(),".asen","history.json"),usageFile=path.join(home(),".asen","usage.json");
+  const workspaceFile=dependencies.workspaceStoreFile??path.join(home(),".asen","workspace.json");
+  const agentRuntimePromise=dependencies.agentRuntimeFactory?.()??(dependencies.enableAgentRuntime?AgentRuntime.open({storeFile:dependencies.agentStoreFile??path.join(home(),".asen","agents.json"),runner:dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,...(dependencies.agentProviderCredential?{providerCredential:dependencies.agentProviderCredential}:{})}),...(dependencies.agentMaxConcurrency!==undefined?{maxConcurrency:dependencies.agentMaxConcurrency}:{})}):undefined);
+  const getAgentRuntime=async()=>{if(!agentRuntimePromise)throw new Error("ASEN agent runtime is unavailable");return agentRuntimePromise;};
+  if(agentRuntimePromise)registerAgentTools(pi,getAgentRuntime);
+  const todoStorePromise=dependencies.todoStoreFactory?.()??(dependencies.enableTodoRuntime?SessionTodoStore.open(dependencies.todoStoreFile??path.join(home(),".asen","todos.json")):undefined);
+  if(todoStorePromise)registerTodoTools(pi,async()=>todoStorePromise);
+  const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
+  const sessionIdentity=async(ctx:CommandContext)=>{const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId)throw new Error("ASEN requires the active Pi session");const projectId=await canonical(ctx.cwd);return {sessionId,projectId,worktree:projectId};};
+  const startSession=async(ctx:CommandContext)=>{await lifecycle.start(ctx,registryStartupDisabled(undefined));if(todoStorePromise){const todos=await todoStorePromise;try{await todos.recover(await sessionIdentity(ctx));}catch{ctx.ui.notify("ASEN Todo recovery failed; task state was not changed.","error");}if(todos.diagnostics())ctx.ui.notify("ASEN Todo data was damaged and has been quarantined; no task was replayed.","error");}if(workspaceStorePromise){const store=await workspaceStorePromise;if(store.diagnostics())ctx.ui.notify("ASEN workspace attribution data was damaged and has been quarantined.","error");}if(agentRuntimePromise){const runtime=await agentRuntimePromise,identity=await sessionIdentity(ctx),records=await runtime.list(identity),recoverable=records.filter(record=>record.state==="queued"||record.state==="interrupted");if(runtime.quarantined)ctx.ui.notify("ASEN agent store was damaged and has been quarantined; no saved task was started.","error");if(recoverable.length)ctx.ui.notify(`ASEN has ${recoverable.length} queued or interrupted task(s) in this session. Review with /asen-agents; continue only after confirmation.`,"info");}try{await incrementUsageFile(usageFile,"sessions");}catch{try{ctx.ui.notify("ASEN local usage could not be saved.","error");}catch{}}};
+  if(!dependencies.deferSessionStart)pi.on?.("session_start",async(_event,ctx)=>startSession(ctx));
+  pi.on?.("session_shutdown",async(_event,ctx)=>{if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{}}if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{const runtime=await agentRuntimePromise;await runtime.cancelSession({sessionId:ctx.sessionManager.getSessionId(),projectId:await canonical(ctx.cwd)});}catch{}await lifecycle.shutdown();});
+  pi.on?.("input",async(event,ctx)=>{
+   const text=typeof event?.text==="string"?event.text:"",sessionId=ctx.sessionManager?.getSessionId?.();
+   if(event?.source!=="interactive"&&event?.source!=="rpc")return;
+   if(text.startsWith("/")){try{await incrementUsageFile(usageFile,"commands");}catch{try{ctx.ui.notify("ASEN local usage could not be saved.","error");}catch{}}return;}
+   if(!sessionId)return;
+   try{await recordHistoryInput({storePath:historyFile,projectId:await canonical(ctx.cwd),sessionId,hasUI:ctx.hasUI===true},text);}
+   catch{try{ctx.ui.notify("ASEN private history could not be saved; your input was not changed.","error");}catch{}}
+  });
+  pi.on?.("turn_start",async()=>{try{await incrementUsageFile(usageFile,"agentRuns");}catch{}});
+  registerInteractionTools(pi,dependencies.interactionTimeoutMs);
+  if(pi.registerTool)registerCodeGraphTools({registerTool:pi.registerTool.bind(pi)},dependencies.codeIntelligence);
+  registerData("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
+  registerData("asen-commands",{description:"List ASEN public commands",handler:()=>ASEN_COMMAND_CATALOG.map(c=>({name:c.name,group:c.group,implemented:c.implemented}))});
+  registerData("asen-status",{description:"Show bounded local ASEN status",handler:()=>dependencies.status?statusLines(dependencies.status()):["ASEN status unavailable: no local status provider configured."]});
+  registerData("asen-doctor",{description:"Check local ASEN invariants",handler:()=>{if(!dependencies.doctor)return {exitCode:1,checks:[],message:"ASEN doctor unavailable: no local diagnostics provider configured."};const checks=doctorChecks(dependencies.doctor());return {exitCode:doctorExitCode(checks),checks};}});
+  registerData("asen-agents",{description:"Show attributed ASEN agent lifecycle",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(agentRuntimePromise){const rows=await (await agentRuntimePromise).list(await sessionIdentity(ctx));return agentStatusRows(rows);}return dependencies.agents?agentStatusRows(dependencies.agents()):["ASEN agents unavailable: no local agent provider configured."];}});
+  registerData("asen-changes",{description:"Show attributed workspace changes",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(workspaceStorePromise){const rows=await (await workspaceStorePromise).list(await sessionIdentity(ctx));return visibleWorkspaceRows(rows.map(row=>row.change));}return dependencies.changes?visibleWorkspaceRows(dependencies.changes()):["ASEN workspace changes unavailable: no local change provider configured."];}});
+  registerData("asen-todos",{description:"Show Todo task states for the current Pi session and project",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(!todoStorePromise)return ["ASEN Todo tasks unavailable: no local Todo store configured."];const rows=await (await todoStorePromise).list(await sessionIdentity(ctx));return todoStatusRows(rows);}});
+  registerData("asen-profiles",{description:"Show local runtime profiles",handler:async()=>{if(!dependencies.profilesFile)return {active:"default",profiles:[],available:false};const value=await readProfilesFile(dependencies.profilesFile);return {active:value.active??"default",profiles:value.profiles.map(p=>p.name),available:true};}});
+  pi.registerCommand?.("asen-history",{description:"Manage opt-in, redacted, project-scoped local prompt history",handler:async(args:string,ctx:CommandContext)=>{
+   const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId){ctx.ui.notify("ASEN history is unavailable without a current session.","error");return;}
+   try{const result=await runHistoryCommand(args,{storePath:historyFile,projectId:await canonical(ctx.cwd),sessionId,hasUI:ctx.hasUI===true,...(ctx.ui.confirm?{confirm:ctx.ui.confirm.bind(ctx.ui)}:{})});ctx.ui.notify(result,"info");return result;}
+   catch(error){ctx.ui.notify(`ASEN history failed: ${safeErrorMessage(error)}`,"error");throw error;}
+  }});
+  pi.registerCommand?.("asen-usage",{description:"Show, delete and review local ASEN usage and telemetry consent",handler:async(args:string,ctx:CommandContext)=>{
+   try{const result=await runUsageCommand(args,{storePath:usageFile,hasUI:ctx.hasUI===true,...(ctx.ui.confirm?{confirm:ctx.ui.confirm.bind(ctx.ui)}:{})});ctx.ui.notify(result,"info");return result;}
+   catch(error){ctx.ui.notify(`ASEN usage failed: ${safeErrorMessage(error)}`,"error");throw error;}
+  }});
   pi.registerCommand?.("asen-skill-registry",{description:"Refresh the generated ASEN skill registry",handler:async(args:string|undefined,ctx:CommandContext)=>{
    if(args?.trim()!=="refresh"){ctx.ui.notify(usage,"info");return usage;}
    try{
-    const projectRoot=await realpath(path.resolve(ctx.cwd)),sources=await sourcesFor(projectRoot,home(),packageRoot);
-    const options:RefreshSkillRegistryOptions={projectRoot,projectId:projectRoot,sources,...(dependencies.mirror?{mirror:dependencies.mirror}:{})};
-    const result=await refresh(options),empty=result.count===0?" (empty when zero)":"",memory=result.persistence.status;
+    const result=await lifecycle.refresh(ctx.cwd),empty=result.count===0?" (empty when zero)":"",memory=result.persistence.status;
     const message=`ASEN skill registry refreshed: path=${result.path}; skills=${result.count}${empty}; cache=${result.cache}; diagnostics=${result.skipped.length}; memory=${memory}.`;
     ctx.ui.notify(message,"info");return message;
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
   const consumer=registerWorkflowSelectionCommand(register);
-  return Object.freeze({decideLifecycleApplicability:(decision:OddRouteDecision,input:LifecycleApplicabilityInput)=>{
+  const review=registerOrdinaryReviewCommand(register);
+  return Object.freeze({review,startSession,deriveOddExecutionContract,trackOddTask,resumeOddTask,appendOddTaskEvent,decideLifecycleApplicability:(decision:OddRouteDecision,input:LifecycleApplicabilityInput)=>{
    const original=claimedOrchestrationRouteContext(decision),binding={taskIdentity:original.facts.taskIdentity,repositoryIdentity:original.facts.repositoryIdentity},choice=readWorkflowSelection(consumer,binding);
    if(!choice)return decideLifecycleApplicability(decision,input);
    const claimed=claimWorkflowSelection(consumer,choice,binding);
@@ -63,4 +147,53 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
  };
 }
 
-export default createAsenExtension();
+/** Production entry uses the real public Pi contract; dependency injection keeps lifecycle tests isolated. */
+export function createPiExtension(dependencies:AsenExtensionDependencies={}){
+ return (pi:ExtensionAPI):void=>{
+ validatePiHost(pi,VERSION);
+ const commandNames=ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name);
+ const toolNames=[...ASEN_INTERACTION_TOOL_NAMES,ASEN_CODE_INTELLIGENCE_TOOL_NAME,ASEN_CODEGRAPH_TOOL_NAME,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES)];
+ let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext)=>Promise<void>)|undefined;
+ pi.on("session_start",async(_event,ctx)=>{
+  if(attempted){if(registrationsReady)await sessionStart?.(ctx);return;}
+  attempted=true;
+  const token=++generation;let publicWrites=0;
+  try{
+   validatePiExecutionContext(ctx);
+   // Pi's public inventory methods can exist before their runtime is initialized; read them only here.
+   validatePiRegistrationCollisions(pi,commandNames,toolNames);
+   const facade=createAsenExtension({...dependencies,enableAgentRuntime:dependencies.enableAgentRuntime??true,enableTodoRuntime:dependencies.enableTodoRuntime??true,enableWorkspaceRuntime:dependencies.enableWorkspaceRuntime??true,deferSessionStart:true})({
+    on:(event,handler)=>pi.on(event as any,(...args:any[])=>{
+     if(token!==generation||!registrationsReady)return undefined;
+     validatePiExecutionContext(args[1]);
+     return handler(...args);
+    }),
+    getFlag:name=>pi.getFlag(name),
+    registerTool:tool=>{publicWrites++;pi.registerTool({...tool,execute:async(...args:any[])=>{
+     if(!registrationsReady)throw new Error("ASEN registrations are disabled after an incomplete host setup");
+     validatePiExecutionContext(args[4]);
+     return (tool.execute as any)(...args);
+    }});},
+    registerCommand:(name,command)=>{publicWrites++;pi.registerCommand(name,{description:command.description,handler:async(args,commandContext)=>{
+     if(!registrationsReady)throw new Error("ASEN registrations are disabled after an incomplete host setup");
+     validatePiExecutionContext(commandContext);
+     await command.handler(args,commandContext);
+    }});},
+   });
+   registrationsReady=true;
+   sessionStart=facade.startSession;
+   await sessionStart(ctx);
+  }catch(error){
+   registrationsReady=false;
+   if(publicWrites===0){attempted=false;generation++;}
+   const message=safeErrorMessage(error);
+   const recovery=publicWrites===0?"a later session start may retry":"partial registrations remain inert; reload Pi to recover";
+   try{ctx.ui.notify(`ASEN host preflight failed; ${recovery}: ${message}`,"error");}catch{}
+  }
+ });
+ };
+}
+
+export default function asen(pi:ExtensionAPI):void{
+ createPiExtension()(pi);
+}

@@ -1,0 +1,43 @@
+name: Ecosystem source drift report
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact upstream commit SHA; leave empty to inspect the current default branch
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24.0.0"
+      - name: Install locked project dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Resolve exact frozen source and candidate commits
+        id: source
+        env:
+          ECOSYSTEM_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: node .github/scripts/prepare-ecosystem-candidate.mjs
+      - name: Create report-only drift proposal
+        env:
+          ECOSYSTEM_SOURCE_REPOSITORY: ${{ runner.temp }}/asen-ecosystem-candidate.git
+          ECOSYSTEM_CANDIDATE_SHA: ${{ steps.source.outputs.candidate_sha }}
+        run: node scripts/ecosystem-candidate-report.mjs "$ECOSYSTEM_SOURCE_REPOSITORY" "$ECOSYSTEM_CANDIDATE_SHA" "$RUNNER_TEMP/ecosystem-drift-report.json"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ecosystem-source-drift-${{ steps.source.outputs.candidate_sha }}
+          path: ${{ runner.temp }}/ecosystem-drift-report.json
+          if-no-files-found: error
+          retention-days: 30

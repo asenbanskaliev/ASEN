@@ -6,7 +6,7 @@ import {isIssuedSkillContext,matchesIssuedSkillContext} from "../skills/context.
 
 export interface VerificationResult { ok: boolean; reason: string; }
 
-const skillEvidenceKinds = new Set<Evidence["kind"]>(["tdd","lifecycle-completion","review","route-decision","work-unit","scope","rollback"]);
+const skillEvidenceKinds = new Set<Evidence["kind"]>(["tdd","lifecycle-completion","review","route-decision","work-unit","scope","rollback","defect-intake"]);
 function evidenceKindFor(requirement:string):Evidence["kind"] {
  if(!skillEvidenceKinds.has(requirement as Evidence["kind"])) throw new Error(`Unknown skill evidence requirement: ${requirement}`);
  return requirement as Evidence["kind"];

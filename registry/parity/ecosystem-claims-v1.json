@@ -1,0 +1,553 @@
+{
+  "version": 1,
+  "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "legacyRegistry": "Historical Phase 10 inventory; its primitive PARITY labels are not strict ecosystem FULL claims.",
+  "acceptedScope": "GSP-06 provider-limited closure and admitted memory R01-R09 remain accepted. This does not exclude ecosystem implementation.",
+  "rows": [
+    {
+      "id": "ECO-01",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "136879aa0b78863afe848846717032522ce883c3c874170855d56565eb176721",
+        "1cdbb3968664e3f3dd5d1ca9eae757e3e37ea12c345861fc2b6c57c7533231d9",
+        "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+        "250a3db46eb790fefc794473d20a31e9dd9c6ea11887a343b808fe8e9757a7f6",
+        "2a2faeebaff581a2370cadf12d3c607ddea23af305d2f8c499309881c91ca204",
+        "2db784c9d70b806c41cf5bb5abc3253acabad108b60c2299cec9eeab107fdf53",
+        "2eff2ba68b246bc79f42d110c3a8fb01ea305da1e7896e30d5dc887d0c3db044",
+        "34ed34719141571ab1d0cbe2cc28dd66da6c9f4c30aa612239b018c1af66ca2e",
+        "35f277a97a432a111d6ed62494bfacd633f975573e32eeb867a74db7105a7f28",
+        "408736bcf2eb97214d4622854df361674f5b8eab95eb270a19911e2e8af59789",
+        "42d9cd663a79b0cd7bc39aa01b92cb76dbadc2a5310102a0ec2cd9d9359a2f0c",
+        "485ab76d54832f3806438eb8aaf9abfe37e58e1be936438c6e31ba655b957e91",
+        "4ca70dbc9b28d177986f350715f763508e87245cd85cd048b883bdc617893db9",
+        "4d69814a064177b700abd8f688269f16f0a8694f29e56dd34441633a14e43dae",
+        "531c776df94e59bec803a196f90af454498d1c013b6cbbdd94a28bd3077b800b",
+        "6012799d86a79515f3b31a8d855aa0e48e1172304b98afdd63643a2146013650",
+        "61f7c359c2bf0b985f93f6d14060d9e4f0364030fe1d46297fc9308557d2acce",
+        "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+        "71c2cf89e92bda9a7f549e60312b45f6b45a3c7f4a0c22772c379f5d9b946ee9",
+        "71d8732d3c2df8c95a029d0ca6476cb7991efccf45122f70bae5e0a42fb4838b",
+        "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",
+        "7deb98ac1cb60df84f9dd4cce7e4bef640862df3331736df45995a7cd31bad20",
+        "84e11467c4458b64a1995960d91a5f2d82a100cdd7932f281f7d9b79ffa26e9b",
+        "971eb77cc401466620b1ee19e156907846bdf80a46297483b45d7baf874091ca",
+        "9871535787a8178bf962fa1e9da862492868940b9a34f0490f937304d2a26e2e",
+        "9b60fa2775129c468f7eb3510905014553cee5f3cbcb78a608f08baf8bbd7336",
+        "9ff54b948dc2593bfcc9e59d9edac9588f6e3e3cdb1d8873e703fdbdb20958c7",
+        "a6dcfeb0f3d0873e4ca5915c26902296cc9cd3c9c100eae70e2b72757748ad1f",
+        "ab1608f51f18c5bae30325b7defcf09e3e5a452aede430ade22b3669bf437a02",
+        "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388",
+        "b2189d32a9115f57a3b75f8393a00ef89bcf352d522d836d542ef80845bdc7c1",
+        "b2abb9981a68d73a6b0d3121ab68b9bfb2669306a3c6e611d76d0f08de8bf742",
+        "b7cdfe192e91f1557133a5c80ba96e41cdb5b1c4d1dbb5d42f5e7103103ed301",
+        "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+        "c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66",
+        "c4c6da34fa3038e183a6df71b0c71470d2ceb2abb69c99cd782dcac0ed7d6c56",
+        "d9ea50ecc8011d5664a5c663f1dc37d98ccfde1442efe4211fee9488ee314728",
+        "db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d",
+        "dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",
+        "f276fe56fe69392f7e6c0f3f8212adbf97cb155ac0c1ef1e788d88f81c9ce3db",
+        "f8b00b31f1c7cd7d08d99cf65e566ae74a865e3542fda91f67f8c7275d8fd09a",
+        "fef309cda80d61010d459bbfb80a232e8f92c1d9149395ad117f1473665d369f"
+      ],
+      "implementation": [
+        "scripts/ecosystem-baseline.mjs"
+      ],
+      "tests": [
+        "tests/ecosystem-baseline.test.ts"
+      ],
+      "remaining": [
+        "The frozen 164-row unresolved-reference adjudication overlay and mapped runtime-edge drift invalidation are implemented, but complete normative semantics remain unverified; the 167-object/988-reference source manifest is unchanged."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": false,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-02",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "3a933bdb788af27e95f75475758ff446e2d2a30d87c6072e1c42593696879c77",
+        "6c95a68fcdfb8f56399c917d97ab01340c22e6cd1632fa6c062d678a56cc1d7a"
+      ],
+      "implementation": [
+        "scripts/package-exports.mjs",
+        "scripts/verify-pack.mjs",
+        "src/runtime/pi-host.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/package-exports.test.ts",
+        "tests/package.test.ts",
+        "tests/pi-host-preflight.test.ts"
+      ],
+      "remaining": [
+        "Public version/callable-capability preflight is implemented before production registration. Packed Pi 1.1 installation and real-host RPC registration passed on Linux/macOS/Windows for be209b98f9d8df4b4cba34f38657a9cf38d7bdf9 only; subsequent candidates require fresh exact-SHA evidence. The packed verifier observes initialized public RPC mode and seven installed-source canonical commands at session_start, with tools disabled; this is not factory-time admission or universal collision prevention. Factory-time mode/inventory/collision admission and a complete minimum-version/platform matrix remain unproven. No internal facade/RPC check establishes production ODD/TUI integration."
+      ],
+      "stateful": false,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-03",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "531c776df94e59bec803a196f90af454498d1c013b6cbbdd94a28bd3077b800b",
+        "9871535787a8178bf962fa1e9da862492868940b9a34f0490f937304d2a26e2e"
+      ],
+      "implementation": [
+        "src/interaction/ask-user.ts",
+        "src/interaction/pi-tools.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/ask-user.test.ts",
+        "tests/ask-user-rpc.test.ts"
+      ],
+      "remaining": [
+        "Core choice/question validation, cancellation and timeout are implemented. Real offline Pi RPC choice and cancellation pass on Linux with zero model calls. Full TUI/questionnaire presentation, cross-platform journeys and genuine human-only mutation consumers remain unverified."
+      ],
+      "stateful": false,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-04",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7"
+      ],
+      "implementation": [
+        "src/interaction/code-intelligence.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/code-intelligence.test.ts"
+      ],
+      "remaining": [
+        "Read-only query/explore registration, canonical Git roots, literal arguments, bounded output/time, cancellation and npm entry containment pass with synthetic subprocesses. Real installed CodeGraph CLI, permitted initialization lifecycle, index behavior and cross-platform host journeys remain unverified; no index was inspected."
+      ],
+      "stateful": false,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-05",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388"
+      ],
+      "implementation": [
+        "src/agents/dispatcher.ts",
+        "src/agents/pi-process-runner.ts",
+        "src/agents/agent-runtime.ts",
+        "src/runtime/agent-store.ts",
+        "src/agents/pi-agent-tools.ts",
+        "src/runtime/agent-lifecycle.ts",
+        "src/policies/scopes.ts"
+      ],
+      "tests": [
+        "tests/dispatcher.test.ts",
+        "tests/pi-process-runner.test.ts",
+        "tests/agent-store.test.ts",
+        "tests/agent-lifecycle.test.ts",
+        "tests/pi-agent-runtime.test.ts",
+        "tests/scopes.test.ts"
+      ],
+      "remaining": [
+        "Persistent public queue, cancel/continue/status, ownership, bounded concurrency, interrupted-work quarantine and rejection of overlapping writers on a shared repository root (including across session IDs) are implemented and tested. Real Pi delivery/restoration across process restart and platforms, hostile child-process cleanup and public grant/transport contracts remain unverified or incomplete."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": true,
+      "evidence": []
+    },
+    {
+      "id": "ECO-06",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd"
+      ],
+      "implementation": [
+        "src/orchestration/orchestrator.ts",
+        "src/flow/odd-routing.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/orchestrator-dispatcher-integration.test.ts",
+        "tests/writer-admission-4r.test.ts"
+      ],
+      "remaining": [
+        "Automatic user-entry orchestration and prompt/status/doctor composition are incomplete; private provider authority is excluded."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": true,
+      "evidence": []
+    },
+    {
+      "id": "ECO-07",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "8d63626c564cdad7af151b60f17cf24242eecc10a6048df420af0b9e0dea6c36",
+        "db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d"
+      ],
+      "implementation": [
+        "src/flow/odd-task-tracking.ts",
+        "src/tasks/task.ts",
+        "src/runtime/task-replay.ts",
+        "src/runtime/todo-store.ts",
+        "src/runtime/pi-todo-tools.ts",
+        "src/runtime/todo-presentation.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/odd-task-tracking.test.ts",
+        "tests/task-replay.test.ts",
+        "tests/todo-store.test.ts",
+        "tests/fixtures/todo-crash-process.ts",
+        "tests/pi-agent-runtime.test.ts",
+        "tests/extension-state-commands.test.ts"
+      ],
+      "remaining": [
+        "Durable session/project-isolated Todo state, validated replay, Pi tools, the read-only /asen-todos view, abrupt process-exit recovery and preservation of completed work are implemented and tested. Real Pi session restart/reopen journeys and Windows/macOS host evidence remain."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-08",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66"
+      ],
+      "implementation": [
+        "src/skills/discovery.ts",
+        "src/skills/generated-registry.ts",
+        "src/skills/registry-lifecycle.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/skill-discovery.test.ts",
+        "tests/generated-skill-registry.test.ts",
+        "tests/skill-registry-extension.test.ts",
+        "tests/skill-registry-lifecycle.test.ts"
+      ],
+      "remaining": [
+        "Startup refresh, serialized existing-cache writes, recursive watch/debounce, dirty-again coalescing, disable, shutdown and stale-generation protection are implemented and locally tested. Real cross-platform Pi startup/restart journeys and complete missing-source/recreated-watch behavior remain unverified."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-09",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "4cf2363d319e30e2b8bb5e2dbe58239c2397798331fbbe11f1675f30ee595511",
+        "a29669355e55c663c06ae91a0f026e1a5a5f7465ce7438b74a70f4024b25fd84",
+        "a29d57b6ad755bb9fcedfebe8daa0ed224275031ad35afe249fc10c0910e33af",
+        "e63420a56dd37757fb9c1bca3f3fcb299c65ea2d25df992a94fc9aade756c051"
+      ],
+      "implementation": [
+        "scripts/verify-pack.mjs",
+        "src/runtime/launcher.ts",
+        "src/runtime/setup.ts",
+        "src/runtime/command-catalog.ts"
+      ],
+      "tests": [
+        "tests/package.test.ts",
+        "tests/launcher.test.ts",
+        "tests/setup.test.ts",
+        "tests/command-catalog.test.ts"
+      ],
+      "remaining": [
+        "Launcher/home precedence and transactional idempotent setup are implemented deterministically. Real executable wiring, permissions and final cross-platform packed-Pi installation remain."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-10",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",
+        "ec64bc54484b4a597ffa16aba5aed950cd9eb1ecf0a1caf0c1405dbbb721d4d9"
+      ],
+      "implementation": [
+        "src/runtime/workspace-attribution.ts",
+        "src/runtime/workspace-store.ts",
+        "src/runtime/agent-lifecycle.ts"
+      ],
+      "tests": [
+        "tests/workspace-attribution.test.ts",
+        "tests/agent-lifecycle.test.ts"
+      ],
+      "remaining": [
+        "Actor/session/project/worktree attribution and bounded status projections are implemented. Durable concurrent workspace UI integration, conflict handling, restart and real Pi host evidence remain."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-11",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "1cdbb3968664e3f3dd5d1ca9eae757e3e37ea12c345861fc2b6c57c7533231d9",
+        "554ddea751d636ee35e9d06babb9bf4513930d7186fcf1fe23599b767e6c844a",
+        "6541e3da65f7f5576eec6edbabda6756ab3caafaae0d6560ceb3b2c5f08827f4",
+        "7a4a83c3f215f34868b375293af33c183322cc610f674ef5fa6ef825ae0eca1c",
+        "831db959b54c8a660da3adfba2a57ad7cc869abc2254ce9e981ff29f15435faf"
+      ],
+      "implementation": [
+        "src/runtime/profiles.ts",
+        "src/runtime/profile-store.ts"
+      ],
+      "tests": [
+        "tests/runtime-profiles.test.ts",
+        "tests/profile-store.test.ts"
+      ],
+      "remaining": [
+        "Strict profile schema, session/project/global precedence, fallback, deterministic mutations and persisted/reloaded profile storage are implemented and tested internally. Production profile-provider/command/model-routing integration, real Pi/platform journeys and rollback evidence remain incomplete. No full production routing parity is claimed. The internal resolver still treats prototype-named missing roles as inherited routes; this confirmed review limitation must be corrected before admitting production profile routing."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": true,
+      "evidence": []
+    },
+    {
+      "id": "ECO-12",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "250a3db46eb790fefc794473d20a31e9dd9c6ea11887a343b808fe8e9757a7f6",
+        "408736bcf2eb97214d4622854df361674f5b8eab95eb270a19911e2e8af59789",
+        "42d9cd663a79b0cd7bc39aa01b92cb76dbadc2a5310102a0ec2cd9d9359a2f0c",
+        "b7cdfe192e91f1557133a5c80ba96e41cdb5b1c4d1dbb5d42f5e7103103ed301",
+        "d9ea50ecc8011d5664a5c663f1dc37d98ccfde1442efe4211fee9488ee314728",
+        "f8b00b31f1c7cd7d08d99cf65e566ae74a865e3542fda91f67f8c7275d8fd09a",
+        "fef309cda80d61010d459bbfb80a232e8f92c1d9149395ad117f1473665d369f"
+      ],
+      "implementation": [
+        "src/runtime/history.ts",
+        "src/runtime/history-store.ts",
+        "src/runtime/history-command.ts",
+        "src/io/exclusive-file-lock.ts",
+        "src/io/private-file.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/history-store.test.ts",
+        "tests/history-usage.test.ts",
+        "tests/extension-runtime-commands.test.ts",
+        "tests/exclusive-file-lock.test.ts"
+      ],
+      "remaining": [
+        "Private durable storage, process-safe serialization, opt-in redacted Pi input capture, project-scoped search/export/delete, tombstones, retention, confirmed corrupt-store reset and reopen behavior have deterministic coverage. Reference keyboard shortcut behavior and full cross-platform interactive history journeys remain unverified."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-13",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "30b974055e03a2d584da910fb4e8365c649d3ffd93301f7b5afed09ce12e5e2d",
+        "57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",
+        "6b380b0b02f4f5611ae666ec69f1c72337c2d44dec396110bcd27067457919f5",
+        "71c2cf89e92bda9a7f549e60312b45f6b45a3c7f4a0c22772c379f5d9b946ee9",
+        "740b7b6f5e97f70caac1077beb0a652edfcaf4ecf2a9f892ca6ee6ff505f7f81",
+        "9566b0a9fac53001c64c38dd4f2799b171ec65676520b6152eb6fabc229d6544",
+        "b2abb9981a68d73a6b0d3121ab68b9bfb2669306a3c6e611d76d0f08de8bf742",
+        "c70802b1cfdf7d76f94d61bb4d3f6e98f26d3377fa4a87b64b188fbd6b0eacd2",
+        "d9cfc54a6c8d6b2b93e21213b69cbed25272793ae110e31a54b663008b1ddb6c",
+        "eb0f2993d9271f55cb42eca343e6fbb601a733fb90bd40daeebc92ee60ae1ba9"
+      ],
+      "implementation": [
+        "src/runtime/usage.ts",
+        "src/runtime/usage-store.ts",
+        "src/runtime/usage-command.ts",
+        "src/io/exclusive-file-lock.ts",
+        "src/io/private-file.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/history-usage.test.ts",
+        "tests/extension-runtime-commands.test.ts",
+        "tests/exclusive-file-lock.test.ts"
+      ],
+      "remaining": [
+        "Local usage counters persist and expose preview, reset, and explicit consent/revocation through Pi; no data is sent and no transport exists. The reference one-shot telemetry delivery behavior and full cross-platform consent journey remain unverified; do not add an external transport without separate evidence and explicit consent."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-14",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "12c15a41dd2a951d30baca7285aff8be6f2c334986a0efbfdf833929742f4693",
+        "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+        "2db784c9d70b806c41cf5bb5abc3253acabad108b60c2299cec9eeab107fdf53",
+        "2eff2ba68b246bc79f42d110c3a8fb01ea305da1e7896e30d5dc887d0c3db044",
+        "34ed34719141571ab1d0cbe2cc28dd66da6c9f4c30aa612239b018c1af66ca2e",
+        "35f277a97a432a111d6ed62494bfacd633f975573e32eeb867a74db7105a7f28",
+        "937bac58127347f7d393bf326213f77ab9287a06848db601f4e0e72beb57ed6f",
+        "a6dcfeb0f3d0873e4ca5915c26902296cc9cd3c9c100eae70e2b72757748ad1f",
+        "daf7b47605ef2d3f48493f10a04e9092cabd2b2c8b29e59497e1f0feb06ab24b",
+        "eda0aa3542e1f18a9cce87d7d19f70c20714053d53d691329d68bad30edfc064"
+      ],
+      "implementation": [
+        "src/session/pi-resume.ts",
+        "src/session/checkpoint.ts",
+        "src/runtime/presentation.ts"
+      ],
+      "tests": [
+        "tests/pi-session-recovery-e2e.test.ts",
+        "tests/session-recovery.test.ts",
+        "tests/presentation.test.ts"
+      ],
+      "remaining": [
+        "Presentation policy now covers theme selection, color/no-color, banner, pretty/quiet, non-TTY and narrow terminals. Pi startup/UI command integration, keyboard/action inventory and cross-platform host lifecycle evidence remain."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-15",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "136879aa0b78863afe848846717032522ce883c3c874170855d56565eb176721",
+        "1cdbb3968664e3f3dd5d1ca9eae757e3e37ea12c345861fc2b6c57c7533231d9",
+        "2a2faeebaff581a2370cadf12d3c607ddea23af305d2f8c499309881c91ca204",
+        "2eff2ba68b246bc79f42d110c3a8fb01ea305da1e7896e30d5dc887d0c3db044",
+        "485ab76d54832f3806438eb8aaf9abfe37e58e1be936438c6e31ba655b957e91",
+        "4ca70dbc9b28d177986f350715f763508e87245cd85cd048b883bdc617893db9",
+        "4d69814a064177b700abd8f688269f16f0a8694f29e56dd34441633a14e43dae",
+        "6012799d86a79515f3b31a8d855aa0e48e1172304b98afdd63643a2146013650",
+        "61f7c359c2bf0b985f93f6d14060d9e4f0364030fe1d46297fc9308557d2acce",
+        "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+        "6c95a68fcdfb8f56399c917d97ab01340c22e6cd1632fa6c062d678a56cc1d7a",
+        "71d8732d3c2df8c95a029d0ca6476cb7991efccf45122f70bae5e0a42fb4838b",
+        "7deb98ac1cb60df84f9dd4cce7e4bef640862df3331736df45995a7cd31bad20",
+        "84e11467c4458b64a1995960d91a5f2d82a100cdd7932f281f7d9b79ffa26e9b",
+        "971eb77cc401466620b1ee19e156907846bdf80a46297483b45d7baf874091ca",
+        "9b60fa2775129c468f7eb3510905014553cee5f3cbcb78a608f08baf8bbd7336",
+        "9ff54b948dc2593bfcc9e59d9edac9588f6e3e3cdb1d8873e703fdbdb20958c7",
+        "a6dcfeb0f3d0873e4ca5915c26902296cc9cd3c9c100eae70e2b72757748ad1f",
+        "ab1608f51f18c5bae30325b7defcf09e3e5a452aede430ade22b3669bf437a02",
+        "b2189d32a9115f57a3b75f8393a00ef89bcf352d522d836d542ef80845bdc7c1",
+        "b2abb9981a68d73a6b0d3121ab68b9bfb2669306a3c6e611d76d0f08de8bf742",
+        "c4c6da34fa3038e183a6df71b0c71470d2ceb2abb69c99cd782dcac0ed7d6c56",
+        "f276fe56fe69392f7e6c0f3f8212adbf97cb155ac0c1ef1e788d88f81c9ce3db"
+      ],
+      "implementation": [
+        "docs/architecture/upstream-independence.md"
+      ],
+      "tests": [
+        "tests/audit-boundary.test.ts"
+      ],
+      "remaining": [
+        "Feature documentation follows unimplemented behavior; ecosystem command/link/media/claim validation remains incomplete."
+      ],
+      "stateful": false,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-16",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "136879aa0b78863afe848846717032522ce883c3c874170855d56565eb176721",
+        "1cdbb3968664e3f3dd5d1ca9eae757e3e37ea12c345861fc2b6c57c7533231d9",
+        "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+        "250a3db46eb790fefc794473d20a31e9dd9c6ea11887a343b808fe8e9757a7f6",
+        "2a2faeebaff581a2370cadf12d3c607ddea23af305d2f8c499309881c91ca204",
+        "2db784c9d70b806c41cf5bb5abc3253acabad108b60c2299cec9eeab107fdf53",
+        "2eff2ba68b246bc79f42d110c3a8fb01ea305da1e7896e30d5dc887d0c3db044",
+        "34ed34719141571ab1d0cbe2cc28dd66da6c9f4c30aa612239b018c1af66ca2e",
+        "35f277a97a432a111d6ed62494bfacd633f975573e32eeb867a74db7105a7f28",
+        "408736bcf2eb97214d4622854df361674f5b8eab95eb270a19911e2e8af59789",
+        "42d9cd663a79b0cd7bc39aa01b92cb76dbadc2a5310102a0ec2cd9d9359a2f0c",
+        "485ab76d54832f3806438eb8aaf9abfe37e58e1be936438c6e31ba655b957e91",
+        "4ca70dbc9b28d177986f350715f763508e87245cd85cd048b883bdc617893db9",
+        "4d69814a064177b700abd8f688269f16f0a8694f29e56dd34441633a14e43dae",
+        "531c776df94e59bec803a196f90af454498d1c013b6cbbdd94a28bd3077b800b",
+        "6012799d86a79515f3b31a8d855aa0e48e1172304b98afdd63643a2146013650",
+        "61f7c359c2bf0b985f93f6d14060d9e4f0364030fe1d46297fc9308557d2acce",
+        "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+        "71c2cf89e92bda9a7f549e60312b45f6b45a3c7f4a0c22772c379f5d9b946ee9",
+        "71d8732d3c2df8c95a029d0ca6476cb7991efccf45122f70bae5e0a42fb4838b",
+        "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",
+        "7deb98ac1cb60df84f9dd4cce7e4bef640862df3331736df45995a7cd31bad20",
+        "84e11467c4458b64a1995960d91a5f2d82a100cdd7932f281f7d9b79ffa26e9b",
+        "971eb77cc401466620b1ee19e156907846bdf80a46297483b45d7baf874091ca",
+        "9871535787a8178bf962fa1e9da862492868940b9a34f0490f937304d2a26e2e",
+        "9b60fa2775129c468f7eb3510905014553cee5f3cbcb78a608f08baf8bbd7336",
+        "9ff54b948dc2593bfcc9e59d9edac9588f6e3e3cdb1d8873e703fdbdb20958c7",
+        "a6dcfeb0f3d0873e4ca5915c26902296cc9cd3c9c100eae70e2b72757748ad1f",
+        "ab1608f51f18c5bae30325b7defcf09e3e5a452aede430ade22b3669bf437a02",
+        "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388",
+        "b2189d32a9115f57a3b75f8393a00ef89bcf352d522d836d542ef80845bdc7c1",
+        "b2abb9981a68d73a6b0d3121ab68b9bfb2669306a3c6e611d76d0f08de8bf742",
+        "b7cdfe192e91f1557133a5c80ba96e41cdb5b1c4d1dbb5d42f5e7103103ed301",
+        "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+        "c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66",
+        "c4c6da34fa3038e183a6df71b0c71470d2ceb2abb69c99cd782dcac0ed7d6c56",
+        "d9ea50ecc8011d5664a5c663f1dc37d98ccfde1442efe4211fee9488ee314728",
+        "db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d",
+        "dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",
+        "f276fe56fe69392f7e6c0f3f8212adbf97cb155ac0c1ef1e788d88f81c9ce3db",
+        "f8b00b31f1c7cd7d08d99cf65e566ae74a865e3542fda91f67f8c7275d8fd09a",
+        "fef309cda80d61010d459bbfb80a232e8f92c1d9149395ad117f1473665d369f"
+      ],
+      "implementation": [
+        "scripts/validate-ecosystem-claims.mjs"
+      ],
+      "tests": [
+        "tests/ecosystem-baseline.test.ts"
+      ],
+      "remaining": [
+        "Unimplemented ECO units and applicable host/platform/model evidence prevent global parity closure."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": true,
+      "evidence": []
+    }
+  ]
+}

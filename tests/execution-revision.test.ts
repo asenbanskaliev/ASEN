@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {execFileSync} from "node:child_process";
-import {access,mkdtemp,mkdir,rm,writeFile} from "node:fs/promises";
+import {execFileSync,spawn} from "node:child_process";
+import {access,mkdtemp,mkdir,readFile,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {executeEvidenceCommand,addExecutedEvidence} from "../src/evidence/execution.js";
@@ -70,15 +70,37 @@ test("execution timeout terminates spawned descendants",async t=>{
  execFileSync("git",["-C",repo,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m","initial"]);
  const revision=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
  const nonce=`${process.pid}-${Date.now()}`,ready=join(tmpdir(),`asen-timeout-ready-${nonce}.txt`),marker=join(tmpdir(),`asen-timeout-descendant-${nonce}.txt`);
- t.after(async()=>{await rm(ready,{force:true});await rm(marker,{force:true});});
- const descendant=`require("fs").writeFileSync(${JSON.stringify(ready)},"ready");setTimeout(()=>require("fs").writeFileSync(${JSON.stringify(marker)},"survived"),4000);setTimeout(()=>{},10000)`;
- const command=[process.execPath,"-e",`const child=require("child_process").spawn(process.execPath,["-e",${JSON.stringify(descendant)}],{stdio:"ignore",detached:process.platform==="win32"});child.unref();setTimeout(()=>{},10000)`] as const;
+ const probe=join(tmpdir(),`asen-timeout-probe-${nonce}.txt`),siblingMarker=join(tmpdir(),`asen-timeout-control-${nonce}.txt`);
+ const observer=(readyPath:string,markerPath:string)=>`const fs=require("fs");fs.writeFileSync(${JSON.stringify(readyPath)},String(Date.now()));let written=false;const timer=setInterval(()=>{if(!written&&fs.existsSync(${JSON.stringify(probe)})){fs.writeFileSync(${JSON.stringify(markerPath)},"survived");written=true;}},25);`;
+ const siblingReady=join(tmpdir(),`asen-timeout-sibling-${nonce}.txt`),sibling=spawn(process.execPath,["-e",observer(siblingReady,siblingMarker)],{stdio:"ignore"});
+ t.after(async()=>{if(sibling.exitCode===null)sibling.kill("SIGKILL");for(const file of [ready,marker,siblingReady,probe,siblingMarker])await rm(file,{force:true});});
+ let siblingStarted=false;for(let i=0;i<80&&!siblingStarted;i++){try{await access(siblingReady);siblingStarted=true;}catch{await new Promise(resolve=>setTimeout(resolve,25));}}
+ assert.equal(siblingStarted,true,"independent sentinel did not start before the timeout");
+ const descendant=observer(ready,marker)+"timer.unref();setTimeout(()=>{},10000)";
+ // Keep the parent alive well beyond the unchanged 3-second evidence timeout.
+ // Windows runners can delay timer delivery under the full parallel test load;
+ // the process lifetime must not race the timeout being tested.
+ const startupDelay=process.platform==="win32"?0:2100;
+ const command=[process.execPath,"-e",`setTimeout(()=>{const child=require("child_process").spawn(process.execPath,["-e",${JSON.stringify(descendant)}],{stdio:"ignore",detached:process.platform==="win32"});child.unref();},${startupDelay});setTimeout(()=>{},30000)`] as const;
  const pending=executeEvidenceCommand({repository:repo,id:"timeout-tree",revision,createdAt:"now"},command,{timeoutMs:3000});
- let started=false;for(let i=0;i<80&&!started;i++){try{await access(ready);started=true;}catch{await new Promise(resolve=>setTimeout(resolve,25));}}
- assert.equal(started,true,"descendant did not start before the timeout");
- await assert.rejects(()=>pending,/timed out/);
+ const rejected=assert.rejects(pending,/timed out/);
+ let settled=false;
+ void pending.then(()=>{settled=true;},()=>{settled=true;});
+ let started=false;
+ for(;;){try{await access(ready);started=true;break;}catch{if(settled)break;await new Promise(resolve=>setTimeout(resolve,25));}}
+ await rejected;
+ assert.equal(started,true,"descendant did not start before execution settled");
+ const descendantStarted=Number(await readFile(ready,"utf8"));
+ assert.ok(Number.isFinite(descendantStarted)&&Date.now()>=descendantStarted,"valid descendant startup receipt required");
+ // Probe only after timeout cleanup: both real processes would now publish a
+ // marker if alive, regardless of how late their initial startup occurred.
+ await writeFile(probe,"observe");
+ assert.ok(Date.now()-descendantStarted+1500<10000,"probe must precede the descendant's natural exit");
  await new Promise(resolve=>setTimeout(resolve,1500));
+ assert.ok(Date.now()-descendantStarted<10000,"observation must precede the descendant's natural exit");
+ await access(siblingMarker);
  await assert.rejects(()=>access(marker),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
+ assert.equal(sibling.exitCode,null,"termination escaped the evidence command's process containment");
 });
 
 test("execution isolates transient command mutations from the authoritative candidate",async t=>{

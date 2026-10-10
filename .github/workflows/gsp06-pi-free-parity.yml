@@ -1,0 +1,41 @@
+name: GSP-06 Pi Free parity
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: "Exact branch HEAD explicitly selected for a new provider run"
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  gsp06-pi-free:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && inputs.expected_sha == github.sha
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+      - run: npm install --ignore-scripts
+      - run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0
+      - run: pi install npm:pi-free@2.8.4
+      - name: Exact candidate and deterministic gates
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ inputs.expected_sha }}"
+          npm run typecheck
+          npm run audit:skill-parity
+          npm run verify:pack
+      - name: Pi Free generated-output probes
+        env:
+          ASEN_EXPECTED_SHA: ${{ inputs.expected_sha }}
+          ASEN_PI_PROVIDER: openrouter
+          ASEN_PI_MODEL: nvidia/nemotron-3.5-lightning:free
+          ASEN_PI_PROVIDER_EXTENSION: npm:pi-free@2.8.4
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          test -n "$OPENROUTER_API_KEY"
+          node scripts/gsp06-pi-free-probes.mjs

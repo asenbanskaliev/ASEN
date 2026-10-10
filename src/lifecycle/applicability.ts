@@ -41,7 +41,9 @@ export interface TddObligation {
 const attempted = new WeakSet<object>();
 const issued = new WeakSet<object>();
 const claimed = new WeakSet<object>();
+const originalWriters=new WeakSet<object>();
 const obligations = new WeakMap<object, TddObligation>();
+const defectIntents=new WeakSet<object>();
 const issuedObligations = new WeakSet<object>();
 const claimedObligations = new WeakSet<object>();
 const selectionDescriptions = new WeakMap<object, WorkflowSelectionDescription>();
@@ -149,6 +151,8 @@ function decide(claimedOddDecision:OddRouteDecision,value:LifecycleApplicability
   };
   const obligation = Object.freeze({ requirementId: createHash("sha256").update(JSON.stringify(obligationPayload)).digest("hex"), ...obligationPayload });
   issued.add(result);
+  if(context.facts.writes.length)originalWriters.add(result);
+  if(context.facts.intent==="defect")defectIntents.add(result);
   issuedObligations.add(obligation);
   obligations.set(result, obligation);
   if (selection && outcome === "structured") selectionDescriptions.set(result, Object.freeze({ schemaVersion: 1, workflow: selection.workflow, source: selection.source, taskIdentity: selection.taskIdentity, repositoryIdentity: selection.repositoryIdentity }));
@@ -186,3 +190,12 @@ export function claimLifecycleApplicability(value: unknown): asserts value is Li
   if (claimed.has(value)) throw new Error("Lifecycle applicability has already been claimed");
   claimed.add(value);
 }
+
+/** Hecho privado de la ruta original; los clones no lo heredan. */
+export function hasOriginalDefectIntent(value:unknown):boolean{
+ return typeof value==="object"&&value!==null&&issued.has(value)&&defectIntents.has(value);
+}
+
+
+/** Immutable original write intent; read-only applicability cannot mint writer admission. */
+export function hasOriginalWriterIntent(value:unknown):boolean{return typeof value==="object"&&value!==null&&originalWriters.has(value);}
