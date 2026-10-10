@@ -14,3 +14,9 @@ test("agent lifecycle rejects invalid timestamp types before parsing",()=>{
  const record=createAgentRecord(input);
  assert.throws(()=>transitionAgent(record,"running",0 as unknown as string),/Invalid agent transition timestamp/);
 });
+
+test("agent lifecycle fails safely for absent or invalid owner data",()=>{
+ const base={id:"owner",role:"worker",sessionId:"s",projectId:"p",createdAt:"2026-10-07T00:00:00Z"};
+ assert.throws(()=>createAgentRecord({...base,owner:undefined as unknown as {kind:"user";id:string}}),/Invalid agent owner kind|Agent identity/);
+ assert.throws(()=>createAgentRecord({...base,owner:{kind:"invalid" as "user",id:"a"}}),/Invalid agent owner kind/);
+});
