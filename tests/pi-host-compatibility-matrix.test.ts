@@ -221,3 +221,14 @@ test("registration names reject control characters before host mutation",()=>{
   assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[{name}]},["asen"]),/inventory is malformed/);
  }
 });
+
+test("reservation array accessors are rejected without invoking getters",()=>{
+ const names:string[]=["asen"];
+ Object.defineProperty(names,"0",{get(){throw Error("reservation getter invoked");}});
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[]},names),/reservation list is invalid/);
+});
+
+test("sparse reservation arrays are rejected before host inventory lookup",()=>{
+ const names:string[]=new Array(1);
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>{throw Error("unexpected lookup");}},names),/reservation list is invalid/);
+});
