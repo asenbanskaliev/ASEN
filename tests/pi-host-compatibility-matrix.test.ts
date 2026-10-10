@@ -156,3 +156,7 @@ test("duplicate reservations fail before invoking host inventory",()=>{
 test("inventory errors are propagated",()=>{
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>{throw Error("inventory error");}},["asen"]),/inventory error/);
 });
+
+test("empty reservation fails before inventory access",()=>{
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>{throw Error("should not run");}},[""]),/reservation list is invalid/);
+});
