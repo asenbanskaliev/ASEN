@@ -148,3 +148,7 @@ test("collision after unrelated command is detected",()=>{
 test("undefined inventory entry is rejected",()=>{
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[undefined]},["asen"]),/inventory is malformed/);
 });
+
+test("duplicate reservations fail before invoking host inventory",()=>{
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>{throw Error("unexpected inventory access");}},["asen","asen"]),/reservation list is invalid/);
+});
