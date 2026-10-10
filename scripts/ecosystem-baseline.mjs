@@ -755,6 +755,14 @@ export function collectRuntimeEdgeFiles(repository,commit,selector) {
   return files.sort((a,b)=>a.path.localeCompare(b.path,"en"));
 }
 
+/** A rename needs a hash unique across both complete snapshots, not just changed paths. */
+export function classifyUniqueContentRenames(removed,added,oldRows,newRows) {
+  const count=rows=>{const result=new Map();for(const row of rows)result.set(row.sha256,(result.get(row.sha256)??0)+1);return result;};
+  const oldCount=count(oldRows),newCount=count(newRows),addedByHash=new Map(added.map(row=>[row.sha256,row]));
+  return removed.flatMap(row=>oldCount.get(row.sha256)===1&&newCount.get(row.sha256)===1&&addedByHash.has(row.sha256)
+    ?[{path:row.path,to:addedByHash.get(row.sha256).path}]:[]);
+}
+
 /** Includes mapped runtime-only inputs in the source drift report; it never adopts them. */
 export function detectMappedBaselineDrift(repository,before,after,adjudications,mapping) {
   verifyRuntimeEdgeMappings(repository,before,adjudications,mapping);
@@ -769,12 +777,9 @@ export function detectMappedBaselineDrift(repository,before,after,adjudications,
         const oldByPath=new Map(oldFiles.map(file=>[file.path,file])),newByPath=new Map(newFiles.map(file=>[file.path,file]));
         const removed=oldFiles.filter(file=>!newByPath.has(file.path)),added=newFiles.filter(file=>!oldByPath.has(file.path));
         const renamedOld=new Set(),renamedNew=new Set();
-        for(const file of removed){
-          const matches=added.filter(candidate=>candidate.sha256===file.sha256);
-          if(matches.length===1&&removed.filter(candidate=>candidate.sha256===file.sha256).length===1){
-            additionalChanges.push({kind:"RENAMED",path:file.path,to:matches[0].path});
-            renamedOld.add(file.path);renamedNew.add(matches[0].path);
-          }
+        for(const move of classifyUniqueContentRenames(removed,added,oldFiles,newFiles)){
+          additionalChanges.push({kind:"RENAMED",path:move.path,to:move.to});
+          renamedOld.add(move.path);renamedNew.add(move.to);
         }
         for(const file of removed)if(!renamedOld.has(file.path))additionalChanges.push({kind:"REMOVED",path:file.path});
         for(const file of added)if(!renamedNew.has(file.path))additionalChanges.push({kind:"ADDED",path:file.path});
@@ -808,11 +813,8 @@ export function detectBaselineDrift(before, after, {runtimeEdges=[],additionalCh
   const old = new Map(before.files.map(row => [row.path,row])), next = new Map(after.files.map(row => [row.path,row]));
   const removed = before.files.filter(row => !next.has(row.path)), added = after.files.filter(row => !old.has(row.path)), changes = [];
   const renamedOld = new Set(), renamedNew = new Set();
-  for (const row of removed) {
-    const matches = added.filter(candidate => candidate.sha256 === row.sha256);
-    if (matches.length === 1 && removed.filter(candidate => candidate.sha256 === row.sha256).length === 1) {
-      changes.push({kind:"RENAMED", path:row.path, to:matches[0].path}); renamedOld.add(row.path); renamedNew.add(matches[0].path);
-    }
+  for (const move of classifyUniqueContentRenames(removed,added,before.files,after.files)) {
+    changes.push({kind:"RENAMED",path:move.path,to:move.to});renamedOld.add(move.path);renamedNew.add(move.to);
   }
   for (const row of removed) if (!renamedOld.has(row.path)) changes.push({kind:"REMOVED", path:row.path});
   for (const row of added) if (!renamedNew.has(row.path)) changes.push({kind:"ADDED", path:row.path});
@@ -834,7 +836,8 @@ export function detectBaselineDrift(before, after, {runtimeEdges=[],additionalCh
       invalidated.add(row.path); addedDependent = true;
     }
   }
-  return {from:before.commit, to:after.commit, autoAdopt:false, changes:changes.sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b), "en")),
+  const uniqueChanges=[...new Map(changes.map(change=>[JSON.stringify(change),change])).values()];
+  return {from:before.commit, to:after.commit, autoAdopt:false, changes:uniqueChanges.sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b), "en")),
     invalidatedPaths:sortedUnique([...invalidated])};
 }
 

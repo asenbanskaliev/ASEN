@@ -13,6 +13,10 @@ cp.execFileSync = function(command, args, options) {
   if (args?.some(arg => basename(String(arg)) === "verify-pi-package.mjs")) {
     inspected++;
     assert.ok(options?.env, "verifier must receive an explicit environment");
+    assert.equal(options.env.PI_OFFLINE, "1");
+    assert.equal(options.env.PI_SKIP_VERSION_CHECK, "1");
+    assert.equal(options.env.PI_TELEMETRY, "0");
+    assert.equal(Object.hasOwn(options.env, "PI_PACKAGE_DIR"), false);
     for (const key of keys) {
       assert.equal(options.env[key], undefined, `${key} must not reach the verifier`);
     }
