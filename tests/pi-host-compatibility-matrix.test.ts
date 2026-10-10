@@ -123,3 +123,8 @@ test("oversized host command inventories are rejected",()=>{
  const rows=[];rows.length=100001;
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>rows},["asen"]),/inventory is malformed/);
 });
+
+test("sparse command inventory fails closed",()=>{
+ const rows=new Array(2);rows[1]={name:"other"};
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>rows},["asen"]),/inventory is malformed/);
+});
