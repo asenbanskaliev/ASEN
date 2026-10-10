@@ -25,3 +25,9 @@ test("agent lifecycle rejects absent input without dereferencing it",()=>{
  assert.throws(()=>createAgentRecord(undefined as unknown as Parameters<typeof createAgentRecord>[0]),/Agent identity is incomplete or invalid/);
  assert.throws(()=>createAgentRecord(null as unknown as Parameters<typeof createAgentRecord>[0]),/Agent identity is incomplete or invalid/);
 });
+
+test("agent transitions reject missing records and unknown states",()=>{
+ assert.throws(()=>transitionAgent(null as unknown as ReturnType<typeof createAgentRecord>,"running","2026-10-07T00:00:00Z"),/Invalid agent state/);
+ const record=createAgentRecord({id:"state",role:"worker",owner:{kind:"system",id:"asen"},sessionId:"s",projectId:"p",createdAt:"2026-10-07T00:00:00Z"});
+ assert.throws(()=>transitionAgent({...record,state:"unknown" as "queued"},"running","2026-10-07T00:00:01Z"),/Invalid agent state/);
+});
