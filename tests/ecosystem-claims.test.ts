@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
+import {readFileSync} from "node:fs";
 // @ts-expect-error Research/claims validator is deliberately outside the runtime TypeScript package.
-import {loadEcosystemClaims,validateEcosystemClaims} from "../scripts/validate-ecosystem-claims.mjs";
+import {isEvidenceOnlyOverlay,loadEcosystemClaims,validateEcosystemClaims} from "../scripts/validate-ecosystem-claims.mjs";
 
 const load=()=>loadEcosystemClaims();
 test("FULL cannot lower fixed ECO obligations through editable claim flags",()=>{
@@ -19,6 +21,30 @@ test("every current ECO claim is honest and no row silently claims FULL",()=>{
   const input=load();assert.deepEqual(validateEcosystemClaims(input),[]);
   assert.equal(input.registry.rows.length,16);
   assert.equal(input.registry.rows.some((row:any)=>row.status==="FULL"),false);
+});
+test("evidence may follow its tested candidate only as claim and receipt metadata",()=>{
+ assert.equal(isEvidenceOnlyOverlay(["registry/parity/ecosystem-claims-v1.json","registry/evidence/ecosystem/eco-05-positive.json"]),true);
+ assert.equal(isEvidenceOnlyOverlay([]),false);
+ assert.equal(isEvidenceOnlyOverlay(["src/agents/dispatcher.ts"]),false);
+ assert.equal(isEvidenceOnlyOverlay(["registry/evidence/ecosystem/../private.json"]),false);
+ assert.equal(isEvidenceOnlyOverlay(["registry/evidence/ecosystem/one.json","registry/evidence/ecosystem/one.json"]),false);
+});
+test("FULL binds receipts to an exact tested source commit followed by an evidence-only overlay",()=>{
+ const baseline=JSON.parse(readFileSync("registry/parity/ecosystem-sources-v1.json","utf8")),registry=JSON.parse(readFileSync("registry/parity/ecosystem-claims-v1.json","utf8"));
+ const input:any={baseline,registry,observedHead:"c".repeat(40),driftReport:undefined,existingPaths:new Set(registry.rows.flatMap((r:any)=>[...r.implementation,...r.tests])),recordDigests:new Map(),records:new Map(),candidateOverlays:new Map()};
+ const row=input.registry.rows.find((r:any)=>r.id==="ECO-05"),candidate="a".repeat(40),sourceCandidate="b".repeat(40);
+ row.status="FULL";row.remaining=[];row.candidate=candidate;row.sourceSnapshotCommit=sourceCandidate;
+ input.candidateOverlays=new Map([[candidate,true]]);
+ input.driftReport={from:input.baseline.commit,to:sourceCandidate,autoAdopt:false,changes:[],invalidatedPaths:[]};
+ const classes:Record<string,string>={positive:"DETERMINISTIC_EXECUTION",negative:"DETERMINISTIC_EXECUTION",failure:"DETERMINISTIC_EXECUTION",recovery:"DETERMINISTIC_EXECUTION",restart:"DETERMINISTIC_EXECUTION","cross-session":"DETERMINISTIC_EXECUTION",linux:"OS_RUNTIME",windows:"OS_RUNTIME",macos:"OS_RUNTIME","pi-host":"REAL_PI_HOST","pi-model":"REAL_PI_MODEL"};
+ row.evidence=Object.entries(classes).map(([kind,evidenceClass])=>{
+  const recordPath=`registry/evidence/ecosystem/validator-${kind}.json`,receipt={id:`receipt-${kind}`,candidate,sourceCommit:input.baseline.commit,kind,class:evidenceClass,command:"exact verified command",observation:"exact observed result",result:"PASS"};
+  const recordSha256=createHash("sha256").update(JSON.stringify(receipt)).digest("hex");
+  const proof={...receipt,recordPath,recordSha256};input.existingPaths.add(recordPath);input.recordDigests.set(recordPath,recordSha256);input.records.set(recordPath,receipt);return proof;
+ });
+ assert.deepEqual(validateEcosystemClaims(input),[]);
+ input.candidateOverlays.set(candidate,false);
+ assert.match(validateEcosystemClaims(input).join("\n"),/tested source candidate followed only by claim\/evidence metadata/);
 });
 test("candidate report integration passes the supplied root metadata to the verifier before producing drift state",()=>{
  const baselineCommit=load().baseline.commit;
@@ -63,6 +89,7 @@ test("FULL requires every platform, restart, cross-session and real Pi boundary;
   const issues=validateEcosystemClaims(input).join("\n");
   for(const kind of ["negative","failure","recovery","restart","cross-session","linux","windows","macos","pi-host","pi-model"])
     assert.match(issues,new RegExp("missing "+kind));
+  assert.match(issues,/tested source candidate followed only by claim\/evidence metadata/);
   assert.match(issues,/invalid executed evidence record/);assert.match(issues,/receipt\/content binding/);
   const path=input.baseline.files.find((r:any)=>r.sha256===row.sourceHashes[0]).path;
   input.driftReport={from:input.baseline.commit,to:row.sourceSnapshotCommit,autoAdopt:false,changes:[],invalidatedPaths:[path]};

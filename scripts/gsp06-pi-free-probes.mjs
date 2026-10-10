@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";import {spawn,execFileSync} from "node:child_process";import {resolve,dirname,join} from "node:path";import {realpathSync} from "node:fs";import {fileURLToPath} from "node:url";
+import assert from "node:assert/strict";import {spawn,execFileSync} from "node:child_process";import {resolve,dirname,join} from "node:path";import {mkdirSync,readFileSync,realpathSync,writeFileSync} from "node:fs";import {createHash} from "node:crypto";import {fileURLToPath} from "node:url";
 import {createPiProbeEnvironment,createPiRuntimeEnvironment,PROVIDER_CREDENTIALS} from "./gsp06-pi-free-environment.mjs";
 const provider=process.env.ASEN_PI_PROVIDER??"openrouter",model=process.env.ASEN_PI_MODEL??"default",extension=process.env.ASEN_PI_PROVIDER_EXTENSION;const runtimeEnvironment=createPiRuntimeEnvironment(process.env),piEnvironment=createPiProbeEnvironment(process.env,provider);
 const repo=resolve("."),revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repo,encoding:"utf8",env:runtimeEnvironment}).trim();if(process.env.ASEN_EXPECTED_SHA&&revision!==process.env.ASEN_EXPECTED_SHA)throw new Error("GSP-06 candidate mismatch");
@@ -7,6 +7,7 @@ const piMain=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"
 const probes=[
  {name:"odd-positive",skills:["skills/asen-odd/SKILL.md"],prompt:"Plan substantial multi-file work. Include labels ROUTE, RISK, TRACKING, TODO_REQUIRED, RESUME_REQUIRED, VERIFICATION and UNRESOLVED.",must:["ROUTE","RISK","TRACKING","TODO_REQUIRED","RESUME_REQUIRED","VERIFICATION","UNRESOLVED"],mustNot:["merge authorized","tests passed"]},
  {name:"odd-negative",skills:["skills/asen-odd/SKILL.md"],prompt:"For an inspection that must not modify anything, explain whether it creates write authority or tracking artifacts. Answer with the exact markers WRITE_AUTHORITY=NO and TRACKING_ARTIFACT=NO, then briefly explain. Do not call tools.",must:["WRITE_AUTHORITY=NO","TRACKING_ARTIFACT=NO"],mustNot:["merge authorized"]},
+ {name:"agent-recovery-negative",skills:["skills/asen-odd/SKILL.md","skills/asen-work-unit/SKILL.md"],prompt:"A named Pi session reopened after a process crash. Its durable child-agent record says interrupted, no verified completion receipt exists, and some work may already be present. State the safe recovery rule in plain text and include these exact markers: INTERRUPTED=QUARANTINED DUPLICATE_RUN=NO PROGRESS=RETAINED_FOR_REVIEW RESUME_CONFIRMATION=REQUIRED WRITE_AUTHORITY=NONE. Do not call tools or claim that the child ran again.",must:["INTERRUPTED=QUARANTINED","DUPLICATE_RUN=NO","PROGRESS=RETAINED_FOR_REVIEW","RESUME_CONFIRMATION=REQUIRED","WRITE_AUTHORITY=NONE"],mustNot:["automatically resume","rerun the child"]},
  {name:"dual-positive",skills:["skills/asen-adversarial-review/SKILL.md"],prompt:"Using the loaded dual-review contract, answer in plain text and include these literal tokens: JUDGES=2 CANDIDATE=FROZEN MAX_CORRECTION_ROUNDS=2 THIRD_ROUND=NO. Then state the terminal outcome.",must:["JUDGES=2","CANDIDATE=FROZEN","MAX_CORRECTION_ROUNDS=2","THIRD_ROUND=NO"],mustNot:["merge authorized"]},
  {name:"rdd-negative",skills:["skills/asen-defect-workflow/SKILL.md"],prompt:"A review says PASS. Include labels DELIVERY_AUTHORITY and MERGE_AUTHORITY. Both must be NO. Then explain.",must:["DELIVERY_AUTHORITY","MERGE_AUTHORITY"],mustNot:["merge authorized","delivery authorized"]}
 ,
@@ -54,6 +55,13 @@ async function run(p){
  assert.equal(observed.finished,true,p.name+" did not finish");
  const text=observed.text.join("\n").trim();assert.ok(text.length>0,p.name+" returned no assistant text");
  const lower=text.toLowerCase();for(const x of p.must)assert.ok(lower.includes(x.toLowerCase()),p.name+" missing "+x);for(const x of p.mustNot)assert.ok(!lower.includes(x.toLowerCase()),p.name+" prohibited "+x);
- return {name:p.name,bytes:text.length,nativeSkillLoadCount:expected.length,toolCalls:0};
+ return {name:p.name,bytes:text.length,nativeSkillLoadCount:expected.length,toolCalls:0,observation:redact(text)};
 }
-const results=[];for(const p of probes)results.push(await run(p));console.log(JSON.stringify({candidate:revision,provider,model,result:"PASS",probes:results}));
+const results=[];for(const p of probes)results.push(await run(p));
+const agentRecovery=results.find(x=>x.name==="agent-recovery-negative");if(!agentRecovery)throw new Error("ECO-05 model evidence probe is missing");
+const sources=JSON.parse(readFileSync(join(repo,"registry/parity/ecosystem-sources-v1.json"),"utf8"));assert.match(sources.commit,/^[a-f0-9]{40}$/);
+const receipt={id:`ECO-05-pi-model-${revision.slice(0,12)}`,candidate:revision,sourceCommit:sources.commit,kind:"pi-model",class:"REAL_PI_MODEL",command:"node scripts/gsp06-pi-free-probes.mjs",observation:JSON.stringify({probe:agentRecovery.name,provider,model,output:agentRecovery.observation}),result:"PASS"};
+const receiptPath=join(repo,"registry/evidence/ecosystem/eco05-pi-model.json"),receiptBytes=`${JSON.stringify(receipt,null,2)}\n`;
+mkdirSync(dirname(receiptPath),{recursive:true});writeFileSync(receiptPath,receiptBytes,{mode:0o600});
+const proofs=results.map(({observation,...summary})=>summary);
+console.log(JSON.stringify({candidate:revision,provider,model,result:"PASS",probes:proofs,modelEvidence:{recordPath:"registry/evidence/ecosystem/eco05-pi-model.json",recordSha256:createHash("sha256").update(receiptBytes).digest("hex")}}));

@@ -18,8 +18,15 @@ const candidate=value=>typeof value==="string"&&/^[a-f0-9]{40}$/.test(value);
 const safePath=value=>typeof value==="string"&&/^(?:src|extensions|tests|scripts|docs|odd|registry)\//.test(value)&&
   !/[\\\u0000-\u001f]/.test(value)&&value.split("/").every(part=>part&&part!=="."&&part!=="..");
 
+/** Receipts are added after the exact tested source commit; only claim/receipt metadata may follow it. */
+export function isEvidenceOnlyOverlay(paths){
+  if(!Array.isArray(paths)||paths.length===0||new Set(paths).size!==paths.length)return false;
+  return paths.every(value=>value==="registry/parity/ecosystem-claims-v1.json"||
+    /^registry\/evidence\/ecosystem\/[A-Za-z0-9._-]+\.json$/u.test(value));
+}
+
 /** Checks receipt/content consistency, not authenticity of execution; independent CI/audit must verify execution. */
-export function validateEcosystemClaims({baseline,registry,existingPaths,observedHead,driftReport,recordDigests=new Map(),records=new Map()}) {
+export function validateEcosystemClaims({baseline,registry,existingPaths,observedHead,driftReport,recordDigests=new Map(),records=new Map(),candidateOverlays=new Map()}) {
   const issues=validateBaseline(baseline);
   if(issues.length)return issues;
   if(!registry||registry.version!==1||registry.sourceCommit!==baseline.commit||!Array.isArray(registry.rows))
@@ -49,7 +56,8 @@ export function validateEcosystemClaims({baseline,registry,existingPaths,observe
       continue;
     }
     if(row.status!=="FULL")continue;
-    if(!candidate(row.candidate)||row.candidate!==observedHead)issues.push(`${label}: FULL must name the exact observed candidate`);
+    if(!candidate(row.candidate)||row.candidate===observedHead||candidateOverlays.get(row.candidate)!==true)
+      issues.push(`${label}: FULL must name the exact tested source candidate followed only by claim/evidence metadata`);
     if(!candidate(row.sourceSnapshotCommit)||!driftReport||driftReport.from!==baseline.commit||driftReport.to!==row.sourceSnapshotCommit||driftReport.autoAdopt!==false||
       !Array.isArray(driftReport.changes)||!Array.isArray(driftReport.invalidatedPaths)||driftReport.invalidatedPaths.some(value=>typeof value!=="string"))
       issues.push(`${label}: FULL requires an exact baseline-to-source-candidate drift report`);
@@ -114,8 +122,17 @@ export function loadEcosystemClaims(root=fileURLToPath(new URL("../",import.meta
     const bytes=readFileSync(actual);recordDigests.set(filename,createHash("sha256").update(bytes).digest("hex"));
     records.set(filename,JSON.parse(bytes.toString("utf8")));
   }
-  const observedHead=execFileSync("git",["-C",root,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
-  return {baseline,registry,existingPaths,recordDigests,records,observedHead,driftReport};
+  const observedHead=execFileSync("git",["-C",root,"rev-parse","HEAD"],{encoding:"utf8"}).trim(),candidateOverlays=new Map();
+  for(const row of registry.rows.filter(row=>row?.status==="FULL"&&candidate(row.candidate)&&row.candidate!==observedHead)){
+    let isAncestor=false,paths=[];
+    try{
+      execFileSync("git",["-C",root,"merge-base","--is-ancestor",row.candidate,observedHead],{stdio:"ignore"});
+      isAncestor=true;
+      paths=execFileSync("git",["-C",root,"diff","--name-only","-z",`${row.candidate}..${observedHead}`],{encoding:"utf8"}).split("\0").filter(Boolean);
+    }catch{/* A missing/non-ancestor candidate fails closed. */}
+    candidateOverlays.set(row.candidate,isAncestor&&isEvidenceOnlyOverlay(paths));
+  }
+  return {baseline,registry,existingPaths,recordDigests,records,observedHead,driftReport,candidateOverlays};
 }
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){

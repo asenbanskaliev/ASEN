@@ -137,6 +137,23 @@ test("Pi Free workflow pins the verified release and exposes only OpenRouter cre
   assert.doesNotMatch(workflow, /secrets\.(?:LLM7_API_KEY|GROQ_API_KEY)/);
 });
 
+test("Pi Free model probes check interrupted-agent recovery without authorizing a rerun", () => {
+  const probes = readFileSync(join(repository, "scripts/gsp06-pi-free-probes.mjs"), "utf8");
+  assert.match(probes, /name:"agent-recovery-negative"/);
+  for (const marker of ["INTERRUPTED=QUARANTINED", "DUPLICATE_RUN=NO", "PROGRESS=RETAINED_FOR_REVIEW", "RESUME_CONFIRMATION=REQUIRED", "WRITE_AUTHORITY=NONE"])
+    assert.ok(probes.includes(marker), `agent recovery model probe must require ${marker}`);
+  assert.match(probes, /kind:"pi-model",class:"REAL_PI_MODEL"/);
+  assert.match(probes, /eco05-pi-model\.json/);
+  const workflow=readFileSync(join(repository,".github/workflows/gsp06-pi-free-parity.yml"),"utf8");
+  assert.match(workflow,/workflow_dispatch:/);
+  assert.match(workflow,/name: eco05-pi-model-\$\{\{ inputs\.expected_sha \}\}/);
+  assert.match(workflow,/path: registry\/evidence\/ecosystem\/eco05-pi-model\.json/);
+  assert.match(workflow,/git ls-remote origin "refs\/heads\/\$GH_REF_NAME"/);
+  assert.match(workflow,/git push origin "HEAD:refs\/heads\/\$GH_REF_NAME"/);
+  assert.match(workflow,/permissions:\s*\n\s+contents: write/);
+  assert.doesNotMatch(workflow,/git push --force/);
+});
+
 test("Pi child environment fails closed for an unsupported or unconfigured provider", () => {
   assert.throws(() => createPiProbeEnvironment({}, "unknown"), /Unsupported GSP-06 provider/);
   assert.throws(() => createPiProbeEnvironment({}, "toString"), /Unsupported GSP-06 provider/);

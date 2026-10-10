@@ -7,7 +7,10 @@ on:
         required: true
         type: string
 permissions:
-  contents: read
+  contents: write
+concurrency:
+  group: gsp06-pi-free-${{ inputs.expected_sha }}
+  cancel-in-progress: false
 jobs:
   gsp06-pi-free:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && inputs.expected_sha == github.sha
@@ -29,6 +32,11 @@ jobs:
           npm run typecheck
           npm run audit:skill-parity
           npm run verify:pack
+      - name: Reject stale or duplicate candidate before provider use
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          GH_REF_NAME: ${{ github.ref_name }}
+        run: test "$(git ls-remote origin "refs/heads/$GH_REF_NAME" | cut -f1)" = "$EXPECTED_SHA"
       - name: Pi Free generated-output probes
         env:
           ASEN_EXPECTED_SHA: ${{ inputs.expected_sha }}
@@ -39,3 +47,23 @@ jobs:
         run: |
           test -n "$OPENROUTER_API_KEY"
           node scripts/gsp06-pi-free-probes.mjs
+      - name: Preserve ECO-05 real Pi model receipt
+        if: success()
+        uses: actions/upload-artifact@v6
+        with:
+          name: eco05-pi-model-${{ inputs.expected_sha }}
+          path: registry/evidence/ecosystem/eco05-pi-model.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish ECO-05 model receipt without overwriting concurrent branch updates
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          GH_REF_NAME: ${{ github.ref_name }}
+        run: |
+          test "$(git ls-remote origin "refs/heads/$GH_REF_NAME" | cut -f1)" = "$EXPECTED_SHA"
+          git add registry/evidence/ecosystem/eco05-pi-model.json
+          test "$(git diff --cached --name-only)" = "registry/evidence/ecosystem/eco05-pi-model.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "test(eco05): record authenticated Pi model evidence"
+          git push origin "HEAD:refs/heads/$GH_REF_NAME"
