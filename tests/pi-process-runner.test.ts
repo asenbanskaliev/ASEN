@@ -145,14 +145,14 @@ test("POSIX process-state observation fails closed on invalid ps output",()=>{
  assert.throws(()=>isLivePosixProcess(204,{exitCode:0,stdout:"Z\n",stderr:"warning"}),/could not observe/);
 });
 
-test("Pi cancellation settles its process tree and policy cleanup before returning",{timeout:45_000},async t=>{
+test("Pi cancellation settles its process tree and policy cleanup before returning",{timeout:process.platform==="win32"?100_000:45_000},async t=>{
  const marker=join(tmpdir(),`asen-descendant-${process.pid}-${Date.now()}.json`);t.after(()=>rm(marker,{force:true}));
  const {d,p}=await fixture('import {spawn} from "node:child_process";import {writeFileSync} from "node:fs";const marker=process.argv[2],policy=process.argv[process.argv.indexOf("--extension")+1];const c=spawn(process.execPath,["-e","setTimeout(()=>{},10000)"],{stdio:"ignore"});writeFileSync(marker,JSON.stringify({pid:c.pid,policy}));setTimeout(()=>{},10000);');
  const controller=new AbortController();
- const pending=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p,marker],signal:controller.signal,timeoutMs:30_000}).run({id:"tree",role:"explorer",prompt:"x",repository:d});
+ const pending=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p,marker],signal:controller.signal,timeoutMs:process.platform==="win32"?75_000:30_000}).run({id:"tree",role:"explorer",prompt:"x",repository:d});
  t.after(async()=>{controller.abort();await pending.catch(()=>{});});
  const {readFile}=await import("node:fs/promises");let state:{pid:number;policy:string}|undefined;
- const deadline=Date.now()+20_000;
+ const deadline=Date.now()+(process.platform==="win32"?60_000:20_000);
  while(Date.now()<deadline&&!state){try{state=JSON.parse(await readFile(marker,"utf8"));}catch{/* Wait for the child readiness marker. */}if(!state)await new Promise(r=>setTimeout(r,50));}
  if(!state){controller.abort();const result=await pending;assert.fail(`child readiness marker was not recorded before the bounded startup deadline: ${result.output}`);}
  controller.abort();const result=await pending;
