@@ -22,7 +22,7 @@ export function validatePiCommandCollisions(host:unknown,names:readonly string[]
  if(!descriptor)return; // Older hosts have no pre-registration inventory; do not claim collision evidence.
  if(!("value" in descriptor)||typeof descriptor.value!=="function")throw new Error("ASEN host command inventory must be callable");
  const inventory=descriptor.value.call(host) as unknown;
- if(!Array.isArray(inventory))throw new Error("ASEN host command inventory is malformed");
+ if(!Array.isArray(inventory)||types.isProxy(inventory))throw new Error("ASEN host command inventory is malformed");
  const reserved=new Set(names);
  if(reserved.size!==names.length||names.some(name=>typeof name!=="string"||!name))throw new Error("ASEN command reservation list is invalid");
  for(const item of inventory){
