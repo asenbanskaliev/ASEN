@@ -108,3 +108,8 @@ test("version parser rejects incomplete versions",()=>{
 test("version parser rejects release metadata",()=>{
  assert.throws(()=>validatePiHost(makeHost(),"1.1.0+build"),/known Pi version/);
 });
+
+test("host rejects missing required registration tool",()=>{
+ const host=makeHost();delete host.registerTool;
+ assert.throws(()=>validatePiHost(host,"1.1.0"),/callable Pi registerTool/);
+});
