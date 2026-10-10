@@ -1,9 +1,21 @@
-import test from "node:test";import assert from "node:assert/strict";import path from "node:path";import {groupChanges,recordWorkspaceChange,visibleWorkspaceRows} from "../src/runtime/workspace-attribution.js";
+import test from "node:test";import assert from "node:assert/strict";import path from "node:path";import {findPotentialWorkspaceConflicts,groupChanges,recordWorkspaceChange,visibleWorkspaceConflictRows,visibleWorkspaceRows} from "../src/runtime/workspace-attribution.js";
 import {mkdtemp,mkdir,readFile,realpath,rm} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {PersistentWorkspaceStore,parseWorkspaceFile,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";import authorityExtension,{recordSuccessfulWorkspaceWrite} from "../extensions/authority.js";
 const base={path:"src/a.ts",actor:{kind:"agent" as const,id:"worker-1"},sessionId:"s1",projectId:"p1",worktree:path.resolve("repo"),operation:"modify" as const,at:"2026-10-06T00:00:00Z"};
 test("workspace attribution binds actor session project and worktree",()=>{const c=recordWorkspaceChange(base);assert.equal(c.actor.id,"worker-1");assert.equal(groupChanges([c]).get("agent:worker-1")?.length,1);});
 test("workspace attribution rejects escape/control and renders bounded rows",()=>{assert.throws(()=>recordWorkspaceChange({...base,path:"../x"}),/escapes/);assert.throws(()=>recordWorkspaceChange({...base,actor:{kind:"agent",id:"bad\nactor"}}),/Invalid/);const row=visibleWorkspaceRows([{...base,path:"very/long/path/to/a/file.ts"}],30)[0]!;assert.ok(row.length<=30);});
 test("workspace attribution rejects forged actor kinds and incomplete operations",()=>{assert.throws(()=>recordWorkspaceChange({...base,actor:{kind:"admin" as never,id:"u"}}),/actor kind/i);assert.throws(()=>recordWorkspaceChange({...base,operation:"review" as never}),/operation/i);assert.throws(()=>recordWorkspaceChange({...base,path:""}),/path/i);});
+test("workspace conflict review conservatively identifies different actors on one path without choosing a winner",()=>{
+ const changes=[
+  recordWorkspaceChange({...base,path:"src/shared.ts",actor:{kind:"agent",id:"agent-a"},operation:"modify"}),
+  recordWorkspaceChange({...base,path:"src/other.ts",actor:{kind:"agent",id:"agent-a"},operation:"create"}),
+  recordWorkspaceChange({...base,path:"src/shared.ts",actor:{kind:"user",id:"user-1"},operation:"modify"}),
+  recordWorkspaceChange({...base,path:"src/shared.ts",actor:{kind:"user",id:"user-1"},operation:"modify"})
+ ];
+ const conflicts=findPotentialWorkspaceConflicts(changes);
+ assert.equal(conflicts.length,1);assert.equal(conflicts[0]?.path,"src/shared.ts");
+ assert.equal(conflicts[0]?.earlier.actor.id,"agent-a");assert.equal(conflicts[0]?.later.actor.id,"user-1");
+ assert.match(visibleWorkspaceConflictRows(conflicts)[0]!,/potential conflict agent:agent-a -> user:user-1 src\/shared\.ts/);
+});
 test("workspace change paths use portable separators and reject Windows absolute paths",()=>{assert.equal(recordWorkspaceChange({...base,path:"src\\nested\\file.ts"}).path,"src/nested/file.ts");assert.throws(()=>recordWorkspaceChange({...base,path:"C:\\secrets\\token"}),/escapes/);});
 test("workspace identity compares Win32 realpath and extended-length forms",()=>{
  assert.equal(sameWorkspaceIdentityPath("\\\\?\\C:\\Work\\ASEN","c:/work/asen","win32"),true);

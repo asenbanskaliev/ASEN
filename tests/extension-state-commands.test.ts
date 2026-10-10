@@ -15,6 +15,13 @@ test("asen-changes reads reopened workspace history only for the active session 
  const messages:string[]=[],rows=await h.commands.get("asen-changes")!.handler("",{cwd:project,sessionManager:{getSessionId:()=>"session-ui"},ui:{notify:(message:string)=>messages.push(message)}}) as string[];
  assert.equal(rows.length,1);assert.match(rows[0]!,/src\/owned\.ts/);assert.ok(!rows.join("\n").includes("foreign"));assert.deepEqual(messages,[rows.join("\n")]);
 });
+test("asen-changes surfaces same-session actor conflicts as review-only and keeps other sessions private",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-change-conflicts-"));t.after(()=>rm(root,{recursive:true,force:true}));const project=await realpath(root),store=await PersistentWorkspaceStore.open(path.join(root,".asen","workspace.json"));
+ const change=(sessionId:string,actorId:string,pathName:string)=>({path:pathName,actor:{kind:"agent" as const,id:actorId},sessionId,projectId:project,worktree:project,operation:"modify" as const,at:"2026-10-10T10:00:00.000Z"});
+ await store.append(change("session-ui","agent-a","src/shared.ts"));await store.append(change("session-ui","agent-b","src/shared.ts"));await store.append(change("foreign-session","secret-agent","src/foreign.ts"));
+ const h=host();createAsenExtension({workspaceStoreFactory:async()=>store})(h.pi);const rows=await h.commands.get("asen-changes")!.handler("",{cwd:project,sessionManager:{getSessionId:()=>"session-ui"},ui:{notify:()=>{}}}) as string[],output=rows.join("\n");
+ assert.match(output,/Potential conflicts require review; no content comparison, winner selection, or automatic resolution/);assert.match(output,/potential conflict agent:agent-a -> agent:agent-b src\/shared\.ts/);assert.ok(!output.includes("foreign-session"));assert.ok(!output.includes("secret-agent"));
+});
 test("asen-route previews exact ODD facts from the active session without dispatching agents",async()=>{
  const h=host();createAsenExtension()(h.pi);const command=h.commands.get("asen-route")!;
  const facts={taskIdentity:"task-1",intent:"implementation",scope:{kind:"known",expectedPaths:["src/a.ts"]},writes:[{path:"src/a.ts",changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:10,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]};

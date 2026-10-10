@@ -47,7 +47,7 @@ export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">
 const authorityDigest="6ff2d45585cef90ff0563660e0833f40d5dc1f95e4271aaa3ce5f0159ac27fb8";
 const authorityAssets=Object.freeze([
  {source:"src/runtime/workspace-store.ts",target:"src/runtime/workspace-store.ts",sha256:"ac8328ae6beeb281c5278a19debb742aa4ccdfa12fcaaff902e5d871050c6049"},
- {source:"src/runtime/workspace-attribution.ts",target:"src/runtime/workspace-attribution.ts",sha256:"17aaafccd5d748d2a370f02cd769848a53f2720d97228b0522934189e9812d53"},
+ {source:"src/runtime/workspace-attribution.ts",target:"src/runtime/workspace-attribution.ts",sha256:"4161490816ee4d4a2c07c696a43a83fcfd88dac534b8fe096294704e40e53aef"},
  {source:"src/io/atomic-write.ts",target:"src/io/atomic-write.ts",sha256:"0b5465f1db54b45ba24107daf9a203708c0ed228b646cc092b9947642c40878c"},
  {source:"src/io/exclusive-file-lock.ts",target:"src/io/exclusive-file-lock.ts",sha256:"73ac80f045c6964d593c4bd4fdffcedc6af7e427043d8904f20cfe335f8c5686"},
  {source:"src/io/private-file.ts",target:"src/io/private-file.ts",sha256:"42d76fe5abfbfbd66f76e310157709890754595d83a63f74cf143110739e1332"},
