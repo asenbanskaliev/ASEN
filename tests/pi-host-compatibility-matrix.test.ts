@@ -204,3 +204,13 @@ test("unsafe numeric Pi versions fail closed",()=>{
  for(const version of ["9007199254740992.0.0","1.9007199254740992.0","1.1.9007199254740992"])
   assert.throws(()=>validatePiHost(makeHost(),version),/known Pi version/);
 });
+
+test("oversized reservation arrays are rejected before inspecting host",()=>{
+ const names=Array(100001).fill("asen");
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>{throw Error("unexpected host access");}},names),/reservation list is invalid/);
+});
+
+test("malformed host command names are not silently accepted",()=>{
+ for(const name of ["", " asen", "asen "])
+  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[{name}]},["asen"]),/inventory is malformed/);
+});
