@@ -135,7 +135,6 @@ export default function asen(pi:ExtensionAPI):void{
  validatePiHost(pi,VERSION);
  validatePiCommandCollisions(pi,ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name));
  createAsenExtension()({
-  getCommands:()=>pi.getCommands().map(command=>({name:command.name})),
   on:(event,handler)=>pi.on(event as any,handler),
   registerFlag:(name,options)=>pi.registerFlag(name,options),
   getFlag:name=>pi.getFlag(name),
