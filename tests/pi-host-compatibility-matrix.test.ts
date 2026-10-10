@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {validatePiHost} from "../src/runtime/pi-host.js";
+import {validatePiHost,ASEN_PI_MINIMUM_VERSION} from "../src/runtime/pi-host.js";
 
 const makeHost=()=>Object.fromEntries(["on","registerCommand","registerTool","registerFlag","getFlag"].map(name=>[name,()=>undefined]));
 
 test("Pi host minimum-version boundary and platform-neutral public methods",()=>{
+ assert.equal(ASEN_PI_MINIMUM_VERSION,"0.85.1");
  for(const version of ["0.85.1","0.86.0","0.99.9","1.0.0","1.1.0","2.0.0"])
   assert.doesNotThrow(()=>validatePiHost(makeHost(),version),version);
  for(const version of ["0.85.0","0.84.99","0.0.0","invalid","1.1.0-rc.1",undefined,null,1])
