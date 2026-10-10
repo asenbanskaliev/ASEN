@@ -63,3 +63,7 @@ test("exact reserved names collide without prefix matching",()=>{
 test("host inventory rejects null entries",()=>{
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[null]},["asen"]),/inventory is malformed/);
 });
+
+test("host inventory rejects nonstring command names",()=>{
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[{name:42}]},["asen"]),/inventory is malformed/);
+});
