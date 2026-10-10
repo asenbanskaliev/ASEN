@@ -278,6 +278,7 @@
       ],
       "implementation": [
         "src/runtime/workspace-attribution.ts",
+        "src/runtime/workspace-store.ts",
         "src/runtime/agent-lifecycle.ts"
       ],
       "tests": [

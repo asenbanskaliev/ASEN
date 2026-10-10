@@ -13,6 +13,19 @@ test("successful child writes persist exact actor, session, project and worktree
  await assert.rejects(()=>recordSuccessfulWorkspaceWrite(authority,"write",{path:"secrets/token"},false,file),/scope is invalid/);
 });
 
+test("workspace history serializes concurrent appends from independent store instances",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-workspace-concurrent-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const canonicalRoot=await realpath(root),file=join(root,".asen","workspace.json"),first=await PersistentWorkspaceStore.open(file),second=await PersistentWorkspaceStore.open(file);
+ const changes=Array.from({length:40},(_,index)=>recordWorkspaceChange({
+  ...base,path:`src/generated-${index}.ts`,actor:{kind:"agent",id:`worker-${index}`},sessionId:"session-concurrent",projectId:canonicalRoot,worktree:canonicalRoot,
+  operation:"create",at:new Date(Date.UTC(2026,0,1,0,0,index)).toISOString()
+ }));
+ await Promise.all(changes.map((change,index)=>(index%2?first:second).append(change)));
+ const reopened=await PersistentWorkspaceStore.open(file),saved=await reopened.list({sessionId:"session-concurrent",projectId:canonicalRoot,worktree:canonicalRoot});
+ assert.equal(saved.length,changes.length);assert.deepEqual(saved.map(item=>item.revision),Array.from({length:changes.length},(_,index)=>index+1));
+ assert.deepEqual(new Set(saved.map(item=>item.id)).size,changes.length);assert.deepEqual(new Set(saved.map(item=>item.change.actor.id)).size,changes.length);
+});
+
 test("Pi authority records only successful writes from the exact authorized tool call",async t=>{
  const root=await mkdtemp(join(tmpdir(),"asen-authority-hook-"));t.after(()=>rm(root,{recursive:true,force:true}));await mkdir(join(root,"src"));const canonicalRoot=await realpath(root),storeFile=join(root,".asen","workspace.json"),handlers=new Map<string,(event:any)=>unknown>();
  const original=process.env.ASEN_PI_AUTHORITY;process.env.ASEN_PI_AUTHORITY=JSON.stringify({repository:root,role:"worker",writeSurfaces:["src"],agentId:"agent-2",sessionId:"session-2",attributionFile:storeFile});t.after(()=>{if(original===undefined)delete process.env.ASEN_PI_AUTHORITY;else process.env.ASEN_PI_AUTHORITY=original;});
