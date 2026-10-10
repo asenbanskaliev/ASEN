@@ -38,3 +38,7 @@ test("public inventory preflight rejects malformed and accessor-backed rows",()=
  const host={};Object.defineProperty(host,"getCommands",{get(){throw Error("must not invoke getter");}});
  assert.throws(()=>validatePiCommandCollisions(host,["asen"]),/inventory must be callable/);
 });
+
+test("duplicate command reservations are rejected",()=>{
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[]},["asen","asen"]),/reservation list is invalid/);
+});
