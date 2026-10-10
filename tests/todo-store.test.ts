@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
+import {spawnSync} from "node:child_process";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {join,resolve} from "node:path";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
 import {parseTodoFile} from "../src/runtime/todo-store.js";
 
@@ -26,6 +27,20 @@ test("session startup recovery changes only the matching session and project",as
  const reopened=await SessionTodoStore.open(file);await reopened.recover(one);
  assert.equal((await reopened.list(one))[0]?.current.state,"blocked");assert.equal((await reopened.list(other))[0]?.current.state,"running");assert.equal((await reopened.list({sessionId:one.sessionId,projectId:"/other-project"}))[0]?.current.state,"running");
  await reopened.recover(other);assert.equal((await reopened.list(other))[0]?.current.state,"blocked");assert.equal((await reopened.list({sessionId:one.sessionId,projectId:"/other-project"}))[0]?.current.state,"running");
+});
+
+test("an abrupt process exit blocks only its own running Todo tasks and preserves completed work",async t=>{
+ const file=await fixture(t),crash=spawnSync(process.execPath,["--import","tsx",resolve("tests/fixtures/todo-crash-process.ts"),file,process.cwd(),"/other-project"],{encoding:"utf8",timeout:30000});
+ assert.equal(crash.status,23,`${crash.error?.message??""}\n${crash.stderr}`);
+ const reopened=await SessionTodoStore.open(file),active={sessionId:"todo-session-a",projectId:process.cwd()},foreignSession={sessionId:"todo-session-b",projectId:process.cwd()},foreignProject={sessionId:"todo-session-a",projectId:"/other-project"};
+ assert.equal((await reopened.list(active)).find(item=>item.title==="active running task")?.current.state,"running");
+ assert.equal((await reopened.list(active)).find(item=>item.title==="finished task")?.current.state,"done");
+ await reopened.recover(active);
+ assert.equal((await reopened.list(active)).find(item=>item.title==="active running task")?.current.state,"blocked");
+ assert.match((await reopened.list(active)).find(item=>item.title==="active running task")?.current.reason??"",/restarted.*explicit review/i);
+ assert.equal((await reopened.list(active)).find(item=>item.title==="finished task")?.current.state,"done");
+ assert.equal((await reopened.list(foreignSession))[0]?.current.state,"running");
+ assert.equal((await reopened.list(foreignProject))[0]?.current.state,"running");
 });
 
 test("Todo rejects stale revisions and impossible transitions under concurrent updates",async t=>{

@@ -46,7 +46,7 @@ try {
   const hostObservations=[];
   try{
     await new Promise((resolve,reject)=>{
-      const names=["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-profiles"];
+      const names=["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles"];
       let buffer="",stdout="",stderr="",index=0,notifications=0;
       const timer=setTimeout(()=>fail(Error(`Installed RPC commands timed out: ${stderr.slice(-1000)}`)),20000);
       const fail=error=>{clearTimeout(timer);reject(error);};
@@ -80,12 +80,12 @@ try {
       });
     });
   }finally{child.kill();await closed;}
-  assert.equal(models,0);assert.equal(visible,7);
+  assert.equal(models,0);assert.equal(visible,8);
   assert.equal(hostObservations.length,1,"public host inventories must be observed once after initialization");
   const host=hostObservations[0];
   assert.equal(host.mode,"rpc");assert.equal(typeof host.hasUI,"boolean");
   const fromPrimary=row=>realpathSync(row.path)===realpathSync(primary);
-  for(const name of ["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-profiles"]){
+  for(const name of ["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles"]){
     const matches=host.commands.filter(row=>row.name===name&&row.source==="extension"&&fromPrimary(row));
     assert.equal(matches.length,1,`${name} must have one canonical installed-source registration`);
   }
@@ -94,5 +94,5 @@ try {
     const matches=host.tools.filter(row=>row.name===name&&realpathSync(row.path)===realpathSync(primary));
     assert.equal(matches.length,1,`${name} must have one canonical installed-source registration`);
   }
-  console.log(JSON.stringify({installedPiPackageVerified:true,primaryExtensions:["asen.ts"],childAuthorityAutoLoaded:false,visibleRpcCommands:visible,modelInvocations:models,publicHost:{mode:host.mode,hasUI:host.hasUI,canonicalCommands:7,canonicalTools:toolNames.length,toolsEnabled:true}}));
+  console.log(JSON.stringify({installedPiPackageVerified:true,primaryExtensions:["asen.ts"],childAuthorityAutoLoaded:false,visibleRpcCommands:visible,modelInvocations:models,publicHost:{mode:host.mode,hasUI:host.hasUI,canonicalCommands:8,canonicalTools:toolNames.length,toolsEnabled:true}}));
 } finally {rmSync(root,{recursive:true,force:true});}

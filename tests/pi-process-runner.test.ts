@@ -1,337 +1,1 @@
-import assert from "node:assert/strict";import test from "node:test";import {execFile} from "node:child_process";import {access,copyFile,mkdir,mkdtemp,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment} from "../src/agents/pi-process-runner.js";
-import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
-import {createTestSkillLifecycle} from "./helpers/lifecycle-applicability.js";
-import {Dispatcher} from "../src/agents/dispatcher.js";
-import {EvidenceStore} from "../src/evidence/store.js";
-import {createAgentLifecycleSink} from "../src/runtime/agent-lifecycle.js";
-import {issueSkillContext} from "../src/skills/context.js";
-import {selectSkills} from "../src/skills/registry.js";
-type PosixProcessObservation={exitCode:number;stdout:string;stderr:string};
-function isLivePosixProcess(pid:number,{exitCode,stdout,stderr}:PosixProcessObservation){
- const state=stdout.trim(),errorOutput=stderr.trim();
- if(exitCode===0){
-  if(errorOutput)throw new Error(`ps could not observe process ${pid} (exit 0: ${errorOutput})`);
-  if(!state)throw new Error(`ps returned no state for process ${pid}`);
-  if(!/^[DIRSTtWXZ](?:<|N)?L?s?l?\+?$/.test(state))throw new Error(`ps returned invalid state for process ${pid}`);
-  return state[0]!=="Z";
- }
- if(exitCode===1&&!state&&!errorOutput)return false;
- throw new Error(`ps could not observe process ${pid} (exit ${exitCode}${errorOutput?`: ${errorOutput}`:""})`);
-}
-async function isLiveProcess(pid:number){
- if(process.platform==="win32"){try{process.kill(pid,0);return true;}catch{return false;}}
- const observation=await new Promise<PosixProcessObservation>((resolve,reject)=>{
-  execFile("ps",["-o","stat=","-p",String(pid)],{timeout:1000},(error,stdout,stderr)=>{
-   if(!error)return resolve({exitCode:0,stdout,stderr});
-   if(typeof error.code==="number")return resolve({exitCode:error.code,stdout,stderr});
-   reject(error);
-  });
- });
- return isLivePosixProcess(pid,observation);
-}
-async function fixture(body:string,policy=true,skillsMode:"exact"|"missing"|"extra"|"altered"="exact"){
- const d=await realpath(await mkdtemp(join(tmpdir(),"asen-pi-"))),p=join(d,"pi-fixture.mjs"),scenario=join(d,"scenario.mjs");
- await mkdir(join(d,"extensions"));await copyFile(fileURLToPath(new URL("../extensions/authority.ts",import.meta.url)),join(d,"extensions/authority.ts"));
- for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(fileURLToPath(new URL(`../${source}`,import.meta.url)),target);}
- await writeFile(scenario,body);
- await writeFile(p,`import {spawn} from "node:child_process";
-import {resolve} from "node:path";
-const child=spawn(process.execPath,[${JSON.stringify(scenario)},...process.argv.slice(2)],{stdio:["pipe","pipe","pipe"]});
-child.stdout.on("data",data=>process.stdout.write(data));child.stderr.on("data",data=>process.stderr.write(data));
-let closed=null,prompted=false,buffer="";
-child.on("close",code=>{closed=code??0;if(prompted)process.exit(closed);});
-process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.indexOf("\\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;const record=JSON.parse(line);
-if(record.type==="get_commands"){
-const pos=process.argv.indexOf("--extension"),path=process.argv[pos+1];
-const skills=process.argv.flatMap((arg,index,args)=>arg==="--skill"?[{name:"fixture",source:"skill",sourceInfo:{path:resolve(process.cwd(),args[index+1])}}]:[]);
-const mode=${JSON.stringify(skillsMode)};
-const loaded=mode==="missing"?[]:mode==="altered"?skills.map(item=>({...item,sourceInfo:{path:resolve(process.cwd(),"skills/asen-other/SKILL.md")}})):skills;
-if(mode==="extra")loaded.push({name:"extra",source:"skill",sourceInfo:{path:resolve(process.cwd(),"skills/asen-extra/SKILL.md")}});
-process.stdout.write(JSON.stringify({type:"response",id:record.id,success:true,data:{commands:[...${policy?"[{name:'asen-authority-status',source:'extension',sourceInfo:{path}}]":"[]"},...loaded]}})+"\\n");
-}else{prompted=true;child.stdin.end(line+"\\n");if(closed!==null)process.exit(closed);}}});`);
- return {d,p};
-}
-function runner(p:string,options:ConstructorParameters<typeof PiProcessRunner>[0]={}){return new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p],...options});}
-test("Pi RPC adapter correlates request id",async()=>{const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,command:"prompt",success:true,message:f.message}));});');const r=await runner(p,{}).run({id:"req-1",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,true);assert.match(r.output,/req-1/);});
-test("Pi child receives an operational environment and only the explicitly selected provider credential",async t=>{
- const names=["ASEN_TEST_UNRELATED_SECRET","OPENROUTER_API_KEY","GROQ_API_KEY"] as const,previous=names.map(name=>process.env[name]);
- process.env.ASEN_TEST_UNRELATED_SECRET="must-not-cross";process.env.OPENROUTER_API_KEY="selected-test-credential";process.env.GROQ_API_KEY="unselected-test-credential";
- t.after(()=>names.forEach((name,index)=>{const value=previous[index];if(value===undefined)delete process.env[name];else process.env[name]=value;}));
- const {d,p}=await fixture('let x="";process.stdin.on("data",chunk=>x+=chunk);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,environment:{path:typeof process.env.PATH==="string",home:typeof process.env.HOME==="string"||typeof process.env.USERPROFILE==="string",telemetry:process.env.PI_TELEMETRY,selected:process.env.OPENROUTER_API_KEY==="selected-test-credential",unselected:typeof process.env.GROQ_API_KEY==="string",unrelated:typeof process.env.ASEN_TEST_UNRELATED_SECRET==="string"}}));});');
- const result=await runner(p,{providerCredential:"OPENROUTER_API_KEY"}).run({id:"env-isolation",role:"explorer",prompt:"inspect",repository:d});assert.equal(result.ok,true);const response=JSON.parse(result.output.trim().split(/\r?\n/u).at(-1)!);assert.deepEqual(response.environment,{path:typeof process.env.PATH==="string",home:typeof process.env.HOME==="string"||typeof process.env.USERPROFILE==="string",telemetry:"0",selected:true,unselected:false,unrelated:false});
-});
-test("Pi runtime environment allowlist preserves Windows names without copying ambient secrets",()=>{const env=piRuntimeEnvironment({PATH:"C:\\bin",USERPROFILE:"C:\\Users\\test",GROQ_API_KEY:"secret",OPENROUTER_API_KEY:"chosen"},"OPENROUTER_API_KEY","win32");assert.equal(env.PATH,"C:\\bin");assert.equal(env.USERPROFILE,"C:\\Users\\test");assert.equal(env.OPENROUTER_API_KEY,"chosen");assert.equal(env.GROQ_API_KEY,undefined);assert.equal(env.PI_TELEMETRY,"0");assert.throws(()=>piRuntimeEnvironment({ASEN_TEST_SECRET:"do-not-copy"},"ASEN_TEST_SECRET" as never),/Unsupported Pi provider credential/);});
-test("Pi runner refuses a candidate-supplied replacement authority extension",async()=>{
- const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
- await writeFile(join(d,"extensions/authority.ts"),'export default pi => pi.registerCommand("asen-authority-status", {handler: async () => {}});');
- const result=await runner(p).run({id:"tampered",role:"explorer",prompt:"inspect",repository:d});
- assert.equal(result.ok,false);assert.match(result.output,/authority extension integrity/);
-});
-test("Pi runner loads policy from the configured ASEN package root, not the project",async()=>{
- const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,message:f.message}));});');
- const policyRoot=fileURLToPath(new URL("..",import.meta.url));await rm(join(d,"extensions/authority.ts"),{force:true});
- const result=await runner(p,{policyRoot}).run({id:"package-policy",role:"explorer",prompt:"inspect",repository:d});assert.equal(result.ok,true);assert.match(result.output,/package-policy/);
-});
-test("Pi rejects an untrusted provider extension without leaking a policy directory",async t=>{
- const {d,p}=await fixture('setTimeout(()=>{},10000);');
- const policyDirectories=async()=>new Set((await readdir(tmpdir(),{withFileTypes:true})).filter(entry=>entry.isDirectory()&&entry.name.startsWith("asen-policy-")).map(entry=>entry.name));
- const before=await policyDirectories();
- const result=await runner(p,{providerExtension:"file:untrusted-provider.ts"}).run({id:"untrusted-provider",role:"explorer",prompt:"inspect",repository:d});
- const leaked=[...(await policyDirectories())].filter(name=>!before.has(name));
- t.after(()=>Promise.all(leaked.map(name=>rm(join(tmpdir(),name),{recursive:true,force:true}))));
- assert.equal(result.ok,false);assert.match(result.output,/untrusted Pi provider extension/);
- assert.deepEqual(leaked,[]);
-});
-test("Pi policy digest accepts Windows checkout line endings",async()=>{
- const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
- const {readFile}=await import("node:fs/promises"),path=join(d,"extensions/authority.ts");
- await writeFile(path,(await readFile(path,"utf8")).replace(/\r?\n/g,"\r\n"));
- const result=await runner(p).run({id:"crlf",role:"explorer",prompt:"inspect",repository:d});
- assert.equal(result.ok,true);
-});
-test("Pi loads a pinned policy copy even when candidate policy changes after preflight",async()=>{
- const {d,p}=await fixture('import {readFileSync,writeFileSync} from "node:fs";let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim()),path=process.argv[process.argv.indexOf("--extension")+1];writeFileSync("extensions/authority.ts","malicious replacement");console.log(JSON.stringify({type:"response",id:f.id,success:true,policySource:readFileSync(path,"utf8")}));});');
- const result=await runner(p).run({id:"race",role:"explorer",prompt:"inspect",repository:d});
- assert.equal(result.ok,true);
- const response=JSON.parse(result.output.trim().split(/\r?\n/).at(-1)!);
- assert.match(response.policySource,/authorizeToolCall/);
-});
-test("Pi artifact runner passes only a completed assistant JSON artifact to lifecycle",async()=>{
- const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:JSON.stringify({kind:"exploration-report",content:"inspected",repository:process.cwd(),candidateId:"c",revision:"r"})}]}}));console.log(JSON.stringify({type:"agent_end"}));console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
- const candidate={id:"c",repository:d,revision:"r",createdAt:"now"};
- const r=await new PiArtifactRunner(runner(p)).run({id:"task:explorer",role:"explorer",prompt:"inspect",repository:d,candidate,skillContext:issueSkillContext("task:explorer",d,candidate,{phase:"explore"}),skillPaths:["skills/asen-phase-protocol/SKILL.md","skills/asen-explore/SKILL.md"]});
- assert.equal(r.ok,true);assert.deepEqual(JSON.parse(r.output),{kind:"exploration-report",content:"inspected",repository:d,candidateId:"c",revision:"r"});
-});
-test("Pi RPC artifact advances one phase only with exact candidate output",async()=>{
- const source='let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:JSON.stringify({kind:"project-context",content:"context inspected",repository:process.cwd(),candidateId:"c",revision:"r"})}]}}));console.log(JSON.stringify({type:"agent_end"}));console.log(JSON.stringify({type:"response",id:f.id,success:true}));});';
- const {d,p}=await fixture(source),candidate={id:"c",repository:d,revision:"r",createdAt:"now"};
- const lifecycle=await createTestSkillLifecycle("pi-task",candidate),ctx=issueSkillContext("pi-task:worker",d,candidate,{phase:"context-init"}),paths=selectSkills(ctx).map(x=>x.path);
- const evidence=new EvidenceStore(),dispatcher=new Dispatcher(new PiArtifactRunner(runner(p)),evidence);
- const state=await lifecycle.runPhase(dispatcher,{phase:"context-init",context:ctx,skillPaths:paths,prompt:"inspect context",evidence,risk:"low"});
- assert.equal(state.records.length,1);assert.equal(state.nextPhase,"explore");
-});
-test("Pi child times out",async()=>{const {d,p}=await fixture("setTimeout(()=>{},10000);");const r=await runner(p,{timeoutMs:50}).run({id:"t",role:"explorer",prompt:"x",repository:d});assert.equal(r.ok,false);assert.match(r.output,/timed out/);});
-test("Pi child output is bounded",async()=>{const {d,p}=await fixture('console.log("x".repeat(10000));');const r=await runner(p,{maxOutputBytes:100}).run({id:"o",role:"explorer",prompt:"x",repository:d});assert.equal(r.ok,false);assert.match(r.output,/exceeded/);});
-
-test("Dispatcher cancellation reaches Pi and records a cancelled terminal state",async()=>{
- const {d,p}=await fixture("setTimeout(()=>{},10000);");const lifecycle=createAgentLifecycleSink(),dispatcher=new Dispatcher(runner(p,{timeoutMs:10000}),new EvidenceStore(),1,lifecycle);
- const pending=dispatcher.dispatch({id:"cancel",role:"explorer",prompt:"x",repository:d});
- for(let i=0;i<100&&lifecycle.snapshot()[0]?.state!=="running";i++)await new Promise(resolve=>setTimeout(resolve,5));
- assert.equal(lifecycle.snapshot()[0]?.state,"running");assert.equal(dispatcher.cancel("cancel","default",d),true);
- const r=await pending;assert.equal(r.ok,false);assert.match(r.output,/cancellation requested/i);assert.equal(lifecycle.snapshot()[0]?.state,"cancelled");
-});
-
-test("Pi child errors cannot replace an already requested cancellation",async()=>{
- const {d}=await fixture("setTimeout(()=>{},10000);");
- const controller=new AbortController();controller.abort();
- const result=await new PiProcessRunner({command:join(d,"missing-pi-command"),signal:controller.signal,timeoutMs:10000}).run({id:"cancel-error",role:"explorer",prompt:"x",repository:d});
- assert.equal(result.ok,false);assert.match(result.output,/cancelled/);
-});
-
-test("POSIX process-state observation distinguishes live, zombie, and absent processes",()=>{
- assert.equal(isLivePosixProcess(101,{exitCode:0,stdout:"R+\n",stderr:""}),true);
- assert.equal(isLivePosixProcess(102,{exitCode:0,stdout:"Z\n",stderr:""}),false);
- assert.equal(isLivePosixProcess(103,{exitCode:0,stdout:"Z+\n",stderr:""}),false);
- assert.equal(isLivePosixProcess(104,{exitCode:0,stdout:"S<sl+\n",stderr:""}),true);
- assert.equal(isLivePosixProcess(105,{exitCode:1,stdout:"",stderr:""}),false);
- assert.throws(()=>isLivePosixProcess(106,{exitCode:1,stdout:"",stderr:"permission denied"}),/could not observe/);
- assert.throws(()=>isLivePosixProcess(107,{exitCode:0,stdout:"",stderr:""}),/no state/);
-});
-
-test("POSIX process-state observation fails closed on invalid ps output",()=>{
- assert.throws(()=>isLivePosixProcess(201,{exitCode:0,stdout:"ZOMBIE\n",stderr:""}),/invalid state/);
- assert.throws(()=>isLivePosixProcess(202,{exitCode:0,stdout:"Z\nR+\n",stderr:""}),/invalid state/);
- assert.throws(()=>isLivePosixProcess(203,{exitCode:0,stdout:"?\n",stderr:""}),/invalid state/);
- assert.throws(()=>isLivePosixProcess(204,{exitCode:0,stdout:"Z\n",stderr:"warning"}),/could not observe/);
-});
-
-test("Pi cancellation settles its process tree and policy cleanup before returning",async t=>{
- const marker=join(tmpdir(),`asen-descendant-${process.pid}-${Date.now()}.json`);t.after(()=>rm(marker,{force:true}));
- const {d,p}=await fixture('import {spawn} from "node:child_process";import {writeFileSync} from "node:fs";const marker=process.argv[2],policy=process.argv[process.argv.indexOf("--extension")+1];const c=spawn(process.execPath,["-e","setTimeout(()=>{},10000)"],{stdio:"ignore"});writeFileSync(marker,JSON.stringify({pid:c.pid,policy}));setTimeout(()=>{},10000);');
- const controller=new AbortController();
- const pending=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p,marker],signal:controller.signal,timeoutMs:10000}).run({id:"tree",role:"explorer",prompt:"x",repository:d});
- const {readFile}=await import("node:fs/promises");let state:{pid:number;policy:string}|undefined;
- for(let i=0;i<40&&!state;i++){try{state=JSON.parse(await readFile(marker,"utf8"));}catch{/* Marker not written yet. */}if(!state)await new Promise(r=>setTimeout(r,25));}
- assert.ok(state,"descendant and policy paths were not recorded");
- controller.abort();const result=await pending;
- assert.equal(result.ok,false);assert.match(result.output,/cancelled/);
- await assert.rejects(()=>access(state.policy),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
- assert.equal(await isLiveProcess(state.pid),false,`descendant ${state.pid} survived cancellation settlement`);
-});
-
-test("Pi RPC adapter rejects a mismatched response id",async()=>{const {d,p}=await fixture('console.log(JSON.stringify({type:"response",id:"other",command:"prompt",success:true}));');const r=await runner(p,{}).run({id:"req-expected",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/correlated response missing/);});
-test("Pi RPC correlation cannot be disabled by a runner option",async()=>{
- const {d,p}=await fixture('console.log(JSON.stringify({type:"response",id:"other",success:true}));');
- const result=await runner(p,{validateResponseId:false} as ConstructorParameters<typeof PiProcessRunner>[0]).run({id:"required",role:"explorer",prompt:"hello",repository:d});
- assert.equal(result.ok,false);assert.match(result.output,/correlated response missing/);
-});
-test("Pi RPC runner rejects duplicate correlated responses",async()=>{
- const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());for(let i=0;i<2;i++)console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
- const result=await runner(p).run({id:"duplicate",role:"explorer",prompt:"hello",repository:d});
- assert.equal(result.ok,false);assert.match(result.output,/exactly one correlated response/);
-});
-test("Pi RPC runner requires an explicit successful correlated response",async()=>{
- const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id}));});');
- const result=await runner(p).run({id:"missing-success",role:"explorer",prompt:"hello",repository:d});
- assert.equal(result.ok,false);assert.match(result.output,/response failed/);
-});
-test("Pi failures never return model content or child stderr",async()=>{
- const marker="PRIVATE_MODEL_CONTENT";
- const failed=await fixture(`let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:false,error:${JSON.stringify(marker)}}));});`);
- const response=await runner(failed.p).run({id:"failed",role:"explorer",prompt:"hello",repository:failed.d});
- assert.equal(response.ok,false);assert.ok(!response.output.includes(marker));
- const crashed=await fixture(`console.error(${JSON.stringify(marker)});process.exit(7);`);
- const failure=await runner(crashed.p).run({id:"crashed",role:"explorer",prompt:"hello",repository:crashed.d});
- assert.equal(failure.ok,false);assert.ok(!failure.output.includes(marker));
-});
-test("Pi RPC adapter rejects malformed structured output",async()=>{const {d,p}=await fixture('console.log("not-json");');const r=await runner(p,{}).run({id:"req-json",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/envelope invalid/);});
-test("Pi RPC adapter requires a correlated response by default",async()=>{const {d,p}=await fixture('console.log(JSON.stringify({type:"event",id:"req-default"}));');const r=await runner(p).run({id:"req-default",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/correlated response missing/);});
-
-test("Pi RPC adapter injects exact issued skill paths before the task",async()=>{
- const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,message:f.message}));});');
- const r=await runner(p,{}).run({id:"skills",role:"explorer",prompt:"inspect this",repository:d,skillContext:issueSkillContext("skills",d,undefined,{phase:"explore"}),skillPaths:["skills/asen-phase-protocol/SKILL.md","skills/asen-explore/SKILL.md"]});
- assert.equal(r.ok,true);
- assert.match(r.output,/Load every SKILL\.md below before task-specific work/);
- assert.match(r.output,/skills\/asen-phase-protocol\/SKILL\.md/);
- assert.match(r.output,/skills\/asen-explore\/SKILL\.md/);
- assert.ok(r.output.indexOf("asen-explore/SKILL.md")<r.output.indexOf("inspect this"));
-});
-test("Pi RPC adapter rejects non-ASEN skill paths",async()=>{
- const {d,p}=await fixture('setTimeout(()=>{},10000);');
- const r=await runner(p).run({id:"bad-skill",role:"explorer",prompt:"x",repository:d,skillContext:issueSkillContext("bad-skill",d,undefined,{phase:"explore"}),skillPaths:["../other/SKILL.md"]});
- assert.equal(r.ok,false);
- assert.match(r.output,/do not match issued context/);
-});
-test("Pi RPC adapter rejects unissued skill injection",async()=>{
- const {d,p}=await fixture('setTimeout(()=>{},10000);');
- const r=await runner(p).run({id:"forged",role:"explorer",prompt:"x",repository:d,skillPaths:["skills/asen-explore/SKILL.md"]});
- assert.equal(r.ok,false);
- assert.match(r.output,/matching ASEN-issued context/);
-});
-test("Pi RPC adapter rejects omitted mandatory skill routes",async()=>{
- const {d,p}=await fixture('setTimeout(()=>{},10000);');
- const r=await runner(p).run({id:"omitted",role:"explorer",prompt:"x",repository:d,skillContext:issueSkillContext("omitted",d,undefined,{phase:"explore"}),skillPaths:[]});
- assert.equal(r.ok,false);
- assert.match(r.output,/do not match issued context/);
-});
-test("Pi RPC adapter supplies selected routes as native Pi flags",async()=>{
- const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
- const context=issueSkillContext("native",d,undefined,{phase:"explore"});
- const paths=selectSkills(context).map(skill=>skill.path);
- const r=await runner(p).run({id:"native",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:paths});
- assert.equal(r.ok,true);
- const response=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!);
- assert.match(response.args[2],/[\\/]asen-policy-[^\\/]+[\\/]extensions[\\/]authority\.ts$/);
- assert.deepEqual([response.args[0],response.args[1],...response.args.slice(3)],["--no-extensions","--extension","--no-skills","--tools","read",...paths.flatMap(path=>["--skill",path])]);
-});
-test("read-only artifact audit disables every Pi tool",async()=>{
- const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
- const context=issueSkillContext("audit",d,undefined,{phase:"explore"});
- const r=await runner(p,{noTools:true}).run({id:"audit",role:"explorer",prompt:"artifact",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
- assert.equal(r.ok,true);
- const args=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!).args as string[];
- assert.ok(args.includes("--no-tools"));assert.ok(!args.includes("--tools"));
-});
-test("read-only Pi runner fails closed when a model attempts a tool",{timeout:process.platform==="win32"?15_000:5_000},async t=>{
- const marker=join(tmpdir(),`asen-denied-tool-${process.pid}-${Date.now()}`);t.after(()=>rm(marker,{force:true}));
- const {d,p}=await fixture(`import {writeFileSync} from "node:fs";const marker=${JSON.stringify(marker)};let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{JSON.parse(x.trim());console.log(JSON.stringify({type:"tool_execution_start",toolName:"write",toolCallId:"forbidden"}));setTimeout(()=>writeFileSync(marker,"tool side effect"),1500);});`);
- await new Promise<void>(resolve=>{const control=execFile(process.execPath,[p],{timeout:4_000},()=>resolve());control.stdin?.end('{"id":"positive-control"}\n');});
- await assert.doesNotReject(()=>access(marker),"positive control did not write the side-effect marker");
- await rm(marker,{force:true});
- const context=issueSkillContext("blocked-tool",d,undefined,{phase:"explore"});
- const timeoutMs=process.platform==="win32"?10_000:1_000;
- const result=await runner(p,{noTools:true,timeoutMs}).run({id:"blocked-tool",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
- assert.equal(result.ok,false);assert.equal(result.output,"pi model attempted a tool while tools were disabled");
- await new Promise(resolve=>setTimeout(resolve,1_750));
- await assert.rejects(()=>access(marker),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
-});
-test("direct Pi worker cannot obtain file tools without a live lifecycle grant",async()=>{
- const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
- const candidate={id:"candidate",repository:d,revision:"revision",createdAt:"now"};
- const context=issueSkillContext("worker",d,candidate,{phase:"apply"});
- const paths=selectSkills(context).map(skill=>skill.path);
- const r=await runner(p).run({id:"worker",role:"worker",prompt:"implement",repository:d,candidate,writeSurfaces:["src"],skillContext:context,skillPaths:paths});
- assert.equal(r.ok,false);
- assert.match(r.output,/exact dispatcher receiver/);
-});
-test("direct Pi runner refuses a candidate-bound turn without issued selection",async()=>{
- const candidate={id:"candidate",repository:"missing-repo",revision:"revision",createdAt:"now"};
- for(const role of ["explorer","reviewer","verifier","worker"] as const){
-  const result=await new PiProcessRunner({command:"does-not-exist"}).run({id:"task:a",role,prompt:"inspect",repository:candidate.repository,candidate});
-  assert.equal(result.ok,false);
-  assert.match(result.output,/issued skill context and exact paths/);
- }
-});
-test("direct Pi runner rejects role phase substitution and writer authority outside apply",async()=>{
- const candidate={id:"candidate",repository:"missing-repo",revision:"revision",createdAt:"now"};
- const context=issueSkillContext("task:a",candidate.repository,candidate,{phase:"explore"});
- const skillPaths=selectSkills(context).map(item=>item.path);
- for(const role of ["reviewer","verifier"] as const){
-  const result=await new PiProcessRunner({command:"does-not-exist"}).run({id:"task:a",role,prompt:"inspect",repository:candidate.repository,candidate,skillContext:context,skillPaths});
-  assert.equal(result.ok,false);assert.match(result.output,/agent role/);
- }
- const writer=await new PiProcessRunner({command:"does-not-exist"}).run({id:"task:a",role:"worker",prompt:"write",repository:candidate.repository,candidate,skillContext:context,skillPaths,writeSurfaces:["src"]});
- assert.equal(writer.ok,false);assert.match(writer.output,/apply phase/);
-});
-test("direct Pi runner rejects a caller-supplied expectedPhase override for read roles",async()=>{
- const candidate={id:"candidate",repository:"missing-repo",revision:"revision",createdAt:"now"};
- const context=issueSkillContext("task:a",candidate.repository,candidate,{phase:"explore"});
- const skillPaths=selectSkills(context).map(item=>item.path);
- for(const role of ["reviewer","verifier"] as const){
-  const result=await new PiProcessRunner({command:"does-not-exist"}).run({id:"task:a",role,expectedPhase:"explore",prompt:"inspect",repository:candidate.repository,candidate,skillContext:context,skillPaths});
-  assert.equal(result.ok,false);assert.match(result.output,/agent role/);
- }
-});
-test("Pi preflight rejects omitted, added or replaced native Skill routes",async()=>{
- for(const mode of ["missing","extra","altered"] as const){
-  const {d,p}=await fixture("setTimeout(()=>{},10000);",true,mode);
-  const context=issueSkillContext("skill-drift",d,undefined,{phase:"explore"});
-  const result=await runner(p).run({id:"skill-drift",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(item=>item.path)});
-  assert.equal(result.ok,false,mode);assert.match(result.output,/native Skill paths do not match/,mode);
- }
-});
-test("Pi runner refuses to prompt without its authority extension",async()=>{
- const {d,p}=await fixture('setTimeout(()=>{},10000);',false);
- const r=await runner(p).run({id:"no-policy",role:"explorer",prompt:"read",repository:d});
- assert.equal(r.ok,false);assert.match(r.output,/policy extension was not loaded/);
-});
-test("Pi RPC adapter blocks caller-supplied tool authority",async()=>{
- const {d,p}=await fixture('setTimeout(()=>{},10000);');
- const context=issueSkillContext("tool-override",d,undefined,{phase:"explore"});
- const r=await runner(p,{extraArgs:[p,"--tools","bash"]}).run({id:"tool-override",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
- assert.equal(r.ok,false);assert.match(r.output,/issued by ASEN/);
-});
-test("Pi RPC adapter rejects option terminators that disable ASEN flags",async()=>{
- const {d,p}=await fixture('setTimeout(()=>{},10000);');
- const context=issueSkillContext("terminator",d,undefined,{phase:"explore"});
- const r=await runner(p,{extraArgs:[p,"--"]}).run({id:"terminator",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
- assert.equal(r.ok,false);assert.match(r.output,/issued by ASEN/);
-});
-test("Pi RPC adapter blocks caller-supplied skill overrides",async()=>{
- const {d,p}=await fixture('setTimeout(()=>{},10000);');
- const context=issueSkillContext("override",d,undefined,{phase:"explore"});
- const r=await runner(p,{extraArgs:[p,"--skill","skills/asen-review/SKILL.md"]}).run({id:"override",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)});
- assert.equal(r.ok,false);assert.match(r.output,/issued by ASEN/);
-});
-
-test("organic writer reaches Pi adapter through one exact Dispatcher receiver without SDD",async t=>{
- const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2),authority:JSON.parse(process.env.ASEN_PI_AUTHORITY)}));});');
- t.after(()=>rm(d,{recursive:true,force:true}));
- const {issueOddDecision}=await import("./helpers/odd-routing.js"),{buildOrchestrationPlan}=await import("../src/orchestration/orchestrator.js"),{decideLifecycleApplicability}=await import("../src/lifecycle/applicability.js"),{issueOrganicWriterAdmission}=await import("../src/lifecycle/skill-lifecycle.js");
- const candidate={id:"organic",repository:d,revision:"revision",createdAt:"now"},decision=issueOddDecision({taskId:"organic",repository:d,paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});
- buildOrchestrationPlan({taskId:"organic",repository:d,candidate,prompt:"write"},decision);
- const app=decideLifecycleApplicability(decision,{taskIdentity:"organic",repositoryIdentity:d,candidate:{id:candidate.id,repository:d,revision:candidate.revision},explicitMode:"unspecified",affectedSubsystems:["Pi"],expectedPaths:["src/a"],requiredArtifacts:[]});
- assert.equal(app.outcome,"organic");
- const skillContext=issueSkillContext("organic:worker",d,candidate,{phase:"apply",codeChange:true}),evidence=new EvidenceStore();
- for(const kind of ["work-unit","scope","rollback"] as const)evidence.add(candidate,{id:kind,kind,status:"pass",createdAt:"now",summary:"bounded"});
- const request={id:"organic:worker",role:"worker" as const,prompt:"write",repository:d,model:"local/test-model",thinking:"low" as const,candidate,skillContext,skillPaths:selectSkills(skillContext).map(s=>s.path),writeSurfaces:["src/a"],writerAdmission:issueOrganicWriterAdmission(app,["src/a"])};
- let captured:import("../src/agents/dispatcher.js").AgentRequest|undefined;
- const pi=runner(p),dispatcher=new Dispatcher({run:async call=>{captured=call;return pi.run(call);}},evidence);
- const result=await dispatcher.dispatch(request);assert.equal(result.ok,true,result.output);
- const observed=JSON.parse(result.output.trim().split(/\r?\n/).at(-1)!);
- assert.ok(observed.args.includes("read,edit,write"));assert.deepEqual(observed.authority.writeSurfaces,["src/a"]);
- assert.ok(observed.args.includes("--model"));assert.equal(observed.args[observed.args.indexOf("--model")+1],"local/test-model");
- assert.ok(observed.args.includes("--thinking"));assert.equal(observed.args[observed.args.indexOf("--thinking")+1],"low");
- assert.equal(captured?.phaseGrant,undefined);assert.ok(captured);
- const replay=await pi.run(captured);assert.equal(replay.ok,false);assert.match(replay.output,/exact dispatcher receiver/);
-});
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éí×^7í:-jZ.¶›­–)Þ³V–×÷'B76W'Bg&öÒ&æöFS¦76W'B÷7G&–7B#¶–×÷'BFW7Bg&öÒ&æöFS§FW7B#¶–×÷'B¶W†V4f–ÆWÒg&öÒ&æöFS¦6†–ÆE÷&ö6W72#¶–×÷'B¶66W72Æ6÷”f–ÆRÆÖ¶F—"ÆÖ¶GFV×Ç&VFF—"Ç&VÇF‚Ç&ÒÇw&—FTf–ÆWÒg&öÒ&æöFS¦g2÷&öÖ—6W2#¶–×÷'B·F×F—'Òg&öÒ&æöFS¦÷2#¶–×÷'B¶¦ö–çÒg&öÒ&æöFS§F‚#¶–×÷'B¶f–ÆUU$ÅFõF‡Òg&öÒ&æöFS§W&Â#¶–×÷'Bµ•&ö6W75'VææW"Ç•'VçF–ÖTVçf—&öæÖVçGÒg&öÒ"ââ÷7&2övVçG2÷’×&ö6W72×'VææW"æ§2#°¦–×÷'Bµ”'F–f7E'VææW'Òg&öÒ"ââ÷7&2övVçG2÷’Ö'F–f7B×'VææW"æ§2#°¦–×÷'B¶7&VFUFW7E6¶–ÆÄÆ–fV7–6ÆWÒg&öÒ"âö†VÇW'2öÆ–fV7–6ÆRÖÆ–6&–Æ—G’æ§2#°¦–×÷'B´F—7F6†W'Òg&öÒ"ââ÷7&2övVçG2öF—7F6†W"æ§2#°¦–×÷'B´Wf–FVæ6U7F÷&WÒg&öÒ"ââ÷7&2öWf–FVæ6R÷7F÷&Ræ§2#°¦–×÷'B¶7&VFTvVçDÆ–fV7–6ÆU6–æ·Òg&öÒ"ââ÷7&2÷'VçF–ÖRövVçBÖÆ–fV7–6ÆRæ§2#°¦–×÷'B¶—77VU6¶–ÆÄ6öçFW‡GÒg&öÒ"ââ÷7&2÷6¶–ÆÇ2ö6öçFW‡Bæ§2#°¦–×÷'B·6VÆV7E6¶–ÆÇ7Òg&öÒ"ââ÷7&2÷6¶–ÆÇ2÷&Vv—7G'’æ§2#°§G—R÷6—…&ö6W74ö'6W'fF–öã×¶W†—D6öFS¦çVÖ&W#·7FF÷WC§7G&–æs·7FFW'#§7G&–æwÓ°¦gVæ7F–öâ—4Æ—fU÷6—…&ö6W72‡–C¦çVÖ&W"Ç¶W†—D6öFRÇ7FF÷WBÇ7FFW''Ó¥÷6—…&ö6W74ö'6W'fF–öâ—°¢6öç7B7FFS×7FF÷WBçG&–Ò‚’ÆW'&÷$÷WGWC×7FFW'"çG&–Ò‚“°¢–b†W†—D6öFSÓÓÓ—°¢–b†W'&÷$÷WGWB—F‡&÷ræWrW'&÷"†26÷VÆBæ÷Bö'6W'fR&ö6W72G·–GÒ†W†—B¢G¶W'&÷$÷WGWGÒ–“°¢–b‚7FFR—F‡&÷ræWrW'&÷"†2&WGW&æVBæò7FFRf÷"&ö6W72G·–GÖ“°¢–b‚õå´D•%5GEu…¥Òƒó£ÇÄâ“ôÃ÷3öÃõÂ³òBòçFW7B‡7FFR’—F‡&÷ræWrW'&÷"†2&WGW&æVB–çfÆ–B7FFRf÷"&ö6W72G·–GÖ“°¢&WGW&â7FFU³ÒÓÒ%¢#°¢Ð¢–b†W†—D6öFSÓÓÓbb7FFRbbW'&÷$÷WGWB—&WGW&âfÇ6S°¢F‡&÷ræWrW'&÷"†26÷VÆBæ÷Bö'6W'fR&ö6W72G·–GÒ†W†—BG¶W†—D6öFWÒG¶W'&÷$÷WGWCö¢G¶W'&÷$÷WGWGÖ¢"'Ò–“°§Ð¦7–æ2gVæ7F–öâ—4Æ—fU&ö6W72‡–C¦çVÖ&W"—°¢–b‡&ö6W72çÆFf÷&ÓÓÓÒ'v–ã3""—·G'—·&ö6W72æ¶–ÆÂ‡–BÃ“·&WGW&âG'VS·Ö6F6‡·&WGW&âfÇ6S·×Ð¢6öç7Bö'6W'fF–öãÖv—BæWr&öÖ—6SÅ÷6—…&ö6W74ö'6W'fF–öãâ‚‡&W6öÇfRÇ&V¦V7B“Óç°¢W†V4f–ÆR‚'2"Å²"Öò"Â'7FCÒ"Â"×"Å7G&–ær‡–B•ÒÇ·F–ÖV÷WC£ÒÂ†W'&÷"Ç7FF÷WBÇ7FFW'"“Óç°¢–b‚W'&÷"—&WGW&â&W6öÇfR‡¶W†—D6öFS£Ç7FF÷WBÇ7FFW''Ò“°¢–b‡G—VöbW'&÷"æ6öFSÓÓÒ&çVÖ&W""—&WGW&â&W6öÇfR‡¶W†—D6öFS¦W'&÷"æ6öFRÇ7FF÷WBÇ7FFW''Ò“°¢&V¦V7B†W'&÷"“°¢Ò“°¢Ò“°¢&WGW&â—4Æ—fU÷6—…&ö6W72‡–BÆö'6W'fF–öâ“°§Ð¦7–æ2gVæ7F–öâf—‡GW&R†&öG“§7G&–ærÇöÆ–7“×G'VRÇ6¶–ÆÇ4ÖöFS¢&W†7B'Â&Ö—76–ær'Â&W‡G&'Â&ÇFW&VB#Ò&W†7B"—°¢6öç7BCÖv—B&VÇF‚†v—BÖ¶GFV×†¦ö–â‡F×F—"‚’Â&6Vâ×’Ò"’’’ÇÖ¦ö–â†BÂ'’Öf—‡GW&RæÖ§2"’Ç66Væ&–óÖ¦ö–â†BÂ'66Væ&–òæÖ§2"“°¢v—BÖ¶F—"†¦ö–â†BÂ&W‡FVç6–öç2"’“¶v—B6÷”f–ÆR†f–ÆUU$ÅFõF‚†æWrU$Â‚"ââöW‡FVç6–öç2öWF†÷&—G’çG2"Æ–×÷'BæÖWFçW&Â’’Æ¦ö–â†BÂ&W‡FVç6–öç2öWF†÷&—G’çG2"’“°¢f÷"†6öç7B6÷W&6Röb²'7&2÷'VçF–ÖR÷v÷&·76R×7F÷&RçG2"Â'7&2÷'VçF–ÖR÷v÷&·76RÖGG&–'WF–öâçG2"Â'7&2ö–òöFöÖ–2×w&—FRçG2"Â'7&2ö–òöW†6ÇW6—fRÖf–ÆRÖÆö6²çG2"Â'7&2ö–ò÷&—fFRÖf–ÆRçG2%Ò—¶6öç7BF&vWCÖ¦ö–â†BÇ6÷W&6R“¶v—BÖ¶F—"‡F&vWBç6Æ–6RƒÇF&vWBæÆ7D–æFW„öb‚"ò"’’Ç·&V7W'6—fS§G'VWÒ“¶v—B6÷”f–ÆR†f–ÆUU$ÅFõF‚†æWrU$Â†ââòG·6÷W&6WÖÆ–×÷'BæÖWFçW&Â’’ÇF&vWB“·Ð¢v—Bw&—FTf–ÆR‡66Væ&–òÆ&öG’“°¢v—Bw&—FTf–ÆR‡Æ–×÷'B·7vçÒg&öÒ&æöFS¦6†–ÆE÷&ö6W72#°¦–×÷'B·&W6öÇfWÒg&öÒ&æöFS§F‚#°¦6öç7B6†–ÆC×7vâ‡&ö6W72æW†V5F‚Å²G´¥4ôâç7G&–æv–g’‡66Væ&–ò—ÒÂââç&ö6W72æ&wbç6Æ–6Rƒ"•ÒÇ·7FF–ó¥²'—R"Â'—R"Â'—R%×Ò“°¦6†–ÆBç7FF÷WBæöâ‚&FF"ÆFFÓç&ö6W72ç7FF÷WBçw&—FR†FF’“¶6†–ÆBç7FFW'"æöâ‚&FF"ÆFFÓç&ö6W72ç7FFW'"çw&—FR†FF’“°¦ÆWB6Æ÷6VCÖçVÆÂÇ&ö×FVCÖfÇ6RÆ'VffW#Ò"#°¦6†–ÆBæöâ‚&6Æ÷6R"Æ6öFSÓç¶6Æ÷6VCÖ6öFSóó¶–b‡&ö×FVB—&ö6W72æW†—B†6Æ÷6VB“·Ò“°§&ö6W72ç7FF–âæöâ‚&FF"Æ6‡Væ³Óç¶'VffW"³Õ7G&–ær†6‡Væ²“¶ÆWBVæC·v†–ÆR‚†VæCÖ'VffW"æ–æFW„öb‚%ÅÆâ"’“ãÓ—¶6öç7BÆ–æSÖ'VffW"ç6Æ–6RƒÆVæB“¶'VffW#Ö'VffW"ç6Æ–6R†VæB³“¶–b‚Æ–æRçG&–Ò‚’–6öçF–çVS¶6öç7B&V6÷&CÔ¥4ôâç'6R†Æ–æR“°¦–b‡&V6÷&BçG—SÓÓÒ&vWEö6öÖÖæG2"—°¦6öç7B÷3×&ö6W72æ&wbæ–æFW„öb‚"ÒÖW‡FVç6–öâ"’ÇFƒ×&ö6W72æ&we·÷2³Ó°¦6öç7B6¶–ÆÇ3×&ö6W72æ&wbæfÆDÖ‚†&rÆ–æFW‚Æ&w2“Óæ&sÓÓÒ"Ò×6¶–ÆÂ#õ·¶æÖS¢&f—‡GW&R"Ç6÷W&6S¢'6¶–ÆÂ"Ç6÷W&6T–æfó§·Fƒ§&W6öÇfR‡&ö6W72æ7vB‚’Æ&w5¶–æFW‚³Ò—×ÕÓ¥µÒ“°¦6öç7BÖöFSÒG´¥4ôâç7G&–æv–g’‡6¶–ÆÇ4ÖöFR—Ó°¦6öç7BÆöFVCÖÖöFSÓÓÒ&Ö—76–ær#õµÓ¦ÖöFSÓÓÒ&ÇFW&VB#÷6¶–ÆÇ2æÖ†—FVÓÓâ‡²ââæ—FVÒÇ6÷W&6T–æfó§·Fƒ§&W6öÇfR‡&ö6W72æ7vB‚’Â'6¶–ÆÇ2ö6VâÖ÷F†W"õ4´”ÄÂæÖB"—×Ò’“§6¶–ÆÇ3°¦–b†ÖöFSÓÓÒ&W‡G&"–ÆöFVBçW6‚‡¶æÖS¢&W‡G&"Ç6÷W&6S¢'6¶–ÆÂ"Ç6÷W&6T–æfó§·Fƒ§&W6öÇfR‡&ö6W72æ7vB‚’Â'6¶–ÆÇ2ö6VâÖW‡G&õ4´”ÄÂæÖB"—×Ò“°§&ö6W72ç7FF÷WBçw&—FR„¥4ôâç7G&–æv–g’‡·G—S¢'&W7öç6R"Æ–C§&V6÷&Bæ–BÇ7V66W73§G'VRÆFF§¶6öÖÖæG3¥²âââG·öÆ–7“ò%·¶æÖS¢v6VâÖWF†÷&—G’×7FGW2rÇ6÷W&6S¢vW‡FVç6–öârÇ6÷W&6T–æfó§·F‡×ÕÒ#¢%µÒ'ÒÂââæÆöFVE××Ò’²%ÅÆâ"“°§ÖVÇ6W·&ö×FVC×G'VS¶6†–ÆBç7FF–âæVæB†Æ–æR²%ÅÆâ"“¶–b†6Æ÷6VBÓÖçVÆÂ—&ö6W72æW†—B†6Æ÷6VB“·××Ò“¶“°¢&WGW&â¶BÇÓ°§Ð¦gVæ7F–öâ'VææW"‡§7G&–ærÆ÷F–öç3¤6öç7G'V7F÷%&ÖWFW'3ÇG—Vöb•&ö6W75'VææW#å³Ó×·Ò—·&WGW&âæWr•&ö6W75'VææW"‡¶6öÖÖæC§&ö6W72æW†V5F‚Ç'4&w3¥µÒÆW‡G&&w3¥·ÒÂââæ÷F–öç7Ò“·Ð§FW7B‚%’%2FFW"6÷'&VÆFW2&WVW7B–B"Æ7–æ2‚“Óç¶6öç7B¶BÇÓÖv—Bf—‡GW&R‚vÆWBƒÒ"#·&ö6W72ç7FF–âæöâ‚&FF"ÆCÓç‚³ÖB“·&ö6W72ç7FF–âæöâ‚&VæB"Â‚“Óç¶6öç7BcÔ¥4ôâç'6R‡‚çG&–Ò‚’“¶6öç6öÆRæÆör„¥4ôâç7G&–æv–g’‡·G—S¢'&W7öç6R"Æ–C¦bæ–BÆ6öÖÖæC¢'&ö×B"Ç7V66W73§G'VRÆÖW76vS¦bæÖW76vWÒ’“·Ò“²r“¶6öç7B#Öv—B'VææW"‡Ç·Ò’ç'Vâ‡¶–C¢'&WÓ"Ç&öÆS¢&W‡Æ÷&W""Ç&ö×C¢&†VÆÆò"Ç&W÷6—F÷'“¦GÒ“¶76W'BæWVÂ‡"æö²ÇG'VR“¶76W'BæÖF6‚‡"æ÷WGWBÂ÷&WÓò“·Ò“°§FW7B‚%’6†–ÆB&V6V—fW2â÷W&F–öæÂVçf—&öæÖVçBæBöæÇ’F†RW‡Æ–6—FÇ’6VÆV7FVB&÷f–FW"7&VFVçF–Â"Æ7–æ2CÓç°¢6öç7BæÖW3Õ²$4TåõDU5EõTå$TÄDTEõ4T5$UB"Â$õTå$õUDU%ô•ô´U’"Â$u$õô•ô´U’%Ò26öç7BÇ&Wf–÷W3ÖæÖW2æÖ†æÖSÓç&ö6W72æVçe¶æÖUÒ“°¢&ö6W72æVçbä4TåõDU5EõTå$TÄDTEõ4T5$UCÒ&×W7BÖæ÷BÖ7&÷72#·&ö6W72æVçbäõTå$õUDU%ô•ô´U“Ò'6VÆV7FVB×FW7BÖ7&VFVçF–Â#·&ö6W72æVçbäu$õô•ô´U“Ò'Vç6VÆV7FVB×FW7BÖ7&VFVçF–Â#°¢BægFW"‚‚“ÓææÖW2æf÷$V6‚‚†æÖRÆ–æFW‚“Óç¶6öç7BfÇVS×&Wf–÷W5¶–æFW…Ó¶–b‡fÇVSÓÓ×VæFVf–æVB–FVÆWFR&ö6W72æVçe¶æÖUÓ¶VÇ6R&ö6W72æVçe¶æÖUÓ×fÇVS·Ò’“°¢6öç7B¶BÇÓÖv—Bf—‡GW&R‚vÆWBƒÒ"#·&ö6W72ç7FF–âæöâ‚&FF"Æ6‡Væ³Óç‚³Ö6‡Væ²“·&ö6W72ç7FF–âæöâ‚&VæB"Â‚“Óç¶6öç7BcÔ¥4ôâç'6R‡‚çG&–Ò‚’“¶6öç6öÆRæÆör„¥4ôâç7G&–æv–g’‡·G—S¢'&W7öç6R"Æ–C¦bæ–BÇ7V66W73§G'VRÆVçf—&öæÖVçC§·Fƒ§G—Vöb&ö6W72æVçbåDƒÓÓÒ'7G&–ær"Æ†öÖS§G—Vöb&ö6W72æVçbä„ôÔSÓÓÒ'7G&–ær'ÇÇG—Vöb&ö6W72æVçbåU4U%$ôd”ÄSÓÓÒ'7G&–ær"ÇFVÆVÖWG'“§&ö6W72æVçbå•õDTÄTÔUE%’Ç6VÆV7FVC§&ö6W72æVçbäõTå$õUDU%ô•ô´U“ÓÓÒ'6VÆV7FVB×FW7BÖ7&VFVçF–Â"ÇVç6VÆV7FVC§G—Vöb&ö6W72æVçbäu$õô•ô´U“ÓÓÒ'7G&–ær"ÇVç&VÆFVC§G—Vöb&ö6W72æVçbä4TåõDU5EõTå$TÄDTEõ4T5$UCÓÓÒ'7G&–ær'×Ò’“·Ò“²r“°¢6öç7B&W7VÇCÖv—B'VææW"‡Ç·&÷f–FW$7&VFVçF–Ã¢$õTå$õUDU%ô•ô´U’'Ò’ç'Vâ‡¶–C¢&VçbÖ—6öÆF–öâ"Ç&öÆS¢&W‡Æ÷&W""Ç&ö×C¢&–ç7V7B"Ç&W÷6—F÷'“¦GÒ“¶76W'BæWVÂ‡&W7VÇBæö²ÇG'VR“¶6öç7B&W7öç6SÔ¥4ôâç'6R‡&W7VÇBæ÷WGWBçG&–Ò‚’ç7Æ—B‚õÇ#õÆâ÷R’æB‚Ó’“¶76W'BæFVWWVÂ‡&W7öç6RæVçf—&öæÖVçBÇ·Fƒ§G—Vöb&ö6W72æVçbåDƒÓÓÒ'7G&–ær"Æ†öÖS§G—Vöb&ö6W72æVçbä„ôÔSÓÓÒ'7G&–ær'ÇÇG—Vöb&ö6W72æVçbåU4U%$ôd”ÄSÓÓÒ'7G&–ær"ÇFVÆVÖWG'“¢#"Ç6VÆV7FVC§G'VRÇVç6VÆV7FVC¦fÇ6RÇVç&VÆFVC¦fÇ6WÒ“°§Ò“°§FW7B‚%’'VçF–ÖRVçf—&öæÖVçBÆÆ÷vÆ—7B&W6W'fW2v–æF÷w2æÖW2v—F†÷WB6÷––ærÖ&–VçB6V7&WG2"Â‚“Óç¶6öç7BVçc×•'VçF–ÖTVçf—&öæÖVçB‡µDƒ¢$3¥ÅÆ&–â"ÅU4U%$ôd”ÄS¢$3¥ÅÅW6W'5ÅÇFW7B"Äu$õô•ô´U“¢'6V7&WB"ÄõTå$õUDU%ô•ô´U“¢&6†÷6Vâ'ÒÂ$õTå$õUDU%ô•ô´U’"Â'v–ã3""“¶76W'BæWVÂ†VçbåD‚Â$3¥ÅÆ&–â"“¶76W'BæWVÂ†VçbåU4U%$ôd”ÄRÂ$3¥ÅÅW6W'5ÅÇFW7B"“¶76W'BæWVÂ†VçbäõTå$õUDU%ô•ô´U’Â&6†÷6Vâ"“¶76W'BæWVÂ†Vçbäu$õô•ô´U’ÇVæFVf–æVB“¶76W'BæWVÂ†Vçbå•õDTÄTÔUE%’Â#"“¶76W'BçF‡&÷w2‚‚“Óç•'VçF–ÖTVçf—&öæÖVçB‡´4TåõDU5Eõ4T5$UC¢&FòÖæ÷BÖ6÷’'ÒÂ$4TåõDU5Eõ4T5$UB"2æWfW"’ÂõVç7W÷'FVB’&÷f–FW"7&VFVçF–Âò“·Ò“°§FW7B‚%’'VææW"&VgW6W26æF–FFR×7WÆ–VB&WÆ6VÖVçBWF†÷&—G’W‡FVç6–öâ"Æ7–æ2‚“Óç°¢6öç7B¶BÇÓÖv—Bf—‡GW&R‚vÆWBƒÒ"#·&ö6W72ç7FF–âæöâ‚&FF"ÆCÓç‚³ÖB“·&ö6W72ç7FF–âæöâ‚&VæB"Â‚“Óç¶6öç7BcÔ¥4ôâç'6R‡‚çG&–Ò‚’“¶6öç6öÆRæÆör„¥4ôâç7G&–æv–g’‡·G—S¢'&W7öç6R"Æ–C¦bæ–BÇ7V66W73§G'VWÒ’“·Ò“²r“°¢v—Bw&—FTf–ÆR†¦ö–â†BÂ&W‡FVç6–öç2öWF†÷&—G’çG2"’ÂvW‡÷'BFVfVÇB’Óâ’ç&Vv—7FW$6öÖÖæB‚&6VâÖWF†÷&—G’×7FGW2"Â¶†æFÆW#¢7–æ2‚’Óâ·×Ò“²r“°¢6öç7B&W7VÇCÖv—B'VææW"‡’ç'Vâ‡¶–C¢'F×W&VB"Ç&öÆS¢&W‡Æ÷&W""Ç&ö×C¢&–ç7V7B"Ç&W÷6—F÷'“¦GÒ“°¢76W'BæWVÂ‡&W7VÇBæö²ÆfÇ6R“¶76W'BæÖF6‚‡&W7VÇBæ÷WGWBÂöWF†÷&—G’W‡FVç6–öâ–çFVw&—G’ò“°§Ò“°§FW7B‚%’'VææW"ÆöG2öÆ–7’g&öÒF†R6öæf–wW&VB4Tâ6¶vR&ö÷BÂæ÷BF†R&ö¦V7B"Æ7–æ2‚“Óç°¢6öç7B¶BÇÓÖv—Bf—‡GW&R‚vÆWBƒÒ"#·&ö6W72ç7FF–âæöâ‚&FF"ÆCÓç‚³ÖB“·&ö6W72ç7FF–âæöâ‚&VæB"Â‚“Óç¶6öç7BcÔ¥4ôâç'6R‡‚çG&–Ò‚’“¶6öç6öÆRæÆör„¥4ôâç7G&–æv–g’‡·G—S¢'&W7öç6R"Æ–C¦bæ–BÇ7V66W73§G'VRÆÖW76vS¦bæÖW76vWÒ’“·Ò“²r“°¢6öç7BöÆ–7•&ö÷CÖf–ÆUU$ÅFõF‚†æWrU$Â‚"ââ"Æ–×÷'BæÖWFçW&Â’“¶v—B&Ò†¦ö–â†BÂ&W‡FVç6–öç2öWF†÷&—G’çG2"’Ç¶f÷&6S§G'VWÒ“°¢6öç7B&W7VÇCÖv—B'VææW"‡Ç·öÆ–7•&ö÷GÒ’ç'Vâ‡¶–C¢'6¶vR×öÆ–7’"Ç&öÆS¢&W‡Æ÷&W""Ç&ö×C¢&–ç7V7B"Ç&W÷6—F÷'“¦GÒ“¶76W'BæWVÂ‡&W7VÇBæö²ÇG'VR“¶76W'BæÖF6‚‡&W7VÇBæ÷WGWBÂ÷6¶vR×öÆ–7’ò“°§Ò“°§FW7B‚%’&V¦V7G2âVçG'W7FVB&÷f–FW"W‡FVç6–öâv—F†÷WBÆV¶–æröÆ–7’F—&V7F÷'’"Æ7–æ2CÓç°¢6öç7B¶BÇÓÖv—Bf—‡GW&R‚w6WEF–ÖV÷WB‚‚“Óç·ÒÃ“²r“°¢6öç7BöÆ–7”F—&V7F÷&–W3Ö7–æ2‚“ÓææWr6WB‚†v—B&VFF—"‡F×F—"‚’Ç·v—F„f–ÆUG—W3§G'VWÒ’’æf–ÇFW"†VçG'“ÓæVçG'’æ—4F—&V7F÷'’‚’bfVçG'’ææÖRç7F'G5v—F‚‚&6Vâ×öÆ–7’Ò"’’æÖ†VçG'“ÓæVçG'’ææÖR’“°¢6öç7B&Vf÷&SÖv—BöÆ–7”F—&V7F÷&–W2‚“°¢6öç7B&W7VÇCÖv—B'VææW"‡Ç·&÷f–FW$W‡FVç6–öã¢&f–ÆS§VçG'W7FVB×&÷f–FW"çG2'Ò’ç'Vâ‡¶–C¢'VçG'W7FVB×&÷f–FW""Ç&öÆS¢&W‡Æ÷&W""Ç&ö×C¢&–ç7V7B"Ç&W÷6—F÷'“¦GÒ“°¢6öç7BÆV¶VCÕ²âââ†v—BöÆ–7”F—&V7F÷&–W2‚’•Òæf–ÇFW"†æÖSÓâ&Vf÷&Ræ†2†æÖR’“°¢BægFW"‚‚“Óå&öÖ—6RæÆÂ†ÆV¶VBæÖ†æÖSÓç&Ò†¦ö–â‡F×F—"‚’ÆæÖR’Ç·&V7W'6—fS§G'VRÆf÷&6S§G'VWÒ’’’“°¢76W'BæWVÂ‡&W7VÇBæö²ÆfÇ6R“¶76W'BæÖF6‚‡&W7VÇBæ÷WGWBÂ÷VçG'W7FVB’&÷f–FW"W‡FVç6–öâò“°¢76W'BæFVWWVÂ†ÆV¶VBÅµÒ“°§Ò“°§FW7B‚%’öÆ–7’F–vW7B66WG2v–æF÷w26†V6¶÷WBÆ–æRVæF–æw2"Æ7–æ2‚“Óç°¢6öç7B¶BÇÓÖv—Bf—‡GW&R‚vÆWBƒÒ"#·&ö6W72ç7FF–âæöâ‚&FF"ÆCÓç‚³ÖB“·&ö6W72ç7FF–âæöâ‚&VæB"Â‚“Óç¶6öç7BcÔ¥4ôâç'6R‡‚çG&–Ò‚’“¶6öç6öÆRæÆör„¥4ôâç7G&–æv–g’‡·G—S¢'&W7öç6R"Æ–C¦bæ–BÇ7V66W73§G'VWÒ’“·Ò“²r“°¢6öç7B·&VDf–ÆWÓÖv—B–×÷'B‚&æöFS¦g2÷&öÖ—6W2"’ÇFƒÖ¦ö–â†BÂ&W‡FVç6–öç2öWF†÷&—G’çG2"“°¢v—Bw&—FTf–ÆR‡F‚Â†v—B&VDf–ÆR‡F‚Â'WFc‚"’’ç&WÆ6R‚õÇ#õÆâörÂ%Ç%Æâ"’“°¢6öç7B&W7VÇCÖv—B'VææW"‡’ç'Vâ‡¶–C¢&7&Æb"Ç&öÆS¢&W‡Æ÷&W""Ç&ö×C¢&–ç7V7B"Ç&W÷6—F÷'“¦GÒ“°¢76W'BæWVÂ‡&W7VÇBæö²ÇG'VR“°§Ò“°§FW7B‚%’ÆöG2–ææVBöÆ–7’6÷’WfVâv†Vâ6æF–FFRöÆ–7’6†ævW2gFW"&VfÆ–v‡B"Æ7–æ2‚“Óç°¢6öç7B¶BÇÓÖv—Bf—‡GW&R‚v–×÷'B·&VDf–ÆU7–æ2Çw&—FTf–ÆU7–æ7Òg&öÒ&æöFS¦g2#¶ÆWBƒÒ"#·&ö6W72ç7FF–âæöâ‚&FF"ÆCÓç‚³ÖB“·&ö6W72ç7FF–âæöâ‚&VæB"Â‚“Óç¶6öç7BcÔ¥4ôâç'6R‡‚çG&–Ò‚’’ÇFƒ×&ö6W72æ&we·&ö6W72æ&wbæ–æFW„öb‚"ÒÖW‡FVç6–öâ"’³Ó·w&—FTf–ÆU7–æ2‚&W‡FVç6–öç2öWF†÷&—G’çG2"Â&ÖÆ–6–÷W2&WÆ6VÖVçB"“¶6öç6öÆRæÆör„¥4ôâç7G&–æv–g’‡·G—S¢'&W7öç6R"Æ–C¦bæ–BÇ7V66W73§G'VRÇöÆ–7•6÷W&6S§&VDf–ÆU7–æ2‡F‚Â'WFc‚"—Ò’“·Ò“²r“°¢6öç7B&W7VÇCÖv—B'VææW"‡’ç'Vâ‡¶–C¢'&6R"Ç&öÆS¢&W‡Æ÷&W""Ç&ö×C¢&–ç7V7B"Ç&W÷6—F÷'“¦GÒ“°¢76W'BæWVÂ‡&W7VÇBæö²ÇG'VR“°¢6öç7B&W7öç6SÔ¥4ôâç'6R‡&W7VÇBæ÷WGWBçG&–Ò‚’ç7Æ—B‚õÇ#õÆâò’æB‚Ó’“°¢76W'BæÖF6‚‡&W7öç6RçöÆ–7•6÷W&6RÂöWF†÷&—¦UFööÄ6ÆÂò“°§Ò“°§FW7B‚%’'F–f7B'VææW"76W2öæÇ’6ö×ÆWFVB76—7FçB¥4ôâ'F–f7BFòÆ–fV7–6ÆR"Æ7–æ2‚“Óç°¢6öç7B¶BÇÓÖv—Bf—‡GW&R‚vÆWBƒÒ"#·&ö6W72ç7FF–âæöâ‚&FF"ÆCÓç‚³ÖB“·&ö6W72ç7FF–âæöâ‚&VæB"Â‚“Óç¶6öç7BcÔ¥4ôâç'6R‡‚çG&–Ò‚’“¶6öç6öÆRæÆör„¥4ôâç7G&–æv–g’‡·G—S¢&ÖW76vUöVæB"ÆÖW76vS§·&öÆS¢&76—7FçB"Ç7F÷&V6öã¢'7F÷"Æ6öçFVçC¥··G—S¢'FW‡B"ÇFW‡C¤¥4ôâç7G&–æv–g’‡¶¶–æC¢&W‡Æ÷&F–öâ×&W÷'B"Æ6öçFVçC¢&–ç7V7FVB"Ç&W÷6—F÷'“§&ö6W72æ7vB‚’Æ6æF–FFT–C¢&2"Ç&Wf—6–öã¢'"'Ò—Õ××Ò’“¶6öç6öÆRæÆör„¥4ôâç7G&–æv–g’‡·G—S¢&vVçEöVæB'Ò’“¶6öç6öÆRæÆör„¥4ôâç7G&–æv–g’‡·G—S¢'&W7öç6R"Æ–C¦bæ–BÇ7V66W73§G'VWÒ’“·Ò“²r“°¢6öç7B6æF–FFS×¶–C¢&2"Ç&W÷6—F÷'“¦BÇ&Wf—6–öã¢'""Æ7&VFVDC¢&æ÷r'Ó°¢6öç7B#Öv—BæWr”'F–f7E'VææW"‡'VææW"‡’’ç'Vâ‡¶–C¢'F6³¦W‡Æ÷&W""Ç&öÆS¢&W‡Æ÷&W""Ç&ö×C¢&–ç7V7B"Ç&W÷6—F÷'“¦BÆ6æF–FFRÇ6¶–ÆÄ6öçFW‡C¦—77VU6¶–ÆÄ6öçFW‡B‚'F6³¦W‡Æ÷&W""ÆBÆ6æF–FFRÇ·†6S¢&W‡Æ÷&R'Ò’Ç6¶–ÆÅF‡3¥²'6¶–ÆÇ2ö6Vâ×†6R×&÷Fö6öÂõ4´”ÄÂæÖB"Â'6¶–ÆÇ2ö6VâÖW‡Æ÷&Rõ4´”ÄÂæÖB%×Ò“°¢76W'BæWVÂ‡"æö²ÇG'VR“¶76W'BæFVWWVÂ„¥4ôâç'6R‡"æ÷WGWB’Ç¶¶–æC¢&W‡Æ÷&F–öâ×&W÷'B"Æ6öçFVçC¢&–ç7V7FVB"Ç&W÷6—F÷'“¦BÆ6æF–FFT–C¢&2"Ç&Wf—6–öã¢'"'Ò“°§Ò“°§FW7B‚%’%2'F–f7BGfæ6W2öæR†6RöæÇ’v—F‚W†7B6æF–FFR÷WGWB"Æ7–æ2‚“Óç°¢6öç7B6÷W&6SÒvÆWBƒÒ"#·&ö6W72ç7FF–âæöâ‚&FF"ÆCÓç‚³ÖB“·øß»h‘éì¶»§q«^uíô°ÄÀÀÀÀ¤ìœ¤ì(½¹ÍÐÈõ…Ý…¥ÐÉÕ¹¹•È¡À¤¹ÉÕ¸¡í¥è‰™½É•ˆ±É½±”è‰•áÁ±½É•Èˆ±ÁÉ½µÁÐè‰àˆ±É•Á½Í¥Ñ½Éäé±Í­¥±±A…Ñ¡Ìél‰Í­¥±±Ì½…Í•¸µ•áÁ±½É”½M-%10¹µ‰uô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡È¹½¬±™…±Í”¤ì(…ÍÍ•ÉÐ¹µ…Ñ ¡È¹½ÕÑÁÕÐ°½µ…Ñ¡¥¹œM8µ¥ÍÍÕ•½¹Ñ•áÐ¼¤ì)ô¤ì)Ñ•ÍÐ ‰A¤IA…‘…ÁÑ•ÈÉ•©•ÑÌ½µ¥ÑÑ•µ…¹‘…Ñ½ÉäÍ­¥±°É½ÕÑ•Ìˆ±…Íå¹Œ ¤ôùì(½¹ÍÐí±Áôõ…Ý…¥Ð™¥áÑÕÉ” Í•ÑQ¥µ•½ÕÐ  ¤ôùíô°ÄÀÀÀÀ¤ìœ¤ì(½¹ÍÐÈõ…Ý…¥ÐÉÕ¹¹•È¡À¤¹ÉÕ¸¡í¥è‰½µ¥ÑÑ•ˆ±É½±”è‰•áÁ±½É•Èˆ±ÁÉ½µÁÐè‰àˆ±É•Á½Í¥Ñ½Éäé±Í­¥±±½¹Ñ•áÐé¥ÍÍÕ•M­¥±±½¹Ñ•áÐ ‰½µ¥ÑÑ•ˆ±±Õ¹‘•™¥¹•±íÁ¡…Í”è‰•áÁ±½É”‰ô¤±Í­¥±±A…Ñ¡Ìémuô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡È¹½¬±™…±Í”¤ì(…ÍÍ•ÉÐ¹µ…Ñ ¡È¹½ÕÑÁÕÐ°½‘¼¹½Ðµ…Ñ ¥ÍÍÕ•½¹Ñ•áÐ¼¤ì)ô¤ì)Ñ•ÍÐ ‰A¤IA…‘…ÁÑ•ÈÍÕÁÁ±¥•ÌÍ•±•Ñ•É½ÕÑ•Ì…Ì¹…Ñ¥Ù”A¤™±…Ìˆ±…Íå¹Œ ¤ôùì(½¹ÍÐí±Áôõ…Ý…¥Ð™¥áÑÕÉ” ±•ÐàôˆˆíÁÉ½•ÍÌ¹ÍÑ‘¥¸¹½¸ ‰‘…Ñ„ˆ±ôùà¬õ¤íÁÉ½•ÍÌ¹ÍÑ‘¥¸¹½¸ ‰•¹ˆ° ¤ôùí½¹ÍÐ˜õ)M=8¹Á…ÉÍ”¡à¹ÑÉ¥´ ¤¤í½¹Í½±”¹±½œ¡)M=8¹ÍÑÉ¥¹¥™ä¡íÑåÁ”è‰É•ÍÁ½¹Í”ˆ±¥é˜¹¥±ÍÕ•ÍÌéÑÉÕ”±…ÉÌéÁÉ½•ÍÌ¹…ÉØ¹Í±¥” È¥ô¤¤íô¤ìœ¤ì(½¹ÍÐ½¹Ñ•áÐõ¥ÍÍÕ•M­¥±±½¹Ñ•áÐ ‰¹…Ñ¥Ù”ˆ±±Õ¹‘•™¥¹•±íÁ¡…Í”è‰•áÁ±½É”‰ô¤ì(½¹ÍÐÁ…Ñ¡ÌõÍ•±•ÑM­¥±±Ì¡½¹Ñ•áÐ¤¹µ…À¡Í­¥±°ôùÍ­¥±°¹Á…Ñ ¤ì(½¹ÍÐÈõ…Ý…¥ÐÉÕ¹¹•È¡À¤¹ÉÕ¸¡í¥è‰¹…Ñ¥Ù”ˆ±É½±”è‰•áÁ±½É•Èˆ±ÁÉ½µÁÐè‰¥¹ÍÁ•Ðˆ±É•Á½Í¥Ñ½Éäé±Í­¥±±½¹Ñ•áÐé½¹Ñ•áÐ±Í­¥±±A…Ñ¡ÌéÁ…Ñ¡Íô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡È¹½¬±ÑÉÕ”¤ì(½¹ÍÐÉ•ÍÁ½¹Í”õ)M=8¹Á…ÉÍ”¡È¹½ÕÑÁÕÐ¹ÑÉ¥´ ¤¹ÍÁ±¥Ð ½qÈýq¸¼¤¹…Ð ´Ä¤„¤ì(…ÍÍ•ÉÐ¹µ…Ñ ¡É•ÍÁ½¹Í”¹…ÉÍlÉt°½mqp½u…Í•¸µÁ½±¥äµmyqp½t­mqp½u•áÑ•¹Í¥½¹Ímqp½u…ÕÑ¡½É¥Ñåp¹ÑÌ¼¤ì(…ÍÍ•ÉÐ¹‘••ÁÅÕ…°¡mÉ•ÍÁ½¹Í”¹…ÉÍlÁt±É•ÍÁ½¹Í”¹…ÉÍlÅt°¸¸¹É•ÍÁ½¹Í”¹…ÉÌ¹Í±¥” Ì¥t±lˆ´µ¹¼µ•áÑ•¹Í¥½¹Ìˆ°ˆ´µ•áÑ•¹Í¥½¸ˆ°ˆ´µ¹¼µÍ­¥±±Ìˆ°ˆ´µÑ½½±Ìˆ°‰É•…ˆ°¸¸¹Á…Ñ¡Ì¹™±…Ñ5…À¡Á…Ñ ôùlˆ´µÍ­¥±°ˆ±Á…Ñ¡t¥t¤ì)ô¤ì)Ñ•ÍÐ ‰É•…µ½¹±ä…ÉÑ¥™…Ð…Õ‘¥Ð‘¥Í…‰±•Ì•Ù•ÉäA¤Ñ½½°ˆ±…Íå¹Œ ¤ôùì(½¹ÍÐí±Áôõ…Ý…¥Ð™¥áÑÕÉ” ±•ÐàôˆˆíÁÉ½•ÍÌ¹ÍÑ‘¥¸¹½¸ ‰‘…Ñ„ˆ±ôùà¬õ¤íÁÉ½•ÍÌ¹ÍÑ‘¥¸¹½¸ ‰•¹ˆ° ¤ôùí½¹ÍÐ˜õ)M=8¹Á…ÉÍ”¡à¹ÑÉ¥´ ¤¤í½¹Í½±”¹±½œ¡)M=8¹ÍÑÉ¥¹¥™ä¡íÑåÁ”è‰É•ÍÁ½¹Í”ˆ±¥é˜¹¥±ÍÕ•ÍÌéÑÉÕ”±…ÉÌéÁÉ½•ÍÌ¹…ÉØ¹Í±¥” È¥ô¤¤íô¤ìœ¤ì(½¹ÍÐ½¹Ñ•áÐõ¥ÍÍÕ•M­¥±±½¹Ñ•áÐ ‰…Õ‘¥Ðˆ±±Õ¹‘•™¥¹•±íÁ¡…Í”è‰•áÁ±½É”‰ô¤ì(½¹ÍÐÈõ…Ý…¥ÐÉÕ¹¹•È¡À±í¹½Q½½±ÌéÑÉÕ•ô¤¹ÉÕ¸¡í¥è‰…Õ‘¥Ðˆ±É½±”è‰•áÁ±½É•Èˆ±ÁÉ½µÁÐè‰…ÉÑ¥™…Ðˆ±É•Á½Í¥Ñ½Éäé±Í­¥±±½¹Ñ•áÐé½¹Ñ•áÐ±Í­¥±±A…Ñ¡ÌéÍ•±•ÑM­¥±±Ì¡½¹Ñ•áÐ¤¹µ…À¡Í­¥±°ôùÍ­¥±°¹Á…Ñ ¥ô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡È¹½¬±ÑÉÕ”¤ì(½¹ÍÐ…ÉÌõ)M=8¹Á…ÉÍ”¡È¹½ÕÑÁÕÐ¹ÑÉ¥´ ¤¹ÍÁ±¥Ð ½qÈýq¸¼¤¹…Ð ´Ä¤„¤¹…ÉÌ…ÌÍÑÉ¥¹mtì(…ÍÍ•ÉÐ¹½¬¡…ÉÌ¹¥¹±Õ‘•Ì ˆ´µ¹¼µÑ½½±Ìˆ¤¤í…ÍÍ•ÉÐ¹½¬ ……ÉÌ¹¥¹±Õ‘•Ì ˆ´µÑ½½±Ìˆ¤¤ì)ô¤ì)Ñ•ÍÐ ‰É•…µ½¹±äA¤ÉÕ¹¹•È™…¥±Ì±½Í•Ý¡•¸„µ½‘•°…ÑÑ•µÁÑÌ„Ñ½½°ˆ±íÑ¥µ•½ÕÐéÁÉ½•ÍÌ¹Á±…Ñ™½É´ôôô‰Ý¥¸ÌÈˆüÐÕ|ÀÀÀèÕ|ÀÀÁô±…Íå¹ŒÐôùì(½¹ÍÐµ…É­•Èõ©½¥¸¡ÑµÁ‘¥È ¤±…Í•¸µ‘•¹¥•µÑ½½°´‘íÁÉ½•ÍÌ¹Á¥‘ô´‘í…Ñ”¹¹½Ü ¥õ€¤íÐ¹…™Ñ•È  ¤ôùÉ´¡µ…É­•È±í™½É”éÑÉÕ•ô¤¤ì(½¹ÍÐí±Áôõ…Ý…¥Ð™¥áÑÕÉ”¡¥µÁ½ÉÐíÝÉ¥Ñ•¥±•Må¹ô™É½´€‰¹½‘”é™Ìˆí½¹ÍÐµ…É­•Èô‘í)M=8¹ÍÑÉ¥¹¥™ä¡µ…É­•È¥ôí±•ÐàôˆˆíÁÉ½•ÍÌ¹ÍÑ‘¥¸¹½¸ ‰‘…Ñ„ˆ±ôùà¬õ¤íÁÉ½•ÍÌ¹ÍÑ‘¥¸¹½¸ ‰•¹ˆ° ¤ôùí)M=8¹Á…ÉÍ”¡à¹ÑÉ¥´ ¤¤í½¹Í½±”¹±½œ¡)M=8¹ÍÑÉ¥¹¥™ä¡íÑåÁ”è‰Ñ½½±}•á•ÕÑ¥½¹}ÍÑ…ÉÐˆ±Ñ½½±9…µ”è‰ÝÉ¥Ñ”ˆ±Ñ½½±…±±%è‰™½É‰¥‘‘•¸‰ô¤¤íÍ•ÑQ¥µ•½ÕÐ  ¤ôùÝÉ¥Ñ•¥±•Må¹Œ¡µ…É­•È°‰Ñ½½°Í¥‘”•™™•Ðˆ¤°ÄÔÀÀ¤íô¤í€¤ì(…Ý…¥Ð¹•ÜAÉ½µ¥Í”ñÙ½¥ø¡É•Í½±Ù”ôùí½¹ÍÐ½¹ÑÉ½°õ•á•¥±”¡ÁÉ½•ÍÌ¹•á•A…Ñ ±mÁt±íÑ¥µ•½ÕÐèÑ|ÀÀÁô° ¤ôùÉ•Í½±Ù” ¤¤í½¹ÑÉ½°¹ÍÑ‘¥¸ü¹•¹ ì‰¥ˆè‰Á½Í¥Ñ¥Ù”µ½¹ÑÉ½°‰õq¸œ¤íô¤ì(…Ý…¥Ð…ÍÍ•ÉÐ¹‘½•Í9½ÑI•©•Ð  ¤ôù…•ÍÌ¡µ…É­•È¤°‰Á½Í¥Ñ¥Ù”½¹ÑÉ½°‘¥¹½ÐÝÉ¥Ñ”Ñ¡”Í¥‘”µ•™™•Ðµ…É­•Èˆ¤ì(…Ý…¥ÐÉ´¡µ…É­•È±í™½É”éÑÉÕ•ô¤ì(½¹ÍÐ½¹Ñ•áÐõ¥ÍÍÕ•M­¥±±½¹Ñ•áÐ ‰‰±½­•µÑ½½°ˆ±±Õ¹‘•™¥¹•±íÁ¡…Í”è‰•áÁ±½É”‰ô¤ì(½¹ÍÐÑ¥µ•½ÕÑ5ÌõÁÉ½•ÍÌ¹Á±…Ñ™½É´ôôô‰Ý¥¸ÌÈˆüÌÁ|ÀÀÀèÅ|ÀÀÀì(½¹ÍÐÉ•ÍÕ±Ðõ…Ý…¥ÐÉÕ¹¹•È¡À±í¹½Q½½±ÌéÑÉÕ”±Ñ¥µ•½ÕÑ5Íô¤¹ÉÕ¸¡í¥è‰‰±½­•µÑ½½°ˆ±É½±”è‰•áÁ±½É•Èˆ±ÁÉ½µÁÐè‰¥¹ÍÁ•Ðˆ±É•Á½Í¥Ñ½Éäé±Í­¥±±½¹Ñ•áÐé½¹Ñ•áÐ±Í­¥±±A…Ñ¡ÌéÍ•±•ÑM­¥±±Ì¡½¹Ñ•áÐ¤¹µ…À¡Í­¥±°ôùÍ­¥±°¹Á…Ñ ¥ô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡É•ÍÕ±Ð¹½¬±™…±Í”¤í…ÍÍ•ÉÐ¹•ÅÕ…°¡É•ÍÕ±Ð¹½ÕÑÁÕÐ°‰Á¤µ½‘•°…ÑÑ•µÁÑ•„Ñ½½°Ý¡¥±”Ñ½½±ÌÝ•É”‘¥Í…‰±•ˆ¤ì(…Ý…¥Ð¹•ÜAÉ½µ¥Í”¡É•Í½±Ù”ôùÍ•ÑQ¥µ•½ÕÐ¡É•Í½±Ù”°Å|ÜÔÀ¤¤ì(…Ý…¥Ð…ÍÍ•ÉÐ¹É•©•ÑÌ  ¤ôù…•ÍÌ¡µ…É­•È¤±•ÉÉ½Èôø¡•ÉÉ½È…Ì9½‘•)L¹ÉÉ¹½á•ÁÑ¥½¸¤¹½‘”ôôô‰9=9Pˆ¤ì)ô¤ì)Ñ•ÍÐ ‰‘¥É•ÐA¤Ý½É­•È…¹¹½Ð½‰Ñ…¥¸™¥±”Ñ½½±ÌÝ¥Ñ¡½ÕÐ„±¥Ù”±¥™•å±”É…¹Ðˆ±…Íå¹Œ ¤ôùì(½¹ÍÐí±Áôõ…Ý…¥Ð™¥áÑÕÉ” ±•ÐàôˆˆíÁÉ½•ÍÌ¹ÍÑ‘¥¸¹½¸ ‰‘…Ñ„ˆ±ôùà¬õ¤íÁÉ½•ÍÌ¹ÍÑ‘¥¸¹½¸ ‰•¹ˆ° ¤ôùí½¹ÍÐ˜õ)M=8¹Á…ÉÍ”¡à¹ÑÉ¥´ ¤¤í½¹Í½±”¹±½œ¡)M=8¹ÍÑÉ¥¹¥™ä¡íÑåÁ”è‰É•ÍÁ½¹Í”ˆ±¥é˜¹¥±ÍÕ•ÍÌéÑÉÕ”±…ÉÌéÁÉ½•ÍÌ¹…ÉØ¹Í±¥” È¥ô¤¤íô¤ìœ¤ì(½¹ÍÐ…¹‘¥‘…Ñ”õí¥è‰…¹‘¥‘…Ñ”ˆ±É•Á½Í¥Ñ½Éäé±É•Ù¥Í¥½¸è‰É•Ù¥Í¥½¸ˆ±É•…Ñ•‘Ðè‰¹½Ü‰ôì(½¹ÍÐ½¹Ñ•áÐõ¥ÍÍÕ•M­¥±±½¹Ñ•áÐ ‰Ý½É­•Èˆ±±…¹‘¥‘…Ñ”±íÁ¡…Í”è‰…ÁÁ±ä‰ô¤ì(½¹ÍÐÁ…Ñ¡ÌõÍ•±•ÑM­¥±±Ì¡½¹Ñ•áÐ¤¹µ…À¡Í­¥±°ôùÍ­¥±°¹Á…Ñ ¤ì(½¹ÍÐÈõ…Ý…¥ÐÉÕ¹¹•È¡À¤¹ÉÕ¸¡í¥è‰Ý½É­•Èˆ±É½±”è‰Ý½É­•Èˆ±ÁÉ½µÁÐè‰¥µÁ±•µ•¹Ðˆ±É•Á½Í¥Ñ½Éäé±…¹‘¥‘…Ñ”±ÝÉ¥Ñ•MÕÉ™…•Ìél‰ÍÉŒ‰t±Í­¥±±½¹Ñ•áÐé½¹Ñ•áÐ±Í­¥±±A…Ñ¡ÌéÁ…Ñ¡Íô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡È¹½¬±™…±Í”¤ì(…ÍÍ•ÉÐ¹µ…Ñ ¡È¹½ÕÑÁÕÐ°½•á…Ð‘¥ÍÁ…Ñ¡•ÈÉ••¥Ù•È¼¤ì)ô¤ì)Ñ•ÍÐ ‰‘¥É•ÐA¤ÉÕ¹¹•ÈÉ•™ÕÍ•Ì„…¹‘¥‘…Ñ”µ‰½Õ¹ÑÕÉ¸Ý¥Ñ¡½ÕÐ¥ÍÍÕ•Í•±•Ñ¥½¸ˆ±…Íå¹Œ ¤ôùì(½¹ÍÐ…¹‘¥‘…Ñ”õí¥è‰…¹‘¥‘…Ñ”ˆ±É•Á½Í¥Ñ½Éäè‰µ¥ÍÍ¥¹œµÉ•Á¼ˆ±É•Ù¥Í¥½¸è‰É•Ù¥Í¥½¸ˆ±É•…Ñ•‘Ðè‰¹½Ü‰ôì(™½È¡½¹ÍÐÉ½±”½˜l‰•áÁ±½É•Èˆ°‰É•Ù¥•Ý•Èˆ°‰Ù•É¥™¥•Èˆ°‰Ý½É­•È‰t…Ì½¹ÍÐ¥ì(€½¹ÍÐÉ•ÍÕ±Ðõ…Ý…¥Ð¹•ÜA¥AÉ½•ÍÍIÕ¹¹•È¡í½µµ…¹è‰‘½•Ìµ¹½Ðµ•á¥ÍÐ‰ô¤¹ÉÕ¸¡í¥è‰Ñ…Í¬é„ˆ±É½±”±ÁÉ½µÁÐè‰¥¹ÍÁ•Ðˆ±É•Á½Í¥Ñ½Éäé…¹‘¥‘…Ñ”¹É•Á½Í¥Ñ½Éä±…¹‘¥‘…Ñ•ô¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡É•ÍÕ±Ð¹½¬±™…±Í”¤ì(€…ÍÍ•ÉÐ¹µ…Ñ ¡É•ÍÕ±Ð¹½ÕÑÁÕÐ°½¥ÍÍÕ•Í­¥±°½¹Ñ•áÐ…¹•á…ÐÁ…Ñ¡Ì¼¤ì(ô)ô¤ì)Ñ•ÍÐ ‰‘¥É•ÐA¤ÉÕ¹¹•ÈÉ•©•ÑÌÉ½±”Á¡…Í”ÍÕ‰ÍÑ¥ÑÕÑ¥½¸…¹ÝÉ¥Ñ•È…ÕÑ¡½É¥Ñä½ÕÑÍ¥‘”…ÁÁ±äˆ±…Íå¹Œ ¤ôùì(½¹ÍÐ…¹‘¥‘…Ñ”õí¥è‰…¹‘¥‘…Ñ”ˆ±É•Á½Í¥Ñ½Éäè‰µ¥ÍÍ¥¹œµÉ•Á¼ˆ±É•Ù¥Í¥½¸è‰É•Ù¥Í¥½¸ˆ±É•…Ñ•‘Ðè‰¹½Ü‰ôì(½¹ÍÐ½¹Ñ•áÐõ¥ÍÍÕ•M­¥±±½¹Ñ•áÐ ‰Ñ…Í¬é„ˆ±…¹‘¥‘…Ñ”¹É•Á½Í¥Ñ½Éä±…¹‘¥‘…Ñ”±íÁ¡…Í”è‰•áÁ±½É”‰ô¤ì(½¹ÍÐÍ­¥±±A…Ñ¡ÌõÍ•±•ÑM­¥±±Ì¡½¹Ñ•áÐ¤¹µ…À¡¥Ñ•´ôù¥Ñ•´¹Á…Ñ ¤ì(™½È¡½¹ÍÐÉ½±”½˜l‰É•Ù¥•Ý•Èˆ°‰Ù•É¥™¥•È‰t…Ì½¹ÍÐ¥ì(€½¹ÍÐÉ•ÍÕ±Ðõ…Ý…¥Ð¹•ÜA¥AÉ½•ÍÍIÕ¹¹•È¡í½µµ…¹è‰‘½•Ìµ¹½Ðµ•á¥ÍÐ‰ô¤¹ÉÕ¸¡í¥è‰Ñ…Í¬é„ˆ±É½±”±ÁÉ½µÁÐè‰¥¹ÍÁ•Ðˆ±É•Á½Í¥Ñ½Éäé…¹‘¥‘…Ñ”¹É•Á½Í¥Ñ½Éä±…¹‘¥‘…Ñ”±Í­¥±±½¹Ñ•áÐé½¹Ñ•áÐ±Í­¥±±A…Ñ¡Íô¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡É•ÍÕ±Ð¹½¬±™…±Í”¤í…ÍÍ•ÉÐ¹µ…Ñ ¡É•ÍÕ±Ð¹½ÕÑÁÕÐ°½…•¹ÐÉ½±”¼¤ì(ô(½¹ÍÐÝÉ¥Ñ•Èõ…Ý…¥Ð¹•ÜA¥AÉ½•ÍÍIÕ¹¹•È¡í½µµ…¹è‰‘½•Ìµ¹½Ðµ•á¥ÍÐ‰ô¤¹ÉÕ¸¡í¥è‰Ñ…Í¬é„ˆ±É½±”è‰Ý½É­•Èˆ±ÁÉ½µÁÐè‰ÝÉ¥Ñ”ˆ±É•Á½Í¥Ñ½Éäé…¹‘¥‘…Ñ”¹É•Á½Í¥Ñ½Éä±…¹‘¥‘…Ñ”±Í­¥±±½¹Ñ•áÐé½¹Ñ•áÐ±Í­¥±±A…Ñ¡Ì±ÝÉ¥Ñ•MÕÉ™…•Ìél‰ÍÉŒ‰uô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡ÝÉ¥Ñ•È¹½¬±™…±Í”¤í…ÍÍ•ÉÐ¹µ…Ñ ¡ÝÉ¥Ñ•È¹½ÕÑÁÕÐ°½…ÁÁ±äÁ¡…Í”¼¤ì)ô¤ì)Ñ•ÍÐ ‰‘¥É•ÐA¤ÉÕ¹¹•ÈÉ•©•ÑÌ„…±±•ÈµÍÕÁÁ±¥••áÁ•Ñ•‘A¡…Í”½Ù•ÉÉ¥‘”™½ÈÉ•…É½±•Ìˆ±…Íå¹Œ ¤ôùì(½¹ÍÐ…¹‘¥‘…Ñ”õí¥è‰…¹‘¥‘…Ñ”ˆ±É•Á½Í¥Ñ½Éäè‰µ¥ÍÍ¥¹œµÉ•Á¼ˆ±É•Ù¥Í¥½¸è‰É•Ù¥Í¥½¸ˆ±É•…Ñ•‘Ðè‰¹½Ü‰ôì(½¹ÍÐ½¹Ñ•áÐõ¥ÍÍÕ•M­¥±±½¹Ñ•áÐ ‰Ñ…Í¬é„ˆ±…¹‘¥‘…Ñ”¹É•Á½Í¥Ñ½Éä±…¹‘¥‘…Ñ”±íÁ¡…Í”è‰•áÁ±½É”‰ô¤ì(½¹ÍÐÍ­¥±±A…Ñ¡ÌõÍ•±•ÑM­¥±±Ì¡½¹Ñ•áÐ¤¹µ…À¡¥Ñ•´ôù¥Ñ•´¹Á…Ñ ¤ì(™½È¡½¹ÍÐÉ½±”½˜l‰É•Ù¥•Ý•Èˆ°‰Ù•É¥™¥•È‰t…Ì½¹ÍÐ¥ì(€½¹ÍÐÉ•ÍÕ±Ðõ…Ý…¥Ð¹•ÜA¥AÉ½•ÍÍIÕ¹¹•È¡í½µµ…¹è‰‘½•Ìµ¹½Ðµ•á¥ÍÐ‰ô¤¹ÉÕ¸¡í¥è‰Ñ…Í¬é„ˆ±É½±”±•áÁ•Ñ•‘A¡…Í”è‰•áÁ±½É”ˆ±ÁÉ½µÁÐè‰¥¹ÍÁ•Ðˆ±É•Á½Í¥Ñ½Éäé…¹‘¥‘…Ñ”¹É•Á½Í¥Ñ½Éä±…¹‘¥‘…Ñ”±Í­¥±±½¹Ñ•áÐé½¹Ñ•áÐ±Í­¥±±A…Ñ¡Íô¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡É•ÍÕ±Ð¹½¬±™…±Í”¤í…ÍÍ•ÉÐ¹µ…Ñ ¡É•ÍÕ±Ð¹½ÕÑÁÕÐ°½…•¹ÐÉ½±”¼¤ì(ô)ô¤ì)Ñ•ÍÐ ‰A¤ÁÉ•™±¥¡ÐÉ•©•ÑÌ½µ¥ÑÑ•°…‘‘•½ÈÉ•Á±…•¹…Ñ¥Ù”M­¥±°É½ÕÑ•Ìˆ±…Íå¹Œ ¤ôùì(™½È¡½¹ÍÐµ½‘”½˜l‰µ¥ÍÍ¥¹œˆ°‰•áÑÉ„ˆ°‰…±Ñ•É•‰t…Ì½¹ÍÐ¥ì(€½¹ÍÐí±Áôõ…Ý…¥Ð™¥áÑÕÉ” ‰Í•ÑQ¥µ•½ÕÐ  ¤ôùíô°ÄÀÀÀÀ¤ìˆ±ÑÉÕ”±µ½‘”¤ì(€½¹ÍÐ½¹Ñ•áÐõ¥ÍÍÕ•M­¥±±½¹Ñ•áÐ ‰Í­¥±°µ‘É¥™Ðˆ±±Õ¹‘•™¥¹•±íÁ¡…Í”è‰•áÁ±½É”‰ô¤ì(€½¹ÍÐÉ•ÍÕ±Ðõ…Ý…¥ÐÉÕ¹¹•È¡À¤¹ÉÕ¸¡í¥è‰Í­¥±°µ‘É¥™Ðˆ±É½±”è‰•áÁ±½É•Èˆ±ÁÉ½µÁÐè‰¥¹ÍÁ•Ðˆ±É•Á½Í¥Ñ½Éäé±Í­¥±±½¹Ñ•áÐé½¹Ñ•áÐ±Í­¥±±A…Ñ¡ÌéÍ•±•ÑM­¥±±Ì¡½¹Ñ•áÐ¤¹µ…À¡¥Ñ•´ôù¥Ñ•´¹Á…Ñ ¥ô¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡É•ÍÕ±Ð¹½¬±™…±Í”±µ½‘”¤í…ÍÍ•ÉÐ¹µ…Ñ ¡É•ÍÕ±Ð¹½ÕÑÁÕÐ°½¹…Ñ¥Ù”M­¥±°Á…Ñ¡Ì‘¼¹½Ðµ…Ñ ¼±µ½‘”¤ì(ô)ô¤ì)Ñ•ÍÐ ‰A¤ÉÕ¹¹•ÈÉ•™ÕÍ•ÌÑ¼ÁÉ½µÁÐÝ¥Ñ¡½ÕÐ¥ÑÌ…ÕÑ¡½É¥Ñä•áÑ•¹Í¥½¸ˆ±…Íå¹Œ ¤ôùì(½¹ÍÐí±Áôõ…Ý…¥Ð™¥áÑÕÉ” Í•ÑQ¥µ•½ÕÐ  ¤ôùíô°ÄÀÀÀÀ¤ìœ±™…±Í”¤ì(½¹ÍÐÈõ…Ý…¥ÐÉÕ¹¹•È¡À¤¹ÉÕ¸¡í¥è‰¹¼µÁ½±¥äˆ±É½±”è‰•áÁ±½É•Èˆ±ÁÉ½µÁÐè‰É•…ˆ±É•Á½Í¥Ñ½Éäé‘ô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡È¹½¬±™…±Í”¤í…ÍÍ•ÉÐ¹µ…Ñ ¡È¹½ÕÑÁÕÐ°½Á½±¥ä•áÑ•¹Í¥½¸Ý…Ì¹½Ð±½…‘•¼¤ì)ô¤ì)Ñ•ÍÐ ‰A¤IA…‘…ÁÑ•È‰±½­Ì…±±•ÈµÍÕÁÁ±¥•Ñ½½°…ÕÑ¡½É¥Ñäˆ±…Íå¹Œ ¤ôùì(½¹ÍÐí±Áôõ…Ý…¥Ð™¥áÑÕÉ” Í•ÑQ¥µ•½ÕÐ  ¤ôùíô°ÄÀÀÀÀ¤ìœ¤ì(½¹ÍÐ½¹Ñ•áÐõ¥ÍÍÕ•M­¥±±½¹Ñ•áÐ ‰Ñ½½°µ½Ù•ÉÉ¥‘”ˆ±±Õ¹‘•™¥¹•±íÁ¡…Í”è‰•áÁ±½É”‰ô¤ì(½¹ÍÐÈõ…Ý…¥ÐÉÕ¹¹•È¡À±í•áÑÉ…ÉÌémÀ°ˆ´µÑ½½±Ìˆ°‰‰…Í ‰uô¤¹ÉÕ¸¡í¥è‰Ñ½½°µ½Ù•ÉÉ¥‘”ˆ±É½±”è‰•áÁ±½É•Èˆ±ÁÉ½µÁÐè‰¥¹ÍÁ•Ðˆ±É•Á½Í¥Ñ½Éäé±Í­¥±±½¹Ñ•áÐé½¹Ñ•áÐ±Í­¥±±A…Ñ¡ÌéÍ•±•ÑM­¥±±Ì¡½¹Ñ•áÐ¤¹µ…À¡Í­¥±°ôùÍ­¥±°¹Á…Ñ ¥ô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡È¹½¬±™…±Í”¤í…ÍÍ•ÉÐ¹µ…Ñ ¡È¹½ÕÑÁÕÐ°½¥ÍÍÕ•‰äM8¼¤ì)ô¤ì)Ñ•ÍÐ ‰A¤IA…‘…ÁÑ•ÈÉ•©•ÑÌ½ÁÑ¥½¸Ñ•Éµ¥¹…Ñ½ÉÌÑ¡…Ð‘¥Í…‰±”M8™±…Ìˆ±…Íå¹Œ ¤ôùì(½¹ÍÐí±Áôõ…Ý…¥Ð™¥áÑÕÉ” Í•ÑQ¥µ•½ÕÐ  ¤ôùíô°ÄÀÀÀÀ¤ìœ¤ì(½¹ÍÐ½¹Ñ•áÐõ¥ÍÍÕ•M­¥±±½¹Ñ•áÐ ‰Ñ•Éµ¥¹…Ñ½Èˆ±±Õ¹‘•™¥¹•±íÁ¡…Í”è‰•áÁ±½É”‰ô¤ì(½¹ÍÐÈõ…Ý…¥ÐÉÕ¹¹•È¡À±í•áÑÉ…ÉÌémÀ°ˆ´´‰uô¤¹ÉÕ¸¡í¥è‰Ñ•Éµ¥¹…Ñ½Èˆ±É½±”è‰•áÁ±½É•Èˆ±ÁÉ½µÁÐè‰¥¹ÍÁ•Ðˆ±É•Á½Í¥Ñ½Éäé±Í­¥±±½¹Ñ•áÐé½¹Ñ•áÐ±Í­¥±±A…Ñ¡ÌéÍ•±•ÑM­¥±±Ì¡½¹Ñ•áÐ¤¹µ…À¡Í­¥±°ôùÍ­¥±°¹Á…Ñ ¥ô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡È¹½¬±™…±Í”¤í…ÍÍ•ÉÐ¹µ…Ñ ¡È¹½ÕÑÁÕÐ°½¥ÍÍÕ•‰äM8¼¤ì)ô¤ì)Ñ•ÍÐ ‰A¤IA…‘…ÁÑ•È‰±½­Ì…±±•ÈµÍÕÁÁ±¥•Í­¥±°½Ù•ÉÉ¥‘•Ìˆ±…Íå¹Œ ¤ôùì(½¹ÍÐí±Áôõ…Ý…¥Ð™¥áÑÕÉ” Í•ÑQ¥µ•½ÕÐ  ¤ôùíô°ÄÀÀÀÀ¤ìœ¤ì(½¹ÍÐ½¹Ñ•áÐõ¥ÍÍÕ•M­¥±±½¹Ñ•áÐ ‰½Ù•ÉÉ¥‘”ˆ±±Õ¹‘•™¥¹•±íÁ¡…Í”è‰•áÁ±½É”‰ô¤ì(½¹ÍÐÈõ…Ý…¥ÐÉÕ¹¹•È¡À±í•áÑÉ…ÉÌémÀ°ˆ´µÍ­¥±°ˆ°‰Í­¥±±Ì½…Í•¸µÉ•Ù¥•Ü½M-%10¹µ‰uô¤¹ÉÕ¸¡í¥è‰½Ù•ÉÉ¥‘”ˆ±É½±”è‰•áÁ±½É•Èˆ±ÁÉ½µÁÐè‰¥¹ÍÁ•Ðˆ±É•Á½Í¥Ñ½Éäé±Í­¥±±½¹Ñ•áÐé½¹Ñ•áÐ±Í­¥±±A…Ñ¡ÌéÍ•±•ÑM­¥±±Ì¡½¹Ñ•áÐ¤¹µ…À¡Í­¥±°ôùÍ­¥±°¹Á…Ñ ¥ô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡È¹½¬±™…±Í”¤í…ÍÍ•ÉÐ¹µ…Ñ ¡È¹½ÕÑÁÕÐ°½¥ÍÍÕ•‰äM8¼¤ì)ô¤ì()Ñ•ÍÐ ‰½É…¹¥ŒÝÉ¥Ñ•ÈÉ•…¡•ÌA¤…‘…ÁÑ•ÈÑ¡É½Õ ½¹”•á…Ð¥ÍÁ…Ñ¡•ÈÉ••¥Ù•ÈÝ¥Ñ¡½ÕÐMˆ±…Íå¹ŒÐôùì(½¹ÍÐí±Áôõ…Ý…¥Ð™¥áÑÕÉ” ±•ÐàôˆˆíÁÉ½•ÍÌ¹ÍÑ‘¥¸¹½¸ ‰‘…Ñ„ˆ±ôùà¬õ¤íÁÉ½•ÍÌ¹ÍÑ‘¥¸¹½¸ ‰•¹ˆ° ¤ôùí½¹ÍÐ˜õ)M=8¹Á…ÉÍ”¡à¹ÑÉ¥´ ¤¤í½¹Í½±”¹±½œ¡)M=8¹ÍÑÉ¥¹¥™ä¡íÑåÁ”è‰É•ÍÁ½¹Í”ˆ±¥é˜¹¥±ÍÕ•ÍÌéÑÉÕ”±…ÉÌéÁÉ½•ÍÌ¹…ÉØ¹Í±¥” È¤±…ÕÑ¡½É¥Ñäé)M=8¹Á…ÉÍ”¡ÁÉ½•ÍÌ¹•¹Ø¹M9}A%}UQ!=I%Qd¥ô¤¤íô¤ìœ¤ì(Ð¹…™Ñ•È  ¤ôùÉ´¡±íÉ•ÕÉÍ¥Ù”éÑÉÕ”±™½É”éÑÉÕ•ô¤¤ì(½¹ÍÐí¥ÍÍÕ•=‘‘•¥Í¥½¹ôõ…Ý…¥Ð¥µÁ½ÉÐ ˆ¸½¡•±Á•ÉÌ½½‘µÉ½ÕÑ¥¹œ¹©Ìˆ¤±í‰Õ¥±‘=É¡•ÍÑÉ…Ñ¥½¹A±…¹ôõ…Ý…¥Ð¥µÁ½ÉÐ ˆ¸¸½ÍÉŒ½½É¡•ÍÑÉ…Ñ¥½¸½½É¡•ÍÑÉ…Ñ½È¹©Ìˆ¤±í‘•¥‘•1¥™•å±•ÁÁ±¥…‰¥±¥Ñåôõ…Ý…¥Ð¥µÁ½ÉÐ ˆ¸¸½ÍÉŒ½±¥™•å±”½…ÁÁ±¥…‰¥±¥Ñä¹©Ìˆ¤±í¥ÍÍÕ•=É…¹¥]É¥Ñ•É‘µ¥ÍÍ¥½¹ôõ…Ý…¥Ð¥µÁ½ÉÐ ˆ¸¸½ÍÉŒ½±¥™•å±”½Í­¥±°µ±¥™•å±”¹©Ìˆ¤ì(½¹ÍÐ…¹‘¥‘…Ñ”õí¥è‰½É…¹¥Œˆ±É•Á½Í¥Ñ½Éäé±É•Ù¥Í¥½¸è‰É•Ù¥Í¥½¸ˆ±É•…Ñ•‘Ðè‰¹½Ü‰ô±‘•¥Í¥½¸õ¥ÍÍÕ•=‘‘•¥Í¥½¸¡íÑ…Í­%è‰½É…¹¥Œˆ±É•Á½Í¥Ñ½Éäé±Á…Ñ¡Ìél‰ÍÉŒ½„‰t±ÝÉ¥Ñ•ÌémíÁ…Ñ è‰ÍÉŒ½„ˆ±¡…¹•-¥¹è‰‰•¡…Ù¥½È‰õuô¤ì(‰Õ¥±‘=É¡•ÍÑÉ…Ñ¥½¹A±…¸¡íÑ…Í­%è‰½É…¹¥Œˆ±É•Á½Í¥Ñ½Éäé±…¹‘¥‘…Ñ”±ÁÉ½µÁÐè‰ÝÉ¥Ñ”‰ô±‘•¥Í¥½¸¤ì(½¹ÍÐ…ÁÀõ‘•¥‘•1¥™•å±•ÁÁ±¥…‰¥±¥Ñä¡‘•¥Í¥½¸±íÑ…Í­%‘•¹Ñ¥Ñäè‰½É…¹¥Œˆ±É•Á½Í¥Ñ½Éå%‘•¹Ñ¥Ñäé±…¹‘¥‘…Ñ”éí¥é…¹‘¥‘…Ñ”¹¥±É•Á½Í¥Ñ½Éäé±É•Ù¥Í¥½¸é…¹‘¥‘…Ñ”¹É•Ù¥Í¥½¹ô±•áÁ±¥¥Ñ5½‘”è‰Õ¹ÍÁ•¥™¥•ˆ±…™™•Ñ•‘MÕ‰ÍåÍÑ•µÌél‰A¤‰t±•áÁ•Ñ•‘A…Ñ¡Ìél‰ÍÉŒ½„‰t±É•ÅÕ¥É•‘ÉÑ¥™…ÑÌémuô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡…ÁÀ¹½ÕÑ½µ”°‰½É…¹¥Œˆ¤ì(½¹ÍÐÍ­¥±±½¹Ñ•áÐõ¥ÍÍÕ•M­¥±±½¹Ñ•áÐ ‰½É…¹¥ŒéÝ½É­•Èˆ±±…¹‘¥‘…Ñ”±íÁ¡…Í”è‰…ÁÁ±äˆ±½‘•¡…¹”éÑÉÕ•ô¤±•Ù¥‘•¹”õ¹•ÜÙ¥‘•¹•MÑ½É” ¤ì(™½È¡½¹ÍÐ­¥¹½˜l‰Ý½É¬µÕ¹¥Ðˆ°‰Í½Á”ˆ°‰É½±±‰…¬‰t…Ì½¹ÍÐ¥•Ù¥‘•¹”¹…‘¡…¹‘¥‘…Ñ”±í¥é­¥¹±­¥¹±ÍÑ…ÑÕÌè‰Á…ÍÌˆ±É•…Ñ•‘Ðè‰¹½Üˆ±ÍÕµµ…Éäè‰‰½Õ¹‘•‰ô¤ì(½¹ÍÐÉ•ÅÕ•ÍÐõí¥è‰½É…¹¥ŒéÝ½É­•Èˆ±É½±”è‰Ý½É­•Èˆ…Ì½¹ÍÐ±ÁÉ½µÁÐè‰ÝÉ¥Ñ”ˆ±É•Á½Í¥Ñ½Éäé±µ½‘•°è‰±½…°½Ñ•ÍÐµµ½‘•°ˆ±Ñ¡¥¹­¥¹œè‰±½Üˆ…Ì½¹ÍÐ±…¹‘¥‘…Ñ”±Í­¥±±½¹Ñ•áÐ±Í­¥±±A…Ñ¡ÌéÍ•±•ÑM­¥±±Ì¡Í­¥±±½¹Ñ•áÐ¤¹µ…À¡ÌôùÌ¹Á…Ñ ¤±ÝÉ¥Ñ•MÕÉ™…•Ìél‰ÍÉŒ½„‰t±ÝÉ¥Ñ•É‘µ¥ÍÍ¥½¸é¥ÍÍÕ•=É…¹¥]É¥Ñ•É‘µ¥ÍÍ¥½¸¡…ÁÀ±l‰ÍÉŒ½„‰t¥ôì(±•Ð…ÁÑÕÉ•é¥µÁ½ÉÐ ˆ¸¸½ÍÉŒ½…•¹ÑÌ½‘¥ÍÁ…Ñ¡•È¹©Ìˆ¤¹•¹ÑI•ÅÕ•ÍÑñÕ¹‘•™¥¹•ì(½¹ÍÐÁ¤õÉÕ¹¹•È¡À¤±‘¥ÍÁ…Ñ¡•Èõ¹•Ü¥ÍÁ…Ñ¡•È¡íÉÕ¸é…Íå¹Œ…±°ôùí…ÁÑÕÉ•õ…±°íÉ•ÑÕÉ¸Á¤¹ÉÕ¸¡…±°¤íõô±•Ù¥‘•¹”¤ì(½¹ÍÐÉ•ÍÕ±Ðõ…Ý…¥Ð‘¥ÍÁ…Ñ¡•È¹‘¥ÍÁ…Ñ ¡É•ÅÕ•ÍÐ¤í…ÍÍ•ÉÐ¹•ÅÕ…°¡É•ÍÕ±Ð¹½¬±ÑÉÕ”±É•ÍÕ±Ð¹½ÕÑÁÕÐ¤ì(½¹ÍÐ½‰Í•ÉÙ•õ)M=8¹Á…ÉÍ”¡É•ÍÕ±Ð¹½ÕÑÁÕÐ¹ÑÉ¥´ ¤¹ÍÁ±¥Ð ½qÈýq¸¼¤¹…Ð ´Ä¤„¤ì(…ÍÍ•ÉÐ¹½¬¡½‰Í•ÉÙ•¹…ÉÌ¹¥¹±Õ‘•Ì ‰É•…±•‘¥Ð±ÝÉ¥Ñ”ˆ¤¤í…ÍÍ•ÉÐ¹‘••ÁÅÕ…°¡½‰Í•ÉÙ•¹…ÕÑ¡½É¥Ñä¹ÝÉ¥Ñ•MÕÉ™…•Ì±l‰ÍÉŒ½„‰t¤ì(…ÍÍ•ÉÐ¹½¬¡½‰Í•ÉÙ•¹…ÉÌ¹¥¹±Õ‘•Ì ˆ´µµ½‘•°ˆ¤¤í…ÍÍ•ÉÐ¹•ÅÕ…°¡½‰Í•ÉÙ•¹…ÉÍm½‰Í•ÉÙ•¹…ÉÌ¹¥¹‘•á=˜ ˆ´µµ½‘•°ˆ¤¬Åt°‰±½…°½Ñ•ÍÐµµ½‘•°ˆ¤ì(…ÍÍ•ÉÐ¹½¬¡½‰Í•ÉÙ•¹…ÉÌ¹¥¹±Õ‘•Ì ˆ´µÑ¡¥¹­¥¹œˆ¤¤í…ÍÍ•ÉÐ¹•ÅÕ…°¡½‰Í•ÉÙ•¹…ÉÍm½‰Í•ÉÙ•¹…ÉÌ¹¥¹‘•á=˜ ˆ´µÑ¡¥¹­¥¹œˆ¤¬Åt°‰±½Üˆ¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡…ÁÑÕÉ•ü¹Á¡…Í•É…¹Ð±Õ¹‘•™¥¹•¤í…ÍÍ•ÉÐ¹½¬¡…ÁÑÕÉ•¤ì(½¹ÍÐÉ•Á±…äõ…Ý…¥ÐÁ¤¹ÉÕ¸¡…ÁÑÕÉ•¤í…ÍÍ•ÉÐ¹•ÅÕ…°¡É•Á±…ä¹½¬±™…±Í”¤í…ÍÍ•ÉÐ¹µ…Ñ ¡É•Á±…ä¹½ÕÑÁÕÐ°½•á…Ð‘¥ÍÁ…Ñ¡•ÈÉ••¥Ù•È¼¤ì)ô¤ì

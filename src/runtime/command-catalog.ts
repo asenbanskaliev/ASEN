@@ -9,6 +9,7 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"configuration",name:"asen-commands",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-changes",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-agents",implemented:true,owner:"extensions/asen.ts"},
+ {group:"session",name:"asen-todos",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-history",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-usage",implemented:true,owner:"extensions/asen.ts"},
  {group:"diagnostics",name:"asen-status",implemented:true,owner:"extensions/asen.ts"},
