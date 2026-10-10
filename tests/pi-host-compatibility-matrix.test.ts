@@ -214,3 +214,10 @@ test("malformed host command names are not silently accepted",()=>{
  for(const name of ["", " asen", "asen "])
   assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[{name}]},["asen"]),/inventory is malformed/);
 });
+
+test("registration names reject control characters before host mutation",()=>{
+ for(const name of ["asen\n","asen\u0000","asen\u007f"]){
+  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[]},[name]),/reservation list is invalid/);
+  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[{name}]},["asen"]),/inventory is malformed/);
+ }
+});
