@@ -44,7 +44,7 @@ function readInventory(host:object,methodName:"getCommands"|"getAllTools",label:
  const length=Object.getOwnPropertyDescriptor(inventory,"length");
  if(!length||!("value" in length)||!Number.isSafeInteger(length.value)||length.value>100000)throw new Error(`ASEN Pi ${label} inventory is malformed`);
  const rows:unknown[]=[];
- for(let index=0;index<inventory.length;index++){
+ for(let index=0;index<length.value;index++){
   const row=Object.getOwnPropertyDescriptor(inventory,String(index));
   if(!row||!("value" in row))throw new Error(`ASEN Pi ${label} inventory is malformed`);
   rows.push(row.value);
