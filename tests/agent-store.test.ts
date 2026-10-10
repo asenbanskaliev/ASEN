@@ -30,6 +30,7 @@ test("completed result and history survive restart only with a bound execution r
  const raw=await readFile(file,"utf8"),receiptKey=await readFile(`${file}.receipt-key`),parsed=JSON.parse(raw);parsed.entries[0].result.output="forged";assert.throws(()=>parseAgentStore(JSON.stringify(parsed),receiptKey),/Invalid ASEN agent store/);
  parsed.entries[0].result.sha256=createHash("sha256").update(JSON.stringify([id,"session-a","/repo","forged"])).digest("hex");assert.throws(()=>parseAgentStore(JSON.stringify(parsed),receiptKey),/Invalid ASEN agent store/);
  const changedPrompt=JSON.parse(raw);changedPrompt.entries[0].request.prompt="run different work";assert.throws(()=>parseAgentStore(JSON.stringify(changedPrompt),receiptKey),/Invalid ASEN agent store/);
+ const changedOwner=JSON.parse(raw);changedOwner.entries[0].record.owner.id="other-agent";assert.throws(()=>parseAgentStore(JSON.stringify(changedOwner),receiptKey),/Invalid ASEN agent store/);
  assert.throws(()=>parseAgentStore(raw),/Invalid ASEN agent store/);
  const impossible=JSON.parse(raw);impossible.entries[0].events[1].state="completed";assert.throws(()=>parseAgentStore(JSON.stringify(impossible)),/Invalid ASEN agent store/);
 });
