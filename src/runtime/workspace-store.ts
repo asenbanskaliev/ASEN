@@ -1,4 +1,5 @@
 import {randomUUID} from "node:crypto";
+import {realpathSync} from "node:fs";
 import {readFile,rename} from "node:fs/promises";
 import path from "node:path";
 import {atomicWriteText} from "../io/atomic-write.js";
@@ -16,7 +17,15 @@ function comparablePath(value:string):string{
  else if(/^\\\\\?\\/u.test(normalized))normalized=normalized.slice(4);
  return path.win32.normalize(normalized).replace(/\\+$/u,"").toLowerCase();
 }
-export function sameWorkspaceIdentityPath(left:string,right:string,platform:NodeJS.Platform=process.platform):boolean{return platform==="win32"?comparablePath(left)===comparablePath(right):left===right;}
+export function sameWorkspaceIdentityPath(left:string,right:string,platform:NodeJS.Platform=process.platform):boolean{
+ if(platform!=="win32")return left===right;
+ if(comparablePath(left)===comparablePath(right))return true;
+ // Windows may return different spellings for the same directory (for example,
+ // a short 8.3 name and its long name). Resolve existing identities before
+ // rejecting a match; retain the lexical comparison for missing historical paths.
+ try{return comparablePath(realpathSync.native(left))===comparablePath(realpathSync.native(right));}
+ catch{return false;}
+}
 const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
 function empty():WorkspaceFile{return {schema:SCHEMA,revision:0,changes:[]};}
 function validChange(value:unknown):value is WorkspaceChange{if(!exact(value,["path","actor","sessionId","projectId","worktree","operation","at"]))return false;try{recordWorkspaceChange(value as unknown as WorkspaceChange);return true;}catch{return false;}}
