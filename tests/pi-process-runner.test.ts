@@ -32,6 +32,7 @@ async function isLiveProcess(pid:number){
 async function fixture(body:string,policy=true,skillsMode:"exact"|"missing"|"extra"|"altered"="exact"){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-pi-"))),p=join(d,"pi-fixture.mjs"),scenario=join(d,"scenario.mjs");
  await mkdir(join(d,"extensions"));await copyFile(fileURLToPath(new URL("../extensions/authority.ts",import.meta.url)),join(d,"extensions/authority.ts"));
+ for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(fileURLToPath(new URL(`../${source}`,import.meta.url)),target);}
  await writeFile(scenario,body);
  await writeFile(p,`import {spawn} from "node:child_process";
 import {resolve} from "node:path";
@@ -57,6 +58,11 @@ test("Pi runner refuses a candidate-supplied replacement authority extension",as
  await writeFile(join(d,"extensions/authority.ts"),'export default pi => pi.registerCommand("asen-authority-status", {handler: async () => {}});');
  const result=await runner(p).run({id:"tampered",role:"explorer",prompt:"inspect",repository:d});
  assert.equal(result.ok,false);assert.match(result.output,/authority extension integrity/);
+});
+test("Pi runner loads policy from the configured ASEN package root, not the project",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,message:f.message}));});');
+ const policyRoot=fileURLToPath(new URL("..",import.meta.url));await rm(join(d,"extensions/authority.ts"),{force:true});
+ const result=await runner(p,{policyRoot}).run({id:"package-policy",role:"explorer",prompt:"inspect",repository:d});assert.equal(result.ok,true);assert.match(result.output,/package-policy/);
 });
 test("Pi rejects an untrusted provider extension without leaking a policy directory",async t=>{
  const {d,p}=await fixture('setTimeout(()=>{},10000);');
@@ -207,7 +213,7 @@ test("Pi RPC adapter supplies selected routes as native Pi flags",async()=>{
  const r=await runner(p).run({id:"native",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:paths});
  assert.equal(r.ok,true);
  const response=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!);
- assert.match(response.args[2],/[\\/]asen-policy-[^\\/]+[\\/]authority\.ts$/);
+ assert.match(response.args[2],/[\\/]asen-policy-[^\\/]+[\\/]extensions[\\/]authority\.ts$/);
  assert.deepEqual([response.args[0],response.args[1],...response.args.slice(3)],["--no-extensions","--extension","--no-skills","--tools","read",...paths.flatMap(path=>["--skill",path])]);
 });
 test("read-only artifact audit disables every Pi tool",async()=>{

@@ -51,7 +51,7 @@ test("factory waits for initialized public inventories then registers one collis
   assert.equal(state.commands.size,0);assert.equal(state.tools.size,0);
   await state.events.get("session_start")![0]!({},state.context());
   assert.ok(state.commands.has("asen"));assert.ok(state.commands.has("asen-review"));
-  assert.deepEqual([...state.tools.keys()].sort(),["asen_ask_choice","asen_ask_question","asen_code_intelligence","codegraph"]);
+  assert.deepEqual([...state.tools.keys()].sort(),["asen_agent_cancel","asen_agent_continue","asen_agent_start","asen_agent_status","asen_ask_choice","asen_ask_question","asen_code_intelligence","asen_todo_add","asen_todo_list","asen_todo_update","codegraph"]);
   assert.equal(state.messages.some(message=>message.includes("host preflight failed")),false);
  }finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;rmSync(home,{recursive:true,force:true});}
 });
@@ -73,7 +73,7 @@ test("deferred session startup runs once for the first session and every later s
 });
 
 test("preflight rejection retries on a later session after the collision is removed",async()=>{
- const state=productionHost([{name:"asen"}]);createPiExtension()(state.host as any);
+ const state=productionHost([{name:"asen"}]);createPiExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false})(state.host as any);
  const bootstrap=state.events.get("session_start")![0]!;
  await bootstrap({},state.context());assert.equal(state.commands.size,0);
  state.commandInventory.length=0;
@@ -83,7 +83,7 @@ test("preflight rejection retries on a later session after the collision is remo
 test("partial host registration remains inert and requires a controlled Pi reload",async()=>{
  const state=productionHost(),original=state.host.registerCommand.bind(state.host);let attempts=0;
  state.host.registerCommand=(name:string,command:any)=>{if(++attempts===3)throw Error("injected command registration failure");original(name,command);};
- createPiExtension()(state.host as any);const bootstrap=state.events.get("session_start")![0]!;
+ createPiExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false})(state.host as any);const bootstrap=state.events.get("session_start")![0]!;
  await bootstrap({},state.context());
  assert.equal(state.commands.size,2);assert.equal(state.tools.size,4);
  assert.match(state.messages.join("\n"),/partial registrations remain inert; reload Pi to recover/);

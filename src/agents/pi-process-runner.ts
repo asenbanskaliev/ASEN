@@ -1,6 +1,6 @@
 import {spawn,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";
 import {join,resolve as resolvePath} from "node:path";
-import {mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {createHash} from "node:crypto";
 import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
@@ -19,6 +19,8 @@ export interface PiProcessOptions{
  signal?:AbortSignal;
  providerExtension?:string;
  noTools?:boolean;
+ attributionFile?:string;
+ policyRoot?:string;
 }
 
 export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">):string[]{
@@ -29,7 +31,14 @@ export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">
 }
 
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
-const authorityDigest="d8f2e3b139245e0230fa93569814fbd47195dc8fff7fca25175e94cf8ce2f9d2";
+const authorityDigest="6ff2d45585cef90ff0563660e0833f40d5dc1f95e4271aaa3ce5f0159ac27fb8";
+const authorityAssets=Object.freeze([
+ {source:"src/runtime/workspace-store.ts",target:"src/runtime/workspace-store.ts",sha256:"57bde6821644b526dc6756db9cd89414880beda76d3070aa4a209a2fb5044025"},
+ {source:"src/runtime/workspace-attribution.ts",target:"src/runtime/workspace-attribution.ts",sha256:"1943d15fbaf3cdcd30d782067ca1af5fa072494034321b392541b97067f8eb83"},
+ {source:"src/io/atomic-write.ts",target:"src/io/atomic-write.ts",sha256:"0b5465f1db54b45ba24107daf9a203708c0ed228b646cc092b9947642c40878c"},
+ {source:"src/io/exclusive-file-lock.ts",target:"src/io/exclusive-file-lock.ts",sha256:"73ac80f045c6964d593c4bd4fdffcedc6af7e427043d8904f20cfe335f8c5686"},
+ {source:"src/io/private-file.ts",target:"src/io/private-file.ts",sha256:"42d76fe5abfbfbd66f76e310157709890754595d83a63f74cf143110739e1332"},
+]);
 
 async function terminateTree(child:ChildProcess,closed:Promise<void>):Promise<void>{
  if(!child.pid){await closed;return;}
@@ -94,22 +103,26 @@ export class PiProcessRunner implements AgentRunner{
   let routeArgs:string[];try{routeArgs=piRuntimeRouteArgs(request);}catch(error){return Promise.resolve({id:request.id,ok:false,output:String(error)});}
   const providerExtension=this.options.providerExtension;
   if(providerExtension&&providerExtension!=="npm:pi-free")return Promise.resolve({id:request.id,ok:false,output:"untrusted Pi provider extension"});
-  const candidatePolicy=resolvePath(request.repository,"extensions/authority.ts");
+  const policyRoot=this.options.policyRoot??request.repository,candidatePolicy=resolvePath(policyRoot,"extensions/authority.ts");
   let policySource:string;
+  let policyFiles:Array<{target:string;source:string}>;
   try{
    policySource=readFileSync(candidatePolicy,"utf8").replace(/\r\n/g,"\n");
    const digest=createHash("sha256").update(policySource).digest("hex");
    if(digest!==authorityDigest)throw new Error("mismatch");
+   policyFiles=authorityAssets.map(asset=>{const source=readFileSync(resolvePath(policyRoot,asset.source),"utf8").replace(/\r\n/g,"\n");if(createHash("sha256").update(source).digest("hex")!==asset.sha256)throw new Error("mismatch");return {target:asset.target,source};});
   }catch{return Promise.resolve({id:request.id,ok:false,output:"pi authority extension integrity check failed"});}
   let policyDirectory:string;
   try{
    policyDirectory=mkdtempSync(join(tmpdir(),"asen-policy-"));
-   writeFileSync(join(policyDirectory,"authority.ts"),policySource,{mode:0o400,flag:"wx"});
+   const extensionPath=join(policyDirectory,"extensions","authority.ts");mkdirSync(join(policyDirectory,"extensions"),{recursive:true,mode:0o700});
+   writeFileSync(extensionPath,policySource,{mode:0o400,flag:"wx"});
+   for(const asset of policyFiles){const target=join(policyDirectory,asset.target);mkdirSync(target.slice(0,target.lastIndexOf("/")),{recursive:true,mode:0o700});writeFileSync(target,asset.source,{mode:0o400,flag:"wx"});}
   }catch(error){
    if(policyDirectory!)rmSync(policyDirectory,{recursive:true,force:true});
    return Promise.resolve({id:request.id,ok:false,output:`pi authority extension preparation failed: ${String(error)}`});
   }
-  const policy=join(policyDirectory,"authority.ts");
+  const policy=join(policyDirectory,"extensions","authority.ts");
   const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,...routeArgs,
    "--no-extensions","--extension",policy,...(providerExtension?["--extension",providerExtension]:[]),"--no-skills",...(this.options.noTools?["--no-tools"]:["--tools",writer?"read,edit,write":"read"]),...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
   const timeoutMs=this.options.timeoutMs??120_000;
@@ -119,7 +132,7 @@ export class PiProcessRunner implements AgentRunner{
   return new Promise(resolve=>{
    const child=spawnContained(command,args,{
     cwd:request.repository,
-    env:{...process.env,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[]})},
+    env:{...process.env,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{})})},
     stdio:["pipe","pipe","pipe"],
     detached:process.platform!=="win32"
    }) as ChildProcessWithoutNullStreams;
