@@ -29,6 +29,7 @@ test("completed result and history survive restart only with a bound execution r
  const reopened=await PersistentAgentStore.open(file),entry=await reopened.store.get(id,"session-a","/repo");assert.equal(entry?.record.state,"completed");assert.equal(entry?.result?.output,"result retained");assert.equal(entry?.events.at(-1)?.state,"completed");
  const raw=await readFile(file,"utf8"),receiptKey=await readFile(`${file}.receipt-key`),parsed=JSON.parse(raw);parsed.entries[0].result.output="forged";assert.throws(()=>parseAgentStore(JSON.stringify(parsed),receiptKey),/Invalid ASEN agent store/);
  parsed.entries[0].result.sha256=createHash("sha256").update(JSON.stringify([id,"session-a","/repo","forged"])).digest("hex");assert.throws(()=>parseAgentStore(JSON.stringify(parsed),receiptKey),/Invalid ASEN agent store/);
+ const changedPrompt=JSON.parse(raw);changedPrompt.entries[0].request.prompt="run different work";assert.throws(()=>parseAgentStore(JSON.stringify(changedPrompt),receiptKey),/Invalid ASEN agent store/);
  assert.throws(()=>parseAgentStore(raw),/Invalid ASEN agent store/);
  const impossible=JSON.parse(raw);impossible.entries[0].events[1].state="completed";assert.throws(()=>parseAgentStore(JSON.stringify(impossible)),/Invalid ASEN agent store/);
 });
@@ -74,4 +75,13 @@ test("concurrent writers preserve every unique task under the cross-process file
  const file=await fixture(t),stores=await Promise.all(Array.from({length:8},()=>PersistentAgentStore.open(file))),tasks=Array.from({length:8},(_,i)=>stores[i]!.store.enqueue(req(`parallel-${i}`),owner));await Promise.all(tasks);
  const reopened=await PersistentAgentStore.open(file);assert.equal((await reopened.store.list("session-a","/repo")).length,8);
  await assert.rejects(()=>reopened.store.enqueue(req("parallel-1"),owner),/already exists/);
+});
+
+test("a completed task missing its receipt is interrupted without losing verified completed results",async t=>{
+ const file=await fixture(t),runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:`valid:${request.id}`})},runtime=await AgentRuntime.open({storeFile:file,runner}),session={sessionId:"session-a",projectId:"/repo"};
+ const ids=await Promise.all(["unverified","verified"].map(prompt=>runtime.startExplorer({prompt,session,owner})));await until(()=>runtime.snapshot().filter(row=>ids.includes(row.id)).every(row=>row.state==="completed"));
+ const parsed=JSON.parse(await readFile(file,"utf8"));delete parsed.entries.find((entry:{record:{id:string}})=>entry.record.id===ids[0])!.result;await writeFile(file,`${JSON.stringify(parsed)}\n`,{mode:0o600});
+ const reopened=await PersistentAgentStore.open(file),rows=await reopened.store.list(session.sessionId,session.projectId),unverified=await reopened.store.get(ids[0]!,session.sessionId,session.projectId),verified=await reopened.store.get(ids[1]!,session.sessionId,session.projectId);
+ assert.equal(rows.find(row=>row.id===ids[0])?.state,"interrupted");assert.match(unverified?.record.summary??"",/Unverified completion after restart/);assert.equal(unverified?.result,undefined);
+ assert.equal(verified?.record.state,"completed");assert.equal(verified?.result?.output,`valid:${ids[1]}`);
 });

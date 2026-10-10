@@ -29,10 +29,10 @@ function specValue(v:unknown):v is AgentTaskSpec{
  if(!exact(v,keys))return false;const x=v as unknown as AgentTaskSpec;
  return identifier(x.id)&&(["explorer","worker","reviewer","verifier"] as unknown[]).includes(x.role)&&typeof x.prompt==="string"&&x.prompt.length>0&&x.prompt.length<=MAX_PROMPT&&!/[\u0000]/u.test(x.prompt)&&identifier(x.repository)&&identifier(x.isolationKey)&&typeof x.createdAt==="string"&&Number.isFinite(Date.parse(x.createdAt))&&(x.model===undefined||identifier(x.model))&&(x.thinking===undefined||(["off","minimal","low","medium","high"] as unknown[]).includes(x.thinking))&&(x.continuationOf===undefined||identifier(x.continuationOf));
 }
-function receiptDigest(key:Buffer,id:string,sessionId:string,projectId:string,output:string):string{return createHmac("sha256",key).update(JSON.stringify([id,sessionId,projectId,output])).digest("hex");}
+function receiptDigest(key:Buffer,entry:AgentStoreEntry,output:string):string{return createHmac("sha256",key).update(JSON.stringify([entry.record.id,entry.record.sessionId,entry.record.projectId,entry.request,output])).digest("hex");}
 function validAgentHistory(events:AgentStateEvent[],record:PublicAgentRecord):boolean{
- const transitions:Record<PublicAgentRecord["state"],PublicAgentRecord["state"][]>={queued:["running","cancelled","failed"],running:["interrupted","cancelled","failed","completed"],interrupted:["cancelled"],cancelled:[],failed:[],completed:[]};
- for(let i=0;i<events.length;i++){const current=events[i]!;if(current.revision!==i+1||current.id!==record.id||typeof current.at!=="string"||!Number.isFinite(Date.parse(current.at)))return false;if(i===0){if(current.state!=="queued"||current.at!==record.createdAt)return false;}else{const previous=events[i-1]!;if(!transitions[previous.state]?.includes(current.state)||Date.parse(current.at)<Date.parse(previous.at))return false;}}
+ const transitions:Record<PublicAgentRecord["state"],PublicAgentRecord["state"][]>={queued:["running","cancelled","failed"],running:["interrupted","cancelled","failed","completed"],interrupted:["cancelled"],cancelled:[],failed:[],completed:["interrupted"]};
+ for(let i=0;i<events.length;i++){const current=events[i]!;if(current.revision!==i+1||current.id!==record.id||typeof current.at!=="string"||!Number.isFinite(Date.parse(current.at)))return false;if(i===0){if(current.state!=="queued"||current.at!==record.createdAt)return false;}else{const previous=events[i-1]!;if(!transitions[previous.state]?.includes(current.state)||Date.parse(current.at)<Date.parse(previous.at))return false;if(previous.state==="completed"&&(current.state!=="interrupted"||current.summary!=="Unverified completion after restart; explicit review is required"))return false;}}
  const last=events.at(-1);return !!last&&last.state===record.state&&last.at===record.updatedAt&&last.summary===record.summary;
 }
 function entryValue(v:unknown,receiptKey?:Buffer):v is AgentStoreEntry{
@@ -42,8 +42,8 @@ function entryValue(v:unknown,receiptKey?:Buffer):v is AgentStoreEntry{
  if(!identifier(r.id)||!(["queued","running","interrupted","cancelled","failed","completed"] as unknown[]).includes(r.state)||typeof r.updatedAt!=="string"||!Number.isFinite(Date.parse(r.updatedAt))||(r.summary!==undefined&&(typeof r.summary!=="string"||r.summary.length>MAX_OUTPUT)))return false;
  if(x.events.some((event,i)=>!exact(event,["id","revision","state","at",...(Object.hasOwn(event,"summary")?["summary"]:[])])||event.id!==r.id||event.revision!==i+1||!(["queued","running","interrupted","cancelled","failed","completed"] as unknown[]).includes(event.state)||typeof event.at!=="string"||!Number.isFinite(Date.parse(event.at))||(event.summary!==undefined&&(typeof event.summary!=="string"||event.summary.length>MAX_OUTPUT))))return false;
  if(!validAgentHistory(x.events,r))return false;
- if(x.result!==undefined){const result=x.result;if(!receiptKey||!exact(result,["id","ok","output","sha256"])||result.id!==r.id||result.ok!==true||typeof result.output!=="string"||result.output.length>MAX_OUTPUT||typeof result.sha256!=="string"||!/^[a-f0-9]{64}$/u.test(result.sha256))return false;const expected=Buffer.from(receiptDigest(receiptKey,r.id,r.sessionId,r.projectId,result.output),"hex"),actual=Buffer.from(result.sha256,"hex");if(actual.length!==expected.length||!timingSafeEqual(actual,expected))return false;}
- return x.result===undefined?r.state!=="completed":r.state==="completed"&&x.events.at(-1)?.state==="completed";
+ if(x.result!==undefined){const result=x.result;if(!receiptKey||!exact(result,["id","ok","output","sha256"])||result.id!==r.id||result.ok!==true||typeof result.output!=="string"||result.output.length>MAX_OUTPUT||typeof result.sha256!=="string"||!/^[a-f0-9]{64}$/u.test(result.sha256))return false;const expected=Buffer.from(receiptDigest(receiptKey,x,result.output),"hex"),actual=Buffer.from(result.sha256,"hex");if(actual.length!==expected.length||!timingSafeEqual(actual,expected))return false;}
+ return x.result===undefined?r.state!=="completed"||x.events.at(-1)?.state==="completed":r.state==="completed"&&x.events.at(-1)?.state==="completed";
 }
 export function parseAgentStore(raw:string,receiptKey?:Buffer):AgentStoreFile{
  const value:unknown=JSON.parse(raw);if(!exact(value,["schema","revision","entries"])||value.schema!==SCHEMA||!Number.isSafeInteger(value.revision)||Number(value.revision)<0||!Array.isArray(value.entries)||value.entries.length>MAX_RECORDS||!value.entries.every(entry=>entryValue(entry,receiptKey)))throw new Error("Invalid ASEN agent store");
@@ -56,7 +56,11 @@ async function openReceiptKey(path:string):Promise<Buffer>{
  const keyPath=`${path}.receipt-key`;await preparePrivateFile(keyPath,true);
  try{const handle=await open(keyPath,"wx",0o600);try{const key=randomBytes(32);await handle.writeFile(key);await handle.sync();return key;}finally{await handle.close();}}
  catch(error){if(!(error&&typeof error==="object"&&"code" in error&&(error as NodeJS.ErrnoException).code==="EEXIST"))throw error;}
- const key=await readFile(keyPath);if(key.length!==32)throw new Error("Invalid ASEN agent receipt key");return key;
+ for(let attempt=0;attempt<100;attempt++){
+  const key=await readFile(keyPath);if(key.length===32)return key;if(key.length!==0&&attempt===99)throw new Error("Invalid ASEN agent receipt key");
+  await new Promise(resolve=>setTimeout(resolve,5));
+ }
+ throw new Error("Invalid ASEN agent receipt key");
 }
 async function write(file:string,value:AgentStoreFile):Promise<void>{await preparePrivateFile(file,true);await atomicWriteText(file,`${JSON.stringify(value,null,2)}\n`);}
 function event(record:PublicAgentRecord,revision:number):AgentStateEvent{return {id:record.id,revision,state:record.state,at:record.updatedAt,...(record.summary!==undefined?{summary:record.summary.slice(0,MAX_OUTPUT)}:{})};}
@@ -92,7 +96,7 @@ export class PersistentAgentStore implements AgentLifecycleSink{
  async running(id:string,at=this.now()):Promise<void>{await this.#move(id,"running",undefined,at);}
  async completed(id:string,result:AgentResult,at=this.now()):Promise<void>{
   let completed:PublicAgentRecord|undefined;
-  await this.#mutate(data=>{const entry=data.entries.find(x=>x.record.id===id);if(!entry)throw new Error("Agent lifecycle record does not exist");completed=completeAgentRecord(entry.record,result,this,at);entry.record=completed;entry.result={id,ok:true,output:result.output,sha256:receiptDigest(this.#receiptKey,id,completed.sessionId,completed.projectId,result.output)};entry.events.push(event(completed,entry.events.length+1));});
+  await this.#mutate(data=>{const entry=data.entries.find(x=>x.record.id===id);if(!entry)throw new Error("Agent lifecycle record does not exist");completed=completeAgentRecord(entry.record,result,this,at);entry.record=completed;entry.result={id,ok:true,output:result.output,sha256:receiptDigest(this.#receiptKey,entry,result.output)};entry.events.push(event(completed,entry.events.length+1));});
   if(completed)this.#records.set(id,structuredClone(completed));
  }
  async failed(id:string,summary?:string,at=this.now()):Promise<void>{await this.#move(id,"failed",summary,at);}
@@ -100,7 +104,7 @@ export class PersistentAgentStore implements AgentLifecycleSink{
  async #move(id:string,state:Exclude<PublicAgentRecord["state"],"queued"|"completed">,summary:string|undefined,at:string):Promise<void>{let updated:PublicAgentRecord|undefined;await this.#mutate(data=>{const entry=data.entries.find(x=>x.record.id===id);if(!entry)throw new Error("Agent lifecycle record does not exist");updated=transitionAgent(entry.record,state,at,summary);entry.record=updated;entry.events.push(event(updated,entry.events.length+1));});if(updated)this.#records.set(id,structuredClone(updated));}
  async #mutate(change:(data:AgentStoreFile)=>void):Promise<void>{await preparePrivateFile(this.path,true);await withExclusiveFileLock(this.path,async()=>{const data=await read(this.path,this.#receiptKey);change(data);if(data.entries.length>MAX_RECORDS)throw new Error("ASEN agent store has reached its record limit");const next=parseAgentStore(JSON.stringify({...data,revision:data.revision+1}),this.#receiptKey);await write(this.path,next);});}
  async #recover():Promise<void>{let recovered:PublicAgentRecord[]|undefined;await this.#mutate(data=>{const at=this.now();for(const entry of data.entries){const record=entry.record;if(record.state==="running"){const next=recoverAgentLifecycleRecords([record],at)[0]!;entry.record=next;entry.events.push(event(next,entry.events.length+1));}
-   else if(record.state==="completed"&&!entry.result){const next=recoverAgentLifecycleRecords([record],at)[0]!;entry.record=next;entry.events.push(event(next,entry.events.length+1));}
+   else if(record.state==="completed"&&!entry.result){const recovered=recoverAgentLifecycleRecords([record],at)[0]!,next={...recovered,summary:"Unverified completion after restart; explicit review is required"};entry.record=next;entry.events.push(event(next,entry.events.length+1));}
   }recovered=data.entries.map(x=>x.record);});for(const record of recovered??[])this.#records.set(record.id,structuredClone(record));}
  /** Returns a request that is safe to resume; authority-bearing requests always need fresh admission. */
  resumable(entry:AgentStoreEntry):AgentRequest|undefined{
