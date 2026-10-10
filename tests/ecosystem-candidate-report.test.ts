@@ -35,7 +35,9 @@ test("drift report binds inputs, requirements and evidence deterministically wit
  const first=bindEcosystemDriftReport(args),second=bindEcosystemDriftReport(args);
  assert.deepEqual(first,second);assert.equal(validateEcosystemCandidateReport(first),true);assert.equal(first.autoAdopt,false);
  assert.equal(first.inputs.baselineSha256,hash(JSON.stringify(before)));
- assert.equal(first.anchorDiffs.some((row:any)=>row.path==="extensions/a.ts"&&row.before.length===1&&row.after.length===1),true,"report carries exact old/new normative anchor identities and hashes");
+ assert.equal(first.anchorDiffs.some((row:any)=>row.path==="extensions/a.ts"&&row.before.some((anchor:any)=>anchor.kind===undefined)&&
+  row.after.some((anchor:any)=>anchor.kind===undefined)&&row.before.some((anchor:any)=>anchor.kind==="source-content")&&
+  row.after.some((anchor:any)=>anchor.kind==="source-content")),true,"report carries exact old/new source and whole-blob identities and hashes");
  assert.deepEqual(assertCandidateReportMatches(first,first),first);
  assert.deepEqual(first.affectedRequirements,[{requirementId:"ECO-01",claimStatus:"FULL",auditRequired:true,impactBasis:"SOURCE_MAP",effectiveStatus:"INVALIDATED",invalidatedSourcePaths:["extensions/a.ts"],evidence:[{id:"proof-1",path:"registry/evidence/ecosystem/proof.json",sha256:null}]}]);
  assert.ok(first.changes.some((row:any)=>row.kind==="CONTENT_CHANGED"&&row.path==="extensions/a.ts"));
