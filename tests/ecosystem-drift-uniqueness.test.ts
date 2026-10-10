@@ -13,3 +13,11 @@ test("rename needs a unique hash in both complete snapshots",()=>{
  assert.deepEqual(classifyUniqueContentRenames([distinct[0]],[distinctNext[0]],distinct,distinctNext),[{path:"a.md",to:"b.md"}]);
  assert.deepEqual(classifyUniqueContentRenames([distinct[0]],[distinctNext[0],row("copy.md","unique")],distinct,[...distinctNext,row("copy.md","unique")]),[]);
 });
+
+test("rename classification preserves Git mode and never hides permission changes",()=>{
+ const old=[{path:"old.md",sha256:"same",mode:"100644"}];
+ const changed=[{path:"new.md",sha256:"same",mode:"100755"}];
+ assert.deepEqual(classifyUniqueContentRenames(old,changed,old,changed),[]);
+ const sameMode=[{...changed[0],mode:"100644"}];
+ assert.deepEqual(classifyUniqueContentRenames(old,sameMode,old,sameMode),[{path:"old.md",to:"new.md"}]);
+});
