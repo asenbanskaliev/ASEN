@@ -249,3 +249,10 @@ test("registration inventories reject duplicate public names",()=>{
  host.getCommands=()=>[];host.getAllTools=()=>[{name:"existing_tool"},{name:"existing_tool"}];
  assert.throws(()=>validatePiRegistrationCollisions(host,["asen"],["asen_probe"]),/tool inventory is malformed/);
 });
+
+test("Pi version comparison handles differing components without missing-index reads",()=>{
+ for(const version of ["0.85.1","0.85.2","0.99.99","1.0.0","1.99.999"])
+  assert.doesNotThrow(()=>validatePiHost(makeHost(),version));
+ for(const version of ["0.85.0","0.84.999","2.0.0","2.0.1"])
+  assert.throws(()=>validatePiHost(makeHost(),version),/known Pi version/);
+});
