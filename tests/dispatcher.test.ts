@@ -250,7 +250,7 @@ test("dispatcher records thrown runner failures without leaking execution author
 
 test("dispatcher rejects a result belonging to another task and records failure",async()=>{
  let completed=false,failed=false;
- const lifecycle={createdAt:()=>new Date().toISOString(),queued:()=>{},running:()=>{},completed:()=>{completed=true;},failed:()=>{failed=true;}};
+ const lifecycle={createdAt:()=>new Date().toISOString(),queued:()=>{},running:()=>{},completed:()=>{completed=true;},failed:()=>{failed=true;},cancelled:()=>{},snapshot:()=>[]};
  const runner:AgentRunner={run:async()=>({id:"other-task",ok:true,output:"incorrect"})};
  const dispatcher=new Dispatcher(runner,new EvidenceStore(),1,lifecycle);
  await assert.rejects(()=>dispatcher.dispatch({id:"requested-task",role:"explorer",prompt:"inspect",repository:"r"}),/invalid or mismatched result/);
