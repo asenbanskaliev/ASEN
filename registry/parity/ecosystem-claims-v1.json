@@ -220,10 +220,11 @@
         "tests/todo-store.test.ts",
         "tests/fixtures/todo-crash-process.ts",
         "tests/pi-agent-runtime.test.ts",
-        "tests/extension-state-commands.test.ts"
+        "tests/extension-state-commands.test.ts",
+        "scripts/verify-pi-package.mjs"
       ],
       "remaining": [
-        "Durable session/project-isolated Todo state, validated replay, Pi tools, the read-only /asen-todos view, abrupt process-exit recovery and preservation of completed work are implemented and tested. Real Pi session restart/reopen journeys and Windows/macOS host evidence remain."
+        "Durable session/project-isolated Todo state, validated replay, Pi tools, the read-only /asen-todos view, abrupt process-exit recovery and preservation of completed work are implemented and tested. An installed-package Linux Pi RPC journey now reopens the same named session in a second process and verifies recovered state without a model. Windows/macOS run evidence and broader real-host compatibility remain."
       ],
       "stateful": true,
       "platformSensitive": true,
@@ -304,10 +305,11 @@
       "tests": [
         "tests/workspace-attribution.test.ts",
         "tests/agent-lifecycle.test.ts",
-        "tests/extension-state-commands.test.ts"
+        "tests/extension-state-commands.test.ts",
+        "scripts/verify-pi-package.mjs"
       ],
       "remaining": [
-        "Actor/session/project/worktree attribution, bounded projections, concurrent durable appends, reopen persistence and the session/project-filtered /asen-changes command are implemented and tested. Workspace conflict semantics and real Pi restart/host evidence remain."
+        "Actor/session/project/worktree attribution, bounded projections, concurrent durable appends, reopen persistence and the session/project-filtered /asen-changes command are implemented and tested. An installed-package Linux Pi RPC journey verifies session-filtered workspace history after reopening the same named session in a second process. Workspace conflict semantics and Windows/macOS host evidence remain."
       ],
       "stateful": true,
       "platformSensitive": true,

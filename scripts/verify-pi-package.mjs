@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {mkdirSync,mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {spawn} from "node:child_process";
@@ -30,6 +30,19 @@ try {
   const defaultPiCli=path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");
   const cli=process.argv[3]?path.resolve(process.argv[3]):defaultPiCli;
   const primary=path.join(packageRoot,"extensions","asen.ts"),probe=path.join(root,"public-host-probe.ts");
+  const sessionId="asen-package-reopen-session",projectId=realpathSync(root),asenHome=path.join(root,".asen"),stamp="2026-10-10T00:00:00.000Z";
+  mkdirSync(asenHome,{recursive:true,mode:0o700});
+  const todoId="todo-package-reopen",foreignTodoId="todo-package-foreign";
+  const todoEvent=(taskId,session,state,revision,at,reason)=>({taskId,sessionId:session,projectId,revision,state,at,...(reason?{reason}:{})});
+  writeFileSync(path.join(asenHome,"todos.json"),JSON.stringify({schema:"asen.todo/v1",revision:1,items:[
+    {taskId:todoId,title:"Pi restart recovery",events:[todoEvent(todoId,sessionId,"planned",1,stamp),todoEvent(todoId,sessionId,"running",2,stamp)]},
+    {taskId:foreignTodoId,title:"Foreign session task",events:[todoEvent(foreignTodoId,"asen-package-foreign-session","planned",1,stamp)]}
+  ]}),{mode:0o600});
+  const workspaceChange=(session,path,actor)=>({path,actor:{kind:"user",id:actor},sessionId:session,projectId,worktree:projectId,operation:"modify",at:stamp});
+  writeFileSync(path.join(asenHome,"workspace.json"),JSON.stringify({schema:"asen.workspace/v1",revision:2,changes:[
+    {revision:1,id:"change-package-owned",change:workspaceChange(sessionId,"src/owned.ts","user-owned")},
+    {revision:2,id:"change-package-foreign",change:workspaceChange("asen-package-foreign-session","src/foreign.ts","user-foreign")}
+  ]}),{mode:0o600});
   writeFileSync(probe,`export default function(pi){
     pi.on("session_start",(_event,ctx)=>{
       const commands=pi.getCommands().map(row=>({name:row.name,source:row.source,path:row.sourceInfo.path}));
@@ -37,7 +50,7 @@ try {
       ctx.ui.notify("ASEN_PUBLIC_HOST:"+JSON.stringify({mode:ctx.mode,hasUI:ctx.hasUI,commands,tools}),"info");
     });
   }`);
-  const child=spawn(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--extension",primary,"--extension",probe,"--no-skills"],{
+  const child=spawn(process.execPath,[cli,"--mode","rpc","--session-id",sessionId,"--no-extensions","--extension",primary,"--extension",probe,"--no-skills"],{
     cwd:root,env:createPiVerifierEnvironment(process.env),stdio:["pipe","pipe","pipe"]});
   // Pi 0.85.1 decides whether to enter RPC from the first available stdin bytes.
   child.stdin.write(JSON.stringify({id:"commands",type:"get_commands"})+"\n");
@@ -47,7 +60,7 @@ try {
   try{
     await new Promise((resolve,reject)=>{
       const names=["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles","asen-route"];
-      let buffer="",stdout="",stderr="",index=0,notifications=0;
+      let buffer="",stdout="",stderr="",index=0,notifications=0,lastNotification="";
       const timer=setTimeout(()=>fail(Error(`Installed RPC commands timed out: ${stderr.slice(-1000)}`)),20000);
       const fail=error=>{clearTimeout(timer);reject(error);};
       const send=value=>child.stdin.write(JSON.stringify(value)+"\n");
@@ -70,9 +83,13 @@ try {
               for(const name of names)assert.ok(row.data.commands.some(c=>c.name===name));
               prompt();
             }else if(row.type==="extension_ui_request"&&row.method==="notify"){
-              assert.equal(row.notifyType,"info");assert.ok(row.message.length>0);notifications++;
+              assert.equal(row.notifyType,"info");assert.ok(row.message.length>0);lastNotification=row.message;notifications++;
             }else if(row.type==="response"&&row.id===names[index]){
               assert.equal(row.success,true);assert.equal(notifications,1,`${names[index]} must be visible over RPC`);
+              if(names[index]==="asen-todos")assert.match(lastNotification,/blocked.*Pi restart recovery.*explicit review is required/i);
+              if(names[index]==="asen-todos")assert.ok(!lastNotification.includes(foreignTodoId),"Todo projection must exclude foreign sessions");
+              if(names[index]==="asen-changes")assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);
+              if(names[index]==="asen-changes")assert.ok(!lastNotification.includes("foreign"),"workspace projection must exclude foreign sessions");
               visible++;index++;notifications=0;
               if(index===names.length){clearTimeout(timer);resolve();}else prompt();
             }
@@ -95,5 +112,28 @@ try {
     const matches=host.tools.filter(row=>row.name===name&&realpathSync(row.path)===realpathSync(primary));
     assert.equal(matches.length,1,`${name} must have one canonical installed-source registration`);
   }
+  // Reopen the same durable Pi session in a fresh process and re-read both persisted projections.
+  const reopened=spawn(process.execPath,[cli,"--mode","rpc","--session-id",sessionId,"--no-extensions","--extension",primary,"--no-skills"],{
+    cwd:root,env:createPiVerifierEnvironment(process.env),stdio:["pipe","pipe","pipe"]});
+  const reopenedClosed=new Promise(resolve=>reopened.once("close",resolve));
+  const seen=[];
+  await new Promise((resolve,reject)=>{
+    const names=["asen-todos","asen-changes"];let buffer="",stderr="",index=-1,notifications=0,lastNotification="";
+    const timer=setTimeout(()=>fail(Error(`Reopened Pi session timed out: ${stderr.slice(-1000)}`)),20000);
+    const fail=error=>{clearTimeout(timer);reject(error);};
+    const send=value=>reopened.stdin.write(JSON.stringify(value)+"\n");
+    const requestNext=()=>{index++;if(index===names.length){clearTimeout(timer);resolve();return;}send({id:`reopen-${names[index]}`,type:"prompt",message:`/${names[index]}`});};
+    reopened.once("error",fail);reopened.once("close",(code,signal)=>{if(index<names.length)fail(Error(`Pi closed during reopen verification (code=${code}, signal=${signal}): ${stderr.slice(-1000)}`));});
+    reopened.stderr.on("data",chunk=>{stderr=(stderr+chunk.toString()).slice(-2000);});
+    reopened.stdout.on("data",chunk=>{buffer+=chunk.toString();if(buffer.length>100000){fail(Error("Oversized reopened RPC output"));return;}let end;while((end=buffer.indexOf("\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;try{
+      const row=JSON.parse(line);if(row.type==="agent_start")throw Error("Reopened ASEN state query invoked a model");
+      if(row.type==="response"&&row.id==="reopen-commands"){assert.equal(row.success,true);for(const name of names)assert.ok(row.data.commands.some(command=>command.name===name));requestNext();}
+      else if(row.type==="extension_ui_request"&&row.method==="notify"){assert.equal(row.notifyType,"info");lastNotification=row.message;notifications++;}
+      else if(row.type==="response"&&row.id===`reopen-${names[index]}`){assert.equal(row.success,true);assert.equal(notifications,1);if(names[index]==="asen-todos"){assert.match(lastNotification,/blocked.*Pi restart recovery.*explicit review is required/i);assert.ok(!lastNotification.includes(foreignTodoId));}else{assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);assert.ok(!lastNotification.includes("foreign"));}seen.push(names[index]);notifications=0;requestNext();}
+    }catch(error){fail(error);}}});
+    send({id:"reopen-commands",type:"get_commands"});
+  }).finally(()=>{reopened.kill();});
+  await reopenedClosed;
+  assert.deepEqual(seen,["asen-todos","asen-changes"]);
   console.log(JSON.stringify({installedPiPackageVerified:true,primaryExtensions:["asen.ts"],childAuthorityAutoLoaded:false,visibleRpcCommands:visible,modelInvocations:models,publicHost:{mode:host.mode,hasUI:host.hasUI,canonicalCommands:9,canonicalTools:toolNames.length,toolsEnabled:true}}));
 } finally {rmSync(root,{recursive:true,force:true});}
