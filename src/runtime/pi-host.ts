@@ -7,7 +7,7 @@ export const ASEN_PI_MAXIMUM_VERSION_EXCLUSIVE="2.0.0";
 export const ASEN_PI_SUPPORTED_MODES=Object.freeze(["tui","rpc","json","print"] as const);
 function compareVersion(left:string,right:string):number{
  const a=left.split(".").map(Number),b=right.split(".").map(Number);
- for(let index=0;index<3;index++)if(a[index]!==b[index])return a[index]!<b[index]!?-1:1;
+ for(let index=0;index<3;index++)if(a[index]!==b[index])return a[index]<b[index]?-1:1;
  return 0;
 }
 /** Validate the public factory boundary without invoking untrusted host getters. */
