@@ -8,7 +8,11 @@ export const ASEN_PI_SUPPORTED_MODES=Object.freeze(["tui","rpc","json","print"] 
 function compareVersion(left:string,right:string):number{
  const a=left.split(".").map(Number),b=right.split(".").map(Number);
  if([...a,...b].some(value=>!Number.isSafeInteger(value)))throw new Error("ASEN Pi version contains an unsafe numeric component");
- for(let index=0;index<3;index++)if(a[index]!==b[index])return a[index]<b[index]?-1:1;
+ for(let index=0;index<3;index++){
+  const leftPart=a[index],rightPart=b[index];
+  if(leftPart===undefined||rightPart===undefined)throw new Error("ASEN Pi version is missing a numeric component");
+  if(leftPart!==rightPart)return leftPart<rightPart?-1:1;
+ }
  return 0;
 }
 /** Validate the public factory boundary without invoking untrusted host getters. */
