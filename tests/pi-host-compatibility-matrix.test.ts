@@ -100,3 +100,7 @@ test("version parser rejects prefixed release strings",()=>{
 test("version parser rejects surrounding whitespace",()=>{
  assert.throws(()=>validatePiHost(makeHost()," 1.1.0 "),/known Pi version/);
 });
+
+test("version parser rejects incomplete versions",()=>{
+ assert.throws(()=>validatePiHost(makeHost(),"1.1"),/known Pi version/);
+});
