@@ -152,17 +152,19 @@
         "src/agents/agent-runtime.ts",
         "src/runtime/agent-store.ts",
         "src/agents/pi-agent-tools.ts",
-        "src/runtime/agent-lifecycle.ts"
+        "src/runtime/agent-lifecycle.ts",
+        "src/policies/scopes.ts"
       ],
       "tests": [
         "tests/dispatcher.test.ts",
         "tests/pi-process-runner.test.ts",
         "tests/agent-store.test.ts",
         "tests/agent-lifecycle.test.ts",
-        "tests/pi-agent-runtime.test.ts"
+        "tests/pi-agent-runtime.test.ts",
+        "tests/scopes.test.ts"
       ],
       "remaining": [
-        "Persistent public queue, cancel/continue/status, ownership, bounded concurrency and interrupted-work quarantine are implemented and tested. Real Pi delivery/restoration across process restart and platforms, hostile child-process cleanup and public grant/transport contracts remain unverified or incomplete."
+        "Persistent public queue, cancel/continue/status, ownership, bounded concurrency, interrupted-work quarantine and rejection of overlapping writers on a shared repository root (including across session IDs) are implemented and tested. Real Pi delivery/restoration across process restart and platforms, hostile child-process cleanup and public grant/transport contracts remain unverified or incomplete."
       ],
       "stateful": true,
       "platformSensitive": true,
