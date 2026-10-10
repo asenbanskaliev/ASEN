@@ -232,3 +232,12 @@ test("sparse reservation arrays are rejected before host inventory lookup",()=>{
  const names:string[]=new Array(1);
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>{throw Error("unexpected lookup");}},names),/reservation list is invalid/);
 });
+
+test("reservation validation accepts frozen ordinary arrays",()=>{
+ const names=Object.freeze(["asen","asen-status"]);
+ assert.doesNotThrow(()=>validatePiCommandCollisions({getCommands:()=>[]},names));
+});
+
+test("reservation validation rejects empty frozen arrays",()=>{
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[]},Object.freeze([])),/reservation list is invalid/);
+});
