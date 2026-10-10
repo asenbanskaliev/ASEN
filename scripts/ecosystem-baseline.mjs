@@ -783,7 +783,11 @@ export function detectMappedBaselineDrift(repository,before,after,adjudications,
         }
         for(const file of removed)if(!renamedOld.has(file.path))additionalChanges.push({kind:"REMOVED",path:file.path});
         for(const file of added)if(!renamedNew.has(file.path))additionalChanges.push({kind:"ADDED",path:file.path});
-        for(const file of newFiles)if(oldByPath.has(file.path)&&(oldByPath.get(file.path).sha256!==file.sha256||oldByPath.get(file.path).mode!==file.mode))additionalChanges.push({kind:"CONTENT_CHANGED",path:file.path});
+        for(const file of newFiles)if(oldByPath.has(file.path)){
+          const previous=oldByPath.get(file.path);
+          if(previous.sha256!==file.sha256)additionalChanges.push({kind:"CONTENT_CHANGED",path:file.path});
+          if(previous.mode!==file.mode)additionalChanges.push({kind:"PERMISSIONS_CHANGED",path:file.path,fromMode:previous.mode,toMode:file.mode});
+        }
         globTargets.set(selector,[...new Set([...oldFiles,...newFiles].map(file=>file.path))]);
       }
       runtimeEdges.push({sourcePath:owner.path,targetPaths:globTargets.get(selector)});
@@ -808,7 +812,9 @@ export function detectBaselineDrift(before, after, {runtimeEdges=[],additionalCh
   for (const value of [before,after]) if (validateBaseline(value).length) throw new Error("Cannot compare malformed baselines");
   if(!Array.isArray(runtimeEdges)||runtimeEdges.some(edge=>!edge||!safePath(edge.sourcePath)||!Array.isArray(edge.targetPaths)||edge.targetPaths.some(target=>!safePath(target))))
     throw new Error("Malformed runtime edge mapping");
-  if(!Array.isArray(additionalChanges)||additionalChanges.some(change=>!change||!["ADDED","REMOVED","CONTENT_CHANGED","RENAMED"].includes(change.kind)||!safePath(change.path)||(change.kind==="RENAMED"?!safePath(change.to):change.to!==undefined)))
+  if(!Array.isArray(additionalChanges)||additionalChanges.some(change=>!change||!["ADDED","REMOVED","CONTENT_CHANGED","PERMISSIONS_CHANGED","RENAMED"].includes(change.kind)||!safePath(change.path)||
+    (change.kind==="RENAMED"?!safePath(change.to):change.to!==undefined)||
+    change.kind==="PERMISSIONS_CHANGED"&&(!["100644","100755"].includes(change.fromMode)||!["100644","100755"].includes(change.toMode)||change.fromMode===change.toMode)))
     throw new Error("Malformed runtime edge drift changes");
   const old = new Map(before.files.map(row => [row.path,row])), next = new Map(after.files.map(row => [row.path,row]));
   const removed = before.files.filter(row => !next.has(row.path)), added = after.files.filter(row => !old.has(row.path)), changes = [];
@@ -820,7 +826,8 @@ export function detectBaselineDrift(before, after, {runtimeEdges=[],additionalCh
   for (const row of added) if (!renamedNew.has(row.path)) changes.push({kind:"ADDED", path:row.path});
   for (const row of after.files) {
     const previous = old.get(row.path); if (!previous) continue;
-    if (previous.sha256 !== row.sha256 || previous.mode !== row.mode) changes.push({kind:"CONTENT_CHANGED",path:row.path});
+    if (previous.sha256 !== row.sha256) changes.push({kind:"CONTENT_CHANGED",path:row.path});
+    if (previous.mode !== row.mode) changes.push({kind:"PERMISSIONS_CHANGED",path:row.path,fromMode:previous.mode,toMode:row.mode});
     if (JSON.stringify(previous.anchors) !== JSON.stringify(row.anchors)) changes.push({kind:"ANCHORS_CHANGED",path:row.path});
     if (JSON.stringify(previous.references) !== JSON.stringify(row.references)) changes.push({kind:"REFERENCES_CHANGED",path:row.path});
   }

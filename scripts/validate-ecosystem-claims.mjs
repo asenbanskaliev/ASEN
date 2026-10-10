@@ -28,6 +28,7 @@ export function validateEcosystemClaims({baseline,registry,existingPaths,observe
   if(ids.length!==units.length||new Set(ids).size!==units.length||units.some(id=>!ids.includes(id)))issues.push("Every ECO unit requires exactly one claim row");
   const sources=new Map();
   for(const row of baseline.files){const paths=sources.get(row.sha256)??[];paths.push(row.path);sources.set(row.sha256,paths);}
+  const mappedPaths=new Set(registry.rows.flatMap(row=>(row?.sourceHashes??[]).flatMap(id=>sources.get(id)??[])));
   for(const row of registry.rows) {
     if(!row||!units.includes(row.id)||!["FULL","PARTIAL","MISSING","OUT-OF-SCOPE"].includes(row.status)) {issues.push("Invalid ecosystem claim row");continue;}
     const label=row.id;
@@ -54,7 +55,11 @@ export function validateEcosystemClaims({baseline,registry,existingPaths,observe
       issues.push(`${label}: FULL requires an exact baseline-to-source-candidate drift report`);
     if(row.remaining?.length)issues.push(`${label}: FULL cannot retain gaps`);
     if(!row.implementation?.length||!row.tests?.length)issues.push(`${label}: FULL needs implemented behavior and tests`);
-    if(Array.isArray(row.sourceHashes)&&row.sourceHashes.some(id=>(sources.get(id)??[]).some(path=>driftReport?.invalidatedPaths?.includes(path))))issues.push(`${label}: source drift invalidates FULL`);
+    const changedPaths=new Set((driftReport?.changes??[]).flatMap(change=>[change?.path,...(change?.to?[change.to]:[])]).filter(value=>typeof value==="string"));
+    const unknownImpact=[...changedPaths].some(path=>!mappedPaths.has(path))||
+      driftReport?.affectedRequirements?.some(impact=>impact?.requirementId===label)||
+      driftReport?.unmappedImpactPaths?.length>0;
+    if(unknownImpact||Array.isArray(row.sourceHashes)&&row.sourceHashes.some(id=>(sources.get(id)??[]).some(path=>driftReport?.invalidatedPaths?.includes(path))))issues.push(`${label}: source drift invalidates FULL`);
     const boundaries=Object.fromEntries(Object.keys(minimums[row.id]).map(key=>[key,minimums[row.id][key]||row[key]]));
     const requirements=["positive","negative","failure","recovery",...(boundaries.stateful?["restart","cross-session"]:[]),
       ...(boundaries.platformSensitive?["linux","windows","macos"]:[]),...(boundaries.piBoundary?["pi-host"]:[]),...(boundaries.modelBoundary?["pi-model"]:[])];
@@ -94,7 +99,8 @@ export function loadEcosystemClaims(root=fileURLToPath(new URL("../",import.meta
     const report=JSON.parse(readFileSync(candidateReportPath,"utf8"));
     if(sourceSnapshotCommit&&sourceSnapshotCommit!==report.inputs?.candidateCommit)throw new Error("Candidate report and source candidate commit disagree");
     const verified=verifyReport(sourceRepository,report,{baselineBytes,mappingBytes,adjudicationBytes,claimsBytes});
-    driftReport={from:verified.inputs.baselineCommit,to:verified.inputs.candidateCommit,autoAdopt:false,changes:verified.changes,invalidatedPaths:verified.invalidatedPaths};
+    driftReport={from:verified.inputs.baselineCommit,to:verified.inputs.candidateCommit,autoAdopt:false,changes:verified.changes,invalidatedPaths:verified.invalidatedPaths,
+      affectedRequirements:verified.affectedRequirements,unmappedImpactPaths:verified.unmappedImpactPaths};
   }else if(sourceRepository&&sourceSnapshotCommit){
     const overlay=JSON.parse(adjudicationBytes.toString("utf8"));
     const mappings=JSON.parse(mappingBytes.toString("utf8"));

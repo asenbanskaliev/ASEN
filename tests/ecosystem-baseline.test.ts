@@ -434,7 +434,8 @@ test("mapped Markdown runtime directory reports additions, removals and content 
   assert.equal(modeAfter.sha256,modeBefore.sha256);
   assert.notEqual(modeAfter.mode,modeBefore.mode);
   const modeReport=detectMappedBaselineDrift(repo,after,collectBaseline(repo,modeCommit),overlay,mappings);
-  assert.ok(modeReport.changes.some((row:any)=>row.kind==="CONTENT_CHANGED"&&row.path===selected));
+  assert.ok(modeReport.changes.some((row:any)=>row.kind==="PERMISSIONS_CHANGED"&&row.path===selected&&row.fromMode!==row.toMode));
+  assert.equal(modeReport.changes.some((row:any)=>row.kind==="CONTENT_CHANGED"&&row.path===selected),false,"mode-only drift is not mislabeled as content drift");
   assert.equal(modeReport.autoAdopt,false);
   for(const owner of globOwners)assert.ok(modeReport.invalidatedPaths.includes(owner));
 

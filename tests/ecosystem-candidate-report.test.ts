@@ -35,14 +35,33 @@ test("drift report binds inputs, requirements and evidence deterministically wit
  const first=bindEcosystemDriftReport(args),second=bindEcosystemDriftReport(args);
  assert.deepEqual(first,second);assert.equal(validateEcosystemCandidateReport(first),true);assert.equal(first.autoAdopt,false);
  assert.equal(first.inputs.baselineSha256,hash(JSON.stringify(before)));
+ assert.equal(first.anchorDiffs.some((row:any)=>row.path==="extensions/a.ts"&&row.before.length===1&&row.after.length===1),true,"report carries exact old/new normative anchor identities and hashes");
  assert.deepEqual(assertCandidateReportMatches(first,first),first);
- assert.deepEqual(first.affectedRequirements,[{requirementId:"ECO-01",claimStatus:"FULL",auditRequired:true,effectiveStatus:"INVALIDATED",invalidatedSourcePaths:["extensions/a.ts"],evidence:[{id:"proof-1",path:"registry/evidence/ecosystem/proof.json",sha256:null}]}]);
+ assert.deepEqual(first.affectedRequirements,[{requirementId:"ECO-01",claimStatus:"FULL",auditRequired:true,impactBasis:"SOURCE_MAP",effectiveStatus:"INVALIDATED",invalidatedSourcePaths:["extensions/a.ts"],evidence:[{id:"proof-1",path:"registry/evidence/ecosystem/proof.json",sha256:null}]}]);
  assert.ok(first.changes.some((row:any)=>row.kind==="CONTENT_CHANGED"&&row.path==="extensions/a.ts"));
- const forged={...first,changes:[],invalidatedPaths:[],affectedRequirements:[]};
+ const forged={...first,changes:[],invalidatedPaths:[],anchorDiffs:[],affectedRequirements:[]};
  const {integritySha256,...unsigned}=forged;forged.integritySha256=hash(JSON.stringify(unsigned));
  assert.equal(validateEcosystemCandidateReport(forged),true,"the unkeyed digest alone only detects accidental edits");
  assert.throws(()=>assertCandidateReportMatches(first,forged),/does not match re-derived/);
+ const forgedAnchor={...first,anchorDiffs:first.anchorDiffs.map((row:any)=>({...row,after:[]}))};
+ const {integritySha256:anchorDigest,...anchorUnsigned}=forgedAnchor;forgedAnchor.integritySha256=hash(JSON.stringify(anchorUnsigned));
+ assert.throws(()=>assertCandidateReportMatches(first,forgedAnchor),/does not match re-derived/);
  assert.throws(()=>verifyEcosystemCandidateReport(f.root,first,{baselineBytes:JSON.stringify(before),mappingBytes,adjudicationBytes,claimsBytes}),/runtime edge mapping envelope/);
+});
+
+test("unmapped changed sources conservatively require every ECO row to be audited",t=>{
+ const f=fixture(t),baseline=collectBaseline(f.root,f.commit),packagePath=join(f.root,"package.json");
+ writeFileSync(packagePath,JSON.stringify({name:"fixture",version:"1.0.0",dependencies:{added:"^1.0.0"}}));
+ f.git("add",".");f.git("commit","-qm","add unmapped dependency");
+ const after=collectBaseline(f.root,f.git("rev-parse","HEAD")),drift=detectBaselineDrift(baseline,after);
+ const mappingBytes=Buffer.from(JSON.stringify({version:1,baselineCommit:baseline.commit,mappings:[]})),adjudicationBytes=Buffer.from(JSON.stringify({version:1,baselineCommit:baseline.commit,adjudications:[]}));
+ const source=baseline.files.find((row:any)=>row.path==="extensions/a.ts");
+ const claimsBytes=Buffer.from(JSON.stringify({version:1,sourceCommit:baseline.commit,rows:Array.from({length:16},(_,index)=>({id:"ECO-"+String(index+1).padStart(2,"0"),status:"PARTIAL",sourceHashes:[source.sha256],evidence:[]}))}));
+ const report=bindEcosystemDriftReport({baseline,after,drift,mappingBytes,adjudicationBytes,claimsBytes});
+ assert.deepEqual(report.unmappedImpactPaths,["package.json"]);
+ assert.equal(report.affectedRequirements.length,16);
+ assert.ok(report.affectedRequirements.every((row:any)=>row.impactBasis==="CONSERVATIVE_UNMAPPED_FALLBACK"&&row.invalidatedSourcePaths.includes("package.json")));
+ assert.equal(validateEcosystemCandidateReport(report),true);
 });
 
 test("report validation rejects identity edits, evidence edits and auto-adoption",t=>{

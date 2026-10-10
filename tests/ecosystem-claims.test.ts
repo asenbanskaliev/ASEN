@@ -86,3 +86,11 @@ test("a duplicate frozen-source hash invalidates FULL when any matching path dri
  input.driftReport={from:input.baseline.commit,to:row.sourceSnapshotCommit,autoAdopt:false,changes:[],invalidatedPaths:[second.path]};
  assert.match(validateEcosystemClaims(input).join("\n"),/source drift invalidates FULL/);
 });
+
+test("an unmapped added source conservatively invalidates any prospective FULL row",()=>{
+ const input=load(),row=input.registry.rows.find((r:any)=>r.id==="ECO-05");
+ row.status="FULL";row.candidate=input.observedHead;row.sourceSnapshotCommit=input.baseline.commit;row.remaining=[];
+ input.driftReport={from:input.baseline.commit,to:row.sourceSnapshotCommit,autoAdopt:false,
+  changes:[{kind:"ADDED",path:"new-unmapped-source.ts"}],invalidatedPaths:["new-unmapped-source.ts"]};
+ assert.match(validateEcosystemClaims(input).join("\n"),/source drift invalidates FULL/);
+});
