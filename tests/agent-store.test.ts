@@ -15,12 +15,18 @@ function req(id:string,sessionId="session-a",repository="/repo"):AgentRequest{re
 async function until(check:()=>boolean){for(let i=0;i<200;i++){if(check())return;await new Promise(resolve=>setTimeout(resolve,5));}assert.fail("condition did not become true");}
 
 test("persistent queue survives reopen and both queued and running work are quarantined for explicit review",async t=>{
- const file=await fixture(t),{store}=await PersistentAgentStore.open(file,()=>"2026-10-10T10:00:00.000Z"),pending=req("pending"),running=req("running");
- await store.enqueue(pending,owner);await store.enqueue(running,owner);await store.running("running","2026-10-10T10:00:00.000Z");
+ const file=await fixture(t),child=spawnSync(process.execPath,["--import","tsx",resolve("tests/fixtures/agent-crash-process.ts"),file,"pair"],{encoding:"utf8",timeout:30000});assert.equal(child.status,0,`${child.error?.message??""}\n${child.stderr}`);
  const reopened=await PersistentAgentStore.open(file,()=>"2026-10-10T10:01:00.000Z");
- const rows=await reopened.store.list("session-a","/repo");assert.equal(rows.find(x=>x.id==="pending")?.state,"interrupted");assert.match(rows.find(x=>x.id==="pending")?.summary??"",/not dispatched before process restart/);assert.equal(rows.find(x=>x.id==="running")?.state,"interrupted");
- assert.match((await reopened.store.history("running","session-a","/repo")).at(-1)?.summary??"",/explicit authorization required/);
- assert.equal(await reopened.store.get("pending","session-b","/repo"),undefined);assert.equal(await reopened.store.get("pending","session-a","/other"),undefined);
+ const rows=await reopened.store.list("session-crash","/repo");assert.equal(rows.find(x=>x.id==="queued-before-crash")?.state,"interrupted");assert.match(rows.find(x=>x.id==="queued-before-crash")?.summary??"",/not dispatched before process restart/);assert.equal(rows.find(x=>x.id==="crash-recovery-task")?.state,"interrupted");
+ assert.match((await reopened.store.history("crash-recovery-task","session-crash","/repo")).at(-1)?.summary??"",/explicit authorization required/);
+ assert.equal(await reopened.store.get("queued-before-crash","other-session","/repo"),undefined);assert.equal(await reopened.store.get("queued-before-crash","session-crash","/other"),undefined);
+});
+
+test("opening a second runtime in a live process does not mark its queued or running agents interrupted",async t=>{
+ const file=await fixture(t),{store}=await PersistentAgentStore.open(file,()=>"2026-10-10T10:00:00.000Z"),queued=req("live-queued"),running=req("live-running");
+ await store.enqueue(queued,owner);await store.enqueue(running,owner);await store.running(running.id,"2026-10-10T10:00:01.000Z");
+ const reopened=await PersistentAgentStore.open(file,()=>"2026-10-10T10:00:02.000Z"),rows=await reopened.store.list("session-a","/repo");
+ assert.equal(rows.find(row=>row.id===queued.id)?.state,"queued");assert.equal(rows.find(row=>row.id===running.id)?.state,"running");
 });
 
 test("a process crash after durable dispatch is recovered as interrupted without replay",async t=>{
@@ -45,19 +51,29 @@ test("completed result and history survive restart only with a bound execution r
 });
 
 test("only read-only explorer tasks can continue, and each continuation has a new identity",async t=>{
- const file=await fixture(t),{store}=await PersistentAgentStore.open(file,()=>"2026-10-10T10:00:00.000Z"),request=req("interrupted"),ownerInput={id:request.id,role:request.role,owner,sessionId:"session-a",projectId:"/repo",createdAt:"2026-10-10T10:00:00.000Z"};
- await store.enqueue(request,owner);await store.running(request.id,"2026-10-10T10:00:01.000Z");
- const recovered=await PersistentAgentStore.open(file,()=>"2026-10-10T10:00:02.000Z"),entry=await recovered.store.get("interrupted","session-a","/repo");assert.ok(entry);const resumed=recovered.store.resumable(entry!);assert.ok(resumed);assert.notEqual(resumed.id,request.id);assert.equal(resumed.parentId,request.id);assert.equal(resumed.role,"explorer");
+ const file=await fixture(t),child=spawnSync(process.execPath,["--import","tsx",resolve("tests/fixtures/agent-crash-process.ts"),file,"running"],{encoding:"utf8",timeout:30000});assert.equal(child.status,0,`${child.error?.message??""}\n${child.stderr}`);
+ const recovered=await PersistentAgentStore.open(file,()=>"2026-10-10T10:00:02.000Z"),entry=await recovered.store.get("crash-recovery-task","session-crash","/repo");assert.ok(entry);const resumed=recovered.store.resumable(entry!);assert.ok(resumed);assert.notEqual(resumed.id,entry!.record.id);assert.equal(resumed.parentId,entry!.record.id);assert.equal(resumed.role,"explorer");
  await assert.rejects(()=>recovered.store.enqueue({...resumed,writeSurfaces:["src/"]},owner),/Authority-bearing agent requests cannot be serialized/);
  await assert.rejects(()=>recovered.store.enqueue(resumed,owner),/atomic interrupted-task claim/);
- await assert.rejects(()=>recovered.store.queued({...ownerInput,role:"worker"}),/record|Invalid/);
+ await assert.rejects(()=>recovered.store.queued({...entry!.record,role:"worker"}),/record|Invalid/);
+});
+
+test("an interrupted continuation can itself be recovered once without duplicating its earlier attempt",async t=>{
+ const file=await fixture(t),session={sessionId:"session-crash",projectId:"/repo"};
+ const firstCrash=spawnSync(process.execPath,["--import","tsx",resolve("tests/fixtures/agent-crash-process.ts"),file,"running"],{encoding:"utf8",timeout:30000});assert.equal(firstCrash.status,0,`${firstCrash.error?.message??""}\n${firstCrash.stderr}`);
+ const recoveredParent=await PersistentAgentStore.open(file),parent=await recoveredParent.store.get("crash-recovery-task",session.sessionId,session.projectId);assert.equal(parent?.record.state,"interrupted");
+ const continuationCrash=spawnSync(process.execPath,["--import","tsx",resolve("tests/fixtures/agent-crash-process.ts"),file,"continue-running",parent!.record.id],{encoding:"utf8",timeout:30000});assert.equal(continuationCrash.status,0,`${continuationCrash.error?.message??""}\n${continuationCrash.stderr}`);
+ const raw=JSON.parse(await readFile(file,"utf8")) as {entries:Array<{record:{id:string};request:{continuationOf?:string}}>},first=raw.entries.find(entry=>entry.request.continuationOf===parent!.record.id);assert.ok(first);
+ const restarted=await PersistentAgentStore.open(file),child=await restarted.store.get(first!.record.id,session.sessionId,session.projectId);assert.equal(child?.record.state,"interrupted");
+ const second=await restarted.store.enqueueContinuation(first!.record.id,session.sessionId,session.projectId,owner);
+ assert.notEqual(second.id,first!.record.id);assert.equal(second.parentId,first!.record.id);assert.equal((await restarted.store.list(session.sessionId,session.projectId)).filter(row=>row.state==="interrupted").length,2);
+ await assert.rejects(()=>restarted.store.enqueueContinuation(first!.record.id,session.sessionId,session.projectId,owner),/already has a continuation/);
 });
 
 test("concurrent continuation requests atomically create at most one replacement execution",async t=>{
- const file=await fixture(t),request=req("crashed"),session={sessionId:"session-a",projectId:"/repo"},initial=await PersistentAgentStore.open(file,()=>"2026-10-10T10:00:00.000Z");
- await initial.store.enqueue(request,owner);await initial.store.running(request.id,"2026-10-10T10:00:01.000Z");
+ const file=await fixture(t),session={sessionId:"session-crash",projectId:"/repo"},crash=spawnSync(process.execPath,["--import","tsx",resolve("tests/fixtures/agent-crash-process.ts"),file,"running"],{encoding:"utf8",timeout:30000});assert.equal(crash.status,0,`${crash.error?.message??""}\n${crash.stderr}`);
  const runner:AgentRunner={run:async r=>({id:r.id,ok:true,output:`continued:${r.id}`})},runtimes=await Promise.all([AgentRuntime.open({storeFile:file,runner}),AgentRuntime.open({storeFile:file,runner})]);
- const attempts=await Promise.allSettled(runtimes.map(runtime=>runtime.continue("crashed",session)));
+ const attempts=await Promise.allSettled(runtimes.map(runtime=>runtime.continue("crash-recovery-task",session)));
  assert.equal(attempts.filter(result=>result.status==="fulfilled").length,1);assert.equal(attempts.filter(result=>result.status==="rejected").length,1);
  const continuation=attempts.find((result):result is PromiseFulfilledResult<string>=>result.status==="fulfilled")!.value;
  await until(()=>runtimes.some(runtime=>runtime.snapshot().find(record=>record.id===continuation)?.state==="completed"));

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {spawnSync} from "node:child_process";
 import {mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {join,resolve} from "node:path";
 import {createPiExtension} from "../extensions/asen.js";
 import type {AgentRunner} from "../src/agents/dispatcher.js";
 import {ASEN_AGENT_TOOL_NAMES} from "../src/agents/pi-agent-tools.js";
-import {PersistentAgentStore} from "../src/runtime/agent-store.js";
 import {ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-tools.js";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
 
@@ -56,8 +56,7 @@ test("Pi continue tool requires explicit UI confirmation and cannot cross projec
  const home=await mkdtemp(join(tmpdir(),"asen-agent-continue-"));t.after(()=>rm(home,{recursive:true,force:true}));const file=join(home,"agents.json"),prior=process.env.ASEN_NO_SKILL_REGISTRY;process.env.ASEN_NO_SKILL_REGISTRY="1";
  const runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:"done"})},state=host();
  try{
-  const priorStore=await PersistentAgentStore.open(file,()=>"2026-10-10T10:00:00.000Z"),saved={id:"interrupted",role:"explorer" as const,prompt:"inspect safely",repository:process.cwd(),isolationKey:"session-a",owner:{kind:"user" as const,id:"pi:session-a"}};
-  await priorStore.store.enqueue(saved,saved.owner);await priorStore.store.running(saved.id,"2026-10-10T10:00:01.000Z");
+  const crashed=spawnSync(process.execPath,["--import","tsx",resolve("tests/fixtures/agent-crash-process.ts"),file,"running","-","session-a",process.cwd(),"interrupted"],{encoding:"utf8",timeout:30000});assert.equal(crashed.status,0,`${crashed.error?.message??""}\n${crashed.stderr}`);
   createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:file})(state.pi as any);await state.events.get("session_start")![0]!({},state.context());
   const confirmController=new AbortController();let dialogSignal:AbortSignal|undefined,resolveConfirmation!:(value:boolean)=>void,confirmationStarted!:()=>void;
   const confirmation=new Promise<boolean>(resolve=>{resolveConfirmation=resolve;}),startedConfirmation=new Promise<void>(resolve=>{confirmationStarted=resolve;});

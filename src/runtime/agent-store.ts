@@ -9,7 +9,7 @@ import {completeAgentRecord,createAgentRecord,recoverAgentLifecycleRecords,trans
 const SCHEMA="asen.agents/v1" as const,MAX_RECORDS=2000,MAX_EVENTS=20000,MAX_PROMPT=32000,MAX_OUTPUT=1_000_000;
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted){const error=new Error("Agent task cancelled");error.name="AbortError";throw error;}}
 type AgentRole=AgentRequest["role"];
-export interface AgentTaskSpec{ id:string;role:AgentRole;prompt:string;repository:string;isolationKey:string;createdAt:string;model?:string;thinking?:AgentRequest["thinking"];continuationOf?:string; }
+export interface AgentTaskSpec{ id:string;role:AgentRole;prompt:string;repository:string;isolationKey:string;createdAt:string;ownerProcessId?:number;model?:string;thinking?:AgentRequest["thinking"];continuationOf?:string; }
 export interface AgentExecutionReceipt{ id:string;ok:true;output:string;sha256:string; }
 export interface AgentStateEvent{ id:string;revision:number;state:PublicAgentRecord["state"];at:string;summary?:string; }
 export interface AgentStoreEntry{ record:PublicAgentRecord;request:AgentTaskSpec;events:AgentStateEvent[];result?:AgentExecutionReceipt; }
@@ -22,13 +22,16 @@ function specFrom(request:AgentRequest,createdAt:string):AgentTaskSpec{
  if(request.model!==undefined&&(typeof request.model!=="string"||!identifier(request.model)))throw new Error("Invalid persistent agent model");
  if(request.thinking!==undefined&&!(["off","minimal","low","medium","high"] as unknown[]).includes(request.thinking))throw new Error("Invalid persistent agent thinking level");
  const {model,thinking}=request;
- return {id:request.id,role:request.role,prompt:request.prompt,repository:request.repository,isolationKey:request.isolationKey??"default",createdAt,...(model?{model}:{}),...(thinking?{thinking}:{}),...(request.parentId?{continuationOf:request.parentId}:{})};
+ return {id:request.id,role:request.role,prompt:request.prompt,repository:request.repository,isolationKey:request.isolationKey??"default",createdAt,ownerProcessId:process.pid,...(model?{model}:{}),...(thinking?{thinking}:{}),...(request.parentId?{continuationOf:request.parentId}:{})};
 }
 function specValue(v:unknown):v is AgentTaskSpec{
  if(!v||typeof v!=="object"||Array.isArray(v))return false;
- const keys=["id","role","prompt","repository","isolationKey","createdAt",...(Object.hasOwn(v,"model")?["model"]:[]),...(Object.hasOwn(v,"thinking")?["thinking"]:[]),...(Object.hasOwn(v,"continuationOf")?["continuationOf"]:[])];
+ const keys=["id","role","prompt","repository","isolationKey","createdAt",...(Object.hasOwn(v,"ownerProcessId")?["ownerProcessId"]:[]),...(Object.hasOwn(v,"model")?["model"]:[]),...(Object.hasOwn(v,"thinking")?["thinking"]:[]),...(Object.hasOwn(v,"continuationOf")?["continuationOf"]:[])];
  if(!exact(v,keys))return false;const x=v as unknown as AgentTaskSpec;
- return identifier(x.id)&&(["explorer","worker","reviewer","verifier"] as unknown[]).includes(x.role)&&typeof x.prompt==="string"&&x.prompt.length>0&&x.prompt.length<=MAX_PROMPT&&!/[\u0000]/u.test(x.prompt)&&identifier(x.repository)&&identifier(x.isolationKey)&&typeof x.createdAt==="string"&&Number.isFinite(Date.parse(x.createdAt))&&(x.model===undefined||identifier(x.model))&&(x.thinking===undefined||(["off","minimal","low","medium","high"] as unknown[]).includes(x.thinking))&&(x.continuationOf===undefined||identifier(x.continuationOf));
+ return identifier(x.id)&&(["explorer","worker","reviewer","verifier"] as unknown[]).includes(x.role)&&typeof x.prompt==="string"&&x.prompt.length>0&&x.prompt.length<=MAX_PROMPT&&!/[\u0000]/u.test(x.prompt)&&identifier(x.repository)&&identifier(x.isolationKey)&&typeof x.createdAt==="string"&&Number.isFinite(Date.parse(x.createdAt))&&(x.ownerProcessId===undefined||Number.isSafeInteger(x.ownerProcessId)&&x.ownerProcessId>0)&&(x.model===undefined||identifier(x.model))&&(x.thinking===undefined||(["off","minimal","low","medium","high"] as unknown[]).includes(x.thinking))&&(x.continuationOf===undefined||identifier(x.continuationOf));
+}
+function processIsAlive(pid:number):boolean{
+ try{process.kill(pid,0);return true;}catch(error){return !!error&&typeof error==="object"&&"code" in error&&(error as NodeJS.ErrnoException).code==="EPERM";}
 }
 function receiptDigest(key:Buffer,entry:AgentStoreEntry,output:string):string{return createHmac("sha256",key).update(JSON.stringify([entry.record.id,entry.record.owner,entry.record.sessionId,entry.record.projectId,entry.request,output])).digest("hex");}
 function validAgentHistory(events:AgentStateEvent[],record:PublicAgentRecord):boolean{
@@ -128,7 +131,7 @@ export class PersistentAgentStore implements AgentLifecycleSink{
    // After the atomic write begins, let it finish or fail; the destination changes only at rename.
    await write(this.path,next);
   },30000,signal);}catch(error){throwIfCancelled(signal);throw error;}}
- async #recover():Promise<void>{let recovered:PublicAgentRecord[]|undefined;await this.#mutate(data=>{const at=this.now();for(const entry of data.entries){const record=entry.record;if(record.state==="running"||record.state==="queued"){const next=record.state==="running"?recoverAgentLifecycleRecords([record],at)[0]!:transitionAgent(record,"interrupted",at,"Queued task was not dispatched before process restart; explicit authorization required to resume");entry.record=next;entry.events.push(event(next,entry.events.length+1));}
+ async #recover():Promise<void>{let recovered:PublicAgentRecord[]|undefined;await this.#mutate(data=>{const at=this.now();for(const entry of data.entries){const record=entry.record;if((record.state==="running"||record.state==="queued")&&entry.request.ownerProcessId!==undefined&&processIsAlive(entry.request.ownerProcessId))continue;if(record.state==="running"||record.state==="queued"){const next=record.state==="running"?recoverAgentLifecycleRecords([record],at)[0]!:transitionAgent(record,"interrupted",at,"Queued task was not dispatched before process restart; explicit authorization required to resume");entry.record=next;entry.events.push(event(next,entry.events.length+1));}
   }recovered=data.entries.map(x=>x.record);});for(const record of recovered??[])this.#records.set(record.id,structuredClone(record));}
  /** Returns a request that is safe to resume; authority-bearing requests always need fresh admission. */
  resumable(entry:AgentStoreEntry):AgentRequest|undefined{
