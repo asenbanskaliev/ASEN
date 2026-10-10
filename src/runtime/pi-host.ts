@@ -25,8 +25,15 @@ export function validatePiHost(host:unknown,version:unknown):void{
 
 /** Check public command inventory before registration when the host exposes it. */
 function reservationNames(names:readonly string[],label:string):Set<string>{
- if(!Array.isArray(names)||types.isProxy(names)||names.length===0||names.length>100000||names.some(name=>typeof name!=="string"||!name||name!==name.trim()||/[\u0000-\u001f\u007f]/.test(name))||new Set(names).size!==names.length)throw new Error(`ASEN ${label} reservation list is invalid`);
- return new Set(names);
+ if(!Array.isArray(names)||types.isProxy(names)||names.length===0||names.length>100000)throw new Error(`ASEN ${label} reservation list is invalid`);
+ const checked:string[]=[];
+ for(let index=0;index<names.length;index++){
+  const descriptor=Object.getOwnPropertyDescriptor(names,String(index));
+  if(!descriptor||!("value" in descriptor)||typeof descriptor.value!=="string"||!descriptor.value||descriptor.value!==descriptor.value.trim()||/[\u0000-\u001f\u007f]/.test(descriptor.value))throw new Error(`ASEN ${label} reservation list is invalid`);
+  checked.push(descriptor.value);
+ }
+ if(new Set(checked).size!==checked.length)throw new Error(`ASEN ${label} reservation list is invalid`);
+ return new Set(checked);
 }
 function readInventory(host:object,methodName:"getCommands"|"getAllTools",label:string):unknown[]{
  const descriptor=Object.getOwnPropertyDescriptor(host,methodName);
