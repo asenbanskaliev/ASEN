@@ -166,3 +166,8 @@ test("empty command reservation list is rejected",()=>{
 test("proxied command reservation arrays are rejected",()=>{
  assert.throws(()=>validatePiCommandCollisions({},new Proxy(["asen"],{})),/reservation list is invalid/);
 });
+
+test("indexed inventory accessor is rejected without execution",()=>{
+ const rows=[];Object.defineProperty(rows,"0",{get(){throw Error("accessor executed");}});
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>rows},["asen"]),/inventory is malformed/);
+});
