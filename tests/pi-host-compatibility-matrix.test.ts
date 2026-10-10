@@ -113,3 +113,8 @@ test("host rejects missing required registration tool",()=>{
  const host=makeHost();delete host.registerTool;
  assert.throws(()=>validatePiHost(host,"1.1.0"),/callable Pi registerTool/);
 });
+
+test("local reservations are checked even without host inventory",()=>{
+ assert.throws(()=>validatePiCommandCollisions({},["asen","asen"]),/reservation list is invalid/);
+ assert.throws(()=>validatePiCommandCollisions({},[""]),/reservation list is invalid/);
+});
