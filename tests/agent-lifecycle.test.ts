@@ -7,3 +7,10 @@ test("agent lifecycle rejects forged owners and unsafe attribution identifiers",
 test("lifecycle sink owns one bounded record per dispatched identity",()=>{let n=0;const sink=createAgentLifecycleSink(()=>`2026-10-06T00:00:0${n++}Z`);sink.queued({id:"a",role:"worker",owner:{kind:"system",id:"dispatcher"},sessionId:"s",projectId:"p",createdAt:"2026-10-06T00:00:00Z"});sink.running("a");sink.completed("a","ok");const [record]=sink.snapshot();assert.equal(record?.state,"completed");assert.equal(record?.summary,"ok");assert.throws(()=>sink.queued({id:"a",role:"worker",owner:{kind:"system",id:"dispatcher"},sessionId:"s",projectId:"p",createdAt:"2026-10-06T00:00:03Z"}),/already exists/);});
 
 test("lifecycle clock permits equal and increasing transitions and rejects stale time",()=>{let at="2026-10-07T00:00:00Z";const sink=createAgentLifecycleSink(()=>at);const input={id:"clock",role:"worker",owner:{kind:"system" as const,id:"asen"},sessionId:"s",projectId:"p",createdAt:sink.createdAt()};sink.queued(input);sink.running("clock");at="2026-10-07T00:00:01Z";sink.completed("clock","ok");assert.equal(sink.snapshot()[0]?.updatedAt,at);const stale=createAgentRecord({...input,id:"stale",createdAt:"2026-10-07T00:00:02Z"});assert.throws(()=>transitionAgent(stale,"running","2026-10-07T00:00:01Z"),/stale/);});
+
+test("agent lifecycle rejects invalid timestamp types before parsing",()=>{
+ const input={id:"timestamp",role:"worker",owner:{kind:"system" as const,id:"asen"},sessionId:"s",projectId:"p",createdAt:"2026-10-07T00:00:00Z"};
+ assert.throws(()=>createAgentRecord({...input,createdAt:0 as unknown as string}),/Invalid timestamp/);
+ const record=createAgentRecord(input);
+ assert.throws(()=>transitionAgent(record,"running",0 as unknown as string),/Invalid agent transition timestamp/);
+});
