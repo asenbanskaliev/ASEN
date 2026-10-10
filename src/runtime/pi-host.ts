@@ -25,7 +25,7 @@ export function validatePiHost(host:unknown,version:unknown):void{
 
 /** Check public command inventory before registration when the host exposes it. */
 function reservationNames(names:readonly string[],label:string):Set<string>{
- if(!Array.isArray(names)||types.isProxy(names)||names.length===0||names.length>100000||names.some(name=>typeof name!=="string"||!name||name!==name.trim())||new Set(names).size!==names.length)throw new Error(`ASEN ${label} reservation list is invalid`);
+ if(!Array.isArray(names)||types.isProxy(names)||names.length===0||names.length>100000||names.some(name=>typeof name!=="string"||!name||name!==name.trim()||/[\u0000-\u001f\u007f]/.test(name))||new Set(names).size!==names.length)throw new Error(`ASEN ${label} reservation list is invalid`);
  return new Set(names);
 }
 function readInventory(host:object,methodName:"getCommands"|"getAllTools",label:string):unknown[]{
@@ -49,7 +49,7 @@ function validateInventory(host:object,methodName:"getCommands"|"getAllTools",na
  for(const row of rows){
   if(typeof row!=="object"||row===null||types.isProxy(row))throw new Error(`ASEN Pi ${label} inventory is malformed`);
   const entry=Object.getOwnPropertyDescriptor(row,"name");
-  if(!entry||!("value" in entry)||typeof entry.value!=="string"||!entry.value||entry.value!==entry.value.trim())throw new Error(`ASEN Pi ${label} inventory is malformed`);
+  if(!entry||!("value" in entry)||typeof entry.value!=="string"||!entry.value||entry.value!==entry.value.trim()||/[\u0000-\u001f\u007f]/.test(entry.value))throw new Error(`ASEN Pi ${label} inventory is malformed`);
   if(reserved.has(entry.value))throw new Error(`ASEN ${label} registration collision: ${entry.value}`);
  }
 }
