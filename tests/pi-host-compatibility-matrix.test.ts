@@ -144,3 +144,7 @@ test("command collision detected beyond first inventory row",()=>{
 test("collision after unrelated command is detected",()=>{
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[{name:"other"},{name:"asen"}]},["asen"]),/registration collision/);
 });
+
+test("undefined inventory entry is rejected",()=>{
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[undefined]},["asen"]),/inventory is malformed/);
+});
