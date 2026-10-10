@@ -114,3 +114,8 @@ test("frozen source ancestry requires a full exact baseline SHA",t=>{
   assert.throws(()=>assertExactCandidate(f.root,f.commit,invalid),/Frozen source must be an exact full Git commit SHA/);
  assert.doesNotThrow(()=>assertExactCandidate(f.root,f.commit,f.commit));
 });
+
+test("candidate ancestry rejects a missing frozen Git commit object",t=>{
+ const f=fixture(t);
+ assert.throws(()=>assertExactCandidate(f.root,f.commit,"0".repeat(40)),/Frozen source SHA is unavailable as a commit object/);
+});
