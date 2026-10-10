@@ -11,6 +11,7 @@ const readJson=relative=>readFileSync(path.join(root,relative));
 const safePath=value=>typeof value==="string"&&value.length>0&&value.length<1024&&!/[\\\u0000-\u001f\u007f]/.test(value)&&!path.posix.isAbsolute(value)&&value.split("/").every(part=>part&&part!=="."&&part!=="..");
 const claimStatuses=["FULL","PARTIAL","MISSING","OUT-OF-SCOPE"];
 const changeKinds=["ADDED","REMOVED","RENAMED","CONTENT_CHANGED","PERMISSIONS_CHANGED","ANCHORS_CHANGED","REFERENCES_CHANGED","DEPENDENCIES_CHANGED"];
+const reportAnchors=source=>source?[...source.anchors,{line:1,kind:"source-content",sha256:source.sha256}]:[];
 
 export function assertExactCandidate(repository,commit,baselineCommit){
  if(typeof commit!=="string"||!/^[a-f0-9]{40}$/.test(commit))throw new Error("Candidate must be an exact full Git commit SHA");
@@ -45,8 +46,9 @@ export function bindEcosystemDriftReport({baseline,after,drift,baselineBytes=JSO
  const beforeFiles=new Map(baseline.files.map(file=>[file.path,file])),afterFiles=new Map(after.files.map(file=>[file.path,file]));
  // Preserve the exact anchor inventory on both sides so public-contract and normative-line
  // changes are reviewable without re-running a line-number heuristic against a later checkout.
+ // The whole-blob digest also makes implementation-only edits visible when heuristics find no anchor.
  const anchorDiffs=changedPaths.flatMap(sourcePath=>{
-  const before=beforeFiles.get(sourcePath)?.anchors??[],next=afterFiles.get(sourcePath)?.anchors??[];
+  const before=reportAnchors(beforeFiles.get(sourcePath)),next=reportAnchors(afterFiles.get(sourcePath));
   return JSON.stringify(before)===JSON.stringify(next)?[]:[{path:sourcePath,beforeCommit:baseline.commit,afterCommit:after.commit,before,after:next}];
  }).sort((a,b)=>a.path.localeCompare(b.path,"en"));
  // A changed or added source with no explicit requirement mapping has unknown semantic impact.
@@ -66,7 +68,7 @@ export function bindEcosystemDriftReport({baseline,after,drift,baselineBytes=JSO
    effectiveStatus:row.status==="FULL"?"INVALIDATED":"REVIEW_REQUIRED",invalidatedSourcePaths:impacted,evidence});
  }
  affectedRequirements.sort((a,b)=>a.requirementId.localeCompare(b.requirementId,"en"));
- const unsigned={schema:"asen.ecosystem-drift-report.v2",autoAdopt:false,
+ const unsigned={schema:"asen.ecosystem-drift-report.v3",autoAdopt:false,
   inputs:{baselineCommit:baseline.commit,baselineTree:baseline.tree,baselineSha256:sha256(baselineBytes),candidateCommit:after.commit,candidateTree:after.tree,
    runtimeEdgeMapSha256:sha256(mappingBytes),referenceAdjudicationSha256:sha256(adjudicationBytes),requirementEvidenceMapSha256:sha256(claimsBytes)},
   changes:drift.changes,invalidatedPaths:drift.invalidatedPaths,anchorDiffs,unmappedImpactPaths,affectedRequirements};
@@ -84,7 +86,7 @@ export function createEcosystemCandidateReport(repository,candidateCommit,{basel
 }
 
 export function validateEcosystemCandidateReport(report){
- if(!report||report.schema!=="asen.ecosystem-drift-report.v2"||report.autoAdopt!==false||!report.inputs||
+ if(!report||report.schema!=="asen.ecosystem-drift-report.v3"||report.autoAdopt!==false||!report.inputs||
   !/^[a-f0-9]{40}$/.test(report.inputs.baselineCommit??"")||!/^[a-f0-9]{40}$/.test(report.inputs.candidateCommit??"")||
   !["baselineSha256","runtimeEdgeMapSha256","referenceAdjudicationSha256","requirementEvidenceMapSha256"].every(key=>/^[a-f0-9]{64}$/.test(report.inputs[key]??""))||
   !/^[a-f0-9]{40}$/.test(report.inputs.baselineTree??"")||!/^[a-f0-9]{40}$/.test(report.inputs.candidateTree??"")||
@@ -98,7 +100,10 @@ export function validateEcosystemCandidateReport(report){
    !Array.isArray(row.before)||!Array.isArray(row.after)||JSON.stringify(row.before)===JSON.stringify(row.after)||
    !report.changes.some(change=>change.path===row.path||change.to===row.path)||
    [...row.before,...row.after].some(anchor=>!anchor||!Number.isSafeInteger(anchor.line)||anchor.line<1||!/^[a-f0-9]{64}$/.test(anchor.sha256)||
-    anchor.kind!==undefined&&(anchor.kind!=="public-contract"||!Number.isSafeInteger(anchor.endLine)||anchor.endLine<anchor.line)))||
+    anchor.kind==="public-contract"&&(!Number.isSafeInteger(anchor.endLine)||anchor.endLine<anchor.line)||
+    anchor.kind==="source-content"&&(anchor.line!==1||anchor.endLine!==undefined)||
+    anchor.kind!==undefined&&!["public-contract","source-content"].includes(anchor.kind)||
+    anchor.kind===undefined&&anchor.endLine!==undefined))||
   !Array.isArray(report.invalidatedPaths)||report.invalidatedPaths.some(value=>!safePath(value))||new Set(report.invalidatedPaths).size!==report.invalidatedPaths.length||
   JSON.stringify([...report.invalidatedPaths].sort())!==JSON.stringify(report.invalidatedPaths)||report.changes.some(change=>!report.invalidatedPaths.includes(change.path)||(change.kind==="RENAMED"&&!report.invalidatedPaths.includes(change.to)))||
   !Array.isArray(report.affectedRequirements)||new Set(report.affectedRequirements.map(row=>row?.requirementId)).size!==report.affectedRequirements.length||report.affectedRequirements.some(row=>!row||typeof row.requirementId!=="string"||

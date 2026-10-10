@@ -64,14 +64,35 @@ test("unmapped changed sources conservatively require every ECO row to be audite
  assert.equal(validateEcosystemCandidateReport(report),true);
 });
 
+test("implementation-only source edits appear in exact content anchor snapshots",t=>{
+ const f=fixture(t);
+ writeFileSync(join(f.root,"extensions","b.ts"),"const implementation = 1;\n");
+ f.git("add",".");f.git("commit","-qm","anchorless source");
+ const baseline=collectBaseline(f.root,f.git("rev-parse","HEAD"));
+ writeFileSync(join(f.root,"extensions","b.ts"),"const implementation = 2;\n");
+ f.git("add",".");f.git("commit","-qm","implementation-only change");
+ const after=collectBaseline(f.root,f.git("rev-parse","HEAD")),drift=detectBaselineDrift(baseline,after);
+ const source=baseline.files.find((row:any)=>row.path==="extensions/b.ts");
+ assert.deepEqual(source.anchors,[]);
+ const mappingBytes=Buffer.from(JSON.stringify({version:1,baselineCommit:baseline.commit,mappings:[]}));
+ const adjudicationBytes=Buffer.from(JSON.stringify({version:1,baselineCommit:baseline.commit,adjudications:[]}));
+ const claimsBytes=Buffer.from(JSON.stringify({version:1,sourceCommit:baseline.commit,rows:Array.from({length:16},(_,index)=>({
+  id:`ECO-${String(index+1).padStart(2,"0")}`,status:"PARTIAL",sourceHashes:[source.sha256],evidence:[]}))}));
+ const report=bindEcosystemDriftReport({baseline,after,drift,mappingBytes,adjudicationBytes,claimsBytes});
+ const anchorDiff=report.anchorDiffs.find((row:any)=>row.path==="extensions/b.ts");
+ assert.deepEqual(anchorDiff.before,[{line:1,kind:"source-content",sha256:source.sha256}]);
+ assert.deepEqual(anchorDiff.after,[{line:1,kind:"source-content",sha256:after.files.find((row:any)=>row.path==="extensions/b.ts").sha256}]);
+ assert.equal(validateEcosystemCandidateReport(report),true);
+});
+
 test("report validation rejects identity edits, evidence edits and auto-adoption",t=>{
  const f=fixture(t),baseline=collectBaseline(f.root,f.commit),after=collectBaseline(f.root,f.commit),drift=detectBaselineDrift(baseline,after);
  const claimsBytes=Buffer.from(JSON.stringify({version:1,sourceCommit:baseline.commit,rows:Array.from({length:16},(_,index)=>({id:`ECO-${String(index+1).padStart(2,"0")}`,status:"PARTIAL",sourceHashes:[baseline.files[0].sha256],evidence:[]}))}));
  const mappings=JSON.stringify({version:1,baselineCommit:baseline.commit,mappings:[]}),adjudications=JSON.stringify({version:1,baselineCommit:baseline.commit,adjudications:[]});
  const report=bindEcosystemDriftReport({baseline,after,drift,mappingBytes:mappings,adjudicationBytes:adjudications,claimsBytes});
  assert.equal(validateEcosystemCandidateReport(report),true);
- assert.equal(report.schema,"asen.ecosystem-drift-report.v2");
- assert.equal(validateEcosystemCandidateReport({...report,schema:"asen.ecosystem-drift-report.v1"}),false,"the expanded report contract has an explicit schema version");
+ assert.equal(report.schema,"asen.ecosystem-drift-report.v3");
+ assert.equal(validateEcosystemCandidateReport({...report,schema:"asen.ecosystem-drift-report.v2"}),false,"the expanded report contract has an explicit schema version");
  assert.equal(validateEcosystemCandidateReport({...report,autoAdopt:true}),false);
  assert.equal(validateEcosystemCandidateReport({...report,inputs:{...report.inputs,candidateCommit:"0".repeat(40)}}),false);
  assert.equal(validateEcosystemCandidateReport({...report,affectedRequirements:[...report.affectedRequirements,{requirementId:"ECO-99",claimStatus:"FULL",invalidatedSourcePaths:[],evidence:[]}]}),false);
