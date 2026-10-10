@@ -20,10 +20,10 @@ export class AgentRuntime{
   const execution=this.dispatcher.dispatch(request);this.#executions.set(request.id,execution);
   void execution.then(()=>{if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);},()=>{if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);});
  }
- async startExplorer(input:{prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"]}):Promise<string>{
+ async startExplorer(input:{prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"]},signal?:AbortSignal):Promise<string>{
   if(!input.session.sessionId||!input.session.projectId)throw new Error("An active Pi session and project are required");
   const request:AgentRequest={id:`agent-${randomUUID()}`,role:"explorer",prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:input.owner??{kind:"user",id:`pi:${input.session.sessionId}`}};
-  await this.store.enqueue(request,request.owner!);
+  await this.store.enqueue(request,request.owner!,signal);
   this.#dispatch(request);
   return request.id;
  }
@@ -33,8 +33,8 @@ export class AgentRuntime{
   if(entry.record.state==="queued"||entry.record.state==="interrupted"){await this.store.cancelled(id,"Cancelled by the owning Pi session");return true;}
   return false;
  }
- async continue(id:string,identity:AgentSessionIdentity):Promise<string>{
-  const request=await this.store.enqueueContinuation(id,identity.sessionId,identity.projectId,{kind:"user",id:`pi:${identity.sessionId}`});
+ async continue(id:string,identity:AgentSessionIdentity,signal?:AbortSignal):Promise<string>{
+  const request=await this.store.enqueueContinuation(id,identity.sessionId,identity.projectId,{kind:"user",id:`pi:${identity.sessionId}`},signal);
   this.#dispatch(request);
   return request.id;
  }

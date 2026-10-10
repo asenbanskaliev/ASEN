@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
+import fsPromises from "node:fs/promises";
+import {syncBuiltinESMExports} from "node:module";
 import {spawnSync} from "node:child_process";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
@@ -47,6 +49,27 @@ test("Todo rejects stale revisions and impossible transitions under concurrent u
  const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Fix issue",one);
  const results=await Promise.allSettled([store.update(todo.taskId,one,1,"running"),store.update(todo.taskId,one,1,"cancelled")]);assert.equal(results.filter(r=>r.status==="fulfilled").length,1);assert.equal(results.filter(r=>r.status==="rejected").length,1);
  const current=(await store.list(one))[0]!.current;await assert.rejects(()=>store.update(todo.taskId,one,1,"planned"),/revision conflict/);await assert.rejects(()=>store.update(todo.taskId,one,current.revision,"planned"),/Invalid task transition/);
+});
+
+test("cancelling an update waiting for the Todo store lock leaves durable state unchanged",async t=>{
+ const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Keep the existing state",one);
+ await writeFile(`${file}.lock`,JSON.stringify({pid:process.pid,token:"live-owner",createdAt:Date.now()}));
+ const controller=new AbortController(),pending=store.update(todo.taskId,one,1,"running",undefined,controller.signal);
+ await new Promise(resolve=>setTimeout(resolve,30));controller.abort();await assert.rejects(pending,error=>(error as Error).name==="AbortError"&&/Todo update cancelled/.test((error as Error).message));
+ assert.equal((await store.list(one))[0]?.current.state,"planned");assert.equal((await store.history(todo.taskId,one)).length,1);
+});
+
+test("cancellation after atomic Todo persistence starts lets the whole transaction commit",{concurrency:false},async t=>{
+ const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Atomic commit boundary",one),originalOpen=fsPromises.open.bind(fsPromises);
+ let notifyWrite!:()=>void,releaseWrite!:()=>void;const writeStarted=new Promise<void>(resolve=>{notifyWrite=resolve;}),allowWrite=new Promise<void>(resolve=>{releaseWrite=resolve;});
+ t.mock.method(fsPromises,"open",async(...args:Parameters<typeof originalOpen>)=>{
+  const handle=await originalOpen(...args);if(String(args[0]).endsWith(".tmp")){const originalWrite=handle.writeFile.bind(handle);t.mock.method(handle,"writeFile",async(...writeArgs:Parameters<typeof handle.writeFile>)=>{notifyWrite();await allowWrite;return originalWrite(...writeArgs);});}return handle;
+ });syncBuiltinESMExports();
+ const controller=new AbortController();let update:Promise<unknown>|undefined;
+ try{
+  update=store.update(todo.taskId,one,1,"running",undefined,controller.signal);await writeStarted;controller.abort();releaseWrite();
+  await update;assert.equal((await store.list(one))[0]?.current.state,"running");assert.deepEqual((await store.history(todo.taskId,one)).map(event=>event.state),["planned","running"]);
+ }finally{releaseWrite();await update?.catch(()=>{});t.mock.restoreAll();syncBuiltinESMExports();}
 });
 
 test("corrupt Todo storage is preserved in quarantine and malformed replays fail closed",async t=>{

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {mkdtemp,realpath,rm} from "node:fs/promises";
+import {mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {createPiExtension} from "../extensions/asen.js";
@@ -19,10 +19,14 @@ function host(){
 
 test("production Pi extension runs and restores session-scoped agent status using durable storage",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-agent-pi-"));t.after(()=>rm(home,{recursive:true,force:true}));const file=join(home,".asen","agents.json"),prior=process.env.ASEN_NO_SKILL_REGISTRY;process.env.ASEN_NO_SKILL_REGISTRY="1";
- const runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:"read-only result"})},first=host();
+ const runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:"read-only result"})},first=host();let second:ReturnType<typeof host>|undefined;
  try{
   createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:file})(first.pi as any);await first.events.get("session_start")![0]!({},first.context());
   for(const name of [...ASEN_AGENT_TOOL_NAMES,...ASEN_TODO_TOOL_NAMES])assert.ok(first.tools.has(name));
+  await writeFile(`${file}.lock`,JSON.stringify({pid:process.pid,token:"live-agent-owner",createdAt:Date.now()}));
+  const startController=new AbortController(),startPending=first.tools.get("asen_agent_start").execute("cancel-before-enqueue",{prompt:"do not enqueue"},startController.signal,()=>{},first.context());
+  await new Promise(resolve=>setTimeout(resolve,30));startController.abort();await assert.rejects(startPending,/Agent task cancelled/);
+  assert.deepEqual((await first.tools.get("asen_agent_status").execute("status-after-abort",{},new AbortController().signal,()=>{},first.context())).details,[]);await rm(`${file}.lock`,{force:true});
   const started=await first.tools.get("asen_agent_start").execute("call-1",{prompt:"inspect this project"},new AbortController().signal,()=>{},first.context());const id=started.details.id;
   let rows:any[]=[],deadline=Date.now()+15_000;while(Date.now()<deadline){rows=(await first.tools.get("asen_agent_status").execute("status",{},new AbortController().signal,()=>{},first.context())).details;if(rows.some(row=>row.id===id&&row.state==="completed"))break;await new Promise(resolve=>setTimeout(resolve,10));}
   assert.ok(rows.some(row=>row.id===id&&row.state==="completed"),"agent runner did not persist completion within 15 seconds");
@@ -32,10 +36,10 @@ test("production Pi extension runs and restores session-scoped agent status usin
   await first.tools.get("asen_todo_update").execute("todo-update",{id:todo.details.taskId,revision:1,state:"running"},new AbortController().signal,()=>{},first.context());
   const done=await first.tools.get("asen_todo_update").execute("todo-done",{id:todo.details.taskId,revision:2,state:"done"},new AbortController().signal,()=>{},first.context());assert.equal(done.details.events.at(-1).state,"done");
   assert.deepEqual((await first.tools.get("asen_todo_list").execute("todo-list",{},new AbortController().signal,()=>{},first.context("other-session"))).details,[]);
-  const second=host();createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:file})(second.pi as any);await second.events.get("session_start")![0]!({},second.context());
+  second=host();createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:file})(second.pi as any);await second.events.get("session_start")![0]!({},second.context());
   const restored=await second.tools.get("asen_agent_status").execute("status",{},new AbortController().signal,()=>{},second.context());assert.ok(restored.details.some((row:any)=>row.id===id&&row.state==="completed"&&row.summary==="read-only result"));
   const restoredTodo=await second.tools.get("asen_todo_list").execute("todo-list",{},new AbortController().signal,()=>{},second.context());assert.equal(restoredTodo.details[0]?.current.state,"done");
- }finally{try{await first.events.get("session_shutdown")![0]!({},first.context());}finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;}}
+ }finally{try{await first.events.get("session_shutdown")![0]!({},first.context());}finally{try{if(second)await second.events.get("session_shutdown")![0]!({},second.context());}finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;}}}
 });
 
 test("Pi session lifecycle recovers only its own running Todo tasks",async t=>{
@@ -55,6 +59,14 @@ test("Pi continue tool requires explicit UI confirmation and cannot cross projec
   const priorStore=await PersistentAgentStore.open(file,()=>"2026-10-10T10:00:00.000Z"),saved={id:"interrupted",role:"explorer" as const,prompt:"inspect safely",repository:process.cwd(),isolationKey:"session-a",owner:{kind:"user" as const,id:"pi:session-a"}};
   await priorStore.store.enqueue(saved,saved.owner);await priorStore.store.running(saved.id,"2026-10-10T10:00:01.000Z");
   createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:file})(state.pi as any);await state.events.get("session_start")![0]!({},state.context());
+  const confirmController=new AbortController();let dialogSignal:AbortSignal|undefined,resolveConfirmation!:(value:boolean)=>void,confirmationStarted!:()=>void;
+  const confirmation=new Promise<boolean>(resolve=>{resolveConfirmation=resolve;}),startedConfirmation=new Promise<void>(resolve=>{confirmationStarted=resolve;});
+  const confirmationPending=state.tools.get("asen_agent_continue").execute("continue-cancel",{id:"interrupted"},confirmController.signal,()=>{},{...state.context(),ui:{confirm:(_title:string,_message:string,options?:{signal?:AbortSignal})=>{dialogSignal=options?.signal;confirmationStarted();return confirmation;}}});
+  await startedConfirmation;assert.equal(dialogSignal,confirmController.signal);confirmController.abort();await assert.rejects(confirmationPending,/Agent task cancelled/);resolveConfirmation(true);await Promise.resolve();
+  const lockController=new AbortController();await writeFile(`${file}.lock`,JSON.stringify({pid:process.pid,token:"live-continuation-owner",createdAt:Date.now()}));
+  const waitingContinuation=state.tools.get("asen_agent_continue").execute("continue-lock-cancel",{id:"interrupted"},lockController.signal,()=>{},state.context());
+  await new Promise(resolve=>setTimeout(resolve,30));lockController.abort();await assert.rejects(waitingContinuation,/Agent task cancelled/);
+  const persisted=JSON.parse(await readFile(file,"utf8"));assert.equal(persisted.entries.length,1);assert.equal(persisted.entries[0]?.record.state,"interrupted");await rm(`${file}.lock`,{force:true});
   const continuation=await state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},state.context());assert.equal(continuation.details.continuedFrom,"interrupted");assert.equal(continuation.details.role,"explorer");
   await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},state.context()),/already has a continuation/);
   await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},{...state.context(),hasUI:false}),/Explicit Pi UI confirmation/);

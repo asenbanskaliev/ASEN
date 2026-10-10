@@ -2,7 +2,19 @@ import {randomUUID} from "node:crypto";
 import {closeSync,fsyncSync,linkSync,lstatSync,openSync,readFileSync,renameSync,rmSync,statSync,writeFileSync} from "node:fs";
 import {link,lstat,open,readFile,rename,rm,stat} from "node:fs/promises";
 
-const delay=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
+const delay=(ms:number):Promise<void>=>new Promise<void>(resolve=>setTimeout(resolve,ms));
+function abortError():Error{const error=new Error("File lock wait cancelled");error.name="AbortError";return error;}
+function throwIfAborted(signal?:AbortSignal):void{if(signal?.aborted)throw abortError();}
+function abortableDelay(ms:number,signal?:AbortSignal):Promise<void>{
+ if(!signal)return delay(ms);
+ throwIfAborted(signal);
+ return new Promise<void>((resolve,reject)=>{
+  const timer=setTimeout(()=>{signal.removeEventListener("abort",onAbort);resolve();},ms);
+  const onAbort=()=>{clearTimeout(timer);signal.removeEventListener("abort",onAbort);reject(abortError());};
+  signal.addEventListener("abort",onAbort,{once:true});
+  if(signal.aborted)onAbort();
+ });
+}
 const syncDelayState=new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
 const syncDelay=(ms:number)=>Atomics.wait(syncDelayState,0,0,ms);
 function alive(pid:number):boolean{try{process.kill(pid,0);return true;}catch(error){return (error as NodeJS.ErrnoException).code==="EPERM";}}
@@ -30,17 +42,18 @@ function createAndClaimSync(lock:string,token:string):void{
 }
 
 /** A bounded cross-process lock for small private JSON transactions. */
-export async function withExclusiveFileLock<T>(target:string,operation:()=>Promise<T>,timeoutMs=30000):Promise<T>{
+export async function withExclusiveFileLock<T>(target:string,operation:()=>Promise<T>,timeoutMs=30000,signal?:AbortSignal):Promise<T>{
  validateTimeout(timeoutMs);
  const lock=`${target}.lock`,token=randomUUID(),deadline=Date.now()+timeoutMs;let held=false,sawContention=false,createRaceRetried=false,inspectionPermissionError:NodeJS.ErrnoException|undefined;
  while(!held){
+  throwIfAborted(signal);
   try{await createAndClaim(lock,token);held=true;}
   catch(error){
    const code=(error as NodeJS.ErrnoException).code;
    if(code!=="EEXIST"){
     if((code==="EPERM"||code==="EACCES")&&sawContention&&!createRaceRetried){
      try{await lstat(lock);}catch(metadataError){
-      if((metadataError as NodeJS.ErrnoException).code==="ENOENT"){createRaceRetried=true;await delay(10);continue;}
+      if((metadataError as NodeJS.ErrnoException).code==="ENOENT"){createRaceRetried=true;await abortableDelay(10,signal);continue;}
      }
     }
     throw error;
@@ -60,10 +73,10 @@ export async function withExclusiveFileLock<T>(target:string,operation:()=>Promi
     }else if(code!=="ENOENT"&&!(error instanceof SyntaxError))throw error;
    }
    if(Date.now()>=deadline)throw new Error("Timed out waiting for private store lock");
-   await delay(10);
+   await abortableDelay(10,signal);
   }
  }
- try{return await operation();}
+ try{throwIfAborted(signal);return await operation();}
  finally{try{const owner=JSON.parse(await readFile(lock,"utf8")) as {token?:unknown};if(owner.token===token){const released=`${lock}.release-${token}`;await rename(lock,released);await rm(released,{force:true});}}catch(error){void error;}}
 }
 

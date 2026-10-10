@@ -8,10 +8,10 @@ import type {TodoContext} from "./todo-store.js";
 const id={type:"string",minLength:1,maxLength:1024},title={type:"string",minLength:1,maxLength:2048},states=["planned","running","blocked","done","cancelled"];
 function cancelled():Error{const error=new Error("Todo update cancelled");error.name="AbortError";return error;}
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted)throw cancelled();}
-async function confirmWithAbort(confirm:()=>Promise<boolean>,signal?:AbortSignal):Promise<boolean>{
+async function confirmWithAbort(confirm:(signal?:AbortSignal)=>Promise<boolean>,signal?:AbortSignal):Promise<boolean>{
  throwIfCancelled(signal);if(!signal)return confirm();let onAbort!:()=>void;
  const aborted=new Promise<never>((_resolve,reject)=>{onAbort=()=>reject(cancelled());signal.addEventListener("abort",onAbort,{once:true});if(signal.aborted)onAbort();});
- try{const result=await Promise.race([Promise.resolve().then(confirm),aborted]);throwIfCancelled(signal);return result;}finally{signal.removeEventListener("abort",onAbort);}
+ try{const result=await Promise.race([Promise.resolve().then(()=>confirm(signal)),aborted]);throwIfCancelled(signal);return result;}finally{signal.removeEventListener("abort",onAbort);}
 }
 async function contextOf(context:any):Promise<TodoContext>{const sessionId=context?.sessionManager?.getSessionId?.(),cwd=context?.cwd;if(typeof sessionId!=="string"||!sessionId||typeof cwd!=="string")throw new Error("ASEN Todo requires the active Pi session and project");return {sessionId,projectId:await realpath(resolve(cwd))};}
 const output=(details:unknown)=>({content:[{type:"text" as const,text:JSON.stringify(details)}],details});
@@ -23,7 +23,7 @@ export function registerTodoTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>
    if(current?.state==="blocked"){
     if(current.revision!==value.revision)throw new Error("Todo revision conflict");
     const title=(item?.title??"blocked task").slice(0,240),reason=(current.reason??"explicit review is required").slice(0,500);
-    if(host?.hasUI!==true||typeof host?.ui?.confirm!=="function"||await confirmWithAbort(()=>host.ui.confirm("Resume blocked ASEN task?",`${title}\n${reason}\nContinue this task in the current session and project?`),signal)!==true)throw new Error("Explicit Pi UI confirmation is required to resume a blocked Todo task");confirmedBlockedResume=true;
+    if(host?.hasUI!==true||typeof host?.ui?.confirm!=="function"||await confirmWithAbort(dialogSignal=>host.ui.confirm("Resume blocked ASEN task?",`${title}\n${reason}\nContinue this task in the current session and project?`,dialogSignal?{signal:dialogSignal}:undefined),signal)!==true)throw new Error("Explicit Pi UI confirmation is required to resume a blocked Todo task");confirmedBlockedResume=true;
    }
   }throwIfCancelled(signal);return output(await active.update(value.id,context,value.revision,value.state as TaskState,confirmedBlockedResume?"User confirmed blocked-task resume in Pi UI":value.reason as string|undefined,signal));}});
  pi.registerTool?.({name:"asen_todo_list",label:"List ASEN Todos",description:"List Todo tasks belonging to the current Pi session and project.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{}},execute:async(_id,_params,_signal,_update,host)=>output(await (await store()).list(await contextOf(host)))});

@@ -88,6 +88,15 @@ test("the synchronous protocol ignores a predecessor tombstone and releases its 
  assert.equal(existsSync(lock),false);assert.deepEqual(readdirSync(directory),[path.basename(tombstone)]);
 });
 
+test("an aborted async lock waiter exits promptly without running its transaction",{timeout:5000},async t=>{
+ const directory=await mkdtemp(path.join(tmpdir(),"asen-lock-abort-")),target=path.join(directory,"data.json"),lock=`${target}.lock`;t.after(()=>rm(directory,{recursive:true,force:true}));
+ await writeFile(lock,JSON.stringify({pid:process.pid,token:"live-owner",createdAt:Date.now()}));
+ const controller=new AbortController();let operations=0;const pending=withExclusiveFileLock(target,async()=>{operations++;return "unexpected";},30000,controller.signal);
+ await new Promise(resolve=>setTimeout(resolve,30));const abortedAt=Date.now();controller.abort();
+ await assert.rejects(pending,error=>(error as Error).name==="AbortError"&&/cancelled/i.test((error as Error).message));
+ assert.ok(Date.now()-abortedAt<1000,"lock cancellation should not wait for the 30 second timeout");assert.equal(operations,0);assert.equal((await readFile(lock,"utf8")).includes("live-owner"),true);
+});
+
 test("the synchronous protocol recovers a stale dead-process lock",async t=>{
  const directory=await mkdtemp(path.join(tmpdir(),"asen-lock-sync-stale-")),target=path.join(directory,"data.json");t.after(()=>rm(directory,{recursive:true,force:true}));
  await writeFile(`${target}.lock`,JSON.stringify({pid:2147483647,token:"dead",createdAt:Date.now()-60000}));

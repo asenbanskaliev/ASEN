@@ -29,10 +29,10 @@ test("cancelling a pending blocked-task confirmation prevents a late approval fr
  await store.update(todo.taskId,session,1,"running");await store.recover(session);
  const tools=new Map<string,any>();registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>store);
  const execute=tools.get("asen_todo_update")!.execute as (...args:any[])=>Promise<unknown>,controller=new AbortController(),host={cwd:project,sessionManager:{getSessionId:()=>session.sessionId},hasUI:true};
- let resolveConfirmation!:(confirmed:boolean)=>void,confirmStarted!:()=>void;
+ let resolveConfirmation!:(confirmed:boolean)=>void,confirmStarted!:()=>void,dialogSignal:AbortSignal|undefined;
  const started=new Promise<void>(resolve=>{confirmStarted=resolve;}),confirmation=new Promise<boolean>(resolve=>{resolveConfirmation=resolve;});
- const pending=execute("call-abort",{id:todo.taskId,revision:3,state:"running"},controller.signal,undefined,{...host,ui:{confirm:()=>{confirmStarted();return confirmation;}}});
- await started;controller.abort();await assert.rejects(pending,/Todo update cancelled/);
+ const pending=execute("call-abort",{id:todo.taskId,revision:3,state:"running"},controller.signal,undefined,{...host,ui:{confirm:(_title:string,_message:string,options?:{signal?:AbortSignal})=>{dialogSignal=options?.signal;confirmStarted();return confirmation;}}});
+ await started;assert.equal(dialogSignal,controller.signal,"Pi should receive the tool signal so it can dismiss the active dialog");controller.abort();await assert.rejects(pending,/Todo update cancelled/);
  resolveConfirmation(true);await Promise.resolve();
  assert.equal((await store.list(session))[0]?.current.state,"blocked");
  assert.deepEqual((await store.history(todo.taskId,session)).map(event=>event.state),["planned","running","blocked"]);

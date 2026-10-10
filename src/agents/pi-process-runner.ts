@@ -49,7 +49,7 @@ const authorityAssets=Object.freeze([
  {source:"src/runtime/workspace-store.ts",target:"src/runtime/workspace-store.ts",sha256:"ac8328ae6beeb281c5278a19debb742aa4ccdfa12fcaaff902e5d871050c6049"},
  {source:"src/runtime/workspace-attribution.ts",target:"src/runtime/workspace-attribution.ts",sha256:"d395916788f69f2a696dbb5e1f0877af9f2decebd1e28d654e8e8253c256fb7a"},
  {source:"src/io/atomic-write.ts",target:"src/io/atomic-write.ts",sha256:"0b5465f1db54b45ba24107daf9a203708c0ed228b646cc092b9947642c40878c"},
- {source:"src/io/exclusive-file-lock.ts",target:"src/io/exclusive-file-lock.ts",sha256:"73ac80f045c6964d593c4bd4fdffcedc6af7e427043d8904f20cfe335f8c5686"},
+ {source:"src/io/exclusive-file-lock.ts",target:"src/io/exclusive-file-lock.ts",sha256:"1921d446891099a9cbf8373a6580f2033e873e89654ee3debebd11c80ff76308"},
  {source:"src/io/private-file.ts",target:"src/io/private-file.ts",sha256:"42d76fe5abfbfbd66f76e310157709890754595d83a63f74cf143110739e1332"},
 ]);
 
