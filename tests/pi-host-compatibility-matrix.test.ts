@@ -128,3 +128,7 @@ test("sparse command inventory fails closed",()=>{
  const rows=new Array(2);rows[1]={name:"other"};
  assert.throws(()=>validatePiCommandCollisions({getCommands:()=>rows},["asen"]),/inventory is malformed/);
 });
+
+test("host version rejects negative major number",()=>{
+ assert.throws(()=>validatePiHost(makeHost(),"-1.1.0"),/known Pi version/);
+});
