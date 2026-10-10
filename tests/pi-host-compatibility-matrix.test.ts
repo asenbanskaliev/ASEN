@@ -136,3 +136,7 @@ test("host version rejects negative major number",()=>{
 test("command inventory accepts multiple distinct registered commands",()=>{
  assert.doesNotThrow(()=>validatePiCommandCollisions({getCommands:()=>[{name:"one"},{name:"two"}]},["asen"]));
 });
+
+test("command collision detected beyond first inventory row",()=>{
+ assert.throws(()=>validatePiCommandCollisions({getCommands:()=>[{name:"other"},{name:"asen"}]},["asen"]),/registration collision/);
+});
