@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+// @ts-expect-error Research-only JavaScript baseline module has no declaration file.
 import {detectBaselineDrift} from "../scripts/ecosystem-baseline.mjs";
 
 test("repeated runtime observations do not duplicate drift reports",()=>{

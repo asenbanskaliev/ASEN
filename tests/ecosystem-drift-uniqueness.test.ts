@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+// @ts-expect-error Research-only JavaScript baseline module has no declaration file.
 import {classifyUniqueContentRenames} from "../scripts/ecosystem-baseline.mjs";
 
 const row=(path:string,sha256:string)=>({path,sha256});
