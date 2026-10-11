@@ -121,6 +121,10 @@ First pending unit is U2: observe the already running Windows jobs, retry only t
 
 Rollback boundary: this reconciliation changes only the four Markdown handoff/tracker reports; all runtime, tests, workflows, lockfile, manifests, claims and historical reports remain untouched. Validate this metadata with structural assertions and diff hygiene, without a new Markdown-only CI dispatch.
 
+## Current continuation after the `8bc84f2` branch update
+
+The user explicitly authorized one non-force fast-forward that published the six local commits from `66259d0` through `8bc84f25e7a53fa6c5d8cfd671896eee78b7193b` to `feat/strict-parity-prerequisites`; local HEAD, origin tracking and GitHub were then verified equal. The user now forbids any further push or GitHub CI dispatch. U2 therefore resumes as an exact local-candidate verification and evidence reconciliation; hosted exact-SHA, cross-platform and provider gates stay pending and cannot be inferred from local results. The prior `4290f7d` handoff below remains historical evidence, not the current candidate identity.
+
 ## Authorization and scope
 
 The user explicitly selected upgrading Pi 1.1 first before resuming ECO-02A preflight. Start from published `fcbe90576339bd9486ca3ba17ce9fe2e8481c58b`. Parent alone commits and publishes to `feat/strict-parity-prerequisites` / draft PR #32. No force push, main mutation, merge, release, paid-model probes, or manual duplicate CI. Use one isolated writer and one CPU-heavy verification at a time.
@@ -130,8 +134,12 @@ Current local SDK is 0.87.1; seven current-runtime jobs pin 0.87.1 or 1.0.0. Off
 ## Tasks
 
 - [x] U1 — Align the development SDK, lockfile, Node requirement and seven current-runtime CI jobs. DONE: source work-unit commit `a413e7e4b1306d3557f0ac1a991f1ecf4eaae885`, tree `401ab3f1c57aa7feb6a5ee992cf7be410534d47a`. Focused 20/20, real-Pi 50/50, memory 6/6 and direct compiler proof passed; final structural clarification 44/44 passed. This closes alignment implementation only, not full or all-platform approval. First observe deterministic RED for package/workflow alignment contracts, then update to development range `^1.1.0` with resolved SDK 1.1.0, regenerate the lockfile using npm and align workflow names/assertions without changing triggers, permissions or credentials. Focused GREEN and typecheck precede the parent work-unit commit.
-- [ ] U2 — Verify the exact frozen 1.1 candidate. IN PROGRESS after U1; exact full-gate candidate is the subsequent tracking-closure commit, whose non-Markdown source must remain identical to `a413e7e`. Run offline actual-CLI/RPC and extension admission checks before one complete retained-source gate, pack/install and independent R1/R2/R3/R4. Report actual failures, platform skips and native unavailability; do not reuse the 0.87.1 full gate as 1.1 evidence.
-- [ ] U3 — Publish the approved alignment batch and resume B2. PENDING U2. Reconcile remote SHA/ancestry, publish non-force once, verify published SHA and observe existing workflows without duplicate dispatch. Record exact work-unit identities; resume preflight only from its accepted aligned base.
+- [ ] U2 — Verify the exact frozen 1.1 candidate. LOCAL BOUNDARY COMPLETE at `8bc84f25e7a53fa6c5d8cfd671896eee78b7193b`; the exact local suite, retained-source audits and pack/install gate passed as recorded below. U2 remains open only for hosted exact-SHA, cross-platform and final aggregate review evidence that is unavailable under the no-push/no-GitHub-CI directive. Do not reuse earlier-SHA gates or infer those results. The cancelled `4290f7d` local verifier and its remote handoff remain historical only.
+- [x] U3 — Publish the current candidate and hand off remaining checks/roadmap. DONE: after the earlier `4290f7d` publication, the user explicitly authorized one later non-force fast-forward from remote `66259d0` to `8bc84f25e7a53fa6c5d8cfd671896eee78b7193b`; local HEAD, origin tracking and GitHub were verified equal. No further push or GitHub CI dispatch is authorized. Publication does not establish U2, all-platform or native approval.
+
+### Exact `8bc84f2` local verification
+
+Independent verification with the retained ecosystem repository available passed `npm run check`: typecheck, 1,193 tests / 1,190 passed / 0 failed / 3 platform skips / 0 cancelled, and every parity/skills/memory/ecosystem/boundary audit. `npm run verify:pack` also passed: 243 files, 28 exports, installed Pi verified, nine visible RPC commands, canonical host 9 commands / 11 tools, zero model calls, `PACK_ENV_BOUNDARY_PASS`, and tarball integrity `sha512-aBZHBASMc19PIqdw7MKMEcGoENgZGii3hlOUxTe9bUQyTdKk1QKfXQzSG/259IwZmMW11NSiyVUV7Ev8/q1axg==`. The three skips remain explicit: Windows symlink permission, nonportable recursive watcher delivery and POSIX private-mode/symlink behavior. Initial/final HEAD, dirty task-document hashes, `.codegraph/` and the preservation stash were unchanged. No hosted workflow or other operating system was invoked, so U2 remains unchecked.
 
 ## Preserved boundaries
 
