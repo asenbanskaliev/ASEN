@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";import test from "node:test";import {execFile} from "node:child_process";import {access,copyFile,mkdir,mkdtemp,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment} from "../src/agents/pi-process-runner.js";
+import assert from "node:assert/strict";import test from "node:test";import {execFile} from "node:child_process";import {access,copyFile,mkdir,mkdtemp,readFile,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment} from "../src/agents/pi-process-runner.js";
 import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {createTestSkillLifecycle} from "./helpers/lifecycle-applicability.js";
 import {Dispatcher} from "../src/agents/dispatcher.js";
@@ -73,6 +73,19 @@ test("Pi runner refuses a candidate-supplied replacement authority extension",as
  await writeFile(join(d,"extensions/authority.ts"),'export default pi => pi.registerCommand("asen-authority-status", {handler: async () => {}});');
  const result=await runner(p).run({id:"tampered",role:"explorer",prompt:"inspect",repository:d});
  assert.equal(result.ok,false);assert.match(result.output,/authority extension integrity/);
+});
+test("Pi pins atomic-write reviewed bytes and rejects tampering before child invocation",async t=>{
+ const marker=join(tmpdir(),`asen-atomic-authority-${process.pid}-${Date.now()}`);
+ const {d,p}=await fixture(`import {writeFileSync} from "node:fs";writeFileSync(${JSON.stringify(marker)},"invoked");let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true}));});`);
+ const atomicPath=join(d,"src/io/atomic-write.ts"),reviewedSource=await readFile(atomicPath,"utf8");
+ t.after(async()=>{await writeFile(atomicPath,reviewedSource);await rm(marker,{force:true});await rm(d,{recursive:true,force:true});});
+ const admitted=await runner(p).run({id:"atomic-reviewed",role:"explorer",prompt:"inspect",repository:d});
+ assert.equal(admitted.ok,true,admitted.output);await access(marker);await rm(marker);
+ await writeFile(atomicPath,reviewedSource+"\n// tampered fixture\n");
+ const rejected=await runner(p).run({id:"atomic-tampered",role:"explorer",prompt:"inspect",repository:d});
+ assert.equal(rejected.ok,false);assert.match(rejected.output,/authority extension integrity/);
+ await assert.rejects(()=>access(marker),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
+ await writeFile(atomicPath,reviewedSource);
 });
 test("Pi runner loads policy from the configured ASEN package root, not the project",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,message:f.message}));});');
@@ -169,10 +182,11 @@ test("Pi cancellation settles its process tree and policy cleanup before returni
 });
 
 test("Pi timeout, output overflow and forbidden tools all settle the descendant process tree",{timeout:process.platform==="win32"?300_000:45_000},async t=>{
+ const runnerTimeoutMs=process.platform==="win32"?75_000:10_000,fixtureLifetimeMs=Math.max(60_000,runnerTimeoutMs+30_000);
  for(const mode of ["timeout","overflow","tool"] as const){
   const marker=join(tmpdir(),`asen-descendant-${mode}-${process.pid}-${Date.now()}.json`);t.after(()=>rm(marker,{force:true}));
-  const body=`import {spawn} from "node:child_process";import {writeFileSync} from "node:fs";const marker=process.argv[2],policy=process.argv[process.argv.indexOf("--extension")+1],child=spawn(process.execPath,["-e","setTimeout(()=>{},60000)"],{stdio:"ignore"});writeFileSync(marker,JSON.stringify({pid:child.pid,policy}));let input="";process.stdin.on("data",chunk=>{input+=chunk;let end;while((end=input.indexOf("\\n"))>=0){const request=JSON.parse(input.slice(0,end));input=input.slice(end+1);if(request.type!=="prompt")continue;${mode==="overflow"?'process.stdout.write("x".repeat(10000)+"\\n");':mode==="tool"?'console.log(JSON.stringify({type:"tool_execution_start",id:request.id,toolName:"read"}));':""}}});setTimeout(()=>{},60000);`;
-  const {d,p}=await fixture(body),runnerOptions={command:process.execPath,rpcArgs:[],extraArgs:[p,marker],timeoutMs:process.platform==="win32"?75_000:10_000,maxOutputBytes:mode==="overflow"?512:1_000_000,noTools:mode==="tool"};
+  const body=`import {spawn} from "node:child_process";import {writeFileSync} from "node:fs";const marker=process.argv[2],policy=process.argv[process.argv.indexOf("--extension")+1],child=spawn(process.execPath,["-e","setTimeout(()=>{},${fixtureLifetimeMs})"],{stdio:"ignore"});writeFileSync(marker,JSON.stringify({pid:child.pid,policy}));let input="";process.stdin.on("data",chunk=>{input+=chunk;let end;while((end=input.indexOf("\\n"))>=0){const request=JSON.parse(input.slice(0,end));input=input.slice(end+1);if(request.type!=="prompt")continue;${mode==="overflow"?'process.stdout.write("x".repeat(10000)+"\\n");':mode==="tool"?'console.log(JSON.stringify({type:"tool_execution_start",id:request.id,toolName:"read"}));':""}}});setTimeout(()=>{},${fixtureLifetimeMs});`;
+  const {d,p}=await fixture(body),runnerOptions={command:process.execPath,rpcArgs:[],extraArgs:[p,marker],timeoutMs:runnerTimeoutMs,maxOutputBytes:mode==="overflow"?512:1_000_000,noTools:mode==="tool"};
   const pending=new PiProcessRunner(runnerOptions).run({id:`stop-${mode}`,role:"explorer",prompt:"wait",repository:d});
   t.after(async()=>{await pending.catch(()=>{});});
   const {readFile}=await import("node:fs/promises");let state:{pid:number;policy:string}|undefined;const deadline=Date.now()+(process.platform==="win32"?60_000:20_000);

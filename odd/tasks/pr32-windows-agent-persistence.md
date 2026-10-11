@@ -1,7 +1,7 @@
 # PR32 Windows agent persistence
 
 ## Goal and authorization
-Fix the Windows durable agent-completion failure on PR #32, then assess current project phase and remaining FULL parity prerequisites. Source changes are authorized. Human-activated YOLO standing permission now permits ordinary scoped commits and non-force publication; no merge, destructive operations, scope expansion, or provider-consent substitution is authorized. Publication to an ambiguous destination still requires clarification. Do not change existing worktrees or their local edits.
+Fix the Windows durable agent-completion failure on PR #32, then assess current project phase and remaining FULL parity prerequisites. Source changes are authorized. Human-activated YOLO standing permission permits ordinary scoped local commits. The latest explicit user instruction forbids push and launching remote CI, overriding standing publication permission. No merge, destructive operations, provider-consent substitution, or unbounded ecosystem changes are authorized. The user also requested optimized closure of ecosystem-strict-parity gaps; map dependencies and derive bounded work units before further source writes. Do not change existing worktrees or their local edits.
 
 ## Baseline and problem
 - Base: `66259d0323564c86315e80b9e66d6ef7ff5cd285`, fetched `origin/feat/strict-parity-prerequisites`.
@@ -15,8 +15,9 @@ Source map confirms agent-store mutations already hold an exclusive lock and the
 
 ## Tasks
 - [x] W1 — Map persistence mechanism and implement the smallest tested Windows-safe fix. Worker completed; parent inspected source diff and focused evidence. Work-unit commit recorded below after creation.
-- [ ] W2 — Independently verify focused regression, runtime behavior, typecheck and applicable broader/package checks; run native review under the enabled user-owned switch. **In progress: independent full/package verification being delegated.**
-- [ ] W3 — Assess authoritative project phase and remaining FULL gaps; recommend ordered next work without implementing new scope.
+- [ ] W2 — Independently verify focused regression, runtime behavior, typecheck and applicable broader/package checks; run native review under the enabled user-owned switch. **Blocked pending W2a: broader verification failed on candidate-caused authority-asset pin drift; independent corrected-candidate verification remains required.**
+- [ ] W2a — Synchronize only the reviewed atomic-write authority-asset digest and add a meaningful admission/tamper regression. **Focused implementation verified: reviewed pin synchronized, tamper regression passes, pre-existing fixture lifetime corrected, runner suite 44/44. Work-unit commit and independent corrected-candidate global verification pending.** Source surfaces: `src/agents/pi-process-runner.ts` and `tests/pi-process-runner.test.ts`. No authority bypass, dynamic trust, refresh of unrelated pins, or changed child permissions. Independently confirmed pre-existing timeout fixture lifetime must also be corrected in the same test file without increasing runner/test deadlines or weakening cleanup.
+- [ ] W3 — Assess authoritative project phase and remaining FULL gaps in `odd/tasks/ecosystem-strict-parity.md`; derive an optimized dependency-ordered execution plan and bounded next source scope. Preparation: read-only scout delegated while local W2 verification runs. Do not push or launch remote CI.
 
 ## Acceptance and evidence
 W1: deterministic regression fails before the fix and passes afterward; error-specific bounded behavior does not lose or corrupt durable state. Existing runtime assertions remain meaningful.
@@ -27,13 +28,52 @@ W3: cite repository task/status/evidence sources for current phase and each rema
 - Node `v24.14.0`, npm `11.9.0`; target worktree dependencies not present at initial inspection.
 - Review mode: on, inherited from global configuration.
 - Existing local changes preserved in the original audit worktree and prior feature worktree.
-- W1 work-unit commit: being created under human-activated YOLO standing permission; identity recorded immediately afterward.
+- W1 work-unit commit: `75f17e20e20bb0544b2a8603fab22acc7be52c8f` — `fix(io): retry transient Windows atomic replacement failures` (source, regression tests, and this task document).
 - Worker evidence: `npm ci` installed 123 packages, zero vulnerabilities. RED atomic suite: 12 pass, 3 fail before source changes. GREEN atomic suite: 15 pass, zero fail. Focused atomic/store/Pi runtime suite: 33 pass, zero fail. `npm run typecheck` and `git diff --check` passed.
 - Retry policy: Windows commit-stage EPERM only; initial rename plus five retries delayed 10/20/40/80/160 ms (310 ms total). Retain old destination and the same temporary file between attempts; permanent failure remains bounded and cleans only owned temporary data. Other error codes/stages and non-Windows EPERM fail immediately.
-- Scoped diff: 2 source/test files, 177 additions and 2 deletions. Remote CI, independent full/package verification, and native review remain pending.
+- Scoped diff: 2 source/test files, 177 additions and 2 deletions. Remote CI remains unrun/unproven by explicit user instruction; native review is blocked before lineage creation as recorded below.
+- Independent focused verification: atomic/store/Pi runtime 33 passed, zero failed/skipped.
+- Independent `npm run check`: exit 1. Typecheck passed; 1,188 tests total, 1,155 passed, 27 failed, 6 skipped. All 27 failed in `tests/pi-process-runner.test.ts`, shared symptom `pi authority extension integrity check failed`; two process-settlement cases exhausted roughly 60 seconds. Read-only incident diagnosis now proves candidate-caused integration drift: the runner retains the baseline atomic-write hash after W1 changed its reviewed dependency. Subsequent six audit commands did not execute because the test command failed.
+- Independent `npm run verify:pack`: exit 0; build/prepack, 243 files, 28 public exports, packed installation and installed Pi verified. RPC host 9 commands / 11 tools, zero model invocations; `PACK_ENV_BOUNDARY_PASS`.
+- Separate retained-source verification after process-local baseline recovery: `tests/ecosystem-baseline.test.ts` 25 passed, zero failed/skipped. Earlier full-suite retained-source skips remain disclosed and are not retrospectively converted to PASS. Other skips: Windows-unavailable symlink behavior, nonportable watcher delivery and POSIX-only private history.
+- Independent initial/final `git diff --check` passed; only parent task-document modifications and preserved `.codegraph/` remain outside the committed source candidate.
 - Mirror: initial file and Engram observation 15171 read back; synchronize updated task document after each transition.
 - Source evidence: `src/io/atomic-write.ts:86-92` attempts one rename; agent-store lock spans mutation. A transient Windows lock remains a hypothesis, not a proven process identity.
 - Authorized self-checks: install `npm ci`; RED `node --import tsx --test tests/atomic-write.test.ts`; GREEN `node --import tsx --test --test-concurrency=1 tests/atomic-write.test.ts tests/agent-store.test.ts tests/pi-agent-runtime.test.ts`; `npm run typecheck`.
 
+## Authority integration incident evidence
+- `src/agents/pi-process-runner.ts:47-55` pins atomic-write to baseline normalized SHA256 `0b5465f1db54b45ba24107daf9a203708c0ed228b646cc092b9947642c40878c`; reviewed candidate Git/worktree identity is `dda584a5c4b6f54dbb86968e38211ee6cf5cbd570e82b48294c93e14abb1b1c7`.
+- Integrity preflight rejects the candidate before spawning Pi. Twenty-five failures are direct/downstream; two readiness waits cannot succeed because no child starts.
+- Exact immutable Git comparison confirms only atomic-write changed among the pinned assets, authority, runner and runner tests. CRLF normalization, generated artifacts, dependency resolution and fixture environment were refuted as causes.
+- Targeted RED witness: `node --import tsx --test --test-name-pattern="^Pi RPC adapter correlates request id$" tests/pi-process-runner.test.ts` — 1 test, 0 passed, 1 failed, exit 1.
+- Parent inspected atomic-write retry diff and integrity comparison before authorizing this single digest synchronization. Keep all unrelated asset/policy digests unchanged and preserve fail-closed tamper rejection.
+- W2a worker updated only the atomic-write asset pin and added a paired temporary-fixture regression. Parent source/test diff inspection confirms 15 additions / 2 deletions across runner/tests; authorityDigest, other asset pins, child permissions and timeouts unchanged.
+- RED: original adapter witness and new paired admission/tamper regression each failed 0/1 before pin sync. GREEN: each passed 1/1. Changed fixture bytes reject before marker creation; fixture-only content restored. Recomputed normalized digest matches independently reviewed hash.
+- W2a focused runner suite: 44 tests, 43 passed, 1 failed. `Pi timeout, output overflow and forbidden tools all settle the descendant process tree` produced `pi correlated response missing` instead of expected timeout. Do not classify as unrelated/environmental without evidence. Typecheck and diff check passed; W2a not committed/complete.
+- Independent isolated settlement RED reproduced 1 selected / 0 passed / 1 failed, exit 1, at 61,507.6406 ms (overall 104,691.0156 ms), without a second retry. Exact baseline comparison proves a pre-existing fixture mismatch: Windows runner timeout 75,000 ms but parent and descendant natural lifetime 60,000 ms. Successful natural close therefore reports missing correlated response before timeout. Candidate pin/source code did not introduce this behavior.
+- Authorized minimum test-only correction: derive parent/descendant fixture lifetime beyond the unchanged runner timeout with explicit margin, preserving natural-lifetime-before-termination assertions and all timeout/overflow/tool cleanup checks. No production runner behavior or larger runner/test timeout. Worker reuses exact observed RED rather than repeating the unchanged 100-second failure. Pending residual observation: command survived about 43 seconds after assertion; do not claim unexplained cleanup fixed without corrected test evidence.
+- Native ASSESS of pending W2a changes remains unassessable due undeclared untracked scope; high-risk fallback requires self-verification plus independent verifier, both retained. No approval is inferred.
+
+## Ecosystem preparation findings
+- Source map completed: operational Phase 9 (`docs/architecture/v1-phases.md:30-33`) differs from parity prerequisites ECO-01C then ECO-02A (`odd/tasks/ecosystem-strict-parity.md:351-369`). W2 remains pending for this local candidate.
+- Manifest admits 16 PARTIAL / 0 FULL. Empty row-level receipt arrays do not erase historical tests; historical evidence does not automatically transfer to this candidate.
+- Optimized dependency order: exact-candidate reliability -> ECO-01C actual normative-contract inventory -> ECO-02A supported public-host behavior and explicit limits -> runtime families -> ECO-15/16 reconciliation and coherent final evidence.
+- Reuse existing exact-span runtime-edge/source-map validation and drift invalidation. Do not build a parallel governance layer or amend seven files before establishing necessity.
+- First bounded candidate family: presentation registrations under frozen source `ECO-SRC-6c28d7b99a511610`, `extensions/startup-banner.ts`, mapped references 5/6/7. Three registration spans are a structural denominator only; actual observable semantics require exact frozen bytes and any behavior helper dependencies.
+- Pinned source evidence recovered and independently verified using the existing unchanged preparation helper, with immutable Git reads. Commit/tree, source blob and all three complete span hashes matched. No reference checkout/execution, tests, build or CI occurred.
+- Three registration factories instantiate four command endpoints. Exact normative dependency spans include types/presets 14-25, config path/normalization/read/write 71-87 and 110-122, notifications 580-589 and name bindings 643-646. Startup rendering 648 onward is separate; registration-only metadata must not claim render/lifecycle equivalence.
+- Next ECO01C scope remains normative mapping and existing validator/tests, not ECO14 command implementation. Recovered bare repo is private operational state recorded in Engram, never a committed absolute locator.
+- Local native review preflight offered START, but committed-range START over base `66259d0` returned `native-start-retained-selection-candidate-mismatch`, `mutation_performed:false`, no lineage. Required continuation: `inspect-and-resolve-the-current-intended-untracked-selection`. No replay, fabricated approval or review of only the ambient task-document diff is permitted. Native review remains blocked/pending while independent local verification continues.
+- Engram canonical mirror 14999 was retrieved and is stale relative to repository top-of-file checkpoints. Retain historical evidence; reconcile from current file before canonical ECO writes. The memory tool truncated the old mirror, so full old-document readback is not yet claimed.
+- Late sibling registration veto lacks a demonstrated public Pi contract; retain that limitation rather than invent private hooks or promote claims.
+- The sole ecosystem execution backlog remains `odd/tasks/ecosystem-strict-parity.md`; these findings prepare its next unit and do not create a competing ECO queue.
+
 ## Next step
-Record W1 commit, receive independent verification, run native review through exact provider continuations, then assess project phase and FULL gaps read-only. Do not merge or change upstream parity claims based only on local tests.
+Resolve the shared Pi authority integrity failure with read-only incident evidence first; distinguish checkout/materialization issues from code defects before deriving a fix. Do not rerun the completed full suite unchanged. After the reliability gate, reconcile canonical ecosystem tracker/memory and implement the bounded normative mapping unit.
+
+## W2a corrected focused evidence
+- Settlement fixture now derives lifetime `max(60,000 ms, runnerTimeoutMs + 30,000 ms)` for both parent and descendant. Windows lifetime 105 seconds; other platforms retain 60 seconds.
+- Runner timeouts remain 75 seconds on Windows / 10 seconds elsewhere. Test deadlines remain 300/45 seconds and readiness deadlines 60/20 seconds. Production termination and integrity code unchanged except the reviewed dependency digest.
+- Existing isolated RED reused as observed evidence, not repeated. Corrected isolated GREEN: 1/1, 78.799 seconds; command finished about 2.95 seconds afterward, no lingering-process failure observed.
+- Full focused runner GREEN: 44 passed, zero failed/skipped. Typecheck and diff checks pass. Scoped integration diff: 2 files, 18 additions / 4 deletions, parent inspected.
+- Earlier 43/44 and full-suite 27 failures remain historical candidate-bound evidence. Corrected-candidate full check/audits/package and native review are not yet PASS. Do not push, launch remote CI, merge, or change FULL claims based only on local tests.
