@@ -14,7 +14,7 @@ Preserve the stash, `.codegraph/`, and unrelated changes. Keep one writer and on
 
 ## Publish a blocked WIP checkpoint
 
-The candidate adds a portable test-runner watchdog: 600 s per chunk, 1,200 s overall, positive validated overrides no greater than Node's `2,147,483,647` ms timer maximum, exit `124` that is never PASS, bounded TERM/KILL cleanup, an honest unconfirmed-cleanup result, and late-error guards. On Windows only, the retained baseline test moves into the existing serialized process-heavy bucket; global concurrency, other operating systems, and exactly-once file selection are unchanged.
+The WIP candidate adds a portable test-runner watchdog: 600 s per chunk, 1,200 s overall, positive validated overrides no greater than Node's `2,147,483,647` ms timer maximum, exit `124` that is never PASS, bounded TERM/KILL cleanup, an honest unconfirmed-cleanup result, and late-error guards. On Windows only, the retained baseline test moves into the existing serialized process-heavy bucket; global concurrency, other operating systems, and exactly-once file selection are unchanged.
 
 - Writer classification: RED 15/16, GREEN 16/16.
 - Independent Phase 1 `mv4cxlnm-2c-huys`: runner 16/16 PASS in 391.2254 ms; typecheck 18 s; 509-path boundary audit 2 s; diff hygiene PASS.
@@ -29,6 +29,8 @@ Code review evidence and functional PASS are separate gates. This checkpoint is 
 - Native committed-only review: `review-24fb23d5e025249c`, one `reliability_review/pi_host_relay`, state `correction_required`. CRITICAL `R3-default-chunk-timeout` reports that the new 600 s default cuts the documented normal 144-file Windows `remaining` chunk, returns 124 before completion, and prevents the serial group. There is no approval, acknowledgement, authority consumption, or submitted correction plan.
 - Full-suite result: **BLOCKED**, as recorded above; focused checks do not override it.
 - Published remote head: read the Git remote and the final PR checkpoint comment after publication. This guide does not assert push success or a remote SHA.
+
+Current follow-up correction splits the Windows ordinary test bucket into bounded `remaining-*` chunks of at most 50 files while preserving the exact file set and the serial `process-heavy` group. Local evidence passed focused runner RED/GREEN, typecheck, retained-source `npm test` 1217/1217, parity/skills/skill-parity/memory audits, retained-source ecosystem audit, and upstream-boundary audit. This resolves the local blocker only; exact new-SHA CI, native review and later FULL-1b witness work remain pending.
 
 The original frozen review remains intact; do not reset, recover, abandon, or disable review authority to manufacture green status. A fresh workspace or clone must inspect native authority locally. The review lineage identifier above is historical context, not portable authority.
 

@@ -80,10 +80,25 @@ test("Windows separates the exact process-heavy files into a serial second run",
  const files=["tests/z.test.ts",...processFiles,"tests/a.test.ts"];
  const runs=planTestRuns({platform:"win32",testFiles:files,nodeOptions:["--test-name-pattern=timeout"]});
  assert.deepEqual(runs,[
-  {name:"remaining",args:["--import","tsx","--test","--test-name-pattern=timeout","tests/a.test.ts","tests/z.test.ts"]},
+  {name:"remaining-1",args:["--import","tsx","--test","--test-name-pattern=timeout","tests/a.test.ts","tests/z.test.ts"]},
   {name:"process-heavy",args:["--import","tsx","--test","--test-name-pattern=timeout","--test-concurrency=1",...processFiles]},
  ]);
  assert.deepEqual(runs.flatMap(run=>run.args.filter(arg=>arg.endsWith(".test.ts"))).sort(),files.sort());
+});
+
+test("Windows splits ordinary test files into bounded chunks before the serial process-heavy run",()=>{
+ const ordinary=Array.from({length:121},(_,index)=>`tests/ordinary-${String(index).padStart(3,"0")}.test.ts`);
+ const files=[...ordinary,...processFiles];
+ const runs=planTestRuns({platform:"win32",testFiles:files,nodeOptions:[]});
+ assert.equal(runs.at(-1)?.name,"process-heavy");
+ assert.equal(runs.at(-1)?.args.includes("--test-concurrency=1"),true);
+ const ordinaryRuns=runs.slice(0,-1);
+ assert.equal(ordinaryRuns.length,3);
+ for(const run of ordinaryRuns){
+  assert.match(run.name,/^remaining-\d+$/);
+  assert.ok(run.args.filter((arg:string)=>arg.endsWith(".test.ts")).length<=50);
+ }
+ assert.deepEqual(runs.flatMap((run:{args:string[]})=>run.args.filter((arg:string)=>arg.endsWith(".test.ts"))).sort(),files.sort());
 });
 
 test("the checked-in Windows plan selects every existing test exactly once",async()=>{
