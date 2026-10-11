@@ -165,7 +165,7 @@ test("watchdog limits reject values above Node's maximum timer delay",()=>{
 test("watchdog override parsing accepts only positive integer milliseconds",()=>{
  assert.deepEqual(resolveWatchdogLimits({}),{
   chunkMs:600_000,
-  overallMs:1_200_000,
+  overallMs:1_800_000,
   termGraceMs:5_000,
   killWaitMs:2_000,
  });

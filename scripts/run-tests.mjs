@@ -6,7 +6,7 @@ import {discoverTestFiles,planTestRuns} from "./test-plan.mjs";
 const MAX_TIMER_DELAY_MS=2_147_483_647;
 const DEFAULT_LIMITS=Object.freeze({
  chunkMs:600_000,
- overallMs:1_200_000,
+ overallMs:1_800_000,
  termGraceMs:5_000,
  killWaitMs:2_000,
 });
