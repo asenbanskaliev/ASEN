@@ -23,6 +23,7 @@ export const WINDOWS_PROCESS_TESTS=Object.freeze([
 ]);
 
 const WINDOWS_REMAINING_CHUNK_SIZE=50;
+const WINDOWS_PROCESS_CHUNK_SIZE=4;
 const comparePaths=(left,right)=>left<right?-1:left>right?1:0;
 
 export async function discoverTestFiles(root){
@@ -61,6 +62,9 @@ export function planTestRuns({platform,testFiles,nodeOptions}){
   const chunk=remaining.slice(index,index+WINDOWS_REMAINING_CHUNK_SIZE);
   runs.push({name:`remaining-${Math.floor(index/WINDOWS_REMAINING_CHUNK_SIZE)+1}`,args:[...base,...chunk]});
  }
- runs.push({name:"process-heavy",args:[...base,"--test-concurrency=1",...WINDOWS_PROCESS_TESTS]});
+ for(let index=0;index<WINDOWS_PROCESS_TESTS.length;index+=WINDOWS_PROCESS_CHUNK_SIZE){
+  const chunk=WINDOWS_PROCESS_TESTS.slice(index,index+WINDOWS_PROCESS_CHUNK_SIZE);
+  runs.push({name:`process-heavy-${Math.floor(index/WINDOWS_PROCESS_CHUNK_SIZE)+1}`,args:[...base,"--test-concurrency=1",...chunk]});
+ }
  return runs;
 }
