@@ -876,6 +876,7 @@ export function verifyNormativeRuntimeInventory(repository,baseline,adjudication
   const plural=mapping?.normativeInventories,singleton=mapping?.normativeInventory;
   if(plural!==undefined&&(!Array.isArray(plural)||!plural.length))throw new Error("Invalid plural normative inventory envelope");
   if(plural!==undefined&&singleton!==undefined&&!isDeepStrictEqual(plural[0],singleton))throw new Error("Normative singleton/plural inventory mismatch");
+  if(plural===undefined&&singleton!==undefined&&singleton.familyId!==normativePresentationAuthority.familyId)throw new Error("Invalid legacy singleton normative family");
   const inventories=plural??(singleton===undefined?[]:[singleton]);
   if(!inventories.length)throw new Error("Missing normative inventory");
   const familyIds=new Set(),total={families:inventories.length,registrations:0,endpoints:0};

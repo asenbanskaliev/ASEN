@@ -313,6 +313,8 @@ test("plural normative inventory binds presentation and CodeGraph families to fr
   const singletonOnly=structuredClone(mappings);delete singletonOnly.normativeInventories;
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,singletonOnly),
     {families:1,registrations:3,endpoints:4});
+  const invalidLegacy=structuredClone(mappings);invalidLegacy.normativeInventory=invalidLegacy.normativeInventories[1];delete invalidLegacy.normativeInventories;
+  assert.throws(()=>verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,invalidLegacy),/legacy singleton/i);
   const pluralOnly=structuredClone(mappings);delete pluralOnly.normativeInventory;
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,pluralOnly),
     {families:2,registrations:4,endpoints:7});
