@@ -821,7 +821,14 @@ const normativeTodoToolAuthority={
   registrations:[["todo.tool",12,168,203,"7d73a31a69f345bdd676a260d1a01a8c480cb792249fc7b8fe3bcc679324da2c"]],
   endpoints:[["todo.tool","todo.tool",12,169,"b7c14a71a207c2b84801c5d610ad1b957653cd05836750f6b1e187b3a25c8dbc",todoToolObligations,["tool-name-import","tool-parameters"]]],
 };
-const normativeAuthorities=new Map([normativePresentationAuthority,normativeCodeGraphAuthority,normativeAgentsAuthority,normativeOrchestratorReviewAuthority,normativeWorkspaceChangeAuthority,normativeTodoToolAuthority].map(authority=>[authority.familyId,authority]));
+const relayListenerObligations=["the exact imported event identifier is the first argument of the exact subscription and the callback is its second argument"];
+const normativeSessionChangeRelayAuthority={
+  familyId:"session-change.relay-listener.v1",sourceId:"ECO-SRC-8420ca03583cfe7b",objectId:"6ed00aef22da1cfaa2d2d6dcaf9746ad758cc64f",bytes:6833,sha256:"dd3fe029f18791462344a0ac0fc87aab0f8a657d0226d8f676aad4c724f8658d",kind:"relay-listener",
+  dependencies:[["session-change-relay-import",8,8,"080bdde371776cb2084bf9d6dbad6cec698b4b75f7e472de21425f9e2f79dbe3"]],
+  registrations:[["session-change.relay-listener",5,39,47,"1123875c62b7b65b57c7abd6546401d32d55a5cd7c976ef387674d92c18c0c5e"]],
+  endpoints:[["session-change.relay","session-change.relay-listener",5,39,"5fc3bab1a53390ce652bb6650a1cf85c5e5bd5077ac56876a30a8027eadb0ff8",relayListenerObligations,["session-change-relay-import"]]],
+};
+const normativeAuthorities=new Map([normativePresentationAuthority,normativeCodeGraphAuthority,normativeAgentsAuthority,normativeOrchestratorReviewAuthority,normativeWorkspaceChangeAuthority,normativeTodoToolAuthority,normativeSessionChangeRelayAuthority].map(authority=>[authority.familyId,authority]));
 
 function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
   const source=inventory?.source,sourceKeys=["sourceId",...(authority.sourcePath===undefined?[]:["path"]),"objectId","bytes","sha256"];
@@ -853,7 +860,7 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
   const visit=node=>{if(ts.isCallExpression(node))calls.push(node);ts.forEachChild(node,visit);};visit(parsed);
   const callLines=node=>[parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line+1,parsed.getLineAndCharacterOfPosition(node.getEnd()).line+1];
   const descendants=(root,predicate)=>{const found=[];const find=node=>{if(predicate(node))found.push(node);ts.forEachChild(node,find);};if(root)find(root);return found;};
-  let operationProperties,toolFactorySymbol,toolHelperSymbol,toolHelperCalls,toolHelperRegistration,reviewToolRegistrations,installRegistration,workspaceSubscription,todoRegistration,todoNameProperty;
+  let operationProperties,toolFactorySymbol,toolHelperSymbol,toolHelperCalls,toolHelperRegistration,reviewToolRegistrations,installRegistration,workspaceSubscription,todoRegistration,todoNameProperty,relaySubscription;
   if(authority.kind==="operation-tool"){
     const declarations=parsed.statements.filter(ts.isVariableStatement).flatMap(statement=>[...statement.declarationList.declarations]),
       objectInitializer=row=>ts.isObjectLiteralExpression(row?.initializer)?row.initializer:ts.isAsExpression(row?.initializer)&&ts.isObjectLiteralExpression(row.initializer.expression)?row.initializer.expression:null,
@@ -958,6 +965,20 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
       parameters.length!==1||!ts.isIdentifier(parameters[0].initializer)||checker.getSymbolAtLocation(parameters[0].initializer)!==parameterSymbol)
       throw new Error("Invalid todo tool registration binding");
     todoRegistration=registration;todoNameProperty=names[0];
+  }else if(authority.kind==="relay-listener"){
+    const imports=parsed.statements.filter(ts.isImportDeclaration).filter(row=>ts.isStringLiteralLike(row.moduleSpecifier)&&row.moduleSpecifier.text==="./session-changes.ts"),
+      specifiers=imports[0]?.importClause?.namedBindings&&ts.isNamedImports(imports[0].importClause.namedBindings)?[...imports[0].importClause.namedBindings.elements]:[],
+      relaySpecifiers=specifiers.filter(row=>row.name.text==="SESSION_CHANGE_RELAY"&&!row.propertyName&&callLines(row.name)[0]===8),relaySymbol=relaySpecifiers[0]&&checker.getSymbolAtLocation(relaySpecifiers[0].name);
+    if(imports.length!==1||relaySpecifiers.length!==1||!relaySymbol)throw new Error("Invalid session-change relay import binding");
+    const declarations=descendants(parsed,node=>ts.isVariableDeclaration(node)&&ts.isIdentifier(node.name)&&node.name.text==="off"),declaration=declarations[0],initializer=declaration?.initializer,
+      exactSubscription=call=>ts.isCallExpression(call)&&ts.isPropertyAccessExpression(call.expression)&&call.expression.name.text==="on"&&ts.isPropertyAccessExpression(call.expression.expression)&&
+        call.expression.expression.name.text==="events"&&ts.isIdentifier(call.expression.expression.expression)&&call.expression.expression.expression.text==="pi",
+      subscriptions=calls.filter(call=>exactSubscription(call)&&ts.isIdentifier(call.arguments[0])&&checker.getSymbolAtLocation(call.arguments[0])===relaySymbol),callback=initializer?.arguments?.[1];
+    if(declarations.length!==1||!(declaration.parent.flags&ts.NodeFlags.Const)||!exactSubscription(initializer)||subscriptions.length!==1||subscriptions[0]!==initializer||
+      JSON.stringify(callLines(initializer))!==JSON.stringify([39,47])||initializer.arguments.length!==2||!ts.isIdentifier(initializer.arguments[0])||
+      checker.getSymbolAtLocation(initializer.arguments[0])!==relaySymbol||!ts.isArrowFunction(callback)||JSON.stringify(callLines(callback))!==JSON.stringify([39,47]))
+      throw new Error("Invalid session-change relay-listener subscription binding");
+    relaySubscription=initializer;
   }
   const registrationIds=new Set(),referenceKeys=new Set(),registrationSymbols=new Map();
   if(inventory.registrations.length!==authority.registrations.length)throw new Error("Normative registration coverage mismatch");
@@ -972,7 +993,10 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
     registrationIds.add(row.id);referenceKeys.add(key);spanHash(span,"registration");
     const toolRegistration=["operation-tool","tool-helper","todo-tool"].includes(authority.kind)||authority.kind==="review-control"&&index<3;
     const registrationName=toolRegistration?"registerTool":"registerCommand";
-    const matches=authority.kind==="event-listener"?[workspaceSubscription].filter(call=>call&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine])):
+    let listener;
+    if(authority.kind==="event-listener")listener=workspaceSubscription;
+    else if(authority.kind==="relay-listener")listener=relaySubscription;
+    const matches=listener?[listener].filter(call=>JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine])):
       calls.filter(call=>ts.isPropertyAccessExpression(call.expression)&&call.expression.name.text===registrationName&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
     if(authority.kind==="operation-tool"){
       const argument=matches[0]?.arguments[0];
@@ -984,6 +1008,8 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
       if(matches.length!==1||(index<3?!reviewToolRegistrations.includes(matches[0]):matches[0]!==installRegistration))throw new Error("Normative review registration binding mismatch");
     }else if(authority.kind==="event-listener"){
       if(matches.length!==1||matches[0]!==workspaceSubscription)throw new Error("Normative event registration binding mismatch");
+    }else if(authority.kind==="relay-listener"){
+      if(matches.length!==1||matches[0]!==relaySubscription)throw new Error("Normative relay registration binding mismatch");
     }else if(authority.kind==="todo-tool"){
       if(matches.length!==1||matches[0]!==todoRegistration)throw new Error("Normative todo registration binding mismatch");
     }else{
@@ -1025,6 +1051,9 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
     }else if(authority.kind==="todo-tool"){
       if(!todoRegistration||!todoNameProperty||callLines(todoNameProperty)[0]!==span.startLine)
         throw new Error("Normative todo endpoint binding mismatch");
+    }else if(authority.kind==="relay-listener"){
+      if(!relaySubscription||callLines(relaySubscription)[0]!==span.startLine||relaySubscription.arguments.length!==2||!ts.isArrowFunction(relaySubscription.arguments[1]))
+        throw new Error("Normative session-change relay endpoint binding mismatch");
     }else{
       const matches=calls.filter(call=>ts.isIdentifier(call.expression)&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
       if(matches.length!==1||checker.getSymbolAtLocation(matches[0].expression)!==registrationSymbols.get(row.registrationId)||!ts.isStringLiteralLike(matches[0].arguments[0]))

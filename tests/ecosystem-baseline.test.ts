@@ -290,7 +290,7 @@ test("CLI source-backed admission is explicit and an invalid repository fails cl
   {skip:!retainedBaselineRepository},()=>{
   const admitted=spawnSync(process.execPath,[baselineAuditScript,retainedBaselineRepository],{encoding:"utf8",env:process.env});
   assert.equal(admitted.status,0,admitted.stderr);
-  assert.match(admitted.stdout,/normative source proof: ADMITTED \(23 endpoints;/);
+  assert.match(admitted.stdout,/normative source proof: ADMITTED \(24 endpoints;/);
   assert.doesNotMatch(admitted.stdout,/NOT ADMITTED/);
   const invalid=spawnSync(process.execPath,[baselineAuditScript,join(tmpdir(),"missing-ecosystem-baseline.git")],{encoding:"utf8",env:process.env});
   assert.notEqual(invalid.status,0);
@@ -333,7 +333,16 @@ test("todo tool normative family is recognized before source-backed verification
     error=>error instanceof Error&&error.message!=="Unknown normative family authority");
 });
 
-test("plural normative inventory binds six bounded families to frozen source",
+test("session-change relay-listener normative family is recognized before source-backed verification",()=>{
+  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
+  const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
+  const mappings=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-runtime-edge-mappings-v1.json",import.meta.url),"utf8"));
+  delete mappings.normativeInventory;mappings.normativeInventories=[mappings.normativeInventories[6]];
+  assert.throws(()=>verifyNormativeRuntimeInventory("unavailable-retained-repository",baseline,overlay,mappings),
+    error=>error instanceof Error&&error.message!=="Unknown normative family authority");
+});
+
+test("plural normative inventory binds seven bounded families to frozen source",
   {skip:!retainedBaselineRepository},()=>{
   assert.equal(typeof verifyNormativeRuntimeInventory,"function");
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
@@ -348,8 +357,9 @@ test("plural normative inventory binds six bounded families to frozen source",
   assert.equal("path" in mappings.normativeInventories[3].source,false,"orchestrator path is derived from its pinned baseline owner");
   assert.equal("path" in mappings.normativeInventories[4].source,false,"workspace path is derived from its pinned baseline owner");
   assert.equal("path" in mappings.normativeInventories[5].source,false,"todo path is derived from its pinned baseline owner");
+  assert.equal("path" in mappings.normativeInventories[6].source,false,"session-change path is derived from its pinned baseline owner");
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,mappings),
-    {families:6,registrations:11,endpoints:23});
+    {families:7,registrations:12,endpoints:24});
   const singletonOnly=structuredClone(mappings);delete singletonOnly.normativeInventories;
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,singletonOnly),
     {families:1,registrations:3,endpoints:4});
@@ -357,7 +367,7 @@ test("plural normative inventory binds six bounded families to frozen source",
   assert.throws(()=>verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,invalidLegacy),/legacy singleton/i);
   const pluralOnly=structuredClone(mappings);delete pluralOnly.normativeInventory;
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,pluralOnly),
-    {families:6,registrations:11,endpoints:23});
+    {families:7,registrations:12,endpoints:24});
   assert.throws(()=>verifyNormativeRuntimeInventory("",baseline,overlay,mappings),/repository/i);
   const media=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-media-v1.json",import.meta.url),"utf8"));
   for(const mutate of [(value:any)=>{delete value.normativeInventory;delete value.normativeInventories;},(value:any)=>{value.normativeInventories[1].endpoints.pop();}]){
@@ -426,6 +436,12 @@ test("plural normative inventory binds six bounded families to frozen source",
     ["todo endpoint denominator",value=>{value.normativeInventories[5].endpoints.pop();}],
     ["todo dependency membership",value=>{value.normativeInventories[5].endpoints[0].dependencySpanIds.pop();}],
     ["todo structural obligation",value=>{value.normativeInventories[5].endpoints[0].obligations[0]="weaker";}],
+    ["session-change source identity",value=>{value.normativeInventories[6].source.bytes++;}],
+    ["session-change dependency",value=>{value.normativeInventories[6].dependencySpans[0].sha256="0".repeat(64);}],
+    ["session-change mapped registration",value=>{value.normativeInventories[6].registrations[0].mappedReference.referenceIndex=4;}],
+    ["session-change endpoint denominator",value=>{value.normativeInventories[6].endpoints.pop();}],
+    ["session-change dependency membership",value=>{value.normativeInventories[6].endpoints[0].dependencySpanIds=[];}],
+    ["session-change structural obligation",value=>{value.normativeInventories[6].endpoints[0].obligations[0]="weaker";}],
   ];
   for(const [name,mutate] of pluralCases){const changed=structuredClone(mappings);mutate(changed);
     assert.throws(()=>verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,changed),/./,name);}
@@ -527,6 +543,23 @@ test("todo tool source mutations preserve exact imported name, schema and regist
     (source:string)=>source.replace('pi.on("session_shutdown"','pi.on("session_shutdown_changed"'),
   ]){const input=alteredNormativeInputs(t,5,mutate);
     assert.throws(()=>verifyNormativeRuntimeInventory(input.repository,input.baseline,input.overlay,input.mappings),/implementation-owned source identity/);}
+});
+
+test("session-change relay source mutations preserve exact imported symbol and subscription membership",{skip:!retainedBaselineRepository},t=>{
+  const registration=`\tconst off = pi.events.on(SESSION_CHANGE_RELAY, (value) => {\n\t\tconst data = value as { sessionId?: string; evidence?: unknown };\n\t\tif (child || !current || data?.sessionId !== current.sessionManager.getSessionId() || !isSessionChangeEvidence(data.evidence)) return;\n\t\ttry {\n\t\t\tconst own = resolver(current.cwd, current.cwd);\n\t\t\tconst target = resolver(data.evidence.root, current.cwd);\n\t\t\tif (own && target?.root === data.evidence.root && own.commonDir === target.commonDir) publish(data.evidence);\n\t\t} catch { /* Observation cannot change tool outcomes. */ }\n\t});`;
+  const cases:[string,(source:string)=>string,RegExp][]=[
+    ["aliased relay import",source=>source.replace("SESSION_CHANGE_RELAY, type SessionChangeEvidence","SESSION_CHANGE_RELAY as SESSION_CHANGE_ALIAS, type SessionChangeEvidence").replace("pi.events.on(SESSION_CHANGE_RELAY, (value) => {","pi.events.on(SESSION_CHANGE_ALIAS, (value) => {"),/dependency (?:authority|span)/],
+    ["shadowed relay symbol",source=>source.replace("\tconst off = pi.events.on(SESSION_CHANGE_RELAY, (value) => {","\tconst SESSION_CHANGE_RELAY = SESSION_CHANGE_EVENT; const off = pi.events.on(SESSION_CHANGE_RELAY, (value) => {"),/session-change .*binding/],
+    ["duplicate relay subscription",source=>source.replace('pi.on("session_start", (_event, ctx) => {','pi.events.on(SESSION_CHANGE_RELAY, () => {}); pi.on("session_start", (_event, ctx) => {'),/session-change .*binding/],
+    ["same-line relay decoy",source=>source.replace("pi.events.on(SESSION_CHANGE_RELAY, (value) => {","pi.events.on(SESSION_CHANGE_EVENT, (value = SESSION_CHANGE_RELAY) => {"),/session-change .*binding/],
+    ["moved relay callback",source=>source.replace(registration,registration.replace("\tconst off = pi.events.on(SESSION_CHANGE_RELAY, (value) => {","\tconst relayCallback = (value: unknown) => {").replace("\n\t});","\n\t}; const off = pi.events.on(SESSION_CHANGE_RELAY, relayCallback);")),/session-change .*binding/],
+  ];
+  for(const [name,mutate,error] of cases){const input=alteredNormativeInputs(t,6,mutate);
+    assert.throws(()=>verifyNormativeRuntimeInventory(input.repository,input.baseline,input.overlay,input.mappings),error,name);}
+  for(const event of ["session_start","tool_call","tool_result","tool_execution_end","session_shutdown"]){
+    const input=alteredNormativeInputs(t,6,source=>source.replace(`pi.on("${event}"`,`pi.on(SESSION_CHANGE_RELAY`));
+    assert.throws(()=>verifyNormativeRuntimeInventory(input.repository,input.baseline,input.overlay,input.mappings),/implementation-owned source identity/,`other pi.on event: ${event}`);
+  }
 });
 
 test("asset overlay rejects identity, ordering, binding, span and authority mutations",

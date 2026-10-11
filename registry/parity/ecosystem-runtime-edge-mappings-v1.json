@@ -662,6 +662,19 @@
       "endpoints":[
         {"id":"todo.tool","registrationId":"todo.tool","mappedReference":{"sourceId":"ECO-SRC-91b70c5973297fbd","referenceIndex":12},"instantiationSpan":{"startLine":169,"endLine":169,"sha256":"b7c14a71a207c2b84801c5d610ad1b957653cd05836750f6b1e187b3a25c8dbc"},"dependencySpanIds":["tool-name-import","tool-parameters"],"obligations":["the exact imported tool-name identifier belongs to the exact registration","the exact parameter-schema identifier belongs to the exact registration"]}
       ]
+    },
+    {
+      "familyId":"session-change.relay-listener.v1",
+      "source":{"sourceId":"ECO-SRC-8420ca03583cfe7b","objectId":"6ed00aef22da1cfaa2d2d6dcaf9746ad758cc64f","bytes":6833,"sha256":"dd3fe029f18791462344a0ac0fc87aab0f8a657d0226d8f676aad4c724f8658d"},
+      "dependencySpans":[
+        {"id":"session-change-relay-import","startLine":8,"endLine":8,"sha256":"080bdde371776cb2084bf9d6dbad6cec698b4b75f7e472de21425f9e2f79dbe3"}
+      ],
+      "registrations":[
+        {"id":"session-change.relay-listener","mappedReference":{"sourceId":"ECO-SRC-8420ca03583cfe7b","referenceIndex":5},"span":{"startLine":39,"endLine":47,"sha256":"1123875c62b7b65b57c7abd6546401d32d55a5cd7c976ef387674d92c18c0c5e"}}
+      ],
+      "endpoints":[
+        {"id":"session-change.relay","registrationId":"session-change.relay-listener","mappedReference":{"sourceId":"ECO-SRC-8420ca03583cfe7b","referenceIndex":5},"instantiationSpan":{"startLine":39,"endLine":39,"sha256":"5fc3bab1a53390ce652bb6650a1cf85c5e5bd5077ac56876a30a8027eadb0ff8"},"dependencySpanIds":["session-change-relay-import"],"obligations":["the exact imported event identifier is the first argument of the exact subscription and the callback is its second argument"]}
+      ]
     }
   ]
 }
