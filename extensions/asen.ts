@@ -98,18 +98,18 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   if(todoStorePromise)registerTodoTools(pi,async()=>todoStorePromise);
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const sessionIdentity=async(ctx:CommandContext)=>{const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId)throw new Error("ASEN requires the active Pi session");const projectId=await canonical(ctx.cwd);return {sessionId,projectId,worktree:projectId};};
-  const startSession=async(ctx:CommandContext)=>{await lifecycle.start(ctx,registryStartupDisabled(undefined));if(todoStorePromise){const todos=await todoStorePromise;try{await todos.recover(await sessionIdentity(ctx));}catch{ctx.ui.notify("ASEN Todo recovery failed; task state was not changed.","error");}if(todos.diagnostics())ctx.ui.notify("ASEN Todo data was damaged and has been quarantined; no task was replayed.","error");}if(workspaceStorePromise){const store=await workspaceStorePromise;if(store.diagnostics())ctx.ui.notify("ASEN workspace attribution data was damaged and has been quarantined.","error");}if(agentRuntimePromise){const runtime=await agentRuntimePromise,identity=await sessionIdentity(ctx),records=await runtime.list(identity),recoverable=records.filter(record=>record.state==="queued"||record.state==="interrupted");if(runtime.quarantined)ctx.ui.notify("ASEN agent store was damaged and has been quarantined; no saved task was started.","error");if(recoverable.length)ctx.ui.notify(`ASEN has ${recoverable.length} queued or interrupted task(s) in this session. Review with /asen-agents; continue only after confirmation.`,"info");}try{await incrementUsageFile(usageFile,"sessions");}catch{try{ctx.ui.notify("ASEN local usage could not be saved.","error");}catch{}}};
+  const startSession=async(ctx:CommandContext)=>{await lifecycle.start(ctx,registryStartupDisabled(undefined));if(todoStorePromise){const todos=await todoStorePromise;try{await todos.recover(await sessionIdentity(ctx));}catch{ctx.ui.notify("ASEN Todo recovery failed; task state was not changed.","error");}if(todos.diagnostics())ctx.ui.notify("ASEN Todo data was damaged and has been quarantined; no task was replayed.","error");}if(workspaceStorePromise){const store=await workspaceStorePromise;if(store.diagnostics())ctx.ui.notify("ASEN workspace attribution data was damaged and has been quarantined.","error");}if(agentRuntimePromise){const runtime=await agentRuntimePromise,identity=await sessionIdentity(ctx),records=await runtime.list(identity),recoverable=records.filter(record=>record.state==="queued"||record.state==="interrupted");if(runtime.quarantined)ctx.ui.notify("ASEN agent store was damaged and has been quarantined; no saved task was started.","error");if(recoverable.length)ctx.ui.notify(`ASEN has ${recoverable.length} queued or interrupted task(s) in this session. Review with /asen-agents; continue only after confirmation.`,"info");}try{await incrementUsageFile(usageFile,"sessions");}catch{try{ctx.ui.notify("ASEN local usage could not be saved.","error");}catch{/* Notification is best-effort when the UI is unavailable. */}}};
   if(!dependencies.deferSessionStart)pi.on?.("session_start",async(_event,ctx)=>startSession(ctx));
-  pi.on?.("session_shutdown",async(_event,ctx)=>{if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{}}if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{const runtime=await agentRuntimePromise;await runtime.cancelSession({sessionId:ctx.sessionManager.getSessionId(),projectId:await canonical(ctx.cwd)});}catch{}await lifecycle.shutdown();});
+  pi.on?.("session_shutdown",async(_event,ctx)=>{if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue when the UI is unavailable. */}}if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{const runtime=await agentRuntimePromise;await runtime.cancelSession({sessionId:ctx.sessionManager.getSessionId(),projectId:await canonical(ctx.cwd)});}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}await lifecycle.shutdown();});
   pi.on?.("input",async(event,ctx)=>{
    const text=typeof event?.text==="string"?event.text:"",sessionId=ctx.sessionManager?.getSessionId?.();
    if(event?.source!=="interactive"&&event?.source!=="rpc")return;
-   if(text.startsWith("/")){try{await incrementUsageFile(usageFile,"commands");}catch{try{ctx.ui.notify("ASEN local usage could not be saved.","error");}catch{}}return;}
+   if(text.startsWith("/")){try{await incrementUsageFile(usageFile,"commands");}catch{try{ctx.ui.notify("ASEN local usage could not be saved.","error");}catch{/* Notification is best-effort when the UI is unavailable. */}}return;}
    if(!sessionId)return;
    try{await recordHistoryInput({storePath:historyFile,projectId:await canonical(ctx.cwd),sessionId,hasUI:ctx.hasUI===true},text);}
-   catch{try{ctx.ui.notify("ASEN private history could not be saved; your input was not changed.","error");}catch{}}
+   catch{try{ctx.ui.notify("ASEN private history could not be saved; your input was not changed.","error");}catch{/* Notification is best-effort when the UI is unavailable. */}}
   });
-  pi.on?.("turn_start",async()=>{try{await incrementUsageFile(usageFile,"agentRuns");}catch{}});
+  pi.on?.("turn_start",async()=>{try{await incrementUsageFile(usageFile,"agentRuns");}catch{/* Usage accounting must not interrupt the host turn. */}});
   registerInteractionTools(pi,dependencies.interactionTimeoutMs);
   if(pi.registerTool)registerCodeGraphTools({registerTool:pi.registerTool.bind(pi)},dependencies.codeIntelligence);
   registerData("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
@@ -157,7 +157,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
  const toolNames=[...ASEN_INTERACTION_TOOL_NAMES,ASEN_CODE_INTELLIGENCE_TOOL_NAME,ASEN_CODEGRAPH_TOOL_NAME,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES)];
  let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext)=>Promise<void>)|undefined;
  pi.on("session_start",async(_event,ctx)=>{
-  if(attempted){if(registrationsReady)await sessionStart?.(ctx);return;}
+  if(attempted){if(registrationsReady){validatePiExecutionContext(ctx);await sessionStart?.(ctx);}return;}
   attempted=true;
   const token=++generation;let publicWrites=0;
   try{
@@ -190,7 +190,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
    if(publicWrites===0){attempted=false;generation++;}
    const message=safeErrorMessage(error);
    const recovery=publicWrites===0?"a later session start may retry":"partial registrations remain inert; reload Pi to recover";
-   try{ctx.ui.notify(`ASEN host preflight failed; ${recovery}: ${message}`,"error");}catch{}
+   try{ctx.ui.notify(`ASEN host preflight failed; ${recovery}: ${message}`,"error");}catch{/* Preflight remains failed when the UI cannot report it. */}
   }
  });
  };

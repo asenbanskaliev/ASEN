@@ -72,6 +72,22 @@ test("deferred session startup runs once for the first session and every later s
  }finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;rmSync(home,{recursive:true,force:true});}
 });
 
+test("later sessions reject invalid public contexts before lifecycle or registration mutation",async()=>{
+ const home=mkdtempSync(path.join(tmpdir(),"asen-pi-session-revalidation-")),prior=process.env.ASEN_NO_SKILL_REGISTRY;
+ process.env.ASEN_NO_SKILL_REGISTRY="1";
+ try{
+  const state=productionHost();createPiExtension({homeDir:()=>home})(state.host as any);
+  const bootstrap=state.events.get("session_start")![0]!;
+  await bootstrap({},state.context());
+  const usagePath=path.join(home,".asen","usage.json"),registrations=[state.commands.size,state.tools.size];
+  for(const context of [state.context("unknown"),{...state.context(),hasUI:"true"}]){
+   await assert.rejects(bootstrap({},context),/execution mode or context/);
+   assert.equal(JSON.parse(readFileSync(usagePath,"utf8")).snapshot.sessions,1);
+   assert.deepEqual([state.commands.size,state.tools.size],registrations);
+  }
+ }finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;rmSync(home,{recursive:true,force:true});}
+});
+
 test("preflight rejection retries on a later session after the collision is removed",async()=>{
  const state=productionHost([{name:"asen"}]);createPiExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false})(state.host as any);
  const bootstrap=state.events.get("session_start")![0]!;
@@ -106,9 +122,14 @@ test("unsupported execution mode fails before any runtime registration",async()=
  assert.match(state.messages.join("\n"),/execution mode or context/);
 });
 
-test("public mode and UI context getters are supported",()=>{
- const context=Object.defineProperties({}, {mode:{get:()=>"rpc"},hasUI:{get:()=>true}});
- assert.doesNotThrow(()=>validatePiExecutionContext(context));
+test("public modes and boolean UI contexts are supported",()=>{
+ for(const mode of ["tui","rpc","json","print"]){
+  for(const hasUI of [true,false]){
+   const context=Object.defineProperties({}, {mode:{get:()=>mode},hasUI:{get:()=>hasUI}});
+   assert.doesNotThrow(()=>validatePiExecutionContext(context));
+  }
+ }
+ assert.throws(()=>validatePiExecutionContext({mode:"rpc",hasUI:"true"}),/execution mode or context/);
 });
 
 test("missing or incomplete initialized inventories fail closed",async()=>{
