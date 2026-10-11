@@ -433,5 +433,60 @@
         "ECO-SRC-8420ca03583cfe7b"
       ]
     }
-  ]
+  ],
+  "normativeInventory": {
+    "familyId": "presentation.commands.v1",
+    "source": {
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "path": "extensions/startup-banner.ts",
+      "objectId": "44de38b41e2199f31cffbe60887456ab9324d185",
+      "bytes": 42261,
+      "sha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8"
+    },
+    "dependencySpans": [
+      {"id": "configuration-model", "startLine": 14, "endLine": 25, "sha256": "356e8f90381ecf05ebcbbaeb0806e2bb67b1adc22c6c9fad754419d12c43f08d"},
+      {"id": "configuration-resolution", "startLine": 71, "endLine": 87, "sha256": "d4d2bdb7a19fe000fa84524537bd1654a849b8dd12da208ca9c79bb03bf429a0"},
+      {"id": "configuration-io", "startLine": 110, "endLine": 122, "sha256": "786f898b42a85543abefe926a5d9753e43cc00ff825b95660bfb3052390d615e"},
+      {"id": "success-reporting", "startLine": 580, "endLine": 589, "sha256": "5fedaea0c72c72c8546bea200c37c0e9f92500f140d6e6492fd81fdc65909358"}
+    ],
+    "registrations": [
+      {"id": "presentation.menu", "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 5}, "span": {"startLine": 592, "endLine": 612, "sha256": "a00e5f7cfc64f8610e295254186593f4c7328203aaec992b137b4336d91f05ab"}},
+      {"id": "presentation.toggle", "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 6}, "span": {"startLine": 615, "endLine": 623, "sha256": "87c1b3e88577f75920c26f27effc97ec78f42136af1bced582e8f41086bb63bd"}},
+      {"id": "presentation.color", "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 7}, "span": {"startLine": 626, "endLine": 641, "sha256": "adcb5bf7008634f80311fe6e231c896e0d712d359280a42b643e7a31b4657c0d"}}
+    ],
+    "endpoints": [
+      {
+        "id": "presentation.menu",
+        "registrationId": "presentation.menu",
+        "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 5},
+        "instantiationSpan": {"startLine": 643, "endLine": 643, "sha256": "ceb734babb5e36206a97bae3bf9c2ca9c074a7202f8c4e73f1b71ff992caa832"},
+        "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+        "obligations": ["successful selection persists the resulting configuration and reports it", "cancellation before a choice writes nothing", "rose and text-logo choices preserve unrelated settings", "color cancellation writes nothing", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+      },
+      {
+        "id": "presentation.rose-toggle",
+        "registrationId": "presentation.toggle",
+        "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 6},
+        "instantiationSpan": {"startLine": 644, "endLine": 644, "sha256": "ccaa896ec604e82f06952b83552b45522a20046354727eb5aa083a92155f1575"},
+        "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+        "obligations": ["a successful toggle persists the resulting configuration and reports it", "the toggle changes only the rose setting and preserves unrelated settings", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+      },
+      {
+        "id": "presentation.text-logo-toggle",
+        "registrationId": "presentation.toggle",
+        "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 6},
+        "instantiationSpan": {"startLine": 645, "endLine": 645, "sha256": "a268a09f732c597e795f46c3af3cdaa943cd76c0f7e82ec7baac64ccb5d5719c"},
+        "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+        "obligations": ["a successful toggle persists the resulting configuration and reports it", "the toggle changes only the text-logo setting and preserves unrelated settings", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+      },
+      {
+        "id": "presentation.color-setter",
+        "registrationId": "presentation.color",
+        "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 7},
+        "instantiationSpan": {"startLine": 646, "endLine": 646, "sha256": "fc04dbe1330a69d8b8fb45c171dfd1f516c0bd67e67ce1079d5d1a93311c4f91"},
+        "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+        "obligations": ["a successful color choice persists the resulting configuration and reports it", "a valid trimmed color preset bypasses prompting", "an invalid preset prompts for a supported color", "cancellation writes nothing", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+      }
+    ]
+  }
 }

@@ -701,7 +701,8 @@ const expectedRuntimeEdgeSemantics=[["ECO-SRC-625c38e8637ad8b0",0,"external-runt
 
 /** Checks that every runtime-edge mapping is bound to one exact adjudicated source span. */
 export function verifyRuntimeEdgeMappings(repository,baseline,adjudications,mapping) {
-  if(validateBaseline(baseline).length||!mapping||!exactKeys(mapping,["version","baselineCommit","adjudicationFile","mappings"])||mapping.version!==1||mapping.baselineCommit!==baseline.commit||
+  const mappingKeys=mapping?.normativeInventory===undefined?["version","baselineCommit","adjudicationFile","mappings"]:["version","baselineCommit","adjudicationFile","mappings","normativeInventory"];
+  if(validateBaseline(baseline).length||!mapping||!exactKeys(mapping,mappingKeys)||mapping.version!==1||mapping.baselineCommit!==baseline.commit||
     mapping.adjudicationFile!=="registry/parity/ecosystem-reference-adjudications-v1.json"||!Array.isArray(mapping.mappings)||
     adjudications?.version!==1||adjudications.baselineCommit!==baseline.commit||!Array.isArray(adjudications.adjudications))throw new Error("Invalid runtime edge mapping envelope");
   if(repository)verifyReferenceAdjudications(repository,baseline,adjudications);
@@ -737,6 +738,85 @@ export function verifyRuntimeEdgeMappings(repository,baseline,adjudications,mapp
   }
   return {mapped:rows.length,tracked:rows.filter(row=>["tracked-file","tracked-glob"].includes(row.mappingKind)).length,
     codeContracts:rows.filter(row=>row.mappingKind==="code-contract").length,externalRuntime:rows.filter(row=>row.mappingKind==="external-runtime").length};
+}
+
+const normativePresentationAuthority={
+  familyId:"presentation.commands.v1",sourceId:"ECO-SRC-6c28d7b99a511610",sourcePath:"extensions/startup-banner.ts",
+  dependencies:[["configuration-model",14,25,"356e8f90381ecf05ebcbbaeb0806e2bb67b1adc22c6c9fad754419d12c43f08d"],["configuration-resolution",71,87,"d4d2bdb7a19fe000fa84524537bd1654a849b8dd12da208ca9c79bb03bf429a0"],["configuration-io",110,122,"786f898b42a85543abefe926a5d9753e43cc00ff825b95660bfb3052390d615e"],["success-reporting",580,589,"5fedaea0c72c72c8546bea200c37c0e9f92500f140d6e6492fd81fdc65909358"]],
+  registrations:[["presentation.menu",5,592,612,"a00e5f7cfc64f8610e295254186593f4c7328203aaec992b137b4336d91f05ab"],["presentation.toggle",6,615,623,"87c1b3e88577f75920c26f27effc97ec78f42136af1bced582e8f41086bb63bd"],["presentation.color",7,626,641,"adcb5bf7008634f80311fe6e231c896e0d712d359280a42b643e7a31b4657c0d"]],
+  endpoints:[
+    ["presentation.menu","presentation.menu",5,643,"ceb734babb5e36206a97bae3bf9c2ca9c074a7202f8c4e73f1b71ff992caa832",["successful selection persists the resulting configuration and reports it","cancellation before a choice writes nothing","rose and text-logo choices preserve unrelated settings","color cancellation writes nothing","missing, malformed, or unreadable configuration reads as defaults","writes create the configuration directory and replace the complete JSON document"]],
+    ["presentation.rose-toggle","presentation.toggle",6,644,"ccaa896ec604e82f06952b83552b45522a20046354727eb5aa083a92155f1575",["a successful toggle persists the resulting configuration and reports it","the toggle changes only the rose setting and preserves unrelated settings","missing, malformed, or unreadable configuration reads as defaults","writes create the configuration directory and replace the complete JSON document"]],
+    ["presentation.text-logo-toggle","presentation.toggle",6,645,"a268a09f732c597e795f46c3af3cdaa943cd76c0f7e82ec7baac64ccb5d5719c",["a successful toggle persists the resulting configuration and reports it","the toggle changes only the text-logo setting and preserves unrelated settings","missing, malformed, or unreadable configuration reads as defaults","writes create the configuration directory and replace the complete JSON document"]],
+    ["presentation.color-setter","presentation.color",7,646,"fc04dbe1330a69d8b8fb45c171dfd1f516c0bd67e67ce1079d5d1a93311c4f91",["a successful color choice persists the resulting configuration and reports it","a valid trimmed color preset bypasses prompting","an invalid preset prompts for a supported color","cancellation writes nothing","missing, malformed, or unreadable configuration reads as defaults","writes create the configuration directory and replace the complete JSON document"]],
+  ],
+};
+
+/** Separately admits the first bounded normative family; legacy version-1 mappings remain mappings without it. */
+export function verifyNormativeRuntimeInventory(repository,baseline,adjudications,mapping){
+  if(typeof repository!=="string"||!repository)throw new Error("A retained baseline repository is required for normative inventory admission");
+  verifyRuntimeEdgeMappings("",baseline,adjudications,mapping);
+  const inventory=mapping?.normativeInventory,source=inventory?.source;
+  if(!inventory||!exactKeys(inventory,["familyId","source","dependencySpans","registrations","endpoints"])||
+    !source||!exactKeys(source,["sourceId","path","objectId","bytes","sha256"])||!Array.isArray(inventory.dependencySpans)||
+    !Array.isArray(inventory.registrations)||!Array.isArray(inventory.endpoints))throw new Error("Invalid normative inventory envelope");
+  const authority=normativePresentationAuthority,owner=baseline.files.find(row=>row.id===source.sourceId);
+  if(inventory.familyId!==authority.familyId||source.sourceId!==authority.sourceId||source.path!==authority.sourcePath||!owner||
+    source.path!==owner.path||source.objectId!==owner.objectId||source.bytes!==owner.bytes||source.sha256!==owner.sha256)
+    throw new Error("Normative inventory source identity mismatch");
+  const bytes=readBaselineSourceBytes(repository,baseline,source.sourceId),text=new TextDecoder("utf-8",{fatal:true}).decode(bytes),lines=text.split(/(?<=\n)/);
+  const spanHash=(span,label)=>{
+    if(!span||!exactKeys(span,["startLine","endLine","sha256"])||!Number.isSafeInteger(span.startLine)||!Number.isSafeInteger(span.endLine)||
+      span.startLine<1||span.endLine<span.startLine||span.endLine>lines.length||!/^[a-f0-9]{64}$/.test(span.sha256)||digest(lines.slice(span.startLine-1,span.endLine).join(""))!==span.sha256)
+      throw new Error(`Invalid normative ${label} span`);
+  };
+  const dependencyIds=new Set();
+  if(inventory.dependencySpans.length!==authority.dependencies.length)throw new Error("Normative dependency coverage mismatch");
+  for(let index=0;index<authority.dependencies.length;index++){
+    const row=inventory.dependencySpans[index],expected=authority.dependencies[index];
+    if(!row||!exactKeys(row,["id","startLine","endLine","sha256"])||dependencyIds.has(row.id)||JSON.stringify([row.id,row.startLine,row.endLine,row.sha256])!==JSON.stringify(expected))
+      throw new Error("Normative dependency authority mismatch");
+    dependencyIds.add(row.id);spanHash({startLine:row.startLine,endLine:row.endLine,sha256:row.sha256},"dependency");
+  }
+  const parsed=ts.createSourceFile(source.path,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+  if(parsed.parseDiagnostics.length)throw new Error("Normative inventory source does not parse completely");
+  const host={getSourceFile:name=>name===source.path?parsed:undefined,getDefaultLibFileName:()=>"lib.d.ts",writeFile(){},getCurrentDirectory:()=>"",getDirectories:()=>[],fileExists:name=>name===source.path,readFile:name=>name===source.path?text:undefined,getCanonicalFileName:name=>name,useCaseSensitiveFileNames:()=>true,getNewLine:()=>"\n"};
+  const checker=ts.createProgram([source.path],{noLib:true,noResolve:true},host).getTypeChecker(),calls=[];
+  const visit=node=>{if(ts.isCallExpression(node))calls.push(node);ts.forEachChild(node,visit);};visit(parsed);
+  const callLines=node=>[parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line+1,parsed.getLineAndCharacterOfPosition(node.getEnd()).line+1];
+  const registrationIds=new Set(),referenceKeys=new Set(),registrationSymbols=new Map();
+  if(inventory.registrations.length!==authority.registrations.length)throw new Error("Normative registration coverage mismatch");
+  for(let index=0;index<authority.registrations.length;index++){
+    const row=inventory.registrations[index],expected=authority.registrations[index],reference=row?.mappedReference,span=row?.span;
+    if(!row||!exactKeys(row,["id","mappedReference","span"])||!reference||!exactKeys(reference,["sourceId","referenceIndex"])||registrationIds.has(row.id)||
+      reference.sourceId!==source.sourceId||JSON.stringify([row.id,reference.referenceIndex,span?.startLine,span?.endLine,span?.sha256])!==JSON.stringify(expected))
+      throw new Error("Normative registration authority mismatch");
+    const key=`${reference.sourceId}:${reference.referenceIndex}`;
+    if(referenceKeys.has(key)||!mapping.mappings.some(item=>item.sourceId===reference.sourceId&&item.referenceIndex===reference.referenceIndex&&JSON.stringify(item.span)===JSON.stringify(span)))
+      throw new Error("Normative mapped-reference identity mismatch");
+    registrationIds.add(row.id);referenceKeys.add(key);spanHash(span,"registration");
+    const matches=calls.filter(call=>ts.isPropertyAccessExpression(call.expression)&&call.expression.name.text==="registerCommand"&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
+    let declaration=matches[0];while(declaration&&!ts.isVariableDeclaration(declaration))declaration=declaration.parent;
+    if(matches.length!==1||!declaration||!ts.isIdentifier(declaration.name)||!matches[0].arguments[0]||!ts.isIdentifier(matches[0].arguments[0]))
+      throw new Error("Normative registration binding mismatch");
+    registrationSymbols.set(row.id,checker.getSymbolAtLocation(declaration.name));
+  }
+  if(referenceKeys.size!==3)throw new Error("Normative mapped-reference coverage mismatch");
+  const endpointIds=new Set();
+  if(inventory.endpoints.length!==authority.endpoints.length)throw new Error("Normative endpoint coverage mismatch");
+  for(let index=0;index<authority.endpoints.length;index++){
+    const row=inventory.endpoints[index],expected=authority.endpoints[index],reference=row?.mappedReference,span=row?.instantiationSpan;
+    if(!row||!exactKeys(row,["id","registrationId","mappedReference","instantiationSpan","dependencySpanIds","obligations"])||!reference||!exactKeys(reference,["sourceId","referenceIndex"])||
+      endpointIds.has(row.id)||!registrationIds.has(row.registrationId)||reference.sourceId!==source.sourceId||
+      JSON.stringify([row.id,row.registrationId,reference.referenceIndex,span?.startLine,span?.sha256,row.obligations])!==JSON.stringify(expected)||span?.endLine!==span?.startLine||
+      !Array.isArray(row.dependencySpanIds)||JSON.stringify(row.dependencySpanIds)!==JSON.stringify([...dependencyIds]))
+      throw new Error("Normative endpoint authority mismatch");
+    endpointIds.add(row.id);spanHash(span,"endpoint instantiation");
+    const matches=calls.filter(call=>ts.isIdentifier(call.expression)&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
+    if(matches.length!==1||checker.getSymbolAtLocation(matches[0].expression)!==registrationSymbols.get(row.registrationId)||!ts.isStringLiteralLike(matches[0].arguments[0]))
+      throw new Error("Normative endpoint binding mismatch");
+  }
+  return {families:1,registrations:registrationIds.size,endpoints:endpointIds.size};
 }
 
 /** Reads the explicitly supported direct-child Markdown selector from exact Git objects. */
@@ -855,23 +935,35 @@ export function verifyBaselineObjects(repository, baseline) {
   return true;
 }
 
+/** Runs either the compatible metadata audit or strict source-backed normative admission. */
+export function auditEcosystemBaseline(repository,baseline,media,adjudications,mapping){
+  const issues=[...validateBaseline(baseline),...validateMediaManifest(baseline,media)];
+  if(issues.length)throw new Error(issues.join("\n"));
+  verifyRuntimeEdgeMappings("",baseline,adjudications,mapping);
+  if(!repository)return {mode:"metadata-only",trackedObjects:baseline.files.length,normativeSourceProof:"NOT_ADMITTED"};
+  const normative=verifyNormativeRuntimeInventory(repository,baseline,adjudications,mapping);
+  verifyBaselineObjects(repository,baseline);
+  for(const row of media.sources){
+    const source=baseline.files.find(file=>file.path===row.path);
+    verifyMediaBytes(source,row,git(repository,["cat-file","blob",source.objectId]));
+  }
+  return {mode:"source-backed",trackedObjects:baseline.files.length,normativeSourceProof:"ADMITTED",endpoints:normative.endpoints};
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const baseline = parseJson(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"),"ecosystem baseline");
-  const issues = validateBaseline(baseline);
   const media = parseJson(readFileSync(new URL("../registry/parity/ecosystem-media-v1.json",import.meta.url),"utf8"),"ecosystem media manifest");
-  issues.push(...validateMediaManifest(baseline,media));
-  if (issues.length) throw new Error(issues.join("\n"));
-  if (process.argv[2]) {
-    verifyBaselineObjects(process.argv[2],baseline);
-    for (const row of media.sources) {
-      const source=baseline.files.find(file=>file.path===row.path);
-      verifyMediaBytes(source,row,git(process.argv[2],["cat-file","blob",source.objectId]));
-    }
+  const overlay=parseJson(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"),"reference adjudications");
+  const mappings=parseJson(readFileSync(new URL("../registry/parity/ecosystem-runtime-edge-mappings-v1.json",import.meta.url),"utf8"),"runtime edge mappings");
+  const repositoryArgumentPresent=process.argv.length>2,repositoryArgument=process.argv[2];
+  if(repositoryArgumentPresent&&!repositoryArgument?.trim())throw new Error("Explicit baseline repository argument must be non-empty");
+  const repository=repositoryArgumentPresent?repositoryArgument:process.env.ECOSYSTEM_BASELINE_REPOSITORY??"",audit=auditEcosystemBaseline(repository,baseline,media,overlay,mappings);
+  if (process.argv[3]) console.log(JSON.stringify(detectMappedBaselineDrift(repository,baseline,collectBaseline(repository,process.argv[3]),overlay,mappings),null,2));
+  if(audit.mode==="source-backed"){
+    console.log(`ecosystem baseline: PASS (${audit.trackedObjects} tracked objects; SOURCE_INSPECTED, not runtime parity)`);
+    console.log(`normative source proof: ADMITTED (${audit.endpoints} endpoints; structural inventory, not runtime parity)`);
+  }else{
+    console.log(`ecosystem baseline metadata: PASS (${audit.trackedObjects} tracked objects; source bytes unavailable)`);
+    console.log("normative source proof: NOT ADMITTED (retained baseline repository unavailable)");
   }
-  if (process.argv[3]) {
-    const overlay=parseJson(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"),"reference adjudications");
-    const mappings=parseJson(readFileSync(new URL("../registry/parity/ecosystem-runtime-edge-mappings-v1.json",import.meta.url),"utf8"),"runtime edge mappings");
-    console.log(JSON.stringify(detectMappedBaselineDrift(process.argv[2],baseline,collectBaseline(process.argv[2],process.argv[3]),overlay,mappings),null,2));
-  }
-  console.log(`ecosystem baseline: PASS (${baseline.files.length} tracked objects; SOURCE_INSPECTED, not runtime parity)`);
 }

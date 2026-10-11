@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import test from "node:test";
-import {execFileSync} from "node:child_process";
+import {execFileSync,spawnSync} from "node:child_process";
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
+import {fileURLToPath} from "node:url";
 // @ts-expect-error Research-only JavaScript baseline collector, outside the runtime package.
 import * as baselineModule from "../scripts/ecosystem-baseline.mjs";
-const {collectBaseline,validateBaseline,verifyBaselineObjects,detectBaselineDrift,detectMappedBaselineDrift,sourceReferences,verifyRuntimeEdgeMappings,collectRuntimeEdgeFiles}=baselineModule;
+const {collectBaseline,validateBaseline,verifyBaselineObjects,detectBaselineDrift,detectMappedBaselineDrift,sourceReferences,verifyRuntimeEdgeMappings,verifyNormativeRuntimeInventory,auditEcosystemBaseline,collectRuntimeEdgeFiles}=baselineModule;
 const retainedBaselineRepository=process.env.ECOSYSTEM_BASELINE_REPOSITORY??"";
+const baselineAuditScript=fileURLToPath(new URL("../scripts/ecosystem-baseline.mjs",import.meta.url));
 
 function fixture(t:test.TestContext) {
   const root=mkdtempSync(join(tmpdir(),"asen-ecosystem-"));
@@ -265,6 +267,73 @@ test("164-reference overlay adjudicates every frozen unresolved reference withou
   assert.deepEqual(validateBaseline(withAbsent),[]);
   assert.deepEqual((baselineModule as any).verifyReferenceAdjudications(retainedBaselineRepository,withAbsent,overlay),
     {scannerUnresolved:165,adjudicated:164,remaining:1});
+});
+
+test("CLI metadata audit remains compatible while source proof is explicitly not admitted",()=>{
+  const env={...process.env};delete env.ECOSYSTEM_BASELINE_REPOSITORY;
+  const result=spawnSync(process.execPath,[baselineAuditScript],{encoding:"utf8",env});
+  assert.equal(result.status,0,result.stderr);
+  assert.match(result.stdout,/normative source proof: NOT ADMITTED/);
+  assert.doesNotMatch(result.stdout,/normative source proof: ADMITTED/);
+});
+
+test("CLI explicit empty repository never falls back to metadata or the environment",()=>{
+  const withoutRepository={...process.env};delete withoutRepository.ECOSYSTEM_BASELINE_REPOSITORY;
+  for(const env of [process.env,withoutRepository]){
+    const result=spawnSync(process.execPath,[baselineAuditScript,""],{encoding:"utf8",env});
+    assert.notEqual(result.status,0);
+    assert.doesNotMatch(result.stdout,/ecosystem baseline|normative source proof/);
+  }
+});
+
+test("CLI source-backed admission is explicit and an invalid repository fails closed",
+  {skip:!retainedBaselineRepository},()=>{
+  const admitted=spawnSync(process.execPath,[baselineAuditScript,retainedBaselineRepository],{encoding:"utf8",env:process.env});
+  assert.equal(admitted.status,0,admitted.stderr);
+  assert.match(admitted.stdout,/normative source proof: ADMITTED \(4 endpoints;/);
+  assert.doesNotMatch(admitted.stdout,/NOT ADMITTED/);
+  const invalid=spawnSync(process.execPath,[baselineAuditScript,join(tmpdir(),"missing-ecosystem-baseline.git")],{encoding:"utf8",env:process.env});
+  assert.notEqual(invalid.status,0);
+  assert.doesNotMatch(invalid.stdout,/normative source proof: (?:ADMITTED|NOT ADMITTED)/);
+});
+
+test("normative presentation inventory binds three registrations and four endpoints to frozen source",
+  {skip:!retainedBaselineRepository},()=>{
+  assert.equal(typeof verifyNormativeRuntimeInventory,"function");
+  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
+  const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
+  const mappings=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-runtime-edge-mappings-v1.json",import.meta.url),"utf8"));
+  const legacy=structuredClone(mappings);delete legacy.normativeInventory;
+  assert.deepEqual(verifyRuntimeEdgeMappings(retainedBaselineRepository,baseline,overlay,legacy),{mapped:25,tracked:3,codeContracts:12,externalRuntime:10});
+  assert.throws(()=>verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,legacy),/normative inventory/i);
+  assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,mappings),
+    {families:1,registrations:3,endpoints:4});
+  assert.throws(()=>verifyNormativeRuntimeInventory("",baseline,overlay,mappings),/repository/i);
+  const media=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-media-v1.json",import.meta.url),"utf8"));
+  for(const mutate of [(value:any)=>{delete value.normativeInventory;},(value:any)=>{value.normativeInventory.endpoints.pop();}]){
+    const changed=structuredClone(mappings);mutate(changed);
+    assert.throws(()=>auditEcosystemBaseline(retainedBaselineRepository,baseline,media,overlay,changed),/normative/i);
+  }
+  const cases:[string,(value:any)=>void][]=[
+    ["malformed inventory",value=>{value.normativeInventory.unexpected=true;}],
+    ["owner identity",value=>{value.normativeInventory.source.sourceId="ECO-SRC-0000000000000000";}],
+    ["source path",value=>{value.normativeInventory.source.path="extensions/not-the-owner.ts";}],
+    ["registration reference",value=>{value.normativeInventory.registrations[0].mappedReference.referenceIndex=6;}],
+    ["endpoint reference",value=>{value.normativeInventory.endpoints[0].mappedReference.referenceIndex=6;}],
+    ["duplicate registration",value=>{value.normativeInventory.registrations[1].id=value.normativeInventory.registrations[0].id;}],
+    ["duplicate endpoint",value=>{value.normativeInventory.endpoints[1].id=value.normativeInventory.endpoints[0].id;}],
+    ["dangling endpoint",value=>{value.normativeInventory.endpoints[0].registrationId="presentation.missing";}],
+    ["incomplete endpoint coverage",value=>{value.normativeInventory.endpoints.pop();}],
+    ["dependency hash",value=>{value.normativeInventory.dependencySpans[0].sha256="0".repeat(64);}],
+    ["registration hash",value=>{value.normativeInventory.registrations[0].span.sha256="0".repeat(64);}],
+    ["instantiation hash",value=>{value.normativeInventory.endpoints[0].instantiationSpan.sha256="0".repeat(64);}],
+    ["dependency coverage",value=>{value.normativeInventory.endpoints[0].dependencySpanIds.pop();}],
+    ["observable obligation",value=>{value.normativeInventory.endpoints[0].obligations[0]="A weaker claim";}],
+  ];
+  for(const [name,mutate] of cases){
+    const changed=structuredClone(mappings);mutate(changed);
+    assert.throws(()=>verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,changed),/./,name);
+  }
 });
 
 test("asset overlay rejects identity, ordering, binding, span and authority mutations",
