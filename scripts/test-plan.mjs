@@ -4,6 +4,7 @@ import {join,relative,sep} from "node:path";
 export const WINDOWS_PROCESS_TESTS=Object.freeze([
  "tests/ask-user-rpc.test.ts",
  "tests/gsp06-pi-free-probes.test.ts",
+ "tests/ecosystem-baseline.test.ts",
  // Retain 40 competing writes and multiprocess fixtures without unrelated
  // Windows test files contending for the private-store filesystem operations.
  "tests/history-store.test.ts",
