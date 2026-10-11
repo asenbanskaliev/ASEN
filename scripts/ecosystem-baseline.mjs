@@ -814,7 +814,14 @@ const normativeWorkspaceChangeAuthority={
   registrations:[["workspace.change-listener",17,1708,1713,"4fdc0bdefe5526e4cb8e7bf4c9c35fce16361d635e82b013e9854facdcc12f6b"]],
   endpoints:[["workspace.session-change","workspace.change-listener",17,1708,"c33ee0f3f2bcad5afbd2d6b3e1fe5ece3c1cc11924fe639927368d32361a352b",workspaceListenerObligations,["session-change-event-import"]]],
 };
-const normativeAuthorities=new Map([normativePresentationAuthority,normativeCodeGraphAuthority,normativeAgentsAuthority,normativeOrchestratorReviewAuthority,normativeWorkspaceChangeAuthority].map(authority=>[authority.familyId,authority]));
+const todoToolObligations=["the exact imported tool-name identifier belongs to the exact registration","the exact parameter-schema identifier belongs to the exact registration"];
+const normativeTodoToolAuthority={
+  familyId:"todo.tool.v1",sourceId:"ECO-SRC-91b70c5973297fbd",objectId:"6f627072f868d6b0fcd46e61e94f4f48612ae935",bytes:9934,sha256:"db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d",kind:"todo-tool",
+  dependencies:[["tool-name-import",15,15,"35f31e9a351626192a7db9c48011995c33fcd35a42d9765ba99abe482fff568e"],["tool-parameters",31,57,"82e094af72c2b866f1200c8421c2138a30684c3203b86f7561d655ffd1d8bc43"]],
+  registrations:[["todo.tool",12,168,203,"7d73a31a69f345bdd676a260d1a01a8c480cb792249fc7b8fe3bcc679324da2c"]],
+  endpoints:[["todo.tool","todo.tool",12,169,"b7c14a71a207c2b84801c5d610ad1b957653cd05836750f6b1e187b3a25c8dbc",todoToolObligations,["tool-name-import","tool-parameters"]]],
+};
+const normativeAuthorities=new Map([normativePresentationAuthority,normativeCodeGraphAuthority,normativeAgentsAuthority,normativeOrchestratorReviewAuthority,normativeWorkspaceChangeAuthority,normativeTodoToolAuthority].map(authority=>[authority.familyId,authority]));
 
 function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
   const source=inventory?.source,sourceKeys=["sourceId",...(authority.sourcePath===undefined?[]:["path"]),"objectId","bytes","sha256"];
@@ -846,7 +853,7 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
   const visit=node=>{if(ts.isCallExpression(node))calls.push(node);ts.forEachChild(node,visit);};visit(parsed);
   const callLines=node=>[parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line+1,parsed.getLineAndCharacterOfPosition(node.getEnd()).line+1];
   const descendants=(root,predicate)=>{const found=[];const find=node=>{if(predicate(node))found.push(node);ts.forEachChild(node,find);};if(root)find(root);return found;};
-  let operationProperties,toolFactorySymbol,toolHelperSymbol,toolHelperCalls,toolHelperRegistration,reviewToolRegistrations,installRegistration,workspaceSubscription;
+  let operationProperties,toolFactorySymbol,toolHelperSymbol,toolHelperCalls,toolHelperRegistration,reviewToolRegistrations,installRegistration,workspaceSubscription,todoRegistration,todoNameProperty;
   if(authority.kind==="operation-tool"){
     const declarations=parsed.statements.filter(ts.isVariableStatement).flatMap(statement=>[...statement.declarationList.declarations]),
       objectInitializer=row=>ts.isObjectLiteralExpression(row?.initializer)?row.initializer:ts.isAsExpression(row?.initializer)&&ts.isObjectLiteralExpression(row.initializer.expression)?row.initializer.expression:null,
@@ -935,6 +942,22 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
       throw new Error("Invalid workspace change-listener subscription binding");
     workspaceSubscription=initializer;
     for(const row of inventory.dependencySpans)spanHash({startLine:row.startLine,endLine:row.endLine,sha256:row.sha256},"dependency");
+  }else if(authority.kind==="todo-tool"){
+    const imports=parsed.statements.filter(ts.isImportDeclaration).filter(row=>ts.isStringLiteralLike(row.moduleSpecifier)&&row.moduleSpecifier.text==="../lib/shell-todo.ts"),
+      specifiers=imports[0]?.importClause?.namedBindings&&ts.isNamedImports(imports[0].importClause.namedBindings)?[...imports[0].importClause.namedBindings.elements]:[],
+      toolNameSpecifiers=specifiers.filter(row=>row.name.text==="TODO_TOOL_NAME"&&!row.propertyName&&callLines(row.name)[0]===15),toolNameSymbol=toolNameSpecifiers[0]&&checker.getSymbolAtLocation(toolNameSpecifiers[0].name);
+    if(imports.length!==1||toolNameSpecifiers.length!==1||!toolNameSymbol)throw new Error("Invalid todo tool-name import binding");
+    const parameterDeclarations=parsed.statements.filter(ts.isVariableStatement).flatMap(statement=>[...statement.declarationList.declarations]).filter(row=>
+      ts.isIdentifier(row.name)&&row.name.text==="TOOL_PARAMETERS"&&callLines(row)[0]===31&&(row.parent.flags&ts.NodeFlags.Const)),parameterDeclaration=parameterDeclarations[0],parameterInitializer=parameterDeclaration?.initializer,
+      parameterObject=ts.isAsExpression(parameterInitializer)&&parameterInitializer.type.getText(parsed)==="const"&&ts.isObjectLiteralExpression(parameterInitializer.expression)?parameterInitializer.expression:undefined,
+      parameterSymbol=parameterDeclaration&&checker.getSymbolAtLocation(parameterDeclaration.name),registrations=calls.filter(call=>ts.isPropertyAccessExpression(call.expression)&&call.expression.name.text==="registerTool"),registration=registrations[0],argument=registration?.arguments[0],
+      exactRegistration=registration&&ts.isIdentifier(registration.expression.expression)&&registration.expression.expression.text==="pi"&&ts.isObjectLiteralExpression(argument),properties=exactRegistration?argument.properties:[],
+      names=properties.filter(row=>ts.isPropertyAssignment(row)&&row.name.getText(parsed)==="name"),parameters=properties.filter(row=>ts.isPropertyAssignment(row)&&row.name.getText(parsed)==="parameters");
+    if(parameterDeclarations.length!==1||!parameterObject||!parameterSymbol||registrations.length!==1||!exactRegistration||JSON.stringify(callLines(registration))!==JSON.stringify([168,203])||
+      names.length!==1||!ts.isIdentifier(names[0].initializer)||checker.getSymbolAtLocation(names[0].initializer)!==toolNameSymbol||callLines(names[0])[0]!==169||
+      parameters.length!==1||!ts.isIdentifier(parameters[0].initializer)||checker.getSymbolAtLocation(parameters[0].initializer)!==parameterSymbol)
+      throw new Error("Invalid todo tool registration binding");
+    todoRegistration=registration;todoNameProperty=names[0];
   }
   const registrationIds=new Set(),referenceKeys=new Set(),registrationSymbols=new Map();
   if(inventory.registrations.length!==authority.registrations.length)throw new Error("Normative registration coverage mismatch");
@@ -947,7 +970,8 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
     if(referenceKeys.has(key)||!mapping.mappings.some(item=>item.sourceId===reference.sourceId&&item.referenceIndex===reference.referenceIndex&&JSON.stringify(item.span)===JSON.stringify(span)))
       throw new Error("Normative mapped-reference identity mismatch");
     registrationIds.add(row.id);referenceKeys.add(key);spanHash(span,"registration");
-    const registrationName=["operation-tool","tool-helper"].includes(authority.kind)?"registerTool":authority.kind==="review-control"&&index<3?"registerTool":"registerCommand";
+    const toolRegistration=["operation-tool","tool-helper","todo-tool"].includes(authority.kind)||authority.kind==="review-control"&&index<3;
+    const registrationName=toolRegistration?"registerTool":"registerCommand";
     const matches=authority.kind==="event-listener"?[workspaceSubscription].filter(call=>call&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine])):
       calls.filter(call=>ts.isPropertyAccessExpression(call.expression)&&call.expression.name.text===registrationName&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
     if(authority.kind==="operation-tool"){
@@ -960,6 +984,8 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
       if(matches.length!==1||(index<3?!reviewToolRegistrations.includes(matches[0]):matches[0]!==installRegistration))throw new Error("Normative review registration binding mismatch");
     }else if(authority.kind==="event-listener"){
       if(matches.length!==1||matches[0]!==workspaceSubscription)throw new Error("Normative event registration binding mismatch");
+    }else if(authority.kind==="todo-tool"){
+      if(matches.length!==1||matches[0]!==todoRegistration)throw new Error("Normative todo registration binding mismatch");
     }else{
       let declaration=matches[0];while(declaration&&!ts.isVariableDeclaration(declaration))declaration=declaration.parent;
       if(matches.length!==1||!declaration||!ts.isIdentifier(declaration.name)||!matches[0].arguments[0]||!ts.isIdentifier(matches[0].arguments[0]))
@@ -996,6 +1022,9 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
     }else if(authority.kind==="event-listener"){
       if(!workspaceSubscription||callLines(workspaceSubscription)[0]!==span.startLine||workspaceSubscription.arguments.length!==2||!ts.isArrowFunction(workspaceSubscription.arguments[1]))
         throw new Error("Normative workspace endpoint binding mismatch");
+    }else if(authority.kind==="todo-tool"){
+      if(!todoRegistration||!todoNameProperty||callLines(todoNameProperty)[0]!==span.startLine)
+        throw new Error("Normative todo endpoint binding mismatch");
     }else{
       const matches=calls.filter(call=>ts.isIdentifier(call.expression)&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
       if(matches.length!==1||checker.getSymbolAtLocation(matches[0].expression)!==registrationSymbols.get(row.registrationId)||!ts.isStringLiteralLike(matches[0].arguments[0]))

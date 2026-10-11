@@ -648,6 +648,20 @@
       "endpoints":[
         {"id":"workspace.session-change","registrationId":"workspace.change-listener","mappedReference":{"sourceId":"ECO-SRC-f25fcbecafe905e1","referenceIndex":17},"instantiationSpan":{"startLine":1708,"endLine":1708,"sha256":"c33ee0f3f2bcad5afbd2d6b3e1fe5ece3c1cc11924fe639927368d32361a352b"},"dependencySpanIds":["session-change-event-import"],"obligations":["the exact imported event identifier is the first argument of the exact subscription and the callback is its second argument"]}
       ]
+    },
+    {
+      "familyId":"todo.tool.v1",
+      "source":{"sourceId":"ECO-SRC-91b70c5973297fbd","objectId":"6f627072f868d6b0fcd46e61e94f4f48612ae935","bytes":9934,"sha256":"db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d"},
+      "dependencySpans":[
+        {"id":"tool-name-import","startLine":15,"endLine":15,"sha256":"35f31e9a351626192a7db9c48011995c33fcd35a42d9765ba99abe482fff568e"},
+        {"id":"tool-parameters","startLine":31,"endLine":57,"sha256":"82e094af72c2b866f1200c8421c2138a30684c3203b86f7561d655ffd1d8bc43"}
+      ],
+      "registrations":[
+        {"id":"todo.tool","mappedReference":{"sourceId":"ECO-SRC-91b70c5973297fbd","referenceIndex":12},"span":{"startLine":168,"endLine":203,"sha256":"7d73a31a69f345bdd676a260d1a01a8c480cb792249fc7b8fe3bcc679324da2c"}}
+      ],
+      "endpoints":[
+        {"id":"todo.tool","registrationId":"todo.tool","mappedReference":{"sourceId":"ECO-SRC-91b70c5973297fbd","referenceIndex":12},"instantiationSpan":{"startLine":169,"endLine":169,"sha256":"b7c14a71a207c2b84801c5d610ad1b957653cd05836750f6b1e187b3a25c8dbc"},"dependencySpanIds":["tool-name-import","tool-parameters"],"obligations":["the exact imported tool-name identifier belongs to the exact registration","the exact parameter-schema identifier belongs to the exact registration"]}
+      ]
     }
   ]
 }

@@ -290,7 +290,7 @@ test("CLI source-backed admission is explicit and an invalid repository fails cl
   {skip:!retainedBaselineRepository},()=>{
   const admitted=spawnSync(process.execPath,[baselineAuditScript,retainedBaselineRepository],{encoding:"utf8",env:process.env});
   assert.equal(admitted.status,0,admitted.stderr);
-  assert.match(admitted.stdout,/normative source proof: ADMITTED \(22 endpoints;/);
+  assert.match(admitted.stdout,/normative source proof: ADMITTED \(23 endpoints;/);
   assert.doesNotMatch(admitted.stdout,/NOT ADMITTED/);
   const invalid=spawnSync(process.execPath,[baselineAuditScript,join(tmpdir(),"missing-ecosystem-baseline.git")],{encoding:"utf8",env:process.env});
   assert.notEqual(invalid.status,0);
@@ -324,7 +324,16 @@ test("workspace change-listener normative family is recognized before source-bac
     error=>error instanceof Error&&error.message!=="Unknown normative family authority");
 });
 
-test("plural normative inventory binds five bounded families to frozen source",
+test("todo tool normative family is recognized before source-backed verification",()=>{
+  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
+  const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
+  const mappings=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-runtime-edge-mappings-v1.json",import.meta.url),"utf8"));
+  delete mappings.normativeInventory;mappings.normativeInventories=[mappings.normativeInventories[5]];
+  assert.throws(()=>verifyNormativeRuntimeInventory("unavailable-retained-repository",baseline,overlay,mappings),
+    error=>error instanceof Error&&error.message!=="Unknown normative family authority");
+});
+
+test("plural normative inventory binds six bounded families to frozen source",
   {skip:!retainedBaselineRepository},()=>{
   assert.equal(typeof verifyNormativeRuntimeInventory,"function");
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
@@ -338,8 +347,9 @@ test("plural normative inventory binds five bounded families to frozen source",
   assert.equal("path" in mappings.normativeInventories[2].source,false,"agent path is derived from its pinned baseline owner");
   assert.equal("path" in mappings.normativeInventories[3].source,false,"orchestrator path is derived from its pinned baseline owner");
   assert.equal("path" in mappings.normativeInventories[4].source,false,"workspace path is derived from its pinned baseline owner");
+  assert.equal("path" in mappings.normativeInventories[5].source,false,"todo path is derived from its pinned baseline owner");
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,mappings),
-    {families:5,registrations:10,endpoints:22});
+    {families:6,registrations:11,endpoints:23});
   const singletonOnly=structuredClone(mappings);delete singletonOnly.normativeInventories;
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,singletonOnly),
     {families:1,registrations:3,endpoints:4});
@@ -347,7 +357,7 @@ test("plural normative inventory binds five bounded families to frozen source",
   assert.throws(()=>verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,invalidLegacy),/legacy singleton/i);
   const pluralOnly=structuredClone(mappings);delete pluralOnly.normativeInventory;
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,pluralOnly),
-    {families:5,registrations:10,endpoints:22});
+    {families:6,registrations:11,endpoints:23});
   assert.throws(()=>verifyNormativeRuntimeInventory("",baseline,overlay,mappings),/repository/i);
   const media=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-media-v1.json",import.meta.url),"utf8"));
   for(const mutate of [(value:any)=>{delete value.normativeInventory;delete value.normativeInventories;},(value:any)=>{value.normativeInventories[1].endpoints.pop();}]){
@@ -410,6 +420,12 @@ test("plural normative inventory binds five bounded families to frozen source",
     ["workspace endpoint denominator",value=>{value.normativeInventories[4].endpoints.pop();}],
     ["workspace dependency membership",value=>{value.normativeInventories[4].endpoints[0].dependencySpanIds=[];}],
     ["workspace structural obligation",value=>{value.normativeInventories[4].endpoints[0].obligations[0]="weaker";}],
+    ["todo source identity",value=>{value.normativeInventories[5].source.bytes++;}],
+    ["todo dependency",value=>{value.normativeInventories[5].dependencySpans[0].sha256="0".repeat(64);}],
+    ["todo mapped registration",value=>{value.normativeInventories[5].registrations[0].mappedReference.referenceIndex=11;}],
+    ["todo endpoint denominator",value=>{value.normativeInventories[5].endpoints.pop();}],
+    ["todo dependency membership",value=>{value.normativeInventories[5].endpoints[0].dependencySpanIds.pop();}],
+    ["todo structural obligation",value=>{value.normativeInventories[5].endpoints[0].obligations[0]="weaker";}],
   ];
   for(const [name,mutate] of pluralCases){const changed=structuredClone(mappings);mutate(changed);
     assert.throws(()=>verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,changed),/./,name);}
@@ -433,6 +449,14 @@ function alteredNormativeInputs(t:test.TestContext,inventoryIndex:number,mutate:
 }
 
 const alteredCodeGraphInputs=(t:test.TestContext,mutate:(source:string)=>string)=>alteredNormativeInputs(t,1,mutate);
+const alteredTodoInputs=(t:test.TestContext,mutate:(source:string)=>string)=>{
+  const input=alteredNormativeInputs(t,5,mutate),inventory=input.mappings.normativeInventories[5],source=input.baseline.files.find((row:any)=>row.id===inventory.source.sourceId),
+    text=execFileSync("git",["-C",input.repository,"cat-file","blob",source.objectId],{encoding:"utf8"}),lines=text.split(/(?<=\n)/),hash=(start:number,end:number)=>createHash("sha256").update(lines.slice(start-1,end).join("")).digest("hex");
+  for(const span of inventory.dependencySpans)span.sha256=hash(span.startLine,span.endLine);
+  for(const registration of inventory.registrations){registration.span.sha256=hash(registration.span.startLine,registration.span.endLine);const mapped=input.mappings.mappings.find((row:any)=>row.sourceId===source.id&&row.referenceIndex===registration.mappedReference.referenceIndex),adjudication=input.overlay.adjudications.find((row:any)=>row.sourceId===source.id&&row.referenceIndex===registration.mappedReference.referenceIndex);mapped.span.sha256=registration.span.sha256;adjudication.span.sha256=registration.span.sha256;}
+  for(const endpoint of inventory.endpoints)endpoint.instantiationSpan.sha256=hash(endpoint.instantiationSpan.startLine,endpoint.instantiationSpan.endLine);
+  return input;
+};
 
 test("CodeGraph authority rejects a coordinated alternate source identity",{skip:!retainedBaselineRepository},t=>{
   const input=alteredCodeGraphInputs(t,source=>`${source}\n// coordinated alternate source identity\n`);
@@ -484,6 +508,25 @@ test("workspace listener source mutations preserve the imported event and exact 
   ];
   for(const [name,mutate] of cases){const input=alteredNormativeInputs(t,4,mutate);
     assert.throws(()=>verifyNormativeRuntimeInventory(input.repository,input.baseline,input.overlay,input.mappings),/workspace .*binding/,name);}
+});
+
+test("todo tool source mutations preserve exact imported name, schema and registration membership",{skip:!retainedBaselineRepository},t=>{
+  const cases:[string,(source:string)=>string,RegExp][]=[
+    ["aliased import",source=>source.replace("\tTODO_TOOL_NAME,","\tTODO_TOOL_NAME as TODO_TOOL_ALIAS,").replace("name: TODO_TOOL_NAME,","name: TODO_TOOL_ALIAS,"),/dependency authority/],
+    ["local name shadow",source=>source.replace("\tpi.registerTool({","\tconst TODO_TOOL_NAME = \"shadow\"; pi.registerTool({"),/todo .*binding/],
+    ["literal name",source=>source.replace("name: TODO_TOOL_NAME,","name: \"todo\","),/todo .*binding/],
+    ["decoy name property",source=>source.replace("name: TODO_TOOL_NAME,","decoy: TODO_TOOL_NAME, name: \"todo\","),/todo .*binding/],
+    ["duplicate registration",source=>source.replace("\tpi.registerTool({","\tpi.registerTool({ name: TODO_TOOL_NAME, parameters: TOOL_PARAMETERS }); pi.registerTool({"),/todo .*binding/],
+    ["alternate parameters symbol",source=>source.replace("\tpi.registerTool({","\tconst ALTERNATE_PARAMETERS = TOOL_PARAMETERS; pi.registerTool({").replace("parameters: TOOL_PARAMETERS,","parameters: ALTERNATE_PARAMETERS,"),/todo .*binding/],
+    ["alternate parameters object",source=>source.replace("parameters: TOOL_PARAMETERS,","parameters: { ...TOOL_PARAMETERS },"),/todo .*binding/],
+  ];
+  for(const [name,mutate,error] of cases){const input=alteredTodoInputs(t,mutate);
+    assert.throws(()=>verifyNormativeRuntimeInventory(input.repository,input.baseline,input.overlay,input.mappings),error,name);}
+  for(const mutate of [
+    (source:string)=>source.replace("Collapse or expand the todo list","Expand or collapse the todo list"),
+    (source:string)=>source.replace('pi.on("session_shutdown"','pi.on("session_shutdown_changed"'),
+  ]){const input=alteredNormativeInputs(t,5,mutate);
+    assert.throws(()=>verifyNormativeRuntimeInventory(input.repository,input.baseline,input.overlay,input.mappings),/implementation-owned source identity/);}
 });
 
 test("asset overlay rejects identity, ordering, binding, span and authority mutations",
