@@ -25,9 +25,22 @@ function sourceClassification(filename) {
     [/launcher|^bin\//,"launcher"],[/-shell\.ts$|workspace|changes/,"workspace"]];
   return {family:rules.find(([pattern]) => pattern.test(filename))?.[1] ?? "support",visibility:filename.startsWith("extensions/") ? "public-interface" : "supporting-source"};
 }
-const git = (repository, args) => execFileSync("git", ["-C", repository, ...args], {
-  env: {...process.env, GIT_NO_REPLACE_OBJECTS: "1"}, maxBuffer: 32 * 1024 * 1024,
-});
+const GIT_TIMEOUT_MS = 30_000;
+const GIT_MAX_BUFFER = 32 * 1024 * 1024;
+const gitOperations = new Set(["cat-file","ls-tree","rev-parse"]);
+export function runGitCommand(repository,args,runner=execFileSync) {
+  const operation=gitOperations.has(args[0])?args[0]:"operation";
+  try {
+    return runner("git",["-C",repository,...args],{
+      env:{...process.env,GIT_NO_REPLACE_OBJECTS:"1"},timeout:GIT_TIMEOUT_MS,maxBuffer:GIT_MAX_BUFFER,
+    });
+  } catch (failure) {
+    const category=failure?.code==="ETIMEDOUT"?"timeout":failure?.code==="ENOBUFS"?"output-limit":
+      Number.isInteger(failure?.status)?"exit":failure?.signal?"signal":"exit";
+    throw Object.assign(new Error(`Git ${operation} failed (${category})`),{name:"GitProcessError",operation,category});
+  }
+}
+const git = runGitCommand;
 const parseJson = (value, label) => {
   try { return JSON.parse(value); }
   catch { throw new Error(`Invalid ${label} JSON`); }

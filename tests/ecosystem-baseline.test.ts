@@ -1,16 +1,20 @@
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import test from "node:test";
-import {execFileSync,spawnSync} from "node:child_process";
+import {execFileSync as nodeExecFileSync,spawnSync} from "node:child_process";
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {fileURLToPath} from "node:url";
 // @ts-expect-error Research-only JavaScript baseline collector, outside the runtime package.
 import * as baselineModule from "../scripts/ecosystem-baseline.mjs";
-const {collectBaseline,validateBaseline,verifyBaselineObjects,detectBaselineDrift,detectMappedBaselineDrift,sourceReferences,verifyRuntimeEdgeMappings,verifyNormativeRuntimeInventory,auditEcosystemBaseline,collectRuntimeEdgeFiles}=baselineModule;
+const {collectBaseline,validateBaseline,verifyBaselineObjects,detectBaselineDrift,detectMappedBaselineDrift,sourceReferences,verifyRuntimeEdgeMappings,verifyNormativeRuntimeInventory,auditEcosystemBaseline,collectRuntimeEdgeFiles,runGitCommand}=baselineModule;
 const retainedBaselineRepository=process.env.ECOSYSTEM_BASELINE_REPOSITORY??"";
 const baselineAuditScript=fileURLToPath(new URL("../scripts/ecosystem-baseline.mjs",import.meta.url));
+const fixtureProcessOptions={timeout:30_000,maxBuffer:32*1024*1024};
+const execFileSync=(file:string,args:readonly string[],options:any={})=>nodeExecFileSync(file,args,{...fixtureProcessOptions,...options}) as any;
+const completedCliFailure=(result:{status:number|null;error?:Error;signal?:NodeJS.Signals|null})=>
+  typeof result.status==="number"&&Number.isInteger(result.status)&&result.status>0&&result.error===undefined&&result.signal===null;
 
 function fixture(t:test.TestContext) {
   const root=mkdtempSync(join(tmpdir(),"asen-ecosystem-"));
@@ -26,6 +30,31 @@ function fixture(t:test.TestContext) {
   git("add",".");git("commit","-qm","fixture");
   return {root,git,commit:git("rev-parse","HEAD")};
 }
+
+test("Git helper bounds execution and redacts process diagnostics",()=>{
+  const repository="private/repository",args=["cat-file","blob","secret-object"],stdout=Buffer.from([0,255,97]);
+  const actual=runGitCommand(repository,args,(file:string,runnerArgs:string[],options:any)=>{
+    assert.equal(file,"git");assert.deepEqual(runnerArgs,["-C",repository,...args]);
+    assert.equal(options.timeout,30_000);assert.equal(options.maxBuffer,32*1024*1024);
+    return stdout;
+  });
+  assert.equal(actual,stdout);
+  for(const [shape,category] of [
+    [{code:"ETIMEDOUT",signal:"SIGTERM"},"timeout"],
+    [{code:"ENOBUFS"},"output-limit"],
+    [{status:7},"exit"],
+    [{signal:"SIGKILL"},"signal"],
+    [{},"exit"],
+  ] as const){
+    const runner=()=>{throw Object.assign(new Error("secret stderr private/repository secret-object"),shape,{stdout:"secret stdout",stderr:"secret stderr"});};
+    let error:Error&{category?:string;operation?:string;cause?:unknown};
+    try {runGitCommand(repository,args,runner);assert.fail("expected bounded Git failure");}
+    catch (caught) {assert.ok(caught instanceof Error);error=caught;}
+    assert.equal(error.message,`Git cat-file failed (${category})`);
+    assert.equal(error.category,category);assert.equal(error.operation,"cat-file");assert.equal(error.cause,undefined);
+    assert.doesNotMatch(error.stack??"",/secret|private\/repository/);
+  }
+});
 
 test("Git-object baseline preserves exact bytes, closes cycles and ignores dirty/untracked state",t=>{
   const f=fixture(t), baseline=collectBaseline(f.root,f.commit);
@@ -271,29 +300,37 @@ test("164-reference overlay adjudicates every frozen unresolved reference withou
 
 test("CLI metadata audit remains compatible while source proof is explicitly not admitted",()=>{
   const env={...process.env};delete env.ECOSYSTEM_BASELINE_REPOSITORY;
-  const result=spawnSync(process.execPath,[baselineAuditScript],{encoding:"utf8",env});
+  const result=spawnSync(process.execPath,[baselineAuditScript],{encoding:"utf8",env,timeout:180_000,maxBuffer:32*1024*1024});
   assert.equal(result.status,0,result.stderr);
   assert.match(result.stdout,/normative source proof: NOT ADMITTED/);
   assert.doesNotMatch(result.stdout,/normative source proof: ADMITTED/);
 });
 
+test("CLI negative result requires a completed positive exit",()=>{
+  assert.equal(completedCliFailure({status:1,signal:null}),true);
+  assert.equal(completedCliFailure({status:0,signal:null}),false);
+  assert.equal(completedCliFailure({status:null,error:Object.assign(new Error("timed out"),{code:"ETIMEDOUT"}),signal:"SIGTERM"}),false);
+  assert.equal(completedCliFailure({status:null,error:new Error("spawn failed"),signal:null}),false);
+  assert.equal(completedCliFailure({status:null,signal:"SIGKILL"}),false);
+});
+
 test("CLI explicit empty repository never falls back to metadata or the environment",()=>{
   const withoutRepository={...process.env};delete withoutRepository.ECOSYSTEM_BASELINE_REPOSITORY;
   for(const env of [process.env,withoutRepository]){
-    const result=spawnSync(process.execPath,[baselineAuditScript,""],{encoding:"utf8",env});
-    assert.notEqual(result.status,0);
+    const result=spawnSync(process.execPath,[baselineAuditScript,""],{encoding:"utf8",env,timeout:180_000,maxBuffer:32*1024*1024});
+    assert.ok(completedCliFailure(result));
     assert.doesNotMatch(result.stdout,/ecosystem baseline|normative source proof/);
   }
 });
 
 test("CLI source-backed admission is explicit and an invalid repository fails closed",
   {skip:!retainedBaselineRepository},()=>{
-  const admitted=spawnSync(process.execPath,[baselineAuditScript,retainedBaselineRepository],{encoding:"utf8",env:process.env});
+  const admitted=spawnSync(process.execPath,[baselineAuditScript,retainedBaselineRepository],{encoding:"utf8",env:process.env,timeout:180_000,maxBuffer:32*1024*1024});
   assert.equal(admitted.status,0,admitted.stderr);
   assert.match(admitted.stdout,/normative source proof: ADMITTED \(24 endpoints;/);
   assert.doesNotMatch(admitted.stdout,/NOT ADMITTED/);
-  const invalid=spawnSync(process.execPath,[baselineAuditScript,join(tmpdir(),"missing-ecosystem-baseline.git")],{encoding:"utf8",env:process.env});
-  assert.notEqual(invalid.status,0);
+  const invalid=spawnSync(process.execPath,[baselineAuditScript,join(tmpdir(),"missing-ecosystem-baseline.git")],{encoding:"utf8",env:process.env,timeout:180_000,maxBuffer:32*1024*1024});
+  assert.ok(completedCliFailure(invalid));
   assert.doesNotMatch(invalid.stdout,/normative source proof: (?:ADMITTED|NOT ADMITTED)/);
 });
 
