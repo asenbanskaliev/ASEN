@@ -807,7 +807,14 @@ const normativeOrchestratorReviewAuthority={
     ["orchestrator.install-review","orchestrator.install",33,9405,"49a01d627b3ad2d701b88cbd8e8544f88929da0dd96be45f8ea5e96745017c65",["the exact install name is the review expansion of the exact owner loop template"],["install-owner-loop"]],
   ],
 };
-const normativeAuthorities=new Map([normativePresentationAuthority,normativeCodeGraphAuthority,normativeAgentsAuthority,normativeOrchestratorReviewAuthority].map(authority=>[authority.familyId,authority]));
+const workspaceListenerObligations=["the exact imported event identifier is the first argument of the exact subscription and the callback is its second argument"];
+const normativeWorkspaceChangeAuthority={
+  familyId:"workspace.change-listener.v1",sourceId:"ECO-SRC-f25fcbecafe905e1",objectId:"ef22678c9621f95d450079ec3aae02f02eccb37c",bytes:114585,sha256:"dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",kind:"event-listener",
+  dependencies:[["session-change-event-import",114,114,"35f01f921db7f23f746b86b374a24e9d38e0209b729b2b8a34b2652577534ac1"]],
+  registrations:[["workspace.change-listener",17,1708,1713,"4fdc0bdefe5526e4cb8e7bf4c9c35fce16361d635e82b013e9854facdcc12f6b"]],
+  endpoints:[["workspace.session-change","workspace.change-listener",17,1708,"c33ee0f3f2bcad5afbd2d6b3e1fe5ece3c1cc11924fe639927368d32361a352b",workspaceListenerObligations,["session-change-event-import"]]],
+};
+const normativeAuthorities=new Map([normativePresentationAuthority,normativeCodeGraphAuthority,normativeAgentsAuthority,normativeOrchestratorReviewAuthority,normativeWorkspaceChangeAuthority].map(authority=>[authority.familyId,authority]));
 
 function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
   const source=inventory?.source,sourceKeys=["sourceId",...(authority.sourcePath===undefined?[]:["path"]),"objectId","bytes","sha256"];
@@ -830,7 +837,7 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
     const row=inventory.dependencySpans[index],expected=authority.dependencies[index];
     if(!row||!exactKeys(row,["id","startLine","endLine","sha256"])||dependencyIds.has(row.id)||JSON.stringify([row.id,row.startLine,row.endLine,row.sha256])!==JSON.stringify(expected))
       throw new Error("Normative dependency authority mismatch");
-    dependencyIds.add(row.id);if(authority.kind!=="review-control")spanHash({startLine:row.startLine,endLine:row.endLine,sha256:row.sha256},"dependency");
+    dependencyIds.add(row.id);if(!["review-control","event-listener"].includes(authority.kind))spanHash({startLine:row.startLine,endLine:row.endLine,sha256:row.sha256},"dependency");
   }
   const parsed=ts.createSourceFile(sourcePath,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
   if(parsed.parseDiagnostics.length)throw new Error("Normative inventory source does not parse completely");
@@ -839,7 +846,7 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
   const visit=node=>{if(ts.isCallExpression(node))calls.push(node);ts.forEachChild(node,visit);};visit(parsed);
   const callLines=node=>[parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line+1,parsed.getLineAndCharacterOfPosition(node.getEnd()).line+1];
   const descendants=(root,predicate)=>{const found=[];const find=node=>{if(predicate(node))found.push(node);ts.forEachChild(node,find);};if(root)find(root);return found;};
-  let operationProperties,toolFactorySymbol,toolHelperSymbol,toolHelperCalls,toolHelperRegistration,reviewToolRegistrations,installRegistration;
+  let operationProperties,toolFactorySymbol,toolHelperSymbol,toolHelperCalls,toolHelperRegistration,reviewToolRegistrations,installRegistration,workspaceSubscription;
   if(authority.kind==="operation-tool"){
     const declarations=parsed.statements.filter(ts.isVariableStatement).flatMap(statement=>[...statement.declarationList.declarations]),
       objectInitializer=row=>ts.isObjectLiteralExpression(row?.initializer)?row.initializer:ts.isAsExpression(row?.initializer)&&ts.isObjectLiteralExpression(row.initializer.expression)?row.initializer.expression:null,
@@ -912,6 +919,22 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
       !ts.isTemplateExpression(template)||template.head.text!==`${externalReviewPrefix}:install-`||template.templateSpans.length!==1||template.templateSpans[0].literal.text!==""||
       checker.getSymbolAtLocation(template.templateSpans[0].expression)!==ownerSymbol)throw new Error("Invalid install command registration binding");
     for(const row of inventory.dependencySpans)spanHash({startLine:row.startLine,endLine:row.endLine,sha256:row.sha256},"dependency");
+  }else if(authority.kind==="event-listener"){
+    const imports=parsed.statements.filter(ts.isImportDeclaration).filter(row=>callLines(row)[0]===114&&ts.isStringLiteralLike(row.moduleSpecifier)&&row.moduleSpecifier.text==="../lib/session-changes.ts"),
+      specifiers=imports[0]?.importClause?.namedBindings&&ts.isNamedImports(imports[0].importClause.namedBindings)?[...imports[0].importClause.namedBindings.elements]:[],names=specifiers.map(row=>row.name.text),
+      eventSpecifier=specifiers.find(row=>row.name.text==="SESSION_CHANGE_EVENT"&&!row.propertyName),eventSymbol=eventSpecifier&&checker.getSymbolAtLocation(eventSpecifier.name);
+    if(imports.length!==1||JSON.stringify(names)!==JSON.stringify(["SessionChanges","SESSION_CHANGE_EVENT"])||!eventSymbol)
+      throw new Error("Invalid workspace session-change import binding");
+    const declarations=descendants(parsed,node=>ts.isVariableDeclaration(node)&&ts.isIdentifier(node.name)&&node.name.text==="unsubscribeWorktrees"),declaration=declarations[0],initializer=declaration?.initializer,
+      exactSubscription=call=>ts.isCallExpression(call)&&ts.isPropertyAccessExpression(call.expression)&&call.expression.name.text==="on"&&ts.isPropertyAccessExpression(call.expression.expression)&&
+        call.expression.expression.name.text==="events"&&ts.isIdentifier(call.expression.expression.expression)&&call.expression.expression.expression.text==="pi",
+      subscriptions=calls.filter(call=>exactSubscription(call)&&ts.isIdentifier(call.arguments[0])&&checker.getSymbolAtLocation(call.arguments[0])===eventSymbol),callback=initializer?.arguments?.[1];
+    if(declarations.length!==1||!(declaration.parent.flags&ts.NodeFlags.Const)||!exactSubscription(initializer)||subscriptions.length!==1||subscriptions[0]!==initializer||
+      JSON.stringify(callLines(initializer))!==JSON.stringify([1708,1713])||initializer.arguments.length!==2||!ts.isIdentifier(initializer.arguments[0])||
+      checker.getSymbolAtLocation(initializer.arguments[0])!==eventSymbol||!ts.isArrowFunction(callback)||JSON.stringify(callLines(callback))!==JSON.stringify([1708,1713]))
+      throw new Error("Invalid workspace change-listener subscription binding");
+    workspaceSubscription=initializer;
+    for(const row of inventory.dependencySpans)spanHash({startLine:row.startLine,endLine:row.endLine,sha256:row.sha256},"dependency");
   }
   const registrationIds=new Set(),referenceKeys=new Set(),registrationSymbols=new Map();
   if(inventory.registrations.length!==authority.registrations.length)throw new Error("Normative registration coverage mismatch");
@@ -925,7 +948,8 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
       throw new Error("Normative mapped-reference identity mismatch");
     registrationIds.add(row.id);referenceKeys.add(key);spanHash(span,"registration");
     const registrationName=["operation-tool","tool-helper"].includes(authority.kind)?"registerTool":authority.kind==="review-control"&&index<3?"registerTool":"registerCommand";
-    const matches=calls.filter(call=>ts.isPropertyAccessExpression(call.expression)&&call.expression.name.text===registrationName&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
+    const matches=authority.kind==="event-listener"?[workspaceSubscription].filter(call=>call&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine])):
+      calls.filter(call=>ts.isPropertyAccessExpression(call.expression)&&call.expression.name.text===registrationName&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
     if(authority.kind==="operation-tool"){
       const argument=matches[0]?.arguments[0];
       if(matches.length!==1||!argument||!ts.isCallExpression(argument)||!ts.isIdentifier(argument.expression)||
@@ -934,6 +958,8 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
       if(matches.length!==1||matches[0]!==toolHelperRegistration)throw new Error("Normative helper registration binding mismatch");
     }else if(authority.kind==="review-control"){
       if(matches.length!==1||(index<3?!reviewToolRegistrations.includes(matches[0]):matches[0]!==installRegistration))throw new Error("Normative review registration binding mismatch");
+    }else if(authority.kind==="event-listener"){
+      if(matches.length!==1||matches[0]!==workspaceSubscription)throw new Error("Normative event registration binding mismatch");
     }else{
       let declaration=matches[0];while(declaration&&!ts.isVariableDeclaration(declaration))declaration=declaration.parent;
       if(matches.length!==1||!declaration||!ts.isIdentifier(declaration.name)||!matches[0].arguments[0]||!ts.isIdentifier(matches[0].arguments[0]))
@@ -967,6 +993,9 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
         if(names.length!==1||!ts.isStringLiteralLike(names[0].initializer)||names[0].initializer.text!==publicName||callLines(names[0])[0]!==span.startLine)
           throw new Error("Normative review name binding mismatch");
       }else if(installRegistration===undefined)throw new Error("Normative install endpoint binding mismatch");
+    }else if(authority.kind==="event-listener"){
+      if(!workspaceSubscription||callLines(workspaceSubscription)[0]!==span.startLine||workspaceSubscription.arguments.length!==2||!ts.isArrowFunction(workspaceSubscription.arguments[1]))
+        throw new Error("Normative workspace endpoint binding mismatch");
     }else{
       const matches=calls.filter(call=>ts.isIdentifier(call.expression)&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
       if(matches.length!==1||checker.getSymbolAtLocation(matches[0].expression)!==registrationSymbols.get(row.registrationId)||!ts.isStringLiteralLike(matches[0].arguments[0]))

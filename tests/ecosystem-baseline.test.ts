@@ -290,7 +290,7 @@ test("CLI source-backed admission is explicit and an invalid repository fails cl
   {skip:!retainedBaselineRepository},()=>{
   const admitted=spawnSync(process.execPath,[baselineAuditScript,retainedBaselineRepository],{encoding:"utf8",env:process.env});
   assert.equal(admitted.status,0,admitted.stderr);
-  assert.match(admitted.stdout,/normative source proof: ADMITTED \(21 endpoints;/);
+  assert.match(admitted.stdout,/normative source proof: ADMITTED \(22 endpoints;/);
   assert.doesNotMatch(admitted.stdout,/NOT ADMITTED/);
   const invalid=spawnSync(process.execPath,[baselineAuditScript,join(tmpdir(),"missing-ecosystem-baseline.git")],{encoding:"utf8",env:process.env});
   assert.notEqual(invalid.status,0);
@@ -315,7 +315,16 @@ test("orchestrator review normative family is recognized before source-backed ve
     error=>error instanceof Error&&error.message!=="Unknown normative family authority");
 });
 
-test("plural normative inventory binds presentation, CodeGraph, agent and orchestrator review families to frozen source",
+test("workspace change-listener normative family is recognized before source-backed verification",()=>{
+  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
+  const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
+  const mappings=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-runtime-edge-mappings-v1.json",import.meta.url),"utf8"));
+  delete mappings.normativeInventory;mappings.normativeInventories=[mappings.normativeInventories[4]];
+  assert.throws(()=>verifyNormativeRuntimeInventory("unavailable-retained-repository",baseline,overlay,mappings),
+    error=>error instanceof Error&&error.message!=="Unknown normative family authority");
+});
+
+test("plural normative inventory binds five bounded families to frozen source",
   {skip:!retainedBaselineRepository},()=>{
   assert.equal(typeof verifyNormativeRuntimeInventory,"function");
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
@@ -328,8 +337,9 @@ test("plural normative inventory binds presentation, CodeGraph, agent and orches
   assert.deepEqual(mappings.normativeInventories[0],mappings.normativeInventory);
   assert.equal("path" in mappings.normativeInventories[2].source,false,"agent path is derived from its pinned baseline owner");
   assert.equal("path" in mappings.normativeInventories[3].source,false,"orchestrator path is derived from its pinned baseline owner");
+  assert.equal("path" in mappings.normativeInventories[4].source,false,"workspace path is derived from its pinned baseline owner");
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,mappings),
-    {families:4,registrations:9,endpoints:21});
+    {families:5,registrations:10,endpoints:22});
   const singletonOnly=structuredClone(mappings);delete singletonOnly.normativeInventories;
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,singletonOnly),
     {families:1,registrations:3,endpoints:4});
@@ -337,7 +347,7 @@ test("plural normative inventory binds presentation, CodeGraph, agent and orches
   assert.throws(()=>verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,invalidLegacy),/legacy singleton/i);
   const pluralOnly=structuredClone(mappings);delete pluralOnly.normativeInventory;
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,pluralOnly),
-    {families:4,registrations:9,endpoints:21});
+    {families:5,registrations:10,endpoints:22});
   assert.throws(()=>verifyNormativeRuntimeInventory("",baseline,overlay,mappings),/repository/i);
   const media=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-media-v1.json",import.meta.url),"utf8"));
   for(const mutate of [(value:any)=>{delete value.normativeInventory;delete value.normativeInventories;},(value:any)=>{value.normativeInventories[1].endpoints.pop();}]){
@@ -394,6 +404,12 @@ test("plural normative inventory binds presentation, CodeGraph, agent and orches
     ["review scope inclusion",value=>{value.normativeInventories[3].endpoints[0].id="review.scope";}],
     ["review dependency membership",value=>{value.normativeInventories[3].endpoints[0].dependencySpanIds[0]="install-owner-loop";}],
     ["review structural obligation",value=>{value.normativeInventories[3].endpoints[0].obligations[0]="weaker";}],
+    ["workspace source identity",value=>{value.normativeInventories[4].source.bytes++;}],
+    ["workspace dependency",value=>{value.normativeInventories[4].dependencySpans[0].sha256="0".repeat(64);}],
+    ["workspace mapped registration",value=>{value.normativeInventories[4].registrations[0].mappedReference.referenceIndex=16;}],
+    ["workspace endpoint denominator",value=>{value.normativeInventories[4].endpoints.pop();}],
+    ["workspace dependency membership",value=>{value.normativeInventories[4].endpoints[0].dependencySpanIds=[];}],
+    ["workspace structural obligation",value=>{value.normativeInventories[4].endpoints[0].obligations[0]="weaker";}],
   ];
   for(const [name,mutate] of pluralCases){const changed=structuredClone(mappings);mutate(changed);
     assert.throws(()=>verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,changed),/./,name);}
@@ -456,6 +472,18 @@ test("orchestrator review source mutations preserve wrapped names and exact owne
   ];
   for(const [name,mutate,error] of cases){const input=alteredNormativeInputs(t,3,mutate);
     assert.throws(()=>verifyNormativeRuntimeInventory(input.repository,input.baseline,input.overlay,input.mappings),error,name);}
+});
+
+test("workspace listener source mutations preserve the imported event and exact subscription denominator",{skip:!retainedBaselineRepository},t=>{
+  const registration=`\tconst unsubscribeWorktrees = pi.events.on(SESSION_CHANGE_EVENT, (data) => {\n\t\tif (!currentContext || !registry || (data as { sessionId?: string } | undefined)?.sessionId !== registry.sessionId) return;\n\t\tconst notice = (data as { notice?: string } | undefined)?.notice;\n\t\tif (notice) { if (changes) changes.notice = notice; currentContext.ui.notify(notice, "warning"); }\n\t\tvoid refreshChanges(currentContext);\n\t});`;
+  const cases:[string,(source:string)=>string][]=[
+    ["alternate imported symbol",source=>source.replace("SessionChanges, SESSION_CHANGE_EVENT } from \"../lib/session-changes.ts\"","SessionChanges, SESSION_CHANGE_EVENT as WORKSPACE_CHANGE_EVENT } from \"../lib/session-changes.ts\"").replace("pi.events.on(SESSION_CHANGE_EVENT, (data) => {","pi.events.on(WORKSPACE_CHANGE_EVENT, (data) => {")],
+    ["duplicate matching subscription",source=>source.replace("\tconst unsubscribeWorktrees = pi.events.on(SESSION_CHANGE_EVENT, (data) => {","\tconst duplicateWorktrees = pi.events.on(SESSION_CHANGE_EVENT, (_data) => {});\n\tconst unsubscribeWorktrees = pi.events.on(SESSION_CHANGE_EVENT, (data) => {")],
+    ["same-line event decoy",source=>source.replace("pi.events.on(SESSION_CHANGE_EVENT, (data) => {","pi.events.on(REVIEW_SIDEBAR_EVENT, (data = SESSION_CHANGE_EVENT) => {")],
+    ["moved callback",source=>source.replace(registration,registration.replace("\tconst unsubscribeWorktrees = pi.events.on(SESSION_CHANGE_EVENT, (data) => {","\tconst workspaceChangeCallback = (data: unknown) => {").replace("\n\t});","\n\t};\n\tconst unsubscribeWorktrees = pi.events.on(SESSION_CHANGE_EVENT, workspaceChangeCallback);"))],
+  ];
+  for(const [name,mutate] of cases){const input=alteredNormativeInputs(t,4,mutate);
+    assert.throws(()=>verifyNormativeRuntimeInventory(input.repository,input.baseline,input.overlay,input.mappings),/workspace .*binding/,name);}
 });
 
 test("asset overlay rejects identity, ordering, binding, span and authority mutations",

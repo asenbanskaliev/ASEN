@@ -635,6 +635,19 @@
         {"id":"orchestrator.install-delegation","registrationId":"orchestrator.install","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":33},"instantiationSpan":{"startLine":9405,"endLine":9405,"sha256":"49a01d627b3ad2d701b88cbd8e8544f88929da0dd96be45f8ea5e96745017c65"},"dependencySpanIds":["install-owner-loop"],"obligations":["the exact install name is the delegation expansion of the exact owner loop template"]},
         {"id":"orchestrator.install-review","registrationId":"orchestrator.install","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":33},"instantiationSpan":{"startLine":9405,"endLine":9405,"sha256":"49a01d627b3ad2d701b88cbd8e8544f88929da0dd96be45f8ea5e96745017c65"},"dependencySpanIds":["install-owner-loop"],"obligations":["the exact install name is the review expansion of the exact owner loop template"]}
       ]
+    },
+    {
+      "familyId":"workspace.change-listener.v1",
+      "source":{"sourceId":"ECO-SRC-f25fcbecafe905e1","objectId":"ef22678c9621f95d450079ec3aae02f02eccb37c","bytes":114585,"sha256":"dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf"},
+      "dependencySpans":[
+        {"id":"session-change-event-import","startLine":114,"endLine":114,"sha256":"35f01f921db7f23f746b86b374a24e9d38e0209b729b2b8a34b2652577534ac1"}
+      ],
+      "registrations":[
+        {"id":"workspace.change-listener","mappedReference":{"sourceId":"ECO-SRC-f25fcbecafe905e1","referenceIndex":17},"span":{"startLine":1708,"endLine":1713,"sha256":"4fdc0bdefe5526e4cb8e7bf4c9c35fce16361d635e82b013e9854facdcc12f6b"}}
+      ],
+      "endpoints":[
+        {"id":"workspace.session-change","registrationId":"workspace.change-listener","mappedReference":{"sourceId":"ECO-SRC-f25fcbecafe905e1","referenceIndex":17},"instantiationSpan":{"startLine":1708,"endLine":1708,"sha256":"c33ee0f3f2bcad5afbd2d6b3e1fe5ece3c1cc11924fe639927368d32361a352b"},"dependencySpanIds":["session-change-event-import"],"obligations":["the exact imported event identifier is the first argument of the exact subscription and the callback is its second argument"]}
+      ]
     }
   ]
 }
