@@ -290,27 +290,35 @@ test("CLI source-backed admission is explicit and an invalid repository fails cl
   {skip:!retainedBaselineRepository},()=>{
   const admitted=spawnSync(process.execPath,[baselineAuditScript,retainedBaselineRepository],{encoding:"utf8",env:process.env});
   assert.equal(admitted.status,0,admitted.stderr);
-  assert.match(admitted.stdout,/normative source proof: ADMITTED \(4 endpoints;/);
+  assert.match(admitted.stdout,/normative source proof: ADMITTED \(7 endpoints;/);
   assert.doesNotMatch(admitted.stdout,/NOT ADMITTED/);
   const invalid=spawnSync(process.execPath,[baselineAuditScript,join(tmpdir(),"missing-ecosystem-baseline.git")],{encoding:"utf8",env:process.env});
   assert.notEqual(invalid.status,0);
   assert.doesNotMatch(invalid.stdout,/normative source proof: (?:ADMITTED|NOT ADMITTED)/);
 });
 
-test("normative presentation inventory binds three registrations and four endpoints to frozen source",
+test("plural normative inventory binds presentation and CodeGraph families to frozen source",
   {skip:!retainedBaselineRepository},()=>{
   assert.equal(typeof verifyNormativeRuntimeInventory,"function");
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
   const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
   const mappings=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-runtime-edge-mappings-v1.json",import.meta.url),"utf8"));
-  const legacy=structuredClone(mappings);delete legacy.normativeInventory;
+  const legacy=structuredClone(mappings);delete legacy.normativeInventory;delete legacy.normativeInventories;
   assert.deepEqual(verifyRuntimeEdgeMappings(retainedBaselineRepository,baseline,overlay,legacy),{mapped:25,tracked:3,codeContracts:12,externalRuntime:10});
   assert.throws(()=>verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,legacy),/normative inventory/i);
+  assert.ok(Array.isArray(mappings.normativeInventories));
+  assert.deepEqual(mappings.normativeInventories[0],mappings.normativeInventory);
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,mappings),
+    {families:2,registrations:4,endpoints:7});
+  const singletonOnly=structuredClone(mappings);delete singletonOnly.normativeInventories;
+  assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,singletonOnly),
     {families:1,registrations:3,endpoints:4});
+  const pluralOnly=structuredClone(mappings);delete pluralOnly.normativeInventory;
+  assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,pluralOnly),
+    {families:2,registrations:4,endpoints:7});
   assert.throws(()=>verifyNormativeRuntimeInventory("",baseline,overlay,mappings),/repository/i);
   const media=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-media-v1.json",import.meta.url),"utf8"));
-  for(const mutate of [(value:any)=>{delete value.normativeInventory;},(value:any)=>{value.normativeInventory.endpoints.pop();}]){
+  for(const mutate of [(value:any)=>{delete value.normativeInventory;delete value.normativeInventories;},(value:any)=>{value.normativeInventories[1].endpoints.pop();}]){
     const changed=structuredClone(mappings);mutate(changed);
     assert.throws(()=>auditEcosystemBaseline(retainedBaselineRepository,baseline,media,overlay,changed),/normative/i);
   }
@@ -334,6 +342,51 @@ test("normative presentation inventory binds three registrations and four endpoi
     const changed=structuredClone(mappings);mutate(changed);
     assert.throws(()=>verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,changed),/./,name);
   }
+  const pluralCases:[string,(value:any)=>void][]=[
+    ["dual representation mismatch",value=>{value.normativeInventory.familyId="other";}],
+    ["empty families",value=>{value.normativeInventories=[];}],
+    ["duplicate family",value=>{value.normativeInventories[1]=structuredClone(value.normativeInventories[0]);}],
+    ["unknown family",value=>{value.normativeInventories[1].familyId="unknown.operations.v1";}],
+    ["malformed family",value=>{value.normativeInventories[1].unexpected=true;}],
+    ["CodeGraph source identity",value=>{value.normativeInventories[1].source.sha256="0".repeat(64);}],
+    ["CodeGraph mapped registration",value=>{value.normativeInventories[1].registrations[0].mappedReference.referenceIndex=0;}],
+    ["init literal span",value=>{value.normativeInventories[1].endpoints[0].instantiationSpan.startLine=10;}],
+    ["query literal hash",value=>{value.normativeInventories[1].endpoints[1].instantiationSpan.sha256="0".repeat(64);}],
+    ["explore literal span",value=>{value.normativeInventories[1].endpoints[2].instantiationSpan.endLine=12;}],
+    ["init argv dependency",value=>{value.normativeInventories[1].endpoints[0].dependencySpanIds[5]="query-argv";}],
+    ["query argv dependency",value=>{value.normativeInventories[1].endpoints[1].dependencySpanIds[5]="explore-argv";}],
+    ["explore argv dependency",value=>{value.normativeInventories[1].endpoints[2].dependencySpanIds[5]="query-argv";}],
+    ["operation obligation",value=>{value.normativeInventories[1].endpoints[1].obligations[2]="weaker";}],
+  ];
+  for(const [name,mutate] of pluralCases){const changed=structuredClone(mappings);mutate(changed);
+    assert.throws(()=>verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,changed),/./,name);}
+});
+
+function alteredCodeGraphInputs(t:test.TestContext,mutate:(source:string)=>string){
+  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
+  const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
+  const mappings=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-runtime-edge-mappings-v1.json",import.meta.url),"utf8"));
+  const source=baseline.files.find((row:any)=>row.id==="ECO-SRC-625c38e8637ad8b0"),repository=mkdtempSync(join(tmpdir(),"asen-codegraph-authority-"));
+  t.after(()=>rmSync(repository,{recursive:true,force:true}));execFileSync("git",["init","--bare","-q",repository]);
+  const presentation=baseline.files.find((row:any)=>row.id==="ECO-SRC-6c28d7b99a511610"),presentationBytes=execFileSync("git",["-C",retainedBaselineRepository,"cat-file","blob",presentation.objectId]);
+  assert.equal(execFileSync("git",["-C",repository,"hash-object","-w","--stdin"],{input:presentationBytes,encoding:"utf8"}).trim(),presentation.objectId);
+  const original=execFileSync("git",["-C",retainedBaselineRepository,"cat-file","blob",source.objectId],{encoding:"utf8"}),bytes=Buffer.from(mutate(original));
+  const objectId=execFileSync("git",["-C",repository,"hash-object","-w","--stdin"],{input:bytes,encoding:"utf8"}).trim(),sha256=createHash("sha256").update(bytes).digest("hex");
+  Object.assign(source,{objectId,bytes:bytes.length,sha256});
+  Object.assign(mappings.normativeInventories[1].source,{objectId,bytes:bytes.length,sha256});
+  for(const row of mappings.mappings.filter((item:any)=>item.sourceId===source.id))Object.assign(row,{objectId,bytes:bytes.length,sha256});
+  for(const row of overlay.adjudications.filter((item:any)=>item.sourceId===source.id))Object.assign(row,{objectId,bytes:bytes.length,sha256});
+  return {repository,baseline,overlay,mappings};
+}
+
+test("CodeGraph authority rejects a coordinated alternate source identity",{skip:!retainedBaselineRepository},t=>{
+  const input=alteredCodeGraphInputs(t,source=>`${source}\n// coordinated alternate source identity\n`);
+  assert.throws(()=>verifyNormativeRuntimeInventory(input.repository,input.baseline,input.overlay,input.mappings),/implementation-owned source identity/);
+});
+
+test("CodeGraph operation binding rejects unrelated same-line operation properties",{skip:!retainedBaselineRepository},t=>{
+  const input=alteredCodeGraphInputs(t,source=>source.replace("const CODEGRAPH_OPERATION = {","const UNRELATED_OPERATION = {"));
+  assert.throws(()=>verifyNormativeRuntimeInventory(input.repository,input.baseline,input.overlay,input.mappings),/CODEGRAPH_OPERATION declaration/);
 });
 
 test("asset overlay rejects identity, ordering, binding, span and authority mutations",

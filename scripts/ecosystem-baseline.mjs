@@ -3,6 +3,7 @@ import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
+import {isDeepStrictEqual} from "node:util";
 import ts from "typescript";
 import {validateMediaManifest,verifyMediaBytes} from "./ecosystem-media.mjs";
 
@@ -510,7 +511,7 @@ function semanticReferenceCandidates(filename,text){
     const rows=[];
     for(const match of text.matchAll(/`\/(\w[\w-]*)(?:\s[^`]*)?`/g)){
       const start=match.index,line=text.slice(0,start).split("\n").length,
-        lineStart=text.lastIndexOf("\n",start)+1,lineEnd=text.indexOf("\n",start),end=lineEnd<0?text.length:lineEnd+1;
+        lineEnd=text.indexOf("\n",start),end=lineEnd<0?text.length:lineEnd+1;
       rows.push({reference:{kind:"command-reference",target:match[1]},line,startLine:line,endLine:line,start,end});
     }
     return rows.sort((a,b)=>JSON.stringify(a.reference).localeCompare(JSON.stringify(b.reference),"en"));
@@ -701,7 +702,7 @@ const expectedRuntimeEdgeSemantics=[["ECO-SRC-625c38e8637ad8b0",0,"external-runt
 
 /** Checks that every runtime-edge mapping is bound to one exact adjudicated source span. */
 export function verifyRuntimeEdgeMappings(repository,baseline,adjudications,mapping) {
-  const mappingKeys=mapping?.normativeInventory===undefined?["version","baselineCommit","adjudicationFile","mappings"]:["version","baselineCommit","adjudicationFile","mappings","normativeInventory"];
+  const mappingKeys=["version","baselineCommit","adjudicationFile","mappings",...(mapping?.normativeInventory===undefined?[]:["normativeInventory"]),...(mapping?.normativeInventories===undefined?[]:["normativeInventories"])];
   if(validateBaseline(baseline).length||!mapping||!exactKeys(mapping,mappingKeys)||mapping.version!==1||mapping.baselineCommit!==baseline.commit||
     mapping.adjudicationFile!=="registry/parity/ecosystem-reference-adjudications-v1.json"||!Array.isArray(mapping.mappings)||
     adjudications?.version!==1||adjudications.baselineCommit!==baseline.commit||!Array.isArray(adjudications.adjudications))throw new Error("Invalid runtime edge mapping envelope");
@@ -741,7 +742,7 @@ export function verifyRuntimeEdgeMappings(repository,baseline,adjudications,mapp
 }
 
 const normativePresentationAuthority={
-  familyId:"presentation.commands.v1",sourceId:"ECO-SRC-6c28d7b99a511610",sourcePath:"extensions/startup-banner.ts",
+  familyId:"presentation.commands.v1",sourceId:"ECO-SRC-6c28d7b99a511610",sourcePath:"extensions/startup-banner.ts",objectId:"44de38b41e2199f31cffbe60887456ab9324d185",bytes:42261,sha256:"209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
   dependencies:[["configuration-model",14,25,"356e8f90381ecf05ebcbbaeb0806e2bb67b1adc22c6c9fad754419d12c43f08d"],["configuration-resolution",71,87,"d4d2bdb7a19fe000fa84524537bd1654a849b8dd12da208ca9c79bb03bf429a0"],["configuration-io",110,122,"786f898b42a85543abefe926a5d9753e43cc00ff825b95660bfb3052390d615e"],["success-reporting",580,589,"5fedaea0c72c72c8546bea200c37c0e9f92500f140d6e6492fd81fdc65909358"]],
   registrations:[["presentation.menu",5,592,612,"a00e5f7cfc64f8610e295254186593f4c7328203aaec992b137b4336d91f05ab"],["presentation.toggle",6,615,623,"87c1b3e88577f75920c26f27effc97ec78f42136af1bced582e8f41086bb63bd"],["presentation.color",7,626,641,"adcb5bf7008634f80311fe6e231c896e0d712d359280a42b643e7a31b4657c0d"]],
   endpoints:[
@@ -751,16 +752,26 @@ const normativePresentationAuthority={
     ["presentation.color-setter","presentation.color",7,646,"fc04dbe1330a69d8b8fb45c171dfd1f516c0bd67e67ce1079d5d1a93311c4f91",["a successful color choice persists the resulting configuration and reports it","a valid trimmed color preset bypasses prompting","an invalid preset prompts for a supported color","cancellation writes nothing","missing, malformed, or unreadable configuration reads as defaults","writes create the configuration directory and replace the complete JSON document"]],
   ],
 };
+const normativeCodeGraphAuthority={
+  familyId:"codegraph.operations.v1",sourceId:"ECO-SRC-625c38e8637ad8b0",sourcePath:"extensions/codegraph-tools.ts",objectId:"39f21cca79a50f02b25472e48d68c2a97e04a073",bytes:10707,sha256:"7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",kind:"operation-tool",
+  dependencies:[
+    ["parameters",24,28,"2fe256de1eb2465db9ecfbc21dcda5c3ee0972062d03002e813387c100184b2b"],["schema",53,62,"4e6bfde7cf01eb6eb0931765bf57f8bead43846ee4eaa324518a474e39042e82"],["workspace-root",71,94,"a02379149444e151865b5213a6e18e04de883d1696e173f37130700fd1182b3f"],["safe-index",96,106,"d91aa9c9646fad940b953037a0336f04af07dcbb5eb8eeb2d71a7e3f4f259359"],["arguments",108,161,"1d398b11becb2d4967e7c8475450833c7f162aeb053abd922ab65f2bfcc14195"],["init-argv",128,129,"12eeb47d23cda82fdadb45f85311f0afb7f5632aad58415171ee09793cc70717"],["query-argv",130,141,"4161988c45f1b4cbd302553315f6a145eb6df96782a9a836c1bce680da901e50"],["explore-argv",142,153,"0bd5922c22d244d88d6c94133b55a4bb38cf3e3727064f6e9e93e35fc660ac0e"],["output-error",163,188,"f578681cf32809e6983a833effa12932700183d8b66cea9213c6166b30c053a5"],["path-shim",191,203,"7d6e14083d4ac7e056ac7507bea32f5a8d716ec458f0aab3cb7f585d267ad7cd"],["binary",208,243,"f2bcbc52d48346ca630f8de71ade35870d3dab41e42bdf7550e40b90b788846b"],["process",245,278,"8b013a4f4e01e2c35d65dcdd3726414a578a61991496ba1660d04a7882c6e6ab"],["factory",280,319,"8c6022206fee753eb867328e30f2bfb2e332496c4b669c81b7a55d86b12c3552"],["default-helper",326,328,"20257cd99a8e2e010befa9dc771947c2ce4411e82ec75b9bba1e67e17c44be1e"],
+  ],
+  registrations:[["codegraph.tool",7,323,323,"a4e951dfbf0364d42620121c654f3f4d1842059c6f0ec6778b19280635a9c8be"]],
+  endpoints:[
+    ["codegraph.init","codegraph.tool",7,9,"7741b3700a8d48b12df547cbbd853a4a71b6d85770f4b72b86da9e443c4b0fc7",["the current workspace must be a real Git project root and HOME or the temporary directory is rejected","an existing .codegraph path must be a real directory and not a symbolic link","init argv contains only the operation and current workspace; query and limit are not forwarded","the wrapper never initializes automatically","execution is sequential, shell-free, signal-aware, and buffer-bounded","joined output is bounded and failures distinguish unavailable from failed"],["parameters","schema","workspace-root","safe-index","arguments","init-argv","output-error","path-shim","binary","process","factory","default-helper"]],
+    ["codegraph.query","codegraph.tool",7,10,"fe48ff89094261c30d093edf90a9f790d75e53382d9b1f1c2e57958e7d0ea68a",["the current workspace must be a real Git project root and HOME or the temporary directory is rejected","an existing .codegraph path must be a real directory and not a symbolic link","query requires a nonblank query of at most 2000 characters and an integer limit from 1 through 20 defaulting to 10","query passes the limit with --limit after the current workspace path","the wrapper never initializes automatically","execution is sequential, shell-free, signal-aware, and buffer-bounded","joined output is bounded and failures distinguish unavailable from failed"],["parameters","schema","workspace-root","safe-index","arguments","query-argv","output-error","path-shim","binary","process","factory","default-helper"]],
+    ["codegraph.explore","codegraph.tool",7,11,"bb26ebfcf475085886d55ac1c715a93a7d902d12d9b84c3e8f67c8cc98b416f6",["the current workspace must be a real Git project root and HOME or the temporary directory is rejected","an existing .codegraph path must be a real directory and not a symbolic link","explore requires a nonblank query of at most 2000 characters and an integer limit from 1 through 20 defaulting to 10","explore passes the limit with --max-files after the current workspace path","the wrapper never initializes automatically","execution is sequential, shell-free, signal-aware, and buffer-bounded","joined output is bounded and failures distinguish unavailable from failed"],["parameters","schema","workspace-root","safe-index","arguments","explore-argv","output-error","path-shim","binary","process","factory","default-helper"]],
+  ],
+};
+const normativeAuthorities=new Map([normativePresentationAuthority,normativeCodeGraphAuthority].map(authority=>[authority.familyId,authority]));
 
-/** Separately admits the first bounded normative family; legacy version-1 mappings remain mappings without it. */
-export function verifyNormativeRuntimeInventory(repository,baseline,adjudications,mapping){
-  if(typeof repository!=="string"||!repository)throw new Error("A retained baseline repository is required for normative inventory admission");
-  verifyRuntimeEdgeMappings("",baseline,adjudications,mapping);
-  const inventory=mapping?.normativeInventory,source=inventory?.source;
+function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
+  const source=inventory?.source;
   if(!inventory||!exactKeys(inventory,["familyId","source","dependencySpans","registrations","endpoints"])||
     !source||!exactKeys(source,["sourceId","path","objectId","bytes","sha256"])||!Array.isArray(inventory.dependencySpans)||
     !Array.isArray(inventory.registrations)||!Array.isArray(inventory.endpoints))throw new Error("Invalid normative inventory envelope");
-  const authority=normativePresentationAuthority,owner=baseline.files.find(row=>row.id===source.sourceId);
+  const owner=baseline.files.find(row=>row.id===source.sourceId);
   if(inventory.familyId!==authority.familyId||source.sourceId!==authority.sourceId||source.path!==authority.sourcePath||!owner||
     source.path!==owner.path||source.objectId!==owner.objectId||source.bytes!==owner.bytes||source.sha256!==owner.sha256)
     throw new Error("Normative inventory source identity mismatch");
@@ -784,6 +795,30 @@ export function verifyNormativeRuntimeInventory(repository,baseline,adjudication
   const checker=ts.createProgram([source.path],{noLib:true,noResolve:true},host).getTypeChecker(),calls=[];
   const visit=node=>{if(ts.isCallExpression(node))calls.push(node);ts.forEachChild(node,visit);};visit(parsed);
   const callLines=node=>[parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line+1,parsed.getLineAndCharacterOfPosition(node.getEnd()).line+1];
+  let operationProperties,toolFactorySymbol;
+  if(authority.kind==="operation-tool"){
+    const declarations=parsed.statements.filter(ts.isVariableStatement).flatMap(statement=>[...statement.declarationList.declarations]),
+      objectInitializer=row=>ts.isObjectLiteralExpression(row?.initializer)?row.initializer:ts.isAsExpression(row?.initializer)&&ts.isObjectLiteralExpression(row.initializer.expression)?row.initializer.expression:null,
+      operationDeclaration=declarations.filter(row=>ts.isIdentifier(row.name)&&row.name.text==="CODEGRAPH_OPERATION"&&objectInitializer(row)&&(row.parent.flags&ts.NodeFlags.Const));
+    if(operationDeclaration.length!==1)throw new Error("Invalid CODEGRAPH_OPERATION declaration binding");
+    const operationSymbol=checker.getSymbolAtLocation(operationDeclaration[0].name),schema=declarations.find(row=>ts.isIdentifier(row.name)&&row.name.text==="CODEGRAPH_TOOL_PARAMETERS"),
+      schemaSymbol=schema&&checker.getSymbolAtLocation(schema.name),command=parsed.statements.find(row=>ts.isFunctionDeclaration(row)&&row.name?.text==="commandArguments"),
+      factory=parsed.statements.find(row=>ts.isFunctionDeclaration(row)&&row.name?.text==="createCodeGraphTool");
+    const descendants=(root,predicate)=>{const found=[];const find=node=>{if(predicate(node))found.push(node);ts.forEachChild(node,find);};if(root)find(root);return found;};
+    const schemaUsesOperation=descendants(schema?.initializer,node=>ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&node.expression.name.text==="values"&&
+      ts.isIdentifier(node.arguments[0])&&checker.getSymbolAtLocation(node.arguments[0])===operationSymbol).length===1;
+    const cases=descendants(command,node=>ts.isCaseClause(node)&&ts.isPropertyAccessExpression(node.expression)&&ts.isIdentifier(node.expression.expression)&&
+      checker.getSymbolAtLocation(node.expression.expression)===operationSymbol).map(node=>node.expression.name.text).sort();
+    toolFactorySymbol=factory?.name&&checker.getSymbolAtLocation(factory.name);
+    const returned=descendants(factory,node=>ts.isReturnStatement(node)&&ts.isObjectLiteralExpression(node.expression)).map(node=>node.expression)[0],
+      parameterProperty=returned?.properties.find(row=>ts.isPropertyAssignment(row)&&row.name.getText(parsed)==="parameters"),
+      execute=returned?.properties.find(row=>ts.isMethodDeclaration(row)&&row.name.getText(parsed)==="execute"),commandSymbol=command?.name&&checker.getSymbolAtLocation(command.name),
+      commandCalls=descendants(execute,node=>ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&checker.getSymbolAtLocation(node.expression)===commandSymbol&&
+        ts.isIdentifier(node.arguments[0])&&node.arguments[0].text==="parameters");
+    if(!schemaUsesOperation||JSON.stringify(cases)!==JSON.stringify(["EXPLORE","INIT","QUERY"])||!parameterProperty||!ts.isIdentifier(parameterProperty.initializer)||
+      checker.getSymbolAtLocation(parameterProperty.initializer)!==schemaSymbol||commandCalls.length!==1)throw new Error("Invalid CODEGRAPH_OPERATION command/factory path binding");
+    operationProperties=objectInitializer(operationDeclaration[0]).properties;
+  }
   const registrationIds=new Set(),referenceKeys=new Set(),registrationSymbols=new Map();
   if(inventory.registrations.length!==authority.registrations.length)throw new Error("Normative registration coverage mismatch");
   for(let index=0;index<authority.registrations.length;index++){
@@ -795,28 +830,63 @@ export function verifyNormativeRuntimeInventory(repository,baseline,adjudication
     if(referenceKeys.has(key)||!mapping.mappings.some(item=>item.sourceId===reference.sourceId&&item.referenceIndex===reference.referenceIndex&&JSON.stringify(item.span)===JSON.stringify(span)))
       throw new Error("Normative mapped-reference identity mismatch");
     registrationIds.add(row.id);referenceKeys.add(key);spanHash(span,"registration");
-    const matches=calls.filter(call=>ts.isPropertyAccessExpression(call.expression)&&call.expression.name.text==="registerCommand"&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
-    let declaration=matches[0];while(declaration&&!ts.isVariableDeclaration(declaration))declaration=declaration.parent;
-    if(matches.length!==1||!declaration||!ts.isIdentifier(declaration.name)||!matches[0].arguments[0]||!ts.isIdentifier(matches[0].arguments[0]))
-      throw new Error("Normative registration binding mismatch");
-    registrationSymbols.set(row.id,checker.getSymbolAtLocation(declaration.name));
+    const registrationName=authority.kind==="operation-tool"?"registerTool":"registerCommand";
+    const matches=calls.filter(call=>ts.isPropertyAccessExpression(call.expression)&&call.expression.name.text===registrationName&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
+    if(authority.kind==="operation-tool"){
+      const argument=matches[0]?.arguments[0];
+      if(matches.length!==1||!argument||!ts.isCallExpression(argument)||!ts.isIdentifier(argument.expression)||
+        checker.getSymbolAtLocation(argument.expression)!==toolFactorySymbol)throw new Error("Normative tool registration binding mismatch");
+    }else{
+      let declaration=matches[0];while(declaration&&!ts.isVariableDeclaration(declaration))declaration=declaration.parent;
+      if(matches.length!==1||!declaration||!ts.isIdentifier(declaration.name)||!matches[0].arguments[0]||!ts.isIdentifier(matches[0].arguments[0]))
+        throw new Error("Normative registration binding mismatch");
+      registrationSymbols.set(row.id,checker.getSymbolAtLocation(declaration.name));
+    }
   }
-  if(referenceKeys.size!==3)throw new Error("Normative mapped-reference coverage mismatch");
+  if(referenceKeys.size!==authority.registrations.length)throw new Error("Normative mapped-reference coverage mismatch");
   const endpointIds=new Set();
   if(inventory.endpoints.length!==authority.endpoints.length)throw new Error("Normative endpoint coverage mismatch");
   for(let index=0;index<authority.endpoints.length;index++){
     const row=inventory.endpoints[index],expected=authority.endpoints[index],reference=row?.mappedReference,span=row?.instantiationSpan;
     if(!row||!exactKeys(row,["id","registrationId","mappedReference","instantiationSpan","dependencySpanIds","obligations"])||!reference||!exactKeys(reference,["sourceId","referenceIndex"])||
       endpointIds.has(row.id)||!registrationIds.has(row.registrationId)||reference.sourceId!==source.sourceId||
-      JSON.stringify([row.id,row.registrationId,reference.referenceIndex,span?.startLine,span?.sha256,row.obligations])!==JSON.stringify(expected)||span?.endLine!==span?.startLine||
-      !Array.isArray(row.dependencySpanIds)||JSON.stringify(row.dependencySpanIds)!==JSON.stringify([...dependencyIds]))
+      JSON.stringify([row.id,row.registrationId,reference.referenceIndex,span?.startLine,span?.sha256,row.obligations])!==JSON.stringify(expected.slice(0,6))||span?.endLine!==span?.startLine||
+      !Array.isArray(row.dependencySpanIds)||JSON.stringify(row.dependencySpanIds)!==JSON.stringify(expected[6]??[...dependencyIds]))
       throw new Error("Normative endpoint authority mismatch");
     endpointIds.add(row.id);spanHash(span,"endpoint instantiation");
-    const matches=calls.filter(call=>ts.isIdentifier(call.expression)&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
-    if(matches.length!==1||checker.getSymbolAtLocation(matches[0].expression)!==registrationSymbols.get(row.registrationId)||!ts.isStringLiteralLike(matches[0].arguments[0]))
-      throw new Error("Normative endpoint binding mismatch");
+    if(authority.kind==="operation-tool"){
+      const operation=row.id.slice(row.id.lastIndexOf(".")+1),matches=operationProperties.filter(node=>ts.isPropertyAssignment(node)&&ts.isIdentifier(node.name)&&
+        node.name.text===operation.toUpperCase()&&ts.isStringLiteralLike(node.initializer)&&node.initializer.text===operation&&callLines(node.initializer)[0]===span.startLine);
+      if(matches.length!==1)throw new Error("Normative operation literal binding mismatch");
+    }else{
+      const matches=calls.filter(call=>ts.isIdentifier(call.expression)&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
+      if(matches.length!==1||checker.getSymbolAtLocation(matches[0].expression)!==registrationSymbols.get(row.registrationId)||!ts.isStringLiteralLike(matches[0].arguments[0]))
+        throw new Error("Normative endpoint binding mismatch");
+    }
   }
-  return {families:1,registrations:registrationIds.size,endpoints:endpointIds.size};
+  if(source.objectId!==authority.objectId||source.bytes!==authority.bytes||source.sha256!==authority.sha256)
+    throw new Error("Normative implementation-owned source identity mismatch");
+  return {registrations:registrationIds.size,endpoints:endpointIds.size};
+}
+
+/** Separately admits bounded normative families; legacy version-1 mappings remain mappings without them. */
+export function verifyNormativeRuntimeInventory(repository,baseline,adjudications,mapping){
+  if(typeof repository!=="string"||!repository)throw new Error("A retained baseline repository is required for normative inventory admission");
+  verifyRuntimeEdgeMappings("",baseline,adjudications,mapping);
+  const plural=mapping?.normativeInventories,singleton=mapping?.normativeInventory;
+  if(plural!==undefined&&(!Array.isArray(plural)||!plural.length))throw new Error("Invalid plural normative inventory envelope");
+  if(plural!==undefined&&singleton!==undefined&&!isDeepStrictEqual(plural[0],singleton))throw new Error("Normative singleton/plural inventory mismatch");
+  const inventories=plural??(singleton===undefined?[]:[singleton]);
+  if(!inventories.length)throw new Error("Missing normative inventory");
+  const familyIds=new Set(),total={families:inventories.length,registrations:0,endpoints:0};
+  for(const inventory of inventories){
+    if(typeof inventory?.familyId!=="string"||familyIds.has(inventory.familyId))throw new Error("Duplicate or malformed normative family");
+    const authority=normativeAuthorities.get(inventory.familyId);if(!authority)throw new Error("Unknown normative family authority");
+    familyIds.add(inventory.familyId);
+    const result=verifyNormativeFamily(repository,baseline,mapping,inventory,authority);
+    total.registrations+=result.registrations;total.endpoints+=result.endpoints;
+  }
+  return total;
 }
 
 /** Reads the explicitly supported direct-child Markdown selector from exact Git objects. */

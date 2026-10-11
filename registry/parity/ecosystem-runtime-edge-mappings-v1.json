@@ -488,5 +488,101 @@
         "obligations": ["a successful color choice persists the resulting configuration and reports it", "a valid trimmed color preset bypasses prompting", "an invalid preset prompts for a supported color", "cancellation writes nothing", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
       }
     ]
-  }
+  },
+  "normativeInventories": [
+    {
+      "familyId": "presentation.commands.v1",
+      "source": {
+        "sourceId": "ECO-SRC-6c28d7b99a511610",
+        "path": "extensions/startup-banner.ts",
+        "objectId": "44de38b41e2199f31cffbe60887456ab9324d185",
+        "bytes": 42261,
+        "sha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8"
+      },
+      "dependencySpans": [
+        {"id": "configuration-model", "startLine": 14, "endLine": 25, "sha256": "356e8f90381ecf05ebcbbaeb0806e2bb67b1adc22c6c9fad754419d12c43f08d"},
+        {"id": "configuration-resolution", "startLine": 71, "endLine": 87, "sha256": "d4d2bdb7a19fe000fa84524537bd1654a849b8dd12da208ca9c79bb03bf429a0"},
+        {"id": "configuration-io", "startLine": 110, "endLine": 122, "sha256": "786f898b42a85543abefe926a5d9753e43cc00ff825b95660bfb3052390d615e"},
+        {"id": "success-reporting", "startLine": 580, "endLine": 589, "sha256": "5fedaea0c72c72c8546bea200c37c0e9f92500f140d6e6492fd81fdc65909358"}
+      ],
+      "registrations": [
+        {"id": "presentation.menu", "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 5}, "span": {"startLine": 592, "endLine": 612, "sha256": "a00e5f7cfc64f8610e295254186593f4c7328203aaec992b137b4336d91f05ab"}},
+        {"id": "presentation.toggle", "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 6}, "span": {"startLine": 615, "endLine": 623, "sha256": "87c1b3e88577f75920c26f27effc97ec78f42136af1bced582e8f41086bb63bd"}},
+        {"id": "presentation.color", "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 7}, "span": {"startLine": 626, "endLine": 641, "sha256": "adcb5bf7008634f80311fe6e231c896e0d712d359280a42b643e7a31b4657c0d"}}
+      ],
+      "endpoints": [
+        {
+          "id": "presentation.menu", "registrationId": "presentation.menu",
+          "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 5},
+          "instantiationSpan": {"startLine": 643, "endLine": 643, "sha256": "ceb734babb5e36206a97bae3bf9c2ca9c074a7202f8c4e73f1b71ff992caa832"},
+          "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+          "obligations": ["successful selection persists the resulting configuration and reports it", "cancellation before a choice writes nothing", "rose and text-logo choices preserve unrelated settings", "color cancellation writes nothing", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+        },
+        {
+          "id": "presentation.rose-toggle", "registrationId": "presentation.toggle",
+          "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 6},
+          "instantiationSpan": {"startLine": 644, "endLine": 644, "sha256": "ccaa896ec604e82f06952b83552b45522a20046354727eb5aa083a92155f1575"},
+          "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+          "obligations": ["a successful toggle persists the resulting configuration and reports it", "the toggle changes only the rose setting and preserves unrelated settings", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+        },
+        {
+          "id": "presentation.text-logo-toggle", "registrationId": "presentation.toggle",
+          "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 6},
+          "instantiationSpan": {"startLine": 645, "endLine": 645, "sha256": "a268a09f732c597e795f46c3af3cdaa943cd76c0f7e82ec7baac64ccb5d5719c"},
+          "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+          "obligations": ["a successful toggle persists the resulting configuration and reports it", "the toggle changes only the text-logo setting and preserves unrelated settings", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+        },
+        {
+          "id": "presentation.color-setter", "registrationId": "presentation.color",
+          "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 7},
+          "instantiationSpan": {"startLine": 646, "endLine": 646, "sha256": "fc04dbe1330a69d8b8fb45c171dfd1f516c0bd67e67ce1079d5d1a93311c4f91"},
+          "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+          "obligations": ["a successful color choice persists the resulting configuration and reports it", "a valid trimmed color preset bypasses prompting", "an invalid preset prompts for a supported color", "cancellation writes nothing", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+        }
+      ]
+    },
+    {
+      "familyId": "codegraph.operations.v1",
+      "source": {"sourceId": "ECO-SRC-625c38e8637ad8b0", "path": "extensions/codegraph-tools.ts", "objectId": "39f21cca79a50f02b25472e48d68c2a97e04a073", "bytes": 10707, "sha256": "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7"},
+      "dependencySpans": [
+        {"id": "parameters", "startLine": 24, "endLine": 28, "sha256": "2fe256de1eb2465db9ecfbc21dcda5c3ee0972062d03002e813387c100184b2b"},
+        {"id": "schema", "startLine": 53, "endLine": 62, "sha256": "4e6bfde7cf01eb6eb0931765bf57f8bead43846ee4eaa324518a474e39042e82"},
+        {"id": "workspace-root", "startLine": 71, "endLine": 94, "sha256": "a02379149444e151865b5213a6e18e04de883d1696e173f37130700fd1182b3f"},
+        {"id": "safe-index", "startLine": 96, "endLine": 106, "sha256": "d91aa9c9646fad940b953037a0336f04af07dcbb5eb8eeb2d71a7e3f4f259359"},
+        {"id": "arguments", "startLine": 108, "endLine": 161, "sha256": "1d398b11becb2d4967e7c8475450833c7f162aeb053abd922ab65f2bfcc14195"},
+        {"id": "init-argv", "startLine": 128, "endLine": 129, "sha256": "12eeb47d23cda82fdadb45f85311f0afb7f5632aad58415171ee09793cc70717"},
+        {"id": "query-argv", "startLine": 130, "endLine": 141, "sha256": "4161988c45f1b4cbd302553315f6a145eb6df96782a9a836c1bce680da901e50"},
+        {"id": "explore-argv", "startLine": 142, "endLine": 153, "sha256": "0bd5922c22d244d88d6c94133b55a4bb38cf3e3727064f6e9e93e35fc660ac0e"},
+        {"id": "output-error", "startLine": 163, "endLine": 188, "sha256": "f578681cf32809e6983a833effa12932700183d8b66cea9213c6166b30c053a5"},
+        {"id": "path-shim", "startLine": 191, "endLine": 203, "sha256": "7d6e14083d4ac7e056ac7507bea32f5a8d716ec458f0aab3cb7f585d267ad7cd"},
+        {"id": "binary", "startLine": 208, "endLine": 243, "sha256": "f2bcbc52d48346ca630f8de71ade35870d3dab41e42bdf7550e40b90b788846b"},
+        {"id": "process", "startLine": 245, "endLine": 278, "sha256": "8b013a4f4e01e2c35d65dcdd3726414a578a61991496ba1660d04a7882c6e6ab"},
+        {"id": "factory", "startLine": 280, "endLine": 319, "sha256": "8c6022206fee753eb867328e30f2bfb2e332496c4b669c81b7a55d86b12c3552"},
+        {"id": "default-helper", "startLine": 326, "endLine": 328, "sha256": "20257cd99a8e2e010befa9dc771947c2ce4411e82ec75b9bba1e67e17c44be1e"}
+      ],
+      "registrations": [
+        {"id": "codegraph.tool", "mappedReference": {"sourceId": "ECO-SRC-625c38e8637ad8b0", "referenceIndex": 7}, "span": {"startLine": 323, "endLine": 323, "sha256": "a4e951dfbf0364d42620121c654f3f4d1842059c6f0ec6778b19280635a9c8be"}}
+      ],
+      "endpoints": [
+        {
+          "id": "codegraph.init", "registrationId": "codegraph.tool", "mappedReference": {"sourceId": "ECO-SRC-625c38e8637ad8b0", "referenceIndex": 7},
+          "instantiationSpan": {"startLine": 9, "endLine": 9, "sha256": "7741b3700a8d48b12df547cbbd853a4a71b6d85770f4b72b86da9e443c4b0fc7"},
+          "dependencySpanIds": ["parameters", "schema", "workspace-root", "safe-index", "arguments", "init-argv", "output-error", "path-shim", "binary", "process", "factory", "default-helper"],
+          "obligations": ["the current workspace must be a real Git project root and HOME or the temporary directory is rejected", "an existing .codegraph path must be a real directory and not a symbolic link", "init argv contains only the operation and current workspace; query and limit are not forwarded", "the wrapper never initializes automatically", "execution is sequential, shell-free, signal-aware, and buffer-bounded", "joined output is bounded and failures distinguish unavailable from failed"]
+        },
+        {
+          "id": "codegraph.query", "registrationId": "codegraph.tool", "mappedReference": {"sourceId": "ECO-SRC-625c38e8637ad8b0", "referenceIndex": 7},
+          "instantiationSpan": {"startLine": 10, "endLine": 10, "sha256": "fe48ff89094261c30d093edf90a9f790d75e53382d9b1f1c2e57958e7d0ea68a"},
+          "dependencySpanIds": ["parameters", "schema", "workspace-root", "safe-index", "arguments", "query-argv", "output-error", "path-shim", "binary", "process", "factory", "default-helper"],
+          "obligations": ["the current workspace must be a real Git project root and HOME or the temporary directory is rejected", "an existing .codegraph path must be a real directory and not a symbolic link", "query requires a nonblank query of at most 2000 characters and an integer limit from 1 through 20 defaulting to 10", "query passes the limit with --limit after the current workspace path", "the wrapper never initializes automatically", "execution is sequential, shell-free, signal-aware, and buffer-bounded", "joined output is bounded and failures distinguish unavailable from failed"]
+        },
+        {
+          "id": "codegraph.explore", "registrationId": "codegraph.tool", "mappedReference": {"sourceId": "ECO-SRC-625c38e8637ad8b0", "referenceIndex": 7},
+          "instantiationSpan": {"startLine": 11, "endLine": 11, "sha256": "bb26ebfcf475085886d55ac1c715a93a7d902d12d9b84c3e8f67c8cc98b416f6"},
+          "dependencySpanIds": ["parameters", "schema", "workspace-root", "safe-index", "arguments", "explore-argv", "output-error", "path-shim", "binary", "process", "factory", "default-helper"],
+          "obligations": ["the current workspace must be a real Git project root and HOME or the temporary directory is rejected", "an existing .codegraph path must be a real directory and not a symbolic link", "explore requires a nonblank query of at most 2000 characters and an integer limit from 1 through 20 defaulting to 10", "explore passes the limit with --max-files after the current workspace path", "the wrapper never initializes automatically", "execution is sequential, shell-free, signal-aware, and buffer-bounded", "joined output is bounded and failures distinguish unavailable from failed"]
+        }
+      ]
+    }
+  ]
 }
