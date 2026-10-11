@@ -614,6 +614,27 @@
         {"id":"agents.send_message","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1355,"endLine":1355,"sha256":"166c798ac0f7382673a521c24b8f4271106ef1e55ebc15cdd465335d0965e16b"},"dependencySpanIds":["tool-prefix","tool-helper","send-message-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
         {"id":"agents.continue","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1361,"endLine":1361,"sha256":"1f4ba3d15a118f8fd0e0cfb613eb7c6b0dd4aabb8cd4b6024af260d934d36c61"},"dependencySpanIds":["tool-prefix","tool-helper","continue-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]}
       ]
+    },
+    {
+      "familyId": "orchestrator.review.v1",
+      "source": {"sourceId":"ECO-SRC-1f527249710bd9bf","objectId":"a0fed68c1cd897700a3857cbe7ea4851891eddd0","bytes":467267,"sha256":"c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd"},
+      "dependencySpans": [
+        {"id":"review-sidebar","startLine":8833,"endLine":8833,"sha256":"b1557775eb979b874c3a9a37975e4e328bd3b61719560e2d4c9963ecd6bed558"},
+        {"id":"install-owner-loop","startLine":9403,"endLine":9403,"sha256":"ac1022a59947267180234fafa0952837d58c308790388c5bdeae833bab9cafad"}
+      ],
+      "registrations": [
+        {"id":"review.capture-group","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":89},"span":{"startLine":8975,"endLine":9013,"sha256":"b79c2071260a75206d9a1675b0da7dd9932be168883993fb4f394c60cc65886b"}},
+        {"id":"review.capture","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":90},"span":{"startLine":9015,"endLine":9059,"sha256":"46a4e717c96aaeef7e31b2f8152f8f2efc7bd0bc1ac383a7070d2b1953baf517"}},
+        {"id":"review.controller","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":91},"span":{"startLine":9061,"endLine":9207,"sha256":"5b63cd9e60d08d8513e1e8e129c6e9a4033699ee538742685ef293812f4dcb04"}},
+        {"id":"orchestrator.install","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":33},"span":{"startLine":9405,"endLine":9415,"sha256":"910ae33c8132730a0cbac13e6dd41b7f7b21f594cba766c03b20ab438ac2457f"}}
+      ],
+      "endpoints": [
+        {"id":"review.capture-group","registrationId":"review.capture-group","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":89},"instantiationSpan":{"startLine":8976,"endLine":8976,"sha256":"a78431c06e8768b3c72cc1b2bef5588cd3e68e95b61af6da9c84a1ad24e72d80"},"dependencySpanIds":["review-sidebar"],"obligations":["the exact name literal belongs to the exact wrapped registration"]},
+        {"id":"review.capture","registrationId":"review.capture","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":90},"instantiationSpan":{"startLine":9016,"endLine":9016,"sha256":"df50547fd5fa69a487cfb21f6aa2763b4db5a944749184b648be1321e16a2735"},"dependencySpanIds":["review-sidebar"],"obligations":["the exact name literal belongs to the exact wrapped registration"]},
+        {"id":"review.controller","registrationId":"review.controller","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":91},"instantiationSpan":{"startLine":9062,"endLine":9062,"sha256":"15fb2ccca12fedf6033a6d36c96182dcc94d3d8d7a9ecc41a75ba38250510fde"},"dependencySpanIds":["review-sidebar"],"obligations":["the exact name literal belongs to the exact wrapped registration"]},
+        {"id":"orchestrator.install-delegation","registrationId":"orchestrator.install","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":33},"instantiationSpan":{"startLine":9405,"endLine":9405,"sha256":"49a01d627b3ad2d701b88cbd8e8544f88929da0dd96be45f8ea5e96745017c65"},"dependencySpanIds":["install-owner-loop"],"obligations":["the exact install name is the delegation expansion of the exact owner loop template"]},
+        {"id":"orchestrator.install-review","registrationId":"orchestrator.install","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":33},"instantiationSpan":{"startLine":9405,"endLine":9405,"sha256":"49a01d627b3ad2d701b88cbd8e8544f88929da0dd96be45f8ea5e96745017c65"},"dependencySpanIds":["install-owner-loop"],"obligations":["the exact install name is the review expansion of the exact owner loop template"]}
+      ]
     }
   ]
 }

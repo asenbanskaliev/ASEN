@@ -290,7 +290,7 @@ test("CLI source-backed admission is explicit and an invalid repository fails cl
   {skip:!retainedBaselineRepository},()=>{
   const admitted=spawnSync(process.execPath,[baselineAuditScript,retainedBaselineRepository],{encoding:"utf8",env:process.env});
   assert.equal(admitted.status,0,admitted.stderr);
-  assert.match(admitted.stdout,/normative source proof: ADMITTED \(16 endpoints;/);
+  assert.match(admitted.stdout,/normative source proof: ADMITTED \(21 endpoints;/);
   assert.doesNotMatch(admitted.stdout,/NOT ADMITTED/);
   const invalid=spawnSync(process.execPath,[baselineAuditScript,join(tmpdir(),"missing-ecosystem-baseline.git")],{encoding:"utf8",env:process.env});
   assert.notEqual(invalid.status,0);
@@ -306,7 +306,16 @@ test("agents normative family is recognized before source-backed verification",(
     error=>error instanceof Error&&error.message!=="Unknown normative family authority");
 });
 
-test("plural normative inventory binds presentation, CodeGraph and agent families to frozen source",
+test("orchestrator review normative family is recognized before source-backed verification",()=>{
+  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
+  const overlay=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-reference-adjudications-v1.json",import.meta.url),"utf8"));
+  const mappings=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-runtime-edge-mappings-v1.json",import.meta.url),"utf8"));
+  delete mappings.normativeInventory;mappings.normativeInventories=[mappings.normativeInventories[3]];
+  assert.throws(()=>verifyNormativeRuntimeInventory("unavailable-retained-repository",baseline,overlay,mappings),
+    error=>error instanceof Error&&error.message!=="Unknown normative family authority");
+});
+
+test("plural normative inventory binds presentation, CodeGraph, agent and orchestrator review families to frozen source",
   {skip:!retainedBaselineRepository},()=>{
   assert.equal(typeof verifyNormativeRuntimeInventory,"function");
   const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
@@ -318,8 +327,9 @@ test("plural normative inventory binds presentation, CodeGraph and agent familie
   assert.ok(Array.isArray(mappings.normativeInventories));
   assert.deepEqual(mappings.normativeInventories[0],mappings.normativeInventory);
   assert.equal("path" in mappings.normativeInventories[2].source,false,"agent path is derived from its pinned baseline owner");
+  assert.equal("path" in mappings.normativeInventories[3].source,false,"orchestrator path is derived from its pinned baseline owner");
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,mappings),
-    {families:3,registrations:5,endpoints:16});
+    {families:4,registrations:9,endpoints:21});
   const singletonOnly=structuredClone(mappings);delete singletonOnly.normativeInventories;
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,singletonOnly),
     {families:1,registrations:3,endpoints:4});
@@ -327,7 +337,7 @@ test("plural normative inventory binds presentation, CodeGraph and agent familie
   assert.throws(()=>verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,invalidLegacy),/legacy singleton/i);
   const pluralOnly=structuredClone(mappings);delete pluralOnly.normativeInventory;
   assert.deepEqual(verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,pluralOnly),
-    {families:3,registrations:5,endpoints:16});
+    {families:4,registrations:9,endpoints:21});
   assert.throws(()=>verifyNormativeRuntimeInventory("",baseline,overlay,mappings),/repository/i);
   const media=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-media-v1.json",import.meta.url),"utf8"));
   for(const mutate of [(value:any)=>{delete value.normativeInventory;delete value.normativeInventories;},(value:any)=>{value.normativeInventories[1].endpoints.pop();}]){
@@ -378,6 +388,12 @@ test("plural normative inventory binds presentation, CodeGraph and agent familie
     ["agent renamed endpoint",value=>{value.normativeInventories[2].endpoints[1].id="agents.start";}],
     ["agent dependency membership",value=>{value.normativeInventories[2].endpoints[2].dependencySpanIds[2]="run-call";}],
     ["agent structural obligation",value=>{value.normativeInventories[2].endpoints[3].obligations[0]="weaker";}],
+    ["review source identity",value=>{value.normativeInventories[3].source.bytes++;}],
+    ["review mapped registration",value=>{value.normativeInventories[3].registrations[0].mappedReference.referenceIndex=88;}],
+    ["review endpoint denominator",value=>{value.normativeInventories[3].endpoints.pop();}],
+    ["review scope inclusion",value=>{value.normativeInventories[3].endpoints[0].id="review.scope";}],
+    ["review dependency membership",value=>{value.normativeInventories[3].endpoints[0].dependencySpanIds[0]="install-owner-loop";}],
+    ["review structural obligation",value=>{value.normativeInventories[3].endpoints[0].obligations[0]="weaker";}],
   ];
   for(const [name,mutate] of pluralCases){const changed=structuredClone(mappings);mutate(changed);
     assert.throws(()=>verifyNormativeRuntimeInventory(retainedBaselineRepository,baseline,overlay,changed),/./,name);}
@@ -421,6 +437,25 @@ test("agent source mutations preserve the exact helper denominator",{skip:!retai
   assert.throws(()=>verifyNormativeRuntimeInventory(membership.repository,membership.baseline,membership.overlay,membership.mappings),/helper construction/);
   const endpoint=alteredNormativeInputs(t,2,source=>source.replace('tool("list_agents"','tool("renamed_agents"'));
   assert.throws(()=>verifyNormativeRuntimeInventory(endpoint.repository,endpoint.baseline,endpoint.overlay,endpoint.mappings),/dependency span/);
+});
+
+test("orchestrator review source mutations preserve wrapped names and exact owner-loop commands",{skip:!retainedBaselineRepository},t=>{
+  const prefix=["gen","tle"].join("");
+  const cases:[string,(source:string)=>string,RegExp][]=[
+    ["renamed wrapped name",source=>source.replace(`name: "${prefix}_review_capture_group"`,`name: "${prefix}_review_scope"`),/wrapped registration names/],
+    ["decoy sidebar helper",source=>source.replace("const reviewSidebar = createReviewSidebarPublisher(pi);","const reviewSidebar = createReviewSidebarPublisher(pi);\n\tconst decoyReviewSidebar = reviewSidebar;").replace("pi.registerTool(reviewSidebar.tool({","pi.registerTool(decoyReviewSidebar.tool({"),/wrapped registration denominator/],
+    ["direct unwrapped object",source=>source.replace(`pi.registerTool(reviewSidebar.tool({\n\t\tname: "${prefix}_review_capture_group"`,`pi.registerTool({\n\t\tname: "${prefix}_review_capture_group"`).replace(`\t}));\n\n\tpi.registerTool(reviewSidebar.tool({\n\t\tname: "${prefix}_review_capture"`,`\t});\n\n\tpi.registerTool(reviewSidebar.tool({\n\t\tname: "${prefix}_review_capture"`),/wrapped registration denominator/],
+    ["extra unmapped scope",source=>source.replace('\n\tpi.on("session_start"',`\n\tpi.registerTool(reviewSidebar.tool({ name: "${prefix}_review_scope" }));\n\n\tpi.on("session_start"`),/wrapped registration denominator/],
+    ["owner added",source=>source.replace('for (const owner of ["delegation", "review"] as const)','for (const owner of ["delegation", "review", "scope"] as const)'),/owner loop binding/],
+    ["owner removed",source=>source.replace('for (const owner of ["delegation", "review"] as const)','for (const owner of ["delegation"] as const)'),/owner loop binding/],
+    ["owner duplicated",source=>source.replace('for (const owner of ["delegation", "review"] as const)','for (const owner of ["delegation", "delegation"] as const)'),/owner loop binding/],
+    ["owner changed",source=>source.replace('for (const owner of ["delegation", "review"] as const)','for (const owner of ["delegation", "reviews"] as const)'),/owner loop binding/],
+    ["wrong interpolation",source=>source.replace(`\`${prefix}:install-\${owner}\``,`\`${prefix}:install-\${label}\``),/command registration binding/],
+    ["moved through helper",source=>source.replace(`\t\tpi.registerCommand(\`${prefix}:install-\${owner}\``,`\t\tconst registerInstall = pi.registerCommand.bind(pi);\n\t\tregisterInstall(\`${prefix}:install-\${owner}\``),/command registration binding/],
+    ["wrong registration kind",source=>source.replace(`pi.registerCommand(\`${prefix}:install-\${owner}\``,`pi.registerTool(\`${prefix}:install-\${owner}\``),/command registration binding/],
+  ];
+  for(const [name,mutate,error] of cases){const input=alteredNormativeInputs(t,3,mutate);
+    assert.throws(()=>verifyNormativeRuntimeInventory(input.repository,input.baseline,input.overlay,input.mappings),error,name);}
 });
 
 test("asset overlay rejects identity, ordering, binding, span and authority mutations",
@@ -562,8 +597,8 @@ test("mapped Markdown runtime directory reports additions, removals and content 
   writeFileSync(join(repo,selected),"# changed input\n");
   rmSync(join(repo,removed));
   writeFileSync(join(repo,assetDirectory,"new-worker.md"),"# added input\n");
-  writeFileSync(join(repo,trackedFile.targets[0]),JSON.stringify({changed:true})+"\n");
-  writeFileSync(join(repo,contractOwner.path),readFileSync(join(repo,contractOwner.path),"utf8")+"\n// contract invalidation fixture\n");
+  writeFileSync(join(repo,trackedFile.targets[0]),`${JSON.stringify({changed:true})}\n`);
+  writeFileSync(join(repo,contractOwner.path),`${readFileSync(join(repo,contractOwner.path),"utf8")}\n// contract invalidation fixture\n`);
   execFileSync("git",["-C",repo,"add","-A"]);execFileSync("git",["-C",repo,"commit","-qm","change mapped runtime asset set"]);
   const after=collectBaseline(repo,execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim());
   const report=detectMappedBaselineDrift(repo,before,after,overlay,mappings);
@@ -583,7 +618,7 @@ test("mapped Markdown runtime directory reports additions, removals and content 
   // A mode-only change must be visible even when the committed blob bytes are identical.
   const modeBefore=collectRuntimeEdgeFiles(repo,after.commit,"assets/agents/*.md").find((file:any)=>file.path===selected);
   assert.ok(modeBefore);
-  execFileSync("git",["-C",repo,"update-index","--chmod="+(modeBefore.mode==="100644"?"+x":"-x"),selected]);
+  execFileSync("git",["-C",repo,"update-index",`--chmod=${modeBefore.mode==="100644"?"+x":"-x"}`,selected]);
   execFileSync("git",["-C",repo,"commit","-qm","change runtime agent executable bit only"]);
   const modeCommit=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
   const modeAfter=collectRuntimeEdgeFiles(repo,modeCommit,"assets/agents/*.md").find((file:any)=>file.path===selected);
@@ -600,7 +635,7 @@ test("mapped Markdown runtime directory reports additions, removals and content 
   assert.ok(modeRenameSource);
   const movedWithModePath=`${assetDirectory}/mode-moved-agent.md`;
   execFileSync("git",["-C",repo,"mv",modeRenameSource.path,movedWithModePath]);
-  execFileSync("git",["-C",repo,"update-index","--chmod="+(modeRenameSource.mode==="100644"?"+x":"-x"),movedWithModePath]);
+  execFileSync("git",["-C",repo,"update-index",`--chmod=${modeRenameSource.mode==="100644"?"+x":"-x"}`,movedWithModePath]);
   execFileSync("git",["-C",repo,"commit","-qm","relocate runtime input with changed Git mode"]);
   const modeRenameCommit=execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
   const movedWithMode=collectRuntimeEdgeFiles(repo,modeRenameCommit,"assets/agents/*.md").find((file:any)=>file.path===movedWithModePath);
@@ -613,7 +648,7 @@ test("mapped Markdown runtime directory reports additions, removals and content 
   assert.equal(modeRenameReport.autoAdopt,false);
   for(const owner of globOwners)assert.ok(modeRenameReport.invalidatedPaths.includes(owner));
   execFileSync("git",["-C",repo,"mv",movedWithModePath,modeRenameSource.path]);
-  execFileSync("git",["-C",repo,"update-index","--chmod="+(modeRenameSource.mode==="100644"?"-x":"+x"),modeRenameSource.path]);
+  execFileSync("git",["-C",repo,"update-index",`--chmod=${modeRenameSource.mode==="100644"?"-x":"+x"}`,modeRenameSource.path]);
   execFileSync("git",["-C",repo,"commit","-qm","restore runtime fixture for subsequent rename checks"]);
 
   const unique=selectedFiles.find((file:any)=>file.path!==selected&&file.path!==removed&&selectedFiles.filter((candidate:any)=>candidate.sha256===file.sha256).length===1);

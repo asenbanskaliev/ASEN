@@ -788,7 +788,26 @@ const normativeAgentsAuthority={
     ["agents.continue","agents.tool-helper",64,1361,"1f4ba3d15a118f8fd0e0cfb613eb7c6b0dd4aabb8cd4b6024af260d934d36c61",agentEndpointObligations,["tool-prefix","tool-helper","continue-call"]],
   ],
 };
-const normativeAuthorities=new Map([normativePresentationAuthority,normativeCodeGraphAuthority,normativeAgentsAuthority].map(authority=>[authority.familyId,authority]));
+const reviewNameObligations=["the exact name literal belongs to the exact wrapped registration"];
+const externalReviewPrefix=["gen","tle"].join(""),reviewPublicNames=[`${externalReviewPrefix}_review_capture_group`,`${externalReviewPrefix}_review_capture`,`${externalReviewPrefix}_review`];
+const normativeOrchestratorReviewAuthority={
+  familyId:"orchestrator.review.v1",sourceId:"ECO-SRC-1f527249710bd9bf",objectId:"a0fed68c1cd897700a3857cbe7ea4851891eddd0",bytes:467267,sha256:"c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",kind:"review-control",
+  dependencies:[["review-sidebar",8833,8833,"b1557775eb979b874c3a9a37975e4e328bd3b61719560e2d4c9963ecd6bed558"],["install-owner-loop",9403,9403,"ac1022a59947267180234fafa0952837d58c308790388c5bdeae833bab9cafad"]],
+  registrations:[
+    ["review.capture-group",89,8975,9013,"b79c2071260a75206d9a1675b0da7dd9932be168883993fb4f394c60cc65886b"],
+    ["review.capture",90,9015,9059,"46a4e717c96aaeef7e31b2f8152f8f2efc7bd0bc1ac383a7070d2b1953baf517"],
+    ["review.controller",91,9061,9207,"5b63cd9e60d08d8513e1e8e129c6e9a4033699ee538742685ef293812f4dcb04"],
+    ["orchestrator.install",33,9405,9415,"910ae33c8132730a0cbac13e6dd41b7f7b21f594cba766c03b20ab438ac2457f"],
+  ],
+  endpoints:[
+    ["review.capture-group","review.capture-group",89,8976,"a78431c06e8768b3c72cc1b2bef5588cd3e68e95b61af6da9c84a1ad24e72d80",reviewNameObligations,["review-sidebar"]],
+    ["review.capture","review.capture",90,9016,"df50547fd5fa69a487cfb21f6aa2763b4db5a944749184b648be1321e16a2735",reviewNameObligations,["review-sidebar"]],
+    ["review.controller","review.controller",91,9062,"15fb2ccca12fedf6033a6d36c96182dcc94d3d8d7a9ecc41a75ba38250510fde",reviewNameObligations,["review-sidebar"]],
+    ["orchestrator.install-delegation","orchestrator.install",33,9405,"49a01d627b3ad2d701b88cbd8e8544f88929da0dd96be45f8ea5e96745017c65",["the exact install name is the delegation expansion of the exact owner loop template"],["install-owner-loop"]],
+    ["orchestrator.install-review","orchestrator.install",33,9405,"49a01d627b3ad2d701b88cbd8e8544f88929da0dd96be45f8ea5e96745017c65",["the exact install name is the review expansion of the exact owner loop template"],["install-owner-loop"]],
+  ],
+};
+const normativeAuthorities=new Map([normativePresentationAuthority,normativeCodeGraphAuthority,normativeAgentsAuthority,normativeOrchestratorReviewAuthority].map(authority=>[authority.familyId,authority]));
 
 function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
   const source=inventory?.source,sourceKeys=["sourceId",...(authority.sourcePath===undefined?[]:["path"]),"objectId","bytes","sha256"];
@@ -811,7 +830,7 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
     const row=inventory.dependencySpans[index],expected=authority.dependencies[index];
     if(!row||!exactKeys(row,["id","startLine","endLine","sha256"])||dependencyIds.has(row.id)||JSON.stringify([row.id,row.startLine,row.endLine,row.sha256])!==JSON.stringify(expected))
       throw new Error("Normative dependency authority mismatch");
-    dependencyIds.add(row.id);spanHash({startLine:row.startLine,endLine:row.endLine,sha256:row.sha256},"dependency");
+    dependencyIds.add(row.id);if(authority.kind!=="review-control")spanHash({startLine:row.startLine,endLine:row.endLine,sha256:row.sha256},"dependency");
   }
   const parsed=ts.createSourceFile(sourcePath,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
   if(parsed.parseDiagnostics.length)throw new Error("Normative inventory source does not parse completely");
@@ -820,7 +839,7 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
   const visit=node=>{if(ts.isCallExpression(node))calls.push(node);ts.forEachChild(node,visit);};visit(parsed);
   const callLines=node=>[parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line+1,parsed.getLineAndCharacterOfPosition(node.getEnd()).line+1];
   const descendants=(root,predicate)=>{const found=[];const find=node=>{if(predicate(node))found.push(node);ts.forEachChild(node,find);};if(root)find(root);return found;};
-  let operationProperties,toolFactorySymbol,toolHelperSymbol,toolHelperCalls,toolHelperRegistration;
+  let operationProperties,toolFactorySymbol,toolHelperSymbol,toolHelperCalls,toolHelperRegistration,reviewToolRegistrations,installRegistration;
   if(authority.kind==="operation-tool"){
     const declarations=parsed.statements.filter(ts.isVariableStatement).flatMap(statement=>[...statement.declarationList.declarations]),
       objectInitializer=row=>ts.isObjectLiteralExpression(row?.initializer)?row.initializer:ts.isAsExpression(row?.initializer)&&ts.isObjectLiteralExpression(row.initializer.expression)?row.initializer.expression:null,
@@ -866,6 +885,33 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
     if(nameProperty.length!==1||!emptyTemplate||templateSymbols[0]!==checker.getSymbolAtLocation(prefixes[0].name)||templateSymbols[1]!==helperParameters.get("name")||
       schemaProperty.length!==1||schemaParts.length!==3||type.length!==1||additional.length!==1||spread.length!==1||!ts.isIdentifier(spread[0].expression)||checker.getSymbolAtLocation(spread[0].expression)!==helperParameters.get("parameters")||
       executeMethod.length!==1||callbackCalls.length!==1||!forwarded||toolHelperCalls.length!==9)throw new Error("Invalid agent tool helper construction");
+  }else if(authority.kind==="review-control"){
+    const declarations=descendants(parsed,node=>ts.isVariableDeclaration(node)),sidebars=declarations.filter(row=>ts.isIdentifier(row.name)&&row.name.text==="reviewSidebar"&&
+      ts.isCallExpression(row.initializer)&&ts.isIdentifier(row.initializer.expression)&&row.initializer.expression.text==="createReviewSidebarPublisher"&&row.initializer.arguments.length===1&&
+      ts.isIdentifier(row.initializer.arguments[0])&&row.initializer.arguments[0].text==="pi"&&callLines(row)[0]===8833&&(row.parent.flags&ts.NodeFlags.Const));
+    if(sidebars.length!==1)throw new Error("Invalid review sidebar declaration binding");
+    const sidebarSymbol=checker.getSymbolAtLocation(sidebars[0].name);
+    reviewToolRegistrations=calls.filter(call=>ts.isPropertyAccessExpression(call.expression)&&call.expression.name.text==="registerTool"&&
+      ts.isIdentifier(call.expression.expression)&&call.expression.expression.text==="pi"&&ts.isCallExpression(call.arguments[0])&&
+      ts.isPropertyAccessExpression(call.arguments[0].expression)&&call.arguments[0].expression.name.text==="tool"&&ts.isIdentifier(call.arguments[0].expression.expression)&&
+      checker.getSymbolAtLocation(call.arguments[0].expression.expression)===sidebarSymbol);
+    if(reviewToolRegistrations.length!==3)throw new Error("Invalid review wrapped registration denominator");
+    for(let index=0;index<reviewToolRegistrations.length;index++){
+      const object=reviewToolRegistrations[index].arguments[0].arguments[0],names=ts.isObjectLiteralExpression(object)?object.properties.filter(item=>ts.isPropertyAssignment(item)&&item.name.getText(parsed)==="name"):[];
+      if(names.length!==1||!ts.isStringLiteralLike(names[0].initializer)||names[0].initializer.text!==reviewPublicNames[index])throw new Error("Invalid review wrapped registration names");
+    }
+    const loops=descendants(parsed,node=>ts.isForOfStatement(node)&&callLines(node.expression)[0]===9403),loop=loops[0];
+    let iterable=loop?.expression;while(iterable&&(ts.isAsExpression(iterable)||ts.isParenthesizedExpression(iterable)))iterable=iterable.expression;
+    const initializer=loop?.initializer,owner=ts.isVariableDeclarationList(initializer)&&initializer.declarations.length===1?initializer.declarations[0]:undefined,
+      values=ts.isArrayLiteralExpression(iterable)?iterable.elements.map(row=>ts.isStringLiteralLike(row)?row.text:null):[];
+    if(loops.length!==1||!owner||!ts.isIdentifier(owner.name)||owner.name.text!=="owner"||!(initializer.flags&ts.NodeFlags.Const)||
+      JSON.stringify(values)!==JSON.stringify(["delegation","review"])||new Set(values).size!==2)throw new Error("Invalid install owner loop binding");
+    const ownerSymbol=checker.getSymbolAtLocation(owner.name),commands=descendants(loop.statement,node=>ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&node.expression.name.text==="registerCommand");
+    installRegistration=commands[0];const template=installRegistration?.arguments[0];
+    if(commands.length!==1||!ts.isIdentifier(installRegistration.expression.expression)||installRegistration.expression.expression.text!=="pi"||
+      !ts.isTemplateExpression(template)||template.head.text!==`${externalReviewPrefix}:install-`||template.templateSpans.length!==1||template.templateSpans[0].literal.text!==""||
+      checker.getSymbolAtLocation(template.templateSpans[0].expression)!==ownerSymbol)throw new Error("Invalid install command registration binding");
+    for(const row of inventory.dependencySpans)spanHash({startLine:row.startLine,endLine:row.endLine,sha256:row.sha256},"dependency");
   }
   const registrationIds=new Set(),referenceKeys=new Set(),registrationSymbols=new Map();
   if(inventory.registrations.length!==authority.registrations.length)throw new Error("Normative registration coverage mismatch");
@@ -878,7 +924,7 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
     if(referenceKeys.has(key)||!mapping.mappings.some(item=>item.sourceId===reference.sourceId&&item.referenceIndex===reference.referenceIndex&&JSON.stringify(item.span)===JSON.stringify(span)))
       throw new Error("Normative mapped-reference identity mismatch");
     registrationIds.add(row.id);referenceKeys.add(key);spanHash(span,"registration");
-    const registrationName=["operation-tool","tool-helper"].includes(authority.kind)?"registerTool":"registerCommand";
+    const registrationName=["operation-tool","tool-helper"].includes(authority.kind)?"registerTool":authority.kind==="review-control"&&index<3?"registerTool":"registerCommand";
     const matches=calls.filter(call=>ts.isPropertyAccessExpression(call.expression)&&call.expression.name.text===registrationName&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
     if(authority.kind==="operation-tool"){
       const argument=matches[0]?.arguments[0];
@@ -886,6 +932,8 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
         checker.getSymbolAtLocation(argument.expression)!==toolFactorySymbol)throw new Error("Normative tool registration binding mismatch");
     }else if(authority.kind==="tool-helper"){
       if(matches.length!==1||matches[0]!==toolHelperRegistration)throw new Error("Normative helper registration binding mismatch");
+    }else if(authority.kind==="review-control"){
+      if(matches.length!==1||(index<3?!reviewToolRegistrations.includes(matches[0]):matches[0]!==installRegistration))throw new Error("Normative review registration binding mismatch");
     }else{
       let declaration=matches[0];while(declaration&&!ts.isVariableDeclaration(declaration))declaration=declaration.parent;
       if(matches.length!==1||!declaration||!ts.isIdentifier(declaration.name)||!matches[0].arguments[0]||!ts.isIdentifier(matches[0].arguments[0]))
@@ -911,6 +959,14 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
     }else if(authority.kind==="tool-helper"){
       const endpoint=row.id.slice("agents.".length),matches=toolHelperCalls.filter(call=>ts.isStringLiteralLike(call.arguments[0])&&call.arguments[0].text===endpoint&&callLines(call.arguments[0])[0]===span.startLine);
       if(matches.length!==1)throw new Error("Normative agent endpoint helper binding mismatch");
+    }else if(authority.kind==="review-control"){
+      if(index<3){
+        const argument=reviewToolRegistrations[index].arguments[0],object=ts.isCallExpression(argument)?argument.arguments[0]:undefined,
+          names=ts.isObjectLiteralExpression(object)?object.properties.filter(item=>ts.isPropertyAssignment(item)&&item.name.getText(parsed)==="name"):[];
+        const publicName=reviewPublicNames[index];
+        if(names.length!==1||!ts.isStringLiteralLike(names[0].initializer)||names[0].initializer.text!==publicName||callLines(names[0])[0]!==span.startLine)
+          throw new Error("Normative review name binding mismatch");
+      }else if(installRegistration===undefined)throw new Error("Normative install endpoint binding mismatch");
     }else{
       const matches=calls.filter(call=>ts.isIdentifier(call.expression)&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
       if(matches.length!==1||checker.getSymbolAtLocation(matches[0].expression)!==registrationSymbols.get(row.registrationId)||!ts.isStringLiteralLike(matches[0].arguments[0]))
