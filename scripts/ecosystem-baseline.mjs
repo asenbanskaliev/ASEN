@@ -764,16 +764,40 @@ const normativeCodeGraphAuthority={
     ["codegraph.explore","codegraph.tool",7,11,"bb26ebfcf475085886d55ac1c715a93a7d902d12d9b84c3e8f67c8cc98b416f6",["the current workspace must be a real Git project root and HOME or the temporary directory is rejected","an existing .codegraph path must be a real directory and not a symbolic link","explore requires a nonblank query of at most 2000 characters and an integer limit from 1 through 20 defaulting to 10","explore passes the limit with --max-files after the current workspace path","the wrapper never initializes automatically","execution is sequential, shell-free, signal-aware, and buffer-bounded","joined output is bounded and failures distinguish unavailable from failed"],["parameters","schema","workspace-root","safe-index","arguments","explore-argv","output-error","path-shim","binary","process","factory","default-helper"]],
   ],
 };
-const normativeAuthorities=new Map([normativePresentationAuthority,normativeCodeGraphAuthority].map(authority=>[authority.familyId,authority]));
+const agentEndpointObligations=["the endpoint literal is argument zero of the exact tool helper"];
+const normativeAgentsAuthority={
+  familyId:"agents.tools.v1",sourceId:"ECO-SRC-af1edc66cbd9834c",objectId:"c6bf814ca8934bd26af5f0efb0c229029ca07155",bytes:81559,sha256:"ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388",kind:"tool-helper",
+  dependencies:[
+    ["tool-prefix",60,60,"2303fafeecfb20a557dc2579c5311b846924802e5057ee5664004cb9bbe8a701"],["tool-helper",1151,1179,"7f85db5c1d64ee61803aaa5f513e3af1b07688abdb0755297ab45358b12dd7e6"],
+    ["list-agents-call",1276,1281,"ea87968cac6563cd6340a2854766913b5cb3ee4bd9e3f3ec519a10ffa89d6909"],["run-call",1283,1318,"ed566cdd9fcd89b53949775d53ab21da0f724133da5b15dc466c23513395968e"],
+    ["status-call",1320,1323,"67fb5645114f6b2495169be38898525d045e99edca14e753bcc39a0e6084ab59"],["result-call",1325,1335,"36eca78fa90ac6c6a898a812145d80aecf5f1f51f483045b00bc78a05ea24010"],
+    ["list-tasks-call",1337,1340,"1eb93dca2334dc01d1ba25f9afc7aba1f5e2fb795ce3c74eb022410f35b7a868"],["reply-call",1342,1347,"aa30bee043174e466f87d52182ea1c94ee8d41ca7bdd6435d412fcbeb30d925c"],
+    ["cancel-call",1349,1353,"c4ada83556038882a1c42080f3c9c1e498631ce353fd136085ce6ef91a80c650"],["send-message-call",1355,1358,"6a258938c7628e5c5c1ea255f895513e829cde741bbe5bbba039875cd631baa4"],
+    ["continue-call",1360,1380,"28b2ab4ec459c53d7278ddb64641fe57a5ee5b9565126af59730223f24508f77"],
+  ],
+  registrations:[["agents.tool-helper",64,1152,1178,"2d2504228419e852849ce25dd30410645c68f8357be7f362474b583b94130eb0"]],
+  endpoints:[
+    ["agents.list_agents","agents.tool-helper",64,1276,"a217c336b06006c9f5a9123616c957a611374c0a327925b1875c5c8c32f9684f",agentEndpointObligations,["tool-prefix","tool-helper","list-agents-call"]],
+    ["agents.run","agents.tool-helper",64,1284,"edc966ea7a050636e4a684acebdf7bd47cd8e0d7334eb6d585b6e36a5756693d",agentEndpointObligations,["tool-prefix","tool-helper","run-call"]],
+    ["agents.status","agents.tool-helper",64,1320,"df087c1390784e3eb85bf69ee4a485265ff6c6bc3ace89f28c3ad62444206ab9",agentEndpointObligations,["tool-prefix","tool-helper","status-call"]],
+    ["agents.result","agents.tool-helper",64,1325,"eb8aa2e777731d2788b5bc9b68989dd0adf0bb58d1423c01b2955391d9125148",agentEndpointObligations,["tool-prefix","tool-helper","result-call"]],
+    ["agents.list_tasks","agents.tool-helper",64,1337,"833762108df979996c4586bd5c6747bb6d32fab3ea40fb178bc33f029b1af318",agentEndpointObligations,["tool-prefix","tool-helper","list-tasks-call"]],
+    ["agents.reply","agents.tool-helper",64,1342,"6be051384e0394569d346c93e4a7c8494211ec25a602470953ec92cc52975d1b",agentEndpointObligations,["tool-prefix","tool-helper","reply-call"]],
+    ["agents.cancel","agents.tool-helper",64,1349,"ce916503e02d93983cbbe0a05d890f027025d3ce483eba6122ba7c05fc36e44d",agentEndpointObligations,["tool-prefix","tool-helper","cancel-call"]],
+    ["agents.send_message","agents.tool-helper",64,1355,"166c798ac0f7382673a521c24b8f4271106ef1e55ebc15cdd465335d0965e16b",agentEndpointObligations,["tool-prefix","tool-helper","send-message-call"]],
+    ["agents.continue","agents.tool-helper",64,1361,"1f4ba3d15a118f8fd0e0cfb613eb7c6b0dd4aabb8cd4b6024af260d934d36c61",agentEndpointObligations,["tool-prefix","tool-helper","continue-call"]],
+  ],
+};
+const normativeAuthorities=new Map([normativePresentationAuthority,normativeCodeGraphAuthority,normativeAgentsAuthority].map(authority=>[authority.familyId,authority]));
 
 function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
-  const source=inventory?.source;
+  const source=inventory?.source,sourceKeys=["sourceId",...(authority.sourcePath===undefined?[]:["path"]),"objectId","bytes","sha256"];
   if(!inventory||!exactKeys(inventory,["familyId","source","dependencySpans","registrations","endpoints"])||
-    !source||!exactKeys(source,["sourceId","path","objectId","bytes","sha256"])||!Array.isArray(inventory.dependencySpans)||
+    !source||!exactKeys(source,sourceKeys)||!Array.isArray(inventory.dependencySpans)||
     !Array.isArray(inventory.registrations)||!Array.isArray(inventory.endpoints))throw new Error("Invalid normative inventory envelope");
-  const owner=baseline.files.find(row=>row.id===source.sourceId);
-  if(inventory.familyId!==authority.familyId||source.sourceId!==authority.sourceId||source.path!==authority.sourcePath||!owner||
-    source.path!==owner.path||source.objectId!==owner.objectId||source.bytes!==owner.bytes||source.sha256!==owner.sha256)
+  const owner=baseline.files.find(row=>row.id===source.sourceId),sourcePath=authority.sourcePath??owner?.path;
+  if(inventory.familyId!==authority.familyId||source.sourceId!==authority.sourceId||!owner||sourcePath!==owner.path||
+    (authority.sourcePath!==undefined&&source.path!==sourcePath)||source.objectId!==owner.objectId||source.bytes!==owner.bytes||source.sha256!==owner.sha256)
     throw new Error("Normative inventory source identity mismatch");
   const bytes=readBaselineSourceBytes(repository,baseline,source.sourceId),text=new TextDecoder("utf-8",{fatal:true}).decode(bytes),lines=text.split(/(?<=\n)/);
   const spanHash=(span,label)=>{
@@ -789,13 +813,14 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
       throw new Error("Normative dependency authority mismatch");
     dependencyIds.add(row.id);spanHash({startLine:row.startLine,endLine:row.endLine,sha256:row.sha256},"dependency");
   }
-  const parsed=ts.createSourceFile(source.path,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+  const parsed=ts.createSourceFile(sourcePath,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
   if(parsed.parseDiagnostics.length)throw new Error("Normative inventory source does not parse completely");
-  const host={getSourceFile:name=>name===source.path?parsed:undefined,getDefaultLibFileName:()=>"lib.d.ts",writeFile(){},getCurrentDirectory:()=>"",getDirectories:()=>[],fileExists:name=>name===source.path,readFile:name=>name===source.path?text:undefined,getCanonicalFileName:name=>name,useCaseSensitiveFileNames:()=>true,getNewLine:()=>"\n"};
-  const checker=ts.createProgram([source.path],{noLib:true,noResolve:true},host).getTypeChecker(),calls=[];
+  const host={getSourceFile:name=>name===sourcePath?parsed:undefined,getDefaultLibFileName:()=>"lib.d.ts",writeFile(){},getCurrentDirectory:()=>"",getDirectories:()=>[],fileExists:name=>name===sourcePath,readFile:name=>name===sourcePath?text:undefined,getCanonicalFileName:name=>name,useCaseSensitiveFileNames:()=>true,getNewLine:()=>"\n"};
+  const checker=ts.createProgram([sourcePath],{noLib:true,noResolve:true},host).getTypeChecker(),calls=[];
   const visit=node=>{if(ts.isCallExpression(node))calls.push(node);ts.forEachChild(node,visit);};visit(parsed);
   const callLines=node=>[parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line+1,parsed.getLineAndCharacterOfPosition(node.getEnd()).line+1];
-  let operationProperties,toolFactorySymbol;
+  const descendants=(root,predicate)=>{const found=[];const find=node=>{if(predicate(node))found.push(node);ts.forEachChild(node,find);};if(root)find(root);return found;};
+  let operationProperties,toolFactorySymbol,toolHelperSymbol,toolHelperCalls,toolHelperRegistration;
   if(authority.kind==="operation-tool"){
     const declarations=parsed.statements.filter(ts.isVariableStatement).flatMap(statement=>[...statement.declarationList.declarations]),
       objectInitializer=row=>ts.isObjectLiteralExpression(row?.initializer)?row.initializer:ts.isAsExpression(row?.initializer)&&ts.isObjectLiteralExpression(row.initializer.expression)?row.initializer.expression:null,
@@ -804,7 +829,6 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
     const operationSymbol=checker.getSymbolAtLocation(operationDeclaration[0].name),schema=declarations.find(row=>ts.isIdentifier(row.name)&&row.name.text==="CODEGRAPH_TOOL_PARAMETERS"),
       schemaSymbol=schema&&checker.getSymbolAtLocation(schema.name),command=parsed.statements.find(row=>ts.isFunctionDeclaration(row)&&row.name?.text==="commandArguments"),
       factory=parsed.statements.find(row=>ts.isFunctionDeclaration(row)&&row.name?.text==="createCodeGraphTool");
-    const descendants=(root,predicate)=>{const found=[];const find=node=>{if(predicate(node))found.push(node);ts.forEachChild(node,find);};if(root)find(root);return found;};
     const schemaUsesOperation=descendants(schema?.initializer,node=>ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&node.expression.name.text==="values"&&
       ts.isIdentifier(node.arguments[0])&&checker.getSymbolAtLocation(node.arguments[0])===operationSymbol).length===1;
     const cases=descendants(command,node=>ts.isCaseClause(node)&&ts.isPropertyAccessExpression(node.expression)&&ts.isIdentifier(node.expression.expression)&&
@@ -818,6 +842,30 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
     if(!schemaUsesOperation||JSON.stringify(cases)!==JSON.stringify(["EXPLORE","INIT","QUERY"])||!parameterProperty||!ts.isIdentifier(parameterProperty.initializer)||
       checker.getSymbolAtLocation(parameterProperty.initializer)!==schemaSymbol||commandCalls.length!==1)throw new Error("Invalid CODEGRAPH_OPERATION command/factory path binding");
     operationProperties=objectInitializer(operationDeclaration[0]).properties;
+  }else if(authority.kind==="tool-helper"){
+    const declarations=descendants(parsed,node=>ts.isVariableDeclaration(node)),prefixes=declarations.filter(row=>ts.isIdentifier(row.name)&&row.name.text==="TOOL_PREFIX"&&
+      ts.isStringLiteralLike(row.initializer)&&row.initializer.text==="subagent_"&&(row.parent.flags&ts.NodeFlags.Const)),helpers=declarations.filter(row=>ts.isIdentifier(row.name)&&row.name.text==="tool"&&ts.isArrowFunction(row.initializer));
+    if(prefixes.length!==1||helpers.length!==1||callLines(prefixes[0])[0]!==60||callLines(helpers[0])[0]!==1151)throw new Error("Invalid agent tool helper declarations");
+    const helper=helpers[0],helperFunction=helper.initializer,helperParameters=new Map(helperFunction.parameters.filter(row=>ts.isIdentifier(row.name)).map(row=>[row.name.text,checker.getSymbolAtLocation(row.name)]));
+    toolHelperSymbol=checker.getSymbolAtLocation(helper.name);toolHelperCalls=calls.filter(call=>ts.isIdentifier(call.expression)&&checker.getSymbolAtLocation(call.expression)===toolHelperSymbol);
+    const registrations=descendants(helperFunction,node=>ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&node.expression.name.text==="registerTool"),argument=registrations[0]?.arguments[0];
+    if(registrations.length!==1||!ts.isObjectLiteralExpression(argument)||JSON.stringify(callLines(registrations[0]))!==JSON.stringify([1152,1178]))throw new Error("Invalid agent helper registration ownership");
+    toolHelperRegistration=registrations[0];
+    const property=name=>argument.properties.filter(row=>(ts.isPropertyAssignment(row)||ts.isMethodDeclaration(row))&&row.name?.getText(parsed)===name),unwrapSchema=node=>{
+      while(node&&(ts.isAsExpression(node)||ts.isTypeAssertionExpression(node)||ts.isParenthesizedExpression(node)))node=node.expression;
+      return node;
+    };
+    const nameProperty=property("name"),schemaProperty=property("parameters"),executeMethod=property("execute"),template=nameProperty[0]?.initializer,schema=unwrapSchema(schemaProperty[0]?.initializer);
+    const templateSymbols=ts.isTemplateExpression(template)?template.templateSpans.map(row=>checker.getSymbolAtLocation(row.expression)):[],emptyTemplate=ts.isTemplateExpression(template)&&
+      template.head.text===""&&template.templateSpans.length===2&&template.templateSpans.every(row=>row.literal.text==="");
+    const schemaParts=ts.isObjectLiteralExpression(schema)?schema.properties:[],type=schemaParts.filter(row=>ts.isPropertyAssignment(row)&&row.name.getText(parsed)==="type"&&ts.isStringLiteralLike(row.initializer)&&row.initializer.text==="object"),
+      additional=schemaParts.filter(row=>ts.isPropertyAssignment(row)&&row.name.getText(parsed)==="additionalProperties"&&row.initializer.kind===ts.SyntaxKind.FalseKeyword),spread=schemaParts.filter(ts.isSpreadAssignment);
+    const method=executeMethod[0],methodParameters=new Map((method?.parameters??[]).filter(row=>ts.isIdentifier(row.name)).map(row=>[row.name.text,checker.getSymbolAtLocation(row.name)])),callbackCalls=descendants(method,node=>ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&checker.getSymbolAtLocation(node.expression)===helperParameters.get("execute")),callback=callbackCalls[0];
+    const forwarded=callback?.arguments.length===3&&ts.isAsExpression(callback.arguments[0])&&ts.isIdentifier(callback.arguments[0].expression)&&checker.getSymbolAtLocation(callback.arguments[0].expression)===methodParameters.get("params")&&
+      ts.isIdentifier(callback.arguments[1])&&checker.getSymbolAtLocation(callback.arguments[1])===methodParameters.get("ctx")&&ts.isIdentifier(callback.arguments[2])&&checker.getSymbolAtLocation(callback.arguments[2])===methodParameters.get("signal");
+    if(nameProperty.length!==1||!emptyTemplate||templateSymbols[0]!==checker.getSymbolAtLocation(prefixes[0].name)||templateSymbols[1]!==helperParameters.get("name")||
+      schemaProperty.length!==1||schemaParts.length!==3||type.length!==1||additional.length!==1||spread.length!==1||!ts.isIdentifier(spread[0].expression)||checker.getSymbolAtLocation(spread[0].expression)!==helperParameters.get("parameters")||
+      executeMethod.length!==1||callbackCalls.length!==1||!forwarded||toolHelperCalls.length!==9)throw new Error("Invalid agent tool helper construction");
   }
   const registrationIds=new Set(),referenceKeys=new Set(),registrationSymbols=new Map();
   if(inventory.registrations.length!==authority.registrations.length)throw new Error("Normative registration coverage mismatch");
@@ -830,12 +878,14 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
     if(referenceKeys.has(key)||!mapping.mappings.some(item=>item.sourceId===reference.sourceId&&item.referenceIndex===reference.referenceIndex&&JSON.stringify(item.span)===JSON.stringify(span)))
       throw new Error("Normative mapped-reference identity mismatch");
     registrationIds.add(row.id);referenceKeys.add(key);spanHash(span,"registration");
-    const registrationName=authority.kind==="operation-tool"?"registerTool":"registerCommand";
+    const registrationName=["operation-tool","tool-helper"].includes(authority.kind)?"registerTool":"registerCommand";
     const matches=calls.filter(call=>ts.isPropertyAccessExpression(call.expression)&&call.expression.name.text===registrationName&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
     if(authority.kind==="operation-tool"){
       const argument=matches[0]?.arguments[0];
       if(matches.length!==1||!argument||!ts.isCallExpression(argument)||!ts.isIdentifier(argument.expression)||
         checker.getSymbolAtLocation(argument.expression)!==toolFactorySymbol)throw new Error("Normative tool registration binding mismatch");
+    }else if(authority.kind==="tool-helper"){
+      if(matches.length!==1||matches[0]!==toolHelperRegistration)throw new Error("Normative helper registration binding mismatch");
     }else{
       let declaration=matches[0];while(declaration&&!ts.isVariableDeclaration(declaration))declaration=declaration.parent;
       if(matches.length!==1||!declaration||!ts.isIdentifier(declaration.name)||!matches[0].arguments[0]||!ts.isIdentifier(matches[0].arguments[0]))
@@ -858,6 +908,9 @@ function verifyNormativeFamily(repository,baseline,mapping,inventory,authority){
       const operation=row.id.slice(row.id.lastIndexOf(".")+1),matches=operationProperties.filter(node=>ts.isPropertyAssignment(node)&&ts.isIdentifier(node.name)&&
         node.name.text===operation.toUpperCase()&&ts.isStringLiteralLike(node.initializer)&&node.initializer.text===operation&&callLines(node.initializer)[0]===span.startLine);
       if(matches.length!==1)throw new Error("Normative operation literal binding mismatch");
+    }else if(authority.kind==="tool-helper"){
+      const endpoint=row.id.slice("agents.".length),matches=toolHelperCalls.filter(call=>ts.isStringLiteralLike(call.arguments[0])&&call.arguments[0].text===endpoint&&callLines(call.arguments[0])[0]===span.startLine);
+      if(matches.length!==1)throw new Error("Normative agent endpoint helper binding mismatch");
     }else{
       const matches=calls.filter(call=>ts.isIdentifier(call.expression)&&JSON.stringify(callLines(call))===JSON.stringify([span.startLine,span.endLine]));
       if(matches.length!==1||checker.getSymbolAtLocation(matches[0].expression)!==registrationSymbols.get(row.registrationId)||!ts.isStringLiteralLike(matches[0].arguments[0]))

@@ -583,6 +583,37 @@
           "obligations": ["the current workspace must be a real Git project root and HOME or the temporary directory is rejected", "an existing .codegraph path must be a real directory and not a symbolic link", "explore requires a nonblank query of at most 2000 characters and an integer limit from 1 through 20 defaulting to 10", "explore passes the limit with --max-files after the current workspace path", "the wrapper never initializes automatically", "execution is sequential, shell-free, signal-aware, and buffer-bounded", "joined output is bounded and failures distinguish unavailable from failed"]
         }
       ]
+    },
+    {
+      "familyId": "agents.tools.v1",
+      "source": {"sourceId": "ECO-SRC-af1edc66cbd9834c", "objectId": "c6bf814ca8934bd26af5f0efb0c229029ca07155", "bytes": 81559, "sha256": "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388"},
+      "dependencySpans": [
+        {"id": "tool-prefix", "startLine": 60, "endLine": 60, "sha256": "2303fafeecfb20a557dc2579c5311b846924802e5057ee5664004cb9bbe8a701"},
+        {"id": "tool-helper", "startLine": 1151, "endLine": 1179, "sha256": "7f85db5c1d64ee61803aaa5f513e3af1b07688abdb0755297ab45358b12dd7e6"},
+        {"id": "list-agents-call", "startLine": 1276, "endLine": 1281, "sha256": "ea87968cac6563cd6340a2854766913b5cb3ee4bd9e3f3ec519a10ffa89d6909"},
+        {"id": "run-call", "startLine": 1283, "endLine": 1318, "sha256": "ed566cdd9fcd89b53949775d53ab21da0f724133da5b15dc466c23513395968e"},
+        {"id": "status-call", "startLine": 1320, "endLine": 1323, "sha256": "67fb5645114f6b2495169be38898525d045e99edca14e753bcc39a0e6084ab59"},
+        {"id": "result-call", "startLine": 1325, "endLine": 1335, "sha256": "36eca78fa90ac6c6a898a812145d80aecf5f1f51f483045b00bc78a05ea24010"},
+        {"id": "list-tasks-call", "startLine": 1337, "endLine": 1340, "sha256": "1eb93dca2334dc01d1ba25f9afc7aba1f5e2fb795ce3c74eb022410f35b7a868"},
+        {"id": "reply-call", "startLine": 1342, "endLine": 1347, "sha256": "aa30bee043174e466f87d52182ea1c94ee8d41ca7bdd6435d412fcbeb30d925c"},
+        {"id": "cancel-call", "startLine": 1349, "endLine": 1353, "sha256": "c4ada83556038882a1c42080f3c9c1e498631ce353fd136085ce6ef91a80c650"},
+        {"id": "send-message-call", "startLine": 1355, "endLine": 1358, "sha256": "6a258938c7628e5c5c1ea255f895513e829cde741bbe5bbba039875cd631baa4"},
+        {"id": "continue-call", "startLine": 1360, "endLine": 1380, "sha256": "28b2ab4ec459c53d7278ddb64641fe57a5ee5b9565126af59730223f24508f77"}
+      ],
+      "registrations": [
+        {"id": "agents.tool-helper", "mappedReference": {"sourceId": "ECO-SRC-af1edc66cbd9834c", "referenceIndex": 64}, "span": {"startLine": 1152, "endLine": 1178, "sha256": "2d2504228419e852849ce25dd30410645c68f8357be7f362474b583b94130eb0"}}
+      ],
+      "endpoints": [
+        {"id":"agents.list_agents","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1276,"endLine":1276,"sha256":"a217c336b06006c9f5a9123616c957a611374c0a327925b1875c5c8c32f9684f"},"dependencySpanIds":["tool-prefix","tool-helper","list-agents-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.run","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1284,"endLine":1284,"sha256":"edc966ea7a050636e4a684acebdf7bd47cd8e0d7334eb6d585b6e36a5756693d"},"dependencySpanIds":["tool-prefix","tool-helper","run-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.status","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1320,"endLine":1320,"sha256":"df087c1390784e3eb85bf69ee4a485265ff6c6bc3ace89f28c3ad62444206ab9"},"dependencySpanIds":["tool-prefix","tool-helper","status-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.result","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1325,"endLine":1325,"sha256":"eb8aa2e777731d2788b5bc9b68989dd0adf0bb58d1423c01b2955391d9125148"},"dependencySpanIds":["tool-prefix","tool-helper","result-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.list_tasks","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1337,"endLine":1337,"sha256":"833762108df979996c4586bd5c6747bb6d32fab3ea40fb178bc33f029b1af318"},"dependencySpanIds":["tool-prefix","tool-helper","list-tasks-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.reply","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1342,"endLine":1342,"sha256":"6be051384e0394569d346c93e4a7c8494211ec25a602470953ec92cc52975d1b"},"dependencySpanIds":["tool-prefix","tool-helper","reply-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.cancel","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1349,"endLine":1349,"sha256":"ce916503e02d93983cbbe0a05d890f027025d3ce483eba6122ba7c05fc36e44d"},"dependencySpanIds":["tool-prefix","tool-helper","cancel-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.send_message","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1355,"endLine":1355,"sha256":"166c798ac0f7382673a521c24b8f4271106ef1e55ebc15cdd465335d0965e16b"},"dependencySpanIds":["tool-prefix","tool-helper","send-message-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.continue","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1361,"endLine":1361,"sha256":"1f4ba3d15a118f8fd0e0cfb613eb7c6b0dd4aabb8cd4b6024af260d934d36c61"},"dependencySpanIds":["tool-prefix","tool-helper","continue-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]}
+      ]
     }
   ]
 }
