@@ -164,7 +164,7 @@
         "tests/scopes.test.ts"
       ],
       "remaining": [
-        "The installed Pi RPC journey restores an interrupted read-only agent's identity and review-required status after reopening the same named session in a second process without a model invocation. Cross-platform installed-Pi restoration, normal completion delivery after a real child run, hostile child-process cleanup under all stop modes, and the remaining public grant/transport contracts are not yet established."
+        "The installed Pi RPC journey restores an interrupted read-only agent's identity and review-required status after reopening the same named session in a second process without a model invocation on Linux, macOS and Windows. New direct-child completion and timeout/overflow/forbidden-tool process-tree cleanup coverage is awaiting the grouped cross-platform run. Public transport/grant contract coverage and the exact-SHA authenticated GSP-06 model receipt remain outstanding."
       ],
       "stateful": true,
       "platformSensitive": true,
@@ -224,7 +224,7 @@
         "scripts/verify-pi-package.mjs"
       ],
       "remaining": [
-        "Durable session/project-isolated Todo state, validated replay, Pi tools, the read-only /asen-todos view, abrupt process-exit recovery and preservation of completed work are implemented and tested. The installed-package Pi RPC journey reopens the same named session in a second process and verifies recovered state without a model. Windows/macOS installed-Pi recovery runs and broader stale-plan/conflict behavior remain to be established."
+        "Durable session/project-isolated Todo state, validated replay, Pi tools, the read-only /asen-todos view, abrupt process-exit recovery and preservation of completed work are implemented and tested. Installed-package Pi recovery after reopening the same named session in a second process without a model passes on Linux, macOS and Windows. New project-substitution, skipped-revision, backward-time and stale-plan-after-recovery cases pass locally; grouped CI and strict evidence receipts remain outstanding."
       ],
       "stateful": true,
       "platformSensitive": true,

@@ -53,6 +53,13 @@ process.stdout.write(JSON.stringify({type:"response",id:record.id,success:true,d
 }
 function runner(p:string,options:ConstructorParameters<typeof PiProcessRunner>[0]={}){return new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p],...options});}
 test("Pi RPC adapter correlates request id",async()=>{const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,command:"prompt",success:true,message:f.message}));});');const r=await runner(p,{}).run({id:"req-1",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,true);assert.match(r.output,/req-1/);});
+test("Dispatcher delivers a successful real Pi child result and records completion",async()=>{
+ const {d,p}=await fixture('let input="";process.stdin.on("data",chunk=>input+=chunk);process.stdin.on("end",()=>{const request=JSON.parse(input.trim());console.log(JSON.stringify({type:"response",id:request.id,success:true,message:"child result delivered"}));});');
+ const lifecycle=createAgentLifecycleSink(),dispatcher=new Dispatcher(runner(p),new EvidenceStore(),1,lifecycle);
+ const result=await dispatcher.dispatch({id:"real-child-completion",role:"explorer",prompt:"inspect",repository:d,isolationKey:"session-real-child"});
+ assert.equal(result.ok,true);assert.match(result.output,/child result delivered/);
+ assert.deepEqual(lifecycle.snapshot().map(record=>[record.id,record.state,record.sessionId,record.projectId]),[["real-child-completion","completed","session-real-child",d]]);
+});
 test("Pi child receives an operational environment and only the explicitly selected provider credential",async t=>{
  const names=["ASEN_TEST_UNRELATED_SECRET","OPENROUTER_API_KEY","GROQ_API_KEY"] as const,previous=names.map(name=>process.env[name]);
  process.env.ASEN_TEST_UNRELATED_SECRET="must-not-cross";process.env.OPENROUTER_API_KEY="selected-test-credential";process.env.GROQ_API_KEY="unselected-test-credential";
@@ -159,6 +166,23 @@ test("Pi cancellation settles its process tree and policy cleanup before returni
  assert.equal(result.ok,false);assert.match(result.output,/cancelled/);
  await assert.rejects(()=>access(state.policy),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
  assert.equal(await isLiveProcess(state.pid),false,`descendant ${state.pid} survived cancellation settlement`);
+});
+
+test("Pi timeout, output overflow and forbidden tools all settle the descendant process tree",{timeout:process.platform==="win32"?90_000:45_000},async t=>{
+ for(const mode of ["timeout","overflow","tool"] as const){
+  const marker=join(tmpdir(),`asen-descendant-${mode}-${process.pid}-${Date.now()}.json`);t.after(()=>rm(marker,{force:true}));
+  const body=`import {spawn} from "node:child_process";import {writeFileSync} from "node:fs";const marker=process.argv[2],policy=process.argv[process.argv.indexOf("--extension")+1],child=spawn(process.execPath,["-e","setTimeout(()=>{},60000)"],{stdio:"ignore"});writeFileSync(marker,JSON.stringify({pid:child.pid,policy}));let input="";process.stdin.on("data",chunk=>{input+=chunk;let end;while((end=input.indexOf("\\n"))>=0){const request=JSON.parse(input.slice(0,end));input=input.slice(end+1);if(request.type!=="prompt")continue;${mode==="overflow"?'process.stdout.write("x".repeat(10000)+"\\n");':mode==="tool"?'console.log(JSON.stringify({type:"tool_execution_start",id:request.id,toolName:"read"}));':""}}});setTimeout(()=>{},60000);`;
+  const {d,p}=await fixture(body),runnerOptions={command:process.execPath,rpcArgs:[],extraArgs:[p,marker],timeoutMs:10_000,maxOutputBytes:mode==="overflow"?512:1_000_000,noTools:mode==="tool"};
+  const pending=new PiProcessRunner(runnerOptions).run({id:`stop-${mode}`,role:"explorer",prompt:"wait",repository:d});
+  t.after(async()=>{await pending.catch(()=>{});});
+  const {readFile}=await import("node:fs/promises");let state:{pid:number;policy:string}|undefined;const deadline=Date.now()+20_000;
+  while(Date.now()<deadline&&!state){try{state=JSON.parse(await readFile(marker,"utf8"));}catch{/* Wait for the child readiness marker. */}if(!state)await new Promise(resolve=>setTimeout(resolve,50));}
+  assert.ok(state,`${mode}: child readiness marker was not recorded`);
+  const result=await pending;
+  assert.equal(result.ok,false);assert.ok(mode==="timeout"?/timed out/i.test(result.output):mode==="overflow"?/exceeded/i.test(result.output):/attempted a tool/i.test(result.output),`${mode}: unexpected stop result: ${result.output}`);
+  await assert.rejects(()=>access(state!.policy),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
+  assert.equal(await isLiveProcess(state!.pid),false,`${mode}: descendant ${state!.pid} survived stop settlement`);
+ }
 });
 
 test("Pi RPC adapter rejects a mismatched response id",async()=>{const {d,p}=await fixture('console.log(JSON.stringify({type:"response",id:"other",command:"prompt",success:true}));');const r=await runner(p,{}).run({id:"req-expected",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/correlated response missing/);});

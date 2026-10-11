@@ -21,6 +21,8 @@ test("Todo task state, history and session isolation survive a process reopen",a
 test("running Todo work becomes blocked after restart and is never resumed automatically",async t=>{
  const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Validate deployment",one);await store.update(todo.taskId,one,1,"running");
  const reopened=await SessionTodoStore.open(file);await reopened.recover(one);const current=(await reopened.list(one))[0]!.current;assert.equal(current.state,"blocked");assert.match(current.reason!,/restarted.*explicit review/i);assert.equal(current.revision,3);assert.equal((await reopened.history(todo.taskId,one)).at(-1)?.state,"blocked");
+ await assert.rejects(()=>reopened.update(todo.taskId,one,2,"done"),/revision conflict/);
+ assert.equal((await reopened.list(one))[0]?.current.state,"blocked","a pre-restart plan cannot overwrite recovery review");
 });
 
 test("session startup recovery changes only the matching session and project",async t=>{
