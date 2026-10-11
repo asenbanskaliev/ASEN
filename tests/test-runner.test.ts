@@ -19,6 +19,7 @@ const processFiles=[
  "tests/pi-native-skill-load.test.ts",
  "tests/pi-process-runner.test.ts",
  "tests/pi-session-recovery-e2e.test.ts",
+ "tests/pi-agent-runtime.test.ts",
  "tests/spawn-contained.test.ts",
 ];
 
