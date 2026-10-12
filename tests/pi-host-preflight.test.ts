@@ -20,7 +20,7 @@ test("primary factory rejects missing public APIs before command or tool registr
 test("preflight preserves the declared minimum and rejects unknown versions and proxies",()=>{
  const host={on(){},registerCommand(){},registerTool(){},getCommands(){return[];},getAllTools(){return[];}};
  for(const version of ["0.85.1","0.85.2","0.86.0","0.87.1","0.99.0","1.0.0","1.1.0","1.99.9"])assert.doesNotThrow(()=>validatePiHost(host,version));
- for(const version of [undefined,"unknown","0.84.999","0.85.0","2.0.0","1.1.0-beta","garbage 1.1.0","v1.1.0","1.1.0\\n",1.1])assert.throws(()=>validatePiHost(host,version),/known Pi version/);
+ for(const version of [undefined,"unknown","0.84.999","0.85.0","2.0.0","1.1.0-beta","garbage 1.1.0","v1.1.0","1.1.0\\n","01.1.0","1.01.0","1.1.00",1.1])assert.throws(()=>validatePiHost(host,version),/known Pi version/);
  let traps=0;const proxy=new Proxy(host,{getOwnPropertyDescriptor(){traps++;throw new Error("must not execute");}});
  assert.throws(()=>validatePiHost(proxy,"1.1.0"),/public Pi extension API/);assert.equal(traps,0);
 });

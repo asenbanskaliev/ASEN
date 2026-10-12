@@ -5,6 +5,7 @@ const required=["on","registerCommand","registerTool","getCommands","getAllTools
 export const ASEN_PI_MINIMUM_VERSION="0.85.1";
 export const ASEN_PI_MAXIMUM_VERSION_EXCLUSIVE="2.0.0";
 export const ASEN_PI_SUPPORTED_MODES=Object.freeze(["tui","rpc","json","print"] as const);
+const EXACT_RELEASE_VERSION=/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 function compareVersion(left:string,right:string):number{
  const a=left.split(".").map(Number),b=right.split(".").map(Number);
  if([...a,...b].some(value=>!Number.isSafeInteger(value)))throw new Error("ASEN Pi version contains an unsafe numeric component");
@@ -17,7 +18,7 @@ function compareVersion(left:string,right:string):number{
 }
 /** Validate the public factory boundary without invoking untrusted host getters. */
 export function validatePiHost(host:unknown,version:unknown):void{
- if(typeof version!=="string"||!/^\d+\.\d+\.\d+$/.test(version)||version.split(".").some(part=>!Number.isSafeInteger(Number(part)))||!checkPiVersion(version,ASEN_PI_MINIMUM_VERSION).ok||compareVersion(version,ASEN_PI_MAXIMUM_VERSION_EXCLUSIVE)>=0)
+ if(typeof version!=="string"||!EXACT_RELEASE_VERSION.test(version)||version.split(".").some(part=>!Number.isSafeInteger(Number(part)))||!checkPiVersion(version,ASEN_PI_MINIMUM_VERSION).ok||compareVersion(version,ASEN_PI_MAXIMUM_VERSION_EXCLUSIVE)>=0)
   throw new Error("ASEN requires a known Pi version >=0.85.1 and <2.0.0");
  if(typeof host!=="object"||host===null||types.isProxy(host))throw new Error("ASEN requires the public Pi extension API");
  for(const name of required){
