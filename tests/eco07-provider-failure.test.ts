@@ -25,14 +25,14 @@ test("ECO-07 selects LLM7 only with its key and the pinned Pi Free extension",()
  assert.throws(()=>resolveEco07Provider({ASEN_ECO07_PROVIDER:"llm7",ASEN_ECO07_PROVIDER_EXTENSION:"npm:pi-free@2.8.4",LLM7_API_KEY:"synthetic-key",ASEN_ECO07_MODEL:"bad\nmodel"}),/Invalid ECO-07 model/);
 });
 
-test("ECO-07 provider workflow uses Groq without a Pi Free extension or automatic quota-consuming runs",()=>{
+test("ECO-07 provider workflow uses Groq with quota-safe triggers",()=>{
  const workflow=readFileSync(resolve(".github/workflows/eco07-groq-recovery.yml"),"utf8");
- assert.match(workflow,/provider: \[groq\]/);
- assert.match(workflow,/GROQ_API_KEY: \\$\{\{ secrets\\.GROQ_API_KEY \\}\}/);
- assert.match(workflow,/ASEN_ECO07_MODEL: openai\\/gpt-oss-120b/);
- assert.match(workflow,/workflow_dispatch:/);
- assert.match(workflow,/paths: \["\\.github\\/workflows\\/eco07-groq-recovery\\.yml"\]/);
- assert.doesNotMatch(workflow,/pi install npm:pi-free/);
- assert.doesNotMatch(workflow,/ASEN_ECO07_PROVIDER_EXTENSION:/);
- assert.doesNotMatch(workflow,/secrets\\.LLM7_API_KEY/);
+ assert.ok(workflow.includes("provider: [groq]"));
+ assert.ok(workflow.includes('GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}'));
+ assert.ok(workflow.includes("ASEN_ECO07_MODEL: openai/gpt-oss-120b"));
+ assert.ok(workflow.includes("workflow_dispatch:"));
+ assert.ok(workflow.includes('paths: [".github/workflows/eco07-groq-recovery.yml"]'));
+ assert.ok(!workflow.includes("pi install npm:pi-free"));
+ assert.ok(!workflow.includes("ASEN_ECO07_PROVIDER_EXTENSION:"));
+ assert.ok(!workflow.includes("secrets.LLM7_API_KEY"));
 });
