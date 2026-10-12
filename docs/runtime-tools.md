@@ -23,6 +23,7 @@ Tests use injected subprocesses and disposable Git fixture projects, including s
 ## Skill registry lifecycle
 
 Startup refresh reuses `.asen/skill-registry.md`, its existing cache and optional memory mirror. Source precedence remains project, user, then package scope. Discovery does not alter mandatory behavior-Skill selection.
+Repeated activation through the same loaded module and Pi host registers only one startup hook; separate copies loaded through different module paths still require real-host validation.
 
 Interactive hosts watch existing source roots recursively, debounce changes and serialize writes per canonical project. Changes during refresh coalesce into a follow-up refresh. Project switching/shutdown invalidates old callbacks; shutdown closes watchers, cancels scheduled refresh and waits for in-flight work. Unsupported watchers produce a diagnostic and leave manual refresh available. Missing or recreated source roots may require manual refresh or restart.
 

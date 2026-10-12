@@ -43,6 +43,12 @@ function productionHost(commandInventory:unknown[]=[],toolInventory:unknown[]=[]
  return {host,events,commands,tools,messages,commandInventory,context};
 }
 
+test("repeated activation on the same Pi host registers only one startup hook",()=>{
+ const state=productionHost(),dependencies={enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false};
+ createPiExtension(dependencies)(state.host as any);createPiExtension(dependencies)(state.host as any);
+ assert.equal(state.events.get("session_start")?.length,1);
+});
+
 test("factory waits for initialized public inventories then registers one collision-free extension",async()=>{
  const home=mkdtempSync(path.join(tmpdir(),"asen-pi-host-preflight-")),prior=process.env.ASEN_NO_SKILL_REGISTRY;
  process.env.ASEN_NO_SKILL_REGISTRY="1";
