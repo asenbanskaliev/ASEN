@@ -8,6 +8,7 @@ import {PersistentAgentStore} from "../runtime/agent-store.js";
 export interface AgentSessionIdentity{sessionId:string;projectId:string;}
 /** Production coordinator using the existing Dispatcher, with session checks around every public action. */
 export class AgentRuntime{
+ readonly #terminalListeners=new Set<(record:PublicAgentRecord)=>void>();
  readonly #executions=new Map<string,Promise<unknown>>();
  private constructor(readonly store:PersistentAgentStore,private readonly dispatcher:Dispatcher,readonly quarantined?:string){}
  static async open(options:{storeFile:string;runner:AgentRunner;maxConcurrency?:number}):Promise<AgentRuntime>{
@@ -16,9 +17,20 @@ export class AgentRuntime{
  }
  snapshot():readonly PublicAgentRecord[]{return this.store.snapshot();}
  async list(identity:AgentSessionIdentity):Promise<readonly PublicAgentRecord[]>{return this.store.list(identity.sessionId,identity.projectId);}
+ /** Observers receive only persisted terminal outcomes; notification failures cannot alter execution. */
+ subscribeTerminal(listener:(record:PublicAgentRecord)=>void):()=>void{
+  this.#terminalListeners.add(listener);return ()=>{this.#terminalListeners.delete(listener);};
+ }
+ async #publishTerminal(request:AgentRequest):Promise<void>{
+  try{
+   const entry=await this.store.get(request.id,request.isolationKey??"default",request.repository);
+   if(!entry||!["completed","failed","cancelled"].includes(entry.record.state))return;
+   for(const listener of this.#terminalListeners)try{listener(structuredClone(entry.record));}catch{/* The durable result remains queryable. */}
+  }catch{/* A failed storage read must never produce a success notification. */}
+ }
  #dispatch(request:AgentRequest):void{
   const execution=this.dispatcher.dispatch(request);this.#executions.set(request.id,execution);
-  void execution.then(()=>{if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);},()=>{if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);});
+  void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);});
  }
  async startExplorer(input:{prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"]},signal?:AbortSignal):Promise<string>{
   if(!input.session.sessionId||!input.session.projectId)throw new Error("An active Pi session and project are required");

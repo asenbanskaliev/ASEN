@@ -30,6 +30,7 @@ test("production Pi extension runs and restores session-scoped agent status usin
   const started=await first.tools.get("asen_agent_start").execute("call-1",{prompt:"inspect this project"},new AbortController().signal,()=>{},first.context());const id=started.details.id;
   let rows:any[]=[],deadline=Date.now()+30_000;while(Date.now()<deadline){rows=(await first.tools.get("asen_agent_status").execute("status",{},new AbortController().signal,()=>{},first.context())).details;if(rows.some(row=>row.id===id&&["completed","failed","cancelled","interrupted"].includes(row.state)))break;await new Promise(resolve=>setTimeout(resolve,10));}
   assert.ok(rows.some(row=>row.id===id&&row.state==="completed"),`agent runner did not persist completion; observed ${JSON.stringify(rows)}`);
+  assert.ok(first.messages.some(message=>message.includes(id)&&message.includes("completed")&&message.includes("read-only result")),"completion must be delivered without a status query");
   await first.commands.get("asen-agents")!.handler("",first.context());assert.ok(first.messages.some(message=>message.includes("completed")&&message.includes("read-only result")));
   const foreign=await first.tools.get("asen_agent_status").execute("call-2",{},new AbortController().signal,()=>{},first.context("other-session"));assert.deepEqual(foreign.details,[]);
   const todo=await first.tools.get("asen_todo_add").execute("todo",{title:"Verify the delivery"},new AbortController().signal,()=>{},first.context());
@@ -37,6 +38,7 @@ test("production Pi extension runs and restores session-scoped agent status usin
   const done=await first.tools.get("asen_todo_update").execute("todo-done",{id:todo.details.taskId,revision:2,state:"done"},new AbortController().signal,()=>{},first.context());assert.equal(done.details.events.at(-1).state,"done");
   assert.deepEqual((await first.tools.get("asen_todo_list").execute("todo-list",{},new AbortController().signal,()=>{},first.context("other-session"))).details,[]);
   second=host();createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:file})(second.pi as any);await second.events.get("session_start")![0]!({},second.context());
+  assert.equal(second.messages.some(message=>message.includes("read-only result")),false,"restart must not redeliver an old completion");
   const restored=await second.tools.get("asen_agent_status").execute("status",{},new AbortController().signal,()=>{},second.context());assert.ok(restored.details.some((row:any)=>row.id===id&&row.state==="completed"&&row.summary==="read-only result"));
   const restoredTodo=await second.tools.get("asen_todo_list").execute("todo-list",{},new AbortController().signal,()=>{},second.context());assert.equal(restoredTodo.details[0]?.current.state,"done");
  }finally{try{await first.events.get("session_shutdown")![0]!({},first.context());}finally{try{if(second)await second.events.get("session_shutdown")![0]!({},second.context());}finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;}}}
@@ -71,4 +73,46 @@ test("Pi continue tool requires explicit UI confirmation and cannot cross projec
   await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},{...state.context(),hasUI:false}),/Explicit Pi UI confirmation/);
   await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},state.context("other-session")),/unavailable to this session or project/);
  }finally{try{await state.events.get("session_shutdown")![0]!({},state.context());}finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;}}
+});
+
+test("agent completion never reaches a different active Pi session",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-agent-delivery-"));t.after(()=>rm(home,{recursive:true,force:true}));
+ const {AgentRuntime}=await import("../src/agents/agent-runtime.js");
+ let finish!:(result:any)=>void,started!:()=>void;
+ const running=new Promise<void>(resolve=>{started=resolve;});
+ const runtime=await AgentRuntime.open({storeFile:join(home,"agents.json"),runner:{run:async request=>{started();return new Promise(resolve=>{finish=result=>resolve({id:request.id,...result});});}}});
+ const state=host();createPiExtension({homeDir:()=>home,agentRuntimeFactory:async()=>runtime})(state.pi as any);
+ await state.events.get("session_start")![0]!({},state.context());
+ const task=await state.tools.get("asen_agent_start").execute("start",{prompt:"inspect"},new AbortController().signal,()=>{},state.context());await running;
+ await state.events.get("session_start")![0]!({},state.context("session-b"));
+ const terminal=new Promise<void>(resolve=>runtime.subscribeTerminal(()=>resolve()));
+ finish({ok:true,output:"private session-a result"});await terminal;
+ assert.equal(state.messages.some(message=>message.includes("private session-a result")),false);
+ assert.equal((await runtime.list({sessionId:"session-a",projectId:await realpath(process.cwd())})).find(record=>record.id===task.details.id)?.state,"completed");
+ await state.events.get("session_shutdown")![0]!({},state.context("session-b"));
+});
+
+test("failed agent reports failure and a broken delivery cannot erase its durable outcome",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-agent-failure-delivery-"));t.after(()=>rm(home,{recursive:true,force:true}));
+ const {AgentRuntime}=await import("../src/agents/agent-runtime.js");
+ let finish!:()=>void;const runtime=await AgentRuntime.open({storeFile:join(home,"agents.json"),runner:{run:async request=>new Promise(resolve=>{finish=()=>resolve({id:request.id,ok:false,output:"child failed"});})}});
+ const state=host(),ctx=state.context();createPiExtension({homeDir:()=>home,agentRuntimeFactory:async()=>runtime})(state.pi as any);await state.events.get("session_start")![0]!({},ctx);
+ const task=await state.tools.get("asen_agent_start").execute("start",{prompt:"inspect"},new AbortController().signal,()=>{},ctx);
+ const deadline=Date.now()+3000;while(!finish&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,5));assert.ok(finish);
+ const terminal=new Promise<void>(resolve=>runtime.subscribeTerminal(()=>resolve()));runtime.subscribeTerminal(()=>{throw new Error("delivery unavailable");});finish();await terminal;
+ assert.ok(state.messages.some(message=>message.includes(task.details.id)&&message.includes("failed")));
+ const records=await runtime.list({sessionId:"session-a",projectId:await realpath(process.cwd())});assert.equal(records.find(record=>record.id===task.details.id)?.state,"failed");
+ await state.events.get("session_shutdown")![0]!({},ctx);
+});
+
+test("session shutdown suppresses late cancellation delivery after child cleanup",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-agent-shutdown-delivery-"));t.after(()=>rm(home,{recursive:true,force:true}));
+ const {AgentRuntime}=await import("../src/agents/agent-runtime.js");
+ let started!:()=>void,cleaned=false;const running=new Promise<void>(resolve=>{started=resolve;});
+ const runtime=await AgentRuntime.open({storeFile:join(home,"agents.json"),runner:{run:async(request,signal)=>{started();return new Promise(resolve=>signal!.addEventListener("abort",()=>{cleaned=true;resolve({id:request.id,ok:false,output:"cancelled after cleanup"});},{once:true}));}}});
+ const state=host(),ctx=state.context();createPiExtension({homeDir:()=>home,agentRuntimeFactory:async()=>runtime})(state.pi as any);await state.events.get("session_start")![0]!({},ctx);
+ const task=await state.tools.get("asen_agent_start").execute("start",{prompt:"inspect"},new AbortController().signal,()=>{},ctx);await running;
+ const messagesBefore=state.messages.length;await state.events.get("session_shutdown")![0]!({},ctx);
+ assert.equal(cleaned,true);assert.equal(state.messages.length,messagesBefore);
+ assert.equal((await runtime.list({sessionId:"session-a",projectId:await realpath(process.cwd())})).find(record=>record.id===task.details.id)?.state,"cancelled");
 });
