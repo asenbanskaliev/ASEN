@@ -1,4 +1,12 @@
 # Ecosystem strict behavioral parity
+## ECO-05 local lifecycle batch — 2026-10-12
+
+Source units `6b110fd` and `fa9ce13` add automatic delivery of persisted terminal outcomes to the owning active Pi session and optional task-id queries returning state/history without request prompts or authority data. The existing Dispatcher and durable store remain the execution/ownership boundary. Session changes suppress foreign results, restart does not replay completion, shutdown removes delivery before child cancellation, and observer failure cannot rewrite a saved result.
+
+Semantic RED reproduced absent completion delivery and absent task-specific query. GREEN: 32/32 lifecycle/store/production-adapter tests, typecheck and diff integrity. Broader dispatcher/runner/preflight coverage passed 91/93; two descendant observers failed on the local `ps: fatal library error, lookup self`, so process-tree cleanup is not locally admitted by that run. Upstream boundary passed 556 paths. No authenticated model execution, new hosted CI, native approval or FULL promotion occurred. User deferred ECO-02 closure to their local computer and authorized ECO-05 next; historical CEA receipts remain bound to CEA and do not transfer to these source units. Foreign-root grants, full transport/provider evidence and cross-platform admission remain open.
+
+Rollback: revert only these two source units and their matching evidence wording. No duplicate dispatcher, added shell access, writable-agent permission or changed pinned child authority.
+
 
 - [x] **DELIVERY-1 — Prepare the current runner WIP checkpoint for GitHub continuation.** Preparation is complete from source commit `182deca348ddeb7aca1e1cf48401a5ab307bddff` and the truthful [portable continuation guide](../handoffs/ecosystem-strict-parity-github.md). The human authorized publishing this known BLOCKED candidate as WIP to existing draft PR #32, not approval, RDD bypass, merge or release. Native review `review-24fb23d5e025249c` is `correction_required` with CRITICAL `R3-default-chunk-timeout`; there is no approval, acknowledgement or authority consumption. FULL-1b remains unchecked and ECO-02A remains `PARTIAL`; the final publication record belongs in the remote PR checkpoint comment, not a self-referential documentation SHA.
 

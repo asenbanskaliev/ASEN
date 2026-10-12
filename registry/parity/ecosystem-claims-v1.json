@@ -417,7 +417,7 @@
         "tests/scopes.test.ts"
       ],
       "remaining": [
-        "The installed Pi RPC journey restores an interrupted read-only agent's identity and review-required status after reopening the same named session in a second process without a model invocation on Linux, macOS and Windows. New direct-child completion and timeout/overflow/forbidden-tool process-tree cleanup coverage is awaiting the grouped cross-platform run. Public transport/grant contract coverage and the exact-SHA authenticated GSP-06 model receipt remain outstanding."
+        "The installed Pi RPC journey restores an interrupted read-only agent's identity and review-required status after reopening the same named session in a second process without a model invocation on Linux, macOS and Windows. New direct-child completion and timeout/overflow/forbidden-tool process-tree cleanup coverage is awaiting the grouped cross-platform run. Public transport/grant contract coverage and the exact-SHA authenticated GSP-06 model receipt remain outstanding. Local source fa9ce13 adds session-owned persisted terminal notifications and per-task state/history queries without returning prompts or authority payloads. Restart does not replay notifications; shutdown detaches delivery before cancellation. Focused lifecycle/store/production-adapter tests pass 32/32 and typecheck passes. Broader dispatcher/runner/preflight tests passed 91/93; two process-tree observers failed because local ps exits with fatal library error, lookup self. This delta has no hosted exact-SHA or authenticated-model admission; independent/native review remains pending."
       ],
       "stateful": true,
       "platformSensitive": true,
