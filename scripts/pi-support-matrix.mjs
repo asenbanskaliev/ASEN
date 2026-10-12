@@ -6,6 +6,7 @@ import {join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {createHash} from "node:crypto";
 import {createPiVerifierEnvironment} from "./gsp06-pi-free-environment.mjs";
+import {prepareDarwinPtyHelper} from "./pi-matrix-pty-helper.mjs";
 
 export function planPiSupportMatrix(){
  return ["linux","win32","darwin"].flatMap(platform=>["0.85.1","1.1.0"].flatMap(version=>
@@ -51,6 +52,7 @@ async function runCell(cell,cli,packageRoot,root){
   PI_CODING_AGENT_DIR:join(work,"agent"),ASEN_NO_SKILL_REGISTRY:"1",TERM:"xterm-256color"};
  let log="",timedOut=false,exitCode,signal=null;
  if(cell.mode==="tui"){
+  prepareDarwinPtyHelper();
   const pty=await import("node-pty");
   const child=pty.spawn(process.execPath,args,{cwd:work,env,cols:100,rows:30,name:"xterm-256color"});
   await new Promise((done,reject)=>{
