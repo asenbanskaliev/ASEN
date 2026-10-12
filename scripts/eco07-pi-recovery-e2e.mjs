@@ -92,8 +92,8 @@ function startPi(label){
     const pending=requests.get(id);requests.set(id,{resolve:value=>{clearTimeout(timeout);pending.resolve(value);},reject:error=>{clearTimeout(timeout);pending.reject(error);}});
   });
   const stop=async(signal="SIGKILL")=>{
-    if(child.exitCode===null&&child.signalCode===null)child.kill(signal);
-    return closed;
+    const killAccepted=child.exitCode===null&&child.signalCode===null?child.kill(signal):false;
+    return {...await closed,killRequested:signal,killAccepted};
   };
   return {child,events,send,stop,stderr,getClosed:()=>closed};
 }
@@ -120,6 +120,14 @@ try{
   assert.equal(started?.events.at(-1)?.state,"running","Pi/ASEN must persist the task as running before interruption");
   assert.equal(started.events[0].sessionId,sessionId);assert.equal(started.events[0].projectId,repository);
   assert.equal(started.events.length,2,"The initial task must have one planned and one running event");
+  const settleDeadline=Date.now()+30_000;
+  while(!first.events.some(event=>event.type==="agent_settled")&&Date.now()<settleDeadline){
+    const exit=await Promise.race([first.getClosed().then(value=>({closed:value})),sleep(25).then(()=>null)]);
+    if(exit)throw new Error(`Initial Pi closed before recording its completed task-start tool result (${JSON.stringify(exit.closed)})`);
+  }
+  const settled=first.events.find(event=>event.type==="agent_settled");
+  assert.ok(settled,"Pi must persist the task-start turn before interruption");
+  assert.equal(settled.aborted,false,"Pi must finish the task-start turn naturally before interruption");
   const initialTools=first.events.filter(event=>event.type==="tool_execution_start").map(event=>event.toolName);
   assert.ok(initialTools.length>=2&&initialTools.every(name=>["asen_todo_add","asen_todo_update","asen_todo_list"].includes(name)),"Before interruption Pi may only establish the task identity and running state; no pending review step may start");
   const persistedPlanFile=await findPersistedPlan(sessionDir);
@@ -130,9 +138,10 @@ try{
   assert.equal(earlySteps,"","No task step may run before the restart");
   phase="forced-interruption";
   const initialPid=first.child.pid;
-  await first.stop("SIGKILL");
+  const interruption=await first.stop("SIGKILL");
+  assert.equal(interruption.killAccepted,true,"The running Pi process must accept the forced process kill");
   await initialTurn.catch(()=>{});
-  await record("process-killed",{pid:initialPid,signal:"SIGKILL"});
+  await record("process-killed",{pid:initialPid,...interruption});
 
   phase="restart-recovery";
   second=startPi("restarted");
@@ -173,8 +182,12 @@ try{
   await writeFile(evidencePath,`${JSON.stringify(final,null,2)}\n`,{mode:0o600});
   console.log(JSON.stringify(final));
 }catch(error){
-  const report={candidate:revision,provider:"groq",phase,result:"FAIL",error:redacted(error?.stack??error)};
+  const task=await currentItem().catch(()=>undefined);
+  const steps=(await readFile(stepsFile,"utf8").catch(()=>"")).split("\n").filter(Boolean).map(line=>{try{const {step,summary,sessionId:owner,projectId,at}=JSON.parse(line);return {step,summary,sessionId:owner,projectId,at};}catch{return {malformed:true};}});
+  const processTrace=[first&&{label:"initial",events:first.events.map(event=>({type:event.type,toolName:event.toolName,method:event.method,stopReason:event.message?.stopReason,aborted:event.aborted}))},second&&{label:"restarted",events:second.events.map(event=>({type:event.type,toolName:event.toolName,method:event.method,stopReason:event.message?.stopReason,aborted:event.aborted}))}].filter(Boolean);
+  const report={candidate:revision,provider:"groq",phase,result:"FAIL",task:task&&{taskId:task.taskId,title:task.title,events:task.events.map(({revision,state,at,reason})=>({revision,state,at,reason}))},steps,processTrace,error:redacted(error?.stack??error)};
   await writeFile(evidencePath,`${JSON.stringify(report,null,2)}\n`,{mode:0o600});
+  console.error(JSON.stringify(report));
   throw error;
 }finally{
   if(first)await first.stop("SIGKILL");
