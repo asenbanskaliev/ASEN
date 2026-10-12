@@ -1,4 +1,5 @@
 import {createHash} from "node:crypto";
+import {execFileSync} from "node:child_process";
 import {lstat,mkdir,readFile,realpath} from "node:fs/promises";
 import path from "node:path";
 import {atomicWriteText} from "../io/atomic-write.js";
@@ -82,12 +83,39 @@ const inside=(root:string,candidate:string):boolean=>{
 };
 const hasCode=(error:unknown,code:string):boolean=>
  typeof error==="object"&&error!==null&&"code" in error&&(error as {code?:unknown}).code===code;
+async function hasGitMetadata(root:string):Promise<boolean>{
+ let current=root;
+ for(;;){
+  try{
+   const marker=path.join(current,".git"),metadata=await lstat(marker);
+   if(metadata.isDirectory()){
+    const head=await lstat(path.join(marker,"HEAD"));if(head.isFile())return true;
+   }else if(metadata.isFile()){
+    const match=/^gitdir:\s*(.+?)\s*$/m.exec(await readFile(marker,"utf8"));
+    if(match){const gitDirectory=path.resolve(current,match[1]!);if((await lstat(path.join(gitDirectory,"HEAD"))).isFile())return true;}
+   }
+  }catch(error){if(!hasCode(error,"ENOENT"))throw new Error("Cannot safely inspect generated registry tracking state");}
+  const parent=path.dirname(current);if(parent===current)return false;current=parent;
+ }
+}
+async function assertGeneratedOutputsUntracked(root:string):Promise<void>{
+ if(!await hasGitMetadata(root))return;
+ let tracked:string;
+ try{
+  const gitEnvironment=Object.fromEntries(Object.entries(process.env).filter(([key])=>
+   !["GIT_DIR","GIT_WORK_TREE","GIT_INDEX_FILE","GIT_COMMON_DIR","GIT_CONFIG_COUNT","GIT_CONFIG_PARAMETERS"].includes(key)&&!/^GIT_CONFIG_(?:KEY|VALUE)_\d+$/.test(key)));
+  tracked=execFileSync("git",["-C",root,"ls-files","-z","--",SKILL_REGISTRY_RELATIVE_PATH,SKILL_REGISTRY_CACHE_RELATIVE_PATH],
+   {encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:3000,env:gitEnvironment});
+ }catch{throw new Error("Cannot safely check whether generated registry outputs are tracked by Git");}
+ if(tracked)throw new Error(`Generated registry output is tracked by Git: ${tracked.split("\0").filter(Boolean).join(", ")}`);
+}
 async function rejectLink(candidate:string):Promise<void>{
  try{if((await lstat(candidate)).isSymbolicLink())throw new Error("Registry output path must not be a symbolic link or junction");}
  catch(error){if(!hasCode(error,"ENOENT"))throw error;}
 }
 async function outputPaths(projectRoot:string):Promise<{registryPath:string;cachePath:string}> {
  const root=path.normalize(await realpath(path.resolve(projectRoot))),directory=path.join(root,".asen");
+ await assertGeneratedOutputsUntracked(root);
  try{await mkdir(directory);}catch(error){if(!hasCode(error,"EEXIST"))throw error;}
  const metadata=await lstat(directory);
  if(metadata.isSymbolicLink()||!metadata.isDirectory())throw new Error("Registry output directory must be a real directory");

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import * as fs from "node:fs/promises";
 import os from "node:os";
@@ -122,6 +123,26 @@ await test("rejects a linked output directory before reads or writes",async t=>{
   await assert.rejects(fs.access(path.join(outside,"skill-registry.md")));
   await assert.rejects(fs.access(path.join(outside,"skill-registry.cache.json")));
  }finally{await fs.rm(container,{recursive:true,force:true});}
+});
+
+await test("refuses to overwrite either generated registry output when Git tracks it",async()=>{
+ for(const relative of [SKILL_REGISTRY_RELATIVE_PATH,SKILL_REGISTRY_CACHE_RELATIVE_PATH]){
+  const root=await fixture();
+  try{
+   const registry=path.join(root,SKILL_REGISTRY_RELATIVE_PATH),cache=path.join(root,SKILL_REGISTRY_CACHE_RELATIVE_PATH);
+   await fs.mkdir(path.dirname(registry),{recursive:true});
+   await fs.writeFile(registry,"hand-maintained registry\n");await fs.writeFile(cache,"hand-maintained cache\n");
+   const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{stdio:"ignore"});
+   git("init","-q");git("config","user.name","ASEN Test");git("config","user.email","asen@example.invalid");
+   git("add","--",relative);git("commit","-qm","track generated output");
+   const alternateIndex=path.join(root,"empty-index");execFileSync("git",["-C",root,"read-tree","--empty"],{stdio:"ignore",env:{...process.env,GIT_INDEX_FILE:alternateIndex}});
+   const priorIndex=process.env.GIT_INDEX_FILE;process.env.GIT_INDEX_FILE=alternateIndex;
+   try{await assert.rejects(refreshSkillRegistry({projectRoot:root,projectId:"p",sources:[]}),/tracked by Git/);}
+   finally{if(priorIndex===undefined)delete process.env.GIT_INDEX_FILE;else process.env.GIT_INDEX_FILE=priorIndex;}
+   assert.equal(await fs.readFile(registry,"utf8"),"hand-maintained registry\n");
+   assert.equal(await fs.readFile(cache,"utf8"),"hand-maintained cache\n");
+  }finally{await fs.rm(root,{recursive:true,force:true});}
+ }
 });
 
 await test("mirrors exact content on regeneration and hit, and sanitizes failures",async()=>{
