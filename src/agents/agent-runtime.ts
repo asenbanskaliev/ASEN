@@ -54,6 +54,10 @@ export class AgentRuntime{
   this.#dispatch(request);
   return request.id;
  }
+ async cancelSessionProjects(sessionId:string):Promise<void>{
+  const projects=new Set(this.store.snapshot().filter(record=>record.sessionId===sessionId&&this.#executions.has(record.id)).map(record=>record.projectId));
+  await Promise.all([...projects].map(projectId=>this.cancelSession({sessionId,projectId})));
+ }
  async cancelSession(identity:AgentSessionIdentity):Promise<void>{
   const entries=await this.store.list(identity.sessionId,identity.projectId);
   await Promise.all(entries.filter(x=>x.state==="queued"||x.state==="running").map(async record=>{

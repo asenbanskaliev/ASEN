@@ -119,3 +119,16 @@ test("session shutdown suppresses late cancellation delivery after child cleanup
  assert.equal(cleaned,true);assert.equal(state.messages.length,messagesBefore);
  assert.equal((await runtime.list({sessionId:"session-a",projectId:await realpath(process.cwd())})).find(record=>record.id===task.details.id)?.state,"cancelled");
 });
+
+test("foreign-project agents require live consent and are cancelled with the owning session",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-foreign-agent-")),foreign=await realpath(await mkdtemp(join(tmpdir(),"asen-foreign-project-")));t.after(()=>Promise.all([rm(home,{recursive:true,force:true}),rm(foreign,{recursive:true,force:true})]));
+ const state=host(),ctx=state.context();let calls=0,started!:()=>void,cleaned=false;
+ const running=new Promise<void>(resolve=>{started=resolve;});ctx.ui.confirm=async()=>{calls++;return true;};
+ createPiExtension({homeDir:()=>home,agentRunner:{run:async(request,signal)=>{assert.equal(request.repository,foreign);started();return new Promise(resolve=>signal!.addEventListener("abort",()=>{cleaned=true;resolve({id:request.id,ok:false,output:"cancelled"});},{once:true}));}}})(state.pi as any);
+ await state.events.get("session_start")![0]!({},ctx);
+ const task=await state.tools.get("asen_agent_start").execute("foreign-start",{prompt:"inspect",root:foreign},new AbortController().signal,()=>{},ctx);await running;assert.equal(calls,1);
+ const status=await state.tools.get("asen_agent_status").execute("foreign-query",{id:task.details.id,root:foreign},new AbortController().signal,()=>{},ctx);assert.equal(status.details.task.record.projectId,foreign);
+ assert.deepEqual((await state.tools.get("asen_agent_status").execute("local-query",{},new AbortController().signal,()=>{},ctx)).details,[]);
+ await state.events.get("session_shutdown")![0]!({},ctx);assert.equal(cleaned,true);
+ await assert.rejects(state.tools.get("asen_agent_status").execute("expired",{id:task.details.id,root:foreign},new AbortController().signal,()=>{},ctx),/permission is unavailable/);
+});
