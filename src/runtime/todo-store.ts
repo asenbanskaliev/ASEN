@@ -26,12 +26,23 @@ export function parseTodoFile(raw:string):TodoFile{
 async function read(file:string):Promise<TodoFile>{if(!await preparePrivateFile(file))return {schema:SCHEMA,revision:0,items:[]};return parseTodoFile(await readFile(file,"utf8"));}
 async function write(file:string,value:TodoFile){await preparePrivateFile(file,true);await atomicWriteText(file,`${JSON.stringify(value,null,2)}\n`);}
 
+function isCorruptTodoError(error:unknown):boolean{return error instanceof SyntaxError||error instanceof Error&&["Invalid ASEN Todo store","Duplicate ASEN Todo task id","ASEN Todo history exceeds its limit"].includes(error.message);}
+
 /** Private, revisioned per-session TODO projection; ODD task mirrors remain a separate store. */
 export class SessionTodoStore{
  private constructor(readonly path:string,private readonly now:()=>string,private readonly quarantined?:string){}
  static async open(path:string,now:()=>string=()=>new Date().toISOString()):Promise<SessionTodoStore>{
   await preparePrivateFile(path,true);let quarantined:string|undefined;
-  try{await read(path);}catch(error){if(!(error instanceof SyntaxError)&&!(error instanceof Error&&["Invalid ASEN Todo store","Duplicate ASEN Todo task id","ASEN Todo history exceeds its limit"].includes(error.message)))throw error;quarantined=`${path}.corrupt-${Date.now()}-${randomUUID()}`;await rename(path,quarantined);}
+  try{await read(path);}catch(error){
+   if(!isCorruptTodoError(error))throw error;
+   await withExclusiveFileLock(path,async()=>{
+    // Another startup or writer may have already recovered the observed bad file.
+    try{await read(path);}catch(currentError){
+     if(!isCorruptTodoError(currentError))throw currentError;
+     quarantined=`${path}.corrupt-${Date.now()}-${randomUUID()}`;await rename(path,quarantined);
+    }
+   });
+  }
   return new SessionTodoStore(path,now,quarantined);
  }
  diagnostics(){return this.quarantined?{quarantined:this.quarantined}:undefined;}

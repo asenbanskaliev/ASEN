@@ -129,3 +129,28 @@ test("a crash before Todo commit preserves the previous plan and recovers its de
  assert.equal((await reopened.list(one))[0]?.current.state,"running");
  await assert.rejects(readFile(`${file}.lock`),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
 });
+
+test("simultaneous Todo startup quarantines corrupted bytes once without losing recovery",async t=>{
+ const file=await fixture(t),corrupt="{broken todo data";await writeFile(file,corrupt,{mode:0o600});
+ const opened=await Promise.allSettled([SessionTodoStore.open(file),SessionTodoStore.open(file)]);
+ assert.equal(opened.filter(result=>result.status==="fulfilled").length,2);
+ const stores=opened.flatMap(result=>result.status==="fulfilled"?[result.value]:[]),quarantined=stores.flatMap(store=>store.diagnostics()?.quarantined?[store.diagnostics()!.quarantined!]:[]);
+ assert.equal(quarantined.length,1);assert.equal(await readFile(quarantined[0]!,"utf8"),corrupt);
+ await stores[0]!.add("First safe task",one);await stores[1]!.add("Second safe task",other);
+ assert.equal((await stores[0]!.list(one)).length,1);assert.equal((await stores[1]!.list(other)).length,1);
+});
+
+test("a Todo commit failure preserves durable history and permits a clean retry",{concurrency:false},async t=>{
+ const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Retry safely",one),before=await readFile(file,"utf8"),originalRename=fsPromises.rename.bind(fsPromises);
+ t.mock.method(fsPromises,"rename",async(...args:Parameters<typeof originalRename>)=>{
+  if(String(args[1])===file&&String(args[0]).endsWith(".tmp"))throw Object.assign(new Error("Injected Todo commit failure"),{code:"EIO"});
+  return originalRename(...args);
+ });syncBuiltinESMExports();
+ try{
+  await assert.rejects(store.update(todo.taskId,one,1,"running"),error=>(error as NodeJS.ErrnoException).code==="EIO");
+  assert.equal(await readFile(file,"utf8"),before);assert.deepEqual((await store.history(todo.taskId,one)).map(event=>event.state),["planned"]);
+  await assert.rejects(readFile(`${file}.lock`),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
+  const entries=await fsPromises.readdir(join(file,".."));assert.equal(entries.some(name=>name.endsWith(".tmp")),false);
+ }finally{t.mock.restoreAll();syncBuiltinESMExports();}
+ await store.update(todo.taskId,one,1,"running");assert.deepEqual((await store.history(todo.taskId,one)).map(event=>event.revision),[1,2]);
+});
