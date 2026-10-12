@@ -26,12 +26,18 @@ export default function(pi){
     parameters:{type:"object",additionalProperties:false,required:["step"],properties:{step:{type:"string",enum:steps}}},
     execute:async(_id,params,_signal,_update,host)=>{
       const value=params?.step;if(!steps.includes(value))throw new Error("Invalid ECO-07 review step");
+      if(process.env.ASEN_ECO07_PHASE!=="restarted")throw new Error("Pending review content is unavailable in the initial Pi process");
       const {rows}=await currentTask(host);
       if(rows.some(row=>row.step===value))throw new Error("ECO-07 review step is already complete");
       if(value==="inspect-task-reducer"&&!rows.some(row=>row.step==="inspect-closure-audit"))throw new Error("ECO-07 review steps must remain in order");
       const filename=`${process.env.ASEN_ECO07_PROJECT}/${reviewFiles[value]}`;
       const content=await readFile(filename,"utf8");
       if(content.length>100_000)throw new Error("ECO-07 review source exceeds the bounded read limit");
+      const readsFile=process.env.ASEN_ECO07_READS_FILE;
+      if(!readsFile)throw new Error("ECO-07 read evidence file is unavailable");
+      const previous=(await readFile(readsFile,"utf8").catch(error=>error?.code==="ENOENT"?"":Promise.reject(error))).split("\n").filter(Boolean).map(line=>JSON.parse(line));
+      if(previous.some(row=>row.step===value))throw new Error("ECO-07 review file was already read");
+      await appendFile(readsFile,`${JSON.stringify({step:value,file:reviewFiles[value],sessionId:process.env.ASEN_ECO07_SESSION_ID,projectId:process.env.ASEN_ECO07_PROJECT,at:new Date().toISOString()})}\n`,{flag:"a",mode:0o600});
       return {content:[{type:"text",text:content}],details:{step:value,file:reviewFiles[value]}};
     },
   });
@@ -50,10 +56,13 @@ export default function(pi){
       if(value==="inspect-task-reducer"&&["planned","running","blocked","session","project"].some(token=>!normalized.includes(token)))throw new Error("Task reducer summary omitted required transition or identity safeguards");
       const {current,rows}=await currentTask(host);
       if(current.state!=="running")throw new Error("ECO-07 review step cannot be recorded while the task is not running");
+      if(process.env.ASEN_ECO07_PHASE!=="restarted")throw new Error("ECO-07 review steps are unavailable in the initial Pi process");
       const file=process.env.ASEN_ECO07_STEPS_FILE;
       if(!file)throw new Error("ECO-07 evidence file is unavailable");
       if(rows.some(row=>row.step===value))throw new Error("ECO-07 step was already recorded");
       if(value==="inspect-task-reducer"&&!rows.some(row=>row.step==="inspect-closure-audit"))throw new Error("ECO-07 review steps must remain in order");
+      const reads=(await readFile(process.env.ASEN_ECO07_READS_FILE,"utf8").catch(error=>error?.code==="ENOENT"?"":Promise.reject(error))).split("\n").filter(Boolean).map(line=>JSON.parse(line));
+      if(!reads.some(row=>row.step===value))throw new Error("ECO-07 review file must be read before its step can be recorded");
       await appendFile(file,`${JSON.stringify({step:value,summary:params.summary,sessionId:process.env.ASEN_ECO07_SESSION_ID,projectId:process.env.ASEN_ECO07_PROJECT,at:new Date().toISOString()})}\n`,{flag:"a",mode:0o600});
       return {content:[{type:"text",text:`Recorded ${value} exactly once.`}],details:{step:value}};
     },
