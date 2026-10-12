@@ -39,7 +39,7 @@ async function runCell(cell,cli,packageRoot,root){
   });
  }`);
  const args=[cli,"--no-extensions","--extension",primary,"--extension",probe,
-  "--no-skills","--no-tools","--provider","openai","--model","gpt-4o"];
+  "--no-skills","--no-builtin-tools","--provider","openai","--model","gpt-4o"];
  if(cell.mode==="print")args.push("--print");
  else if(cell.mode!=="tui")args.push("--mode",cell.mode);
  const env={...createPiVerifierEnvironment(process.env),HOME:work,USERPROFILE:work,
@@ -66,7 +66,9 @@ async function runCell(cell,cli,packageRoot,root){
    child.stdin.end(cell.mode==="rpc"?JSON.stringify({type:"get_state",id:"matrix-state"})+"\n":"");
   });
  }
- const observed=JSON.parse(readFileSync(observation,"utf8"));
+ let observed;
+ try{observed=JSON.parse(readFileSync(observation,"utf8"));}
+ catch{observed={mode:null,hasUI:null,commands:[],tools:[],modelCalls:null};}
  assert.ok(!log.includes('"type":"agent_start"'),"host must not start an agent");
  return {...observed,exitCode,signal,timedOut,logSha256:createHash("sha256").update(log).digest("hex"),log};
 }
@@ -76,6 +78,7 @@ export async function main({tarball=process.argv[2],output=process.argv[3],candi
  assert.equal(execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(),candidate);
  assert.ok(tarball&&output,"Usage: pi-support-matrix.mjs <tarball> <output-directory>");
  const artifact=resolve(tarball),out=resolve(output);mkdirSync(out,{recursive:true});
+ const artifactSha256=createHash("sha256").update(readFileSync(artifact)).digest("hex");
  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
  const root=mkdtempSync(join(tmpdir(),"asen-pi-matrix-"));
  const results=[];
@@ -89,7 +92,7 @@ export async function main({tarball=process.argv[2],output=process.argv[3],candi
    const metadata=JSON.parse(readFileSync(join(peer,"package.json"),"utf8"));assert.equal(metadata.version,version);
    const cli=join(peer,typeof metadata.bin==="string"?metadata.bin:metadata.bin.pi);
    for(const cell of planPiSupportMatrix().filter(c=>c.platform===process.platform&&c.version===version)){
-    let record={...cell,candidate,sourceCommit:baseline.commit,result:"FAIL"};
+    let record={...cell,candidate,sourceCommit:baseline.commit,artifactSha256,result:"FAIL"};
     try{const observation=await runCell(cell,cli,join(host,"node_modules","asen"),root);
      writeFileSync(join(out,`${cell.id}.log`),observation.log);delete observation.log;
      record={...record,observation};validateCellObservation(cell,observation);record.result="PASS";
