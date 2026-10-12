@@ -11,6 +11,13 @@ import {
 
 const repository = process.cwd();
 
+test("LLM7 probe receives only the LLM7 credential",()=>{
+ const environment=createPiProbeEnvironment({PATH:"/bin",LLM7_API_KEY:"selected-llm7-key",OPENROUTER_API_KEY:"unselected-openrouter-key",GROQ_API_KEY:"unselected-groq-key"},"llm7");
+ assert.equal(environment.LLM7_API_KEY,"selected-llm7-key");
+ assert.equal(Object.hasOwn(environment,"OPENROUTER_API_KEY"),false);
+ assert.equal(Object.hasOwn(environment,"GROQ_API_KEY"),false);
+});
+
 test("Pi Free receives only the selected provider credential and required runtime settings", () => {
   const source: NodeJS.ProcessEnv = {
     ...process.env,
@@ -31,6 +38,7 @@ test("Pi Free receives only the selected provider credential and required runtim
     __CF_USER_TEXT_ENCODING: "untrusted-inherited-value",
   };
   const environment = createPiProbeEnvironment(source, "openrouter");
+  const llm7Environment = createPiProbeEnvironment(source, "llm7");
   const child = spawnSync(
     process.execPath,
     ["-e", "process.stdout.write(JSON.stringify(process.env))"],
@@ -51,6 +59,9 @@ test("Pi Free receives only the selected provider credential and required runtim
   assert.equal(observed.PI_OFFLINE, source.PI_OFFLINE);
   assert.equal(observed.PI_TELEMETRY, "0");
   assert.equal(observed.OPENROUTER_API_KEY, source.OPENROUTER_API_KEY);
+  assert.equal(llm7Environment.LLM7_API_KEY,source.LLM7_API_KEY);
+  assert.equal(Object.hasOwn(llm7Environment,"OPENROUTER_API_KEY"),false,"LLM7 probes must not receive an OpenRouter key");
+  assert.equal(Object.hasOwn(llm7Environment,"GROQ_API_KEY"),false,"LLM7 probes must not receive other provider keys");
   for (const name of ["SYSTEMROOT", "WINDIR", "TEMP", "TMPDIR", "COMSPEC", "PATHEXT", "LANG", "LC_ALL", "LC_CTYPE", "TZ"]) {
     assert.equal(observed[name], environment[name], `${name} must remain available to Pi`);
   }
@@ -125,7 +136,7 @@ test("Pi verifier subprocess is offline and excludes ambient credentials", () =>
   assert.equal(Object.hasOwn(observed, "GITHUB_TOKEN"), false);
 });
 
-test("Pi Free workflow pins the verified release and exposes only OpenRouter credentials", () => {
+test("Pi Free workflow pins its provider and exposes only the selected LLM7 credential", () => {
   const workflow = readFileSync(
     join(repository, ".github/workflows/gsp06-pi-free-parity.yml"),
     "utf8",
@@ -133,8 +144,10 @@ test("Pi Free workflow pins the verified release and exposes only OpenRouter cre
 
   assert.match(workflow, /pi install npm:pi-free@2\.8\.4/);
   assert.match(workflow, /ASEN_PI_PROVIDER_EXTENSION: npm:pi-free@2\.8\.4/);
-  assert.match(workflow, /OPENROUTER_API_KEY: \$\{\{ secrets\.OPENROUTER_API_KEY \}\}/);
-  assert.doesNotMatch(workflow, /secrets\.(?:LLM7_API_KEY|GROQ_API_KEY)/);
+  assert.match(workflow, /ASEN_PI_PROVIDER: llm7/);
+  assert.match(workflow, /ASEN_PI_MODEL: default/);
+  assert.match(workflow, /LLM7_API_KEY: \$\{\{ secrets\.LLM7_API_KEY \}\}/);
+  assert.doesNotMatch(workflow, /secrets\.(?:OPENROUTER_API_KEY|GROQ_API_KEY)/);
 });
 
 test("Pi Free model probes check interrupted-agent recovery without authorizing a rerun", () => {

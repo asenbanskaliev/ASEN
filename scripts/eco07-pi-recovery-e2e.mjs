@@ -7,14 +7,12 @@ import {execFileSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {parseTodoFile,SessionTodoStore} from "../src/runtime/todo-store.ts";
 import {eco07ProviderRateLimitError} from "../src/runtime/eco07-provider-failure.ts";
+import {resolveEco07Provider} from "./eco07-provider-config.mjs";
 
 const repository=await realpath(process.cwd());
 const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8"}).trim();
 assert.equal(revision,process.env.ASEN_EXPECTED_SHA,"ECO-07 Pi recovery must test the exact candidate SHA");
-const provider=process.env.ASEN_ECO07_PROVIDER==="openrouter"?"openrouter":"groq";
-const model=provider==="openrouter"?(process.env.ASEN_ECO07_MODEL||"nvidia/nemotron-3.5-lightning:free"):"openai/gpt-oss-120b";
-const apiKey=provider==="openrouter"?process.env.OPENROUTER_API_KEY:process.env.GROQ_API_KEY;
-if(!apiKey)throw new Error(`${provider} API key is unavailable to the ECO-07 Actions job`);
+const {provider,model,apiKey,credential,extension}=resolveEco07Provider(process.env);
 const piPackage=JSON.parse(await readFile(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url),"utf8"));
 assert.equal(piPackage.version,"1.1.0","ECO-07 provider run must use Pi 1.1.0");
 
@@ -32,7 +30,7 @@ await writeFile(transcriptPath,"",{mode:0o600});
 const cli=path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");
 const asenExtension=path.join(repository,"extensions","asen.ts");
 const probeExtension=fileURLToPath(new URL("./eco07-pi-recovery-probe-extension.mjs",import.meta.url));
-const baseEnv={...Object.fromEntries(["PATH","SystemRoot","WINDIR","TEMP","TMP","TMPDIR","LANG","TERM"].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]]])),HOME:home,USERPROFILE:home,PI_CODING_AGENT_DIR:agentDir,PI_CODING_AGENT_SESSION_DIR:sessionDir,PI_TELEMETRY:"0",...(provider==="groq"?{GROQ_API_KEY:apiKey}:{OPENROUTER_API_KEY:apiKey}),ASEN_ECO07_SESSION_ID:sessionId,ASEN_ECO07_PROJECT:repository,ASEN_ECO07_STEPS_FILE:stepsFile,ASEN_ECO07_READS_FILE:readsFile,ASEN_ECO07_TODO_FILE:todoFile,ASEN_ECO07_TASK_TITLE:title};
+const baseEnv={...Object.fromEntries(["PATH","SystemRoot","WINDIR","TEMP","TMP","TMPDIR","LANG","TERM"].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]]])),HOME:home,USERPROFILE:home,PI_CODING_AGENT_DIR:agentDir,PI_CODING_AGENT_SESSION_DIR:sessionDir,PI_TELEMETRY:"0",[credential]:apiKey,ASEN_ECO07_SESSION_ID:sessionId,ASEN_ECO07_PROJECT:repository,ASEN_ECO07_STEPS_FILE:stepsFile,ASEN_ECO07_READS_FILE:readsFile,ASEN_ECO07_TODO_FILE:todoFile,ASEN_ECO07_TASK_TITLE:title};
 const redacted=value=>String(value).replaceAll(apiKey,"[redacted]").slice(-1200);
 const record=async(kind,details={})=>writeFile(transcriptPath,`${JSON.stringify({at:new Date().toISOString(),kind,...details})}\n`,{flag:"a",mode:0o600});
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -53,7 +51,7 @@ const currentItem=async()=>{
   return matches.find(item=>item.title===title);
 };
 function startPi(label){
-  const args=[cli,"--mode","rpc","--session-id",sessionId,"--session-dir",sessionDir,"--no-extensions","--extension",asenExtension,"--extension",probeExtension,"--provider",provider,"--model",model,"--no-skills","--tools","asen_todo_*,asen_eco07_*"];
+  const args=[cli,"--mode","rpc","--session-id",sessionId,"--session-dir",sessionDir,"--no-extensions",...(extension?["--extension",extension]:[]),"--extension",asenExtension,"--extension",probeExtension,"--provider",provider,"--model",model,"--no-skills","--tools","asen_todo_*,asen_eco07_*"];
   const child=spawn(process.execPath,args,{cwd:repository,env:{...baseEnv,ASEN_ECO07_PHASE:label},stdio:["pipe","pipe","pipe"]});
   let buffer="",stderr="",stdoutBytes=0,closed;
   let resumeConfirmed=false;

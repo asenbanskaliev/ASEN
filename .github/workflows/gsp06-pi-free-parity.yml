@@ -40,12 +40,12 @@ jobs:
       - name: Pi Free generated-output probes
         env:
           ASEN_EXPECTED_SHA: ${{ inputs.expected_sha }}
-          ASEN_PI_PROVIDER: openrouter
-          ASEN_PI_MODEL: nvidia/nemotron-3.5-lightning:free
+          ASEN_PI_PROVIDER: llm7
+          ASEN_PI_MODEL: default
           ASEN_PI_PROVIDER_EXTENSION: npm:pi-free@2.8.4
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
         run: |
-          test -n "$OPENROUTER_API_KEY"
+          test -n "$LLM7_API_KEY"
           node scripts/gsp06-pi-free-probes.mjs
       - name: Preserve ECO-05 real Pi model receipt
         if: success()

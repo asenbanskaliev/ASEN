@@ -1,4 +1,4 @@
-name: ECO-07 provider task recovery
+name: ECO-07 LLM7 task recovery
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: eco07-groq-recovery-${{ github.ref }}
+  group: eco07-llm7-recovery-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   pi-recovery:
@@ -19,7 +19,7 @@ jobs:
       max-parallel: 1
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
-        provider: [openrouter]
+        provider: [llm7]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -42,21 +42,25 @@ jobs:
       - run: npm ci
       - name: Install Pi 1.1.0
         run: npm install -g @earendil-works/pi-coding-agent@1.1.0
+      - name: Install the pinned LLM7 provider
+        run: pi install npm:pi-free@2.8.4
       - name: Execute actual Pi interruption, restart, and resume through ASEN Todo
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
           ASEN_ECO07_PROVIDER: ${{ matrix.provider }}
+          ASEN_ECO07_MODEL: default
+          ASEN_ECO07_PROVIDER_EXTENSION: npm:pi-free@2.8.4
           ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
-          test -n "$OPENROUTER_API_KEY"
+          test -n "$LLM7_API_KEY"
           node --import tsx scripts/eco07-pi-recovery-e2e.mjs
         shell: bash
       - name: Preserve ECO-07 process and event evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: eco07-${{ matrix.provider }}-recovery-${{ github.event.pull_request.head.sha || github.sha }}-${{ matrix.os }}
+          name: eco07-llm7-recovery-${{ github.event.pull_request.head.sha || github.sha }}-${{ matrix.os }}
           path: eco07-pi-evidence/
           if-no-files-found: error
           retention-days: 30
