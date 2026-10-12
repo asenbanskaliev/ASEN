@@ -31,7 +31,7 @@ test("ECO-07 provider workflow uses Groq with quota-safe triggers",()=>{
  assert.ok(workflow.includes('GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}'));
  assert.ok(workflow.includes("ASEN_ECO07_MODEL: openai/gpt-oss-120b"));
  assert.ok(workflow.includes("workflow_dispatch:"));
- assert.ok(workflow.includes('paths: [".github/workflows/eco07-groq-recovery.yml"]'));
+ assert.ok(!workflow.includes("  pull_request:"));
  assert.ok(!workflow.includes("pi install npm:pi-free"));
  assert.ok(!workflow.includes("ASEN_ECO07_PROVIDER_EXTENSION:"));
  assert.ok(!workflow.includes("secrets.LLM7_API_KEY"));
