@@ -7,16 +7,16 @@ import {tmpdir} from "node:os";
 import {fileURLToPath,pathToFileURL} from "node:url";
 import {createPiVerifierEnvironment} from "../scripts/gsp06-pi-free-environment.mjs";
 
-test("real offline Pi RPC transports ASEN choice and cancellation without any model invocation",{timeout:20000},async t=>{
+test("real offline Pi RPC transports canonical and ASEN choices without any model invocation",{timeout:20000},async t=>{
   const root=await mkdtemp(join(tmpdir(),"asen-interaction-rpc-"));
   const extension=join(root,"probe.ts"),source=pathToFileURL(resolve("extensions/asen.ts")).href;
   const credentialNames=["OPENROUTER_API_KEY","LLM7_API_KEY","GROQ_API_KEY","GITHUB_TOKEN","ASEN_TEST_UNRELATED_SECRET"];
   const ambient={...process.env,...Object.fromEntries(credentialNames.map(name=>[name,"ASEN-SYNTHETIC-CREDENTIAL"]))};
   await writeFile(extension,`import {createAsenExtension} from ${JSON.stringify(source)};
-export default function(pi){const tools=new Map();createAsenExtension()({registerCommand:(...args)=>pi.registerCommand(...args),registerTool:tool=>{tools.set(tool.name,tool);pi.registerTool(tool);}});
+export default function(pi){const tools=new Map();let calls=0;createAsenExtension()({registerCommand:(...args)=>pi.registerCommand(...args),registerTool:tool=>{tools.set(tool.name,tool);pi.registerTool(tool);}});
 pi.registerCommand("asen-interaction-probe",{description:"Synthetic offline interaction",handler:async(args,ctx)=>{
 const params={question:"Synthetic choice",options:[{label:"A",description:"First",value:"a"},{label:"B",description:"Second",value:"b"}]};
-const result=await tools.get("asen_ask_choice").execute("probe",params,undefined,undefined,ctx);
+const result=await tools.get(calls++===0?"ask_user_choice":"asen_ask_choice").execute("probe",params,undefined,undefined,ctx);
 const credentialNames=${JSON.stringify(credentialNames)}.filter(name=>process.env[name]!==undefined);
 ctx.ui.notify("ASEN_PROBE:"+JSON.stringify({...result.details,credentialNames}),"info");}});}
 `);
@@ -31,7 +31,7 @@ ctx.ui.notify("ASEN_PROBE:"+JSON.stringify({...result.details,credentialNames}),
   child.stderr.on("data",chunk=>{stderr+=chunk.toString();});
   const outcomes=await new Promise<any[]>((done,reject)=>{
     const timer=setTimeout(()=>reject(Error("RPC probe timed out: "+stderr.slice(-1000))),15000),results:any[]=[];
-    child.once("error",reject);child.once("close",()=>{if(results.length!==2)reject(Error("Pi closed before probe: "+stderr.slice(-1000)));});
+    child.once("error",reject);child.once("close",(code,signal)=>{if(results.length!==2)reject(Error(`Pi closed before probe (code=${code}, signal=${signal}): ${stderr.slice(-1000)}`));});
     child.stdout.on("data",chunk=>{
       buffer+=chunk.toString();if(buffer.length>100000){clearTimeout(timer);reject(Error("Oversized RPC output"));return;}
       let newline:number;while((newline=buffer.indexOf("\n"))>=0){
@@ -57,5 +57,6 @@ ctx.ui.notify("ASEN_PROBE:"+JSON.stringify({...result.details,credentialNames}),
   });
   assert.equal(dialogs,2);assert.equal(models,0,"extension commands must never fall through to model execution");
   for(const outcome of outcomes)assert.deepEqual(outcome.credentialNames,[],"the real Pi extension must receive no ambient credentials");
-  assert.equal(outcomes[0].status,"answered");assert.equal(outcomes[0].selection.value,"b");assert.equal(outcomes[1].status,"cancelled");
+  assert.equal(outcomes[0].status,"answered");assert.equal(outcomes[0].selection.value,"b");assert.equal(outcomes[0].selection.index,2);
+  assert.equal(outcomes[1].status,"cancelled");
 });
