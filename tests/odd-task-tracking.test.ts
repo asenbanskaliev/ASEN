@@ -334,3 +334,125 @@ test("ECO-07 accepts valid planned-running-done sequence and preserves ordering"
  await appendOddTaskEvent(c,context,store,{...base,revision:3,state:"done"});
  assert.deepEqual((await resumeOddTask(c,store,context))?.taskEvents.map(e=>e.revision),[1,2,3]);
 });
+
+// ECO-07 audited negative-path matrix: every rejection must preserve the durable record.
+test("ECO-07 rejects empty event task identifier without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"taskId":""}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects padded event task identifier without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"taskId":" task"}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects control characters in event session without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"sessionId":"session\\n"}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects empty event project identifier without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"projectId":""}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects zero revision without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"revision":0}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects negative revision without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"revision":-1}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects fractional revision without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"revision":1.5}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects nonnumeric revision without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"revision":"1"}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects unknown task state without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"state":"paused"}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects invalid calendar timestamp without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"at":"2026-02-30T00:00:00Z"}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects timestamp without timezone without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"at":"2026-10-12T00:00:00"}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects timestamp with timezone offset without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"at":"2026-10-12T02:00:00+02:00"}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects timestamp with excessive precision without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"at":"2026-10-12T00:00:00.1234Z"}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects empty reason without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"reason":""}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects reason with control character without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"reason":"bad\\nreason"}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects padded reason without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"reason":" padded"}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects reason longer than bound without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"reason":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects unexpected event property without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"unexpected":"value"}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects invalid initial running state without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"state":"running"}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects invalid initial cancelled state without durable mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",...{"state":"cancelled"}} as never));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
