@@ -6,6 +6,7 @@ import {spawn} from "node:child_process";
 import {execFileSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {parseTodoFile,SessionTodoStore} from "../src/runtime/todo-store.ts";
+import {eco07ProviderRateLimitError} from "../src/runtime/eco07-provider-failure.ts";
 
 const repository=await realpath(process.cwd());
 const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8"}).trim();
@@ -56,6 +57,7 @@ function startPi(label){
   const child=spawn(process.execPath,args,{cwd:repository,env:{...baseEnv,ASEN_ECO07_PHASE:label},stdio:["pipe","pipe","pipe"]});
   let buffer="",stderr="",stdoutBytes=0,closed;
   let resumeConfirmed=false;
+  let providerFailure;
   const requests=new Map();
   const events=[];
   child.stdout.on("data",chunk=>{
@@ -67,6 +69,8 @@ function startPi(label){
       const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;
       let value;try{value=JSON.parse(line);}catch{child.kill("SIGKILL");continue;}
       events.push(value);void record(`${label}:pi-event`,{type:value.type,command:value.command,method:value.method,toolName:value.toolName,stopReason:value.message?.stopReason,...(typeof value.message?.errorMessage==="string"?{providerError:redacted(value.message.errorMessage)}:{})});
+      const rateLimit=eco07ProviderRateLimitError(value);
+      if(rateLimit&&!providerFailure){providerFailure=redacted(rateLimit);child.kill("SIGKILL");}
       if(label==="restarted"&&!resumeConfirmed&&value.type==="tool_execution_start"&&!["asen_todo_list","asen_todo_update"].includes(value.toolName)){
         void record("blocked-work-before-resume-rejected",{toolName:value.toolName});
         child.kill("SIGKILL");continue;
@@ -89,7 +93,7 @@ function startPi(label){
   });
   child.stderr.on("data",chunk=>{stderr=redacted(stderr+chunk.toString()).slice(-3000);});
   closed=new Promise(resolve=>child.once("close",(code,signal)=>{
-    for(const [id,pending] of requests){requests.delete(id);pending.reject(new Error(`${label} Pi process exited (${code??signal})`));}
+    for(const [id,pending] of requests){requests.delete(id);pending.reject(new Error(providerFailure?`Pi provider rate limit: ${providerFailure}`:`${label} Pi process exited (${code??signal})`));}
     resolve({code,signal});
   }));
   child.once("error",error=>{for(const pending of requests.values())pending.reject(error);});
@@ -104,7 +108,7 @@ function startPi(label){
     const killAccepted=child.exitCode===null&&child.signalCode===null?child.kill(signal):false;
     return {...await closed,killRequested:signal,killAccepted};
   };
-  return {child,events,send,stop,stderr,getClosed:()=>closed};
+  return {child,events,send,stop,stderr,getClosed:()=>closed,getProviderFailure:()=>providerFailure};
 }
 
 let phase="starting";
@@ -118,6 +122,7 @@ try{
   let started;
   const startDeadline=Date.now()+180_000;
   while(Date.now()<startDeadline){
+    if(first.getProviderFailure())throw new Error(`Pi provider rate limit before task persistence: ${first.getProviderFailure()}`);
     try{
       const item=await currentItem();
       if(item){started=item;const state=item.events.at(-1)?.state;if(state==="running")break;if(["done","cancelled"].includes(state))throw new Error(`Pi ended the task before interruption (${state})`);}
@@ -174,6 +179,7 @@ try{
 
   const finishDeadline=Date.now()+240_000;
   while(Date.now()<finishDeadline){
+    if(second.getProviderFailure())throw new Error(`Pi provider rate limit while resuming task: ${second.getProviderFailure()}`);
     recovered=await currentItem();
     if(recovered.events.at(-1)?.state==="done")break;
     if(second.events.some(event=>event.type==="agent_settled")&&recovered.events.at(-1)?.state==="blocked")throw new Error("Restarted Pi settled without resuming the recovered task");
