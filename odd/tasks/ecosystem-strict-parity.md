@@ -1,4 +1,10 @@
 # Ecosystem strict behavioral parity
+## ECO-07 pre-commit process crash witness — 2026-10-12
+
+Test unit `4a9b316` exits a real subprocess after the new Todo temporary file is fully written and synced but immediately before the atomic rename. The old durable plan remains byte-identical; the uncommitted temporary file contains the attempted running transition. After process exit, reopening reads the earlier planned task, and the existing lock recovers after its unchanged stale/dead-owner grace period. The test advances only Date.now observation by 31 seconds instead of sleeping; it does not bypass the production live-owner check or lower its grace period. The next transition persists exactly once, retains revisions [1,2], and releases its lock. No orphan temporary file is treated as a committed plan.
+
+Focused Todo/replay/tools checks pass 25/25, zero failures/skips/cancellations; typecheck and diff integrity pass. This is process/durable-storage evidence, not authenticated model execution or a new hosted pass. Current `fe0344f` CI and Release Gate remain active; keep this unit with the preceding local memory/replay correction batch for one later publication. No production source changed in this witness.
+
 ## ECO-07 stale resume snapshot rejection — 2026-10-12
 
 Source `ef194f2` rechecks the saved task record after asynchronous task-document validation and before returning a resume projection. A concurrent update or deletion now rejects stale resume instead of exposing its earlier plan. Semantic RED reproduced the accepted stale snapshot; new changed-record and deletion cases pass with the existing positive replay/ownership tests. Focused Todo/replay/ODD/conditional-memory checks pass 38/38 without failures/skips/cancellations. The first fixture typecheck caught an explicitly undefined optional topic; its separate test-only correction omits absent topic and final typecheck passes. Ecosystem audit retains 16 PARTIAL / 0 FULL. CI and Release Gate still run `fe0344f`; no duplicate CI, hosted evidence transfer or native approval is claimed for these local units.
