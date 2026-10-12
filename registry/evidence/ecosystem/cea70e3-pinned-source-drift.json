@@ -1,0 +1,20 @@
+{
+  "schema": "asen.ecosystem-drift-report.v3",
+  "autoAdopt": false,
+  "inputs": {
+    "baselineCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+    "baselineTree": "9af648106ed75fa270476e9d474bad93aa38af6b",
+    "baselineSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+    "candidateCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+    "candidateTree": "9af648106ed75fa270476e9d474bad93aa38af6b",
+    "runtimeEdgeMapSha256": "370c819fa1ad789e653be4147cc210220c95d6da59ef057251fb4e95be8895dc",
+    "referenceAdjudicationSha256": "5bdea3dac779ca68f92198888cf82442232a4bb9c61ec9d0834ac7767514c0a9",
+    "requirementEvidenceMapSha256": "911ef892cdbfcb8902ebe9d35ad8ab77f0b6fa026987b96e8507e222edb89449"
+  },
+  "changes": [],
+  "invalidatedPaths": [],
+  "anchorDiffs": [],
+  "unmappedImpactPaths": [],
+  "affectedRequirements": [],
+  "integritySha256": "3a5d35d32e9142d586b258820adb315f2cd66d250c53f7da983ef46395228ac4"
+}
