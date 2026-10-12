@@ -49,6 +49,19 @@ test("shutdown waits for preparation/in-flight refresh; concurrent starts retain
  await Promise.all([lifecycle.start(ctx),lifecycle.start(ctx)]);assert.equal(calls,2);assert.equal(watchers,1);await lifecycle.shutdown();
 });
 
+test("shutdown waits for the complete watched refresh, including post-write work",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-registry-drain-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ let changed!:()=>void,release!:()=>void,entered!:()=>void,finished=false;
+ const started=new Promise<void>(resolve=>entered=resolve);
+ const gate=new Promise<void>(resolve=>release=resolve);
+ let calls=0;
+ const lifecycle=new RegistryLifecycle({debounceMs:0,prepare:async cwd=>({projectRoot:cwd,projectId:cwd,sources:[{id:"one",scope:"project",root:cwd}]}),refresh:async()=>{calls++;if(calls===2){entered();await gate;finished=true;}return observed(root);},watch:(_root,callback)=>{changed=callback;return {close(){}};}});
+ await lifecycle.start({cwd:root,hasUI:true,ui:{notify(){}}});changed();await started;
+ let stopped=false;const stopping=lifecycle.shutdown().then(()=>stopped=true);
+ await Promise.resolve();assert.equal(stopped,false);
+ release();await stopping;assert.equal(finished,true);assert.equal(calls,2);
+});
+
 test("native recursive watcher invalidates real temporary registry and shutdown preserves last bytes",{skip:process.platform==="win32"?"recursive fs.watch delivery is not a portable Windows contract":false,timeout:12000},async t=>{
  const {writeFile,readFile,realpath}=await import("node:fs/promises");const {refreshSkillRegistry}=await import("../src/skills/generated-registry.js");
  const temporaryRoot=await mkdtemp(join(tmpdir(),"asen-registry-native-")),root=await realpath(temporaryRoot);t.after(()=>rm(temporaryRoot,{recursive:true,force:true}));
