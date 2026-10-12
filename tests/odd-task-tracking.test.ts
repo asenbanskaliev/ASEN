@@ -98,3 +98,20 @@ test("competing ODD task events from independent memory clients cannot overwrite
  const restored=await resumeOddTask(contract(root),first,firstContext);assert.equal(restored?.taskEvents.length,2);
  assert.deepEqual(restored?.taskEvents.map(event=>event.revision),[1,2]);
 });
+
+test("a fresh contract cannot replace the saved history of the same ODD task candidate",async t=>{
+ let store:SqliteMemoryStore|undefined;const root=await fixture(t,()=>store?.close());store=new SqliteMemoryStore(join(root,"memory.db"));const context=createMemoryContext(store,{repository:root},"session");
+ await trackOddTask(contract(root),context,"odd/tasks/task.md",progress);
+ const event={taskId:"task",sessionId:"session",projectId:root,revision:1,state:"planned" as const,at:"2026-10-12T00:00:00Z"};await appendOddTaskEvent(contract(root),context,store,event);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(trackOddTask(contract(root),context,"odd/tasks/task.md",{...progress,nextStep:"Replace old plan"}),/already exists|resume/);
+ assert.deepEqual(store.exportProject(root).observations,before);
+ assert.equal((await resumeOddTask(contract(root),store,context))?.taskEvents.length,1);
+});
+
+test("concurrent first ODD mirrors create exactly one durable task record",async t=>{
+ let store:SqliteMemoryStore|undefined;const root=await fixture(t,()=>store?.close());store=new SqliteMemoryStore(join(root,"memory.db"));const context=createMemoryContext(store,{repository:root},"session");
+ const results=await Promise.allSettled([trackOddTask(contract(root),context,"odd/tasks/task.md",progress),trackOddTask(contract(root),context,"odd/tasks/task.md",{...progress,nextStep:"Competing plan"})]);
+ assert.equal(results.filter(result=>result.status==="fulfilled").length,1);assert.equal(results.filter(result=>result.status==="rejected").length,1);
+ assert.equal(store.exportProject(root).observations.length,1);assert.ok(await resumeOddTask(contract(root),store,context));
+});

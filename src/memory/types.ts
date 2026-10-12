@@ -56,6 +56,7 @@ export interface MemorySearchPreview { id:string; kind:MemoryKind; title?:string
 export interface MemoryStore {
   save(item: MemoryItem): void;
   /** Atomically replaces one exact previously observed record, or rejects stale state. */
+  createIfAbsent?(item:MemoryItem):void;
   saveIfUnchanged?(item:MemoryItem,expected:MemoryItem):void;
   get(id: string): MemoryItem | undefined;
   search(projectId: string, query: string): MemoryItem[];

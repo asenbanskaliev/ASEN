@@ -169,11 +169,12 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  }
  #requireIdentity(projectId:string,sessionId:string):void{if(!projectId.trim()||!sessionId.trim())throw new Error("Memory project and session IDs must be nonblank");}
  save(item:MemoryItem):void{this.#save(item);}
+ createIfAbsent(item:MemoryItem):void{this.#save(item,undefined,true);}
  saveIfUnchanged(item:MemoryItem,expected:MemoryItem):void{
   if(item.id!==expected.id||item.projectId!==expected.projectId||item.sessionId!==expected.sessionId)throw new Error("Memory conditional-write identity mismatch");
   this.#save(item,expected);
  }
- #save(item:MemoryItem,expected?:MemoryItem):void{
+ #save(item:MemoryItem,expected?:MemoryItem,createOnly=false):void{
   this.#requireIdentity(item.projectId,item.sessionId);
   const content=stripPrivateTags(item.content);
   if(!content)throw new Error("Memory content is empty");
@@ -186,6 +187,8 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
     if(!current||keys.some(key=>current[key]!==expected[key]))throw new Error("Memory revision conflict; record changed before persistence");
    }
    const existing=this.#db.prepare("SELECT project_id FROM memory WHERE id=?").get(item.id) as {project_id?:string}|undefined;
+   if(createOnly&&this.#db.prepare("SELECT id FROM memory_tombstones WHERE id=?").get(item.id))throw new Error("Memory task record was deleted; use a fresh task identity");
+   if(createOnly&&existing)throw new Error("Memory task record already exists; resume the saved task instead");
    if(existing&&existing.project_id!==item.projectId) throw new Error("Memory ownership mismatch");
    this.#db.prepare(`INSERT INTO memory(id,project_id,session_id,kind,topic,content,created_at) VALUES(?,?,?,?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET session_id=excluded.session_id,kind=excluded.kind,topic=excluded.topic,content=excluded.content,created_at=excluded.created_at`)

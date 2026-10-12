@@ -18,6 +18,10 @@ export class MemoryContext {
   remember(input: Omit<MemoryItem,"projectId"|"sessionId">): void {
     this.store.save({...input,projectId:this.projectId,sessionId:this.sessionId});
   }
+  rememberNew(input:Omit<MemoryItem,"projectId"|"sessionId">):void{
+    if(!this.store.createIfAbsent)throw new Error("Memory store lacks atomic task creation");
+    this.store.createIfAbsent({...input,projectId:this.projectId,sessionId:this.sessionId});
+  }
   rememberIfUnchanged(expected:MemoryItem,input:Omit<MemoryItem,"projectId"|"sessionId">):void{
     if(expected.projectId!==this.projectId||expected.sessionId!==this.sessionId||input.id!==expected.id)throw new Error("Memory conditional-write identity mismatch");
     if(!this.store.saveIfUnchanged)throw new Error("Memory store lacks atomic conditional writes");

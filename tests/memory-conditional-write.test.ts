@@ -28,3 +28,11 @@ test("a backend without conditional persistence cannot silently fall back to ove
  assert.throws(()=>context.rememberIfUnchanged(initial,{id:"task",kind:"decision",content:"unprotected",createdAt:"now"}),/lacks atomic conditional writes/);
  assert.equal(store.get("task")?.content,"initial");
 });
+
+test("atomic task creation never replaces an existing or deleted record",t=>{
+ const store=new SqliteMemoryStore(":memory:");t.after(()=>store.close());const context=createMemoryContext(store,{explicit:"project"},"session");
+ const item={id:"task",kind:"decision" as const,content:"saved plan",createdAt:"now"};context.rememberNew(item);
+ assert.throws(()=>context.rememberNew({...item,content:"replacement"}),/already exists/);assert.equal(store.get("task")?.content,"saved plan");
+ store.deleteObservation("task","project",true);assert.throws(()=>context.rememberNew(item),/deleted/);assert.equal(store.get("task"),undefined);
+ context.rememberNew({...item,id:"fresh-task"});assert.equal(store.get("fresh-task")?.content,"saved plan");
+});

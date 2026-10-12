@@ -59,7 +59,7 @@ export async function trackOddTask(contract:OddExecutionContract,context:MemoryC
  if(state.taskEvents?.length&&state.taskEvents[0]?.sessionId!==context.sessionId)throw new Error("ODD task event session mismatch");
  const payload:TrackingRecord={version:2,task:binding.facts.taskIdentity,repository:binding.facts.repositoryIdentity,candidateId:binding.candidate.id,revision:binding.candidate.revision,documentPath,document,todos:state.todos,nextStep:state.nextStep,taskEvents:state.taskEvents??[]};
  const item:MemoryItem={id:`odd-task-${digest(JSON.stringify([payload.repository,payload.task,payload.candidateId]))}`,projectId:context.projectId,sessionId:context.sessionId,kind:"decision",topic:"odd-task-tracking-v1",content:JSON.stringify(payload),createdAt:new Date().toISOString()};
- context.remember(item);return Object.freeze({...item});
+ context.rememberNew(item);return Object.freeze({...item});
 }
 /** Reconstructs TODO/resume only after exact live binding and task-document byte validation. No authority is restored. */
 export async function resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):Promise<Readonly<TrackingRecord>|undefined>{
