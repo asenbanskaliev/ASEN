@@ -76,3 +76,40 @@ jobs:
       - name: Enforce ASEN upstream isolation boundary
         shell: bash
         run: node scripts/audit-upstream-boundary.mjs
+  pi-support-matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Semantic evidence admission gate
+        run: node --import tsx --test tests/pi-support-matrix.test.ts tests/ecosystem-execution-receipts.test.ts tests/ecosystem-claims.test.ts
+      - name: Pack exact candidate
+        shell: bash
+        run: npm pack --silent > matrix-package.txt
+      - name: Run eight real Pi host cells
+        shell: bash
+        run: npm run verify:pi-matrix -- "$(cat matrix-package.txt)" matrix-evidence
+      - name: Record executed contract and host evidence
+        run: node scripts/ecosystem-execution-receipts.mjs contract-evidence matrix-evidence
+      - name: Upload exact candidate matrix and receipts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: pi-support-${{ runner.os }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            matrix-evidence
+            contract-evidence
+          if-no-files-found: error
+          retention-days: 14

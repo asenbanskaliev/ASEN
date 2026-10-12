@@ -4,6 +4,7 @@ import {readFileSync,writeFileSync,mkdirSync} from "node:fs";
 import {resolve,join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {createHash} from "node:crypto";
+import {validateCellObservation} from "./pi-support-matrix.mjs";
 const sha256=bytes=>createHash("sha256").update(bytes).digest("hex");
 
 export function admitTapResult(result){
@@ -50,6 +51,8 @@ export function main({output=process.argv[2],matrix=process.argv[3],candidate=pr
   const cell=JSON.parse(bytes);
   assert.equal(cell.candidate,candidate);assert.equal(cell.sourceCommit,sourceCommit);assert.equal(cell.result,"PASS");
   assert.equal(cell.version,version);assert.equal(cell.mode,mode);assert.equal(cell.platform,process.platform);
+  validateCellObservation(cell,cell.observation);
+  assert.equal(sha256(readFileSync(join(resolve(matrix),`${cell.id}.log`))),cell.observation.logSha256);
   assert.equal(cell.observation.exitCode,0);assert.equal(cell.observation.signal,null);
   assert.equal(cell.observation.timedOut,false);assert.equal(cell.observation.modelCalls,0);
   cells.push({id:cell.id,sha256:sha256(bytes)});
