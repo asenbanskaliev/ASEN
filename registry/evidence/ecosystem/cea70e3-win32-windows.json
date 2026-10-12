@@ -1,0 +1,12 @@
+{
+  "id": "ECO-02A-win32-windows",
+  "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+  "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "kind": "windows",
+  "class": "OS_RUNTIME",
+  "command": "npm run verify:pi-matrix",
+  "observation": "Eight packed real-host cells on this operating system completed with natural exit and no model calls",
+  "result": "PASS",
+  "sourceManifestSha256": "1a7c706439630fc7339b247b66c61727235ac14d894f6f7a57578787558849f9",
+  "logSha256": "956b395d9c6d8fd9fe82ce8812aeef23a8c4c82d7bad2027d59c45e4fbc61fbd"
+}
