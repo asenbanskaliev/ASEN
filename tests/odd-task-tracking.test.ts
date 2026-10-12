@@ -115,3 +115,19 @@ test("concurrent first ODD mirrors create exactly one durable task record",async
  assert.equal(results.filter(result=>result.status==="fulfilled").length,1);assert.equal(results.filter(result=>result.status==="rejected").length,1);
  assert.equal(store.exportProject(root).observations.length,1);assert.ok(await resumeOddTask(contract(root),store,context));
 });
+
+test("ODD resume rejects a task record updated during asynchronous document validation",async t=>{
+ let store:SqliteMemoryStore|undefined;const root=await fixture(t,()=>store?.close());store=new SqliteMemoryStore(join(root,"memory.db"));const context=createMemoryContext(store,{repository:root},"session");
+ await trackOddTask(contract(root),context,"odd/tasks/task.md",progress);let reads=0;
+ const observed={get(id:string){const snapshot=store!.get(id);if(snapshot&&++reads===1){const payload=JSON.parse(snapshot.content);payload.nextStep="A newer saved step";context.rememberIfUnchanged(snapshot,{id:snapshot.id,kind:snapshot.kind,topic:snapshot.topic,content:JSON.stringify(payload),createdAt:snapshot.createdAt});}return snapshot;}};
+ await assert.rejects(resumeOddTask(contract(root),observed,context),/changed.*resume|stale/);
+ assert.equal((await resumeOddTask(contract(root),store,context))?.nextStep,"A newer saved step");
+});
+
+test("ODD resume cannot return a task deleted while its document was being checked",async t=>{
+ let store:SqliteMemoryStore|undefined;const root=await fixture(t,()=>store?.close());store=new SqliteMemoryStore(join(root,"memory.db"));const context=createMemoryContext(store,{repository:root},"session");
+ await trackOddTask(contract(root),context,"odd/tasks/task.md",progress);let reads=0;
+ const observed={get(id:string){const snapshot=store!.get(id);if(snapshot&&++reads===1)store!.deleteObservation(id,root,true);return snapshot;}};
+ await assert.rejects(resumeOddTask(contract(root),observed,context),/changed during resume/);
+ assert.equal(await resumeOddTask(contract(root),store,context),undefined);
+});

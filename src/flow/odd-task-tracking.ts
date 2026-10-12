@@ -76,6 +76,8 @@ export async function resumeOddTask(contract:OddExecutionContract,store:Pick<Mem
  if((value.version!==1&&value.version!==2)||value.task!==facts.taskIdentity||value.repository!==facts.repositoryIdentity||value.candidateId!==candidate.id||value.revision!==candidate.revision)throw new Error("ODD tracking exact candidate mismatch");
  const document=await documentBytes(facts.repositoryIdentity,text(value.documentPath));if(document!==value.document)throw new Error("ODD tracking task document changed; revalidate before resume");
  const state=progress({todos:value.todos,nextStep:value.nextStep,...("taskEvents" in value?{taskEvents:value.taskEvents}:{})},facts.taskIdentity,facts.repositoryIdentity);
+ const latest=store.get(id),keys=["id","projectId","sessionId","kind","topic","content","createdAt"] as const;
+ if(!latest||keys.some(key=>latest[key]!==item[key]))throw new Error("ODD task record changed during resume; reload the current saved plan");
  return Object.freeze({version:2,task:facts.taskIdentity,repository:facts.repositoryIdentity,candidateId:candidate.id,revision:candidate.revision,documentPath:value.documentPath as string,document,todos:state.todos,nextStep:state.nextStep,taskEvents:state.taskEvents??[]});
 }
 
