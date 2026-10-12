@@ -13,8 +13,14 @@ import {SessionTodoStore} from "../src/runtime/todo-store.js";
 function host(){
  const events=new Map<string,Function[]>(),commands=new Map<string,any>(),tools=new Map<string,any>(),messages:string[]=[];
  const pi={on(name:string,handler:Function){events.set(name,[...(events.get(name)??[]),handler]);},registerCommand(name:string,command:any){commands.set(name,command);},registerTool(tool:any){tools.set(tool.name,tool);},getCommands(){return[];},getAllTools(){return[];}};
- const context=(session="session-a",cwd=process.cwd())=>({mode:"rpc",hasUI:true,cwd,sessionManager:{getSessionId:()=>session},ui:{notify:(message:string)=>messages.push(message),confirm:async()=>true}});
- return {pi,events,commands,tools,messages,context};
+ const waiters=new Set<()=>void>();
+ const waitForMessage=(matches:(message:string)=>boolean)=>new Promise<void>((resolve,reject)=>{
+  const check=()=>{if(messages.some(matches)){clearTimeout(timer);waiters.delete(check);resolve();}};
+  const timer=setTimeout(()=>{waiters.delete(check);reject(new Error("Agent terminal notification was not delivered"));},30_000);
+  waiters.add(check);check();
+ });
+ const context=(session="session-a",cwd=process.cwd())=>({mode:"rpc",hasUI:true,cwd,sessionManager:{getSessionId:()=>session},ui:{notify:(message:string)=>{messages.push(message);for(const check of waiters)check();},confirm:async()=>true}});
+ return {pi,events,commands,tools,messages,context,waitForMessage};
 }
 
 test("production Pi extension runs and restores session-scoped agent status using durable storage",async t=>{
@@ -28,6 +34,7 @@ test("production Pi extension runs and restores session-scoped agent status usin
   await new Promise(resolve=>setTimeout(resolve,30));startController.abort();await assert.rejects(startPending,/Agent task cancelled/);
   assert.deepEqual((await first.tools.get("asen_agent_status").execute("status-after-abort",{},new AbortController().signal,()=>{},first.context())).details,[]);await rm(`${file}.lock`,{force:true});
   const started=await first.tools.get("asen_agent_start").execute("call-1",{prompt:"inspect this project"},new AbortController().signal,()=>{},first.context());const id=started.details.id;
+  await first.waitForMessage(message=>message.includes(id)&&message.includes("completed")&&message.includes("read-only result"));
   let rows:any[]=[],deadline=Date.now()+30_000;while(Date.now()<deadline){rows=(await first.tools.get("asen_agent_status").execute("status",{},new AbortController().signal,()=>{},first.context())).details;if(rows.some(row=>row.id===id&&["completed","failed","cancelled","interrupted"].includes(row.state)))break;await new Promise(resolve=>setTimeout(resolve,10));}
   assert.ok(rows.some(row=>row.id===id&&row.state==="completed"),`agent runner did not persist completion; observed ${JSON.stringify(rows)}`);
   assert.ok(first.messages.some(message=>message.includes(id)&&message.includes("completed")&&message.includes("read-only result")),"completion must be delivered without a status query");
