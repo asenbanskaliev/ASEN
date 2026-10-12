@@ -41,10 +41,11 @@ export class RegistryLifecycle {
    let running=false,dirty=false;
    const refreshWatched=()=>{
     if(generation!==this.#generation)return;if(running){dirty=true;return;}running=true;
-    void (async()=>{try{do{dirty=false;
+    const operation=(async()=>{try{do{dirty=false;
      try{const result=await this.refresh(session.cwd);if(generation===this.#generation)this.#notify(session,`ASEN skill registry refreshed: skills=${result.count}; cache=${result.cache}; diagnostics=${result.skipped.length}.`,"info");}
      catch{if(generation===this.#generation)this.#notify(session,"ASEN skill registry watch refresh failed; use /asen-skill-registry refresh.","error");}
     }while(dirty&&generation===this.#generation);}finally{running=false;}})();
+    this.#pending.add(operation);void operation.then(()=>this.#pending.delete(operation),()=>this.#pending.delete(operation));
    };
    for(const source of prepared.sources){
     let root:string;try{root=await realpath(source.root);}catch{continue;}
