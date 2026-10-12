@@ -1,206 +1,115 @@
-import assert from "node:assert/strict";
-import {mkdir,readdir,readFile,realpath,rm,writeFile} from "node:fs/promises";
-import {tmpdir} from "node:os";
-import path from "node:path";
-import {spawn} from "node:child_process";
-import {execFileSync} from "node:child_process";
-import {fileURLToPath} from "node:url";
-import {parseTodoFile,SessionTodoStore} from "../src/runtime/todo-store.ts";
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíë}N‹Z–‹­¦ëeŠw¬Õ¥µÁ½ÉĞ…ÍÍ•ÉĞ™É½´€‰¹½‘”é…ÍÍ•ÉĞ½ÍÑÉ¥Ğˆì)¥µÁ½ÉĞíµ­‘¥È±É•…‘‘¥È±É•…‘¥±”±É•…±Á…Ñ ±É´±İÉ¥Ñ•¥±•ô™É½´€‰¹½‘”é™Ì½ÁÉ½µ¥Í•Ìˆì)¥µÁ½ÉĞíÑµÁ‘¥Éô™É½´€‰¹½‘”é½Ìˆì)¥µÁ½ÉĞÁ…Ñ ™É½´€‰¹½‘”éÁ…Ñ ˆì)¥µÁ½ÉĞíÍÁ…İ¹ô™É½´€‰¹½‘”é¡¥±‘}ÁÉ½•ÍÌˆì)¥µÁ½ÉĞí•á•¥±•Må¹ô™É½´€‰¹½‘”é¡¥±‘}ÁÉ½•ÍÌˆì)¥µÁ½ÉĞí™¥±•UI1Q½A…Ñ¡ô™É½´€‰¹½‘”éÕÉ°ˆì)¥µÁ½ÉĞíÁ…ÉÍ•Q½‘½¥±”±M•ÍÍ¥½¹Q½‘½MÑ½É•ô™É½´€ˆ¸¸½ÍÉŒ½ÉÕ¹Ñ¥µ”½Ñ½‘¼µÍÑ½É”¹ÑÌˆì()½¹ÍĞÉ•Á½Í¥Ñ½Éäõ…İ…¥ĞÉ•…±Á…Ñ ¡ÁÉ½•ÍÌ¹İ ¤¤ì)½¹ÍĞÉ•Ù¥Í¥½¸õ•á•¥±•Må¹Œ ‰¥Ğˆ±l‰É•ØµÁ…ÉÍ”ˆ°‰!‰t±íİéÉ•Á½Í¥Ñ½Éä±•¹½‘¥¹œè‰ÕÑ˜à‰ô¤¹ÑÉ¥´ ¤ì)…ÍÍ•ÉĞ¹•ÅÕ…°¡É•Ù¥Í¥½¸±ÁÉ½•ÍÌ¹•¹Ø¹M9}aAQ}M!°‰<´ÀÜA¤É•½Ù•ÉäµÕÍĞÑ•ÍĞÑ¡”•á…Ğ…¹‘¥‘…Ñ”M!ˆ¤ì)¥˜ …ÁÉ½•ÍÌ¹•¹Ø¹I=E}A%}-d¥Ñ¡É½Ü¹•ÜÉÉ½È ‰I=E}A%}-d¥ÌÕ¹…Ù…¥±…‰±”Ñ¼Ñ¡”<´ÀÜÑ¥½¹Ì©½ˆˆ¤ì)½¹ÍĞÁ¥A…­…”õ)M=8¹Á…ÉÍ”¡…İ…¥ĞÉ•…‘¥±”¡¹•ÜUI0 ˆ¸¸½¹½‘•}µ½‘Õ±•Ì½•…É•¹‘¥°µİ½É­Ì½Á¤µ½‘¥¹œµ…•¹Ğ½Á…­…”¹©Í½¸ˆ±¥µÁ½ÉĞ¹µ•Ñ„¹ÕÉ°¤°‰ÕÑ˜àˆ¤¤ì)…ÍÍ•ÉĞ¹•ÅÕ…°¡Á¥A…­…”¹Ù•ÉÍ¥½¸°ˆÄ¸Ä¸Àˆ°‰<´ÀÜÁÉ½Ù¥‘•ÈÉÕ¸µÕÍĞÕÍ”A¤€Ä¸Ä¸Àˆ¤ì()½¹ÍĞ•Ù¥‘•¹•¥ÈõÁ…Ñ ¹©½¥¸¡É•Á½Í¥Ñ½Éä°‰•¼ÀÜµÁ¤µ•Ù¥‘•¹”ˆ¤ì)…İ…¥Ğµ­‘¥È¡•Ù¥‘•¹•¥È±íÉ•ÕÉÍ¥Ù”éÑÉÕ•ô¤ì)½¹ÍĞÑÉ…¹ÍÉ¥ÁÑA…Ñ õÁ…Ñ ¹©½¥¸¡•Ù¥‘•¹•¥È°‰•Ù•¹ÑÌ¹©Í½¹°ˆ¤ì)½¹ÍĞ•Ù¥‘•¹•A…Ñ õÁ…Ñ ¹©½¥¸¡•Ù¥‘•¹•¥È°‰É•½Ù•Éä¹©Í½¸ˆ¤ì)½¹ÍĞÍÉ…Ñ õ…İ…¥Ğ¥µÁ½ÉĞ ‰¹½‘”é™Ì½ÁÉ½µ¥Í•Ìˆ¤¹Ñ¡•¸¡™Ìôù™Ì¹µ­‘Ñ•µÀ¡Á…Ñ ¹©½¥¸¡ÑµÁ‘¥È ¤°‰…Í•¸µ•¼ÀÜµÉ½Ä´ˆ¤¤¤ì)½¹ÍĞ¡½µ”õÁ…Ñ ¹©½¥¸¡ÍÉ…Ñ °‰¡½µ”ˆ¤±…•¹Ñ¥ÈõÁ…Ñ ¹©½¥¸¡¡½µ”°ˆ¹Á¤ˆ°‰…•¹Ğˆ¤±Í•ÍÍ¥½¹¥ÈõÁ…Ñ ¹©½¥¸¡¡½µ”°‰Í•ÍÍ¥½¹Ìˆ¤±…Í•¹¥ÈõÁ…Ñ ¹©½¥¸¡¡½µ”°ˆ¹…Í•¸ˆ¤ì)½¹ÍĞÍÑ•ÁÍ¥±”õÁ…Ñ ¹©½¥¸¡ÍÉ…Ñ °‰ÍÑ•ÁÌ¹©Í½¹°ˆ¤±É•…‘Í¥±”õÁ…Ñ ¹©½¥¸¡ÍÉ…Ñ °‰É•…‘Ì¹©Í½¹°ˆ¤±Ñ½‘½¥±”õÁ…Ñ ¹©½¥¸¡…Í•¹¥È°‰Ñ½‘½Ì¹©Í½¸ˆ¤ì)½¹ÍĞÍ•ÍÍ¥½¹%õ•¼ÀÜµÉ•½Ù•Éä´‘íÉ•Ù¥Í¥½¸¹Í±¥” À°ÄÈ¥õ€ì)½¹ÍĞÑ¥Ñ±”ô‰<´ÀÜÉ•½Ù•ÉäÉ•Ù¥•Üè…Õ‘¥Ğ•Ù¥‘•¹”°Ñ¡•¸¥¹ÍÁ•ĞÑ…Í¬ÍÑ…Ñ”ÑÉ…¹Í¥Ñ¥½¹Ìˆì)…İ…¥ĞAÉ½µ¥Í”¹…±°¡mµ­‘¥È¡…•¹Ñ¥È±íÉ•ÕÉÍ¥Ù”éÑÉÕ”±µ½‘”èÁ¼ÜÀÁô¤±µ­‘¥È¡Í•ÍÍ¥½¹¥È±íÉ•ÕÉÍ¥Ù”éÑÉÕ”±µ½‘”èÁ¼ÜÀÁô¤±µ­‘¥È¡…Í•¹¥È±íÉ•ÕÉÍ¥Ù”éÑÉÕ”±µ½‘”èÁ¼ÜÀÁô¥t¤ì)…İ…¥ĞİÉ¥Ñ•¥±”¡ÑÉ…¹ÍÉ¥ÁÑA…Ñ °ˆˆ±íµ½‘”èÁ¼ØÀÁô¤ì)½¹ÍĞ±¤õÁ…Ñ ¹©½¥¸¡Á…Ñ ¹‘¥É¹…µ”¡™¥±•UI1Q½A…Ñ ¡¥µÁ½ÉĞ¹µ•Ñ„¹É•Í½±Ù” ‰•…É•¹‘¥°µİ½É­Ì½Á¤µ½‘¥¹œµ…•¹Ğˆ¤¤¤°‰‰Õ¹‘±”ˆ°‰±¤¹©Ìˆ¤ì)½¹ÍĞ…Í•¹áÑ•¹Í¥½¸õÁ…Ñ ¹©½¥¸¡É•Á½Í¥Ñ½Éä°‰•áÑ•¹Í¥½¹Ìˆ°‰…Í•¸¹ÑÌˆ¤ì)½¹ÍĞÁÉ½‰•áÑ•¹Í¥½¸õ™¥±•UI1Q½A…Ñ ¡¹•ÜUI0 ˆ¸½•¼ÀÜµÁ¤µÉ•½Ù•ÉäµÁÉ½‰”µ•áÑ•¹Í¥½¸¹µ©Ìˆ±¥µÁ½ÉĞ¹µ•Ñ„¹ÕÉ°¤¤ì)½¹ÍĞ‰…Í•¹Øõì¸¸¹=‰©•Ğ¹™É½µ¹ÑÉ¥•Ì¡l‰AQ ˆ°‰MåÍÑ•µI½½Ğˆ°‰]%9%Hˆ°‰Q5@ˆ°‰Q5@ˆ°‰Q5A%Hˆ°‰19ˆ°‰QI4‰t¹™±…Ñ5…À¡­•äôùÁÉ½•ÍÌ¹•¹Ùm­•åtôôõÕ¹‘•™¥¹•ımtémm­•ä±ÁÉ½•ÍÌ¹•¹Ùm­•åuut¤¤±!=5é¡½µ”±UMIAI=%1é¡½µ”±A%}=%9}9Q}%Hé…•¹Ñ¥È±A%}=%9}9Q}MMM%=9}%HéÍ•ÍÍ¥½¹¥È±A%}Q15QIdèˆÀˆ±I=E}A%}-déÁÉ½•ÍÌ¹•¹Ø¹I=E}A%}-d±M9}<Àİ}MMM%=9}%éÍ•ÍÍ¥½¹%±M9}<Àİ}AI=)PéÉ•Á½Í¥Ñ½Éä±M9}<Àİ}MQAM}%1éÍÑ•ÁÍ¥±”±M9}<Àİ}IM}%1éÉ•…‘Í¥±”±M9}<Àİ}Q==}%1éÑ½‘½¥±”±M9}<Àİ}QM-}Q%Q1éÑ¥Ñ±•ôì)½¹ÍĞÉ•‘…Ñ•õÙ…±Õ”ôùMÑÉ¥¹œ¡Ù…±Õ”¤¹É•Á±…•±°¡ÁÉ½•ÍÌ¹•¹Ø¹I=E}A%}-d°‰mÉ•‘…Ñ•‘tˆ¤¹Í±¥” ´ÄÈÀÀ¤ì)½¹ÍĞÉ•½Éõ…Íå¹Œ¡­¥¹±‘•Ñ…¥±Ìõíô¤ôùİÉ¥Ñ•¥±”¡ÑÉ…¹ÍÉ¥ÁÑA…Ñ ±€‘í)M=8¹ÍÑÉ¥¹¥™ä¡í…Ğé¹•Ü…Ñ” ¤¹Ñ½%M=MÑÉ¥¹œ ¤±­¥¹°¸¸¹‘•Ñ…¥±Íô¥õq¹€±í™±…œè‰„ˆ±µ½‘”èÁ¼ØÀÁô¤ì)½¹ÍĞÍ±••ÀõµÌôù¹•ÜAÉ½µ¥Í”¡É•Í½±Ù”ôùÍ•ÑQ¥µ•½ÕĞ¡É•Í½±Ù”±µÌ¤¤ì)½¹ÍĞÍ¹…ÁÍ¡½Ğõ…Íå¹Œ ¤ôùÁ…ÉÍ•Q½‘½¥±”¡…İ…¥ĞÉ•…‘¥±”¡Ñ½‘½¥±”°‰ÕÑ˜àˆ¤¤ì)…Íå¹Œ™Õ¹Ñ¥½¸™¥¹‘A•ÉÍ¥ÍÑ•‘A±…¸¡‘¥É•Ñ½Éä¥ì(€™½È¡½¹ÍĞ•¹ÑÉä½˜…İ…¥ĞÉ•…‘‘¥È¡‘¥É•Ñ½Éä±íİ¥Ñ¡¥±•QåÁ•ÌéÑÉÕ•ô¤¥ì(€€€½¹ÍĞ™¥±•¹…µ”õÁ…Ñ ¹©½¥¸¡‘¥É•Ñ½Éä±•¹ÑÉä¹¹…µ”¤ì(€€€¥˜¡•¹ÑÉä¹¥Í¥É•Ñ½Éä ¤¥í½¹ÍĞ™½Õ¹õ…İ…¥Ğ™¥¹‘A•ÉÍ¥ÍÑ•‘A±…¸¡™¥±•¹…µ”¤í¥˜¡™½Õ¹¥É•ÑÕÉ¸™½Õ¹í½¹Ñ¥¹Õ”íô(€€€¥˜ …•¹ÑÉä¹¥Í¥±” ¤¥½¹Ñ¥¹Õ”ì(€€€½¹ÍĞ½¹Ñ•¹ÑÌõ…İ…¥ĞÉ•…‘¥±”¡™¥±•¹…µ”°‰ÕÑ˜àˆ¤¹…Ñ   ¤ôøˆˆ¤ì(€€€¥˜¡½¹Ñ•¹ÑÌ¹¥¹±Õ‘•Ì ‰M9}<Àİ}A9%9}A18è¥¹ÍÁ•Ğµ±½ÍÕÉ”µ…Õ‘¥Ğ€´ø¥¹ÍÁ•ĞµÑ…Í¬µÉ•‘Õ•Èˆ¤¥É•ÑÕÉ¸™¥±•¹…µ”ì(€ô)ô)½¹ÍĞÕÉÉ•¹Ñ%Ñ•´õ…Íå¹Œ ¤ôùì(€½¹ÍĞ‘…Ñ„õ…İ…¥ĞÍ¹…ÁÍ¡½Ğ ¤ì(€½¹ÍĞµ…Ñ¡•Ìõ‘…Ñ„¹¥Ñ•µÌ¹™¥±Ñ•È¡¥Ñ•´ôù¥Ñ•´¹•Ù•¹ÑÍlÁtü¹Í•ÍÍ¥½¹%ôôõÍ•ÍÍ¥½¹%˜™¥Ñ•´¹•Ù•¹ÑÍlÁtü¹ÁÉ½©•Ñ%ôôõÉ•Á½Í¥Ñ½Éä¤ì(€¥˜¡µ…Ñ¡•Ì¹±•¹Ñ øÄ¥Ñ¡É½Ü¹•ÜÉÉ½È ‰A¤É•…Ñ•‘ÕÁ±¥…Ñ”Í•ÍÍ¥½¸½ÁÉ½©•ĞQ½‘¼Ñ…Í­Ìˆ¤ì(€É•ÑÕÉ¸µ…Ñ¡•Ì¹™¥¹¡¥Ñ•´ôù¥Ñ•´¹Ñ¥Ñ±”ôôõÑ¥Ñ±”¤ì)ôì)™Õ¹Ñ¥½¸ÍÑ…ÉÑA¤¡±…‰•°¥ì(€½¹ÍĞ…ÉÌõm±¤°ˆ´µµ½‘”ˆ°‰ÉÁŒˆ°ˆ´µÍ•ÍÍ¥½¸µ¥ˆ±Í•ÍÍ¥½¹%°ˆ´µÍ•ÍÍ¥½¸µ‘¥Èˆ±Í•ÍÍ¥½¹¥È°ˆ´µ¹¼µ•áÑ•¹Í¥½¹Ìˆ°ˆ´µ•áÑ•¹Í¥½¸ˆ±…Í•¹áÑ•¹Í¥½¸°ˆ´µ•áÑ•¹Í¥½¸ˆ±ÁÉ½‰•áÑ•¹Í¥½¸°ˆ´µÁÉ½Ù¥‘•Èˆ°‰É½Äˆ°ˆ´µµ½‘•°ˆ°‰½Á•¹…¤½ÁĞµ½ÍÌ´ÄÈÁˆˆ°ˆ´µ¹¼µÍ­¥±±Ìˆ°ˆ´µÑ½½±Ìˆ°‰…Í•¹}Ñ½‘½|¨±…Í•¹}•¼Àİ|¨‰tì(€½¹ÍĞ¡¥±õÍÁ…İ¸¡ÁÉ½•ÍÌ¹•á•A…Ñ ±…ÉÌ±íİéÉ•Á½Í¥Ñ½Éä±•¹Øéì¸¸¹‰…Í•¹Ø±M9}<Àİ}A!Mé±…‰•±ô±ÍÑ‘¥¼él‰Á¥Á”ˆ°‰Á¥Á”ˆ°‰Á¥Á”‰uô¤ì(€±•Ğ‰Õ™™•Èôˆˆ±ÍÑ‘•ÉÈôˆˆ±ÍÑ‘½ÕÑ	åÑ•ÌôÀ±±½Í•ì(€±•ĞÉ•ÍÕµ•½¹™¥Éµ•õ™…±Í”ì(€½¹ÍĞÉ•ÅÕ•ÍÑÌõ¹•Ü5…À ¤ì(€½¹ÍĞ•Ù•¹ÑÌõmtì(€¡¥±¹ÍÑ‘½ÕĞ¹½¸ ‰‘…Ñ„ˆ±¡Õ¹¬ôùì(€€€ÍÑ‘½ÕÑ	åÑ•Ì¬õ¡Õ¹¬¹±•¹Ñ ì(€€€¥˜¡ÍÑ‘½ÕÑ	åÑ•ÌøÉ|ÀÀÁ|ÀÀÀ¥í¡¥±¹­¥±° ‰M%-%10ˆ¤íÉ•ÑÕÉ¸íô(€€€‰Õ™™•È¬õ¡Õ¹¬¹Ñ½MÑÉ¥¹œ ¤ì(€€€±•Ğ•¹ì(€€€İ¡¥±” ¡•¹õ‰Õ™™•È¹¥¹‘•á=˜ ‰q¸ˆ¤¤øôÀ¥ì(€€€€€½¹ÍĞ±¥¹”õ‰Õ™™•È¹Í±¥” À±•¹¤í‰Õ™™•Èõ‰Õ™™•È¹Í±¥”¡•¹¬Ä¤í¥˜ …±¥¹”¹ÑÉ¥´ ¤¥½¹Ñ¥¹Õ”ì(€€€€€±•ĞÙ…±Õ”íÑÉåíÙ…±Õ”õ)M=8¹Á…ÉÍ”¡±¥¹”¤íõ…Ñ¡í¡¥±¹­¥±° ‰M%-%10ˆ¤í½¹Ñ¥¹Õ”íô(€€€€€•Ù•¹ÑÌ¹ÁÕÍ ¡Ù…±Õ”¤íÙ½¥É•½É¡€‘í±…‰•±ôéÁ¤µ•Ù•¹Ñ€±íÑåÁ”éÙ…±Õ”¹ÑåÁ”±½µµ…¹éÙ…±Õ”¹½µµ…¹±µ•Ñ¡½éÙ…±Õ”¹µ•Ñ¡½±Ñ½½±9…µ”éÙ…±Õ”¹Ñ½½±9…µ”±ÍÑ½ÁI•…Í½¸éÙ…±Õ”¹µ•ÍÍ…”ü¹ÍÑ½ÁI•…Í½¸°¸¸¸¡ÑåÁ•½˜Ù…±Õ”¹µ•ÍÍ…”ü¹•ÉÉ½É5•ÍÍ…”ôôô‰ÍÑÉ¥¹œˆıíÁÉ½Ù¥‘•ÉÉÉ½ÈéÉ•‘…Ñ•¡Ù…±Õ”¹µ•ÍÍ…”¹•ÉÉ½É5•ÍÍ…”¥ôéíô¥ô¤ì(€€€€€¥˜¡±…‰•°ôôô‰É•ÍÑ…ÉÑ•ˆ˜˜…É•ÍÕµ•½¹™¥Éµ•˜™Ù…±Õ”¹ÑåÁ”ôôô‰Ñ½½±}•á•ÕÑ¥½¹}ÍÑ…ÉĞˆ˜˜…l‰…Í•¹}Ñ½‘½}±¥ÍĞˆ°‰…Í•¹}Ñ½‘½}ÕÁ‘…Ñ”‰t¹¥¹±Õ‘•Ì¡Ù…±Õ”¹Ñ½½±9…µ”¤¥ì(€€€€€€€Ù½¥É•½É ‰‰±½­•µİ½É¬µ‰•™½É”µÉ•ÍÕµ”µÉ•©•Ñ•ˆ±íÑ½½±9…µ”éÙ…±Õ”¹Ñ½½±9…µ•ô¤ì(€€€€€€€¡¥±¹­¥±° ‰M%-%10ˆ¤í½¹Ñ¥¹Õ”ì(€€€€€ô(€€€€€¥˜¡Ù…±Õ”¹ÑåÁ”ôôô‰•áÑ•¹Í¥½¹}Õ¥}É•ÅÕ•ÍĞˆ˜™Ù…±Õ”¹µ•Ñ¡½ôôô‰½¹™¥É´ˆ¥ì(€€€€€€€½¹ÍĞÑ¥Ñ±•Q•áĞõMÑÉ¥¹œ¡Ù…±Õ”¹Ñ¥Ñ±”üüˆˆ¤í½¹ÍĞµ•ÍÍ…”õMÑÉ¥¹œ¡Ù…±Õ”¹µ•ÍÍ…”üüˆˆ¤ì(€€€€€€€¥˜¡Ñ¥Ñ±•Q•áĞ„ôô‰I•ÍÕµ”‰±½­•M8Ñ…Í¬ü‰ñğ…µ•ÍÍ…”¹¥¹±Õ‘•Ì¡Ñ¥Ñ±”¥ñğ…µ•ÍÍ…”¹¥¹±Õ‘•Ì ‰•áÁ±¥¥ĞÉ•Ù¥•Ü¥ÌÉ•ÅÕ¥É•ˆ¤¥ì(€€€€€€€€€É•ÅÕ•ÍÑÌ¹•Ğ¡Ù…±Õ”¹¥¤ü¹É•©•Ğ¡¹•ÜÉÉ½È ‰A¤É•ÅÕ•ÍÑ•…¸Õ¹•áÁ•Ñ•½¹™¥Éµ…Ñ¥½¸ˆ¤¤í½¹Ñ¥¹Õ”ì(€€€€€€€ô(€€€€€€€€¼¼Q¡¥Ì¥ÌÑ¡”…™™¥Éµ…Ñ¥Ù”Ñ•ÍĞµÕÍ•ÈÉ•ÍÁ½¹Í”Ñ¼M8Ì•áÁ±¥¥ĞÉ•ÍÕµ”‘¥…±½œì¹¼É•±•…Í”…ÕÑ¡½É¥Ñä¥ÌÉ•ÅÕ•ÍÑ•½ÈÉ…¹Ñ•¸(€€€€€€€É•ÍÕµ•½¹™¥Éµ•õÑÉÕ”ì(€€€€€€€Ù½¥É•½É¡€‘í±…‰•±ôéÉ•ÍÕµ”µ½¹Í•¹Ñ€±íÑ¥Ñ±”éÑ¥Ñ±•Q•áĞ±½¹™¥Éµ•éÑÉÕ•ô¤ì(€€€€€€€¡¥±¹ÍÑ‘¥¸¹İÉ¥Ñ”¡€‘í)M=8¹ÍÑÉ¥¹¥™ä¡íÑåÁ”è‰•áÑ•¹Í¥½¹}Õ¥}É•ÍÁ½¹Í”ˆ±¥éÙ…±Õ”¹¥±½¹™¥Éµ•éÑÉÕ•ô¥õq¹€¤ì(€€€€€ô(€€€€€¥˜¡Ù…±Õ”¹ÑåÁ”ôôô‰É•ÍÁ½¹Í”ˆ˜™Ù…±Õ”¹¥˜™É•ÅÕ•ÍÑÌ¹¡…Ì¡Ù…±Õ”¹¥¤¥ì(€€€€€€€½¹ÍĞÁ•¹‘¥¹œõÉ•ÅÕ•ÍÑÌ¹•Ğ¡Ù…±Õ”¹¥¤íÉ•ÅÕ•ÍÑÌ¹‘•±•Ñ”¡Ù…±Õ”¹¥¤ì(€€€€€€€Ù…±Õ”¹ÍÕ•ÍÌôôõ™…±Í”ıÁ•¹‘¥¹œ¹É•©•Ğ¡¹•ÜÉÉ½È¡Ù…±Õ”¹•ÉÉ½Èüı€‘íÙ…±Õ”¹½µµ…¹‘ô™…¥±•‘€¤¤éÁ•¹‘¥¹œ¹É•Í½±Ù”¡Ù…±Õ”¤ì(€€€€€ô(€€€ô(€ô¤ì(€¡¥±¹ÍÑ‘•ÉÈ¹½¸ ‰‘…Ñ„ˆ±¡Õ¹¬ôùíÍÑ‘•ÉÈõÉ•‘…Ñ•¡ÍÑ‘•ÉÈ­¡Õ¹¬¹Ñ½MÑÉ¥¹œ ¤¤¹Í±¥” ´ÌÀÀÀ¤íô¤ì(€±½Í•õ¹•ÜAÉ½µ¥Í”¡É•Í½±Ù”ôù¡¥±¹½¹” ‰±½Í”ˆ°¡½‘”±Í¥¹…°¤ôùì(€€€™½È¡½¹ÍĞm¥±Á•¹‘¥¹t½˜É•ÅÕ•ÍÑÌ¥íÉ•ÅÕ•ÍÑÌ¹‘•±•Ñ”¡¥¤íÁ•¹‘¥¹œ¹É•©•Ğ¡¹•ÜÉÉ½È¡€‘í±…‰•±ôA¤ÁÉ½•ÍÌ•á¥Ñ•€ ‘í½‘”üıÍ¥¹…±ô¥€¤¤íô(€€€É•Í½±Ù”¡í½‘”±Í¥¹…±ô¤ì(€ô¤¤ì(€¡¥±¹½¹” ‰•ÉÉ½Èˆ±•ÉÉ½Èôùí™½È¡½¹ÍĞÁ•¹‘¥¹œ½˜É•ÅÕ•ÍÑÌ¹Ù…±Õ•Ì ¤¥Á•¹‘¥¹œ¹É•©•Ğ¡•ÉÉ½È¤íô¤ì(€½¹ÍĞÍ•¹ô¡ÑåÁ”±Á…å±½…õíô¤ôù¹•ÜAÉ½µ¥Í” ¡É•Í½±Ù”±É•©•Ğ¤ôùì(€€€½¹ÍĞ¥õ€‘í±…‰•±ô´‘íÑåÁ•ô´‘í5…Ñ ¹É…¹‘½´ ¤¹Ñ½MÑÉ¥¹œ ÌØ¤¹Í±¥” È¥õ€ì(€€€É•ÅÕ•ÍÑÌ¹Í•Ğ¡¥±íÉ•Í½±Ù”±É•©•Ñô¤ì(€€€¡¥±¹ÍÑ‘¥¸¹İÉ¥Ñ”¡€‘í)M=8¹ÍÑÉ¥¹¥™ä¡í¥±ÑåÁ”°¸¸¹Á…å±½…‘ô¥õq¹€¤ì(€€€½¹ÍĞÑ¥µ•½ÕĞõÍ•ÑQ¥µ•½ÕĞ  ¤ôùí¥˜¡É•ÅÕ•ÍÑÌ¹‘•±•Ñ”¡¥¤¥É•©•Ğ¡¹•ÜÉÉ½È¡€‘í±…‰•±ôA¤€‘íÑåÁ•ôÑ¥µ•½ÕĞìÍÑ‘•ÉÈô‘íÍÑ‘•ÉÉõ€¤¤íô°ÄàÁ|ÀÀÀ¤ì(€€€½¹ÍĞÁ•¹‘¥¹œõÉ•ÅÕ•ÍÑÌ¹•Ğ¡¥¤íÉ•ÅÕ•ÍÑÌ¹Í•Ğ¡¥±íÉ•Í½±Ù”éÙ…±Õ”ôùí±•…ÉQ¥µ•½ÕĞ¡Ñ¥µ•½ÕĞ¤íÁ•¹‘¥¹œ¹É•Í½±Ù”¡Ù…±Õ”¤íô±É•©•Ğé•ÉÉ½Èôùí±•…ÉQ¥µ•½ÕĞ¡Ñ¥µ•½ÕĞ¤íÁ•¹‘¥¹œ¹É•©•Ğ¡•ÉÉ½È¤íõô¤ì(€ô¤ì(€½¹ÍĞÍÑ½Àõ…Íå¹Œ¡Í¥¹…°ô‰M%-%10ˆ¤ôùì(€€€½¹ÍĞ­¥±±•ÁÑ•õ¡¥±¹•á¥Ñ½‘”ôôõ¹Õ±°˜™¡¥±¹Í¥¹…±½‘”ôôõ¹Õ±°ı¡¥±¹­¥±°¡Í¥¹…°¤é™…±Í”ì(€€€É•ÑÕÉ¸ì¸¸¹…İ…¥Ğ±½Í•±­¥±±I•ÅÕ•ÍÑ•éÍ¥¹…°±­¥±±•ÁÑ•‘ôì(€ôì(€É•ÑÕÉ¸í¡¥±±•Ù•¹ÑÌ±Í•¹±ÍÑ½À±ÍÑ‘•ÉÈ±•Ñ±½Í•è ¤ôù±½Í•‘ôì)ô()±•ĞÁ¡…Í”ô‰ÍÑ…ÉÑ¥¹œˆì)±•Ğ™¥ÉÍĞ±Í•½¹ì)ÑÉåì(€™¥ÉÍĞõÍÑ…ÉÑA¤ ‰¥¹¥Ñ¥…°ˆ¤ì(€…İ…¥Ğ™¥ÉÍĞ¹Í•¹ ‰•Ñ}½µµ…¹‘Ìˆ¤ì(€Á¡…Í”ô‰ÍÑ…ÉÑ¥¹œµÑ…Í¬ˆì(€½¹ÍĞ¥¹¥Ñ¥…±QÕÉ¸õ™¥ÉÍĞ¹Í•¹ ‰ÁÉ½µÁĞˆ±íµ•ÍÍ…”éUÍ”Ñ¡”M8Q½‘¼Ñ½½±ÌÑ¼É•…Ñ”•á…Ñ±ä½¹”Ñ…Í¬Ñ¥Ñ±••á…Ñ±ä€‘í)M=8¹ÍÑÉ¥¹¥™ä¡Ñ¥Ñ±”¥ô¸Q¡”Ñ…Í¬Ì½É‘•É•Á•¹‘¥¹œ¡•­±¥ÍĞ¥ÌM9}<Àİ}A9%9}A18è¥¹ÍÁ•Ğµ±½ÍÕÉ”µ…Õ‘¥Ğ€´ø¥¹ÍÁ•ĞµÑ…Í¬µÉ•‘Õ•È¸MÑ•À½¹”¥ÌÑ¼¥¹ÍÁ•Ğ‘½Ì½…Õ‘¥Ğ½•¼ÀÜµ±½ÍÕÉ”µ•Ù¥‘•¹”´ÈÀÈØ´ÄÀ´ÄÈ¹µ…¹É•½É„€ÇŠLÈÍ•¹Ñ•¹”ÍÕµµ…Éäµ•¹Ñ¥½¹¥¹œAIQ%0°É•…°A¤°…¹¥¹Ñ•ÉÉÕÁÑ¥½¸¸MÑ•ÀÑİ¼¥ÌÑ¼¥¹ÍÁ•ĞÍÉŒ½ÉÕ¹Ñ¥µ”½Ñ…Í¬µÉ•Á±…ä¹ÑÌ…¹É•½É„€ÇŠLÈÍ•¹Ñ•¹”ÍÕµµ…Éäµ•¹Ñ¥½¹¥¹œÁ±…¹¹•°ÉÕ¹¹¥¹œ°‰±½­•°Í•ÍÍ¥½¸°…¹ÁÉ½©•Ğ¸5½Ù”Ñ¡”Ñ…Í¬™É½´Á±…¹¹•Ñ¼ÉÕ¹¹¥¹œÕÍ¥¹œ¥ÑÌÕÉÉ•¹ĞÉ•Ù¥Í¥½¸¸A•ÉÍ¥ÍĞÑ¡”½µÁ±•Ñ”Ñ…Í¬Á±…¸¥¸Ñ¡¥ÌA¤Í•ÍÍ¥½¸Ì¡¥ÍÑ½Éä°‰ÕĞ‘¼¹½ĞÉ•…•¥Ñ¡•ÈÍ½ÕÉ”™¥±”½È‰•¥¸•¥Ñ¡•ÈÉ•Ù¥•ÜÍÑ•Àå•Ğ¸¼¹½Ğ™¥¹¥Í ¥Ğ°‘¼¹½Ğµ…É¬¥Ğ‘½¹”°…¹‘¼¹½Ğ…±°…Í•¹}•¼Àİ}É•½É‘}ÍÑ•À¸I•Á±ä‰É¥•™±ä…™Ñ•ÈÑ¡”ÉÕ¹¹¥¹œÍÑ…Ñ”¥ÌÍ…Ù•¹ô¤ì(€Ù½¥¥¹¥Ñ¥…±QÕÉ¸¹…Ñ   ¤ôùíô¤ì(€±•ĞÍÑ…ÉÑ•ì(€½¹ÍĞÍÑ…ÉÑ•…‘±¥¹”õ…Ñ”¹¹½Ü ¤¬ÄàÁ|ÀÀÀì(€İ¡¥±”¡…Ñ”¹¹½Ü ¤ñÍÑ…ÉÑ•…‘±¥¹”¥ì(€€€ÑÉåì(€€€€€½¹ÍĞ¥Ñ•´õ…İ…¥ĞÕÉÉ•¹Ñ%Ñ•´ ¤ì(€€€€€¥˜¡¥Ñ•´¥íÍÑ…ÉÑ•õ¥Ñ•´í½¹ÍĞÍÑ…Ñ”õ¥Ñ•´¹•Ù•¹ÑÌ¹…Ğ ´Ä§}¶‰ËkºwµçXÛÛœİÙ]YYš\œİ™]™[Ë™š[™
+]™[O™]™[\OOOH˜YÙ[ÜÙ]YŠNÂˆ\ÜÙ\›ÚÊÙ]Y”H]\İ\œÚ\İH\ÚË\İ\\›ˆ™Y›Ü™H[\œ\[ÛˆŠNÂˆ\ÜÙ\™\]X[
+Ù]Y˜X›ÜY˜[ÙK”H]\İš[š\ÚH\ÚË\İ\\›ˆ˜]\˜[H™Y›Ü™H[\œ\[ÛˆŠNÂˆÛÛœİ[š]X[ÛÛÏYš\œİ™]™[Ë™š[\Š]™[O™]™[\OOOHÛÛÙ^Xİ][Û—Üİ\ŠK›X\
+]™[O™]™[ÛÛ˜[YJNÂˆ\ÜÙ\›ÚÊ[š]X[ÛÛË›[™İL‰‰š[š]X[ÛÛË™]™\J˜[YOO–È˜\Ù[—İÙ×ØY‹˜\Ù[—İÙ×İ\]H‹˜\Ù[—İÙ×Û\İ—Kš[˜ÛY\Ê˜[YJJK™Y›Ü™H[\œ\[ÛˆHX^HÛ›H\İX›\ÚH\ÚÈY[]H[™[›š[™Èİ]NÈ›È[™[™È™]šY]Èİ\X^Hİ\ŠNÂˆÛÛœİ\œÚ\İY[‘š[OX]ØZ]š[™\œÚ\İY[ŠÙ\ÜÚ[Û‘\ŠNÂˆ\ÜÙ\›ÚÊ\œÚ\İY[‘š[K”H]\İ\œÚ\İH[™[™ÈÜ™\™Y™]šY]ÈÚXÚÛ\İ[ˆHÜšYÚ[˜[Ù\ÜÚ[Ûˆ\İÜH™Y›Ü™H[\œ\[ÛˆŠNÂˆ]ØZ]™XÛÜ™
+œ[™[™Ë\[‹\\œÚ\İY‹ÜÙ\ÜÚ[Û’YÙ\ÜÚ[Û‘š[Nœ]œ™[]]™JÙ\ÜÚ[Û‘\‹\œÚ\İY[‘š[JKÜ™\™Yİ\Î–Èš[œÜXİXÛÜİ\™KX]Y]‹š[œÜXİ]\ÚË\™YXÙ\ˆ—_JNÂˆ]ØZ]™XÛÜ™
+œ[›š[™Ë]\ÚË\\œÚ\İY‹ØÛÛ[Z]œ™]š\Ú[Û‹\ÚÒYœİ\Y\ÚÒYÙ\ÜÚ[Û’Y›Ú™XİYœ™\ÜÚ]ÜK]™[™]š\Ú[ÛœÎœİ\Y™]™[Ë›X\
+]™[O™]™[œ™]š\Ú[ÛŠKİ]Nˆœ[›š[™ÈŸJNÂˆÛÛœİX\›Tİ\ÏX]ØZ]™XYš[Jİ\Ñš[K]ŠK˜Ø]Ú
+\œ›ÜO™\œ›ÜË˜ÛÙOOOH‘S“ÑS•Èˆ”›ÛZ\ÙKœ™Z™Xİ
+\œ›ÜŠJNÂˆ\ÜÙ\™\]X[
+X\›Tİ\Ëˆ‹“›È\ÚÈİ\X^H[ˆ™Y›Ü™HH™\İ\ŠNÂˆ\ÙOH™›Ü˜ÙYZ[\œ\[ÛˆÂˆÛÛœİ[š]X[YYš\œİ˜Ú[œYÂˆÛÛœİ[\œ\[ÛX]ØZ]š\œİœİÜ
+”ÒQÒÒSŠNÂˆ\ÜÙ\™\]X[
+[\œ\[Û‹šÚ[XØÙ\YYK•H[›š[™ÈH›ØÙ\ÜÈ]\İXØÙ\H›Ü˜ÙY›ØÙ\ÜÈÚ[ŠNÂˆ]ØZ][š]X[\›‹˜Ø]Ú
 
-const repository=await realpath(process.cwd());
-const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8"}).trim();
-assert.equal(revision,process.env.ASEN_EXPECTED_SHA,"ECO-07 Pi recovery must test the exact candidate SHA");
-if(!process.env.GROQ_API_KEY)throw new Error("GROQ_API_KEY is unavailable to the ECO-07 Actions job");
-const piPackage=JSON.parse(await readFile(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url),"utf8"));
-assert.equal(piPackage.version,"1.1.0","ECO-07 provider run must use Pi 1.1.0");
 
-const evidenceDir=path.join(repository,"eco07-pi-evidence");
-await mkdir(evidenceDir,{recursive:true});
-const transcriptPath=path.join(evidenceDir,"events.jsonl");
-const evidencePath=path.join(evidenceDir,"recovery.json");
-const scratch=await import("node:fs/promises").then(fs=>fs.mkdtemp(path.join(tmpdir(),"asen-eco07-groq-")));
-const home=path.join(scratch,"home"),agentDir=path.join(home,".pi","agent"),sessionDir=path.join(home,"sessions"),asenDir=path.join(home,".asen");
-const stepsFile=path.join(scratch,"steps.jsonl"),readsFile=path.join(scratch,"reads.jsonl"),todoFile=path.join(asenDir,"todos.json");
-const sessionId=`eco07-recovery-${revision.slice(0,12)}`;
-const title="ECO-07 recovery review: audit evidence, then inspect task state transitions";
-await Promise.all([mkdir(agentDir,{recursive:true,mode:0o700}),mkdir(sessionDir,{recursive:true,mode:0o700}),mkdir(asenDir,{recursive:true,mode:0o700})]);
-await writeFile(transcriptPath,"",{mode:0o600});
-const cli=path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");
-const asenExtension=path.join(repository,"extensions","asen.ts");
-const probeExtension=fileURLToPath(new URL("./eco07-pi-recovery-probe-extension.mjs",import.meta.url));
-const baseEnv={...Object.fromEntries(["PATH","SystemRoot","WINDIR","TEMP","TMP","TMPDIR","LANG","TERM"].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]]])),HOME:home,USERPROFILE:home,PI_CODING_AGENT_DIR:agentDir,PI_CODING_AGENT_SESSION_DIR:sessionDir,PI_TELEMETRY:"0",GROQ_API_KEY:process.env.GROQ_API_KEY,ASEN_ECO07_SESSION_ID:sessionId,ASEN_ECO07_PROJECT:repository,ASEN_ECO07_STEPS_FILE:stepsFile,ASEN_ECO07_READS_FILE:readsFile,ASEN_ECO07_TODO_FILE:todoFile,ASEN_ECO07_TASK_TITLE:title};
-const redacted=value=>String(value).replaceAll(process.env.GROQ_API_KEY,"[redacted]").slice(-1200);
-const record=async(kind,details={})=>writeFile(transcriptPath,`${JSON.stringify({at:new Date().toISOString(),kind,...details})}\n`,{flag:"a",mode:0o600});
-const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-const snapshot=async()=>parseTodoFile(await readFile(todoFile,"utf8"));
-async function findPersistedPlan(directory){
-  for(const entry of await readdir(directory,{withFileTypes:true})){
-    const filename=path.join(directory,entry.name);
-    if(entry.isDirectory()){const found=await findPersistedPlan(filename);if(found)return found;continue;}
-    if(!entry.isFile())continue;
-    const contents=await readFile(filename,"utf8").catch(()=>"");
-    if(contents.includes("ASEN_ECO07_PENDING_PLAN: inspect-closure-audit -> inspect-task-reducer"))return filename;
-  }
-}
-const currentItem=async()=>{
-  const data=await snapshot();
-  const matches=data.items.filter(item=>item.events[0]?.sessionId===sessionId&&item.events[0]?.projectId===repository);
-  if(matches.length>1)throw new Error("Pi created duplicate session/project Todo tasks");
-  return matches.find(item=>item.title===title);
-};
-function startPi(label){
-  const args=[cli,"--mode","rpc","--session-id",sessionId,"--session-dir",sessionDir,"--no-extensions","--extension",asenExtension,"--extension",probeExtension,"--provider","groq","--model","openai/gpt-oss-120b","--no-skills","--tools","asen_todo_*,asen_eco07_*"];
-  const child=spawn(process.execPath,args,{cwd:repository,env:{...baseEnv,ASEN_ECO07_PHASE:label},stdio:["pipe","pipe","pipe"]});
-  let buffer="",stderr="",stdoutBytes=0,closed;
-  let resumeConfirmed=false;
-  const requests=new Map();
-  const events=[];
-  child.stdout.on("data",chunk=>{
-    stdoutBytes+=chunk.length;
-    if(stdoutBytes>2_000_000){child.kill("SIGKILL");return;}
-    buffer+=chunk.toString();
-    let end;
-    while((end=buffer.indexOf("\n"))>=0){
-      const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;
-      let value;try{value=JSON.parse(line);}catch{child.kill("SIGKILL");continue;}
-      events.push(value);void record(`${label}:pi-event`,{type:value.type,command:value.command,method:value.method,toolName:value.toolName,stopReason:value.message?.stopReason});
-      if(label==="restarted"&&!resumeConfirmed&&value.type==="tool_execution_start"&&!["asen_todo_list","asen_todo_update"].includes(value.toolName)){
-        void record("blocked-work-before-resume-rejected",{toolName:value.toolName});
-        child.kill("SIGKILL");continue;
-      }
-      if(value.type==="extension_ui_request"&&value.method==="confirm"){
-        const titleText=String(value.title??"");const message=String(value.message??"");
-        if(titleText!=="Resume blocked ASEN task?"||!message.includes(title)||!message.includes("explicit review is required")){
-          requests.get(value.id)?.reject(new Error("Pi requested an unexpected confirmation"));continue;
-        }
-        // This is the affirmative test-user response to ASEN's explicit resume dialog; no release authority is requested or granted.
-        resumeConfirmed=true;
-        void record(`${label}:resume-consent`,{title:titleText,confirmed:true});
-        child.stdin.write(`${JSON.stringify({type:"extension_ui_response",id:value.id,confirmed:true})}\n`);
-      }
-      if(value.type==="response"&&value.id&&requests.has(value.id)){
-        const pending=requests.get(value.id);requests.delete(value.id);
-        value.success===false?pending.reject(new Error(value.error??`${value.command} failed`)):pending.resolve(value);
-      }
-    }
-  });
-  child.stderr.on("data",chunk=>{stderr=redacted(stderr+chunk.toString()).slice(-3000);});
-  closed=new Promise(resolve=>child.once("close",(code,signal)=>{
-    for(const [id,pending] of requests){requests.delete(id);pending.reject(new Error(`${label} Pi process exited (${code??signal})`));}
-    resolve({code,signal});
-  }));
-  child.once("error",error=>{for(const pending of requests.values())pending.reject(error);});
-  const send=(type,payload={})=>new Promise((resolve,reject)=>{
-    const id=`${label}-${type}-${Math.random().toString(36).slice(2)}`;
-    requests.set(id,{resolve,reject});
-    child.stdin.write(`${JSON.stringify({id,type,...payload})}\n`);
-    const timeout=setTimeout(()=>{if(requests.delete(id))reject(new Error(`${label} Pi ${type} timed out; stderr=${stderr}`));},180_000);
-    const pending=requests.get(id);requests.set(id,{resolve:value=>{clearTimeout(timeout);pending.resolve(value);},reject:error=>{clearTimeout(timeout);pending.reject(error);}});
-  });
-  const stop=async(signal="SIGKILL")=>{
-    const killAccepted=child.exitCode===null&&child.signalCode===null?child.kill(signal):false;
-    return {...await closed,killRequested:signal,killAccepted};
-  };
-  return {child,events,send,stop,stderr,getClosed:()=>closed};
-}
+OOßJNÂˆ]ØZ]™XÛÜ™
+œ›ØÙ\ÜËZÚ[Y‹ÜYš[š]X[Y‹‹š[\œ\[ÛŸJNÂ‚ˆ\ÙOHœ™\İ\\™XÛİ™\HÂˆÙXÛÛ™\İ\Jœ™\İ\YŠNÂˆ]ØZ]ÙXÛÛ™œÙ[™
+™Ù]ØÛÛ[X[™ÈŠNÂˆ]™XÛİ™\™YX]ØZ]İ\œ™[][J
+NÂˆ\ÜÙ\™Y\\]X[
+™XÛİ™\™Y™]™[Ë›X\
+]™[O™]™[œİ]JKÈœ[›™Y‹œ[›š[™È‹˜›ØÚÙY—K”H™\İ\]\İ™\Ù\™H\İÜH[™›ØÚÈ[\œ\YÛÜšÈŠNÂˆ\ÜÙ\›X]Ú
+™XÛİ™\™Y™]™[Ë˜]
+LJKœ™X\ÛÛ‹Ù^XÚ]™]šY]È\È™\]Z\™YİJNÂˆ]ØZ]™XÛÜ™
+\ÚË\™XÛİ™\™Y‹İ\ÚÒYœ™XÛİ™\™Y\ÚÒYÙ\ÜÚ[Û’Y›Ú™XİYœ™\ÜÚ]ÜK]™[Îœ™XÛİ™\™Y™]™[Ë›X\
 
-let phase="starting";
-let first,second;
-try{
-  first=startPi("initial");
-  await first.send("get_commands");
-  phase="starting-task";
-  const initialTurn=first.send("prompt",{message:`Use the ASEN Todo tools to create exactly one task titled exactly ${JSON.stringify(title)}. The task's ordered pending checklist is ASEN_ECO07_PENDING_PLAN: inspect-closure-audit -> inspect-task-reducer. Step one is to inspect docs/audit/eco07-closure-evidence-2026-10-12.md and record a 1â€“2 sentence summary mentioning PARTIAL, real Pi, and interruption. Step two is to inspect src/runtime/task-replay.ts and record a 1â€“2 sentence summary mentioning planned, running, blocked, session, and project. Move the task from planned to running using its current revision. Persist the complete task plan in this Pi session's history, but do not read either source file or begin either review step yet. Do not finish it, do not mark it done, and do not call asen_eco07_record_step. Reply briefly after the running state is saved.`});
-  void initialTurn.catch(()=>{});
-  let started;
-  const startDeadline=Date.now()+180_000;
-  while(Date.now()<startDeadline){
-    try{
-      const item=await currentItem();
-      if(item){started=item;const state=item.events.at(-1)?.state;if(state==="running")break;if(["done","cancelled"].includes(state))throw new Error(`Pi ended the task before interruption (${state})`);}
-    }catch(error){if(error?.code!=="ENOENT")throw error;}
-    const exit=await Promise.race([first.getClosed().then(value=>({closed:value})),sleep(25).then(()=>null)]);
-    if(exit)throw new Error(`Initial Pi exited before saving running task (${JSON.stringify(exit.closed)}): ${first.stderr}`);
-  }
-  started=await currentItem();
-  assert.equal(started?.events.at(-1)?.state,"running","Pi/ASEN must persist the task as running before interruption");
-  assert.equal(started.events[0].sessionId,sessionId);assert.equal(started.events[0].projectId,repository);
-  assert.equal(started.events.length,2,"The initial task must have one planned and one running event");
-  const settleDeadline=Date.now()+30_000;
-  while(!first.events.some(event=>event.type==="agent_settled")&&Date.now()<settleDeadline){
-    const exit=await Promise.race([first.getClosed().then(value=>({closed:value})),sleep(25).then(()=>null)]);
-    if(exit)throw new Error(`Initial Pi closed before recording its completed task-start tool result (${JSON.stringify(exit.closed)})`);
-  }
-  const settled=first.events.find(event=>event.type==="agent_settled");
-  assert.ok(settled,"Pi must persist the task-start turn before interruption");
-  assert.equal(settled.aborted,false,"Pi must finish the task-start turn naturally before interruption");
-  const initialTools=first.events.filter(event=>event.type==="tool_execution_start").map(event=>event.toolName);
-  assert.ok(initialTools.length>=2&&initialTools.every(name=>["asen_todo_add","asen_todo_update","asen_todo_list"].includes(name)),"Before interruption Pi may only establish the task identity and running state; no pending review step may start");
-  const persistedPlanFile=await findPersistedPlan(sessionDir);
-  assert.ok(persistedPlanFile,"Pi must persist the pending ordered review checklist in the original session history before interruption");
-  await record("pending-plan-persisted",{sessionId,sessionFile:path.relative(sessionDir,persistedPlanFile),orderedSteps:["inspect-closure-audit","inspect-task-reducer"]});
-  await record("running-task-persisted",{commit:revision,taskId:started.taskId,sessionId,projectId:repository,eventRevisions:started.events.map(event=>event.revision),state:"running"});
-  const earlySteps=await readFile(stepsFile,"utf8").catch(error=>error?.code==="ENOENT"?"":Promise.reject(error));
-  assert.equal(earlySteps,"","No task step may run before the restart");
-  phase="forced-interruption";
-  const initialPid=first.child.pid;
-  const interruption=await first.stop("SIGKILL");
-  assert.equal(interruption.killAccepted,true,"The running Pi process must accept the forced process kill");
-  await initialTurn.catch(()=>{});
-  await record("process-killed",{pid:initialPid,...interruption});
+Ü™]š\Ú[Û‹İ]K]™X\ÛÛŸJOOŠÜ™]š\Ú[Û‹İ]K]™X\ÛÛŸJJ_JNÂ‚ˆ\ÙOHšY[]KZ\ÛÛ][ÛˆÂˆÛÛœİİÜ™OX]ØZ]Ù\ÜÚ[Û•ÙÔİÜ™K›Ü[ŠÙÑš[JNÂˆ\ÜÙ\™Y\\]X[
+]ØZ]İÜ™K›\İ
+ÜÙ\ÜÚ[Û’Yˆ™XÛÌË]Ü›Û™Ë\Ù\ÜÚ[Ûˆ‹›Ú™XİYœ™\ÜÚ]Ü_JK×K•Ü›Û™ÈÙ\ÜÚ[Ûˆ]\İ›İÙYH™XÛİ™\™Y\ÚÈŠNÂˆ]ØZ]\ÜÙ\œ™Z™XİÊ
 
-  phase="restart-recovery";
-  second=startPi("restarted");
-  await second.send("get_commands");
-  let recovered=await currentItem();
-  assert.deepEqual(recovered.events.map(event=>event.state),["planned","running","blocked"],"Pi restart must preserve history and block interrupted work");
-  assert.match(recovered.events.at(-1).reason,/explicit review is required/u);
-  await record("task-recovered",{taskId:recovered.taskId,sessionId,projectId:repository,events:recovered.events.map(({revision,state,at,reason})=>({revision,state,at,reason}))});
+OOœİÜ™K\]J™XÛİ™\™Y\ÚÒYÜÙ\ÜÚ[Û’Yˆ™XÛÌË]Ü›Û™Ë\Ù\ÜÚ[Ûˆ‹›Ú™XİYœ™\ÜÚ]Ü_K™XÛİ™\™Y™]™[Ë˜]
+LJKœ™]š\Ú[Û‹œ[›š[™ÈŠKİ[˜]˜Z[X›KİJNÂˆ\ÜÙ\™Y\\]X[
+]ØZ]İÜ™K›\İ
+ÜÙ\ÜÚ[Û’Y›Ú™XİYœ]š›Ú[ŠØÜ˜]ÚÜ›Û™Ë\›Ú™XİŠ_JK×K•Ü›Û™È›Ú™Xİ]\İ›İÙYH™XÛİ™\™Y\ÚÈŠNÂˆ]ØZ]\ÜÙ\œ™Z™XİÊ
 
-  phase="identity-isolation";
-  const store=await SessionTodoStore.open(todoFile);
-  assert.deepEqual(await store.list({sessionId:"eco07-wrong-session",projectId:repository}),[],"Wrong session must not see recovered task");
-  await assert.rejects(()=>store.update(recovered.taskId,{sessionId:"eco07-wrong-session",projectId:repository},recovered.events.at(-1).revision,"running"),/unavailable/u);
-  assert.deepEqual(await store.list({sessionId,projectId:path.join(scratch,"wrong-project")}),[],"Wrong project must not see recovered task");
-  await assert.rejects(()=>store.update(recovered.taskId,{sessionId,projectId:path.join(scratch,"wrong-project")},recovered.events.at(-1).revision,"running"),/unavailable/u);
-  assert.deepEqual((await currentItem()).events.map(event=>event.state),["planned","running","blocked"],"Wrong session must not mutate the recovered task");
-  await record("wrong-identity-rejected",{taskId:recovered.taskId,wrongSession:{visibleItems:0,mutationRejected:true},wrongProject:{visibleItems:0,mutationRejected:true},stateUnchanged:true});
+OOœİÜ™K\]J™XÛİ™\™Y\ÚÒYÜÙ\ÜÚ[Û’Y›Ú™XİYœ]š›Ú[ŠØÜ˜]ÚÜ›Û™Ë\›Ú™XİŠ_K™XÛİ™\™Y™]™[Ë˜]
+LJKœ™]š\Ú[Û‹œ[›š[™ÈŠKİ[˜]˜Z[X›KİJNÂˆ\ÜÙ\™Y\\]X[
 
-  phase="explicit-resume-and-completion";
-  await second.send("prompt",{message:`The same ASEN task is blocked after a Pi restart. First, call asen_todo_list and verify this exact task id ${JSON.stringify(recovered.taskId)} belongs to this session and project. Then call asen_todo_update with that task id, revision ${recovered.events.at(-1).revision}, and state running. Wait for Pi's explicit resume confirmation before doing anything else. After confirmation, use asen_eco07_read_pending_review with step inspect-closure-audit, then record that step exactly once with a summary mentioning PARTIAL, real Pi, and interruption. Next use asen_eco07_read_pending_review with step inspect-task-reducer, then record it exactly once with a summary mentioning planned, running, blocked, session, and project. Follow the ordered pending checklist in the earlier user message in this same Pi session. Finally update this same task to done using its latest revision. Never create a second task and do not use approval, publishing, or merge actions.`});
+]ØZ]İ\œ™[][J
+JK™]™[Ë›X\
+]™[O™]™[œİ]JKÈœ[›™Y‹œ[›š[™È‹˜›ØÚÙY—K•Ü›Û™ÈÙ\ÜÚ[Ûˆ]\İ›İ]]]HH™XÛİ™\™Y\ÚÈŠNÂˆ]ØZ]™XÛÜ™
+Ü›Û™ËZY[]K\™Z™XİY‹İ\ÚÒYœ™XÛİ™\™Y\ÚÒYÜ›Û™ÔÙ\ÜÚ[Ûİš\ÚX›R][\ÎŒ]]][Û”™Z™XİYY_KÜ›Û™Ô›Ú™Xİİš\ÚX›R][\ÎŒ]]][Û”™Z™XİYY_Kİ]U[˜Ú[™ÙYY_JNÂ‚ˆ\ÙOH™^XÚ]\™\İ[YKX[™XÛÛ\][ÛˆÂˆ]ØZ]ÙXÛÛ™œÙ[™
+œ›Û\‹ÛY\ÜØYÙN˜HØ[YHTÑSˆ\ÚÈ\È›ØÚÙYY\ˆHH™\İ\ˆš\œİØ[\Ù[—İÙ×Û\İ[™™\šYH\È^Xİ\ÚÈY	Ò”ÓÓ‹œİš[™ÚYJ™XÛİ™\™Y\ÚÒY
+_H™[Û™ÜÈÈ\ÈÙ\ÜÚ[Ûˆ[™›Ú™Xİˆ[ˆØ[\Ù[—İÙ×İ\]HÚ]]\ÚÈY™]š\Ú[Ûˆ	Ü™XÛİ™\™Y™]™[Ë˜]
+LJKœ™]š\Ú[ÛŸK[™İ]H[›š[™ËˆØZ]›ÜˆIÜÈ^XÚ]™\İ[YHÛÛ™š\›X][Ûˆ™Y›Ü™HÚ[™È[][™È[ÙKˆY\ˆÛÛ™š\›X][Û‹\ÙH\Ù[—ÙXÛÌ×Ü™XYÜ[™[™×Ü™]šY]ÈÚ]İ\[œÜXİXÛÜİ\™KX]Y][ˆ™XÛÜ™]İ\^XİHÛ˜ÙHÚ]Hİ[[X\HY[[Ûš[™ÈT•PS™X[K[™[\œ\[Û‹ˆ™^\ÙH\Ù[—ÙXÛÌ×Ü™XYÜ[™[™×Ü™]šY]ÈÚ]İ\[œÜXİ]\ÚË\™YXÙ\‹[ˆ™XÛÜ™]^XİHÛ˜ÙHÚ]Hİ[[X\HY[[Ûš[™È[›™Y[›š[™Ë›ØÚÙYÙ\ÜÚ[Û‹[™›Ú™Xİˆ›ÛİÈHÜ™\™Y[™[™ÈÚXÚÛ\İ[ˆHX\›Y\ˆ\Ù\ˆY\ÜØYÙH[ˆ\ÈØ[YHHÙ\ÜÚ[Û‹ˆš[˜[H\]H\ÈØ[YH\ÚÈÈÛ™H\Ú[™È]È]\İ™]š\Ú[Û‹ˆ™]™\ˆÜ™X]HHÙXÛÛ™\ÚÈ[™È›İ\ÙH\›İ˜[X›\Ú[™ËÜˆY\™ÙHXİ[ÛœË˜JNÂ‚ˆÛÛœİš[š\ÚXY[™OQ]K››İÊ
+JÌÌÂˆÚ[J]K››İÊ
+Oš[š\ÚXY[™J^Âˆ™XÛİ™\™YX]ØZ]İ\œ™[][J
+NÂˆYŠ™XÛİ™\™Y™]™[Ë˜]
+LJOËœİ]OOOH™Û™HŠXœ™XZÎÂˆÛÛœİ^]X]ØZ]›ÛZ\ÙKœ˜XÙJÜÙXÛÛ™™Ù]ÛÜÙY
 
-  const finishDeadline=Date.now()+240_000;
-  while(Date.now()<finishDeadline){
-    recovered=await currentItem();
-    if(recovered.events.at(-1)?.state==="done")break;
-    const exit=await Promise.race([second.getClosed().then(value=>({closed:value})),sleep(25).then(()=>null)]);
-    if(exit)throw new Error(`Restarted Pi exited before completing task (${JSON.stringify(exit.closed)}): ${second.stderr}`);
-  }
-  recovered=await currentItem();
-  assert.deepEqual(recovered.events.map(event=>event.state),["planned","running","blocked","running","done"],"Only the same recovered task may progress to completion");
-  assert.deepEqual(recovered.events.map(event=>event.revision),[1,2,3,4,5],"Persisted task history must have one strictly ordered revision for each transition");
-  const rows=(await readFile(stepsFile,"utf8")).trim().split("\n").filter(Boolean).map(line=>JSON.parse(line));
-  assert.deepEqual(rows.map(row=>row.step),["inspect-closure-audit","inspect-task-reducer"],"Both pending review steps must run exactly once and in order");
-  assert.ok(rows.every(row=>row.sessionId===sessionId&&row.projectId===repository));
-  const reads=(await readFile(readsFile,"utf8")).trim().split("\n").filter(Boolean).map(line=>JSON.parse(line));
-  assert.deepEqual(reads.map(row=>row.step),["inspect-closure-audit","inspect-task-reducer"],"Pi must read each pending review file exactly once and in order");
-  assert.deepEqual(second.events.filter(event=>event.type==="tool_execution_start"&&event.toolName==="asen_eco07_read_pending_review").map(event=>event.args?.step),["inspect-closure-audit","inspect-task-reducer"],"Pi must read the real review files through the resume-gated ASEN test tool in order");
-  assert.equal(first.events.filter(event=>event.type==="extension_ui_request"&&event.method==="confirm").length,0);
-  assert.equal(second.events.filter(event=>event.type==="extension_ui_request"&&event.method==="confirm").length,1,"Resume requires one explicit affirmative Pi confirmation");
-  const final={candidate:revision,provider:"groq",model:"openai/gpt-oss-120b",piVersion:piPackage.version,sessionId,projectId:repository,taskId:recovered.taskId,events:recovered.events.map(({revision,state,at,reason})=>({revision,state,at,reason})),persistedPlan:{sessionFile:path.relative(sessionDir,persistedPlanFile),orderedSteps:["inspect-closure-audit","inspect-task-reducer"]},reads:reads.map(({step,file,at})=>({step,file,at})),steps:rows.map(({step,summary,at})=>({step,summary,at})),initialProcessPid:first.child.pid,restartedProcessPid:second.child.pid,interruptionSignal:"SIGKILL",wrongSession:{visible:0,mutationRejected:true},wrongProject:{visible:0,mutationRejected:true},explicitResumeConsent:true,approvalAuthorityGranted:false,publishAuthorityGranted:false,mergeAuthorityGranted:false,result:"PASS"};
-  await writeFile(evidencePath,`${JSON.stringify(final,null,2)}\n`,{mode:0o600});
-  console.log(JSON.stringify(final));
-}catch(error){
-  const task=await currentItem().catch(()=>undefined);
-  const readRows=(await readFile(readsFile,"utf8").catch(()=>"")).split("\n").filter(Boolean).map(line=>{try{return JSON.parse(line);}catch{return {malformed:true};}});
-  const steps=(await readFile(stepsFile,"utf8").catch(()=>"")).split("\n").filter(Boolean).map(line=>{try{const {step,summary,sessionId:owner,projectId,at}=JSON.parse(line);return {step,summary,sessionId:owner,projectId,at};}catch{return {malformed:true};}});
-  const processTrace=[first&&{label:"initial",events:first.events.map(event=>({type:event.type,toolName:event.toolName,method:event.method,stopReason:event.message?.stopReason,aborted:event.aborted}))},second&&{label:"restarted",events:second.events.map(event=>({type:event.type,toolName:event.toolName,method:event.method,stopReason:event.message?.stopReason,aborted:event.aborted}))}].filter(Boolean);
-  const report={candidate:revision,provider:"groq",phase,result:"FAIL",task:task&&{taskId:task.taskId,title:task.title,events:task.events.map(({revision,state,at,reason})=>({revision,state,at,reason}))},reads:readRows,steps,processTrace,error:redacted(error?.stack??error)};
-  await writeFile(evidencePath,`${JSON.stringify(report,null,2)}\n`,{mode:0o600});
-  console.error(JSON.stringify(report));
-  throw error;
-}finally{
-  if(first)await first.stop("SIGKILL");
-  if(second)await second.stop("SIGKILL");
-  await rm(scratch,{recursive:true,force:true});
-}
+K[Š˜[YOOŠØÛÜÙY˜[Y_JJKÛY\
+JK[Š
+
+OO›[
+WJNÂˆYŠ^]
+]›İÈ™]È\œ›ÜŠ™\İ\YH^]Y™Y›Ü™HÛÛ\][™È\ÚÈ
+	Ò”ÓÓ‹œİš[™ÚYJ^]˜ÛÜÙY
+_JNˆ	ÜÙXÛÛ™œİ\œŸX
+NÂˆBˆ™XÛİ™\™YX]ØZ]İ\œ™[][J
+NÂˆ\ÜÙ\™Y\\]X[
+™XÛİ™\™Y™]™[Ë›X\
+]™[O™]™[œİ]JKÈœ[›™Y‹œ[›š[™È‹˜›ØÚÙY‹œ[›š[™È‹™Û™H—K“Û›HHØ[YH™XÛİ™\™Y\ÚÈX^H›ÙÜ™\ÜÈÈÛÛ\][ÛˆŠNÂˆ\ÜÙ\™Y\\]X[
+™XÛİ™\™Y™]™[Ë›X\
+]™[O™]™[œ™]š\Ú[ÛŠKÌK‹ËWK”\œÚ\İY\ÚÈ\İÜH]\İ]™HÛ™HİšXİHÜ™\™Y™]š\Ú[Ûˆ›ÜˆXXÚ˜[œÚ][ÛˆŠNÂˆÛÛœİ›İÜÏJ]ØZ]™XYš[Jİ\Ñš[K]ŠJKš[J
+KœÜ]
+—ˆŠK™š[\Š›ÛÛX[ŠK›X\
+[™OO’”ÓÓ‹œ\œÙJ[™JJNÂˆ\ÜÙ\™Y\\]X[
+›İÜË›X\
+›İÏOœ›İËœİ\
+KÈš[œÜXİXÛÜİ\™KX]Y]‹š[œÜXİ]\ÚË\™YXÙ\ˆ—K›İ[™[™È™]šY]Èİ\È]\İ[ˆ^XİHÛ˜ÙH[™[ˆÜ™\ˆŠNÂˆ\ÜÙ\›ÚÊ›İÜË™]™\J›İÏOœ›İËœÙ\ÜÚ[Û’YOO\Ù\ÜÚ[Û’Y	‰œ›İËœ›Ú™XİYOO\™\ÜÚ]ÜJJNÂˆÛÛœİ™XYÏJ]ØZ]™XYš[J™XYÑš[K]ŠJKš[J
+KœÜ]
+—ˆŠK™š[\Š›ÛÛX[ŠK›X\
+[™OO’”ÓÓ‹œ\œÙJ[™JJNÂˆ\ÜÙ\™Y\\]X[
+™XYË›X\
+›İÏOœ›İËœİ\
+KÈš[œÜXİXÛÜİ\™KX]Y]‹š[œÜXİ]\ÚË\™YXÙ\ˆ—K”H]\İ™XYXXÚ[™[™È™]šY]Èš[H^XİHÛ˜ÙH[™[ˆÜ™\ˆŠNÂˆ\ÜÙ\™Y\\]X[
+ÙXÛÛ™™]™[Ë™š[\Š]™[O™]™[\OOOHÛÛÙ^Xİ][Û—Üİ\‰‰™]™[ÛÛ˜[YOOOH˜\Ù[—ÙXÛÌ×Ü™XYÜ[™[™×Ü™]šY]ÈŠK›X\
+]™[O™]™[˜\™ÜÏËœİ\
+KÈš[œÜXİXÛÜİ\™KX]Y]‹š[œÜXİ]\ÚË\™YXÙ\ˆ—K”H]\İ™XYH™X[™]šY]Èš[\È›İYÚH™\İ[YKYØ]YTÑSˆ\İÛÛ[ˆÜ™\ˆŠNÂˆ\ÜÙ\™\]X[
+š\œİ™]™[Ë™š[\Š]™[O™]™[\OOOH™^[œÚ[Û—İZWÜ™\]Y\İ‰‰™]™[›Y]ÙOOH˜ÛÛ™š\›HŠK›[™İ
+NÂˆ\ÜÙ\™\]X[
+ÙXÛÛ™™]™[Ë™š[\Š]™[O™]™[\OOOH™^[œÚ[Û—İZWÜ™\]Y\İ‰‰™]™[›Y]ÙOOH˜ÛÛ™š\›HŠK›[™İK”™\İ[YH™\]Z\™\ÈÛ™H^XÚ]Y™š\›X]]™HHÛÛ™š\›X][ÛˆŠNÂˆÛÛœİš[˜[^ØØ[™Y]Nœ™]š\Ú[Û‹›İšY\ˆ™Ü›ÜH‹[Ù[ˆ›Ü[˜ZKÙÜ[ÜÜËLLŒˆ‹U™\œÚ[ÛœTXÚØYÙK™\œÚ[Û‹Ù\ÜÚ[Û’Y›Ú™XİYœ™\ÜÚ]ÜK\ÚÒYœ™XÛİ™\™Y\ÚÒY]™[Îœ™XÛİ™\™Y™]™[Ë›X\
+
+Ü™]š\Ú[Û‹İ]K]™X\ÛÛŸJOOŠÜ™]š\Ú[Û‹İ]K]™X\ÛÛŸJJK\œÚ\İY[ÜÙ\ÜÚ[Û‘š[Nœ]œ™[]]™JÙ\ÜÚ[Û‘\‹\œÚ\İY[‘š[JKÜ™\™Yİ\Î–Èš[œÜXİXÛÜİ\™KX]Y]‹š[œÜXİ]\ÚË\™YXÙ\ˆ—_K™XYÎœ™XYË›X\
+
+Üİ\š[K]JOOŠÜİ\š[K]JJKİ\Îœ›İÜË›X\
+
+Üİ\İ[[X\K]JOOŠÜİ\İ[[X\K]JJK[š]X[›ØÙ\ÜÔY™š\œİ˜Ú[œY™\İ\Y›ØÙ\ÜÔYœÙXÛÛ™˜Ú[œY[\œ\[Û”ÚYÛ˜[ˆ”ÒQÒÒS‹Ü›Û™ÔÙ\ÜÚ[Ûİš\ÚX›NŒ]]][Û”™Z™XİYY_KÜ›Û™Ô›Ú™Xİİš\ÚX›NŒ]]][Û”™Z™XİYY_K^XÚ]™\İ[YPÛÛœÙ[YK\›İ˜[]]Üš]QÜ˜[Y™˜[ÙKX›\Ú]]Üš]QÜ˜[Y™˜[ÙKY\™ÙP]]Üš]QÜ˜[Y™˜[ÙK™\İ[ˆ”TÔÈŸNÂˆ]ØZ]Üš]Qš[J]šY[˜ÙT]	Ò”ÓÓ‹œİš[™ÚYJš[˜[[Š_W˜Û[ÙNŒÍŒJNÂˆÛÛœÛÛK›ÙÊ”ÓÓ‹œİš[™ÚYJš[˜[
+JNÂŸXØ]Ú
+\œ›ÜŠ^ÂˆÛÛœİ\ÚÏX]ØZ]İ\œ™[][J
+K˜Ø]Ú
+
+
+OO[™Yš[™Y
+NÂˆÛÛœİ™XY›İÜÏJ]ØZ]™XYš[J™XYÑš[K]ŠK˜Ø]Ú
+
+
+OOˆˆŠJKœÜ]
+—ˆŠK™š[\Š›ÛÛX[ŠK›X\
+[™OOİ^Ü™]\›ˆ”ÓÓ‹œ\œÙJ[™JNßXØ]ÚÜ™]\›ˆÛX[›Ü›YYY_Nß_JNÂˆÛÛœİİ\ÏJ]ØZ]™XYš[Jİ\Ñš[K]ŠK˜Ø]Ú
+
+
+OOˆˆŠJKœÜ]
+—ˆŠK™š[\Š›ÛÛX[ŠK›X\
+[™OOİ^ØÛÛœİÜİ\İ[[X\KÙ\ÜÚ[Û’Y›İÛ™\‹›Ú™XİY]OR”ÓÓ‹œ\œÙJ[™JNÜ™]\›ˆÜİ\İ[[X\KÙ\ÜÚ[Û’Y›İÛ™\‹›Ú™XİY]NßXØ]ÚÜ™]\›ˆÛX[›Ü›YYY_Nß_JNÂˆÛÛœİ›ØÙ\ÜÕ˜XÙOVÙš\œİ	‰ÛX™[ˆš[š]X[‹]™[Î™š\œİ™]™[Ë›X\
+]™[OŠİ\N™]™[\KÛÛ˜[YN™]™[ÛÛ˜[YKY]Ù™]™[›Y]ÙİÜ™X\ÛÛ™]™[›Y\ÜØYÙOËœİÜ™X\ÛÛ‹‹‹Š\[Ùˆ]™[›Y\ÜØYÙOË™\œ›Ü“Y\ÜØYÙOOOHœİš[™ÈŞÜ›İšY\‘\œ›Üœ™YXİY
+]™[›Y\ÜØYÙK™\œ›Ü“Y\ÜØYÙJ_NßJKX›ÜY™]™[˜X›ÜYJJKİ\œ™š\œİœİ\œŸKÙXÛÛ™	‰ÛX™[ˆœ™\İ\Y‹]™[ÎœÙXÛÛ™™]™[Ë›X\
+]™[OŠİ\N™]™[\KÛÛ˜[YN™]™[ÛÛ˜[YKY]Ù™]™[›Y]ÙİÜ™X\ÛÛ™]™[›Y\ÜØYÙOËœİÜ™X\ÛÛ‹‹‹Š\[Ùˆ]™[›Y\ÜØYÙOË™\œ›Ü“Y\ÜØYÙOOOHœİš[™ÈŞÜ›İšY\‘\œ›Üœ™YXİY
+]™[›Y\ÜØYÙK™\œ›Ü“Y\ÜØYÙJ_NßJKX›ÜY™]™[˜X›ÜYJJKİ\œœÙXÛÛ™œİ\œŸWK™š[\Š›ÛÛX[ŠNÂˆÛÛœİ™\Ü^ØØ[™Y]Nœ™]š\Ú[Û‹›İšY\ˆ™Ü›ÜH‹\ÙK™\İ[ˆ‘RS‹\ÚÎ\ÚÉ‰İ\ÚÒY\ÚË\ÚÒY]N\ÚË]K]™[Î\ÚË™]™[Ë›X\
+
+Ü™]š\Ú[Û‹İ]K]™X\ÛÛŸJOOŠÜ™]š\Ú[Û‹İ]K]™X\ÛÛŸJJ_K™XYÎœ™XY›İÜËİ\Ë›ØÙ\ÜÕ˜XÙK\œ›Üœ™YXİY
+\œ›ÜËœİXÚÏÏÙ\œ›ÜŠ_NÂˆ]ØZ]Üš]Qš[J]šY[˜ÙT]	Ò”ÓÓ‹œİš[™ÚYJ™\Ü[Š_W˜Û[ÙNŒÍŒJNÂˆÛÛœÛÛK™\œ›ÜŠ”ÓÓ‹œİš[™ÚYJ™\Ü
+JNÂˆ›İÈ\œ›ÜÂŸYš[˜[^ÂˆYŠš\œİ
+X]ØZ]š\œİœİÜ
+”ÒQÒÒSŠNÂˆYŠÙXÛÛ™
+X]ØZ]ÙXÛÛ™œİÜ
+”ÒQÒÒSŠNÂˆ]ØZ]›JØÜ˜]ÚÜ™Xİ\œÚ]™NYK›Ü˜ÙNY_JNÂŸB

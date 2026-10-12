@@ -99,7 +99,7 @@ export async function main({tarball=process.argv[2],output=process.argv[3],candi
   assert.equal(artifactSha256,expected,"Tarball must match the clean exact candidate checkout");
   for(const version of ["0.85.1","1.1.0"]){
    const host=join(root,version);mkdirSync(host);writeFileSync(join(host,"package.json"),'{"private":true}');
-   execFileSync(process.execPath,[npmCli,"install","--no-audit","--no-fund","--package-lock=false",artifact,`@earendil-works/pi-coding-agent@${version}`],{cwd:host,stdio:"inherit",timeout:180_000});
+   execFileSync(process.execPath,[npmCli,"install","--no-audit","--no-fund","--package-lock=false",artifact,`@earendil-works/pi-coding-agent@${version}`],{cwd:host,stdio:"inherit",timeout:300_000});
    const peer=join(host,"node_modules","@earendil-works","pi-coding-agent");
    const metadata=JSON.parse(readFileSync(join(peer,"package.json"),"utf8"));assert.equal(metadata.version,version);
    const cli=join(peer,typeof metadata.bin==="string"?metadata.bin:metadata.bin.pi);
