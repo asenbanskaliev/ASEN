@@ -7,7 +7,7 @@ export default function(pi){
   pi.registerTool({
     name:"asen_eco07_record_step",
     label:"Record ECO-07 test step",
-    description:"Record one reviewed ECO-07 recovery artifact in the isolated test. Each step may be recorded only once.",
+    description:"Record each recovered ECO-07 step exactly once and in order. For inspect-closure-audit, the summary must mention PARTIAL, real Pi, and interruption. For inspect-task-reducer, the summary must mention planned, running, blocked, session, and project.",
     executionMode:"sequential",
     parameters:{type:"object",additionalProperties:false,required:["step","summary"],properties:{step:{type:"string",enum:steps},summary:{type:"string",minLength:20,maxLength:1000}}},
     execute:async(_id,params,_signal,_update,host)=>{
