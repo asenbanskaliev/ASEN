@@ -31,6 +31,26 @@ jobs:
         run: npm run typecheck
       - name: Full test suite
         run: npm test
+      - name: macOS retained-source witness
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          node .github/scripts/run-retained-ecosystem-source-witness.mjs 2>&1 | tee retained-source-witness.log
+          witness_status=${PIPESTATUS[0]}
+          printf '%s\n' "$witness_status" > retained-source-witness.exit
+          exit "$witness_status"
+      - name: Upload macOS retained-source witness
+        if: always() && runner.os == 'macOS'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: retained-source-macos-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            retained-source-witness.log
+            retained-source-witness.exit
+          if-no-files-found: error
+          retention-days: 14
       - name: Phase parity audit
         run: npm run audit:parity
       - name: Skills audit
