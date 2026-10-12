@@ -1,9 +1,6 @@
 name: ECO-07 Groq task recovery
 on:
-  # One controlled PR run when this workflow itself changes; later code pushes do not spend quota.
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths: [".github/workflows/eco07-groq-recovery.yml"]
+  # Explicit execution only: PR path filters match cumulative diffs and can re-spend quota.
   workflow_dispatch:
 permissions:
   contents: read
