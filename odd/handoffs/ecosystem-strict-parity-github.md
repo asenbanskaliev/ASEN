@@ -76,3 +76,11 @@ The human requested one publication/hosted verification after a larger phase. Lo
 - Keep all 16 ecosystem rows `PARTIAL` until every gate passes. `LOCAL-4` (ECO-03–14), `LOCAL-5` (ECO-15), and `LOCAL-6` (ECO-16) remain pending.
 
 Commit this passive documentation as a separate unit after the source commit, then non-force push and add a concise Spanish WIP checkpoint comment to PR #32. The parent records the actual published head there after the remote update; do not claim functional PASS, review approval, feature completion, merge, or release.
+
+## Local work while the batched CI is running
+
+The pending local reconciliation unit `7d9e6fe` validates exactly 24 cells, per-OS packed-byte identity, exact candidate/frozen-source bindings, eight receipt kinds and every log/reference digest. Synthetic adversarial tests validate consistency only; real execution authenticity remains a hosted-provenance/review gate. The source-pinned drift report was re-derived against `08de420ca29be16b6f6bee725a30b599b061df16` itself: zero changes/invalidations; this does not inspect a newer upstream snapshot.
+
+Hosted candidate `b4e3489` now passed macOS retained-source witness and all eight Linux matrix cells. macOS matrix passed RPC/JSON/print for both versions; both TUI cells failed immediately with `posix_spawnp failed`, as confirmed in artifact `11737190704` (archive SHA-256 `77b5e0d1a19436c548d121ace9d7ddb2ed5b159ea8c92d33e50109c6a34856c5`). The pinned dependency locally includes macOS prebuilt `spawn-helper` files with mode 0644; a bounded dev-only correction adds owner execution to the actual native helper, preserves bytes and leaves other operating systems untouched. This is a supported diagnosis and pending macOS verification, not hosted PASS.
+
+Local combined admission/preparation/claim checks: 24/24 PASS, zero skips; typecheck, diff hygiene and 522-path boundary PASS. Both new units remain local, with no second publication/CI. All FULL gates and native-review requirements remain unchanged.
