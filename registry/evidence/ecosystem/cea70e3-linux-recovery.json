@@ -1,0 +1,12 @@
+{
+  "id": "ECO-02A-linux-recovery",
+  "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+  "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "kind": "recovery",
+  "class": "DETERMINISTIC_EXECUTION",
+  "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+  "observation": "12 selected preflight contract test(s) completed; pattern: preflight rejection retries on a later session",
+  "result": "PASS",
+  "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+  "logSha256": "d0570f18fa851d85f635f1ecd2a521ccfab5286c7392437372a65fdcae2ff7bf"
+}
