@@ -57,6 +57,7 @@ test("native recursive watcher invalidates real temporary registry and shutdown 
  await writeFile(file,document("First"));const notices:string[]=[];
  const lifecycle=new RegistryLifecycle({debounceMs:10,refresh:refreshSkillRegistry,prepare:async cwd=>({projectRoot:cwd,projectId:cwd,sources:[{id:"one",scope:"project",root:skills}]})});t.after(()=>lifecycle.shutdown());
  await lifecycle.start({cwd:root,hasUI:true,ui:{notify:message=>notices.push(message)}});assert.equal(notices.some(value=>value.includes("watcher unavailable")),false);
+ await new Promise(resolve=>setTimeout(resolve,100));
  await writeFile(file,document("Second"));const output=join(root,".asen/skill-registry.md");let current="",until=Date.now()+8000;
  do{current=await readFile(output,"utf8");if(current.includes("Second"))break;await new Promise(resolve=>setTimeout(resolve,20));}while(Date.now()<until);
  assert.match(current,/Second/);await lifecycle.shutdown();await writeFile(file,document("Third"));await delay();assert.equal(await readFile(output,"utf8"),current);
