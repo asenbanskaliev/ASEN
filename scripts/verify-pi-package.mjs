@@ -77,13 +77,14 @@ try {
   const hostObservations=[];let startupRecoveryNotice="";
   try{
     await new Promise((resolve,reject)=>{
-      const names=["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles","asen-route"];
+      const names=["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles","asen-route","asen-plan"];
       let buffer="",stdout="",stderr="",index=0,notifications=0,lastNotification="";
       const timer=setTimeout(()=>fail(Error(`Installed RPC commands timed out: ${stderr.slice(-1000)}`)),20000);
       const fail=error=>{clearTimeout(timer);reject(error);};
       const send=value=>child.stdin.write(JSON.stringify(value)+"\n");
       const routeFacts={taskIdentity:"package-route",intent:"analysis",scope:{kind:"known",expectedPaths:[]},writes:[],riskOperations:[],session:{estimatedMinutes:1,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]};
-      const prompt=()=>send({id:names[index],type:"prompt",message:names[index]==="asen-route"?`/asen-route ${JSON.stringify(routeFacts)}`:`/${names[index]}`});
+      const planFacts={...routeFacts,taskIdentity:"package-plan",instruction:"Inspect this bounded request"};
+      const prompt=()=>send({id:names[index],type:"prompt",message:names[index]==="asen-route"?`/asen-route ${JSON.stringify(routeFacts)}`:names[index]==="asen-plan"?`/asen-plan ${JSON.stringify(planFacts)}`:`/${names[index]}`});
       child.once("error",fail);
       child.once("close",(code,signal)=>{if(index!==names.length)fail(Error(`Installed RPC closed before completion (code=${code}, signal=${signal}): stdout=${stdout.slice(-2000)} stderr=${stderr.slice(-1000)}`));});
       child.stderr.on("data",chunk=>{stderr=(stderr+chunk.toString()).slice(-2000);});
@@ -111,6 +112,7 @@ try {
               if(names[index]==="asen-agents")assertInterruptedAgentVisible(lastNotification);
               if(names[index]==="asen-changes")assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);
               if(names[index]==="asen-changes")assert.ok(!lastNotification.includes("foreign"),"workspace projection must exclude foreign sessions");
+              if(names[index]==="asen-plan"){const plan=JSON.parse(lastNotification);assert.equal(plan.route,"direct");assert.equal(plan.execution.started,false);assert.equal(plan.execution.authorized,false);assert.equal(plan.actions.reviewRequested,false);}
               visible++;index++;notifications=0;
               if(index===names.length){clearTimeout(timer);resolve();}else prompt();
             }
@@ -120,13 +122,13 @@ try {
     });
     firstVerified=true;
   }finally{await settleVerifierChild(child,closed,{successful:firstVerified});}
-  assert.equal(models,0);assert.equal(visible,9);
+  assert.equal(models,0);assert.equal(visible,10);
   assert.match(startupRecoveryNotice,/1 queued or interrupted task\(s\).*asen-agents/u);
   assert.equal(hostObservations.length,1,"public host inventories must be observed once after initialization");
   const host=hostObservations[0];
   assert.equal(host.mode,"rpc");assert.equal(typeof host.hasUI,"boolean");
   const fromPrimary=row=>realpathSync(row.path)===realpathSync(primary);
-  for(const name of ["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles","asen-route"]){
+  for(const name of ["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles","asen-route","asen-plan"]){
     const matches=host.commands.filter(row=>row.name===name&&row.source==="extension"&&fromPrimary(row));
     assert.equal(matches.length,1,`${name} must have one canonical installed-source registration`);
   }

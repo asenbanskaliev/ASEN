@@ -23,6 +23,20 @@ test("resuming a restart-blocked Todo requires explicit active Pi UI approval",a
  assert.equal((await store.list(session))[0]?.current.state,"running");assert.equal((await store.history(todo.taskId,session)).at(-1)?.reason,"User confirmed blocked-task resume in Pi UI");assert.equal(questions.length,2);assert.match(questions[1]!,/Continue implementation[\s\S]*ASEN restarted.*explicit review/);assert.ok(result);
 });
 
+test("ECO-07 restart recovery preserves one ordered task transition chain through completion",async t=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-todo-full-recovery-")));t.after(()=>rm(root,{recursive:true,force:true}));
+ const file=path.join(root,"todos.json"),session={sessionId:"recovery-session",projectId:root},initial=await SessionTodoStore.open(file),todo=await initial.add("Finish the approved remaining step",session,undefined,undefined,"recovery-request");
+ await initial.update(todo.taskId,session,1,"running");await initial.recover(session,"shutdown");
+ const reopened=await SessionTodoStore.open(file),tools=new Map<string,any>();registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>reopened);
+ const confirmCalls:string[]=[];const host={cwd:root,sessionManager:{getSessionId:()=>session.sessionId},hasUI:true,ui:{confirm:async(title:string)=>{confirmCalls.push(title);return true;}}};
+ await tools.get("asen_todo_update").execute("resume-call",{id:todo.taskId,revision:3,state:"running"},undefined,undefined,host);
+ await tools.get("asen_todo_update").execute("done-call",{id:todo.taskId,revision:4,state:"done"},undefined,undefined,host);
+ await assert.rejects(tools.get("asen_todo_update").execute("duplicate-done",{id:todo.taskId,revision:4,state:"done"},undefined,undefined,host),/revision conflict/);
+ assert.deepEqual(confirmCalls,["Resume blocked ASEN task?"]);
+ assert.deepEqual((await reopened.history(todo.taskId,session)).map(event=>[event.revision,event.state]),[[1,"planned"],[2,"running"],[3,"blocked"],[4,"running"],[5,"done"]]);
+ assert.equal((await reopened.list(session))[0]?.current.state,"done");
+});
+
 test("cancelling a pending blocked-task confirmation prevents a late approval from changing Todo state",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-todo-abort-"));t.after(()=>rm(root,{recursive:true,force:true}));
  const project=await realpath(root),session={sessionId:"session-abort",projectId:project},store=await SessionTodoStore.open(path.join(root,"todos.json")),todo=await store.add("Continue safely",session);

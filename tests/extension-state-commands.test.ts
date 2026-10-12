@@ -31,9 +31,27 @@ test("asen-route previews exact ODD facts from the active session without dispat
  await assert.rejects(async()=>await command.handler(JSON.stringify({...facts,scope:{kind:"known",expectedPaths:["../secret"]}}),context),/canonical relative/);
  await assert.rejects(async()=>await command.handler(JSON.stringify(facts),{cwd:process.cwd()}),/active Pi session/);
 });
+test("asen-plan composes the existing ODD and orchestrator without retrieving, reviewing, authorizing or executing",async()=>{
+ const h=host();createAsenExtension()(h.pi);const command=h.commands.get("asen-plan")!;
+ const facts={taskIdentity:"sensitive-plan",instruction:"Rotate credentials and publish the change",intent:"implementation",scope:{kind:"known",expectedPaths:["src/auth.ts"]},writes:[{path:"src/auth.ts",changeKind:"security"}],riskOperations:["credential_or_auth"],session:{estimatedMinutes:30,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:20},unresolvedDecisions:[]};
+ const result=JSON.parse(await command.handler(JSON.stringify(facts),{cwd:process.cwd(),sessionManager:{getSessionId:()=>"plan-session"}}) as string);
+ assert.equal(result.route,"plan");assert.equal(result.risk,"high");assert.equal(result.sensitiveOperationsPresent,true);
+ assert.deepEqual(result.requiredAgentRoles,[]);assert.deepEqual(result.execution,{started:false,authorized:false});
+ assert.deepEqual(result.actions,{informationRetrieved:false,reviewRequested:false});assert.match(result.notice,/does not retrieve information, request review, grant execution authorization, or dispatch agents/);
+ await assert.rejects(async()=>await command.handler(JSON.stringify(facts),{cwd:process.cwd()}),/active Pi session/);
+ await assert.rejects(async()=>await command.handler(JSON.stringify({...facts,extra:true}),{cwd:process.cwd(),sessionManager:{getSessionId:()=>"plan-session"}}),/exactly/);
+ await assert.rejects(async()=>await command.handler(JSON.stringify({...facts,instruction:" padded "}),{cwd:process.cwd(),sessionManager:{getSessionId:()=>"plan-session"}}),/instruction is invalid/);
+});
+test("asen-plan previews bounded orchestration roles without dispatching or granting execution",async()=>{
+ const h=host();createAsenExtension()(h.pi);const command=h.commands.get("asen-plan")!,paths=["src/a.ts","src/b.ts","src/c.ts","src/d.ts"];
+ const result=JSON.parse(await command.handler(JSON.stringify({taskIdentity:"orchestrated-plan",instruction:"Implement the bounded change",intent:"implementation",scope:{kind:"known",expectedPaths:paths},writes:[{path:"src/a.ts",changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:20,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]}),{cwd:process.cwd(),sessionManager:{getSessionId:()=>"orchestrator-session"}}) as string);
+ assert.equal(result.route,"orchestrate");assert.deepEqual(result.requiredAgentRoles,["explorer","worker","reviewer","verifier"]);
+ assert.equal(result.requiresSingleWriter,true);assert.equal(result.requiresIsolatedChild,true);assert.deepEqual(result.execution,{started:false,authorized:false});
+ assert.deepEqual(result.actions,{informationRetrieved:false,reviewRequested:false});
+});
 test("public data commands publish their result through the Pi UI",async()=>{
  const h=host();createAsenExtension()(h.pi);
- for(const [name,args,context] of [["asen","",{}],["asen-commands","",{}],["asen-status","",{}],["asen-doctor","",{}],["asen-agents","",{}],["asen-changes","",{}],["asen-todos","",{}],["asen-profiles","",{}],["asen-route",JSON.stringify({taskIdentity:"task-2",intent:"analysis",scope:{kind:"known",expectedPaths:[]},writes:[],riskOperations:[],session:{estimatedMinutes:1,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]}),{cwd:process.cwd(),sessionManager:{getSessionId:()=>"route-session"}}]] as const){
+ for(const [name,args,context] of [["asen","",{}],["asen-commands","",{}],["asen-status","",{}],["asen-doctor","",{}],["asen-agents","",{}],["asen-changes","",{}],["asen-todos","",{}],["asen-profiles","",{}],["asen-route",JSON.stringify({taskIdentity:"task-2",intent:"analysis",scope:{kind:"known",expectedPaths:[]},writes:[],riskOperations:[],session:{estimatedMinutes:1,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]}),{cwd:process.cwd(),sessionManager:{getSessionId:()=>"route-session"}}],["asen-plan",JSON.stringify({taskIdentity:"task-plan",instruction:"Inspect this bounded request",intent:"analysis",scope:{kind:"known",expectedPaths:[]},writes:[],riskOperations:[],session:{estimatedMinutes:1,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]}),{cwd:process.cwd(),sessionManager:{getSessionId:()=>"plan-session"}}]] as const){
   const messages:string[]=[];
   const result=await h.commands.get(name)!.handler(args,{...context,ui:{notify:(message:string)=>messages.push(message)}});
   assert.equal(messages.length,1,`${name} must publish exactly one result`);
