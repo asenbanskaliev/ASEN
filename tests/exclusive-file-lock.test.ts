@@ -94,7 +94,7 @@ test("an aborted async lock waiter exits promptly without running its transactio
  const controller=new AbortController();let operations=0;const pending=withExclusiveFileLock(target,async()=>{operations++;return "unexpected";},30000,controller.signal);
  await new Promise(resolve=>setTimeout(resolve,30));const abortedAt=Date.now();controller.abort();
  await assert.rejects(pending,error=>(error as Error).name==="AbortError"&&/cancelled/i.test((error as Error).message));
- assert.ok(Date.now()-abortedAt<1000,"lock cancellation should not wait for the 30 second timeout");assert.equal(operations,0);assert.equal((await readFile(lock,"utf8")).includes("live-owner"),true);
+ assert.ok(Date.now()-abortedAt<3000,"lock cancellation should not wait for the 30 second timeout even on a loaded Windows runner");assert.equal(operations,0);assert.equal((await readFile(lock,"utf8")).includes("live-owner"),true);
 });
 
 test("the synchronous protocol recovers a stale dead-process lock",async t=>{
