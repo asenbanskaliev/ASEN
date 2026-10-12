@@ -265,3 +265,72 @@ test("ECO-07 rejects backwards timestamps without losing committed revisions",as
  await appendOddTaskEvent(c,context,store,{...base,revision:2,state:"running",at:"2026-10-12T00:00:03Z"});
  assert.deepEqual((await resumeOddTask(c,store,context))?.taskEvents.map(event=>event.revision),[1,2]);
 });
+
+
+const eco07Base=(root:string,session="session")=>({taskId:"task",sessionId:session,projectId:root,at:"2026-10-12T00:00:00Z"});
+async function eco07Setup(t:Parameters<typeof fixture>[0]){
+ let store:SqliteMemoryStore|undefined;
+ const root=await fixture(t,()=>store?.close());
+ store=new SqliteMemoryStore(join(root,"memory.db"));
+ const c=contract(root),context=createMemoryContext(store,{repository:root},"session");
+ await trackOddTask(c,context,"odd/tasks/task.md",progress);
+ return {root,store,c,context,base:eco07Base(root)};
+}
+test("ECO-07 rejects replay of revision one after revision one committed",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ await appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned"});
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned"}));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects skipped revision and accepts next contiguous revision",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:2,state:"planned"}));
+ assert.deepEqual((await resumeOddTask(c,store,context))?.taskEvents,[]);
+ await appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned"});
+ assert.equal((await resumeOddTask(c,store,context))?.taskEvents.length,1);
+});
+test("ECO-07 rejects wrong task identity without modifying history",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t),before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,taskId:"foreign",revision:1,state:"planned"}));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects wrong event session without modifying history",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t),before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,sessionId:"foreign",revision:1,state:"planned"}));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 rejects changed candidate revision when resuming",async t=>{
+ const {root,store,context}=await eco07Setup(t);
+ await assert.rejects(()=>resumeOddTask(contract(root,false,"different-revision"),store,context));
+});
+test("ECO-07 rejects changed candidate revision when appending",async t=>{
+ const {root,store,context,base}=await eco07Setup(t),before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(contract(root,false,"different-revision"),context,store,{...base,revision:1,state:"planned"}));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 prevents event append after task document removal",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t),before=store.exportProject(root).observations;
+ await rm(join(root,"odd/tasks/task.md"));
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned"}));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 prevents resume after task document removal",async t=>{
+ const {root,store,c,context}=await eco07Setup(t);
+ await rm(join(root,"odd/tasks/task.md"));
+ await assert.rejects(()=>resumeOddTask(c,store,context));
+});
+test("ECO-07 rejects invalid transition from planned to done without mutation",async t=>{
+ const {root,store,c,context,base}=await eco07Setup(t);
+ await appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned"});
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:2,state:"done"}));
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+test("ECO-07 accepts valid planned-running-done sequence and preserves ordering",async t=>{
+ const {store,c,context,base}=await eco07Setup(t);
+ await appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned"});
+ await appendOddTaskEvent(c,context,store,{...base,revision:2,state:"running"});
+ await appendOddTaskEvent(c,context,store,{...base,revision:3,state:"done"});
+ assert.deepEqual((await resumeOddTask(c,store,context))?.taskEvents.map(e=>e.revision),[1,2,3]);
+});
