@@ -49,6 +49,14 @@ test("repeated activation on the same Pi host registers only one startup hook",(
  assert.equal(state.events.get("session_start")?.length,1);
 });
 
+test("separately loaded copies share the Pi-host activation guard",async()=>{
+ const state=productionHost(),dependencies={enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false};
+ const copyUrl=new URL("../extensions/asen.ts",import.meta.url);copyUrl.searchParams.set("copy","independent-module");
+ const copy=await import(copyUrl.href);
+ createPiExtension(dependencies)(state.host as any);copy.createPiExtension(dependencies)(state.host as any);
+ assert.equal(state.events.get("session_start")?.length,1,"a second package copy must not add a competing startup hook");
+});
+
 test("factory waits for initialized public inventories then registers one collision-free extension",async()=>{
  const home=mkdtempSync(path.join(tmpdir(),"asen-pi-host-preflight-")),prior=process.env.ASEN_NO_SKILL_REGISTRY;
  process.env.ASEN_NO_SKILL_REGISTRY="1";
