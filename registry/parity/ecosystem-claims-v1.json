@@ -477,7 +477,8 @@
         "scripts/verify-pi-package.mjs"
       ],
       "remaining": [
-        "Durable session/project-isolated Todo state, validated replay, Pi tools, the read-only /asen-todos view, abrupt process-exit recovery and preservation of completed work are implemented and tested. Installed-package Pi recovery after reopening the same named session in a second process without a model passes on Linux, macOS and Windows. New project-substitution, skipped-revision, backward-time and stale-plan-after-recovery cases pass locally; grouped CI and strict evidence receipts remain outstanding."
+        "Durable session/project-isolated Todo state, validated replay, Pi tools, the read-only /asen-todos view, abrupt process-exit recovery and preservation of completed work are implemented and tested. Installed-package Pi recovery after reopening the same named session in a second process without a model passes on Linux, macOS and Windows. New project-substitution, skipped-revision, backward-time and stale-plan-after-recovery cases pass locally; grouped CI and strict evidence receipts remain outstanding.",
+        "Local source 1db6cf81b502b3b753a26be85b4abd9bb95a4dd4 rejects cancelled Todo creation before persistence or while waiting for its lock, changed-session recovery consent, and stale approval racing with newer cancellation. Focused Todo/replay/production-adapter verification passed 27/27 and typecheck passed. Exact hosted validation and independent review of this source remain pending; existing hosted receipts do not transfer."
       ],
       "stateful": true,
       "platformSensitive": true,
