@@ -85,3 +85,35 @@ test("bundle accepts actual byte buffers while retaining exact receipt digests",
   receipts:group.receipts.map(entry=>({bytes:Buffer.from(entry.bytes),log:Buffer.from(entry.log)}))}))};
  assert.equal(validateEvidenceBundle(buffers).receipts[0].sha256,expected);
 });
+
+test("stateful closure explicitly requires restart and cross-session evidence on every OS",()=>{
+ assert.throws(()=>validateEvidenceBundle({...fixture(),requireStatefulEvidence:true}),/stateful/);
+});
+
+function withStatefulEvidence(){
+ const input={...fixture(),requireStatefulEvidence:true};
+ const journey={installedPiPackageVerified:true,childAuthorityAutoLoaded:false,visibleRpcCommands:9,modelInvocations:0,
+  sessionRestartVerified:true,crossSessionProjectionVerified:true,naturalProcessExits:3,
+  publicHost:{mode:"rpc",canonicalCommands:9,canonicalTools:11,hasUI:true,toolsEnabled:true}};
+ const integrity="sha512-"+"A".repeat(86)+"==";
+ const log=JSON.stringify(journey)+"\n"+JSON.stringify({packedInstallVerified:true,publicExports:28,files:243,integrity})+"\nPACK_ENV_BOUNDARY_PASS\n";
+ for(const group of input.groups)(group as any).statefulReceipts=["restart","cross-session"].map(kind=>({log,
+  bytes:JSON.stringify({id:`ECO-02A-${group.platform}-${kind}`,candidate,sourceCommit,sourceManifestSha256,
+   kind,class:"REAL_PI_HOST",result:"PASS",command:"npm run verify:pack",observation:"real packaged session projection",
+   packageIntegrity:integrity,logSha256:hash(log)})}));
+ return input;
+}
+
+test("stateful bundle binds package logs and receipts without claiming independent authenticity",()=>{
+ const result=validateEvidenceBundle(withStatefulEvidence());
+ assert.equal(result.statefulEvidence,"CONSISTENT");assert.equal(result.claimsPromotion,false);
+ assert.equal(result.receipts.filter((row:{kind:string})=>["restart","cross-session"].includes(row.kind)).length,6);
+});
+
+test("stateful bundle rejects missing OS proof, altered package integrity and forced exits",()=>{
+ for(const mutate of [
+  (input:any)=>{input.groups[2].statefulReceipts=[];},
+  (input:any)=>{const entry=input.groups[0].statefulReceipts[0],row=JSON.parse(entry.bytes);row.packageIntegrity="wrong";entry.bytes=JSON.stringify(row);},
+  (input:any)=>{const entry=input.groups[0].statefulReceipts[0];entry.log=entry.log.replace('"naturalProcessExits":3','"naturalProcessExits":2');const row=JSON.parse(entry.bytes);row.logSha256=hash(entry.log);entry.bytes=JSON.stringify(row);},
+ ]){const input=withStatefulEvidence();mutate(input);assert.throws(()=>validateEvidenceBundle(input));}
+});
