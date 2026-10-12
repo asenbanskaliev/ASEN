@@ -1,4 +1,10 @@
 # Ecosystem strict behavioral parity
+## ECO-07 repeated-plan history preservation — 2026-10-12
+
+Source `927e917` prevents another genuine ODD contract for the same task/candidate from replacing saved task history. Semantic RED demonstrated that re-registering without events erased a persisted replay. Initial tracking now uses atomic create-if-absent in the existing SQLite memory transaction, while later events use the existing conditional append. Duplicate/live records and hard-deletion markers reject replacement; a new task identity can still be created. Concurrent first mirrors admit exactly one durable record. Backends without atomic creation reject this tracking operation rather than falling back to unsafe overwrite. Existing ordinary memory save remains unchanged; no schema migration or second store is introduced. Consumers must resume the existing record or select a fresh task/candidate identity instead of resetting history.
+
+All memory/ODD tests pass 185/185 with no failures, skips or cancellations. Hosted CI/Release Gate still execute older `fe0344f` and do not admit this local delta. Earlier installed-package verification belongs only to `e6e7897`; it is not transferred to this later source. ECO-07 remains PARTIAL and these units await a grouped publication after current CI completes.
+
 ## ECO-07 atomic ODD event conflict correction — 2026-10-12
 
 Source `e6e7897` fixes reproduced lost updates when two independent SQLite clients append the same ODD task-event revision while task-document validation yields. Semantic RED admitted both competing updates (2 successes instead of 1). The memory core now offers conditional persistence within its existing immediate transaction; the owning MemoryContext requires exact record/session/project binding, and ODD append compares the observed full record before saving. A stale/deleted/changed record rejects rather than overwriting it; backends without atomic support fail closed. No second task or memory core, authority grant, schema migration or provider execution was introduced.
