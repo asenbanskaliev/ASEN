@@ -186,7 +186,7 @@ test("ECO-07 persists history after restart and stale replay rejection",async t=
  const base={taskId:"task",sessionId:"session",projectId:root,at:"2026-10-12T00:00:00Z"};
  await appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned"});
  await appendOddTaskEvent(c,context,store,{...base,revision:2,state:"running"});
- await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:2,state:"cancelled"}),/revision conflict/);
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store!,{...base,revision:2,state:"cancelled"}),/revision conflict/);
  store.close();store=undefined;
  const reopened=store=new SqliteMemoryStore(db);
  const resumed=await resumeOddTask(c,reopened,createMemoryContext(reopened,{repository:root},"session"));
