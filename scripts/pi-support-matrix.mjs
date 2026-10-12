@@ -18,6 +18,7 @@ export function validateCellObservation(cell,result){
  assert.ok(result.commands.includes("asen"),"primary command must be registered");
  assert.ok(result.tools.includes("asen_ask_choice"),"primary tool must be registered");
  assert.equal(result.modelCalls,0);
+ assert.equal(result.shutdownObserved,true,"host must deliver session shutdown");
  assert.equal(result.exitCode,0);
  assert.equal(result.signal,null);
  assert.equal(result.timedOut,false,"forced shutdown is not natural exit");
@@ -31,10 +32,14 @@ async function runCell(cell,cli,packageRoot,root){
  export default function(pi){
   let modelCalls=0;
   pi.on('before_agent_start',()=>{modelCalls++;throw Error('Matrix forbids model calls');});
-  pi.on('session_start',(_event,ctx)=>{
+  const observe=(ctx,shutdownObserved)=>{
    writeFileSync(${JSON.stringify(observation)},JSON.stringify({mode:ctx.mode,hasUI:ctx.hasUI,
     commands:pi.getCommands().filter(c=>c.source==='extension'&&c.sourceInfo.path===${JSON.stringify(primary)}).map(c=>c.name),
-    tools:pi.getAllTools().filter(c=>c.sourceInfo.path===${JSON.stringify(primary)}).map(c=>c.name),modelCalls}));
+    tools:pi.getAllTools().filter(c=>c.sourceInfo.path===${JSON.stringify(primary)}).map(c=>c.name),modelCalls,shutdownObserved}));
+  };
+  pi.on('session_shutdown',(_event,ctx)=>observe(ctx,true));
+  pi.on('session_start',(_event,ctx)=>{
+   observe(ctx,false);
    if(ctx.mode==='tui')setTimeout(()=>ctx.shutdown(),100);
   });
  }`);
@@ -76,6 +81,7 @@ async function runCell(cell,cli,packageRoot,root){
 export async function main({tarball=process.argv[2],output=process.argv[3],candidate=process.env.ASEN_EXPECTED_SHA}={}){
  assert.match(candidate??"",/^[a-f0-9]{40}$/);
  assert.equal(execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(),candidate);
+ execFileSync("git",["diff","--exit-code","HEAD"],{stdio:"pipe"});
  assert.ok(tarball&&output,"Usage: pi-support-matrix.mjs <tarball> <output-directory>");
  const artifact=resolve(tarball),out=resolve(output);mkdirSync(out,{recursive:true});
  const artifactSha256=createHash("sha256").update(readFileSync(artifact)).digest("hex");
@@ -85,6 +91,9 @@ export async function main({tarball=process.argv[2],output=process.argv[3],candi
  const npmCli=process.env.npm_execpath;
  assert.ok(npmCli,"Run through npm run verify:pi-matrix");
  try{
+  const packed=JSON.parse(execFileSync(process.execPath,[npmCli,"pack","--json","--pack-destination",root],{encoding:"utf8",timeout:90_000}));
+  const expected=createHash("sha256").update(readFileSync(join(root,packed[0].filename))).digest("hex");
+  assert.equal(artifactSha256,expected,"Tarball must match the clean exact candidate checkout");
   for(const version of ["0.85.1","1.1.0"]){
    const host=join(root,version);mkdirSync(host);writeFileSync(join(host,"package.json"),'{"private":true}');
    execFileSync(process.execPath,[npmCli,"install","--no-audit","--no-fund","--package-lock=false",artifact,`@earendil-works/pi-coding-agent@${version}`],{cwd:host,stdio:"inherit",timeout:180_000});
