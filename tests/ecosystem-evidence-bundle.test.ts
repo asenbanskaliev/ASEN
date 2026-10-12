@@ -15,7 +15,7 @@ function fixture(){
   const matrix=planPiSupportMatrix().filter((cell:{platform:string})=>cell.platform===platform).map((cell:object)=>{
    const log="real-host fixture log";
    const bytes=JSON.stringify({...cell,candidate,sourceCommit,artifactSha256:"d".repeat(64),result:"PASS",
-    observation:{mode:(cell as {mode:string}).mode,hasUI:true,commands:["asen"],tools:["asen_ask_choice"],modelCalls:0,shutdownObserved:true,exitCode:0,signal:null,timedOut:false,logSha256:hash(log)}});
+    observation:{mode:(cell as {mode:string}).mode,hasUI:true,commands:["asen"],tools:["asen_ask_choice","asen_ask_question","ask_user_choice","ask_user_question"],modelCalls:0,shutdownObserved:true,exitCode:0,signal:null,timedOut:false,logSha256:hash(log)}});
    return {bytes,log};
   });
   const hostLog=JSON.stringify(matrix.map((item:{bytes:string})=>({id:JSON.parse(item.bytes).id,sha256:hash(item.bytes)})),null,2)+"\n";
