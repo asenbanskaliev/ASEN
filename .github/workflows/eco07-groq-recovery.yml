@@ -1,4 +1,4 @@
-name: ECO-07 Groq task recovery
+name: ECO-07 provider task recovery
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -19,6 +19,7 @@ jobs:
       max-parallel: 1
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
+        provider: [openrouter]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -43,18 +44,19 @@ jobs:
         run: npm install -g @earendil-works/pi-coding-agent@1.1.0
       - name: Execute actual Pi interruption, restart, and resume through ASEN Todo
         env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ASEN_ECO07_PROVIDER: ${{ matrix.provider }}
           ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
-          test -n "$GROQ_API_KEY"
+          test -n "$OPENROUTER_API_KEY"
           node --import tsx scripts/eco07-pi-recovery-e2e.mjs
         shell: bash
       - name: Preserve ECO-07 process and event evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: eco07-groq-recovery-${{ github.event.pull_request.head.sha || github.sha }}-${{ matrix.os }}
+          name: eco07-${{ matrix.provider }}-recovery-${{ github.event.pull_request.head.sha || github.sha }}-${{ matrix.os }}
           path: eco07-pi-evidence/
           if-no-files-found: error
           retention-days: 30
