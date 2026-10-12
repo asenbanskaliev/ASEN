@@ -92,3 +92,11 @@ test("Todo recovery lookup accepts Windows case aliases for the same project roo
   assert.deepEqual((await store.history(todo.taskId,context)).map(event=>event.projectId),["C:\\Work\\ASEN","C:\\Work\\ASEN"]);
  }
 });
+
+test("cancelled creation waiting for the Todo lock cannot append a stale task",async t=>{
+ const file=await fixture(t),store=await SessionTodoStore.open(file);await store.add("Existing task",one);
+ await writeFile(`${file}.lock`,JSON.stringify({pid:process.pid,token:"live-create-owner",createdAt:Date.now()}));
+ const controller=new AbortController(),pending=store.add("Cancelled before persistence",one,controller.signal);
+ await new Promise(resolve=>setTimeout(resolve,30));controller.abort();await assert.rejects(pending,error=>(error as Error).name==="AbortError");
+ assert.deepEqual((await store.list(one)).map(item=>item.title),["Existing task"]);
+});

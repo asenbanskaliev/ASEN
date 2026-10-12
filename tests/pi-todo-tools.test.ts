@@ -37,3 +37,29 @@ test("cancelling a pending blocked-task confirmation prevents a late approval fr
  assert.equal((await store.list(session))[0]?.current.state,"blocked");
  assert.deepEqual((await store.history(todo.taskId,session)).map(event=>event.state),["planned","running","blocked"]);
 });
+
+test("cancelled Todo creation does not create a durable task",async t=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-todo-create-abort-")));t.after(()=>rm(root,{recursive:true,force:true}));
+ const store=await SessionTodoStore.open(path.join(root,"todos.json")),tools=new Map<string,any>();registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>store);
+ const controller=new AbortController();controller.abort();const session={sessionId:"create-session",projectId:root};
+ await assert.rejects(tools.get("asen_todo_add").execute("add",{title:"Must not exist"},controller.signal,undefined,{cwd:root,sessionManager:{getSessionId:()=>session.sessionId}}),/Todo update cancelled/);
+ assert.deepEqual(await store.list(session),[]);
+});
+
+test("blocked Todo approval cannot survive a session change during its dialog",async t=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-todo-session-change-")));t.after(()=>rm(root,{recursive:true,force:true}));
+ const session={sessionId:"original-session",projectId:root},store=await SessionTodoStore.open(path.join(root,"todos.json")),todo=await store.add("Review recovery",session);await store.update(todo.taskId,session,1,"running");await store.recover(session);
+ const tools=new Map<string,any>();registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>store);
+ let currentSession=session.sessionId;const host={cwd:root,sessionManager:{getSessionId:()=>currentSession},hasUI:true,ui:{confirm:async()=>{currentSession="replacement-session";return true;}}};
+ await assert.rejects(tools.get("asen_todo_update").execute("resume",{id:todo.taskId,revision:3,state:"running"},undefined,undefined,host),/session changed/);
+ assert.equal((await store.list(session))[0]?.current.state,"blocked");assert.equal((await store.history(todo.taskId,session)).length,3);
+});
+
+test("a concurrent task cancellation invalidates an earlier blocked-resume approval",async t=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-todo-stale-approval-")));t.after(()=>rm(root,{recursive:true,force:true}));
+ const session={sessionId:"race-session",projectId:root},store=await SessionTodoStore.open(path.join(root,"todos.json")),todo=await store.add("Keep latest decision",session);await store.update(todo.taskId,session,1,"running");await store.recover(session);
+ const tools=new Map<string,any>();registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>store);
+ const host={cwd:root,sessionManager:{getSessionId:()=>session.sessionId},hasUI:true,ui:{confirm:async()=>{await store.update(todo.taskId,session,3,"cancelled","Newer user decision");return true;}}};
+ await assert.rejects(tools.get("asen_todo_update").execute("stale-resume",{id:todo.taskId,revision:3,state:"running"},undefined,undefined,host),/revision conflict/);
+ assert.equal((await store.list(session))[0]?.current.state,"cancelled");assert.equal((await store.history(todo.taskId,session)).at(-1)?.reason,"Newer user decision");
+});

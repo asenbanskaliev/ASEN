@@ -35,10 +35,11 @@ export class SessionTodoStore{
   return new SessionTodoStore(path,now,quarantined);
  }
  diagnostics(){return this.quarantined?{quarantined:this.quarantined}:undefined;}
- async add(title:string,context:TodoContext):Promise<TodoItem>{
+ async add(title:string,context:TodoContext,signal?:AbortSignal):Promise<TodoItem>{
+  throwIfCancelled(signal);
   if(typeof title!=="string"||!title.trim()||title!==title.trim()||title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(title)||!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN Todo task");
   const taskId=`todo-${randomUUID()}`,event:TaskEvent={taskId,sessionId:context.sessionId,projectId:context.projectId,revision:1,state:"planned",at:this.now()},item={taskId,title,events:[event]};
-  await this.#mutate(data=>{data.items.push(item);});return structuredClone(item);
+  await this.#mutate(data=>{data.items.push(item);},signal);return structuredClone(item);
  }
  async update(taskId:string,context:TodoContext,expectedRevision:number,state:TaskState,reason?:string,signal?:AbortSignal):Promise<TodoItem>{
   if(!identity(taskId)||!identity(context.sessionId)||!identity(context.projectId)||!Number.isSafeInteger(expectedRevision)||expectedRevision<1)throw new Error("Invalid ASEN Todo update");let updated:TodoItem|undefined;
