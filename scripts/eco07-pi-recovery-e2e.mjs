@@ -184,6 +184,7 @@ try{
   assert.deepEqual(recovered.events.map(event=>event.state),["planned","running","blocked","running","done"],"Only the same recovered task may progress to completion");
   assert.deepEqual(recovered.events.map(event=>event.revision),[1,2,3,4,5],"Persisted task history must have one strictly ordered revision for each transition");
   const rows=(await readFile(stepsFile,"utf8").catch(error=>error?.code==="ENOENT"?"":Promise.reject(error))).trim().split("\n").filter(Boolean).map(line=>JSON.parse(line));
+  assert.equal(rows.length,2,"Pi must record both review steps before declaring the task complete");
   assert.deepEqual(rows.map(row=>row.step),["inspect-closure-audit","inspect-task-reducer"],"Both pending review steps must run exactly once and in order");
   assert.ok(rows.every(row=>row.sessionId===sessionId&&row.projectId===repository));
   const reads=(await readFile(readsFile,"utf8").catch(error=>error?.code==="ENOENT"?"":Promise.reject(error))).trim().split("\n").filter(Boolean).map(line=>JSON.parse(line));
