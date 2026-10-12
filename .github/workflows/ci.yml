@@ -94,7 +94,7 @@ jobs:
           node-version: 22
       - run: npm ci
       - name: Semantic evidence admission gate
-        run: node --import tsx --test tests/pi-support-matrix.test.ts tests/ecosystem-execution-receipts.test.ts tests/ecosystem-claims.test.ts tests/ecosystem-evidence-bundle.test.ts tests/pi-matrix-pty-helper.test.ts tests/pi-verifier-exit.test.ts tests/pi-matrix-cleanup.test.ts
+        run: node --import tsx --test tests/pi-support-matrix.test.ts tests/ecosystem-execution-receipts.test.ts tests/ecosystem-claims.test.ts tests/ecosystem-evidence-bundle.test.ts tests/pi-matrix-pty-helper.test.ts tests/pi-verifier-exit.test.ts tests/pi-matrix-cleanup.test.ts tests/ecosystem-package-receipts.test.ts
       - name: Pack exact candidate
         shell: bash
         run: npm pack --silent > matrix-package.txt
