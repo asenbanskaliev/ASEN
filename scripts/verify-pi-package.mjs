@@ -6,6 +6,7 @@ import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {DefaultResourceLoader,SettingsManager} from "@earendil-works/pi-coding-agent";
 import {createPiVerifierEnvironment} from "./gsp06-pi-free-environment.mjs";
+import {settleVerifierChild} from "./pi-verifier-exit.mjs";
 
 // Run in a separate process: no credentials, models, user homes or ambient indexes.
 if(!process.argv[2])throw new Error("Usage: node scripts/verify-pi-package.mjs <installed-package-root> [pi-cli-path]");
@@ -70,7 +71,8 @@ try {
     cwd:root,env:createPiVerifierEnvironment(process.env),stdio:["pipe","pipe","pipe"]});
   // Pi 0.85.1 decides whether to enter RPC from the first available stdin bytes.
   child.stdin.write(JSON.stringify({id:"commands",type:"get_commands"})+"\n");
-  const closed=new Promise(resolve=>child.once("close",resolve));
+  const closed=new Promise(resolve=>child.once("close",(code,signal)=>resolve({code,signal})));
+  let firstVerified=false;
   let models=0,visible=0;
   const hostObservations=[];let startupRecoveryNotice="";
   try{
@@ -116,7 +118,8 @@ try {
         }
       });
     });
-  }finally{child.kill();await closed;}
+    firstVerified=true;
+  }finally{await settleVerifierChild(child,closed,{successful:firstVerified});}
   assert.equal(models,0);assert.equal(visible,9);
   assert.match(startupRecoveryNotice,/1 queued or interrupted task\(s\).*asen-agents/u);
   assert.equal(hostObservations.length,1,"public host inventories must be observed once after initialization");
@@ -135,7 +138,8 @@ try {
   // Reopen the same durable Pi session in a fresh process and re-read both persisted projections.
   const reopened=spawn(process.execPath,[cli,"--mode","rpc","--session-id",sessionId,"--no-extensions","--extension",primary,"--no-skills"],{
     cwd:root,env:createPiVerifierEnvironment(process.env),stdio:["pipe","pipe","pipe"]});
-  const reopenedClosed=new Promise(resolve=>reopened.once("close",resolve));
+  const reopenedClosed=new Promise(resolve=>reopened.once("close",(code,signal)=>resolve({code,signal})));
+  let reopenedVerified=false;
   const seen=[];let reopenedRecoveryNotice="";
   await new Promise((resolve,reject)=>{
     const names=["asen-agents","asen-todos","asen-changes"];let buffer="",stderr="",index=-1,notifications=0,lastNotification="";
@@ -152,9 +156,49 @@ try {
       else if(row.type==="response"&&row.id===`reopen-${names[index]}`){assert.equal(row.success,true);assert.equal(notifications,1);if(names[index]==="asen-agents")assertInterruptedAgentVisible(lastNotification);else if(names[index]==="asen-todos"){assert.match(lastNotification,/blocked.*Pi restart recovery.*explicit review is required/i);assert.ok(!lastNotification.includes(foreignTodoId));}else{assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);assert.ok(!lastNotification.includes("foreign"));}seen.push(names[index]);notifications=0;requestNext();}
     }catch(error){fail(error);}}});
     send({id:"reopen-commands",type:"get_commands"});
-  }).finally(()=>{reopened.kill();});
-  await reopenedClosed;
+  }).then(()=>{reopenedVerified=true;}).finally(()=>settleVerifierChild(reopened,reopenedClosed,{successful:reopenedVerified}));
   assert.match(reopenedRecoveryNotice,/1 queued or interrupted task\(s\).*asen-agents/u);
   assert.deepEqual(seen,["asen-agents","asen-todos","asen-changes"]);
-  console.log(JSON.stringify({installedPiPackageVerified:true,primaryExtensions:["asen.ts"],childAuthorityAutoLoaded:false,visibleRpcCommands:visible,modelInvocations:models,publicHost:{mode:host.mode,hasUI:host.hasUI,canonicalCommands:9,canonicalTools:toolNames.length,toolsEnabled:true}}));
+  // Open a different real Pi session against the same project and durable stores.
+  const foreign=spawn(process.execPath,[cli,"--mode","rpc","--session-id","asen-package-foreign-session","--no-extensions","--extension",primary,"--no-skills"],{
+    cwd:root,env:createPiVerifierEnvironment(process.env),stdio:["pipe","pipe","pipe"]});
+  const foreignClosed=new Promise(resolve=>foreign.once("close",(code,signal)=>resolve({code,signal})));
+  let foreignVerified=false;
+  await new Promise((resolve,reject)=>{
+    const names=["asen-agents","asen-todos","asen-changes"];
+    let buffer="",stderr="",index=-1,notifications=0,lastNotification="";
+    const timer=setTimeout(()=>fail(Error(`Foreign Pi session timed out: ${stderr.slice(-1000)}`)),20000);
+    const fail=error=>{clearTimeout(timer);reject(error);};
+    const send=value=>foreign.stdin.write(JSON.stringify(value)+"\n");
+    const next=()=>{index++;if(index===names.length){clearTimeout(timer);resolve();return;}send({id:`foreign-${names[index]}`,type:"prompt",message:`/${names[index]}`});};
+    foreign.once("error",fail);
+    foreign.once("close",(code,signal)=>{if(index<names.length)fail(Error(`Foreign Pi closed early: ${code}/${signal}`));});
+    foreign.stderr.on("data",chunk=>{stderr=(stderr+chunk.toString()).slice(-2000);});
+    foreign.stdout.on("data",chunk=>{
+      buffer+=chunk.toString();if(buffer.length>100000){fail(Error("Oversized foreign RPC output"));return;}
+      let end;while((end=buffer.indexOf("\n"))>=0){
+        const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;
+        try{
+          const row=JSON.parse(line);if(row.type==="agent_start")throw Error("Cross-session projection invoked a model");
+          if(row.type==="response"&&row.id==="foreign-commands"){
+            assert.equal(row.success,true);for(const name of names)assert.ok(row.data.commands.some(command=>command.name===name));next();
+          }else if(row.type==="extension_ui_request"&&row.method==="notify"){
+            assert.equal(row.notifyType,"info");assert.ok(!row.message.includes(agentId));
+            lastNotification=row.message;notifications++;
+          }else if(row.type==="response"&&row.id===`foreign-${names[index]}`){
+            assert.equal(row.success,true);assert.equal(notifications,1);
+            if(names[index]==="asen-agents")assert.ok(!lastNotification.includes(agentId));
+            else if(names[index]==="asen-todos"){
+              assert.match(lastNotification,/Foreign session task/);assert.ok(!lastNotification.includes("Pi restart recovery"));
+            }else{
+              assert.match(lastNotification,/modify\s+user:user-foreign\s+src\/foreign\.ts/);assert.ok(!lastNotification.includes("src/owned.ts"));
+            }
+            notifications=0;next();
+          }
+        }catch(error){fail(error);}
+      }
+    });
+    send({id:"foreign-commands",type:"get_commands"});
+  }).then(()=>{foreignVerified=true;}).finally(()=>settleVerifierChild(foreign,foreignClosed,{successful:foreignVerified}));
+  console.log(JSON.stringify({installedPiPackageVerified:true,primaryExtensions:["asen.ts"],childAuthorityAutoLoaded:false,visibleRpcCommands:visible,modelInvocations:models,sessionRestartVerified:true,crossSessionProjectionVerified:true,naturalProcessExits:3,publicHost:{mode:host.mode,hasUI:host.hasUI,canonicalCommands:9,canonicalTools:toolNames.length,toolsEnabled:true}}));
 } finally {rmSync(root,{recursive:true,force:true});}
