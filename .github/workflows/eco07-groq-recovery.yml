@@ -1,7 +1,6 @@
 name: ECO-07 LLM7 task recovery
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  # Real provider calls are deliberate: PR updates must not consume shared quota.
   workflow_dispatch:
 permissions:
   contents: read
