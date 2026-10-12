@@ -1,4 +1,8 @@
 # Ecosystem strict behavioral parity
+## ECO-07 continued session and conflict batch — 2026-10-12
+
+Source `d4f026b` uses a common live-session binding for Todo create/update/list. Creation rechecks the binding inside the write lock; reads reject cancellation and changed-session delivery; relative host roots are rejected. Two new production-tool cases verify no task is created after a locked session switch and no old-session results are delivered after asynchronous store access. Additional independent-store conflict coverage demonstrates that exactly one competing saved revision commits and both clients observe the same durable replay. Final focused tests pass 31/31 and typecheck passes. Packed installation at exact `d4f026b` passes 245 files / 28 exports / 9 commands / 11 tools / zero models / three natural exits, restart and cross-session isolation. Later test-only metadata does not inherit an exact-SHA pack claim. No new CI or publication occurred while the existing Windows run remained active; hosted correction and native review are still pending.
+
 ## ECO-07 continued batch and hosted notification race — 2026-10-12
 
 Published source `f86ca7a` Release Gate `38239561565` failed Ubuntu job `114778522856`: 1,242 passed / one failed / 12 skipped. The failure was the new completion-notification assertion racing an already persisted result; sibling package jobs were cancelled by fail-fast. Local correction waits for the actual notification independently before querying saved status, retaining the existing 30-second bounded wait. No production deadline or assertion was removed. Current hosted CI remains a separate running gate, not a green Release Gate.
