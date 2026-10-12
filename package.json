@@ -16,6 +16,7 @@
     "test": "node scripts/run-tests.mjs",
     "check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills && npm run audit:skill-parity && npm run audit:memory-parity && npm run audit:ecosystem && npm run audit:upstream-boundary",
     "verify:pack": "node scripts/verify-pack-environment.mjs",
+    "verify:pi-matrix": "node scripts/pi-support-matrix.mjs",
     "audit:parity": "node scripts/validate-phase10-parity.mjs",
     "audit:skills": "node scripts/audit-behavior-skills.mjs",
     "audit:skill-parity": "node scripts/validate-skill-contract-parity.mjs",
@@ -44,6 +45,7 @@
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "^1.1.0",
     "@types/node": "^24.0.0",
+    "node-pty": "1.1.0",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"
   },
