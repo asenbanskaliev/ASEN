@@ -8,6 +8,8 @@ import {tmpdir} from "node:os";
 import {fileURLToPath} from "node:url";
 // @ts-expect-error Research-only JavaScript baseline collector, outside the runtime package.
 import * as baselineModule from "../scripts/ecosystem-baseline.mjs";
+// @ts-expect-error Test-only Git fixture helper.
+import {writeFixtureBlob} from "../scripts/fixture-git-blob.mjs";
 const {collectBaseline,validateBaseline,verifyBaselineObjects,detectBaselineDrift,detectMappedBaselineDrift,sourceReferences,verifyRuntimeEdgeMappings,verifyNormativeRuntimeInventory,auditEcosystemBaseline,collectRuntimeEdgeFiles,runGitCommand}=baselineModule;
 const retainedBaselineRepository=process.env.ECOSYSTEM_BASELINE_REPOSITORY??"";
 const baselineAuditScript=fileURLToPath(new URL("../scripts/ecosystem-baseline.mjs",import.meta.url));
@@ -491,7 +493,7 @@ function alteredNormativeInputs(t:test.TestContext,inventoryIndex:number,mutate:
   const repository=mkdtempSync(join(tmpdir(),"asen-normative-authority-"));t.after(()=>rmSync(repository,{recursive:true,force:true}));execFileSync("git",["init","--bare","-q",repository]);
   for(let index=0;index<=inventoryIndex;index++){
     const inventory=mappings.normativeInventories[index],source=baseline.files.find((row:any)=>row.id===inventory.source.sourceId),original=execFileSync("git",["-C",retainedBaselineRepository,"cat-file","blob",source.objectId],{encoding:"utf8"}),bytes=Buffer.from(index===inventoryIndex?mutate(original):original);
-    const objectId=execFileSync("git",["-C",repository,"hash-object","-w","--stdin"],{input:bytes,encoding:"utf8"}).trim();
+    const objectId=writeFixtureBlob(repository,bytes);
     if(index<inventoryIndex){assert.equal(objectId,source.objectId);continue;}
     assert.notEqual(bytes.toString(),original,"mutation must change source");const sha256=createHash("sha256").update(bytes).digest("hex");
     Object.assign(source,{objectId,bytes:bytes.length,sha256});Object.assign(inventory.source,{objectId,bytes:bytes.length,sha256});
