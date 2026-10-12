@@ -134,6 +134,19 @@ test("unknown declared scope remains a bounded clarification plan",()=>{
  assert.equal(plan.skills.includes("asen-tdd"),false);
 });
 
+test("ODD keeps sensitive-operation instructions plan-only without creating execution workers",()=>{
+ for(const operation of ["destructive_git","external_write","credential_or_auth","security_boundary"] as const){
+  const taskId=`sensitive-${operation}`,decision=issueOddDecision({
+   taskId,repository:"r",paths:["src/credentials.ts"],
+   writes:[{path:"src/credentials.ts",changeKind:"security"}],riskOperations:[operation],
+  });
+  const plan=buildOrchestrationPlan({taskId,repository:"r",prompt:`request ${operation}`,writeSurfaces:["src"],candidate},decision);
+  assert.equal(plan.decision.route,"plan",operation);assert.equal(plan.decision.risk,"high",operation);
+  assert.deepEqual(plan.agents,[],operation);
+  assert.equal(plan.skillContext,undefined,`${operation} must not issue a primary execution context`);
+ }
+});
+
 test("writer is bound to the exact orchestration candidate",()=>{
  const decision=issueOddDecision({
   taskId:"t",repository:"r",paths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"],

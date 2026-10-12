@@ -7,14 +7,15 @@ import {sameWorkspaceIdentityPath} from "./workspace-store.js";
 import {applyTaskEvent,replayTask,type TaskEvent,type TaskState} from "./task-replay.js";
 
 const SCHEMA="asen.todo/v1" as const,MAX_TASKS=2000,MAX_EVENTS=20000;
-export interface TodoItem{taskId:string;title:string;events:TaskEvent[];}
+export interface TodoItem{taskId:string;title:string;events:TaskEvent[];requestId?:string;}
 export interface TodoFile{schema:typeof SCHEMA;revision:number;items:TodoItem[];}
 export interface TodoContext{sessionId:string;projectId:string;}
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted){const error=new Error("Todo update cancelled");error.name="AbortError";throw error;}}
 const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
 const identity=(v:unknown)=>typeof v==="string"&&v.length>0&&v.length<=1024&&v===v.trim()&&v===v.normalize("NFC")&&!/[\u0000-\u001f\u007f-\u009f]/u.test(v);
 function validItem(value:unknown):value is TodoItem{
- if(!exact(value,["taskId","title","events"])||!identity(value.taskId)||typeof value.title!=="string"||!value.title.trim()||value.title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(value.title)||!Array.isArray(value.events)||value.events.length<1||value.events.length>MAX_EVENTS)return false;
+ if(!value||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)return false;
+ if(!(exact(value,["taskId","title","events"])||exact(value,["taskId","title","events","requestId"]))||!identity(value.taskId)||("requestId" in value&&!identity(value.requestId))||typeof value.title!=="string"||!value.title.trim()||value.title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(value.title)||!Array.isArray(value.events)||value.events.length<1||value.events.length>MAX_EVENTS)return false;
  try{let state:TaskEvent|undefined;for(const event of value.events){if(event.taskId!==value.taskId) return false;state=applyTaskEvent(state,event);}return !!state;}catch{return false;}
 }
 export function parseTodoFile(raw:string):TodoFile{
@@ -46,11 +47,14 @@ export class SessionTodoStore{
   return new SessionTodoStore(path,now,quarantined);
  }
  diagnostics(){return this.quarantined?{quarantined:this.quarantined}:undefined;}
- async add(title:string,context:TodoContext,signal?:AbortSignal,validateContext?:()=>void):Promise<TodoItem>{
+ async add(title:string,context:TodoContext,signal?:AbortSignal,validateContext?:()=>void,requestId?:string):Promise<TodoItem>{
   throwIfCancelled(signal);
-  if(typeof title!=="string"||!title.trim()||title!==title.trim()||title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(title)||!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN Todo task");
-  const taskId=`todo-${randomUUID()}`,event:TaskEvent={taskId,sessionId:context.sessionId,projectId:context.projectId,revision:1,state:"planned",at:this.now()},item={taskId,title,events:[event]};
-  await this.#mutate(data=>{validateContext?.();data.items.push(item);},signal);return structuredClone(item);
+  if(typeof title!=="string"||!title.trim()||title!==title.trim()||title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(title)||!identity(context.sessionId)||!identity(context.projectId)||(requestId!==undefined&&!identity(requestId)))throw new Error("Invalid ASEN Todo task");
+  const taskId=`todo-${randomUUID()}`,event:TaskEvent={taskId,sessionId:context.sessionId,projectId:context.projectId,revision:1,state:"planned",at:this.now()},item:TodoItem={taskId,title,events:[event],...(requestId?{requestId}:{})};let result:TodoItem|undefined;
+  await this.#mutate(data=>{validateContext?.();
+   if(requestId){const existing=data.items.find(candidate=>candidate.requestId===requestId);if(existing){const owner=existing.events[0];if(owner?.sessionId!==context.sessionId||!sameWorkspaceIdentityPath(owner.projectId,context.projectId))throw new Error("Todo request id belongs to another session or project");if(existing.title!==title)throw new Error("Todo request id conflicts with the existing task");result=structuredClone(existing);return false;}}
+   data.items.push(item);result=item;return true;
+  },signal);return structuredClone(result!);
  }
  async update(taskId:string,context:TodoContext,expectedRevision:number,state:TaskState,reason?:string,signal?:AbortSignal,validateContext?:()=>void):Promise<TodoItem>{
   if(!identity(taskId)||!identity(context.sessionId)||!identity(context.projectId)||!Number.isSafeInteger(expectedRevision)||expectedRevision<1)throw new Error("Invalid ASEN Todo update");let updated:TodoItem|undefined;
@@ -59,9 +63,9 @@ export class SessionTodoStore{
  async list(context:TodoContext):Promise<readonly (TodoItem&{current:TaskEvent})[]>{if(!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN Todo session");const data=await read(this.path);return data.items.flatMap(item=>{const current=replayTask(item.events);return current&&current.sessionId===context.sessionId&&sameWorkspaceIdentityPath(current.projectId,context.projectId)?[{...structuredClone(item),current}]:[];});}
  async history(taskId:string,context:TodoContext):Promise<readonly TaskEvent[]>{const data=await read(this.path),item=data.items.find(x=>x.taskId===taskId&&x.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(x.events.at(-1)!.projectId,context.projectId));return item?item.events.map(event=>structuredClone(event)):[];}
  async recover(context:TodoContext,reason:"restart"|"shutdown"="restart"):Promise<void>{if(!identity(context.sessionId)||!identity(context.projectId)||!(reason==="restart"||reason==="shutdown"))throw new Error("Invalid ASEN Todo recovery session");await this.#mutate(data=>{for(const item of data.items){const current=replayTask(item.events);if(current?.state!=="running"||current.sessionId!==context.sessionId||!sameWorkspaceIdentityPath(current.projectId,context.projectId))continue;const blocked:TaskEvent={taskId:item.taskId,sessionId:current.sessionId,projectId:current.projectId,revision:current.revision+1,state:"blocked",at:this.now(),reason:reason==="shutdown"?"Pi session ended while this task was running; explicit review is required before continuing":"ASEN restarted while this task was running; explicit review is required before continuing"};item.events.push(applyTaskEvent(current,blocked));}});}
- async #mutate(change:(data:TodoFile)=>void,signal?:AbortSignal):Promise<void>{
+ async #mutate(change:(data:TodoFile)=>void|boolean,signal?:AbortSignal):Promise<void>{
   throwIfCancelled(signal);await preparePrivateFile(this.path,true);throwIfCancelled(signal);
-  try{await withExclusiveFileLock(this.path,async()=>{throwIfCancelled(signal);const data=await read(this.path);throwIfCancelled(signal);change(data);if(data.items.length>MAX_TASKS||data.items.reduce((total,item)=>total+item.events.length,0)>MAX_EVENTS)throw new Error("ASEN Todo store has reached its history limit");const next=parseTodoFile(JSON.stringify({...data,revision:data.revision+1}));throwIfCancelled(signal);
+  try{await withExclusiveFileLock(this.path,async()=>{throwIfCancelled(signal);const data=await read(this.path);throwIfCancelled(signal);if(change(data)===false)return;if(data.items.length>MAX_TASKS||data.items.reduce((total,item)=>total+item.events.length,0)>MAX_EVENTS)throw new Error("ASEN Todo store has reached its history limit");const next=parseTodoFile(JSON.stringify({...data,revision:data.revision+1}));throwIfCancelled(signal);
    // Cancellation is deferred once the atomic transaction starts, so it can commit at rename or fail without a partial destination.
    await write(this.path,next);
   },30000,signal);}

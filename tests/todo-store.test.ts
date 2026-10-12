@@ -18,6 +18,18 @@ test("Todo task state, history and session isolation survive a process reopen",a
  const reopened=await SessionTodoStore.open(file);rows=await reopened.list(one);assert.equal(rows[0]?.current.state,"done");assert.equal(rows[0]?.current.revision,3);assert.deepEqual((await reopened.history(todo.taskId,one)).map(event=>event.state),["planned","running","done"]);assert.deepEqual(await reopened.list(other),[]);assert.deepEqual(await reopened.history(todo.taskId,other),[]);
 });
 
+test("Todo creation retries are idempotent across concurrent clients and restarts",async t=>{
+ const file=await fixture(t),first=await SessionTodoStore.open(file),second=await SessionTodoStore.open(file),requestId="pi-call:create-task-17";
+ const results=await Promise.all([first.add("Prepare release",one,undefined,undefined,requestId),second.add("Prepare release",one,undefined,undefined,requestId)]);
+ assert.equal(results[0]?.taskId,results[1]?.taskId);assert.equal((await first.list(one)).length,1);
+ const revision=JSON.parse(await readFile(file,"utf8")).revision,reopened=await SessionTodoStore.open(file),retried=await reopened.add("Prepare release",one,undefined,undefined,requestId);
+ assert.equal(retried.taskId,results[0]?.taskId);assert.equal((await reopened.history(retried.taskId,one)).length,1);
+ assert.equal(JSON.parse(await readFile(file,"utf8")).revision,revision,"an idempotent retry must not rewrite durable state");
+ await assert.rejects(()=>reopened.add("Different task",one,undefined,undefined,requestId),/request id conflicts/);
+ await assert.rejects(()=>reopened.add("Prepare release",other,undefined,undefined,requestId),/another session or project/);
+ assert.equal((await reopened.list(other)).length,0);
+});
+
 test("running Todo work becomes blocked after restart and is never resumed automatically",async t=>{
  const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Validate deployment",one);await store.update(todo.taskId,one,1,"running");
  const reopened=await SessionTodoStore.open(file);await reopened.recover(one);const current=(await reopened.list(one))[0]!.current;assert.equal(current.state,"blocked");assert.match(current.reason!,/restarted.*explicit review/i);assert.equal(current.revision,3);assert.equal((await reopened.history(todo.taskId,one)).at(-1)?.state,"blocked");

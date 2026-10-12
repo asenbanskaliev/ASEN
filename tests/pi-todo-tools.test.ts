@@ -46,6 +46,15 @@ test("cancelled Todo creation does not create a durable task",async t=>{
  assert.deepEqual(await store.list(session),[]);
 });
 
+test("a retried Pi Todo add call ID returns its existing task instead of duplicating it",async t=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-todo-retry-")));t.after(()=>rm(root,{recursive:true,force:true}));
+ const session={sessionId:"retry-session",projectId:root},store=await SessionTodoStore.open(path.join(root,"todos.json")),tools=new Map<string,any>();registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>store);
+ const host={cwd:root,sessionManager:{getSessionId:()=>session.sessionId}},add=tools.get("asen_todo_add").execute;
+ const first=await add("pi-call-17",{title:"Publish verified release"},undefined,undefined,host),retried=await add("pi-call-17",{title:"Publish verified release"},undefined,undefined,host);
+ assert.equal(first.details.taskId,retried.details.taskId);assert.equal((await store.list(session)).length,1);
+ assert.equal((await store.history(first.details.taskId,session)).length,1);
+});
+
 test("blocked Todo approval cannot survive a session change during its dialog",async t=>{
  const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-todo-session-change-")));t.after(()=>rm(root,{recursive:true,force:true}));
  const session={sessionId:"original-session",projectId:root},store=await SessionTodoStore.open(path.join(root,"todos.json")),todo=await store.add("Review recovery",session);await store.update(todo.taskId,session,1,"running");await store.recover(session);
