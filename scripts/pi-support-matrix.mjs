@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import {spawn,execFileSync} from "node:child_process";
-import {readFileSync,writeFileSync,mkdirSync,mkdtempSync,rmSync} from "node:fs";
+import {readFileSync,writeFileSync,mkdirSync,mkdtempSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {createHash} from "node:crypto";
 import {createPiVerifierEnvironment} from "./gsp06-pi-free-environment.mjs";
 import {prepareDarwinPtyHelper} from "./pi-matrix-pty-helper.mjs";
+import {cleanupMatrixWorkspace} from "./pi-matrix-cleanup.mjs";
 
 export function planPiSupportMatrix(){
  return ["linux","win32","darwin"].flatMap(platform=>["0.85.1","1.1.0"].flatMap(version=>
@@ -112,11 +113,17 @@ export async function main({tarball=process.argv[2],output=process.argv[3],candi
     console.log(`${cell.id}: ${record.result}`);
    }
   }
- }finally{rmSync(root,{recursive:true,force:true});}
+ }finally{
+  console.log("MATRIX_CLEANUP_STARTED");cleanupMatrixWorkspace(root);console.log("MATRIX_CLEANUP_COMPLETED");
+ }
  assert.equal(results.length,8);
  assert.ok(results.every(row=>row.result==="PASS"),"Some real-host cells failed; inspect receipts");
 }
 
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- try{await main();}catch(error){console.error(error);process.exitCode=1;}
+ let exitCode=0;
+ try{await main();console.log("MATRIX_CONTROLLER_COMPLETED");}catch(error){console.error(error);exitCode=1;}
+ await Promise.all([process.stdout,process.stderr].map(stream=>new Promise(resolve=>stream.write("",resolve))));
+ // This is the verifier controller. Each real Pi child must already have passed natural-exit admission.
+ process.exit(exitCode);
 }
