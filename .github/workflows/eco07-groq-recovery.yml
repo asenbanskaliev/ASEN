@@ -1,0 +1,55 @@
+name: ECO-07 Groq task recovery
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pi-recovery:
+    if: github.repository == 'asenbanskaliev/ASEN' && (github.event_name == 'workflow_dispatch' || github.event.pull_request.number == 32 && github.event.pull_request.head.repo.full_name == github.repository)
+    name: Pi recovery (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+      - name: Prepare evidence directory
+        run: mkdir -p eco07-pi-evidence
+        shell: bash
+      - name: Assert exact PR candidate
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          ASEN_EXPECTED_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          test "$ASEN_EXPECTED_BRANCH" = "feat/strict-parity-prerequisites"
+        shell: bash
+      - run: npm ci
+      - name: Install Pi 1.1.0
+        run: npm install -g @earendil-works/pi-coding-agent@1.1.0
+      - name: Execute actual Pi interruption, restart, and resume through ASEN Todo
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$GROQ_API_KEY"
+          node --import tsx scripts/eco07-pi-recovery-e2e.mjs
+        shell: bash
+      - name: Preserve ECO-07 process and event evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: eco07-groq-recovery-${{ github.event.pull_request.head.sha || github.sha }}-${{ matrix.os }}
+          path: eco07-pi-evidence/
+          if-no-files-found: error
+          retention-days: 30
