@@ -131,3 +131,47 @@ test("ODD resume cannot return a task deleted while its document was being check
  await assert.rejects(resumeOddTask(contract(root),observed,context),/changed during resume/);
  assert.equal(await resumeOddTask(contract(root),store,context),undefined);
 });
+
+
+test("ECO-07 concurrent losing writer recovers winning revision and resumes safely",async t=>{
+ let first:SqliteMemoryStore|undefined,second:SqliteMemoryStore|undefined;
+ const root=await fixture(t,()=>{first?.close();second?.close();}),db=join(root,"memory.db"),c=contract(root);
+ first=new SqliteMemoryStore(db);
+ const context1=createMemoryContext(first,{repository:root},"shared-session");
+ await trackOddTask(c,context1,"odd/tasks/task.md",progress);
+ const base={taskId:"task",sessionId:"shared-session",projectId:root,at:"2026-10-12T00:00:00Z"};
+ await appendOddTaskEvent(c,context1,first,{...base,revision:1,state:"planned"});
+ second=new SqliteMemoryStore(db);
+ const context2=createMemoryContext(second,{repository:root},"shared-session");
+ const attempts=await Promise.allSettled([
+  appendOddTaskEvent(c,context1,first,{...base,revision:2,state:"running"}),
+  appendOddTaskEvent(c,context2,second,{...base,revision:2,state:"cancelled"}),
+ ]);
+ assert.equal(attempts.filter(result=>result.status==="fulfilled").length,1);
+ assert.equal(attempts.filter(result=>result.status==="rejected").length,1);
+ const recovered=await resumeOddTask(c,second,context2);
+ assert.ok(recovered);
+ assert.equal(recovered.taskEvents.length,2);
+ assert.equal(recovered.taskEvents[1]?.revision,2);
+ if(recovered.taskEvents[1]?.state==="running"){
+  await appendOddTaskEvent(c,context2,second,{...base,revision:3,state:"done",at:"2026-10-12T00:00:01Z"});
+  assert.equal((await resumeOddTask(c,first,context1))?.taskEvents.at(-1)?.state,"done");
+ }else{
+  assert.equal(recovered.taskEvents[1]?.state,"cancelled");
+  await assert.rejects(()=>appendOddTaskEvent(c,context2,second,{...base,revision:3,state:"running",at:"2026-10-12T00:00:01Z"}),/transition/);
+ }
+});
+
+test("ECO-07 changed task document rejects append without altering saved history",async t=>{
+ let store:SqliteMemoryStore|undefined;
+ const root=await fixture(t,()=>store?.close());
+ store=new SqliteMemoryStore(join(root,"memory.db"));
+ const context=createMemoryContext(store,{repository:root},"session"),c=contract(root);
+ await trackOddTask(c,context,"odd/tasks/task.md",progress);
+ const before=store.exportProject(root).observations;
+ await writeFile(join(root,"odd/tasks/task.md"),"# Updated task\n");
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{
+  taskId:"task",sessionId:"session",projectId:root,revision:1,state:"planned",at:"2026-10-12T00:00:00Z"
+ }),/document changed/);
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
