@@ -5,8 +5,10 @@ import {createHash} from "node:crypto";
 import {validateEvidenceBundle} from "../scripts/ecosystem-evidence-bundle.mjs";
 // @ts-expect-error CI matrix planner.
 import {planPiSupportMatrix} from "../scripts/pi-support-matrix.mjs";
-const candidate="a".repeat(40),sourceCommit="b".repeat(40),sourceManifestSha256="c".repeat(64);
+const candidate="a".repeat(40),sourceCommit="b".repeat(40);
 const hash=(bytes:string)=>createHash("sha256").update(bytes).digest("hex");
+const sourceManifestBytes=Buffer.from('{\n  "source": "fixed"\n}\n');
+const sourceManifestSha256=hash(sourceManifestBytes.toString());
 const classes:Record<string,string>={positive:"DETERMINISTIC_EXECUTION",negative:"DETERMINISTIC_EXECUTION",failure:"DETERMINISTIC_EXECUTION",recovery:"DETERMINISTIC_EXECUTION",linux:"OS_RUNTIME",windows:"OS_RUNTIME",macos:"OS_RUNTIME","pi-host":"REAL_PI_HOST"};
 function fixture(){
  const groups=["linux","win32","darwin"].map(platform=>{
@@ -25,7 +27,7 @@ function fixture(){
   });
   return {platform,matrix,receipts};
  });
- return {candidate,sourceCommit,sourceManifestSha256,groups};
+ return {candidate,sourceCommit,sourceManifestSha256,sourceManifestBytes,groups};
 }
 
 test("bundle reconciles all 24 cells and eight kinds without promoting claims",()=>{
@@ -116,4 +118,18 @@ test("stateful bundle rejects missing OS proof, altered package integrity and fo
   (input:any)=>{const entry=input.groups[0].statefulReceipts[0],row=JSON.parse(entry.bytes);row.packageIntegrity="wrong";entry.bytes=JSON.stringify(row);},
   (input:any)=>{const entry=input.groups[0].statefulReceipts[0];entry.log=entry.log.replace('"naturalProcessExits":3','"naturalProcessExits":2');const row=JSON.parse(entry.bytes);row.logSha256=hash(entry.log);entry.bytes=JSON.stringify(row);},
  ]){const input=withStatefulEvidence();mutate(input);assert.throws(()=>validateEvidenceBundle(input));}
+});
+
+test("Windows manifest receipt admits only the exact Git LF-to-CRLF checkout transformation",()=>{
+ const input=fixture(),windows=input.groups.find(group=>group.platform==="win32")!;
+ const checkoutHash=hash(sourceManifestBytes.toString().replace(/\n/g,"\r\n"));
+ for(const entry of windows.receipts){const row=JSON.parse(entry.bytes);row.sourceManifestSha256=checkoutHash;entry.bytes=JSON.stringify(row);}
+ assert.equal(validateEvidenceBundle(input).receipts.find((row:{platform:string})=>row.platform==="win32").sourceManifestCheckoutSha256,checkoutHash);
+ const row=JSON.parse(windows.receipts[0]!.bytes);row.sourceManifestSha256="e".repeat(64);windows.receipts[0]!.bytes=JSON.stringify(row);
+ assert.throws(()=>validateEvidenceBundle(input));
+});
+
+test("canonical manifest byte digest is checked before accepting any checkout transform",()=>{
+ const input=fixture();input.sourceManifestBytes=Buffer.from("different");
+ assert.throws(()=>validateEvidenceBundle(input));
 });

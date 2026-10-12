@@ -3,6 +3,7 @@ import {readFileSync,writeFileSync,existsSync} from "node:fs";
 import {join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {createHash} from "node:crypto";
+import {execFileSync} from "node:child_process";
 import {planPiSupportMatrix,validateCellObservation} from "./pi-support-matrix.mjs";
 import {admitPackageJourneyResult} from "./ecosystem-package-receipts.mjs";
 const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
@@ -14,10 +15,17 @@ const classes={positive:"DETERMINISTIC_EXECUTION",negative:"DETERMINISTIC_EXECUT
 const digest=value=>typeof value==="string"&&/^[a-f0-9]{64}$/.test(value);
 
 /** Checks cross-artifact consistency; hosted provenance and review remain independent gates. */
-export function validateEvidenceBundle({candidate,sourceCommit,sourceManifestSha256,groups,requireStatefulEvidence=false}){
+export function validateEvidenceBundle({candidate,sourceCommit,sourceManifestSha256,sourceManifestBytes,groups,requireStatefulEvidence=false}){
  assert.equal(typeof requireStatefulEvidence,"boolean");
  assert.match(candidate??"",/^[a-f0-9]{40}$/);assert.match(sourceCommit??"",/^[a-f0-9]{40}$/);
  assert.ok(digest(sourceManifestSha256));
+ const checkoutHashes=new Set([sourceManifestSha256]);
+ if(sourceManifestBytes!==undefined){
+  assert.ok(Buffer.isBuffer(sourceManifestBytes));assert.equal(hash(sourceManifestBytes),sourceManifestSha256);
+  const text=sourceManifestBytes.toString("utf8");JSON.parse(text);
+  checkoutHashes.add(hash(Buffer.from(text.replace(/(?<!\r)\n/g,"\r\n"))));
+ }
+ const admitsManifest=(platform,value)=>platform==="win32"?checkoutHashes.has(value):value===sourceManifestSha256;
  assert.ok(Array.isArray(groups));assert.equal(groups.length,3);
  assert.deepEqual(groups.map(group=>group.platform).sort(),Object.keys(platforms).sort());
  const cells=[],receipts=[];
@@ -44,7 +52,7 @@ export function validateEvidenceBundle({candidate,sourceCommit,sourceManifestSha
    assert.ok(required.includes(row.kind));assert.ok(!seen.has(row.kind),"Duplicate receipt kind");seen.add(row.kind);
    assert.equal(row.id,`ECO-02A-${group.platform}-${row.kind}`);
    assert.equal(row.candidate,candidate);assert.equal(row.sourceCommit,sourceCommit);
-   assert.equal(row.sourceManifestSha256,sourceManifestSha256);
+   assert.ok(admitsManifest(group.platform,row.sourceManifestSha256),"Manifest differs beyond a known Git checkout line-ending transform");
    assert.equal(row.class,classes[row.kind]);assert.equal(row.result,"PASS");
    for(const key of ["command","observation"])assert.ok(typeof row[key]==="string"&&row[key].trim());
    assert.equal(hash(entry.log),row.logSha256,"Receipt log bytes disagree");
@@ -53,7 +61,7 @@ export function validateEvidenceBundle({candidate,sourceCommit,sourceManifestSha
     assert.equal(new Set(references.map(item=>item.id)).size,8);
     for(const reference of references){assert.ok(selected.has(reference.id));assert.equal(reference.sha256,selected.get(reference.id));}
    }
-   receipts.push({id:row.id,kind:row.kind,platform:group.platform,sha256:hash(entry.bytes)});
+   receipts.push({id:row.id,kind:row.kind,platform:group.platform,sha256:hash(entry.bytes),sourceManifestCheckoutSha256:row.sourceManifestSha256});
   }
   assert.deepEqual([...seen].sort(),required.sort());
   const stateful=group.statefulReceipts??[];
@@ -66,13 +74,13 @@ export function validateEvidenceBundle({candidate,sourceCommit,sourceManifestSha
    assert.ok(["restart","cross-session"].includes(row.kind));assert.ok(!statefulKinds.has(row.kind));statefulKinds.add(row.kind);
    assert.equal(row.id,`ECO-02A-${group.platform}-${row.kind}`);
    assert.equal(row.candidate,candidate);assert.equal(row.sourceCommit,sourceCommit);
-   assert.equal(row.sourceManifestSha256,sourceManifestSha256);
+   assert.ok(admitsManifest(group.platform,row.sourceManifestSha256));
    assert.equal(row.class,"REAL_PI_HOST");assert.equal(row.result,"PASS");
    for(const key of ["command","observation"])assert.ok(typeof row[key]==="string"&&row[key].trim());
    assert.equal(hash(entry.log),row.logSha256);
    const admitted=admitPackageJourneyResult({status:0,signal:null,stdout:entry.log});
    assert.equal(row.packageIntegrity,admitted.pack.integrity);
-   receipts.push({id:row.id,kind:row.kind,platform:group.platform,sha256:hash(entry.bytes)});
+   receipts.push({id:row.id,kind:row.kind,platform:group.platform,sha256:hash(entry.bytes),sourceManifestCheckoutSha256:row.sourceManifestSha256});
   }
  }
  assert.equal(cells.length,24);assert.equal(new Set(cells.map(cell=>cell.id)).size,24);
@@ -86,7 +94,8 @@ export function validateEvidenceBundle({candidate,sourceCommit,sourceManifestSha
 
 export function main({root=process.argv[2],candidate=process.argv[3],output=process.argv[4],requireStatefulEvidence=process.argv[5]==="--require-stateful"}={}){
  assert.ok(root&&output,"Usage: ecosystem-evidence-bundle.mjs <artifact-root> <candidate-sha> <output-json>");
- const sourceBytes=readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url));
+ assert.match(candidate??"",/^[a-f0-9]{40}$/);
+ const sourceBytes=execFileSync("git",["show",`${candidate}:registry/parity/ecosystem-sources-v1.json`],{timeout:30_000,maxBuffer:4*1024*1024});
  const groups=Object.keys(platforms).map(platform=>{
   const directory=join(resolve(root),platform);
   const load=(folder,name)=>({bytes:readFileSync(join(directory,folder,`${name}.json`)),log:readFileSync(join(directory,folder,`${name}.log`))});
@@ -95,7 +104,7 @@ export function main({root=process.argv[2],candidate=process.argv[3],output=proc
   return {platform,statefulReceipts,matrix:planPiSupportMatrix().filter(cell=>cell.platform===platform).map(cell=>load("matrix-evidence",cell.id)),
    receipts:["positive","negative","failure","recovery",platforms[platform],"pi-host"].map(kind=>load("contract-evidence",kind))};
  });
- const report=validateEvidenceBundle({candidate,sourceCommit:JSON.parse(sourceBytes).commit,sourceManifestSha256:hash(sourceBytes),groups,requireStatefulEvidence});
+ const report=validateEvidenceBundle({candidate,sourceCommit:JSON.parse(sourceBytes).commit,sourceManifestSha256:hash(sourceBytes),sourceManifestBytes:sourceBytes,groups,requireStatefulEvidence});
  writeFileSync(resolve(output),JSON.stringify(report,null,2)+"\n");
  return report;
 }
