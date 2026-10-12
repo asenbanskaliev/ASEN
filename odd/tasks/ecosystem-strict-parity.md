@@ -1,4 +1,10 @@
 # Ecosystem strict behavioral parity
+## ECO-07 continued batch and hosted notification race — 2026-10-12
+
+Published source `f86ca7a` Release Gate `38239561565` failed Ubuntu job `114778522856`: 1,242 passed / one failed / 12 skipped. The failure was the new completion-notification assertion racing an already persisted result; sibling package jobs were cancelled by fail-fast. Local correction waits for the actual notification independently before querying saved status, retaining the existing 30-second bounded wait. No production deadline or assertion was removed. Current hosted CI remains a separate running gate, not a green Release Gate.
+
+Additional ECO-07 hardening validates live session identity again inside the Todo persistence lock. A session switch while waiting for another writer cannot commit the pending task transition. Final Todo/replay/production-adapter checks pass 28/28, typecheck and diff integrity pass. Correction and ECO-07 source remain local; no duplicate CI was launched while the current run is active. Full claims and native authority remain unapproved.
+
 ## ECO-07 local recovery hardening — 2026-10-12
 
 Source `1db6cf81b502b3b753a26be85b4abd9bb95a4dd4` adds cancellation throughout Todo creation, including a wait for the durable store lock. An already cancelled request leaves no task; cancellation after atomic persistence starts retains the existing whole-transaction contract. Todo updates revalidate the active session-manager instance and canonical project after any confirmation dialog. A changed session cannot consume earlier recovery consent. A concurrent newer cancellation defeats stale approval through the existing atomic expected-revision check. Semantic RED reproduced both previously accepted mutations. Final focused Todo/replay/production-adapter coverage passed 27/27, zero failures/skips, with typecheck and diff integrity. These changes are local and have not launched another CI; hosted evidence remains bound to published ECO-05 candidate `f86ca7a58aae82e8b4f6e55ced8d4b6091961af1`. ECO-07 stays PARTIAL pending exact hosted/host compatibility and independent admission.
