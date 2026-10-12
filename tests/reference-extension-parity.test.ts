@@ -61,7 +61,7 @@ test("all 34 EP specifications retain one canonical owner or disposition",()=>{
  assert.equal(owners.length,34);
  assert.deepEqual([...owners].sort(),[...specs].sort());
  for(const [id,owner] of Object.entries(ownership)){
-  assert.match(id,/^\\d{3}$/);
+  assert.match(id,/^\d{3}$/);
   if(owner!=="EXCLUDED")assert.ok(tracker.includes("**"+owner+" —"),"Missing roadmap owner "+owner+" for EP-"+id);
  }
  assert.equal(ownership["030"],"EXCLUDED","user-excluded provider must not be silently assigned");
