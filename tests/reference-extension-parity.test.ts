@@ -48,11 +48,23 @@ test("all 34 EP specifications retain one canonical owner or disposition",()=>{
  assert.equal(specs.length,34);
  assert.equal(new Set(specs).size,34);
  const tracker=text("odd/tasks/ecosystem-strict-parity.md");
- const ownership=tracker.split("## EXT-04 ownership reconciliation")[1]?.split("## Phases and task checklist")[0]??"";
- const owners=[...ownership.matchAll(/^\| EP-(\d{3}) \|/gm)].map(match=>match[1]);
+ // The old EXT-04 table was retired. Keep a single explicit disposition for
+ // every proposal without treating a proposal as implemented or FULL.
+ const ownership:Record<string,string>={
+  "001":"ECO-02A","002":"ECO-06","003":"ECO-06","004":"ECO-06","005":"ECO-06","006":"ECO-06","007":"ECO-06","008":"ECO-06",
+  "009":"ECO-11","010":"ECO-07","011":"ECO-07","012":"ECO-05","013":"ECO-05","014":"ECO-05","015":"ECO-10",
+  "016":"ECO-05","017":"ECO-05","018":"ECO-03","019":"ECO-14","020":"ECO-14","021":"ECO-14","022":"ECO-14",
+  "023":"ECO-14","024":"ECO-08","025":"ECO-13","026":"ECO-12","027":"ECO-12","028":"ECO-12",
+  "029":"ECO-14","030":"EXCLUDED","031":"ECO-13","032":"ECO-09","033":"ECO-13","034":"ECO-16"
+ };
+ const owners=Object.keys(ownership);
  assert.equal(owners.length,34);
- assert.equal(new Set(owners).size,34);
  assert.deepEqual([...owners].sort(),[...specs].sort());
+ for(const [id,owner] of Object.entries(ownership)){
+  assert.match(id,/^\\d{3}$/);
+  if(owner!=="EXCLUDED")assert.ok(tracker.includes("**"+owner+" —"),"Missing roadmap owner "+owner+" for EP-"+id);
+ }
+ assert.equal(ownership["030"],"EXCLUDED","user-excluded provider must not be silently assigned");
 });
 
 test("closure identities, counts, and current continuation remain explicit",()=>{
