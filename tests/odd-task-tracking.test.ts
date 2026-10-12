@@ -351,7 +351,7 @@ test("ECO-07 rejects padded event task identifier without durable mutation",asyn
 test("ECO-07 rejects control characters in event session without durable mutation",async t=>{
  const {root,store,c,context,base}=await eco07Setup(t);
  const before=store.exportProject(root).observations;
- await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,...{"sessionId":"session\\n"}} as never));
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,...{"sessionId":"session\u000a"}} as never));
  assert.deepEqual(store.exportProject(root).observations,before);
 });
 test("ECO-07 rejects empty event project identifier without durable mutation",async t=>{
@@ -423,7 +423,7 @@ test("ECO-07 rejects empty reason without durable mutation",async t=>{
 test("ECO-07 rejects reason with control character without durable mutation",async t=>{
  const {root,store,c,context,base}=await eco07Setup(t);
  const before=store.exportProject(root).observations;
- await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,...{"reason":"bad\\nreason"}} as never));
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,...{"reason":"bad\u000areason"}} as never));
  assert.deepEqual(store.exportProject(root).observations,before);
 });
 test("ECO-07 rejects padded reason without durable mutation",async t=>{
