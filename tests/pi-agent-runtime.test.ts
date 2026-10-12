@@ -32,6 +32,9 @@ test("production Pi extension runs and restores session-scoped agent status usin
   assert.ok(rows.some(row=>row.id===id&&row.state==="completed"),`agent runner did not persist completion; observed ${JSON.stringify(rows)}`);
   assert.ok(first.messages.some(message=>message.includes(id)&&message.includes("completed")&&message.includes("read-only result")),"completion must be delivered without a status query");
   await first.commands.get("asen-agents")!.handler("",first.context());assert.ok(first.messages.some(message=>message.includes("completed")&&message.includes("read-only result")));
+  const queried=await first.tools.get("asen_agent_status").execute("query",{id},new AbortController().signal,()=>{},first.context());
+  assert.equal(queried.details.task?.record.id,id);assert.equal(queried.details.task?.record.state,"completed");assert.equal(queried.details.task?.history.at(-1)?.state,"completed");assert.equal(queried.details.task?.request,undefined);
+  const hidden=await first.tools.get("asen_agent_status").execute("foreign-query",{id},new AbortController().signal,()=>{},first.context("other-session"));assert.equal(hidden.details.task,null);
   const foreign=await first.tools.get("asen_agent_status").execute("call-2",{},new AbortController().signal,()=>{},first.context("other-session"));assert.deepEqual(foreign.details,[]);
   const todo=await first.tools.get("asen_todo_add").execute("todo",{title:"Verify the delivery"},new AbortController().signal,()=>{},first.context());
   await first.tools.get("asen_todo_update").execute("todo-update",{id:todo.details.taskId,revision:1,state:"running"},new AbortController().signal,()=>{},first.context());

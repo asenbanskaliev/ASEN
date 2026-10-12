@@ -17,6 +17,10 @@ export class AgentRuntime{
  }
  snapshot():readonly PublicAgentRecord[]{return this.store.snapshot();}
  async list(identity:AgentSessionIdentity):Promise<readonly PublicAgentRecord[]>{return this.store.list(identity.sessionId,identity.projectId);}
+ async query(id:string,identity:AgentSessionIdentity){
+  const entry=await this.store.get(id,identity.sessionId,identity.projectId);
+  return entry?{record:entry.record,history:entry.events}:null;
+ }
  /** Observers receive only persisted terminal outcomes; notification failures cannot alter execution. */
  subscribeTerminal(listener:(record:PublicAgentRecord)=>void):()=>void{
   this.#terminalListeners.add(listener);return ()=>{this.#terminalListeners.delete(listener);};

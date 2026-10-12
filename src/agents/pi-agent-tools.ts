@@ -27,8 +27,13 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const prompt=(params as {prompt?:unknown})?.prompt;if(typeof prompt!=="string"||!prompt.trim()||prompt.length>32000)throw new Error("Invalid agent prompt");
   const active=await runtime(),taskId=await active.startExplorer({prompt,session:await identity(context)},signal);return result({id:taskId,state:"queued",role:"explorer"});
  }});
- pi.registerTool?.({name:"asen_agent_status",label:"ASEN agent status",description:"List agent tasks belonging to the current Pi session and project.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{}},execute:async(_id,_params,_signal,_update,context)=>{
-  const rows=await (await runtime()).list(await identity(context));
+ pi.registerTool?.({name:"asen_agent_status",label:"ASEN agent status",description:"List owned agent tasks, or query one task and its durable state history by id.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{id:idSchema}},execute:async(_id,params,signal,_update,context)=>{
+  throwIfCancelled(signal);
+  const taskId=(params as {id?:unknown})?.id;
+  if(taskId!==undefined&&(typeof taskId!=="string"||!taskId.trim()||taskId.length>1024))throw new Error("Invalid agent task id");
+  const active=await runtime(),session=await identity(context);throwIfCancelled(signal);
+  if(typeof taskId==="string")return result({id:taskId,task:await active.query(taskId,session)});
+  const rows=await active.list(session);
   return result(rows.map(({id,role,state,createdAt,updatedAt,summary})=>({id,role,state,createdAt,updatedAt,...(summary?{summary}:{})})));
  }});
  pi.registerTool?.({name:"asen_agent_cancel",label:"Cancel ASEN agent",description:"Cancel a queued or running task owned by the current Pi session and project.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["id"],properties:{id:idSchema}},execute:async(_id,params,signal,_update,context)=>{
