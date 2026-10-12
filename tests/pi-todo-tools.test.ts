@@ -75,3 +75,24 @@ test("session change while waiting for the Todo lock rejects the pending mutatio
  await new Promise(resolve=>setTimeout(resolve,30));current="replacement-session";await rm(`${file}.lock`);
  await assert.rejects(pending,/session changed/);assert.equal((await store.list(session))[0]?.current.state,"planned");assert.equal((await store.history(todo.taskId,session)).length,1);
 });
+
+test("session change during locked Todo creation leaves no task in either session",async t=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-todo-create-session-")));t.after(()=>rm(root,{recursive:true,force:true}));
+ const file=path.join(root,"todos.json"),store=await SessionTodoStore.open(file),tools=new Map<string,any>();registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>store);
+ let sessionId="original-session";const host={cwd:root,sessionManager:{getSessionId:()=>sessionId}};
+ await writeFile(`${file}.lock`,JSON.stringify({pid:process.pid,token:"create-session-lock",createdAt:Date.now()}));
+ const pending=tools.get("asen_todo_add").execute("create",{title:"Must not cross sessions"},undefined,undefined,host);
+ await new Promise(resolve=>setTimeout(resolve,30));sessionId="replacement-session";await rm(`${file}.lock`);
+ await assert.rejects(pending,/session changed/);
+ for(const id of ["original-session","replacement-session"])assert.deepEqual(await store.list({sessionId:id,projectId:root}),[]);
+});
+
+test("Todo read rejects cancelled calls and a session replacement during store access",async t=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-todo-read-session-")));t.after(()=>rm(root,{recursive:true,force:true}));
+ const store=await SessionTodoStore.open(path.join(root,"todos.json"));let sessionId="original-session";
+ const host={cwd:root,sessionManager:{getSessionId:()=>sessionId}},tools=new Map<string,any>();
+ registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>{sessionId="replacement-session";return store;});
+ const controller=new AbortController();controller.abort();
+ await assert.rejects(tools.get("asen_todo_list").execute("cancelled-read",{},controller.signal,undefined,host),/Todo update cancelled/);
+ sessionId="original-session";await assert.rejects(tools.get("asen_todo_list").execute("session-read",{},undefined,undefined,host),/session changed/);
+});
