@@ -68,7 +68,7 @@ function startPi(label){
       let value;try{value=JSON.parse(line);}catch{child.kill("SIGKILL");continue;}
       events.push(value);void record(`${label}:pi-event`,{type:value.type,command:value.command,method:value.method,toolName:value.toolName,stopReason:value.message?.stopReason,...(typeof value.message?.errorMessage==="string"?{providerError:redacted(value.message.errorMessage)}:{})});
       const rateLimit=eco07ProviderRateLimitError(value);
-      if(rateLimit&&!providerFailure){providerFailure=redacted(rateLimit);child.kill("SIGKILL");}
+      if(rateLimit&&!providerFailure){providerFailure=redacted(rateLimit);void record(`${label}:provider-rate-limit`,{message:providerFailure});}
       if(label==="restarted"&&!resumeConfirmed&&value.type==="tool_execution_start"&&!["asen_todo_list","asen_todo_update"].includes(value.toolName)){
         void record("blocked-work-before-resume-rejected",{toolName:value.toolName});
         child.kill("SIGKILL");continue;
@@ -120,10 +120,9 @@ try{
   let started;
   const startDeadline=Date.now()+180_000;
   while(Date.now()<startDeadline){
-    if(first.getProviderFailure())throw new Error(`Pi provider rate limit before task persistence: ${first.getProviderFailure()}`);
     try{
       const item=await currentItem();
-      if(item){started=item;const state=item.events.at(-1)?.state;if(state==="running")break;if(["done","cancelled"].includes(state))throw new Error(`Pi ended the task before interruption (${state})`);}
+      if(item){started=item;const state=item.events.at(-1)?.state;if(state==="running")break;if(["done","cancelled"].includes(state))throw new Error(`Pi ended the task before interruption (${state})`);if(first.events.some(event=>event.type==="agent_settled"))throw new Error(`Pi settled without persisting a running task${first.getProviderFailure()?`: ${first.getProviderFailure()}`:""}`);}
     }catch(error){if(error?.code!=="ENOENT")throw error;}
     const exit=await Promise.race([first.getClosed().then(value=>({closed:value})),sleep(25).then(()=>null)]);
     if(exit)throw new Error(`Initial Pi exited before saving running task (${JSON.stringify(exit.closed)}): ${first.stderr}`);
@@ -177,7 +176,6 @@ try{
 
   const finishDeadline=Date.now()+240_000;
   while(Date.now()<finishDeadline){
-    if(second.getProviderFailure())throw new Error(`Pi provider rate limit while resuming task: ${second.getProviderFailure()}`);
     recovered=await currentItem();
     if(recovered.events.at(-1)?.state==="done")break;
     if(second.events.some(event=>event.type==="agent_settled")&&recovered.events.at(-1)?.state==="blocked")throw new Error("Restarted Pi settled without resuming the recovered task");
