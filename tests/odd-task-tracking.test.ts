@@ -83,3 +83,18 @@ test("tracking rejects forgery, wrong project, duplicate TODO and extras without
  await assert.rejects(()=>trackOddTask(contract(root),context,"../outside.md",progress),/bounded/);
  assert.equal(await readFile(join(root,"odd/tasks/task.md"),"utf8"),original);assert.equal(store.exportProject(root).observations.length,0);
 });
+
+test("competing ODD task events from independent memory clients cannot overwrite one another",async t=>{
+ let first:SqliteMemoryStore|undefined,second:SqliteMemoryStore|undefined;
+ const root=await fixture(t,()=>{first?.close();second?.close();}),db=join(root,"memory.db");
+ first=new SqliteMemoryStore(db);const firstContext=createMemoryContext(first,{repository:root},"shared-session"),c=contract(root);
+ await trackOddTask(c,firstContext,"odd/tasks/task.md",progress);
+ const base={taskId:"task",sessionId:"shared-session",projectId:root,at:"2026-10-12T00:00:00Z"};
+ await appendOddTaskEvent(c,firstContext,first,{...base,revision:1,state:"planned"});
+ second=new SqliteMemoryStore(db);const secondContext=createMemoryContext(second,{repository:root},"shared-session");
+ const results=await Promise.allSettled([appendOddTaskEvent(contract(root),firstContext,first,{...base,revision:2,state:"running"}),appendOddTaskEvent(contract(root),secondContext,second,{...base,revision:2,state:"cancelled"})]);
+ assert.equal(results.filter(result=>result.status==="fulfilled").length,1);
+ assert.equal(results.filter(result=>result.status==="rejected").length,1);
+ const restored=await resumeOddTask(contract(root),first,firstContext);assert.equal(restored?.taskEvents.length,2);
+ assert.deepEqual(restored?.taskEvents.map(event=>event.revision),[1,2]);
+});

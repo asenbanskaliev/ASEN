@@ -95,6 +95,6 @@ export async function appendOddTaskEvent(contract:OddExecutionContract,context:M
  if(next.projectId!==facts.repositoryIdentity)throw new Error("ODD task event project identity mismatch");
  if(!current&&next.sessionId!==context.sessionId)throw new Error("ODD task event session mismatch");
  const updated:TrackingRecord={version:2,task:facts.taskIdentity,repository:facts.repositoryIdentity,candidateId:candidate.id,revision:candidate.revision,documentPath:value.documentPath as string,document,todos:state.todos,nextStep:state.nextStep,taskEvents:Object.freeze([...(state.taskEvents??[]),next])};
- context.remember({id:item.id,kind:item.kind,topic:item.topic,content:JSON.stringify(updated),createdAt:item.createdAt});
+ context.rememberIfUnchanged(item,{id:item.id,kind:item.kind,topic:item.topic,content:JSON.stringify(updated),createdAt:item.createdAt});
  return Object.freeze(updated);
 }

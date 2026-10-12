@@ -168,7 +168,12 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   });
  }
  #requireIdentity(projectId:string,sessionId:string):void{if(!projectId.trim()||!sessionId.trim())throw new Error("Memory project and session IDs must be nonblank");}
- save(item:MemoryItem):void{
+ save(item:MemoryItem):void{this.#save(item);}
+ saveIfUnchanged(item:MemoryItem,expected:MemoryItem):void{
+  if(item.id!==expected.id||item.projectId!==expected.projectId||item.sessionId!==expected.sessionId)throw new Error("Memory conditional-write identity mismatch");
+  this.#save(item,expected);
+ }
+ #save(item:MemoryItem,expected?:MemoryItem):void{
   this.#requireIdentity(item.projectId,item.sessionId);
   const content=stripPrivateTags(item.content);
   if(!content)throw new Error("Memory content is empty");
@@ -176,6 +181,10 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
    const session=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(item.sessionId) as {project_id:string;status:string}|undefined;
    if(!session||session.project_id!==item.projectId)throw new Error("Memory session identity conflict");
    if(session.status!=="live")throw new Error("Memory session is ended");
+   if(expected){
+    const current=this.get(item.id),keys=["id","projectId","sessionId","kind","topic","content","createdAt","pinned","title","scope","toolName","topicKey","revisionCount","duplicateCount","lastSeenAt","updatedAt"] as const;
+    if(!current||keys.some(key=>current[key]!==expected[key]))throw new Error("Memory revision conflict; record changed before persistence");
+   }
    const existing=this.#db.prepare("SELECT project_id FROM memory WHERE id=?").get(item.id) as {project_id?:string}|undefined;
    if(existing&&existing.project_id!==item.projectId) throw new Error("Memory ownership mismatch");
    this.#db.prepare(`INSERT INTO memory(id,project_id,session_id,kind,topic,content,created_at) VALUES(?,?,?,?,?,?,?)
