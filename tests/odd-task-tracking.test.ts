@@ -221,3 +221,47 @@ test("ECO-07 cancelled task remains terminal after reopening",async t=>{
  await assert.rejects(()=>appendOddTaskEvent(c,context,reopened,{...base,revision:3,state:"running"}),/transition/);
  assert.deepEqual((await resumeOddTask(c,reopened,context))?.taskEvents.map(event=>event.state),["planned","cancelled"]);
 });
+
+
+test("ECO-07 finished task stays terminal across database restart",async t=>{
+ let store:SqliteMemoryStore|undefined;
+ const root=await fixture(t,()=>store?.close()),db=join(root,"memory.db"),c=contract(root);
+ store=new SqliteMemoryStore(db);
+ const context=createMemoryContext(store,{repository:root},"session");
+ await trackOddTask(c,context,"odd/tasks/task.md",progress);
+ const base={taskId:"task",sessionId:"session",projectId:root,at:"2026-10-12T00:00:00Z"};
+ await appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned"});
+ await appendOddTaskEvent(c,context,store,{...base,revision:2,state:"running"});
+ await appendOddTaskEvent(c,context,store,{...base,revision:3,state:"done"});
+ store.close();store=undefined;
+ const reopened=store=new SqliteMemoryStore(db),recovered=createMemoryContext(reopened,{repository:root},"session");
+ await assert.rejects(()=>appendOddTaskEvent(c,recovered,reopened,{...base,revision:4,state:"running"}),/transition/);
+ assert.deepEqual((await resumeOddTask(c,reopened,recovered))?.taskEvents.map(event=>event.state),["planned","running","done"]);
+});
+
+test("ECO-07 rejects an event from another project without modifying task history",async t=>{
+ let store:SqliteMemoryStore|undefined;
+ const root=await fixture(t,()=>store?.close()),c=contract(root);
+ store=new SqliteMemoryStore(join(root,"memory.db"));
+ const context=createMemoryContext(store,{repository:root},"session");
+ await trackOddTask(c,context,"odd/tasks/task.md",progress);
+ const before=store.exportProject(root).observations;
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{
+  taskId:"task",sessionId:"session",projectId:"other-project",revision:1,state:"planned",at:"2026-10-12T00:00:00Z"
+ }),/project identity/);
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+
+test("ECO-07 rejects backwards timestamps without losing committed revisions",async t=>{
+ let store:SqliteMemoryStore|undefined;
+ const root=await fixture(t,()=>store?.close()),c=contract(root);
+ store=new SqliteMemoryStore(join(root,"memory.db"));
+ const context=createMemoryContext(store,{repository:root},"session");
+ await trackOddTask(c,context,"odd/tasks/task.md",progress);
+ const base={taskId:"task",sessionId:"session",projectId:root};
+ await appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned",at:"2026-10-12T00:00:02Z"});
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:2,state:"running",at:"2026-10-12T00:00:01Z"}),/Stale task event/);
+ assert.deepEqual((await resumeOddTask(c,store,context))?.taskEvents.map(event=>event.revision),[1]);
+ await appendOddTaskEvent(c,context,store,{...base,revision:2,state:"running",at:"2026-10-12T00:00:03Z"});
+ assert.deepEqual((await resumeOddTask(c,store,context))?.taskEvents.map(event=>event.revision),[1,2]);
+});
