@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {mkdtemp,realpath,rm} from "node:fs/promises";
+import {mkdtemp,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {registerTodoTools} from "../src/runtime/pi-todo-tools.js";
@@ -62,4 +62,16 @@ test("a concurrent task cancellation invalidates an earlier blocked-resume appro
  const host={cwd:root,sessionManager:{getSessionId:()=>session.sessionId},hasUI:true,ui:{confirm:async()=>{await store.update(todo.taskId,session,3,"cancelled","Newer user decision");return true;}}};
  await assert.rejects(tools.get("asen_todo_update").execute("stale-resume",{id:todo.taskId,revision:3,state:"running"},undefined,undefined,host),/revision conflict/);
  assert.equal((await store.list(session))[0]?.current.state,"cancelled");assert.equal((await store.history(todo.taskId,session)).at(-1)?.reason,"Newer user decision");
+});
+
+
+test("session change while waiting for the Todo lock rejects the pending mutation",async t=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-todo-lock-session-")));t.after(()=>rm(root,{recursive:true,force:true}));
+ const file=path.join(root,"todos.json"),session={sessionId:"lock-session",projectId:root},store=await SessionTodoStore.open(file),todo=await store.add("Keep owning session",session);
+ const tools=new Map<string,any>();registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>store);
+ let current=session.sessionId;const host={cwd:root,sessionManager:{getSessionId:()=>current}};
+ await writeFile(`${file}.lock`,JSON.stringify({pid:process.pid,token:"session-lock-owner",createdAt:Date.now()}));
+ const pending=tools.get("asen_todo_update").execute("locked-update",{id:todo.taskId,revision:1,state:"running"},undefined,undefined,host);
+ await new Promise(resolve=>setTimeout(resolve,30));current="replacement-session";await rm(`${file}.lock`);
+ await assert.rejects(pending,/session changed/);assert.equal((await store.list(session))[0]?.current.state,"planned");assert.equal((await store.history(todo.taskId,session)).length,1);
 });
