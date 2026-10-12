@@ -56,7 +56,9 @@ test("shutdown waits for the complete watched refresh, including post-write work
  const gate=new Promise<void>(resolve=>release=resolve);
  let calls=0;
  const lifecycle=new RegistryLifecycle({debounceMs:0,prepare:async cwd=>({projectRoot:cwd,projectId:cwd,sources:[{id:"one",scope:"project",root:cwd}]}),refresh:async()=>{calls++;if(calls===2){entered();await gate;finished=true;}return observed(root);},watch:(_root,callback)=>{changed=callback;return {close(){}};}});
- await lifecycle.start({cwd:root,hasUI:true,ui:{notify(){}}});changed();await started;
+ await lifecycle.start({cwd:root,hasUI:true,ui:{notify(){}}});changed();
+ // Keep the event loop alive until the unref-ed debounce callback runs.
+ const keepAlive=setInterval(()=>{},100);try{await started;}finally{clearInterval(keepAlive);}
  let stopped=false;const stopping=lifecycle.shutdown().then(()=>stopped=true);
  await Promise.resolve();assert.equal(stopped,false);
  release();await stopping;assert.equal(finished,true);assert.equal(calls,2);
