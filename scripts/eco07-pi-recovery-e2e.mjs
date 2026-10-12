@@ -10,7 +10,10 @@ import {parseTodoFile,SessionTodoStore} from "../src/runtime/todo-store.ts";
 const repository=await realpath(process.cwd());
 const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8"}).trim();
 assert.equal(revision,process.env.ASEN_EXPECTED_SHA,"ECO-07 Pi recovery must test the exact candidate SHA");
-if(!process.env.GROQ_API_KEY)throw new Error("GROQ_API_KEY is unavailable to the ECO-07 Actions job");
+const provider=process.env.ASEN_ECO07_PROVIDER==="openrouter"?"openrouter":"groq";
+const model=provider==="openrouter"?(process.env.ASEN_ECO07_MODEL||"nvidia/nemotron-3.5-lightning:free"):"openai/gpt-oss-120b";
+const apiKey=provider==="openrouter"?process.env.OPENROUTER_API_KEY:process.env.GROQ_API_KEY;
+if(!apiKey)throw new Error(`${provider} API key is unavailable to the ECO-07 Actions job`);
 const piPackage=JSON.parse(await readFile(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url),"utf8"));
 assert.equal(piPackage.version,"1.1.0","ECO-07 provider run must use Pi 1.1.0");
 
@@ -18,7 +21,7 @@ const evidenceDir=path.join(repository,"eco07-pi-evidence");
 await mkdir(evidenceDir,{recursive:true});
 const transcriptPath=path.join(evidenceDir,"events.jsonl");
 const evidencePath=path.join(evidenceDir,"recovery.json");
-const scratch=await import("node:fs/promises").then(fs=>fs.mkdtemp(path.join(tmpdir(),"asen-eco07-groq-")));
+const scratch=await import("node:fs/promises").then(fs=>fs.mkdtemp(path.join(tmpdir(),`asen-eco07-${provider}-`)));
 const home=path.join(scratch,"home"),agentDir=path.join(home,".pi","agent"),sessionDir=path.join(home,"sessions"),asenDir=path.join(home,".asen");
 const stepsFile=path.join(scratch,"steps.jsonl"),readsFile=path.join(scratch,"reads.jsonl"),todoFile=path.join(asenDir,"todos.json");
 const sessionId=`eco07-recovery-${revision.slice(0,12)}`;
@@ -28,8 +31,8 @@ await writeFile(transcriptPath,"",{mode:0o600});
 const cli=path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");
 const asenExtension=path.join(repository,"extensions","asen.ts");
 const probeExtension=fileURLToPath(new URL("./eco07-pi-recovery-probe-extension.mjs",import.meta.url));
-const baseEnv={...Object.fromEntries(["PATH","SystemRoot","WINDIR","TEMP","TMP","TMPDIR","LANG","TERM"].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]]])),HOME:home,USERPROFILE:home,PI_CODING_AGENT_DIR:agentDir,PI_CODING_AGENT_SESSION_DIR:sessionDir,PI_TELEMETRY:"0",GROQ_API_KEY:process.env.GROQ_API_KEY,ASEN_ECO07_SESSION_ID:sessionId,ASEN_ECO07_PROJECT:repository,ASEN_ECO07_STEPS_FILE:stepsFile,ASEN_ECO07_READS_FILE:readsFile,ASEN_ECO07_TODO_FILE:todoFile,ASEN_ECO07_TASK_TITLE:title};
-const redacted=value=>String(value).replaceAll(process.env.GROQ_API_KEY,"[redacted]").slice(-1200);
+const baseEnv={...Object.fromEntries(["PATH","SystemRoot","WINDIR","TEMP","TMP","TMPDIR","LANG","TERM"].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]]])),HOME:home,USERPROFILE:home,PI_CODING_AGENT_DIR:agentDir,PI_CODING_AGENT_SESSION_DIR:sessionDir,PI_TELEMETRY:"0",...(provider==="groq"?{GROQ_API_KEY:apiKey}:{OPENROUTER_API_KEY:apiKey}),ASEN_ECO07_SESSION_ID:sessionId,ASEN_ECO07_PROJECT:repository,ASEN_ECO07_STEPS_FILE:stepsFile,ASEN_ECO07_READS_FILE:readsFile,ASEN_ECO07_TODO_FILE:todoFile,ASEN_ECO07_TASK_TITLE:title};
+const redacted=value=>String(value).replaceAll(apiKey,"[redacted]").slice(-1200);
 const record=async(kind,details={})=>writeFile(transcriptPath,`${JSON.stringify({at:new Date().toISOString(),kind,...details})}\n`,{flag:"a",mode:0o600});
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const snapshot=async()=>parseTodoFile(await readFile(todoFile,"utf8"));
@@ -49,7 +52,7 @@ const currentItem=async()=>{
   return matches.find(item=>item.title===title);
 };
 function startPi(label){
-  const args=[cli,"--mode","rpc","--session-id",sessionId,"--session-dir",sessionDir,"--no-extensions","--extension",asenExtension,"--extension",probeExtension,"--provider","groq","--model","openai/gpt-oss-120b","--no-skills","--tools","asen_todo_*,asen_eco07_*"];
+  const args=[cli,"--mode","rpc","--session-id",sessionId,"--session-dir",sessionDir,"--no-extensions","--extension",asenExtension,"--extension",probeExtension,"--provider",provider,"--model",model,"--no-skills","--tools","asen_todo_*,asen_eco07_*"];
   const child=spawn(process.execPath,args,{cwd:repository,env:{...baseEnv,ASEN_ECO07_PHASE:label},stdio:["pipe","pipe","pipe"]});
   let buffer="",stderr="",stdoutBytes=0,closed;
   let resumeConfirmed=false;
@@ -188,7 +191,7 @@ try{
   assert.deepEqual(second.events.filter(event=>event.type==="tool_execution_start"&&event.toolName==="asen_eco07_read_pending_review").map(event=>event.args?.step),["inspect-closure-audit","inspect-task-reducer"],"Pi must read the real review files through the resume-gated ASEN test tool in order");
   assert.equal(first.events.filter(event=>event.type==="extension_ui_request"&&event.method==="confirm").length,0);
   assert.equal(second.events.filter(event=>event.type==="extension_ui_request"&&event.method==="confirm").length,1,"Resume requires one explicit affirmative Pi confirmation");
-  const final={candidate:revision,provider:"groq",model:"openai/gpt-oss-120b",piVersion:piPackage.version,sessionId,projectId:repository,taskId:recovered.taskId,events:recovered.events.map(({revision,state,at,reason})=>({revision,state,at,reason})),persistedPlan:{sessionFile:path.relative(sessionDir,persistedPlanFile),orderedSteps:["inspect-closure-audit","inspect-task-reducer"]},reads:reads.map(({step,file,at})=>({step,file,at})),steps:rows.map(({step,summary,at})=>({step,summary,at})),initialProcessPid:first.child.pid,restartedProcessPid:second.child.pid,interruptionSignal:"SIGKILL",wrongSession:{visible:0,mutationRejected:true},wrongProject:{visible:0,mutationRejected:true},explicitResumeConsent:true,approvalAuthorityGranted:false,publishAuthorityGranted:false,mergeAuthorityGranted:false,result:"PASS"};
+  const final={candidate:revision,provider,model,piVersion:piPackage.version,sessionId,projectId:repository,taskId:recovered.taskId,events:recovered.events.map(({revision,state,at,reason})=>({revision,state,at,reason})),persistedPlan:{sessionFile:path.relative(sessionDir,persistedPlanFile),orderedSteps:["inspect-closure-audit","inspect-task-reducer"]},reads:reads.map(({step,file,at})=>({step,file,at})),steps:rows.map(({step,summary,at})=>({step,summary,at})),initialProcessPid:first.child.pid,restartedProcessPid:second.child.pid,interruptionSignal:"SIGKILL",wrongSession:{visible:0,mutationRejected:true},wrongProject:{visible:0,mutationRejected:true},explicitResumeConsent:true,approvalAuthorityGranted:false,publishAuthorityGranted:false,mergeAuthorityGranted:false,result:"PASS"};
   await writeFile(evidencePath,`${JSON.stringify(final,null,2)}\n`,{mode:0o600});
   console.log(JSON.stringify(final));
 }catch(error){
@@ -197,7 +200,7 @@ try{
   const steps=(await readFile(stepsFile,"utf8").catch(()=>"")).split("\n").filter(Boolean).map(line=>{try{const {step,summary,sessionId:owner,projectId,at}=JSON.parse(line);return {step,summary,sessionId:owner,projectId,at};}catch{return {malformed:true};}});
   const summarizeProcess=process=>({label:process.label,events:process.events.map(event=>({type:event.type,toolName:event.toolName,method:event.method,stopReason:event.message?.stopReason,...(typeof event.message?.errorMessage==="string"?{providerError:redacted(event.message.errorMessage)}:{}),aborted:event.aborted})),assistantReplies:process.events.filter(event=>event.type==="message_end"&&event.message?.role==="assistant"&&event.message?.stopReason==="stop").map(event=>redacted((event.message.content??[]).filter(part=>part?.type==="text").map(part=>part.text).join("\n")).slice(-600)),stderr:process.stderr});
   const processTrace=[first&&summarizeProcess({label:"initial",events:first.events,stderr:first.stderr}),second&&summarizeProcess({label:"restarted",events:second.events,stderr:second.stderr})].filter(Boolean);
-  const report={candidate:revision,provider:"groq",phase,result:"FAIL",task:task&&{taskId:task.taskId,title:task.title,events:task.events.map(({revision,state,at,reason})=>({revision,state,at,reason}))},reads:readRows,steps,processTrace,error:redacted(error?.stack??error)};
+  const report={candidate:revision,provider,model,phase,result:"FAIL",task:task&&{taskId:task.taskId,title:task.title,events:task.events.map(({revision,state,at,reason})=>({revision,state,at,reason}))},reads:readRows,steps,processTrace,error:redacted(error?.stack??error)};
   await writeFile(evidencePath,`${JSON.stringify(report,null,2)}\n`,{mode:0o600});
   console.error(JSON.stringify(report));
   throw error;
