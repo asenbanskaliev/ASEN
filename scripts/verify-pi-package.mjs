@@ -202,5 +202,5 @@ try {
     });
     send({id:"foreign-commands",type:"get_commands"});
   }).then(()=>{foreignVerified=true;}).finally(()=>settleVerifierChild(foreign,foreignClosed,{successful:foreignVerified}));
-  console.log(JSON.stringify({installedPiPackageVerified:true,primaryExtensions:["asen.ts"],childAuthorityAutoLoaded:false,visibleRpcCommands:visible,modelInvocations:models,sessionRestartVerified:true,crossSessionProjectionVerified:true,naturalProcessExits:3,publicHost:{mode:host.mode,hasUI:host.hasUI,canonicalCommands:9,canonicalTools:toolNames.length,toolsEnabled:true}}));
+  console.log(JSON.stringify({installedPiPackageVerified:true,primaryExtensions:["asen.ts"],childAuthorityAutoLoaded:false,visibleRpcCommands:visible,modelInvocations:models,sessionRestartVerified:true,crossSessionProjectionVerified:true,naturalProcessExits:3,publicHost:{mode:host.mode,hasUI:host.hasUI,canonicalCommands:10,canonicalTools:toolNames.length,toolsEnabled:true}}));
 } finally {rmSync(root,{recursive:true,force:true});}

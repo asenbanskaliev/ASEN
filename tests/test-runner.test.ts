@@ -60,6 +60,7 @@ const processFiles=[
  "tests/pi-agent-runtime.test.ts",
  "tests/spawn-contained.test.ts",
  "tests/lifecycle-tdd-completion.test.ts",
+ "tests/workspace-attribution.test.ts",
 ];
 
 test("Windows isolates strict lifecycle command witnesses from concurrent ordinary tests",()=>{
@@ -70,6 +71,12 @@ test("Windows isolates strict lifecycle command witnesses from concurrent ordina
  assert.equal(owners.length,1);
  assert.ok(owners[0].args.includes("--test-concurrency=1"));
  assert.ok(owners[0].name.startsWith("process-heavy"));
+});
+
+test("Windows isolates the 40-writer workspace lock stress from ordinary filesystem load",()=>{
+ const target="tests/workspace-attribution.test.ts",files=[...new Set([...processFiles,target,"tests/ordinary.test.ts"])];
+ const owners=planTestRuns({platform:"win32",testFiles:files,nodeOptions:[]}).filter((run:{args:string[]})=>run.args.includes(target));
+ assert.equal(owners.length,1);assert.ok(owners[0].args.includes("--test-concurrency=1"));assert.ok(owners[0].name.startsWith("process-heavy"));
 });
 
 test("discovers every test recursively once in deterministic repository-relative order",async t=>{

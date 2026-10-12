@@ -3,9 +3,9 @@ import test from "node:test";
 // @ts-expect-error CI-only package execution evidence.
 import {admitPackageJourneyResult} from "../scripts/ecosystem-package-receipts.mjs";
 function fixture(patch:Record<string,unknown>={}){
- const journey={installedPiPackageVerified:true,childAuthorityAutoLoaded:false,visibleRpcCommands:9,modelInvocations:0,
+ const journey={installedPiPackageVerified:true,childAuthorityAutoLoaded:false,visibleRpcCommands:10,modelInvocations:0,
   sessionRestartVerified:true,crossSessionProjectionVerified:true,naturalProcessExits:3,
-  publicHost:{mode:"rpc",canonicalCommands:9,canonicalTools:13,hasUI:true,toolsEnabled:true},...patch};
+  publicHost:{mode:"rpc",canonicalCommands:10,canonicalTools:13,hasUI:true,toolsEnabled:true},...patch};
  const pack={packedInstallVerified:true,publicExports:28,files:243,integrity:"sha512-"+"A".repeat(86)+"=="};
  return {status:0,signal:null,stdout:JSON.stringify(journey)+"\n"+JSON.stringify(pack)+"\nPACK_ENV_BOUNDARY_PASS\n"};
 }

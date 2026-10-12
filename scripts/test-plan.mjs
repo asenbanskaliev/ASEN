@@ -23,6 +23,9 @@ export const WINDOWS_PROCESS_TESTS=Object.freeze([
  // Hosted Windows ordinary-chunk load exhausted this strict command witness's
  // existing execution deadline. Preserve that deadline and serialize its launches.
  "tests/lifecycle-tdd-completion.test.ts",
+ // This test intentionally runs 40 contending private-store writes. Keep that
+ // lock stress out of ordinary Windows chunks with unrelated filesystem work.
+ "tests/workspace-attribution.test.ts",
 ]);
 
 const WINDOWS_REMAINING_CHUNK_SIZE=50;

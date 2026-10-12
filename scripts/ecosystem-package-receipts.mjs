@@ -16,11 +16,11 @@ export function admitPackageJourneyResult(result){
  assert.equal(journeys.length,1);assert.equal(packs.length,1);
  const journey=journeys[0],pack=packs[0];
  assert.equal(journey.installedPiPackageVerified,true);assert.equal(journey.childAuthorityAutoLoaded,false);
- assert.equal(journey.visibleRpcCommands,9);assert.equal(journey.modelInvocations,0);
+ assert.equal(journey.visibleRpcCommands,10);assert.equal(journey.modelInvocations,0);
  assert.equal(journey.sessionRestartVerified,true);assert.equal(journey.crossSessionProjectionVerified,true);
  assert.equal(journey.naturalProcessExits,3);
  assert.equal(journey.publicHost?.mode,"rpc");assert.equal(typeof journey.publicHost?.hasUI,"boolean");
- assert.equal(journey.publicHost?.canonicalCommands,9);assert.equal(journey.publicHost?.canonicalTools,13);
+ assert.equal(journey.publicHost?.canonicalCommands,10);assert.equal(journey.publicHost?.canonicalTools,13);
  assert.equal(journey.publicHost?.toolsEnabled,true);
  assert.equal(pack.packedInstallVerified,true);assert.equal(pack.publicExports,28);
  assert.ok(Number.isInteger(pack.files)&&pack.files>0);assert.match(pack.integrity??"",/^sha512-[A-Za-z0-9+/]{86}==$/);
