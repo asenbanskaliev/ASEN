@@ -4,9 +4,9 @@ These interfaces are registered by the shipped primary extension (`asen/extensio
 
 ## User interaction
 
-`asen_ask_choice` accepts a question, optional header, and two to four options. Each option has a label, optional description/preview and a unique value. An answered result contains the selected option; cancellation, timeout, unavailable host, invalid response and host failure have separate statuses.
+`asen_ask_choice` accepts a question, optional header, and two to four options. Each option has a label, optional description/preview and a unique value. `ask_user_choice` is the canonical compatibility alias: it uses the same strict input checks, excludes `preview`, and reports the selection index starting at one. The ASEN-named tool keeps its existing zero-based index.
 
-`asen_ask_question` accepts one to four questions. Each has a question, header and two to four labeled options; `multiSelect` is optional. A cancelled questionnaire discards all partial answers. Custom free text, where explicitly enabled by the choice contract, is validated and remains data. Neither tool issues permissions or a write grant.
+`asen_ask_question` accepts one to four questions. Each has a question, header and two to four labeled options; `multiSelect` is optional. `ask_user_question` is registered as a compatibility name and currently uses this ASEN input and result shape; exact canonical result translation is still pending. A cancelled questionnaire discards all partial answers. Custom free text, where explicitly enabled by the choice contract, is validated and remains data. Neither tool issues permissions or a write grant.
 
 The native Pi select/input primitives carry interaction. Offline Linux RPC choice/cancellation has been tested with zero model turns. Full TUI/questionnaire presentation and integration with genuine human-only mutation consumers remain open. Timed-out hosts that ignore abort stay quarantined until the old dialog settles.
 

@@ -188,7 +188,7 @@ test("canonical registration and ASEN integration expose both contracts with cor
     registerCommand(){},
     registerTool(tool:any){tools.set(tool.name,tool);},
   } as any);
-  assert.deepEqual([...tools.keys()],["asen_ask_choice","asen_ask_question","asen_code_intelligence","codegraph"]);
+  assert.deepEqual([...tools.keys()],["asen_ask_choice","asen_ask_question","ask_user_choice","ask_user_question","asen_code_intelligence","codegraph"]);
   assert.equal(tools.get("asen_code_intelligence").annotations.readOnlyHint,true);
   assert.equal(tools.get("codegraph").annotations.readOnlyHint,false);
 });

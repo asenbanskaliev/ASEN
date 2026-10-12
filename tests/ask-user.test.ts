@@ -12,6 +12,16 @@ test("Pi registers both ASEN interaction tools; choice returns only the actual c
   assert.equal(result.details.status,"answered");assert.equal(result.details.selection.value,"b");
   assert.equal("authority" in result.details,false);
 });
+test("canonical interaction aliases use the one-based choice contract without changing ASEN results",async()=>{
+ const registered=tools();assert.ok(registered.has("ask_user_choice"));assert.ok(registered.has("ask_user_question"));
+ const canonical=registered.get("ask_user_choice"),local=registered.get("asen_ask_choice");
+ assert.equal("preview" in canonical.parameters.properties.options.items.properties,false);
+ const ui={select:async(_title:string,rows:string[])=>rows[1]};
+ const result=await call(canonical,choice,ui),legacy=await call(local,choice,ui);
+ assert.equal(result.details.selection.index,2);assert.equal(result.details.selection.value,"b");
+ assert.equal(legacy.details.selection.index,1);assert.equal(legacy.details.selection.value,"b");
+ assert.equal("authority" in result.details,false);
+});
 test("invalid choices, forged host answers, unavailable UI and pre-cancel make no decision",async()=>{
   const tool=tools().get("asen_ask_choice");assert.ok(tool,"interaction tool must exist");let calls=0;
   const ui={select:async()=>{calls++;return "forged";}};

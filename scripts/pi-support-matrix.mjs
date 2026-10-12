@@ -19,6 +19,8 @@ export function validateCellObservation(cell,result){
  assert.equal(typeof result.hasUI,"boolean");
  assert.ok(result.commands.includes("asen"),"primary command must be registered");
  assert.ok(result.tools.includes("asen_ask_choice"),"primary tool must be registered");
+ assert.ok(result.tools.includes("ask_user_choice"),"canonical choice alias must be registered");
+ assert.ok(result.tools.includes("ask_user_question"),"canonical question alias must be registered");
  assert.equal(result.modelCalls,0);
  assert.equal(result.shutdownObserved,true,"host must deliver session shutdown");
  assert.equal(result.exitCode,0);

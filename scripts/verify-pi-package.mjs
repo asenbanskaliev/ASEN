@@ -130,7 +130,7 @@ try {
     const matches=host.commands.filter(row=>row.name===name&&row.source==="extension"&&fromPrimary(row));
     assert.equal(matches.length,1,`${name} must have one canonical installed-source registration`);
   }
-  const toolNames=["asen_ask_choice","asen_ask_question","asen_code_intelligence","asen_agent_start","asen_agent_status","asen_agent_cancel","asen_agent_continue","asen_todo_add","asen_todo_update","asen_todo_list","codegraph"];
+  const toolNames=["asen_ask_choice","asen_ask_question","ask_user_choice","ask_user_question","asen_code_intelligence","asen_agent_start","asen_agent_status","asen_agent_cancel","asen_agent_continue","asen_todo_add","asen_todo_update","asen_todo_list","codegraph"];
   for(const name of toolNames){
     const matches=host.tools.filter(row=>row.name===name&&realpathSync(row.path)===realpathSync(primary));
     assert.equal(matches.length,1,`${name} must have one canonical installed-source registration`);
