@@ -59,7 +59,18 @@ const processFiles=[
  "tests/pi-session-recovery-e2e.test.ts",
  "tests/pi-agent-runtime.test.ts",
  "tests/spawn-contained.test.ts",
+ "tests/lifecycle-tdd-completion.test.ts",
 ];
+
+test("Windows isolates strict lifecycle command witnesses from concurrent ordinary tests",()=>{
+ const target="tests/lifecycle-tdd-completion.test.ts";
+ const files=[...new Set([...processFiles,target,"tests/ordinary.test.ts"])];
+ const runs=planTestRuns({platform:"win32",testFiles:files,nodeOptions:[]});
+ const owners=runs.filter((run:{args:string[]})=>run.args.includes(target));
+ assert.equal(owners.length,1);
+ assert.ok(owners[0].args.includes("--test-concurrency=1"));
+ assert.ok(owners[0].name.startsWith("process-heavy"));
+});
 
 test("discovers every test recursively once in deterministic repository-relative order",async t=>{
  const root=await mkdtemp(join(tmpdir(),"asen-test-plan-"));
