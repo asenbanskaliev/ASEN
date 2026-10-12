@@ -28,7 +28,7 @@ await writeFile(transcriptPath,"",{mode:0o600});
 const cli=path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");
 const asenExtension=path.join(repository,"extensions","asen.ts");
 const probeExtension=fileURLToPath(new URL("./eco07-pi-recovery-probe-extension.mjs",import.meta.url));
-const baseEnv={...Object.fromEntries(["PATH","SystemRoot","WINDIR","TEMP","TMP","TMPDIR","LANG","TERM"].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]]])),HOME:home,USERPROFILE:home,PI_CODING_AGENT_DIR:agentDir,PI_CODING_AGENT_SESSION_DIR:sessionDir,PI_TELEMETRY:"0",GROQ_API_KEY:process.env.GROQ_API_KEY,ASEN_ECO07_SESSION_ID:sessionId,ASEN_ECO07_PROJECT:repository,ASEN_ECO07_STEPS_FILE:stepsFile};
+const baseEnv={...Object.fromEntries(["PATH","SystemRoot","WINDIR","TEMP","TMP","TMPDIR","LANG","TERM"].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]]])),HOME:home,USERPROFILE:home,PI_CODING_AGENT_DIR:agentDir,PI_CODING_AGENT_SESSION_DIR:sessionDir,PI_TELEMETRY:"0",GROQ_API_KEY:process.env.GROQ_API_KEY,ASEN_ECO07_SESSION_ID:sessionId,ASEN_ECO07_PROJECT:repository,ASEN_ECO07_STEPS_FILE:stepsFile,ASEN_ECO07_TODO_FILE:todoFile,ASEN_ECO07_TASK_TITLE:title};
 const redacted=value=>String(value).replaceAll(process.env.GROQ_API_KEY,"[redacted]").slice(-1200);
 const record=async(kind,details={})=>writeFile(transcriptPath,`${JSON.stringify({at:new Date().toISOString(),kind,...details})}\n`,{flag:"a",mode:0o600});
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -49,7 +49,7 @@ const currentItem=async()=>{
   return matches.find(item=>item.title===title);
 };
 function startPi(label){
-  const args=[cli,"--mode","rpc","--session-id",sessionId,"--session-dir",sessionDir,"--no-extensions","--extension",asenExtension,"--extension",probeExtension,"--provider","groq","--model","openai/gpt-oss-120b","--no-skills","--tools","read,asen_todo_*,asen_eco07_record_step"];
+  const args=[cli,"--mode","rpc","--session-id",sessionId,"--session-dir",sessionDir,"--no-extensions","--extension",asenExtension,"--extension",probeExtension,"--provider","groq","--model","openai/gpt-oss-120b","--no-skills","--tools","asen_todo_*,asen_eco07_*"];
   const child=spawn(process.execPath,args,{cwd:repository,env:baseEnv,stdio:["pipe","pipe","pipe"]});
   let buffer="",stderr="",stdoutBytes=0,closed;
   let resumeConfirmed=false;
@@ -167,7 +167,7 @@ try{
   await record("wrong-identity-rejected",{taskId:recovered.taskId,wrongSession:{visibleItems:0,mutationRejected:true},wrongProject:{visibleItems:0,mutationRejected:true},stateUnchanged:true});
 
   phase="explicit-resume-and-completion";
-  await second.send("prompt",{message:`The same ASEN task is blocked after a Pi restart. First, call asen_todo_list and verify this exact task id ${JSON.stringify(recovered.taskId)} belongs to this session and project. Then call asen_todo_update with that task id, revision ${recovered.events.at(-1).revision}, and state running. Wait for Pi's explicit resume confirmation before doing anything else. Until the confirmation is accepted, do not call read, asen_eco07_record_step, or any other tool; this restriction is enforced by the test. After confirmation, follow the ordered pending checklist from the earlier user message in this same Pi session: inspect docs/audit/eco07-closure-evidence-2026-10-12.md, then src/runtime/task-replay.ts, and record each matching step exactly once in that order. The first summary must mention PARTIAL, real Pi, and interruption. The second must mention planned, running, blocked, session, and project. Finally update this same task to done using its latest revision. Never create a second task and do not use approval, publishing, or merge actions.`});
+  await second.send("prompt",{message:`The same ASEN task is blocked after a Pi restart. First, call asen_todo_list and verify this exact task id ${JSON.stringify(recovered.taskId)} belongs to this session and project. Then call asen_todo_update with that task id, revision ${recovered.events.at(-1).revision}, and state running. Wait for Pi's explicit resume confirmation before doing anything else. After confirmation, use asen_eco07_read_pending_review with step inspect-closure-audit, then record that step exactly once with a summary mentioning PARTIAL, real Pi, and interruption. Next use asen_eco07_read_pending_review with step inspect-task-reducer, then record it exactly once with a summary mentioning planned, running, blocked, session, and project. Follow the ordered pending checklist in the earlier user message in this same Pi session. Finally update this same task to done using its latest revision. Never create a second task and do not use approval, publishing, or merge actions.`});
 
   const finishDeadline=Date.now()+240_000;
   while(Date.now()<finishDeadline){
@@ -182,6 +182,7 @@ try{
   const rows=(await readFile(stepsFile,"utf8")).trim().split("\n").filter(Boolean).map(line=>JSON.parse(line));
   assert.deepEqual(rows.map(row=>row.step),["inspect-closure-audit","inspect-task-reducer"],"Both pending review steps must run exactly once and in order");
   assert.ok(rows.every(row=>row.sessionId===sessionId&&row.projectId===repository));
+  assert.deepEqual(second.events.filter(event=>event.type==="tool_execution_start"&&event.toolName==="asen_eco07_read_pending_review").map(event=>event.args?.step),["inspect-closure-audit","inspect-task-reducer"],"Pi must read the real review files through the resume-gated ASEN test tool in order");
   assert.equal(first.events.filter(event=>event.type==="extension_ui_request"&&event.method==="confirm").length,0);
   assert.equal(second.events.filter(event=>event.type==="extension_ui_request"&&event.method==="confirm").length,1,"Resume requires one explicit affirmative Pi confirmation");
   const final={candidate:revision,provider:"groq",model:"openai/gpt-oss-120b",piVersion:piPackage.version,sessionId,projectId:repository,taskId:recovered.taskId,events:recovered.events.map(({revision,state,at,reason})=>({revision,state,at,reason})),persistedPlan:{sessionFile:path.relative(sessionDir,persistedPlanFile),orderedSteps:["inspect-closure-audit","inspect-task-reducer"]},steps:rows.map(({step,summary,at})=>({step,summary,at})),initialProcessPid:first.child.pid,restartedProcessPid:second.child.pid,interruptionSignal:"SIGKILL",wrongSession:{visible:0,mutationRejected:true},wrongProject:{visible:0,mutationRejected:true},explicitResumeConsent:true,approvalAuthorityGranted:false,publishAuthorityGranted:false,mergeAuthorityGranted:false,result:"PASS"};
