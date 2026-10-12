@@ -112,3 +112,20 @@ test("independent Todo clients cannot both apply the same saved plan revision",a
  await assert.rejects(second.update(todo.taskId,one,revision,"running"),/revision conflict/);
  assert.deepEqual(await reopened.history(todo.taskId,other),[]);
 });
+
+test("a crash before Todo commit preserves the previous plan and recovers its dead lock",async t=>{
+ const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Preserve committed plan",one),before=await readFile(file,"utf8");
+ const crash=spawnSync(process.execPath,["--import","tsx",resolve("tests/fixtures/todo-crash-before-commit.ts"),file,todo.taskId,one.sessionId,one.projectId],{encoding:"utf8",timeout:30000});
+ assert.equal(crash.status,23,`${crash.error?.message??""}\n${crash.stderr}`);
+ const marker=JSON.parse(crash.stdout.trim());assert.equal(marker.boundary,"before-commit");
+ assert.equal(await readFile(file,"utf8"),before,"uncommitted temporary bytes must never replace the durable plan");
+ assert.equal(parseTodoFile(await readFile(marker.temporary,"utf8")).items[0]?.events.at(-1)?.state,"running");
+ const owner=JSON.parse(await readFile(`${file}.lock`,"utf8"));assert.equal(owner.pid,crash.pid);
+ const reopened=await SessionTodoStore.open(file);assert.equal((await reopened.list(one))[0]?.current.state,"planned");
+ // Advance only the lock's wall-clock observation past its existing stale-owner grace period.
+ const realNow=Date.now;t.mock.method(Date,"now",()=>realNow()+31_000);
+ try{await reopened.update(todo.taskId,one,1,"running");}finally{t.mock.restoreAll();}
+ assert.deepEqual((await reopened.history(todo.taskId,one)).map(event=>event.revision),[1,2]);
+ assert.equal((await reopened.list(one))[0]?.current.state,"running");
+ await assert.rejects(readFile(`${file}.lock`),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
+});
