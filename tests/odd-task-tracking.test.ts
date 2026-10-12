@@ -119,7 +119,7 @@ test("concurrent first ODD mirrors create exactly one durable task record",async
 test("ODD resume rejects a task record updated during asynchronous document validation",async t=>{
  let store:SqliteMemoryStore|undefined;const root=await fixture(t,()=>store?.close());store=new SqliteMemoryStore(join(root,"memory.db"));const context=createMemoryContext(store,{repository:root},"session");
  await trackOddTask(contract(root),context,"odd/tasks/task.md",progress);let reads=0;
- const observed={get(id:string){const snapshot=store!.get(id);if(snapshot&&++reads===1){const payload=JSON.parse(snapshot.content);payload.nextStep="A newer saved step";context.rememberIfUnchanged(snapshot,{id:snapshot.id,kind:snapshot.kind,topic:snapshot.topic,content:JSON.stringify(payload),createdAt:snapshot.createdAt});}return snapshot;}};
+ const observed={get(id:string){const snapshot=store!.get(id);if(snapshot&&++reads===1){const payload=JSON.parse(snapshot.content);payload.nextStep="A newer saved step";context.rememberIfUnchanged(snapshot,{id:snapshot.id,kind:snapshot.kind,...(snapshot.topic!==undefined?{topic:snapshot.topic}:{}),content:JSON.stringify(payload),createdAt:snapshot.createdAt});}return snapshot;}};
  await assert.rejects(resumeOddTask(contract(root),observed,context),/changed.*resume|stale/);
  assert.equal((await resumeOddTask(contract(root),store,context))?.nextStep,"A newer saved step");
 });
