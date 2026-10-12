@@ -17,6 +17,7 @@
     "check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills && npm run audit:skill-parity && npm run audit:memory-parity && npm run audit:ecosystem && npm run audit:upstream-boundary",
     "verify:pack": "node scripts/verify-pack-environment.mjs",
     "verify:pi-matrix": "node scripts/pi-support-matrix.mjs",
+    "verify:package-receipts": "node scripts/ecosystem-package-receipts.mjs",
     "audit:parity": "node scripts/validate-phase10-parity.mjs",
     "audit:skills": "node scripts/audit-behavior-skills.mjs",
     "audit:skill-parity": "node scripts/validate-skill-contract-parity.mjs",
