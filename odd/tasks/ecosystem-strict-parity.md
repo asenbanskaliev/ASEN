@@ -1,4 +1,8 @@
 # Ecosystem strict behavioral parity
+## ECO-05 publication batch — 2026-10-12
+
+Source `d351bc0` adds live-session consent for read-only foreign-project launches and requires that permission for later query/cancel/continue. Permission is not serialized, cannot be regained through continuation, and is cleared on shutdown. Owned active children in foreign projects are also cancelled at shutdown. Existing child tool exclusion and write attribution are reused unchanged. Local installed-package verification passed (245 files, 28 exports, 9 commands, 11 tools, zero model calls, three natural exits, same-session restart and foreign-session isolation). Final focused authority/lifecycle/attribution checks and exact hosted outcomes are recorded separately; local hostile-process observations retain their two environment failures. Independent native review and authenticated provider/full cross-session transport evidence remain pending; ECO-05 is not promoted to FULL. User authorized one CI publication for this batch and ECO-07 work during that run.
+
 ## ECO-05 local lifecycle batch — 2026-10-12
 
 Source units `6b110fd` and `fa9ce13` add automatic delivery of persisted terminal outcomes to the owning active Pi session and optional task-id queries returning state/history without request prompts or authority data. The existing Dispatcher and durable store remain the execution/ownership boundary. Session changes suppress foreign results, restart does not replay completion, shutdown removes delivery before child cancellation, and observer failure cannot rewrite a saved result.
