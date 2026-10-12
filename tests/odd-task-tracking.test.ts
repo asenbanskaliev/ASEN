@@ -175,3 +175,49 @@ test("ECO-07 changed task document rejects append without altering saved history
  }),/document changed/);
  assert.deepEqual(store.exportProject(root).observations,before);
 });
+
+
+test("ECO-07 persists history after restart and stale replay rejection",async t=>{
+ let store:SqliteMemoryStore|undefined;
+ const root=await fixture(t,()=>store?.close()),db=join(root,"memory.db"),c=contract(root);
+ store=new SqliteMemoryStore(db);
+ const context=createMemoryContext(store,{repository:root},"session");
+ await trackOddTask(c,context,"odd/tasks/task.md",progress);
+ const base={taskId:"task",sessionId:"session",projectId:root,at:"2026-10-12T00:00:00Z"};
+ await appendOddTaskEvent(c,context,store,{...base,revision:1,state:"planned"});
+ await appendOddTaskEvent(c,context,store,{...base,revision:2,state:"running"});
+ await assert.rejects(()=>appendOddTaskEvent(c,context,store,{...base,revision:2,state:"cancelled"}),/revision conflict/);
+ store.close();store=undefined;
+ const reopened=store=new SqliteMemoryStore(db);
+ const resumed=await resumeOddTask(c,reopened,createMemoryContext(reopened,{repository:root},"session"));
+ assert.deepEqual(resumed?.taskEvents.map(event=>event.state),["planned","running"]);
+});
+
+test("ECO-07 rejects writes from unrelated session without mutation",async t=>{
+ let store:SqliteMemoryStore|undefined;
+ const root=await fixture(t,()=>store?.close()),c=contract(root);
+ store=new SqliteMemoryStore(join(root,"memory.db"));
+ const source=createMemoryContext(store,{repository:root},"source");
+ await trackOddTask(c,source,"odd/tasks/task.md",progress);
+ const before=store.exportProject(root).observations;
+ const other=createMemoryContext(store,{repository:root},"other");
+ await assert.rejects(()=>appendOddTaskEvent(c,other,store,{
+  taskId:"task",sessionId:"other",projectId:root,revision:1,state:"planned",at:"2026-10-12T00:00:00Z"
+ }),/session mismatch/);
+ assert.deepEqual(store.exportProject(root).observations,before);
+});
+
+test("ECO-07 cancelled task remains terminal after reopening",async t=>{
+ let store:SqliteMemoryStore|undefined;
+ const root=await fixture(t,()=>store?.close()),db=join(root,"memory.db"),c=contract(root);
+ store=new SqliteMemoryStore(db);
+ const source=createMemoryContext(store,{repository:root},"session");
+ await trackOddTask(c,source,"odd/tasks/task.md",progress);
+ const base={taskId:"task",sessionId:"session",projectId:root,at:"2026-10-12T00:00:00Z"};
+ await appendOddTaskEvent(c,source,store,{...base,revision:1,state:"planned"});
+ await appendOddTaskEvent(c,source,store,{...base,revision:2,state:"cancelled"});
+ store.close();store=undefined;
+ const reopened=store=new SqliteMemoryStore(db),context=createMemoryContext(reopened,{repository:root},"session");
+ await assert.rejects(()=>appendOddTaskEvent(c,context,reopened,{...base,revision:3,state:"running"}),/transition/);
+ assert.deepEqual((await resumeOddTask(c,reopened,context))?.taskEvents.map(event=>event.state),["planned","cancelled"]);
+});
