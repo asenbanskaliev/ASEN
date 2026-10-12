@@ -100,3 +100,15 @@ test("cancelled creation waiting for the Todo lock cannot append a stale task",a
  await new Promise(resolve=>setTimeout(resolve,30));controller.abort();await assert.rejects(pending,error=>(error as Error).name==="AbortError");
  assert.deepEqual((await store.list(one)).map(item=>item.title),["Existing task"]);
 });
+
+test("independent Todo clients cannot both apply the same saved plan revision",async t=>{
+ const file=await fixture(t),first=await SessionTodoStore.open(file),todo=await first.add("One shared plan",one),second=await SessionTodoStore.open(file);
+ const revision=(await second.list(one))[0]!.current.revision;
+ const results=await Promise.allSettled([first.update(todo.taskId,one,revision,"running"),second.update(todo.taskId,one,revision,"cancelled")]);
+ assert.equal(results.filter(result=>result.status==="fulfilled").length,1);assert.equal(results.filter(result=>result.status==="rejected").length,1);
+ const reopened=await SessionTodoStore.open(file),history=await reopened.history(todo.taskId,one);
+ assert.equal(history.length,2);assert.deepEqual(history.map(event=>event.revision),[1,2]);
+ assert.deepEqual(await first.list(one),await second.list(one));
+ await assert.rejects(second.update(todo.taskId,one,revision,"running"),/revision conflict/);
+ assert.deepEqual(await reopened.history(todo.taskId,other),[]);
+});
