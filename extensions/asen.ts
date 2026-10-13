@@ -9,6 +9,7 @@ import {claimWorkflowSelection,readWorkflowSelection,registerWorkflowSelectionCo
 import {decideLifecycleApplicability,decideLifecycleApplicabilityWithSelection,type LifecycleApplicability,type LifecycleApplicabilityInput} from "../src/lifecycle/applicability.js";
 import type {OddRouteDecision} from "../src/flow/odd-routing.js";
 import {claimedOrchestrationRouteContext} from "../src/orchestration/orchestrator.js";
+import type {ExecutablePlan} from "../src/orchestration/executable-plan.js";
 import {registerOrdinaryReviewCommand,type OrdinaryReviewCommandController} from "../src/review/ordinary-review-command.js";
 import {deriveOddExecutionContract,type OddExecutionContract} from "../src/flow/odd-execution-contract.js";
 import {trackOddTask,resumeOddTask,appendOddTaskEvent,type OddProgress} from "../src/flow/odd-task-tracking.js";
@@ -142,18 +143,18 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   registerData("asen-plan",{description:"Build and persist a dependency-aware Todo plan from exact ODD facts; no agent is dispatched",handler:async(args:string|undefined,ctx:CommandContext)=>{
    if(!ctx.sessionManager?.getSessionId?.())throw new Error("ASEN planning requires the active Pi session");
    let project:string;try{project=await realpath(ctx.cwd);}catch{throw new Error("ASEN planning requires an existing active project");}
-   const output=JSON.parse(controlledInstructionPlanCommand(args??"",project)) as Record<string,any>;
+   const output=JSON.parse(controlledInstructionPlanCommand(args??"",project)) as Record<string,unknown>&{executablePlan?:ExecutablePlan;persistedTasks?:Array<{planTaskId:string;todoId:string|undefined;dependsOn:Array<string|undefined>}>};
    if(!output.executablePlan)return JSON.stringify(output,null,2);
    if(!todoStorePromise){output.persistence={status:"unavailable",reason:"Todo store is not configured; this graph was not saved or made runnable"};output.execution={started:false,authorized:false};output.notice="Plan only. The Todo store is unavailable, so no task records were persisted. No agent was dispatched and no permission was granted.";return JSON.stringify(output,null,2);}
    const store=await todoStorePromise,identity=await sessionIdentity(ctx),todoIds=new Map<string,string>();
-   for(const taskId of output.executablePlan.topologicalOrder as string[]){
-    const task=(output.executablePlan.tasks as Array<{id:string;title:string;instruction:string;dependsOn:string[]}>).find(item=>item.id===taskId);
+   for(const taskId of output.executablePlan.topologicalOrder){
+    const task=output.executablePlan.tasks.find(item=>item.id===taskId);
     if(!task)throw new Error("ASEN executable plan order references an unknown task");
     const dependencies=task.dependsOn.map(id=>{const todoId=todoIds.get(id);if(!todoId)throw new Error("ASEN executable plan dependency order is invalid");return todoId;});
     const item=await store.add(task.title,identity,undefined,undefined,`asen-plan:${task.id}`,dependencies,task.instruction);
     todoIds.set(task.id,item.taskId);
    }
-   output.persistedTasks=(output.executablePlan.tasks as Array<{id:string;dependsOn:string[]}>).map(task=>({planTaskId:task.id,todoId:todoIds.get(task.id),dependsOn:task.dependsOn.map(id=>todoIds.get(id))}));
+   output.persistedTasks=output.executablePlan.tasks.map(task=>({planTaskId:task.id,todoId:todoIds.get(task.id),dependsOn:task.dependsOn.map(id=>todoIds.get(id))}));
    output.persistence={status:"saved",sessionId:identity.sessionId,projectId:identity.projectId};
    output.execution={started:false,authorized:false};
    output.notice="Executable task DAG persisted to this Pi session Todo store. Dependencies are enforced before a task may run. No agent was dispatched and no permission was granted.";

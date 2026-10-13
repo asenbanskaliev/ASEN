@@ -13,12 +13,13 @@ test("ECO-07 explicit persisted links survive restart without altering Todo stat
  const linkFile=join(dir,"links.json"),links=new TaskAgentLinkStore(linkFile);
  await links.bind({taskId:task.taskId,agentId:"agent-opaque",...identity,createdAt:"2026-10-13T00:00:00.000Z"});
  const agents={list:async()=>[
-  {id:"agent-opaque",role:"explorer",state:"completed",...identity},
+  {id:"agent-opaque",role:"explorer",state:"completed",summary:"Verified test evidence is available",...identity},
   {id:task.taskId+":worker",role:"worker",state:"running",...other},
  ]};
  const coordinator=new TaskAgentCoordinator(await SessionTodoStore.open(join(dir,"todos.json")),agents as never,new TaskAgentLinkStore(linkFile));
  const view=await coordinator.task(task.taskId,identity);
  assert.deepEqual(view?.agents.map(a=>a.id),["agent-opaque"]);
+ assert.equal(view?.agents[0]?.summary,"Verified test evidence is available");
  assert.equal(view?.state,"planned");
  assert.equal(await coordinator.task(task.taskId,other),null);
  assert.equal((await todos.history(task.taskId,identity)).length,1);
