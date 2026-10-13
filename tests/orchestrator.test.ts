@@ -295,21 +295,13 @@ test("ECO-06 rejects invalid orchestration instructions before consuming ODD rou
 
 test("ECO-06 planning never issues writer admission or runner write receivers",()=>{
  const taskId="sensitive-plan";
- const decision=issueOddDecision({
-  taskId,repository:"r",paths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"],
-  writes:[{path:"src/a.ts",changeKind:"security"}],
-  riskOperations:["security_boundary"],
- });
  const plan=buildOrchestrationPlan({
   taskId,repository:"r",prompt:"Inspect sensitive change",candidate,writeSurfaces:["src/a.ts"],
- },decision);
+ },orchestrated(taskId));
  const worker=plan.agents.find(agent=>agent.role==="worker");
  assert.ok(worker);
  assert.deepEqual(worker.writeSurfaces,["src/a.ts"]);
- assert.equal(worker.writerAdmission,undefined);
- assert.equal(worker.runnerWriteReceiver,undefined);
- assert.equal(worker.phaseGrant,undefined);
- assert.equal(Object.hasOwn(worker,"writerAdmission"),false);
- assert.equal(Object.hasOwn(worker,"runnerWriteReceiver"),false);
- assert.equal(Object.hasOwn(worker,"phaseGrant"),false);
+ for(const key of ["writerAdmission","runnerWriteReceiver","phaseGrant"]){
+  assert.equal(Object.hasOwn(worker,key),false);
+ }
 });
