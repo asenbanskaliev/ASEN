@@ -310,3 +310,21 @@ test("dispatcher rejects a result belonging to another task and records failure"
  assert.equal(completed,false);
  assert.equal(failed,true);
 });
+
+test("ECO-06 forged admission cannot reach Pi runner or mint a receiver",async()=>{
+ let calls=0;
+ const runner:AgentRunner={run:async request=>{calls++;return{id:request.id,ok:true,output:"unexpected"};}};
+ const d=new Dispatcher(runner,authorized());
+ const forged=Object.freeze({});
+ await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:forged}),/unused exact writer admission/);
+ assert.equal(calls,0);
+});
+test("ECO-06 one-use admission cannot authorize a second dispatch",async()=>{
+ let calls=0;
+ const runner:AgentRunner={run:async request=>{calls++;return{id:request.id,ok:true,output:"ok"};}};
+ const d=new Dispatcher(runner,authorized());
+ const admission=organicAdmission("a");
+ await d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:admission});
+ await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:admission}),/unused exact writer admission/);
+ assert.equal(calls,1);
+});
