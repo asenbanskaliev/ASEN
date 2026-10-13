@@ -1,4 +1,5 @@
 import {readFile} from "node:fs/promises";
+import {isAbsolute} from "node:path";
 import {atomicWriteText} from "../io/atomic-write.js";
 import {withExclusiveFileLock} from "../io/exclusive-file-lock.js";
 import {applyTaskEvent,recoverInterruptedTask,replayTask,type TaskEvent} from "./task-replay.js";
@@ -26,11 +27,12 @@ async function load(file:string):Promise<TaskJournal>{
  catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return empty();throw error;}
 }
 export class PersistentTaskStore{
- constructor(private readonly file:string){}
+ constructor(private readonly file:string){if(typeof file!=="string"||!isAbsolute(file))throw new Error("ASEN task journal requires an absolute file path");}
  async append(event:TaskEvent):Promise<TaskEvent>{
   return withExclusiveFileLock(this.file,async()=>{
    const journal=await load(this.file);
    const matching=journal.events.filter(e=>e.taskId===event.taskId&&e.sessionId===event.sessionId&&e.projectId===event.projectId);
+   if(matching.length===0&&journal.events.some(e=>e.taskId===event.taskId))throw new Error("Task identity already belongs to another session or project");
    const next=applyTaskEvent(replayTask(matching),event);
    journal.events.push(next);journal.revision++;
    await atomicWriteText(this.file,JSON.stringify(journal));
@@ -45,6 +47,7 @@ export class PersistentTaskStore{
   return withExclusiveFileLock(this.file,async()=>{
    const journal=await load(this.file);
    const events=journal.events.filter(e=>e.taskId===taskId&&e.sessionId===sessionId&&e.projectId===projectId);
+   if(events.length===0&&journal.events.some(e=>e.taskId===taskId))return undefined;
    const result=recoverInterruptedTask(events,at);
    if(!result.recoveryEvent)return result.state;
    journal.events.push(result.recoveryEvent);journal.revision++;
