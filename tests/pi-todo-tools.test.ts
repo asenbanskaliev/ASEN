@@ -5,6 +5,7 @@ import {tmpdir} from "node:os";
 import path from "node:path";
 import {registerTodoTools} from "../src/runtime/pi-todo-tools.js";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
+import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 
 test("resuming a restart-blocked Todo requires explicit active Pi UI approval",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-todo-confirm-"));t.after(()=>rm(root,{recursive:true,force:true}));
@@ -34,6 +35,15 @@ test("a planned DAG node cannot become done without a verification summary and e
  assert.match(question,/acceptance criteria pass/);assert.equal((await store.list(session))[0]?.current.state,"running");
  await execute("accepted",params,undefined,undefined,{...host,hasUI:true,ui:{confirm:async()=>true}});
  const current=(await store.list(session))[0]!.current;assert.equal(current.state,"done");assert.match(current.reason!,/Pi user independently verified/);
+});
+
+test("linked agent results above the complete UI review bound cannot be accepted",async t=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-agent-result-bound-")));t.after(()=>rm(root,{recursive:true,force:true}));const session={sessionId:"bounded-result-session",projectId:root},store=await SessionTodoStore.open(path.join(root,"todos.json")),links=new TaskAgentLinkStore(path.join(root,"links.json"));
+ const [task]=await store.addPlan([{title:"Review saved verifier result",requestId:"asen-plan:bounded-result:verifier",dependsOn:[],description:"Check the exact result against acceptance criteria",plan:{role:"verifier",skillPaths:[],skillSelection:{phase:"verify"}}}],session);assert.ok(task);
+ await store.update(task.taskId,session,1,"running");await store.update(task.taskId,session,2,"blocked","Agent result requires review");await links.bind({taskId:task.taskId,agentId:"agent-large-result",sessionId:session.sessionId,projectId:root,createdAt:new Date().toISOString()});
+ const fakeRuntime={query:async()=>({record:{id:"agent-large-result",role:"verifier",sessionId:session.sessionId,projectId:root,state:"completed",summary:"x".repeat(4097)}})},tools=new Map<string,any>();registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>store,undefined,{links:async()=>links,agents:async()=>fakeRuntime as any});let confirms=0;
+ await assert.rejects(()=>tools.get("asen_todo_accept_result")!.execute("accept-large",{id:task.taskId,agentId:"agent-large-result",revision:3,evidence:"I reviewed the whole result"},undefined,undefined,{cwd:root,sessionManager:{getSessionId:()=>session.sessionId},hasUI:true,ui:{confirm:async()=>{confirms++;return true;}}}),/bounded UI review size/u);
+ assert.equal(confirms,0);assert.equal((await store.list(session))[0]?.current.state,"blocked");
 });
 
 test("ECO-07 restart recovery preserves one ordered task transition chain through completion",async t=>{
