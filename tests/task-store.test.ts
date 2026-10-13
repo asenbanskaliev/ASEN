@@ -41,3 +41,25 @@ test("ECO-07 rejects cross-session task identity reuse before writing",async t=>
  assert.equal((await store.history("same","s1","p1")).length,1);
  assert.equal(await store.recover("same","s2","p1","2026-10-13T00:00:02Z"),undefined);
 });
+
+test("ECO-07 journal rejects cross-session identity substitution in persisted history",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-task-forged-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const file=join(dir,"tasks.json"),store=new PersistentTaskStore(file);
+ const base:TaskEvent={taskId:"shared",sessionId:"s1",projectId:"p",revision:1,state:"planned",at:"2026-10-13T00:00:01Z"};
+ await store.append(base);
+ const forged={schema:"asen.tasks/v1",revision:2,events:[base,{...base,sessionId:"s2"}]};
+ await writeFile(file,JSON.stringify(forged));
+ await assert.rejects(()=>store.history("shared","s1","p"),/multiple sessions or projects/);
+ await assert.rejects(()=>store.append({...base,taskId:"another"}),/multiple sessions or projects/);
+});
+test("ECO-07 competing revisions preserve exactly one winner",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-task-race-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const file=join(dir,"tasks.json"),first=new PersistentTaskStore(file),second=new PersistentTaskStore(file);
+ const planned:TaskEvent={taskId:"race",sessionId:"s",projectId:"p",revision:1,state:"planned",at:"2026-10-13T00:00:01Z"};
+ await first.append(planned);
+ const next:TaskEvent={...planned,revision:2,state:"running",at:"2026-10-13T00:00:02Z"};
+ const results=await Promise.allSettled([first.append(next),second.append(next)]);
+ assert.equal(results.filter(r=>r.status==="fulfilled").length,1);
+ assert.equal(results.filter(r=>r.status==="rejected").length,1);
+ assert.equal((await first.history("race","s","p")).length,2);
+});

@@ -13,8 +13,12 @@ function parse(raw:string):TaskJournal{
  if(Object.keys(value).sort().join(",")!=="events,revision,schema"||value.schema!==SCHEMA||!Number.isSafeInteger(value.revision)||Number(value.revision)<0||!Array.isArray(value.events)||value.events.length>20000)throw new Error("Invalid ASEN task journal");
  const events=value.events as TaskEvent[];
  const states=new Map<string,TaskEvent>();
+ const identities=new Map<string,string>();
  for(const event of events){
   const key=JSON.stringify([event.taskId,event.sessionId,event.projectId]);
+  const existing=identities.get(event.taskId);
+  if(existing!==undefined&&existing!==key)throw new Error("Task identity belongs to multiple sessions or projects");
+  identities.set(event.taskId,key);
   const state=applyTaskEvent(states.get(key),event);
   states.set(key,state);
  }
