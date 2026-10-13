@@ -41,10 +41,11 @@ export class AgentRuntime{
   const execution=this.dispatcher.dispatch(request);this.#executions.set(request.id,execution);
   void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{signal?.removeEventListener("abort",onAbort);if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);});
  }
- async startExplorer(input:{prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
+ async startReadOnly(input:{role:"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
   if(!input.session.sessionId||!input.session.projectId)throw new Error("An active Pi session and project are required");
-  if(input.skillSelection&&input.skillSelection.phase!=="explore")throw new Error("Explorer dispatch requires an explore-phase skill selection");
-  const request:AgentRequest={id:`agent-${randomUUID()}`,role:"explorer",prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:input.owner??{kind:"user",id:`pi:${input.session.sessionId}`}};
+  const requiredPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[input.role];
+  if(input.skillSelection&&input.skillSelection.phase!==requiredPhase)throw new Error(`${input.role} dispatch requires a ${requiredPhase}-phase skill selection`);
+  const request:AgentRequest={id:`agent-${randomUUID()}`,role:input.role,prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:input.owner??{kind:"user",id:`pi:${input.session.sessionId}`}};
   if(input.skillSelection){request.skillContext=issueSkillContext(request.id,request.repository,undefined,input.skillSelection);request.skillPaths=selectSkills(request.skillContext).map(skill=>skill.path);}
   await this.store.enqueue(request,request.owner!,signal);
   if(signal?.aborted){await this.store.cancelled(request.id,"Pi cancelled the launch after durable enqueue and before dispatch");throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});}
@@ -56,6 +57,7 @@ export class AgentRuntime{
   }catch(error){if(!dispatched)await this.store.cancelled(request.id,"Agent binding or launch was cancelled before dispatch").catch(()=>{});throw error;}
   return request.id;
  }
+ async startExplorer(input:{prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{return this.startReadOnly({role:"explorer",...input},signal);}
  async cancel(id:string,identity:AgentSessionIdentity):Promise<boolean>{
   const entry=await this.store.get(id,identity.sessionId,identity.projectId);if(!entry||!["queued","running","interrupted"].includes(entry.record.state))return false;
   if(this.dispatcher.cancel(id,identity.sessionId,identity.projectId)){await this.#executions.get(id)?.catch(()=>{});return true;}

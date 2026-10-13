@@ -30,3 +30,13 @@ test("ECO-06 plan dependency gates remain enforced inside the ECO-07 launch lock
  let dispatches=0;await assert.rejects(()=>binder.launch(task.taskId,"agent-child",own,()=>{dispatches++;}),/dependencies must be verified done/);
  assert.equal(dispatches,0);assert.deepEqual(await links.list(own),[]);assert.equal((await todos.list(own)).find(item=>item.taskId===task.taskId)?.current.state,"planned");
 });
+test("ECO-07 rejects a second launch while a Todo already has an active linked agent",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-binder-duplicate-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const own={sessionId:"session-a",projectId:"/project"},todos=await SessionTodoStore.open(join(dir,"todos.json")),task=await todos.add("Single active launch",own),links=new TaskAgentLinkStore(join(dir,"links.json"));
+ const records=new Map([["agent-one",{record:{id:"agent-one",sessionId:own.sessionId,projectId:own.projectId,state:"running"}}],["agent-two",{record:{id:"agent-two",sessionId:own.sessionId,projectId:own.projectId,state:"queued"}}]]),runtime={query:async(id:string)=>records.get(id)??null},binder=new TrustedTaskAgentBinder(todos,runtime as never,links);
+ await binder.launch(task.taskId,"agent-one",own,()=>{});let secondDispatches=0;
+ await assert.rejects(()=>binder.launch(task.taskId,"agent-two",own,()=>{secondDispatches++;}),/duplicate launch rejected/);
+ assert.equal(secondDispatches,0);assert.deepEqual((await links.list(own)).map(link=>link.agentId),["agent-one"]);
+ records.set("agent-one",{record:{id:"agent-one",sessionId:own.sessionId,projectId:own.projectId,state:"interrupted"}});
+ await binder.launch(task.taskId,"agent-two",own,()=>{secondDispatches++;});assert.equal(secondDispatches,1,"an interrupted attempt is terminal and an explicit fresh launch may recover the pre-dispatch crash window");
+});

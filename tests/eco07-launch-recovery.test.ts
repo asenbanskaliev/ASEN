@@ -79,7 +79,7 @@ test("ECO-07 abort after enqueue but during binding closes launch without dispat
  const runtime=await AgentRuntime.open({storeFile:join(dir,"agents.json"),runner:{run:async(request:{id:string})=>{runs++;return{id:request.id,ok:true,output:"unexpected"};}} as never});
  const todos=await SessionTodoStore.open(join(dir,"todos.json")),task=await todos.add("Owned work",identity);
  const baseLinks=new TaskAgentLinkStore(join(dir,"links.json"));
- const slowLinks={bind:async(link:Parameters<TaskAgentLinkStore["bind"]>[0])=>{entered();await bindingGate;return baseLinks.bind(link);}};
+ const slowLinks={bind:async(link:Parameters<TaskAgentLinkStore["bind"]>[0])=>{entered();await bindingGate;return baseLinks.bind(link);},list:(active:Parameters<TaskAgentLinkStore["list"]>[0])=>baseLinks.list(active)};
  const binder=new TrustedTaskAgentBinder(todos,runtime,slowLinks as never),controller=new AbortController();
  const starting=runtime.startExplorer({prompt:"Read only",session:identity,onQueued:(id,dispatch)=>binder.launch(task.taskId,id,identity,dispatch)},controller.signal);
  await enteredBinding;controller.abort();release();

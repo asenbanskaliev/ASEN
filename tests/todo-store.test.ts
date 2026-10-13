@@ -42,6 +42,11 @@ test("dependency-aware plan tasks persist across restart and cannot run before p
  await assert.rejects(()=>reopened.add("Wrong dependency",one,undefined,undefined,"plan:conflict",["missing"]),/current session and project/);
 });
 
+test("Todo plan journals survive skill registry changes and reject stale dispatch separately",async t=>{
+ const file=await fixture(t),store=await SessionTodoStore.open(file),selection={phase:"explore" as const,risk:"low" as const,codeChange:false,behaviorChange:false,filesTouched:0},task=await store.add("Keep historical plan",one,undefined,undefined,"asen-plan:historical:explorer",[],"Inspect with the plan's recorded skill set",{role:"explorer",skillPaths:["skills/asen-retired/SKILL.md"],skillSelection:selection});
+ const reopened=await SessionTodoStore.open(file),persisted=(await reopened.list(one)).find(item=>item.taskId===task.taskId);assert.equal(reopened.diagnostics(),undefined);assert.deepEqual(persisted?.plan?.skillPaths,["skills/asen-retired/SKILL.md"]);
+});
+
 test("running Todo work becomes blocked after restart and is never resumed automatically",async t=>{
  const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Validate deployment",one);await store.update(todo.taskId,one,1,"running");
  const reopened=await SessionTodoStore.open(file);await reopened.recover(one);const current=(await reopened.list(one))[0]!.current;assert.equal(current.state,"blocked");assert.match(current.reason!,/restarted.*explicit review/i);assert.equal(current.revision,3);assert.equal((await reopened.history(todo.taskId,one)).at(-1)?.state,"blocked");

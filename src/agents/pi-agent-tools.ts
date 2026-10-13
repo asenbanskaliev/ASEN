@@ -6,7 +6,7 @@ import type {AgentRuntime} from "./agent-runtime.js";
 import type {AgentSessionIdentity} from "./agent-runtime.js";
 import type {TrustedTaskAgentBinder} from "../runtime/trusted-task-agent-binder.js";
 import type {SessionTodoStore} from "../runtime/todo-store.js";
-import type {SkillSelectionContext} from "../skills/registry.js";
+import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 
 const text={type:"string",minLength:1,maxLength:32000};
 const rootSchema={type:"string",minLength:1,maxLength:4096};
@@ -34,17 +34,18 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const prompt=(params as {prompt?:unknown})?.prompt;if(typeof prompt!=="string"||!prompt.trim()||prompt.length>32000)throw new Error("Invalid agent prompt");
   const session=await selectedIdentity((params as {root?:unknown}).root,context,true,signal);
   const todoId=(params as {todoId?:unknown}).todoId;
+  let dispatchRole:"explorer"|"reviewer"|"verifier"="explorer";
   let planSkillSelection:SkillSelectionContext|undefined;
   if(todoId!==undefined){
    if(typeof todoId!=="string"||!todoId.trim()||!todoLink)throw new Error("Todo binding is unavailable");
    const task=(await (await todoLink.todos()).list(session)).find(item=>item.taskId===todoId);
    if(!task||task.current.state==="done"||task.current.state==="cancelled"||task.current.state==="blocked")throw new Error("Todo must be an active, owned task before agent launch");
    if(task.description&&prompt!==task.description)throw new Error("A planned Todo agent must receive the exact persisted task instruction");
-   if(task.plan){if(task.plan.role!=="explorer")throw new Error(`Planned ${task.plan.role} work requires a controlled ${task.plan.role} dispatcher`);if(task.plan.skillSelection?.phase!=="explore")throw new Error("Planned explorer Todo is missing its ASEN skill selection");planSkillSelection=task.plan.skillSelection;}
+   if(task.plan){if(task.plan.role!=="explorer"&&task.plan.role!=="reviewer"&&task.plan.role!=="verifier")throw new Error(`Planned ${task.plan.role} work requires a controlled ${task.plan.role} dispatcher`);const expectedPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[task.plan.role];if(task.plan.skillSelection?.phase!==expectedPhase)throw new Error(`Planned ${task.plan.role} Todo is missing its exact ASEN skill selection`);const expectedPaths=selectSkills(task.plan.skillSelection).map(skill=>skill.path);if(expectedPaths.length!==task.plan.skillPaths.length||expectedPaths.some((path,index)=>path!==task.plan!.skillPaths[index]))throw new Error("Persisted ASEN skill registry selection changed; rebuild this plan before dispatch");dispatchRole=task.plan.role;planSkillSelection=task.plan.skillSelection;}
   }
   throwIfCancelled(signal);
-  const active=await runtime(),taskId=await active.startExplorer({prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(typeof todoId==="string"?{onQueued:async(agentId:string,dispatch:()=>void)=>{await (await todoLink!.binder()).launch(todoId,agentId,session,dispatch);}}:{})},signal);
-  return result({id:taskId,state:"queued",role:"explorer",...(typeof todoId==="string"?{todoId}:{})});
+  const active=await runtime(),taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(typeof todoId==="string"?{onQueued:async(agentId:string,dispatch:()=>void)=>{await (await todoLink!.binder()).launch(todoId,agentId,session,dispatch);}}:{})},signal);
+  return result({id:taskId,state:"queued",role:dispatchRole,...(typeof todoId==="string"?{todoId}:{})});
  }});
  pi.registerTool?.({name:"asen_agent_status",label:"ASEN agent status",description:"List owned agent tasks, or query one task and its durable state history by id.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{id:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);

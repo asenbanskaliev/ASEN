@@ -5,11 +5,11 @@ import {withExclusiveFileLock} from "../io/exclusive-file-lock.js";
 import {preparePrivateFile} from "../io/private-file.js";
 import {sameWorkspaceIdentityPath} from "./workspace-store.js";
 import {applyTaskEvent,replayTask,type TaskEvent,type TaskState} from "./task-replay.js";
-import {selectSkills,type SkillPhase,type SkillSelectionContext} from "../skills/registry.js";
+import type {SkillPhase,SkillSelectionContext} from "../skills/registry.js";
 
 const SCHEMA="asen.todo/v1" as const,MAX_TASKS=2000,MAX_EVENTS=20000;
 export type TodoPlanRole="primary"|"explorer"|"worker"|"reviewer"|"verifier"|"clarifier";
-export interface TodoPlanMetadata{role:TodoPlanRole;skillPaths:string[];skillSelection?:SkillSelectionContext;}
+export interface TodoPlanMetadata{role:TodoPlanRole;skillPaths:string[];skillSelection?:SkillSelectionContext;priority?:number;}
 export interface TodoItem{taskId:string;title:string;events:TaskEvent[];requestId?:string;dependsOn?:string[];description?:string;plan?:TodoPlanMetadata;}
 export interface TodoFile{schema:typeof SCHEMA;revision:number;items:TodoItem[];}
 export interface TodoContext{sessionId:string;projectId:string;}
@@ -18,8 +18,9 @@ const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&
 const identity=(v:unknown)=>typeof v==="string"&&v.length>0&&v.length<=1024&&v===v.trim()&&v===v.normalize("NFC")&&!/[\u0000-\u001f\u007f-\u009f]/u.test(v);
 function validPlan(value:unknown):value is TodoPlanMetadata{
  if(!value||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)return false;
- const hasSelection=Object.hasOwn(value,"skillSelection"),keys=hasSelection?["role","skillPaths","skillSelection"]:["role","skillPaths"];
+ const hasSelection=Object.hasOwn(value,"skillSelection"),hasPriority=Object.hasOwn(value,"priority"),keys=["role","skillPaths",...(hasSelection?["skillSelection"]:[]),...(hasPriority?["priority"]:[])];
  if(!exact(value,keys)||!(["primary","explorer","worker","reviewer","verifier","clarifier"] as unknown[]).includes(value.role)||!Array.isArray(value.skillPaths)||value.skillPaths.some(p=>typeof p!=="string"||!/^skills\/asen-[a-z-]+\/SKILL\.md$/u.test(p))||new Set(value.skillPaths).size!==value.skillPaths.length)return false;
+ if(hasPriority&&(!Number.isSafeInteger(value.priority)||Number(value.priority)<1||Number(value.priority)>100))return false;
  if(!hasSelection)return value.role==="primary"||value.role==="clarifier";
  const selectionRaw=value.skillSelection;if(!selectionRaw||typeof selectionRaw!=="object"||Array.isArray(selectionRaw)||Object.getPrototypeOf(selectionRaw)!==Object.prototype)return false;const selection=selectionRaw as SkillSelectionContext,role=value.role as TodoPlanRole;
  const allowed=["phase","defect","codeChange","behaviorChange","risk","filesTouched","verification"],selectionKeys=Object.keys(selectionRaw);
@@ -29,7 +30,7 @@ function validPlan(value:unknown):value is TodoPlanMetadata{
  if("filesTouched" in selection&&(!Number.isSafeInteger((selection as Record<string,unknown>).filesTouched)||Number((selection as Record<string,unknown>).filesTouched)<0))return false;
  const expectedPhase:Partial<Record<TodoPlanRole,SkillPhase>>={explorer:"explore",worker:"apply",reviewer:"adversarial-review",verifier:"verify"};
  if(role==="clarifier"||expectedPhase[role]!==undefined&&expectedPhase[role]!==selection.phase)return false;
- try{return JSON.stringify(selectSkills(selection).map(skill=>skill.path))===JSON.stringify(value.skillPaths);}catch{return false;}
+ return true;
 }
 function validItem(value:unknown):value is TodoItem{
  if(!value||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)return false;
