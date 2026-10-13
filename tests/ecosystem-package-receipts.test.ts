@@ -5,7 +5,7 @@ import {admitPackageJourneyResult} from "../scripts/ecosystem-package-receipts.m
 function fixture(patch:Record<string,unknown>={}){
  const journey={installedPiPackageVerified:true,childAuthorityAutoLoaded:false,visibleRpcCommands:11,modelInvocations:0,
   sessionRestartVerified:true,crossSessionProjectionVerified:true,naturalProcessExits:3,
-  publicHost:{mode:"rpc",canonicalCommands:11,canonicalTools:13,hasUI:true,toolsEnabled:true},...patch};
+  publicHost:{mode:"rpc",canonicalCommands:11,canonicalTools:16,hasUI:true,toolsEnabled:true},...patch};
  const pack={packedInstallVerified:true,publicExports:28,files:243,integrity:"sha512-"+"A".repeat(86)+"=="};
  return {status:0,signal:null,stdout:JSON.stringify(journey)+"\n"+JSON.stringify(pack)+"\nPACK_ENV_BOUNDARY_PASS\n"};
 }
@@ -17,7 +17,7 @@ test("package receipt admission requires actual completed package and three-proc
 
 test("old forced-exit package observations cannot prove restart or cross-session receipts",()=>{
  for(const patch of [{sessionRestartVerified:false},{crossSessionProjectionVerified:false},{naturalProcessExits:2},
-  {modelInvocations:1},{childAuthorityAutoLoaded:true},{visibleRpcCommands:0}])
+  {modelInvocations:1},{childAuthorityAutoLoaded:true},{visibleRpcCommands:0},{publicHost:{mode:"rpc",canonicalCommands:11,canonicalTools:13,hasUI:true,toolsEnabled:true}}])
   assert.throws(()=>admitPackageJourneyResult(fixture(patch)));
  const row=fixture();row.stdout=row.stdout.replace("PACK_ENV_BOUNDARY_PASS","");
  assert.throws(()=>admitPackageJourneyResult(row));
