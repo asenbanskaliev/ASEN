@@ -26,7 +26,7 @@ async function identity(context:any):Promise<AgentSessionIdentity>{
  if(typeof sessionId!=="string"||!sessionId||sessionId!==sessionId.trim()||typeof cwd!=="string"||!isAbsolute(cwd))throw new Error("ASEN agent tools require the active Pi session and project");
  return {sessionId,projectId:await realpath(resolve(cwd))};
 }
-export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent_status","asen_agent_cancel","asen_agent_continue","asen_plan_dispatch_next"] as const);
+export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent_status","asen_agent_cancel","asen_agent_continue","asen_agent_retry","asen_plan_dispatch_next"] as const);
 /** Exposes only read-only explorer work by default; write agents require an internal fresh ASEN grant. */
 export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>}):()=>void{
  const access=new AgentProjectAccess();
@@ -77,6 +77,27 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
    if(resumed&&todos){const current=(await todos.list(session)).find(item=>item.taskId===resumed.taskId);if(current?.current.state==="running")await todos.update(current.taskId,session,current.current.revision,"blocked","Linked agent continuation was not dispatched; review is required",undefined).catch(()=>{});}
    throw error;
   }
+ }});
+ pi.registerTool?.({name:"asen_agent_retry",label:"Retry failed ASEN plan task",description:"After explicit Pi UI confirmation, create one new read-only attempt for a failed linked Todo task; writes and cancelled tasks are not retried.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["id"],properties:{id:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
+  throwIfCancelled(signal);const agentId=(params as {id?:unknown})?.id;if(typeof agentId!=="string"||!agentId.trim()||!todoLink)throw new Error("Retry requires a linked ASEN Todo agent");
+  const session=await selectedIdentity((params as {root?:unknown}).root,context,true,signal),[links,todos,active]=await Promise.all([todoLink.links(),todoLink.todos(),runtime()]);
+  const link=(await links.list(session)).find(item=>item.agentId===agentId);if(!link)throw new Error("Retry requires a Todo-agent link owned by this session and project");
+  const todo=(await todos.list(session)).find(item=>item.taskId===link.taskId),prior=await active.query(agentId,session);
+  if(!todo||todo.current.state!=="blocked"||!todo.description)throw new Error("Retry requires a blocked Todo with its exact persisted instruction");const instruction=todo.description;
+  const attempts=(await links.list(session)).filter(item=>item.taskId===link.taskId);if(attempts.length!==1||attempts[0]?.agentId!==agentId)throw new Error("This Todo already used its single controlled retry; review the result and create a new plan if needed");
+  if(!prior||prior.record.state!=="failed"||!(["explorer","reviewer","verifier"] as const).includes(prior.record.role as "explorer"|"reviewer"|"verifier"))throw new Error("Only a failed read-only agent may be retried; interrupted work requires explicit continuation");
+  const role=prior.record.role as "explorer"|"reviewer"|"verifier",selection=todo.plan?.skillSelection;
+  if(todo.plan&&(todo.plan.role!==role||!selection||selection.phase!==({explorer:"explore",reviewer:"adversarial-review",verifier:"verify"} as const)[role]))throw new Error("Failed agent does not match the persisted read-only plan role and skill phase");
+  if(selection){const expected=selectSkills(selection).map(skill=>skill.path);if(expected.length!==todo.plan!.skillPaths.length||expected.some((value,index)=>value!==todo.plan!.skillPaths[index]))throw new Error("Persisted ASEN skill registry selection changed; rebuild this plan before retry");}
+  if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function"||!await confirmWithAbort(dialogSignal=>context.ui.confirm("Retry failed ASEN task?",`${todo.title}\n\nThe previous read-only attempt failed. Start one new attempt with the exact saved instruction and bind it to this Todo?\n\n${instruction.slice(0,1200)}`,dialogSignal?{signal:dialogSignal}:undefined),signal))throw new Error("Explicit Pi UI confirmation is required to retry a failed task");
+  throwIfCancelled(signal);if((await identity(context)).sessionId!==session.sessionId)throw new Error("Pi session changed before agent retry");
+  const fresh=(await todos.list(session)).find(item=>item.taskId===todo.taskId),latest=await active.query(agentId,session);
+  if(!fresh||fresh.current.state!=="blocked"||fresh.current.revision!==todo.current.revision||!latest||latest.record.state!=="failed")throw new Error("Failed Todo or agent changed during retry confirmation; refresh before retry");
+  const resumed=await todos.update(todo.taskId,session,todo.current.revision,"running","User confirmed a new read-only retry in Pi UI",signal);
+  try{
+   const next=await active.startReadOnly({role,prompt:instruction,session,...(selection?{skillSelection:selection}:{}),onQueued:async(id,dispatch)=>{await (await todoLink.binder()).launch(todo.taskId,id,session,dispatch);}},signal);
+   return result({id:next,state:"queued",retriedFrom:agentId,role,todoId:todo.taskId});
+  }catch(error){const current=(await todos.list(session)).find(item=>item.taskId===todo.taskId);if(current?.current.state==="running")await todos.update(current.taskId,session,current.current.revision,"blocked","Read-only retry was not dispatched; review is required",undefined).catch(()=>{});throw error;}
  }});
  pi.registerTool?.({name:"asen_plan_dispatch_next",label:"Dispatch next ASEN plan task",description:"After explicit Pi UI confirmation, dispatch one dependency-ready persisted plan task only when it has a supported read-only role. Completion still requires independent verification.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);const session=await selectedIdentity((params as {root?:unknown}).root,context,true,signal);

@@ -185,6 +185,24 @@ test("continuing a Todo-linked interrupted Pi agent binds the child before execu
  await state.events.get("session_shutdown")![0]!({},state.context(sessionId));
 });
 
+test("failed linked read-only tasks retry only with confirmation and persist the new binding before dispatch",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-linked-agent-retry-"));t.after(()=>rm(home,{recursive:true,force:true}));const sessionId="retry-session",projectId=await realpath(process.cwd()),identity={sessionId,projectId},todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),linkFile=join(home,".asen","task-agent-links.json"),todos=await SessionTodoStore.open(todoFile),links=new TaskAgentLinkStore(linkFile);
+ const instruction="Inspect the exact change and report evidence",todo=await todos.add("Retry failed inspection",identity,undefined,undefined,undefined,[],instruction);let attempts=0,childId="",begin!:()=>void;const begun=new Promise<void>(resolve=>{begin=resolve;});
+ const runner:AgentRunner={run:async(request,signal)=>{attempts++;if(attempts===1)return{id:request.id,ok:false,output:"transient read-only failure"};childId=request.id;const linked=(await links.list(identity)).some(link=>link.agentId===request.id&&link.taskId===todo.taskId),current=(await todos.list(identity)).find(item=>item.taskId===todo.taskId);assert.equal(linked,true,"retry child must be linked before it starts");assert.equal(current?.current.state,"running","Todo retry must be running before dispatch");begin();return{id:request.id,ok:false,output:"retry failed"};}};
+ const state=host(),ctx=state.context(sessionId);createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:agentFile,todoStoreFile:todoFile})(state.pi as any);await state.events.get("session_start")![0]!({},ctx);
+ const first=await state.tools.get("asen_agent_start").execute("retry-first",{prompt:instruction,todoId:todo.taskId},new AbortController().signal,()=>{},ctx),firstId=first.details.id;
+ let current:any,deadline=Date.now()+5000;while(Date.now()<deadline){current=(await todos.list(identity)).find(item=>item.taskId===todo.taskId);if(attempts===1&&current?.current.state==="blocked")break;await new Promise(resolve=>setTimeout(resolve,5));}
+ assert.equal(attempts,1);assert.equal(current?.current.state,"blocked");assert.equal((await state.tools.get("asen_agent_status").execute("first-status",{id:firstId},new AbortController().signal,()=>{},ctx)).details.task.record.state,"failed");
+ const noConsent={...ctx,hasUI:false};await assert.rejects(()=>state.tools.get("asen_agent_retry").execute("retry-denied",{id:firstId},new AbortController().signal,()=>{},noConsent),/Explicit Pi UI confirmation/u);assert.equal(attempts,1);
+ const retried=await state.tools.get("asen_agent_retry").execute("retry",{id:firstId},new AbortController().signal,()=>{},ctx);assert.equal(retried.details.retriedFrom,firstId);await begun;assert.equal(attempts,2);
+ assert.ok((await links.list(identity)).some(link=>link.agentId===childId&&link.taskId===todo.taskId));
+ deadline=Date.now()+5000;while(Date.now()<deadline){current=(await todos.list(identity)).find(item=>item.taskId===todo.taskId);if(current?.current.state==="blocked")break;await new Promise(resolve=>setTimeout(resolve,5));}
+ assert.equal(current?.current.state,"blocked");assert.equal((await state.tools.get("asen_agent_status").execute("retry-child-status",{id:childId},new AbortController().signal,()=>{},ctx)).details.task.record.state,"failed");
+ await assert.rejects(()=>state.tools.get("asen_agent_retry").execute("retry-again",{id:childId},new AbortController().signal,()=>{},ctx),/single controlled retry/u);assert.equal(attempts,2);
+ const cancelled=await state.tools.get("asen_todo_update").execute("cancel-retry",{id:todo.taskId,revision:5,state:"cancelled"},new AbortController().signal,()=>{},ctx);assert.equal(cancelled.details.events.at(-1).state,"cancelled");
+ await state.events.get("session_shutdown")![0]!({},ctx);
+});
+
 test("agent completion never reaches a different active Pi session",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-agent-delivery-"));t.after(()=>rm(home,{recursive:true,force:true}));
  const {AgentRuntime}=await import("../src/agents/agent-runtime.js");
