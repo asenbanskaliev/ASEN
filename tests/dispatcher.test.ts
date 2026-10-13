@@ -342,7 +342,7 @@ test("ECO-06 wrong repository burns writer admission without invoking runner",as
  let calls=0;
  const runner:AgentRunner={run:async request=>{calls++;return{id:request.id,ok:true,output:"unexpected"};}};
  const d=new Dispatcher(runner,authorized()),admission=organicAdmission("a");
- await assert.rejects(()=>d.dispatch({...writeRequest,repository:"other",skillContext:sealedCodeChange(),writerAdmission:admission}),/unused exact writer admission|repository mismatch/);
+ await assert.rejects(()=>d.dispatch({...writeRequest,repository:"other",skillContext:sealedCodeChange(),writerAdmission:admission}),/unused exact writer admission|repository mismatch|Delegated skill context does not match task\/candidate/);
  await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:admission}),/unused exact writer admission/);
  assert.equal(calls,0);
 });
