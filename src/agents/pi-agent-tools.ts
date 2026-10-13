@@ -105,7 +105,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   if(!todoLink)throw new Error("ASEN plan dispatch requires the session Todo and durable task-agent link stores");
   const [todos,links,runtimeValue]=await Promise.all([todoLink.todos(),todoLink.links(),runtime()]);
   const validateIdentity=async()=>{const current=await identity(context);if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before plan task dispatch");};
-  const dispatched=await dispatchNextReadOnlyPlanTask({todos,agents:runtimeValue,links,identity:session,validateIdentity,confirm:async task=>confirmWithAbort(dialogSignal=>context.ui.confirm("Dispatch next ASEN plan task?",`${task.title} (${task.role})\n\n${task.instruction.slice(0,1600)}\n\nStart this read-only task in the current session and project?`,dialogSignal?{signal:dialogSignal}:undefined),signal)});
+  const dispatched=await dispatchNextReadOnlyPlanTask({todos,agents:runtimeValue,links,identity:session,validateIdentity,confirm:async task=>confirmWithAbort(dialogSignal=>context.ui.confirm("Dispatch next ASEN plan task?",`${task.title} (${task.role})\n\n${task.instruction}\n\nStart this read-only task in the current session and project?`,dialogSignal?{signal:dialogSignal}:undefined),signal)});
   return result(dispatched);
  }});
  return ()=>access.reset();
