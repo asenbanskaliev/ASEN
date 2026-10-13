@@ -29,10 +29,17 @@ test("ECO-06 exact ODD input compiles to an immutable ordered task DAG without g
  assert.equal(graph.taskId,"ECO-06-A1");assert.equal(graph.route,"orchestrate");
  assert.deepEqual(graph.tasks.map((task:{role:string})=>task.role),["explorer","worker","reviewer","verifier"]);
  assert.deepEqual(graph.tasks.map((task:{dependsOn:string[]})=>task.dependsOn.length),[0,1,1,2]);
+ assert.deepEqual(graph.tasks.map((task:{priority:number})=>task.priority),[1,2,3,4]);
  assert.deepEqual(graph.topologicalOrder,graph.tasks.map((task:{id:string})=>task.id));
  assert.equal(graph.tasks[0].status,"ready");assert.equal(graph.tasks[1].status,"waiting");
  assert.equal(graph.execution,"not_started");assert.equal(graph.authorization,"required_before_dispatch");
  assert.ok(graph.tasks.every((task:{execution:string;authorization:string})=>task.execution==="not_started"&&task.authorization==="required_before_dispatch"));
+});
+test("ECO-06 routes direct work to the primary session and verification intent to a verifier",()=>{
+ const direct=JSON.parse(controlledInstructionPlanCommand(oddInput({taskIdentity:"direct-plan",scope:{kind:"known",expectedPaths:["docs/guide.md"]},writes:[],review:{kind:"none",estimatedMinutes:0}}),"/repo"));
+ assert.equal(direct.executablePlan.tasks[0].role,"primary");assert.equal(direct.executablePlan.tasks[0].status,"ready");
+ const verify=JSON.parse(controlledInstructionPlanCommand(oddInput({taskIdentity:"verify-plan",intent:"verification",scope:{kind:"known",expectedPaths:[]},writes:[],review:{kind:"none",estimatedMinutes:0}}),"/repo"));
+ assert.equal(verify.route,"verify");assert.equal(verify.executablePlan.tasks[0].role,"verifier");
 });
 test("ECO-06 plan route creates a clarification gate instead of fabricating agent work",()=>{
  const value=JSON.parse(controlledInstructionPlanCommand(oddInput({scope:{kind:"unknown",reason:"Paths unknown"},writes:[]}),"/repo"));

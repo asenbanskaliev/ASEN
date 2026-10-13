@@ -10,10 +10,12 @@ export class TaskAgentCoordinator {
  async snapshot(identity:AgentSessionIdentity){
   const [tasks,agents,links]=await Promise.all([this.todos.list(identity),this.agents.list(identity),this.links?.list(identity)??Promise.resolve([])]);
   const owned=agents.filter(agent=>agent.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(agent.projectId,identity.projectId));
+  const byId=new Map(tasks.map(task=>[task.taskId,task]));
   return {tasks:tasks.map(task=>{
    const explicit=new Set(links.filter(link=>link.taskId===task.taskId&&link.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(link.projectId,identity.projectId)).map(link=>link.agentId));
    const correlated:AgentView[]=owned.filter(agent=>explicit.has(agent.id)||["explorer","worker","reviewer","verifier"].some(role=>agent.id===task.taskId+":"+role&&agent.role===role)).map(agent=>({id:agent.id,role:agent.role,state:agent.state}));
-   return {id:task.taskId,title:task.title,state:task.current.state,revision:task.current.revision,agents:correlated};
+   const dependsOn=(task.dependsOn??[]).map(id=>byId.get(id)).filter((value):value is NonNullable<typeof value>=>!!value),blockedBy=dependsOn.filter(value=>value.current.state!=="done").map(value=>({id:value.taskId,state:value.current.state}));
+   return {id:task.taskId,title:task.title,state:task.current.state,revision:task.current.revision,dependsOn:dependsOn.map(value=>value.taskId),blockedBy,ready:task.current.state==="planned"&&blockedBy.length===0,agents:correlated};
   })};
  }
  async task(taskId:string,identity:AgentSessionIdentity){

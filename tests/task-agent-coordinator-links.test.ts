@@ -33,3 +33,10 @@ test("ECO-07 corrupted links block projection rather than silently omitting them
  const coordinator=new TaskAgentCoordinator(todos,{list:async()=>[]} as never,links);
  await assert.rejects(()=>coordinator.snapshot(identity),SyntaxError);
 });
+test("ECO-06 coordination projection reports dependency blockers and readiness by session",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-coordinator-dag-"));t.after(()=>rm(dir,{recursive:true,force:true}));const identity={sessionId:"session-a",projectId:"/project"},todos=await SessionTodoStore.open(join(dir,"todos.json"));
+ const prerequisite=await todos.add("Inspect",identity),dependent=await todos.add("Verify",identity,undefined,undefined,"asen-plan:verify",[prerequisite.taskId],"Check independently"),coordinator=new TaskAgentCoordinator(todos,{list:async()=>[]} as never);
+ let view=await coordinator.task(dependent.taskId,identity);assert.deepEqual(view?.blockedBy,[{id:prerequisite.taskId,state:"planned"}]);assert.equal(view?.ready,false);
+ await todos.update(prerequisite.taskId,identity,1,"running");await todos.update(prerequisite.taskId,identity,2,"done","human verification");view=await coordinator.task(dependent.taskId,identity);
+ assert.deepEqual(view?.blockedBy,[]);assert.equal(view?.ready,true);
+});

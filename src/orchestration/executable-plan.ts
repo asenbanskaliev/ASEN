@@ -7,6 +7,7 @@ export interface PlannedTask {
  readonly title:string;
  readonly instruction:string;
  readonly dependsOn:readonly string[];
+ readonly priority:number;
  readonly skills:readonly string[];
  readonly status:"ready"|"waiting"|"clarification_required";
  readonly execution:"not_started";
@@ -27,10 +28,10 @@ export interface ExecutablePlan {
 export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:string):ExecutablePlan{
  const decision=plan.decision,taskId=decision.taskIdentity;
  if(!taskId||!decision.repositoryIdentity||typeof instruction!=="string"||!instruction.trim()||instruction!==instruction.trim()||instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(instruction))throw new Error("Executable plan identity or instruction is invalid");
- const tasks:PlannedTask[]=[];
+ const tasks:PlannedTask[]=[],priority:Readonly<Record<PlannedTaskRole,number>>={clarifier:1,primary:1,explorer:1,worker:2,reviewer:3,verifier:4};
  const add=(role:PlannedTaskRole,title:string,text:string,dependsOn:string[],skills:readonly string[],status:PlannedTask["status"]="waiting")=>{
   const id=`${taskId}:${role}`;
-  tasks.push(Object.freeze({id,role,title,instruction:text,dependsOn:Object.freeze(dependsOn),skills:Object.freeze([...skills]),status,execution:"not_started",authorization:"required_before_dispatch"}));
+  tasks.push(Object.freeze({id,role,title,instruction:text,dependsOn:Object.freeze(dependsOn),priority:priority[role],skills:Object.freeze([...skills]),status,execution:"not_started",authorization:"required_before_dispatch"}));
   return id;
  };
  if(decision.route==="plan"){
