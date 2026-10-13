@@ -109,7 +109,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   if(todoStorePromise)registerTodoTools(pi,async()=>todoStorePromise,taskAgentLinks&&agentRuntimePromise?async(taskId,identity)=>{
    const [links,runtime]=await Promise.all([taskAgentLinks.list(identity),agentRuntimePromise]);
    await Promise.all(links.filter(link=>link.taskId===taskId).map(link=>runtime.cancel(link.agentId,identity)));
-  }:undefined);
+  }:undefined,taskAgentLinks&&agentRuntimePromise?{links:async()=>taskAgentLinks,agents:async()=>agentRuntimePromise}:undefined);
   const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks),links:async()=>taskAgentLinks}:undefined):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const sessionIdentity=async(ctx:CommandContext)=>{const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId)throw new Error("ASEN requires the active Pi session");const projectId=await canonical(ctx.cwd);return {sessionId,projectId,worktree:projectId};};

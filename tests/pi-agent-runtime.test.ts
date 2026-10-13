@@ -125,10 +125,9 @@ test("next-plan dispatch confirms one ready read-only task and refuses the write
  assert.equal(dispatched.details.status,"dispatched");assert.equal(dispatched.details.role,"explorer");assert.equal(confirmations,1);
  const deadline=Date.now()+3000;while(Date.now()<deadline&&(await todos.list(session)).find(row=>row.taskId===persisted[0]!.taskId)?.current.state!=="blocked")await new Promise(resolve=>setTimeout(resolve,5));
  let rows=await todos.list(session),explorer=rows.find(row=>row.taskId===persisted[0]!.taskId)!;assert.equal(explorer.current.state,"blocked");assert.equal(seen.length,1);assert.equal(seen[0]?.role,"explorer");assert.equal(seen[0]?.candidate,undefined);assert.equal(seen[0]?.writeSurfaces,undefined);
- await state.tools.get("asen_todo_update").execute("resume-explorer",{id:explorer.taskId,revision:explorer.current.revision,state:"running"},new AbortController().signal,()=>{},context);
- await state.tools.get("asen_todo_update").execute("verify-explorer",{id:explorer.taskId,revision:explorer.current.revision+1,state:"done",reason:"Inspected the task output and confirmed it contains the requested evidence"},new AbortController().signal,()=>{},context);
+ await state.tools.get("asen_todo_accept_result").execute("accept-explorer",{id:explorer.taskId,agentId:dispatched.details.agentId,revision:explorer.current.revision,evidence:"I inspected the saved inspection result and confirmed it contains the requested evidence."},new AbortController().signal,()=>{},context);
  const refused=await state.tools.get("asen_plan_dispatch_next").execute("dispatch-worker",{},new AbortController().signal,()=>{},context);
- assert.equal(refused.details.status,"blocked");assert.match(refused.details.reason,/controlled worker lifecycle dispatcher/);assert.equal(confirmations,3);assert.equal(seen.length,1);
+ assert.equal(refused.details.status,"blocked");assert.match(refused.details.reason,/controlled worker lifecycle dispatcher/);assert.equal(confirmations,2);assert.equal(seen.length,1);
  rows=await todos.list(session);assert.equal(rows.find(row=>row.taskId===persisted[1]!.taskId)?.current.state,"planned");await state.events.get("session_shutdown")![0]!({},context);
 });
 
@@ -146,9 +145,12 @@ test("ECO-06 verification plan dispatches through Pi and requires independent To
  let row:any,deadline=Date.now()+5000;while(Date.now()<deadline){row=(await todos.list(identity)).find(item=>item.taskId===todoId);if(row?.current.state==="blocked")break;await new Promise(resolve=>setTimeout(resolve,5));}
  assert.equal(row?.current.state,"blocked");assert.equal((request as import("../src/agents/dispatcher.js").AgentRequest|undefined)?.role,"verifier");assert.equal((request as import("../src/agents/dispatcher.js").AgentRequest|undefined)?.prompt,row?.description);assert.equal(confirmations,2);
  const agent=await state.tools.get("asen_agent_status").execute("verify-result",{id:dispatched.details.agentId},new AbortController().signal,()=>{},context);assert.equal(agent.details.task.record.state,"completed");assert.match(agent.details.task.record.summary,/acceptance criteria/u);
- const resumed=await state.tools.get("asen_todo_update").execute("verify-resume",{id:todoId,revision:row.current.revision,state:"running"},new AbortController().signal,()=>{},context);
- const completed=await state.tools.get("asen_todo_update").execute("verify-done",{id:todoId,revision:resumed.details.events.at(-1).revision,state:"done",reason:"I independently inspected the verifier result against the acceptance instruction and confirmed the result."},new AbortController().signal,()=>{},context);
- assert.equal(completed.details.events.at(-1).state,"done");assert.match(completed.details.events.at(-1).reason,/independently verified/u);assert.equal(confirmations,4);
+ await assert.rejects(()=>state.tools.get("asen_todo_update").execute("verify-bypass",{id:todoId,revision:row.current.revision,state:"done",reason:"I read the result"},new AbortController().signal,()=>{},context),/asen_todo_accept_result/u);
+ assert.equal((await todos.list(identity)).find(item=>item.taskId===todoId)?.current.state,"blocked","agent completion alone must never close a linked plan task");
+ await assert.rejects(()=>state.tools.get("asen_todo_accept_result").execute("verify-wrong-agent",{id:todoId,agentId:"foreign-agent",revision:row.current.revision,evidence:"I checked it"},new AbortController().signal,()=>{},context),/not persistently linked/u);
+ context.ui.confirm=async()=>{confirmations++;return false;};await assert.rejects(()=>state.tools.get("asen_todo_accept_result").execute("verify-declined",{id:todoId,agentId:dispatched.details.agentId,revision:row.current.revision,evidence:"I checked it"},new AbortController().signal,()=>{},context),/Explicit Pi result verification confirmation/u);assert.equal((await todos.list(identity)).find(item=>item.taskId===todoId)?.current.state,"blocked");context.ui.confirm=async()=>{confirmations++;return true;};
+ const completed=await state.tools.get("asen_todo_accept_result").execute("verify-accept",{id:todoId,agentId:dispatched.details.agentId,revision:row.current.revision,evidence:"I inspected the saved verifier result against the recorded acceptance criteria and confirmed the requested checks pass."},new AbortController().signal,()=>{},context);
+ assert.equal(completed.details.events.at(-1).state,"done");assert.match(completed.details.events.at(-1).reason,/independently verified linked verifier result/u);assert.equal(confirmations,4);
  await state.events.get("session_shutdown")![0]!({},context);
 });
 
