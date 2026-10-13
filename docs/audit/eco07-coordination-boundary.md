@@ -1,7 +1,23 @@
-# ECO-07 implementation checkpoint
+# ECO-07 task-agent coordination boundary
 
-Read-only TaskAgentCoordinator is wired into the Pi extension through the asen-task-agents command. Both stores are required; no new storage schema, dispatch authority, replay, or automatic task completion was introduced.
+## Implemented
 
-Current task-agent correlation recognizes only IDs emitted by orchestrator planning with the taskId:role convention. Pi explorer IDs are random and **not** yet durably linked to Todo IDs. Do not interpret missing links as evidence that no agents exist.
+- Read-only coordinator joining the existing session-scoped Todo and agent stores.
+- Pi command `asen-task-agents` exposes the projection when both stores are available.
+- Exact taskId:role correlation is restricted to known orchestrator roles and verified matching session/project identities.
+- Neither completion nor interruption of an agent changes the Todo state.
+- Tests cover cross-session visibility, forged role/identity/prefix collisions, and blocked Todo recovery after restart.
 
-Next acceptance gates: durable explicit correlation with no authority transfer; process crash/restart tests through the Pi extension; cross-process concurrent session tests; audit of PID reuse and receipt-key handling. No CI requested or triggered by these unattached commits.
+## Deliberate limits
+
+Pi-started explorers have opaque `agent-UUID` IDs, so they cannot be reliably correlated to Todos by naming convention. A durable explicit relation needs its own bounded contract, atomic persistence, migration/reconciliation rules, and separate acceptance tests. Do not infer links from matching prompts or times.
+
+The generic PersistentTaskStore is not part of production Pi lifecycle. Never invoke its global recoverAll on session startup; it lacks live-process ownership checks. AgentRuntime already uses PersistentAgentStore with explicit continuation.
+
+## Remaining exit criteria
+
+1. Design and implement explicit task-agent link records with fail-closed recovery and immutable session/project ownership, or document why orchestrated IDs alone suffice.
+2. End-to-end Pi crash/restart tests of the new command and link behavior, including multiple live processes.
+3. Independent security review and final test execution on Linux, Windows and macOS.
+
+No CI or tests were launched for this unattached commit.
