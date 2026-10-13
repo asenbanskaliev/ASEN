@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {mkdtemp,rm} from "node:fs/promises";
+import {mkdtemp,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
@@ -29,6 +29,7 @@ test("ECO-07 corrupted links block projection rather than silently omitting them
  const todos=await SessionTodoStore.open(join(dir,"todos.json"));await todos.add("Review",identity);
  const links=new TaskAgentLinkStore(join(dir,"links.json"));
  await links.bind({taskId:"todo-a",agentId:"agent-a",...identity,createdAt:"2026-10-13T00:00:00.000Z"});
+ await writeFile(links.file,"{invalid-json");
  const coordinator=new TaskAgentCoordinator(todos,{list:async()=>[]} as never,links);
- assert.equal((await coordinator.snapshot(identity)).tasks.length,1);
+ await assert.rejects(()=>coordinator.snapshot(identity),SyntaxError);
 });
