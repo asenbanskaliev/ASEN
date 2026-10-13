@@ -39,11 +39,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
    if(!task||task.current.state==="done"||task.current.state==="cancelled"||task.current.state==="blocked")throw new Error("Todo must be an active, owned task before agent launch");
   }
   throwIfCancelled(signal);
-  const active=await runtime(),taskId=await active.startExplorer({prompt,session},signal);
-  if(typeof todoId==="string"){
-   try{await (await todoLink!.binder()).bind(todoId,taskId,session);}
-   catch(error){await active.cancel(taskId,session).catch(()=>{});throw error;}
-  }
+  const active=await runtime(),taskId=await active.startExplorer({prompt,session,...(typeof todoId==="string"?{onQueued:async(agentId:string)=>{await (await todoLink!.binder()).bind(todoId,agentId,session);}}:{})},signal);
   return result({id:taskId,state:"queued",role:"explorer",...(typeof todoId==="string"?{todoId}:{})});
  }});
  pi.registerTool?.({name:"asen_agent_status",label:"ASEN agent status",description:"List owned agent tasks, or query one task and its durable state history by id.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{id:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{

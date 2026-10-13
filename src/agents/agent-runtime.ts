@@ -36,10 +36,16 @@ export class AgentRuntime{
   const execution=this.dispatcher.dispatch(request);this.#executions.set(request.id,execution);
   void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);});
  }
- async startExplorer(input:{prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"]},signal?:AbortSignal):Promise<string>{
+ async startExplorer(input:{prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];onQueued?:(agentId:string)=>Promise<void>},signal?:AbortSignal):Promise<string>{
   if(!input.session.sessionId||!input.session.projectId)throw new Error("An active Pi session and project are required");
   const request:AgentRequest={id:`agent-${randomUUID()}`,role:"explorer",prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:input.owner??{kind:"user",id:`pi:${input.session.sessionId}`}};
   await this.store.enqueue(request,request.owner!,signal);
+  if(input.onQueued){
+   try{await input.onQueued(request.id);}catch(error){
+    await this.store.cancelled(request.id,"Task-agent binding failed before dispatch").catch(()=>{});
+    throw error;
+   }
+  }
   this.#dispatch(request);
   return request.id;
  }
