@@ -23,7 +23,7 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
  if(typeof repositoryIdentity!=="string"||!path.isAbsolute(repositoryIdentity))throw new Error("ASEN planning requires a canonical active project path");
  if(!args.trimStart().startsWith("{")){
   const instruction=args.trim();
-  if(instruction.length>8192||/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(instruction))throw new Error("ASEN plan instruction is invalid");
+  if(instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(instruction))throw new Error("ASEN plan instruction is invalid");
   return JSON.stringify({
    instruction,repository:repositoryIdentity,status:"needs-verified-facts",
    steps:["Establish task identity and intended scope","Confirm whether writes or sensitive operations are requested","Determine session, verification and review requirements","Derive ODD route from verified facts","Select skills and roles before any authorized execution"],
