@@ -26,15 +26,19 @@ test("resuming a restart-blocked Todo requires explicit active Pi UI approval",a
 
 test("a planned DAG node cannot become done without a verification summary and explicit Pi confirmation",async t=>{
  const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-plan-verify-")));t.after(()=>rm(root,{recursive:true,force:true}));
- const session={sessionId:"plan-verify-session",projectId:root},store=await SessionTodoStore.open(path.join(root,"todos.json")),task=await store.add("Verify implementation",session,undefined,undefined,"asen-plan:plan:verify",[],"Check test evidence and acceptance criteria");
+ const instruction=`Check test evidence and acceptance criteria ${"x".repeat(1400)}`,evidence=`Typecheck and targeted tests passed; inspected the changed behavior. ${"y".repeat(1400)}`;
+ const session={sessionId:"plan-verify-session",projectId:root},store=await SessionTodoStore.open(path.join(root,"todos.json")),task=await store.add("Verify implementation",session,undefined,undefined,"asen-plan:plan:verify",[],instruction);
  await store.update(task.taskId,session,1,"running");const tools=new Map<string,any>();registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>store);
- const execute=tools.get("asen_todo_update")!.execute,params={id:task.taskId,revision:2,state:"done",reason:"Typecheck and targeted tests passed; inspected the changed behavior."},host={cwd:root,sessionManager:{getSessionId:()=>session.sessionId}};
+ const execute=tools.get("asen_todo_update")!.execute,params={id:task.taskId,revision:2,state:"done",reason:evidence},host={cwd:root,sessionManager:{getSessionId:()=>session.sessionId}};
  await assert.rejects(()=>execute("no-ui",params,undefined,undefined,host),/Explicit Pi verification confirmation/);
  await assert.rejects(()=>execute("no-summary",{...params,reason:" "},undefined,undefined,{...host,hasUI:true,ui:{confirm:async()=>true}}),/verification summary/);
  let question="";await assert.rejects(()=>execute("rejected",params,undefined,undefined,{...host,hasUI:true,ui:{confirm:async(title:string,message:string)=>{question=`${title}\n${message}`;return false;}}}),/Explicit Pi verification confirmation/);
- assert.match(question,/acceptance criteria pass/);assert.equal((await store.list(session))[0]?.current.state,"running");
+ assert.match(question,/acceptance criteria pass/);assert.ok(question.includes(instruction));assert.ok(question.includes(evidence));assert.equal((await store.list(session))[0]?.current.state,"running");
  await execute("accepted",params,undefined,undefined,{...host,hasUI:true,ui:{confirm:async()=>true}});
  const current=(await store.list(session))[0]!.current;assert.equal(current.state,"done");assert.match(current.reason!,/Pi user independently verified/);
+ const hidden=await store.add("Reject hidden review text",session,undefined,undefined,"asen-plan:plan:hidden",[],"x".repeat(4097));await store.update(hidden.taskId,session,1,"running");let confirms=0;
+ await assert.rejects(()=>execute("hidden-criteria",{id:hidden.taskId,revision:2,state:"done",reason:"reviewed"},undefined,undefined,{...host,hasUI:true,ui:{confirm:async()=>{confirms++;return true;}}}),/complete Pi UI review size/);
+ assert.equal(confirms,0);assert.equal((await store.list(session)).find(row=>row.taskId===hidden.taskId)?.current.state,"running");
 });
 
 test("linked agent results above the complete UI review bound cannot be accepted",async t=>{
