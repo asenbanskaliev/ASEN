@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {mkdir,readdir,readFile,realpath,rm,writeFile} from "node:fs/promises";
+import {mkdir,open,readdir,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {spawn} from "node:child_process";
@@ -8,12 +8,15 @@ import {fileURLToPath} from "node:url";
 import {parseTodoFile,SessionTodoStore} from "../src/runtime/todo-store.ts";
 import {eco07ProviderRateLimitError} from "../src/runtime/eco07-provider-failure.ts";
 import {resolveEco07Provider} from "./eco07-provider-config.mjs";
+import {createJsonlQueue,createRpcController,createSecretSanitizer,runCleanup} from "./eco07-recovery-io.mjs";
 
 const repository=await realpath(process.cwd());
 const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8"}).trim();
 assert.equal(revision,process.env.ASEN_EXPECTED_SHA,"ECO-07 Pi recovery must test the exact candidate SHA");
 const {provider,model,apiKey,credential,extension}=resolveEco07Provider(process.env);
-const piPackage=JSON.parse(await readFile(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url),"utf8"));
+let piPackage;
+try{piPackage=JSON.parse(await readFile(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url),"utf8"));}
+catch{throw new Error("ECO-07 installed Pi package metadata is unavailable or malformed");}
 assert.equal(piPackage.version,"1.1.0","ECO-07 provider run must use Pi 1.1.0");
 
 const evidenceDir=path.join(repository,"eco07-pi-evidence");
@@ -26,13 +29,15 @@ const stepsFile=path.join(scratch,"steps.jsonl"),readsFile=path.join(scratch,"re
 const sessionId=`eco07-recovery-${revision.slice(0,12)}`;
 const title="ECO-07 recovery review: audit evidence, then inspect task state transitions";
 await Promise.all([mkdir(agentDir,{recursive:true,mode:0o700}),mkdir(sessionDir,{recursive:true,mode:0o700}),mkdir(asenDir,{recursive:true,mode:0o700})]);
-await writeFile(transcriptPath,"",{mode:0o600});
 const cli=path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");
 const asenExtension=path.join(repository,"extensions","asen.ts");
 const probeExtension=fileURLToPath(new URL("./eco07-pi-recovery-probe-extension.mjs",import.meta.url));
 const baseEnv={...Object.fromEntries(["PATH","SystemRoot","WINDIR","TEMP","TMP","TMPDIR","LANG","TERM"].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]]])),HOME:home,USERPROFILE:home,PI_CODING_AGENT_DIR:agentDir,PI_CODING_AGENT_SESSION_DIR:sessionDir,PI_TELEMETRY:"0",[credential]:apiKey,ASEN_ECO07_SESSION_ID:sessionId,ASEN_ECO07_PROJECT:repository,ASEN_ECO07_STEPS_FILE:stepsFile,ASEN_ECO07_READS_FILE:readsFile,ASEN_ECO07_TODO_FILE:todoFile,ASEN_ECO07_TASK_TITLE:title};
-const redacted=value=>String(value).replaceAll(apiKey,"[redacted]").slice(-1200);
-const record=async(kind,details={})=>writeFile(transcriptPath,`${JSON.stringify({at:new Date().toISOString(),kind,...details})}\n`,{flag:"a",mode:0o600});
+const sanitize=createSecretSanitizer(apiKey);
+const redacted=value=>sanitize(String(value));
+const transcript=createJsonlQueue({file:await open(transcriptPath,"w",0o600),sanitize});
+const record=transcript.record;
+const recordAsync=(...args)=>{const pending=record(...args);pending.catch(()=>{});return pending;};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const snapshot=async()=>parseTodoFile(await readFile(todoFile,"utf8"));
 async function findPersistedPlan(directory){
@@ -53,12 +58,11 @@ const currentItem=async()=>{
 function startPi(label){
   const args=[cli,"--mode","rpc","--session-id",sessionId,"--session-dir",sessionDir,"--no-extensions",...(extension?["--extension",extension]:[]),"--extension",asenExtension,"--extension",probeExtension,"--provider",provider,"--model",model,"--no-skills","--tools","asen_todo_*,asen_eco07_*"];
   const child=spawn(process.execPath,args,{cwd:repository,env:{...baseEnv,ASEN_ECO07_PHASE:label},stdio:["pipe","pipe","pipe"]});
-  let buffer="",stderr="",stdoutBytes=0,closed;
+  let buffer="",stderr="",stdoutBytes=0;
   let resumeConfirmed=false;
-  let providerFailure;
-  const requests=new Map();
   const events=[];
-  child.stdout.on("data",chunk=>{
+  let controller;
+  const onStdout=chunk=>{
     stdoutBytes+=chunk.length;
     if(stdoutBytes>2_000_000){child.kill("SIGKILL");return;}
     buffer+=chunk.toString();
@@ -66,47 +70,29 @@ function startPi(label){
     while((end=buffer.indexOf("\n"))>=0){
       const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;
       let value;try{value=JSON.parse(line);}catch{child.kill("SIGKILL");continue;}
-      events.push(value);void record(`${label}:pi-event`,{type:value.type,command:value.command,method:value.method,toolName:value.toolName,stopReason:value.message?.stopReason,...(typeof value.message?.errorMessage==="string"?{providerError:redacted(value.message.errorMessage)}:{})});
-      const rateLimit=eco07ProviderRateLimitError(value);
-      if(rateLimit&&!providerFailure){providerFailure=redacted(rateLimit);void record(`${label}:provider-rate-limit`,{message:providerFailure});}
+      events.push(value);void recordAsync(`${label}:pi-event`,{type:value.type,command:value.command,method:value.method,toolName:value.toolName,stopReason:value.message?.stopReason,...(typeof value.message?.errorMessage==="string"?{providerError:redacted(value.message.errorMessage)}:{})});
+      const rateLimit=controller.observe(value);
+      if(rateLimit)void recordAsync(`${label}:provider-rate-limit`,{message:rateLimit});
       if(label==="restarted"&&!resumeConfirmed&&value.type==="tool_execution_start"&&!["asen_todo_list","asen_todo_update"].includes(value.toolName)){
-        void record("blocked-work-before-resume-rejected",{toolName:value.toolName});
+        void recordAsync("blocked-work-before-resume-rejected",{toolName:value.toolName});
         child.kill("SIGKILL");continue;
       }
       if(value.type==="extension_ui_request"&&value.method==="confirm"){
         const titleText=String(value.title??"");const message=String(value.message??"");
         if(titleText!=="Resume blocked ASEN task?"||!message.includes(title)||!message.includes("explicit review is required")){
-          requests.get(value.id)?.reject(new Error("Pi requested an unexpected confirmation"));continue;
+          void controller.stop("SIGKILL");continue;
         }
         // This is the affirmative test-user response to ASEN's explicit resume dialog; no release authority is requested or granted.
         resumeConfirmed=true;
-        void record(`${label}:resume-consent`,{title:titleText,confirmed:true});
-        child.stdin.write(`${JSON.stringify({type:"extension_ui_response",id:value.id,confirmed:true})}\n`);
-      }
-      if(value.type==="response"&&value.id&&requests.has(value.id)){
-        const pending=requests.get(value.id);requests.delete(value.id);
-        value.success===false?pending.reject(new Error(value.error??`${value.command} failed`)):pending.resolve(value);
+        void recordAsync(`${label}:resume-consent`,{title:titleText,confirmed:true});
+        void controller.write({type:"extension_ui_response",id:value.id,confirmed:true}).catch(()=>{});
       }
     }
-  });
-  child.stderr.on("data",chunk=>{stderr=redacted(stderr+chunk.toString()).slice(-3000);});
-  closed=new Promise(resolve=>child.once("close",(code,signal)=>{
-    for(const [id,pending] of requests){requests.delete(id);pending.reject(new Error(providerFailure?`Pi provider rate limit: ${providerFailure}`:`${label} Pi process exited (${code??signal})`));}
-    resolve({code,signal});
-  }));
-  child.once("error",error=>{for(const pending of requests.values())pending.reject(error);});
-  const send=(type,payload={})=>new Promise((resolve,reject)=>{
-    const id=`${label}-${type}-${Math.random().toString(36).slice(2)}`;
-    requests.set(id,{resolve,reject});
-    child.stdin.write(`${JSON.stringify({id,type,...payload})}\n`);
-    const timeout=setTimeout(()=>{if(requests.delete(id))reject(new Error(`${label} Pi ${type} timed out; stderr=${stderr}`));},180_000);
-    const pending=requests.get(id);requests.set(id,{resolve:value=>{clearTimeout(timeout);pending.resolve(value);},reject:error=>{clearTimeout(timeout);pending.reject(error);}});
-  });
-  const stop=async(signal="SIGKILL")=>{
-    const killAccepted=child.exitCode===null&&child.signalCode===null?child.kill(signal):false;
-    return {...await closed,killRequested:signal,killAccepted};
   };
-  return {child,events,send,stop,stderr,getClosed:()=>closed,getProviderFailure:()=>providerFailure};
+  const onStderr=chunk=>{stderr=redacted(stderr+chunk.toString()).slice(-3000);};
+  controller=createRpcController({child,label,classifyProviderFailure:eco07ProviderRateLimitError,redact:redacted,dispose:()=>{child.stdout.off("data",onStdout);child.stderr.off("data",onStderr);buffer="";}});
+  child.stdout.on("data",onStdout);child.stderr.on("data",onStderr);
+  return {child,events,send:controller.send,stop:controller.stop,get stderr(){return stderr;},getClosed:controller.getClosed,getProviderFailure:controller.getProviderFailure};
 }
 
 let phase="starting";
@@ -151,6 +137,7 @@ try{
   const initialPid=first.child.pid;
   const interruption=await first.stop("SIGKILL");
   assert.equal(interruption.killAccepted,true,"The running Pi process must accept the forced process kill");
+  assert.equal(interruption.cleanupConfirmed,true,"The forced interruption must observe Pi process close");
   await initialTurn.catch(()=>{});
   await record("process-killed",{pid:initialPid,...interruption});
 
@@ -196,20 +183,28 @@ try{
   assert.equal(first.events.filter(event=>event.type==="extension_ui_request"&&event.method==="confirm").length,0);
   assert.equal(second.events.filter(event=>event.type==="extension_ui_request"&&event.method==="confirm").length,1,"Resume requires one explicit affirmative Pi confirmation");
   const final={candidate:revision,provider,model,piVersion:piPackage.version,sessionId,projectId:repository,taskId:recovered.taskId,events:recovered.events.map(({revision,state,at,reason})=>({revision,state,at,reason})),persistedPlan:{sessionFile:path.relative(sessionDir,persistedPlanFile),orderedSteps:["inspect-closure-audit","inspect-task-reducer"]},reads:reads.map(({step,file,at})=>({step,file,at})),steps:rows.map(({step,summary,at})=>({step,summary,at})),initialProcessPid:first.child.pid,restartedProcessPid:second.child.pid,interruptionSignal:"SIGKILL",wrongSession:{visible:0,mutationRejected:true},wrongProject:{visible:0,mutationRejected:true},explicitResumeConsent:true,approvalAuthorityGranted:false,publishAuthorityGranted:false,mergeAuthorityGranted:false,result:"PASS"};
+  const completionShutdown=await second.stop("SIGKILL");
+  assert.equal(completionShutdown.cleanupConfirmed,true,"Successful recovery must observe restarted Pi process close");
+  await transcript.drainAndClose();
+  await rm(scratch,{recursive:true,force:true});
   await writeFile(evidencePath,`${JSON.stringify(final,null,2)}\n`,{mode:0o600});
   console.log(JSON.stringify(final));
 }catch(error){
-  const task=await currentItem().catch(()=>undefined);
-  const readRows=(await readFile(readsFile,"utf8").catch(()=>"")).split("\n").filter(Boolean).map(line=>{try{return JSON.parse(line);}catch{return {malformed:true};}});
-  const steps=(await readFile(stepsFile,"utf8").catch(()=>"")).split("\n").filter(Boolean).map(line=>{try{const {step,summary,sessionId:owner,projectId,at}=JSON.parse(line);return {step,summary,sessionId:owner,projectId,at};}catch{return {malformed:true};}});
-  const summarizeProcess=process=>({label:process.label,events:process.events.map(event=>({type:event.type,toolName:event.toolName,method:event.method,stopReason:event.message?.stopReason,...(typeof event.message?.errorMessage==="string"?{providerError:redacted(event.message.errorMessage)}:{}),aborted:event.aborted})),assistantReplies:process.events.filter(event=>event.type==="message_end"&&event.message?.role==="assistant"&&event.message?.stopReason==="stop").map(event=>redacted((event.message.content??[]).filter(part=>part?.type==="text").map(part=>part.text).join("\n")).slice(-600)),stderr:process.stderr});
-  const processTrace=[first&&summarizeProcess({label:"initial",events:first.events,stderr:first.stderr}),second&&summarizeProcess({label:"restarted",events:second.events,stderr:second.stderr})].filter(Boolean);
-  const report={candidate:revision,provider,model,phase,result:"FAIL",task:task&&{taskId:task.taskId,title:task.title,events:task.events.map(({revision,state,at,reason})=>({revision,state,at,reason}))},reads:readRows,steps,processTrace,error:redacted(error?.stack??error)};
-  await writeFile(evidencePath,`${JSON.stringify(report,null,2)}\n`,{mode:0o600});
-  console.error(JSON.stringify(report));
-  throw error;
-}finally{
-  if(first)await first.stop("SIGKILL");
-  if(second)await second.stop("SIGKILL");
-  await rm(scratch,{recursive:true,force:true});
+  let flushFailure;
+  await runCleanup(error,[
+    async()=>{if(first)await first.stop("SIGKILL");},
+    async()=>{if(second)await second.stop("SIGKILL");},
+    async()=>{try{await transcript.drainAndClose();}catch(failure){flushFailure=failure;throw failure;}},
+    async()=>{
+      const task=await currentItem().catch(()=>undefined);
+      const readRows=(await readFile(readsFile,"utf8").catch(()=>"")).split("\n").filter(Boolean).map(line=>{try{return JSON.parse(line);}catch{return {malformed:true};}});
+      const steps=(await readFile(stepsFile,"utf8").catch(()=>"")).split("\n").filter(Boolean).map(line=>{try{const {step,summary,sessionId:owner,projectId,at}=JSON.parse(line);return {step,summary,sessionId:owner,projectId,at};}catch{return {malformed:true};}});
+      const summarizeProcess=process=>({label:process.label,events:process.events.map(event=>({type:event.type,toolName:event.toolName,method:event.method,stopReason:event.message?.stopReason,...(typeof event.message?.errorMessage==="string"?{providerError:redacted(event.message.errorMessage)}:{}),aborted:event.aborted})),assistantReplies:process.events.filter(event=>event.type==="message_end"&&event.message?.role==="assistant"&&event.message?.stopReason==="stop").map(event=>redacted((event.message.content??[]).filter(part=>part?.type==="text").map(part=>part.text).join("\n")).slice(-600)),stderr:process.stderr});
+      const processTrace=[first&&summarizeProcess({label:"initial",events:first.events,stderr:first.stderr}),second&&summarizeProcess({label:"restarted",events:second.events,stderr:second.stderr})].filter(Boolean);
+      const report={candidate:revision,provider,model,phase,result:"FAIL",task:task&&{taskId:task.taskId,title:task.title,events:task.events.map(({revision,state,at,reason})=>({revision,state,at,reason}))},reads:readRows,steps,processTrace,error:redacted(error?.stack??error),...(flushFailure?{transcriptFlushError:redacted(flushFailure?.stack??flushFailure)}:{})};
+      await writeFile(evidencePath,`${JSON.stringify(report,null,2)}\n`,{mode:0o600});
+      console.error(JSON.stringify(report));
+    },
+    async()=>rm(scratch,{recursive:true,force:true}),
+  ]);
 }

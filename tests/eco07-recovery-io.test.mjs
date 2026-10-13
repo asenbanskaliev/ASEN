@@ -235,3 +235,17 @@ test("cleanup attempts retain primary, report, and removal failures",async()=>{
  await assert.rejects(runCleanup(primary,[async()=>{attempts.push("report");throw report;},async()=>{attempts.push("remove");throw removal;}]),error=>error instanceof AggregateError&&error.errors[0]===primary&&error.errors.includes(report)&&error.errors.includes(removal));
  assert.deepEqual(attempts,["report","remove"]);
 });
+
+test("E2E wires the existing provider classifier through guarded IO and drains before success evidence",async()=>{
+ const source=await readFile(new URL("../scripts/eco07-pi-recovery-e2e.mjs",import.meta.url),"utf8");
+ assert.match(source,/createJsonlQueue/);
+ assert.match(source,/createRpcController/);
+ assert.match(source,/const sanitize=createSecretSanitizer\(apiKey\)/u);
+ assert.match(source,/classifyProviderFailure:\s*eco07ProviderRateLimitError/u);
+ assert.match(source,/dispose:\(\)=>\{child\.stdout\.off/u);
+ assert.match(source,/void recordAsync/u);
+ assert.match(source,/await runCleanup\(error/u);
+ const drain=source.indexOf("await transcript.drainAndClose()"),evidence=source.indexOf("await writeFile(evidencePath");
+ assert.ok(drain>=0&&evidence>drain,"successful evidence must follow transcript drain");
+ assert.match(source,/transcriptFlushError/u,"failure evidence must retain a distinct flush error");
+});
