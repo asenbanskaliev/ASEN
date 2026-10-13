@@ -2,13 +2,17 @@
 
 ## Decision
 
-**PARTIAL / OPEN.** ASEN can turn verified ODD facts into a persisted executable Todo DAG, dispatch dependency-ready read-only Pi roles, recover interrupted work without replay, and require review of a durable agent result before accepting a linked plan task. It cannot yet execute the planned writer, primary-session, or clarification roles through the complete controlled lifecycle.
+**PARTIAL / OPEN.** ASEN can turn verified ODD facts into a persisted executable Todo DAG, dispatch dependency-ready read-only Pi roles, and run a bounded `worker` through a candidate-bound, explicitly authorized Pi lifecycle. The worker is persisted as a descriptive record before dispatch; write authority remains in memory and is never restored after restart. A linked task remains blocked for independent human review after the agent returns. Full ECO-06 remains open because `primary` and `clarification` dispatch, structured lifecycle grants, and restart recovery/re-authorization of an interrupted writer are not implemented.
 
 ## Implemented and exercised
 
 - `/asen-plan` accepts exact user-provided ODD facts and instruction text, runs the existing ODD route and skill selection, materializes role-specific tasks and dependencies, and persists the whole plan atomically in the active session/project Todo store.
 - Changing the Pi session or project while planning or dispatch confirmation is pending rejects the operation. Read-only dispatch revalidates identity after confirmation and repeatedly inside the Todo launch lock, including immediately before the trusted binder starts the agent.
-- `asen_plan_dispatch_next` selects one dependency-ready task by saved priority, confirms the exact role/instruction, verifies the current skill registry selection, and dispatches only `explorer`, `reviewer`, or `verifier` roles.
+- `asen_plan_dispatch_next` selects one dependency-ready task by saved priority, confirms the exact role/instruction, verifies the current skill registry selection, and dispatches `explorer`, `reviewer`, `verifier`, or a controlled `worker`.
+- A planned worker retains the exact original ODD authorization facts, candidate revision, and ordered write surfaces. Before asking permission, dispatch recomputes ODD routing, checks the candidate is current, verifies the selected skills and surfaces, and requires an organic bounded lifecycle. After the visible Pi confirmation, it rechecks project/session identity, the persisted Todo revision and plan, and Git HEAD. It then creates one-use writer admission and binds the Todo/agent link before running the worker.
+- Only organic bounded worker changes are supported by this path. The Pi confirmation displays the candidate and exact write surfaces and instructs the worker to stop without committing or merging. The runner receives a one-use bound receiver; it does not receive the admission token itself.
+- `PersistentAgentStore.enqueueControlledWorker` persists only the worker's descriptive task record. Candidate, write surfaces, skill context, and writer admission are omitted from the durable agent record, so restarting cannot replay the write. An interrupted worker requires a fresh plan and explicit authorization.
+- Worker success is reconciled to `blocked`, not `done`. `asen_todo_accept_result` displays the saved terminal result and requires independent confirmation that the actual diff stayed within the approved surfaces and met the acceptance criteria.
 - `TrustedTaskAgentBinder` persists Todo ownership and the agent link before the Pi runner starts. Agent terminal outcomes reconcile to `blocked`; they never complete a Todo.
 - `asen_todo_accept_result` requires a blocked planned task, an immutable task-agent link, matching session/project/role, a durable successful terminal agent record, a bounded full result view, independent user evidence, and explicit Pi UI confirmation. Direct `done` is rejected for a linked plan task. Acceptance is persisted as ordered `running` then `done` events, so a crash between them recovers to review rather than completing silently.
 - Interrupted linked read-only work requires explicit continuation; failed linked read-only work permits one explicitly confirmed retry. Both bind the child attempt before dispatch. Writes and cancelled tasks are not retried.
@@ -16,16 +20,19 @@
 ## Evidence
 
 - `tests/extension-state-commands.test.ts`: exact-fact planning, atomic persisted DAG, dependency gating, and session-change rejection while waiting for Todo persistence.
-- `tests/pi-agent-runtime.test.ts`: production Pi planning/dispatch, role and skill matching, identity change rejection, link-before-run, result reconciliation, cancellation, continuation, bounded retry, and full verifier-result acceptance after restarting the Pi runtime. It also rejects an unrelated agent ID, declined confirmation, and direct completion of linked work.
+- `tests/pi-agent-runtime.test.ts`: production Pi planning/dispatch, role and skill matching, identity change rejection, link-before-run, result reconciliation, cancellation, continuation, bounded retry, and full verifier-result acceptance after restarting the Pi runtime. The ECO-06 writer integration test proves decline leaves the task planned, an approved run uses the persisted candidate and exact scope, the durable agent record excludes authority, success remains blocked for review, and explicit acceptance completes the task.
+- `tests/agent-store.test.ts`: generic persistence rejects worker and authority-bearing requests; the Pi runtime integration inspects the controlled worker record to confirm authority was stripped.
 - `tests/pi-todo-tools.test.ts`: explicit acceptance confirmation, restart recovery, and rejection of results too large for complete UI review.
 - `tests/pi-host-preflight.test.ts`: public tool inventory and Pi host compatibility.
-- Local checks on the working tree: `npm run typecheck`; the four suites above; `git diff --check`.
+- Local checks on the working tree: `npm run check` (typecheck, full test suite, parity/skill/memory/ecosystem/upstream-boundary audits; 1,393 passed and 12 skipped), plus a focused 85-test runtime/persistence suite and a final rerun of the ECO-06 worker integration test after its duplicate-dispatch assertion was added. `git diff --check` is clean.
+- The ecosystem audit reports normative source proof as not admitted because its retained baseline repository is unavailable. The check passes without making a global parity claim; ECO-06 remains PARTIAL.
 
 These local checks are not CI evidence for a published SHA. Hosted CI and Release Gate results must be read from the exact commit.
 
 ## Remaining work
 
-- `primary`, `worker`, and `clarifier` plan roles cannot yet be dispatched by the Pi plan tool. The writer path must bind a current candidate, exact authorized surfaces, lifecycle phase grant, skill evidence, and one-use writer admission, then persist auditable outputs and recover without replay.
+- `primary` and `clarifier` plan roles do not yet have Pi dispatch paths. The controlled writer currently supports only the organic bounded lifecycle; structured workflows and lifecycle phase grants are not wired into the persisted Todo DAG.
+- The agent record intentionally does not preserve write authority. A process restart cannot resume a partially executed writer automatically; the task must be inspected, replanned against the current candidate, and explicitly reauthorized. ECO-06 still needs a dedicated interrupted-during-operation test to establish safe recovery behavior for partially applied file changes.
 - Natural-language `/asen-plan` input currently produces conservative triage and missing-fact questions; it does not infer ODD facts, inspect project capabilities, or obtain model/provider availability.
 - Acceptance is an explicit human review of the persisted result and recorded acceptance instruction; ASEN does not execute arbitrary acceptance commands inferred from agent output.
 - Concurrency is bounded by the agent dispatcher, but plan scheduling remains one confirmed task per Pi tool call. There is no automatic multi-task scheduler or provider quota policy.

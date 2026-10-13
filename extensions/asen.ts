@@ -1,6 +1,7 @@
 import {RegistryLifecycle,registryStartupDisabled,type RegistryLifecycleOptions} from "../src/skills/registry-lifecycle.js";
 import {realpath} from "node:fs/promises";
 import {homedir} from "node:os";
+import {execFileSync} from "node:child_process";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {refreshSkillRegistry,type SkillRegistryMirror} from "../src/skills/generated-registry.js";
@@ -31,6 +32,7 @@ import {incrementUsageFile} from "../src/runtime/usage-store.js";
 import {VERSION,type ExtensionAPI} from "@earendil-works/pi-coding-agent";
 import {validatePiHost,validatePiRegistrationCollisions,validatePiExecutionContext} from "../src/runtime/pi-host.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
+import type {Candidate} from "../src/core/types.js";
 import {PiProcessRunner,type PiProviderCredential} from "../src/agents/pi-process-runner.js";
 import type {AgentRunner} from "../src/agents/dispatcher.js";
 import {registerAgentTools,ASEN_AGENT_TOOL_NAMES} from "../src/agents/pi-agent-tools.js";
@@ -56,6 +58,13 @@ const usage="Usage: /asen-skill-registry refresh";
 const productionPackageRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 async function canonical(value:string):Promise<string>{
  const resolved=path.resolve(value);try{return path.normalize(await realpath(resolved));}catch{return path.normalize(resolved);}
+}
+function candidateAtHead(repository:string):Candidate|undefined{
+ try{
+  const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:2000,windowsHide:true}).trim();
+  if(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(revision))return undefined;
+  return {id:`asen-${revision.slice(0,12)}`,repository,revision,createdAt:new Date().toISOString()};
+ }catch(error){const revision=error&&typeof error==="object"&&"status" in error&&error.status===0&&"stdout" in error?String(error.stdout).trim():"";if(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(revision))return undefined;return {id:`asen-${revision.slice(0,12)}`,repository,revision,createdAt:new Date().toISOString()};}
 }
 async function sourcesFor(projectRoot:string,homeRoot:string,packageRoot:string):Promise<SkillSource[]>{
  const [canonicalHome,canonicalPackage]=await Promise.all([canonical(homeRoot),canonical(packageRoot)]);
@@ -144,12 +153,12 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd;if(!manager||!sessionId)throw new Error("ASEN planning requires the active Pi session");
    const validateContext=()=>{if(ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed before plan persistence");};
    let project:string;try{project=await realpath(cwd);}catch{throw new Error("ASEN planning requires an existing active project");}validateContext();
-   const output=JSON.parse(controlledInstructionPlanCommand(args??"",project)) as Record<string,unknown>&{executablePlan?:ExecutablePlan;persistedTasks?:Array<{planTaskId:string;todoId:string|undefined;dependsOn:Array<string|undefined>}>};
+    const output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project))) as Record<string,unknown>&{executablePlan?:ExecutablePlan;persistedTasks?:Array<{planTaskId:string;todoId:string|undefined;dependsOn:Array<string|undefined>}>};
    if(!output.executablePlan)return JSON.stringify(output,null,2);
    if(!todoStorePromise){output.persistence={status:"unavailable",reason:"Todo store is not configured; this graph was not saved or made runnable"};output.execution={started:false,authorized:false};output.notice="Plan only. The Todo store is unavailable, so no task records were persisted. No agent was dispatched and no permission was granted.";return JSON.stringify(output,null,2);}
    const store=await todoStorePromise,identity=await sessionIdentity(ctx),todoIds=new Map<string,string>(),ordered=output.executablePlan.topologicalOrder.map(taskId=>{const task=output.executablePlan!.tasks.find(item=>item.id===taskId);if(!task)throw new Error("ASEN executable plan order references an unknown task");return task;});
    validateContext();if(identity.sessionId!==sessionId||identity.projectId!==project)throw new Error("Pi session or project changed while preparing the plan");
-   const persisted=await store.addPlan(ordered.map(task=>({title:task.title,requestId:`asen-plan:${task.id}`,dependsOn:task.dependsOn.map(id=>`asen-plan:${id}`),description:task.instruction,plan:{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,...(task.skillSelection?{skillSelection:task.skillSelection}:{})}})),identity,undefined,validateContext);
+    const persisted=await store.addPlan(ordered.map(task=>({title:task.title,requestId:`asen-plan:${task.id}`,dependsOn:task.dependsOn.map(id=>`asen-plan:${id}`),description:task.instruction,plan:{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(task.candidate?{candidate:task.candidate}:{}),...(task.writeSurfaces?{writeSurfaces:[...task.writeSurfaces]}:{}),...(task.writerAuthorizationBasis?{writerAuthorizationBasis:task.writerAuthorizationBasis}:{})}})),identity,undefined,validateContext);
    validateContext();
    for(const item of persisted)todoIds.set(item.requestId!.slice("asen-plan:".length),item.taskId);
    output.persistedTasks=output.executablePlan.tasks.map(task=>({planTaskId:task.id,todoId:todoIds.get(task.id),dependsOn:task.dependsOn.map(id=>todoIds.get(id))}));

@@ -8,7 +8,7 @@ import type {TrustedTaskAgentBinder} from "../runtime/trusted-task-agent-binder.
 import type {TaskAgentLinkStore} from "../runtime/task-agent-link-store.js";
 import type {SessionTodoStore} from "../runtime/todo-store.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
-import {dispatchNextReadOnlyPlanTask} from "../runtime/plan-dispatcher.js";
+import {dispatchNextPlanTask} from "../runtime/plan-dispatcher.js";
 
 const text={type:"string",minLength:1,maxLength:32000};
 const rootSchema={type:"string",minLength:1,maxLength:4096};
@@ -101,13 +101,13 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
    return result({id:next,state:"queued",retriedFrom:agentId,role,todoId:todo.taskId});
   }catch(error){const current=(await todos.list(session)).find(item=>item.taskId===todo.taskId);if(current?.current.state==="running")await todos.update(current.taskId,session,current.current.revision,"blocked","Read-only retry was not dispatched; review is required",undefined).catch(()=>{});throw error;}
  }});
- pi.registerTool?.({name:"asen_plan_dispatch_next",label:"Dispatch next ASEN plan task",description:"After explicit Pi UI confirmation, dispatch one dependency-ready persisted plan task only when it has a supported read-only role. Completion still requires independent verification.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
+ pi.registerTool?.({name:"asen_plan_dispatch_next",label:"Dispatch next ASEN plan task",description:"After explicit Pi UI confirmation, dispatch one dependency-ready persisted plan task. Writer tasks require a fresh candidate, exact ODD file scope and one-use authorization; every result remains blocked until independently reviewed.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);const session=await selectedIdentity((params as {root?:unknown}).root,context,true,signal);
   if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function")throw new Error("Interactive Pi UI confirmation is required to dispatch a planned task");
   if(!todoLink)throw new Error("ASEN plan dispatch requires the session Todo and durable task-agent link stores");
   const [todos,links,runtimeValue]=await Promise.all([todoLink.todos(),todoLink.links(),runtime()]);
   const validateIdentity=async()=>{const current=await identity(context);if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before plan task dispatch");};
-  const dispatched=await dispatchNextReadOnlyPlanTask({todos,agents:runtimeValue,links,identity:session,validateIdentity,confirm:async task=>confirmWithAbort(dialogSignal=>context.ui.confirm("Dispatch next ASEN plan task?",`${task.title} (${task.role})\n\n${task.instruction}\n\nStart this read-only task in the current session and project?`,dialogSignal?{signal:dialogSignal}:undefined),signal)});
+  const dispatched=await dispatchNextPlanTask({todos,agents:runtimeValue,links,identity:session,validateIdentity,confirm:async task=>confirmWithAbort(dialogSignal=>context.ui.confirm(task.writeSurfaces?"Authorize scoped ASEN write?":"Dispatch next ASEN plan task?",`${task.title} (${task.role})\n\n${task.instruction}${task.writeSurfaces?`\n\nCandidate: ${task.candidateRevision}\nAuthorized write surfaces (only): ${task.writeSurfaces.join(", ")}\nFailure rule: stop without commit or merge; leave scoped changes for review.\n\nAuthorize this single worker run in the current session and project?`:"\n\nStart this read-only task in the current session and project?"}`,dialogSignal?{signal:dialogSignal}:undefined),signal)});
   return result(dispatched);
  }});
  return ()=>access.reset();

@@ -19,13 +19,14 @@ export interface AgentStoreEntry{ record:PublicAgentRecord;request:AgentTaskSpec
 export interface AgentStoreFile{schema:typeof SCHEMA;revision:number;entries:AgentStoreEntry[];}
 const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
 const identifier=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<=1024&&v===v.trim()&&v===v.normalize("NFC")&&!/[\u0000-\u001f\u007f-\u009f]/u.test(v);
-function specFrom(request:AgentRequest,createdAt:string):AgentTaskSpec{
+function specFrom(request:AgentRequest,createdAt:string,controlledWorker=false):AgentTaskSpec{
  if(!identifier(request.id)||!identifier(request.repository)||!identifier(request.isolationKey??"default")||typeof request.prompt!=="string"||!request.prompt.trim()||request.prompt.length>MAX_PROMPT||/\u0000/u.test(request.prompt)||!(["explorer","worker","reviewer","verifier"] as unknown[]).includes(request.role))throw new Error("Invalid persistent agent request");
- if(!( ["explorer","reviewer","verifier"] as unknown[]).includes(request.role)||request.writeSurfaces?.length||request.candidate||request.writerAdmission||request.phaseGrant)throw new Error("Authority-bearing agent requests cannot be serialized; create a fresh authorized dispatch");
+ const safeControlledWorker=controlledWorker&&request.role==="worker"&&!!request.candidate&&Array.isArray(request.writeSurfaces)&&request.writeSurfaces.length>0&&!!request.writerAdmission&&!request.phaseGrant;
+ if(!( ["explorer","reviewer","verifier"] as unknown[]).includes(request.role)&&!safeControlledWorker||request.writeSurfaces?.length&&!safeControlledWorker||request.candidate&&!safeControlledWorker||request.writerAdmission&&!safeControlledWorker||request.phaseGrant)throw new Error("Authority-bearing agent requests cannot be serialized; create a fresh authorized dispatch");
  if(request.skillContext||request.skillPaths){
   const selected=request.skillContext&&isIssuedSkillContext(request.skillContext)?selectSkills(request.skillContext).map(skill=>skill.path):[];
-  const requiredPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[request.role as "explorer"|"reviewer"|"verifier"];
-  if(!request.skillContext||!request.skillPaths||!isIssuedSkillContext(request.skillContext)||request.skillContext.phase!==requiredPhase||request.expectedPhase!==undefined&&request.expectedPhase!==requiredPhase||!matchesIssuedSkillContext(request.skillContext,request.id,request.repository)||request.skillPaths.length!==selected.length||request.skillPaths.some((path,index)=>path!==selected[index]))throw new Error("Only exact read-only role skill selections may be serialized");
+  const requiredPhase=request.role==="worker"?"apply":{explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[request.role as "explorer"|"reviewer"|"verifier"];
+  if(!request.skillContext||!request.skillPaths||!isIssuedSkillContext(request.skillContext)||request.skillContext.phase!==requiredPhase||request.expectedPhase!==undefined&&request.expectedPhase!==requiredPhase||!matchesIssuedSkillContext(request.skillContext,request.id,request.repository,safeControlledWorker?request.candidate:undefined)||request.skillPaths.length!==selected.length||request.skillPaths.some((path,index)=>path!==selected[index]))throw new Error("Only exact authorized skill selections may be serialized");
  }
  if(request.model!==undefined&&(typeof request.model!=="string"||!identifier(request.model)))throw new Error("Invalid persistent agent model");
  if(request.thinking!==undefined&&!(["off","minimal","low","medium","high"] as unknown[]).includes(request.thinking))throw new Error("Invalid persistent agent thinking level");
@@ -99,10 +100,13 @@ export class PersistentAgentStore implements AgentLifecycleSink{
  async list(sessionId:string,projectId:string):Promise<readonly PublicAgentRecord[]>{const data=await read(this.path,this.#receiptKey);return data.entries.map(x=>x.record).filter(x=>x.sessionId===sessionId&&sameWorkspaceIdentityPath(x.projectId,projectId)).map(x=>structuredClone(x));}
  async history(id:string,sessionId:string,projectId:string):Promise<readonly AgentStateEvent[]>{const data=await read(this.path,this.#receiptKey),entry=data.entries.find(x=>x.record.id===id&&x.record.sessionId===sessionId&&sameWorkspaceIdentityPath(x.record.projectId,projectId));return entry?entry.events.map(x=>structuredClone(x)):[];}
  async get(id:string,sessionId:string,projectId:string):Promise<AgentStoreEntry|undefined>{const data=await read(this.path,this.#receiptKey),entry=data.entries.find(x=>x.record.id===id&&x.record.sessionId===sessionId&&sameWorkspaceIdentityPath(x.record.projectId,projectId));return entry?structuredClone(entry):undefined;}
- async enqueue(request:AgentRequest,owner:PublicAgentRecord["owner"],signal?:AbortSignal):Promise<void>{
-  throwIfCancelled(signal);const createdAt=this.now(),spec=specFrom(request,createdAt);if(spec.continuationOf)throw new Error("Continuation tasks must use the atomic interrupted-task claim");const input={id:spec.id,role:spec.role,owner,sessionId:spec.isolationKey,projectId:spec.repository,createdAt},record=createAgentRecord(input),first=event(record,1),entry:AgentStoreEntry={record,request:spec,events:[first]};
+ async #enqueue(request:AgentRequest,owner:PublicAgentRecord["owner"],signal:AbortSignal|undefined,controlledWorker:boolean):Promise<void>{
+  throwIfCancelled(signal);const createdAt=this.now(),spec=specFrom(request,createdAt,controlledWorker);if(spec.continuationOf)throw new Error("Continuation tasks must use the atomic interrupted-task claim");const input={id:spec.id,role:spec.role,owner,sessionId:spec.isolationKey,projectId:spec.repository,createdAt},record=createAgentRecord(input),first=event(record,1),entry:AgentStoreEntry={record,request:spec,events:[first]};
   await this.#mutate(data=>{throwIfCancelled(signal);if(data.entries.some(x=>x.record.id===spec.id))throw new Error("Agent task id already exists");data.entries.push(entry);},signal);this.#records.set(record.id,structuredClone(record));
  }
+ async enqueue(request:AgentRequest,owner:PublicAgentRecord["owner"],signal?:AbortSignal):Promise<void>{return this.#enqueue(request,owner,signal,false);}
+ /** Persists only a descriptive worker record; candidate, file scope and one-use authority remain in memory. */
+ async enqueueControlledWorker(request:AgentRequest,owner:PublicAgentRecord["owner"],signal?:AbortSignal):Promise<void>{return this.#enqueue(request,owner,signal,true);}
  /** Atomically claims one interrupted parent and persists its fresh continuation identity. */
  async enqueueContinuation(parentId:string,sessionId:string,projectId:string,owner:PublicAgentRecord["owner"],signal?:AbortSignal):Promise<AgentRequest>{
   throwIfCancelled(signal);

@@ -2,6 +2,7 @@ import path from "node:path";
 import {deriveOddFacts,planOddRoute,type OddRoutingRequest} from "../flow/odd-routing.js";
 import {buildOrchestrationPlan} from "../orchestration/orchestrator.js";
 import {materializeExecutablePlan} from "../orchestration/executable-plan.js";
+import type {Candidate} from "../core/types.js";
 
 const INPUT_KEYS=["taskIdentity","intent","scope","writes","riskOperations","session","testing","review","unresolvedDecisions"] as const;
 const PLAN_INPUT_KEYS=["instruction",...INPUT_KEYS] as const;
@@ -19,7 +20,7 @@ export function routePreviewCommand(args:string,repositoryIdentity:string):strin
 }
 
 /** Builds a bounded, read-only plan from the user's instruction and exact ODD facts. */
-export function controlledInstructionPlanCommand(args:string,repositoryIdentity:string):string{
+export function controlledInstructionPlanCommand(args:string,repositoryIdentity:string,candidate?:Candidate):string{
  if(typeof args!=="string"||!args.trim()||args.length>MAX_INPUT)throw new Error("Usage: /asen-plan <JSON instruction and ODD facts>; input must be 1–16384 characters");
  if(typeof repositoryIdentity!=="string"||!path.isAbsolute(repositoryIdentity))throw new Error("ASEN planning requires a canonical active project path");
  if(!args.trimStart().startsWith("{")){
@@ -37,8 +38,11 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
  if(typeof value.instruction!=="string"||!value.instruction.trim()||value.instruction!==value.instruction.trim()||value.instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(value.instruction))throw new Error("ASEN plan instruction is invalid");
  const {instruction,...factsInput}=value;
  const facts=deriveOddFacts({...factsInput,repositoryIdentity} as unknown as OddRoutingRequest),decision=planOddRoute(facts);
- const plan=buildOrchestrationPlan({taskId:decision.taskIdentity,repository:decision.repositoryIdentity,prompt:instruction},decision);
- const executablePlan=materializeExecutablePlan(plan,instruction);
+ if(candidate&&(candidate.repository!==repositoryIdentity||!candidate.id||!candidate.revision||!candidate.createdAt))throw new Error("ASEN plan candidate does not match the active project");
+ const writeSurfaces=facts.writes.map(write=>write.path);
+ const plan=buildOrchestrationPlan({taskId:decision.taskIdentity,repository:decision.repositoryIdentity,prompt:instruction,...(candidate?{candidate}:{}),...(candidate&&writeSurfaces.length?{writeSurfaces}:{})},decision);
+ const writerAuthorizationBasis=candidate&&writeSurfaces.length?JSON.stringify({instruction,...factsInput}):undefined;
+ const executablePlan=materializeExecutablePlan(plan,instruction,writerAuthorizationBasis);
  const sensitive=facts.riskOperations.length>0;
  return JSON.stringify({
   task:decision.taskIdentity,

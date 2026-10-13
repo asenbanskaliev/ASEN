@@ -1,4 +1,5 @@
 import type {OrchestrationPlan} from "./orchestrator.js";
+import type {Candidate} from "../core/types.js";
 import type {IssuedSkillContext} from "../skills/context.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 
@@ -13,6 +14,9 @@ export interface PlannedTask {
  readonly skills:readonly string[];
  readonly skillPaths:readonly string[];
  readonly skillSelection?:SkillSelectionContext;
+ readonly candidate?:Candidate;
+ readonly writeSurfaces?:readonly string[];
+ readonly writerAuthorizationBasis?:string;
  readonly status:"ready"|"waiting"|"clarification_required";
  readonly execution:"not_started";
  readonly authorization:"required_before_dispatch";
@@ -33,7 +37,7 @@ function selectionOf(context:IssuedSkillContext|undefined):SkillSelectionContext
 
 /** Materializes the existing ODD route and selected roles as an ordered, inspectable task DAG.
  * This is a plan only: it never grants permissions or starts an agent. */
-export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:string):ExecutablePlan{
+export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:string,writerAuthorizationBasis?:string):ExecutablePlan{
  const decision=plan.decision,taskId=decision.taskIdentity;
  if(!taskId||!decision.repositoryIdentity||typeof instruction!=="string"||!instruction.trim()||instruction!==instruction.trim()||instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(instruction))throw new Error("Executable plan identity or instruction is invalid");
  const tasks:PlannedTask[]=[],priority:Readonly<Record<PlannedTaskRole,number>>={clarifier:1,primary:1,explorer:1,worker:2,reviewer:3,verifier:4};
@@ -55,7 +59,13 @@ export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:str
    const dependencies=role==="worker"?[ids.get("explorer")].filter((id):id is string=>!!id):role==="reviewer"?[ids.get("worker")].filter((id):id is string=>!!id):role==="verifier"?[ids.get("worker"),ids.get("reviewer")].filter((id):id is string=>!!id):[];
    const text=role==="explorer"?`Inspect the repository and report relevant evidence for: ${instruction}`:role==="worker"?`Perform only the authorized, scoped work for: ${instruction}`:role==="reviewer"?`Review the resulting work against the original acceptance criteria: ${instruction}`:`Independently verify the result and acceptance criteria for: ${instruction}`;
    const selection=selectionOf(agent.skillContext);
-   ids.set(role,add(role,`${role[0]!.toUpperCase()}${role.slice(1)} task`,text,dependencies,selection?selectSkills(selection).map(skill=>skill.id):[],agent.skillPaths??[],selection,dependencies.length?"waiting":"ready"));
+   const id=add(role,`${role[0]!.toUpperCase()}${role.slice(1)} task`,text,dependencies,selection?selectSkills(selection).map(skill=>skill.id):[],agent.skillPaths??[],selection,dependencies.length?"waiting":"ready");
+   const task=tasks.find(item=>item.id===id)!;
+   if(role==="worker"&&agent.writeSurfaces?.length&&agent.candidate&&writerAuthorizationBasis){
+    const writable=Object.freeze({...task,candidate:Object.freeze({...agent.candidate}),writeSurfaces:Object.freeze([...agent.writeSurfaces]),writerAuthorizationBasis});
+    tasks[tasks.indexOf(task)]=writable;
+   }
+   ids.set(role,id);
   }
  }
  const byId=new Map(tasks.map(item=>[item.id,item]));
