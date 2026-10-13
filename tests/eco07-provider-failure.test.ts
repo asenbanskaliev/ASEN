@@ -4,7 +4,7 @@ import {resolve} from "node:path";
 import test from "node:test";
 import {eco07ProviderRateLimitError} from "../src/runtime/eco07-provider-failure.js";
 // @ts-expect-error Provider selection is a small Node-side Actions helper.
-import {resolveEco07Provider} from "../scripts/eco07-provider-config.mjs";
+import {resolveEco07Provider,validateEco07ProviderSelection} from "../scripts/eco07-provider-config.mjs";
 
 test("ECO-07 detects provider quota failures without treating normal Pi replies as failures",()=>{
  const error='429: {"message":"Rate limit exceeded: free-models-per-day","code":429}';
@@ -14,6 +14,13 @@ test("ECO-07 detects provider quota failures without treating normal Pi replies 
   assert.equal(eco07ProviderRateLimitError(value),undefined);
  }
  assert.equal(eco07ProviderRateLimitError({message:{stopReason:"error",errorMessage:"x".repeat(1500)+" 429"}})?.length,1200);
+});
+
+test("ECO-07 validates provider metadata without reading a credential",()=>{
+ const environment=new Proxy({ASEN_ECO07_PROVIDER:"groq",ASEN_ECO07_MODEL:"openai/gpt-oss-120b"},{
+  get(target,key,receiver){if(String(key).endsWith("_API_KEY"))throw new Error("credential read");return Reflect.get(target,key,receiver);},
+ });
+ assert.deepEqual(validateEco07ProviderSelection(environment),{provider:"groq",model:"openai/gpt-oss-120b",credential:"GROQ_API_KEY"});
 });
 
 test("ECO-07 selects LLM7 only with its key and the pinned Pi Free extension",()=>{
