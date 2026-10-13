@@ -283,3 +283,12 @@ test("cross-repository first attempt burns the genuine decision",()=>{
  assert.throws(()=>buildOrchestrationPlan({taskId:"task",repository:"other",prompt:"p"},decision),/repository mismatch/);
  assert.throws(()=>buildOrchestrationPlan({taskId:"task",repository:"expected",prompt:"p"},decision),/already been claimed/);
 });
+
+test("ECO-06 rejects invalid orchestration instructions before consuming ODD route decisions",()=>{
+ for(const prompt of [""," "," leading","trailing ","line\nfeed","x".repeat(8193)]){
+  const taskId="invalid-prompt";
+  const decision=issueOddDecision({taskId,repository:"r"});
+  assert.throws(()=>buildOrchestrationPlan({taskId,repository:"r",prompt},decision),/Orchestration instruction is invalid/);
+  assert.doesNotThrow(()=>buildOrchestrationPlan({taskId,repository:"r",prompt:"valid"},decision));
+ }
+});
