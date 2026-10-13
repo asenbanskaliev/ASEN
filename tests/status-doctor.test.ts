@@ -28,3 +28,9 @@ test("ECO-06 status rendering remains bounded for long operational summaries",()
   assert.ok(lines.every(line=>typeof line==="string"&&line.length<=width));
  }
 });
+
+test("ECO-06 doctor reports all-clear when every local prerequisite is valid",()=>{
+ const checks=doctorChecks({piVersionOk:true,homeWritable:true,registryAvailable:true,profileValid:true,historyPrivate:true,telemetryConsentValid:true});
+ assert.equal(doctorExitCode(checks),0);
+ assert.ok(checks.length>0);
+});
