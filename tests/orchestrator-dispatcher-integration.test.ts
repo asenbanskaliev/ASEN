@@ -116,3 +116,21 @@ test("read-only agent authority cannot cross tasks or revisions",async()=>{
  await assert.rejects(()=>dispatcher.dispatch(withoutCandidate),/task\/candidate/);
  assert.equal(ran,false);
 });
+
+test("ECO-06 plan-only delegation cannot start a worker even with complete evidence",async()=>{
+ const plan=buildOrchestrationPlan(
+  {taskId:"plan-only",repository:"repo",prompt:"change behavior",codeChange:true,behaviorChange:true,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
+  decisionFor("plan-only")
+ );
+ const worker=plan.agents.find(agent=>agent.role==="worker");
+ assert.ok(worker);
+ const evidence=new EvidenceStore();
+ assert.ok(plan.routeEvidence);
+ evidence.addRouteDecision(candidate,plan.routeEvidence,{id:"route-plan-only",summary:"route",createdAt:"now"});
+ for(const [id,kind] of [["unit-plan","work-unit"],["scope-plan","scope"],["rollback-plan","rollback"]] as const)
+  evidence.add(candidate,{id,kind,status:"pass",summary:"ready",createdAt:"now"});
+ let ran=false;
+ const dispatcher=new Dispatcher({run:async r=>{ran=true;return{id:r.id,ok:true,output:"unexpected"};}},evidence);
+ await assert.rejects(()=>dispatcher.dispatch(worker),/unused exact writer admission/);
+ assert.equal(ran,false);
+});
