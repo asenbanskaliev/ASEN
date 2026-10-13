@@ -132,6 +132,26 @@ test("next-plan dispatch confirms one ready read-only task and refuses the write
  rows=await todos.list(session);assert.equal(rows.find(row=>row.taskId===persisted[1]!.taskId)?.current.state,"planned");await state.events.get("session_shutdown")![0]!({},context);
 });
 
+test("ECO-06 verification plan dispatches through Pi and requires independent Todo acceptance",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-eco06-verify-flow-"));t.after(()=>rm(home,{recursive:true,force:true}));const sessionId="eco06-verify-flow",projectId=await realpath(process.cwd()),identity={sessionId,projectId},todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),todos=await SessionTodoStore.open(todoFile);let request:import("../src/agents/dispatcher.js").AgentRequest|undefined,confirmations=0;
+ const state=host(),context={...state.context(sessionId),ui:{...state.context(sessionId).ui,confirm:async()=>{confirmations++;return true;}}};
+ createPiExtension({homeDir:()=>home,agentRunner:{run:async value=>{request=value;return{id:value.id,ok:true,output:"Verified the requested acceptance criteria against the current project state."};}},agentStoreFile:agentFile,todoStoreFile:todoFile})(state.pi as any);await state.events.get("session_start")![0]!({},context);
+ await state.commands.get("asen-plan").handler(JSON.stringify({taskIdentity:"eco06-verify-flow",instruction:"Independently verify the requested acceptance criteria",intent:"verification",scope:{kind:"known",expectedPaths:[]},writes:[],riskOperations:[],session:{estimatedMinutes:15,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:10},unresolvedDecisions:[]}),context);
+ const plan=JSON.parse(state.messages.at(-1)!);
+ assert.equal(plan.route,"verify");assert.equal(plan.persistedTasks.length,1);const todoId=plan.persistedTasks[0].todoId;
+ const originalProject=context.cwd;context.ui.confirm=async()=>{confirmations++;if(confirmations===1)context.cwd=home;return true;};
+ await assert.rejects(()=>state.tools.get("asen_plan_dispatch_next").execute("verify-project-change",{},new AbortController().signal,()=>{},context),/session or project changed/u);assert.equal(request,undefined);
+ context.cwd=originalProject;
+ const dispatched=await state.tools.get("asen_plan_dispatch_next").execute("verify-next",{},new AbortController().signal,()=>{},context);assert.equal(dispatched.details.status,"dispatched");assert.equal(dispatched.details.role,"verifier");
+ let row:any,deadline=Date.now()+5000;while(Date.now()<deadline){row=(await todos.list(identity)).find(item=>item.taskId===todoId);if(row?.current.state==="blocked")break;await new Promise(resolve=>setTimeout(resolve,5));}
+ assert.equal(row?.current.state,"blocked");assert.equal((request as import("../src/agents/dispatcher.js").AgentRequest|undefined)?.role,"verifier");assert.equal((request as import("../src/agents/dispatcher.js").AgentRequest|undefined)?.prompt,row?.description);assert.equal(confirmations,2);
+ const agent=await state.tools.get("asen_agent_status").execute("verify-result",{id:dispatched.details.agentId},new AbortController().signal,()=>{},context);assert.equal(agent.details.task.record.state,"completed");assert.match(agent.details.task.record.summary,/acceptance criteria/u);
+ const resumed=await state.tools.get("asen_todo_update").execute("verify-resume",{id:todoId,revision:row.current.revision,state:"running"},new AbortController().signal,()=>{},context);
+ const completed=await state.tools.get("asen_todo_update").execute("verify-done",{id:todoId,revision:resumed.details.events.at(-1).revision,state:"done",reason:"I independently inspected the verifier result against the acceptance instruction and confirmed the result."},new AbortController().signal,()=>{},context);
+ assert.equal(completed.details.events.at(-1).state,"done");assert.match(completed.details.events.at(-1).reason,/independently verified/u);assert.equal(confirmations,4);
+ await state.events.get("session_shutdown")![0]!({},context);
+});
+
 test("cancelling a Todo through Pi cancels its linked active agent",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-pi-todo-cancel-agent-"));t.after(()=>rm(home,{recursive:true,force:true}));
  const state=host();let started!:()=>void;
@@ -161,7 +181,8 @@ test("Pi continue tool requires explicit UI confirmation and cannot cross projec
   const waitingContinuation=state.tools.get("asen_agent_continue").execute("continue-lock-cancel",{id:"interrupted"},lockController.signal,()=>{},state.context());
   await new Promise(resolve=>setTimeout(resolve,30));lockController.abort();await assert.rejects(waitingContinuation,/Agent task cancelled/);
   const persisted=JSON.parse(await readFile(file,"utf8"));assert.equal(persisted.entries.length,1);assert.equal(persisted.entries[0]?.record.state,"interrupted");await rm(`${file}.lock`,{force:true});
-  let currentSession="session-a";const switchingContext={...state.context(),sessionManager:{getSessionId:()=>currentSession},ui:{confirm:async()=>{currentSession="session-b";return true;}}};await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue-session-change",{id:"interrupted"},new AbortController().signal,()=>{},switchingContext),/session changed/u);currentSession="session-a";
+  let currentSession="session-a";const switchingContext={...state.context(),sessionManager:{getSessionId:()=>currentSession},ui:{confirm:async()=>{currentSession="session-b";return true;}}};await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue-session-change",{id:"interrupted"},new AbortController().signal,()=>{},switchingContext),/session or project changed/u);currentSession="session-a";
+  let currentProject=process.cwd();const switchingProjectContext=state.context();Object.defineProperty(switchingProjectContext,"cwd",{get:()=>currentProject});switchingProjectContext.ui.confirm=async()=>{currentProject=home;return true;};await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue-project-change",{id:"interrupted"},new AbortController().signal,()=>{},switchingProjectContext),/session or project changed/u);currentProject=process.cwd();
   const continuation=await state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},state.context());assert.equal(continuation.details.continuedFrom,"interrupted");assert.equal(continuation.details.role,"explorer");
   await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},state.context()),/already has a continuation/);
   await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},{...state.context(),hasUI:false}),/Explicit Pi UI confirmation/);

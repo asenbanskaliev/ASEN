@@ -68,10 +68,10 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const todo=link&&todos?(await todos.list(session)).find(item=>item.taskId===link.taskId):undefined;
   if(link&&(!todo||todo.current.state!=="blocked"))throw new Error("A linked Todo must be blocked for explicit review before its interrupted agent can continue");
   if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function"||!await confirmWithAbort(dialogSignal=>context.ui.confirm("Continue agent task?",link?`Resume ${todo!.title} (${todo!.taskId}) and bind the new read-only Pi attempt to that Todo before dispatch?`:`This starts a new read-only attempt for the saved task in this same session and project.`,dialogSignal?{signal:dialogSignal}:undefined),signal))throw new Error("Explicit Pi UI confirmation is required to continue an agent task");
-  throwIfCancelled(signal);if((await identity(context)).sessionId!==session.sessionId)throw new Error("Pi session changed before agent continuation");
+  throwIfCancelled(signal);const confirmedIdentity=await identity(context);if(confirmedIdentity.sessionId!==session.sessionId||confirmedIdentity.projectId!==session.projectId)throw new Error("Pi session or project changed before agent continuation");
   const resumed=link&&todo&&todos?await todos.update(todo.taskId,session,todo.current.revision,"running","User confirmed linked agent continuation in Pi UI",signal):undefined;
   try{
-   const active=await runtime(),next=await active.continue(taskId,session,signal,link&&todoLink?async(agentId,dispatch)=>{await (await todoLink!.binder()).launch(link.taskId,agentId,session,dispatch);}:undefined);
+   const active=await runtime(),next=await active.continue(taskId,session,signal,link&&todoLink?async(agentId,dispatch)=>{const current=await identity(context);if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before agent continuation dispatch");await (await todoLink!.binder()).launch(link.taskId,agentId,session,dispatch);}:undefined);
    return result({id:next,state:"queued",continuedFrom:taskId,role:"explorer",...(link?{todoId:link.taskId}:{} )});
   }catch(error){
    if(resumed&&todos){const current=(await todos.list(session)).find(item=>item.taskId===resumed.taskId);if(current?.current.state==="running")await todos.update(current.taskId,session,current.current.revision,"blocked","Linked agent continuation was not dispatched; review is required",undefined).catch(()=>{});}
@@ -90,12 +90,12 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   if(todo.plan&&(todo.plan.role!==role||!selection||selection.phase!==({explorer:"explore",reviewer:"adversarial-review",verifier:"verify"} as const)[role]))throw new Error("Failed agent does not match the persisted read-only plan role and skill phase");
   if(selection){const expected=selectSkills(selection).map(skill=>skill.path);if(expected.length!==todo.plan!.skillPaths.length||expected.some((value,index)=>value!==todo.plan!.skillPaths[index]))throw new Error("Persisted ASEN skill registry selection changed; rebuild this plan before retry");}
   if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function"||!await confirmWithAbort(dialogSignal=>context.ui.confirm("Retry failed ASEN task?",`${todo.title}\n\nThe previous read-only attempt failed. Start one new attempt with the exact saved instruction and bind it to this Todo?\n\n${instruction.slice(0,1200)}`,dialogSignal?{signal:dialogSignal}:undefined),signal))throw new Error("Explicit Pi UI confirmation is required to retry a failed task");
-  throwIfCancelled(signal);if((await identity(context)).sessionId!==session.sessionId)throw new Error("Pi session changed before agent retry");
+  throwIfCancelled(signal);const confirmedIdentity=await identity(context);if(confirmedIdentity.sessionId!==session.sessionId||confirmedIdentity.projectId!==session.projectId)throw new Error("Pi session or project changed before agent retry");
   const fresh=(await todos.list(session)).find(item=>item.taskId===todo.taskId),latest=await active.query(agentId,session);
   if(!fresh||fresh.current.state!=="blocked"||fresh.current.revision!==todo.current.revision||!latest||latest.record.state!=="failed")throw new Error("Failed Todo or agent changed during retry confirmation; refresh before retry");
   const resumed=await todos.update(todo.taskId,session,todo.current.revision,"running","User confirmed a new read-only retry in Pi UI",signal);
   try{
-   const next=await active.startReadOnly({role,prompt:instruction,session,...(selection?{skillSelection:selection}:{}),onQueued:async(id,dispatch)=>{await (await todoLink.binder()).launch(todo.taskId,id,session,dispatch);}},signal);
+   const next=await active.startReadOnly({role,prompt:instruction,session,...(selection?{skillSelection:selection}:{}),onQueued:async(id,dispatch)=>{const currentIdentity=await identity(context);if(currentIdentity.sessionId!==session.sessionId||currentIdentity.projectId!==session.projectId)throw new Error("Pi session or project changed before agent retry dispatch");await (await todoLink.binder()).launch(todo.taskId,id,session,dispatch);}},signal);
    return result({id:next,state:"queued",retriedFrom:agentId,role,todoId:todo.taskId});
   }catch(error){const current=(await todos.list(session)).find(item=>item.taskId===todo.taskId);if(current?.current.state==="running")await todos.update(current.taskId,session,current.current.revision,"blocked","Read-only retry was not dispatched; review is required",undefined).catch(()=>{});throw error;}
  }});
@@ -104,7 +104,8 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function")throw new Error("Interactive Pi UI confirmation is required to dispatch a planned task");
   if(!todoLink)throw new Error("ASEN plan dispatch requires the session Todo and durable task-agent link stores");
   const [todos,links,runtimeValue]=await Promise.all([todoLink.todos(),todoLink.links(),runtime()]);
-  const dispatched=await dispatchNextReadOnlyPlanTask({todos,agents:runtimeValue,links,identity:session,confirm:async task=>confirmWithAbort(dialogSignal=>context.ui.confirm("Dispatch next ASEN plan task?",`${task.title} (${task.role})\n\n${task.instruction.slice(0,1600)}\n\nStart this read-only task in the current session and project?`,dialogSignal?{signal:dialogSignal}:undefined),signal)});
+  const validateIdentity=async()=>{const current=await identity(context);if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before plan task dispatch");};
+  const dispatched=await dispatchNextReadOnlyPlanTask({todos,agents:runtimeValue,links,identity:session,validateIdentity,confirm:async task=>confirmWithAbort(dialogSignal=>context.ui.confirm("Dispatch next ASEN plan task?",`${task.title} (${task.role})\n\n${task.instruction.slice(0,1600)}\n\nStart this read-only task in the current session and project?`,dialogSignal?{signal:dialogSignal}:undefined),signal)});
   return result(dispatched);
  }});
  return ()=>access.reset();
