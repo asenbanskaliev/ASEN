@@ -1,25 +1,23 @@
 import type {AgentSessionIdentity,AgentRuntime} from "../agents/agent-runtime.js";
 import type {SessionTodoStore} from "./todo-store.js";
+import type {TaskAgentLinkStore} from "./task-agent-link-store.js";
+import {sameWorkspaceIdentityPath} from "./workspace-store.js";
 
-/**
- * A read-only projection. A task is never completed because an agent completes.
- * Only exact, session-scoped orchestrator IDs (taskId:role) are correlated.
- * Pi agent IDs are opaque; do not guess their parent from prompts or timestamps.
- */
+type AgentView={id:string;role:string;state:string};
+/** Read-only coordination. Correlation never conveys execution authority. */
 export class TaskAgentCoordinator {
- constructor(private readonly todos:Pick<SessionTodoStore,"list"|"history">,private readonly agents:Pick<AgentRuntime,"list">){}
+ constructor(private readonly todos:Pick<SessionTodoStore,"list"|"history">,private readonly agents:Pick<AgentRuntime,"list">,private readonly links?:Pick<TaskAgentLinkStore,"list">){}
  async snapshot(identity:AgentSessionIdentity){
-  const [tasks,agents]=await Promise.all([this.todos.list(identity),this.agents.list(identity)]);
-  return {tasks:tasks.map(task=>({
-   id:task.taskId,title:task.title,state:task.current.state,revision:task.current.revision,
-   agents:agents.filter(agent=>agent.sessionId===identity.sessionId&&agent.projectId===identity.projectId&&
-    ["explorer","worker","reviewer","verifier"].some(role=>agent.id===task.taskId+":"+role&&agent.role===role))
-    .map(agent=>({id:agent.id,role:agent.role,state:agent.state})),
-  }))};
+  const [tasks,agents,links]=await Promise.all([this.todos.list(identity),this.agents.list(identity),this.links?.list(identity)??Promise.resolve([])]);
+  const owned=agents.filter(agent=>agent.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(agent.projectId,identity.projectId));
+  return {tasks:tasks.map(task=>{
+   const explicit=new Set(links.filter(link=>link.taskId===task.taskId&&link.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(link.projectId,identity.projectId)).map(link=>link.agentId));
+   const correlated:AgentView[]=owned.filter(agent=>explicit.has(agent.id)||["explorer","worker","reviewer","verifier"].some(role=>agent.id===task.taskId+":"+role&&agent.role===role)).map(agent=>({id:agent.id,role:agent.role,state:agent.state}));
+   return {id:task.taskId,title:task.title,state:task.current.state,revision:task.current.revision,agents:correlated};
+  })};
  }
  async task(taskId:string,identity:AgentSessionIdentity){
-  const view=await this.snapshot(identity);
-  const item=view.tasks.find(task=>task.id===taskId);
+  const view=await this.snapshot(identity),item=view.tasks.find(task=>task.id===taskId);
   if(!item)return null;
   return {...item,history:await this.todos.history(taskId,identity)};
  }
