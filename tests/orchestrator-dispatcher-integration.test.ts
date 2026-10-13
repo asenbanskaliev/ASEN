@@ -134,3 +134,19 @@ test("ECO-06 plan-only delegation cannot start a worker even with complete evide
  await assert.rejects(()=>dispatcher.dispatch(worker),/unused exact writer admission/);
  assert.equal(ran,false);
 });
+
+test("ECO-06 every planned read-only role stays outside write admission",async()=>{
+ const plan=buildOrchestrationPlan({taskId:"read-only-roles",repository:"repo",prompt:"inspect",candidate},decisionFor("read-only-roles"));
+ let calls=0;
+ const dispatcher=new Dispatcher({run:async r=>{calls++;return{id:r.id,ok:true,output:"ok"};}},new EvidenceStore());
+ for(const role of ["explorer","reviewer","verifier"] as const){
+  const request=plan.agents.find(agent=>agent.role===role);
+  assert.ok(request);
+  assert.equal(request.writeSurfaces,undefined);
+  assert.equal(request.writerAdmission,undefined);
+  assert.equal(request.runnerWriteReceiver,undefined);
+  const result=await dispatcher.dispatch(request);
+  assert.equal(result.ok,true);
+ }
+ assert.equal(calls,3);
+});
