@@ -41,7 +41,7 @@ test("ECO-07 provider workflow uses Groq with quota-safe triggers",()=>{
  assert.ok(workflow.includes('GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}'));
  assert.ok(workflow.includes("ASEN_ECO07_MODEL: openai/gpt-oss-120b"));
  assert.ok(workflow.includes("workflow_dispatch:"));
- assert.ok(workflow.includes("  pull_request:\n    branches: [main]\n    types: [labeled]"));
+ assert.ok(compact.includes("pull_request: branches: [main] types: [labeled]"));
  assert.ok(workflow.includes("github.event.label.name == 'eco07:run-ubuntu'"));
  assert.ok(workflow.includes("github.event.pull_request.number == 32"));
  assert.ok(compact.includes("github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'"));

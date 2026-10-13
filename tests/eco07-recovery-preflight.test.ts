@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from "node:fs";
+import {mkdirSync,mkdtempSync,readFileSync,rmSync,symlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import test from "node:test";
@@ -115,6 +115,16 @@ test("ECO-07 installed runtime observation validates local Pi and tool entrypoin
  }finally{rmSync(fixture.root,{recursive:true,force:true});}
 });
 
+test("ECO-07 runtime containment compares canonical paths across macOS temp aliases",{skip:process.platform==="win32"},()=>{
+ const fixture=runtimeFixture(),alias=join(fixture.root,"worktree-alias");
+ try{
+  symlinkSync(fixture.repository,alias,"dir");
+  const observation=observeEco07InstalledRuntimeForTest(alias,"22.19.0");
+  assert.equal(observation.piEntrypoint,"node_modules/@earendil-works/pi-coding-agent/dist/index.js");
+  assert.equal(validateEco07InstalledRuntime(observation).piVersion,"1.1.0");
+ }finally{rmSync(fixture.root,{recursive:true,force:true});}
+});
+
 test("ECO-07 installed runtime fails closed for bad pins and dependencies",()=>{
  for(const [options,pattern] of [
   [{integrity:"sha512-wrong"},/lockfile Pi pin or integrity/u],
@@ -155,6 +165,7 @@ test("ECO-07 preflight admits manual dispatch and the exact labeled PR32 route",
  assert.equal(pullRequest.triggerKind,"pull_request");
  assert.equal(pullRequest.eventHeadSha,SHA);
  assert.equal(pullRequest.githubSha,MERGE_SHA);
+ assert.throws(()=>validateEco07RecoveryPreflight({...validPullRequestEnvironment(),ASEN_GITHUB_SHA:SHA},validObservation()),/must remain the event merge SHA/u);
 });
 
 test("ECO-07 preflight rejects unapproved manual OS, SHA, branch, and metadata",()=>{
@@ -207,7 +218,7 @@ test("ECO-07 provider selection validates model metadata without resolving a key
 test("ECO-07 workflow preflights one selected OS before exposing credentials",()=>{
  const workflow=readFileSync(resolve(".github/workflows/eco07-groq-recovery.yml"),"utf8");
  const compact=workflow.replace(/\s+/gu," ");
- assert.ok(workflow.includes("required: true\n        type: choice"));
+ assert.ok(compact.includes("required: true type: choice"));
  assert.ok(compact.includes("runs-on: >- ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.os }}"));
  assert.ok(!workflow.includes("matrix:"));
  const boundary=workflow.indexOf("eco07-pi-recovery-preflight.mjs boundary");

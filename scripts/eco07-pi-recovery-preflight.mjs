@@ -1,4 +1,4 @@
-import {existsSync,readFileSync,readdirSync,statSync} from "node:fs";
+import {existsSync,readFileSync,readdirSync,realpathSync,statSync} from "node:fs";
 import {createRequire} from "node:module";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
@@ -70,8 +70,10 @@ function readHead(repository){
  return readRef(directory,match[1]);
 }
 function localPath(repository,filename,noun){
- const relative=path.relative(repository,filename);
- if(relative.startsWith("..")||path.isAbsolute(relative)||!existsSync(filename))throw new Error(`ECO-07 repository-local ${noun} is unavailable`);
+ if(!existsSync(filename))throw new Error(`ECO-07 repository-local ${noun} is unavailable`);
+ const canonicalRepository=realpathSync(repository),canonicalFilename=realpathSync(filename);
+ const relative=path.relative(canonicalRepository,canonicalFilename);
+ if(relative===".."||relative.startsWith(`..${path.sep}`)||path.isAbsolute(relative))throw new Error(`ECO-07 repository-local ${noun} is unavailable`);
  return relative.replaceAll("\\","/");
 }
 
