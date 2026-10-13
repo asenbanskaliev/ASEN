@@ -13,6 +13,7 @@ import {dispatchNextReadOnlyPlanTask} from "../runtime/plan-dispatcher.js";
 const text={type:"string",minLength:1,maxLength:32000};
 const rootSchema={type:"string",minLength:1,maxLength:4096};
 const idSchema={type:"string",minLength:1,maxLength:1024};
+const MAX_VISIBLE_AGENT_INSTRUCTION=4096;
 function cancelled():Error{const error=new Error("Agent task cancelled");error.name="AbortError";return error;}
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted)throw cancelled();}
 async function confirmWithAbort(confirm:(signal?:AbortSignal)=>Promise<boolean>,signal?:AbortSignal):Promise<boolean>{
@@ -84,12 +85,13 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const link=(await links.list(session)).find(item=>item.agentId===agentId);if(!link)throw new Error("Retry requires a Todo-agent link owned by this session and project");
   const todo=(await todos.list(session)).find(item=>item.taskId===link.taskId),prior=await active.query(agentId,session);
   if(!todo||todo.current.state!=="blocked"||!todo.description)throw new Error("Retry requires a blocked Todo with its exact persisted instruction");const instruction=todo.description;
+  if(instruction.length>MAX_VISIBLE_AGENT_INSTRUCTION)throw new Error("The complete saved instruction exceeds the safe Pi confirmation size; split the task before retrying.");
   const attempts=(await links.list(session)).filter(item=>item.taskId===link.taskId);if(attempts.length!==1||attempts[0]?.agentId!==agentId)throw new Error("This Todo already used its single controlled retry; review the result and create a new plan if needed");
   if(!prior||prior.record.state!=="failed"||!(["explorer","reviewer","verifier"] as const).includes(prior.record.role as "explorer"|"reviewer"|"verifier"))throw new Error("Only a failed read-only agent may be retried; interrupted work requires explicit continuation");
   const role=prior.record.role as "explorer"|"reviewer"|"verifier",selection=todo.plan?.skillSelection;
   if(todo.plan&&(todo.plan.role!==role||!selection||selection.phase!==({explorer:"explore",reviewer:"adversarial-review",verifier:"verify"} as const)[role]))throw new Error("Failed agent does not match the persisted read-only plan role and skill phase");
   if(selection){const expected=selectSkills(selection).map(skill=>skill.path);if(expected.length!==todo.plan!.skillPaths.length||expected.some((value,index)=>value!==todo.plan!.skillPaths[index]))throw new Error("Persisted ASEN skill registry selection changed; rebuild this plan before retry");}
-  if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function"||!await confirmWithAbort(dialogSignal=>context.ui.confirm("Retry failed ASEN task?",`${todo.title}\n\nThe previous read-only attempt failed. Start one new attempt with the exact saved instruction and bind it to this Todo?\n\n${instruction.slice(0,1200)}`,dialogSignal?{signal:dialogSignal}:undefined),signal))throw new Error("Explicit Pi UI confirmation is required to retry a failed task");
+  if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function"||!await confirmWithAbort(dialogSignal=>context.ui.confirm("Retry failed ASEN task?",`${todo.title}\n\nThe previous read-only attempt failed. Start one new attempt with the exact saved instruction and bind it to this Todo?\n\n${instruction}`,dialogSignal?{signal:dialogSignal}:undefined),signal))throw new Error("Explicit Pi UI confirmation is required to retry a failed task");
   throwIfCancelled(signal);const confirmedIdentity=await identity(context);if(confirmedIdentity.sessionId!==session.sessionId||confirmedIdentity.projectId!==session.projectId)throw new Error("Pi session or project changed before agent retry");
   const fresh=(await todos.list(session)).find(item=>item.taskId===todo.taskId),latest=await active.query(agentId,session);
   if(!fresh||fresh.current.state!=="blocked"||fresh.current.revision!==todo.current.revision||!latest||latest.record.state!=="failed")throw new Error("Failed Todo or agent changed during retry confirmation; refresh before retry");
