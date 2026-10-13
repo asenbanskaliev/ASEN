@@ -27,6 +27,23 @@ Repository `asenbanskaliev/ASEN`, branch `feat/strict-parity-prerequisites`, PR 
 ## Decision
 **PARTIAL / NOT YET CLOSED.** Automated replay/persistence evidence is strong; real Pi interruption/resumption evidence is still missing. Do not merge PR #32 or promote ECO-07 to full parity based solely on these automated tests.
 
+## Q1 quota-control limitations (local preparation)
+
+**Attempt conservation, not a hard request/token budget.** The prepared workflow selects one OS per dispatch and validates the candidate and installed runtime before exposing credentials. Its recovery journey sends two explicit `prompt` RPC commands. Those commands do not bound provider requests within tool loops, retries, or token usage.
+
+- Exact local Pi 1.1.0 exposes `before_provider_request` payload transformation, but catches handler exceptions and continues; throwing from that hook is not a reliable request veto. No built-in CLI request/turn ceiling or enforced metadata-based token budget is established.
+- The harness latches a detected quota failure, prevents later RPC sends and performs bounded process cleanup. This happens **after observing a failure**; it cannot prevent quota already spent by the failing request. Transcript writes are serialized, sanitized for exact configured-secret occurrences, synced and drained before success evidence.
+- Do not dispatch authenticated evidence under the current no-provider authorization. A later authorized attempt must use the exact published candidate: Ubuntu once, inspect complete artifacts, then macOS and Windows individually only after success. Do not blindly retry or fall back to another provider.
+- If a hard pre-spend ceiling is required, keep Q2 blocked and separately design a provider-supported or gateway-enforced request/spend budget. Documenting this limitation is not acceptance of that risk, authenticated evidence, native approval, or ECO-07 FULL status.
+
+## PR #32 bounded Ubuntu opt-in correction
+
+The recovery workflow retains its manual single-OS dispatch and adds one automatic route only: a `pull_request` `labeled` event for PR #32 into `main`. The job runs only for the same repository and exact `feat/strict-parity-prerequisites` head branch, the exact `eco07:run-ubuntu` label, and the first run attempt. That route is Ubuntu 24.04 only; pushes, synchronization events, forks, other labels, other PRs, and reruns do not enter the provider job.
+
+The PR checkout and `ASEN_EXPECTED_SHA` use the trusted pull-request head SHA. `ASEN_GITHUB_SHA` remains the original event merge SHA, while `ASEN_EVENT_HEAD_SHA` separately carries the explicit PR head metadata. The credential-free preflight rejects missing or mismatched route metadata, malformed SHA values, merge-SHA checkout substitution, a wrong repository/base/head branch, and non-Ubuntu PR execution. Manual dispatch still requires its input SHA to equal the dispatch event SHA and the dispatch branch to equal `feat/strict-parity-prerequisites`.
+
+This opt-in conserves attempts but does not create a hard provider-request or token ceiling. It does not record an actual provider PASS, artifact admission, native approval, or ECO-07 FULL status. Repository policy requires an approved linked task, but the default branch has no required GitHub Issue Form; issue publication therefore remains pending rather than assigning a fabricated issue or approval.
+
 ## Authenticated Groq test preparation (2026-10-12)
 - Repository secret `GROQ_API_KEY` was confirmed by the repository owner. The local workspace does not receive or print that secret; local `pi auth check --provider groq --json --no-refresh` reports `credentials_not_configured`.
 - Added a PR #32-only Pi 1.1 workflow using Groq's supported `openai/gpt-oss-120b` model on Linux, macOS, and Windows. Each job starts an actual Pi process with ASEN's Todo tools, waits for a persisted `running` task, kills that process, reopens the same Pi session, verifies `blocked` recovery, exercises the explicit resume confirmation, records two ordered test steps once each, and requires the task to reach `done`.
