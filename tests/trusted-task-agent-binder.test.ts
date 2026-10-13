@@ -1,0 +1,22 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {mkdtemp,rm} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {SessionTodoStore} from "../src/runtime/todo-store.js";
+import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
+import {TrustedTaskAgentBinder} from "../src/runtime/trusted-task-agent-binder.js";
+test("ECO-07 binder rejects unowned agents and foreign Todos without writing links",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-binder-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const own={sessionId:"session-a",projectId:"/project"},foreign={sessionId:"session-b",projectId:"/project"};
+ const todos=await SessionTodoStore.open(join(dir,"todos.json")),task=await todos.add("Owned",own),other=await todos.add("Foreign",foreign);
+ const links=new TaskAgentLinkStore(join(dir,"links.json"));
+ const agent={record:{id:"agent-a",sessionId:own.sessionId,projectId:own.projectId}};
+ const runtime={query:async(id:string,identity:typeof own)=>id==="agent-a"&&identity.sessionId===own.sessionId?agent:null};
+ const binder=new TrustedTaskAgentBinder(todos,runtime as never,links);
+ await assert.rejects(()=>binder.bind(other.taskId,"agent-a",own),/matching durable ownership/);
+ await assert.rejects(()=>binder.bind(task.taskId,"missing",own),/matching durable ownership/);
+ assert.deepEqual(await links.list(own),[]);
+ assert.equal((await binder.bind(task.taskId,"agent-a",own)).taskId,task.taskId);
+ assert.equal((await links.list(own)).length,1);
+});
