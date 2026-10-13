@@ -40,6 +40,8 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
   requiresSingleWriter:decision.requiresSingleWriter,
   requiresIsolatedChild:decision.requiresIsolatedChild,
   sensitiveOperationsPresent:sensitive,
+  authorizationRequiredBeforeExecution:true,
+  recoveryPolicy:"interrupted tasks require fresh authorization; no automatic write replay",
   execution:{started:false,authorized:false},
   actions:{informationRetrieved:false,reviewRequested:false},
   notice:"Plan only. This command does not retrieve information, request review, grant execution authorization, or dispatch agents.",
