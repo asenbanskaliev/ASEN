@@ -21,6 +21,16 @@ export function routePreviewCommand(args:string,repositoryIdentity:string):strin
 export function controlledInstructionPlanCommand(args:string,repositoryIdentity:string):string{
  if(typeof args!=="string"||!args.trim()||args.length>MAX_INPUT)throw new Error("Usage: /asen-plan <JSON instruction and ODD facts>; input must be 1–16384 characters");
  if(typeof repositoryIdentity!=="string"||!path.isAbsolute(repositoryIdentity))throw new Error("ASEN planning requires a canonical active project path");
+ if(!args.trimStart().startsWith("{")){
+  const instruction=args.trim();
+  if(instruction.length>8192||/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(instruction))throw new Error("ASEN plan instruction is invalid");
+  return JSON.stringify({
+   instruction,repository:repositoryIdentity,status:"needs-verified-facts",
+   steps:["Establish task identity and intended scope","Confirm whether writes or sensitive operations are requested","Determine session, verification and review requirements","Derive ODD route from verified facts","Select skills and roles before any authorized execution"],
+   missingFacts:[...INPUT_KEYS],execution:{started:false,authorized:false},
+   notice:"Conservative instruction triage only. No ODD decision, skills, agents, permissions or execution were issued."
+  },null,2);
+ }
  let value:unknown;try{value=JSON.parse(args);}catch{throw new Error("ASEN planning expects valid JSON instruction and ODD facts");}
  if(!exact(value,PLAN_INPUT_KEYS))throw new Error(`ASEN plan input must contain exactly: ${PLAN_INPUT_KEYS.join(", ")}`);
  if(typeof value.instruction!=="string"||!value.instruction.trim()||value.instruction!==value.instruction.trim()||value.instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(value.instruction))throw new Error("ASEN plan instruction is invalid");
