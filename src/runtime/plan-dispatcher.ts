@@ -29,6 +29,6 @@ export async function dispatchNextReadOnlyPlanTask(input:{todos:SessionTodoStore
  if(!fresh||fresh.current.state!=="planned"||fresh.current.revision!==task.current.revision)return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};
  await input.validateIdentity();
  const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
- const agentId=await input.agents.startReadOnly({role,prompt:fresh.description!,session:input.identity,skillSelection:selection,onQueued:async(id,dispatch)=>{await input.validateIdentity();await binder.launch(fresh.taskId,id,input.identity,dispatch);}});
+ const agentId=await input.agents.startReadOnly({role,prompt:fresh.description!,session:input.identity,skillSelection:selection,onQueued:async(id,dispatch)=>{await input.validateIdentity();await binder.launch(fresh.taskId,id,input.identity,dispatch,input.validateIdentity);}});
  return {status:"dispatched",todoId:task.taskId,agentId,role};
 }

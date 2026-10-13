@@ -21,7 +21,7 @@ export class TrustedTaskAgentBinder{
   return this.links.bind({taskId,agentId,sessionId:identity.sessionId,projectId:identity.projectId,createdAt:new Date().toISOString()});
  }
  /** Persist an active Todo claim and immutable link before the synchronous dispatch starts. */
- async launch(taskId:string,agentId:string,identity:AgentSessionIdentity,dispatch:()=>void):Promise<void>{
-  await this.todos.withAgentLaunch(taskId,identity,async()=>{await this.#bindOwned(taskId,agentId,identity);},dispatch);
+ async launch(taskId:string,agentId:string,identity:AgentSessionIdentity,dispatch:()=>void,validateIdentity?:()=>void|Promise<void>):Promise<void>{
+  await this.todos.withAgentLaunch(taskId,identity,async()=>{await validateIdentity?.();await this.#bindOwned(taskId,agentId,identity);await validateIdentity?.();},dispatch,validateIdentity);
  }
 }

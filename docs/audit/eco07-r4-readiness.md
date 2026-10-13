@@ -9,6 +9,7 @@
 - `asen_agent_start` accepts an optional owned `todoId`. It persists the agent as queued, then calls `TrustedTaskAgentBinder.launch` before dispatch.
 - The binder checks that the Todo is still `planned` or `running` and that the persisted agent belongs to the exact session and canonical project. It writes the immutable link while the Todo store lock is held.
 - The same locked operation records the Todo as `running` before the synchronous dispatcher start. A canceled, blocked, done, foreign, or missing Todo cannot be linked and dispatched.
+- The active Pi session/project identity is revalidated after acquiring the Todo lock, after durable link binding, and immediately before dispatch. A switch during that window prevents the runner call and leaves an auditable blocked or unstarted task for review.
 - If Pi aborts after enqueue but before dispatch, no runner call occurs. If the launch claim had already moved the Todo to running, it is moved to blocked; the queued agent is canceled.
 - Todo cancellation through the Pi tool cancels all linked agents owned by that session/project and waits for their durable terminal state.
 - Once every linked agent is terminal, `TaskAgentTodoReconciler` moves an active Todo to `blocked` with an independent-verification reason. Agent success never marks a Todo `done`.
@@ -18,10 +19,10 @@
 
 - `src/agents/pi-agent-tools.ts`: validates the current session/project and routes Todo-bound launches through the trusted binder.
 - `src/agents/agent-runtime.ts`: registers cancellation against the dispatcher before execution and cancels persisted queued work when binding or launch fails.
-- `src/runtime/todo-store.ts`: serializes binding/launch against Todo updates and records the running claim before dispatch.
+- `src/runtime/todo-store.ts`: serializes binding/launch against Todo updates, revalidates identity at the locked launch boundary, and records the running claim before dispatch.
 - `src/runtime/trusted-task-agent-binder.ts` and `src/runtime/task-agent-link-store.ts`: validate ownership and persist immutable, private links.
 - `src/runtime/task-agent-reconciler.ts`: waits for all linked attempts to terminate and blocks for independent review; never completes the Todo.
-- `tests/eco07-launch-recovery.test.ts`: failed persistence, link and completion visibility after restart without redispatch, terminal Todo rejection, and abort during binding.
+- `tests/eco07-launch-recovery.test.ts` and `tests/trusted-task-agent-binder.test.ts`: failed persistence, link and completion visibility after restart without redispatch, terminal Todo rejection, abort during binding, dependency enforcement, duplicate launch rejection, and identity change before runner invocation.
 - `tests/pi-agent-runtime.test.ts`: Pi tool launch, result-to-Todo reconciliation, and cancellation propagation.
 - `scripts/verify-pi-package.mjs`: packaged real-Pi RPC verifies linked task/agent projection after process restart and session isolation without invoking a model.
 

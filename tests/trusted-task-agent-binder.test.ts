@@ -40,3 +40,8 @@ test("ECO-07 rejects a second launch while a Todo already has an active linked a
  records.set("agent-one",{record:{id:"agent-one",sessionId:own.sessionId,projectId:own.projectId,state:"interrupted"}});
  await binder.launch(task.taskId,"agent-two",own,()=>{secondDispatches++;});assert.equal(secondDispatches,1,"an interrupted attempt is terminal and an explicit fresh launch may recover the pre-dispatch crash window");
 });
+test("ECO-07 revalidates Pi identity after persistence and before invoking the runner",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-binder-identity-race-"));t.after(()=>rm(dir,{recursive:true,force:true}));const own={sessionId:"session-a",projectId:"/project"},todos=await SessionTodoStore.open(join(dir,"todos.json")),task=await todos.add("Identity-bound launch",own),links=new TaskAgentLinkStore(join(dir,"links.json")),agent={record:{id:"agent-race",sessionId:own.sessionId,projectId:own.projectId,state:"queued"}},runtime={query:async()=>agent},binder=new TrustedTaskAgentBinder(todos,runtime as never,links);let validations=0,dispatches=0;
+ await assert.rejects(()=>binder.launch(task.taskId,"agent-race",own,()=>{dispatches++;},()=>{if(++validations===6)throw new Error("Pi session or project changed");}),/session or project changed/);
+ assert.equal(validations,6);assert.equal(dispatches,0);assert.equal((await links.list(own)).length,1,"the durable attempted binding remains auditable");assert.equal((await todos.list(own))[0]?.current.state,"blocked","a claimed launch that fails final identity validation requires review");
+});

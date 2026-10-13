@@ -7,7 +7,7 @@
 ## Implemented and exercised
 
 - `/asen-plan` accepts exact user-provided ODD facts and instruction text, runs the existing ODD route and skill selection, materializes role-specific tasks and dependencies, and persists the whole plan atomically in the active session/project Todo store.
-- Changing the Pi session or project while planning or dispatch confirmation is pending rejects the operation. Read-only dispatch revalidates identity after confirmation and immediately before the trusted binder starts the agent.
+- Changing the Pi session or project while planning or dispatch confirmation is pending rejects the operation. Read-only dispatch revalidates identity after confirmation and repeatedly inside the Todo launch lock, including immediately before the trusted binder starts the agent.
 - `asen_plan_dispatch_next` selects one dependency-ready task by saved priority, confirms the exact role/instruction, verifies the current skill registry selection, and dispatches only `explorer`, `reviewer`, or `verifier` roles.
 - `TrustedTaskAgentBinder` persists Todo ownership and the agent link before the Pi runner starts. Agent terminal outcomes reconcile to `blocked`; they never complete a Todo.
 - `asen_todo_accept_result` requires a blocked planned task, an immutable task-agent link, matching session/project/role, a durable successful terminal agent record, a bounded full result view, independent user evidence, and explicit Pi UI confirmation. Direct `done` is rejected for a linked plan task. Acceptance is persisted as ordered `running` then `done` events, so a crash between them recovers to review rather than completing silently.

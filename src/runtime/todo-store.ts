@@ -108,16 +108,16 @@ export class SessionTodoStore{
  }
  /** Serialize an agent launch claim with Todo updates. `launch` runs synchronously
   * after the durable running event and before the Todo lock is released. */
- async withAgentLaunch(taskId:string,context:TodoContext,prepare:()=>Promise<void>,launch:()=>void):Promise<void>{
+ async withAgentLaunch(taskId:string,context:TodoContext,prepare:()=>Promise<void>,launch:()=>void,validateContext?:()=>void|Promise<void>):Promise<void>{
   if(!identity(taskId)||!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN agent launch identity");
   await preparePrivateFile(this.path,true);
   await withExclusiveFileLock(this.path,async()=>{
-   const data=await read(this.path),item=data.items.find(x=>x.taskId===taskId&&x.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(x.events.at(-1)!.projectId,context.projectId));
+   await validateContext?.();const data=await read(this.path);await validateContext?.();const item=data.items.find(x=>x.taskId===taskId&&x.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(x.events.at(-1)!.projectId,context.projectId));
    if(!item)throw new Error("Todo task is unavailable to this session or project");
    const current=replayTask(item.events);
    if(!current||!(current.state==="planned"||current.state==="running"))throw new Error("Todo must remain active before agent launch");
    for(const dependency of item.dependsOn??[]){const prerequisite=data.items.find(candidate=>candidate.taskId===dependency&&candidate.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(candidate.events.at(-1)!.projectId,context.projectId)),prerequisiteState=prerequisite&&replayTask(prerequisite.events);if(prerequisiteState?.state!=="done")throw new Error("Todo dependencies must be verified done before agent launch");}
-   await prepare();
+   await prepare();await validateContext?.();
    const transitionedToRunning=current.state==="planned";
    if(transitionedToRunning){
     const event:TaskEvent={taskId,sessionId:context.sessionId,projectId:current.projectId,revision:current.revision+1,state:"running",at:this.now(),reason:"Agent launch claimed before dispatch"};
@@ -126,7 +126,7 @@ export class SessionTodoStore{
     const next=parseTodoFile(JSON.stringify({...data,revision:data.revision+1}));
     await write(this.path,next);
    }
-   try{launch();}catch(error){
+   try{await validateContext?.();launch();}catch(error){
     if(transitionedToRunning){
      const running=item.events.at(-1)!;
      const blocked:TaskEvent={taskId,sessionId:context.sessionId,projectId:running.projectId,revision:running.revision+1,state:"blocked",at:this.now(),reason:"Agent launch was interrupted before dispatch"};
