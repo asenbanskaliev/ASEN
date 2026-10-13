@@ -153,3 +153,16 @@ test("ECO-06 recovery store rejects persisted write and phase authority",async t
  }
  assert.equal((await store.list("session-a","/repo")).length,0);
 });
+
+test("ECO-07 persistence rejects forged authority on an explorer before disk write",async t=>{
+ const file=await fixture(t),{store}=await PersistentAgentStore.open(file);
+ const request=req("forged-explorer");
+ const forbidden=[
+  {...request,writerAdmission:Object.freeze({})},
+  {...request,phaseGrant:Object.freeze({})},
+  {...request,writeSurfaces:["src/private.ts"]},
+ ];
+ for(const candidateRequest of forbidden)
+  await assert.rejects(()=>store.enqueue(candidateRequest,owner),/Authority-bearing agent requests cannot be serialized/);
+ assert.deepEqual(await store.list("session-a","/repo"),[]);
+});
