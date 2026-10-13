@@ -19,3 +19,12 @@ test("ECO-06 status is a read-only projection, not a dispatch authorization",()=
  assert.equal(Object.hasOwn(first,"writerAdmission"),false);
  assert.equal(Object.hasOwn(first,"runnerWriteReceiver"),false);
 });
+
+test("ECO-06 status rendering remains bounded for long operational summaries",()=>{
+ const input={agents:[],changes:[],skills:{enabled:true,count:3},historyEnabled:false,telemetryEnabled:false};
+ for(const width of [24,40,80,120]){
+  const lines=statusLines(input,width);
+  assert.ok(lines.length>0);
+  assert.ok(lines.every(line=>typeof line==="string"&&line.length<=width));
+ }
+});
