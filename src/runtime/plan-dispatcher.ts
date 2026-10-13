@@ -6,6 +6,7 @@ import {TrustedTaskAgentBinder} from "./trusted-task-agent-binder.js";
 
 const readOnlyRoles=["explorer","reviewer","verifier"] as const;
 type ReadOnlyRole=typeof readOnlyRoles[number];
+const MAX_VISIBLE_PLAN_INSTRUCTION=4096;
 const phaseFor:Readonly<Record<ReadOnlyRole,SkillSelectionContext["phase"]>>={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"};
 
 /** Explicitly dispatches one dependency-ready, persisted read-only plan task.
@@ -23,6 +24,7 @@ export async function dispatchNextReadOnlyPlanTask(input:{todos:SessionTodoStore
  const currentPaths=selectSkills(selection).map(skill=>skill.path);
  if(currentPaths.length!==task.plan.skillPaths.length||currentPaths.some((value,index)=>value!==task.plan!.skillPaths[index]))return {status:"blocked",reason:"The persisted skill registry selection changed; rebuild the plan before dispatch."};
  if(!task.description)return {status:"blocked",reason:"The persisted plan task has no exact instruction; no agent was launched."};
+ if(task.description.length>MAX_VISIBLE_PLAN_INSTRUCTION)return {status:"blocked",reason:"The complete plan instruction exceeds the safe Pi confirmation size; split the task before dispatch."};
  if(!await input.confirm({id:task.taskId,title:task.title,role,instruction:task.description}))return {status:"blocked",reason:"Pi user declined dispatch; the plan was not changed."};
  await input.validateIdentity();
  const fresh=(await input.todos.list(context)).find(row=>row.taskId===task.taskId);
