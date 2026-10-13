@@ -47,6 +47,13 @@ test("Todo plan journals survive skill registry changes and reject stale dispatc
  const reopened=await SessionTodoStore.open(file),persisted=(await reopened.list(one)).find(item=>item.taskId===task.taskId);assert.equal(reopened.diagnostics(),undefined);assert.deepEqual(persisted?.plan?.skillPaths,["skills/asen-retired/SKILL.md"]);
 });
 
+test("executable Todo plans persist atomically and idempotently",async t=>{
+ const file=await fixture(t),store=await SessionTodoStore.open(file),selection={phase:"explore" as const,risk:"low" as const,codeChange:false,behaviorChange:false,filesTouched:0},existing=await store.add("Existing claim",one,undefined,undefined,"asen-plan:collision",[],"Original description",{role:"explorer",skillPaths:["skills/asen-explore/SKILL.md"],skillSelection:selection});
+ const drafts=[{title:"A new first node",requestId:"asen-plan:new",dependsOn:[] as string[],description:"Persist this only if the complete graph is valid",plan:{role:"primary" as const,skillPaths:[],priority:1}},{title:"Conflicting claim",requestId:"asen-plan:collision",dependsOn:["asen-plan:new"],description:"Different description",plan:{role:"explorer" as const,skillPaths:["skills/asen-explore/SKILL.md"],skillSelection:selection,priority:1}}];
+ await assert.rejects(()=>store.addPlan(drafts,one),/request id conflicts/);assert.deepEqual((await store.list(one)).map(item=>item.taskId),[existing.taskId]);
+ const valid=drafts.slice(0,1),created=await store.addPlan(valid,one),reopened=await SessionTodoStore.open(file),retried=await reopened.addPlan(valid,one);assert.equal(created[0]?.taskId,retried[0]?.taskId);assert.equal((await reopened.list(one)).length,2);
+});
+
 test("running Todo work becomes blocked after restart and is never resumed automatically",async t=>{
  const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Validate deployment",one);await store.update(todo.taskId,one,1,"running");
  const reopened=await SessionTodoStore.open(file);await reopened.recover(one);const current=(await reopened.list(one))[0]!.current;assert.equal(current.state,"blocked");assert.match(current.reason!,/restarted.*explicit review/i);assert.equal(current.revision,3);assert.equal((await reopened.history(todo.taskId,one)).at(-1)?.state,"blocked");

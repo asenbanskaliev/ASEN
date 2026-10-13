@@ -10,6 +10,7 @@ import type {SkillPhase,SkillSelectionContext} from "../skills/registry.js";
 const SCHEMA="asen.todo/v1" as const,MAX_TASKS=2000,MAX_EVENTS=20000;
 export type TodoPlanRole="primary"|"explorer"|"worker"|"reviewer"|"verifier"|"clarifier";
 export interface TodoPlanMetadata{role:TodoPlanRole;skillPaths:string[];skillSelection?:SkillSelectionContext;priority?:number;}
+export interface TodoPlanDraft{title:string;requestId:string;dependsOn:readonly string[];description:string;plan:TodoPlanMetadata;}
 export interface TodoItem{taskId:string;title:string;events:TaskEvent[];requestId?:string;dependsOn?:string[];description?:string;plan?:TodoPlanMetadata;}
 export interface TodoFile{schema:typeof SCHEMA;revision:number;items:TodoItem[];}
 export interface TodoContext{sessionId:string;projectId:string;}
@@ -77,6 +78,29 @@ export class SessionTodoStore{
    for(const dependency of dependsOn){const prerequisite=data.items.find(candidate=>candidate.taskId===dependency&&candidate.events[0]?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(candidate.events[0]!.projectId,context.projectId));if(!prerequisite)throw new Error("Todo dependency must belong to the current session and project");if(dependency===taskId)throw new Error("Todo dependency cycle rejected");}
    data.items.push(item);result=item;return true;
   },signal);return structuredClone(result!);
+ }
+ /** Persist a complete executable plan in one journal transaction; dependencies use sibling request ids. */
+ async addPlan(drafts:readonly TodoPlanDraft[],context:TodoContext,signal?:AbortSignal,validateContext?:()=>void):Promise<TodoItem[]>{
+  if(!Array.isArray(drafts)||drafts.length<1||drafts.length>100||!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN Todo plan");
+  const seen=new Set<string>();
+  for(const draft of drafts){
+   if(!draft||typeof draft!=="object"||typeof draft.title!=="string"||!draft.title.trim()||draft.title!==draft.title.trim()||draft.title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(draft.title)||!identity(draft.requestId)||!draft.requestId.startsWith("asen-plan:")||seen.has(draft.requestId)||!Array.isArray(draft.dependsOn)||draft.dependsOn.some((id:string)=>!identity(id))||new Set(draft.dependsOn).size!==draft.dependsOn.length||typeof draft.description!=="string"||!draft.description.trim()||draft.description!==draft.description.trim()||draft.description.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(draft.description)||!validPlan(draft.plan))throw new Error("Invalid ASEN Todo plan task");
+   seen.add(draft.requestId);
+  }
+  const ids=new Map(drafts.map(draft=>[draft.requestId,`todo-${randomUUID()}`]));let result:TodoItem[]=[];
+  await this.#mutate(data=>{
+   validateContext?.();const plannedIds=new Map(ids),existingByRequest=new Map(data.items.flatMap(item=>item.requestId?[[item.requestId,item] as const]:[]));
+   for(const draft of drafts){const existing=existingByRequest.get(draft.requestId);if(!existing)continue;const owner=existing.events[0];if(owner?.sessionId!==context.sessionId||!sameWorkspaceIdentityPath(owner.projectId,context.projectId))throw new Error("Todo request id belongs to another session or project");plannedIds.set(draft.requestId,existing.taskId);}
+   const newItems:TodoItem[]=[],byRequest=new Map(existingByRequest);
+   for(const draft of drafts){
+    const dependencies=draft.dependsOn.map((request:string)=>{const id=plannedIds.get(request);if(!id)throw new Error("ASEN Todo plan dependency is missing");const prior=byRequest.get(request);if(prior&&(!prior.events[0]||prior.events[0].sessionId!==context.sessionId||!sameWorkspaceIdentityPath(prior.events[0].projectId,context.projectId)))throw new Error("Todo dependency must belong to the current session and project");return id;});
+    const existing=byRequest.get(draft.requestId);if(existing){if(existing.title!==draft.title||JSON.stringify(existing.dependsOn??[])!==JSON.stringify(dependencies)||existing.description!==draft.description||JSON.stringify(existing.plan??null)!==JSON.stringify(draft.plan))throw new Error("Todo request id conflicts with the existing task");continue;}
+    const taskId=plannedIds.get(draft.requestId)!;if(dependencies.includes(taskId))throw new Error("Todo dependency cycle rejected");
+    const item:TodoItem={taskId,title:draft.title,events:[{taskId,sessionId:context.sessionId,projectId:context.projectId,revision:1,state:"planned",at:this.now()}],requestId:draft.requestId,...(dependencies.length?{dependsOn:dependencies}:{}),description:draft.description,plan:structuredClone(draft.plan)};
+    newItems.push(item);byRequest.set(draft.requestId,item);
+   }
+   data.items.push(...newItems);result=drafts.map(draft=>structuredClone(byRequest.get(draft.requestId)!));return newItems.length>0;
+  },signal);return result;
  }
  async update(taskId:string,context:TodoContext,expectedRevision:number,state:TaskState,reason?:string,signal?:AbortSignal,validateContext?:()=>void):Promise<TodoItem>{
   if(!identity(taskId)||!identity(context.sessionId)||!identity(context.projectId)||!Number.isSafeInteger(expectedRevision)||expectedRevision<1)throw new Error("Invalid ASEN Todo update");let updated:TodoItem|undefined;

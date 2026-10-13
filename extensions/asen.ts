@@ -146,14 +146,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const output=JSON.parse(controlledInstructionPlanCommand(args??"",project)) as Record<string,unknown>&{executablePlan?:ExecutablePlan;persistedTasks?:Array<{planTaskId:string;todoId:string|undefined;dependsOn:Array<string|undefined>}>};
    if(!output.executablePlan)return JSON.stringify(output,null,2);
    if(!todoStorePromise){output.persistence={status:"unavailable",reason:"Todo store is not configured; this graph was not saved or made runnable"};output.execution={started:false,authorized:false};output.notice="Plan only. The Todo store is unavailable, so no task records were persisted. No agent was dispatched and no permission was granted.";return JSON.stringify(output,null,2);}
-   const store=await todoStorePromise,identity=await sessionIdentity(ctx),todoIds=new Map<string,string>();
-   for(const taskId of output.executablePlan.topologicalOrder){
-    const task=output.executablePlan.tasks.find(item=>item.id===taskId);
-    if(!task)throw new Error("ASEN executable plan order references an unknown task");
-    const dependencies=task.dependsOn.map(id=>{const todoId=todoIds.get(id);if(!todoId)throw new Error("ASEN executable plan dependency order is invalid");return todoId;});
-    const item=await store.add(task.title,identity,undefined,undefined,`asen-plan:${task.id}`,dependencies,task.instruction,{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,...(task.skillSelection?{skillSelection:task.skillSelection}:{})});
-    todoIds.set(task.id,item.taskId);
-   }
+   const store=await todoStorePromise,identity=await sessionIdentity(ctx),todoIds=new Map<string,string>(),ordered=output.executablePlan.topologicalOrder.map(taskId=>{const task=output.executablePlan!.tasks.find(item=>item.id===taskId);if(!task)throw new Error("ASEN executable plan order references an unknown task");return task;});
+   const persisted=await store.addPlan(ordered.map(task=>({title:task.title,requestId:`asen-plan:${task.id}`,dependsOn:task.dependsOn.map(id=>`asen-plan:${id}`),description:task.instruction,plan:{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,...(task.skillSelection?{skillSelection:task.skillSelection}:{})}})),identity);
+   for(const item of persisted)todoIds.set(item.requestId!.slice("asen-plan:".length),item.taskId);
    output.persistedTasks=output.executablePlan.tasks.map(task=>({planTaskId:task.id,todoId:todoIds.get(task.id),dependsOn:task.dependsOn.map(id=>todoIds.get(id))}));
    output.persistence={status:"saved",sessionId:identity.sessionId,projectId:identity.projectId};
    output.execution={started:false,authorized:false};
