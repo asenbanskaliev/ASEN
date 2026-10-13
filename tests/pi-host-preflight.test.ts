@@ -154,3 +154,14 @@ test("missing or incomplete initialized inventories fail closed",async()=>{
  await incomplete.events.get("session_start")![0]!({},incomplete.context());
  assert.equal(incomplete.commands.size,0);assert.match(incomplete.messages.join("\n"),/inventory/);
 });
+
+test("ECO-06 public Pi preflight rejects missing tools and commands without host mutation",()=>{
+ const names=["on","registerCommand","registerTool","getCommands","getAllTools"] as const;
+ for(const missing of names){
+  let registrations=0;
+  const host:any={on(){},registerCommand(){registrations++;},registerTool(){registrations++;},getCommands(){return[];},getAllTools(){return[];}};
+  delete host[missing];
+  assert.throws(()=>validatePiHost(host,"1.1.0"),/public Pi extension API/);
+  assert.equal(registrations,0);
+ }
+});
