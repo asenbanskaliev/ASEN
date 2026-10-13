@@ -34,11 +34,21 @@ test("ECO-07 selects LLM7 only with its key and the pinned Pi Free extension",()
 
 test("ECO-07 provider workflow uses Groq with quota-safe triggers",()=>{
  const workflow=readFileSync(resolve(".github/workflows/eco07-groq-recovery.yml"),"utf8");
- assert.ok(workflow.includes("provider: [groq]"));
+ const compact=workflow.replace(/\s+/gu," ");
+ assert.ok(workflow.includes("type: choice"));
+ for(const operatingSystem of ["ubuntu-24.04","macos-15","windows-2025"])assert.ok(workflow.includes(`- ${operatingSystem}`));
+ assert.ok(workflow.includes("expected_sha:"));
  assert.ok(workflow.includes('GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}'));
  assert.ok(workflow.includes("ASEN_ECO07_MODEL: openai/gpt-oss-120b"));
  assert.ok(workflow.includes("workflow_dispatch:"));
- assert.ok(!workflow.includes("  pull_request:"));
+ assert.ok(workflow.includes("  pull_request:\n    branches: [main]\n    types: [labeled]"));
+ assert.ok(workflow.includes("github.event.label.name == 'eco07:run-ubuntu'"));
+ assert.ok(workflow.includes("github.event.pull_request.number == 32"));
+ assert.ok(compact.includes("github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'"));
+ assert.ok(workflow.includes("github.run_attempt == 1"));
+ assert.ok(!workflow.includes("pull_request_target:"));
+ assert.ok(!workflow.includes("types: [synchronize]"));
+ assert.ok(!workflow.includes("matrix:"));
  assert.ok(!workflow.includes("pi install npm:pi-free"));
  assert.ok(!workflow.includes("ASEN_ECO07_PROVIDER_EXTENSION:"));
  assert.ok(!workflow.includes("secrets.LLM7_API_KEY"));

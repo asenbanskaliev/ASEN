@@ -1,7 +1,24 @@
 name: ECO-07 Groq task recovery
 on:
-  # Explicit execution only: PR path filters match cumulative diffs and can re-spend quota.
+  # Manual evidence remains one explicitly selected OS per dispatch.
   workflow_dispatch:
+    inputs:
+      os:
+        description: Hosted runner used for this evidence attempt
+        required: true
+        type: choice
+        options:
+          - ubuntu-24.04
+          - macos-15
+          - windows-2025
+      expected_sha:
+        description: Exact 40-character candidate SHA
+        required: true
+        type: string
+  # PR #32 opts in only when its exact Ubuntu label is added.
+  pull_request:
+    branches: [main]
+    types: [labeled]
 permissions:
   contents: read
 concurrency:
@@ -9,44 +26,81 @@ concurrency:
   cancel-in-progress: true
 jobs:
   pi-recovery:
-    if: github.repository == 'asenbanskaliev/ASEN' && (github.event_name == 'workflow_dispatch' || github.event.pull_request.number == 32 && github.event.pull_request.head.repo.full_name == github.repository)
-    name: Pi recovery (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.run_attempt == 1 &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.number == 32 &&
+          github.event.pull_request.base.ref == 'main' &&
+          github.event.pull_request.head.repo.full_name ==
+            'asenbanskaliev/ASEN' &&
+          github.event.pull_request.head.ref ==
+            'feat/strict-parity-prerequisites' &&
+          github.event.label.name == 'eco07:run-ubuntu'
+        )
+      )
+    name: >-
+      Pi recovery
+      (${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.os }})
+    runs-on: >-
+      ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.os }}
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        os: [ubuntu-24.04, macos-15, windows-2025]
-        provider: [groq]
+    env:
+      ASEN_RESOLVED_EXPECTED_SHA: >-
+        ${{ github.event_name == 'pull_request' &&
+        github.event.pull_request.head.sha || inputs.expected_sha }}
+      ASEN_RESOLVED_OS: >-
+        ${{ github.event_name == 'pull_request' &&
+        'ubuntu-24.04' || inputs.os }}
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ env.ASEN_RESOLVED_EXPECTED_SHA }}
           persist-credentials: false
+      - name: Prepare empty evidence destination
+        run: mkdir -p eco07-pi-evidence
+        shell: bash
+      - name: Validate credential-free checkout boundary
+        env:
+          ASEN_TRIGGER_KIND: >-
+            ${{ github.event_name == 'pull_request' &&
+            'pull_request' || 'manual' }}
+          ASEN_REPOSITORY: ${{ github.repository }}
+          ASEN_RUN_ATTEMPT: ${{ github.run_attempt }}
+          ASEN_SELECTED_OS: ${{ env.ASEN_RESOLVED_OS }}
+          ASEN_EXPECTED_SHA: ${{ env.ASEN_RESOLVED_EXPECTED_SHA }}
+          ASEN_GITHUB_SHA: ${{ github.sha }}
+          ASEN_EVENT_HEAD_SHA: >-
+            ${{ github.event_name == 'pull_request' &&
+            github.event.pull_request.head.sha || github.sha }}
+          ASEN_DISPATCH_BRANCH: >-
+            ${{ github.event_name == 'workflow_dispatch' &&
+            github.ref_name || '' }}
+          ASEN_EXPECTED_BRANCH: feat/strict-parity-prerequisites
+          ASEN_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          ASEN_PR_BASE_BRANCH: ${{ github.event.pull_request.base.ref || '' }}
+          ASEN_PR_HEAD_REPOSITORY: >-
+            ${{ github.event.pull_request.head.repo.full_name || '' }}
+          ASEN_PR_HEAD_BRANCH: ${{ github.event.pull_request.head.ref || '' }}
+          ASEN_EVENT_LABEL: ${{ github.event.label.name || '' }}
+          ASEN_ECO07_PROVIDER: groq
+          ASEN_ECO07_MODEL: openai/gpt-oss-120b
+        run: node scripts/eco07-pi-recovery-preflight.mjs boundary
       - uses: actions/setup-node@v7
         with:
           node-version: "22.19.0"
-      - name: Prepare evidence directory
-        run: mkdir -p eco07-pi-evidence
-        shell: bash
-      - name: Assert exact PR candidate
-        env:
-          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          ASEN_EXPECTED_BRANCH: ${{ github.head_ref || github.ref_name }}
-        run: |
-          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
-          test "$ASEN_EXPECTED_BRANCH" = "feat/strict-parity-prerequisites"
-        shell: bash
       - run: npm ci
-      - name: Install Pi 1.1.0
-        run: npm install -g @earendil-works/pi-coding-agent@1.1.0
-      - name: Execute actual Pi interruption, restart, and resume through ASEN Todo
+      - name: Validate installed repository-local runtime
+        run: node scripts/eco07-pi-recovery-preflight.mjs runtime
+      - name: Execute Pi interruption, restart, and ASEN Todo resume
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          ASEN_ECO07_PROVIDER: ${{ matrix.provider }}
+          ASEN_ECO07_PROVIDER: groq
           ASEN_ECO07_MODEL: openai/gpt-oss-120b
-          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          ASEN_EXPECTED_SHA: ${{ env.ASEN_RESOLVED_EXPECTED_SHA }}
         run: |
           set -euo pipefail
           test -n "$GROQ_API_KEY"
@@ -56,7 +110,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: eco07-groq-recovery-${{ github.event.pull_request.head.sha || github.sha }}-${{ matrix.os }}
+          name: >-
+            eco07-groq-recovery-${{ env.ASEN_RESOLVED_EXPECTED_SHA }}-
+            ${{ env.ASEN_RESOLVED_OS }}
           path: eco07-pi-evidence/
           if-no-files-found: error
           retention-days: 30

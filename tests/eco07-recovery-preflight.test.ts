@@ -188,3 +188,35 @@ test("ECO-07 PR route fails closed for every non-authorized label event",()=>{
  rejects({ASEN_EVENT_HEAD_SHA:MERGE_SHA},/event head SHA/);
  rejects({},/checked-out HEAD/,{...validObservation(),head:MERGE_SHA});
 });
+
+test("ECO-07 preflight requires pinned selections and pristine evidence output",()=>{
+ assert.throws(()=>validateEco07RecoveryPreflight({...validEnvironment(),ASEN_ECO07_PROVIDER:"openrouter"},validObservation()),/provider/);
+ assert.throws(()=>validateEco07RecoveryPreflight({...validEnvironment(),ASEN_ECO07_MODEL:"other"},validObservation()),/model/);
+ assert.throws(()=>validateEco07RecoveryPreflight(validEnvironment(),{...validObservation(),missingFiles:["extensions/asen.ts"]}),/required file/);
+ assert.throws(()=>validateEco07RecoveryPreflight(validEnvironment(),{...validObservation(),evidenceDestination:{exists:false,isDirectory:false,entries:[]}}),/evidence directory/);
+ assert.throws(()=>validateEco07RecoveryPreflight(validEnvironment(),{...validObservation(),evidenceDestination:{exists:true,isDirectory:true,entries:["old.json"]}}),/not clean/);
+});
+
+test("ECO-07 provider selection validates model metadata without resolving a key",()=>{
+ const environment=new Proxy({ASEN_ECO07_PROVIDER:"groq",ASEN_ECO07_MODEL:"openai/gpt-oss-120b"},{
+  get(target,key,receiver){if(String(key).endsWith("_API_KEY"))throw new Error("credential resolution attempted");return Reflect.get(target,key,receiver);},
+ });
+ assert.deepEqual(validateEco07ProviderSelection(environment),{provider:"groq",model:"openai/gpt-oss-120b",credential:"GROQ_API_KEY"});
+});
+
+test("ECO-07 workflow preflights one selected OS before exposing credentials",()=>{
+ const workflow=readFileSync(resolve(".github/workflows/eco07-groq-recovery.yml"),"utf8");
+ const compact=workflow.replace(/\s+/gu," ");
+ assert.ok(workflow.includes("required: true\n        type: choice"));
+ assert.ok(compact.includes("runs-on: >- ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.os }}"));
+ assert.ok(!workflow.includes("matrix:"));
+ const boundary=workflow.indexOf("eco07-pi-recovery-preflight.mjs boundary");
+ const install=workflow.indexOf("npm ci"),runtime=workflow.indexOf("eco07-pi-recovery-preflight.mjs runtime"),secret=workflow.indexOf("secrets.GROQ_API_KEY");
+ assert.ok(boundary<install&&install<runtime&&runtime<secret);
+ assert.ok(!workflow.includes("npm install -g"));
+ assert.ok(workflow.includes("ASEN_GITHUB_SHA: ${{ github.sha }}"));
+ assert.ok(compact.includes("ASEN_EVENT_HEAD_SHA: >- ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"));
+ assert.ok(workflow.includes("ASEN_EXPECTED_SHA: ${{ env.ASEN_RESOLVED_EXPECTED_SHA }}"));
+ assert.ok(workflow.includes("ref: ${{ env.ASEN_RESOLVED_EXPECTED_SHA }}"));
+ assert.ok(workflow.includes("ASEN_EXPECTED_BRANCH: feat/strict-parity-prerequisites"));
+});
