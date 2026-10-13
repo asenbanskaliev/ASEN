@@ -9,6 +9,7 @@ import type {AgentRunner} from "../src/agents/dispatcher.js";
 import {ASEN_AGENT_TOOL_NAMES} from "../src/agents/pi-agent-tools.js";
 import {ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-tools.js";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
+import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 import {selectSkills} from "../src/skills/registry.js";
 
 function host(){
@@ -160,11 +161,28 @@ test("Pi continue tool requires explicit UI confirmation and cannot cross projec
   const waitingContinuation=state.tools.get("asen_agent_continue").execute("continue-lock-cancel",{id:"interrupted"},lockController.signal,()=>{},state.context());
   await new Promise(resolve=>setTimeout(resolve,30));lockController.abort();await assert.rejects(waitingContinuation,/Agent task cancelled/);
   const persisted=JSON.parse(await readFile(file,"utf8"));assert.equal(persisted.entries.length,1);assert.equal(persisted.entries[0]?.record.state,"interrupted");await rm(`${file}.lock`,{force:true});
+  let currentSession="session-a";const switchingContext={...state.context(),sessionManager:{getSessionId:()=>currentSession},ui:{confirm:async()=>{currentSession="session-b";return true;}}};await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue-session-change",{id:"interrupted"},new AbortController().signal,()=>{},switchingContext),/session changed/u);currentSession="session-a";
   const continuation=await state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},state.context());assert.equal(continuation.details.continuedFrom,"interrupted");assert.equal(continuation.details.role,"explorer");
   await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},state.context()),/already has a continuation/);
   await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},{...state.context(),hasUI:false}),/Explicit Pi UI confirmation/);
   await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},state.context("other-session")),/unavailable to this session or project/);
  }finally{try{await state.events.get("session_shutdown")![0]!({},state.context());}finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;}}
+});
+
+test("continuing a Todo-linked interrupted Pi agent binds the child before execution and Todo cancellation reaches it",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-linked-agent-continuation-"));t.after(()=>rm(home,{recursive:true,force:true}));const sessionId="session-a",projectId=await realpath(process.cwd()),identity={sessionId,projectId},todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),linkFile=join(home,".asen","task-agent-links.json"),todos=await SessionTodoStore.open(todoFile),links=new TaskAgentLinkStore(linkFile);
+ const todo=await todos.add("Resume linked review",identity);await todos.update(todo.taskId,identity,1,"running");
+ const crashed=spawnSync(process.execPath,["--import","tsx",resolve("tests/fixtures/agent-crash-process.ts"),agentFile,"running","-",sessionId,projectId,"interrupted-linked-agent"],{encoding:"utf8",timeout:30000});assert.equal(crashed.status,0,`${crashed.error?.message??""}\n${crashed.stderr}`);
+ await links.bind({taskId:todo.taskId,agentId:"interrupted-linked-agent",sessionId,projectId,createdAt:new Date().toISOString()});
+ let childId="",begin!:()=>void;const begun=new Promise<void>(resolve=>{begin=resolve;});
+ const runner:AgentRunner={run:async(request,signal)=>{childId=request.id;const linked=(await links.list(identity)).some(link=>link.agentId===request.id&&link.taskId===todo.taskId),current=(await todos.list(identity)).find(item=>item.taskId===todo.taskId);assert.equal(linked,true,"child correlation must persist before the AgentRunner starts");assert.equal(current?.current.state,"running","Todo resume must persist before child dispatch");begin();return new Promise(resolve=>signal!.addEventListener("abort",()=>resolve({id:request.id,ok:false,output:"cancelled"}),{once:true}));}};
+ const state=host();createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:agentFile,todoStoreFile:todoFile})(state.pi as any);await state.events.get("session_start")![0]!({},state.context(sessionId));
+ const recovered=(await todos.list(identity)).find(item=>item.taskId===todo.taskId)!;assert.equal(recovered.current.state,"blocked");
+ const continuation=await state.tools.get("asen_agent_continue").execute("continue-linked",{id:"interrupted-linked-agent"},new AbortController().signal,()=>{},state.context(sessionId));assert.equal(continuation.details.todoId,todo.taskId);await begun;
+ const persistedLinks=await links.list(identity);assert.ok(persistedLinks.some(link=>link.agentId===childId&&link.taskId===todo.taskId));
+ const cancelled=await state.tools.get("asen_todo_update").execute("cancel-linked",{id:todo.taskId,revision:4,state:"cancelled"},new AbortController().signal,()=>{},state.context(sessionId));assert.equal(cancelled.details.events.at(-1).state,"cancelled");
+ const status=await state.tools.get("asen_agent_status").execute("child-status",{id:childId},new AbortController().signal,()=>{},state.context(sessionId));assert.equal(status.details.task.record.state,"cancelled");
+ await state.events.get("session_shutdown")![0]!({},state.context(sessionId));
 });
 
 test("agent completion never reaches a different active Pi session",async t=>{

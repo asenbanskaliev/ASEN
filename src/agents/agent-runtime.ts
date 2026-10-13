@@ -64,9 +64,13 @@ export class AgentRuntime{
   if(entry.record.state==="queued"||entry.record.state==="interrupted"){await this.store.cancelled(id,"Cancelled by the owning Pi session");return true;}
   return false;
  }
- async continue(id:string,identity:AgentSessionIdentity,signal?:AbortSignal):Promise<string>{
+ async continue(id:string,identity:AgentSessionIdentity,signal?:AbortSignal,onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>):Promise<string>{
   const request=await this.store.enqueueContinuation(id,identity.sessionId,identity.projectId,{kind:"user",id:`pi:${identity.sessionId}`},signal);
-  this.#dispatch(request);
+  if(signal?.aborted){await this.store.cancelled(request.id,"Pi cancelled the continuation after durable enqueue and before dispatch");throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});}
+  let dispatched=false;
+  const dispatch=()=>{if(dispatched)throw new Error("Agent continuation may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal);dispatched=true;};
+  try{if(onQueued){await onQueued(request.id,dispatch);if(!dispatched)throw new Error("Trusted Todo binding did not start the continuation");}else dispatch();}
+  catch(error){if(!dispatched)await this.store.cancelled(request.id,"Agent binding or continuation was cancelled before dispatch").catch(()=>{});throw error;}
   return request.id;
  }
  async cancelSessionProjects(sessionId:string):Promise<void>{

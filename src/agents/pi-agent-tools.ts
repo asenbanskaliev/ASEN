@@ -63,8 +63,20 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
  }});
  pi.registerTool?.({name:"asen_agent_continue",label:"Continue ASEN agent",description:"Resume a safe read-only task after confirming it belongs to the current Pi session and project.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["id"],properties:{id:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);const taskId=(params as {id?:unknown})?.id;if(typeof taskId!=="string")throw new Error("Invalid agent task id");const session=await selectedIdentity((params as {root?:unknown}).root,context,false,signal);throwIfCancelled(signal);
-  if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function"||!await confirmWithAbort(dialogSignal=>context.ui.confirm("Continue agent task?","This starts a new read-only attempt for the saved task in this same session and project.",dialogSignal?{signal:dialogSignal}:undefined),signal))throw new Error("Explicit Pi UI confirmation is required to continue an agent task");
-  const next=await (await runtime()).continue(taskId,session,signal);return result({id:next,state:"queued",continuedFrom:taskId,role:"explorer"});
+  const link=todoLink?(await (await todoLink.links()).list(session)).find(item=>item.agentId===taskId):undefined;
+  const todos=link&&todoLink?await todoLink.todos():undefined;
+  const todo=link&&todos?(await todos.list(session)).find(item=>item.taskId===link.taskId):undefined;
+  if(link&&(!todo||todo.current.state!=="blocked"))throw new Error("A linked Todo must be blocked for explicit review before its interrupted agent can continue");
+  if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function"||!await confirmWithAbort(dialogSignal=>context.ui.confirm("Continue agent task?",link?`Resume ${todo!.title} (${todo!.taskId}) and bind the new read-only Pi attempt to that Todo before dispatch?`:`This starts a new read-only attempt for the saved task in this same session and project.`,dialogSignal?{signal:dialogSignal}:undefined),signal))throw new Error("Explicit Pi UI confirmation is required to continue an agent task");
+  throwIfCancelled(signal);if((await identity(context)).sessionId!==session.sessionId)throw new Error("Pi session changed before agent continuation");
+  const resumed=link&&todo&&todos?await todos.update(todo.taskId,session,todo.current.revision,"running","User confirmed linked agent continuation in Pi UI",signal):undefined;
+  try{
+   const active=await runtime(),next=await active.continue(taskId,session,signal,link&&todoLink?async(agentId,dispatch)=>{await (await todoLink!.binder()).launch(link.taskId,agentId,session,dispatch);}:undefined);
+   return result({id:next,state:"queued",continuedFrom:taskId,role:"explorer",...(link?{todoId:link.taskId}:{} )});
+  }catch(error){
+   if(resumed&&todos){const current=(await todos.list(session)).find(item=>item.taskId===resumed.taskId);if(current?.current.state==="running")await todos.update(current.taskId,session,current.current.revision,"blocked","Linked agent continuation was not dispatched; review is required",undefined).catch(()=>{});}
+   throw error;
+  }
  }});
  pi.registerTool?.({name:"asen_plan_dispatch_next",label:"Dispatch next ASEN plan task",description:"After explicit Pi UI confirmation, dispatch one dependency-ready persisted plan task only when it has a supported read-only role. Completion still requires independent verification.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);const session=await selectedIdentity((params as {root?:unknown}).root,context,true,signal);
