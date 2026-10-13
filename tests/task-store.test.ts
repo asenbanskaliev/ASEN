@@ -16,7 +16,7 @@ test("ECO-07 durable journal isolates sessions, persists recovery and never repl
  assert.equal(recovered?.state,"blocked");
  assert.equal((await a.history("task-a","a","/repo")).length,3);
  assert.equal((await a.history("task-b","b","/repo")).length,1);
- assert.equal(await a.recover("task","a","/repo","2026-10-13T00:00:04Z")?.then(s=>s?.state),"blocked");
+ assert.equal(await a.recover("task-a","a","/repo","2026-10-13T00:00:04Z")?.then(s=>s?.state),"blocked");
  assert.equal((await b.history("task","a","/other")).length,0);
  assert.throws(()=>JSON.parse("invalid"));
  const raw=await readFile(file,"utf8");assert.equal(JSON.parse(raw).revision,4);
