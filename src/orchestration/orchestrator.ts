@@ -114,6 +114,7 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRou
   };
   const requestedPhase=input.skillPhase??"apply";
   if(input.writeSurfaces?.length&&requestedPhase!=="apply")throw new Error("Writer orchestration requires apply phase");
+  if(input.writeSurfaces?.length&&facts.riskOperations.length)throw new Error("Sensitive ODD operations cannot be admitted by orchestration planning");
   const primary=contextFor("worker",requestedPhase,decision.verification==="independent");
   const skills=primary.skills;
   const agents:AgentRequest[]=[];
