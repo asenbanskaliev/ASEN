@@ -5,8 +5,10 @@ import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
 import type {AgentRuntime} from "./agent-runtime.js";
 import type {AgentSessionIdentity} from "./agent-runtime.js";
 import type {TrustedTaskAgentBinder} from "../runtime/trusted-task-agent-binder.js";
+import type {TaskAgentLinkStore} from "../runtime/task-agent-link-store.js";
 import type {SessionTodoStore} from "../runtime/todo-store.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
+import {dispatchNextReadOnlyPlanTask} from "../runtime/plan-dispatcher.js";
 
 const text={type:"string",minLength:1,maxLength:32000};
 const rootSchema={type:"string",minLength:1,maxLength:4096};
@@ -24,9 +26,9 @@ async function identity(context:any):Promise<AgentSessionIdentity>{
  if(typeof sessionId!=="string"||!sessionId||sessionId!==sessionId.trim()||typeof cwd!=="string"||!isAbsolute(cwd))throw new Error("ASEN agent tools require the active Pi session and project");
  return {sessionId,projectId:await realpath(resolve(cwd))};
 }
-export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent_status","asen_agent_cancel","asen_agent_continue"] as const);
+export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent_status","asen_agent_cancel","asen_agent_continue","asen_plan_dispatch_next"] as const);
 /** Exposes only read-only explorer work by default; write agents require an internal fresh ASEN grant. */
-export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>}):()=>void{
+export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>}):()=>void{
  const access=new AgentProjectAccess();
  const selectedIdentity=async(root:unknown,context:any,launch:boolean,signal?:AbortSignal)=>access.resolve(root,context,await identity(context),launch,()=>confirmWithAbort(dialogSignal=>context.ui.confirm("Authorize another project?",`Start a read-only ASEN agent in ${String(root)}? Access applies only to this live session and project.`,dialogSignal?{signal:dialogSignal}:undefined),signal),signal);
  pi.registerTool?.({name:"asen_agent_start",label:"Start ASEN agent",description:"Queue an isolated, read-only Pi agent task in the current session and project.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["prompt"],properties:{prompt:text,root:rootSchema,todoId:idSchema}},execute:async(_id,params,signal,_update,context)=>{
@@ -63,6 +65,14 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   throwIfCancelled(signal);const taskId=(params as {id?:unknown})?.id;if(typeof taskId!=="string")throw new Error("Invalid agent task id");const session=await selectedIdentity((params as {root?:unknown}).root,context,false,signal);throwIfCancelled(signal);
   if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function"||!await confirmWithAbort(dialogSignal=>context.ui.confirm("Continue agent task?","This starts a new read-only attempt for the saved task in this same session and project.",dialogSignal?{signal:dialogSignal}:undefined),signal))throw new Error("Explicit Pi UI confirmation is required to continue an agent task");
   const next=await (await runtime()).continue(taskId,session,signal);return result({id:next,state:"queued",continuedFrom:taskId,role:"explorer"});
+ }});
+ pi.registerTool?.({name:"asen_plan_dispatch_next",label:"Dispatch next ASEN plan task",description:"After explicit Pi UI confirmation, dispatch one dependency-ready persisted plan task only when it has a supported read-only role. Completion still requires independent verification.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
+  throwIfCancelled(signal);const session=await selectedIdentity((params as {root?:unknown}).root,context,true,signal);
+  if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function")throw new Error("Interactive Pi UI confirmation is required to dispatch a planned task");
+  if(!todoLink)throw new Error("ASEN plan dispatch requires the session Todo and durable task-agent link stores");
+  const [todos,links,runtimeValue]=await Promise.all([todoLink.todos(),todoLink.links(),runtime()]);
+  const dispatched=await dispatchNextReadOnlyPlanTask({todos,agents:runtimeValue,links,identity:session,confirm:async task=>confirmWithAbort(dialogSignal=>context.ui.confirm("Dispatch next ASEN plan task?",`${task.title} (${task.role})\n\n${task.instruction.slice(0,1600)}\n\nStart this read-only task in the current session and project?`,dialogSignal?{signal:dialogSignal}:undefined),signal)});
+  return result(dispatched);
  }});
  return ()=>access.reset();
 }

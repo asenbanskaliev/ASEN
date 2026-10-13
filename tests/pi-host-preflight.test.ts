@@ -65,7 +65,7 @@ test("factory waits for initialized public inventories then registers one collis
   assert.equal(state.commands.size,0);assert.equal(state.tools.size,0);
   await state.events.get("session_start")![0]!({},state.context());
   assert.ok(state.commands.has("asen"));assert.ok(state.commands.has("asen-review"));
-  assert.deepEqual([...state.tools.keys()].sort(),["asen_agent_cancel","asen_agent_continue","asen_agent_start","asen_agent_status","asen_ask_choice","asen_ask_question","asen_code_intelligence","asen_todo_add","asen_todo_list","asen_todo_update","ask_user_choice","ask_user_question","codegraph"]);
+  assert.deepEqual([...state.tools.keys()].sort(),["asen_agent_cancel","asen_agent_continue","asen_agent_start","asen_agent_status","asen_ask_choice","asen_ask_question","asen_code_intelligence","asen_plan_dispatch_next","asen_todo_add","asen_todo_list","asen_todo_update","ask_user_choice","ask_user_question","codegraph"]);
   assert.equal(state.messages.some(message=>message.includes("host preflight failed")),false);
  }finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;rmSync(home,{recursive:true,force:true});}
 });

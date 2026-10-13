@@ -112,6 +112,25 @@ test("persisted plan reviewer and verifier roles dispatch only their exact read-
  const persisted=JSON.parse(await readFile(agentFile,"utf8"));assert.ok(persisted.entries.every((entry:any)=>!Object.hasOwn(entry.request,"skillContext")&&!Object.hasOwn(entry.request,"skillPaths")));await state.events.get("session_shutdown")![0]!({},state.context(session.sessionId));
 });
 
+test("next-plan dispatch confirms one ready read-only task and refuses the writer phase",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-plan-dispatch-next-"));t.after(()=>rm(home,{recursive:true,force:true}));const projectId=await realpath(process.cwd()),session={sessionId:"dispatch-next-session",projectId},todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),todos=await SessionTodoStore.open(todoFile),selection={phase:"explore" as const,risk:"low" as const,codeChange:false,behaviorChange:false,filesTouched:0},paths=selectSkills(selection).map(skill=>skill.path),workerSelection={phase:"apply" as const,risk:"medium" as const,codeChange:true,behaviorChange:false,filesTouched:1},workerPaths=selectSkills(workerSelection).map(skill=>skill.path),seen:import("../src/agents/dispatcher.js").AgentRequest[]=[],runner:AgentRunner={run:async request=>{seen.push(request);return{id:request.id,ok:true,output:"inspection evidence"};}};
+ const persisted=await todos.addPlan([
+  {title:"Explore task",requestId:"asen-plan:dispatch-next:explorer",dependsOn:[],description:"Inspect the bounded project and report evidence",plan:{role:"explorer",skillPaths:paths,priority:1,skillSelection:selection}},
+  {title:"Worker task",requestId:"asen-plan:dispatch-next:worker",dependsOn:["asen-plan:dispatch-next:explorer"],description:"Apply the accepted change",plan:{role:"worker",skillPaths:workerPaths,priority:2,skillSelection:workerSelection}}
+ ],session),state=host();let confirmations=0;
+ createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:agentFile,todoStoreFile:todoFile})(state.pi as any);await state.events.get("session_start")![0]!({},state.context(session.sessionId));
+ const context={...state.context(session.sessionId),ui:{...state.context(session.sessionId).ui,confirm:async()=>{confirmations++;return true;}}};
+ const dispatched=await state.tools.get("asen_plan_dispatch_next").execute("dispatch-next",{},new AbortController().signal,()=>{},context);
+ assert.equal(dispatched.details.status,"dispatched");assert.equal(dispatched.details.role,"explorer");assert.equal(confirmations,1);
+ const deadline=Date.now()+3000;while(Date.now()<deadline&&(await todos.list(session)).find(row=>row.taskId===persisted[0]!.taskId)?.current.state!=="blocked")await new Promise(resolve=>setTimeout(resolve,5));
+ let rows=await todos.list(session),explorer=rows.find(row=>row.taskId===persisted[0]!.taskId)!;assert.equal(explorer.current.state,"blocked");assert.equal(seen.length,1);assert.equal(seen[0]?.role,"explorer");assert.equal(seen[0]?.candidate,undefined);assert.equal(seen[0]?.writeSurfaces,undefined);
+ await state.tools.get("asen_todo_update").execute("resume-explorer",{id:explorer.taskId,revision:explorer.current.revision,state:"running"},new AbortController().signal,()=>{},context);
+ await state.tools.get("asen_todo_update").execute("verify-explorer",{id:explorer.taskId,revision:explorer.current.revision+1,state:"done",reason:"Inspected the task output and confirmed it contains the requested evidence"},new AbortController().signal,()=>{},context);
+ const refused=await state.tools.get("asen_plan_dispatch_next").execute("dispatch-worker",{},new AbortController().signal,()=>{},context);
+ assert.equal(refused.details.status,"blocked");assert.match(refused.details.reason,/controlled worker lifecycle dispatcher/);assert.equal(confirmations,3);assert.equal(seen.length,1);
+ rows=await todos.list(session);assert.equal(rows.find(row=>row.taskId===persisted[1]!.taskId)?.current.state,"planned");await state.events.get("session_shutdown")![0]!({},context);
+});
+
 test("cancelling a Todo through Pi cancels its linked active agent",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-pi-todo-cancel-agent-"));t.after(()=>rm(home,{recursive:true,force:true}));
  const state=host();let started!:()=>void;
