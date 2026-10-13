@@ -138,3 +138,18 @@ test("a completed task missing its receipt is interrupted without losing verifie
  for(const id of ids.slice(0,2))assert.equal(rows.find(row=>row.id===id)?.state,"interrupted");for(const entry of [unverified,invalid]){assert.match(entry?.record.summary??"",/Unverified completion after restart/);assert.equal(entry?.result,undefined);}
  assert.equal(verified?.record.state,"completed");assert.equal(verified?.result?.output,`valid:${ids[2]}`);
 });
+
+test("ECO-06 recovery store rejects persisted write and phase authority",async t=>{
+ const file=await fixture(t),{store}=await PersistentAgentStore.open(file);
+ const base=req("authority-boundary");
+ for(const altered of [
+  {...base,role:"worker" as const},
+  {...base,writeSurfaces:["src/a.ts"]},
+  {...base,candidate:{id:"c",repository:"/repo",revision:"sha",createdAt:"now"}},
+  {...base,writerAdmission:Object.freeze({})},
+  {...base,phaseGrant:Object.freeze({})},
+ ]){
+  await assert.rejects(()=>store.enqueue(altered,owner),/Authority-bearing agent requests cannot be serialized/);
+ }
+ assert.equal((await store.list("session-a","/repo")).length,0);
+});
