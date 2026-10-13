@@ -1,4 +1,6 @@
 import type {OrchestrationPlan} from "./orchestrator.js";
+import type {IssuedSkillContext} from "../skills/context.js";
+import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 
 export type PlannedTaskRole="primary"|"explorer"|"worker"|"reviewer"|"verifier"|"clarifier";
 export interface PlannedTask {
@@ -9,6 +11,8 @@ export interface PlannedTask {
  readonly dependsOn:readonly string[];
  readonly priority:number;
  readonly skills:readonly string[];
+ readonly skillPaths:readonly string[];
+ readonly skillSelection?:SkillSelectionContext;
  readonly status:"ready"|"waiting"|"clarification_required";
  readonly execution:"not_started";
  readonly authorization:"required_before_dispatch";
@@ -22,6 +26,10 @@ export interface ExecutablePlan {
  readonly execution:"not_started";
  readonly authorization:"required_before_dispatch";
 }
+function selectionOf(context:IssuedSkillContext|undefined):SkillSelectionContext|undefined{
+ if(!context?.phase)return undefined;
+ return {phase:context.phase,...(context.defect!==undefined?{defect:context.defect}:{}),...(context.codeChange!==undefined?{codeChange:context.codeChange}:{}),...(context.behaviorChange!==undefined?{behaviorChange:context.behaviorChange}:{}),...(context.risk?{risk:context.risk}:{}),...(context.filesTouched!==undefined?{filesTouched:context.filesTouched}:{}),...(context.verification!==undefined?{verification:context.verification}:{})};
+}
 
 /** Materializes the existing ODD route and selected roles as an ordered, inspectable task DAG.
  * This is a plan only: it never grants permissions or starts an agent. */
@@ -29,15 +37,16 @@ export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:str
  const decision=plan.decision,taskId=decision.taskIdentity;
  if(!taskId||!decision.repositoryIdentity||typeof instruction!=="string"||!instruction.trim()||instruction!==instruction.trim()||instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(instruction))throw new Error("Executable plan identity or instruction is invalid");
  const tasks:PlannedTask[]=[],priority:Readonly<Record<PlannedTaskRole,number>>={clarifier:1,primary:1,explorer:1,worker:2,reviewer:3,verifier:4};
- const add=(role:PlannedTaskRole,title:string,text:string,dependsOn:string[],skills:readonly string[],status:PlannedTask["status"]="waiting")=>{
+ const add=(role:PlannedTaskRole,title:string,text:string,dependsOn:string[],skills:readonly string[],skillPaths:readonly string[]=[],skillSelection?:SkillSelectionContext,status:PlannedTask["status"]="waiting")=>{
   const id=`${taskId}:${role}`;
-  tasks.push(Object.freeze({id,role,title,instruction:text,dependsOn:Object.freeze(dependsOn),priority:priority[role],skills:Object.freeze([...skills]),status,execution:"not_started",authorization:"required_before_dispatch"}));
+  tasks.push(Object.freeze({id,role,title,instruction:text,dependsOn:Object.freeze(dependsOn),priority:priority[role],skills:Object.freeze([...skills]),skillPaths:Object.freeze([...skillPaths]),...(skillSelection?{skillSelection:Object.freeze({...skillSelection})}:{}),status,execution:"not_started",authorization:"required_before_dispatch"}));
   return id;
  };
  if(decision.route==="plan"){
-  add("clarifier","Resolve missing or high-risk facts",`Clarify the task before selecting or dispatching capabilities. Original instruction: ${instruction}`,[],plan.skills,"clarification_required");
+  add("clarifier","Resolve missing or high-risk facts",`Clarify the task before selecting or dispatching capabilities. Original instruction: ${instruction}`,[],plan.skills,[],undefined,"clarification_required");
  }else if(plan.agents.length===0){
-  add("primary","Carry out the bounded primary-session task",instruction,[],plan.skills,"ready");
+  const selection=selectionOf(plan.skillContext);
+  add("primary","Carry out the bounded primary-session task",instruction,[],plan.skills,selection?selectSkills(selection).map(skill=>skill.path):[],selection,"ready");
  }else{
   const byRole=new Map(plan.agents.map(agent=>[agent.role,agent]));
   const ids=new Map<string,string>();
@@ -45,7 +54,8 @@ export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:str
    const agent=byRole.get(role);if(!agent)continue;
    const dependencies=role==="worker"?[ids.get("explorer")].filter((id):id is string=>!!id):role==="reviewer"?[ids.get("worker")].filter((id):id is string=>!!id):role==="verifier"?[ids.get("worker"),ids.get("reviewer")].filter((id):id is string=>!!id):[];
    const text=role==="explorer"?`Inspect the repository and report relevant evidence for: ${instruction}`:role==="worker"?`Perform only the authorized, scoped work for: ${instruction}`:role==="reviewer"?`Review the resulting work against the original acceptance criteria: ${instruction}`:`Independently verify the result and acceptance criteria for: ${instruction}`;
-   ids.set(role,add(role,`${role[0]!.toUpperCase()}${role.slice(1)} task`,text,dependencies,agent.skillPaths??[],dependencies.length?"waiting":"ready"));
+   const selection=selectionOf(agent.skillContext);
+   ids.set(role,add(role,`${role[0]!.toUpperCase()}${role.slice(1)} task`,text,dependencies,selection?selectSkills(selection).map(skill=>skill.id):[],agent.skillPaths??[],selection,dependencies.length?"waiting":"ready"));
   }
  }
  const byId=new Map(tasks.map(item=>[item.id,item]));

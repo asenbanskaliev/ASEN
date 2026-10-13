@@ -151,7 +151,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const task=output.executablePlan.tasks.find(item=>item.id===taskId);
     if(!task)throw new Error("ASEN executable plan order references an unknown task");
     const dependencies=task.dependsOn.map(id=>{const todoId=todoIds.get(id);if(!todoId)throw new Error("ASEN executable plan dependency order is invalid");return todoId;});
-    const item=await store.add(task.title,identity,undefined,undefined,`asen-plan:${task.id}`,dependencies,task.instruction);
+    const item=await store.add(task.title,identity,undefined,undefined,`asen-plan:${task.id}`,dependencies,task.instruction,{role:task.role,skillPaths:[...task.skillPaths],...(task.skillSelection?{skillSelection:task.skillSelection}:{})});
     todoIds.set(task.id,item.taskId);
    }
    output.persistedTasks=output.executablePlan.tasks.map(task=>({planTaskId:task.id,todoId:todoIds.get(task.id),dependsOn:task.dependsOn.map(id=>todoIds.get(id))}));

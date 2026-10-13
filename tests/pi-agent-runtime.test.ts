@@ -9,6 +9,7 @@ import type {AgentRunner} from "../src/agents/dispatcher.js";
 import {ASEN_AGENT_TOOL_NAMES} from "../src/agents/pi-agent-tools.js";
 import {ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-tools.js";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
+import {selectSkills} from "../src/skills/registry.js";
 
 function host(){
  const events=new Map<string,Function[]>(),commands=new Map<string,any>(),tools=new Map<string,any>(),messages:string[]=[];
@@ -79,6 +80,19 @@ test("Pi launch persists Todo-agent ownership before dispatch and blocks for ind
  const view=JSON.parse(state.messages.at(-1)!);
  assert.equal(view[0]?.state,"blocked");assert.deepEqual(view[0]?.agents.map((agent:any)=>[agent.id,agent.state]),[[id,"completed"]]);
  await state.events.get("session_shutdown")![0]!({},state.context());
+});
+
+test("a persisted plan explorer dispatches the exact selected read-only skills through Pi",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-plan-explorer-skills-"));t.after(()=>rm(home,{recursive:true,force:true}));const projectId=await realpath(process.cwd()),session={sessionId:"plan-skill-session",projectId},todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),todos=await SessionTodoStore.open(todoFile);
+ const selection={phase:"explore" as const,risk:"medium" as const,codeChange:true,behaviorChange:false,filesTouched:4},skillPaths=selectSkills(selection).map(skill=>skill.path),instruction="Inspect only the bounded plan request and return evidence";
+ const todo=await todos.add("Explorer task",session,undefined,undefined,"asen-plan:task:explorer",[],instruction,{role:"explorer",skillPaths,skillSelection:selection});
+ let dispatched:import("../src/agents/dispatcher.js").AgentRequest|undefined;const runner:AgentRunner={run:async request=>{dispatched=request;return{id:request.id,ok:true,output:"read-only evidence"};}},state=host();
+ createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:agentFile,todoStoreFile:todoFile})(state.pi as any);await state.events.get("session_start")![0]!({},state.context(session.sessionId));
+ const result=await state.tools.get("asen_agent_start").execute("plan-start",{prompt:instruction,todoId:todo.taskId},new AbortController().signal,()=>{},state.context(session.sessionId));
+ const deadline=Date.now()+3000;while(Date.now()<deadline&&(!dispatched||(await todos.list(session))[0]?.current.state!=="blocked"))await new Promise(resolve=>setTimeout(resolve,5));
+ assert.equal(result.details.role,"explorer");assert.equal(dispatched?.prompt,instruction);assert.deepEqual(dispatched?.skillPaths,skillPaths);assert.equal(dispatched?.skillContext?.phase,"explore");assert.equal(dispatched?.candidate,undefined);assert.equal(dispatched?.writeSurfaces,undefined);
+ const persisted=JSON.parse(await readFile(agentFile,"utf8"));assert.equal(persisted.entries[0].request.prompt,instruction);assert.equal(Object.hasOwn(persisted.entries[0].request,"skillContext"),false);assert.equal(Object.hasOwn(persisted.entries[0].request,"skillPaths"),false);
+ assert.equal((await todos.list(session))[0]?.current.state,"blocked");await state.events.get("session_shutdown")![0]!({},state.context(session.sessionId));
 });
 
 test("cancelling a Todo through Pi cancels its linked active agent",async t=>{

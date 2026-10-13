@@ -6,6 +6,8 @@ import {withExclusiveFileLock} from "../io/exclusive-file-lock.js";
 import {preparePrivateFile} from "../io/private-file.js";
 import {completeAgentRecord,createAgentRecord,recoverAgentLifecycleRecords,transitionAgent,type AgentLifecycleSink,type PublicAgentRecord} from "./agent-lifecycle.js";
 import {sameWorkspaceIdentityPath} from "./workspace-store.js";
+import {matchesIssuedSkillContext,isIssuedSkillContext} from "../skills/context.js";
+import {selectSkills} from "../skills/registry.js";
 
 const SCHEMA="asen.agents/v1" as const,MAX_RECORDS=2000,MAX_EVENTS=20000,MAX_PROMPT=32000,MAX_OUTPUT=1_000_000;
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted){const error=new Error("Agent task cancelled");error.name="AbortError";throw error;}}
@@ -19,7 +21,11 @@ const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&
 const identifier=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<=1024&&v===v.trim()&&v===v.normalize("NFC")&&!/[\u0000-\u001f\u007f-\u009f]/u.test(v);
 function specFrom(request:AgentRequest,createdAt:string):AgentTaskSpec{
  if(!identifier(request.id)||!identifier(request.repository)||!identifier(request.isolationKey??"default")||typeof request.prompt!=="string"||!request.prompt.trim()||request.prompt.length>MAX_PROMPT||/\u0000/u.test(request.prompt)||!(["explorer","worker","reviewer","verifier"] as unknown[]).includes(request.role))throw new Error("Invalid persistent agent request");
- if(request.role!=="explorer"||request.writeSurfaces?.length||request.candidate||request.skillContext||request.writerAdmission||request.phaseGrant)throw new Error("Authority-bearing agent requests cannot be serialized; create a fresh authorized dispatch");
+ if(request.role!=="explorer"||request.writeSurfaces?.length||request.candidate||request.writerAdmission||request.phaseGrant)throw new Error("Authority-bearing agent requests cannot be serialized; create a fresh authorized dispatch");
+ if(request.skillContext||request.skillPaths){
+  const selected=request.skillContext&&isIssuedSkillContext(request.skillContext)?selectSkills(request.skillContext).map(skill=>skill.path):[];
+  if(!request.skillContext||!request.skillPaths||!isIssuedSkillContext(request.skillContext)||request.skillContext.phase!=="explore"||!matchesIssuedSkillContext(request.skillContext,request.id,request.repository)||request.skillPaths.length!==selected.length||request.skillPaths.some((path,index)=>path!==selected[index]))throw new Error("Only exact read-only explorer skill selections may be serialized");
+ }
  if(request.model!==undefined&&(typeof request.model!=="string"||!identifier(request.model)))throw new Error("Invalid persistent agent model");
  if(request.thinking!==undefined&&!(["off","minimal","low","medium","high"] as unknown[]).includes(request.thinking))throw new Error("Invalid persistent agent thinking level");
  const {model,thinking}=request;

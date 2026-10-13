@@ -4,6 +4,8 @@ import {Dispatcher} from "./dispatcher.js";
 import {EvidenceStore} from "../evidence/store.js";
 import type {PublicAgentRecord} from "../runtime/agent-lifecycle.js";
 import {PersistentAgentStore} from "../runtime/agent-store.js";
+import {issueSkillContext} from "../skills/context.js";
+import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 
 export interface AgentSessionIdentity{sessionId:string;projectId:string;}
 /** Production coordinator using the existing Dispatcher, with session checks around every public action. */
@@ -39,9 +41,11 @@ export class AgentRuntime{
   const execution=this.dispatcher.dispatch(request);this.#executions.set(request.id,execution);
   void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{signal?.removeEventListener("abort",onAbort);if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);});
  }
- async startExplorer(input:{prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
+ async startExplorer(input:{prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
   if(!input.session.sessionId||!input.session.projectId)throw new Error("An active Pi session and project are required");
+  if(input.skillSelection&&input.skillSelection.phase!=="explore")throw new Error("Explorer dispatch requires an explore-phase skill selection");
   const request:AgentRequest={id:`agent-${randomUUID()}`,role:"explorer",prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:input.owner??{kind:"user",id:`pi:${input.session.sessionId}`}};
+  if(input.skillSelection){request.skillContext=issueSkillContext(request.id,request.repository,undefined,input.skillSelection);request.skillPaths=selectSkills(request.skillContext).map(skill=>skill.path);}
   await this.store.enqueue(request,request.owner!,signal);
   if(signal?.aborted){await this.store.cancelled(request.id,"Pi cancelled the launch after durable enqueue and before dispatch");throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});}
   let dispatched=false;

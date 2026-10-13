@@ -5,18 +5,36 @@ import {withExclusiveFileLock} from "../io/exclusive-file-lock.js";
 import {preparePrivateFile} from "../io/private-file.js";
 import {sameWorkspaceIdentityPath} from "./workspace-store.js";
 import {applyTaskEvent,replayTask,type TaskEvent,type TaskState} from "./task-replay.js";
+import {selectSkills,type SkillPhase,type SkillSelectionContext} from "../skills/registry.js";
 
 const SCHEMA="asen.todo/v1" as const,MAX_TASKS=2000,MAX_EVENTS=20000;
-export interface TodoItem{taskId:string;title:string;events:TaskEvent[];requestId?:string;dependsOn?:string[];description?:string;}
+export type TodoPlanRole="primary"|"explorer"|"worker"|"reviewer"|"verifier"|"clarifier";
+export interface TodoPlanMetadata{role:TodoPlanRole;skillPaths:string[];skillSelection?:SkillSelectionContext;}
+export interface TodoItem{taskId:string;title:string;events:TaskEvent[];requestId?:string;dependsOn?:string[];description?:string;plan?:TodoPlanMetadata;}
 export interface TodoFile{schema:typeof SCHEMA;revision:number;items:TodoItem[];}
 export interface TodoContext{sessionId:string;projectId:string;}
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted){const error=new Error("Todo update cancelled");error.name="AbortError";throw error;}}
 const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
 const identity=(v:unknown)=>typeof v==="string"&&v.length>0&&v.length<=1024&&v===v.trim()&&v===v.normalize("NFC")&&!/[\u0000-\u001f\u007f-\u009f]/u.test(v);
+function validPlan(value:unknown):value is TodoPlanMetadata{
+ if(!value||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)return false;
+ const hasSelection=Object.hasOwn(value,"skillSelection"),keys=hasSelection?["role","skillPaths","skillSelection"]:["role","skillPaths"];
+ if(!exact(value,keys)||!(["primary","explorer","worker","reviewer","verifier","clarifier"] as unknown[]).includes(value.role)||!Array.isArray(value.skillPaths)||value.skillPaths.some(p=>typeof p!=="string"||!/^skills\/asen-[a-z-]+\/SKILL\.md$/u.test(p))||new Set(value.skillPaths).size!==value.skillPaths.length)return false;
+ if(!hasSelection)return value.role==="primary"||value.role==="clarifier";
+ const selectionRaw=value.skillSelection;if(!selectionRaw||typeof selectionRaw!=="object"||Array.isArray(selectionRaw)||Object.getPrototypeOf(selectionRaw)!==Object.prototype)return false;const selection=selectionRaw as SkillSelectionContext,role=value.role as TodoPlanRole;
+ const allowed=["phase","defect","codeChange","behaviorChange","risk","filesTouched","verification"],selectionKeys=Object.keys(selectionRaw);
+ if(selectionKeys.some(key=>!allowed.includes(key))||!Object.hasOwn(selection,"phase")||!(["status","context-init","explore","proposal","specification","design","tasks","apply","verify","archive","skill-registry","adversarial-review","skill-authoring","skill-audit","defect","go-testing","delivery-branch","delivery-chain","issue","docs","collaboration-message"] as unknown[]).includes(selection.phase))return false;
+ for(const key of ["defect","codeChange","behaviorChange","verification"])if(key in selection&&typeof (selection as Record<string,unknown>)[key]!=="boolean")return false;
+ if("risk" in selection&&!(["low","medium","high","unknown"] as unknown[]).includes((selection as Record<string,unknown>).risk))return false;
+ if("filesTouched" in selection&&(!Number.isSafeInteger((selection as Record<string,unknown>).filesTouched)||Number((selection as Record<string,unknown>).filesTouched)<0))return false;
+ const expectedPhase:Partial<Record<TodoPlanRole,SkillPhase>>={explorer:"explore",worker:"apply",reviewer:"adversarial-review",verifier:"verify"};
+ if(role==="clarifier"||expectedPhase[role]!==undefined&&expectedPhase[role]!==selection.phase)return false;
+ try{return JSON.stringify(selectSkills(selection).map(skill=>skill.path))===JSON.stringify(value.skillPaths);}catch{return false;}
+}
 function validItem(value:unknown):value is TodoItem{
  if(!value||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)return false;
- const optionalKeys=["requestId","dependsOn","description"],keys=["taskId","title","events",...optionalKeys.filter(key=>Object.hasOwn(value,key))];
- if(!exact(value,keys)||!identity(value.taskId)||("requestId" in value&&!identity(value.requestId))||("dependsOn" in value&&(!Array.isArray(value.dependsOn)||value.dependsOn.some(id=>!identity(id))||new Set(value.dependsOn).size!==value.dependsOn.length||value.dependsOn.includes(value.taskId)))||("description" in value&&(typeof value.description!=="string"||!value.description.trim()||value.description.length>8192||value.description!==value.description.trim()||/[\u0000-\u001f\u007f-\u009f]/u.test(value.description)))||typeof value.title!=="string"||!value.title.trim()||value.title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(value.title)||!Array.isArray(value.events)||value.events.length<1||value.events.length>MAX_EVENTS)return false;
+ const optionalKeys=["requestId","dependsOn","description","plan"],keys=["taskId","title","events",...optionalKeys.filter(key=>Object.hasOwn(value,key))];
+ if(!exact(value,keys)||!identity(value.taskId)||("requestId" in value&&!identity(value.requestId))||("plan" in value&&(!validPlan(value.plan)||typeof value.requestId!=="string"||!value.requestId.startsWith("asen-plan:")))||("dependsOn" in value&&(!Array.isArray(value.dependsOn)||value.dependsOn.some(id=>!identity(id))||new Set(value.dependsOn).size!==value.dependsOn.length||value.dependsOn.includes(value.taskId)))||("description" in value&&(typeof value.description!=="string"||!value.description.trim()||value.description.length>8192||value.description!==value.description.trim()||/[\u0000-\u001f\u007f-\u009f]/u.test(value.description)))||typeof value.title!=="string"||!value.title.trim()||value.title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(value.title)||!Array.isArray(value.events)||value.events.length<1||value.events.length>MAX_EVENTS)return false;
  try{let state:TaskEvent|undefined;for(const event of value.events){if(event.taskId!==value.taskId) return false;state=applyTaskEvent(state,event);}return !!state;}catch{return false;}
 }
 export function parseTodoFile(raw:string):TodoFile{
@@ -49,12 +67,12 @@ export class SessionTodoStore{
   return new SessionTodoStore(path,now,quarantined);
  }
  diagnostics(){return this.quarantined?{quarantined:this.quarantined}:undefined;}
- async add(title:string,context:TodoContext,signal?:AbortSignal,validateContext?:()=>void,requestId?:string,dependsOn:readonly string[]=[],description?:string):Promise<TodoItem>{
+ async add(title:string,context:TodoContext,signal?:AbortSignal,validateContext?:()=>void,requestId?:string,dependsOn:readonly string[]=[],description?:string,plan?:TodoPlanMetadata):Promise<TodoItem>{
   throwIfCancelled(signal);
-  if(typeof title!=="string"||!title.trim()||title!==title.trim()||title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(title)||!identity(context.sessionId)||!identity(context.projectId)||(requestId!==undefined&&!identity(requestId))||!Array.isArray(dependsOn)||dependsOn.some(id=>!identity(id))||new Set(dependsOn).size!==dependsOn.length||(description!==undefined&&(typeof description!=="string"||!description||description!==description.trim()||description.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(description))))throw new Error("Invalid ASEN Todo task");
-  const taskId=`todo-${randomUUID()}`,event:TaskEvent={taskId,sessionId:context.sessionId,projectId:context.projectId,revision:1,state:"planned",at:this.now()},item:TodoItem={taskId,title,events:[event],...(requestId?{requestId}:{}),...(dependsOn.length?{dependsOn:[...dependsOn]}:{}),...(description?{description}:{})};let result:TodoItem|undefined;
+  if(typeof title!=="string"||!title.trim()||title!==title.trim()||title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(title)||!identity(context.sessionId)||!identity(context.projectId)||(requestId!==undefined&&!identity(requestId))||!Array.isArray(dependsOn)||dependsOn.some(id=>!identity(id))||new Set(dependsOn).size!==dependsOn.length||(description!==undefined&&(typeof description!=="string"||!description||description!==description.trim()||description.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(description)))||(plan!==undefined&&!validPlan(plan))||(plan!==undefined&&(requestId===undefined||!requestId.startsWith("asen-plan:"))))throw new Error("Invalid ASEN Todo task");
+  const taskId=`todo-${randomUUID()}`,event:TaskEvent={taskId,sessionId:context.sessionId,projectId:context.projectId,revision:1,state:"planned",at:this.now()},item:TodoItem={taskId,title,events:[event],...(requestId?{requestId}:{}),...(dependsOn.length?{dependsOn:[...dependsOn]}:{}),...(description?{description}:{}),...(plan?{plan:structuredClone(plan)}:{})};let result:TodoItem|undefined;
   await this.#mutate(data=>{validateContext?.();
-   if(requestId){const existing=data.items.find(candidate=>candidate.requestId===requestId);if(existing){const owner=existing.events[0];if(owner?.sessionId!==context.sessionId||!sameWorkspaceIdentityPath(owner.projectId,context.projectId))throw new Error("Todo request id belongs to another session or project");if(existing.title!==title||JSON.stringify(existing.dependsOn??[])!==JSON.stringify(dependsOn)||existing.description!==description)throw new Error("Todo request id conflicts with the existing task");result=structuredClone(existing);return false;}}
+   if(requestId){const existing=data.items.find(candidate=>candidate.requestId===requestId);if(existing){const owner=existing.events[0];if(owner?.sessionId!==context.sessionId||!sameWorkspaceIdentityPath(owner.projectId,context.projectId))throw new Error("Todo request id belongs to another session or project");if(existing.title!==title||JSON.stringify(existing.dependsOn??[])!==JSON.stringify(dependsOn)||existing.description!==description||JSON.stringify(existing.plan??null)!==JSON.stringify(plan??null))throw new Error("Todo request id conflicts with the existing task");result=structuredClone(existing);return false;}}
    for(const dependency of dependsOn){const prerequisite=data.items.find(candidate=>candidate.taskId===dependency&&candidate.events[0]?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(candidate.events[0]!.projectId,context.projectId));if(!prerequisite)throw new Error("Todo dependency must belong to the current session and project");if(dependency===taskId)throw new Error("Todo dependency cycle rejected");}
    data.items.push(item);result=item;return true;
   },signal);return structuredClone(result!);

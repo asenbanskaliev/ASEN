@@ -58,6 +58,7 @@ test("asen-plan persists its DAG in the active Todo store and enforces predecess
  const projectId=await realpath(process.cwd()),identity={sessionId:"dag-session",projectId},rows=await store.list(identity);assert.equal(rows.length,4);
  const todoById=new Map(rows.map(row=>[row.taskId,row]));const graph=new Map(result.persistedTasks.map((item:any)=>[item.planTaskId,item]));
  const worker=graph.get("dag-plan:worker") as any,explorer=graph.get("dag-plan:explorer") as any;assert.deepEqual(worker.dependsOn,[explorer.todoId]);
+ const explorerTodo=todoById.get(explorer.todoId)!;assert.equal(explorerTodo.plan?.role,"explorer");assert.equal(explorerTodo.plan?.skillSelection?.phase,"explore");assert.ok(explorerTodo.plan?.skillPaths.includes("skills/asen-explore/SKILL.md"));
  await assert.rejects(()=>store.update(worker.todoId,identity,1,"running"),/dependencies must be verified done/);
  assert.equal(todoById.get(worker.todoId)?.current.state,"planned");
 });
