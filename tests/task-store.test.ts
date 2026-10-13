@@ -63,3 +63,19 @@ test("ECO-07 competing revisions preserve exactly one winner",async t=>{
  assert.equal(results.filter(r=>r.status==="rejected").length,1);
  assert.equal((await first.history("race","s","p")).length,2);
 });
+
+test("ECO-07 startup recovery blocks all running tasks exactly once and never dispatches",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-task-startup-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const file=join(dir,"tasks.json"),store=new PersistentTaskStore(file);
+ for(const id of ["a","b","c"]){
+  const base:TaskEvent={taskId:id,sessionId:"s",projectId:"p",revision:1,state:"planned",at:"2026-10-13T00:00:01Z"};
+  await store.append(base);
+  if(id!=="c")await store.append({...base,revision:2,state:"running",at:"2026-10-13T00:00:02Z"});
+ }
+ const recovered=await store.recoverAll("2026-10-13T00:00:03Z");
+ assert.deepEqual(recovered.map(x=>x.taskId),["a","b"]);
+ assert.ok(recovered.every(x=>x.state==="blocked"&&x.revision===3));
+ assert.deepEqual(await new PersistentTaskStore(file).recoverAll("2026-10-13T00:00:04Z"),[]);
+ assert.equal((await store.history("c","s","p")).at(-1)?.state,"planned");
+ assert.equal(JSON.parse(await readFile(file,"utf8")).revision,7);
+});

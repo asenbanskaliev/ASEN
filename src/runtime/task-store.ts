@@ -43,6 +43,22 @@ export class PersistentTaskStore{
    return next;
   });
  }
+ /** Quarantine every interrupted execution atomically on startup; never dispatch automatically. */
+ async recoverAll(at:string):Promise<TaskEvent[]>{
+  return withExclusiveFileLock(this.file,async()=>{
+   const journal=await load(this.file),latest=new Map<string,TaskEvent>();
+   for(const event of journal.events)latest.set(event.taskId,event);
+   const recovery:TaskEvent[]=[];
+   for(const state of latest.values()){
+    if(state.state!=="running")continue;
+    // Preserve the complete validated journal history and original revision.
+    const next=applyTaskEvent(state,{taskId:state.taskId,sessionId:state.sessionId,projectId:state.projectId,revision:state.revision+1,state:"blocked",at,reason:"Interrupted execution; fresh authorization required before continuation"});
+    recovery.push(next);
+   }
+   if(recovery.length){journal.events.push(...recovery);journal.revision+=recovery.length;await atomicWriteText(this.file,JSON.stringify(journal));}
+   return recovery;
+  });
+ }
  async history(taskId:string,sessionId:string,projectId:string):Promise<TaskEvent[]>{
   const journal=await load(this.file);
   return journal.events.filter(e=>e.taskId===taskId&&e.sessionId===sessionId&&e.projectId===projectId).map(e=>structuredClone(e));
