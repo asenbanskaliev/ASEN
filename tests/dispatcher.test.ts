@@ -346,3 +346,20 @@ test("ECO-06 wrong repository burns writer admission without invoking runner",as
  await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:admission}),/unused exact writer admission/);
  assert.equal(calls,0);
 });
+
+test("ECO-06 cancelled queued work never reaches the runner",async()=>{
+ let release!:()=>void,started=0;
+ const blocker=new Promise<void>(resolve=>{release=resolve;});
+ const runner:AgentRunner={run:async request=>{started++;if(request.id==="blocking")await blocker;return{id:request.id,ok:true,output:"done"};}};
+ const dispatcher=new Dispatcher(runner,new EvidenceStore(),1);
+ const first=dispatcher.dispatch({id:"blocking",role:"explorer",prompt:"inspect",repository:"r",isolationKey:"session-a"});
+ for(let i=0;i<100&&started===0;i++)await new Promise(resolve=>setTimeout(resolve,1));
+ assert.equal(started,1);
+ const queued=dispatcher.dispatch({id:"queued",role:"explorer",prompt:"inspect",repository:"r",isolationKey:"session-b"});
+ assert.equal(dispatcher.cancel("queued","session-a","r"),false);
+ assert.equal(dispatcher.cancel("queued","session-b","wrong"),false);
+ assert.equal(dispatcher.cancel("queued","session-b","r"),true);
+ await assert.rejects(queued,/cancelled while queued/);
+ release();await first;
+ assert.equal(started,1);
+});
