@@ -328,3 +328,21 @@ test("ECO-06 one-use admission cannot authorize a second dispatch",async()=>{
  await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:admission}),/unused exact writer admission/);
  assert.equal(calls,1);
 });
+
+test("ECO-06 wrong candidate revision burns writer admission without invoking runner",async()=>{
+ let calls=0;
+ const runner:AgentRunner={run:async request=>{calls++;return{id:request.id,ok:true,output:"unexpected"};}};
+ const d=new Dispatcher(runner,authorized()),admission=organicAdmission("a");
+ const changed={...candidate,revision:"different"};
+ await assert.rejects(()=>d.dispatch({...writeRequest,candidate:changed,skillContext:sealedCodeChange(),writerAdmission:admission}),/unused exact writer admission|skill context/);
+ await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:admission}),/unused exact writer admission/);
+ assert.equal(calls,0);
+});
+test("ECO-06 wrong repository burns writer admission without invoking runner",async()=>{
+ let calls=0;
+ const runner:AgentRunner={run:async request=>{calls++;return{id:request.id,ok:true,output:"unexpected"};}};
+ const d=new Dispatcher(runner,authorized()),admission=organicAdmission("a");
+ await assert.rejects(()=>d.dispatch({...writeRequest,repository:"other",skillContext:sealedCodeChange(),writerAdmission:admission}),/unused exact writer admission|repository mismatch/);
+ await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:admission}),/unused exact writer admission/);
+ assert.equal(calls,0);
+});
