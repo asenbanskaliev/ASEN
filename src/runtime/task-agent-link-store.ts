@@ -1,4 +1,3 @@
-import {randomUUID} from "node:crypto";
 import {readFile} from "node:fs/promises";
 import {isAbsolute} from "node:path";
 import {atomicWriteText} from "../io/atomic-write.js";
