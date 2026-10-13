@@ -36,6 +36,7 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
   reasons:decision.reasons,
   requiredAgentRoles:plan.agents.map(agent=>agent.role),
   selectedSkills:plan.skills,
+  delegatedAgents:plan.agents.map(agent=>({id:agent.id,role:agent.role,phase:agent.expectedPhase??null,skillPaths:agent.skillPaths??[],model:agent.model??null,thinking:agent.thinking??null})),
   requiresSingleWriter:decision.requiresSingleWriter,
   requiresIsolatedChild:decision.requiresIsolatedChild,
   sensitiveOperationsPresent:sensitive,
