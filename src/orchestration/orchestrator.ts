@@ -83,6 +83,7 @@ export function claimOrchestrationRouteEvidence(candidate:Candidate,proof:unknow
 }
 
 export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRouteDecision):OrchestrationPlan {
+  if(typeof input.prompt!=="string"||!input.prompt.trim()||input.prompt!==input.prompt.trim()||input.prompt.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(input.prompt))throw new Error("Orchestration instruction is invalid");
   claimOddRouteDecision(decision);
   const facts = claimedOddRouteFacts(decision);
   if (decision.taskIdentity !== input.taskId) throw new Error("ODD route decision task mismatch");
