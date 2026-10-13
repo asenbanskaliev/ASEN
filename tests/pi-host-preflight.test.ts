@@ -161,7 +161,7 @@ test("ECO-06 public Pi preflight rejects missing tools and commands without host
   let registrations=0;
   const host:any={on(){},registerCommand(){registrations++;},registerTool(){registrations++;},getCommands(){return[];},getAllTools(){return[];}};
   delete host[missing];
-  assert.throws(()=>validatePiHost(host,"1.1.0"),/public Pi extension API/);
+  assert.throws(()=>validatePiHost(host,"1.1.0"),/requires callable Pi|public Pi extension API/);
   assert.equal(registrations,0);
  }
 });
