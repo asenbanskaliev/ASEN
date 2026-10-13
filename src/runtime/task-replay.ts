@@ -15,3 +15,18 @@ function exactEvent(value:unknown):TaskEvent{
 }
 export function applyTaskEvent(current:TaskEvent|undefined,event:TaskEvent):TaskEvent{const checked=exactEvent(event);if(!current){if(checked.revision!==1||checked.state!=="planned")throw new Error("First task event must be planned revision 1");return checked;}if(current.taskId!==checked.taskId||current.sessionId!==checked.sessionId||current.projectId!==checked.projectId)throw new Error("Task identity mismatch");if(checked.revision!==current.revision+1)throw new Error("Task revision conflict");if(!next[current.state].includes(checked.state))throw new Error("Invalid task transition");if(Date.parse(checked.at)<Date.parse(current.at))throw new Error("Stale task event");return checked;}
 export function replayTask(events:readonly TaskEvent[]):TaskEvent|undefined{let state:TaskEvent|undefined;for(const event of events)state=applyTaskEvent(state,event);return state;}
+
+/** Recover a persisted task without ever replaying its previous execution authority.
+ * Running tasks become blocked; all other states remain unchanged.
+ * The returned event is an explicit, identity-bound state transition, not a dispatch grant.
+ */
+export function recoverInterruptedTask(events:readonly TaskEvent[],at:string):{state:TaskEvent|undefined;recoveryEvent?:TaskEvent}{
+ const state=replayTask(events);
+ if(!state||state.state!=="running")return {state};
+ const recoveryEvent:TaskEvent={
+  taskId:state.taskId,sessionId:state.sessionId,projectId:state.projectId,
+  revision:state.revision+1,state:"blocked",at,
+  reason:"Interrupted execution; fresh authorization required before continuation",
+ };
+ return {state:applyTaskEvent(state,recoveryEvent),recoveryEvent};
+}
