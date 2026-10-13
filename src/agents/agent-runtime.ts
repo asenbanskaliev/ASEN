@@ -32,21 +32,24 @@ export class AgentRuntime{
    for(const listener of this.#terminalListeners)try{listener(structuredClone(entry.record));}catch{/* The durable result remains queryable. */}
   }catch{/* A failed storage read must never produce a success notification. */}
  }
- #dispatch(request:AgentRequest):void{
+ #dispatch(request:AgentRequest,signal?:AbortSignal):void{
+  const sessionId=request.isolationKey??"default",projectId=request.repository;
+  const onAbort=()=>{this.dispatcher.cancel(request.id,sessionId,projectId);};
+  signal?.addEventListener("abort",onAbort,{once:true});
   const execution=this.dispatcher.dispatch(request);this.#executions.set(request.id,execution);
-  void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);});
+  void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{signal?.removeEventListener("abort",onAbort);if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);});
  }
- async startExplorer(input:{prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];onQueued?:(agentId:string)=>Promise<void>},signal?:AbortSignal):Promise<string>{
+ async startExplorer(input:{prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
   if(!input.session.sessionId||!input.session.projectId)throw new Error("An active Pi session and project are required");
   const request:AgentRequest={id:`agent-${randomUUID()}`,role:"explorer",prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:input.owner??{kind:"user",id:`pi:${input.session.sessionId}`}};
   await this.store.enqueue(request,request.owner!,signal);
-  if(input.onQueued){
-   try{await input.onQueued(request.id);}catch(error){
-    await this.store.cancelled(request.id,"Task-agent binding failed before dispatch").catch(()=>{});
-    throw error;
-   }
-  }
-  this.#dispatch(request);
+  if(signal?.aborted){await this.store.cancelled(request.id,"Pi cancelled the launch after durable enqueue and before dispatch");throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});}
+  let dispatched=false;
+  const dispatch=()=>{if(dispatched)throw new Error("Agent launch may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal);dispatched=true;};
+  try{
+   if(input.onQueued){await input.onQueued(request.id,dispatch);if(!dispatched)throw new Error("Trusted Todo binding did not start the agent dispatch");}
+   else dispatch();
+  }catch(error){if(!dispatched)await this.store.cancelled(request.id,"Agent binding or launch was cancelled before dispatch").catch(()=>{});throw error;}
   return request.id;
  }
  async cancel(id:string,identity:AgentSessionIdentity):Promise<boolean>{

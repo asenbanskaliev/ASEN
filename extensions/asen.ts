@@ -37,6 +37,7 @@ import {SessionTodoStore} from "../src/runtime/todo-store.js";
 import {TaskAgentCoordinator} from "../src/runtime/task-agent-coordinator.js";
 import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 import {TrustedTaskAgentBinder} from "../src/runtime/trusted-task-agent-binder.js";
+import {TaskAgentTodoReconciler} from "../src/runtime/task-agent-reconciler.js";
 import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-tools.js";
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 import {todoStatusRows} from "../src/runtime/todo-presentation.js";
@@ -103,8 +104,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const getAgentRuntime=async()=>{if(!agentRuntimePromise)throw new Error("ASEN agent runtime is unavailable");return agentRuntimePromise;};
   
   const todoStorePromise=dependencies.todoStoreFactory?.()??(dependencies.enableTodoRuntime?SessionTodoStore.open(dependencies.todoStoreFile??path.join(home(),".asen","todos.json")):undefined);
-  if(todoStorePromise)registerTodoTools(pi,async()=>todoStorePromise);
   const taskAgentLinks=agentRuntimePromise&&todoStorePromise?new TaskAgentLinkStore(path.join(home(),".asen","task-agent-links.json")):undefined;
+  if(todoStorePromise)registerTodoTools(pi,async()=>todoStorePromise,taskAgentLinks&&agentRuntimePromise?async(taskId,identity)=>{
+   const [links,runtime]=await Promise.all([taskAgentLinks.list(identity),agentRuntimePromise]);
+   await Promise.all(links.filter(link=>link.taskId===taskId).map(link=>runtime.cancel(link.agentId,identity)));
+  }:undefined);
   const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks)}:undefined):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const sessionIdentity=async(ctx:CommandContext)=>{const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId)throw new Error("ASEN requires the active Pi session");const projectId=await canonical(ctx.cwd);return {sessionId,projectId,worktree:projectId};};
@@ -112,6 +116,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    agentDeliveryContext=ctx;agentDeliveryIdentity=identity;
    if(!unsubscribeAgentDelivery)unsubscribeAgentDelivery=runtime.subscribeTerminal(record=>{
     const current=agentDeliveryContext,active=agentDeliveryIdentity;
+    if(todoStorePromise&&taskAgentLinks)void Promise.all([todoStorePromise,agentRuntimePromise]).then(([todos,agents])=>new TaskAgentTodoReconciler(todos,agents!,taskAgentLinks).reconcile({sessionId:record.sessionId,projectId:record.projectId})).catch(()=>{});
     if(!current||!active||record.sessionId!==active.sessionId||record.projectId!==active.projectId||current.sessionManager?.getSessionId?.()!==active.sessionId)return;
     current.ui.notify(agentStatusRows([record],1000).join("\n"),record.state==="failed"?"error":"info");
    });

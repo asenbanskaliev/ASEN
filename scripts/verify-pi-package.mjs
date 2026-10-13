@@ -50,6 +50,9 @@ try {
       {id:agentId,revision:3,state:"interrupted",at:stamp,summary:interruptedReason}
     ]
   }]}),{mode:0o600});
+  writeFileSync(path.join(asenHome,"task-agent-links.json"),JSON.stringify({schema:"asen.task-agent-links/v1",revision:1,links:[{
+    taskId:todoId,agentId,sessionId,projectId,createdAt:stamp
+  }]}),{mode:0o600});
   const workspaceChange=(session,path,actor)=>({path,actor:{kind:"user",id:actor},sessionId:session,projectId,worktree:projectId,operation:"modify",at:stamp});
   const assertInterruptedAgentVisible=message=>{
     assert.ok(message.includes(agentId),`restored agent identity must be visible: ${message}`);
@@ -77,7 +80,7 @@ try {
   const hostObservations=[];let startupRecoveryNotice="";
   try{
     await new Promise((resolve,reject)=>{
-      const names=["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles","asen-route","asen-plan"];
+      const names=["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-task-agents","asen-profiles","asen-route","asen-plan"];
       let buffer="",stdout="",stderr="",index=0,notifications=0,lastNotification="";
       const timer=setTimeout(()=>fail(Error(`Installed RPC commands timed out: ${stderr.slice(-1000)}`)),20000);
       const fail=error=>{clearTimeout(timer);reject(error);};
@@ -110,6 +113,7 @@ try {
               if(names[index]==="asen-todos")assert.match(lastNotification,/blocked.*Pi restart recovery.*explicit review is required/i);
               if(names[index]==="asen-todos")assert.ok(!lastNotification.includes(foreignTodoId),"Todo projection must exclude foreign sessions");
               if(names[index]==="asen-agents")assertInterruptedAgentVisible(lastNotification);
+              if(names[index]==="asen-task-agents"){const tasks=JSON.parse(lastNotification);assert.equal(tasks[0]?.state,"blocked");assert.deepEqual(tasks[0]?.agents.map(agent=>[agent.id,agent.state]),[[agentId,"interrupted"]]);}
               if(names[index]==="asen-changes")assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);
               if(names[index]==="asen-changes")assert.ok(!lastNotification.includes("foreign"),"workspace projection must exclude foreign sessions");
               if(names[index]==="asen-plan"){const plan=JSON.parse(lastNotification);assert.equal(plan.route,"direct");assert.equal(plan.execution.started,false);assert.equal(plan.execution.authorized,false);assert.equal(plan.actions.reviewRequested,false);}
@@ -122,13 +126,13 @@ try {
     });
     firstVerified=true;
   }finally{await settleVerifierChild(child,closed,{successful:firstVerified});}
-  assert.equal(models,0);assert.equal(visible,10);
+  assert.equal(models,0);assert.equal(visible,11);
   assert.match(startupRecoveryNotice,/1 queued or interrupted task\(s\).*asen-agents/u);
   assert.equal(hostObservations.length,1,"public host inventories must be observed once after initialization");
   const host=hostObservations[0];
   assert.equal(host.mode,"rpc");assert.equal(typeof host.hasUI,"boolean");
   const fromPrimary=row=>realpathSync(row.path)===realpathSync(primary);
-  for(const name of ["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-profiles","asen-route","asen-plan"]){
+  for(const name of ["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-task-agents","asen-profiles","asen-route","asen-plan"]){
     const matches=host.commands.filter(row=>row.name===name&&row.source==="extension"&&fromPrimary(row));
     assert.equal(matches.length,1,`${name} must have one canonical installed-source registration`);
   }
@@ -144,7 +148,7 @@ try {
   let reopenedVerified=false;
   const seen=[];let reopenedRecoveryNotice="";
   await new Promise((resolve,reject)=>{
-    const names=["asen-agents","asen-todos","asen-changes"];let buffer="",stderr="",index=-1,notifications=0,lastNotification="";
+    const names=["asen-agents","asen-todos","asen-task-agents","asen-changes"];let buffer="",stderr="",index=-1,notifications=0,lastNotification="";
     const timer=setTimeout(()=>fail(Error(`Reopened Pi session timed out: ${stderr.slice(-1000)}`)),20000);
     const fail=error=>{clearTimeout(timer);reject(error);};
     const send=value=>reopened.stdin.write(JSON.stringify(value)+"\n");
@@ -155,19 +159,19 @@ try {
       const row=JSON.parse(line);if(row.type==="agent_start")throw Error("Reopened ASEN state query invoked a model");
       if(row.type==="response"&&row.id==="reopen-commands"){assert.equal(row.success,true);for(const name of names)assert.ok(row.data.commands.some(command=>command.name===name));requestNext();}
       else if(row.type==="extension_ui_request"&&row.method==="notify"){assert.equal(row.notifyType,"info");if(row.message.includes("queued or interrupted task(s)"))reopenedRecoveryNotice=row.message;else{lastNotification=row.message;notifications++;}}
-      else if(row.type==="response"&&row.id===`reopen-${names[index]}`){assert.equal(row.success,true);assert.equal(notifications,1);if(names[index]==="asen-agents")assertInterruptedAgentVisible(lastNotification);else if(names[index]==="asen-todos"){assert.match(lastNotification,/blocked.*Pi restart recovery.*explicit review is required/i);assert.ok(!lastNotification.includes(foreignTodoId));}else{assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);assert.ok(!lastNotification.includes("foreign"));}seen.push(names[index]);notifications=0;requestNext();}
+      else if(row.type==="response"&&row.id===`reopen-${names[index]}`){assert.equal(row.success,true);assert.equal(notifications,1);if(names[index]==="asen-agents")assertInterruptedAgentVisible(lastNotification);else if(names[index]==="asen-todos"){assert.match(lastNotification,/blocked.*Pi restart recovery.*explicit review is required/i);assert.ok(!lastNotification.includes(foreignTodoId));}else if(names[index]==="asen-task-agents"){const tasks=JSON.parse(lastNotification);assert.equal(tasks[0]?.state,"blocked");assert.deepEqual(tasks[0]?.agents.map(agent=>[agent.id,agent.state]),[[agentId,"interrupted"]]);}else{assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);assert.ok(!lastNotification.includes("foreign"));}seen.push(names[index]);notifications=0;requestNext();}
     }catch(error){fail(error);}}});
     send({id:"reopen-commands",type:"get_commands"});
   }).then(()=>{reopenedVerified=true;}).finally(()=>settleVerifierChild(reopened,reopenedClosed,{successful:reopenedVerified}));
   assert.match(reopenedRecoveryNotice,/1 queued or interrupted task\(s\).*asen-agents/u);
-  assert.deepEqual(seen,["asen-agents","asen-todos","asen-changes"]);
+  assert.deepEqual(seen,["asen-agents","asen-todos","asen-task-agents","asen-changes"]);
   // Open a different real Pi session against the same project and durable stores.
   const foreign=spawn(process.execPath,[cli,"--mode","rpc","--session-id","asen-package-foreign-session","--no-extensions","--extension",primary,"--no-skills"],{
     cwd:root,env:createPiVerifierEnvironment(process.env),stdio:["pipe","pipe","pipe"]});
   const foreignClosed=new Promise(resolve=>foreign.once("close",(code,signal)=>resolve({code,signal})));
   let foreignVerified=false;
   await new Promise((resolve,reject)=>{
-    const names=["asen-agents","asen-todos","asen-changes"];
+    const names=["asen-agents","asen-todos","asen-task-agents","asen-changes"];
     let buffer="",stderr="",index=-1,notifications=0,lastNotification="";
     const timer=setTimeout(()=>fail(Error(`Foreign Pi session timed out: ${stderr.slice(-1000)}`)),20000);
     const fail=error=>{clearTimeout(timer);reject(error);};
@@ -192,7 +196,8 @@ try {
             if(names[index]==="asen-agents")assert.ok(!lastNotification.includes(agentId));
             else if(names[index]==="asen-todos"){
               assert.match(lastNotification,/Foreign session task/);assert.ok(!lastNotification.includes("Pi restart recovery"));
-            }else{
+            }else if(names[index]==="asen-task-agents")assert.ok(!lastNotification.includes(agentId));
+            else{
               assert.match(lastNotification,/modify\s+user:user-foreign\s+src\/foreign\.ts/);assert.ok(!lastNotification.includes("src/owned.ts"));
             }
             notifications=0;next();
@@ -202,5 +207,5 @@ try {
     });
     send({id:"foreign-commands",type:"get_commands"});
   }).then(()=>{foreignVerified=true;}).finally(()=>settleVerifierChild(foreign,foreignClosed,{successful:foreignVerified}));
-  console.log(JSON.stringify({installedPiPackageVerified:true,primaryExtensions:["asen.ts"],childAuthorityAutoLoaded:false,visibleRpcCommands:visible,modelInvocations:models,sessionRestartVerified:true,crossSessionProjectionVerified:true,naturalProcessExits:3,publicHost:{mode:host.mode,hasUI:host.hasUI,canonicalCommands:10,canonicalTools:toolNames.length,toolsEnabled:true}}));
+  console.log(JSON.stringify({installedPiPackageVerified:true,primaryExtensions:["asen.ts"],childAuthorityAutoLoaded:false,visibleRpcCommands:visible,modelInvocations:models,sessionRestartVerified:true,crossSessionProjectionVerified:true,naturalProcessExits:3,publicHost:{mode:host.mode,hasUI:host.hasUI,canonicalCommands:11,canonicalTools:toolNames.length,toolsEnabled:true}}));
 } finally {rmSync(root,{recursive:true,force:true});}

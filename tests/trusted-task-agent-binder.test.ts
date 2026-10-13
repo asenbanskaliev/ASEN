@@ -14,9 +14,12 @@ test("ECO-07 binder rejects unowned agents and foreign Todos without writing lin
  const agent={record:{id:"agent-a",sessionId:own.sessionId,projectId:own.projectId}};
  const runtime={query:async(id:string,identity:typeof own)=>id==="agent-a"&&identity.sessionId===own.sessionId?agent:null};
  const binder=new TrustedTaskAgentBinder(todos,runtime as never,links);
- await assert.rejects(()=>binder.bind(other.taskId,"agent-a",own),/matching durable ownership/);
- await assert.rejects(()=>binder.bind(task.taskId,"missing",own),/matching durable ownership/);
+ let dispatched=false;
+ await assert.rejects(()=>binder.launch(other.taskId,"agent-a",own,()=>{dispatched=true;}),/unavailable to this session or project/);
+ await assert.rejects(()=>binder.launch(task.taskId,"missing",own,()=>{dispatched=true;}),/active durable ownership/);
  assert.deepEqual(await links.list(own),[]);
- assert.equal((await binder.bind(task.taskId,"agent-a",own)).taskId,task.taskId);
+ await binder.launch(task.taskId,"agent-a",own,()=>{dispatched=true;});
+ assert.equal(dispatched,true);
  assert.equal((await links.list(own)).length,1);
+ assert.equal((await todos.list(own))[0]?.current.state,"running");
 });

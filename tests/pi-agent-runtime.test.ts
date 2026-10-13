@@ -64,6 +64,37 @@ test("Pi session lifecycle recovers only its own running Todo tasks",async t=>{
  const afterShutdown=await SessionTodoStore.open(file);assert.equal((await afterShutdown.history(closing.taskId,{sessionId:"session-a",projectId})).at(-1)?.state,"blocked");assert.equal((await afterShutdown.list({sessionId:"session-b",projectId}))[0]?.current.state,"running");
 });
 
+test("Pi launch persists Todo-agent ownership before dispatch and blocks for independent verification",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-pi-todo-agent-"));t.after(()=>rm(home,{recursive:true,force:true}));
+ const state=host();let runs=0;
+ const runner:AgentRunner={run:async request=>{runs++;return{id:request.id,ok:true,output:"agent result"};}};
+ createPiExtension({homeDir:()=>home,agentRunner:runner})(state.pi as any);await state.events.get("session_start")![0]!({},state.context());
+ const todo=await state.tools.get("asen_todo_add").execute("todo-add",{title:"Verify the implementation"},new AbortController().signal,()=>{},state.context());
+ const start=await state.tools.get("asen_agent_start").execute("agent-start",{prompt:"Inspect only",todoId:todo.details.taskId},new AbortController().signal,()=>{},state.context());
+ const id=start.details.id;
+ let row:any,deadline=Date.now()+3000;while(Date.now()<deadline){row=(await state.tools.get("asen_todo_list").execute("todo-list",{},new AbortController().signal,()=>{},state.context())).details[0];if(row?.current.state==="blocked")break;await new Promise(resolve=>setTimeout(resolve,5));}
+ assert.equal(runs,1);assert.equal(row?.current.state,"blocked");assert.match(row?.current.reason??"",/independent verification/u);
+ await state.commands.get("asen-task-agents")!.handler("",state.context());
+ const view=JSON.parse(state.messages.at(-1)!);
+ assert.equal(view[0]?.state,"blocked");assert.deepEqual(view[0]?.agents.map((agent:any)=>[agent.id,agent.state]),[[id,"completed"]]);
+ await state.events.get("session_shutdown")![0]!({},state.context());
+});
+
+test("cancelling a Todo through Pi cancels its linked active agent",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-pi-todo-cancel-agent-"));t.after(()=>rm(home,{recursive:true,force:true}));
+ const state=host();let started!:()=>void;
+ const running=new Promise<void>(resolve=>{started=resolve;});
+ const runner:AgentRunner={run:async(request,signal)=>{started();return new Promise(resolve=>signal!.addEventListener("abort",()=>resolve({id:request.id,ok:false,output:"cancelled"}),{once:true}));}};
+ createPiExtension({homeDir:()=>home,agentRunner:runner})(state.pi as any);await state.events.get("session_start")![0]!({},state.context());
+ const todo=await state.tools.get("asen_todo_add").execute("todo-add",{title:"Cancel this work"},new AbortController().signal,()=>{},state.context());
+ const start=await state.tools.get("asen_agent_start").execute("agent-start",{prompt:"Inspect only",todoId:todo.details.taskId},new AbortController().signal,()=>{},state.context());await running;
+ const updated=await state.tools.get("asen_todo_update").execute("todo-cancel",{id:todo.details.taskId,revision:2,state:"cancelled"},new AbortController().signal,()=>{},state.context());
+ assert.equal(updated.details.events.at(-1)?.state,"cancelled");
+ const status=await state.tools.get("asen_agent_status").execute("agent-status",{id:start.details.id},new AbortController().signal,()=>{},state.context());
+ assert.equal(status.details.task.record.state,"cancelled");
+ await state.events.get("session_shutdown")![0]!({},state.context());
+});
+
 test("Pi continue tool requires explicit UI confirmation and cannot cross project/session identity",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-agent-continue-"));t.after(()=>rm(home,{recursive:true,force:true}));const file=join(home,"agents.json"),prior=process.env.ASEN_NO_SKILL_REGISTRY;process.env.ASEN_NO_SKILL_REGISTRY="1";
  const runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:"done"})},state=host();

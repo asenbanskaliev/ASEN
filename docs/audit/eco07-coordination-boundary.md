@@ -2,22 +2,20 @@
 
 ## Implemented
 
-- Read-only coordinator joining the existing session-scoped Todo and agent stores.
-- Pi command `asen-task-agents` exposes the projection when both stores are available.
-- Exact taskId:role correlation is restricted to known orchestrator roles and verified matching session/project identities.
-- Neither completion nor interruption of an agent changes the Todo state.
-- Tests cover cross-session visibility, forged role/identity/prefix collisions, and blocked Todo recovery after restart.
+- `TaskAgentCoordinator` projects owned Todos and durable agents through an explicit session/project scoped link store.
+- Pi command `asen-task-agents` exposes that read-only projection.
+- `asen_agent_start` may take an owned Todo ID. Agent enqueue, durable link, Todo running claim, and dispatcher start are ordered so execution cannot begin before association.
+- Todo-bound launch is serialized with state changes. A terminal, blocked, missing, or foreign Todo fails closed before dispatch.
+- Pi cancellation updates the Todo and cancels its linked agents. Agent terminal results move a running Todo to blocked only after all linked agents finish, leaving independent verification before any user marks it done.
+- Process recovery never replays an agent. Unlinked queued work becomes interrupted; linked running Todos become blocked; exact session/project ownership remains required.
+- Tests cover immutable link persistence, restart visibility without redispatch, cancellation, abort during the binding window, failed writes, terminal Todo rejection, and the real Pi package's session/restart projection.
 
-## Deliberate limits
+## Consistency boundary
 
-Pi-started explorers have opaque `agent-UUID` IDs, so they cannot be reliably correlated to Todos by naming convention. A durable explicit relation needs its own bounded contract, atomic persistence, migration/reconciliation rules, and separate acceptance tests. Do not infer links from matching prompts or times.
+The Todo store, agent store, and link journal are separate files, so a crash cannot atomically commit all three. The launch order is deliberately conservative: the agent is persisted first; the link is persisted while the Todo lock is held; the Todo is moved to running; then the exact in-memory dispatcher call starts synchronously before releasing that lock. A crash before linking leaves no execution; a crash after linking is recovered as interrupted/blocked and is never automatically replayed. The link is observational and grants no permission.
 
-The generic PersistentTaskStore is not part of production Pi lifecycle. Never invoke its global recoverAll on session startup; it lacks live-process ownership checks. AgentRuntime already uses PersistentAgentStore with explicit continuation.
+Agent completion alone never marks a Todo `done`. When every linked agent is terminal, the Todo becomes `blocked` for independent verification. A user must explicitly resume it before recording completion.
 
 ## Remaining exit criteria
 
-1. Design and implement explicit task-agent link records with fail-closed recovery and immutable session/project ownership, or document why orchestrated IDs alone suffice.
-2. End-to-end Pi crash/restart tests of the new command and link behavior, including multiple live processes.
-3. Independent security review and final test execution on Linux, Windows and macOS.
-
-No CI or tests were launched for this unattached commit.
+The authenticated, provider-backed Pi interruption/restart journey must pass on the exact published candidate across Linux, Windows, and macOS, and its event artifacts must be reviewed. The package verifier proves real-Pi read projection and restart/session isolation without a model; it does not prove the authenticated launch-and-resume journey.

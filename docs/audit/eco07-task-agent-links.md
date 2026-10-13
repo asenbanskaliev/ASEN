@@ -1,7 +1,9 @@
 # ECO-07 explicit link journal
 
-TaskAgentLinkStore is a separate, private, versioned, append-only correlation journal. It does not control execution, modify Todos or grant permission. Agent IDs have immutable owner bindings; conflicting reuse fails closed. A link may be created only by a future trusted coordination path after verifying that both the Todo and agent belong to the same active session/project.
+`TaskAgentLinkStore` is a private, versioned, append-only correlation journal. Agent IDs have immutable task/session/project ownership. Conflicting reuse, malformed data, and cross-session/project reads fail closed. The link does not authorize execution.
 
-Do not expose bind directly to Pi or infer links from agent prompts. The current read-only Pi command remains unchanged until a trusted creation and reconciliation flow is implemented.
+The production Pi launch path uses `TrustedTaskAgentBinder.launch`. It verifies the already-persisted Todo and queued agent, writes the link while the Todo store lock is held, records the Todo as running, and only then invokes the dispatch closure for that exact agent request. The binding path is not exposed as a Pi tool.
 
-Pending: secure end-to-end binding after durable agent enqueue, crash-gap reconciliation, independent verification of ownership, multi-process tests, integration into TaskAgentCoordinator, and full tests. Commits are unattached to the PR branch to honor the request not to trigger CI.
+If link persistence fails, the queued agent is canceled before dispatch. If Pi aborts during binding, the agent is canceled and a newly claimed Todo becomes blocked. A crash never triggers automatic replay. When all linked agents finish, the Todo becomes blocked for independent verification and is never automatically marked done.
+
+The remaining ECO-07 gate is the authenticated, exact-candidate Pi interruption/restart experiment and review of its Linux, Windows, and macOS artifacts. Unit and packaged Pi RPC tests do not replace that experiment.

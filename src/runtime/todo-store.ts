@@ -60,6 +60,36 @@ export class SessionTodoStore{
   if(!identity(taskId)||!identity(context.sessionId)||!identity(context.projectId)||!Number.isSafeInteger(expectedRevision)||expectedRevision<1)throw new Error("Invalid ASEN Todo update");let updated:TodoItem|undefined;
   await this.#mutate(data=>{validateContext?.();const item=data.items.find(x=>x.taskId===taskId&&x.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(x.events.at(-1)!.projectId,context.projectId));if(!item)throw new Error("Todo task is unavailable to this session or project");const current=replayTask(item.events);if(!current||current.revision!==expectedRevision)throw new Error("Todo revision conflict");const event:TaskEvent={taskId,sessionId:context.sessionId,projectId:current.projectId,revision:expectedRevision+1,state,at:this.now(),...(reason?{reason}:{})};const next=applyTaskEvent(current,event);item.events.push(next);updated=structuredClone(item);},signal);return updated!;
  }
+ /** Serialize an agent launch claim with Todo updates. `launch` runs synchronously
+  * after the durable running event and before the Todo lock is released. */
+ async withAgentLaunch(taskId:string,context:TodoContext,prepare:()=>Promise<void>,launch:()=>void):Promise<void>{
+  if(!identity(taskId)||!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN agent launch identity");
+  await preparePrivateFile(this.path,true);
+  await withExclusiveFileLock(this.path,async()=>{
+   const data=await read(this.path),item=data.items.find(x=>x.taskId===taskId&&x.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(x.events.at(-1)!.projectId,context.projectId));
+   if(!item)throw new Error("Todo task is unavailable to this session or project");
+   const current=replayTask(item.events);
+   if(!current||!(current.state==="planned"||current.state==="running"))throw new Error("Todo must remain active before agent launch");
+   await prepare();
+   const transitionedToRunning=current.state==="planned";
+   if(transitionedToRunning){
+    const event:TaskEvent={taskId,sessionId:context.sessionId,projectId:current.projectId,revision:current.revision+1,state:"running",at:this.now(),reason:"Agent launch claimed before dispatch"};
+    item.events.push(applyTaskEvent(current,event));
+    if(data.items.reduce((total,candidate)=>total+candidate.events.length,0)>MAX_EVENTS)throw new Error("ASEN Todo store has reached its history limit");
+    const next=parseTodoFile(JSON.stringify({...data,revision:data.revision+1}));
+    await write(this.path,next);
+   }
+   try{launch();}catch(error){
+    if(transitionedToRunning){
+     const running=item.events.at(-1)!;
+     const blocked:TaskEvent={taskId,sessionId:context.sessionId,projectId:running.projectId,revision:running.revision+1,state:"blocked",at:this.now(),reason:"Agent launch was interrupted before dispatch"};
+     item.events.push(applyTaskEvent(running,blocked));
+     try{await write(this.path,parseTodoFile(JSON.stringify({...data,revision:data.revision+2})));}catch{/* Startup recovery will fail closed if the launch claim cannot be reconciled. */}
+    }
+    throw error;
+   }
+  },30000);
+ }
  async list(context:TodoContext):Promise<readonly (TodoItem&{current:TaskEvent})[]>{if(!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN Todo session");const data=await read(this.path);return data.items.flatMap(item=>{const current=replayTask(item.events);return current&&current.sessionId===context.sessionId&&sameWorkspaceIdentityPath(current.projectId,context.projectId)?[{...structuredClone(item),current}]:[];});}
  async history(taskId:string,context:TodoContext):Promise<readonly TaskEvent[]>{const data=await read(this.path),item=data.items.find(x=>x.taskId===taskId&&x.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(x.events.at(-1)!.projectId,context.projectId));return item?item.events.map(event=>structuredClone(event)):[];}
  async recover(context:TodoContext,reason:"restart"|"shutdown"="restart"):Promise<void>{if(!identity(context.sessionId)||!identity(context.projectId)||!(reason==="restart"||reason==="shutdown"))throw new Error("Invalid ASEN Todo recovery session");await this.#mutate(data=>{for(const item of data.items){const current=replayTask(item.events);if(current?.state!=="running"||current.sessionId!==context.sessionId||!sameWorkspaceIdentityPath(current.projectId,context.projectId))continue;const blocked:TaskEvent={taskId:item.taskId,sessionId:current.sessionId,projectId:current.projectId,revision:current.revision+1,state:"blocked",at:this.now(),reason:reason==="shutdown"?"Pi session ended while this task was running; explicit review is required before continuing":"ASEN restarted while this task was running; explicit review is required before continuing"};item.events.push(applyTaskEvent(current,blocked));}});}
