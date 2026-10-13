@@ -69,8 +69,9 @@ test("Pi launch persists Todo-agent ownership before dispatch and blocks for ind
  const state=host();let runs=0;
  const runner:AgentRunner={run:async request=>{runs++;return{id:request.id,ok:true,output:"agent result"};}};
  createPiExtension({homeDir:()=>home,agentRunner:runner})(state.pi as any);await state.events.get("session_start")![0]!({},state.context());
- const todo=await state.tools.get("asen_todo_add").execute("todo-add",{title:"Verify the implementation"},new AbortController().signal,()=>{},state.context());
- const start=await state.tools.get("asen_agent_start").execute("agent-start",{prompt:"Inspect only",todoId:todo.details.taskId},new AbortController().signal,()=>{},state.context());
+ const todo=await state.tools.get("asen_todo_add").execute("todo-add",{title:"Verify the implementation",description:"Inspect the exact change and report test evidence"},new AbortController().signal,()=>{},state.context());
+ await assert.rejects(()=>state.tools.get("asen_agent_start").execute("wrong-instruction",{prompt:"Inspect another task",todoId:todo.details.taskId},new AbortController().signal,()=>{},state.context()),/exact persisted task instruction/);assert.equal(runs,0);
+ const start=await state.tools.get("asen_agent_start").execute("agent-start",{prompt:"Inspect the exact change and report test evidence",todoId:todo.details.taskId},new AbortController().signal,()=>{},state.context());
  const id=start.details.id;
  let row:any,deadline=Date.now()+3000;while(Date.now()<deadline){row=(await state.tools.get("asen_todo_list").execute("todo-list",{},new AbortController().signal,()=>{},state.context())).details[0];if(row?.current.state==="blocked")break;await new Promise(resolve=>setTimeout(resolve,5));}
  assert.equal(runs,1);assert.equal(row?.current.state,"blocked");assert.match(row?.current.reason??"",/independent verification/u);

@@ -1,6 +1,7 @@
 import path from "node:path";
 import {deriveOddFacts,planOddRoute,type OddRoutingRequest} from "../flow/odd-routing.js";
 import {buildOrchestrationPlan} from "../orchestration/orchestrator.js";
+import {materializeExecutablePlan} from "../orchestration/executable-plan.js";
 
 const INPUT_KEYS=["taskIdentity","intent","scope","writes","riskOperations","session","testing","review","unresolvedDecisions"] as const;
 const PLAN_INPUT_KEYS=["instruction",...INPUT_KEYS] as const;
@@ -37,6 +38,7 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
  const {instruction,...factsInput}=value;
  const facts=deriveOddFacts({...factsInput,repositoryIdentity} as unknown as OddRoutingRequest),decision=planOddRoute(facts);
  const plan=buildOrchestrationPlan({taskId:decision.taskIdentity,repository:decision.repositoryIdentity,prompt:instruction},decision);
+ const executablePlan=materializeExecutablePlan(plan,instruction);
  const sensitive=facts.riskOperations.length>0;
  return JSON.stringify({
   task:decision.taskIdentity,
@@ -47,6 +49,7 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
   requiredAgentRoles:plan.agents.map(agent=>agent.role),
   selectedSkills:plan.skills,
   delegatedAgents:plan.agents.map(agent=>({id:agent.id,role:agent.role,phase:agent.expectedPhase??null,skillPaths:agent.skillPaths??[],model:agent.model??null,thinking:agent.thinking??null})),
+  executablePlan,
   requiresSingleWriter:decision.requiresSingleWriter,
   requiresIsolatedChild:decision.requiresIsolatedChild,
   sensitiveOperationsPresent:sensitive,

@@ -30,6 +30,18 @@ test("Todo creation retries are idempotent across concurrent clients and restart
  assert.equal((await reopened.list(other)).length,0);
 });
 
+test("dependency-aware plan tasks persist across restart and cannot run before prerequisites are done",async t=>{
+ const file=await fixture(t),store=await SessionTodoStore.open(file),prerequisite=await store.add("Inspect evidence",one,undefined,undefined,"plan:inspect",[],"Collect exact evidence and report findings"),dependent=await store.add("Review evidence",one,undefined,undefined,"plan:review",[prerequisite.taskId],"Review the collected evidence");
+ assert.deepEqual(dependent.dependsOn,[prerequisite.taskId]);
+ await assert.rejects(()=>store.update(dependent.taskId,one,1,"running"),/dependencies must be verified done/);
+ await store.update(prerequisite.taskId,one,1,"running");await store.update(prerequisite.taskId,one,2,"done","inspection acceptance criteria passed");
+ const reopened=await SessionTodoStore.open(file),persisted=(await reopened.list(one)).find(item=>item.taskId===dependent.taskId)!;
+ assert.deepEqual(persisted.dependsOn,[prerequisite.taskId]);assert.equal(persisted.description,"Review the collected evidence");await reopened.update(dependent.taskId,one,1,"running");
+ assert.equal((await reopened.list(one)).find(item=>item.taskId===dependent.taskId)?.current.state,"running");
+ await assert.rejects(()=>reopened.add("Wrong owner",other,undefined,undefined,"plan:foreign",[prerequisite.taskId]),/current session and project/);
+ await assert.rejects(()=>reopened.add("Wrong dependency",one,undefined,undefined,"plan:conflict",["missing"]),/current session and project/);
+});
+
 test("running Todo work becomes blocked after restart and is never resumed automatically",async t=>{
  const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Validate deployment",one);await store.update(todo.taskId,one,1,"running");
  const reopened=await SessionTodoStore.open(file);await reopened.recover(one);const current=(await reopened.list(one))[0]!.current;assert.equal(current.state,"blocked");assert.match(current.reason!,/restarted.*explicit review/i);assert.equal(current.revision,3);assert.equal((await reopened.history(todo.taskId,one)).at(-1)?.state,"blocked");

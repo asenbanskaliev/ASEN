@@ -1,0 +1,56 @@
+import type {OrchestrationPlan} from "./orchestrator.js";
+
+export type PlannedTaskRole="primary"|"explorer"|"worker"|"reviewer"|"verifier"|"clarifier";
+export interface PlannedTask {
+ readonly id:string;
+ readonly role:PlannedTaskRole;
+ readonly title:string;
+ readonly instruction:string;
+ readonly dependsOn:readonly string[];
+ readonly skills:readonly string[];
+ readonly status:"ready"|"waiting"|"clarification_required";
+ readonly execution:"not_started";
+ readonly authorization:"required_before_dispatch";
+}
+export interface ExecutablePlan {
+ readonly taskId:string;
+ readonly repository:string;
+ readonly route:OrchestrationPlan["decision"]["route"];
+ readonly tasks:readonly PlannedTask[];
+ readonly topologicalOrder:readonly string[];
+ readonly execution:"not_started";
+ readonly authorization:"required_before_dispatch";
+}
+
+/** Materializes the existing ODD route and selected roles as an ordered, inspectable task DAG.
+ * This is a plan only: it never grants permissions or starts an agent. */
+export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:string):ExecutablePlan{
+ const decision=plan.decision,taskId=decision.taskIdentity;
+ if(!taskId||!decision.repositoryIdentity||typeof instruction!=="string"||!instruction.trim()||instruction!==instruction.trim()||instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(instruction))throw new Error("Executable plan identity or instruction is invalid");
+ const tasks:PlannedTask[]=[];
+ const add=(role:PlannedTaskRole,title:string,text:string,dependsOn:string[],skills:readonly string[],status:PlannedTask["status"]="waiting")=>{
+  const id=`${taskId}:${role}`;
+  tasks.push(Object.freeze({id,role,title,instruction:text,dependsOn:Object.freeze(dependsOn),skills:Object.freeze([...skills]),status,execution:"not_started",authorization:"required_before_dispatch"}));
+  return id;
+ };
+ if(decision.route==="plan"){
+  add("clarifier","Resolve missing or high-risk facts",`Clarify the task before selecting or dispatching capabilities. Original instruction: ${instruction}`,[],plan.skills,"clarification_required");
+ }else if(plan.agents.length===0){
+  add("primary","Carry out the bounded primary-session task",instruction,[],plan.skills,"ready");
+ }else{
+  const byRole=new Map(plan.agents.map(agent=>[agent.role,agent]));
+  const ids=new Map<string,string>();
+  for(const role of ["explorer","worker","reviewer","verifier"] as const){
+   const agent=byRole.get(role);if(!agent)continue;
+   const dependencies=role==="worker"?[ids.get("explorer")].filter((id):id is string=>!!id):role==="reviewer"?[ids.get("worker")].filter((id):id is string=>!!id):role==="verifier"?[ids.get("worker"),ids.get("reviewer")].filter((id):id is string=>!!id):[];
+   const text=role==="explorer"?`Inspect the repository and report relevant evidence for: ${instruction}`:role==="worker"?`Perform only the authorized, scoped work for: ${instruction}`:role==="reviewer"?`Review the resulting work against the original acceptance criteria: ${instruction}`:`Independently verify the result and acceptance criteria for: ${instruction}`;
+   ids.set(role,add(role,`${role[0]!.toUpperCase()}${role.slice(1)} task`,text,dependencies,agent.skillPaths??[],dependencies.length?"waiting":"ready"));
+  }
+ }
+ const byId=new Map(tasks.map(item=>[item.id,item]));
+ if(byId.size!==tasks.length||tasks.some(item=>item.dependsOn.some(id=>!byId.has(id)||id===item.id)))throw new Error("Executable plan contains invalid task dependencies");
+ const visited=new Set<string>(),visiting=new Set<string>(),order:string[]=[];
+ const visit=(id:string)=>{if(visiting.has(id))throw new Error("Executable plan dependency cycle");if(visited.has(id))return;visiting.add(id);for(const dependency of byId.get(id)!.dependsOn)visit(dependency);visiting.delete(id);visited.add(id);order.push(id);};
+ for(const item of tasks)visit(item.id);
+ return Object.freeze({taskId,repository:decision.repositoryIdentity,route:decision.route,tasks:Object.freeze(tasks),topologicalOrder:Object.freeze(order),execution:"not_started",authorization:"required_before_dispatch"});
+}

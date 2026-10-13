@@ -37,6 +37,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
    if(typeof todoId!=="string"||!todoId.trim()||!todoLink)throw new Error("Todo binding is unavailable");
    const task=(await (await todoLink.todos()).list(session)).find(item=>item.taskId===todoId);
    if(!task||task.current.state==="done"||task.current.state==="cancelled"||task.current.state==="blocked")throw new Error("Todo must be an active, owned task before agent launch");
+   if(task.description&&prompt!==task.description)throw new Error("A planned Todo agent must receive the exact persisted task instruction");
   }
   throwIfCancelled(signal);
   const active=await runtime(),taskId=await active.startExplorer({prompt,session,...(typeof todoId==="string"?{onQueued:async(agentId:string,dispatch:()=>void)=>{await (await todoLink!.binder()).launch(todoId,agentId,session,dispatch);}}:{})},signal);

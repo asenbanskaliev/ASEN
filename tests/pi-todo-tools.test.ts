@@ -23,6 +23,19 @@ test("resuming a restart-blocked Todo requires explicit active Pi UI approval",a
  assert.equal((await store.list(session))[0]?.current.state,"running");assert.equal((await store.history(todo.taskId,session)).at(-1)?.reason,"User confirmed blocked-task resume in Pi UI");assert.equal(questions.length,2);assert.match(questions[1]!,/Continue implementation[\s\S]*ASEN restarted.*explicit review/);assert.ok(result);
 });
 
+test("a planned DAG node cannot become done without a verification summary and explicit Pi confirmation",async t=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-plan-verify-")));t.after(()=>rm(root,{recursive:true,force:true}));
+ const session={sessionId:"plan-verify-session",projectId:root},store=await SessionTodoStore.open(path.join(root,"todos.json")),task=await store.add("Verify implementation",session,undefined,undefined,"asen-plan:plan:verify",[],"Check test evidence and acceptance criteria");
+ await store.update(task.taskId,session,1,"running");const tools=new Map<string,any>();registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>store);
+ const execute=tools.get("asen_todo_update")!.execute,params={id:task.taskId,revision:2,state:"done",reason:"Typecheck and targeted tests passed; inspected the changed behavior."},host={cwd:root,sessionManager:{getSessionId:()=>session.sessionId}};
+ await assert.rejects(()=>execute("no-ui",params,undefined,undefined,host),/Explicit Pi verification confirmation/);
+ await assert.rejects(()=>execute("no-summary",{...params,reason:" "},undefined,undefined,{...host,hasUI:true,ui:{confirm:async()=>true}}),/verification summary/);
+ let question="";await assert.rejects(()=>execute("rejected",params,undefined,undefined,{...host,hasUI:true,ui:{confirm:async(title:string,message:string)=>{question=`${title}\n${message}`;return false;}}}),/Explicit Pi verification confirmation/);
+ assert.match(question,/acceptance criteria pass/);assert.equal((await store.list(session))[0]?.current.state,"running");
+ await execute("accepted",params,undefined,undefined,{...host,hasUI:true,ui:{confirm:async()=>true}});
+ const current=(await store.list(session))[0]!.current;assert.equal(current.state,"done");assert.match(current.reason!,/Pi user independently verified/);
+});
+
 test("ECO-07 restart recovery preserves one ordered task transition chain through completion",async t=>{
  const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-todo-full-recovery-")));t.after(()=>rm(root,{recursive:true,force:true}));
  const file=path.join(root,"todos.json"),session={sessionId:"recovery-session",projectId:root},initial=await SessionTodoStore.open(file),todo=await initial.add("Finish the approved remaining step",session,undefined,undefined,"recovery-request");

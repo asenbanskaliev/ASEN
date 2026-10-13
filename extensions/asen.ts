@@ -139,7 +139,26 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   registerData("asen-status",{description:"Show bounded local ASEN status",handler:()=>dependencies.status?statusLines(dependencies.status()):["ASEN status unavailable: no local status provider configured."]});
   registerData("asen-doctor",{description:"Check local ASEN invariants",handler:()=>{if(!dependencies.doctor)return {exitCode:1,checks:[],message:"ASEN doctor unavailable: no local diagnostics provider configured."};const checks=doctorChecks(dependencies.doctor());return {exitCode:doctorExitCode(checks),checks};}});
   registerData("asen-route",{description:"Preview a route from exact user-supplied ODD facts; does not execute agents",handler:async(args:string|undefined,ctx:CommandContext)=>{if(!ctx.sessionManager?.getSessionId?.())throw new Error("ASEN route preview requires the active Pi session");let project:string;try{project=await realpath(ctx.cwd);}catch{throw new Error("ASEN route preview requires an existing active project");}return routePreviewCommand(args??"",project);}});
-  registerData("asen-plan",{description:"Build a bounded plan from a user instruction and exact ODD facts; does not retrieve, review, authorize or execute",handler:async(args:string|undefined,ctx:CommandContext)=>{if(!ctx.sessionManager?.getSessionId?.())throw new Error("ASEN planning requires the active Pi session");let project:string;try{project=await realpath(ctx.cwd);}catch{throw new Error("ASEN planning requires an existing active project");}return controlledInstructionPlanCommand(args??"",project);}});
+  registerData("asen-plan",{description:"Build and persist a dependency-aware Todo plan from exact ODD facts; no agent is dispatched",handler:async(args:string|undefined,ctx:CommandContext)=>{
+   if(!ctx.sessionManager?.getSessionId?.())throw new Error("ASEN planning requires the active Pi session");
+   let project:string;try{project=await realpath(ctx.cwd);}catch{throw new Error("ASEN planning requires an existing active project");}
+   const output=JSON.parse(controlledInstructionPlanCommand(args??"",project)) as Record<string,any>;
+   if(!output.executablePlan)return JSON.stringify(output,null,2);
+   if(!todoStorePromise){output.persistence={status:"unavailable",reason:"Todo store is not configured; this graph was not saved or made runnable"};output.execution={started:false,authorized:false};output.notice="Plan only. The Todo store is unavailable, so no task records were persisted. No agent was dispatched and no permission was granted.";return JSON.stringify(output,null,2);}
+   const store=await todoStorePromise,identity=await sessionIdentity(ctx),todoIds=new Map<string,string>();
+   for(const taskId of output.executablePlan.topologicalOrder as string[]){
+    const task=(output.executablePlan.tasks as Array<{id:string;title:string;instruction:string;dependsOn:string[]}>).find(item=>item.id===taskId);
+    if(!task)throw new Error("ASEN executable plan order references an unknown task");
+    const dependencies=task.dependsOn.map(id=>{const todoId=todoIds.get(id);if(!todoId)throw new Error("ASEN executable plan dependency order is invalid");return todoId;});
+    const item=await store.add(task.title,identity,undefined,undefined,`asen-plan:${task.id}`,dependencies,task.instruction);
+    todoIds.set(task.id,item.taskId);
+   }
+   output.persistedTasks=(output.executablePlan.tasks as Array<{id:string;dependsOn:string[]}>).map(task=>({planTaskId:task.id,todoId:todoIds.get(task.id),dependsOn:task.dependsOn.map(id=>todoIds.get(id))}));
+   output.persistence={status:"saved",sessionId:identity.sessionId,projectId:identity.projectId};
+   output.execution={started:false,authorized:false};
+   output.notice="Executable task DAG persisted to this Pi session Todo store. Dependencies are enforced before a task may run. No agent was dispatched and no permission was granted.";
+   return JSON.stringify(output,null,2);
+  }});
   registerData("asen-agents",{description:"Show attributed ASEN agent lifecycle",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(agentRuntimePromise){const rows=await (await agentRuntimePromise).list(await sessionIdentity(ctx));return agentStatusRows(rows);}return dependencies.agents?agentStatusRows(dependencies.agents()):["ASEN agents unavailable: no local agent provider configured."];}});
   registerData("asen-changes",{description:"Show current-session attributed changes and possible same-path actor conflicts",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(workspaceStorePromise){const rows=await (await workspaceStorePromise).list(await sessionIdentity(ctx)),changes=rows.map(row=>row.change),conflicts=findPotentialWorkspaceConflicts(changes);return [...(conflicts.length?["Potential conflicts require review; no content comparison, winner selection, or automatic resolution is performed.",...visibleWorkspaceConflictRows(conflicts)]:[]),...visibleWorkspaceRows(changes)];}return dependencies.changes?visibleWorkspaceRows(dependencies.changes()):["ASEN workspace changes unavailable: no local change provider configured."];}});
   registerData("asen-todos",{description:"Show Todo task states for the current Pi session and project",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(!todoStorePromise)return ["ASEN Todo tasks unavailable: no local Todo store configured."];const rows=await (await todoStorePromise).list(await sessionIdentity(ctx));return todoStatusRows(rows);}});

@@ -23,3 +23,10 @@ test("ECO-07 binder rejects unowned agents and foreign Todos without writing lin
  assert.equal((await links.list(own)).length,1);
  assert.equal((await todos.list(own))[0]?.current.state,"running");
 });
+test("ECO-06 plan dependency gates remain enforced inside the ECO-07 launch lock",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-plan-binder-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const own={sessionId:"session-a",projectId:"/project"},todos=await SessionTodoStore.open(join(dir,"todos.json")),pre=await todos.add("Prerequisite",own),task=await todos.add("Dependent",own,undefined,undefined,"asen-plan:child",[pre.taskId],"Do dependent work");
+ const links=new TaskAgentLinkStore(join(dir,"links.json")),agent={record:{id:"agent-child",sessionId:own.sessionId,projectId:own.projectId}},runtime={query:async()=>agent},binder=new TrustedTaskAgentBinder(todos,runtime as never,links);
+ let dispatches=0;await assert.rejects(()=>binder.launch(task.taskId,"agent-child",own,()=>{dispatches++;}),/dependencies must be verified done/);
+ assert.equal(dispatches,0);assert.deepEqual(await links.list(own),[]);assert.equal((await todos.list(own)).find(item=>item.taskId===task.taskId)?.current.state,"planned");
+});
