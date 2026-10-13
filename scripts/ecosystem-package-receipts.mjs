@@ -20,7 +20,7 @@ export function admitPackageJourneyResult(result){
  assert.equal(journey.sessionRestartVerified,true);assert.equal(journey.crossSessionProjectionVerified,true);
  assert.equal(journey.naturalProcessExits,3);
  assert.equal(journey.publicHost?.mode,"rpc");assert.equal(typeof journey.publicHost?.hasUI,"boolean");
- assert.equal(journey.publicHost?.canonicalCommands,11);assert.equal(journey.publicHost?.canonicalTools,13);
+ assert.equal(journey.publicHost?.canonicalCommands,11);assert.equal(journey.publicHost?.canonicalTools,16);
  assert.equal(journey.publicHost?.toolsEnabled,true);
  assert.equal(pack.packedInstallVerified,true);assert.equal(pack.publicExports,28);
  assert.ok(Number.isInteger(pack.files)&&pack.files>0);assert.match(pack.integrity??"",/^sha512-[A-Za-z0-9+/]{86}==$/);
