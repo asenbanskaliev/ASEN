@@ -9,8 +9,32 @@ import {createPiVerifierEnvironment} from "./gsp06-pi-free-environment.mjs";
 import {prepareDarwinPtyHelper} from "./pi-matrix-pty-helper.mjs";
 import {cleanupMatrixWorkspace} from "./pi-matrix-cleanup.mjs";
 
-export function planPiSupportMatrix(){
- return ["linux","win32","darwin"].flatMap(platform=>["0.85.1","1.1.0"].flatMap(version=>
+const piPackageName="@earendil-works/pi-coding-agent";
+const packageMetadata=()=>JSON.parse(readFileSync(new URL("../package.json",import.meta.url),"utf8"));
+
+function compareVersions(left,right){
+ const a=left.split(".").map(Number),b=right.split(".").map(Number);
+ for(let i=0;i<3;i++)if(a[i]!==b[i])return a[i]-b[i];
+ return 0;
+}
+
+export function piVersionAnchors(metadata=packageMetadata()){
+ const peerRange=metadata?.peerDependencies?.[piPackageName];
+ const developmentRange=metadata?.devDependencies?.[piPackageName];
+ const peerMatch=typeof peerRange==="string"&&/^>=(\d+\.\d+\.\d+) <(\d+\.\d+\.\d+)$/.exec(peerRange);
+ const developmentMatch=typeof developmentRange==="string"&&/^\^(\d+\.\d+\.\d+)$/.exec(developmentRange);
+ assert.ok(peerMatch,"Pi peer dependency must use an exact minimum and exclusive maximum");
+ assert.ok(developmentMatch,"Pi development dependency must use a caret-pinned exact version");
+ const minimum=peerMatch[1],maximum=peerMatch[2],development=developmentMatch[1];
+ assert.ok(compareVersions(minimum,maximum)<0,"Pi peer dependency range must be non-empty");
+ assert.ok(compareVersions(development,minimum)>=0&&compareVersions(development,maximum)<0,
+  "Pi development version must lie inside the declared peer dependency range");
+ return [...new Set([minimum,development])];
+}
+
+export function planPiSupportMatrix(metadata){
+ const versions=piVersionAnchors(metadata);
+ return ["linux","win32","darwin"].flatMap(platform=>versions.flatMap(version=>
   ["tui","rpc","json","print"].map(mode=>({platform,version,mode,id:`${platform}-${version}-${mode}`}))));
 }
 
