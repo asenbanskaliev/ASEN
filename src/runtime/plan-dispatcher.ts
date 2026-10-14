@@ -21,6 +21,11 @@ function sameSkillSelection(left:SkillSelectionContext,right:SkillSelectionConte
  return skillSelectionKeys.every(key=>left[key]===right[key]);
 }
 
+/** Fail closed if any persisted task field changed while the user reviewed the authorization. */
+export function sameApprovedTaskSnapshot(before:TodoItem,after:TodoItem|undefined):boolean{
+ return !!after&&after.current.state==="planned"&&JSON.stringify(after)===JSON.stringify(before);
+}
+
 type PlanDispatchTask={id:string;title:string;role:string;instruction:string;writeSurfaces?:readonly string[];candidateRevision?:string};
 type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>};
 type DispatchResult={status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string};
@@ -84,7 +89,7 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
   if(!approved)return {status:"blocked",reason:"Pi user declined the exact scoped write authorization; the plan was not changed."};
   await input.validateIdentity();
   const fresh=(await input.todos.list(context)).find(row=>row.taskId===task.taskId);
-  if(!fresh||fresh.current.state!=="planned"||JSON.stringify(fresh)!==JSON.stringify(task))return {status:"blocked",reason:"The plan task changed while awaiting authorization; refresh the plan before dispatch."};
+  if(!sameApprovedTaskSnapshot(task,fresh))return {status:"blocked",reason:"The plan task changed while awaiting authorization; refresh the plan before dispatch."};
   let head:string;try{head=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The project stopped being a readable Git candidate; no writer was launched."};}
   if(head!==prepared.candidate.revision)return {status:"blocked",reason:"The project changed while awaiting authorization; rebuild the plan against the current candidate."};
   await input.validateIdentity();
