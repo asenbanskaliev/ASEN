@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 11519)
-Total output lines: 389
-
 import {RegistryLifecycle,registryStartupDisabled,type RegistryLifecycleOptions} from "../src/skills/registry-lifecycle.js";
 import {access,lstat,readFile,realpath} from "node:fs/promises";
 import {W_OK,X_OK} from "node:constants";
@@ -185,7 +182,39 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    let identity:{sessionId:string;projectId:string}|undefined;const todos=todoStorePromise?await todoStorePromise:undefined;
    if(todos){try{identity=await sessionIdentity(ctx);await todos.recover(identity);}catch{ctx.ui.notify("ASEN no pudo recuperar el estado de las tareas; no ha repetido ninguna.","error");}if(todos.diagnostics())ctx.ui.notify("ASEN aisló un archivo de tareas dañado; no inició ninguna tarea guardada.","error");if(identity){const interrupted=(await todos.list(identity)).filter(item=>item.current.state==="blocked"&&/restarted|session ended|interrupted/iu.test(item.current.reason??""));if(interrupted.length)ctx.ui.notify(todoProgressSummary(interrupted),"info");}}
    if(workspaceStorePromise){const store=await workspaceStorePromise;if(store.diagnostics())ctx.ui.notify("ASEN detectó y aisló datos de atribución dañados.","error");}
-   if(agentRuntimePromise){cons…1519 tokens truncated…&context.cwd===cwd){
+   if(agentRuntimePromise){const runtime=await agentRuntimePromise;identity??=await sessionIdentity(ctx);agentDeliveryContext=ctx;agentDeliveryIdentity=identity;
+    if(!unsubscribeAgentDelivery)unsubscribeAgentDelivery=runtime.subscribeTerminal(record=>{
+     const current=agentDeliveryContext,active=agentDeliveryIdentity;if(!current||!active||record.sessionId!==active.sessionId||record.projectId!==active.projectId||current.sessionManager?.getSessionId?.()!==active.sessionId)return;
+     const roleLabels:Record<string,string>={primary:"la tarea",explorer:"la exploración",worker:"el cambio",reviewer:"la revisión",verifier:"la verificación",clarifier:"la aclaración"};
+     const completed=record.state==="completed",failed=record.state==="failed";current.ui.notify(completed?`ASEN terminó ${roleLabels[record.role]??"una tarea"}; comprobará el resultado antes de cerrar el plan.`:failed?`ASEN no pudo completar ${roleLabels[record.role]??"una tarea"}. Revisa el estado antes de continuar.`:`ASEN pausó ${roleLabels[record.role]??"una tarea"}. Revisa el estado antes de continuar.`,completed?"info":"error");
+     if(todoStorePromise&&taskAgentLinks)void Promise.all([todoStorePromise,agentRuntimePromise]).then(async([store,agents])=>{await new TaskAgentTodoReconciler(store,agents!,taskAgentLinks).reconcile({sessionId:record.sessionId,projectId:record.projectId});const latest=agentDeliveryContext,currentIdentity=agentDeliveryIdentity;if(latest&&currentIdentity&&record.sessionId===currentIdentity.sessionId&&record.projectId===currentIdentity.projectId&&latest.sessionManager?.getSessionId?.()===currentIdentity.sessionId){await advancePlan(latest);const rows=await store.list(currentIdentity);if(rows.length)latest.ui.notify(todoProgressSummary(rows),"info");else{const archived=await store.archived(currentIdentity);if(archived.length)latest.ui.notify(todoProgressSummary(archived),"info");}}}).catch(()=>{});
+    });
+    const records=await runtime.list(identity),recoverable=records.filter(record=>record.state==="queued"||record.state==="interrupted");if(runtime.quarantined)ctx.ui.notify("ASEN aisló datos de agentes dañados; no inició tareas guardadas.","error");if(recoverable.length)ctx.ui.notify(`Hay ${recoverable.length} tarea(s) de agente pausada(s). Revisa /asen-agents y /asen-todos antes de pedir que ASEN continúe.`,"info");
+    try{await advancePlan(ctx);}catch{ctx.ui.notify("ASEN no pudo avanzar el plan automáticamente. Revisa /asen-todos antes de continuar.","error");}
+   }
+   try{await incrementUsageFile(usageFile,"sessions");}catch{try{ctx.ui.notify("ASEN no pudo guardar el uso local.","error");}catch{/* Notification is best-effort when the UI is unavailable. */}}
+  };
+  if(!dependencies.deferSessionStart)pi.on?.("session_start",async(_event,ctx)=>startSession(ctx));
+  pi.on?.("session_shutdown",async(_event,ctx)=>{agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue when the UI is unavailable. */}}if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}try{finishActiveMemory();}catch(error){try{ctx?.ui?.notify(`ASEN no pudo cerrar la sesión de memoria: ${safeErrorMessage(error)}`,"error");}catch{/* Shutdown continues after best-effort memory finalization. */}}if(memoryStorePromise)try{(await memoryStorePromise).close();}catch{/* Shutdown continues after best-effort memory close. */}await lifecycle.shutdown();});
+  pi.on?.("input",async(event,ctx)=>{
+   const text=typeof event?.text==="string"?event.text:"",sessionId=ctx.sessionManager?.getSessionId?.();
+   if(event?.source!=="interactive"&&event?.source!=="rpc")return;
+   if(text.startsWith("/")){try{await incrementUsageFile(usageFile,"commands");}catch{try{ctx.ui.notify("ASEN local usage could not be saved.","error");}catch{/* Notification is best-effort when the UI is unavailable. */}}return;}
+   if(!sessionId)return;
+   try{await recordHistoryInput({storePath:historyFile,projectId:await canonical(ctx.cwd),sessionId,hasUI:ctx.hasUI===true},text);}
+   catch{try{ctx.ui.notify("ASEN private history could not be saved; your input was not changed.","error");}catch{/* Notification is best-effort when the UI is unavailable. */}}
+  });
+  pi.on?.("turn_start",async()=>{try{await incrementUsageFile(usageFile,"agentRuns");}catch{/* Usage accounting must not interrupt the host turn. */}});
+  registerInteractionTools(pi,dependencies.interactionTimeoutMs);
+  if(pi.registerTool)registerCodeGraphTools({registerTool:pi.registerTool.bind(pi)},dependencies.codeIntelligence);
+  pi.on?.("before_agent_start",async(event,ctx)=>{
+   const options=(event as {systemPromptOptions?:{sections?:Record<string,string>}}|undefined)?.systemPromptOptions;
+   if(options?.sections){
+    addAsenRequestGuidance(options,!!pi.registerTool);
+    if(memoryStorePromise){options.sections[ASEN_MEMORY_GUIDANCE_SECTION]=ASEN_MEMORY_GUIDANCE;try{const binding=await currentMemoryBinding(ctx);const context=projectMemoryContext(binding,(event as {prompt?:string}).prompt??"",memoryFirstRequest,4096);memoryFirstRequest=false;if(context)options.sections.asen_project_memory_context=context;}catch{/* Missing or mismatched session identity never exposes stored context or blocks the requested turn. */}}
+    if(todoStorePromise)try{
+     const context=ctx as CommandContext,manager=context.sessionManager,cwd=context.cwd,identity=await sessionIdentity(context),rows=await (await todoStorePromise).list(identity);
+     if(context.sessionManager===manager&&manager?.getSessionId?.()===identity.sessionId&&context.cwd===cwd){
       const current=await sessionIdentity(context);
       if(current.sessionId===identity.sessionId&&current.projectId===identity.projectId){const planContext=formatActivePlanContext(rows);if(planContext)options.sections.asen_active_plan=planContext;}
      }
