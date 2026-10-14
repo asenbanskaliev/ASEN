@@ -161,8 +161,6 @@ try{
   await record("wrong-identity-rejected",{taskId:recovered.taskId,wrongSession:{visibleItems:0,mutationRejected:true},wrongProject:{visibleItems:0,mutationRejected:true},stateUnchanged:true});
 
   phase="explicit-resume-and-completion";
-  // The pinned Groq model has an 8k TPM window; let the initial real Pi turn age out before resuming.
-  await sleep(65_000);
   await second.send("prompt",{message:`Continue the recovered task now. This is an execution request: do not answer with a text-only summary. First call asen_todo_list and verify this exact task id ${JSON.stringify(recovered.taskId)} belongs to this session and project. Then call asen_todo_update with that task id, revision ${recovered.events.at(-1).revision}, and state running. Pi will ask the user for explicit resume confirmation; wait for that confirmation before doing any review work. After confirmation, call asen_eco07_read_pending_review for inspect-closure-audit and record it exactly once with a summary mentioning PARTIAL, real Pi, and interruption. Then call asen_eco07_read_pending_review for inspect-task-reducer and record it exactly once with a summary mentioning planned, running, blocked, session, and project. Follow the ordered pending checklist in this same Pi session. Finally update the same task to done using its latest revision. A text-only reply without the required tool calls is a failed task. Never create a second task and do not use approval, publishing, or merge actions.`});
 
   const finishDeadline=Date.now()+240_000;
