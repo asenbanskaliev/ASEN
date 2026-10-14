@@ -20,9 +20,9 @@ export interface AgentStoreFile{schema:typeof SCHEMA;revision:number;entries:Age
 const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
 const identifier=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<=1024&&v===v.trim()&&v===v.normalize("NFC")&&!/[\u0000-\u001f\u007f-\u009f]/u.test(v);
 function specFrom(request:AgentRequest,createdAt:string,controlledWorker=false):AgentTaskSpec{
- if(!identifier(request.id)||!identifier(request.repository)||!identifier(request.isolationKey??"default")||typeof request.prompt!=="string"||!request.prompt.trim()||request.prompt.length>MAX_PROMPT||/\u0000/u.test(request.prompt)||!(["explorer","worker","reviewer","verifier"] as unknown[]).includes(request.role))throw new Error("Invalid persistent agent request");
+ if(!identifier(request.id)||!identifier(request.repository)||!identifier(request.isolationKey??"default")||typeof request.prompt!=="string"||!request.prompt.trim()||request.prompt.length>MAX_PROMPT||/\u0000/u.test(request.prompt)||!(["clarifier","explorer","worker","reviewer","verifier"] as unknown[]).includes(request.role))throw new Error("Invalid persistent agent request");
  const safeControlledWorker=controlledWorker&&request.role==="worker"&&!!request.candidate&&Array.isArray(request.writeSurfaces)&&request.writeSurfaces.length>0&&!!request.writerAdmission&&!request.phaseGrant;
- if(!( ["explorer","reviewer","verifier"] as unknown[]).includes(request.role)&&!safeControlledWorker||request.writeSurfaces?.length&&!safeControlledWorker||request.candidate&&!safeControlledWorker||request.writerAdmission&&!safeControlledWorker||request.phaseGrant)throw new Error("Authority-bearing agent requests cannot be serialized; create a fresh authorized dispatch");
+ if(!(["clarifier","explorer","reviewer","verifier"] as unknown[]).includes(request.role)&&!safeControlledWorker||request.writeSurfaces?.length&&!safeControlledWorker||request.candidate&&!safeControlledWorker||request.writerAdmission&&!safeControlledWorker||request.phaseGrant)throw new Error("Authority-bearing agent requests cannot be serialized; create a fresh authorized dispatch");
  if(request.skillContext||request.skillPaths){
   const selected=request.skillContext&&isIssuedSkillContext(request.skillContext)?selectSkills(request.skillContext).map(skill=>skill.path):[];
   const requiredPhase=request.role==="worker"?"apply":{explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[request.role as "explorer"|"reviewer"|"verifier"];
@@ -36,8 +36,10 @@ function specFrom(request:AgentRequest,createdAt:string,controlledWorker=false):
 function specValue(v:unknown):v is AgentTaskSpec{
  if(!v||typeof v!=="object"||Array.isArray(v))return false;
  const keys=["id","role","prompt","repository","isolationKey","createdAt",...(Object.hasOwn(v,"ownerProcessId")?["ownerProcessId"]:[]),...(Object.hasOwn(v,"model")?["model"]:[]),...(Object.hasOwn(v,"thinking")?["thinking"]:[]),...(Object.hasOwn(v,"continuationOf")?["continuationOf"]:[])];
- if(!exact(v,keys))return false;const x=v as unknown as AgentTaskSpec;
- return identifier(x.id)&&(["explorer","worker","reviewer","verifier"] as unknown[]).includes(x.role)&&typeof x.prompt==="string"&&x.prompt.length>0&&x.prompt.length<=MAX_PROMPT&&!/[\u0000]/u.test(x.prompt)&&identifier(x.repository)&&identifier(x.isolationKey)&&typeof x.createdAt==="string"&&Number.isFinite(Date.parse(x.createdAt))&&(x.ownerProcessId===undefined||Number.isSafeInteger(x.ownerProcessId)&&x.ownerProcessId>0)&&(x.model===undefined||identifier(x.model))&&(x.thinking===undefined||(["off","minimal","low","medium","high"] as unknown[]).includes(x.thinking))&&(x.continuationOf===undefined||identifier(x.continuationOf));
+ if(!exact(v,keys))return false;
+ // SAFETY: exact validated the complete persisted task-spec key set before field validation below.
+ const x=v as unknown as AgentTaskSpec;
+ return identifier(x.id)&&(["clarifier","explorer","worker","reviewer","verifier"] as unknown[]).includes(x.role)&&typeof x.prompt==="string"&&x.prompt.length>0&&x.prompt.length<=MAX_PROMPT&&!/[\u0000]/u.test(x.prompt)&&identifier(x.repository)&&identifier(x.isolationKey)&&typeof x.createdAt==="string"&&Number.isFinite(Date.parse(x.createdAt))&&(x.ownerProcessId===undefined||Number.isSafeInteger(x.ownerProcessId)&&x.ownerProcessId>0)&&(x.model===undefined||identifier(x.model))&&(x.thinking===undefined||(["off","minimal","low","medium","high"] as unknown[]).includes(x.thinking))&&(x.continuationOf===undefined||identifier(x.continuationOf));
 }
 function processIsAlive(pid:number):boolean{
  try{process.kill(pid,0);return true;}catch(error){return !!error&&typeof error==="object"&&"code" in error&&(error as NodeJS.ErrnoException).code==="EPERM";}
@@ -50,6 +52,7 @@ function validAgentHistory(events:AgentStateEvent[],record:PublicAgentRecord):bo
 }
 function entryValue(v:unknown,receiptKey?:Buffer,allowUnverifiedCompletion=false):v is AgentStoreEntry{
  if(!v||typeof v!=="object"||Array.isArray(v))return false;const keys=["record","request","events",...(Object.hasOwn(v,"result")?["result"]:[])];if(!exact(v,keys))return false;
+ // SAFETY: entryValue validates the complete entry shape and all nested fields before returning true.
  const x=v as unknown as AgentStoreEntry,r=x.record;if(!r||!exact(r,["id","role","owner","sessionId","projectId","state","createdAt","updatedAt",...(Object.hasOwn(r,"summary")?["summary"]:[])])||!exact(r.owner,["kind","id"])||!specValue(x.request)||x.request.id!==r.id||x.request.role!==r.role||x.request.isolationKey!==r.sessionId||x.request.repository!==r.projectId||!Array.isArray(x.events)||x.events.length<1||x.events.length>MAX_EVENTS)return false;
  try{createAgentRecord({id:r.id,role:r.role,owner:r.owner,sessionId:r.sessionId,projectId:r.projectId,createdAt:r.createdAt});}catch{return false;}
  if(!identifier(r.id)||!(["queued","running","interrupted","cancelled","failed","completed"] as unknown[]).includes(r.state)||typeof r.updatedAt!=="string"||!Number.isFinite(Date.parse(r.updatedAt))||(r.summary!==undefined&&(typeof r.summary!=="string"||r.summary.length>MAX_OUTPUT)))return false;
@@ -60,7 +63,8 @@ function entryValue(v:unknown,receiptKey?:Buffer,allowUnverifiedCompletion=false
  return x.result===undefined?r.state!=="completed":r.state==="completed"&&x.events.at(-1)?.state==="completed";
 }
 export function parseAgentStore(raw:string,receiptKey?:Buffer,allowUnverifiedCompletion=false):AgentStoreFile{
- const value:unknown=JSON.parse(raw);if(!exact(value,["schema","revision","entries"])||value.schema!==SCHEMA||!Number.isSafeInteger(value.revision)||Number(value.revision)<0||!Array.isArray(value.entries)||value.entries.length>MAX_RECORDS||!value.entries.every(entry=>entryValue(entry,receiptKey)||allowUnverifiedCompletion&&entryValue(entry,receiptKey,true)))throw new Error("Invalid ASEN agent store");
+ let value:unknown;try{value=JSON.parse(raw);}catch(error){throw error;}
+ if(!exact(value,["schema","revision","entries"])||value.schema!==SCHEMA||!Number.isSafeInteger(value.revision)||Number(value.revision)<0||!Array.isArray(value.entries)||value.entries.length>MAX_RECORDS||!value.entries.every(entry=>entryValue(entry,receiptKey)||allowUnverifiedCompletion&&entryValue(entry,receiptKey,true)))throw new Error("Invalid ASEN agent store");
  const entries=(value.entries as unknown[]).map(rawEntry=>{const trusted=entryValue(rawEntry,receiptKey),entry=structuredClone(rawEntry) as AgentStoreEntry;if(allowUnverifiedCompletion&&!trusted){delete entry.result;}return entry;}),byId=new Map<string,AgentStoreEntry>(),continuations=new Set<string>();for(const entry of entries){if(byId.has(entry.record.id))throw new Error("Duplicate ASEN agent task id");byId.set(entry.record.id,entry);}for(const entry of entries){const parentId=entry.request.continuationOf;if(!parentId)continue;const parent=byId.get(parentId);if(!parent||parent.record.sessionId!==entry.record.sessionId||parent.record.projectId!==entry.record.projectId||parent.record.role!=="explorer"||entry.record.role!=="explorer"||continuations.has(parentId))throw new Error("Invalid or duplicate ASEN agent continuation");continuations.add(parentId);}
  return {schema:SCHEMA,revision:Number(value.revision),entries:entries.map(entry=>structuredClone(entry))};
 }

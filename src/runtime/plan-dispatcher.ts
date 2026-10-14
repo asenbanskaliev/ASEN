@@ -8,12 +8,12 @@ import {buildOrchestrationPlan} from "../orchestration/orchestrator.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import type {SessionTodoStore,TodoContext,TodoItem} from "./todo-store.js";
 import type {TaskAgentLinkStore} from "./task-agent-link-store.js";
-import {TrustedTaskAgentBinder} from "./trusted-task-agent-binder.js";
+import {TodoLaunchConflictError,TrustedTaskAgentBinder} from "./trusted-task-agent-binder.js";
 
-const readOnlyRoles=["explorer","reviewer","verifier"] as const;
+const readOnlyRoles=["clarifier","explorer","reviewer","verifier"] as const;
 type ReadOnlyRole=typeof readOnlyRoles[number];
 const MAX_VISIBLE_PLAN_INSTRUCTION=4096;
-const phaseFor:Readonly<Record<ReadOnlyRole,SkillSelectionContext["phase"]>>={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"};
+const phaseFor:Readonly<Partial<Record<ReadOnlyRole,SkillSelectionContext["phase"]>>>={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"};
 const basisKeys=["instruction","taskIdentity","intent","scope","writes","riskOperations","session","testing","review","unresolvedDecisions"] as const;
 const skillSelectionKeys=["behaviorChange","codeChange","defect","filesTouched","phase","risk","verification"] as const;
 const exact=(value:unknown,keys:readonly string[]):value is Record<string,unknown>=>!!value&&typeof value==="object"&&!Array.isArray(value)&&Object.getPrototypeOf(value)===Object.prototype&&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
@@ -37,7 +37,10 @@ function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity):{candi
  if(!exact(parsed,basisKeys)||typeof parsed.instruction!=="string"||!parsed.instruction.trim()||parsed.instruction!==parsed.instruction.trim())return {reason:"The worker ODD authorization facts are incomplete; rebuild the plan."};
  const {instruction,...rawFacts}=parsed;
  let facts:ReturnType<typeof deriveOddFacts>,revision:string;
- try{facts=deriveOddFacts({...rawFacts,repositoryIdentity:identity.projectId} as unknown as OddRoutingRequest);revision=currentRevision(identity.projectId);}catch{return {reason:"The current project is not a readable Git candidate; no writer was launched."};}
+ try{
+  // SAFETY: exact basis-key validation reconstructs the persisted ODD request before domain validation.
+  facts=deriveOddFacts({...rawFacts,repositoryIdentity:identity.projectId} as unknown as OddRoutingRequest);revision=currentRevision(identity.projectId);
+ }catch{return {reason:"The current project is not a readable Git candidate; no writer was launched."};}
  if(revision!==candidate.revision)return {reason:"The project changed after planning; rebuild the plan against the current candidate before authorizing writes."};
  if(facts.taskIdentity!==task.requestId?.slice("asen-plan:".length,-":worker".length)||facts.scope.kind!=="known"||!facts.writes.length)return {reason:"The persisted worker does not match a bounded original write request."};
  const originalScope=facts.scope;
@@ -91,18 +94,24 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  }
 
  const readRole=role as ReadOnlyRole,selection=task.plan.skillSelection;
- if(!selection||selection.phase!==phaseFor[readRole])return {status:"blocked",reason:`The planned ${readRole} task lacks its exact read-only skill selection; rebuild the plan.`};
- const currentPaths=selectSkills(selection).map(skill=>skill.path);
- if(currentPaths.length!==task.plan.skillPaths.length||currentPaths.some((value,index)=>value!==task.plan!.skillPaths[index]))return {status:"blocked",reason:"The persisted skill registry selection changed; rebuild the plan before dispatch."};
+ if(readRole==="clarifier"){
+  if(selection||task.plan.skillPaths.length)return {status:"blocked",reason:"The planned clarifier must remain read-only without delegated skills or phase authority; rebuild the plan."};
+ }else{
+  if(!selection||selection.phase!==phaseFor[readRole])return {status:"blocked",reason:`The planned ${readRole} task lacks its exact read-only skill selection; rebuild the plan.`};
+  const currentPaths=selectSkills(selection).map(skill=>skill.path);
+  if(currentPaths.length!==task.plan.skillPaths.length||currentPaths.some((value,index)=>value!==task.plan!.skillPaths[index]))return {status:"blocked",reason:"The persisted skill registry selection changed; rebuild the plan before dispatch."};
+ }
  const approved=await input.confirm({id:task.taskId,title:task.title,role,instruction:task.description});
  if(!approved)return {status:"blocked",reason:"Pi user declined dispatch; the plan was not changed."};
  await input.validateIdentity();
  const fresh=(await input.todos.list(context)).find(row=>row.taskId===task.taskId);
- if(!fresh||fresh.current.state!=="planned"||fresh.current.revision!==task.current.revision)return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};
+ if(!fresh||fresh.current.state!=="planned"||JSON.stringify(fresh)!==JSON.stringify(task))return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};
  await input.validateIdentity();
  const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
- const agentId=await input.agents.startReadOnly({role:readRole,prompt:fresh.description!,session:input.identity,skillSelection:selection,onQueued:async(id,dispatch)=>{await input.validateIdentity();await binder.launch(fresh.taskId,id,input.identity,dispatch,input.validateIdentity);}});
- return {status:"dispatched",todoId:task.taskId,agentId,role:readRole};
+ try{
+  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),onPrepared:async(id,enqueue,dispatch)=>{await input.validateIdentity();await binder.launchExact(task,id,input.identity,enqueue,dispatch,input.validateIdentity);}});
+  return {status:"dispatched",todoId:task.taskId,agentId,role:readRole};
+ }catch(error){if(error instanceof TodoLaunchConflictError)return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};throw error;}
 }
 
 /** @deprecated Use dispatchNextPlanTask; retained for callers that explicitly require read-only plans. */

@@ -9,7 +9,7 @@ import {consumePhaseGrant,retirePhaseGrant,consumeWriterAdmission} from "../life
 import type {AgentLifecycleSink} from "../runtime/agent-lifecycle.js";
 import {sameWorkspaceIdentityPath} from "../runtime/workspace-store.js";
 
-export interface AgentRequest { id:string; role:"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; model?:string; thinking?:"off"|"minimal"|"low"|"medium"|"high"; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; writerAdmission?:object; runnerWriteReceiver?:object; owner?:{kind:"user"|"agent"|"system";id:string};parentId?:string; }
+export interface AgentRequest { id:string; role:"clarifier"|"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; model?:string; thinking?:"off"|"minimal"|"low"|"medium"|"high"; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; writerAdmission?:object; runnerWriteReceiver?:object; owner?:{kind:"user"|"agent"|"system";id:string};parentId?:string; }
 export interface AgentArtifactProof { readonly requestId:string; readonly role:AgentRequest["role"]; readonly repository:string; readonly candidateId?:string; readonly candidateRevision?:string; readonly skillPaths:readonly string[]; }
 export interface AgentResult { id:string; ok:boolean; output:string; artifactProof?:AgentArtifactProof; }
 export interface AgentRunner { run(request:AgentRequest,signal?:AbortSignal):Promise<AgentResult>; }
@@ -74,6 +74,7 @@ export class Dispatcher {
   let runnerRequest:AgentRequest;
   try{
    const data=plainData(request),{writerAdmission:_admission,runnerWriteReceiver:_receiver,...forwarded}=data;
+   // SAFETY: plainData and requestArray validate every forwarded request field before reconstruction.
    runnerRequest={...forwarded,
     ...(data.candidate?{candidate:Object.freeze(plainData(data.candidate))}:{}),
     ...(data.writeSurfaces?{writeSurfaces:Object.freeze(requestArray(data.writeSurfaces))}:{}),
@@ -130,7 +131,7 @@ export class Dispatcher {
    if(controller.signal.aborted){const pending=this.lifecycle?.cancelled(request.id,result.output);if(isPromise(pending))await pending;terminalState=true;lifecycleRunning=false;return {id:request.id,ok:false,output:"Cancellation requested; completion was not accepted"};}
    const terminal=acceptedResult.ok?this.lifecycle?.completed(request.id,acceptedResult):this.lifecycle?.failed(request.id,acceptedResult.output);if(isPromise(terminal))await terminal;
    terminalState=true;lifecycleRunning=false;return acceptedResult;
-  } catch(error){if(!terminalState){try{if(controller.signal.aborted)await this.lifecycle?.cancelled(request.id,error instanceof Error?error.message:String(error));else if(lifecycleRunning)await this.lifecycle?.failed(request.id,error instanceof Error?error.message:String(error));else await this.lifecycle?.failed(request.id,error instanceof Error?error.message:String(error));}catch{}}throw error;
+  } catch(error){if(!terminalState){try{if(controller.signal.aborted)await this.lifecycle?.cancelled(request.id,error instanceof Error?error.message:String(error));else if(lifecycleRunning)await this.lifecycle?.failed(request.id,error instanceof Error?error.message:String(error));else await this.lifecycle?.failed(request.id,error instanceof Error?error.message:String(error));}catch{/* Preserve the original dispatch failure when terminal persistence also fails. */}}throw error;
   } finally {this.#controls.delete(request.id);retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);if(grant){const i=this.#active.indexOf(grant);if(i>=0)this.#active.splice(i,1);}if(acquired)this.#release();}
  }
 }

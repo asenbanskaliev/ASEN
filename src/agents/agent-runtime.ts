@@ -43,20 +43,21 @@ export class AgentRuntime{
   const execution=this.dispatcher.dispatch(request);this.#executions.set(request.id,execution);
   void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{signal?.removeEventListener("abort",onAbort);if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);});
  }
- async startReadOnly(input:{role:"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
-  if(!input.session.sessionId||!input.session.projectId)throw new Error("An active Pi session and project are required");
-  const requiredPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[input.role];
+ async startReadOnly(input:{role:"clarifier"|"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;onPrepared?:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
+  if(!input.session.sessionId||!input.session.projectId||input.onPrepared&&input.onQueued)throw new Error("An active Pi session and project with one launch boundary is required");
+  const requiredPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[input.role as Exclude<typeof input.role,"clarifier">];
+  if(input.role==="clarifier"&&input.skillSelection)throw new Error("clarifier dispatch cannot receive a skill phase");
   if(input.skillSelection&&input.skillSelection.phase!==requiredPhase)throw new Error(`${input.role} dispatch requires a ${requiredPhase}-phase skill selection`);
   const request:AgentRequest={id:`agent-${randomUUID()}`,role:input.role,prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:input.owner??{kind:"user",id:`pi:${input.session.sessionId}`}};
   if(input.skillSelection){request.skillContext=issueSkillContext(request.id,request.repository,undefined,input.skillSelection);request.skillPaths=selectSkills(request.skillContext).map(skill=>skill.path);}
-  await this.store.enqueue(request,request.owner!,signal);
-  if(signal?.aborted){await this.store.cancelled(request.id,"Pi cancelled the launch after durable enqueue and before dispatch");throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});}
-  let dispatched=false;
-  const dispatch=()=>{if(dispatched)throw new Error("Agent launch may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal);dispatched=true;};
+  let enqueued=false,dispatched=false;
+  const enqueue=async()=>{if(enqueued)throw new Error("Agent launch may enqueue only once");await this.store.enqueue(request,request.owner!,signal);enqueued=true;};
+  const dispatch=()=>{if(!enqueued)throw new Error("Agent launch must be durably enqueued before dispatch");if(dispatched)throw new Error("Agent launch may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal);dispatched=true;};
   try{
-   if(input.onQueued){await input.onQueued(request.id,dispatch);if(!dispatched)throw new Error("Trusted Todo binding did not start the agent dispatch");}
-   else dispatch();
-  }catch(error){if(!dispatched)await this.store.cancelled(request.id,"Agent binding or launch was cancelled before dispatch").catch(()=>{});throw error;}
+   if(input.onPrepared)await input.onPrepared(request.id,enqueue,dispatch);
+   else{await enqueue();if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});if(input.onQueued)await input.onQueued(request.id,dispatch);else dispatch();}
+   if(!enqueued||!dispatched)throw new Error("Trusted Todo binding did not durably enqueue and start the agent dispatch");
+  }catch(error){if(enqueued&&!dispatched)await this.store.cancelled(request.id,"Agent binding or launch was cancelled before dispatch").catch(()=>{});throw error;}
   return request.id;
  }
  /** Starts one user-approved worker bound to an exact persisted plan, candidate and file scope. */
@@ -105,6 +106,7 @@ export class AgentRuntime{
    const cancelled=this.dispatcher.cancel(record.id,identity.sessionId,identity.projectId),execution=this.#executions.get(record.id);
    if(execution)await execution.catch(()=>{});
    else if(!cancelled&&record.state==="queued")await this.store.cancelled(record.id,"Pi session ended before execution");
+   return undefined;
   }));
  }
 }
