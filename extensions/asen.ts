@@ -26,7 +26,7 @@ import {ASEN_COMMAND_CATALOG} from "../src/runtime/command-catalog.js";
 import {agentStatusRows,type PublicAgentRecord} from "../src/runtime/agent-lifecycle.js";
 import {findPotentialWorkspaceConflicts,visibleWorkspaceConflictRows,visibleWorkspaceRows,type WorkspaceChange} from "../src/runtime/workspace-attribution.js";
 import {readProfilesFile} from "../src/runtime/profile-store.js";
-import {runHistoryCommand,recordHistoryInput} from "../src/runtime/history-command.js";
+import {runHistoryCommand,recordHistoryInput,type HistoryCommandResult} from "../src/runtime/history-command.js";
 import {runUsageCommand} from "../src/runtime/usage-command.js";
 import {incrementUsageFile} from "../src/runtime/usage-store.js";
 import {VERSION,type ExtensionAPI} from "@earendil-works/pi-coding-agent";
@@ -45,7 +45,7 @@ import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-too
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 import {todoStatusRows} from "../src/runtime/todo-presentation.js";
 
-type CommandContext={cwd:string;hasUI?:boolean;sessionManager?:{getSessionId?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;confirm?:(title:string,message:string)=>Promise<boolean>}};
+type CommandContext={cwd:string;hasUI?:boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>}};
 type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
@@ -153,7 +153,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd;if(!manager||!sessionId)throw new Error("ASEN planning requires the active Pi session");
    const validateContext=()=>{if(ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed before plan persistence");};
    let project:string;try{project=await realpath(cwd);}catch{throw new Error("ASEN planning requires an existing active project");}validateContext();
-    const output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project))) as Record<string,unknown>&{executablePlan?:ExecutablePlan;persistedTasks?:Array<{planTaskId:string;todoId:string|undefined;dependsOn:Array<string|undefined>}>};
+   let output:Record<string,unknown>&{executablePlan?:ExecutablePlan;persistedTasks?:Array<{planTaskId:string;todoId:string|undefined;dependsOn:Array<string|undefined>}>};
+   try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project))) as typeof output;}
+   catch(error){if(error instanceof Error)throw error;throw new Error("ASEN plan output was invalid");}
    if(!output.executablePlan)return JSON.stringify(output,null,2);
    if(!todoStorePromise){output.persistence={status:"unavailable",reason:"Todo store is not configured; this graph was not saved or made runnable"};output.execution={started:false,authorized:false};output.notice="Plan only. The Todo store is unavailable, so no task records were persisted. No agent was dispatched and no permission was granted.";return JSON.stringify(output,null,2);}
    const store=await todoStorePromise,identity=await sessionIdentity(ctx),todoIds=new Map<string,string>(),ordered=output.executablePlan.topologicalOrder.map(taskId=>{const task=output.executablePlan!.tasks.find(item=>item.id===taskId);if(!task)throw new Error("ASEN executable plan order references an unknown task");return task;});
@@ -174,8 +176,18 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   registerData("asen-profiles",{description:"Show local runtime profiles",handler:async()=>{if(!dependencies.profilesFile)return {active:"default",profiles:[],available:false};const value=await readProfilesFile(dependencies.profilesFile);return {active:value.active??"default",profiles:value.profiles.map(p=>p.name),available:true};}});
   pi.registerCommand?.("asen-history",{description:"Manage opt-in, redacted, project-scoped local prompt history",handler:async(args:string,ctx:CommandContext)=>{
    const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId){ctx.ui.notify("ASEN history is unavailable without a current session.","error");return;}
-   try{const result=await runHistoryCommand(args,{storePath:historyFile,projectId:await canonical(ctx.cwd),sessionId,hasUI:ctx.hasUI===true,...(ctx.ui.confirm?{confirm:ctx.ui.confirm.bind(ctx.ui)}:{})});ctx.ui.notify(result,"info");return result;}
-   catch(error){ctx.ui.notify(`ASEN history failed: ${safeErrorMessage(error)}`,"error");throw error;}
+   const selecting=args.trim().split(/\s+/u)[0]==="select";
+   try{
+    const result=await runHistoryCommand(args,{storePath:historyFile,projectId:await canonical(ctx.cwd),sessionId,hasUI:ctx.hasUI===true,...(ctx.signal?{signal:ctx.signal}:{}),...(ctx.ui.select?{select:ctx.ui.select.bind(ctx.ui)}:{}),...(ctx.ui.confirm?{confirm:ctx.ui.confirm.bind(ctx.ui)}:{})}) as HistoryCommandResult;
+    if(selecting){
+     if(typeof result==="string")throw new Error("Unexpected history selection result");
+     let message:string;
+     switch(result.state){case "selected":message="History entry selected.";break;case "cancelled":message="History selection cancelled.";break;case "empty":message="No matching history entries.";break;case "unavailable":message="History selection is unavailable.";break;}
+     ctx.ui.notify(message,"info");return;
+    }
+    if(typeof result!=="string")throw new Error("Unexpected history command result");ctx.ui.notify(result,"info");return result;
+   }
+   catch(error){if(selecting){ctx.ui.notify("ASEN history selection failed.","error");return;}ctx.ui.notify(`ASEN history failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
   pi.registerCommand?.("asen-usage",{description:"Show, delete and review local ASEN usage and telemetry consent",handler:async(args:string,ctx:CommandContext)=>{
    try{const result=await runUsageCommand(args,{storePath:usageFile,hasUI:ctx.hasUI===true,...(ctx.ui.confirm?{confirm:ctx.ui.confirm.bind(ctx.ui)}:{})});ctx.ui.notify(result,"info");return result;}

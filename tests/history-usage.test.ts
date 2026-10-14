@@ -7,6 +7,7 @@ import {tmpdir} from "node:os";
 import path from "node:path";
 import {captureHistory,exportHistory,searchHistory,trimHistory,redactHistoryText} from "../src/runtime/history.js";
 import {runHistoryCommand,recordHistoryInput} from "../src/runtime/history-command.js";
+import {projectHistory} from "../src/runtime/history-selector.js";
 import {readHistoryStore} from "../src/runtime/history-store.js";
 import {emptyUsage,incrementUsage,maySendTelemetry,telemetryPreview} from "../src/runtime/usage.js";
 import {incrementUsageFile,parseUsageFile,readUsageFile,updateUsageFile} from "../src/runtime/usage-store.js";
@@ -91,6 +92,63 @@ test("public history commands require explicit opt-in and keep captures project 
  const exported=JSON.parse(await runHistoryCommand("export",base));assert.equal(exported.length,1);assert.equal(exported[0].projectId,"p");
  const id=exported[0].id;assert.match(await runHistoryCommand(`delete ${id}`,base),/deleted/);assert.match(await runHistoryCommand(`delete ${id}`,base),/not found/);
  assert.match(await runHistoryCommand("retention 1",base),/set to 1/);assert.match(await runHistoryCommand("disable",base),/disabled/);const count=(await readUsageFile(path.join(directory,"missing.json"))).snapshot.commands;assert.equal(count,0);
+});
+
+test("history select shows exactly 20 newest sanitized project labels with opaque IDs and forwards signal",async t=>{
+ const directory=await mkdtemp(path.join(tmpdir(),"asen-history-select-"));t.after(()=>rm(directory,{recursive:true,force:true}));
+ const storePath=path.join(directory,"history.json"),base={storePath,projectId:"p",sessionId:"s",hasUI:true,confirm:async()=>true};
+ await runHistoryCommand("enable",base);
+ for(let index=0;index<22;index++)await recordHistoryInput(base,index===21?`needle \u001b]0;PRIVATE-MARKER\u0007 safe-${index}`:index===19||index===20?"needle duplicate":`needle local-${index}`);
+ await recordHistoryInput({...base,projectId:"other"},"needle foreign");
+ const signal=new AbortController().signal;let seenSignal:AbortSignal|undefined,labels:string[]=[];
+ const result=await runHistoryCommand("select needle",{...base,signal,select:async(_title,options,opts)=>{labels=options;seenSignal=opts?.signal;return options[0];}});
+ const store=await readHistoryStore(storePath),projection=projectHistory(store.entries,"p","needle",20);assert.equal(projection.state,"data");if(projection.state!=="data")return;
+ assert.equal(labels.length,20);assert.deepEqual(labels,projection.rows.map(row=>`id=${row.id} | timestamp=${row.timestamp} | redacted=${row.redacted} | preview=${row.preview}`));
+ const duplicateRows=projection.rows.filter(row=>row.preview==="needle duplicate");assert.equal(duplicateRows.length,2);assert.notEqual(duplicateRows[0]!.id,duplicateRows[1]!.id);assert.ok(duplicateRows.every(row=>labels.some(label=>label.includes(`id=${row.id} |`))));
+ assert.equal(seenSignal,signal);assert.doesNotMatch(labels.join("\n"),/PRIVATE-MARKER|foreign|\x1b/);
+ assert.deepEqual(result,{state:"selected",id:projection.rows[0]!.id,deletionAuthorized:false});assert.deepEqual(Object.keys(result).sort(),["deletionAuthorized","id","state"]);
+});
+
+test("history select returns bounded unavailable before store access, empty, and cancelled outcomes",async t=>{
+ const directory=await mkdtemp(path.join(tmpdir(),"asen-history-select-states-"));t.after(()=>rm(directory,{recursive:true,force:true}));
+ const storePath=path.join(directory,"history.json"),base={storePath,projectId:"p",sessionId:"s",hasUI:true,confirm:async()=>true};
+ await writeFile(storePath,"{malformed\n");
+ for(const context of [{...base,hasUI:false,select:async()=>"unused"},{...base},{...base,storePath:directory,hasUI:false,select:async()=>"unused"}]){const unavailable=await runHistoryCommand("select",context);assert.deepEqual(unavailable,{state:"unavailable",rows:[]});assert.equal("id" in unavailable,false);}
+ await rm(storePath);await runHistoryCommand("enable",base);await recordHistoryInput({...base,projectId:"other"},"foreign");
+ let opened=false;const empty=await runHistoryCommand("select",{...base,select:async()=>{opened=true;return undefined;}});assert.deepEqual(empty,{state:"empty",rows:[]});assert.equal(opened,false);
+ await recordHistoryInput(base,"local");const cancelled=await runHistoryCommand("select",{...base,select:async()=>undefined});assert.deepEqual(cancelled,{state:"cancelled"});assert.equal("id" in cancelled,false);
+});
+
+test("history select safely bounds hostile metadata labels and rejects unoffered choices",async t=>{
+ const directory=await mkdtemp(path.join(tmpdir(),"asen-history-select-labels-"));t.after(()=>rm(directory,{recursive:true,force:true}));
+ const storePath=path.join(directory,"history.json"),base={storePath,projectId:"p",sessionId:"s",hasUI:true,confirm:async()=>true};
+ await runHistoryCommand("enable",base);await recordHistoryInput(base,"duplicate | preview=value");
+ const raw=JSON.parse(await readFile(storePath,"utf8"));raw.entries[0].id="opaque | preview=FORGED \u202e";raw.entries[0].createdAt="\n2026-10-06\t";await writeFile(storePath,JSON.stringify(raw));await readHistoryStore(storePath);
+ let offered:string[]=[];const selected=await runHistoryCommand("select",{...base,select:async(_title,options)=>{offered=options;return options[0];}});
+ assert.equal(offered.length,1);assert.ok(offered[0]!.length<=4096);assert.doesNotMatch(offered[0]!,/[\u0000-\u001f\u007f-\u009f]|\p{Cf}/u);assert.equal(offered[0]!.split("|").length-1,3);assert.deepEqual(selected,{state:"selected",id:raw.entries[0].id,deletionAuthorized:false});
+ await assert.rejects(()=>runHistoryCommand("select",{...base,select:async()=>"not one of the offered labels"}),/selection/);
+});
+
+test("history select observes aborts before and during interaction without exposing an ID",async t=>{
+ const directory=await mkdtemp(path.join(tmpdir(),"asen-history-select-abort-"));t.after(()=>rm(directory,{recursive:true,force:true}));
+ const storePath=path.join(directory,"history.json"),base={storePath,projectId:"p",sessionId:"s",hasUI:true,confirm:async()=>true};await runHistoryCommand("enable",base);await recordHistoryInput(base,"local");
+ const pre=new AbortController();pre.abort();let opened=false;const preResult=await runHistoryCommand("select",{...base,signal:pre.signal,select:async()=>{opened=true;return undefined;}});assert.deepEqual(preResult,{state:"cancelled"});assert.equal(opened,false);
+ const during=new AbortController();let seen:AbortSignal|undefined;const duringResult=await runHistoryCommand("select",{...base,signal:during.signal,select:async(_title,options,opts)=>{seen=opts?.signal;during.abort();return options[0];}});assert.equal(seen,during.signal);assert.deepEqual(duringResult,{state:"cancelled"});assert.equal("id" in duringResult,false);
+});
+
+test("history select propagates selector and reopened-store failures",async t=>{
+ const directory=await mkdtemp(path.join(tmpdir(),"asen-history-select-errors-"));t.after(()=>rm(directory,{recursive:true,force:true}));
+ const storePath=path.join(directory,"history.json"),base={storePath,projectId:"p",sessionId:"s",hasUI:true,confirm:async()=>true};await runHistoryCommand("enable",base);await recordHistoryInput(base,"local");
+ await assert.rejects(()=>runHistoryCommand("select",{...base,select:async()=>{throw new Error("raw selector marker");}}),/raw selector marker/);
+ await assert.rejects(()=>runHistoryCommand("select",{...base,select:async(_title,options)=>{await writeFile(storePath,"{broken after interaction");return options[0];}}),/history store/);
+});
+
+test("history select rejects removal, reorder, and insertion changes to the offered page",async t=>{
+ for(const mutation of ["remove","reorder","insert"] as const){
+  const directory=await mkdtemp(path.join(tmpdir(),`asen-history-select-${mutation}-`));t.after(()=>rm(directory,{recursive:true,force:true}));
+  const storePath=path.join(directory,"history.json"),base={storePath,projectId:"p",sessionId:"s",hasUI:true,confirm:async()=>true};await runHistoryCommand("enable",base);await recordHistoryInput(base,"first");await recordHistoryInput(base,"second");
+  await assert.rejects(()=>runHistoryCommand("select",{...base,select:async(_title,options)=>{const raw=JSON.parse(await readFile(storePath,"utf8"));if(mutation==="remove")raw.entries.pop();if(mutation==="reorder")raw.entries.reverse();if(mutation==="insert")raw.entries.push({...raw.entries[0],id:"inserted",text:"newest",createdAt:"2026-10-07T00:00:00Z"});await writeFile(storePath,JSON.stringify(raw));return options[0];}}),/stale|selection/);
+ }
 });
 
 test("bulk history delete requires confirmation and persists tombstones",async()=>{
