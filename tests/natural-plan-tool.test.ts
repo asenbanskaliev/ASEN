@@ -42,11 +42,12 @@ test("natural-plan tool refuses missing facts instead of inventing an ODD plan",
  assert.equal(runs,0);
 });
 
-test("Pi prompt guidance removes user-authored ODD JSON while retaining the plan-only boundary",()=>{
+test("Pi prompt guidance removes user-authored ODD JSON and explains safe automatic advancement",()=>{
  const options:{sections:Record<string,string>}={sections:{existing:"preserved"}};addAsenRequestGuidance(options,true);
  assert.equal(options.sections.existing,"preserved");
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Never ask the user to write JSON/u);
- assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/does not dispatch agents or authorize writes/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/automatically dispatch dependency-ready read-only tasks/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/exact one-run Pi approval/u);
  const disabled:{sections:Record<string,string>}={sections:{existing:"preserved"}};addAsenRequestGuidance(disabled,false);assert.deepEqual(disabled,{sections:{existing:"preserved"}});
 });
 
@@ -60,7 +61,7 @@ test("ASEN registers the natural-language planning tool and injects its guidance
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Never ask the user to write JSON/u);
 });
 
-test("natural-language plan request uses the real planner and persists without dispatch or authorization",async()=>{
+test("natural-language plan request persists the real planner output without authorizing a write",async()=>{
  const directory=await mkdtemp(path.join(os.tmpdir(),"asen-natural-plan-"));
  try{
   const tools=new Map<string,any>(),commands=new Map<string,any>(),events=new Map<string,(...args:any[])=>unknown>();

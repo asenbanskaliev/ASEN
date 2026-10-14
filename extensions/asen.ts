@@ -45,6 +45,7 @@ import {TaskAgentCoordinator} from "../src/runtime/task-agent-coordinator.js";
 import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 import {TrustedTaskAgentBinder} from "../src/runtime/trusted-task-agent-binder.js";
 import {TaskAgentTodoReconciler} from "../src/runtime/task-agent-reconciler.js";
+import {dispatchNextPlanTask} from "../src/runtime/plan-dispatcher.js";
 import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-tools.js";
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 import {todoStatusRows} from "../src/runtime/todo-presentation.js";
@@ -57,7 +58,7 @@ type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
 const activationRegistryRoot=globalThis as typeof globalThis&{[activationRegistryKey]?:WeakSet<object>};
 const activatedPiHosts=activationRegistryRoot[activationRegistryKey]??(activationRegistryRoot[activationRegistryKey]=new WeakSet<object>());
-export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;deferSessionStart?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>}
+export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>}
 export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;startSession(context:CommandContext):Promise<void>;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
 
 const usage="Usage: /asen-skill-registry refresh";
@@ -141,15 +142,32 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks),links:async()=>taskAgentLinks}:undefined):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const sessionIdentity=async(ctx:CommandContext)=>{const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId)throw new Error("ASEN requires the active Pi session");const projectId=await canonical(ctx.cwd);return {sessionId,projectId,worktree:projectId};};
+  const advancingPlans=new Set<string>();
+  const advancePlan=async(ctx:CommandContext):Promise<{started:boolean;authorized:boolean;role?:string}>=>{
+   if(dependencies.autoAdvancePlans===false)return {started:false,authorized:false};
+   if(!todoStorePromise||!agentRuntimePromise||!taskAgentLinks)return {started:false,authorized:false};
+   const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;if(advancingPlans.has(key))return {started:false,authorized:false};advancingPlans.add(key);
+   try{
+    const [todos,agents]=await Promise.all([todoStorePromise,agentRuntimePromise]);
+    const result=await dispatchNextPlanTask({todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,validateIdentity:async()=>{const current=await sessionIdentity(ctx);if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw new Error("Pi session or project changed during automatic plan advancement");},confirm:async task=>{
+     if(task.role==="clarifier")return false;
+     if(!task.writeSurfaces)return true;
+     if(ctx.hasUI!==true||typeof ctx.ui.confirm!=="function")return false;
+     return ctx.ui.confirm("Authorize scoped ASEN write?",`${task.title} (${task.role})\n\n${task.instruction}\n\nCandidate: ${task.candidateRevision}\nAuthorized write surfaces (only): ${task.writeSurfaces.join(", ")}\nFailure rule: stop without commit or merge; leave scoped changes for review.\n\nAuthorize this single worker run in the current session and project?`);
+    }});
+    if(result.status==="dispatched")ctx.ui.notify(`ASEN automatically started ${result.role} task ${result.todoId}.`,"info");
+    return result.status==="dispatched"?{started:true,authorized:result.role==="worker",role:result.role}:{started:false,authorized:false};
+   }finally{advancingPlans.delete(key);}
+  };
   const startSession=async(ctx:CommandContext)=>{agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;await lifecycle.start(ctx,registryStartupDisabled(undefined));if(todoStorePromise){const todos=await todoStorePromise;try{await todos.recover(await sessionIdentity(ctx));}catch{ctx.ui.notify("ASEN Todo recovery failed; task state was not changed.","error");}if(todos.diagnostics())ctx.ui.notify("ASEN Todo data was damaged and has been quarantined; no task was replayed.","error");}if(workspaceStorePromise){const store=await workspaceStorePromise;if(store.diagnostics())ctx.ui.notify("ASEN workspace attribution data was damaged and has been quarantined.","error");}if(agentRuntimePromise){const runtime=await agentRuntimePromise,identity=await sessionIdentity(ctx);
    agentDeliveryContext=ctx;agentDeliveryIdentity=identity;
    if(!unsubscribeAgentDelivery)unsubscribeAgentDelivery=runtime.subscribeTerminal(record=>{
     const current=agentDeliveryContext,active=agentDeliveryIdentity;
-    if(todoStorePromise&&taskAgentLinks)void Promise.all([todoStorePromise,agentRuntimePromise]).then(([todos,agents])=>new TaskAgentTodoReconciler(todos,agents!,taskAgentLinks).reconcile({sessionId:record.sessionId,projectId:record.projectId})).catch(()=>{});
+    if(todoStorePromise&&taskAgentLinks)void Promise.all([todoStorePromise,agentRuntimePromise]).then(async([todos,agents])=>{await new TaskAgentTodoReconciler(todos,agents!,taskAgentLinks).reconcile({sessionId:record.sessionId,projectId:record.projectId});const current=agentDeliveryContext,active=agentDeliveryIdentity;if(current&&active&&record.sessionId===active.sessionId&&record.projectId===active.projectId&&current.sessionManager?.getSessionId?.()===active.sessionId)await advancePlan(current);}).catch(()=>{});
     if(!current||!active||record.sessionId!==active.sessionId||record.projectId!==active.projectId||current.sessionManager?.getSessionId?.()!==active.sessionId)return;
     current.ui.notify(agentStatusRows([record],1000).join("\n"),record.state==="failed"?"error":"info");
    });
-   const records=await runtime.list(identity),recoverable=records.filter(record=>record.state==="queued"||record.state==="interrupted");if(runtime.quarantined)ctx.ui.notify("ASEN agent store was damaged and has been quarantined; no saved task was started.","error");if(recoverable.length)ctx.ui.notify(`ASEN has ${recoverable.length} queued or interrupted task(s) in this session. Review with /asen-agents; continue only after confirmation.`,"info");}try{await incrementUsageFile(usageFile,"sessions");}catch{try{ctx.ui.notify("ASEN local usage could not be saved.","error");}catch{/* Notification is best-effort when the UI is unavailable. */}}};
+   const records=await runtime.list(identity),recoverable=records.filter(record=>record.state==="queued"||record.state==="interrupted");if(runtime.quarantined)ctx.ui.notify("ASEN agent store was damaged and has been quarantined; no saved task was started.","error");if(recoverable.length)ctx.ui.notify(`ASEN has ${recoverable.length} queued or interrupted task(s) in this session. Review with /asen-agents; continue only after confirmation.`,"info");try{await advancePlan(ctx);}catch{ctx.ui.notify("ASEN could not automatically advance a saved plan; review /asen-todos before continuing.","error");}}try{await incrementUsageFile(usageFile,"sessions");}catch{try{ctx.ui.notify("ASEN local usage could not be saved.","error");}catch{/* Notification is best-effort when the UI is unavailable. */}}};
   if(!dependencies.deferSessionStart)pi.on?.("session_start",async(_event,ctx)=>startSession(ctx));
   pi.on?.("session_shutdown",async(_event,ctx)=>{agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue when the UI is unavailable. */}}if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}await lifecycle.shutdown();});
   pi.on?.("input",async(event,ctx)=>{
@@ -208,8 +226,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    for(const item of persisted)todoIds.set(item.requestId!.slice("asen-plan:".length),item.taskId);
    output.persistedTasks=output.executablePlan.tasks.map(task=>({planTaskId:task.id,todoId:todoIds.get(task.id),dependsOn:task.dependsOn.map(id=>todoIds.get(id))}));
    output.persistence={status:"saved",sessionId:identity.sessionId,projectId:identity.projectId};
-   output.execution={started:false,authorized:false};
-   output.notice="Executable task DAG persisted to this Pi session Todo store. Dependencies are enforced before a task may run. No agent was dispatched and no permission was granted.";
+   const execution=await advancePlan(ctx);
+   output.execution=execution;
+   output.notice=execution.started?(execution.authorized?"The plan was saved and the exact scoped writer was started after Pi approval. Independent review and verification will continue automatically.":"The plan was saved and its first dependency-ready read-only task started automatically. A writer still requires exact Pi approval; completion requires a passing independent verifier."):"The plan was saved. No dependency-ready task could be started automatically; inspect its Todo state and resolve any required authorization or clarification.";
    return JSON.stringify(output,null,2);
   };
   registerData("asen-plan",{description:"Internal plan materializer for validated ODD facts; ordinary-language requests are planned from chat without user-authored JSON",handler:preparePlan});

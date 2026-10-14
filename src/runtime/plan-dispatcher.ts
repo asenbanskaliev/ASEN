@@ -27,7 +27,7 @@ export function sameApprovedTaskSnapshot(before:TodoItem&{current:{state:string}
 }
 
 type PlanDispatchTask={id:string;title:string;role:string;instruction:string;writeSurfaces?:readonly string[];candidateRevision?:string};
-type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>};
+type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean};
 type DispatchResult={status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string};
 
 function currentRevision(repository:string):string{
@@ -73,7 +73,7 @@ function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity):{candi
 export async function dispatchNextPlanTask(input:DispatchInput):Promise<DispatchResult>{
  const context:TodoContext={sessionId:input.identity.sessionId,projectId:input.identity.projectId};
  const rows=await input.todos.list(context),byId=new Map(rows.map(row=>[row.taskId,row]));
- const ready=rows.filter(row=>row.requestId?.startsWith("asen-plan:")&&row.current.state==="planned"&&(row.dependsOn??[]).every(id=>byId.get(id)?.current.state==="done"));
+ const ready=rows.filter(row=>row.requestId?.startsWith("asen-plan:")&&row.current.state==="planned"&&(row.dependsOn??[]).every(id=>["succeeded","done"].includes(byId.get(id)?.current.state??"")));
  if(!ready.length)return {status:"blocked",reason:"No persisted plan task is dependency-ready; complete independent verification or resolve the plan clarification first."};
  ready.sort((a,b)=>(a.plan?.priority??Number.MAX_SAFE_INTEGER)-(b.plan?.priority??Number.MAX_SAFE_INTEGER));
  const task=ready[0]!;
@@ -102,13 +102,14 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
 
  const readRole=role as ReadOnlyRole,selection=task.plan.skillSelection;
  if(readRole==="clarifier"){
+  if(input.autoApproveReadOnly)return {status:"blocked",reason:"Material clarification is required from the user before ASEN can continue this plan."};
   if(selection||task.plan.skillPaths.length)return {status:"blocked",reason:"The planned clarifier must remain read-only without delegated skills or phase authority; rebuild the plan."};
  }else{
   if(!selection||selection.phase!==phaseFor[readRole])return {status:"blocked",reason:`The planned ${readRole} task lacks its exact read-only skill selection; rebuild the plan.`};
   const currentPaths=selectSkills(selection).map(skill=>skill.path);
   if(currentPaths.length!==task.plan.skillPaths.length||currentPaths.some((value,index)=>value!==task.plan!.skillPaths[index]))return {status:"blocked",reason:"The persisted skill registry selection changed; rebuild the plan before dispatch."};
  }
- const approved=await input.confirm({id:task.taskId,title:task.title,role,instruction:task.description});
+ const approved=input.autoApproveReadOnly===true||await input.confirm({id:task.taskId,title:task.title,role,instruction:task.description});
  if(!approved)return {status:"blocked",reason:"Pi user declined dispatch; the plan was not changed."};
  await input.validateIdentity();
  const fresh=(await input.todos.list(context)).find(row=>row.taskId===task.taskId);

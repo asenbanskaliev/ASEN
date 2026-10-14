@@ -1,7 +1,7 @@
 import {types} from "node:util";
-export type TaskState="planned"|"running"|"blocked"|"done"|"cancelled";
+export type TaskState="planned"|"running"|"succeeded"|"blocked"|"done"|"cancelled";
 export interface TaskEvent{taskId:string;sessionId:string;projectId:string;revision:number;state:TaskState;at:string;reason?:string}
-const next:Record<TaskState,readonly TaskState[]>={planned:["running","cancelled"],running:["blocked","done","cancelled"],blocked:["running","cancelled"],done:[],cancelled:[]};
+const next:Record<TaskState,readonly TaskState[]>={planned:["running","cancelled"],running:["succeeded","blocked","done","cancelled"],succeeded:["done","blocked","cancelled"],blocked:["running","cancelled"],done:[],cancelled:[]};
 function validTimestamp(value:unknown):value is string{if(typeof value!=="string"||value.length>40||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u.test(value))return false;const time=Date.parse(value);if(!Number.isFinite(time))return false;const milliseconds=value.replace(/(?:\.(\d{1,3}))?Z$/u,(_,fraction:string|undefined)=>`.${(fraction??"").padEnd(3,"0")}Z`);return new Date(time).toISOString()===milliseconds;}
 function exactEvent(value:unknown):TaskEvent{
  if(typeof value!=="object"||value===null||types.isProxy(value)||Object.getPrototypeOf(value)!==Object.prototype)throw new Error("Task event must be exact plain data");
