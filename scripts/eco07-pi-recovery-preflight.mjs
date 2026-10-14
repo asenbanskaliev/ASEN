@@ -27,8 +27,8 @@ export const ECO07_RECOVERY_CONTRACT=Object.freeze({
  nodeVersion:"22.19.0",
  piVersion:"1.1.0",
  piIntegrity:"sha512-SeEi/4hdcHNgA9UWlefZl7ZZpm3dzi2OoxNjDHsBJ9o298LNOtbL4DGKgitlEj6uCTccvtw6f2hlCkTPVJ2RXg==",
- provider:"groq",
- model:"openai/gpt-oss-120b",
+ provider:"openrouter",
+ model:"nvidia/nemotron-3.5-lightning:free",
  evidenceDirectory:"eco07-pi-evidence",
  requiredFiles:REQUIRED_FILES,
 });
