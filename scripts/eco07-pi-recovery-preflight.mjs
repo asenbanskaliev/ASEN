@@ -132,8 +132,8 @@ function observeInstalledRuntime(repository,nodeVersion){
  const require=createRequire(path.join(repository,"package.json"));
  const piPackagePath=path.join(repository,"node_modules",...PI_PACKAGE.split("/"),"package.json");
  const pi=jsonFile(piPackagePath,"installed Pi package"),tsx=jsonFile(path.join(repository,"node_modules","tsx","package.json"),"installed tsx package"),typescript=jsonFile(path.join(repository,"node_modules","typescript","package.json"),"installed TypeScript package");
- const piEntrypoint=localPath(repository,require.resolve(PI_PACKAGE),"Pi entrypoint");
  const piCli=typeof pi.bin?.pi==="string"?localPath(repository,path.resolve(path.dirname(piPackagePath),pi.bin.pi),"Pi CLI entrypoint"):undefined;
+ const piEntrypoint=piCli;
  const tsxEntrypoint=localPath(repository,require.resolve("tsx"),"tsx entrypoint");
  const tsc=typeof typescript.bin?.tsc==="string"?localPath(repository,path.resolve(repository,"node_modules","typescript",typescript.bin.tsc),"TypeScript CLI"):undefined;
  return Object.freeze({nodeVersion,lockPi:packages[`node_modules/${PI_PACKAGE}`],lockTsx:packages["node_modules/tsx"],lockTypescript:packages["node_modules/typescript"],piVersion:pi.version,piEntrypoint,piCli,tsxVersion:tsx.version,tsxEntrypoint,typescriptVersion:typescript.version,tsc});

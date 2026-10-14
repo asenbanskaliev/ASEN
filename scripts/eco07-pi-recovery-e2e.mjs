@@ -29,7 +29,9 @@ const stepsFile=path.join(scratch,"steps.jsonl"),readsFile=path.join(scratch,"re
 const sessionId=`eco07-recovery-${revision.slice(0,12)}`;
 const title="ECO-07 recovery review: audit evidence, then inspect task state transitions";
 await Promise.all([mkdir(agentDir,{recursive:true,mode:0o700}),mkdir(sessionDir,{recursive:true,mode:0o700}),mkdir(asenDir,{recursive:true,mode:0o700})]);
-const cli=path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");
+assert.equal(typeof piPackage.bin?.pi,"string","Pi package must expose its pinned CLI executable");
+const piPackageRoot=path.dirname(fileURLToPath(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url)));
+const cli=path.resolve(piPackageRoot,piPackage.bin.pi);
 const asenExtension=path.join(repository,"extensions","asen.ts");
 const probeExtension=fileURLToPath(new URL("./eco07-pi-recovery-probe-extension.mjs",import.meta.url));
 const baseEnv={...Object.fromEntries(["PATH","SystemRoot","WINDIR","TEMP","TMP","TMPDIR","LANG","TERM"].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]]])),HOME:home,USERPROFILE:home,PI_CODING_AGENT_DIR:agentDir,PI_CODING_AGENT_SESSION_DIR:sessionDir,PI_TELEMETRY:"0",[credential]:apiKey,ASEN_ECO07_SESSION_ID:sessionId,ASEN_ECO07_PROJECT:repository,ASEN_ECO07_STEPS_FILE:stepsFile,ASEN_ECO07_READS_FILE:readsFile,ASEN_ECO07_TODO_FILE:todoFile,ASEN_ECO07_TASK_TITLE:title};

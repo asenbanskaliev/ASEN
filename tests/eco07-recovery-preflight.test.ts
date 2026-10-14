@@ -75,8 +75,8 @@ function runtimeFixture(options:{integrity?:string;piVersion?:string;omitTsx?:bo
   "node_modules/tsx":{version:"4.23.15"},
   "node_modules/typescript":{version:"5.9.3"},
  }}));
- write(fixture.repository,"node_modules/@earendil-works/pi-coding-agent/package.json",JSON.stringify({name:"@earendil-works/pi-coding-agent",version:piVersion,main:"dist/index.js",bin:{pi:"dist/bundle/cli.js"}}));
- write(fixture.repository,"node_modules/@earendil-works/pi-coding-agent/dist/index.js","export {};\n");
+ write(fixture.repository,"node_modules/@earendil-works/pi-coding-agent/package.json",JSON.stringify({name:"@earendil-works/pi-coding-agent",version:piVersion,exports:{"./*":"./dist/*.js"},bin:{pi:"dist/bundle/cli.js"}}));
+ write(fixture.repository,"node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js","export {};\n");
  write(fixture.repository,"node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js","export {};\n");
  if(!options.omitTsx){
   write(fixture.repository,"node_modules/tsx/package.json",JSON.stringify({name:"tsx",version:"4.23.15",main:"dist/loader.mjs"}));
@@ -110,7 +110,7 @@ test("ECO-07 installed runtime observation validates local Pi and tool entrypoin
   const observation=observeEco07InstalledRuntimeForTest(fixture.repository,"22.19.0");
   const result=validateEco07InstalledRuntime(observation);
   assert.equal(result.piVersion,"1.1.0");
-  assert.match(result.piEntrypoint,/node_modules\/@earendil-works\/pi-coding-agent\/dist\/index\.js$/u);
+  assert.match(result.piEntrypoint,/node_modules\/@earendil-works\/pi-coding-agent\/dist\/bundle\/cli\.js$/u);
   assert.throws(()=>validateEco07InstalledRuntime({...observation,nodeVersion:"24.0.0"}),/actual Node version/u);
  }finally{rmSync(fixture.root,{recursive:true,force:true});}
 });
@@ -120,7 +120,7 @@ test("ECO-07 runtime containment compares canonical paths across macOS temp alia
  try{
   symlinkSync(fixture.repository,alias,"dir");
   const observation=observeEco07InstalledRuntimeForTest(alias,"22.19.0");
-  assert.equal(observation.piEntrypoint,"node_modules/@earendil-works/pi-coding-agent/dist/index.js");
+  assert.equal(observation.piEntrypoint,"node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js");
   assert.equal(validateEco07InstalledRuntime(observation).piVersion,"1.1.0");
  }finally{rmSync(fixture.root,{recursive:true,force:true});}
 });
