@@ -110,7 +110,7 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  if(!approved)return {status:"blocked",reason:"Pi user declined dispatch; the plan was not changed."};
  await input.validateIdentity();
  const fresh=(await input.todos.list(context)).find(row=>row.taskId===task.taskId);
- if(!fresh||fresh.current.state!=="planned"||JSON.stringify(fresh)!==JSON.stringify(task))return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};
+ if(!sameApprovedTaskSnapshot(task,fresh))return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};
  await input.validateIdentity();
  const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
  try{
