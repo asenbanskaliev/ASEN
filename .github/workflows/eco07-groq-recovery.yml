@@ -15,10 +15,7 @@ on:
         description: Exact 40-character candidate SHA
         required: true
         type: string
-  # Automatically exercise the exact PR #32 candidate on each branch update.
-  pull_request:
-    branches: [main]
-    types: [synchronize]
+  # Provider-backed evidence is manual: avoid spending limited quota on every PR update.
 permissions:
   contents: read
 concurrency:
