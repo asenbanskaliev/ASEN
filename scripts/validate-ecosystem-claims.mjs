@@ -6,7 +6,10 @@ import path from "node:path";
 import {collectBaseline,detectMappedBaselineDrift,validateBaseline} from "./ecosystem-baseline.mjs";
 import {verifyEcosystemCandidateReport} from "./ecosystem-candidate-report.mjs";
 
-const units=Array.from({length:16},(_,index)=>`ECO-${String(index+1).padStart(2,"0")}`);
+let defaultRoot;
+try{defaultRoot=fileURLToPath(new URL("../",import.meta.url));}catch(error){throw error;}
+
+const units=Array.from({length:16},(_,index)=>`ECO-${String(index+1).padStart(2,"0")}`),unitSet=new Set(units);
 // Minimum obligations derived from the canonical ECO contract, independent of claim flags.
 // Flags may add obligations but cannot remove these fixed unit boundaries.
 const minimums=Object.freeze(Object.fromEntries(units.map((id,index)=>[id,Object.freeze({
@@ -17,16 +20,102 @@ const hash=value=>typeof value==="string"&&/^[a-f0-9]{64}$/.test(value);
 const candidate=value=>typeof value==="string"&&/^[a-f0-9]{40}$/.test(value);
 const safePath=value=>typeof value==="string"&&/^(?:src|extensions|tests|scripts|docs|odd|registry)\//.test(value)&&
   !/[\\\u0000-\u001f]/.test(value)&&value.split("/").every(part=>part&&part!=="."&&part!=="..");
+const approvalPath=/^registry\/parity\/ecosystem-provenance-approvals\/(ECO-\d{2})\.json$/u;
+const exactKeys=(value,keys)=>value!==null&&typeof value==="object"&&!Array.isArray(value)&&
+  Object.keys(value).length===keys.length&&Object.keys(value).every((key,index)=>key===keys[index]);
+const canonicalText=(value,min,max)=>typeof value==="string"&&value===value.trim()&&value===value.normalize("NFC")&&
+  [...value].length>=min&&[...value].length<=max&&!/[\p{Cc}\p{Cf}\p{Cs}]/u.test(value);
+const utcMilliseconds=value=>typeof value==="string"&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value)&&
+  !Number.isNaN(Date.parse(value))&&new Date(value).toISOString()===value;
+const hasUnpairedSurrogate=value=>{
+  for(let index=0;index<value.length;index++){
+    const code=value.charCodeAt(index);
+    if(code>=0xd800&&code<=0xdbff){const next=value.charCodeAt(index+1);if(next>=0xdc00&&next<=0xdfff){index++;continue;}return true;}
+    if(code>=0xdc00&&code<=0xdfff)return true;
+  }
+  return false;
+};
+
+/** Bounded recursive descent retains raw member identity so JSON.parse cannot hide duplicates. */
+function parseApprovalJson(bytes){
+  let text,index=0,duplicate=false,invalidScalar=false;
+  try{text=new TextDecoder("utf-8",{fatal:true}).decode(bytes);}catch{return undefined;}
+  const whitespace=()=>{while(/[\u0009\u000a\u000d\u0020]/u.test(text[index]??""))index++;};
+  const string=()=>{
+    if(text[index]!=="\"")throw new Error("string expected");const start=index++;
+    let escaped=false;
+    while(index<text.length){const character=text[index++];if(escaped){escaped=false;continue;}if(character==="\\"){escaped=true;continue;}if(character==="\""){
+      let decoded;try{decoded=JSON.parse(text.slice(start,index));}catch{throw new Error("invalid string escape");}
+      if(hasUnpairedSurrogate(decoded))invalidScalar=true;return decoded;
+    }if(character.charCodeAt(0)<0x20)throw new Error("control in string");}
+    throw new Error("unterminated string");
+  };
+  const value=depth=>{
+    if(depth>16)throw new Error("JSON nesting exceeds approval schema");whitespace();const character=text[index];
+    if(character==="\"")return string();
+    if(character==="{"){
+      index++;const object=Object.create(null),keys=new Set();whitespace();if(text[index]==="}"){index++;return object;}
+      while(true){whitespace();const key=string();if(keys.has(key))duplicate=true;keys.add(key);whitespace();if(text[index++]!==":")throw new Error("colon expected");
+        Object.defineProperty(object,key,{value:value(depth+1),enumerable:true,writable:true,configurable:true});whitespace();
+        if(text[index]===","){index++;continue;}if(text[index]==="}"){index++;return object;}throw new Error("object delimiter expected");}
+    }
+    if(character==="["){
+      index++;const array=[];whitespace();if(text[index]==="]"){index++;return array;}
+      while(true){array.push(value(depth+1));whitespace();if(text[index]===","){index++;continue;}if(text[index]==="]"){index++;return array;}throw new Error("array delimiter expected");}
+    }
+    for(const [token,result] of [["true",true],["false",false],["null",null]])if(text.startsWith(token,index)){index+=token.length;return result;}
+    const number=text.slice(index).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/u)?.[0];if(number){index+=number.length;return Number(number);}
+    throw new Error("JSON value expected");
+  };
+  try{const parsed=value(0);whitespace();if(index!==text.length)throw new Error("trailing JSON");return {value:parsed,duplicate,invalidScalar};}catch{return undefined;}
+}
+
+export function isAllowedEcosystemOverlayPath(value){
+  if(typeof value!=="string")return false;
+  if(value==="registry/parity/ecosystem-claims-v1.json"||/^registry\/evidence\/ecosystem\/[A-Za-z0-9._-]+\.json$/u.test(value))return true;
+  const match=typeof value==="string"&&value.match(approvalPath);return Boolean(match&&unitSet.has(match[1]));
+}
 
 /** Receipts are added after the exact tested source commit; only claim/receipt metadata may follow it. */
 export function isEvidenceOnlyOverlay(paths){
-  if(!Array.isArray(paths)||paths.length===0||new Set(paths).size!==paths.length)return false;
-  return paths.every(value=>value==="registry/parity/ecosystem-claims-v1.json"||
-    /^registry\/evidence\/ecosystem\/[A-Za-z0-9._-]+\.json$/u.test(value));
+  return Array.isArray(paths)&&paths.length>0&&new Set(paths).size===paths.length&&paths.every(isAllowedEcosystemOverlayPath);
+}
+
+function validateApproval(row,baselineCommit,approvalRecords){
+  const label=row.id,reference=row.provenanceApproval,issues=[];
+  const finish=()=>{if(reference!==undefined&&!["PARTIAL","FULL"].includes(row.status))issues.push(`${label}: EPA011_STATUS_NOT_ELIGIBLE`);return issues;};
+  if(reference===undefined){if(row.status==="FULL")issues.push(`${label}: EPA001_REFERENCE_REQUIRED`);return finish();}
+  const match=exactKeys(reference,["path","sha256"])&&typeof reference.path==="string"&&reference.path.match(approvalPath);
+  const record=match&&match[1]===label&&hash(reference.sha256)?approvalRecords.get(reference.path):undefined;
+  if(!match||match[1]!==label||!hash(reference.sha256)||record?.unsafe){issues.push(`${label}: EPA002_REFERENCE_INVALID`);return finish();}
+  if(!record){issues.push(`${label}: EPA003_REFERENCE_MISSING`);return finish();}
+  if(createHash("sha256").update(record.bytes).digest("hex")!==reference.sha256)issues.push(`${label}: EPA004_DIGEST_MISMATCH`);
+  if(record.bytes.length>16_384)issues.push(`${label}: EPA005_SIZE_INVALID`);
+  const parsed=record.bytes.length<=16_384?parseApprovalJson(record.bytes):undefined,value=parsed?.value,human=value?.approval?.humanVerification;
+  const shape=record.bytes.length>0&&parsed&&!parsed.duplicate&&!parsed.invalidScalar&&exactKeys(value,["schema","claim","provenance","approval","constraints"])&&
+    value.schema==="asen.ecosystem-provenance-approval.v1"&&exactKeys(value.claim,["id","status"])&&
+    exactKeys(value.provenance,["testedCandidate","sourceBaseline","sourceSnapshot"])&&
+    exactKeys(value.approval,["candidate","humanVerification"])&&
+    exactKeys(human,["reviewerType","independence","authentication","method","reviewer","notes","verifiedAt"])&&
+    exactKeys(value.constraints,["claimsPromotion","cryptographicAttestation","deliveryAuthority"])&&
+    candidate(value.provenance.testedCandidate)&&candidate(value.provenance.sourceBaseline)&&candidate(value.provenance.sourceSnapshot)&&
+    candidate(value.approval.candidate)&&utcMilliseconds(human.verifiedAt);
+  if(!shape){issues.push(`${label}: EPA006_SHAPE_INVALID`);}
+  else{
+    if(value.claim.id!==row.id||value.claim.status!==row.status)issues.push(`${label}: EPA007_CLAIM_MISMATCH`);
+    if(value.provenance.testedCandidate!==row.candidate||value.provenance.sourceBaseline!==baselineCommit||value.provenance.sourceSnapshot!==row.sourceSnapshotCommit)
+      issues.push(`${label}: EPA008_PROVENANCE_MISMATCH`);
+    if(value.approval.candidate!==value.provenance.testedCandidate)issues.push(`${label}: EPA009_APPROVAL_MISMATCH`);
+    if(human.reviewerType!=="HUMAN"||human.independence!=="DECLARED_INDEPENDENT"||human.authentication!=="UNAUTHENTICATED_DECLARATION"||
+      human.method!=="MANUAL_INDEPENDENT_VERIFICATION"||!canonicalText(human.reviewer,1,128)||!canonicalText(human.notes,1,2048)||
+      value.constraints.claimsPromotion!==false||value.constraints.cryptographicAttestation!==false||value.constraints.deliveryAuthority!==false)
+      issues.push(`${label}: EPA010_DECLARATION_INVALID`);
+  }
+  return finish();
 }
 
 /** Checks receipt/content consistency, not authenticity of execution; independent CI/audit must verify execution. */
-export function validateEcosystemClaims({baseline,registry,existingPaths,observedHead,driftReport,recordDigests=new Map(),records=new Map(),candidateOverlays=new Map()}) {
+export function validateEcosystemClaims({baseline,registry,existingPaths,observedHead,driftReport,recordDigests=new Map(),records=new Map(),candidateOverlays=new Map(),approvalRecords=new Map()}) {
   const issues=validateBaseline(baseline);
   if(issues.length)return issues;
   if(!registry||registry.version!==1||registry.sourceCommit!==baseline.commit||!Array.isArray(registry.rows))
@@ -48,6 +137,7 @@ export function validateEcosystemClaims({baseline,registry,existingPaths,observe
     if(!Array.isArray(row.remaining)||row.remaining.some(value=>typeof value!=="string"||!value.trim()))issues.push(`${label}: invalid remaining obligations`);
     if(["PARTIAL","MISSING"].includes(row.status)&&(!row.remaining?.length))issues.push(`${label}: non-final claim needs explicit gaps`);
     if(row.status==="MISSING"&&(row.implementation?.length||row.tests?.length))issues.push(`${label}: MISSING contradicts implementation mapping`);
+    issues.push(...validateApproval(row,baseline.commit,approvalRecords));
     for(const flag of ["stateful","platformSensitive","piBoundary","modelBoundary"])
       if(typeof row[flag]!=="boolean")issues.push(`${label}: explicit ${flag} boundary is required`);
     if(row.modelBoundary&&!row.piBoundary)issues.push(`${label}: model boundary requires Pi ownership`);
@@ -92,7 +182,8 @@ export function validateEcosystemClaims({baseline,registry,existingPaths,observe
   return issues;
 }
 
-export function loadEcosystemClaims(root=fileURLToPath(new URL("../",import.meta.url)),{verifyCandidateReport:verifyReport=verifyEcosystemCandidateReport}={}) {
+export function loadEcosystemClaims(root=defaultRoot,{verifyCandidateReport:verifyReport=verifyEcosystemCandidateReport}={}) {
+ try{
   const baselineBytes=readFileSync(path.join(root,"registry/parity/ecosystem-sources-v1.json"));
   const claimsBytes=readFileSync(path.join(root,"registry/parity/ecosystem-claims-v1.json"));
   const adjudicationBytes=readFileSync(path.join(root,"registry/parity/ecosystem-reference-adjudications-v1.json"));
@@ -115,12 +206,20 @@ export function loadEcosystemClaims(root=fileURLToPath(new URL("../",import.meta
     driftReport=detectMappedBaselineDrift(sourceRepository,baseline,collectBaseline(sourceRepository,sourceSnapshotCommit),overlay,mappings);
   }
   const paths=registry.rows.flatMap(row=>[...(row.implementation??[]),...(row.tests??[]),...(row.evidence??[]).map(proof=>proof.recordPath)]);
-  const existingPaths=new Set(paths.filter(value=>safePath(value)&&existsSync(path.join(root,value)))),recordDigests=new Map(),records=new Map();
+  const existingPaths=new Set(paths.filter(value=>safePath(value)&&existsSync(path.join(root,value)))),recordDigests=new Map(),records=new Map(),approvalRecords=new Map();
   for(const filename of existingPaths)if(/^registry\/evidence\/ecosystem\/[^/]+\.json$/.test(filename)){
     const actual=realpathSync(path.join(root,filename)),relative=path.relative(realpathSync(root),actual);
     if(relative.startsWith("..")||path.isAbsolute(relative))throw new Error("Evidence receipt escapes project");
     const bytes=readFileSync(actual);recordDigests.set(filename,createHash("sha256").update(bytes).digest("hex"));
     records.set(filename,JSON.parse(bytes.toString("utf8")));
+  }
+  const rootReal=realpathSync(root);
+  for(const row of registry.rows){
+    const reference=row?.provenanceApproval,match=exactKeys(reference,["path","sha256"])&&typeof reference.path==="string"&&reference.path.match(approvalPath);
+    if(!match||match[1]!==row.id||!existsSync(path.join(root,reference.path)))continue;
+    const actual=realpathSync(path.join(root,reference.path)),relative=path.relative(rootReal,actual);
+    if(relative.startsWith("..")||path.isAbsolute(relative)){approvalRecords.set(reference.path,{unsafe:true});continue;}
+    approvalRecords.set(reference.path,{bytes:readFileSync(actual)});
   }
   const observedHead=execFileSync("git",["-C",root,"rev-parse","HEAD"],{encoding:"utf8"}).trim(),candidateOverlays=new Map();
   for(const row of registry.rows.filter(row=>row?.status==="FULL"&&candidate(row.candidate)&&row.candidate!==observedHead)){
@@ -132,7 +231,8 @@ export function loadEcosystemClaims(root=fileURLToPath(new URL("../",import.meta
     }catch{/* A missing/non-ancestor candidate fails closed. */}
     candidateOverlays.set(row.candidate,isAncestor&&isEvidenceOnlyOverlay(paths));
   }
-  return {baseline,registry,existingPaths,recordDigests,records,observedHead,driftReport,candidateOverlays};
+  return {baseline,registry,existingPaths,recordDigests,records,approvalRecords,observedHead,driftReport,candidateOverlays};
+ }catch(error){throw error;}
 }
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
