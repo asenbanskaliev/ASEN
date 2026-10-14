@@ -36,10 +36,10 @@ test("production Pi extension runs and restores session-scoped agent status usin
   await new Promise(resolve=>setTimeout(resolve,30));startController.abort();await assert.rejects(startPending,/Agent task cancelled/);
   assert.deepEqual((await first.tools.get("asen_agent_status").execute("status-after-abort",{},new AbortController().signal,()=>{},first.context())).details,[]);await rm(`${file}.lock`,{force:true});
   const started=await first.tools.get("asen_agent_start").execute("call-1",{prompt:"inspect this project"},new AbortController().signal,()=>{},first.context());const id=started.details.id;
-  await first.waitForMessage(message=>message.includes(id)&&message.includes("completed")&&message.includes("read-only result"));
+  await first.waitForMessage(message=>message.includes("terminó")&&message.includes("comprobará el resultado"));
   let rows:any[]=[],deadline=Date.now()+30_000;while(Date.now()<deadline){rows=(await first.tools.get("asen_agent_status").execute("status",{},new AbortController().signal,()=>{},first.context())).details;if(rows.some(row=>row.id===id&&["completed","failed","cancelled","interrupted"].includes(row.state)))break;await new Promise(resolve=>setTimeout(resolve,10));}
   assert.ok(rows.some(row=>row.id===id&&row.state==="completed"),`agent runner did not persist completion; observed ${JSON.stringify(rows)}`);
-  assert.ok(first.messages.some(message=>message.includes(id)&&message.includes("completed")&&message.includes("read-only result")),"completion must be delivered without a status query");
+  assert.ok(first.messages.some(message=>message.includes("terminó")&&message.includes("comprobará el resultado")),"completion must be delivered without a status query");
   await first.commands.get("asen-agents")!.handler("",first.context());assert.ok(first.messages.some(message=>message.includes("completed")&&message.includes("read-only result")));
   const queried=await first.tools.get("asen_agent_status").execute("query",{id},new AbortController().signal,()=>{},first.context());
   assert.equal(queried.details.task?.record.id,id);assert.equal(queried.details.task?.record.state,"completed");assert.equal(queried.details.task?.history.at(-1)?.state,"completed");assert.equal(queried.details.task?.request,undefined);
@@ -52,7 +52,7 @@ test("production Pi extension runs and restores session-scoped agent status usin
   second=host();createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:file})(second.pi as any);await second.events.get("session_start")![0]!({},second.context());
   assert.equal(second.messages.some(message=>message.includes("read-only result")),false,"restart must not redeliver an old completion");
   const restored=await second.tools.get("asen_agent_status").execute("status",{},new AbortController().signal,()=>{},second.context());assert.ok(restored.details.some((row:any)=>row.id===id&&row.state==="completed"&&row.summary==="read-only result"));
-  const restoredTodo=await second.tools.get("asen_todo_list").execute("todo-list",{},new AbortController().signal,()=>{},second.context());assert.equal(restoredTodo.details[0]?.current.state,"done");
+  await second.commands.get("asen-todos")!.handler("history",second.context());assert.match(second.messages.at(-1)!,/Completada.*Verify the delivery/);
  }finally{try{await first.events.get("session_shutdown")![0]!({},first.context());}finally{try{if(second)await second.events.get("session_shutdown")![0]!({},second.context());}finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;}}}
 });
 
@@ -101,7 +101,7 @@ test("session startup automatically dispatches one ready read-only plan task",as
  const [task]=await todos.addPlan([{title:"Inspect",requestId:"asen-plan:auto-startup:explorer",dependsOn:[],description:instruction,plan:{role:"explorer",skillPaths,skillSelection:selection,priority:1}}],identity);let seen:import("../src/agents/dispatcher.js").AgentRequest|undefined;
  const state=host();createPiExtension({homeDir:()=>home,agentRunner:{run:async request=>{seen=request;return{id:request.id,ok:true,output:"Read-only findings"};}},agentStoreFile:agentFile,todoStoreFile:todoFile})(state.pi as any);await state.events.get("session_start")![0]!({},state.context(identity.sessionId));
  const deadline=Date.now()+5000;let row:any;while(Date.now()<deadline){row=(await todos.list(identity)).find(item=>item.taskId===task!.taskId);if(row?.current.state==="succeeded")break;await new Promise(resolve=>setTimeout(resolve,5));}
- assert.equal(row?.current.state,"succeeded");assert.equal(seen?.role,"explorer");assert.equal(seen?.prompt,instruction);assert.deepEqual(seen?.skillPaths,skillPaths);assert.equal(state.messages.some(message=>message.includes("automatically started explorer")),true);await state.events.get("session_shutdown")![0]!({},state.context(identity.sessionId));
+ assert.equal(row?.current.state,"succeeded");assert.equal(seen?.role,"explorer");assert.equal(seen?.prompt,instruction);assert.deepEqual(seen?.skillPaths,skillPaths);assert.equal(state.messages.some(message=>message.includes("ha iniciado la exploración")),true);await state.events.get("session_shutdown")![0]!({},state.context(identity.sessionId));
 });
 
 test("Pi project changes while the Todo launch lock is held prevent agent dispatch",async t=>{
@@ -299,7 +299,7 @@ test("failed agent reports failure and a broken delivery cannot erase its durabl
  const task=await state.tools.get("asen_agent_start").execute("start",{prompt:"inspect"},new AbortController().signal,()=>{},ctx);
  const deadline=Date.now()+3000;while(!finish&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,5));assert.ok(finish);
  const terminal=new Promise<void>(resolve=>runtime.subscribeTerminal(()=>resolve()));runtime.subscribeTerminal(()=>{throw new Error("delivery unavailable");});finish();await terminal;
- assert.ok(state.messages.some(message=>message.includes(task.details.id)&&message.includes("failed")));
+ assert.ok(state.messages.some(message=>message.includes("no pudo completar la exploración")&&message.includes("Revisa el estado")));
  const records=await runtime.list({sessionId:"session-a",projectId:await realpath(process.cwd())});assert.equal(records.find(record=>record.id===task.details.id)?.state,"failed");
  await state.events.get("session_shutdown")![0]!({},ctx);
 });

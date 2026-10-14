@@ -7,9 +7,19 @@ function clean(value:string):string{return value.replace(/[\u0000-\u001f\u007f-\
 export function todoStatusRows(items:readonly (TodoItem&{current:TodoItem["events"][number]})[],width=160):string[]{
  if(!Number.isInteger(width)||width<48)throw new Error("Todo status width must be at least 48 characters");
  const rows=items.slice(0,MAX_ROWS).map(item=>{
-  const prefix=`${item.current.state.padEnd(10)} ${item.taskId} `,dependencies=item.dependsOn?.length?`depends on ${item.dependsOn.join(", ")}`:"",detail=[clean(item.title),dependencies,item.current.reason?clean(item.current.reason):""].filter(Boolean).join(" — ");
+  const status:Record<string,string>={planned:"Pendiente",running:"En curso",succeeded:"Ejecutada; pendiente de revisión",blocked:"Pausada; requiere revisión",done:"Completada",cancelled:"Cancelada"},roles:Record<string,string>={primary:"Tarea principal",explorer:"Exploración",worker:"Aplicación del cambio",reviewer:"Revisión",verifier:"Verificación",clarifier:"Aclaración"};
+  const prefix=`${status[item.current.state]??"Estado"} · ${item.plan?roles[item.plan.role]??"Tarea": "Tarea"}: `,dependencies=item.dependsOn?.length?`${item.dependsOn.length} requisito(s) previo(s)`:"",detail=[clean(item.title),dependencies,item.current.reason?clean(item.current.reason):""].filter(Boolean).join(" — ");
   return (prefix+(detail.length+prefix.length>width?`${detail.slice(0,Math.max(0,width-prefix.length-1))}…`:detail)).slice(0,width);
  });
- if(items.length>MAX_ROWS)rows.push(`… ${items.length-MAX_ROWS} additional tasks omitted`);
+ if(items.length>MAX_ROWS)rows.push(`… ${items.length-MAX_ROWS} tareas adicionales omitidas`);
  return rows;
+}
+
+export function todoProgressSummary(items:readonly (TodoItem&{current:TodoItem["events"][number]})[]):string{
+ if(!items.length)return "ASEN: no hay tareas activas para este proyecto y sesión.";
+ const completed=items.filter(item=>item.current.state==="done").length,cancelled=items.filter(item=>item.current.state==="cancelled").length,waiting=items.filter(item=>item.current.state==="blocked").length,running=items.filter(item=>item.current.state==="running").length;
+ if(waiting)return `ASEN pausó el plan para revisar ${waiting} tarea(s). No las repetirá automáticamente. Consulta /asen-todos y decide si quieres continuar.`;
+ if(running)return `ASEN está trabajando: ${completed} de ${items.length} tareas completadas.`;
+ if(completed+cancelled===items.length)return cancelled?`ASEN cerró el plan: ${completed} tareas completadas y ${cancelled} canceladas.`:`ASEN terminó y verificó las ${items.length} tareas del plan.`;
+ return `ASEN lleva ${completed} de ${items.length} tareas completadas; continuará con el siguiente paso disponible.`;
 }
