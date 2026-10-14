@@ -11,6 +11,16 @@ export const SKILL_REGISTRY_CACHE_RELATIVE_PATH=".asen/skill-registry.cache.json
 export interface SkillRegistryMirrorPayload {title:"skill-registry";topicKey:"skill-registry";projectId:string;content:string;capturePrompt:false}
 export interface SkillRegistryMirror {save(payload:SkillRegistryMirrorPayload):Promise<void>}
 export type SkillRegistryPersistence={status:"unavailable"}|{status:"saved"}|{status:"failed";message:string};
+export type GeneratedRegistrySafetyCode="migration-required"|"git-lookup-failed";
+export class GeneratedRegistrySafetyError extends Error {
+ readonly affectedPaths:readonly string[];
+ constructor(readonly code:GeneratedRegistrySafetyCode,affectedPaths:readonly string[]=[]){
+  const paths=Object.freeze([...affectedPaths]);
+  super(code==="migration-required"?`Generated registry migration required: ${paths.join(", ")}`:"Generated registry Git lookup failed");
+  this.name="GeneratedRegistrySafetyError";this.affectedPaths=paths;
+  Object.defineProperty(this,"affectedPaths",{writable:false,configurable:false});this.stack=`${this.name}: ${this.message}`;
+ }
+}
 export interface RefreshSkillRegistryOptions {
  projectRoot:string;
  projectId:string;
@@ -86,28 +96,41 @@ const hasCode=(error:unknown,code:string):boolean=>
 async function hasGitMetadata(root:string):Promise<boolean>{
  let current=root;
  for(;;){
-  try{
-   const marker=path.join(current,".git"),metadata=await lstat(marker);
-   if(metadata.isDirectory()){
-    const head=await lstat(path.join(marker,"HEAD"));if(head.isFile())return true;
-   }else if(metadata.isFile()){
-    const match=/^gitdir:\s*(.+?)\s*$/m.exec(await readFile(marker,"utf8"));
-    if(match){const gitDirectory=path.resolve(current,match[1]!);if((await lstat(path.join(gitDirectory,"HEAD"))).isFile())return true;}
+  const marker=path.join(current,".git");let metadata;
+  try{metadata=await lstat(marker);}
+  catch(error){
+   if(!hasCode(error,"ENOENT"))throw new Error("Cannot safely inspect generated registry tracking state");
+   const parent=path.dirname(current);if(parent===current)return false;current=parent;continue;
+  }
+  if(metadata.isDirectory()){
+   const head=await lstat(path.join(marker,"HEAD"));
+   if(head.isFile())return true;
+  }else if(metadata.isFile()){
+   const match=/^gitdir: ([^\p{Cc}\p{Cf}]+)\r?\n?$/u.exec(await readFile(marker,"utf8"));
+   if(match){
+    const gitDirectory=path.resolve(current,match[1]!),directory=await lstat(gitDirectory),head=await lstat(path.join(gitDirectory,"HEAD"));
+    if(directory.isDirectory()&&head.isFile())return true;
    }
-  }catch(error){if(!hasCode(error,"ENOENT"))throw new Error("Cannot safely inspect generated registry tracking state");}
-  const parent=path.dirname(current);if(parent===current)return false;current=parent;
+  }
+  throw new Error("Cannot safely inspect generated registry tracking state");
  }
 }
 async function assertGeneratedOutputsUntracked(root:string):Promise<void>{
- if(!await hasGitMetadata(root))return;
+ let hasMetadata:boolean;
+ try{hasMetadata=await hasGitMetadata(root);}catch{throw new GeneratedRegistrySafetyError("git-lookup-failed");}
+ if(!hasMetadata)return;
  let tracked:string;
  try{
   const gitEnvironment=Object.fromEntries(Object.entries(process.env).filter(([key])=>
    !["GIT_DIR","GIT_WORK_TREE","GIT_INDEX_FILE","GIT_COMMON_DIR","GIT_CONFIG_COUNT","GIT_CONFIG_PARAMETERS"].includes(key)&&!/^GIT_CONFIG_(?:KEY|VALUE)_\d+$/.test(key)));
   tracked=execFileSync("git",["-C",root,"ls-files","-z","--",SKILL_REGISTRY_RELATIVE_PATH,SKILL_REGISTRY_CACHE_RELATIVE_PATH],
    {encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:3000,env:gitEnvironment});
- }catch{throw new Error("Cannot safely check whether generated registry outputs are tracked by Git");}
- if(tracked)throw new Error(`Generated registry output is tracked by Git: ${tracked.split("\0").filter(Boolean).join(", ")}`);
+ }catch{throw new GeneratedRegistrySafetyError("git-lookup-failed");}
+ const known=[SKILL_REGISTRY_RELATIVE_PATH,SKILL_REGISTRY_CACHE_RELATIVE_PATH].map(value=>path.posix.normalize(value));
+ const found=tracked.split("\0").filter(Boolean);
+ if(found.some(value=>!known.includes(value)))throw new GeneratedRegistrySafetyError("git-lookup-failed");
+ const affected=known.filter(value=>found.includes(value));
+ if(affected.length)throw new GeneratedRegistrySafetyError("migration-required",affected);
 }
 async function rejectLink(candidate:string):Promise<void>{
  try{if((await lstat(candidate)).isSymbolicLink())throw new Error("Registry output path must not be a symbolic link or junction");}

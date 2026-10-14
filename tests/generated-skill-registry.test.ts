@@ -5,17 +5,31 @@ import * as fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import {inspect} from "node:util";
 import {atomicWriteText} from "../src/io/atomic-write.js";
 import {discoverSkills,type SkillScanResult,type SkillSource} from "../src/skills/discovery.js";
-import {SKILL_REGISTRY_CACHE_RELATIVE_PATH,SKILL_REGISTRY_RELATIVE_PATH,refreshSkillRegistry,renderSkillRegistry,type SkillRegistryMirror} from "../src/skills/generated-registry.js";
+import {GeneratedRegistrySafetyError,SKILL_REGISTRY_CACHE_RELATIVE_PATH,SKILL_REGISTRY_RELATIVE_PATH,refreshSkillRegistry,renderSkillRegistry,type SkillRegistryMirror} from "../src/skills/generated-registry.js";
 
 const document=(name:string,description=`Trigger: Use ${name}.`)=>`---\nname: ${name}\ndescription: "${description}"\n---\nBody\n`;
 const source=(id:string,scope:SkillSource["scope"],root:string):SkillSource=>({id,scope,root});
 async function fixture():Promise<string>{return fs.mkdtemp(path.join(os.tmpdir(),"asen-generated-registry-"));}
+async function fixtureWithoutGitAncestor():Promise<string>{
+ let current=os.tmpdir();
+ for(;;){
+  try{await fs.lstat(path.join(current,".git"));return fs.mkdtemp(path.join(path.parse(current).root,"asen-generated-registry-"));}
+  catch(error){if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}
+  const parent=path.dirname(current);if(parent===current)return fixture();current=parent;
+ }
+}
 async function skill(root:string,directory:string,name=directory,description?:string):Promise<string>{
  const file=path.join(root,directory,"SKILL.md");await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,document(name,description));return fs.realpath(file);
 }
 const sha=(value:string)=>createHash("sha256").update(value).digest("hex");
+function assertSafetySanitized(error:GeneratedRegistrySafetyError,forbidden:readonly string[]):void{
+ assert.equal(Object.hasOwn(error,"cause"),false);
+ const exposed=[error.message,error.stack,inspect(error),JSON.stringify(error),inspect(Object.getOwnPropertyDescriptors(error))].join("\n");
+ for(const value of forbidden)assert.ok(!exposed.includes(value),`safety error exposed forbidden text: ${value}`);
+}
 
 await test("renders the exact deterministic empty registry without timestamps",async()=>{
  const scan=await discoverSkills([]);
@@ -125,22 +139,78 @@ await test("rejects a linked output directory before reads or writes",async t=>{
  }finally{await fs.rm(container,{recursive:true,force:true});}
 });
 
-await test("refuses to overwrite either generated registry output when Git tracks it",async()=>{
- for(const relative of [SKILL_REGISTRY_RELATIVE_PATH,SKILL_REGISTRY_CACHE_RELATIVE_PATH]){
-  const root=await fixture();
+await test("classifies tracked generated outputs without changing bytes or writing",async()=>{
+ const cases=[[SKILL_REGISTRY_RELATIVE_PATH],[SKILL_REGISTRY_CACHE_RELATIVE_PATH],[SKILL_REGISTRY_RELATIVE_PATH,SKILL_REGISTRY_CACHE_RELATIVE_PATH]];
+ for(const affectedPaths of cases){
+  const root=await fixture();let writes=0;
   try{
    const registry=path.join(root,SKILL_REGISTRY_RELATIVE_PATH),cache=path.join(root,SKILL_REGISTRY_CACHE_RELATIVE_PATH);
    await fs.mkdir(path.dirname(registry),{recursive:true});
    await fs.writeFile(registry,"hand-maintained registry\n");await fs.writeFile(cache,"hand-maintained cache\n");
+   const before=await fs.readdir(path.dirname(registry));
    const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{stdio:"ignore"});
    git("init","-q");git("config","user.name","ASEN Test");git("config","user.email","asen@example.invalid");
-   git("add","--",relative);git("commit","-qm","track generated output");
+   git("add","--",...affectedPaths);git("commit","-qm","track generated output");
    const alternateIndex=path.join(root,"empty-index");execFileSync("git",["-C",root,"read-tree","--empty"],{stdio:"ignore",env:{...process.env,GIT_INDEX_FILE:alternateIndex}});
    const priorIndex=process.env.GIT_INDEX_FILE;process.env.GIT_INDEX_FILE=alternateIndex;
-   try{await assert.rejects(refreshSkillRegistry({projectRoot:root,projectId:"p",sources:[]}),/tracked by Git/);}
-   finally{if(priorIndex===undefined)delete process.env.GIT_INDEX_FILE;else process.env.GIT_INDEX_FILE=priorIndex;}
-   assert.equal(await fs.readFile(registry,"utf8"),"hand-maintained registry\n");
-   assert.equal(await fs.readFile(cache,"utf8"),"hand-maintained cache\n");
+   try{
+    await assert.rejects(refreshSkillRegistry({projectRoot:root,projectId:"p",sources:[],atomicWrite:async()=>{writes++;}}),error=>{
+     assert.ok(error instanceof GeneratedRegistrySafetyError);assert.equal(error.code,"migration-required");
+     assert.deepEqual(error.affectedPaths,affectedPaths);assert.equal(error.message,`Generated registry migration required: ${affectedPaths.join(", ")}`);
+     assert.equal(error.stack,`${error.name}: ${error.message}`);
+     const descriptor=Object.getOwnPropertyDescriptor(error,"affectedPaths");assert.equal(descriptor?.writable,false);assert.equal(descriptor?.configurable,false);
+     assert.equal(Object.isFrozen(error.affectedPaths),true);assert.throws(()=>{(error.affectedPaths as string[]).push("appended");},TypeError);
+     assert.throws(()=>{(error as unknown as {affectedPaths:string[]}).affectedPaths=["replaced"];},TypeError);assert.deepEqual(error.affectedPaths,affectedPaths);
+     assertSafetySanitized(error,[root,alternateIndex,"GIT_INDEX_FILE","ls-files"]);return true;
+    });
+   }finally{if(priorIndex===undefined)delete process.env.GIT_INDEX_FILE;else process.env.GIT_INDEX_FILE=priorIndex;}
+   assert.equal(writes,0);assert.deepEqual(await fs.readdir(path.dirname(registry)),before);
+   assert.equal(await fs.readFile(registry,"utf8"),"hand-maintained registry\n");assert.equal(await fs.readFile(cache,"utf8"),"hand-maintained cache\n");
+  }finally{await fs.rm(root,{recursive:true,force:true});}
+ }
+});
+
+await test("fails closed with a sanitized classification when Git lookup fails",async()=>{
+ const root=await fixture(),hostile="credential=secret-token";let writes=0;
+ try{
+  execFileSync("git",["-C",root,"init","-q"],{stdio:"ignore"});
+  await fs.writeFile(path.join(root,".git","config"),`[${hostile}\n`);
+  await assert.rejects(refreshSkillRegistry({projectRoot:root,projectId:"p",sources:[],atomicWrite:async()=>{writes++;}}),error=>{
+   assert.ok(error instanceof GeneratedRegistrySafetyError);assert.equal(error.code,"git-lookup-failed");assert.deepEqual(error.affectedPaths,[]);
+   assert.equal(error.message,"Generated registry Git lookup failed");assert.equal(error.stack,`${error.name}: ${error.message}`);
+   assertSafetySanitized(error,[hostile,root,"not a git repository","GIT_CONFIG_PARAMETERS","ls-files"]);return true;
+  });
+  assert.equal(writes,0);await assert.rejects(fs.access(path.join(root,".asen")));
+ }finally{await fs.rm(root,{recursive:true,force:true});}
+});
+
+await test("rejects bidi controls without restricting international Git paths",async()=>{
+ const container=await fixtureWithoutGitAncestor(),project=path.join(container,"project"),bidi="\u202e",external=path.join(container,`valid-${bidi}-git-directory`);let writes=0;
+ try{
+  await fs.mkdir(project);execFileSync("git",["init","--bare","-q",external],{stdio:"ignore"});
+  await fs.writeFile(path.join(project,".git"),`gitdir: ${external}\n`);
+  await assert.rejects(refreshSkillRegistry({projectRoot:project,projectId:"p",sources:[],atomicWrite:async()=>{writes++;}}),error=>{
+   assert.ok(error instanceof GeneratedRegistrySafetyError);assert.equal(error.code,"git-lookup-failed");assert.deepEqual(error.affectedPaths,[]);
+   assertSafetySanitized(error,[bidi,external,container,"gitdir:"]);return true;
+  });
+  assert.equal(writes,0);await assert.rejects(fs.access(path.join(project,".asen")));
+  const international=path.join(container,"répertoire-東京"),ordinaryProject=path.join(container,"ordinary-project");
+  await fs.mkdir(ordinaryProject);execFileSync("git",["init","--bare","-q",international],{stdio:"ignore"});
+  await fs.writeFile(path.join(ordinaryProject,".git"),`gitdir: ${international}\n`);
+  assert.equal((await refreshSkillRegistry({projectRoot:ordinaryProject,projectId:"p",sources:[]})).cache,"regenerated");
+ }finally{await fs.rm(container,{recursive:true,force:true});}
+});
+
+await test("fails closed for malformed and unresolved worktree Git markers",async()=>{
+ for(const marker of ["malformed\u0000secret",`gitdir: ${path.resolve(os.tmpdir(),"missing-secret-git-directory")}`]){
+  const root=await fixtureWithoutGitAncestor();let writes=0;
+  try{
+   await fs.writeFile(path.join(root,".git"),marker);
+   await assert.rejects(refreshSkillRegistry({projectRoot:root,projectId:"p",sources:[],atomicWrite:async()=>{writes++;}}),error=>{
+    assert.ok(error instanceof GeneratedRegistrySafetyError);assert.equal(error.code,"git-lookup-failed");assert.deepEqual(error.affectedPaths,[]);
+    assert.equal(error.message,"Generated registry Git lookup failed");assertSafetySanitized(error,[marker,root,"malformed","secret","gitdir:","missing-secret-git-directory"]);return true;
+   });
+   assert.equal(writes,0);await assert.rejects(fs.access(path.join(root,".asen")));
   }finally{await fs.rm(root,{recursive:true,force:true});}
  }
 });
