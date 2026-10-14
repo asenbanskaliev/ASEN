@@ -17,10 +17,10 @@ test("ECO-07 detects provider quota failures without treating normal Pi replies 
 });
 
 test("ECO-07 validates provider metadata without reading a credential",()=>{
- const environment=new Proxy({ASEN_ECO07_PROVIDER:"groq",ASEN_ECO07_MODEL:"openai/gpt-oss-120b"},{
+ const environment=new Proxy({ASEN_ECO07_PROVIDER:"openrouter",ASEN_ECO07_MODEL:"nvidia/nemotron-3.5-lightning:free"},{
   get(target,key,receiver){if(String(key).endsWith("_API_KEY"))throw new Error("credential read");return Reflect.get(target,key,receiver);},
  });
- assert.deepEqual(validateEco07ProviderSelection(environment),{provider:"groq",model:"openai/gpt-oss-120b",credential:"GROQ_API_KEY"});
+ assert.deepEqual(validateEco07ProviderSelection(environment),{provider:"openrouter",model:"nvidia/nemotron-3.5-lightning:free",credential:"OPENROUTER_API_KEY"});
 });
 
 test("ECO-07 selects LLM7 only with its key and the pinned Pi Free extension",()=>{
@@ -32,22 +32,22 @@ test("ECO-07 selects LLM7 only with its key and the pinned Pi Free extension",()
  assert.throws(()=>resolveEco07Provider({ASEN_ECO07_PROVIDER:"llm7",ASEN_ECO07_PROVIDER_EXTENSION:"npm:pi-free@2.8.4",LLM7_API_KEY:"synthetic-key",ASEN_ECO07_MODEL:"bad\nmodel"}),/Invalid ECO-07 model/);
 });
 
-test("ECO-07 provider workflow uses Groq with quota-safe triggers",()=>{
+test("ECO-07 provider workflow uses OpenRouter with restricted PR synchronization",()=>{
  const workflow=readFileSync(resolve(".github/workflows/eco07-groq-recovery.yml"),"utf8");
  const compact=workflow.replace(/\s+/gu," ");
  assert.ok(workflow.includes("type: choice"));
  for(const operatingSystem of ["ubuntu-24.04","macos-15","windows-2025"])assert.ok(workflow.includes(`- ${operatingSystem}`));
  assert.ok(workflow.includes("expected_sha:"));
- assert.ok(workflow.includes('GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}'));
- assert.ok(workflow.includes("ASEN_ECO07_MODEL: openai/gpt-oss-120b"));
+ assert.ok(workflow.includes('OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}'));
+ assert.ok(workflow.includes("ASEN_ECO07_MODEL: nvidia/nemotron-3.5-lightning:free"));
  assert.ok(workflow.includes("workflow_dispatch:"));
- assert.ok(compact.includes("pull_request: branches: [main] types: [labeled]"));
- assert.ok(workflow.includes("github.event.label.name == 'eco07:run-ubuntu'"));
+ assert.ok(compact.includes("pull_request: branches: [main] types: [synchronize]"));
+ assert.ok(workflow.includes("github.event.action == 'synchronize'"));
  assert.ok(workflow.includes("github.event.pull_request.number == 32"));
  assert.ok(compact.includes("github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'"));
  assert.ok(workflow.includes("github.run_attempt == 1"));
  assert.ok(!workflow.includes("pull_request_target:"));
- assert.ok(!workflow.includes("types: [synchronize]"));
+ assert.ok(!workflow.includes("types: [labeled]"));
  assert.ok(!workflow.includes("matrix:"));
  assert.ok(!workflow.includes("pi install npm:pi-free"));
  assert.ok(!workflow.includes("ASEN_ECO07_PROVIDER_EXTENSION:"));
