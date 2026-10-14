@@ -89,7 +89,7 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
   if(!approved)return {status:"blocked",reason:"Pi user declined the exact scoped write authorization; the plan was not changed."};
   await input.validateIdentity();
   const fresh=(await input.todos.list(context)).find(row=>row.taskId===task.taskId);
-  if(!sameApprovedTaskSnapshot(task,fresh))return {status:"blocked",reason:"The plan task changed while awaiting authorization; refresh the plan before dispatch."};
+  if(!fresh||!sameApprovedTaskSnapshot(task,fresh))return {status:"blocked",reason:"The plan task changed while awaiting authorization; refresh the plan before dispatch."};
   let head:string;try{head=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The project stopped being a readable Git candidate; no writer was launched."};}
   if(head!==prepared.candidate.revision)return {status:"blocked",reason:"The project changed while awaiting authorization; rebuild the plan against the current candidate."};
   await input.validateIdentity();
