@@ -113,7 +113,7 @@ export function validateEco07RecoveryBoundary(environment,observation){
   if(environment.ASEN_PR_BASE_BRANCH!==ECO07_RECOVERY_CONTRACT.baseBranch)throw new Error("ECO-07 pull request base branch is not approved");
   if(environment.ASEN_PR_HEAD_REPOSITORY!==ECO07_RECOVERY_CONTRACT.repository)throw new Error("ECO-07 pull request head repository is not approved");
   if(environment.ASEN_PR_HEAD_BRANCH!==ECO07_RECOVERY_CONTRACT.branch)throw new Error("ECO-07 pull request head branch is not approved");
-  if(environment.ASEN_EVENT_LABEL!==ECO07_RECOVERY_CONTRACT.eventLabel)throw new Error("ECO-07 pull request event label is not approved");
+  if(environment.ASEN_EVENT_LABEL!=="" )throw new Error("ECO-07 automatic pull request event must not carry a label");
  }
  const selection=validateEco07ProviderSelection(environment);
  if(selection.provider!==ECO07_RECOVERY_CONTRACT.provider)throw new Error("ECO-07 provider is not pinned");
