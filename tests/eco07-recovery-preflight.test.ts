@@ -30,8 +30,8 @@ const validEnvironment=()=>({
  ASEN_EVENT_HEAD_SHA:SHA,
  ASEN_DISPATCH_BRANCH:BRANCH,
  ASEN_EXPECTED_BRANCH:BRANCH,
- ASEN_ECO07_PROVIDER:"groq",
- ASEN_ECO07_MODEL:"openai/gpt-oss-120b",
+ ASEN_ECO07_PROVIDER:"openrouter",
+ ASEN_ECO07_MODEL:"nvidia/nemotron-3.5-lightning:free",
 });
 const validPullRequestEnvironment=()=>({
  ...validEnvironment(),
@@ -42,7 +42,7 @@ const validPullRequestEnvironment=()=>({
  ASEN_PR_BASE_BRANCH:"main",
  ASEN_PR_HEAD_REPOSITORY:REPOSITORY,
  ASEN_PR_HEAD_BRANCH:BRANCH,
- ASEN_EVENT_LABEL:"eco07:run-ubuntu",
+ ASEN_EVENT_LABEL:"",
  ASEN_DISPATCH_BRANCH:"",
 });
 const validObservation=()=>({
@@ -151,13 +151,13 @@ test("ECO-07 preflight admits each enumerated runner without credentials or laun
   });
   const result=validateEco07RecoveryPreflight(environment,validObservation());
   assert.equal(result.operatingSystem,operatingSystem);
-  assert.equal(result.provider,"groq");
+  assert.equal(result.provider,"openrouter");
   assert.ok(!accessed.some(key=>key.endsWith("_API_KEY")));
   assert.deepEqual(Object.keys(result).sort(),["branch","candidate","evidenceDirectory","eventHeadSha","githubSha","model","operatingSystem","provider","triggerKind"].sort());
  }
 });
 
-test("ECO-07 preflight admits manual dispatch and the exact labeled PR32 route",()=>{
+test("ECO-07 preflight admits manual dispatch and the exact automatic PR32 route",()=>{
  const manual=validateEco07RecoveryPreflight(validEnvironment(),validObservation());
  assert.equal(manual.triggerKind,"manual");
  assert.equal(manual.eventHeadSha,SHA);
@@ -183,12 +183,12 @@ test("ECO-07 preflight rejects unapproved manual OS, SHA, branch, and metadata",
  rejects({...validEnvironment(),ASEN_TRIGGER_KIND:"push"},validObservation(),/trigger/);
 });
 
-test("ECO-07 PR route fails closed for every non-authorized label event",()=>{
+test("ECO-07 PR route fails closed for every non-authorized PR event",()=>{
  const rejects=(changes:Record<string,string>,pattern:RegExp,observation=validObservation())=>
   assert.throws(()=>validateEco07RecoveryPreflight({...validPullRequestEnvironment(),...changes},observation),pattern);
  rejects({ASEN_PR_HEAD_REPOSITORY:"fork/ASEN"},/head repository/);
- rejects({ASEN_EVENT_LABEL:""},/event label/);
- rejects({ASEN_EVENT_LABEL:"eco07:run-windows"},/event label/);
+ rejects({ASEN_EVENT_LABEL:"eco07:run-ubuntu"},/must not carry a label/);
+ rejects({ASEN_EVENT_LABEL:"eco07:run-windows"},/must not carry a label/);
  rejects({ASEN_PR_NUMBER:"31"},/pull request/);
  rejects({ASEN_PR_BASE_BRANCH:"develop"},/base branch/);
  rejects({ASEN_PR_HEAD_BRANCH:"feat/other"},/head branch/);
@@ -201,7 +201,7 @@ test("ECO-07 PR route fails closed for every non-authorized label event",()=>{
 });
 
 test("ECO-07 preflight requires pinned selections and pristine evidence output",()=>{
- assert.throws(()=>validateEco07RecoveryPreflight({...validEnvironment(),ASEN_ECO07_PROVIDER:"openrouter"},validObservation()),/provider/);
+ assert.throws(()=>validateEco07RecoveryPreflight({...validEnvironment(),ASEN_ECO07_PROVIDER:"groq"},validObservation()),/provider/);
  assert.throws(()=>validateEco07RecoveryPreflight({...validEnvironment(),ASEN_ECO07_MODEL:"other"},validObservation()),/model/);
  assert.throws(()=>validateEco07RecoveryPreflight(validEnvironment(),{...validObservation(),missingFiles:["extensions/asen.ts"]}),/required file/);
  assert.throws(()=>validateEco07RecoveryPreflight(validEnvironment(),{...validObservation(),evidenceDestination:{exists:false,isDirectory:false,entries:[]}}),/evidence directory/);
@@ -209,10 +209,10 @@ test("ECO-07 preflight requires pinned selections and pristine evidence output",
 });
 
 test("ECO-07 provider selection validates model metadata without resolving a key",()=>{
- const environment=new Proxy({ASEN_ECO07_PROVIDER:"groq",ASEN_ECO07_MODEL:"openai/gpt-oss-120b"},{
+ const environment=new Proxy({ASEN_ECO07_PROVIDER:"openrouter",ASEN_ECO07_MODEL:"nvidia/nemotron-3.5-lightning:free"},{
   get(target,key,receiver){if(String(key).endsWith("_API_KEY"))throw new Error("credential resolution attempted");return Reflect.get(target,key,receiver);},
  });
- assert.deepEqual(validateEco07ProviderSelection(environment),{provider:"groq",model:"openai/gpt-oss-120b",credential:"GROQ_API_KEY"});
+ assert.deepEqual(validateEco07ProviderSelection(environment),{provider:"openrouter",model:"nvidia/nemotron-3.5-lightning:free",credential:"OPENROUTER_API_KEY"});
 });
 
 test("ECO-07 workflow preflights one selected OS before exposing credentials",()=>{
@@ -222,7 +222,7 @@ test("ECO-07 workflow preflights one selected OS before exposing credentials",()
  assert.ok(compact.includes("runs-on: >- ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.os }}"));
  assert.ok(!workflow.includes("matrix:"));
  const boundary=workflow.indexOf("eco07-pi-recovery-preflight.mjs boundary");
- const install=workflow.indexOf("npm ci"),runtime=workflow.indexOf("eco07-pi-recovery-preflight.mjs runtime"),secret=workflow.indexOf("secrets.GROQ_API_KEY");
+ const install=workflow.indexOf("npm ci"),runtime=workflow.indexOf("eco07-pi-recovery-preflight.mjs runtime"),secret=workflow.indexOf("secrets.OPENROUTER_API_KEY");
  assert.ok(boundary<install&&install<runtime&&runtime<secret);
  assert.ok(!workflow.includes("npm install -g"));
  assert.ok(workflow.includes("ASEN_GITHUB_SHA: ${{ github.sha }}"));
