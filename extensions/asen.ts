@@ -16,6 +16,8 @@ import {registerOrdinaryReviewCommand,type OrdinaryReviewCommandController} from
 import {deriveOddExecutionContract,type OddExecutionContract} from "../src/flow/odd-execution-contract.js";
 import {trackOddTask,resumeOddTask,appendOddTaskEvent,type OddProgress} from "../src/flow/odd-task-tracking.js";
 import type {MemoryContext} from "../src/memory/context.js";import type {MemoryStore} from "../src/memory/types.js";
+import {SqliteMemoryStore} from "../src/memory/sqlite-store.js";
+import {ASEN_MEMORY_GUIDANCE,ASEN_MEMORY_GUIDANCE_SECTION,ASEN_MEMORY_TOOL_NAMES,createPiMemoryBinding,finishPiMemorySession,preparePrivateMemoryDirectory,projectMemoryContext,registerPiMemoryTools,type PiMemoryBinding,type PiMemoryStore} from "../src/memory/pi-integration.js";
 import type {TaskEvent} from "../src/runtime/task-replay.js";
 import {ALL_INTERACTION_TOOL_NAMES,registerInteractionTools} from "../src/interaction/pi-tools.js";
 import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
@@ -58,7 +60,7 @@ type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
 const activationRegistryRoot=globalThis as typeof globalThis&{[activationRegistryKey]?:WeakSet<object>};
 const activatedPiHosts=activationRegistryRoot[activationRegistryKey]??(activationRegistryRoot[activationRegistryKey]=new WeakSet<object>());
-export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>}
+export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>;enableMemoryRuntime?:boolean;memoryStoreFile?:string;memoryStoreFactory?:()=>Promise<PiMemoryStore>}
 export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;startSession(context:CommandContext):Promise<void>;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
 
 const usage="Usage: /asen-skill-registry refresh";
@@ -130,6 +132,15 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let agentDeliveryContext:CommandContext|undefined,agentDeliveryIdentity:{sessionId:string;projectId:string}|undefined;
   let unsubscribeAgentDelivery:(()=>void)|undefined;
   const workspaceFile=dependencies.workspaceStoreFile??path.join(home(),".asen","workspace.json");
+  const memoryFile=dependencies.memoryStoreFile??path.join(home(),".asen","memory.db");
+  const memoryStorePromise=dependencies.memoryStoreFactory?.()??(dependencies.enableMemoryRuntime?(async()=>{await preparePrivateMemoryDirectory(memoryFile);return new SqliteMemoryStore(memoryFile);})():undefined);
+  let activeMemory:PiMemoryBinding|undefined,memoryFirstRequest=true;
+  const currentMemoryBinding=async(host:unknown):Promise<PiMemoryBinding>=>{
+   const context=host as CommandContext|undefined,binding=activeMemory;
+   if(!binding||binding.closed||!context?.cwd||context.sessionManager?.getSessionId?.()!==binding.piSessionId||await canonical(context.cwd)!==binding.projectId)throw new Error("ASEN memory is unavailable for this Pi session and project");
+   return binding;
+  };
+  const finishActiveMemory=()=>{if(!activeMemory||activeMemory.closed)return;finishPiMemorySession(activeMemory);activeMemory=undefined;};
   const agentRuntimePromise=dependencies.agentRuntimeFactory?.()??(dependencies.enableAgentRuntime?AgentRuntime.open({storeFile:dependencies.agentStoreFile??path.join(home(),".asen","agents.json"),runner:dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,...(dependencies.agentProviderCredential?{providerCredential:dependencies.agentProviderCredential}:{})}),...(dependencies.agentMaxConcurrency!==undefined?{maxConcurrency:dependencies.agentMaxConcurrency}:{})}):undefined);
   const getAgentRuntime=async()=>{if(!agentRuntimePromise)throw new Error("ASEN agent runtime is unavailable");return agentRuntimePromise;};
   
@@ -139,6 +150,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const [links,runtime]=await Promise.all([taskAgentLinks.list(identity),agentRuntimePromise]);
    await Promise.all(links.filter(link=>link.taskId===taskId).map(link=>runtime.cancel(link.agentId,identity)));
   }:undefined,taskAgentLinks&&agentRuntimePromise?{links:async()=>taskAgentLinks,agents:async()=>agentRuntimePromise}:undefined);
+  if(memoryStorePromise)registerPiMemoryTools(pi,host=>currentMemoryBinding(host));
   const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks),links:async()=>taskAgentLinks}:undefined):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const sessionIdentity=async(ctx:CommandContext)=>{const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId)throw new Error("ASEN requires the active Pi session");const projectId=await canonical(ctx.cwd);return {sessionId,projectId,worktree:projectId};};
@@ -162,6 +174,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const startSession=async(ctx:CommandContext)=>{
    agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;await lifecycle.start(ctx,registryStartupDisabled(undefined));
+   try{
+    finishActiveMemory();
+    if(memoryStorePromise){const identity=await sessionIdentity(ctx),store=await memoryStorePromise;activeMemory=createPiMemoryBinding(store,identity.projectId,identity.sessionId);memoryFirstRequest=true;}
+   }catch(error){activeMemory=undefined;try{ctx.ui.notify(`ASEN no pudo activar la memoria local del proyecto: ${safeErrorMessage(error)}`,"error");}catch{/* Memory remains unavailable without interrupting Pi startup. */}}
    let identity:{sessionId:string;projectId:string}|undefined;const todos=todoStorePromise?await todoStorePromise:undefined;
    if(todos){try{identity=await sessionIdentity(ctx);await todos.recover(identity);}catch{ctx.ui.notify("ASEN no pudo recuperar el estado de las tareas; no ha repetido ninguna.","error");}if(todos.diagnostics())ctx.ui.notify("ASEN aisló un archivo de tareas dañado; no inició ninguna tarea guardada.","error");if(identity){const interrupted=(await todos.list(identity)).filter(item=>item.current.state==="blocked"&&/restarted|session ended|interrupted/iu.test(item.current.reason??""));if(interrupted.length)ctx.ui.notify(todoProgressSummary(interrupted),"info");}}
    if(workspaceStorePromise){const store=await workspaceStorePromise;if(store.diagnostics())ctx.ui.notify("ASEN detectó y aisló datos de atribución dañados.","error");}
@@ -178,7 +194,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    try{await incrementUsageFile(usageFile,"sessions");}catch{try{ctx.ui.notify("ASEN no pudo guardar el uso local.","error");}catch{/* Notification is best-effort when the UI is unavailable. */}}
   };
   if(!dependencies.deferSessionStart)pi.on?.("session_start",async(_event,ctx)=>startSession(ctx));
-  pi.on?.("session_shutdown",async(_event,ctx)=>{agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue when the UI is unavailable. */}}if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}await lifecycle.shutdown();});
+  pi.on?.("session_shutdown",async(_event,ctx)=>{agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue when the UI is unavailable. */}}if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}try{finishActiveMemory();}catch(error){try{ctx?.ui?.notify(`ASEN no pudo cerrar la sesión de memoria: ${safeErrorMessage(error)}`,"error");}catch{/* Shutdown continues after best-effort memory finalization. */}}if(memoryStorePromise)try{(await memoryStorePromise).close();}catch{/* Shutdown continues after best-effort memory close. */}await lifecycle.shutdown();});
   pi.on?.("input",async(event,ctx)=>{
    const text=typeof event?.text==="string"?event.text:"",sessionId=ctx.sessionManager?.getSessionId?.();
    if(event?.source!=="interactive"&&event?.source!=="rpc")return;
@@ -190,9 +206,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   pi.on?.("turn_start",async()=>{try{await incrementUsageFile(usageFile,"agentRuns");}catch{/* Usage accounting must not interrupt the host turn. */}});
   registerInteractionTools(pi,dependencies.interactionTimeoutMs);
   if(pi.registerTool)registerCodeGraphTools({registerTool:pi.registerTool.bind(pi)},dependencies.codeIntelligence);
-  pi.on?.("before_agent_start",event=>{
+  pi.on?.("before_agent_start",async(event,ctx)=>{
    const options=(event as {systemPromptOptions?:{sections?:Record<string,string>}}|undefined)?.systemPromptOptions;
-   if(options?.sections)addAsenRequestGuidance(options,!!pi.registerTool);
+   if(options?.sections){addAsenRequestGuidance(options,!!pi.registerTool);if(memoryStorePromise){options.sections[ASEN_MEMORY_GUIDANCE_SECTION]=ASEN_MEMORY_GUIDANCE;try{const binding=await currentMemoryBinding(ctx);const context=projectMemoryContext(binding,(event as {prompt?:string}).prompt??"",memoryFirstRequest,4096);memoryFirstRequest=false;if(context)options.sections.asen_project_memory_context=context;}catch{/* Missing or mismatched session identity never exposes stored context or blocks the requested turn. */}}}
   });
   registerData("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
   registerData("asen-commands",{description:"List ASEN public commands",handler:()=>ASEN_COMMAND_CATALOG.map(c=>({name:c.name,group:c.group,implemented:c.implemented}))});
@@ -245,6 +261,28 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   registerData("asen-agents",{description:"Show attributed ASEN agent lifecycle",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(agentRuntimePromise){const rows=await (await agentRuntimePromise).list(await sessionIdentity(ctx));return agentStatusRows(rows);}return dependencies.agents?agentStatusRows(dependencies.agents()):["ASEN agents unavailable: no local agent provider configured."];}});
   registerData("asen-changes",{description:"Show current-session attributed changes and possible same-path actor conflicts",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(workspaceStorePromise){const rows=await (await workspaceStorePromise).list(await sessionIdentity(ctx)),changes=rows.map(row=>row.change),conflicts=findPotentialWorkspaceConflicts(changes);return [...(conflicts.length?["Potential conflicts require review; no content comparison, winner selection, or automatic resolution is performed.",...visibleWorkspaceConflictRows(conflicts)]:[]),...visibleWorkspaceRows(changes)];}return dependencies.changes?visibleWorkspaceRows(dependencies.changes()):["ASEN workspace changes unavailable: no local change provider configured."];}});
   registerData("asen-todos",{description:"Show active Todo tasks, or archived completed task history for the current Pi session and project",handler:async(args:string|undefined,ctx:CommandContext)=>{if(!todoStorePromise)return ["ASEN no tiene un almacén local de tareas configurado."];const store=await todoStorePromise,identity=await sessionIdentity(ctx),history=args?.trim()==="history",rows=history?await store.archived(identity):await store.list(identity);return rows.length?todoStatusRows(rows):[history?"No hay tareas archivadas para este proyecto y sesión.":"No hay tareas activas para este proyecto y sesión."];}});
+  registerData("asen-memory",{description:"Consultar o borrar recuerdos locales del proyecto actual",handler:async(args:string|undefined,ctx:CommandContext)=>{
+   if(!memoryStorePromise)return ["La memoria local de ASEN está desactivada."];
+   const binding=await currentMemoryBinding(ctx),parts=(args??"").trim().split(/\s+/u),operation=parts[0]??"status";
+   if(operation==="status"){
+    if(parts.length>1)return ["Uso: /asen-memory [status | search <texto> | forget <id>"];
+    const data=binding.store.exportProject(binding.projectId);
+    return [`Memoria local activa para este proyecto: ${data.observations.length} recuerdos; ${data.summaries.length} resúmenes de sesión.`,`Base privada: ${path.basename(memoryFile)}.`];
+   }
+   if(operation==="search"){
+    const query=(args??"").trim().slice("search".length).trim();if(!query)return ["Uso: /asen-memory search <texto>"];
+    const matches=binding.store.searchPreviews(binding.projectId,query,{matchMode:"any",limit:5});
+    return matches.length?matches.map(item=>`${item.id} | ${item.title??item.topicKey??item.kind} | ${item.preview}${item.truncated?"…":""}`):["No hay recuerdos relacionados en este proyecto."];
+   }
+   if(operation==="forget"){
+    const id=parts[1];if(!id||parts.length!==2)return ["Uso: /asen-memory forget <id>"];
+    if(ctx.hasUI!==true||typeof ctx.ui.confirm!=="function")throw new Error("Borrar un recuerdo requiere confirmación en la interfaz de Pi.");
+    const item=binding.store.get(id);if(!item||item.projectId!==binding.projectId)return ["No se encontró ese recuerdo en este proyecto."];
+    if(!await ctx.ui.confirm("Borrar recuerdo de ASEN",`${item.title??"Recuerdo"}\n\nSe ocultará de búsquedas futuras en este proyecto. ¿Continuar?`))return ["No se ha borrado ningún recuerdo."];
+    binding.store.deleteObservation(id,binding.projectId);for(let index=binding.saved.length-1;index>=0;index--)if(binding.saved[index]?.id===id)binding.saved.splice(index,1);return ["Recuerdo borrado de la memoria activa del proyecto."];
+   }
+   return ["Uso: /asen-memory [status | search <texto> | forget <id>"];
+  }});
   registerData("asen-task-agents",{description:"Show read-only task, dependency readiness and agent coordination for the current Pi session",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(!todoStorePromise||!agentRuntimePromise)return ["ASEN task-agent coordination requires both local stores."];const identity=await sessionIdentity(ctx);const coordinator=new TaskAgentCoordinator(await todoStorePromise,await agentRuntimePromise,taskAgentLinks);const view=await coordinator.snapshot(identity);return view.tasks.map(task=>({taskId:task.id,title:task.title,state:task.state,revision:task.revision,dependsOn:task.dependsOn,blockedBy:task.blockedBy,ready:task.ready,agents:task.agents}));}});
   registerData("asen-profiles",{description:"Show local runtime profiles",handler:async()=>{const value=await readProfilesFile(profilesFile);return {active:value.active??"default",profiles:value.profiles.map(p=>p.name),available:true};}});
   pi.registerCommand?.("asen-history",{description:"Manage opt-in, redacted, project-scoped local prompt history",handler:async(args:string,ctx:CommandContext)=>{
@@ -292,7 +330,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
  validatePiHost(pi,VERSION);
  if(activatedPiHosts.has(pi))return;
  const commandNames=ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name);
- const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODE_INTELLIGENCE_TOOL_NAME,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES)];
+ const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODE_INTELLIGENCE_TOOL_NAME,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES),...(dependencies.enableMemoryRuntime===false&&!dependencies.memoryStoreFactory?[]:ASEN_MEMORY_TOOL_NAMES)];
  let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext)=>Promise<void>)|undefined;
  pi.on("session_start",async(_event,ctx)=>{
   if(attempted){if(registrationsReady){validatePiExecutionContext(ctx);await sessionStart?.(ctx);}return;}
@@ -302,7 +340,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
    validatePiExecutionContext(ctx);
    // Pi's public inventory methods can exist before their runtime is initialized; read them only here.
    validatePiRegistrationCollisions(pi,commandNames,toolNames);
-   const facade=createAsenExtension({...dependencies,enableAgentRuntime:dependencies.enableAgentRuntime??true,enableTodoRuntime:dependencies.enableTodoRuntime??true,enableWorkspaceRuntime:dependencies.enableWorkspaceRuntime??true,deferSessionStart:true})({
+   const facade=createAsenExtension({...dependencies,enableAgentRuntime:dependencies.enableAgentRuntime??true,enableTodoRuntime:dependencies.enableTodoRuntime??true,enableWorkspaceRuntime:dependencies.enableWorkspaceRuntime??true,enableMemoryRuntime:dependencies.enableMemoryRuntime??true,deferSessionStart:true})({
     on:(event,handler)=>pi.on(event as any,(...args:any[])=>{
      if(token!==generation||!registrationsReady)return undefined;
      validatePiExecutionContext(args[1]);

@@ -1,4 +1,4 @@
-export interface PublicCommand{group:"core"|"workflow"|"review"|"skills"|"configuration"|"session"|"diagnostics";name:string;implemented:boolean;owner:string}
+export interface PublicCommand{group:"core"|"workflow"|"review"|"skills"|"configuration"|"session"|"memory"|"diagnostics";name:string;implemented:boolean;owner:string}
 export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"core",name:"asen",implemented:true,owner:"extensions/asen.ts"},
  {group:"workflow",name:"asen-workflow",implemented:true,owner:"src/lifecycle/workflow-selection.ts"},
@@ -15,6 +15,7 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"session",name:"asen-history",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-usage",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-stats",implemented:true,owner:"extensions/asen.ts"},
+ {group:"memory",name:"asen-memory",implemented:true,owner:"extensions/asen.ts"},
  {group:"diagnostics",name:"asen-status",implemented:true,owner:"extensions/asen.ts"},
  {group:"diagnostics",name:"asen-doctor",implemented:true,owner:"extensions/asen.ts"},
  {group:"diagnostics",name:"asen-authority-status",implemented:true,owner:"extensions/authority.ts"}

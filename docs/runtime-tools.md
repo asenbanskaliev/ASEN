@@ -36,6 +36,16 @@ ASEN does not register a separate CLI flag because Pi's public extension API has
 
 `/asen-skill-registry refresh` remains an explicit manual command. Startup/watch failure is diagnostic; it does not cancel the user's final response. Local native Linux watch invalidation, restart generation, shutdown, disable and project isolation are tested. Real all-platform Pi startup/restart journeys remain open.
 
+## Project memory
+
+The primary Pi extension opens the private local SQLite store at `~/.asen/memory.db` when memory is enabled. At session start it binds a fresh memory session to the canonical current project and Pi session. Before each agent turn it adds only bounded project context: recent/pinned notes on the first turn and project-search matches for later requests, capped at 4 KiB. A project/session mismatch or unsafe store prevents memory access and never broadens retrieval to another project.
+
+`asen_memory_save` stores curated project decisions, conventions and non-obvious discoveries. `asen_memory_search` retrieves bounded matches. The injected policy tells the agent to avoid transcripts, routine actions, credentials, personal data and temporary task checklists. On session shutdown ASEN stores a short summary of notes saved during that session; the next session can read it. A crash may skip the summary, but saved notes remain durable. Memory remains reference data and never restores write permission or resumes a task.
+
+`/asen-memory status`, `/asen-memory search <text>` and `/asen-memory forget <id>` let the user inspect or remove local notes. Forget requires a live Pi UI confirmation and removes the affected session summary so deleted content is not reintroduced through that summary. Search and context remain project-scoped.
+
+These deterministic lifecycle tests use a local SQLite file and simulated Pi events; they do not establish a provider-backed Pi conversation or cross-platform host evidence.
+
 ## Primary installation and child policy
 
 The Pi package manifest selects `extensions/asen.ts` explicitly. `extensions/authority.ts` is a private, hash-pinned policy loaded explicitly by the existing child runner; ordinary installation must not apply it to the primary session. `verify:pack` installs the actual tarball with the optional peer omitted, asserts that the peer is absent, then loads the tarball through the real Pi SDK resource loader and rejects accidental child-policy activation. This offline registration check does not execute tools or models, and does not prove complete ecosystem integration.

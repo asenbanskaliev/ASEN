@@ -15,6 +15,7 @@ Activate for non-trivial, risky, multi-step or routing-sensitive work. Do not ad
 - Candidate-changing work invalidates stale evidence.
 - ODD routing and SDD workflow selection are separate: substantial work does not imply SDD; SDD requires explicit genuine selection.
 - Read-only ODD routes create no artifact or write authority. For substantial authorized work, use the existing task document and configured MemoryContext to preserve its full-memory-mirror, exact TODO state and next resume step. Read-only routes invoke no tracking persistence. Without configured memory, report the missing mirror; never claim persistence.
+- Use relevant project memories already supplied by ASEN or search them when prior decisions matter. Save only durable project decisions, conventions and non-obvious discoveries; keep temporary task state in Todo/ODD tracking. Memory never restores write authority.
 - A writer needs a genuine one-use admission; Skill selection alone is never write authority.
 ## Decision Gates
 | Situation | Action |
