@@ -48,3 +48,11 @@ The current controlled-write path was rechecked against the exact `fb26e5ae0092c
 Expanded `tests/plan-dispatcher-role-boundaries.test.ts`: approved clarification proves exact durable read-only provenance and link-before-run ordering; concurrent dispatch proves one durable admission; post-confirmation instruction, plan, and dependency drift is rejected before enqueue; decline and identity/revision drift remain planned; `primary` still returns blocked before confirmation or launch. The historical focused R4 set passed **152/152 tests** across the plan, dispatcher, Pi agent, Todo persistence, recovery, evidence-bundle, and matrix contracts.
 
 **Decision remains PARTIAL / OPEN.** Remaining work includes usable primary execution, structured lifecycle grants, and a real interrupted-write scenario showing recovery requires a fresh candidate and explicit reauthorization. Existing tests demonstrate that write authority is not restored from disk; they do not establish safe recovery from partially applied file changes on a real Pi host. No automatic multi-task scheduler or provider quota policy is claimed.
+
+## Authorization snapshot race correction (2026-10-14)
+
+Independent review found a gap between the worker's post-confirmation snapshot check and `TrustedTaskAgentBinder.launch`: a concurrent Todo transition could occur before the binder acquired the launch lock. The old worker path accepted an already-running Todo and could therefore dispatch work authorized against a stale snapshot.
+
+The controlled worker now receives enqueue and dispatch callbacks only through `launchExact`. The binder compares the complete persisted Todo and requires `planned` while holding the same lock that records the running claim, binds ownership, and dispatches. The agent record is not durably enqueued until that exact comparison succeeds. The worker path has no direct-dispatch fallback. `tests/trusted-task-agent-binder.test.ts` reproduces the stale-state race and requires zero enqueue, zero link and zero runner calls; `tests/pi-agent-runtime.test.ts` continues to cover the approved writer path.
+
+This closes the local stale-snapshot admission gap only. ECO-06 remains **PARTIAL / OPEN**: primary-session dispatch, structured lifecycle grants, real interrupted-write recovery and native review remain separate gates.

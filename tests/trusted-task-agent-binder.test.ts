@@ -30,6 +30,18 @@ test("ECO-06 plan dependency gates remain enforced inside the ECO-07 launch lock
  let dispatches=0;await assert.rejects(()=>binder.launch(task.taskId,"agent-child",own,()=>{dispatches++;}),/dependencies must be verified done/);
  assert.equal(dispatches,0);assert.deepEqual(await links.list(own),[]);assert.equal((await todos.list(own)).find(item=>item.taskId===task.taskId)?.current.state,"planned");
 });
+test("ECO-06 exact worker admission rejects Todo drift before durable enqueue or dispatch",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-worker-snapshot-race-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const own={sessionId:"session-a",projectId:"/project"},todos=await SessionTodoStore.open(join(dir,"todos.json")),task=await todos.add("Authorized plan snapshot",own,undefined,undefined,"asen-plan:writer",[],"Change only the approved file"),snapshot=(await todos.list(own))[0]!;
+ const links=new TaskAgentLinkStore(join(dir,"links.json")),runtime={query:async()=>({record:{id:"agent-writer",sessionId:own.sessionId,projectId:own.projectId,state:"queued"}})},binder=new TrustedTaskAgentBinder(todos,runtime as never,links);
+ await todos.update(task.taskId,own,snapshot.current.revision,"running","Competing Todo transition before the launch lock");
+ let enqueues=0,dispatches=0;
+ await assert.rejects(()=>binder.launchExact(snapshot,"agent-writer",own,async()=>{enqueues++;},()=>{dispatches++;}),/confirmed Todo snapshot changed/u);
+ assert.equal(enqueues,0,"stale write authorization must be rejected before persisting an agent");
+ assert.equal(dispatches,0,"stale write authorization must never reach the runner");
+ assert.deepEqual(await links.list(own),[]);
+ assert.equal((await todos.list(own))[0]?.current.state,"running","the competing state remains available for review");
+});
 test("ECO-07 rejects a second launch while a Todo already has an active linked agent",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-binder-duplicate-"));t.after(()=>rm(dir,{recursive:true,force:true}));
  const own={sessionId:"session-a",projectId:"/project"},todos=await SessionTodoStore.open(join(dir,"todos.json")),task=await todos.add("Single active launch",own),links=new TaskAgentLinkStore(join(dir,"links.json"));
