@@ -5,7 +5,7 @@ import {join} from "node:path";
 import test,{type TestContext} from "node:test";
 import type {AgentRequest} from "../src/agents/dispatcher.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
-import {dispatchNextPlanTask} from "../src/runtime/plan-dispatcher.js";
+import {dispatchNextPlanTask,sameApprovedTaskSnapshot} from "../src/runtime/plan-dispatcher.js";
 import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 import {TaskAgentTodoReconciler} from "../src/runtime/task-agent-reconciler.js";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
@@ -119,4 +119,19 @@ test("primary remains blocked without confirmation or launch",async()=>{
  const result=await dispatchNextPlanTask(input);
  assert.equal(result.status,"blocked");if(result.status==="blocked")assert.match(result.reason,/controlled primary lifecycle dispatcher/u);
  assert.equal(confirmations,0);assert.equal(agentStarts,0);
+});
+
+
+test("ECO-06 approval snapshot rejects changed dependency, instruction, scope, identity, and state",()=>{
+ const before={taskId:"todo-1",requestId:"asen-plan:task:worker",title:"Write scoped file",description:"Only change src/allowed.ts",dependsOn:["todo-explore"],current:{state:"planned",revision:1},plan:{role:"worker",priority:2,writeSurfaces:["src/allowed.ts"],candidate:{id:"candidate-1",repository:"/repo",revision:"a".repeat(40)}}} as unknown as Parameters<typeof sameApprovedTaskSnapshot>[0];
+ assert.equal(sameApprovedTaskSnapshot(before,{...before}),true);
+ assert.equal(sameApprovedTaskSnapshot(before,undefined),false);
+ for(const changed of [
+  {...before,dependsOn:["todo-unverified"]},
+  {...before,description:"Change every file"},
+  {...before,requestId:"asen-plan:other:worker"},
+  {...before,plan:{...before.plan!,writeSurfaces:["src/other.ts"]}},
+  {...before,current:{state:"running" as const,revision:1}},
+  {...before,title:"Different task"},
+ ])assert.equal(sameApprovedTaskSnapshot(before,changed as typeof before),false);
 });
