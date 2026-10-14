@@ -1,4 +1,4 @@
-name: ECO-07 Groq task recovery
+name: ECO-07 OpenRouter task recovery
 on:
   # Manual evidence remains one explicitly selected OS per dispatch.
   workflow_dispatch:
@@ -22,7 +22,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: eco07-groq-recovery-${{ github.ref }}
+  group: eco07-openrouter-recovery-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   pi-recovery:
@@ -86,8 +86,8 @@ jobs:
             ${{ github.event.pull_request.head.repo.full_name || '' }}
           ASEN_PR_HEAD_BRANCH: ${{ github.event.pull_request.head.ref || '' }}
           ASEN_EVENT_LABEL: ${{ github.event.label.name || '' }}
-          ASEN_ECO07_PROVIDER: groq
-          ASEN_ECO07_MODEL: openai/gpt-oss-120b
+          ASEN_ECO07_PROVIDER: openrouter
+          ASEN_ECO07_MODEL: nvidia/nemotron-3.5-lightning:free
         run: node scripts/eco07-pi-recovery-preflight.mjs boundary
       - uses: actions/setup-node@v7
         with:
@@ -97,13 +97,13 @@ jobs:
         run: node scripts/eco07-pi-recovery-preflight.mjs runtime
       - name: Execute Pi interruption, restart, and ASEN Todo resume
         env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          ASEN_ECO07_PROVIDER: groq
-          ASEN_ECO07_MODEL: openai/gpt-oss-120b
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ASEN_ECO07_PROVIDER: openrouter
+          ASEN_ECO07_MODEL: nvidia/nemotron-3.5-lightning:free
           ASEN_EXPECTED_SHA: ${{ env.ASEN_RESOLVED_EXPECTED_SHA }}
         run: |
           set -euo pipefail
-          test -n "$GROQ_API_KEY"
+          test -n "$OPENROUTER_API_KEY"
           node --import tsx scripts/eco07-pi-recovery-e2e.mjs
         shell: bash
       - name: Preserve ECO-07 process and event evidence
@@ -111,7 +111,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: >-
-            eco07-groq-recovery-${{ env.ASEN_RESOLVED_EXPECTED_SHA }}-
+            eco07-openrouter-recovery-${{ env.ASEN_RESOLVED_EXPECTED_SHA }}-
             ${{ env.ASEN_RESOLVED_OS }}
           path: eco07-pi-evidence/
           if-no-files-found: error
