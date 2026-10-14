@@ -15,10 +15,10 @@ on:
         description: Exact 40-character candidate SHA
         required: true
         type: string
-  # PR #32 opts in only when its exact Ubuntu label is added.
+  # Automatically exercise the exact PR #32 candidate on each branch update.
   pull_request:
     branches: [main]
-    types: [labeled]
+    types: [synchronize]
 permissions:
   contents: read
 concurrency:
@@ -39,7 +39,7 @@ jobs:
             'asenbanskaliev/ASEN' &&
           github.event.pull_request.head.ref ==
             'feat/strict-parity-prerequisites' &&
-          github.event.label.name == 'eco07:run-ubuntu'
+          github.event.action == 'synchronize'
         )
       )
     name: >-
