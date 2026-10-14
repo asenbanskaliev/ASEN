@@ -15,7 +15,8 @@ export function parseRuntimeProfiles(raw:string):RuntimeProfilesFile|undefined{
 }
 function selected(file:RuntimeProfilesFile|undefined):RuntimeProfile|undefined{return file?.active?file.profiles.find(p=>p.name===file.active):undefined;}
 export function resolveRuntimeRoute(layers:ProfileLayer,role:string):{choice?:RouteChoice;source:"session"|"project"|"global"|"default"}{
- for(const [source,file] of [["session",layers.session],["project",layers.project],["global",layers.global]] as const){const route=selected(file)?.routes[role];if(route)return {choice:{...route},source};}return {source:"default"};
+ if(typeof role!=="string"||!NAME.test(role))return {source:"default"};
+ for(const [source,file] of [["session",layers.session],["project",layers.project],["global",layers.global]] as const){const routes=selected(file)?.routes;if(routes&&Object.hasOwn(routes,role)){const route=routes[role];if(route)return {choice:{...route},source};}}return {source:"default"};
 }
 export function setActiveProfile(file:RuntimeProfilesFile,name:string):RuntimeProfilesFile{if(!file.profiles.some(p=>p.name===name))throw new Error("Profile does not exist");return {...file,active:name};}
 export function upsertProfile(file:RuntimeProfilesFile,profile:RuntimeProfile):RuntimeProfilesFile{if(!NAME.test(profile.name)||Object.entries(profile.routes).some(([r,v])=>!NAME.test(r)||!validRoute(v)))throw new Error("Invalid profile");const i=file.profiles.findIndex(p=>p.name===profile.name),profiles=file.profiles.map(p=>({name:p.name,routes:structuredClone(p.routes)}));if(i<0){if(profiles.length>=64)throw new Error("Too many profiles");profiles.push(structuredClone(profile));}else profiles[i]=structuredClone(profile);return {...file,profiles};}

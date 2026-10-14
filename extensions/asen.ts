@@ -1,5 +1,6 @@
 import {RegistryLifecycle,registryStartupDisabled,type RegistryLifecycleOptions} from "../src/skills/registry-lifecycle.js";
-import {realpath} from "node:fs/promises";
+import {access,lstat,readFile,realpath} from "node:fs/promises";
+import {W_OK,X_OK} from "node:constants";
 import {homedir} from "node:os";
 import {execFileSync} from "node:child_process";
 import path from "node:path";
@@ -26,8 +27,11 @@ import {ASEN_COMMAND_CATALOG} from "../src/runtime/command-catalog.js";
 import {agentStatusRows,type PublicAgentRecord} from "../src/runtime/agent-lifecycle.js";
 import {findPotentialWorkspaceConflicts,visibleWorkspaceConflictRows,visibleWorkspaceRows,type WorkspaceChange} from "../src/runtime/workspace-attribution.js";
 import {readProfilesFile} from "../src/runtime/profile-store.js";
+import {parseHistoryStore,emptyHistoryStore} from "../src/runtime/history-store.js";
+import {parseUsageFile,emptyUsageFile} from "../src/runtime/usage-store.js";
 import {runHistoryCommand,recordHistoryInput,type HistoryCommandResult} from "../src/runtime/history-command.js";
 import {runUsageCommand} from "../src/runtime/usage-command.js";
+import {runPiHistoryStatsCommand} from "../src/stats/pi-history-command.js";
 import {incrementUsageFile} from "../src/runtime/usage-store.js";
 import {VERSION,type ExtensionAPI} from "@earendil-works/pi-coding-agent";
 import {validatePiHost,validatePiRegistrationCollisions,validatePiExecutionContext} from "../src/runtime/pi-host.js";
@@ -44,8 +48,10 @@ import {TaskAgentTodoReconciler} from "../src/runtime/task-agent-reconciler.js";
 import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-tools.js";
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 import {todoStatusRows} from "../src/runtime/todo-presentation.js";
+import {addAsenRequestGuidance} from "../src/runtime/request-guidance.js";
+import {ASEN_PLAN_REQUEST_TOOL,registerAsenPlanRequestTool} from "../src/runtime/natural-plan-tool.js";
 
-type CommandContext={cwd:string;hasUI?:boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>}};
+type CommandContext={cwd:string;hasUI?:boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>}};
 type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
@@ -56,6 +62,16 @@ export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;sta
 
 const usage="Usage: /asen-skill-registry refresh";
 const productionPackageRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
+async function privateFileState(file:string):Promise<boolean>{
+ let directory;
+ try{directory=await lstat(path.dirname(file));}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return true;return false;}
+ if(directory.isSymbolicLink()||!directory.isDirectory())return false;
+ const directoryPrivate=process.platform==="win32"||(directory.mode&0o077)===0;
+ let metadata;
+ try{metadata=await lstat(file);}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return directoryPrivate;return false;}
+ if(metadata.isSymbolicLink()||!metadata.isFile())return false;
+ return directoryPrivate&&(process.platform==="win32"||(metadata.mode&0o077)===0);
+}
 async function canonical(value:string):Promise<string>{
  const resolved=path.resolve(value);try{return path.normalize(await realpath(resolved));}catch{return path.normalize(resolved);}
 }
@@ -102,11 +118,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     return result instanceof Promise?result.then(publish):publish(result);
    }
   });
-  const lifecycle=new RegistryLifecycle({refresh,prepare:async cwd=>{
+  const registryObservations=new Map<string,number>(),registryRefreshGeneration=new Map<string,number>();
+  const observedRefresh:Refresh=async options=>{const project=path.resolve(options.projectId),generation=(registryRefreshGeneration.get(project)??0)+1;registryRefreshGeneration.set(project,generation);registryObservations.delete(project);try{const result=await refresh(options);if(registryRefreshGeneration.get(project)===generation)registryObservations.set(project,result.count);return result;}catch(error){if(registryRefreshGeneration.get(project)===generation)registryObservations.delete(project);throw error;}};
+  const lifecycle=new RegistryLifecycle({refresh:observedRefresh,prepare:async cwd=>{
    const projectRoot=await realpath(path.resolve(cwd)),sources=await sourcesFor(projectRoot,home(),packageRoot);
    return {projectRoot,projectId:projectRoot,sources,...(dependencies.mirror?{mirror:dependencies.mirror}:{})};
   },...dependencies.registryLifecycle});
   const historyFile=path.join(home(),".asen","history.json"),usageFile=path.join(home(),".asen","usage.json");
+  const profilesFile=dependencies.profilesFile??path.join(home(),".asen","profiles.json");
   let agentDeliveryContext:CommandContext|undefined,agentDeliveryIdentity:{sessionId:string;projectId:string}|undefined;
   let unsubscribeAgentDelivery:(()=>void)|undefined;
   const workspaceFile=dependencies.workspaceStoreFile??path.join(home(),".asen","workspace.json");
@@ -144,12 +163,36 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   pi.on?.("turn_start",async()=>{try{await incrementUsageFile(usageFile,"agentRuns");}catch{/* Usage accounting must not interrupt the host turn. */}});
   registerInteractionTools(pi,dependencies.interactionTimeoutMs);
   if(pi.registerTool)registerCodeGraphTools({registerTool:pi.registerTool.bind(pi)},dependencies.codeIntelligence);
+  pi.on?.("before_agent_start",event=>{
+   const options=(event as {systemPromptOptions?:{sections?:Record<string,string>}}|undefined)?.systemPromptOptions;
+   if(options?.sections)addAsenRequestGuidance(options,!!pi.registerTool);
+  });
   registerData("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
   registerData("asen-commands",{description:"List ASEN public commands",handler:()=>ASEN_COMMAND_CATALOG.map(c=>({name:c.name,group:c.group,implemented:c.implemented}))});
-  registerData("asen-status",{description:"Show bounded local ASEN status",handler:()=>dependencies.status?statusLines(dependencies.status()):["ASEN status unavailable: no local status provider configured."]});
-  registerData("asen-doctor",{description:"Check local ASEN invariants",handler:()=>{if(!dependencies.doctor)return {exitCode:1,checks:[],message:"ASEN doctor unavailable: no local diagnostics provider configured."};const checks=doctorChecks(dependencies.doctor());return {exitCode:doctorExitCode(checks),checks};}});
-  registerData("asen-route",{description:"Preview a route from exact user-supplied ODD facts; does not execute agents",handler:async(args:string|undefined,ctx:CommandContext)=>{if(!ctx.sessionManager?.getSessionId?.())throw new Error("ASEN route preview requires the active Pi session");let project:string;try{project=await realpath(ctx.cwd);}catch{throw new Error("ASEN route preview requires an existing active project");}return routePreviewCommand(args??"",project);}});
-  registerData("asen-plan",{description:"Build and persist a dependency-aware Todo plan from exact ODD facts; no agent is dispatched",handler:async(args:string|undefined,ctx:CommandContext)=>{
+  registerData("asen-status",{description:"Show bounded local ASEN status",handler:async(_args:string|undefined,ctx:CommandContext|undefined)=>{
+   if(dependencies.status)return statusLines(dependencies.status());
+   let agents:readonly PublicAgentRecord[]=[],changes:readonly WorkspaceChange[]=[],agentsAvailable=false,changesAvailable=false;
+   if(agentRuntimePromise&&ctx){const rows=await (await agentRuntimePromise).list(await sessionIdentity(ctx));agents=rows;agentsAvailable=true;}else if(dependencies.agents){agents=dependencies.agents();agentsAvailable=true;}
+   if(workspaceStorePromise&&ctx){changes=(await (await workspaceStorePromise).list(await sessionIdentity(ctx))).map(row=>row.change);changesAvailable=true;}else if(dependencies.changes){changes=dependencies.changes();changesAvailable=true;}
+   const readPrivateStore=async<T>(file:string,parse:(raw:string)=>T,empty:()=>T):Promise<T>=>{if(!await privateFileState(file))throw new Error("ASEN private state is not safe to read");try{return parse(await readFile(file,"utf8"));}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return empty();throw error;}};
+   const [project,profiles,history,usage]=await Promise.all([ctx?.cwd?canonical(ctx.cwd):Promise.resolve(undefined),readProfilesFile(profilesFile),readPrivateStore(historyFile,parseHistoryStore,emptyHistoryStore),readPrivateStore(usageFile,parseUsageFile,emptyUsageFile)]),registrySkillCount=project?registryObservations.get(project):undefined;
+   return statusLines({agents,changes,agentsAvailable,changesAvailable,skills:{enabled:registrySkillCount!==undefined,count:registrySkillCount??null},profile:profiles.active??"default",historyEnabled:history.policy.enabled,telemetryEnabled:usage.telemetryConsent?.enabled===true});
+  }});
+  registerData("asen-doctor",{description:"Check local ASEN invariants",handler:async(_args:string|undefined,ctx:CommandContext|undefined)=>{
+   let input:Parameters<typeof doctorChecks>[0];
+   if(dependencies.doctor)input=dependencies.doctor();
+   else{
+    let homeWritable=false,profileValid=false,telemetryConsentValid=false,registryAvailable=false;
+    try{await access(home(),W_OK|X_OK);homeWritable=true;}catch{}
+    try{await readProfilesFile(profilesFile);profileValid=true;}catch{}
+    try{if(await privateFileState(usageFile)){const raw=await readFile(usageFile,"utf8");parseUsageFile(raw);telemetryConsentValid=true;}}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")telemetryConsentValid=true;}
+    try{if(ctx?.cwd)registryAvailable=registryObservations.has(await canonical(ctx.cwd));}catch{}
+    input={piVersionOk:typeof VERSION==="string"&&VERSION.length>0,homeWritable,registryAvailable,profileValid,historyPrivate:await privateFileState(historyFile),telemetryConsentValid};
+   }
+   const checks=doctorChecks(input);return {exitCode:doctorExitCode(checks),checks};
+  }});
+  registerData("asen-route",{description:"Advanced read-only route diagnostic for exact ODD facts; for ordinary requests, write what you want in chat",handler:async(args:string|undefined,ctx:CommandContext)=>{if(!ctx.sessionManager?.getSessionId?.())throw new Error("ASEN route preview requires the active Pi session");let project:string;try{project=await realpath(ctx.cwd);}catch{throw new Error("ASEN route preview requires an existing active project");}return routePreviewCommand(args??"",project);}});
+  const preparePlan=async(args:string|undefined,ctx:CommandContext):Promise<string>=>{
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd;if(!manager||!sessionId)throw new Error("ASEN planning requires the active Pi session");
    const validateContext=()=>{if(ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed before plan persistence");};
    let project:string;try{project=await realpath(cwd);}catch{throw new Error("ASEN planning requires an existing active project");}validateContext();
@@ -168,12 +211,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    output.execution={started:false,authorized:false};
    output.notice="Executable task DAG persisted to this Pi session Todo store. Dependencies are enforced before a task may run. No agent was dispatched and no permission was granted.";
    return JSON.stringify(output,null,2);
-  }});
+  };
+  registerData("asen-plan",{description:"Internal plan materializer for validated ODD facts; ordinary-language requests are planned from chat without user-authored JSON",handler:preparePlan});
+  if(pi.registerTool)registerAsenPlanRequestTool({registerTool:pi.registerTool.bind(pi)},preparePlan);
   registerData("asen-agents",{description:"Show attributed ASEN agent lifecycle",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(agentRuntimePromise){const rows=await (await agentRuntimePromise).list(await sessionIdentity(ctx));return agentStatusRows(rows);}return dependencies.agents?agentStatusRows(dependencies.agents()):["ASEN agents unavailable: no local agent provider configured."];}});
   registerData("asen-changes",{description:"Show current-session attributed changes and possible same-path actor conflicts",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(workspaceStorePromise){const rows=await (await workspaceStorePromise).list(await sessionIdentity(ctx)),changes=rows.map(row=>row.change),conflicts=findPotentialWorkspaceConflicts(changes);return [...(conflicts.length?["Potential conflicts require review; no content comparison, winner selection, or automatic resolution is performed.",...visibleWorkspaceConflictRows(conflicts)]:[]),...visibleWorkspaceRows(changes)];}return dependencies.changes?visibleWorkspaceRows(dependencies.changes()):["ASEN workspace changes unavailable: no local change provider configured."];}});
   registerData("asen-todos",{description:"Show Todo task states for the current Pi session and project",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(!todoStorePromise)return ["ASEN Todo tasks unavailable: no local Todo store configured."];const rows=await (await todoStorePromise).list(await sessionIdentity(ctx));return todoStatusRows(rows);}});
   registerData("asen-task-agents",{description:"Show read-only task, dependency readiness and agent coordination for the current Pi session",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(!todoStorePromise||!agentRuntimePromise)return ["ASEN task-agent coordination requires both local stores."];const identity=await sessionIdentity(ctx);const coordinator=new TaskAgentCoordinator(await todoStorePromise,await agentRuntimePromise,taskAgentLinks);const view=await coordinator.snapshot(identity);return view.tasks.map(task=>({taskId:task.id,title:task.title,state:task.state,revision:task.revision,dependsOn:task.dependsOn,blockedBy:task.blockedBy,ready:task.ready,agents:task.agents}));}});
-  registerData("asen-profiles",{description:"Show local runtime profiles",handler:async()=>{if(!dependencies.profilesFile)return {active:"default",profiles:[],available:false};const value=await readProfilesFile(dependencies.profilesFile);return {active:value.active??"default",profiles:value.profiles.map(p=>p.name),available:true};}});
+  registerData("asen-profiles",{description:"Show local runtime profiles",handler:async()=>{const value=await readProfilesFile(profilesFile);return {active:value.active??"default",profiles:value.profiles.map(p=>p.name),available:true};}});
   pi.registerCommand?.("asen-history",{description:"Manage opt-in, redacted, project-scoped local prompt history",handler:async(args:string,ctx:CommandContext)=>{
    const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId){ctx.ui.notify("ASEN history is unavailable without a current session.","error");return;}
    const selecting=args.trim().split(/\s+/u)[0]==="select";
@@ -193,6 +238,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    try{const result=await runUsageCommand(args,{storePath:usageFile,hasUI:ctx.hasUI===true,...(ctx.ui.confirm?{confirm:ctx.ui.confirm.bind(ctx.ui)}:{})});ctx.ui.notify(result,"info");return result;}
    catch(error){ctx.ui.notify(`ASEN usage failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
+  registerData("asen-stats",{description:"Show fresh read-only Pi history aggregates for the active project and optional local date range",handler:async(args:string|undefined,ctx:CommandContext)=>{const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.();if(!sessionId)return runPiHistoryStatsCommand(args??"");return runPiHistoryStatsCommand(args??"",manager?.getSessionDir?.(),await canonical(ctx.cwd));}});
   pi.registerCommand?.("asen-skill-registry",{description:"Refresh the generated ASEN skill registry",handler:async(args:string|undefined,ctx:CommandContext)=>{
    if(args?.trim()!=="refresh"){ctx.ui.notify(usage,"info");return usage;}
    try{
@@ -218,7 +264,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
  validatePiHost(pi,VERSION);
  if(activatedPiHosts.has(pi))return;
  const commandNames=ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name);
- const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODE_INTELLIGENCE_TOOL_NAME,ASEN_CODEGRAPH_TOOL_NAME,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES)];
+ const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODE_INTELLIGENCE_TOOL_NAME,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES)];
  let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext)=>Promise<void>)|undefined;
  pi.on("session_start",async(_event,ctx)=>{
   if(attempted){if(registrationsReady){validatePiExecutionContext(ctx);await sessionStart?.(ctx);}return;}

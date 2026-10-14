@@ -6,7 +6,7 @@
 
 ## Implemented and exercised
 
-- `/asen-plan` accepts exact user-provided ODD facts and instruction text, runs the existing ODD route and skill selection, materializes role-specific tasks and dependencies, and persists the whole plan atomically in the active session/project Todo store.
+- The model-facing `asen_plan_request` bridge accepts ordinary-language requests through the Pi coordinator, which is instructed to derive ODD facts from read-only project inspection; it creates task identity internally, then reuses the existing ODD route, skill selection, DAG materialization and atomic session/project Todo persistence. The lower-level `/asen-plan` materializer still accepts validated ODD facts for internal use.
 - Changing the Pi session or project while planning or dispatch confirmation is pending rejects the operation. Read-only dispatch revalidates identity after confirmation and repeatedly inside the Todo launch lock, including immediately before the trusted binder starts the agent.
 - `asen_plan_dispatch_next` selects one dependency-ready task by saved priority, confirms the exact role/instruction, verifies any current skill registry selection, and dispatches `clarifier`, `explorer`, `reviewer`, `verifier`, or a controlled `worker`.
 - A `clarifier` is durably queued with its exact role provenance and no candidate, write surfaces, phase grant, writer admission, or delegated skill phase. Identity/revision drift, decline, and oversized instructions launch nothing and leave the Todo planned. Under the existing Todo launch lock, the complete confirmed snapshot is matched before enqueue, so concurrent dispatch admits one durable agent and instruction, plan, or dependency drift admits none. Its link remains persisted before runner start, and successful output leaves the Todo blocked for explicit acceptance.
@@ -35,7 +35,7 @@ These local checks are not CI evidence for a published SHA. Hosted CI and Releas
 
 - The `primary` plan role still has no Pi dispatch path. The controlled writer currently supports only the organic bounded lifecycle; structured workflows and lifecycle phase grants are not wired into the persisted Todo DAG. Clarifier interruption may be exposed for review after restart, but clarification has no automatic continuation path.
 - The agent record intentionally does not preserve write authority. A process restart cannot resume a partially executed writer automatically; the task must be inspected, replanned against the current candidate, and explicitly reauthorized. ECO-06 still needs a dedicated interrupted-during-operation test to establish safe recovery behavior for partially applied file changes.
-- Natural-language `/asen-plan` input currently produces conservative triage and missing-fact questions; it does not infer ODD facts, inspect project capabilities, or obtain model/provider availability.
+- Plain text passed directly to the lower-level `/asen-plan` command still produces conservative missing-fact triage. The chat bridge relies on the configured Pi model to follow coordinator guidance and infer facts; this deterministic local change does not prove behavior with a live provider.
 - Acceptance is an explicit human review of the persisted result and recorded acceptance instruction; ASEN does not execute arbitrary acceptance commands inferred from agent output.
 - Concurrency is bounded by the agent dispatcher, but plan scheduling remains one confirmed task per Pi tool call. There is no automatic multi-task scheduler or provider quota policy.
 

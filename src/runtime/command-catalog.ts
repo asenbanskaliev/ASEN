@@ -14,6 +14,7 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"session",name:"asen-todos",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-history",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-usage",implemented:true,owner:"extensions/asen.ts"},
+ {group:"session",name:"asen-stats",implemented:true,owner:"extensions/asen.ts"},
  {group:"diagnostics",name:"asen-status",implemented:true,owner:"extensions/asen.ts"},
  {group:"diagnostics",name:"asen-doctor",implemented:true,owner:"extensions/asen.ts"},
  {group:"diagnostics",name:"asen-authority-status",implemented:true,owner:"extensions/authority.ts"}
