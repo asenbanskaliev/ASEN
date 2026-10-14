@@ -22,7 +22,7 @@ function sameSkillSelection(left:SkillSelectionContext,right:SkillSelectionConte
 }
 
 /** Fail closed if any persisted task field changed while the user reviewed the authorization. */
-export function sameApprovedTaskSnapshot(before:TodoItem,after:TodoItem|undefined):boolean{
+export function sameApprovedTaskSnapshot(before:TodoItem&{current:{state:string}},after:(TodoItem&{current:{state:string}})|undefined):boolean{
  return !!after&&after.current.state==="planned"&&JSON.stringify(after)===JSON.stringify(before);
 }
 
