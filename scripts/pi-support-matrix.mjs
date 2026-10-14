@@ -117,13 +117,14 @@ export async function main({tarball=process.argv[2],output=process.argv[3],candi
  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
  const root=mkdtempSync(join(tmpdir(),"asen-pi-matrix-"));
  const results=[];
+ const versions=piVersionAnchors();
  const npmCli=process.env.npm_execpath;
  assert.ok(npmCli,"Run through npm run verify:pi-matrix");
  try{
   const packed=JSON.parse(execFileSync(process.execPath,[npmCli,"pack","--json","--pack-destination",root],{encoding:"utf8",timeout:90_000}));
   const expected=createHash("sha256").update(readFileSync(join(root,packed[0].filename))).digest("hex");
   assert.equal(artifactSha256,expected,"Tarball must match the clean exact candidate checkout");
-  for(const version of ["0.85.1","1.1.0"]){
+  for(const version of versions){
    const host=join(root,version);mkdirSync(host);writeFileSync(join(host,"package.json"),'{"private":true}');
    execFileSync(process.execPath,[npmCli,"install","--no-audit","--no-fund","--package-lock=false",artifact,`@earendil-works/pi-coding-agent@${version}`],{cwd:host,stdio:"inherit",timeout:300_000});
    const peer=join(host,"node_modules","@earendil-works","pi-coding-agent");
@@ -142,7 +143,7 @@ export async function main({tarball=process.argv[2],output=process.argv[3],candi
  }finally{
   console.log("MATRIX_CLEANUP_STARTED");cleanupMatrixWorkspace(root);console.log("MATRIX_CLEANUP_COMPLETED");
  }
- assert.equal(results.length,8);
+ assert.equal(results.length,versions.length*4);
  assert.ok(results.every(row=>row.result==="PASS"),"Some real-host cells failed; inspect receipts");
 }
 

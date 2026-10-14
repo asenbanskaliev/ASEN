@@ -20,6 +20,17 @@ test("support matrix derives its version anchors from the declared package contr
  assert.equal(cells.length,24);
 });
 
+test("support matrix deduplicates a peer floor that matches the development version",()=>{
+ const metadata={
+  peerDependencies:{"@earendil-works/pi-coding-agent":">=1.2.3 <2.0.0"},
+  devDependencies:{"@earendil-works/pi-coding-agent":"^1.2.3"},
+ };
+ const cells=planPiSupportMatrix(metadata as any);
+ assert.equal(new Set(cells.map((c:{version:string})=>c.version)).size,1);
+ assert.equal(cells.length,12);
+ for(const platform of ["linux","win32","darwin"])assert.equal(cells.filter((c:{platform:string})=>c.platform===platform).length,4);
+});
+
 test("support matrix rejects malformed or out-of-range Pi version contracts",()=>{
  const base={
   peerDependencies:{"@earendil-works/pi-coding-agent":">=0.86.0 <2.0.0"},
