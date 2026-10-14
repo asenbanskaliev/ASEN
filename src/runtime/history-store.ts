@@ -6,14 +6,17 @@ import type {HistoryEntry,HistoryPolicy} from "./history.js";
 import {redactHistoryText,trimHistory} from "./history.js";
 
 export interface HistoryFile{schema:"asen.history/v1";revision:number;policy:HistoryPolicy;entries:HistoryEntry[];tombstones:string[]}
+export interface HistoryMigrationResult{status:"changed"|"unchanged";redactedEntries:number;evictedEntries:number;addedTombstones:number}
 const SCHEMA="asen.history/v1" as const,DEFAULT_POLICY:HistoryPolicy={enabled:false,maxEntries:500};
 const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
 const identifier=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<=256&&!/[\u0000-\u001f\u007f-\u009f]/u.test(v);
+type HistoryJson=Record<string,unknown>;
+function parseJson(raw:string):HistoryJson{try{const value:unknown=JSON.parse(raw);if(!value||typeof value!=="object"||Array.isArray(value))throw new Error("Invalid history store");return value as HistoryJson;}catch(error){if(error instanceof Error&&error.message==="Invalid history store")throw error;throw new Error("Invalid history store");}}
 const policyValue=(v:unknown):v is HistoryPolicy=>exact(v,["enabled","maxEntries"])&&typeof v.enabled==="boolean"&&Number.isSafeInteger(v.maxEntries)&&Number(v.maxEntries)>=1&&Number(v.maxEntries)<=10000;
 function entryValue(v:unknown):v is HistoryEntry{return exact(v,["id","sessionId","projectId","text","createdAt","redacted"])&&identifier(v.id)&&identifier(v.sessionId)&&identifier(v.projectId)&&typeof v.text==="string"&&v.text.length<=12000&&typeof v.createdAt==="string"&&Number.isFinite(Date.parse(v.createdAt))&&typeof v.redacted==="boolean";}
 export function emptyHistoryStore():HistoryFile{return {schema:SCHEMA,revision:0,policy:{...DEFAULT_POLICY},entries:[],tombstones:[]};}
 export function parseHistoryStore(raw:string):HistoryFile{
- const value:unknown=JSON.parse(raw);if(!value||typeof value!=="object"||Array.isArray(value))throw new Error("Invalid history store");const v=value as Record<string,unknown>;
+ const v=parseJson(raw);
  const legacy=exact(v,["schema","revision","entries","tombstones"]),current=exact(v,["schema","revision","policy","entries","tombstones"]);
  if((!legacy&&!current)||v.schema!==SCHEMA||!Number.isSafeInteger(v.revision)||Number(v.revision)<0||!Array.isArray(v.entries)||!Array.isArray(v.tombstones))throw new Error("Invalid history store");
  const entries=v.entries;if(entries.length>10000||!entries.every(entryValue))throw new Error("Invalid history entries");
@@ -24,6 +27,19 @@ export function parseHistoryStore(raw:string):HistoryFile{
 }
 export async function readHistoryStore(file:string):Promise<HistoryFile>{if(!await preparePrivateFile(file))return emptyHistoryStore();return parseHistoryStore(await readFile(file,"utf8"));}
 async function write(file:string,value:HistoryFile):Promise<void>{await preparePrivateFile(file,true);await atomicWriteText(file,`${JSON.stringify(value,null,2)}\n`);}
+export async function migrateHistoryStore(file:string,expectedRevision:number):Promise<HistoryMigrationResult>{
+ await preparePrivateFile(file,true);return withExclusiveFileLock(file,async()=>{
+  if(!await preparePrivateFile(file)){if(expectedRevision!==0)throw new Error("History revision conflict");return {status:"unchanged",redactedEntries:0,evictedEntries:0,addedTombstones:0};}
+  const raw=await readFile(file,"utf8"),stored=parseHistoryStore(raw);if(stored.revision!==expectedRevision)throw new Error("History revision conflict");
+  const source=parseJson(raw),retained=stored.policy.enabled?trimHistory(stored.policy,stored.entries):stored.entries.map(entry=>structuredClone(entry));
+  let redactedEntries=0;const entries=retained.map(entry=>{const redacted=redactHistoryText(entry.text);if(redacted.text!==entry.text)redactedEntries++;return {...entry,text:redacted.text,redacted:entry.redacted||redacted.redacted};});
+  const keep=new Set(entries.map(entry=>entry.id)),evicted=stored.entries.filter(entry=>!keep.has(entry.id)).map(entry=>entry.id),tombstones=[...stored.tombstones,...evicted];
+  const semanticChange=!Object.hasOwn(source,"policy")||JSON.stringify(entries)!==JSON.stringify(stored.entries)||evicted.length>0;
+  if(!semanticChange)return {status:"unchanged",redactedEntries:0,evictedEntries:0,addedTombstones:0};
+  const next=parseHistoryStore(JSON.stringify({...stored,revision:stored.revision+1,entries,tombstones}));await write(file,next);
+  return {status:"changed",redactedEntries,evictedEntries:evicted.length,addedTombstones:evicted.length};
+ });
+}
 export async function commitHistory(file:string,expectedRevision:number,change:(value:HistoryFile)=>HistoryFile):Promise<HistoryFile>{
  await preparePrivateFile(file,true);return withExclusiveFileLock(file,async()=>{
   const current=await readHistoryStore(file);if(current.revision!==expectedRevision)throw new Error("History revision conflict");
