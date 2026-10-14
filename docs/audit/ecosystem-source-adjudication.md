@@ -2,7 +2,7 @@
 
 ## Current reconciliation — exact B0 candidate `2b3a83938fd4a54923c7da351a5f93ba2602d035`
 
-The verified two-commit slice is `c5964f0` → `5a41c34` → `2b3a839`: 10 paths, +308/-27, tree `e5f5d3899b3fa55452f9c1b4b7dcb464bf679926`, diff `842c34d98f2879b2fdbb0cf8490ef12b5848aee4`. B0 is DONE. B1 remains in progress until parent-observed structural verification and the parent metadata commit; B2 remains pending publication. The later metadata commit must not inherit or restate the full-run result as same-SHA evidence.
+The verified two-commit slice is `c5964f0` → `5a41c34` → `2b3a839`: 10 paths, +308/-27, tree `e5f5d3899b3fa55452f9c1b4b7dcb464bf679926`, diff `842c34d98f2879b2fdbb0cf8490ef12b5848aee4`. B0 is DONE. B1 structural verification is DONE: the full Git trees and changed blobs were checked, the exact 10 paths and +308/-27 totals were reproduced, and the Git diff-object SHA matched the recorded value. B2 is this publication of the verification record. This metadata commit does not inherit or restate the full-run result as same-SHA evidence.
 
 Frozen source commit `08de420ca29be16b6f6bee725a30b599b061df16` still has 167 tracked manifest objects and 988 scanner references. Its 164 raw unresolved/absent/outside-root references have 164 identity-bound adjudications and zero rows remaining in that cohort. This is not broad semantic closure: ECO-01C and ECO-01E remain `PARTIAL`, claims remain 16 `PARTIAL` / 0 `FULL`, and all 988 semantics are not asserted closed. The 25 `source-runtime-edge` rows retain their exact dispositions: 3 tracked file/set edges, 12 self-owned code contracts, and 10 external/dynamic runtime inputs. No source change is auto-adopted.
 
