@@ -335,6 +335,13 @@ Final materialized-candidate full suite, audits, pack and independent SHA-bound 
 
 ## ECO-01C-2 / ECO-01E / remaining ECO-01–02 completion plan — 2026-10-13
 
+### Verified checkpoint — 2026-10-14
+
+- **ECO-01C-2 B1/B2:** structural verification is complete and its record was published in commit `3003ee3bc72929b764e82c6afdcaed8534aeeed7`. The result covers the exact 10-path, +308/-27 slice and confirms the recorded diff-object identity. This closes the structural seal only; broader ECO-01C semantics remain open.
+- **ECO-01E validation gate:** code candidate `24a246286358bc180223c2ecb41d1cc75840776c` passed CI run `38471669366`. Ubuntu, macOS and Windows each prepared the frozen source objects; full tests, typecheck and ecosystem audit passed on all three. The retained-source witness passed on macOS; its steps were skipped on Ubuntu and Windows. Do not report a three-platform witness.
+- The audited test coverage includes exact content/mode/reference/anchor/dependency drift, transitive invalidation, unique-hash rename rules, ambiguous duplicate hashes, deterministic report verification and rejection of automatic adoption. No reproducible defect justified a code change in this pass.
+- The report and source tests were not changed by the documentation commits. No manual CI was launched for those documentation-only commits. Keep all 16 claims PARTIAL / 0 FULL until the separate claim/status reconciliation and remaining semantic obligations are satisfied.
+
 This is the execution order for the remaining source-parity prerequisites. It reconciles the current checklist with the more cautious B0/B1/B2 state in `docs/audit/ecosystem-source-adjudication.md`; neither checklist marks nor a green general CI run substitute for the evidence below. Keep the frozen Reference A commit, source manifests, claims registry and all 16 `PARTIAL` statuses unchanged unless a separately reviewed evidence gate permits a status change.
 
 1. **ECO-01C-2 B1 structural seal.** Re-read exact candidate `2b3a83938fd4a54923c7da351a5f93ba2602d035`, its parent chain, tree and changed paths. Independently reproduce the recorded 10-path / +308/-27 slice and tree/diff digests against Git objects; verify the 164 identity-bound adjudications still bind to the frozen source and preserve 167 objects / 988 raw references. Record the parent-observed result and metadata change as a distinct exact-SHA unit. Do not restate the prior full-suite result as evidence for that metadata SHA.
