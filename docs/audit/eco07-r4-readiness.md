@@ -31,3 +31,11 @@ The targeted suites and typecheck must be recorded against the published candida
 ## Remaining closure gate
 
 Run `.github/workflows/eco07-groq-recovery.yml` against the exact published SHA on Linux, Windows, and macOS. Review the uploaded event artifact for the same linked Todo, interruption, blocked recovery, explicit resume, no duplicate work, verified terminal outcome, and session/project isolation. If provider quota or workflow access prevents this, retain ECO-07 as PARTIAL and report the exact blocker.
+
+## R4 review on 2026-10-14
+
+Reviewed candidate `fb26e5ae0092cfbebeeec115614db0b401f15871` and the current Pi/Todo ownership path. The durable link is recorded before dispatch; recovery quarantines interrupted work and does not replay it; identity and project checks gate dispatch; successful agents remain blocked until a separate result review. Local tests cover failed link writes, abort during binding, duplicate launch, recovery after restart, and cross-session/project rejection.
+
+Focused R4 verification on the candidate source plus the current regression-test addition passed **152/152 tests**, including `eco07-launch-recovery`, `trusted-task-agent-binder`, `task-store`, and `pi-agent-runtime`; typecheck and `git diff --check` passed. This is local deterministic evidence, not a real Pi/provider run.
+
+**Decision remains PARTIAL / OPEN.** No authenticated recovery run was launched in this batch. Previous hosted recovery attempts in the closure record either failed to resume the task or stopped before creating one. The required successful same-task restart, preserved owner identity, explicit resume, exactly-once steps, verified terminal result, and final artifact review have not been demonstrated together on one exact candidate. Do not mark ECO-07 complete or infer it from the 24-cell model-free host matrix.

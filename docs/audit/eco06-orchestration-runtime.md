@@ -38,3 +38,11 @@ These local checks are not CI evidence for a published SHA. Hosted CI and Releas
 - Concurrency is bounded by the agent dispatcher, but plan scheduling remains one confirmed task per Pi tool call. There is no automatic multi-task scheduler or provider quota policy.
 
 No permission is inferred from a plan, model response, skill selection, or successful agent completion.
+
+## R4 review on 2026-10-14
+
+The current controlled-write path was rechecked against the exact `fb26e5ae0092cfbebeeec115614db0b401f15871` source. One-use write admission is bound to the current candidate, repository, role, and exact surfaces; the persisted agent record excludes the authority token and write scope; completion remains blocked for independent review. Primary-session and clarification plan roles still have no execution dispatcher.
+
+Added `tests/plan-dispatcher-role-boundaries.test.ts`: both unsupported roles must return blocked before asking for execution confirmation or starting an agent. This records the safety boundary without pretending those capabilities exist. The focused R4 set passed **152/152 tests** across the plan, dispatcher, Pi agent, Todo persistence, recovery, evidence-bundle, and matrix contracts; typecheck and `git diff --check` passed.
+
+**Decision remains PARTIAL / OPEN.** Remaining work includes usable primary and clarification flows, structured lifecycle grants, and a real interrupted-write scenario showing recovery requires a fresh candidate and explicit reauthorization. Existing tests demonstrate that write authority is not restored from disk; they do not establish safe recovery from partially applied file changes on a real Pi host. No automatic multi-task scheduler or provider quota policy is claimed.
