@@ -17,7 +17,6 @@ const {
 import {validateEco07ProviderSelection} from "../scripts/eco07-provider-config.mjs";
 
 const SHA="3dbd333d7ee03d2d756df60c21ad77fab96bd7c4";
-const MERGE_SHA="1111111111111111111111111111111111111111";
 const REPOSITORY="asenbanskaliev/ASEN";
 const BRANCH="feat/strict-parity-prerequisites";
 const validEnvironment=()=>({
@@ -32,18 +31,6 @@ const validEnvironment=()=>({
  ASEN_EXPECTED_BRANCH:BRANCH,
  ASEN_ECO07_PROVIDER:"openrouter",
  ASEN_ECO07_MODEL:"nvidia/nemotron-3.5-lightning:free",
-});
-const validPullRequestEnvironment=()=>({
- ...validEnvironment(),
- ASEN_TRIGGER_KIND:"pull_request",
- ASEN_GITHUB_SHA:MERGE_SHA,
- ASEN_EVENT_HEAD_SHA:SHA,
- ASEN_PR_NUMBER:"32",
- ASEN_PR_BASE_BRANCH:"main",
- ASEN_PR_HEAD_REPOSITORY:REPOSITORY,
- ASEN_PR_HEAD_BRANCH:BRANCH,
- ASEN_EVENT_LABEL:"",
- ASEN_DISPATCH_BRANCH:"",
 });
 const validObservation=()=>({
  head:SHA,
@@ -157,15 +144,11 @@ test("ECO-07 preflight admits each enumerated runner without credentials or laun
  }
 });
 
-test("ECO-07 preflight admits manual dispatch and the exact automatic PR32 route",()=>{
+test("ECO-07 preflight admits manual exact-SHA dispatch only",()=>{
  const manual=validateEco07RecoveryPreflight(validEnvironment(),validObservation());
  assert.equal(manual.triggerKind,"manual");
  assert.equal(manual.eventHeadSha,SHA);
- const pullRequest=validateEco07RecoveryPreflight(validPullRequestEnvironment(),validObservation());
- assert.equal(pullRequest.triggerKind,"pull_request");
- assert.equal(pullRequest.eventHeadSha,SHA);
- assert.equal(pullRequest.githubSha,MERGE_SHA);
- assert.throws(()=>validateEco07RecoveryPreflight({...validPullRequestEnvironment(),ASEN_GITHUB_SHA:SHA},validObservation()),/must remain the event merge SHA/u);
+ assert.throws(()=>validateEco07RecoveryPreflight({...validEnvironment(),ASEN_TRIGGER_KIND:"pull_request"},validObservation()),/explicitly selected manual dispatch/u);
 });
 
 test("ECO-07 preflight rejects unapproved manual OS, SHA, branch, and metadata",()=>{
@@ -179,25 +162,8 @@ test("ECO-07 preflight rejects unapproved manual OS, SHA, branch, and metadata",
  rejects({...validEnvironment(),ASEN_EXPECTED_BRANCH:"main"},validObservation(),/approved branch/);
  rejects({...validEnvironment(),ASEN_REPOSITORY:"other/repository"},validObservation(),/repository/);
  rejects({...validEnvironment(),ASEN_RUN_ATTEMPT:"2"},validObservation(),/run attempt/);
- rejects({...validEnvironment(),ASEN_EVENT_HEAD_SHA:MERGE_SHA},validObservation(),/event head SHA/);
- rejects({...validEnvironment(),ASEN_TRIGGER_KIND:"push"},validObservation(),/trigger/);
-});
-
-test("ECO-07 PR route fails closed for every non-authorized PR event",()=>{
- const rejects=(changes:Record<string,string>,pattern:RegExp,observation=validObservation())=>
-  assert.throws(()=>validateEco07RecoveryPreflight({...validPullRequestEnvironment(),...changes},observation),pattern);
- rejects({ASEN_PR_HEAD_REPOSITORY:"fork/ASEN"},/head repository/);
- rejects({ASEN_EVENT_LABEL:"eco07:run-ubuntu"},/must not carry a label/);
- rejects({ASEN_EVENT_LABEL:"eco07:run-windows"},/must not carry a label/);
- rejects({ASEN_PR_NUMBER:"31"},/pull request/);
- rejects({ASEN_PR_BASE_BRANCH:"develop"},/base branch/);
- rejects({ASEN_PR_HEAD_BRANCH:"feat/other"},/head branch/);
- rejects({ASEN_SELECTED_OS:"macos-15"},/Ubuntu/);
- rejects({ASEN_RUN_ATTEMPT:"2"},/run attempt/);
- rejects({ASEN_PR_NUMBER:""},/pull request/);
- rejects({ASEN_EVENT_HEAD_SHA:"abc"},/event head SHA/);
- rejects({ASEN_EVENT_HEAD_SHA:MERGE_SHA},/event head SHA/);
- rejects({},/checked-out HEAD/,{...validObservation(),head:MERGE_SHA});
+ rejects({...validEnvironment(),ASEN_EVENT_HEAD_SHA:"1".repeat(40)},validObservation(),/event head SHA/);
+ rejects({...validEnvironment(),ASEN_TRIGGER_KIND:"push"},validObservation(),/explicitly selected manual dispatch/);
 });
 
 test("ECO-07 preflight requires pinned selections and pristine evidence output",()=>{
@@ -219,14 +185,16 @@ test("ECO-07 workflow preflights one selected OS before exposing credentials",()
  const workflow=readFileSync(resolve(".github/workflows/eco07-groq-recovery.yml"),"utf8");
  const compact=workflow.replace(/\s+/gu," ");
  assert.ok(compact.includes("required: true type: choice"));
- assert.ok(compact.includes("runs-on: >- ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.os }}"));
+ assert.ok(compact.includes("runs-on: ${{ inputs.os }}"));
  assert.ok(!workflow.includes("matrix:"));
  const boundary=workflow.indexOf("eco07-pi-recovery-preflight.mjs boundary");
  const install=workflow.indexOf("npm ci"),runtime=workflow.indexOf("eco07-pi-recovery-preflight.mjs runtime"),secret=workflow.indexOf("secrets.OPENROUTER_API_KEY");
  assert.ok(boundary<install&&install<runtime&&runtime<secret);
  assert.ok(!workflow.includes("npm install -g"));
  assert.ok(workflow.includes("ASEN_GITHUB_SHA: ${{ github.sha }}"));
- assert.ok(compact.includes("ASEN_EVENT_HEAD_SHA: >- ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"));
+ assert.ok(compact.includes("ASEN_EVENT_HEAD_SHA: ${{ github.sha }}"));
+ assert.ok(compact.includes("ASEN_TRIGGER_KIND: manual"));
+ assert.ok(!compact.includes("pull_request:"));
  assert.ok(workflow.includes("ASEN_EXPECTED_SHA: ${{ env.ASEN_RESOLVED_EXPECTED_SHA }}"));
  assert.ok(workflow.includes("ref: ${{ env.ASEN_RESOLVED_EXPECTED_SHA }}"));
  assert.ok(workflow.includes("ASEN_EXPECTED_BRANCH: feat/strict-parity-prerequisites"));

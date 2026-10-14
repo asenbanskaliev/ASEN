@@ -15,7 +15,7 @@ on:
         description: Exact 40-character candidate SHA
         required: true
         type: string
-  # Provider-backed evidence is manual: avoid spending limited quota on every PR update.
+# Provider-backed evidence is opt-in and runs only after a manual exact-SHA dispatch.
 permissions:
   contents: read
 concurrency:
@@ -23,35 +23,17 @@ concurrency:
   cancel-in-progress: true
 jobs:
   pi-recovery:
-    if: >-
-      github.repository == 'asenbanskaliev/ASEN' &&
-      github.run_attempt == 1 &&
-      (
-        github.event_name == 'workflow_dispatch' ||
-        (
-          github.event_name == 'pull_request' &&
-          github.event.pull_request.number == 32 &&
-          github.event.pull_request.base.ref == 'main' &&
-          github.event.pull_request.head.repo.full_name ==
-            'asenbanskaliev/ASEN' &&
-          github.event.pull_request.head.ref ==
-            'feat/strict-parity-prerequisites' &&
-          github.event.action == 'synchronize'
-        )
-      )
+    if: github.repository == 'asenbanskaliev/ASEN' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     name: >-
       Pi recovery
-      (${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.os }})
-    runs-on: >-
-      ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.os }}
+      (${{ inputs.os }})
+    runs-on: ${{ inputs.os }}
     timeout-minutes: 15
     env:
       ASEN_RESOLVED_EXPECTED_SHA: >-
-        ${{ github.event_name == 'pull_request' &&
-        github.event.pull_request.head.sha || inputs.expected_sha }}
+        ${{ inputs.expected_sha }}
       ASEN_RESOLVED_OS: >-
-        ${{ github.event_name == 'pull_request' &&
-        'ubuntu-24.04' || inputs.os }}
+        ${{ inputs.os }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -62,27 +44,15 @@ jobs:
         shell: bash
       - name: Validate credential-free checkout boundary
         env:
-          ASEN_TRIGGER_KIND: >-
-            ${{ github.event_name == 'pull_request' &&
-            'pull_request' || 'manual' }}
+          ASEN_TRIGGER_KIND: manual
           ASEN_REPOSITORY: ${{ github.repository }}
           ASEN_RUN_ATTEMPT: ${{ github.run_attempt }}
           ASEN_SELECTED_OS: ${{ env.ASEN_RESOLVED_OS }}
           ASEN_EXPECTED_SHA: ${{ env.ASEN_RESOLVED_EXPECTED_SHA }}
           ASEN_GITHUB_SHA: ${{ github.sha }}
-          ASEN_EVENT_HEAD_SHA: >-
-            ${{ github.event_name == 'pull_request' &&
-            github.event.pull_request.head.sha || github.sha }}
-          ASEN_DISPATCH_BRANCH: >-
-            ${{ github.event_name == 'workflow_dispatch' &&
-            github.ref_name || '' }}
+          ASEN_EVENT_HEAD_SHA: ${{ github.sha }}
+          ASEN_DISPATCH_BRANCH: ${{ github.ref_name }}
           ASEN_EXPECTED_BRANCH: feat/strict-parity-prerequisites
-          ASEN_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
-          ASEN_PR_BASE_BRANCH: ${{ github.event.pull_request.base.ref || '' }}
-          ASEN_PR_HEAD_REPOSITORY: >-
-            ${{ github.event.pull_request.head.repo.full_name || '' }}
-          ASEN_PR_HEAD_BRANCH: ${{ github.event.pull_request.head.ref || '' }}
-          ASEN_EVENT_LABEL: ${{ github.event.label.name || '' }}
           ASEN_ECO07_PROVIDER: openrouter
           ASEN_ECO07_MODEL: nvidia/nemotron-3.5-lightning:free
         run: node scripts/eco07-pi-recovery-preflight.mjs boundary

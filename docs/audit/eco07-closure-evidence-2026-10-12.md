@@ -36,9 +36,15 @@ Repository `asenbanskaliev/ASEN`, branch `feat/strict-parity-prerequisites`, PR 
 - Do not dispatch authenticated evidence under the current no-provider authorization. A later authorized attempt must use the exact published candidate: Ubuntu once, inspect complete artifacts, then macOS and Windows individually only after success. Do not blindly retry or fall back to another provider.
 - If a hard pre-spend ceiling is required, keep Q2 blocked and separately design a provider-supported or gateway-enforced request/spend budget. Documenting this limitation is not acceptance of that risk, authenticated evidence, native approval, or ECO-07 FULL status.
 
-## PR #32 bounded Ubuntu opt-in correction
+## Current provider workflow policy (2026-10-14)
 
-The recovery workflow retains its manual single-OS dispatch and adds one automatic route only: a `pull_request` `labeled` event for PR #32 into `main`. The job runs only for the same repository and exact `feat/strict-parity-prerequisites` head branch, the exact `eco07:run-ubuntu` label, and the first run attempt. That route is Ubuntu 24.04 only; pushes, synchronization events, forks, other labels, other PRs, and reruns do not enter the provider job.
+The current `.github/workflows/eco07-groq-recovery.yml` is manual-only. A caller must select exactly one operating system and the expected commit SHA; the workflow validates that the dispatch branch, event SHA, checked-out SHA, provider and model match before exposing `OPENROUTER_API_KEY`. The workflow has no `pull_request`, `push`, or label trigger. The boundary preflight rejects every non-manual trigger. No provider workflow was run for the current candidate.
+
+## Historical PR #32 bounded Ubuntu opt-in correction — superseded
+
+The following records a temporary workflow policy that was later removed. It is historical evidence only and does not describe the current workflow.
+
+The recovery workflow temporarily retained its manual single-OS dispatch and added one automatic route: a `pull_request` `labeled` event for PR #32 into `main`. The job ran only for the same repository and exact `feat/strict-parity-prerequisites` head branch, the exact `eco07:run-ubuntu` label, and the first run attempt. That route was Ubuntu 24.04 only.
 
 The PR checkout and `ASEN_EXPECTED_SHA` use the trusted pull-request head SHA. `ASEN_GITHUB_SHA` remains the original event merge SHA, while `ASEN_EVENT_HEAD_SHA` separately carries the explicit PR head metadata. The credential-free preflight rejects missing or mismatched route metadata, malformed SHA values, merge-SHA checkout substitution, a wrong repository/base/head branch, and non-Ubuntu PR execution. Manual dispatch still requires its input SHA to equal the dispatch event SHA and the dispatch branch to equal `feat/strict-parity-prerequisites`.
 

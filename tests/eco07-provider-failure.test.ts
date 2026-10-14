@@ -32,7 +32,7 @@ test("ECO-07 selects LLM7 only with its key and the pinned Pi Free extension",()
  assert.throws(()=>resolveEco07Provider({ASEN_ECO07_PROVIDER:"llm7",ASEN_ECO07_PROVIDER_EXTENSION:"npm:pi-free@2.8.4",LLM7_API_KEY:"synthetic-key",ASEN_ECO07_MODEL:"bad\nmodel"}),/Invalid ECO-07 model/);
 });
 
-test("ECO-07 provider workflow uses OpenRouter with restricted PR synchronization",()=>{
+test("ECO-07 provider workflow uses OpenRouter only after manual exact-SHA dispatch",()=>{
  const workflow=readFileSync(resolve(".github/workflows/eco07-groq-recovery.yml"),"utf8");
  const compact=workflow.replace(/\s+/gu," ");
  assert.ok(workflow.includes("type: choice"));
@@ -41,13 +41,10 @@ test("ECO-07 provider workflow uses OpenRouter with restricted PR synchronizatio
  assert.ok(workflow.includes('OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}'));
  assert.ok(workflow.includes("ASEN_ECO07_MODEL: nvidia/nemotron-3.5-lightning:free"));
  assert.ok(workflow.includes("workflow_dispatch:"));
- assert.ok(compact.includes("pull_request: branches: [main] types: [synchronize]"));
- assert.ok(workflow.includes("github.event.action == 'synchronize'"));
- assert.ok(workflow.includes("github.event.pull_request.number == 32"));
- assert.ok(compact.includes("github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'"));
+ assert.ok(!compact.includes("pull_request:"));
+ assert.ok(!compact.includes("push:"));
+ assert.ok(compact.includes("github.event_name == 'workflow_dispatch'"));
  assert.ok(workflow.includes("github.run_attempt == 1"));
- assert.ok(!workflow.includes("pull_request_target:"));
- assert.ok(!workflow.includes("types: [labeled]"));
  assert.ok(!workflow.includes("matrix:"));
  assert.ok(!workflow.includes("pi install npm:pi-free"));
  assert.ok(!workflow.includes("ASEN_ECO07_PROVIDER_EXTENSION:"));

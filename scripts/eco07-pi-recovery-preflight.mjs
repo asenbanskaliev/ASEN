@@ -20,10 +20,7 @@ const REQUIRED_FILES=Object.freeze([
 export const ECO07_RECOVERY_CONTRACT=Object.freeze({
  operatingSystems:OPERATING_SYSTEMS,
  repository:"asenbanskaliev/ASEN",
- pullRequest:32,
- baseBranch:"main",
  branch:"feat/strict-parity-prerequisites",
- eventLabel:"eco07:run-ubuntu",
  nodeVersion:"22.19.0",
  piVersion:"1.1.0",
  piIntegrity:"sha512-SeEi/4hdcHNgA9UWlefZl7ZZpm3dzi2OoxNjDHsBJ9o298LNOtbL4DGKgitlEj6uCTccvtw6f2hlCkTPVJ2RXg==",
@@ -90,7 +87,7 @@ export function observeEco07RecoveryCheckout(repository){
 /** Validate cheap checkout and trigger invariants without reading credentials or installed packages. */
 export function validateEco07RecoveryBoundary(environment,observation){
  const triggerKind=environment.ASEN_TRIGGER_KIND;
- if(!["manual","pull_request"].includes(triggerKind))throw new Error("ECO-07 trigger kind is not approved");
+ if(triggerKind!=="manual")throw new Error("ECO-07 recovery requires an explicitly selected manual dispatch");
  if(environment.ASEN_REPOSITORY!==ECO07_RECOVERY_CONTRACT.repository)throw new Error("ECO-07 repository is not approved");
  if(environment.ASEN_RUN_ATTEMPT!=="1")throw new Error("ECO-07 run attempt is not approved");
  const operatingSystem=environment.ASEN_SELECTED_OS;
@@ -103,18 +100,8 @@ export function validateEco07RecoveryBoundary(environment,observation){
  if(typeof eventHeadSha!=="string"||!SHA_PATTERN.test(eventHeadSha)||eventHeadSha!==candidate)throw new Error("ECO-07 event head SHA does not match expected SHA");
  if(observation.head!==candidate)throw new Error("ECO-07 checked-out HEAD does not match expected SHA");
  if(environment.ASEN_EXPECTED_BRANCH!==ECO07_RECOVERY_CONTRACT.branch)throw new Error("ECO-07 approved branch is incorrect");
- if(triggerKind==="manual"){
-  if(githubSha!==candidate)throw new Error("ECO-07 GitHub SHA does not match expected SHA");
-  if(environment.ASEN_DISPATCH_BRANCH!==ECO07_RECOVERY_CONTRACT.branch)throw new Error("ECO-07 dispatch branch is not approved");
- }else{
-  if(operatingSystem!=="ubuntu-24.04")throw new Error("ECO-07 pull request route is Ubuntu-only");
-  if(githubSha===candidate)throw new Error("ECO-07 pull request GitHub SHA must remain the event merge SHA");
-  if(environment.ASEN_PR_NUMBER!==String(ECO07_RECOVERY_CONTRACT.pullRequest))throw new Error("ECO-07 pull request number is not approved");
-  if(environment.ASEN_PR_BASE_BRANCH!==ECO07_RECOVERY_CONTRACT.baseBranch)throw new Error("ECO-07 pull request base branch is not approved");
-  if(environment.ASEN_PR_HEAD_REPOSITORY!==ECO07_RECOVERY_CONTRACT.repository)throw new Error("ECO-07 pull request head repository is not approved");
-  if(environment.ASEN_PR_HEAD_BRANCH!==ECO07_RECOVERY_CONTRACT.branch)throw new Error("ECO-07 pull request head branch is not approved");
-  if(environment.ASEN_EVENT_LABEL!=="" )throw new Error("ECO-07 automatic pull request event must not carry a label");
- }
+ if(githubSha!==candidate)throw new Error("ECO-07 GitHub SHA does not match expected SHA");
+ if(environment.ASEN_DISPATCH_BRANCH!==ECO07_RECOVERY_CONTRACT.branch)throw new Error("ECO-07 dispatch branch is not approved");
  const selection=validateEco07ProviderSelection(environment);
  if(selection.provider!==ECO07_RECOVERY_CONTRACT.provider)throw new Error("ECO-07 provider is not pinned");
  if(selection.model!==ECO07_RECOVERY_CONTRACT.model)throw new Error("ECO-07 model is not pinned");
