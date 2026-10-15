@@ -25,6 +25,12 @@ export interface PiProcessOptions{
 }
 export type PiProviderCredential="OPENROUTER_API_KEY"|"LLM7_API_KEY"|"GROQ_API_KEY"|"NVIDIA_API_KEY";
 const providerCredentialNames=new Set<PiProviderCredential>(["OPENROUTER_API_KEY","LLM7_API_KEY","GROQ_API_KEY","NVIDIA_API_KEY"]);
+export function configuredPiProviderCredential(environment:NodeJS.ProcessEnv):PiProviderCredential|undefined{
+ const selected=environment.ASEN_AGENT_PROVIDER_CREDENTIAL;
+ if(selected===undefined||selected==="")return undefined;
+ if(typeof selected!=="string"||!providerCredentialNames.has(selected as PiProviderCredential))throw new Error("ASEN_AGENT_PROVIDER_CREDENTIAL must name one supported provider credential");
+ return selected as PiProviderCredential;
+}
 const runtimeEnvironmentNames=["PATH","HOME","USERPROFILE","TMPDIR","TMP","TEMP","SYSTEMROOT","WINDIR","COMSPEC","PATHEXT","LANG","LC_ALL","LC_CTYPE","TZ","PI_CODING_AGENT_DIR","PI_PACKAGE_DIR","PI_OFFLINE","PI_SKIP_VERSION_CHECK"] as const;
 /** Preserve Pi's runtime configuration while keeping unrelated ambient credentials out of child tasks. */
 export function piRuntimeEnvironment(source:NodeJS.ProcessEnv,providerCredential?:PiProviderCredential,platform:NodeJS.Platform=process.platform):NodeJS.ProcessEnv{

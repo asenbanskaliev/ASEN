@@ -39,7 +39,7 @@ import {VERSION,type ExtensionAPI} from "@earendil-works/pi-coding-agent";
 import {validatePiHost,validatePiRegistrationCollisions,validatePiExecutionContext} from "../src/runtime/pi-host.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import type {Candidate} from "../src/core/types.js";
-import {PiProcessRunner,type PiProviderCredential} from "../src/agents/pi-process-runner.js";
+import {PiProcessRunner,configuredPiProviderCredential,type PiProviderCredential} from "../src/agents/pi-process-runner.js";
 import type {AgentRunner} from "../src/agents/dispatcher.js";
 import {registerAgentTools,ASEN_AGENT_TOOL_NAMES} from "../src/agents/pi-agent-tools.js";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
@@ -144,7 +144,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return binding;
   };
   const finishActiveMemory=()=>{if(!activeMemory||activeMemory.closed)return;finishPiMemorySession(activeMemory);activeMemory=undefined;};
-  const agentRuntimePromise=dependencies.agentRuntimeFactory?.()??(dependencies.enableAgentRuntime?AgentRuntime.open({storeFile:dependencies.agentStoreFile??path.join(home(),".asen","agents.json"),runner:dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,...(dependencies.agentProviderCredential?{providerCredential:dependencies.agentProviderCredential}:{})}),...(dependencies.agentMaxConcurrency!==undefined?{maxConcurrency:dependencies.agentMaxConcurrency}:{})}):undefined);
+  const agentProviderCredential=dependencies.agentProviderCredential??configuredPiProviderCredential(process.env);
+  const agentRuntimePromise=dependencies.agentRuntimeFactory?.()??(dependencies.enableAgentRuntime?AgentRuntime.open({storeFile:dependencies.agentStoreFile??path.join(home(),".asen","agents.json"),runner:dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})}),...(dependencies.agentMaxConcurrency!==undefined?{maxConcurrency:dependencies.agentMaxConcurrency}:{})}):undefined);
   const getAgentRuntime=async()=>{if(!agentRuntimePromise)throw new Error("ASEN agent runtime is unavailable");return agentRuntimePromise;};
   
   const todoStorePromise=dependencies.todoStoreFactory?.()??(dependencies.enableTodoRuntime?(dependencies.todoStoreFile?SessionTodoStore.open(dependencies.todoStoreFile):SessionTodoStore.openProjectScoped(path.join(home(),".asen","todos"),path.join(home(),".asen","todos.json"))):undefined);
@@ -304,7 +305,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const validateContext=()=>{if(ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed before plan persistence");};
    let project:string;try{project=await realpath(cwd);}catch{throw new Error("ASEN planning requires an existing active project");}validateContext();
    let output:Record<string,unknown>&{executablePlan?:ExecutablePlan;persistedTasks?:Array<{planTaskId:string;todoId:string|undefined;dependsOn:Array<string|undefined>}>};
-   try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project))) as typeof output;}
+   try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),{global:await readProfilesFile(profilesFile)})) as typeof output;}
    catch(error){if(error instanceof Error)throw error;throw new Error("ASEN plan output was invalid");}
    if(!output.executablePlan)return JSON.stringify(output,null,2);
    if(output.executablePlan.route==="direct"){
@@ -324,7 +325,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(!todoStorePromise){output.persistence={status:"unavailable",reason:"Todo store is not configured; this graph was not saved or made runnable"};output.execution={started:false,authorized:false};output.notice="Plan only. The Todo store is unavailable, so no task records were persisted. No agent was dispatched and no permission was granted.";return JSON.stringify(output,null,2);}
    const store=await todoStorePromise,identity=await sessionIdentity(ctx),todoIds=new Map<string,string>(),ordered=output.executablePlan.topologicalOrder.map(taskId=>{const task=output.executablePlan!.tasks.find(item=>item.id===taskId);if(!task)throw new Error("ASEN executable plan order references an unknown task");return task;});
    validateContext();if(identity.sessionId!==sessionId||identity.projectId!==project)throw new Error("Pi session or project changed while preparing the plan");
-    const persisted=await store.addPlan(ordered.map(task=>({title:task.title,requestId:`asen-plan:${task.id}`,dependsOn:task.dependsOn.map(id=>`asen-plan:${id}`),description:task.instruction,plan:{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(task.candidate?{candidate:task.candidate}:{}),...(task.candidateRevision?{candidateRevision:task.candidateRevision}:{}),...(task.writeSurfaces?{writeSurfaces:[...task.writeSurfaces]}:{}),...(task.writerAuthorizationBasis?{writerAuthorizationBasis:task.writerAuthorizationBasis}:{})}})),identity,undefined,validateContext);
+    const persisted=await store.addPlan(ordered.map(task=>({title:task.title,requestId:`asen-plan:${task.id}`,dependsOn:task.dependsOn.map(id=>`asen-plan:${id}`),description:task.instruction,plan:{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,...(task.model?{model:task.model}:{}),...(task.thinking?{thinking:task.thinking}:{}),...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(task.candidate?{candidate:task.candidate}:{}),...(task.candidateRevision?{candidateRevision:task.candidateRevision}:{}),...(task.writeSurfaces?{writeSurfaces:[...task.writeSurfaces]}:{}),...(task.writerAuthorizationBasis?{writerAuthorizationBasis:task.writerAuthorizationBasis}:{})}})),identity,undefined,validateContext);
    validateContext();
    for(const item of persisted)todoIds.set(item.requestId!.slice("asen-plan:".length),item.taskId);
    output.persistedTasks=output.executablePlan.tasks.map(task=>({planTaskId:task.id,todoId:todoIds.get(task.id),dependsOn:task.dependsOn.map(id=>todoIds.get(id))}));

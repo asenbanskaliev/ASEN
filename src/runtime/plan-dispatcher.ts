@@ -123,7 +123,7 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
   await input.validateIdentity();
   const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
   try{
-   const agentId=await input.agents.startControlledWorker({taskIdentity:prepared.taskIdentity,prompt:prepared.instruction,session:input.identity,candidate:prepared.candidate,writeSurfaces:prepared.writeSurfaces,skillSelection:prepared.workerSelection,writerAdmission:prepared.admission,routeEvidence:prepared.routeEvidence,onPrepared:async(id,enqueue,dispatch)=>{await input.validateIdentity();await binder.launchExact(fresh,id,input.identity,enqueue,dispatch,input.validateIdentity);}});
+   const agentId=await input.agents.startControlledWorker({taskIdentity:prepared.taskIdentity,prompt:prepared.instruction,session:input.identity,candidate:prepared.candidate,writeSurfaces:prepared.writeSurfaces,skillSelection:prepared.workerSelection,...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),writerAdmission:prepared.admission,routeEvidence:prepared.routeEvidence,onPrepared:async(id,enqueue,dispatch)=>{await input.validateIdentity();await binder.launchExact(fresh,id,input.identity,enqueue,dispatch,input.validateIdentity);}});
    return {status:"dispatched",todoId:task.taskId,agentId,role};
   }catch(error){if(error instanceof TodoLaunchConflictError)return {status:"blocked",reason:"The plan task changed while awaiting authorization; refresh the plan before dispatch."};throw error;}
  }
@@ -147,7 +147,7 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  await input.validateIdentity();
  const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
  try{
-  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),onPrepared:async(id,enqueue,dispatch)=>{await input.validateIdentity();await binder.launchExact(task,id,input.identity,enqueue,dispatch,input.validateIdentity);}});
+  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),onPrepared:async(id,enqueue,dispatch)=>{await input.validateIdentity();await binder.launchExact(task,id,input.identity,enqueue,dispatch,input.validateIdentity);}});
   return {status:"dispatched",todoId:task.taskId,agentId,role:readRole};
  }catch(error){if(error instanceof TodoLaunchConflictError)return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};throw error;}
 }

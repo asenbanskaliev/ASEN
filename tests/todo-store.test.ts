@@ -53,6 +53,13 @@ test("executable Todo plans persist atomically and idempotently",async t=>{
  await assert.rejects(()=>store.addPlan(drafts,one),/request id conflicts/);assert.deepEqual((await store.list(one)).map(item=>item.taskId),[existing.taskId]);
  const valid=drafts.slice(0,1),created=await store.addPlan(valid,one),reopened=await SessionTodoStore.open(file),retried=await reopened.addPlan(valid,one);assert.equal(created[0]?.taskId,retried[0]?.taskId);assert.equal((await reopened.list(one)).length,2);
 });
+test("controlled Todo plans preserve a validated provider route but never write credentials",async t=>{
+ const file=await fixture(t),store=await SessionTodoStore.open(file),draft={title:"Scoped worker",requestId:"asen-plan:route-worker",dependsOn:[],description:"Write only src/a.ts",plan:{role:"worker" as const,skillPaths:["skills/asen-apply/SKILL.md"],skillSelection:{phase:"apply" as const,risk:"medium" as const,codeChange:true,behaviorChange:true,filesTouched:1},priority:2,model:"nvidia/nemotron-3.5-lightning-30b-a3b",thinking:"low" as const,candidate:{id:"candidate",repository:one.projectId,revision:"a".repeat(40),createdAt:new Date().toISOString()},writeSurfaces:["src/a.ts"],writerAuthorizationBasis:JSON.stringify({instruction:"Write only src/a.ts"})}};
+ const created=await store.addPlan([draft],one),reopened=await SessionTodoStore.open(file),saved=(await reopened.list(one)).find(item=>item.taskId===created[0]!.taskId)!;
+ assert.equal(saved.plan?.model,"nvidia/nemotron-3.5-lightning-30b-a3b");assert.equal(saved.plan?.thinking,"low");
+ assert.equal(JSON.stringify(saved).includes("API_KEY"),false,"credential values or names do not belong in persisted task plans");
+ await assert.rejects(()=>store.addPlan([{...draft,requestId:"asen-plan:invalid-route",plan:{...draft.plan,model:"nvidia\nmalicious"}}],one),/Invalid ASEN Todo plan task/);
+});
 
 test("running Todo work becomes blocked after restart and is never resumed automatically",async t=>{
  const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Validate deployment",one);await store.update(todo.taskId,one,1,"running");

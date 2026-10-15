@@ -2,6 +2,7 @@ import type {OrchestrationPlan} from "./orchestrator.js";
 import type {Candidate} from "../core/types.js";
 import type {IssuedSkillContext} from "../skills/context.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
+import type {AgentRequest} from "../agents/dispatcher.js";
 
 export type PlannedTaskRole="primary"|"explorer"|"worker"|"reviewer"|"verifier"|"clarifier";
 export interface PlannedTask {
@@ -14,6 +15,8 @@ export interface PlannedTask {
  readonly skills:readonly string[];
  readonly skillPaths:readonly string[];
  readonly skillSelection?:SkillSelectionContext;
+ readonly model?:string;
+ readonly thinking?:AgentRequest["thinking"];
  readonly candidate?:Candidate;
  readonly candidateRevision?:string;
  readonly writeSurfaces?:readonly string[];
@@ -42,9 +45,9 @@ export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:str
  const decision=plan.decision,taskId=decision.taskIdentity;
  if(!taskId||!decision.repositoryIdentity||typeof instruction!=="string"||!instruction.trim()||instruction!==instruction.trim()||instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(instruction))throw new Error("Executable plan identity or instruction is invalid");
  const tasks:PlannedTask[]=[],priority:Readonly<Record<PlannedTaskRole,number>>={clarifier:1,primary:1,explorer:1,worker:2,reviewer:3,verifier:4};
- const add=(role:PlannedTaskRole,title:string,text:string,dependsOn:string[],skills:readonly string[],skillPaths:readonly string[]=[],skillSelection?:SkillSelectionContext,status:PlannedTask["status"]="waiting")=>{
+ const add=(role:PlannedTaskRole,title:string,text:string,dependsOn:string[],skills:readonly string[],skillPaths:readonly string[]=[],skillSelection?:SkillSelectionContext,status:PlannedTask["status"]="waiting",model?:string,thinking?:AgentRequest["thinking"])=>{
   const id=`${taskId}:${role}`;
-  tasks.push(Object.freeze({id,role,title,instruction:text,dependsOn:Object.freeze(dependsOn),priority:priority[role],skills:Object.freeze([...skills]),skillPaths:Object.freeze([...skillPaths]),...(skillSelection?{skillSelection:Object.freeze({...skillSelection})}:{}),status,execution:"not_started",authorization:"required_before_dispatch"}));
+  tasks.push(Object.freeze({id,role,title,instruction:text,dependsOn:Object.freeze(dependsOn),priority:priority[role],skills:Object.freeze([...skills]),skillPaths:Object.freeze([...skillPaths]),...(skillSelection?{skillSelection:Object.freeze({...skillSelection})}:{}),...(model?{model}:{}),...(thinking?{thinking}:{}),status,execution:"not_started",authorization:"required_before_dispatch"}));
   return id;
  };
  if(decision.route==="plan"){
@@ -60,7 +63,7 @@ export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:str
    const dependencies=role==="worker"?[ids.get("explorer")].filter((id):id is string=>!!id):role==="reviewer"?[ids.get("worker")].filter((id):id is string=>!!id):role==="verifier"?[ids.get("worker"),ids.get("reviewer")].filter((id):id is string=>!!id):[];
    const text=role==="explorer"?`Inspect only the repository areas relevant to this broad task and report concise evidence for: ${instruction}. Do not change files or expand the authorized scope.`:role==="worker"?`Perform only the authorized, scoped work for: ${instruction}`:role==="reviewer"?`Independently review the actual changes against the original acceptance criteria: ${instruction}. Return exactly one JSON object with keys verdict and evidence. verdict must be pass or fail. evidence must be a non-empty array of concise findings. Do not mark pass if a material criterion fails.`:`Independently verify the actual changes and acceptance criteria for: ${instruction}. Run the relevant local checks and inspect the final diff. Return exactly one JSON object with keys verdict and evidence. verdict must be pass or fail. evidence must be a non-empty array of concise findings, including the checks run and their result. Do not mark pass if a material criterion fails.`;
    const selection=selectionOf(agent.skillContext);
-   const id=add(role,`${role[0]!.toUpperCase()}${role.slice(1)} task`,text,dependencies,selection?selectSkills(selection).map(skill=>skill.id):[],agent.skillPaths??[],selection,dependencies.length?"waiting":"ready");
+   const id=add(role,`${role[0]!.toUpperCase()}${role.slice(1)} task`,text,dependencies,selection?selectSkills(selection).map(skill=>skill.id):[],agent.skillPaths??[],selection,dependencies.length?"waiting":"ready",agent.model,agent.thinking);
    const task=tasks.find(item=>item.id===id)!;
    if(role==="explorer"&&agent.candidate){
     const bound=Object.freeze({...task,candidateRevision:agent.candidate.revision});

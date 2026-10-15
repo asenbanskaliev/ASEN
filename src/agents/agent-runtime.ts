@@ -44,12 +44,12 @@ export class AgentRuntime{
   const execution=this.dispatcher.dispatch(request);this.#executions.set(request.id,execution);
   void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{signal?.removeEventListener("abort",onAbort);if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);});
  }
- async startReadOnly(input:{role:"clarifier"|"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;onPrepared?:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
+ async startReadOnly(input:{role:"clarifier"|"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;model?:string;thinking?:AgentRequest["thinking"];onPrepared?:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
   if(!input.session.sessionId||!input.session.projectId||input.onPrepared&&input.onQueued)throw new Error("An active Pi session and project with one launch boundary is required");
   const requiredPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[input.role as Exclude<typeof input.role,"clarifier">];
   if(input.role==="clarifier"&&input.skillSelection)throw new Error("clarifier dispatch cannot receive a skill phase");
   if(input.skillSelection&&input.skillSelection.phase!==requiredPhase)throw new Error(`${input.role} dispatch requires a ${requiredPhase}-phase skill selection`);
-  const request:AgentRequest={id:`agent-${randomUUID()}`,role:input.role,prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:input.owner??{kind:"user",id:`pi:${input.session.sessionId}`}};
+  const request:AgentRequest={id:`agent-${randomUUID()}`,role:input.role,prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:input.owner??{kind:"user",id:`pi:${input.session.sessionId}`},...(input.model?{model:input.model}:{}),...(input.thinking?{thinking:input.thinking}:{})};
   if(input.skillSelection){request.skillContext=issueSkillContext(request.id,request.repository,undefined,input.skillSelection);request.skillPaths=selectSkills(request.skillContext).map(skill=>skill.path);}
   let enqueued=false,dispatched=false;
   const enqueue=async()=>{if(enqueued)throw new Error("Agent launch may enqueue only once");await this.store.enqueue(request,request.owner!,signal);enqueued=true;};
@@ -62,11 +62,11 @@ export class AgentRuntime{
   return request.id;
  }
  /** Starts one user-approved worker bound to an exact persisted plan, candidate and file scope. */
- async startControlledWorker(input:{taskIdentity:string;prompt:string;session:AgentSessionIdentity;candidate:Candidate;writeSurfaces:readonly string[];skillSelection:SkillSelectionContext;writerAdmission:object;routeEvidence:OrchestrationRouteEvidence;onPrepared:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
+ async startControlledWorker(input:{taskIdentity:string;prompt:string;session:AgentSessionIdentity;candidate:Candidate;writeSurfaces:readonly string[];skillSelection:SkillSelectionContext;writerAdmission:object;routeEvidence:OrchestrationRouteEvidence;model?:string;thinking?:AgentRequest["thinking"];onPrepared:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
   if(!input.taskIdentity||!input.prompt||input.prompt!==input.prompt.trim()||input.prompt.length>32_000||!input.session.sessionId||!input.session.projectId)throw new Error("A controlled worker requires an exact task, prompt, session and project");
   if(input.candidate.repository!==input.session.projectId||input.skillSelection.phase!=="apply"||!Array.isArray(input.writeSurfaces)||!input.writeSurfaces.length||input.writeSurfaces.length>256||input.writeSurfaces.some(surface=>typeof surface!=="string"||!surface))throw new Error("A controlled worker requires the exact candidate, apply phase and bounded write scope");
   const id=`${input.taskIdentity}:worker`,candidate=structuredClone(input.candidate),writeSurfaces=[...input.writeSurfaces];
-  const request:AgentRequest={id,role:"worker",expectedPhase:"apply",prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:{kind:"user",id:`pi:${input.session.sessionId}`},candidate,writeSurfaces,phaseGrant:issueControlledPlanPhaseGrant({requestId:id,sessionId:input.session.sessionId,candidate,surfaces:writeSurfaces,writerAdmission:input.writerAdmission}),writerAdmission:input.writerAdmission};
+  const request:AgentRequest={id,role:"worker",expectedPhase:"apply",prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:{kind:"user",id:`pi:${input.session.sessionId}`},candidate,writeSurfaces,...(input.model?{model:input.model}:{}),...(input.thinking?{thinking:input.thinking}:{}),phaseGrant:issueControlledPlanPhaseGrant({requestId:id,sessionId:input.session.sessionId,candidate,surfaces:writeSurfaces,writerAdmission:input.writerAdmission}),writerAdmission:input.writerAdmission};
   const context=issueSkillContext(request.id,request.repository,request.candidate,input.skillSelection);
   request.skillContext=context;request.skillPaths=selectSkills(context).map(skill=>skill.path);
   const authorizedAt=new Date().toISOString(),scope=input.writeSurfaces.join(", ");

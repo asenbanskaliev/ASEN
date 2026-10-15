@@ -35,6 +35,15 @@ test("ECO-06 exact ODD input compiles to an immutable ordered task DAG without g
  assert.equal(graph.execution,"not_started");assert.equal(graph.authorization,"required_before_dispatch");
  assert.ok(graph.tasks.every((task:{execution:string;authorization:string})=>task.execution==="not_started"&&task.authorization==="required_before_dispatch"));
 });
+test("ECO-06 persists the active profile model and thinking route with each agent phase",()=>{
+ const revision="a".repeat(40),profiles={global:{schema:"asen.runtime-profiles/v1" as const,active:"test",profiles:[{name:"test",routes:{worker:{model:"nvidia/nemotron-3.5-lightning-30b-a3b",thinking:"low" as const},reviewer:{model:"nvidia/nemotron-3.5-lightning-30b-a3b"},verifier:{model:"nvidia/nemotron-3.5-lightning-30b-a3b"}}}]}};
+ const value=JSON.parse(controlledInstructionPlanCommand(oddInput({taskIdentity:"profiled-plan"}),"/repo",{id:"candidate-a",repository:"/repo",revision,createdAt:new Date().toISOString()},profiles));
+ assert.deepEqual(value.executablePlan.tasks.map((task:{role:string;model?:string;thinking?:string})=>[task.role,task.model,task.thinking]),[
+  ["worker","nvidia/nemotron-3.5-lightning-30b-a3b","low"],
+  ["reviewer","nvidia/nemotron-3.5-lightning-30b-a3b",undefined],
+  ["verifier","nvidia/nemotron-3.5-lightning-30b-a3b",undefined],
+ ]);
+});
 test("ECO-06 keeps ordinary review work in the main session",()=>{
  const value=JSON.parse(controlledInstructionPlanCommand(oddInput({taskIdentity:"review-only-plan",scope:{kind:"known",expectedPaths:["src/a.ts"]},writes:[],review:{kind:"ordinary",estimatedMinutes:10}}),"/repo"));
  assert.deepEqual(value.executablePlan.tasks.map((task:{role:string})=>task.role),["primary"]);
