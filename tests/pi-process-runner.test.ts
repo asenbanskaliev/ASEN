@@ -20,6 +20,13 @@ function isLivePosixProcess(pid:number,{exitCode,stdout,stderr}:PosixProcessObse
 }
 async function isLiveProcess(pid:number){
  if(process.platform==="win32"){try{process.kill(pid,0);return true;}catch{return false;}}
+ if(process.platform==="linux"){
+  try{
+   const stat=await readFile(`/proc/${pid}/stat`,"utf8"),end=stat.lastIndexOf(")"),state=stat.slice(end+2).split(/\s+/u,1)[0];
+   if(end<0||!state||!/^[A-Z]$/u.test(state))throw new Error(`procfs returned an invalid state for process ${pid}`);
+   return state!=="Z";
+  }catch(error){if(error&&typeof error==="object"&&"code" in error&&error.code==="ENOENT")return false;throw error;}
+ }
  const observation=await new Promise<PosixProcessObservation>((resolve,reject)=>{
   execFile("ps",["-o","stat=","-p",String(pid)],{timeout:1000},(error,stdout,stderr)=>{
    if(!error)return resolve({exitCode:0,stdout,stderr});

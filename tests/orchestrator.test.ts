@@ -17,7 +17,7 @@ import {readProfilesFile,writeProfilesFile} from "../src/runtime/profile-store.j
 const candidate={id:"c",repository:"r",revision:"sha",createdAt:"now"};
 const orchestrated=(taskId="t",repository="r")=>issueOddDecision({
  taskId,repository,paths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"],
- reviewKind:"ordinary",
+ reviewKind:"dual_explicit",
 });
 const invokeWithUnknownDecision=(input:Parameters<typeof buildOrchestrationPlan>[0],decision:unknown)=>
  Reflect.apply(buildOrchestrationPlan,undefined,[input,decision]);
@@ -25,39 +25,34 @@ const invokeWithUnknownDecision=(input:Parameters<typeof buildOrchestrationPlan>
 test("orchestration uses one writer and read-only reviewer/verifier",()=>{
  const decision=orchestrated();
  const p=buildOrchestrationPlan({taskId:"t",repository:"r",prompt:"p",writeSurfaces:["src"],candidate},decision);
- assert.deepEqual(p.agents.map(a=>a.role),["explorer","worker","reviewer","verifier"]);
+ assert.deepEqual(p.agents.map(a=>a.role),["worker","reviewer","verifier"]);
  assert.equal(p.agents.filter(a=>a.writeSurfaces?.length).length,1);
  assert.equal(p.decision,decision);
  assert.equal(Object.isFrozen(p.decision),true);
  assert.equal(JSON.stringify(p).match(/evidenceToken|authority|verdict|mutationCallback/giu),null);
 });
 
-test("orchestration skips an unrequested reviewer and lets verification follow the writer",()=>{
- const decision=issueOddDecision({taskId:"no-review",repository:"r",paths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"]});
- const plan=buildOrchestrationPlan({taskId:"no-review",repository:"r",prompt:"p",writeSurfaces:["src"],candidate},decision);
- assert.deepEqual(plan.agents.map(agent=>agent.role),["explorer","worker","verifier"]);
+test("a clear multi-file change stays in the primary session",()=>{
+ const decision=issueOddDecision({taskId:"multi-file-direct",repository:"r",paths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"],writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"behavior"}]});
+ const plan=buildOrchestrationPlan({taskId:"multi-file-direct",repository:"r",prompt:"p",writeSurfaces:["src/a.ts","src/b.ts"],candidate},decision);
+ assert.equal(decision.route,"direct");assert.deepEqual(plan.agents,[]);
  const executable=materializeExecutablePlan(plan,"Implement the bounded request");
- const worker=executable.tasks.find(task=>task.role==="worker"),verifier=executable.tasks.find(task=>task.role==="verifier");
- assert.ok(worker&&verifier);assert.deepEqual(verifier.dependsOn,[worker.id],"the independent verification gate remains, without an unrequested review stage");
+ assert.equal(executable.tasks[0]?.role,"primary");assert.equal(executable.tasks[0]?.status,"ready");
 });
 
-test("orchestration skips exploration when only session length or review triggered delegation",()=>{
+test("time and ordinary review do not trigger delegation",()=>{
  const long=buildOrchestrationPlan({taskId:"long-only",repository:"r",prompt:"p",candidate},issueOddDecision({taskId:"long-only",repository:"r",estimatedMinutes:90}));
- assert.deepEqual(long.agents.map(agent=>agent.role),["worker","verifier"]);
- const longGraph=materializeExecutablePlan(long,"Continue the bounded work"),longWorker=longGraph.tasks.find(task=>task.role==="worker");
- assert.ok(longWorker);assert.deepEqual(longWorker.dependsOn,[]);assert.equal(longWorker.status,"ready");
+ assert.deepEqual(long.agents.map(agent=>agent.role),[]);
+ const longGraph=materializeExecutablePlan(long,"Continue the bounded work");assert.equal(longGraph.tasks[0]?.role,"primary");
  const review=buildOrchestrationPlan({taskId:"review-only",repository:"r",prompt:"p",candidate},issueOddDecision({taskId:"review-only",repository:"r",reviewKind:"ordinary"}));
- assert.deepEqual(review.agents.map(agent=>agent.role),["worker","reviewer","verifier"]);
- const reviewGraph=materializeExecutablePlan(review,"Make the bounded change"),reviewWorker=reviewGraph.tasks.find(task=>task.role==="worker"),reviewer=reviewGraph.tasks.find(task=>task.role==="reviewer");
- assert.ok(reviewWorker&&reviewer);assert.deepEqual(reviewWorker.dependsOn,[]);assert.deepEqual(reviewer.dependsOn,[reviewWorker.id]);
+ assert.deepEqual(review.agents.map(agent=>agent.role),[]);
 });
 
-test("broad multi-write plans retain an exploration prerequisite",()=>{
+test("multiple writes alone do not launch a redundant exploration agent",()=>{
  const decision=issueOddDecision({taskId:"broad-writes",repository:"r",paths:["src/a.ts","src/b.ts"],writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"schema"}]});
  const plan=buildOrchestrationPlan({taskId:"broad-writes",repository:"r",prompt:"p",writeSurfaces:["src/a.ts","src/b.ts"],candidate},decision);
- assert.deepEqual(plan.agents.map(agent=>agent.role),["explorer","worker","verifier"]);
- const graph=materializeExecutablePlan(plan,"Make the coordinated change"),explorer=graph.tasks.find(task=>task.role==="explorer"),worker=graph.tasks.find(task=>task.role==="worker");
- assert.ok(explorer&&worker);assert.deepEqual(worker.dependsOn,[explorer.id]);assert.equal(worker.status,"waiting");
+ assert.equal(plan.decision.route,"direct");assert.deepEqual(plan.agents,[]);
+ const graph=materializeExecutablePlan(plan,"Make the coordinated change");assert.equal(graph.tasks[0]?.role,"primary");assert.deepEqual(graph.tasks[0]?.dependsOn,[]);
 });
 
 test("persisted session/project/global routes reach each agent request after reload",async t=>{
@@ -68,7 +63,7 @@ test("persisted session/project/global routes reach each agent request after rel
  const runtimeProfiles={global:await readProfilesFile(path.join(dir,"global.json")),project:await readProfilesFile(path.join(dir,"project.json")),session:await readProfilesFile(path.join(dir,"session.json"))};
  const p=buildOrchestrationPlan({taskId:"profiled",repository:"r",prompt:"p",candidate,runtimeProfiles},orchestrated("profiled"));
  assert.deepEqual(p.agents.map(a=>[a.role,a.model,a.thinking]),[
-  ["explorer","project/explorer","low"],["worker","session/worker","high"],
+  ["worker","session/worker","high"],
   ["reviewer",undefined,undefined],["verifier","global/verifier",undefined],
  ]);
 });
@@ -111,7 +106,7 @@ test("orchestration derives mandatory skills from original high-risk behavior fa
  assert.deepEqual(omitted.skills,expected);
 });
 
-test("obsolete caller skill facts are never observed",()=>{
+test("obsolete caller skill facts are never observed on a direct multi-file route",()=>{
  let reads=0;
  const input={taskId:"getters",repository:"r",prompt:"p",writeSurfaces:["src"],candidate};
  for(const field of ["codeChange","behaviorChange","filesTouched"] as const){
@@ -122,15 +117,8 @@ test("obsolete caller skill facts are never observed",()=>{
   writes:[{path:"src/a.ts",changeKind:"behavior"}],
  }));
  assert.equal(reads,0);
- const context=plan.agents.find(agent=>agent.role==="worker")?.skillContext;
- assert.equal(context?.taskId,"getters:worker");
- assert.equal(context?.repository,"r");
- assert.equal(context?.candidateId,"c");
- assert.equal(context?.candidateRevision,"sha");
- assert.equal(context?.codeChange,true);
- assert.equal(context?.behaviorChange,true);
- assert.equal(context?.filesTouched,4);
- assert.equal(context?.risk,"medium");
+ assert.equal(plan.agents.length,0);
+ assert.equal(plan.skills.includes("asen-safe-change"),true);
 });
 
 test("declared write kinds preserve exact code and behavior skill predicates",()=>{
@@ -180,7 +168,7 @@ test("ODD keeps sensitive-operation instructions plan-only without creating exec
 test("writer is bound to the exact orchestration candidate",()=>{
  const decision=issueOddDecision({
   taskId:"t",repository:"r",paths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"],
-  writes:[{path:"src/a.ts",changeKind:"configuration"}],
+  writes:[{path:"src/a.ts",changeKind:"configuration"}],reviewKind:"dual_explicit",
  });
  const p=buildOrchestrationPlan({taskId:"t",repository:"r",prompt:"p",codeChange:false,filesTouched:0,writeSurfaces:["src"],candidate},decision);
  const worker=p.agents.find(a=>a.role==="worker");
@@ -259,7 +247,6 @@ test("orchestration passes exact selected SKILL.md paths to delegated agents",()
   {taskId:"phase",repository:"r",prompt:"implement",skillPhase:"apply",codeChange:true,filesTouched:4,writeSurfaces:["src"],candidate},
   orchestrated("phase")
  );
- const explorer=p.agents.find(a=>a.role==="explorer");
  const worker=p.agents.find(a=>a.role==="worker");
  const reviewer=p.agents.find(a=>a.role==="reviewer");
  const verifier=p.agents.find(a=>a.role==="verifier");
@@ -270,8 +257,6 @@ test("orchestration passes exact selected SKILL.md paths to delegated agents",()
   "skills/asen-apply/SKILL.md",
   "skills/asen-odd/SKILL.md"
  ]);
- assert.ok(explorer?.skillPaths?.includes("skills/asen-explore/SKILL.md"));
- assert.equal(explorer?.skillPaths?.includes("skills/asen-apply/SKILL.md"),false);
  assert.ok(reviewer?.skillPaths?.includes("skills/asen-adversarial-review/SKILL.md"));
  assert.equal(reviewer?.skillPaths?.includes("skills/asen-apply/SKILL.md"),false);
  assert.ok(verifier?.skillPaths?.includes("skills/asen-verify/SKILL.md"));
@@ -280,7 +265,6 @@ test("orchestration passes exact selected SKILL.md paths to delegated agents",()
 
 test("delegated role contexts are independently issued and task-bound",()=>{
  const p=buildOrchestrationPlan({taskId:"phase",repository:"r",prompt:"implement",skillPhase:"apply",codeChange:true,filesTouched:4,writeSurfaces:["src"],candidate},orchestrated("phase"));
- assert.equal(p.agents.find(a=>a.role==="explorer")?.skillContext?.taskId,"phase:explore");
  assert.equal(p.agents.find(a=>a.role==="worker")?.skillContext?.taskId,"phase:worker");
  assert.equal(p.agents.find(a=>a.role==="reviewer")?.skillContext?.taskId,"phase:review");
  assert.equal(p.agents.find(a=>a.role==="verifier")?.skillContext?.taskId,"phase:verify");

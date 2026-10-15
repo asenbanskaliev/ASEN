@@ -113,11 +113,17 @@ test("oversized clarifier is rejected before confirmation and stays planned",asy
  assert.deepEqual(await fixture.agents.list(fixture.identity),[]);assert.deepEqual(await fixture.links.list(fixture.identity),[]);
 });
 
-test("primary remains blocked without confirmation or launch",async()=>{
+test("primary continues in the active session once, without an agent or write grant",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-primary-dispatch-"));t.after(()=>rm(home,{recursive:true,force:true}));
+ const identity={sessionId:"eco06-role-boundary",projectId:await realpath(process.cwd())},todos=await SessionTodoStore.open(join(home,"todos.json"));
+ const task=(await todos.addPlan([{title:"Primary work",requestId:"asen-plan:primary",dependsOn:[],description:"Complete this bounded task in the main session",plan:{role:"primary",priority:1,skillPaths:[]}}],identity))[0]!;
  let confirmations=0,agentStarts=0;
- const input={todos:{list:async()=>[{taskId:"todo-primary",requestId:"asen-plan:primary",current:{state:"planned",revision:1},dependsOn:[],description:"Do not dispatch primary",plan:{role:"primary",priority:1,skillPaths:[]}}]},agents:{startReadOnly:async()=>{agentStarts++;return"unexpected";},startControlledWorker:async()=>{agentStarts++;return"unexpected";}},links:{},identity:{sessionId:"eco06-role-boundary",projectId:"/tmp/eco06-role-boundary"},validateIdentity:async()=>{},confirm:async()=>{confirmations++;return true;}} as unknown as Parameters<typeof dispatchNextPlanTask>[0];
- const result=await dispatchNextPlanTask(input);
- assert.equal(result.status,"blocked");if(result.status==="blocked")assert.match(result.reason,/controlled primary lifecycle dispatcher/u);
+ const input={todos,agents:{startReadOnly:async()=>{agentStarts++;return"unexpected";},startControlledWorker:async()=>{agentStarts++;return"unexpected";}},links:new TaskAgentLinkStore(join(home,"links.json")),identity,validateIdentity:async()=>{},confirm:async()=>{confirmations++;return true;}} as unknown as Parameters<typeof dispatchNextPlanTask>[0];
+ const results=await Promise.all([dispatchNextPlanTask(input),dispatchNextPlanTask(input)]);
+ const inline=results.find(result=>result.status==="inline");assert.ok(inline&&inline.status==="inline");
+ assert.equal(inline.todoId,task.taskId);assert.equal(inline.revision,2);assert.equal(inline.instruction,"Complete this bounded task in the main session");
+ assert.equal(results.filter(result=>result.status==="blocked").length,1);
+ assert.equal((await todos.list(identity))[0]?.current.state,"running");
  assert.equal(confirmations,0);assert.equal(agentStarts,0);
 });
 

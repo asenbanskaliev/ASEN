@@ -5,7 +5,7 @@ const bindings=new WeakMap<object,ReturnType<typeof claimedOrchestrationRouteCon
 /** Derives execution obligations from the already-claimed ODD route; it does not claim memory/recovery implementation parity. */
 export function deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract{
  const context=claimedOrchestrationRouteContext(decision),route=decision.route,readOnly=route==="verify"||context.facts.intent==="analysis"&&!context.facts.writes.length;
- const substantial=route==="plan"||route==="orchestrate"||context.facts.scope.kind==="unknown"||context.facts.nonTrivialWrites>1||context.facts.longSession||context.facts.filesTouched>=4;
+ const substantial=route==="plan"||route==="orchestrate"||route==="incident"||context.facts.scope.kind==="unknown"||context.facts.longSession;
  const result=Object.freeze({route,readOnly,artifactPolicy:readOnly?"none" as const:"bounded" as const,substantial,requiresFullMemoryMirror:substantial&&!readOnly,requiresTodo:substantial&&!readOnly,requiresResume:substantial&&!readOnly});issued.add(result);bindings.set(result,context);return result;
 }
 /** Exact identity check for consumers; clones are not evidence of an ODD execution contract. */

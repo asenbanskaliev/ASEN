@@ -29,6 +29,14 @@ test("read-only substantial ODD produces no artifact and invokes no memory callb
  assert.equal(await resumeOddTask(c,{get(){throw new Error("read-only memory callback");}},null as never),undefined);
  assert.deepEqual(await readdir(root),before);
 });
+test("a bounded multi-file request does not trigger full task mirror tracking by size alone",()=>{
+ const repository="/tmp/odd-direct-many-files",paths=Array.from({length:12},(_,index)=>`src/part-${index}.ts`),taskId="direct-many-files";
+ const decision=issueOddDecision({taskId,repository,paths,writes:paths.slice(0,6).map((path,index)=>({path,changeKind:index%2===0?"behavior":"configuration"})),estimatedMinutes:25});
+ const candidate={id:"candidate",repository,revision:"a".repeat(40),createdAt:"2026-10-15T00:00:00.000Z"};
+ buildOrchestrationPlan({taskId,repository,prompt:"Apply this bounded change",candidate},decision);
+ const value=deriveOddExecutionContract(decision);
+ assert.equal(decision.route,"direct");assert.equal(value.substantial,false);assert.equal(value.requiresTodo,false);assert.equal(value.requiresResume,false);
+});
 test("full task mirror, TODO and exact resume survive SQLite close/reopen",async t=>{
  let openStore:SqliteMemoryStore|undefined;
  const root=await fixture(t,()=>openStore?.close()),path=join(root,"memory.db"),store=openStore=new SqliteMemoryStore(path),context=createMemoryContext(store,{repository:root},"first");

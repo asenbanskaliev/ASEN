@@ -13,7 +13,7 @@ const decisionFor=(taskId:string,repository="repo")=>issueOddDecision({
  taskId,repository,
  paths:["src/a.ts","src/b.ts"],
  writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"behavior"}],
- reviewKind:"ordinary",
+ reviewKind:"dual_explicit",
 });
 const writerAdmissionFor=(plan:ReturnType<typeof buildOrchestrationPlan>,taskId:string)=>issueOrganicWriterAdmission(decideLifecycleApplicability(plan.decision,{taskIdentity:taskId,repositoryIdentity:"repo",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"unspecified",affectedSubsystems:["orchestration"],expectedPaths:["src/a.ts","src/b.ts"],requiredArtifacts:[]}),["src/a.ts","src/b.ts"]);
 
@@ -93,7 +93,7 @@ test("writer cannot reuse another task's issued skill context",async()=>{
 });
 
 test("read-only agents cannot exchange their phase authorities",async()=>{
- const plan=buildOrchestrationPlan({taskId:"roles",repository:"repo",prompt:"inspect",candidate},decisionFor("roles"));
+ const plan=buildOrchestrationPlan({taskId:"roles",repository:"repo",prompt:"inspect",candidate},issueOddDecision({taskId:"roles",repository:"repo",intent:"incident"}));
  const explorer=plan.agents.find(agent=>agent.role==="explorer");
  const reviewer=plan.agents.find(agent=>agent.role==="reviewer");
  assert.ok(explorer?.skillContext&&explorer.skillPaths&&reviewer?.skillContext);
@@ -105,9 +105,9 @@ test("read-only agents cannot exchange their phase authorities",async()=>{
 });
 
 test("read-only agent authority cannot cross tasks or revisions",async()=>{
- const first=buildOrchestrationPlan({taskId:"first",repository:"repo",prompt:"inspect",candidate},decisionFor("first"));
+ const first=buildOrchestrationPlan({taskId:"first",repository:"repo",prompt:"inspect",candidate},issueOddDecision({taskId:"first",repository:"repo",intent:"incident"}));
  const next={...candidate,revision:"next"};
- const second=buildOrchestrationPlan({taskId:"second",repository:"repo",prompt:"inspect",candidate:next},decisionFor("second"));
+ const second=buildOrchestrationPlan({taskId:"second",repository:"repo",prompt:"inspect",candidate:next},issueOddDecision({taskId:"second",repository:"repo",intent:"incident"}));
  const old=first.agents.find(agent=>agent.role==="explorer"),explorer=second.agents.find(agent=>agent.role==="explorer");
  assert.ok(old?.skillContext&&old.skillPaths&&explorer);
  let ran=false;
@@ -137,7 +137,7 @@ test("ECO-06 plan-only delegation cannot start a worker even with complete evide
 });
 
 test("ECO-06 every planned read-only role stays outside write admission",async()=>{
- const plan=buildOrchestrationPlan({taskId:"read-only-roles",repository:"repo",prompt:"inspect",candidate},decisionFor("read-only-roles"));
+ const plan=buildOrchestrationPlan({taskId:"read-only-roles",repository:"repo",prompt:"inspect",candidate},issueOddDecision({taskId:"read-only-roles",repository:"repo",intent:"incident"}));
  let calls=0;
  const dispatcher=new Dispatcher({run:async r=>{calls++;return{id:r.id,ok:true,output:"ok"};}},new EvidenceStore());
  for(const role of ["explorer","reviewer","verifier"] as const){

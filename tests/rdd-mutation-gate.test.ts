@@ -25,7 +25,7 @@ test("D5 la fase defect explícita también exige intake para mutación",()=>{
  assert.equal(verifySkillEvidence(candidate,selectSkills(context).map(s=>s.id),store,"mutation").ok,false);
 });
 test("D5 todos los contextos delegados conservan el defecto sin convertirlo en incidente",()=>{
- const decision=issueOddDecision({taskId:"d5-amplio",repository:"repo",intent:"defect",paths:["src/a.ts","src/b.ts"],writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"behavior"}]});
+ const decision=issueOddDecision({taskId:"d5-amplio",repository:"repo",intent:"defect",paths:["src/a.ts","src/b.ts"],writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"behavior"}],reviewKind:"dual_explicit"});
  const plan=buildOrchestrationPlan({taskId:"d5-amplio",repository:"repo",prompt:"corregir",candidate,writeSurfaces:["src/"]},decision);
  assert.equal(plan.decision.route,"orchestrate");
  for(const agent of plan.agents){assert.equal(agent.skillContext?.defect,true);assert.ok(agent.skillPaths?.includes("skills/asen-defect-workflow/SKILL.md"));}

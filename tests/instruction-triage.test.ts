@@ -21,24 +21,24 @@ const oddInput=(overrides:Record<string,unknown>={})=>JSON.stringify({
  instruction:"Implement the bounded change and verify it",
  taskIdentity:"ECO-06-A1",intent:"implementation",scope:{kind:"known",expectedPaths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"]},
  writes:[{path:"src/a.ts",changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:20,continuation:false},
- testing:{kind:"required"},review:{kind:"ordinary",estimatedMinutes:15},unresolvedDecisions:[],...overrides,
+ testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:15},unresolvedDecisions:[],...overrides,
 });
 test("ECO-06 exact ODD input compiles to an immutable ordered task DAG without granting execution",()=>{
  const value=JSON.parse(controlledInstructionPlanCommand(oddInput(),"/repo"));
  const graph=value.executablePlan;
  assert.equal(graph.taskId,"ECO-06-A1");assert.equal(graph.route,"orchestrate");
- assert.deepEqual(graph.tasks.map((task:{role:string})=>task.role),["explorer","worker","reviewer","verifier"]);
- assert.deepEqual(graph.tasks.map((task:{dependsOn:string[]})=>task.dependsOn.length),[0,1,1,2]);
- assert.deepEqual(graph.tasks.map((task:{priority:number})=>task.priority),[1,2,3,4]);
+ assert.deepEqual(graph.tasks.map((task:{role:string})=>task.role),["worker","reviewer","verifier"]);
+ assert.deepEqual(graph.tasks.map((task:{dependsOn:string[]})=>task.dependsOn.length),[0,1,2]);
+ assert.deepEqual(graph.tasks.map((task:{priority:number})=>task.priority),[2,3,4]);
  assert.deepEqual(graph.topologicalOrder,graph.tasks.map((task:{id:string})=>task.id));
  assert.equal(graph.tasks[0].status,"ready");assert.equal(graph.tasks[1].status,"waiting");
  assert.equal(graph.execution,"not_started");assert.equal(graph.authorization,"required_before_dispatch");
  assert.ok(graph.tasks.every((task:{execution:string;authorization:string})=>task.execution==="not_started"&&task.authorization==="required_before_dispatch"));
 });
-test("ECO-06 omits exploration for a review-only route and keeps review after the worker",()=>{
+test("ECO-06 keeps ordinary review work in the main session",()=>{
  const value=JSON.parse(controlledInstructionPlanCommand(oddInput({taskIdentity:"review-only-plan",scope:{kind:"known",expectedPaths:["src/a.ts"]},writes:[],review:{kind:"ordinary",estimatedMinutes:10}}),"/repo"));
- assert.deepEqual(value.executablePlan.tasks.map((task:{role:string})=>task.role),["worker","reviewer","verifier"]);
- assert.deepEqual(value.executablePlan.tasks.map((task:{dependsOn:string[]})=>task.dependsOn.length),[0,1,2]);
+ assert.deepEqual(value.executablePlan.tasks.map((task:{role:string})=>task.role),["primary"]);
+ assert.deepEqual(value.executablePlan.tasks[0]?.dependsOn,[]);
 });
 test("ECO-06 routes direct work to the primary session and verification intent to a verifier",()=>{
  const direct=JSON.parse(controlledInstructionPlanCommand(oddInput({taskIdentity:"direct-plan",scope:{kind:"known",expectedPaths:["docs/guide.md"]},writes:[],review:{kind:"none",estimatedMinutes:0}}),"/repo"));

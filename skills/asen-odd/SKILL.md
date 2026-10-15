@@ -22,7 +22,7 @@ Activate for non-trivial, risky, multi-step or routing-sensitive work. Do not ad
 | --- | --- |
 | Simple bounded request | Direct route |
 | High/unknown risk | Plan before mutation |
-| Multiple non-trivial writes or broad exploration | Orchestrate isolated work |
+| Explicit independent review is required, or an incident needs broad discovery | Orchestrate only the needed isolated work |
 | Explicit verification | Read-only verify route |
 ## Execution Steps
 1. Assess scope and risk.

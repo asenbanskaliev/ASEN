@@ -76,14 +76,13 @@ test("natural-language plan request persists the real planner output without aut
   const pi={registerCommand(name:string,command:any){commands.set(name,command);},registerTool(tool:any){tools.set(tool.name,tool);},on(name:string,handler:(...args:any[])=>unknown){events.set(name,handler);}};
   createAsenExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,todoStoreFactory:async()=>todos})(pi);
   const tool=tools.get(ASEN_PLAN_REQUEST_TOOL);
-  const requestFacts={...request(),scope:{kind:"known",expectedPaths:["src/runtime/natural-plan-tool.ts","src/runtime/route-command.ts","src/orchestration/orchestrator.ts","tests/natural-plan-tool.test.ts"]},writes:[{path:"src/runtime/natural-plan-tool.ts",changeKind:"behavior"}],review:{kind:"ordinary",estimatedMinutes:5}};
+  const requestFacts={...request(),scope:{kind:"known",expectedPaths:["src/runtime/natural-plan-tool.ts","src/runtime/route-command.ts","src/orchestration/orchestrator.ts","tests/natural-plan-tool.test.ts"]},writes:[{path:"src/runtime/natural-plan-tool.ts",changeKind:"behavior"}],review:{kind:"dual_explicit",estimatedMinutes:5}};
   const context={cwd:process.cwd(),sessionManager:{getSessionId:()=>"natural-plan-session"},ui:{notify(){}}};
   const result=await tool.execute("call",requestFacts,undefined,undefined,context);
   const persisted=await todos.list({sessionId:"natural-plan-session",projectId:process.cwd()});
-  assert.equal(persisted.length,4);
-  assert.deepEqual(persisted.map(row=>row.plan?.role),["explorer","worker","reviewer","verifier"]);
+  assert.equal(persisted.length,3);
+  assert.deepEqual(persisted.map(row=>row.plan?.role),["worker","reviewer","verifier"]);
   assert.ok(persisted.every(row=>row.current.state==="planned"));
-  assert.equal(persisted.find(row=>row.plan?.role==="explorer")?.plan?.candidateRevision,persisted.find(row=>row.plan?.role==="worker")?.plan?.candidate?.revision);
   assert.ok(persisted.find(row=>row.plan?.role==="worker")?.plan?.candidate?.revision);
   assert.equal(result.details.execution.started,false);
   assert.equal(result.details.execution.authorized,false);

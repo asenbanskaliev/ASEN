@@ -124,9 +124,9 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRou
     agents.push(applyRuntimeProfile({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext:verifier.context,skillPaths:verifier.skillPaths},input.runtimeProfiles));
     return planned({decision,agents,skills:verifier.skills});
   }
-  // Explore only when ODD identifies broad implementation work. A long session
-  // or a requested review alone does not justify another agent lifecycle.
-  const needsExploration=decision.route==="incident"||decision.reasons.some(reason=>reason==="four-or-more-files"||reason==="two-or-more-nontrivial-writes");
+  // File count, write count, and duration do not establish exploration value.
+  // Incident work is the only current route with a verified broad-discovery need.
+  const needsExploration=decision.route==="incident";
   if(needsExploration){
     const explorer=contextFor("explore","explore");
     agents.push(applyRuntimeProfile({id:`${input.taskId}:explore`,role:"explorer",...base,skillContext:explorer.context,skillPaths:explorer.skillPaths},input.runtimeProfiles));

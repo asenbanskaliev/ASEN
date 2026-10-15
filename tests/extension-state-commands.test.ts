@@ -44,24 +44,24 @@ test("asen-plan composes the existing ODD and orchestrator without retrieving, r
 });
 test("asen-plan previews bounded orchestration roles without dispatching or granting execution",async()=>{
  const h=host();createAsenExtension()(h.pi);const command=h.commands.get("asen-plan")!,paths=["src/a.ts","src/b.ts","src/c.ts","src/d.ts"];
- const result=JSON.parse(await command.handler(JSON.stringify({taskIdentity:"orchestrated-plan",instruction:"Implement the bounded change",intent:"implementation",scope:{kind:"known",expectedPaths:paths},writes:[{path:"src/a.ts",changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:20,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]}),{cwd:process.cwd(),sessionManager:{getSessionId:()=>"orchestrator-session"}}) as string);
- assert.equal(result.route,"orchestrate");assert.deepEqual(result.requiredAgentRoles,["explorer","worker","verifier"]);
+ const result=JSON.parse(await command.handler(JSON.stringify({taskIdentity:"orchestrated-plan",instruction:"Implement the bounded change",intent:"implementation",scope:{kind:"known",expectedPaths:paths},writes:[{path:"src/a.ts",changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:20,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:0},unresolvedDecisions:[]}),{cwd:process.cwd(),sessionManager:{getSessionId:()=>"orchestrator-session"}}) as string);
+ assert.equal(result.route,"orchestrate");assert.deepEqual(result.requiredAgentRoles,["worker","reviewer","verifier"]);
  assert.equal(result.requiresSingleWriter,true);assert.equal(result.requiresIsolatedChild,true);assert.deepEqual(result.execution,{started:false,authorized:false});
- assert.deepEqual(result.executablePlan.tasks.map((task:any)=>task.role),["explorer","worker","verifier"]);
+ assert.deepEqual(result.executablePlan.tasks.map((task:any)=>task.role),["worker","reviewer","verifier"]);
  assert.equal(result.persistence.status,"unavailable");
  assert.deepEqual(result.actions,{informationRetrieved:false,reviewRequested:false});
 });
 test("asen-plan persists its DAG in the active Todo store and enforces predecessor completion",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-plan-dag-"));t.after(()=>rm(root,{recursive:true,force:true}));const store=await SessionTodoStore.open(path.join(root,"todos.json")),h=host();createAsenExtension({todoStoreFactory:async()=>store})(h.pi);
- const paths=["src/a.ts","src/b.ts","src/c.ts","src/d.ts"],session={sessionManager:{getSessionId:()=>"dag-session"},cwd:process.cwd()},result=JSON.parse(await h.commands.get("asen-plan")!.handler(JSON.stringify({taskIdentity:"dag-plan",instruction:"Implement bounded change",intent:"implementation",scope:{kind:"known",expectedPaths:paths},writes:[{path:"src/a.ts",changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:20,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]}),session) as string);
+ const paths=["src/a.ts","src/b.ts","src/c.ts","src/d.ts"],session={sessionManager:{getSessionId:()=>"dag-session"},cwd:process.cwd()},result=JSON.parse(await h.commands.get("asen-plan")!.handler(JSON.stringify({taskIdentity:"dag-plan",instruction:"Implement bounded change",intent:"implementation",scope:{kind:"known",expectedPaths:paths},writes:[{path:"src/a.ts",changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:20,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:0},unresolvedDecisions:[]}),session) as string);
  assert.equal(result.persistence.status,"saved");assert.equal(result.execution.started,false);assert.equal(result.persistedTasks.length,3);
  assert.match(result.notice,/Do not ask the user to inspect Todo state or run commands/);assert.doesNotMatch(result.notice,/inspect its Todo state/u);
  const projectId=await realpath(process.cwd()),identity={sessionId:"dag-session",projectId},rows=await store.list(identity);assert.equal(rows.length,3);
  const todoById=new Map(rows.map(row=>[row.taskId,row]));const graph=new Map(result.persistedTasks.map((item:any)=>[item.planTaskId,item]));
- const worker=graph.get("dag-plan:worker") as any,explorer=graph.get("dag-plan:explorer") as any;assert.deepEqual(worker.dependsOn,[explorer.todoId]);
- const explorerTodo=todoById.get(explorer.todoId)!;assert.equal(explorerTodo.plan?.role,"explorer");assert.equal(explorerTodo.plan?.priority,1);assert.equal(explorerTodo.plan?.skillSelection?.phase,"explore");assert.ok(explorerTodo.plan?.skillPaths.includes("skills/asen-explore/SKILL.md"));assert.equal(todoById.get(worker.todoId)?.plan?.priority,2);
- await assert.rejects(()=>store.update(worker.todoId,identity,1,"running"),/dependencies must be verified done/);
- assert.equal(todoById.get(worker.todoId)?.current.state,"planned");
+ const worker=graph.get("dag-plan:worker") as any,reviewer=graph.get("dag-plan:reviewer") as any;assert.deepEqual(reviewer.dependsOn,[worker.todoId]);
+ const workerTodo=todoById.get(worker.todoId)!;assert.equal(workerTodo.plan?.role,"worker");assert.equal(workerTodo.plan?.priority,2);assert.equal(workerTodo.plan?.skillSelection?.phase,"apply");assert.equal(todoById.get(reviewer.todoId)?.plan?.priority,3);
+ await assert.rejects(()=>store.update(reviewer.todoId,identity,1,"running"),/dependencies must be verified done/);
+ assert.equal(todoById.get(reviewer.todoId)?.current.state,"planned");
 });
 test("asen-plan refuses persistence when its Pi session changes while waiting for the Todo transaction",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-plan-session-change-"));t.after(()=>rm(root,{recursive:true,force:true}));const store=await SessionTodoStore.open(path.join(root,"todos.json")),h=host();createAsenExtension({todoStoreFactory:async()=>store})(h.pi);

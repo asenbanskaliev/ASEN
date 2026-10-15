@@ -28,7 +28,7 @@ export function sameApprovedTaskSnapshot(before:TodoItem&{current:{state:string}
 
 type PlanDispatchTask={id:string;title:string;role:string;instruction:string;writeSurfaces?:readonly string[];candidateRevision?:string};
 type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean};
-type DispatchResult={status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string};
+type DispatchResult={status:"dispatched";todoId:string;agentId:string;role:string}|{status:"inline";todoId:string;revision:number;role:"primary";instruction:string}|{status:"blocked";reason:string};
 
 function currentRevision(repository:string):string{
  try{return execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:2000,windowsHide:true}).trim();}
@@ -95,6 +95,18 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  const task=ready[0]!;
  if(!task.plan)return {status:"blocked",reason:"The next plan task has no persisted role or skill selection."};
  const role=task.plan.role;
+ if(role==="primary"){
+  if(!task.description)return {status:"blocked",reason:"The primary-session task has no exact persisted instruction."};
+  await input.validateIdentity();
+  const fresh=(await input.todos.list(context)).find(row=>row.taskId===task.taskId);
+  if(!sameApprovedTaskSnapshot(task,fresh))return {status:"blocked",reason:"The primary-session task changed while being selected; refresh the plan before continuing."};
+  let claimed:TodoItem;
+  try{claimed=await input.todos.update(task.taskId,context,task.current.revision,"running","Claimed for continuation in the active Pi session");}
+  catch(error){if(error instanceof Error&&error.message.includes("Todo revision conflict"))return {status:"blocked",reason:"This primary-session task was claimed concurrently; refresh its saved state before continuing."};throw error;}
+  // Primary work belongs to the current Pi turn. Claiming the Todo with CAS
+  // prevents a second dispatch; it creates no agent and grants no write authority.
+  return {status:"inline",todoId:task.taskId,revision:claimed.events.at(-1)!.revision,role:"primary",instruction:task.description};
+ }
  if(!readOnlyRoles.includes(role as ReadOnlyRole)&&role!=="worker")return {status:"blocked",reason:`The next ready plan task requires a controlled ${role} lifecycle dispatcher; no agent was launched.`};
  if(!task.description)return {status:"blocked",reason:"The persisted plan task has no exact instruction; no agent was launched."};
  if(task.description.length>MAX_VISIBLE_PLAN_INSTRUCTION)return {status:"blocked",reason:"The complete plan instruction exceeds the safe Pi confirmation size; split the task before dispatch."};
