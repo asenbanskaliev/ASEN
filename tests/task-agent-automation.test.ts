@@ -46,12 +46,34 @@ test("successful DAG steps advance separately from independent final verificatio
  const runtime={list:async()=>records};
  const reconciler=new TaskAgentTodoReconciler(todos,runtime as never,links);
  await reconciler.reconcile(identity);
- assert.equal((await todos.list(identity)).find(row=>row.taskId===explorer.taskId)?.current.state,"succeeded");
+ assert.equal((await todos.list(identity)).find(row=>row.taskId===explorer.taskId)?.current.state,"done");
  await todos.update(verifier.taskId,identity,1,"running");
  await links.bind({taskId:verifier.taskId,agentId:"task:verifier",...identity,createdAt:"2026-10-14T00:00:02.000Z"});
  records=[...records,{id:"task:verifier",role:"verifier",owner:{kind:"user",id:"user"},state:"completed",createdAt:"2026-10-14T00:00:02.000Z",updatedAt:"2026-10-14T00:00:03.000Z",summary:JSON.stringify({verdict:"pass",evidence:["Reviewed the final diff","Required local checks passed"]}),...identity}];
  await reconciler.reconcile(identity);
  assert.equal((await todos.list(identity)).find(row=>row.taskId===verifier.taskId)?.current.state,"done");
+});
+
+test("a passing linked verifier closes its successful upstream writer without a second acceptance",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-plan-auto-close-writer-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const identity={sessionId:"session-writer-verify",projectId:dir},todos=await SessionTodoStore.open(join(dir,"todos.json")),links=new TaskAgentLinkStore(join(dir,"links.json")),selection={phase:"apply" as const,risk:"low" as const,codeChange:true,behaviorChange:false,filesTouched:1},candidate={id:"candidate-writer",repository:dir,revision:"a".repeat(40),createdAt:"2026-10-14T00:00:00.000Z"};
+ const [worker,unrelatedWorker,verifier]=await todos.addPlan([
+  {title:"Apply scoped change",requestId:"asen-plan:writer-verify:worker",dependsOn:[],description:"Update the approved file",plan:{role:"worker",skillPaths:selectSkills(selection).map(skill=>skill.path),skillSelection:selection,priority:2,candidate,writeSurfaces:["README.md"],writerAuthorizationBasis:JSON.stringify({authorization:"Explicit one-run Pi UI authorization"})}},
+  {title:"Apply separate change",requestId:"asen-plan:other:worker",dependsOn:[],description:"Update a separate approved file",plan:{role:"worker",skillPaths:selectSkills(selection).map(skill=>skill.path),skillSelection:selection,priority:2,candidate:{...candidate,id:"candidate-other"},writeSurfaces:["docs/guide.md"],writerAuthorizationBasis:JSON.stringify({authorization:"Separate one-run Pi UI authorization"})}},
+  {title:"Verify change",requestId:"asen-plan:writer-verify:verifier",dependsOn:["asen-plan:writer-verify:worker"],description:"Inspect the actual diff and run checks",plan:{role:"verifier",skillPaths:selectSkills({phase:"verify"}).map(skill=>skill.path),skillSelection:{phase:"verify"},priority:4}},
+ ],identity);assert.ok(worker&&unrelatedWorker&&verifier);
+ await todos.update(worker.taskId,identity,1,"running");await links.bind({taskId:worker.taskId,agentId:"task:worker",...identity,createdAt:"2026-10-14T00:00:00.000Z"});
+ await todos.update(worker.taskId,identity,2,"succeeded","Worker ran within its authorized scope");
+ await todos.update(unrelatedWorker.taskId,identity,1,"running");await links.bind({taskId:unrelatedWorker.taskId,agentId:"task:other-worker",...identity,createdAt:"2026-10-14T00:00:00.000Z"});
+ await todos.update(unrelatedWorker.taskId,identity,2,"succeeded","Separate worker awaits its own verification");
+ await todos.update(verifier.taskId,identity,1,"running");await links.bind({taskId:verifier.taskId,agentId:"task:verifier",...identity,createdAt:"2026-10-14T00:00:01.000Z"});
+ const agents={list:async()=>[
+  {id:"task:worker",role:"worker",owner:{kind:"user" as const,id:"user"},state:"completed" as const,createdAt:"2026-10-14T00:00:00.000Z",updatedAt:"2026-10-14T00:00:01.000Z",summary:"Changed only README.md",...identity},
+  {id:"task:other-worker",role:"worker",owner:{kind:"user" as const,id:"user"},state:"completed" as const,createdAt:"2026-10-14T00:00:00.000Z",updatedAt:"2026-10-14T00:00:01.000Z",summary:"Changed only docs/guide.md",...identity},
+  {id:"task:verifier",role:"verifier",owner:{kind:"user" as const,id:"user"},state:"completed" as const,createdAt:"2026-10-14T00:00:01.000Z",updatedAt:"2026-10-14T00:00:02.000Z",summary:JSON.stringify({verdict:"pass",evidence:["Only the authorized file changed","Local checks passed"]}),...identity},
+ ]};
+ await new TaskAgentTodoReconciler(todos,agents as never,links).reconcile(identity);
+ const rows=await todos.list(identity);assert.equal(rows.find(row=>row.taskId===worker.taskId)?.current.state,"done");assert.match(rows.find(row=>row.taskId===worker.taskId)?.current.reason??"",/Independent verifier task:verifier/u);assert.equal(rows.find(row=>row.taskId===verifier.taskId)?.current.state,"done");assert.equal(rows.find(row=>row.taskId===unrelatedWorker.taskId)?.current.state,"succeeded","verification cannot close an unrelated writer from the same session");
 });
 
 test("verifier cannot finish a plan without a structured passing verdict",async t=>{
