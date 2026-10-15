@@ -42,6 +42,7 @@ function productionHost(commandInventory:unknown[]=[],toolInventory:unknown[]=[]
  const context=(mode:string="rpc")=>({mode,hasUI:true,ui:{notify:(message:string)=>messages.push(message)},cwd:process.cwd(),sessionManager:{getSessionId:()=>"session"}});
  return {host,events,commands,tools,messages,commandInventory,context};
 }
+async function shutdown(state:ReturnType<typeof productionHost>):Promise<void>{for(const listener of state.events.get("session_shutdown")??[])await listener({},state.context());}
 
 test("repeated activation on the same Pi host registers only one startup hook",()=>{
  const state=productionHost(),dependencies={enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false};
@@ -59,22 +60,24 @@ test("separately loaded copies share the Pi-host activation guard",async()=>{
 
 test("factory waits for initialized public inventories then registers one collision-free extension",async()=>{
  const home=mkdtempSync(path.join(tmpdir(),"asen-pi-host-preflight-")),prior=process.env.ASEN_NO_SKILL_REGISTRY;
+ const state=productionHost();
  process.env.ASEN_NO_SKILL_REGISTRY="1";
  try{
-  const state=productionHost();createPiExtension({homeDir:()=>home})(state.host as any);
+  createPiExtension({homeDir:()=>home})(state.host as any);
   assert.equal(state.commands.size,0);assert.equal(state.tools.size,0);
   await state.events.get("session_start")![0]!({},state.context());
   assert.ok(state.commands.has("asen"));assert.ok(state.commands.has("asen-review"));
   assert.deepEqual([...state.tools.keys()].sort(), ["asen_agent_cancel", "asen_agent_continue", "asen_agent_retry", "asen_agent_start", "asen_agent_status", "asen_ask_choice", "asen_ask_question", "asen_code_intelligence", "asen_memory_save", "asen_memory_search", "asen_plan_dispatch_next", "asen_plan_request", "asen_todo_accept_result", "asen_todo_add", "asen_todo_list", "asen_todo_update", "ask_user_choice", "ask_user_question", "codegraph"]);
   assert.equal(state.messages.some(message=>message.includes("host preflight failed")),false);
- }finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;rmSync(home,{recursive:true,force:true});}
+ }finally{await shutdown(state);if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;rmSync(home,{recursive:true,force:true});}
 });
 
 test("deferred session startup runs once for the first session and every later session",async()=>{
  const home=mkdtempSync(path.join(tmpdir(),"asen-pi-session-start-")),prior=process.env.ASEN_NO_SKILL_REGISTRY;
+ const state=productionHost();
  process.env.ASEN_NO_SKILL_REGISTRY="1";
  try{
-  const state=productionHost();createPiExtension({homeDir:()=>home})(state.host as any);
+  createPiExtension({homeDir:()=>home})(state.host as any);
   const listeners=state.events.get("session_start")!;
   assert.equal(listeners.length,1,"production registers only the bootstrap hook before host initialization");
   await listeners[0]!({},state.context());
@@ -83,14 +86,15 @@ test("deferred session startup runs once for the first session and every later s
   await listeners[0]!({},state.context());
   assert.equal(JSON.parse(readFileSync(usagePath,"utf8")).snapshot.sessions,2);
   assert.equal(state.messages.length,0);
- }finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;rmSync(home,{recursive:true,force:true});}
+ }finally{await shutdown(state);if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;rmSync(home,{recursive:true,force:true});}
 });
 
 test("later sessions reject invalid public contexts before lifecycle or registration mutation",async()=>{
  const home=mkdtempSync(path.join(tmpdir(),"asen-pi-session-revalidation-")),prior=process.env.ASEN_NO_SKILL_REGISTRY;
+ const state=productionHost();
  process.env.ASEN_NO_SKILL_REGISTRY="1";
  try{
-  const state=productionHost();createPiExtension({homeDir:()=>home})(state.host as any);
+  createPiExtension({homeDir:()=>home})(state.host as any);
   const bootstrap=state.events.get("session_start")![0]!;
   await bootstrap({},state.context());
   const usagePath=path.join(home,".asen","usage.json"),registrations=[state.commands.size,state.tools.size];
@@ -99,7 +103,7 @@ test("later sessions reject invalid public contexts before lifecycle or registra
    assert.equal(JSON.parse(readFileSync(usagePath,"utf8")).snapshot.sessions,1);
    assert.deepEqual([state.commands.size,state.tools.size],registrations);
   }
- }finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;rmSync(home,{recursive:true,force:true});}
+ }finally{await shutdown(state);if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;rmSync(home,{recursive:true,force:true});}
 });
 
 test("preflight rejection retries on a later session after the collision is removed",async()=>{

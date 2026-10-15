@@ -13,6 +13,7 @@ const decisionFor=(taskId:string,repository="repo")=>issueOddDecision({
  taskId,repository,
  paths:["src/a.ts","src/b.ts"],
  writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"behavior"}],
+ reviewKind:"ordinary",
 });
 const writerAdmissionFor=(plan:ReturnType<typeof buildOrchestrationPlan>,taskId:string)=>issueOrganicWriterAdmission(decideLifecycleApplicability(plan.decision,{taskIdentity:taskId,repositoryIdentity:"repo",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"unspecified",affectedSubsystems:["orchestration"],expectedPaths:["src/a.ts","src/b.ts"],requiredArtifacts:[]}),["src/a.ts","src/b.ts"]);
 
