@@ -80,8 +80,8 @@ test("ECO-06 Pi inspection binds the interrupted writer to its blocked Todo and 
  await todos.update(todo!.taskId,identity,1,"running");await todos.recover(identity);
  const {store:agentStore}=await PersistentAgentStore.open(agentFile),agentRequest={id:agentId,role:"worker" as const,prompt:"Update only the two approved fixture files",repository:project,isolationKey:identity.sessionId,candidate,writeSurfaces:["target.txt","new-target.txt"],writerAdmission:{oneUse:true}};
  await agentStore.enqueueControlledWorker(agentRequest,{kind:"user",id:`pi:${identity.sessionId}`});await agentStore.running(agentId,new Date().toISOString());
- // Simulate a valid persisted owner that has exited without relying on OS PID reuse/visibility.
- const agentJournal=JSON.parse(await readFile(agentFile,"utf8"));agentJournal.entries[0].request.ownerProcessId=2_147_483_647;await writeFile(agentFile,`${JSON.stringify(agentJournal,null,2)}\n`);
+ // Simulate a recovered journal without process ownership; restart must quarantine its running writer.
+ const agentJournal=JSON.parse(await readFile(agentFile,"utf8"));delete agentJournal.entries[0].request.ownerProcessId;await writeFile(agentFile,`${JSON.stringify(agentJournal,null,2)}\n`);
  await new TaskAgentLinkStore(linkFile).bind({taskId:todo!.taskId,agentId,sessionId:identity.sessionId,projectId:project,createdAt:new Date().toISOString()});
  const events=new Map<string,Function[]>(),tools=new Map<string,any>();const pi={on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),registerCommand:()=>{},registerTool:(tool:any)=>tools.set(tool.name,tool),getCommands:()=>[],getAllTools:()=>[]};
  const context=(sessionId=identity.sessionId,cwd=project)=>({mode:"rpc",hasUI:true,cwd,sessionManager:{getSessionId:()=>sessionId},ui:{notify:()=>{},confirm:async()=>true,setWidget:()=>{}}});
