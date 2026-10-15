@@ -70,7 +70,6 @@ test("ECO-07 exact-SHA workflow uses NVIDIA only and supports a guarded branch r
  const workflow=readFileSync(resolve(".github/workflows/eco07-nvidia-e2e.yml"),"utf8");
  const compact=workflow.replace(/\s+/gu," ");
  assert.ok(workflow.includes("workflow_dispatch:"));
- assert.ok(workflow.includes("[ECO07-NVIDIA]"));
  assert.ok(compact.includes("push: branches: - feat/strict-parity-prerequisites paths: - .github/workflows/eco07-nvidia-e2e.yml - scripts/eco07-pi-recovery-e2e.mjs - scripts/eco07-pi-recovery-probe-extension.mjs - src/runtime/todo-store.ts - src/agents/dispatcher.ts - src/agents/pi-process-runner.ts - src/lifecycle/skill-lifecycle.ts"));
  assert.ok(workflow.includes("expected_sha:"));
  assert.ok(workflow.includes('NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}'));
@@ -80,7 +79,8 @@ test("ECO-07 exact-SHA workflow uses NVIDIA only and supports a guarded branch r
  const nvidiaStep=workflow.split("- name: Execute real Pi NVIDIA interruption and restart")[1]?.split("- name: Preserve process and event evidence")[0]??"";
  assert.ok(nvidiaStep.includes("secrets.NVIDIA_API_KEY"));
  assert.ok(!compact.includes("inputs.provider"));
- assert.ok(compact.includes("github.event_name == 'push' && contains(github.event.head_commit.message, '[ECO07-NVIDIA]')"));
+ assert.ok(compact.includes("github.ref == 'refs/heads/feat/strict-parity-prerequisites' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push')"));
+ assert.ok(!compact.includes("contains(github.event.head_commit.message"));
  assert.ok(compact.includes("ASEN_EXPECTED_SHA: ${{ inputs.expected_sha || github.sha }}"));
  assert.ok(compact.includes("test \"$ASEN_EXPECTED_SHA\" = \"$GITHUB_EVENT_SHA\""));
  assert.ok(compact.includes("git ls-remote origin"));

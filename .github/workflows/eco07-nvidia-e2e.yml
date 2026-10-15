@@ -1,5 +1,5 @@
 name: ECO-07 NVIDIA task recovery
-# The [ECO07-NVIDIA] commit marker starts one exact-SHA NVIDIA run on this branch.
+# Scoped path changes on the PR branch start one exact-SHA NVIDIA run.
 on:
   push:
     branches:
@@ -33,7 +33,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   pi-recovery:
-    if: github.repository == 'asenbanskaliev/ASEN' && github.run_attempt == 1 && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ECO07-NVIDIA]')))
+    if: github.repository == 'asenbanskaliev/ASEN' && github.run_attempt == 1 && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
     name: NVIDIA Pi recovery (${{ inputs.os || 'ubuntu-24.04' }})
     runs-on: ${{ inputs.os || 'ubuntu-24.04' }}
     timeout-minutes: 15
