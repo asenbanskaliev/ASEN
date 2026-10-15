@@ -19,7 +19,7 @@ test("ECO-06 interrupted writer preserves partial edits but cannot replay author
  const child=spawnSync(process.execPath,["--import","tsx","--input-type=module","-e",`
   import {PersistentAgentStore} from "./src/runtime/agent-store.ts";
   import {appendFile} from "node:fs/promises";
-  const file=process.argv[0],target=process.argv[1];
+  const file=process.argv[1],target=process.argv[2];
   const {store}=await PersistentAgentStore.open(file);
   const request={id:"interrupted-writer",role:"worker",prompt:"Edit only work.txt",repository:"/repo",isolationKey:"session-a",
     candidate:{id:"candidate",repository:"/repo",revision:"revision"},writeSurfaces:["work.txt"],
@@ -45,4 +45,9 @@ test("ECO-06 interrupted writer preserves partial edits but cannot replay author
  );
  assert.equal(await readFile(target,"utf8"),before,"restart must not reapply partial edits");
  assert.equal((await reopened.store.list("session-a","/repo")).length,1,"no second execution admitted");
+ const reopenedAgain=await PersistentAgentStore.open(file);
+ assert.equal((await reopenedAgain.store.get("interrupted-writer","session-a","/repo"))?.record.state,"interrupted");
+ assert.equal((await reopenedAgain.store.list("session-a","/repo")).length,1);
+ await assert.rejects(()=>reopenedAgain.store.enqueue({id:"unauthorized-replay",role:"worker",prompt:"Edit again",repository:"/repo",isolationKey:"session-a",writeSurfaces:["work.txt"]},{kind:"user",id:"pi:session-a"}),/Authority-bearing agent requests cannot be serialized/);
+ assert.equal(await readFile(target,"utf8"),before);
 });
