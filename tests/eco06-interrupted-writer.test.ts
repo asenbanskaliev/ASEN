@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {mkdir,mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
+import {mkdir,mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {execFileSync,spawnSync} from "node:child_process";
@@ -69,8 +69,9 @@ test("ECO-06 interrupted writer preserves partial edits but cannot replay author
 });
 
 test("ECO-06 Pi inspection binds the interrupted writer to its blocked Todo and current Git diff",async t=>{
- const root=await mkdtemp(join(tmpdir(),"asen-eco06-pi-inspection-")),home=join(root,"home"),project=join(root,"project");
- t.after(()=>rm(root,{recursive:true,force:true}));await Promise.all([mkdir(home,{recursive:true}),mkdir(project,{recursive:true})]);
+ const root=await mkdtemp(join(tmpdir(),"asen-eco06-pi-inspection-")),home=join(root,"home"),projectPath=join(root,"project");
+ t.after(()=>rm(root,{recursive:true,force:true}));await Promise.all([mkdir(home,{recursive:true}),mkdir(projectPath,{recursive:true})]);
+ const project=await realpath(projectPath);
  const git=(...args:string[])=>execFileSync("git",args,{cwd:project,encoding:"utf8",stdio:["ignore","pipe","pipe"]});
  git("init","-q");git("config","user.email","asen-test@example.invalid");git("config","user.name","ASEN test");
  await writeFile(join(project,"target.txt"),"before\n");await writeFile(join(project,"outside.txt"),"stable\n");git("add","target.txt","outside.txt");git("commit","-qm","clean candidate");
