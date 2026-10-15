@@ -46,7 +46,7 @@ export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
 const authorityDigest="6ff2d45585cef90ff0563660e0833f40d5dc1f95e4271aaa3ce5f0159ac27fb8";
 const authorityAssets=Object.freeze([
- {source:"src/runtime/workspace-store.ts",target:"src/runtime/workspace-store.ts",sha256:"ac8328ae6beeb281c5278a19debb742aa4ccdfa12fcaaff902e5d871050c6049"},
+ {source:"src/runtime/workspace-store.ts",target:"src/runtime/workspace-store.ts",sha256:"f0307f8c72b72dd714382eba68fd3d2e50ca2c538d11d5ff71028f682d5f8cef"},
  {source:"src/runtime/workspace-attribution.ts",target:"src/runtime/workspace-attribution.ts",sha256:"d395916788f69f2a696dbb5e1f0877af9f2decebd1e28d654e8e8253c256fb7a"},
  {source:"src/io/atomic-write.ts",target:"src/io/atomic-write.ts",sha256:"dda584a5c4b6f54dbb86968e38211ee6cf5cbd570e82b48294c93e14abb1b1c7"},
  {source:"src/io/exclusive-file-lock.ts",target:"src/io/exclusive-file-lock.ts",sha256:"1921d446891099a9cbf8373a6580f2033e873e89654ee3debebd11c80ff76308"},

@@ -4,6 +4,7 @@ import {mkdtemp,readFile,readdir,realpath,rm,stat,writeFile} from "node:fs/promi
 import path from "node:path";
 import test from "node:test";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
+import {sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";
 
 test("project-scoped Todo migration splits the legacy file, verifies shards and keeps a backup",async t=>{
  const home=await mkdtemp(path.join(process.cwd(),".tmp-todo-migration-"));t.after(()=>rm(home,{recursive:true,force:true}));
@@ -14,6 +15,16 @@ test("project-scoped Todo migration splits the legacy file, verifies shards and 
  const backup=await readFile(`${legacy}.migrated-v1`,"utf8");assert.equal(JSON.parse(backup).items.length,2);await assert.rejects(()=>stat(legacy),{code:"ENOENT"});
  const expectedA=createHash("sha256").update(process.platform==="win32"?a.projectId.toLowerCase():a.projectId).digest("hex");assert.ok((await readdir(path.join(root,"projects"))).includes(expectedA));
  const reopened=await SessionTodoStore.openProjectScoped(root,legacy);assert.equal((await reopened.list(a))[0]?.taskId,one.taskId);assert.equal((await reopened.list(b))[0]?.taskId,two.taskId);
+});
+
+test("project-scoped Todo reads the same Windows shard through extended-length path aliases",async t=>{
+ if(process.platform!=="win32"){t.skip("Windows path alias contract");return;}
+ const home=await mkdtemp(path.join(process.cwd(),".tmp-todo-win-alias-"));t.after(()=>rm(home,{recursive:true,force:true}));
+ const project=await realpath(home),alias=path.toNamespacedPath(project),identity={sessionId:"windows-alias-session",projectId:project};
+ assert.ok(sameWorkspaceIdentityPath(project,alias));
+ const store=await SessionTodoStore.openProjectScoped(path.join(home,".asen","todos"),path.join(home,".asen","todos.json"));
+ const task=await store.add("Windows alias task",identity);
+ assert.equal((await store.list({...identity,projectId:alias}))[0]?.taskId,task.taskId);
 });
 
 test("project-scoped Todo store archives a completed project batch and exposes it only on history request",async t=>{

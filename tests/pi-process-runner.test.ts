@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";import test from "node:test";import {execFile} from "node:child_process";import {access,copyFile,mkdir,mkdtemp,readFile,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment} from "../src/agents/pi-process-runner.js";
+import assert from "node:assert/strict";import test from "node:test";import {execFile} from "node:child_process";import {readFileSync} from "node:fs";import {access,copyFile,mkdir,mkdtemp,readFile,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment} from "../src/agents/pi-process-runner.js";
 import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {createTestSkillLifecycle} from "./helpers/lifecycle-applicability.js";
 import {Dispatcher} from "../src/agents/dispatcher.js";
@@ -18,12 +18,13 @@ function isLivePosixProcess(pid:number,{exitCode,stdout,stderr}:PosixProcessObse
  if(exitCode===1&&!state&&!errorOutput)return false;
  throw new Error(`ps could not observe process ${pid} (exit ${exitCode}${errorOutput?`: ${errorOutput}`:""})`);
 }
-async function isLiveProcess(pid:number){
+async function isLiveProcess(pid:number,expectedStartTime?:string){
  if(process.platform==="win32"){try{process.kill(pid,0);return true;}catch{return false;}}
  if(process.platform==="linux"){
   try{
-   const stat=await readFile(`/proc/${pid}/stat`,"utf8"),end=stat.lastIndexOf(")"),state=stat.slice(end+2).split(/\s+/u,1)[0];
-   if(end<0||!state||!/^[A-Z]$/u.test(state))throw new Error(`procfs returned an invalid state for process ${pid}`);
+   const stat=await readFile(`/proc/${pid}/stat`,"utf8"),end=stat.lastIndexOf(")"),fields=stat.slice(end+2).split(/\s+/u),state=fields[0],startTime=fields[19];
+   if(end<0||!state||!/^[A-Z]$/u.test(state)||!startTime)throw new Error(`procfs returned an invalid state for process ${pid}`);
+   if(expectedStartTime!==undefined&&startTime!==expectedStartTime)return false;
    return state!=="Z";
   }catch(error){if(error&&typeof error==="object"&&"code" in error&&error.code==="ENOENT")return false;throw error;}
  }
@@ -174,35 +175,35 @@ test("POSIX process-state observation fails closed on invalid ps output",()=>{
 
 test("Pi cancellation settles its process tree and policy cleanup before returning",{timeout:process.platform==="win32"?100_000:45_000},async t=>{
  const marker=join(tmpdir(),`asen-descendant-${process.pid}-${Date.now()}.json`);t.after(()=>rm(marker,{force:true}));
- const {d,p}=await fixture('import {spawn} from "node:child_process";import {writeFileSync} from "node:fs";const marker=process.argv[2],policy=process.argv[process.argv.indexOf("--extension")+1];const c=spawn(process.execPath,["-e","setTimeout(()=>{},10000)"],{stdio:"ignore"});writeFileSync(marker,JSON.stringify({pid:c.pid,policy}));setTimeout(()=>{},10000);');
+ const {d,p}=await fixture('import {spawn} from "node:child_process";import {readFileSync,writeFileSync} from "node:fs";const marker=process.argv[2],policy=process.argv[process.argv.indexOf("--extension")+1];const c=spawn(process.execPath,["-e","setTimeout(()=>{},10000)"],{stdio:"ignore"});let startTime;try{const stat=readFileSync(`/proc/${c.pid}/stat`,"utf8"),end=stat.lastIndexOf(")");startTime=stat.slice(end+2).split(/\\s+/u)[19];}catch{}writeFileSync(marker,JSON.stringify({pid:c.pid,policy,...(startTime?{startTime}:{})}));setTimeout(()=>{},10000);');
  const controller=new AbortController();
  const pending=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p,marker],signal:controller.signal,timeoutMs:process.platform==="win32"?75_000:30_000}).run({id:"tree",role:"explorer",prompt:"x",repository:d});
  t.after(async()=>{controller.abort();await pending.catch(()=>{});});
- const {readFile}=await import("node:fs/promises");let state:{pid:number;policy:string}|undefined;
+ const {readFile}=await import("node:fs/promises");let state:{pid:number;policy:string;startTime?:string}|undefined;
  const deadline=Date.now()+(process.platform==="win32"?60_000:20_000);
  while(Date.now()<deadline&&!state){try{state=JSON.parse(await readFile(marker,"utf8"));}catch{/* Wait for the child readiness marker. */}if(!state)await new Promise(r=>setTimeout(r,50));}
  if(!state){controller.abort();const result=await pending;assert.fail(`child readiness marker was not recorded before the bounded startup deadline: ${result.output}`);}
  controller.abort();const result=await pending;
  assert.equal(result.ok,false);assert.match(result.output,/cancelled/);
  await assert.rejects(()=>access(state.policy),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
- assert.equal(await isLiveProcess(state.pid),false,`descendant ${state.pid} survived cancellation settlement`);
+ assert.equal(await isLiveProcess(state.pid,state.startTime),false,`descendant ${state.pid} survived cancellation settlement`);
 });
 
 test("Pi timeout, output overflow and forbidden tools all settle the descendant process tree",{timeout:process.platform==="win32"?300_000:45_000},async t=>{
  const runnerTimeoutMs=process.platform==="win32"?75_000:10_000,fixtureLifetimeMs=Math.max(60_000,runnerTimeoutMs+30_000);
  for(const mode of ["timeout","overflow","tool"] as const){
   const marker=join(tmpdir(),`asen-descendant-${mode}-${process.pid}-${Date.now()}.json`);t.after(()=>rm(marker,{force:true}));
-  const body=`import {spawn} from "node:child_process";import {writeFileSync} from "node:fs";const marker=process.argv[2],policy=process.argv[process.argv.indexOf("--extension")+1],child=spawn(process.execPath,["-e","setTimeout(()=>{},${fixtureLifetimeMs})"],{stdio:"ignore"});writeFileSync(marker,JSON.stringify({pid:child.pid,policy}));let input="";process.stdin.on("data",chunk=>{input+=chunk;let end;while((end=input.indexOf("\\n"))>=0){const request=JSON.parse(input.slice(0,end));input=input.slice(end+1);if(request.type!=="prompt")continue;${mode==="overflow"?'process.stdout.write("x".repeat(10000)+"\\n");':mode==="tool"?'console.log(JSON.stringify({type:"tool_execution_start",id:request.id,toolName:"read"}));':""}}});setTimeout(()=>{},${fixtureLifetimeMs});`;
+  const body=`import {spawn} from "node:child_process";import {readFileSync,writeFileSync} from "node:fs";const marker=process.argv[2],policy=process.argv[process.argv.indexOf("--extension")+1],child=spawn(process.execPath,["-e","setTimeout(()=>{},${fixtureLifetimeMs})"],{stdio:"ignore"});let startTime;try{const stat=readFileSync("/proc/"+child.pid+"/stat","utf8"),close=stat.lastIndexOf(")");startTime=stat.slice(close+2).split(/\\s+/u)[19];}catch{}writeFileSync(marker,JSON.stringify({pid:child.pid,policy,...(startTime?{startTime}:{})}));let input="";process.stdin.on("data",chunk=>{input+=chunk;let end;while((end=input.indexOf("\\n"))>=0){const request=JSON.parse(input.slice(0,end));input=input.slice(end+1);if(request.type!=="prompt")continue;${mode==="overflow"?'process.stdout.write("x".repeat(10000)+"\\n");':mode==="tool"?'console.log(JSON.stringify({type:"tool_execution_start",id:request.id,toolName:"read"}));':""}}});setTimeout(()=>{},${fixtureLifetimeMs});`;
   const {d,p}=await fixture(body),runnerOptions={command:process.execPath,rpcArgs:[],extraArgs:[p,marker],timeoutMs:runnerTimeoutMs,maxOutputBytes:mode==="overflow"?512:1_000_000,noTools:mode==="tool"};
   const pending=new PiProcessRunner(runnerOptions).run({id:`stop-${mode}`,role:"explorer",prompt:"wait",repository:d});
   t.after(async()=>{await pending.catch(()=>{});});
-  const {readFile}=await import("node:fs/promises");let state:{pid:number;policy:string}|undefined;const deadline=Date.now()+(process.platform==="win32"?60_000:20_000);
+  const {readFile}=await import("node:fs/promises");let state:{pid:number;policy:string;startTime?:string}|undefined;const deadline=Date.now()+(process.platform==="win32"?60_000:20_000);
   while(Date.now()<deadline&&!state){try{state=JSON.parse(await readFile(marker,"utf8"));}catch{/* Wait for the child readiness marker. */}if(!state)await new Promise(resolve=>setTimeout(resolve,50));}
   assert.ok(state,`${mode}: child readiness marker was not recorded`);
   const result=await pending;
   assert.equal(result.ok,false);assert.ok(mode==="timeout"?/timed out/i.test(result.output):mode==="overflow"?/exceeded/i.test(result.output):/attempted a tool/i.test(result.output),`${mode}: unexpected stop result: ${result.output}`);
   await assert.rejects(()=>access(state!.policy),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
-  assert.equal(await isLiveProcess(state!.pid),false,`${mode}: descendant ${state!.pid} survived stop settlement`);
+  assert.equal(await isLiveProcess(state!.pid,state!.startTime),false,`${mode}: descendant ${state!.pid} survived stop settlement`);
  }
 });
 

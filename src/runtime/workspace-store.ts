@@ -17,6 +17,10 @@ function comparablePath(value:string):string{
  else if(/^\\\\\?\\/u.test(normalized))normalized=normalized.slice(4);
  return path.win32.normalize(normalized).replace(/\\+$/u,"").toLowerCase();
 }
+export function workspaceIdentityPathKey(value:string,platform:NodeJS.Platform=process.platform):string{
+ if(platform!=="win32")return value;
+ try{return comparablePath(realpathSync.native(value));}catch{return comparablePath(value);}
+}
 export function sameWorkspaceIdentityPath(left:string,right:string,platform:NodeJS.Platform=process.platform):boolean{
  if(platform!=="win32")return left===right;
  if(comparablePath(left)===comparablePath(right))return true;

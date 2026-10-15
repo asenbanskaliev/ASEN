@@ -4,7 +4,7 @@ import path from "node:path";
 import {atomicWriteText} from "../io/atomic-write.js";
 import {withExclusiveFileLock} from "../io/exclusive-file-lock.js";
 import {preparePrivateFile} from "../io/private-file.js";
-import {sameWorkspaceIdentityPath} from "./workspace-store.js";
+import {sameWorkspaceIdentityPath,workspaceIdentityPathKey} from "./workspace-store.js";
 import {applyTaskEvent,replayTask,type TaskEvent,type TaskState} from "./task-replay.js";
 import type {SkillPhase,SkillSelectionContext} from "../skills/registry.js";
 import type {Candidate} from "../core/types.js";
@@ -16,7 +16,7 @@ export interface TodoPlanDraft{title:string;requestId:string;dependsOn:readonly 
 export interface TodoItem{taskId:string;title:string;events:TaskEvent[];requestId?:string;dependsOn?:string[];description?:string;plan?:TodoPlanMetadata;}
 export interface TodoFile{schema:typeof SCHEMA;revision:number;items:TodoItem[];}
 export interface TodoContext{sessionId:string;projectId:string;}
-const projectKey=(value:string)=>createHash("sha256").update(process.platform==="win32"?value.toLowerCase():value).digest("hex");
+const projectKey=(value:string)=>createHash("sha256").update(workspaceIdentityPathKey(value)).digest("hex");
 const emptyTodoFile=(revision=0):TodoFile=>({schema:SCHEMA,revision,items:[]});
 const terminal=(item:TodoItem)=>{const state=replayTask(item.events)?.state;return state==="done"||state==="cancelled";};
 const allTerminal=(data:TodoFile)=>data.items.length>0&&data.items.every(terminal);
