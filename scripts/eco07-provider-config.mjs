@@ -1,7 +1,7 @@
 const PROVIDERS=Object.freeze({
  openrouter:{credential:"OPENROUTER_API_KEY",model:"nvidia/nemotron-3.5-lightning:free"},
  groq:{credential:"GROQ_API_KEY",model:"openai/gpt-oss-120b"},
- nvidia:{credential:"NVIDIA_API_KEY",model:"deepseek-ai/deepseek-v4.1-flash"},
+ nvidia:{credential:"NVIDIA_API_KEY",model:"nvidia/nemotron-3.5-lightning-30b-a3b"},
  llm7:{credential:"LLM7_API_KEY",model:"default",extension:"npm:pi-free@2.8.4"},
 });
 

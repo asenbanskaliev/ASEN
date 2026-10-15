@@ -27,13 +27,13 @@ test("ECO-07 selects Pi-native NVIDIA NIM without reading its credential during 
  const environment=new Proxy({ASEN_ECO07_PROVIDER:"nvidia"},{
   get(target,key,receiver){if(String(key).endsWith("_API_KEY"))throw new Error("credential read");return Reflect.get(target,key,receiver);},
  });
- assert.deepEqual(validateEco07ProviderSelection(environment),{provider:"nvidia",model:"deepseek-ai/deepseek-v4.1-flash",credential:"NVIDIA_API_KEY"});
+ assert.deepEqual(validateEco07ProviderSelection(environment),{provider:"nvidia",model:"nvidia/nemotron-3.5-lightning-30b-a3b",credential:"NVIDIA_API_KEY"});
  const selected=resolveEco07Provider({ASEN_ECO07_PROVIDER:"nvidia",NVIDIA_API_KEY:"synthetic-key"});
- assert.deepEqual({...selected,apiKey:"[hidden]"},{provider:"nvidia",model:"deepseek-ai/deepseek-v4.1-flash",apiKey:"[hidden]",credential:"NVIDIA_API_KEY"});
+ assert.deepEqual({...selected,apiKey:"[hidden]"},{provider:"nvidia",model:"nvidia/nemotron-3.5-lightning-30b-a3b",apiKey:"[hidden]",credential:"NVIDIA_API_KEY"});
  assert.throws(()=>resolveEco07Provider({ASEN_ECO07_PROVIDER:"nvidia"}),/API key is unavailable/);
  const catalog=JSON.parse(readFileSync(resolve("node_modules/@earendil-works/pi-ai/dist/providers/data/nvidia.json"),"utf8")) as Record<string,Record<string,Record<string,unknown>>>;
- const model=catalog["openai-completions"]?.["chat:deepseek-ai/deepseek-v4.1-flash"];
- assert.equal(model?.id,"deepseek-ai/deepseek-v4.1-flash");
+ const model=catalog["openai-completions"]?.["chat:nvidia/nemotron-3.5-lightning-30b-a3b"];
+ assert.equal(model?.id,"nvidia/nemotron-3.5-lightning-30b-a3b");
  assert.equal(model?.provider,"nvidia");
  assert.equal(model?.baseUrl,"https://integrate.api.nvidia.com/v1");
 });
@@ -74,7 +74,7 @@ test("ECO-07 exact-SHA workflow uses NVIDIA only and supports a guarded branch r
  assert.ok(workflow.includes("expected_sha:"));
  assert.ok(workflow.includes('NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}'));
  assert.ok(workflow.includes("ASEN_ECO07_PROVIDER: nvidia"));
- assert.ok(workflow.includes("ASEN_ECO07_MODEL: deepseek-ai/deepseek-v4.1-flash"));
+ assert.ok(workflow.includes("ASEN_ECO07_MODEL: nvidia/nemotron-3.5-lightning-30b-a3b"));
  assert.ok(!workflow.includes("GROQ_API_KEY"));
  const nvidiaStep=workflow.split("- name: Execute real Pi NVIDIA interruption and restart")[1]?.split("- name: Preserve process and event evidence")[0]??"";
  assert.ok(nvidiaStep.includes("secrets.NVIDIA_API_KEY"));

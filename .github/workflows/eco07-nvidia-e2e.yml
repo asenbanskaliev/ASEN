@@ -71,7 +71,7 @@ jobs:
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           ASEN_ECO07_PROVIDER: nvidia
-          ASEN_ECO07_MODEL: deepseek-ai/deepseek-v4.1-flash
+          ASEN_ECO07_MODEL: nvidia/nemotron-3.5-lightning-30b-a3b
         shell: bash
         run: |
           set -euo pipefail
