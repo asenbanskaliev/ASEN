@@ -373,10 +373,12 @@ test("session shutdown drains in-flight Todo reconciliation after agent completi
  const selection={phase:"explore" as const,risk:"low" as const,codeChange:false,behaviorChange:false,filesTouched:0},skillPaths=selectSkills(selection).map(skill=>skill.path);
  const [task]=await todos.addPlan([{title:"Drain linked result",requestId:"asen-plan:terminal-drain:explorer",dependsOn:[],description:"Inspect the saved candidate and report bounded findings",plan:{role:"explorer",skillPaths,skillSelection:selection,priority:1}}],identity);
  assert.ok(task);
- let delayDelivery=false,entered!:()=>void,release!:()=>void;
- const deliveryEntered=new Promise<void>(resolve=>{entered=resolve;}),deliveryGate=new Promise<void>(resolve=>{release=resolve;});
+ let delayDelivery=false,entered!:()=>void,release!:()=>void,recovered!:()=>void;
+ const deliveryEntered=new Promise<void>(resolve=>{entered=resolve;}),deliveryGate=new Promise<void>(resolve=>{release=resolve;}),shutdownRecovered=new Promise<void>(resolve=>{recovered=resolve;});
  const originalList=todos.list.bind(todos);
  (todos as any).list=async(...args:Parameters<typeof todos.list>)=>{if(delayDelivery){delayDelivery=false;entered();await deliveryGate;}return originalList(...args);};
+ const originalRecover=todos.recover.bind(todos);
+ (todos as any).recover=async(...args:Parameters<typeof todos.recover>)=>{await originalRecover(...args);if(args[1]==="shutdown")recovered();};
  const state=host();
  createPiExtension({homeDir:()=>home,todoStoreFactory:async()=>todos,agentStoreFile:agentFile,autoAdvancePlans:false,agentRunner:{run:async request=>{delayDelivery=true;return{id:request.id,ok:true,output:"Inspected the saved candidate and found no blockers."};}}})(state.pi as any);
  const context={...state.context(identity.sessionId),ui:{...state.context(identity.sessionId).ui,confirm:async()=>true}};
@@ -387,8 +389,11 @@ test("session shutdown drains in-flight Todo reconciliation after agent completi
  try{await Promise.race([deliveryEntered,new Promise((_,reject)=>{entryTimer=setTimeout(()=>reject(new Error("terminal Todo reconciliation did not reach its delay")),3000);})]);}
  finally{if(entryTimer)clearTimeout(entryTimer);}
  let shutdownFinished=false;const shutdown=state.events.get("session_shutdown")![0]!({},context).then(()=>{shutdownFinished=true;});
- try{await new Promise(resolve=>setImmediate(resolve));assert.equal(shutdownFinished,false,"session shutdown must wait for its already-started terminal reconciliation");}
- finally{release();}
+ let recoveryTimer:ReturnType<typeof setTimeout>|undefined;
+ try{
+  await Promise.race([shutdownRecovered,new Promise((_,reject)=>{recoveryTimer=setTimeout(()=>reject(new Error("session shutdown did not finish Todo recovery")),3000);})]);
+  assert.equal(shutdownFinished,false,"session shutdown must wait for its already-started terminal reconciliation");
+ }finally{if(recoveryTimer)clearTimeout(recoveryTimer);release();}
  await shutdown;
  const afterShutdown=(await todos.list(identity)).find(row=>row.taskId===task!.taskId);
  assert.equal(afterShutdown?.current.state,"blocked");assert.match(afterShutdown?.current.reason??"",/session ended/u);
