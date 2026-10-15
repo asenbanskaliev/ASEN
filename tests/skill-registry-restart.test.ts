@@ -28,7 +28,7 @@ function isObservation(value:unknown):value is Observation{
   typeof item.sha256==="string"&&/^[a-f0-9]{64}$/.test(item.sha256)&&item.shutdown===true&&item.watcherClosed===true;
 }
 async function runProcess(phase:Observation["phase"],project:string,home:string,packageRoot:string,expected:string,excluded:string):Promise<Observation>{
- const child=spawnContained(process.execPath,["--import","tsx",fixture,phase,project,home,packageRoot,expected,excluded],{
+ const child=spawnContained(process.execPath,["--disable-warning=ExperimentalWarning","--import","tsx",fixture,phase,project,home,packageRoot,expected,excluded],{
   cwd:fileURLToPath(new URL("..",import.meta.url)),env:containedEnvironment(),stdio:["ignore","pipe","pipe"],
  });
  let stdout=Buffer.alloc(0),stderrBytes=0,overflow=false,timedOut=false;
