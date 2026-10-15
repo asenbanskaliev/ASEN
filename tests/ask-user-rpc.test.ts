@@ -10,7 +10,7 @@ import {createPiVerifierEnvironment} from "../scripts/gsp06-pi-free-environment.
 test("real offline Pi RPC transports canonical and ASEN choices without any model invocation",{timeout:20000},async t=>{
   const root=await mkdtemp(join(tmpdir(),"asen-interaction-rpc-"));
   const extension=join(root,"probe.ts"),source=pathToFileURL(resolve("extensions/asen.ts")).href;
-  const credentialNames=["OPENROUTER_API_KEY","LLM7_API_KEY","GROQ_API_KEY","GITHUB_TOKEN","ASEN_TEST_UNRELATED_SECRET"];
+  const credentialNames=["OPENROUTER_API_KEY","LLM7_API_KEY","GROQ_API_KEY","NVIDIA_API_KEY","GITHUB_TOKEN","ASEN_TEST_UNRELATED_SECRET"];
   const ambient={...process.env,...Object.fromEntries(credentialNames.map(name=>[name,"ASEN-SYNTHETIC-CREDENTIAL"]))};
   await writeFile(extension,`import {createAsenExtension} from ${JSON.stringify(source)};
 export default function(pi){const tools=new Map();let calls=0;createAsenExtension()({registerCommand:(...args)=>pi.registerCommand(...args),registerTool:tool=>{tools.set(tool.name,tool);pi.registerTool(tool);}});

@@ -4,7 +4,7 @@ import {syncBuiltinESMExports} from "node:module";
 import {basename} from "node:path";
 
 const native = cp.execFileSync;
-const keys = ["OPENROUTER_API_KEY", "LLM7_API_KEY", "GROQ_API_KEY", "GITHUB_TOKEN"];
+const keys = ["OPENROUTER_API_KEY", "LLM7_API_KEY", "GROQ_API_KEY", "NVIDIA_API_KEY", "GITHUB_TOKEN"];
 const previous = new Map(keys.map(key => [key, process.env[key]]));
 for (const key of keys) process.env[key] = `ASEN-SYNTHETIC-${key}`;
 

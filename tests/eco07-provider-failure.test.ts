@@ -23,6 +23,21 @@ test("ECO-07 validates provider metadata without reading a credential",()=>{
  assert.deepEqual(validateEco07ProviderSelection(environment),{provider:"openrouter",model:"nvidia/nemotron-3.5-lightning:free",credential:"OPENROUTER_API_KEY"});
 });
 
+test("ECO-07 selects Pi-native NVIDIA NIM without reading its credential during validation",()=>{
+ const environment=new Proxy({ASEN_ECO07_PROVIDER:"nvidia"},{
+  get(target,key,receiver){if(String(key).endsWith("_API_KEY"))throw new Error("credential read");return Reflect.get(target,key,receiver);},
+ });
+ assert.deepEqual(validateEco07ProviderSelection(environment),{provider:"nvidia",model:"deepseek-ai/deepseek-v4.1-flash",credential:"NVIDIA_API_KEY"});
+ const selected=resolveEco07Provider({ASEN_ECO07_PROVIDER:"nvidia",NVIDIA_API_KEY:"synthetic-key"});
+ assert.deepEqual({...selected,apiKey:"[hidden]"},{provider:"nvidia",model:"deepseek-ai/deepseek-v4.1-flash",apiKey:"[hidden]",credential:"NVIDIA_API_KEY"});
+ assert.throws(()=>resolveEco07Provider({ASEN_ECO07_PROVIDER:"nvidia"}),/API key is unavailable/);
+ const catalog=JSON.parse(readFileSync(resolve("node_modules/@earendil-works/pi-ai/dist/providers/data/nvidia.json"),"utf8")) as Record<string,Record<string,Record<string,unknown>>>;
+ const model=catalog["openai-completions"]?.["chat:deepseek-ai/deepseek-v4.1-flash"];
+ assert.equal(model?.id,"deepseek-ai/deepseek-v4.1-flash");
+ assert.equal(model?.provider,"nvidia");
+ assert.equal(model?.baseUrl,"https://integrate.api.nvidia.com/v1");
+});
+
 test("ECO-07 selects LLM7 only with its key and the pinned Pi Free extension",()=>{
  const selected=resolveEco07Provider({ASEN_ECO07_PROVIDER:"llm7",ASEN_ECO07_PROVIDER_EXTENSION:"npm:pi-free@2.8.4",LLM7_API_KEY:"synthetic-key"});
  assert.deepEqual({...selected,apiKey:"[hidden]"},{provider:"llm7",model:"default",apiKey:"[hidden]",credential:"LLM7_API_KEY",extension:"npm:pi-free@2.8.4"});
@@ -49,4 +64,32 @@ test("ECO-07 provider workflow uses OpenRouter only after manual exact-SHA dispa
  assert.ok(!workflow.includes("pi install npm:pi-free"));
  assert.ok(!workflow.includes("ASEN_ECO07_PROVIDER_EXTENSION:"));
  assert.ok(!workflow.includes("secrets.LLM7_API_KEY"));
+});
+
+test("ECO-07 exact-SHA workflow selects one provider secret per manual Pi recovery run",()=>{
+ const workflow=readFileSync(resolve(".github/workflows/eco07-groq-e2e.yml"),"utf8");
+ const compact=workflow.replace(/\s+/gu," ");
+ assert.ok(workflow.includes("workflow_dispatch:"));
+ assert.ok(workflow.includes("default: nvidia"));
+ assert.ok(workflow.includes("- nvidia"));
+ assert.ok(workflow.includes("- groq"));
+ assert.ok(workflow.includes("expected_sha:"));
+ assert.ok(workflow.includes('NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}'));
+ assert.ok(workflow.includes("ASEN_ECO07_PROVIDER: nvidia"));
+ assert.ok(workflow.includes("ASEN_ECO07_MODEL: deepseek-ai/deepseek-v4.1-flash"));
+ assert.ok(workflow.includes('GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}'));
+ const nvidiaStep=workflow.split("- name: Execute real Pi NVIDIA interruption and restart")[1]?.split("- name: Execute real Pi Groq interruption and restart")[0]??"";
+ const groqStep=workflow.split("- name: Execute real Pi Groq interruption and restart")[1]?.split("- name: Preserve process and event evidence")[0]??"";
+ assert.ok(nvidiaStep.includes("secrets.NVIDIA_API_KEY"));
+ assert.ok(!nvidiaStep.includes("secrets.GROQ_API_KEY"));
+ assert.ok(groqStep.includes("secrets.GROQ_API_KEY"));
+ assert.ok(!groqStep.includes("secrets.NVIDIA_API_KEY"));
+ assert.ok(compact.includes("if: inputs.provider == 'nvidia'"));
+ assert.ok(compact.includes("if: inputs.provider == 'groq'"));
+ assert.ok(compact.includes("test \"$ASEN_EXPECTED_SHA\" = \"$GITHUB_EVENT_SHA\""));
+ assert.ok(compact.includes("git ls-remote origin"));
+ assert.ok(workflow.includes("actions/upload-artifact@v6"));
+ assert.ok(workflow.includes("${{ inputs.provider }}-recovery-${{ inputs.expected_sha }}-${{ inputs.os }}"));
+ assert.ok(!compact.includes("pull_request:"));
+ assert.ok(!compact.includes("push:"));
 });

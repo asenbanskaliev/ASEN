@@ -30,7 +30,9 @@ The targeted suites and typecheck must be recorded against the published candida
 
 ## Remaining closure gate
 
-Run `.github/workflows/eco07-groq-recovery.yml` against the exact published SHA on Linux, Windows, and macOS. Review the uploaded event artifact for the same linked Todo, interruption, blocked recovery, explicit resume, no duplicate work, verified terminal outcome, and session/project isolation. If provider quota or workflow access prevents this, retain ECO-07 as PARTIAL and report the exact blocker.
+Run `.github/workflows/eco07-groq-e2e.yml` against the exact published SHA on Linux, Windows, and macOS. It supports a manual NVIDIA NIM run (`NVIDIA_API_KEY`, `deepseek-ai/deepseek-v4.1-flash`, included in the Pi 1.1.0 model catalog) and a separate Groq run (`GROQ_API_KEY`, `openai/gpt-oss-120b`). Only the selected credential enters its provider step. A successful NVIDIA run is evidence for Pi recovery through NVIDIA NIM; it does not establish Groq compatibility or close a Groq-specific criterion. Review the uploaded event artifact for the same linked Todo, interruption, blocked recovery, explicit resume, no duplicate work, verified terminal outcome, and session/project isolation. If provider quota, credentials, or workflow access prevents this, retain ECO-07 as PARTIAL and report the exact blocker.
+
+Provider integration is implemented locally: Pi's NVIDIA provider is native, the ASEN Pi child credential allowlist includes `NVIDIA_API_KEY`, and ECO-07 resolves its default model. This is not yet real-provider evidence. The manual dispatch must run against the exact published SHA and its event artifact must pass review before the NVIDIA-backed recovery slice can be called verified.
 
 ## R4 review on 2026-10-14
 

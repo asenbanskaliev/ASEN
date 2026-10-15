@@ -12,10 +12,11 @@ import {
 const repository = process.cwd();
 
 test("LLM7 probe receives only the LLM7 credential",()=>{
- const environment=createPiProbeEnvironment({PATH:"/bin",LLM7_API_KEY:"selected-llm7-key",OPENROUTER_API_KEY:"unselected-openrouter-key",GROQ_API_KEY:"unselected-groq-key"},"llm7");
+ const environment=createPiProbeEnvironment({PATH:"/bin",LLM7_API_KEY:"selected-llm7-key",OPENROUTER_API_KEY:"unselected-openrouter-key",GROQ_API_KEY:"unselected-groq-key",NVIDIA_API_KEY:"unselected-nvidia-key"},"llm7");
  assert.equal(environment.LLM7_API_KEY,"selected-llm7-key");
  assert.equal(Object.hasOwn(environment,"OPENROUTER_API_KEY"),false);
  assert.equal(Object.hasOwn(environment,"GROQ_API_KEY"),false);
+ assert.equal(Object.hasOwn(environment,"NVIDIA_API_KEY"),false);
 });
 
 test("Pi Free receives only the selected provider credential and required runtime settings", () => {
@@ -33,6 +34,7 @@ test("Pi Free receives only the selected provider credential and required runtim
     OPENROUTER_API_KEY: "selected-openrouter-key",
     LLM7_API_KEY: "unselected-llm7-key",
     GROQ_API_KEY: "unselected-groq-key",
+    NVIDIA_API_KEY: "unselected-nvidia-key",
     GITHUB_TOKEN: "runner-token",
     OTHER_SECRET: "unrelated-secret",
     __CF_USER_TEXT_ENCODING: "untrusted-inherited-value",
@@ -62,6 +64,7 @@ test("Pi Free receives only the selected provider credential and required runtim
   assert.equal(llm7Environment.LLM7_API_KEY,source.LLM7_API_KEY);
   assert.equal(Object.hasOwn(llm7Environment,"OPENROUTER_API_KEY"),false,"LLM7 probes must not receive an OpenRouter key");
   assert.equal(Object.hasOwn(llm7Environment,"GROQ_API_KEY"),false,"LLM7 probes must not receive other provider keys");
+  assert.equal(Object.hasOwn(llm7Environment,"NVIDIA_API_KEY"),false,"LLM7 probes must not receive an NVIDIA key");
   for (const name of ["SYSTEMROOT", "WINDIR", "TEMP", "TMPDIR", "COMSPEC", "PATHEXT", "LANG", "LC_ALL", "LC_CTYPE", "TZ"]) {
     assert.equal(observed[name], environment[name], `${name} must remain available to Pi`);
   }
@@ -93,6 +96,7 @@ test("Pi runtime environment retains runtime paths but strips every provider cre
     OPENROUTER_API_KEY: "openrouter-key",
     LLM7_API_KEY: "llm7-key",
     GROQ_API_KEY: "groq-key",
+    NVIDIA_API_KEY: "nvidia-key",
     GITHUB_TOKEN: "runner-token",
   };
   const environment = createPiRuntimeEnvironment(source);
@@ -106,7 +110,7 @@ test("Pi runtime environment retains runtime paths but strips every provider cre
   const observed = JSON.parse(child.stdout) as Record<string, string>;
   assert.equal(observed.PATH, source.PATH);
   assert.equal(observed.HOME, source.HOME);
-  for (const name of ["OPENROUTER_API_KEY", "LLM7_API_KEY", "GROQ_API_KEY", "GITHUB_TOKEN"]) {
+  for (const name of ["OPENROUTER_API_KEY", "LLM7_API_KEY", "GROQ_API_KEY", "NVIDIA_API_KEY", "GITHUB_TOKEN"]) {
     assert.equal(Object.hasOwn(observed, name), false, `${name} must not reach intermediate processes`);
   }
 });

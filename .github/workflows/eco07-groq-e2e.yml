@@ -1,9 +1,17 @@
-name: ECO-07 Groq task recovery
+name: ECO-07 provider task recovery
 on:
   workflow_dispatch:
     inputs:
+      provider:
+        description: Provider for the authenticated Pi recovery run
+        required: true
+        type: choice
+        options:
+          - nvidia
+          - groq
+        default: nvidia
       os:
-        description: Hosted runner for Groq recovery evidence
+        description: Hosted runner for provider recovery evidence
         required: true
         type: choice
         options:
@@ -17,12 +25,12 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: eco07-groq-recovery-${{ github.ref }}
+  group: eco07-provider-recovery-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   pi-recovery:
     if: github.repository == 'asenbanskaliev/ASEN' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && github.ref == 'refs/heads/feat/strict-parity-prerequisites'
-    name: Pi Groq recovery (${{ inputs.os }})
+    name: Pi ${{ inputs.provider }} recovery (${{ inputs.os }})
     runs-on: ${{ inputs.os }}
     timeout-minutes: 15
     env:
@@ -55,7 +63,22 @@ jobs:
       - run: npm ci
       - name: Validate pinned local Pi runtime
         run: node scripts/eco07-pi-recovery-preflight.mjs runtime
+      - name: Execute real Pi NVIDIA interruption and restart
+        if: inputs.provider == 'nvidia'
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          ASEN_ECO07_PROVIDER: nvidia
+          ASEN_ECO07_MODEL: deepseek-ai/deepseek-v4.1-flash
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -z "$NVIDIA_API_KEY"; then
+            echo "::error::NVIDIA_API_KEY is not configured for this Actions job"
+            exit 1
+          fi
+          node --import tsx scripts/eco07-pi-recovery-e2e.mjs
       - name: Execute real Pi Groq interruption and restart
+        if: inputs.provider == 'groq'
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           ASEN_ECO07_PROVIDER: groq
@@ -72,7 +95,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: eco07-groq-recovery-${{ inputs.expected_sha }}-${{ inputs.os }}
+          name: eco07-${{ inputs.provider }}-recovery-${{ inputs.expected_sha }}-${{ inputs.os }}
           path: eco07-pi-evidence/
           if-no-files-found: warn
           retention-days: 30
