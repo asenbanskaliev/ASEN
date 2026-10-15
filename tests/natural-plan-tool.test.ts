@@ -105,3 +105,44 @@ test("bounded direct requests stay in chat without leaving a stalled Todo task",
   assert.doesNotMatch(result.content[0].text,/slash command|task-[0-9a-f-]{36}|natural-direct-session/u);
  }finally{await rm(directory,{recursive:true,force:true});}
 });
+
+test("material clarification stays in chat instead of parking a blocked Todo task",async()=>{
+ const directory=await mkdtemp(path.join(os.tmpdir(),"asen-natural-clarify-"));
+ try{
+  const tools=new Map<string,any>();
+  const todos=await SessionTodoStore.open(path.join(directory,"todos.json"));
+  const pi={registerCommand(){},registerTool(tool:any){tools.set(tool.name,tool);},on(){}};
+  createAsenExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,todoStoreFactory:async()=>todos})(pi);
+  const context={cwd:process.cwd(),sessionManager:{getSessionId:()=>"natural-clarify-session"},ui:{notify(){}}};
+  const facts={...request(),unresolvedDecisions:["Should the form reject or normalize surrounding whitespace?"]};
+  const result=await tools.get(ASEN_PLAN_REQUEST_TOOL).execute("call",facts,undefined,undefined,context);
+  assert.equal(result.details.route,"plan");
+  assert.equal(result.details.inlineClarification,true);
+  assert.equal(result.details.persistence.status,"not-needed");
+  assert.equal(result.details.execution.started,false);
+  assert.deepEqual(await todos.list({sessionId:"natural-clarify-session",projectId:process.cwd()}),[]);
+  assert.match(result.content[0].text,/Haz una sola pregunta concreta en esta conversación/u);
+  assert.match(result.content[0].text,/No guardes una tarea pendiente/u);
+  assert.doesNotMatch(result.content[0].text,/slash command|task-[0-9a-f-]{36}|natural-clarify-session/u);
+ }finally{await rm(directory,{recursive:true,force:true});}
+});
+
+test("high-risk requests stay blocked without a stale clarification task",async()=>{
+ const directory=await mkdtemp(path.join(os.tmpdir(),"asen-natural-high-risk-"));
+ try{
+  const tools=new Map<string,any>();
+  const todos=await SessionTodoStore.open(path.join(directory,"todos.json"));
+  const pi={registerCommand(){},registerTool(tool:any){tools.set(tool.name,tool);},on(){}};
+  createAsenExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,todoStoreFactory:async()=>todos})(pi);
+  const context={cwd:process.cwd(),sessionManager:{getSessionId:()=>"natural-high-risk-session"},ui:{notify(){}}};
+  const facts={...request(),writes:[{path:"src/form.ts",changeKind:"security"}],riskOperations:["security_boundary"]};
+  const result=await tools.get(ASEN_PLAN_REQUEST_TOOL).execute("call",facts,undefined,undefined,context);
+  assert.equal(result.details.route,"plan");
+  assert.equal(result.details.risk,"high");
+  assert.equal(result.details.inlineClarification,true);
+  assert.equal(result.details.execution.started,false);
+  assert.deepEqual(await todos.list({sessionId:"natural-high-risk-session",projectId:process.cwd()}),[]);
+  assert.match(result.content[0].text,/límite de riesgo alto/u);
+  assert.match(result.content[0].text,/No inicies tareas ni escribas/u);
+ }finally{await rm(directory,{recursive:true,force:true});}
+});

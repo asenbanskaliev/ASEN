@@ -250,7 +250,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const checks=doctorChecks(input);return {exitCode:doctorExitCode(checks),checks};
   }});
   registerData("asen-route",{description:"Advanced read-only route diagnostic for exact ODD facts; for ordinary requests, write what you want in chat",handler:async(args:string|undefined,ctx:CommandContext)=>{if(!ctx.sessionManager?.getSessionId?.())throw new Error("ASEN route preview requires the active Pi session");let project:string;try{project=await realpath(ctx.cwd);}catch{throw new Error("ASEN route preview requires an existing active project");}return routePreviewCommand(args??"",project);}});
-  const preparePlan=async(args:string|undefined,ctx:CommandContext):Promise<string>=>{
+  const preparePlan=async(args:string|undefined,ctx:CommandContext,conversational=false):Promise<string>=>{
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd;if(!manager||!sessionId)throw new Error("ASEN planning requires the active Pi session");
    const validateContext=()=>{if(ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed before plan persistence");};
    let project:string;try{project=await realpath(cwd);}catch{throw new Error("ASEN planning requires an existing active project");}validateContext();
@@ -263,6 +263,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     output.execution={started:false,authorized:false};
     output.inlineContinuation=true;
     output.notice="This is a bounded direct request. Continue it in the current Pi conversation without saving a task, asking the user to run commands, or requesting internal planning details. No agent was dispatched.";
+    return JSON.stringify(output,null,2);
+   }
+   if(conversational&&output.executablePlan.route==="plan"){
+    output.persistence={status:"not-needed",reason:"Material clarification or a high-risk boundary is handled in the current conversation, without parking a blocked Todo task"};
+    output.execution={started:false,authorized:false};
+    output.inlineClarification=true;
+    output.notice=output.risk==="high"?"This request crosses a high-risk boundary. Do not dispatch, write, or save a blocked task. Explain the missing control in ordinary language and wait for the user's next instruction.":"A material decision is unresolved. Ask one concise question in ordinary language, then re-evaluate the request. Do not ask the user to run commands, provide JSON, or inspect task records.";
     return JSON.stringify(output,null,2);
    }
    if(!todoStorePromise){output.persistence={status:"unavailable",reason:"Todo store is not configured; this graph was not saved or made runnable"};output.execution={started:false,authorized:false};output.notice="Plan only. The Todo store is unavailable, so no task records were persisted. No agent was dispatched and no permission was granted.";return JSON.stringify(output,null,2);}
@@ -279,7 +286,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return JSON.stringify(output,null,2);
   };
   registerData("asen-plan",{description:"Internal plan materializer for validated ODD facts; ordinary-language requests are planned from chat without user-authored JSON",handler:preparePlan});
-  if(pi.registerTool)registerAsenPlanRequestTool({registerTool:pi.registerTool.bind(pi)},preparePlan);
+  if(pi.registerTool)registerAsenPlanRequestTool({registerTool:pi.registerTool.bind(pi)},(args,ctx)=>preparePlan(args,ctx,true));
   registerData("asen-agents",{description:"Show attributed ASEN agent lifecycle",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(agentRuntimePromise){const rows=await (await agentRuntimePromise).list(await sessionIdentity(ctx));return agentStatusRows(rows);}return dependencies.agents?agentStatusRows(dependencies.agents()):["ASEN agents unavailable: no local agent provider configured."];}});
   registerData("asen-changes",{description:"Show current-session attributed changes and possible same-path actor conflicts",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(workspaceStorePromise){const rows=await (await workspaceStorePromise).list(await sessionIdentity(ctx)),changes=rows.map(row=>row.change),conflicts=findPotentialWorkspaceConflicts(changes);return [...(conflicts.length?["Potential conflicts require review; no content comparison, winner selection, or automatic resolution is performed.",...visibleWorkspaceConflictRows(conflicts)]:[]),...visibleWorkspaceRows(changes)];}return dependencies.changes?visibleWorkspaceRows(dependencies.changes()):["ASEN workspace changes unavailable: no local change provider configured."];}});
   registerData("asen-todos",{description:"Show active Todo tasks, or archived completed task history for the current Pi session and project",handler:async(args:string|undefined,ctx:CommandContext)=>{if(!todoStorePromise)return ["ASEN no tiene un almacén local de tareas configurado."];const store=await todoStorePromise,identity=await sessionIdentity(ctx),history=args?.trim()==="history",rows=history?await store.archived(identity):await store.list(identity);return rows.length?todoStatusRows(rows):[history?"No hay tareas archivadas para este proyecto y sesión.":"No hay tareas activas para este proyecto y sesión."];}});

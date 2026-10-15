@@ -27,6 +27,7 @@ function userSummary(value:unknown):string{
  if(!value||typeof value!=="object"||Array.isArray(value))return "ASEN could not prepare a readable plan.";
  const plan=value as {status?:unknown;route?:unknown;risk?:unknown;verification?:unknown;requiredAgentRoles?:unknown;executablePlan?:{tasks?:unknown};persistence?:{status?:unknown};execution?:{started?:unknown;authorized?:unknown}};
  if(plan.status==="needs-verified-facts")return "ASEN needs more information before it can prepare a safe plan. I will ask only about decisions that cannot be inferred from the request or project.";
+ if((value as {inlineClarification?:unknown}).inlineClarification===true)return plan.risk==="high"?"La petición cruza un límite de riesgo alto. No inicies tareas ni escribas; explica brevemente en lenguaje normal qué control falta y espera la siguiente instrucción, sin pedir comandos ni datos internos.":"Falta una decisión importante. Haz una sola pregunta concreta en esta conversación y, cuando el usuario responda, vuelve a evaluar la petición. No guardes una tarea pendiente ni pidas comandos, JSON o IDs.";
  if((value as {inlineContinuation?:unknown}).inlineContinuation===true)return "La petición es acotada: continúa en esta misma conversación de Pi. No guardes una tarea Todo, no pidas al usuario ejecutar comandos ni detalles internos de planificación. No se lanzó ningún agente.";
  const tasks=Array.isArray(plan.executablePlan?.tasks)?plan.executablePlan!.tasks as Array<{role?:unknown;title?:unknown;status?:unknown;dependsOn?:unknown;writeSurfaces?:unknown}>:[];
  const routeLabel:Record<string,string>={direct:"trabajo acotado en la sesión actual",plan:"aclaración pendiente",orchestrate:"trabajo coordinado",incident:"atención de incidencia",verify:"verificación independiente"};
@@ -49,7 +50,7 @@ export function registerAsenPlanRequestTool(
 ):void{
  pi.registerTool?.({
   name:ASEN_PLAN_REQUEST_TOOL,label:"Prepare ASEN task plan",
-  description:"Turn the user's ordinary-language project request into a validated ASEN plan. Inspect the project first; derive these ODD facts yourself, never ask the user to write JSON or supply internal IDs. ASEN persists the plan and may automatically start dependency-ready read-only work. It never grants write permission; every writer needs exact Pi approval, and the plan completes only after a passing independent verifier.",
+  description:"Turn the user's ordinary-language project request into a validated ASEN plan. Inspect the project first; derive these ODD facts yourself, never ask the user to write JSON or supply internal IDs. Bounded requests stay in chat; material clarifications are asked there without parking a task; coordinated work is persisted and may start dependency-ready read-only steps. ASEN never grants write permission; every writer needs exact Pi approval, and completion needs a passing independent verifier.",
   executionMode:"sequential",
   parameters:{type:"object",additionalProperties:false,required:[...planKeys],properties:{instruction:{type:"string",minLength:1,maxLength:8192},intent,scope,writes,riskOperations,session,testing,review,unresolvedDecisions}},
   execute:async(_callId,params,_signal,_update,context)=>{
