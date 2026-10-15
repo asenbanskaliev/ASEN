@@ -57,10 +57,31 @@ async function findPersistedPlans(directory){
   return matches;
 }
 const currentItem=async()=>{
-  const data=await snapshot();
-  const matches=data.items.filter(item=>item.events[0]?.sessionId===sessionId&&item.events[0]?.projectId===repository);
-  if(matches.length>1)throw new Error("Pi created duplicate session/project Todo tasks");
-  return matches.find(item=>item.title===title);
+  const deadline=Date.now()+5_000;
+  while(true){
+    const data=await snapshot();
+    const matches=data.items.filter(item=>item.events[0]?.sessionId===sessionId&&item.events[0]?.projectId===repository);
+    const taskIds=new Set(matches.map(item=>item.taskId));
+    if(taskIds.size>1)throw new Error(`Pi created duplicate session/project Todo tasks: ${matches.map(item=>`${item.taskId}:${item.current.state}`).join(", ")}`);
+    if(matches.length>1){
+      const ordered=[...matches].sort((a,b)=>a.events.length-b.events.length),active=ordered[0],archived=ordered.at(-1);
+      const prefix=active.events.length<archived.events.length&&active.events.every((event,index)=>JSON.stringify(event)===JSON.stringify(archived.events[index]));
+      const markerFile=`${todoFile}.archive-pending.json`;
+      let marker,archiveRaw;
+      try{
+        marker=JSON.parse(await readFile(markerFile,"utf8"));
+        if(marker?.schema!=="asen.todo-archive-transaction/v1"||typeof marker.archiveFile!=="string"||!/^archive-[0-9]+-[a-f0-9]{12}\.json$/u.test(marker.archiveFile))throw new Error("invalid archive transaction marker");
+        archiveRaw=await readFile(path.join(path.dirname(todoFile),"archive",marker.archiveFile),"utf8");
+      }catch(error){throw new Error(`Duplicate ASEN Todo snapshots were observed outside a readable archive transaction: ${error?.message??error}`);}
+      const digest=createHash("sha256").update(archiveRaw).digest("hex"),archiveData=JSON.parse(archiveRaw),archivedTask=archiveData.items.find(item=>item.taskId===archived.taskId);
+      if(!prefix||!marker||marker.schema!=="asen.todo-archive-transaction/v1"||marker.sha256!==digest||!archivedTask||JSON.stringify(archivedTask.events)!==JSON.stringify(archived.events)||!(["done","cancelled"].includes(archived.events.at(-1)?.state)))
+        throw new Error("ASEN archive transaction contains inconsistent active and archived task histories");
+      if(Date.now()>=deadline)throw new Error("ASEN archive transaction did not settle after writing its verified terminal snapshot");
+      await sleep(20);
+      continue;
+    }
+    return matches.find(item=>item.title===title);
+  }
 };
 function startPi(label){
   const args=[cli,"--mode","rpc","--session-id",sessionId,"--session-dir",sessionDir,"--no-extensions",...(extension?["--extension",extension]:[]),"--extension",asenExtension,"--extension",probeExtension,"--provider",provider,"--model",model,"--no-skills","--tools","asen_todo_*,asen_eco07_*"];
