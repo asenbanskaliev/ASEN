@@ -1,0 +1,78 @@
+name: ECO-07 Groq task recovery
+on:
+  workflow_dispatch:
+    inputs:
+      os:
+        description: Hosted runner for Groq recovery evidence
+        required: true
+        type: choice
+        options:
+          - ubuntu-24.04
+          - macos-15
+          - windows-2025
+      expected_sha:
+        description: Exact branch HEAD SHA (40 lowercase hex characters)
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: eco07-groq-recovery-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  pi-recovery:
+    if: github.repository == 'asenbanskaliev/ASEN' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && github.ref == 'refs/heads/feat/strict-parity-prerequisites'
+    name: Pi Groq recovery (${{ inputs.os }})
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 15
+    env:
+      ASEN_EXPECTED_SHA: ${{ inputs.expected_sha }}
+      ASEN_SELECTED_OS: ${{ inputs.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify exact branch commit and Groq selection without credentials
+        shell: bash
+        env:
+          GITHUB_EVENT_SHA: ${{ github.sha }}
+          GITHUB_REPO: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          [[ "$ASEN_EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$ASEN_EXPECTED_SHA" = "$GITHUB_EVENT_SHA"
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          test "$GITHUB_REPO" = "asenbanskaliev/ASEN"
+          test "$GITHUB_REF_NAME" = "feat/strict-parity-prerequisites"
+          test "$(git ls-remote origin "refs/heads/$GITHUB_REF_NAME" | cut -f1)" = "$ASEN_EXPECTED_SHA"
+          mkdir -p eco07-pi-evidence
+          test -z "$(ls -A eco07-pi-evidence)"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+      - run: npm ci
+      - name: Validate pinned local Pi runtime
+        run: node scripts/eco07-pi-recovery-preflight.mjs runtime
+      - name: Execute real Pi Groq interruption and restart
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          ASEN_ECO07_PROVIDER: groq
+          ASEN_ECO07_MODEL: openai/gpt-oss-120b
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -z "$GROQ_API_KEY"; then
+            echo "::error::GROQ_API_KEY is not configured for this Actions job"
+            exit 1
+          fi
+          node --import tsx scripts/eco07-pi-recovery-e2e.mjs
+      - name: Preserve process and event evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: eco07-groq-recovery-${{ inputs.expected_sha }}-${{ inputs.os }}
+          path: eco07-pi-evidence/
+          if-no-files-found: warn
+          retention-days: 30
