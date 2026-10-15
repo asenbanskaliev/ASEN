@@ -18,7 +18,7 @@ export function todoStatusRows(items:readonly (TodoItem&{current:TodoItem["event
 export function todoProgressSummary(items:readonly (TodoItem&{current:TodoItem["events"][number]})[]):string{
  if(!items.length)return "ASEN: no hay tareas activas para este proyecto y sesión.";
  const completed=items.filter(item=>item.current.state==="done").length,cancelled=items.filter(item=>item.current.state==="cancelled").length,waiting=items.filter(item=>item.current.state==="blocked").length,running=items.filter(item=>item.current.state==="running").length;
- if(waiting)return `ASEN pausó el plan para revisar ${waiting} tarea(s). No las repetirá automáticamente. Consulta /asen-todos y decide si quieres continuar.`;
+ if(waiting)return `ASEN pausó el plan para revisar ${waiting} tarea(s). No las repetirá automáticamente. Si quieres retomarlas, di «continúa» y revisaré qué paso es seguro; pediré confirmación cuando haga falta.`;
  if(running)return `ASEN está trabajando: ${completed} de ${items.length} tareas completadas.`;
  if(completed+cancelled===items.length)return cancelled?`ASEN cerró el plan: ${completed} tareas completadas y ${cancelled} canceladas.`:`ASEN terminó y verificó las ${items.length} tareas del plan.`;
  return `ASEN lleva ${completed} de ${items.length} tareas completadas; continuará con el siguiente paso disponible.`;

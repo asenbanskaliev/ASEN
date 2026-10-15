@@ -14,6 +14,7 @@ test("Todo status shows useful Spanish labels without exposing internal IDs",()=
 
 test("plan progress describes running, blocked and completed work in plain language",()=>{
  assert.match(todoProgressSummary([task("running")]),/está trabajando/u);
- assert.match(todoProgressSummary([task("blocked")]),/No las repetirá automáticamente.*\/asen-todos/u);
+ assert.match(todoProgressSummary([task("blocked")]),/No las repetirá automáticamente.*di «continúa».*pediré confirmación/u);
+ assert.doesNotMatch(todoProgressSummary([task("blocked")]),/\/asen-/u);
  assert.match(todoProgressSummary([task("done","verifier")]),/terminó y verificó/u);
 });
