@@ -367,6 +367,33 @@ test("session shutdown suppresses late cancellation delivery after child cleanup
  assert.equal((await runtime.list({sessionId:"session-a",projectId:await realpath(process.cwd())})).find(record=>record.id===task.details.id)?.state,"cancelled");
 });
 
+test("session shutdown drains in-flight Todo reconciliation after agent completion",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-agent-terminal-drain-"));t.after(()=>rm(home,{recursive:true,force:true}));
+ const projectId=await realpath(process.cwd()),identity={sessionId:"terminal-drain-session",projectId},todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),todos=await SessionTodoStore.open(todoFile);
+ const selection={phase:"explore" as const,risk:"low" as const,codeChange:false,behaviorChange:false,filesTouched:0},skillPaths=selectSkills(selection).map(skill=>skill.path);
+ const [task]=await todos.addPlan([{title:"Drain linked result",requestId:"asen-plan:terminal-drain:explorer",dependsOn:[],description:"Inspect the saved candidate and report bounded findings",plan:{role:"explorer",skillPaths,skillSelection:selection,priority:1}}],identity);
+ assert.ok(task);
+ let delayDelivery=false,entered!:()=>void,release!:()=>void;
+ const deliveryEntered=new Promise<void>(resolve=>{entered=resolve;}),deliveryGate=new Promise<void>(resolve=>{release=resolve;});
+ const originalList=todos.list.bind(todos);
+ (todos as any).list=async(...args:Parameters<typeof todos.list>)=>{if(delayDelivery){delayDelivery=false;entered();await deliveryGate;}return originalList(...args);};
+ const state=host();
+ createPiExtension({homeDir:()=>home,todoStoreFactory:async()=>todos,agentStoreFile:agentFile,autoAdvancePlans:false,agentRunner:{run:async request=>{delayDelivery=true;return{id:request.id,ok:true,output:"Inspected the saved candidate and found no blockers."};}}})(state.pi as any);
+ const context={...state.context(identity.sessionId),ui:{...state.context(identity.sessionId).ui,confirm:async()=>true}};
+ await state.events.get("session_start")![0]!({},context);
+ const dispatched=await state.tools.get("asen_plan_dispatch_next").execute("dispatch-for-drain",{},new AbortController().signal,()=>{},context);
+ assert.equal(dispatched.details.status,"dispatched");
+ let entryTimer:ReturnType<typeof setTimeout>|undefined;
+ try{await Promise.race([deliveryEntered,new Promise((_,reject)=>{entryTimer=setTimeout(()=>reject(new Error("terminal Todo reconciliation did not reach its delay")),3000);})]);}
+ finally{if(entryTimer)clearTimeout(entryTimer);}
+ let shutdownFinished=false;const shutdown=state.events.get("session_shutdown")![0]!({},context).then(()=>{shutdownFinished=true;});
+ try{await new Promise(resolve=>setImmediate(resolve));assert.equal(shutdownFinished,false,"session shutdown must wait for its already-started terminal reconciliation");}
+ finally{release();}
+ await shutdown;
+ const afterShutdown=(await todos.list(identity)).find(row=>row.taskId===task!.taskId);
+ assert.equal(afterShutdown?.current.state,"blocked");assert.match(afterShutdown?.current.reason??"",/session ended/u);
+});
+
 test("foreign-project agents require live consent and are cancelled with the owning session",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-foreign-agent-")),foreign=await realpath(await mkdtemp(join(tmpdir(),"asen-foreign-project-")));t.after(()=>Promise.all([rm(home,{recursive:true,force:true}),rm(foreign,{recursive:true,force:true})]));
  const state=host(),ctx=state.context();let calls=0,started!:()=>void,cleaned=false;

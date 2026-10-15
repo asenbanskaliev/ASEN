@@ -77,3 +77,11 @@ Added `asen_todo_inspect_interrupted_write` for an interrupted worker only when 
 The helper has deterministic Git tests for partial tracked edits, untracked files, out-of-scope edits, candidate drift, content non-disclosure, and no mutation. This is local evidence only. The full Pi E2E acceptance and CI on the final SHA remain required; ECO-06 stays PARTIAL.
 
 Local validation in this tranche: full `npm test` passed **1,496/1,496 executed tests** with 13 skips; after the final helper cleanup, the focused recovery/Pi/provider set passed **59/59**, with `npm run typecheck`, `npm run build`, all six registry/skills/memory/ecosystem audits, and `git diff --check` passing. Ecosystem source proof remains NOT ADMITTED because the retained baseline repository is unavailable. These results do not replace CI on the published SHA or a real Pi interrupted-writer run.
+
+## R4 shutdown and Windows follow-up (2026-10-15)
+
+GitHub CI exposed a Windows-only false rejection for a valid project subdirectory during interrupted-write inspection. The inspection now asks Git for the project prefix from the requested working directory instead of comparing absolute path spellings, which may differ on Windows. A regression fixture covers inspection from a nested project directory.
+
+The Ubuntu CI log also exposed a shutdown race: a terminal agent event could start asynchronous Todo reconciliation, then session shutdown could return before that reconciliation finished. Shutdown now waits for already-started terminal Todo deliveries after cancelling agents. It preserves the session-ended task as blocked and prevents late writes after teardown; a gated Pi-host test verifies the drain.
+
+Local evidence for this follow-up is `npm run typecheck`, `npm run build`, the complete test suite, and focused Pi agent-runtime tests. The original CI run on `b7c1b9eef46c1eaf6e60b614b6df4ccc3e8af6bd` is still in progress and had one Ubuntu failure in temporary-directory cleanup. The follow-up commit needs its own exact-SHA CI. These changes do not close the separate real Pi interrupted-writer and fresh-authorization gate; ECO-06 remains PARTIAL / OPEN.
