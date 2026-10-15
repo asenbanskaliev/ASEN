@@ -241,7 +241,7 @@ test("Pi failures never return model content or child stderr",async()=>{
  const failure=await runner(crashed.p).run({id:"crashed",role:"explorer",prompt:"hello",repository:crashed.d});
  assert.equal(failure.ok,false);assert.ok(!failure.output.includes(marker));
 });
-test("Pi RPC adapter rejects malformed structured output",async()=>{const {d,p}=await fixture('console.log("not-json");');const r=await runner(p,{}).run({id:"req-json",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/envelope invalid/);});
+test("Pi RPC adapter rejects malformed structured output",async()=>{const {d,p}=await fixture('let input="";process.stdin.on("data",chunk=>input+=chunk);process.stdin.on("end",()=>console.log("not-json"));');const r=await runner(p,{}).run({id:"req-json",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/envelope invalid/);});
 test("Pi RPC adapter requires a correlated response by default",async()=>{const {d,p}=await fixture('console.log(JSON.stringify({type:"event",id:"req-default"}));');const r=await runner(p).run({id:"req-default",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/correlated response missing/);});
 
 test("Pi RPC adapter injects exact issued skill paths before the task",async()=>{

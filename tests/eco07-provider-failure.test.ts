@@ -66,10 +66,11 @@ test("ECO-07 provider workflow uses OpenRouter only after manual exact-SHA dispa
  assert.ok(!workflow.includes("secrets.LLM7_API_KEY"));
 });
 
-test("ECO-07 exact-SHA workflow selects one provider secret per manual Pi recovery run",()=>{
+test("ECO-07 exact-SHA workflow selects one provider secret and supports a guarded branch run",()=>{
  const workflow=readFileSync(resolve(".github/workflows/eco07-groq-e2e.yml"),"utf8");
  const compact=workflow.replace(/\s+/gu," ");
  assert.ok(workflow.includes("workflow_dispatch:"));
+ assert.ok(compact.includes("push: branches: - feat/strict-parity-prerequisites paths: - .github/workflows/eco07-groq-e2e.yml"));
  assert.ok(workflow.includes("default: nvidia"));
  assert.ok(workflow.includes("- nvidia"));
  assert.ok(workflow.includes("- groq"));
@@ -84,12 +85,13 @@ test("ECO-07 exact-SHA workflow selects one provider secret per manual Pi recove
  assert.ok(!nvidiaStep.includes("secrets.GROQ_API_KEY"));
  assert.ok(groqStep.includes("secrets.GROQ_API_KEY"));
  assert.ok(!groqStep.includes("secrets.NVIDIA_API_KEY"));
- assert.ok(compact.includes("if: inputs.provider == 'nvidia'"));
- assert.ok(compact.includes("if: inputs.provider == 'groq'"));
+ assert.ok(compact.includes("if: github.event_name == 'push' || inputs.provider == 'nvidia'"));
+ assert.ok(compact.includes("if: github.event_name == 'workflow_dispatch' && inputs.provider == 'groq'"));
+ assert.ok(compact.includes("github.event_name == 'push' && contains(github.event.head_commit.message, '[ECO07-NVIDIA]')"));
+ assert.ok(compact.includes("ASEN_EXPECTED_SHA: ${{ inputs.expected_sha || github.sha }}"));
  assert.ok(compact.includes("test \"$ASEN_EXPECTED_SHA\" = \"$GITHUB_EVENT_SHA\""));
  assert.ok(compact.includes("git ls-remote origin"));
  assert.ok(workflow.includes("actions/upload-artifact@v6"));
- assert.ok(workflow.includes("${{ inputs.provider }}-recovery-${{ inputs.expected_sha }}-${{ inputs.os }}"));
+ assert.ok(workflow.includes("${{ inputs.provider || 'nvidia' }}-recovery-${{ inputs.expected_sha || github.sha }}-${{ inputs.os || 'ubuntu-24.04' }}"));
  assert.ok(!compact.includes("pull_request:"));
- assert.ok(!compact.includes("push:"));
 });

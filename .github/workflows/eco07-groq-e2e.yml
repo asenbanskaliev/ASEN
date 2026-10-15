@@ -1,5 +1,10 @@
 name: ECO-07 provider task recovery
 on:
+  push:
+    branches:
+      - feat/strict-parity-prerequisites
+    paths:
+      - .github/workflows/eco07-groq-e2e.yml
   workflow_dispatch:
     inputs:
       provider:
@@ -29,13 +34,13 @@ concurrency:
   cancel-in-progress: false
 jobs:
   pi-recovery:
-    if: github.repository == 'asenbanskaliev/ASEN' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && github.ref == 'refs/heads/feat/strict-parity-prerequisites'
-    name: Pi ${{ inputs.provider }} recovery (${{ inputs.os }})
-    runs-on: ${{ inputs.os }}
+    if: github.repository == 'asenbanskaliev/ASEN' && github.run_attempt == 1 && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ECO07-NVIDIA]')))
+    name: Pi ${{ inputs.provider || 'nvidia' }} recovery (${{ inputs.os || 'ubuntu-24.04' }})
+    runs-on: ${{ inputs.os || 'ubuntu-24.04' }}
     timeout-minutes: 15
     env:
-      ASEN_EXPECTED_SHA: ${{ inputs.expected_sha }}
-      ASEN_SELECTED_OS: ${{ inputs.os }}
+      ASEN_EXPECTED_SHA: ${{ inputs.expected_sha || github.sha }}
+      ASEN_SELECTED_OS: ${{ inputs.os || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -64,7 +69,7 @@ jobs:
       - name: Validate pinned local Pi runtime
         run: node scripts/eco07-pi-recovery-preflight.mjs runtime
       - name: Execute real Pi NVIDIA interruption and restart
-        if: inputs.provider == 'nvidia'
+        if: github.event_name == 'push' || inputs.provider == 'nvidia'
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           ASEN_ECO07_PROVIDER: nvidia
@@ -78,7 +83,7 @@ jobs:
           fi
           node --import tsx scripts/eco07-pi-recovery-e2e.mjs
       - name: Execute real Pi Groq interruption and restart
-        if: inputs.provider == 'groq'
+        if: github.event_name == 'workflow_dispatch' && inputs.provider == 'groq'
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           ASEN_ECO07_PROVIDER: groq
@@ -95,7 +100,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: eco07-${{ inputs.provider }}-recovery-${{ inputs.expected_sha }}-${{ inputs.os }}
+          name: eco07-${{ inputs.provider || 'nvidia' }}-recovery-${{ inputs.expected_sha || github.sha }}-${{ inputs.os || 'ubuntu-24.04' }}
           path: eco07-pi-evidence/
           if-no-files-found: warn
           retention-days: 30
