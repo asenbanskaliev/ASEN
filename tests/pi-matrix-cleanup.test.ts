@@ -8,7 +8,7 @@ import {cleanupMatrixWorkspace} from "../scripts/pi-matrix-cleanup.mjs";
 test("matrix cleanup has a command deadline and accepts only completed zero exit",()=>{
  const root=join(tmpdir(),"asen-pi-matrix-fixture");let calls=0;
  cleanupMatrixWorkspace(root,{run:(_file:string,args:string[],options:{timeout:number})=>{
-  calls++;assert.equal(args.at(-1),root);assert.equal(options.timeout,process.platform==="win32"?120_000:30_000);
+  calls++;assert.equal(args.at(-1),root);assert.equal(options.timeout,process.platform==="win32"?300_000:30_000);
   return {status:0,signal:null};
  }});
  assert.equal(calls,1);
