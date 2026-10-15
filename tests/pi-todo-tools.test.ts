@@ -50,6 +50,19 @@ test("linked agent results above the complete UI review bound cannot be accepted
  assert.equal(confirms,0);assert.equal((await store.list(session))[0]?.current.state,"blocked");
 });
 
+test("accepting an independently verified plan result advances the next step after persistence",async t=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-plan-auto-advance-")));t.after(()=>rm(root,{recursive:true,force:true}));
+ const session={sessionId:"plan-auto-advance-session",projectId:root},store=await SessionTodoStore.open(path.join(root,"todos.json")),links=new TaskAgentLinkStore(path.join(root,"links.json"));
+ const [task]=await store.addPlan([{title:"Verify the finished change",requestId:"asen-plan:auto-advance:verifier",dependsOn:[],description:"Independently verify the requested behavior",plan:{role:"verifier",skillPaths:[],skillSelection:{phase:"verify"}}}],session);assert.ok(task);
+ await store.update(task.taskId,session,1,"running");await store.update(task.taskId,session,2,"blocked","Agent result requires independent review");
+ await links.bind({taskId:task.taskId,agentId:"agent-verified",sessionId:session.sessionId,projectId:root,createdAt:new Date().toISOString()});
+ const runtime={query:async()=>({record:{id:"agent-verified",role:"verifier",sessionId:session.sessionId,projectId:root,state:"completed",summary:"The requested behavior and focused checks pass."}})};
+ const host={cwd:root,sessionManager:{getSessionId:()=>session.sessionId},hasUI:true,ui:{confirm:async()=>true}},tools=new Map<string,any>();let advanced=false;
+ registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>store,undefined,{links:async()=>links,agents:async()=>runtime as any},async received=>{assert.equal(received,host);assert.equal((await store.list(session))[0]?.current.state,"done","advance only after independent acceptance is persisted");advanced=true;});
+ const result=await tools.get("asen_todo_accept_result")!.execute("accept",{id:task.taskId,agentId:"agent-verified",revision:3,evidence:"I inspected the exact result and confirmed the acceptance criteria pass."},undefined,undefined,host);
+ assert.equal(result.details.events.at(-1).state,"done");assert.equal(advanced,true);
+});
+
 test("ECO-07 restart recovery preserves one ordered task transition chain through completion",async t=>{
  const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-todo-full-recovery-")));t.after(()=>rm(root,{recursive:true,force:true}));
  const file=path.join(root,"todos.json"),session={sessionId:"recovery-session",projectId:root},initial=await SessionTodoStore.open(file),todo=await initial.add("Finish the approved remaining step",session,undefined,undefined,"recovery-request");

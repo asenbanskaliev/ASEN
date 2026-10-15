@@ -104,6 +104,25 @@ test("session startup automatically dispatches one ready read-only plan task",as
  assert.equal(row?.current.state,"succeeded");assert.equal(seen?.role,"explorer");assert.equal(seen?.prompt,instruction);assert.deepEqual(seen?.skillPaths,skillPaths);assert.equal(state.messages.some(message=>message.includes("ha iniciado la exploración")),true);await state.events.get("session_shutdown")![0]!({},state.context(identity.sessionId));
 });
 
+test("accepting a reviewed plan result automatically dispatches its newly ready verifier",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-plan-auto-after-review-"));t.after(()=>rm(home,{recursive:true,force:true}));const projectId=await realpath(process.cwd()),identity={sessionId:"plan-auto-after-review",projectId},todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),linkFile=join(home,".asen","task-agent-links.json"),todos=await SessionTodoStore.open(todoFile),links=new TaskAgentLinkStore(linkFile),reviewSelection={phase:"adversarial-review" as const},verifySelection={phase:"verify" as const},seen:import("../src/agents/dispatcher.js").AgentRequest[]=[],state=host();
+ const [review,verify]=await todos.addPlan([
+  {title:"Review the change",requestId:"asen-plan:auto-after-review:reviewer",dependsOn:[],description:"Review the exact change and report findings",plan:{role:"reviewer",skillPaths:selectSkills(reviewSelection).map(skill=>skill.path),skillSelection:reviewSelection,priority:3}},
+  {title:"Verify the change",requestId:"asen-plan:auto-after-review:verifier",dependsOn:["asen-plan:auto-after-review:reviewer"],description:"Verify the accepted change independently",plan:{role:"verifier",skillPaths:selectSkills(verifySelection).map(skill=>skill.path),skillSelection:verifySelection,priority:4}},
+ ],identity);assert.ok(review&&verify);
+ const context={...state.context(identity.sessionId),ui:{...state.context(identity.sessionId).ui,confirm:async()=>true}};
+ createPiExtension({homeDir:()=>home,agentRunner:{run:async request=>{seen.push(request);return{id:request.id,ok:true,output:request.role==="verifier"?JSON.stringify({verdict:"pass",evidence:["The accepted change and criteria match"]}):"Review findings are ready for independent acceptance."};}},agentStoreFile:agentFile,todoStoreFile:todoFile,autoAdvancePlans:true})(state.pi as any);
+ await state.events.get("session_start")![0]!({},context);
+ const firstDeadline=Date.now()+5000;let reviewerRow:any,reviewerAgent:string|undefined;
+ while(Date.now()<firstDeadline){reviewerRow=(await todos.list(identity)).find(item=>item.taskId===review!.taskId);reviewerAgent=(await links.list(identity)).find(link=>link.taskId===review!.taskId)?.agentId;if(reviewerRow?.current.state==="blocked"&&reviewerAgent)break;await new Promise(resolve=>setTimeout(resolve,5));}
+ assert.equal(reviewerRow?.current.state,"blocked");assert.equal(seen[0]?.role,"reviewer");assert.equal((await todos.list(identity)).find(item=>item.taskId===verify!.taskId)?.current.state,"planned");
+ await state.tools.get("asen_todo_accept_result").execute("accept-review",{id:review!.taskId,agentId:reviewerAgent,revision:reviewerRow.current.revision,evidence:"I reviewed the saved result and confirmed its findings meet the plan criteria."},new AbortController().signal,()=>{},context);
+ const nextDeadline=Date.now()+5000;let verifyRow:any;
+ while(Date.now()<nextDeadline){verifyRow=(await todos.list(identity)).find(item=>item.taskId===verify!.taskId);if(verifyRow?.current.state==="done")break;await new Promise(resolve=>setTimeout(resolve,5));}
+ assert.equal(verifyRow?.current.state,"done");assert.equal(seen[1]?.role,"verifier");assert.equal(seen.length,2,"only the newly dependency-ready verifier should start after acceptance");
+ await state.events.get("session_shutdown")![0]!({},context);
+});
+
 test("Pi project changes while the Todo launch lock is held prevent agent dispatch",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-agent-lock-project-change-"));t.after(()=>rm(home,{recursive:true,force:true}));const session={sessionId:"launch-lock-session",projectId:await realpath(process.cwd())},todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),linkFile=join(home,".asen","task-agent-links.json"),todos=await SessionTodoStore.open(todoFile),links=new TaskAgentLinkStore(linkFile),instruction="Inspect the exact persisted task",selection={phase:"explore" as const},task=await todos.add("Identity-bound Pi task",session,undefined,undefined,"asen-plan:lock-project:explorer",[],instruction,{role:"explorer",skillPaths:selectSkills(selection).map(skill=>skill.path),skillSelection:selection});let runnerCalls=0;
  const state=host(),context=state.context(session.sessionId),runner:AgentRunner={run:async request=>{runnerCalls++;return{id:request.id,ok:true,output:"must not execute after identity change"};}};createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:agentFile,todoStoreFile:todoFile,autoAdvancePlans:false})(state.pi as any);await state.events.get("session_start")![0]!({},context);
