@@ -2,7 +2,7 @@
 
 ## Decision
 
-**PARTIAL / OPEN.** ASEN can turn verified ODD facts into a persisted executable Todo DAG, dispatch dependency-ready read-only Pi roles including clarification-only work, and run a bounded `worker` through a candidate-bound, explicitly authorized Pi lifecycle. The worker is persisted as a descriptive record before dispatch; write authority remains in memory and is never restored after restart. A linked task remains blocked for independent human review after the agent returns. Full ECO-06 remains open because `primary` dispatch, structured lifecycle grants, and restart recovery/re-authorization of an interrupted writer are not implemented.
+**PARTIAL / OPEN.** ASEN can turn verified ODD facts into a persisted executable Todo DAG, continue dependency-ready `primary` work in the active Pi session, dispatch read-only roles including clarification, and run a bounded `worker` through a candidate-bound, explicitly authorized lifecycle. The worker is persisted as a descriptive record before dispatch; write authority remains in memory and is never restored after restart. A linked task remains blocked for independent review after the agent returns. Full ECO-06 remains open because structured lifecycle grants and the complete inspect → replan → fresh-authorization recovery journey are not implemented.
 
 ## Implemented and exercised
 
@@ -17,6 +17,8 @@
 - `TrustedTaskAgentBinder` persists Todo ownership and the agent link before the Pi runner starts. Agent terminal outcomes reconcile to `blocked`; they never complete a Todo.
 - `asen_todo_accept_result` requires a blocked planned task, an immutable task-agent link, matching session/project/role, a durable successful terminal agent record, a bounded full result view, independent user evidence, and explicit Pi UI confirmation. Direct `done` is rejected for a linked plan task. Acceptance is persisted as ordered `running` then `done` events, so a crash between them recovers to review rather than completing silently.
 - Interrupted linked read-only work requires explicit continuation; failed linked read-only work permits one explicitly confirmed retry. Both bind the child attempt before dispatch. Writes and cancelled tasks are not retried.
+- The primary role runs in the active Pi turn, without creating an agent or receiving a write grant; a compare-and-swap Todo claim prevents duplicate advancement.
+- `asen_todo_inspect_interrupted_write` is a read-only recovery aid for one interrupted writer linked to the exact active session and project. It compares the saved candidate revision with current Git HEAD, reports tracked/untracked paths and additions/deletions against the approved scope, and never returns file contents or changes the worktree. It requires a new plan and a new explicit authorization before any later write.
 
 ## Evidence
 
@@ -33,8 +35,8 @@ These local checks are not CI evidence for a published SHA. Hosted CI and Releas
 
 ## Remaining work
 
-- The `primary` plan role still has no Pi dispatch path. The controlled writer currently supports only the organic bounded lifecycle; structured workflows and lifecycle phase grants are not wired into the persisted Todo DAG. Clarifier interruption may be exposed for review after restart, but clarification has no automatic continuation path.
-- The agent record intentionally does not preserve write authority. A process restart cannot resume a partially executed writer automatically; the task must be inspected, replanned against the current candidate, and explicitly reauthorized. ECO-06 still needs a dedicated interrupted-during-operation test to establish safe recovery behavior for partially applied file changes.
+- Structured workflows and lifecycle phase grants are not wired into the persisted Todo DAG. The inspection tool reports a recovery plan; the user must resolve changed files and create a new plan and authorization before writing.
+- The agent record intentionally does not preserve write authority. A process restart cannot resume a partially executed writer automatically. The new inspection test is local deterministic Git evidence, not an abrupt Pi SIGKILL recovery receipt; ECO-06 still needs the full Pi-host interrupted-write and fresh-authorization journey.
 - Plain text passed directly to the lower-level `/asen-plan` command still produces conservative missing-fact triage. The chat bridge relies on the configured Pi model to follow coordinator guidance and infer facts; this deterministic local change does not prove behavior with a live provider.
 - Acceptance is an explicit human review of the persisted result and recorded acceptance instruction; ASEN does not execute arbitrary acceptance commands inferred from agent output.
 - Concurrency is bounded by the agent dispatcher, but plan scheduling remains one confirmed task per Pi tool call. There is no automatic multi-task scheduler or provider quota policy.
@@ -45,9 +47,9 @@ No permission is inferred from a plan, model response, skill selection, or succe
 
 The current controlled-write path was rechecked against the exact `fb26e5ae0092cfbebeeec115614db0b401f15871` source. One-use write admission is bound to the current candidate, repository, role, and exact surfaces; the persisted agent record excludes the authority token and write scope; completion remains blocked for independent review. Primary-session dispatch still has no execution dispatcher. Clarification-only dispatch is now implemented as a durable read-only role with exact provenance and explicit result acceptance.
 
-Expanded `tests/plan-dispatcher-role-boundaries.test.ts`: approved clarification proves exact durable read-only provenance and link-before-run ordering; concurrent dispatch proves one durable admission; post-confirmation instruction, plan, and dependency drift is rejected before enqueue; decline and identity/revision drift remain planned; `primary` still returns blocked before confirmation or launch. The historical focused R4 set passed **152/152 tests** across the plan, dispatcher, Pi agent, Todo persistence, recovery, evidence-bundle, and matrix contracts.
+Expanded `tests/plan-dispatcher-role-boundaries.test.ts`: approved clarification proves exact durable read-only provenance and link-before-run ordering; concurrent dispatch proves one durable admission; post-confirmation instruction, plan, and dependency drift is rejected before enqueue; decline and identity/revision drift remain planned. Primary tasks are claimed once and continue in the active session without an agent or write grant. The historical focused R4 set passed **152/152 tests** across the plan, dispatcher, Pi agent, Todo persistence, recovery, evidence-bundle, and matrix contracts.
 
-**Decision remains PARTIAL / OPEN.** Remaining work includes usable primary execution, structured lifecycle grants, and a real interrupted-write scenario showing recovery requires a fresh candidate and explicit reauthorization. Existing tests demonstrate that write authority is not restored from disk; they do not establish safe recovery from partially applied file changes on a real Pi host. No automatic multi-task scheduler or provider quota policy is claimed.
+**Decision remains PARTIAL / OPEN.** Primary execution is implemented in the active session. Remaining work includes structured lifecycle grants, the full real Pi interrupted-write and fresh-authorization journey, and native review. No automatic multi-task scheduler or provider quota policy is claimed.
 
 ## Authorization snapshot race correction (2026-10-14)
 
@@ -55,7 +57,7 @@ Independent review found a gap between the worker's post-confirmation snapshot c
 
 The controlled worker now receives enqueue and dispatch callbacks only through `launchExact`. The binder compares the complete persisted Todo and requires `planned` while holding the same lock that records the running claim, binds ownership, and dispatches. The agent record is not durably enqueued until that exact comparison succeeds. The worker path has no direct-dispatch fallback. `tests/trusted-task-agent-binder.test.ts` reproduces the stale-state race and requires zero enqueue, zero link and zero runner calls; `tests/pi-agent-runtime.test.ts` continues to cover the approved writer path.
 
-This closes the local stale-snapshot admission gap only. ECO-06 remains **PARTIAL / OPEN**: primary-session dispatch, structured lifecycle grants, real interrupted-write recovery and native review remain separate gates.
+This closes the local stale-snapshot admission gap only. ECO-06 remains **PARTIAL / OPEN**: structured lifecycle grants, real interrupted-write recovery and native review remain separate gates.
 
 
 ## Interrupted writer regression tranche (2026-10-15)
@@ -66,4 +68,12 @@ Added `tests/eco06-interrupted-writer.test.ts` to exercise a separate Node/tsx p
 
 **Evidence classification:** this is a deterministic subprocess/persistence regression, **not** a live Pi writer interruption and **not** a full ECO-06 acceptance receipt. CI must pass on the final exact SHA before this regression is called verified. The test uses a process that exits after applying an edit; it does not establish the stronger abrupt-SIGKILL or mid-write durability property. No claim of automated file repair, human-free approval, or real provider execution is made.
 
-**R4 checklist:** reject authority replay, reject duplicate continuation, retain partial edits for explicit review, ensure session/project isolation, verify second-restart idempotence, and preserve the distinction between test coverage and live provider evidence. The remaining work is a real Pi interrupted-write experiment with fresh reauthorization, plus primary-session execution and structured phase grants.
+**R4 checklist:** reject authority replay, reject duplicate continuation, retain partial edits for explicit review, ensure session/project isolation, verify second-restart idempotence, and preserve the distinction between test coverage and live provider evidence. The remaining work is a real Pi interrupted-write experiment with fresh reauthorization and structured phase grants.
+
+## Read-only recovery inspection tranche (2026-10-15)
+
+Added `asen_todo_inspect_interrupted_write` for an interrupted worker only when the agent, Todo link, current Pi session, and project all match. The report compares saved candidate HEAD with current Git HEAD and lists changed paths, scope membership, staged/unstaged state, and line counts. It does not expose patch contents, edit or revert files, continue the task, or restore authority. Dirty files, untracked files, out-of-scope edits, or candidate drift require manual resolution before a fresh plan; any new write still needs a separate Pi confirmation.
+
+The helper has deterministic Git tests for partial tracked edits, untracked files, out-of-scope edits, candidate drift, content non-disclosure, and no mutation. This is local evidence only. The full Pi E2E acceptance and CI on the final SHA remain required; ECO-06 stays PARTIAL.
+
+Local validation in this tranche: full `npm test` passed **1,496/1,496 executed tests** with 13 skips; after the final helper cleanup, the focused recovery/Pi/provider set passed **59/59**, with `npm run typecheck`, `npm run build`, all six registry/skills/memory/ecosystem audits, and `git diff --check` passing. Ecosystem source proof remains NOT ADMITTED because the retained baseline repository is unavailable. These results do not replace CI on the published SHA or a real Pi interrupted-writer run.

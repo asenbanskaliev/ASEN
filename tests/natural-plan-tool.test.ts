@@ -66,6 +66,8 @@ test("ASEN registers the natural-language planning tool and injects its guidance
  const options={sections:{} as Record<string,string>};events.get("before_agent_start")?.({systemPromptOptions:options},{});
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/ordinary language/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Never ask the user to write JSON/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/asen_todo_inspect_interrupted_write/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/fresh plan plus a new explicit write authorization/u);
 });
 
 test("natural-language plan request persists the real planner output without authorizing a write",async()=>{
