@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
+import {mkdir,mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {spawnSync} from "node:child_process";
+import {execFileSync,spawnSync} from "node:child_process";
+import {createPiExtension} from "../extensions/asen.js";
 import {PersistentAgentStore} from "../src/runtime/agent-store.js";
+import {SessionTodoStore} from "../src/runtime/todo-store.js";
+import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
+import {selectSkills} from "../src/skills/registry.js";
 
 /**
  * ECO-06 crash boundary: the worker has already modified a real file when
@@ -62,4 +66,37 @@ test("ECO-06 interrupted writer preserves partial edits but cannot replay author
  assert.equal((await reopenedAgain.store.list("session-a","/repo")).length,1);
  await assert.rejects(()=>reopenedAgain.store.enqueue({id:"unauthorized-replay",role:"worker",prompt:"Edit again",repository:"/repo",isolationKey:"session-a",writeSurfaces:["work.txt"]},{kind:"user",id:"pi:session-a"}),/Authority-bearing agent requests cannot be serialized/);
  assert.equal(await readFile(target,"utf8"),before);
+});
+
+test("ECO-06 Pi inspection binds the interrupted writer to its blocked Todo and current Git diff",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-eco06-pi-inspection-")),home=join(root,"home"),project=join(root,"project");
+ t.after(()=>rm(root,{recursive:true,force:true}));await Promise.all([mkdir(home,{recursive:true}),mkdir(project,{recursive:true})]);
+ const git=(...args:string[])=>execFileSync("git",args,{cwd:project,encoding:"utf8",stdio:["ignore","pipe","pipe"]});
+ git("init","-q");git("config","user.email","asen-test@example.invalid");git("config","user.name","ASEN test");
+ await writeFile(join(project,"target.txt"),"before\n");await writeFile(join(project,"outside.txt"),"stable\n");git("add","target.txt","outside.txt");git("commit","-qm","clean candidate");
+ const revision=git("rev-parse","HEAD").trim(),identity={sessionId:"eco06-pi-inspection-session",projectId:project},candidate={id:"eco06-fixture-candidate",repository:project,revision,createdAt:new Date().toISOString()},agentId="eco06-pi-inspection:worker",todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),linkFile=join(home,".asen","task-agent-links.json");
+ await writeFile(join(project,"target.txt"),"before\npartial PRIVATE-CONTENT\n");await writeFile(join(project,"outside.txt"),"unexpected outside edit\n");
+ const selection={phase:"apply" as const,risk:"medium" as const,codeChange:true,behaviorChange:true,filesTouched:2},skillPaths=selectSkills(selection).map(skill=>skill.path),todos=await SessionTodoStore.open(todoFile),[todo]=await todos.addPlan([{title:"Recover partial fixture write",requestId:"asen-plan:eco06-pi-inspection:worker",dependsOn:[],description:"Update the two scoped fixture files",plan:{role:"worker",skillPaths,skillSelection:selection,candidate,writeSurfaces:["target.txt","new-target.txt"],writerAuthorizationBasis:JSON.stringify({instruction:"Update the two scoped fixture files"})}}],identity);
+ await todos.update(todo!.taskId,identity,1,"running");await todos.recover(identity);
+ const seededAgent=spawnSync(process.execPath,["--import","tsx","--input-type=module","-e",`
+  import {PersistentAgentStore} from "./src/runtime/agent-store.ts";
+  const [file,project,sessionId,id,revision]=process.argv.slice(1),{store}=await PersistentAgentStore.open(file);
+  const candidate={id:"eco06-fixture-candidate",repository:project,revision,createdAt:new Date().toISOString()};
+  const request={id,role:"worker",prompt:"Update only the two approved fixture files",repository:project,isolationKey:sessionId,candidate,writeSurfaces:["target.txt","new-target.txt"],writerAdmission:{oneUse:true}};
+  await store.enqueueControlledWorker(request,{kind:"user",id:"pi:"+sessionId});await store.running(id,new Date().toISOString());
+ `,agentFile,project,identity.sessionId,agentId,revision],{cwd:process.cwd(),encoding:"utf8",timeout:30_000});
+ assert.equal(seededAgent.status,0,`interrupted agent fixture failed: ${seededAgent.stderr}`);
+ await new TaskAgentLinkStore(linkFile).bind({taskId:todo!.taskId,agentId,sessionId:identity.sessionId,projectId:project,createdAt:new Date().toISOString()});
+ const events=new Map<string,Function[]>(),tools=new Map<string,any>();const pi={on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),registerCommand:()=>{},registerTool:(tool:any)=>tools.set(tool.name,tool),getCommands:()=>[],getAllTools:()=>[]};
+ const context=(sessionId=identity.sessionId,cwd=project)=>({mode:"rpc",hasUI:true,cwd,sessionManager:{getSessionId:()=>sessionId},ui:{notify:()=>{},confirm:async()=>true,setWidget:()=>{}}});
+ const priorRegistry=process.env.ASEN_NO_SKILL_REGISTRY;t.after(()=>{if(priorRegistry===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=priorRegistry;});process.env.ASEN_NO_SKILL_REGISTRY="1";
+ createPiExtension({homeDir:()=>home,agentStoreFile:agentFile,todoStoreFile:todoFile,enableMemoryRuntime:false,enableWorkspaceRuntime:false,agentRunner:{run:async()=>{throw new Error("Interrupted writer must never be replayed during inspection");}}})(pi as any);
+ await events.get("session_start")![0]!({},context());
+ const result=await tools.get("asen_todo_inspect_interrupted_write").execute("inspect-partial-writer",{agentId},new AbortController().signal,()=>{},context());
+ assert.equal(result.details.task.state,"blocked");assert.equal(result.details.agent.state,"interrupted");assert.deepEqual(result.details.candidate,{expectedRevision:revision,observedHead:revision,matches:true});
+ assert.equal(result.details.repository.clean,false);assert.equal(result.details.recovery.automaticWriteAllowed,false);assert.equal(result.details.recovery.freshAuthorizationRequired,true);assert.equal(result.details.recovery.eligibleForFreshPlan,false);
+ assert.deepEqual(result.details.changes.map((item:any)=>[item.path,item.scope]),[["outside.txt","outside"],["target.txt","approved"]]);assert.equal(JSON.stringify(result.details).includes("PRIVATE-CONTENT"),false);
+ assert.equal(await readFile(join(project,"target.txt"),"utf8"),"before\npartial PRIVATE-CONTENT\n");assert.equal((await todos.list(identity)).length,1);assert.equal((await todos.list(identity))[0]?.current.state,"blocked");
+ await assert.rejects(()=>tools.get("asen_todo_inspect_interrupted_write").execute("wrong-session",{agentId},new AbortController().signal,()=>{},context("foreign-session")),/Only an interrupted writer owned by this exact Pi session and project/u);
+ await events.get("session_shutdown")![0]!({},context());
 });
