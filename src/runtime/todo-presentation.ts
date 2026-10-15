@@ -19,8 +19,24 @@ export function todoProgressSummary(items:readonly (TodoItem&{current:TodoItem["
  if(!items.length)return "ASEN: no hay tareas activas para este proyecto y sesión.";
  const completed=items.filter(item=>item.current.state==="done").length,cancelled=items.filter(item=>item.current.state==="cancelled").length,waiting=items.filter(item=>item.current.state==="blocked").length,running=items.filter(item=>item.current.state==="running").length;
  const count=(amount:number,noun:string)=>`${amount} ${noun}${amount===1?"":"s"}`;
- if(waiting)return `ASEN pausó el trabajo para revisar ${count(waiting,"tarea")}. No las repetirá automáticamente. Si quieres retomarlas, di «continúa» y revisaré qué paso es seguro; pediré confirmación cuando haga falta.`;
+ if(waiting)return `ASEN pausó el trabajo para revisar ${count(waiting,"tarea")}. No las repetirá automáticamente. Si quieres retomarlas, di «continúa»; reanudaré las tareas de solo lectura que sean seguras y te preguntaré solo si hace falta una escritura o una decisión importante.`;
  if(running)return `ASEN está trabajando: ${completed} de ${items.length} ${items.length===1?"tarea completada":"tareas completadas"}.`;
  if(completed+cancelled===items.length)return cancelled?`ASEN cerró el trabajo: ${count(completed,"tarea")} completada${completed===1?"":"s"} y ${count(cancelled,"tarea")} cancelada${cancelled===1?"":"s"}.`:`ASEN completó ${count(completed,"tarea")}; no quedan pasos pendientes.`;
  return `ASEN lleva ${completed} de ${items.length} tareas completadas; continuará con el siguiente paso disponible.`;
+}
+
+/** Compact Pi editor widget for active work; it exposes progress, never task IDs or permissions. */
+export function todoProgressWidget(items:readonly (TodoItem&{current:TodoItem["events"][number]})[],maxRows=3):string[]|undefined{
+ if(!Number.isInteger(maxRows)||maxRows<1||maxRows>8)throw new Error("Todo widget row limit must be between 1 and 8");
+ const active=items.filter(item=>item.current.state!=="done"&&item.current.state!=="cancelled");
+ if(!active.length)return undefined;
+ const running=active.filter(item=>item.current.state==="running").length,blocked=active.filter(item=>item.current.state==="blocked").length;
+ const header=`ASEN · ${active.length} ${active.length===1?"paso activo":"pasos activos"}${running?` · ${running} en curso`:""}${blocked?` · ${blocked} pausado${blocked===1?"":"s"}`:""}`;
+ const rows=active.slice(0,maxRows).map(item=>{
+  const state:Record<string,string>={planned:"Pendiente",running:"En curso",succeeded:"En revisión",blocked:"Pausado",failed:"Fallido"},role:Record<string,string>={primary:"Tarea",explorer:"Exploración",worker:"Cambio",reviewer:"Revisión",verifier:"Verificación",clarifier:"Aclaración"};
+  const label=`${state[item.current.state]??"Pendiente"} · ${role[item.plan?.role??"primary"]??"Tarea"}: `,title=clean(item.title),available=Math.max(1,100-label.length),visible=title.length>available?`${title.slice(0,available-1)}…`:title;
+  return `${label}${visible}`;
+ });
+ if(active.length>maxRows)rows.push(`y ${active.length-maxRows} paso${active.length-maxRows===1?"":"s"} más`);
+ return [header,...rows];
 }

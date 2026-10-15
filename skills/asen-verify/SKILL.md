@@ -7,6 +7,8 @@ Use as the candidate-bound quality gate after implementation or on an explicit v
 ## Hard Rules
 - Verification is read-only.
 - Execute relevant tests/builds; static inspection alone does not prove behavior.
+- Infer the smallest relevant local deterministic checks from repository scripts, tests, and project instructions; run them without asking the user to choose commands or nominate test files.
+- Keep local verification separate from hosted CI and provider-backed tests. Do not start CI, consume external model/provider quota, publish, deploy, or cause external writes as part of verification. If a needed check has external cost or side effects, report it as pending instead of silently running it.
 - Every required scenario maps to real passing evidence or remains non-compliant.
 - Evidence must match exact repository, candidate and revision.
 - Do not fix findings during verification.

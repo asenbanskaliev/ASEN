@@ -48,6 +48,8 @@ test("Pi prompt guidance removes user-authored ODD JSON and explains safe automa
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Never ask the user to write JSON/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/automatically dispatch dependency-ready read-only tasks/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/exact one-run Pi approval/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Group related unresolved decisions into that same message/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/does not need another confirmation dialog/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/continúa.*reanuda.*¿qué queda?/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Do not ask the user to run slash commands or copy task IDs/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/explicitly says to stop, cancel, or replace work/u);
@@ -124,7 +126,8 @@ test("material clarification stays in chat instead of parking a blocked Todo tas
   assert.equal(result.details.persistence.status,"not-needed");
   assert.equal(result.details.execution.started,false);
   assert.deepEqual(await todos.list({sessionId:"natural-clarify-session",projectId:process.cwd()}),[]);
-  assert.match(result.content[0].text,/Haz una sola pregunta concreta en esta conversación/u);
+  assert.match(result.content[0].text,/Haz un único mensaje breve en esta conversación/u);
+  assert.match(result.content[0].text,/agrupa en él las decisiones relacionadas/u);
   assert.match(result.content[0].text,/No guardes una tarea pendiente/u);
   assert.doesNotMatch(result.content[0].text,/slash command|task-[0-9a-f-]{36}|natural-clarify-session/u);
  }finally{await rm(directory,{recursive:true,force:true});}

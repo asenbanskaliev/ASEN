@@ -50,12 +50,12 @@ import {TaskAgentTodoReconciler} from "../src/runtime/task-agent-reconciler.js";
 import {dispatchNextPlanTask} from "../src/runtime/plan-dispatcher.js";
 import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-tools.js";
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
-import {todoProgressSummary,todoStatusRows} from "../src/runtime/todo-presentation.js";
+import {todoProgressSummary,todoProgressWidget,todoStatusRows} from "../src/runtime/todo-presentation.js";
 import {addAsenRequestGuidance} from "../src/runtime/request-guidance.js";
 import {ASEN_PLAN_REQUEST_TOOL,registerAsenPlanRequestTool} from "../src/runtime/natural-plan-tool.js";
 import {formatActivePlanContext} from "../src/runtime/plan-context.js";
 
-type CommandContext={cwd:string;hasUI?:boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>}};
+type CommandContext={cwd:string;hasUI?:boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void}};
 type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
@@ -147,19 +147,28 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   
   const todoStorePromise=dependencies.todoStoreFactory?.()??(dependencies.enableTodoRuntime?(dependencies.todoStoreFile?SessionTodoStore.open(dependencies.todoStoreFile):SessionTodoStore.openProjectScoped(path.join(home(),".asen","todos"),path.join(home(),".asen","todos.json"))):undefined);
   const taskAgentLinks=agentRuntimePromise&&todoStorePromise?new TaskAgentLinkStore(path.join(home(),".asen","task-agent-links.json")):undefined;
+  const sessionIdentity=async(ctx:CommandContext)=>{const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId)throw new Error("ASEN requires the active Pi session");const projectId=await canonical(ctx.cwd);return {sessionId,projectId,worktree:projectId};};
+  const refreshTodoWidget=async(ctx:CommandContext):Promise<void>=>{
+   if(!ctx?.ui?.setWidget)return;
+   try{
+    if(!todoStorePromise){ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});return;}
+    const identity=await sessionIdentity(ctx),rows=await (await todoStorePromise).list(identity),current=await sessionIdentity(ctx);
+    if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId){ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});return;}
+    ctx.ui.setWidget("asen-todo-progress",todoProgressWidget(rows),{placement:"belowEditor"});
+   }catch{/* The progress display is optional and never blocks task work. */}
+  };
   if(todoStorePromise)registerTodoTools(pi,async()=>todoStorePromise,taskAgentLinks&&agentRuntimePromise?async(taskId,identity)=>{
    const [links,runtime]=await Promise.all([taskAgentLinks.list(identity),agentRuntimePromise]);
    await Promise.all(links.filter(link=>link.taskId===taskId).map(link=>runtime.cancel(link.agentId,identity)));
-  }:undefined,taskAgentLinks&&agentRuntimePromise?{links:async()=>taskAgentLinks,agents:async()=>agentRuntimePromise}:undefined,async host=>{await advancePlan(host as CommandContext);});
+  }:undefined,taskAgentLinks&&agentRuntimePromise?{links:async()=>taskAgentLinks,agents:async()=>agentRuntimePromise}:undefined,async host=>{await advancePlan(host as CommandContext);},async host=>refreshTodoWidget(host as CommandContext));
   if(memoryStorePromise)registerPiMemoryTools(pi,host=>currentMemoryBinding(host));
   const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks),links:async()=>taskAgentLinks}:undefined):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
-  const sessionIdentity=async(ctx:CommandContext)=>{const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId)throw new Error("ASEN requires the active Pi session");const projectId=await canonical(ctx.cwd);return {sessionId,projectId,worktree:projectId};};
   const advancingPlans=new Set<string>();
-  const advancePlan=async(ctx:CommandContext):Promise<{started:boolean;authorized:boolean;role?:string;title?:string}>=>{
-   if(dependencies.autoAdvancePlans===false)return {started:false,authorized:false};
-   if(!todoStorePromise||!agentRuntimePromise||!taskAgentLinks)return {started:false,authorized:false};
-   const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;if(advancingPlans.has(key))return {started:false,authorized:false};advancingPlans.add(key);
+  const advancePlan=async(ctx:CommandContext):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
+   if(dependencies.autoAdvancePlans===false)return {started:false,authorized:false,reason:"Automatic plan dispatch is disabled."};
+   if(!todoStorePromise||!agentRuntimePromise||!taskAgentLinks)return {started:false,authorized:false,reason:"The local plan dispatcher is unavailable."};
+   const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;if(advancingPlans.has(key))return {started:false,authorized:false,reason:"ASEN is already advancing this plan."};advancingPlans.add(key);
    try{
     const [todos,agents]=await Promise.all([todoStorePromise,agentRuntimePromise]);
     const result=await dispatchNextPlanTask({todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,validateIdentity:async()=>{const current=await sessionIdentity(ctx);if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw new Error("Pi session or project changed during automatic plan advancement");},confirm:async task=>{
@@ -170,26 +179,28 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     }});
     const dispatched=result.status==="dispatched",title=dispatched?(await todos.list(identity)).find(task=>task.taskId===result.todoId)?.title:undefined;
     if(dispatched){const labels:Record<string,string>={explorer:"la exploración",worker:"el cambio autorizado",reviewer:"la revisión",verifier:"la verificación"};ctx.ui.notify(`ASEN ha iniciado ${labels[result.role]??"la tarea siguiente"}${title?`: ${title}`:""}.`,"info");}
-    return dispatched?{started:true,authorized:result.role==="worker",role:result.role,...(title?{title}:{})}:{started:false,authorized:false};
+    await refreshTodoWidget(ctx);
+    return dispatched?{started:true,authorized:result.role==="worker",role:result.role,...(title?{title}:{})}:{started:false,authorized:false,...(result.status==="blocked"?{reason:result.reason}:{})};
    }finally{advancingPlans.delete(key);}
   };
   const startSession=async(ctx:CommandContext)=>{
-   agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;await lifecycle.start(ctx,registryStartupDisabled(undefined));
+   agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});await lifecycle.start(ctx,registryStartupDisabled(undefined));
    try{
     finishActiveMemory();
     if(memoryStorePromise){const identity=await sessionIdentity(ctx),store=await memoryStorePromise;activeMemory=createPiMemoryBinding(store,identity.projectId,identity.sessionId);memoryFirstRequest=true;}
    }catch(error){activeMemory=undefined;try{ctx.ui.notify(`ASEN no pudo activar la memoria local del proyecto: ${safeErrorMessage(error)}`,"error");}catch{/* Memory remains unavailable without interrupting Pi startup. */}}
    let identity:{sessionId:string;projectId:string}|undefined;const todos=todoStorePromise?await todoStorePromise:undefined;
    if(todos){try{identity=await sessionIdentity(ctx);await todos.recover(identity);}catch{ctx.ui.notify("ASEN no pudo recuperar el estado de las tareas; no ha repetido ninguna.","error");}if(todos.diagnostics())ctx.ui.notify("ASEN aisló un archivo de tareas dañado; no inició ninguna tarea guardada.","error");if(identity){const interrupted=(await todos.list(identity)).filter(item=>item.current.state==="blocked"&&/restarted|session ended|interrupted/iu.test(item.current.reason??""));if(interrupted.length)ctx.ui.notify(todoProgressSummary(interrupted),"info");}}
+   await refreshTodoWidget(ctx);
    if(workspaceStorePromise){const store=await workspaceStorePromise;if(store.diagnostics())ctx.ui.notify("ASEN detectó y aisló datos de atribución dañados.","error");}
    if(agentRuntimePromise){const runtime=await agentRuntimePromise;identity??=await sessionIdentity(ctx);agentDeliveryContext=ctx;agentDeliveryIdentity=identity;
     if(!unsubscribeAgentDelivery)unsubscribeAgentDelivery=runtime.subscribeTerminal(record=>{
      const current=agentDeliveryContext,active=agentDeliveryIdentity;if(!current||!active||record.sessionId!==active.sessionId||record.projectId!==active.projectId||current.sessionManager?.getSessionId?.()!==active.sessionId)return;
      const roleLabels:Record<string,string>={primary:"la tarea",explorer:"la exploración",worker:"el cambio",reviewer:"la revisión",verifier:"la verificación",clarifier:"la aclaración"};
      const completed=record.state==="completed",failed=record.state==="failed",notifyTerminal=()=>{const latest=agentDeliveryContext,latestIdentity=agentDeliveryIdentity;if(!latest||!latestIdentity||record.sessionId!==latestIdentity.sessionId||record.projectId!==latestIdentity.projectId||latest.sessionManager?.getSessionId?.()!==latestIdentity.sessionId)return;latest.ui.notify(completed?`ASEN terminó ${roleLabels[record.role]??"una tarea"}; comprobará el resultado antes de cerrar el plan.`:failed?`ASEN no pudo completar ${roleLabels[record.role]??"una tarea"}. Si quieres reintentarlo, di «continúa» y revisaré el estado primero.`:`ASEN pausó ${roleLabels[record.role]??"una tarea"}. Di «continúa» cuando quieras que revise cómo retomarla.`,completed?"info":"error");};
-     if(todoStorePromise&&taskAgentLinks)void Promise.all([todoStorePromise,agentRuntimePromise]).then(async([store,agents])=>{const identity={sessionId:record.sessionId,projectId:record.projectId},linked=(await taskAgentLinks.list(identity)).some(link=>link.agentId===record.id);if(!linked){notifyTerminal();return;}if(record.state!=="completed"){notifyTerminal();await new TaskAgentTodoReconciler(store,agents!,taskAgentLinks).reconcile(identity);return;}await new TaskAgentTodoReconciler(store,agents!,taskAgentLinks).reconcile(identity);const latest=agentDeliveryContext,currentIdentity=agentDeliveryIdentity;if(latest&&currentIdentity&&record.sessionId===currentIdentity.sessionId&&record.projectId===currentIdentity.projectId&&latest.sessionManager?.getSessionId?.()===currentIdentity.sessionId){await advancePlan(latest);const rows=await store.list(currentIdentity);if(rows.length)latest.ui.notify(todoProgressSummary(rows),"info");else{const archived=await store.archived(currentIdentity);if(archived.length)latest.ui.notify(todoProgressSummary(archived),"info");}}}).catch(()=>notifyTerminal());else notifyTerminal();
+     if(todoStorePromise&&taskAgentLinks)void Promise.all([todoStorePromise,agentRuntimePromise]).then(async([store,agents])=>{const identity={sessionId:record.sessionId,projectId:record.projectId},linked=(await taskAgentLinks.list(identity)).some(link=>link.agentId===record.id);if(!linked){notifyTerminal();return;}if(record.state!=="completed"){notifyTerminal();await new TaskAgentTodoReconciler(store,agents!,taskAgentLinks).reconcile(identity);const latest=agentDeliveryContext,currentIdentity=agentDeliveryIdentity;if(latest&&currentIdentity&&record.sessionId===currentIdentity.sessionId&&record.projectId===currentIdentity.projectId)await refreshTodoWidget(latest);return;}await new TaskAgentTodoReconciler(store,agents!,taskAgentLinks).reconcile(identity);const latest=agentDeliveryContext,currentIdentity=agentDeliveryIdentity;if(latest&&currentIdentity&&record.sessionId===currentIdentity.sessionId&&record.projectId===currentIdentity.projectId&&latest.sessionManager?.getSessionId?.()===currentIdentity.sessionId){await advancePlan(latest);const rows=await store.list(currentIdentity);if(rows.length)latest.ui.notify(todoProgressSummary(rows),"info");else{const archived=await store.archived(currentIdentity);if(archived.length)latest.ui.notify(todoProgressSummary(archived),"info");}await refreshTodoWidget(latest);}}).catch(()=>notifyTerminal());else notifyTerminal();
     });
-    const records=await runtime.list(identity),recoverable=records.filter(record=>record.state==="queued"||record.state==="interrupted");if(runtime.quarantined)ctx.ui.notify("ASEN aisló datos de agentes dañados; no inició tareas guardadas.","error");if(recoverable.length)ctx.ui.notify(`Hay ${recoverable.length} tarea(s) pausada(s). Si quieres retomarlas, di «continúa»; ASEN comprobará cada estado y pedirá confirmación cuando corresponda. No repetirá trabajo automáticamente.`,"info");
+    const records=await runtime.list(identity),recoverable=records.filter(record=>record.state==="queued"||record.state==="interrupted");if(runtime.quarantined)ctx.ui.notify("ASEN aisló datos de agentes dañados; no inició tareas guardadas.","error");if(recoverable.length)ctx.ui.notify(`Hay ${recoverable.length} tarea(s) pausada(s). Si quieres retomarlas, di «continúa»; ASEN comprobará la identidad y reanudará solo exploraciones interrumpidas de solo lectura. No repetirá automáticamente tareas de escritura ni tareas fallidas.`,"info");
     try{await advancePlan(ctx);}catch{ctx.ui.notify("ASEN no pudo avanzar el plan automáticamente. Di «continúa» y revisaré el estado antes de reintentarlo.","error");}
    }
    try{await incrementUsageFile(usageFile,"sessions");}catch{try{ctx.ui.notify("ASEN no pudo guardar el uso local.","error");}catch{/* Notification is best-effort when the UI is unavailable. */}}
@@ -269,7 +280,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     output.persistence={status:"not-needed",reason:"Material clarification or a high-risk boundary is handled in the current conversation, without parking a blocked Todo task"};
     output.execution={started:false,authorized:false};
     output.inlineClarification=true;
-    output.notice=output.risk==="high"?"This request crosses a high-risk boundary. Do not dispatch, write, or save a blocked task. Explain the missing control in ordinary language and wait for the user's next instruction.":"A material decision is unresolved. Ask one concise question in ordinary language, then re-evaluate the request. Do not ask the user to run commands, provide JSON, or inspect task records.";
+    output.notice=output.risk==="high"?"This request crosses a high-risk boundary. Do not dispatch, write, or save a blocked task. Explain the missing control in ordinary language and wait for the user's next instruction.":"Material decisions are unresolved. Ask one concise message in ordinary language, grouping related decisions together, then re-evaluate the request. Do not ask the user to run commands, provide JSON, or inspect task records.";
     return JSON.stringify(output,null,2);
    }
    if(!todoStorePromise){output.persistence={status:"unavailable",reason:"Todo store is not configured; this graph was not saved or made runnable"};output.execution={started:false,authorized:false};output.notice="Plan only. The Todo store is unavailable, so no task records were persisted. No agent was dispatched and no permission was granted.";return JSON.stringify(output,null,2);}
@@ -282,7 +293,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    output.persistence={status:"saved",sessionId:identity.sessionId,projectId:identity.projectId};
    const execution=await advancePlan(ctx);
    output.execution=execution;
-   output.notice=execution.started?(execution.authorized?"The plan was saved and the exact scoped writer was started after Pi approval. Independent review and verification will continue automatically.":"The plan was saved and its first dependency-ready read-only task started automatically. A writer still requires exact Pi approval; completion requires a passing independent verifier."):"The plan was saved. No dependency-ready task could be started automatically; inspect its Todo state and resolve any required authorization or clarification.";
+   output.notice=execution.started?(execution.authorized?"The plan was saved and the exact scoped writer was started after Pi approval. Independent review and verification will continue automatically.":"The plan was saved and its first dependency-ready read-only task started automatically. A writer still requires exact Pi approval; completion requires a passing independent verifier."): `The plan was saved, but no task started: ${execution.reason??"automatic dispatch did not report a runnable task"} Explain the next step in ordinary language. Do not ask the user to inspect Todo state or run commands.`;
+   await refreshTodoWidget(ctx);
    return JSON.stringify(output,null,2);
   };
   registerData("asen-plan",{description:"Internal plan materializer for validated ODD facts; ordinary-language requests are planned from chat without user-authored JSON",handler:preparePlan});

@@ -13,7 +13,7 @@ import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 import {selectSkills} from "../src/skills/registry.js";
 
 function host(){
- const events=new Map<string,Function[]>(),commands=new Map<string,any>(),tools=new Map<string,any>(),messages:string[]=[];
+ const events=new Map<string,Function[]>(),commands=new Map<string,any>(),tools=new Map<string,any>(),messages:string[]=[],widgets=new Map<string,string[]|undefined>();
  const pi={on(name:string,handler:Function){events.set(name,[...(events.get(name)??[]),handler]);},registerCommand(name:string,command:any){commands.set(name,command);},registerTool(tool:any){tools.set(tool.name,tool);},getCommands(){return[];},getAllTools(){return[];}};
  const waiters=new Set<()=>void>();
  const waitForMessage=(matches:(message:string)=>boolean)=>new Promise<void>((resolve,reject)=>{
@@ -21,9 +21,18 @@ function host(){
   const timer=setTimeout(()=>{waiters.delete(check);reject(new Error("Agent terminal notification was not delivered"));},30_000);
   waiters.add(check);check();
  });
- const context=(session="session-a",cwd=process.cwd())=>({mode:"rpc",hasUI:true,cwd,sessionManager:{getSessionId:()=>session},ui:{notify:(message:string)=>{messages.push(message);for(const check of waiters)check();},confirm:async()=>true}});
- return {pi,events,commands,tools,messages,context,waitForMessage};
+ const context=(session="session-a",cwd=process.cwd())=>({mode:"rpc",hasUI:true,cwd,sessionManager:{getSessionId:()=>session},ui:{notify:(message:string)=>{messages.push(message);for(const check of waiters)check();},confirm:async()=>true,setWidget:(key:string,content:string[]|undefined)=>{widgets.set(key,content);}}});
+ return {pi,events,commands,tools,messages,widgets,context,waitForMessage};
 }
+
+test("Pi shows and clears a bounded ASEN progress widget as tasks change",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-plan-widget-"));t.after(()=>rm(home,{recursive:true,force:true}));const todos=await SessionTodoStore.open(join(home,"todos.json")),projectId=await realpath(process.cwd()),identity={sessionId:"widget-session",projectId};
+ const selection={phase:"explore" as const,risk:"low" as const,codeChange:false,behaviorChange:false,filesTouched:0},skillPaths=selectSkills(selection).map(skill=>skill.path),[task]=await todos.addPlan([{title:"Inspect the requested change",requestId:"asen-plan:widget-plan:explorer",dependsOn:[],description:"Inspect this project",plan:{role:"explorer",skillPaths,skillSelection:selection,priority:1}}],identity);assert.ok(task);
+ const state=host();createPiExtension({homeDir:()=>home,enableAgentRuntime:false,todoStoreFactory:async()=>todos})(state.pi as any);await state.events.get("session_start")![0]!({},state.context(identity.sessionId));
+ const lines=state.widgets.get("asen-todo-progress");assert.ok(lines);assert.match(lines[0]!,/ASEN · 1 paso activo/u);assert.match(lines[1]!,/Pendiente · Exploración: Inspect the requested change/u);assert.doesNotMatch(lines.join("\n"),/widget-session|widget-plan|todo-/u);
+ await state.tools.get("asen_todo_update").execute("cancel-widget-task",{id:task!.taskId,revision:1,state:"cancelled"},new AbortController().signal,()=>{},state.context(identity.sessionId));assert.equal(state.widgets.get("asen-todo-progress"),undefined);
+ await state.events.get("session_shutdown")![0]!({},state.context(identity.sessionId));
+});
 
 test("production Pi extension runs and restores session-scoped agent status using durable storage",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-agent-pi-"));t.after(()=>rm(home,{recursive:true,force:true}));const file=join(home,".asen","agents.json"),prior=process.env.ASEN_NO_SKILL_REGISTRY;process.env.ASEN_NO_SKILL_REGISTRY="1";
@@ -234,25 +243,19 @@ test("cancelling a Todo through Pi cancels its linked active agent",async t=>{
  await state.events.get("session_shutdown")![0]!({},state.context());
 });
 
-test("Pi continue tool requires explicit UI confirmation and cannot cross project/session identity",async t=>{
+test("Pi continue tool uses the user's natural follow-up without another dialog and remains session-scoped",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-agent-continue-"));t.after(()=>rm(home,{recursive:true,force:true}));const file=join(home,"agents.json"),prior=process.env.ASEN_NO_SKILL_REGISTRY;process.env.ASEN_NO_SKILL_REGISTRY="1";
  const runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:"done"})},state=host();
  try{
   const crashed=spawnSync(process.execPath,["--import","tsx",resolve("tests/fixtures/agent-crash-process.ts"),file,"running","-","session-a",process.cwd(),"interrupted"],{encoding:"utf8",timeout:30000});assert.equal(crashed.status,0,`${crashed.error?.message??""}\n${crashed.stderr}`);
   createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:file})(state.pi as any);await state.events.get("session_start")![0]!({},state.context());
-  const confirmController=new AbortController();let dialogSignal:AbortSignal|undefined,resolveConfirmation!:(value:boolean)=>void,confirmationStarted!:()=>void;
-  const confirmation=new Promise<boolean>(resolve=>{resolveConfirmation=resolve;}),startedConfirmation=new Promise<void>(resolve=>{confirmationStarted=resolve;});
-  const confirmationPending=state.tools.get("asen_agent_continue").execute("continue-cancel",{id:"interrupted"},confirmController.signal,()=>{},{...state.context(),ui:{confirm:(_title:string,_message:string,options?:{signal?:AbortSignal})=>{dialogSignal=options?.signal;confirmationStarted();return confirmation;}}});
-  await startedConfirmation;assert.equal(dialogSignal,confirmController.signal);confirmController.abort();await assert.rejects(confirmationPending,/Agent task cancelled/);resolveConfirmation(true);await Promise.resolve();
+  let confirmations=0;const context={...state.context(),hasUI:false,ui:{...state.context().ui,confirm:async()=>{confirmations++;return true;}}};
   const lockController=new AbortController();await writeFile(`${file}.lock`,JSON.stringify({pid:process.pid,token:"live-continuation-owner",createdAt:Date.now()}));
-  const waitingContinuation=state.tools.get("asen_agent_continue").execute("continue-lock-cancel",{id:"interrupted"},lockController.signal,()=>{},state.context());
+  const waitingContinuation=state.tools.get("asen_agent_continue").execute("continue-lock-cancel",{id:"interrupted"},lockController.signal,()=>{},context);
   await new Promise(resolve=>setTimeout(resolve,30));lockController.abort();await assert.rejects(waitingContinuation,/Agent task cancelled/);
   const persisted=JSON.parse(await readFile(file,"utf8"));assert.equal(persisted.entries.length,1);assert.equal(persisted.entries[0]?.record.state,"interrupted");await rm(`${file}.lock`,{force:true});
-  let currentSession="session-a";const switchingContext={...state.context(),sessionManager:{getSessionId:()=>currentSession},ui:{confirm:async()=>{currentSession="session-b";return true;}}};await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue-session-change",{id:"interrupted"},new AbortController().signal,()=>{},switchingContext),/session or project changed/u);currentSession="session-a";
-  let currentProject=process.cwd();const switchingProjectContext=state.context();Object.defineProperty(switchingProjectContext,"cwd",{get:()=>currentProject});switchingProjectContext.ui.confirm=async()=>{currentProject=home;return true;};await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue-project-change",{id:"interrupted"},new AbortController().signal,()=>{},switchingProjectContext),/session or project changed/u);currentProject=process.cwd();
-  const continuation=await state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},state.context());assert.equal(continuation.details.continuedFrom,"interrupted");assert.equal(continuation.details.role,"explorer");
+  const continuation=await state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},context);assert.equal(continuation.details.continuedFrom,"interrupted");assert.equal(continuation.details.role,"explorer");assert.equal(confirmations,0);
   await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},state.context()),/already has a continuation/);
-  await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},{...state.context(),hasUI:false}),/Explicit Pi UI confirmation/);
   await assert.rejects(()=>state.tools.get("asen_agent_continue").execute("continue",{id:"interrupted"},new AbortController().signal,()=>{},state.context("other-session")),/unavailable to this session or project/);
  }finally{try{await state.events.get("session_shutdown")![0]!({},state.context());}finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;}}
 });
@@ -267,7 +270,7 @@ test("continuing a Todo-linked interrupted Pi agent binds the child before execu
  const state=host();createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:agentFile,todoStoreFile:todoFile})(state.pi as any);await state.events.get("session_start")![0]!({},state.context(sessionId));
  assert.ok(state.messages.some(message=>/di «continúa»/.test(message)),"restart recovery should be available through ordinary language");assert.ok(state.messages.every(message=>!/\/asen-(?:agents|todos)/u.test(message)));
  const recovered=(await todos.list(identity)).find(item=>item.taskId===todo.taskId)!;assert.equal(recovered.current.state,"blocked");
- const continuation=await state.tools.get("asen_agent_continue").execute("continue-linked",{id:"interrupted-linked-agent"},new AbortController().signal,()=>{},state.context(sessionId));assert.equal(continuation.details.todoId,todo.taskId);await begun;
+ const continuation=await state.tools.get("asen_agent_continue").execute("continue-linked",{id:"interrupted-linked-agent"},new AbortController().signal,()=>{},{...state.context(sessionId),hasUI:false});assert.equal(continuation.details.todoId,todo.taskId);await begun;
  const persistedLinks=await links.list(identity);assert.ok(persistedLinks.some(link=>link.agentId===childId&&link.taskId===todo.taskId));
  const cancelled=await state.tools.get("asen_todo_update").execute("cancel-linked",{id:todo.taskId,revision:4,state:"cancelled"},new AbortController().signal,()=>{},state.context(sessionId));assert.equal(cancelled.details.events.at(-1).state,"cancelled");
  const status=await state.tools.get("asen_agent_status").execute("child-status",{id:childId},new AbortController().signal,()=>{},state.context(sessionId));assert.equal(status.details.task.record.state,"cancelled");
