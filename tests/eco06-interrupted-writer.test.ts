@@ -78,14 +78,10 @@ test("ECO-06 Pi inspection binds the interrupted writer to its blocked Todo and 
  await writeFile(join(project,"target.txt"),"before\npartial PRIVATE-CONTENT\n");await writeFile(join(project,"outside.txt"),"unexpected outside edit\n");
  const selection={phase:"apply" as const,risk:"medium" as const,codeChange:true,behaviorChange:true,filesTouched:2},skillPaths=selectSkills(selection).map(skill=>skill.path),todos=await SessionTodoStore.open(todoFile),[todo]=await todos.addPlan([{title:"Recover partial fixture write",requestId:"asen-plan:eco06-pi-inspection:worker",dependsOn:[],description:"Update the two scoped fixture files",plan:{role:"worker",skillPaths,skillSelection:selection,candidate,writeSurfaces:["target.txt","new-target.txt"],writerAuthorizationBasis:JSON.stringify({instruction:"Update the two scoped fixture files"})}}],identity);
  await todos.update(todo!.taskId,identity,1,"running");await todos.recover(identity);
- const seededAgent=spawnSync(process.execPath,["--import","tsx","--input-type=module","-e",`
-  import {PersistentAgentStore} from "./src/runtime/agent-store.ts";
-  const [file,project,sessionId,id,revision]=process.argv.slice(1),{store}=await PersistentAgentStore.open(file);
-  const candidate={id:"eco06-fixture-candidate",repository:project,revision,createdAt:new Date().toISOString()};
-  const request={id,role:"worker",prompt:"Update only the two approved fixture files",repository:project,isolationKey:sessionId,candidate,writeSurfaces:["target.txt","new-target.txt"],writerAdmission:{oneUse:true}};
-  await store.enqueueControlledWorker(request,{kind:"user",id:"pi:"+sessionId});await store.running(id,new Date().toISOString());
- `,agentFile,project,identity.sessionId,agentId,revision],{cwd:process.cwd(),encoding:"utf8",timeout:30_000});
- assert.equal(seededAgent.status,0,`interrupted agent fixture failed: ${seededAgent.stderr}`);
+ const {store:agentStore}=await PersistentAgentStore.open(agentFile),agentRequest={id:agentId,role:"worker" as const,prompt:"Update only the two approved fixture files",repository:project,isolationKey:identity.sessionId,candidate,writeSurfaces:["target.txt","new-target.txt"],writerAdmission:{oneUse:true}};
+ await agentStore.enqueueControlledWorker(agentRequest,{kind:"user",id:`pi:${identity.sessionId}`});await agentStore.running(agentId,new Date().toISOString());
+ // Simulate a valid persisted owner that has exited without relying on OS PID reuse/visibility.
+ const agentJournal=JSON.parse(await readFile(agentFile,"utf8"));agentJournal.entries[0].request.ownerProcessId=2_147_483_647;await writeFile(agentFile,`${JSON.stringify(agentJournal,null,2)}\n`);
  await new TaskAgentLinkStore(linkFile).bind({taskId:todo!.taskId,agentId,sessionId:identity.sessionId,projectId:project,createdAt:new Date().toISOString()});
  const events=new Map<string,Function[]>(),tools=new Map<string,any>();const pi={on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),registerCommand:()=>{},registerTool:(tool:any)=>tools.set(tool.name,tool),getCommands:()=>[],getAllTools:()=>[]};
  const context=(sessionId=identity.sessionId,cwd=project)=>({mode:"rpc",hasUI:true,cwd,sessionManager:{getSessionId:()=>sessionId},ui:{notify:()=>{},confirm:async()=>true,setWidget:()=>{}}});
