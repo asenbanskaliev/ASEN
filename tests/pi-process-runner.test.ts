@@ -389,6 +389,6 @@ test("organic writer reaches Pi adapter through one exact Dispatcher receiver wi
  assert.ok(observed.args.includes("read,edit,write"));assert.deepEqual(observed.authority.writeSurfaces,["src/a"]);
  assert.ok(observed.args.includes("--model"));assert.equal(observed.args[observed.args.indexOf("--model")+1],"local/test-model");
  assert.ok(observed.args.includes("--thinking"));assert.equal(observed.args[observed.args.indexOf("--thinking")+1],"low");
- assert.equal(captured?.phaseGrant,undefined);assert.ok(captured);
+ assert.equal(captured?.expectedPhase,"apply");assert.ok(captured?.phaseGrant,"Dispatcher must materialize the exact apply-phase grant before Pi starts");assert.ok(captured);
  const replay=await pi.run(captured);assert.equal(replay.ok,false);assert.match(replay.output,/exact dispatcher receiver/);
 });

@@ -1,5 +1,9 @@
 # ECO-07 — independent evidence review (2026-10-12)
 
+## Later exact-candidate closeout — 2026-10-15
+
+This later receipt supersedes the historical PARTIAL decisions below for the agreed NVIDIA NIM / Ubuntu 24.04 provider-backed recovery scope. Candidate `9d3f2e0710fd74b770e94b3aa2a2e43f3fd3e445`, Actions run `38789463310`, and artifact `11999926486` (`sha256:5b9a17724773607c9f31c5a770dd75c91ab3cdaaa6a58e9089a1a09c8e2fb93b`) were reviewed. Pi 1.1.0 with `deepseek-ai/deepseek-v4.1-flash` passed the same-task interruption/restart journey, explicit resume, ordered exactly-once review steps, session/project isolation, and no-duplicate assertions. CI for that exact candidate passed; Pi Free Smoke was skipped and is not counted as a pass. Provider-backed recovery on macOS/Windows is not claimed. This does not close ECO-06's interrupted-writer authorization journey or promote global ecosystem parity claims.
+
 ## Scope
 Repository `asenbanskaliev/ASEN`, branch `feat/strict-parity-prerequisites`, PR #32. This review distinguishes automated persistence tests from a real Pi interruption/restart experiment.
 

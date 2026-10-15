@@ -66,33 +66,25 @@ test("ECO-07 provider workflow uses OpenRouter only after manual exact-SHA dispa
  assert.ok(!workflow.includes("secrets.LLM7_API_KEY"));
 });
 
-test("ECO-07 exact-SHA workflow selects one provider secret and supports a guarded branch run",()=>{
- const workflow=readFileSync(resolve(".github/workflows/eco07-groq-e2e.yml"),"utf8");
+test("ECO-07 exact-SHA workflow uses NVIDIA only and supports a guarded branch run",()=>{
+ const workflow=readFileSync(resolve(".github/workflows/eco07-nvidia-e2e.yml"),"utf8");
  const compact=workflow.replace(/\s+/gu," ");
  assert.ok(workflow.includes("workflow_dispatch:"));
  assert.ok(workflow.includes("[ECO07-NVIDIA]"));
- assert.ok(compact.includes("push: branches: - feat/strict-parity-prerequisites paths: - .github/workflows/eco07-groq-e2e.yml - scripts/eco07-pi-recovery-e2e.mjs - scripts/eco07-pi-recovery-probe-extension.mjs - src/runtime/todo-store.ts"));
- assert.ok(workflow.includes("default: nvidia"));
- assert.ok(workflow.includes("- nvidia"));
- assert.ok(workflow.includes("- groq"));
+ assert.ok(compact.includes("push: branches: - feat/strict-parity-prerequisites paths: - .github/workflows/eco07-nvidia-e2e.yml - scripts/eco07-pi-recovery-e2e.mjs - scripts/eco07-pi-recovery-probe-extension.mjs - src/runtime/todo-store.ts - src/agents/dispatcher.ts - src/agents/pi-process-runner.ts - src/lifecycle/skill-lifecycle.ts"));
  assert.ok(workflow.includes("expected_sha:"));
  assert.ok(workflow.includes('NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}'));
  assert.ok(workflow.includes("ASEN_ECO07_PROVIDER: nvidia"));
  assert.ok(workflow.includes("ASEN_ECO07_MODEL: deepseek-ai/deepseek-v4.1-flash"));
- assert.ok(workflow.includes('GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}'));
- const nvidiaStep=workflow.split("- name: Execute real Pi NVIDIA interruption and restart")[1]?.split("- name: Execute real Pi Groq interruption and restart")[0]??"";
- const groqStep=workflow.split("- name: Execute real Pi Groq interruption and restart")[1]?.split("- name: Preserve process and event evidence")[0]??"";
+ assert.ok(!workflow.includes("GROQ_API_KEY"));
+ const nvidiaStep=workflow.split("- name: Execute real Pi NVIDIA interruption and restart")[1]?.split("- name: Preserve process and event evidence")[0]??"";
  assert.ok(nvidiaStep.includes("secrets.NVIDIA_API_KEY"));
- assert.ok(!nvidiaStep.includes("secrets.GROQ_API_KEY"));
- assert.ok(groqStep.includes("secrets.GROQ_API_KEY"));
- assert.ok(!groqStep.includes("secrets.NVIDIA_API_KEY"));
- assert.ok(compact.includes("if: github.event_name == 'push' || inputs.provider == 'nvidia'"));
- assert.ok(compact.includes("if: github.event_name == 'workflow_dispatch' && inputs.provider == 'groq'"));
+ assert.ok(!compact.includes("inputs.provider"));
  assert.ok(compact.includes("github.event_name == 'push' && contains(github.event.head_commit.message, '[ECO07-NVIDIA]')"));
  assert.ok(compact.includes("ASEN_EXPECTED_SHA: ${{ inputs.expected_sha || github.sha }}"));
  assert.ok(compact.includes("test \"$ASEN_EXPECTED_SHA\" = \"$GITHUB_EVENT_SHA\""));
  assert.ok(compact.includes("git ls-remote origin"));
  assert.ok(workflow.includes("actions/upload-artifact@v6"));
- assert.ok(workflow.includes("${{ inputs.provider || 'nvidia' }}-recovery-${{ inputs.expected_sha || github.sha }}-${{ inputs.os || 'ubuntu-24.04' }}"));
+ assert.ok(workflow.includes("eco07-nvidia-recovery-${{ inputs.expected_sha || github.sha }}-${{ inputs.os || 'ubuntu-24.04' }}"));
  assert.ok(!compact.includes("pull_request:"));
 });

@@ -7,6 +7,7 @@ import type {OrchestrationRouteEvidence} from "../orchestration/orchestrator.js"
 import {issueSkillContext} from "../skills/context.js";
 import type {PublicAgentRecord} from "../runtime/agent-lifecycle.js";
 import {PersistentAgentStore} from "../runtime/agent-store.js";
+import {issueControlledPlanPhaseGrant} from "../lifecycle/skill-lifecycle.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 
 export interface AgentSessionIdentity{sessionId:string;projectId:string;}
@@ -64,14 +65,16 @@ export class AgentRuntime{
  async startControlledWorker(input:{taskIdentity:string;prompt:string;session:AgentSessionIdentity;candidate:Candidate;writeSurfaces:readonly string[];skillSelection:SkillSelectionContext;writerAdmission:object;routeEvidence:OrchestrationRouteEvidence;onPrepared:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
   if(!input.taskIdentity||!input.prompt||input.prompt!==input.prompt.trim()||input.prompt.length>32_000||!input.session.sessionId||!input.session.projectId)throw new Error("A controlled worker requires an exact task, prompt, session and project");
   if(input.candidate.repository!==input.session.projectId||input.skillSelection.phase!=="apply"||!Array.isArray(input.writeSurfaces)||!input.writeSurfaces.length||input.writeSurfaces.length>256||input.writeSurfaces.some(surface=>typeof surface!=="string"||!surface))throw new Error("A controlled worker requires the exact candidate, apply phase and bounded write scope");
-  const request:AgentRequest={id:`${input.taskIdentity}:worker`,role:"worker",prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:{kind:"user",id:`pi:${input.session.sessionId}`},candidate:structuredClone(input.candidate),writeSurfaces:[...input.writeSurfaces],writerAdmission:input.writerAdmission};
+  const id=`${input.taskIdentity}:worker`,candidate=structuredClone(input.candidate),writeSurfaces=[...input.writeSurfaces];
+  const request:AgentRequest={id,role:"worker",expectedPhase:"apply",prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:{kind:"user",id:`pi:${input.session.sessionId}`},candidate,writeSurfaces,phaseGrant:issueControlledPlanPhaseGrant({requestId:id,sessionId:input.session.sessionId,candidate,surfaces:writeSurfaces,writerAdmission:input.writerAdmission}),writerAdmission:input.writerAdmission};
   const context=issueSkillContext(request.id,request.repository,request.candidate,input.skillSelection);
   request.skillContext=context;request.skillPaths=selectSkills(context).map(skill=>skill.path);
   const authorizedAt=new Date().toISOString(),scope=input.writeSurfaces.join(", ");
   let enqueued=false,dispatched=false;
   const enqueue=async()=>{
    if(enqueued)throw new Error("Controlled worker may enqueue only once");
-   await this.store.enqueueControlledWorker(request,request.owner!,signal);enqueued=true;
+   const {phaseGrant:_phaseGrant,...durableDescription}=request;
+   await this.store.enqueueControlledWorker(durableDescription,request.owner!,signal);enqueued=true;
    this.evidence.addRouteDecision(input.candidate,input.routeEvidence,{id:`plan-route:${request.id}`,summary:`Explicit Pi authorization for ${request.id}`,createdAt:authorizedAt});
    this.evidence.add(input.candidate,{id:`plan-work-unit:${request.id}`,kind:"work-unit",status:"pass",summary:`User approved the exact persisted task: ${request.id}`,createdAt:authorizedAt});
    this.evidence.add(input.candidate,{id:`plan-scope:${request.id}`,kind:"scope",status:"pass",summary:`User approved only these write surfaces: ${scope}`,createdAt:authorizedAt});

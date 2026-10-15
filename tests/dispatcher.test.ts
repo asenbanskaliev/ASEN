@@ -5,7 +5,7 @@ import { Dispatcher, type AgentRunner } from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
-import {issueOddDecision} from "./helpers/odd-routing.js";import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";import {issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";import {createAgentLifecycleSink} from "../src/runtime/agent-lifecycle.js";
+import {issueOddDecision} from "./helpers/odd-routing.js";import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";import {issueControlledPlanPhaseGrant,issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";import {createAgentLifecycleSink} from "../src/runtime/agent-lifecycle.js";
 
 const candidate={id:"candidate",repository:"r",revision:"sha",createdAt:"now"};
 function authorized(){
@@ -19,12 +19,13 @@ const sealedCodeChange=(taskId="a")=>issueSkillContext(taskId,"r",candidate,{pha
 const codeChangePaths=["skills/asen-phase-protocol/SKILL.md","skills/asen-work-unit/SKILL.md","skills/asen-safe-change/SKILL.md","skills/asen-apply/SKILL.md"];
 const writeRequest={id:"a",role:"worker" as const,prompt:"x",repository:"r",writeSurfaces:["src/a"],candidate,skillContext:sealedCodeChange(),skillPaths:codeChangePaths};
 function organicAdmission(taskId="a"){const decision=issueOddDecision({taskId,repository:"r",paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});buildOrchestrationPlan({taskId,repository:"r",prompt:"write",candidate},decision);const applicability=decideLifecycleApplicability(decision,{taskIdentity:taskId,repositoryIdentity:"r",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"organic",affectedSubsystems:["dispatcher"],expectedPaths:["src/a"],requiredArtifacts:[]});return issueOrganicWriterAdmission(applicability,["src/a"]);}
+function controlledRequest(id="a",session="default") {const writerAdmission=organicAdmission(id),requestId=id.endsWith(":worker")?id:`${id}:worker`,grant=issueControlledPlanPhaseGrant({requestId,sessionId:session,candidate,surfaces:["src/a"],writerAdmission});return {...writeRequest,id:requestId,isolationKey:session,expectedPhase:"apply",skillContext:sealedCodeChange(requestId),phaseGrant:grant,writerAdmission};}
 
 test("dispatcher releases writer grant after completion", async()=>{
   const runner: AgentRunner={run:async r=>({id:r.id,ok:true,output:"ok"})};
   const d=new Dispatcher(runner,authorized());
-  await d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:organicAdmission()});
-  const second=await d.dispatch({...writeRequest,id:"b",skillContext:sealedCodeChange("b"),writerAdmission:organicAdmission("b")});
+  await d.dispatch(controlledRequest());
+  const second=await d.dispatch(controlledRequest("b"));
   assert.equal(second.ok,true);
 });
 
@@ -215,25 +216,22 @@ test("worker cannot reuse authority from another lifecycle phase",async()=>{
  assert.equal(ran,false);
 });
 
-test("candidate-bound worker cannot replay an issued context by omitting expectedPhase",async()=>{
+test("candidate-bound worker cannot dispatch without a structured phase grant",async()=>{
  let ran=false;
  const runner:AgentRunner={run:async r=>{ran=true;return{id:r.id,ok:true,output:"unauthorized"}}};
  const context=issueSkillContext("phase-worker","r",candidate,{phase:"proposal"});
  const paths=selectSkills(context).map(skill=>skill.path);
  const request={id:"phase-worker",role:"worker" as const,prompt:"x",repository:"r",candidate,skillContext:context,skillPaths:paths};
- await new Dispatcher(runner,new EvidenceStore()).dispatch(request);
- ran=false;
- await assert.rejects(()=>new Dispatcher(runner,new EvidenceStore()).dispatch(request),/used worker context/);
+ await assert.rejects(()=>new Dispatcher(runner,new EvidenceStore()).dispatch(request),/unused, identity-bound ASEN lifecycle grant/);
  assert.equal(ran,false);
 });
-test("concurrent dispatchers cannot spend the same worker context twice",async()=>{
+test("concurrent dispatchers cannot spend the same structured phase grant twice",async()=>{
  let started=0;
  const runner:AgentRunner={run:async r=>{started++;return{id:r.id,ok:true,output:"ok"}}};
- const context=issueSkillContext("parallel-worker","r",candidate,{phase:"proposal"});
- const request={id:"parallel-worker",role:"worker" as const,prompt:"x",repository:"r",candidate,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path)};
- const results=await Promise.allSettled([new Dispatcher(runner,new EvidenceStore()).dispatch(request),new Dispatcher(runner,new EvidenceStore()).dispatch(request)]);
+ const request=controlledRequest("parallel-worker");
+ const results=await Promise.allSettled([new Dispatcher(runner,authorized()).dispatch(request),new Dispatcher(runner,authorized()).dispatch(request)]);
  assert.equal(results.filter(r=>r.status==="fulfilled").length,1);
- assert.equal(results.filter(r=>r.status==="rejected"&&/used worker context/.test(String(r.reason))).length,1);
+ assert.equal(results.filter(r=>r.status==="rejected"&&/unused exact writer admission/.test(String(r.reason))).length,1);
  assert.equal(started,1);
 });
 
@@ -271,7 +269,7 @@ test("dispatcher strips admission and conveys one exact-call runner receiver",as
   return{id:request.id,ok:true,output:"ok"};
  }};
  const d=new Dispatcher(runner,authorized());
- await d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:organicAdmission()});
+ await d.dispatch(controlledRequest());
  assert.equal(observed,true);
 });
 
@@ -280,10 +278,11 @@ test("runner receiver burns on a mismatched first claim",async()=>{
  let receiver:object|undefined;
  const runner:AgentRunner={run:async request=>{receiver=request.runnerWriteReceiver;return{id:request.id,ok:true,output:"ok"};}};
  const d=new Dispatcher(runner,authorized());
- await d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:organicAdmission()});
+ const request=controlledRequest();
+ await d.dispatch(request);
  assert.ok(receiver);
- assert.equal(consumeRunnerWriteReceiver(receiver,{...writeRequest,id:"wrong"}),false);
- assert.equal(consumeRunnerWriteReceiver(receiver,writeRequest),false);
+ assert.equal(consumeRunnerWriteReceiver(receiver,{...request,id:"wrong"}),false);
+ assert.equal(consumeRunnerWriteReceiver(receiver,request),false);
 });
 
 test("queued slot transfer preserves FIFO and concurrency against microtask arrivals",async()=>{
@@ -323,9 +322,9 @@ test("ECO-06 one-use admission cannot authorize a second dispatch",async()=>{
  let calls=0;
  const runner:AgentRunner={run:async request=>{calls++;return{id:request.id,ok:true,output:"ok"};}};
  const d=new Dispatcher(runner,authorized());
- const admission=organicAdmission("a");
- await d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:admission});
- await assert.rejects(()=>d.dispatch({...writeRequest,skillContext:sealedCodeChange(),writerAdmission:admission}),/unused exact writer admission/);
+ const request=controlledRequest("a");
+ await d.dispatch(request);
+ await assert.rejects(()=>d.dispatch(request),/unused exact writer admission/);
  assert.equal(calls,1);
 });
 

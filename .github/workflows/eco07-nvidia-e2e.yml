@@ -1,26 +1,21 @@
-name: ECO-07 provider task recovery
+name: ECO-07 NVIDIA task recovery
 # The [ECO07-NVIDIA] commit marker starts one exact-SHA NVIDIA run on this branch.
 on:
   push:
     branches:
       - feat/strict-parity-prerequisites
     paths:
-      - .github/workflows/eco07-groq-e2e.yml
+      - .github/workflows/eco07-nvidia-e2e.yml
       - scripts/eco07-pi-recovery-e2e.mjs
       - scripts/eco07-pi-recovery-probe-extension.mjs
       - src/runtime/todo-store.ts
+      - src/agents/dispatcher.ts
+      - src/agents/pi-process-runner.ts
+      - src/lifecycle/skill-lifecycle.ts
   workflow_dispatch:
     inputs:
-      provider:
-        description: Provider for the authenticated Pi recovery run
-        required: true
-        type: choice
-        options:
-          - nvidia
-          - groq
-        default: nvidia
       os:
-        description: Hosted runner for provider recovery evidence
+        description: Hosted runner for NVIDIA recovery evidence
         required: true
         type: choice
         options:
@@ -39,7 +34,7 @@ concurrency:
 jobs:
   pi-recovery:
     if: github.repository == 'asenbanskaliev/ASEN' && github.run_attempt == 1 && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ECO07-NVIDIA]')))
-    name: Pi ${{ inputs.provider || 'nvidia' }} recovery (${{ inputs.os || 'ubuntu-24.04' }})
+    name: NVIDIA Pi recovery (${{ inputs.os || 'ubuntu-24.04' }})
     runs-on: ${{ inputs.os || 'ubuntu-24.04' }}
     timeout-minutes: 15
     env:
@@ -50,7 +45,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Verify exact branch commit and Groq selection without credentials
+      - name: Verify exact branch commit and NVIDIA selection without credentials
         shell: bash
         env:
           GITHUB_EVENT_SHA: ${{ github.sha }}
@@ -73,7 +68,6 @@ jobs:
       - name: Validate pinned local Pi runtime
         run: node scripts/eco07-pi-recovery-preflight.mjs runtime
       - name: Execute real Pi NVIDIA interruption and restart
-        if: github.event_name == 'push' || inputs.provider == 'nvidia'
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           ASEN_ECO07_PROVIDER: nvidia
@@ -86,25 +80,11 @@ jobs:
             exit 1
           fi
           node --import tsx scripts/eco07-pi-recovery-e2e.mjs
-      - name: Execute real Pi Groq interruption and restart
-        if: github.event_name == 'workflow_dispatch' && inputs.provider == 'groq'
-        env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          ASEN_ECO07_PROVIDER: groq
-          ASEN_ECO07_MODEL: openai/gpt-oss-120b
-        shell: bash
-        run: |
-          set -euo pipefail
-          if test -z "$GROQ_API_KEY"; then
-            echo "::error::GROQ_API_KEY is not configured for this Actions job"
-            exit 1
-          fi
-          node --import tsx scripts/eco07-pi-recovery-e2e.mjs
       - name: Preserve process and event evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: eco07-${{ inputs.provider || 'nvidia' }}-recovery-${{ inputs.expected_sha || github.sha }}-${{ inputs.os || 'ubuntu-24.04' }}
+          name: eco07-nvidia-recovery-${{ inputs.expected_sha || github.sha }}-${{ inputs.os || 'ubuntu-24.04' }}
           path: eco07-pi-evidence/
           if-no-files-found: warn
           retention-days: 30

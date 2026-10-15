@@ -59,10 +59,10 @@ test("worker lifecycle grant is one-use and bound to task, phase and candidate",
  await flow.runPhase(dispatcher,{phase:"context-init",context:selected.context,skillPaths:selected.skillPaths,prompt:"context",evidence,risk:"low"});
  if(!captured?.phaseGrant)throw new Error("Lifecycle did not issue a worker phase grant");
  const request:AgentRequest=captured;
- await assert.rejects(()=>dispatcher.dispatch(request),/unused ASEN lifecycle grant/);
+ await assert.rejects(()=>dispatcher.dispatch(request),/unused, identity-bound ASEN lifecycle grant/);
  const other=issueSkillContext("other:worker",candidate.repository,candidate,{phase:"context-init"});
- await assert.rejects(()=>dispatcher.dispatch({...request,id:"other:worker",skillContext:other}),/unused ASEN lifecycle grant/);
- await assert.rejects(()=>dispatcher.dispatch({...request,phaseGrant:Object.freeze({})}),/unused ASEN lifecycle grant/);
+ await assert.rejects(()=>dispatcher.dispatch({...request,id:"other:worker",skillContext:other}),/unused, identity-bound ASEN lifecycle grant/);
+ await assert.rejects(()=>dispatcher.dispatch({...request,phaseGrant:Object.freeze({})}),/unused, identity-bound ASEN lifecycle grant/);
 });
 test("lifecycle refuses wrong role, task, revision, routes and artifact",async()=>{
  const flow=await createTestSkillLifecycle("task",candidate);

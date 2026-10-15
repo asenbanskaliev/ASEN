@@ -5,7 +5,7 @@ import {EvidenceStore} from "../evidence/store.js";
 import {selectSkills} from "../skills/registry.js";
 import {consumeIssuedWorkerContext,isIssuedSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {verifySkillEvidence} from "../verify/verifier.js";
-import {consumePhaseGrant,retirePhaseGrant,consumeWriterAdmission} from "../lifecycle/skill-lifecycle.js";
+import {consumePhaseGrant,issueAdmittedWriterPhaseGrant,retirePhaseGrant,consumeWriterAdmission} from "../lifecycle/skill-lifecycle.js";
 import type {AgentLifecycleSink} from "../runtime/agent-lifecycle.js";
 import {sameWorkspaceIdentityPath} from "../runtime/workspace-store.js";
 
@@ -81,7 +81,9 @@ export class Dispatcher {
     ...(data.skillPaths?{skillPaths:Object.freeze(requestArray(data.skillPaths))}:{}),
    } as unknown as AgentRequest;
   }catch(error){consumeWriterAdmission(token,{id:"",role:"worker",prompt:"",repository:""});throw error;}
-  const admitted=consumeWriterAdmission(token,runnerRequest),receiver=admitted?Object.freeze({}):undefined;
+  const admitted=consumeWriterAdmission(token,runnerRequest);
+  if(admitted&&!runnerRequest.phaseGrant){const phaseGrant=issueAdmittedWriterPhaseGrant(token,runnerRequest);if(phaseGrant){runnerRequest.expectedPhase="apply";runnerRequest.phaseGrant=phaseGrant;}}
+  const receiver=admitted?Object.freeze({}):undefined;
   if(receiver)runnerRequest.runnerWriteReceiver=receiver;
   Object.freeze(runnerRequest);request=runnerRequest;
   if(this.#controls.has(request.id))throw new Error("Agent task is already queued or running");
@@ -122,7 +124,7 @@ export class Dispatcher {
     validateWriteGrant(grant,this.#active);this.#active.push(grant);
    }
    if(request.candidate&&(!request.skillContext||!request.skillPaths))throw new Error("Candidate-bound delegation requires issued skill context and exact paths");
-   if(request.role==="worker"&&request.expectedPhase&&!consumePhaseGrant(request))throw new Error("Worker phase requires unused ASEN lifecycle grant");
+   if(request.role==="worker"&&(request.expectedPhase||request.candidate||request.writeSurfaces)&&!consumePhaseGrant(request))throw new Error("Worker phase requires an unused, identity-bound ASEN lifecycle grant");
    if(request.role==="worker"&&request.candidate&&!consumeIssuedWorkerContext(request.skillContext!))throw new Error("Candidate-bound worker requires unused worker context");
    if(receiver)runnerReceivers.set(receiver,{request:runnerRequest,used:false});
    const result=await this.runner.run(runnerRequest,controller.signal);

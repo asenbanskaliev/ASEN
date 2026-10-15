@@ -118,18 +118,39 @@ function constructLifecycle(taskId:string,candidate:Candidate,snapshot?:Lifecycl
  if(defect)lifecycleDefects.add(lifecycle);
  return lifecycle;
 }
-const phaseGrants=new WeakMap<object,{requestId:string;repository:string;candidateId:string;revision:string;phase:LifecyclePhase;used:boolean;active:boolean;piUsed:boolean}>();
-function issuePhaseGrant(requestId:string,candidate:Candidate,phase:LifecyclePhase):object{
- const grant=Object.freeze({});phaseGrants.set(grant,{requestId,repository:candidate.repository,candidateId:candidate.id,revision:candidate.revision,phase,used:false,active:false,piUsed:false});return grant;
+type PhaseOperation="read"|"edit"|"write";
+type PhaseGrantRecord={requestId:string;sessionId:string;repository:string;candidateId:string;revision:string;phase:LifecyclePhase;surfaces:readonly string[];operations:readonly PhaseOperation[];used:boolean;active:boolean;piUsed:boolean};
+const phaseGrants=new WeakMap<object,PhaseGrantRecord>();
+const phaseOperations=(phase:LifecyclePhase):readonly PhaseOperation[]=>phase==="apply"?["read","edit","write"]:["read"];
+function issuePhaseGrant(request:AgentRequest,phase:LifecyclePhase):object{
+ if(!request.candidate||!request.expectedPhase||request.expectedPhase!==phase)throw new Error("Lifecycle phase grant requires the exact candidate and phase");
+ const surfaces=phase==="apply"?writerSurfaces(request.writeSurfaces):[];
+ const grant=Object.freeze({});phaseGrants.set(grant,{requestId:request.id,sessionId:request.isolationKey??"default",repository:request.repository,candidateId:request.candidate.id,revision:request.candidate.revision,phase,surfaces:Object.freeze(surfaces),operations:phaseOperations(phase),used:false,active:false,piUsed:false});return grant;
+}
+/** Issue a one-run apply grant only from a still-unconsumed ODD writer admission. */
+export function issueControlledPlanPhaseGrant(input:{requestId:string;sessionId:string;candidate:Candidate;surfaces:readonly string[];writerAdmission:object}):object{
+ const admission=writerAdmissions.get(input.writerAdmission);
+ const surfaces=writerSurfaces(input.surfaces);
+ const taskMatches=admission&&(input.requestId.endsWith(":worker")?admission.task===input.requestId.slice(0,-":worker".length):admission.task===input.requestId);
+ if(!admission||admission.used||!taskMatches||admission.repository!==input.candidate.repository||admission.candidateId!==input.candidate.id||admission.revision!==input.candidate.revision||admission.surfaces.length!==surfaces.length||admission.surfaces.some((surface,index)=>surface!==surfaces[index])||!input.sessionId||input.sessionId!==input.sessionId.trim())throw new Error("Controlled plan phase grant does not match its fresh writer admission");
+ const grant=Object.freeze({});phaseGrants.set(grant,{requestId:input.requestId,sessionId:input.sessionId,repository:input.candidate.repository,candidateId:input.candidate.id,revision:input.candidate.revision,phase:"apply",surfaces:Object.freeze(surfaces),operations:phaseOperations("apply"),used:false,active:false,piUsed:false});return grant;
+}
+/** Convert a successfully consumed legacy organic writer admission into the same structured apply grant. */
+export function issueAdmittedWriterPhaseGrant(admissionToken:unknown,request:AgentRequest):object|undefined{
+ const admission=typeof admissionToken==="object"&&admissionToken!==null?writerAdmissions.get(admissionToken):undefined,surfaces=request.writeSurfaces??[];
+ if(!admission?.used||!request.candidate||request.role!=="worker"||request.skillContext?.phase!=="apply"||request.expectedPhase!==undefined&&request.expectedPhase!=="apply"||request.repository!==request.candidate.repository||admission.repository!==request.repository||admission.candidateId!==request.candidate.id||admission.revision!==request.candidate.revision||!(admission.task===request.id.replace(/:worker$/u,"")||admission.task===request.id)||admission.surfaces.length!==surfaces.length||admission.surfaces.some((surface,index)=>surface!==surfaces[index]))return undefined;
+ const grant=Object.freeze({});phaseGrants.set(grant,{requestId:request.id,sessionId:request.isolationKey??"default",repository:request.repository,candidateId:request.candidate.id,revision:request.candidate.revision,phase:"apply",surfaces:Object.freeze(writerSurfaces(surfaces)),operations:phaseOperations("apply"),used:false,active:false,piUsed:false});return grant;
 }
 export function consumePhaseGrant(request:AgentRequest):boolean{
  const grant=request.phaseGrant&&phaseGrants.get(request.phaseGrant);
- if(!grant||grant.used||!request.candidate||grant.requestId!==request.id||grant.repository!==request.repository||grant.candidateId!==request.candidate.id||grant.revision!==request.candidate.revision||grant.phase!==request.expectedPhase)return false;
+ if(!grant||grant.used||!request.candidate||grant.requestId!==request.id||grant.sessionId!==(request.isolationKey??"default")||grant.repository!==request.repository||grant.candidateId!==request.candidate.id||grant.revision!==request.candidate.revision||grant.phase!==request.expectedPhase||grant.operations.length!==phaseOperations(grant.phase).length||grant.operations.some((op,index)=>op!==phaseOperations(grant.phase)[index]))return false;
+ const surfaces=request.writeSurfaces??[];if(grant.surfaces.length!==surfaces.length||grant.surfaces.some((surface,index)=>surface!==surfaces[index]))return false;
  grant.used=true;grant.active=true;return true;
 }
 export function authorizePiWriteGrant(request:AgentRequest):boolean{
  const grant=request.phaseGrant&&phaseGrants.get(request.phaseGrant);
- if(!grant||!grant.active||grant.piUsed||!grant.used||!request.candidate||grant.phase!=="apply"||request.expectedPhase!=="apply"||request.skillContext?.phase!=="apply"||grant.requestId!==request.id||grant.repository!==request.repository||grant.candidateId!==request.candidate.id||grant.revision!==request.candidate.revision)return false;
+ if(!grant||!grant.active||grant.piUsed||!grant.used||!request.candidate||grant.phase!=="apply"||request.expectedPhase!=="apply"||request.skillContext?.phase!=="apply"||grant.requestId!==request.id||grant.sessionId!==(request.isolationKey??"default")||grant.repository!==request.repository||grant.candidateId!==request.candidate.id||grant.revision!==request.candidate.revision||grant.operations.join(",")!=="read,edit,write")return false;
+ const surfaces=request.writeSurfaces??[];if(!surfaces.length||grant.surfaces.length!==surfaces.length||grant.surfaces.some((surface,index)=>surface!==surfaces[index]))return false;
  grant.piUsed=true;return true;
 }
 export function retirePhaseGrant(request:AgentRequest):void{
@@ -200,7 +221,7 @@ export class SkillLifecycle{
    ...(input.phase==="apply"?{writeSurfaces:input.writeSurfaces!,writerAdmission:writerAdmission(s.taskId,s.candidate,input.writeSurfaces!)}:{})};
   // Validate authority before invoking the agent, then validate its result before advancing.
   this.#assertAuthority(input.phase,role,input.context,input.skillPaths);
-  request.phaseGrant=issuePhaseGrant(request.id,s.candidate,input.phase);
+  request.phaseGrant=issuePhaseGrant(request,input.phase);
   if(input.phase==="verify"){
    const obligation=liveObligations.get(this)??recoveredObligations.get(this);
    if(obligation?.mode==="required"&&s.version!==2)throw new Error("Required TDD lifecycle needs exact TDD completion promotion before verify");
