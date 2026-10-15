@@ -82,7 +82,9 @@ test("ECO-06 Pi inspection binds the interrupted writer to its blocked Todo and 
  await agentStore.enqueueControlledWorker(agentRequest,{kind:"user",id:`pi:${identity.sessionId}`});await agentStore.running(agentId,new Date().toISOString());
  // Simulate a recovered journal without process ownership; restart must quarantine its running writer.
  const agentJournal=JSON.parse(await readFile(agentFile,"utf8"));delete agentJournal.entries[0].request.ownerProcessId;await writeFile(agentFile,`${JSON.stringify(agentJournal,null,2)}\n`);
- await new TaskAgentLinkStore(linkFile).bind({taskId:todo!.taskId,agentId,sessionId:identity.sessionId,projectId:project,createdAt:new Date().toISOString()});
+ // Windows can persist a different but equivalent casing for the same workspace path.
+ const linkedProject=process.platform==="win32"?project.toUpperCase():project;
+ await new TaskAgentLinkStore(linkFile).bind({taskId:todo!.taskId,agentId,sessionId:identity.sessionId,projectId:linkedProject,createdAt:new Date().toISOString()});
  const events=new Map<string,Function[]>(),tools=new Map<string,any>();const pi={on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),registerCommand:()=>{},registerTool:(tool:any)=>tools.set(tool.name,tool),getCommands:()=>[],getAllTools:()=>[]};
  const context=(sessionId=identity.sessionId,cwd=project)=>({mode:"rpc",hasUI:true,cwd,sessionManager:{getSessionId:()=>sessionId},ui:{notify:()=>{},confirm:async()=>true,setWidget:()=>{}}});
  const priorRegistry=process.env.ASEN_NO_SKILL_REGISTRY;t.after(()=>{if(priorRegistry===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=priorRegistry;});process.env.ASEN_NO_SKILL_REGISTRY="1";
