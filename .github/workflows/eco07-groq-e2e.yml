@@ -1,4 +1,5 @@
 name: ECO-07 provider task recovery
+# The [ECO07-NVIDIA] commit marker starts one exact-SHA NVIDIA run on this branch.
 on:
   push:
     branches:

@@ -70,6 +70,7 @@ test("ECO-07 exact-SHA workflow selects one provider secret and supports a guard
  const workflow=readFileSync(resolve(".github/workflows/eco07-groq-e2e.yml"),"utf8");
  const compact=workflow.replace(/\s+/gu," ");
  assert.ok(workflow.includes("workflow_dispatch:"));
+ assert.ok(workflow.includes("[ECO07-NVIDIA]"));
  assert.ok(compact.includes("push: branches: - feat/strict-parity-prerequisites paths: - .github/workflows/eco07-groq-e2e.yml"));
  assert.ok(workflow.includes("default: nvidia"));
  assert.ok(workflow.includes("- nvidia"));
