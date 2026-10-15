@@ -133,8 +133,10 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRou
     worker.candidate=input.candidate;
   }
   agents.push(applyRuntimeProfile(worker,input.runtimeProfiles));
-  const reviewer=contextFor("review","adversarial-review",true);
-  agents.push(applyRuntimeProfile({id:`${input.taskId}:review`,role:"reviewer",...base,skillContext:reviewer.context,skillPaths:reviewer.skillPaths},input.runtimeProfiles));
+  if(facts.incident||facts.review.kind!=="none"){
+    const reviewer=contextFor("review","adversarial-review",true);
+    agents.push(applyRuntimeProfile({id:`${input.taskId}:review`,role:"reviewer",...base,skillContext:reviewer.context,skillPaths:reviewer.skillPaths},input.runtimeProfiles));
+  }
   const verifier=contextFor("verify","verify",true);
   agents.push(applyRuntimeProfile({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext:verifier.context,skillPaths:verifier.skillPaths},input.runtimeProfiles));
   return planned({decision,agents,skills});

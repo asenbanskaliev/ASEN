@@ -6,6 +6,7 @@ import {
   buildOrchestrationPlan,
   claimedOrchestrationRouteContext,
 } from "../src/orchestration/orchestrator.js";
+import {materializeExecutablePlan} from "../src/orchestration/executable-plan.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";
 import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
 import {mkdtemp,rm} from "node:fs/promises";
@@ -16,6 +17,7 @@ import {readProfilesFile,writeProfilesFile} from "../src/runtime/profile-store.j
 const candidate={id:"c",repository:"r",revision:"sha",createdAt:"now"};
 const orchestrated=(taskId="t",repository="r")=>issueOddDecision({
  taskId,repository,paths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"],
+ reviewKind:"ordinary",
 });
 const invokeWithUnknownDecision=(input:Parameters<typeof buildOrchestrationPlan>[0],decision:unknown)=>
  Reflect.apply(buildOrchestrationPlan,undefined,[input,decision]);
@@ -28,6 +30,15 @@ test("orchestration uses one writer and read-only reviewer/verifier",()=>{
  assert.equal(p.decision,decision);
  assert.equal(Object.isFrozen(p.decision),true);
  assert.equal(JSON.stringify(p).match(/evidenceToken|authority|verdict|mutationCallback/giu),null);
+});
+
+test("orchestration skips an unrequested reviewer and lets verification follow the writer",()=>{
+ const decision=issueOddDecision({taskId:"no-review",repository:"r",paths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"]});
+ const plan=buildOrchestrationPlan({taskId:"no-review",repository:"r",prompt:"p",writeSurfaces:["src"],candidate},decision);
+ assert.deepEqual(plan.agents.map(agent=>agent.role),["explorer","worker","verifier"]);
+ const executable=materializeExecutablePlan(plan,"Implement the bounded request");
+ const worker=executable.tasks.find(task=>task.role==="worker"),verifier=executable.tasks.find(task=>task.role==="verifier");
+ assert.ok(worker&&verifier);assert.deepEqual(verifier.dependsOn,[worker.id],"the independent verification gate remains, without an unrequested review stage");
 });
 
 test("persisted session/project/global routes reach each agent request after reload",async t=>{

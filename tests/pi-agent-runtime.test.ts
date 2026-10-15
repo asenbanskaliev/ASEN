@@ -159,7 +159,7 @@ test("a passing independent review automatically dispatches its newly ready veri
  assert.equal(reviewerRow?.current.state,"done");assert.equal(seen[0]?.role,"reviewer");assert.equal((await todos.list(identity)).find(item=>item.taskId===verify!.taskId)?.current.state,"planned");
  const nextDeadline=Date.now()+5000;let verifyRow:any;
  while(Date.now()<nextDeadline){verifyRow=(await todos.list(identity)).find(item=>item.taskId===verify!.taskId);if(verifyRow?.current.state==="done")break;await new Promise(resolve=>setTimeout(resolve,5));}
- assert.equal(verifyRow?.current.state,"done");assert.equal(seen[1]?.role,"verifier");assert.equal(seen.length,2,"only the newly dependency-ready verifier should start after acceptance");
+ assert.equal(verifyRow?.current.state,"done");assert.equal(seen[1]?.role,"verifier");assert.equal(seen.length,2,"only the newly dependency-ready verifier should start after acceptance");assert.equal(state.messages.some(message=>message.startsWith("ASEN está trabajando:")),false,"starting the next agent is already the transition notice; do not add a duplicate progress toast");assert.equal(state.messages.filter(message=>message.startsWith("ASEN completó ")).length,1,"report the final state once when no next task starts");
  await state.events.get("session_shutdown")![0]!({},context);
 });
 
