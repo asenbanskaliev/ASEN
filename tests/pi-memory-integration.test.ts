@@ -60,8 +60,8 @@ test("Pi startup retrieves project memory and exposes bounded save/search tools"
  assert.equal((await memoryCommand.handler("search deployment candidate",context("session-a")) as string[]).length,1);
  const sections:{[key:string]:string}={};await state.events.get("before_agent_start")![0]!({prompt:"What is the deployment verification rule?",systemPromptOptions:{sections}},context("session-a"));
  assert.match(sections.asen_project_memory!,/project-scoped and bounded/);assert.match(sections.asen_project_memory_context!,/ASEN verifies the deployed candidate/);
- const mismatchedSession:{[key:string]:string}={};await state.events.get("before_agent_start")![0]!({prompt:"deployment verification",systemPromptOptions:{sections:mismatchedSession}},context("foreign-session"));
- assert.equal(mismatchedSession.asen_project_memory_context,undefined,"another Pi session must not receive the active session's memory context");
+ await state.events.get("before_agent_start")![0]!({prompt:"deployment verification",systemPromptOptions:{sections}},context("foreign-session"));
+ assert.equal(sections.asen_project_memory_context,undefined,"a reused Pi prompt object must not retain another session's memory context");
  await assert.rejects(()=>invoke(state.tools.get("asen_memory_search"),{query:"deployment"},context("foreign-session")),/unavailable for this Pi session and project/);
  await state.events.get("session_start")![0]!({},context("session-b"));
  const resumed:{[key:string]:string}={};await state.events.get("before_agent_start")![0]!({prompt:"How is the deployment candidate verified?",systemPromptOptions:{sections:resumed}},context("session-b"));

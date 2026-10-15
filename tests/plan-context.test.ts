@@ -42,8 +42,8 @@ test("Pi receives active plan status only for its exact session and project",asy
  const sections:Record<string,string>={};await state.events.get("before_agent_start")![0]!({prompt:"Continue the change",systemPromptOptions:{sections}},context(identity.sessionId));
  assert.match(sections.asen_active_plan!,/trabajo principal: bloqueado; requiere atención/u);assert.doesNotMatch(sections.asen_active_plan!,/private-plan|todo-[a-f0-9-]+/u);
  for(const other of [context("different-session"),context(identity.sessionId,foreignProject)]){
-  const isolated:Record<string,string>={};await state.events.get("before_agent_start")![0]!({prompt:"Continue",systemPromptOptions:{sections:isolated}},other);
-  assert.equal(isolated.asen_active_plan,undefined);
+  await state.events.get("before_agent_start")![0]!({prompt:"Continue",systemPromptOptions:{sections}},other);
+  assert.equal(sections.asen_active_plan,undefined,"a reused Pi prompt object must not retain another session or project's plan context");
  }
  await state.events.get("session_shutdown")![0]!({},context(identity.sessionId));
 });

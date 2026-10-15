@@ -210,6 +210,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   pi.on?.("before_agent_start",async(event,ctx)=>{
    const options=(event as {systemPromptOptions?:{sections?:Record<string,string>}}|undefined)?.systemPromptOptions;
    if(options?.sections){
+    delete options.sections.asen_request_handling;
+    delete options.sections.asen_project_memory;
+    delete options.sections.asen_project_memory_context;
+    delete options.sections.asen_active_plan;
     addAsenRequestGuidance(options,!!pi.registerTool);
     if(memoryStorePromise){options.sections[ASEN_MEMORY_GUIDANCE_SECTION]=ASEN_MEMORY_GUIDANCE;try{const binding=await currentMemoryBinding(ctx);const context=projectMemoryContext(binding,(event as {prompt?:string}).prompt??"",memoryFirstRequest,4096);memoryFirstRequest=false;if(context)options.sections.asen_project_memory_context=context;}catch{/* Missing or mismatched session identity never exposes stored context or blocks the requested turn. */}}
     if(todoStorePromise)try{
