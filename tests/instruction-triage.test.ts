@@ -35,6 +35,11 @@ test("ECO-06 exact ODD input compiles to an immutable ordered task DAG without g
  assert.equal(graph.execution,"not_started");assert.equal(graph.authorization,"required_before_dispatch");
  assert.ok(graph.tasks.every((task:{execution:string;authorization:string})=>task.execution==="not_started"&&task.authorization==="required_before_dispatch"));
 });
+test("ECO-06 omits exploration for a review-only route and keeps review after the worker",()=>{
+ const value=JSON.parse(controlledInstructionPlanCommand(oddInput({taskIdentity:"review-only-plan",scope:{kind:"known",expectedPaths:["src/a.ts"]},writes:[],review:{kind:"ordinary",estimatedMinutes:10}}),"/repo"));
+ assert.deepEqual(value.executablePlan.tasks.map((task:{role:string})=>task.role),["worker","reviewer","verifier"]);
+ assert.deepEqual(value.executablePlan.tasks.map((task:{dependsOn:string[]})=>task.dependsOn.length),[0,1,2]);
+});
 test("ECO-06 routes direct work to the primary session and verification intent to a verifier",()=>{
  const direct=JSON.parse(controlledInstructionPlanCommand(oddInput({taskIdentity:"direct-plan",scope:{kind:"known",expectedPaths:["docs/guide.md"]},writes:[],review:{kind:"none",estimatedMinutes:0}}),"/repo"));
  assert.equal(direct.executablePlan.tasks[0].role,"primary");assert.equal(direct.executablePlan.tasks[0].status,"ready");

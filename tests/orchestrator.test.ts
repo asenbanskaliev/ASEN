@@ -41,6 +41,25 @@ test("orchestration skips an unrequested reviewer and lets verification follow t
  assert.ok(worker&&verifier);assert.deepEqual(verifier.dependsOn,[worker.id],"the independent verification gate remains, without an unrequested review stage");
 });
 
+test("orchestration skips exploration when only session length or review triggered delegation",()=>{
+ const long=buildOrchestrationPlan({taskId:"long-only",repository:"r",prompt:"p",candidate},issueOddDecision({taskId:"long-only",repository:"r",estimatedMinutes:90}));
+ assert.deepEqual(long.agents.map(agent=>agent.role),["worker","verifier"]);
+ const longGraph=materializeExecutablePlan(long,"Continue the bounded work"),longWorker=longGraph.tasks.find(task=>task.role==="worker");
+ assert.ok(longWorker);assert.deepEqual(longWorker.dependsOn,[]);assert.equal(longWorker.status,"ready");
+ const review=buildOrchestrationPlan({taskId:"review-only",repository:"r",prompt:"p",candidate},issueOddDecision({taskId:"review-only",repository:"r",reviewKind:"ordinary"}));
+ assert.deepEqual(review.agents.map(agent=>agent.role),["worker","reviewer","verifier"]);
+ const reviewGraph=materializeExecutablePlan(review,"Make the bounded change"),reviewWorker=reviewGraph.tasks.find(task=>task.role==="worker"),reviewer=reviewGraph.tasks.find(task=>task.role==="reviewer");
+ assert.ok(reviewWorker&&reviewer);assert.deepEqual(reviewWorker.dependsOn,[]);assert.deepEqual(reviewer.dependsOn,[reviewWorker.id]);
+});
+
+test("broad multi-write plans retain an exploration prerequisite",()=>{
+ const decision=issueOddDecision({taskId:"broad-writes",repository:"r",paths:["src/a.ts","src/b.ts"],writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"schema"}]});
+ const plan=buildOrchestrationPlan({taskId:"broad-writes",repository:"r",prompt:"p",writeSurfaces:["src/a.ts","src/b.ts"],candidate},decision);
+ assert.deepEqual(plan.agents.map(agent=>agent.role),["explorer","worker","verifier"]);
+ const graph=materializeExecutablePlan(plan,"Make the coordinated change"),explorer=graph.tasks.find(task=>task.role==="explorer"),worker=graph.tasks.find(task=>task.role==="worker");
+ assert.ok(explorer&&worker);assert.deepEqual(worker.dependsOn,[explorer.id]);assert.equal(worker.status,"waiting");
+});
+
 test("persisted session/project/global routes reach each agent request after reload",async t=>{
  const dir=await mkdtemp(path.join(tmpdir(),"asen-profile-route-"));t.after(()=>rm(dir,{recursive:true,force:true}));
  const layer=(routes:Record<string,{model:string;thinking?:"off"|"minimal"|"low"|"medium"|"high"}>)=>({schema:ASEN_PROFILES_SCHEMA,active:"active",profiles:[{name:"active",routes}]});
