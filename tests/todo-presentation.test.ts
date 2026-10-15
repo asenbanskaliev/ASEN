@@ -16,5 +16,8 @@ test("plan progress describes running, blocked and completed work in plain langu
  assert.match(todoProgressSummary([task("running")]),/está trabajando/u);
  assert.match(todoProgressSummary([task("blocked")]),/No las repetirá automáticamente.*di «continúa».*pediré confirmación/u);
  assert.doesNotMatch(todoProgressSummary([task("blocked")]),/\/asen-/u);
- assert.match(todoProgressSummary([task("done","verifier")]),/terminó y verificó/u);
+ const completed=todoProgressSummary([task("done","explorer")]);
+ assert.match(completed,/completó 1 tarea; no quedan pasos pendientes/u);
+ assert.doesNotMatch(completed,/verificó|plan/u);
+ assert.match(todoProgressSummary([task("done"),task("cancelled")]),/1 tarea completada y 1 tarea cancelada/u);
 });

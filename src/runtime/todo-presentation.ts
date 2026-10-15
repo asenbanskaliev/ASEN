@@ -18,8 +18,9 @@ export function todoStatusRows(items:readonly (TodoItem&{current:TodoItem["event
 export function todoProgressSummary(items:readonly (TodoItem&{current:TodoItem["events"][number]})[]):string{
  if(!items.length)return "ASEN: no hay tareas activas para este proyecto y sesión.";
  const completed=items.filter(item=>item.current.state==="done").length,cancelled=items.filter(item=>item.current.state==="cancelled").length,waiting=items.filter(item=>item.current.state==="blocked").length,running=items.filter(item=>item.current.state==="running").length;
- if(waiting)return `ASEN pausó el plan para revisar ${waiting} tarea(s). No las repetirá automáticamente. Si quieres retomarlas, di «continúa» y revisaré qué paso es seguro; pediré confirmación cuando haga falta.`;
- if(running)return `ASEN está trabajando: ${completed} de ${items.length} tareas completadas.`;
- if(completed+cancelled===items.length)return cancelled?`ASEN cerró el plan: ${completed} tareas completadas y ${cancelled} canceladas.`:`ASEN terminó y verificó las ${items.length} tareas del plan.`;
+ const count=(amount:number,noun:string)=>`${amount} ${noun}${amount===1?"":"s"}`;
+ if(waiting)return `ASEN pausó el trabajo para revisar ${count(waiting,"tarea")}. No las repetirá automáticamente. Si quieres retomarlas, di «continúa» y revisaré qué paso es seguro; pediré confirmación cuando haga falta.`;
+ if(running)return `ASEN está trabajando: ${completed} de ${items.length} ${items.length===1?"tarea completada":"tareas completadas"}.`;
+ if(completed+cancelled===items.length)return cancelled?`ASEN cerró el trabajo: ${count(completed,"tarea")} completada${completed===1?"":"s"} y ${count(cancelled,"tarea")} cancelada${cancelled===1?"":"s"}.`:`ASEN completó ${count(completed,"tarea")}; no quedan pasos pendientes.`;
  return `ASEN lleva ${completed} de ${items.length} tareas completadas; continuará con el siguiente paso disponible.`;
 }

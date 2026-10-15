@@ -91,9 +91,10 @@ test("a persisted plan explorer dispatches the exact selected read-only skills t
  createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:agentFile,todoStoreFile:todoFile,autoAdvancePlans:false})(state.pi as any);await state.events.get("session_start")![0]!({},state.context(session.sessionId));
  const result=await state.tools.get("asen_agent_start").execute("plan-start",{prompt:instruction,todoId:todo.taskId},new AbortController().signal,()=>{},state.context(session.sessionId));
  const deadline=Date.now()+3000;while(Date.now()<deadline&&(!dispatched||(await todos.list(session))[0]?.current.state!=="done"))await new Promise(resolve=>setTimeout(resolve,5));
+ await state.waitForMessage(message=>message.includes("ASEN completó 1 tarea; no quedan pasos pendientes."));
  assert.equal(result.details.role,"explorer");assert.equal(dispatched?.prompt,instruction);assert.deepEqual(dispatched?.skillPaths,skillPaths);assert.equal(dispatched?.skillContext?.phase,"explore");assert.equal(dispatched?.candidate,undefined);assert.equal(dispatched?.writeSurfaces,undefined);
  const persisted=JSON.parse(await readFile(agentFile,"utf8"));assert.equal(persisted.entries[0].request.prompt,instruction);assert.equal(Object.hasOwn(persisted.entries[0].request,"skillContext"),false);assert.equal(Object.hasOwn(persisted.entries[0].request,"skillPaths"),false);
- assert.equal((await todos.list(session))[0]?.current.state,"done");await state.events.get("session_shutdown")![0]!({},state.context(session.sessionId));
+ assert.equal((await todos.list(session))[0]?.current.state,"done");assert.equal(state.messages.filter(message=>message.includes("ASEN completó 1 tarea; no quedan pasos pendientes.")).length,1);assert.equal(state.messages.some(message=>message.includes("comprobará el resultado antes de cerrar el plan")),false,"linked plan work should produce one accurate progress notice");await state.events.get("session_shutdown")![0]!({},state.context(session.sessionId));
 });
 
 test("session startup automatically dispatches one ready read-only plan task",async t=>{
@@ -316,6 +317,7 @@ test("failed agent reports failure and a broken delivery cannot erase its durabl
  const task=await state.tools.get("asen_agent_start").execute("start",{prompt:"inspect"},new AbortController().signal,()=>{},ctx);
  const deadline=Date.now()+3000;while(!finish&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,5));assert.ok(finish);
  const terminal=new Promise<void>(resolve=>runtime.subscribeTerminal(()=>resolve()));runtime.subscribeTerminal(()=>{throw new Error("delivery unavailable");});finish();await terminal;
+ await state.waitForMessage(message=>message.includes("no pudo completar la exploración")&&message.includes("di «continúa»"));
  assert.ok(state.messages.some(message=>message.includes("no pudo completar la exploración")&&message.includes("di «continúa»")));assert.ok(state.messages.every(message=>!message.includes("/asen-")));
  const records=await runtime.list({sessionId:"session-a",projectId:await realpath(process.cwd())});assert.equal(records.find(record=>record.id===task.details.id)?.state,"failed");
  await state.events.get("session_shutdown")![0]!({},ctx);
