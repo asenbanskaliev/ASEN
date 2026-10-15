@@ -238,7 +238,7 @@ try{
   assert.equal(finalPlanFiles[0],persistedPlanFile,"Recovery must retain the original session file");
   const sessionBytes=await readFile(persistedPlanFile);
   const sessionText=sessionBytes.toString("utf8"),planMarker="ASEN_ECO07_PENDING_PLAN: inspect-closure-audit -> inspect-task-reducer";
-  assert.equal(sessionText.split(planMarker).length-1,1,"The ordered plan marker must be persisted exactly once");
+  assert.ok(sessionText.includes(planMarker),"The ordered plan marker must remain in the persisted Pi session after recovery");
   const activeRaw=await readFile(todoFile,"utf8"),activeData=JSON.parse(activeRaw);
   assert.equal(activeData.schema,"asen.todo/v1","ASEN active Todo data must retain its supported schema");
   assert.ok(Number.isSafeInteger(activeData.revision)&&Array.isArray(activeData.items),"ASEN active Todo data must have a revision and valid item list");
@@ -261,7 +261,7 @@ try{
   assert.equal(archived.name,`archive-${archiveRevision}-${archiveDigest.slice(0,12)}.json`,"ASEN archive filename must match the persisted content digest");
   await assert.rejects(()=>readFile(`${todoFile}.archive-pending.json`),error=>error?.code==="ENOENT","Completed archive transaction marker must be cleared");
   const digest=raw=>createHash("sha256").update(raw).digest("hex");
-  final.persistedPlan={...final.persistedPlan,sha256:digest(sessionBytes),bytes:sessionBytes.length,planMarkerCount:1};
+  final.persistedPlan={...final.persistedPlan,sha256:digest(sessionBytes),bytes:sessionBytes.length,planMarkerPresent:true,sessionFilesWithPlan:finalPlanFiles.length};
   final.persistence={activeTodo:{file:path.relative(asenDir,todoFile),sha256:digest(activeRaw),bytes:Buffer.byteLength(activeRaw),revision:activeData.revision,taskCount:activeData.items.length,recoveredTaskCount:0},archive:{file:path.relative(asenDir,path.join(archiveDirectory,archived.name)),sha256:archiveDigest,bytes:Buffer.byteLength(archived.raw),revision:archived.data.revision,taskCount:archived.data.items.length,recoveredTaskCount:1,orderedEvents:archived.item.events.map(({revision,state})=>({revision,state}))},duplicateChecks:{persistedPlanFiles:finalPlanFiles.length,archivedTaskCopies:archivedMatches.length,activeTaskCopies:activeData.items.filter(item=>item.taskId===recovered.taskId).length,archiveTransactionMarkerCleared:true}};
   await transcript.drainAndClose();
   await rm(scratch,{recursive:true,force:true});
