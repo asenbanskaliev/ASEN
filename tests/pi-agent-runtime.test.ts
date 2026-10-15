@@ -34,6 +34,37 @@ test("Pi shows and clears a bounded ASEN progress widget as tasks change",async 
  await state.events.get("session_shutdown")![0]!({},state.context(identity.sessionId));
 });
 
+test("Pi links a long validation indicator and terminal notice only to one running Todo",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-validation-progress-"));t.after(()=>rm(home,{recursive:true,force:true}));const todos=await SessionTodoStore.open(join(home,"todos.json")),projectId=await realpath(process.cwd()),identity={sessionId:"validation-session",projectId};
+ const task=await todos.add("Run focused checks",identity);
+ const state=host();createPiExtension({homeDir:()=>home,enableAgentRuntime:false,todoStoreFactory:async()=>todos})(state.pi as any);await state.events.get("session_start")![0]!({},state.context(identity.sessionId));
+ await todos.update(task.taskId,identity,1,"running");
+ const started=state.events.get("tool_execution_start")![0]!,ended=state.events.get("tool_execution_end")![0]!;
+ await started({toolCallId:"short-check",toolName:"bash",args:{command:"npm test"}},state.context(identity.sessionId));
+ await ended({toolCallId:"short-check",toolName:"bash",durationMs:1_000,isError:false,result:{}},state.context(identity.sessionId));
+ assert.equal(state.messages.some(message=>message.includes("comprobación")),false,"short validations should not create completion noise");
+ await started({toolCallId:"check-1",toolName:"bash",args:{command:"npm test"}},state.context(identity.sessionId));
+ assert.match(state.widgets.get("asen-todo-progress")?.join("\n")??"",/Comprobando: Run focused checks/u);
+ await ended({toolCallId:"check-1",toolName:"bash",durationMs:12_000,isError:false,result:{}},state.context(identity.sessionId));
+ assert.equal(state.widgets.get("asen-todo-progress")?.join("\n").includes("Comprobando"),false);
+ assert.ok(state.messages.some(message=>message.includes("terminó la comprobación")&&message.includes("no sustituye la revisión independiente")));
+ assert.equal((await todos.list(identity)).find(row=>row.taskId===task.taskId)?.current.state,"running","a validation notice must not complete its Todo");
+ await todos.update(task.taskId,identity,2,"succeeded","The caller owns the independent review step");
+
+ const second=await todos.add("Run another check",identity);await todos.update(second.taskId,identity,1,"running");
+ await started({toolCallId:"check-2",toolName:"bash",args:{command:"pnpm run typecheck"}},state.context(identity.sessionId));
+ await ended({toolCallId:"check-2",toolName:"bash",durationMs:12_000,isError:true,result:{}},state.context(identity.sessionId));
+ assert.ok(state.messages.some(message=>message.includes("falló la comprobación")&&message.includes("Run another check")));
+ await todos.update(second.taskId,identity,2,"succeeded","The failure report was reviewed independently");
+ const third=await todos.add("First active check",identity),fourth=await todos.add("Second active check",identity);await todos.update(third.taskId,identity,1,"running");await todos.update(fourth.taskId,identity,1,"running");
+ await started({toolCallId:"check-3",toolName:"bash",args:{command:"npm run test"}},state.context(identity.sessionId));
+ assert.doesNotMatch(state.widgets.get("asen-todo-progress")?.join("\n")??"",/Comprobando/u,"ambiguous concurrent Todos must not receive a guessed validation link");
+ await ended({toolCallId:"check-3",toolName:"bash",durationMs:20_000,isError:false,result:{}},state.context("other-session"));
+ assert.equal(state.messages.filter(message=>message.includes("comprobación")).length,2,"a different session must not receive the task notification");
+ await ended({toolCallId:"not-tracked",toolName:"bash",durationMs:20_000,isError:true,result:{}},state.context(identity.sessionId));
+ await state.events.get("session_shutdown")![0]!({},state.context(identity.sessionId));
+});
+
 test("production Pi extension runs and restores session-scoped agent status using durable storage",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-agent-pi-"));t.after(()=>rm(home,{recursive:true,force:true}));const file=join(home,".asen","agents.json"),prior=process.env.ASEN_NO_SKILL_REGISTRY;process.env.ASEN_NO_SKILL_REGISTRY="1";
  const runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:"read-only result"})},first=host();let second:ReturnType<typeof host>|undefined;

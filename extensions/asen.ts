@@ -65,6 +65,7 @@ export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:str
 export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;startSession(context:CommandContext):Promise<void>;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
 
 const usage="Usage: /asen-skill-registry refresh";
+const longValidationNoticeMs=10_000;
 const productionPackageRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 async function privateFileState(file:string):Promise<boolean>{
  let directory;
@@ -147,6 +148,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   
   const todoStorePromise=dependencies.todoStoreFactory?.()??(dependencies.enableTodoRuntime?(dependencies.todoStoreFile?SessionTodoStore.open(dependencies.todoStoreFile):SessionTodoStore.openProjectScoped(path.join(home(),".asen","todos"),path.join(home(),".asen","todos.json"))):undefined);
   const taskAgentLinks=agentRuntimePromise&&todoStorePromise?new TaskAgentLinkStore(path.join(home(),".asen","task-agent-links.json")):undefined;
+  const validationActivities=new Map<string,{taskId:string;title:string;sessionId:string;projectId:string;startedAt:number}>();
+  const validationCommand=(toolName:unknown,args:unknown):boolean=>{
+   if((toolName!=="bash"&&toolName!=="powershell")||!args||typeof args!=="object")return false;
+   const command=(args as {command?:unknown}).command;if(typeof command!=="string"||command.length>16_384)return false;
+   return /(?:^|(?:&&|\|\||;)\s*)(?:(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?(?:test|check|typecheck|lint|build|verify)(?::[\w:-]+)?(?:\s|$)|(?:node|tsx)\s+[^\n]*(?:--test|vitest|jest)(?:\s|$)|(?:npx|bunx)\s+(?:vitest|jest|playwright)(?:\s|$)|(?:pytest|cargo\s+test|go\s+test|dotnet\s+test|mvn\s+test|gradle\s+test|make\s+(?:test|check))\b)/iu.test(command);
+  };
+  const activeValidationTask=(sessionId:string,projectId:string):string|undefined=>[...validationActivities.values()].find(activity=>activity.sessionId===sessionId&&activity.projectId===projectId)?.taskId;
   const sessionIdentity=async(ctx:CommandContext)=>{const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId)throw new Error("ASEN requires the active Pi session");const projectId=await canonical(ctx.cwd);return {sessionId,projectId,worktree:projectId};};
   const refreshTodoWidget=async(ctx:CommandContext):Promise<void>=>{
    if(!ctx?.ui?.setWidget)return;
@@ -154,7 +162,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(!todoStorePromise){ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});return;}
     const identity=await sessionIdentity(ctx),rows=await (await todoStorePromise).list(identity),current=await sessionIdentity(ctx);
     if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId){ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});return;}
-    ctx.ui.setWidget("asen-todo-progress",todoProgressWidget(rows),{placement:"belowEditor"});
+    ctx.ui.setWidget("asen-todo-progress",todoProgressWidget(rows,3,activeValidationTask(identity.sessionId,identity.projectId)),{placement:"belowEditor"});
    }catch{/* The progress display is optional and never blocks task work. */}
   };
   if(todoStorePromise)registerTodoTools(pi,async()=>todoStorePromise,taskAgentLinks&&agentRuntimePromise?async(taskId,identity)=>{
@@ -184,7 +192,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }finally{advancingPlans.delete(key);}
   };
   const startSession=async(ctx:CommandContext)=>{
-   agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});await lifecycle.start(ctx,registryStartupDisabled(undefined));
+   validationActivities.clear();agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});await lifecycle.start(ctx,registryStartupDisabled(undefined));
    try{
     finishActiveMemory();
     if(memoryStorePromise){const identity=await sessionIdentity(ctx),store=await memoryStorePromise;activeMemory=createPiMemoryBinding(store,identity.projectId,identity.sessionId);memoryFirstRequest=true;}
@@ -206,7 +214,16 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    try{await incrementUsageFile(usageFile,"sessions");}catch{try{ctx.ui.notify("ASEN no pudo guardar el uso local.","error");}catch{/* Notification is best-effort when the UI is unavailable. */}}
   };
   if(!dependencies.deferSessionStart)pi.on?.("session_start",async(_event,ctx)=>startSession(ctx));
-  pi.on?.("session_shutdown",async(_event,ctx)=>{agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue when the UI is unavailable. */}}if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}try{finishActiveMemory();}catch(error){try{ctx?.ui?.notify(`ASEN no pudo cerrar la sesión de memoria: ${safeErrorMessage(error)}`,"error");}catch{/* Shutdown continues after best-effort memory finalization. */}}if(memoryStorePromise)try{(await memoryStorePromise).close();}catch{/* Shutdown continues after best-effort memory close. */}await lifecycle.shutdown();});
+  // This is a temporary UI projection only: it records no validation evidence and never changes task state.
+  pi.on?.("tool_execution_start",async(event,ctx)=>{
+   if(!todoStorePromise||!validationCommand(event?.toolName,event?.args)||typeof event?.toolCallId!=="string"||!event.toolCallId||event.toolCallId.length>512)return;
+   try{const identity=await sessionIdentity(ctx as CommandContext),rows=await (await todoStorePromise).list(identity),running=rows.filter(row=>row.current.state==="running");if(running.length!==1)return;const task=running[0]!;validationActivities.set(event.toolCallId,{taskId:task.taskId,title:task.title,sessionId:identity.sessionId,projectId:identity.projectId,startedAt:Date.now()});await refreshTodoWidget(ctx as CommandContext);}catch{/* Progress is optional and cannot block Pi tool execution. */}
+  });
+  pi.on?.("tool_execution_end",async(event,ctx)=>{
+   if(typeof event?.toolCallId!=="string"||typeof event?.isError!=="boolean")return;const activity=validationActivities.get(event.toolCallId);if(!activity)return;validationActivities.delete(event.toolCallId);
+   const context=ctx as CommandContext;try{const current=await sessionIdentity(context);await refreshTodoWidget(context);if(current.sessionId!==activity.sessionId||current.projectId!==activity.projectId)return;const rows=await (await todoStorePromise!).list(current),task=rows.find(row=>row.taskId===activity.taskId);if(task?.current.state!=="running")return;const duration=typeof event.durationMs==="number"&&Number.isFinite(event.durationMs)?event.durationMs:Date.now()-activity.startedAt;if(duration<longValidationNoticeMs)return;const title=activity.title.replace(/[\u0000-\u001f\u007f-\u009f]+/gu," ").slice(0,120);context.ui.notify(event.isError?`ASEN: falló la comprobación de «${title}». Revisa el resultado antes de seguir.`:`ASEN: terminó la comprobación de «${title}». El resultado no sustituye la revisión independiente del plan.`,event.isError?"error":"info");}catch{/* A stale session or unavailable UI receives no validation notice. */}
+  });
+  pi.on?.("session_shutdown",async(_event,ctx)=>{const endingSession=ctx?.sessionManager?.getSessionId?.();for(const [id,activity] of validationActivities)if(activity.sessionId===endingSession)validationActivities.delete(id);agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue when the UI is unavailable. */}}if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}try{finishActiveMemory();}catch(error){try{ctx?.ui?.notify(`ASEN no pudo cerrar la sesión de memoria: ${safeErrorMessage(error)}`,"error");}catch{/* Shutdown continues after best-effort memory finalization. */}}if(memoryStorePromise)try{(await memoryStorePromise).close();}catch{/* Shutdown continues after best-effort memory close. */}await lifecycle.shutdown();});
   pi.on?.("input",async(event,ctx)=>{
    const text=typeof event?.text==="string"?event.text:"",sessionId=ctx.sessionManager?.getSessionId?.();
    if(event?.source!=="interactive"&&event?.source!=="rpc")return;
