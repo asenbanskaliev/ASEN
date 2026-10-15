@@ -107,8 +107,8 @@ try {
               prompt();
             }else if(row.type==="extension_ui_request"&&row.method==="notify"){
               assert.equal(row.notifyType,"info");assert.ok(row.message.length>0);
-              if(row.message.includes("queued or interrupted task(s)")||row.message.includes("tarea(s) de agente pausada(s)"))startupRecoveryNotice=row.message;
-              else if(row.message.includes("ASEN pausó el plan para revisar"))todoRecoveryNotice=row.message;
+              if(row.message.includes("queued or interrupted task(s)")||row.message.includes("tarea(s) pausada(s)"))startupRecoveryNotice=row.message;
+              else if(row.message.includes("ASEN pausó el trabajo para revisar"))todoRecoveryNotice=row.message;
               else{lastNotification=row.message;notifications++;}
             }else if(row.type==="response"&&row.id===names[index]){
               assert.equal(row.success,true);assert.equal(notifications,names[index]==="asen-plan"?2:1,`${names[index]} must be visible over RPC`);
@@ -118,7 +118,7 @@ try {
               if(names[index]==="asen-task-agents"){const tasks=JSON.parse(lastNotification);assert.equal(tasks[0]?.state,"blocked");assert.deepEqual(tasks[0]?.agents.map(agent=>[agent.id,agent.state]),[[agentId,"interrupted"]]);}
               if(names[index]==="asen-changes")assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);
               if(names[index]==="asen-changes")assert.ok(!lastNotification.includes("foreign"),"workspace projection must exclude foreign sessions");
-              if(names[index]==="asen-plan"){const plan=JSON.parse(lastNotification);assert.equal(plan.route,"orchestrate");assert.equal(plan.execution.started,true);assert.equal(plan.execution.authorized,false);assert.equal(plan.actions.reviewRequested,false);assert.equal(plan.persistence.status,"saved");assert.deepEqual(plan.executablePlan.tasks.map(task=>task.role),["explorer","worker","reviewer","verifier"]);assert.equal(plan.persistedTasks.length,4);assert.deepEqual(plan.persistedTasks[1].dependsOn,[plan.persistedTasks[0].todoId]);planTasks=plan.persistedTasks;}
+              if(names[index]==="asen-plan"){const plan=JSON.parse(lastNotification);assert.equal(plan.route,"orchestrate");assert.equal(plan.execution.started,true);assert.equal(plan.execution.authorized,false);assert.equal(plan.actions.reviewRequested,false);assert.equal(plan.persistence.status,"saved");assert.deepEqual(plan.executablePlan.tasks.map(task=>task.role),["explorer","worker","verifier"]);assert.equal(plan.persistedTasks.length,3);assert.deepEqual(plan.persistedTasks[1].dependsOn,[plan.persistedTasks[0].todoId]);planTasks=plan.persistedTasks;}
               visible++;index++;notifications=0;
               if(index===names.length){clearTimeout(timer);resolve();}else prompt();
             }
@@ -129,8 +129,8 @@ try {
     firstVerified=true;
   }finally{await settleVerifierChild(child,closed,{successful:firstVerified});}
   assert.equal(models,0);assert.equal(visible,11);
-  assert.match(startupRecoveryNotice,/1 tarea\(s\) de agente pausada\(s\).*asen-agents/u);
-  assert.match(todoRecoveryNotice,/ASEN pausó el plan para revisar \d+ tarea\(s\).*no las repetirá automáticamente/iu);
+  assert.match(startupRecoveryNotice,/Hay 1 tarea\(s\) pausada\(s\).*continúa/u);
+  assert.match(todoRecoveryNotice,/ASEN pausó el trabajo para revisar 1 tarea\..*No las repetirá automáticamente/iu);
   assert.equal(hostObservations.length,1,"public host inventories must be observed once after initialization");
   const host=hostObservations[0];
   assert.equal(host.mode,"rpc");assert.equal(typeof host.hasUI,"boolean");
@@ -161,13 +161,13 @@ try {
     reopened.stdout.on("data",chunk=>{buffer+=chunk.toString();if(buffer.length>100000){fail(Error("Oversized reopened RPC output"));return;}let end;while((end=buffer.indexOf("\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;try{
       const row=JSON.parse(line);if(row.type==="agent_start")throw Error("Reopened ASEN state query invoked a model");
       if(row.type==="response"&&row.id==="reopen-commands"){assert.equal(row.success,true);for(const name of names)assert.ok(row.data.commands.some(command=>command.name===name));requestNext();}
-      else if(row.type==="extension_ui_request"&&row.method==="notify"){assert.equal(row.notifyType,"info");if(row.message.includes("queued or interrupted task(s)")||row.message.includes("tarea(s) de agente pausada(s)"))reopenedRecoveryNotice=row.message;else if(row.message.includes("ASEN pausó el plan para revisar"))reopenedTodoRecoveryNotice=row.message;else{lastNotification=row.message;notifications++;}}
+      else if(row.type==="extension_ui_request"&&row.method==="notify"){assert.equal(row.notifyType,"info");if(row.message.includes("queued or interrupted task(s)")||row.message.includes("tarea(s) pausada(s)"))reopenedRecoveryNotice=row.message;else if(row.message.includes("ASEN pausó el trabajo para revisar"))reopenedTodoRecoveryNotice=row.message;else{lastNotification=row.message;notifications++;}}
       else if(row.type==="response"&&row.id===`reopen-${names[index]}`){assert.equal(row.success,true);assert.equal(notifications,1);if(names[index]==="asen-agents")assertInterruptedAgentVisible(lastNotification);else if(names[index]==="asen-todos"){assert.match(lastNotification,/Pausada; requiere revisión.*Pi restart recovery.*explicit review is required/i);assert.ok(!lastNotification.includes(foreignTodoId));assert.match(lastNotification,/Explorer task/);}else if(names[index]==="asen-task-agents"){const tasks=JSON.parse(lastNotification),recovered=tasks.find(task=>task.taskId===todoId),workerLink=planTasks.find(task=>task.planTaskId==="package-plan:worker"),explorerLink=planTasks.find(task=>task.planTaskId==="package-plan:explorer"),worker=tasks.find(task=>task.taskId===workerLink.todoId);assert.equal(recovered?.state,"blocked");assert.deepEqual(recovered?.agents.map(agent=>[agent.id,agent.state]),[[agentId,"interrupted"]]);assert.match(recovered?.agents[0]?.summary,/explicit review/i);assert.equal(worker?.ready,false);assert.deepEqual(worker?.blockedBy,[{id:explorerLink.todoId,state:"blocked"}]);}else{assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);assert.ok(!lastNotification.includes("foreign"));}seen.push(names[index]);notifications=0;requestNext();}
     }catch(error){fail(error);}}});
     send({id:"reopen-commands",type:"get_commands"});
   }).then(()=>{reopenedVerified=true;}).finally(()=>settleVerifierChild(reopened,reopenedClosed,{successful:reopenedVerified}));
-  assert.match(reopenedRecoveryNotice,/1 tarea\(s\) de agente pausada\(s\).*asen-agents/u);
-  assert.match(reopenedTodoRecoveryNotice,/ASEN pausó el plan para revisar \d+ tarea\(s\).*no las repetirá automáticamente/iu);
+  assert.match(reopenedRecoveryNotice,/Hay 1 tarea\(s\) pausada\(s\).*continúa/u);
+  assert.match(reopenedTodoRecoveryNotice,/ASEN pausó el trabajo para revisar 2 tareas\..*No las repetirá automáticamente/iu);
   assert.deepEqual(seen,["asen-agents","asen-todos","asen-task-agents","asen-changes"]);
   // Open a different real Pi session against the same project and durable stores.
   const foreign=spawn(process.execPath,[cli,"--mode","rpc","--session-id","asen-package-foreign-session","--no-extensions","--extension",primary,"--no-skills"],{

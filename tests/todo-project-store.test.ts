@@ -29,7 +29,7 @@ test("project-scoped Todo store archives a completed project batch and exposes i
  assert.deepEqual(await store.list(identity),[]);const archived=await store.archived(identity);assert.deepEqual(archived.map(item=>item.taskId),tasks.map(item=>item.taskId));
  assert.deepEqual((await store.history(tasks[1]!.taskId,identity)).map(event=>event.state),["planned","running","done"]);
  const retry=await store.addPlan(plan,identity);assert.deepEqual(retry.map(item=>item.taskId),tasks.map(item=>item.taskId),"archived request IDs remain idempotent");
- const projectDir=path.join(root,"projects",createHash("sha256").update(project).digest("hex"));assert.equal((await readdir(path.join(projectDir,"archive"))).filter(name=>name.endsWith(".json")).length,1);
+ const projectDir=path.join(root,"projects",createHash("sha256").update(process.platform==="win32"?project.toLowerCase():project).digest("hex"));assert.equal((await readdir(path.join(projectDir,"archive"))).filter(name=>name.endsWith(".json")).length,1);
 });
 
 test("project-scoped Todo recovers an interrupted archive transaction without replaying completed work",async t=>{
