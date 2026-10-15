@@ -248,6 +248,10 @@ test("E2E wires the existing provider classifier through guarded IO and drains b
  assert.match(source,/SessionTodoStore\.openProjectScoped\(todoRoot,legacyTodoFile\)/u,"the E2E harness must inspect the same project-scoped Todo store Pi opens");
  assert.match(source,/todoProjectStorageFile\(todoRoot,repository\)/u,"the Pi probe must inspect the exact active project shard");
  assert.match(source,/store\.archived\(todoIdentity\)/u,"the E2E verifier must inspect a completed task after Todo auto-archives it");
+ const settleWait=source.indexOf('if(recovered.events.at(-1)?.state==="done"&&second.events.some(event=>event.type==="agent_settled"))'),settleAssert=source.indexOf("const resumedSettled=second.events.findLast"),shutdown=source.indexOf("const completionShutdown");
+ assert.ok(settleWait>=0&&settleAssert>settleWait&&shutdown>settleAssert,"the real Pi journey must observe natural agent settlement before shutting down the resumed process");
+ assert.match(source,/pipelineTimingsMs/u,"the real Pi receipt must report task transition timings");
+ assert.match(source,/processMetrics/u,"the real Pi receipt must report turn and tool-call counts without storing prompts");
  const drain=source.indexOf("await transcript.drainAndClose()"),evidence=source.indexOf("await writeFile(evidencePath");
  assert.ok(drain>=0&&evidence>drain,"successful evidence must follow transcript drain");
  assert.match(source,/transcriptFlushError/u,"failure evidence must retain a distinct flush error");

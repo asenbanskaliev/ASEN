@@ -65,6 +65,8 @@ function startPi(label){
   let buffer="",stderr="",stdoutBytes=0;
   let resumeConfirmed=false;
   const events=[];
+  const timeline=[];
+  const processStartedAt=process.hrtime.bigint();
   let controller;
   const onStdout=chunk=>{
     stdoutBytes+=chunk.length;
@@ -74,7 +76,7 @@ function startPi(label){
     while((end=buffer.indexOf("\n"))>=0){
       const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;
       let value;try{value=JSON.parse(line);}catch{child.kill("SIGKILL");continue;}
-      events.push(value);void recordAsync(`${label}:pi-event`,{type:value.type,command:value.command,method:value.method,toolName:value.toolName,stopReason:value.message?.stopReason,...(typeof value.message?.errorMessage==="string"?{providerError:redacted(value.message.errorMessage)}:{})});
+      events.push(value);const observedAt=new Date().toISOString(),elapsedMs=Number(process.hrtime.bigint()-processStartedAt)/1e6;timeline.push({type:value.type,at:observedAt,elapsedMs,...(typeof value.toolName==="string"?{toolName:value.toolName}:{}),...(typeof value.message?.stopReason==="string"?{stopReason:value.message.stopReason}:{})});void recordAsync(`${label}:pi-event`,{type:value.type,command:value.command,method:value.method,toolName:value.toolName,stopReason:value.message?.stopReason,...(typeof value.message?.errorMessage==="string"?{providerError:redacted(value.message.errorMessage)}:{})});
       const rateLimit=controller.observe(value);
       if(rateLimit)void recordAsync(`${label}:provider-rate-limit`,{message:rateLimit});
       if(label==="restarted"&&!resumeConfirmed&&value.type==="tool_execution_start"&&!["asen_todo_list","asen_todo_update"].includes(value.toolName)){
@@ -96,7 +98,18 @@ function startPi(label){
   const onStderr=chunk=>{stderr=redacted(stderr+chunk.toString()).slice(-3000);};
   controller=createRpcController({child,label,classifyProviderFailure:eco07ProviderRateLimitError,redact:redacted,dispose:()=>{child.stdout.off("data",onStdout);child.stderr.off("data",onStderr);buffer="";}});
   child.stdout.on("data",onStdout);child.stderr.on("data",onStderr);
-  return {child,events,send:controller.send,stop:controller.stop,get stderr(){return stderr;},getClosed:controller.getClosed,getProviderFailure:controller.getProviderFailure};
+  return {child,events,timeline,send:controller.send,stop:controller.stop,get stderr(){return stderr;},getClosed:controller.getClosed,getProviderFailure:controller.getProviderFailure};
+}
+function measureProcess(process){
+  let turnStartedAt;
+  const turnDurationsMs=[],toolCalls={},timeline=process.timeline;
+  for(const event of timeline){
+    if(event.type==="turn_start")turnStartedAt=event.elapsedMs;
+    if(event.type==="turn_end"&&Number.isFinite(turnStartedAt)){turnDurationsMs.push(Math.round(Math.max(0,event.elapsedMs-turnStartedAt)));turnStartedAt=undefined;}
+    if(event.type==="tool_execution_start"&&event.toolName)toolCalls[event.toolName]=(toolCalls[event.toolName]??0)+1;
+  }
+  const started=timeline.find(event=>event.type==="agent_start"),settled=timeline.findLast(event=>event.type==="agent_settled");
+  return {agentStartedAt:started?.at??null,agentSettledAt:settled?.at??null,turnsStarted:timeline.filter(event=>event.type==="turn_start").length,turnsCompleted:turnDurationsMs.length,turnDurationsMs,toolCalls};
 }
 
 let phase="starting";
@@ -168,12 +181,17 @@ try{
   const finishDeadline=Date.now()+240_000;
   while(Date.now()<finishDeadline){
     recovered=await currentItem();
-    if(recovered.events.at(-1)?.state==="done")break;
+    if(recovered.events.at(-1)?.state==="done"&&second.events.some(event=>event.type==="agent_settled"))break;
     if(second.events.some(event=>event.type==="agent_settled")&&recovered.events.at(-1)?.state==="blocked")throw new Error("Restarted Pi settled without resuming the recovered task");
     const exit=await Promise.race([second.getClosed().then(value=>({closed:value})),sleep(25).then(()=>null)]);
     if(exit)throw new Error(`Restarted Pi exited before completing task (${JSON.stringify(exit.closed)}): ${second.stderr}`);
   }
   recovered=await currentItem();
+  const resumedSettled=second.events.findLast(event=>event.type==="agent_settled");
+  assert.ok(resumedSettled,"Pi must settle naturally after saving the recovered task as done");
+  assert.equal(resumedSettled.aborted,false,"The recovered task's final Pi turn must not be aborted");
+  const finalTurnEnd=second.events.findLastIndex(event=>event.type==="turn_end"),settledIndex=second.events.findLastIndex(event=>event.type==="agent_settled");
+  assert.ok(finalTurnEnd>=0&&settledIndex>finalTurnEnd,"Pi must finish its final model turn before the harness shuts down the process");
   assert.deepEqual(recovered.events.map(event=>event.state),["planned","running","blocked","running","done"],"Only the same recovered task may progress to completion");
   assert.deepEqual(recovered.events.map(event=>event.revision),[1,2,3,4,5],"Persisted task history must have one strictly ordered revision for each transition");
   // A model can claim completion without performing the required review. Evidence, not the Todo label, determines success.
@@ -186,7 +204,8 @@ try{
   assert.ok(second.events.filter(event=>event.type==="tool_execution_start"&&event.toolName==="asen_eco07_read_pending_review").length>=2,"Pi must invoke the resume-gated ASEN review tool; persisted successful reads enforce exact order and uniqueness");
   assert.equal(first.events.filter(event=>event.type==="extension_ui_request"&&event.method==="confirm").length,0);
   assert.equal(second.events.filter(event=>event.type==="extension_ui_request"&&event.method==="confirm").length,1,"Resume requires one explicit affirmative Pi confirmation");
-  const final={candidate:revision,provider,model,piVersion:piPackage.version,sessionId,projectId:repository,taskId:recovered.taskId,events:recovered.events.map(({revision,state,at,reason})=>({revision,state,at,reason})),persistedPlan:{sessionFile:path.relative(sessionDir,persistedPlanFile),orderedSteps:["inspect-closure-audit","inspect-task-reducer"]},reads:reads.map(({step,file,at})=>({step,file,at})),steps:rows.map(({step,summary,at})=>({step,summary,at})),initialProcessPid:first.child.pid,restartedProcessPid:second.child.pid,interruptionSignal:"SIGKILL",wrongSession:{visible:0,mutationRejected:true},wrongProject:{visible:0,mutationRejected:true},explicitResumeConsent:true,approvalAuthorityGranted:false,publishAuthorityGranted:false,mergeAuthorityGranted:false,result:"PASS"};
+  const [planned,running,blocked,resumed,done]=recovered.events.map(event=>Date.parse(event.at));
+  const final={candidate:revision,provider,model,piVersion:piPackage.version,sessionId,projectId:repository,taskId:recovered.taskId,events:recovered.events.map(({revision,state,at,reason})=>({revision,state,at,reason})),pipelineTimingsMs:{plannedToRunning:running-planned,activeBeforeInterruption:blocked-running,blockedUntilResume:resumed-blocked,activeAfterResume:done-resumed,plannedToDone:done-planned},processMetrics:{initial:measureProcess(first),restarted:measureProcess(second)},persistedPlan:{sessionFile:path.relative(sessionDir,persistedPlanFile),orderedSteps:["inspect-closure-audit","inspect-task-reducer"]},reads:reads.map(({step,file,at})=>({step,file,at})),steps:rows.map(({step,summary,at})=>({step,summary,at})),initialProcessPid:first.child.pid,restartedProcessPid:second.child.pid,interruptionSignal:"SIGKILL",wrongSession:{visible:0,mutationRejected:true},wrongProject:{visible:0,mutationRejected:true},explicitResumeConsent:true,approvalAuthorityGranted:false,publishAuthorityGranted:false,mergeAuthorityGranted:false,result:"PASS"};
   const completionShutdown=await second.stop("SIGKILL");
   assert.equal(completionShutdown.cleanupConfirmed,true,"Successful recovery must observe restarted Pi process close");
   await transcript.drainAndClose();
