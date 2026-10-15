@@ -19,14 +19,14 @@ test("ECO-06 interrupted writer preserves partial edits but cannot replay author
  const child=spawnSync(process.execPath,["--import","tsx","--input-type=module","-e",`
   import {PersistentAgentStore} from "./src/runtime/agent-store.ts";
   import {appendFile} from "node:fs/promises";
-  const file=process.argv[1],target=process.argv[2];
+  const file=process.argv[0],target=process.argv[1];
   const {store}=await PersistentAgentStore.open(file);
   const request={id:"interrupted-writer",role:"worker",prompt:"Edit only work.txt",repository:"/repo",isolationKey:"session-a",
     candidate:{id:"candidate",repository:"/repo",revision:"revision"},writeSurfaces:["work.txt"],
     writerAdmission:{opaque:true}};
   await store.enqueueControlledWorker(request,{kind:"user",id:"pi:session-a"});
   await store.running("interrupted-writer",new Date().toISOString());
-  await appendFile(target,"partially-applied\n");
+  await appendFile(target,"partially-applied\\n");
  `,file,target],{encoding:"utf8",timeout:30000,cwd:process.cwd()});
  assert.equal(child.status,0,`crash fixture failed: ${child.stderr}`);
  const before=await readFile(target,"utf8");
