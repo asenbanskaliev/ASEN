@@ -35,6 +35,18 @@ test("ECO-06 interrupted writer preserves partial edits but cannot replay author
  const entry=await reopened.store.get("interrupted-writer","session-a","/repo");
  assert.equal(entry?.record.state,"interrupted");
  assert.equal(entry?.result,undefined);
+ assert.equal(await reopened.store.get("interrupted-writer","other-session","/repo"),undefined);
+ assert.equal(await reopened.store.get("interrupted-writer","session-a","/other-repo"),undefined);
+ assert.equal((await reopened.store.list("other-session","/repo")).length,0);
+ assert.equal((await reopened.store.list("session-a","/other-repo")).length,0);
+ await assert.rejects(
+  ()=>reopened.store.enqueueContinuation("interrupted-writer","other-session","/repo",{kind:"user",id:"pi:other-session"}),
+  /unavailable to this session or project/
+ );
+ await assert.rejects(
+  ()=>reopened.store.enqueueContinuation("interrupted-writer","session-a","/other-repo",{kind:"user",id:"pi:session-a"}),
+  /unavailable to this session or project/
+ );
  for(const field of ["candidate","writeSurfaces","writerAdmission","phaseGrant"]){
   assert.equal(Object.hasOwn(entry?.request??{},field),false,`${field} must not be restored`);
  }
