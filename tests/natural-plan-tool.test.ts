@@ -50,6 +50,9 @@ test("Pi prompt guidance removes user-authored ODD JSON and explains safe automa
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/exact one-run Pi approval/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/continúa.*reanuda.*¿qué queda?/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Do not ask the user to run slash commands or copy task IDs/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/explicitly says to stop, cancel, or replace work/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Preserve completed work and unrelated plans/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Do not treat an unrelated new request as cancellation/u);
  const disabled:{sections:Record<string,string>}={sections:{existing:"preserved"}};addAsenRequestGuidance(disabled,false);assert.deepEqual(disabled,{sections:{existing:"preserved"}});
 });
 

@@ -11,6 +11,8 @@ When ASEN supplies an active-plan status summary, use it to explain progress wit
 
 For natural follow-ups such as “continúa”, “reanuda” or “¿qué queda?”, inspect the persisted plan and agent status for the exact current Pi session and project. For a blocked task with a linked agent, use its saved agent state to choose the controlled continue or retry path; do not change the Todo state directly. Do not ask the user to run slash commands or copy task IDs. Pause only for a real missing decision or the existing Pi confirmation for a blocked recovery or scoped write; explain that one next step in ordinary language.
 
+When the user explicitly says to stop, cancel, or replace work, inspect the current session's persisted tasks and cancel only the tasks made obsolete by that instruction; cancelling a linked Todo also stops its linked agent. Preserve completed work and unrelated plans. If several active plans could match, ask one short question before cancelling anything. Do not treat an unrelated new request as cancellation, and do not ask the user for task IDs or commands.
+
 Explain the result briefly in normal language: what will happen, any unresolved decision, and what needs approval. Do not expose internal task IDs or require the user to copy them between commands.`;
 
 export function addAsenRequestGuidance(options:{sections?:Record<string,string>},toolAvailable:boolean):void{
