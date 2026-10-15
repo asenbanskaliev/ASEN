@@ -56,3 +56,14 @@ Independent review found a gap between the worker's post-confirmation snapshot c
 The controlled worker now receives enqueue and dispatch callbacks only through `launchExact`. The binder compares the complete persisted Todo and requires `planned` while holding the same lock that records the running claim, binds ownership, and dispatches. The agent record is not durably enqueued until that exact comparison succeeds. The worker path has no direct-dispatch fallback. `tests/trusted-task-agent-binder.test.ts` reproduces the stale-state race and requires zero enqueue, zero link and zero runner calls; `tests/pi-agent-runtime.test.ts` continues to cover the approved writer path.
 
 This closes the local stale-snapshot admission gap only. ECO-06 remains **PARTIAL / OPEN**: primary-session dispatch, structured lifecycle grants, real interrupted-write recovery and native review remain separate gates.
+
+
+## Interrupted writer regression tranche (2026-10-15)
+
+Added `tests/eco06-interrupted-writer.test.ts` to exercise a separate Node/tsx process with a controlled worker persisted as running. The child writes a partial real-file edit and exits. A fresh store open must mark the writer interrupted, retain the modified file unchanged, and exclude the candidate, write surfaces, one-use admission and phase grant from the durable task specification. A second open must not dispatch or create another task. Continuation of the writer and generic unapproved worker enqueue are explicitly rejected.
+
+**Security boundary:** an interrupted write is not automatically retried or rolled back. Before any new writer launch, an operator must inspect the actual diff and repository state, decide whether to preserve or revert partial changes, create a fresh candidate/plan, and approve a newly scoped one-use admission. Existing authority cannot be reconstructed from the persistent agent store.
+
+**Evidence classification:** this is a deterministic subprocess/persistence regression, **not** a live Pi writer interruption and **not** a full ECO-06 acceptance receipt. CI must pass on the final exact SHA before this regression is called verified. The test uses a process that exits after applying an edit; it does not establish the stronger abrupt-SIGKILL or mid-write durability property. No claim of automated file repair, human-free approval, or real provider execution is made.
+
+**R4 checklist:** reject authority replay, reject duplicate continuation, retain partial edits for explicit review, ensure session/project isolation, verify second-restart idempotence, and preserve the distinction between test coverage and live provider evidence. The remaining work is a real Pi interrupted-write experiment with fresh reauthorization, plus primary-session execution and structured phase grants.
