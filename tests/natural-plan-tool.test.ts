@@ -85,3 +85,23 @@ test("natural-language plan request persists the real planner output without aut
   assert.doesNotMatch(result.content[0].text,/task-[0-9a-f-]{36}|natural-plan-session/u);
  }finally{await rm(directory,{recursive:true,force:true});}
 });
+
+test("bounded direct requests stay in chat without leaving a stalled Todo task",async()=>{
+ const directory=await mkdtemp(path.join(os.tmpdir(),"asen-natural-direct-"));
+ try{
+  const tools=new Map<string,any>(),events=new Map<string,(...args:any[])=>unknown>();
+  const todos=await SessionTodoStore.open(path.join(directory,"todos.json"));
+  const pi={registerCommand(){},registerTool(tool:any){tools.set(tool.name,tool);},on(name:string,handler:(...args:any[])=>unknown){events.set(name,handler);}};
+  createAsenExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,todoStoreFactory:async()=>todos})(pi);
+  const context={cwd:process.cwd(),sessionManager:{getSessionId:()=>"natural-direct-session"},ui:{notify(){}}};
+  const result=await tools.get(ASEN_PLAN_REQUEST_TOOL).execute("call",request(),undefined,undefined,context);
+  assert.equal(result.details.route,"direct");
+  assert.equal(result.details.inlineContinuation,true);
+  assert.equal(result.details.persistence.status,"not-needed");
+  assert.equal(result.details.execution.started,false);
+  assert.deepEqual(await todos.list({sessionId:"natural-direct-session",projectId:process.cwd()}),[]);
+  assert.match(result.content[0].text,/continúa en esta misma conversación de Pi/u);
+  assert.match(result.content[0].text,/No guardes una tarea Todo/u);
+  assert.doesNotMatch(result.content[0].text,/slash command|task-[0-9a-f-]{36}|natural-direct-session/u);
+ }finally{await rm(directory,{recursive:true,force:true});}
+});

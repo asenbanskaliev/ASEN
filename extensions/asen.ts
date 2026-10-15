@@ -258,6 +258,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project))) as typeof output;}
    catch(error){if(error instanceof Error)throw error;throw new Error("ASEN plan output was invalid");}
    if(!output.executablePlan)return JSON.stringify(output,null,2);
+   if(output.executablePlan.route==="direct"){
+    output.persistence={status:"not-needed",reason:"A bounded direct request stays in the current Pi conversation; no Todo record is needed"};
+    output.execution={started:false,authorized:false};
+    output.inlineContinuation=true;
+    output.notice="This is a bounded direct request. Continue it in the current Pi conversation without saving a task, asking the user to run commands, or requesting internal planning details. No agent was dispatched.";
+    return JSON.stringify(output,null,2);
+   }
    if(!todoStorePromise){output.persistence={status:"unavailable",reason:"Todo store is not configured; this graph was not saved or made runnable"};output.execution={started:false,authorized:false};output.notice="Plan only. The Todo store is unavailable, so no task records were persisted. No agent was dispatched and no permission was granted.";return JSON.stringify(output,null,2);}
    const store=await todoStorePromise,identity=await sessionIdentity(ctx),todoIds=new Map<string,string>(),ordered=output.executablePlan.topologicalOrder.map(taskId=>{const task=output.executablePlan!.tasks.find(item=>item.id===taskId);if(!task)throw new Error("ASEN executable plan order references an unknown task");return task;});
    validateContext();if(identity.sessionId!==sessionId||identity.projectId!==project)throw new Error("Pi session or project changed while preparing the plan");

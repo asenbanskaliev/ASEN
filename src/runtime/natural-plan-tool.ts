@@ -27,6 +27,7 @@ function userSummary(value:unknown):string{
  if(!value||typeof value!=="object"||Array.isArray(value))return "ASEN could not prepare a readable plan.";
  const plan=value as {status?:unknown;route?:unknown;risk?:unknown;verification?:unknown;requiredAgentRoles?:unknown;executablePlan?:{tasks?:unknown};persistence?:{status?:unknown};execution?:{started?:unknown;authorized?:unknown}};
  if(plan.status==="needs-verified-facts")return "ASEN needs more information before it can prepare a safe plan. I will ask only about decisions that cannot be inferred from the request or project.";
+ if((value as {inlineContinuation?:unknown}).inlineContinuation===true)return "La petición es acotada: continúa en esta misma conversación de Pi. No guardes una tarea Todo, no pidas al usuario ejecutar comandos ni detalles internos de planificación. No se lanzó ningún agente.";
  const tasks=Array.isArray(plan.executablePlan?.tasks)?plan.executablePlan!.tasks as Array<{role?:unknown;title?:unknown;status?:unknown;dependsOn?:unknown;writeSurfaces?:unknown}>:[];
  const routeLabel:Record<string,string>={direct:"trabajo acotado en la sesión actual",plan:"aclaración pendiente",orchestrate:"trabajo coordinado",incident:"atención de incidencia",verify:"verificación independiente"};
  const riskLabel:Record<string,string>={low:"riesgo bajo",medium:"riesgo medio",high:"riesgo alto",unknown:"riesgo por determinar"};
