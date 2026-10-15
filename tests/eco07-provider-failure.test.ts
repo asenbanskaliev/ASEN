@@ -70,7 +70,7 @@ test("ECO-07 exact-SHA workflow uses NVIDIA only and supports a guarded branch r
  const workflow=readFileSync(resolve(".github/workflows/eco07-nvidia-e2e.yml"),"utf8");
  const compact=workflow.replace(/\s+/gu," ");
  assert.ok(workflow.includes("workflow_dispatch:"));
- assert.ok(compact.includes("push: branches: - feat/strict-parity-prerequisites paths: - .github/workflows/eco07-nvidia-e2e.yml - scripts/eco07-pi-recovery-e2e.mjs - scripts/eco07-pi-recovery-probe-extension.mjs - src/runtime/todo-store.ts - src/agents/dispatcher.ts - src/agents/pi-process-runner.ts - src/lifecycle/skill-lifecycle.ts"));
+ assert.ok(compact.includes("push: branches: - feat/strict-parity-prerequisites paths: - .github/workflows/eco07-nvidia-e2e.yml - scripts/eco07-pi-recovery-e2e.mjs - scripts/eco07-pi-recovery-probe-extension.mjs - src/runtime/todo-store.ts - src/runtime/plan-dispatcher.ts - src/agents/pi-agent-tools.ts - src/agents/dispatcher.ts - src/agents/pi-process-runner.ts - src/lifecycle/skill-lifecycle.ts"));
  assert.ok(workflow.includes("expected_sha:"));
  assert.ok(workflow.includes('NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}'));
  assert.ok(workflow.includes("ASEN_ECO07_PROVIDER: nvidia"));

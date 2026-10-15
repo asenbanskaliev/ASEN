@@ -190,21 +190,20 @@ test("persisted plan reviewer and verifier roles dispatch only their exact read-
  const persisted=JSON.parse(await readFile(agentFile,"utf8"));assert.ok(persisted.entries.every((entry:any)=>!Object.hasOwn(entry.request,"skillContext")&&!Object.hasOwn(entry.request,"skillPaths")));await state.events.get("session_shutdown")![0]!({},state.context(session.sessionId));
 });
 
-test("next-plan dispatch confirms one ready read-only task and refuses the writer phase",async t=>{
+test("next-plan dispatch starts ready read-only work without another confirmation and refuses an incomplete writer",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-plan-dispatch-next-"));t.after(()=>rm(home,{recursive:true,force:true}));const projectId=await realpath(process.cwd()),session={sessionId:"dispatch-next-session",projectId},todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),todos=await SessionTodoStore.open(todoFile),selection={phase:"explore" as const,risk:"low" as const,codeChange:false,behaviorChange:false,filesTouched:0},paths=selectSkills(selection).map(skill=>skill.path),workerSelection={phase:"apply" as const,risk:"medium" as const,codeChange:true,behaviorChange:false,filesTouched:1},workerPaths=selectSkills(workerSelection).map(skill=>skill.path),longInstruction=`Inspect the bounded project and report evidence ${"i".repeat(1800)} END-OF-INSTRUCTION-MARKER`,seen:import("../src/agents/dispatcher.js").AgentRequest[]=[],runner:AgentRunner={run:async request=>{seen.push(request);return{id:request.id,ok:true,output:"inspection evidence"};}};
  const persisted=await todos.addPlan([
   {title:"Explore task",requestId:"asen-plan:dispatch-next:explorer",dependsOn:[],description:longInstruction,plan:{role:"explorer",skillPaths:paths,priority:1,skillSelection:selection}},
   {title:"Worker task",requestId:"asen-plan:dispatch-next:worker",dependsOn:["asen-plan:dispatch-next:explorer"],description:"Apply the accepted change",plan:{role:"worker",skillPaths:workerPaths,priority:2,skillSelection:workerSelection}}
  ],session),state=host();let confirmations=0;
  createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:agentFile,todoStoreFile:todoFile,autoAdvancePlans:false})(state.pi as any);await state.events.get("session_start")![0]!({},state.context(session.sessionId));
- let confirmationMessage="";const context={...state.context(session.sessionId),ui:{...state.context(session.sessionId).ui,confirm:async(_title:string,message:string)=>{confirmations++;confirmationMessage=message;return true;}}};
+ const context={...state.context(session.sessionId),ui:{...state.context(session.sessionId).ui,confirm:async()=>{confirmations++;return true;}}};
  const dispatched=await state.tools.get("asen_plan_dispatch_next").execute("dispatch-next",{},new AbortController().signal,()=>{},context);
- assert.equal(dispatched.details.status,"dispatched");assert.equal(dispatched.details.role,"explorer");assert.equal(confirmations,1);
- assert.ok(confirmationMessage.includes(longInstruction),"Pi must show the complete persisted instruction before dispatch");
+ assert.equal(dispatched.details.status,"dispatched");assert.equal(dispatched.details.role,"explorer");assert.equal(confirmations,0,"read-only continuation must not add a redundant approval dialog");
  const deadline=Date.now()+3000;while(Date.now()<deadline&&(await todos.list(session)).find(row=>row.taskId===persisted[0]!.taskId)?.current.state!=="done")await new Promise(resolve=>setTimeout(resolve,5));
  let rows=await todos.list(session),explorer=rows.find(row=>row.taskId===persisted[0]!.taskId)!;assert.equal(explorer.current.state,"done");assert.equal(seen.length,1);assert.equal(seen[0]?.role,"explorer");assert.equal(seen[0]?.prompt,longInstruction);assert.equal(seen[0]?.candidate,undefined);assert.equal(seen[0]?.writeSurfaces,undefined);
  const refused=await state.tools.get("asen_plan_dispatch_next").execute("dispatch-worker",{},new AbortController().signal,()=>{},context);
- assert.equal(refused.details.status,"blocked");assert.match(refused.details.reason,/persisted candidate, exact file scope/);assert.equal(confirmations,1,"an incomplete writer plan must be rejected before asking for authorization");assert.equal(seen.length,1);
+ assert.equal(refused.details.status,"blocked");assert.match(refused.details.reason,/persisted candidate, exact file scope/);assert.equal(confirmations,0,"an incomplete writer plan must be rejected before asking for authorization");assert.equal(seen.length,1);
  rows=await todos.list(session);assert.equal(rows.find(row=>row.taskId===persisted[1]!.taskId)?.current.state,"planned");await state.events.get("session_shutdown")![0]!({},context);
 });
 
@@ -222,7 +221,7 @@ test("ECO-06 worker dispatch binds one Pi write to the persisted ODD scope and r
  deadline=Date.now()+3000;let workerRowAfter:any;while(Date.now()<deadline){workerRowAfter=(await todos.list(identity)).find(row=>row.taskId===worker.todoId);if(workerRowAfter?.current.state==="succeeded")break;await new Promise(resolve=>setTimeout(resolve,5));}assert.equal(workerRowAfter?.current.state,"succeeded");assert.equal(requests.filter(value=>value.role==="worker").length,1);const nextPhase=await state.tools.get("asen_plan_dispatch_next").execute("advance-after-worker",{},new AbortController().signal,()=>{},context);assert.equal(nextPhase.details.status,"dispatched");assert.notEqual(nextPhase.details.role,"worker");assert.equal(requests.filter(value=>value.role==="worker").length,1);assert.equal(requests.at(-1)?.model,model,"independent review follows the same explicit model route");
  let reviewPrompt="";context.ui.confirm=async(_title:string,message:string)=>{confirmations++;reviewPrompt=message;return true;};
  const accepted=await state.tools.get("asen_todo_accept_result").execute("accept-write-plan-worker",{id:worker.todoId,agentId:writeLaunch.details.agentId,revision:workerRowAfter.current.revision,evidence:"I inspected the actual diff, confirmed only the two approved files changed, and verified the acceptance criteria."},new AbortController().signal,()=>{},context);
- assert.equal(accepted.details.events.at(-1).state,"done");assert.ok(reviewPrompt.includes("actual changes in those files"));assert.ok(reviewPrompt.includes("README.md, docs/guide.md"));assert.equal(confirmations,4);await state.events.get("session_shutdown")![0]!({},context);
+ assert.equal(accepted.details.events.at(-1).state,"done");assert.ok(reviewPrompt.includes("actual changes in those files"));assert.ok(reviewPrompt.includes("README.md, docs/guide.md"));assert.equal(confirmations,3,"the declined and approved writer runs plus independent acceptance remain explicit; read-only review dispatch adds no prompt");await state.events.get("session_shutdown")![0]!({},context);
 });
 
 test("Pi refuses plan instructions too large to display completely before launching an agent",async t=>{
@@ -239,12 +238,13 @@ test("ECO-06 verification plan dispatches through Pi and requires independent To
  await state.commands.get("asen-plan").handler(JSON.stringify({taskIdentity:"eco06-verify-flow",instruction:acceptanceInstruction,intent:"verification",scope:{kind:"known",expectedPaths:[]},writes:[],riskOperations:[],session:{estimatedMinutes:15,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:10},unresolvedDecisions:[]}),context);
  const plan=JSON.parse(state.messages.at(-1)!);
  assert.equal(plan.route,"verify");assert.equal(plan.persistedTasks.length,1);const todoId=plan.persistedTasks[0].todoId;
- const originalProject=context.cwd;context.ui.confirm=async()=>{confirmations++;if(confirmations===1)context.cwd=home;return true;};
+ const originalProject=context.cwd,originalGetSessionId=context.sessionManager!.getSessionId.bind(context.sessionManager);let identityReads=0;
+ context.sessionManager!.getSessionId=()=>{const session=originalGetSessionId();if(++identityReads===2)context.cwd=home;return session;};
  await assert.rejects(()=>state.tools.get("asen_plan_dispatch_next").execute("verify-project-change",{},new AbortController().signal,()=>{},context),/session or project changed/u);assert.equal(request,undefined);
- context.cwd=originalProject;
+ context.cwd=originalProject;context.sessionManager!.getSessionId=originalGetSessionId;
  const dispatched=await state.tools.get("asen_plan_dispatch_next").execute("verify-next",{},new AbortController().signal,()=>{},context);assert.equal(dispatched.details.status,"dispatched");assert.equal(dispatched.details.role,"verifier");
  let row:any,deadline=Date.now()+5000;while(Date.now()<deadline){row=(await todos.list(identity)).find(item=>item.taskId===todoId);if(row?.current.state==="blocked")break;await new Promise(resolve=>setTimeout(resolve,5));}
- assert.equal(row?.current.state,"blocked");assert.equal((request as import("../src/agents/dispatcher.js").AgentRequest|undefined)?.role,"verifier");assert.equal((request as import("../src/agents/dispatcher.js").AgentRequest|undefined)?.prompt,row?.description);assert.equal(confirmations,2);
+ assert.equal(row?.current.state,"blocked");assert.equal((request as import("../src/agents/dispatcher.js").AgentRequest|undefined)?.role,"verifier");assert.equal((request as import("../src/agents/dispatcher.js").AgentRequest|undefined)?.prompt,row?.description);assert.equal(confirmations,0,"read-only verification starts without a redundant prompt");
  const agent=await state.tools.get("asen_agent_status").execute("verify-result",{id:dispatched.details.agentId},new AbortController().signal,()=>{},context);assert.equal(agent.details.task.record.state,"completed");assert.match(agent.details.task.record.summary,/acceptance criteria/u);
  await assert.rejects(()=>state.tools.get("asen_todo_update").execute("verify-bypass",{id:todoId,revision:row.current.revision,state:"done",reason:"I read the result"},new AbortController().signal,()=>{},context),/asen_todo_accept_result/u);
  assert.equal((await todos.list(identity)).find(item=>item.taskId===todoId)?.current.state,"blocked","agent completion alone must never close a linked plan task");
@@ -256,7 +256,7 @@ test("ECO-06 verification plan dispatches through Pi and requires independent To
  let acceptancePrompt="";context.ui.confirm=async(...args:any[])=>{confirmations++;acceptancePrompt=String(args[1]??args[0]??"");return true;};
  const completed=await restarted.tools.get("asen_todo_accept_result").execute("verify-accept",{id:todoId,agentId:dispatched.details.agentId,revision:row.current.revision,evidence:acceptanceEvidence},new AbortController().signal,()=>{},context);
  assert.ok(acceptancePrompt.includes(row.description));assert.ok(acceptancePrompt.includes(acceptanceEvidence));
- assert.equal(completed.details.events.at(-1).state,"done");assert.match(completed.details.events.at(-1).reason,/independently verified linked verifier result/u);assert.equal(confirmations,4);
+ assert.equal(completed.details.events.at(-1).state,"done");assert.match(completed.details.events.at(-1).reason,/independently verified linked verifier result/u);assert.equal(confirmations,2,"only explicit result acceptance and declined acceptance remain prompted");
  await restarted.events.get("session_shutdown")![0]!({},context);
 });
 
