@@ -27,6 +27,7 @@ const scratch=await import("node:fs/promises").then(fs=>fs.mkdtemp(path.join(tmp
 const home=path.join(scratch,"home"),agentDir=path.join(home,".pi","agent"),sessionDir=path.join(home,"sessions"),asenDir=path.join(home,".asen");
 const stepsFile=path.join(scratch,"steps.jsonl"),readsFile=path.join(scratch,"reads.jsonl"),todoRoot=path.join(asenDir,"todos"),legacyTodoFile=path.join(asenDir,"todos.json"),todoFile=todoProjectStorageFile(todoRoot,repository);
 const sessionId=`eco07-recovery-${revision.slice(0,12)}`;
+const todoIdentity={sessionId,projectId:repository};
 const title="ECO-07 recovery review: audit evidence, then inspect task state transitions";
 await Promise.all([mkdir(agentDir,{recursive:true,mode:0o700}),mkdir(sessionDir,{recursive:true,mode:0o700}),mkdir(asenDir,{recursive:true,mode:0o700})]);
 assert.equal(typeof piPackage.bin?.pi,"string","Pi package must expose its pinned CLI executable");
@@ -42,7 +43,7 @@ const record=transcript.record;
 const recordAsync=(...args)=>{const pending=record(...args);pending.catch(()=>{});return pending;};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const openTodoStore=()=>SessionTodoStore.openProjectScoped(todoRoot,legacyTodoFile);
-const snapshot=async()=>({items:await (await openTodoStore()).list({sessionId,projectId:repository})});
+const snapshot=async()=>{const store=await openTodoStore(),[active,archived]=await Promise.all([store.list(todoIdentity),store.archived(todoIdentity)]);return {items:[...active,...archived]};};
 async function findPersistedPlan(directory){
   for(const entry of await readdir(directory,{withFileTypes:true})){
     const filename=path.join(directory,entry.name);

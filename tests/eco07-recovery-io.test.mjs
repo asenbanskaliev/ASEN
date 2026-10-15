@@ -247,6 +247,7 @@ test("E2E wires the existing provider classifier through guarded IO and drains b
  assert.match(source,/await runCleanup\(error/u);
  assert.match(source,/SessionTodoStore\.openProjectScoped\(todoRoot,legacyTodoFile\)/u,"the E2E harness must inspect the same project-scoped Todo store Pi opens");
  assert.match(source,/todoProjectStorageFile\(todoRoot,repository\)/u,"the Pi probe must inspect the exact active project shard");
+ assert.match(source,/store\.archived\(todoIdentity\)/u,"the E2E verifier must inspect a completed task after Todo auto-archives it");
  const drain=source.indexOf("await transcript.drainAndClose()"),evidence=source.indexOf("await writeFile(evidencePath");
  assert.ok(drain>=0&&evidence>drain,"successful evidence must follow transcript drain");
  assert.match(source,/transcriptFlushError/u,"failure evidence must retain a distinct flush error");
