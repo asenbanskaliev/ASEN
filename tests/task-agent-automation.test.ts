@@ -17,11 +17,12 @@ test("automatic plan advancement skips confirmation only for the exact read-only
  const identity={sessionId:"session-a",projectId:dir},todos=await SessionTodoStore.open(join(dir,"todos.json")),links=new TaskAgentLinkStore(join(dir,"links.json"));
  const explorerSelection={phase:"explore"} as const;
  const [task]=await todos.addPlan([{title:"Inspect project",requestId:"asen-plan:task:explorer",dependsOn:[],description:"Inspect the bounded project",plan:{role:"explorer",skillPaths:selectSkills(explorerSelection).map(skill=>skill.path),skillSelection:explorerSelection,priority:1}}],identity);
- const runtime=await AgentRuntime.open({storeFile:join(dir,"agents.json"),runner:{run:async(request:{id:string})=>({id:request.id,ok:true,output:"Read only findings"})} as never});let prompts=0;
+ const runtime=await AgentRuntime.open({storeFile:join(dir,"agents.json"),runner:{run:async(request:{id:string})=>({id:request.id,ok:true,output:"Read only findings"})} as never});let prompts=0,terminal:Awaited<ReturnType<typeof runtime.list>>[number]|undefined,settleTerminal!:()=>void;
+ const terminalEvent=new Promise<void>(resolve=>{settleTerminal=resolve;}),unsubscribe=runtime.subscribeTerminal(record=>{if(record.role==="explorer"&&record.sessionId===identity.sessionId&&record.projectId===identity.projectId){terminal=record;settleTerminal();}});t.after(unsubscribe);
  const result=await dispatchNextPlanTask({todos,agents:runtime,links,identity,autoApproveReadOnly:true,validateIdentity:async()=>{},confirm:async()=>{prompts++;return false;}});
  assert.equal(result.status,"dispatched");assert.equal(prompts,0);
  const record=(await runtime.list(identity))[0];assert.equal(record?.role,"explorer");assert.equal((await links.list(identity))[0]?.taskId,task?.taskId);
- const deadline=Date.now()+3000;let terminal;while(Date.now()<deadline){terminal=(await runtime.list(identity))[0];if(terminal?.state==="completed")break;await new Promise(resolve=>setTimeout(resolve,5));}assert.equal(terminal?.state,"completed");
+ let terminalTimer:ReturnType<typeof setTimeout>|undefined;try{await Promise.race([terminalEvent,new Promise((_,reject)=>{terminalTimer=setTimeout(()=>reject(new Error("read-only plan task did not reach its terminal event within 30 seconds")),30_000);})]);}finally{if(terminalTimer)clearTimeout(terminalTimer);}assert.equal(terminal?.id,record?.id);assert.equal(terminal?.state,"completed");
 });
 
 test("known multi-file scope no longer triggers broad exploration by file count",async t=>{
