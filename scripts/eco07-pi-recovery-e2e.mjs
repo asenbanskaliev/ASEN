@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
 import {mkdir,open,readdir,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
@@ -44,14 +45,16 @@ const recordAsync=(...args)=>{const pending=record(...args);pending.catch(()=>{}
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const openTodoStore=()=>SessionTodoStore.openProjectScoped(todoRoot,legacyTodoFile);
 const snapshot=async()=>{const store=await openTodoStore(),[active,archived]=await Promise.all([store.list(todoIdentity),store.archived(todoIdentity)]);return {items:[...active,...archived]};};
-async function findPersistedPlan(directory){
+async function findPersistedPlans(directory){
+  const matches=[];
   for(const entry of await readdir(directory,{withFileTypes:true})){
     const filename=path.join(directory,entry.name);
-    if(entry.isDirectory()){const found=await findPersistedPlan(filename);if(found)return found;continue;}
+    if(entry.isDirectory()){matches.push(...await findPersistedPlans(filename));continue;}
     if(!entry.isFile())continue;
     const contents=await readFile(filename,"utf8").catch(()=>"");
-    if(contents.includes("ASEN_ECO07_PENDING_PLAN: inspect-closure-audit -> inspect-task-reducer"))return filename;
+    if(contents.includes("ASEN_ECO07_PENDING_PLAN: inspect-closure-audit -> inspect-task-reducer"))matches.push(filename);
   }
+  return matches;
 }
 const currentItem=async()=>{
   const data=await snapshot();
@@ -144,8 +147,9 @@ try{
   assert.equal(settled.aborted,false,"Pi must finish the task-start turn naturally before interruption");
   const initialTools=first.events.filter(event=>event.type==="tool_execution_start").map(event=>event.toolName);
   assert.ok(initialTools.length>=2&&initialTools.every(name=>["asen_todo_add","asen_todo_update","asen_todo_list"].includes(name)),"Before interruption Pi may only establish the task identity and running state; no pending review step may start");
-  const persistedPlanFile=await findPersistedPlan(sessionDir);
-  assert.ok(persistedPlanFile,"Pi must persist the pending ordered review checklist in the original session history before interruption");
+  const persistedPlanFiles=await findPersistedPlans(sessionDir);
+  assert.equal(persistedPlanFiles.length,1,"Pi must persist the pending ordered review checklist exactly once in the original session history");
+  const persistedPlanFile=persistedPlanFiles[0];
   await record("pending-plan-persisted",{sessionId,sessionFile:path.relative(sessionDir,persistedPlanFile),orderedSteps:["inspect-closure-audit","inspect-task-reducer"]});
   await record("running-task-persisted",{commit:revision,taskId:started.taskId,sessionId,projectId:repository,eventRevisions:started.events.map(event=>event.revision),state:"running"});
   const earlySteps=await readFile(stepsFile,"utf8").catch(error=>error?.code==="ENOENT"?"":Promise.reject(error));
@@ -208,6 +212,36 @@ try{
   const final={candidate:revision,provider,model,piVersion:piPackage.version,sessionId,projectId:repository,taskId:recovered.taskId,events:recovered.events.map(({revision,state,at,reason})=>({revision,state,at,reason})),pipelineTimingsMs:{plannedToRunning:running-planned,activeBeforeInterruption:blocked-running,blockedUntilResume:resumed-blocked,activeAfterResume:done-resumed,plannedToDone:done-planned},processMetrics:{initial:measureProcess(first),restarted:measureProcess(second)},persistedPlan:{sessionFile:path.relative(sessionDir,persistedPlanFile),orderedSteps:["inspect-closure-audit","inspect-task-reducer"]},reads:reads.map(({step,file,at})=>({step,file,at})),steps:rows.map(({step,summary,at})=>({step,summary,at})),initialProcessPid:first.child.pid,restartedProcessPid:second.child.pid,interruptionSignal:"SIGKILL",wrongSession:{visible:0,mutationRejected:true},wrongProject:{visible:0,mutationRejected:true},explicitResumeConsent:true,approvalAuthorityGranted:false,publishAuthorityGranted:false,mergeAuthorityGranted:false,result:"PASS"};
   const completionShutdown=await second.stop("SIGKILL");
   assert.equal(completionShutdown.cleanupConfirmed,true,"Successful recovery must observe restarted Pi process close");
+  const finalPlanFiles=await findPersistedPlans(sessionDir);
+  assert.equal(finalPlanFiles.length,1,"Pi must leave one persisted session plan after recovery and shutdown");
+  assert.equal(finalPlanFiles[0],persistedPlanFile,"Recovery must retain the original session file");
+  const sessionBytes=await readFile(persistedPlanFile);
+  const sessionText=sessionBytes.toString("utf8"),planMarker="ASEN_ECO07_PENDING_PLAN: inspect-closure-audit -> inspect-task-reducer";
+  assert.equal(sessionText.split(planMarker).length-1,1,"The ordered plan marker must be persisted exactly once");
+  const activeRaw=await readFile(todoFile,"utf8"),activeData=JSON.parse(activeRaw);
+  assert.equal(activeData.schema,"asen.todo/v1","ASEN active Todo data must retain its supported schema");
+  assert.ok(Number.isSafeInteger(activeData.revision)&&Array.isArray(activeData.items),"ASEN active Todo data must have a revision and valid item list");
+  assert.equal(activeData.items.filter(item=>item.taskId===recovered.taskId).length,0,"Completed task must not remain in the active project store");
+  const archiveDirectory=path.join(path.dirname(todoFile),"archive"),archiveNames=(await readdir(archiveDirectory)).filter(name=>/^archive-[0-9]+-[a-f0-9]{12}\.json$/u.test(name));
+  const archivedMatches=[];
+  for(const name of archiveNames){
+    const raw=await readFile(path.join(archiveDirectory,name),"utf8"),data=JSON.parse(raw);
+    for(const item of data.items??[])if(item.taskId===recovered.taskId)archivedMatches.push({name,raw,data,item});
+  }
+  assert.equal(archivedMatches.length,1,"ASEN must archive the recovered task exactly once");
+  const archived=archivedMatches[0];
+  assert.deepEqual(archived.item.events,recovered.events,"ASEN archive must preserve the complete ordered recovery history");
+  assert.equal(archived.item.events[0].sessionId,sessionId);
+  assert.equal(archived.item.events[0].projectId,repository);
+  assert.equal(archived.item.events.at(-1).state,"done");
+  const archiveDigest=createHash("sha256").update(archived.raw).digest("hex"),archiveRevision=Number(/^archive-([0-9]+)-/u.exec(archived.name)?.[1]);
+  assert.equal(archived.data.schema,"asen.todo/v1");
+  assert.equal(archived.data.revision,archiveRevision,"ASEN archive filename and payload revisions must agree");
+  assert.equal(archived.name,`archive-${archiveRevision}-${archiveDigest.slice(0,12)}.json`,"ASEN archive filename must match the persisted content digest");
+  await assert.rejects(()=>readFile(`${todoFile}.archive-pending.json`),error=>error?.code==="ENOENT","Completed archive transaction marker must be cleared");
+  const digest=raw=>createHash("sha256").update(raw).digest("hex");
+  final.persistedPlan={...final.persistedPlan,sha256:digest(sessionBytes),bytes:sessionBytes.length,planMarkerCount:1};
+  final.persistence={activeTodo:{file:path.relative(asenDir,todoFile),sha256:digest(activeRaw),bytes:Buffer.byteLength(activeRaw),revision:activeData.revision,taskCount:activeData.items.length,recoveredTaskCount:0},archive:{file:path.relative(asenDir,path.join(archiveDirectory,archived.name)),sha256:archiveDigest,bytes:Buffer.byteLength(archived.raw),revision:archived.data.revision,taskCount:archived.data.items.length,recoveredTaskCount:1,orderedEvents:archived.item.events.map(({revision,state})=>({revision,state}))},duplicateChecks:{persistedPlanFiles:finalPlanFiles.length,archivedTaskCopies:archivedMatches.length,activeTaskCopies:activeData.items.filter(item=>item.taskId===recovered.taskId).length,archiveTransactionMarkerCleared:true}};
   await transcript.drainAndClose();
   await rm(scratch,{recursive:true,force:true});
   await writeFile(evidencePath,`${JSON.stringify(final,null,2)}\n`,{mode:0o600});
