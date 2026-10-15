@@ -6,6 +6,9 @@ on:
       - feat/strict-parity-prerequisites
     paths:
       - .github/workflows/eco07-groq-e2e.yml
+      - scripts/eco07-pi-recovery-e2e.mjs
+      - scripts/eco07-pi-recovery-probe-extension.mjs
+      - src/runtime/todo-store.ts
   workflow_dispatch:
     inputs:
       provider:

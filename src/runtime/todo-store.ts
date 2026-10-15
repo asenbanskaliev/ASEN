@@ -17,6 +17,7 @@ export interface TodoItem{taskId:string;title:string;events:TaskEvent[];requestI
 export interface TodoFile{schema:typeof SCHEMA;revision:number;items:TodoItem[];}
 export interface TodoContext{sessionId:string;projectId:string;}
 const projectKey=(value:string)=>createHash("sha256").update(workspaceIdentityPathKey(value)).digest("hex");
+export function todoProjectStorageFile(root:string,projectId:string):string{return path.join(root,"projects",projectKey(projectId),"active.json");}
 const emptyTodoFile=(revision=0):TodoFile=>({schema:SCHEMA,revision,items:[]});
 const terminal=(item:TodoItem)=>{const state=replayTask(item.events)?.state;return state==="done"||state==="cancelled";};
 const allTerminal=(data:TodoFile)=>data.items.length>0&&data.items.every(terminal);
@@ -109,7 +110,7 @@ export class SessionTodoStore{
  }
  static async openProjectScoped(root:string,legacyFile:string,now:()=>string=()=>new Date().toISOString()):Promise<SessionTodoStore>{await migrateLegacyTodoFile(root,legacyFile);return new SessionTodoStore(root,now,undefined,true);}
  diagnostics(){return this.quarantined?{quarantined:this.quarantined}:undefined;}
- #file(context:TodoContext):string{return this.projectScoped?path.join(this.path,"projects",projectKey(context.projectId),"active.json"):this.path;}
+ #file(context:TodoContext):string{return this.projectScoped?todoProjectStorageFile(this.path,context.projectId):this.path;}
  async #reconcileArchive(file:string):Promise<void>{
   const markerFile=`${file}.archive-pending.json`;await preparePrivateFile(markerFile,true);const rawMarker=await readIfPresent(markerFile);if(rawMarker===undefined)return;
   let marker:unknown;try{marker=JSON.parse(rawMarker);}catch{throw new Error("ASEN Todo archive transaction marker is corrupt; active data was preserved");}

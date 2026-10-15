@@ -5,7 +5,7 @@ import path from "node:path";
 import {spawn} from "node:child_process";
 import {execFileSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
-import {parseTodoFile,SessionTodoStore} from "../src/runtime/todo-store.ts";
+import {SessionTodoStore,todoProjectStorageFile} from "../src/runtime/todo-store.ts";
 import {eco07ProviderRateLimitError} from "../src/runtime/eco07-provider-failure.ts";
 import {resolveEco07Provider} from "./eco07-provider-config.mjs";
 import {createJsonlQueue,createRpcController,createSecretSanitizer,runCleanup} from "./eco07-recovery-io.mjs";
@@ -25,7 +25,7 @@ const transcriptPath=path.join(evidenceDir,"events.jsonl");
 const evidencePath=path.join(evidenceDir,"recovery.json");
 const scratch=await import("node:fs/promises").then(fs=>fs.mkdtemp(path.join(tmpdir(),`asen-eco07-${provider}-`)));
 const home=path.join(scratch,"home"),agentDir=path.join(home,".pi","agent"),sessionDir=path.join(home,"sessions"),asenDir=path.join(home,".asen");
-const stepsFile=path.join(scratch,"steps.jsonl"),readsFile=path.join(scratch,"reads.jsonl"),todoFile=path.join(asenDir,"todos.json");
+const stepsFile=path.join(scratch,"steps.jsonl"),readsFile=path.join(scratch,"reads.jsonl"),todoRoot=path.join(asenDir,"todos"),legacyTodoFile=path.join(asenDir,"todos.json"),todoFile=todoProjectStorageFile(todoRoot,repository);
 const sessionId=`eco07-recovery-${revision.slice(0,12)}`;
 const title="ECO-07 recovery review: audit evidence, then inspect task state transitions";
 await Promise.all([mkdir(agentDir,{recursive:true,mode:0o700}),mkdir(sessionDir,{recursive:true,mode:0o700}),mkdir(asenDir,{recursive:true,mode:0o700})]);
@@ -41,7 +41,8 @@ const transcript=createJsonlQueue({file:await open(transcriptPath,"w",0o600),san
 const record=transcript.record;
 const recordAsync=(...args)=>{const pending=record(...args);pending.catch(()=>{});return pending;};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-const snapshot=async()=>parseTodoFile(await readFile(todoFile,"utf8"));
+const openTodoStore=()=>SessionTodoStore.openProjectScoped(todoRoot,legacyTodoFile);
+const snapshot=async()=>({items:await (await openTodoStore()).list({sessionId,projectId:repository})});
 async function findPersistedPlan(directory){
   for(const entry of await readdir(directory,{withFileTypes:true})){
     const filename=path.join(directory,entry.name);
@@ -152,7 +153,7 @@ try{
   await record("task-recovered",{taskId:recovered.taskId,sessionId,projectId:repository,events:recovered.events.map(({revision,state,at,reason})=>({revision,state,at,reason}))});
 
   phase="identity-isolation";
-  const store=await SessionTodoStore.open(todoFile);
+  const store=await openTodoStore();
   assert.deepEqual(await store.list({sessionId:"eco07-wrong-session",projectId:repository}),[],"Wrong session must not see recovered task");
   await assert.rejects(()=>store.update(recovered.taskId,{sessionId:"eco07-wrong-session",projectId:repository},recovered.events.at(-1).revision,"running"),/unavailable/u);
   assert.deepEqual(await store.list({sessionId,projectId:path.join(scratch,"wrong-project")}),[],"Wrong project must not see recovered task");

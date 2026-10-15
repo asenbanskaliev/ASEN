@@ -71,7 +71,7 @@ test("ECO-07 exact-SHA workflow selects one provider secret and supports a guard
  const compact=workflow.replace(/\s+/gu," ");
  assert.ok(workflow.includes("workflow_dispatch:"));
  assert.ok(workflow.includes("[ECO07-NVIDIA]"));
- assert.ok(compact.includes("push: branches: - feat/strict-parity-prerequisites paths: - .github/workflows/eco07-groq-e2e.yml"));
+ assert.ok(compact.includes("push: branches: - feat/strict-parity-prerequisites paths: - .github/workflows/eco07-groq-e2e.yml - scripts/eco07-pi-recovery-e2e.mjs - scripts/eco07-pi-recovery-probe-extension.mjs - src/runtime/todo-store.ts"));
  assert.ok(workflow.includes("default: nvidia"));
  assert.ok(workflow.includes("- nvidia"));
  assert.ok(workflow.includes("- groq"));

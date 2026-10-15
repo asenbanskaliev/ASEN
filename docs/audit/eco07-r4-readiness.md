@@ -34,6 +34,8 @@ Run `.github/workflows/eco07-groq-e2e.yml` against the exact published SHA on Li
 
 Provider integration is implemented locally: Pi's NVIDIA provider is native, the ASEN Pi child credential allowlist includes `NVIDIA_API_KEY`, and ECO-07 resolves its default model. This is not yet real-provider evidence. The dispatch must run against the exact published SHA and its event artifact must pass review before the NVIDIA-backed recovery slice can be called verified.
 
+The first marked branch run on candidate `552ba441a1b3cf936a79fbeca1f7036715a77519` reached Pi 1.1.0 and NVIDIA, created the task, then failed because the evidence harness looked for the legacy `.asen/todos.json` file while the live extension writes project-scoped `.asen/todos/projects/<project-key>/active.json` shards. The harness now resolves the same shard through the Todo store's canonical path helper. This was an ASEN evidence-harness defect, not a provider quota or credential failure; the failure artifact remains available for audit. A marked push affecting the workflow or recovery harness starts the next exact-SHA NVIDIA attempt.
+
 ## R4 review on 2026-10-14
 
 Reviewed candidate `fb26e5ae0092cfbebeeec115614db0b401f15871` and the current Pi/Todo ownership path. The durable link is recorded before dispatch; recovery quarantines interrupted work and does not replay it; identity and project checks gate dispatch; successful agents remain blocked until a separate result review. Local tests cover failed link writes, abort during binding, duplicate launch, recovery after restart, and cross-session/project rejection.

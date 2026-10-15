@@ -3,7 +3,7 @@ import {createHash,randomUUID} from "node:crypto";
 import {mkdtemp,readFile,readdir,realpath,rm,stat,writeFile} from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
+import {SessionTodoStore,todoProjectStorageFile} from "../src/runtime/todo-store.js";
 import {sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";
 
 test("project-scoped Todo migration splits the legacy file, verifies shards and keeps a backup",async t=>{
@@ -13,7 +13,7 @@ test("project-scoped Todo migration splits the legacy file, verifies shards and 
  const store=await SessionTodoStore.openProjectScoped(root,legacy),migratedA=await store.list(a),migratedB=await store.list(b);
  assert.deepEqual(migratedA.map(item=>[item.title,item.current.state]),[["Project A task","running"]]);assert.deepEqual(migratedB.map(item=>[item.title,item.current.state]),[["Project B task","planned"]]);
  const backup=await readFile(`${legacy}.migrated-v1`,"utf8");assert.equal(JSON.parse(backup).items.length,2);await assert.rejects(()=>stat(legacy),{code:"ENOENT"});
- const expectedA=createHash("sha256").update(process.platform==="win32"?a.projectId.toLowerCase():a.projectId).digest("hex");assert.ok((await readdir(path.join(root,"projects"))).includes(expectedA));
+ const expectedA=createHash("sha256").update(process.platform==="win32"?a.projectId.toLowerCase():a.projectId).digest("hex");assert.ok((await readdir(path.join(root,"projects"))).includes(expectedA));assert.equal(todoProjectStorageFile(root,a.projectId),path.join(root,"projects",expectedA,"active.json"));
  const reopened=await SessionTodoStore.openProjectScoped(root,legacy);assert.equal((await reopened.list(a))[0]?.taskId,one.taskId);assert.equal((await reopened.list(b))[0]?.taskId,two.taskId);
 });
 
