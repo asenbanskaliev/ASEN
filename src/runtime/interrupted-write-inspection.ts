@@ -27,7 +27,11 @@ function safeScope(paths:readonly string[]):string[]{
 export function inspectInterruptedWrite(input:{repository:string;expectedRevision:string;writeSurfaces:readonly string[]}):InterruptedWriteInspection{
  if(typeof input.repository!=="string"||!isAbsolute(input.repository))throw new TypeError("Interrupted writer inspection requires an absolute project path");
  if(typeof input.expectedRevision!=="string"||!revisionPattern.test(input.expectedRevision))throw new TypeError("Interrupted writer candidate revision is invalid");
- const scope=safeScope(input.writeSurfaces),root=realpathSync(input.repository),gitRoot=realpathSync(git(root,["rev-parse","--show-toplevel"])),projectRelative=relative(gitRoot,root);
+ const scope=safeScope(input.writeSurfaces),root=realpathSync(input.repository),gitRoot=realpathSync(git(root,["rev-parse","--show-toplevel"]));
+ // Git for Windows can report the same canonical worktree path with different
+ // drive-letter casing. Compare normalized spellings before deriving the
+ // relative path so valid nested project directories remain inside the root.
+ const comparisonRoot=process.platform==="win32"?gitRoot.toLowerCase():gitRoot,comparisonProject=process.platform==="win32"?root.toLowerCase():root,projectRelative=relative(comparisonRoot,comparisonProject);
  if(projectRelative===".."||projectRelative.startsWith(`..${sep}`)||isAbsolute(projectRelative))throw new Error("Interrupted writer project is outside its Git worktree");
  const observedHead=git(root,["rev-parse","HEAD"]);
  if(!revisionPattern.test(observedHead))throw new Error("Git returned an invalid current candidate revision");
