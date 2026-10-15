@@ -86,7 +86,7 @@ try {
       const fail=error=>{clearTimeout(timer);reject(error);};
       const send=value=>child.stdin.write(JSON.stringify(value)+"\n");
       const routeFacts={taskIdentity:"package-route",intent:"analysis",scope:{kind:"known",expectedPaths:[]},writes:[],riskOperations:[],session:{estimatedMinutes:1,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]};
-      const planFacts={...routeFacts,taskIdentity:"package-plan",instruction:"Implement and verify this bounded change",intent:"implementation",scope:{kind:"known",expectedPaths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"]},writes:[{path:"src/a.ts",changeKind:"behavior"}],session:{estimatedMinutes:20,continuation:false}};
+      const planFacts={...routeFacts,taskIdentity:"package-plan",instruction:"Implement and verify this bounded change",intent:"implementation",scope:{kind:"known",expectedPaths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"]},writes:[{path:"src/a.ts",changeKind:"behavior"}],session:{estimatedMinutes:20,continuation:false},review:{kind:"dual_explicit",estimatedMinutes:0}};
       const prompt=()=>send({id:names[index],type:"prompt",message:names[index]==="asen-route"?`/asen-route ${JSON.stringify(routeFacts)}`:names[index]==="asen-plan"?`/asen-plan ${JSON.stringify(planFacts)}`:`/${names[index]}`});
       child.once("error",fail);
       child.once("close",(code,signal)=>{if(index!==names.length)fail(Error(`Installed RPC closed before completion (code=${code}, signal=${signal}): stdout=${stdout.slice(-2000)} stderr=${stderr.slice(-1000)}`));});
@@ -111,14 +111,14 @@ try {
               else if(row.message.includes("ASEN pausó el trabajo para revisar"))todoRecoveryNotice=row.message;
               else{lastNotification=row.message;notifications++;}
             }else if(row.type==="response"&&row.id===names[index]){
-              assert.equal(row.success,true);assert.equal(notifications,names[index]==="asen-plan"?2:1,`${names[index]} must be visible over RPC`);
+              assert.equal(row.success,true);assert.equal(notifications,1,`${names[index]} must be visible over RPC`);
               if(names[index]==="asen-todos")assert.match(lastNotification,/Pausada; requiere revisión.*Pi restart recovery.*explicit review is required/i);
               if(names[index]==="asen-todos")assert.ok(!lastNotification.includes(foreignTodoId),"Todo projection must exclude foreign sessions");
               if(names[index]==="asen-agents")assertInterruptedAgentVisible(lastNotification);
               if(names[index]==="asen-task-agents"){const tasks=JSON.parse(lastNotification);assert.equal(tasks[0]?.state,"blocked");assert.deepEqual(tasks[0]?.agents.map(agent=>[agent.id,agent.state]),[[agentId,"interrupted"]]);}
               if(names[index]==="asen-changes")assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);
               if(names[index]==="asen-changes")assert.ok(!lastNotification.includes("foreign"),"workspace projection must exclude foreign sessions");
-              if(names[index]==="asen-plan"){const plan=JSON.parse(lastNotification);assert.equal(plan.route,"orchestrate");assert.equal(plan.execution.started,true);assert.equal(plan.execution.authorized,false);assert.equal(plan.actions.reviewRequested,false);assert.equal(plan.persistence.status,"saved");assert.deepEqual(plan.executablePlan.tasks.map(task=>task.role),["explorer","worker","verifier"]);assert.equal(plan.persistedTasks.length,3);assert.deepEqual(plan.persistedTasks[1].dependsOn,[plan.persistedTasks[0].todoId]);planTasks=plan.persistedTasks;}
+              if(names[index]==="asen-plan"){const plan=JSON.parse(lastNotification);assert.equal(plan.route,"orchestrate");assert.equal(plan.execution.started,false);assert.equal(plan.execution.authorized,false);assert.equal(plan.persistence.status,"saved");assert.deepEqual(plan.executablePlan.tasks.map(task=>task.role),["worker","reviewer","verifier"]);assert.equal(plan.persistedTasks.length,3);assert.deepEqual(plan.persistedTasks[1].dependsOn,[plan.persistedTasks[0].todoId]);planTasks=plan.persistedTasks;}
               visible++;index++;notifications=0;
               if(index===names.length){clearTimeout(timer);resolve();}else prompt();
             }
@@ -162,12 +162,12 @@ try {
       const row=JSON.parse(line);if(row.type==="agent_start")throw Error("Reopened ASEN state query invoked a model");
       if(row.type==="response"&&row.id==="reopen-commands"){assert.equal(row.success,true);for(const name of names)assert.ok(row.data.commands.some(command=>command.name===name));requestNext();}
       else if(row.type==="extension_ui_request"&&row.method==="notify"){assert.equal(row.notifyType,"info");if(row.message.includes("queued or interrupted task(s)")||row.message.includes("tarea(s) pausada(s)"))reopenedRecoveryNotice=row.message;else if(row.message.includes("ASEN pausó el trabajo para revisar"))reopenedTodoRecoveryNotice=row.message;else{lastNotification=row.message;notifications++;}}
-      else if(row.type==="response"&&row.id===`reopen-${names[index]}`){assert.equal(row.success,true);assert.equal(notifications,1);if(names[index]==="asen-agents")assertInterruptedAgentVisible(lastNotification);else if(names[index]==="asen-todos"){assert.match(lastNotification,/Pausada; requiere revisión.*Pi restart recovery.*explicit review is required/i);assert.ok(!lastNotification.includes(foreignTodoId));assert.match(lastNotification,/Explorer task/);}else if(names[index]==="asen-task-agents"){const tasks=JSON.parse(lastNotification),recovered=tasks.find(task=>task.taskId===todoId),workerLink=planTasks.find(task=>task.planTaskId==="package-plan:worker"),explorerLink=planTasks.find(task=>task.planTaskId==="package-plan:explorer"),worker=tasks.find(task=>task.taskId===workerLink.todoId);assert.equal(recovered?.state,"blocked");assert.deepEqual(recovered?.agents.map(agent=>[agent.id,agent.state]),[[agentId,"interrupted"]]);assert.match(recovered?.agents[0]?.summary,/explicit review/i);assert.equal(worker?.ready,false);assert.deepEqual(worker?.blockedBy,[{id:explorerLink.todoId,state:"blocked"}]);}else{assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);assert.ok(!lastNotification.includes("foreign"));}seen.push(names[index]);notifications=0;requestNext();}
+      else if(row.type==="response"&&row.id===`reopen-${names[index]}`){assert.equal(row.success,true);assert.equal(notifications,1);if(names[index]==="asen-agents")assertInterruptedAgentVisible(lastNotification);else if(names[index]==="asen-todos"){assert.match(lastNotification,/Pausada; requiere revisión.*Pi restart recovery.*explicit review is required/i);assert.ok(!lastNotification.includes(foreignTodoId));}else if(names[index]==="asen-task-agents"){const tasks=JSON.parse(lastNotification),recovered=tasks.find(task=>task.taskId===todoId);assert.equal(recovered?.state,"blocked");assert.deepEqual(recovered?.agents.map(agent=>[agent.id,agent.state]),[[agentId,"interrupted"]]);assert.match(recovered?.agents[0]?.summary,/explicit review/i);}else{assert.match(lastNotification,/modify\s+user:user-owned\s+src\/owned\.ts/);assert.ok(!lastNotification.includes("foreign"));}seen.push(names[index]);notifications=0;requestNext();}
     }catch(error){fail(error);}}});
     send({id:"reopen-commands",type:"get_commands"});
   }).then(()=>{reopenedVerified=true;}).finally(()=>settleVerifierChild(reopened,reopenedClosed,{successful:reopenedVerified}));
   assert.match(reopenedRecoveryNotice,/Hay 1 tarea\(s\) pausada\(s\).*continúa/u);
-  assert.match(reopenedTodoRecoveryNotice,/ASEN pausó el trabajo para revisar 2 tareas\..*No las repetirá automáticamente/iu);
+  assert.match(reopenedTodoRecoveryNotice,/ASEN pausó el trabajo para revisar 1 tarea\..*No las repetirá automáticamente/iu);
   assert.deepEqual(seen,["asen-agents","asen-todos","asen-task-agents","asen-changes"]);
   // Open a different real Pi session against the same project and durable stores.
   const foreign=spawn(process.execPath,[cli,"--mode","rpc","--session-id","asen-package-foreign-session","--no-extensions","--extension",primary,"--no-skills"],{
