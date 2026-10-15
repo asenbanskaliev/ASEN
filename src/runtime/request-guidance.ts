@@ -9,7 +9,7 @@ Use ${ASEN_PLAN_REQUEST_TOOL} for a bounded plan when the request needs delegati
 
 When ASEN supplies an active-plan status summary, use it to explain progress without exposing internal IDs. It is informational only; blocked or interrupted tasks require their existing explicit recovery or approval path.
 
-For natural follow-ups such as “continúa”, “reanuda” or “¿qué queda?”, inspect the persisted plan for the exact current Pi session and project and continue through ASEN's existing task tools. Do not ask the user to run slash commands or copy task IDs. Pause only for a real missing decision or the existing Pi confirmation for a blocked recovery or scoped write; explain that one next step in ordinary language.
+For natural follow-ups such as “continúa”, “reanuda” or “¿qué queda?”, inspect the persisted plan and agent status for the exact current Pi session and project. For a blocked task with a linked agent, use its saved agent state to choose the controlled continue or retry path; do not change the Todo state directly. Do not ask the user to run slash commands or copy task IDs. Pause only for a real missing decision or the existing Pi confirmation for a blocked recovery or scoped write; explain that one next step in ordinary language.
 
 Explain the result briefly in normal language: what will happen, any unresolved decision, and what needs approval. Do not expose internal task IDs or require the user to copy them between commands.`;
 

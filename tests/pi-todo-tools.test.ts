@@ -24,6 +24,16 @@ test("resuming a restart-blocked Todo requires explicit active Pi UI approval",a
  assert.equal((await store.list(session))[0]?.current.state,"running");assert.equal((await store.history(todo.taskId,session)).at(-1)?.reason,"User confirmed blocked-task resume in Pi UI");assert.equal(questions.length,2);assert.match(questions[1]!,/Continue implementation[\s\S]*ASEN restarted.*explicit review/);assert.ok(result);
 });
 
+test("a blocked Todo with a persisted agent link cannot bypass agent recovery",async t=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-linked-todo-resume-")));t.after(()=>rm(root,{recursive:true,force:true}));
+ const session={sessionId:"linked-resume-session",projectId:root},store=await SessionTodoStore.open(path.join(root,"todos.json")),links=new TaskAgentLinkStore(path.join(root,"links.json")),todo=await store.add("Resume the interrupted review",session);
+ await store.update(todo.taskId,session,1,"running");await store.recover(session);await links.bind({taskId:todo.taskId,agentId:"interrupted-review",sessionId:session.sessionId,projectId:root,createdAt:new Date().toISOString()});
+ const tools=new Map<string,any>();registerTodoTools({registerTool:tool=>tools.set(tool.name,tool)},async()=>store,undefined,{links:async()=>links,agents:async()=>({} as any)});
+ let confirmations=0;const host={cwd:root,sessionManager:{getSessionId:()=>session.sessionId},hasUI:true,ui:{confirm:async()=>{confirmations++;return true;}}};
+ await assert.rejects(()=>tools.get("asen_todo_update").execute("bypass-agent-recovery",{id:todo.taskId,revision:3,state:"running"},undefined,undefined,host),/recovered through its persisted agent.*asen_agent_continue.*asen_agent_retry/u);
+ assert.equal(confirmations,0,"generic Todo resume must not approve a state change that skips agent continuation or retry");assert.equal((await store.list(session))[0]?.current.state,"blocked");
+});
+
 test("a planned DAG node cannot become done without a verification summary and explicit Pi confirmation",async t=>{
  const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-plan-verify-")));t.after(()=>rm(root,{recursive:true,force:true}));
  const instruction=`Check test evidence and acceptance criteria ${"x".repeat(1400)}`,evidence=`Typecheck and targeted tests passed; inspected the changed behavior. ${"y".repeat(1400)}`;
