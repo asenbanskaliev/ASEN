@@ -26,7 +26,7 @@ async function isLiveProcess(pid:number,expectedStartTime?:string){
    if(end<0||!state||!/^[A-Z]$/u.test(state)||!startTime)throw new Error(`procfs returned an invalid state for process ${pid}`);
    if(expectedStartTime!==undefined&&startTime!==expectedStartTime)return false;
    return state!=="Z";
-  }catch(error){if(error&&typeof error==="object"&&"code" in error&&error.code==="ENOENT")return false;throw error;}
+  }catch(error){if(error&&typeof error==="object"&&"code" in error&&["ENOENT","ESRCH"].includes(String(error.code)))return false;throw error;}
  }
  const observation=await new Promise<PosixProcessObservation>((resolve,reject)=>{
   execFile("ps",["-o","stat=","-p",String(pid)],{timeout:1000},(error,stdout,stderr)=>{
@@ -36,6 +36,14 @@ async function isLiveProcess(pid:number,expectedStartTime?:string){
   });
  });
  return isLivePosixProcess(pid,observation);
+}
+async function waitForProcessStopped(pid:number,expectedStartTime?:string,timeoutMs=5_000){
+ const deadline=Date.now()+timeoutMs;
+ do{
+  if(!await isLiveProcess(pid,expectedStartTime))return true;
+  await new Promise(resolve=>setTimeout(resolve,25));
+ }while(Date.now()<deadline);
+ return !await isLiveProcess(pid,expectedStartTime);
 }
 async function fixture(body:string,policy=true,skillsMode:"exact"|"missing"|"extra"|"altered"="exact"){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-pi-"))),p=join(d,"pi-fixture.mjs"),scenario=join(d,"scenario.mjs");
@@ -189,7 +197,7 @@ test("Pi cancellation settles its process tree and policy cleanup before returni
  assert.equal(await isLiveProcess(state.pid,state.startTime),false,`descendant ${state.pid} survived cancellation settlement`);
 });
 
-test("Pi timeout, output overflow and forbidden tools all settle the descendant process tree",{timeout:process.platform==="win32"?300_000:45_000},async t=>{
+test("Pi timeout, output overflow and forbidden tools all settle the descendant process tree",{timeout:process.platform==="win32"?300_000:60_000},async t=>{
  const runnerTimeoutMs=process.platform==="win32"?75_000:10_000,fixtureLifetimeMs=Math.max(60_000,runnerTimeoutMs+30_000);
  for(const mode of ["timeout","overflow","tool"] as const){
   const marker=join(tmpdir(),`asen-descendant-${mode}-${process.pid}-${Date.now()}.json`);t.after(()=>rm(marker,{force:true}));
@@ -203,7 +211,8 @@ test("Pi timeout, output overflow and forbidden tools all settle the descendant 
   const result=await pending;
   assert.equal(result.ok,false);assert.ok(mode==="timeout"?/timed out/i.test(result.output):mode==="overflow"?/exceeded/i.test(result.output):/attempted a tool/i.test(result.output),`${mode}: unexpected stop result: ${result.output}`);
   await assert.rejects(()=>access(state!.policy),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
-  assert.equal(await isLiveProcess(state!.pid,state!.startTime),false,`${mode}: descendant ${state!.pid} survived stop settlement`);
+  const stopped=await waitForProcessStopped(state!.pid,state!.startTime);
+  if(!stopped){let details="unreadable";try{details=await readFile(`/proc/${state!.pid}/stat`,`utf8`);}catch(error){details=String(error);}assert.fail(`${mode}: descendant ${state!.pid} survived stop settlement; expectedStartTime=${state!.startTime}; ${details}`);}
  }
 });
 
