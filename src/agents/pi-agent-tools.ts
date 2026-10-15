@@ -10,6 +10,7 @@ import type {SessionTodoStore} from "../runtime/todo-store.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import {dispatchNextPlanTask} from "../runtime/plan-dispatcher.js";
 import {inspectInterruptedWrite} from "../runtime/interrupted-write-inspection.js";
+import {sameWorkspaceIdentityPath} from "../runtime/workspace-store.js";
 
 const text={type:"string",minLength:1,maxLength:32000};
 const rootSchema={type:"string",minLength:1,maxLength:4096};
@@ -115,7 +116,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
  pi.registerTool?.({name:"asen_todo_inspect_interrupted_write",label:"Inspect interrupted ASEN write",description:"Read-only inspection for one interrupted linked writer in the active Pi session and project. Compares its saved Git candidate and exact file scope with current Git state; never edits files, resumes work, or restores permission. A fresh plan and explicit new authorization are required.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["agentId"],properties:{agentId:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);const agentId=(params as {agentId?:unknown}).agentId;if(typeof agentId!=="string"||!agentId.trim()||!todoLink)throw new Error("Interrupted write inspection requires an owned linked agent task");
   const session=await selectedIdentity((params as {root?:unknown}).root,context,false,signal),[active,todos,links]=await Promise.all([runtime(),todoLink.todos(),todoLink.links()]);
-  const [entry,ownedLinks]=await Promise.all([active.query(agentId,session),links.list(session)]);if(!entry||entry.record.state!=="interrupted"||entry.record.role!=="worker"||entry.record.sessionId!==session.sessionId||entry.record.projectId!==session.projectId)throw new Error("Only an interrupted writer owned by this exact Pi session and project can be inspected");
+  const [entry,ownedLinks]=await Promise.all([active.query(agentId,session),links.list(session)]);if(!entry||entry.record.state!=="interrupted"||entry.record.role!=="worker"||entry.record.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(entry.record.projectId,session.projectId))throw new Error("Only an interrupted writer owned by this exact Pi session and project can be inspected");
   const matches=ownedLinks.filter(link=>link.agentId===agentId&&link.sessionId===session.sessionId&&link.projectId===session.projectId);if(matches.length!==1)throw new Error("Interrupted writer does not have one unique task link in this session and project");
   const todo=(await todos.list(session)).find(item=>item.taskId===matches[0]!.taskId);if(!todo||todo.current.state!=="blocked"||todo.plan?.role!=="worker"||!todo.plan.candidate||!todo.plan.writeSurfaces?.length)throw new Error("Interrupted writer has no matching blocked Todo with a saved candidate and exact scope");
   throwIfCancelled(signal);const inspection=inspectInterruptedWrite({repository:session.projectId,expectedRevision:todo.plan.candidate.revision,writeSurfaces:todo.plan.writeSurfaces});
