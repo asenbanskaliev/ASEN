@@ -25,10 +25,10 @@ git -C /tmp/asen-upstream-source fetch origin d5d692a6888da9e9844e7e443ee30991fa
 git -C /tmp/asen-upstream-source checkout --detach d5d692a6888da9e9844e7e443ee30991fa4b9d14
 git -C /tmp/asen-upstream-source cat-file -t 08de420ca29be16b6f6bee725a30b599b061df16
 node scripts/audit-current-upstream.mjs d5d692a6888da9e9844e7e443ee30991fa4b9d14 /tmp/asen-upstream-source > /tmp/asen-upstream-source-report.json
-ECOSYSTEM_SOURCE_REPOSITORY=/tmp/asen-upstream-source ECOSYSTEM_CANDIDATE_REPORT=/tmp/asen-upstream-source-report.json npm run audit:ecosystem
+npm run audit:ecosystem
 ```
 
-The `cat-file` command must return `commit`. If the frozen object is missing, fetch it explicitly from its known upstream origin; never substitute a different baseline. The report is a review input only and must not auto-adopt new source contracts.
+The report is a separate, read-only candidate assessment. `npm run audit:ecosystem` validates the frozen source and current claims; it does not ingest the candidate report via environment variables. Review and independently re-derive the candidate report before any provenance or status update. The `cat-file` command must return `commit`. If the frozen object is missing, fetch it explicitly from its known upstream origin; never substitute a different baseline. The report is a review input only and must not auto-adopt new source contracts.
 
 ## Closure tasks, with explicit gates
 
