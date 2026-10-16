@@ -24,7 +24,7 @@ test("ECO-01 Todo observations bind exact source, ASEN tree, and raw logs",{skip
  assert.equal(evidence.source.sourceId,edge.id);
  assert.equal(evidence.source.fileSha256,edge.sha256);
  assert.equal(digest(git("show",`${baseline.commit}:${edge.path}`)),edge.sha256);
- assert.equal(evidence.asen.commit,matrix.asenCandidateCommit);
+ assert.equal(evidence.asen.commit,matrix.currentCandidateEvidence.todoPairEvidence.asenCommit);
  assert.equal(evidence.asen.tree,matrix.currentCandidateEvidence.todoPairEvidence.asenTree);
  assert.equal(digest(committed(evidencePath)),matrix.currentCandidateEvidence.todoPairEvidence.sha256);
  assert.equal(evidence.summary.overall,"UNVERIFIED");
@@ -40,7 +40,7 @@ test("ECO-01 Todo observations bind exact source, ASEN tree, and raw logs",{skip
   assert.equal(digest(bytes),observation.sha256);
  }
  const contract=matrix.contracts.find((row:any)=>row.id===evidence.contractId);
- assert.equal(contract.scenarios.find((row:any)=>row.name==="registration").status,"UNVERIFIED");
+ assert.equal(contract.scenarios.find((row:any)=>row.name==="registration").status,"INTENTIONAL");
  assert.equal(contract.scenarios.find((row:any)=>row.name==="denied").status,"INTENTIONAL");
  assert.equal(contract.scenarios.find((row:any)=>row.name==="normal").status,"UNVERIFIED");
  assert.equal(contract.scenarios.find((row:any)=>row.name==="partial-failure").status,"UNVERIFIED");
@@ -61,6 +61,8 @@ test("ECO-01 Todo observations bind exact source, ASEN tree, and raw logs",{skip
  assert.equal(authorizationEvidence.scenario.asenResult.deniedWithoutMutation,true);
  assert.equal(contract.scenarios.find((row:any)=>row.name==="denied").status,"INTENTIONAL");
  assert.equal(contract.scenarios.find((row:any)=>row.name==="denied").evidence.evidenceSha256,authorization.sha256);
- assert.equal(matrix.summary.statusCounts.INTENTIONAL,9);
- assert.equal(matrix.summary.statusCounts.UNVERIFIED,138);
+ assert.equal(contract.scenarios.find((row:any)=>row.name==="registration").status,"INTENTIONAL");
+ assert.equal(contract.scenarios.find((row:any)=>row.name==="registration").evidence.evidenceSha256,matrix.currentCandidateEvidence.todoRegistrationEvidence.sha256);
+ assert.equal(matrix.summary.statusCounts.INTENTIONAL,10);
+ assert.equal(matrix.summary.statusCounts.UNVERIFIED,137);
 });

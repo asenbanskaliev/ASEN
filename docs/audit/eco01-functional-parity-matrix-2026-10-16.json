@@ -2,7 +2,7 @@
   "schema": "asen.eco01.functional-evidence-matrix.v1",
   "generatedAt": "2026-10-16T15:46:17.188Z",
   "asenBaseCommit": "dd28850f8c39d59b12d8227744d61ec65458c09d",
-  "asenCandidateCommit": "b1f028ce2dde27757a901cd8722a4fe5ee27565f",
+  "asenCandidateCommit": "c21106c27028af580a7b8ddbb2fb8b831c959bda",
   "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
   "sourceVerification": {
     "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
@@ -18,18 +18,19 @@
   "summary": {
     "contracts": 25,
     "scenarios": 147,
-    "pairedExecutions": 10,
-    "pairedProcessRuns": 10,
+    "pairedExecutions": 11,
+    "pairedProcessRuns": 12,
     "verified": 0,
     "statusCounts": {
       "EQUIVALENT": 0,
       "DIVERGENT": 0,
-      "INTENTIONAL": 9,
+      "INTENTIONAL": 10,
       "NOT_APPLICABLE": 0,
-      "UNVERIFIED": 138
+      "UNVERIFIED": 137
     },
-    "note": "Five CodeGraph scenarios were executed with the real dynamic package and remain INTENTIONAL for host annotation differences. Five Todo core-state comparisons were run; four are INTENTIONAL (invalid-input signaling, restart recovery, duplicate-request protection, and session/project authorization) and one pair remains UNVERIFIED. No EQUIVALENT results are admitted.",
-    "pairedCoreStateExperiments": 5
+    "note": "Five CodeGraph scenarios were executed with the real dynamic package and remain INTENTIONAL for host annotation differences. Five Todo core-state comparisons were run; four are INTENTIONAL (invalid-input signaling, restart recovery, duplicate-request protection, and session/project authorization) and one remains UNVERIFIED. Real Pi RPC registration was observed for both the source Todo tool and ASEN Todo tools, with zero model calls; the interface/authentication differences are INTENTIONAL. Across those experiments, 11 paired scenarios and 12 Pi/package processes were observed. No EQUIVALENT results are admitted.",
+    "pairedCoreStateExperiments": 5,
+    "pairedPiRuntimeRuns": 2
   },
   "contracts": [
     {
@@ -2184,12 +2185,46 @@
         "path": null
       },
       "mappingReason": "self-owned-registration",
-      "limitation": "A core-state pair was executed with exact source and ASEN identities. Tool registration, authorization, extension lifecycle and the whole-list replace/clear counterpart remain unverified.",
+      "limitation": "Real Pi RPC registration is verified on source Pi 0.87.1 and ASEN Pi 1.1.0. Paired core-state runs cover selected normal/error/recovery behavior, but full tool execution, authorization lifecycle, whole-list replace/clear and cross-platform parity remain unverified.",
       "scenarios": [
         {
           "name": "registration",
-          "status": "UNVERIFIED",
-          "evidence": null
+          "status": "INTENTIONAL",
+          "evidence": {
+            "kind": "paired-pi-runtime-registration",
+            "evidencePath": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/todo-registration-pair.json",
+            "evidenceSha256": "19e1af34fee4c4610545c57f06dbcdb054a71832828dbce30f4102d6d3918e7f",
+            "observation": {
+              "classification": "INTENTIONAL",
+              "reason": "Both real Pi runtimes load their mapped Todo extension and register user-facing Todo tools. The source exposes one sequential whole-list tool; ASEN exposes separate add/list/revisioned-update tools plus independent review and recovery controls. This is an intentional session-scoped authorization and lifecycle redesign, not API equivalence.",
+              "runtimes": [
+                {
+                  "version": "0.87.1",
+                  "tools": [
+                    "todo"
+                  ],
+                  "exitCode": 0,
+                  "stdoutSha256": "44d46f1f4839506f1afb09e6c057dbb0644bf7736a85379f8a2b664fcdc1f72d",
+                  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                {
+                  "version": "1.1.0",
+                  "tools": [
+                    "asen_todo_accept_result",
+                    "asen_todo_add",
+                    "asen_todo_inspect_interrupted_write",
+                    "asen_todo_list",
+                    "asen_todo_update"
+                  ],
+                  "exitCode": 0,
+                  "stdoutSha256": "6a62bd370cd3c9ed2a05af5963eb11db7b17c6d99710739994c1376da2ae1037",
+                  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                }
+              ],
+              "modelsInvoked": 0,
+              "networkMode": "offline"
+            }
+          }
         },
         {
           "name": "normal",
@@ -2977,7 +3012,7 @@
     }
   ],
   "localValidation": {
-    "command": "npm run check",
+    "command": "ECOSYSTEM_BASELINE_REPOSITORY=<exact frozen source repository> npm run check",
     "installCommand": "npm ci --ignore-scripts",
     "environment": {
       "platform": "linux",
@@ -2985,10 +3020,10 @@
     },
     "exitCode": 0,
     "tests": {
-      "total": 1534,
-      "passed": 1521,
+      "total": 1539,
+      "passed": 1538,
       "failed": 0,
-      "skipped": 13
+      "skipped": 1
     },
     "audits": {
       "phaseParity": "PASS",
@@ -2998,7 +3033,7 @@
       "ecosystemClaims": "PASS (claims remain PARTIAL)",
       "upstreamBoundary": "PASS"
     },
-    "logSha256": "3cab21abdfec25c05950ebff4a821974352a0609ff795bea3c5172f0f15fa46e",
+    "logSha256": "afb8904b04ff09416d302f5d4f126fbd52b9c213223876d296be27671ce5d5dc",
     "logPath": "docs/audit/evidence/eco01-codegraph-dd28850f8c39d59b12d8227744d61ec65458c09d/asen-full-check.log",
     "eco01PlanTests": {
       "command": "node --import tsx --test tests/eco01-differential-plan.test.ts",
@@ -3010,7 +3045,10 @@
       "skipped": 0,
       "log": "docs/audit/evidence/eco01-codegraph-dd28850f8c39d59b12d8227744d61ec65458c09d/eco01-plan-tests.log",
       "logSha256": "9ee5b2ac21431423db8910676ab4dec75cdb053da20ddbeffab2446f39331ea9"
-    }
+    },
+    "platform": "linux",
+    "node": "v24.19.0",
+    "log": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/asen-full-check.log"
   },
   "executionEvidence": {
     "codegraphPair": "docs/audit/evidence/eco01-codegraph-1359d892f177dd1b76501961582ea3a7eedab8f1/codegraph-pair-evidence.json",
@@ -3037,23 +3075,32 @@
       "logSha256": "6bb296fa7d4b8886782176a72fa9bc485a6b17e4b5909d7f8529c9c1e46fc579"
     },
     "fullLocalCheck": {
-      "command": "npm run check",
-      "installCommand": "npm ci --ignore-scripts",
+      "command": "ECOSYSTEM_BASELINE_REPOSITORY=<exact frozen source repository> npm run check",
       "platform": "linux",
       "node": "v24.19.0",
       "exitCode": 0,
       "tests": {
-        "total": 1534,
-        "passed": 1521,
+        "total": 1539,
+        "passed": 1538,
         "failed": 0,
-        "skipped": 13
+        "skipped": 1
       },
-      "log": "/tmp/asen-eco01-block2-final2.log",
-      "logSha256": "3cab21abdfec25c05950ebff4a821974352a0609ff795bea3c5172f0f15fa46e"
+      "audits": {
+        "phaseParity": "PASS",
+        "behaviorSkills": "PASS",
+        "skillParity": "PASS",
+        "memoryParity": "PASS",
+        "ecosystemClaims": "PASS (claims remain PARTIAL)",
+        "upstreamBoundary": "PASS"
+      },
+      "log": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/asen-full-check.log",
+      "logSha256": "afb8904b04ff09416d302f5d4f126fbd52b9c213223876d296be27671ce5d5dc",
+      "installCommand": "npm ci --ignore-scripts (pre-existing environment; no dependency changes)",
+      "candidateCommit": "c21106c27028af580a7b8ddbb2fb8b831c959bda"
     }
   },
   "currentCandidateEvidence": {
-    "candidateCommit": "b1f028ce2dde27757a901cd8722a4fe5ee27565f",
+    "candidateCommit": "c21106c27028af580a7b8ddbb2fb8b831c959bda",
     "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
     "pairEvidence": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
     "pairEvidenceSha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
@@ -3097,7 +3144,7 @@
       "log": "local test output; CI reruns as part of npm test",
       "testPath": "tests/eco01-file-reference-evidence.test.ts"
     },
-    "latestCandidateCommit": "2e8444c42429102a2294e86fd9277963c8850353",
+    "latestCandidateCommit": "c21106c27028af580a7b8ddbb2fb8b831c959bda",
     "liveCodegraphPackage": {
       "path": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
       "version": "1.6.2",
@@ -3152,6 +3199,63 @@
         "node": "v24.19.0"
       },
       "limitation": "The comparison exercises the actual Todo state operation and ASEN persistent store, not Pi tool registration or UI authorization lifecycle."
+    },
+    "todoRegistrationEvidence": {
+      "path": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/todo-registration-pair.json",
+      "sha256": "19e1af34fee4c4610545c57f06dbcdb054a71832828dbce30f4102d6d3918e7f",
+      "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+      "asenCommit": "c21106c27028af580a7b8ddbb2fb8b831c959bda",
+      "asenTree": "10ecabd4598b93653a0114e9121309521623d5bf",
+      "scenario": "registration",
+      "status": "INTENTIONAL",
+      "runtimeVersions": [
+        "0.87.1",
+        "1.1.0"
+      ],
+      "modelsInvoked": 0,
+      "platform": "linux",
+      "stdoutLogs": [
+        {
+          "path": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/logs/source.stdout.log",
+          "sha256": "44d46f1f4839506f1afb09e6c057dbb0644bf7736a85379f8a2b664fcdc1f72d"
+        },
+        {
+          "path": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/logs/asen.stdout.log",
+          "sha256": "6a62bd370cd3c9ed2a05af5963eb11db7b17c6d99710739994c1376da2ae1037"
+        }
+      ],
+      "stderrLogs": [
+        {
+          "path": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/logs/source.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/logs/asen.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    "registrationValidation": {
+      "command": "ECOSYSTEM_BASELINE_REPOSITORY=<exact frozen source repository> npm run check",
+      "platform": "linux",
+      "node": "v24.19.0",
+      "exitCode": 0,
+      "tests": {
+        "total": 1539,
+        "passed": 1538,
+        "failed": 0,
+        "skipped": 1
+      },
+      "audits": {
+        "phaseParity": "PASS",
+        "behaviorSkills": "PASS",
+        "skillParity": "PASS",
+        "memoryParity": "PASS",
+        "ecosystemClaims": "PASS (claims remain PARTIAL)",
+        "upstreamBoundary": "PASS"
+      },
+      "log": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/asen-full-check.log",
+      "logSha256": "afb8904b04ff09416d302f5d4f126fbd52b9c213223876d296be27671ce5d5dc"
     }
   }
 }
