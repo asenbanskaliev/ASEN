@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import {execFileSync,spawn} from "node:child_process";
-import {mkdir,readFile,realpath,rm,writeFile} from "node:fs/promises";
+import {cp,mkdir,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -22,6 +22,9 @@ const home=path.join(scratch,"home"),project=path.join(scratch,"candidate");
 const hash=value=>createHash("sha256").update(value).digest("hex");
 const git=(...args)=>execFileSync("git",args,{cwd:project,encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
 await Promise.all([mkdir(home,{recursive:true,mode:0o700}),mkdir(project,{recursive:true})]);
+// Candidate-bound Pi skills must resolve inside the disposable repository so
+// Pi's native skill provenance matches the exact paths issued by ASEN.
+await cp(path.join(source,"skills"),path.join(project,"skills"),{recursive:true});
 await writeFile(path.join(project,"README.md"),"# ECO-06 controlled write\n\nInitial candidate.\n");
 git("init","-q");git("config","user.email","asen-eco06@example.invalid");git("config","user.name","ASEN ECO-06 E2E");git("add","README.md");git("commit","-qm","fixture: clean writer candidate");
 const candidateRevision=git("rev-parse","HEAD"),sessionId=`eco06-live-${expected.slice(0,12)}`;
