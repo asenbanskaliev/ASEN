@@ -595,7 +595,7 @@
         "tests/profile-store.test.ts"
       ],
       "remaining": [
-        "Strict profile schema, session/project/global precedence, fallback, deterministic mutations and persisted/reloaded profile storage are implemented and tested internally. Production profile-provider/command/model-routing integration, real Pi/platform journeys and rollback evidence remain incomplete. No full production routing parity is claimed. The internal resolver still treats prototype-named missing roles as inherited routes; this confirmed review limitation must be corrected before admitting production profile routing."
+        "Strict profile schema, session/project/global precedence, fallback, deterministic mutations and persisted/reloaded profile storage are implemented and tested internally. Profile parsing preserves prototype-named route keys as own data properties, and route resolution ignores inherited properties; deterministic regression coverage exercises both boundaries. Production profile-provider/command/model-routing integration, real Pi/platform journeys and rollback evidence remain incomplete. No full production routing parity is claimed."
       ],
       "stateful": true,
       "platformSensitive": true,
