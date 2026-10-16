@@ -6,7 +6,7 @@ import {fileURLToPath,pathToFileURL} from "node:url";
 import {assessPairedObservation,createExecutionReceipt,createDifferentialPlan} from "./eco01-differential-plan.mjs";
 import {registerCodeGraphTool as registerAsenCodeGraphTool} from "../src/interaction/code-intelligence.ts";
 
-const scriptPath=fileURLToPath(import.meta.url),asenRoot=resolve(new URL("../",import.meta.url).pathname);
+const scriptPath=fileURLToPath(import.meta.url),asenRoot=fileURLToPath(new URL("../",import.meta.url));
 const fail=message=>{throw new Error(message);};
 
 async function runSide({side,sourceRoot,scenario,root}){

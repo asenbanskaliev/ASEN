@@ -46,7 +46,6 @@
         "path": null
       },
       "mappingReason": "installed-package-discovery",
-      "asenTargets": [],
       "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
       "scenarios": [
         {
@@ -81,7 +80,8 @@
         }
       ],
       "sourceId": "ECO-SRC-625c38e8637ad8b0",
-      "referenceIndex": 0
+      "referenceIndex": 0,
+      "mappingTargets": []
     },
     {
       "id": "ECO-SRC-ecb5b4ebbaf005aa:0",
@@ -99,7 +99,6 @@
         "path": null
       },
       "mappingReason": "user-selected-absolute-file",
-      "asenTargets": [],
       "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
       "scenarios": [
         {
@@ -134,7 +133,8 @@
         }
       ],
       "sourceId": "ECO-SRC-ecb5b4ebbaf005aa",
-      "referenceIndex": 0
+      "referenceIndex": 0,
+      "mappingTargets": []
     },
     {
       "id": "ECO-SRC-ecb5b4ebbaf005aa:2",
@@ -152,7 +152,6 @@
         "path": null
       },
       "mappingReason": "generated-install-manifest-and-binary",
-      "asenTargets": [],
       "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
       "scenarios": [
         {
@@ -187,7 +186,8 @@
         }
       ],
       "sourceId": "ECO-SRC-ecb5b4ebbaf005aa",
-      "referenceIndex": 2
+      "referenceIndex": 2,
+      "mappingTargets": []
     },
     {
       "id": "ECO-SRC-f4f6b335bf2cf4e9:0",
@@ -205,7 +205,6 @@
         "path": null
       },
       "mappingReason": "configured-provider-url",
-      "asenTargets": [],
       "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
       "scenarios": [
         {
@@ -240,7 +239,8 @@
         }
       ],
       "sourceId": "ECO-SRC-f4f6b335bf2cf4e9",
-      "referenceIndex": 0
+      "referenceIndex": 0,
+      "mappingTargets": []
     },
     {
       "id": "ECO-SRC-ee431194e4155110:0",
@@ -258,7 +258,6 @@
         "path": null
       },
       "mappingReason": "caller-selected-candidate-tree",
-      "asenTargets": [],
       "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
       "scenarios": [
         {
@@ -293,7 +292,8 @@
         }
       ],
       "sourceId": "ECO-SRC-ee431194e4155110",
-      "referenceIndex": 0
+      "referenceIndex": 0,
+      "mappingTargets": []
     },
     {
       "id": "ECO-SRC-6058ca4d664d9095:1",
@@ -311,9 +311,6 @@
         "path": null
       },
       "mappingReason": "direct-markdown-children",
-      "asenTargets": [
-        "assets/agents/*.md"
-      ],
       "limitation": "The source inventory points to an upstream-only file or file set and does not identify an ASEN counterpart; absence is not being treated as functional equivalence.",
       "scenarios": [
         {
@@ -343,7 +340,10 @@
         }
       ],
       "sourceId": "ECO-SRC-6058ca4d664d9095",
-      "referenceIndex": 1
+      "referenceIndex": 1,
+      "mappingTargets": [
+        "assets/agents/*.md"
+      ]
     },
     {
       "id": "ECO-SRC-dbf31123d00902ed:1",
@@ -361,9 +361,6 @@
         "path": null
       },
       "mappingReason": "exact-source-file",
-      "asenTargets": [
-        "contracts/telemetry/runtime-aggregate-v1.schema.json"
-      ],
       "limitation": "The source inventory points to an upstream-only file or file set and does not identify an ASEN counterpart; absence is not being treated as functional equivalence.",
       "scenarios": [
         {
@@ -388,7 +385,10 @@
         }
       ],
       "sourceId": "ECO-SRC-dbf31123d00902ed",
-      "referenceIndex": 1
+      "referenceIndex": 1,
+      "mappingTargets": [
+        "contracts/telemetry/runtime-aggregate-v1.schema.json"
+      ]
     },
     {
       "id": "ECO-SRC-8745033959a82ed0:0",
@@ -406,7 +406,6 @@
         "path": null
       },
       "mappingReason": "user-selected-absolute-file",
-      "asenTargets": [],
       "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
       "scenarios": [
         {
@@ -441,7 +440,8 @@
         }
       ],
       "sourceId": "ECO-SRC-8745033959a82ed0",
-      "referenceIndex": 0
+      "referenceIndex": 0,
+      "mappingTargets": []
     },
     {
       "id": "ECO-SRC-8745033959a82ed0:2",
@@ -459,7 +459,6 @@
         "path": null
       },
       "mappingReason": "generated-install-manifest-and-binary",
-      "asenTargets": [],
       "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
       "scenarios": [
         {
@@ -494,7 +493,8 @@
         }
       ],
       "sourceId": "ECO-SRC-8745033959a82ed0",
-      "referenceIndex": 2
+      "referenceIndex": 2,
+      "mappingTargets": []
     },
     {
       "id": "ECO-SRC-7fb85a620f260291:2",
@@ -512,7 +512,6 @@
         "path": null
       },
       "mappingReason": "downloaded-or-staged-content",
-      "asenTargets": [],
       "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
       "scenarios": [
         {
@@ -547,7 +546,8 @@
         }
       ],
       "sourceId": "ECO-SRC-7fb85a620f260291",
-      "referenceIndex": 2
+      "referenceIndex": 2,
+      "mappingTargets": []
     },
     {
       "id": "ECO-SRC-7fb85a620f260291:0",
@@ -565,7 +565,6 @@
         "path": null
       },
       "mappingReason": "https-download-url",
-      "asenTargets": [],
       "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
       "scenarios": [
         {
@@ -600,7 +599,8 @@
         }
       ],
       "sourceId": "ECO-SRC-7fb85a620f260291",
-      "referenceIndex": 0
+      "referenceIndex": 0,
+      "mappingTargets": []
     },
     {
       "id": "ECO-SRC-7fb85a620f260291:1",
@@ -618,7 +618,6 @@
         "path": null
       },
       "mappingReason": "https-redirect-location",
-      "asenTargets": [],
       "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
       "scenarios": [
         {
@@ -653,7 +652,8 @@
         }
       ],
       "sourceId": "ECO-SRC-7fb85a620f260291",
-      "referenceIndex": 1
+      "referenceIndex": 1,
+      "mappingTargets": []
     },
     {
       "id": "ECO-SRC-625c38e8637ad8b0:7",
@@ -671,9 +671,6 @@
         "path": null
       },
       "mappingReason": "self-owned-registration",
-      "asenTargets": [
-        "ECO-SRC-625c38e8637ad8b0"
-      ],
       "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
       "scenarios": [
         {
@@ -1709,7 +1706,10 @@
         }
       ],
       "sourceId": "ECO-SRC-625c38e8637ad8b0",
-      "referenceIndex": 7
+      "referenceIndex": 7,
+      "mappingTargets": [
+        "ECO-SRC-625c38e8637ad8b0"
+      ]
     },
     {
       "id": "ECO-SRC-af1edc66cbd9834c:64",
@@ -1727,9 +1727,6 @@
         "path": null
       },
       "mappingReason": "self-owned-registration",
-      "asenTargets": [
-        "ECO-SRC-af1edc66cbd9834c"
-      ],
       "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
       "scenarios": [
         {
@@ -1764,7 +1761,10 @@
         }
       ],
       "sourceId": "ECO-SRC-af1edc66cbd9834c",
-      "referenceIndex": 64
+      "referenceIndex": 64,
+      "mappingTargets": [
+        "ECO-SRC-af1edc66cbd9834c"
+      ]
     },
     {
       "id": "ECO-SRC-1f527249710bd9bf:33",
@@ -1782,9 +1782,6 @@
         "path": null
       },
       "mappingReason": "self-owned-registration",
-      "asenTargets": [
-        "ECO-SRC-1f527249710bd9bf"
-      ],
       "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
       "scenarios": [
         {
@@ -1819,7 +1816,10 @@
         }
       ],
       "sourceId": "ECO-SRC-1f527249710bd9bf",
-      "referenceIndex": 33
+      "referenceIndex": 33,
+      "mappingTargets": [
+        "ECO-SRC-1f527249710bd9bf"
+      ]
     },
     {
       "id": "ECO-SRC-1f527249710bd9bf:89",
@@ -1837,9 +1837,6 @@
         "path": null
       },
       "mappingReason": "self-owned-registration",
-      "asenTargets": [
-        "ECO-SRC-1f527249710bd9bf"
-      ],
       "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
       "scenarios": [
         {
@@ -1874,7 +1871,10 @@
         }
       ],
       "sourceId": "ECO-SRC-1f527249710bd9bf",
-      "referenceIndex": 89
+      "referenceIndex": 89,
+      "mappingTargets": [
+        "ECO-SRC-1f527249710bd9bf"
+      ]
     },
     {
       "id": "ECO-SRC-1f527249710bd9bf:90",
@@ -1892,9 +1892,6 @@
         "path": null
       },
       "mappingReason": "self-owned-registration",
-      "asenTargets": [
-        "ECO-SRC-1f527249710bd9bf"
-      ],
       "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
       "scenarios": [
         {
@@ -1929,7 +1926,10 @@
         }
       ],
       "sourceId": "ECO-SRC-1f527249710bd9bf",
-      "referenceIndex": 90
+      "referenceIndex": 90,
+      "mappingTargets": [
+        "ECO-SRC-1f527249710bd9bf"
+      ]
     },
     {
       "id": "ECO-SRC-1f527249710bd9bf:91",
@@ -1947,9 +1947,6 @@
         "path": null
       },
       "mappingReason": "self-owned-registration",
-      "asenTargets": [
-        "ECO-SRC-1f527249710bd9bf"
-      ],
       "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
       "scenarios": [
         {
@@ -1984,7 +1981,10 @@
         }
       ],
       "sourceId": "ECO-SRC-1f527249710bd9bf",
-      "referenceIndex": 91
+      "referenceIndex": 91,
+      "mappingTargets": [
+        "ECO-SRC-1f527249710bd9bf"
+      ]
     },
     {
       "id": "ECO-SRC-f25fcbecafe905e1:17",
@@ -2002,9 +2002,6 @@
         "path": null
       },
       "mappingReason": "self-owned-registration",
-      "asenTargets": [
-        "ECO-SRC-f25fcbecafe905e1"
-      ],
       "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
       "scenarios": [
         {
@@ -2039,7 +2036,10 @@
         }
       ],
       "sourceId": "ECO-SRC-f25fcbecafe905e1",
-      "referenceIndex": 17
+      "referenceIndex": 17,
+      "mappingTargets": [
+        "ECO-SRC-f25fcbecafe905e1"
+      ]
     },
     {
       "id": "ECO-SRC-91b70c5973297fbd:12",
@@ -2057,9 +2057,6 @@
         "path": null
       },
       "mappingReason": "self-owned-registration",
-      "asenTargets": [
-        "ECO-SRC-91b70c5973297fbd"
-      ],
       "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
       "scenarios": [
         {
@@ -2094,7 +2091,10 @@
         }
       ],
       "sourceId": "ECO-SRC-91b70c5973297fbd",
-      "referenceIndex": 12
+      "referenceIndex": 12,
+      "mappingTargets": [
+        "ECO-SRC-91b70c5973297fbd"
+      ]
     },
     {
       "id": "ECO-SRC-6c28d7b99a511610:5",
@@ -2112,9 +2112,6 @@
         "path": null
       },
       "mappingReason": "self-owned-registration",
-      "asenTargets": [
-        "ECO-SRC-6c28d7b99a511610"
-      ],
       "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
       "scenarios": [
         {
@@ -2149,7 +2146,10 @@
         }
       ],
       "sourceId": "ECO-SRC-6c28d7b99a511610",
-      "referenceIndex": 5
+      "referenceIndex": 5,
+      "mappingTargets": [
+        "ECO-SRC-6c28d7b99a511610"
+      ]
     },
     {
       "id": "ECO-SRC-6c28d7b99a511610:6",
@@ -2167,9 +2167,6 @@
         "path": null
       },
       "mappingReason": "self-owned-registration",
-      "asenTargets": [
-        "ECO-SRC-6c28d7b99a511610"
-      ],
       "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
       "scenarios": [
         {
@@ -2204,7 +2201,10 @@
         }
       ],
       "sourceId": "ECO-SRC-6c28d7b99a511610",
-      "referenceIndex": 6
+      "referenceIndex": 6,
+      "mappingTargets": [
+        "ECO-SRC-6c28d7b99a511610"
+      ]
     },
     {
       "id": "ECO-SRC-6c28d7b99a511610:7",
@@ -2222,9 +2222,6 @@
         "path": null
       },
       "mappingReason": "self-owned-registration",
-      "asenTargets": [
-        "ECO-SRC-6c28d7b99a511610"
-      ],
       "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
       "scenarios": [
         {
@@ -2259,7 +2256,10 @@
         }
       ],
       "sourceId": "ECO-SRC-6c28d7b99a511610",
-      "referenceIndex": 7
+      "referenceIndex": 7,
+      "mappingTargets": [
+        "ECO-SRC-6c28d7b99a511610"
+      ]
     },
     {
       "id": "ECO-SRC-6058ca4d664d9095:0",
@@ -2277,9 +2277,6 @@
         "path": null
       },
       "mappingReason": "direct-markdown-children",
-      "asenTargets": [
-        "assets/agents/*.md"
-      ],
       "limitation": "The source inventory points to an upstream-only file or file set and does not identify an ASEN counterpart; absence is not being treated as functional equivalence.",
       "scenarios": [
         {
@@ -2309,7 +2306,10 @@
         }
       ],
       "sourceId": "ECO-SRC-6058ca4d664d9095",
-      "referenceIndex": 0
+      "referenceIndex": 0,
+      "mappingTargets": [
+        "assets/agents/*.md"
+      ]
     },
     {
       "id": "ECO-SRC-8420ca03583cfe7b:5",
@@ -2327,9 +2327,6 @@
         "path": null
       },
       "mappingReason": "self-owned-registration",
-      "asenTargets": [
-        "ECO-SRC-8420ca03583cfe7b"
-      ],
       "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
       "scenarios": [
         {
@@ -2364,7 +2361,10 @@
         }
       ],
       "sourceId": "ECO-SRC-8420ca03583cfe7b",
-      "referenceIndex": 5
+      "referenceIndex": 5,
+      "mappingTargets": [
+        "ECO-SRC-8420ca03583cfe7b"
+      ]
     }
   ],
   "localValidation": {
