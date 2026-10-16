@@ -1,202 +1,4 @@
-import assert from "node:assert/strict";
-import {spawn} from "node:child_process";
-import {EventEmitter,once} from "node:events";
-import {readFile} from "node:fs/promises";
-import test from "node:test";
-import {createJsonlQueue,createRpcController,createSecretSanitizer,runCleanup} from "../scripts/eco07-recovery-io.mjs";
-
-function deferred(){
- let resolve,reject;
- const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});
- return {promise,resolve,reject};
-}
-
-async function within(promise,milliseconds,timeoutValue){
- let timer;
- try{return await Promise.race([promise,new Promise(resolve=>{timer=setTimeout(()=>resolve(timeoutValue),milliseconds);})]);}
- finally{clearTimeout(timer);}
-}
-
-function fakeTimers(){
- let next=1;
- const pending=new Map();
- return {
-  setTimer(callback){const id=next++;pending.set(id,callback);return id;},
-  clearTimer(id){pending.delete(id);},
-  runNext(){const entry=pending.entries().next().value;assert.ok(entry,"expected a pending timer");pending.delete(entry[0]);entry[1]();},
-  get size(){return pending.size;},
- };
-}
-
-function fakeChild(){
- const child=new EventEmitter();
- child.exitCode=null;child.signalCode=null;child.writes=[];child.kills=[];child.endCount=0;
- child.stdin=new EventEmitter();
- child.stdin.write=value=>{child.writes.push(value);return true;};
- child.stdin.end=()=>{child.endCount++;};
- child.stdout=new EventEmitter();child.stderr=new EventEmitter();
- child.kill=signal=>{child.kills.push(signal);return true;};
- return child;
-}
-
-test("JSONL queue snapshots sanitized input and serializes write then sync",async()=>{
- const firstWrite=deferred();
- const operations=[];
- let writes=0;
- const file={
-  write(line){operations.push(["write",line]);writes++;return writes===1?firstWrite.promise:Promise.resolve();},
-  async sync(){operations.push(["sync"]);},
-  async close(){operations.push(["close"]);},
- };
- const secret="eco07-real-secret-value";
- const sanitize=createSecretSanitizer(secret);
- const queue=createJsonlQueue({file,now:()=>"fixed",sanitize});
- const details={nested:{value:`before-${secret}`},headers:{authorization:`Bearer ${secret}`},authToken:`prefix-${secret}-suffix`,array:[secret,{note:`embedded-${secret}`}]};
- const original=structuredClone(details);
- const one=queue.record("one",details);
- assert.deepEqual(details,original,"sanitization must not mutate its input");
- const two=queue.record("two",{position:2});
- details.nested.value="after";details.headers.authorization="mutated";
- await Promise.resolve();
- assert.equal(operations.length,1,"a later append must not overlap the first append");
- firstWrite.resolve();
- await Promise.all([one,two]);
- await queue.drainAndClose();
- assert.deepEqual(operations.map(entry=>entry[0]),["write","sync","write","sync","close"]);
- const bytes=operations.filter(entry=>entry[0]==="write").map(entry=>entry[1]).join("");
- assert.equal(bytes.includes(secret),false,"serialized file bytes must not contain the configured secret");
- const rows=bytes.trim().split("\n").map(line=>JSON.parse(line));
- assert.deepEqual(rows,[
-  {at:"fixed",kind:"one",nested:{value:"before-[redacted]"},headers:{authorization:"Bearer [redacted]"},authToken:"prefix-[redacted]-suffix",array:["[redacted]",{note:"embedded-[redacted]"}]},
-  {at:"fixed",kind:"two",position:2},
- ]);
-});
-
-test("JSONL queue propagates write and close failures and permanently rejects new records",async()=>{
- const writeError=new Error("write failed"),closeError=new Error("close failed");
- let closes=0;
- const queue=createJsonlQueue({file:{write:async()=>{throw writeError;},sync:async()=>{},close:async()=>{closes++;throw closeError;}}});
- const write=queue.record("broken");
- await assert.rejects(write,error=>error===writeError);
- const firstDrain=queue.drainAndClose();
- assert.strictEqual(queue.drainAndClose(),firstDrain,"drain must be idempotent");
- await assert.rejects(firstDrain,error=>error instanceof AggregateError&&error.errors.includes(writeError)&&error.errors.includes(closeError));
- assert.equal(closes,1);
- await assert.rejects(queue.record("late"),/closed/u);
-});
-
-test("JSONL queue propagates serialization and sync failures through drain",async()=>{
- const serializationError=new Error("cannot sanitize"),syncError=new Error("sync failed");
- const badSanitize=createJsonlQueue({file:{write:async()=>{},sync:async()=>{},close:async()=>{}},sanitize:()=>{throw serializationError;}});
- await assert.rejects(badSanitize.record("broken"),error=>error===serializationError);
- await assert.rejects(badSanitize.drainAndClose(),error=>error===serializationError);
- let closed=false;
- const badSync=createJsonlQueue({file:{write:async()=>{},sync:async()=>{throw syncError;},close:async()=>{closed=true;}}});
- await assert.rejects(badSync.record("broken"),error=>error===syncError);
- await assert.rejects(badSync.drainAndClose(),error=>error===syncError);
- assert.equal(closed,true,"drain must attempt close after a sync failure");
-});
-
-test("quota latch rejects pending work and prevents every later write before bounded TERM/KILL cleanup",async()=>{
- const child=fakeChild(),timers=fakeTimers();
- const controller=createRpcController({
-  child,label:"test",classifyProviderFailure:value=>value?.quota?"429 quota":undefined,
-  redact:value=>String(value),setTimer:timers.setTimer,clearTimer:timers.clearTimer,
-  termGraceMs:10,killGraceMs:10,requestTimeoutMs:100,
- });
- const pending=controller.send("prompt",{message:"first"});
- assert.equal(child.writes.length,1);
- assert.equal(controller.observe({quota:true}),"429 quota");
- await assert.rejects(pending,/rate limit.*429 quota/iu);
- await assert.rejects(controller.send("prompt",{message:"late"}),/rate limit/iu);
- await assert.rejects(controller.write({type:"extension_ui_response"}),/rate limit/iu);
- assert.equal(child.writes.length,1,"quota observation must synchronously prevent later prompts and responses");
- assert.equal(child.endCount,1);
- assert.deepEqual(child.kills,["SIGTERM"]);
- timers.runNext();
- assert.deepEqual(child.kills,["SIGTERM","SIGKILL"]);
- timers.runNext();
- const closed=await controller.getClosed();
- assert.deepEqual(closed,{code:null,signal:"SIGKILL",cleanupConfirmed:false});
- assert.equal(timers.size,0);
- assert.equal(child.listenerCount("error"),1,"late errors remain consumed until actual close");
- assert.doesNotThrow(()=>child.emit("error",new Error("late")));
- child.emit("close",null,"SIGKILL");
- assert.equal(child.listenerCount("close"),0);assert.equal(child.listenerCount("error"),0);
-});
-
-test("unconfirmed cleanup disposes stream handlers and safely consumes late process errors",async()=>{
- const child=fakeChild(),timers=fakeTimers();
- let observed=0,disposals=0;
- const onData=()=>{observed++;};child.stdout.on("data",onData);
- const controller=createRpcController({child,label:"test",classifyProviderFailure:()=>undefined,setTimer:timers.setTimer,clearTimer:timers.clearTimer,killGraceMs:10,dispose:()=>{disposals++;child.stdout.off("data",onData);}});
- const stopping=controller.stop("SIGKILL");timers.runNext();
- assert.equal((await stopping).cleanupConfirmed,false);
- let lateError;try{child.emit("error",new Error("late"));}catch(error){lateError=error;}
- child.stdout.emit("data","late");
- assert.deepEqual({disposals,observed,lateError},{disposals:1,observed:0,lateError:undefined});
- child.emit("close",null,"SIGKILL");
- assert.equal(child.listenerCount("close"),0);assert.equal(child.listenerCount("error"),0);
-});
-
-test("unconfirmed cleanup releases owned handles despite dispose failure and late stream errors",async()=>{
- const child=fakeChild(),timers=fakeTimers(),disposeError=new Error("dispose failed"),foreign=[];
- child.unrefCount=0;child.unref=()=>{child.unrefCount++;};
- for(const stream of [child.stdin,child.stdout,child.stderr]){
-  stream.destroyCount=0;stream.unrefCount=0;
-  stream.destroy=()=>{stream.destroyCount++;};stream.unref=()=>{stream.unrefCount++;};
- }
- child.stdout.on("error",error=>foreign.push(error.message));
- const queue=createJsonlQueue({file:{write:async()=>{},sync:async()=>{},close:async()=>{}}});
- const onData=()=>{void queue.record("late");};child.stdout.on("data",onData);
- const controller=createRpcController({child,label:"test",classifyProviderFailure:()=>undefined,setTimer:timers.setTimer,clearTimer:timers.clearTimer,killGraceMs:10,dispose:()=>{child.stdout.off("data",onData);throw disposeError;}});
- await queue.drainAndClose();
- const stopping=controller.stop("SIGKILL");timers.runNext();
- const result=await stopping;
- assert.equal(result.cleanupConfirmed,false);assert.ok(result.cleanupErrors.includes(disposeError));
- assert.equal(child.unrefCount,1);
- for(const stream of [child.stdin,child.stdout,child.stderr])assert.deepEqual([stream.destroyCount,stream.unrefCount],[1,1]);
- let unhandled;const onUnhandled=error=>{unhandled=error;};process.once("unhandledRejection",onUnhandled);
- try{child.stdout.emit("data","late");child.stdout.emit("error",new Error("stdout late"));child.stderr.emit("error",new Error("stderr late"));await new Promise(resolve=>setImmediate(resolve));}
- finally{process.removeListener("unhandledRejection",onUnhandled);}
- assert.equal(unhandled,undefined);assert.deepEqual(foreign,["stdout late"]);
- for(const stream of [child.stdin,child.stdout,child.stderr])stream.emit("close");
- child.emit("close",null,"SIGKILL");
- assert.equal(child.listenerCount("error"),0);assert.equal(child.stdout.listenerCount("error"),1,"foreign listener must remain");
- assert.equal(child.stderr.listenerCount("error"),0);assert.equal(child.stdin.listenerCount("error"),0);
-});
-
-test("active-handle supervisor exits after unconfirmed owned-child cleanup",async()=>{
- const helper=new URL("../scripts/eco07-recovery-io.mjs",import.meta.url).href;
- const program=`
-  const {spawn}=await import("node:child_process");
-  const {createRpcController}=await import(${JSON.stringify(helper)});
-  const owned=spawn(process.execPath,["-e","setInterval(()=>{},10000)"],{stdio:["pipe","pipe","pipe"]});
-  await new Promise((resolve,reject)=>process.send(owned.pid,error=>error?reject(error):resolve()));
-  process.disconnect();owned.kill=()=>false;
-  const controller=createRpcController({child:owned,label:"fixture",classifyProviderFailure:()=>undefined,killGraceMs:20});
-  const result=await controller.stop("SIGKILL");
-  if(result.cleanupConfirmed)process.exitCode=2;
- `;
- const supervisor=spawn(process.execPath,["--input-type=module","-e",program],{stdio:["ignore","ignore","ignore","ipc"]});
- const closed=once(supervisor,"close");let ownedPid;
- supervisor.once("message",pid=>{ownedPid=pid;});
- let outcome;
- try{outcome=await within(closed.then(([code,signal])=>({code,signal})),1_200,{timeout:true});}
- finally{
-  if(supervisor.exitCode===null&&supervisor.signalCode===null)supervisor.kill("SIGKILL");
-  if(ownedPid)try{process.kill(ownedPid,"SIGKILL");}catch(error){if(error?.code!=="ESRCH")throw error;}
-  await within(closed,1_000,undefined);
- }
- assert.deepEqual(outcome,{code:0,signal:null});
-});
-
-test("asynchronous stdin failure rejects every pending request once",async()=>{
- const child=fakeChild(),callbacks=[];
- child.stdin.write=(value,callback)=>{child.writes.push(value);callbacks.push(callback);return false;};
- const controller=createRpcController({child,label:"test",classifyProviderFailure:()=>undefined});
- const first=controller.send("prompt"),second=controller.send("get_commands");
- assert.ok(callbacks.every(callback=>typeof callback==="function"),"writes must provide completion callbacks");
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíë}·N‹Z–‹­¦ëeŠw¬Õ¥µÁ½ÉÐ…ÍÍ•ÉÐ™É½´€‰¹½‘”é…ÍÍ•ÉÐ½ÍÑÉ¥Ðˆì)¥µÁ½ÉÐíÍÁ…Ý¹ô™É½´€‰¹½‘”é¡¥±‘}ÁÉ½•ÍÌˆì)¥µÁ½ÉÐíÙ•¹Ñµ¥ÑÑ•È±½¹•ô™É½´€‰¹½‘”é•Ù•¹ÑÌˆì)¥µÁ½ÉÐíÉ•…‘¥±•ô™É½´€‰¹½‘”é™Ì½ÁÉ½µ¥Í•Ìˆì)¥µÁ½ÉÐÑ•ÍÐ™É½´€‰¹½‘”éÑ•ÍÐˆì)¥µÁ½ÉÐíÉ•…Ñ•)Í½¹±EÕ•Õ”±É•…Ñ•IÁ½¹ÑÉ½±±•È±É•…Ñ•M•É•ÑM…¹¥Ñ¥é•È±ÉÕ¹±•…¹ÕÁô™É½´€ˆ¸¸½ÍÉ¥ÁÑÌ½•¼ÀÜµÉ•½Ù•Éäµ¥¼¹µ©Ìˆì()™Õ¹Ñ¥½¸‘•™•ÉÉ• ¥ì(±•ÐÉ•Í½±Ù”±É•©•Ðì(½¹ÍÐÁÉ½µ¥Í”õ¹•ÜAÉ½µ¥Í” ¡å•Ì±¹¼¤ôùíÉ•Í½±Ù”õå•ÌíÉ•©•Ðõ¹¼íô¤ì(É•ÑÕÉ¸íÁÉ½µ¥Í”±É•Í½±Ù”±É•©•Ñôì)ô()…Íå¹Œ™Õ¹Ñ¥½¸Ý¥Ñ¡¥¸¡ÁÉ½µ¥Í”±µ¥±±¥Í•½¹‘Ì±Ñ¥µ•½ÕÑY…±Õ”¥ì(±•ÐÑ¥µ•Èì(ÑÉåíÉ•ÑÕÉ¸…Ý…¥ÐAÉ½µ¥Í”¹É…”¡mÁÉ½µ¥Í”±¹•ÜAÉ½µ¥Í”¡É•Í½±Ù”ôùíÑ¥µ•ÈõÍ•ÑQ¥µ•½ÕÐ  ¤ôùÉ•Í½±Ù”¡Ñ¥µ•½ÕÑY…±Õ”¤±µ¥±±¥Í•½¹‘Ì¤íô¥t¤íô(™¥¹…±±åí±•…ÉQ¥µ•½ÕÐ¡Ñ¥µ•È¤íô)ô()™Õ¹Ñ¥½¸™…­•Q¥µ•ÉÌ ¥ì(±•Ð¹•áÐôÄì(½¹ÍÐÁ•¹‘¥¹œõ¹•Ü5…À ¤ì(É•ÑÕÉ¸ì(€Í•ÑQ¥µ•È¡…±±‰…¬¥í½¹ÍÐ¥õ¹•áÐ¬¬íÁ•¹‘¥¹œ¹Í•Ð¡¥±…±±‰…¬¤íÉ•ÑÕÉ¸¥íô°(€±•…ÉQ¥µ•È¡¥¥íÁ•¹‘¥¹œ¹‘•±•Ñ”¡¥¤íô°(€ÉÕ¹9•áÐ ¥í½¹ÍÐ•¹ÑÉäõÁ•¹‘¥¹œ¹•¹ÑÉ¥•Ì ¤¹¹•áÐ ¤¹Ù…±Õ”í…ÍÍ•ÉÐ¹½¬¡•¹ÑÉä°‰•áÁ•Ñ•„Á•¹‘¥¹œÑ¥µ•Èˆ¤íÁ•¹‘¥¹œ¹‘•±•Ñ”¡•¹ÑÉålÁt¤í•¹ÑÉålÅt ¤íô°(€•ÐÍ¥é” ¥íÉ•ÑÕÉ¸Á•¹‘¥¹œ¹Í¥é”íô°(ôì)ô()™Õ¹Ñ¥½¸™…­•¡¥± ¥ì(½¹ÍÐ¡¥±õ¹•ÜÙ•¹Ñµ¥ÑÑ•È ¤ì(¡¥±¹•á¥Ñ½‘”õ¹Õ±°í¡¥±¹Í¥¹…±½‘”õ¹Õ±°í¡¥±¹ÝÉ¥Ñ•Ìõmtí¡¥±¹­¥±±Ìõmtí¡¥±¹•¹‘½Õ¹ÐôÀì(¡¥±¹ÍÑ‘¥¸õ¹•ÜÙ•¹Ñµ¥ÑÑ•È ¤ì(¡¥±¹ÍÑ‘¥¸¹ÝÉ¥Ñ”õÙ…±Õ”ôùí¡¥±¹ÝÉ¥Ñ•Ì¹ÁÕÍ ¡Ù…±Õ”¤íÉ•ÑÕÉ¸ÑÉÕ”íôì(¡¥±¹ÍÑ‘¥¸¹•¹ô ¤ôùí¡¥±¹•¹‘½Õ¹Ð¬¬íôì(¡¥±¹ÍÑ‘½ÕÐõ¹•ÜÙ•¹Ñµ¥ÑÑ•È ¤í¡¥±¹ÍÑ‘•ÉÈõ¹•ÜÙ•¹Ñµ¥ÑÑ•È ¤ì(¡¥±¹­¥±°õÍ¥¹…°ôùí¡¥±¹­¥±±Ì¹ÁÕÍ ¡Í¥¹…°¤íÉ•ÑÕÉ¸ÑÉÕ”íôì(É•ÑÕÉ¸¡¥±ì)ô()Ñ•ÍÐ ‰)M=90ÅÕ•Õ”Í¹…ÁÍ¡½ÑÌÍ…¹¥Ñ¥é•¥¹ÁÕÐ…¹Í•É¥…±¥é•ÌÝÉ¥Ñ”Ñ¡•¸Íå¹Œˆ±…Íå¹Œ ¤ôùì(½¹ÍÐ™¥ÉÍÑ]É¥Ñ”õ‘•™•ÉÉ• ¤ì(½¹ÍÐ½Á•É…Ñ¥½¹Ìõmtì(±•ÐÝÉ¥Ñ•ÌôÀì(½¹ÍÐ™¥±”õì(€ÝÉ¥Ñ”¡±¥¹”¥í½Á•É…Ñ¥½¹Ì¹ÁÕÍ ¡l‰ÝÉ¥Ñ”ˆ±±¥¹•t¤íÝÉ¥Ñ•Ì¬¬íÉ•ÑÕÉ¸ÝÉ¥Ñ•ÌôôôÄý™¥ÉÍÑ]É¥Ñ”¹ÁÉ½µ¥Í”éAÉ½µ¥Í”¹É•Í½±Ù” ¤íô°(€…Íå¹ŒÍå¹Œ ¥í½Á•É…Ñ¥½¹Ì¹ÁÕÍ ¡l‰Íå¹Œ‰t¤íô°(€…Íå¹Œ±½Í” ¥í½Á•É…Ñ¥½¹Ì¹ÁÕÍ ¡l‰±½Í”‰t¤íô°(ôì(½¹ÍÐÍ•É•Ðô‰•¼ÀÜµÉ•…°µÍ•É•ÐµÙ…±Õ”ˆì(½¹ÍÐÍ…¹¥Ñ¥é”õÉ•…Ñ•M•É•ÑM…¹¥Ñ¥é•È¡Í•É•Ð¤ì(½¹ÍÐÅÕ•Õ”õÉ•…Ñ•)Í½¹±EÕ•Õ”¡í™¥±”±¹½Üè ¤ôø‰™¥á•ˆ±Í…¹¥Ñ¥é•ô¤ì(½¹ÍÐ‘•Ñ…¥±Ìõí¹•ÍÑ•éíÙ…±Õ”é‰•™½É”´‘íÍ•É•Ñõô±¡•…‘•ÉÌéí…ÕÑ¡½É¥é…Ñ¥½¸é	•…É•È€‘íÍ•É•Ñõô±…ÕÑ¡Q½­•¸éÁÉ•™¥à´‘íÍ•É•ÑôµÍÕ™™¥á€±…ÉÉ…äémÍ•É•Ð±í¹½Ñ”é•µ‰•‘‘•´‘íÍ•É•Ñõõuôì(½¹ÍÐ½É¥¥¹…°õÍÑÉÕÑÕÉ•‘±½¹”¡‘•Ñ…¥±Ì¤ì(½¹ÍÐ½¹”õÅÕ•Õ”¹É•½É ‰½¹”ˆ±‘•Ñ…¥±Ì¤ì(…ÍÍ•ÉÐ¹‘••ÁÅÕ…°¡‘•Ñ…¥±Ì±½É¥¥¹…°°‰Í…¹¥Ñ¥é…Ñ¥½¸µÕÍÐ¹½ÐµÕÑ…Ñ”¥ÑÌ¥¹ÁÕÐˆ¤ì(½¹ÍÐÑÝ¼õÅÕ•Õ”¹É•½É ‰ÑÝ¼ˆ±íÁ½Í¥Ñ¥½¸èÉô¤ì(‘•Ñ…¥±Ì¹¹•ÍÑ•¹Ù…±Õ”ô‰…™Ñ•Èˆí‘•Ñ…¥±Ì¹¡•…‘•ÉÌ¹…ÕÑ¡½É¥é…Ñ¥½¸ô‰µÕÑ…Ñ•ˆì(…Ý…¥ÐAÉ½µ¥Í”¹É•Í½±Ù” ¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡½Á•É…Ñ¥½¹Ì¹±•¹Ñ °Ä°‰„±…Ñ•È…ÁÁ•¹µÕÍÐ¹½Ð½Ù•É±…ÀÑ¡”™¥ÉÍÐ…ÁÁ•¹ˆ¤ì(™¥ÉÍÑ]É¥Ñ”¹É•Í½±Ù” ¤ì(…Ý…¥ÐAÉ½µ¥Í”¹…±°¡m½¹”±ÑÝ½t¤ì(…Ý…¥ÐÅÕ•Õ”¹‘É…¥¹¹‘±½Í” ¤ì(…ÍÍ•ÉÐ¹‘••ÁÅÕ…°¡½Á•É…Ñ¥½¹Ì¹µ…À¡•¹ÑÉäôù•¹ÑÉålÁt¤±l‰ÝÉ¥Ñ”ˆ°‰Íå¹Œˆ°‰ÝÉ¥Ñ”ˆ°‰Íå¹Œˆ°‰±½Í”‰t¤ì(½¹ÍÐ‰åÑ•Ìõ½Á•É…Ñ¥½¹Ì¹™¥±Ñ•È¡•¹ÑÉäôù•¹ÑÉålÁtôôô‰ÝÉ¥Ñ”ˆ¤¹µ…À¡•¹ÑÉäôù•¹ÑÉålÅt¤¹©½¥¸ ˆˆ¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡‰åÑ•Ì¹¥¹±Õ‘•Ì¡Í•É•Ð¤±™…±Í”°‰Í•É¥…±¥é•™¥±”‰åÑ•ÌµÕÍÐ¹½Ð½¹Ñ…¥¸Ñ¡”½¹™¥ÕÉ•Í•É•Ðˆ¤ì(½¹ÍÐÉ½ÝÌõ‰åÑ•Ì¹ÑÉ¥´ ¤¹ÍÁ±¥Ð ‰q¸ˆ¤¹µ…À¡±¥¹”ôù)M=8¹Á…ÉÍ”¡±¥¹”¤¤ì(…ÍÍ•ÉÐ¹‘••ÁÅÕ…°¡É½ÝÌ±l(€í…Ðè‰™¥á•ˆ±­¥¹è‰½¹”ˆ±¹•ÍÑ•éíÙ…±Õ”è‰‰•™½É”µmÉ•‘…Ñ•‘t‰ô±¡•…‘•ÉÌéí…ÕÑ¡½É¥é…Ñ¥½¸è‰	•…É•ÈmÉ•‘…Ñ•‘t‰ô±…ÕÑ¡Q½­•¸è‰ÁÉ•™¥àµmÉ•‘…Ñ•‘tµÍÕ™™¥àˆ±…ÉÉ…äél‰mÉ•‘…Ñ•‘tˆ±í¹½Ñ”è‰•µ‰•‘‘•µmÉ•‘…Ñ•‘t‰õuô°(€í…Ðè‰™¥á•ˆ±­¥¹è‰ÑÝ¼ˆ±Á½Í¥Ñ¥½¸èÉô°(t¤ì)ô¤ì()Ñ•ÍÐ ‰)M=90ÅÕ•Õ”ÁÉ½Á……Ñ•ÌÝÉ¥Ñ”…¹±½Í”™…¥±ÕÉ•Ì…¹Á•Éµ…¹•¹Ñ±äÉ•©•ÑÌ¹•ÜÉ•½É‘Ìˆ±…Íå¹Œ ¤ôùì(½¹ÍÐÝÉ¥Ñ•ÉÉ½Èõ¹•ÜÉÉ½È ‰ÝÉ¥Ñ”™…¥±•ˆ¤±±½Í•ÉÉ½Èõ¹•ÜÉÉ½È ‰±½Í”™…¥±•ˆ¤ì(±•Ð±½Í•ÌôÀì(½¹ÍÐÅÕ•Õ”õÉ•…Ñ•)Í½¹±EÕ•Õ”¡í™¥±”éíÝÉ¥Ñ”é…Íå¹Œ ¤ôùíÑ¡É½ÜÝÉ¥Ñ•ÉÉ½Èíô±Íå¹Œé…Íå¹Œ ¤ôùíô±±½Í”é…Íå¹Œ ¤ôùí±½Í•Ì¬¬íÑ¡É½Ü±½Í•ÉÉ½Èíõõô¤ì(½¹ÍÐÝÉ¥Ñ”õÅÕ•Õ”¹É•½É ‰‰É½­•¸ˆ¤ì(…Ý…¥Ð…ÍÍ•ÉÐ¹É•©•ÑÌ¡ÝÉ¥Ñ”±•ÉÉ½Èôù•ÉÉ½ÈôôõÝÉ¥Ñ•ÉÉ½È¤ì(½¹ÍÐ™¥ÉÍÑÉ…¥¸õÅÕ•Õ”¹‘É…¥¹¹‘±½Í” ¤ì(…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡ÅÕ•Õ”¹‘É…¥¹¹‘±½Í” ¤±™¥ÉÍÑÉ…¥¸°‰‘É…¥¸µÕÍÐ‰”¥‘•µÁ½Ñ•¹Ðˆ¤ì(…Ý…¥Ð…ÍÍ•ÉÐ¹É•©•ÑÌ¡™¥ÉÍÑÉ…¥¸±•ÉÉ½Èôù•ÉÉ½È¥¹ÍÑ…¹•½˜É•…Ñ•ÉÉ½È˜™•ÉÉ½È¹•ÉÉ½ÉÌ¹¥¹±Õ‘•Ì¡ÝÉ¥Ñ•ÉÉ½È¤˜™•ÉÉ½È¹•ÉÉ½ÉÌ¹¥¹±Õ‘•Ì¡±½Í•ÉÉ½È¤¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡±½Í•Ì°Ä¤ì(…Ý…¥Ð…ÍÍ•ÉÐ¹É•©•ÑÌ¡ÅÕ•Õ”¹É•½É ‰±…Ñ”ˆ¤°½±½Í•½Ô¤ì)ô¤ì()Ñ•ÍÐ ‰)M=90ÅÕ•Õ”ÁÉ½Á……Ñ•ÌÍ•É¥…±¥é…Ñ¥½¸…¹Íå¹Œ™…¥±ÕÉ•ÌÑ¡É½Õ ‘É…¥¸ˆ±…Íå¹Œ ¤ôùì(½¹ÍÐÍ•É¥…±¥é…Ñ¥½¹ÉÉ½Èõ¹•ÜÉÉ½È ‰…¹¹½ÐÍ…¹¥Ñ¥é”ˆ¤±Íå¹ÉÉ½Èõ¹•ÜÉÉ½È ‰Íå¹Œ™…¥±•ˆ¤ì(½¹ÍÐ‰…‘M…¹¥Ñ¥é”õÉ•…Ñ•)Í½¹±EÕ•Õ”¡í™¥±”éíÝÉ¥Ñ”é…Íå¹Œ ¤ôùíô±Íå¹Œé…Íå¹Œ ¤ôùíô±±½Í”é…Íå¹Œ ¤ôùíõô±Í…¹¥Ñ¥é”è ¤ôùíÑ¡É½ÜÍ•É¥…±¥é…Ñ¥½¹ÉÉ½Èíõô¤ì(…Ý…¥Ð…ÍÍ•ÉÐ¹É•©•ÑÌ¡‰…‘M…¹¥Ñ¥é”¹É•½É ‰‰É½­•¸ˆ¤±•ÉÉ½Èôù•ÉÉ½ÈôôõÍ•É¥…±¥é…Ñ¥½¹ÉÉ½È¤ì(…Ý…¥Ð…ÍÍ•ÉÐ¹É•©•ÑÌ¡‰…‘M…¹¥Ñ¥é”¹‘É…¥¹¹‘±½Í” ¤±•ÉÉ½Èôù•ÉÉ½ÈôôõÍ•É¥…±¥é…Ñ¥½¹ÉÉ½È¤ì(±•Ð±½Í•õ™…±Í”ì(½¹ÍÐ‰…‘Må¹ŒõÉ•…Ñ•)Í½¹±EÕ•Õ”¡í™¥±”éíÝÉ¥Ñ”é…Íå¹Œ ¤ôùíô±Íå¹Œé…Íå¹Œ ¤ôùíÑ¡É½ÜÍå¹ÉÉ½Èíô±±½Í”é…Íå¹Œ ¤ôùí±½Í•õÑÉÕ”íõõô¤ì(…Ý…¥Ð…ÍÍ•ÉÐ¹É•©•ÑÌ¡‰…‘Må¹Œ¹É•½É ‰‰É½­•¸ˆ¤±•ÉÉ½Èôù•ÉÉ½ÈôôõÍå¹ÉÉ½È¤ì(…Ý…¥Ð…ÍÍ•ÉÐ¹É•©•ÑÌ¡‰…‘Må¹Œ¹‘É…¥¹¹‘±½Í” ¤±•ÉÉ½Èôù•ÉÉ½ÈôôõÍå¹ÉÉ½È¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡±½Í•±ÑÉÕ”°‰‘É…¥¸µÕÍÐ…ÑÑ•µÁÐ±½Í”…™Ñ•È„Íå¹Œ™…¥±ÕÉ”ˆ¤ì)ô¤ì()Ñ•ÍÐ ‰ÅÕ½Ñ„±…Ñ É•©•ÑÌÁ•¹‘¥¹œÝ½É¬…¹ÁÉ•Ù•¹ÑÌ•Ù•Éä±…Ñ•ÈÝÉ¥Ñ”‰•™½É”‰½Õ¹‘•QI4½-%10±•…¹ÕÀˆ±…Íå¹Œ ¤ôùì(½¹ÍÐ¡¥±õ™…­•¡¥± ¤±Ñ¥µ•ÉÌõ™…­•Q¥µ•ÉÌ ¤ì(½¹ÍÐ½¹ÑÉ½±±•ÈõÉ•…Ñ•IÁ½¹ÑÉ½±±•È¡ì(€¡¥±±±…‰•°è‰Ñ•ÍÐˆ±±…ÍÍ¥™åAÉ½Ù¥‘•É…¥±ÕÉ”éÙ…±Õ”ôùÙ…±Õ”ü¹ÅÕ½Ñ„üˆÐÈäÅÕ½Ñ„ˆéÕ¹‘•™¥¹•°(€É•‘…ÐéÙ…±Õ”ôùMÑÉ¥¹œ¡Ù…±Õ”¤±Í•ÑQ¥µ•ÈéÑ¥µ•ÉÌ¹Í•ÑQ¥µ•È±±•…ÉQ¥µ•ÈéÑ¥µ•ÉÌ¹±•…ÉQ¥µ•È°(€Ñ•ÉµÉ…•5ÌèÄÀ±­¥±±É…•5ÌèÄÀ±É•ÅÕ•ÍÑQ¥µ•½ÕÑ5ÌèÄÀÀ°(ô¤ì(½¹ÍÐÁ•¹‘¥¹œõ½¹ÑÉ½±±•È¹Í•¹ ‰ÁÉ½µÁÐˆ±íµ•ÍÍ…”è‰™¥ÉÍÐ‰ô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡¡¥±¹ÝÉ¥Ñ•Ì¹±•¹Ñ °Ä¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡½¹ÑÉ½±±•È¹½‰Í•ÉÙ”¡íÅÕ½Ñ„éÑÉÕ•ô¤°ˆÐÈäÅÕ½Ñ„ˆ¤ì(…Ý…¥Ð…ÍÍ•ÉÐ¹É•©•ÑÌ¡Á•¹‘¥¹œ°½É…Ñ”±¥µ¥Ð¸¨ÐÈäÅÕ½Ñ„½¥Ô¤ì(…Ý…¥Ð…ÍÍ•ÉÐ¹É•©•ÑÌ¡½¹ÑÉ½±±•È¹Í•¹ ‰ÁÉ½µÁÐˆ±íµ•ÍÍ…”è‰±…Ñ”‰ô¤°½É…Ñ”±¥µ¥Ð½¥Ô¤ì(…Ý…¥Ð…ÍÍ•ÉÐ¹É•©•ÑÌ¡½¹ÑÉ½±±•È¹ÝÉ¥Ñ”¡íÑåÁ”è‰•áÑ•¹Í¥½¹}Õ¥}É•ÍÁ½¹Í”‰ô¤°½É…Ñ”±¥µ¥Ð½¥Ô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡¡¥±¹ÝÉ¥Ñ•Ì¹±•¹Ñ °Ä°‰ÅÕ½Ñ„½‰Í•ÉÙ…Ñ¥½¸µÕÍÐÍå¹¡É½¹½ÕÍ±äÁÉ•Ù•¹Ð±…Ñ•ÈÁÉ½µÁÑÌ…¹É•ÍÁ½¹Í•Ìˆ¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡¡¥±¹•¹‘½Õ¹Ð°Ä¤ì(…ÍÍ•ÉÐ¹‘••ÁÅÕ…°¡¡¥±¹­¥±±Ì±l‰M%QI4‰t¤ì(Ñ¥µ•ÉÌ¹ÉÕ¹9•áÐ ¤ì(…ÍÍ•ÉÐ¹‘••ÁÅÕ…°¡¡¥±¹­¥±±Ì±l‰M%QI4ˆ°‰M%-%10‰t¤ì(Ñ¥µ•ÉÌ¹ÉÕ¹9•áÐ ¤ì(½¹ÍÐ±½Í•õ…Ý…¥Ð½¹ÑÉ½±±•È¹•Ñ±½Í• ¤ì(…ÍÍ•ÉÐ¹‘••ÁÅÕ…°¡±½Í•±í½‘”é¹Õ±°±Í¥¹…°è‰M%-%10ˆ±±•…¹ÕÁ½¹™¥Éµ•é™…±Í•ô¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡Ñ¥µ•ÉÌ¹Í¥é”°À¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡¡¥±¹±¥ÍÑ•¹•É½Õ¹Ð ‰•ÉÉ½Èˆ¤°Ä°‰±…Ñ”•ÉÉ½ÉÌÉ•µ…¥¸½¹ÍÕµ•Õ¹Ñ¥°…ÑÕ…°±½Í”ˆ¤ì(…ÍÍ•ÉÐ¹‘½•Í9½ÑQ¡É½Ü  ¤ôù¡¥±¹•µ¥Ð ‰•ÉÉ½Èˆ±¹•ÜÉÉ½È ‰±…Ñ”ˆ¤¤¤ì(¡¥±¹•µ¥Ð ‰±½Í”ˆ±¹Õ±°°‰M%-%10ˆ¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡¡¥±¹±¥ÍÑ•¹•É½Õ¹Ð ‰±½Í”ˆ¤°À¤í…ÍÍ•ÉÐ¹•ÅÕ…°¡¡¥±¹±¥ÍÑ•¹•É½Õ¹Ð ‰•ÉÉ½Èˆ¤°À¤ì)ô¤ì()Ñ•ÍÐ ‰Õ¹½¹™¥Éµ•±•…¹ÕÀ‘¥ÍÁ½Í•ÌÍÑÉ•…´¡…¹‘±•ÉÌ…¹Í…™•±ä½¹ÍÕµ•Ì±…Ñ”ÁÉ½•ÍÌ•ÉÉ½ÉÌˆ±…Íå¹Œ ¤ôùì(½¹ÍÐ¡¥±õ™…­•¡¥± ¤±Ñ¥µ•ÉÌõ™…­•Q¥µ•ÉÌ ¤ì(±•Ð½‰Í•ÉÙ•ôÀ±‘¥ÍÁ½Í…±ÌôÀì(½¹ÍÐ½¹…Ñ„ô ¤ôùí½‰Í•ÉÙ•¬¬íôí¡¥±¹ÍÑ‘½ÕÐ¹½¸ ‰‘…Ñ„ˆ±½¹…Ñ„¤ì(½¹ÍÐ½¹ÑÉ½±±•ÈõÉ•…Ñ•IÁ½¹ÑÉ½±±•È¡í¡¥±±±…‰•°è‰Ñ•ÍÐˆ±±…ÍÍ¥™åAÉ½Ù¥‘•É…¥±ÕÉ”è ¤ôùÕ¹‘•™¥¹•±Í•ÑQ¥µ•ÈéÑ¥µ•ÉÌ¹Í•ÑQ¥µ•È±±•…ÉQ¥µ•ÈéÑ¥µ•ÉÌ¹±•…ÉQ¥µ•È±­¥±±É…•5ÌèÄÀ±‘¥ÍÁ½Í”è ¤ôùí‘¥ÍÁ½Í…±Ì¬¬í¡¥±¹ÍÑ‘½ÕÐ¹½™˜ ‰‘…Ñ„ˆ±½¹…Ñ„¤íõô¤ì(½¹ÍÐÍÑ½ÁÁ¥¹œõ½¹ÑÉ½±±•È¹ÍÑ½À ‰M%-%10ˆ¤íÑ¥µ•ÉÌ¹ÉÕ¹9•áÐ ¤ì(…ÍÍ•ÉÐ¹•ÅÕ…° ¡…Ý…¥ÐÍÑ½ÁÁ¥¹œ¤¹±•…¹ÕÁ½¹™¥Éµ•±™…±Í”¤ì(±•Ð±…Ñ•ÉÉ½ÈíÑÉåí¡¥±¹•µ¥Ð ‰•ÉÉ½Èˆ±¹•ÜÉÉ½È ‰±…Ñ”ˆ¤¤íõ…Ñ ¡•ÉÉ½È¥í±…Ñ•ÉÉ½Èõ•ÉÉ½Èíô(¡¥±¹ÍÑ‘½ÕÐ¹•µ¥Ð ‰‘…Ñ„ˆ°‰±…Ñ”ˆ¤ì(…ÍÍ•ÉÐ¹‘••ÁÅÕ…°¡í‘¥ÍÁ½Í…±Ì±½‰Í•ÉÙ•±±…Ñ•ÉÉ½Éô±í‘¥ÍÁ½Í…±ÌèÄ±½‰Í•ÉÙ•èÀ±±…Ñ•ÉÉ½ÈéÕ¹‘•™¥¹•‘ô¤ì(¡¥±¹•µ¥Ð ‰±½Í”ˆ±¹Õ±°°‰M%-%10ˆ¤ì(…ÍÍ•ÉÐ¹•ÅÕ…°¡¡¥±¹±¥ÍÑ•¹•É½Õ¹Ð ‰±½Í”ˆ¤°À¤í…ÍÍ•ÉÐ¹•ÅÕ…°¡¡¥±¹±¥ÍÑ•¹•É½Õ¹Ð ‰•ÉÉ½Èˆ¤°À¤ì)ô¤ì()Ñ•ÍÐ ‰Õ¹½¹™¥Éµ•±•…¹ÕÀÉ•±•…Í•Ì½Ý¹•¡…¹‘±•Ì‘•ÍÁ¥Ñ”‘¥ÍÁ½Í”™…¥±ÕÉ”ƒ]öÞÚ$z{-®éÜj× callbacks");
  callbacks[0](new Error("EPIPE"));callbacks[1](new Error("second EPIPE"));
  child.stdin.emit("error",new Error("stream EPIPE"));
  await assert.rejects(first,/EPIPE/u);await assert.rejects(second,/EPIPE/u);
@@ -268,4 +70,16 @@ test("ECO-07 real Pi interruption starts from one seeded task and one state tran
  assert.match(source,/findPersistedPlans\(sessionDir\)[\s\S]*?assert\.equal\(persistedPlanFiles\.length,1/u,"the recovery plan must be persisted before process interruption");
  assert.doesNotMatch(source,/Pi must persist the task-start turn before interruption/u,"the test must not require an unnecessary natural model-turn completion");
  assert.match(source,/planned-task-prepared/u,"evidence must preserve the pre-run planned state");
+});
+
+test("ECO-07 authorizes resumed review only after the exact resume update and bounds inspected context",async()=>{
+ const source=await readFile(new URL("../scripts/eco07-pi-recovery-e2e.mjs",import.meta.url),"utf8");
+ const extension=await readFile(new URL("../scripts/eco07-pi-recovery-probe-extension.mjs",import.meta.url),"utf8");
+ assert.match(source,/Make exactly one tool call: asen_todo_update/u,"the resumed turn must be limited to explicit task authorization");
+ assert.match(source,/event\.type==="tool_execution_start"&&event\.toolName==="asen_todo_update"&&event\.args\?\.id===recovered\.taskId/u,"steering must bind to the exact recovered task");
+ assert.match(source,/event\.type==="tool_execution_end"&&event\.toolName==="asen_todo_update"&&event\.toolCallId===resumeUpdate\.toolCallId/u,"review instructions must wait for the matching update result");
+ assert.ok(source.indexOf('second.send("steer"')>source.indexOf("assert.equal(result.isError,false"),"the review instructions must follow the successful resume update");
+ assert.match(extension,/createHash\("sha256"\)/u,"read evidence must fingerprint the exact file inspected");
+ assert.match(extension,/content\.slice\(0,5_000\)/u,"provider context must remain bounded while evidence records the complete file read");
+ assert.match(extension,/bytes:Buffer\.byteLength\(content\),sha256/u,"the read record must bind the full read to byte length and SHA-256");
 });

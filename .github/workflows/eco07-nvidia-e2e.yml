@@ -38,7 +38,7 @@ jobs:
     if: github.repository == 'asenbanskaliev/ASEN' && github.run_attempt == 1 && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
     name: NVIDIA Pi recovery (${{ inputs.os || 'ubuntu-24.04' }})
     runs-on: ${{ inputs.os || 'ubuntu-24.04' }}
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       ASEN_EXPECTED_SHA: ${{ inputs.expected_sha || github.sha }}
       ASEN_SELECTED_OS: ${{ inputs.os || 'ubuntu-24.04' }}

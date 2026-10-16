@@ -1,5 +1,6 @@
 import {appendFile,readFile} from "node:fs/promises";
 import {realpath} from "node:fs/promises";
+import {createHash} from "node:crypto";
 
 const steps=["inspect-closure-audit","inspect-task-reducer"];
 const reviewFiles={"inspect-closure-audit":"docs/audit/eco07-closure-evidence-2026-10-12.md","inspect-task-reducer":"src/runtime/task-replay.ts"};
@@ -33,12 +34,14 @@ export default function(pi){
       const filename=`${process.env.ASEN_ECO07_PROJECT}/${reviewFiles[value]}`;
       const content=await readFile(filename,"utf8");
       if(content.length>100_000)throw new Error("ECO-07 review source exceeds the bounded read limit");
+      const sha256=createHash("sha256").update(content).digest("hex");
       const readsFile=process.env.ASEN_ECO07_READS_FILE;
       if(!readsFile)throw new Error("ECO-07 read evidence file is unavailable");
       const previous=(await readFile(readsFile,"utf8").catch(error=>error?.code==="ENOENT"?"":Promise.reject(error))).split("\n").filter(Boolean).map(line=>JSON.parse(line));
       if(previous.some(row=>row.step===value))throw new Error("ECO-07 review file was already read");
-      await appendFile(readsFile,`${JSON.stringify({step:value,file:reviewFiles[value],sessionId:process.env.ASEN_ECO07_SESSION_ID,projectId:process.env.ASEN_ECO07_PROJECT,at:new Date().toISOString()})}\n`,{flag:"a",mode:0o600});
-      return {content:[{type:"text",text:content}],details:{step:value,file:reviewFiles[value]}};
+      await appendFile(readsFile,`${JSON.stringify({step:value,file:reviewFiles[value],bytes:Buffer.byteLength(content),sha256,sessionId:process.env.ASEN_ECO07_SESSION_ID,projectId:process.env.ASEN_ECO07_PROJECT,at:new Date().toISOString()})}\n`,{flag:"a",mode:0o600});
+      // Read and fingerprint the exact file, but keep provider context bounded.
+      return {content:[{type:"text",text:`Exact file read; SHA-256 ${sha256}; showing the first 5,000 characters for review:\n${content.slice(0,5_000)}`}],details:{step:value,file:reviewFiles[value],bytes:Buffer.byteLength(content),sha256,excerptCharacters:Math.min(content.length,5_000)}};
     },
   });
   pi.registerTool({
