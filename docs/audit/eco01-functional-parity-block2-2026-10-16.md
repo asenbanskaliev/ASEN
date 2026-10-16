@@ -31,3 +31,11 @@ The JSON file lists all 146 planned cases with status, exact source spans, comma
 ## Remaining gate
 
 The other 11 code mappings lack explicit ASEN counterpart paths and normalized behavior contracts. The 3 tracked source references lack an adopted-scope decision. The 10 external/dynamic edges lack exact reproducible fixtures or a bound ASEN counterpart. Continue by adding reviewed crosswalks and real adapters, then run source and ASEN implementations under matching controlled environments. Do not mark ECO-01 block 2 complete until all applicable cells have evidence and required divergences are resolved.
+
+## Revalidation against current PR HEAD (2026-10-16)
+
+- Current PR head verified before execution: `1359d892f177dd1b76501961582ea3a7eedab8f1`; frozen source remains `08de420ca29be16b6f6bee725a30b599b061df16` with tree `9af648106ed75fa270476e9d474bad93aa38af6b`.
+- The CodeGraph adapter contract was re-run for normal, invalid-input, denied, partial-failure, and restart fixtures: 5 paired scenarios / 10 process executions. The matrix now points these observations at the exact current ASEN SHA. They remain **INTENTIONAL simulation observations**, not EQUIVALENT and not admitted evidence of real package behavior; the test executable was controlled, and actual CodeGraph package/index semantics and macOS/Windows remain untested.
+- Frozen source focused suite: 12/12 passed. ASEN focused suite: 12/12 passed. `npm run typecheck` and `git diff --check`: PASS. Logs and output receipts are stored under `docs/audit/evidence/eco01-codegraph-1359d892f177dd1b76501961582ea3a7eedab8f1/` and bound in the matrix by SHA-256.
+- Recomputed scope remains 25 correspondences / 146 scenarios: 5 INTENTIONAL controlled observations, 141 UNVERIFIED, zero EQUIVALENT, zero DIVERGENT, zero NOT_APPLICABLE. Of the 12 code-contract edges, this re-ran one; the other 11 remain without exact counterpart mappings or paired functional evidence. The 3 file references and 10 external/dynamic edges are also unclosed. ECO-01 block 2 remains **INCOMPLETE**.
+- R4 self-review: current-head identity and source identity are explicit; the evidence does not inflate a simulation into a parity claim. No source or ASEN implementation behavior was changed. This is implementer verification, not the independent block-3 audit.
