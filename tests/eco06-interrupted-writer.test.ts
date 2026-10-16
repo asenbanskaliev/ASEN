@@ -78,7 +78,7 @@ test("ECO-06 SIGKILL after a persisted partial edit quarantines the writer", {sk
  const dir=await mkdtemp(join(tmpdir(),"asen-eco06-sigkill-"));
  t.after(()=>rm(dir,{recursive:true,force:true}));
  const journal=join(dir,"agents.json"),target=join(dir,"work.txt");
- await writeFile(target,"before\\n");
+ await writeFile(target,"before\n");
  const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",`
   import {PersistentAgentStore} from "./src/runtime/agent-store.ts";
   import {appendFile} from "node:fs/promises";
@@ -105,7 +105,7 @@ test("ECO-06 SIGKILL after a persisted partial edit quarantines the writer", {sk
  const timer=setTimeout(()=>child.kill("SIGKILL"),20000);
  try{
   await ready;
-  assert.equal(await readFile(target,"utf8"),"before\\npartial\\n");
+  assert.equal(await readFile(target,"utf8"),"before\npartial\n");
   assert.equal(child.kill("SIGKILL"),true);
   const exit=await new Promise<{signal:NodeJS.Signals|null}>((resolve,reject)=>{
    if(child.exitCode!==null||child.signalCode!==null){resolve({signal:child.signalCode});return;}
@@ -121,7 +121,7 @@ test("ECO-06 SIGKILL after a persisted partial edit quarantines the writer", {sk
   }
   await assert.rejects(()=>store.enqueueContinuation("killed-writer","session-a","/repo",{kind:"user",id:"pi:session-a"}),/cannot be resumed safely|fresh authority/);
   assert.equal((await store.list("session-a","/repo")).length,1);
-  assert.equal(await readFile(target,"utf8"),"before\\npartial\\n");
+  assert.equal(await readFile(target,"utf8"),"before\npartial\n");
  }finally{clearTimeout(timer);if(child.exitCode===null&&child.signalCode===null)child.kill("SIGKILL");}
 });
 
