@@ -33,7 +33,6 @@
     {
       "id": "ECO-SRC-625c38e8637ad8b0:0",
       "kind": "external-runtime",
-      "sourcePath": "extensions/codegraph-tools.ts",
       "sourceSha256": "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",
       "sourceSpan": {
         "startLine": 208,
@@ -80,12 +79,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-625c38e8637ad8b0",
+      "referenceIndex": 0
     },
     {
       "id": "ECO-SRC-ecb5b4ebbaf005aa:0",
       "kind": "external-runtime",
-      "sourcePath": "lib/gentle-ai-binary.ts",
       "sourceSha256": "afe1984c6334ff774fbf69961675f2ccc9ea034cd36b3aa3b17632958a0cd553",
       "sourceSpan": {
         "startLine": 120,
@@ -132,12 +132,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-ecb5b4ebbaf005aa",
+      "referenceIndex": 0
     },
     {
       "id": "ECO-SRC-ecb5b4ebbaf005aa:2",
       "kind": "external-runtime",
-      "sourcePath": "lib/gentle-ai-binary.ts",
       "sourceSha256": "afe1984c6334ff774fbf69961675f2ccc9ea034cd36b3aa3b17632958a0cd553",
       "sourceSpan": {
         "startLine": 271,
@@ -184,12 +185,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-ecb5b4ebbaf005aa",
+      "referenceIndex": 2
     },
     {
       "id": "ECO-SRC-f4f6b335bf2cf4e9:0",
       "kind": "external-runtime",
-      "sourcePath": "lib/inprocess-reviewer.ts",
       "sourceSha256": "3f26a3bfe12e962bf968fcc546c0cdf4d700d3a9a8c180626f4e3729da2d4bf3",
       "sourceSpan": {
         "startLine": 169,
@@ -236,12 +238,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-f4f6b335bf2cf4e9",
+      "referenceIndex": 0
     },
     {
       "id": "ECO-SRC-ee431194e4155110:0",
       "kind": "external-runtime",
-      "sourcePath": "lib/review-candidate-view.ts",
       "sourceSha256": "8f4ce05940375a03b24cefb517c9329b6a34bf2d978513dea6b784916012f15b",
       "sourceSpan": {
         "startLine": 606,
@@ -288,12 +291,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-ee431194e4155110",
+      "referenceIndex": 0
     },
     {
       "id": "ECO-SRC-6058ca4d664d9095:1",
       "kind": "tracked-glob",
-      "sourcePath": "lib/runtime-metrics-children.ts",
       "sourceSha256": "57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",
       "sourceSpan": {
         "startLine": 32,
@@ -337,12 +341,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-6058ca4d664d9095",
+      "referenceIndex": 1
     },
     {
       "id": "ECO-SRC-dbf31123d00902ed:1",
       "kind": "tracked-file",
-      "sourcePath": "lib/runtime-metrics.ts",
       "sourceSha256": "740b7b6f5e97f70caac1077beb0a652edfcaf4ecf2a9f892ca6ee6ff505f7f81",
       "sourceSpan": {
         "startLine": 1,
@@ -381,12 +386,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-dbf31123d00902ed",
+      "referenceIndex": 1
     },
     {
       "id": "ECO-SRC-8745033959a82ed0:0",
       "kind": "external-runtime",
-      "sourcePath": "runtime/gentle-ai-binary.mjs",
       "sourceSha256": "cbdf5deac8b7a85ab1253dbd049953aeb192a7d1f7987f9206916ab449c10a92",
       "sourceSpan": {
         "startLine": 121,
@@ -433,12 +439,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-8745033959a82ed0",
+      "referenceIndex": 0
     },
     {
       "id": "ECO-SRC-8745033959a82ed0:2",
       "kind": "external-runtime",
-      "sourcePath": "runtime/gentle-ai-binary.mjs",
       "sourceSha256": "cbdf5deac8b7a85ab1253dbd049953aeb192a7d1f7987f9206916ab449c10a92",
       "sourceSpan": {
         "startLine": 272,
@@ -485,12 +492,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-8745033959a82ed0",
+      "referenceIndex": 2
     },
     {
       "id": "ECO-SRC-7fb85a620f260291:2",
       "kind": "external-runtime",
-      "sourcePath": "scripts/gentle-ai-installer.mjs",
       "sourceSha256": "3b897818fbf8aef7ef22c9c11c5f8a8118453fbcb67d69ea1c8cf7d608d20547",
       "sourceSpan": {
         "startLine": 165,
@@ -537,12 +545,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-7fb85a620f260291",
+      "referenceIndex": 2
     },
     {
       "id": "ECO-SRC-7fb85a620f260291:0",
       "kind": "external-runtime",
-      "sourcePath": "scripts/gentle-ai-installer.mjs",
       "sourceSha256": "3b897818fbf8aef7ef22c9c11c5f8a8118453fbcb67d69ea1c8cf7d608d20547",
       "sourceSpan": {
         "startLine": 176,
@@ -589,12 +598,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-7fb85a620f260291",
+      "referenceIndex": 0
     },
     {
       "id": "ECO-SRC-7fb85a620f260291:1",
       "kind": "external-runtime",
-      "sourcePath": "scripts/gentle-ai-installer.mjs",
       "sourceSha256": "3b897818fbf8aef7ef22c9c11c5f8a8118453fbcb67d69ea1c8cf7d608d20547",
       "sourceSpan": {
         "startLine": 185,
@@ -641,12 +651,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-7fb85a620f260291",
+      "referenceIndex": 1
     },
     {
       "id": "ECO-SRC-625c38e8637ad8b0:7",
       "kind": "code-contract",
-      "sourcePath": "extensions/codegraph-tools.ts",
       "sourceSha256": "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",
       "sourceSpan": {
         "startLine": 323,
@@ -679,8 +690,8 @@
               "contractId": "ECO-SRC-625c38e8637ad8b0:7",
               "scenario": "normal",
               "status": "INTENTIONAL",
-              "sourceReceiptSha256": "51686297c5d2c0ce770f3467cbe944d68debfa2421addc96b79b512959ddc32e",
-              "asenReceiptSha256": "f42d00fcbaa9e9739c108706bace86fb64aea201ff6a1dcfccf1bfff7a7d9ef9",
+              "sourceReceiptSha256": "f3bbe6d6a41689e22f61a064dc2a12d1d9e4c299d74f60a937d3249666e64184",
+              "asenReceiptSha256": "20564b9e571d520c675fd0e319c983f3b7179e459aab37167a62e79dd13ca16d",
               "difference": {
                 "summary": "Only the registered tool annotation metadata differs; normalized content, errors, args, and outcomes match under the controlled executable."
               },
@@ -693,27 +704,33 @@
               "admitted": false
             },
             "behaviorSame": true,
-            "source": {
+            "sourceReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "normal",
+              "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
               "command": {
                 "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
                 "args": [
                   "--import",
                   "tsx",
-                  "/workspace/scratch/4e85480ade89/asen-worktree/scripts/eco01-codegraph-pair.mjs",
+                  "/tmp/asen-published/scripts/eco01-codegraph-pair.mjs",
                   "--child",
-                  "/workspace/scratch/4e85480ade89/gentle-source",
+                  "/tmp/asen-eco01-source",
                   "normal",
                   "source",
-                  "/tmp/asen-eco01-codegraph-N9kS4g"
+                  "/tmp/asen-eco01-codegraph-IHbztr"
                 ]
               },
               "environment": {
                 "platform": "linux",
                 "nodeVersion": "v24.19.0",
-                "cwd": "/tmp/asen-eco01-codegraph-N9kS4g",
-                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-N9kS4g/controlled-codegraph-bin"
+                "cwd": "/tmp/asen-eco01-codegraph-IHbztr",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-IHbztr/controlled-codegraph-bin"
               },
               "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":null},\"content\":[{\"type\":\"text\",\"text\":\"controlled-index-result\\n\"}],\"details\":{\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-codegraph-IHbztr\",\"args\":[\"query\",\"--path\",\"/tmp/asen-eco01-codegraph-IHbztr\",\"--limit\",\"3\",\"--\",\"--help; literal query\"]}}\n",
+              "stderr": "",
               "output": {
                 "registration": {
                   "name": "codegraph",
@@ -763,11 +780,11 @@
                 ],
                 "details": {
                   "operation": "query",
-                  "cwd": "/tmp/asen-eco01-codegraph-N9kS4g",
+                  "cwd": "/tmp/asen-eco01-codegraph-IHbztr",
                   "args": [
                     "query",
                     "--path",
-                    "/tmp/asen-eco01-codegraph-N9kS4g",
+                    "/tmp/asen-eco01-codegraph-IHbztr",
                     "--limit",
                     "3",
                     "--",
@@ -775,32 +792,39 @@
                   ]
                 }
               },
-              "receiptSha256": "51686297c5d2c0ce770f3467cbe944d68debfa2421addc96b79b512959ddc32e",
-              "logSha256": "2e362301df41e907a0cc9555a03d4c2d30ee9400d0f9a6f6a36afb51560dd667",
-              "stdoutSha256": "1185b8ee8c362ccbd9062c9dab7f472b971e2f798e6c96f47034a23cdf1115ea",
-              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              "stdoutSha256": "5848f144a05c4e49aefc531757603aa34c46bfcf6d2a9eac52ec19417ca6a3fe",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "b6da64547f97aa4569ffda49518bba3ead3d3bd6d4a8967e55b0f3c760a9534b",
+              "logSha256": "6891bc714b65b677de964b0861edcd55773101d76837316744731b85ccd45245",
+              "receiptSha256": "f3bbe6d6a41689e22f61a064dc2a12d1d9e4c299d74f60a937d3249666e64184"
             },
-            "asen": {
+            "asenReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "normal",
+              "commit": "a98fa1510a30234f4fbd39381d85bab5437f0143",
               "command": {
                 "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
                 "args": [
                   "--import",
                   "tsx",
-                  "/workspace/scratch/4e85480ade89/asen-worktree/scripts/eco01-codegraph-pair.mjs",
+                  "/tmp/asen-published/scripts/eco01-codegraph-pair.mjs",
                   "--child",
-                  "/workspace/scratch/4e85480ade89/gentle-source",
+                  "/tmp/asen-eco01-source",
                   "normal",
                   "asen",
-                  "/tmp/asen-eco01-codegraph-N9kS4g"
+                  "/tmp/asen-eco01-codegraph-IHbztr"
                 ]
               },
               "environment": {
                 "platform": "linux",
                 "nodeVersion": "v24.19.0",
-                "cwd": "/tmp/asen-eco01-codegraph-N9kS4g",
-                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-N9kS4g/controlled-codegraph-bin"
+                "cwd": "/tmp/asen-eco01-codegraph-IHbztr",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-IHbztr/controlled-codegraph-bin"
               },
               "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false}},\"content\":[{\"type\":\"text\",\"text\":\"controlled-index-result\\n\"}],\"details\":{\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-codegraph-IHbztr\",\"args\":[\"query\",\"--path\",\"/tmp/asen-eco01-codegraph-IHbztr\",\"--limit\",\"3\",\"--\",\"--help; literal query\"]}}\n",
+              "stderr": "",
               "output": {
                 "registration": {
                   "name": "codegraph",
@@ -855,11 +879,11 @@
                 ],
                 "details": {
                   "operation": "query",
-                  "cwd": "/tmp/asen-eco01-codegraph-N9kS4g",
+                  "cwd": "/tmp/asen-eco01-codegraph-IHbztr",
                   "args": [
                     "query",
                     "--path",
-                    "/tmp/asen-eco01-codegraph-N9kS4g",
+                    "/tmp/asen-eco01-codegraph-IHbztr",
                     "--limit",
                     "3",
                     "--",
@@ -867,17 +891,14 @@
                   ]
                 }
               },
-              "receiptSha256": "f42d00fcbaa9e9739c108706bace86fb64aea201ff6a1dcfccf1bfff7a7d9ef9",
-              "logSha256": "9b7442e51c4a775dfa9715a0ac2bd72ea08e780284f8f86ec5bab9e5c47c1fdd",
-              "stdoutSha256": "4435f25a96bbd49759e7acb293c65d784454444757d68bfab9fbcc2458e9d784",
-              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              "stdoutSha256": "a06161ad2a2fbf78e56eae8e902c35ab1d9248c566351160e59995d97b480eec",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "2242837cf5de6595c06ada8df9bd18613545f2873fadacf369e83395a43a2c70",
+              "logSha256": "7b2de7b7944eef2e9977d8e3bf29ea0cfac23ef9e40e8203e5582a172b2a1502",
+              "receiptSha256": "20564b9e571d520c675fd0e319c983f3b7179e459aab37167a62e79dd13ca16d"
             },
-            "rawEvidence": "docs/audit/evidence/eco01-codegraph-dd28850f8c39d59b12d8227744d61ec65458c09d/codegraph-pair-evidence.json",
-            "reason": "ASEN adds accurate Pi tool annotations for the existing mutating init operation; the frozen upstream registration omits those hints. This explicit host metadata is a deliberate transparency improvement and does not grant additional write authority.",
-            "limitations": [
-              "The CLI is a temporary controlled executable; actual CodeGraph package and index semantics remain unverified.",
-              "Only the current host OS was exercised."
-            ]
+            "simulationObservation": "intentional-annotation-difference; controlled behavior matches",
+            "limitation": "Both production extension registrations launched a temporary controlled codegraph executable. This checks tool registration, argv, error handling, and permission-denial behavior for this fixture, not compatibility with the actual CodeGraph package or persisted index contents; only this host OS was exercised."
           }
         },
         {
@@ -889,8 +910,8 @@
               "contractId": "ECO-SRC-625c38e8637ad8b0:7",
               "scenario": "invalid-input",
               "status": "INTENTIONAL",
-              "sourceReceiptSha256": "13f4c2bf03c1187b06372e1bf350e8b2424a2592997c657321c057c983ed9e86",
-              "asenReceiptSha256": "afce9f25910db1aa040e88f1c2afa23950c752aa59b6172be2d3a3365f86c03e",
+              "sourceReceiptSha256": "2c067f0e9281075e4894b0c25c90873ed8a7ce78abf9da0e2f06a837e97f91d0",
+              "asenReceiptSha256": "796bcfd4e7444f5f4e58b6aa1a416f446d6b674343bb9c0b1ee47866b5a5ceeb",
               "difference": {
                 "summary": "Only the registered tool annotation metadata differs; normalized content, errors, args, and outcomes match under the controlled executable."
               },
@@ -903,27 +924,33 @@
               "admitted": false
             },
             "behaviorSame": true,
-            "source": {
+            "sourceReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "invalid-input",
+              "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
               "command": {
                 "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
                 "args": [
                   "--import",
                   "tsx",
-                  "/workspace/scratch/4e85480ade89/asen-worktree/scripts/eco01-codegraph-pair.mjs",
+                  "/tmp/asen-published/scripts/eco01-codegraph-pair.mjs",
                   "--child",
-                  "/workspace/scratch/4e85480ade89/gentle-source",
+                  "/tmp/asen-eco01-source",
                   "invalid-input",
                   "source",
-                  "/tmp/asen-eco01-codegraph-MGgJ4D"
+                  "/tmp/asen-eco01-codegraph-4F0Fuu"
                 ]
               },
               "environment": {
                 "platform": "linux",
                 "nodeVersion": "v24.19.0",
-                "cwd": "/tmp/asen-eco01-codegraph-MGgJ4D",
-                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-MGgJ4D/controlled-codegraph-bin"
+                "cwd": "/tmp/asen-eco01-codegraph-4F0Fuu",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-4F0Fuu/controlled-codegraph-bin"
               },
               "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":null},\"thrown\":{\"name\":\"Error\",\"message\":\"CodeGraph query is required for query and explore operations.\"}}\n",
+              "stderr": "",
               "output": {
                 "registration": {
                   "name": "codegraph",
@@ -970,32 +997,39 @@
                   "message": "CodeGraph query is required for query and explore operations."
                 }
               },
-              "receiptSha256": "13f4c2bf03c1187b06372e1bf350e8b2424a2592997c657321c057c983ed9e86",
-              "logSha256": "4c4ffdfbea322a21a747ee39efa5e7168de5d4f98416a13b3c8fd97e14507626",
               "stdoutSha256": "b7114103088145ec957a6f32be3d9186e51fa86ea92283c766b5e29c10d68f6f",
-              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "8742800f4672190cb8de58d78203a75bc5bdd9b30d05e7eae47d052959a82443",
+              "logSha256": "4c4ffdfbea322a21a747ee39efa5e7168de5d4f98416a13b3c8fd97e14507626",
+              "receiptSha256": "2c067f0e9281075e4894b0c25c90873ed8a7ce78abf9da0e2f06a837e97f91d0"
             },
-            "asen": {
+            "asenReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "invalid-input",
+              "commit": "a98fa1510a30234f4fbd39381d85bab5437f0143",
               "command": {
                 "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
                 "args": [
                   "--import",
                   "tsx",
-                  "/workspace/scratch/4e85480ade89/asen-worktree/scripts/eco01-codegraph-pair.mjs",
+                  "/tmp/asen-published/scripts/eco01-codegraph-pair.mjs",
                   "--child",
-                  "/workspace/scratch/4e85480ade89/gentle-source",
+                  "/tmp/asen-eco01-source",
                   "invalid-input",
                   "asen",
-                  "/tmp/asen-eco01-codegraph-MGgJ4D"
+                  "/tmp/asen-eco01-codegraph-4F0Fuu"
                 ]
               },
               "environment": {
                 "platform": "linux",
                 "nodeVersion": "v24.19.0",
-                "cwd": "/tmp/asen-eco01-codegraph-MGgJ4D",
-                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-MGgJ4D/controlled-codegraph-bin"
+                "cwd": "/tmp/asen-eco01-codegraph-4F0Fuu",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-4F0Fuu/controlled-codegraph-bin"
               },
               "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false}},\"thrown\":{\"name\":\"Error\",\"message\":\"CodeGraph query is required for query and explore operations.\"}}\n",
+              "stderr": "",
               "output": {
                 "registration": {
                   "name": "codegraph",
@@ -1047,17 +1081,14 @@
                   "message": "CodeGraph query is required for query and explore operations."
                 }
               },
-              "receiptSha256": "afce9f25910db1aa040e88f1c2afa23950c752aa59b6172be2d3a3365f86c03e",
-              "logSha256": "e39964b5430ad62dea665375dfffb40f0805ab782da9a0cd482f62f2e11e64bd",
               "stdoutSha256": "c8d87ed73157f37f72f20c3642e3ca758fb6d9782499fe531c11cfc652ef59a0",
-              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "0484c16733d4ba3ec9452f85ded954095c795263cca954b998811c0220aed409",
+              "logSha256": "e39964b5430ad62dea665375dfffb40f0805ab782da9a0cd482f62f2e11e64bd",
+              "receiptSha256": "796bcfd4e7444f5f4e58b6aa1a416f446d6b674343bb9c0b1ee47866b5a5ceeb"
             },
-            "rawEvidence": "docs/audit/evidence/eco01-codegraph-dd28850f8c39d59b12d8227744d61ec65458c09d/codegraph-pair-evidence.json",
-            "reason": "ASEN adds accurate Pi tool annotations for the existing mutating init operation; the frozen upstream registration omits those hints. This explicit host metadata is a deliberate transparency improvement and does not grant additional write authority.",
-            "limitations": [
-              "The CLI is a temporary controlled executable; actual CodeGraph package and index semantics remain unverified.",
-              "Only the current host OS was exercised."
-            ]
+            "simulationObservation": "intentional-annotation-difference; controlled behavior matches",
+            "limitation": "Both production extension registrations launched a temporary controlled codegraph executable. This checks tool registration, argv, error handling, and permission-denial behavior for this fixture, not compatibility with the actual CodeGraph package or persisted index contents; only this host OS was exercised."
           }
         },
         {
@@ -1069,8 +1100,8 @@
               "contractId": "ECO-SRC-625c38e8637ad8b0:7",
               "scenario": "denied",
               "status": "INTENTIONAL",
-              "sourceReceiptSha256": "c62620543ca199ce54d38cd7f897d22bba4e34ad7052ad4749c4d5775f31c7a5",
-              "asenReceiptSha256": "f1eab22354a00e31bed0f3b2bbffb1d7e00967bdb8a742756f4ed422063d70d4",
+              "sourceReceiptSha256": "1ff2bd46df6b8efa5d9b00a803c88b91671d83f87dcdce59ec31cbdd8b21a48f",
+              "asenReceiptSha256": "8bce74b7da105882b1603f9f0b381534dfb82ae9feff8f47393fc1d944ebd43a",
               "difference": {
                 "summary": "Only the registered tool annotation metadata differs; normalized content, errors, args, and outcomes match under the controlled executable."
               },
@@ -1083,27 +1114,33 @@
               "admitted": false
             },
             "behaviorSame": true,
-            "source": {
+            "sourceReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "denied",
+              "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
               "command": {
                 "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
                 "args": [
                   "--import",
                   "tsx",
-                  "/workspace/scratch/4e85480ade89/asen-worktree/scripts/eco01-codegraph-pair.mjs",
+                  "/tmp/asen-published/scripts/eco01-codegraph-pair.mjs",
                   "--child",
-                  "/workspace/scratch/4e85480ade89/gentle-source",
+                  "/tmp/asen-eco01-source",
                   "denied",
                   "source",
-                  "/tmp/asen-eco01-codegraph-SruSDv"
+                  "/tmp/asen-eco01-codegraph-GCUQxm"
                 ]
               },
               "environment": {
                 "platform": "linux",
                 "nodeVersion": "v24.19.0",
-                "cwd": "/tmp/asen-eco01-codegraph-SruSDv",
-                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-SruSDv/controlled-codegraph-bin"
+                "cwd": "/tmp/asen-eco01-codegraph-GCUQxm",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-GCUQxm/controlled-codegraph-bin"
               },
               "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":null},\"thrown\":{\"name\":\"Error\",\"message\":\"CodeGraph .codegraph must be a real directory when it already exists.\"}}\n",
+              "stderr": "",
               "output": {
                 "registration": {
                   "name": "codegraph",
@@ -1150,32 +1187,39 @@
                   "message": "CodeGraph .codegraph must be a real directory when it already exists."
                 }
               },
-              "receiptSha256": "c62620543ca199ce54d38cd7f897d22bba4e34ad7052ad4749c4d5775f31c7a5",
-              "logSha256": "11483a21b9eb79ed88140686b25e80125a9cc646c8f655266cfb5639cb8c1de6",
               "stdoutSha256": "63da36c1b82b5b6fdab9c8ccd5df1048b8958609191f38c6ff6ac8e357628930",
-              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "d1e5d2739f0bd5943ae5cf5ef14656f3a4d7f822fdbf83dfe261b12ee551ed68",
+              "logSha256": "11483a21b9eb79ed88140686b25e80125a9cc646c8f655266cfb5639cb8c1de6",
+              "receiptSha256": "1ff2bd46df6b8efa5d9b00a803c88b91671d83f87dcdce59ec31cbdd8b21a48f"
             },
-            "asen": {
+            "asenReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "denied",
+              "commit": "a98fa1510a30234f4fbd39381d85bab5437f0143",
               "command": {
                 "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
                 "args": [
                   "--import",
                   "tsx",
-                  "/workspace/scratch/4e85480ade89/asen-worktree/scripts/eco01-codegraph-pair.mjs",
+                  "/tmp/asen-published/scripts/eco01-codegraph-pair.mjs",
                   "--child",
-                  "/workspace/scratch/4e85480ade89/gentle-source",
+                  "/tmp/asen-eco01-source",
                   "denied",
                   "asen",
-                  "/tmp/asen-eco01-codegraph-SruSDv"
+                  "/tmp/asen-eco01-codegraph-GCUQxm"
                 ]
               },
               "environment": {
                 "platform": "linux",
                 "nodeVersion": "v24.19.0",
-                "cwd": "/tmp/asen-eco01-codegraph-SruSDv",
-                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-SruSDv/controlled-codegraph-bin"
+                "cwd": "/tmp/asen-eco01-codegraph-GCUQxm",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-GCUQxm/controlled-codegraph-bin"
               },
               "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false}},\"thrown\":{\"name\":\"Error\",\"message\":\"CodeGraph .codegraph must be a real directory when it already exists.\"}}\n",
+              "stderr": "",
               "output": {
                 "registration": {
                   "name": "codegraph",
@@ -1227,17 +1271,14 @@
                   "message": "CodeGraph .codegraph must be a real directory when it already exists."
                 }
               },
-              "receiptSha256": "f1eab22354a00e31bed0f3b2bbffb1d7e00967bdb8a742756f4ed422063d70d4",
-              "logSha256": "08d643db11223898af05f526ff652a2617aef59f0f8daf9b7fc0fe667612d26d",
               "stdoutSha256": "469a6a532b94d6403d054b7d129944f352d02394f0042331c168fce25e9f3ddc",
-              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "5286635dcad77b68ce7d7b44d9abed8bdefe02673b3f542582054da4efbd3f66",
+              "logSha256": "08d643db11223898af05f526ff652a2617aef59f0f8daf9b7fc0fe667612d26d",
+              "receiptSha256": "8bce74b7da105882b1603f9f0b381534dfb82ae9feff8f47393fc1d944ebd43a"
             },
-            "rawEvidence": "docs/audit/evidence/eco01-codegraph-dd28850f8c39d59b12d8227744d61ec65458c09d/codegraph-pair-evidence.json",
-            "reason": "ASEN adds accurate Pi tool annotations for the existing mutating init operation; the frozen upstream registration omits those hints. This explicit host metadata is a deliberate transparency improvement and does not grant additional write authority.",
-            "limitations": [
-              "The CLI is a temporary controlled executable; actual CodeGraph package and index semantics remain unverified.",
-              "Only the current host OS was exercised."
-            ]
+            "simulationObservation": "intentional-annotation-difference; controlled behavior matches",
+            "limitation": "Both production extension registrations launched a temporary controlled codegraph executable. This checks tool registration, argv, error handling, and permission-denial behavior for this fixture, not compatibility with the actual CodeGraph package or persisted index contents; only this host OS was exercised."
           }
         },
         {
@@ -1249,8 +1290,8 @@
               "contractId": "ECO-SRC-625c38e8637ad8b0:7",
               "scenario": "partial-failure",
               "status": "INTENTIONAL",
-              "sourceReceiptSha256": "6ce69c9ccee02eeea56c8d398ebcac87c438c0a1a53e9416e59d81e0177ed3c5",
-              "asenReceiptSha256": "a02af813c0f3f4c5a3a1d988b418e3d4ed406af67ad675e5cea451a5baaf0ce6",
+              "sourceReceiptSha256": "8c3653c5a0fc035d6b51e48d28016509d27a8eaca8a0e2ddb794703c3be72aa2",
+              "asenReceiptSha256": "5cfc8032b207e4ff96a333c948d2b28ab2c95893de5ce9e4fc898fc433669cad",
               "difference": {
                 "summary": "Only the registered tool annotation metadata differs; normalized content, errors, args, and outcomes match under the controlled executable."
               },
@@ -1263,27 +1304,33 @@
               "admitted": false
             },
             "behaviorSame": true,
-            "source": {
+            "sourceReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "partial-failure",
+              "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
               "command": {
                 "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
                 "args": [
                   "--import",
                   "tsx",
-                  "/workspace/scratch/4e85480ade89/asen-worktree/scripts/eco01-codegraph-pair.mjs",
+                  "/tmp/asen-published/scripts/eco01-codegraph-pair.mjs",
                   "--child",
-                  "/workspace/scratch/4e85480ade89/gentle-source",
+                  "/tmp/asen-eco01-source",
                   "partial-failure",
                   "source",
-                  "/tmp/asen-eco01-codegraph-MkQEuP"
+                  "/tmp/asen-eco01-codegraph-hzFZsB"
                 ]
               },
               "environment": {
                 "platform": "linux",
                 "nodeVersion": "v24.19.0",
-                "cwd": "/tmp/asen-eco01-codegraph-MkQEuP",
-                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-MkQEuP/controlled-codegraph-bin"
+                "cwd": "/tmp/asen-eco01-codegraph-hzFZsB",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-hzFZsB/controlled-codegraph-bin"
               },
               "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":null},\"content\":[{\"type\":\"text\",\"text\":\"CodeGraph failed to run. Use read, grep, and find for this exploration.\"}],\"details\":{\"status\":\"failed\",\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-codegraph-hzFZsB\",\"fallback\":\"Use read, grep, and find for this exploration.\"}}\n",
+              "stderr": "",
               "output": {
                 "registration": {
                   "name": "codegraph",
@@ -1334,36 +1381,43 @@
                 "details": {
                   "status": "failed",
                   "operation": "query",
-                  "cwd": "/tmp/asen-eco01-codegraph-MkQEuP",
+                  "cwd": "/tmp/asen-eco01-codegraph-hzFZsB",
                   "fallback": "Use read, grep, and find for this exploration."
                 }
               },
-              "receiptSha256": "6ce69c9ccee02eeea56c8d398ebcac87c438c0a1a53e9416e59d81e0177ed3c5",
-              "logSha256": "48fd8bd35d3c5d38fc69ce16d189b7b819576e1b82b1b4058f9c8d1d67f46c95",
-              "stdoutSha256": "78ef7068ee7474913a4bf2279d637586183e80f4661806378bd3523b43bf8be5",
-              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              "stdoutSha256": "fafb0106f632db414ffee15e4a2deaed0d86bcee17fc86fc2860f66c95cf2745",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "d366e1c9e5764db9da45dad142a724f7c392f32640fbf7851f67582338cd285d",
+              "logSha256": "cc23a6ac64b58b5131f2a742eb82cc515953993e0e8d7f63ad3589264faae924",
+              "receiptSha256": "8c3653c5a0fc035d6b51e48d28016509d27a8eaca8a0e2ddb794703c3be72aa2"
             },
-            "asen": {
+            "asenReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "partial-failure",
+              "commit": "a98fa1510a30234f4fbd39381d85bab5437f0143",
               "command": {
                 "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
                 "args": [
                   "--import",
                   "tsx",
-                  "/workspace/scratch/4e85480ade89/asen-worktree/scripts/eco01-codegraph-pair.mjs",
+                  "/tmp/asen-published/scripts/eco01-codegraph-pair.mjs",
                   "--child",
-                  "/workspace/scratch/4e85480ade89/gentle-source",
+                  "/tmp/asen-eco01-source",
                   "partial-failure",
                   "asen",
-                  "/tmp/asen-eco01-codegraph-MkQEuP"
+                  "/tmp/asen-eco01-codegraph-hzFZsB"
                 ]
               },
               "environment": {
                 "platform": "linux",
                 "nodeVersion": "v24.19.0",
-                "cwd": "/tmp/asen-eco01-codegraph-MkQEuP",
-                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-MkQEuP/controlled-codegraph-bin"
+                "cwd": "/tmp/asen-eco01-codegraph-hzFZsB",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-hzFZsB/controlled-codegraph-bin"
               },
               "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false}},\"content\":[{\"type\":\"text\",\"text\":\"CodeGraph failed to run. Use read, grep, and find for this exploration.\"}],\"details\":{\"status\":\"failed\",\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-codegraph-hzFZsB\",\"fallback\":\"Use read, grep, and find for this exploration.\"}}\n",
+              "stderr": "",
               "output": {
                 "registration": {
                   "name": "codegraph",
@@ -1419,21 +1473,18 @@
                 "details": {
                   "status": "failed",
                   "operation": "query",
-                  "cwd": "/tmp/asen-eco01-codegraph-MkQEuP",
+                  "cwd": "/tmp/asen-eco01-codegraph-hzFZsB",
                   "fallback": "Use read, grep, and find for this exploration."
                 }
               },
-              "receiptSha256": "a02af813c0f3f4c5a3a1d988b418e3d4ed406af67ad675e5cea451a5baaf0ce6",
-              "logSha256": "fbb16e10097fb215057b4056d5a54f2df41dd9535ae4f8cd6904076808525730",
-              "stdoutSha256": "3348caca14f8e26159e4c43970b1c0c1a04f01c7b6cc12718ba6206ff11c8d37",
-              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              "stdoutSha256": "3c0492d8f42403eb4cb26505de0577a8f4706a428a297db48f29a50638e92564",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "80173271ac1be187bfba440001b7fe2ae2ec67bd304eecc2fecb13e3cb882172",
+              "logSha256": "e81c1c217cf56db3a6255c3514a567b44df6db48a864a41931299b38f570bbf4",
+              "receiptSha256": "5cfc8032b207e4ff96a333c948d2b28ab2c95893de5ce9e4fc898fc433669cad"
             },
-            "rawEvidence": "docs/audit/evidence/eco01-codegraph-dd28850f8c39d59b12d8227744d61ec65458c09d/codegraph-pair-evidence.json",
-            "reason": "ASEN adds accurate Pi tool annotations for the existing mutating init operation; the frozen upstream registration omits those hints. This explicit host metadata is a deliberate transparency improvement and does not grant additional write authority.",
-            "limitations": [
-              "The CLI is a temporary controlled executable; actual CodeGraph package and index semantics remain unverified.",
-              "Only the current host OS was exercised."
-            ]
+            "simulationObservation": "intentional-annotation-difference; controlled behavior matches",
+            "limitation": "Both production extension registrations launched a temporary controlled codegraph executable. This checks tool registration, argv, error handling, and permission-denial behavior for this fixture, not compatibility with the actual CodeGraph package or persisted index contents; only this host OS was exercised."
           }
         },
         {
@@ -1445,8 +1496,8 @@
               "contractId": "ECO-SRC-625c38e8637ad8b0:7",
               "scenario": "restart",
               "status": "INTENTIONAL",
-              "sourceReceiptSha256": "30d6ce53f0aeb2d76e523eb851782adc9b96cae200ca0c7beb11a2589de21e7e",
-              "asenReceiptSha256": "d659ccc83da41e40049c95a18e6df3e5a966a4034aa3b030d70e45236bf0c884",
+              "sourceReceiptSha256": "47323ee8c8175afa643f0a702a4690694506242b1a5b3280fa7e7b70a38f554f",
+              "asenReceiptSha256": "6f22de3c400c1758e6c3c2c68c0dc635d67911d14534ab175a0eda4bd4f533c5",
               "difference": {
                 "summary": "Only the registered tool annotation metadata differs; normalized content, errors, args, and outcomes match under the controlled executable."
               },
@@ -1459,27 +1510,33 @@
               "admitted": false
             },
             "behaviorSame": true,
-            "source": {
+            "sourceReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "restart",
+              "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
               "command": {
                 "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
                 "args": [
                   "--import",
                   "tsx",
-                  "/workspace/scratch/4e85480ade89/asen-worktree/scripts/eco01-codegraph-pair.mjs",
+                  "/tmp/asen-published/scripts/eco01-codegraph-pair.mjs",
                   "--child",
-                  "/workspace/scratch/4e85480ade89/gentle-source",
+                  "/tmp/asen-eco01-source",
                   "restart",
                   "source",
-                  "/tmp/asen-eco01-codegraph-5wTJcl"
+                  "/tmp/asen-eco01-codegraph-5Pn5aE"
                 ]
               },
               "environment": {
                 "platform": "linux",
                 "nodeVersion": "v24.19.0",
-                "cwd": "/tmp/asen-eco01-codegraph-5wTJcl",
-                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-5wTJcl/controlled-codegraph-bin"
+                "cwd": "/tmp/asen-eco01-codegraph-5Pn5aE",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-5Pn5aE/controlled-codegraph-bin"
               },
               "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":null},\"content\":[{\"type\":\"text\",\"text\":\"controlled-index-present\\n\"}],\"details\":{\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-codegraph-5Pn5aE\",\"args\":[\"query\",\"--path\",\"/tmp/asen-eco01-codegraph-5Pn5aE\",\"--limit\",\"3\",\"--\",\"--help; literal query\"]}}\n",
+              "stderr": "",
               "output": {
                 "registration": {
                   "name": "codegraph",
@@ -1529,11 +1586,11 @@
                 ],
                 "details": {
                   "operation": "query",
-                  "cwd": "/tmp/asen-eco01-codegraph-5wTJcl",
+                  "cwd": "/tmp/asen-eco01-codegraph-5Pn5aE",
                   "args": [
                     "query",
                     "--path",
-                    "/tmp/asen-eco01-codegraph-5wTJcl",
+                    "/tmp/asen-eco01-codegraph-5Pn5aE",
                     "--limit",
                     "3",
                     "--",
@@ -1541,32 +1598,39 @@
                   ]
                 }
               },
-              "receiptSha256": "30d6ce53f0aeb2d76e523eb851782adc9b96cae200ca0c7beb11a2589de21e7e",
-              "logSha256": "40ffd69296544267b30d5de659515fcac0d89dd20c5867c1143831127c776677",
-              "stdoutSha256": "7627e03714c71d4edabe193d67e47ab954b75254af5527eff1afecda502516de",
-              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              "stdoutSha256": "cf0c285ecdee7c631685b6308ad0739f3f2b3ce11f0cf706ff716b77dbff401b",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "6e6dd2bafb735c644c774c1595e97cdde68966405ae9c88011cfff0fc064772a",
+              "logSha256": "0e250a879ac1be9d6e9e238d7f6abfdbe28e3948bfcd9b3f72843fefadb1df30",
+              "receiptSha256": "47323ee8c8175afa643f0a702a4690694506242b1a5b3280fa7e7b70a38f554f"
             },
-            "asen": {
+            "asenReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "restart",
+              "commit": "a98fa1510a30234f4fbd39381d85bab5437f0143",
               "command": {
                 "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
                 "args": [
                   "--import",
                   "tsx",
-                  "/workspace/scratch/4e85480ade89/asen-worktree/scripts/eco01-codegraph-pair.mjs",
+                  "/tmp/asen-published/scripts/eco01-codegraph-pair.mjs",
                   "--child",
-                  "/workspace/scratch/4e85480ade89/gentle-source",
+                  "/tmp/asen-eco01-source",
                   "restart",
                   "asen",
-                  "/tmp/asen-eco01-codegraph-5wTJcl"
+                  "/tmp/asen-eco01-codegraph-5Pn5aE"
                 ]
               },
               "environment": {
                 "platform": "linux",
                 "nodeVersion": "v24.19.0",
-                "cwd": "/tmp/asen-eco01-codegraph-5wTJcl",
-                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-5wTJcl/controlled-codegraph-bin"
+                "cwd": "/tmp/asen-eco01-codegraph-5Pn5aE",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-5Pn5aE/controlled-codegraph-bin"
               },
               "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false}},\"content\":[{\"type\":\"text\",\"text\":\"controlled-index-present\\n\"}],\"details\":{\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-codegraph-5Pn5aE\",\"args\":[\"query\",\"--path\",\"/tmp/asen-eco01-codegraph-5Pn5aE\",\"--limit\",\"3\",\"--\",\"--help; literal query\"]}}\n",
+              "stderr": "",
               "output": {
                 "registration": {
                   "name": "codegraph",
@@ -1621,11 +1685,11 @@
                 ],
                 "details": {
                   "operation": "query",
-                  "cwd": "/tmp/asen-eco01-codegraph-5wTJcl",
+                  "cwd": "/tmp/asen-eco01-codegraph-5Pn5aE",
                   "args": [
                     "query",
                     "--path",
-                    "/tmp/asen-eco01-codegraph-5wTJcl",
+                    "/tmp/asen-eco01-codegraph-5Pn5aE",
                     "--limit",
                     "3",
                     "--",
@@ -1633,25 +1697,23 @@
                   ]
                 }
               },
-              "receiptSha256": "d659ccc83da41e40049c95a18e6df3e5a966a4034aa3b030d70e45236bf0c884",
-              "logSha256": "1a764f5f7c84c0e4511159523c7ba5fc527ac3b018b9ec68b72c55ea17052fd5",
-              "stdoutSha256": "d6b62baec7b21de70119efd5d13afceda63151a22ce4a788d4e6fe24898e8b6e",
-              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              "stdoutSha256": "3425c81abae2162364fb5e78bf5375af4444267479d052830bc8baaa91defb3d",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "2cb24ecf318067704c92d56dd64e1474f28168434bfe75c19772a0eb42709080",
+              "logSha256": "26f0ce3011501f4ed27498379358d67aa4d66a8ce8df0cd7eda0f9eee0bc11d1",
+              "receiptSha256": "6f22de3c400c1758e6c3c2c68c0dc635d67911d14534ab175a0eda4bd4f533c5"
             },
-            "rawEvidence": "docs/audit/evidence/eco01-codegraph-dd28850f8c39d59b12d8227744d61ec65458c09d/codegraph-pair-evidence.json",
-            "reason": "ASEN adds accurate Pi tool annotations for the existing mutating init operation; the frozen upstream registration omits those hints. This explicit host metadata is a deliberate transparency improvement and does not grant additional write authority.",
-            "limitations": [
-              "The CLI is a temporary controlled executable; actual CodeGraph package and index semantics remain unverified.",
-              "Only the current host OS was exercised."
-            ]
+            "simulationObservation": "intentional-annotation-difference; controlled behavior matches",
+            "limitation": "Both production extension registrations launched a temporary controlled codegraph executable. This checks tool registration, argv, error handling, and permission-denial behavior for this fixture, not compatibility with the actual CodeGraph package or persisted index contents; only this host OS was exercised."
           }
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-625c38e8637ad8b0",
+      "referenceIndex": 7
     },
     {
       "id": "ECO-SRC-af1edc66cbd9834c:64",
       "kind": "code-contract",
-      "sourcePath": "extensions/gentle-agents.ts",
       "sourceSha256": "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388",
       "sourceSpan": {
         "startLine": 1152,
@@ -1700,12 +1762,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-af1edc66cbd9834c",
+      "referenceIndex": 64
     },
     {
       "id": "ECO-SRC-1f527249710bd9bf:33",
       "kind": "code-contract",
-      "sourcePath": "extensions/gentle-ai.ts",
       "sourceSha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
       "sourceSpan": {
         "startLine": 9405,
@@ -1754,12 +1817,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 33
     },
     {
       "id": "ECO-SRC-1f527249710bd9bf:89",
       "kind": "code-contract",
-      "sourcePath": "extensions/gentle-ai.ts",
       "sourceSha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
       "sourceSpan": {
         "startLine": 8975,
@@ -1808,12 +1872,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 89
     },
     {
       "id": "ECO-SRC-1f527249710bd9bf:90",
       "kind": "code-contract",
-      "sourcePath": "extensions/gentle-ai.ts",
       "sourceSha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
       "sourceSpan": {
         "startLine": 9015,
@@ -1862,12 +1927,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 90
     },
     {
       "id": "ECO-SRC-1f527249710bd9bf:91",
       "kind": "code-contract",
-      "sourcePath": "extensions/gentle-ai.ts",
       "sourceSha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
       "sourceSpan": {
         "startLine": 9061,
@@ -1916,12 +1982,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 91
     },
     {
       "id": "ECO-SRC-f25fcbecafe905e1:17",
       "kind": "code-contract",
-      "sourcePath": "extensions/gentle-shell.ts",
       "sourceSha256": "dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",
       "sourceSpan": {
         "startLine": 1708,
@@ -1970,12 +2037,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-f25fcbecafe905e1",
+      "referenceIndex": 17
     },
     {
       "id": "ECO-SRC-91b70c5973297fbd:12",
       "kind": "code-contract",
-      "sourcePath": "extensions/gentle-todo.ts",
       "sourceSha256": "db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d",
       "sourceSpan": {
         "startLine": 168,
@@ -2024,12 +2092,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-91b70c5973297fbd",
+      "referenceIndex": 12
     },
     {
       "id": "ECO-SRC-6c28d7b99a511610:5",
       "kind": "code-contract",
-      "sourcePath": "extensions/startup-banner.ts",
       "sourceSha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
       "sourceSpan": {
         "startLine": 592,
@@ -2078,12 +2147,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 5
     },
     {
       "id": "ECO-SRC-6c28d7b99a511610:6",
       "kind": "code-contract",
-      "sourcePath": "extensions/startup-banner.ts",
       "sourceSha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
       "sourceSpan": {
         "startLine": 615,
@@ -2132,12 +2202,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 6
     },
     {
       "id": "ECO-SRC-6c28d7b99a511610:7",
       "kind": "code-contract",
-      "sourcePath": "extensions/startup-banner.ts",
       "sourceSha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
       "sourceSpan": {
         "startLine": 626,
@@ -2186,12 +2257,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 7
     },
     {
       "id": "ECO-SRC-6058ca4d664d9095:0",
       "kind": "tracked-glob",
-      "sourcePath": "lib/runtime-metrics-children.ts",
       "sourceSha256": "57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",
       "sourceSpan": {
         "startLine": 31,
@@ -2235,12 +2307,13 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-6058ca4d664d9095",
+      "referenceIndex": 0
     },
     {
       "id": "ECO-SRC-8420ca03583cfe7b:5",
       "kind": "code-contract",
-      "sourcePath": "lib/session-change-capture.ts",
       "sourceSha256": "dd3fe029f18791462344a0ac0fc87aab0f8a657d0226d8f676aad4c724f8658d",
       "sourceSpan": {
         "startLine": 39,
@@ -2289,7 +2362,9 @@
           "status": "UNVERIFIED",
           "evidence": null
         }
-      ]
+      ],
+      "sourceId": "ECO-SRC-8420ca03583cfe7b",
+      "referenceIndex": 5
     }
   ],
   "localValidation": {
@@ -2325,7 +2400,7 @@
       "failed": 0,
       "skipped": 0,
       "log": "docs/audit/evidence/eco01-codegraph-dd28850f8c39d59b12d8227744d61ec65458c09d/eco01-plan-tests.log",
-      "logSha256": "4cf0b52f178ad4e4f81141c266f7855f413fab9e7a30ec4a46c2727d6d726c49"
+      "logSha256": "9ee5b2ac21431423db8910676ab4dec75cdb053da20ddbeffab2446f39331ea9"
     }
   },
   "executionEvidence": {
