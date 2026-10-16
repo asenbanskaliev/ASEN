@@ -55,7 +55,7 @@ import {resolve} from "node:path";
 const child=spawn(process.execPath,[${JSON.stringify(scenario)},...process.argv.slice(2)],{stdio:["pipe","pipe","pipe"]});
 child.stdout.on("data",data=>process.stdout.write(data));child.stderr.on("data",data=>process.stderr.write(data));
 let closed=null,prompted=false,buffer="";
-child.on("close",code=>{closed=code??0;if(prompted)process.exit(closed);});
+child.on("close",code=>{closed=code??0;if(prompted){process.stdin.destroy();process.exitCode=closed;}});
 process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.indexOf("\\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;const record=JSON.parse(line);
 if(record.type==="get_commands"){
 const pos=process.argv.indexOf("--extension"),path=process.argv[pos+1];
@@ -64,7 +64,7 @@ const mode=${JSON.stringify(skillsMode)};
 const loaded=mode==="missing"?[]:mode==="altered"?skills.map(item=>({...item,sourceInfo:{path:resolve(process.cwd(),"skills/asen-other/SKILL.md")}})):skills;
 if(mode==="extra")loaded.push({name:"extra",source:"skill",sourceInfo:{path:resolve(process.cwd(),"skills/asen-extra/SKILL.md")}});
 process.stdout.write(JSON.stringify({type:"response",id:record.id,success:true,data:{commands:[...${policy?"[{name:'asen-authority-status',source:'extension',sourceInfo:{path}}]":"[]"},...loaded]}})+"\\n");
-}else{prompted=true;child.stdin.end(line+"\\n");if(closed!==null)process.exit(closed);}}});`);
+}else{prompted=true;child.stdin.end(line+"\\n");if(closed!==null){process.stdin.destroy();process.exitCode=closed;}}}});`);
  return {d,p};
 }
 function runner(p:string,options:ConstructorParameters<typeof PiProcessRunner>[0]={}){return new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p],...options});}
