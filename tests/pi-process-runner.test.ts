@@ -149,6 +149,12 @@ test("Pi RPC artifact advances one phase only with exact candidate output",async
 test("Pi child times out",async()=>{const {d,p}=await fixture("setTimeout(()=>{},10000);");const r=await runner(p,{timeoutMs:50}).run({id:"t",role:"explorer",prompt:"x",repository:d});assert.equal(r.ok,false);assert.match(r.output,/timed out/);});
 test("Pi child output is bounded",async()=>{const {d,p}=await fixture('console.log("x".repeat(10000));');const r=await runner(p,{maxOutputBytes:100}).run({id:"o",role:"explorer",prompt:"x",repository:d});assert.equal(r.ok,false);assert.match(r.output,/exceeded/);});
 
+test("Pi RPC transient message updates do not consume the retained artifact budget",async()=>{
+ const {d,p}=await fixture(`let input="";const emit=value=>new Promise(resolve=>process.stdout.write(JSON.stringify(value)+"\\n",resolve));process.stdin.on("data",chunk=>{input+=chunk;let end;while((end=input.indexOf("\\n"))>=0){const request=JSON.parse(input.slice(0,end));input=input.slice(end+1);if(request.type!=="prompt")continue;(async()=>{for(let i=0;i<2;i++)await emit({type:"message_update",message:{role:"assistant",content:[{type:"text",text:"x".repeat(700_000)}]}});await emit({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"completed"}]}});await emit({type:"response",id:request.id,success:true});await emit({type:"agent_end"});})();}});`);
+ const result=await runner(p,{maxOutputBytes:1_000_000,maxStreamBytes:4_000_000}).run({id:"transient-stream",role:"explorer",prompt:"inspect",repository:d});
+ assert.equal(result.ok,true,result.output);assert.ok(Buffer.byteLength(result.output)<1_000_000);assert.ok(!result.output.includes("message_update"));assert.match(result.output,/message_end/);assert.match(result.output,/agent_end/);
+});
+
 test("Dispatcher cancellation reaches Pi and records a cancelled terminal state",async()=>{
  const {d,p}=await fixture("setTimeout(()=>{},10000);");const lifecycle=createAgentLifecycleSink(),dispatcher=new Dispatcher(runner(p,{timeoutMs:10000}),new EvidenceStore(),1,lifecycle);
  const pending=dispatcher.dispatch({id:"cancel",role:"explorer",prompt:"x",repository:d});

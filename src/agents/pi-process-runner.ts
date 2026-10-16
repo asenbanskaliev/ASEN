@@ -16,6 +16,8 @@ export interface PiProcessOptions{
  extraArgs?:string[];
  timeoutMs?:number;
  maxOutputBytes?:number;
+ maxStreamBytes?:number;
+ maxRpcRecordBytes?:number;
  signal?:AbortSignal;
  providerExtension?:string;
  noTools?:boolean;
@@ -147,6 +149,8 @@ export class PiProcessRunner implements AgentRunner{
    "--no-extensions","--extension",policy,...(providerExtension?["--extension",providerExtension]:[]),"--no-skills",...(this.options.noTools?["--no-tools"]:["--tools",writer?"read,edit,write":"read"]),...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
   const timeoutMs=this.options.timeoutMs??120_000;
   const max=this.options.maxOutputBytes??1_000_000;
+  const maxStream=this.options.maxStreamBytes??32_000_000;
+  const maxRecord=Math.min(this.options.maxRpcRecordBytes??2_000_000,max);
   const signal=runSignal&&this.options.signal?AbortSignal.any([runSignal,this.options.signal]):runSignal??this.options.signal;
 
   return new Promise(resolve=>{
@@ -156,7 +160,7 @@ export class PiProcessRunner implements AgentRunner{
     stdio:["pipe","pipe","pipe"],
     detached:process.platform!=="win32"
    }) as ChildProcessWithoutNullStreams;
-   let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,stopResult:AgentResult|undefined;
+   let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,agentEnded=false,streamBytes=0,retainedBytes=0,stopResult:AgentResult|undefined;
    const preflightId=`asen-policy:${request.id}`;
    const closed=new Promise<void>(resolveClosed=>{child.once("close",()=>resolveClosed());child.once("error",()=>{if(child.pid===undefined)resolveClosed();});});
    let timer:ReturnType<typeof setTimeout>|undefined;
@@ -175,18 +179,22 @@ export class PiProcessRunner implements AgentRunner{
     void terminateTree(child,closed).then(()=>finish(result));
    };
    const onAbort=()=>stop({id:request.id,ok:false,output:"pi process cancelled"});
-   const append=(current:string,data:unknown)=>{
-    const next=current+String(data);
-    if(Buffer.byteLength(next)>max){overflow=true;stop({id:request.id,ok:false,output:`pi output exceeded ${max} bytes`});return current;}
-    return next;
-   };
-
    child.stdout.on("data",data=>{
-    stdout=append(stdout,data);buffer+=String(data);
+    streamBytes+=Buffer.byteLength(data);
+    if(streamBytes>maxStream){overflow=true;stop({id:request.id,ok:false,output:`pi stream exceeded ${maxStream} bytes`});return;}
+    buffer+=String(data);
     let end;while((end=buffer.indexOf("\n"))>=0){
      const line=buffer.slice(0,end).trim();buffer=buffer.slice(end+1);
-     let record:unknown;try{record=JSON.parse(line);}catch{continue;}
-     const response=record as {type?:string;id?:string;success?:boolean;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>}};
+     let record:unknown;try{record=JSON.parse(line);}catch{record=line;}
+     const response=(record&&typeof record==="object"?record:{}) as {type?:string;id?:string;success?:boolean;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>} };
+     const type=response.type;
+     const keep=typeof record==="string"||agentEnded||type==="agent_end"||type==="message_end"&&((record as {message?:{role?:string}}).message?.role==="assistant")||type==="response"&&(response.id===preflightId||response.id===request.id)||typeof type==="string"&&type.startsWith("tool_execution_");
+     if(keep){
+      const retained=line+"\n";retainedBytes+=Buffer.byteLength(retained);
+      if(retainedBytes>max){overflow=true;stop({id:request.id,ok:false,output:`pi retained output exceeded ${max} bytes`});return;}
+      stdout+=retained;
+     }
+     if(type==="agent_end")agentEnded=true;
      if(response.type==="tool_execution_start"&&this.options.noTools){toolAttempted=true;stop({id:request.id,ok:false,output:"pi model attempted a tool while tools were disabled"});return;}
      if(response.type==="agent_end"&&policyLoaded){child.stdin.end();continue;}
      if(response.type!=="response"||response.id!==preflightId)continue;
@@ -199,8 +207,9 @@ export class PiProcessRunner implements AgentRunner{
      policyLoaded=true;
      child.stdin.write(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
     }
+    if(Buffer.byteLength(buffer)>maxRecord){overflow=true;stop({id:request.id,ok:false,output:`pi RPC record exceeded ${maxRecord} bytes`});}
    });
-   child.stderr.on("data",data=>stderr=append(stderr,data));
+   child.stderr.on("data",data=>{streamBytes+=Buffer.byteLength(data);if(streamBytes>maxStream){overflow=true;stop({id:request.id,ok:false,output:`pi stream exceeded ${maxStream} bytes`});return;}stderr=(stderr+String(data)).slice(-16_384);});
    child.on("error",error=>{if(!stopResult)finish({id:request.id,ok:false,output:`pi process error: ${String(error)}`});});
    child.on("close",code=>{
     if(stopResult)return;
