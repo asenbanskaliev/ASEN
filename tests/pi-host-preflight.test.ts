@@ -40,7 +40,7 @@ function productionHost(commandInventory:unknown[]=[],toolInventory:unknown[]=[]
   registerTool(tool:any){if(tools.has(tool.name))throw Error("duplicate tool");tools.set(tool.name,tool);},
   getCommands(){return commandInventory;},getAllTools(){return toolInventory;}};
  const context=(mode:string="rpc")=>({mode,hasUI:true,ui:{notify:(message:string)=>messages.push(message)},cwd:process.cwd(),sessionManager:{getSessionId:()=>"session"}});
- return {host,events,commands,tools,messages,commandInventory,context};
+ return {host,events,commands,tools,messages,commandInventory,toolInventory,context};
 }
 async function shutdown(state:ReturnType<typeof productionHost>):Promise<void>{for(const listener of state.events.get("session_shutdown")??[])await listener({},state.context());}
 
