@@ -17,14 +17,14 @@ Date: 2026-10-16. This is a **comparison and implementation backlog**, not a par
 
 ## Reproducible source-candidate audit
 
-Run in a clean local environment with Node >=22.19 and the ASEN dependencies installed:
+Run in a clean local environment with Node >=22.19 and the ASEN dependencies installed. Set `ASEN_ECOSYSTEM_SOURCE_URL` to the vetted source repository URL before running.
 
 ```sh
-git clone https://github.com/the pinned external reference repository.git /tmp/asen-upstream-source
-git -C /tmp/asen-upstream-source fetch origin d5d692a6888da9e9844e7e443ee30991fa4b9d14
+git clone "$ASEN_ECOSYSTEM_SOURCE_URL" /tmp/asen-upstream-source
+git -C /tmp/asen-upstream-source fetch origin d5d692a6888da9e9844e7e443ee30991fa4b9d14\ngit -C /tmp/asen-upstream-source fetch origin 08de420ca29be16b6f6bee725a30b599b061df16
 git -C /tmp/asen-upstream-source checkout --detach d5d692a6888da9e9844e7e443ee30991fa4b9d14
 git -C /tmp/asen-upstream-source cat-file -t 08de420ca29be16b6f6bee725a30b599b061df16
-node scripts/ecosystem-candidate-report.mjs /tmp/asen-upstream-source d5d692a6888da9e9844e7e443ee30991fa4b9d14 /tmp/asen-upstream-source-report.json
+node scripts/audit-current-upstream.mjs d5d692a6888da9e9844e7e443ee30991fa4b9d14 /tmp/asen-upstream-source > /tmp/asen-upstream-source-report.json
 ECOSYSTEM_SOURCE_REPOSITORY=/tmp/asen-upstream-source ECOSYSTEM_CANDIDATE_REPORT=/tmp/asen-upstream-source-report.json npm run audit:ecosystem
 ```
 
