@@ -2,7 +2,7 @@
   "schema": "asen.eco01.functional-evidence-matrix.v1",
   "generatedAt": "2026-10-16T15:46:17.188Z",
   "asenBaseCommit": "dd28850f8c39d59b12d8227744d61ec65458c09d",
-  "asenCandidateCommit": "1359d892f177dd1b76501961582ea3a7eedab8f1",
+  "asenCandidateCommit": "1cae8b74427358e96738b6223aed1583d6e6b361",
   "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
   "sourceVerification": {
     "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
@@ -2487,6 +2487,26 @@
       "failed": 0,
       "log": "local test output; CI reruns as part of npm test",
       "testPath": "tests/eco01-file-reference-evidence.test.ts"
+    },
+    "latestCandidateCommit": "1cae8b74427358e96738b6223aed1583d6e6b361",
+    "liveCodegraphPackage": {
+      "path": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
+      "version": "1.6.2",
+      "packageIntegrity": "sha512-hODH/mGnCf3IUMs6rzktv/zbecJIKJfdZAYHZ9mqecb0G7ZkHaA8CZafDVnswANFEL1YFcG+lfAwc5SIXzUH6Q==",
+      "packageShasum": "372b7b4f0190197b07d444116d6692240883a2d5",
+      "sha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
+      "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+      "asenCommit": "1cae8b74427358e96738b6223aed1583d6e6b361",
+      "platform": "linux",
+      "scenarios": 5,
+      "pairedProcessRuns": 10,
+      "scenarioStatus": "INTENTIONAL",
+      "overallStatus": "UNVERIFIED",
+      "limitations": [
+        "Current dynamic package version, not a frozen dependency lock.",
+        "Linux only.",
+        "The registration metadata difference remains INTENTIONAL; no scenario is admitted as EQUIVALENT."
+      ]
     }
   }
 }
