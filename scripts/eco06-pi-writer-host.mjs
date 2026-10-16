@@ -55,6 +55,7 @@ const runner={run:async(request,signal)=>{
       }
       await new Promise(resolve=>setTimeout(resolve,25));
     }
+    send({kind:"writer-finished-without-partial",id:request.id,ok:false,outputLength:0,diagnostic:"No visible edit before the 160-second observation deadline; cancelling the Pi worker"});
     controller.abort();
     return running;
   }
