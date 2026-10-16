@@ -33,6 +33,7 @@ const DEFAULT_LIMIT=10;
 const MAX_OUTPUT_CHARS=100_000;
 const PROCESS_MAX_BUFFER=MAX_OUTPUT_CHARS*2;
 const FALLBACK_INSTRUCTIONS="Use read, grep, and find for this exploration.";
+const initializedRoots=new WeakMap<CodeGraphRunner,Map<string,Promise<CodeGraphCommandResult>>>();
 const CODEGRAPH_TOOL_PARAMETERS={
   type:"object",
   additionalProperties:false,
@@ -202,6 +203,8 @@ function fallbackStatus(error:unknown):"unavailable"|"failed" {
 
 /** Canonical upstream-compatible CodeGraph tool. Only explicit `init` can create an index. */
 export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner()):AnnotatedToolDefinition {
+  let initialized=initializedRoots.get(runner);
+  if(!initialized){initialized=new Map();initializedRoots.set(runner,initialized);}
   return {
     name:ASEN_CODEGRAPH_TOOL_NAME,
     renderShell:"self",
@@ -209,7 +212,8 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
     description:"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.",
     promptSnippet:"Initialize and query CodeGraph for the current workspace without shell access",
     promptGuidelines:[
-      "Use operation init before querying when the current workspace has no .codegraph index.",
+      "Use query or explore directly for read-only code research; they never initialize or modify the index.",
+      "Use operation init only when the user has asked to build the CodeGraph index. ASEN requests a one-run approval before indexing.",
       "Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.",
     ],
     annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false,openWorldHint:false},
@@ -219,9 +223,26 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
       const request=canonicalParameters(input);
       const root=rootFor(context.cwd);
       assertSafeIndexDirectory(root);
+      if(request.operation==="init"){
+        if(signal?.aborted)return {content:[{type:"text" as const,text:"CodeGraph initialization was cancelled."}],details:{status:"cancelled",operation:"init",cwd:root}};
+        const previous=initialized.get(root);
+        if(previous){
+          try{await previous;return {content:[{type:"text" as const,text:"CodeGraph is already initialized for this project in the current Pi session."}],details:{status:"already_initialized",operation:"init",cwd:root}};}
+          catch{/* A failed initialization can be explicitly retried after fresh approval. */}
+        }
+        if(lstatIndexIsDirectory(root))return {content:[{type:"text" as const,text:"The CodeGraph index already exists for this project. No initialization was run."}],details:{status:"already_initialized",operation:"init",cwd:root}};
+        if(typeof context.hasUI!=="boolean"||context.hasUI!==true||typeof context.ui?.confirm!=="function")return {content:[{type:"text" as const,text:"CodeGraph initialization needs approval in Pi's interactive interface. No index was created."}],details:{status:"authorization_required",operation:"init",cwd:root}};
+        let approved=false;
+        try{approved=await context.ui.confirm("Authorize CodeGraph index creation?",`ASEN will run CodeGraph init for this project only. It may create or update ${join(root,".codegraph")} and read project files to build the index. This approval applies to this initialization only.`,signal===undefined?undefined:{signal});}
+        catch{return {content:[{type:"text" as const,text:"CodeGraph initialization was cancelled before any files were changed."}],details:{status:signal?.aborted?"cancelled":"authorization_unavailable",operation:"init",cwd:root}};}
+        if(!approved||signal?.aborted)return {content:[{type:"text" as const,text:signal?.aborted?"CodeGraph initialization was cancelled.":"CodeGraph initialization was not authorized. No index was created."}],details:{status:signal?.aborted?"cancelled":"denied",operation:"init",cwd:root}};
+        try{if(rootFor(context.cwd)!==root)throw new Error("Project root changed during authorization");assertSafeIndexDirectory(root);}
+        catch{return {content:[{type:"text" as const,text:"The project or CodeGraph index changed during approval. No initialization was run."}],details:{status:"failed",operation:"init",cwd:root}};}
+      }
       const args=commandArguments(request,root);
       try{
-        const observed=await runner(args,{cwd:root,maxBuffer:PROCESS_MAX_BUFFER,...(signal===undefined?{}:{signal})});
+        const run=request.operation==="init"?runInitialization(initialized,root,()=>runner(args,{cwd:root,maxBuffer:PROCESS_MAX_BUFFER,...(signal===undefined?{}:{signal})})):runner(args,{cwd:root,maxBuffer:PROCESS_MAX_BUFFER,...(signal===undefined?{}:{signal})});
+        const observed=await run;
         const output=truncateOutput([observed.stdout,observed.stderr].filter(Boolean).join("\n"));
         return {content:[{type:"text" as const,text:output||"CodeGraph completed without output."}],details:{operation:request.operation,cwd:root,args}};
       }catch(error){
@@ -231,6 +252,18 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
       }
     },
   };
+}
+
+function lstatIndexIsDirectory(root:string):boolean {
+  try{return lstatSync(join(root,".codegraph")).isDirectory();}
+  catch(error){if(typeof error==="object"&&error!==null&&"code" in error&&(error as NodeJS.ErrnoException).code==="ENOENT")return false;throw error;}
+}
+
+function runInitialization(cache:Map<string,Promise<CodeGraphCommandResult>>,root:string,run:()=>Promise<CodeGraphCommandResult>):Promise<CodeGraphCommandResult> {
+  const active=cache.get(root);if(active)return active;
+  const started=run();cache.set(root,started);
+  void started.catch(()=>{if(cache.get(root)===started)cache.delete(root);});
+  return started;
 }
 
 export function registerCodeGraphTool(pi:{registerTool(tool:ToolDefinition<any>):void},runner?:CodeGraphRunner):void {
@@ -275,6 +308,5 @@ export function createCodeIntelligenceTool(options:CodeIntelligenceOptions={},in
 /** Register canonical and compatibility names against the same hardened subprocess policy. */
 export function registerCodeGraphTools(pi:{registerTool(tool:ToolDefinition<any>):void},options:CodeIntelligenceOptions={}):void {
   const runner=createCodeGraphRunner(options);
-  pi.registerTool(createCodeIntelligenceTool(options,runner));
   registerCodeGraphTool(pi,runner);
 }

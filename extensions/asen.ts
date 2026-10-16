@@ -21,7 +21,7 @@ import {ASEN_MEMORY_GUIDANCE,ASEN_MEMORY_GUIDANCE_SECTION,ASEN_MEMORY_TOOL_NAMES
 import type {TaskEvent} from "../src/runtime/task-replay.js";
 import {ALL_INTERACTION_TOOL_NAMES,registerInteractionTools} from "../src/interaction/pi-tools.js";
 import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
-import {ASEN_CODEGRAPH_TOOL_NAME,ASEN_CODE_INTELLIGENCE_TOOL_NAME,registerCodeGraphTools,type CodeIntelligenceOptions} from "../src/interaction/code-intelligence.js";
+import {ASEN_CODEGRAPH_TOOL_NAME,registerCodeGraphTools,type CodeIntelligenceOptions} from "../src/interaction/code-intelligence.js";
 import {statusLines,type AsenStatusInput} from "../src/runtime/status.js";
 import {doctorChecks,doctorExitCode} from "../src/runtime/doctor.js";
 import {controlledInstructionPlanCommand,routePreviewCommand} from "../src/runtime/route-command.js";
@@ -410,7 +410,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
  validatePiHost(pi,VERSION);
  if(activatedPiHosts.has(pi))return;
  const commandNames=ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name);
- const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODE_INTELLIGENCE_TOOL_NAME,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES),...(dependencies.enableMemoryRuntime===false&&!dependencies.memoryStoreFactory?[]:ASEN_MEMORY_TOOL_NAMES)];
+ const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES),...(dependencies.enableMemoryRuntime===false&&!dependencies.memoryStoreFactory?[]:ASEN_MEMORY_TOOL_NAMES)];
  let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext)=>Promise<void>)|undefined;
  pi.on("session_start",async(_event,ctx)=>{
   if(attempted){if(registrationsReady){validatePiExecutionContext(ctx);await sessionStart?.(ctx);}return;}
