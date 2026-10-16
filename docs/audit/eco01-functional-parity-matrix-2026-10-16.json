@@ -1,6 +1,6 @@
 {
   "schema": "asen.eco01.functional-evidence-matrix.v1",
-  "generatedAt": "2026-10-16T15:40:28.152Z",
+  "generatedAt": "2026-10-16T15:46:17.188Z",
   "asenBaseCommit": "dd28850f8c39d59b12d8227744d61ec65458c09d",
   "asenCandidateCommit": "1359d892f177dd1b76501961582ea3a7eedab8f1",
   "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
@@ -2472,6 +2472,21 @@
     "diffCheck": {
       "command": "git diff --check",
       "result": "PASS"
+    },
+    "fileReferenceAssessment": {
+      "path": "docs/audit/evidence/eco01-files-1359d892f177dd1b76501961582ea3a7eedab8f1/file-reference-observation.json",
+      "sha256": "ca99c1447872f0be730fbf6a98bd5cd1c56f524f56e6e026faec1b1eec367480",
+      "result": "UNVERIFIED",
+      "filesInspected": 10,
+      "sourceSchemaPresent": true,
+      "asenCounterpartsPresent": 0
+    },
+    "fileReferenceIntegrityTest": {
+      "command": "ECOSYSTEM_BASELINE_REPOSITORY=<exact frozen source repository> node --import tsx --test tests/eco01-file-reference-evidence.test.ts",
+      "passed": 1,
+      "failed": 0,
+      "log": "local test output; CI reruns as part of npm test",
+      "testPath": "tests/eco01-file-reference-evidence.test.ts"
     }
   }
 }

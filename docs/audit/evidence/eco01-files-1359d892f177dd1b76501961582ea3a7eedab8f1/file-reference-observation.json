@@ -1,0 +1,160 @@
+{
+  "schema": "asen.eco01.file-reference-observation.v1",
+  "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "sourceTree": "9af648106ed75fa270476e9d474bad93aa38af6b",
+  "asenCommit": "1359d892f177dd1b76501961582ea3a7eedab8f1",
+  "asenTree": "3ea83aaa995886bc1a82a960f665a8352181e5a7",
+  "environment": {
+    "platform": "linux",
+    "nodeVersion": "v24.19.0"
+  },
+  "observations": [
+    {
+      "id": "ECO-SRC-6058ca4d664d9095:0",
+      "kind": "asset-directory",
+      "sourceOwnerObjectId": "af5a725bad0b3841179e0572429fdcab1eb3189b",
+      "sourceOwnerSha256": "57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",
+      "declaredTarget": "../assets/agents/",
+      "inventoryClassification": "outside-root",
+      "actualResolution": {
+        "relativeToSourceFileDirectory": true,
+        "sourceRootRelativePath": "assets/agents",
+        "containedInSourceRoot": true,
+        "existsAsDirectory": true,
+        "discovery": "readdirSync; this records one Linux checkout order",
+        "directMarkdownCount": 10,
+        "filesInObservedDiscoveryOrder": [
+          {
+            "sourceObjectId": "02ac815cf6a27ca268f76c4fd5d9cd38318867eb",
+            "sourceSha256": "3a341b47f73ea4af0dfd9dc9bb41da9a2fa58ae9b403274c985726b017778b66",
+            "bytes": 1344
+          },
+          {
+            "sourceObjectId": "924a89e942a8ad08418189fe91479cc4953d3b96",
+            "sourceSha256": "2c708be391bb36a9fe07e4b14e084466bfeb7864c15cd76b15f49f3f0ae393e1",
+            "bytes": 1614
+          },
+          {
+            "sourceObjectId": "a4fd794ca69c794861c5d98ac0e930a796759532",
+            "sourceSha256": "a960d740da49f5675b44138f439fa3aa70878603dab44bd7b465ecf5ee0a110d",
+            "bytes": 10969
+          },
+          {
+            "sourceObjectId": "bc8bc31ab8bf6e7649acbc06adc49ac216366228",
+            "sourceSha256": "d9abfc6e6eb8afd325b6d5221faf172a5dbd263469f4a704c37caaf0255587b2",
+            "bytes": 2540
+          },
+          {
+            "sourceObjectId": "2a740ec023b799022842f32bfb99646b856ceb06",
+            "sourceSha256": "7d8074facf59c898e9e0fb9daf96f927fb6f49602a35449da50e68ad6675ea2e",
+            "bytes": 3071
+          },
+          {
+            "sourceObjectId": "5bbf69e373e6e4da78817df8e2810a957f13ec9a",
+            "sourceSha256": "83802e7792ad36f80dbffbbf46502ca6ae5b963e460fea97572970ae1f08be0f",
+            "bytes": 3148
+          },
+          {
+            "sourceObjectId": "88a0ac072fec12a2a6f258dea283d9fb1f59d5ae",
+            "sourceSha256": "9db1806ff9de8ecf825f0318406acfbb910dc5b12f7ceae73580ef5d24726c3c",
+            "bytes": 3539
+          },
+          {
+            "sourceObjectId": "510036be6fa6b4da33db3432b477642f201dd2df",
+            "sourceSha256": "cd23b095bafd470107ab03b21d25e171561708d3c9d122caf039f972e15a788c",
+            "bytes": 3739
+          },
+          {
+            "sourceObjectId": "b7c02b5802d1c3857cbc1e203d4883e9a17cebcc",
+            "sourceSha256": "dd6e5d971dbd7d90269a61ea2d7f597dfa3ad96677e901efa127ac52c849a7d7",
+            "bytes": 3710
+          },
+          {
+            "sourceObjectId": "f527b80c1b057a7130beabaadd017e57050d8744",
+            "sourceSha256": "c896e40fd706ce611e6f5fb803193259c23a4471ca1ecac3857c1ddf3a70a432",
+            "bytes": 4188
+          }
+        ]
+      },
+      "asenTarget": "assets/agents/*.md",
+      "asenTargetExists": false,
+      "result": "UNVERIFIED",
+      "limitation": "Source directory resolution and exact source file identities are observed, but the ASEN target is absent and no adopted-scope decision or paired implementation exists. The inventory labels this resolvable path outside-root because its safe-path check rejects the trailing slash."
+    },
+    {
+      "id": "ECO-SRC-dbf31123d00902ed:1",
+      "kind": "tracked-file",
+      "sourceOwnerObjectId": "8c8fe7c8bb2af81a00fbffe7589c4fbc758806df",
+      "sourceOwnerSha256": "740b7b6f5e97f70caac1077beb0a652edfcaf4ecf2a9f892ca6ee6ff505f7f81",
+      "sourceTarget": "contracts/telemetry/runtime-aggregate-v1.schema.json",
+      "sourceTargetObjectId": "86cb821758395493f1cc81269dae3d665627903d",
+      "sourceTargetSha256": "eb0f2993d9271f55cb42eca343e6fbb601a733fb90bd40daeebc92ee60ae1ba9",
+      "sourceTargetBytes": 4988,
+      "sourceExists": true,
+      "asenTarget": "contracts/telemetry/runtime-aggregate-v1.schema.json",
+      "asenTargetExists": false,
+      "result": "UNVERIFIED",
+      "limitation": "Frozen schema identity is verified, but the ASEN counterpart path is absent and no accepted out-of-scope disposition has been reviewed."
+    },
+    {
+      "id": "ECO-SRC-6058ca4d664d9095:1",
+      "kind": "tracked-glob-inputs",
+      "sourceOwnerObjectId": "af5a725bad0b3841179e0572429fdcab1eb3189b",
+      "selector": "assets/agents/*.md",
+      "filesInObservedDiscoveryOrder": [
+        {
+          "sourceObjectId": "02ac815cf6a27ca268f76c4fd5d9cd38318867eb",
+          "sourceSha256": "3a341b47f73ea4af0dfd9dc9bb41da9a2fa58ae9b403274c985726b017778b66",
+          "bytes": 1344
+        },
+        {
+          "sourceObjectId": "924a89e942a8ad08418189fe91479cc4953d3b96",
+          "sourceSha256": "2c708be391bb36a9fe07e4b14e084466bfeb7864c15cd76b15f49f3f0ae393e1",
+          "bytes": 1614
+        },
+        {
+          "sourceObjectId": "a4fd794ca69c794861c5d98ac0e930a796759532",
+          "sourceSha256": "a960d740da49f5675b44138f439fa3aa70878603dab44bd7b465ecf5ee0a110d",
+          "bytes": 10969
+        },
+        {
+          "sourceObjectId": "bc8bc31ab8bf6e7649acbc06adc49ac216366228",
+          "sourceSha256": "d9abfc6e6eb8afd325b6d5221faf172a5dbd263469f4a704c37caaf0255587b2",
+          "bytes": 2540
+        },
+        {
+          "sourceObjectId": "2a740ec023b799022842f32bfb99646b856ceb06",
+          "sourceSha256": "7d8074facf59c898e9e0fb9daf96f927fb6f49602a35449da50e68ad6675ea2e",
+          "bytes": 3071
+        },
+        {
+          "sourceObjectId": "5bbf69e373e6e4da78817df8e2810a957f13ec9a",
+          "sourceSha256": "83802e7792ad36f80dbffbbf46502ca6ae5b963e460fea97572970ae1f08be0f",
+          "bytes": 3148
+        },
+        {
+          "sourceObjectId": "88a0ac072fec12a2a6f258dea283d9fb1f59d5ae",
+          "sourceSha256": "9db1806ff9de8ecf825f0318406acfbb910dc5b12f7ceae73580ef5d24726c3c",
+          "bytes": 3539
+        },
+        {
+          "sourceObjectId": "510036be6fa6b4da33db3432b477642f201dd2df",
+          "sourceSha256": "cd23b095bafd470107ab03b21d25e171561708d3c9d122caf039f972e15a788c",
+          "bytes": 3739
+        },
+        {
+          "sourceObjectId": "b7c02b5802d1c3857cbc1e203d4883e9a17cebcc",
+          "sourceSha256": "dd6e5d971dbd7d90269a61ea2d7f597dfa3ad96677e901efa127ac52c849a7d7",
+          "bytes": 3710
+        },
+        {
+          "sourceObjectId": "f527b80c1b057a7130beabaadd017e57050d8744",
+          "sourceSha256": "c896e40fd706ce611e6f5fb803193259c23a4471ca1ecac3857c1ddf3a70a432",
+          "bytes": 4188
+        }
+      ],
+      "result": "UNVERIFIED",
+      "limitation": "Frozen direct-child inputs are enumerated and content-bound; ASEN has no corresponding package asset set at the mapped path."
+    }
+  ]
+}
