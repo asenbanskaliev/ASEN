@@ -198,3 +198,17 @@ test("ECO-02 tool collision recovery requires fresh inventory and never register
  await bootstrap({},state.context());
  assert.deepEqual([state.commands.size,state.tools.size],registrations);
 });
+
+test("ECO-02 malformed inventory can recover on a later session without partial registration",async()=>{
+ const state=productionHost(new Array(1));
+ createPiExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false})(state.host as any);
+ const bootstrap=state.events.get("session_start")![0]!;
+ await bootstrap({},state.context());
+ assert.equal(state.commands.size,0);assert.equal(state.tools.size,0);
+ state.commandInventory.splice(0,1);
+ await bootstrap({},state.context());
+ assert.ok(state.commands.size>0);assert.ok(state.tools.size>0);
+ const counts=[state.commands.size,state.tools.size];
+ await bootstrap({},state.context());
+ assert.deepEqual([state.commands.size,state.tools.size],counts);
+});
