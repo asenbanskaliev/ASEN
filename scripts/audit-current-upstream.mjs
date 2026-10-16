@@ -5,7 +5,6 @@ import {execFileSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {createEcosystemCandidateReport,validateEcosystemCandidateReport} from "./ecosystem-candidate-report.mjs";
 
-const UPSTREAM=process.env.ASEN_ECOSYSTEM_SOURCE_URL;
 const PINNED="d5d692a6888da9e9844e7e443ee30991fa4b9d14";
 const BASELINE="08de420ca29be16b6f6bee725a30b599b061df16";
 const sha=value=>typeof value==="string"&&/^[a-f0-9]{40}$/.test(value);
@@ -14,10 +13,10 @@ export function runCurrentUpstreamAudit({candidate=PINN,sourceRepository,run=exe
  let temp;
  const git=(cwd,...args)=>run("git",["-C",cwd,...args],{encoding:"utf8",timeout:120_000,maxBuffer:32*1024*1024,stdio:["ignore","pipe","pipe"]}).trim();
  try{
+  if(!sourceRepository&&!process.env.ASEN_ECOSYSTEM_SOURCE_URL)throw new Error("Set ASEN_ECOSYSTEM_SOURCE_URL or pass an existing source repository");
   const source=sourceRepository??(temp=mkdtempSync(join(tmpdir(),"asen-upstream-audit-")));
   if(!sourceRepository){
-   if(!UPSTREAM)throw new Error("Set ASEN_ECOSYSTEM_SOURCE_URL or pass an existing source repository");
-   run("git",["clone","--quiet","--no-checkout","--filter=blob:none",UPSTREAM,source],{timeout:180_000,maxBuffer:32*1024*1024,stdio:["ignore","pipe","pipe"]});
+   run("git",["clone","--quiet","--no-checkout","--filter=blob:none",process.env.ASEN_ECOSYSTEM_SOURCE_URL,source],{timeout:180_000,maxBuffer:32*1024*1024,stdio:["ignore","pipe","pipe"]});
   }
   const isCommit=(repository,commit)=>{try{return git(repository,"cat-file","-t",commit)==="commit";}catch{return false;}};
   if(!isCommit(source,candidate))throw new Error("Upstream candidate is unavailable as a commit");
