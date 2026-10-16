@@ -30,6 +30,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Full test suite
+        env:
+          ASEN_TEST_OVERALL_TIMEOUT_MS: ${{ matrix.os == 'windows-latest' && '2400000' || '1800000' }}
         run: npm test
       - name: macOS retained-source witness
         if: runner.os == 'macOS'

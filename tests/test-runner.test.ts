@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {EventEmitter} from "node:events";
 import {PassThrough} from "node:stream";
-import {mkdtemp,mkdir,rm,writeFile} from "node:fs/promises";
+import {mkdtemp,mkdir,readFile,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 // @ts-expect-error Test-only JavaScript runner is outside the runtime TypeScript package.
@@ -44,6 +44,13 @@ class FakeChild extends EventEmitter {
 
 const flush=()=>new Promise<void>(resolve=>setImmediate(resolve));
 const limits=(chunkMs:number,overallMs=chunkMs*10)=>({chunkMs,overallMs,termGraceMs:5,killWaitMs:2});
+
+test("Windows CI gives the serialized full suite a 40-minute watchdog budget",async()=>{
+ const workflow=await readFile(new URL("../.github/workflows/ci.yml",import.meta.url),"utf8");
+ const step=workflow.match(/- name: Full test suite\n([\s\S]*?)(?=\n      - name:)/u)?.[1];
+ assert.ok(step,"CI must retain an explicit full-suite step");
+ assert.match(step,/ASEN_TEST_OVERALL_TIMEOUT_MS:\s*\$\{\{\s*matrix\.os\s*==\s*'windows-latest'\s*&&\s*'2400000'\s*\|\|\s*'1800000'\s*\}\}/u);
+});
 
 const processFiles=[
  "tests/ask-user-rpc.test.ts",
