@@ -1,0 +1,13 @@
+✔ ECO-01 binds all 25 inventory edges to source paths and exact spans without asserting parity (3.592128ms)
+✔ ECO-01 verifies a clean frozen Git checkout, file bytes, and mapped source spans (36.550659ms)
+✔ ECO-01 accepts only output and log hashes recomputed from exact paired execution receipts (197.549724ms)
+✔ ECO-01 requires demonstrated differences for DIVERGENT and INTENTIONAL (137.211165ms)
+✔ ECO-01 preserves UNVERIFIED and requires a specific reason for NOT_APPLICABLE (3.261839ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 506.95876
