@@ -33,6 +33,24 @@ test("current upstream audit requires a configured source before invoking Git",(
  }finally{if(original===undefined)delete process.env.ASEN_ECOSYSTEM_SOURCE_URL;else process.env.ASEN_ECOSYSTEM_SOURCE_URL=original;}
 });
 
+test("current upstream audit defaults to the exact pinned candidate",()=>{
+ const original=process.env.ASEN_ECOSYSTEM_SOURCE_URL;
+ const fetched:string[]=[];
+ process.env.ASEN_ECOSYSTEM_SOURCE_URL="https://example.invalid/source.git";
+ try{
+  assert.throws(()=>runCurrentUpstreamAudit({run:(_command:string,args:string[])=>{
+   if(args[0]==="clone")return "";
+   if(args.includes("fetch")){
+    fetched.push(args.at(-1) as string);
+    if(fetched.length===2)throw new Error("stop after candidate fetch");
+    return "";
+   }
+   throw new Error("unexpected Git invocation");
+  }}),/Unable to fetch exact upstream commit d5d692a6888da9e9844e7e443ee30991fa4b9d14/);
+  assert.deepEqual(fetched,["08de420ca29be16b6f6bee725a30b599b061df16","d5d692a6888da9e9844e7e443ee30991fa4b9d14"]);
+ }finally{if(original===undefined)delete process.env.ASEN_ECOSYSTEM_SOURCE_URL;else process.env.ASEN_ECOSYSTEM_SOURCE_URL=original;}
+});
+
 test("current upstream audit rejects a blob SHA even when its object exists",t=>{
  const root=mkdtempSync(join(tmpdir(),"asen-upstream-blob-candidate-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
  const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8"}).trim();
