@@ -16,6 +16,7 @@ const families={
  "external-runtime":["available","missing","malformed","denied","partial-failure","restart"],
 };
 const statuses=["EQUIVALENT","DIVERGENT","INTENTIONAL","NOT_APPLICABLE","UNVERIFIED"];
+const scenariosFor=row=>row.mappingKind==="code-contract"&&row.sourceId==="ECO-SRC-91b70c5973297fbd"?[...families[row.mappingKind],"duplicate-request"]:families[row.mappingKind];
 
 export function verifyFrozenSourceCheckout(baseline,mapping,sourceRoot){
  if(!sha40(baseline?.commit)||mapping?.baselineCommit!==baseline.commit||typeof sourceRoot!=="string"||!sourceRoot)throw Error("Frozen source checkout identity is required");
@@ -36,7 +37,7 @@ export function createDifferentialPlan(baseline=load("ecosystem-sources-v1.json"
  if(!sha40(baseline?.commit)||mapping?.baselineCommit!==baseline.commit||!Array.isArray(baseline.files)||!Array.isArray(mapping.mappings))throw Error("Invalid frozen source identity");
  const files=new Map(baseline.files.map(file=>[file.id,file])),seen=new Set();
  const contracts=mapping.mappings.map(row=>{
-  const id=row.sourceId+":"+row.referenceIndex,file=files.get(row.sourceId),reference=file?.references?.[row.referenceIndex],scenarios=families[row.mappingKind];
+  const id=row.sourceId+":"+row.referenceIndex,file=files.get(row.sourceId),reference=file?.references?.[row.referenceIndex],scenarios=scenariosFor(row);
   if(seen.has(id)||!file||file.objectId!==row.objectId||file.sha256!==row.sha256||file.bytes!==row.bytes||!reference||!sha64(row.span?.sha256)||!scenarios)throw Error("Unbound or duplicate source edge: "+id);
   seen.add(id);
   return {id,sourcePath:file.path,sourceSha256:file.sha256,sourceSpan:{startLine:row.span.startLine,endLine:row.span.endLine,sha256:row.span.sha256},reference,kind:row.mappingKind,reason:row.mappingReason,targets:row.targets,scenarios:scenarios.map(name=>({name,status:"UNVERIFIED",evidence:null}))};

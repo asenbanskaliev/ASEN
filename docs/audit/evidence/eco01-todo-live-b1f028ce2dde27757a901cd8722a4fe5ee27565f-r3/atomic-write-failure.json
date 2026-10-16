@@ -1,0 +1,102 @@
+{
+  "classification": "UNVERIFIED",
+  "reason": "The source supports atomic whole-list write; the mapped ASEN interface exposes append and revisioned state transitions, with no direct equivalent batch replacement operation.",
+  "source": {
+    "input": {
+      "action": "write",
+      "tasks": [
+        {
+          "title": "Would be added"
+        },
+        {
+          "title": "   "
+        }
+      ]
+    },
+    "error": "title is required",
+    "stateAfterFailure": {
+      "tasks": [
+        {
+          "id": 1,
+          "title": "Existing",
+          "status": "pending"
+        }
+      ],
+      "nextId": 2,
+      "updatedTurn": 1
+    },
+    "existingState": {
+      "tasks": [
+        {
+          "id": 1,
+          "title": "Existing",
+          "status": "pending"
+        }
+      ],
+      "nextId": 2,
+      "updatedTurn": 1
+    }
+  },
+  "asen": {
+    "availableMethods": [
+      "add",
+      "update",
+      "list",
+      "recover",
+      "addPlan"
+    ],
+    "existingTaskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+    "rowsBefore": [
+      {
+        "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+        "title": "Existing",
+        "events": [
+          {
+            "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+            "sessionId": "eco01-atomic",
+            "projectId": "/eco01-project",
+            "revision": 1,
+            "state": "planned",
+            "at": "2026-10-16T16:21:52.745Z"
+          }
+        ],
+        "current": {
+          "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+          "sessionId": "eco01-atomic",
+          "projectId": "/eco01-project",
+          "revision": 1,
+          "state": "planned",
+          "at": "2026-10-16T16:21:52.745Z"
+        }
+      }
+    ],
+    "rowsAfter": [
+      {
+        "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+        "title": "Existing",
+        "events": [
+          {
+            "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+            "sessionId": "eco01-atomic",
+            "projectId": "/eco01-project",
+            "revision": 1,
+            "state": "planned",
+            "at": "2026-10-16T16:21:52.745Z"
+          }
+        ],
+        "current": {
+          "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+          "sessionId": "eco01-atomic",
+          "projectId": "/eco01-project",
+          "revision": 1,
+          "state": "planned",
+          "at": "2026-10-16T16:21:52.745Z"
+        }
+      }
+    ],
+    "storeFileBeforeSha256": "94bfbbf667c29ccf4baf4f2fffb06329188cf599aadf4e0557713ac180c9dcbd",
+    "storeFileAfterSha256": "94bfbbf667c29ccf4baf4f2fffb06329188cf599aadf4e0557713ac180c9dcbd",
+    "storeUnchanged": true,
+    "comparisonBlocker": "no batch replace/clear operation exposed by the ASEN Todo store"
+  }
+}
