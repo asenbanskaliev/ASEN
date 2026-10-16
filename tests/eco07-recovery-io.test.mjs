@@ -263,5 +263,9 @@ test("ECO-07 real Pi interruption starts from one seeded task and one state tran
  assert.match(source,/initialTask\.events\.map\(event=>event\.state\),\["planned"\]/u,"the real Pi call must start from a persisted planned state");
  assert.match(source,/asen_todo_update with \{id: \$\{JSON\.stringify\(initialTask\.taskId\)\}, revision: 1, state: "running"\}/u,"the initial worker prompt must specify the exact one-use state transition");
  assert.match(source,/assert\.deepEqual\(initialTools,\["asen_todo_update"\]/u,"no create/list/review tool may run before interruption");
+ assert.match(source,/event\.type==="tool_execution_end"&&event\.toolCallId===updateStart\.toolCallId/u,"interruption must wait for the exact Pi update call to finish");
+ assert.match(source,/assert\.equal\(updateEnd\.isError,false/u,"interruption must require a successful Pi tool result");
+ assert.match(source,/findPersistedPlans\(sessionDir\)[\s\S]*?assert\.equal\(persistedPlanFiles\.length,1/u,"the recovery plan must be persisted before process interruption");
+ assert.doesNotMatch(source,/Pi must persist the task-start turn before interruption/u,"the test must not require an unnecessary natural model-turn completion");
  assert.match(source,/planned-task-prepared/u,"evidence must preserve the pre-run planned state");
 });

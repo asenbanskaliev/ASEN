@@ -165,18 +165,23 @@ try{
   assert.equal(started?.events.at(-1)?.state,"running","Pi/ASEN must persist the task as running before interruption");
   assert.equal(started.events[0].sessionId,sessionId);assert.equal(started.events[0].projectId,repository);
   assert.equal(started.events.length,2,"The initial task must have one planned and one running event");
-  const settleDeadline=Date.now()+30_000;
-  while(!first.events.some(event=>event.type==="agent_settled")&&Date.now()<settleDeadline){
-    const exit=await Promise.race([first.getClosed().then(value=>({closed:value})),sleep(25).then(()=>null)]);
-    if(exit)throw new Error(`Initial Pi closed before recording its completed task-start tool result (${JSON.stringify(exit.closed)})`);
-  }
-  const settled=first.events.find(event=>event.type==="agent_settled");
-  assert.ok(settled,"Pi must persist the task-start turn before interruption");
-  assert.equal(settled.aborted,false,"Pi must finish the task-start turn naturally before interruption");
   const initialTools=first.events.filter(event=>event.type==="tool_execution_start").map(event=>event.toolName);
   assert.deepEqual(initialTools,["asen_todo_update"],"The real Pi worker must perform exactly one planned-to-running update before interruption");
+  const updateStart=first.events.find(event=>event.type==="tool_execution_start"&&event.toolName==="asen_todo_update");
+  assert.ok(updateStart?.toolCallId,"Pi must expose the exact running-update tool call before interruption");
+  const updateDeadline=Date.now()+15_000;
+  let updateEnd;
+  while(Date.now()<updateDeadline){
+    updateEnd=first.events.find(event=>event.type==="tool_execution_end"&&event.toolCallId===updateStart.toolCallId&&event.toolName==="asen_todo_update");
+    if(updateEnd)break;
+    const exit=await Promise.race([first.getClosed().then(value=>({closed:value})),sleep(25).then(()=>null)]);
+    if(exit)throw new Error(`Initial Pi closed before the running-update tool result was recorded (${JSON.stringify(exit.closed)})`);
+  }
+  assert.ok(updateEnd,"Pi must finish the running-update tool call before interruption");
+  assert.equal(updateEnd.isError,false,"The exact running-update tool call must succeed before interruption");
   const persistedPlanFiles=await findPersistedPlans(sessionDir);
-  assert.equal(persistedPlanFiles.length,1,"Pi must persist the pending ordered review checklist exactly once in the original session history");
+  assert.equal(persistedPlanFiles.length,1,"Pi must persist the pending ordered review checklist exactly once before interruption");
+  await record("running-update-completed",{taskId:started.taskId,toolCallId:updateStart.toolCallId,durationMs:updateEnd.durationMs??null,isError:updateEnd.isError,state:"running"});
   const persistedPlanFile=persistedPlanFiles[0];
   await record("pending-plan-persisted",{sessionId,sessionFile:path.relative(sessionDir,persistedPlanFile),orderedSteps:["inspect-closure-audit","inspect-task-reducer"]});
   await record("running-task-persisted",{commit:revision,taskId:started.taskId,sessionId,projectId:repository,eventRevisions:started.events.map(event=>event.revision),state:"running"});
