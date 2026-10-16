@@ -27,7 +27,7 @@ await Promise.all([mkdir(path.dirname(profilesFile),{recursive:true}),mkdir(todo
 await writeProfilesFile(profilesFile,{schema:ASEN_PROFILES_SCHEMA,active:"eco06-nvidia",profiles:[{name:"eco06-nvidia",routes:{worker:{model,thinking:"low"},reviewer:{model,thinking:"low"},verifier:{model,thinking:"low"}}}]});
 const piPackage=JSON.parse(await (await import("node:fs/promises")).readFile(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url),"utf8"));
 const piRoot=path.dirname(fileURLToPath(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url)));
-const baseRunner=new PiProcessRunner({command:path.resolve(piRoot,piPackage.bin.pi),providerCredential:"NVIDIA_API_KEY",policyRoot:root,timeoutMs:180_000});
+const baseRunner=new PiProcessRunner({command:path.resolve(piRoot,piPackage.bin.pi),providerCredential:"NVIDIA_API_KEY",policyRoot:root,timeoutMs:180_000,maxOutputBytes:4_000_000});
 const invocations=[];
 const runner={run:async(request,signal)=>{
   invocations.push({id:request.id,role:request.role,writeSurfaces:request.writeSurfaces??[]});
