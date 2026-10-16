@@ -32,3 +32,12 @@ test("current upstream audit requires a configured source before invoking Git",(
   assert.throws(()=>runCurrentUpstreamAudit({run:()=>{throw new Error("unexpected Git invocation");}}),/Set ASEN_ECOSYSTEM_SOURCE_URL/);
  }finally{if(original===undefined)delete process.env.ASEN_ECOSYSTEM_SOURCE_URL;else process.env.ASEN_ECOSYSTEM_SOURCE_URL=original;}
 });
+
+test("current upstream audit rejects a blob SHA even when its object exists",t=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-upstream-blob-candidate-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8"}).trim();
+ git("init","-q");git("config","user.name","Fixture");git("config","user.email","fixture@example.test");
+ writeFileSync(join(root,"payload.txt"),"fixture");git("add",".");git("commit","-qm","fixture");
+ const blob=git("rev-parse","HEAD:payload.txt");
+ assert.throws(()=>runCurrentUpstreamAudit({candidate:blob,sourceRepository:root}),/candidate is unavailable as a commit/);
+});
