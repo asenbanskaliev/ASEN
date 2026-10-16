@@ -1,0 +1,85 @@
+name: ECO-06 NVIDIA controlled-write E2E
+on:
+  push:
+    branches:
+      - feat/strict-parity-prerequisites
+    paths:
+      - .github/workflows/eco06-nvidia-e2e.yml
+      - scripts/eco06-pi-writer-e2e.mjs
+      - scripts/eco06-pi-writer-host.mjs
+      - src/agents/dispatcher.ts
+      - src/agents/pi-agent-tools.ts
+      - src/agents/pi-process-runner.ts
+      - src/lifecycle/skill-lifecycle.ts
+      - src/runtime/agent-store.ts
+      - src/runtime/pi-todo-tools.ts
+      - src/runtime/plan-dispatcher.ts
+      - src/runtime/todo-store.ts
+      - extensions/asen.ts
+      - tests/eco06-interrupted-writer.test.ts
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact branch HEAD SHA (40 lowercase hex characters)
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: eco06-nvidia-writer-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  controlled-write:
+    if: github.repository == 'asenbanskaliev/ASEN' && github.run_attempt == 1 && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
+    name: ECO-06 Pi 1.1.0 NVIDIA interruption and review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      ASEN_EXPECTED_SHA: ${{ inputs.expected_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify the exact branch candidate
+        shell: bash
+        env:
+          GITHUB_EVENT_SHA: ${{ github.sha }}
+          GITHUB_REPO: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          [[ "$ASEN_EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$ASEN_EXPECTED_SHA" = "$GITHUB_EVENT_SHA"
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          test "$GITHUB_REPO" = "asenbanskaliev/ASEN"
+          test "$GITHUB_REF_NAME" = "feat/strict-parity-prerequisites"
+          test "$(git ls-remote origin "refs/heads/$GITHUB_REF_NAME" | cut -f1)" = "$ASEN_EXPECTED_SHA"
+          mkdir -p eco06-pi-evidence
+          test -z "$(ls -A eco06-pi-evidence)"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+      - run: npm ci
+      - name: Validate Pi 1.1.0 runtime
+        run: node scripts/eco07-pi-recovery-preflight.mjs runtime
+      - name: Run real NVIDIA worker interruption, recovery, and review
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -z "$NVIDIA_API_KEY"; then
+            printf '{"candidate":"%s","provider":"nvidia","secretConfigured":false,"result":"BLOCKED"}\n' "$ASEN_EXPECTED_SHA" > eco06-pi-evidence/preflight.json
+            echo "::error::NVIDIA_API_KEY is not configured for this Actions job"
+            exit 1
+          fi
+          node --import tsx scripts/eco06-pi-writer-e2e.mjs
+      - name: Preserve exact-SHA evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: eco06-nvidia-writer-${{ github.sha }}
+          path: eco06-pi-evidence/
+          if-no-files-found: warn
+          retention-days: 30
