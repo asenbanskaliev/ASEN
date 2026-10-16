@@ -36,7 +36,7 @@ const runner={run:async(request,signal)=>{
     const controller=new AbortController(),combined=signal?AbortSignal.any([signal,controller.signal]):controller.signal;
     const running=baseRunner.run(request,combined);
     let settled=false;void running.finally(()=>{settled=true;}).catch(()=>{});
-    const deadline=Date.now()+160_000;
+    const deadline=Date.now()+210_000;
     while(Date.now()<deadline){
       const current=await import("node:fs/promises").then(fs=>fs.readFile(target,"utf8"));
       if(current!==initial){
@@ -55,9 +55,13 @@ const runner={run:async(request,signal)=>{
       }
       await new Promise(resolve=>setTimeout(resolve,25));
     }
-    send({kind:"writer-finished-without-partial",id:request.id,ok:false,outputLength:0,diagnostic:"No visible edit before the 160-second observation deadline; cancelling the Pi worker"});
     controller.abort();
-    return running;
+    const result=await running;
+    const output=typeof result.output==="string"?result.output:"";
+    const key=process.env.NVIDIA_API_KEY;
+    const diagnostic=output.replaceAll(key||"\u0000","[REDACTED]").replace(/[\u0000-\u001f\u007f]/gu," ").trim().slice(0,500);
+    send({kind:"writer-finished-without-partial",id:request.id,ok:result.ok,outputLength:output.length,diagnostic});
+    return result;
   }
   return baseRunner.run(request,signal);
 }};

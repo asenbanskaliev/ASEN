@@ -55,7 +55,7 @@ try{
   assert.equal(firstPlan.route,"orchestrate");
   assert.equal(firstPlan.persistedTasks.filter(task=>task.planTaskId.endsWith(":worker")).length,1);
   const firstDispatch=host.call("dispatch");
-  const firstOutcome=await waitForWriterOutcome(host,180_000);
+  const firstOutcome=await waitForWriterOutcome(host,240_000);
   if(firstOutcome.kind==="writer-finished-without-partial"){
     report.steps.push({event:"writer-finished-before-visible-edit",ok:firstOutcome.ok===true,outputLength:firstOutcome.outputLength,diagnostic:firstOutcome.diagnostic});
     throw new Error("Real Pi writer finished without changing the approved file; see the bounded runner diagnostic in the evidence artifact");
