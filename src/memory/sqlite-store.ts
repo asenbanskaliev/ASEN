@@ -1,9 +1,12 @@
+import {Buffer} from "node:buffer";
 import { DatabaseSync } from "node:sqlite";
 import {createHash,randomUUID} from "node:crypto";
 import {existsSync,rmSync} from "node:fs";
+import {withExclusiveFileLockSync} from "../io/exclusive-file-lock.js";
 import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemoryExport, MemoryRelation, MemoryRelationInput, MemorySessionState, MemorySessionSummary, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
 
 const CURRENT_SCHEMA_VERSION=8;
+const SQLITE_STARTUP_LOCK_TIMEOUT_MS=30_000;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
 const DEFAULT_DEDUPE_WINDOW_MS=15*60_000;
 type Migration={readonly version:number;apply(db:DatabaseSync):void};
@@ -87,6 +90,11 @@ function migrate(db:DatabaseSync,path:string,existingFile:boolean):void{
  }
  if(version!==CURRENT_SCHEMA_VERSION)throw new Error(`Memory schema version ${version} is unsupported`);
 }
+function repairFts(db:DatabaseSync):void{
+ db.exec("BEGIN IMMEDIATE");
+ try{db.exec("DELETE FROM memory_fts; INSERT INTO memory_fts(id,project_id,content) SELECT id,project_id,content FROM memory; COMMIT");}
+ catch(error){try{db.exec("ROLLBACK");}catch{/* Preserve the repair failure. */}throw error;}
+}
 
 export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,MemorySessionRegistry {
  readonly #db:DatabaseSync;
@@ -94,20 +102,19 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  constructor(path:string,dedupeWindowMs=DEFAULT_DEDUPE_WINDOW_MS){
   if(!Number.isFinite(dedupeWindowMs))throw new Error("Memory dedupe window must be finite");
   this.#dedupeWindowMs=dedupeWindowMs;
-  const existingFile=path!==":memory:"&&path!==""&&existsSync(path);
-  this.#db=new DatabaseSync(path);
-  try{
-   this.#db.exec("PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;");
-   migrate(this.#db,path,existingFile);
-   this.#db.exec("PRAGMA journal_mode=WAL;");
-   this.#repairFts();
-  }catch(error){try{this.#db.close();}catch{/* Preserve the startup failure. */}throw error;}
+  const initialize=()=>{
+   const existingFile=existsSync(path),db=new DatabaseSync(path);
+   try{
+    db.exec("PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;");
+    migrate(db,path,existingFile);
+    db.exec("PRAGMA journal_mode=WAL;");
+    repairFts(db);
+    return db;
+   }catch(error){try{db.close();}catch{/* Preserve the startup failure. */}throw error;}
+  };
+  this.#db=path===":memory:"||path===""?initialize():withExclusiveFileLockSync(path,initialize,SQLITE_STARTUP_LOCK_TIMEOUT_MS);
  }
- #repairFts():void{
-  this.#db.exec("BEGIN IMMEDIATE");
-  try{this.#db.exec("DELETE FROM memory_fts; INSERT INTO memory_fts(id,project_id,content) SELECT id,project_id,content FROM memory; COMMIT");}
-  catch(e){this.#db.exec("ROLLBACK");throw e;}
- }
+ #repairFts():void{repairFts(this.#db);}
  #transaction<T>(operation:()=>T):T{
   this.#db.exec("BEGIN IMMEDIATE");
   try{const result=operation();this.#db.exec("COMMIT");return result;}
@@ -161,7 +168,13 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   });
  }
  #requireIdentity(projectId:string,sessionId:string):void{if(!projectId.trim()||!sessionId.trim())throw new Error("Memory project and session IDs must be nonblank");}
- save(item:MemoryItem):void{
+ save(item:MemoryItem):void{this.#save(item);}
+ createIfAbsent(item:MemoryItem):void{this.#save(item,undefined,true);}
+ saveIfUnchanged(item:MemoryItem,expected:MemoryItem):void{
+  if(item.id!==expected.id||item.projectId!==expected.projectId||item.sessionId!==expected.sessionId)throw new Error("Memory conditional-write identity mismatch");
+  this.#save(item,expected);
+ }
+ #save(item:MemoryItem,expected?:MemoryItem,createOnly=false):void{
   this.#requireIdentity(item.projectId,item.sessionId);
   const content=stripPrivateTags(item.content);
   if(!content)throw new Error("Memory content is empty");
@@ -169,7 +182,13 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
    const session=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(item.sessionId) as {project_id:string;status:string}|undefined;
    if(!session||session.project_id!==item.projectId)throw new Error("Memory session identity conflict");
    if(session.status!=="live")throw new Error("Memory session is ended");
+   if(expected){
+    const current=this.get(item.id),keys=["id","projectId","sessionId","kind","topic","content","createdAt","pinned","title","scope","toolName","topicKey","revisionCount","duplicateCount","lastSeenAt","updatedAt"] as const;
+    if(!current||keys.some(key=>current[key]!==expected[key]))throw new Error("Memory revision conflict; record changed before persistence");
+   }
    const existing=this.#db.prepare("SELECT project_id FROM memory WHERE id=?").get(item.id) as {project_id?:string}|undefined;
+   if(createOnly&&this.#db.prepare("SELECT id FROM memory_tombstones WHERE id=?").get(item.id))throw new Error("Memory task record was deleted; use a fresh task identity");
+   if(createOnly&&existing)throw new Error("Memory task record already exists; resume the saved task instead");
    if(existing&&existing.project_id!==item.projectId) throw new Error("Memory ownership mismatch");
    this.#db.prepare(`INSERT INTO memory(id,project_id,session_id,kind,topic,content,created_at) VALUES(?,?,?,?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET session_id=excluded.session_id,kind=excluded.kind,topic=excluded.topic,content=excluded.content,created_at=excluded.created_at`)
@@ -260,9 +279,11 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  deleteObservation(id:string,expectedProject:string,hardDelete=false):void{
   if(!expectedProject.trim())throw new Error("Expected memory project must be nonblank");
   this.#transaction(()=>{
-   const existing=this.#db.prepare("SELECT project_id FROM memory WHERE id=?").get(id) as {project_id:string}|undefined;
+   const existing=this.#db.prepare("SELECT project_id,session_id FROM memory WHERE id=?").get(id) as {project_id:string;session_id:string}|undefined;
    if(!existing)throw new Error("Memory observation not found");
    if(existing.project_id!==expectedProject)throw new Error("Memory ownership mismatch");
+   // A session summary may repeat this note. Remove that derived summary with the note.
+   this.#db.prepare("DELETE FROM memory_session_summaries WHERE project_id=? AND session_id=?").run(expectedProject,existing.session_id);
    const deletedAt=new Date().toISOString();
    if(hardDelete){
     this.#db.prepare("INSERT INTO memory_tombstones(id,project_id,deleted_at) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET project_id=excluded.project_id,deleted_at=excluded.deleted_at").run(id,expectedProject,deletedAt);
@@ -383,20 +404,22 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   return this.searchWithOptions(projectId,query,options).map(item=>{const chars=Array.from(item.content),preview=chars.slice(0,300).join("");return {id:item.id,kind:item.kind,...(item.title!==undefined?{title:item.title}:{}),preview,truncated:chars.length>300,...(item.topicKey!==undefined?{topicKey:item.topicKey}:{})};});
  }
  formatContext(projectId:string,options:MemoryContextOptions={}):string{
+  const summary=this.#db.prepare("SELECT session_id,content,created_at FROM memory_session_summaries WHERE project_id=? ORDER BY created_at DESC,session_id DESC LIMIT 1").get(projectId) as {session_id:string;content:string;created_at:string}|undefined;
   const pinnedLimit=boundedContextLimit(options.pinned,Number.MAX_SAFE_INTEGER),recentLimit=boundedContextLimit(options.observations,20);
   const pinned=this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NULL AND pinned=1 ORDER BY created_at DESC,id DESC LIMIT ?").all(projectId,pinnedLimit) as Record<string,unknown>[];
   const recent=this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NULL AND pinned=0 ORDER BY created_at DESC,id DESC LIMIT ?").all(projectId,recentLimit) as Record<string,unknown>[];
-  if(pinned.length===0&&recent.length===0)return "";
-  let out="## Memory from Previous Sessions\\n\\n";
-  if(pinned.length){out+="### Pinned\\n"+pinned.map(r=>contextBullet(row(r),options.compact??false)).join("")+"\\n";}
-  if(recent.length){out+="### Recent Observations\\n"+recent.map(r=>contextBullet(row(r),options.compact??false)).join("")+"\\n";}
+  if(!summary&&pinned.length===0&&recent.length===0)return "";
+  let out="## Memory from Previous Sessions\n\n";
+  if(summary)out+=`### Latest Session Summary\n${Array.from(summary.content).slice(0,2000).join("")}\n\n`;
+  if(pinned.length){out+="### Pinned\n"+pinned.map(r=>contextBullet(row(r),options.compact??false)).join("")+"\n";}
+  if(recent.length){out+="### Recent Observations\n"+recent.map(r=>contextBullet(row(r),options.compact??false)).join("")+"\n";}
   return limitContextBytes(out,options.maxBytes??0);
  }
  close():void{this.#db.close();}
 }
 function boundedContextLimit(value:number|undefined,fallback:number):number{if(value===undefined||value===0)return fallback;if(value<0)return 0;return Math.min(Math.trunc(value),1000);}
-function contextBullet(item:MemoryItem,compact:boolean):string{const title=item.title?.trim()||item.topicKey||item.id;return compact?`- [${item.kind}] **${title}**\\n`:`- [${item.kind}] **${title}**: ${Array.from(item.content).slice(0,300).join("")}\\n`;}
-const contextTruncationMarker="\\n[truncated]\\n";
+function contextBullet(item:MemoryItem,compact:boolean):string{const title=item.title?.trim()||item.topicKey||item.id;return compact?`- [${item.kind}] **${title}**\n`:`- [${item.kind}] **${title}**: ${Array.from(item.content).slice(0,300).join("")}\n`;}
+const contextTruncationMarker="\n[truncated]\n";
 function limitContextBytes(value:string,maxBytes:number):string{if(maxBytes<=0||Buffer.byteLength(value,"utf8")<=maxBytes)return value;const marker=Buffer.from(contextTruncationMarker);if(maxBytes<marker.length)return truncateUtf8Bytes(value,maxBytes);return truncateUtf8Bytes(value,maxBytes-marker.length)+contextTruncationMarker;}
 function truncateUtf8Bytes(value:string,maxBytes:number):string{if(maxBytes<=0)return "";const bytes=Buffer.from(value,"utf8");if(bytes.length<=maxBytes)return value;return bytes.subarray(0,maxBytes).toString("utf8").replace(/\\uFFFD$/u,"");}
 function memoryFtsQuery(query:string,mode:"all"|"any"):string{

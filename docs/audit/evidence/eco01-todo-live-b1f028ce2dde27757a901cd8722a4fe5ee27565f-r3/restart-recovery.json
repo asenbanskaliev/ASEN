@@ -1,0 +1,76 @@
+{
+  "classification": "INTENTIONAL",
+  "reason": "ASEN preserves durable history and converts interrupted running work to blocked so it cannot resume without explicit user review; the source replays its in_progress snapshot.",
+  "source": {
+    "replayedState": "in_progress",
+    "task": {
+      "id": 1,
+      "title": "Continue safely",
+      "status": "in_progress"
+    }
+  },
+  "asen": {
+    "beforeFileSha256": "c3d6c55ec2ebf047e0a0e4d9b287311047782cc9db60799a467e7a78f7ec6e7c",
+    "afterFileSha256": "441e5f0197fd6d3df0f765fffb82920c9451699a68a987b29d7ee2d6cc742309",
+    "rows": [
+      {
+        "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+        "title": "Continue safely",
+        "events": [
+          {
+            "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+            "sessionId": "eco01-restart",
+            "projectId": "/eco01-project",
+            "revision": 1,
+            "state": "planned",
+            "at": "2026-10-16T16:21:52.728Z"
+          },
+          {
+            "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+            "sessionId": "eco01-restart",
+            "projectId": "/eco01-project",
+            "revision": 2,
+            "state": "running",
+            "at": "2026-10-16T16:21:52.731Z"
+          },
+          {
+            "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+            "sessionId": "eco01-restart",
+            "projectId": "/eco01-project",
+            "revision": 3,
+            "state": "blocked",
+            "at": "2026-10-16T16:21:52.735Z",
+            "reason": "ASEN restarted while this task was running; explicit review is required before continuing"
+          }
+        ],
+        "requestId": "eco01-restart-request",
+        "current": {
+          "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+          "sessionId": "eco01-restart",
+          "projectId": "/eco01-project",
+          "revision": 3,
+          "state": "blocked",
+          "at": "2026-10-16T16:21:52.735Z",
+          "reason": "ASEN restarted while this task was running; explicit review is required before continuing"
+        }
+      }
+    ],
+    "history": [
+      {
+        "revision": 1,
+        "state": "planned",
+        "reason": null
+      },
+      {
+        "revision": 2,
+        "state": "running",
+        "reason": null
+      },
+      {
+        "revision": 3,
+        "state": "blocked",
+        "reason": "ASEN restarted while this task was running; explicit review is required before continuing"
+      }
+    ]
+  }
+}

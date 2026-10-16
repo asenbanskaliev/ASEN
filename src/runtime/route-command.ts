@@ -1,0 +1,67 @@
+import path from "node:path";
+import {deriveOddFacts,planOddRoute,type OddRoutingRequest} from "../flow/odd-routing.js";
+import {buildOrchestrationPlan} from "../orchestration/orchestrator.js";
+import {materializeExecutablePlan} from "../orchestration/executable-plan.js";
+import type {Candidate} from "../core/types.js";
+import type {ProfileLayer} from "./profiles.js";
+
+const INPUT_KEYS=["taskIdentity","intent","scope","writes","riskOperations","session","testing","review","unresolvedDecisions"] as const;
+const PLAN_INPUT_KEYS=["instruction",...INPUT_KEYS] as const;
+const MAX_INPUT=16_384;
+const exact=(value:unknown,keys:readonly string[]):value is Record<string,unknown>=>!!value&&typeof value==="object"&&!Array.isArray(value)&&Object.getPrototypeOf(value)===Object.prototype&&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
+
+/** User-authored, read-only ODD route preview bound to the active project by the Pi adapter. */
+export function routePreviewCommand(args:string,repositoryIdentity:string):string{
+ if(typeof args!=="string"||!args.trim()||args.length>MAX_INPUT)throw new Error("Usage: /asen-route <JSON ODD facts>; input must be 1–16384 characters");
+ if(typeof repositoryIdentity!=="string"||!path.isAbsolute(repositoryIdentity))throw new Error("ASEN route preview requires a canonical active project path");
+ let value:unknown;try{value=JSON.parse(args);}catch{throw new Error("ASEN route preview expects valid JSON ODD facts");}
+ if(!exact(value,INPUT_KEYS))throw new Error(`ASEN route facts must contain exactly: ${INPUT_KEYS.join(", ")}`);
+ const facts=deriveOddFacts({...value,repositoryIdentity} as unknown as OddRoutingRequest),decision=planOddRoute(facts);
+ return [`route: ${decision.route}`,`risk: ${decision.risk}`,`verification: ${decision.verification}`,`reasons: ${decision.reasons.join(", ")}`,`isolated child required: ${decision.requiresIsolatedChild}`,"Preview only: no agent was dispatched and no write permission was granted."].join("\n");
+}
+
+/** Builds a bounded, read-only plan from the user's instruction and exact ODD facts. */
+export function controlledInstructionPlanCommand(args:string,repositoryIdentity:string,candidate?:Candidate,runtimeProfiles?:ProfileLayer):string{
+ if(typeof args!=="string"||!args.trim()||args.length>MAX_INPUT)throw new Error("Usage: /asen-plan <JSON instruction and ODD facts>; input must be 1–16384 characters");
+ if(typeof repositoryIdentity!=="string"||!path.isAbsolute(repositoryIdentity))throw new Error("ASEN planning requires a canonical active project path");
+ if(!args.trimStart().startsWith("{")){
+  const instruction=args.trim();
+  if(instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(instruction))throw new Error("ASEN plan instruction is invalid");
+  return JSON.stringify({
+   instruction,repository:repositoryIdentity,status:"needs-verified-facts",
+   steps:["Establish task identity and intended scope","Confirm whether writes or sensitive operations are requested","Determine session, verification and review requirements","Derive ODD route from verified facts","Select skills and roles before any authorized execution"],
+   missingFacts:[...INPUT_KEYS],execution:{started:false,authorized:false},
+   notice:"Conservative instruction triage only. No ODD decision, skills, agents, permissions or execution were issued."
+  },null,2);
+ }
+ let value:unknown;try{value=JSON.parse(args);}catch{throw new Error("ASEN planning expects valid JSON instruction and ODD facts");}
+ if(!exact(value,PLAN_INPUT_KEYS))throw new Error(`ASEN plan input must contain exactly: ${PLAN_INPUT_KEYS.join(", ")}`);
+ if(typeof value.instruction!=="string"||!value.instruction.trim()||value.instruction!==value.instruction.trim()||value.instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(value.instruction))throw new Error("ASEN plan instruction is invalid");
+ const {instruction,...factsInput}=value;
+ const facts=deriveOddFacts({...factsInput,repositoryIdentity} as unknown as OddRoutingRequest),decision=planOddRoute(facts);
+ if(candidate&&(candidate.repository!==repositoryIdentity||!candidate.id||!candidate.revision||!candidate.createdAt))throw new Error("ASEN plan candidate does not match the active project");
+ const writeSurfaces=facts.writes.map(write=>write.path);
+ const plan=buildOrchestrationPlan({taskId:decision.taskIdentity,repository:decision.repositoryIdentity,prompt:instruction,...(candidate?{candidate}:{}),...(candidate&&writeSurfaces.length?{writeSurfaces}:{}),...(runtimeProfiles?{runtimeProfiles}:{})},decision);
+ const writerAuthorizationBasis=candidate&&writeSurfaces.length?JSON.stringify({instruction,...factsInput}):undefined;
+ const executablePlan=materializeExecutablePlan(plan,instruction,writerAuthorizationBasis);
+ const sensitive=facts.riskOperations.length>0;
+ return JSON.stringify({
+  task:decision.taskIdentity,
+  route:decision.route,
+  risk:decision.risk,
+  verification:decision.verification,
+  reasons:decision.reasons,
+  requiredAgentRoles:plan.agents.map(agent=>agent.role),
+  selectedSkills:plan.skills,
+  delegatedAgents:plan.agents.map(agent=>({id:agent.id,role:agent.role,phase:agent.expectedPhase??null,skillPaths:agent.skillPaths??[],model:agent.model??null,thinking:agent.thinking??null})),
+  executablePlan,
+  requiresSingleWriter:decision.requiresSingleWriter,
+  requiresIsolatedChild:decision.requiresIsolatedChild,
+  sensitiveOperationsPresent:sensitive,
+  authorizationRequiredBeforeExecution:true,
+  recoveryPolicy:"interrupted tasks require fresh authorization; no automatic write replay",
+  execution:{started:false,authorized:false},
+  actions:{informationRetrieved:false,reviewRequested:false},
+  notice:"Plan only. This command does not retrieve information, request review, grant execution authorization, or dispatch agents.",
+ },null,2);
+}

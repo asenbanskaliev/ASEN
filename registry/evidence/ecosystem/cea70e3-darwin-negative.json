@@ -1,0 +1,12 @@
+{
+  "id": "ECO-02A-darwin-negative",
+  "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+  "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "kind": "negative",
+  "class": "DETERMINISTIC_EXECUTION",
+  "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+  "observation": "12 selected preflight contract test(s) completed; pattern: command and tool collisions stop every registration",
+  "result": "PASS",
+  "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+  "logSha256": "eff134c613f3f2d8ca3b83c5a126b17ab8cf3ed66cc024f885ec95bd76b7a0b6"
+}

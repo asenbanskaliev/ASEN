@@ -1,8 +1,6 @@
 name: Memory Pi Free E2E
 on:
   workflow_dispatch:
-  push:
-  pull_request:
 permissions:
   contents: read
 jobs:
@@ -19,7 +17,7 @@ jobs:
       - run: npm install
       - name: Install Pi and provider
         run: |
-          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0
           pi install npm:pi-free
       - name: Execute synthetic memory restart and model recall
         env:

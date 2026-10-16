@@ -1,0 +1,55 @@
+# Ecosystem closure audit: current evidence
+
+Initial candidate audited: `46c81fa67ce39aee9186c481d278cbd7e398d448` (`feat/strict-parity-prerequisites`). The follow-up implementation and host checks are recorded below against their exact candidate.
+
+This audit records the code and evidence present before the current batch. `PARTIAL` means a behavior-backed foundation exists but required composition or recovery evidence is still missing.
+
+| Route | Existing mechanism and source of truth | Evidence found | Real gap |
+| --- | --- | --- | --- |
+| R03 | `runtime/launcher.ts` owns the bounded home config schema/path and flag → config → `ASEN_HOME` environment → default precedence. `cli.ts` reads the config on each invocation and passes its resolved home to Pi. Pi's other settings remain Pi-owned. | `launcher.test.ts` covers strict shape, invalid values, precedence, reload, and the public `asen home` command. | Config errors are tolerated only for invalid JSON/schema (the safe default is used); unreadable config returns a bounded CLI error. No general settings system, live in-process reload, rollback workflow, or complete user diagnostics. Keep `PARTIAL`. |
+| R04 | `runtime/profiles.ts` validates profiles, mutates them and resolves session → project → global → default. `runtime/profile-store.ts` atomically writes/reloads profile files; the orchestrator carries the selected model/thinking values on agent requests for Pi argument routing. | `runtime-profiles.test.ts`, `profile-store.test.ts`, `orchestrator.test.ts`, and `pi-process-runner.test.ts`. | Extension exposes profile listing only; no production path loads profile files and invokes orchestration. Profile mutations now use the shared bounded cross-process lock plus atomic write, with concurrent lost-update and failed-mutation regression coverage. Runtime layer discovery, production extension-to-orchestrator composition and customization command remain incomplete. |
+| R05 | `runtime/workspace-attribution.ts` binds actor, session, project and worktree; validates actor kind, operation and nonempty in-worktree path; renders bounded rows. | `workspace-attribution.test.ts` covers forged kinds, invalid operations, empty/escaping paths and bounded output; extension output accepts an injected provider. | No built-in durable change journal or actor lifecycle integration. |
+| R06 | Workspace change projection and narrow output exist. | `workspace-attribution.test.ts`, `extension-state-commands.test.ts`. | No public workspace mutation UI, persisted conflict handling, or restart/isolation flow. |
+| R07 | Presentation helpers exist. | `presentation.test.ts`. | Contract and host-level accessibility snapshots remain incomplete. |
+| R08 | Interaction tools and shortcut resolution inventory exist. | Interaction and `shortcuts.test.ts` suites. | Shortcut bindings are not registered as a complete public interaction flow; several advertised bindings remain unavailable. |
+| R09 | `runtime/agent-lifecycle.ts` validates monotonic transitions, timestamps, owner kinds and bounded attribution identifiers; extension status is injectable. | `agent-lifecycle.test.ts`, `extension-state-commands.test.ts`. | Dispatcher execution now projects queued → running → completed/failed into the existing lifecycle sink without granting authority. Durable persistence/recovery, cancellation projection and full Pi/orchestrator host composition remain open. |
+| R10 | `task-replay.ts` validates exact bounded task events and ordered transitions. `odd-task-tracking.ts` mirrors the complete bound ODD document/TODO and appends replay events to that existing MemoryStore item. `tasks/task.ts` is transient ASEN engineering-task state only. | `task-replay.test.ts`, `odd-task-tracking.test.ts`, SQLite close/reopen and stale-revision coverage; first appended event now fails closed unless task, project and initial session match the live contract. | Append uses read-then-save and does not provide cross-process compare-and-swap, so simultaneous append conflict handling remains open. The internal EngineeringTask is deliberately not a user-task source of truth. |
+
+## Current exact-SHA host evidence
+
+At initial candidate `46c81fa67ce39aee9186c481d278cbd7e398d448`, Phase 0 succeeded (run `37523687482`), CI succeeded on Ubuntu, Windows and macOS (run `37523687820`), and Release Gate succeeded on all three platforms (run `37523687432`). Windows ran `npm run verify:pack` and the Windows package smoke steps successfully. Pi Free Smoke was skipped (run `37523687394`) and is not a pass.
+
+At follow-up candidate `f5ec3874f8cc1adee57f5bc44992dcb46efe6321`, Phase 0 run `37576518470` succeeded; CI run `37576518506` and Release Gate run `37576518628` succeeded on Ubuntu, Windows and macOS. Windows `npm run check`, `npm run verify:pack`, Pi package installation and packed-install smoke all succeeded. Exact-SHA check `authenticated-free-model` was `skipped`; this is not a Pi Free pass.
+
+At candidate `1f46630d32bbbf5544db866716322585717fbd65`, Phase 0 succeeded; CI and Release Gate succeeded on Ubuntu, Windows and macOS. One duplicate Ubuntu run hit a transient `database is locked` failure in the existing simultaneous SQLite migration test; the isolated job retry passed, as did 20/20 local repetitions. This surfaced a memory-core concurrency flake; it is recorded without redesigning the memory core. The exact-SHA Pi Free check was `skipped`.
+
+## R14 and R15 evidence
+
+The Pi extension now exposes `/asen-history` for opt-in capture of interactive/RPC text, redaction before persistence, project-scoped search/export/delete, retention, disable, and tombstones. The private JSON store uses atomic writes and a bounded cross-process lock; deterministic tests cover concurrent updates, stale-lock recovery, confirmed reset after corruption, close/reopen, and project isolation. Keyboard integration and complete cross-platform user journeys remain open.
+
+`/asen-usage` persists only local counters, supports preview/reset/disable, and requires a confirmation after showing the exact preview before recording telemetry consent. It sends no data; there is no telemetry transport. The Reference A one-shot delivery behavior and cross-platform consent journey are still unverified, so neither route is `FULL`.
+
+## Work in this batch
+
+- Effective profile choices are tested through persisted/reloaded session, project and global layers, orchestration agent requests and Pi `--model`/`--thinking` arguments. Profile mutations now serialize through the existing shared file-lock/atomic-write primitives, so concurrent mutations do not silently lose an update and failed mutations preserve the previous durable value. The extension still does not invoke profile routing as a production user flow.
+- Workspace attribution now rejects forged actor kinds, invalid operation names and empty paths. Agent transitions reject invalid timestamps. Initial ODD replay events are validated against the bound task/project/session before the existing MemoryStore item is updated; regression tests prove rejected events persist nothing.
+- ODD reopen/resume, strict input validation and stale-revision tests cover the combined path. Concurrent append conflict handling remains an explicit gap. No memory schema/core or parallel task store was added.
+- R03-R06 and R09-R10 and R14-R15 remain `PARTIAL` until their remaining integration and host/recovery gaps are closed. R19 is recorded as `PARTIAL`, one of the map's allowed values.
+
+## Post-audit reconciliation batch
+
+Code inspection at pre-batch candidate `ce417c9c72f36566c7c9eddd00cb558467f06e5f` found that several older Markdown summaries lagged shipped code. In particular, History and Usage already have Pi command/event wiring and durable private stores; Workspace and Agent lifecycle have public bounded projections but still rely on injected providers; profile routing reaches orchestration and Pi process arguments deterministically but lacks production extension composition. The route map therefore remains conservatively PARTIAL while its remaining-gap text is reconciled to code rather than historical implementation state.
+
+This batch also closes the profile store's identified lost-update window by reusing `withExclusiveFileLock` and `atomicWriteText`; it does not introduce another store or settings system. Fresh exact-HEAD CI/Release evidence is required before treating the batch as stable.
+
+The dispatcher now accepts the existing lifecycle abstraction as an optional projection sink. It records bounded system-owned lifecycle state around the exact frozen request that already passed Dispatcher authority gates. This does not mint writer admission, phase grants, skill context or workspace authority. Existing callers remain compatible when no sink is supplied. Durable lifecycle persistence and restart recovery remain intentionally open rather than inventing a second store in this batch.
+
+## Session/lifecycle composition audit
+
+The existing session checkpoint is now the recovery boundary for observational agent lifecycle state; no separate agent store was introduced. Checkpoint creation rejects lifecycle rows from another repository or Pi session, recovery preserves the bounded rows as detached data, and deserialization still cannot recreate issued skill authority. The real Pi SessionManager cross-process fixture now carries this lifecycle projection through checkpoint/restart while retaining the existing project, repository, revision and Pi-session negative checks. This advances R09/R13/R20 but does not prove cancellation recovery, workspace mutation observation or full production orchestrator-to-host composition, so those routes remain PARTIAL pending their own evidence.
+
+### Follow-up boundary audit
+
+The dispatcher/lifecycle clock mismatch was a real deterministic defect: lifecycle transitions already used an injectable clock while Dispatcher created the initial timestamp independently. Dispatcher now obtains the initial timestamp from the lifecycle sink, preserving stale-transition rejection and deterministic tests. Recovered lifecycle rows are bounded, duplicate-free and revalidated through the existing lifecycle constructors/transitions; forged owner kinds, stale timestamps and cross-session/repository rows fail closed.
+
+The audit did not establish that AgentRequest.isolationKey is the product session identity or that repository is the product projectId. Those current projection fields therefore remain implementation-level attribution and must not be promoted as R05/R09 product-identity closure. Likewise no reliable Pi mutation feed was found in the audited runner boundary, so R05/R06 workspace integration remains PARTIAL rather than inferring changes from successful execution. Existing profile routing already reaches AgentRequest model/thinking and Pi runtime arguments; further work is evidence/composition, not a second routing implementation.

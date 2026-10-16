@@ -1,0 +1,464 @@
+{
+  "schema": "asen.eco01.todo-pair.v1",
+  "contractId": "ECO-SRC-91b70c5973297fbd:12",
+  "source": {
+    "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+    "sourceId": "ECO-SRC-91b70c5973297fbd",
+    "fileSha256": "db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d",
+    "span": {
+      "startLine": 168,
+      "endLine": 203,
+      "sha256": "7d73a31a69f345bdd676a260d1a01a8c480cb792249fc7b8fe3bcc679324da2c"
+    }
+  },
+  "asen": {
+    "commit": "b1f028ce2dde27757a901cd8722a4fe5ee27565f",
+    "tree": "ae33a228960d26106984541254cddb00223c3b3d",
+    "paths": [
+      "src/runtime/pi-todo-tools.ts",
+      "src/runtime/todo-store.ts"
+    ]
+  },
+  "runtime": {
+    "platform": "linux",
+    "node": "v24.19.0",
+    "sourcePiTui": "0.87.1",
+    "asenPiTui": "1.1.0"
+  },
+  "summary": {
+    "executed": 5,
+    "statuses": {
+      "EQUIVALENT": 0,
+      "DIVERGENT": 0,
+      "INTENTIONAL": 3,
+      "NOT_APPLICABLE": 0,
+      "UNVERIFIED": 2
+    },
+    "overall": "UNVERIFIED",
+    "limitations": [
+      "This probes core state operations, not the complete Pi 1.1 extension lifecycle.",
+      "No direct ASEN counterpart was established for source whole-list write/clear.",
+      "Registration, denied-context and full tool-output scenarios remain open."
+    ]
+  },
+  "observations": [
+    {
+      "scenario": "normal",
+      "file": "normal.json",
+      "sha256": "8a5eae566e431678cb1604ea5a0a37ff6c80531d50f31e2463a824513340a244",
+      "observation": {
+        "classification": "UNVERIFIED",
+        "reason": "The shared task intent is observable, but exact state and persistence mappings require an accepted contract crosswalk.",
+        "source": {
+          "input": [
+            {
+              "action": "add",
+              "title": "Review parser"
+            },
+            {
+              "action": "update",
+              "id": 1,
+              "status": "in_progress",
+              "note": "checking"
+            }
+          ],
+          "addResult": "Added #1 Review parser (pending)",
+          "updateResult": "#1 Review parser → in_progress",
+          "state": {
+            "tasks": [
+              {
+                "id": 1,
+                "title": "Review parser",
+                "status": "in_progress",
+                "note": "checking"
+              }
+            ],
+            "nextId": 2,
+            "updatedTurn": 2
+          },
+          "replayedState": {
+            "tasks": [
+              {
+                "id": 1,
+                "title": "Review parser",
+                "status": "in_progress",
+                "note": "checking"
+              }
+            ],
+            "nextId": 2,
+            "updatedTurn": 2
+          }
+        },
+        "asen": {
+          "input": [
+            {
+              "method": "add",
+              "title": "Review parser",
+              "requestId": "eco01-normal-request"
+            },
+            {
+              "method": "update",
+              "state": "running",
+              "reason": "checking"
+            }
+          ],
+          "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+          "updateRevision": 2,
+          "rows": [
+            {
+              "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+              "title": "Review parser",
+              "events": [
+                {
+                  "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+                  "sessionId": "eco01-normal",
+                  "projectId": "/eco01-project",
+                  "revision": 1,
+                  "state": "planned",
+                  "at": "2026-10-16T16:21:52.713Z"
+                },
+                {
+                  "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+                  "sessionId": "eco01-normal",
+                  "projectId": "/eco01-project",
+                  "revision": 2,
+                  "state": "running",
+                  "at": "2026-10-16T16:21:52.723Z",
+                  "reason": "checking"
+                }
+              ],
+              "requestId": "eco01-normal-request",
+              "current": {
+                "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+                "sessionId": "eco01-normal",
+                "projectId": "/eco01-project",
+                "revision": 2,
+                "state": "running",
+                "at": "2026-10-16T16:21:52.723Z",
+                "reason": "checking"
+              }
+            }
+          ],
+          "storeFileSha256": "235f4cfb22dae082d3005d28c7bbe77b61c7fd5278c45e39a33993514bbe006e",
+          "storeBytes": 799
+        },
+        "difference": {
+          "sourceState": "in_progress",
+          "asenState": "running",
+          "sourceIdentity": "integer task id",
+          "asenIdentity": "opaque task id plus session/project/revision"
+        }
+      }
+    },
+    {
+      "scenario": "invalid-input",
+      "file": "invalid-input.json",
+      "sha256": "437b37d0dbbdf7b840aeb50d4fee4ad9440d0c3bff665fdcd3876d13ec61a7e6",
+      "observation": {
+        "classification": "INTENTIONAL",
+        "reason": "Both reject whitespace-only titles and preserve an empty task list; ASEN exposes rejection by throwing while the source returns an error result.",
+        "source": {
+          "input": {
+            "action": "add",
+            "title": "   "
+          },
+          "error": "title is required",
+          "resultText": "Error: title is required",
+          "state": {
+            "tasks": [],
+            "nextId": 1,
+            "updatedTurn": null
+          }
+        },
+        "asen": {
+          "input": {
+            "method": "add",
+            "title": "   "
+          },
+          "error": "Invalid ASEN Todo task",
+          "rows": [],
+          "storeFileExists": false,
+          "storeFileSha256": null
+        }
+      }
+    },
+    {
+      "scenario": "restart-recovery",
+      "file": "restart-recovery.json",
+      "sha256": "1a3ebe8141b6de798f5a2e44c77168b7788efaa97034bcdc096edd6f542ee072",
+      "observation": {
+        "classification": "INTENTIONAL",
+        "reason": "ASEN preserves durable history and converts interrupted running work to blocked so it cannot resume without explicit user review; the source replays its in_progress snapshot.",
+        "source": {
+          "replayedState": "in_progress",
+          "task": {
+            "id": 1,
+            "title": "Continue safely",
+            "status": "in_progress"
+          }
+        },
+        "asen": {
+          "beforeFileSha256": "c3d6c55ec2ebf047e0a0e4d9b287311047782cc9db60799a467e7a78f7ec6e7c",
+          "afterFileSha256": "441e5f0197fd6d3df0f765fffb82920c9451699a68a987b29d7ee2d6cc742309",
+          "rows": [
+            {
+              "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+              "title": "Continue safely",
+              "events": [
+                {
+                  "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+                  "sessionId": "eco01-restart",
+                  "projectId": "/eco01-project",
+                  "revision": 1,
+                  "state": "planned",
+                  "at": "2026-10-16T16:21:52.728Z"
+                },
+                {
+                  "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+                  "sessionId": "eco01-restart",
+                  "projectId": "/eco01-project",
+                  "revision": 2,
+                  "state": "running",
+                  "at": "2026-10-16T16:21:52.731Z"
+                },
+                {
+                  "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+                  "sessionId": "eco01-restart",
+                  "projectId": "/eco01-project",
+                  "revision": 3,
+                  "state": "blocked",
+                  "at": "2026-10-16T16:21:52.735Z",
+                  "reason": "ASEN restarted while this task was running; explicit review is required before continuing"
+                }
+              ],
+              "requestId": "eco01-restart-request",
+              "current": {
+                "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+                "sessionId": "eco01-restart",
+                "projectId": "/eco01-project",
+                "revision": 3,
+                "state": "blocked",
+                "at": "2026-10-16T16:21:52.735Z",
+                "reason": "ASEN restarted while this task was running; explicit review is required before continuing"
+              }
+            }
+          ],
+          "history": [
+            {
+              "revision": 1,
+              "state": "planned",
+              "reason": null
+            },
+            {
+              "revision": 2,
+              "state": "running",
+              "reason": null
+            },
+            {
+              "revision": 3,
+              "state": "blocked",
+              "reason": "ASEN restarted while this task was running; explicit review is required before continuing"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "scenario": "duplicate-request",
+      "file": "duplicate-request.json",
+      "sha256": "ce23b33ff75c03797dacc2874d528ea910319e116e3485abf92770ecd5daad70",
+      "observation": {
+        "classification": "INTENTIONAL",
+        "reason": "ASEN deduplicates retried request IDs to prevent duplicate tasks; the source add operation has no request identity and appends each call.",
+        "source": {
+          "repeatedAdds": 2,
+          "taskCount": 2,
+          "tasks": [
+            {
+              "id": 1,
+              "title": "One operation",
+              "status": "pending"
+            },
+            {
+              "id": 2,
+              "title": "One operation",
+              "status": "pending"
+            }
+          ]
+        },
+        "asen": {
+          "firstTaskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+          "retriedTaskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+          "sameTask": true,
+          "taskCount": 1,
+          "rows": [
+            {
+              "taskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+              "title": "One operation",
+              "events": [
+                {
+                  "taskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+                  "sessionId": "eco01-duplicate",
+                  "projectId": "/eco01-project",
+                  "revision": 1,
+                  "state": "planned",
+                  "at": "2026-10-16T16:21:52.739Z"
+                }
+              ],
+              "requestId": "eco01-duplicate-request",
+              "current": {
+                "taskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+                "sessionId": "eco01-duplicate",
+                "projectId": "/eco01-project",
+                "revision": 1,
+                "state": "planned",
+                "at": "2026-10-16T16:21:52.739Z"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "scenario": "atomic-write-failure",
+      "file": "atomic-write-failure.json",
+      "sha256": "2fa01d58043c625d33c77b828f727a7b52508da1b8655d42d6b56d185ec60592",
+      "observation": {
+        "classification": "UNVERIFIED",
+        "reason": "The source supports atomic whole-list write; the mapped ASEN interface exposes append and revisioned state transitions, with no direct equivalent batch replacement operation.",
+        "source": {
+          "input": {
+            "action": "write",
+            "tasks": [
+              {
+                "title": "Would be added"
+              },
+              {
+                "title": "   "
+              }
+            ]
+          },
+          "error": "title is required",
+          "stateAfterFailure": {
+            "tasks": [
+              {
+                "id": 1,
+                "title": "Existing",
+                "status": "pending"
+              }
+            ],
+            "nextId": 2,
+            "updatedTurn": 1
+          },
+          "existingState": {
+            "tasks": [
+              {
+                "id": 1,
+                "title": "Existing",
+                "status": "pending"
+              }
+            ],
+            "nextId": 2,
+            "updatedTurn": 1
+          }
+        },
+        "asen": {
+          "availableMethods": [
+            "add",
+            "update",
+            "list",
+            "recover",
+            "addPlan"
+          ],
+          "existingTaskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+          "rowsBefore": [
+            {
+              "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+              "title": "Existing",
+              "events": [
+                {
+                  "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+                  "sessionId": "eco01-atomic",
+                  "projectId": "/eco01-project",
+                  "revision": 1,
+                  "state": "planned",
+                  "at": "2026-10-16T16:21:52.745Z"
+                }
+              ],
+              "current": {
+                "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+                "sessionId": "eco01-atomic",
+                "projectId": "/eco01-project",
+                "revision": 1,
+                "state": "planned",
+                "at": "2026-10-16T16:21:52.745Z"
+              }
+            }
+          ],
+          "rowsAfter": [
+            {
+              "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+              "title": "Existing",
+              "events": [
+                {
+                  "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+                  "sessionId": "eco01-atomic",
+                  "projectId": "/eco01-project",
+                  "revision": 1,
+                  "state": "planned",
+                  "at": "2026-10-16T16:21:52.745Z"
+                }
+              ],
+              "current": {
+                "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+                "sessionId": "eco01-atomic",
+                "projectId": "/eco01-project",
+                "revision": 1,
+                "state": "planned",
+                "at": "2026-10-16T16:21:52.745Z"
+              }
+            }
+          ],
+          "storeFileBeforeSha256": "94bfbbf667c29ccf4baf4f2fffb06329188cf599aadf4e0557713ac180c9dcbd",
+          "storeFileAfterSha256": "94bfbbf667c29ccf4baf4f2fffb06329188cf599aadf4e0557713ac180c9dcbd",
+          "storeUnchanged": true,
+          "comparisonBlocker": "no batch replace/clear operation exposed by the ASEN Todo store"
+        }
+      }
+    }
+  ],
+  "execution": {
+    "command": "node --import tsx scripts/eco01-todo-pair.mjs ../gentle-source docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3 08de420ca29be16b6f6bee725a30b599b061df16 b1f028ce2dde27757a901cd8722a4fe5ee27565f ae33a228960d26106984541254cddb00223c3b3d",
+    "logs": {
+      "stdout": {
+        "file": "run.stdout.log",
+        "sha256": "2e9aec9a06da5ec1fa6e45e9ec07a2ac9759ee0a69ae00de00cad0feafe27295"
+      },
+      "stderr": {
+        "file": "run.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "focusedTests": {
+      "source": {
+        "command": "node --experimental-strip-types --test ../gentle-source/tests/shell-todo.test.ts",
+        "passed": 17,
+        "failed": 0,
+        "log": "source-tests.log",
+        "sha256": "6ce8e0e11cb91b6b0b0935ed70c4af4eb28c8994451e46920911a0e3ab98bc66"
+      },
+      "asen": {
+        "command": "node --import tsx --test tests/todo-store.test.ts tests/pi-todo-tools.test.ts",
+        "passed": 34,
+        "failed": 0,
+        "log": "asen-tests.log",
+        "sha256": "a97ebdf8c81ab1ab34122d073162af3d209e7f0c8ef04a616a04d4a838c7045f"
+      }
+    },
+    "sourceDependencySetup": {
+      "command": "npm install --ignore-scripts --no-save --no-package-lock @earendil-works/pi-tui@0.87.1",
+      "result": "completed; 295 packages; no tracked source changes",
+      "limitation": "Frozen source has no lockfile; the imported TUI package is pinned to its package.json version."
+    }
+  }
+}

@@ -1,0 +1,298 @@
+{
+  "schema": "asen.ecosystem-evidence-bundle/v1",
+  "candidate": "a2ea0f2253bd7548790fd03a4f3693ab65deaa99",
+  "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+  "cells": [
+    {
+      "id": "linux-0.85.1-tui",
+      "sha256": "ac556deb32810b7bb33a8cfebb060a4455e19d774cb9d1309119a80ac27c6ef6",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "linux-0.85.1-rpc",
+      "sha256": "5533d9444730e2d95f7797e81a36369ca0682609d434e35278e1d9b36c016c07",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "linux-0.85.1-json",
+      "sha256": "8b0bd3919bbe07ab909cf260e1c500b755b7af3f59f39d4962f1addba5b648a2",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "linux-0.85.1-print",
+      "sha256": "a8ac82607ef0a2570c0da171cba8eca5cb76001c2128650cdf6d08824b85e7d4",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "linux-1.1.0-tui",
+      "sha256": "dc62e32adbbf75de23f314833ca20107780c3d3285ae49ed671391205db761c5",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "linux-1.1.0-rpc",
+      "sha256": "215d8932beafe8ecfd502205800b087e8d44ef78d47c50dc98eed2ea992ce1e8",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "linux-1.1.0-json",
+      "sha256": "8867732cca68ecf7a0b8b55389026a4feb6d7ea320db16096065d1dce0994443",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "linux-1.1.0-print",
+      "sha256": "3892a35b52db7c278818236f07d907ff1645367e4ec09cb736f72f1d9e50ae13",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "win32-0.85.1-tui",
+      "sha256": "f911de3a7e225a4b718eef42f903e8c12b23ee5b4f5d3a3e9f8bd6f07449e8f8",
+      "artifactSha256": "f081e651558cd6c90ac479191de268c06228473fd19af3aa6d477193a571a766"
+    },
+    {
+      "id": "win32-0.85.1-rpc",
+      "sha256": "de0df0dcb570b092a4721156fae38bbf8a8a07d2294b7495832c9fac85265d39",
+      "artifactSha256": "f081e651558cd6c90ac479191de268c06228473fd19af3aa6d477193a571a766"
+    },
+    {
+      "id": "win32-0.85.1-json",
+      "sha256": "7566711676635fba3181a67bd2d73201481d28353b6a48176859de89d3a28f18",
+      "artifactSha256": "f081e651558cd6c90ac479191de268c06228473fd19af3aa6d477193a571a766"
+    },
+    {
+      "id": "win32-0.85.1-print",
+      "sha256": "e24718f586fc84d21d4530b7a8bfc23671e4519e822d587eeec574267f0a9360",
+      "artifactSha256": "f081e651558cd6c90ac479191de268c06228473fd19af3aa6d477193a571a766"
+    },
+    {
+      "id": "win32-1.1.0-tui",
+      "sha256": "7ea59890d513eed6d2cfb33213ecbf9e7f225035c45cb71109debbe1831e5be7",
+      "artifactSha256": "f081e651558cd6c90ac479191de268c06228473fd19af3aa6d477193a571a766"
+    },
+    {
+      "id": "win32-1.1.0-rpc",
+      "sha256": "c242f26389b00bf1b2ad8cef4f4c89a3f945cf8763ac7d12aa3e2ed4f6a1e50f",
+      "artifactSha256": "f081e651558cd6c90ac479191de268c06228473fd19af3aa6d477193a571a766"
+    },
+    {
+      "id": "win32-1.1.0-json",
+      "sha256": "80806404614d370b67356159c70dfefeab370c3d1c10a67d8757e27f7e73b2ff",
+      "artifactSha256": "f081e651558cd6c90ac479191de268c06228473fd19af3aa6d477193a571a766"
+    },
+    {
+      "id": "win32-1.1.0-print",
+      "sha256": "5705543d135ac17250ac4f30c680ce879133c006c954cccfb022a6dd649734cf",
+      "artifactSha256": "f081e651558cd6c90ac479191de268c06228473fd19af3aa6d477193a571a766"
+    },
+    {
+      "id": "darwin-0.85.1-tui",
+      "sha256": "a1c56777d66fa057b748176b7cb89bb227962e3558d13069c71461a62522ca97",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "darwin-0.85.1-rpc",
+      "sha256": "edb8106d936be932ed8b9fef29fa903379a166b17d31e19d96b61c39d945ef09",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "darwin-0.85.1-json",
+      "sha256": "7d56c3961515db39d101665f5d0a762d758c5a20ad7409f802f35428c1f5df54",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "darwin-0.85.1-print",
+      "sha256": "d7dce0e632e22f744077fde714df2af7e3653e21f2dc3a9c161c722e83e51d2e",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "darwin-1.1.0-tui",
+      "sha256": "8267acf125fe53b706a4b9618873859a278fe61fe64ebfa90bfeda2a59ca3430",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "darwin-1.1.0-rpc",
+      "sha256": "bcf8d25b0ca98258986ee2c2c64ddcc0627b3cc7e822ba97366da13becba528e",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "darwin-1.1.0-json",
+      "sha256": "af879981d5d0439bb50d0403ddb83565f28e0e3525480598236a9f0040e1904a",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    },
+    {
+      "id": "darwin-1.1.0-print",
+      "sha256": "ce763254573103555f258471a7353634a75cae2c5209ca92d8a11fd52fe5619e",
+      "artifactSha256": "30201e410fa74c822b18ae2b333d6fd0ea6d2f528c7133cec8995ca0acac482a"
+    }
+  ],
+  "receipts": [
+    {
+      "id": "ECO-02A-linux-positive",
+      "kind": "positive",
+      "platform": "linux",
+      "sha256": "a894b7cd6ff0677fe4ab797ddffad1868814758d7381f93d87cc801ed158a243",
+      "sourceManifestCheckoutSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493"
+    },
+    {
+      "id": "ECO-02A-linux-negative",
+      "kind": "negative",
+      "platform": "linux",
+      "sha256": "1e196335ced4f98832227ead147349e21076d888966aef8127c43d62cc5bedc2",
+      "sourceManifestCheckoutSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493"
+    },
+    {
+      "id": "ECO-02A-linux-failure",
+      "kind": "failure",
+      "platform": "linux",
+      "sha256": "55b54c93c4fc9bc9c3bc4faec4b355bf6f66075cc655ad30363371c96305e38d",
+      "sourceManifestCheckoutSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493"
+    },
+    {
+      "id": "ECO-02A-linux-recovery",
+      "kind": "recovery",
+      "platform": "linux",
+      "sha256": "bb498797e79fed4fe773256de7403f0c87e16f4b2688fde573312096dab30213",
+      "sourceManifestCheckoutSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493"
+    },
+    {
+      "id": "ECO-02A-linux-linux",
+      "kind": "linux",
+      "platform": "linux",
+      "sha256": "73ac8abb3edfdf9dd6112c50a88f22277db56de1436cca70fa5b5c5f2497c135",
+      "sourceManifestCheckoutSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493"
+    },
+    {
+      "id": "ECO-02A-linux-pi-host",
+      "kind": "pi-host",
+      "platform": "linux",
+      "sha256": "8437246457c80901997a74dbda8ad0627baf18e7b54cfbb57d9d84912cc1928e",
+      "sourceManifestCheckoutSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493"
+    },
+    {
+      "id": "ECO-02A-win32-positive",
+      "kind": "positive",
+      "platform": "win32",
+      "sha256": "6b36c5cf5bba2b664648e94d29aaceab4cde533e7cd9750134ed9288c607a2eb",
+      "sourceManifestCheckoutSha256": "1a7c706439630fc7339b247b66c61727235ac14d894f6f7a57578787558849f9"
+    },
+    {
+      "id": "ECO-02A-win32-negative",
+      "kind": "negative",
+      "platform": "win32",
+      "sha256": "49735f0d89856e1797af08747c8d730fbe2dd34a75a018a01ea7f6de7077a59e",
+      "sourceManifestCheckoutSha256": "1a7c706439630fc7339b247b66c61727235ac14d894f6f7a57578787558849f9"
+    },
+    {
+      "id": "ECO-02A-win32-failure",
+      "kind": "failure",
+      "platform": "win32",
+      "sha256": "3d59e6cc6ba779177548bf07d4d5247fc6d29c0ce75b5cb1e76e723ab1679ad8",
+      "sourceManifestCheckoutSha256": "1a7c706439630fc7339b247b66c61727235ac14d894f6f7a57578787558849f9"
+    },
+    {
+      "id": "ECO-02A-win32-recovery",
+      "kind": "recovery",
+      "platform": "win32",
+      "sha256": "76b18133f0ac91bea03b77a5d57c99863cf342990ba4b992135d2b52b8e545a2",
+      "sourceManifestCheckoutSha256": "1a7c706439630fc7339b247b66c61727235ac14d894f6f7a57578787558849f9"
+    },
+    {
+      "id": "ECO-02A-win32-windows",
+      "kind": "windows",
+      "platform": "win32",
+      "sha256": "368a5437ad085e932bade3a6e61b46c3fb69c8c05920813f2b5311683355e28a",
+      "sourceManifestCheckoutSha256": "1a7c706439630fc7339b247b66c61727235ac14d894f6f7a57578787558849f9"
+    },
+    {
+      "id": "ECO-02A-win32-pi-host",
+      "kind": "pi-host",
+      "platform": "win32",
+      "sha256": "d62bce76abe9c10f54e039c40b83feb636778b82793eb08693a4caa563b25872",
+      "sourceManifestCheckoutSha256": "1a7c706439630fc7339b247b66c61727235ac14d894f6f7a57578787558849f9"
+    },
+    {
+      "id": "ECO-02A-darwin-positive",
+      "kind": "positive",
+      "platform": "darwin",
+      "sha256": "37c0b206f0643fb5557092126648286bac227b2514cbeffc87f64b3fa7d909cd",
+      "sourceManifestCheckoutSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493"
+    },
+    {
+      "id": "ECO-02A-darwin-negative",
+      "kind": "negative",
+      "platform": "darwin",
+      "sha256": "9cc491fc3e633c09b7d2308cd4ce55223aa6052bda778ad22b3e75d8f944b4a9",
+      "sourceManifestCheckoutSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493"
+    },
+    {
+      "id": "ECO-02A-darwin-failure",
+      "kind": "failure",
+      "platform": "darwin",
+      "sha256": "53372922685107219cf7c36c8a5e5d3675d66ce233c1f4378c72ac8e3be1106c",
+      "sourceManifestCheckoutSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493"
+    },
+    {
+      "id": "ECO-02A-darwin-recovery",
+      "kind": "recovery",
+      "platform": "darwin",
+      "sha256": "5deb277aaefcd8d31b0fcc00e788766973a4d8ae1940b769d5b9295eb914a44b",
+      "sourceManifestCheckoutSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493"
+    },
+    {
+      "id": "ECO-02A-darwin-macos",
+      "kind": "macos",
+      "platform": "darwin",
+      "sha256": "c3559908edfe90ab50393f4fa85c31e83806d4f18200a99c3f79938ff655ccc3",
+      "sourceManifestCheckoutSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493"
+    },
+    {
+      "id": "ECO-02A-darwin-pi-host",
+      "kind": "pi-host",
+      "platform": "darwin",
+      "sha256": "21b87e052a497fe7c1479eafbfc8781b2101c7228be81b7889a8311f320ba300",
+      "sourceManifestCheckoutSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493"
+    }
+  ],
+  "kinds": [
+    "positive",
+    "negative",
+    "failure",
+    "recovery",
+    "linux",
+    "windows",
+    "macos",
+    "pi-host"
+  ],
+  "consistency": "PASS",
+  "claimsPromotion": false,
+  "statefulEvidence": "PENDING",
+  "executionAuthenticity": "Requires independent hosted artifact provenance and review",
+  "remaining": [
+    "Exact source drift reconciliation",
+    "Restart and cross-session obligations",
+    "Native review",
+    "Final evidence-only claim overlay"
+  ],
+  "hostedProvenance": {
+    "repository": "asenbanskaliev/ASEN",
+    "runId": 38231100178,
+    "candidate": "a2ea0f2253bd7548790fd03a4f3693ab65deaa99",
+    "artifacts": [
+      {
+        "platform": "linux",
+        "artifactId": 11738094340,
+        "archiveSha256": "af7d9ee3198c2002da5099ead2ad1c585346a5bc7d6a3df947436bc626de0cf9"
+      },
+      {
+        "platform": "darwin",
+        "artifactId": 11738377070,
+        "archiveSha256": "a7cedf5f56db27d02206e01a4e00c2a8f385a42106c170dbe822af110b874c56"
+      },
+      {
+        "platform": "win32",
+        "artifactId": 11738797249,
+        "archiveSha256": "ea62c72fa35ec4e24c996bcb785f2e5d6de45ad66e9825b61f661d6cd33a9018"
+      }
+    ]
+  }
+}

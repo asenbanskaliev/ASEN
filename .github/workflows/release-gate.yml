@@ -11,6 +11,8 @@ jobs:
       matrix:
         os: [ubuntu-24.04, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -23,10 +25,26 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - run: npm run check
-      - run: npm run verify:pack
-      - name: Install official Pi CLI
-        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
+      # CI already runs typecheck, the complete suite, and all repository
+      # audits for this exact candidate SHA. Keep this gate focused on the
+      # platform-specific build and packed-package receipts below.
+      - run: npm run typecheck && npm run build
+      - name: Packed restart and cross-session execution receipts
+        run: npm run verify:package-receipts -- stateful-evidence
+      - name: Retain exact-candidate package session evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: package-sessions-${{ runner.os }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: stateful-evidence
+          if-no-files-found: error
+          retention-days: 14
+      - name: Use installed official Pi CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e 'const p=require("./node_modules/@earendil-works/pi-coding-agent/package.json"); if (p.version !== "1.1.0") throw new Error(`Expected Pi 1.1.0, got ${p.version}`); console.log(`Using installed Pi ${p.version}`)'
+          echo "$GITHUB_WORKSPACE/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Real Pi package install smoke
         shell: bash
         if: runner.os != 'Windows'

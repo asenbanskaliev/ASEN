@@ -1,5 +1,11 @@
+import {execFileSync} from "node:child_process";
+import {mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {prepareOrdinaryReview,claimOrdinaryReviewRequest,bindOrdinaryReviewCheckout} from "../src/review/ordinary-review-controller.js";
 import assert from "node:assert/strict";
 import test from "node:test";
+import {createAsenExtension} from "../extensions/asen.js";
 import { planWorkUnitBoundary, type ReadyWorkUnitBoundary, type WorkUnitBoundaryInput } from "../src/delivery/work-unit-policy.js";
 import { recordCompletedWorkUnit, type CompletedWorkUnit, type WorkUnitEvidenceInput } from "../src/delivery/work-unit-evidence.js";
 import { recordWorkUnitReviewCandidate, type WorkUnitReviewCandidateInput } from "../src/delivery/work-unit-review-candidate.js";
@@ -9,7 +15,7 @@ const repository = "https://github.com/acme/asen";
 const commit = "a".repeat(40);
 const tree = "b".repeat(40);
 const parent = "c".repeat(40);
-function completed(chain = false): CompletedWorkUnit {
+function completed(chain = false,snapshot={identity:commit,treeIdentity:tree,parentIdentity:parent}): CompletedWorkUnit {
   const boundaryInput: WorkUnitBoundaryInput = {
     featureIdentity: "GSP-04", taskIdentity: "GSP-04E1b2", taskDocumentPath: tracker,
     purpose: "Bind an exact review candidate", behaviorIds: ["candidate-binding"],
@@ -27,19 +33,19 @@ function completed(chain = false): CompletedWorkUnit {
     boundaryId: boundary.boundaryId, repositoryIdentity: repository, purpose: boundary.purpose,
     deliveryRelationship: boundary.deliveryRelationship, previousReviewedBoundary: boundary.previousReviewedBoundary,
     rollbackBoundary: boundary.rollbackBoundaries[0]!,
-    commit: { identity: commit, treeIdentity: tree, parentIdentity: parent, message: "feat(delivery): bind review candidate", currentTreeIdentity: tree },
+    commit: { identity: snapshot.identity, treeIdentity: snapshot.treeIdentity, parentIdentity: snapshot.parentIdentity, message: "feat(delivery): bind review candidate", currentTreeIdentity: snapshot.treeIdentity },
     authoredAdditions: boundary.authoredAdditions, authoredDeletions: boundary.authoredDeletions,
     changedPaths: [...boundary.expectedChangedPaths], behaviorPaths: ["src/delivery/work-unit-review-candidate.ts"],
     focusedTestPaths: ["tests/work-unit-review-candidate.test.ts"], documentationPaths: [], generatedArtifacts: [],
     focusedTests: { status: "pass", command: "npx tsx --test tests/work-unit-review-candidate.test.ts", scenario: "candidate contract", exitCode: 0, summary: "Focused checks passed" },
     runtimeHarness: { status: "pass", command: "npm run audit:skill-parity", scenario: "runtime contract", exitCode: 0, summary: "Runtime checks passed" },
-    documentation: { status: "n_a", reason: "No documentation surface" }, taskDocumentCommitIdentity: commit,
+    documentation: { status: "n_a", reason: "No documentation surface" }, taskDocumentCommitIdentity: snapshot.identity,
   };
   return recordCompletedWorkUnit(boundary, evidence);
 }
 function candidate(record: CompletedWorkUnit, overrides: Partial<WorkUnitReviewCandidateInput> = {}): WorkUnitReviewCandidateInput {
   return {
-    kind: "commit", identity: commit, revision: commit, treeIdentity: tree,
+    kind: "commit", identity: record.commit.identity, revision: record.commit.identity, treeIdentity: record.commit.treeIdentity,
     repositoryIdentity: repository, featureIdentity: record.featureIdentity, taskIdentity: record.taskIdentity,
     taskDocumentPath: record.taskDocumentPath, boundaryId: record.boundaryId,
     previousReviewedBoundary: record.previousReviewedBoundary, deliveryRelationship: record.deliveryRelationship,
@@ -130,4 +136,85 @@ test("exposes no verdict, readiness, authority, publication, merge, or mutation 
   for (const name of ["verdict", "approved", "ready", "readiness", "authority", "authorityToken", "publication", "merge", "mutation", "callback", "adapter", "git", "network"]) {
     assert.equal(name in result, false);
   }
+});
+test("E rechaza Proxy del candidato antes de ejecutar traps y consume el completed",()=>{
+ const record=completed(),input=candidate(record);let llamadas=0;
+ const proxy=new Proxy(input,{getPrototypeOf(){llamadas++;return Object.prototype;}});
+ assert.throws(()=>recordWorkUnitReviewCandidate(record,proxy));assert.equal(llamadas,0);
+ assert.throws(()=>recordWorkUnitReviewCandidate(record,input),/claimed/);
+});
+test("E prepara candidato genuino una vez sin emitir autoridad ni aceptar clones",()=>{
+ const record=completed(),c=recordWorkUnitReviewCandidate(record,candidate(record)),input={authorId:"autor",reviewerId:"revisor",sessionId:"sesion"};
+ const request=prepareOrdinaryReview(c,input);assert.equal(request.candidate,c);assert.equal(request.status,"prepared");
+ assert.equal(Object.isFrozen(request)&&Object.isFrozen(request.participants),true);
+ for(const key of ["authority","verdict","approved","mutation","delivery","merge"])assert.equal(key in request,false);
+ assert.throws(()=>prepareOrdinaryReview(c,input),/consumido/);assert.throws(()=>prepareOrdinaryReview({...c},input),/genuino/);
+ assert.throws(()=>claimOrdinaryReviewRequest(structuredClone(request),"sesion"),/genuina/);
+ assert.equal(claimOrdinaryReviewRequest(request,"sesion"),request);assert.throws(()=>claimOrdinaryReviewRequest(request,"sesion"),/consumida/);
+});
+test("E consume el candidato antes del rechazo de metadatos malformados",()=>{
+ for(const caso of ["proxy","accesor","autor-igual","extra"]){
+  const record=completed(),c=recordWorkUnitReviewCandidate(record,candidate(record));let llamadas=0;
+  let input:any={authorId:"autor",reviewerId:"revisor",sessionId:"sesion"};
+  if(caso==="proxy")input=new Proxy(input,{getPrototypeOf(){llamadas++;return Object.prototype;}});
+  if(caso==="accesor")Object.defineProperty(input,"authorId",{enumerable:true,get(){llamadas++;return "autor";}});
+  if(caso==="autor-igual")input.reviewerId="autor";if(caso==="extra")input.authority=true;
+  assert.throws(()=>prepareOrdinaryReview(c,input));assert.equal(llamadas,0);
+  assert.throws(()=>prepareOrdinaryReview(c,{authorId:"autor",reviewerId:"revisor",sessionId:"sesion"}),/consumido/);
+ }
+});
+test("E rechaza sesión ajena y consume preparación antes del rechazo",()=>{
+ const record=completed(),c=recordWorkUnitReviewCandidate(record,candidate(record)),request=prepareOrdinaryReview(c,{authorId:"autor",reviewerId:"revisor",sessionId:"sesion"});
+ assert.throws(()=>claimOrdinaryReviewRequest(request,"otra"),/sesión/);assert.throws(()=>claimOrdinaryReviewRequest(request,"sesion"),/consumida/);
+});
+test("E liga revisión al HEAD, árbol y padre reales; rechaza cambios y consume la solicitud",t=>{
+ const root=realpathSync(mkdtempSync(join(tmpdir(),"asen-review-checkout-")));t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim();
+ git("init","-q");const commitLocal=()=>git("-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m","test(review): candidato sintético");
+ commitLocal();const parentIdentity=git("rev-parse","HEAD");commitLocal();const snapshot={identity:git("rev-parse","HEAD"),treeIdentity:git("rev-parse","HEAD^{tree}"),parentIdentity};
+ const prepare=(changes:Partial<typeof snapshot>={})=>{const r=completed(false,{...snapshot,...changes});return prepareOrdinaryReview(recordWorkUnitReviewCandidate(r,candidate(r)),{authorId:"autor",reviewerId:"revisor",sessionId:"sesion"});};
+ const request=prepare(),bound=bindOrdinaryReviewCheckout(request,"sesion",root);
+ assert.equal(bound.revision,snapshot.identity);assert.equal(bound.treeIdentity,snapshot.treeIdentity);assert.equal(Object.isFrozen(bound),true);
+ assert.throws(()=>bindOrdinaryReviewCheckout(request,"sesion",root),/consumida/);
+ for(const changes of [{identity:"f".repeat(40)},{treeIdentity:"f".repeat(40)},{parentIdentity:"f".repeat(40)}]){
+  const bad=prepare(changes);assert.throws(()=>bindOrdinaryReviewCheckout(bad,"sesion",root));assert.throws(()=>bindOrdinaryReviewCheckout(bad,"sesion",root),/consumida/);
+ }
+ const dirty=prepare();writeFileSync(join(root,"no-rastreado.txt"),"dato sintético");
+ assert.throws(()=>bindOrdinaryReviewCheckout(dirty,"sesion",root),/checkout/);assert.throws(()=>bindOrdinaryReviewCheckout(dirty,"sesion",root),/consumida/);
+ rmSync(join(root,"no-rastreado.txt"));const drift=prepare();commitLocal();assert.throws(()=>bindOrdinaryReviewCheckout(drift,"sesion",root),/checkout/);
+ writeFileSync(join(root,"tracked.txt"),"original");git("add","tracked.txt");commitLocal();
+ const original={identity:git("rev-parse","HEAD"),treeIdentity:git("rev-parse","HEAD^{tree}"),parentIdentity:git("rev-parse","HEAD^")};
+ writeFileSync(join(root,"tracked.txt"),"modificado");git("add","tracked.txt");commitLocal();const replacement=git("rev-parse","HEAD");
+ git("reset","--hard",original.identity);writeFileSync(join(root,"tracked.txt"),"modificado");git("add","tracked.txt");git("replace",original.identity,replacement);
+ const replaced=prepare(original);assert.throws(()=>bindOrdinaryReviewCheckout(replaced,"sesion",root),/checkout/);
+ assert.throws(()=>bindOrdinaryReviewCheckout(replaced,"sesion",root),/consumida/);
+ git("replace","-d",original.identity);git("reset","--hard",original.identity);
+ for(const flag of ["assume-unchanged","skip-worktree"]){
+  const hidden=prepare(original);git("update-index",`--${flag}`,"tracked.txt");writeFileSync(join(root,"tracked.txt"),"modificado");
+  assert.throws(()=>bindOrdinaryReviewCheckout(hidden,"sesion",root),/checkout/);assert.throws(()=>bindOrdinaryReviewCheckout(hidden,"sesion",root),/consumida/);
+  git("update-index",`--no-${flag}`,"tracked.txt");git("reset","--hard",original.identity);
+ }
+
+
+});
+
+test("E registra entrada ASEN, separa instancias y consume fallos de host y sesión",t=>{
+ const root=realpathSync(mkdtempSync(join(tmpdir(),"asen-review-command-")));t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim();
+ git("init","-q");for(let i=0;i<2;i++)git("-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m","test(review): entrada sintética");
+ const snapshot={identity:git("rev-parse","HEAD"),treeIdentity:git("rev-parse","HEAD^{tree}"),parentIdentity:git("rev-parse","HEAD^")};
+ const setup=()=>{const commands=new Map<string,any>();const facade=createAsenExtension()({registerCommand:(name,command)=>commands.set(name,command)});return {facade,handler:commands.get("asen-review").handler};};
+ const one=setup(),two=setup(),notifications:string[]=[];
+ const context=(session="sesion",cwd=root)=>({cwd,sessionManager:{getSessionId:()=>session},ui:{notify:(message:string)=>notifications.push(message)}});
+ const prepare=()=>{const r=completed(false,snapshot);return one.facade.review.prepare(recordWorkUnitReviewCandidate(r,candidate(r)),{authorId:"autor",reviewerId:"revisor",sessionId:"sesion"});};
+ const request=prepare();assert.equal(one.handler("",context()),"Uso: /asen-review <solicitud-id>");
+ assert.throws(()=>two.handler(request.requestId,context()),/instancia/);
+ const checkout=one.handler(request.requestId,context());assert.equal(checkout.request,request);assert.equal(checkout.revision,snapshot.identity);
+ assert.ok(notifications.some(message=>message.includes("RDD pendiente")));assert.equal("verdict" in checkout,false);
+ assert.throws(()=>one.handler(request.requestId,context()),/pendiente/);
+ for(const bad of [context("otra"),context("sesion",join(root,"ausente")),{...context(),sessionManager:{getSessionId(){throw new Error("host no disponible");}}}]){
+  const rejected=prepare();assert.throws(()=>one.handler(rejected.requestId,bad),/rechazada/);
+  assert.throws(()=>one.handler(rejected.requestId,context()),/pendiente/);
+  assert.throws(()=>claimOrdinaryReviewRequest(rejected,"sesion"),/consumida/);
+ }
 });

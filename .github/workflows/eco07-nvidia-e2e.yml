@@ -1,0 +1,92 @@
+name: ECO-07 NVIDIA task recovery
+# Scoped path changes on the PR branch start one exact-SHA NVIDIA run.
+on:
+  push:
+    branches:
+      - feat/strict-parity-prerequisites
+    paths:
+      - .github/workflows/eco07-nvidia-e2e.yml
+      - scripts/eco07-pi-recovery-e2e.mjs
+      - scripts/eco07-pi-recovery-probe-extension.mjs
+      - src/runtime/todo-store.ts
+      - src/runtime/plan-dispatcher.ts
+      - src/agents/pi-agent-tools.ts
+      - src/agents/dispatcher.ts
+      - src/agents/pi-process-runner.ts
+      - src/lifecycle/skill-lifecycle.ts
+  workflow_dispatch:
+    inputs:
+      os:
+        description: Hosted runner for NVIDIA recovery evidence
+        required: true
+        type: choice
+        options:
+          - ubuntu-24.04
+          - macos-15
+          - windows-2025
+      expected_sha:
+        description: Exact branch HEAD SHA (40 lowercase hex characters)
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: eco07-provider-recovery-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  pi-recovery:
+    if: github.repository == 'asenbanskaliev/ASEN' && github.run_attempt == 1 && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
+    name: NVIDIA Pi recovery (${{ inputs.os || 'ubuntu-24.04' }})
+    runs-on: ${{ inputs.os || 'ubuntu-24.04' }}
+    timeout-minutes: 20
+    env:
+      ASEN_EXPECTED_SHA: ${{ inputs.expected_sha || github.sha }}
+      ASEN_SELECTED_OS: ${{ inputs.os || 'ubuntu-24.04' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify exact branch commit and NVIDIA selection without credentials
+        shell: bash
+        env:
+          GITHUB_EVENT_SHA: ${{ github.sha }}
+          GITHUB_REPO: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          [[ "$ASEN_EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$ASEN_EXPECTED_SHA" = "$GITHUB_EVENT_SHA"
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          test "$GITHUB_REPO" = "asenbanskaliev/ASEN"
+          test "$GITHUB_REF_NAME" = "feat/strict-parity-prerequisites"
+          test "$(git ls-remote origin "refs/heads/$GITHUB_REF_NAME" | cut -f1)" = "$ASEN_EXPECTED_SHA"
+          mkdir -p eco07-pi-evidence
+          test -z "$(ls -A eco07-pi-evidence)"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+      - run: npm ci
+      - name: Validate pinned local Pi runtime
+        run: node scripts/eco07-pi-recovery-preflight.mjs runtime
+      - name: Execute real Pi NVIDIA interruption and restart
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          ASEN_ECO07_PROVIDER: nvidia
+          ASEN_ECO07_MODEL: nvidia/nemotron-3.5-lightning-30b-a3b
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -z "$NVIDIA_API_KEY"; then
+            echo "::error::NVIDIA_API_KEY is not configured for this Actions job"
+            exit 1
+          fi
+          node --import tsx scripts/eco07-pi-recovery-e2e.mjs
+      - name: Preserve process and event evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: eco07-nvidia-recovery-${{ inputs.expected_sha || github.sha }}-${{ inputs.os || 'ubuntu-24.04' }}
+          path: eco07-pi-evidence/
+          if-no-files-found: warn
+          retention-days: 30

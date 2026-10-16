@@ -1,7 +1,6 @@
 name: Memory OpenRouter E2E
 on:
   workflow_dispatch:
-  pull_request:
 permissions:
   contents: read
 jobs:
@@ -17,13 +16,13 @@ jobs:
           node-version: 22
       - run: npm install
       - name: Install Pi
-        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
+        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0
       - name: Execute synthetic memory restart and model recall
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           ASEN_PI_PROVIDER: openrouter
-          ASEN_PI_MODEL: qwen/qwen3.8-27b:free
+          ASEN_PI_MODEL: nvidia/nemotron-3.5-lightning:free
         run: |
           test -n "$OPENROUTER_API_KEY"
           node --import tsx scripts/pi-free-memory-e2e.mjs

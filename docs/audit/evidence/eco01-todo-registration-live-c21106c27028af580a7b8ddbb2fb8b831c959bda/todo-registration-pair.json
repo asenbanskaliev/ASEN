@@ -1,0 +1,307 @@
+{
+  "schema": "asen.eco01.todo-registration-pair.v1",
+  "contractId": "ECO-SRC-91b70c5973297fbd:12",
+  "source": {
+    "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+    "sourceId": "ECO-SRC-91b70c5973297fbd",
+    "fileSha256": "db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d"
+  },
+  "asen": {
+    "commit": "c21106c27028af580a7b8ddbb2fb8b831c959bda",
+    "tree": "10ecabd4598b93653a0114e9121309521623d5bf",
+    "extension": "extensions/asen.ts"
+  },
+  "execution": {
+    "mode": "Pi RPC get_state",
+    "modelsInvoked": 0,
+    "networkMode": "offline",
+    "runs": [
+      {
+        "runtime": "source",
+        "piVersion": "0.87.1",
+        "platform": "linux",
+        "node": "v24.19.0",
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "tools": [
+          {
+            "name": "todo",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "action"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "enum": [
+                    "write",
+                    "add",
+                    "update",
+                    "clear",
+                    "list"
+                  ],
+                  "description": "write replaces the whole list; add appends one task; update changes one task by id; clear empties the list; list reports it."
+                },
+                "tasks": {
+                  "type": "array",
+                  "description": "For write: the complete ordered list. Keep the id of tasks that already exist so their history survives; omit it for new ones.",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "title"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "integer",
+                        "description": "Existing task id to keep."
+                      },
+                      "title": {
+                        "type": "string",
+                        "description": "Short imperative title, e.g. 'Write the parser'."
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "pending",
+                          "in_progress",
+                          "done"
+                        ],
+                        "description": "Defaults to pending."
+                      },
+                      "note": {
+                        "type": "string",
+                        "description": "What is happening right now, shown while in_progress, e.g. 'writing tests'."
+                      }
+                    }
+                  }
+                },
+                "id": {
+                  "type": "integer",
+                  "description": "Task id for update."
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Title for add, or a new title for update."
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "in_progress",
+                    "done"
+                  ],
+                  "description": "Status for add or update."
+                },
+                "note": {
+                  "type": "string",
+                  "description": "Note for add or update."
+                }
+              }
+            }
+          }
+        ],
+        "toolNames": [
+          "todo"
+        ],
+        "commands": [
+          "llama"
+        ],
+        "stdout": {
+          "file": "logs/source.stdout.log",
+          "sha256": "44d46f1f4839506f1afb09e6c057dbb0644bf7736a85379f8a2b664fcdc1f72d"
+        },
+        "stderr": {
+          "file": "logs/source.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "runtime": "asen",
+        "piVersion": "1.1.0",
+        "platform": "linux",
+        "node": "v24.19.0",
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "tools": [
+          {
+            "name": "asen_todo_add",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "title"
+              ],
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8192
+                },
+                "requestId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                }
+              }
+            }
+          },
+          {
+            "name": "asen_todo_update",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "revision",
+                "state"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "planned",
+                    "running",
+                    "blocked",
+                    "done",
+                    "cancelled"
+                  ]
+                },
+                "reason": {
+                  "type": "string",
+                  "maxLength": 8192
+                }
+              }
+            }
+          },
+          {
+            "name": "asen_todo_accept_result",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "agentId",
+                "revision",
+                "evidence"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                "agentId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "evidence": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8192
+                }
+              }
+            }
+          },
+          {
+            "name": "asen_todo_list",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {}
+            }
+          },
+          {
+            "name": "asen_todo_inspect_interrupted_write",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "agentId"
+              ],
+              "properties": {
+                "agentId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                "root": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                }
+              }
+            }
+          }
+        ],
+        "toolNames": [
+          "asen_todo_accept_result",
+          "asen_todo_add",
+          "asen_todo_inspect_interrupted_write",
+          "asen_todo_list",
+          "asen_todo_update"
+        ],
+        "commands": [
+          "asen",
+          "asen-commands",
+          "asen-status",
+          "asen-doctor",
+          "asen-route",
+          "asen-plan",
+          "asen-agents",
+          "asen-changes",
+          "asen-todos",
+          "asen-memory",
+          "asen-task-agents",
+          "asen-profiles",
+          "asen-history",
+          "asen-usage",
+          "asen-stats",
+          "asen-skill-registry",
+          "asen-workflow",
+          "asen-review"
+        ],
+        "stdout": {
+          "file": "logs/asen.stdout.log",
+          "sha256": "6a62bd370cd3c9ed2a05af5963eb11db7b17c6d99710739994c1376da2ae1037"
+        },
+        "stderr": {
+          "file": "logs/asen.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    ]
+  },
+  "scenario": {
+    "name": "registration",
+    "classification": "INTENTIONAL",
+    "reason": "Both real Pi runtimes load their mapped Todo extension and register user-facing Todo tools. The source exposes one sequential whole-list tool; ASEN exposes separate add/list/revisioned-update tools plus independent review and recovery controls. This is an intentional session-scoped authorization and lifecycle redesign, not API equivalence."
+  },
+  "limitations": [
+    "This registration probe verifies actual Pi 0.87.1 and Pi 1.1.0 extension loading and tool schemas without invoking a model; tool behavior remains covered by paired core-state runs and ASEN runtime tests.",
+    "The source and candidate use different Pi major/minor API generations, so registration success does not certify cross-version visual parity."
+  ]
+}

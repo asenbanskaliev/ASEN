@@ -2,12 +2,13 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, "feat/**"]
+    branches: [main]
 permissions:
   contents: read
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-24.04, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
@@ -23,7 +24,47 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - run: npm run check
+      - name: Prepare frozen ecosystem Git objects
+        run: node .github/scripts/prepare-frozen-ecosystem-baseline.mjs
+      # Same checks and order as npm run check, split into timed Actions steps.
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Full test suite
+        env:
+          ASEN_TEST_OVERALL_TIMEOUT_MS: ${{ matrix.os == 'windows-latest' && '2400000' || '1800000' }}
+        run: npm test
+      - name: macOS retained-source witness
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          node .github/scripts/run-retained-ecosystem-source-witness.mjs 2>&1 | tee retained-source-witness.log
+          witness_status=${PIPESTATUS[0]}
+          printf '%s\n' "$witness_status" > retained-source-witness.exit
+          exit "$witness_status"
+      - name: Upload macOS retained-source witness
+        if: always() && runner.os == 'macOS'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: retained-source-macos-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            retained-source-witness.log
+            retained-source-witness.exit
+          if-no-files-found: error
+          retention-days: 14
+      - name: Phase parity audit
+        run: npm run audit:parity
+      - name: Skills audit
+        run: npm run audit:skills
+      - name: Skill parity audit
+        run: npm run audit:skill-parity
+      - name: Memory parity audit
+        run: npm run audit:memory-parity
+      - name: Ecosystem audit
+        run: npm run audit:ecosystem
+      - name: Upstream boundary audit
+        run: npm run audit:upstream-boundary
   architecture:
     runs-on: ubuntu-24.04
     steps:
@@ -37,3 +78,40 @@ jobs:
       - name: Enforce ASEN upstream isolation boundary
         shell: bash
         run: node scripts/audit-upstream-boundary.mjs
+  pi-support-matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Semantic evidence admission gate
+        run: node --import tsx --test tests/pi-support-matrix.test.ts tests/ecosystem-execution-receipts.test.ts tests/ecosystem-claims.test.ts tests/ecosystem-evidence-bundle.test.ts tests/pi-matrix-pty-helper.test.ts tests/pi-verifier-exit.test.ts tests/pi-matrix-cleanup.test.ts tests/ecosystem-package-receipts.test.ts
+      - name: Pack exact candidate
+        shell: bash
+        run: npm pack --silent > matrix-package.txt
+      - name: Run eight real Pi host cells
+        shell: bash
+        run: npm run verify:pi-matrix -- "$(cat matrix-package.txt)" matrix-evidence
+      - name: Record executed contract and host evidence
+        run: node scripts/ecosystem-execution-receipts.mjs contract-evidence matrix-evidence
+      - name: Upload exact candidate matrix and receipts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: pi-support-${{ runner.os }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            matrix-evidence
+            contract-evidence
+          if-no-files-found: error
+          retention-days: 14

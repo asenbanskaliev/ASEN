@@ -1,0 +1,12 @@
+{
+  "id": "ECO-02A-darwin-failure",
+  "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+  "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "kind": "failure",
+  "class": "DETERMINISTIC_EXECUTION",
+  "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+  "observation": "12 selected preflight contract test(s) completed; pattern: partial host registration remains inert",
+  "result": "PASS",
+  "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+  "logSha256": "0642f74997b77dc9e696d87d83bcf6fcd27824d44174edbd0dd82068ae3afb1d"
+}

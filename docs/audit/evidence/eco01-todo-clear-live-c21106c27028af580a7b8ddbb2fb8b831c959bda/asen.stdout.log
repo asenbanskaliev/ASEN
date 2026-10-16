@@ -1,0 +1,116 @@
+{
+  "input": {
+    "methods": [
+      "add",
+      "update(cancelled)",
+      "list",
+      "archived"
+    ],
+    "titles": [
+      "Review parser",
+      "Run regression suite"
+    ]
+  },
+  "addedTaskIds": [
+    "todo-ff34452a-e0ec-41d6-bfe4-4a5bec0edf3f",
+    "todo-08f8d62a-4094-4c1a-b55f-d4fcf0fab5f4"
+  ],
+  "cancelledEvents": [
+    {
+      "taskId": "todo-ff34452a-e0ec-41d6-bfe4-4a5bec0edf3f",
+      "sessionId": "eco01-clear",
+      "projectId": "/eco01-project",
+      "revision": 2,
+      "state": "cancelled",
+      "at": "2026-10-16T16:59:01.770Z",
+      "reason": "User cleared the active task list"
+    },
+    {
+      "taskId": "todo-08f8d62a-4094-4c1a-b55f-d4fcf0fab5f4",
+      "sessionId": "eco01-clear",
+      "projectId": "/eco01-project",
+      "revision": 2,
+      "state": "cancelled",
+      "at": "2026-10-16T16:59:01.774Z",
+      "reason": "User cleared the active task list"
+    }
+  ],
+  "activeTasks": [],
+  "activeTaskCount": 0,
+  "archivedTasks": [
+    {
+      "taskId": "todo-ff34452a-e0ec-41d6-bfe4-4a5bec0edf3f",
+      "title": "Review parser",
+      "events": [
+        {
+          "taskId": "todo-ff34452a-e0ec-41d6-bfe4-4a5bec0edf3f",
+          "sessionId": "eco01-clear",
+          "projectId": "/eco01-project",
+          "revision": 1,
+          "state": "planned",
+          "at": "2026-10-16T16:59:01.757Z"
+        },
+        {
+          "taskId": "todo-ff34452a-e0ec-41d6-bfe4-4a5bec0edf3f",
+          "sessionId": "eco01-clear",
+          "projectId": "/eco01-project",
+          "revision": 2,
+          "state": "cancelled",
+          "at": "2026-10-16T16:59:01.770Z",
+          "reason": "User cleared the active task list"
+        }
+      ],
+      "current": {
+        "taskId": "todo-ff34452a-e0ec-41d6-bfe4-4a5bec0edf3f",
+        "sessionId": "eco01-clear",
+        "projectId": "/eco01-project",
+        "revision": 2,
+        "state": "cancelled",
+        "at": "2026-10-16T16:59:01.770Z",
+        "reason": "User cleared the active task list"
+      }
+    },
+    {
+      "taskId": "todo-08f8d62a-4094-4c1a-b55f-d4fcf0fab5f4",
+      "title": "Run regression suite",
+      "events": [
+        {
+          "taskId": "todo-08f8d62a-4094-4c1a-b55f-d4fcf0fab5f4",
+          "sessionId": "eco01-clear",
+          "projectId": "/eco01-project",
+          "revision": 1,
+          "state": "planned",
+          "at": "2026-10-16T16:59:01.763Z"
+        },
+        {
+          "taskId": "todo-08f8d62a-4094-4c1a-b55f-d4fcf0fab5f4",
+          "sessionId": "eco01-clear",
+          "projectId": "/eco01-project",
+          "revision": 2,
+          "state": "cancelled",
+          "at": "2026-10-16T16:59:01.774Z",
+          "reason": "User cleared the active task list"
+        }
+      ],
+      "current": {
+        "taskId": "todo-08f8d62a-4094-4c1a-b55f-d4fcf0fab5f4",
+        "sessionId": "eco01-clear",
+        "projectId": "/eco01-project",
+        "revision": 2,
+        "state": "cancelled",
+        "at": "2026-10-16T16:59:01.774Z",
+        "reason": "User cleared the active task list"
+      }
+    }
+  ],
+  "archivedTaskCount": 2,
+  "activeFileSha256Before": "483bb452103286b80b18c2ab773f601a90b47ceee6304a66f2ed63e3f3483449",
+  "activeFileSha256After": "ac265daa8d81222ce98456ec561008d59ec2d72d96d79a88d1eaa495ccabc091",
+  "activeFileBytesAfter": 63,
+  "archiveHashes": [
+    {
+      "file": "runtime/store/projects/5a1a23e1ebc9121cc5c5c17da62c40267c123fc858dfbaa2795f8c1ab6fe1dc0/archive/archive-4-481c99b92637.json",
+      "sha256": "481c99b9263777ad601de2bfc644e9ef391655660a138fe0d6194a1bf38ceb2b"
+    }
+  ]
+}
