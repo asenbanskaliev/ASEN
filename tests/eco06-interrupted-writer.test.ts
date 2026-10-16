@@ -3,7 +3,7 @@ import test from "node:test";
 import {mkdir,mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {execFileSync,spawnSync} from "node:child_process";
+import {execFileSync,spawn,spawnSync} from "node:child_process";
 import {createPiExtension} from "../extensions/asen.js";
 import {PersistentAgentStore} from "../src/runtime/agent-store.js";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
@@ -66,6 +66,63 @@ test("ECO-06 interrupted writer preserves partial edits but cannot replay author
  assert.equal((await reopenedAgain.store.list("session-a","/repo")).length,1);
  await assert.rejects(()=>reopenedAgain.store.enqueue({id:"unauthorized-replay",role:"worker",prompt:"Edit again",repository:"/repo",isolationKey:"session-a",writeSurfaces:["work.txt"]},{kind:"user",id:"pi:session-a"}),/Authority-bearing agent requests cannot be serialized/);
  assert.equal(await readFile(target,"utf8"),before);
+});
+
+
+/**
+ * The existing fixture exits normally after a partial write. This separate
+ * regression proves an actual SIGKILL cannot resurrect the old write grant.
+ * It does not replace a live provider-backed Pi worker experiment.
+ */
+test("ECO-06 SIGKILL after a persisted partial edit quarantines the writer", {skip:process.platform==="win32"?"POSIX SIGKILL fixture":false},async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-eco06-sigkill-"));
+ t.after(()=>rm(dir,{recursive:true,force:true}));
+ const journal=join(dir,"agents.json"),target=join(dir,"work.txt");
+ await writeFile(target,"before\\n");
+ const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",`
+  import {PersistentAgentStore} from "./src/runtime/agent-store.ts";
+  import {appendFile} from "node:fs/promises";
+  const journal=process.argv[1],target=process.argv[2];
+  const {store}=await PersistentAgentStore.open(journal);
+  await store.enqueueControlledWorker({
+   id:"killed-writer",role:"worker",prompt:"Edit only work.txt",repository:"/repo",isolationKey:"session-a",
+   candidate:{id:"candidate",repository:"/repo",revision:"revision"},
+   writeSurfaces:["work.txt"],writerAdmission:{opaque:true}
+  },{kind:"user",id:"pi:session-a"});
+  await store.running("killed-writer");
+  await appendFile(target,"partial\\\\n");
+  process.stdout.write("PARTIAL_EDIT_PERSISTED\\\\n");
+  setInterval(()=>{},1000);
+ `,journal,target],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"]});
+ let output="",errors="";
+ child.stderr.setEncoding("utf8");child.stderr.on("data",chunk=>{errors+=chunk;});
+ child.stdout.setEncoding("utf8");
+ const ready=new Promise<void>((resolve,reject)=>{
+  child.stdout.on("data",chunk=>{output+=chunk;if(output.includes("PARTIAL_EDIT_PERSISTED"))resolve();});
+  child.once("error",reject);
+  child.once("exit",()=>{if(!output.includes("PARTIAL_EDIT_PERSISTED"))reject(new Error(`writer exited before edit: ${errors}`));});
+ });
+ const timer=setTimeout(()=>child.kill("SIGKILL"),20000);
+ try{
+  await ready;
+  assert.equal(await readFile(target,"utf8"),"before\\npartial\\n");
+  assert.equal(child.kill("SIGKILL"),true);
+  const exit=await new Promise<{signal:NodeJS.Signals|null}>((resolve,reject)=>{
+   if(child.exitCode!==null||child.signalCode!==null){resolve({signal:child.signalCode});return;}
+   child.once("exit",(_code,signal)=>resolve({signal}));child.once("error",reject);
+  });
+  assert.equal(exit.signal,"SIGKILL");
+  const {store}=await PersistentAgentStore.open(journal);
+  const entry=await store.get("killed-writer","session-a","/repo");
+  assert.equal(entry?.record.state,"interrupted");
+  assert.equal(store.resumable(entry!),undefined);
+  for(const field of ["candidate","writeSurfaces","writerAdmission","phaseGrant"]){
+   assert.equal(Object.hasOwn(entry?.request??{},field),false);
+  }
+  await assert.rejects(()=>store.enqueueContinuation("killed-writer","session-a","/repo",{kind:"user",id:"pi:session-a"}),/cannot be resumed safely|fresh authority/);
+  assert.equal((await store.list("session-a","/repo")).length,1);
+  assert.equal(await readFile(target,"utf8"),"before\\npartial\\n");
+ }finally{clearTimeout(timer);if(child.exitCode===null&&child.signalCode===null)child.kill("SIGKILL");}
 });
 
 test("ECO-06 Pi inspection binds the interrupted writer to its blocked Todo and current Git diff",async t=>{
