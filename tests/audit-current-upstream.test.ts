@@ -24,3 +24,11 @@ test("current upstream audit rejects an unknown exact candidate without falling 
  execFileSync("git",["-C",root,"init","-q"]);
  assert.throws(()=>runCurrentUpstreamAudit({candidate:"f".repeat(40),sourceRepository:root}),/candidate is unavailable as a commit/);
 });
+
+test("current upstream audit requires a configured source before invoking Git",()=>{
+ const original=process.env.ASEN_ECOSYSTEM_SOURCE_URL;
+ try{
+  delete process.env.ASEN_ECOSYSTEM_SOURCE_URL;
+  assert.throws(()=>runCurrentUpstreamAudit({run:()=>{throw new Error("unexpected Git invocation");}}),/Set ASEN_ECOSYSTEM_SOURCE_URL/);
+ }finally{if(original===undefined)delete process.env.ASEN_ECOSYSTEM_SOURCE_URL;else process.env.ASEN_ECOSYSTEM_SOURCE_URL=original;}
+});
