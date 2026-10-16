@@ -26,6 +26,8 @@ const provenanceAllowlist=new Set([
  "registry/parity/skill-sources-v1.json","registry/parity/ecosystem-sources-v1.json","registry/parity/ecosystem-media-v1.json",memoryManifestPath,"registry/parity/memory-foundation-contracts-v1.json",
  observationWriteManifestPath,retrievalSearchManifestPath,contextTimelineManifestPath,projectIdentityManifestPath,
  sessionTransportManifestPath,sessionStoreManifestPath,passiveCaptureManifestPath,relationManifestPath,
+ "docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3/todo-pair-evidence.json",
+ "docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3/source-tests.log",
  ...additionalParityFixturePaths
 ]);
 const tracked=execFileSync("git",["ls-files","-z"],{cwd:root}).toString("utf8").split("\0").filter(Boolean);
