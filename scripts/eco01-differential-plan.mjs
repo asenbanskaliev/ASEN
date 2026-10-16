@@ -16,7 +16,7 @@ const families={
  "external-runtime":["available","missing","malformed","denied","partial-failure","restart"],
 };
 const statuses=["EQUIVALENT","DIVERGENT","INTENTIONAL","NOT_APPLICABLE","UNVERIFIED"];
-const scenariosFor=row=>row.mappingKind==="code-contract"&&row.sourceId==="ECO-SRC-91b70c5973297fbd"?[...families[row.mappingKind],"duplicate-request"]:families[row.mappingKind];
+const scenariosFor=row=>row.mappingKind==="code-contract"&&row.sourceId==="ECO-SRC-91b70c5973297fbd"?[...families[row.mappingKind],"duplicate-request","clear-and-archive"]:families[row.mappingKind];
 
 export function verifyFrozenSourceCheckout(baseline,mapping,sourceRoot){
  if(!sha40(baseline?.commit)||mapping?.baselineCommit!==baseline.commit||typeof sourceRoot!=="string"||!sourceRoot)throw Error("Frozen source checkout identity is required");

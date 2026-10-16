@@ -17,18 +17,18 @@
   },
   "summary": {
     "contracts": 25,
-    "scenarios": 147,
-    "pairedExecutions": 11,
+    "scenarios": 148,
+    "pairedExecutions": 12,
     "pairedProcessRuns": 12,
     "verified": 0,
     "statusCounts": {
       "EQUIVALENT": 0,
       "DIVERGENT": 0,
-      "INTENTIONAL": 10,
+      "INTENTIONAL": 11,
       "NOT_APPLICABLE": 0,
       "UNVERIFIED": 137
     },
-    "note": "Five CodeGraph scenarios were executed with the real dynamic package and remain INTENTIONAL for host annotation differences. Five Todo core-state comparisons were run; four are INTENTIONAL (invalid-input signaling, restart recovery, duplicate-request protection, and session/project authorization) and one remains UNVERIFIED. Real Pi RPC registration was observed for both the source Todo tool and ASEN Todo tools, with zero model calls; the interface/authentication differences are INTENTIONAL. Across those experiments, 11 paired scenarios and 12 Pi/package processes were observed. No EQUIVALENT results are admitted.",
+    "note": "Five CodeGraph scenarios were executed with the real dynamic package and remain INTENTIONAL for host annotation differences. Todo core-state comparisons cover invalid-input signaling, restart recovery, duplicate-request protection, session/project authorization, and clear/archive; those differences are INTENTIONAL except one normal pair which remains UNVERIFIED. Real Pi RPC registration was observed for both the source Todo tool and ASEN Todo tools, with zero model calls; interface/authentication differences are INTENTIONAL. Across these experiments, 12 paired scenarios and 12 Pi/package processes were observed. No EQUIVALENT results are admitted.",
     "pairedCoreStateExperiments": 5,
     "pairedPiRuntimeRuns": 2
   },
@@ -2732,6 +2732,39 @@
               }
             }
           }
+        },
+        {
+          "name": "clear-and-archive",
+          "status": "INTENTIONAL",
+          "evidence": {
+            "kind": "paired-core-state-execution",
+            "evidencePath": "docs/audit/evidence/eco01-todo-clear-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/todo-clear-pair.json",
+            "evidenceSha256": "1bebc3cf36c5f595cbf523267c7610dee43e3d58eafef3bd39d346d061e36376",
+            "observation": {
+              "classification": "INTENTIONAL",
+              "reason": "The source clear replaces the active snapshot and replay yields an empty list. ASEN has no destructive clear tool; the mapped lifecycle cancels each task, empties active listing, and atomically archives the complete history. This preserves audit/recovery records while honoring the user-visible empty-active-list result.",
+              "source": {
+                "activeTaskCount": 0,
+                "clearText": "Cleared 2 tasks"
+              },
+              "asen": {
+                "activeTaskCount": 0,
+                "archivedTaskCount": 2,
+                "activeFileSha256After": "ac265daa8d81222ce98456ec561008d59ec2d72d96d79a88d1eaa495ccabc091",
+                "archiveHashes": [
+                  {
+                    "file": "runtime/store/projects/5a1a23e1ebc9121cc5c5c17da62c40267c123fc858dfbaa2795f8c1ab6fe1dc0/archive/archive-4-481c99b92637.json",
+                    "sha256": "481c99b9263777ad601de2bfc644e9ef391655660a138fe0d6194a1bf38ceb2b"
+                  }
+                ]
+              },
+              "differences": {
+                "sourcePersistence": "empty branch snapshot after clear",
+                "asenPersistence": "active store is empty; cancelled task history remains in archive",
+                "operation": "one whole-list clear versus per-task revisioned cancellation"
+              }
+            }
+          }
         }
       ],
       "sourceId": "ECO-SRC-91b70c5973297fbd",
@@ -3172,12 +3205,12 @@
       "asenCommit": "b1f028ce2dde27757a901cd8722a4fe5ee27565f",
       "sourcePiTui": "0.87.1",
       "asenPiTui": "1.1.0",
-      "experiments": 5,
-      "pairedCoreStateExperiments": 4,
+      "experiments": 6,
+      "pairedCoreStateExperiments": 5,
       "results": {
         "EQUIVALENT": 0,
         "DIVERGENT": 0,
-        "INTENTIONAL": 3,
+        "INTENTIONAL": 4,
         "NOT_APPLICABLE": 0,
         "UNVERIFIED": 2
       },
@@ -3256,6 +3289,35 @@
       },
       "log": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/asen-full-check.log",
       "logSha256": "afb8904b04ff09416d302f5d4f126fbd52b9c213223876d296be27671ce5d5dc"
+    },
+    "todoClearEvidence": {
+      "path": "docs/audit/evidence/eco01-todo-clear-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/todo-clear-pair.json",
+      "sha256": "1bebc3cf36c5f595cbf523267c7610dee43e3d58eafef3bd39d346d061e36376",
+      "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+      "asenCommit": "c21106c27028af580a7b8ddbb2fb8b831c959bda",
+      "asenTree": "10ecabd4598b93653a0114e9121309521623d5bf",
+      "scenario": "clear-and-archive",
+      "status": "INTENTIONAL",
+      "environment": {
+        "platform": "linux",
+        "node": "v24.19.0",
+        "sourcePiTui": "0.87.1",
+        "asenPiTui": "1.1.0"
+      },
+      "sourceLog": {
+        "file": "source.stdout.log",
+        "sha256": "b148b5cd4308a2ca15cd3416ace6002c6b056a0c924b72c1590cf1b2bff36a57"
+      },
+      "asenLog": {
+        "file": "asen.stdout.log",
+        "sha256": "fd28cbec5539aaaae1116f061f32056af2cad8df2f05231422eb802a5e788618"
+      },
+      "archiveHashes": [
+        {
+          "file": "runtime/store/projects/5a1a23e1ebc9121cc5c5c17da62c40267c123fc858dfbaa2795f8c1ab6fe1dc0/archive/archive-4-481c99b92637.json",
+          "sha256": "481c99b9263777ad601de2bfc644e9ef391655660a138fe0d6194a1bf38ceb2b"
+        }
+      ]
     }
   }
 }

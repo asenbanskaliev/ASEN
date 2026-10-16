@@ -63,6 +63,6 @@ test("ECO-01 Todo observations bind exact source, ASEN tree, and raw logs",{skip
  assert.equal(contract.scenarios.find((row:any)=>row.name==="denied").evidence.evidenceSha256,authorization.sha256);
  assert.equal(contract.scenarios.find((row:any)=>row.name==="registration").status,"INTENTIONAL");
  assert.equal(contract.scenarios.find((row:any)=>row.name==="registration").evidence.evidenceSha256,matrix.currentCandidateEvidence.todoRegistrationEvidence.sha256);
- assert.equal(matrix.summary.statusCounts.INTENTIONAL,10);
+ assert.equal(matrix.summary.statusCounts.INTENTIONAL,11);
  assert.equal(matrix.summary.statusCounts.UNVERIFIED,137);
 });
