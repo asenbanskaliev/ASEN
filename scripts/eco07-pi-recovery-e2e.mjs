@@ -1,1 +1,312 @@
-YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éí×MõÕ:-jZ.¶›­–)Þ³V–×÷'B76W'Bg&öÒ&æöFS¦76W'B÷7G&–7B#°¦–×÷'B¶7&VFT†6‡Òg&öÒ&æöFS¦7'—Fò#°¦–×÷'B¶Ö¶F—"Æ÷VâÇ&VFF—"Ç&VDf–ÆRÇ&VÇF‚Ç&ÒÇw&—FTf–ÆWÒg&öÒ&æöFS¦g2÷&öÖ—6W2#°¦–×÷'B·F×F—'Òg&öÒ&æöFS¦÷2#°¦–×÷'BF‚g&öÒ&æöFS§F‚#°¦–×÷'B·7vçÒg&öÒ&æöFS¦6†–ÆE÷&ö6W72#°¦–×÷'B¶W†V4f–ÆU7–æ7Òg&öÒ&æöFS¦6†–ÆE÷&ö6W72#°¦–×÷'B¶f–ÆUU$ÅFõF‡Òg&öÒ&æöFS§W&Â#°¦–×÷'Bµ6W76–öåFöFõ7F÷&RÇFöFõ&ö¦V7E7F÷&vTf–ÆWÒg&öÒ"ââ÷7&2÷'VçF–ÖR÷FöFò×7F÷&RçG2#°¦–×÷'B¶V6óu&÷f–FW%&FTÆ–Ö—DW'&÷'Òg&öÒ"ââ÷7&2÷'VçF–ÖRöV6ór×&÷f–FW"Öf–ÇW&RçG2#°¦–×÷'B·&W6öÇfTV6óu&÷f–FW'Òg&öÒ"âöV6ór×&÷f–FW"Ö6öæf–ræÖ§2#°¦–×÷'B¶7&VFT§6öæÅVWVRÆ7&VFU'46öçG&öÆÆW"Æ7&VFU6V7&WE6æ—F—¦W"Ç'Vä6ÆVçWÒg&öÒ"âöV6ór×&V6÷fW'’Ö–òæÖ§2#° ¦6öç7B&W÷6—F÷'“Öv—B&VÇF‚‡&ö6W72æ7vB‚’“°¦6öç7B&Wf—6–öãÖW†V4f–ÆU7–æ2‚&v—B"Å²'&Wb×'6R"Â$„TB%ÒÇ¶7vC§&W÷6—F÷'’ÆVæ6öF–æs¢'WFc‚'Ò’çG&–Ò‚“°¦76W'BæWVÂ‡&Wf—6–öâÇ&ö6W72æVçbä4TåôU…T5DTEõ4„Â$T4òÓr’&V6÷fW'’×W7BFW7BF†RW†7B6æF–FFR4„"“°¦6öç7B·&÷f–FW"ÆÖöFVÂÆ”¶W’Æ7&VFVçF–ÂÆW‡FVç6–öçÓ×&W6öÇfTV6óu&÷f–FW"‡&ö6W72æVçb“°¦ÆWB•6¶vS°§G'—·•6¶vSÔ¥4ôâç'6R†v—B&VDf–ÆR†æWrU$Â‚"ââöæöFUöÖöGVÆW2ôV&VæF–Â×v÷&·2÷’Ö6öF–ærÖvVçB÷6¶vRæ§6öâ"Æ–×÷'BæÖWFçW&Â’Â'WFc‚"’“·Ð¦6F6‡·F‡&÷ræWrW'&÷"‚$T4òÓr–ç7FÆÆVB’6¶vRÖWFFF—2Væf–Æ&ÆR÷"ÖÆf÷&ÖVB"“·Ð¦76W'BæWVÂ‡•6¶vRçfW'6–öâÂ#ãã"Â$T4òÓr&÷f–FW"'Vâ×W7BW6R’ãã"“° ¦6öç7BWf–FVæ6TF—#×F‚æ¦ö–â‡&W÷6—F÷'’Â&V6ór×’ÖWf–FVæ6R"“°¦v—BÖ¶F—"†Wf–FVæ6TF—"Ç·&V7W'6—fS§G'VWÒ“°¦6öç7BG&ç67&—EFƒ×F‚æ¦ö–â†Wf–FVæ6TF—"Â&WfVçG2æ§6öæÂ"“°¦6öç7BWf–FVæ6UFƒ×F‚æ¦ö–â†Wf–FVæ6TF—"Â'&V6÷fW'’æ§6öâ"“°¦6öç7B67&F6ƒÖv—B–×÷'B‚&æöFS¦g2÷&öÖ—6W2"’çF†Vâ†g3Óæg2æÖ¶GFV×‡F‚æ¦ö–â‡F×F—"‚’Æ6VâÖV6órÒG·&÷f–FW'ÒÖ’’“°¦6öç7B†öÖS×F‚æ¦ö–â‡67&F6‚Â&†öÖR"’ÆvVçDF—#×F‚æ¦ö–â††öÖRÂ"ç’"Â&vVçB"’Ç6W76–öäF—#×F‚æ¦ö–â††öÖRÂ'6W76–öç2"’Æ6VäF—#×F‚æ¦ö–â††öÖRÂ"æ6Vâ"“°¦6öç7B7FW4f–ÆS×F‚æ¦ö–â‡67&F6‚Â'7FW2æ§6öæÂ"’Ç&VG4f–ÆS×F‚æ¦ö–â‡67&F6‚Â'&VG2æ§6öæÂ"’ÇFöFõ&ö÷C×F‚æ¦ö–â†6VäF—"Â'FöF÷2"’ÆÆVv7•FöFôf–ÆS×F‚æ¦ö–â†6VäF—"Â'FöF÷2æ§6öâ"’ÇFöFôf–ÆS×FöFõ&ö¦V7E7F÷&vTf–ÆR‡FöFõ&ö÷BÇ&W÷6—F÷'’“°¦6öç7B6W76–öä–CÖV6ór×&V6÷fW'’ÒG·&Wf—6–öâç6Æ–6RƒÃ"—Ö°¦6öç7BFöFô–FVçF—G“×·6W76–öä–BÇ&ö¦V7D–C§&W÷6—F÷'—Ó°¦6öç7BF—FÆSÒ$T4òÓr&V6÷fW'’&Wf–Ws¢VF—BWf–FVæ6RÂF†Vâ–ç7V7BF6²7FFRG&ç6—F–öç2#°¦v—B&öÖ—6RæÆÂ…¶Ö¶F—"†vVçDF—"Ç·&V7W'6—fS§G'VRÆÖöFS£ósÒ’ÆÖ¶F—"‡6W76–öäF—"Ç·&V7W'6—fS§G'VRÆÖöFS£ósÒ’ÆÖ¶F—"†6VäF—"Ç·&V7W'6—fS§G'VRÆÖöFS£ósÒ•Ò“°¦76W'BæWVÂ‡G—Vöb•6¶vRæ&–ãòç’Â'7G&–ær"Â%’6¶vR×W7BW‡÷6R—G2–ææVB4Ä’W†V7WF&ÆR"“°¦6öç7B•6¶vU&ö÷C×F‚æF—&æÖR†f–ÆUU$ÅFõF‚†æWrU$Â‚"ââöæöFUöÖöGVÆW2ôV&VæF–Â×v÷&·2÷’Ö6öF–ærÖvVçB÷6¶vRæ§6öâ"Æ–×÷'BæÖWFçW&Â’’“°¦6öç7B6Æ“×F‚ç&W6öÇfR‡•6¶vU&ö÷BÇ•6¶vRæ&–âç’“°¦6öç7B6VäW‡FVç6–öã×F‚æ¦ö–â‡&W÷6—F÷'’Â&W‡FVç6–öç2"Â&6VâçG2"“°¦6öç7B&ö&TW‡FVç6–öãÖf–ÆUU$ÅFõF‚†æWrU$Â‚"âöV6ór×’×&V6÷fW'’×&ö&RÖW‡FVç6–öâæÖ§2"Æ–×÷'BæÖWFçW&Â’“°¦6öç7B&6TVçc×²ââäö&¦V7Bæg&öÔVçG&–W2…²%D‚"Â%7—7FVÕ&ö÷B"Â%t”äD•""Â%DTÕ"Â%DÕ"Â%DÕD•""Â$Äär"Â%DU$Ò%ÒæfÆDÖ†¶W“Óç&ö6W72æVçe¶¶W•ÓÓÓ×VæFVf–æVCõµÓ¥µ¶¶W’Ç&ö6W72æVçe¶¶W•ÕÕÒ’’Ä„ôÔS¦†öÖRÅU4U%$ôd”ÄS¦†öÖRÅ•ô4ôD”äuôtTåEôD•#¦vVçDF—"Å•ô4ôD”äuôtTåEõ4U54”ôåôD•#§6W76–öäF—"Å•õDTÄTÔUE%“¢#"Å¶7&VFVçF–ÅÓ¦”¶W’Ä4TåôT4óuõ4U54”ôåô”C§6W76–öä–BÄ4TåôT4óuõ$ô¤T5C§&W÷6—F÷'’Ä4TåôT4óuõ5DU5ôd”ÄS§7FW4f–ÆRÄ4TåôT4óuõ$TE5ôd”ÄS§&VG4f–ÆRÄ4TåôT4óuõDôDõôd”ÄS§FöFôf–ÆRÄ4TåôT4óuõD4µõD•DÄS§F—FÆWÓ°¦6öç7B6æ—F—¦SÖ7&VFU6V7&WE6æ—F—¦W"†”¶W’“°¦6öç7B&VF7FVC×fÇVSÓç6æ—F—¦R…7G&–ær‡fÇVR’“°¦6öç7BG&ç67&—CÖ7&VFT§6öæÅVWVR‡¶f–ÆS¦v—B÷Vâ‡G&ç67&—EF‚Â'r"Ãóc’Ç6æ—F—¦WÒ“°¦6öç7B&V6÷&C×G&ç67&—Bç&V6÷&C°¦6öç7B&V6÷&D7–æ3Ò‚ââæ&w2“Óç¶6öç7BVæF–æs×&V6÷&B‚ââæ&w2“·VæF–æræ6F6‚‚‚“Óç·Ò“·&WGW&âVæF–æs·Ó°¦6öç7B6ÆVWÖ×3ÓææWr&öÖ—6R‡&W6öÇfSÓç6WEF–ÖV÷WB‡&W6öÇfRÆ×2’“°¦6öç7B÷VåFöFõ7F÷&SÒ‚“Óå6W76–öåFöFõ7F÷&Ræ÷Vå&ö¦V7E66÷VB‡FöFõ&ö÷BÆÆVv7•FöFôf–ÆR“°¦6öç7B6æ6†÷CÖ7–æ2‚“Óç¶6öç7B7F÷&SÖv—B÷VåFöFõ7F÷&R‚’Å¶7F—fRÆ&6†—fVEÓÖv—B&öÖ—6RæÆÂ…·7F÷&RæÆ—7B‡FöFô–FVçF—G’’Ç7F÷&Ræ&6†—fVB‡FöFô–FVçF—G’•Ò“·&WGW&â¶—FV×3¥²ââæ7F—fRÂââæ&6†—fVE×Ó·Ó°¦7–æ2gVæ7F–öâf–æEW'6—7FVEÆç2†F—&V7F÷'’—°¢6öç7BÖF6†W3ÕµÓ°¢f÷"†6öç7BVçG'’öbv—B&VFF—"†F—&V7F÷'’Ç·v—F„f–ÆUG—W3§G'VWÒ’—°¢6öç7Bf–ÆVæÖS×F‚æ¦ö–â†F—&V7F÷'’ÆVçG'’ææÖR“°¢–b†VçG'’æ—4F—&V7F÷'’‚’—¶ÖF6†W2çW6‚‚ââæv—Bf–æEW'6—7FVEÆç2†f–ÆVæÖR’“¶6öçF–çVS·Ð¢–b‚VçG'’æ—4f–ÆR‚’–6öçF–çVS°¢6öç7B6öçFVçG3Öv—B&VDf–ÆR†f–ÆVæÖRÂ'WFc‚"’æ6F6‚‚‚“Óâ""“°¢–b†6öçFVçG2æ–æ6ÇVFW2‚$4TåôT4óuõTäD”äuõÄã¢–ç7V7BÖ6Æ÷7W&RÖVF—BÓâ–ç7V7B×F6²×&VGV6W""’–ÖF6†W2çW6‚†f–ÆVæÖR“°¢Ð¢&WGW&âÖF6†W3°§Ð¦6öç7B7W'&VçD—FVÓÖ7–æ2‚“Óç°¢6öç7BFVFÆ–æSÔFFRææ÷r‚’³Uó°¢v†–ÆR‡G'VR—°¢6öç7BFFÖv—B6æ6†÷B‚“°¢6öç7BÖF6†W3ÖFFæ—FV×2æf–ÇFW"†—FVÓÓæ—FVÒæWfVçG5³Óòç6W76–öä–CÓÓ×6W76–öä–Bbf—FVÒæWfVçG5³Óòç&ö¦V7D–CÓÓ×&W÷6—F÷'’“°¢6öç7BF6´–G3ÖæWr6WB†ÖF6†W2æÖ†—FVÓÓæ—FVÒçF6´–B’“°¢–b‡F6´–G2ç6—¦Sã—F‡&÷ræWrW'&÷"†’7&VFVBGWÆ–6FR6W76–öâ÷&ö¦V7BFöFòF6·3¢G¶ÖF6†W2æÖ†—FVÓÓæG¶—FVÒçF6´–GÓ¢G¶—FVÒæ7W'&VçBç7FFWÖ’æ¦ö–â‚"Â"—Ö“°¢–b†ÖF6†W2æÆVæwFƒã—°¢6öç7B÷&FW&VCÕ²ââæÖF6†W5Òç6÷'B‚†Æ"“ÓææWfVçG2æÆVæwF‚Ö"æWfVçG2æÆVæwF‚’Æ7F—fSÖ÷&FW&VE³ÒÆ&6†—fVCÖ÷&FW&VBæB‚Ó“°¢6öç7B&Vf—ƒÖ7F—fRæWfVçG2æÆVæwFƒÆ&6†—fVBæWfVçG2æÆVæwF‚bf7F—fRæWfVçG2æWfW'’‚†WfVçBÆ–æFW‚“Óä¥4ôâç7G&–æv–g’†WfVçB“ÓÓÔ¥4ôâç7G&–æv–g’†&6†—fVBæWfVçG5¶–æFW…Ò’“°¢6öç7BÖ&¶W$f–ÆSÖG·FöFôf–ÆWÒæ&6†—fR×VæF–æræ§6öæ°¢ÆWBÖ&¶W"Æ&6†—fU&s°¢G'—°¢Ö&¶W#Ô¥4ôâç'6R†v—B&VDf–ÆR†Ö&¶W$f–ÆRÂ'WFc‚"’“°¢–b†Ö&¶W#òç66†VÖÓÒ&6VâçFöFòÖ&6†—fR×G&ç67F–öâ÷c'ÇÇG—VöbÖ&¶W"æ&6†—fTf–ÆRÓÒ'7G&–ær'ÇÂõæ&6†—fRÕ³Ó•Ò²Õ¶ÖcÓ•×³'ÕÂæ§6öâB÷RçFW7B†Ö&¶W"æ&6†—fTf–ÆR’—F‡&÷ræWrW'&÷"‚&–çfÆ–B&6†—fRG&ç67F–öâÖ&¶W""“°¢&6†—fU&sÖv—B&VDf–ÆR‡F‚æ¦ö–â‡F‚æF—&æÖR‡FöFôf–ÆR’Â&&6†—fR"ÆÖ&¶W"æ&6†—fTf–ÆR’Â'WFc‚"“°¢Ö6F6‚†W'&÷"—·F‡&÷ræWrW'&÷"†GWÆ–6FR4TâFöFò6æ6†÷G2vW&Rö'6W'fVB÷WG6–FR&VF&ÆR&6†—fRG&ç67F–öã¢G¶W'&÷#òæÖW76vSóöW'&÷'Ö“·Ð¢6öç7BF–vW7CÖ7&VFT†6‚‚'6†#Sb"’çWFFR†&6†—fU&r’æF–vW7B‚&†W‚"’Æ&6†—fTFFÔ¥4ôâç'6R†&6†—fU&r’Æ&6†—fVEF6³Ö&6†—fTFFæ—FV×2æf–æB†—FVÓÓæ—FVÒçF6´–CÓÓÖ&6†—fVBçF6´–B“°¢–b‚&Vf—‡ÇÂÖ&¶W'ÇÆÖ&¶W"ç66†VÖÓÒ&6VâçFöFòÖ&6†—fR×G&ç67F–öâ÷c'ÇÆÖ&¶W"ç6†#SbÓÖF–vW7GÇÂ&6†—fVEF6·ÇÄ¥4ôâç7G&–æv–g’†&6†—fVEF6²æWfVçG2’ÓÔ¥4ôâç7G&–æv–g’†&6†—fVBæWfVçG2—ÇÂ…²&FöæR"Â&6æ6VÆÆVB%Òæ–æ6ÇVFW2†&6†—fVBæWfVçG2æB‚Ó“òç7FFR’’¢F‡&÷ræWrW'&÷"‚$4Tâ&6†—fRG&ç67F–öâ6öçF–ç2–æ6öç6—7FVçB7F—fRæB&6†—fVBF6²†—7F÷&–W2"“°¢–b„FFRææ÷r‚“ãÖFVFÆ–æR—F‡&÷ræWrW'&÷"‚$4Tâ&6†—fRG&ç67F–öâF–Bæ÷B6WGFÆRgFW"w&—F–ær—G2fW&–f–VBFW&Ö–æÂ6æ6†÷B"“°¢v—B6ÆVWƒ#“°¢6öçF–çVS°¢Ð¢&WGW&âÖF6†W2æf–æB†—FVÓÓæ—FVÒçF—FÆSÓÓ×F—FÆR“°¢Ð§Ó°¦gVæ7F–öâ7F'E’†Æ&VÂ—°¢6öç7B&w3Õ¶6Æ’Â"ÒÖÖöFR"Â''2"Â"Ò×6W76–öâÖ–B"Ç6W76–öä–BÂ"Ò×6W76–öâÖF—""Ç6W76–öäF—"Â"ÒÖæòÖW‡FVç6–öç2"Ââââ†W‡FVç6–öãõ²"ÒÖW‡FVç6–öâ"ÆW‡FVç6–öåÓ¥µÒ’Â"ÒÖW‡FVç6–öâ"Æ6VäW‡FVç6–öâÂ"ÒÖW‡FVç6–öâ"Ç&ö&TW‡FVç6–öâÂ"Ò×&÷f–FW""Ç&÷f–FW"Â"ÒÖÖöFVÂ"ÆÖöFVÂÂ"ÒÖæò×6¶–ÆÇ2"Â"Ò×FööÇ2"Â&6Vå÷FöFõò¢Æ6VåöV6óuò¢%Ó°¢6öç7B6†–ÆC×7vâ‡&ö6W72æW†V5F‚Æ&w2Ç¶7vC§&W÷6—F÷'’ÆVçc§²ââæ&6TVçbÄ4TåôT4óuõ„4S¦Æ&VÇÒÇ7FF–ó¥²'—R"Â'—R"Â'—R%×Ò“°¢ÆWB'VffW#Ò""Ç7FFW'#Ò""Ç7FF÷WD'—FW3Ó°¢ÆWB&W7VÖT6öæf—&ÖVCÖfÇ6S°¢6öç7BWfVçG3ÕµÓ°¢6öç7BF–ÖVÆ–æSÕµÓ°¢6öç7B&ö6W757F'FVDC×&ö6W72æ‡'F–ÖRæ&–v–çB‚“°¢ÆWB6öçG&öÆÆW#°¢6öç7Böå7FF÷WCÖ6‡Væ³Óç°¢7FF÷WD'—FW2³Ö6‡Væ²æÆVæwFƒ°¢–b‡7FF÷WD'—FW3ã%óó—¶6†–ÆBæ¶–ÆÎw×[h‘éì¶»§q«^u•ÉÐ¹•ÅÕ…°¡Í•½¹¹•Ù•¹ÑÌ¹™¥±Ñ•È¡•Ù•¹Ðôù•Ù•¹Ð¹ÑåÁ”ôôô‰•áÑ•¹Í¥½¹}Õ¥}É•ÅÕ•ÍÐˆ˜™•Ù•¹Ð¹µ•Ñ¡½ôôô‰½¹™¥É´ˆ¤¹±•¹Ñ °Ä°‰I•ÍÕµ”É•ÅÕ¥É•Ì½¹”•áÁ±¥¥Ð…™™¥Éµ…Ñ¥Ù”A¤½¹™¥Éµ…Ñ¥½¸ˆ¤ì(€½¹ÍÐmÁ±…¹¹•±ÉÕ¹¹¥¹œ±‰±½­•±É•ÍÕµ•±‘½¹•tõÉ•½Ù•É•¹•Ù•¹ÑÌ¹µ…À¡•Ù•¹Ðôù…Ñ”¹Á…ÉÍ”¡•Ù•¹Ð¹…Ð¤¤ì(€½¹ÍÐ™¥¹…°õí…¹‘¥‘…Ñ”éÉ•Ù¥Í¥½¸±ÁÉ½Ù¥‘•È±µ½‘•°±Á¥Y•ÉÍ¥½¸éÁ¥A…­…”¹Ù•ÉÍ¥½¸±Í•ÍÍ¥½¹%±ÁÉ½©•Ñ%éÉ•Á½Í¥Ñ½Éä±Ñ…Í­%éÉ•½Ù•É•¹Ñ…Í­%±•Ù•¹ÑÌéÉ•½Ù•É•¹•Ù•¹ÑÌ¹µ…À ¡íÉ•Ù¥Í¥½¸±ÍÑ…Ñ”±…Ð±É•…Í½¹ô¤ôø¡íÉ•Ù¥Í¥½¸±ÍÑ…Ñ”±…Ð±É•…Í½¹ô¤¤±Á¥Á•±¥¹•Q¥µ¥¹Í5ÌéíÁ±…¹¹•‘Q½IÕ¹¹¥¹œéÉÕ¹¹¥¹œµÁ±…¹¹•±…Ñ¥Ù•	•™½É•%¹Ñ•ÉÉÕÁÑ¥½¸é‰±½­•µÉÕ¹¹¥¹œ±‰±½­•‘U¹Ñ¥±I•ÍÕµ”éÉ•ÍÕµ•µ‰±½­•±…Ñ¥Ù•™Ñ•ÉI•ÍÕµ”é‘½¹”µÉ•ÍÕµ•±Á±…¹¹•‘Q½½¹”é‘½¹”µÁ±…¹¹•‘ô±ÁÉ½•ÍÍ5•ÑÉ¥Ìéí¥¹¥Ñ¥…°éµ•…ÍÕÉ•AÉ½•ÍÌ¡™¥ÉÍÐ¤±É•ÍÑ…ÉÑ•éµ•…ÍÕÉ•AÉ½•ÍÌ¡Í•½¹¥ô±Á•ÉÍ¥ÍÑ•‘A±…¸éíÍ•ÍÍ¥½¹¥±”éÁ…Ñ ¹É•±…Ñ¥Ù”¡Í•ÍÍ¥½¹¥È±Á•ÉÍ¥ÍÑ•‘A±…¹¥±”¤±½É‘•É•‘MÑ•ÁÌél‰¥¹ÍÁ•Ðµ±½ÍÕÉ”µ…Õ‘¥Ðˆ°‰¥¹ÍÁ•ÐµÑ…Í¬µÉ•‘Õ•È‰uô±É•…‘ÌéÉ•…‘Ì¹µ…À ¡íÍÑ•À±™¥±”±…Ñô¤ôø¡íÍÑ•À±™¥±”±…Ñô¤¤±ÍÑ•ÁÌéÉ½ÝÌ¹µ…À ¡íÍÑ•À±ÍÕµµ…Éä±…Ñô¤ôø¡íÍÑ•À±ÍÕµµ…Éä±…Ñô¤¤±¥¹¥Ñ¥…±AÉ½•ÍÍA¥é™¥ÉÍÐ¹¡¥±¹Á¥±É•ÍÑ…ÉÑ•‘AÉ½•ÍÍA¥éÍ•½¹¹¡¥±¹Á¥±¥¹Ñ•ÉÉÕÁÑ¥½¹M¥¹…°è‰M%-%10ˆ±ÝÉ½¹M•ÍÍ¥½¸éíÙ¥Í¥‰±”èÀ±µÕÑ…Ñ¥½¹I•©•Ñ•éÑÉÕ•ô±ÝÉ½¹AÉ½©•ÐéíÙ¥Í¥‰±”èÀ±µÕÑ…Ñ¥½¹I•©•Ñ•éÑÉÕ•ô±•áÁ±¥¥ÑI•ÍÕµ•½¹Í•¹ÐéÑÉÕ”±…ÁÁÉ½Ù…±ÕÑ¡½É¥ÑåÉ…¹Ñ•é™…±Í”±ÁÕ‰±¥Í¡ÕÑ¡½É¥ÑåÉ…¹Ñ•é™…±Í”±µ•É•ÕÑ¡½É¥ÑåÉ…¹Ñ•é™…±Í”±É•ÍÕ±Ðè‰AML‰ôì(€½¹ÍÐ½µÁ±•Ñ¥½¹M¡ÕÑ‘½Ý¸õ…Ý…¥ÐÍ•½¹¹ÍÑ½À ‰M%-%10ˆ¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡½µÁ±•Ñ¥½¹M¡ÕÑ‘½Ý¸¹±•…¹ÕÁ½¹™¥Éµ•±ÑÉÕ”°‰MÕ•ÍÍ™Õ°É•½Ù•ÉäµÕÍÐ½‰Í•ÉÙ”É•ÍÑ…ÉÑ•A¤ÁÉ½•ÍÌ±½Í”ˆ¤ì(€½¹ÍÐ™¥¹…±A±…¹¥±•Ìõ…Ý…¥Ð™¥¹‘A•ÉÍ¥ÍÑ•‘A±…¹Ì¡Í•ÍÍ¥½¹¥È¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡™¥¹…±A±…¹¥±•Ì¹±•¹Ñ °Ä°‰A¤µÕÍÐ±•…Ù”½¹”Á•ÉÍ¥ÍÑ•Í•ÍÍ¥½¸Á±…¸…™Ñ•ÈÉ•½Ù•Éä…¹Í¡ÕÑ‘½Ý¸ˆ¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡™¥¹…±A±…¹¥±•ÍlÁt±Á•ÉÍ¥ÍÑ•‘A±…¹¥±”°‰I•½Ù•ÉäµÕÍÐÉ•Ñ…¥¸Ñ¡”½É¥¥¹…°Í•ÍÍ¥½¸™¥±”ˆ¤ì(€½¹ÍÐÍ•ÍÍ¥½¹	åÑ•Ìõ…Ý…¥ÐÉ•…‘¥±”¡Á•ÉÍ¥ÍÑ•‘A±…¹¥±”¤ì(€½¹ÍÐÍ•ÍÍ¥½¹Q•áÐõÍ•ÍÍ¥½¹	åÑ•Ì¹Ñ½MÑÉ¥¹œ ‰ÕÑ˜àˆ¤±Á±…¹5…É­•Èô‰M9}<ÀÝ}A9%9}A18è¥¹ÍÁ•Ðµ±½ÍÕÉ”µ…Õ‘¥Ð€´ø¥¹ÍÁ•ÐµÑ…Í¬µÉ•‘Õ•Èˆì(€…ÍÍ•ÉÐ¹½¬¡Í•ÍÍ¥½¹Q•áÐ¹¥¹±Õ‘•Ì¡Á±…¹5…É­•È¤°‰Q¡”½É‘•É•Á±…¸µ…É­•ÈµÕÍÐÉ•µ…¥¸¥¸Ñ¡”Á•ÉÍ¥ÍÑ•A¤Í•ÍÍ¥½¸…™Ñ•ÈÉ•½Ù•Éäˆ¤ì(€½¹ÍÐ…Ñ¥Ù•I…Üõ…Ý…¥ÐÉ•…‘¥±”¡Ñ½‘½¥±”°‰ÕÑ˜àˆ¤±…Ñ¥Ù•…Ñ„õ)M=8¹Á…ÉÍ”¡…Ñ¥Ù•I…Ü¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡…Ñ¥Ù•…Ñ„¹Í¡•µ„°‰…Í•¸¹Ñ½‘¼½ØÄˆ°‰M8…Ñ¥Ù”Q½‘¼‘…Ñ„µÕÍÐÉ•Ñ…¥¸¥ÑÌÍÕÁÁ½ÉÑ•Í¡•µ„ˆ¤ì(€…ÍÍ•ÉÐ¹½¬¡9Õµ‰•È¹¥ÍM…™•%¹Ñ••È¡…Ñ¥Ù•…Ñ„¹É•Ù¥Í¥½¸¤˜™ÉÉ…ä¹¥ÍÉÉ…ä¡…Ñ¥Ù•…Ñ„¹¥Ñ•µÌ¤°‰M8…Ñ¥Ù”Q½‘¼‘…Ñ„µÕÍÐ¡…Ù”„É•Ù¥Í¥½¸…¹Ù…±¥¥Ñ•´±¥ÍÐˆ¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡…Ñ¥Ù•…Ñ„¹¥Ñ•µÌ¹™¥±Ñ•È¡¥Ñ•´ôù¥Ñ•´¹Ñ…Í­%ôôõÉ•½Ù•É•¹Ñ…Í­%¤¹±•¹Ñ °À°‰½µÁ±•Ñ•Ñ…Í¬µÕÍÐ¹½ÐÉ•µ…¥¸¥¸Ñ¡”…Ñ¥Ù”ÁÉ½©•ÐÍÑ½É”ˆ¤ì(€½¹ÍÐ…É¡¥Ù•¥É•Ñ½ÉäõÁ…Ñ ¹©½¥¸¡Á…Ñ ¹‘¥É¹…µ”¡Ñ½‘½¥±”¤°‰…É¡¥Ù”ˆ¤±…É¡¥Ù•9…µ•Ìô¡…Ý…¥ÐÉ•…‘‘¥È¡…É¡¥Ù•¥É•Ñ½Éä¤¤¹™¥±Ñ•È¡¹…µ”ôø½y…É¡¥Ù”µlÀ´åt¬µm„µ˜À´åuìÄÉõp¹©Í½¸½Ô¹Ñ•ÍÐ¡¹…µ”¤¤ì(€½¹ÍÐ…É¡¥Ù•‘5…Ñ¡•Ìõmtì(€™½È¡½¹ÍÐ¹…µ”½˜…É¡¥Ù•9…µ•Ì¥ì(€€€½¹ÍÐÉ…Üõ…Ý…¥ÐÉ•…‘¥±”¡Á…Ñ ¹©½¥¸¡…É¡¥Ù•¥É•Ñ½Éä±¹…µ”¤°‰ÕÑ˜àˆ¤±‘…Ñ„õ)M=8¹Á…ÉÍ”¡É…Ü¤ì(€€€™½È¡½¹ÍÐ¥Ñ•´½˜‘…Ñ„¹¥Ñ•µÌüýmt¥¥˜¡¥Ñ•´¹Ñ…Í­%ôôõÉ•½Ù•É•¹Ñ…Í­%¥…É¡¥Ù•‘5…Ñ¡•Ì¹ÁÕÍ ¡í¹…µ”±É…Ü±‘…Ñ„±¥Ñ•µô¤ì(€ô(€…ÍÍ•ÉÐ¹•ÅÕ…°¡…É¡¥Ù•‘5…Ñ¡•Ì¹±•¹Ñ °Ä°‰M8µÕÍÐ…É¡¥Ù”Ñ¡”É•½Ù•É•Ñ…Í¬•á…Ñ±ä½¹”ˆ¤ì(€½¹ÍÐ…É¡¥Ù•õ…É¡¥Ù•‘5…Ñ¡•ÍlÁtì(€…ÍÍ•ÉÐ¹‘••ÁÅÕ…°¡…É¡¥Ù•¹¥Ñ•´¹•Ù•¹ÑÌ±É•½Ù•É•¹•Ù•¹ÑÌ°‰M8…É¡¥Ù”µÕÍÐÁÉ•Í•ÉÙ”Ñ¡”½µÁ±•Ñ”½É‘•É•É•½Ù•Éä¡¥ÍÑ½Éäˆ¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡…É¡¥Ù•¹¥Ñ•´¹•Ù•¹ÑÍlÁt¹Í•ÍÍ¥½¹%±Í•ÍÍ¥½¹%¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡…É¡¥Ù•¹¥Ñ•´¹•Ù•¹ÑÍlÁt¹ÁÉ½©•Ñ%±É•Á½Í¥Ñ½Éä¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡…É¡¥Ù•¹¥Ñ•´¹•Ù•¹ÑÌ¹…Ð ´Ä¤¹ÍÑ…Ñ”°‰‘½¹”ˆ¤ì(€½¹ÍÐ…É¡¥Ù•¥•ÍÐõÉ•…Ñ•!…Í  ‰Í¡„ÈÔØˆ¤¹ÕÁ‘…Ñ”¡…É¡¥Ù•¹É…Ü¤¹‘¥•ÍÐ ‰¡•àˆ¤±…É¡¥Ù•I•Ù¥Í¥½¸õ9Õµ‰•È ½y…É¡¥Ù”´¡lÀ´åt¬¤´½Ô¹•á•Œ¡…É¡¥Ù•¹¹…µ”¤ü¹lÅt¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡…É¡¥Ù•¹‘…Ñ„¹Í¡•µ„°‰…Í•¸¹Ñ½‘¼½ØÄˆ¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡…É¡¥Ù•¹‘…Ñ„¹É•Ù¥Í¥½¸±…É¡¥Ù•I•Ù¥Í¥½¸°‰M8…É¡¥Ù”™¥±•¹…µ”…¹Á…å±½…É•Ù¥Í¥½¹ÌµÕÍÐ…É•”ˆ¤ì(€…ÍÍ•ÉÐ¹•ÅÕ…°¡…É¡¥Ù•¹¹…µ”±…É¡¥Ù”´‘í…É¡¥Ù•I•Ù¥Í¥½¹ô´‘í…É¡¥Ù•¥•ÍÐ¹Í±¥” À°ÄÈ¥ô¹©Í½¹€°‰M8…É¡¥Ù”™¥±•¹…µ”µÕÍÐµ…Ñ Ñ¡”Á•ÉÍ¥ÍÑ•½¹Ñ•¹Ð‘¥•ÍÐˆ¤ì(€…Ý…¥Ð…ÍÍ•ÉÐ¹É•©•ÑÌ  ¤ôùÉ•…‘¥±”¡€‘íÑ½‘½¥±•ô¹…É¡¥Ù”µÁ•¹‘¥¹œ¹©Í½¹€¤±•ÉÉ½Èôù•ÉÉ½Èü¹½‘”ôôô‰9=9Pˆ°‰½µÁ±•Ñ•…É¡¥Ù”ÑÉ…¹Í…Ñ¥½¸µ…É­•ÈµÕÍÐ‰”±•…É•ˆ¤ì(€½¹ÍÐ‘¥•ÍÐõÉ…ÜôùÉ•…Ñ•!…Í  ‰Í¡„ÈÔØˆ¤¹ÕÁ‘…Ñ”¡É…Ü¤¹‘¥•ÍÐ ‰¡•àˆ¤ì(€™¥¹…°¹Á•ÉÍ¥ÍÑ•‘A±…¸õì¸¸¹™¥¹…°¹Á•ÉÍ¥ÍÑ•‘A±…¸±Í¡„ÈÔØé‘¥•ÍÐ¡Í•ÍÍ¥½¹	åÑ•Ì¤±‰åÑ•ÌéÍ•ÍÍ¥½¹	åÑ•Ì¹±•¹Ñ ±Á±…¹5…É­•ÉAÉ•Í•¹ÐéÑÉÕ”±Í•ÍÍ¥½¹¥±•Í]¥Ñ¡A±…¸é™¥¹…±A±…¹¥±•Ì¹±•¹Ñ¡ôì(€™¥¹…°¹Á•ÉÍ¥ÍÑ•¹”õí…Ñ¥Ù•Q½‘¼éí™¥±”éÁ…Ñ ¹É•±…Ñ¥Ù”¡…Í•¹¥È±Ñ½‘½¥±”¤±Í¡„ÈÔØé‘¥•ÍÐ¡…Ñ¥Ù•I…Ü¤±‰åÑ•Ìé	Õ™™•È¹‰åÑ•1•¹Ñ ¡…Ñ¥Ù•I…Ü¤±É•Ù¥Í¥½¸é…Ñ¥Ù•…Ñ„¹É•Ù¥Í¥½¸±Ñ…Í­½Õ¹Ðé…Ñ¥Ù•…Ñ„¹¥Ñ•µÌ¹±•¹Ñ ±É•½Ù•É•‘Q…Í­½Õ¹ÐèÁô±…É¡¥Ù”éí™¥±”éÁ…Ñ ¹É•±…Ñ¥Ù”¡…Í•¹¥È±Á…Ñ ¹©½¥¸¡…É¡¥Ù•¥É•Ñ½Éä±…É¡¥Ù•¹¹…µ”¤¤±Í¡„ÈÔØé…É¡¥Ù•¥•ÍÐ±‰åÑ•Ìé	Õ™™•È¹‰åÑ•1•¹Ñ ¡…É¡¥Ù•¹É…Ü¤±É•Ù¥Í¥½¸é…É¡¥Ù•¹‘…Ñ„¹É•Ù¥Í¥½¸±Ñ…Í­½Õ¹Ðé…É¡¥Ù•¹‘…Ñ„¹¥Ñ•µÌ¹±•¹Ñ ±É•½Ù•É•‘Q…Í­½Õ¹ÐèÄ±½É‘•É•‘Ù•¹ÑÌé…É¡¥Ù•¹¥Ñ•´¹•Ù•¹ÑÌ¹µ…À ¡íÉ•Ù¥Í¥½¸±ÍÑ…Ñ•ô¤ôø¡íÉ•Ù¥Í¥½¸±ÍÑ…Ñ•ô¤¥ô±‘ÕÁ±¥…Ñ•¡•­ÌéíÁ•ÉÍ¥ÍÑ•‘A±…¹¥±•Ìé™¥¹…±A±…¹¥±•Ì¹±•¹Ñ ±…É¡¥Ù•‘Q…Í­½Á¥•Ìé…É¡¥Ù•‘5…Ñ¡•Ì¹±•¹Ñ ±…Ñ¥Ù•Q…Í­½Á¥•Ìé…Ñ¥Ù•…Ñ„¹¥Ñ•µÌ¹™¥±Ñ•È¡¥Ñ•´ôù¥Ñ•´¹Ñ…Í­%ôôõÉ•½Ù•É•¹Ñ…Í­%¤¹±•¹Ñ ±…É¡¥Ù•QÉ…¹Í…Ñ¥½¹5…É­•É±•…É•éÑÉÕ•õôì(€…Ý…¥ÐÑÉ…¹ÍÉ¥ÁÐ¹‘É…¥¹¹‘±½Í” ¤ì(€…Ý…¥ÐÉ´¡ÍÉ…Ñ ±íÉ•ÕÉÍ¥Ù”éÑÉÕ”±™½É”éÑÉÕ•ô¤ì(€…Ý…¥ÐÝÉ¥Ñ•¥±”¡•Ù¥‘•¹•A…Ñ ±€‘í)M=8¹ÍÑÉ¥¹¥™ä¡™¥¹…°±¹Õ±°°È¥õq¹€±íµ½‘”èÁ¼ØÀÁô¤ì(€½¹Í½±”¹±½œ¡)M=8¹ÍÑÉ¥¹¥™ä¡™¥¹…°¤¤ì)õ…Ñ ¡•ÉÉ½È¥ì(€±•Ð™±ÕÍ¡…¥±ÕÉ”ì(€…Ý…¥ÐÉÕ¹±•…¹ÕÀ¡•ÉÉ½È±l(€€€…Íå¹Œ ¤ôùí¥˜¡™¥ÉÍÐ¥…Ý…¥Ð™¥ÉÍÐ¹ÍÑ½À ‰M%-%10ˆ¤íô°(€€€…Íå¹Œ ¤ôùí¥˜¡Í•½¹¥…Ý…¥ÐÍ•½¹¹ÍÑ½À ‰M%-%10ˆ¤íô°(€€€…Íå¹Œ ¤ôùíÑÉåí…Ý…¥ÐÑÉ…¹ÍÉ¥ÁÐ¹‘É…¥¹¹‘±½Í” ¤íõ…Ñ ¡™…¥±ÕÉ”¥í™±ÕÍ¡…¥±ÕÉ”õ™…¥±ÕÉ”íÑ¡É½Ü™…¥±ÕÉ”íõô°(€€€…Íå¹Œ ¤ôùì(€€€€€½¹ÍÐÑ…Í¬õ…Ý…¥ÐÕÉÉ•¹Ñ%Ñ•´ ¤¹…Ñ   ¤ôùÕ¹‘•™¥¹•¤ì(€€€€€½¹ÍÐÉ•…‘I½ÝÌô¡…Ý…¥ÐÉ•…‘¥±”¡É•…‘Í¥±”°‰ÕÑ˜àˆ¤¹…Ñ   ¤ôøˆˆ¤¤¹ÍÁ±¥Ð ‰q¸ˆ¤¹™¥±Ñ•È¡	½½±•…¸¤¹µ…À¡±¥¹”ôùíÑÉåíÉ•ÑÕÉ¸)M=8¹Á…ÉÍ”¡±¥¹”¤íõ…Ñ¡íÉ•ÑÕÉ¸íµ…±™½Éµ•éÑÉÕ•ôíõô¤ì(€€€€€½¹ÍÐÍÑ•ÁÌô¡…Ý…¥ÐÉ•…‘¥±”¡ÍÑ•ÁÍ¥±”°‰ÕÑ˜àˆ¤¹…Ñ   ¤ôøˆˆ¤¤¹ÍÁ±¥Ð ‰q¸ˆ¤¹™¥±Ñ•È¡	½½±•…¸¤¹µ…À¡±¥¹”ôùíÑÉåí½¹ÍÐíÍÑ•À±ÍÕµµ…Éä±Í•ÍÍ¥½¹%é½Ý¹•È±ÁÉ½©•Ñ%±…Ñôõ)M=8¹Á…ÉÍ”¡±¥¹”¤íÉ•ÑÕÉ¸íÍÑ•À±ÍÕµµ…Éä±Í•ÍÍ¥½¹%é½Ý¹•È±ÁÉ½©•Ñ%±…Ñôíõ…Ñ¡íÉ•ÑÕÉ¸íµ…±™½Éµ•éÑÉÕ•ôíõô¤ì(€€€€€½¹ÍÐÍÕµµ…É¥é•AÉ½•ÍÌõÁÉ½•ÍÌôø¡í±…‰•°éÁÉ½•ÍÌ¹±…‰•°±•Ù•¹ÑÌéÁÉ½•ÍÌ¹•Ù•¹ÑÌ¹µ…À¡•Ù•¹Ðôø¡íÑåÁ”é•Ù•¹Ð¹ÑåÁ”±Ñ½½±9…µ”é•Ù•¹Ð¹Ñ½½±9…µ”±µ•Ñ¡½é•Ù•¹Ð¹µ•Ñ¡½±ÍÑ½ÁI•…Í½¸é•Ù•¹Ð¹µ•ÍÍ…”ü¹ÍÑ½ÁI•…Í½¸°¸¸¸¡ÑåÁ•½˜•Ù•¹Ð¹µ•ÍÍ…”ü¹•ÉÉ½É5•ÍÍ…”ôôô‰ÍÑÉ¥¹œˆýíÁÉ½Ù¥‘•ÉÉÉ½ÈéÉ•‘…Ñ•¡•Ù•¹Ð¹µ•ÍÍ…”¹•ÉÉ½É5•ÍÍ…”¥ôéíô¤±…‰½ÉÑ•é•Ù•¹Ð¹…‰½ÉÑ•‘ô¤¤±…ÍÍ¥ÍÑ…¹ÑI•Á±¥•ÌéÁÉ½•ÍÌ¹•Ù•¹ÑÌ¹™¥±Ñ•È¡•Ù•¹Ðôù•Ù•¹Ð¹ÑåÁ”ôôô‰µ•ÍÍ…•}•¹ˆ˜™•Ù•¹Ð¹µ•ÍÍ…”ü¹É½±”ôôô‰…ÍÍ¥ÍÑ…¹Ðˆ˜™•Ù•¹Ð¹µ•ÍÍ…”ü¹ÍÑ½ÁI•…Í½¸ôôô‰ÍÑ½Àˆ¤¹µ…À¡•Ù•¹ÐôùÉ•‘…Ñ• ¡•Ù•¹Ð¹µ•ÍÍ…”¹½¹Ñ•¹Ðüýmt¤¹™¥±Ñ•È¡Á…ÉÐôùÁ…ÉÐü¹ÑåÁ”ôôô‰Ñ•áÐˆ¤¹µ…À¡Á…ÉÐôùÁ…ÉÐ¹Ñ•áÐ¤¹©½¥¸ ‰q¸ˆ¤¤¹Í±¥” ´ØÀÀ¤¤±ÍÑ‘•ÉÈéÁÉ½•ÍÌ¹ÍÑ‘•ÉÉô¤ì(€€€€€½¹ÍÐÁÉ½•ÍÍQÉ…”õm™¥ÉÍÐ˜™ÍÕµµ…É¥é•AÉ½•ÍÌ¡í±…‰•°è‰¥¹¥Ñ¥…°ˆ±•Ù•¹ÑÌé™¥ÉÍÐ¹•Ù•¹ÑÌ±ÍÑ‘•ÉÈé™¥ÉÍÐ¹ÍÑ‘•ÉÉô¤±Í•½¹˜™ÍÕµµ…É¥é•AÉ½•ÍÌ¡í±…‰•°è‰É•ÍÑ…ÉÑ•ˆ±•Ù•¹ÑÌéÍ•½¹¹•Ù•¹ÑÌ±ÍÑ‘•ÉÈéÍ•½¹¹ÍÑ‘•ÉÉô¥t¹™¥±Ñ•È¡	½½±•…¸¤ì(€€€€€½¹ÍÐÉ•Á½ÉÐõí…¹‘¥‘…Ñ”éÉ•Ù¥Í¥½¸±ÁÉ½Ù¥‘•È±µ½‘•°±Á¡…Í”±É•ÍÕ±Ðè‰%0ˆ±Ñ…Í¬éÑ…Í¬˜™íÑ…Í­%éÑ…Í¬¹Ñ…Í­%±Ñ¥Ñ±”éÑ…Í¬¹Ñ¥Ñ±”±•Ù•¹ÑÌéÑ…Í¬¹•Ù•¹ÑÌ¹µ…À ¡íÉ•Ù¥Í¥½¸±ÍÑ…Ñ”±…Ð±É•…Í½¹ô¤ôø¡íÉ•Ù¥Í¥½¸±ÍÑ…Ñ”±…Ð±É•…Í½¹ô¤¥ô±É•…‘ÌéÉ•…‘I½ÝÌ±ÍÑ•ÁÌ±ÁÉ½•ÍÍQÉ…”±•ÉÉ½ÈéÉ•‘…Ñ•¡•ÉÉ½Èü¹ÍÑ…¬üý•ÉÉ½È¤°¸¸¸¡™±ÕÍ¡…¥±ÕÉ”ýíÑÉ…¹ÍÉ¥ÁÑ±ÕÍ¡ÉÉ½ÈéÉ•‘…Ñ•¡™±ÕÍ¡…¥±ÕÉ”ü¹ÍÑ…¬üý™±ÕÍ¡…¥±ÕÉ”¥ôéíô¥ôì(€€€€€…Ý…¥ÐÝÉ¥Ñ•¥±”¡•Ù¥‘•¹•A…Ñ ±€‘í)M=8¹ÍÑÉ¥¹¥™ä¡É•Á½ÉÐ±¹Õ±°°È¥õq¹€±íµ½‘”èÁ¼ØÀÁô¤ì(€€€€€½¹Í½±”¹•ÉÉ½È¡)M=8¹ÍÑÉ¥¹¥™ä¡É•Á½ÉÐ¤¤ì(€€€ô°(€€€…Íå¹Œ ¤ôùÉ´¡ÍÉ…Ñ ±íÉ•ÕÉÍ¥Ù”éÑÉÕ”±™½É”éÑÉÕ•ô¤°(€t¤ì)ô(
+import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
+import {mkdir,open,readdir,readFile,realpath,rm,writeFile} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import path from "node:path";
+import {spawn} from "node:child_process";
+import {execFileSync} from "node:child_process";
+import {fileURLToPath} from "node:url";
+import {SessionTodoStore,todoProjectStorageFile} from "../src/runtime/todo-store.ts";
+import {eco07ProviderRateLimitError} from "../src/runtime/eco07-provider-failure.ts";
+import {resolveEco07Provider} from "./eco07-provider-config.mjs";
+import {createJsonlQueue,createRpcController,createSecretSanitizer,runCleanup} from "./eco07-recovery-io.mjs";
+
+const repository=await realpath(process.cwd());
+const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8"}).trim();
+assert.equal(revision,process.env.ASEN_EXPECTED_SHA,"ECO-07 Pi recovery must test the exact candidate SHA");
+const {provider,model,apiKey,credential,extension}=resolveEco07Provider(process.env);
+let piPackage;
+try{piPackage=JSON.parse(await readFile(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url),"utf8"));}
+catch{throw new Error("ECO-07 installed Pi package metadata is unavailable or malformed");}
+assert.equal(piPackage.version,"1.1.0","ECO-07 provider run must use Pi 1.1.0");
+
+const evidenceDir=path.join(repository,"eco07-pi-evidence");
+await mkdir(evidenceDir,{recursive:true});
+const transcriptPath=path.join(evidenceDir,"events.jsonl");
+const evidencePath=path.join(evidenceDir,"recovery.json");
+const scratch=await import("node:fs/promises").then(fs=>fs.mkdtemp(path.join(tmpdir(),`asen-eco07-${provider}-`)));
+const home=path.join(scratch,"home"),agentDir=path.join(home,".pi","agent"),sessionDir=path.join(home,"sessions"),asenDir=path.join(home,".asen");
+const stepsFile=path.join(scratch,"steps.jsonl"),readsFile=path.join(scratch,"reads.jsonl"),todoRoot=path.join(asenDir,"todos"),legacyTodoFile=path.join(asenDir,"todos.json"),todoFile=todoProjectStorageFile(todoRoot,repository);
+const sessionId=`eco07-recovery-${revision.slice(0,12)}`;
+const todoIdentity={sessionId,projectId:repository};
+const title="ECO-07 recovery review: audit evidence, then inspect task state transitions";
+await Promise.all([mkdir(agentDir,{recursive:true,mode:0o700}),mkdir(sessionDir,{recursive:true,mode:0o700}),mkdir(asenDir,{recursive:true,mode:0o700})]);
+assert.equal(typeof piPackage.bin?.pi,"string","Pi package must expose its pinned CLI executable");
+const piPackageRoot=path.dirname(fileURLToPath(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url)));
+const cli=path.resolve(piPackageRoot,piPackage.bin.pi);
+const asenExtension=path.join(repository,"extensions","asen.ts");
+const probeExtension=fileURLToPath(new URL("./eco07-pi-recovery-probe-extension.mjs",import.meta.url));
+const baseEnv={...Object.fromEntries(["PATH","SystemRoot","WINDIR","TEMP","TMP","TMPDIR","LANG","TERM"].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]]])),HOME:home,USERPROFILE:home,PI_CODING_AGENT_DIR:agentDir,PI_CODING_AGENT_SESSION_DIR:sessionDir,PI_TELEMETRY:"0",[credential]:apiKey,ASEN_ECO07_SESSION_ID:sessionId,ASEN_ECO07_PROJECT:repository,ASEN_ECO07_STEPS_FILE:stepsFile,ASEN_ECO07_READS_FILE:readsFile,ASEN_ECO07_TODO_FILE:todoFile,ASEN_ECO07_TASK_TITLE:title};
+const sanitize=createSecretSanitizer(apiKey);
+const redacted=value=>sanitize(String(value));
+const transcript=createJsonlQueue({file:await open(transcriptPath,"w",0o600),sanitize});
+const record=transcript.record;
+const recordAsync=(...args)=>{const pending=record(...args);pending.catch(()=>{});return pending;};
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const openTodoStore=()=>SessionTodoStore.openProjectScoped(todoRoot,legacyTodoFile);
+const snapshot=async()=>{const store=await openTodoStore(),[active,archived]=await Promise.all([store.list(todoIdentity),store.archived(todoIdentity)]);return {items:[...active,...archived]};};
+async function findPersistedPlans(directory){
+  const matches=[];
+  for(const entry of await readdir(directory,{withFileTypes:true})){
+    const filename=path.join(directory,entry.name);
+    if(entry.isDirectory()){matches.push(...await findPersistedPlans(filename));continue;}
+    if(!entry.isFile())continue;
+    const contents=await readFile(filename,"utf8").catch(()=>"");
+    if(contents.includes("ASEN_ECO07_PENDING_PLAN: inspect-closure-audit -> inspect-task-reducer"))matches.push(filename);
+  }
+  return matches;
+}
+const currentItem=async()=>{
+  const deadline=Date.now()+5_000;
+  while(true){
+    const data=await snapshot();
+    const matches=data.items.filter(item=>item.events[0]?.sessionId===sessionId&&item.events[0]?.projectId===repository);
+    const taskIds=new Set(matches.map(item=>item.taskId));
+    if(taskIds.size>1)throw new Error(`Pi created duplicate session/project Todo tasks: ${matches.map(item=>`${item.taskId}:${item.current.state}`).join(", ")}`);
+    if(matches.length>1){
+      const ordered=[...matches].sort((a,b)=>a.events.length-b.events.length),active=ordered[0],archived=ordered.at(-1);
+      const prefix=active.events.length<archived.events.length&&active.events.every((event,index)=>JSON.stringify(event)===JSON.stringify(archived.events[index]));
+      const markerFile=`${todoFile}.archive-pending.json`;
+      let marker,archiveRaw;
+      try{
+        marker=JSON.parse(await readFile(markerFile,"utf8"));
+        if(marker?.schema!=="asen.todo-archive-transaction/v1"||typeof marker.archiveFile!=="string"||!/^archive-[0-9]+-[a-f0-9]{12}\.json$/u.test(marker.archiveFile))throw new Error("invalid archive transaction marker");
+        archiveRaw=await readFile(path.join(path.dirname(todoFile),"archive",marker.archiveFile),"utf8");
+      }catch(error){throw new Error(`Duplicate ASEN Todo snapshots were observed outside a readable archive transaction: ${error?.message??error}`);}
+      const digest=createHash("sha256").update(archiveRaw).digest("hex"),archiveData=JSON.parse(archiveRaw),archivedTask=archiveData.items.find(item=>item.taskId===archived.taskId);
+      if(!prefix||!marker||marker.schema!=="asen.todo-archive-transaction/v1"||marker.sha256!==digest||!archivedTask||JSON.stringify(archivedTask.events)!==JSON.stringify(archived.events)||!(["done","cancelled"].includes(archived.events.at(-1)?.state)))
+        throw new Error("ASEN archive transaction contains inconsistent active and archived task histories");
+      if(Date.now()>=deadline)throw new Error("ASEN archive transaction did not settle after writing its verified terminal snapshot");
+      await sleep(20);
+      continue;
+    }
+    return matches.find(item=>item.title===title);
+  }
+};
+function startPi(label){
+  const args=[cli,"--mode","rpc","--session-id",sessionId,"--session-dir",sessionDir,"--no-extensions",...(extension?["--extension",extension]:[]),"--extension",asenExtension,"--extension",probeExtension,"--provider",provider,"--model",model,"--no-skills","--tools","asen_todo_*,asen_eco07_*"];
+  const child=spawn(process.execPath,args,{cwd:repository,env:{...baseEnv,ASEN_ECO07_PHASE:label},stdio:["pipe","pipe","pipe"]});
+  let buffer="",stderr="",stdoutBytes=0;
+  let resumeConfirmed=false;
+  const events=[];
+  const timeline=[];
+  const processStartedAt=process.hrtime.bigint();
+  let controller;
+  const onStdout=chunk=>{
+    stdoutBytes+=chunk.length;
+    if(stdoutBytes>2_000_000){child.kill("SIGKILL");return;}
+    buffer+=chunk.toString();
+    let end;
+    while((end=buffer.indexOf("\n"))>=0){
+      const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;
+      let value;try{value=JSON.parse(line);}catch{child.kill("SIGKILL");continue;}
+      events.push(value);const observedAt=new Date().toISOString(),elapsedMs=Number(process.hrtime.bigint()-processStartedAt)/1e6;timeline.push({type:value.type,at:observedAt,elapsedMs,...(typeof value.toolName==="string"?{toolName:value.toolName}:{}),...(typeof value.message?.stopReason==="string"?{stopReason:value.message.stopReason}:{})});void recordAsync(`${label}:pi-event`,{type:value.type,command:value.command,method:value.method,toolName:value.toolName,stopReason:value.message?.stopReason,...(typeof value.message?.errorMessage==="string"?{providerError:redacted(value.message.errorMessage)}:{})});
+      const rateLimit=controller.observe(value);
+      if(rateLimit)void recordAsync(`${label}:provider-rate-limit`,{message:rateLimit});
+      if(label==="restarted"&&!resumeConfirmed&&value.type==="tool_execution_start"&&!["asen_todo_list","asen_todo_update"].includes(value.toolName)){
+        void recordAsync("blocked-work-before-resume-rejected",{toolName:value.toolName});
+        child.kill("SIGKILL");continue;
+      }
+      if(value.type==="extension_ui_request"&&value.method==="confirm"){
+        const titleText=String(value.title??"");const message=String(value.message??"");
+        if(titleText!=="Resume blocked ASEN task?"||!message.includes(title)||!message.includes("explicit review is required")){
+          void controller.stop("SIGKILL");continue;
+        }
+        // This is the affirmative test-user response to ASEN's explicit resume dialog; no release authority is requested or granted.
+        resumeConfirmed=true;
+        void recordAsync(`${label}:resume-consent`,{title:titleText,confirmed:true});
+        void controller.write({type:"extension_ui_response",id:value.id,confirmed:true}).catch(()=>{});
+      }
+    }
+  };
+  const onStderr=chunk=>{stderr=redacted(stderr+chunk.toString()).slice(-3000);};
+  controller=createRpcController({child,label,classifyProviderFailure:eco07ProviderRateLimitError,redact:redacted,dispose:()=>{child.stdout.off("data",onStdout);child.stderr.off("data",onStderr);buffer="";}});
+  child.stdout.on("data",onStdout);child.stderr.on("data",onStderr);
+  return {child,events,timeline,send:controller.send,stop:controller.stop,get stderr(){return stderr;},getClosed:controller.getClosed,getProviderFailure:controller.getProviderFailure};
+}
+function measureProcess(process){
+  let turnStartedAt;
+  const turnDurationsMs=[],toolCalls={},timeline=process.timeline;
+  for(const event of timeline){
+    if(event.type==="turn_start")turnStartedAt=event.elapsedMs;
+    if(event.type==="turn_end"&&Number.isFinite(turnStartedAt)){turnDurationsMs.push(Math.round(Math.max(0,event.elapsedMs-turnStartedAt)));turnStartedAt=undefined;}
+    if(event.type==="tool_execution_start"&&event.toolName)toolCalls[event.toolName]=(toolCalls[event.toolName]??0)+1;
+  }
+  const started=timeline.find(event=>event.type==="agent_start"),settled=timeline.findLast(event=>event.type==="agent_settled");
+  return {agentStartedAt:started?.at??null,agentSettledAt:settled?.at??null,turnsStarted:timeline.filter(event=>event.type==="turn_start").length,turnsCompleted:turnDurationsMs.length,turnDurationsMs,toolCalls};
+}
+
+let phase="starting";
+let first,second;
+try{
+  first=startPi("initial");
+  await first.send("get_commands");
+  // Keep setup deterministic: the real Pi worker must perform and persist the
+  // planned -> running transition before we interrupt it. Asking the model to
+  // create, rediscover, and then update the Todo made this provider-backed
+  // boundary depend on an unnecessary multi-call planning sequence.
+  const initialTask=await (await openTodoStore()).add(title,todoIdentity);
+  assert.deepEqual(initialTask.events.map(event=>event.state),["planned"],"The harness must prepare exactly one planned task before asking Pi to start it");
+  await record("planned-task-prepared",{taskId:initialTask.taskId,sessionId,projectId:repository,eventRevision:initialTask.events[0].revision,state:"planned"});
+  phase="starting-task";
+  const initialTurn=first.send("prompt",{message:`The test harness prepared exactly one ASEN Todo task for this session and project: id ${JSON.stringify(initialTask.taskId)}, title ${JSON.stringify(title)}, state planned, revision 1. Make exactly one tool call: asen_todo_update with {id: ${JSON.stringify(initialTask.taskId)}, revision: 1, state: "running"}. Do not call asen_todo_add, asen_todo_list, or any other tool. Confirm briefly after the update succeeds. This is the initial real worker action; the harness will interrupt Pi immediately after verifying the persisted running state. Persist this complete pending plan in this Pi session's history: ASEN_ECO07_PENDING_PLAN: inspect-closure-audit -> inspect-task-reducer. After restart, step one is to inspect docs/audit/eco07-closure-evidence-2026-10-12.md and record a 1â€“2 sentence summary mentioning PARTIAL, real Pi, and interruption. Step two is to inspect src/runtime/task-replay.ts and record a 1â€“2 sentence summary mentioning planned, running, blocked, session, and project. Do not read either file or begin either review step yet. Do not complete the task or call asen_eco07_record_step.`});
+  void initialTurn.catch(()=>{});
+  let started;
+  const startDeadline=Date.now()+180_000;
+  while(Date.now()<startDeadline){
+    try{
+      const item=await currentItem();
+      if(item){started=item;const state=item.events.at(-1)?.state;if(state==="running")break;if(["done","cancelled"].includes(state))throw new Error(`Pi ended the task before interruption (${state})`);if(first.events.some(event=>event.type==="agent_settled"))throw new Error(`Pi settled without persisting a running task${first.getProviderFailure()?`: ${first.getProviderFailure()}`:""}`);}
+    }catch(error){if(error?.code!=="ENOENT")throw error;}
+    const exit=await Promise.race([first.getClosed().then(value=>({closed:value})),sleep(25).then(()=>null)]);
+    if(exit)throw new Error(`Initial Pi exited before saving running task (${JSON.stringify(exit.closed)}): ${first.stderr}`);
+  }
+  started=await currentItem();
+  assert.equal(started?.events.at(-1)?.state,"running","Pi/ASEN must persist the task as running before interruption");
+  assert.equal(started.events[0].sessionId,sessionId);assert.equal(started.events[0].projectId,repository);
+  assert.equal(started.events.length,2,"The initial task must have one planned and one running event");
+  const initialTools=first.events.filter(event=>event.type==="tool_execution_start").map(event=>event.toolName);
+  assert.deepEqual(initialTools,["asen_todo_update"],"The real Pi worker must perform exactly one planned-to-running update before interruption");
+  const updateStart=first.events.find(event=>event.type==="tool_execution_start"&&event.toolName==="asen_todo_update");
+  assert.ok(updateStart?.toolCallId,"Pi must expose the exact running-update tool call before interruption");
+  const updateDeadline=Date.now()+15_000;
+  let updateEnd;
+  while(Date.now()<updateDeadline){
+    updateEnd=first.events.find(event=>event.type==="tool_execution_end"&&event.toolCallId===updateStart.toolCallId&&event.toolName==="asen_todo_update");
+    if(updateEnd)break;
+    const exit=await Promise.race([first.getClosed().then(value=>({closed:value})),sleep(25).then(()=>null)]);
+    if(exit)throw new Error(`Initial Pi closed before the running-update tool result was recorded (${JSON.stringify(exit.closed)})`);
+  }
+  assert.ok(updateEnd,"Pi must finish the running-update tool call before interruption");
+  assert.equal(updateEnd.isError,false,"The exact running-update tool call must succeed before interruption");
+  const persistedPlanFiles=await findPersistedPlans(sessionDir);
+  assert.equal(persistedPlanFiles.length,1,"Pi must persist the pending ordered review checklist exactly once before interruption");
+  await record("running-update-completed",{taskId:started.taskId,toolCallId:updateStart.toolCallId,durationMs:updateEnd.durationMs??null,isError:updateEnd.isError,state:"running"});
+  const persistedPlanFile=persistedPlanFiles[0];
+  await record("pending-plan-persisted",{sessionId,sessionFile:path.relative(sessionDir,persistedPlanFile),orderedSteps:["inspect-closure-audit","inspect-task-reducer"]});
+  await record("running-task-persisted",{commit:revision,taskId:started.taskId,sessionId,projectId:repository,eventRevisions:started.events.map(event=>event.revision),state:"running"});
+  const earlySteps=await readFile(stepsFile,"utf8").catch(error=>error?.code==="ENOENT"?"":Promise.reject(error));
+  assert.equal(earlySteps,"","No task step may run before the restart");
+  phase="forced-interruption";
+  const initialPid=first.child.pid;
+  const interruption=await first.stop("SIGKILL");
+  assert.equal(interruption.killAccepted,true,"The running Pi process must accept the forced process kill");
+  assert.equal(interruption.cleanupConfirmed,true,"The forced interruption must observe Pi process close");
+  await initialTurn.catch(()=>{});
+  await record("process-killed",{pid:initialPid,...interruption});
+
+  phase="restart-recovery";
+  second=startPi("restarted");
+  await second.send("get_commands");
+  let recovered=await currentItem();
+  assert.deepEqual(recovered.events.map(event=>event.state),["planned","running","blocked"],"Pi restart must preserve history and block interrupted work");
+  assert.match(recovered.events.at(-1).reason,/explicit review is required/u);
+  await record("task-recovered",{taskId:recovered.taskId,sessionId,projectId:repository,events:recovered.events.map(({revision,state,at,reason})=>({revision,state,at,reason}))});
+
+  phase="identity-isolation";
+  const store=await openTodoStore();
+  assert.deepEqual(await store.list({sessionId:"eco07-wrong-session",projectId:repository}),[],"Wrong session must not see recovered task");
+  await assert.rejects(()=>store.update(recovered.taskId,{sessionId:"eco07-wrong-session",projectId:repository},recovered.events.at(-1).revision,"running"),/unavailable/u);
+  assert.deepEqual(await store.list({sessionId,projectId:path.join(scratch,"wrong-project")}),[],"Wrong project must not see recovered task");
+  await assert.rejects(()=>store.update(recovered.taskId,{sessionId,projectId:path.join(scratch,"wrong-project")},recovered.events.at(-1).revision,"running"),/unavailable/u);
+  assert.deepEqual((await currentItem()).events.map(event=>event.state),["planned","running","blocked"],"Wrong session must not mutate the recovered task");
+  await record("wrong-identity-rejected",{taskId:recovered.taskId,wrongSession:{visibleItems:0,mutationRejected:true},wrongProject:{visibleItems:0,mutationRejected:true},stateUnchanged:true});
+
+  phase="explicit-resume-and-completion";
+  await second.send("prompt",{message:`Resume the exact recovered task ${JSON.stringify(recovered.taskId)} at revision ${recovered.events.at(-1).revision}. Make exactly one tool call: asen_todo_update with this id, this revision, and state running. Wait for the explicit resume confirmation before the update. Do no review work yet; the harness will provide the next instruction after verifying this update succeeded.`});
+
+  const finishDeadline=Date.now()+600_000;
+  let reviewSteer;
+  while(Date.now()<finishDeadline){
+    recovered=await currentItem();
+    const resumeUpdate=second.events.find(event=>event.type==="tool_execution_start"&&event.toolName==="asen_todo_update"&&event.args?.id===recovered.taskId&&event.args?.state==="running");
+    if(!reviewSteer&&resumeUpdate){
+      const result=second.events.find(event=>event.type==="tool_execution_end"&&event.toolName==="asen_todo_update"&&event.toolCallId===resumeUpdate.toolCallId);
+      if(result){
+        assert.equal(result.isError,false,"Pi must successfully complete the exact explicit-resume update before any review instruction is sent");
+        assert.equal(second.events.some(event=>event.type==="extension_ui_request"&&event.method==="confirm"),true,"The resume update must have requested explicit confirmation");
+        reviewSteer=await second.send("steer",{message:`Execute the already persisted two-step review plan in order. For inspect-closure-audit, read the pending review file and record a summary mentioning PARTIAL, real Pi, and interruption. Then read inspect-task-reducer and record a summary mentioning planned, running, blocked, session, and project. Check each tool result; retry a failed record with a corrected summary. After both ordered records succeed, mark this same task done using its latest revision. Use only the ECO-07 review tools and asen_todo_update.`});
+        await record("review-instruction-steered",{taskId:recovered.taskId,resumeToolCallId:resumeUpdate.toolCallId,disposition:reviewSteer.disposition??null});
+      }
+    }
+    if(recovered.events.at(-1)?.state==="done"&&second.events.some(event=>event.type==="agent_settled"))break;
+    if(second.events.some(event=>event.type==="agent_settled")&&recovered.events.at(-1)?.state==="blocked")throw new Error("Restarted Pi settled without resuming the recovered task");
+    const exit=await Promise.race([second.getClosed().then(value=>({closed:value})),sleep(25).then(()=>null)]);
+    if(exit)throw new Error(`Restarted Pi exited before completing task (${JSON.stringify(exit.closed)}): ${second.stderr}`);
+  }
+  recovered=await currentItem();
+  const resumedSettled=second.events.findLast(event=>event.type==="agent_settled");
+  assert.ok(reviewSteer,"The harness must steer the resumed Pi worker only after the successful, explicitly authorized running update");
+  assert.ok(resumedSettled,"Pi must settle naturally after saving the recovered task as done");
+  assert.equal(resumedSettled.aborted,false,"The recovered task's final Pi turn must not be aborted");
+  const finalTurnEnd=second.events.findLastIndex(event=>event.type==="turn_end"),settledIndex=second.events.findLastIndex(event=>event.type==="agent_settled");
+  assert.ok(finalTurnEnd>=0&&settledIndex>finalTurnEnd,"Pi must finish its final model turn before the harness shuts down the process");
+  assert.deepEqual(recovered.events.map(event=>event.state),["planned","running","blocked","running","done"],"Only the same recovered task may progress to completion");
+  assert.deepEqual(recovered.events.map(event=>event.revision),[1,2,3,4,5],"Persisted task history must have one strictly ordered revision for each transition");
+  // A model can claim completion without performing the required review. Evidence, not the Todo label, determines success.
+  const rows=(await readFile(stepsFile,"utf8").catch(error=>error?.code==="ENOENT"?"":Promise.reject(error))).trim().split("\n").filter(Boolean).map(line=>JSON.parse(line));
+  assert.equal(rows.length,2,"Pi must record both review steps before declaring the task complete");
+  assert.deepEqual(rows.map(row=>row.step),["inspect-closure-audit","inspect-task-reducer"],"Both pending review steps must run exactly once and in order");
+  assert.ok(rows.every(row=>row.sessionId===sessionId&&row.projectId===repository));
+  const reads=(await readFile(readsFile,"utf8").catch(error=>error?.code==="ENOENT"?"":Promise.reject(error))).trim().split("\n").filter(Boolean).map(line=>JSON.parse(line));
+  assert.deepEqual(reads.map(row=>row.step),["inspect-closure-audit","inspect-task-reducer"],"Pi must read each pending review file exactly once and in order");
+  assert.ok(second.events.filter(event=>event.type==="tool_execution_start"&&event.toolName==="asen_eco07_read_pending_review").length>=2,"Pi must invoke the resume-gated ASEN review tool; persisted successful reads enforce exact order and uniqueness");
+  assert.equal(first.events.filter(event=>event.type==="extension_ui_request"&&event.method==="confirm").length,0);
+  assert.equal(second.events.filter(event=>event.type==="extension_ui_request"&&event.method==="confirm").length,1,"Resume requires one explicit affirmative Pi confirmation");
+  const [planned,running,blocked,resumed,done]=recovered.events.map(event=>Date.parse(event.at));
+  const final={candidate:revision,provider,model,piVersion:piPackage.version,sessionId,projectId:repository,taskId:recovered.taskId,events:recovered.events.map(({revision,state,at,reason})=>({revision,state,at,reason})),pipelineTimingsMs:{plannedToRunning:running-planned,activeBeforeInterruption:blocked-running,blockedUntilResume:resumed-blocked,activeAfterResume:done-resumed,plannedToDone:done-planned},processMetrics:{initial:measureProcess(first),restarted:measureProcess(second)},persistedPlan:{sessionFile:path.relative(sessionDir,persistedPlanFile),orderedSteps:["inspect-closure-audit","inspect-task-reducer"]},reads:reads.map(({step,file,at})=>({step,file,at})),steps:rows.map(({step,summary,at})=>({step,summary,at})),initialProcessPid:first.child.pid,restartedProcessPid:second.child.pid,interruptionSignal:"SIGKILL",wrongSession:{visible:0,mutationRejected:true},wrongProject:{visible:0,mutationRejected:true},explicitResumeConsent:true,approvalAuthorityGranted:false,publishAuthorityGranted:false,mergeAuthorityGranted:false,result:"PASS"};
+  const completionShutdown=await second.stop("SIGKILL");
+  assert.equal(completionShutdown.cleanupConfirmed,true,"Successful recovery must observe restarted Pi process close");
+  const finalPlanFiles=await findPersistedPlans(sessionDir);
+  assert.equal(finalPlanFiles.length,1,"Pi must leave one persisted session plan after recovery and shutdown");
+  assert.equal(finalPlanFiles[0],persistedPlanFile,"Recovery must retain the original session file");
+  const sessionBytes=await readFile(persistedPlanFile);
+  const sessionText=sessionBytes.toString("utf8"),planMarker="ASEN_ECO07_PENDING_PLAN: inspect-closure-audit -> inspect-task-reducer";
+  assert.ok(sessionText.includes(planMarker),"The ordered plan marker must remain in the persisted Pi session after recovery");
+  const activeRaw=await readFile(todoFile,"utf8"),activeData=JSON.parse(activeRaw);
+  assert.equal(activeData.schema,"asen.todo/v1","ASEN active Todo data must retain its supported schema");
+  assert.ok(Number.isSafeInteger(activeData.revision)&&Array.isArray(activeData.items),"ASEN active Todo data must have a revision and valid item list");
+  assert.equal(activeData.items.filter(item=>item.taskId===recovered.taskId).length,0,"Completed task must not remain in the active project store");
+  const archiveDirectory=path.join(path.dirname(todoFile),"archive"),archiveNames=(await readdir(archiveDirectory)).filter(name=>/^archive-[0-9]+-[a-f0-9]{12}\.json$/u.test(name));
+  const archivedMatches=[];
+  for(const name of archiveNames){
+    const raw=await readFile(path.join(archiveDirectory,name),"utf8"),data=JSON.parse(raw);
+    for(const item of data.items??[])if(item.taskId===recovered.taskId)archivedMatches.push({name,raw,data,item});
+  }
+  assert.equal(archivedMatches.length,1,"ASEN must archive the recovered task exactly once");
+  const archived=archivedMatches[0];
+  assert.deepEqual(archived.item.events,recovered.events,"ASEN archive must preserve the complete ordered recovery history");
+  assert.equal(archived.item.events[0].sessionId,sessionId);
+  assert.equal(archived.item.events[0].projectId,repository);
+  assert.equal(archived.item.events.at(-1).state,"done");
+  const archiveDigest=createHash("sha256").update(archived.raw).digest("hex"),archiveRevision=Number(/^archive-([0-9]+)-/u.exec(archived.name)?.[1]);
+  assert.equal(archived.data.schema,"asen.todo/v1");
+  assert.equal(archived.data.revision,archiveRevision,"ASEN archive filename and payload revisions must agree");
+  assert.equal(archived.name,`archive-${archiveRevision}-${archiveDigest.slice(0,12)}.json`,"ASEN archive filename must match the persisted content digest");
+  await assert.rejects(()=>readFile(`${todoFile}.archive-pending.json`),error=>error?.code==="ENOENT","Completed archive transaction marker must be cleared");
+  const digest=raw=>createHash("sha256").update(raw).digest("hex");
+  final.persistedPlan={...final.persistedPlan,sha256:digest(sessionBytes),bytes:sessionBytes.length,planMarkerPresent:true,sessionFilesWithPlan:finalPlanFiles.length};
+  final.persistence={activeTodo:{file:path.relative(asenDir,todoFile),sha256:digest(activeRaw),bytes:Buffer.byteLength(activeRaw),revision:activeData.revision,taskCount:activeData.items.length,recoveredTaskCount:0},archive:{file:path.relative(asenDir,path.join(archiveDirectory,archived.name)),sha256:archiveDigest,bytes:Buffer.byteLength(archived.raw),revision:archived.data.revision,taskCount:archived.data.items.length,recoveredTaskCount:1,orderedEvents:archived.item.events.map(({revision,state})=>({revision,state}))},duplicateChecks:{persistedPlanFiles:finalPlanFiles.length,archivedTaskCopies:archivedMatches.length,activeTaskCopies:activeData.items.filter(item=>item.taskId===recovered.taskId).length,archiveTransactionMarkerCleared:true}};
+  await transcript.drainAndClose();
+  await rm(scratch,{recursive:true,force:true});
+  await writeFile(evidencePath,`${JSON.stringify(final,null,2)}\n`,{mode:0o600});
+  console.log(JSON.stringify(final));
+}catch(error){
+  let flushFailure;
+  await runCleanup(error,[
+    async()=>{if(first)await first.stop("SIGKILL");},
+    async()=>{if(second)await second.stop("SIGKILL");},
+    async()=>{try{await transcript.drainAndClose();}catch(failure){flushFailure=failure;throw failure;}},
+    async()=>{
+      const task=await currentItem().catch(()=>undefined);
+      const readRows=(await readFile(readsFile,"utf8").catch(()=>"")).split("\n").filter(Boolean).map(line=>{try{return JSON.parse(line);}catch{return {malformed:true};}});
+      const steps=(await readFile(stepsFile,"utf8").catch(()=>"")).split("\n").filter(Boolean).map(line=>{try{const {step,summary,sessionId:owner,projectId,at}=JSON.parse(line);return {step,summary,sessionId:owner,projectId,at};}catch{return {malformed:true};}});
+      const summarizeProcess=process=>({label:process.label,events:process.events.map(event=>({type:event.type,toolName:event.toolName,method:event.method,stopReason:event.message?.stopReason,...(typeof event.message?.errorMessage==="string"?{providerError:redacted(event.message.errorMessage)}:{}),aborted:event.aborted})),assistantReplies:process.events.filter(event=>event.type==="message_end"&&event.message?.role==="assistant"&&event.message?.stopReason==="stop").map(event=>redacted((event.message.content??[]).filter(part=>part?.type==="text").map(part=>part.text).join("\n")).slice(-600)),stderr:process.stderr});
+      const processTrace=[first&&summarizeProcess({label:"initial",events:first.events,stderr:first.stderr}),second&&summarizeProcess({label:"restarted",events:second.events,stderr:second.stderr})].filter(Boolean);
+      const report={candidate:revision,provider,model,phase,result:"FAIL",task:task&&{taskId:task.taskId,title:task.title,events:task.events.map(({revision,state,at,reason})=>({revision,state,at,reason}))},reads:readRows,steps,processTrace,error:redacted(error?.stack??error),...(flushFailure?{transcriptFlushError:redacted(flushFailure?.stack??flushFailure)}:{})};
+      await writeFile(evidencePath,`${JSON.stringify(report,null,2)}\n`,{mode:0o600});
+      console.error(JSON.stringify(report));
+    },
+    async()=>rm(scratch,{recursive:true,force:true}),
+  ]);
+}
