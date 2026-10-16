@@ -1,6 +1,6 @@
 # ECO-01 block 2 — functional evidence matrix (2026-10-16)
 
-Status: **INCOMPLETE.** This matrix records one source/ASEN registration comparison under a controlled external executable. The actual CodeGraph package remains untested, and 141 of 146 planned scenarios remain UNVERIFIED; five simulation-only observations are marked INTENTIONAL but are not admitted as proof of actual CodeGraph parity.
+Status: **INCOMPLETE.** This matrix records source/ASEN observations with explicit limitations. The 5 CodeGraph scenarios have now been rerun against the authentic dynamic package 1.6.2 and remain INTENTIONAL for the host annotation difference; registration and 136 other planned scenarios remain UNVERIFIED. No equivalence is admitted for the dynamic package.
 
 ## Bound identities
 
@@ -11,9 +11,9 @@ Status: **INCOMPLETE.** This matrix records one source/ASEN registration compari
 ## Results
 
 - Inventory: 25 correspondences and 146 planned cases.
-- Paired observations: 5 CodeGraph cases (10 source/ASEN process runs). All five are **INTENTIONAL** for the observed registration metadata difference; none are EQUIVALENT. Their normalized behavior, command arguments, errors, and outputs match using a temporary controlled executable. ASEN declares `readOnlyHint: false`, `destructiveHint: true`, `idempotentHint: false`, and `openWorldHint: false`; the frozen source omits annotations. This accurately signals the existing mutating `init` operation and grants no additional authority.
-- Remaining: 141 scenarios UNVERIFIED; five simulation-only scenarios are INTENTIONAL; 0 DIVERGENT, 0 NOT_APPLICABLE, 0 EQUIVALENT. No functional parity PASS is claimed.
-- The frozen source's own CodeGraph tests: 12/12 passed. ASEN's CodeGraph tests: 12/12 passed. The paired tests do **not** execute the real CodeGraph package, inspect its actual index, or cover Windows/macOS. The related dynamic package-discovery edge remains unverified.
+- Paired observations: 5 CodeGraph cases (10 source/ASEN process runs) against authentic npm package `@colbymchenry/codegraph@1.6.2`. All five are **INTENTIONAL** for the observed host annotation difference; none are EQUIVALENT. The matrix links each row to paired receipts and logs. Earlier controlled-executable observations are retained as historical evidence only. ASEN declares `readOnlyHint: false`, `destructiveHint: true`, `idempotentHint: false`, and `openWorldHint: false`; the frozen source omits annotations. This accurately signals the existing mutating `init` operation and grants no additional authority.
+- Remaining: 141 scenarios UNVERIFIED in the original scenario inventory (including registration); five executed CodeGraph observations are INTENTIONAL and do not count as equivalence. 0 DIVERGENT, 0 NOT_APPLICABLE, 0 EQUIVALENT. No functional parity PASS is claimed.
+- The frozen source's own CodeGraph tests: 12/12 passed. ASEN's CodeGraph tests: 12/12 passed. The real-package run inspected index state and error outcomes on Linux, but does not establish parity with a frozen dependency version or cover Windows/macOS. The related dynamic package-discovery edge remains unverified.
 - Full local ASEN check: 1,534 tests, 1,521 passed, 13 skipped, 0 failed; all included audits passed. Log SHA-256: `3cab21abdfec25c05950ebff4a821974352a0609ff795bea3c5172f0f15fa46e`.
 
 ## Consolidated matrix and raw evidence

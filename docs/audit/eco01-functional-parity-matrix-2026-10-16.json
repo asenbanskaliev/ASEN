@@ -27,7 +27,8 @@
       "INTENTIONAL": 5,
       "NOT_APPLICABLE": 0,
       "UNVERIFIED": 141
-    }
+    },
+    "note": "The 5 CodeGraph rows now reference real @colbymchenry/codegraph@1.6.2 paired executions. Their status is INTENTIONAL due to host annotation differences; registration remains UNVERIFIED and the package version is dynamic, so no equivalence is admitted."
   },
   "contracts": [
     {
@@ -682,6 +683,31 @@
           "name": "normal",
           "status": "INTENTIONAL",
           "evidence": {
+            "kind": "actual-external-package",
+            "evidencePath": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
+            "evidenceSha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
+            "runtimeVersion": "1.6.2",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "normal",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "08ee7914254691f8929a03020fba772a4dcdcfefd605961406b94263d653fe9f",
+              "asenReceiptSha256": "251bd70f2b7dd4a1f68a96084eddae748e68caac1ee737abf9f457c3fbe2e4f7",
+              "difference": {
+                "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+              },
+              "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+              "limitations": [
+                "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+                "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "sourceReceiptSha256": "08ee7914254691f8929a03020fba772a4dcdcfefd605961406b94263d653fe9f",
+            "asenReceiptSha256": "251bd70f2b7dd4a1f68a96084eddae748e68caac1ee737abf9f457c3fbe2e4f7"
+          },
+          "previousControlledSimulation": {
             "kind": "controlled-external-process",
             "observation": {
               "contractId": "ECO-SRC-625c38e8637ad8b0:7",
@@ -902,6 +928,31 @@
           "name": "invalid-input",
           "status": "INTENTIONAL",
           "evidence": {
+            "kind": "actual-external-package",
+            "evidencePath": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
+            "evidenceSha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
+            "runtimeVersion": "1.6.2",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "invalid-input",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "beed078cc71fba26889dffdfb552362a5e1e34963cc33fb83dba1f3bff1c49b0",
+              "asenReceiptSha256": "20c89490e976104685962eba6941593ca973cbc31669b3657befa45d29ce94d0",
+              "difference": {
+                "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+              },
+              "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+              "limitations": [
+                "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+                "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "sourceReceiptSha256": "beed078cc71fba26889dffdfb552362a5e1e34963cc33fb83dba1f3bff1c49b0",
+            "asenReceiptSha256": "20c89490e976104685962eba6941593ca973cbc31669b3657befa45d29ce94d0"
+          },
+          "previousControlledSimulation": {
             "kind": "controlled-external-process",
             "observation": {
               "contractId": "ECO-SRC-625c38e8637ad8b0:7",
@@ -1092,6 +1143,31 @@
           "name": "denied",
           "status": "INTENTIONAL",
           "evidence": {
+            "kind": "actual-external-package",
+            "evidencePath": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
+            "evidenceSha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
+            "runtimeVersion": "1.6.2",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "denied",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "201f4fd6063b2554ec0031698044b15be022f0eea645d6ba76214cccbe2c5335",
+              "asenReceiptSha256": "4431f515e323f218e34d81856f1cf6123a53d81aeca6b8735fc35991aafd8a28",
+              "difference": {
+                "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+              },
+              "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+              "limitations": [
+                "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+                "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "sourceReceiptSha256": "201f4fd6063b2554ec0031698044b15be022f0eea645d6ba76214cccbe2c5335",
+            "asenReceiptSha256": "4431f515e323f218e34d81856f1cf6123a53d81aeca6b8735fc35991aafd8a28"
+          },
+          "previousControlledSimulation": {
             "kind": "controlled-external-process",
             "observation": {
               "contractId": "ECO-SRC-625c38e8637ad8b0:7",
@@ -1282,6 +1358,31 @@
           "name": "partial-failure",
           "status": "INTENTIONAL",
           "evidence": {
+            "kind": "actual-external-package",
+            "evidencePath": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
+            "evidenceSha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
+            "runtimeVersion": "1.6.2",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "partial-failure",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "b81c210d6105437ce795832a23152a9c7809f0200c2d6b3885e023e75468eab2",
+              "asenReceiptSha256": "59039250dd5168d190b56dec272db48db4cc90f8ecfac242eea1446ffe1bbf40",
+              "difference": {
+                "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+              },
+              "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+              "limitations": [
+                "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+                "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "sourceReceiptSha256": "b81c210d6105437ce795832a23152a9c7809f0200c2d6b3885e023e75468eab2",
+            "asenReceiptSha256": "59039250dd5168d190b56dec272db48db4cc90f8ecfac242eea1446ffe1bbf40"
+          },
+          "previousControlledSimulation": {
             "kind": "controlled-external-process",
             "observation": {
               "contractId": "ECO-SRC-625c38e8637ad8b0:7",
@@ -1488,6 +1589,31 @@
           "name": "restart",
           "status": "INTENTIONAL",
           "evidence": {
+            "kind": "actual-external-package",
+            "evidencePath": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
+            "evidenceSha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
+            "runtimeVersion": "1.6.2",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "restart",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "d7df76859e628a16d744e6af78299f2dda13619a1d514ab5089921dc30f95d7c",
+              "asenReceiptSha256": "830e12622e0bd03d1ab73e93ad1a3bb57cd8327b4566e941a1ec6646e96901cd",
+              "difference": {
+                "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+              },
+              "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+              "limitations": [
+                "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+                "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "sourceReceiptSha256": "d7df76859e628a16d744e6af78299f2dda13619a1d514ab5089921dc30f95d7c",
+            "asenReceiptSha256": "830e12622e0bd03d1ab73e93ad1a3bb57cd8327b4566e941a1ec6646e96901cd"
+          },
+          "previousControlledSimulation": {
             "kind": "controlled-external-process",
             "observation": {
               "contractId": "ECO-SRC-625c38e8637ad8b0:7",
@@ -2446,8 +2572,8 @@
   "currentCandidateEvidence": {
     "candidateCommit": "1359d892f177dd1b76501961582ea3a7eedab8f1",
     "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
-    "pairEvidence": "docs/audit/evidence/eco01-codegraph-1359d892f177dd1b76501961582ea3a7eedab8f1/codegraph-pair-evidence.json",
-    "pairEvidenceSha256": "7f0334ccb283b657746af3bc300b43ad31b8c4c6f0ad222fdfbdc022899da2d7",
+    "pairEvidence": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
+    "pairEvidenceSha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
     "pairResult": "UNVERIFIED",
     "pairedScenarios": 5,
     "pairedProcessRuns": 10,
@@ -2507,6 +2633,7 @@
         "Linux only.",
         "The registration metadata difference remains INTENTIONAL; no scenario is admitted as EQUIVALENT."
       ]
-    }
+    },
+    "realPackageVersion": "1.6.2"
   }
 }
