@@ -5,6 +5,8 @@ on:
       - feat/strict-parity-prerequisites
     paths:
       - .github/workflows/eco06-nvidia-e2e.yml
+      - scripts/eco06-pi-writer-e2e.mjs
+      - scripts/eco06-pi-writer-host.mjs
   workflow_dispatch:
     inputs:
       expected_sha:
