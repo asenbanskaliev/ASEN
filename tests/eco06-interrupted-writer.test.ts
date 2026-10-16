@@ -90,8 +90,8 @@ test("ECO-06 SIGKILL after a persisted partial edit quarantines the writer", {sk
    writeSurfaces:["work.txt"],writerAdmission:{opaque:true}
   },{kind:"user",id:"pi:session-a"});
   await store.running("killed-writer");
-  await appendFile(target,"partial\\\\n");
-  process.stdout.write("PARTIAL_EDIT_PERSISTED\\\\n");
+  await appendFile(target,"partial\\n");
+  process.stdout.write("PARTIAL_EDIT_PERSISTED\\n");
   setInterval(()=>{},1000);
  `,journal,target],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"]});
  let output="",errors="";
