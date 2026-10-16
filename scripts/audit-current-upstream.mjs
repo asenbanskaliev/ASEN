@@ -18,6 +18,11 @@ export function runCurrentUpstreamAudit({candidate=PINN,sourceRepository,run=exe
   if(!sourceRepository){
    run("git",["clone","--quiet","--no-checkout","--filter=blob:none",process.env.ASEN_ECOSYSTEM_SOURCE_URL,source],{timeout:180_000,maxBuffer:32*1024*1024,stdio:["ignore","pipe","pipe"]});
   }
+  if(!sourceRepository){
+   for(const commit of [BASELINE,candidate]){
+    try{git(source,"fetch","--no-tags","origin",commit);}catch{throw new Error(`Unable to fetch exact upstream commit ${commit}`);}
+   }
+  }
   const isCommit=(repository,commit)=>{try{return git(repository,"cat-file","-t",commit)==="commit";}catch{return false;}};
   if(!isCommit(source,candidate))throw new Error("Upstream candidate is unavailable as a commit");
   if(!isCommit(source,BASELINE))throw new Error("Frozen upstream baseline is unavailable: abort without substituting another source");
