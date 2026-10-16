@@ -1,5 +1,10 @@
 name: ECO-06 NVIDIA controlled-write E2E
 on:
+  push:
+    branches:
+      - feat/strict-parity-prerequisites
+    paths:
+      - .github/workflows/eco06-nvidia-e2e.yml
   workflow_dispatch:
     inputs:
       expected_sha:
@@ -13,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   controlled-write:
-    if: github.repository == 'asenbanskaliev/ASEN' && github.run_attempt == 1 && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && github.event_name == 'workflow_dispatch'
+    if: github.repository == 'asenbanskaliev/ASEN' && github.run_attempt == 1 && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
     name: ECO-06 Pi 1.1.0 NVIDIA interruption and review
     runs-on: ubuntu-24.04
     timeout-minutes: 25
