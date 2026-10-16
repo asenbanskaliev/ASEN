@@ -1,5 +1,10 @@
 name: ECO-06 NVIDIA controlled-write E2E
 on:
+  push:
+    branches:
+      - feat/strict-parity-prerequisites
+    paths:
+      - .github/workflows/eco06-nvidia-e2e.yml
   workflow_dispatch:
     inputs:
       expected_sha:
