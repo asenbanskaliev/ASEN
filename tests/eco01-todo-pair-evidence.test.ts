@@ -12,8 +12,10 @@ const baseline=read("registry/parity/ecosystem-sources-v1.json");
 const edge=baseline.files.find((row:any)=>row.id==="ECO-SRC-91b70c5973297fbd");
 const evidencePath=matrix.currentCandidateEvidence.todoPairEvidence.path;
 const evidence=read(evidencePath);
+const authorization=matrix.currentCandidateEvidence.todoAuthorizationEvidence;
+const authorizationEvidence=read(authorization.path);
 const sourceRepository=process.env.ECOSYSTEM_BASELINE_REPOSITORY;
-const committed=(path:string)=>execFileSync("git",["show",`HEAD:${path}`],{encoding:"buffer",maxBuffer:32*1024*1024});
+const committed=(path:string)=>execFileSync("git",["show",`:${path}`],{encoding:"buffer",maxBuffer:32*1024*1024});
 
 test("ECO-01 Todo observations bind exact source, ASEN tree, and raw logs",{skip:!sourceRepository},()=>{
  const git=(...args:string[])=>execFileSync("git",["-C",sourceRepository!,...args],{encoding:"buffer",maxBuffer:32*1024*1024});
@@ -39,10 +41,26 @@ test("ECO-01 Todo observations bind exact source, ASEN tree, and raw logs",{skip
  }
  const contract=matrix.contracts.find((row:any)=>row.id===evidence.contractId);
  assert.equal(contract.scenarios.find((row:any)=>row.name==="registration").status,"UNVERIFIED");
- assert.equal(contract.scenarios.find((row:any)=>row.name==="denied").status,"UNVERIFIED");
+ assert.equal(contract.scenarios.find((row:any)=>row.name==="denied").status,"INTENTIONAL");
  assert.equal(contract.scenarios.find((row:any)=>row.name==="normal").status,"UNVERIFIED");
  assert.equal(contract.scenarios.find((row:any)=>row.name==="partial-failure").status,"UNVERIFIED");
  assert.equal(contract.scenarios.find((row:any)=>row.name==="invalid-input").status,"INTENTIONAL");
  assert.equal(contract.scenarios.find((row:any)=>row.name==="restart").status,"INTENTIONAL");
  assert.equal(contract.scenarios.find((row:any)=>row.name==="duplicate-request").status,"INTENTIONAL");
+ assert.equal(authorizationEvidence.schema,"asen.eco01.todo-authorization-pair.v1");
+ assert.equal(authorizationEvidence.source.commit,baseline.commit);
+ assert.equal(authorizationEvidence.source.sourceId,edge.id);
+ assert.equal(authorizationEvidence.source.fileSha256,edge.sha256);
+ assert.equal(authorizationEvidence.asen.commit,authorization.asenCommit);
+ assert.equal(authorizationEvidence.asen.tree,authorization.asenTree);
+ assert.equal(digest(committed(authorization.path)),authorization.sha256);
+ assert.equal(digest(committed(authorization.stdoutLog)),authorization.stdoutLogSha256);
+ assert.equal(authorizationEvidence.scenario.name,"denied");
+ assert.equal(authorizationEvidence.scenario.classification,"INTENTIONAL");
+ assert.equal(authorizationEvidence.scenario.sourceResult.allowedMutation,true);
+ assert.equal(authorizationEvidence.scenario.asenResult.deniedWithoutMutation,true);
+ assert.equal(contract.scenarios.find((row:any)=>row.name==="denied").status,"INTENTIONAL");
+ assert.equal(contract.scenarios.find((row:any)=>row.name==="denied").evidence.evidenceSha256,authorization.sha256);
+ assert.equal(matrix.summary.statusCounts.INTENTIONAL,9);
+ assert.equal(matrix.summary.statusCounts.UNVERIFIED,138);
 });

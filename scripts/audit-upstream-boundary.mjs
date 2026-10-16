@@ -28,6 +28,7 @@ const provenanceAllowlist=new Set([
  sessionTransportManifestPath,sessionStoreManifestPath,passiveCaptureManifestPath,relationManifestPath,
  "docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3/todo-pair-evidence.json",
  "docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3/source-tests.log",
+ "docs/audit/evidence/eco01-todo-authorization-live-2e8444c42429102a2294e86fd9277963c8850353/todo-authorization-pair.json",
  ...additionalParityFixturePaths
 ]);
 const tracked=execFileSync("git",["ls-files","-z"],{cwd:root}).toString("utf8").split("\0").filter(Boolean);

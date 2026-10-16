@@ -18,18 +18,18 @@
   "summary": {
     "contracts": 25,
     "scenarios": 147,
-    "pairedExecutions": 9,
+    "pairedExecutions": 10,
     "pairedProcessRuns": 10,
     "verified": 0,
     "statusCounts": {
       "EQUIVALENT": 0,
       "DIVERGENT": 0,
-      "INTENTIONAL": 8,
+      "INTENTIONAL": 9,
       "NOT_APPLICABLE": 0,
-      "UNVERIFIED": 139
+      "UNVERIFIED": 138
     },
-    "note": "Five CodeGraph scenarios were executed with the real dynamic package and remain INTENTIONAL for host annotation differences. Four Todo core-state comparisons were run; three are INTENTIONAL (invalid-input rejection surface, restart recovery, duplicate request protection) and one pair remains UNVERIFIED. No EQUIVALENT results are admitted.",
-    "pairedCoreStateExperiments": 4
+    "note": "Five CodeGraph scenarios were executed with the real dynamic package and remain INTENTIONAL for host annotation differences. Five Todo core-state comparisons were run; four are INTENTIONAL (invalid-input signaling, restart recovery, duplicate-request protection, and session/project authorization) and one pair remains UNVERIFIED. No EQUIVALENT results are admitted.",
+    "pairedCoreStateExperiments": 5
   },
   "contracts": [
     {
@@ -2351,8 +2351,81 @@
         },
         {
           "name": "denied",
-          "status": "UNVERIFIED",
-          "evidence": null
+          "status": "INTENTIONAL",
+          "evidence": {
+            "kind": "paired-core-state-execution",
+            "evidencePath": "docs/audit/evidence/eco01-todo-authorization-live-2e8444c42429102a2294e86fd9277963c8850353/todo-authorization-pair.json",
+            "evidenceSha256": "9cb613018ffd8f34e10fe4d7c8ca524347c86b9702fa4bd90f3f8e41e2fe4740",
+            "observation": {
+              "scenario": "denied",
+              "file": "todo-authorization-pair.json",
+              "sha256": "9cb613018ffd8f34e10fe4d7c8ca524347c86b9702fa4bd90f3f8e41e2fe4740",
+              "observation": {
+                "name": "denied",
+                "classification": "INTENTIONAL",
+                "reason": "The source Todo state operation has no session/project owner and applies the task update; ASEN rejects the same task ID from another session, preserving the owner state and file bytes. This is an intentional authorization boundary.",
+                "input": {
+                  "source": {
+                    "initialTask": "Owned task",
+                    "attemptedSession": "eco01-outsider",
+                    "action": {
+                      "action": "update",
+                      "id": 1,
+                      "status": "done",
+                      "note": "cross-session attempt"
+                    }
+                  },
+                  "asen": {
+                    "taskId": "todo-61185d7a-5040-4d92-a242-692fb4e97384",
+                    "owner": {
+                      "sessionId": "eco01-owner",
+                      "projectId": "/eco01-project"
+                    },
+                    "outsider": {
+                      "sessionId": "eco01-outsider",
+                      "projectId": "/eco01-project"
+                    },
+                    "expectedRevision": 1,
+                    "nextState": "done"
+                  }
+                },
+                "sourceResult": {
+                  "error": null,
+                  "state": {
+                    "tasks": [
+                      {
+                        "id": 1,
+                        "title": "Owned task",
+                        "status": "done",
+                        "note": "cross-session attempt"
+                      }
+                    ],
+                    "nextId": 2,
+                    "updatedTurn": 2
+                  },
+                  "allowedMutation": true
+                },
+                "asenResult": {
+                  "error": {
+                    "name": "Error",
+                    "message": "Todo task is unavailable to this session or project"
+                  },
+                  "ownerBefore": [
+                    "planned"
+                  ],
+                  "ownerAfter": [
+                    "planned"
+                  ],
+                  "outsiderVisibleTasks": 0,
+                  "fileBytesBefore": 456,
+                  "fileBytesAfter": 456,
+                  "fileSha256Before": "10470931af0ce7b2b0d4673e93516b47d07feb2de544e8be8cbe5732082f21e9",
+                  "fileSha256After": "10470931af0ce7b2b0d4673e93516b47d07feb2de544e8be8cbe5732082f21e9",
+                  "deniedWithoutMutation": true
+                }
+              }
+            }
+          }
         },
         {
           "name": "partial-failure",
@@ -3024,7 +3097,7 @@
       "log": "local test output; CI reruns as part of npm test",
       "testPath": "tests/eco01-file-reference-evidence.test.ts"
     },
-    "latestCandidateCommit": "b1f028ce2dde27757a901cd8722a4fe5ee27565f",
+    "latestCandidateCommit": "2e8444c42429102a2294e86fd9277963c8850353",
     "liveCodegraphPackage": {
       "path": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
       "version": "1.6.2",
@@ -3063,6 +3136,22 @@
       },
       "overallStatus": "UNVERIFIED",
       "asenTree": "ae33a228960d26106984541254cddb00223c3b3d"
+    },
+    "todoAuthorizationEvidence": {
+      "path": "docs/audit/evidence/eco01-todo-authorization-live-2e8444c42429102a2294e86fd9277963c8850353/todo-authorization-pair.json",
+      "sha256": "9cb613018ffd8f34e10fe4d7c8ca524347c86b9702fa4bd90f3f8e41e2fe4740",
+      "stdoutLog": "docs/audit/evidence/eco01-todo-authorization-live-2e8444c42429102a2294e86fd9277963c8850353/run.stdout.log",
+      "stdoutLogSha256": "63002b5240a72b68b9d4cd396abf0def0562569b4f0fc2e6a0ba7dbf1f052923",
+      "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+      "asenCommit": "2e8444c42429102a2294e86fd9277963c8850353",
+      "asenTree": "f5d267adbd97fe5a33d21964d174f9f6b1ed9484",
+      "scenario": "denied",
+      "status": "INTENTIONAL",
+      "environment": {
+        "platform": "linux",
+        "node": "v24.19.0"
+      },
+      "limitation": "The comparison exercises the actual Todo state operation and ASEN persistent store, not Pi tool registration or UI authorization lifecycle."
     }
   }
 }

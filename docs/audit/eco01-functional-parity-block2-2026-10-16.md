@@ -1,10 +1,10 @@
 # ECO-01 block 2 — functional evidence matrix (2026-10-16)
 
-Status: **INCOMPLETE.** This matrix records source/ASEN observations with explicit limitations. The 5 CodeGraph scenarios have now been rerun against the authentic dynamic package 1.6.2 and remain INTENTIONAL for the host annotation difference; registration and 136 other planned scenarios remain UNVERIFIED. No equivalence is admitted for the dynamic package.
+Status: **INCOMPLETE.** This matrix records source/ASEN observations with explicit limitations. Five CodeGraph scenarios were rerun against the authentic dynamic package 1.6.2 and remain INTENTIONAL for the host annotation difference. Five Todo core-state comparisons now include an intentional session-authorization difference; no equivalence is admitted for either contract.
 
 ## Bound identities
 
-- Frozen source: `08de420ca29be16b6f6bee725a30b599b061df16`. CodeGraph package evidence is bound to ASEN code commit `1cae8b74427358e96738b6223aed1583d6e6b361`; Todo core-state evidence is bound to current published tree/commit `b1f028ce2dde27757a901cd8722a4fe5ee27565f`. The latter includes only evidence/matrix/documentation changes over the tested implementation tree. The source checkout is clean; ignored dependency files used for the Todo run did not change tracked source files.
+- Frozen source: `08de420ca29be16b6f6bee725a30b599b061df16`. CodeGraph package evidence is bound to ASEN code commit `1cae8b74427358e96738b6223aed1583d6e6b361`; Todo core-state evidence is bound to ASEN `b1f028ce2dde27757a901cd8722a4fe5ee27565f`, and its authorization probe to `2e8444c42429102a2294e86fd9277963c8850353`. The source checkout is clean; ignored dependency files used for the Todo run did not change tracked source files.
 - Frozen source: `08de420ca29be16b6f6bee725a30b599b061df16`; detached source checkout was clean. The verifier confirmed 14 files and 25 mapped line spans against the pinned inventory.
 - Runtime host: Linux, Node v24.19.0. The Todo comparison loaded each implementation directly, with Pi TUI versions 0.87.1 (frozen source manifest) and 1.1.0 (ASEN lockfile); it did not instantiate both Pi extension hosts.
 
@@ -12,8 +12,8 @@ Status: **INCOMPLETE.** This matrix records source/ASEN observations with explic
 
 - Inventory: 25 correspondences and 147 scenarios (146 original plus one added duplicate-request scenario).
 - Paired observations: 5 CodeGraph cases (10 source/ASEN process runs) against authentic npm package `@colbymchenry/codegraph@1.6.2`. All five are **INTENTIONAL** for the observed host annotation difference; none are EQUIVALENT. The matrix links each row to paired receipts and logs. Earlier controlled-executable observations are retained as historical evidence only. ASEN declares `readOnlyHint: false`, `destructiveHint: true`, `idempotentHint: false`, and `openWorldHint: false`; the frozen source omits annotations. This accurately signals the existing mutating `init` operation and grants no additional authority.
-- Status counts: 8 INTENTIONAL, 139 UNVERIFIED, 0 DIVERGENT, 0 NOT_APPLICABLE, 0 EQUIVALENT. The three new Todo INTENTIONAL observations describe deliberate invalid-input signaling, restart blocking, and duplicate-request protection. No functional parity PASS is claimed.
-- Source Todo suite: 17/17 passed; ASEN Todo store and Pi tool suites: 34/34 passed. The real CodeGraph package remains a dynamic version, and its test was Linux-only. Todo registration, authorization and full Pi lifecycle are not closed.
+- Status counts: 9 INTENTIONAL, 138 UNVERIFIED, 0 DIVERGENT, 0 NOT_APPLICABLE, 0 EQUIVALENT. The four Todo INTENTIONAL observations describe invalid-input signaling, restart blocking, duplicate-request protection, and session/project authorization. No functional parity PASS is claimed.
+- Source Todo suite: 17/17 passed; ASEN Todo store and Pi tool suites: 34/34 passed. The authorization probe also ran both state implementations and confirmed that ASEN rejects a cross-session task update without changing owner state or persisted bytes, while the source state helper has no owner context. The real CodeGraph package remains a dynamic version, and its test was Linux-only. Todo registration and full Pi lifecycle are not closed.
 - Full local ASEN check: 1,534 tests, 1,521 passed, 13 skipped, 0 failed; all included audits passed. Log SHA-256: `3cab21abdfec25c05950ebff4a821974352a0609ff795bea3c5172f0f15fa46e`.
 
 ## Consolidated matrix and raw evidence
@@ -22,7 +22,7 @@ The JSON file lists all 147 scenarios with status, exact source spans, command, 
 
 ## R4 self-review
 
-1. **Requirements:** source checkout identity and 25 edge spans are verified; only 1 of 25 correspondences has a paired adapter experiment. The block is not complete.
+1. **Requirements:** source checkout identity and 25 edge spans are verified; two correspondences have partial paired execution evidence, with no complete parity certification. The block is not complete.
 2. **Evidence:** receipts recompute SHA-256 over captured process output and bind exact contract, scenario, commits, argv and environment. The fake CodeGraph executable is called out in every receipt; its simulation does not establish actual package behavior. No missing evidence is marked PASS.
 3. **Risks/regressions:** the evaluator now rejects arbitrary hashes and wrong commits/scenarios, models INTENTIONAL and NOT_APPLICABLE, and compares stdout, stderr, output, exit status, platform, and Node version. Full local checks and focused upstream/ASEN suites pass.
 4. **Boundary regression:** the first CI candidate was rejected by the upstream-boundary audit because the report repeated source repository names and paths outside the provenance registry. The matrix now binds each edge by inventory source ID, reference index, exact commit, and span; raw paired commands use a sanitized checkout path. The boundary audit passes locally after this correction.
@@ -30,7 +30,7 @@ The JSON file lists all 147 scenarios with status, exact source spans, command, 
 
 ## Remaining gate
 
-The other 11 code mappings lack explicit ASEN counterpart paths and normalized behavior contracts. The 3 tracked source references lack an adopted-scope decision. The 10 external/dynamic edges lack exact reproducible fixtures or a bound ASEN counterpart. Continue by adding reviewed crosswalks and real adapters, then run source and ASEN implementations under matching controlled environments. Do not mark ECO-01 block 2 complete until all applicable cells have evidence and required divergences are resolved.
+Ten code mappings still lack explicit ASEN counterpart paths and normalized behavior contracts; CodeGraph and Todo have only partial paired evidence. The 3 tracked source references lack an adopted-scope decision. The 10 external/dynamic edges lack exact reproducible fixtures or a bound ASEN counterpart. Continue by adding reviewed crosswalks and real adapters, then run source and ASEN implementations under matching controlled environments. Do not mark ECO-01 block 2 complete until all applicable cells have evidence and required divergences are resolved.
 
 ## Revalidation against current PR HEAD (2026-10-16)
 
@@ -63,5 +63,7 @@ The other 11 code mappings lack explicit ASEN counterpart paths and normalized b
 - Restart: source transcript replay leaves its task `in_progress`; ASEN preserves its durable event history and changes interrupted `running` work to `blocked`, requiring explicit review before continuing. Marked INTENTIONAL as a recovery safety difference.
 - Duplicate request: two source `add` operations create two tasks; retrying the same ASEN request ID returns the same task and leaves one task. Marked INTENTIONAL to prevent duplicate work.
 - Normal add/update remains UNVERIFIED because the state and identity mapping (`in_progress` vs `running`, integer IDs vs opaque session/project/revision-bound IDs) has no accepted normalization. Atomic whole-list failure also remains UNVERIFIED: source supports `write`, while ASEN exposes no direct batch replace/clear counterpart. Registration and denied-context scenarios are still open.
+- Denied cross-session update: the source state helper updates task 1 because it carries no owner identity. ASEN rejects the same task ID from a different session, leaves the owner's state planned, and preserves the store bytes. This security boundary is marked INTENTIONAL; it does not weaken ASEN authorization.
+- Denied evidence is bound to source `08de420…` and exact ASEN commit `2e8444c42429102a2294e86fd9277963c8850353`, tree `f5d267adbd97fe5a33d21964d174f9f6b1ed9484`, in `docs/audit/evidence/eco01-todo-authorization-live-2e8444c42429102a2294e86fd9277963c8850353/todo-authorization-pair.json`. Its report SHA-256 is `9cb613018ffd8f34e10fe4d7c8ca524347c86b9702fa4bd90f3f8e41e2fe4740`; raw command output is stored beside it.
 - The frozen checkout has no package lock. I installed its manifest-pinned Pi TUI 0.87.1 with scripts disabled for this probe; `git status` showed no tracked source changes. This limits package-level reproducibility.
 - Added a test that recomputes source Git blob identity, evidence/log hashes, and matrix classifications. Latest local focused validation: 9/9 ECO-01 tests passed, typecheck passed, upstream boundary audit passed, and `git diff --check` passed. This remains an implementer comparison, not independent review.
