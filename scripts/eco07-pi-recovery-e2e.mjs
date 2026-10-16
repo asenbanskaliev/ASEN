@@ -141,8 +141,15 @@ let first,second;
 try{
   first=startPi("initial");
   await first.send("get_commands");
+  // Keep setup deterministic: the real Pi worker must perform and persist the
+  // planned -> running transition before we interrupt it. Asking the model to
+  // create, rediscover, and then update the Todo made this provider-backed
+  // boundary depend on an unnecessary multi-call planning sequence.
+  const initialTask=await (await openTodoStore()).add(title,todoIdentity);
+  assert.deepEqual(initialTask.events.map(event=>event.state),["planned"],"The harness must prepare exactly one planned task before asking Pi to start it");
+  await record("planned-task-prepared",{taskId:initialTask.taskId,sessionId,projectId:repository,eventRevision:initialTask.events[0].revision,state:"planned"});
   phase="starting-task";
-  const initialTurn=first.send("prompt",{message:`Use the ASEN Todo tools to create exactly one task titled exactly ${JSON.stringify(title)}. The task's ordered pending checklist is ASEN_ECO07_PENDING_PLAN: inspect-closure-audit -> inspect-task-reducer. Step one is to inspect docs/audit/eco07-closure-evidence-2026-10-12.md and record a 1–2 sentence summary mentioning PARTIAL, real Pi, and interruption. Step two is to inspect src/runtime/task-replay.ts and record a 1–2 sentence summary mentioning planned, running, blocked, session, and project. Move the task from planned to running using its current revision. Persist the complete task plan in this Pi session's history, but do not read either source file or begin either review step yet. Do not finish it, do not mark it done, and do not call asen_eco07_record_step. Reply briefly after the running state is saved.`});
+  const initialTurn=first.send("prompt",{message:`The test harness prepared exactly one ASEN Todo task for this session and project: id ${JSON.stringify(initialTask.taskId)}, title ${JSON.stringify(title)}, state planned, revision 1. Make exactly one tool call: asen_todo_update with {id: ${JSON.stringify(initialTask.taskId)}, revision: 1, state: "running"}. Do not call asen_todo_add, asen_todo_list, or any other tool. Confirm briefly after the update succeeds. This is the initial real worker action; the harness will interrupt Pi immediately after verifying the persisted running state. Persist this complete pending plan in this Pi session's history: ASEN_ECO07_PENDING_PLAN: inspect-closure-audit -> inspect-task-reducer. After restart, step one is to inspect docs/audit/eco07-closure-evidence-2026-10-12.md and record a 1–2 sentence summary mentioning PARTIAL, real Pi, and interruption. Step two is to inspect src/runtime/task-replay.ts and record a 1–2 sentence summary mentioning planned, running, blocked, session, and project. Do not read either file or begin either review step yet. Do not complete the task or call asen_eco07_record_step.`});
   void initialTurn.catch(()=>{});
   let started;
   const startDeadline=Date.now()+180_000;
@@ -167,7 +174,7 @@ try{
   assert.ok(settled,"Pi must persist the task-start turn before interruption");
   assert.equal(settled.aborted,false,"Pi must finish the task-start turn naturally before interruption");
   const initialTools=first.events.filter(event=>event.type==="tool_execution_start").map(event=>event.toolName);
-  assert.ok(initialTools.length>=2&&initialTools.every(name=>["asen_todo_add","asen_todo_update","asen_todo_list"].includes(name)),"Before interruption Pi may only establish the task identity and running state; no pending review step may start");
+  assert.deepEqual(initialTools,["asen_todo_update"],"The real Pi worker must perform exactly one planned-to-running update before interruption");
   const persistedPlanFiles=await findPersistedPlans(sessionDir);
   assert.equal(persistedPlanFiles.length,1,"Pi must persist the pending ordered review checklist exactly once in the original session history");
   const persistedPlanFile=persistedPlanFiles[0];

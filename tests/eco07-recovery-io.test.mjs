@@ -256,3 +256,12 @@ test("E2E wires the existing provider classifier through guarded IO and drains b
  assert.ok(drain>=0&&evidence>drain,"successful evidence must follow transcript drain");
  assert.match(source,/transcriptFlushError/u,"failure evidence must retain a distinct flush error");
 });
+
+test("ECO-07 real Pi interruption starts from one seeded task and one state transition",async()=>{
+ const source=await readFile(new URL("../scripts/eco07-pi-recovery-e2e.mjs",import.meta.url),"utf8");
+ assert.match(source,/const initialTask=await \(await openTodoStore\(\)\)\.add\(title,todoIdentity\)/u,"the harness must seed one durable planned Todo");
+ assert.match(source,/initialTask\.events\.map\(event=>event\.state\),\["planned"\]/u,"the real Pi call must start from a persisted planned state");
+ assert.match(source,/asen_todo_update with \{id: \$\{JSON\.stringify\(initialTask\.taskId\)\}, revision: 1, state: "running"\}/u,"the initial worker prompt must specify the exact one-use state transition");
+ assert.match(source,/assert\.deepEqual\(initialTools,\["asen_todo_update"\]/u,"no create/list/review tool may run before interruption");
+ assert.match(source,/planned-task-prepared/u,"evidence must preserve the pre-run planned state");
+});

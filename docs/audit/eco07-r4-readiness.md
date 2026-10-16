@@ -1,5 +1,11 @@
 # ECO-07 R4 — current candidate review
 
+## Latest candidate revalidation — 2026-10-16
+
+The latest provider workflow was run `38877254578`, attempt 1, against exact candidate `0afd6432fab687efa457918c30cc85eda72175de`. Pi 1.1.0 runtime validation and the NVIDIA secret-presence check passed. The E2E then failed at `starting-task`: Pi called `asen_todo_add` and `asen_todo_list` but did not persist the required `running` transition. The assertion failed before process interruption, restart recovery, review, or duplicate-dispatch checks. Logs: [run 38877254578](https://github.com/asenbanskaliev/ASEN/actions/runs/38877254578). Artifact `12036296282`, digest `sha256:bfa9047b4405a0cb6152e87e51366fdb220e1aeea9dbf8ac6377f18ff8792623`, is retained until 2026-11-15.
+
+R4 identified an avoidable provider-prompt dependency: the worker had to create, rediscover, then transition a task before the interruption boundary. The candidate correction seeds one exact `planned` Todo through the real ASEN store, then asks the real Pi process to make exactly one `asen_todo_update` call with the known ID and revision. The harness asserts the persisted transition and exactly one startup tool call before SIGKILL. A regression test protects this sequence. This correction is local-only until published and provider-verified; the latest failed run supersedes any earlier successful receipt for current-candidate readiness. **ECO-07 remains PARTIAL / OPEN; no new provider attempt is implied by this code change.**
+
 ## Current closeout — 2026-10-15
 
 **VERIFIED for the agreed NVIDIA NIM / Ubuntu 24.04 scope.** The exact published candidate `9d3f2e0710fd74b770e94b3aa2a2e43f3fd3e445` ran real Pi `1.1.0` with `deepseek-ai/deepseek-v4.1-flash`. Workflow run `38789463310` succeeded; artifact `11999926486` (`sha256:5b9a17724773607c9f31c5a770dd75c91ab3cdaaa6a58e9089a1a09c8e2fb93b`) contains `result: PASS`.
