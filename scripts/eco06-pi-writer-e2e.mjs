@@ -41,7 +41,8 @@ function startHost(phase,mode){
   const closed=new Promise(resolve=>child.once("close",(code,signal)=>resolve({code,signal})));
   return {child,stderr,closed,listen(fn){listeners.add(fn);return()=>listeners.delete(fn);},get authorizations(){return authorizations;},call(op,args={}){const id=`eco06-${phase}-${++sequence}`;return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject});child.send({id,op,...args},error=>{if(error){pending.delete(id);reject(error);}});});}};
 }
-function waitFor(client,kind,timeout=180_000){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{off();reject(new Error(`Timed out waiting for ${kind}`));},timeout);const off=client.listen(message=>{if(message?.kind===kind){clearTimeout(timer);off();resolve(message);}else if(kind==="partial-write"&&message?.kind==="writer-finished-without-partial"){clearTimeout(timer);off();reject(new Error("Real Pi writer finished without changing the approved file"));}});});}
+function waitFor(client,kind,timeout=180_000){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{off();reject(new Error(`Timed out waiting for ${kind}`));},timeout);const off=client.listen(message=>{if(message?.kind===kind){clearTimeout(timer);off();resolve(message);}});});}
+function waitForWriterOutcome(client,timeout=180_000){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{off();reject(new Error("Timed out waiting for the real Pi writer"));},timeout);const off=client.listen(message=>{if(message?.kind==="partial-write"||message?.kind==="writer-finished-without-partial"){clearTimeout(timer);off();resolve(message);}});});}
 function count(text,needle){return text.split(needle).length-1;}
 const report={candidate:{sha:expected,fixtureCommit:candidateRevision,provider:"nvidia",model:"nvidia/nemotron-3.5-lightning-30b-a3b",piVersion:piPackage.version,nvidiaKeyPresent:true},fixture:{repository:path.basename(project),sessionId,writeSurface:"README.md"},steps:[]};
 try{
@@ -51,7 +52,12 @@ try{
   assert.equal(firstPlan.route,"orchestrate");
   assert.equal(firstPlan.persistedTasks.filter(task=>task.planTaskId.endsWith(":worker")).length,1);
   const firstDispatch=host.call("dispatch");
-  const partial=await waitFor(host,"partial-write",180_000);
+  const firstOutcome=await waitForWriterOutcome(host,180_000);
+  if(firstOutcome.kind==="writer-finished-without-partial"){
+    report.steps.push({event:"writer-finished-before-visible-edit",ok:firstOutcome.ok===true,outputLength:firstOutcome.outputLength,diagnostic:firstOutcome.diagnostic});
+    throw new Error("Real Pi writer finished without changing the approved file; see the bounded runner diagnostic in the evidence artifact");
+  }
+  const partial=firstOutcome;
   const partialBytes=await readFile(path.join(project,"README.md"),"utf8");
   assert.notEqual(hash(partialBytes),hash("# ECO-06 controlled write\n\nInitial candidate.\n"));
   assert.ok(partialBytes.includes("FIRST_WRITE:"),"The real Pi worker must create the first visible partial edit");

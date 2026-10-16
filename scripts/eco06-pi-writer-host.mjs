@@ -45,7 +45,14 @@ const runner={run:async(request,signal)=>{
         controller.abort();
         process.kill(process.pid,"SIGKILL");
       }
-      if(settled){send({kind:"writer-finished-without-partial",id:request.id});return running;}
+      if(settled){
+        const result=await running;
+        const output=typeof result.output==="string"?result.output:"";
+        const key=process.env.NVIDIA_API_KEY;
+        const diagnostic=output.replaceAll(key||"\u0000","[REDACTED]").replace(/[\u0000-\u001f\u007f]/gu," ").trim().slice(0,500);
+        send({kind:"writer-finished-without-partial",id:request.id,ok:result.ok,outputLength:output.length,diagnostic});
+        return result;
+      }
       await new Promise(resolve=>setTimeout(resolve,25));
     }
     controller.abort();
