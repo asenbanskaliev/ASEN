@@ -96,7 +96,7 @@ function withStatefulEvidence(){
  const input={...fixture(),requireStatefulEvidence:true};
  const journey={installedPiPackageVerified:true,childAuthorityAutoLoaded:false,visibleRpcCommands:11,modelInvocations:0,
   sessionRestartVerified:true,crossSessionProjectionVerified:true,naturalProcessExits:3,
-  publicHost:{mode:"rpc",canonicalCommands:11,canonicalTools:17,hasUI:true,toolsEnabled:true}};
+  publicHost:{mode:"rpc",canonicalCommands:11,canonicalTools:16,hasUI:true,toolsEnabled:true}};
  const integrity="sha512-"+"A".repeat(86)+"==";
  const log=JSON.stringify(journey)+"\n"+JSON.stringify({packedInstallVerified:true,publicExports:28,files:243,integrity})+"\nPACK_ENV_BOUNDARY_PASS\n";
  for(const group of input.groups)(group as any).statefulReceipts=["restart","cross-session"].map(kind=>({log,
