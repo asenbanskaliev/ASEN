@@ -169,3 +169,32 @@ test("ECO-06 public Pi preflight rejects missing tools and commands without host
   assert.equal(registrations,0);
  }
 });
+
+test("ECO-02 startup collision recovery does not duplicate registrations across three sessions",async()=>{
+ const state=productionHost([{name:"asen"}]);
+ createPiExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false})(state.host as any);
+ const bootstrap=state.events.get("session_start")![0]!;
+ await bootstrap({},state.context());
+ assert.equal(state.commands.size,0);assert.equal(state.tools.size,0);
+ state.commandInventory.length=0;
+ await bootstrap({},state.context());
+ const commandCount=state.commands.size,toolCount=state.tools.size;
+ assert.ok(commandCount>0);assert.ok(toolCount>0);
+ await bootstrap({},state.context());
+ assert.equal(state.commands.size,commandCount,"repeated session must not register commands twice");
+ assert.equal(state.tools.size,toolCount,"repeated session must not register tools twice");
+});
+
+test("ECO-02 tool collision recovery requires fresh inventory and never registers during a failed preflight",async()=>{
+ const state=productionHost([],[{name:"asen_ask_choice"}]);
+ createPiExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false})(state.host as any);
+ const bootstrap=state.events.get("session_start")![0]!;
+ await bootstrap({},state.context());
+ assert.equal(state.commands.size,0);assert.equal(state.tools.size,0);
+ state.toolInventory.length=0;
+ await bootstrap({},state.context());
+ assert.ok(state.commands.size>0);assert.ok(state.tools.size>0);
+ const registrations=[state.commands.size,state.tools.size];
+ await bootstrap({},state.context());
+ assert.deepEqual([state.commands.size,state.tools.size],registrations);
+});
