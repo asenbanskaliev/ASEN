@@ -39,7 +39,7 @@ async function stage(f:Fixture,version=VERSION,engine=">=0.0.0",additional=false
  if(additional)await stageAdditionalManagedVersion(request);else await stageManagedInstall(request);
 }
 async function fixture(t:test.TestContext,name="doctor ü"){
- const base=process.env.TEMP??process.env.TMP??tmpdir(),root=await fs.mkdtemp(path.join(base,"doc-"));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+ const base=process.env.TEMP??process.env.TMP??tmpdir(),root=await fs.realpath(await fs.mkdtemp(path.join(base,"doc-")));t.after(()=>fs.rm(root,{recursive:true,force:true}));
  const home=path.join(root,"home "+name),prefix=path.join(home,".asen"),data=path.join(root,"data home"),effective=path.join(root,"effective package ü"),cwd=path.join(root,"caller cwd");
  for(const dir of [home,prefix,data,effective,cwd])await fs.mkdir(dir,{recursive:true});
  return{root,home,prefix,data,effective,cwd,managed:path.join(prefix,"install"),current:path.join(prefix,"install","current"),config:path.join(prefix,"config.json"),marker:path.join(prefix,"install",".asen-maintenance.lock"),sentinel:path.join(root,"PI-EXECUTED"),managedSentinel:path.join(root,"MANAGED-EXECUTED")};
