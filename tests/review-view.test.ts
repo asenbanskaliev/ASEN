@@ -4,7 +4,7 @@ import {createHash} from "node:crypto";
 import {chmodSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {disposeReviewView,materializeReviewView,readReviewViewFile} from "../src/review/review-view.js";
+import {disposeReviewView,materializeReviewView,readReviewViewFile,revalidateReviewView} from "../src/review/review-view.js";
 
 function manifest(bytes="hello\n"){
  const encoded=Buffer.from(bytes);
@@ -18,6 +18,7 @@ test("materializes one immutable read-only candidate view and disposes only owne
  const parent=mkdtempSync(join(tmpdir(),"asen-review-parent-"));
  try{
   const view=materializeReviewView(manifest(),parent);
+  assert.equal(revalidateReviewView(view,manifest()),view);
   assert.equal(readReviewViewFile(view,"src/file.txt").toString(),"hello\n");
   assert.equal(view.entryCount,1);
   assert.throws(()=>readReviewViewFile(view,"../outside"),/Unsafe portable review path/);
@@ -41,5 +42,6 @@ test("does not remove a replaced view root",()=>{
   const view=materializeReviewView(manifest(),parent),old=view.root;
   chmodSync(old,0o700);rmSync(old,{recursive:true,force:true});writeFileSync(old,"foreign");
   assert.throws(()=>disposeReviewView(view),/ownership is uncertain/);
+  assert.throws(()=>readReviewViewFile(view,"src/file.txt"),/ownership is uncertain/);
  } finally {rmSync(parent,{recursive:true,force:true});}
 });
