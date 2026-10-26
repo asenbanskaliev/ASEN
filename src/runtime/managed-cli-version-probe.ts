@@ -60,10 +60,16 @@ async function privateEnvironment(root:string,known:DirectoryClaim[]):Promise<No
   await mkdir(file);known.push(await directoryClaim(file));
  }
  const systemRoot=process.env.SystemRoot??process.env.SYSTEMROOT;
- const env:NodeJS.ProcessEnv={PATH:path.dirname(process.execPath),HOME:home,USERPROFILE:home,
+ // Windows PowerShell's Add-Type bridge needs the native command interpreter and
+ // system tools to start its compiler. Keep that small runtime bootstrap while
+ // continuing to exclude credentials, NODE_OPTIONS and provider configuration.
+ const windowsPath=systemRoot&&process.platform==="win32"
+  ? [path.dirname(process.execPath),path.join(systemRoot,"System32"),systemRoot,path.join(systemRoot,"System32","Wbem")].join(path.delimiter)
+  : path.dirname(process.execPath);
+ const env:NodeJS.ProcessEnv={PATH:windowsPath,HOME:home,USERPROFILE:home,
   TEMP:temp,TMP:temp,TMPDIR:temp,APPDATA:roaming,LOCALAPPDATA:local,
   XDG_CONFIG_HOME:config,XDG_CACHE_HOME:cache,XDG_DATA_HOME:data};
- if(systemRoot){env.SystemRoot=systemRoot;env.WINDIR=systemRoot;}
+ if(systemRoot){env.SystemRoot=systemRoot;env.WINDIR=systemRoot;env.ComSpec=process.env.ComSpec??process.env.COMSPEC??path.join(systemRoot,"System32","cmd.exe");env.COMSPEC=env.ComSpec;}
  if(process.env.OS)env.OS=process.env.OS;
  if(process.env.PATHEXT)env.PATHEXT=process.env.PATHEXT;
  return env;
