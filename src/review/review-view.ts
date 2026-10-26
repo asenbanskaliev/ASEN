@@ -1,7 +1,7 @@
 import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {chmodSync,lstatSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync,rmdirSync,unlinkSync,writeFileSync} from "node:fs";
-import {isAbsolute,join,relative,resolve} from "node:path";
+import {dirname,isAbsolute,join,relative,resolve} from "node:path";
 import {tmpdir} from "node:os";
 import type {CandidateGitTreeManifest,CandidateGitTreeEntry} from "./review-tree-inspection.js";
 import {validatePortableReviewPaths} from "./review-tree-paths.js";
@@ -71,7 +71,7 @@ export function materializeReviewView(manifest:CandidateGitTreeManifest,parent:s
    const target=join(root,...entry.path.split("/"));
    const rootRelative=relative(root,target);
    if(!rootRelative||rootRelative.startsWith("..")||isAbsolute(rootRelative))throw new Error("Review view path escaped its root");
-   const directory=target.slice(0,target.lastIndexOf("/"));
+   const directory=dirname(target);
    if(directory!==root)mkdirSync(directory,{recursive:true,mode:0o700});
    writeFileSync(target,Buffer.from(entry.bytesBase64!,"base64"),{flag:"wx",mode:entry.mode==="100755"?0o500:0o400});
    if(process.platform!=="win32")chmodSync(target,entry.mode==="100755"?0o500:0o400);
@@ -99,8 +99,8 @@ export function disposeReviewView(view:ReviewView):void {
   const target=join(view.root,...path.split("/")),entry=lstatSync(target,{throwIfNoEntry:false});
   if(!entry||!entry.isFile()||entry.isSymbolicLink())throw new Error("Review view entry ownership is uncertain");
   unlinkSync(target);
-  let directory=target.slice(0,target.lastIndexOf("/"));
-  while(directory!==view.root){directories.add(directory);directory=directory.slice(0,directory.lastIndexOf("/"));}
+  let directory=dirname(target);
+  while(directory!==view.root){directories.add(directory);directory=dirname(directory);}
  }
  for(const directory of [...directories].sort((a,b)=>b.length-a.length))rmdirSync(directory);
  if(readdirSync(view.root).length!==0)throw new Error("Review view contains unowned data");
