@@ -108,6 +108,8 @@ export function disposeReviewView(view:ReviewView):void {
 }
 
 export function readReviewViewFile(view:ReviewView,path:string):Buffer {
+ const rootInfo=lstatSync(view.root,{throwIfNoEntry:false});
+ if(!rootInfo||!rootInfo.isDirectory()||rootInfo.isSymbolicLink()||rootInfo.dev!==view.rootDev||rootInfo.ino!==view.rootIno)throw new Error("Review view ownership is uncertain");
  validatePortableReviewPaths([path]);
  const target=join(view.root,...path.split("/"));
  const rootRelative=relative(view.root,target);
@@ -115,4 +117,12 @@ export function readReviewViewFile(view:ReviewView,path:string):Buffer {
  const info=lstatSync(target);
  if(!info.isFile()||info.isSymbolicLink())throw new Error("Review view file is unsafe");
  return readFileSync(target);
+}
+
+/** Rejects a stale view before a new review or correction can consume it. */
+export function revalidateReviewView(view:ReviewView,manifest:CandidateGitTreeManifest):ReviewView {
+ const rootInfo=lstatSync(view.root,{throwIfNoEntry:false});
+ if(!rootInfo||!rootInfo.isDirectory()||rootInfo.isSymbolicLink()||rootInfo.dev!==view.rootDev||rootInfo.ino!==view.rootIno)throw new Error("Review view ownership is uncertain");
+ if(manifest.treeIdentity!==view.candidateTree||digestManifest(manifest)!==view.manifestDigest)throw new Error("Review view candidate drifted");
+ return view;
 }
