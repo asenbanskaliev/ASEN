@@ -39,6 +39,26 @@ Allowed statuses are `FULL`, `PARTIAL`, `MISSING`, `OUT_OF_SCOPE`, and `PARTIAL_
 | R19 | memory integration with ecosystem | MEM R01-R09 + ECO composition | PARTIAL | do not redesign memory; prove only ecosystem-facing composition |
 | R20 | failure/recovery/platform matrix | ECO-16 | PARTIAL | positive, rejection, failure, recovery, restart and applicable Windows/macOS/Linux evidence |
 
+## Current capability execution overlay — L440
+
+The owner approved the functional-equivalence completion plan with "hazlo asi"; see `pi-capability-completion.md` S14/L440. This overlay routes current work to the existing T/ECO owners. It is not a new backlog, reference rebaseline, registry promotion or replacement for the historical exact-candidate records below.
+
+Working behavior target: the previously studied Gentle Shell **4.3.0**. A complete immutable source/inventory binding for that target is **not yet established here**. The frozen Reference A/B identities above remain authoritative only for their own recorded evidence. Full4.3.0 equivalence requires its own pinned inventory and shared behavior/platform evidence; version labels and installed mutable paths are insufficient. Explicitly excluded optional behavior still prevents full-reference parity even when adopted-scope work is complete.
+
+| Capability / owner | Current ASEN public surface or implementation | Recorded evidence (bounded, not full parity) | Remaining acceptance outcome |
+| --- | --- | --- | --- |
+| Recovery — T04 / R09,R13 | `scripts/eco06-pi-writer-e2e.mjs`; interruption inspection and dirty-candidate rejection | Local deterministic cases through L48 | Controlled abrupt child interruption, restart, retained edits and newly bound authority; explicit proof/consent stop remains |
+| Exact-change review — T05 / R12,R18 | `src/review/workspace-review-projection.ts`, `review-tree-paths.ts`, `review-tree-inspection.ts`; not yet public workspace-snapshot composition | A1/A2a1/A2a2 local admissions L401/L405/L415 | Owned materialized view and safe disposal, public controller/result/correction integration, stale-result rejection and platform write-restriction proof |
+| Code knowledge — T07 / R12 | `src/interaction/code-intelligence.ts`, public tool registration in `extensions/asen.ts` | Existing local tests/source evidence; no admitted lifecycle journey | Disposable-project initialization/query/change/error/restart proof and honest optional-docs availability; existing stop remains |
+| Managed maintenance — T09 / R01,R02 | `src/cli.ts`: setup preview, doctor, retained selection/run, backup preview, update preview; finite backup/restore primitives | Scoped admissions through L452; U9c internal expected-byte staging PASS,31tests/types0/one legacy differential; U9b public preview evidence retained | Safe actual acquisition/update/rollback, executable backup and live restore, managed-only removal, browser consent and clean-machine/platform checks |
+| Workspace experience — T10 / R05–R10,R13–R15 | `extensions/asen.ts`; `src/runtime/command-catalog.ts`; partial status/agents/changes/todos/history/usage/profiles/memory wiring | T10-A2 display sanitization locally admitted L455:26tests/types0/2differential scenarios and independent Risk2/3 PASS; host receipts remain candidate-specific | Background jobs with observed exit, cross-session boundaries, workspace actions/conflicts, notifications, accessibility/narrow terminals and current host proof |
+| Additional clients — T11 | Pi extensions exist; no additional adapters found in the audited source paths | Pi-only evidence cannot transfer | Reference-confirmed client inventory, one explicit capability contract and independently exercised adapter per client |
+| Final equivalence — T12 / R16–R20 | Existing reverse inventory, package/claim validators and parity registry | Registry remains16PARTIAL/0FULL; old-SHA results stay historical | One exact ASEN candidate and pinned reference, same public success/refusal/failure/recovery scenarios, supported platforms and documentation validation |
+
+The preceding R01–R20 routes remain the completeness checklist: completed local T02/T03/T06/T08 prerequisites are not erased or automatically promoted to full equivalence. Shared scenario coverage must still include routing, permissions, memory/skills, settings, package exports and optional integrations. No missing surface is silently renamed "not applicable".
+
+Current execution: **T09-U9c** internal local expected-byte staging is admitted at L452, not a full/public updater. **T05-A2b** is blocked on identity-safe disposition of its restrictive fixture. **T10-A2** display sanitization is locally admitted at L455; the next read-only **T10-A3** map advances the roadmap without bypassing that stop. Bound their contracts and disjoint edit surfaces before starting writers; maximum two implementation workers. Keep T04/T07 blocked until their specific requirements are resolved, then complete T10/T11 behavior and T12 proof. Source commits, real installation, external/provider/native authority operations and publication remain separately controlled.
+
 ## Canonical implementation order
 
 Reverse-inventory preparation remains first so omitted surfaces are visible, but it does not reorder execution. The strict tracker phases control:
