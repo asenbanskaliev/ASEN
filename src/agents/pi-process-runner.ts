@@ -25,6 +25,27 @@ export interface PiProcessOptions{
  policyRoot?:string;
  providerCredential?:PiProviderCredential;
 }
+export interface PiChildSelectionObservation{
+ readonly taskId:string;readonly sessionId:string;readonly projectId:string;
+ readonly source:"child-reported";readonly model:Readonly<{provider:string;id:string}>|null;
+ readonly thinking?:AgentRequest["thinking"];
+}
+type ChildSelectionListener=(observation:PiChildSelectionObservation)=>void;
+type ChildSelectionSubscription=Readonly<{listener:ChildSelectionListener}>;
+type ChildSelectionOwner=Readonly<Pick<PiChildSelectionObservation,"taskId"|"sessionId"|"projectId">>;
+function selectionText(value:unknown,limit=256):value is string{return typeof value==="string"&&value.length>0&&value.length<=limit&&value===value.trim()&&!/[\p{Cc}\p{Cf}\p{Cs}]/u.test(value);}
+function childSelection(owner:ChildSelectionOwner,data:unknown):PiChildSelectionObservation|undefined{
+ if(!data||typeof data!=="object"||Array.isArray(data))return;
+ const value=data as {model?:unknown;thinkingLevel?:unknown};let model:PiChildSelectionObservation["model"]=null;
+ if(value.model!==null){
+  if(!value.model||typeof value.model!=="object"||Array.isArray(value.model))return;
+  const chosen=value.model as {provider?:unknown;id?:unknown};if(!selectionText(chosen.provider)||!selectionText(chosen.id))return;
+  model=Object.freeze({provider:chosen.provider,id:chosen.id});
+ }
+ const thinking=value.thinkingLevel;
+ if(thinking!==undefined&&(typeof thinking!=="string"||!["off","minimal","low","medium","high"].includes(thinking)))return;
+ return Object.freeze({...owner,source:"child-reported",model,...(thinking!==undefined?{thinking:thinking as AgentRequest["thinking"]}:{})});
+}
 export type PiProviderCredential="OPENROUTER_API_KEY"|"LLM7_API_KEY"|"GROQ_API_KEY"|"NVIDIA_API_KEY";
 const providerCredentialNames=new Set<PiProviderCredential>(["OPENROUTER_API_KEY","LLM7_API_KEY","GROQ_API_KEY","NVIDIA_API_KEY"]);
 export function configuredPiProviderCredential(environment:NodeJS.ProcessEnv):PiProviderCredential|undefined{
@@ -97,9 +118,21 @@ function promptWithSkills(request:AgentRequest):string{
 }
 
 export class PiProcessRunner implements AgentRunner{
+ readonly #selectionSubscriptions=new Set<ChildSelectionSubscription>();
  constructor(private readonly options:PiProcessOptions={}){}
+ /** Optional, nonpersistent selection reports; subscription replacement never revives old launches. */
+ subscribeChildSelection(listener:ChildSelectionListener):()=>void{
+  if(typeof listener!=="function")throw new TypeError("Child selection observer must be a function");
+  const subscription=Object.freeze({listener});this.#selectionSubscriptions.add(subscription);
+  return ()=>{this.#selectionSubscriptions.delete(subscription);};
+ }
 
  run(request:AgentRequest,runSignal?:AbortSignal):Promise<AgentResult>{
+  const selectionSubscriptions=[...this.#selectionSubscriptions];let selectionOwner:ChildSelectionOwner|undefined;
+  if(selectionSubscriptions.length){
+   try{const taskId=request.id,sessionId=request.isolationKey??"default",projectId=realpathSync(request.repository);if(selectionText(taskId,1024)&&selectionText(sessionId,1024)&&selectionText(projectId,32768))selectionOwner=Object.freeze({taskId,sessionId,projectId});}
+   catch{/* Observation identity is optional; existing execution guards still decide launch. */}
+  }
   const receiverValid=request.runnerWriteReceiver!==undefined&&consumeRunnerWriteReceiver(request.runnerWriteReceiver,request);
   if(request.runnerWriteReceiver!==undefined&&!receiverValid)return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
   if(request.candidate&&(!request.skillContext||!request.skillPaths))return Promise.resolve({id:request.id,ok:false,output:"Candidate-bound Pi execution requires issued skill context and exact paths"});
@@ -161,7 +194,8 @@ export class PiProcessRunner implements AgentRunner{
     detached:process.platform!=="win32"
    }) as ChildProcessWithoutNullStreams;
    let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,agentEnded=false,streamBytes=0,retainedBytes=0,stopResult:AgentResult|undefined;
-   const preflightId=`asen-policy:${request.id}`;
+   const preflightId=`asen-policy:${request.id}`,selectionId=`asen-selection:${request.id}`;
+   let selectionRequested=false,selectionResponded=false;
    const closed=new Promise<void>(resolveClosed=>{child.once("close",()=>resolveClosed());child.once("error",()=>{if(child.pid===undefined)resolveClosed();});});
    let timer:ReturnType<typeof setTimeout>|undefined;
 
@@ -186,8 +220,19 @@ export class PiProcessRunner implements AgentRunner{
     let end;while((end=buffer.indexOf("\n"))>=0){
      const line=buffer.slice(0,end).trim();buffer=buffer.slice(end+1);
      let record:unknown;try{record=JSON.parse(line);}catch{record=line;}
-     const response=(record&&typeof record==="object"?record:{}) as {type?:string;id?:string;success?:boolean;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>} };
+     const response=(record&&typeof record==="object"?record:{}) as {type?:string;id?:string;command?:string;success?:boolean;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>;} };
      const type=response.type;
+     if(selectionOwner&&selectionSubscriptions.length&&type==="response"&&(response.id===selectionId||response.command==="get_state")){
+      if(selectionRequested&&!selectionResponded&&response.id===selectionId&&policyLoaded&&!settled&&!stopResult&&!agentEnded&&!signal?.aborted){
+       selectionResponded=true;
+       const observation=response.success===true&&response.command==="get_state"?childSelection(selectionOwner,response.data):undefined;
+       if(observation)for(const subscription of selectionSubscriptions){
+        if(!this.#selectionSubscriptions.has(subscription))continue;
+        try{void Promise.resolve(subscription.listener(observation)).catch(()=>{});}catch{/* Descriptive observers cannot alter execution. */}
+       }
+      }
+      continue; // Raw state is never part of the retained execution output.
+     }
      const keep=typeof record==="string"||agentEnded||type==="agent_end"||type==="message_end"&&((record as {message?:{role?:string}}).message?.role==="assistant")||type==="response"&&(response.id===preflightId||response.id===request.id)||typeof type==="string"&&type.startsWith("tool_execution_");
      if(keep){
       const retained=line+"\n";retainedBytes+=Buffer.byteLength(retained);
@@ -205,6 +250,7 @@ export class PiProcessRunner implements AgentRunner{
      const observed=response.data?.commands?.filter(item=>item.source==="skill").map(item=>typeof item.sourceInfo?.path==="string"?canonical(item.sourceInfo.path):"")??[];
      if(observed.length!==expected.length||observed.some((path,index)=>path!==expected[index])){stop({id:request.id,ok:false,output:"pi native Skill paths do not match ASEN selection"});return;}
      policyLoaded=true;
+     if(selectionOwner&&selectionSubscriptions.length&&!selectionRequested){selectionRequested=true;child.stdin.write(JSON.stringify({id:selectionId,type:"get_state"})+"\n");}
      child.stdin.write(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
     }
     if(Buffer.byteLength(buffer)>maxRecord){overflow=true;stop({id:request.id,ok:false,output:`pi RPC record exceeded ${maxRecord} bytes`});}

@@ -7,6 +7,7 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"review",name:"asen-review",implemented:true,owner:"src/review/ordinary-review-command.ts"},
  {group:"skills",name:"asen-skill-registry",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-profiles",implemented:true,owner:"extensions/asen.ts"},
+ {group:"configuration",name:"asen-persona",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-customize",implemented:false,owner:"ECO-14"},
  {group:"configuration",name:"asen-commands",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-changes",implemented:true,owner:"extensions/asen.ts"},

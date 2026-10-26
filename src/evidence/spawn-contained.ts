@@ -1,7 +1,7 @@
 import {spawn,type ChildProcess,type SpawnOptions} from "node:child_process";
-import {mkdtempSync,rmSync,writeFileSync} from "node:fs";
+import {lstatSync,mkdtempSync,readFileSync,realpathSync,rmSync,rmdirSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {join,resolve} from "node:path";
+import {isAbsolute,join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 
 const windowsJobSource=String.raw`
@@ -72,21 +72,55 @@ public static class AsenContainedProcess {
   }
 }`;
 
-function spawnWindowsJobCommand(command:string,args:readonly string[],options:SpawnOptions):ChildProcess {
-  const payloadDirectory=mkdtempSync(join(tmpdir(),"asen-contained-job-")),payloadPath=join(payloadDirectory,"command.json");
+interface PrivateJobScope {temporaryParent:string;powershell:string}
+
+function spawnWindowsJobCommand(command:string,args:readonly string[],options:SpawnOptions,privateScope?:PrivateJobScope):ChildProcess {
+  const payloadDirectory=mkdtempSync(join(privateScope?.temporaryParent??tmpdir(),"asen-contained-job-")),payloadPath=join(payloadDirectory,"command.json");
   const cwd=options.cwd===undefined?process.cwd():typeof options.cwd==="string"?resolve(options.cwd):fileURLToPath(options.cwd);
-  writeFileSync(payloadPath,JSON.stringify({command,args,cwd}),{encoding:"utf8",mode:0o600,flag:"wx"});
+  const rootClaim=privateScope?lstatSync(payloadDirectory):undefined;
+  const canonicalClaim=privateScope?realpathSync(payloadDirectory):undefined;
+  const payload=JSON.stringify({command,args,cwd});
+  writeFileSync(payloadPath,payload,{encoding:"utf8",mode:0o600,flag:"wx"});
+  const fileClaim=privateScope?lstatSync(payloadPath):undefined;
+  const cleanup=()=>{
+    if(!privateScope){rmSync(payloadDirectory,{recursive:true,force:true});return;}
+    // Only our original regular payload and empty directory may be removed.
+    if(!rootClaim||!fileClaim||canonicalClaim===undefined)return;
+    try{
+      const root=lstatSync(payloadDirectory),file=lstatSync(payloadPath);
+      if(!root.isDirectory()||root.isSymbolicLink()||root.dev!==rootClaim.dev||root.ino!==rootClaim.ino
+        ||realpathSync(payloadDirectory)!==canonicalClaim)return;
+      if(!file.isFile()||file.isSymbolicLink()||file.dev!==fileClaim.dev||file.ino!==fileClaim.ino
+        ||readFileSync(payloadPath,"utf8")!==payload)return;
+      rmSync(payloadPath);rmdirSync(payloadDirectory);
+    }catch{/* Preserve unknown, replaced, or uncertain private data. */}
+  };
   const source=Buffer.from(windowsJobSource,"utf8").toString("base64"),file=Buffer.from(payloadPath,"utf8").toString("base64");
-  const script=`$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; try { $s=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${source}')); Add-Type -TypeDefinition $s; $f=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${file}')); $p=Get-Content -Raw -LiteralPath $f | ConvertFrom-Json; $c=[AsenContainedProcess]::Run([string]$p.command,[string]$p.cwd,[string[]]$p.args); exit $c } catch { [Console]::Error.WriteLine($_.Exception.ToString()); exit 1 }`;
+  const payloadEncoding=privateScope?" -Encoding UTF8":"";
+  const script=`$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; try { $s=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${source}')); Add-Type -TypeDefinition $s; $f=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${file}')); $p=Get-Content -Raw -LiteralPath $f${payloadEncoding} | ConvertFrom-Json; $c=[AsenContainedProcess]::Run([string]$p.command,[string]$p.cwd,[string[]]$p.args); exit $c } catch { [Console]::Error.WriteLine($_.Exception.ToString()); exit 1 }`;
   const encoded=Buffer.from(script,"utf16le").toString("base64");
   try{
-    const child=spawn("powershell.exe",["-NoLogo","-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-EncodedCommand",encoded],{...options,detached:false,windowsHide:true});
-    const cleanup=()=>rmSync(payloadDirectory,{recursive:true,force:true});child.once("close",cleanup);child.once("error",cleanup);return child;
-  }catch(error){rmSync(payloadDirectory,{recursive:true,force:true});throw error;}
+    const policyArguments=privateScope?[]:["-ExecutionPolicy","Bypass"];
+    const child=spawn(privateScope?.powershell??"powershell.exe",["-NoLogo","-NoProfile","-NonInteractive",...policyArguments,"-EncodedCommand",encoded],{...options,detached:false,windowsHide:true});
+    child.once("close",cleanup);child.once("error",cleanup);return child;
+  }catch(error){cleanup();throw error;}
 }
 
 /** On Windows, start the exact command suspended and assign it to a kill-on-close Job Object before resume. */
 export function spawnContained(command:string,args:readonly string[],options:SpawnOptions={}):ChildProcess {
   if(process.platform==="win32")return spawnWindowsJobCommand(command,args,options);
   return spawn(command,[...args],options);
+}
+
+/** Inherit host policy; the caller must supply an owned temporary directory and authorize execution. */
+export function spawnContainedWithInheritedPolicy(command:string,args:readonly string[],options:SpawnOptions,privateTempRoot:string):ChildProcess {
+  if(!isAbsolute(privateTempRoot))throw new Error("Private process payload parent must be absolute");
+  const parent=lstatSync(privateTempRoot);
+  if(!parent.isDirectory()||parent.isSymbolicLink())throw new Error("Private process payload parent must be an unlinked directory");
+  const safeOptions={...options,shell:false};
+  if(process.platform!=="win32")return spawn(command,[...args],safeOptions);
+  const systemRoot=(process.env.SystemRoot??process.env.SYSTEMROOT??"").trim();
+  if(!systemRoot||!isAbsolute(systemRoot))throw new Error("Windows SystemRoot is required for inherited-policy containment");
+  const powershell=join(systemRoot,"System32","WindowsPowerShell","v1.0","powershell.exe");
+  return spawnWindowsJobCommand(command,args,safeOptions,{temporaryParent:privateTempRoot,powershell});
 }

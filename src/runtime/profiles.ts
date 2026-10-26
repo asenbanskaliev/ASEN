@@ -4,6 +4,7 @@ export interface RouteChoice{model?:string;thinking?:Thinking}
 export interface RuntimeProfile{name:string;routes:Record<string,RouteChoice>}
 export interface RuntimeProfilesFile{schema:typeof ASEN_PROFILES_SCHEMA;active?:string;profiles:RuntimeProfile[]}
 export type ProfileLayer={global?:RuntimeProfilesFile;project?:RuntimeProfilesFile;session?:RuntimeProfilesFile};
+export interface RuntimeRoutingMetadata{requested:RouteChoice;resolved:RouteChoice;source:"session"|"project"|"global"|"default"|"persisted-plan";actual:"unknown"}
 const NAME=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const THINKING=new Set(["off","minimal","low","medium","high"]);
 function record(v:unknown):v is Record<string,unknown>{return !!v&&typeof v==="object"&&!Array.isArray(v);}
@@ -18,6 +19,8 @@ export function resolveRuntimeRoute(layers:ProfileLayer,role:string):{choice?:Ro
  if(typeof role!=="string"||!NAME.test(role))return {source:"default"};
  for(const [source,file] of [["session",layers.session],["project",layers.project],["global",layers.global]] as const){const routes=selected(file)?.routes;if(routes&&Object.hasOwn(routes,role)){const route=routes[role];if(route)return {choice:{...route},source};}}return {source:"default"};
 }
+export function runtimeRoutingMetadata(requested:RouteChoice,resolved:RouteChoice,source:RuntimeRoutingMetadata["source"]):RuntimeRoutingMetadata{return {requested:{...requested},resolved:{...resolved},source,actual:"unknown"};}
+export function globalRuntimeRoutingFacts(file:RuntimeProfilesFile):Record<string,RuntimeRoutingMetadata>{const routes=selected(file)?.routes;if(!routes)return {};return Object.fromEntries(Object.entries(routes).map(([role,choice])=>[role,runtimeRoutingMetadata(choice,choice,"global")]));}
 export function setActiveProfile(file:RuntimeProfilesFile,name:string):RuntimeProfilesFile{if(!file.profiles.some(p=>p.name===name))throw new Error("Profile does not exist");return {...file,active:name};}
 export function upsertProfile(file:RuntimeProfilesFile,profile:RuntimeProfile):RuntimeProfilesFile{if(!NAME.test(profile.name)||Object.entries(profile.routes).some(([r,v])=>!NAME.test(r)||!validRoute(v)))throw new Error("Invalid profile");const i=file.profiles.findIndex(p=>p.name===profile.name),profiles=file.profiles.map(p=>({name:p.name,routes:structuredClone(p.routes)}));if(i<0){if(profiles.length>=64)throw new Error("Too many profiles");profiles.push(structuredClone(profile));}else profiles[i]=structuredClone(profile);return {...file,profiles};}
 

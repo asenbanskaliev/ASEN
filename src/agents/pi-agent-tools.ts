@@ -6,7 +6,8 @@ import type {AgentRuntime} from "./agent-runtime.js";
 import type {AgentSessionIdentity} from "./agent-runtime.js";
 import type {TrustedTaskAgentBinder} from "../runtime/trusted-task-agent-binder.js";
 import type {TaskAgentLinkStore} from "../runtime/task-agent-link-store.js";
-import type {SessionTodoStore} from "../runtime/todo-store.js";
+import type {SessionTodoStore,TodoPlanMetadata} from "../runtime/todo-store.js";
+import {runtimeRoutingMetadata,type RouteChoice} from "../runtime/profiles.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import {dispatchNextPlanTask} from "../runtime/plan-dispatcher.js";
 import {inspectInterruptedWrite} from "../runtime/interrupted-write-inspection.js";
@@ -31,7 +32,7 @@ async function identity(context:any):Promise<AgentSessionIdentity>{
 }
 export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent_status","asen_agent_cancel","asen_agent_continue","asen_agent_retry","asen_plan_dispatch_next","asen_todo_inspect_interrupted_write"] as const);
 /** Exposes only read-only explorer work by default; write agents require an internal fresh ASEN grant. */
-export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>}):()=>void{
+export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default"}>):()=>void{
  const access=new AgentProjectAccess();
  const selectedIdentity=async(root:unknown,context:any,launch:boolean,signal?:AbortSignal)=>access.resolve(root,context,await identity(context),launch,()=>confirmWithAbort(dialogSignal=>context.ui.confirm("Authorize another project?",`Start a read-only ASEN agent in ${String(root)}? Access applies only to this live session and project.`,dialogSignal?{signal:dialogSignal}:undefined),signal),signal);
  pi.registerTool?.({name:"asen_agent_start",label:"Start ASEN agent",description:"Queue an isolated, read-only Pi agent task in the current session and project.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["prompt"],properties:{prompt:text,root:rootSchema,todoId:idSchema}},execute:async(_id,params,signal,_update,context)=>{
@@ -40,17 +41,22 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const session=await selectedIdentity((params as {root?:unknown}).root,context,true,signal);
   const todoId=(params as {todoId?:unknown}).todoId;
   let dispatchRole:"explorer"|"reviewer"|"verifier"="explorer";
-  let planSkillSelection:SkillSelectionContext|undefined;
+  let planSkillSelection:SkillSelectionContext|undefined,persistedPlan:TodoPlanMetadata|undefined;
   if(todoId!==undefined){
    if(typeof todoId!=="string"||!todoId.trim()||!todoLink)throw new Error("Todo binding is unavailable");
    const task=(await (await todoLink.todos()).list(session)).find(item=>item.taskId===todoId);
    if(!task||task.current.state==="done"||task.current.state==="cancelled"||task.current.state==="blocked")throw new Error("Todo must be an active, owned task before agent launch");
    if(task.description&&prompt!==task.description)throw new Error("A planned Todo agent must receive the exact persisted task instruction");
-   if(task.plan){if(task.plan.role!=="explorer"&&task.plan.role!=="reviewer"&&task.plan.role!=="verifier")throw new Error(`Planned ${task.plan.role} work requires a controlled ${task.plan.role} dispatcher`);const expectedPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[task.plan.role];if(task.plan.skillSelection?.phase!==expectedPhase)throw new Error(`Planned ${task.plan.role} Todo is missing its exact ASEN skill selection`);const expectedPaths=selectSkills(task.plan.skillSelection).map(skill=>skill.path);if(expectedPaths.length!==task.plan.skillPaths.length||expectedPaths.some((path,index)=>path!==task.plan!.skillPaths[index]))throw new Error("Persisted ASEN skill registry selection changed; rebuild this plan before dispatch");dispatchRole=task.plan.role;planSkillSelection=task.plan.skillSelection;}
+   if(task.plan){if(task.plan.role!=="explorer"&&task.plan.role!=="reviewer"&&task.plan.role!=="verifier")throw new Error(`Planned ${task.plan.role} work requires a controlled ${task.plan.role} dispatcher`);const expectedPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[task.plan.role];if(task.plan.skillSelection?.phase!==expectedPhase)throw new Error(`Planned ${task.plan.role} Todo is missing its exact ASEN skill selection`);const expectedPaths=selectSkills(task.plan.skillSelection).map(skill=>skill.path);if(expectedPaths.length!==task.plan.skillPaths.length||expectedPaths.some((path,index)=>path!==task.plan!.skillPaths[index]))throw new Error("Persisted ASEN skill registry selection changed; rebuild this plan before dispatch");dispatchRole=task.plan.role;planSkillSelection=task.plan.skillSelection;persistedPlan=task.plan;}
   }
   throwIfCancelled(signal);
-  const active=await runtime(),taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(typeof todoId==="string"?{onQueued:async(agentId:string,dispatch:()=>void)=>{const validate=async()=>{const current=await identity(context);if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before Todo agent dispatch");};await validate();await (await todoLink!.binder()).launch(todoId,agentId,session,dispatch,validate);}}:{})},signal);
-  return result({id:taskId,state:"queued",role:dispatchRole,...(typeof todoId==="string"?{todoId}:{})});
+  const requested:RouteChoice=persistedPlan?{...(persistedPlan.model!==undefined?{model:persistedPlan.model}:{}),...(persistedPlan.thinking!==undefined?{thinking:persistedPlan.thinking}:{})}:{};
+  let resolved:RouteChoice,routeSource:"session"|"project"|"global"|"default"|"persisted-plan";
+  if(persistedPlan){resolved={...requested};routeSource="persisted-plan";}else{const route=resolveRouting?await resolveRouting(dispatchRole,session):{source:"default" as const};resolved=route.choice??{};routeSource=route.source;}
+  const routing=runtimeRoutingMetadata(requested,resolved,routeSource);
+  throwIfCancelled(signal);
+  const active=await runtime(),taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...(typeof todoId==="string"?{onQueued:async(agentId:string,dispatch:()=>void)=>{const validate=async()=>{const current=await identity(context);if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before Todo agent dispatch");};await validate();await (await todoLink!.binder()).launch(todoId,agentId,session,dispatch,validate);}}:{})},signal);
+  return result({id:taskId,state:"queued",role:dispatchRole,routing,...(typeof todoId==="string"?{todoId}:{})});
  }});
  pi.registerTool?.({name:"asen_agent_status",label:"ASEN agent status",description:"List owned agent tasks, or query one task and its durable state history by id.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{id:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);
@@ -83,11 +89,11 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
    throw error;
   }
  }});
- pi.registerTool?.({name:"asen_agent_retry",label:"Retry failed ASEN plan task",description:"After explicit Pi UI confirmation, create one new read-only attempt for a failed linked Todo task; writes and cancelled tasks are not retried.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["id"],properties:{id:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
+ pi.registerTool?.({name:"asen_agent_retry",label:"Retry failed ASEN plan task",description:"After explicit Pi UI confirmation, create one new read-only attempt for a failed linked Todo task using its saved model and thinking; writes and cancelled tasks are not retried.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["id"],properties:{id:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);const agentId=(params as {id?:unknown})?.id;if(typeof agentId!=="string"||!agentId.trim()||!todoLink)throw new Error("Retry requires a linked ASEN Todo agent");
   const session=await selectedIdentity((params as {root?:unknown}).root,context,true,signal),[links,todos,active]=await Promise.all([todoLink.links(),todoLink.todos(),runtime()]);
   const link=(await links.list(session)).find(item=>item.agentId===agentId);if(!link)throw new Error("Retry requires a Todo-agent link owned by this session and project");
-  const todo=(await todos.list(session)).find(item=>item.taskId===link.taskId),prior=await active.query(agentId,session);
+  const todo=(await todos.list(session)).find(item=>item.taskId===link.taskId),prior=await active.store.get(agentId,session.sessionId,session.projectId);
   if(!todo||todo.current.state!=="blocked"||!todo.description)throw new Error("Retry requires a blocked Todo with its exact persisted instruction");const instruction=todo.description;
   if(instruction.length>MAX_VISIBLE_AGENT_INSTRUCTION)throw new Error("The complete saved instruction exceeds the safe Pi confirmation size; split the task before retrying.");
   const attempts=(await links.list(session)).filter(item=>item.taskId===link.taskId);if(attempts.length!==1||attempts[0]?.agentId!==agentId)throw new Error("This Todo already used its single controlled retry; review the result and create a new plan if needed");
@@ -99,9 +105,9 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   throwIfCancelled(signal);const confirmedIdentity=await identity(context);if(confirmedIdentity.sessionId!==session.sessionId||confirmedIdentity.projectId!==session.projectId)throw new Error("Pi session or project changed before agent retry");
   const fresh=(await todos.list(session)).find(item=>item.taskId===todo.taskId),latest=await active.query(agentId,session);
   if(!fresh||fresh.current.state!=="blocked"||fresh.current.revision!==todo.current.revision||!latest||latest.record.state!=="failed")throw new Error("Failed Todo or agent changed during retry confirmation; refresh before retry");
-  const resumed=await todos.update(todo.taskId,session,todo.current.revision,"running","User confirmed a new read-only retry in Pi UI",signal);
+  await todos.update(todo.taskId,session,todo.current.revision,"running","User confirmed a new read-only retry in Pi UI",signal);
   try{
-   const next=await active.startReadOnly({role,prompt:instruction,session,...(selection?{skillSelection:selection}:{}),onQueued:async(id,dispatch)=>{const validate=async()=>{const currentIdentity=await identity(context);if(currentIdentity.sessionId!==session.sessionId||currentIdentity.projectId!==session.projectId)throw new Error("Pi session or project changed before agent retry dispatch");};await validate();await (await todoLink.binder()).launch(todo.taskId,id,session,dispatch,validate);}},signal);
+   const next=await active.startReadOnly({role,prompt:instruction,session,...(prior.request.model!==undefined?{model:prior.request.model}:{}),...(prior.request.thinking!==undefined?{thinking:prior.request.thinking}:{}),...(selection?{skillSelection:selection}:{}),onQueued:async(id,dispatch)=>{const validate=async()=>{const currentIdentity=await identity(context);if(currentIdentity.sessionId!==session.sessionId||currentIdentity.projectId!==session.projectId)throw new Error("Pi session or project changed before agent retry dispatch");};await validate();await (await todoLink.binder()).launch(todo.taskId,id,session,dispatch,validate);}},signal);
    return result({id:next,state:"queued",retriedFrom:agentId,role,todoId:todo.taskId});
   }catch(error){const current=(await todos.list(session)).find(item=>item.taskId===todo.taskId);if(current?.current.state==="running")await todos.update(current.taskId,session,current.current.revision,"blocked","Read-only retry was not dispatched; review is required",undefined).catch(()=>{});throw error;}
  }});

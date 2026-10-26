@@ -1,13 +1,48 @@
-import assert from "node:assert/strict";import test from "node:test";import {mkdtemp,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import path from "node:path";import {createAsenExtension} from "../extensions/asen.js";import {writeProfilesFile} from "../src/runtime/profile-store.js";import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";import {SessionTodoStore} from "../src/runtime/todo-store.js";import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
+import assert from "node:assert/strict";import test from "node:test";import {mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import path from "node:path";import {createAsenExtension} from "../extensions/asen.js";import {writeProfilesFile} from "../src/runtime/profile-store.js";import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";import {SessionTodoStore} from "../src/runtime/todo-store.js";import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 function host(){const commands=new Map<string,{handler:(...args:any[])=>unknown}>();return {commands,pi:{registerCommand:(n:string,c:any)=>commands.set(n,c)}};}
-test("state commands compose existing runtime projections without inventing data",async()=>{const d=await mkdtemp(path.join(tmpdir(),"asen-state-")),f=path.join(d,"profiles.json");await writeProfilesFile(f,{schema:ASEN_PROFILES_SCHEMA,active:"main",profiles:[{name:"main",routes:{}}]});const h=host();createAsenExtension({profilesFile:f,agents:()=>[],changes:()=>[]})(h.pi);assert.deepEqual(await h.commands.get("asen-profiles")!.handler(),{active:"main",profiles:["main"],available:true});assert.deepEqual(await h.commands.get("asen-agents")!.handler(),[]);assert.deepEqual(await h.commands.get("asen-changes")!.handler(),[]);});
-test("state commands report local profile defaults and fail closed for absent runtime providers",async()=>{const h=host();createAsenExtension()(h.pi);assert.deepEqual(await h.commands.get("asen-profiles")!.handler(),{active:"default",profiles:[],available:true});assert.match((await h.commands.get("asen-agents")!.handler() as string[])[0]!,/unavailable/);assert.match((await h.commands.get("asen-changes")!.handler() as string[])[0]!,/unavailable/);});
+function lifecycleHost(){const commands=new Map<string,{handler:(...args:any[])=>unknown}>(),events=new Map<string,Function[]>();return {commands,events,pi:{registerCommand:(n:string,c:any)=>commands.set(n,c),registerTool:()=>{},on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),getCommands:()=>[],getAllTools:()=>[]}};}
+test("profiles status keeps existing fields and adds effective global routing facts",async()=>{const d=await mkdtemp(path.join(tmpdir(),"asen-state-")),f=path.join(d,"profiles.json"),explorer={model:"configured/explorer",thinking:"high" as const};await writeProfilesFile(f,{schema:ASEN_PROFILES_SCHEMA,active:"main",profiles:[{name:"main",routes:{explorer,verifier:{thinking:"low"}}}]});const h=host();createAsenExtension({profilesFile:f,agents:()=>[],changes:()=>[]})(h.pi);assert.deepEqual(await h.commands.get("asen-profiles")!.handler(),{active:"main",profiles:["main"],available:true,globalRoles:{explorer:{requested:explorer,resolved:explorer,source:"global",actual:"unknown"},verifier:{requested:{thinking:"low"},resolved:{thinking:"low"},source:"global",actual:"unknown"}}});assert.deepEqual(await h.commands.get("asen-agents")!.handler(),[]);assert.deepEqual(await h.commands.get("asen-changes")!.handler(),[]);});
+test("profiles status preserves default output when the global profile file is missing",async()=>{const h=host();createAsenExtension()(h.pi);assert.deepEqual(await h.commands.get("asen-profiles")!.handler(),{active:"default",profiles:[],available:true,globalRoles:{}});assert.match((await h.commands.get("asen-agents")!.handler() as string[])[0]!,/unavailable/);assert.match((await h.commands.get("asen-changes")!.handler() as string[])[0]!,/unavailable/);});
+test("profiles status labels the frozen live-session facts without changing global inventory",async t=>{const d=await mkdtemp(path.join(tmpdir(),"asen-session-profile-status-")),f=path.join(d,".asen","profiles.json"),choice={model:"frozen/model",thinking:"low" as const},h=lifecycleHost(),project=await realpath(process.cwd()),ctx={cwd:project,sessionManager:{getSessionId:()=>"profile-status-session"},ui:{notify:()=>{}}};t.after(async()=>{try{for(const shutdown of h.events.get("session_shutdown")??[])await shutdown({},ctx);}finally{await rm(d,{recursive:true,force:true});}});await writeProfilesFile(f,{schema:ASEN_PROFILES_SCHEMA,active:"main",profiles:[{name:"main",routes:{explorer:choice}}]});createAsenExtension({homeDir:()=>d,profilesFile:f,enableAgentRuntime:false,enableTodoRuntime:false,enableMemoryRuntime:false})(h.pi as any);for(const start of h.events.get("session_start")??[])await start({},ctx);const result=await h.commands.get("asen-profiles")!.handler("",ctx);assert.deepEqual(result,{active:"main",profiles:["main"],available:true,globalRoles:{explorer:{requested:choice,resolved:choice,source:"global",actual:"unknown"}},sessionProfile:{sessionId:"profile-status-session",projectId:project,active:"main",source:"inherited-global",frozen:true,roles:{explorer:{requested:choice,resolved:choice,source:"session",actual:"unknown"}}}});});
 test("asen-todos shows only the active session and project with bounded state and recovery reason",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-todos-ui-"));t.after(()=>rm(root,{recursive:true,force:true}));const store=await SessionTodoStore.open(path.join(root,"todos.json")),project=await realpath(process.cwd());
  const own=await store.add("Inspect active project",{sessionId:"session-ui",projectId:project}),foreign=await store.add("Foreign task",{sessionId:"other-session",projectId:project});await store.update(own.taskId,{sessionId:"session-ui",projectId:project},1,"running");await store.recover({sessionId:"session-ui",projectId:project});
  const h=host();createAsenExtension({todoStoreFactory:async()=>store})(h.pi);const messages:string[]=[],rows=await h.commands.get("asen-todos")!.handler("",{cwd:process.cwd(),sessionManager:{getSessionId:()=>"session-ui"},ui:{notify:(message:string)=>messages.push(message)}}) as string[];
  assert.equal(rows.length,1);assert.match(rows[0]!,/Pausada; requiere revisión.*Inspect active project.*explicit review/i);assert.ok(!rows.join("\n").includes(foreign.taskId));assert.deepEqual(messages,[rows.join("\n")]);
 });
+test("workspace display sanitizes persisted command rows and notifications without changing privacy or stored bytes",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-change-controls-"));
+ t.after(()=>rm(root,{recursive:true,force:true}));
+ const project=await realpath(root),file=path.join(root,"workspace.json"),store=await PersistentWorkspaceStore.open(file);
+ const hostile="src/\u001b[31m\u0007\u009b\u202e.ts",clean="src/�[31m���.ts";
+ const identity={sessionId:"session-ui",projectId:project,worktree:project};
+ const change={...identity,path:hostile,actor:{kind:"agent" as const,id:"a"},operation:"modify" as const,at:"2026-10-10T10:00:00.000Z"};
+ await store.append(change);
+ await store.append({...change,actor:{kind:"agent",id:"b"}});
+ await store.append({...change,sessionId:"foreign-session",path:"secret-session.ts"});
+ await store.append({...change,projectId:path.join(project,"other"),path:"secret-project.ts"});
+ await store.append({...change,worktree:path.join(project,"other"),path:"secret-worktree.ts"});
+ const before=await readFile(file),records=await store.list(identity),h=host(),messages:string[]=[];
+ createAsenExtension({workspaceStoreFactory:()=>PersistentWorkspaceStore.open(file)})(h.pi);
+ const rows=await h.commands.get("asen-changes")!.handler("",{cwd:project,sessionManager:{getSessionId:()=>identity.sessionId},ui:{notify:(message:string)=>messages.push(message)}});
+ assert.deepEqual(rows,[
+  "Potential conflicts require review; no content comparison, winner selection, or automatic resolution is performed.",
+  `potential conflict agent:a -> agent:b ${clean}`,
+  `modify agent:a ${clean}`,`modify agent:b ${clean}`
+ ]);
+ assert.deepEqual(messages,[(rows as string[]).join("\n")]);
+ assert.deepEqual(await readFile(file),before);
+ assert.deepEqual(await store.list(identity),records);
+});
+
+test("workspace display sanitizes injected provider changes without mutating the provider",async()=>{
+ const input=[{path:"src/\u009dtitle\u0007.ts",actor:{kind:"agent" as const,id:"a\u202e"},sessionId:"s",projectId:"p",worktree:path.resolve("repo"),operation:"modify" as const,at:"2026-10-10T10:00:00.000Z"}];
+ const before=structuredClone(input),h=host();
+ createAsenExtension({changes:()=>input})(h.pi);
+ assert.deepEqual(await h.commands.get("asen-changes")!.handler(),["modify agent:a� src/�title�.ts"]);
+ assert.deepEqual(input,before);
+});
+
 test("asen-changes reads reopened workspace history only for the active session and project",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-changes-ui-"));t.after(()=>rm(root,{recursive:true,force:true}));const project=await realpath(root),file=path.join(root,".asen","workspace.json"),store=await PersistentWorkspaceStore.open(file);
  const change=(sessionId:string,pathName:string)=>({path:pathName,actor:{kind:"agent" as const,id:`agent-${sessionId}`},sessionId,projectId:project,worktree:project,operation:"modify" as const,at:"2026-10-10T10:00:00.000Z"});

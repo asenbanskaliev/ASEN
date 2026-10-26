@@ -17,7 +17,9 @@ test("Pi history stats stream known entry types into bounded aggregates and appl
  await writeFile(path.join(root,"two.jsonl"),jsonl(header("session-two","2026-10-03T10:00:00.000Z"),entry("message","u2",{message:{role:"user",content:"other"}})));
  await writeFile(path.join(root,"outside-range.jsonl"),jsonl(header("session-old","2026-09-30T23:59:59.000Z"),entry("message","old-u",{message:{role:"user",content:"old"}})));
  const all=await collectPiHistoryStats([root,path.join(root,".")]);assert.equal(all.roots,1);assert.equal(all.sessions,3);assert.equal(all.entries,6);assert.equal(all.userMessages,3);assert.equal(all.assistantMessages,1);assert.equal(all.toolCalls,1);assert.equal(all.inputTokens,17);assert.equal(all.outputTokens,5);assert.equal(all.totalTokens,22);assert.equal(all.costUsd,0.035);
+ assert.equal(all.schema,"asen.pi-history-stats/v1");assert.deepEqual(Reflect.get(all,"measurementCounts"),{inputTokens:3,outputTokens:3,totalTokens:3,costUsd:3});
  const ranged=JSON.parse(await runPiHistoryStatsCommand("from=2026-10-01 to=2026-10-01",root,"/private/project/path"));assert.equal(ranged.sessions,1);assert.equal(ranged.userMessages,1);assert.equal(ranged.range.from,"2026-10-01");assert.doesNotMatch(JSON.stringify(ranged),/PRIVATE PROMPT|private-provider|private-model|private-tool|\/private\/project/);
+ assert.equal(ranged.schema,"asen.pi-history-stats/v2");assert.deepEqual(ranged.measurementCounts,{inputTokens:3,outputTokens:3,totalTokens:3,costUsd:3});assert.deepEqual([ranged.inputTokens,ranged.outputTokens,ranged.totalTokens,ranged.costUsd],[17,5,22,0.035]);
 });
 test("corrupt and duplicate histories are reported without writing any session data",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-pi-stats-invalid-"));t.after(()=>rm(root,{recursive:true,force:true}));
@@ -46,6 +48,25 @@ test("history stats reject unsafe ranges and unavailable roots return structured
 
 test("stats command returns unavailable when Pi does not expose a session directory",async()=>{
  const result=JSON.parse(await runPiHistoryStatsCommand(""));assert.equal(result.state,"unavailable");assert.equal(result.sessions,0);
+ assert.deepEqual([result.inputTokens,result.outputTokens,result.totalTokens,result.costUsd],[null,null,null,null],"unavailable history must not claim measured zero");assert.equal(result.schema,"asen.pi-history-stats/v2");assert.deepEqual(result.measurementCounts,{inputTokens:0,outputTokens:0,totalTokens:0,costUsd:0});
+});
+
+test("available history without usage reports unknown measurements without changing source files",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-stats-no-usage-"));t.after(()=>rm(root,{recursive:true,force:true}));const file=path.join(root,"session.jsonl");await writeFile(file,jsonl(header("no-usage","2026-10-01T00:00:00.000Z"),entry("message","assistant",{message:{role:"assistant",content:"PRIVATE UNMEASURED TEXT"}})));
+ const before={bytes:await readFile(file),mtime:(await stat(file)).mtimeMs},numeric=await collectPiHistoryStats([root]),projected=JSON.parse(await runPiHistoryStatsCommand("",root,"/private/project/path"));
+ assert.equal(numeric.schema,"asen.pi-history-stats/v1");assert.deepEqual([numeric.inputTokens,numeric.outputTokens,numeric.totalTokens,numeric.costUsd],[0,0,0,0]);assert.equal(projected.state,"available");assert.equal(projected.sessions,1);assert.equal(projected.assistantMessages,1);
+ assert.deepEqual([projected.inputTokens,projected.outputTokens,projected.totalTokens,projected.costUsd],[null,null,null,null]);assert.deepEqual(Reflect.get(numeric,"measurementCounts"),{inputTokens:0,outputTokens:0,totalTokens:0,costUsd:0});assert.deepEqual(projected,{...numeric,schema:"asen.pi-history-stats/v2",inputTokens:null,outputTokens:null,totalTokens:null,costUsd:null});
+ assert.doesNotMatch(JSON.stringify(projected),/PRIVATE UNMEASURED TEXT|session\.jsonl|\/private\/project/u);assert.deepEqual({bytes:await readFile(file),mtime:(await stat(file)).mtimeMs},before);
+});
+
+test("partial history measurements count only independently valid fields without inferring totals or cost",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-stats-partial-"));t.after(()=>rm(root,{recursive:true,force:true}));await writeFile(path.join(root,"session.jsonl"),jsonl(header("partial","2026-10-01T00:00:00.000Z"),entry("usage","valid-input",{usage:{input:7,output:-1,totalTokens:1.5,cost:{total:-1}}}),entry("compaction","invalid-values",{usage:{input:"7",output:null,totalTokens:Number.MAX_SAFE_INTEGER+1,cost:{total:"0"}}})));
+ const numeric=await collectPiHistoryStats([root]),projected=JSON.parse(await runPiHistoryStatsCommand("",root,"/private/project/path"));assert.deepEqual([numeric.inputTokens,numeric.outputTokens,numeric.totalTokens,numeric.costUsd],[7,0,0,0]);assert.deepEqual([projected.inputTokens,projected.outputTokens,projected.totalTokens,projected.costUsd],[7,null,null,null]);assert.deepEqual(Reflect.get(numeric,"measurementCounts"),{inputTokens:1,outputTokens:0,totalTokens:0,costUsd:0});assert.deepEqual(projected.measurementCounts,Reflect.get(numeric,"measurementCounts"));assert.equal(projected.entries,2);
+});
+
+test("explicitly observed zero remains measured zero rather than unknown",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-stats-zero-"));t.after(()=>rm(root,{recursive:true,force:true}));await writeFile(path.join(root,"session.jsonl"),jsonl(header("zero","2026-10-01T00:00:00.000Z"),entry("message","assistant-zero",{message:{role:"assistant",usage:{input:0,output:0,totalTokens:0,cost:{total:0}}}})));
+ const numeric=await collectPiHistoryStats([root]),projected=JSON.parse(await runPiHistoryStatsCommand("",root,"/private/project/path"));assert.deepEqual(Reflect.get(numeric,"measurementCounts"),{inputTokens:1,outputTokens:1,totalTokens:1,costUsd:1});assert.deepEqual(projected.measurementCounts,Reflect.get(numeric,"measurementCounts"));assert.deepEqual([projected.inputTokens,projected.outputTokens,projected.totalTokens,projected.costUsd],[0,0,0,0]);assert.equal(projected.schema,"asen.pi-history-stats/v2");
 });
 
 test("Pi /asen-stats command uses only the active session directory",async t=>{

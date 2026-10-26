@@ -3,6 +3,7 @@ import {opendir,lstat,realpath,stat} from "node:fs/promises";
 import path from "node:path";
 
 export interface PiHistoryRange{from?:string;to?:string}
+export interface PiHistoryMeasurementCounts{inputTokens:number;outputTokens:number;totalTokens:number;costUsd:number}
 export interface PiHistoryStats{
  schema:"asen.pi-history-stats/v1";
  range:PiHistoryRange;
@@ -18,6 +19,7 @@ export interface PiHistoryStats{
  outputTokens:number;
  totalTokens:number;
  costUsd:number;
+ measurementCounts?:PiHistoryMeasurementCounts;
  corruptFiles:number;
  duplicateFiles:number;
  oversizedFiles:number;
@@ -27,7 +29,7 @@ export interface PiHistoryStats{
 
 export const PI_HISTORY_STATS_LIMITS=Object.freeze({maxRoots:16,maxDirectories:10_000,maxFiles:10_000,maxFileBytes:16*1024*1024,maxTotalBytes:128*1024*1024,maxLineBytes:1024*1024,maxEntriesPerFile:100_000,maxDirectoryEntries:2_000,maxDepth:12});
 const SCHEMA="asen.pi-history-stats/v1" as const;
-const EMPTY=()=>({roots:0,outOfScopeFiles:0,sessions:0,entries:0,userMessages:0,assistantMessages:0,toolCalls:0,inputTokens:0,outputTokens:0,totalTokens:0,costUsd:0,corruptFiles:0,duplicateFiles:0,oversizedFiles:0,unreadableFiles:0,truncated:false});
+const EMPTY=()=>({roots:0,outOfScopeFiles:0,sessions:0,entries:0,userMessages:0,assistantMessages:0,toolCalls:0,inputTokens:0,outputTokens:0,totalTokens:0,costUsd:0,measurementCounts:{inputTokens:0,outputTokens:0,totalTokens:0,costUsd:0},corruptFiles:0,duplicateFiles:0,oversizedFiles:0,unreadableFiles:0,truncated:false});
 type Counters=ReturnType<typeof EMPTY>;
 class OversizedHistoryError extends Error{}
 class DuplicateHistoryError extends Error{}
@@ -44,9 +46,14 @@ export function parsePiHistoryRange(input:string):PiHistoryRange{
  if(range.from&&range.to&&range.from>range.to)throw new Error("Stats range starts after it ends");return range;
 }
 function included(timestamp:string,range:PiHistoryRange):boolean{const day=timestamp.slice(0,10);return (!range.from||day>=range.from)&&(!range.to||day<=range.to);}
-function safeCount(value:unknown):number{return typeof value==="number"&&Number.isSafeInteger(value)&&value>=0?value:0;}
+function observedCount(value:unknown):value is number{return typeof value==="number"&&Number.isSafeInteger(value)&&value>=0;}
 function addCount(target:Counters,key:"entries"|"userMessages"|"assistantMessages"|"toolCalls"|"inputTokens"|"outputTokens"|"totalTokens",value:number):void{const next=target[key]+value;if(!Number.isSafeInteger(next)||next>Number.MAX_SAFE_INTEGER){target[key]=Number.MAX_SAFE_INTEGER;target.truncated=true;}else target[key]=next;}
-function add(target:Counters,usage:unknown):void{if(!isRecord(usage))return;addCount(target,"inputTokens",safeCount(usage.input));addCount(target,"outputTokens",safeCount(usage.output));addCount(target,"totalTokens",safeCount(usage.totalTokens));if(isRecord(usage.cost)&&typeof usage.cost.total==="number"&&Number.isFinite(usage.cost.total)&&usage.cost.total>=0){const next=target.costUsd+usage.cost.total;if(!Number.isFinite(next)||next>Number.MAX_SAFE_INTEGER){target.costUsd=Number.MAX_SAFE_INTEGER;target.truncated=true;}else target.costUsd=next;}}
+function addCost(target:Counters,value:number):void{const next=target.costUsd+value;if(!Number.isFinite(next)||next>Number.MAX_SAFE_INTEGER){target.costUsd=Number.MAX_SAFE_INTEGER;target.truncated=true;}else target.costUsd=next;}
+function add(target:Counters,usage:unknown):void{
+ if(!isRecord(usage))return;
+ for(const [source,key] of [["input","inputTokens"],["output","outputTokens"],["totalTokens","totalTokens"]] as const){const value=usage[source];if(observedCount(value)){addCount(target,key,value);target.measurementCounts[key]++;}}
+ if(isRecord(usage.cost)&&typeof usage.cost.total==="number"&&Number.isFinite(usage.cost.total)&&usage.cost.total>=0){addCost(target,usage.cost.total);target.measurementCounts.costUsd++;}
+}
 function validTimestamp(value:unknown):value is string{return typeof value==="string"&&value.length<=64&&Number.isFinite(Date.parse(value));}
 function decodeLine(bytes:Buffer):string{const line=bytes.at(-1)===13?bytes.subarray(0,-1):bytes;try{return new TextDecoder("utf-8",{fatal:true}).decode(line);}catch{throw new CorruptHistoryError();}}
 async function* lines(file:string,byteLimit:number,totalBudgetLimit:boolean):AsyncGenerator<string>{
@@ -87,13 +94,13 @@ export async function collectPiHistoryStats(roots:readonly string[],range:PiHist
  if(!Array.isArray(roots)||roots.length>PI_HISTORY_STATS_LIMITS.maxRoots)throw new Error("Invalid Pi history roots");
  if(range.from!==undefined&&!validDate(range.from)||range.to!==undefined&&!validDate(range.to)||range.from&&range.to&&range.from>range.to)throw new Error("Invalid Pi history range");
  if(projectRoot!==undefined&&(typeof projectRoot!=="string"||!path.isAbsolute(projectRoot)||/[\u0000-\u001f\u007f]/u.test(projectRoot)))throw new Error("Invalid Pi history project");
- const result:PiHistoryStats={schema:SCHEMA,range:{...range},state:"available",...EMPTY()},canonicalRoots:string[]=[],seenRoots=new Set<string>();
+ const result:PiHistoryStats&{measurementCounts:PiHistoryMeasurementCounts}={schema:SCHEMA,range:{...range},state:"available",...EMPTY()},canonicalRoots:string[]=[],seenRoots=new Set<string>();
  for(const root of roots){if(typeof root!=="string"||!path.isAbsolute(root)||/[\u0000-\u001f\u007f]/u.test(root))throw new Error("Invalid Pi history root");try{const canonical=await realpath(root),info=await stat(canonical);if(!info.isDirectory()||seenRoots.has(canonical))continue;seenRoots.add(canonical);canonicalRoots.push(canonical);}catch{result.unreadableFiles++;}}
  result.roots=canonicalRoots.length;if(!canonicalRoots.length){result.state="unavailable";return result;}
  canonicalRoots.sort((a,b)=>a<b?-1:a>b?1:0);const seenFiles=new Set<string>(),allFiles:string[]=[];for(const root of canonicalRoots){if(allFiles.length>=PI_HISTORY_STATS_LIMITS.maxFiles){result.truncated=true;break;}const found=await filesUnder(root,result,seenFiles,PI_HISTORY_STATS_LIMITS.maxFiles-allFiles.length);allFiles.push(...found);}allFiles.sort((a,b)=>a<b?-1:a>b?1:0);
  const projectKey=projectRoot===undefined?undefined:await workspaceKey(projectRoot);let bytesRead=0;const seenSessionIds=new Set<string>();
  for(const file of allFiles){let size:number;try{size=(await stat(file)).size;}catch{result.unreadableFiles++;continue;}if(size>PI_HISTORY_STATS_LIMITS.maxFileBytes){result.oversizedFiles++;continue;}const remaining=PI_HISTORY_STATS_LIMITS.maxTotalBytes-bytesRead;if(size>remaining){result.truncated=true;break;}bytesRead+=size;const totalBudgetLimit=remaining<PI_HISTORY_STATS_LIMITS.maxFileBytes;
-  try{const parsed=await parseFile(file,Math.min(PI_HISTORY_STATS_LIMITS.maxFileBytes,remaining),totalBudgetLimit);if(seenSessionIds.has(parsed.sessionId)){result.duplicateFiles++;continue;}seenSessionIds.add(parsed.sessionId);if(projectKey!==undefined&&await workspaceKey(parsed.cwd)!==projectKey){result.outOfScopeFiles++;continue;}if(!included(parsed.timestamp,result.range))continue;result.sessions++;addCount(result,"entries",parsed.stats.entries);addCount(result,"userMessages",parsed.stats.userMessages);addCount(result,"assistantMessages",parsed.stats.assistantMessages);addCount(result,"toolCalls",parsed.stats.toolCalls);addCount(result,"inputTokens",parsed.stats.inputTokens);addCount(result,"outputTokens",parsed.stats.outputTokens);addCount(result,"totalTokens",parsed.stats.totalTokens);add(result,{cost:{total:parsed.stats.costUsd}});result.truncated||=parsed.stats.truncated;}
+  try{const parsed=await parseFile(file,Math.min(PI_HISTORY_STATS_LIMITS.maxFileBytes,remaining),totalBudgetLimit);if(seenSessionIds.has(parsed.sessionId)){result.duplicateFiles++;continue;}seenSessionIds.add(parsed.sessionId);if(projectKey!==undefined&&await workspaceKey(parsed.cwd)!==projectKey){result.outOfScopeFiles++;continue;}if(!included(parsed.timestamp,result.range))continue;result.sessions++;addCount(result,"entries",parsed.stats.entries);addCount(result,"userMessages",parsed.stats.userMessages);addCount(result,"assistantMessages",parsed.stats.assistantMessages);addCount(result,"toolCalls",parsed.stats.toolCalls);addCount(result,"inputTokens",parsed.stats.inputTokens);addCount(result,"outputTokens",parsed.stats.outputTokens);addCount(result,"totalTokens",parsed.stats.totalTokens);addCost(result,parsed.stats.costUsd);for(const key of ["inputTokens","outputTokens","totalTokens","costUsd"] as const)result.measurementCounts[key]+=parsed.stats.measurementCounts[key];result.truncated||=parsed.stats.truncated;}
   catch(error){if(error instanceof TotalBudgetHistoryError){result.truncated=true;break;}if(error instanceof DuplicateHistoryError)result.duplicateFiles++;else if(error instanceof OversizedHistoryError)result.oversizedFiles++;else if(error instanceof CorruptHistoryError)result.corruptFiles++;else result.unreadableFiles++;}
  }
  result.costUsd=Number(result.costUsd.toFixed(8));return result;

@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test,{type TestContext} from "node:test";
 import {spawnSync} from "node:child_process";
-import {mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
+import {mkdir,mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
-import {createPiExtension} from "../extensions/asen.js";
+import {createAsenExtension,createPiExtension} from "../extensions/asen.js";
 import type {AgentRunner} from "../src/agents/dispatcher.js";
 import {ASEN_AGENT_TOOL_NAMES} from "../src/agents/pi-agent-tools.js";
 import {ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-tools.js";
@@ -26,6 +26,138 @@ function host(){
  const context=(session="session-a",cwd=process.cwd())=>({mode:"rpc",hasUI:true,cwd,sessionManager:{getSessionId:()=>session},ui:{notify:(message:string)=>{messages.push(message);for(const check of waiters)check();},confirm:async()=>true,setWidget:(key:string,content:string[]|undefined)=>{widgets.set(key,content);}}});
  return {pi,events,commands,tools,messages,widgets,context,waitForMessage};
 }
+
+const routingView=(requested:Record<string,string>,resolved:Record<string,string>,source:"global"|"default"|"persisted-plan")=>({requested,resolved,source,actual:"unknown"});
+function captureRunner(output:string){const requests:import("../src/agents/dispatcher.js").AgentRequest[]=[];let observed!:(request:import("../src/agents/dispatcher.js").AgentRequest)=>void;const firstRequest=new Promise<import("../src/agents/dispatcher.js").AgentRequest>(resolve=>{observed=resolve;});const runner:AgentRunner={run:async request=>{requests.push(request);observed(request);return{id:request.id,ok:true,output};}};return {requests,firstRequest,runner};}
+async function routingFixture(t:TestContext,prefix:string){const home=await mkdtemp(join(tmpdir(),prefix));let lifecycle:{state:ReturnType<typeof host>;context:ReturnType<ReturnType<typeof host>["context"]>}|undefined;t.after(async()=>{if(lifecycle)for(const shutdown of lifecycle.state.events.get("session_shutdown")??[])await shutdown({},lifecycle.context);await rm(home,{recursive:true,force:true});});return {home,bind(state:ReturnType<typeof host>,context:ReturnType<ReturnType<typeof host>["context"]>){lifecycle={state,context};}};}
+async function sessionProfileFixture(t:TestContext,prefix:string){
+ const home=await mkdtemp(join(tmpdir(),prefix)),lifecycles:Array<{state:ReturnType<typeof host>;context:ReturnType<ReturnType<typeof host>["context"]>}>=[];
+ t.after(async()=>{try{for(const lifecycle of [...lifecycles].reverse())for(const shutdown of lifecycle.state.events.get("session_shutdown")??[])await shutdown({},lifecycle.context);}finally{await rm(home,{recursive:true,force:true});}});
+ return {home,track(state:ReturnType<typeof host>,...contexts:Array<ReturnType<ReturnType<typeof host>["context"]>>){for(const context of contexts)lifecycles.push({state,context});}};
+}
+function requestQueue(output="bounded read-only result"){
+ const requests:import("../src/agents/dispatcher.js").AgentRequest[]=[],waiters=new Map<number,(request:import("../src/agents/dispatcher.js").AgentRequest)=>void>();
+ return {requests,runner:{run:async(request:import("../src/agents/dispatcher.js").AgentRequest)=>{requests.push(request);waiters.get(requests.length-1)?.(request);return{id:request.id,ok:true,output};}} satisfies AgentRunner,at(index:number){return requests[index]?Promise.resolve(requests[index]!):new Promise<import("../src/agents/dispatcher.js").AgentRequest>(resolve=>waiters.set(index,resolve));}};
+}
+const profile=(name:string,model:string)=>({schema:ASEN_PROFILES_SCHEMA,active:name,profiles:[{name,routes:{explorer:{model,thinking:"high" as const},worker:{model,thinking:"high" as const},reviewer:{model,thinking:"high" as const},verifier:{model,thinking:"high" as const}}}]});
+async function startPublicSession(state:ReturnType<typeof host>,context:ReturnType<ReturnType<typeof host>["context"]>){for(const start of state.events.get("session_start")??[])await start({},context);}
+
+test("session profile snapshot survives a later global profile change",async t=>{
+ const fixture=await sessionProfileFixture(t,"asen-session-profile-freeze-"),profilesFile=join(fixture.home,".asen","profiles.json"),state=host(),capture=requestQueue(),root=await realpath(process.cwd()),sessionA=state.context("profile-session-a",root),sessionB=state.context("profile-session-b",root);fixture.track(state,sessionA,sessionB);
+ await writeProfilesFile(profilesFile,profile("global-x","profile/model-x"));createAsenExtension({homeDir:()=>fixture.home,profilesFile,enableAgentRuntime:true,agentStoreFile:join(fixture.home,".asen","agents.json"),agentRunner:capture.runner,autoAdvancePlans:false})(state.pi as any);await startPublicSession(state,sessionA);await writeProfilesFile(profilesFile,profile("global-y","profile/model-y"));
+ await state.tools.get("asen_agent_start").execute("frozen-a",{prompt:"Inspect the bounded project for session A"},new AbortController().signal,()=>{},sessionA);const requestA=await capture.at(0);assert.equal(requestA.model,"profile/model-x","session A must keep the global profile copied at its first public start");assert.equal(requestA.thinking,"high");
+ const facts=JSON.stringify({taskIdentity:"frozen-plan-a",instruction:"Implement the bounded four-file change",intent:"implementation",scope:{kind:"known",expectedPaths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"]},writes:[{path:"src/a.ts",changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:20,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:5},unresolvedDecisions:[]}),plan=JSON.parse(String(await state.commands.get("asen-plan")!.handler(facts,sessionA)));
+ assert.ok(plan.executablePlan.tasks.some((task:any)=>task.model==="profile/model-x"),"materialized plan roles must use session A's frozen profile");assert.ok(plan.executablePlan.tasks.every((task:any)=>task.model==="profile/model-x"));
+ await startPublicSession(state,sessionB);await state.tools.get("asen_agent_start").execute("fresh-b",{prompt:"Inspect the bounded project for session B"},new AbortController().signal,()=>{},sessionB);assert.equal((await capture.at(1)).model,"profile/model-y","fresh session B must capture the current global profile");
+});
+
+test("profile snapshots isolate interleaved sessions and consented project identities",async t=>{
+ const fixture=await sessionProfileFixture(t,"asen-session-profile-identities-"),foreign=await mkdtemp(join(fixture.home,"foreign-")),profilesFile=join(fixture.home,".asen","profiles.json"),state=host(),capture=requestQueue(),root=await realpath(process.cwd());let confirmations=0;const baseA=state.context("shared-session",root),sessionA={...baseA,ui:{...baseA.ui,confirm:async()=>{confirmations++;return true;}}},sessionB=state.context("other-session",root);fixture.track(state,sessionA,sessionB);
+ await writeProfilesFile(profilesFile,profile("global-x","profile/model-x"));createAsenExtension({homeDir:()=>fixture.home,profilesFile,enableAgentRuntime:true,agentStoreFile:join(fixture.home,".asen","agents.json"),agentRunner:capture.runner})(state.pi as any);await Promise.all([startPublicSession(state,sessionA),startPublicSession(state,sessionB)]);await writeProfilesFile(profilesFile,profile("global-y","profile/model-y"));
+ const startedA=await state.tools.get("asen_agent_start").execute("session-a-root",{prompt:"Inspect root A"},new AbortController().signal,()=>{},sessionA);
+ const startedB=await state.tools.get("asen_agent_start").execute("session-b-root",{prompt:"Inspect root B"},new AbortController().signal,()=>{},sessionB);
+ const startedForeign=await state.tools.get("asen_agent_start").execute("session-a-foreign",{prompt:"Inspect consented foreign root",root:foreign},new AbortController().signal,()=>{},sessionA);
+ await Promise.all([capture.at(0),capture.at(1),capture.at(2)]);
+ for(const [started,context,target,expectedModel] of [[startedForeign,sessionA,await realpath(foreign),"profile/model-y"],[startedA,sessionA,root,"profile/model-x"],[startedB,sessionB,root,"profile/model-x"]] as const){
+  const id=started.details.id,request=capture.requests.find(item=>item.id===id);assert.ok(request,"returned ID must identify the owned runner request");
+  assert.equal(request.isolationKey,context.sessionManager.getSessionId());assert.equal(request.repository,target);assert.equal(request.model,expectedModel);
+  const status=await state.tools.get("asen_agent_status").execute("verify-project-profile",{id,...(target===root?{}:{root:foreign})},new AbortController().signal,()=>{},context);
+  assert.equal(status.details.task.record.id,id);assert.equal(status.details.task.record.sessionId,context.sessionManager.getSessionId());assert.equal(status.details.task.record.projectId,target);
+ }
+ await assert.rejects(()=>state.tools.get("asen_agent_status").execute("foreign-after-session-switch",{id:startedForeign.details.id,root:foreign},new AbortController().signal,()=>{},sessionA),/Foreign agent project permission is unavailable/u);
+ assert.equal(confirmations,1);assert.equal(capture.requests.length,3);
+});
+
+test("duplicate startup does not recapture and shutdown invalidates only its own session",async t=>{
+ const fixture=await sessionProfileFixture(t,"asen-session-profile-lifecycle-"),profilesFile=join(fixture.home,".asen","profiles.json"),state=host(),capture=requestQueue(),root=await realpath(process.cwd()),sessionA=state.context("lifecycle-a",root),sessionB=state.context("lifecycle-b",root);fixture.track(state,sessionA,sessionB);
+ await writeProfilesFile(profilesFile,profile("global-x","profile/model-x"));createAsenExtension({homeDir:()=>fixture.home,profilesFile,enableAgentRuntime:true,agentStoreFile:join(fixture.home,".asen","agents.json"),agentRunner:capture.runner})(state.pi as any);await Promise.all([startPublicSession(state,sessionA),startPublicSession(state,sessionB)]);await writeProfilesFile(profilesFile,profile("global-y","profile/model-y"));await startPublicSession(state,sessionA);await state.tools.get("asen_agent_start").execute("duplicate-start-a",{prompt:"Inspect after duplicate startup"},new AbortController().signal,()=>{},sessionA);assert.equal((await capture.at(0)).model,"profile/model-x");for(const shutdown of state.events.get("session_shutdown")??[])await shutdown({},sessionA);
+ const restarted=await state.tools.get("asen_agent_start").execute("recaptured-a",{prompt:"Inspect after A shutdown"},new AbortController().signal,()=>{},sessionA);
+ const retained=await state.tools.get("asen_agent_start").execute("still-frozen-b",{prompt:"Inspect B after A shutdown"},new AbortController().signal,()=>{},sessionB);
+ await Promise.all([capture.at(1),capture.at(2)]);
+ for(const [started,context,expectedSession,expectedModel] of [[restarted,sessionA,"lifecycle-a","profile/model-y"],[retained,sessionB,"lifecycle-b","profile/model-x"]] as const){
+  const id=started.details.id;assert.match(id,/^agent-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u);
+  const request=capture.requests.find(item=>item.id===id);assert.ok(request,"returned agent ID must bind its runner request");
+  assert.equal(request.isolationKey,expectedSession);assert.equal(request.repository,root);assert.equal(request.model,expectedModel);
+  const status=await state.tools.get("asen_agent_status").execute("verify-profile-owner",{id},new AbortController().signal,()=>{},context);
+  assert.equal(status.details.task.record.id,id);assert.equal(status.details.task.record.sessionId,expectedSession);assert.equal(status.details.task.record.projectId,root);
+ }
+});
+
+test("a missing profile file freezes provider defaults for that session",async t=>{
+ const fixture=await sessionProfileFixture(t,"asen-session-profile-missing-"),profilesFile=join(fixture.home,".asen","profiles.json"),state=host(),capture=requestQueue(),root=await realpath(process.cwd()),sessionA=state.context("missing-a",root),sessionB=state.context("missing-b",root);fixture.track(state,sessionA,sessionB);createAsenExtension({homeDir:()=>fixture.home,profilesFile,enableAgentRuntime:true,agentStoreFile:join(fixture.home,".asen","agents.json"),agentRunner:capture.runner})(state.pi as any);await startPublicSession(state,sessionA);await writeProfilesFile(profilesFile,profile("global-x","profile/model-x"));await startPublicSession(state,sessionB);
+ const startedA=await state.tools.get("asen_agent_start").execute("missing-a",{prompt:"Use frozen defaults"},new AbortController().signal,()=>{},sessionA),startedB=await state.tools.get("asen_agent_start").execute("configured-b",{prompt:"Use captured profile"},new AbortController().signal,()=>{},sessionB);
+ await Promise.all([capture.at(0),capture.at(1)]);
+ const requestA=capture.requests.find(request=>request.id===startedA.details.id),requestB=capture.requests.find(request=>request.id===startedB.details.id);assert.ok(requestA&&requestB,"returned task IDs must identify both owned runner requests");assert.notEqual(requestA.id,requestB.id);
+ for(const [request,context] of [[requestA,sessionA],[requestB,sessionB]] as const){assert.equal(request.isolationKey,context.sessionManager.getSessionId());assert.equal(request.repository,root);}
+ assert.equal(Object.hasOwn(requestA,"model"),false);assert.equal(Object.hasOwn(requestA,"thinking"),false);assert.equal(requestB.model,"profile/model-x");assert.equal(requestB.thinking,"high");
+});
+
+test("malformed profile startup creates no false binding or queued work",async t=>{
+ const fixture=await sessionProfileFixture(t,"asen-session-profile-malformed-"),profilesFile=join(fixture.home,".asen","profiles.json"),state=host(),capture=requestQueue(),root=await realpath(process.cwd()),context=state.context("malformed-session",root);fixture.track(state,context);await mkdir(join(fixture.home,".asen"),{recursive:true});await writeFile(profilesFile,"{ malformed");createAsenExtension({homeDir:()=>fixture.home,profilesFile,enableAgentRuntime:true,agentStoreFile:join(fixture.home,".asen","agents.json"),agentRunner:capture.runner})(state.pi as any);
+ await assert.rejects(()=>startPublicSession(state,context),/Invalid profiles file/u);assert.equal(capture.requests.length,0);assert.deepEqual((await state.tools.get("asen_agent_status").execute("malformed-status",{},new AbortController().signal,()=>{},context)).details,[]);await writeProfilesFile(profilesFile,profile("global-x","profile/model-x"));await startPublicSession(state,context);await state.tools.get("asen_agent_start").execute("valid-after-malformed",{prompt:"Inspect after valid capture"},new AbortController().signal,()=>{},context);assert.equal((await capture.at(0)).model,"profile/model-x");
+});
+
+test("accepted Todo routing and public authority schema stay unchanged by session capture",async t=>{
+ const fixture=await sessionProfileFixture(t,"asen-session-profile-preservation-"),profilesFile=join(fixture.home,".asen","profiles.json"),todoFile=join(fixture.home,".asen","todos.json"),state=host(),capture=requestQueue(),projectId=await realpath(process.cwd()),identity={sessionId:"profile-preservation",projectId},context=state.context(identity.sessionId,projectId),todos=await SessionTodoStore.open(todoFile),selection={phase:"explore" as const},skillPaths=selectSkills(selection).map(skill=>skill.path),instruction="Inspect the accepted Todo route";fixture.track(state,context);const todo=await todos.add("Accepted route",identity,undefined,undefined,"asen-plan:profile-preservation:explorer",[],instruction,{role:"explorer",skillPaths,skillSelection:selection,model:"accepted/model",thinking:"low"});await writeProfilesFile(profilesFile,profile("global-x","profile/model-x"));createAsenExtension({homeDir:()=>fixture.home,profilesFile,enableAgentRuntime:true,enableTodoRuntime:true,todoStoreFactory:async()=>todos,agentStoreFile:join(fixture.home,".asen","agents.json"),agentRunner:capture.runner,autoAdvancePlans:false})(state.pi as any);await startPublicSession(state,context);await writeProfilesFile(profilesFile,profile("global-y","profile/model-y"));const tool=state.tools.get("asen_agent_start");assert.deepEqual(Object.keys(tool.parameters.properties).sort(),["prompt","root","todoId"]);await tool.execute("accepted-route",{prompt:instruction,todoId:todo.taskId},new AbortController().signal,()=>{},context);const request=await capture.at(0);assert.equal(request.model,"accepted/model");assert.equal(request.thinking,"low");for(const key of ["candidate","writeSurfaces","writerAdmission","phaseGrant","runnerWriteReceiver"] as const)assert.equal(Object.hasOwn(request,key),false);
+});
+
+test("public direct agent start resolves active global explorer routing",async t=>{
+ const fixture=await routingFixture(t,"asen-direct-global-route-"),home=fixture.home,profilesFile=join(home,".asen","profiles.json"),agentFile=join(home,".asen","agents.json"),model="configured/explorer",capture=captureRunner("bounded read-only result");
+ await writeProfilesFile(profilesFile,{schema:ASEN_PROFILES_SCHEMA,active:"owned",profiles:[{name:"owned",routes:{explorer:{model,thinking:"high"}}}]});const state=host(),context=state.context("routing-session");fixture.bind(state,context);
+ createAsenExtension({homeDir:()=>home,profilesFile,enableAgentRuntime:true,agentStoreFile:agentFile,agentRunner:capture.runner})(state.pi as any);
+ const started=await state.tools.get("asen_agent_start").execute("direct-global-route",{prompt:"Inspect the bounded project"},new AbortController().signal,()=>{},context),request=await capture.firstRequest;
+ assert.equal(capture.requests.length,1);assert.equal(request.model,model);assert.equal(request.thinking,"high");assert.deepEqual(started.details.routing,routingView({}, {model,thinking:"high"},"global"));
+});
+
+test("persisted Todo explicit route stays intact after the global profile changes",async t=>{
+ const fixture=await routingFixture(t,"asen-persisted-route-"),home=fixture.home,profilesFile=join(home,".asen","profiles.json"),todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),projectId=await realpath(process.cwd()),identity={sessionId:"persisted-route-session",projectId},todos=await SessionTodoStore.open(todoFile),selection={phase:"explore" as const},skillPaths=selectSkills(selection).map(skill=>skill.path),instruction="Inspect the accepted plan route",capture=captureRunner("persisted route result");
+ const todo=await todos.add("Persisted route",identity,undefined,undefined,"asen-plan:persisted-route:explorer",[],instruction,{role:"explorer",skillPaths,skillSelection:selection,model:"accepted/model",thinking:"low"});
+ await writeProfilesFile(profilesFile,{schema:ASEN_PROFILES_SCHEMA,active:"changed",profiles:[{name:"changed",routes:{explorer:{model:"new/global",thinking:"high"}}}]});const state=host(),context=state.context(identity.sessionId);fixture.bind(state,context);
+ createAsenExtension({homeDir:()=>home,profilesFile,enableAgentRuntime:true,enableTodoRuntime:true,todoStoreFactory:async()=>todos,agentStoreFile:agentFile,agentRunner:capture.runner,autoAdvancePlans:false})(state.pi as any);
+ const started=await state.tools.get("asen_agent_start").execute("persisted-route",{prompt:instruction,todoId:todo.taskId},new AbortController().signal,()=>{},context),request=await capture.firstRequest;
+ assert.equal(capture.requests.length,1);assert.equal(request.model,"accepted/model");assert.equal(request.thinking,"low");assert.deepEqual(started.details.routing,routingView({model:"accepted/model",thinking:"low"},{model:"accepted/model",thinking:"low"},"persisted-plan"));
+});
+
+test("persisted Todo absent route fields remain provider defaults after the global profile changes",async t=>{
+ const fixture=await routingFixture(t,"asen-persisted-default-route-"),home=fixture.home,profilesFile=join(home,".asen","profiles.json"),todoFile=join(home,".asen","todos.json"),projectId=await realpath(process.cwd()),identity={sessionId:"persisted-default-session",projectId},todos=await SessionTodoStore.open(todoFile),selection={phase:"explore" as const},skillPaths=selectSkills(selection).map(skill=>skill.path),instruction="Inspect with provider defaults",capture=captureRunner("default route result");
+ const todo=await todos.add("Persisted defaults",identity,undefined,undefined,"asen-plan:persisted-default:explorer",[],instruction,{role:"explorer",skillPaths,skillSelection:selection});await writeProfilesFile(profilesFile,{schema:ASEN_PROFILES_SCHEMA,active:"changed",profiles:[{name:"changed",routes:{explorer:{model:"must/not/drift",thinking:"high"}}}]});const state=host(),context=state.context(identity.sessionId);fixture.bind(state,context);
+ createAsenExtension({homeDir:()=>home,profilesFile,enableAgentRuntime:true,enableTodoRuntime:true,todoStoreFactory:async()=>todos,agentRunner:capture.runner,autoAdvancePlans:false})(state.pi as any);
+ const started=await state.tools.get("asen_agent_start").execute("persisted-default",{prompt:instruction,todoId:todo.taskId},new AbortController().signal,()=>{},context),request=await capture.firstRequest;
+ assert.equal(capture.requests.length,1);assert.equal(Object.hasOwn(request,"model"),false);assert.equal(Object.hasOwn(request,"thinking"),false);assert.deepEqual(started.details.routing,routingView({}, {},"persisted-plan"));
+});
+
+test("persisted Todo route does not read a later malformed global profile",async t=>{
+ const fixture=await routingFixture(t,"asen-persisted-malformed-global-"),home=fixture.home,profilesFile=join(home,".asen","profiles.json"),todoFile=join(home,".asen","todos.json"),projectId=await realpath(process.cwd()),identity={sessionId:"persisted-malformed-session",projectId},todos=await SessionTodoStore.open(todoFile),selection={phase:"explore" as const},skillPaths=selectSkills(selection).map(skill=>skill.path),instruction="Use only the accepted route",capture=captureRunner("persisted malformed result");
+ const todo=await todos.add("Persisted malformed fallback",identity,undefined,undefined,"asen-plan:persisted-malformed:explorer",[],instruction,{role:"explorer",skillPaths,skillSelection:selection,model:"accepted/model"});await writeFile(profilesFile,"{ malformed");const state=host(),context=state.context(identity.sessionId);fixture.bind(state,context);
+ createAsenExtension({homeDir:()=>home,profilesFile,enableAgentRuntime:true,enableTodoRuntime:true,todoStoreFactory:async()=>todos,agentRunner:capture.runner,autoAdvancePlans:false})(state.pi as any);const started=await state.tools.get("asen_agent_start").execute("persisted-malformed",{prompt:instruction,todoId:todo.taskId},new AbortController().signal,()=>{},context),request=await capture.firstRequest;
+ assert.equal(request.model,"accepted/model");assert.equal(Object.hasOwn(request,"thinking"),false);assert.deepEqual(started.details.routing,routingView({model:"accepted/model"},{model:"accepted/model"},"persisted-plan"));
+});
+
+test("legacy unplanned Todo uses the active global explorer route",async t=>{
+ const fixture=await routingFixture(t,"asen-legacy-global-route-"),home=fixture.home,profilesFile=join(home,".asen","profiles.json"),todoFile=join(home,".asen","todos.json"),projectId=await realpath(process.cwd()),identity={sessionId:"legacy-route-session",projectId},todos=await SessionTodoStore.open(todoFile),instruction="Inspect this legacy task",todo=await todos.add("Legacy task",identity,undefined,undefined,undefined,[],instruction),capture=captureRunner("legacy route result");
+ await writeProfilesFile(profilesFile,{schema:ASEN_PROFILES_SCHEMA,active:"legacy",profiles:[{name:"legacy",routes:{explorer:{model:"legacy/global",thinking:"minimal"}}}]});const state=host(),context=state.context(identity.sessionId);fixture.bind(state,context);createAsenExtension({homeDir:()=>home,profilesFile,enableAgentRuntime:true,enableTodoRuntime:true,todoStoreFactory:async()=>todos,agentRunner:capture.runner,autoAdvancePlans:false})(state.pi as any);
+ const started=await state.tools.get("asen_agent_start").execute("legacy-global",{prompt:instruction,todoId:todo.taskId},new AbortController().signal,()=>{},context),request=await capture.firstRequest;assert.equal(request.model,"legacy/global");assert.equal(request.thinking,"minimal");assert.deepEqual(started.details.routing,routingView({}, {model:"legacy/global",thinking:"minimal"},"global"));
+});
+
+test("invalid global profiles fail before direct launch without queued or counter effects",async t=>{
+ const fixture=await routingFixture(t,"asen-invalid-global-route-"),home=fixture.home,profilesFile=join(home,".asen","profiles.json"),invalid=JSON.stringify({schema:ASEN_PROFILES_SCHEMA,active:"missing",profiles:[]}),state=host();let runs=0,confirmations=0;
+ await mkdir(join(home,".asen"),{recursive:true});await writeFile(profilesFile,invalid);const context={...state.context("invalid-route-session"),ui:{...state.context("invalid-route-session").ui,confirm:async()=>{confirmations++;return true;}}};fixture.bind(state,context);
+ createAsenExtension({homeDir:()=>home,profilesFile,enableAgentRuntime:true,agentRunner:{run:async request=>{runs++;return{id:request.id,ok:true,output:"must not run"};}}})(state.pi as any);
+ await assert.rejects(()=>state.tools.get("asen_agent_start").execute("invalid-global",{prompt:"Do not launch with invalid routing"},new AbortController().signal,()=>{},context),/Invalid profiles file/u);
+ assert.equal(runs,0);assert.equal(confirmations,0);assert.deepEqual((await state.tools.get("asen_agent_status").execute("invalid-status",{},new AbortController().signal,()=>{},context)).details,[]);assert.equal(await readFile(profilesFile,"utf8"),invalid);
+});
+
+test("missing global profiles keep direct explorer provider defaults",async t=>{
+ const fixture=await routingFixture(t,"asen-missing-global-route-"),home=fixture.home,state=host(),capture=captureRunner("default route"),context=state.context("missing-route-session");fixture.bind(state,context);
+ createAsenExtension({homeDir:()=>home,profilesFile:join(home,".asen","missing-profiles.json"),enableAgentRuntime:true,agentRunner:capture.runner})(state.pi as any);
+ const started=await state.tools.get("asen_agent_start").execute("missing-global",{prompt:"Inspect with defaults"},new AbortController().signal,()=>{},context),request=await capture.firstRequest;assert.equal(capture.requests.length,1);assert.equal(Object.hasOwn(request,"model"),false);assert.equal(Object.hasOwn(request,"thinking"),false);assert.deepEqual(started.details.routing,routingView({}, {},"default"));
+});
+
+test("direct routing preserves read-only tool schema, session ownership and authority boundaries",async t=>{
+ const fixture=await routingFixture(t,"asen-direct-route-boundaries-"),home=fixture.home,state=host(),capture=captureRunner("read-only");let confirmations=0;const sessionId="route-boundary-session",context={...state.context(sessionId),ui:{...state.context(sessionId).ui,confirm:async()=>{confirmations++;return true;}}};fixture.bind(state,context);
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:true,agentRunner:capture.runner})(state.pi as any);const tool=state.tools.get("asen_agent_start");assert.equal(tool.executionMode,"sequential");assert.deepEqual(Object.keys(tool.parameters.properties).sort(),["prompt","root","todoId"]);assert.equal(Object.hasOwn(tool.parameters.properties,"model"),false);assert.equal(Object.hasOwn(tool.parameters.properties,"thinking"),false);
+ await tool.execute("route-boundaries",{prompt:"Inspect without authority"},new AbortController().signal,()=>{},context);const request=await capture.firstRequest;assert.equal(confirmations,0);assert.equal(capture.requests.length,1);assert.equal(request.role,"explorer");assert.equal(request.isolationKey,sessionId);assert.equal(request.repository,await realpath(process.cwd()));for(const key of ["candidate","writeSurfaces","writerAdmission","phaseGrant","runnerWriteReceiver"] as const)assert.equal(Object.hasOwn(request,key),false);
+});
 
 test("Pi shows and clears a bounded ASEN progress widget as tasks change",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-plan-widget-"));t.after(()=>rm(home,{recursive:true,force:true}));const todos=await SessionTodoStore.open(join(home,"todos.json")),projectId=await realpath(process.cwd()),identity={sessionId:"widget-session",projectId};
@@ -123,6 +255,44 @@ test("Pi launch persists Todo-agent ownership before dispatch and blocks for ind
  const view=JSON.parse(state.messages.at(-1)!);
  assert.equal(view[0]?.state,"blocked");assert.deepEqual(view[0]?.agents.map((agent:any)=>[agent.id,agent.state]),[[id,"completed"]]);
  await state.events.get("session_shutdown")![0]!({},state.context());
+});
+
+test("public Todo-bound tools run two explicitly scoped read-only branches concurrently without authority",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-pi-parallel-read-only-"));t.after(()=>rm(home,{recursive:true,force:true}));
+ const state=host(),sessionId="parallel-read-only-session",projectId=await realpath(process.cwd()),identity={sessionId,projectId},agentFile=join(home,".asen","agents.json"),linkFile=join(home,".asen","task-agent-links.json");
+ const originalRequest="Inspect the API and UI contracts for the requested compatibility change without modifying files.";
+ const branches=[
+  {title:"API contract branch",scope:"Inspect only src/api/schema.ts and report the API contract.",prompt:`${originalRequest} Explicit non-overlapping scope: Inspect only src/api/schema.ts and report the API contract.`},
+  {title:"UI contract branch",scope:"Inspect only src/ui/panel.ts and report the UI contract.",prompt:`${originalRequest} Explicit non-overlapping scope: Inspect only src/ui/panel.ts and report the UI contract.`},
+ ] as const;
+ const requests:import("../src/agents/dispatcher.js").AgentRequest[]=[],executing=new Set<string>();let release!:()=>void,overlap!:()=>void;
+ const releaseGate=new Promise<void>(resolve=>{release=resolve;}),bothExecuting=new Promise<void>(resolve=>{overlap=resolve;});
+ const runner:AgentRunner={run:async request=>{requests.push(request);executing.add(request.id);if(executing.size===2)overlap();await releaseGate;executing.delete(request.id);return{id:request.id,ok:true,output:`Read-only result for ${request.prompt}`};}};
+ const context=state.context(sessionId);createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:agentFile,agentMaxConcurrency:2})(state.pi as any);await state.events.get("session_start")![0]!({},context);
+ try{
+  const todos=[] as any[],agents=[] as any[];
+  for(const [index,branch] of branches.entries()){
+   assert.equal(branch.prompt.startsWith(originalRequest),true);assert.equal(branch.prompt.includes(branch.scope),true);
+   const todo=await state.tools.get("asen_todo_add").execute(`parallel-todo-${index}`,{title:branch.title,description:branch.prompt},new AbortController().signal,()=>{},context);todos.push(todo.details);
+   const agent=await state.tools.get("asen_agent_start").execute(`parallel-agent-${index}`,{prompt:branch.prompt,todoId:todo.details.taskId},new AbortController().signal,()=>{},context);agents.push(agent.details);
+  }
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  try{await Promise.race([bothExecuting,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error("both read-only branches did not enter their runners concurrently")),3000);})]);}finally{if(timer)clearTimeout(timer);}
+  assert.equal(executing.size,2,"both branches must actually execute before either runner is released");
+  assert.equal(new Set(todos.map(todo=>todo.taskId)).size,2);assert.equal(new Set(agents.map(agent=>agent.id)).size,2);
+  assert.deepEqual(requests.map(request=>request.prompt).sort(),branches.map(branch=>branch.prompt).sort());
+  assert.ok(requests.every(request=>request.role==="explorer"&&request.repository===projectId&&request.isolationKey===sessionId));
+  for(const request of requests)for(const key of ["candidate","writeSurfaces","writerAdmission","phaseGrant","runnerWriteReceiver"] as const)assert.equal(Object.hasOwn(request,key),false,`${key} must not reach a read-only branch runner`);
+  const persisted=JSON.parse(await readFile(agentFile,"utf8"));assert.deepEqual(persisted.entries.map((entry:any)=>entry.request.prompt).sort(),branches.map(branch=>branch.prompt).sort());
+  assert.ok(persisted.entries.every((entry:any)=>entry.record.sessionId===sessionId&&entry.record.projectId===projectId&&entry.request.role==="explorer"));
+  for(const entry of persisted.entries)for(const key of ["candidate","writeSurfaces","writerAdmission","phaseGrant","runnerWriteReceiver"])assert.equal(Object.hasOwn(entry.request,key),false,`${key} must not be persisted for a read-only branch`);
+  const links=await new TaskAgentLinkStore(linkFile).list(identity);assert.equal(links.length,2);for(const [index,agent] of agents.entries())assert.deepEqual(links.filter(link=>link.agentId===agent.id).map(link=>link.taskId),[todos[index].taskId]);
+  const runningTodos=(await state.tools.get("asen_todo_list").execute("parallel-running-todos",{},new AbortController().signal,()=>{},context)).details;assert.ok(runningTodos.every((todo:any)=>todo.current.state==="running"));
+  release();
+  const deadline=Date.now()+5000;let finalTodos:any[]=[];while(Date.now()<deadline){finalTodos=(await state.tools.get("asen_todo_list").execute("parallel-final-todos",{},new AbortController().signal,()=>{},context)).details;if(finalTodos.length===2&&finalTodos.every(todo=>todo.current.state==="blocked"))break;await new Promise(resolve=>setTimeout(resolve,5));}
+  assert.deepEqual(finalTodos.map(todo=>todo.current.state),["blocked","blocked"],"agent completion must leave each linked Todo awaiting independent acceptance");
+  const finalAgents=await state.tools.get("asen_agent_status").execute("parallel-final-agents",{},new AbortController().signal,()=>{},context);assert.ok(finalAgents.details.every((agent:any)=>agent.state==="completed"));
+ }finally{release();await state.events.get("session_shutdown")![0]!({},context);}
 });
 
 test("a persisted plan explorer dispatches the exact selected read-only skills through Pi",async t=>{
@@ -312,7 +482,7 @@ test("continuing a Todo-linked interrupted Pi agent binds the child before execu
 test("failed linked read-only tasks retry only with confirmation and persist the new binding before dispatch",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-linked-agent-retry-"));t.after(()=>rm(home,{recursive:true,force:true}));const sessionId="retry-session",projectId=await realpath(process.cwd()),identity={sessionId,projectId},todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),linkFile=join(home,".asen","task-agent-links.json"),todos=await SessionTodoStore.open(todoFile),links=new TaskAgentLinkStore(linkFile);
  const instruction=`Inspect the exact change and report evidence ${"i".repeat(1800)} END-OF-RETRY-INSTRUCTION-MARKER`,todo=await todos.add("Retry failed inspection",identity,undefined,undefined,undefined,[],instruction);let attempts=0,childId="",begin!:()=>void;const begun=new Promise<void>(resolve=>{begin=resolve;});
- const runner:AgentRunner={run:async(request,signal)=>{attempts++;if(attempts===1)return{id:request.id,ok:false,output:"transient read-only failure"};childId=request.id;const linked=(await links.list(identity)).some(link=>link.agentId===request.id&&link.taskId===todo.taskId),current=(await todos.list(identity)).find(item=>item.taskId===todo.taskId);assert.equal(linked,true,"retry child must be linked before it starts");assert.equal(current?.current.state,"running","Todo retry must be running before dispatch");begin();return{id:request.id,ok:false,output:"retry failed"};}};
+ const runner:AgentRunner={run:async(request,_signal)=>{attempts++;if(attempts===1)return{id:request.id,ok:false,output:"transient read-only failure"};childId=request.id;const linked=(await links.list(identity)).some(link=>link.agentId===request.id&&link.taskId===todo.taskId),current=(await todos.list(identity)).find(item=>item.taskId===todo.taskId);assert.equal(linked,true,"retry child must be linked before it starts");assert.equal(current?.current.state,"running","Todo retry must be running before dispatch");begin();return{id:request.id,ok:false,output:"retry failed"};}};
  const state=host(),ctx=state.context(sessionId);let confirmationMessage="";ctx.ui.confirm=async(...args:any[])=>{confirmationMessage=String(args[1]??"");return true;};createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:agentFile,todoStoreFile:todoFile})(state.pi as any);await state.events.get("session_start")![0]!({},ctx);
  const first=await state.tools.get("asen_agent_start").execute("retry-first",{prompt:instruction,todoId:todo.taskId},new AbortController().signal,()=>{},ctx),firstId=first.details.id;
  let current:any,deadline=Date.now()+5000;while(Date.now()<deadline){current=(await todos.list(identity)).find(item=>item.taskId===todo.taskId);if(attempts===1&&current?.current.state==="blocked")break;await new Promise(resolve=>setTimeout(resolve,5));}
@@ -400,6 +570,29 @@ test("session shutdown drains in-flight Todo reconciliation after agent completi
  await shutdown;
  const afterShutdown=(await todos.list(identity)).find(row=>row.taskId===task!.taskId);
  assert.equal(afterShutdown?.current.state,"blocked");assert.match(afterShutdown?.current.reason??"",/session ended/u);
+});
+
+test("declined or aborted foreign-project consent leaves every public view unchanged",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-foreign-agent-denial-")),foreign=await realpath(await mkdtemp(join(tmpdir(),"asen-foreign-denied-project-")));t.after(()=>Promise.all([rm(home,{recursive:true,force:true}),rm(foreign,{recursive:true,force:true})]));
+ const state=host(),ctx=state.context(),identity={sessionId:"session-a",projectId:await realpath(process.cwd())},links=new TaskAgentLinkStore(join(home,".asen","task-agent-links.json"));let runnerCalls=0,confirmations=0,confirmationEntered!:()=>void;
+ const entered=new Promise<void>(resolve=>{confirmationEntered=resolve;});ctx.ui.confirm=async()=>{confirmations++;if(confirmations===1)return false;confirmationEntered();return new Promise<boolean>(()=>{});};
+ createPiExtension({homeDir:()=>home,agentRunner:{run:async request=>{runnerCalls++;return{id:request.id,ok:true,output:"must not run"};}}})(state.pi as any);await state.events.get("session_start")![0]!({},ctx);
+ await state.tools.get("asen_todo_add").execute("named-foreign-project",{title:`Do not infer access from ${foreign}`},new AbortController().signal,()=>{},ctx);
+ const publicViews=async()=>{
+  const todos=(await state.tools.get("asen_todo_list").execute("public-todos",{},new AbortController().signal,()=>{},ctx)).details;
+  const agents=(await state.tools.get("asen_agent_status").execute("public-agents",{},new AbortController().signal,()=>{},ctx)).details;
+  await state.commands.get("asen-task-agents")!.handler("",ctx);const coordination=JSON.parse(state.messages.at(-1)!);
+  const workspace=await state.commands.get("asen-changes")!.handler("",ctx);
+  return {todos,agents,coordination,workspace,links:await links.list(identity)};
+ };
+ const before=await publicViews();
+ await assert.rejects(()=>state.tools.get("asen_agent_start").execute("foreign-declined",{prompt:`Inspect ${foreign}`,root:foreign},new AbortController().signal,()=>{},ctx),/Explicit Pi UI confirmation/u);
+ assert.equal(confirmations,1);assert.equal(runnerCalls,0);assert.deepEqual(await publicViews(),before);
+ const controller=new AbortController(),pending=state.tools.get("asen_agent_start").execute("foreign-aborted",{prompt:`Inspect ${foreign}`,root:foreign},controller.signal,()=>{},ctx);await entered;controller.abort();await assert.rejects(pending,/Agent task cancelled/u);
+ assert.equal(confirmations,2);assert.equal(runnerCalls,0);assert.deepEqual(await publicViews(),before);
+ await assert.rejects(()=>state.tools.get("asen_agent_status").execute("foreign-still-unavailable",{root:foreign},new AbortController().signal,()=>{},ctx),/permission is unavailable/u);
+ assert.equal(confirmations,2,"names, prompts and denied history must not manufacture live foreign-project consent");assert.deepEqual(await publicViews(),before);
+ await state.events.get("session_shutdown")![0]!({},ctx);
 });
 
 test("foreign-project agents require live consent and are cancelled with the owning session",async t=>{

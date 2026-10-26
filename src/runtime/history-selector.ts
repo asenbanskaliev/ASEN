@@ -88,6 +88,11 @@ function cursorOffset(cursor:string|undefined,entries:readonly HistoryEntry[],pr
  return offset;
 }
 
+/** Shared display DTO; raw history and its search/selection identity stay unchanged. */
+export function historyPreviewRow(entry:HistoryEntry):HistorySelectorRow{
+ return Object.freeze({id:entry.id,timestamp:entry.createdAt,redacted:entry.redacted,preview:sanitizePreview(entry.text)});
+}
+
 export function projectHistory(entries:readonly HistoryEntry[],projectId:string,query:string,pageSize:number,cursor?:string):HistoryProjection{
  if(!IDENTIFIER.test(projectId))throw new Error("Invalid history project");
  if(!Number.isSafeInteger(pageSize)||pageSize<3||pageSize>20)throw new Error("Invalid history page size");
@@ -96,7 +101,7 @@ export function projectHistory(entries:readonly HistoryEntry[],projectId:string,
  if(offset>matches.length)throw new Error("Invalid history cursor");
  const page=matches.slice(offset,offset+pageSize);
  if(page.length===0)return Object.freeze({state:"empty",rows:EMPTY_ROWS});
- const rows=Object.freeze(page.map(entry=>Object.freeze({id:entry.id,timestamp:entry.createdAt,redacted:entry.redacted,preview:sanitizePreview(entry.text)})));
+ const rows=Object.freeze(page.map(historyPreviewRow));
  const nextOffset=offset+page.length;
  return Object.freeze(nextOffset<matches.length?{state:"data",rows,nextCursor:cursorFor(entries,nextOffset,projectId,needle,pageSize)}:{state:"data",rows});
 }

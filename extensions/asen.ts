@@ -28,7 +28,10 @@ import {controlledInstructionPlanCommand,routePreviewCommand} from "../src/runti
 import {ASEN_COMMAND_CATALOG} from "../src/runtime/command-catalog.js";
 import {agentStatusRows,type PublicAgentRecord} from "../src/runtime/agent-lifecycle.js";
 import {findPotentialWorkspaceConflicts,visibleWorkspaceConflictRows,visibleWorkspaceRows,type WorkspaceChange} from "../src/runtime/workspace-attribution.js";
-import {readProfilesFile} from "../src/runtime/profile-store.js";
+import {readProfilesFile,mutateProfilesFile} from "../src/runtime/profile-store.js";
+import {globalRuntimeRoutingFacts,resolveRuntimeRoute,setActiveProfile,type ProfileLayer,type RuntimeProfilesFile} from "../src/runtime/profiles.js";
+import {canonicalProfilePartition,captureSessionProfile,clearSessionProfiles,selectSessionProfile,resetSessionProfile,type ProfileSessionIdentity,type SessionProfileSnapshot} from "../src/runtime/session-profile-binding.js";
+import {ASEN_PERSONA_STYLE_SECTION,ASEN_PERSONA_USAGE,personaConfigPaths,personaStyleText,resolvePersonaStyle,selectPersonaStyle,type PersonaStyle} from "../src/runtime/persona.js";
 import {parseHistoryStore,emptyHistoryStore} from "../src/runtime/history-store.js";
 import {parseUsageFile,emptyUsageFile} from "../src/runtime/usage-store.js";
 import {runHistoryCommand,recordHistoryInput,type HistoryCommandResult} from "../src/runtime/history-command.js";
@@ -54,6 +57,7 @@ import {todoProgressSummary,todoProgressWidget,todoStatusRows} from "../src/runt
 import {addAsenRequestGuidance} from "../src/runtime/request-guidance.js";
 import {ASEN_PLAN_REQUEST_TOOL,registerAsenPlanRequestTool} from "../src/runtime/natural-plan-tool.js";
 import {formatActivePlanContext} from "../src/runtime/plan-context.js";
+import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-policy.js";
 
 type CommandContext={cwd:string;hasUI?:boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void}};
 type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
@@ -131,9 +135,16 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   },...dependencies.registryLifecycle});
   const historyFile=path.join(home(),".asen","history.json"),usageFile=path.join(home(),".asen","usage.json");
   const profilesFile=dependencies.profilesFile??path.join(home(),".asen","profiles.json");
+  const personaFiles=async(ctx:CommandContext)=>personaConfigPaths(home(),await canonical(ctx.cwd));
   let agentDeliveryContext:CommandContext|undefined,agentDeliveryIdentity:{sessionId:string;projectId:string}|undefined;
   let unsubscribeAgentDelivery:(()=>void)|undefined;
   const agentDeliveryTasks=new Set<Promise<void>>();
+  let selectionGeneration=0,unsubscribeChildSelection:(()=>void)|undefined;
+  let selectionOwner:Readonly<{generation:number;context:CommandContext;manager:CommandContext["sessionManager"];sessionId:string|undefined;cwd:string}>|undefined;
+  const invalidateChildSelection=()=>{
+   selectionGeneration++;selectionOwner=undefined;const unsubscribe=unsubscribeChildSelection;unsubscribeChildSelection=undefined;
+   try{unsubscribe?.();}catch{/* Optional observation cannot block lifecycle changes. */}
+  };
   const workspaceFile=dependencies.workspaceStoreFile??path.join(home(),".asen","workspace.json");
   const memoryFile=dependencies.memoryStoreFile??path.join(home(),".asen","memory.db");
   const memoryStorePromise=dependencies.memoryStoreFactory?.()??(dependencies.enableMemoryRuntime?(async()=>{await preparePrivateMemoryDirectory(memoryFile);return new SqliteMemoryStore(memoryFile);})():undefined);
@@ -145,7 +156,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const finishActiveMemory=()=>{if(!activeMemory||activeMemory.closed)return;finishPiMemorySession(activeMemory);activeMemory=undefined;};
   const agentProviderCredential=dependencies.agentProviderCredential??configuredPiProviderCredential(process.env);
-  const agentRuntimePromise=dependencies.agentRuntimeFactory?.()??(dependencies.enableAgentRuntime?AgentRuntime.open({storeFile:dependencies.agentStoreFile??path.join(home(),".asen","agents.json"),runner:dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})}),...(dependencies.agentMaxConcurrency!==undefined?{maxConcurrency:dependencies.agentMaxConcurrency}:{})}):undefined);
+  const suppliedAgentRuntime=dependencies.agentRuntimeFactory?.();
+  const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})})):undefined;
+  const childSelectionSource=composedAgentRunner&&"subscribeChildSelection" in composedAgentRunner&&typeof composedAgentRunner.subscribeChildSelection==="function"?composedAgentRunner as AgentRunner&Pick<PiProcessRunner,"subscribeChildSelection">:undefined;
+  const agentRuntimePromise=suppliedAgentRuntime??(composedAgentRunner?AgentRuntime.open({storeFile:dependencies.agentStoreFile??path.join(home(),".asen","agents.json"),runner:composedAgentRunner,...(dependencies.agentMaxConcurrency!==undefined?{maxConcurrency:dependencies.agentMaxConcurrency}:{})}):undefined);
   const getAgentRuntime=async()=>{if(!agentRuntimePromise)throw new Error("ASEN agent runtime is unavailable");return agentRuntimePromise;};
   
   const todoStorePromise=dependencies.todoStoreFactory?.()??(dependencies.enableTodoRuntime?(dependencies.todoStoreFile?SessionTodoStore.open(dependencies.todoStoreFile):SessionTodoStore.openProjectScoped(path.join(home(),".asen","todos"),path.join(home(),".asen","todos.json"))):undefined);
@@ -158,6 +172,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const activeValidationTask=(sessionId:string,projectId:string):string|undefined=>[...validationActivities.values()].find(activity=>activity.sessionId===sessionId&&activity.projectId===projectId)?.taskId;
   const sessionIdentity=async(ctx:CommandContext)=>{const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId)throw new Error("ASEN requires the active Pi session");const projectId=await canonical(ctx.cwd);return {sessionId,projectId,worktree:projectId};};
+  let profilePartitionPromise:Promise<string>|undefined;
+  const profilePartition=()=>profilePartitionPromise??=canonicalProfilePartition(profilesFile);
+  const inheritedProfile=async(identity:ProfileSessionIdentity)=>captureSessionProfile(await profilePartition(),identity,()=>readProfilesFile(profilesFile));
+  const profileLayer=async(identity:ProfileSessionIdentity):Promise<ProfileLayer>=>{const chosen=await inheritedProfile(identity);return chosen.source==="explicit-session"?{session:chosen.file}:{global:chosen.file};};
   const refreshTodoWidget=async(ctx:CommandContext):Promise<void>=>{
    if(!ctx?.ui?.setWidget)return;
    try{
@@ -172,7 +190,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    await Promise.all(links.filter(link=>link.taskId===taskId).map(link=>runtime.cancel(link.agentId,identity)));
   }:undefined,taskAgentLinks&&agentRuntimePromise?{links:async()=>taskAgentLinks,agents:async()=>agentRuntimePromise}:undefined,async host=>{await advancePlan(host as CommandContext);},async host=>refreshTodoWidget(host as CommandContext));
   if(memoryStorePromise)registerPiMemoryTools(pi,host=>currentMemoryBinding(host));
-  const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks),links:async()=>taskAgentLinks}:undefined):undefined;
+  const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks),links:async()=>taskAgentLinks}:undefined,async(role,identity)=>resolveRuntimeRoute(await profileLayer(identity),role)):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const advancingPlans=new Set<string>();
   const advancePlan=async(ctx:CommandContext):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
@@ -194,6 +212,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }finally{advancingPlans.delete(key);}
   };
   const startSession=async(ctx:CommandContext)=>{
+   invalidateChildSelection();
+   const selectionScope=Object.freeze({generation:selectionGeneration,context:ctx,manager:ctx.sessionManager,sessionId:ctx.sessionManager?.getSessionId?.(),cwd:ctx.cwd});selectionOwner=selectionScope;
+   if(ctx.sessionManager?.getSessionId?.())await inheritedProfile(await sessionIdentity(ctx));
    validationActivities.clear();agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});await lifecycle.start(ctx,registryStartupDisabled(undefined));
    try{
     finishActiveMemory();
@@ -204,6 +225,22 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    await refreshTodoWidget(ctx);
    if(workspaceStorePromise){const store=await workspaceStorePromise;if(store.diagnostics())ctx.ui.notify("ASEN detectó y aisló datos de atribución dañados.","error");}
    if(agentRuntimePromise){const runtime=await agentRuntimePromise;identity??=await sessionIdentity(ctx);agentDeliveryContext=ctx;agentDeliveryIdentity=identity;
+    if(childSelectionSource&&selectionOwner===selectionScope){
+     const ownerIdentity=Object.freeze({sessionId:identity.sessionId,projectId:identity.projectId});
+     const current=()=>selectionOwner===selectionScope&&selectionGeneration===selectionScope.generation&&ctx.sessionManager===selectionScope.manager&&ctx.cwd===selectionScope.cwd&&ctx.sessionManager?.getSessionId?.()===ownerIdentity.sessionId&&selectionScope.sessionId===ownerIdentity.sessionId;
+     const currentProject=async()=>{if(!current())return false;const latest=await sessionIdentity(ctx);return current()&&latest.sessionId===ownerIdentity.sessionId&&latest.projectId===ownerIdentity.projectId;};
+     try{if(current())unsubscribeChildSelection=childSelectionSource.subscribeChildSelection(observation=>{
+      if(!current()||observation.source!=="child-reported"||observation.sessionId!==ownerIdentity.sessionId||observation.projectId!==ownerIdentity.projectId)return;
+      return (async()=>{
+       if(!await currentProject())return;
+       const task=await runtime.query(observation.taskId,ownerIdentity),record=task?.record;
+       if(!current()||!record||record.id!==observation.taskId||record.sessionId!==ownerIdentity.sessionId||record.projectId!==ownerIdentity.projectId||!await currentProject())return;
+       if(!current())return;
+       const model=observation.model?`${observation.model.provider}/${observation.model.id}`:"unavailable";
+       ctx.ui.notify(`ASEN child-reported selection (${record.id}): model ${model}; thinking ${observation.thinking??"unavailable"}.`,"info");
+      })().catch(()=>{/* Optional UI failures cannot alter task execution or authority. */});
+     });}catch{/* A custom runner without working observation retains execution support. */}
+    }
     if(!unsubscribeAgentDelivery)unsubscribeAgentDelivery=runtime.subscribeTerminal(record=>{
      const current=agentDeliveryContext,active=agentDeliveryIdentity;if(!current||!active||record.sessionId!==active.sessionId||record.projectId!==active.projectId||current.sessionManager?.getSessionId?.()!==active.sessionId)return;
      const roleLabels:Record<string,string>={primary:"la tarea",explorer:"la exploración",worker:"el cambio",reviewer:"la revisión",verifier:"la verificación",clarifier:"la aclaración"};
@@ -245,7 +282,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(typeof event?.toolCallId!=="string"||typeof event?.isError!=="boolean")return;const activity=validationActivities.get(event.toolCallId);if(!activity)return;validationActivities.delete(event.toolCallId);
    const context=ctx as CommandContext;try{const current=await sessionIdentity(context);await refreshTodoWidget(context);if(current.sessionId!==activity.sessionId||current.projectId!==activity.projectId)return;const rows=await (await todoStorePromise!).list(current),task=rows.find(row=>row.taskId===activity.taskId);if(task?.current.state!=="running")return;const duration=typeof event.durationMs==="number"&&Number.isFinite(event.durationMs)?event.durationMs:Date.now()-activity.startedAt;if(duration<longValidationNoticeMs)return;const title=activity.title.replace(/[\u0000-\u001f\u007f-\u009f]+/gu," ").slice(0,120);context.ui.notify(event.isError?`ASEN: falló la comprobación de «${title}». Revisa el resultado antes de seguir.`:`ASEN: terminó la comprobación de «${title}». El resultado no sustituye la revisión independiente del plan.`,event.isError?"error":"info");}catch{/* A stale session or unavailable UI receives no validation notice. */}
   });
-  pi.on?.("session_shutdown",async(_event,ctx)=>{const endingSession=ctx?.sessionManager?.getSessionId?.();for(const [id,activity] of validationActivities)if(activity.sessionId===endingSession)validationActivities.delete(id);agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue when the UI is unavailable. */}}if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}while(agentDeliveryTasks.size)await Promise.all([...agentDeliveryTasks]);try{finishActiveMemory();}catch(error){try{ctx?.ui?.notify(`ASEN no pudo cerrar la sesión de memoria: ${safeErrorMessage(error)}`,"error");}catch{/* Shutdown continues after best-effort memory finalization. */}}if(memoryStorePromise)try{(await memoryStorePromise).close();}catch{/* Shutdown continues after best-effort memory close. */}await lifecycle.shutdown();});
+  pi.on?.("session_shutdown",async(_event,ctx)=>{const endingSession=ctx?.sessionManager?.getSessionId?.();if(!ctx?.sessionManager||(selectionOwner&&ctx.sessionManager===selectionOwner.manager&&endingSession===selectionOwner.sessionId&&(ctx===selectionOwner.context||ctx.cwd===selectionOwner.cwd)))invalidateChildSelection();if(endingSession)clearSessionProfiles(await profilePartition(),endingSession);for(const [id,activity] of validationActivities)if(activity.sessionId===endingSession)validationActivities.delete(id);agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue when the UI is unavailable. */}}if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}while(agentDeliveryTasks.size)await Promise.all([...agentDeliveryTasks]);try{finishActiveMemory();}catch(error){try{ctx?.ui?.notify(`ASEN no pudo cerrar la sesión de memoria: ${safeErrorMessage(error)}`,"error");}catch{/* Shutdown continues after best-effort memory finalization. */}}if(memoryStorePromise)try{(await memoryStorePromise).close();}catch{/* Shutdown continues after best-effort memory close. */}await lifecycle.shutdown();});
   pi.on?.("input",async(event,ctx)=>{
    const text=typeof event?.text==="string"?event.text:"",sessionId=ctx.sessionManager?.getSessionId?.();
    if(event?.source!=="interactive"&&event?.source!=="rpc")return;
@@ -260,6 +297,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   pi.on?.("before_agent_start",async(event,ctx)=>{
    const options=(event as {systemPromptOptions?:{sections?:Record<string,string>}}|undefined)?.systemPromptOptions;
    if(options?.sections){
+    delete options.sections[ASEN_PERSONA_STYLE_SECTION];
+    try{const files=await personaFiles(ctx as CommandContext),selection=await resolvePersonaStyle(files.globalFile,files.projectFile);options.sections[ASEN_PERSONA_STYLE_SECTION]=personaStyleText(selection.style);}
+    catch{options.sections[ASEN_PERSONA_STYLE_SECTION]=personaStyleText("professional");}
     delete options.sections.asen_request_handling;
     delete options.sections.asen_project_memory;
     delete options.sections.asen_project_memory_context;
@@ -291,10 +331,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(dependencies.doctor)input=dependencies.doctor();
    else{
     let homeWritable=false,profileValid=false,telemetryConsentValid=false,registryAvailable=false;
-    try{await access(home(),W_OK|X_OK);homeWritable=true;}catch{}
-    try{await readProfilesFile(profilesFile);profileValid=true;}catch{}
+    try{await access(home(),W_OK|X_OK);homeWritable=true;}catch{/* Doctor reports the failed local invariant below. */}
+    try{await readProfilesFile(profilesFile);profileValid=true;}catch{/* Doctor reports the failed local invariant below. */}
     try{if(await privateFileState(usageFile)){const raw=await readFile(usageFile,"utf8");parseUsageFile(raw);telemetryConsentValid=true;}}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")telemetryConsentValid=true;}
-    try{if(ctx?.cwd)registryAvailable=registryObservations.has(await canonical(ctx.cwd));}catch{}
+    try{if(ctx?.cwd)registryAvailable=registryObservations.has(await canonical(ctx.cwd));}catch{/* Doctor reports the failed local invariant below. */}
     input={piVersionOk:typeof VERSION==="string"&&VERSION.length>0,homeWritable,registryAvailable,profileValid,historyPrivate:await privateFileState(historyFile),telemetryConsentValid};
    }
    const checks=doctorChecks(input);return {exitCode:doctorExitCode(checks),checks};
@@ -305,7 +345,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const validateContext=()=>{if(ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed before plan persistence");};
    let project:string;try{project=await realpath(cwd);}catch{throw new Error("ASEN planning requires an existing active project");}validateContext();
    let output:Record<string,unknown>&{executablePlan?:ExecutablePlan;persistedTasks?:Array<{planTaskId:string;todoId:string|undefined;dependsOn:Array<string|undefined>}>};
-   try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),{global:await readProfilesFile(profilesFile)})) as typeof output;}
+   try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),await profileLayer({sessionId,projectId:project}))) as typeof output;}
    catch(error){if(error instanceof Error)throw error;throw new Error("ASEN plan output was invalid");}
    if(!output.executablePlan)return JSON.stringify(output,null,2);
    if(output.executablePlan.route==="direct"){
@@ -364,7 +404,37 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return ["Uso: /asen-memory [status | search <texto> | forget <id>"];
   }});
   registerData("asen-task-agents",{description:"Show read-only task, dependency readiness and agent coordination for the current Pi session",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(!todoStorePromise||!agentRuntimePromise)return ["ASEN task-agent coordination requires both local stores."];const identity=await sessionIdentity(ctx);const coordinator=new TaskAgentCoordinator(await todoStorePromise,await agentRuntimePromise,taskAgentLinks);const view=await coordinator.snapshot(identity);return view.tasks.map(task=>({taskId:task.id,title:task.title,state:task.state,revision:task.revision,dependsOn:task.dependsOn,blockedBy:task.blockedBy,ready:task.ready,agents:task.agents}));}});
-  registerData("asen-profiles",{description:"Show local runtime profiles",handler:async()=>{const value=await readProfilesFile(profilesFile);return {active:value.active??"default",profiles:value.profiles.map(p=>p.name),available:true};}});
+  registerData("asen-profiles",{description:"Show/apply profiles: [show | session <profile> | session --inherit | global <profile>]; actual routing remains unknown",handler:async(args:string|undefined,ctx:CommandContext|undefined)=>{
+   const input=(args??"").trim(),parts=input?input.split(/\s+/u):[],operation=parts[0],name=parts[1];
+   if(!(parts.length===0||operation==="show"&&parts.length===1||(operation==="session"||operation==="global")&&parts.length===2))return "Usage: /asen-profiles [show | session <profile> | session --inherit | global <profile>]";
+   let value:RuntimeProfilesFile,identity:ProfileSessionIdentity|undefined,frozen:SessionProfileSnapshot|undefined;
+   if(operation==="session"){
+    const manager=ctx?.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx?.cwd;
+    if(!ctx||!manager||!sessionId||!cwd)throw new Error("Session profile selection requires the active Pi session and project");
+    identity=await sessionIdentity(ctx);const owner=identity;
+    const assertContext=()=>{if(ctx.signal?.aborted)throw new Error("Profile selection cancelled");if(ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed before profile selection");};
+    const validate=async()=>{assertContext();const current=await sessionIdentity(ctx);assertContext();if(current.sessionId!==owner.sessionId||current.projectId!==owner.projectId)throw new Error("Pi session or project changed before profile selection");};
+    assertContext();const partition=await profilePartition(),load=()=>readProfilesFile(profilesFile);
+    const applied=name==="--inherit"?await resetSessionProfile(partition,owner,load,validate):await selectSessionProfile(partition,owner,name!,load,validate);
+    assertContext();value=applied.global;frozen=applied.snapshot;
+   }else if(operation==="global"){
+    if(ctx?.signal?.aborted)throw new Error("Profile selection cancelled");
+    setActiveProfile(await readProfilesFile(profilesFile),name!);
+    value=await mutateProfilesFile(profilesFile,current=>setActiveProfile(current,name!));
+   }else value=await readProfilesFile(profilesFile);
+   const inventory={active:value.active??"default",profiles:value.profiles.map(p=>p.name),available:true,globalRoles:globalRuntimeRoutingFacts(value)};
+   if(!ctx?.sessionManager?.getSessionId?.()||!ctx.cwd)return inventory;
+   identity??=await sessionIdentity(ctx);frozen??=await inheritedProfile(identity);
+   const roles=Object.fromEntries(Object.entries(globalRuntimeRoutingFacts(frozen.file)).map(([role,facts])=>[role,{...facts,source:"session" as const}]));
+   return {...inventory,sessionProfile:{sessionId:identity.sessionId,projectId:identity.projectId,active:frozen.active,source:frozen.source,frozen:true,roles}};
+  }});
+  registerData("asen-persona",{description:"Show or select the ASEN communication style",handler:async(args:string|undefined,ctx:CommandContext)=>{
+   const input=(args??"").trim();
+   if(input!==""&&input!=="professional"&&input!=="neutral")return ASEN_PERSONA_USAGE;
+   let files:Awaited<ReturnType<typeof personaFiles>>;try{files=await personaFiles(ctx);}catch{return {style:"professional",source:"default",available:false};}
+   if(input==="")try{return await resolvePersonaStyle(files.globalFile,files.projectFile);}catch{return {style:"professional",source:"default",available:false};}
+   return selectPersonaStyle(files.globalFile,files.projectFile,input as PersonaStyle);
+  }});
   pi.registerCommand?.("asen-history",{description:"Manage opt-in, redacted, project-scoped local prompt history",handler:async(args:string,ctx:CommandContext)=>{
    const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId){ctx.ui.notify("ASEN history is unavailable without a current session.","error");return;}
    const selecting=args.trim().split(/\s+/u)[0]==="select";
@@ -409,6 +479,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
  return (pi:ExtensionAPI):void=>{
  validatePiHost(pi,VERSION);
  if(activatedPiHosts.has(pi))return;
+ pi.on("tool_call",createPrimaryToolPolicyHandler());
  const commandNames=ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name);
  const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES),...(dependencies.enableMemoryRuntime===false&&!dependencies.memoryStoreFactory?[]:ASEN_MEMORY_TOOL_NAMES)];
  let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext)=>Promise<void>)|undefined;

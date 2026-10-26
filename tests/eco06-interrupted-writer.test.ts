@@ -9,6 +9,39 @@ import {PersistentAgentStore} from "../src/runtime/agent-store.js";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
 import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 import {selectSkills} from "../src/skills/registry.js";
+import {inspectInterruptedWrite} from "../src/runtime/interrupted-write-inspection.js";
+// @ts-expect-error Node-side disposable candidate setup is intentionally JavaScript.
+import {prepareEco06WriterCandidate} from "../scripts/eco06-writer-fixture.mjs";
+
+test("ECO-06 live fixture tracks native skills and requires a clean fresh candidate",async t=>{
+ const project=await mkdtemp(join(tmpdir(),"asen-eco06-clean-fixture-"));
+ t.after(()=>rm(project,{recursive:true,force:true}));
+ const git=(...args:string[])=>execFileSync("git",args,{cwd:project,encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
+ const revision=await prepareEco06WriterCandidate(project,join(process.cwd(),"skills"));
+ assert.equal(git("rev-parse","HEAD"),revision);
+ assert.equal(git("status","--porcelain=v1","--untracked-files=all"),"");
+ assert.equal(git("ls-files","--error-unmatch","skills/asen-apply/SKILL.md"),"skills/asen-apply/SKILL.md");
+ assert.equal(await readFile(join(project,"skills/asen-apply/SKILL.md"),"utf8"),await readFile("skills/asen-apply/SKILL.md","utf8"));
+ const inspect=(expectedRevision:string)=>inspectInterruptedWrite({repository:project,expectedRevision,writeSurfaces:["README.md"]});
+ assert.equal(inspect(revision).recovery.eligibleForFreshPlan,true);
+ const partial="# ECO-06 controlled write\n\nInitial candidate.\nFIRST_WRITE: interrupted-before-completion\n";
+ await writeFile(join(project,"README.md"),partial);
+ const dirty=inspect(revision);
+ assert.equal(dirty.repository.clean,false);
+ assert.equal(dirty.recovery.eligibleForFreshPlan,false);
+ assert.equal(dirty.recovery.automaticWriteAllowed,false);
+ assert.equal(dirty.recovery.freshAuthorizationRequired,true);
+ assert.deepEqual(dirty.changes.map(row=>[row.path,row.scope]),[["README.md","approved"]]);
+ git("add","--","README.md");git("commit","-qm","test: preserve inspected partial write");
+ assert.equal(inspect(revision).candidate.matches,false);
+ assert.equal(inspect(revision).recovery.eligibleForFreshPlan,false,"A clean worktree does not admit the old candidate");
+ const fresh=inspect(git("rev-parse","HEAD"));
+ assert.equal(fresh.repository.clean,true);
+ assert.equal(fresh.recovery.eligibleForFreshPlan,true);
+ assert.equal(fresh.recovery.automaticWriteAllowed,false);
+ assert.equal(fresh.recovery.freshAuthorizationRequired,true);
+ assert.equal(await readFile(join(project,"README.md"),"utf8"),partial);
+});
 
 /**
  * ECO-06 crash boundary: the worker has already modified a real file when
@@ -154,5 +187,11 @@ test("ECO-06 Pi inspection binds the interrupted writer to its blocked Todo and 
  assert.deepEqual(result.details.changes.map((item:any)=>[item.path,item.scope]),[["outside.txt","outside"],["target.txt","approved"]]);assert.equal(JSON.stringify(result.details).includes("PRIVATE-CONTENT"),false);
  assert.equal(await readFile(join(project,"target.txt"),"utf8"),"before\npartial PRIVATE-CONTENT\n");assert.equal((await todos.list(identity)).length,1);assert.equal((await todos.list(identity))[0]?.current.state,"blocked");
  await assert.rejects(()=>tools.get("asen_todo_inspect_interrupted_write").execute("wrong-session",{agentId},new AbortController().signal,()=>{},context("foreign-session")),/Only an interrupted writer owned by this exact Pi session and project/u);
+ await assert.rejects(()=>tools.get("asen_todo_inspect_interrupted_write").execute("wrong-project",{agentId},new AbortController().signal,()=>{},context(identity.sessionId,home)),/Only an interrupted writer owned by this exact Pi session and project/u);
+ const afterRejections=await tools.get("asen_todo_inspect_interrupted_write").execute("inspect-after-rejections",{agentId},new AbortController().signal,()=>{},context());
+ assert.deepEqual(afterRejections.details,result.details,"Rejected foreign identities must not change inspection state");
+ assert.equal(await readFile(join(project,"target.txt"),"utf8"),"before\npartial PRIVATE-CONTENT\n");
+ assert.equal((await todos.list(identity)).length,1);
+ assert.equal((await todos.list(identity))[0]?.current.state,"blocked");
  await events.get("session_shutdown")![0]!({},context());
 });

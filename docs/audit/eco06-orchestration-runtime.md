@@ -137,3 +137,24 @@ Exact-candidate PR CI run `38885085096` for `1b97bd5f38ebd93827c5f08f1204b727c2d
 Verification on the repaired local candidate: `npm run typecheck` PASS; full `npm test` **1,506 passed / 0 failed / 13 skipped** (1,519 total); the transient-response regression, cancellation cleanup, and timeout/overflow/forbidden-tool process-tree tests passed together; `git diff --check` PASS. The earlier single local process-tree observation against a `tokio-rt-worker` host PID was not reproducible: the focused process-tree test passed on rerun and the full suite passed. A fresh exact-SHA CI run is required to confirm the repair. ECO-06 remains **PARTIAL / OPEN**: the provider-backed interrupted-writer/re-authorization journey has not passed, and no additional NVIDIA run is authorized by this test-only correction.
 
 The exact-SHA CI follow-up exposed one more Windows-only regression in run `38886271561`, job `116924660080`: test 66 could not find `Full test suite` because Windows checkout converted the workflow file to CRLF while the assertion expected LF. The full Windows run otherwise reached the test summaries and failed only this assertion (`duration_ms: 477074`). R4 normalized CRLF when reading the workflow in `tests/test-runner.test.ts`; the 40-minute watchdog and workflow behavior are unchanged. Local targeted validation and a fresh exact-SHA CI run are required for this correction. ECO-06 remains **PARTIAL / OPEN**.
+
+## Disposable candidate and recovery assertions — local follow-up
+
+**ECO-06 remains PARTIAL / OPEN.** This correction prepares a more discriminating experiment; it does not supply a new NVIDIA execution receipt or prove an abrupt Pi-child kill.
+
+The original fixture copied native skills but committed only `README.md`. A provider-free Git reproduction failed the clean-candidate assertion with `?? skills/`. `scripts/eco06-writer-fixture.mjs` now commits both the README and native skills in the disposable repository and refuses a dirty initial baseline. Its regression checks unchanged skill bytes, tracked skill paths, dirty-write ineligibility, old-candidate rejection after checkpointing, and a clean freshly bound candidate that still requires new authorization. All fixture commits occur only in temporary test repositories, not on the development branch.
+
+The live controller now requires the interrupted diff to contain only the approved README change, refuses fresh-plan eligibility while that change is dirty, and requires a clean new checkpoint before replanning. The host exercises the existing public inspection tool with foreign session/project contexts and requires both to be rejected without agent-inventory changes or provider invocation. Deterministic Pi integration coverage also verifies that rejected identities preserve the blocked Todo and file bytes. Production authorization code is unchanged.
+
+Local verification command (no provider credentials):
+
+```bash
+node --import tsx --test tests/eco06-interrupted-writer.test.ts tests/interrupted-write-inspection.test.ts
+npm run typecheck
+```
+
+Observed focused result: **5 passed / 0 failed / 1 skipped**, with the existing POSIX SIGKILL fixture skipped on Windows. `npm run typecheck` passed. These are local deterministic checks, not execution of the live host's new RPC branch with an interrupted NVIDIA writer.
+
+Missing or malformed Pi package metadata now stops preflight with `Cannot read valid Pi package metadata; live-writer preflight is blocked` or host startup with `Cannot read valid Pi package metadata; live-writer host is blocked`. These messages do not imply a completed experiment.
+
+Evidence limits: the host still aborts the worker and kills itself after observing a write; this does not independently establish an abrupt Pi-child kill or a mid-write durability boundary. This patch changes neither that mechanism nor provider quota limits. The workflow still supports manual exact-SHA dispatch **and** a branch push restricted to changes of its own workflow file; older manual-only descriptions are historical. No workflow is launched by this local correction. The clean baseline full check at `f2ed915` stopped on two Windows `EPERM` symlink-fixture setup failures; later chunks and chained audits did not run. The operator accepted continued focused verification without weakening those tests or claiming full-suite PASS.

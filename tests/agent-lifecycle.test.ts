@@ -1,4 +1,4 @@
-import test from "node:test";import assert from "node:assert/strict";import {agentStatusRows,createAgentLifecycleSink,createAgentRecord,transitionAgent,recoverAgentLifecycleRecords} from "../src/runtime/agent-lifecycle.js";
+import test from "node:test";import assert from "node:assert/strict";import {createAsenExtension} from "../extensions/asen.js";import {agentStatusRows,createAgentLifecycleSink,createAgentRecord,transitionAgent,recoverAgentLifecycleRecords} from "../src/runtime/agent-lifecycle.js";
 test("public agent lifecycle binds owner/session/project and completion requires an in-process runner result",()=>{const q=createAgentRecord({id:"a",role:"worker",owner:{kind:"user",id:"u"},sessionId:"s",projectId:"p",createdAt:"2026-10-06T00:00:00Z"});const r=transitionAgent(q,"running","2026-10-06T00:00:01Z");assert.throws(()=>transitionAgent(r,"completed","2026-10-06T00:00:02Z","done"),/in-process runner result/);const sink=createAgentLifecycleSink(()=>"2026-10-06T00:00:02Z");sink.queued({id:"a",role:"worker",owner:{kind:"user",id:"u"},sessionId:"s",projectId:"p",createdAt:"2026-10-06T00:00:00Z"});sink.running("a","2026-10-06T00:00:01Z");assert.throws(()=>sink.completed("a",{id:"a",ok:true,output:"done"},"2026-10-06T00:00:02Z"),/Dispatcher result/);const d=sink.snapshot()[0]!;assert.equal(d.state,"running");assert.throws(()=>transitionAgent(r,"completed","2026-10-05T00:00:00Z"),/in-process runner result/);});
 test("agent status is bounded for narrow terminals and preserves the task id before its summary",()=>{
  const q=createAgentRecord({id:"agent-0123456789abcdef0123456789",role:"worker",owner:{kind:"agent",id:"parent"},sessionId:"s",projectId:"p",createdAt:"2026-10-06T00:00:00Z"});
@@ -6,6 +6,18 @@ test("agent status is bounded for narrow terminals and preserves the task id bef
  assert.ok(normal.includes(q.id),"the visible status must retain the id needed for a follow-up action");
  assert.ok(normal.endsWith("…"),"long summaries should be truncated after the task id");
  assert.ok(agentStatusRows([q],30)[0]!.length<=30);
+});
+test("registered agent status command makes hostile display controls visible without mutating provider records",async()=>{
+ const hostile=createAgentRecord({id:"agent\u200b-id",role:"work\u2028er",owner:{kind:"agent",id:"own\u2029er"},sessionId:"s",projectId:"p",createdAt:"2028-10-06T00:00:00Z"});
+ const benign=createAgentRecord({id:"task-plain",role:"worker",owner:{kind:"user",id:"owner"},sessionId:"s",projectId:"p",createdAt:"2029-10-06T00:00:00Z"});
+ const records=[{...hostile,summary:"task-42\tline\u0007\u009b\u2066done"},benign],before=structuredClone(records),commands=new Map<string,{handler:(...args:any[])=>unknown}>(),messages:string[]=[];
+ createAsenExtension({agents:()=>records})( {registerCommand:(name:string,command:any)=>commands.set(name,command)} );
+ const rows=await commands.get("asen-agents")!.handler("",{ui:{notify:(message:string)=>messages.push(message)}}) as string[];
+ assert.equal(rows[0],"queued      work�er agent:own�er agent�-id — task-42�line���done");
+ assert.equal(rows[1],"queued      worker user:owner task-plain");
+ assert.deepEqual(messages,[rows.join("\n")]);
+ assert.doesNotMatch(rows.join(""),/[\p{Cc}\p{Cf}\u2028\u2029]/u);
+ assert.deepEqual(records,before);
 });
 test("agent lifecycle rejects invalid transition timestamps",()=>{const q=createAgentRecord({id:"a",role:"worker",owner:{kind:"user",id:"u"},sessionId:"s",projectId:"p",createdAt:"2026-10-06T00:00:00Z"});assert.throws(()=>transitionAgent(q,"running","not-a-time"),/timestamp/i);assert.throws(()=>transitionAgent({...q,updatedAt:"broken"},"running","2026-10-06T00:00:01Z"),/timestamp/i);});
 test("agent lifecycle rejects forged owners and unsafe attribution identifiers",()=>{const base={id:"a",role:"worker",owner:{kind:"user" as const,id:"u"},sessionId:"s",projectId:"p",createdAt:"2026-10-06T00:00:00Z"};assert.throws(()=>createAgentRecord({...base,owner:{kind:"admin" as never,id:"u"}}),/owner kind/i);for(const field of ["id","role","sessionId","projectId"] as const)assert.throws(()=>createAgentRecord({...base,[field]:"bad\nvalue"}),/identity/i);});

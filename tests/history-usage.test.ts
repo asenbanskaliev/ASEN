@@ -83,6 +83,30 @@ test("opt-in history never persists or exposes recognized provider credentials",
  assert.equal(store.entries.length,2);assert.ok(store.entries.every(entry=>entry.redacted));
 });
 
+test("history search preview keeps query order and fifty-row bound without exposing raw entries",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-search-preview-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const storePath=path.join(root,"history.json"),context={storePath,projectId:"private-project",sessionId:"private-session",hasUI:true,confirm:async()=>true};
+ await runHistoryCommand("enable",context);
+ for(let index=0;index<52;index++)await recordHistoryInput(context,index===51?`needle \u001b]0;HIDDEN-PAYLOAD\u0007\u001b[31mred\u001b[0m \u009b31mC1\u009b0m \u202e tail\n token=private-credential ${"x".repeat(220)}`:`NeEdLe café-${index}`);
+ await recordHistoryInput({...context,projectId:"foreign-project"},"needle FOREIGN-MARKER");
+ const before=await readFile(storePath),exportedText=await runHistoryCommand("export",context),exported=JSON.parse(exportedText);
+ const output=await runHistoryCommand("search nEeDlE",context),rows=JSON.parse(output);
+ assert.equal(rows.length,50);
+ assert.deepEqual(Object.keys(rows[0]).sort(),["id","preview","redacted","timestamp"]);
+ assert.deepEqual(rows.map((row:{id:string})=>row.id),exported.slice(-50).reverse().map((entry:{id:string})=>entry.id));
+ assert.equal(rows[0].timestamp,exported[51].createdAt);assert.equal(rows[0].redacted,true);
+ assert.ok(Array.from(rows[0].preview).length<=160);assert.ok(rows[0].preview.endsWith("…"));
+ assert.match(rows[0].preview,/^needle red C1 tail token \[REDACTED\] x/);
+ assert.doesNotMatch(rows[0].preview,/[\p{Cc}\p{Cf}\u2028\u2029]/u);
+ assert.doesNotMatch(output,/sessionId|projectId|createdAt|"text"|private-session|private-project|HIDDEN-PAYLOAD|FOREIGN-MARKER|private-credential/);
+ assert.equal(rows[1].preview,"NeEdLe café-50");
+ assert.equal(await runHistoryCommand("search absent-marker",context),"[]");
+ assert.equal(JSON.parse(await runHistoryCommand("search",context)).length,50);
+ await assert.rejects(()=>runHistoryCommand(`search ${"x".repeat(513)}`,context),{message:"Invalid history search"});
+ assert.equal(await runHistoryCommand("export",context),exportedText);
+ assert.deepEqual(await readFile(storePath),before);
+});
+
 test("public history commands require explicit opt-in and keep captures project scoped",async()=>{
  const directory=await mkdtemp(path.join(tmpdir(),"asen-history-command-")),storePath=path.join(directory,"history.json"),base={storePath,projectId:"p",sessionId:"s",hasUI:true};
  let consent=false;const confirm=async()=>consent;

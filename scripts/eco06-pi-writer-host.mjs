@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import {mkdir} from "node:fs/promises";
 import {fileURLToPath} from "node:url";
 import path from "node:path";
@@ -25,7 +26,12 @@ const context={mode:"rpc",hasUI:true,cwd:project,sessionManager:{getSessionId:()
 const profilesFile=path.join(home,".asen","profiles.json"),agentFile=path.join(home,".asen","agents.json"),todoRoot=path.join(home,".asen","todos"),legacyTodoFile=path.join(home,".asen","todos.json");
 await Promise.all([mkdir(path.dirname(profilesFile),{recursive:true}),mkdir(todoRoot,{recursive:true})]);
 await writeProfilesFile(profilesFile,{schema:ASEN_PROFILES_SCHEMA,active:"eco06-nvidia",profiles:[{name:"eco06-nvidia",routes:{worker:{model,thinking:"low"},reviewer:{model,thinking:"low"},verifier:{model,thinking:"low"}}}]});
-const piPackage=JSON.parse(await (await import("node:fs/promises")).readFile(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url),"utf8"));
+let piPackage;
+try{
+  piPackage=JSON.parse(await (await import("node:fs/promises")).readFile(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url),"utf8"));
+}catch{
+  throw new Error("Cannot read valid Pi package metadata; live-writer host is blocked");
+}
 const piRoot=path.dirname(fileURLToPath(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url)));
 const baseRunner=new PiProcessRunner({command:path.resolve(piRoot,piPackage.bin.pi),providerCredential:"NVIDIA_API_KEY",policyRoot:root,timeoutMs:180_000,maxOutputBytes:4_000_000});
 const invocations=[];
@@ -90,13 +96,23 @@ process.on("message",async message=>{
       await handler(JSON.stringify(selection()),context);result=JSON.parse(messages.at(-1));
     }else if(message.op==="dispatch"){
       result=await tools.get("asen_plan_dispatch_next").execute(message.id,{},new AbortController().signal,()=>{},context);
-    }else if(message.op==="inspect"){
+    }else if(message.op==="inspect"||message.op==="inspect-foreign-identities"){
       const store=await PersistentAgentStore.open(agentFile),entries=await store.store.list(sessionId,project);
       const matches=entries.filter(row=>row.state==="interrupted"&&row.role==="worker");
       if(matches.length!==1)throw new Error(`Restart recovered ${matches.length} interrupted writers; expected exactly one`);
       const entry=matches[0];
       if(!entry)throw new Error("Restart did not recover exactly one interrupted writer");
-      result=await tools.get("asen_todo_inspect_interrupted_write").execute(message.id,{agentId:entry.id},new AbortController().signal,()=>{},context);
+      const inspect=tools.get("asen_todo_inspect_interrupted_write");
+      if(message.op==="inspect-foreign-identities"){
+        const denied=/Only an interrupted writer owned by this exact Pi session and project/u;
+        await assert.rejects(()=>inspect.execute(`${message.id}:session`,{agentId:entry.id},new AbortController().signal,()=>{}, {...context,sessionManager:{getSessionId:()=>`${sessionId}-foreign`}}),denied);
+        await assert.rejects(()=>inspect.execute(`${message.id}:project`,{agentId:entry.id},new AbortController().signal,()=>{}, {...context,cwd:home}),denied);
+        assert.deepEqual(invocations,[],"Rejected inspection must not invoke a provider");
+        assert.deepEqual(await store.store.list(sessionId,project),entries,"Rejected inspection must preserve the agent inventory");
+        result={wrongSessionRejected:true,wrongProjectRejected:true};
+      }else{
+        result=await inspect.execute(message.id,{agentId:entry.id},new AbortController().signal,()=>{},context);
+      }
     }else if(message.op==="accept"){
       result=await tools.get("asen_todo_accept_result").execute(message.id,message.args,new AbortController().signal,()=>{},context);
     }else if(message.op==="counts"){

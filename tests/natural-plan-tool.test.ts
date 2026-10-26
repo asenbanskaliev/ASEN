@@ -4,6 +4,7 @@ import {mkdtemp,rm} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {registerAsenPlanRequestTool,ASEN_PLAN_REQUEST_TOOL} from "../src/runtime/natural-plan-tool.js";
+import {controlledInstructionPlanCommand} from "../src/runtime/route-command.js";
 import {addAsenRequestGuidance,ASEN_REQUEST_GUIDANCE_SECTION} from "../src/runtime/request-guidance.js";
 import {createAsenExtension} from "../extensions/asen.js";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
@@ -35,6 +36,28 @@ test("natural-plan tool generates internal identity and hides machine fields fro
  assert.equal(result.details.task,"private-task-id");
 });
 
+test("registered natural intake preserves controlled command routing and instructions",async t=>{
+ const cases=[
+  {name:"direct primary",taskIdentity:"parity-direct",route:"direct",taskRoles:["primary"],delegatedRoles:[],facts:{...request(),instruction:"Inspect the bounded form behavior without changing it",writes:[],testing:{kind:"n_a",reason:"Read-only inspection"}}},
+  {name:"material clarification",taskIdentity:"parity-clarify",route:"plan",taskRoles:["clarifier"],delegatedRoles:[],facts:{...request(),instruction:"Update the form while preserving its current normalization contract",unresolvedDecisions:["Should surrounding whitespace be rejected or normalized?"]}},
+  {name:"explicit coordinated review",taskIdentity:"parity-review",route:"orchestrate",taskRoles:["worker","reviewer","verifier"],delegatedRoles:["worker","reviewer","verifier"],facts:{...request(),instruction:"Implement the bounded form change with explicit coordinated review",scope:{kind:"known",expectedPaths:["src/form.ts","src/form-rules.ts","tests/form.test.ts","docs/form.md"]},review:{kind:"dual_explicit",estimatedMinutes:10}}},
+  {name:"verification",taskIdentity:"parity-verify",route:"verify",taskRoles:["verifier"],delegatedRoles:["verifier"],facts:{...request(),instruction:"Verify the completed form behavior independently",intent:"verification",scope:{kind:"known",expectedPaths:[]},writes:[]}},
+ ] as const;
+ for(const item of cases)await t.test(item.name,async()=>{
+  let tool:any,received="",materialized="",observedContext:unknown;
+  registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async(args,context)=>{received=args;observedContext=context;materialized=controlledInstructionPlanCommand(args,"/repo");return materialized;},()=>item.taskIdentity);
+  const context={cwd:"/repo",marker:item.name};
+  const actual=(await tool.execute("call",item.facts,undefined,undefined,context)).details;
+  const internal=JSON.parse(received),expected=JSON.parse(materialized);
+  assert.equal(internal.instruction,item.facts.instruction);assert.equal(observedContext,context);
+  assert.equal(actual.route,item.route);assert.equal(actual.route,expected.route);assert.equal(actual.risk,expected.risk);
+  assert.deepEqual(actual.executablePlan.tasks.map((task:{role:string})=>task.role),item.taskRoles);
+  assert.deepEqual(actual.requiredAgentRoles,item.delegatedRoles);assert.deepEqual(actual.requiredAgentRoles,expected.requiredAgentRoles);
+  assert.deepEqual(actual.executablePlan.tasks.map((task:{role:string;instruction:string;dependsOn:string[]})=>({role:task.role,instruction:task.instruction,dependsOn:task.dependsOn})),expected.executablePlan.tasks.map((task:{role:string;instruction:string;dependsOn:string[]})=>({role:task.role,instruction:task.instruction,dependsOn:task.dependsOn})));
+  assert.deepEqual(actual.execution,{started:false,authorized:false});assert.equal(actual.executablePlan.execution,"not_started");assert.equal(actual.executablePlan.authorization,"required_before_dispatch");
+ });
+});
+
 test("natural-plan tool refuses missing facts instead of inventing an ODD plan",async()=>{
  let runs=0,tool:any;
  registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async()=>{runs++;return "{}";},()=>"task-id");
@@ -56,6 +79,22 @@ test("Pi prompt guidance removes user-authored ODD JSON and explains safe automa
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Preserve completed work and unrelated plans/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Do not treat an unrelated new request as cancellation/u);
  const disabled:{sections:Record<string,string>}={sections:{existing:"preserved"}};addAsenRequestGuidance(disabled,false);assert.deepEqual(disabled,{sections:{existing:"preserved"}});
+});
+
+test("Pi guidance keeps explicitly scoped read-only parallelism proportional and authority-free",async t=>{
+ const guidance=()=>{const options:{sections:Record<string,string>}={sections:{}};addAsenRequestGuidance(options,true);return options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!;};
+ await t.test("uses separate Todo-bound agents for explicitly named independent read-only branches",()=>{
+  assert.match(guidance(),/explicitly named, non-overlapping read-only branches.*separate Todos.*Todo-bound asen_agent_start/isu);
+ });
+ await t.test("does not force decomposition from counts",()=>{
+  assert.match(guidance(),/Do not decompose or delegate merely because of task count, file count, or step count/iu);
+ });
+ await t.test("never routes writers through the independent read-only branch path",()=>{
+  assert.match(guidance(),/Never use this independent-branch path for writers or infer write authority from it/iu);
+ });
+ await t.test("retains the plan dependency DAG for genuinely dependent work",()=>{
+  assert.match(guidance(),/Genuinely dependent work retains the existing bounded plan dependency DAG/iu);
+ });
 });
 
 test("ASEN registers the natural-language planning tool and injects its guidance into Pi turns",()=>{

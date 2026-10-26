@@ -1,7 +1,7 @@
 import {createHash,randomUUID} from "node:crypto";
 import {appendHistoryEntry,applyHistoryRetention,commitHistory,deleteHistoryEntry,deleteProjectHistory,readHistoryStore,resetHistoryStore} from "./history-store.js";
 import {captureHistory,exportHistory,searchHistory} from "./history.js";
-import {cancelHistorySelection,historyUnavailable,normalizeHistoryQuery,projectHistory,selectHistoryEntry,type HistoryProjection,type HistorySelection} from "./history-selector.js";
+import {cancelHistorySelection,historyUnavailable,historyPreviewRow,normalizeHistoryQuery,projectHistory,selectHistoryEntry,type HistoryProjection,type HistorySelection} from "./history-selector.js";
 
 interface HistorySelectOptions{signal?:AbortSignal}
 export interface HistoryCommandContext{storePath:string;projectId:string;sessionId:string;hasUI:boolean;signal?:AbortSignal|undefined;select?:(title:string,options:string[],opts?:HistorySelectOptions)=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>}
@@ -63,7 +63,7 @@ export async function runHistoryCommand(args:string,context:HistoryCommandContex
  if(action==="disable"){
   await commitHistory(context.storePath,store.revision,current=>({...current,revision:current.revision+1,policy:{...current.policy,enabled:false}}));return "History capture disabled. Existing entries are unchanged.";
  }
- if(action==="search")return JSON.stringify(searchHistory(store.entries,context.projectId,rest),null,2);
+ if(action==="search")return JSON.stringify(searchHistory(store.entries,context.projectId,rest).map(historyPreviewRow),null,2);
  if(action==="export")return exportHistory(store.entries,context.projectId);
  if(action==="retention"){
   if(!/^\d{1,5}$/u.test(rest))return usage;const maxEntries=Number(rest);if(maxEntries<1||maxEntries>10000)return usage;

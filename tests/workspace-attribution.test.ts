@@ -1,6 +1,31 @@
 import test from "node:test";import assert from "node:assert/strict";import path from "node:path";import {findPotentialWorkspaceConflicts,groupChanges,recordWorkspaceChange,visibleWorkspaceConflictRows,visibleWorkspaceRows} from "../src/runtime/workspace-attribution.js";
 import {mkdtemp,mkdir,readFile,realpath,rm} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {PersistentWorkspaceStore,parseWorkspaceFile,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";import authorityExtension,{recordSuccessfulWorkspaceWrite} from "../extensions/authority.js";
 const base={path:"src/a.ts",actor:{kind:"agent" as const,id:"worker-1"},sessionId:"s1",projectId:"p1",worktree:path.resolve("repo"),operation:"modify" as const,at:"2026-10-06T00:00:00Z"};
+test("workspace display sanitizes control and format characters before bounding without mutating attribution",()=>{
+ const controls="\u001b\u0007\u009b\u009d\u007f\n\r\t\u202e\u2066\u200b\u2028\u2029";
+ const change=recordWorkspaceChange({...base,path:`src/${controls}café-日本.ts`});
+ const before=structuredClone(change),cleanPath=`src/${"�".repeat(13)}café-日本.ts`;
+ assert.deepEqual(visibleWorkspaceRows([change],200),[`modify agent:worker-1 ${cleanPath}`]);
+ assert.deepEqual(change,before);
+ const benign={...base,path:"src/café-日本.ts"};
+ assert.deepEqual(visibleWorkspaceRows([benign]),["modify agent:worker-1 src/café-日本.ts"]);
+ assert.deepEqual(visibleWorkspaceRows([change],30),[`modify agent:worker-1 …é-日本.ts`]);
+ const injected={...base,actor:{kind:"agent" as const,id:"x\u001b[31m"},operation:"mo\u0007dify" as "modify"};
+ assert.deepEqual(visibleWorkspaceRows([injected]),["mo�dify agent:x�[31m src/a.ts"]);
+});
+
+test("workspace conflict display sanitizes controls but preserves raw conflict identity",()=>{
+ const first=recordWorkspaceChange({...base,path:"src/\u001b]52;c;payload\u0007.ts",actor:{kind:"agent",id:"a\u009b"}});
+ const second=recordWorkspaceChange({...first,actor:{kind:"user",id:"b\u202e"}});
+ const conflicts=findPotentialWorkspaceConflicts([first,second]),before=structuredClone(conflicts);
+ assert.equal(conflicts.length,1);
+ assert.deepEqual(visibleWorkspaceConflictRows(conflicts,200),["potential conflict agent:a� -> user:b� src/�]52;c;payload�.ts"]);
+ assert.deepEqual(conflicts,before);
+ assert.equal(conflicts[0]!.path,first.path);
+ const bounded=visibleWorkspaceConflictRows(conflicts,20);
+ assert.deepEqual(bounded,["potential conflict a"]);
+});
+
 test("workspace attribution binds actor session project and worktree",()=>{const c=recordWorkspaceChange(base);assert.equal(c.actor.id,"worker-1");assert.equal(groupChanges([c]).get("agent:worker-1")?.length,1);});
 test("workspace attribution rejects escape/control and renders bounded rows",()=>{assert.throws(()=>recordWorkspaceChange({...base,path:"../x"}),/escapes/);assert.throws(()=>recordWorkspaceChange({...base,actor:{kind:"agent",id:"bad\nactor"}}),/Invalid/);const row=visibleWorkspaceRows([{...base,path:"very/long/path/to/a/file.ts"}],30)[0]!;assert.ok(row.length<=30);});
 test("workspace attribution rejects forged actor kinds and incomplete operations",()=>{assert.throws(()=>recordWorkspaceChange({...base,actor:{kind:"admin" as never,id:"u"}}),/actor kind/i);assert.throws(()=>recordWorkspaceChange({...base,operation:"review" as never}),/operation/i);assert.throws(()=>recordWorkspaceChange({...base,path:""}),/path/i);});

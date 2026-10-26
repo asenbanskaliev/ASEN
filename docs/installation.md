@@ -1,0 +1,195 @@
+# Inspect and stage an ASEN managed installation
+
+ASEN exposes backend APIs for inventorying versions, bootstrapping the first version and staging additional inactive versions. These do **not** activate a version or make the `asen setup` command an installer.
+
+## Ownership boundary
+
+`<prefix>/.asen`-style prefixes are shared containers. The managed-install API owns only `<prefix>/install` after validating its `asen.managed-install/v1` receipt. It never adopts the whole prefix, `config.json`, `agent`, Pi/custom homes, projects, or unknown siblings.
+
+| API | Result |
+| --- | --- |
+| `inspectManagedInstall` | Read-only `absent`, `owned`, or `foreign` inventory, including an optional validated stored selection. It performs no writes and grants no authority. |
+| `selectManagedVersion` | Compare-and-set publication of ordinary stored-selection metadata under the managed maintenance lease. It does not activate or execute the selected version. |
+| `stageManagedInstall` | With explicit confirmation, copies a finite manifest of ordinary package files into a fresh private stage, verifies bytes, and publishes one inactive version. |
+| `stageAdditionalManagedVersion` | Under the non-stealing lease, publishes another inactive version and atomically commits its finite catalog entry; preserves the v1 receipt. |
+| `verifyManagedVersion` | Reads an owned version's integrity and package metadata. Never executes the staged entry or grants activation authority. |
+| `probeManagedCliVersion` | Explicitly executes one listed CLI `--version` invocation with bounded observation. Never establishes Pi/ASEN runtime readiness or activation authority. |
+| `launchManagedSelectedVersion` | Executes one explicitly named, currently selected owned CLI under the shared lease. Caller intent is not publisher verification, native consent, activation, or a sandbox. |
+| `withManagedMaintenanceLock` | Cooperative non-stealing lock primitive for a trusted callback in an existing owned installation. Used by explicit CLI observation, selected execution, and additional-version staging; fresh bootstrap and future activation/rollback remain separate. |
+
+A staged report always has `activation: "not-active"` and `runtimeReady: false`. No `current` selector is created. A CLI version observation is not runtime verification. Runtime readiness, activation, upgrades, rollback, and upgrade concurrency remain unfinished.
+
+## Optional read-only version catalog
+
+`inspectManagedInstall({prefix})` still accepts the unchanged single-version `managed-install.json` receipt. With no catalog, its DTO and identical first-version staging behavior stay unchanged. An optional `<prefix>/install/managed-versions.json` supports a finite multi-version **inventory**, not installation or activation.
+
+The catalog has exactly `schema: "asen.managed-version-catalog/v1"`, `product: "asen"`, `canonicalManagedRoot` matching the legacy receipt, and a non-empty `versions` array. Each entry has exactly `version` and `files`; file entries retain the legacy canonical `path`, nonnegative integer `size` and lowercase SHA-256 rules. Versions and normalized file paths must be unique. The legacy version must occur once with the same ordered manifest as its receipt. Catalog entries are returned in declared order, always with `runtimeReady: false`. Without a selector, `activeVersion` remains `null`; the optional stored selection below does not establish host activation.
+
+The reader requires regular canonical catalog/anchor files and physical root/version-directory claims, verifies every listed version's complete byte manifest and namespace, then rechecks catalog/anchor bytes and identities. A malformed, unreadable, non-regular, mismatched, invalid or observably changed recognized catalog returns `foreign`, no versions, and `ASEN managed-version catalog failed validation`. It never falls back to an owned legacy view of a bad recognized catalog. Unlisted version directories and unknown root files are not adopted, scanned or deleted. Persistent metadata/path checks are not an atomic snapshot or protection against hostile same-user/ABA mutation.
+
+The v1 receipt is not extended, replaced or migrated. Older readers ignore the new root catalog and continue seeing only the legacy version; older identical staging remains write-free and differing staging still conflicts. The current reader never creates a catalog, lock, temporary data or selector and never imports/executes package code. The additional-version API below is the validated writer: **do not hand-create catalog metadata to adopt arbitrary directories**. This index is bounded integrity metadata, not publisher authenticity, consent, activation authority or runtime proof. Explicit metadata verification can select only an inventoried requested version and still applies its existing package, bin and Node checks.
+
+## Read-only ordinary version selector
+
+Inventory recognizes an optional ordinary `<prefix>/install/current` file containing exactly an already inventoried stable version plus LF, such as `2.0.0\n`. The version must belong to the fully validated catalog, or to the legacy receipt's single-version inventory when no catalog exists. Unlisted directories are never adopted. Without `current`, existing inventory and identical staging keep their previous behavior.
+
+A present selector requires canonical regular-file metadata, physical identity, exact bytes and a bound owned root. The reader observes it before version validation and always rechecks the owned root afterward, including when the selector remains absent; a present selector also has its identity and bytes rechecked. Malformed, unlisted, linked, noncanonical, incomplete or observably drifting selectors return `foreign`, no versions, `activeVersion: null`, `runtimeReady: false`, and `ASEN managed-version selector failed validation`; appearance or disappearance during inspection also refuses. Invalid catalogs keep their own validation refusal.
+
+For a valid selector, `activeVersion` reports **stored selection metadata only**. Inspection itself creates no selector, lease, history, launcher or temporary data, executes no package code, and changes no home/config. No symlink is supported. The explicit `managed run` command described below can consume a matching selector only after fresh execution-boundary validation; selection alone never launches anything. Caller intent, publisher authentication, native consent, host activation and runtime readiness remain separate, and every inspection result still has `runtimeReady: false`. These pre/post checks detect persistent changes, not hostile same-user/ABA mutation or an atomic filesystem snapshot. Automatic activation, update and rollback remain separate unfinished operations.
+
+### Controlled selector publication
+
+`selectManagedVersion({prefix, version, expectedCurrentVersion, confirmed, hooks?})` writes only the ordinary `current` metadata file. `expectedCurrentVersion` is required and is either a stable semantic version or `null`; it provides exact compare-and-set intent. Before lease or temporary effects, the API requires explicit confirmation, a canonical owned inventory, a listed and byte-verified target, a valid ordinary selector, and an exact current-value match. Selecting the already-selected version with matching intent returns `unchanged` without creating a lease or changing filesystem metadata.
+
+A mutating selection uses the common non-stealing maintenance lease. It rebinds the prefix, managed root, versions parent, target version, v1 receipt, optional catalog, complete inventory and current selector before and during the lease. It exclusively creates one root-contained `current.<uuid>.tmp` with exact `version + "\\n"` bytes, rechecks all baselines immediately before one atomic rename, then verifies destination identity, bytes and authoritative read-back. It does not depend on `staging`, import package code, invoke a launcher, alter package/catalog/receipt bytes, or touch personal configuration.
+
+The frozen `ManagedVersionSelectionReport` has `status: selected | unchanged | failed | ambiguous`, `publication: not-started | committed | unchanged | uncertain`, cleanup disposition, retained diagnostic paths and an error string. It always reports `activation: "not-active"` and `runtimeReady: false`. A confirmed boolean and successful report describe caller intent and stored data only; neither is human/native approval, publisher authenticity, launcher activation or runtime evidence.
+
+Operational failures throw `ManagedVersionSelectionError` with the frozen report and original cause. Read-back mismatch never succeeds. If rename may have moved before throwing, publication remains `uncertain`, the destination is never deleted or rolled back, and no matching foreign bytes are adopted. Cleanup removes only a positively rebound private temporary before any move attempt; collision, replacement or unknown bytes are retained. A lease-release failure after verified publication remains overall `ambiguous` while preserving `publication: "committed"`, the actual selected bytes and the foreign marker. Combined operation and release failures preserve both causes. There is no automatic retry.
+
+### Public retained-version selection
+
+`asen [--link|--isolated|--home PATH] managed select <exact-target-version> --expected-current <exact-current-version>` exposes that stored-metadata operation for an already listed version. Both versions are mandatory exact `major.minor.patch` values. The command supplies the non-null expected current value directly to the backend; stale or absent current metadata is refused rather than inferred or repaired. Selecting the matching current version is an unchanged, lock-free operation.
+
+The software prefix is always `<launcher-home>/.asen`. Home selector flags are grammar-checked for compatibility, but data-home environment variables and launcher data-home configuration cannot redirect this software prefix. Selection does not read that irrelevant configuration, resolve Pi, execute staged package code, acquire software, stage an update, or scan source paths.
+
+A successful `selected` or `unchanged` report is printed unchanged as two-space JSON plus LF and exits zero. A `ManagedVersionSelectionError` prints its real frozen report the same way, exits one, and warns that selection is not confirmed. This preserves committed or uncertain publication, cleanup and retained-path evidence; it is never retried or compensated. Other preflight errors exit one with no JSON and retain the backend message. Invalid command grammar exits two before launcher-home lookup.
+
+This command can move between retained catalog entries, but it is not full update or rollback. It creates no selection history, restores no data, changes no data-home schema, grants no native or publisher authority, and does not activate, launch, or establish runtime readiness. The public update command remains observation-only. Internal expected-byte staging is described below; a complete acquisition/update lifecycle remains unfinished.
+
+## Observation-only managed update preview
+
+`asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run` is a fixed-order local observation command. Both paths must be bounded, non-empty, control-free, fully qualified local absolute paths. Windows drive-relative, root-relative, UNC, device, and extended forms are refused. Repeats, alternate ordering, extras, a global `--package-root`, or a missing `--dry-run` exit `2` before launcher-home lookup or filesystem access. Other managed actions, Pi `update` passthrough, and tokens after the ordinary `--` boundary keep their existing parsing behavior.
+
+Home selectors retain their existing conflict validation, but this command does not read launcher configuration or resolve a data home. Its software prefix is always `path.join(path.resolve(OS home), ".asen")`; `--home`, `--link`, `--isolated`, `ASEN_HOME`, `PI_CODING_AGENT_DIR`, and other data-home selectors cannot relocate it. The package root comes only from the action-specific `--package-root` operand.
+
+The command-specific manifest reader accepts one ordinary, unlinked, single-link file with supported filesystem identity. It compares pre-open path metadata, descriptor metadata before and after reading, and post-read path metadata. Where available it uses no-follow and nonblocking read-only flags. Descriptor ownership is established before any post-open check and closure is attempted in `finally`. The reader requests no more than a 1 MiB limit plus one growth-detection byte, decodes UTF-8 fatally, parses JSON without echoing document contents, and enforces a 30-second monotonic cooperative deadline. The deadline is checked between awaited operations; it does not preempt an in-flight kernel call and is not implemented with `Promise.race`.
+
+Decoded data is passed unchanged to `verifyManagedAcquisitionPackage`, which retains its own 64 MiB-per-file, 256 MiB-total, 1 MiB-chunk, and 30-second cooperative limits. The preview then calls the existing read-only `inspectManagedInstall`. That inspector may read the owned receipt, optional catalog, selector, and installed content. **Those existing reads are not included in the new manifest/package budgets**, so this is not advertised as a globally bounded operation. None of the composed observations is an atomic or hostile-ABA-safe snapshot.
+
+Success exits `0`, leaves stderr empty, and prints exact two-space-indented `asen.managed-update-preview/v1` JSON plus LF. The report contains:
+
+- `operation: "managed-update-preview"`, `executable: false`, and `authorized: false`;
+- the resolved `manifestPath` and existing acquisition-verification report;
+- `managed.prefix`, `managed.status` (`absent`, `foreign`, or `owned`), and the observed owned `activeVersion` as `selectedVersion`;
+- `targetVersionState`: `not-retained`, `matching-retained`, `conflicting-retained`, or `not-observable`;
+- `staging`, `selection`, and `activation` all `not-run`; and
+- `snapshotGuarantee: "none"`, `producerAuthenticity: "not-established"`, and `runtimeReady: false`.
+
+Only an `owned` inspection with the same target version and the exact same **ordered** destination path, size, and SHA-256 inventory is `matching-retained`. An absent target is `not-retained`; differing retained metadata is `conflicting-retained`; foreign state is `not-observable`. The command never adopts or repairs a foreign installation. Matching hashes and retention do not establish publisher identity, producer provenance, authority, activation, executable readiness, or the unresolved acquisition dependency.
+
+Operational refusal exits `1` with no stdout and one line: `Managed update preview refused: <message>`. Control characters in the embedded message become spaces and the message is limited to 512 characters; stacks and manifest contents are not printed. The route performs no configuration read, network request, package execution, installation, copy, staging, lease acquisition, selector write, activation, backup/restore, or destination output creation.
+
+## Internal expected-byte update staging
+
+`stageManagedAcquisitionUpdate` in `src/runtime/managed-acquisition-update.ts` accepts absolute manifest/package/prefix paths, protected paths and explicit `confirmed: true`. This internal API performs a fresh preview, requires an existing owned installation and stages the declared local bytes through `stageAdditionalManagedVersion` with `expectedAcquisition`. Conflicting retained inventory is refused; matching retained inventory still undergoes current-content and epoch checks rather than returning from a stale preview.
+
+The expected mode bounds the copy, hashes actual written bytes and reuses the maintenance lease, non-overwriting publication and catalog checks. Omitting `expectedAcquisition` retains the legacy staging route. Failed staging preserves `ManagedAdditionalStageError.report`, including uncertain publication and retained paths; callers must not reinterpret ambiguity as rollback or retry automatically.
+
+Cleanup requires proven file bytes and physical identity. Directory claims retain exact bigint device/inode values and revalidate the root and nested ancestors before removal. Unknown, replaced or unproven partial content is retained. Claims also include directory link counts: on filesystems where child creation/removal changes those counts, cleanup may conservatively retain an otherwise owned stage. Windows test evidence does not establish all-platform cleanup behavior.
+
+The successful `asen.managed-acquisition-update/v1` report returns `staged` or `unchanged`, with selection and activation `not-run`, producer authenticity `not-established` and runtime readiness `false`. This is not a public mutating CLI command, download service, publisher verification, package execution, sandbox, atomic snapshot or complete updater. Existing inspection and lifecycle reads are outside the copy budgets; no global operation deadline is claimed.
+
+## Explicit selected-version execution
+
+`asen [--link|--isolated|--home PATH] managed run <exact-version> -- <Pi arguments>` is the only public selected-version execution form. It requires an exact stable version that equals the validated ordinary `current` selector. The command is explicit current-user execution intent; it is **not** verified human-origin consent, publisher authenticity, native approval, OS confinement, runtime readiness, or default activation. Do not use it to execute acquired or untrusted packages.
+
+The command rejects malformed or missing versions, a missing `--`, unknown managed actions, and caller-supplied `--package-root` without launch or fallback. A literal `managed` after the ordinary end-of-options delimiter remains a Pi argument. Existing home flag/config/environment/default precedence selects the data home, while the software prefix remains `<launcher-home>/.asen`; neither changes the caller project working directory.
+
+The backend reuses the managed CLI candidate binder, so each check covers the owned root, exact version directory, canonical listed bin, source bytes, and full finite inventory. It additionally binds the physical ordinary `current` file and its exact `version + LF` bytes. Under the existing non-stealing maintenance lease it revalidates those bindings immediately before at most one launch and holds the lease until that child closes. Drift or a missing/mismatched selector launches nothing. A possible launch followed by an uncertain error or lease release is reported as ambiguous and is never retried automatically.
+
+The selected child is the actual Node executable with arguments `listed-bin --home <resolved-data-home> --package-root <selected-version-root> -- <original-Pi-arguments>`. The caller working directory, stdio and environment are inherited; therefore existing explicit `ASEN_PI`, bundled runtime, and explicit `ASEN_PI_ON_PATH` resolution remain available inside the selected CLI without adding implicit PATH discovery. On Windows the existing inherited-policy contained-process primitive is used with a private owned payload directory; other platforms retain its existing behavior. This is defense in depth, not a filesystem/network sandbox, hostile-ABA guarantee, or descendant-process supervision promise.
+
+No selection receipt is promoted, no persistent grant is written, and no install, acquisition, update, rollback, restart, global fallback, or host configuration change is performed.
+
+## Read-only package metadata verification
+
+`verifyManagedVersion({prefix, version})`, exported from `src/runtime/managed-version-verification.ts`, reuses the managed inventory. It requires listed `package.json` bytes matching the receipt, exact `name: "asen"` and version, and a canonical `bin.asen` target listed in that version. An optional leading `./` is accepted; absolute paths, traversal, backslashes, colons, empty segments and unlisted targets are refused. A final inventory comparison rejects observed drift.
+
+The `asen.managed-version-verification/v1` report separates `integrity`, `packageMetadata` and `nodeCompatibility`. Node compatibility supports only canonical `>=major.minor.patch` floors, including the shipped `>=22.19.0`; other ranges remain `unverified` rather than being declared incompatible. It compares the actual current Node version, not an injected readiness callback. A valid metadata report has a null `reason`; refusals explain missing ownership/integrity, invalid package identity, an unlisted/noncanonical bin, an unsupported range, an incompatible Node floor, or observed drift.
+
+This operation performs no writes, imports of staged code, subprocesses, package-manager actions or network requests. **Every result has `runtimeProbe: "not-run"` and `runtimeReady: false`.** Metadata and checksums are neither publisher authenticity nor executable/runtime proof. The returned report is not a future activation permission; later operations must revalidate their own inputs. Inspection stays inactive, and no selector, lock or supplemental receipt is created. CLI execution is a separate explicit operation below; activation, updates, runtime verification and rollback remain unfinished. The shared read-only `resolveManagedCliCandidate` returns the same verification plus an immutable nullable metadata target, never permission to execute.
+
+## Standalone read-only installation doctor
+
+`asen [--link|--isolated|--home PATH] [--package-root PATH] doctor` emits `asen.installation-doctor/v1` as two-space JSON plus LF. The executing package root and optional effective diagnostic package root are reported separately. Neither redirects the fixed software prefix `<launcher-home>/.asen`; home selectors and the existing strict launcher configuration resolve only the data home.
+
+The doctor composes the existing managed-install inventory and per-version metadata verifier. It reports stored selection as current, current-absent, or not-inspected, without treating metadata as activation. Configuration is reported as absent, valid, invalid, or unreadable; malformed configuration follows the ordinary fallback, while unreadable configuration makes collection incomplete and leaves resolved home null. Pi reporting exposes only `env`, `bundled`, `configured-path`, `unavailable`, or `unknown` with `configured-only` confidence. Opaque command values and arguments are never echoed, scanned, or executed.
+
+Maintenance observation is deliberately weak: only the fixed marker's presence and entry type are reported, with `presence-only` confidence. The doctor does not read marker contents, infer owner/PID/liveness/staleness, wait, acquire, reclaim, or repair. Foreign, linked, changed, or otherwise uncertain managed roots produce unknown marker state rather than descendant inspection.
+
+Exit `0` means all bounded metadata observations completed; it does **not** mean healthy, approved, active, or ready. Foreign/absent installs, corrupt metadata, no current selection, incompatible or unverified Node metadata, and a present marker remain findings that can still accompany exit `0`. Exit `1` preserves the JSON report and indicates an unreadable required observation or recognized managed-state change. Exit `2` is invalid doctor grammar and produces no JSON.
+
+Every report states `confidence: "metadata-only"`, `atomic: false`, `runtimeProbe: "not-run"`, and `runtimeReady: false`; publisher authenticity, native authority, and process health remain unknown. Pre/post comparison detects persistent managed-state changes but is not an atomic snapshot or hostile same-user/ABA protection. The command imports no managed package, runs no `--version` probe, loads no extension/runtime, initializes no store, and performs no installation, activation, repair, update, backup, restore, removal, or lock mutation.
+
+## Inherited-policy process primitive
+
+`spawnContainedWithInheritedPolicy(command, args, options, privateTempRoot)` in `src/evidence/spawn-contained.ts` is a low-level prerequisite for later explicit execution, **not** the managed CLI probe or an installer. Its caller must authorize the command and supply an existing absolute, unlinked, caller-owned temporary directory. It forces `shell:false`. On Windows it pins the system PowerShell executable, inherits host execution policy without an override, and uses the existing Job Object bridge with explicitly UTF-8-decoded payloads under that private directory. On other platforms it uses ordinary spawn; it is not a filesystem/network sandbox or a promise to clean every hostile descendant.
+
+The inherited-policy path removes only its original regular payload with matching identity/content and its empty original directory; unknown, replaced or uncertain data is retained. Existing `spawnContained` callers keep their previous behavior. The primitive itself makes no publisher, SDK or runtime-readiness assertion. The explicit CLI observation below consumes this primitive. The activation workflow remains unfinished.
+
+## Explicit CLI version observation
+
+`probeManagedCliVersion({prefix, version, confirmed, signal?, timeoutMs?, maxOutputBytes?})` from `src/runtime/managed-cli-version-probe.ts` executes package code with **current-user permissions**. Call it only after human authorization to execute that particular package. `confirmed: true` represents caller intent, **not native human consent**; names, checksums, metadata, PIDs and matching output do not authenticate a publisher. This is neither a read-only check nor a filesystem/network sandbox. Do not automatically execute an acquired or untrusted package.
+
+Missing confirmation, an already-aborted signal, invalid bounds or unverified metadata refuse before temporary writes or process launch. The operation reuses metadata validation, pins canonical root/version/entry identities and manifest digests, then revalidates before launch and after every process completion. It runs only the actual Node executable with `[listedCanonicalBin, "--version"]`, `shell:false`, a whitelisted environment and fresh private home/temp/AppData/XDG directories inside the owned install child. No credential or `NODE_OPTIONS` inheritance, provider or SDK probe is introduced. After these initial checks, the operation acquires the common maintenance marker and revalidates its candidate before creating temporary data or launching code. The lease remains held through observation, post-validation and temporary-data disposal. Cooperative CLI probes and additional-version staging share the lease; first-version bootstrap and future activation/rollback remain separate. Pre/post checks detect persistent drift but do not prevent transient/adversarial mutation.
+
+The deadline defaults to 10,000 ms (integer range 1–20,000), followed by at most 1,000 ms close grace after stopping. Combined retained stdout/stderr defaults to 65,536 bytes (integer range 1–65,536); overflow stops observation without accumulating further data. Cancellation requests termination once. `termination: "closed"` refers to the observed launcher close, not proof that every hostile descendant ended. An uncertain close remains uncertain rather than triggering an uncontained fallback.
+
+The frozen `asen.managed-cli-version-observation/v1` report separates `cliVersion: "not-run" | "observed" | "failed" | "ambiguous"`, raw collected output, exit/signal, outer launcher PID and launch-attempt count. Only observed close, exit zero, empty stderr and exact version plus LF yield `observed`. Output/exit mismatches fail; timeout, cancellation, overflow, errors, uncertain termination or post-execution drift remain ambiguous. **Every result has `runtimeReady: false`**, even when CLI version output matches: `--version` does not establish Pi or harness readiness. No selector or activation receipt is created. The transient maintenance marker is released only after positively identifying its original file and bytes; unknown or replaced data is retained.
+
+Temporary cleanup removes only positively identified known empty directories. Unknown bytes remain; `temporaryData` reports the original path and `removed`, `retained` or `uncertain` disposition. Replaced/missing claims or ambiguous execution never become assertions of owned retained data, and changed package bytes are not repaired or deleted.
+
+The maintenance acquisition wait adds up to 2,000 ms before the separate process deadline. A blocked or unavailable lease reports `maintenance-unavailable` without launching or creating probe temporaries; cancellation while waiting reports `cancelled-before-launch`. A queued candidate that loses ownership/integrity is refused as `candidate-drift`. If release becomes uncertain **after code ran**, the final report remains `ambiguous` with `maintenance-unavailable` and preserves the actual launch count, raw streams, exit/signal, launcher close and temporary-data disposition; it never rewrites an executed invocation as `not-run`. The error includes any prior process reason/error.
+
+## Non-stealing maintenance lock primitive
+
+`withManagedMaintenanceLock({prefix, confirmed, timeoutMs?, signal?}, operation)` from `src/runtime/managed-maintenance-lock.ts` requires an absolute prefix, explicit caller confirmation and an existing canonical, regular, owned install child. It reuses `inspectManagedInstall`; it does not create or adopt a root. Confirmation is caller intent, not native consent. The callback is trusted current-user code, not a sandbox.
+
+Acquisition exclusively creates `<prefix>/install/.asen-maintenance.lock` with `wx`, without hard links. The bounded acquisition wait defaults to 2,000 ms (integer range 1–30,000), uses a monotonic clock and can be cancelled before the callback. This is **not** an operation deadline: a running callback is never detached or allowed to overlap another owner. PID, timestamp and token are diagnostic consistency metadata, not authority. Every existing marker remains untouched, including old, malformed or dead-owner data. There is no automatic stale-lock recovery, liveness probe or lock-stealing fallback.
+
+The primitive rechecks owned-root integrity before the callback and pins root/file physical identities, canonical paths and exact marker bytes. Release unlinks only the positively identified original marker. Replaced roots/files, changed bytes, initialization/close errors or uncertain cleanup retain data and report `LOCK_INIT_FAILED` or `LOCK_RETAINED` with `lockPath` and cause. An ordinary operation error survives a clean release unchanged; if both operation and release fail, `AggregateError.errors` preserves both. Other refusal codes are `CONFIRMATION_REQUIRED`, `INVALID_REQUEST`, `OWNED_ROOT_REQUIRED`, `ROOT_CHANGED`, `LOCK_TIMEOUT` and `LOCK_CANCELLED`; native filesystem acquisition errors are preserved. No recursive deletion, ownership receipt, activation selector, package execution or publisher/readiness claim is added.
+
+Explicit CLI observation and additional-version staging consume this primitive. First-version bootstrap still uses its exclusive fresh-root claim. Activation/upgrade selection and rollback are unfinished and are not yet serialized by this primitive. Separate-invoker-process and all-platform execution are not claimed here. Remaining integration and multi-version maintenance are unfinished. Existing private-store locks retain their separate unchanged reclamation policy. Pre/post identity checks do not defeat hostile same-user writers or transient ABA replacement; an orphaned marker requires explicit investigation, not an automatic deletion command.
+
+## Staging an additional inactive version
+
+`stageAdditionalManagedVersion(request)` from `src/runtime/managed-install.ts` accepts the same finite source request as first-version staging, but requires an existing canonical owned installation. Confirmation, paths, protected-data overlap, source shape and occupied/unlisted destinations are checked before lease effects. An already cataloged identical version is verified and returned `unchanged` without writes; differing or unlisted occupied destinations throw `VERSION_CONFLICT`. No orphan adoption or retry-overwrite is available.
+
+The operation uses the real root, shared source guards and non-stealing lease: rebind source/root/staging/versions/v1/catalog → copy and verify a fresh private stage → publish and verify the actual version destination → create a private catalog temporary → rebind the baseline → atomically rename the catalog → verify exact committed bytes and inventory. The original v1 receipt and all previous catalog entries remain unchanged. No package code, package manager, provider, activation selector or runtime probe runs. The request may supply trusted test adapters `catalogPublication.beforeCommit` and `catalogPublication.rename`; these are not consent or filesystem authority.
+
+The frozen `ManagedAdditionalStageReport` separates `status: staged | unchanged | failed | ambiguous`, `publication: not-started | published | uncertain`, and `catalog: not-committed | committed | unchanged | uncertain`. It includes the version/file manifest, expected version path, original `stagePath`, `cleanup: not-needed | removed | retained | uncertain`, diagnostic `retainedPaths`, and an error string. All reports keep `activation: "not-active"` and `runtimeReady: false`. Diagnostic paths are observations, never ownership grants.
+
+Preflight keeps existing validation errors. Operational failures throw `ManagedAdditionalStageError` with the frozen `report` and original `cause`; if operation and lease release both fail, the cause preserves both in `AggregateError`. A release failure after a successful catalog commit remains overall `ambiguous` while preserving actual `published`/`committed` evidence and foreign marker bytes.
+
+Before any possible publication, cleanup removes only a positively bound empty or fully verified private stage and known files/empty directories. Partial, unknown or replaced data remains uncertain. Once a rename might have published the version, the destination is **never automatically deleted**. A failed pre-commit operation can leave an unlisted orphan that future calls refuse; a rename that moved then reported an error stays uncertain. Catalog commit is not retried, rolled back or inferred from a matching name. This is inactive local staging, not activation, update selection, rollback, all-platform proof or a sandbox.
+
+## Required staging input
+
+Callers provide:
+
+- an absolute shared prefix and absolute package root;
+- an exact stable `major.minor.patch` version (prerelease labels and ranges are refused);
+- an explicit list of relative source and destination file paths;
+- absolute protected paths for Pi/custom/project data; and
+- `confirmed: true` at the mutation boundary.
+
+The API rejects absolute or traversing manifest entries, duplicates, sensitive paths, linked/non-regular files, source or protected-data overlap, foreign managed roots, and identity or content drift. It copies bytes only; it does not import or execute source packages, scan homes or package trees, invoke a package manager, or access the network.
+
+## Failure and integrity behavior
+
+Selected bytes are hashed before copying and verified again in the fresh stage. The implementation exclusively creates the managed child, binds the fresh root and stage to their observed filesystem identities, and revalidates both immediately before publication and cleanup. A receipt records only the product, canonical managed root, version, non-empty relative file manifest, sizes, and SHA-256 digests. It is ownership/integrity metadata, not consent, task/review authority, publisher proof, or runtime proof.
+
+Failures remove only positively identified files and empty directories created for the fresh stage. A replaced directory identity or any unexpected file makes cleanup uncertain; the foreign or unlisted content remains untouched and the thrown `STAGING_RETAINED` error identifies the retained pathname for diagnosis. Unknown prefix contents are never recursively removed. Identical owned staging validates and returns `unchanged` without writes; differing existing data is preserved for later upgrade handling.
+
+On Windows only, publication of the verified directory retries `EPERM`, `EBUSY`, and `EACCES` after 200, 400, 800, and 1600 milliseconds (at most five attempts). Each attempt revalidates the original managed root, stage and versions-parent identities, the absent destination, and every staged digest. A changed identity, changed byte, newly occupied destination, ambiguous move, or non-retryable error stops publication. Other platforms do not retry. Exhaustion preserves the first publication error as the cause; it never reports success. Only this directory move is retried, not the whole install or receipt commit. Foreign destinations, including empty directories, are not removed by cleanup. Test adapters can inject platform, publication and waits under the existing hooks; they grant no filesystem authority or activation.
+
+Namespace validation lists only the immediate children of directories derived from the declared manifest. Extra files or directories refuse staging with `STAGING_RETAINED` and cause `staged contents include an unlisted or invalid entry`; unknown bytes are preserved. Extra entries in an existing version make read-only inventory `foreign` and identical restaging fail with `VERSION_CONFLICT`, without removing those entries. Validation never descends into an unlisted directory or scans shared homes or projects. If a directory move completes but reports an error, no receipt is published: the diagnostic reports the existing version destination under unchanged managed/versions roots, without adopting that directory for cleanup.
+
+These checks are defense in depth against path and ownership mistakes. They are not an OS sandbox and do not replace filesystem permissions or host isolation.
+
+## Project-memory backup preview
+
+`asen [--link|--isolated|--home PATH] backup project-memory --project <project-id> --destination <absolute-path> --dry-run` prints a read-only `asen.project-memory-backup-preview/v1` report. The destination is validated lexically but is not accessed, and no store is opened, exported or backed up. Use a POSIX absolute path or a fully qualified Windows drive/UNC path; a Windows root-relative path such as `\backup.json` is rejected because its drive is unspecified.
+
+The reported launcher data home follows the existing flag, configuration, environment and default precedence, but is Pi-only informational metadata. The preview deliberately reports `memorySource: "not-resolved"`: launcher home selection does not identify or bind `memory.db`. The report also names excluded authority-bearing state, separately unconsented personal data and unsupported whole-home/live-restore work. It is never executable or authorized and creates no backup.
