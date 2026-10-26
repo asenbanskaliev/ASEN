@@ -135,11 +135,12 @@ export function runChildWithWatchdog({
  });
 }
 
-// Managed-install tests require canonical roots; macOS /var and Windows 8.3 temp paths are not.
+// Managed-install tests require canonical roots, and the macOS temporary directory is reached through the /var link.
 function canonicalTemporaryEnvironment(env){
+ if(process.platform!=="darwin")return env;
  try{
   const canonical=realpathSync.native(tmpdir());
-  return {...env,TMPDIR:canonical,TEMP:canonical,TMP:canonical};
+  return {...env,TMPDIR:canonical};
  }catch{return env;}
 }
 
