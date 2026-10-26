@@ -108,7 +108,7 @@ function spawnWindowsJobCommand(command:string,args:readonly string[],options:Sp
 
 /** On Windows, start the exact command suspended and assign it to a kill-on-close Job Object before resume. */
 export function spawnContained(command:string,args:readonly string[],options:SpawnOptions={}):ChildProcess {
-  if(process.platform==="win32")return spawnWindowsJobCommand(command,args,options);
+ if(process.platform==="win32")return spawn(command,[...args],{...options,shell:false,detached:false,windowsHide:true});
   return spawn(command,[...args],options);
 }
 
