@@ -33,8 +33,8 @@ test("legacy contained spawn preserves its existing default command contract",as
   const call=calls[0];assert(call);assert.equal(call.options.cwd,f.root);assert.equal(call.options.env,process.env);
   assert.deepEqual(call.options.stdio,["ignore","pipe","pipe"]);assert.equal(call.options.shell,false);
   if(process.platform==="win32"){
-   assert.equal(call.command,"powershell.exe");assert.deepEqual(call.args.slice(0,-1),["-NoLogo","-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-EncodedCommand"]);
-   assert.equal(call.options.detached,false);assert.equal(call.options.windowsHide,true);
+   assert.equal(call.command,process.execPath);assert.deepEqual(call.args,["--version"]);
+   assert.equal(call.options.shell,false);assert.equal(call.options.detached,false);assert.equal(call.options.windowsHide,true);
   }else{assert.equal(call.command,process.execPath);assert.deepEqual(call.args,["--version"]);}
   fake.emit("close",0,null);
  });
