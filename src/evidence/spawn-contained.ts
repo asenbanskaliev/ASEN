@@ -1,1 +1,135 @@
-aW1wb3J0IHtzcGF3bix0eXBlIENoaWxkUHJvY2Vzcyx0eXBlIFNwYXduT3B0aW9uc30gZnJvbSAibm9kZTpjaGlsZF9wcm9jZXNzIjsKaW1wb3J0IHtsc3RhdFN5bmMsbWtkdGVtcFN5bmMscmVhZEZpbGVTeW5jLHJlYWxwYXRoU3luYyxybVN5bmMscm1kaXJTeW5jLHdyaXRlRmlsZVN5bmN9IGZyb20gIm5vZGU6ZnMiOwppbXBvcnQge3RtcGRpcn0gZnJvbSAibm9kZTpvcyI7CmltcG9ydCB7aXNBYnNvbHV0ZSxqb2luLHJlc29sdmV9IGZyb20gIm5vZGU6cGF0aCI7CmltcG9ydCB7ZmlsZVVSTFRvUGF0aH0gZnJvbSAibm9kZTp1cmwiOwoKY29uc3Qgd2luZG93c0pvYlNvdXJjZT1TdHJpbmcucmF3YAp1c2luZyBTeXN0ZW07CnVzaW5nIFN5c3RlbS5Db21wb25lbnRNb2RlbDsKdXNpbmcgU3lzdGVtLlJ1bnRpbWUuSW50ZXJvcFNlcnZpY2VzOwp1c2luZyBTeXN0ZW0uVGV4dDsKcHVibGljIHN0YXRpYyBjbGFzcyBBc2VuQ29udGFpbmVkUHJvY2VzcyB7CiAgY29uc3QgdWludCBDUkVBVEVfU1VTUEVOREVEPTB4MDAwMDAwMDQsIENSRUFURV9VTklDT0RFX0VOVklST05NRU5UPTB4MDAwMDA0MDA7CiAgY29uc3QgdWludCBTVEFSVEZfVVNFU1RESEFORExFUz0weDAwMDAwMTAwLCBKT0JfT0JKRUNUX0xJTUlUX0tJTExfT05fSk9CX0NMT1NFPTB4MDAwMDIwMDA7CiAgY29uc3QgdWludCBXQUlUX09CSkVDVF8wPTAsIElORklOSVRFPTB4ZmZmZmZmZmY7CiAgW1N0cnVjdExheW91dChMYXlvdXRLaW5kLlNlcXVlbnRpYWwsIENoYXJTZXQ9Q2hhclNldC5Vbmljb2RlKV0gc3RydWN0IFNUQVJUVVBJTkZPIHsKICAgIHB1YmxpYyBpbnQgY2I7IHB1YmxpYyBzdHJpbmcgbHBSZXNlcnZlZDsgcHVibGljIHN0cmluZyBscERlc2t0b3A7IHB1YmxpYyBzdHJpbmcgbHBUaXRsZTsKICAgIHB1YmxpYyBpbnQgZHdYLGR3WSxkd1hTaXplLGR3WVNpemUsZHdYQ291bnRDaGFycyxkd1lDb3VudENoYXJzLGR3RmlsbEF0dHJpYnV0ZSxkd0ZsYWdzOwogICAgcHVibGljIHNob3J0IHdTaG93V2luZG93LGNiUmVzZXJ2ZWQyOyBwdWJsaWMgSW50UHRyIGxwUmVzZXJ2ZWQyLGhTdGRJbnB1dCxoU3RkT3V0cHV0LGhTdGRFcnJvcjsKICB9CiAgW1N0cnVjdExheW91dChMYXlvdXRLaW5kLlNlcXVlbnRpYWwpXSBzdHJ1Y3QgUFJPQ0VTU19JTkZPUk1BVElPTiB7IHB1YmxpYyBJbnRQdHIgaFByb2Nlc3MsaFRocmVhZDsgcHVibGljIHVpbnQgZHdQcm9jZXNzSWQsZHdUaHJlYWRJZDsgfQogIFtTdHJ1Y3RMYXlvdXQoTGF5b3V0S2luZC5TZXF1ZW50aWFsKV0gc3RydWN0IEJBU0lDX0xJTUlUX0lORk9STUFUSU9OIHsKICAgIHB1YmxpYyBsb25nIFBlclByb2Nlc3NVc2VyVGltZUxpbWl0LFBlckpvYlVzZXJUaW1lTGltaXQ7IHB1YmxpYyB1aW50IExpbWl0RmxhZ3M7CiAgICBwdWJsaWMgVUludFB0ciBNaW5pbXVtV29ya2luZ1NldFNpemUsTWF4aW11bVdvcmtpbmdTZXRTaXplOyBwdWJsaWMgdWludCBBY3RpdmVQcm9jZXNzTGltaXQ7CiAgICBwdWJsaWMgVUludFB0ciBBZmZpbml0eTsgcHVibGljIHVpbnQgUHJpb3JpdHlDbGFzcyxTY2hlZHVsaW5nQ2xhc3M7CiAgfQogIFtTdHJ1Y3RMYXlvdXQoTGF5b3V0S2luZC5TZXF1ZW50aWFsKV0gc3RydWN0IElPX0NPVU5URVJTIHsgcHVibGljIHVsb25nIFJlYWRPcGVyYXRpb25Db3VudCxXcml0ZU9wZXJhdGlvbkNvdW50LE90aGVyT3BlcmF0aW9uQ291bnQsUmVhZFRyYW5zZmVyQ291bnQsV3JpdGVUcmFuc2ZlckNvdW50LE90aGVyVHJhbnNmZXJDb3VudDsgfQogIFtTdHJ1Y3RMYXlvdXQoTGF5b3V0S2luZC5TZXF1ZW50aWFsKV0gc3RydWN0IEVYVEVOREVEX0xJTUlUX0lORk9STUFUSU9OIHsKICAgIHB1YmxpYyBCQVNJQ19MSU1JVF9JTkZPUk1BVElPTiBCYXNpY0xpbWl0SW5mb3JtYXRpb247IHB1YmxpYyBJT19DT1VOVEVSUyBJb0luZm87CiAgICBwdWJsaWMgVUludFB0ciBQcm9jZXNzTWVtb3J5TGltaXQsSm9iTWVtb3J5TGltaXQsUGVha1Byb2Nlc3NNZW1vcnlVc2VkLFBlYWtKb2JNZW1vcnlVc2VkOwogIH0KICBbRGxsSW1wb3J0KCJrZXJuZWwzMi5kbGwiLENoYXJTZXQ9Q2hhclNldC5Vbmljb2RlLFNldExhc3RFcnJvcj10cnVlKV0gc3RhdGljIGV4dGVybiBJbnRQdHIgQ3JlYXRlSm9iT2JqZWN0KEludFB0ciBhdHRyaWJ1dGVzLHN0cmluZyBuYW1lKTsKICBbRGxsSW1wb3J0KCJrZXJuZWwzMi5kbGwiLFNldExhc3RFcnJvcj10cnVlKV0gc3RhdGljIGV4dGVybiBib29sIFNldEluZm9ybWF0aW9uSm9iT2JqZWN0KEludFB0ciBqb2IsaW50IGluZm9DbGFzcyxyZWYgRVhURU5ERURfTElNSVRfSU5GT1JNQVRJT04gaW5mbyx1aW50IGxlbmd0aCk7CiAgW0RsbEltcG9ydCgia2VybmVsMzIuZGxsIixDaGFyU2V0PUNoYXJTZXQuVW5pY29kZSxTZXRMYXN0RXJyb3I9dHJ1ZSldIHN0YXRpYyBleHRlcm4gYm9vbCBDcmVhdGVQcm9jZXNzKHN0cmluZyBhcHAsU3RyaW5nQnVpbGRlciBjb21tYW5kLEludFB0ciBwcm9jZXNzQXR0cmlidXRlcyxJbnRQdHIgdGhyZWFkQXR0cmlidXRlcyxib29sIGluaGVyaXQsdWludCBmbGFncyxJbnRQdHIgZW52aXJvbm1lbnQsc3RyaW5nIGN3ZCxyZWYgU1RBUlRVUElORk8gc3RhcnR1cCxvdXQgUFJPQ0VTU19JTkZPUk1BVElPTiBpbmZvKTsKICBbRGxsSW1wb3J0KCJrZXJuZWwzMi5kbGwiLFNldExhc3RFcnJvcj10cnVlKV0gc3RhdGljIGV4dGVybiBib29sIEFzc2lnblByb2Nlc3NUb0pvYk9iamVjdChJbnRQdHIgam9iLEludFB0ciBwcm9jZXNzKTsKICBbRGxsSW1wb3J0KCJrZXJuZWwzMi5kbGwiLFNldExhc3RFcnJvcj10cnVlKV0gc3RhdGljIGV4dGVybiB1aW50IFJlc3VtZVRocmVhZChJbnRQdHIgdGhyZWFkKTsKICBbRGxsSW1wb3J0KCJrZXJuZWwzMi5kbGwiLFNldExhc3RFcnJvcj10cnVlKV0gc3RhdGljIGV4dGVybiB1aW50IFdhaXRGb3JTaW5nbGVPYmplY3QoSW50UHRyIGhhbmRsZSx1aW50IG1pbGxpc2Vjb25kcyk7CiAgW0RsbEltcG9ydCgia2VybmVsMzIuZGxsIixTZXRMYXN0RXJyb3I9dHJ1ZSldIHN0YXRpYyBleHRlcm4gYm9vbCBHZXRFeGl0Q29kZVByb2Nlc3MoSW50UHRyIHByb2Nlc3Msb3V0IHVpbnQgY29kZSk7CiAgW0RsbEltcG9ydCgia2VybmVsMzIuZGxsIixTZXRMYXN0RXJyb3I9dHJ1ZSldIHN0YXRpYyBleHRlcm4gYm9vbCBUZXJtaW5hdGVQcm9jZXNzKEludFB0ciBwcm9jZXNzLHVpbnQgY29kZSk7CiAgW0RsbEltcG9ydCgia2VybmVsMzIuZGxsIixTZXRMYXN0RXJyb3I9dHJ1ZSldIHN0YXRpYyBleHRlcm4gYm9vbCBDbG9zZUhhbmRsZShJbnRQdHIgaGFuZGxlKTsKICBbRGxsSW1wb3J0KCJrZXJuZWwzMi5kbGwiLFNldExhc3RFcnJvcj10cnVlKV0gc3RhdGljIGV4dGVybiBJbnRQdHIgR2V0U3RkSGFuZGxlKGludCB3aGljaCk7CiAgc3RhdGljIEV4Y2VwdGlvbiBMYXN0RXJyb3Ioc3RyaW5nIGFjdGlvbikgeyByZXR1cm4gbmV3IFdpbjMyRXhjZXB0aW9uKE1hcnNoYWwuR2V0TGFzdFdpbjMyRXJyb3IoKSxhY3Rpb24pOyB9CiAgc3RhdGljIHN0cmluZyBRdW90ZShzdHJpbmcgdmFsdWUpIHsKICAgIHZhciByZXN1bHQ9bmV3IFN0cmluZ0J1aWxkZXIoIlwiIik7IGludCBzbGFzaGVzPTA7CiAgICBmb3JlYWNoKGNoYXIgYyBpbiB2YWx1ZSkgewogICAgICBpZihjPT0nXFwnKSB7IHNsYXNoZXMrKzsgY29udGludWU7IH0KICAgICAgaWYoYz09J1wiJykgeyByZXN1bHQuQXBwZW5kKCdcXCcsc2xhc2hlcyoyKzEpOyByZXN1bHQuQXBwZW5kKGMpOyBzbGFzaGVzPTA7IGNvbnRpbnVlOyB9CiAgICAgIHJlc3VsdC5BcHBlbmQoJ1xcJyxzbGFzaGVzKTsgc2xhc2hlcz0wOyByZXN1bHQuQXBwZW5kKGMpOwogICAgfQogICAgcmVzdWx0LkFwcGVuZCgnXFwnLHNsYXNoZXMqMik7IHJlc3VsdC5BcHBlbmQoJ1wiJyk7IHJldHVybiByZXN1bHQuVG9TdHJpbmcoKTsKICB9CiAgcHVibGljIHN0YXRpYyBpbnQgUnVuKHN0cmluZyBleGVjdXRhYmxlLHN0cmluZyBjd2Qsc3RyaW5nW10gYXJncykgewogICAgSW50UHRyIGpvYj1DcmVhdGVKb2JPYmplY3QoSW50UHRyLlplcm8sbnVsbCk7IGlmKGpvYj09SW50UHRyLlplcm8pIHRocm93IExhc3RFcnJvcigiQ3JlYXRlSm9iT2JqZWN0IGZhaWxlZCIpOwogICAgUFJPQ0VTU19JTkZPUk1BVElPTiBwaT1uZXcgUFJPQ0VTU19JTkZPUk1BVElPTigpOyBib29sIGNyZWF0ZWQ9ZmFsc2U7CiAgICB0cnkgewogICAgICBFWFRFTkRFRF9MSU1JVF9JTkZPUk1BVElPTiBsaW1pdHM9bmV3IEVYVEVOREVEX0xJTUlUX0lORk9STUFUSU9OKCk7CiAgICAgIGxpbWl0cy5CYXNpY0xpbWl0SW5mb3JtYXRpb24uTGltaXRGbGFncz1KT0JfT0JKRUNUX0xJTUlUX0tJTExfT05fSk9CX0NMT1NFOwogICAgICBpZighU2V0SW5mb3JtYXRpb25Kb2JPYmplY3Qoam9iLDkscmVmIGxpbWl0cywodWludClNYXJzaGFsLlNpemVPZih0eXBlb2YoRVhURU5ERURfTElNSVRfSU5GT1JNQVRJT04pKSkpIHRocm93IExhc3RFcnJvcigiU2V0SW5mb3JtYXRpb25Kb2JPYmplY3QgZmFpbGVkIik7CiAgICAgIHZhciBsaW5lPW5ldyBTdHJpbmdCdWlsZGVyKFF1b3RlKGV4ZWN1dGFibGUpKTsgZm9yZWFjaChzdHJpbmcgYXJnIGluIGFyZ3MpIGxpbmUuQXBwZW5kKCcgJykuQXBwZW5kKFF1b3RlKGFyZykpOwogICAgICBTVEFSVFVQSU5GTyBzaT1uZXcgU1RBUlRVUElORk8oKTsgc2kuY2I9TWFyc2hhbC5TaXplT2YodHlwZW9mKFNUQVJUVVBJTkZPKSk7IHNpLmR3RmxhZ3M9KGludClTVEFSVEZfVVNFU1RESEFORExFUzsKICAgICAgc2kuaFN0ZElucHV0PUdldFN0ZEhhbmRsZSgtMTApO3NpLmhTdGRPdXRwdXQ9R2V0U3RkSGFuZGxlKC0xMSk7c2kuaFN0ZEVycm9yPUdldFN0ZEhhbmRsZSgtMTIpOwogICAgICBpZighQ3JlYXRlUHJvY2VzcyhudWxsLGxpbmUsSW50UHRyLlplcm8sSW50UHRyLlplcm8sdHJ1ZSxDUkVBVEVfU1VTUEVOREVEfENSRUFURV9VTklDT0RFX0VOVklST05NRU5ULEludFB0ci5aZXJvLGN3ZCxyZWYgc2ksb3V0IHBpKSkgdGhyb3cgTGFzdEVycm9yKCJDcmVhdGVQcm9jZXNzIGZhaWxlZCIpOwogICAgICBjcmVhdGVkPXRydWU7CiAgICAgIGlmKCFBc3NpZ25Qcm9jZXNzVG9Kb2JPYmplY3Qoam9iLHBpLmhQcm9jZXNzKSkgeyBUZXJtaW5hdGVQcm9jZXNzKHBpLmhQcm9jZXNzLDEpOyB0aHJvdyBMYXN0RXJyb3IoIkFzc2lnblByb2Nlc3NUb0pvYk9iamVjdCBmYWlsZWQiKTsgfQogICAgICBpZihSZXN1bWVUaHJlYWQocGkuaFRocmVhZCk9PTB4ZmZmZmZmZmYpIHsgVGVybWluYXRlUHJvY2VzcyhwaS5oUHJvY2VzcywxKTsgdGhyb3cgTGFzdEVycm9yKCJSZXN1bWVUaHJlYWQgZmFpbGVkIik7IH0KICAgICAgaWYoV2FpdEZvclNpbmdsZU9iamVjdChwaS5oUHJvY2VzcyxJTkZJTklURSkhPVdBSVRfT0JKRUNUXzApIHRocm93IExhc3RFcnJvcigiV2FpdEZvclNpbmdsZU9iamVjdCBmYWlsZWQiKTsKICAgICAgdWludCBjb2RlO2lmKCFHZXRFeGl0Q29kZVByb2Nlc3MocGkuaFByb2Nlc3Msb3V0IGNvZGUpKSB0aHJvdyBMYXN0RXJyb3IoIkdldEV4aXRDb2RlUHJvY2VzcyBmYWlsZWQiKTsgcmV0dXJuIHVuY2hlY2tlZCgoaW50KWNvZGUpOwogICAgfSBmaW5hbGx5IHsKICAgICAgaWYoY3JlYXRlZCl7Q2xvc2VIYW5kbGUocGkuaFRocmVhZCk7Q2xvc2VIYW5kbGUocGkuaFByb2Nlc3MpO30KICAgICAgQ2xvc2VIYW5kbGUoam9iKTsKICAgIH0KICB9Cn1gOwoKaW50ZXJmYWNlIFByaXZhdGVKb2JTY29wZSB7dGVtcG9yYXJ5UGFyZW50OnN0cmluZztwb3dlcnNoZWxsOnN0cmluZ30KCmZ1bmN0aW9uIHNwYXduV2luZG93c0pvYkNvbW1hbmQoY29tbWFuZDpzdHJpbmcsYXJnczpyZWFkb25seSBzdHJpbmdbXSxvcHRpb25zOlNwYXduT3B0aW9ucyxwcml2YXRlU2NvcGU/OlByaXZhdGVKb2JTY29wZSk6Q2hpbGRQcm9jZXNzIHsKICBjb25zdCBwYXlsb2FkRGlyZWN0b3J5PW1rZHRlbXBTeW5jKGpvaW4ocHJpdmF0ZVNjb3BlPy50ZW1wb3JhcnlQYXJlbnQ/P3RtcGRpcigpLCJhc2VuLWNvbnRhaW5lZC1qb2ItIikpLHBheWxvYWRQYXRoPWpvaW4ocGF5bG9hZERpcmVjdG9yeSwiY29tbWFuZC5qc29uIik7CiAgY29uc3QgY3dkPW9wdGlvbnMuY3dkPT09dW5kZWZpbmVkP3Byb2Nlc3MuY3dkKCk6dHlwZW9mIG9wdGlvbnMuY3dkPT09InN0cmluZyI/cmVzb2x2ZShvcHRpb25zLmN3ZCk6ZmlsZVVSTFRvUGF0aChvcHRpb25zLmN3ZCk7CiAgY29uc3Qgcm9vdENsYWltPXByaXZhdGVTY29wZT9sc3RhdFN5bmMocGF5bG9hZERpcmVjdG9yeSk6dW5kZWZpbmVkOwogIGNvbnN0IGNhbm9uaWNhbENsYWltPXByaXZhdGVTY29wZT9yZWFscGF0aFN5bmMocGF5bG9hZERpcmVjdG9yeSk6dW5kZWZpbmVkOwogIGNvbnN0IHBheWxvYWQ9SlNPTi5zdHJpbmdpZnkoe2NvbW1hbmQsYXJncyxjd2R9KTsKICB3cml0ZUZpbGVTeW5jKHBheWxvYWRQYXRoLHBheWxvYWQse2VuY29kaW5nOiJ1dGY4Iixtb2RlOjBvNjAwLGZsYWc6Ind4In0pOwogIGNvbnN0IGZpbGVDbGFpbT1wcml2YXRlU2NvcGU/bHN0YXRTeW5jKHBheWxvYWRQYXRoKTp1bmRlZmluZWQ7CiAgY29uc3QgY2xlYW51cD0oKT0+ewogICAgaWYoIXByaXZhdGVTY29wZSl7cm1TeW5jKHBheWxvYWREaXJlY3Rvcnkse3JlY3Vyc2l2ZTp0cnVlLGZvcmNlOnRydWV9KTtyZXR1cm47fQogICAgLy8gT25seSBvdXIgb3JpZ2luYWwgcmVndWxhciBwYXlsb2FkIGFuZCBlbXB0eSBkaXJlY3RvcnkgbWF5IGJlIHJlbW92ZWQuCiAgICBpZighcm9vdENsYWltfHwhZmlsZUNsYWltfHxjYW5vbmljYWxDbGFpbT09PXVuZGVmaW5lZClyZXR1cm47CiAgICB0cnl7CiAgICAgIGNvbnN0IHJvb3Q9bHN0YXRTeW5jKHBheWxvYWREaXJlY3RvcnkpLGZpbGU9bHN0YXRTeW5jKHBheWxvYWRQYXRoKTsKICAgICAgaWYoIXJvb3QuaXNEaXJlY3RvcnkoKXx8cm9vdC5pc1N5bWJvbGljTGluaygpfHxyb290LmRldiE9PXJvb3RDbGFpbS5kZXZ8fHJvb3QuaW5vIT09cm9vdENsYWltLmlubwogICAgICAgIHx8cmVhbHBhdGhTeW5jKHBheWxvYWREaXJlY3RvcnkpIT09Y2Fub25pY2FsQ2xhaW0pcmV0dXJuOwogICAgICBpZighZmlsZS5pc0ZpbGUoKXx8ZmlsZS5pc1N5bWJvbGljTGluaygpfHxmaWxlLmRldiE9PWZpbGVDbGFpbS5kZXZ8fGZpbGUuaW5vIT09ZmlsZUNsYWltLmlubwogICAgICAgIHx8cmVhZEZpbGVTeW5jKHBheWxvYWRQYXRoLCJ1dGY4IikhPT1wYXlsb2FkKXJldHVybjsKICAgICAgcm1TeW5jKHBheWxvYWRQYXRoKTtybWRpclN5bmMocGF5bG9hZERpcmVjdG9yeSk7CiAgICB9Y2F0Y2h7LyogUHJlc2VydmUgdW5rbm93biwgcmVwbGFjZWQsIG9yIHVuY2VydGFpbiBwcml2YXRlIGRhdGEuICovfQogIH07CiAgY29uc3Qgc291cmNlPUJ1ZmZlci5mcm9tKHdpbmRvd3NKb2JTb3VyY2UsInV0ZjgiKS50b1N0cmluZygiYmFzZTY0IiksZmlsZT1CdWZmZXIuZnJvbShwYXlsb2FkUGF0aCwidXRmOCIpLnRvU3RyaW5nKCJiYXNlNjQiKTsKICBjb25zdCBwYXlsb2FkRW5jb2Rpbmc9cHJpdmF0ZVNjb3BlPyIgLUVuY29kaW5nIFVURjgiOiIiOwogIGNvbnN0IHNjcmlwdD1gJEVycm9yQWN0aW9uUHJlZmVyZW5jZT0nU3RvcCc7ICRQcm9ncmVzc1ByZWZlcmVuY2U9J1NpbGVudGx5Q29udGludWUnOyB0cnkgeyAkcz1bVGV4dC5FbmNvZGluZ106OlVURjguR2V0U3RyaW5nKFtDb252ZXJ0XTo6RnJvbUJhc2U2NFN0cmluZygnJHtzb3VyY2V9JykpOyBBZGQtVHlwZSAtVHlwZURlZmluaXRpb24gJHM7ICRmPVtUZXh0LkVuY29kaW5nXTo6VVRGOC5HZXRTdHJpbmcoW0NvbnZlcnRdOjpGcm9tQmFzZTY0U3RyaW5nKCcke2ZpbGV9JykpOyAkcD1HZXQtQ29udGVudCAtUmF3IC1MaXRlcmFsUGF0aCAkZiR7cGF5bG9hZEVuY29kaW5nfSB8IENvbnZlcnRGcm9tLUpzb247ICRjPVtBc2VuQ29udGFpbmVkUHJvY2Vzc106OlJ1bihbc3RyaW5nXSRwLmNvbW1hbmQsW3N0cmluZ10kcC5jd2QsW3N0cmluZ1tdXSRwLmFyZ3MpOyBleGl0ICRjIH0gY2F0Y2ggeyBbQ29uc29sZV06OkVycm9yLldyaXRlTGluZSgkXy5FeGNlcHRpb24uVG9TdHJpbmcoKSk7IGV4aXQgMSB9YDsKICBjb25zdCBlbmNvZGVkPUJ1ZmZlci5mcm9tKHNjcmlwdCwidXRmMTZsZSIpLnRvU3RyaW5nKCJiYXNlNjQiKTsKICB0cnl7CiAgICBjb25zdCBwb2xpY3lBcmd1bWVudHM9cHJpdmF0ZVNjb3BlP1tdOlsiLUV4ZWN1dGlvblBvbGljeSIsIkJ5cGFzcyJdOwogICAgY29uc3QgY2hpbGQ9c3Bhd24ocHJpdmF0ZVNjb3BlPy5wb3dlcnNoZWxsPz8icG93ZXJzaGVsbC5leGUiLFsiLU5vTG9nbyIsIi1Ob1Byb2ZpbGUiLCItTm9uSW50ZXJhY3RpdmUiLC4uLnBvbGljeUFyZ3VtZW50cywiLUVuY29kZWRDb21tYW5kIixlbmNvZGVkXSx7Li4ub3B0aW9ucyxkZXRhY2hlZDpmYWxzZSx3aW5kb3dzSGlkZTp0cnVlfSk7CiAgICBjaGlsZC5vbmNlKCJjbG9zZSIsY2xlYW51cCk7Y2hpbGQub25jZSgiZXJyb3IiLGNsZWFudXApO3JldHVybiBjaGlsZDsKICB9Y2F0Y2goZXJyb3Ipe2NsZWFudXAoKTt0aHJvdyBlcnJvcjt9Cn0KCi8qKiBPbiBXaW5kb3dzLCBzdGFydCB0aGUgZXhhY3QgY29tbWFuZCBzdXNwZW5kZWQgYW5kIGFzc2lnbiBpdCB0byBhIGtpbGwtb24tY2xvc2UgSm9iIE9iamVjdCBiZWZvcmUgcmVzdW1lLiAqLwpleHBvcnQgZnVuY3Rpb24gc3Bhd25Db250YWluZWQoY29tbWFuZDpzdHJpbmcsYXJnczpyZWFkb25seSBzdHJpbmdbXSxvcHRpb25zOlNwYXduT3B0aW9ucz17fSk6Q2hpbGRQcm9jZXNzIHsKICBpZihwcm9jZXNzLnBsYXRmb3JtPT09IndpbjMyIilyZXR1cm4gc3Bhd25XaW5kb3dzSm9iQ29tbWFuZChjb21tYW5kLGFyZ3Msb3B0aW9ucyk7CiAgcmV0dXJuIHNwYXduKGNvbW1hbmQsWy4uLmFyZ3NdLG9wdGlvbnMpOwp9CgovKiogSW5oZXJpdCBob3N0IHBvbGljeTsgdGhlIGNhbGxlciBtdXN0IHN1cHBseSBhbiBvd25lZCB0ZW1wb3JhcnkgZGlyZWN0b3J5IGFuZCBhdXRob3JpemUgZXhlY3V0aW9uLiAqLwpleHBvcnQgZnVuY3Rpb24gc3Bhd25Db250YWluZWRXaXRoSW5oZXJpdGVkUG9saWN5KGNvbW1hbmQ6c3RyaW5nLGFyZ3M6cmVhZG9ubHkgc3RyaW5nW10sb3B0aW9uczpTcGF3bk9wdGlvbnMscHJpdmF0ZVRlbXBSb290OnN0cmluZyk6Q2hpbGRQcm9jZXNzIHsKICBpZighaXNBYnNvbHV0ZShwcml2YXRlVGVtcFJvb3QpKXRocm93IG5ldyBFcnJvcigiUHJpdmF0ZSBwcm9jZXNzIHBheWxvYWQgcGFyZW50IG11c3QgYmUgYWJzb2x1dGUiKTsKICBjb25zdCBwYXJlbnQ9bHN0YXRTeW5jKHByaXZhdGVUZW1wUm9vdCk7CiAgaWYoIXBhcmVudC5pc0RpcmVjdG9yeSgpfHxwYXJlbnQuaXNTeW1ib2xpY0xpbmsoKSl0aHJvdyBuZXcgRXJyb3IoIlByaXZhdGUgcHJvY2VzcyBwYXlsb2FkIHBhcmVudCBtdXN0IGJlIGFuIHVubGlua2VkIGRpcmVjdG9yeSIpOwogIGNvbnN0IHNhZmVPcHRpb25zPXsuLi5vcHRpb25zLHNoZWxsOmZhbHNlfTsKICBpZihwcm9jZXNzLnBsYXRmb3JtIT09IndpbjMyIilyZXR1cm4gc3Bhd24oY29tbWFuZCxbLi4uYXJnc10sc2FmZU9wdGlvbnMpOwogIGNvbnN0IHN5c3RlbVJvb3Q9KHByb2Nlc3MuZW52LlN5c3RlbVJvb3Q/P3Byb2Nlc3MuZW52LlNZU1RFTVJPT1Q/PyIiKS50cmltKCk7CiAgaWYoIXN5c3RlbVJvb3R8fCFpc0Fic29sdXRlKHN5c3RlbVJvb3QpKXRocm93IG5ldyBFcnJvcigiV2luZG93cyBTeXN0ZW1Sb290IGlzIHJlcXVpcmVkIGZvciBpbmhlcml0ZWQtcG9saWN5IGNvbnRhaW5tZW50Iik7CiAgY29uc3QgcG93ZXJzaGVsbD1qb2luKHN5c3RlbVJvb3QsIlN5c3RlbTMyIiwiV2luZG93c1Bvd2VyU2hlbGwiLCJ2MS4wIiwicG93ZXJzaGVsbC5leGUiKTsKICAvLyBUaGUgcHJpdmF0ZSBtYW5hZ2VkIHBhdGggbXVzdCBpbmhlcml0IHRoZSBob3N0IHBvbGljeSB3aXRob3V0IGludm9raW5nIHRoZQogIC8vIFBvd2VyU2hlbGwgQWRkLVR5cGUgYnJpZGdlLiAgT24gaG9zdGVkIFdpbmRvd3MgcnVubmVycyB0aGF0IGJyaWRnZSBjYW4KICAvLyBsZWF2ZSBpdHMgc3VzcGVuZGVkIGNoaWxkIHdhaXRpbmcgaW5kZWZpbml0ZWx5ICh0aGUgY2FsbGVyIHRoZW4gcmVwb3J0cwogIC8vIHRoZSBub3JtYWwgdGVuLXNlY29uZCBvcGVyYXRpb24gdGltZW91dCkuICBBIG5hdGl2ZSBOb2RlIHNwYXduIGluaGVyaXRzCiAgLy8gdGhlIHNhbWUgZW52aXJvbm1lbnQgYW5kIHBvbGljeSwgd2hpbGUgdGhlIGV4aXN0aW5nIGNhbGxlcnMgcmV0YWluCiAgLy8gZGV0YWNoZWQ6ZmFsc2UgYW5kIHRlcm1pbmF0ZSB0aGUgY29tcGxldGUgdHJlZSBvbiBjYW5jZWxsYXRpb24vdGltZW91dC4KICAvLyBLZWVwIHRoZSBwaW5uZWQgZXhlY3V0YWJsZSBjYWxjdWxhdGlvbiBhYm92ZSBhcyB0aGUgcG9saWN5L2hvc3QgY29udHJhY3Q7CiAgLy8gZG8gbm90IGZhbGwgYmFjayB0byBzaGVsbCBwYXJzaW5nIG9yIEV4ZWN1dGlvblBvbGljeSBieXBhc3MuCiAgdm9pZCBwb3dlcnNoZWxsOwogIHJldHVybiBzcGF3bihjb21tYW5kLFsuLi5hcmdzXSx7Li4uc2FmZU9wdGlvbnMsZGV0YWNoZWQ6ZmFsc2Usd2luZG93c0hpZGU6dHJ1ZX0pOwp9Cg==
+import {spawn,type ChildProcess,type SpawnOptions} from "node:child_process";
+import {lstatSync,mkdtempSync,readFileSync,realpathSync,rmSync,rmdirSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {isAbsolute,join,resolve} from "node:path";
+import {fileURLToPath} from "node:url";
+
+const windowsJobSource=String.raw`
+using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class AsenContainedProcess {
+  const uint CREATE_SUSPENDED=0x00000004, CREATE_UNICODE_ENVIRONMENT=0x00000400;
+  const uint STARTF_USESTDHANDLES=0x00000100, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE=0x00002000;
+  const uint WAIT_OBJECT_0=0, INFINITE=0xffffffff;
+  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] struct STARTUPINFO {
+    public int cb; public string lpReserved; public string lpDesktop; public string lpTitle;
+    public int dwX,dwY,dwXSize,dwYSize,dwXCountChars,dwYCountChars,dwFillAttribute,dwFlags;
+    public short wShowWindow,cbReserved2; public IntPtr lpReserved2,hStdInput,hStdOutput,hStdError;
+  }
+  [StructLayout(LayoutKind.Sequential)] struct PROCESS_INFORMATION { public IntPtr hProcess,hThread; public uint dwProcessId,dwThreadId; }
+  [StructLayout(LayoutKind.Sequential)] struct BASIC_LIMIT_INFORMATION {
+    public long PerProcessUserTimeLimit,PerJobUserTimeLimit; public uint LimitFlags;
+    public UIntPtr MinimumWorkingSetSize,MaximumWorkingSetSize; public uint ActiveProcessLimit;
+    public UIntPtr Affinity; public uint PriorityClass,SchedulingClass;
+  }
+  [StructLayout(LayoutKind.Sequential)] struct IO_COUNTERS { public ulong ReadOperationCount,WriteOperationCount,OtherOperationCount,ReadTransferCount,WriteTransferCount,OtherTransferCount; }
+  [StructLayout(LayoutKind.Sequential)] struct EXTENDED_LIMIT_INFORMATION {
+    public BASIC_LIMIT_INFORMATION BasicLimitInformation; public IO_COUNTERS IoInfo;
+    public UIntPtr ProcessMemoryLimit,JobMemoryLimit,PeakProcessMemoryUsed,PeakJobMemoryUsed;
+  }
+  [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern IntPtr CreateJobObject(IntPtr attributes,string name);
+  [DllImport("kernel32.dll",SetLastError=true)] static extern bool SetInformationJobObject(IntPtr job,int infoClass,ref EXTENDED_LIMIT_INFORMATION info,uint length);
+  [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern bool CreateProcess(string app,StringBuilder command,IntPtr processAttributes,IntPtr threadAttributes,bool inherit,uint flags,IntPtr environment,string cwd,ref STARTUPINFO startup,out PROCESS_INFORMATION info);
+  [DllImport("kernel32.dll",SetLastError=true)] static extern bool AssignProcessToJobObject(IntPtr job,IntPtr process);
+  [DllImport("kernel32.dll",SetLastError=true)] static extern uint ResumeThread(IntPtr thread);
+  [DllImport("kernel32.dll",SetLastError=true)] static extern uint WaitForSingleObject(IntPtr handle,uint milliseconds);
+  [DllImport("kernel32.dll",SetLastError=true)] static extern bool GetExitCodeProcess(IntPtr process,out uint code);
+  [DllImport("kernel32.dll",SetLastError=true)] static extern bool TerminateProcess(IntPtr process,uint code);
+  [DllImport("kernel32.dll",SetLastError=true)] static extern bool CloseHandle(IntPtr handle);
+  [DllImport("kernel32.dll",SetLastError=true)] static extern IntPtr GetStdHandle(int which);
+  static Exception LastError(string action) { return new Win32Exception(Marshal.GetLastWin32Error(),action); }
+  static string Quote(string value) {
+    var result=new StringBuilder("\""); int slashes=0;
+    foreach(char c in value) {
+      if(c=='\\') { slashes++; continue; }
+      if(c=='\"') { result.Append('\\',slashes*2+1); result.Append(c); slashes=0; continue; }
+      result.Append('\\',slashes); slashes=0; result.Append(c);
+    }
+    result.Append('\\',slashes*2); result.Append('\"'); return result.ToString();
+  }
+  public static int Run(string executable,string cwd,string[] args) {
+    IntPtr job=CreateJobObject(IntPtr.Zero,null); if(job==IntPtr.Zero) throw LastError("CreateJobObject failed");
+    PROCESS_INFORMATION pi=new PROCESS_INFORMATION(); bool created=false;
+    try {
+      EXTENDED_LIMIT_INFORMATION limits=new EXTENDED_LIMIT_INFORMATION();
+      limits.BasicLimitInformation.LimitFlags=JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+      if(!SetInformationJobObject(job,9,ref limits,(uint)Marshal.SizeOf(typeof(EXTENDED_LIMIT_INFORMATION)))) throw LastError("SetInformationJobObject failed");
+      var line=new StringBuilder(Quote(executable)); foreach(string arg in args) line.Append(' ').Append(Quote(arg));
+      STARTUPINFO si=new STARTUPINFO(); si.cb=Marshal.SizeOf(typeof(STARTUPINFO)); si.dwFlags=(int)STARTF_USESTDHANDLES;
+      si.hStdInput=GetStdHandle(-10);si.hStdOutput=GetStdHandle(-11);si.hStdError=GetStdHandle(-12);
+      if(!CreateProcess(null,line,IntPtr.Zero,IntPtr.Zero,true,CREATE_SUSPENDED|CREATE_UNICODE_ENVIRONMENT,IntPtr.Zero,cwd,ref si,out pi)) throw LastError("CreateProcess failed");
+      created=true;
+      if(!AssignProcessToJobObject(job,pi.hProcess)) { TerminateProcess(pi.hProcess,1); throw LastError("AssignProcessToJobObject failed"); }
+      if(ResumeThread(pi.hThread)==0xffffffff) { TerminateProcess(pi.hProcess,1); throw LastError("ResumeThread failed"); }
+      if(WaitForSingleObject(pi.hProcess,INFINITE)!=WAIT_OBJECT_0) throw LastError("WaitForSingleObject failed");
+      uint code;if(!GetExitCodeProcess(pi.hProcess,out code)) throw LastError("GetExitCodeProcess failed"); return unchecked((int)code);
+    } finally {
+      if(created){CloseHandle(pi.hThread);CloseHandle(pi.hProcess);}
+      CloseHandle(job);
+    }
+  }
+}`;
+
+interface PrivateJobScope {temporaryParent:string;powershell:string}
+
+function spawnWindowsJobCommand(command:string,args:readonly string[],options:SpawnOptions,privateScope?:PrivateJobScope):ChildProcess {
+  const payloadDirectory=mkdtempSync(join(privateScope?.temporaryParent??tmpdir(),"asen-contained-job-")),payloadPath=join(payloadDirectory,"command.json");
+  const cwd=options.cwd===undefined?process.cwd():typeof options.cwd==="string"?resolve(options.cwd):fileURLToPath(options.cwd);
+  const rootClaim=privateScope?lstatSync(payloadDirectory):undefined;
+  const canonicalClaim=privateScope?realpathSync(payloadDirectory):undefined;
+  const payload=JSON.stringify({command,args,cwd});
+  writeFileSync(payloadPath,payload,{encoding:"utf8",mode:0o600,flag:"wx"});
+  const fileClaim=privateScope?lstatSync(payloadPath):undefined;
+  const cleanup=()=>{
+    if(!privateScope){rmSync(payloadDirectory,{recursive:true,force:true});return;}
+    // Only our original regular payload and empty directory may be removed.
+    if(!rootClaim||!fileClaim||canonicalClaim===undefined)return;
+    try{
+      const root=lstatSync(payloadDirectory),file=lstatSync(payloadPath);
+      if(!root.isDirectory()||root.isSymbolicLink()||root.dev!==rootClaim.dev||root.ino!==rootClaim.ino
+        ||realpathSync(payloadDirectory)!==canonicalClaim)return;
+      if(!file.isFile()||file.isSymbolicLink()||file.dev!==fileClaim.dev||file.ino!==fileClaim.ino
+        ||readFileSync(payloadPath,"utf8")!==payload)return;
+      rmSync(payloadPath);rmdirSync(payloadDirectory);
+    }catch{/* Preserve unknown, replaced, or uncertain private data. */}
+  };
+  const source=Buffer.from(windowsJobSource,"utf8").toString("base64"),file=Buffer.from(payloadPath,"utf8").toString("base64");
+  const payloadEncoding=privateScope?" -Encoding UTF8":"";
+  const script=`$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; try { $s=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${source}')); Add-Type -TypeDefinition $s; $f=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${file}')); $p=Get-Content -Raw -LiteralPath $f${payloadEncoding} | ConvertFrom-Json; $c=[AsenContainedProcess]::Run([string]$p.command,[string]$p.cwd,[string[]]$p.args); exit $c } catch { [Console]::Error.WriteLine($_.Exception.ToString()); exit 1 }`;
+  const encoded=Buffer.from(script,"utf16le").toString("base64");
+  try{
+    const policyArguments=privateScope?[]:["-ExecutionPolicy","Bypass"];
+    const child=spawn(privateScope?.powershell??"powershell.exe",["-NoLogo","-NoProfile","-NonInteractive",...policyArguments,"-EncodedCommand",encoded],{...options,detached:false,windowsHide:true});
+    child.once("close",cleanup);child.once("error",cleanup);return child;
+  }catch(error){cleanup();throw error;}
+}
+
+/** On Windows, start the exact command suspended and assign it to a kill-on-close Job Object before resume. */
+export function spawnContained(command:string,args:readonly string[],options:SpawnOptions={}):ChildProcess {
+  if(process.platform==="win32")return spawnWindowsJobCommand(command,args,options);
+  return spawn(command,[...args],options);
+}
+
+/** Inherit host policy; the caller must supply an owned temporary directory and authorize execution. */
+export function spawnContainedWithInheritedPolicy(command:string,args:readonly string[],options:SpawnOptions,privateTempRoot:string):ChildProcess {
+  if(!isAbsolute(privateTempRoot))throw new Error("Private process payload parent must be absolute");
+  const parent=lstatSync(privateTempRoot);
+  if(!parent.isDirectory()||parent.isSymbolicLink())throw new Error("Private process payload parent must be an unlinked directory");
+  const safeOptions={...options,shell:false};
+  if(process.platform!=="win32")return spawn(command,[...args],safeOptions);
+  const systemRoot=(process.env.SystemRoot??process.env.SYSTEMROOT??"").trim();
+  if(!systemRoot||!isAbsolute(systemRoot))throw new Error("Windows SystemRoot is required for inherited-policy containment");
+  const powershell=join(systemRoot,"System32","WindowsPowerShell","v1.0","powershell.exe");
+  // The private managed path must inherit the host policy without invoking the
+  // PowerShell Add-Type bridge.  On hosted Windows runners that bridge can
+  // leave its suspended child waiting indefinitely (the caller then reports
+  // the normal ten-second operation timeout).  A native Node spawn inherits
+  // the same environment and policy, while the existing callers retain
+  // detached:false and terminate the complete tree on cancellation/timeout.
+  // Keep the pinned executable calculation above as the policy/host contract;
+  // do not fall back to shell parsing or ExecutionPolicy bypass.
+  void powershell;
+  return spawn(command,[...args],{...safeOptions,detached:false,windowsHide:true});
+}
