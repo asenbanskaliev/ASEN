@@ -25,7 +25,9 @@ try {
   const loaded=loader.getExtensions();
   assert.deepEqual(loaded.errors,[]);
   assert.deepEqual(loaded.extensions.map(e=>path.basename(e.path)),["asen.ts"],"installed primary must exclude child authority");
-  assert.equal(loaded.extensions.some(e=>e.handlers.has("tool_call")),false,"primary install must not inherit child tool denial");
+  // The primary policy guard is the only tool_call handler; child authority is excluded by the extension list above.
+  assert.equal(loaded.extensions.filter(e=>e.handlers.has("tool_call")).length,1,"primary install must carry exactly the primary tool policy");
+  assert.equal(loaded.extensions[0].handlers.get("tool_call").length,1,"primary install must not stack child tool denial");
   assert.ok(loaded.extensions[0].handlers.has("session_start"),"public preflight must wait for initialized host context");
   assert.equal(loaded.extensions[0].commands.size,0,"commands must not register before collision inventories are initialized");
   const defaultPiCli=path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");

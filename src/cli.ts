@@ -11,10 +11,11 @@ import {createSetupMaintenancePlan} from "./runtime/maintenance-plan.js";
 import {ManagedAdditionalStageError,ManagedVersionSelectionError,selectManagedVersion} from "./runtime/managed-install.js";
 import {launchManagedSelectedVersion} from "./runtime/managed-selected-launch.js";
 import {createManagedUpdatePreview} from "./runtime/managed-update-preview.js";
+import {runLifecycleCommand} from "./runtime/lifecycle-cli.js";
 import {stageManagedAcquisitionUpdate} from "./runtime/managed-acquisition-update.js";
 
 export function launcherPackageRoot():string{return path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");}
-export const ASEN_HELP=`Usage: asen [--link|--isolated|--home PATH] [Pi arguments]\n       asen home\n       asen setup --dry-run [--yes]  Preview setup intent (no changes)\n       asen [--link|--isolated|--home PATH] backup project-memory --project <project-id> --destination <absolute-path> --dry-run  Preview only; no backup created\n       asen [--link|--isolated|--home PATH] managed run <version> -- [Pi arguments]  Current-user execution; publisher unverified\n       asen [--link|--isolated|--home PATH] managed select <version> --expected-current <version>  Select retained metadata only; no activation\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run  Observe only; software prefix remains OS home/.asen\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes  Stage local bytes only; no selection or execution\n       asen [--link|--isolated|--home PATH] [--package-root PATH] doctor\n       asen --version\n`;
+export const ASEN_HELP=`Usage: asen [--link|--isolated|--home PATH] [Pi arguments]\n       asen home\n       asen setup --dry-run [--yes]  Preview setup intent (no changes)\n       asen [--link|--isolated|--home PATH] backup project-memory --project <project-id> --destination <absolute-path> --dry-run  Preview only; no backup created\n       asen [--link|--isolated|--home PATH] managed run <version> -- [Pi arguments]  Current-user execution; publisher unverified\n       asen [--link|--isolated|--home PATH] managed select <version> --expected-current <version>  Select retained metadata only; no activation\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run  Observe only; software prefix remains OS home/.asen\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes  Stage local bytes only; no selection or execution\n       asen [--link|--isolated|--home PATH] [--package-root PATH] doctor\n       asen managed install|upgrade|rollback|uninstall|release …  Signed install lifecycle (see docs/installation.md)\n       asen backup home --destination <absolute-file> | backup verify --file <file> | restore home --backup <file> --target-home <dir> --yes\n       asen --version\n`;
 const BACKUP_PREVIEW_USAGE="Unsupported ASEN backup project-memory command. Expected: backup project-memory --project <project-id> --destination <absolute-path> --dry-run.\n";
 const DOCTOR_USAGE="Unsupported ASEN doctor command. Expected: [--link|--isolated|--home PATH] [--package-root PATH] doctor.\n";
 const DOCTOR_INCOMPLETE="Installation doctor could not complete all metadata observations.\n";
@@ -32,6 +33,8 @@ function bundledPi(packageRoot:string):string|undefined{const p=path.join(packag
 
 export async function runAsen(argv=process.argv.slice(2),env:Record<string,string|undefined>=process.env,dependencies:AsenCliDependencies={}):Promise<number>{
  const stdout=dependencies.stdout??((text:string)=>{process.stdout.write(text);}),stderr=dependencies.stderr??((text:string)=>{process.stderr.write(text);});
+ const lifecycle=await runLifecycleCommand({argv,env,homeDirectory:dependencies.homeDirectory??homedir,stdout,stderr,version:"0.1.0"});
+ if(lifecycle!==undefined)return lifecycle;
  const stage=parseManagedUpdateStageArgs(argv);
  if(stage.kind==="invalid"){stderr(MANAGED_STAGE_USAGE);return 2;}
  const update=stage.kind==="none"?parseManagedUpdatePreviewArgs(argv):{kind:"none" as const};

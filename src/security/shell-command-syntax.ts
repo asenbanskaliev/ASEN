@@ -1,5 +1,5 @@
 /*
- * Portions derived from gentle-pi's destructive command syntax helpers.
+ * Portions derived from reference-pi's destructive command syntax helpers.
  * MIT License
  * Copyright (c) 2025 Mario Zechner
  *

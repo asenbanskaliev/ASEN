@@ -8,6 +8,8 @@ import {runAsen} from "../src/cli.js";
 import {parseAsenArgs} from "../src/runtime/launcher.js";
 import {stageAdditionalManagedVersion,stageManagedInstall} from "../src/runtime/managed-install.js";
 
+// Children run from isolated cwds, so tsx must be resolved from this checkout, not from the child cwd.
+const TSX_IMPORT=import.meta.resolve("tsx");
 const VERSION="1.2.0";
 const SCHEMA="asen.installation-doctor/v1";
 const USAGE="Unsupported ASEN doctor command. Expected: [--link|--isolated|--home PATH] [--package-root PATH] doctor.\n";
@@ -49,7 +51,7 @@ function env(f:Fixture,extra:NodeJS.ProcessEnv={}):NodeJS.ProcessEnv{
   XDG_CONFIG_HOME:path.join(f.root,"xc"),XDG_CACHE_HOME:path.join(f.root,"xd"),XDG_DATA_HOME:path.join(f.root,"xx"),TSX_DISABLE_CACHE:"1",ASEN_NO_SKILL_REGISTRY:"1",...extra};
 }
 function invoke(f:Fixture,args:readonly string[],extra:NodeJS.ProcessEnv={},cwd=f.cwd){
- const result=spawnSync(process.execPath,["--import","tsx",path.resolve("src/cli.ts"),...args],{cwd,env:env(f,extra),shell:false,timeout:10000,maxBuffer:1024*1024,encoding:"utf8"});
+ const result=spawnSync(process.execPath,["--import",TSX_IMPORT,path.resolve("src/cli.ts"),...args],{cwd,env:env(f,extra),shell:false,timeout:10000,maxBuffer:1024*1024,encoding:"utf8"});
  assert.equal(result.error,undefined);assert.equal(result.signal,null);return{code:result.status,stdout:result.stdout,stderr:result.stderr};
 }
 function jsonResult(result:ReturnType<typeof invoke>,code=0,stderr=""):Json{

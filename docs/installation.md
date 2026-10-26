@@ -102,6 +102,23 @@ Cleanup requires proven file bytes and physical identity. Directory claims retai
 
 The successful `asen.managed-acquisition-update/v1` report returns `staged` or `unchanged`, with selection and activation `not-run`, producer authenticity `not-established` and runtime readiness `false`. The public staging route exposes this API without adding authority or another maintenance lock. It is not a download service, publisher verification, package execution, sandbox, atomic snapshot or complete updater. Existing inspection and lifecycle reads are outside the copy budgets; no global operation deadline is claimed.
 
+## Managed lifecycle (T09)
+
+Public commands (`src/runtime/lifecycle-cli.ts`, dispatched before the legacy parsers in `runAsen`):
+
+- `asen managed release keygen|manifest|sign …` produces an Ed25519 key pair, a manifest and a detached signature for a package directory.
+- `asen managed install|upgrade --trust-anchor <public-key> (--manifest M --signature S --package-root DIR | --source-url https://…) (--yes | --browser [--no-open] [--timeout-ms N])` installs or upgrades under `<home>/.asen`. `upgrade` also accepts `--expected-current V` and `--allow-downgrade`.
+- `asen managed rollback --to <version> --yes` and `asen managed uninstall --yes`.
+- `asen backup home --destination FILE [--skip-links]`, `asen backup verify --file FILE`, `asen restore home --backup FILE --target-home DIR [--target-config FILE] [--replace] --yes`.
+
+Trust model: authenticity comes only from a signature that verifies against the operator-supplied trust-anchor file; hashes inside the manifest prove integrity only. Network acquisition is HTTPS-only, bounded, rejects redirects and cleans `.part` files. Unsigned, tampered, truncated or wrong-signer packages are rejected before anything is staged. There is no PKI, key rotation or revocation.
+
+Upgrade stages and probes the new version without changing the active one, activates it under the maintenance lock with a journal, probes again and rolls back automatically on failure; interrupted operations recover from the journal. User data and launcher config live outside the managed root. Uninstall removes only files whose ownership receipt and bytes still match; modified or foreign files, data, sessions and Pi installations are retained, and ownership records stay until nothing remains so a later uninstall can finish. The `--browser` assistant serves a loopback-only consent page protected by a random path token, Host/Origin checks and a CSP nonce.
+
+Backups are a single checksummed `ASENBAK1` file. Restore verifies it, never overwrites an existing target (`--replace` moves it aside), blocks path traversal and refuses symlinks. SQLite files are copied as bytes: back up while ASEN is quiescent.
+
+Known limits: a same-user process can race path replacement during uninstall (identity is checked, not enforced with descriptor-relative operations); Windows/macOS were not run locally.
+
 ## Explicit selected-version execution
 
 `asen [--link|--isolated|--home PATH] managed run <exact-version> -- <Pi arguments>` is the only public selected-version execution form. It requires an exact stable version that equals the validated ordinary `current` selector. The command is explicit current-user execution intent; it is **not** verified human-origin consent, publisher authenticity, native approval, OS confinement, runtime readiness, or default activation. Do not use it to execute acquired or untrusted packages.

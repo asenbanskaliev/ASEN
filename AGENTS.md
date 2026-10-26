@@ -8,5 +8,5 @@ Start with the portable [remote continuation plan](docs/remote-continuation.md) 
 - Work test-first where a meaningful behavior test exists. Isolate stateful tests with project-owned home, config, cache, data, and temporary roots.
 - Require an independent check for explicitly named security, data-integrity, concurrency, installation, or shared-contract risk.
 - Keep missing capability or evidence marked blocked/partial. Never invent native review, provider consent, approval, reference parity, or a successful command.
-- Do not require local Engram state, caches, installed SDK copies, private sessions, or machine-specific absolute paths. Reconstruct from tracked repository sources.
+- Do not require local RefMem state, caches, installed SDK copies, private sessions, or machine-specific absolute paths. Reconstruct from tracked repository sources.
 - Do not merge, release, publish packages, mutate provider state, or perform destructive actions without explicit owner consent.

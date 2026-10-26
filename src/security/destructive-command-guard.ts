@@ -1,5 +1,5 @@
 /*
- * Portions derived from gentle-pi's destructive command recognizer.
+ * Portions derived from reference-pi's destructive command recognizer.
  * MIT License
  * Copyright (c) 2025 Mario Zechner
  *

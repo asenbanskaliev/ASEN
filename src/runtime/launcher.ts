@@ -35,7 +35,7 @@ const exactVersion=(value:string)=>/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\
 type SelectorPrelude=Readonly<{kind:"none"}>|Readonly<{kind:"command";selectorArgs:readonly string[];packageRoot:boolean;index:number;command:string}>;
 type ManagedPrelude=Readonly<{kind:"none"}>|Readonly<{kind:"managed";selectorArgs:readonly string[];packageRoot:boolean;index:number}>;
 
-function parseSelectorPrelude(argv:readonly string[]):SelectorPrelude{
+export function parseSelectorPrelude(argv:readonly string[]):SelectorPrelude{
  const selectors:string[]=[];let packageRoot=false,index=0;
  while(index<argv.length){
   const argument=argv[index]!;
@@ -80,7 +80,7 @@ export function parseDoctorArgs(argv:readonly string[]):DoctorArgs{
  return {kind:"doctor",selectorArgs:prelude.selectorArgs};
 }
 
-function fullyQualifiedLocalPath(value:unknown):value is string{
+export function fullyQualifiedLocalPath(value:unknown):value is string{
  if(typeof value!=="string"||value.length===0||value.length>4096||/[\p{Cc}]/u.test(value))return false;
  if(!path.isAbsolute(value))return false;
  if(process.platform==="win32"&&(!/^[A-Za-z]:[\\/]/u.test(value)||/^\\\\/u.test(value)||/^\\\\[?.]\\/u.test(value)))return false;

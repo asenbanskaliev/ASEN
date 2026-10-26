@@ -1,0 +1,384 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import http from "node:http";
+import os from "node:os";
+import path from "node:path";
+import {createServer,type Server} from "node:http";
+import {buildManagedManifest,generateManagedSigningKeyPair,signManagedManifest} from "../src/runtime/managed-trust.js";
+import {installManaged,rollbackManaged,uninstallManaged,upgradeManaged,checkManagedPrerequisites,type ManagedAcquisitionSource} from "../src/runtime/managed-lifecycle.js";
+import {inspectManagedInstall} from "../src/runtime/managed-install.js";
+import {createHomeBackup,restoreHomeBackup,verifyHomeBackup,HomeBackupError} from "../src/runtime/home-backup.js";
+import {requestBrowserConsent} from "../src/runtime/browser-assistant.js";
+import {runAsen} from "../src/cli.js";
+
+const roots:string[]=[];
+test.after(async()=>{for(const root of roots)await fs.rm(root,{recursive:true,force:true});});
+async function tmp(label:string){const root=await fs.mkdtemp(path.join(os.tmpdir(),`asen-t09-${label}-`));roots.push(root);return root;}
+
+const GOOD_CLI=(version:string)=>`process.stdout.write(${JSON.stringify(version+"\n")});`;
+// Passes the pre-activation probe, then fails once `current` selects this version.
+const BAD_AFTER_SELECT=(version:string)=>`const fs=require("fs"),path=require("path");let cur="";try{cur=fs.readFileSync(path.join(__dirname,"..","..","current"),"utf8").trim();}catch{}
+if(cur===${JSON.stringify(version)}){process.exit(1);}process.stdout.write(${JSON.stringify(version+"\n")});`;
+async function pkg(root:string,name:string,version:string,cli=GOOD_CLI(version),extra:Record<string,string>={}){
+ const dir=path.join(root,name);await fs.mkdir(dir,{recursive:true});
+ await fs.writeFile(path.join(dir,"package.json"),JSON.stringify({name:"asen",version,engines:{node:">=0.0.0"},bin:{asen:"./cli.cjs"}}));
+ await fs.writeFile(path.join(dir,"cli.cjs"),cli);
+ for(const [file,content] of Object.entries(extra))await fs.writeFile(path.join(dir,file),content);
+ return dir;
+}
+async function release(root:string,dir:string,keys=generateManagedSigningKeyPair()){
+ const built=await buildManagedManifest(dir),manifestPath=`${dir}.manifest.json`,signaturePath=`${dir}.sig.json`;
+ await fs.writeFile(manifestPath,built.manifestText);await fs.writeFile(signaturePath,signManagedManifest(Buffer.from(built.manifestText),keys.privateKeyPem));
+ const anchor=`${dir}.anchor.pem`;await fs.writeFile(anchor,keys.publicKeyPem);
+ const source:ManagedAcquisitionSource={kind:"local",manifestPath,signaturePath,packageRoot:dir};
+ return {source,anchor,keys,manifestPath,signaturePath,dir};
+}
+const env=(root:string)=>({prefix:path.join(root,"home",".asen"),dataHome:path.join(root,"home",".asen","agent")});
+async function setupInstall(label:string){
+ const root=await tmp(label),{prefix,dataHome}=env(root);
+ const v1=await release(root,await pkg(root,"v1","1.0.0"));
+ const base={prefix,trustedKeyPath:v1.anchor,protectedPaths:[dataHome],confirmed:true as const};
+ return {root,prefix,dataHome,v1,base};
+}
+
+test("clean install authenticates, initialises dirs/config, activates, then is idempotent",async()=>{
+ const {prefix,dataHome,v1,base}=await setupInstall("install");
+ const result=await installManaged({...base,source:v1.source,dataHome,launcherConfig:{mode:"isolated"}});
+ assert.equal(result.status,"installed");assert.equal(result.activeVersion,"1.0.0");assert.equal(result.signerKeyId,v1.keys.keyId);
+ assert.equal((await fs.stat(dataHome)).isDirectory(),true);
+ assert.deepEqual(JSON.parse(await fs.readFile(path.join(prefix,"config.json"),"utf8")),{home:"isolated"});
+ assert.equal((await inspectManagedInstall({prefix})).status,"owned");
+ const again=await installManaged({...base,source:v1.source,dataHome,launcherConfig:{mode:"isolated"}});
+ assert.equal(again.status,"unchanged");
+ assert.equal(checkManagedPrerequisites.length>=1,true);
+});
+
+test("prerequisites reject an old Node and a prefix that is a symlink",async()=>{
+ const root=await tmp("prereq");
+ assert.equal((await checkManagedPrerequisites({prefix:path.join(root,"p"),nodeVersion:"18.0.0"})).ok,false);
+ if(process.platform!=="win32"){
+  await fs.mkdir(path.join(root,"real"));await fs.symlink(path.join(root,"real"),path.join(root,"link"));
+  assert.equal((await checkManagedPrerequisites({prefix:path.join(root,"link")})).ok,false);
+  assert.equal((await checkManagedPrerequisites({prefix:path.join(root,"link","deep","prefix")})).ok,false,"a link in an ancestor must be refused");
+ }
+});
+
+test("untrusted, tampered, unsigned and wrong-signer packages are rejected without leaving an install",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("auth");
+ const attacker=await release(root,await pkg(root,"evil","1.0.0"));
+ await assert.rejects(()=>installManaged({...base,source:attacker.source,dataHome}),/authenticat|trusted|signer/i);
+ await fs.appendFile(v1.manifestPath," ");
+ await assert.rejects(()=>installManaged({...base,source:v1.source,dataHome}),/signature|authenticat/i);
+ const fresh=await release(root,await pkg(root,"ok","1.0.0"));
+ await fs.appendFile(path.join(fresh.dir,"cli.cjs"),"//tamper");
+ await assert.rejects(()=>installManaged({...base,trustedKeyPath:fresh.anchor,source:fresh.source,dataHome}));
+ await fs.writeFile(fresh.signaturePath,"{}");
+ await assert.rejects(()=>installManaged({...base,trustedKeyPath:fresh.anchor,source:fresh.source,dataHome}));
+ assert.equal((await inspectManagedInstall({prefix})).status,"absent");
+});
+
+test("an install whose candidate fails its probe is removed again and user data stays",async()=>{
+ const root=await tmp("failinstall"),{prefix,dataHome}=env(root);
+ await fs.mkdir(dataHome,{recursive:true});await fs.writeFile(path.join(dataHome,"keep.txt"),"mine");
+ const bad=await release(root,await pkg(root,"bad","1.0.0","process.exit(3);"));
+ await assert.rejects(()=>installManaged({prefix,source:bad.source,trustedKeyPath:bad.anchor,protectedPaths:[dataHome],dataHome,confirmed:true}),/probe/i);
+ assert.equal((await inspectManagedInstall({prefix})).status,"absent");
+ assert.equal(await fs.readFile(path.join(dataHome,"keep.txt"),"utf8"),"mine");
+});
+
+test("upgrade activates v2 and preserves data; rollback returns to v1",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("upgrade");
+ await installManaged({...base,source:v1.source,dataHome});
+ await fs.writeFile(path.join(dataHome,"session.jsonl"),"state");
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ const up=await upgradeManaged({...base,source:v2.source});
+ assert.equal(up.status,"upgraded");assert.equal(up.activeVersion,"2.0.0");assert.equal(up.previousVersion,"1.0.0");
+ assert.equal(await fs.readFile(path.join(dataHome,"session.jsonl"),"utf8"),"state");
+ const back=await rollbackManaged({prefix,expectedCurrentVersion:"2.0.0",toVersion:"1.0.0",confirmed:true});
+ assert.equal(back.status,"rolled-back");assert.equal((await inspectManagedInstall({prefix})).status==="owned"&&(await inspectManagedInstall({prefix})).activeVersion,"1.0.0");
+ assert.equal((await upgradeManaged({...base,source:v1.source})).status,"unchanged");
+ const v3=await release(root,await pkg(root,"v3","3.0.0"),v1.keys);
+ assert.equal((await upgradeManaged({...base,source:v3.source})).activeVersion,"3.0.0");
+ await assert.rejects(()=>upgradeManaged({...base,source:v1.source}),{code:"DOWNGRADE_REFUSED"});
+});
+
+test("a v2 that fails its pre-activation probe leaves v1 active and usable",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("preprobe");
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0","process.stdout.write('9.9.9\\n');"),v1.keys);
+ const result=await upgradeManaged({...base,source:v2.source});
+ assert.equal(result.status,"not-activated");assert.equal(result.activeVersion,"1.0.0");
+ const inspection=await inspectManagedInstall({prefix});
+ assert.equal(inspection.status==="owned"&&inspection.activeVersion,"1.0.0");
+});
+
+test("a v2 that breaks only after activation is rolled back automatically",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("postprobe");
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0",BAD_AFTER_SELECT("2.0.0")),v1.keys);
+ const result=await upgradeManaged({...base,source:v2.source});
+ assert.equal(result.status,"rolled-back");assert.equal(result.activeVersion,"1.0.0");
+ const inspection=await inspectManagedInstall({prefix});
+ assert.equal(inspection.status==="owned"&&inspection.activeVersion,"1.0.0");
+ await assert.rejects(()=>fs.lstat(path.join(prefix,"managed-update-journal.json")),{code:"ENOENT"});
+});
+
+test("an interrupted upgrade (crash after activation) is recovered by rollback via the journal",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("crash");
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ await assert.rejects(()=>upgradeManaged({...base,source:v2.source,hooks:{afterActivation:async()=>{throw new Error("simulated crash");}}}).then(result=>{if(result.status!=="rolled-back")throw new Error("not rolled back");throw new Error("simulated crash");}));
+ const state=await inspectManagedInstall({prefix});
+ assert.equal(state.status,"owned");
+ if(state.status==="owned"&&state.activeVersion==="2.0.0"){
+  const recovered=await rollbackManaged({prefix,expectedCurrentVersion:"2.0.0",confirmed:true});
+  assert.equal(recovered.activeVersion,"1.0.0");
+ }
+ const final=await inspectManagedInstall({prefix});
+ assert.equal(final.status==="owned"&&final.activeVersion,"1.0.0");
+});
+
+test("uninstall removes only owned files, keeps data/config, and retains foreign files",async()=>{
+ const {prefix,dataHome,v1,base}=await setupInstall("uninstall");
+ await installManaged({...base,source:v1.source,dataHome,launcherConfig:{mode:"isolated"}});
+ await fs.writeFile(path.join(dataHome,"sessions.db"),"data");
+ await fs.writeFile(path.join(prefix,"install","versions","1.0.0","user-note.txt"),"foreign");
+ const report=await uninstallManaged({prefix,confirmed:true});
+ assert.equal(report.userDataTouched,false);assert.equal(report.status,"partial");
+ assert.equal(await fs.readFile(path.join(dataHome,"sessions.db"),"utf8"),"data");
+ assert.equal(await fs.readFile(path.join(prefix,"install","versions","1.0.0","user-note.txt"),"utf8"),"foreign");
+ await assert.rejects(()=>fs.lstat(path.join(prefix,"install","versions","1.0.0","cli.cjs")),{code:"ENOENT"});
+ await assert.rejects(()=>uninstallManaged({prefix,confirmed:false as unknown as true}),/confirm/i);
+});
+
+test("uninstall refuses a modified owned file and never follows symlinks out of the install",async()=>{
+ if(process.platform==="win32")return;
+ const {root,prefix,dataHome,v1,base}=await setupInstall("uninstallsym");
+ await installManaged({...base,source:v1.source,dataHome});
+ const outside=path.join(root,"outside.txt");await fs.writeFile(outside,"external");
+ const cli=path.join(prefix,"install","versions","1.0.0","cli.cjs");
+ await fs.rm(cli);await fs.symlink(outside,cli);
+ const report=await uninstallManaged({prefix,confirmed:true}).catch(error=>error);
+ assert.equal(await fs.readFile(outside,"utf8"),"external");
+ assert.ok(report instanceof Error||report.status==="partial");
+});
+
+test("a partial uninstall keeps ownership records so a later uninstall can finish",async()=>{
+ const {prefix,dataHome,v1,base}=await setupInstall("uninstallresume");
+ await installManaged({...base,source:v1.source,dataHome});
+ const stray=path.join(prefix,"install","versions","1.0.0","user-note.txt");await fs.writeFile(stray,"mine");
+ const first=await uninstallManaged({prefix,confirmed:true});
+ assert.equal(first.status,"partial");
+ assert.equal(await fs.readFile(stray,"utf8"),"mine");
+ await fs.access(path.join(prefix,"install","managed-install.json"));
+ await fs.rm(stray);
+ const second=await uninstallManaged({prefix,confirmed:true});
+ assert.equal(second.status,"removed");
+});
+
+test("foreign (non-ASEN) managed roots are never touched by install or uninstall",async()=>{
+ const {prefix,dataHome,v1,base}=await setupInstall("foreign");
+ await fs.mkdir(path.join(prefix,"install"),{recursive:true});await fs.writeFile(path.join(prefix,"install","stranger.txt"),"not ours");
+ await assert.rejects(()=>installManaged({...base,source:v1.source,dataHome}));
+ await uninstallManaged({prefix,confirmed:true}).catch(()=>undefined);
+ assert.equal(await fs.readFile(path.join(prefix,"install","stranger.txt"),"utf8"),"not ours");
+});
+
+// ------------------------------------------------------------ HTTPS-style acquisition (real loopback server)
+async function serve(files:Record<string,Buffer|string>,mutate?:(url:string,body:Buffer)=>Buffer|undefined){
+ const server:Server=createServer((req,res)=>{
+  const name=(req.url??"").replace(/^\//u,"");
+  if(name==="redirect"){res.writeHead(302,{location:"/asen-manifest.json"});res.end();return;}
+  const raw=files[name];if(raw===undefined){res.writeHead(404);res.end();return;}
+  const body=mutate?.(name,Buffer.from(raw))??Buffer.from(raw);res.writeHead(200,{"content-length":body.length});res.end(body);
+ });
+ await new Promise<void>(resolve=>server.listen(0,"127.0.0.1",resolve));
+ const port=(server.address() as {port:number}).port;
+ return {url:`http://127.0.0.1:${port}/`,close:()=>new Promise<void>(resolve=>{server.closeAllConnections();server.close(()=>resolve());})};
+}
+async function servedRelease(label:string){
+ const s=await setupInstall(label);
+ const manifestText=await fs.readFile(s.v1.manifestPath,"utf8");
+ const manifest=JSON.parse(manifestText) as {files:{sourcePath:string}[]};
+ const files:Record<string,Buffer|string>={"asen-manifest.json":manifestText,"asen-manifest.sig.json":await fs.readFile(s.v1.signaturePath,"utf8")};
+ for(const file of manifest.files)files[file.sourcePath]=await fs.readFile(path.join(s.v1.dir,file.sourcePath));
+ return {...s,files};
+}
+
+test("network acquisition installs a signed package from a loopback server",async()=>{
+ const s=await servedRelease("net"),server=await serve(s.files);
+ try{
+  const result=await installManaged({...s.base,source:{kind:"https",baseUrl:server.url},dataHome:s.dataHome});
+  assert.equal(result.status,"installed");
+  assert.deepEqual(await fs.readdir(path.join(s.prefix,"downloads")).catch(()=>[] as string[]),[]);
+ }finally{await server.close();}
+});
+
+test("network acquisition rejects altered, truncated and redirected content and cleans partial downloads",async()=>{
+ const s=await servedRelease("netbad");
+ for(const mutate of [
+  (name:string,body:Buffer)=>name==="cli.cjs"?Buffer.concat([body,Buffer.from("x")]):undefined,
+  (name:string,body:Buffer)=>name==="cli.cjs"?body.subarray(0,body.length-3):undefined,
+  (name:string,body:Buffer)=>name==="asen-manifest.json"?Buffer.from(body.toString().replace("1.0.0","1.0.1")):undefined,
+ ]){
+  const server=await serve(s.files,mutate);
+  try{await assert.rejects(()=>installManaged({...s.base,source:{kind:"https",baseUrl:server.url},dataHome:s.dataHome}));}
+  finally{await server.close();}
+ }
+ const redirecting=await serve(s.files);
+ try{await assert.rejects(()=>installManaged({...s.base,source:{kind:"https",baseUrl:redirecting.url+"redirect/"},dataHome:s.dataHome}));}finally{await redirecting.close();}
+ await assert.rejects(()=>installManaged({...s.base,source:{kind:"https",baseUrl:"http://example.com/"},dataHome:s.dataHome}),/https|loopback|refus/i);
+ assert.equal((await inspectManagedInstall({prefix:s.prefix})).status,"absent");
+ const downloads=await fs.readdir(path.join(s.prefix,"downloads")).catch(()=>[] as string[]);
+ assert.deepEqual(downloads.filter(name=>name.startsWith("dl-")),[]);
+});
+
+// ------------------------------------------------------------ backup / restore
+async function homeFixture(label:string){
+ const root=await tmp(label),home=path.join(root,"home");
+ await fs.mkdir(path.join(home,"sessions","a"),{recursive:true});await fs.mkdir(path.join(home,"empty"));
+ await fs.writeFile(path.join(home,"settings.json"),'{"theme":"dark"}');await fs.writeFile(path.join(home,"sessions","a","one.jsonl"),"line\n");
+ const config=path.join(root,"config.json");await fs.writeFile(config,'{"home":"isolated"}');
+ return {root,home,config};
+}
+
+test("home backup is real, verifiable, never overwrites, and restores data and config exactly",async()=>{
+ const {root,home,config}=await homeFixture("backup"),file=path.join(root,"out","x.asenbak");
+ await fs.mkdir(path.dirname(file));
+ const made=await createHomeBackup({homeDir:home,configFile:config,destination:file,asenVersion:"0.1.0"});
+ assert.equal(made.files,3);
+ assert.equal((await verifyHomeBackup(file)).hasConfig,true);
+ await assert.rejects(()=>createHomeBackup({homeDir:home,destination:file,asenVersion:"0.1.0"}),{code:"DESTINATION_EXISTS"});
+ await assert.rejects(()=>createHomeBackup({homeDir:home,destination:path.join(home,"inside.bak"),asenVersion:"0.1.0"}),{code:"DESTINATION_INSIDE_SOURCE"});
+ const target=path.join(root,"restored"),targetConfig=path.join(root,"restored.config.json");
+ await assert.rejects(()=>restoreHomeBackup({backup:file,targetHome:target,confirmed:false}),{code:"CONFIRMATION_REQUIRED"});
+ const restored=await restoreHomeBackup({backup:file,targetHome:target,targetConfig,confirmed:true});
+ assert.equal(restored.files,2);assert.equal(restored.configRestored,true);
+ assert.equal(await fs.readFile(path.join(target,"settings.json"),"utf8"),'{"theme":"dark"}');
+ assert.equal(await fs.readFile(path.join(target,"sessions","a","one.jsonl"),"utf8"),"line\n");
+ assert.equal((await fs.stat(path.join(target,"empty"))).isDirectory(),true);
+ assert.equal(await fs.readFile(targetConfig,"utf8"),'{"home":"isolated"}');
+});
+
+test("restore refuses to overwrite existing data; --replace moves it aside instead of deleting",async()=>{
+ const {root,home}=await homeFixture("overwrite"),file=path.join(root,"b.asenbak");
+ await createHomeBackup({homeDir:home,destination:file,asenVersion:"0.1.0"});
+ const target=path.join(root,"live");await fs.mkdir(target);await fs.writeFile(path.join(target,"precious"),"keep");
+ await assert.rejects(()=>restoreHomeBackup({backup:file,targetHome:target,confirmed:true}),{code:"TARGET_EXISTS"});
+ assert.equal(await fs.readFile(path.join(target,"precious"),"utf8"),"keep");
+ const result=await restoreHomeBackup({backup:file,targetHome:target,replace:true,confirmed:true});
+ assert.equal(result.movedAside.length,1);
+ assert.equal(await fs.readFile(path.join(result.movedAside[0]!,"precious"),"utf8"),"keep");
+ assert.equal(await fs.readFile(path.join(target,"settings.json"),"utf8"),'{"theme":"dark"}');
+});
+
+test("corrupt, truncated, foreign and incompatible backups are detected and restore changes nothing",async()=>{
+ const {root,home}=await homeFixture("corrupt"),file=path.join(root,"c.asenbak");
+ await createHomeBackup({homeDir:home,destination:file,asenVersion:"0.1.0"});
+ const good=await fs.readFile(file);
+ const cases:Array<[string,Buffer,string]>=[
+  ["flipped",Buffer.concat([good.subarray(0,good.length-40),Buffer.from([good[good.length-40]!^1]),good.subarray(good.length-39)]),"BACKUP_CORRUPT"],
+  ["truncated",good.subarray(0,good.length-50),"BACKUP_CORRUPT"],
+  ["garbage",Buffer.from("not a backup at all, definitely"),"BACKUP_CORRUPT"],
+ ];
+ for(const [name,bytes,code] of cases){
+  const bad=path.join(root,name+".bak");await fs.writeFile(bad,bytes);
+  await assert.rejects(()=>verifyHomeBackup(bad),(error:unknown)=>error instanceof HomeBackupError&&error.code===code,name);
+  await assert.rejects(()=>restoreHomeBackup({backup:bad,targetHome:path.join(root,"t-"+name),confirmed:true}));
+  await assert.rejects(()=>fs.lstat(path.join(root,"t-"+name)),{code:"ENOENT"});
+ }
+ // Incompatible schema, re-sealed so only the schema is wrong.
+ const {createHash}=await import("node:crypto");
+ const length=good.readUInt32BE(8),manifest=good.subarray(12,12+length).toString().replace("asen.home-backup/v1","asen.home-backup/v9");
+ const body=Buffer.concat([good.subarray(0,8),(()=>{const b=Buffer.alloc(4);b.writeUInt32BE(Buffer.byteLength(manifest));return b;})(),Buffer.from(manifest),good.subarray(12+length,good.length-32)]);
+ const odd=path.join(root,"v9.bak");await fs.writeFile(odd,Buffer.concat([body,createHash("sha256").update(body).digest()]));
+ await assert.rejects(()=>verifyHomeBackup(odd),{code:"BACKUP_INCOMPATIBLE"});
+});
+
+test("backup refuses symlinks in the source unless explicitly skipped; restore blocks path traversal",async()=>{
+ if(process.platform==="win32")return;
+ const {root,home}=await homeFixture("links");
+ await fs.writeFile(path.join(root,"secret.txt"),"outside");await fs.symlink(path.join(root,"secret.txt"),path.join(home,"link"));
+ await assert.rejects(()=>createHomeBackup({homeDir:home,destination:path.join(root,"l.bak"),asenVersion:"0.1.0"}),{code:"SOURCE_LINK"});
+ const made=await createHomeBackup({homeDir:home,destination:path.join(root,"l2.bak"),asenVersion:"0.1.0",skipLinks:true});
+ assert.deepEqual(made.skippedLinks,["link"]);
+ // Hand-forged traversal entry, correctly sealed: must still be rejected by path validation.
+ const {createHash}=await import("node:crypto");
+ const manifest=Buffer.from(JSON.stringify({schema:"asen.home-backup/v1",createdAt:"x",asenVersion:"0",dirs:[],entries:[{root:"home",path:"../escape",size:1,sha256:createHash("sha256").update("a").digest("hex"),mode:420}]}));
+ const header=Buffer.alloc(4);header.writeUInt32BE(manifest.length);
+ const body=Buffer.concat([Buffer.from("ASENBAK1"),header,manifest,Buffer.from("a")]);
+ const forged=path.join(root,"forged.bak");await fs.writeFile(forged,Buffer.concat([body,createHash("sha256").update(body).digest()]));
+ await assert.rejects(()=>verifyHomeBackup(forged),{code:"BACKUP_CORRUPT"});
+});
+
+test("unreadable source data fails the backup without leaving partial output",async()=>{
+ if(process.platform==="win32"||process.getuid?.()===0)return;
+ const {root,home}=await homeFixture("perm");await fs.chmod(path.join(home,"settings.json"),0o000);
+ const file=path.join(root,"p.bak");
+ try{await assert.rejects(()=>createHomeBackup({homeDir:home,destination:file,asenVersion:"0.1.0"}));}finally{await fs.chmod(path.join(home,"settings.json"),0o600);}
+ assert.deepEqual((await fs.readdir(root)).filter(name=>name.startsWith("p.bak")),[]);
+});
+
+// ------------------------------------------------------------ browser assistant (real loopback HTTP)
+function request(url:string,method:string,headers:Record<string,string>={}):Promise<number>{
+ return new Promise((resolve,reject)=>{const req=http.request(url,{method,headers},res=>{res.resume();res.on("end",()=>resolve(res.statusCode??0));});req.on("error",reject);req.end();});
+}
+test("browser assistant: wrong token, foreign Origin and bad Host are refused; confirm resolves once",async()=>{
+ let url="";const urlReady=new Promise<void>(resolve=>{(globalThis as {__ready?:()=>void}).__ready=resolve;});
+ const pending=requestBrowserConsent({title:"t",lines:["a <b>"],timeoutMs:10_000,onUrl:value=>{url=value;(globalThis as {__ready?:()=>void}).__ready?.();}});
+ await urlReady;
+ const base=new URL(url),token=base.pathname.slice(1);
+ assert.equal(await request(`http://127.0.0.1:${base.port}/wrong`,"GET"),404);
+ assert.equal(await request(url,"GET",{host:"evil.example"}),403);
+ assert.equal(await request(`${url}/confirm`,"POST",{origin:"http://evil.example","x-asen-token":token}),403);
+ assert.equal(await request(`${url}/confirm`,"POST"),403);
+ assert.equal(await request(url,"GET"),200);
+ assert.equal(await request(`${url}/confirm`,"POST",{"x-asen-token":token}),200);
+ assert.equal(await pending,"confirmed");
+});
+test("browser assistant times out without confirming",async()=>{
+ assert.equal(await requestBrowserConsent({title:"t",lines:[],timeoutMs:50,onUrl:()=>undefined}),"timeout");
+});
+
+// ------------------------------------------------------------ public CLI end to end
+test("public CLI: release keygen/manifest/sign → install → upgrade → backup → uninstall keeps data",async()=>{
+ const root=await tmp("cli"),homeDirectory=path.join(root,"home");await fs.mkdir(homeDirectory);
+ const out:string[]=[],err:string[]=[];
+ const run=async(...argv:string[])=>{out.length=0;err.length=0;const code=await runAsen(argv,{},{homeDirectory:()=>homeDirectory,stdout:text=>out.push(text),stderr:text=>err.push(text)});return code;};
+ const priv=path.join(root,"k.pem"),pub=path.join(root,"k.pub.pem");
+ assert.equal(await run("managed","release","keygen","--private-key",priv,"--public-key",pub),0);
+ const ship=async(version:string,cli=GOOD_CLI(version))=>{
+  const dir=await pkg(root,`pkg-${version}`,version,cli),manifest=path.join(root,`m-${version}.json`),sig=path.join(root,`s-${version}.json`);
+  assert.equal(await run("managed","release","manifest","--package-root",dir,"--output",manifest),0);
+  assert.equal(await run("managed","release","sign","--manifest",manifest,"--private-key",priv,"--output",sig),0);
+  return ["--manifest",manifest,"--signature",sig,"--package-root",dir,"--trust-anchor",pub];
+ };
+ const v1=await ship("1.0.0"),v2=await ship("2.0.0");
+ assert.equal(await run("managed","install",...v1),2,"consent flag required");
+ assert.equal(await run("managed","install",...v1,"--yes"),0,err.join(""));
+ assert.equal(JSON.parse(out.join("")).status,"installed");
+ assert.equal(await run("managed","upgrade",...v2,"--yes"),0,err.join(""));
+ const dataHome=path.join(homeDirectory,".asen","agent");await fs.writeFile(path.join(dataHome,"mem.db"),"data");
+ const backup=path.join(root,"cli.asenbak");
+ assert.equal(await run("backup","home","--destination",backup),0,err.join(""));
+ assert.equal(await run("backup","verify","--file",backup),0,err.join(""));
+ assert.equal(await run("managed","rollback","--expected-current","2.0.0","--to","1.0.0","--yes"),0,err.join(""));
+ assert.equal(await run("managed","uninstall","--yes"),0,err.join(""));
+ assert.equal(await fs.readFile(path.join(dataHome,"mem.db"),"utf8"),"data");
+ const restoredHome=path.join(root,"restored");
+ assert.equal(await run("restore","home","--backup",backup,"--target-home",restoredHome,"--yes"),0,err.join(""));
+ assert.equal(await fs.readFile(path.join(restoredHome,"mem.db"),"utf8"),"data");
+ assert.equal(await run("managed","uninstall"),2);
+ assert.equal(await run("backup","verify","--file","relative.bak"),2);
+});
+
+test("public CLI: --browser asks for consent via loopback and a cancel changes nothing",async()=>{
+ const root=await tmp("clibrowser"),homeDirectory=path.join(root,"home");await fs.mkdir(homeDirectory);
+ const v1=await release(root,await pkg(root,"v1","1.0.0"));
+ const err:string[]=[];
+ const code=await runAsen(["managed","install","--manifest",v1.manifestPath,"--signature",v1.signaturePath,"--package-root",v1.dir,"--trust-anchor",v1.anchor,"--browser","--no-open","--timeout-ms","10000"],{},
+  {homeDirectory:()=>homeDirectory,stdout:()=>undefined,stderr:text=>{err.push(text);const match=/(http:\/\/127\.0\.0\.1:\d+\/\S+) to confirm/u.exec(text);if(match){const url=match[1]!,token=new URL(url).pathname.slice(1);void request(`${url}/cancel`,"POST",{"x-asen-token":token});}}});
+ assert.equal(code,1);assert.match(err.join(""),/cancelled/);
+ assert.equal((await inspectManagedInstall({prefix:path.join(homeDirectory,".asen")})).status,"absent");
+});

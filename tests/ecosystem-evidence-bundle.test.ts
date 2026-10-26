@@ -30,9 +30,9 @@ function fixture(){
  return {candidate,sourceCommit,sourceManifestSha256,sourceManifestBytes,groups};
 }
 
-test("bundle reconciles all 24 cells and eight kinds without promoting claims",()=>{
+test("bundle reconciles all planned cells and eight kinds without promoting claims",()=>{
  const result=validateEvidenceBundle(fixture());
- assert.equal(result.cells.length,24);
+ assert.equal(result.cells.length,planPiSupportMatrix().length);
  assert.deepEqual(result.kinds,["positive","negative","failure","recovery","linux","windows","macos","pi-host"]);
  assert.equal(result.claimsPromotion,false);
 });

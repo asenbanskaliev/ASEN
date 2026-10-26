@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import {access,mkdir,readFile,realpath,rename,writeFile} from "node:fs/promises";
+import {mkdtempSync,rmSync} from "node:fs";
+import {tmpdir} from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {Agent,runToolCall} from "@earendil-works/pi-agent-core";
@@ -26,10 +28,19 @@ type SessionFixture={
  close:(reason?:"quit"|"reload")=>Promise<void>;
 };
 
+let ownedFixtureRoot:string|undefined;
+// A parent may supply ASEN_T06_FIXTURE_ROOT; otherwise this process owns a private temporary root.
 function fixtureRoot():string{
  const value=process.env.ASEN_T06_FIXTURE_ROOT;
- if(!value||!path.isAbsolute(value))throw new Error("ASEN_T06_FIXTURE_ROOT must be an absolute parent-owned fixture path");
- return path.resolve(value);
+ if(value!==undefined&&value!==""){
+  if(!path.isAbsolute(value))throw new Error("ASEN_T06_FIXTURE_ROOT must be an absolute parent-owned fixture path");
+  return path.resolve(value);
+ }
+ if(!ownedFixtureRoot){
+  const created=mkdtempSync(path.join(tmpdir(),"asen-t06-"));ownedFixtureRoot=created;
+  process.once("exit",()=>{try{rmSync(created,{recursive:true,force:true});}catch{/* best-effort temp cleanup */}});
+ }
+ return ownedFixtureRoot;
 }
 
 function ui(notices:Notice[],confirmations:{count:number}):ExtensionUIContext{
