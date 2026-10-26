@@ -70,3 +70,14 @@ test("managed CLI retains unknown temporary bytes while observing only the CLI v
  const called=await invocation(f);assert.equal(await readFile(path.join(called.home,"foreign.txt"),"utf8"),"FOREIGN");
  assert.equal(report.stdout,"0.1.0\n");assert.equal(report.stderr,"");assert.equal(report.exitCode,0);await preserved(before);
 });
+
+test("Windows private probe environment retains only the native compiler bootstrap",async()=>{
+ if(process.platform!=="win32")return;
+ const f=await fixture("ok"),{probeManagedCliVersion}=await api();
+ const report=await probeManagedCliVersion({prefix:f.prefix,version:"0.1.0",confirmed:true});
+ assert.equal(report.cliVersion,"observed",JSON.stringify(report));
+ const observed=await invocation(f);
+ assert.equal(observed.keys.includes("ComSpec"),true);
+ assert.equal(observed.keys.includes("SystemRoot"),true);
+ assert.equal(observed.keys.some(key=>/TOKEN|SECRET|PASSWORD|API_KEY|CREDENTIAL|PROVIDER/iu.test(key)),false);
+});
