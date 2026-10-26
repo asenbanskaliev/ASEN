@@ -4,7 +4,7 @@ import {readFileSync,writeFileSync,mkdirSync} from "node:fs";
 import {resolve,join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {createHash} from "node:crypto";
-import {validateCellObservation} from "./pi-support-matrix.mjs";
+import {planPiSupportMatrix,validateCellObservation} from "./pi-support-matrix.mjs";
 const sha256=bytes=>createHash("sha256").update(bytes).digest("hex");
 
 export function admitTapResult(result){
@@ -46,7 +46,8 @@ export function main({output=process.argv[2],matrix=process.argv[3],candidate=pr
   emit(kind,"DETERMINISTIC_EXECUTION",`node ${args.join(" ")}`,`${count} selected preflight contract test(s) completed; pattern: ${pattern}`,result.stdout+result.stderr);
  }
  const cells=[];
- for(const version of ["0.85.1","1.1.0"])for(const mode of ["tui","rpc","json","print"]){
+ const planned=planPiSupportMatrix().filter(item=>item.platform===process.platform),versions=[...new Set(planned.map(item=>item.version))];
+ for(const {version,mode} of planned){
   const bytes=readFileSync(join(resolve(matrix),`${process.platform}-${version}-${mode}.json`));
   const cell=JSON.parse(bytes);
   assert.equal(cell.candidate,candidate);assert.equal(cell.sourceCommit,sourceCommit);assert.equal(cell.result,"PASS");
@@ -59,8 +60,8 @@ export function main({output=process.argv[2],matrix=process.argv[3],candidate=pr
  }
  const platform={linux:"linux",win32:"windows",darwin:"macos"}[process.platform];assert.ok(platform);
  const log=JSON.stringify(cells,null,2)+"\n";
- emit(platform,"OS_RUNTIME","npm run verify:pi-matrix","Eight packed real-host cells on this operating system completed with natural exit and no model calls",log);
- emit("pi-host","REAL_PI_HOST","npm run verify:pi-matrix","Pi 0.85.1 and 1.1.0 in four public modes; bounded lifecycle sample, not complete behavior parity",log);
+ emit(platform,"OS_RUNTIME","npm run verify:pi-matrix",`${planned.length} packed real-host cells on this operating system completed with natural exit and no model calls`,log);
+ emit("pi-host","REAL_PI_HOST","npm run verify:pi-matrix",`Pi ${versions.join(" and ")} in four public modes; bounded lifecycle sample, not complete behavior parity`,log);
 }
 
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
