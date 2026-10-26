@@ -1,6 +1,6 @@
 import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
-import {chmodSync,lstatSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,rmSync,rmdirSync,unlinkSync,writeFileSync} from "node:fs";
+import {chmodSync,lstatSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync,rmdirSync,unlinkSync,writeFileSync} from "node:fs";
 import {isAbsolute,join,relative,resolve} from "node:path";
 import {tmpdir} from "node:os";
 import type {CandidateGitTreeManifest,CandidateGitTreeEntry} from "./review-tree-inspection.js";
@@ -24,7 +24,7 @@ interface ViewClaim {readonly root:string;readonly realRoot:string;readonly dev:
 function assertDirectory(path:string,label:string):{realPath:string;dev:number;ino:number} {
  const requested=resolve(path),info=lstatSync(requested);
  if(!info.isDirectory()||info.isSymbolicLink())throw new Error(`${label} must be an owned non-symlink directory`);
- const realPath=resolve(requested);
+ const realPath=realpathSync(requested);
  if(realPath!==requested)throw new Error(`${label} must be canonical`);
  return {realPath,dev:info.dev,ino:info.ino};
 }
@@ -57,6 +57,9 @@ export function materializeReviewView(manifest:CandidateGitTreeManifest,parent:s
  if(typeof manifest!=="object"||manifest===null||manifest.schemaVersion!==1)throw new Error("Review tree manifest is invalid");
  if(!isAbsolute(parent))throw new Error("Review view parent must be absolute");
  const parentClaim=assertDirectory(parent,"Review view parent");
+ const repositoryRoot=realpathSync(manifest.repositoryRoot);
+ const parentRelative=relative(repositoryRoot,parentClaim.realPath);
+ if(!parentRelative||(!parentRelative.startsWith("..")&&!isAbsolute(parentRelative)))throw new Error("Review view parent must be outside the repository");
  const paths=manifest.entries.map(entry=>entry.path);
  validatePortableReviewPaths(paths);
  for(const entry of manifest.entries)validateEntry(entry);
