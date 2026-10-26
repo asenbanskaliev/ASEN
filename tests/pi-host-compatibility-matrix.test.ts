@@ -1,26 +1,25 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {validatePiHost,validatePiCommandCollisions,validatePiRegistrationCollisions,validatePiExecutionContext,ASEN_PI_MINIMUM_VERSION,ASEN_PI_MAXIMUM_VERSION_EXCLUSIVE,ASEN_PI_SUPPORTED_MODES} from "../src/runtime/pi-host.js";
+import {validatePiHost,validatePiCommandCollisions,validatePiRegistrationCollisions,validatePiExecutionContext,ASEN_PI_MINIMUM_VERSION,ASEN_PI_SUPPORTED_MODES} from "../src/runtime/pi-host.js";
 
 const makeHost=()=>Object.assign(Object.fromEntries(["on","registerCommand","registerTool","getFlag","getCommands","getAllTools"].map(name=>[name,()=>name==="getCommands"||name==="getAllTools"?[]:undefined])));
 
 test("Pi host minimum-version boundary and platform-neutral public methods",()=>{
- assert.equal(ASEN_PI_MINIMUM_VERSION,"0.85.1");
- assert.equal(ASEN_PI_MAXIMUM_VERSION_EXCLUSIVE,"2.0.0");
- for(const version of ["0.85.1","0.86.0","0.99.9","1.0.0","1.1.0","1.99.9"])
+ assert.equal(ASEN_PI_MINIMUM_VERSION,"1.2.0");
+ for(const version of ["1.2.0","1.2.1","1.99.9","2.0.0","9.1.0"])
   assert.doesNotThrow(()=>validatePiHost(makeHost(),version),version);
- for(const version of ["0.85.0","0.84.99","0.0.0","2.0.0","9.1.0","invalid","1.1.0-rc.1",undefined,null,1])
+ for(const version of ["1.1.999","1.1.0","0.85.1","0.0.0","invalid","1.2.0-rc.1",undefined,null,1])
   assert.throws(()=>validatePiHost(makeHost(),version),/known Pi version/);
 });
 
 test("Pi host preflight rejects missing or accessor-backed registration methods",()=>{
  for(const name of ["on","registerCommand","registerTool","getCommands","getAllTools"]){
   const missing=makeHost();delete missing[name];
-  assert.throws(()=>validatePiHost(missing,"1.1.0"),/requires callable Pi/);
+  assert.throws(()=>validatePiHost(missing,"1.2.0"),/requires callable Pi/);
   const accessor=makeHost();Object.defineProperty(accessor,name,{get(){throw Error("host getter invoked");}});
-  assert.throws(()=>validatePiHost(accessor,"1.1.0"),/requires callable Pi/);
+  assert.throws(()=>validatePiHost(accessor,"1.2.0"),/requires callable Pi/);
  }
- assert.throws(()=>validatePiHost(new Proxy(makeHost(),{}),"1.1.0"),/public Pi extension API/);
+ assert.throws(()=>validatePiHost(new Proxy(makeHost(),{}),"1.2.0"),/public Pi extension API/);
 });
 
 test("public inventory collision preflight rejects reserved commands before registration",()=>{
@@ -95,11 +94,11 @@ test("unrelated command names preserve case-sensitive matching",()=>{
 });
 
 test("version parser rejects prefixed release strings",()=>{
- assert.throws(()=>validatePiHost(makeHost(),"v1.1.0"),/known Pi version/);
+ assert.throws(()=>validatePiHost(makeHost(),"v1.2.0"),/known Pi version/);
 });
 
 test("version parser rejects surrounding whitespace",()=>{
- assert.throws(()=>validatePiHost(makeHost()," 1.1.0 "),/known Pi version/);
+ assert.throws(()=>validatePiHost(makeHost()," 1.2.0 "),/known Pi version/);
 });
 
 test("version parser rejects incomplete versions",()=>{
@@ -107,12 +106,12 @@ test("version parser rejects incomplete versions",()=>{
 });
 
 test("version parser rejects release metadata",()=>{
- assert.throws(()=>validatePiHost(makeHost(),"1.1.0+build"),/known Pi version/);
+ assert.throws(()=>validatePiHost(makeHost(),"1.2.0+build"),/known Pi version/);
 });
 
 test("host rejects missing required registration tool",()=>{
  const host=makeHost();delete host.registerTool;
- assert.throws(()=>validatePiHost(host,"1.1.0"),/callable Pi registerTool/);
+ assert.throws(()=>validatePiHost(host,"1.2.0"),/callable Pi registerTool/);
 });
 
 test("local reservations are checked even without host inventory",()=>{
@@ -250,10 +249,10 @@ test("registration inventories reject duplicate public names",()=>{
  assert.throws(()=>validatePiRegistrationCollisions(host,["asen"],["asen_probe"]),/tool inventory is malformed/);
 });
 
-test("Pi version comparison handles differing components without missing-index reads",()=>{
- for(const version of ["0.85.1","0.85.2","0.99.99","1.0.0","1.99.999"])
+test("Pi version comparison handles differing components without an upper cap",()=>{
+ for(const version of ["1.2.0","1.2.1","1.99.999","2.0.0","2.0.1"])
   assert.doesNotThrow(()=>validatePiHost(makeHost(),version));
- for(const version of ["0.85.0","0.84.999","2.0.0","2.0.1"])
+ for(const version of ["0.85.1","1.0.999","1.1.999"])
   assert.throws(()=>validatePiHost(makeHost(),version),/known Pi version/);
 });
 

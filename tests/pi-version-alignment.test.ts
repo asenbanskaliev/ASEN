@@ -53,40 +53,40 @@ await test("package and lock metadata align the development SDK and Node floor",
   const lockRoot = packageLock.packages?.[""];
   const lockedSdk = packageLock.packages?.[`node_modules/${sdkName}`];
 
-  assert.equal(packageJson.devDependencies?.[sdkName], "^1.1.0");
+  assert.equal(packageJson.devDependencies?.[sdkName], "^1.2.0");
   assert.equal(packageJson.engines?.node, ">=22.19.0");
-  assert.equal(packageJson.peerDependencies?.[sdkName], ">=0.85.1 <2.0.0");
+  assert.equal(packageJson.peerDependencies?.[sdkName], ">=1.2.0");
   assert.equal(packageJson.peerDependenciesMeta?.[sdkName]?.optional, true);
 
-  assert.equal(lockRoot?.devDependencies?.[sdkName], "^1.1.0");
+  assert.equal(lockRoot?.devDependencies?.[sdkName], "^1.2.0");
   assert.equal(lockRoot?.engines?.node, ">=22.19.0");
-  assert.equal(lockRoot?.peerDependencies?.[sdkName], ">=0.85.1 <2.0.0");
+  assert.equal(lockRoot?.peerDependencies?.[sdkName], ">=1.2.0");
   assert.equal(lockRoot?.peerDependenciesMeta?.[sdkName]?.optional, true);
-  assert.equal(lockedSdk?.version, "1.1.0");
+  assert.equal(lockedSdk?.version, "1.2.0");
 });
 
-await test("all seven current-runtime workflows pin Pi 1.1.0", () => {
+await test("all seven current-runtime workflows pin Pi 1.2.0", () => {
   for (const [path, workflow] of workflowTexts) {
     if (path === "release-gate.yml") {
       // Release Gate reuses the lockfile-installed SDK to avoid an unpinned second npm resolution.
       assert.match(workflow, /npm install/);
-      assert.match(workflow, /p\.version !== "1\.1\.0"/);
+      assert.match(workflow, /p\.version !== "1\.2\.0"/);
       assert.match(workflow, /GITHUB_WORKSPACE\/node_modules\/\.bin/);
       assert.equal(workflow.includes("npm install -g"), false);
       continue;
     }
     const pins = [...workflow.matchAll(/@earendil-works\/pi-coding-agent@(\d+\.\d+\.\d+)/g)]
       .map((match) => match[1]);
-    assert.deepEqual(pins, ["1.1.0"], `${path} must have one current Pi runtime pin`);
+    assert.deepEqual(pins, ["1.2.0"], `${path} must have one current Pi runtime pin`);
   }
 });
 
 await test("Pi runtime evidence labels and assertions describe the pinned runtime", () => {
   const workflow = workflowTexts.get("pi-1-runtime-evidence.yml") ?? "";
 
-  assert.match(workflow, /^name:\s*Pi 1\.1 runtime evidence$/m);
-  assert.match(workflow, /name:\s*Install current stable Pi 1\.1\.0/);
-  assert.match(workflow, /name:\s*Exercise ASEN extension inside real Pi 1\.1 RPC runtime/);
-  assert.match(workflow, /test "\$\(pi --version \| tr -d '\\r'\)" = "1\.1\.0"/);
-  assert.match(workflow, /PASS: Pi 1\.1\.0 loaded ASEN/);
+  assert.match(workflow, /^name:\s*Pi 1\.2 runtime evidence$/m);
+  assert.match(workflow, /name:\s*Install current stable Pi 1\.2\.0/);
+  assert.match(workflow, /name:\s*Exercise ASEN extension inside real Pi 1\.2 RPC runtime/);
+  assert.match(workflow, /test "\$\(pi --version \| tr -d '\\r'\)" = "1\.2\.0"/);
+  assert.match(workflow, /PASS: Pi 1\.2\.0 loaded ASEN/);
 });

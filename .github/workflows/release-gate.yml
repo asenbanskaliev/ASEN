@@ -43,7 +43,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node -e 'const p=require("./node_modules/@earendil-works/pi-coding-agent/package.json"); if (p.version !== "1.1.0") throw new Error(`Expected Pi 1.1.0, got ${p.version}`); console.log(`Using installed Pi ${p.version}`)'
+          node -e 'const p=require("./node_modules/@earendil-works/pi-coding-agent/package.json"); if (p.version !== "1.2.0") throw new Error(`Expected Pi 1.2.0, got ${p.version}`); console.log(`Using installed Pi ${p.version}`)'
           echo "$GITHUB_WORKSPACE/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Real Pi package install smoke
         shell: bash

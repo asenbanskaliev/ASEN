@@ -22,14 +22,13 @@ function compareVersions(left,right){
 export function piVersionAnchors(metadata=packageMetadata()){
  const peerRange=metadata?.peerDependencies?.[piPackageName];
  const developmentRange=metadata?.devDependencies?.[piPackageName];
- const peerMatch=typeof peerRange==="string"&&/^>=(\d+\.\d+\.\d+) <(\d+\.\d+\.\d+)$/.exec(peerRange);
+ const peerMatch=typeof peerRange==="string"&&/^>=(\d+\.\d+\.\d+)$/.exec(peerRange);
  const developmentMatch=typeof developmentRange==="string"&&/^\^(\d+\.\d+\.\d+)$/.exec(developmentRange);
- assert.ok(peerMatch,"Pi peer dependency must use an exact minimum and exclusive maximum");
+ assert.ok(peerMatch,"Pi peer dependency must use an exact minimum without an upper bound");
  assert.ok(developmentMatch,"Pi development dependency must use a caret-pinned exact version");
- const minimum=peerMatch[1],maximum=peerMatch[2],development=developmentMatch[1];
- assert.ok(compareVersions(minimum,maximum)<0,"Pi peer dependency range must be non-empty");
- assert.ok(compareVersions(development,minimum)>=0&&compareVersions(development,maximum)<0,
-  "Pi development version must lie inside the declared peer dependency range");
+ const minimum=peerMatch[1],development=developmentMatch[1];
+ assert.ok(compareVersions(development,minimum)>=0,
+  "Pi development version must be at or above the declared peer dependency floor");
  return [...new Set([minimum,development])];
 }
 
