@@ -77,7 +77,8 @@ test("Windows private probe environment retains only the native compiler bootstr
  const report=await probeManagedCliVersion({prefix:f.prefix,version:"0.1.0",confirmed:true});
  assert.equal(report.cliVersion,"observed",JSON.stringify(report));
  const observed=await invocation(f);
- assert.equal(observed.keys.includes("ComSpec"),true);
- assert.equal(observed.keys.includes("SystemRoot"),true);
+ const keys=new Set(observed.keys.map(key=>key.toUpperCase()));
+ assert.equal(keys.has("COMSPEC"),true);
+ assert.equal(keys.has("SYSTEMROOT"),true);
  assert.equal(observed.keys.some(key=>/TOKEN|SECRET|PASSWORD|API_KEY|CREDENTIAL|PROVIDER/iu.test(key)),false);
 });
