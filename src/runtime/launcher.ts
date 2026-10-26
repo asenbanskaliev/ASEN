@@ -18,6 +18,10 @@ export type ManagedUpdatePreviewArgs=
  |Readonly<{kind:"none"}>
  |Readonly<{kind:"invalid"}>
  |Readonly<{kind:"preview";selectorArgs:readonly string[];manifestPath:string;packageRoot:string}>;
+export type ManagedUpdateStageArgs=
+ |Readonly<{kind:"none"}>
+ |Readonly<{kind:"invalid"}>
+ |Readonly<{kind:"stage";selectorArgs:readonly string[];manifestPath:string;packageRoot:string}>;
 export type DoctorArgs=
  |Readonly<{kind:"none"}>
  |Readonly<{kind:"invalid"}>
@@ -90,6 +94,15 @@ export function parseManagedUpdatePreviewArgs(argv:readonly string[]):ManagedUpd
  const manifestFlag=argv[prelude.index+2],manifestPath=argv[prelude.index+3],packageFlag=argv[prelude.index+4],packageRoot=argv[prelude.index+5],dryRun=argv[prelude.index+6];
  if(prelude.packageRoot||manifestFlag!=="--manifest"||!fullyQualifiedLocalPath(manifestPath)||packageFlag!=="--package-root"||!fullyQualifiedLocalPath(packageRoot)||dryRun!=="--dry-run"||argv.length!==prelude.index+7)return {kind:"invalid"};
  return {kind:"preview",selectorArgs:prelude.selectorArgs,manifestPath,packageRoot};
+}
+
+/** Add explicit inactive staging without changing the observation-only parser's contract. */
+export function parseManagedUpdateStageArgs(argv:readonly string[]):ManagedUpdateStageArgs{
+ const prelude=parseManagedPrelude(argv);if(prelude.kind==="none")return prelude;
+ if(argv[prelude.index+1]!=="update"||argv[prelude.index+6]!=="--stage")return {kind:"none"};
+ const manifestFlag=argv[prelude.index+2],manifestPath=argv[prelude.index+3],packageFlag=argv[prelude.index+4],packageRoot=argv[prelude.index+5];
+ if(prelude.packageRoot||manifestFlag!=="--manifest"||!fullyQualifiedLocalPath(manifestPath)||packageFlag!=="--package-root"||!fullyQualifiedLocalPath(packageRoot)||argv[prelude.index+7]!=="--yes"||argv.length!==prelude.index+8)return {kind:"invalid"};
+ return {kind:"stage",selectorArgs:prelude.selectorArgs,manifestPath,packageRoot};
 }
 
 /** Recognize only the explicit managed run namespace before the ordinary end-of-options boundary. */

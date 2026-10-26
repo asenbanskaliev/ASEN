@@ -4,22 +4,25 @@ import {existsSync,realpathSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 import path from "node:path";
 import {homedir} from "node:os";
-import {parseAsenArgs,parseDoctorArgs,parseManagedRunArgs,parseManagedSelectArgs,parseManagedUpdatePreviewArgs,parseProjectMemoryBackupPreviewArgs,readAsenLauncherConfig,resolveAsenHome,resolvePiRuntime} from "./runtime/launcher.js";
+import {parseAsenArgs,parseDoctorArgs,parseManagedRunArgs,parseManagedSelectArgs,parseManagedUpdatePreviewArgs,parseManagedUpdateStageArgs,parseProjectMemoryBackupPreviewArgs,readAsenLauncherConfig,resolveAsenHome,resolvePiRuntime} from "./runtime/launcher.js";
 import {composeInstallationDoctor} from "./runtime/installation-doctor.js";
 import {createProjectMemoryBackupPreview} from "./runtime/project-memory-backup-preview.js";
 import {createSetupMaintenancePlan} from "./runtime/maintenance-plan.js";
-import {ManagedVersionSelectionError,selectManagedVersion} from "./runtime/managed-install.js";
+import {ManagedAdditionalStageError,ManagedVersionSelectionError,selectManagedVersion} from "./runtime/managed-install.js";
 import {launchManagedSelectedVersion} from "./runtime/managed-selected-launch.js";
 import {createManagedUpdatePreview} from "./runtime/managed-update-preview.js";
+import {stageManagedAcquisitionUpdate} from "./runtime/managed-acquisition-update.js";
 
 export function launcherPackageRoot():string{return path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");}
-export const ASEN_HELP=`Usage: asen [--link|--isolated|--home PATH] [Pi arguments]\n       asen home\n       asen setup --dry-run [--yes]  Preview setup intent (no changes)\n       asen [--link|--isolated|--home PATH] backup project-memory --project <project-id> --destination <absolute-path> --dry-run  Preview only; no backup created\n       asen [--link|--isolated|--home PATH] managed run <version> -- [Pi arguments]  Current-user execution; publisher unverified\n       asen [--link|--isolated|--home PATH] managed select <version> --expected-current <version>  Select retained metadata only; no activation\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run  Observe only; software prefix remains OS home/.asen\n       asen [--link|--isolated|--home PATH] [--package-root PATH] doctor\n       asen --version\n`;
+export const ASEN_HELP=`Usage: asen [--link|--isolated|--home PATH] [Pi arguments]\n       asen home\n       asen setup --dry-run [--yes]  Preview setup intent (no changes)\n       asen [--link|--isolated|--home PATH] backup project-memory --project <project-id> --destination <absolute-path> --dry-run  Preview only; no backup created\n       asen [--link|--isolated|--home PATH] managed run <version> -- [Pi arguments]  Current-user execution; publisher unverified\n       asen [--link|--isolated|--home PATH] managed select <version> --expected-current <version>  Select retained metadata only; no activation\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run  Observe only; software prefix remains OS home/.asen\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes  Stage local bytes only; no selection or execution\n       asen [--link|--isolated|--home PATH] [--package-root PATH] doctor\n       asen --version\n`;
 const BACKUP_PREVIEW_USAGE="Unsupported ASEN backup project-memory command. Expected: backup project-memory --project <project-id> --destination <absolute-path> --dry-run.\n";
 const DOCTOR_USAGE="Unsupported ASEN doctor command. Expected: [--link|--isolated|--home PATH] [--package-root PATH] doctor.\n";
 const DOCTOR_INCOMPLETE="Installation doctor could not complete all metadata observations.\n";
 const MANAGED_SELECT_USAGE="Unsupported ASEN managed select command. Expected: managed select <exact-target-version> --expected-current <exact-current-version>.\n";
 const MANAGED_SELECT_NOT_CONFIRMED="Managed version selection is not confirmed; inspect the reported state before retrying.\n";
 const MANAGED_UPDATE_USAGE="Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n";
+const MANAGED_STAGE_USAGE="Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n";
+const MANAGED_STAGE_NOT_CONFIRMED="Managed update staging is not confirmed; inspect the reported state before retrying.\n";
 const safeOperationalMessage=(error:unknown)=>{
  const raw=error instanceof Error?error.message:String(error),scrubbed=raw.replace(/[\u0000-\u001f\u007f-\u009f]/gu," ").slice(0,512);
  return scrubbed||"Operation failed";
@@ -29,20 +32,24 @@ function bundledPi(packageRoot:string):string|undefined{const p=path.join(packag
 
 export async function runAsen(argv=process.argv.slice(2),env:Record<string,string|undefined>=process.env,dependencies:AsenCliDependencies={}):Promise<number>{
  const stdout=dependencies.stdout??((text:string)=>{process.stdout.write(text);}),stderr=dependencies.stderr??((text:string)=>{process.stderr.write(text);});
- const update=parseManagedUpdatePreviewArgs(argv);
+ const stage=parseManagedUpdateStageArgs(argv);
+ if(stage.kind==="invalid"){stderr(MANAGED_STAGE_USAGE);return 2;}
+ const update=stage.kind==="none"?parseManagedUpdatePreviewArgs(argv):{kind:"none" as const};
  if(update.kind==="invalid"){stderr(MANAGED_UPDATE_USAGE);return 2;}
- const preview=update.kind==="none"?parseProjectMemoryBackupPreviewArgs(argv):{kind:"none" as const};
+ const hasUpdate=stage.kind!=="none"||update.kind!=="none";
+ const preview=!hasUpdate?parseProjectMemoryBackupPreviewArgs(argv):{kind:"none" as const};
  if(preview.kind==="invalid"){stderr(BACKUP_PREVIEW_USAGE);return 2;}
- const doctor=update.kind==="none"&&preview.kind==="none"?parseDoctorArgs(argv):{kind:"none" as const};
+ const doctor=!hasUpdate&&preview.kind==="none"?parseDoctorArgs(argv):{kind:"none" as const};
  if(doctor.kind==="invalid"){stderr(DOCTOR_USAGE);return 2;}
- const selection=update.kind==="none"&&preview.kind==="none"&&doctor.kind==="none"?parseManagedSelectArgs(argv):{kind:"none" as const};
+ const selection=!hasUpdate&&preview.kind==="none"&&doctor.kind==="none"?parseManagedSelectArgs(argv):{kind:"none" as const};
  if(selection.kind==="invalid"){stderr(MANAGED_SELECT_USAGE);return 2;}
- const managed=update.kind==="none"&&doctor.kind==="none"&&selection.kind==="none"?parseManagedRunArgs(argv):{kind:"none" as const};
+ const managed=!hasUpdate&&doctor.kind==="none"&&selection.kind==="none"?parseManagedRunArgs(argv):{kind:"none" as const};
  if(managed.kind==="invalid"){
   stderr("Unsupported ASEN managed command. Expected: managed run <exact-version> -- <Pi arguments>.\n");return 2;
  }
  let selectorArgs:readonly string[]=argv;
- if(update.kind==="preview")selectorArgs=update.selectorArgs;
+ if(stage.kind==="stage")selectorArgs=stage.selectorArgs;
+ else if(update.kind==="preview")selectorArgs=update.selectorArgs;
  else if(preview.kind==="preview")selectorArgs=preview.selectorArgs;
  else if(doctor.kind==="doctor")selectorArgs=doctor.selectorArgs;
  else if(selection.kind==="select")selectorArgs=selection.selectorArgs;
@@ -62,6 +69,21 @@ export async function runAsen(argv=process.argv.slice(2),env:Record<string,strin
   try{plan=createSetupMaintenancePlan({packageRoot,prefix:path.join(homeDirectory,".asen"),home:home.dir});}
   catch(error){stderr((error instanceof Error?error.message:"Unable to create ASEN setup preview")+"\n");return 2;}
   stdout(JSON.stringify(plan,null,2)+"\n");return 0;
+ }
+ if(stage.kind==="stage"){
+  const homeDirectory=path.resolve((dependencies.homeDirectory??homedir)());
+  let report:Awaited<ReturnType<typeof stageManagedAcquisitionUpdate>>;
+  try{
+   const config=await readAsenLauncherConfig(homeDirectory);
+   const dataHome=resolveAsenHome({args:parsed,env,homedir:homeDirectory,...(config?{config}:{})});
+   report=await stageManagedAcquisitionUpdate({manifestPath:stage.manifestPath,packageRoot:stage.packageRoot,
+    prefix:path.join(homeDirectory,".asen"),protectedPaths:[path.resolve(dataHome.dir),path.join(homeDirectory,".asen","agent"),path.join(homeDirectory,".pi","agent")],confirmed:true});
+  }catch(error){
+   if(error instanceof ManagedAdditionalStageError){stdout(JSON.stringify(error.report,null,2)+"\n");stderr(MANAGED_STAGE_NOT_CONFIRMED);return 1;}
+   stderr("Managed update staging refused: "+safeOperationalMessage(error)+"\n");return 1;
+  }
+  // Output failure must not reclassify a completed mutation as a preflight refusal.
+  stdout(JSON.stringify(report,null,2)+"\n");return 0;
  }
  if(update.kind==="preview"){
   const homeDirectory=(dependencies.homeDirectory??homedir)();

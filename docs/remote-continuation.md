@@ -4,6 +4,8 @@
 
 This publication is a **WIP checkpoint, not FULL parity**. Start from base `f2ed915d475408481aeec648cba248a13957e09f` on `feat/strict-parity-prerequisites`, then inspect the exact pushed candidate rather than assuming every local historical receipt is portable.
 
+The remote continuation began from published checkpoint `4a4c7e71a876b83f76c0bbfc0d26163dfa2c1b0f`. The owner now authorizes clean-clone setup, work branches and reviewable PRs against `feat/strict-parity-prerequisites`, without merge/releases, provider credits or installed Gentle/Pi changes. Keep the old quarantined-child incident separate. L474 onward records the new scoped checks; older local-only restrictions describe their historical runs.
+
 The canonical source of truth is the latest log in [`odd/tasks/pi-capability-completion.md`](../odd/tasks/pi-capability-completion.md). The earlier [`resume handoff`](../odd/handoffs/pi-capability-completion-resume.md) is historical context. Keep the tracked [`parity map`](../odd/tasks/ecosystem-final-parity-map.md) and registry/claim files aligned, but do not let an older summary override the canonical log. Cached receipts unavailable in a clean clone are historical claims, not remote approval.
 
 Static local metadata that reported Gentle Shell 4.3.0 and Pi Coding Agent 1.4.0 is neither a complete immutable reference binding nor proof of the versions loaded by a live runtime.
@@ -27,6 +29,8 @@ Compare the clean clone, pushed diff, canonical latest log, parity map/registry,
 ### B. Finish T09 maintenance
 
 Advance real update/restore/managed removal/browser/bootstrap/distribution work. Reuse admitted selection, launch, doctor, finite backup, reader, isolated restore-stage, preview, and expected-byte staging pieces. Version rollback is not data restore; a preview is not an executed installation. Keep acquisition, authenticity, activation, live restore, uninstall preservation, clean-machine behavior, and platform proof explicit.
+
+T09-U9d adds explicit local `managed update ... --stage --yes` composition plus a reproduced POSIX directory-link-count correction. Follow its PR evidence and admission state in the canonical Log. This operation stages only already-local declared bytes in an existing owned prefix; it does not download, select or run a version. Remaining T09 lifecycle work precedes T05 → T10 → T11 → T04/T07 required proof → T12 acceptance. The full immutable Gentle4.3.0 reference binding is still missing; no new reference equivalence is inferred from this public operation.
 
 ### C. Finish T05 review composition
 
