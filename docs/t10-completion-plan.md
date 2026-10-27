@@ -12,7 +12,7 @@ Gentle Shell separa `bash_background` de `monitor`, entrega el fin del proceso c
 
 1. `BackgroundJobRegistry`: estados explícitos, eventos únicos, tail acotado, límite anti-flood, timeout, parada y aislamiento por sesión.
 2. Regresiones de salida larga, aislamiento, parada y flood.
-3. Integración pendiente de conectar el registro al adaptador Pi de ejecución; no se declara FULL hasta ejecutar esa integración en los tres sistemas.
+3. El registro ya ejecuta procesos reales mediante `spawnContained`, captura stdout/stderr y registra el código de salida; todavía no se declara FULL hasta conectarlo al ciclo de herramientas de Pi y demostrarlo en los tres sistemas.
 
 ## Cierre restante obligatorio
 
