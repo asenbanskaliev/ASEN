@@ -59,7 +59,7 @@ try {
   const assertInterruptedAgentVisible=message=>{
     assert.ok(message.includes(agentId),`restored agent identity must be visible: ${message}`);
     assert.ok(message.includes("interrupted"),`restored agent state must be visible: ${message}`);
-    assert.ok(message.includes("explicit review"),`interrupted work must require review before continuation: ${message}`);
+    assert.ok(message.includes("review required"),`interrupted work must require review before continuation: ${message}`);
   };
   writeFileSync(path.join(asenHome,"workspace.json"),JSON.stringify({schema:"asen.workspace/v1",revision:2,changes:[
     {revision:1,id:"change-package-owned",change:workspaceChange(sessionId,"src/owned.ts","user-owned")},
