@@ -28,6 +28,8 @@ Compare the clean clone, pushed diff, canonical latest log, parity map/registry,
 
 ### B. Finish T09 maintenance
 
+Use the audited, phased execution checklist in [`docs/t09-autopilot-closure-plan.md`](t09-autopilot-closure-plan.md). Its current baseline is the PR #37 head recorded in that document; reconcile it again before implementation or publication. The plan is operational guidance, not evidence of completion.
+
 Advance real update/restore/managed removal/browser/bootstrap/distribution work. Reuse admitted selection, launch, doctor, finite backup, reader, isolated restore-stage, preview, and expected-byte staging pieces. Version rollback is not data restore; a preview is not an executed installation. Keep acquisition, authenticity, activation, live restore, uninstall preservation, clean-machine behavior, and platform proof explicit.
 
 L478 adds the public lifecycle commands (signed install/upgrade/rollback, backup/restore, managed-only uninstall, browser consent); T09 stays PARTIAL until Windows/macOS, clean-host and real-package evidence exist. T09-U9d adds explicit local `managed update ... --stage --yes` composition plus a reproduced POSIX directory-link-count correction. Follow its PR evidence and admission state in the canonical Log. This operation stages only already-local declared bytes in an existing owned prefix; it does not download, select or run a version. Remaining T09 lifecycle work precedes T05 → T10 → T11 → T04/T07 required proof → T12 acceptance. The full immutable Reference4.3.0 reference binding is still missing; no new reference equivalence is inferred from this public operation.
