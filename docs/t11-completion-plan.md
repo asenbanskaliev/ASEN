@@ -6,16 +6,16 @@ Orden: después de T10 y antes de T04/T07 pendientes y T12.
 
 ## Decisión de alcance adoptada — 2026-10-27
 
-Por instrucción del usuario y siguiendo la arquitectura observada de Gentle Shell, T11 queda limitado a la integración Pi 1.2 de ASEN. Los runtimes externos del ecosistema Gentle-AI no forman parte de este cierre y se difieren como futuros adaptadores independientes. Esta decisión queda registrada en S11/L480 del ODD. No implica `FULL`: la admisión todavía requiere evidencia del comportamiento real del host por modo/plataforma, revisión R4 y candidato exacto. Las secciones históricas de este documento que condicionan el alcance Pi-only a una decisión futura quedan supersedidas por esta decisión.
+Por instrucción del usuario y siguiendo la arquitectura observada de la referencia de integración Pi-native, T11 queda limitado a la integración Pi 1.2 de ASEN. Los runtimes externos del ecosistema el catálogo multi-runtime externo no forman parte de este cierre y se difieren como futuros adaptadores independientes. Esta decisión queda registrada en S11/L480 del ODD. No implica `FULL`: la admisión todavía requiere evidencia del comportamiento real del host por modo/plataforma, revisión R4 y candidato exacto. Las secciones históricas de este documento que condicionan el alcance Pi-only a una decisión futura quedan supersedidas por esta decisión.
 
 ## 1. Resultado de la auditoría
 
 La documentación ODD y el código actual muestran una integración Pi nativa, pero no una capa de adaptadores para clientes externos. `extensions/asen.ts` y los módulos de runtime Pi son el punto de composición real. No se ha encontrado un adaptador implementado y ejercitado para Claude Code, Codex, OpenCode, Cursor, Gemini CLI u otro runtime externo.
 
-La comparación con Gentle Shell corrige una ambigüedad importante:
+La comparación con la referencia de integración Pi-native corrige una ambigüedad importante:
 
-- Gentle Shell es principalmente una extensión Pi-native: sesión, comandos, herramientas, agentes, trabajos en segundo plano, cambios de workspace, perfiles y notificaciones.
-- La lista multi-runtime pertenece al ecosistema Gentle-AI y no demuestra que Gentle Shell implemente todos esos clientes.
+- la referencia de integración Pi-native es principalmente una extensión Pi-native: sesión, comandos, herramientas, agentes, trabajos en segundo plano, cambios de workspace, perfiles y notificaciones.
+- La lista multi-runtime pertenece al ecosistema el catálogo multi-runtime externo y no demuestra que la referencia de integración Pi-native implemente todos esos clientes.
 - MCP es un transporte o puente opcional; no debe convertirse en una nueva autoridad ni confundirse con un cliente.
 
 Por tanto, T11 valida el contrato de integración Pi de ASEN. Los clientes externos quedan fuera de este alcance y requerirán tareas y evidencias propias si se abordan más adelante.
@@ -31,7 +31,7 @@ Por tanto, T11 valida el contrato de integración Pi de ASEN. Los clientes exter
 
 ### No incluido por defecto
 
-- Implementar adaptadores para todos los runtimes mencionados por Gentle-AI.
+- Implementar adaptadores para todos los runtimes mencionados por el catálogo multi-runtime externo.
 - Inferir soporte porque exista un binario instalado.
 - Convertir MCP en un segundo sistema de permisos.
 - Prometer idénticas herramientas, delegación o permisos a todos los clientes.
@@ -148,7 +148,7 @@ No se debe marcar T11 como FULL mientras la integración siga siendo solo Pi sin
 
 ## 7. Decisión auditada
 
-La ruta es cerrar la evidencia del host Pi conforme al alcance adoptado en S11/L480 del ODD. Esto coincide con el alcance v1 de ASEN y con la arquitectura Pi-native de Gentle Shell.
+La ruta es cerrar la evidencia del host Pi conforme al alcance adoptado en S11/L480 del ODD. Esto coincide con el alcance v1 de ASEN y con la arquitectura Pi-native de la referencia de integración Pi-native.
 
 ## 8. Especificación quirúrgica de implementación
 
@@ -313,7 +313,7 @@ No se debe lanzar CI por el documento aislado. La ronda final de CI se ejecutar�
 
 ## 10. Auditoría final del plan y correcciones aplicadas
 
-Se ha revisado el plan contra el ODD, el alcance v1, la frontera de autoridad y el patrón de Gentle Shell. La revisión detectó y resolvió estos riesgos:
+Se ha revisado el plan contra el ODD, el alcance v1, la frontera de autoridad y el patrón de la referencia de integración Pi-native. La revisión detectó y resolvió estos riesgos:
 
 ### 10.1 Riesgo: confundir Pi-only con FULL normativo
 
@@ -380,9 +380,9 @@ La evidencia se separará en:
 
 No se debe llamar “multiplataforma” a una prueba ejecutada solo en Linux. Una plataforma sin runtime Pi disponible se marca `unavailable`, conservando la razón exacta.
 
-### 10.8 Riesgo: Gentle Shell usado como fuente normativa incorrecta
+### 10.8 Riesgo: la referencia de integración Pi-native usado como fuente normativa incorrecta
 
-Gentle Shell se usa para comparar semántica de integración Pi, trabajos, sesión y cierre. Gentle-AI solo se usa para inventariar posibles runtimes externos. Ninguna de las dos fuentes autoriza copiar permisos, herramientas o equivalencia sin contrato ASEN y evidencia propia.
+la referencia de integración Pi-native se usa para comparar semántica de integración Pi, trabajos, sesión y cierre. el catálogo multi-runtime externo solo se usa para inventariar posibles runtimes externos. Ninguna de las dos fuentes autoriza copiar permisos, herramientas o equivalencia sin contrato ASEN y evidencia propia.
 
 ### 10.9 Puerta de decisión antes del cierre
 
