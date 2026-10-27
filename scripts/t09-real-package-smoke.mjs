@@ -14,7 +14,7 @@ assert.match(packageJson.version,/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*
 const cli=path.join(realPackageRoot,"dist","cli.js");
 await access(cli);
 
-const root=await mkdtemp(path.join(tmpdir(),"asen-t09-real-package-"));
+const root=await realpath(await mkdtemp(path.join(tmpdir(),"asen-t09-real-package-")));
 const home=path.join(root,"home"),dataHome=path.join(home,".asen","agent"),restoreHome=path.join(root,"restored-home"),restoreConfig=path.join(root,"restored-config.json");
 await mkdir(home,{recursive:true});
 const env={};
