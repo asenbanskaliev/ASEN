@@ -5,7 +5,7 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import {createServer,type Server} from "node:http";
-import {buildManagedManifest,generateManagedSigningKeyPair,signManagedManifest} from "../src/runtime/managed-trust.js";
+import {buildManagedManifest,generateManagedSigningKeyPair,parseManagedTrustAnchor,signManagedManifest,verifyManagedManifestSignature} from "../src/runtime/managed-trust.js";
 import {installManaged,rollbackManaged,uninstallManaged,upgradeManaged,checkManagedPrerequisites,type ManagedAcquisitionSource} from "../src/runtime/managed-lifecycle.js";
 import {inspectManagedInstall} from "../src/runtime/managed-install.js";
 import {createHomeBackup,restoreHomeBackup,verifyHomeBackup,HomeBackupError} from "../src/runtime/home-backup.js";
@@ -76,6 +76,18 @@ test("untrusted, tampered, unsigned and wrong-signer packages are rejected witho
  await fs.writeFile(fresh.signaturePath,"{}");
  await assert.rejects(()=>installManaged({...base,trustedKeyPath:fresh.anchor,source:fresh.source,dataHome}));
  assert.equal((await inspectManagedInstall({prefix})).status,"absent");
+});
+
+test("Ed25519 trust-anchor rotation accepts overlap then revokes the retired signer",async()=>{
+ const root=await tmp("key-rotation"),dir=await pkg(root,"rotation","1.0.0"),built=await buildManagedManifest(dir),bytes=Buffer.from(built.manifestText);
+ const oldKey=generateManagedSigningKeyPair(),newKey=generateManagedSigningKeyPair();
+ const oldSignature=signManagedManifest(bytes,oldKey.privateKeyPem),newSignature=signManagedManifest(bytes,newKey.privateKeyPem);
+ const overlap=parseManagedTrustAnchor(`${oldKey.publicKeyPem}\n${newKey.publicKeyPem}`);
+ assert.equal(verifyManagedManifestSignature({manifestBytes:bytes,signatureText:oldSignature,trustedKeys:overlap}).keyId,oldKey.keyId);
+ assert.equal(verifyManagedManifestSignature({manifestBytes:bytes,signatureText:newSignature,trustedKeys:overlap}).keyId,newKey.keyId);
+ const rotated=parseManagedTrustAnchor(newKey.publicKeyPem);
+ assert.equal(verifyManagedManifestSignature({manifestBytes:bytes,signatureText:newSignature,trustedKeys:rotated}).keyId,newKey.keyId);
+ assert.throws(()=>verifyManagedManifestSignature({manifestBytes:bytes,signatureText:oldSignature,trustedKeys:rotated}),{code:"SIGNER_NOT_TRUSTED"});
 });
 
 test("an install whose candidate fails its probe is removed again and user data stays",async()=>{
