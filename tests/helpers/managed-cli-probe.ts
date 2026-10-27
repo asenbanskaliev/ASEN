@@ -16,7 +16,7 @@ export async function fixture(mode="ok",unicode=false){
  await writeFile(path.join(prefix,"config.json"),"PERSONAL");await writeFile(path.join(prefix,"agent","state"),"STATE");
  const metadata={name:"asen",version:"0.1.0",engines:{node:mode==="unverified"?"^22.0.0":">=0.0.0"},bin:{asen:"./cli.cjs"}};
  await writeFile(path.join(packageRoot,"package.json"),JSON.stringify(metadata));
- let code='const fs=require("node:fs"),path=require("node:path");fs.writeFileSync('+JSON.stringify(record)+',JSON.stringify({args:process.argv.slice(2),cwd:process.cwd(),home:process.env.HOME,keys:Object.keys(process.env),secret:process.env.ASEN_PROBE_SECRET??null}));';
+ let code='const fs=require("node:fs"),path=require("node:path");fs.writeFileSync('+JSON.stringify(record)+',JSON.stringify({args:process.argv.slice(2),entry:process.argv[1],cwd:process.cwd(),home:process.env.HOME,keys:Object.keys(process.env),secret:process.env.ASEN_PROBE_SECRET??null}));';
  if(mode==="hang")code+='fs.writeFileSync('+JSON.stringify(ready+".tmp")+',"READY");fs.renameSync('+JSON.stringify(ready+".tmp")+','+JSON.stringify(ready)+');setInterval(()=>{},1000);';
  else{
   if(mode==="drift")code+='fs.writeFileSync(__filename,"CHANGED");';
@@ -47,7 +47,7 @@ export function baseReport(report:{schema:string;runtimeReady:boolean}){
  assert.equal(report.schema,"asen.managed-cli-version-observation/v1");assert.equal(report.runtimeReady,false);assert(Object.isFrozen(report));
 }
 export async function invocation(f:Awaited<ReturnType<typeof fixture>>){
- const result=JSON.parse(await readFile(f.record,"utf8")) as {args:string[];cwd:string;home:string;keys:string[];secret:unknown};
+ const result=JSON.parse(await readFile(f.record,"utf8")) as {args:string[];entry:string;cwd:string;home:string;keys:string[];secret:unknown};
  assert.deepEqual(result.args,["--version"]);assert.equal(result.cwd,f.versionRoot);assert.equal(result.secret,null);
  assert.equal(result.keys.some(key=>/NODE_OPTIONS|TOKEN|SECRET|PASSWORD|API_KEY|CREDENTIAL|PROVIDER/iu.test(key)),false);
  return result;

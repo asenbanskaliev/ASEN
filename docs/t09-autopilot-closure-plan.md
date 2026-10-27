@@ -92,3 +92,29 @@ Si cualquiera de estos elementos no se puede ejecutar o falla sin resolver, mant
 ## Límites de autorización
 
 Autopiloto permite implementar, probar y publicar una tanda en el PR #37 existente. No permite merge a `main`, release, instalar/desinstalar software del host, usar claves de producción, elevar permisos, limpiar rutas no identificadas ni omitir pruebas requeridas. Las operaciones de mantenimiento se limitan a entornos desechables creados por la prueba.
+
+## Evidencia obtenida al iniciar la ejecución
+
+El log del workflow CI `40403608285`, SHA `037f17317631e1231d161b130d83e9667336fba1`, confirma que el job `test (windows-latest)` falló durante `Full test suite`. Catorce casos de ejecución CLI administrada agotaron aproximadamente 10 segundos; el reporte de observación mostraba un único intento, `SIGKILL` y streams vacíos, y un caso no llegó a crear su marcador `READY`. Los casos fueron:
+
+- `concurrent CLI probes serialize actual package execution`
+- `release uncertainty never erases already executed CLI output`
+- `managed CLI output overflow is capped and remains ambiguous`
+- `managed CLI cancellation after program readiness closes without a false observation`
+- `managed CLI post-execution drift is ambiguous and changed data is not repaired`
+- `managed CLI retains unknown temporary bytes while observing only the CLI version`
+- `managed CLI observes exact version and fixed private invocation` (incluida variante Unicode)
+- `managed CLI refuses version-mismatch`, `stderr-not-empty` y `exit-mismatch`
+- `public managed run launches the exact selected owned CLI once with protected argv and empty child streams`
+- `a successful prior probe is one inert trace, not selection or launch permission`
+- `one public child close followed by uncertain lease release is exact ambiguous evidence and never retries`
+
+El historial muestra dos defectos del camino de lanzamiento de Windows. **Causa principal:** `spawnContainedWithInheritedPolicy` delegaba en PowerShell y un puente C# `Add-Type` para lanzar el proceso suspendido bajo Job Object. En hosted runners ese puente podía quedarse esperando con el hijo suspendido; la operación administrada no llegaba a ejecutar su CLI y alcanzaba su deadline normal de 10 s. El arreglo evita el puente PowerShell en ese camino y usa `spawn` nativo de Node con `shell:false`, `detached:false` y el entorno/política heredados; los llamadores siguen esperando el cierre y terminan el árbol al cancelar o agotar el deadline (`5223c83`, `72cebf0`, `6ffd848`). No se elevó el timeout ni se añadió un fallback de shell. **Defecto secundario:** `realpath` podía devolver alias DOS 8.3 usados como `cwd`/argv; el código conserva el path físico para validar ownership y usa el absoluto léxico para lanzar (`edcaad4`). El bootstrap mínimo de entorno Windows (`SystemRoot`, `ComSpec`, PATH del sistema) y comparación case-insensitive de sus claves se preservan donde corresponde (`973de8b`, `71656e3`). Así que sí hubo un bloqueo real en el puente de proceso, no un deadlock de la lógica del CLI; los logs muestran que el script administrado no arrancaba y que el test no llegaba a crear `READY`. El límite de 10 s sigue siendo una protección válida, no un remedio que haya que ampliar. El test de deadline de 7 s es un caso negativo deliberado y separado.
+
+En el CI de PR del SHA `3635ca8e2ef0a206ac2cbe74f5f098486c28a09c` (run `40571444978`), Windows terminó con éxito. Los mismos escenarios relevantes pasaron en ese host: probes/ejecución normalmente entre ~0,1 y 1,6 s; el test deliberado de deadline tardó ~7,2 s. Esto es evidencia Windows real de la corrección, aunque aún se añade abajo una aserción dedicada para la ruta léxica.
+
+En entorno Linux, `node --import tsx --test tests/managed-*.test.ts` pasó 272/272 y `tests/t09-lifecycle.test.ts` pasó 24/24. `npm run typecheck`, `npm run build`, `git diff --check` y `npm run verify:pack` pasaron en el árbol cuyo código coincide con el tree del SHA `3635ca8`; verify-pack instaló el paquete npm real y validó 28 exports, 11 comandos y 16 herramientas. También se ejecutó `npm pack`, instalación npm desechable y `scripts/t09-real-package-smoke.mjs`: `PACKED_PACKAGE_SMOKE_PASS`, con firma Ed25519 efímera explícita, instalación, doctor, CLI, backup/verificación, restore limpio, uninstall y conservación de datos.
+
+La ejecución nueva de `npm ci` en worktree limpio no se completó: la compilación nativa de `node-pty` falló al extraer headers de Node con `TAR_ENTRY_ERROR EINVAL: invalid argument, fchown`. No se alteró el lockfile ni se omitieron scripts para convertirlo en un falso PASS. En Linux, la regresión específica de alias 8.3 añadida al test se omite intencionadamente por no ser Windows; requiere CI Windows.
+
+Estas pruebas de ciclo y del paquete son evidencia real en directorios desechables, pero no demuestran apertura real de navegador, adquisición remota TLS en host, ni la matriz del candidato final después de la regresión nueva. Por eso T09 sigue PARTIAL.
