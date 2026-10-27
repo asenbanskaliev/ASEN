@@ -45,3 +45,13 @@ test("does not remove a replaced view root",()=>{
   assert.throws(()=>readReviewViewFile(view,"src/file.txt"),/ownership is uncertain/);
  } finally {rmSync(parent,{recursive:true,force:true});}
 });
+
+test("rejects reviewer-view bytes changed after materialization",()=>{
+ const parent=mkdtempSync(join(tmpdir(),"asen-review-parent-"));
+ try{
+  const candidate=manifest(),view=materializeReviewView(candidate,parent),file=join(view.root,"src/file.txt");
+  chmodSync(view.root,0o700);chmodSync(join(view.root,"src"),0o700);chmodSync(file,0o600);writeFileSync(file,"tampered\n");
+  assert.throws(()=>readReviewViewFile(view,"src/file.txt"),/contents drifted from the candidate/);
+  assert.throws(()=>revalidateReviewView(view,candidate),/contents drifted from the candidate/);
+ } finally {rmSync(parent,{recursive:true,force:true});}
+});

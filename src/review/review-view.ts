@@ -17,6 +17,7 @@ export interface ReviewView {
  readonly rootDev:number;
  readonly rootIno:number;
  readonly paths:readonly string[];
+ readonly entries:readonly Readonly<{path:string;size:number;contentSha256:string;mode:"100644"|"100755"}>[];
 }
 
 interface ViewClaim {readonly root:string;readonly realRoot:string;readonly dev:number;readonly ino:number;readonly manifestDigest:string;}
@@ -52,6 +53,27 @@ function applyWindowsReadOnlyAcl(root:string):void {
  } catch { throw new Error("review-unavailable: private-view-not-provable"); }
 }
 
+function verifyMaterializedEntries(view:ReviewView,entries:readonly CandidateGitTreeEntry[]):void {
+ const expected=new Map(entries.map(entry=>[entry.path,entry]));
+ if(expected.size!==view.entryCount||view.paths.length!==expected.size)throw new Error("Review view entry inventory is inconsistent");
+ for(const [path,expectedEntry] of expected){
+  assertOrdinaryReviewParents(view.root,path);
+  const target=join(view.root,...path.split("/")),info=lstatSync(target);
+  if(!info.isFile()||info.isSymbolicLink())throw new Error("Review view entry ownership is uncertain");
+  const bytes=readFileSync(target);
+  if(bytes.length!==expectedEntry.size||createHash("sha256").update(bytes).digest("hex")!==expectedEntry.contentSha256)throw new Error("Review view contents drifted from the candidate");
+ }
+}
+
+function assertOrdinaryReviewParents(root:string,path:string):void {
+ let current=root;
+ for(const part of path.split("/").slice(0,-1)){
+  current=join(current,part);
+  const info=lstatSync(current);
+  if(!info.isDirectory()||info.isSymbolicLink())throw new Error("Review view parent directory is unsafe");
+ }
+}
+
 /** Materializes one frozen Git tree as a private, read-only reviewer view. */
 export function materializeReviewView(manifest:CandidateGitTreeManifest,parent:string):ReviewView {
  if(typeof manifest!=="object"||manifest===null||manifest.schemaVersion!==1)throw new Error("Review tree manifest is invalid");
@@ -83,7 +105,8 @@ export function materializeReviewView(manifest:CandidateGitTreeManifest,parent:s
   return Object.freeze({schemaVersion:1,root,candidateTree:manifest.treeIdentity,manifestDigest,
    viewIdentity:createHash("sha256").update(`${root}\0${info.dev}\0${info.ino}\0${manifestDigest}`).digest("hex"),
    entryCount:manifest.entries.length,platform:process.platform==="win32"?"windows":"posix",rootDev:info.dev,rootIno:info.ino,
-   paths:Object.freeze(manifest.entries.map(entry=>entry.path))});
+   paths:Object.freeze(manifest.entries.map(entry=>entry.path)),
+   entries:Object.freeze(manifest.entries.map(entry=>Object.freeze({path:entry.path,size:entry.size!,contentSha256:entry.contentSha256!,mode:entry.mode as "100644"|"100755"})))});
  } finally {
   if(!committed)rmSync(root,{recursive:true,force:true});
  }
@@ -112,11 +135,16 @@ export function readReviewViewFile(view:ReviewView,path:string):Buffer {
  if(!rootInfo||!rootInfo.isDirectory()||rootInfo.isSymbolicLink()||rootInfo.dev!==view.rootDev||rootInfo.ino!==view.rootIno)throw new Error("Review view ownership is uncertain");
  validatePortableReviewPaths([path]);
  const target=join(view.root,...path.split("/"));
+ assertOrdinaryReviewParents(view.root,path);
  const rootRelative=relative(view.root,target);
  if(!rootRelative||rootRelative.startsWith("..")||isAbsolute(rootRelative))throw new Error("Review view path escaped its root");
  const info=lstatSync(target);
  if(!info.isFile()||info.isSymbolicLink())throw new Error("Review view file is unsafe");
- return readFileSync(target);
+ const expected=view.entries.find(entry=>entry.path===path);
+ if(!expected)throw new Error("Review view path is not part of the candidate");
+ const bytes=readFileSync(target);
+ if(bytes.length!==expected.size||createHash("sha256").update(bytes).digest("hex")!==expected.contentSha256)throw new Error("Review view contents drifted from the candidate");
+ return bytes;
 }
 
 /** Rejects a stale view before a new review or correction can consume it. */
@@ -124,5 +152,6 @@ export function revalidateReviewView(view:ReviewView,manifest:CandidateGitTreeMa
  const rootInfo=lstatSync(view.root,{throwIfNoEntry:false});
  if(!rootInfo||!rootInfo.isDirectory()||rootInfo.isSymbolicLink()||rootInfo.dev!==view.rootDev||rootInfo.ino!==view.rootIno)throw new Error("Review view ownership is uncertain");
  if(manifest.treeIdentity!==view.candidateTree||digestManifest(manifest)!==view.manifestDigest)throw new Error("Review view candidate drifted");
+ verifyMaterializedEntries(view,manifest.entries);
  return view;
 }
