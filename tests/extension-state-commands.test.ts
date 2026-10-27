@@ -25,7 +25,7 @@ test("workspace display sanitizes persisted command rows and notifications witho
  const before=await readFile(file),records=await store.list(identity),h=host(),messages:string[]=[];
  createAsenExtension({workspaceStoreFactory:()=>PersistentWorkspaceStore.open(file)})(h.pi);
  const rows=await h.commands.get("asen-changes")!.handler("",{cwd:project,sessionManager:{getSessionId:()=>identity.sessionId},ui:{notify:(message:string)=>messages.push(message)}});
- assert.deepEqual(rows,[
+ const displayRows=rows as string[],attribution=displayRows.slice(displayRows.indexOf("Session-attributed changes:")+1);assert.deepEqual(attribution,[
   "Potential conflicts require review; no content comparison, winner selection, or automatic resolution is performed.",
   `potential conflict agent:a -> agent:b ${clean}`,
   `modify agent:a ${clean}`,`modify agent:b ${clean}`
@@ -48,7 +48,7 @@ test("asen-changes reads reopened workspace history only for the active session 
  const change=(sessionId:string,pathName:string)=>({path:pathName,actor:{kind:"agent" as const,id:`agent-${sessionId}`},sessionId,projectId:project,worktree:project,operation:"modify" as const,at:"2026-10-10T10:00:00.000Z"});
  await store.append(change("session-ui","src/owned.ts"));await store.append(change("other-session","src/foreign.ts"));const reopened=await PersistentWorkspaceStore.open(file),h=host();createAsenExtension({workspaceStoreFactory:async()=>reopened})(h.pi);
  const messages:string[]=[],rows=await h.commands.get("asen-changes")!.handler("",{cwd:project,sessionManager:{getSessionId:()=>"session-ui"},ui:{notify:(message:string)=>messages.push(message)}}) as string[];
- assert.equal(rows.length,1);assert.match(rows[0]!,/src\/owned\.ts/);assert.ok(!rows.join("\n").includes("foreign"));assert.deepEqual(messages,[rows.join("\n")]);
+ assert.ok(rows.includes("Session-attributed changes:"));const attribution=rows.slice(rows.indexOf("Session-attributed changes:")+1);assert.equal(attribution.length,1);assert.match(attribution[0]!,/src\/owned\.ts/);assert.ok(!rows.join("\n").includes("foreign"));assert.deepEqual(messages,[rows.join("\n")]);
 });
 test("asen-changes surfaces same-session actor conflicts as review-only and keeps other sessions private",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-change-conflicts-"));t.after(()=>rm(root,{recursive:true,force:true}));const project=await realpath(root),store=await PersistentWorkspaceStore.open(path.join(root,".asen","workspace.json"));

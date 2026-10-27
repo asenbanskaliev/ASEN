@@ -77,10 +77,10 @@ test("execution timeout terminates spawned descendants",async t=>{
  let siblingStarted=false;for(let i=0;i<80&&!siblingStarted;i++){try{await access(siblingReady);siblingStarted=true;}catch{await new Promise(resolve=>setTimeout(resolve,25));}}
  assert.equal(siblingStarted,true,"independent sentinel did not start before the timeout");
  const descendant=observer(ready,marker)+"timer.unref();setTimeout(()=>{},10000)";
- // Keep the parent alive well beyond the unchanged 3-second evidence timeout.
- // Windows runners can delay timer delivery under the full parallel test load;
- // the process lifetime must not race the timeout being tested.
- const startupDelay=process.platform==="win32"?0:2100;
+ // Start the descendant immediately so parallel test load cannot consume most
+ // of the fixed evidence timeout before the process-tree assertion begins.
+ // The parent remains alive well beyond that timeout on every platform.
+ const startupDelay=0;
  const command=[process.execPath,"-e",`setTimeout(()=>{const child=require("child_process").spawn(process.execPath,["-e",${JSON.stringify(descendant)}],{stdio:"ignore",detached:process.platform==="win32"});child.unref();},${startupDelay});setTimeout(()=>{},30000)`] as const;
  const pending=executeEvidenceCommand({repository:repo,id:"timeout-tree",revision,createdAt:"now"},command,{timeoutMs:3000});
  const rejected=assert.rejects(pending,/timed out/);
