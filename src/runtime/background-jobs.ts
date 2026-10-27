@@ -1,6 +1,7 @@
 import {randomUUID} from "node:crypto";
 import {spawnContained} from "../evidence/spawn-contained.js";
 import type {ChildProcessWithoutNullStreams} from "node:child_process";
+import type {BackgroundJobJournal} from "./background-job-journal.js";
 
 export type BackgroundJobState="queued"|"running"|"completed"|"failed"|"stopped"|"timed_out"|"flooded";
 export interface BackgroundJobEvent{readonly id:string;readonly jobId:string;readonly sessionId:string;readonly kind:"started"|"line"|"completed"|"stopped"|"failed"|"timed_out"|"flooded";readonly line?:string;readonly exitCode?:number|null;readonly at:string;}
@@ -12,6 +13,7 @@ interface Mutable{readonly options:Required<Pick<BackgroundJobOptions,"sessionId
 const limit=(value:unknown,fallback:number,min:number,max:number):number=>Number.isSafeInteger(value)&&Number(value)>=min&&Number(value)<=max?Number(value):fallback;
 export class BackgroundJobRegistry{
  readonly #jobs=new Map<string,Mutable>();
+ constructor(private readonly journal?:BackgroundJobJournal){}
  start(options:BackgroundJobOptions):BackgroundJobSnapshot{
   if(!options||typeof options.sessionId!=="string"||!options.sessionId||typeof options.command!=="string"||!options.command)throw new Error("Background job identity is invalid");
   const now=new Date().toISOString(),job:Mutable={options:{sessionId:options.sessionId,command:options.command,mode:options.mode??"background",maxTailLines:limit(options.maxTailLines,20,1,200),maxLineChars:limit(options.maxLineChars,2000,1,10000),maxEventsPerMinute:limit(options.maxEventsPerMinute,120,1,10000),timeoutMs:limit(options.timeoutMs,0,0,1_800_000)},state:"running",createdAt:now,updatedAt:now,exitCode:null,tail:[],eventCount:0,windowStart:Date.now(),windowEvents:0,listeners:new Set()};
@@ -26,7 +28,7 @@ export class BackgroundJobRegistry{
  }
  subscribe(id:string,listener:Listener):()=>void{const job=this.require(id);if(typeof listener!=="function")throw new TypeError("Job listener is invalid");job.listeners.add(listener);return()=>job.listeners.delete(listener);}
  append(id:string,chunk:string):void{const job=this.require(id);if(job.state!=="running")throw new Error("Background job is not running");if(typeof chunk!=="string")throw new TypeError("Job output must be text");for(const line of chunk.split(/\r?\n/u).filter(Boolean)){const now=Date.now();if(now-job.windowStart>=60_000){job.windowStart=now;job.windowEvents=0;}if(++job.windowEvents>job.options.maxEventsPerMinute){this.finish(id,"flooded",null);return;}const bounded=line.slice(-job.options.maxLineChars);job.tail.push(bounded);if(job.tail.length>job.options.maxTailLines)job.tail.splice(0,job.tail.length-job.options.maxTailLines);job.eventCount++;this.emit(id,"line",bounded);}}
- finish(id:string,state:"completed"|"failed"|"stopped"|"timed_out"|"flooded",exitCode:number|null):void{const job=this.require(id);if(job.state!=="running")return;job.state=state;job.exitCode=exitCode;job.updatedAt=new Date().toISOString();if(job.timer)clearTimeout(job.timer);if(state!=="completed"&&job.child&&!job.child.killed){try{if(process.platform!="win32"&&job.child.pid)process.kill(-job.child.pid,"SIGTERM");else job.child.kill();}catch{try{job.child.kill("SIGKILL");}catch{/* Best effort after terminal state is durable. */}}}this.emit(id,state);}
+ finish(id:string,state:"completed"|"failed"|"stopped"|"timed_out"|"flooded",exitCode:number|null):void{const job=this.require(id);if(job.state!=="running")return;job.state=state;job.exitCode=exitCode;job.updatedAt=new Date().toISOString();if(job.timer)clearTimeout(job.timer);if(state!=="completed"&&job.child&&!job.child.killed){try{if(process.platform!=="win32"&&job.child.pid)process.kill(-job.child.pid,"SIGTERM");else job.child.kill();}catch{try{job.child.kill("SIGKILL");}catch{/* Best effort after terminal state is durable. */}}}this.emit(id,state);this.journal?.record(this.snapshot(id));}
  stop(id:string):void{this.finish(id,"stopped",null);}
  snapshot(id:string):BackgroundJobSnapshot{const job=this.require(id);return Object.freeze({id,sessionId:job.options.sessionId,command:job.options.command,mode:job.options.mode,state:job.state,createdAt:job.createdAt,updatedAt:job.updatedAt,exitCode:job.exitCode,eventCount:job.eventCount,tail:Object.freeze([...job.tail])});}
  list(sessionId:string):readonly BackgroundJobSnapshot[]{return Object.freeze([...this.#jobs].filter(([,job])=>job.options.sessionId===sessionId).map(([id])=>this.snapshot(id)).reverse());}
