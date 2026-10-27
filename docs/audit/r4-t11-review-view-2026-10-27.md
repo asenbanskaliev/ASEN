@@ -11,7 +11,7 @@ Date: 2026-10-27 (Europe/Madrid)
 
 ## Finding R4-01 — reviewer view accepted modified candidate bytes
 
-**Severity: Medium. Status: corrected in this candidate; final CI admission pending.**
+**Severity: Medium. Status: corrected and admitted on exact candidate `111d74a48557ccf410a94e51b4c594cd3e25041e`.**
 
 The materializer created read-only files, but the same owning account can change their permissions. Before this correction, `readReviewViewFile` checked that the target was a regular file and then returned its bytes; `revalidateReviewView` checked only the root identity and original manifest. Neither compared the materialized bytes with the candidate tree. I reproduced this on the reviewed SHA: changed `src/file.txt` from `candidate` to `tampered`, then `readReviewViewFile` returned `tampered` successfully.
 
@@ -33,4 +33,8 @@ No additional critical or high finding was established in these reviewed boundar
 - Corrected regression and related review chain/session tests: 13 passed, 0 failed, 0 skipped.
 - `npm run typecheck`: pass.
 - `git diff --check`: pass.
-- The new commit's required GitHub workflows and exact-SHA Pi runtime evidence remain the final admission gate; no FULL claim is made before those results.
+- Exact-candidate CI run `40505625662`: PASS, including Linux/macOS/Windows full suites and Pi host matrices.
+- Release Gate run `40505625687`: PASS on Linux/macOS/Windows.
+- Pi 1.2 runtime evidence run `40505625611`: PASS; artifact ID `12734876804`, digest `sha256:5bb709d1084e7a616e0386b6a9f1e7151703b0f8e3fbb3ae82e68e6f8e60c60c`.
+- Phase 0 Architecture run `40505625834`: PASS. Pi Free Smoke run `40505625893`: skipped by PR condition.
+- Admission: T11 is FULL within the adopted Pi-only scope. The PR does not claim external-client or full Reference Shell parity.

@@ -1,12 +1,12 @@
 # T11 — Plan auditado de clientes adicionales y adaptadores
 
-Estado: `PARTIAL_BY_ACCEPTED_SCOPE`
+Estado: `FULL` dentro del alcance Pi-only adoptado
 Alcance adoptado: integración Pi 1.2 únicamente; runtimes externos quedan diferidos.
 Orden: después de T10 y antes de T04/T07 pendientes y T12.
 
 ## Decisión de alcance adoptada — 2026-10-27
 
-Por instrucción del usuario y siguiendo la arquitectura observada de la referencia de integración Pi-native, T11 queda limitado a la integración Pi 1.2 de ASEN. Los runtimes externos del ecosistema el catálogo multi-runtime externo no forman parte de este cierre y se difieren como futuros adaptadores independientes. Esta decisión queda registrada en S11/L480 del ODD. No implica `FULL`: la admisión todavía requiere evidencia del comportamiento real del host por modo/plataforma, revisión R4 y candidato exacto. Las secciones históricas de este documento que condicionan el alcance Pi-only a una decisión futura quedan supersedidas por esta decisión.
+Por instrucción del usuario y siguiendo la arquitectura observada de la referencia de integración Pi-native, T11 queda limitado a la integración Pi 1.2 de ASEN. Los runtimes externos del ecosistema el catálogo multi-runtime externo no forman parte de este cierre y se difieren como futuros adaptadores independientes. Esta decisión queda registrada en S11/L480 del ODD. La admisión Pi-only quedó demostrada en el candidato exacto `111d74a48557ccf410a94e51b4c594cd3e25041e` mediante CI multiplataforma, matriz de host Pi, evidencia Pi 1.2 y R4 corregido. Las secciones históricas que condicionaban la decisión o la evidencia quedan supersedidas por el cierre de esta fecha.
 
 ## 1. Resultado de la auditoría
 
@@ -131,7 +131,7 @@ El alcance Pi-only ya está adoptado en S11/L480 del ODD. Para FULL falta que la
 
 Requiere además un adaptador probado para cada cliente incluido en el inventario adoptado, con capacidades diferenciadas, pruebas positivas y negativas, recuperación, permisos y evidencia por plataforma.
 
-El alcance Pi-only ya está adoptado. T11 permanece `PARTIAL_BY_ACCEPTED_SCOPE` hasta cerrar las pruebas y revisión exigidas para Pi.
+El alcance Pi-only está adoptado y sus pruebas, revisión R4 y admisión exacta finalizaron con éxito en `111d74a48557ccf410a94e51b4c594cd3e25041e`. T11 está `FULL` dentro de ese alcance. Los clientes externos siguen diferidos y no se afirma paridad global con Reference Shell.
 
 ## 6. Dependencias y orden de ejecución
 
@@ -317,12 +317,7 @@ Se ha revisado el plan contra el ODD, el alcance v1, la frontera de autoridad y 
 
 ### 10.1 Riesgo: confundir Pi-only con FULL normativo
 
-La etiqueta `FULL Pi-only` no puede cambiar por sí sola la fila normativa `Additional clients — T11`. El cierre solo será `FULL` si el alcance Pi-only queda adoptado explícitamente en la entrada del ODD y en la documentación de producto. Si esa decisión no está registrada, el resultado correcto es:
-
-```text
-Pi adapter: FULL de implementación
-T11 global: PARTIAL por clientes adicionales pendientes
-```
+La etiqueta `FULL Pi-only` no puede cambiar por sí sola la fila normativa `Additional clients — T11`. El cierre solo será `FULL` si el alcance Pi-only queda adoptado explícitamente en la entrada del ODD y en la documentación de producto. La hipótesis de ese riesgo ya está resuelta: S11/L480 adoptó Pi-only y §12 registra la evidencia exacta de cierre. Sin esa decisión, habría correspondido mantener T11 parcial.
 
 La implementación no debe modificar automáticamente el registro global para aparentar completitud.
 
@@ -403,14 +398,7 @@ Si cualquiera de las respuestas críticas está vacía, T11 no puede ser `FULL`.
 
 ### 10.10 Resultado de la auditoría
 
-El plan queda completo para implementación, pero no anticipa el resultado. El estado de partida permanece:
-
-```text
-T11 = PARTIAL
-Pi = integración existente, pendiente de contrato y prueba formal
-Clientes externos = sin adaptadores admitidos
-FULL = solo después de satisfacer la puerta de decisión y actualizar el ODD
-```
+Este bloque registra el estado previo a la adopción y ejecución de T11; queda supersedido por la evidencia final de §12. La conclusión vigente es `FULL` solo para el alcance Pi-only aceptado. Los clientes externos siguen sin adaptadores y fuera de alcance.
 
 ## 11. Ajuste tras inspeccionar la composición real de ASEN
 
@@ -441,19 +429,21 @@ Esta tabla es una hipótesis de documentación que debe verificarse contra el SD
 
 ### 11.2 Alcance de implementación revisado
 
-La primera tanda no necesita un adaptador adicional. Debe cerrar únicamente el contrato de capacidades Pi si existe una brecha funcional demostrable. Si la matriz ya se puede derivar de `ASEN_PI_SUPPORTED_MODES` y del comportamiento existente sin añadir código, el cambio será de pruebas/documentación y T11 seguirá `PARTIAL` global mientras el alcance adicional no se adopte formalmente.
+La primera tanda no necesita un adaptador adicional. Debe cerrar únicamente el contrato de capacidades Pi si existe una brecha funcional demostrable. Si la matriz ya se puede derivar de `ASEN_PI_SUPPORTED_MODES` y del comportamiento existente sin añadir código, el cambio será de pruebas/documentación. La decisión de alcance Pi-only quedó formalmente adoptada en ODD S11/L480.
 
 No ejecutar una prueba Pi “real” que invoque proveedor/modelo para cerrar T11: las pruebas del adaptador son host-contract, provider-free. La aceptación de una operación que requiera UI humana debe seguir marcada como no disponible en modos sin UI.
 
-## 12. Ejecución local actual y conclusión
+## 12. Ejecución final y cierre
 
-En el worktree actual, `PiClientAdapter` no existe ni es necesario: la frontera está implementada por `src/runtime/pi-host.ts` y la extensión. Se corrigieron las expectativas antiguas de inventario en `tests/pi-host-preflight.test.ts` para incluir las tres herramientas de background ya registradas y las herramientas condicionales de la configuración de prueba.
+T11 queda **FULL dentro del alcance Pi-only adoptado** en el candidato `111d74a48557ccf410a94e51b4c594cd3e25041e`.
 
-Evidencia de esta revisión:
+Evidencias exactas:
 
-- `node --import tsx --test tests/pi-host-preflight.test.ts tests/pi-host-compatibility-matrix.test.ts`: 67/67 PASS, 0 fallos, 0 skips.
-- `npm run typecheck`: PASS.
-- `git diff --check`: PASS.
-- La suite anterior disparada accidentalmente por el runner completo no se toma como verde: tuvo fallos en esas expectativas, que son precisamente las que se corrigieron y verificaron después en la ejecución dirigida.
+- **CI 40505625662: PASS**. Typecheck, suite completa Linux/macOS/Windows, auditorías requeridas y ocho celdas reales de host Pi en cada plataforma.
+- **Release Gate 40505625687: PASS**. Empaquetado, reinicio/sesión y smoke de instalación del paquete real en Linux, macOS y Windows.
+- **Pi 1.2 runtime evidence 40505625611: PASS**. Pi 1.2.0 instalado, typecheck, pruebas GSP-05E, facade real y ejecución RPC real; artefacto `pi-1-runtime-evidence` ID `12734876804`, digest `sha256:5bb709d1084e7a616e0386b6a9f1e7151703b0f8e3fbb3ae82e68e6f8e60c60c`.
+- **Phase 0 Architecture 40505625834: PASS**. **Pi Free Smoke 40505625893: SKIPPED** por su condición para PR; no es un gate requerido para T11.
+- **R4**: hallazgo medio R4-01 reproducido en el candidato previo, corregido y cubierto por regresión; sin hallazgos críticos/altos en las fronteras revisadas. El análisis y el límite de la vista frente a carreras concurrentes del mismo usuario están en `docs/audit/r4-t11-review-view-2026-10-27.md`.
+- Verificación local del fix: 13 tests de review chain/session/view, typecheck y `git diff --check` en PASS.
 
-Esto prueba el contrato local del host Pi, no prueba multiplataforma. No se afirma compatibilidad de clientes externos, que están fuera del alcance adoptado. Resultado: pruebas locales de frontera Pi admitidas como evidencia de worktree, no ligadas a SHA; T11 permanece `PARTIAL_BY_ACCEPTED_SCOPE` hasta la evidencia host/plataforma y revisión exacta pendientes.
+**Disposición:** `T11 = FULL (Pi-only)`. No se afirma compatibilidad con clientes externos ni paridad global con Reference Shell; esos runtimes permanecen diferidos.
