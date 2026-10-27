@@ -3,7 +3,7 @@ import {lstatSync,realpathSync} from "node:fs";
 import type {BigIntStats} from "node:fs";
 export interface WorkspaceFileChange{readonly path:string;readonly status:string;}
 export interface WorkspaceRootSnapshot{readonly root:string;readonly head:string;readonly branch:string;readonly files:readonly WorkspaceFileChange[];readonly error?:string;}
-function parseStatus(output:string):WorkspaceFileChange[]{
+export function parseWorkspaceStatus(output:string):WorkspaceFileChange[]{
  const records=output.split("\0"),files:WorkspaceFileChange[]=[];
  for(let index=0;index<records.length;index++){
   const record=records[index]!;if(!record)continue;
@@ -38,7 +38,7 @@ export function snapshotWorkspaceRoots(roots:readonly string[]):readonly Workspa
    assertWorkspaceRootIdentity(root,rootIdentity);
    const status=git(canonical,["status","--porcelain=v1","-z","--untracked-files=all"]);
    assertWorkspaceRootIdentity(root,rootIdentity);
-   return Object.freeze({root:canonical,head,branch,files:Object.freeze(parseStatus(status))});
+   return Object.freeze({root:canonical,head,branch,files:Object.freeze(parseWorkspaceStatus(status))});
   }catch(error){return Object.freeze({root,head:"",branch:"unavailable",files:Object.freeze([]),error:error instanceof Error?error.message:"workspace unavailable"});}
  }));
 }

@@ -5,14 +5,19 @@ import {realpathSync,renameSync} from "node:fs";
 import {mkdtemp,mkdir,rename,rm,symlink,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
-import {assertWorkspaceRootIdentity,captureWorkspaceRootIdentity,snapshotWorkspaceRoots} from "../src/runtime/workspace-snapshot.js";
+import {assertWorkspaceRootIdentity,captureWorkspaceRootIdentity,parseWorkspaceStatus,snapshotWorkspaceRoots} from "../src/runtime/workspace-snapshot.js";
 
 test("reports a git root and isolates an unavailable root",()=>{const rows=snapshotWorkspaceRoots([process.cwd(),"/not-a-real-workspace"]);assert.ok(rows[0]!.head);assert.equal(rows[1]!.branch,"unavailable");});
 
-test("parses real Git status names containing newlines and preserves porcelain state",async t=>{
+test("parses porcelain NUL records with unusual path characters",()=>{
+ const strange="line one\nline two.txt";const files=parseWorkspaceStatus(`?? ${strange}\0`);
+ assert.deepEqual(files,[{status:"??",path:strange}]);
+});
+
+test("parses real Git status names with spaces and preserves porcelain state",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-workspace-snapshot-"));t.after(()=>rm(root,{recursive:true,force:true}));
  execFileSync("git",["init","-q",root]);execFileSync("git",["-C",root,"-c","user.name=ASEN test","-c","user.email=asen@example.invalid","commit","--allow-empty","-qm","initial"]);
- const strange="line one\nline two.txt";await writeFile(path.join(root,strange),"untracked\n");
+ const strange="line one line two.txt";await writeFile(path.join(root,strange),"untracked\n");
  const row=snapshotWorkspaceRoots([root])[0]!;assert.ok(row.head);assert.equal(row.files.length,1);assert.equal(row.files[0]?.status,"??");assert.equal(row.files[0]?.path,strange);
 });
 
