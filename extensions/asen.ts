@@ -60,6 +60,7 @@ import {formatActivePlanContext} from "../src/runtime/plan-context.js";
 import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-policy.js";
 import {BackgroundJobRegistry} from "../src/runtime/background-jobs.js";
 import {registerBackgroundJobTools} from "../src/runtime/background-job-tools.js";
+import {SessionDirectory} from "../src/runtime/session-directory.js";
 
 type CommandContext={cwd:string;hasUI?:boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void}};
 type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
@@ -159,6 +160,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const finishActiveMemory=()=>{if(!activeMemory||activeMemory.closed)return;finishPiMemorySession(activeMemory);activeMemory=undefined;};
   const agentProviderCredential=dependencies.agentProviderCredential??configuredPiProviderCredential(process.env);
   const backgroundJobs=new BackgroundJobRegistry();
+  const sessionDirectory=new SessionDirectory(path.join(home(),".asen","sessions.json"));
   const suppliedAgentRuntime=dependencies.agentRuntimeFactory?.();
   const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})})):undefined;
   const childSelectionSource=composedAgentRunner&&"subscribeChildSelection" in composedAgentRunner&&typeof composedAgentRunner.subscribeChildSelection==="function"?composedAgentRunner as AgentRunner&Pick<PiProcessRunner,"subscribeChildSelection">:undefined;
@@ -481,6 +483,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
 /** Production entry uses the real public Pi contract; dependency injection keeps lifecycle tests isolated. */
 export function createPiExtension(dependencies:AsenExtensionDependencies={}){
  return (pi:ExtensionAPI):void=>{
+ const sessionDirectory=new SessionDirectory(path.join((dependencies.homeDir??homedir)(),".asen","sessions.json"));
  validatePiHost(pi,VERSION);
  if(activatedPiHosts.has(pi))return;
  pi.on("tool_call",createPrimaryToolPolicyHandler());
@@ -493,6 +496,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
   const token=++generation;let publicWrites=0;
   try{
    validatePiExecutionContext(ctx);
+   try{const sessionId=ctx.sessionManager?.getSessionId?.();if(sessionId&&ctx.cwd)sessionDirectory.publish({sessionId,subject:`ASEN ${path.basename(ctx.cwd)}`,projectId:await canonical(ctx.cwd),classification:"read",updatedAt:new Date().toISOString()});}catch{/* Session discovery is descriptive and never blocks extension startup. */}
    // Pi's public inventory methods can exist before their runtime is initialized; read them only here.
    validatePiRegistrationCollisions(pi,commandNames,toolNames);
    const facade=createAsenExtension({...dependencies,enableAgentRuntime:dependencies.enableAgentRuntime??true,enableTodoRuntime:dependencies.enableTodoRuntime??true,enableWorkspaceRuntime:dependencies.enableWorkspaceRuntime??true,enableMemoryRuntime:dependencies.enableMemoryRuntime??true,deferSessionStart:true})({
