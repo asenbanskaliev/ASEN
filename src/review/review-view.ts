@@ -64,6 +64,17 @@ function applyWindowsReadOnlyAcl(root:string):void {
  } catch { throw new Error("review-unavailable: private-view-not-provable"); }
 }
 
+function restoreWindowsCleanupAcl(root:string):void {
+ const username=process.env.USERNAME;
+ if(!username)throw new Error("review-unavailable: Windows owner identity is unavailable");
+ try {
+  // The read-only ACE is explicit on the owned root and inherited by its
+  // children. Temporarily grant this user full control on that root with
+  // inheritance for the owned tree; never touch the parent.
+  execFileSync("icacls",[root,"/grant:r",`${username}:(OI)(CI)F`],{stdio:"ignore",windowsHide:true,timeout:10_000});
+ } catch { throw new Error("review-unavailable: private-view-cleanup-not-provable"); }
+}
+
 function verifyMaterializedEntries(view:ReviewView,entries:readonly CandidateGitTreeEntry[]):void {
  const expected=new Map(entries.map(entry=>[entry.path,entry]));
  if(expected.size!==view.entryCount||view.paths.length!==expected.size)throw new Error("Review view entry inventory is inconsistent");
@@ -83,6 +94,32 @@ function assertOrdinaryReviewParents(root:string,path:string):void {
   const info=lstatSync(current);
   if(!info.isDirectory()||info.isSymbolicLink())throw new Error("Review view parent directory is unsafe");
  }
+}
+
+function ownedViewDirectories(view:ReviewView):string[] {
+ validatePortableReviewPaths(view.paths);
+ const expectedFiles=new Set(view.paths),expectedDirectories=new Set<string>();
+ for(const path of view.paths){
+  let directory=dirname(join(view.root,...path.split("/")));
+  while(directory!==view.root){expectedDirectories.add(directory);directory=dirname(directory);}
+ }
+ const actualFiles=new Set<string>(),actualDirectories=new Set<string>();
+ const visit=(directory:string,prefix:string):void=>{
+  for(const entry of readdirSync(directory,{withFileTypes:true})){
+   const name=prefix?`${prefix}/${entry.name}`:entry.name,path=join(directory,entry.name),info=lstatSync(path);
+   if(info.isSymbolicLink())throw new Error("Review view contains an unsafe link");
+   if(info.isDirectory()) {actualDirectories.add(path);visit(path,name);}
+   else if(info.isFile())actualFiles.add(name);
+   else throw new Error("Review view contains an unsupported filesystem entry");
+  }
+ };
+ visit(view.root,"");
+ if([...actualFiles].some(value=>!expectedFiles.has(value))||[...actualDirectories].some(value=>!expectedDirectories.has(value)))
+  throw new Error("Review view contains unowned data");
+ // Missing expected entries are safe during disposal: an earlier interrupted
+ // close may already have removed them. Reject extras, then finish the same
+ // owned cleanup on retry.
+ return [...actualDirectories].sort((a,b)=>b.length-a.length);
 }
 
 /** Materializes one frozen Git tree as a private, read-only reviewer view. */
@@ -130,16 +167,15 @@ export function disposeReviewView(view:ReviewView):void {
  const claim=requireLiveClaim(view);
  const info=lstatSync(view.root,{throwIfNoEntry:false});
  if(!info||!info.isDirectory()||info.isSymbolicLink()||info.dev!==claim.dev||info.ino!==claim.ino||realpathSync(view.root)!==claim.realRoot)throw new Error("Review view ownership is uncertain");
- chmodSync(view.root,0o700);
- const directories=new Set<string>();
+ const directories=ownedViewDirectories(view);
+ if(process.platform==="win32")restoreWindowsCleanupAcl(view.root);else chmodSync(view.root,0o700);
  for(const path of view.paths){
   const target=join(view.root,...path.split("/")),entry=lstatSync(target,{throwIfNoEntry:false});
-  if(!entry||!entry.isFile()||entry.isSymbolicLink())throw new Error("Review view entry ownership is uncertain");
+  if(!entry)continue;
+  if(!entry.isFile()||entry.isSymbolicLink())throw new Error("Review view entry ownership is uncertain");
   unlinkSync(target);
-  let directory=dirname(target);
-  while(directory!==view.root){directories.add(directory);directory=dirname(directory);}
  }
- for(const directory of [...directories].sort((a,b)=>b.length-a.length))rmdirSync(directory);
+ for(const directory of directories)if(lstatSync(directory,{throwIfNoEntry:false})?.isDirectory())rmdirSync(directory);
  if(readdirSync(view.root).length!==0)throw new Error("Review view contains unowned data");
  rmdirSync(view.root);
  liveViewClaims.delete(view);

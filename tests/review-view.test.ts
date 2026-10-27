@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {chmodSync,lstatSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {chmodSync,lstatSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync,unlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {disposeReviewView,materializeReviewView,readReviewViewFile,revalidateReviewView,type ReviewView} from "../src/review/review-view.js";
@@ -61,6 +61,28 @@ test("rejects forged or cloned view ownership without deleting unrelated files",
   assert.throws(()=>readReviewViewFile(clone,"src/file.txt"),/ownership is uncertain/);
   assert.throws(()=>disposeReviewView(clone),/ownership is uncertain/);
   disposeReviewView(view);
+ } finally {rmSync(parent,{recursive:true,force:true});}
+});
+
+test("refuses to relax view ACLs when unexpected data has entered the owned root",{skip:process.platform==="win32"?"POSIX fixture mutates directory mode bits":false},()=>{
+ const parent=mkdtempSync(join(tmpdir(),"asen-review-parent-"));
+ try{
+  const view=materializeReviewView(manifest(),parent),foreign=join(view.root,"unexpected.txt");
+  chmodSync(view.root,0o700);writeFileSync(foreign,"preserve me\n");
+  assert.throws(()=>disposeReviewView(view),/contains unowned data/);
+  assert.equal(readFileSync(foreign,"utf8"),"preserve me\n");
+ } finally {rmSync(parent,{recursive:true,force:true});}
+});
+
+test("resumes disposal after an owned entry was already removed",{skip:process.platform==="win32"?"POSIX fixture mutates directory mode bits":false},()=>{
+ const parent=mkdtempSync(join(tmpdir(),"asen-review-parent-"));
+ try{
+  const base=manifest(),bytes=Buffer.from("second\n"),second={...base.entries[0]!,path:"src/second.txt",size:bytes.length,
+   contentSha256:createHash("sha256").update(bytes).digest("hex"),bytesBase64:bytes.toString("base64")};
+  const candidate={...base,entries:[base.entries[0]!,second]},view=materializeReviewView(candidate,parent),source=join(view.root,"src/file.txt");
+  chmodSync(view.root,0o700);chmodSync(join(view.root,"src"),0o700);unlinkSync(source);
+  disposeReviewView(view);
+  assert.throws(()=>lstatSync(view.root),/ENOENT/);
  } finally {rmSync(parent,{recursive:true,force:true});}
 });
 
