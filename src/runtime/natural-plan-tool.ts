@@ -50,7 +50,7 @@ export function registerAsenPlanRequestTool(
 ):void{
  pi.registerTool?.({
   name:ASEN_PLAN_REQUEST_TOOL,label:"Prepare ASEN task plan",
-  description:"Turn the user's ordinary-language project request into a validated ASEN plan. Inspect the project first; derive these ODD facts yourself, never ask the user to write JSON or supply internal IDs. Bounded requests stay in chat; material clarifications are asked there without parking a task; coordinated work is persisted and may start dependency-ready read-only steps. ASEN never grants write permission; every writer needs exact Pi approval, and completion needs a passing independent verifier.",
+  description:"Turn the user's ordinary-language project request into a validated ASEN plan. Inspect the project first; derive these ODD facts yourself, never ask the user to write JSON or supply internal IDs. Bounded requests stay in chat; material clarifications are asked there without parking a task; coordinated work is persisted and may start dependency-ready read-only steps. ASEN never grants write permission; every writer needs exact Pi approval, and completion requires explicit user acceptance after reviewing independent verification.",
   executionMode:"sequential",
   parameters:{type:"object",additionalProperties:false,required:[...planKeys],properties:{instruction:{type:"string",minLength:1,maxLength:8192},intent,scope,writes,riskOperations,session,testing,review,unresolvedDecisions}},
   execute:async(_callId,params,_signal,_update,context)=>{

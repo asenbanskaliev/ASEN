@@ -224,7 +224,7 @@ test("canonical registration and ASEN integration expose only one CodeGraph tool
     registerCommand(){},
     registerTool(tool:any){tools.set(tool.name,tool);},
   } as any);
-  assert.deepEqual([...tools.keys()], ["asen_ask_choice", "asen_ask_question", "ask_user_choice", "ask_user_question", "codegraph", "asen_plan_request"]);
+  assert.deepEqual([...tools.keys()], ["asen_ask_choice", "asen_ask_question", "ask_user_choice", "ask_user_question", "codegraph", "asen_background_start", "asen_background_status", "asen_background_stop", "asen_plan_request"]);
   assert.equal(tools.get("codegraph").annotations.readOnlyHint,false);
   assert.equal(tools.get("codegraph").annotations.destructiveHint,true);
   assert.deepEqual(f.registered.filter(name=>name.includes("code")),["codegraph"],"Pi must expose exactly one CodeGraph tool");
