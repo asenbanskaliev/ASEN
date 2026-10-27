@@ -58,6 +58,8 @@ import {addAsenRequestGuidance} from "../src/runtime/request-guidance.js";
 import {ASEN_PLAN_REQUEST_TOOL,registerAsenPlanRequestTool} from "../src/runtime/natural-plan-tool.js";
 import {formatActivePlanContext} from "../src/runtime/plan-context.js";
 import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-policy.js";
+import {BackgroundJobRegistry} from "../src/runtime/background-jobs.js";
+import {registerBackgroundJobTools} from "../src/runtime/background-job-tools.js";
 
 type CommandContext={cwd:string;hasUI?:boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void}};
 type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void};
@@ -156,6 +158,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const finishActiveMemory=()=>{if(!activeMemory||activeMemory.closed)return;finishPiMemorySession(activeMemory);activeMemory=undefined;};
   const agentProviderCredential=dependencies.agentProviderCredential??configuredPiProviderCredential(process.env);
+  const backgroundJobs=new BackgroundJobRegistry();
   const suppliedAgentRuntime=dependencies.agentRuntimeFactory?.();
   const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})})):undefined;
   const childSelectionSource=composedAgentRunner&&"subscribeChildSelection" in composedAgentRunner&&typeof composedAgentRunner.subscribeChildSelection==="function"?composedAgentRunner as AgentRunner&Pick<PiProcessRunner,"subscribeChildSelection">:undefined;
@@ -294,6 +297,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   pi.on?.("turn_start",async()=>{try{await incrementUsageFile(usageFile,"agentRuns");}catch{/* Usage accounting must not interrupt the host turn. */}});
   registerInteractionTools(pi,dependencies.interactionTimeoutMs);
   if(pi.registerTool)registerCodeGraphTools({registerTool:pi.registerTool.bind(pi)},dependencies.codeIntelligence);
+  if(pi.registerTool)registerBackgroundJobTools({registerTool:pi.registerTool.bind(pi)},backgroundJobs);
   pi.on?.("before_agent_start",async(event,ctx)=>{
    const options=(event as {systemPromptOptions?:{sections?:Record<string,string>}}|undefined)?.systemPromptOptions;
    if(options?.sections){
@@ -527,3 +531,4 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
 export default function asen(pi:ExtensionAPI):void{
  createPiExtension()(pi);
 }
+
