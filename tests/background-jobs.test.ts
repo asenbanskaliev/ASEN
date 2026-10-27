@@ -21,3 +21,8 @@ test("runs a real contained child and records its exit",async()=>{
  const result=await child.done;assert.equal(result.state,"completed");assert.equal(result.exitCode,0);assert.deepEqual(result.tail,["ok"]);
 });
 
+test("timeout terminates a real child",async()=>{
+ const registry=new BackgroundJobRegistry(),child=registry.run({sessionId:"timeout",command:process.execPath,args:["-e","setTimeout(()=>{},10000)"],timeoutMs:50});
+ const result=await child.done;assert.equal(result.state,"timed_out");
+});
+
