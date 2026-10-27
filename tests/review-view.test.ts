@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {chmodSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {chmodSync,lstatSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {disposeReviewView,materializeReviewView,readReviewViewFile,revalidateReviewView} from "../src/review/review-view.js";
+import {disposeReviewView,materializeReviewView,readReviewViewFile,revalidateReviewView,type ReviewView} from "../src/review/review-view.js";
 
 function manifest(bytes="hello\n"){
  const encoded=Buffer.from(bytes);
@@ -43,6 +43,24 @@ test("does not remove a replaced view root",()=>{
   chmodSync(old,0o700);rmSync(old,{recursive:true,force:true});writeFileSync(old,"foreign");
   assert.throws(()=>disposeReviewView(view),/ownership is uncertain/);
   assert.throws(()=>readReviewViewFile(view,"src/file.txt"),/ownership is uncertain/);
+ } finally {rmSync(parent,{recursive:true,force:true});}
+});
+
+test("rejects forged or cloned view ownership without deleting unrelated files",()=>{
+ const parent=mkdtempSync(join(tmpdir(),"asen-review-parent-"));
+ try{
+  const marker=join(parent,"keep.txt");writeFileSync(marker,"user data\n");
+  const info=lstatSync(parent);
+  const forged={schemaVersion:1,root:parent,candidateTree:"a".repeat(40),manifestDigest:"b".repeat(64),viewIdentity:"c".repeat(64),
+   entryCount:1,platform:process.platform==="win32"?"windows":"posix",rootDev:info.dev,rootIno:info.ino,
+   paths:["keep.txt"],entries:[{path:"keep.txt",size:10,contentSha256:createHash("sha256").update("user data\n").digest("hex"),mode:"100644"}]} as ReviewView;
+  assert.throws(()=>disposeReviewView(forged),/ownership is uncertain/);
+  assert.equal(readFileSync(marker,"utf8"),"user data\n");
+
+  const view=materializeReviewView(manifest(),parent),clone={...view} as ReviewView;
+  assert.throws(()=>readReviewViewFile(clone,"src/file.txt"),/ownership is uncertain/);
+  assert.throws(()=>disposeReviewView(clone),/ownership is uncertain/);
+  disposeReviewView(view);
  } finally {rmSync(parent,{recursive:true,force:true});}
 });
 

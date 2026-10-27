@@ -21,6 +21,17 @@ export interface ReviewView {
 }
 
 interface ViewClaim {readonly root:string;readonly realRoot:string;readonly dev:number;readonly ino:number;readonly manifestDigest:string;}
+// Public view fields are descriptive, not an ownership capability. Keeping the
+// claim out of the serializable object prevents forged/cloned views from being
+// used to remove arbitrary files through disposeReviewView.
+const liveViewClaims=new WeakMap<ReviewView,ViewClaim>();
+
+function requireLiveClaim(view:ReviewView):ViewClaim {
+ const claim=liveViewClaims.get(view);
+ if(!claim||claim.root!==view.root||claim.dev!==view.rootDev||claim.ino!==view.rootIno||claim.manifestDigest!==view.manifestDigest)
+  throw new Error("Review view ownership is uncertain");
+ return claim;
+}
 
 function assertDirectory(path:string,label:string):{realPath:string;dev:number;ino:number} {
  const requested=resolve(path),info=lstatSync(requested);
@@ -102,11 +113,13 @@ export function materializeReviewView(manifest:CandidateGitTreeManifest,parent:s
   const info=lstatSync(root);
   if(!info.isDirectory()||info.isSymbolicLink())throw new Error("Review view root changed during materialization");
   committed=true;
-  return Object.freeze({schemaVersion:1,root,candidateTree:manifest.treeIdentity,manifestDigest,
+  const view=Object.freeze({schemaVersion:1 as const,root,candidateTree:manifest.treeIdentity,manifestDigest,
    viewIdentity:createHash("sha256").update(`${root}\0${info.dev}\0${info.ino}\0${manifestDigest}`).digest("hex"),
-   entryCount:manifest.entries.length,platform:process.platform==="win32"?"windows":"posix",rootDev:info.dev,rootIno:info.ino,
+   entryCount:manifest.entries.length,platform:process.platform==="win32"?"windows" as const:"posix" as const,rootDev:info.dev,rootIno:info.ino,
    paths:Object.freeze(manifest.entries.map(entry=>entry.path)),
    entries:Object.freeze(manifest.entries.map(entry=>Object.freeze({path:entry.path,size:entry.size!,contentSha256:entry.contentSha256!,mode:entry.mode as "100644"|"100755"})))});
+  liveViewClaims.set(view,{root,realRoot:realpathSync(root),dev:info.dev,ino:info.ino,manifestDigest});
+  return view;
  } finally {
   if(!committed)rmSync(root,{recursive:true,force:true});
  }
@@ -114,8 +127,9 @@ export function materializeReviewView(manifest:CandidateGitTreeManifest,parent:s
 
 /** Closes a view only if its root still belongs to this materialization. */
 export function disposeReviewView(view:ReviewView):void {
+ const claim=requireLiveClaim(view);
  const info=lstatSync(view.root,{throwIfNoEntry:false});
- if(!info||!info.isDirectory()||info.isSymbolicLink()||info.dev!==view.rootDev||info.ino!==view.rootIno)throw new Error("Review view ownership is uncertain");
+ if(!info||!info.isDirectory()||info.isSymbolicLink()||info.dev!==claim.dev||info.ino!==claim.ino||realpathSync(view.root)!==claim.realRoot)throw new Error("Review view ownership is uncertain");
  chmodSync(view.root,0o700);
  const directories=new Set<string>();
  for(const path of view.paths){
@@ -128,9 +142,11 @@ export function disposeReviewView(view:ReviewView):void {
  for(const directory of [...directories].sort((a,b)=>b.length-a.length))rmdirSync(directory);
  if(readdirSync(view.root).length!==0)throw new Error("Review view contains unowned data");
  rmdirSync(view.root);
+ liveViewClaims.delete(view);
 }
 
 export function readReviewViewFile(view:ReviewView,path:string):Buffer {
+ requireLiveClaim(view);
  const rootInfo=lstatSync(view.root,{throwIfNoEntry:false});
  if(!rootInfo||!rootInfo.isDirectory()||rootInfo.isSymbolicLink()||rootInfo.dev!==view.rootDev||rootInfo.ino!==view.rootIno)throw new Error("Review view ownership is uncertain");
  validatePortableReviewPaths([path]);
@@ -149,6 +165,7 @@ export function readReviewViewFile(view:ReviewView,path:string):Buffer {
 
 /** Rejects a stale view before a new review or correction can consume it. */
 export function revalidateReviewView(view:ReviewView,manifest:CandidateGitTreeManifest):ReviewView {
+ requireLiveClaim(view);
  const rootInfo=lstatSync(view.root,{throwIfNoEntry:false});
  if(!rootInfo||!rootInfo.isDirectory()||rootInfo.isSymbolicLink()||rootInfo.dev!==view.rootDev||rootInfo.ino!==view.rootIno)throw new Error("Review view ownership is uncertain");
  if(manifest.treeIdentity!==view.candidateTree||digestManifest(manifest)!==view.manifestDigest)throw new Error("Review view candidate drifted");
