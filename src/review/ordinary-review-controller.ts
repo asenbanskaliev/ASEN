@@ -6,6 +6,8 @@ import {isProxy} from "node:util/types";
 import {claimWorkUnitReviewCandidate,type WorkUnitReviewCandidate} from "../delivery/work-unit-review-candidate.js";
 import {exactRecord,text} from "../delivery/work-unit-policy.js";
 import {materializeReviewView,type ReviewView} from "./review-view.js";
+import {openReviewSession,type ReviewSession} from "./review-session.js";
+import type {ReviewRiskInput} from "./review-risk.js";
 import type {CandidateGitTreeManifest} from "./review-tree-inspection.js";
 export interface OrdinaryReviewInput{
  readonly authorId:string;readonly reviewerId:string;readonly sessionId:string;
@@ -75,4 +77,13 @@ export function materializeOrdinaryReviewView(value:unknown,parent:string,manife
   throw new Error("Review view manifest does not bind the exact checkout");
  }
  return materializeReviewView(manifest,parent);
+}
+
+/** Opens the public review composition only from a genuine exact checkout. */
+export function openOrdinaryReviewSession(value:unknown,parent:string,manifest:CandidateGitTreeManifest,risk:ReviewRiskInput):ReviewSession{
+ const checkout=claimOrdinaryReviewCheckout(value);
+ if(manifest.repositoryRoot!==checkout.repository||manifest.treeIdentity!==checkout.treeIdentity){
+  throw new Error("Review session manifest does not bind the exact checkout");
+ }
+ return openReviewSession(checkout.repository,manifest,parent,risk);
 }
