@@ -111,7 +111,7 @@ test("preflight rejection retries on a later session after the collision is remo
  const bootstrap=state.events.get("session_start")![0]!;
  await bootstrap({},state.context());assert.equal(state.commands.size,0);
  state.commandInventory.length=0;
- await bootstrap({},state.context());assert.ok(state.commands.has("asen"));assert.equal(state.tools.size,11);
+ await bootstrap({},state.context());assert.ok(state.commands.has("asen"));assert.deepEqual([...state.tools.keys()].sort(),["asen_ask_choice","asen_ask_question","asen_background_start","asen_background_status","asen_background_stop","asen_memory_save","asen_memory_search","asen_plan_request","ask_user_choice","ask_user_question","codegraph"]);
 });
 
 test("partial host registration remains inert and requires a controlled Pi reload",async()=>{
