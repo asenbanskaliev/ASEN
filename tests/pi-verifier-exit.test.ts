@@ -18,11 +18,12 @@ test("a forced shutdown cannot turn a completed verifier into natural exit evide
  const stream=()=>Object.assign(new EventEmitter(),{destroyed:false,readableEnded:false,writableEnded:false,writableFinished:false,writableLength:0});
  child.stdin=stream();child.stdout=stream();child.stderr=stream();child.exitCode=null;child.signalCode=null;child.killed=false;
  child.stdin.end=()=>{child.stdin.writableEnded=true;child.stdin.writableFinished=true;child.stdin.emit("finish");};
- child.kill=()=>{child.killed=true;child.signalCode="SIGKILL";child.emit("exit",null,"SIGKILL");child.emit("close",null,"SIGKILL");};
+ child.kill=()=>{child.killed=true;child.signalCode="SIGKILL";child.stderr.emit("data",Buffer.from("ASEN_PI_VERIFIER_SHUT"));child.stderr.emit("data",Buffer.from("DOWN:session-done\r\n"));child.emit("exit",null,"SIGKILL");child.emit("close",null,"SIGKILL");};
  const closed=new Promise(resolve=>child.once("close",(code,signal)=>resolve({code,signal})));
  await assert.rejects(settleVerifierChild(child,closed,{graceMs:5,killWaitMs:5}),(error:Error)=>{
   assert.match(error.message,/Verifier required forced shutdown/);assert.match(error.message,/"event":"finish"/);
-  assert.match(error.message,/"event":"exit"/);assert.match(error.message,/"SIGKILL"/);return true;
+  assert.match(error.message,/"event":"exit"/);assert.match(error.message,/"SIGKILL"/);
+  assert.match(error.message,/ASEN_PI_VERIFIER_SHUTDOWN:session-done/);return true;
  });
 });
 
