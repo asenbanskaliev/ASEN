@@ -5,6 +5,7 @@ import {
 } from "node:fs";
 import {isAbsolute, join, relative, resolve, sep} from "node:path";
 import {tmpdir} from "node:os";
+import {isProxy} from "node:util/types";
 
 export type WorkspaceReviewEntryMode = "100644" | "100755" | "120000" | "160000";
 export type WorkspaceReviewEntryChange = "added" | "modified" | "deleted" | "gitlink";
@@ -27,6 +28,7 @@ export interface WorkspaceReviewProjection {
   readonly baseTree: string;
   readonly candidateTree: string;
   readonly intendedUntracked: readonly string[];
+  readonly unexpectedUntracked: readonly string[];
   readonly indexIdentity: string;
   readonly sourceIdentity: string;
   readonly entries: readonly WorkspaceReviewEntry[];
@@ -36,6 +38,7 @@ type TreeEntry = {path: string; mode: WorkspaceReviewEntryMode; objectId: string
 type SourceEntry = TreeEntry & {bytes?: Buffer; contentSha256: string | null};
 const outputLimit = 16 * 1024 * 1024;
 const decoder = new TextDecoder("utf-8", {fatal: true});
+const issuedProjections = new WeakSet<object>();
 
 function sha256(value: string | Buffer): string {
   return createHash("sha256").update(value).digest("hex");
@@ -49,7 +52,7 @@ function safePath(value: unknown): value is string {
 }
 
 function plainData(value: unknown, keys: readonly string[], label: string): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) {
+  if (typeof value !== "object" || value === null || isProxy(value) || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) {
     throw new Error(`${label} must be exact plain data`);
   }
   const own = Reflect.ownKeys(value);
@@ -70,11 +73,16 @@ function normalizeRequest(value: WorkspaceReviewProjectionRequest): {repositoryR
   if (typeof data.repositoryRoot !== "string" || !data.repositoryRoot || !Array.isArray(data.intendedUntracked)) {
     throw new Error("workspace projection request is invalid");
   }
-  const intended = data.intendedUntracked;
+  const input=data.intendedUntracked;
+  if(isProxy(input)||Object.getPrototypeOf(input)!==Array.prototype)throw new Error("workspace projection scope must be plain data");
+  const descriptors=Object.getOwnPropertyDescriptors(input),own=Reflect.ownKeys(descriptors);
+  if(own.length!==input.length+1||own.some(key=>key!=="length"&&!(typeof key==="string"&&/^(?:0|[1-9][0-9]*)$/u.test(key)&&Number(key)<input.length)))throw new Error("workspace projection scope must be a dense plain array");
+  const intended:string[]=[];
+  for(let index=0;index<input.length;index++){const descriptor=descriptors[String(index)];if(!descriptor?.enumerable||!("value" in descriptor)||typeof descriptor.value!=="string")throw new Error("workspace projection scope must be a dense plain array");intended.push(descriptor.value);}
   if (intended.some(path => !safePath(path)) || new Set(intended).size !== intended.length) {
     throw new Error("workspace projection scope contains an unsafe path");
   }
-  return {repositoryRoot: data.repositoryRoot, intendedUntracked: [...intended].sort()};
+  return {repositoryRoot: data.repositoryRoot, intendedUntracked: intended.sort()};
 }
 
 function gitEnvironment(): NodeJS.ProcessEnv {
@@ -192,7 +200,15 @@ function freezeProjection(value: WorkspaceReviewProjection): WorkspaceReviewProj
   for (const entry of value.entries) Object.freeze(entry);
   Object.freeze(value.entries);
   Object.freeze(value.intendedUntracked);
-  return Object.freeze(value);
+  Object.freeze(value.unexpectedUntracked);
+  const projection=Object.freeze(value);
+  issuedProjections.add(projection);
+  return projection;
+}
+
+/** Returns true only for the exact immutable projection emitted by this module. */
+export function isWorkspaceReviewProjectionGenuine(value:unknown):value is WorkspaceReviewProjection {
+  return typeof value==="object"&&value!==null&&issuedProjections.has(value);
 }
 
 /**
@@ -207,6 +223,9 @@ export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectio
     const parsed = parseEntry(record, false); return [parsed.path, parsed] as const;
   }));
   const rawIndex = runGit(root, ["ls-files", "--stage", "-z"]);
+  const observedUntracked=records(runGit(root,["ls-files","--others","--exclude-standard","-z"])).map(record=>decoder.decode(record));
+  if(observedUntracked.some(path=>!safePath(path))||new Set(observedUntracked).size!==observedUntracked.length)throw new Error("repository contains an unsafe untracked path");
+  const intendedSet=new Set(request.intendedUntracked),unexpectedUntracked=observedUntracked.filter(path=>!intendedSet.has(path)).sort();
   const indexEntries = new Map<string, TreeEntry>();
   for (const record of records(rawIndex)) {
     const parsed = parseEntry(record, true);
@@ -285,7 +304,7 @@ export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectio
   const sourceIdentity = sha256(JSON.stringify([...candidate.values()].map(item => [item.path, item.mode, item.objectId, item.contentSha256])));
   return freezeProjection({
     schemaVersion: 1, repositoryRoot: root, ...base, candidateTree,
-    intendedUntracked: request.intendedUntracked, indexIdentity, sourceIdentity, entries,
+    intendedUntracked: request.intendedUntracked,unexpectedUntracked,indexIdentity, sourceIdentity, entries,
   });
 }
 
@@ -294,18 +313,31 @@ export function revalidateWorkspaceReviewProjection(
   saved: WorkspaceReviewProjection,
   input: WorkspaceReviewProjectionRequest,
 ): WorkspaceReviewProjection {
+  if(!isWorkspaceReviewProjectionGenuine(saved))throw new Error("workspace projection was not captured here");
   const request = normalizeRequest(input);
   const data = plainData(saved, [
-    "schemaVersion", "repositoryRoot", "baseCommit", "baseTree", "candidateTree", "intendedUntracked",
+    "schemaVersion", "repositoryRoot", "baseCommit", "baseTree", "candidateTree", "intendedUntracked","unexpectedUntracked",
     "indexIdentity", "sourceIdentity", "entries",
   ], "saved workspace projection");
   if (!Array.isArray(data.intendedUntracked) || JSON.stringify([...data.intendedUntracked].sort()) !== JSON.stringify(request.intendedUntracked)) {
     throw new Error("workspace projection scope drifted");
   }
   const current = captureWorkspaceReviewProjection({repositoryRoot: request.repositoryRoot, intendedUntracked: request.intendedUntracked});
-  const comparable = ["schemaVersion", "repositoryRoot", "baseCommit", "baseTree", "candidateTree", "indexIdentity", "sourceIdentity", "entries"] as const;
+  const comparable = ["schemaVersion", "repositoryRoot", "baseCommit", "baseTree", "candidateTree", "intendedUntracked","unexpectedUntracked","indexIdentity", "sourceIdentity", "entries"] as const;
   for (const key of comparable) if (JSON.stringify(data[key]) !== JSON.stringify(current[key])) {
     throw new Error(`workspace projection drifted: ${key}`);
   }
   return current;
+}
+
+/** Builds the complete binary-safe diff between the captured base and candidate Git trees. */
+export function diffWorkspaceReviewProjection(saved:WorkspaceReviewProjection,input:WorkspaceReviewProjectionRequest):string{
+  const current=revalidateWorkspaceReviewProjection(saved,input);
+  const base=current.baseTree;
+  const diff=decoder.decode(runGit(current.repositoryRoot,[
+    "diff","--no-ext-diff","--no-color","--no-renames","--binary","--full-index",
+    "--src-prefix=a/","--dst-prefix=b/",base,current.candidateTree,"--",
+  ]));
+  revalidateWorkspaceReviewProjection(current,input);
+  return diff;
 }

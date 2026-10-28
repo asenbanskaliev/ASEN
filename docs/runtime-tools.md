@@ -10,6 +10,16 @@ These interfaces are registered by the shipped primary extension (`asen/extensio
 
 The native Pi select/input primitives carry interaction. Offline Linux RPC choice/cancellation has been tested with zero model turns. Full TUI/questionnaire presentation and integration with genuine human-only mutation consumers remain open. Timed-out hosts that ignore abort stay quarantined until the old dialog settles.
 
+## Independent code review
+
+`/asen-review workspace` captures the current tracked/index changes plus explicitly selected untracked files through a private Git index. It does not move HEAD or modify the contributor index. The command rejects untracked files left outside the requested scope, builds a private read-only view, and derives the complete diff, changed paths, tree identities and candidate file bytes from that captured Git tree. Any source, index or view drift invalidates the session and result.
+
+The user selects an authenticated Pi model distinct from the current author model, enters review requirements, and explicitly confirms sending the exact candidate evidence to that provider. The reviewer receives a fresh tool-free Pi model call with the requirements, full diff, changed file contents, source identities, risk lenses, and test status. Output is schema-checked and bound to that exact candidate. Provider/model identity is descriptive evidence of the configured call, not a human identity or delivery authority.
+
+A failed review can issue one correction request. `/asen-review workspace correction <correction-id>` requires a different reviewer model and a changed candidate whose correction delta touches only files named by the findings. A second failure blocks. A passing review remains `passed-awaiting-tests`; ASEN reports tests as `not-run` and does not accept or authorize delivery. Headless hosts, missing author identity, unavailable reviewer credentials, oversized evidence, cancellation or provider errors fail closed without a pass.
+
+The correction map and review-view ownership claims are in-memory and session-bound. Restart requires a new review and does not recover an old approval. A model-backed review is evidence for the shown tree; it does not establish native RDD provider authentication, persistent result recovery, test execution, final acceptance or OS-level isolation. These remain T05 closure gates.
+
 ## Code intelligence
 
 Pi exposes one CodeGraph tool: `codegraph`. It accepts `operation` (`init`, `query` or `explore`), an optional integer `limit` from 1 to 20 (default 10), and a nonempty query of at most 2,000 characters for query/explore. Read-only query/explore calls run without an ASEN confirmation and never initialize or retry automatically. `init` may create `.codegraph` only after a one-run approval in Pi's interactive UI; headless execution, denial, or cancellation performs no initialization. A successful index initialization is not repeated in the same Pi process, and an existing safe index is left alone.

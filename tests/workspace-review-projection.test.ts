@@ -45,7 +45,7 @@ test("captures tracked final bytes, staged additions, and only explicitly intend
   git("add", "staged.txt");
   writeFileSync(join(root, "staged.txt"), "staged working final\n");
   writeFileSync(join(root, "selected.txt"), "selected\n");
-  writeFileSync(join(root, "ignored.txt"), "not selected\n");
+  writeFileSync(join(root, "unselected.txt"), "not selected\n");
 
   const projection = captureWorkspaceReviewProjection({repositoryRoot: root, intendedUntracked: ["selected.txt"]});
   assert.equal(projection.repositoryRoot, root);
@@ -53,10 +53,11 @@ test("captures tracked final bytes, staged additions, and only explicitly intend
   assert.equal(projection.baseTree, git("rev-parse", "HEAD^{tree}"));
   assert.match(projection.candidateTree, /^[0-9a-f]{40,64}$/u);
   assert.deepEqual(projection.intendedUntracked, ["selected.txt"]);
+  assert.deepEqual(projection.unexpectedUntracked, ["unselected.txt"]);
   assert.equal(entry(projection, "tracked.txt")?.change, "modified");
   assert.equal(entry(projection, "staged.txt")?.change, "added");
   assert.equal(entry(projection, "selected.txt")?.change, "added");
-  assert.equal(entry(projection, "ignored.txt"), undefined);
+  assert.equal(entry(projection, "unselected.txt"), undefined);
   assert.deepEqual(git("ls-tree", "-r", "--name-only", projection.candidateTree).split("\n"),
     ["mode.txt", "selected.txt", "staged.txt", "tracked.txt"]);
   for (const [name, expected] of [["tracked.txt", "working final\n"], ["staged.txt", "staged working final\n"], ["selected.txt", "selected\n"]]) {
@@ -64,7 +65,7 @@ test("captures tracked final bytes, staged additions, and only explicitly intend
     assert.deepEqual(bytes, Buffer.from(expected!));
   }
 
-  writeFileSync(join(root, "ignored.txt"), "still excluded\n");
+  writeFileSync(join(root, "unselected.txt"), "still excluded\n");
   assert.equal(revalidateWorkspaceReviewProjection(projection, {repositoryRoot: root, intendedUntracked: ["selected.txt"]}).candidateTree, projection.candidateTree);
   writeFileSync(join(root, "selected.txt"), "selected drift\n");
   assert.throws(() => revalidateWorkspaceReviewProjection(projection, {repositoryRoot: root, intendedUntracked: ["selected.txt"]}), /drift/u);

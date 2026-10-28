@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {chmodSync,lstatSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync,unlinkSync,writeFileSync} from "node:fs";
+import {chmodSync,lstatSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync,unlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {disposeReviewView,materializeReviewView,readReviewViewFile,revalidateReviewView,type ReviewView} from "../src/review/review-view.js";
@@ -34,6 +34,15 @@ test("rejects links and invalid content before materializing",()=>{
   assert.throws(()=>materializeReviewView(invalid,parent),/links and gitlinks/);
   assert.equal(readdirSync(parent).length,0);
  } finally {rmSync(parent,{recursive:true,force:true});}
+});
+
+test("rejects an in-repository parent whose name begins with two dots",()=>{
+ const repository=realpathSync("."),parent=join(repository,"..asen-review-inside-test");
+ mkdirSync(parent);
+ try{
+  assert.throws(()=>materializeReviewView(manifest(),parent),/outside the repository/u);
+  assert.deepEqual(readdirSync(parent),[]);
+ }finally{rmSync(parent,{recursive:true,force:true});}
 });
 
 test("does not remove a replaced view root",()=>{

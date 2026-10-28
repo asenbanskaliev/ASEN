@@ -13,23 +13,32 @@ Date: 2026-10-28. Base: PR #37 HEAD `18e98728e2e39c8b1a4ebf66019574ee7d1b32a6`.
 - Evidence boundary: this is a local real-Git freshness regression. The fabricated PASS object in the test is only a guard probe; it is not a native RDD observation, reviewer identity or approval.
 - Residual risk: a same-user process can race filesystem changes between validations and later reads. The review view is not an OS sandbox or atomic snapshot. Process restart loses WeakMap claims and requires fresh preparation.
 
+## Follow-up R4 — public workspace review composition
+
+The follow-up implementation adds `/asen-review workspace`: capture through a private index, candidate tree inspection, private read-only view/session, exact Git diff and changed-file bytes, explicit provider consent, a fresh Pi `streamSimple` call without tools, schema-checked findings, exact candidate binding, and one bounded correction reviewed by a different configured model. Unexpected untracked paths block dispatch. Session/view drift invalidates the result. The command reports `passed-awaiting-tests`; it does not accept the candidate or authorize delivery.
+
+| Finding | Severity | Evidence and correction | Regression / residual |
+| --- | --- | --- | --- |
+| Parent path containment treated any relative path beginning `..` as outside. A sibling named `..asen-inside` could be inside the repository. | High | Fixed with segment-aware `..` + separator checks in both view materialization and workspace setup. | `review-view.test.ts` and `workspace-review-session.test.ts` reject in-repo dot-dot-prefixed parents. |
+| Untracked files outside the explicit scope were absent from the projection summary and could be missed by the public reviewer. | High | Projection now records all nonignored untracked paths; review fails closed until each is selected or removed. | `workspace-review-projection.test.ts` and public command flow test verify capture and no dispatch. |
+| Correction delta needed to be constrained to paths identified by findings and must use a different reviewer. | Medium | One in-memory correction request records prior candidate files, finding paths, author/reviewer model IDs, repo and session. A second failed correction blocks. | `ordinary-review-workspace-flow.test.ts` covers a corrected second candidate and blocks out-of-scope deltas. Restart drops correction state; user must start over. |
+| Provider/model labels do not establish a human identity, native RDD authentication or approval authority. | High residual | Fresh `streamSimple` output is treated as analysis only and bound to exact request/session/tree. Explicit provider consent is required. | No live credentials are configured here; model calls are stubbed in tests. Tests are `not-run`, acceptance stays absent and no delivery authority is emitted. |
+
 ## R4 perspectives
 
 | Area | Finding / correction | Residual |
 | --- | --- | --- |
-| Architecture | Reused candidate, tree-inspection, view, session and result modules; no second permission store or delivery authority added. | Public `/asen-review` still stops before real review/result/correction composition. |
-| Security | Exact checkout freshness is retained privately and checked at session and result use; stale result is rejected. | Participant IDs are not authenticated; no real RDD provider was called. Same-user TOCTOU remains. |
-| Reliability | Stale attempts burn their receiver; owned view is explicitly disposed in regression. | Restart recovery, interrupted cleanup and multi-OS behavior are not demonstrated for this new code. |
-| Performance | Freshness checks are limited to session/result boundaries and inspect source identity, not model calls. | No before/after benchmark or Git-call measurement; no performance gain claimed. |
+| Architecture | Reuses candidate, tree-inspection, view, session, result and correction modules; no parallel permission store or delivery path. Public workspace review now composes exact evidence and one correction. | Legacy prepared-checkout command remains separate. Native RDD is not authenticated by this model-backed adapter. |
+| Security | Private-index snapshot, exact tree/file contents, unexpected untracked detection, source/view drift validation, provider consent, no reviewer tools, distinct configured model, finding-path correction limit. | Participant model IDs are descriptive; no real provider called. Same-user TOCTOU and temp-file forensic recovery are not closed. |
+| Reliability | Public tests cover success-awaiting-tests, finding, bounded correction/new reviewer, out-of-scope untracked block and drift rejection; view disposed on normal/cancel paths. | Correction/session ownership is in-memory; hard process crash can leave a temporary view for later manual cleanup. Simultaneous-edit stress and multi-OS new-flow evidence remain open. |
+| Performance | One bounded review call per candidate and at most one bounded correction call. | No reproducible before/after benchmark; candidate capture and full diff are repeated for each new candidate. No speedup claimed. |
 
 ## Verification
 
-- Focused candidate/session/review-chain tests: 27/27 PASS, including forged source-binding rejection.
-- Typecheck: PASS.
-- Prior candidate full test suite: 2,217 passed, 0 failed, 19 skipped; build and package verification passed. The final callback-injection hardening still needs a full-suite rerun.
-- Prior Pi 1.2.0 Linux package matrix on `1e8d486e7c0bf32547a8c3cdbd895ca3bbb8d2ee`: TUI/RPC/JSON/print all PASS, natural shutdown observed, zero model calls. The corrected tree must rerun this exact-candidate matrix.
-- Local parity/skills/memory/upstream-boundary audits pass. Ecosystem normative source proof remains NOT ADMITTED because its retained repository is unavailable.
-- Independent external review: not obtained; CodeRabbit CLI is unavailable in the environment.
-- T05 admission: PARTIAL. No critical/high finding remains known in the narrow freshness correction, but this is not a full R4 signoff of T05.
+- Focused workspace/reviewer/session/correction tests: 60/60 PASS; prior-checkout freshness hardening is also in the full suite.
+- Typecheck and build: PASS. `TMPDIR=/tmp npm run check`: 2,229 passed, 0 failed, 19 skipped; local parity, skills, skill-parity, memory and tracked-boundary audits pass. Ecosystem normative source proof remains NOT ADMITTED because its retained repository is unavailable.
+- `npm run verify:pack`: PASS; installed Pi package verified, 11 RPC commands, 16 tools, 28 public exports, packed install verified. The first `verify:pi-matrix` attempt stopped before launch because it requires a committed clean SHA and tarball; this is not a Pi matrix result. Exact SHA matrix remains open.
+- External independent review: not obtained; CodeRabbit service/CLI unavailable. Do not treat this self-audit as independent signoff.
+- T05 remains PARTIAL. Critical/high containment and scope omissions found in the local R4 pass were corrected and regression-tested; provider identity/authentication, tests/acceptance, durable crash recovery, OS isolation, external R4 and final exact-SHA CI remain closure gates.
 
 The previous full-suite result predates the final callback-injection correction. The current corrected candidate still requires a full-suite rerun before admission.

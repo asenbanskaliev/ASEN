@@ -1,7 +1,7 @@
 import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {chmodSync,lstatSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync,rmdirSync,unlinkSync,writeFileSync} from "node:fs";
-import {dirname,isAbsolute,join,relative,resolve} from "node:path";
+import {dirname,isAbsolute,join,relative,resolve,sep} from "node:path";
 import {tmpdir} from "node:os";
 import type {CandidateGitTreeManifest,CandidateGitTreeEntry} from "./review-tree-inspection.js";
 import {validatePortableReviewPaths} from "./review-tree-paths.js";
@@ -129,7 +129,8 @@ export function materializeReviewView(manifest:CandidateGitTreeManifest,parent:s
  const parentClaim=assertDirectory(parent,"Review view parent");
  const repositoryRoot=realpathSync(manifest.repositoryRoot);
  const parentRelative=relative(repositoryRoot,parentClaim.realPath);
- if(!parentRelative||(!parentRelative.startsWith("..")&&!isAbsolute(parentRelative)))throw new Error("Review view parent must be outside the repository");
+ const parentIsInside=parentRelative===""||(!isAbsolute(parentRelative)&&parentRelative!==".."&&!parentRelative.startsWith(`..${sep}`));
+ if(parentIsInside)throw new Error("Review view parent must be outside the repository");
  const paths=manifest.entries.map(entry=>entry.path);
  validatePortableReviewPaths(paths);
  for(const entry of manifest.entries)validateEntry(entry);

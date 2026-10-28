@@ -1,10 +1,10 @@
 import {createHash} from "node:crypto";
-import {claimOrdinaryReviewCheckout,type OrdinaryReviewCheckout} from "./ordinary-review-controller.js";
-import {claimReviewSessionRddSource,type ReviewSession} from "./review-session.js";
+import {claimOrdinaryReviewCheckout,revalidateOrdinaryReviewCheckout,type OrdinaryReviewCheckout} from "./ordinary-review-controller.js";
+import {claimReviewSessionRddSource,type ReviewSession,type ReviewSessionRddSource} from "./review-session.js";
 export type NativeRddVerdict="pass"|"fail";
 export interface NativeRddResult{readonly schemaVersion:1;readonly requestId:string;readonly sessionId:string;readonly revision:string;readonly treeIdentity:string;readonly parentIdentity:string;readonly reviewerId:string;readonly verdict:NativeRddVerdict;readonly summary:string;}
 export interface BoundOrdinaryReviewResult extends NativeRddResult{readonly resultId:string;readonly status:"observed";}
-const live=new WeakMap<object,{checkout:OrdinaryReviewCheckout;assertCurrent:()=>void}>(),used=new WeakSet<object>(),issuedResults=new WeakSet<object>(),claimedResults=new WeakSet<object>(),resultFreshness=new WeakMap<object,()=>void>();
+const live=new WeakMap<object,ReviewSessionRddSource>(),used=new WeakSet<object>(),issuedResults=new WeakSet<object>(),claimedResults=new WeakSet<object>(),resultFreshness=new WeakMap<object,()=>void>();
 const text=(v:unknown,n:string):string=>{if(typeof v!=="string"||!v||v.trim()!==v||v!==v.normalize("NFC")||/[\u0000-\u001f\u007f-\u009f]/u.test(v))throw new Error(`${n} is malformed`);return v;};
 function exact(value:unknown):NativeRddResult{
  if(typeof value!=="object"||value===null||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)throw new Error("RDD result must be exact plain data");
@@ -15,14 +15,18 @@ function exact(value:unknown):NativeRddResult{
 }
 /** Creates a one-use receiver from genuine checkout provenance; it creates no RDD authority. */
 export function awaitNativeRddResult(value:OrdinaryReviewCheckout|ReviewSession):Readonly<Record<string,never>>{
- const source="view" in value?claimReviewSessionRddSource(value):{checkout:claimOrdinaryReviewCheckout(value),assertCurrent:()=>{}};
+ const source="view" in value?claimReviewSessionRddSource(value):(()=>{const checkout=claimOrdinaryReviewCheckout(value);return Object.freeze({
+  requestId:checkout.request.requestId,sessionId:checkout.request.participants.sessionId,reviewerId:checkout.request.participants.reviewerId,
+  revision:checkout.revision,treeIdentity:checkout.treeIdentity,parentIdentity:checkout.parentIdentity,
+  assertCurrent:()=>revalidateOrdinaryReviewCheckout(checkout),
+ });})();
  const handle=Object.freeze({});live.set(handle,source);return handle;
 }
 /** Binds externally observed RDD data to the exact candidate. PASS remains descriptive, never delivery authority. */
 export function bindNativeRddResult(handle:unknown,value:unknown):BoundOrdinaryReviewResult{
  if(typeof handle!=="object"||handle===null||!live.has(handle)||used.has(handle))throw new Error("RDD observation handle is not live");
- used.add(handle);const source=live.get(handle)!;source.assertCurrent();const checkout=source.checkout,result=exact(value),q=checkout.request;
- if(result.requestId!==q.requestId||result.sessionId!==q.participants.sessionId||result.reviewerId!==q.participants.reviewerId||result.revision!==checkout.revision||result.treeIdentity!==checkout.treeIdentity||result.parentIdentity!==checkout.parentIdentity)throw new Error("RDD result does not bind the exact review candidate");
+ used.add(handle);const source=live.get(handle)!;source.assertCurrent();const result=exact(value);
+ if(result.requestId!==source.requestId||result.sessionId!==source.sessionId||result.reviewerId!==source.reviewerId||result.revision!==source.revision||result.treeIdentity!==source.treeIdentity||result.parentIdentity!==source.parentIdentity)throw new Error("RDD result does not bind the exact review candidate");
  const payload={...result,status:"observed" as const},bound=Object.freeze({...payload,resultId:createHash("sha256").update("asen.native-rdd-result.v1\0").update(JSON.stringify(payload)).digest("hex")});issuedResults.add(bound);resultFreshness.set(bound,source.assertCurrent);return bound;
 }
 

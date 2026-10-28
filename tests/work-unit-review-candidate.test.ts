@@ -210,7 +210,7 @@ test("E registra entrada ASEN, separa instancias y consume fallos de host y sesi
  const one=setup(),two=setup(),notifications:string[]=[];
  const context=(session="sesion",cwd=root)=>({cwd,sessionManager:{getSessionId:()=>session},ui:{notify:(message:string)=>notifications.push(message)}});
  const prepare=()=>{const r=completed(false,snapshot);return one.facade.review.prepare(recordWorkUnitReviewCandidate(r,candidate(r)),{authorId:"autor",reviewerId:"revisor",sessionId:"sesion"});};
- const request=prepare();assert.equal(one.handler("",context()),"Uso: /asen-review <solicitud-id>");
+ const request=prepare();assert.equal(one.handler("",context()),"Uso: /asen-review <solicitud-id> | /asen-review workspace");
  assert.throws(()=>two.handler(request.requestId,context()),/instancia/);
  const checkout=one.handler(request.requestId,context());assert.equal(checkout.request,request);assert.equal(checkout.revision,snapshot.identity);
  assert.ok(notifications.some(message=>message.includes("RDD pendiente")));assert.equal("verdict" in checkout,false);
