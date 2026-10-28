@@ -78,6 +78,9 @@ export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;sta
 const usage="Usage: /asen-skill-registry refresh";
 const longValidationNoticeMs=10_000;
 const productionPackageRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
+function traceVerifierShutdown(stage:string):void{
+ if(process.env.ASEN_PI_VERIFIER_TRACE==="1")process.stderr.write(`ASEN_PI_VERIFIER_SHUTDOWN:${stage}\n`);
+}
 async function privateFileState(file:string):Promise<boolean>{
  let directory;
  try{directory=await lstat(path.dirname(file));}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return true;return false;}
@@ -299,7 +302,21 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(typeof event?.toolCallId!=="string"||typeof event?.isError!=="boolean")return;const activity=validationActivities.get(event.toolCallId);if(!activity)return;validationActivities.delete(event.toolCallId);
    const context=ctx as CommandContext;try{const current=await sessionIdentity(context);await refreshTodoWidget(context);if(current.sessionId!==activity.sessionId||current.projectId!==activity.projectId)return;const rows=await (await todoStorePromise!).list(current),task=rows.find(row=>row.taskId===activity.taskId);if(task?.current.state!=="running")return;const duration=typeof event.durationMs==="number"&&Number.isFinite(event.durationMs)?event.durationMs:Date.now()-activity.startedAt;if(duration<longValidationNoticeMs)return;const title=activity.title.replace(/[\u0000-\u001f\u007f-\u009f]+/gu," ").slice(0,120);context.ui.notify(event.isError?`ASEN: falló la comprobación de «${title}». Revisa el resultado antes de seguir.`:`ASEN: terminó la comprobación de «${title}». El resultado no sustituye la revisión independiente del plan.`,event.isError?"error":"info");}catch{/* A stale session or unavailable UI receives no validation notice. */}
   });
-  pi.on?.("session_shutdown",async(_event,ctx)=>{const endingSession=ctx?.sessionManager?.getSessionId?.();if(endingSession)await backgroundJobs.disposeSession(endingSession);if(!ctx?.sessionManager||(selectionOwner&&ctx.sessionManager===selectionOwner.manager&&endingSession===selectionOwner.sessionId&&(ctx===selectionOwner.context||ctx.cwd===selectionOwner.cwd)))invalidateChildSelection();if(endingSession){sessionDirectory.remove(endingSession);clearSessionProfiles(await profilePartition(),endingSession);}for(const [id,activity] of validationActivities)if(activity.sessionId===endingSession)validationActivities.delete(id);agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue when the UI is unavailable. */}}if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}while(agentDeliveryTasks.size)await Promise.all([...agentDeliveryTasks]);try{finishActiveMemory();}catch(error){try{ctx?.ui?.notify(`ASEN no pudo cerrar la sesión de memoria: ${safeErrorMessage(error)}`,"error");}catch{/* Shutdown continues after best-effort memory finalization. */}}if(memoryStorePromise)try{(await memoryStorePromise).close();}catch{/* Shutdown continues after best-effort memory close. */}await lifecycle.shutdown();});
+  pi.on?.("session_shutdown",async(_event,ctx)=>{
+   traceVerifierShutdown("session-start");
+   const endingSession=ctx?.sessionManager?.getSessionId?.();
+   if(endingSession){traceVerifierShutdown("background-dispose-start");await backgroundJobs.disposeSession(endingSession);traceVerifierShutdown("background-dispose-done");}
+   if(!ctx?.sessionManager||(selectionOwner&&ctx.sessionManager===selectionOwner.manager&&endingSession===selectionOwner.sessionId&&(ctx===selectionOwner.context||ctx.cwd===selectionOwner.cwd)))invalidateChildSelection();
+   if(endingSession){sessionDirectory.remove(endingSession);clearSessionProfiles(await profilePartition(),endingSession);}
+   for(const [id,activity] of validationActivities)if(activity.sessionId===endingSession)validationActivities.delete(id);
+   agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;
+   if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{traceVerifierShutdown("todo-recovery-start");await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");traceVerifierShutdown("todo-recovery-done");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue after best-effort recovery. */}}
+   if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{traceVerifierShutdown("agent-cancel-start");const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());traceVerifierShutdown("agent-cancel-done");}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}
+   traceVerifierShutdown("delivery-drain-start");while(agentDeliveryTasks.size)await Promise.all([...agentDeliveryTasks]);traceVerifierShutdown("delivery-drain-done");
+   try{finishActiveMemory();}catch(error){try{ctx?.ui?.notify(`ASEN no pudo cerrar la sesión de memoria: ${safeErrorMessage(error)}`,"error");}catch{/* Shutdown continues after best-effort memory finalization. */}}
+   if(memoryStorePromise)try{traceVerifierShutdown("memory-close-start");(await memoryStorePromise).close();traceVerifierShutdown("memory-close-done");}catch{/* Shutdown continues after best-effort memory close. */}
+   traceVerifierShutdown("registry-shutdown-start");await lifecycle.shutdown();traceVerifierShutdown("session-done");
+  });
   pi.on?.("input",async(event,ctx)=>{
    const text=typeof event?.text==="string"?event.text:"",sessionId=ctx.sessionManager?.getSessionId?.();
    if(event?.source!=="interactive"&&event?.source!=="rpc")return;

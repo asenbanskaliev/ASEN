@@ -8,6 +8,19 @@ async function observeWithin(closed,ms){
 
 export async function settleVerifierChild(child,closed,{successful=true,graceMs=5_000,killWaitMs=2_000}={}){
  for(const value of [graceMs,killWaitMs])assert.ok(Number.isSafeInteger(value)&&value>0);
+ const started=Date.now(),events=[],shutdownTrace=[];
+ const observe=(emitter,name,event)=>emitter?.on?.(event,(...values)=>{
+  const value=event==="exit"||event==="close"?values.map(item=>item??null):undefined;
+  events.push({atMs:Date.now()-started,stream:name,event,...(value?{value}:{})});
+ });
+ observe(child,"process","exit");observe(child,"process","close");observe(child,"process","error");
+ child.stderr?.on?.("data",chunk=>{
+  for(const line of String(chunk).split(/\r?\n/u))if(line.startsWith("ASEN_PI_VERIFIER_SHUTDOWN:")){
+   shutdownTrace.push(line.slice(0,256));if(shutdownTrace.length>32)shutdownTrace.shift();
+  }
+ });
+ for(const [name,stream] of [["stdin",child.stdin],["stdout",child.stdout],["stderr",child.stderr]])
+  for(const event of name==="stdin"?["finish","end","close","error"]:["end","close","error"])observe(stream,name,event);
  let forced=!successful;
  if(successful)child.stdin.end();else child.kill("SIGTERM");
  let result=await observeWithin(closed,graceMs);
@@ -19,7 +32,12 @@ export async function settleVerifierChild(child,closed,{successful=true,graceMs=
   throw Error("Verifier process cleanup unconfirmed");
  }
  if(successful){
-  assert.equal(forced,false,"Verifier required forced shutdown");
+  assert.equal(forced,false,`Verifier required forced shutdown: ${JSON.stringify({pid:child.pid??null,
+   exitCode:child.exitCode??null,signalCode:child.signalCode??null,killed:child.killed??null,
+   streams:Object.fromEntries([["stdin",child.stdin],["stdout",child.stdout],["stderr",child.stderr]].map(([name,stream])=>[name,stream?{
+    destroyed:stream.destroyed??null,readableEnded:stream.readableEnded??null,writableEnded:stream.writableEnded??null,
+   writableFinished:stream.writableFinished??null,writableLength:stream.writableLength??null
+   }:null])),events,shutdownTrace})}`);
   assert.ok(result.code===0&&result.signal===null,"Verifier requires a natural zero exit");
  }
  return result;

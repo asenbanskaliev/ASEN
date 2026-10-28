@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {EventEmitter} from "node:events";
 import test from "node:test";
 // @ts-expect-error CI-only verifier lifecycle helper.
 import {settleVerifierChild} from "../scripts/pi-verifier-exit.mjs";
@@ -13,10 +14,16 @@ test("successful verifier ends stdin and accepts only a natural zero exit",async
 });
 
 test("a forced shutdown cannot turn a completed verifier into natural exit evidence",async()=>{
- let resolveExit!:(value:unknown)=>void;
- const closed=new Promise(resolve=>{resolveExit=resolve;});
- const child={stdin:{end(){}},kill(){resolveExit({code:0,signal:null});}};
- await assert.rejects(settleVerifierChild(child,closed,{graceMs:5,killWaitMs:5}),/forced shutdown/);
+ const child=new EventEmitter() as EventEmitter&Record<string,any>;
+ const stream=()=>Object.assign(new EventEmitter(),{destroyed:false,readableEnded:false,writableEnded:false,writableFinished:false,writableLength:0});
+ child.stdin=stream();child.stdout=stream();child.stderr=stream();child.exitCode=null;child.signalCode=null;child.killed=false;
+ child.stdin.end=()=>{child.stdin.writableEnded=true;child.stdin.writableFinished=true;child.stdin.emit("finish");};
+ child.kill=()=>{child.killed=true;child.signalCode="SIGKILL";child.emit("exit",null,"SIGKILL");child.emit("close",null,"SIGKILL");};
+ const closed=new Promise(resolve=>child.once("close",(code,signal)=>resolve({code,signal})));
+ await assert.rejects(settleVerifierChild(child,closed,{graceMs:5,killWaitMs:5}),(error:Error)=>{
+  assert.match(error.message,/Verifier required forced shutdown/);assert.match(error.message,/"event":"finish"/);
+  assert.match(error.message,/"event":"exit"/);assert.match(error.message,/"SIGKILL"/);return true;
+ });
 });
 
 test("unconfirmed close has bounded cleanup and never hangs",async()=>{
