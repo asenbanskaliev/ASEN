@@ -69,3 +69,17 @@ test("interrupted reviewer leaves no approval and a retry reviews the current ca
  assert.equal(retry.status,"passed-awaiting-tests");assert.equal(retry.acceptance,"not-accepted");
  assert.equal(state.calls(),2);assert.equal(state.messages.length,1);
 });
+
+test("concurrent workspace mutation while the reviewer is running invalidates its candidate",async t=>{
+ const state=setup(t,[{verdict:"pass",findings:[]}]);
+ const registry=state.context.modelRegistry!,stream=registry.streamSimple.bind(registry);
+ registry.streamSimple=(model,request,options)=>{const events=stream(model,request,options);return (async function*(){
+  for await(const event of events){
+   writeFileSync(join(state.context.cwd,"target.txt"),"concurrent edit during review\n");
+   yield event;
+  }
+ })();};
+ await assert.rejects(()=>state.handler("workspace",state.context),/candidate is stale|source changed|projection changed|candidate drifted/iu);
+ assert.equal(state.calls(),1);
+ assert.equal(state.messages.length,0,"a stale reviewer response must not be presented as a result");
+});
