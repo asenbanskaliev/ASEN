@@ -70,6 +70,11 @@ export function bindOrdinaryReviewCheckout(value:OrdinaryReviewRequest,sessionId
 /** Rechecks source identity after a reviewer has consumed its frozen view. */
 export function revalidateOrdinaryReviewCheckout(value:unknown):void{revalidateClaim(value);}
 
+/** Exposes a predicate-like assertion without revealing or minting checkout authority. */
+export function assertOrdinaryReviewCheckoutGenuine(value:unknown):asserts value is OrdinaryReviewCheckout{
+ if(typeof value!=="object"||value===null||!issuedCheckouts.has(value)||!checkoutClaims.has(value))throw new Error("review checkout is not genuine");
+}
+
 /** Consumes genuine checkout provenance for an external review transaction. */
 export function claimOrdinaryReviewCheckout(value:unknown):OrdinaryReviewCheckout{
  if(typeof value!=="object"||value===null||!issuedCheckouts.has(value))throw new Error("Se requiere checkout de revisión genuino");
@@ -95,6 +100,6 @@ export function openOrdinaryReviewSession(value:unknown,parent:string,manifest:C
   throw new Error("Review session manifest does not bind the exact checkout");
  }
  const session=openReviewSession(checkout.repository,manifest,parent,risk);
- bindReviewSessionSource(session,checkout,()=>revalidateClaim(checkout));
+ bindReviewSessionSource(session,checkout);
  return session;
 }

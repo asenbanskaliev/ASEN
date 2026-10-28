@@ -2,7 +2,7 @@ import {createHash} from "node:crypto";
 import type {CandidateGitTreeManifest} from "./review-tree-inspection.js";
 import {materializeReviewView,disposeReviewView,revalidateReviewView,type ReviewView} from "./review-view.js";
 import {planReviewRisk,type ReviewPlan,type ReviewRiskInput} from "./review-risk.js";
-import type {OrdinaryReviewCheckout} from "./ordinary-review-controller.js";
+import {assertOrdinaryReviewCheckoutGenuine,revalidateOrdinaryReviewCheckout,type OrdinaryReviewCheckout} from "./ordinary-review-controller.js";
 
 export type ReviewSessionState="open"|"closed";
 export interface ReviewSession{
@@ -14,7 +14,7 @@ export interface ReviewSession{
  readonly inputDigest:string;
  readonly state:ReviewSessionState;
 }
-interface SessionClaim{state:"open"|"closed"|"invalid";manifest:CandidateGitTreeManifest;sourceValidator?:()=>void;checkout?:OrdinaryReviewCheckout;rddClaimed?:boolean;}
+interface SessionClaim{state:"open"|"closed"|"invalid";manifest:CandidateGitTreeManifest;checkout?:OrdinaryReviewCheckout;rddClaimed?:boolean;}
 const claims=new WeakMap<object,SessionClaim>();
 
 function digest(repository:string,tree:string,risk:ReviewPlan):string{
@@ -31,19 +31,21 @@ export function openReviewSession(repository:string,manifest:CandidateGitTreeMan
 }
 
 /** Keeps source provenance private to the session; serialized clones cannot inherit it. */
-export function bindReviewSessionSource(session:ReviewSession,checkout:OrdinaryReviewCheckout,validate:()=>void):void{
- const claim=claims.get(session);if(!claim||claim.state!=="open"||claim.sourceValidator||typeof validate!=="function")throw new Error("Review session source binding is unavailable");
- claim.checkout=checkout;claim.sourceValidator=validate;
+export function bindReviewSessionSource(session:ReviewSession,checkout:OrdinaryReviewCheckout):void{
+ const claim=claims.get(session);if(!claim||claim.state!=="open"||claim.checkout)throw new Error("Review session source binding is unavailable");
+ assertOrdinaryReviewCheckoutGenuine(checkout);
+ if(checkout.repository!==session.checkoutRepository||checkout.treeIdentity!==session.checkoutTree)throw new Error("Review session source does not bind its exact candidate");
+ revalidateOrdinaryReviewCheckout(checkout);claim.checkout=checkout;
 }
 
 export function assertReviewSessionCurrent(session:ReviewSession):void{
  const claim=claims.get(session);if(!claim||claim.state!=="open"||session.state!=="open")throw new Error("Review session is closed or not genuine");
- try{claim.sourceValidator?.();revalidateReviewView(session.view,claim.manifest);}catch{claim.state="invalid";throw new Error("Review session candidate is stale; previous approval invalidated");}
+ try{if(claim.checkout)revalidateOrdinaryReviewCheckout(claim.checkout);revalidateReviewView(session.view,claim.manifest);}catch{claim.state="invalid";throw new Error("Review session candidate is stale; previous approval invalidated");}
 }
 
 /** Transfers genuine session provenance to one RDD-result receiver. */
 export function claimReviewSessionRddSource(session:ReviewSession):Readonly<{checkout:OrdinaryReviewCheckout;assertCurrent:()=>void}>{
- const claim=claims.get(session);if(!claim||claim.state!=="open"||!claim.checkout||!claim.sourceValidator||claim.rddClaimed)throw new Error("Review session is unavailable for RDD result binding");
+ const claim=claims.get(session);if(!claim||claim.state!=="open"||!claim.checkout||claim.rddClaimed)throw new Error("Review session is unavailable for RDD result binding");
  claim.rddClaimed=true;assertReviewSessionCurrent(session);return Object.freeze({checkout:claim.checkout,assertCurrent:()=>assertReviewSessionCurrent(session)});
 }
 
