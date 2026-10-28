@@ -7,6 +7,7 @@ import {spawn} from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import {createServer,type Server} from "node:http";
+import {DatabaseSync} from "node:sqlite";
 import {buildManagedManifest,generateManagedSigningKeyPair,parseManagedTrustAnchor,signManagedManifest,verifyManagedManifestSignature} from "../src/runtime/managed-trust.js";
 import {installManaged,rollbackManaged,uninstallManaged,upgradeManaged,checkManagedPrerequisites,type ManagedAcquisitionSource} from "../src/runtime/managed-lifecycle.js";
 import {inspectManagedInstall} from "../src/runtime/managed-install.js";
@@ -335,6 +336,27 @@ test("home backup is real, verifiable, never overwrites, and restores data and c
  assert.equal(await fs.readFile(targetConfig,"utf8"),'{"home":"isolated"}');
 });
 
+test("home backup takes a consistent snapshot of an active SQLite WAL database",async()=>{
+ const {root,home}=await homeFixture("sqlite-wal"),databasePath=path.join(home,"memory.db"),backup=path.join(root,"sqlite.asenbak"),target=path.join(root,"sqlite-restored");
+ const live=new DatabaseSync(databasePath);
+ try{
+  live.exec("PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0; CREATE TABLE entries(value TEXT NOT NULL); INSERT INTO entries VALUES('committed-before-backup');");
+  assert.equal((await fs.stat(databasePath+"-wal")).size>0,true,"committed rows must still reside in the live WAL");
+  const report=await createHomeBackup({homeDir:home,destination:backup,asenVersion:"0.1.0"});
+  const verified=await verifyHomeBackup(backup);
+  const paths=verified._manifest.entries.map(entry=>entry.path);
+  assert.ok(paths.includes("memory.db"));assert.ok(!paths.some(name=>name.endsWith("-wal")||name.endsWith("-shm")||name.endsWith("-journal")));
+  live.prepare("INSERT INTO entries VALUES(?)").run("committed-after-backup");
+  const restored=await restoreHomeBackup({backup,targetHome:target,confirmed:true});assert.equal(restored.status,"restored");
+  const copy=new DatabaseSync(path.join(target,"memory.db"));
+  try{
+   assert.equal((copy.prepare("PRAGMA integrity_check").get() as {integrity_check:string}).integrity_check,"ok");
+   assert.deepEqual(copy.prepare("SELECT value FROM entries ORDER BY rowid").all().map(row=>(row as {value:string}).value),["committed-before-backup"]);
+  }finally{copy.close();}
+  assert.equal(report.status,"created");
+ }finally{live.close();}
+});
+
 test("restore refuses to overwrite existing data; --replace moves it aside instead of deleting",async()=>{
  const {root,home}=await homeFixture("overwrite"),file=path.join(root,"b.asenbak");
  await createHomeBackup({homeDir:home,destination:file,asenVersion:"0.1.0"});
@@ -345,6 +367,17 @@ test("restore refuses to overwrite existing data; --replace moves it aside inste
  assert.equal(result.movedAside.length,1);
  assert.equal(await fs.readFile(path.join(result.movedAside[0]!,"precious"),"utf8"),"keep");
  assert.equal(await fs.readFile(path.join(target,"settings.json"),"utf8"),'{"theme":"dark"}');
+});
+
+test("restore failure during staging cleans temporary data and can be retried",async()=>{
+ const {root,home}=await homeFixture("restore-recovery"),backup=path.join(root,"recovery.asenbak"),target=path.join(root,"restore-target");
+ await createHomeBackup({homeDir:home,destination:backup,asenVersion:"0.1.0"});await fs.mkdir(target);await fs.writeFile(path.join(target,"precious"),"retain-me");
+ await assert.rejects(()=>restoreHomeBackup({backup,targetHome:target,replace:true,confirmed:true,hooks:{afterStagedFile(){throw new Error("injected staging interruption");}}}),{code:"RESTORE_FAILED"});
+ assert.equal(await fs.readFile(path.join(target,"precious"),"utf8"),"retain-me");
+ assert.deepEqual((await fs.readdir(root)).filter(name=>name.includes(".restore-")),[]);
+ const restored=await restoreHomeBackup({backup,targetHome:target,replace:true,confirmed:true});
+ assert.equal(await fs.readFile(path.join(target,"settings.json"),"utf8"),'{"theme":"dark"}');
+ assert.equal(await fs.readFile(path.join(restored.movedAside[0]!,"precious"),"utf8"),"retain-me");
 });
 
 test("corrupt, truncated, foreign and incompatible backups are detected and restore changes nothing",async()=>{

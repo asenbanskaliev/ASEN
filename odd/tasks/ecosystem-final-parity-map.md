@@ -149,3 +149,8 @@ Extended the disposable packed ASEN smoke (real npm tarball) with local signed H
 ### T09 smoke runner correction — 2026-10-28
 
 Release Gate on `2d50f464bc054045d7ef57146f0f9dee9fc239d6` failed on Ubuntu real-package smoke with `ENOENT` for the TLS fixture: the workflow changes cwd to its temp npm project, but the smoke had resolved fixtures relative to cwd. Anchoring fixture paths to the script module location fixed it; local reproduction from the same temp cwd passed the complete packed upgrade/rollback/corrupt-restore flow. macOS/Windows jobs were cancelled and are not evidence. Phase 0 and Pi runtime passed on the failed candidate; corrected exact-SHA CI remains required. T09 stays PARTIAL.
+
+
+### T09 SQLite backup checkpoint — 2026-10-28
+
+The whole-home backup now snapshots active SQLite databases with read-only `VACUUM INTO`, integrity-checks and bounds the resulting database, and excludes SQLite sidecars. The regression establishes committed-WAL inclusion and snapshot-time isolation of later writes; restore returns a database passing `PRAGMA integrity_check`. A controlled failure during restore staging preserves an existing target, removes owned staging, and supports retry. Focused tests passed 4/4; full local suite passed 2,213 with 19 conditional skips; typecheck/build/verify-pack passed. `npm run check` passed before the final source-path identity recheck; the final guard was rechecked with typecheck/build, focused regressions and diff check. Exact-candidate CI and real-package cross-OS SQLite execution are not yet admitted. This proves handled failure recovery only, not SIGKILL/power-loss recovery at publication. T09 remains PARTIAL; other task statuses unchanged.

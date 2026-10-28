@@ -222,3 +222,10 @@ These checks are defense in depth against path and ownership mistakes. They are 
 `asen [--link|--isolated|--home PATH] backup project-memory --project <project-id> --destination <absolute-path> --dry-run` prints a read-only `asen.project-memory-backup-preview/v1` report. The destination is validated lexically but is not accessed, and no store is opened, exported or backed up. Use a POSIX absolute path or a fully qualified Windows drive/UNC path; a Windows root-relative path such as `\backup.json` is rejected because its drive is unspecified.
 
 The reported launcher data home follows the existing flag, configuration, environment and default precedence, but is Pi-only informational metadata. The preview deliberately reports `memorySource: "not-resolved"`: launcher home selection does not identify or bind `memory.db`. The report also names excluded authority-bearing state, separately unconsented personal data and unsupported whole-home/live-restore work. It is never executable or authorized and creates no backup.
+
+
+## Whole-home backup and restore consistency
+
+The `createHomeBackup` API recognizes ordinary SQLite database files by their SQLite header and takes a read-only, transactionally consistent `VACUUM INTO` snapshot. This includes committed pages still in a live WAL and archives the consolidated database without its `-wal`, `-shm`, or `-journal` sidecars. The snapshot is integrity-checked and bounded before it is included; ordinary files keep stable-read and identity checks. The backup report identifies this policy as `sqlite-snapshot-and-per-file-stable-checked`.
+
+Restore verifies the complete backup before creating a private staging directory, checks every staged file, then publishes by rename. A controlled staging failure removes its owned temporary tree, preserves the previous target, and allows retry. This is evidence for handled restore errors, not abrupt process/OS termination recovery; a hard interruption around target publication still needs a durable recovery protocol and dedicated evidence. The API is not the preview-only `backup project-memory --dry-run` command described above.

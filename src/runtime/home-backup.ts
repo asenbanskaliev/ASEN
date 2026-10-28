@@ -1,5 +1,8 @@
 import {createHash,randomUUID} from "node:crypto";
-import {link,lstat,mkdir,open,readdir,rename,rm,rmdir,unlink} from "node:fs/promises";
+import {constants} from "node:fs";
+import {link,lstat,mkdir,mkdtemp,open,readdir,rename,rm,rmdir,unlink} from "node:fs/promises";
+import {DatabaseSync} from "node:sqlite";
+import {tmpdir} from "node:os";
 import path from "node:path";
 import {readBoundedOrdinaryFile} from "../io/bounded-file.js";
 
@@ -10,8 +13,9 @@ export const HOME_BACKUP_MAX_ENTRIES=20_000;
 const MAGIC=Buffer.from("ASENBAK1");
 const MAX_MANIFEST_BYTES=8*1024*1024;
 const HASH_BYTES=32;
+const SQLITE_HEADER=Buffer.from("SQLite format 3\0","ascii");
 
-export type HomeBackupErrorCode="INVALID_REQUEST"|"CONFIRMATION_REQUIRED"|"DESTINATION_EXISTS"|"DESTINATION_INSIDE_SOURCE"|"SOURCE_LINK"|"SOURCE_UNSUPPORTED"|"SOURCE_CHANGED"|"BOUNDS_EXCEEDED"|"BACKUP_CORRUPT"|"BACKUP_INCOMPATIBLE"|"TARGET_EXISTS"|"TARGET_UNSAFE"|"RESTORE_FAILED";
+export type HomeBackupErrorCode="INVALID_REQUEST"|"CONFIRMATION_REQUIRED"|"DESTINATION_EXISTS"|"DESTINATION_INSIDE_SOURCE"|"SOURCE_LINK"|"SOURCE_UNSUPPORTED"|"SOURCE_CHANGED"|"SQLITE_SNAPSHOT_FAILED"|"BOUNDS_EXCEEDED"|"BACKUP_CORRUPT"|"BACKUP_INCOMPATIBLE"|"TARGET_EXISTS"|"TARGET_UNSAFE"|"RESTORE_FAILED";
 export class HomeBackupError extends Error{
  constructor(readonly code:HomeBackupErrorCode,message:string,options?:{cause?:unknown}){super(message,{cause:options?.cause});this.name="HomeBackupError";}
 }
@@ -19,6 +23,57 @@ const fail=(code:HomeBackupErrorCode,message:string,cause?:unknown):never=>{thro
 const sha256=(bytes:Uint8Array)=>createHash("sha256").update(bytes).digest("hex");
 const enoent=(error:unknown)=>(error as NodeJS.ErrnoException).code==="ENOENT";
 const within=(root:string,candidate:string)=>{const relative=path.relative(root,candidate);return relative===""||(!relative.startsWith("..")&&!path.isAbsolute(relative));};
+
+interface CollectedFile{entry:Entry;absolute:string;mtimeMs:number;dev:number;ino:number;snapshot?:Buffer}
+function sameFileIdentity(left:{dev:number;ino:number},right:{dev:number;ino:number}):boolean{return left.dev===right.dev&&left.ino===right.ino;}
+
+async function hasSqliteHeader(file:string,expected:{dev:number;ino:number},size:number):Promise<boolean>{
+ if(size<SQLITE_HEADER.length)return false;
+ const flags=constants.O_RDONLY|(process.platform==="win32"?0:constants.O_NOFOLLOW|constants.O_NONBLOCK),handle=await open(file,flags);
+ try{
+  const opened=await handle.stat();if(!opened.isFile()||!sameFileIdentity(opened,expected))return fail("SOURCE_CHANGED","A backup source changed before SQLite inspection");
+  const header=Buffer.alloc(SQLITE_HEADER.length);let offset=0;
+  while(offset<header.length){const read=await handle.read(header,offset,header.length-offset,offset);if(read.bytesRead===0)break;offset+=read.bytesRead;}
+  const after=await handle.stat();if(!sameFileIdentity(after,opened))return fail("SOURCE_CHANGED","A backup source changed during SQLite inspection");
+  return offset===header.length&&header.equals(SQLITE_HEADER);
+ }finally{await handle.close();}
+}
+
+async function assertSqliteSidecarsOrdinary(file:string):Promise<void>{
+ for(const suffix of ["-wal","-shm","-journal"]){
+  const sidecar=`${file}${suffix}`,info=await lstat(sidecar).catch(error=>enoent(error)?undefined:Promise.reject(error));
+  if(!info)continue;
+  if(info.isSymbolicLink())return fail("SOURCE_LINK",`Refusing linked SQLite sidecar: ${path.basename(sidecar)}`);
+  if(!info.isFile())return fail("SOURCE_UNSUPPORTED",`SQLite sidecar is not an ordinary file: ${path.basename(sidecar)}`);
+ }
+}
+
+/** Uses SQLite's consistent VACUUM INTO snapshot so committed WAL pages are included and sidecars are not restored. */
+async function snapshotSqlite(file:string,expected:{dev:number;ino:number}):Promise<Buffer>{
+ const scratch=await mkdtemp(path.join(tmpdir(),"asen-home-sqlite-")),snapshot=path.join(scratch,"snapshot.sqlite");let source:DatabaseSync|undefined;
+ try{
+  const before=await lstat(file);if(!before.isFile()||before.isSymbolicLink()||!sameFileIdentity(before,expected))return fail("SOURCE_CHANGED","SQLite database path changed before snapshot opening");
+  source=new DatabaseSync(file,{readOnly:true});
+  const opened=await lstat(file);if(!opened.isFile()||opened.isSymbolicLink()||!sameFileIdentity(opened,expected))return fail("SOURCE_CHANGED","SQLite database path changed while snapshot connection opened");
+  source.exec("PRAGMA busy_timeout=5000;");source.prepare("VACUUM INTO ?").run(snapshot);
+  const check=new DatabaseSync(snapshot,{readOnly:true});
+  try{
+   const rows=check.prepare("PRAGMA integrity_check;").all() as Array<Record<string,unknown>>;
+   if(rows.length!==1||rows[0]?.integrity_check!=="ok")return fail("SQLITE_SNAPSHOT_FAILED","SQLite snapshot failed its integrity check");
+  }finally{check.close();}
+  const info=await lstat(snapshot);if(!info.isFile()||info.isSymbolicLink())return fail("SQLITE_SNAPSHOT_FAILED","SQLite snapshot is not an ordinary file");
+  if(info.size>HOME_BACKUP_MAX_FILE_BYTES)return fail("BOUNDS_EXCEEDED","SQLite snapshot exceeds the per-file backup bound");
+  const bytes=await readBoundedOrdinaryFile(snapshot,HOME_BACKUP_MAX_FILE_BYTES),after=await lstat(file);
+  if(!after.isFile()||after.isSymbolicLink()||!sameFileIdentity(after,expected))return fail("SOURCE_CHANGED","SQLite database path changed while its snapshot was created");
+  return bytes;
+ }catch(error){
+  if(error instanceof HomeBackupError)throw error;
+  return fail("SQLITE_SNAPSHOT_FAILED","Could not create a consistent SQLite database snapshot",error);
+ }finally{
+  try{source?.close();}catch{/* Preserve the primary snapshot result. */}
+  await rm(scratch,{recursive:true,force:true}).catch(()=>undefined);
+ }
+}
 
 type Root="home"|"config";
 interface Entry{readonly root:Root;readonly path:string;readonly size:number;readonly sha256:string;readonly mode:number}
@@ -54,26 +109,35 @@ export interface HomeBackupCreateReport{
  readonly bytes:number;
  readonly sha256:string;
  readonly skippedLinks:readonly string[];
- readonly consistency:"per-file-stable-checked";
+ readonly consistency:"sqlite-snapshot-and-per-file-stable-checked";
 }
 
-async function collect(homeDir:string,skipLinks:boolean):Promise<{files:{entry:Entry;absolute:string;mtimeMs:number}[];dirs:string[];skipped:string[]}>{
- const files:{entry:Entry;absolute:string;mtimeMs:number}[]=[],dirs:string[]=[],skipped:string[]=[];
+async function collect(homeDir:string,skipLinks:boolean):Promise<{files:CollectedFile[];dirs:string[];skipped:string[]}>{
+ const files:CollectedFile[]=[],dirs:string[]=[],skipped:string[]=[],sqliteSidecars=new Set<string>();
  let total=0;
  const walk=async(directory:string,prefix:string):Promise<void>=>{
   for(const name of (await readdir(directory)).sort()){
-   const absolute=path.join(directory,name),relative=prefix?`${prefix}/${name}`:name,info=await lstat(absolute);
+   const absolute=path.join(directory,name),relative=prefix?`${prefix}/${name}`:name;
+   const info=await lstat(absolute);
    if(info.isSymbolicLink()||(!info.isFile()&&!info.isDirectory())){
     if(skipLinks){skipped.push(relative);continue;}
     return fail(info.isSymbolicLink()?"SOURCE_LINK":"SOURCE_UNSUPPORTED",`Refusing to back up ${info.isSymbolicLink()?"a link":"a non-regular entry"}: ${relative}`);
    }
+   if(sqliteSidecars.has(absolute)){
+    if(!info.isFile())return fail("SOURCE_UNSUPPORTED",`SQLite sidecar is not a regular file: ${relative}`);
+    continue;
+   }
    if(info.isDirectory()){dirs.push(relative);await walk(absolute,relative);continue;}
-   if(info.size>HOME_BACKUP_MAX_FILE_BYTES)return fail("BOUNDS_EXCEEDED",`File exceeds the per-file bound: ${relative}`);
-   total+=info.size;
+   const sqlite=await hasSqliteHeader(absolute,info,info.size);
+   if(sqlite)await assertSqliteSidecarsOrdinary(absolute);
+   const snapshot=sqlite?await snapshotSqlite(absolute,info):undefined;
+   if(sqlite)for(const suffix of ["-wal","-shm","-journal"])sqliteSidecars.add(`${absolute}${suffix}`);
+   const bytes=snapshot??await readBoundedOrdinaryFile(absolute,HOME_BACKUP_MAX_FILE_BYTES),after=await lstat(absolute);
+   if(!sameFileIdentity(after,info)||(!sqlite&&(after.size!==bytes.length||after.mtimeMs!==info.mtimeMs)))return fail("SOURCE_CHANGED",`File changed while it was read: ${relative}`);
+   if(bytes.length>HOME_BACKUP_MAX_FILE_BYTES)return fail("BOUNDS_EXCEEDED",`File exceeds the per-file bound: ${relative}`);
+   total+=bytes.length;
    if(total>HOME_BACKUP_MAX_TOTAL_BYTES||files.length>=HOME_BACKUP_MAX_ENTRIES)return fail("BOUNDS_EXCEEDED","Backup source exceeds finite bounds");
-   const bytes=await readBoundedOrdinaryFile(absolute,HOME_BACKUP_MAX_FILE_BYTES),after=await lstat(absolute);
-   if(after.size!==bytes.length||after.mtimeMs!==info.mtimeMs)return fail("SOURCE_CHANGED",`File changed while it was read: ${relative}`);
-   files.push({entry:{root:"home",path:relative,size:bytes.length,sha256:sha256(bytes),mode:info.mode&0o777},absolute,mtimeMs:info.mtimeMs});
+   files.push({entry:{root:"home",path:relative,size:bytes.length,sha256:sha256(bytes),mode:info.mode&0o777},absolute,mtimeMs:info.mtimeMs,dev:info.dev,ino:info.ino,...(snapshot?{snapshot}:{})});
   }
  };
  await walk(homeDir,"");
@@ -91,7 +155,7 @@ export async function createHomeBackup(request:CreateHomeBackupRequest):Promise<
  const parent=await lstat(path.dirname(destination)).catch(()=>undefined);
  if(!parent||!parent.isDirectory()||parent.isSymbolicLink())return fail("INVALID_REQUEST","Backup destination parent must be an existing ordinary directory");
  const collected=await collect(home,request.skipLinks===true);
- const entries=collected.files.map(item=>item.entry),sources=collected.files.map(item=>({absolute:item.absolute,mtimeMs:item.mtimeMs,entry:item.entry}));
+ const entries=collected.files.map(item=>item.entry),sources:CollectedFile[]=collected.files.map(item=>({...item}));
  const dirs=collected.dirs.map(directory=>({root:"home" as const,path:directory}));
  if(request.configFile){
   const info=await lstat(path.resolve(request.configFile)).catch(error=>enoent(error)?undefined:Promise.reject(error));
@@ -99,7 +163,7 @@ export async function createHomeBackup(request:CreateHomeBackupRequest):Promise<
    if(info.isSymbolicLink()||!info.isFile())return fail("SOURCE_UNSUPPORTED","Launcher config must be an ordinary file");
    const bytes=await readBoundedOrdinaryFile(path.resolve(request.configFile),HOME_BACKUP_MAX_FILE_BYTES);
    const entry:Entry={root:"config",path:"config.json",size:bytes.length,sha256:sha256(bytes),mode:info.mode&0o777};
-   entries.push(entry);sources.push({absolute:path.resolve(request.configFile),mtimeMs:info.mtimeMs,entry});
+   entries.push(entry);sources.push({absolute:path.resolve(request.configFile),mtimeMs:info.mtimeMs,entry,dev:info.dev,ino:info.ino});
   }
  }
  const manifest:Manifest={schema:HOME_BACKUP_SCHEMA,createdAt:new Date().toISOString(),asenVersion:request.asenVersion,dirs,entries};
@@ -110,8 +174,10 @@ export async function createHomeBackup(request:CreateHomeBackupRequest):Promise<
  try{
   await write(MAGIC);await write(header);await write(manifestBytes);
   for(const source of sources){
-   const data=await readBoundedOrdinaryFile(source.absolute,HOME_BACKUP_MAX_FILE_BYTES),after=await lstat(source.absolute);
-   if(sha256(data)!==source.entry.sha256||after.mtimeMs!==source.mtimeMs)return fail("SOURCE_CHANGED",`File changed during backup: ${source.entry.path}`);
+   const after=await lstat(source.absolute);
+   if(!after.isFile()||after.isSymbolicLink()||!sameFileIdentity(after,source))return fail("SOURCE_CHANGED",`File changed during backup: ${source.entry.path}`);
+   const data=source.snapshot??await readBoundedOrdinaryFile(source.absolute,HOME_BACKUP_MAX_FILE_BYTES);
+   if(sha256(data)!==source.entry.sha256||(!source.snapshot&&after.mtimeMs!==source.mtimeMs))return fail("SOURCE_CHANGED",`File changed during backup: ${source.entry.path}`);
    await write(data);
   }
   const digest=hash.digest();await handle.write(digest);bytes+=digest.length;
@@ -122,7 +188,7 @@ export async function createHomeBackup(request:CreateHomeBackupRequest):Promise<
   });
   await unlink(temporary);
   const verified=await verifyHomeBackup(destination);
-  return Object.freeze({schema:"asen.home-backup-report/v1",operation:"backup-home",status:"created",destination,files:entries.length,directories:dirs.length,bytes,sha256:verified.sha256,skippedLinks:Object.freeze(collected.skipped),consistency:"per-file-stable-checked"});
+  return Object.freeze({schema:"asen.home-backup-report/v1",operation:"backup-home",status:"created",destination,files:entries.length,directories:dirs.length,bytes,sha256:verified.sha256,skippedLinks:Object.freeze(collected.skipped),consistency:"sqlite-snapshot-and-per-file-stable-checked"});
  }catch(error){
   if(handle)await handle.close().catch(()=>undefined);
   await rm(temporary,{force:true}).catch(()=>undefined);
@@ -203,6 +269,8 @@ export interface RestoreHomeBackupRequest{
  readonly targetConfig?:string;
  readonly replace?:boolean;
  readonly confirmed:boolean;
+ /** @internal deterministic failure injection for restore recovery tests. */
+ readonly hooks?:Readonly<{afterStagedFile?:(relativePath:string)=>void|Promise<void>;beforePublish?:()=>void|Promise<void>}>;
 }
 export interface HomeRestoreReport{
  readonly schema:"asen.home-restore-report/v1";
@@ -253,6 +321,7 @@ export async function restoreHomeBackup(request:RestoreHomeBackupRequest):Promis
    try{await handle.writeFile(data);await handle.sync();}finally{await handle.close();}
    const written=await readBoundedOrdinaryFile(destination,HOME_BACKUP_MAX_FILE_BYTES);
    if(sha256(written)!==entry.sha256)return fail("RESTORE_FAILED",`Restored bytes differ from the backup: ${entry.path}`);
+   await request.hooks?.afterStagedFile?.(entry.path);
    restored++;
   }
   let stagedConfig:string|undefined;
@@ -263,6 +332,7 @@ export async function restoreHomeBackup(request:RestoreHomeBackupRequest):Promis
    try{await handle.writeFile(verified._bytes.subarray(verified._offsets[configEntry]!,verified._offsets[configEntry]!+entry.size));await handle.sync();}finally{await handle.close();}
   }
   try{
+   await request.hooks?.beforePublish?.();
    if(empty===false){movedTarget=`${target}.pre-restore-${Date.now()}-${randomUUID().slice(0,8)}`;await rename(target,movedTarget);movedAside.push(movedTarget);}
    else if(empty===true)await rmdir(target);
    if(config&&configExists){movedConfig=`${config}.pre-restore-${Date.now()}-${randomUUID().slice(0,8)}`;await rename(config,movedConfig);movedAside.push(movedConfig);}
