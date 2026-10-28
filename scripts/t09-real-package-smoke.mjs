@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {execFileSync,execFile} from "node:child_process";
-import {access,readFile,mkdir,writeFile,rm,cp} from "node:fs/promises";
+import {access,readFile,mkdir,writeFile,rm,cp,stat} from "node:fs/promises";
 import path from "node:path";
 import {tmpdir} from "node:os";
 import {mkdtemp,realpath} from "node:fs/promises";
@@ -32,8 +32,8 @@ function run(args){
  const result=execFileSync(process.execPath,[cli,...args],{cwd:root,env,encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:60_000,maxBuffer:2*1024*1024});
  return result;
 }
-function runAsync(args){
- return new Promise((resolve,reject)=>execFile(process.execPath,[cli,...args],{cwd:root,env,encoding:"utf8",timeout:60_000,maxBuffer:2*1024*1024},(error,stdout,stderr)=>{
+function runAsync(args,timeout=60_000){
+ return new Promise((resolve,reject)=>execFile(process.execPath,[cli,...args],{cwd:root,env,encoding:"utf8",timeout,maxBuffer:2*1024*1024},(error,stdout,stderr)=>{
   if(error){error.message+=`\nstdout=${String(stdout)}\nstderr=${String(stderr)}`;reject(error);return;}
   resolve(stdout);
  }));
@@ -45,21 +45,24 @@ function report(args){
  const stdout=run(args);
  try{return JSON.parse(stdout);}catch(error){throw new Error(`Expected JSON from ${args.slice(0,2).join(" ")}`,{cause:error});}
 }
-async function reportAsync(args){
- const stdout=await runAsync(args);
+async function reportAsync(args,timeout){
+ const stdout=await runAsync(args,timeout);
  try{return JSON.parse(stdout);}catch(error){throw new Error(`Expected JSON from ${args.slice(0,2).join(" ")}`,{cause:error});}
 }
 async function serveSignedPackage(packageRoot,manifestPath,signaturePath){
  const manifestText=await readFile(manifestPath,"utf8"),manifest=JSON.parse(manifestText);
  const files={"asen-manifest.json":manifestText,"asen-manifest.sig.json":await readFile(signaturePath,"utf8")};
  for(const file of manifest.files)files[file.sourcePath]=await readFile(path.join(packageRoot,file.sourcePath));
+ const requests=[];
  const server=https.createServer({key:await readFile(path.join(tlsFixture,"t09-loopback-test-key.pem")),cert:await readFile(path.join(tlsFixture,"t09-loopback-test-ca.pem"))},(request,response)=>{
   const name=(request.url??"").slice(1);
+  requests.push({method:request.method??"",path:name});
   const body=files[name];if(body===undefined){response.writeHead(404);response.end();return;}
   response.writeHead(200,{"content-length":Buffer.byteLength(body)});response.end(body);
  });
+ const serverErrors=[];server.on("tlsClientError",error=>serverErrors.push(error.message));server.on("clientError",error=>serverErrors.push(error.message));
  await new Promise((resolve,reject)=>{server.once("error",reject);server.listen(0,"127.0.0.1",resolve);});
- return {url:`https://127.0.0.1:${server.address().port}/`,close:()=>new Promise(resolve=>{server.closeAllConnections();server.close(()=>resolve());})};
+ return {url:`https://127.0.0.1:${server.address().port}/`,requests,serverErrors,close:()=>new Promise(resolve=>{server.closeAllConnections();server.close(()=>resolve());})};
 }
 let success=false;
 try{
@@ -101,7 +104,10 @@ try{
  report(["managed","release","sign","--manifest",nextManifest,"--private-key",privateKey,"--output",nextSignature]);
  const releaseServer=await serveSignedPackage(nextPackageRoot,nextManifest,nextSignature);
  try{
-  const upgraded=await reportAsync(["managed","upgrade","--source-url",releaseServer.url,"--trust-anchor",trustAnchor,"--yes"]);
+  let upgraded;
+  try{upgraded=await reportAsync(["managed","upgrade","--source-url",releaseServer.url,"--trust-anchor",trustAnchor,"--yes"],75_000);}
+  catch(error){error.message+=`\nloopback requests=${JSON.stringify(releaseServer.requests)}\nTLS/server errors=${JSON.stringify(releaseServer.serverErrors)}`;throw error;}
+  assert.deepEqual(releaseServer.requests.map(request=>request.path),["asen-manifest.json","asen-manifest.sig.json",...JSON.parse(await readFile(nextManifest,"utf8")).files.map(file=>file.sourcePath)]);
   assert.equal(upgraded.status,"upgraded");assert.equal(upgraded.activeVersion,nextVersion);
   const upgradedCli=path.join(home,".asen","install","versions",nextVersion,"dist","cli.js");
   assert.equal(runEntry(upgradedCli,["--version"]).trim(),nextVersion);
@@ -112,12 +118,16 @@ try{
   assert.equal(JSON.parse(await readFile(personalData,"utf8")).value,"preserve across HTTPS upgrade and rollback");
  }finally{await releaseServer.close();}
 
+ const sqlitePath=path.join(dataHome,"memory.db"),{DatabaseSync}=await import("node:sqlite"),liveSqlite=new DatabaseSync(sqlitePath);
+ liveSqlite.exec("PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0; CREATE TABLE entries(value TEXT NOT NULL); INSERT INTO entries VALUES('committed-before-packed-backup');");
+ assert.ok((await stat(`${sqlitePath}-wal`)).size>0,"committed SQLite pages stay in the live WAL while the real packed CLI creates the backup");
  const backup=path.join(root,"home.backup");
  const made=report(["backup","home","--destination",backup]);
  const verified=report(["backup","verify","--file",backup]);
  assert.equal(made.status,"created");
  assert.equal(verified.schema,"asen.home-backup-verification/v1");
  assert.equal(verified.sha256,made.sha256);
+ liveSqlite.prepare("INSERT INTO entries VALUES(?)").run("committed-after-packed-backup");liveSqlite.close();
  const corruptBackup=path.join(root,"corrupt.backup"),corruptBytes=Buffer.from(await readFile(backup));
  corruptBytes[corruptBytes.length-1]^=1;await writeFile(corruptBackup,corruptBytes);
  assert.throws(()=>run(["restore","home","--backup",corruptBackup,"--target-home",restoreHome,"--target-config",restoreConfig,"--yes"]),error=>String(error.stderr).includes("BACKUP_CORRUPT"));
@@ -126,6 +136,11 @@ try{
  assert.equal(restored.status,"restored");
  assert.equal(await readFile(path.join(restoreHome,"t09-smoke-data.json"),"utf8"),await readFile(personalData,"utf8"));
  assert.equal(await readFile(restoreConfig,"utf8"),await readFile(path.join(home,".asen","config.json"),"utf8"));
+ const restoredSqlite=new DatabaseSync(path.join(restoreHome,"memory.db"));
+ try{
+  assert.equal(restoredSqlite.prepare("PRAGMA integrity_check").get().integrity_check,"ok");
+  assert.deepEqual(restoredSqlite.prepare("SELECT value FROM entries ORDER BY rowid").all().map(row=>row.value),["committed-before-packed-backup"]);
+ }finally{restoredSqlite.close();}
 
  const removed=report(["managed","uninstall","--yes"]);
  assert.equal(removed.status,"removed");
@@ -134,7 +149,7 @@ try{
  await access(path.join(home,".asen","config.json"));
  await assert.rejects(access(path.join(home,".asen","install")),{code:"ENOENT"});
  success=true;
- console.log(JSON.stringify({schema:"asen.t09-real-package-smoke/v1",status:"passed",packageVersion:packageJson.version,updatedVersion:nextVersion,trust:"ephemeral-explicit-ed25519-anchor-and-verified-loopback-tls",operations:["npm-packed-package","signed-install","metadata-doctor","installed-cli-version","real-package-https-upgrade","updated-cli-version","user-data-preserved-across-update","rollback-to-original","user-data-preserved-across-rollback","backup","backup-verify","corrupt-restore-no-effects","clean-target-restore-recovery","managed-uninstall","user-data-preserved"]}));
+ console.log(JSON.stringify({schema:"asen.t09-real-package-smoke/v1",status:"passed",packageVersion:packageJson.version,updatedVersion:nextVersion,trust:"ephemeral-explicit-ed25519-anchor-and-verified-loopback-tls",operations:["npm-packed-package","signed-install","metadata-doctor","installed-cli-version","real-package-https-upgrade","updated-cli-version","user-data-preserved-across-update","rollback-to-original","user-data-preserved-across-rollback","backup","active-sqlite-wal-backup","backup-verify","corrupt-restore-no-effects","clean-target-restore-recovery","sqlite-integrity-and-snapshot-time-data-restore","managed-uninstall","user-data-preserved"]}));
 }catch(error){
  console.error(`T09 real package smoke failed; disposable state retained at ${root}: ${error instanceof Error?error.stack:String(error)}`);
  throw error;

@@ -115,9 +115,9 @@ Trust model: authenticity comes only from a signature that verifies against the 
 
 Upgrade stages and probes the new version without changing the active one, activates it under the maintenance lock with a journal, probes again and rolls back automatically on failure; interrupted operations recover from the journal. User data and launcher config live outside the managed root. Uninstall removes only files whose ownership receipt and bytes still match; modified or foreign files, data, sessions and Pi installations are retained, and ownership records stay until nothing remains so a later uninstall can finish. The `--browser` assistant serves a loopback-only consent page protected by a random path token, Host/Origin checks and a CSP nonce.
 
-Backups are a single checksummed `ASENBAK1` file. Restore verifies it, never overwrites an existing target (`--replace` moves it aside), blocks path traversal and refuses symlinks. SQLite files are copied as bytes: back up while ASEN is quiescent.
+Backups are a single checksummed `ASENBAK1` file. Restore verifies it, never overwrites an existing target (`--replace` moves it aside), blocks path traversal and refuses symlinks. Ordinary SQLite databases are snapshotted consistently with read-only `VACUUM INTO`, including committed WAL pages and excluding sidecars; the snapshot is integrity-checked. Abrupt termination during restore publication still needs recovery evidence.
 
-Known limits: a same-user process can race path replacement during uninstall (identity is checked, not enforced with descriptor-relative operations); Windows/macOS were not run locally.
+Known limits: a same-user process can race path replacement during uninstall (identity is checked, not enforced with descriptor-relative operations). The package workflows exercise Windows, Linux and macOS; the extended real-tarball SQLite cycle is currently locally verified on Linux and awaits exact-candidate cross-platform receipts.
 
 ## Explicit selected-version execution
 

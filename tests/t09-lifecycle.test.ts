@@ -387,6 +387,22 @@ test("restore failure during staging cleans temporary data and can be retried",a
  assert.equal(await fs.readFile(path.join(restored.movedAside[0]!,"precious"),"utf8"),"retain-me");
 });
 
+test("a killed restore during staging preserves the old target and a retry completes",async()=>{
+ const {root,home}=await homeFixture("restore-kill"),backup=path.join(root,"interrupted.asenbak"),target=path.join(root,"interrupted-target");
+ await createHomeBackup({homeDir:home,destination:backup,asenVersion:"0.1.0"});await fs.mkdir(target);await fs.writeFile(path.join(target,"precious"),"retain-after-kill");
+ const childSource=`import {restoreHomeBackup} from ${JSON.stringify(path.resolve("src/runtime/home-backup.ts"))};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},replace:true,confirmed:true,hooks:{afterStagedFile(){process.stdout.write("RESTORE_STAGE_READY\\n");return new Promise(()=>{});}}});`;
+ const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",childSource],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"],windowsHide:true});let output="",errors="";
+ child.stdout.setEncoding("utf8").on("data",chunk=>output+=chunk);child.stderr.setEncoding("utf8").on("data",chunk=>errors+=chunk);
+ const closed=new Promise<{code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{child.once("error",reject);child.once("close",(code,signal)=>resolve({code,signal}));});
+ await new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>{child.kill();reject(new Error("restore child did not reach its staged-file checkpoint"));},30_000);const ready=()=>{if(output.includes("RESTORE_STAGE_READY")){clearTimeout(timer);child.stdout.off("data",ready);resolve();}};child.stdout.on("data",ready);child.once("close",()=>{clearTimeout(timer);reject(new Error(`restore child exited before staging checkpoint: ${errors}`));});});
+ child.kill("SIGKILL");const stopped=await closed;assert.notEqual(stopped.code,0,"the staging child was forcibly terminated");
+ assert.equal(await fs.readFile(path.join(target,"precious"),"utf8"),"retain-after-kill");
+ const abandoned=(await fs.readdir(root)).filter(name=>name.startsWith("interrupted-target.restore-"));assert.equal(abandoned.length,1,"only a private, unpublished stage may remain after forced termination");
+ const restored=await restoreHomeBackup({backup,targetHome:target,replace:true,confirmed:true});
+ assert.equal(await fs.readFile(path.join(target,"settings.json"),"utf8"),'{"theme":"dark"}');
+ assert.equal(await fs.readFile(path.join(restored.movedAside[0]!,"precious"),"utf8"),"retain-after-kill");
+});
+
 test("corrupt, truncated, foreign and incompatible backups are detected and restore changes nothing",async()=>{
  const {root,home}=await homeFixture("corrupt"),file=path.join(root,"c.asenbak");
  await createHomeBackup({homeDir:home,destination:file,asenVersion:"0.1.0"});
