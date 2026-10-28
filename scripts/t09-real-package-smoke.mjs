@@ -5,6 +5,10 @@ import path from "node:path";
 import {tmpdir} from "node:os";
 import {mkdtemp,realpath} from "node:fs/promises";
 import https from "node:https";
+import {fileURLToPath} from "node:url";
+
+const repositoryRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
+const tlsFixture=path.join(repositoryRoot,"tests","fixtures");
 
 const packageRoot=process.argv[2];
 if(!packageRoot||!path.isAbsolute(packageRoot))throw new Error("Usage: node scripts/t09-real-package-smoke.mjs <absolute-installed-package-root>");
@@ -22,7 +26,7 @@ const env={};
 for(const key of ["PATH","Path","PATHEXT","SystemRoot","WINDIR","COMSPEC","LANG","LC_ALL"]){
  if(process.env[key]!==undefined)env[key]=process.env[key];
 }
-Object.assign(env,{HOME:home,USERPROFILE:home,APPDATA:home,LOCALAPPDATA:home,TEMP:root,TMP:root,TMPDIR:root,NODE_EXTRA_CA_CERTS:path.resolve("tests/fixtures/t09-loopback-test-ca.pem")});
+Object.assign(env,{HOME:home,USERPROFILE:home,APPDATA:home,LOCALAPPDATA:home,TEMP:root,TMP:root,TMPDIR:root,NODE_EXTRA_CA_CERTS:path.join(tlsFixture,"t09-loopback-test-ca.pem")});
 
 function run(args){
  const result=execFileSync(process.execPath,[cli,...args],{cwd:root,env,encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:60_000,maxBuffer:2*1024*1024});
@@ -49,8 +53,7 @@ async function serveSignedPackage(packageRoot,manifestPath,signaturePath){
  const manifestText=await readFile(manifestPath,"utf8"),manifest=JSON.parse(manifestText);
  const files={"asen-manifest.json":manifestText,"asen-manifest.sig.json":await readFile(signaturePath,"utf8")};
  for(const file of manifest.files)files[file.sourcePath]=await readFile(path.join(packageRoot,file.sourcePath));
- const fixture=path.resolve("tests/fixtures");
- const server=https.createServer({key:await readFile(path.join(fixture,"t09-loopback-test-key.pem")),cert:await readFile(path.join(fixture,"t09-loopback-test-ca.pem"))},(request,response)=>{
+ const server=https.createServer({key:await readFile(path.join(tlsFixture,"t09-loopback-test-key.pem")),cert:await readFile(path.join(tlsFixture,"t09-loopback-test-ca.pem"))},(request,response)=>{
   const name=(request.url??"").slice(1);
   const body=files[name];if(body===undefined){response.writeHead(404);response.end();return;}
   response.writeHead(200,{"content-length":Buffer.byteLength(body)});response.end(body);
