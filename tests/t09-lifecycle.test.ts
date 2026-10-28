@@ -45,6 +45,13 @@ async function setupInstall(label:string){
  return {root,prefix,dataHome,v1,base};
 }
 
+test("CLI version probe does not initialize SQLite or write an experimental warning",async()=>{
+ const child=spawn(process.execPath,["--import","tsx",path.resolve("src/cli.ts"),"--version"],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"],windowsHide:true});let stdout="",stderr="";
+ child.stdout.setEncoding("utf8").on("data",chunk=>stdout+=chunk);child.stderr.setEncoding("utf8").on("data",chunk=>stderr+=chunk);
+ const exit=await new Promise<{code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{const timer=setTimeout(()=>child.kill(),20_000);child.once("error",error=>{clearTimeout(timer);reject(error);});child.once("close",(code,signal)=>{clearTimeout(timer);resolve({code,signal});});});
+ assert.deepEqual(exit,{code:0,signal:null});assert.equal(stdout.trim(),"0.1.0");assert.equal(stderr,"");
+});
+
 test("clean install authenticates, initialises dirs/config, activates, then is idempotent",async()=>{
  const {prefix,dataHome,v1,base}=await setupInstall("install");
  const result=await installManaged({...base,source:v1.source,dataHome,launcherConfig:{mode:"isolated"}});

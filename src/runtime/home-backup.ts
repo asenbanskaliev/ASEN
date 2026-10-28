@@ -1,7 +1,7 @@
 import {createHash,randomUUID} from "node:crypto";
 import {constants} from "node:fs";
 import {link,lstat,mkdir,mkdtemp,open,readdir,rename,rm,rmdir,unlink} from "node:fs/promises";
-import {DatabaseSync} from "node:sqlite";
+import type {DatabaseSync} from "node:sqlite";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {readBoundedOrdinaryFile} from "../io/bounded-file.js";
@@ -53,6 +53,7 @@ async function snapshotSqlite(file:string,expected:{dev:number;ino:number}):Prom
  const scratch=await mkdtemp(path.join(tmpdir(),"asen-home-sqlite-")),snapshot=path.join(scratch,"snapshot.sqlite");let source:DatabaseSync|undefined;
  try{
   const before=await lstat(file);if(!before.isFile()||before.isSymbolicLink()||!sameFileIdentity(before,expected))return fail("SOURCE_CHANGED","SQLite database path changed before snapshot opening");
+  const {DatabaseSync}=await import("node:sqlite");
   source=new DatabaseSync(file,{readOnly:true});
   const opened=await lstat(file);if(!opened.isFile()||opened.isSymbolicLink()||!sameFileIdentity(opened,expected))return fail("SOURCE_CHANGED","SQLite database path changed while snapshot connection opened");
   source.exec("PRAGMA busy_timeout=5000;");source.prepare("VACUUM INTO ?").run(snapshot);
