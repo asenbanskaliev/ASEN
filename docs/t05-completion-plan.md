@@ -234,6 +234,10 @@ Validación de esta reconstrucción: typecheck PASS; las tres suites enfocadas (
 
 T05 continúa PARTIAL: no se implementó ni simuló un reviewer RDD real, no existe la composición pública de corrección→nueva revisión→aceptación, no hay signoff independiente ni CI del SHA nuevo. La matriz Pi 1.2 requiere ejecución remota exacta; evidencia heredada de #37 no sustituye esa ejecución. El checker RDD existente solo valida datos externos y no autentica un reviewer.
 
+### Seguimiento de cancelación — 2026-10-28
+
+Se añadió una integración sobre repo Git temporal para interrumpir la llamada revisora antes de ligar el resultado. El intento no produce aprobación; la vista se cierra y un reintento hace una revisión nueva (`tests/ordinary-review-workspace-flow.test.ts`, 4/4). `TMPDIR=/tmp npm run check` pasa localmente. Esto no cubre terminación abrupta ni reinicio del proceso, ejecución de pruebas sobre el candidato, aceptación, autenticación de proveedor ni aislamiento del sistema operativo. T05 sigue PARTIAL.
+
 Consolidated verification on the reconstructed source tree: `TMPDIR=/tmp npm run test` passed 2,217, failed 0, skipped 19. The failed attempts with nonstandard TMPDIR are excluded from evidence; selected temporary directories inside the candidate violated test preconditions. This suite result is from source after the final controller hardening, before no further code changes.
 
 Exact candidate `1e8d486e7c0bf32547a8c3cdbd895ca3bbb8d2ee` package Pi 1.2.0 Linux matrix: TUI, RPC, JSON and print all PASS from the generated npm tarball. Tarball SHA binding and clean-checkout preconditions passed; all child processes shut down naturally. The earlier TUI failure was environmental (`node-pty` native binary absent); compiling against the official Node 24.22.1 headers extracted without owner preservation resolved the host setup without source changes.

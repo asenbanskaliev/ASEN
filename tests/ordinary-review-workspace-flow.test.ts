@@ -56,3 +56,16 @@ test("unexpected untracked files block dispatch to the external reviewer",async 
  const result=await state.handler("workspace",state.context);
  assert.equal(result.status,"blocked");assert.deepEqual(result.unexpectedFiles,["outside-scope.txt"]);assert.equal(state.calls(),0);
 });
+
+test("interrupted reviewer leaves no approval and a retry reviews the current candidate once",async t=>{
+ const state=setup(t,[{verdict:"pass",findings:[]},{verdict:"pass",findings:[]}]),controller=new AbortController();
+ Object.assign(state.context,{signal:controller.signal});
+ const registry=state.context.modelRegistry!,stream=registry.streamSimple.bind(registry);
+ registry.streamSimple=(model,request,options)=>{const events=stream(model,request,options);return (async function*(){for await(const event of events){controller.abort();yield event;}})();};
+ await assert.rejects(()=>state.handler("workspace",state.context),/cancelled/u);
+ assert.equal(state.calls(),1);assert.equal(state.messages.length,0);
+ delete (state.context as typeof state.context&{signal?:AbortSignal}).signal;
+ const retry=await state.handler("workspace",state.context);
+ assert.equal(retry.status,"passed-awaiting-tests");assert.equal(retry.acceptance,"not-accepted");
+ assert.equal(state.calls(),2);assert.equal(state.messages.length,1);
+});

@@ -33,6 +33,10 @@ The follow-up implementation adds `/asen-review workspace`: capture through a pr
 | Reliability | Public tests cover success-awaiting-tests, finding, bounded correction/new reviewer, out-of-scope untracked block and drift rejection; view disposed on normal/cancel paths. | Correction/session ownership is in-memory; hard process crash can leave a temporary view for later manual cleanup. Simultaneous-edit stress and multi-OS new-flow evidence remain open. |
 | Performance | One bounded review call per candidate and at most one bounded correction call. | No reproducible before/after benchmark; candidate capture and full diff are repeated for each new candidate. No speedup claimed. |
 
+### Follow-up — interrupted provider response and retry
+
+A real temporary Git repository integration test now aborts after the reviewer response is yielded but before the result can be bound. The handler rejects the interrupted attempt, emits no approval/result notification, and disposes its owned view in `finally`; a retry reviews the current candidate and returns only `passed-awaiting-tests`. `tests/ordinary-review-workspace-flow.test.ts`: 4/4 PASS. This demonstrates in-process cancellation and safe retry, not SIGKILL/restart recovery, filesystem isolation, provider authentication or candidate acceptance. `TMPDIR=/tmp npm run check` passes after this regression. T05 remains PARTIAL.
+
 ## Verification
 
 - Focused workspace/reviewer/session/correction tests: 60/60 PASS; prior-checkout freshness hardening is also in the full suite.
