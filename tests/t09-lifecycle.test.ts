@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import http from "node:http";
+import https from "node:https";
+import {spawn} from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import {createServer,type Server} from "node:http";
@@ -209,13 +211,28 @@ async function serve(files:Record<string,Buffer|string>,mutate?:(url:string,body
  const port=(server.address() as {port:number}).port;
  return {url:`http://127.0.0.1:${port}/`,close:()=>new Promise<void>(resolve=>{server.closeAllConnections();server.close(()=>resolve());})};
 }
+async function serveTls(files:Record<string,Buffer|string>){
+ // This checked-in key/certificate pair is test-only TLS identity material, never a package-signing key.
+ const fixture=path.resolve("tests/fixtures"),server=https.createServer({key:await fs.readFile(path.join(fixture,"t09-loopback-test-key.pem")),cert:await fs.readFile(path.join(fixture,"t09-loopback-test-ca.pem"))},(req,res)=>{
+  const name=(req.url??"").replace(/^\//u,"");
+  const raw=files[name];if(raw===undefined){res.writeHead(404);res.end();return;}
+  const body=Buffer.isBuffer(raw)?raw:Buffer.from(raw);res.writeHead(200,{"content-length":body.length});res.end(body);
+ });
+ await new Promise<void>((resolve,reject)=>{server.once("error",reject);server.listen(0,"127.0.0.1",resolve);});
+ const port=(server.address() as {port:number}).port;
+ return {url:`https://127.0.0.1:${port}/`,close:()=>new Promise<void>(resolve=>{server.closeAllConnections();server.close(()=>resolve());})};
+}
 async function servedRelease(label:string){
  const s=await setupInstall(label);
- const manifestText=await fs.readFile(s.v1.manifestPath,"utf8");
- const manifest=JSON.parse(manifestText) as {files:{sourcePath:string}[]};
- const files:Record<string,Buffer|string>={"asen-manifest.json":manifestText,"asen-manifest.sig.json":await fs.readFile(s.v1.signaturePath,"utf8")};
- for(const file of manifest.files)files[file.sourcePath]=await fs.readFile(path.join(s.v1.dir,file.sourcePath));
+ const files=await releaseFiles(s.v1.dir,s.v1.manifestPath,s.v1.signaturePath);
  return {...s,files};
+}
+async function releaseFiles(dir:string,manifestPath:string,signaturePath:string){
+ const manifestText=await fs.readFile(manifestPath,"utf8");
+ const manifest=JSON.parse(manifestText) as {files:{sourcePath:string}[]};
+ const files:Record<string,Buffer|string>={"asen-manifest.json":manifestText,"asen-manifest.sig.json":await fs.readFile(signaturePath,"utf8")};
+ for(const file of manifest.files)files[file.sourcePath]=await fs.readFile(path.join(dir,file.sourcePath));
+ return files;
 }
 
 test("network acquisition installs a signed package from a loopback server",async()=>{
@@ -225,6 +242,51 @@ test("network acquisition installs a signed package from a loopback server",asyn
   assert.equal(result.status,"installed");
   assert.deepEqual(await fs.readdir(path.join(s.prefix,"downloads")).catch(()=>[] as string[]),[]);
  }finally{await server.close();}
+});
+
+test("public CLI installs and upgrades signed loopback releases, rolls back, and preserves user data",async()=>{
+ const s=await servedRelease("cli-net"),homeDirectory=path.join(s.root,"home"),v1Server=await serve(s.files);
+ const v2=await release(s.root,await pkg(s.root,"v2","2.0.0"),s.v1.keys),v2Files=await releaseFiles(v2.dir,v2.manifestPath,v2.signaturePath),v2Server=await serve(v2Files);
+ const out:string[]=[],err:string[]=[];
+ const run=async(...argv:string[])=>{out.length=0;err.length=0;return runAsen(argv,{},{homeDirectory:()=>homeDirectory,stdout:text=>out.push(text),stderr:text=>err.push(text)});};
+ try{
+  assert.equal(await run("managed","install","--source-url",v1Server.url,"--trust-anchor",s.v1.anchor,"--yes"),0,err.join(""));
+  assert.equal(JSON.parse(out.join("")).status,"installed");
+  const dataHome=path.join(homeDirectory,".asen","agent"),personal=path.join(dataHome,"keep.db");
+  await fs.writeFile(personal,"preserve across signed update and rollback");
+  assert.equal(await run("managed","upgrade","--source-url",v2Server.url,"--trust-anchor",s.v1.anchor,"--yes"),0,err.join(""));
+  assert.equal(JSON.parse(out.join("")).status,"upgraded");
+  assert.equal((await inspectManagedInstall({prefix:path.join(homeDirectory,".asen")})).activeVersion,"2.0.0");
+  assert.equal(await run("managed","rollback","--expected-current","2.0.0","--to","1.0.0","--yes"),0,err.join(""));
+  assert.equal(JSON.parse(out.join("")).status,"rolled-back");
+  assert.equal((await inspectManagedInstall({prefix:path.join(homeDirectory,".asen")})).activeVersion,"1.0.0");
+  assert.equal(await fs.readFile(personal,"utf8"),"preserve across signed update and rollback");
+  assert.deepEqual(await fs.readdir(path.join(homeDirectory,".asen","downloads")),[]);
+ }finally{await Promise.all([v1Server.close(),v2Server.close()]);}
+});
+
+test("public CLI verifies real TLS for signed install and upgrade before activating the new version",async()=>{
+ const s=await servedRelease("cli-tls"),homeDirectory=path.join(s.root,"home"),v1Server=await serveTls(s.files);
+ const v2=await release(s.root,await pkg(s.root,"tls-v2","2.0.0"),s.v1.keys),v2Server=await serveTls(await releaseFiles(v2.dir,v2.manifestPath,v2.signaturePath));
+ const env:NodeJS.ProcessEnv={};
+ for(const key of ["PATH","Path","PATHEXT","SystemRoot","WINDIR","COMSPEC","LANG","LC_ALL"])if(process.env[key]!==undefined)env[key]=process.env[key];
+ Object.assign(env,{HOME:homeDirectory,USERPROFILE:homeDirectory,APPDATA:homeDirectory,LOCALAPPDATA:homeDirectory,TEMP:s.root,TMP:s.root,TMPDIR:s.root,NODE_EXTRA_CA_CERTS:path.resolve("tests/fixtures/t09-loopback-test-ca.pem")});
+ const invoke=(trustTestCa:boolean,...args:string[])=>new Promise<{code:number|null;stdout:string;stderr:string}>((resolve,reject)=>{
+  const childEnv={...env};if(!trustTestCa)delete childEnv.NODE_EXTRA_CA_CERTS;
+  const child=spawn(process.execPath,["--import","tsx",path.resolve("src/cli.ts"),...args],{cwd:process.cwd(),env:childEnv,stdio:["ignore","pipe","pipe"],windowsHide:true});
+  let stdout="",stderr="";child.stdout.setEncoding("utf8").on("data",chunk=>stdout+=chunk);child.stderr.setEncoding("utf8").on("data",chunk=>stderr+=chunk);
+  const timer=setTimeout(()=>child.kill(),30_000);child.once("error",error=>{clearTimeout(timer);reject(error);});child.once("close",code=>{clearTimeout(timer);resolve({code,stdout,stderr});});
+ });
+ try{
+  const args=["managed","install","--source-url",v1Server.url,"--trust-anchor",s.v1.anchor,"--yes"];
+  const untrusted=await invoke(false,...args);assert.notEqual(untrusted.code,0,"unknown TLS root must be rejected");
+  assert.equal((await inspectManagedInstall({prefix:path.join(homeDirectory,".asen")})).status,"absent","failed TLS acquisition must have no install effects");
+  const installed=await invoke(true,...args);
+  assert.equal(installed.code,0,installed.stderr);assert.equal(JSON.parse(installed.stdout).status,"installed");
+  const upgraded=await invoke(true,"managed","upgrade","--source-url",v2Server.url,"--trust-anchor",s.v1.anchor,"--yes");
+  assert.equal(upgraded.code,0,upgraded.stderr);assert.equal(JSON.parse(upgraded.stdout).status,"upgraded");
+  assert.equal((await inspectManagedInstall({prefix:path.join(homeDirectory,".asen")})).activeVersion,"2.0.0");
+ }finally{await Promise.all([v1Server.close(),v2Server.close()]);}
 });
 
 test("network acquisition rejects altered, truncated and redirected content and cleans partial downloads",async()=>{
