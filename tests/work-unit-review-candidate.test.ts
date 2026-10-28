@@ -1,8 +1,11 @@
 import {execFileSync} from "node:child_process";
-import {mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {mkdtempSync,realpathSync,readdirSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {prepareOrdinaryReview,claimOrdinaryReviewRequest,bindOrdinaryReviewCheckout} from "../src/review/ordinary-review-controller.js";
+import {prepareOrdinaryReview,claimOrdinaryReviewRequest,bindOrdinaryReviewCheckout,openOrdinaryReviewSession} from "../src/review/ordinary-review-controller.js";
+import {inspectCandidateGitTree} from "../src/review/review-tree-inspection.js";
+import {closeReviewSession} from "../src/review/review-session.js";
+import {awaitNativeRddResult,bindNativeRddResult} from "../src/review/native-rdd-result.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {createAsenExtension} from "../extensions/asen.js";
@@ -217,4 +220,19 @@ test("E registra entrada ASEN, separa instancias y consume fallos de host y sesi
   assert.throws(()=>one.handler(rejected.requestId,context()),/pendiente/);
   assert.throws(()=>claimOrdinaryReviewRequest(rejected,"sesion"),/consumida/);
  }
+});
+
+test("F invalidates a session and prior result when the live Git checkout changes",t=>{
+ const root=realpathSync(mkdtempSync(join(tmpdir(),"asen-review-stale-session-"))),viewParent=realpathSync(mkdtempSync(join(tmpdir(),"asen-review-stale-view-")));
+ t.after(()=>{rmSync(root,{recursive:true,force:true});rmSync(viewParent,{recursive:true,force:true});});
+ const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim();
+ git("init","-q");const commitLocal=()=>git("-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","--allow-empty","-m","test(review): candidate");
+ commitLocal();commitLocal();const revision=git("rev-parse","HEAD"),treeIdentity=git("rev-parse","HEAD^{tree}"),parentIdentity=git("rev-parse","HEAD^");
+ const record=completed(false,{identity:revision,treeIdentity,parentIdentity}),candidateRecord=recordWorkUnitReviewCandidate(record,candidate(record));
+ const request=prepareOrdinaryReview(candidateRecord,{authorId:"author",reviewerId:"reviewer",sessionId:"session"}),checkout=bindOrdinaryReviewCheckout(request,"session",root);
+ const manifest=inspectCandidateGitTree({repositoryRoot:root,treeIdentity}),session=openOrdinaryReviewSession(checkout,viewParent,manifest,{riskId:"T05",reason:"freshness regression",severity:"high",lenses:["risk"]}),receiver=awaitNativeRddResult(session);
+ const result={schemaVersion:1,requestId:request.requestId,sessionId:"session",revision,treeIdentity,parentIdentity,reviewerId:"reviewer",verdict:"pass",summary:"local guard probe"};
+ commitLocal();
+ assert.throws(()=>bindNativeRddResult(receiver,result),/stale|changed|checkout/i);
+ closeReviewSession(session);assert.equal(readdirSync(viewParent).length,0);
 });
