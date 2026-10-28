@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import http from "node:http";
 import https from "node:https";
 import {spawn} from "node:child_process";
+import {pathToFileURL} from "node:url";
 import os from "node:os";
 import path from "node:path";
 import {createServer,type Server} from "node:http";
@@ -390,7 +391,7 @@ test("restore failure during staging cleans temporary data and can be retried",a
 test("a killed restore during staging preserves the old target and a retry completes",async()=>{
  const {root,home}=await homeFixture("restore-kill"),backup=path.join(root,"interrupted.asenbak"),target=path.join(root,"interrupted-target");
  await createHomeBackup({homeDir:home,destination:backup,asenVersion:"0.1.0"});await fs.mkdir(target);await fs.writeFile(path.join(target,"precious"),"retain-after-kill");
- const childSource=`import {restoreHomeBackup} from ${JSON.stringify(path.resolve("src/runtime/home-backup.ts"))};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},replace:true,confirmed:true,hooks:{afterStagedFile(){process.stdout.write("RESTORE_STAGE_READY\\n");return new Promise(()=>{});}}});`;
+ const childSource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},replace:true,confirmed:true,hooks:{afterStagedFile(){process.stdout.write("RESTORE_STAGE_READY\\n");return new Promise(()=>{});}}});`;
  const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",childSource],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"],windowsHide:true});let output="",errors="";
  child.stdout.setEncoding("utf8").on("data",chunk=>output+=chunk);child.stderr.setEncoding("utf8").on("data",chunk=>errors+=chunk);
  const closed=new Promise<{code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{child.once("error",reject);child.once("close",(code,signal)=>resolve({code,signal}));});

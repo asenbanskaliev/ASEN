@@ -154,6 +154,17 @@ test("non-Windows keeps one default-concurrency run and forwards options before 
  }),[{name:"all",args:["--import","tsx","--test","--test-reporter=spec","tests/a.test.ts","tests/z.test.ts"]}]);
 });
 
+test("macOS splits the complete suite into bounded chunks without dropping test files",()=>{
+ const files=Array.from({length:121},(_,index)=>`tests/macos-${String(index).padStart(3,"0")}.test.ts`);
+ const runs=planTestRuns({platform:"darwin",testFiles:files,nodeOptions:["--test-reporter=spec"]});
+ assert.equal(runs.length,3);
+ for(const [index,run] of runs.entries()){
+  assert.equal(run.name,`macos-${index+1}`);
+  assert.ok(run.args.filter((arg:string)=>arg.endsWith(".test.ts")).length<=50);
+ }
+ assert.deepEqual(runs.flatMap((run:{args:string[]})=>run.args.filter((arg:string)=>arg.endsWith(".test.ts"))).sort(),files.sort());
+});
+
 test("planning fails closed for no tests, duplicate inputs, or an incomplete Windows process set",()=>{
  assert.throws(()=>planTestRuns({platform:"linux",testFiles:[],nodeOptions:[]}),/no test files/i);
  assert.throws(()=>planTestRuns({platform:"linux",testFiles:["tests/a.test.ts","tests/a.test.ts"],nodeOptions:[]}),/duplicate test file/i);
