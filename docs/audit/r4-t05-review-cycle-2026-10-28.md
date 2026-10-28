@@ -37,7 +37,7 @@ The follow-up implementation adds `/asen-review workspace`: capture through a pr
 
 - Focused workspace/reviewer/session/correction tests: 60/60 PASS; prior-checkout freshness hardening is also in the full suite.
 - Typecheck and build: PASS. `TMPDIR=/tmp npm run check`: 2,229 passed, 0 failed, 19 skipped; local parity, skills, skill-parity, memory and tracked-boundary audits pass. Ecosystem normative source proof remains NOT ADMITTED because its retained repository is unavailable.
-- `npm run verify:pack`: PASS; installed Pi package verified, 11 RPC commands, 16 tools, 28 public exports, packed install verified. The first `verify:pi-matrix` attempt stopped before launch because it requires a committed clean SHA and tarball; this is not a Pi matrix result. Exact SHA matrix remains open.
+- `npm run verify:pack`: PASS; installed Pi package verified, 11 RPC commands, 16 tools, 28 public exports, packed install verified. Exact candidate `8aff8baf0ee1fa199d0d0611323d0adaf4f18ce2` Pi 1.2.0 Linux package matrix: TUI/RPC/JSON/print all PASS; natural shutdown and zero model calls; cleanup confirmed. Windows/macOS remain CI gates.
 - External independent review: not obtained; CodeRabbit service/CLI unavailable. Do not treat this self-audit as independent signoff.
 - T05 remains PARTIAL. Critical/high containment and scope omissions found in the local R4 pass were corrected and regression-tested; provider identity/authentication, tests/acceptance, durable crash recovery, OS isolation, external R4 and final exact-SHA CI remain closure gates.
 
