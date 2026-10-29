@@ -147,7 +147,11 @@ export function consumePhaseGrant(request:AgentRequest):boolean{
  if(!grant||grant.used||!request.candidate||grant.requestId!==request.id||grant.sessionId!==(request.isolationKey??"default")||grant.repository!==request.repository||grant.candidateId!==request.candidate.id||grant.revision!==request.candidate.revision||grant.phase!==request.expectedPhase||grant.operations.length!==phaseOperations(grant.phase).length||grant.operations.some((op,index)=>op!==phaseOperations(grant.phase)[index]))return false;
  const surfaces=request.writeSurfaces??[];if(grant.surfaces.length!==surfaces.length||grant.surfaces.some((surface,index)=>surface!==surfaces[index]))return false;
  if(grant.snapshotRequired){
-  try{grant.snapshot=captureWriterAuthorizationSnapshot(request.candidate,grant.surfaces);}catch{return false;}
+  try{grant.snapshot=captureWriterAuthorizationSnapshot(request.candidate,grant.surfaces);}catch(error){
+   // Preserve the security denial, but surface its actual cause for platform diagnostics.
+   // Do not log paths or repository content: the original exception is retained as cause.
+   throw new Error("Worker phase requires an unused, identity-bound ASEN lifecycle grant (writer snapshot rejected)",{cause:error});
+  }
  }
  grant.used=true;grant.active=true;return true;
 }
