@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import {execFileSync,spawn} from "node:child_process";
 import {createHash,randomUUID} from "node:crypto";
 import {existsSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {createRequire} from "node:module";
 import {tmpdir} from "node:os";
 import {dirname,join} from "node:path";
-import {fileURLToPath} from "node:url";
+import {fileURLToPath,pathToFileURL} from "node:url";
 import {Dispatcher} from "../src/agents/dispatcher.js";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {EvidenceStore} from "../src/evidence/store.js";
@@ -24,6 +25,7 @@ const expectedSha=process.env.ASEN_EXPECTED_SHA;
 const evidenceDirectory=process.env.ASEN_T05_EVIDENCE_DIR;
 const provider="nvidia",model=process.env.ASEN_T05_MODEL??"nvidia/nemotron-3.5-lightning-30b-a3b";
 const target="docs/t04-t05-live-cycle.txt";
+const require=createRequire(import.meta.url);
 const rejectedContent=`ASEN T04 + T05 live candidate\nCandidate: ${expectedSha}\nDecision: REJECT\nRequirement: Decision must be ACCEPT\n`;
 const acceptedContent=`ASEN T04 + T05 live candidate\nCandidate: ${expectedSha}\nDecision: ACCEPT\nRequirement: Decision must be ACCEPT\n`;
 const sha256=(value:string|Buffer)=>createHash("sha256").update(value).digest("hex");
@@ -39,9 +41,11 @@ function requiredEnvironment():void{
 function writerInputs(root:string,taskId:string,sessionId:string,content:string){
  const baseSha=git(root,"rev-parse","HEAD"),candidate={id:taskId,repository:root,revision:baseSha,createdAt:new Date().toISOString()};
  const decision=issueOddDecision({taskId,repository:root,paths:[target],writes:[{path:target,changeKind:"behavior"}]});
- buildOrchestrationPlan({taskId,repository:root,prompt:"Write the one declared T04/T05 evidence file",candidate},decision);
+ const plan=buildOrchestrationPlan({taskId,repository:root,prompt:"Write the one declared T04/T05 evidence file",candidate},decision);
  const applicability=decideLifecycleApplicability(decision,{taskIdentity:taskId,repositoryIdentity:root,candidate:{id:candidate.id,repository:root,revision:baseSha},explicitMode:"organic",affectedSubsystems:["runtime"],expectedPaths:[target],requiredArtifacts:[]});
  const writerAdmission=issueOrganicWriterAdmission(applicability,[target]),skillContext=issueSkillContext(`${taskId}:worker`,root,candidate,{phase:"apply",codeChange:true,risk:"high"}),skillPaths=selectSkills(skillContext).map(skill=>skill.path),evidence=new EvidenceStore();
+ if(!plan.routeEvidence)throw new Error("Candidate-bound orchestration did not issue route evidence");
+ evidence.addRouteDecision(candidate,plan.routeEvidence,{id:`${taskId}:route`,summary:"Ruta ODD genuina para la escritura autorizada integral",createdAt:new Date().toISOString()});
  for(const [id,kind] of [["work-unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)evidence.add(candidate,{id:`${taskId}:${id}`,kind,status:"pass",summary:`Exact ${target} write admitted for the isolated live scenario`,createdAt:new Date().toISOString()});
  return {baseSha,candidate,writerAdmission,skillContext,skillPaths,evidence,request:{id:`${taskId}:worker`,role:"worker" as const,repository:root,isolationKey:sessionId,prompt:`Create or replace exactly one file at ${target} with the following exact UTF-8 contents, including the final newline:\n\n${content}\nUse only the ASEN-authorized file writing tools. Do not run shell commands, commit, or alter any other path.`,candidate,writeSurfaces:[target],skillContext,skillPaths,writerAdmission,model,thinking:"minimal" as const}};
 }
@@ -68,11 +72,20 @@ async function waitForFile(file:string,timeoutMs:number,child:ReturnType<typeof 
  }
  throw new Error(`Timed out waiting for ${file}`);
 }
+function tsxImportUrl():string{
+ const configured=process.env.ASEN_TSX_IMPORT_URL;
+ if(configured){const url=new URL(configured);if(url.protocol!=="file:"||!existsSync(fileURLToPath(url)))throw new Error("ASEN_TSX_IMPORT_URL must identify an existing file URL");return url.href;}
+ try{return pathToFileURL(require.resolve("tsx")).href;}catch{
+  const npm=process.platform==="win32"?"npm.cmd":"npm",globalRoot=execFileSync(npm,["root","-g"],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim(),loader=join(globalRoot,"tsx","dist","loader.mjs");
+  if(!existsSync(loader))throw new Error("The pinned global tsx loader is unavailable");return pathToFileURL(loader).href;
+ }
+}
 async function hardKillInitialWriter(root:string,stateDir:string,taskId:string,sessionId:string,authorizationId:string){
- const journalFile=join(stateDir,"jobs.json"),barrier=join(stateDir,"interruption-barrier.json"),pids=join(stateDir,"processes.json"),script=fileURLToPath(import.meta.url);
- const child=spawn(process.env.ASEN_TSX_EXECUTABLE??"tsx",[script],{cwd:sourceRoot,env:{...process.env,ASEN_T04_T05_CHILD:"interrupted-writer",ASEN_T04_T05_ROOT:root,ASEN_T04_T05_JOURNAL:journalFile,ASEN_T04_T05_BARRIER:barrier,ASEN_T04_T05_PIDS:pids,ASEN_T04_T05_TASK:taskId,ASEN_T04_T05_SESSION:sessionId,ASEN_T04_T05_AUTH:authorizationId},stdio:["ignore","ignore","pipe"]});
+ const journalFile=join(stateDir,"jobs.json"),barrier=join(stateDir,"interruption-barrier.json"),pids=join(stateDir,"processes.json");
+ const child=spawn(process.execPath,["--import",tsxImportUrl(),"./scripts/t04-t05-nvidia-cycle.ts"],{cwd:sourceRoot,env:{...process.env,ASEN_T04_T05_CHILD:"interrupted-writer",ASEN_T04_T05_ROOT:root,ASEN_T04_T05_JOURNAL:journalFile,ASEN_T04_T05_BARRIER:barrier,ASEN_T04_T05_PIDS:pids,ASEN_T04_T05_TASK:taskId,ASEN_T04_T05_SESSION:sessionId,ASEN_T04_T05_AUTH:authorizationId},stdio:["ignore","ignore","pipe"]});
  let stderr="";child.stderr.setEncoding("utf8").on("data",chunk=>stderr=(stderr+String(chunk)).slice(-16_384));
- await waitForFile(barrier,180_000,child);const processEvidence=JSON.parse(readFileSync(pids,"utf8")) as {controllerPid:number;piPid:number},barrierEvidence=JSON.parse(readFileSync(barrier,"utf8"));
+ try{await waitForFile(barrier,180_000,child);}catch(error){try{if(child.pid&&child.exitCode===null&&child.signalCode===null)process.kill(child.pid,"SIGKILL");}catch{}throw new Error(`${error instanceof Error?error.message:"Interrupted writer failed"}; child stderr: ${redact(stderr)}`,{cause:error});}
+ const processEvidence=JSON.parse(readFileSync(pids,"utf8")) as {controllerPid:number;piPid:number},barrierEvidence=JSON.parse(readFileSync(barrier,"utf8"));
  assert.equal(processEvidence.controllerPid,child.pid);assert.ok(processEvidence.piPid>0);assert.equal(readFileSync(join(root,target),"utf8"),rejectedContent);
  // Kill the controller first while Pi is stopped. Otherwise the controller can
  // observe Pi's death and persist a misleading terminal result before it dies.

@@ -14,7 +14,9 @@ test("T04/T05 CI runs a real Pi 1.2 NVIDIA cycle through ASEN writer and reviewe
  assert.match(liveTask,/providerCredential:"NVIDIA_API_KEY"/u);
  assert.match(liveTask,/nvidia\/nemotron-3\.5-lightning-30b-a3b/u);
  assert.match(liveTask,/issueOrganicWriterAdmission\(applicability,\[target\]\)/u);
+ assert.match(liveTask,/evidence\.addRouteDecision\(candidate,plan\.routeEvidence/u);
  assert.match(liveTask,/noTools:true/u);
+ assert.match(liveTask,/spawn\(process\.execPath,\["--import",tsxImportUrl\(\),"\.\/scripts\/t04-t05-nvidia-cycle\.ts"\]/u);
 });
 
 test("live provider evidence binds interruption, recovery, correction and independent review",()=>{
