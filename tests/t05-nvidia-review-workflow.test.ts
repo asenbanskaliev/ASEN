@@ -5,7 +5,8 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import test from "node:test";
 
-const workflow=readFileSync(new URL("../.github/workflows/ci.yml",import.meta.url),"utf8");
+// A Windows checkout may convert the workflow to CRLF; the embedded script is LF.
+const workflow=readFileSync(new URL("../.github/workflows/ci.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
 const nodeBlock=/node --input-type=module <<'NODE'\n([\s\S]*?)\n\s*NODE\n/u.exec(workflow)?.[1];
 if(!nodeBlock)throw new Error("The T05 provider validation block is missing");
 const validator=nodeBlock.replace(/^ {10}/gmu,"");
