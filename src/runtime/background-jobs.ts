@@ -12,7 +12,7 @@ export function formatBackgroundJobStatus(job:BackgroundJobSnapshot,width=80):st
  const states:Record<BackgroundJobState,string>={queued:"Queued",running:"Running",interrupted:"Interrupted",completed:"Completed",failed:"Failed",stopped:"Stopped",timed_out:"Timed out",flooded:"Output limit exceeded"};
  const state=states[job.state];
  const outcome=job.state==="completed"&&job.exitCode===0?"Succeeded":state;
- const message=`Job ${job.id}: ${outcome}${job.exitCode===null?"":`; exit code ${job.exitCode}`}`.replace(/[\\x00-\\x1f\\x7f-\\x9f]/gu," ");
+ const message=`Job ${job.id}: ${outcome}${job.exitCode===null?"":`; exit code ${job.exitCode}`}`.replace(/[\x00-\x1f\x7f-\x9f]/gu," ");
  return message.length<=width?message:message.slice(0,width-3)+"...";
 }
 /** Only observed terminal states can generate a completion notification. */
