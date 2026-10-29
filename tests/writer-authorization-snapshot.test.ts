@@ -43,3 +43,18 @@ test("writer authorization rejects repository and write-surface symbolic links",
  assert.throws(()=>captureWriterAuthorizationSnapshot({...candidate,repository:linkedRepository},["allowed.txt"]),/repository is unsafe/);
  assert.throws(()=>captureWriterAuthorizationSnapshot(candidate,["linked"]),/surface is symbolic link/);
 });
+
+test("writer outcome rejects a symlink substituted after authorization",async t=>{
+ const {repository,candidate}=await fixture(t);
+ const external=await mkdtemp(join(tmpdir(),"asen-writer-external-"));
+ t.after(()=>rm(external,{recursive:true,force:true}));
+ const snapshot=captureWriterAuthorizationSnapshot(candidate,["allowed.txt"]);
+ const {unlink}=await import("node:fs/promises");
+ await unlink(join(repository,"allowed.txt"));
+ try{await symlink(join(external,"target.txt"),join(repository,"allowed.txt"),"file");}
+ catch(error){
+  if(["EPERM","EACCES"].includes((error as NodeJS.ErrnoException).code??"")){t.skip("The host does not permit file symlinks");return;}
+  throw error;
+ }
+ assert.throws(()=>assertWriterAuthorizationSnapshotOutcome(snapshot),/surface is symbolic link/);
+});
