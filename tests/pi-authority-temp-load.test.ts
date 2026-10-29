@@ -4,7 +4,7 @@ import {createRequire} from "node:module";
 import {mkdtemp, mkdir, copyFile, rm, writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {dirname,join} from "node:path";
-import {fileURLToPath} from "node:url";
+import {fileURLToPath,pathToFileURL} from "node:url";
 import test from "node:test";
 
 const require=createRequire(import.meta.url);
@@ -35,7 +35,7 @@ if(!handlers.has("tool_call")||!handlers.has("tool_result")||!commands.has("asen
 process.stdout.write("authority extension loaded\\n");`;
  const entry=join(root,"load.mjs");
  await writeFile(entry,probe);
- const child=spawn(process.execPath,["--import",require.resolve("tsx"),entry],{
+ const child=spawn(process.execPath,["--import",require.resolve("tsx"),pathToFileURL(entry).href],{
   cwd:root,
   env:{PATH:process.env.PATH??"",HOME:root,TMPDIR:root,TMP:root,TEMP:root,PI_CODING_AGENT_DIR:root,PI_TELEMETRY:"0"},
   stdio:["ignore","pipe","pipe"],
