@@ -3,7 +3,7 @@ import {spawn} from "node:child_process";
 import {createRequire} from "node:module";
 import {mkdtemp, mkdir, copyFile, rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {dirname,join} from "node:path";
 import {fileURLToPath} from "node:url";
 import test from "node:test";
 
@@ -23,7 +23,7 @@ test("pinned authority extension and its complete dependency bundle load in a cl
  t.after(()=>rm(root,{recursive:true,force:true}));
  for(const source of pinnedAssets){
   const target=join(root,source);
-  await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});
+  await mkdir(dirname(target),{recursive:true});
   await copyFile(fileURLToPath(new URL("../"+source,import.meta.url)),target);
  }
  const probe=`import {pathToFileURL} from "node:url";
