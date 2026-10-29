@@ -43,6 +43,30 @@ export class BackgroundJobJournal{
    }catch(error){if(fd!==undefined)try{closeSync(fd);}catch{}try{unlinkSync(temporary);}catch{}throw error;}
   });
  }
+ /** Claim an interrupted operation for a fresh, explicitly authorized attempt.
+  * Never replays the old command or revives its authority. Atomic across processes.
+  * A competing writer or a repeated claim fails closed.
+  */
+ claimInterruptedForRetry(input:{readonly sessionId:string;readonly projectId:string;readonly interruptedJobId:string;readonly newJobId:string;readonly authorizedCommand:string;readonly authorizationId:string}):BackgroundJobJournalEntry{
+  const {sessionId,projectId,interruptedJobId,newJobId,authorizedCommand,authorizationId}=input;
+  if([sessionId,projectId,interruptedJobId,newJobId,authorizedCommand,authorizationId].some(value=>typeof value!=="string"||!value.trim())||interruptedJobId===newJobId||newJobId.length>256||authorizedCommand.length>16_384)throw new Error("Retry requires a distinct job and fresh explicit authorization");
+  return this.withExclusiveLock(()=>{
+   const rows=this.readAll(),previous=rows.find(row=>row.id===interruptedJobId);
+   if(!previous||previous.sessionId!==sessionId||previous.projectId!==projectId||!(previous.state==="running"||previous.state==="interrupted"))throw new Error("Interrupted operation is not available for retry");
+   if(rows.some(row=>row.id===newJobId||row.command===authorizationId&&row.sessionId===sessionId&&row.projectId===projectId))throw new Error("Retry conflict: job or authorization already claimed");
+   // A retry is only a pending claim; callers must independently revalidate workspace,
+   // grant and exact candidate before starting a new execution.
+   const now=new Date().toISOString();
+   const claim:BackgroundJobJournalEntry={id:newJobId,sessionId,projectId,command:authorizationId,mode:previous.mode,state:"interrupted",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[],recoveredAt:now,resumable:false};
+   const updated=rows.map(row=>row.id===interruptedJobId?{...row,state:"interrupted" as const,updatedAt:now}:row);
+   updated.push(claim);
+   const serialized=JSON.stringify(validateRows(updated))+"\\n";
+   if(Buffer.byteLength(serialized)>MAX_JOURNAL_BYTES)throw new Error("Retry journal exceeds retention bound");
+   privatePath(this.file);const temporary=`${this.file}.tmp-${process.pid}-${randomUUID()}`;let fd:number|undefined;
+   try{fd=openSync(temporary,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);writeFileSync(fd,serialized,{encoding:"utf8"});fsyncSync(fd);closeSync(fd);fd=undefined;renameSync(temporary,this.file);}catch(error){if(fd!==undefined)try{closeSync(fd);}catch{}try{unlinkSync(temporary);}catch{}throw error;}
+   return Object.freeze(claim);
+  });
+ }
  private readAll():BackgroundJobJournalEntry[]{
   privatePath(this.file);let fd:number;try{fd=openSync(this.file,constants.O_RDONLY|(constants.O_NOFOLLOW??0));}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return [];throw error;}
   let raw:Buffer;try{const stat=fstatSync(fd);if(!stat.isFile()||(process.platform!=="win32"&&(stat.mode&0o077)!==0))throw new Error("Background journal file is not private and safe");if(stat.size>MAX_JOURNAL_BYTES)throw new Error("Background job journal exceeds its byte limit");raw=readFileSync(fd);}finally{closeSync(fd);}if(raw.byteLength>MAX_JOURNAL_BYTES)throw new Error("Background job journal exceeds its byte limit");
