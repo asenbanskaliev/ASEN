@@ -4,7 +4,7 @@ import {createRequire} from "node:module";
 import {mkdtemp, mkdir, copyFile, rm, writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {dirname,join} from "node:path";
-import {fileURLToPath,pathToFileURL} from "node:url";
+import {fileURLToPath} from "node:url";
 import test from "node:test";
 
 const require=createRequire(import.meta.url);
@@ -27,13 +27,14 @@ test("pinned authority extension and its complete dependency bundle load in a cl
   await mkdir(dirname(target),{recursive:true});
   await copyFile(fileURLToPath(new URL("../"+source,import.meta.url)),target);
  }
- const authorityUrl=pathToFileURL(join(root,"extensions/authority.ts")).href;
- const probe=`const loaded=await import(${JSON.stringify(authorityUrl)});
+ const probe=`import authority from "./extensions/authority.ts";
 const handlers=new Map(),commands=new Map();
-loaded.default({on:(name,handler)=>handlers.set(name,handler),registerCommand:(name,command)=>commands.set(name,command)});
+authority({on:(name,handler)=>handlers.set(name,handler),registerCommand:(name,command)=>commands.set(name,command)});
 if(!handlers.has("tool_call")||!handlers.has("tool_result")||!commands.has("asen-authority-status"))throw new Error("authority extension registration incomplete");
 process.stdout.write("authority extension loaded\\n");`;
- const child=spawn(process.execPath,["--import",require.resolve("tsx"),"--input-type=module","-e",probe],{
+ const entry=join(root,"load.mjs");
+ await writeFile(entry,probe);
+ const child=spawn(process.execPath,["--import",require.resolve("tsx"),entry],{
   cwd:root,
   env:{PATH:process.env.PATH??"",HOME:root,TMPDIR:root,TMP:root,TEMP:root,PI_CODING_AGENT_DIR:root,PI_TELEMETRY:"0"},
   stdio:["ignore","pipe","pipe"],
