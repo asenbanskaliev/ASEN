@@ -1,4 +1,4 @@
-import {constants,closeSync,fstatSync,fsyncSync,lstatSync,mkdirSync,openSync,readFileSync,realpathSync,unlinkSync,writeFileSync} from "node:fs";
+import {constants,closeSync,fstatSync,fsyncSync,linkSync,lstatSync,mkdirSync,openSync,readFileSync,realpathSync,unlinkSync,writeFileSync} from "node:fs";
 import {execFileSync} from "node:child_process";
 import {randomUUID} from "node:crypto";
 import {join,resolve} from "node:path";
@@ -43,15 +43,24 @@ export function acquireWorkspaceWriter(input:{root:string;expectedHead:string;au
  if(!sameWorkspaceIdentityPath(toplevel,worktree))throw new Error("Writer must own the exact Git root");
  const gitDir=resolve(worktree,git("rev-parse","--git-dir"));
  const lock=join(gitDir,"asen-t05-writer.lock");
- let fd:number;
- try{fd=openSync(lock,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);}
- catch(error){if((error as NodeJS.ErrnoException).code==="EEXIST"&&recoverDeadWriterLock(lock)){try{fd=openSync(lock,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);}catch(retryError){if((retryError as NodeJS.ErrnoException).code==="EEXIST")throw new Error("Workspace writer conflict: another process acquired the recovered lease");throw retryError;}}else if((error as NodeJS.ErrnoException).code==="EEXIST")throw new Error("Workspace writer conflict: live, unsafe, or unverifiable lock remains");else throw error;}
- const identity=fstatSync(fd),token=randomUUID();let released=false;
+ const token=randomUUID(),temporary=`${lock}.tmp-${process.pid}-${token}`;
+ let fd:number,identity:ReturnType<typeof fstatSync>;
+ const createAtomicLock=()=>{
+  fd=openSync(temporary,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);
+  try{
+   writeFileSync(fd,JSON.stringify({token,pid:process.pid,authorizationId,expectedHead,allowedPaths,createdAt:new Date().toISOString()}));fsyncSync(fd);identity=fstatSync(fd);
+   // Publish a fully written owner record atomically. A process death while
+   // creating the private temp cannot leave an unrecoverable canonical lock.
+   linkSync(temporary,lock);try{unlinkSync(temporary);}catch{/* The canonical lock is valid; an orphan temp does not block writers. */}
+  }catch(error){try{closeSync(fd);}catch{/* Preserve the publication error. */}try{unlinkSync(temporary);}catch{/* Never remove another process's lock. */}throw error;}
+ };
+ try{createAtomicLock();}
+ catch(error){if((error as NodeJS.ErrnoException).code==="EEXIST"&&recoverDeadWriterLock(lock)){try{createAtomicLock();}catch(retryError){if((retryError as NodeJS.ErrnoException).code==="EEXIST")throw new Error("Workspace writer conflict: another process acquired the recovered lease");throw retryError;}}else if((error as NodeJS.ErrnoException).code==="EEXIST")throw new Error("Workspace writer conflict: live, unsafe, or unverifiable lock remains");else throw error;}
+ let released=false;
  const release=()=>{if(released)return;released=true;try{closeSync(fd);}finally{try{const current=lstatSync(lock);if(current.dev===identity.dev&&current.ino===identity.ino)unlinkSync(lock);}catch{ /* Never remove another owner's lock. */ }}};
  try{
   if(git("rev-parse","HEAD")!==expectedHead)throw new Error("Stale writer authorization: HEAD changed");
   if(changedPaths().length)throw new Error("Writer requires a clean workspace");
-  writeFileSync(fd,JSON.stringify({token,pid:process.pid,authorizationId,expectedHead,allowedPaths,createdAt:new Date().toISOString()}));fsyncSync(fd);
   return Object.freeze({authorizationId,expectedHead,allowedPaths:Object.freeze([...allowedPaths]),
    verify:()=>{if(released)throw new Error("Writer lease released");const current=lstatSync(lock),currentRoot=lstatSync(worktree);if(current.dev!==identity.dev||current.ino!==identity.ino)throw new Error("Writer lease replaced");if(!currentRoot.isDirectory()||currentRoot.isSymbolicLink()||currentRoot.dev!==rootStat.dev||currentRoot.ino!==rootStat.ino||realpathSync.native(worktree)!==rootPath)throw new Error("Writer repository identity changed");if(git("rev-parse","HEAD")!==expectedHead)throw new Error("Writer candidate changed");for(const path of changedPaths())if(!allowedPaths.some(scope=>path===scope||path.startsWith(scope+"/")))throw new Error(`Writer modified unauthorized path: ${path}`);},
    release});

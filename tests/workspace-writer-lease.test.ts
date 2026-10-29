@@ -51,6 +51,15 @@ test("a process death releases an orphaned lease only after its recorded owner i
  const recovered=acquireWorkspaceWriter({root,expectedHead:head,authorizationId:"fresh-after-death",allowedPaths:["target.txt"]});recovered.release();
 });
 
+test("a crash during lock preparation leaves no canonical lock and orphan temp files do not block writers",t=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-writer-temp-crash-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8"}).trim();
+ git("init","-q");git("config","user.name","ASEN test");git("config","user.email","asen@example.invalid");writeFileSync(join(root,"target.txt"),"base\n");git("add","target.txt");git("commit","-qm","base");
+ const gitDir=git("rev-parse","--absolute-git-dir"),orphan=join(gitDir,"asen-t05-writer.lock.tmp-dead-owner-partial");writeFileSync(orphan,"partial owner record");
+ const lease=acquireWorkspaceWriter({root,expectedHead:git("rev-parse","HEAD"),authorizationId:"after-temp-crash",allowedPaths:["target.txt"]});
+ assert.equal(readFileSync(orphan,"utf8"),"partial owner record");lease.verify();lease.release();
+});
+
 test("writer verification preserves and rejects a modification outside the granted file",t=>{
  const root=mkdtempSync(join(tmpdir(),"asen-writer-outside-scope-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
  const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8"}).trim();
