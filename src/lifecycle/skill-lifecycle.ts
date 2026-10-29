@@ -150,7 +150,7 @@ export function consumePhaseGrant(request:AgentRequest):boolean{
   try{grant.snapshot=captureWriterAuthorizationSnapshot(request.candidate,grant.surfaces);}catch(error){
    // Preserve the security denial, but surface its actual cause for platform diagnostics.
    // Do not log paths or repository content: the original exception is retained as cause.
-   throw new Error("Worker phase requires an unused, identity-bound ASEN lifecycle grant (writer snapshot rejected)",{cause:error});
+   throw new Error(`Worker phase requires an unused, identity-bound ASEN lifecycle grant (writer snapshot rejected: ${error instanceof Error?error.message:"unknown"})`,{cause:error});
   }
  }
  grant.used=true;grant.active=true;return true;

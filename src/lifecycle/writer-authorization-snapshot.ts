@@ -17,9 +17,15 @@ export interface WriterAuthorizationSnapshot {
  readonly root:{readonly dev:number;readonly ino:number;readonly birthtimeMs:number};
 }
 
+const PLATFORM_ENVIRONMENT=["PATH","Path","PATHEXT","SystemRoot","SYSTEMROOT","WINDIR","COMSPEC","TEMP","TMP","TMPDIR"] as const;
+function baseEnvironment():NodeJS.ProcessEnv{
+ const env:NodeJS.ProcessEnv={GIT_CONFIG_GLOBAL:process.platform==="win32"?"NUL":"/dev/null",GIT_OPTIONAL_LOCKS:"0",GIT_NO_REPLACE_OBJECTS:"1",GIT_TERMINAL_PROMPT:"0",GIT_ALLOW_PROTOCOL:""};
+ for(const key of PLATFORM_ENVIRONMENT)if(process.env[key]!==undefined)env[key]=process.env[key];
+ return env;
+}
 function git(root:string,args:readonly string[]):Buffer {
  return execFileSync("git",["-c","core.fsmonitor=false","-C",root,...args],{
-  env:{PATH:process.env.PATH??"",Path:process.env.Path,GIT_CONFIG_NOSYSTEM:"1",GIT_CONFIG_GLOBAL:process.platform==="win32"?"NUL":"/dev/null",GIT_OPTIONAL_LOCKS:"0",GIT_NO_REPLACE_OBJECTS:"1",GIT_TERMINAL_PROMPT:"0",GIT_ALLOW_PROTOCOL:""},
+  env:{...baseEnvironment(),GIT_CONFIG_NOSYSTEM:"1"},
   stdio:["ignore","pipe","ignore"],maxBuffer:16*1024*1024,windowsHide:true,
  });
 }

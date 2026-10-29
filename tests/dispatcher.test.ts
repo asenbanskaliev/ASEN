@@ -1,20 +1,28 @@
 import {consumeRunnerWriteReceiver} from "../src/agents/dispatcher.js";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import test from "node:test";
+import test,{after} from "node:test";
+import {mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import { Dispatcher, type AgentRunner } from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";import {issueControlledPlanPhaseGrant,issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";import {createAgentLifecycleSink} from "../src/runtime/agent-lifecycle.js";
 
-// Controlled writer grants bind to the checked-out candidate before a runner is
-// invoked.  Keep the dispatcher fixture an actual candidate rather than a
-// synthetic revision, so these tests exercise that production invariant.
-const candidate={id:"candidate",repository:"r",revision:execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(),createdAt:"now"};
+// Controlled writer grants bind to a real, clean Git candidate before a runner
+// is invoked.  The fixture is a private temporary repository so neither the
+// checkout state nor concurrently running test files can alter the candidate.
+const fixtureRoot=realpathSync(mkdtempSync(join(tmpdir(),"asen-dispatcher-")));
+after(()=>rmSync(fixtureRoot,{recursive:true,force:true}));
+writeFileSync(join(fixtureRoot,"seed.txt"),"seed\n");
+execFileSync("git",["init","-q",fixtureRoot]);execFileSync("git",["-C",fixtureRoot,"add","."]);
+execFileSync("git",["-C",fixtureRoot,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","-m","fixture"]);
+const candidate={id:"candidate",repository:"r",revision:execFileSync("git",["-C",fixtureRoot,"rev-parse","HEAD"],{encoding:"utf8"}).trim(),createdAt:"now"};
 function authorized(){
  const evidence=new EvidenceStore();
- for(const [index,authorizedCandidate] of [candidate,{...candidate,repository:process.cwd()}].entries()){
+ for(const [index,authorizedCandidate] of [candidate,{...candidate,repository:fixtureRoot}].entries()){
   evidence.add(authorizedCandidate,{id:`work-unit-${index}`,kind:"work-unit",status:"pass",summary:"bounded",createdAt:"now"});
   evidence.add(authorizedCandidate,{id:`scope-${index}`,kind:"scope",status:"pass",summary:"authorized",createdAt:"now"});
   evidence.add(authorizedCandidate,{id:`rollback-${index}`,kind:"rollback",status:"pass",summary:"ready",createdAt:"now"});
@@ -25,7 +33,7 @@ const sealedCodeChange=(taskId="a",repository="r",issuedCandidate=candidate)=>is
 const codeChangePaths=["skills/asen-phase-protocol/SKILL.md","skills/asen-work-unit/SKILL.md","skills/asen-safe-change/SKILL.md","skills/asen-apply/SKILL.md"];
 const writeRequest={id:"a",role:"worker" as const,prompt:"x",repository:"r",writeSurfaces:["src/a"],candidate,skillContext:sealedCodeChange(),skillPaths:codeChangePaths};
 function organicAdmission(taskId="a",admissionCandidate=candidate){const decision=issueOddDecision({taskId,repository:admissionCandidate.repository,paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});buildOrchestrationPlan({taskId,repository:admissionCandidate.repository,prompt:"write",candidate:admissionCandidate},decision);const applicability=decideLifecycleApplicability(decision,{taskIdentity:taskId,repositoryIdentity:admissionCandidate.repository,candidate:{id:admissionCandidate.id,repository:admissionCandidate.repository,revision:admissionCandidate.revision},explicitMode:"organic",affectedSubsystems:["dispatcher"],expectedPaths:["src/a"],requiredArtifacts:[]});return issueOrganicWriterAdmission(applicability,["src/a"]);}
-function controlledRequest(id="a",session="default") {const workspaceCandidate={...candidate,repository:process.cwd()},writerAdmission=organicAdmission(id,workspaceCandidate),requestId=id.endsWith(":worker")?id:`${id}:worker`,grant=issueControlledPlanPhaseGrant({requestId,sessionId:session,candidate:workspaceCandidate,surfaces:["src/a"],writerAdmission});return {...writeRequest,id:requestId,repository:workspaceCandidate.repository,candidate:workspaceCandidate,isolationKey:session,expectedPhase:"apply",skillContext:sealedCodeChange(requestId,workspaceCandidate.repository,workspaceCandidate),phaseGrant:grant,writerAdmission};}
+function controlledRequest(id="a",session="default") {const workspaceCandidate={...candidate,repository:fixtureRoot},writerAdmission=organicAdmission(id,workspaceCandidate),requestId=id.endsWith(":worker")?id:`${id}:worker`,grant=issueControlledPlanPhaseGrant({requestId,sessionId:session,candidate:workspaceCandidate,surfaces:["src/a"],writerAdmission});return {...writeRequest,id:requestId,repository:workspaceCandidate.repository,candidate:workspaceCandidate,isolationKey:session,expectedPhase:"apply",skillContext:sealedCodeChange(requestId,workspaceCandidate.repository,workspaceCandidate),phaseGrant:grant,writerAdmission};}
 
 test("dispatcher releases writer grant after completion", async()=>{
   const runner: AgentRunner={run:async r=>({id:r.id,ok:true,output:"ok"})};
