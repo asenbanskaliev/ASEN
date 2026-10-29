@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {chmodSync,cpSync,mkdtempSync,readdirSync,renameSync,rmSync,unlinkSync,writeFileSync} from "node:fs";
+import {chmodSync,cpSync,mkdirSync,mkdtempSync,readdirSync,renameSync,rmSync,unlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {registerOrdinaryReviewCommand} from "../src/review/ordinary-review-command.js";
@@ -23,7 +23,7 @@ function setup(t:unknown,responses:readonly {verdict:"pass"|"fail";findings:read
   })();}
  };
  const context={cwd:root,hasUI:true,modelRegistry:registry,model:author,sessionManager:{getSessionId:()=>"session-1"},
-  ui:{notify:(message:string)=>messages.push(message),select:async(_title:string,options:string[])=>options[0],editor:async(title:string)=>title.includes("untracked")?"[]":"Check the task requirements",confirm:async()=>true}};
+  ui:{notify:(message:string)=>messages.push(message),select:async(_title:string,options:string[])=>options[0],editor:async(title:string):Promise<string>=>title.includes("untracked")?"[]":title.includes("Rutas exactas")?'["target.txt"]':"Check the task requirements",confirm:async()=>true}};
  return {handler:commands.get("asen-review").handler,context,messages,calls:()=>calls,selected:()=>selected};
 }
 
@@ -57,6 +57,80 @@ test("unexpected untracked files block dispatch to the external reviewer",async 
  const state=setup(t,[{verdict:"pass",findings:[]}]);writeFileSync(join(state.context.cwd,"outside-scope.txt"),"must not be sent");
  const result=await state.handler("workspace",state.context);
  assert.equal(result.status,"blocked");assert.deepEqual(result.unexpectedFiles,["outside-scope.txt"]);assert.equal(state.calls(),0);
+});
+
+test("a modified tracked file outside the selected review scope blocks model dispatch",async t=>{
+ const state=setup(t,[{verdict:"pass",findings:[]}]),root=state.context.cwd;
+ writeFileSync(join(root,"outside.txt"),"before\n");
+ execFileSync("git",["-C",root,"add","outside.txt"]);execFileSync("git",["-C",root,"commit","-qm","add outside file"]);
+ writeFileSync(join(root,"outside.txt"),"after\n");
+ const result=await state.handler("workspace",state.context);
+ assert.equal(result.status,"blocked");assert.deepEqual(result.outsideReview,["outside.txt"]);assert.equal(state.calls(),0);
+});
+
+test("a deleted tracked file outside the selected review scope blocks model dispatch",async t=>{
+ const state=setup(t,[{verdict:"pass",findings:[]}]),root=state.context.cwd;
+ writeFileSync(join(root,"outside.txt"),"before\n");
+ execFileSync("git",["-C",root,"add","outside.txt"]);execFileSync("git",["-C",root,"commit","-qm","add outside file"]);
+ unlinkSync(join(root,"outside.txt"));
+ const result=await state.handler("workspace",state.context);
+ assert.equal(result.status,"blocked");assert.deepEqual(result.outsideReview,["outside.txt"]);assert.equal(state.calls(),0);
+});
+
+test("an explicitly included untracked file must also be selected for review",async t=>{
+ const state=setup(t,[{verdict:"pass",findings:[]}]);writeFileSync(join(state.context.cwd,"new.txt"),"new\n");
+ state.context.ui.editor=async(title:string)=>title.includes("untracked")?'["new.txt"]':title.includes("Rutas exactas")?'["target.txt"]':"Check the task requirements";
+ const result=await state.handler("workspace",state.context);
+ assert.equal(result.status,"blocked");assert.deepEqual(result.outsideReview,["new.txt"]);assert.equal(state.calls(),0);
+});
+
+test("selected tracked deletion is reviewed and a correction retains the original selection",async t=>{
+ const state=setup(t,[{verdict:"fail",findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Restore the required behavior."}]},{verdict:"pass",findings:[]}]);
+ unlinkSync(join(state.context.cwd,"target.txt"));
+ const first=await state.handler("workspace",state.context);
+ assert.equal(first.status,"correction-required");assert.equal(state.calls(),1);
+ writeFileSync(join(state.context.cwd,"target.txt"),"corrected\n");
+ state.context.ui.editor=async()=>{throw new Error("correction must retain its original review scope");};
+ const second=await state.handler("workspace correction "+first.correctionId,state.context);
+ assert.equal(second.status,"corrected-passed-awaiting-tests");assert.equal(second.acceptance,"not-accepted");assert.equal(state.calls(),2);
+});
+
+test("selected scope can include both sides of a file-to-directory replacement",async t=>{
+ const state=setup(t,[{verdict:"pass",findings:[]}]),root=state.context.cwd;
+ unlinkSync(join(root,"target.txt"));mkdirSync(join(root,"target.txt"));writeFileSync(join(root,"target.txt","nested.txt"),"new\n");
+ execFileSync("git",["-C",root,"add","-A"]);
+ state.context.ui.editor=async(title:string)=>title.includes("untracked")?"[]":title.includes("Rutas exactas")?'["target.txt","target.txt/nested.txt"]':"Check the task requirements";
+ const result=await state.handler("workspace",state.context);
+ assert.equal(result.status,"passed-awaiting-tests");assert.equal(result.acceptance,"not-accepted");assert.equal(state.calls(),1);
+});
+
+test("selected scope can include both sides of a case-only rename",async t=>{
+ const state=setup(t,[{verdict:"pass",findings:[]}]),root=state.context.cwd;
+ execFileSync("git",["-C",root,"mv","target.txt","TARGET.txt"]);
+ state.context.ui.editor=async(title:string)=>title.includes("untracked")?"[]":title.includes("Rutas exactas")?'["target.txt","TARGET.txt"]':"Check the task requirements";
+ const result=await state.handler("workspace",state.context);
+ assert.equal(result.status,"passed-awaiting-tests");assert.equal(result.acceptance,"not-accepted");assert.equal(state.calls(),1);
+});
+
+test("duplicate and unsafe review scope paths are rejected before provider dispatch",async t=>{
+ const state=setup(t,[{verdict:"pass",findings:[]}]);
+ for(const paths of ['["target.txt","target.txt"]','["../outside"]']){
+  state.context.ui.editor=async(title:string)=>title.includes("Rutas exactas")?paths:"Check the task requirements";
+  await assert.rejects(()=>state.handler("workspace",state.context),/alcance de revisión/u);
+ }
+ assert.equal(state.calls(),0);
+});
+
+test("real submodules remain fail-closed even when unchanged or staged with a new commit",async t=>{
+ const state=setup(t,[{verdict:"pass",findings:[]}]),root=state.context.cwd;
+ const child=mkdtempSync(join(tmpdir(),"asen-review-submodule-"));t.after(()=>rmSync(child,{recursive:true,force:true}));
+ const git=(where:string,...args:string[])=>execFileSync("git",["-C",where,...args],{stdio:"ignore"});
+ git(child,"init","-q");git(child,"config","user.name","ASEN test");git(child,"config","user.email","asen@example.invalid");
+ writeFileSync(join(child,"child.txt"),"one\n");git(child,"add","child.txt");git(child,"commit","-qm","initial");
+ git(root,"-c","protocol.file.allow=always","submodule","add","-q",child,"linked");git(root,"add",".gitmodules","linked");git(root,"commit","-qm","add submodule");
+ await assert.rejects(()=>state.handler("workspace",state.context),/links and gitlinks/u);assert.equal(state.calls(),0);
+ const linked=join(root,"linked");writeFileSync(join(linked,"child.txt"),"two\n");git(linked,"add","child.txt");git(linked,"-c","user.name=ASEN test","-c","user.email=asen@example.invalid","commit","-qm","changed");git(root,"add","linked");
+ await assert.rejects(()=>state.handler("workspace",state.context),/changed gitlinks cannot be projected/u);assert.equal(state.calls(),0);
 });
 
 test("interrupted reviewer leaves no approval and a retry reviews the current candidate once",async t=>{

@@ -9,6 +9,7 @@ import {openBoundedCorrection,validateBoundedCorrection,type CorrectionRequest,t
 import {assertReviewSessionOpen} from "./review-session.js";
 import {assertWorkspaceProjectionRepository,revalidateWorkspaceReviewProjection,type WorkspaceReviewProjection} from "./workspace-review-projection.js";
 import {captureReviewRepositoryBinding,assertReviewRepositoryBinding} from "./review-tree-inspection.js";
+import {validatePortableReviewPaths} from "./review-tree-paths.js";
 
 interface ReviewCommandContext{
  cwd:string;hasUI?:boolean;signal?:AbortSignal;modelRegistry?:PiReviewRegistry;model?:PiReviewerModel;
@@ -25,7 +26,7 @@ interface CorrectionState{
  readonly request:CorrectionRequest;readonly repository:string;readonly sessionId:string;readonly priorRevision:string;readonly priorReviewerId:string;
  readonly baseCommit:string|null;readonly baseTree:string;
  readonly priorProjection:WorkspaceReviewProjection;
- readonly requirements:string;readonly intendedUntracked:readonly string[];readonly priorFiles:readonly Readonly<{path:string;mode:string;objectId:string}>[];
+ readonly requirements:string;readonly reviewPaths:readonly string[];readonly intendedUntracked:readonly string[];readonly priorFiles:readonly Readonly<{path:string;mode:string;objectId:string}>[];
  readonly allowedPaths:readonly string[];used:boolean;
 }
 const workspaceCorrections=new Map<string,CorrectionState>();
@@ -73,6 +74,21 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
  const requirements=correction?.requirements??await context.ui.editor("Requisitos que debe comprobar el revisor","Revisar el cambio completo, alcance autorizado, errores funcionales, riesgos de seguridad, regresiones y pruebas ausentes.");
  assertContextCurrent();
  if(!requirements?.trim())return {status:"cancelled"};
+ let reviewPaths:readonly string[];
+ if(correction)reviewPaths=correction.reviewPaths;
+ else{
+  const reviewPathsText=await context.ui.editor("Rutas exactas incluidas en esta revisión (JSON array; incluye archivos eliminados)","[]");
+  assertContextCurrent();
+  if(!reviewPathsText)return {status:"cancelled"};
+  try{
+   const selected:unknown=JSON.parse(reviewPathsText);
+   if(!Array.isArray(selected)||selected.some(path=>typeof path!=="string")||new Set(selected).size!==selected.length)throw new Error();
+   // The selection spans both the base and candidate trees: a deleted path
+   // and a new path may overlap or differ only by case, although each tree
+   // is materialized separately under its own stricter collision rules.
+   reviewPaths=Object.freeze(selected.map(path=>validatePortableReviewPaths([path])[0]!).sort());
+  }catch{throw new Error("El alcance de revisión debe ser un array JSON de rutas exactas válidas");}
+ }
  let intendedUntracked:string[];
  if(correction)intendedUntracked=[...correction.intendedUntracked];
  else{
@@ -116,6 +132,12 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
     closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"error");return result;
    }
   }
+  const selected=new Set(reviewPaths),outsideReview=paths.filter(path=>!selected.has(path));
+  if(outsideReview.length){
+   if(correction)retireCorrection=true;
+   const blocked=Object.freeze({status:"blocked",reason:"Hay archivos modificados fuera del alcance seleccionado para la revisión.",outsideReview});
+   closeWorkspace();context.ui.notify(JSON.stringify(blocked,null,2),"error");return blocked;
+  }
   if(paths.length===0){const result={status:"not-required",reason:"El snapshot no contiene cambios revisables.",candidate:evidence.candidate};closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"info");return result;}
   const consent=await context.ui.confirm("Enviar el diff al modelo revisor?",[
    "Pi enviará el diff completo del candidato a:",
@@ -147,7 +169,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
    else{
     evictedCorrection=slot.evicted;
     const state:CorrectionState={request,repository:workspace.projection.repositoryRoot,sessionId:bound.sessionId,priorRevision:bound.revision,
-     priorReviewerId:bound.reviewerId,baseCommit:workspace.projection.baseCommit,baseTree:workspace.projection.baseTree,priorProjection:workspace.projection,requirements,intendedUntracked:workspace.projection.intendedUntracked,
+     priorReviewerId:bound.reviewerId,baseCommit:workspace.projection.baseCommit,baseTree:workspace.projection.baseTree,priorProjection:workspace.projection,requirements,reviewPaths,intendedUntracked:workspace.projection.intendedUntracked,
      priorFiles:Object.freeze(workspace.manifest.entries.map(entry=>Object.freeze({path:entry.path,mode:entry.mode,objectId:entry.objectId}))),
      allowedPaths:Object.freeze(findingPaths),used:false};
     workspaceCorrections.set(request.correctionId,state);
