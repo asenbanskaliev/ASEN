@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {mkdtempSync,rmSync,writeFileSync} from "node:fs";
+import {chmodSync,cpSync,mkdtempSync,readdirSync,renameSync,rmSync,unlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {registerOrdinaryReviewCommand} from "../src/review/ordinary-review-command.js";
@@ -49,6 +49,8 @@ test("bounded correction blocks newly changed files outside reviewer findings",a
  execFileSync("git",["-C",state.context.cwd,"add","other.txt"]);
  const second=await state.handler("workspace correction "+first.correctionId,state.context);
  assert.equal(second.status,"blocked");assert.deepEqual(second.allowedPaths,["target.txt"]);assert.deepEqual(second.changedPaths,["other.txt","target.txt"]);assert.equal(state.calls(),1);
+ execFileSync("git",["-C",state.context.cwd,"rm","--cached","-q","other.txt"]);unlinkSync(join(state.context.cwd,"other.txt"));
+ assert.equal((await state.handler("workspace correction "+first.correctionId,state.context)).status,"blocked");assert.equal(state.calls(),1);
 });
 
 test("unexpected untracked files block dispatch to the external reviewer",async t=>{
@@ -82,4 +84,206 @@ test("concurrent workspace mutation while the reviewer is running invalidates it
  await assert.rejects(()=>state.handler("workspace",state.context),/candidate is stale|source changed|projection changed|candidate drifted/iu);
  assert.equal(state.calls(),1);
  assert.equal(state.messages.length,0,"a stale reviewer response must not be presented as a result");
+});
+
+test("changes during the consent dialog stop dispatch to the reviewer",async t=>{
+ const state=setup(t,[{verdict:"pass",findings:[]}]);
+ state.context.ui.confirm=async()=>{writeFileSync(join(state.context.cwd,"target.txt"),"changed while waiting for consent\n");return true;};
+ await assert.rejects(()=>state.handler("workspace",state.context),/stale|drift|changed/u);
+ assert.equal(state.calls(),0);assert.equal(state.messages.length,0);
+});
+
+test("a replaced project during selection is rejected before consent or reviewer dispatch",async t=>{
+ const state=setup(t,[{verdict:"pass",findings:[]}]),root=state.context.cwd,original=root+"-original";
+ t.after(()=>rmSync(original,{recursive:true,force:true}));let confirmations=0;
+ state.context.ui.select=async(_title,options)=>{renameSync(root,original);cpSync(original,root,{recursive:true});return options[0];};
+ state.context.ui.confirm=async()=>{confirmations++;return true;};
+ await assert.rejects(()=>state.handler("workspace",state.context),/session or project changed/u);
+ assert.equal(confirmations,0);assert.equal(state.calls(),0);
+});
+
+test("a session change while the reviewer is running invalidates the correction",async t=>{
+ const state=setup(t,[{verdict:"fail",findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Fix the behavior."}]},{verdict:"pass",findings:[]}]);
+ let sessionId="session-1";state.context.sessionManager.getSessionId=()=>sessionId;
+ const first=await state.handler("workspace",state.context);
+ writeFileSync(join(state.context.cwd,"target.txt"),"corrected candidate\n");
+ const registry=state.context.modelRegistry!,stream=registry.streamSimple.bind(registry);
+ registry.streamSimple=(model,request,options)=>{const events=stream(model,request,options);return (async function*(){
+  for await(const event of events){yield event;sessionId="session-2";}
+ })();};
+ await assert.rejects(()=>state.handler("workspace correction "+first.correctionId,state.context),/session or project changed/u);
+ assert.equal(state.messages.length,1);sessionId="session-1";
+ assert.equal((await state.handler("workspace correction "+first.correctionId,state.context)).status,"blocked");assert.equal(state.calls(),2);
+});
+
+test("a declined correction with workspace drift invalidates its previous request",async t=>{
+ const state=setup(t,[{verdict:"fail",findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Fix the behavior."}]}]);
+ const first=await state.handler("workspace",state.context);
+ writeFileSync(join(state.context.cwd,"target.txt"),"corrected candidate\n");
+ state.context.ui.confirm=async()=>{writeFileSync(join(state.context.cwd,"target.txt"),"changed during consent\n");return false;};
+ await assert.rejects(()=>state.handler("workspace correction "+first.correctionId,state.context),/stale|drift|changed/u);
+ assert.equal((await state.handler("workspace correction "+first.correctionId,state.context)).status,"blocked");assert.equal(state.calls(),1);
+});
+
+test("cancellation after the final reviewer event cannot bind or notify a result",async t=>{
+ const state=setup(t,[{verdict:"pass",findings:[]}]),controller=new AbortController();
+ Object.assign(state.context,{signal:controller.signal});
+ const registry=state.context.modelRegistry!,stream=registry.streamSimple.bind(registry);
+ registry.streamSimple=(model,request,options)=>{const events=stream(model,request,options);return (async function*(){
+  for await(const event of events)yield event;
+  controller.abort();
+ })();};
+ await assert.rejects(()=>state.handler("workspace",state.context),/cancelled/u);
+ assert.equal(state.calls(),1);assert.equal(state.messages.length,0);
+});
+
+test("cancelled correction review can be retried, but concurrent attempts remain blocked",async t=>{
+ const state=setup(t,[{verdict:"fail",findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Fix the behavior."}]},{verdict:"pass",findings:[]}]);
+ const first=await state.handler("workspace",state.context);
+ writeFileSync(join(state.context.cwd,"target.txt"),"corrected candidate\n");
+ const select=state.context.ui.select;
+ let release!:()=>void,entered!:()=>void;
+ const selected=new Promise<void>(resolve=>{entered=resolve;});
+ state.context.ui.select=async()=>{entered();return await new Promise<undefined>(resolve=>{release=()=>resolve(undefined);});};
+ const pending=state.handler("workspace correction "+first.correctionId,state.context);
+ await selected;
+ const parallel=await state.handler("workspace correction "+first.correctionId,state.context);
+ assert.equal(parallel.status,"blocked");assert.equal(state.calls(),1);
+ release();assert.equal((await pending).status,"cancelled");
+ state.context.ui.select=select;
+ const retry=await state.handler("workspace correction "+first.correctionId,state.context);
+ assert.equal(retry.status,"corrected-passed-awaiting-tests");assert.equal(retry.reviewerId,"pi-model:review-provider/reviewer-two");
+ assert.equal(retry.acceptance,"not-accepted");assert.equal(state.calls(),2);
+ const reused=await state.handler("workspace correction "+first.correctionId,state.context);
+ assert.equal(reused.status,"blocked");
+});
+
+test("an interrupted correction response requires a fresh review before it can pass",async t=>{
+ const state=setup(t,[{verdict:"fail",findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Fix the behavior."}]},{verdict:"pass",findings:[]},{verdict:"pass",findings:[]}]);
+ const first=await state.handler("workspace",state.context);
+ writeFileSync(join(state.context.cwd,"target.txt"),"corrected candidate\n");
+ const controller=new AbortController(),registry=state.context.modelRegistry!,stream=registry.streamSimple.bind(registry);
+ Object.assign(state.context,{signal:controller.signal});
+ registry.streamSimple=(model,request,options)=>{const events=stream(model,request,options);return (async function*(){for await(const event of events)yield event;controller.abort();})();};
+ await assert.rejects(()=>state.handler("workspace correction "+first.correctionId,state.context),/cancelled/u);
+ assert.equal(state.calls(),2);assert.equal(state.messages.length,1);
+ registry.streamSimple=stream;delete (state.context as typeof state.context&{signal?:AbortSignal}).signal;
+ const retry=await state.handler("workspace correction "+first.correctionId,state.context);
+ assert.equal(retry.status,"corrected-passed-awaiting-tests");assert.equal(retry.acceptance,"not-accepted");assert.equal(state.calls(),3);
+});
+
+test("a duplicate initial review cannot replace an in-flight correction",async t=>{
+ const failure={verdict:"fail" as const,findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Fix the behavior."}]};
+ const state=setup(t,[failure,failure,{verdict:"pass",findings:[]}]);
+ const first=await state.handler("workspace",state.context),select=state.context.ui.select;
+ let release!:()=>void,entered!:()=>void;
+ const selected=new Promise<void>(resolve=>{entered=resolve;});
+ state.context.ui.select=async()=>{entered();return await new Promise<undefined>(resolve=>{release=()=>resolve(undefined);});};
+ const pending=state.handler("workspace correction "+first.correctionId,state.context);
+ await selected;state.context.ui.select=select;
+ const duplicate=await state.handler("workspace",state.context);
+ assert.equal(duplicate.status,"correction-required");assert.notEqual(duplicate.correctionId,first.correctionId);
+ const parallel=await state.handler("workspace correction "+first.correctionId,state.context);
+ assert.equal(parallel.status,"blocked");
+ release();assert.equal((await pending).status,"cancelled");
+ writeFileSync(join(state.context.cwd,"target.txt"),"corrected candidate\n");
+ const retry=await state.handler("workspace correction "+first.correctionId,state.context);
+ assert.equal(retry.status,"corrected-passed-awaiting-tests");assert.equal(state.calls(),3);
+});
+
+test("a correction cannot reuse a review after the Git base changes",async t=>{
+ const state=setup(t,[{verdict:"fail",findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Fix the behavior."}]}]);
+ const first=await state.handler("workspace",state.context);
+ const oldBase=execFileSync("git",["-C",state.context.cwd,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+ execFileSync("git",["-C",state.context.cwd,"add","target.txt"]);
+ execFileSync("git",["-C",state.context.cwd,"commit","-qm","advance base"]);
+ writeFileSync(join(state.context.cwd,"target.txt"),"corrected candidate\n");
+ const result=await state.handler("workspace correction "+first.correctionId,state.context);
+ assert.equal(result.status,"blocked");assert.match(result.reason,/base del candidato cambi/iu);assert.equal(state.calls(),1);
+ execFileSync("git",["-C",state.context.cwd,"update-ref","HEAD",oldBase]);
+ assert.equal((await state.handler("workspace correction "+first.correctionId,state.context)).status,"blocked");assert.equal(state.calls(),1);
+});
+
+test("a correction is invalidated when its repository is replaced by an identical clone",async t=>{
+ const state=setup(t,[{verdict:"fail",findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Fix the behavior."}]}]);
+ const first=await state.handler("workspace",state.context),root=state.context.cwd,original=root+"-original";
+ t.after(()=>rmSync(original,{recursive:true,force:true}));
+ renameSync(root,original);cpSync(original,root,{recursive:true});
+ writeFileSync(join(root,"target.txt"),"corrected candidate\n");
+ await assert.rejects(()=>state.handler("workspace correction "+first.correctionId,state.context),/repository changed/u);
+ rmSync(root,{recursive:true,force:true});renameSync(original,root);
+ assert.equal((await state.handler("workspace correction "+first.correctionId,state.context)).status,"blocked");assert.equal(state.calls(),1);
+});
+
+test("a fresh identical review does not revive an invalidated correction ID",async t=>{
+ const failure={verdict:"fail" as const,findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Fix the behavior."}]};
+ const state=setup(t,[failure,failure]);
+ const first=await state.handler("workspace",state.context);
+ writeFileSync(join(state.context.cwd,"outside.txt"),"unexpected\n");
+ assert.equal((await state.handler("workspace correction "+first.correctionId,state.context)).status,"blocked");
+ unlinkSync(join(state.context.cwd,"outside.txt"));
+ const fresh=await state.handler("workspace",state.context);
+ assert.equal(fresh.status,"correction-required");assert.notEqual(fresh.correctionId,first.correctionId);
+ assert.equal((await state.handler("workspace correction "+first.correctionId,state.context)).status,"blocked");
+});
+
+test("a correction started by a failed notification cannot continue after its request is retired",async t=>{
+ const failure={verdict:"fail" as const,findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Fix the behavior."}]};
+ const state=setup(t,[failure]),select=state.context.ui.select;
+ let release!:()=>void,entered!:()=>void,nested:Promise<unknown>|undefined;
+ const selected=new Promise<void>(resolve=>{entered=resolve;});
+ state.context.ui.notify=(message:string)=>{
+  const result=JSON.parse(message) as {correctionId:string};
+  state.context.ui.select=async()=>{entered();return await new Promise<string>(resolve=>{release=()=>resolve("review-provider/reviewer-two");});};
+  nested=state.handler("workspace correction "+result.correctionId,state.context);
+  throw new Error("notification failed");
+ };
+ await assert.rejects(()=>state.handler("workspace",state.context),/notification failed/u);
+ await selected;assert.ok(nested);release();
+ await assert.rejects(()=>nested!,/no longer live/u);
+ state.context.ui.select=select;assert.equal(state.calls(),1);
+});
+
+test("a failed view cleanup cannot announce or reuse a correction result",{skip:process.platform==="win32"?"POSIX fixture mutates directory mode bits":false},async t=>{
+ const state=setup(t,[{verdict:"fail",findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Fix the behavior."}]},{verdict:"pass",findings:[]}]);
+ const first=await state.handler("workspace",state.context);
+ writeFileSync(join(state.context.cwd,"target.txt"),"corrected candidate\n");
+ const parent=mkdtempSync(join(tmpdir(),"asen-review-cleanup-test-")),prior=process.env.TMPDIR;
+ const registry=state.context.modelRegistry!,stream=registry.streamSimple.bind(registry);
+ try{
+  process.env.TMPDIR=parent;
+  registry.streamSimple=(model,request,options)=>{const events=stream(model,request,options);return (async function*(){
+   for await(const event of events)yield event;
+   const views=readdirSync(parent).filter(name=>name.startsWith("asen-review-view-"));assert.equal(views.length,1);
+   const root=join(parent,views[0]!);chmodSync(root,0o700);writeFileSync(join(root,"foreign.txt"),"leave untouched\n");
+  })();};
+  await assert.rejects(()=>state.handler("workspace correction "+first.correctionId,state.context),/contains unowned data/u);
+  assert.equal(state.messages.length,1);assert.equal(state.calls(),2);
+  assert.equal((await state.handler("workspace correction "+first.correctionId,state.context)).status,"blocked");
+ }finally{
+  registry.streamSimple=stream;if(prior===undefined)delete process.env.TMPDIR;else process.env.TMPDIR=prior;
+  rmSync(parent,{recursive:true,force:true});
+ }
+});
+
+test("a failed initial review cleanup emits no finding or correction",{skip:process.platform==="win32"?"POSIX fixture mutates directory mode bits":false},async t=>{
+ const failure={verdict:"fail" as const,findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Fix the behavior."}]};
+ const state=setup(t,[failure,failure]),parent=mkdtempSync(join(tmpdir(),"asen-review-cleanup-test-")),prior=process.env.TMPDIR;
+ const registry=state.context.modelRegistry!,stream=registry.streamSimple.bind(registry);
+ try{
+  process.env.TMPDIR=parent;
+  registry.streamSimple=(model,request,options)=>{const events=stream(model,request,options);return (async function*(){
+   for await(const event of events)yield event;
+   const views=readdirSync(parent).filter(name=>name.startsWith("asen-review-view-"));assert.equal(views.length,1);
+   const root=join(parent,views[0]!);chmodSync(root,0o700);writeFileSync(join(root,"foreign.txt"),"leave untouched\n");
+  })();};
+  await assert.rejects(()=>state.handler("workspace",state.context),/contains unowned data/u);
+  assert.equal(state.messages.length,0);
+  registry.streamSimple=stream;
+  const fresh=await state.handler("workspace",state.context);
+  assert.equal(fresh.status,"correction-required");assert.equal(state.calls(),2);
+ }finally{
+  registry.streamSimple=stream;if(prior===undefined)delete process.env.TMPDIR;else process.env.TMPDIR=prior;
+  rmSync(parent,{recursive:true,force:true});
+ }
 });

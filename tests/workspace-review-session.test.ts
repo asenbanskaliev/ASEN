@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from "node:fs";
+import {cpSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,renameSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview} from "../src/review/workspace-review-session.js";
@@ -29,7 +29,7 @@ function result(review:ReturnType<typeof openWorkspaceReview>,verdict:"pass"|"fa
   reviewerId:"reviewer-model",verdict,summary:"local provenance probe"};
 }
 
-test("workspace review composes private-index snapshot, manifest, view, and RDD binding without changing HEAD or real index",t=>{
+test("workspace review composes an exact tree, manifest, view, and RDD binding without changing HEAD or real index",t=>{
  const {root,git}=repository(t);writeFileSync(join(root,"target.txt"),"candidate\n");writeFileSync(join(root,"new.txt"),"untracked candidate\n");
  const before={head:git("rev-parse","HEAD"),index:git("write-tree"),status:git("status","--porcelain=v1","--untracked-files=all")};
  const review=open(t,root,git);
@@ -62,6 +62,42 @@ test("workspace drift after capture invalidates the session and rejects its prio
   assert.throws(()=>bindNativeRddResult(handle,result(review)),/stale|drift|changed/u);
   assert.throws(()=>assertReviewSessionOpen(review.session),/stale|drift|changed|closed/u);
  }finally{closeWorkspaceReview(review);}
+});
+
+test("replacing the repository with identical bytes invalidates the review",t=>{
+ const {root,git}=repository(t);writeFileSync(join(root,"target.txt"),"candidate\n");writeFileSync(join(root,"new.txt"),"untracked candidate\n");
+ const review=open(t,root,git),original=root+"-original";
+ t.after(()=>rmSync(original,{recursive:true,force:true}));
+ try{
+  renameSync(root,original);cpSync(original,root,{recursive:true});
+  assert.throws(()=>assertReviewSessionOpen(review.session),/stale|identity|changed/u);
+ }finally{closeWorkspaceReview(review);}
+});
+
+test("Git replacement objects cannot substitute the candidate diff",t=>{
+ const {root,git}=repository(t);writeFileSync(join(root,"target.txt"),"real candidate\n");writeFileSync(join(root,"new.txt"),"untracked candidate\n");
+ const review=open(t,root,git),directory=mkdtempSync(join(tmpdir(),"asen-replace-index-")),index=join(directory,"index");
+ t.after(()=>rmSync(directory,{recursive:true,force:true}));
+ const env={...process.env,GIT_INDEX_FILE:index,GIT_NO_REPLACE_OBJECTS:"1"};
+ const run=(args:string[],input?:string)=>execFileSync("git",["-C",root,...args],{encoding:"utf8",env,...(input===undefined?{}:{input})}).trim();
+ try{
+  const fake=run(["hash-object","-w","--stdin"],"fake review\n");
+  run(["read-tree",review.projection.candidateTree]);run(["update-index","--cacheinfo",`100644,${fake},target.txt`]);
+  const fakeTree=run(["write-tree"]);git("replace",review.projection.candidateTree,fakeTree);
+  const evidence=readWorkspaceReviewEvidence(review);
+  assert.match(evidence.diff,/real candidate/u);assert.doesNotMatch(evidence.diff,/fake review/u);
+  assert.equal(evidence.candidateFiles.find(file=>file.path==="target.txt")?.content,"real candidate\n");
+ }finally{closeWorkspaceReview(review);}
+});
+
+test("workspace review supports a linked Git worktree with a stable relationship",t=>{
+ const {root,git}=repository(t),parent=mkdtempSync(join(tmpdir(),"asen-linked-review-")),linked=join(parent,"checkout");
+ t.after(()=>rmSync(parent,{recursive:true,force:true}));
+ git("worktree","add","--detach",linked,"HEAD");
+ writeFileSync(join(linked,"target.txt"),"linked candidate\n");writeFileSync(join(linked,"new.txt"),"untracked candidate\n");
+ const review=open(t,realpathSync(linked),git);
+ try{assert.match(readWorkspaceReviewEvidence(review).diff,/linked candidate/u);assertReviewSessionOpen(review.session);}
+ finally{try{closeWorkspaceReview(review);}finally{git("worktree","remove","--force",linked);}}
 });
 
 test("workspace review input rejects proxies and malformed scope before capturing candidate objects",t=>{

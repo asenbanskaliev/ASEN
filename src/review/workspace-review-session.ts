@@ -1,4 +1,4 @@
-import {createHash} from "node:crypto";
+import {createHash,randomUUID} from "node:crypto";
 import {inspectCandidateGitTree,type CandidateGitTreeManifest} from "./review-tree-inspection.js";
 import {openReviewSession,bindReviewSessionWorkspaceSource,type ReviewSession,assertReviewSessionOpen,closeReviewSession} from "./review-session.js";
 import {captureWorkspaceReviewProjection,diffWorkspaceReviewProjection,isWorkspaceReviewProjectionGenuine,type WorkspaceReviewProjection,type WorkspaceReviewProjectionRequest} from "./workspace-review-projection.js";
@@ -64,7 +64,7 @@ function normalizeInput(value:unknown):WorkspaceReviewSessionInput{
  return Object.freeze({repositoryRoot:raw.repositoryRoot,intendedUntracked:Object.freeze(stringArray(raw.intendedUntracked,"workspace untracked scope")),sessionId:raw.sessionId,reviewerId:raw.reviewerId,viewParent:raw.viewParent,risk:Object.freeze({riskId:risk.riskId,reason:risk.reason,severity:risk.severity,lenses:Object.freeze(lenses as ReviewLens[])})});
 }
 
-/** Captures workspace bytes through the private index, then binds one isolated view to those exact sources. */
+/** Captures workspace bytes as a Git tree, then binds one isolated view to those exact sources. */
 export function openWorkspaceReview(input:WorkspaceReviewSessionInput):WorkspaceReviewSession{
  input=normalizeInput(input);
  if(!isAbsolute(input.repositoryRoot)||!isAbsolute(input.viewParent))throw new Error("Workspace review paths must be absolute");
@@ -77,12 +77,13 @@ export function openWorkspaceReview(input:WorkspaceReviewSessionInput):Workspace
  const projection=captureWorkspaceReviewProjection(projectionRequest);
  const manifest=inspectCandidateGitTree({repositoryRoot:projection.repositoryRoot,treeIdentity:projection.candidateTree});
  const session=openReviewSession(projection.repositoryRoot,manifest,parent,input.risk);
- const requestId=createHash("sha256").update("asen.workspace-review.v1\0").update(JSON.stringify({
-  sessionId:input.sessionId,reviewerId:input.reviewerId,repositoryRoot:projection.repositoryRoot,risk:session.risk,
-  baseCommit:projection.baseCommit,baseTree:projection.baseTree,candidateTree:projection.candidateTree,
-  intendedUntracked:projection.intendedUntracked,indexIdentity:projection.indexIdentity,sourceIdentity:projection.sourceIdentity,
- })).digest("hex");
  try{
+  const requestId=createHash("sha256").update("asen.workspace-review.v1\0").update(JSON.stringify({
+   attemptId:randomUUID(),
+   sessionId:input.sessionId,reviewerId:input.reviewerId,repositoryRoot:projection.repositoryRoot,risk:session.risk,
+   baseCommit:projection.baseCommit,baseTree:projection.baseTree,candidateTree:projection.candidateTree,
+   intendedUntracked:projection.intendedUntracked,indexIdentity:projection.indexIdentity,sourceIdentity:projection.sourceIdentity,
+  })).digest("hex");
   bindReviewSessionWorkspaceSource(session,projection,projectionRequest,{
    requestId,sessionId:input.sessionId,reviewerId:input.reviewerId,revision:projection.candidateTree,
    treeIdentity:projection.candidateTree,parentIdentity:projection.baseCommit??projection.baseTree,

@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
-import {chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync} from "node:fs";
+import {chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {join,resolve} from "node:path";
+import {pathToFileURL} from "node:url";
 import test from "node:test";
 import {
   captureWorkspaceReviewProjection,
+  diffWorkspaceReviewProjection,
   revalidateWorkspaceReviewProjection,
   type WorkspaceReviewProjection,
 } from "../src/review/workspace-review-projection.js";
@@ -69,6 +71,81 @@ test("captures tracked final bytes, staged additions, and only explicitly intend
   assert.equal(revalidateWorkspaceReviewProjection(projection, {repositoryRoot: root, intendedUntracked: ["selected.txt"]}).candidateTree, projection.candidateTree);
   writeFileSync(join(root, "selected.txt"), "selected drift\n");
   assert.throws(() => revalidateWorkspaceReviewProjection(projection, {repositoryRoot: root, intendedUntracked: ["selected.txt"]}), /drift/u);
+});
+
+test("review diff does not execute configured text conversion", t => {
+  const {root,git}=fixture(t),marker=join(root,"textconv-marker"),probe=join(root,"textconv.cjs");
+  const quote=(value:string)=>`'${value.replaceAll("\\","/").replaceAll("'","'\\''")}'`;
+  writeFileSync(probe,`require('node:fs').appendFileSync(${JSON.stringify(marker)},'called\\n');process.stdout.write('converted\\n');\n`);
+  writeFileSync(join(root,".gitattributes"),"tracked.txt diff=fixture\n");
+  git("config","diff.fixture.textconv",`${quote(process.execPath)} ${quote(probe)}`);
+  writeFileSync(join(root,"tracked.txt"),"real candidate\n");
+  git("diff","--textconv","--","tracked.txt");
+  const calls=readFileSync(marker,"utf8");assert.match(calls,/called/u);
+  const request={repositoryRoot:root,intendedUntracked:[]},projection=captureWorkspaceReviewProjection(request);
+  const diff=diffWorkspaceReviewProjection(projection,request);
+  assert.equal(readFileSync(marker,"utf8"),calls);assert.match(diff,/real candidate/u);assert.doesNotMatch(diff,/converted/u);
+});
+
+test("index flag changes invalidate the captured candidate",t=>{
+  const {root,git}=fixture(t),request={repositoryRoot:root,intendedUntracked:[]};
+  for(const [set,clear] of [["--assume-unchanged","--no-assume-unchanged"],["--skip-worktree","--no-skip-worktree"]]){
+    const projection=captureWorkspaceReviewProjection(request);
+    git("update-index",set!,"tracked.txt");
+    assert.throws(()=>revalidateWorkspaceReviewProjection(projection,request),/drift/u,`flag ${set}`);
+    git("update-index",clear!,"tracked.txt");
+  }
+});
+
+test("an invalid existing HEAD is rejected instead of treated as an unborn repository",t=>{
+  const {root,git}=fixture(t),ref=git("symbolic-ref","HEAD");
+  writeFileSync(join(root,".git",...ref.split("/")),"f".repeat(40)+"\n");
+  assert.throws(()=>captureWorkspaceReviewProjection({repositoryRoot:root,intendedUntracked:[]}),/HEAD cannot be resolved/u);
+});
+
+test("projected tree matches Git's index tree for the same real changes",t=>{
+  const {root,git}=fixture(t);
+  writeFileSync(join(root,"tracked.txt"),"modified\n");unlinkSync(join(root,"mode.txt"));
+  mkdirSync(join(root,"nested"));writeFileSync(join(root,"nested","staged file.txt"),"staged\n");git("add","nested/staged file.txt");
+  writeFileSync(join(root,"nested","selected.txt"),"selected\n");
+  const before=indexBytes(git),projection=captureWorkspaceReviewProjection({repositoryRoot:root,intendedUntracked:["nested/selected.txt"]});
+  assert.deepEqual(indexBytes(git),before);
+  git("add","-A");assert.equal(projection.candidateTree,git("write-tree"));
+});
+
+test("a substituted hooks scratch directory is retained with foreign data",{skip:process.platform==="win32"?"POSIX fixture replaces a live directory":false},t=>{
+  const {root}=fixture(t),temp=join(root,"scratch");mkdirSync(temp);
+  const source=pathToFileURL(resolve("src/review/workspace-review-projection.ts")).href;
+  const script=`import child from 'node:child_process';import fs from 'node:fs';import path from 'node:path';import {syncBuiltinESMExports} from 'node:module';
+   const original=child.execFileSync;let swapped='';
+   child.execFileSync=function(command,args,...rest){const result=original.call(this,command,args,...rest);
+    const option=args.find(value=>typeof value==='string'&&value.startsWith('core.hooksPath='));
+    if(option&&!swapped){swapped=option.slice('core.hooksPath='.length);fs.renameSync(swapped,swapped+'-original');fs.mkdirSync(swapped);fs.writeFileSync(path.join(swapped,'foreign.txt'),'preserve');}
+    return result;};syncBuiltinESMExports();
+   const {captureWorkspaceReviewProjection}=await import(${JSON.stringify(source)});let failed=false;
+   try{captureWorkspaceReviewProjection({repositoryRoot:${JSON.stringify(root)},intendedUntracked:[]});}catch(error){failed=String(error).includes('ownership is uncertain');}
+   process.stdout.write(JSON.stringify({failed,foreign:fs.readFileSync(path.join(swapped,'foreign.txt'),'utf8'),original:fs.existsSync(swapped+'-original')}));`;
+  const result=JSON.parse(execFileSync(process.execPath,["--import","tsx","--input-type=module","--eval",script],{encoding:"utf8",env:{...process.env,TMPDIR:temp}}));
+  assert.deepEqual(result,{failed:true,foreign:"preserve",original:true});
+});
+
+test("rejects a file substituted between stat and open",{skip:process.platform==="win32"?"POSIX fixture swaps a directory symlink":false},t=>{
+  const {root,git}=fixture(t),outside=mkdtempSync(join(tmpdir(),"asen-review-outside-"));
+  t.after(()=>rmSync(outside,{recursive:true,force:true}));
+  mkdirSync(join(root,"nested"));writeFileSync(join(root,"nested","file.txt"),"candidate\n");git("add","nested/file.txt");
+  writeFileSync(join(outside,"file.txt"),"outside data\n");
+  const source=pathToFileURL(resolve("src/review/workspace-review-projection.ts")).href;
+  const script=`import fs from 'node:fs';import path from 'node:path';import {syncBuiltinESMExports} from 'node:module';
+   const original=fs.openSync;let swapped=false;const directory=${JSON.stringify(join(root,"nested"))};
+   fs.openSync=function(target,...args){if(!swapped&&typeof target==='string'&&target===path.join(directory,'file.txt')){
+    swapped=true;fs.renameSync(directory,directory+'-original');fs.symlinkSync(${JSON.stringify(outside)},directory);
+    try{return original.call(this,target,...args);}finally{fs.unlinkSync(directory);fs.renameSync(directory+'-original',directory);}
+   }return original.call(this,target,...args);};syncBuiltinESMExports();
+   const {captureWorkspaceReviewProjection}=await import(${JSON.stringify(source)});let rejected=false;
+   try{captureWorkspaceReviewProjection({repositoryRoot:${JSON.stringify(root)},intendedUntracked:[]});}catch(error){rejected=/identity changed|changed while reading/.test(String(error));}
+   process.stdout.write(JSON.stringify({swapped,rejected,unchanged:fs.readFileSync(path.join(directory,'file.txt'),'utf8')==='candidate\\n'}));`;
+  const result=JSON.parse(execFileSync(process.execPath,["--import","tsx","--input-type=module","--eval",script],{encoding:"utf8"}));
+  assert.deepEqual(result,{swapped:true,rejected:true,unchanged:true});
 });
 
 test("does not move HEAD, mutate the contributor index, or chmod project files", t => {

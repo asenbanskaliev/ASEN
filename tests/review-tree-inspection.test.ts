@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {execFileSync,spawnSync} from "node:child_process";
-import {createHash} from "node:crypto";
+import {createHash,randomBytes} from "node:crypto";
 import {
  chmodSync,lstatSync,mkdirSync,readFileSync,readdirSync,realpathSync,rmSync,writeFileSync,
 } from "node:fs";
@@ -10,6 +10,7 @@ import test from "node:test";
 import {inspectCandidateGitTree,type CandidateGitTreeManifest} from "../src/review/review-tree-inspection.js";
 
 let sequence=0;
+const fixtureRun=randomBytes(6).toString("hex");
 const cacheRoot=resolve(".cache");
 const inspectionTemp=resolve(".cache/t05-a2inspection-correction/tmp");
 mkdirSync(inspectionTemp,{recursive:true});
@@ -17,7 +18,7 @@ for(const key of ["TEMP","TMP","TMPDIR"])process.env[key]=inspectionTemp;
 
 function fixture(t:{after(callback:()=>void):void},name="repo"):{root:string;git:(...args:string[])=>string}{
  sequence+=1;
- const root=join(cacheRoot,`a2c-${process.pid}-${sequence}`,name);
+ const root=join(cacheRoot,`a2c-${fixtureRun}-${sequence}`,name);
  mkdirSync(root,{recursive:true});
  const owner=resolve(root,"..");
  t.after(()=>{

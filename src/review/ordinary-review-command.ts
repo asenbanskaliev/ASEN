@@ -6,6 +6,9 @@ import {availableIndependentPiReviewers,runIndependentPiReview,type PiReviewRegi
 import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview} from "./workspace-review-session.js";
 import {awaitNativeRddResult,bindNativeRddResult} from "./native-rdd-result.js";
 import {openBoundedCorrection,validateBoundedCorrection,type CorrectionRequest,type CorrectionValidation} from "./bounded-correction.js";
+import {assertReviewSessionOpen} from "./review-session.js";
+import {assertWorkspaceProjectionRepository,revalidateWorkspaceReviewProjection,type WorkspaceReviewProjection} from "./workspace-review-projection.js";
+import {captureReviewRepositoryBinding,assertReviewRepositoryBinding} from "./review-tree-inspection.js";
 
 interface ReviewCommandContext{
  cwd:string;hasUI?:boolean;signal?:AbortSignal;modelRegistry?:PiReviewRegistry;model?:PiReviewerModel;
@@ -20,10 +23,17 @@ export interface OrdinaryReviewCommandController{
 }
 interface CorrectionState{
  readonly request:CorrectionRequest;readonly repository:string;readonly sessionId:string;readonly priorRevision:string;readonly priorReviewerId:string;
+ readonly baseCommit:string|null;readonly baseTree:string;
+ readonly priorProjection:WorkspaceReviewProjection;
  readonly requirements:string;readonly intendedUntracked:readonly string[];readonly priorFiles:readonly Readonly<{path:string;mode:string;objectId:string}>[];
  readonly allowedPaths:readonly string[];used:boolean;
 }
 const workspaceCorrections=new Map<string,CorrectionState>();
+function reserveCorrectionSlot():{evicted?:readonly [string,CorrectionState]}|undefined{
+ if(workspaceCorrections.size<100)return {};
+ for(const [id,state] of workspaceCorrections){if(!state.used){workspaceCorrections.delete(id);return {evicted:[id,state]};}}
+ return undefined;
+}
 function changedCandidatePaths(before:readonly Readonly<{path:string;mode:string;objectId:string}>[],after:readonly Readonly<{path:string;mode:string;objectId:string}>[]):string[]{
  const previous=new Map(before.map(file=>[file.path,file.mode+":"+file.objectId])),current=new Map(after.map(file=>[file.path,file.mode+":"+file.objectId]));
  return [...new Set([...previous.keys(),...current.keys()])].filter(path=>previous.get(path)!==current.get(path)).sort();
@@ -34,42 +44,79 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
   const unavailable="Revisión independiente no disponible: se requiere una sesión Pi interactiva, modelo autor conocido y un modelo revisor autenticado distinto.";
   context.ui.notify(unavailable,"error");return {status:"unavailable",reason:unavailable};
  }
+ const projectRoot=realpathSync(context.cwd);
+ const projectBinding=captureReviewRepositoryBinding(projectRoot);
  const correction=correctionId?workspaceCorrections.get(correctionId):undefined;
- if(correctionId&&(!correction||correction.used||correction.sessionId!==sessionId||correction.repository!==realpathSync(context.cwd))){
+ if(correctionId&&(!correction||correction.used||correction.sessionId!==sessionId||correction.repository!==projectRoot)){
   const unavailable="La corrección ya se consumió o no pertenece a esta sesión y proyecto.";context.ui.notify(unavailable,"error");return {status:"blocked",reason:unavailable};
  }
  if(correction)correction.used=true;
+ let retireCorrection=false,workspaceOpened=false;
+ const assertCorrectionReserved=()=>{
+  if(!correction)return;
+  if(workspaceCorrections.get(correctionId!)!==correction||!correction.used)throw new Error("Correction review is no longer live");
+  try{assertWorkspaceProjectionRepository(correction.priorProjection);}catch{retireCorrection=true;throw new Error("Correction repository changed; start a new review");}
+ };
+ const assertContextCurrent=()=>{
+  try{if(context.sessionManager.getSessionId()!==sessionId||realpathSync(context.cwd)!==projectRoot)throw new Error();assertReviewRepositoryBinding(projectBinding);}
+  catch{if(correction)retireCorrection=true;throw new Error("Review session or project changed; start a new review");}
+ };
+ try{
+ assertCorrectionReserved();
  const reviewers=availableIndependentPiReviewers(registry,author).filter(model=>!correction||"pi-model:"+model.provider+"/"+model.id!==correction.priorReviewerId),labels=reviewers.map(model=>model.provider+"/"+model.id);
  if(!reviewers.length){const unavailable="Revisión independiente no disponible: no hay otro modelo Pi autenticado en el registro.";context.ui.notify(unavailable,"error");return {status:"unavailable",reason:unavailable};}
  const selected=await context.ui.select("Selecciona un modelo revisor independiente",labels,context.signal?{signal:context.signal}:undefined);
+ assertCorrectionReserved();assertContextCurrent();
  if(!selected)return {status:"cancelled"};
  const model=reviewers[labels.indexOf(selected)];
  if(!model)throw new Error("El modelo revisor seleccionado ya no está disponible");
  const requirements=correction?.requirements??await context.ui.editor("Requisitos que debe comprobar el revisor","Revisar el cambio completo, alcance autorizado, errores funcionales, riesgos de seguridad, regresiones y pruebas ausentes.");
+ assertContextCurrent();
  if(!requirements?.trim())return {status:"cancelled"};
  let intendedUntracked:string[];
  if(correction)intendedUntracked=[...correction.intendedUntracked];
  else{
   const untrackedText=await context.ui.editor("Rutas untracked que deben incluirse (JSON array; [] si ninguna)","[]");
+  assertContextCurrent();
   if(!untrackedText)return {status:"cancelled"};
   try{const parsed:unknown=JSON.parse(untrackedText);if(!Array.isArray(parsed))throw new Error();intendedUntracked=parsed;}catch{throw new Error("El alcance untracked debe ser un array JSON válido");}
  }
  const reviewerId="pi-model:"+model.provider+"/"+model.id;
- const workspace=openWorkspaceReview({repositoryRoot:realpathSync(context.cwd),intendedUntracked,sessionId,reviewerId,viewParent:tmpdir(),
+ const workspace=openWorkspaceReview({repositoryRoot:projectRoot,intendedUntracked,sessionId,reviewerId,viewParent:tmpdir(),
   risk:{riskId:"pi-independent-review",reason:"Review the exact current workspace snapshot",severity:"high",lenses:["risk","resilience","reliability"]}});
+ workspaceOpened=true;
+ let closeAttempted=false,issuedCorrectionId:string|undefined,issuedCorrection:CorrectionState|undefined,evictedCorrection:readonly [string,CorrectionState]|undefined;
+ const undoIssuedCorrection=()=>{
+  if(issuedCorrectionId&&workspaceCorrections.get(issuedCorrectionId)===issuedCorrection)workspaceCorrections.delete(issuedCorrectionId);
+  if(evictedCorrection&&!workspaceCorrections.has(evictedCorrection[0])&&workspaceCorrections.size<100)workspaceCorrections.set(...evictedCorrection);
+  evictedCorrection=undefined;
+ };
+ const closeWorkspace=()=>{closeAttempted=true;try{closeWorkspaceReview(workspace);}catch(error){
+  if(correction)retireCorrection=true;
+  undoIssuedCorrection();
+  throw error;
+ }};
  try{
   const evidence=readWorkspaceReviewEvidence(workspace),paths=evidence.modifiedFiles.map(file=>file.path);
   if(evidence.repositoryState.unexpectedUntracked.length){
+   if(correction)retireCorrection=true;
    const blocked=Object.freeze({status:"blocked",reason:"Hay archivos untracked fuera del alcance; inclúyelos explícitamente o retíralos antes de revisar.",unexpectedFiles:evidence.repositoryState.unexpectedUntracked});
-   context.ui.notify(JSON.stringify(blocked,null,2),"error");return blocked;
+   closeWorkspace();context.ui.notify(JSON.stringify(blocked,null,2),"error");return blocked;
   }
-  if(paths.length===0){const result={status:"not-required",reason:"El snapshot no contiene cambios revisables.",candidate:evidence.candidate};context.ui.notify(JSON.stringify(result,null,2),"info");return result;}
   if(correction){
    const currentFiles=workspace.manifest.entries.map(entry=>({path:entry.path,mode:entry.mode,objectId:entry.objectId})),changed=changedCandidatePaths(correction.priorFiles,currentFiles);
+   if(workspace.projection.baseCommit!==correction.baseCommit||workspace.projection.baseTree!==correction.baseTree){
+    retireCorrection=true;
+    const result={status:"blocked",reason:"La base del candidato cambió; se requiere una revisión nueva."};
+    closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"error");return result;
+   }
    if(evidence.candidate.treeIdentity===correction.priorRevision||changed.length===0||changed.some(path=>!correction.allowedPaths.includes(path))){
-    return {status:"blocked",reason:"La corrección debe cambiar el candidato exacto y limitarse a los archivos señalados.",allowedPaths:correction.allowedPaths,changedPaths:changed};
+    if(changed.some(path=>!correction.allowedPaths.includes(path))||paths.length===0)retireCorrection=true;
+    const result={status:"blocked",reason:"La corrección debe cambiar el candidato exacto y limitarse a los archivos señalados.",allowedPaths:correction.allowedPaths,changedPaths:changed};
+    closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"error");return result;
    }
   }
+  if(paths.length===0){const result={status:"not-required",reason:"El snapshot no contiene cambios revisables.",candidate:evidence.candidate};closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"info");return result;}
   const consent=await context.ui.confirm("Enviar el diff al modelo revisor?",[
    "Pi enviará el diff completo del candidato a:",
    reviewerId,
@@ -78,8 +125,12 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
    "Archivos: "+(paths.join(", ")||"(sin cambios)"),
    "El índice real no se modifica. No se ejecutan pruebas en la vista.",
   ].join("\n"));
+  assertContextCurrent();assertReviewSessionOpen(workspace.session);
   if(!consent)return {status:"cancelled",requestId:workspace.requestId,candidate:evidence.candidate};
+  assertCorrectionReserved();
   const verdict=await runIndependentPiReview({registry,model,author,evidence,requirements,...(context.signal?{signal:context.signal}:{})});
+  assertCorrectionReserved();assertContextCurrent();
+  if(context.signal?.aborted)throw new Error("Independent review was cancelled");
   const rddProbe={schemaVersion:1,requestId:evidence.requestId,sessionId:evidence.sessionId,revision:evidence.candidate.revision,
    treeIdentity:evidence.candidate.treeIdentity,parentIdentity:evidence.candidate.parentIdentity,reviewerId:verdict.reviewerId,
    verdict:verdict.verdict,summary:JSON.stringify({summary:verdict.summary,findings:verdict.findings})};
@@ -87,17 +138,20 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
   let correctionValidation:CorrectionValidation|undefined,correctionNext:string|undefined,status:string;
   if(correction){
    correctionValidation=validateBoundedCorrection(correction.request,{priorRevision:correction.priorRevision,correctedRevision:bound.revision,validation:bound.verdict});
-   workspaceCorrections.delete(correctionId!);
+   if(workspaceCorrections.get(correctionId!)===correction)workspaceCorrections.delete(correctionId!);
    status=bound.verdict==="pass"?"corrected-passed-awaiting-tests":"blocked-after-correction";
   }else if(bound.verdict==="fail"){
    const request=openBoundedCorrection(bound),findingPaths=[...new Set(verdict.findings.map(finding=>finding.path))],changedPaths=new Set(paths);
-   if(!findingPaths.length||findingPaths.some(path=>!changedPaths.has(path))){status="blocked";workspaceCorrections.delete(request.correctionId);}
+   const slot=!findingPaths.length||findingPaths.some(path=>!changedPaths.has(path))||workspaceCorrections.has(request.correctionId)?undefined:reserveCorrectionSlot();
+   if(!slot){status="blocked";}
    else{
+    evictedCorrection=slot.evicted;
     const state:CorrectionState={request,repository:workspace.projection.repositoryRoot,sessionId:bound.sessionId,priorRevision:bound.revision,
-     priorReviewerId:bound.reviewerId,requirements,intendedUntracked:workspace.projection.intendedUntracked,
+     priorReviewerId:bound.reviewerId,baseCommit:workspace.projection.baseCommit,baseTree:workspace.projection.baseTree,priorProjection:workspace.projection,requirements,intendedUntracked:workspace.projection.intendedUntracked,
      priorFiles:Object.freeze(workspace.manifest.entries.map(entry=>Object.freeze({path:entry.path,mode:entry.mode,objectId:entry.objectId}))),
      allowedPaths:Object.freeze(findingPaths),used:false};
-    workspaceCorrections.set(request.correctionId,state);while(workspaceCorrections.size>100)workspaceCorrections.delete(workspaceCorrections.keys().next().value!);
+    workspaceCorrections.set(request.correctionId,state);
+    issuedCorrectionId=request.correctionId;issuedCorrection=state;
     correctionNext=request.correctionId;status="correction-required";
    }
   }else status="passed-awaiting-tests";
@@ -105,9 +159,24 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
    verdict:bound.verdict,summary:verdict.summary,findings:verdict.findings,tests:evidence.tests,
    ...(correctionValidation?{correction:correctionValidation}:{}),...(correctionNext?{correctionId:correctionNext,allowedCorrectionPaths:workspaceCorrections.get(correctionNext)?.allowedPaths}:{}),
    acceptance:"not-accepted",deliveryAuthority:false});
+  closeWorkspace();
+  revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
+  assertContextCurrent();
   context.ui.notify(JSON.stringify(result,null,2),bound.verdict==="fail"?"error":"info");
   return result;
- }finally{closeWorkspaceReview(workspace);}
+ }catch(error){
+  undoIssuedCorrection();
+  if(correction){try{assertReviewSessionOpen(workspace.session);}catch{retireCorrection=true;}}
+  throw error;
+ }finally{if(!closeAttempted)closeWorkspace();}
+ }catch(error){
+  if(correction&&!workspaceOpened&&!context.signal?.aborted)retireCorrection=true;
+  throw error;
+ }finally{
+  // A cancelled or failed attempt made no correction itself. Permit a fresh
+  // review, but never allow two calls to consume the same correction at once.
+  if(correction&&workspaceCorrections.get(correctionId!)===correction){if(retireCorrection)workspaceCorrections.delete(correctionId!);else correction.used=false;}
+ }
 }
 /** Registro propio de ASEN: prepara el traspaso; no emite dictamen ni autorización RDD. */
 export function registerOrdinaryReviewCommand(register:(name:string,command:ReviewCommand)=>void):OrdinaryReviewCommandController{
