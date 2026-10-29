@@ -60,7 +60,7 @@ export class BackgroundJobJournal{
    const claim:BackgroundJobJournalEntry={id:newJobId,sessionId,projectId,command:authorizedCommand,mode:previous.mode,state:"interrupted",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[],recoveredAt:now,resumable:false};
    const updated=rows.map(row=>row.id===interruptedJobId?{...row,state:"stopped" as const,updatedAt:now}:row);
    updated.push(claim);
-   const serialized=JSON.stringify(validateRows(updated))+"\\n";
+   const serialized=JSON.stringify(validateRows(updated))+"\n";
    if(Buffer.byteLength(serialized)>MAX_JOURNAL_BYTES)throw new Error("Retry journal exceeds retention bound");
    privatePath(this.file);const temporary=`${this.file}.tmp-${process.pid}-${randomUUID()}`;let fd:number|undefined;
    try{fd=openSync(temporary,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);writeFileSync(fd,serialized,{encoding:"utf8"});fsyncSync(fd);closeSync(fd);fd=undefined;renameSync(temporary,this.file);}catch(error){if(fd!==undefined)try{closeSync(fd);}catch{}try{unlinkSync(temporary);}catch{}throw error;}
