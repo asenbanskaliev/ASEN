@@ -102,6 +102,9 @@ export function assertWriterAuthorizationSnapshotCurrent(snapshot:WriterAuthoriz
  */
 export function assertWriterAuthorizationSnapshotOutcome(snapshot:WriterAuthorizationSnapshot):readonly string[]{
  assertRoot(snapshot);
+ // Recheck the authorized path components after execution: a worker must not
+ // replace an approved directory with a symlink before outcome validation.
+ assertSafeSurfacePaths(snapshot.repository,snapshot.surfaces);
  const changed=[
   ...nulPaths(snapshot.repository,["diff","--name-only","-z","HEAD","--"]),
   ...nulPaths(snapshot.repository,["ls-files","--others","--exclude-standard","-z"]),
@@ -110,6 +113,11 @@ export function assertWriterAuthorizationSnapshotOutcome(snapshot:WriterAuthoriz
  const outside=unique.filter(path=>!allowed(snapshot,path));
  if(outside.length)throw new Error(`Writer authorization observed changes outside its exact scope: ${outside.join(", ")}`);
  // A path that escaped the repository cannot be admitted through a Git name.
- for(const path of unique){const absolute=realpathSync(snapshot.repository),target=relative(absolute,absolute+"/"+path);if(target===".."||target.startsWith("../")||isAbsolute(target))throw new Error("Writer authorization observed an unsafe change path");}
+ for(const path of unique){
+  const absolute=snapshot.repository;
+  assertSafeSurfacePaths(absolute,[path]);
+  const target=relative(absolute,join(absolute,path));
+  if(target===".."||target.startsWith("../")||isAbsolute(target))throw new Error("Writer authorization observed an unsafe change path");
+ }
  return Object.freeze(unique);
 }
