@@ -1,7 +1,8 @@
 import {createHash,randomUUID} from "node:crypto";
 import {inspectCandidateGitTree,type CandidateGitTreeManifest} from "./review-tree-inspection.js";
 import {openReviewSession,bindReviewSessionWorkspaceSource,type ReviewSession,assertReviewSessionOpen,closeReviewSession} from "./review-session.js";
-import {captureWorkspaceReviewProjection,diffWorkspaceReviewProjection,isWorkspaceReviewProjectionGenuine,type WorkspaceReviewProjection,type WorkspaceReviewProjectionRequest} from "./workspace-review-projection.js";
+import {captureWorkspaceReviewProjection,diffWorkspaceReviewProjection,isWorkspaceReviewProjectionGenuine,type WorkspaceReviewProjection,type WorkspaceReviewProjectionRequest,type WorkspaceCorrectionConstraint} from "./workspace-review-projection.js";
+export {WorkspaceReviewScopeError} from "./workspace-review-projection.js";
 import {isProxy} from "node:util/types";
 import type {ReviewLens,ReviewRiskInput} from "./review-risk.js";
 import {lstatSync,realpathSync} from "node:fs";
@@ -65,8 +66,9 @@ function normalizeInput(value:unknown):WorkspaceReviewSessionInput{
 }
 
 /** Captures workspace bytes as a Git tree, then binds one isolated view to those exact sources. */
-export function openWorkspaceReview(input:WorkspaceReviewSessionInput):WorkspaceReviewSession{
+export function openWorkspaceReview(input:WorkspaceReviewSessionInput,selection?:{readonly reviewPaths:readonly string[]},correction?:WorkspaceCorrectionConstraint):WorkspaceReviewSession{
  input=normalizeInput(input);
+ const selected=selection===undefined?undefined:stringArray(exactRecord(selection,["reviewPaths"],"workspace review selection").reviewPaths,"workspace review paths");
  if(!isAbsolute(input.repositoryRoot)||!isAbsolute(input.viewParent))throw new Error("Workspace review paths must be absolute");
  const rootInfo=lstatSync(input.repositoryRoot),parentInfo=lstatSync(input.viewParent);
  if(!rootInfo.isDirectory()||rootInfo.isSymbolicLink()||!parentInfo.isDirectory()||parentInfo.isSymbolicLink())throw new Error("Workspace review directories are unsafe");
@@ -74,7 +76,7 @@ export function openWorkspaceReview(input:WorkspaceReviewSessionInput):Workspace
  const parentIsInside=relativeParent===""||(!isAbsolute(relativeParent)&&relativeParent!==".."&&!relativeParent.startsWith(".."+sep));
  if(parentIsInside)throw new Error("Workspace review view parent must be outside the repository");
  const projectionRequest=Object.freeze({repositoryRoot:root,intendedUntracked:Object.freeze([...input.intendedUntracked])});
- const projection=captureWorkspaceReviewProjection(projectionRequest);
+ const projection=captureWorkspaceReviewProjection(projectionRequest,selected,correction);
  const manifest=inspectCandidateGitTree({repositoryRoot:projection.repositoryRoot,treeIdentity:projection.candidateTree});
  const session=openReviewSession(projection.repositoryRoot,manifest,parent,input.risk);
  try{

@@ -35,12 +35,32 @@ export interface WorkspaceReviewProjection {
   readonly entries: readonly WorkspaceReviewEntry[];
 }
 
+/** A review selection restricts evidence collection; it grants no write authority. */
+export class WorkspaceReviewScopeError extends Error {
+  readonly paths: readonly string[];
+  readonly changedPaths: readonly string[];
+  constructor(readonly kind: "unexpected-untracked" | "outside-review" | "outside-correction" | "correction-base" | "unchanged-correction", paths: readonly string[], changedPaths: readonly string[] = []) {
+    super(kind === "unexpected-untracked" ? "Unexpected untracked paths" : kind === "correction-base" ? "Correction base changed" : kind === "unchanged-correction" ? "Correction did not change the candidate" : kind === "outside-correction" ? "Changed paths outside correction findings" : "Changed paths outside selected review scope");
+    this.paths = Object.freeze([...paths]);
+    this.changedPaths = Object.freeze([...changedPaths]);
+  }
+}
+
+/** Comparison policy only; no permission or review authority is issued. */
+export interface WorkspaceCorrectionConstraint {
+  readonly previousProjection: WorkspaceReviewProjection;
+  readonly allowedPaths: readonly string[];
+}
+
 type TreeEntry = {path: string; mode: WorkspaceReviewEntryMode; objectId: string};
 type SourceEntry = TreeEntry & {bytes?: Buffer; contentSha256: string | null};
 const outputLimit = 16 * 1024 * 1024;
 const decoder = new TextDecoder("utf-8", {fatal: true});
 const issuedProjections = new WeakSet<object>();
 const projectionRepositories = new WeakMap<object,Readonly<Record<string,never>>>();
+const projectionSelections = new WeakMap<object,readonly string[]>();
+const projectionCatalogs = new WeakMap<object,ReadonlyMap<string,Readonly<{mode:string;objectId:string;contentSha256:string|null}>>>();
+const projectionCorrections = new WeakMap<object,WorkspaceCorrectionConstraint>();
 
 function sha256(value: string | Buffer): string {
   return createHash("sha256").update(value).digest("hex");
@@ -294,11 +314,27 @@ export function assertWorkspaceProjectionRepository(value:unknown):void{
  * Freezes workspace bytes into an immutable Git tree without changing the index.
  * The returned data is identity metadata only; it grants no review, write, or delivery authority.
  */
-export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectionRequest): WorkspaceReviewProjection {
+export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectionRequest, selectedReviewPaths?: readonly string[], correction?: WorkspaceCorrectionConstraint): WorkspaceReviewProjection {
   const request = normalizeRequest(input);
+  const selection = selectedReviewPaths === undefined ? undefined : Object.freeze(normalizeRequest({repositoryRoot:request.repositoryRoot,intendedUntracked:selectedReviewPaths}).intendedUntracked);
+  const selected = selection === undefined ? undefined : new Set(selection);
+  let correctionPolicy: WorkspaceCorrectionConstraint | undefined;
+  if(correction!==undefined){
+    const data=plainData(correction,["previousProjection","allowedPaths"],"workspace correction constraint");
+    if(!isWorkspaceReviewProjectionGenuine(data.previousProjection))throw new Error("workspace correction baseline was not captured here");
+    const previousProjection=data.previousProjection;
+    const allowedPaths=Object.freeze(normalizeRequest({repositoryRoot:request.repositoryRoot,intendedUntracked:data.allowedPaths as readonly string[]}).intendedUntracked);
+    if(!projectionCatalogs.has(previousProjection))throw new Error("workspace correction baseline catalog is unavailable");
+    assertWorkspaceProjectionRepository(previousProjection);
+    correctionPolicy=Object.freeze({previousProjection,allowedPaths});
+  }
   const root = canonicalRepository(request.repositoryRoot);
   const identity=captureReviewRepositoryBinding(root);
   const base = baseIdentity(root);
+  if(correctionPolicy){
+    const previous=correctionPolicy.previousProjection;
+    if(previous.repositoryRoot!==root||previous.baseCommit!==base.baseCommit||previous.baseTree!==base.baseTree||JSON.stringify(previous.intendedUntracked)!==JSON.stringify(request.intendedUntracked))throw new WorkspaceReviewScopeError("correction-base",[]);
+  }
   const baseEntries = new Map(records(runGit(root, ["ls-tree", "-r", "-z", base.baseTree])).map(record => {
     const parsed = parseEntry(record, false); return [parsed.path, parsed] as const;
   }));
@@ -308,6 +344,7 @@ export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectio
   const observedUntracked=records(runGit(root,["ls-files","--others","--exclude-standard","-z"])).map(record=>decoder.decode(record));
   if(observedUntracked.some(path=>!safePath(path))||new Set(observedUntracked).size!==observedUntracked.length)throw new Error("repository contains an unsafe untracked path");
   const intendedSet=new Set(request.intendedUntracked),unexpectedUntracked=observedUntracked.filter(path=>!intendedSet.has(path)).sort();
+  if(selected&&unexpectedUntracked.length)throw new WorkspaceReviewScopeError("unexpected-untracked",unexpectedUntracked);
   const indexEntries = new Map<string, TreeEntry>();
   for (const record of records(rawIndex)) {
     const parsed = parseEntry(record, true);
@@ -360,6 +397,25 @@ export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectio
     }
   }
 
+  // Compare the bytes captured for this projection before adding any changed
+  // blobs or trees to Git. This does not make the workspace read atomic.
+  if(selected){
+    const outside=entries.filter(entry=>entry.change!=="gitlink"&&!selected.has(entry.path)).map(entry=>entry.path);
+    if(outside.length)throw new WorkspaceReviewScopeError("outside-review",outside);
+  }
+  if(correctionPolicy){
+    const previous=projectionCatalogs.get(correctionPolicy.previousProjection)!;
+    const paths=[...new Set([...previous.keys(),...candidate.keys()])].sort();
+    const changed=paths.filter(path=>{
+      const before=previous.get(path),after=candidate.get(path);
+      return !before||!after||before.mode!==after.mode||before.objectId!==after.objectId||before.contentSha256!==after.contentSha256;
+    });
+    const allowed=new Set(correctionPolicy.allowedPaths),outside=changed.filter(path=>!allowed.has(path));
+    if(outside.length)throw new WorkspaceReviewScopeError("outside-correction",outside,changed);
+    if(!changed.length)throw new WorkspaceReviewScopeError("unchanged-correction",[]);
+    assertWorkspaceProjectionRepository(correctionPolicy.previousProjection);
+  }
+
   for (const item of entries) {
     if (item.change === "gitlink" || item.change === "deleted") continue;
     const source = candidate.get(item.path)!;
@@ -379,6 +435,9 @@ export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectio
     intendedUntracked: request.intendedUntracked,unexpectedUntracked,indexIdentity, sourceIdentity, entries,
   });
   projectionRepositories.set(projection,identity);
+  projectionCatalogs.set(projection,new Map([...candidate].map(([path,entry])=>[path,Object.freeze({mode:entry.mode,objectId:entry.objectId,contentSha256:entry.contentSha256})])));
+  if(selection)projectionSelections.set(projection,selection);
+  if(correctionPolicy)projectionCorrections.set(projection,correctionPolicy);
   return projection;
 }
 
@@ -399,7 +458,7 @@ export function revalidateWorkspaceReviewProjection(
   if (!Array.isArray(data.intendedUntracked) || JSON.stringify([...data.intendedUntracked].sort()) !== JSON.stringify(request.intendedUntracked)) {
     throw new Error("workspace projection scope drifted");
   }
-  const current = captureWorkspaceReviewProjection({repositoryRoot: request.repositoryRoot, intendedUntracked: request.intendedUntracked});
+  const current = captureWorkspaceReviewProjection({repositoryRoot: request.repositoryRoot, intendedUntracked: request.intendedUntracked},projectionSelections.get(saved),projectionCorrections.get(saved));
   const comparable = ["schemaVersion", "repositoryRoot", "baseCommit", "baseTree", "candidateTree", "intendedUntracked","unexpectedUntracked","indexIdentity", "sourceIdentity", "entries"] as const;
   for (const key of comparable) if (JSON.stringify(data[key]) !== JSON.stringify(current[key])) {
     throw new Error(`workspace projection drifted: ${key}`);

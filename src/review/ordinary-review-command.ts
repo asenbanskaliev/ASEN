@@ -3,7 +3,7 @@ import {tmpdir} from "node:os";
 import {prepareOrdinaryReview,claimOrdinaryReviewRequest,bindOrdinaryReviewCheckout,type OrdinaryReviewInput,type OrdinaryReviewRequest,type OrdinaryReviewCheckout} from "./ordinary-review-controller.js";
 import type {WorkUnitReviewCandidate} from "../delivery/work-unit-review-candidate.js";
 import {availableIndependentPiReviewers,runIndependentPiReview,type PiReviewRegistry,type PiReviewerModel} from "./pi-model-reviewer.js";
-import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview} from "./workspace-review-session.js";
+import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview,WorkspaceReviewScopeError} from "./workspace-review-session.js";
 import {awaitNativeRddResult,bindNativeRddResult} from "./native-rdd-result.js";
 import {openBoundedCorrection,validateBoundedCorrection,type CorrectionRequest,type CorrectionValidation} from "./bounded-correction.js";
 import {assertReviewSessionOpen} from "./review-session.js";
@@ -98,8 +98,23 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
   try{const parsed:unknown=JSON.parse(untrackedText);if(!Array.isArray(parsed))throw new Error();intendedUntracked=parsed;}catch{throw new Error("El alcance untracked debe ser un array JSON válido");}
  }
  const reviewerId="pi-model:"+model.provider+"/"+model.id;
- const workspace=openWorkspaceReview({repositoryRoot:projectRoot,intendedUntracked,sessionId,reviewerId,viewParent:tmpdir(),
-  risk:{riskId:"pi-independent-review",reason:"Review the exact current workspace snapshot",severity:"high",lenses:["risk","resilience","reliability"]}});
+ let workspace:ReturnType<typeof openWorkspaceReview>;
+ try{workspace=openWorkspaceReview({repositoryRoot:projectRoot,intendedUntracked,sessionId,reviewerId,viewParent:tmpdir(),
+  risk:{riskId:"pi-independent-review",reason:"Review the exact current workspace snapshot",severity:"high",lenses:["risk","resilience","reliability"]}},{reviewPaths},correction?{previousProjection:correction.priorProjection,allowedPaths:correction.allowedPaths}:undefined);}
+ catch(error){
+  if(!(error instanceof WorkspaceReviewScopeError))throw error;
+  if(correction&&error.kind!=="unchanged-correction")retireCorrection=true;
+  const blocked=error.kind==="correction-base"
+   ?Object.freeze({status:"blocked",reason:"La base del candidato cambió; se requiere una revisión nueva."})
+   :error.kind==="unchanged-correction"
+   ?Object.freeze({status:"blocked",reason:"La corrección debe cambiar el candidato exacto y limitarse a los archivos señalados.",allowedPaths:correction?.allowedPaths,changedPaths:error.changedPaths})
+   :error.kind==="outside-correction"
+   ?Object.freeze({status:"blocked",reason:"La corrección debe cambiar el candidato exacto y limitarse a los archivos señalados.",allowedPaths:correction?.allowedPaths,changedPaths:error.changedPaths,outsideReview:error.paths})
+   :error.kind==="unexpected-untracked"
+   ?Object.freeze({status:"blocked",reason:"Hay archivos untracked fuera del alcance; inclúyelos explícitamente o retíralos antes de revisar.",unexpectedFiles:error.paths})
+   :Object.freeze({status:"blocked",reason:"Hay archivos modificados fuera del alcance seleccionado para la revisión.",outsideReview:error.paths,...(correction?{allowedPaths:correction.allowedPaths}:{})});
+  context.ui.notify(JSON.stringify(blocked,null,2),"error");return blocked;
+ }
  workspaceOpened=true;
  let closeAttempted=false,issuedCorrectionId:string|undefined,issuedCorrection:CorrectionState|undefined,evictedCorrection:readonly [string,CorrectionState]|undefined;
  const undoIssuedCorrection=()=>{
@@ -114,11 +129,6 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
  }};
  try{
   const evidence=readWorkspaceReviewEvidence(workspace),paths=evidence.modifiedFiles.map(file=>file.path);
-  if(evidence.repositoryState.unexpectedUntracked.length){
-   if(correction)retireCorrection=true;
-   const blocked=Object.freeze({status:"blocked",reason:"Hay archivos untracked fuera del alcance; inclúyelos explícitamente o retíralos antes de revisar.",unexpectedFiles:evidence.repositoryState.unexpectedUntracked});
-   closeWorkspace();context.ui.notify(JSON.stringify(blocked,null,2),"error");return blocked;
-  }
   if(correction){
    const currentFiles=workspace.manifest.entries.map(entry=>({path:entry.path,mode:entry.mode,objectId:entry.objectId})),changed=changedCandidatePaths(correction.priorFiles,currentFiles);
    if(workspace.projection.baseCommit!==correction.baseCommit||workspace.projection.baseTree!==correction.baseTree){
@@ -131,12 +141,6 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
     const result={status:"blocked",reason:"La corrección debe cambiar el candidato exacto y limitarse a los archivos señalados.",allowedPaths:correction.allowedPaths,changedPaths:changed};
     closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"error");return result;
    }
-  }
-  const selected=new Set(reviewPaths),outsideReview=paths.filter(path=>!selected.has(path));
-  if(outsideReview.length){
-   if(correction)retireCorrection=true;
-   const blocked=Object.freeze({status:"blocked",reason:"Hay archivos modificados fuera del alcance seleccionado para la revisión.",outsideReview});
-   closeWorkspace();context.ui.notify(JSON.stringify(blocked,null,2),"error");return blocked;
   }
   if(paths.length===0){const result={status:"not-required",reason:"El snapshot no contiene cambios revisables.",candidate:evidence.candidate};closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"info");return result;}
   const consent=await context.ui.confirm("Enviar el diff al modelo revisor?",[

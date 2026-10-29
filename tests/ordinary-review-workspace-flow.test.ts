@@ -48,9 +48,45 @@ test("bounded correction blocks newly changed files outside reviewer findings",a
  const first=await state.handler("workspace",state.context);writeFileSync(join(state.context.cwd,"target.txt"),"corrected\n");writeFileSync(join(state.context.cwd,"other.txt"),"out of scope\n");
  execFileSync("git",["-C",state.context.cwd,"add","other.txt"]);
  const second=await state.handler("workspace correction "+first.correctionId,state.context);
- assert.equal(second.status,"blocked");assert.deepEqual(second.allowedPaths,["target.txt"]);assert.deepEqual(second.changedPaths,["other.txt","target.txt"]);assert.equal(state.calls(),1);
+ assert.equal(second.status,"blocked");assert.deepEqual(second.allowedPaths,["target.txt"]);assert.deepEqual(second.outsideReview,["other.txt"]);assert.equal(state.calls(),1);
  execFileSync("git",["-C",state.context.cwd,"rm","--cached","-q","other.txt"]);unlinkSync(join(state.context.cwd,"other.txt"));
  assert.equal((await state.handler("workspace correction "+first.correctionId,state.context)).status,"blocked");assert.equal(state.calls(),1);
+});
+
+test("correction change inside the original review scope but outside findings is blocked before Git writes and view creation",async t=>{
+ const state=setup(t,[{verdict:"fail",findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Correct this changed file."}]}]);
+ const root=state.context.cwd;
+ writeFileSync(join(root,"other.txt"),"original other\n");
+ execFileSync("git",["-C",root,"add","other.txt"]);execFileSync("git",["-C",root,"commit","-qm","add other file"]);
+ state.context.ui.editor=async title=>title.includes("untracked")?"[]":title.includes("Rutas exactas")?'["target.txt","other.txt"]':"Check the task requirements";
+ const first=await state.handler("workspace",state.context);assert.equal(first.status,"correction-required");
+ const target="new corrected target for preflight\n",outside="unapproved correction delta for preflight\n";
+ writeFileSync(join(root,"target.txt"),target);writeFileSync(join(root,"other.txt"),outside);
+ const oid=(input:string)=>execFileSync("git",["-C",root,"hash-object","--stdin"],{input,encoding:"utf8"}).trim();
+ const has=(id:string)=>{try{execFileSync("git",["-C",root,"cat-file","-e",id],{stdio:"ignore"});return true;}catch{return false;}};
+ const ids=[oid(target),oid(outside)];assert.deepEqual(ids.map(has),[false,false]);
+ const parent=mkdtempSync(join(tmpdir(),"asen-correction-preflight-")),prior=process.env.TMPDIR;
+ try{
+  process.env.TMPDIR=parent;
+  const result=await state.handler("workspace correction "+first.correctionId,state.context);
+  assert.equal(result.status,"blocked");assert.deepEqual(result.outsideReview,["other.txt"]);
+  assert.deepEqual(result.allowedPaths,["target.txt"]);assert.equal(state.calls(),1);
+  assert.deepEqual(ids.map(has),[false,false]);assert.deepEqual(readdirSync(parent),[]);
+ }finally{if(prior===undefined)delete process.env.TMPDIR;else process.env.TMPDIR=prior;rmSync(parent,{recursive:true,force:true});}
+});
+
+test("unchanged correction blocks before materialization and can be retried after a real fix",async t=>{
+ const state=setup(t,[{verdict:"fail",findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Correct this changed file."}]},{verdict:"pass",findings:[]}]);
+ const first=await state.handler("workspace",state.context);assert.equal(first.status,"correction-required");
+ const parent=mkdtempSync(join(tmpdir(),"asen-correction-unchanged-")),prior=process.env.TMPDIR;
+ try{
+  process.env.TMPDIR=parent;
+  const blocked=await state.handler("workspace correction "+first.correctionId,state.context);
+  assert.equal(blocked.status,"blocked");assert.deepEqual(blocked.changedPaths,[]);assert.equal(state.calls(),1);assert.deepEqual(readdirSync(parent),[]);
+  writeFileSync(join(state.context.cwd,"target.txt"),"corrected after retry\n");
+  const result=await state.handler("workspace correction "+first.correctionId,state.context);
+  assert.equal(result.status,"corrected-passed-awaiting-tests");assert.equal(state.calls(),2);
+ }finally{if(prior===undefined)delete process.env.TMPDIR;else process.env.TMPDIR=prior;rmSync(parent,{recursive:true,force:true});}
 });
 
 test("unexpected untracked files block dispatch to the external reviewer",async t=>{

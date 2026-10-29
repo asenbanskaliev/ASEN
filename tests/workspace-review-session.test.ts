@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {cpSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,renameSync,rmSync,writeFileSync} from "node:fs";
+import {cpSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,renameSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
-import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview} from "../src/review/workspace-review-session.js";
+import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview,WorkspaceReviewScopeError} from "../src/review/workspace-review-session.js";
 import {assertReviewSessionOpen} from "../src/review/review-session.js";
 import {readReviewViewFile} from "../src/review/review-view.js";
 import {awaitNativeRddResult,bindNativeRddResult} from "../src/review/native-rdd-result.js";
@@ -108,6 +108,43 @@ test("workspace review input rejects proxies and malformed scope before capturin
  assert.throws(()=>openWorkspaceReview(new Proxy(input,{getOwnPropertyDescriptor(){throw new Error("proxy trap");}}) as any),/plain data/u);
  assert.throws(()=>openWorkspaceReview({...input,intendedUntracked:new Proxy([], {}) as any}),/plain array/u);
  assert.deepEqual({head:git("rev-parse","HEAD"),index:git("write-tree"),objects:git("count-objects","-v")},before);
+});
+
+test("scope rejection precedes changed blob persistence and materialization of any review view",t=>{
+ const {root}=repository(t),parent=mkdtempSync(join(tmpdir(),"asen-workspace-scope-parent-"));
+ t.after(()=>rmSync(parent,{recursive:true,force:true}));
+ const input={repositoryRoot:root,intendedUntracked:[],sessionId:"pi-session",reviewerId:"reviewer-model",viewParent:parent,risk};
+ writeFileSync(join(root,"target.txt"),"modified outside selection\n");
+ const oid=execFileSync("git",["-C",root,"hash-object","--stdin"],{input:"modified outside selection\n",encoding:"utf8"}).trim();
+ const present=()=>{try{execFileSync("git",["-C",root,"cat-file","-e",oid],{stdio:"ignore"});return true;}catch{return false;}};
+ assert.equal(present(),false);
+ assert.throws(()=>openWorkspaceReview(input,{reviewPaths:[]}),error=>error instanceof WorkspaceReviewScopeError&&error.kind==="outside-review"&&error.paths.join()=== "target.txt");
+ assert.equal(present(),false);assert.deepEqual(readdirSync(parent),[]);
+ writeFileSync(join(root,"unexpected.txt"),"unselected\n");
+ assert.throws(()=>openWorkspaceReview(input,{reviewPaths:["target.txt"]}),error=>error instanceof WorkspaceReviewScopeError&&error.kind==="unexpected-untracked"&&error.paths.join()==="unexpected.txt");
+ assert.deepEqual(readdirSync(parent),[]);
+ rmSync(join(root,"unexpected.txt"));
+ const review=openWorkspaceReview(input,{reviewPaths:["target.txt"]});
+ try{assert.ok(readdirSync(parent).length>0);assert.match(readWorkspaceReviewEvidence(review).diff,/modified outside selection/u);}
+ finally{closeWorkspaceReview(review);}
+ assert.deepEqual(readdirSync(parent),[]);
+});
+
+test("out-of-scope drift does not persist a new blob during review revalidation",t=>{
+ const {root,git}=repository(t),parent=mkdtempSync(join(tmpdir(),"asen-workspace-scope-drift-"));
+ t.after(()=>rmSync(parent,{recursive:true,force:true}));
+ writeFileSync(join(root,"protected.txt"),"before\n");git("add","protected.txt");git("commit","-qm","add protected file");
+ writeFileSync(join(root,"target.txt"),"authorized review change\n");
+ const input={repositoryRoot:root,intendedUntracked:[],sessionId:"pi-session",reviewerId:"reviewer-model",viewParent:parent,risk};
+ const review=openWorkspaceReview(input,{reviewPaths:["target.txt"]});
+ try{
+  const changed="out of scope after session started\n";
+  const oid=execFileSync("git",["-C",root,"hash-object","--stdin"],{input:changed,encoding:"utf8"}).trim();
+  const present=()=>{try{execFileSync("git",["-C",root,"cat-file","-e",oid],{stdio:"ignore"});return true;}catch{return false;}};
+  assert.equal(present(),false);writeFileSync(join(root,"protected.txt"),changed);
+  assert.throws(()=>readWorkspaceReviewEvidence(review),/stale|invalidated/u);
+  assert.equal(present(),false);
+ }finally{closeWorkspaceReview(review);}
 });
 
 test("workspace session rejects a two-dot child view parent before snapshotting Git objects",t=>{

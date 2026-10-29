@@ -40,6 +40,22 @@ function entry(projection: WorkspaceReviewProjection, path: string) {
   return projection.entries.find(candidate => candidate.path === path);
 }
 
+test("correction preflight requires a genuine baseline and retains its restriction on revalidation",t=>{
+  const {root}=fixture(t),request={repositoryRoot:root,intendedUntracked:[] as string[]};
+  writeFileSync(join(root,"tracked.txt"),"first candidate\n");
+  const baseline=captureWorkspaceReviewProjection(request,["tracked.txt","mode.txt"]);
+  writeFileSync(join(root,"tracked.txt"),"corrected candidate\n");
+  assert.throws(()=>captureWorkspaceReviewProjection(request,["tracked.txt","mode.txt"],{previousProjection:{...baseline},allowedPaths:["tracked.txt"]}),/baseline was not captured here/u);
+  const corrected=captureWorkspaceReviewProjection(request,["tracked.txt","mode.txt"],{previousProjection:baseline,allowedPaths:["tracked.txt"]});
+  assert.doesNotThrow(()=>revalidateWorkspaceReviewProjection(corrected,request));
+  const unexpected="fresh outside-finding delta\n";
+  const oid=execFileSync("git",["-C",root,"hash-object","--stdin"],{input:unexpected,encoding:"utf8"}).trim();
+  const present=()=>{try{execFileSync("git",["-C",root,"cat-file","-e",oid],{stdio:"ignore"});return true;}catch{return false;}};
+  assert.equal(present(),false);writeFileSync(join(root,"mode.txt"),unexpected);
+  assert.throws(()=>revalidateWorkspaceReviewProjection(corrected,request),/outside correction findings/u);
+  assert.equal(present(),false);
+});
+
 test("captures tracked final bytes, staged additions, and only explicitly intended untracked files", t => {
   const {root, git} = fixture(t);
   writeFileSync(join(root, "tracked.txt"), "working final\n");
