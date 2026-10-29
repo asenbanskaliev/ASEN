@@ -2,6 +2,7 @@ import {execFileSync} from "node:child_process";
 import {lstatSync,realpathSync,type Stats} from "node:fs";
 import {isAbsolute,join,relative} from "node:path";
 import type {Candidate} from "../core/types.js";
+import {sameWorkspaceIdentityPath} from "../runtime/workspace-store.js";
 
 /**
  * Private before/after binding for one active writer grant.
@@ -29,7 +30,7 @@ function repositoryRoot(candidate:Candidate):{root:string;info:Stats} {
  if(!supplied.isDirectory()||supplied.isSymbolicLink())throw new Error("Writer authorization repository is unsafe");
  const root=realpathSync(candidate.repository),info=lstatSync(root) as Stats;
  if(!info.isDirectory()||info.isSymbolicLink())throw new Error("Writer authorization repository is unsafe");
- if(gitText(root,["rev-parse","--show-toplevel"])!==root)throw new Error("Writer authorization requires the Git toplevel");
+ if(!sameWorkspaceIdentityPath(gitText(root,["rev-parse","--show-toplevel"]),root))throw new Error("Writer authorization requires the Git toplevel");
  if(gitText(root,["rev-parse","HEAD"])!==candidate.revision)throw new Error("Writer authorization candidate changed");
  return {root,info};
 }

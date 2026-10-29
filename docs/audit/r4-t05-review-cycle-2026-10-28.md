@@ -106,3 +106,9 @@ Adversarial review found that a controlled worker's one-use grant and its persis
 - **Residual blockers:** this is authorization binding, not an OS sandbox. A same-user process can still race path operations after a check, and the evidence executor can write outside its worktree. This host rejected the tested Bubblewrap user-namespace setup and has no Docker or Podman. Public workspace-review correction state is still in memory across a hard restart; isolated candidate tests, candidate-bound acceptance, a valid real provider review, external R4 signoff and final exact-SHA CI remain absent.
 
 T05 remains **PARTIAL**. No acceptance or delivery authority is granted by this follow-up.
+
+### Windows root-path compatibility correction
+
+CI run `40862578061` on published candidate `16eea3f31e877f261390176a9c0734261f707099` failed Windows job `123409239402` before a controlled writer reached its runner. The complete job log shows that the new snapshot compared Git's `rev-parse --show-toplevel` result to Node's `realpath` result literally; on Windows their separator/identity spellings differ. This caused the phase grant to fail closed and cascaded into the extension-runtime cancellations. It was not a journal `EPERM` recurrence.
+
+The correction reuses ASEN's existing Windows workspace-identity comparator for the Git-toplevel check. The targeted dispatcher, extension-runtime, Pi and snapshot set passed 100/100; the full local suite passed 2,281 / 0 failed / 19 skipped, then build, pack and applicable audits passed. A new exact-SHA cross-platform CI round is required. T05 remains PARTIAL; this compatibility fix does not change the isolation, durable-recovery, acceptance, provider or independent-signoff blockers.
