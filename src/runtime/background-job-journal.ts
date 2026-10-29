@@ -53,12 +53,12 @@ export class BackgroundJobJournal{
   return this.withExclusiveLock(()=>{
    const rows=this.readAll(),previous=rows.find(row=>row.id===interruptedJobId);
    if(!previous||previous.sessionId!==sessionId||previous.projectId!==projectId||!(previous.state==="running"||previous.state==="interrupted"))throw new Error("Interrupted operation is not available for retry");
-   if(rows.some(row=>row.id===newJobId||row.command===authorizationId&&row.sessionId===sessionId&&row.projectId===projectId))throw new Error("Retry conflict: job or authorization already claimed");
+   if(rows.some(row=>row.id===newJobId||row.id===authorizationId&&row.sessionId===sessionId&&row.projectId===projectId))throw new Error("Retry conflict: job or authorization already claimed");
    // A retry is only a pending claim; callers must independently revalidate workspace,
    // grant and exact candidate before starting a new execution.
    const now=new Date().toISOString();
-   const claim:BackgroundJobJournalEntry={id:newJobId,sessionId,projectId,command:authorizationId,mode:previous.mode,state:"interrupted",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[],recoveredAt:now,resumable:false};
-   const updated=rows.map(row=>row.id===interruptedJobId?{...row,state:"interrupted" as const,updatedAt:now}:row);
+   const claim:BackgroundJobJournalEntry={id:newJobId,sessionId,projectId,command:authorizedCommand,mode:previous.mode,state:"interrupted",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[],recoveredAt:now,resumable:false};
+   const updated=rows.map(row=>row.id===interruptedJobId?{...row,state:"stopped" as const,updatedAt:now}:row);
    updated.push(claim);
    const serialized=JSON.stringify(validateRows(updated))+"\\n";
    if(Buffer.byteLength(serialized)>MAX_JOURNAL_BYTES)throw new Error("Retry journal exceeds retention bound");
