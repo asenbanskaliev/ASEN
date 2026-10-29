@@ -25,7 +25,7 @@ export function acquireWorkspaceWriter(input:{root:string;expectedHead:string;au
   if(git("status","--porcelain=v1","--untracked-files=all"))throw new Error("Writer requires a clean workspace");
   writeFileSync(fd,JSON.stringify({token,authorizationId,expectedHead,allowedPaths,createdAt:new Date().toISOString()}));
   return Object.freeze({authorizationId,expectedHead,allowedPaths:Object.freeze([...allowedPaths]),
-   verify:()=>{if(released)throw new Error("Writer lease released");const current=lstatSync(lock);if(current.dev!==identity.dev||current.ino!==identity.ino)throw new Error("Writer lease replaced");if(git("rev-parse","HEAD")!==expectedHead)throw new Error("Writer candidate changed");},
+   verify:()=>{if(released)throw new Error("Writer lease released");const current=lstatSync(lock);if(current.dev!==identity.dev||current.ino!==identity.ino)throw new Error("Writer lease replaced");if(git("rev-parse","HEAD")!==expectedHead)throw new Error("Writer candidate changed");const changed=git("status","--porcelain=v1","--untracked-files=all");for(const row of changed.split("\n").filter(Boolean)){const path=row.slice(3);if(!allowedPaths.includes(path))throw new Error("Writer modified a path outside authorization");}},
    release});
  }catch(error){release();throw error;}
 }
