@@ -179,6 +179,12 @@ jobs:
           mkdir -p "$PI_CODING_AGENT_DIR" "$ASEN_T05_EVIDENCE_DIR"
           npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.2.0
           timeout 180s node --import tsx scripts/t05-nvidia-live-write.ts
+      - name: Joint T04/T05 evidence integrity and separate verdicts
+        if: success()
+        shell: bash
+        env:
+          ASEN_T05_EVIDENCE_DIR: ${{ github.workspace }}/r4-provider-evidence
+        run: node --import tsx scripts/t04-t05-integrated-verdict.ts
       - name: Preserve real execution evidence
         if: always()
         uses: actions/upload-artifact@v6
