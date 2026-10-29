@@ -57,7 +57,7 @@ export class BackgroundJobJournal{
     const code=(error as NodeJS.ErrnoException).code,windowsPermission=failedToCreate&&process.platform==="win32"&&code==="EPERM";
     if(!failedToCreate||code!=="EEXIST"&&!windowsPermission)throw error;
     try{const observed=lstatSync(lock);if(!observed.isFile()||observed.isSymbolicLink()||(process.platform!=="win32"&&(observed.mode&0o077)!==0))throw new Error("Background journal lock is unsafe");}
-    catch(lockError){if(windowsPermission)throw error;if((lockError as NodeJS.ErrnoException).code!=="ENOENT")throw lockError;}
+    catch(lockError){if(windowsPermission&&(lockError as NodeJS.ErrnoException).code!=="ENOENT")throw error;if((lockError as NodeJS.ErrnoException).code!=="ENOENT")throw lockError;}
     if(windowsPermission)permissionError??=error;
     if(Date.now()>=deadline){if(permissionError)throw permissionError;throw new Error("Background journal is busy; refusing a concurrent overwrite");}Atomics.wait(waitCell,0,0,10);
    }
