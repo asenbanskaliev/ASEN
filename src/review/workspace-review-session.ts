@@ -110,7 +110,12 @@ export function readWorkspaceReviewEvidence(value:unknown):WorkspaceReviewEviden
  const projection=claim.projection,session=claim.session;
  const changedCandidateFiles=projection.entries.filter(entry=>entry.change!=="deleted"&&(entry.mode==="100644"||entry.mode==="100755"));
  const candidateFiles=Object.freeze(changedCandidateFiles.map(entry=>{
+  assertReviewSessionOpen(session);
   const bytes=readReviewViewFile(session.view,entry.path);
+  // A review view is not an OS sandbox: reject any byte substitution observed
+  // between projection and evidence extraction, including same-user races.
+  if(entry.contentSha256!==null&&createHash("sha256").update(bytes).digest("hex")!==entry.contentSha256)throw new Error("Workspace review candidate bytes changed during evidence extraction");
+  assertReviewSessionOpen(session);
   try{return Object.freeze({path:entry.path,encoding:"utf8" as const,content:new TextDecoder("utf-8",{fatal:true}).decode(bytes)});}
   catch{return Object.freeze({path:entry.path,encoding:"base64" as const,content:bytes.toString("base64")});}
  }));
