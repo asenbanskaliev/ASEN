@@ -10,6 +10,7 @@ import test from "node:test";
 const require=createRequire(import.meta.url);
 const pinnedAssets=[
  "extensions/authority.ts",
+ "tsconfig.json",
  "src/runtime/workspace-store.ts",
  "src/runtime/workspace-attribution.ts",
  "src/runtime/responsive-layout.ts",
