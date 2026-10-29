@@ -129,3 +129,19 @@ test("T10 accessible status is bounded and requires no color or terminal control
  assert.match(formatBackgroundJobStatus(registry.snapshot(job.id)),/Succeeded/);
  assert.throws(()=>formatBackgroundJobStatus(registry.snapshot(job.id),10),/width/);
 });
+
+test("T10 terminal notification identity does not change on subsequent status updates",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"project",command:"task"});
+ registry.finish(job.id,"failed",1);
+ const initial=backgroundJobTerminalNotification(registry.snapshot(job.id));
+ assert.ok(initial);
+ registry.setDeliveryState(job.id,"pending","retry");
+ const retried=backgroundJobTerminalNotification(registry.snapshot(job.id));
+ assert.equal(initial.id,retried?.id);
+});
+test("T10 accessible output removes terminal controls from untrusted job identity",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"project",command:"task"});
+ assert.doesNotMatch(formatBackgroundJobStatus({...job,id:"unsafe\\x1b[31m\\nnext"}),/[\\x00-\\x1f\\x7f-\\x9f]/u);
+});
