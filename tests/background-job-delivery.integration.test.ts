@@ -57,7 +57,7 @@ test("a failed real child leaves a durable pending notice and startup retries it
  const started=await first.tools.get("asen_background_start").execute("start",{command:"integration failure"},new AbortController().signal,()=>{},context),job=started.details as {id:string};
  const deadline=Date.now()+5_000;while(childStarts<1&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,10));
  let retained=await first.tools.get("asen_background_status").execute("status",{},new AbortController().signal,()=>{},context),deadlineState=Date.now()+5_000;
- while(retained.details[0]?.state!=="failed"&&Date.now()<deadlineState){await new Promise(resolve=>setTimeout(resolve,10));retained=await first.tools.get("asen_background_status").execute("status",{},new AbortController().signal,()=>{},context);}
+ while((retained.details[0]?.state!=="failed"||retained.details[0]?.deliveryState!=="pending")&&Date.now()<deadlineState){await new Promise(resolve=>setTimeout(resolve,10));retained=await first.tools.get("asen_background_status").execute("status",{},new AbortController().signal,()=>{},context);}
  assert.equal(retained.details[0].state,"failed");assert.equal(retained.details[0].exitCode,7);assert.equal(retained.details[0].deliveryState,"pending");assert.match(retained.details[0].deliveryError,/synthetic delivery fault/u);
  await first.events.get("session_shutdown")![0]!({},context);
  const restarted=host();createAsenExtension(dependencies)(restarted.pi as any);await restarted.events.get("session_start")![0]!({},context);
