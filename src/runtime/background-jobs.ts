@@ -50,10 +50,15 @@ export class BackgroundJobRegistry{
   return {job,done};
  }
  /** Session-scoped observation never exposes a job from another session or project. */
- subscribeScoped(id:string,sessionId:string,projectId:string,listener:BackgroundJobListener):()=>void{
+ snapshotScoped(id:string,sessionId:string,projectId:string):BackgroundJobSnapshot{this.assertScope(id,sessionId,projectId);return this.snapshot(id);}
+ stopScoped(id:string,sessionId:string,projectId:string):void{this.assertScope(id,sessionId,projectId);this.stop(id);}
+ private assertScope(id:string,sessionId:string,projectId:string):void{
   if(typeof sessionId!=="string"||!sessionId||typeof projectId!=="string"||!projectId)throw new Error("Background job observation scope is invalid");
   const job=this.require(id);
   if(job.options.sessionId!==sessionId||job.options.projectId!==projectId)throw new Error("Background job does not belong to the requested scope");
+ }
+ subscribeScoped(id:string,sessionId:string,projectId:string,listener:BackgroundJobListener):()=>void{
+  this.assertScope(id,sessionId,projectId);
   return this.subscribe(id,listener);
  }
  subscribe(id:string,listener:BackgroundJobListener):()=>void{const job=this.require(id);if(typeof listener!=="function")throw new TypeError("Job listener is invalid");job.listeners.add(listener);return()=>job.listeners.delete(listener);}
