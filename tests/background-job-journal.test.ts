@@ -73,10 +73,24 @@ test("interrupted retry claim is atomic and cannot be replayed",()=>{
  try{
   const journal=new BackgroundJobJournal(join(root,"jobs.json")),now=new Date().toISOString();
   journal.record({id:"original",sessionId:"s",projectId:root,command:"original-command",mode:"background",state:"running",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[]});
-  const claim=journal.claimInterruptedForRetry({sessionId:"s",projectId:root,interruptedJobId:"original",newJobId:"retry-1",authorizedCommand:"safe-command",authorizationId:"fresh-approval"});
-  assert.equal(claim.resumable,false);assert.equal(claim.command,"safe-command");
+  const binding={sessionId:"s",projectId:root,interruptedJobId:"original",authorizedCommand:"safe-command",operationDigest:"a".repeat(64),expectedHead:"b".repeat(40),allowedPaths:["allowed.txt"],authorizationExpiresAt:new Date(Date.now()+60_000).toISOString()};
+  const claim=journal.claimInterruptedForRetry({...binding,newJobId:"retry-1",authorizationId:"fresh-approval"});
+  assert.equal(claim.resumable,false);assert.equal(claim.command,"safe-command");assert.equal(claim.authorizationId,"fresh-approval");assert.equal(claim.operationDigest,binding.operationDigest);
   assert.equal(journal.load("s",root).find(row=>row.id==="original")?.state,"stopped");
-  assert.throws(()=>journal.claimInterruptedForRetry({sessionId:"s",projectId:root,interruptedJobId:"original",newJobId:"retry-2",authorizedCommand:"safe-command",authorizationId:"another-approval"}),/not available/u);
+  assert.throws(()=>journal.claimInterruptedForRetry({...binding,newJobId:"retry-2",authorizationId:"another-approval"}),/not available/u);
   assert.equal(journal.load("s",root).filter(row=>row.id.startsWith("retry-")).length,1);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
+
+test("authorization identifiers are durably single-use and ambiguous attempts cannot be replayed",()=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-retry-replay-"));
+ try{
+  const journal=new BackgroundJobJournal(join(root,"jobs.json")),now=new Date().toISOString(),base={sessionId:"s",projectId:root,authorizedCommand:"safe-command",operationDigest:"c".repeat(64),expectedHead:"d".repeat(40),allowedPaths:["allowed.txt"],authorizationExpiresAt:new Date(Date.now()+60_000).toISOString()};
+  for(const id of ["first","second"])journal.record({id,sessionId:"s",projectId:root,command:"old-command",mode:"background",state:"running",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[]});
+  journal.claimInterruptedForRetry({...base,interruptedJobId:"first",newJobId:"retry-1",authorizationId:"one-use"});
+  for(let index=0;index<105;index++){const at=new Date(Date.now()+index).toISOString();journal.record({id:`ordinary-${index}`,sessionId:"s",projectId:root,command:"test",mode:"background",state:"completed",createdAt:at,updatedAt:at,exitCode:0,eventCount:0,tail:[]});}
+  assert.throws(()=>journal.claimInterruptedForRetry({...base,interruptedJobId:"second",newJobId:"retry-2",authorizationId:"one-use"}),/already consumed/u);
+  assert.throws(()=>journal.claimInterruptedForRetry({...base,interruptedJobId:"first",newJobId:"retry-3",authorizationId:"fresh-but-ambiguous"}),/not available|uncertain outcome/u);
+  assert.equal(journal.load("s",root).filter(row=>row.originalJobId==="first").length,1);
  }finally{rmSync(root,{recursive:true,force:true});}
 });

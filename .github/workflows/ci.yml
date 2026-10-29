@@ -162,21 +162,18 @@ jobs:
         run: |
           set -euo pipefail
           node --import tsx --test tests/ordinary-review-workspace-flow.test.ts tests/background-job-journal.test.ts tests/workspace-writer-lease.test.ts tests/authorized-job-retry.test.ts 2>&1 | tee r4-scenarios.log
-      - name: Real Pi 1.2.0 NVIDIA API execution probe (not an audit verdict)
+      - name: Real Pi 1.2.0 NVIDIA authorized ASEN workspace write
         shell: bash
-        working-directory: ${{ runner.temp }}
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t05-pi-config
           ASEN_T05_EVIDENCE_DIR: ${{ github.workspace }}/r4-provider-evidence
         run: |
           set -euo pipefail
-          test -n "$NVIDIA_API_KEY" || { echo "::error::NVIDIA_API_KEY missing; real provider execution not demonstrated"; exit 1; }
+          test -n "$NVIDIA_API_KEY" || { echo "::error::NVIDIA_API_KEY missing; authorized Pi provider task is BLOCKED"; exit 1; }
           mkdir -p "$PI_CODING_AGENT_DIR" "$ASEN_T05_EVIDENCE_DIR"
           npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.2.0
-          timeout 120s pi --no-session --no-tools --no-extensions --no-mcp --no-skills --no-context-files --no-prompt-templates --no-themes --no-approve --provider nvidia --model nvidia/nemotron-3.5-lightning-30b-a3b --print --system-prompt 'Return only the requested token. Do not execute tools.' -- 'Reply with ASEN_T05_PI_LIVE_OK' > "$ASEN_T05_EVIDENCE_DIR/pi-live-output.txt"
-          grep -Fq 'ASEN_T05_PI_LIVE_OK' "$ASEN_T05_EVIDENCE_DIR/pi-live-output.txt"
-          printf '%s\n' "$ASEN_EXPECTED_SHA" > "$ASEN_T05_EVIDENCE_DIR/candidate.sha"
+          timeout 180s node --import tsx scripts/t05-nvidia-live-write.ts
       - name: Preserve real execution evidence
         if: always()
         uses: actions/upload-artifact@v6

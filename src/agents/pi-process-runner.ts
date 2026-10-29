@@ -24,6 +24,7 @@ export interface PiProcessOptions{
  attributionFile?:string;
  policyRoot?:string;
  providerCredential?:PiProviderCredential;
+ onProcessStart?:(pid:number)=>void;
 }
 export interface PiChildSelectionObservation{
  readonly taskId:string;readonly sessionId:string;readonly projectId:string;
@@ -193,6 +194,7 @@ export class PiProcessRunner implements AgentRunner{
     stdio:["pipe","pipe","pipe"],
     detached:process.platform!=="win32"
    }) as ChildProcessWithoutNullStreams;
+   if(child.pid!==undefined){try{this.options.onProcessStart?.(child.pid);}catch{/* Evidence observers cannot alter Pi execution. */}}
    let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,agentEnded=false,streamBytes=0,retainedBytes=0,stopResult:AgentResult|undefined;
    const preflightId=`asen-policy:${request.id}`,selectionId=`asen-selection:${request.id}`;
    let selectionRequested=false,selectionResponded=false;

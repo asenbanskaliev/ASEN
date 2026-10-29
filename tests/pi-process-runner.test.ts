@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";import test from "node:test";import {execFile} from "node:child_process";import {readFileSync} from "node:fs";import {access,copyFile,mkdir,mkdtemp,readFile,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment} from "../src/agents/pi-process-runner.js";
+import assert from "node:assert/strict";import test from "node:test";import {execFile,execFileSync} from "node:child_process";import {readFileSync} from "node:fs";import {access,copyFile,mkdir,mkdtemp,readFile,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment} from "../src/agents/pi-process-runner.js";
 import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {createTestSkillLifecycle} from "./helpers/lifecycle-applicability.js";
 import {Dispatcher} from "../src/agents/dispatcher.js";
@@ -380,8 +380,9 @@ test("Pi RPC adapter blocks caller-supplied skill overrides",async()=>{
 test("organic writer reaches Pi adapter through one exact Dispatcher receiver without SDD",async t=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2),authority:JSON.parse(process.env.ASEN_PI_AUTHORITY)}));});');
  t.after(()=>rm(d,{recursive:true,force:true}));
+ await mkdir(join(d,"src"),{recursive:true});await writeFile(join(d,"src/a"),"fixture\n");execFileSync("git",["-C",d,"init","-q"]);execFileSync("git",["-C",d,"config","user.name","ASEN tests"]);execFileSync("git",["-C",d,"config","user.email","asen-tests@example.invalid"]);execFileSync("git",["-C",d,"add","."]);execFileSync("git",["-C",d,"commit","-qm","fixture"]);
  const {issueOddDecision}=await import("./helpers/odd-routing.js"),{buildOrchestrationPlan}=await import("../src/orchestration/orchestrator.js"),{decideLifecycleApplicability}=await import("../src/lifecycle/applicability.js"),{issueOrganicWriterAdmission}=await import("../src/lifecycle/skill-lifecycle.js");
- const candidate={id:"organic",repository:d,revision:"revision",createdAt:"now"},decision=issueOddDecision({taskId:"organic",repository:d,paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});
+ const candidate={id:"organic",repository:d,revision:execFileSync("git",["-C",d,"rev-parse","HEAD"],{encoding:"utf8"}).trim(),createdAt:"now"},decision=issueOddDecision({taskId:"organic",repository:d,paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});
  buildOrchestrationPlan({taskId:"organic",repository:d,candidate,prompt:"write"},decision);
  const app=decideLifecycleApplicability(decision,{taskIdentity:"organic",repositoryIdentity:d,candidate:{id:candidate.id,repository:d,revision:candidate.revision},explicitMode:"unspecified",affectedSubsystems:["Pi"],expectedPaths:["src/a"],requiredArtifacts:[]});
  assert.equal(app.outcome,"organic");

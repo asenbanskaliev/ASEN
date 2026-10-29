@@ -17,6 +17,7 @@ import {claimStrictTddCompletion,type StrictTddCompletion} from "../test/strict-
 import {claimNonTddAlternativeResult,type NonTddAlternativeResult} from "../test/non-tdd-alternative.js";
 import {validateTddCompletionRecord,type TddCompletionRecord} from "../test/tdd-completion-record.js";
 import {captureWriterAuthorizationSnapshot,assertWriterAuthorizationSnapshotCurrent,assertWriterAuthorizationSnapshotOutcome,type WriterAuthorizationSnapshot} from "./writer-authorization-snapshot.js";
+import {acquireWorkspaceWriter} from "../runtime/workspace-writer-lease.js";
 
 export const lifecyclePhases=["context-init","explore","proposal","specification","design","tasks","apply","verify","archive"] as const;
 export type LifecyclePhase=typeof lifecyclePhases[number];
@@ -170,6 +171,13 @@ export function assertActiveWriterSnapshotOutcome(request:AgentRequest):readonly
  if(!grant.snapshotRequired)return Object.freeze([]);
  if(!grant.snapshot)throw new Error("Writer authorization snapshot is unavailable");
  return assertWriterAuthorizationSnapshotOutcome(grant.snapshot);
+}
+/** Hold a cross-process workspace lease for the entire trusted writer dispatch. */
+export function acquireActiveWriterLease(request:AgentRequest):ReturnType<typeof acquireWorkspaceWriter>|undefined{
+ const grant=request.phaseGrant&&phaseGrants.get(request.phaseGrant);
+ if(!request.writeSurfaces?.length)return undefined;
+ if(!grant||!grant.active||!grant.used||grant.phase!=="apply"||grant.requestId!==request.id||grant.sessionId!==(request.isolationKey??"default")||grant.repository!==request.repository||!request.candidate||grant.candidateId!==request.candidate.id||grant.revision!==request.candidate.revision||grant.surfaces.length!==request.writeSurfaces.length||grant.surfaces.some((path,index)=>path!==request.writeSurfaces![index]))throw new Error("Workspace writer lease requires the exact active one-use ASEN grant");
+ return acquireWorkspaceWriter({root:grant.repository,expectedHead:grant.revision,authorizationId:grant.requestId,allowedPaths:grant.surfaces});
 }
 export function authorizePiWriteGrant(request:AgentRequest):boolean{
  const grant=request.phaseGrant&&phaseGrants.get(request.phaseGrant);

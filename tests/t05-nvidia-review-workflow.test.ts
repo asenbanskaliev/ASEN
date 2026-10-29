@@ -1,73 +1,32 @@
 import assert from "node:assert/strict";
-import {spawnSync} from "node:child_process";
-import {existsSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from "node:fs";
-import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {readFileSync} from "node:fs";
 import test from "node:test";
 
-// A Windows checkout may convert the workflow to CRLF; the embedded script is LF.
 const workflow=readFileSync(new URL("../.github/workflows/ci.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
-const nodeBlock=/node --input-type=module <<'NODE'\n([\s\S]*?)\n\s*NODE\n/u.exec(workflow)?.[1];
-if(!nodeBlock)throw new Error("The T05 provider validation block is missing");
-const validator=nodeBlock.replace(/^ {10}/gmu,"");
+const liveTask=readFileSync(new URL("../scripts/t05-nvidia-live-write.ts",import.meta.url),"utf8");
 
-function runValidator(output:string){
- const directory=mkdtempSync(join(tmpdir(),"asen-t05-provider-contract-"));
- try{
-  writeFileSync(join(directory,"review-output.json"),output);
-  writeFileSync(join(directory,"candidate.diff.sha256"),"a".repeat(64)+"  candidate.diff\n");
-  const result=spawnSync(process.execPath,["--input-type=module"],{input:validator,encoding:"utf8",timeout:10000,
-   env:{...process.env,ASEN_T05_EVIDENCE_DIR:directory,ASEN_EXPECTED_SHA:"b".repeat(40),ASEN_T05_BASE_SHA:"c".repeat(40)}});
-  if(result.error)throw result.error;
-  const receipt=existsSync(join(directory,"review-evidence.json"))?JSON.parse(readFileSync(join(directory,"review-evidence.json"),"utf8")):undefined;
-  return {status:result.status,stdout:result.stdout,stderr:result.stderr,receipt};
- }finally{rmSync(directory,{recursive:true,force:true});}
-}
-
-test("review prompt names the description field and treats unresolved serious security defects as blocking",()=>{
- const prompt=/cat <<'PROMPT'\n([\s\S]*?)\n\s*PROMPT/u.exec(workflow)?.[1];
- assert.ok(prompt);
- assert.match(prompt,/"description":"nonempty reproducible explanation"/u);
- assert.match(prompt,/do not use explanation in place of description/u);
- assert.match(prompt,/previously identified security defect if it remains unresolved/u);
- assert.match(prompt,/documenting a known security defect does not make it nonblocking/u);
+test("T05 CI runs a real Pi 1.2 NVIDIA task through ASEN's authorized writer path",()=>{
+ assert.match(workflow,/@earendil-works\/pi-coding-agent@1\.2\.0/u);
+ assert.match(workflow,/NVIDIA_API_KEY:\s*\$\{\{ secrets\.NVIDIA_API_KEY \}\}/u);
+ assert.match(workflow,/node --import tsx scripts\/t05-nvidia-live-write\.ts/u);
+ assert.doesNotMatch(workflow,/ASEN_T05_PI_LIVE_OK|--no-tools[^\n]*nvidia/u);
+ assert.match(liveTask,/new Dispatcher\(runner,evidence\)\.dispatch\(request\)/u);
+ assert.match(liveTask,/providerCredential:"NVIDIA_API_KEY"/u);
+ assert.match(liveTask,/model:"nvidia\/nemotron-3\.5-lightning-30b-a3b"/u);
+ assert.match(liveTask,/issueOrganicWriterAdmission\(applicability,\[target\]\)/u);
 });
 
-test("explanation instead of description fails closed with a field-only diagnostic",()=>{
- const secret="DO_NOT_LOG_REVIEW_CONTENT";
- const result=runValidator(JSON.stringify({verdict:"pass",summary:secret,findings:[{severity:"high",path:"target",explanation:secret}]}));
- assert.notEqual(result.status,0);assert.equal(result.receipt,undefined);
- assert.match(result.stderr,/Reviewer finding at index 0 is missing a nonempty description/u);
- assert.ok(!result.stderr.includes(secret));assert.ok(!result.stdout.includes(secret));
+test("live provider evidence is tied to the exact candidate and exact changed-file set",()=>{
+ assert.match(liveTask,/assert\.equal\(git\(sourceRoot,"rev-parse","HEAD"\),expectedSha/u);
+ assert.match(liveTask,/assert\.deepEqual\(changedPaths,\[target\]/u);
+ assert.match(liveTask,/assert\.equal\(git\(root,"rev-parse","HEAD"\),baseSha/u);
+ assert.match(liveTask,/contentSha256:fileSha256/u);
+ assert.match(liveTask,/patchSha256:createHash\("sha256"\)\.update\(patch\)/u);
+ assert.match(liveTask,/piProcessId/u);
+ assert.match(liveTask,/result:"PASS"/u);
 });
 
-test("invalid JSON fails without including the model response in the error",()=>{
- const secret="DO_NOT_LOG_INVALID_RESPONSE";
- const result=runValidator(`{"summary":"${secret}",`);
- assert.notEqual(result.status,0);assert.equal(result.receipt,undefined);
- assert.match(result.stderr,/Reviewer output is not valid JSON/u);
- assert.ok(!result.stderr.includes(secret));assert.ok(!result.stdout.includes(secret));
-});
-
-test("a finding with a blank path is rejected without a receipt",()=>{
- const result=runValidator(JSON.stringify({verdict:"fail",summary:"Fixture",findings:[{severity:"high",path:"  ",description:"Missing traceable location"}]}));
- assert.notEqual(result.status,0);assert.equal(result.receipt,undefined);
- assert.match(result.stderr,/Reviewer finding at index 0 has invalid path/u);
-});
-
-test("a valid high-severity finding cannot pass, and a fail remains a failure with evidence",()=>{
- const finding={severity:"high",path:"target",description:"A reproducible problem"};
- const passing=runValidator(JSON.stringify({verdict:"pass",summary:"Fixture",findings:[finding]}));
- assert.notEqual(passing.status,0);assert.equal(passing.receipt,undefined);
- assert.match(passing.stderr,/Reviewer cannot pass with blocking findings/u);
- const failing=runValidator(JSON.stringify({verdict:"fail",summary:"Fixture",findings:[finding]}));
- assert.equal(failing.status,2);assert.equal(failing.receipt.reviewerOutput.verdict,"fail");
- assert.equal(failing.receipt.reviewerOutput.findings[0].severity,"high");
-});
-
-test("a valid pass without findings retains exact candidate identity",()=>{
- const result=runValidator(JSON.stringify({verdict:"pass",summary:"Fixture",findings:[]}));
- assert.equal(result.status,0);assert.equal(result.receipt.candidateSha,"b".repeat(40));
- assert.equal(result.receipt.baseSha,"c".repeat(40));assert.equal(result.receipt.diffSha256,"a".repeat(64));
- assert.equal(result.receipt.reviewerOutput.verdict,"pass");
+test("missing NVIDIA credentials are an explicit blocked result and are never logged",()=>{
+ assert.match(liveTask,/if\(!process\.env\.NVIDIA_API_KEY\)throw new Error\("NVIDIA_API_KEY missing; the live authorized-write scenario is BLOCKED"\)/u);
+ assert.doesNotMatch(liveTask,/stdout\.write\([^\n]*NVIDIA_API_KEY|JSON\.stringify\([^\n]*NVIDIA_API_KEY/u);
 });

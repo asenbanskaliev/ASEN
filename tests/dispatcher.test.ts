@@ -2,7 +2,7 @@ import {consumeRunnerWriteReceiver} from "../src/agents/dispatcher.js";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import test,{after} from "node:test";
-import {mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {existsSync,mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import { Dispatcher, type AgentRunner } from "../src/agents/dispatcher.js";
@@ -10,6 +10,7 @@ import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";import {issueControlledPlanPhaseGrant,issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";import {createAgentLifecycleSink} from "../src/runtime/agent-lifecycle.js";
+import {acquireWorkspaceWriter} from "../src/runtime/workspace-writer-lease.js";
 
 // Controlled writer grants bind to a real, clean Git candidate before a runner
 // is invoked.  The fixture is a private temporary repository so neither the
@@ -36,9 +37,15 @@ function organicAdmission(taskId="a",admissionCandidate=candidate){const decisio
 function controlledRequest(id="a",session="default") {const workspaceCandidate={...candidate,repository:fixtureRoot},writerAdmission=organicAdmission(id,workspaceCandidate),requestId=id.endsWith(":worker")?id:`${id}:worker`,grant=issueControlledPlanPhaseGrant({requestId,sessionId:session,candidate:workspaceCandidate,surfaces:["src/a"],writerAdmission});return {...writeRequest,id:requestId,repository:workspaceCandidate.repository,candidate:workspaceCandidate,isolationKey:session,expectedPhase:"apply",skillContext:sealedCodeChange(requestId,workspaceCandidate.repository,workspaceCandidate),phaseGrant:grant,writerAdmission};}
 
 test("dispatcher releases writer grant after completion", async()=>{
-  const runner: AgentRunner={run:async r=>({id:r.id,ok:true,output:"ok"})};
+  let sawLease=false;const runner: AgentRunner={run:async r=>{
+   const lock=join(fixtureRoot,".git","asen-t05-writer.lock");sawLease=existsSync(lock);
+   assert.throws(()=>acquireWorkspaceWriter({root:fixtureRoot,expectedHead:candidate.revision,authorizationId:"parallel",allowedPaths:["src/a"]}),/conflict/u);
+   return{id:r.id,ok:true,output:"ok"};
+  }};
   const d=new Dispatcher(runner,authorized());
   await d.dispatch(controlledRequest());
+  assert.equal(sawLease,true);
+  assert.equal(existsSync(join(fixtureRoot,".git","asen-t05-writer.lock")),false);
   const second=await d.dispatch(controlledRequest("b"));
   assert.equal(second.ok,true);
 });
