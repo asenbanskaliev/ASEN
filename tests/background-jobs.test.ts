@@ -143,5 +143,5 @@ test("T10 terminal notification identity does not change on subsequent status up
 test("T10 accessible output removes terminal controls from untrusted job identity",()=>{
  const registry=new BackgroundJobRegistry();
  const job=registry.start({sessionId:"owner",projectId:"project",command:"task"});
- assert.doesNotMatch(formatBackgroundJobStatus({...job,id:"unsafe\\x1b[31m\\nnext"}),/[\\x00-\\x1f\\x7f-\\x9f]/u);
+ assert.doesNotMatch(formatBackgroundJobStatus({...job,id:"unsafe\\x1b[31m\\nnext"}),/[\x00-\x1f\x7f-\x9f]/u);
 });
