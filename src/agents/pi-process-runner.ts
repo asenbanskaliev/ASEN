@@ -26,6 +26,7 @@ export interface PiProcessOptions{
  providerCredential?:PiProviderCredential;
  onProcessStart?:(pid:number)=>void;
  onProcessClose?:(details:{code:number|null;signal:NodeJS.Signals|null;stderr:string})=>void;
+ onToolExecution?:(event:Readonly<{type:"tool_execution_start"|"tool_execution_end";pid:number;toolName?:string;toolCallId?:string;isError?:boolean}>)=>void;
 }
 export interface PiChildSelectionObservation{
  readonly taskId:string;readonly sessionId:string;readonly projectId:string;
@@ -224,8 +225,16 @@ export class PiProcessRunner implements AgentRunner{
     let end;while((end=buffer.indexOf("\n"))>=0){
      const line=buffer.slice(0,end).trim();buffer=buffer.slice(end+1);
      let record:unknown;try{record=JSON.parse(line);}catch{record=line;}
-     const response=(record&&typeof record==="object"?record:{}) as {type?:string;id?:string;command?:string;success?:boolean;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>;} };
+     const response=(record&&typeof record==="object"?record:{}) as {type?:string;id?:string;command?:string;success?:boolean;toolName?:unknown;toolCallId?:unknown;isError?:unknown;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>;} };
      const type=response.type;
+     if((type==="tool_execution_start"||type==="tool_execution_end")&&child.pid!==undefined){
+      const event=Object.freeze({type,pid:child.pid,
+       ...(typeof response.toolName==="string"?{toolName:response.toolName}:{}),
+       ...(typeof response.toolCallId==="string"?{toolCallId:response.toolCallId}:{}),
+       ...(typeof response.isError==="boolean"?{isError:response.isError}:{}),
+      });
+      try{this.options.onToolExecution?.(event);}catch{/* Evidence observers cannot alter Pi execution. */}
+     }
      if(selectionOwner&&selectionSubscriptions.length&&type==="response"&&(response.id===selectionId||response.command==="get_state")){
       if(selectionRequested&&!selectionResponded&&response.id===selectionId&&policyLoaded&&!settled&&!stopResult&&!agentEnded&&!signal?.aborted){
        selectionResponded=true;

@@ -295,6 +295,17 @@ test("read-only artifact audit disables every Pi tool",async()=>{
  const args=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!).args as string[];
  assert.ok(args.includes("--no-tools"));assert.ok(!args.includes("--tools"));
 });
+test("Pi runner exposes bounded tool lifecycle observations without raw tool data",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"tool_execution_start",toolName:"read",toolCallId:"call-1",input:{path:"secret"}}));console.log(JSON.stringify({type:"tool_execution_end",toolName:"read",toolCallId:"call-1",isError:false,content:"secret"}));console.log(JSON.stringify({type:"response",id:f.id,success:true}));console.log(JSON.stringify({type:"agent_end"}));});');
+ const observed:unknown[]=[];
+ const result=await runner(p,{onToolExecution:event=>{observed.push(event);if(observed.length===1)throw new Error("observer failure must be isolated");}}).run({id:"tool-observer",role:"explorer",prompt:"inspect",repository:d});
+ assert.equal(result.ok,true,result.output);
+ assert.deepEqual(observed.map(event=>Object.keys(event as object).sort()),[["pid","toolCallId","toolName","type"],["isError","pid","toolCallId","toolName","type"]]);
+ assert.deepEqual(observed.map(event=>({...(event as object),pid:0})),[
+  {type:"tool_execution_start",pid:0,toolName:"read",toolCallId:"call-1"},
+  {type:"tool_execution_end",pid:0,toolName:"read",toolCallId:"call-1",isError:false},
+ ]);
+});
 test("read-only Pi runner fails closed when a model attempts a tool",{timeout:process.platform==="win32"?45_000:5_000},async t=>{
  const marker=join(tmpdir(),`asen-denied-tool-${process.pid}-${Date.now()}`);t.after(()=>rm(marker,{force:true}));
  const {d,p}=await fixture(`import {writeFileSync} from "node:fs";const marker=${JSON.stringify(marker)};let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{JSON.parse(x.trim());console.log(JSON.stringify({type:"tool_execution_start",toolName:"write",toolCallId:"forbidden"}));setTimeout(()=>writeFileSync(marker,"tool side effect"),1500);});`);
