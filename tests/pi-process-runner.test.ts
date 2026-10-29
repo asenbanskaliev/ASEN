@@ -48,7 +48,7 @@ async function waitForProcessStopped(pid:number,expectedStartTime?:string,timeou
 async function fixture(body:string,policy=true,skillsMode:"exact"|"missing"|"extra"|"altered"="exact"){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-pi-"))),p=join(d,"pi-fixture.mjs"),scenario=join(d,"scenario.mjs");
  await mkdir(join(d,"extensions"));await copyFile(fileURLToPath(new URL("../extensions/authority.ts",import.meta.url)),join(d,"extensions/authority.ts"));
- for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(fileURLToPath(new URL(`../${source}`,import.meta.url)),target);}
+ for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/runtime/responsive-layout.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(fileURLToPath(new URL(`../${source}`,import.meta.url)),target);}
  await writeFile(scenario,body);
  await writeFile(p,`import {spawn} from "node:child_process";
 import {resolve} from "node:path";

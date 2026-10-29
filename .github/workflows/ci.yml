@@ -161,7 +161,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --import tsx --test tests/ordinary-review-workspace-flow.test.ts tests/background-job-journal.test.ts tests/workspace-writer-lease.test.ts tests/authorized-job-retry.test.ts 2>&1 | tee r4-scenarios.log
+          node --import tsx --test tests/pi-authority-temp-load.test.ts tests/ordinary-review-workspace-flow.test.ts tests/background-job-journal.test.ts tests/workspace-writer-lease.test.ts tests/authorized-job-retry.test.ts 2>&1 | tee r4-scenarios.log
       - name: Real Pi 1.2.0 NVIDIA authorized ASEN workspace write
         shell: bash
         env:

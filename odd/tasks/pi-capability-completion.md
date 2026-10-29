@@ -1,213 +1,4451 @@
-YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíßÍ¼ßž<Û¾¸o+^²‰¢¶×# ASEN capability completion
-Complete the approved Pi-first capability roadmap using existing ASEN mechanisms; later add presentation and client adapters without claiming unsupported equivalence.
-Base branch: `feat/strict-parity-prerequisites`; current delivery: bounded work branches and reviewable PRs authorized at L474, no merge/releases; checks: focused Node/tsx tests, typecheck/build, applicable audits and isolated provider-free journeys. Older local-only delivery entries remain historical.
-
-## Specs
-
-### S1 â€” Authorized outcome and reference boundary
-
-User authorization, verbatim: "adelante con ese plan".
-
-The approved proposal compares the current ASEN implementation with Reference B release `v4.2.0`, target commit `4acaf4241beae1e0c977c92dfe406a270f8d40de`. The separate Reference A workspace experience is a later block, not a feature of Reference B's configuration binary. Preserve the historical frozen ecosystem source `08de420ca29be16b6f6bee725a30b599b061df16` and its evidence. A new comparison target never silently replaces that baseline or promotes a claim. L51 authorizes using installed Reference Shell 4.3.0 behavior to resolve remaining product decisions; this does not silently rebaseline the v4.2.0 comparison or establish remote-version equivalence.
-
-### S2 â€” Reuse and truthful inventory
-
-Inventory implementation, production composition, deterministic tests, real-host evidence and remaining gaps separately. Reconcile stale documentation against source. Classify each adopted surface as demonstrated, integration needed, evidence needed, missing or explicitly different. Reuse the existing routing, dispatcher, task, memory, profile and review components. The existing `ecosystem-strict-parity.md` remains the detailed ecosystem execution backlog; this document coordinates the newly approved completion program and links to those units rather than creating replacement stores or duplicating their evidence.
-
-### S3 â€” Proportional workflow
-
-Support natural-language requests, read-only inspection, focused clarification, direct small changes, durable substantial plans, task dependencies, delegation for a named reason and disjoint parallel work. Keep user requirements unchanged across handoffs. One consistent routing decision must serve the chat bridge, command materializer and agent paths. Continue already-authorized read-only work without redundant confirmation. Keep coherent code/test/doc units reviewable; task count and file count alone must not force delegation.
-
-### S4 â€” Permission and identity boundaries
-
-Preserve exact-candidate, exact-surface writer authorization; primary-session and child-process guards; sensitive-path and destructive-command protection; project/session/worktree ownership; explicit foreign-project consent; and safe cancellation. A denied call must execute zero forbidden operations. Persisted descriptions, memory and successful agent output must never restore or manufacture permission.
-
-Approved sensitive-path policy (L16): block tool access to `.git`, `.env*`, `*.pem` and `*.key`. User correction (L21), verbatim: "dejalo como lo esa haciendo reference". For the pending shell/PowerShell and Pi-floor decisions, align with the installed Reference Shell `reference-pi` 4.3.0 behavior: Pi minimum 1.2.0 and reference normal-mode command admission rather than universal exact-effective-command confirmation. Resolve exact reference policy from authorized installed source before implementation; do not infer adoption of unrelated YOLO/Auto modes, providers, background tools or stores. Preserve sensitive-path protection and child authority. Tool-call admission remains defense in depth, not shell/OS confinement; older host tests do not prove the new minimum.
-
-### S5 â€” Recovery and independent acceptance
-
-Complete the real interrupted-writer journey using the existing ECO-06 harness, stores and inspection tools. Preserve partial edits for explicit resolution, reject automatic replay and dirty-candidate fresh-plan eligibility, create a newly bound candidate/plan and obtain fresh one-use authority before another writer. Verify identity rejection, cancellation cleanup and restart behavior. Agent completion alone never completes a linked task; independent acceptance must remain explicit. An ASEN-host kill is not independent proof of an abrupt Pi-child kill or mid-write durability.
-
-### S6 â€” Tests and exact-change review
-
-Use applicable test-first development, regressions for touched existing behavior and proportionate verification. Complete the existing review lifecycle rather than adding competing authority. Bind review to an immutable exact candidate, validate bounded corrections, invalidate stale results and disclose unavailable review. Keep review switch/consent human-owned. A review result never authorizes publication. ASEN must not acquire a mandatory external review-runtime dependency.
-
-Candidate policy resolved by L51: support both committed commit/PR ranges and immutable local workspace snapshots, following the verified installed Reference behavior. Local snapshots use a private index/tree and owned read-only view without moving the contributor HEAD/branch/index; selected untracked scope must be explicit and current-candidate drift must invalidate results. Reuse ASEN candidate/controller/result/correction mechanisms; snapshot data is not a second approval authority. Generic Todo verification is not native review approval.
-
-### S7 â€” Memory, skills and code knowledge
-
-Keep the existing local memory implementation. Verify useful project context, search, deletion, restart continuity and project isolation without storing credentials or restoring authority. Complete skill selection/discovery/cache refresh, missing/recreated sources and real-host lifecycle coverage. Verify the unified CodeGraph tool against a real disposable project, including permitted index initialization and read-only queries. Live documentation is optional and must preserve personal configuration and disclose unavailability.
-
-### S8 â€” Profiles, persona and usage
-
-Complete effective model/effort routing, persistence, fallback and visible actual routing. Keep persona/style independent from permissions. Show only measured usage/cost and provider limits that can actually be enforced. An estimate, cancellation after quota failure or two prompts is not a hard request/token ceiling. Optional integrations and telemetry require explicit selection/consent; do not add hidden transmission.
-
-### S9 â€” Installation and maintenance
-
-User instruction, verbatim (L175): "hazlo como lo hace reference shell y completa esta parte que falta en asen". Implement the missing ASEN installation/maintenance lifecycle using the relevant logic of the already-authorized installed Reference Shell 4.3.0 reference. This supersedes the previous small-fix-only implementation boundary, not the separate execution/permission constraints in S12. Retain existing ASEN mechanisms and bind the implementation units to concrete reference behavior before writing source.
-
-Verify clean install, home/config precedence, spaces/Unicode, declared platform support, packaged exports, optional components/presets, safe update, backup/restore, read-only diagnosis and managed-only removal. Preserve unrelated personal configuration and project data. Documentation/help/errors must follow shipped behavior. Prove restore as well as backup creation. No installer or permission-changing action is authorized merely to make a local check pass.
-
-### S10 â€” Workspace experience
-
-After the core is reliable, compose status, agents, changes, task list, private history, background command completion, bounded cross-session communication, terminal accessibility and customization from the authoritative existing state. Views must not create a second task list or grant authority. Background jobs report observed exits, never inferred success. This block is distinct from Reference B release equivalence.
-
-### S11 â€” Additional clients
-
-**Adopted scope decision (L480):** T11 follows the actual Gentle Shell integration boundary: Pi is its native host/client. For this roadmap, T11 covers ASEN's Pi 1.2 host integration only; Claude Code, Codex, OpenCode, Cursor, Gemini CLI and other runtimes are deferred follow-on adapters, not implied T11 requirements. Gentle-AI's broader runtime inventory is not evidence that Gentle Shell itself implements those adapters. This decision changes scope only; it does not promote T11 to FULL.
-
-Reuse ASEN's existing Pi host contract and declare the capabilities and limits actually supported by each Pi mode. Do not add a generic adapter layer unless a concrete shared behavior requires it. Preserve the Pi core's guarantees; do not infer identical tools, delegation, UI or permissions across modes. Do not claim multi-client equivalence from Pi-only checks. Any future non-Pi adapter requires a concrete reference/API mapping, an explicit capability contract, independent behavior/security tests and runtime/platform evidence.
-
-### S12 â€” Execution constraints and closure
-
-Preserve the five existing uncommitted ECO-06 surfaces. Work locally; no source commits, push, PR/merge/release, permission changes, destructive cleanup or paid/provider-backed runs without separate explicit authorization. Prefer deterministic/provider-free tests before a separately authorized real journey. Stop on failed or unavailable required proof; do not retry blindly, weaken tests, transfer old candidate evidence or promote registry rows from broad CI alone. Do not claim time/cost superiority without comparable measurements.
-
-Standing user direction (L51), verbatim: "si tinenes aguna otra duda o decision que te falta compara como lo hace reference shell y aplica si logica, continua hasta terminar todos los T de esa forma y no me preguntes". Compare authorized installed/reference source and apply its relevant logic to remaining in-scope decisions without routine product/local-test questions. This does not grant provider/native consent, publication, destructive maintenance, project commits or new outside-target/install permissions. Continue independent authorized local work; disclose unavailable required proof as blocked, never complete.
-
-Additional user continuity instruction, verbatim (L176): "despues de terminar la seccion de instalacion continua con T10,T11 y T12 si tienes que tomar una decision por algo que falta busca como lo hace reference shell y con criticidad toma la decision o informacion qeu te flta de este estudio de reference shell y cotinua en modo autopiloto hasta completar todos los T pendientes de completar". Continue through the remaining tasks, critically deriving in-scope decisions from the authorized Reference Shell reference. Do not stop merely because T09 is complete or for routine product/local-test questions. Preserve required explicit consent and honest blocked/unavailable evidence; autonomy is not authority for unrelated or irreversible host actions.
-
-Owner disposition L190, verbatim reply: "si", to the exact request for a new bounded investigation/correction of the Windows temporary-directory rename failure without changing permissions or personal configuration. This reopens ONLY the L189 U3 decision stop for a new evidence-driven round; it does not erase the failed spot, authorize blind retries, or reopen unrelated T04/T05/T07 stops.
-
-Latest user direction (L220), verbatim: "si, no me pregutnes cosas tan basicas , quedas autorizado". Add the public cause to the real test's failure diagnostic without repeating the suite now; avoid routine basic local approval questions. This does not authorize publishing, permission changes, native consent or blind/exhausted proof retries.
-
-Current owner test authorization (L258), verbatim: "quedas autorizado para los test,no me pregutes cada vez". Run necessary in-scope provider-free local tests and compiler checks without repeated routine approval questions; this resolves the L257 proof-budget stop for one fresh bounded compiler execution with the proposed two-minute child budget. Diagnose unexpected failures and preserve evidence rather than retry blindly or claim a timeout passed. This does not grant paid/provider/native review consent, permission changes, destructive operations, package acquisition, source commits or publication, and does not erase separately stopped T04/T05/T07 cases.
-
-Local fixture corrections and necessary provider-free verification of the same kind are authorized without repeated routine permission questions (L110). Diagnose failures rather than retry blindly; preserve exact assertions and previous receipts. This does not reopen explicit T04/T05/T07 timeout stops, authorize automatic timeout retries, provider/native consent, personal configuration changes, installs or delivery.
-
-### S13 â€” Audit ODD pending work against actual implementation
-
-User instruction, verbatim (L437): "si y mientras tanto otro subagente revise os todo pendientes y contraste los odd. md que hay con la realidad del codigo". Run a separate read-only audit of pending tasks and project ODD Markdown against actual code and saved proof, concurrently with the authorized T09-U9b supplemental comparisons. Report discrepancies and missing evidence without silently changing implementation, historical records, or admission status.
-
-### S14 â€” Execute the functional-equivalence completion plan
-
-User goal, verbatim: "que plan propones para compltar los T pendientes para que asen y reference shell sean hermanos genemolos con mismas caractristicas y funcionalidades ?". User approval of the proposed plan, verbatim (L440): "hazlo asi".
-
-Execute the accepted sequence: consolidate the capability-to-code/public-entry/proof matrix and stale task metadata; advance independent T09 maintenance and T05 review units in parallel; resolve T04/T07 proof stops only within their explicit execution permissions; complete T10 workspace behavior and reference-confirmed T11 clients; perform T12 shared public scenarios and applicable platform verification last. At most two independent implementation workers, with separate risk verification and parent-owned integration. Reuse existing stores, controllers and public contracts. Functionality still absent remains a gap, not a documentation-only completion.
-
-Scoped permission exception (L442): the owner selected "Autorizar solo esas vistas temporales" for DACL application/restoration only on newly created owned `.cache/asen-review-view-*` fixtures in this project, without elevation, parent-directory ACL changes or modifications to existing files. This replaces the earlier no-ACL restriction only for those fresh owned fixtures and their owned contents; `.cache` itself, the repository and any pre-existing paths remain forbidden targets. Feasibility proof must precede a successful Windows materializer claim.
-
-In-scope correction direction (L444), verbatim: "autorizo, y no me vuelvas a pedir autorizacion apra corregir eroroes". Diagnose and correct errors within already authorized surfaces and permission boundaries, preserve prior failures, and perform necessary bounded verification without repeated routine authorization questions. This is not permission for blind unchanged retries, broader targets, elevation, external actions or claims unsupported by proof.
-
-The working behavior target is the already studied Reference Shell4.3.0. Existing immutable Reference A and Reference B pins and admissions remain historical evidence, not a silently rebased4.3.0 inventory. A complete immutable4.3.0 source/inventory binding and controlled comparison evidence must be established before full functional-equivalence claims; do not infer it from a package version or installed mutable paths. No new outside-project reads, provider/native consent, real installations, destructive host actions, source commits or publication are granted by this approval. Prior explicit exclusions remain visible full-parity gaps until separately resolved, not automatically adopted permissions.
-
-## Tasks
-
-- [x] T00 | S1,S2,S12 | route: parent bookkeeping | Record accepted scope, current source identity, pre-existing changes and blockers | commit: none; evidence: clean base identity and five existing ECO-06 surfaces observed before this file.
-- [x] T01 | S1,S2 | route: read-only explorer mvbbc1rw-1-z61q, mapping/context boundary | Produce versioned feature-to-source/test/evidence map and first bounded work-unit surfaces | commit: none; evidence: v1 map in L5, parent dispatcher spot-check; Reference B source unavailable locally, no equivalence claimed.
-- [x] T02 | S3 | route: context-backstop bounded units; U2 independent authority/concurrency verifier | Reconcile proportional routing and the natural-language-to-accepted-task path | commit: none; local deterministic closure: U1/U2 95 passes+typecheck, independent U2 PASS, parent parallel spot-check PASS; U3 final 21 passes/1 Windows skip+typecheck. Host/model adherence remains T12 evidence debt, not claimed.
-- [x] T03 | S4 | route: bounded parent/workers; Normal/floor unit independently verified for Risk2/5, P1 test-only checks | Complete local primary/child guards, identity/foreign-project consent and cancellation proof | commit: none; evidence: scoped independent PASS131/1WindowsSkip plus real host veto; P1 worker55/1skip+types, parent controlled2/2 in39.1s (L41). Finite SDK1.2/core1.3 Windows evidence only; all-OS/mode/native-review limits remain T12.
-- [ ] T04 | S5 | route: provider-free local units verified; real journey requires separate consent | Finish ECO-06 recovery evidence without replacing stores or replaying authority | status: blocked, NOT complete; L1 PASS3/1POSIXskip+types; L2 corrected parent focused1/1+regressions56/1WindowsSkip+types (L48), ECO5/source retained; commit: none; actual Pi/provider/midwrite/restart proof and legacy1.1 controller disposition remain required.
-- [ ] T05 | S6 | route: candidate/snapshot integration design, bounded implementation units, named-risk independent verification | Complete exact-change review, stale-result rejection and correction/acceptance composition | status: IN PROGRESS L415; standalone A1, portable-path preflight A2a1 and corrected nonmaterializing inspector A2a2 DONE LOCAL under their separate independent admissions L401/L405/L415. A2a2 causalRED3â†’GREEN19/19/types0 and same-reviewer PASS; admission97eb40f6â€¦2732f. A2b owned filesystem view/lifetime, B/C/D and public integration remain unfinished. Historical failures/limits preserved; no native approval or full T05 claim; commit: prohibited by owner.
-- [x] T05-A1 | S6,S12 | route: original bounded writer, causal parent correction, same independent reviewer and final parent binding | Capture and revalidate a data-only workspace projection with explicit untracked scope and repository-code isolation | DONE LOCAL L401, bounded Windows evidence and declared symlink skip; original approximately400-line planning target exceeded and not waived. No native authority; commit prohibited by owner.
-- [x] T05-A2-map | S6,S12 | route: one read-only explorer, parent ownership spot-check, one safety challenge | Map owned read-only review-view materialization and lifetime | DONE decision L403: portable-path prerequisite, non-materializing tree inspection, then coherent materialization+lifetime; no unsupported Windows readonly claim or authority expansion; commit: none.
-- [x] T05-A2a1 | S6,S12 | route: parent test-first, independent Risk2 verification | Validate portable destination paths as pure untrusted data before tree inspection/materialization | DONE LOCAL L405; independent S6/S12/Risk2 PASS,12/12 tests/tsc0,779-file/11-receipt binding rechecked. Standalone lexical preflight only; commit: prohibited by owner.
-- [x] T05-A2a2 | S6,S12 | route: source-backed design, context-backstop bounded writer, independent security verification | Inspect candidate Git tree without materializing a destination or granting authority | DONE LOCAL L415: same independent reviewer S6/S12/boundedRisk2 PASS, all3findings resolved; parent rechecked781sources/2manifests/37receipts, admission97eb40f6â€¦2732f. Standalone nonmaterializing inspector only; original FAIL/incident and limits preserved; commit: prohibited by owner.
-- [x] T06 | S7 | route: reuse existing store/registry; scoped SDK and admission characterization | Complete memory continuity, deletion/isolation and skill lifecycle integration/evidence | LOCAL closure verified: job11 existing6/6, job12 SDKhost1/1+types, job14 corrected admission1/1+types; scoped source snapshots/ECO5, current734 efc1fccd... (L62). No production change/nativeapproval; provider/Pi-child/OS/nativeWinwatcher limitations T04/T12, no all-OS/fullCLI claim; commit: none.
-- [ ] T07 | S7 | route: read-only unified-tool/backend/offline map, then isolated provider-free public checks if available | Complete real CodeGraph lifecycle and optional documentation integration | status: BLOCKED/NOT complete (L65); CLI-only map complete, real backend offline behavior unproved; firstlauncher134 then corrected20sTIMEOUT, no behavioralRED/GREEN/types/differential; proposedunitrolledback byte-identical3files, evidence retained; no more execution without explicitdecision; commit: none; no current ASEN index mutation or unapproved external install/config/provider/docs calls.
-- [x] T08 | S8 | route: bounded parent units and named-risk independent verification | Complete model routing, persona separation, honest usage and optional-component boundaries | LOCAL closure: U1(L72),U2a(L79),U2b1(L89),U2b2(L115),U2c(L123),U2d1(L138),U2d2(L153),U3(L163); latest7421189 exact liveRoot/ECO5, U3 RED68/GREEN69(40pass1WindowsPOSIXskip)/types70/differential71/independent72+finalS8-U3-S12-Risk3PASS. Child-reported selection is not provider-used routing; history cost is not verified billing and no provider quota is claimed. Native approval, provider/SDK-host/fullbaseline/all-platform proof remain T12 evidence debt. Historical failed attempts remain in Log. No source commits per user constraint; commit: none.
-
-- [ ] T09 | S9,S12 | route: sequential bounded lifecycle units and named-risk verification | Complete installation/update/restore/doctor/removal and docs | IN PROGRESS L440: owned staging/catalog/selection/explicit launch and public doctor locally admitted through L315; consistent export and corrected finite backup admitted L329/L345; reader/isolated restore-stage/blocker plan admitted L354/L362/L371; public backup preview admitted L394; strict acquisition decoder/byte observer/public update preview admitted L419/L428/L438. Actual acquisition/update/rollback, broader executable backup, live restore, managed-only uninstall, browser consent and distribution/platform closure remain unfinished. Historical failures are retained, not current unresolved defects when superseded by a scoped admission. No whole-installer/native/all-OS claim; commit: prohibited by owner.
-
-### T09 Windows verifier checkpoint â€” 2026-10-28
-
-Initial PR HEAD `c0d5caa0dbe7e4da835af5681b7396d2307fb532` failed the Windows packed-package stateful-evidence verifier: after stdin EOF the Pi child did not close within the existing 5-second grace and was force-killed; the test correctly rejected forced shutdown. The original workflow artifact does not contain process/stream event details, so the lower-level cause remains unproven. Diagnostic candidate `c3da3bd40faf644a897241580b751e882dae4e91` adds bounded failure-only lifecycle diagnostics and a forced-shutdown regression without changing behavior or timeouts. Exact-candidate Release Gate passed real packed Pi install/restart/cross-session evidence on Windows, Linux and macOS; each verifier process exited naturally (3 observed). Its separate real-package smoke also passed a local Ed25519-signed install (ephemeral explicit trust anchor), doctor/installed CLI, backup/integrity check, clean-target restore with data/config comparison, and managed uninstall preserving sample user data on all three OSes. This does not test HTTPS acquisition, version-to-version activation/rollback, SQLite-active consistency, interrupted/corrupt restore recovery, uninstall symlink/race attacks, signature rejection/rotation/revocation, or browser opening. This is not reproduction, not a causal fix. CI run `40657477741` was still in progress when recorded. Local Linux `npm run check`, `npm run verify:pack`, and Pi 1.2 TUI/RPC/JSON/print matrix passed.
-
-R4 dependency residual: `npm audit --json` on 2026-10-28 reports 1 moderate and 1 high finding under development/test Pi host `@earendil-works/pi-coding-agent@1.2.0` â†’ `undici@8.10.2`, including TLS certificate validation bypass GHSA-2m5v-pch6-74hx. Pi imports the Undici dispatcher. Pi is an optional peer and its dependency tree is not bundled by ASEN; npm's suggested Pi `0.75.3` downgrade is a major-version mismatch. No override or Pi substitution was used. Keep T09 PARTIAL until a supported Pi-side fix is verified.
-
-
-T09 remains PARTIAL: actual signed acquisition/activation/rollback, complete data restore, race-safe managed uninstall and real browser launch/platform proof are not all evidenced. Do not change T05/T10/T11 states from this checkpoint. Preserve the opaque suffix of this file byte-for-byte.
-
-### T09 continuation checkpoint -- 2026-10-28
-
-Reconfirmed remote PR #37 HEAD `425170f02db2fa69327d4cc415b059a09ce004ec`. Added public CLI tests for signed loopback HTTPS install, A-to-B upgrade and rollback with user-data preservation, plus isolated child-process rejection of an untrusted TLS root before any install effect and acceptance of the explicitly trusted test CA. Full local suite: 2,211 passed, 0 failed, 19 conditional skips; typecheck, build, `npm run check`, `npm run verify:pack`, and diff check passed. The real tarball host-boundary check reports 361 files, 28 exports, 11 commands and 16 tools. These new tests use signed fixture packages; they do not replace the real-package cross-OS lifecycle receipts or prove upgrade of the real tarball.
-
-R4: Pi 1.2.0 still brings moderate/high Undici advisories. The inspected HTTP dispatcher does not pass the function-valued TLS option described in GHSA-2m5v-pch6-74hx, but this is not proof that every Pi request path is unaffected; no downgrade or override was made. T09 remains PARTIAL: exact-SHA CI, real-package HTTPS update/rollback across OSes, restore crash/corruption and SQLite evidence, uninstall link/concurrent-path protection, real browser launch, and supported upstream dependency remediation remain outstanding. T05/T10/T11 are unchanged. Opaque suffix preserved byte-for-byte.
-
-### T09 packed lifecycle follow-up -- 2026-10-28
-
-Extended the actual packed ASEN npm smoke: ephemeral Ed25519 signing, loopback HTTPS A-to-B upgrade (0.1.0 to a versioned copy of the tarball), installed version probe, data preserved across update and rollback, rollback to A, real backup verification, corrupt backup restore rejected with no target effects, valid retry restores the same clean target with data/config equality, managed uninstall and preserved user data. Linux Node 24.22.1 passed. The v2 copy changes only package and the two compiled CLI version literals. First run found a harness-only deadlock because synchronous child execution blocked the same-process HTTPS server; async child execution passed with TLS verification and original timeouts unchanged. Typecheck/build/verify-pack passed. Windows/macOS exact-SHA execution of this extended real-package smoke remains pending. T09 stays PARTIAL for interrupted/SQLite restore, concurrent uninstall-route substitution, real browser launch and inherited Pi dependency risk; T05/T10/T11 unchanged.
-
-### T09 smoke runner correction -- 2026-10-28
-
-Release Gate `2d50f464bc054045d7ef57146f0f9dee9fc239d6` failed its Ubuntu real-package smoke because it runs from a temporary npm-project cwd and the script resolved the TLS fixture from cwd (`ENOENT`). The smoke now anchors fixture paths to its own module location; exact reproduction from the temporary cwd passed locally. The failed Windows/macOS jobs were cancelled, not passed. Phase 0 and Pi runtime passed on that SHA. A corrected exact-SHA Release Gate/CI run is still needed. T09 PARTIAL; T05/T10/T11 unchanged.
-
-
-### T09 SQLite backup and restore follow-up â€” 2026-10-28
-
-PR #37 candidate base `9a235e15ce523c610cc7a5a726c77e8601fe2c13` now snapshots active SQLite databases through read-only `VACUUM INTO`, validates integrity and bounds, and excludes WAL/SHM/journal sidecars. A live-WAL regression proves commit inclusion, snapshot isolation and healthy restored SQLite. An injected handled restore-stage failure preserves the prior target, cleans owned staging and permits retry. Focused tests 4/4; full suite 2,214 passed, 19 conditional skips; npm run check, typecheck/build, verify-pack, focused regressions and diff check passed on the lazy-import candidate. This is not abrupt kill/power-loss recovery evidence. Exact-SHA CI and real-package cross-platform SQLite proof remain pending; T09 stays PARTIAL. T05/T10/T11 unchanged.
-
-
-### T09 CI-discovered Node 22 SQLite warning â€” 2026-10-28
-
-Exact candidate `49aa9e9c61cd01e82e4f78b724e4d8673b87fed3` failed Release Gate's Ubuntu packed install smoke because eager runtime import of `node:sqlite` emitted Node 22 `ExperimentalWarning` on stderr, invalidating the clean version-probe contract; Linux and Windows test logs confirm the same cause across 50 failures. Phase 0, Pi runtime, and Linux package restart/cross-session receipts passed. Fixed locally with lazy SQLite import and a child-process version/no-stderr regression; this fix awaits exact-SHA CI. Keep T09 PARTIAL. Opaque suffix unchanged.
-
-
-T09 exact-candidate follow-up (2026-10-28): the actual npm tarball now passes signed HTTPS upgrade/rollback, live SQLite-WAL backup, snapshot-time restore/integrity, corrupt-restore no-effects and retry, and uninstall with data preservation on Linux Node 24.22.1. The lifecycle suite passes 30/30, including SIGKILL during restore staging; existing target survival and retry pass, but the private unpublished stage remains after forced termination. Candidate a1e389d passed Phase 0/Pi runtime and Linux/Windows Release Gate; macOS packed upgrade was killed at the same 60-second boundary as the inner acquisition timeout, so the harness now uses 75 seconds plus bounded request/TLS diagnostics. Why macOS reaches the acquisition deadline remains unconfirmed; exact-candidate rerun is pending. T09 remains PARTIAL; other task states unchanged.
-
-
-T09 CI follow-up (2026-10-28): candidate 12e3f08 passed Phase 0, Pi runtime, Pi support matrix and real packed lifecycle Release Gate on Linux/macOS/Windows; Ubuntu CI also passed. macOS full CI timed out its single all-tests chunk at 600,183/600,000 ms with cleanup confirmed and no assertion failure. RED reproduced 121 files mapping to one macOS chunk; GREEN now uses sequential chunks of 50 with unchanged watchdogs; focused test-runner tests pass 21/21. Full local check and corrected exact-candidate CI remain pending; do not promote T09 or other tasks.
-
-
-T09 CI follow-up 2 (2026-10-28): Windows full suite on 12e3f08 found the new restore-kill test used a raw drive-letter path as an ESM import, failing with ERR_UNSUPPORTED_ESM_URL_SCHEME before the staged checkpoint. The child import now uses pathToFileURL and the targeted lifecycle regression passes locally. A planner-test implicit-any was also corrected after typecheck. Consolidated validation is rerunning; no runtime product change.
-
-
-T09 corrective local validation (2026-10-28): `npm run check` passes 2,216 tests, 0 failures, 19 conditional skips; typecheck, build, verify-pack and diff-check pass. Phase/skills/memory/upstream-boundary audits pass; ecosystem normative proof remains NOT ADMITTED because the retained source repository is unavailable. Exact CI for the corrective candidate is pending.
-
-- [x] T09-U1 | S9,S12 | route: parent narrow fix, context-backstop cache-controller preparation, independent named-Risk3 verifier | Reject unavailable setup before home/config/runtime access and disclose the boundary in help/docs | LOCAL complete L174: RED73 setup fallthrough reproduced (combined scope incident preserved), GREEN74 15/15, types75, differential76 15 pairs, literal independent77 and final25-rrmx S9-small/S12/Risk3PASS; 26 authored lines/3 surfaces, candidate7420018 and ECO5 preserved; full S9 not admitted; commit: none per user constraint.
-- [x] T09-U2 | S9,S12 | route: bounded writer28, single callback correction2a, independent29/final2b | Add a truthful read-only setup plan and preserve other launcher contracts | LOCAL COMPLETE L183: corrected744b485, GREEN27/27/types/differential/parent81spot, independent82 exactPASS and final S9-U2/S12/Risk3PASS; original403-line scope and correctionCLI4/4/test36/0 retained, not a full installer; commit: none.
-- [x] T09-U3 | S9,S12 | route: staged ownership unit, bounded Windows/namespace fixes, SAME independent2fâ†’2gâ†’2h | Establish owned prefix and validated setup staging without touching foreign data | LOCAL COMPLETE L199: final74740f self61of61/types20exactdiff/ONEindependent14casePASS plus actual2h FINAL S9-U3/S12/Risk2/Risk4PASS; prior7dbREJECT/bcdd43of44EPERM/ENAMETOOLONG preserved, no fullinstaller/native/allOS approval; commit: none.
-- [ ] T09-U4 | S9,S12 | route: sequential source/reference maps, bounded implementation, named-risk review | Verify metadata/CLI, select/activate, update and rollback managed versions | IN PROGRESS: prior U4a/b/c and readerU4d1+selectorU4d2 admitted locally throughL274. Stored selection is not execution/readiness. U4e explicit selected launch locally admitted L288 after corrected50/types0/differential24/independentPASS; U4f1 metadata-only publicselection locally admitted L297, activation/update/rollback unfinished, historical failed receipts preserved; commit: prohibited by owner.
-- [x] T09-U4b1 â€” S9/S12; route: parent inline, Risk2/Risk4 independent verifier after observed checks; commit: prohibited by owner. Implement the non-stealing owned-install maintenance-lock primitive only, leaving existing private-store locks/default consumers and CLI consumer unchanged. Scope and checks: L225. Status: DONE LOCAL bounded; RED10 missing API, GREEN10/10 and full applicable types0 on756f3e10d0bâ€¦, independent final2p S9-U4b1/S12/Risk2/Risk4 PASS and parent spotcheck L227. Primitive only; no existing API integration/separate-invoker-process/whole-installer admission.
-- [x] T09-U4b2 â€” S9/S12; route: parent inline then Risk2/Risk4 independent verifier; commit: prohibited by owner. Integrate the accepted common maintenance primitive into the explicit CLI probe only. Status: DONE LOCAL bounded after real RED4 behavior failures, GREEN4 new+5 existing output+6 existing control and full types0 on757cafd0688â€¦, independent final2q S9-U4b2/S12/Risk2/Risk4 PASS plus parent spotcheck (L230); staging/multi-version integration separate.
-- [x] T09-U4c-map â€” S9/S12; route: ONE reference-ai-explore read-only compatibility/reuse map, parent one spotcheck/decision; commit: prohibited by owner. Status: DONE decision/reuse map2r and one parent parseReceipt spotcheck L232. Reader-first additive optional root catalog selected; map's module-wide-test recommendation narrowed by actual changed call paths. No production edits/checks in map.
-- [x] T09-U4c1 â€” S9/S12; route: parent inline then independent Risk2/Risk4 verification; commit: prohibited by owner. Add read-only finite version catalog inventory preserving exact legacy helpers/stage/v1 bytes; L233. Status: DONE LOCAL bounded after real RED1legacyPASS/5newFAIL, GREEN38/38 actual new+consumer cases and full types0 on758454e2211â€¦, final2s S9/S12/Risk2/Risk4 PASS plus parent spotcheck (L235). No metadata writer/migration/activation.
-- [x] T09-U4c2-design â€” S9/S12; route: ONE scoped read-only assumption challenge via prior explorer2r continuation; commit: prohibited by owner. Status: DONE scoped challenge2t and parent frozenstage468â€“569spotcheck L237. Nestedprefix rejected; same-module private reuse selected. First small behavior-preserving source-guard extraction L238, mutator still not written.
-- [x] T09-U4c2a â€” S9/S12; route: parent inline, Risk2/Risk4 independent after observed checks; commit: prohibited by owner. Extract ONLY the two source-observation/revalidation loops into private same-module helpers; L238. Status: DONE LOCAL bounded: exact two-loop structural reversal/current staging34/34/types0 on7588801df6eâ€¦, final2u S9/S12/Risk2/Risk4 PASS and parent spotcheck L240. No metadata writer in this refactor.
-- [x] T09-U4c2b â€” S9/S12; route: parent inline, independent Risk1/Risk2/Risk4 source/existing-evidence review2v; commit: prohibited by owner. DONE LOCAL bounded L248: final2v S9/S12/Risk1/2/4 PASS and parent source/receipt spotcheck on7598d9802c59â€¦;9/9 and completed childcompiler0 admitted, outer30stimeout remains a failed envelope/closure limitation. No further execution required. No nativeapproval/activation/runtime/wholeinstaller claim; original8/9/73of74 unexplained; mirror pending DB14.
-- [x] T09-U4d-map â€” S9/S12; route: ONEexplorer2w mve1522x-2w-h0xj + parent source/reference spotcheck; commit: prohibited by owner. DONE map L249: ASEN has no current/launcher consumer; home selects Pidata, update passthrough not selfupdate. Reference718â€“759 ordinaryWindows current/atomicwriter confirmed; adapt reader-first ordinaryfile only, reject symlink/package-loaded maintenance/hostauthority copying. No implementation/tests in map.
-- [x] T09-U4d1 â€” S9/S12; route: bounded parent/worker correction and SAME independent Risk2/Risk4 reviewer; commit: prohibited by owner. DONE LOCAL L260: corrected759cd1f2... publicREDâ†’53observedPASS(two layouts), currentcompiler0/46009ms, finalmvf29pt1 S9/S12/Risk2/4PASS and parent source/receipt spotcheck. Rejected originalreader/deepTEMP0of5/25stypeout retained. Native approval/activation/launcher/runtime readiness/all-platform/fullinstaller not claimed.
-- [x] T09-U4d2 | S9,S12 | route: context-backstop writer, bounded cleanup correction, SAME independent Risk1/2/4 reviewer | Publish a controlled ordinary current-version selector using existing owned-install/lease/atomic-write mechanisms | DONE LOCAL L274: final760/82f03e... GREEN10/10(types0), positive existing1â†’2CAS proof, SAMEverifier mvf4a7dx S9/S12/Risk1/2/4PASS and parent source/test/hash/receipt spotcheck. HistoricalAPIRED/8of9/proofrejection preserved; no native/activation/allOS/wholeinstaller claim; commit: prohibited by owner.
-- [x] T09-U4e | S9,S12 | route: bounded writer, parent RED/GREEN/types/differential, SAME independent Risk1/2/4 correction reassessment | Integrate explicit selected-version startup without treating stored selection as execution permission | DONE LOCAL L288: corrected762/8412a185,50PASS/types0/differential24/hygiene0, SAMEverifier mvf7ek0c S9/S12/Risk1/Ûµçkh‘éì¶»§q«^uÉ”¡…¹•Ì½ÕÑÍ¥‘”Ñ¡”Ñ¡É•”Á…Ñ¡Ì°•á•ÁÐ™É•Í ½Ý¹•€¹…¡”½ÐÄÀµ„Ð½Á½ÍÐµÉ•´¨¼ÁÉ½½˜…ÉÑ¥™…ÑÌ¸I…Ü½±¥™•å±”½¥‘•¹Ñ¥Ñä½ÍÑ½É…”…¹‰•¹¥¸½Ý¥‘Ñ ‰•¡…Ù¥½ÈµÕÍÐÉ•µ…¥¸•á…ÐìI¥Í¬È¼Ì¥¹‘•Á•¹‘•¹ÐÙ•É¥™¥…Ñ¥½¸™½±±½ÝÌÑ¡”™¥¹…°…¹‘¥‘…Ñ”¸9¼½µµ¥ÑÌ°ÍÑ…¥¹œ°ÁÕÍ °É•µ½Ñ”$°½ÕÑÍ¥‘”É•…‘Ì°¡½ÍÐ½ÁÉ½Ù¥‘•È½0½È™Õ±°PÄÀ½PÄÈ±…¥µÌ¸((ŒŒŒ0ÐØÔƒŠPAÉ•Á…É”™¥ÉÍÐ¡…¹•µ½‘”‰…­É½Õ¹Ù•É¥™¥…Ñ¥½¸()]½É­•ÈµÙÀÈÉàÜÄ´Ø´á”Ý´¥µÁ±•µ•¹ÑÌÑ¡”ÁÉ¥Ù…Ñ”‘¥ÍÁ±…äµ½¹±äÉ•Á±…•µ•¹Ð‰•™½É”Õ¹¡…¹•Ý¥‘Ñ …±Õ±…Ñ¥½¹Ì…¹‘½Õµ•¹ÑÌÑ¡”É…Üµ¥‘•¹Ñ¥Ñä‰½Õ¹‘…Éä¸%ÐÉ•Ñ…¥¹ÌÑ¡”•á¥ÍÑ¥¹œ…ÕÍ…°Ñ•ÍÐ°ÁÉ½Ñ•Ñ•ÍÑ…Ñ”µ½µµ…¹Ñ•ÍÑÌ…¹•…É±¥•ÈÉ••¥ÁÑÌ¸I•Á½ÉÑ•Ñ¡É•”µÍ½ÕÉ”µÁ…Ñ …¹‘¥‘…Ñ”àÐØåÉåŒÈÀÔÉŒÈÜÑ••„ØÐÅ…•”É•„ÔáÑ”Å•ØØÈÌÄÙŒàÝ„ÔÈÌÅÙ˜áŒàäÅ‘¡…Ì¹¼I8±…¥´å•Ð¸A…É•¹ÐÍÁ½Ðµ¡•¬½¹™¥ÉµÌ5…Ñ ¹µ…à Ð±Ý¥‘Ñ µÀ¹±•¹Ñ ¤°‘•Ñ…¥°ÑÉÕ¹…Ñ¥½¸°™¥¹…°Ý¥‘Ñ Í±¥”…¹…ÕÑ¡½É¥Ñ…Ñ¥Ù”±¥™•å±”½Á•É…Ñ¥½¹ÌÉ•µ…¥¸Õ¹¡…¹•¸()	•™½É”…¹ä•á•ÕÑ¥½¸°Á…É•¹Ð¥¹ÍÁ•Ñ•Ñ¡”ÁÉ•Á…É•ÉÕ¸µ…±°½‘¥™™•É•¹Ñ¥…°½ÁÉ½‰”ÍÉ¥ÁÑÌ¸Q¡”]¥¹‘½ÝÌÑåÁ•¡•¬Á±…¸ÕÍ•¹Á´¹µ‘¥É•Ñ±äÝ¥Ñ¡½ÕÐ„Í¡•±°ìÕÍ”Ñ¡”•ÅÕ¥Ù…±•¹Ð¹½‘”¹½‘•}µ½‘Õ±•Ì½ÑåÁ•ÍÉ¥ÁÐ½‰¥¸½ÑÍŒ€´µ¹½µ¥Ð™É½´Ñ¡”…ÑÕ…°Á…­…”ÍÉ¥ÁÐ¥¹ÍÑ•…¸Q¡”‘¥™™•É•¹Ñ¥…°ÌÍ•½¹¡½ÍÑ¥±”µ…ÉÉ…ä™¥áÑÕÉ”¡…Ì¹¼ÍÕµµ…Éä°‰ÕÐÑÝ¼•áÁ•Ñ•¹…ÉÉ½ÜÉ½ÝÌ¥¹½ÉÉ•Ñ±ä…‘‘•½¹”ì‘•É¥Ù•‘¥™™•É•¹Ñ¥…°µÁ…É•¹Ð¹µ©Ì½ÉÉ•ÑÌ½¹±äÑ¡½Í”•áÁ•Ñ…Ñ¥½¹ÌÑ¼Ñ¡”…ÑÕ…°Õ¹¡…¹•™¥áÑÕÉ”¸=É¥¥¹…°ÁÉ•Á…É•ÍÉ¥ÁÑÌÉ•µ…¥¸Õ¹Ñ½Õ¡•ì¹¼•á•ÕÑ•É••¥ÁÐ¥ÌÉ•ÝÉ¥ÑÑ•¸…¹¹¼ÁÉ½‘ÕÐ…ÍÍ•ÉÑ¥½¸¥ÌÝ•…­•¹•¸•É¥Ù•ÉÕ¸µÁ…É•¹Ð¹µ©Ì…‘‘Ì„É•…Ñ”µ¹•ÜÉÕ¸µ½¹”µ…É­•È¸Q¡¥Ì¥ÌÑ¡”™¥ÉÍÐ•á•ÕÑ¥½¸½˜¡…¹•µ½‘”¡•­Ì°¹½Ð„É•ÑÉä½˜„™…¥±•¡•¬¸½¹Í½±”½ÕÑÁÕÐ™É½´Ñ¡•Í”±½…°ÁÉ½½˜ÉÕ¹¹•ÉÌ¥Ì‘•±¥‰•É…Ñ”•Ù¥‘•¹”°¹½ÐÁÉ½‘ÕÑ¥½¸±½¥¹œ¸()IÕ¸½¹”Í•É¥…°‰…­É½Õ¹Á¥Á•±¥¹”Ý¥Ñ ÄàÀÀÀÁµÌ¥¹¥Ñ¥…°Á•Èµ¡•¬•¥±¥¹Ìè½µ‰¥¹•±¥™•å±”½ÁÕ‰±¥ŒµÍÑ…Ñ”Ñ•ÍÑÌ°‘¥É•ÐQåÁ•MÉ¥ÁÐ1$°Ñ¡•¸•á…ÐÁÉ”µÕ¹¥Ð‘¥™™•É•¹Ñ¥…°¸-••ÀÍÑ‘½ÕÐ½ÍÑ‘•ÉÈ½•á¥Ð½Í¥¹…°…¹‰•™½É”½…™Ñ•È™½ÕÈµ™¥±”¡…Í¡•Ì¥¸€¹…¡”½ÐÄÀµ„Ð½Á½ÍÐµÉ•´ÈÀÈØÄÀÈÙPÀäÌÐÈÕh´ÄÌÀä¼¸MÑ½ÀÑ¡”Á¥Á•±¥¹”½¸Ñ¡”™¥ÉÍÐ™…¥±ÕÉ”ì¹¼…ÕÑ½µ…Ñ¥ŒÉ•ÉÕ¸¸½‘•µ½‘”MMMLÉ½ÕÑ”Ý…ÌÉ•™ÕÍ•‰•™½É”•á•ÕÑ¥½¸ìÑ¡”ÍÕ‰Í•ÅÕ•¹Ð‘¥É•ÐMMMLÉ•ÑÕÉ¹•¹…Ñ¥Ù•I¥Í¬Õ¹…ÍÍ•ÍÍ…‰±”™½È…¡”…¹…ÁÁ±¥•Í•ÕÉ¥Ñä•Í…±…Ñ¥½¸¥Ñ•´È¡¥ Ý¥Ñ ¥¹‘•Á•¹‘•¹ÑY•É¥™¥•ÈÉ•ÅÕ¥É•¸9¼É•Ù¥•ÝÕ”½¹…Ñ¥Ù”½¹Ñ¥¹Õ…Ñ¥½¸Ý…ÌÉ•ÑÕÉ¹•°Í¼¹½¹”¥Ì¥¹™•ÉÉ•¸9…µ•I¥Í¬È¼ÌÙ•É¥™¥…Ñ¥½¸™½±±½ÝÌ…ÑÕ…°½µÁ±•Ñ••Ù¥‘•¹”¸9¼™Õ±°ÍÕ¥Ñ”°QU$°Á±…Ñ™½É´°ÁÉ½Ù¥‘•È°¹…Ñ¥Ù”…ÁÁÉ½Ù…°°½µµ¥ÑÌ°ÍÑ…¥¹œ°ÁÕÍ ½ÈÉ•µ½Ñ”$¸((ŒŒŒ0ÐØØƒŠPÕ¹Ñ¥½¹…°AMLÝ¥Ñ „¡…É¹•ÍÌ¥Í½±…Ñ¥½¸…À°¹¼…‘µ¥ÍÍ¥½¸()	…­É½Õ¹©½ˆ´È½µÁ±•Ñ••á¥ÐÀ½¹”¸½µ‰¥¹•±¥™•å±”½ÍÑ…Ñ”É•É•ÍÍ¥½¸ÈÙÁ…ÍÌ½é•É¼™…¥°½é•É¼Í­¥À¥¸ÐÈÐØÉµÌì‘¥É•ÐÑåÁ•Ì•á¥ÐÀ¼ÈàØÄåµÌì•á…ÐÁÉ”µÕ¹¥Ð‘¥™™•É•¹Ñ¥…°•á¥ÐÀ¼ÌäÔÌÅµÌ¸½ÕÈÝ…Ñ¡•Í½ÕÉ”½Ñ•ÍÐ½‘½Œ½ÁÉ½Ñ•Ñ•¡…Í¡•ÌÉ•µ…¥¹•¥‘•¹Ñ¥…°¸AÉ•Í•ÉÙ”•Ù•ÉäÉ…ÜÉ••¥ÁÐÕ¹‘•È€¹…¡”½ÐÄÀµ„Ð½Á½ÍÐµÉ•´ÈÀÈØÄÀÈÙPÀäÌÐÈÕh´ÄÌÀä¼ì‘¼¹½ÐÉ•ÝÉ¥Ñ”Ñ¡”½µÁ±•Ñ•ÉÕ¸½È‘•ÍÉ¥‰”¥Ð…Ì™…¥±•™Õ¹Ñ¥½¹…°‰•¡…Ù¥½È¸()A…É•¹ÐÑ¡•¸¥‘•¹Ñ¥™¥•…¸¥Í½±…Ñ¥½¸½µ¥ÍÍ¥½¸¥¸Ñ¡”±…Õ¹¡•ÉÕ¹¹•Èè¥Ð½Ù•ÉÉ¥‘•Ì½¹±äQ5@½Q5@½Q5A%H…¹‘¥Í…‰±•ÌÑ¡”ÑÍà…¡”°‰ÕÐ‘½•Ì¹½ÐÉ•‘¥É•Ð!=5½UMIAI=%1¸Q¡”•á¥ÍÑ¥¹œÍÑ…Ñ”µ½µµ…¹É•É•ÍÍ¥½¸¥¹±Õ‘•ÌÉ•…Ñ•Í•¹áÑ•¹Í¥½¸ ¤Ý¥Ñ ‘•™…Õ±ÐÁÉ½™¥±•Ì½ÍÑ…ÑÕÌ½‘½Ñ½ÈÁ…Ñ¡ÌìÑ¡”•áÑ•¹Í¥½¸‘•É¥Ù•ÌÑ¡½Í”Á…Ñ¡Ì™É½´¡½µ•‘¥È ¤°…¹„µ•Ñ…‘…Ñ„µ½¹±ä¡•¬½¹™¥ÉµÌÑ¡…Ð¥¹¡•É¥Ñ•¡½µ”¥Ì½ÕÑÍ¥‘”Ñ¡”ÁÉ½©•Ð¸]¡•Ñ¡•È•á¥ÍÑ¥¹œÁÉ¥Ù…Ñ”™¥±•ÌÝ•É”É•…¥Ì¹½Ð•ÍÑ…‰±¥Í¡•ì‘¼¹½Ð¥¹ÍÁ•ÐÑ¡•´½È…ÍÍ•ÉÐÑ¡…Ð¹¼½ÕÑÍ¥‘”…•ÍÌ½ÕÉÉ•¸A…É•¹Ð…ÑÑ•µÁÑ•©½‰}ÍÑ½À…™Ñ•È¥‘•¹Ñ¥™å¥¹œÑ¡¥Ì°‰ÕÐÑ¡”©½ˆ¡……±É•…‘ä•á¥Ñ•Àì¥ÐÝ…Ì¹½Ð…¹•±±•¸Q¡¥Ì¥Ì„Á…É•¹ÐÁÉ•™±¥¡Ð…À°¹½Ð„Í½ÕÉ”µ½‘”™…¥±ÕÉ”½ÈÁÉ½½˜½˜½µÁ±•Ñ”¥Í½±…Ñ¥½¸¸()PÄÀµÐ¥Ì¹½Ð…‘µ¥ÑÑ•¸MÑ½À™ÕÉÑ¡•ÈÙ•É¥™¥…Ñ¥½¸Á•¹‘¥¹œ½¹”‘•¥Í¥½¸è…ÕÑ¡½É¥é”„Í¥¹±”™É•Í ½µ‰¥¹•µÉ•É•ÍÍ¥½¸•á•ÕÑ¥½¸Ý¥Ñ !=5½UMIAI=%1…¹Ñ•µÁ½É…Éä½½¹™¥œÉ½½ÑÌ•áÁ±¥¥Ñ±ä¥Í½±…Ñ•¥¹Í¥‘”Ñ¡”ÁÉ½©•Ð°¥¹¥Ñ¥…°µ…á¥µÕ´ÄàÁÍ•½¹‘Ì°½È±•…Ù”Ñ¡”Õ¹¥Ð‰±½­•¸¼¹½ÐÉ•Á•…ÐÑ¡”ÍÕ•ÍÍ™Õ°ÑåÁ•¡•¬½È‘¥™™•É•¹Ñ¥…°°…±Ñ•ÈÁÉ½‘ÕÑ¥½¸½‘”µ•É•±ä™½ÈÑ¡¥Ì¡…É¹•ÍÌ¥ÍÍÕ”°É•ÅÕ•ÍÐ…•ÍÌÑ¼Ñ¡”É•…°¡½µ”°½È…ÕÑ½µ…Ñ¥…±±äÉ•ÉÕ¸¸I¥Í¬È¼Ì¥¹‘•Á•¹‘•¹ÐÙ•É¥™¥…Ñ¥½¸ÍÑ¥±°™½±±½ÝÌÍÕ™™¥¥•¹ÐÍ½Á•ÁÉ½½˜¸9¼½µµ¥ÑÌ°ÍÑ…¥¹œ°ÁÕÍ °$°¡½ÍÐ½0½Á•É…Ñ¥½¹Ì°™Õ±°ÍÕ¥Ñ”°QU$½Á±…Ñ™½É´½¹…Ñ¥Ù”½ÈÝ¡½±”PÄÀ½PÄÈ±…¥µÌ¸((ŒŒŒ0ÐØÜƒŠPÕÑ¡½É¥é”½¹”É•É•ÍÍ¥½¸Ý¥Ñ ÁÉ½©•Ðµ±½…°¡½µ”½½¹™¥œÉ½½ÑÌ()½ÈÑ¡”¥Í½±…Ñ¥½¸‘•¥Í¥½¸°ÕÍ•ÈÍ•±•Ñ•Ù•É‰…Ñ¥´è€‰O´°Í½±¼•Í„É•É•Í§Í¸Ñ½Ñ…±µ•¹Ñ”…¥Í±…‘„ˆ¸M•±•Ñ•½¹Í•ÅÕ•¹”è€‰9¼É•Á¥Ñ¼ÑåÁ•¡•¬¹¤‘¥™•É•¹¥…°°¹¼…µ‰¥¼±„½ÉÉ•§Í¸ä¹¼…•‘¼…°Á•É™¥°É•…°¸ˆIÕ¸½¹±äÑ¡”Í…µ”±¥™•å±”½ÍÑ…Ñ”É•É•ÍÍ¥½¸½¹”Ý¥Ñ „ÄàÀµÍ•½¹•¥±¥¹œ°™É•Í ÁÉ½©•Ðµ½Ý¹•!=5½UMIAI=%1°…ÁÁ±¥…Ñ¥½¸½½¹™¥œ½…¡”½‘…Ñ„É½½ÑÌ…¹Ñ•µÁ½É…É¥•Ì¸Y•É¥™äÑ¡”•™™•Ñ¥Ù”¡¥±¡½µ”½½¹™¥œÉ½½ÑÌ‰•™½É”¥µÁ½ÉÑ¥¹œÑ¡”Ñ•ÍÑÌì‘¼¹½Ð¥¹¡•É¥ÐÁÉ½Ù¥‘•ÈÉ•‘•¹Ñ¥…±Ì½È…É‰¥ÑÉ…Éä•áÑ•É¹…°½¹™¥ÕÉ…Ñ¥½¸½Ù•ÉÉ¥‘•Ì¸Q¡¥Ì¥Ì½¹ÑÉ½±±•Á…Ñ ½½¹™¥œ¥Í½±…Ñ¥½¸™½ÈÑ¡”¡•¬°¹½Ð…¸=LÍ…¹‘‰½à±…¥´¸()M½ÕÉ”½Ñ•ÍÐ½‘½Œ½ÁÉ½Ñ•Ñ•¡…Í¡•ÌµÕÍÐÍÑ…äÕ¹¡…¹•¸AÉ•Í•ÉÙ”…±°½É¥¥¹…°É••¥ÁÑÌ…¹Ñ¡”0ÐØØ±¥µ¥Ñ…Ñ¥½¸ì‘¼¹½Ð•É…Í”½ÈÉ•ÑÉ½…Ñ¥Ù•±ä…ÕÑ¡½É¥é”Á½ÍÍ¥‰±”•…É±¥•È½ÕÑÍ¥‘”É•…‘Ì¸9¼…ÑÕ…°µ¡½µ”¥¹ÍÁ•Ñ¥½¸°ÁÉ½‘ÕÑ¥½¸¡…¹•Ì°¹•ÜÑåÁ•¡•¬½‘¥™™•É•¹Ñ¥…°½™Õ±°µÍÕ¥Ñ”ÉÕ¸½È…ÕÑ½µ…Ñ¥ŒÉ•ÑÉä¸=¸½µÁ±•Ñ¥½¸•á…µ¥¹”Ñ¡”…ÑÕ…°É•ÍÕ±Ð‰•™½É”¥¹‘•Á•¹‘•¹ÐÙ•É¥™¥…Ñ¥½¸½È±½…°…‘µ¥ÍÍ¥½¸¸=Ñ¡•ÈLÄÐÍ½Á”°¹¼µ½µµ¥Ð½¹¼µ•áÑ•É¹…°½¹¼µ¡½ÍÐ½0½¹ÍÑÉ…¥¹ÑÌ…¹ÍÑ½ÁÁ•PÀÐ½PÀÜ½PÀÔÝ½É¬É•µ…¥¸Õ¹¡…¹•¸((ŒŒŒ0ÐØàƒŠP=‰Í•ÉÙ”¥Í½±…Ñ•É•É•ÍÍ¥½¸…¹‰¥¹Ñ¡”™¥¹…°…¹‘¥‘…Ñ”()ÕÑ¡½É¥é•©½ˆ´Ì½µÁ±•Ñ•½¹”è•á¥ÐÀ°¹¼Ñ¥µ•½ÕÐ½Í¥¹…°½±…Õ¹¡•È•ÉÉ½È°ÄÀØÐäÙµÌìÑ•ÍÐÍÕµµ…ÉäÈÙÁ…ÍÌ½é•É¼™…¥°½é•É¼Í­¥À¸	½Ñ Ñ•ÍÐÍÕ‰ÁÉ½•ÍÍ•ÌÝÉ½Ñ”ÁÉ”µ¥µÁ½ÉÐ¡½µ”½Ñ•µÀ½½¹™¥œ¡•­ÌÉ•Í½±Ù¥¹œÁ¡åÍ¥…±±ä¥¹Í¥‘”Ñ¡”¹•Ü€¹…¡”½ÐÄÀµ„Ð½¥Í¼´ÈÁ¹5¨¼™¥áÑÕÉ”¸™™•Ñ¥Ù”!=5½UMIAI=%1°AAQ½1=1AAQ…¹aÉ½½ÑÌ…É”ÁÉ½©•Ðµ±½…°ì‰½½ÑÍÑÉ…À•¹Ù¥É½¹µ•¹ÐÝ…Ì…±±½Ý±¥ÍÑ•…¹¹¼ÁÉ½Ù¥‘•ÈÉ•‘•¹Ñ¥…±Ì½È…É‰¥ÑÉ…Éä½¹™¥ÕÉ…Ñ¥½¸½Ù•ÉÉ¥‘•ÌÝ•É”¥¹¡•É¥Ñ•¸Q¡¥Ì¥ÌÁ…Ñ ½½¹™¥œ¥Í½±…Ñ¥½¸°¹½Ð…¸=LÍ…¹‘‰½àÕ…É…¹Ñ•”¸½ÕÈÍ½ÕÉ”½Ñ•ÍÐ½‘½Œ½ÁÉ½Ñ•Ñ•¡…Í¡•ÌÉ•µ…¥¹•Õ¹¡…¹•¸9¼ÑåÁ•¡•¬½È‘¥™™•É•¹Ñ¥…°Ý…ÌÉ•Á•…Ñ•¸()É•Í €¹…¡”½ÐÄÀµ„Ð½…¹‘¥‘…Ñ”´ÀÍ”ØÉ˜Ø´ÁŒÀÀ´Ñ™Àµ„äåŒ´àÈáØÌØØÕ˜Ü¹©Í½¸M!ÈÔÙ„äàÐåˆÜå„Øå‘„å˜ØÁ”ÙàäàÔÔÐå™„ÔÜÍ™‰”àäÝˆÔÌÉ…”É˜åŒàÄÌØÕˆÁˆå„ÔÔÑ™‰¥¹‘ÌÔÅÍ½ÕÉ”½•Ù¥‘•¹”½ÁÉ¥½Èµ…‘µ¥ÍÍ¥½¸½É½½Ðµµ…¹¥™•ÍÐ•¹ÑÉ¥•Ì¸%Ð¥¹±Õ‘•Ì•á…ÐÁÉ”µÕ¹¥ÐÍ¹…ÁÍ¡½ÑÌ°…ÑÕ…°ÐÌµÍ•½¹…ÕÍ…°I°ÁÉ•Á…É•µ½É¥¥¹…°…¹•á•ÕÑ•µ‘•É¥Ù•¡…É¹•ÍÍ•Ì°™¥ÉÍÐ™Õ¹Ñ¥½¹…°É••¥ÁÑÌÝ¥Ñ Ñ¡•¥È¥¹¡•É¥Ñ•µ¡½µ”±¥µ¥Ñ…Ñ¥½¸°…ÕÑ¡½É¥Ñ…Ñ¥Ù”¥Í½±…Ñ•É•É•ÍÍ¥½¸…¹•¹Ù¥É½¹µ•¹ÐÉ••¥ÁÑÌ¸ÕÉÉ•¹ÐÍ½ÕÉ•ŒÔÈÀØÝ•‡Š˜ÜØÁ”È°Ñ•ÍÑ”äÔÜÙ•ÛŠ˜àÀÝˆà°‘½ÌÐÔÕ™•ÌãŠ˜ÌÙˆÜÉˆ…¹ÁÉ½Ñ•Ñ•ÍÑ…Ñ”Ñ•ÍÑ„ÄÀÀÕ‘˜çŠ˜ÄÄàÄÉ•µ…¥¸™¥á•¸=É¥¥¹…°ÌÀµÍ•½¹™…¥±ÕÉ”…¹0ÐØØ…À…É”ÁÉ•Í•ÉÙ•ì¹¼É•ÑÉ½ÍÁ•Ñ¥Ù”¹¼µ½ÕÑÍ¥‘”µÉ•…±…¥´¥Ìµ…‘”¸()=¹”¥¹‘•Á•¹‘•¹ÐÙ•É¥™¥•È¹½ÜÉ•Ù¥•ÝÌLÄÀ½LÄÈ½LÄÐ…¹I¥Í¬È¼Ì……¥¹ÍÐÑ¡¥Ì•á…Ð…¹‘¥‘…Ñ”°…ÑÕ…°Í½ÕÉ”°É…Ü½ÕÑ½µ•Ì°Õ¹¡…¹•É…Ü½±¥™•å±”½Ý¥‘Ñ ‰•¡…Ù¥½È…¹¥Í½±…Ñ¥½¸±¥µ¥Ñ…Ñ¥½¸¸%Ð‘½•Ì¹½ÐÉ•Á•…ÐÑ¡”½µÁ±•Ñ•¡•­Ì°½µÁ¥±•È½È‘¥™™•É•¹Ñ¥…°¸A…É•¹ÐÝ¥±°¹½Ð…±Ñ•ÈÍ½ÕÉ”½ÑÉ…­•È½ÁÉ½½˜‘ÕÉ¥¹œÑ¡…ÐÉÕ¸¸PÄÀµÐÉ•µ…¥¹ÌÕ¹¡•­•Õ¹Ñ¥°¥ÑÌÙ•É‘¥Ð…¹™¥¹…°¥¹Ñ•É¥ÑäÉ•…‘‰…¬ì¹¼™Õ±°ÍÕ¥Ñ”°QU$°…±°µÁ±…Ñ™½É´°¹…Ñ¥Ù”…ÁÁÉ½Ù…°°Ý¡½±”PÄÀ½PÄÈ½ÈU10±…¥´¸9¼½µµ¥ÑÌ°ÍÑ…¥¹œ°ÁÕÍ °É•µ½Ñ”$°½ÕÑÍ¥‘”É•…‘Ì°…ÑÕ…°µ¡½µ”…•ÍÌ½ÈÍÑ½ÁÁ•µÁÉ½½˜•á•ÕÑ¥½¸¸((ŒŒŒ0ÐØäƒŠPAÉ•Í•ÉÙ”AML½¹Ñ•¹Ð‰ÕÐ‰±½¬½¸™…¥±•Ù•É¥™¥•È±¥™•å±”()Y•É¥™¥•ÈµÙÀÑ˜å¬Ä´Üµ¹‰±¨‘•±¥Ù•É•±…ÍÐµ…¹ÍÝ•ÈAML™½ÈÍ½Á•LÄÀ½LÄÈ½LÄÐ…¹I¥Í¬È¼Ì°É•Á½ÉÑ¥¹œÔÄ¼ÔÄ…¹‘¥‘…Ñ”É•™•É•¹•Ì°Ð¼ÐÁÉ”µÕ¹¥ÐÍ¹…ÁÍ¡½ÑÌ°ÍÑ…‰±”Í½ÕÉ”½ÁÉ½Ñ•Ñ•½É½½Ð¡…Í¡•Ì°•á…ÐÈ½Ì…‘µ¥ÍÍ¥½¸™¥±•Ì°¥¹Ñ•¹Ñ¥½¹…°ÍÕ•ÍÍ½È‘½Õµ•¹Ñ…Ñ¥½¸‘•±Ñ„…¹…±°É•Ñ…¥¹•™Õ¹Ñ¥½¹…°½¥Í½±…Ñ¥½¸•Ù¥‘•¹”¸AÉ•Í•ÉÙ”Ñ¡…ÐÉ•Á½ÉÐ…Ì‘•±¥Ù•É•½¹Ñ•¹Ðì¥Ð¥Ì¹½Ð„½¹™¥Éµ•ÍÕ•ÍÍ™Õ°ÍÕ‰…•¹Ð•á•ÕÑ¥½¸¸()Q¡”…ÕÑ¡½É¥Ñ…Ñ¥Ù”Ñ…Í¬½µÁ±•Ñ¥½¸•¹Ù•±½Á”¥Ì™…¥±•è€‰¡¥±•á¥ÐÕ¹½¹™¥Éµ•…™Ñ•È€ÄÀÀÁµÌì…Á…¥ÑäÅÕ…É…¹Ñ¥¹•ˆ¸=¹”É•…µ½¹±äÑ•Éµ¥¹…°ÍÑ…ÑÕÌ¥¹ÍÁ•Ñ¥½¸½¹™¥ÉµÌ™…¥±•½ÅÕ…É…¹Ñ¥¹•¸9¼ÁÉ½•ÍÌ¥‘•¹Ñ¥Ñä½ÈÍ…™”É•±•…Í”½¹Ñ¥¹Õ…Ñ¥½¸Ý…ÌÍÕÁÁ±¥•¸¼¹½Ð¥¹™•È•á¥ÐÀ°™É•”…Á…¥Ñä°­¥±°…¸…É‰¥ÑÉ…Éä9½‘”ÁÉ½•ÍÌ°¥¹Ù½­”¹…Ñ¥Ù”É•Ù¥•ÜÉ•½Ù•Éä½É•Í•Ð°É•±…Õ¹ Ñ¡¥Ì½È…¹½Ñ¡•ÈÙ•É¥™¥•È°½ÈÉ•Á•…Ð¡•­Ì¸9¼Í½ÕÉ”½ÁÉ½½˜µÕÑ…Ñ¥½¸½È™¥¹…°…‘µ¥ÍÍ¥½¸É••¥ÁÐÝ…Ìµ…‘”¥¸É•ÍÁ½¹Í”¸…¹‘¥‘…Ñ•„äàÐåˆÜçŠ˜ÔÔÑ™°¥Í½±…Ñ•ÈÙAML…¹ÍÕ•ÍÍ™Õ°ÑåÁ”½‘¥™™•É•¹Ñ¥…°É••¥ÁÑÌÉ•µ…¥¸…Ù…¥±…‰±”°‰ÕÐPÄÀµÐÍÑ…åÌÕ¹¡•­•…¹I¥Í¬È¼Ì…‘µ¥ÍÍ¥½¸¥Ì¹½Ð±½Í•¸()9••‘Ìå½ÕÈ‘•¥Í¥½¸è±•…Ù”PÄÀµÐ‰±½­•Ý¡¥±”Ñ¡”½Ý¹¥¹œÉÕ¹Ñ¥µ”Í…™•±äÉ•Í½±Ù•ÌÑ¡”ÅÕ…É…¹Ñ¥¹•¡¥±°½È•áÁ±¥¥Ñ±äÁ½ÍÑÁ½¹”Ñ¡”Õ¹…‘µ¥ÑÑ•Õ¹¥Ð¸Q¡¥Ì¥Ì„Ù•É¥™¥•È½ÉÕ¹Ñ¥µ”™…¥±ÕÉ”°¹½Ð„¹•Ý±ä½‰Í•ÉÙ•ÁÉ½‘ÕÐ™…¥±ÕÉ”…¹¹½Ð„É•…Í½¸™½È…¹½Ñ¡•ÈÑ•ÍÐ‰…ÑÑ•Éä¸9¼ÍÑ…¥¹œ°½µµ¥ÑÌ°ÁÕÍ °$°½ÕÑÍ¥‘”½¡½ÍÐ½0…Ñ¥½¹Ì½È™Õ±°PÄÀ½PÄÈ½¹…Ñ¥Ù”½Á±…Ñ™½É´½U10±…¥´¸Q¡”ÁÉ¥½ÈÌÀµÍ•½¹Ñ¥µ•½ÕÐ…¹¥¹¡•É¥Ñ•µ¡½µ”¥¹¥‘•¹ÐÉ•µ…¥¸¡¥ÍÑ½É¥…°ì‘¼¹½ÐÉ•ÝÉ¥Ñ”Ñ¡•´½ÈÁÉ•Í•¹ÐÑ¡¥Ì±…ÍÐ…¹ÍÝ•È…Ì…¸…ÁÁÉ½Ù•ÉÕ¹Ñ¥µ”±½ÍÕÉ”¸((ŒŒŒ0ÐÜÀƒŠPÕÑ¡½É¥é”‰½Õ¹‘•É•…µ½¹±äÉÕ¹Ñ¥µ”‘¥…¹½Í¥Ì()½ÈÑ¡”ÉÕ¹Ñ¥µ”‘¥…¹½Í¥ÌÅÕ•ÍÑ¥½¸°ÕÍ•ÈÍ•±•Ñ•Ù•É‰…Ñ¥´è€‰O´°É•Ù¥Í…È•°ÉÕ¹Ñ¥µ”•¸•Í…ÌÉÕÑ…Ìˆ¸Q¡”Í•±•Ñ•ÁÉ•Ù¥•Ü…ÕÑ¡½É¥é•½¹±äÉ•…‘¥¹œÉ•±…Ñ•½‘”½‘½Õµ•¹Ñ…Ñ¥½¸Õ¹‘•ÈÑ¡•Í”ÑÝ¼…‰Í½±ÕÑ”Á…­…”Ñ…É•ÑÌ™½ÈÑ¡¥ÌÍ•ÍÍ¥½¸èéqUÍ•ÉÍq…Í•¸¹‰…¹Í­…±¥•Ùp¹Á¥q…•¹Ñq¹Áµq¹½‘•}µ½‘Õ±•ÍqÉ•™•É•¹”µÁ¤…¹éqUÍ•ÉÍq…Í•¸¹‰…¹Í­…±¥•ÙqÁÁ…Ñ…qI½…µ¥¹q¹Áµq¹½‘•}µ½‘Õ±•Íq•…É•¹‘¥°µÝ½É­ÍqÁ¤µ½‘¥¹œµ…•¹Ð¸9¼Á…­…”ÝÉ¥Ñ•Ì°ÁÉ½•ÍÌÑ•Éµ¥¹…Ñ¥½¸°É•ÍÑ…ÉÐ°ÅÕ…É…¹Ñ¥¹”É•±•…Í”°Í•ÍÍ¥½¸½É•‘•¹Ñ¥…°¥¹ÍÁ•Ñ¥½¸½ÈÝ¥‘•È½ÕÑÍ¥‘”…•ÍÌÝ…Ì…ÕÑ¡½É¥é•¸()IÕ¸½¹”‰½Õ¹‘•É•…µ½¹±äÍ½ÕÉ”µ…ÁÁ•È™½ÈÑ¡”•á…Ð™…¥±ÕÉ”€‰¡¥±•á¥ÐÕ¹½¹™¥Éµ•…™Ñ•È€ÄÀÀÁµÌì…Á…¥ÑäÅÕ…É…¹Ñ¥¹•ˆ¸%‘•¹Ñ¥™ä¥µÁ±•µ•¹Ñ…Ñ¥½¸½¹‘¥Ñ¥½¹Ì°±¥™•å±”½Ý¹•ÉÍ¡¥À…¹…¹ä‘½Õµ•¹Ñ•Í…™”‘¥ÍÁ½Í¥Ñ¥½¸ì‘¥ÍÑ¥¹Õ¥Í ¥¹ÍÑ…±±•ÍÑ…Ñ¥Œ½‘”™É½´Ñ¡”Õ¹­¹½Ý¸±¥Ù”¡¥±ÍÑ…Ñ”¸¼¹½ÐÉ•Á•…Ð…¹‘¥‘…Ñ”Ù•É¥™¥…Ñ¥½¸½Ñ•ÍÑÌ½È¥¹™•È•á¥Ð½¹™¥Éµ…Ñ¥½¸™É½´Ñ¡”±…ÍÐAMLÑ•áÐ¸¼¹½Ð•á•ÕÑ”Á…­…”½‘”°É•…ÁÉ¥Ù…Ñ”Í•ÍÍ¥½¸½½¹™¥œ‘…Ñ„°…ÕÑ½µ…Ñ¥…±±äÉ•ÑÉä‰±½­•Ñ½½±Ì½È™½±±½Ü„¡½¥ÍÑ•‘•Á•¹‘•¹ä½ÕÑÍ¥‘”Ñ¡”ÑÝ¼É…¹Ñ•É½½ÑÌ¸%˜µ½É”…•ÍÌ½È„µÕÑ…Ñ¥½¸¥ÌÉ•ÅÕ¥É•°É•ÑÕÉ¸½¹”ÁÉ•¥Í”‘•¥Í¥½¸Ý¥Ñ Ñ…É•Ð…¹½¹Í•ÅÕ•¹”¸A…É•¹Ð½¹Ñ•áÐ‰…­ÍÑ½ÀÉ•ÅÕ¥É•ÌÑ¡¥Ì¹…ÉÉ½Ü‘¥…¹½ÍÑ¥Œ¡…¹‘½™˜ìPÄÀµÐÉ•µ…¥¹ÌÕ¹…‘µ¥ÑÑ•Ý¡¥±”Ñ¡…Ð•áÑ•É¹…°ÉÕ¹Ñ¥µ”½¹‘¥Ñ¥½¸¥ÌÕ¹É•Í½±Ù•¸((ŒŒŒ0ÐÜÄƒŠP½µÁ±•Ñ”ÍÑ…Ñ¥ŒÉÕ¹Ñ¥µ”‘¥…¹½Í¥ÌÝ¥Ñ¡½ÕÐ¡…¹¥¹œ¥¹ÍÑ…±±…Ñ¥½¸()I•…µ½¹±äµ…ÁÁ•ÈµÙÀÕÝ¥œ´àµ‰Ù¸Ô½µÁ±•Ñ•Ñ¡”…ÕÑ¡½É¥é•¥¹ÍÁ•Ñ¥½¸¸%¹ÍÑ…±±•ÍÑ…Ñ¥Œµ•Ñ…‘…Ñ„É•Á½ÉÑÌÉ•™•É•¹”µÁ¤Ð¸Ì¸À…¹A¤½‘¥¹œ•¹ÐÄ¸Ð¸ÀìÑ¡•Í”…É”¹½ÐÁÉ½½˜½˜Ñ¡”±½…‘•±¥Ù”Ù•ÉÍ¥½¹Ì¸M½ÕÉ”…•¹ÑÌµÉÕ¹¹•È¹ÑÌÈÐÌ´ÈÐÜ¼äÀØ´äÄÄ¼äÔÈ´ÄÀÈÔÍ•¹‘ÌM%QI4…™Ñ•È9Q}MQQ1°•Í…±…Ñ•Ì…™Ñ•ÈÈÔÁµÌ…¹É•ÅÕ¥É•Ì½‰Í•ÉÙ•¡¥±•á¥ÐÝ¥Ñ¡¥¸ÄÀÀÁµÌ½¸]¥¹‘½ÝÌ°Ý¡¥ ¡…Ì¹¼ÁÉ½•ÍÌµÉ½ÕÀÁÉ½‰”¸A…É•¹ÐÍÁ½Ðµ¡•¬½˜äÌÐ´ÄÀÌà½¹™¥ÉµÌÉ•ÅÕ•ÍÑMÑ½À°µ¥ÍÍ¥¹œ]¥¹‘½ÝÌÁÉ½‰”…¹™…¥±•½ÅÕ…É…¹Ñ¥¹•‘•…‘±¥¹”±½¥Œ¸IA…•¹Ñ}Í•ÑÑ±•¥Ì¹½ÐÁÉ½•ÍÌÑ•Éµ¥¹…Ñ¥½¸ìA¤ÉÁŒ¹µØÜ´ÜÄ¼äÄ´äÔ…¹ÉÁŒµµ½‘”¹©ÌÔÜä´ÔäÔ¼ØÌä´ØÐÈ‘½Õµ•¹ÐÍÑ‘¥¸µ•¹‘¥ÍÁ½Í…°‰•™½É”•á¥Ð¸()Q¡”…¹ÍÝ•ÈµÑ¡•¸µ™…¥±•½ÕÑ½µ”¥ÌÍ½ÕÉ”µ½¹Í¥ÍÑ•¹Ð¸…Á…¥Ñä°ÝÉ¥Ñ•È±…¥´…¹ÍÉ…Ñ ½Ý¹•ÉÍ¡¥ÀÍÑ…äÉ•Í•ÉÙ•Õ¹Ñ¥°±…Ñ•ÈÁÉ½Ù•¸•á¥Ð¸Q¡”¥¹ÍÑ…±±•½‘”•áÁ½Í•Ì¹¼‘½Õµ•¹Ñ•Í…™”¥¸µÍ•ÍÍ¥½¸É•±•…Í”Ñ¡…Ð¥¹‘•Á•¹‘•¹Ñ±äÁÉ½Ù•ÌÑ¡¥Ì]¥¹‘½ÝÌ¡¥±ÌÕÉÉ•¹ÐÍÑ…Ñ”¸MÑ…ÑÕÌ½É•ÍÕ±ÐÉ•Á•…ÐÉ•½É‘•™…¥±ÕÉ”ìU$ÍÑ½À•á±Õ‘•Ì™¥¹¥Í¡•Ñ…Í­Ìì…¹•°µ…äµ¥Í±•…‘¥¹±äÉ•Á½ÉÐ…¹•±±…Ñ¥½¸Ý¡¥±”É•ÅÕ•ÍÑMÑ½ÀÉ•ÑÕÉ¹Ì•…É±ä™½ÈÑ•Éµ¥¹…°•¹ÑÉ¥•Ì¸¼¹½Ð…±°¥Ð…ÌÉ•½Ù•Éä¸Q¡”±¥Ù”…ÕÍ”…¹ÁÉ•Í•¹Ð¡¥±½A%‘¥ÍÁ½Í¥Ñ¥½¸É•µ…¥¸Õ¹­¹½Ý¸ì¹¼ÁÉ½•ÍÌ½Á…­…”½ÉÕ¹Ñ¥µ”µÕÑ…Ñ¥½¸½È•áÑÉ„…¹‘¥‘…Ñ”Ù•É¥™¥…Ñ¥½¸½ÕÉÉ•¸()A½Ñ•¹Ñ¥…°Í¡ÕÑ‘½Ý¸µ½¹ÑÉ…Ðµ¥Íµ…Ñ ¥Ì„¡åÁ½Ñ¡•Í¥Ì°¹½Ð„‘•µ½¹ÍÑÉ…Ñ•±¥Ù”…ÕÍ”¸Í…™”É•Á…¥È…¹‘¥‘…Ñ”Ý½Õ±¹••Ñ¼É•ÍÁ•ÐA¤Ì½É‘•É±äÍÑ‘¥¸µ±½Í”‘¥ÍÁ½Í…°…¹É•Ñ…¥¸Í¥¹…°•Í…±…Ñ¥½¸½±½ÍÕÉ”ÁÉ½½˜™½È™…¥±ÕÉ”½È‘•…‘±¥¹”°¹½Ðµ•É•±ä¥¹É•…Í”„Ñ¥µ•½ÕÐ¸I•…Á•Éµ¥ÍÍ¥½¸‘½•Ì¹½Ð…ÕÑ¡½É¥é”Ñ¡…ÐÉ•Á…¥È½È¡…¹•ÌÑ¼Ñ¡”¥¹ÍÑ…±±•Á…­…”¸9••‘Ì„Í•Á…É…Ñ”½Ý¹•È‘•¥Í¥½¸èÁÉ•Á…É”„½¹ÑÉ½±±•É•Á…¥È¥¸…¸¥¸µÁÉ½©•Ð½ÁäÝ¥Ñ¡½ÕÐ¥¹ÍÑ…±±…Ñ¥½¸½É•ÍÑ…ÉÑÌ½ÁÉ½Ù¥‘•ÈÁÉ½•ÍÍ•Ì°½È±•…Ù”Ñ¡”¥¹ÍÑ…±±…Ñ¥½¸Õ¹Ñ½Õ¡•…¹±•ÐÑ¡”½Á•É…Ñ½ÈÕÍ”Ñ¡”½Ý¹¥¹œA¤Í•ÍÍ¥½¸Ì¹½Éµ…°±¥™•å±”¸9•¥Ñ¡•È„½Á¥•Á…Ñ ¹½È„AMLÉ•Á½ÉÐ…±½¹”É•±•…Í•ÌÑ¡”ÕÉÉ•¹ÐÅÕ…É…¹Ñ¥¹”½È…‘µ¥ÑÌPÄÀµÐ¸9¼Í½ÕÉ”½µµ¥ÑÌ°ÍÑ…¥¹œ°ÁÕÍ °É•µ½Ñ”$°ÁÉ¥Ù…Ñ”Í•ÍÍ¥½¹Ì½É•‘•¹Ñ¥…±Ì½ÈÝ¥‘•È½ÕÑÍ¥‘”…•ÍÌ¸((ŒŒŒ0ÐÜÈƒŠPÕÑ¡½É¥é”¥Í½±…Ñ•É•Á…¥È…¹‘¥‘…Ñ”°¹½Ð¥¹ÍÑ…±±…Ñ¥½¸½È±¥Ù”É•½Ù•Éä()UÍ•ÈÍ•±•Ñ•Ù•É‰…Ñ¥´è€‰AÉ•Á…É…ÈÕ¸Á…É¡”•¸Õ¹„½Á¥„…¥Í±…‘„ˆÝ¥Ñ ÁÉ•Ù¥•Üè€‰AÉ•Á…É…ÈÕ¹„½ÉÉ•§Í¸…¹‘¥‘…Ñ„äÁÉÕ•‰…Ì½¸ÁÉ½•Í½ÌÍ¥µÕ±…‘½Ì‘•¹ÑÉ¼‘”€¹…¡”½ÉÕ¹Ñ¥µ”µ¡¥±µ•á¥ÐµÉ•Á…¥È´©€•¸M8¸ˆ€‰=‰©•Ñ¥Ù¼èÉ•ÍÁ•Ñ…È•°¥•ÉÉ”½É‘•¹…‘¼‘•°M,ä½¹Í•ÉÙ…È±„½¹™¥Éµ…§Í¸É•…°‘”Í…±¥‘„¸9¼‰…ÍÑ„½¸…Õµ•¹Ñ…È•°Ñ¥µ•½ÕÐ¸ˆ€‰M¥¸¥¹ÍÑ…±…§Í¸°ÁÉ½•Í½ÌA¤É•…±•Ì°ÁÉ½Ù••‘½É•Ì°½µµ¥ÑÌ°ÁÕÍ ¹¤$¸°Á…É¡”¹¼‘•µÕ•ÍÑÉ„ÅÕ”•°¡¥©¼…ÑÕ…°¡…å„Ñ•Éµ¥¹…‘¼¸ˆ()M•Á…É…Ñ”É•Á…¥Èµ…¹‘¥‘…Ñ”…ÕÑ¡½É¥Ñä¥Ì½‘½Ñ…Í­Ì½ÉÕ¹Ñ¥µ”µ¡¥±µ•á¥ÐµÉ•Á…¥È¹µ‘€LÄµLÐ°Ñ¡É•”Ñ…Í­Ì°½Ý¹•™É•Í Ý½É­ÍÁ…”€¹…¡”½ÉÕ¹Ñ¥µ”µ¡¥±µ•á¥ÐµÉ•Á…¥Èµ%Éá=¡`½€¸%¹ÍÑ…±±•Á…­…”É½½ÑÌÉ•µ…¥¸É•…µ½¹±äÕ¹‘•È0ÐÜÀì¹¼¹•Ü½ÕÑÍ¥‘”ÝÉ¥Ñ”°ÁÉ½•ÍÌ½¹ÑÉ½°°¥¹ÍÑ…±°½É•ÍÑ…ÉÐ½ÈÉ•½Ù•ÉäÉ…¹Ð¸=¹”½¹Ñ•áÐµ‰…­ÍÑ½ÀÝÉ¥Ñ•ÈÁÉ•Á…É•Ì‰åÑ”µ‰½Õ¹½É¥¥¹…±Ì½…¹‘¥‘…Ñ”…¹„ÁÕ‰±¥Œµ¥¹Ñ•É™…”µ½­•I½µµ…¹ìÁ…É•¹Ð½‰Í•ÉÙ•Ì…ÑÕ…°I‰•™½É”…¹ä…¹‘¥‘…Ñ”±½¥Œ¡…¹”¸±°•á•ÕÑ…‰±”¡•­ÌÕÍ”±½…°¡½µ”½½¹™¥œ½Ñ•µÀÉ½½ÑÌ…¹¹¼ÁÉ½Ù¥‘•ÈÉ•‘•¹Ñ¥…±Ì¸á¥ÍÑ¥¹œPÄÀ½M8ÍÕ•ÍÍ™Õ°¡•­Ì…É”¹½ÐÉ•Á•…Ñ•¸PÄÀµÐÍÑ…åÌÕ¹¡•­•…¹Õ¹…‘µ¥ÑÑ•ì„½Á¥•É•Á…¥È…¹¹½ÐÁÉ½Ù”½ÈÉ•±•…Í”¥ÑÌ½±¡¥±ÌÅÕ…É…¹Ñ¥¹”¸((ŒŒŒ0ÐÜÌƒŠPÕÑ¡½É¥é”„]%@ÁÕ‰±¥…Ñ¥½¸¡•­Á½¥¹ÐÝ¥Ñ „Á½ÉÑ…‰±”½¹Ñ¥¹Õ…Ñ¥½¸Á±…¸()UÍ•ÈÉ•ÅÕ•ÍÐ°Ù•É‰…Ñ¥´è€‰Á½‘É¥…ÌÁÉ•Á…É…È•°Á±…¸‘”½¹Ñ¥¹Õ…¥½¸Á…É„ÅÕ”ÑÉ…ÌÕ¸ÁÕÍ ÁÕ•‘„Ñ•Éµ¥…¹É±¼½¸¥Ñ¡Õˆ•¸É•µ½Ñ¼€üˆ¸™Ñ•ÈÍ•±•Ñ¥¹œ„¥Ñ!Õˆµ½¹¹•Ñ•½‘¥¹œ…•¹Ð°Ñ¡”ÕÍ•ÈÑ¡•¸¥¹ÍÑÉÕÑ•è€‰¡…è½µµ¥ÐäÁÕÍ ˆ¸]¡•¸…Í­•Ý¡•Ñ¡•ÈÑ¼ÁÕ‰±¥Í …±°Á•¹‘¥¹œM8¥µÁ±•µ•¹Ñ…Ñ¥½¸Ñ½•Ñ¡•ÈÝ¥Ñ Ñ¡”Á±…¸½È½¹±äÑ¡”Á±…¸°Ñ¡”ÕÍ•È…¹ÍÝ•É•è€‰½¸•°Á±…¸ˆ¸()Q¡¥Ì…ÕÑ¡½É¥é•ÌÑ¡”Á…É•¹ÐÑ¼ÁÕ‰±¥Í Ñ¡”Á•¹‘¥¹œM8¥µÁ±•µ•¹Ñ…Ñ¥½¸Ñ½•Ñ¡•ÈÝ¥Ñ Ñ¡”Á½ÉÑ…‰±”½¹Ñ¥¹Õ…Ñ¥½¸Á±…¸…Ì„]%@¡•­Á½¥¹Ð½¸Ñ¡”ÕÉÉ•¹Ð™•…ÑÕÉ”‰É…¹ °•á±Õ‘¥¹œ…¡•Ì°É•‘•¹Ñ¥…±Ì…¹Ñ•µÁ½É…Éä…ÉÑ¥™…ÑÌ¸%Ð‘½•Ì¹½Ð…ÕÑ¡½É¥é”Ñ¡¥Ì‘½Õµ•¹Ñ…Ñ¥½¸ÝÉ¥Ñ•ÈÑ¼ÍÑ…”°½µµ¥Ð½ÈÁÕÍ °…¹¥Ð‘½•Ì¹½ÐÉ…¹Ðµ•É”°É•±•…Í”°™½É”µÁÕÍ °ÁÉ½Ù¥‘•È½¹…Ñ¥Ù”…ÁÁÉ½Ù…°°Á…­…”ÁÕ‰±¥…Ñ¥½¸½È‘•ÍÑÉÕÑ¥Ù”µ¡½ÍÐ…ÕÑ¡½É¥Ñä¸9¼ÁÕÍ ¥Ì±…¥µ•¡•É”¸Q¡”Á½ÉÑ…‰±”É•µ½Ñ”Á±…¸¥Ì‘½Ì½É•µ½Ñ”µ½¹Ñ¥¹Õ…Ñ¥½¸¹µ‘€°Ý¥Ñ É•Á½Í¥Ñ½ÉäÕ¥‘…¹”¥¸9QL¹µ‘€ìÑ¡¥Ì…¹½¹¥…°Ñ…Í¬±½œÉ•µ…¥¹ÌÑ¡”Í½ÕÉ”½˜ÑÉÕÑ ™½ÈÑ…Í¬…‘µ¥ÍÍ¥½¸…¹‰±½­•ÉÌ¸()Q¡”¡•­Á½¥¹Ð¥Ì•áÁ±¥¥Ñ±ä¹½ÐU10Á…É¥Ñä¸PÀä½PÄÀ½PÄÄ½PÄÈÉ•µ…¥¸¥¹½µÁ±•Ñ”…ÌÉ•½É‘•…‰½Ù”°…¹µ¥ÍÍ¥¹œ¥µÁ±•µ•¹Ñ…Ñ¥½¸½ÈÉ•ÅÕ¥É••Ù¥‘•¹”ÍÑ…åÌ‰±½­•½Á…ÉÑ¥…°¸!¥ÍÑ½É¥…°…¡”É••¥ÁÑÌÕ¹…Ù…¥±…‰±”Ñ¼„±•…¸É•µ½Ñ”±½¹”É•µ…¥¸¡¥ÍÑ½É¥…°±…¥µÌÉ…Ñ¡•ÈÑ¡…¸Á½ÉÑ…‰±”…ÁÁÉ½Ù…°¸()Q¡”¥Í½±…Ñ•ÉÕ¹Ñ¥µ”µ¡¥±µ•á¥ÐÉ•Á…¥ÈÁÉ½É•ÍÍ•½¹±äÑ¼…¸½‰Í•ÉÙ•I¸%ÑÌ¹•áÐÝ½É­•È™…¥±•Ý¥Ñ 9=MA°…¹±…Ñ•Èµ•µ½Éä½½¹Ñ•áÐÝ…Ì¹•Ý•ÈÑ¡…¸Ñ¡…ÐÝ½É­•ÈÌ±½…°Ñ…Í¬™¥±”¸9¼I8°¥¹ÍÑ…±±•µÁ…­…”™¥à°½ÈÉ•½Ù•Éä½•á¥Ð½¹™¥Éµ…Ñ¥½¸™½ÈÑ¡”ÅÕ…É…¹Ñ¥¹•ÕÉÉ•¹Ð¡¥±Ý…Ì½‰Ñ…¥¹•¸ÍÕ‰Í•ÅÕ•¹ÐÁÕ‰±¥…Ñ¥½¸ÁÉ•™±¥¡Ð½‰Í•ÉÙ•™É•”‘¥Í¬ÍÁ…”°‰ÕÐ¥Ð‘¥¹½ÐÉ•±•…Í”ÅÕ…É…¹Ñ¥¹”½È½¹Ù•ÉÐÑ¡”½Á¥•É•Á…¥È¥¹Ñ¼PÄÀµÐ…‘µ¥ÍÍ¥½¸¸AÉ•Í•ÉÙ”Ñ¡½Í”‘¥ÍÑ¥¹Ñ¥½¹Ì…¹‘¼¹½ÐÉ•ÑÉä½±ÍÑ½ÁÁ•Ý½É¬‰±¥¹‘±ä¸((ŒŒŒ0ÐÜÐƒŠPI•½¹¥±”±•…¸É•µ½Ñ”¡•­Á½¥¹Ð…¹Í•±•ÐPÀäµTå()I•µ½Ñ”™•…Ð½ÍÑÉ¥ÐµÁ…É¥ÑäµÁÉ•É•ÅÕ¥Í¥Ñ•Í€…¹Ñ¡”±•…¸±½¹”‰½Ñ É•Í½±Ù”Ñ¼€Ñ„ÑŒÝ”ÜÅ„àÜÙˆàÍ˜ÜÙŒÁ‰‰™ŒÁÈØÄØÍ‘™„ÉŒÅˆÁ™€¸I•…9QL¹µ°‘½Ì½É•µ½Ñ”µ½¹Ñ¥¹Õ…Ñ¥½¸¹µ°LÇŠMLÄÐ°ÕÉÉ•¹ÐÑ…Í¬É½ÝÌ°É•±•Ù…¹ÐÉ•™•É•¹”µ…ÁÌ0ÄÜà½0ÈäÀ½0ÐÌÀ°TåŒ…‘µ¥ÍÍ¥½¸0ÐÔÈ…¹±…Ñ•ÍÐ0ÐØçŠM0ÐÜÌ¸M½ÕÉ”½¹™¥ÉµÌÑ¡…ÐÑ¡”ÁÕ‰±¥Œ1$½¹±äÁÉ•Ù¥•ÝÌÕÁ‘…Ñ•ÌìÍÑ…•5…¹…•‘ÅÕ¥Í¥Ñ¥½¹UÁ‘…Ñ•€…±É•…‘äÁ•É™½ÉµÌ™É•Í •áÁ•Ñ•µ‰åÑ”ÍÑ…¥¹œ¸…¡”É••¥ÁÑÌ™É½´Ñ¡”ÁÉ•Ù¥½ÕÌµ…¡¥¹”…É”Õ¹…Ù…¥±…‰±”…¹…É”¹½ÐÑÉ•…Ñ•…ÌÕÉÉ•¹ÐÙ•É¥™¥…Ñ¥½¸¸PÀÔµÉˆ½PÀÐ½PÀÜÉ•µ…¥¸‰±½­•ìPÄÀµÐ¥ÌÕ¹…‘µ¥ÑÑ•…¹¥ÑÌÍ•Á…É…Ñ”¥¹¥‘•¹Ð¥ÌÕ¹Ñ½Õ¡•¸I•¥ÍÑÉä±…¥µÌÍÑ…äAIQ%0¸()M•±•Ð½¹”‘•Á•¹‘•¹äµÉ•…‘äÁÕ‰±¥Œ½µÁ½Í¥Ñ¥½¸°PÀäµTå€¡LÈ½LÐ½Lä½LÄÈ½LÄÐ¤èµ…¹…•ÕÁ‘…Ñ”€´µµ…¹¥™•ÍÐ€ñ…‰Í½±ÕÑ”µ©Í½¸ø€´µÁ…­…”µÉ½½Ð€ñ…‰Í½±ÕÑ”µ‘¥Èø€´µÍÑ…”€´µå•Í€¸áÁ±¥¥Ð€´µÍÑ…”€´µå•Í€É•ÅÕ•ÍÑÌ½¹±ä¥¹…Ñ¥Ù”±½…°ÍÑ…¥¹œ¥¸…¸•á¥ÍÑ¥¹œ½Ý¹•€ñ=Lµ¡½µ”ø¼¹…Í•¹€ÁÉ•™¥à¸I•ÕÍ”TåŒÝ¥Ñ¡½ÕÐ¡…¹¥¹œÑ¡”‰…­•¹°¥ÑÌ™½Éµ…ÑÌ°±•…Í”½È±•…¹ÕÀ¸AÉ•Í•ÉÙ”Ñ¡”ÁÉ•Ù¥•ÜÁ…ÉÍ•È½A$…¹•á¥ÍÑ¥¹œ1$‰•¡…Ù¥½È¸Y…±¥‘…Ñ”É…µµ…È‰•™½É”$½<ìÁÉ½Ñ•ÐÑ¡”•™™•Ñ¥Ù”½¹™¥ÕÉ•‘…Ñ„¡½µ”Á±ÕÌ‘•™…Õ±ÐA¤½M8‘…Ñ„¡½µ•ÌìÉ•Ñ…¥¸É•…°™…¥±ÕÉ”½…µ‰¥Õ¥ÑäÉ•Á½ÉÑÌ…¹¹•Ù•ÈÉ•ÑÉä½ÈÍ•±•Ð½•á•ÕÑ”Á…­…”½‘”¸9¼‘½Ý¹±½…°…ÕÑ¡•¹Ñ¥¥Ñä°…Ñ¥Ù…Ñ¥½¸½È™Õ±°ÕÁ‘…Ñ•È±…¥´¸Q¡¥Ì¥Ì„‰½Õ¹‘•ÍÑ•ÀÑ½Ý…ÉÑ¡”ÍÑ…”½Ù•É¥™ä½É•Ñ…¥¸Í•ÅÕ•¹”µ…ÁÁ•…Ð0ÄÜà°¹½Ð¹•Ý±äÙ•É¥™¥•I•™•É•¹”•ÅÕ¥Ù…±•¹”¸()A±…¹¹•ÍÕÉ™…•Ìè…‘‘¥Ñ¥Ù”Á…ÉÍ•È½ÑåÁ”¥¸ÍÉŒ½ÉÕ¹Ñ¥µ”½±…Õ¹¡•È¹ÑÌ°‘¥ÍÁ…Ñ ½¡•±À¥¸ÍÉŒ½±¤¹ÑÌ°¹•ÜÑ•ÍÑÌ½µ…¹…•µÕÁ‘…Ñ”µÍÑ…”µ±¤¹Ñ•ÍÐ¹ÑÌ°¥¹ÍÑ…±±…Ñ¥½¸½½¹Ñ¥¹Õ…Ñ¥½¸½Á…É¥Ñä‘½Õµ•¹Ñ…Ñ¥½¸…¹Ñ¡¥Ì…¹½¹¥…°±½œ¸Q•ÍÐµ™¥ÉÍÐÁÕ‰±¥ŒI°¥Í½±…Ñ•1$Íµ½­”°É•™ÕÍ…°½…µ‰¥Õ¥Ñä½ÁÉ•Í•ÉÙ…Ñ¥½¸…¹Í¡…É•µ½µµ…¹É•É•ÍÍ¥½¹Ì°ÑåÁ•¡•¬½‰Õ¥±ì¥¹‘•Á•¹‘•¹Ð¥¹ÍÑ…±±…Ñ¥½¸½Í•ÕÉ¥Ñä½Í¡…É•µ½¹ÑÉ…ÐÉ•Ù¥•ÜÉ•ÅÕ¥É•‰ä9QL¹µ‰•™½É”‘•±¥Ù•Éä¸9•Ü™¥áÑÕÉ•Ì½¡•¬É••¥ÁÑÌ±¥Ù”½¹±äÕ¹‘•ÈÁÉ½©•Ðµ½Ý¹•€¹…¡”Á…Ñ¡Ì¸9¼Á•ÉÍ½¹…°É•‘•¹Ñ¥…±Ì…É”Á…ÍÍ•Ñ¼¡•­Ì¸•±¥Ù•Éä¥Ì½¹”Ý½É¬‰É…¹ …¹AH°¹¼µ•É”½É•±•…Í”¸TåÍÑ…åÌÁ•¹‘¥¹œÕ¹Ñ¥°Ñ¡•Í”¡•­Ì…ÑÕ…±±ä½µÁ±•Ñ”¸()±•…¸Í•ÑÕÀÕÍ•Ì9½‘”ÈÐ¸ÈÈ¸Ä€¡Í…Ñ¥Í™¥•Ì€øôÈÈ¸Ää¸À¤°¹Á´ÄÄ¸ä¸À…¹Ñ¡”ÑÉ…­•±½­™¥±”¸¥ÉÍÐ¹Á´¥€™…¥±•Ý¡¥±”¹½‘”µåÀ•áÑÉ…Ñ•‘½Ý¹±½…‘•9½‘”¡•…‘•ÉÌÝ¥Ñ Õ¹ÍÕÁÁ½ÉÑ•™¡½Ý¹€€¡%9Y0¤¸AÉ•Í•ÉÙ”¥ÑÌ±½œ¸É•Í ½™™¥¥…°ØÈÐ¸ÈÈ¸Ä¡•…‘•ÉÌÝ•É”‘½Ý¹±½…‘•…¹•áÑÉ…Ñ•Ý¥Ñ AåÑ¡½¸Ì‘…Ñ„™¥±Ñ•È¥¹Ñ¼Ñ¡”‘¥ÍÁ½Í…‰±”ÁÉ½©•Ð•¹Ù¥É½¹µ•¹Ðì¹Á´¥€Ý¥Ñ ¹Áµ}½¹™¥}¹½‘•‘¥É€Ñ¡•¸•á¥Ñ•À°…‘‘•ÄÈÑÁ…­…•Ì¸9¼¥¹ÍÑ…±±•½…¡•M,Ý…Ì½Á¥•…¹Á…­…”½±½­™¥±”‰åÑ•Ì…É”Õ¹¡…¹•¸1½­•A¤Ä¸È¸À½ÑÍàÐ¸ÈÌ¸ÄÔ½QåÁ•MÉ¥ÁÐÔ¸ä¸Ì½¹½‘”µÁÑäÄ¸Ä¸Àµ…Ñ ¹Á´±Ì€´µ‘•ÁÑ ôÁ€¸%¹ÍÑ…±±…Ñ¥½¸ÍÕ•ÍÌ¥Ì•¹Ù¥É½¹µ•¹ÐÍ•ÑÕÀ°¹½Ð„PÀä±•…¸µ¡½ÍÐÁÉ½½˜¸((ŒŒŒ0ÐÜÔƒŠP=‰Í•ÉÙ”…ÕÍ…°ÁÕ‰±¥ŒI…¹…¸•á¥ÍÑ¥¹œA=M%`ÍÑ…¥¹œ‰±½­•È()Q¡”¹•ÜÁÕ‰±¥ŒÑ•ÍÑÌ™…¥°½¸Ñ¡”¡•­Á½¥¹Ð‰•…ÕÍ”€´µÍÑ…”€´µå•Í€¥ÌÕ¹…Ù…¥±…‰±”€¡•á¥ÐÈ¤¸á¥ÍÑ¥¹œ™¥Ù”µ™¥±”Í¡…É•1$‰…Í•±¥¹”Á…ÍÍ•ÌÄÈä¼ÄÈäÝ¥Ñ ÍÑ…‰±”Í½ÕÉ”½±½¬¡…Í¡•Ì¸™Ñ•È…‘‘¥Ñ¥Ù”1$½µÁ½Í¥Ñ¥½¸°™¥ÉÍÐI8…ÑÑ•µÁÐÁ…ÍÍ•ÌÈÔ¼Èà‰ÕÐ™…¥±ÌÑ¡”Ñ¡É•”ÍÕ•ÍÍ™Õ°µÁÕ‰±¥…Ñ¥½¸…Í•Ì¸¥…¹½ÍÑ¥Œµ½¹±äÉ•ÉÕ¸½˜Ñ¡½Í”Ñ¡É•”™É•Í ™¥áÑÕÉ•Ì•áÁ½Í•Ì5…¹…•…ÅÕ¥Í¥Ñ¥½¸½Áä‘•ÍÑ¥¹…Ñ¥½¸…¹•ÍÑ½È¡…¹•‘€½¸Ñ¡”ÁÉ¥Ù…Ñ”ÍÑ…”É½½Ð°‰•™½É”ÁÕ‰±¥…Ñ¥½¸¸9•ÍÑ•‘¥É•Ñ½ÉäÉ•…Ñ¥½¸±•¥Ñ¥µ…Ñ•±ä¥¹É•µ•¹ÑÌ„A=M%`Á…É•¹ÐÌ¹±¥¹¬ì‘•ÍÑ¥¹…Ñ¥½¹U¹¡…¹•¥¹½ÉÉ•Ñ±äÑÉ•…ÑÌÑ¡…ÐµÕÑ…‰±”½Õ¹Ð…ÌÁ¡åÍ¥…°¥‘•¹Ñ¥Ñä¸0ÐÔÈ‘½Õµ•¹Ñ•½¹Í•ÉÙ…Ñ¥Ù”±•…¹ÕÀÉ•Ñ•¹Ñ¥½¸°‰ÕÐÑ¡¥Ì™½ÉÝ…Éµ½ÁäÉ•™ÕÍ…°…±Í¼ÁÉ•Ù•¹ÑÌ¹½Éµ…°¹•ÍÑ•ÍÑ…¥¹œ½¸Ñ¡¥Ì1¥¹Õà¡½ÍÐ¸9¼™…¥±ÕÉ”¥Ì…‘µ¥ÑÑ•½È¡¥‘‘•¸¸Ñ•ÍÐ¥¹Ñ•É•ÁÑ¥½¸Á…Ñ Ý…Ì½ÉÉ•Ñ•™É½´¹½¹•á¥ÍÑ•¹ÐÙ•ÉÍ¥½¹Ì¹©Í½¸Ñ¼Ñ¡”‰…­•¹Ì…ÑÕ…°µ…¹…•µÙ•ÉÍ¥½¹Ì¹©Í½¸‰•™½É”Ñ¡¥Ì‘¥…¹½ÍÑ¥Œì¹¼ÁÉ½‘ÕÑ¥½¸‰•¡…Ù¥½ÈÝ…ÌÝ•…­•¹•¸()áÁ…¹Ñ¡¥ÌÍ…µ”‰½Õ¹‘•Õ¹¥ÐÑ¼ÍÉŒ½ÉÕ¹Ñ¥µ”½µ…¹…•µ…ÅÕ¥Í¥Ñ¥½¸µ½Áä¹ÑÌ…¹„™½ÕÍ•‘¥É•Ð½Á¥•ÈÉ•É•ÍÍ¥½¸™¥±”èÁ•Éµ¥Ð‘•ÍÑ¥¹…Ñ¥½¸‘¥É•Ñ½Éä¡¥±µ½Õ¹Ð¡…¹•Ì‘ÕÉ¥¹œ™½ÉÝ…É½ÁäÝ¡¥±”É•Ñ…¥¹¥¹œ•á…Ð‰¥¥¹Ð‘•Ù¥”½¥¹½‘”°­¥¹°…¹½¹¥…°½¹Ñ…¥¹µ•¹Ð…¹µ½‘”¡•­Ì¸M½ÕÉ”½‰Í•ÉÙ…Ñ¥½¸°É•Õ±…Èµ™¥±”Í¥¹±”µ±¥¹¬ÉÕ±•Ì…¹‘¥É•Ñ½Éäµ±…¥´±•…¹ÕÀÉ•µ…¥¸Õ¹¡…¹•¸á¥ÍÑ¥¹œÍå¹Ñ¡•Ñ¥Œ¥‘•¹Ñ¥ÑäµÉ•Á±…•µ•¹Ð…¹Õ¹•ÉÑ…¥¸µ±•…¹ÕÀÑ•ÍÑÌµÕÍÐÍÑ…ä•™™•Ñ¥Ù”¸Q¡¥ÌÁÉ•É•ÅÕ¥Í¥Ñ”¥Ì¹••ÍÍ…Éä™½È„™Õ¹Ñ¥½¹¥¹œÁÕ‰±¥ŒÉ½ÕÑ”ì¥¹‘•Á•¹‘•¹ÐÍ¡…É•µ½¹ÑÉ…Ð½Í•ÕÉ¥Ñä½‘…Ñ„µ¥¹Ñ•É¥ÑäÉ•Ù¥•Ü¹½Ü•áÁ±¥¥Ñ±ä¥¹±Õ‘•Ì¥Ð¸AÉ•Í•ÉÙ”™…¥±•™¥áÑÕÉ•Ì½É••¥ÁÑÌ¸9¼¡½ÍÐ±•…¹ÕÀ°¥¹ÍÑ…±±•ÉÕ¹Ñ¥µ”µÕÑ…Ñ¥½¸½È½±ÅÕ…É…¹Ñ¥¹”Ý½É¬¸((ŒŒŒ0ÐÜØƒŠP½ÉÉ•Ð‘¥É•Ñ½Éä½Ý¹•ÉÍ¡¥À¡•­Ì…¹Ñ¡”¥¹‘•Á•¹‘•¹Ð½ÕÑÁÕÐ™¥¹‘¥¹œ()‘¥É•Ð¹•ÍÑ•½Í¥‰±¥¹œ½Á¥•ÈIÉ•ÁÉ½‘Õ•ÌÑ¡”A=M%`É•™ÕÍ…°¸Q¡”Õ¹¡…¹••á¥ÍÑ¥¹œ‰…­•¹Ñ•ÍÑÌ…±Í¼™…¥°‰•™½É”Ñ¡”½ÉÉ•Ñ¥½¸°¥¹±Õ‘¥¹œ±•¥Ñ¥µ…Ñ”±•…¹ÕÀ…ÍÍ•ÉÑ¥½¹Ì¸Q¡”Í…µ”µÕÑ…‰±”¹±¥¹¬½µÁ…É¥Í½¸…™™•ÑÌ‰½Ñ ™½ÉÝ…Éµ½ÁäÙ…±¥‘…Ñ¥½¸…¹Ñ¡”±•…¹ÕÀ‘¥É•Ñ½Éäµ±…¥´Ù•É¥™¥•ÈìÑ¡”±…ÑÑ•ÈÑ¡•É•™½É”…±Í¼¹••‘Ì½ÉÉ•Ñ¥½¸°ÍÕÁ•ÉÍ•‘¥¹œ0ÐÜÔÌ¥¹¥Ñ¥…°±•…¹ÕÀµÕ¹¡…¹•Í½Á”¸¥É•Ñ½Éä±…¥µÌÉ•Ñ…¥¸Ñ¡•¥ÈÁÕ‰±¥Œ‘¥…¹½ÍÑ¥Œ¹±¥¹¬™¥•±‰ÕÐ¥‘•¹Ñ¥ÑäÕÍ•Ì…¹½¹¥…°‘¥É•Ñ½ÉäÁ…Ñ °•á…Ð‰¥¥¹Ð‘•Ù¥”½¥¹½‘”…¹µ½‘”°Ý¥Ñ ¹¼Í½ÕÉ”½™¥±”½¡…Í ¡…¹•Ì¸9½¹É•ÕÉÍ¥Ù”Éµ‘¥ÈÁÉ•Í•ÉÙ•ÌÕ¹­¹½Ý¸¡¥±‘É•¸¸á¥ÍÑ¥¹œÉ•Á±…•µ•¹Ð°Í…µ”µ¥¹½‘”™½É•¥¸µ‰åÑ”°Íå¹Ñ¡•Ñ¥Œ¡¥ µ%°Á…ÉÑ¥…°µÝÉ¥Ñ”°‘•ÍÉ¥ÁÑ½Èµ±½Í”…¹±•…äµÍÑ…”Ñ•ÍÑÌÁ…ÍÌ…™Ñ•È½ÉÉ•Ñ¥½¸¸¸…‘‘¥Ñ¥½¹…°Õ¹­¹½Ý¸µ¡¥±Ñ•ÍÐÁÉ½Ù•ÌÉ•Ñ•¹Ñ¥½¸É…Ñ¡•ÈÑ¡…¸É•ÕÉÍ¥Ù”‘•±•Ñ¥½¸¸()%¹‘•Á•¹‘•¹ÐÉ•Ù¥•Ý•ÈÐÀå}¥¹‘•Á•¹‘•¹Ñ}É•Ù¥•ÜÉ•ÁÉ½‘Õ•„µ•‘¥Õ´…¹‘¥‘…Ñ”‘•™•Ðè„Íå¹¡É½¹½ÕÌÍÑ‘½ÕÐ…±±‰…¬™…¥±ÕÉ”…™Ñ•ÈÍÕ•ÍÍ™Õ°ÁÕ‰±¥…Ñ¥½¸Ý…Ì…Õ¡Ð…¹™…±Í•±ä±…‰•±•ÁÉ•™±¥¡ÐÉ•™ÕÍ…°°‘•ÍÁ¥Ñ”½µµ¥ÑÑ•…Ñ…±½œÙ•ÉÍ¥½¹ÌÄ¼È¸A…É•¹Ð…‘‘Ì„…ÕÍ…°I°µ½Ù•ÌÍÕ•ÍÍ™Õ°½ÕÑÁÕÐ½ÕÑÍ¥‘”Ñ¡”½Á•É…Ñ¥½¹…°…Ñ °…¹Ù•É¥™¥•ÌÁÉ½Á……Ñ¥½¸½˜Ñ¡”½É¥¥¹…°½ÕÑÁÕÐ•ÉÉ½ÈÝ¥Ñ ½¹”½ÕÑÁÕÐ…ÑÑ•µÁÐ°¥¹Ñ…ÐÍ½ÕÉ”½Á•ÉÍ½¹…°‘…Ñ„°Í•±•Ñ•ØÄ…¹½µµ¥ÑÑ•ØÈ¸9¼É•ÑÉä½½µÁ•¹Í…Ñ¥½¸½ÕÉÌ¸9•Ü™¥¹…°™½ÕÍ•ÉÕ¸ÄäÌ¼ÄäÍAML¼ÁÍ­¥ÁÌ°ÑåÁ•¡•¬À…¹‰Õ¥±ÀìÍ½ÕÉ”…¹‰½Ñ Ñ•ÍÐ¡…Í¡•Ì…É”‰½Õ¹¥¸Ñ¡”½ÉÉ•Ñ•É••¥ÁÑÌ¸Q¡”•…É±¥•ÈÄäÉAMLÉ•µ…¥¹Ì„ÁÉ”µ½ÉÉ•Ñ¥½¸É•ÍÕ±Ð°¹½Ð™¥¹…°ÁÉ½½˜¸()Q¡”½ÁÑ¥½¹…°ÕÁÍÑÉ•…´µ‰½Õ¹‘…Éä…Õ‘¥Ð•á¥ÑÌÄ½¸‰½Ñ Ñ¡”Õ¹Ñ½Õ¡•‘•Ñ…¡•¡•­Á½¥¹Ð…¹Ñ¡”…¹‘¥‘…Ñ”Ý¥Ñ •á…Ñ±äÑ¡”Í…µ”ÄÄ½™™•¹‘¥¹œÁ…Ñ¡Ì¸9¼…±±½Ý±¥ÍÐ½Ñ•ÍÐÝ•…­•¹¥¹œ¥Ì…ÁÁ±¥•¸Q¡¥Ì¥¹¡•É¥Ñ•É•Á½Í¥Ñ½Éä½¹ÑÉ½°™…¥±ÕÉ”É•µ…¥¹Ì…¸…‘µ¥ÍÍ¥½¸‰±½­•ÈèTåÍÑ…åÌÕ¹¡•­•½AIQ%0°…¹‘•±¥Ù•ÉäÝ¥±°‰”„‘É…™ÐAH•Ù•¸¥˜‰½Õ¹‘•½‘”É•Ù¥•ÜÁ…ÍÍ•Ì¸Õ±°ÍÕ¥Ñ”°É•µ½Ñ”$°Á…­…”¥¹ÍÑ…±±…Ñ¥½¸°É•…°µ…¥¹Ñ•¹…¹”¡½ÍÑÌ…¹]¥¹‘½ÝÌ½µ…=LÁÉ½½˜…É”¹½ÐÉ•ÁÉ•Í•¹Ñ•‰äÑ¡”™½ÕÍ•1¥¹ÕàÉÕ¸¸()á…Ð¡•­Á½¥¹Ð½…¹‘¥‘…Ñ”1$‘¥™™•É•¹Ñ¥…°Á…ÍÍ•ÌÄÕ½µÁ…É¥Í½¹Ì…™Ñ•È½ÉÉ•Ñ¥¹œ¥ÑÌ½Ý¸¡…É¹•ÍÌè½¹±äÑ¡”½¹”•áÁ±¥¥Ñ±ä…‘‘•¡•±À±¥¹”¥Ì¹½Éµ…±¥é•ì•á¥Ð½ÍÑ‘½ÕÐ½ÍÑ‘•ÉÈ…¹ÁÉ½Ñ•Ñ•A¤½•¹µ½˜µ½ÁÑ¥½¹Ì…ÉÕµ•¹ÐÉ•½É‘Ì½Ñ¡•ÉÝ¥Í”µ…Ñ ¸%ÑÌ™¥ÉÍÐ…ÑÑ•µÁÐÕÍ•Ñ¡”Õ¹ÍÕÁÁ½ÉÑ•€´µ¡½µ”AQ ¡½µ•€½É‘•È…¹…¥‘•¹Ñ…±±ä™•±°Ñ¡É½Õ Ñ¼Ñ¡”‰Õ¹‘±•A¤1$¥¸Ñ¡”¥Í½±…Ñ•Ñ•ÍÐ¡½µ”ì¥ÐÉ•™ÕÍ•™½Èµ¥ÍÍ¥¹œÉ•‘•¹Ñ¥…±Ì…¹•á¥Ñ•Ý¥Ñ¡½ÕÐ„µ½‘•°…±°¸9¼É•‘•¹Ñ¥…±ÌÝ•É”ÍÕÁÁ±¥•…¹¹¼ÁÉ½Ù¥‘•ÈÉ•‘¥ÑÌ½ÈÁ•ÉÍ½¹…°½¹™¥ÕÉ…Ñ¥½¸Ý•É”ÕÍ•¸AÉ•Í•ÉÙ”Ñ¡…Ð™…¥±•¡…É¹•ÍÌÉ••¥ÁÐìÑ¡”½ÉÉ•Ñ•…Í”ÕÍ•ÌÍ•ÑÕÀÁÉ•Ù¥•ÜÝ¥Ñ •áÁ±¥¥ÐÁ…­…”É½½Ð¸Q¡¥Ì¥Ì„¡…É¹•ÍÌ½•¹Ù¥É½¹µ•¹Ðµ¥Íµ…Ñ °¹½Ð„±…¥µ•ÁÉ½‘ÕÐÉ•É•ÍÍ¥½¸½È…ÕÑ¡½É¥é…Ñ¥½¸Ñ¼ÕÍ”ÁÉ½Ù¥‘•ÉÌ¸((ŒŒŒ0ÐÜÜƒŠP	¥¹Í½Á••Ù¥‘•¹”ìÉ•Ñ…¥¸Á…ÉÑ¥…°ÍÑ…Ñ”™½È‘É…™Ð‘•±¥Ù•Éä()%¹‘•Á•¹‘•¹ÐÉ•Ù¥•Ý•ÈÐÀå}¥¹‘•Á•¹‘•¹Ñ}É•Ù¥•ÜÉ•ÑÕÉ¹Ì‰½Õ¹‘•AML½¸Ñ¡”½ÉÉ•Ñ•…¹‘¥‘…Ñ”°Ý¥Ñ ¥ÑÌµ•‘¥Õ´½ÕÑÁÕÐ™¥¹‘¥¹œÉ•Í½±Ù•…¹¹¼É•µ…¥¹¥¹œÍ•Ù•É”½‘”™¥¹‘¥¹œ¸%ÐÉ•Ù¥•ÝÌÑ¡”…ÑÕ…°ÄäÍAML½ÑåÁ•ÌÀ¼ÄÕ½µÁ…É¥Í½¸É••¥ÁÑÌ…¹…±°Í•Ù•¸Í½ÕÉ”½Ñ•ÍÐ½‘•Á•¹‘•¹ä¡…Í¡•ÌÉ…Ñ¡•ÈÑ¡…¸É•Á±…å¥¹œÍÕ¥Ñ•Ì¸…¹‘¥‘…Ñ”1$M!ÈÔØÜäÍˆäàÐàÐÐÙ‘˜å˜ØÅ…˜Í‘„ÐäÈÕ˜Í„åˆàÙ•”äÈÜÙ‰˜ÕˆààÉ„ÔØàÕ™„Í”ÔÈÄØÌÐÐÜ¸Q¡¥Ì¥Ì¥¹‘•Á•¹‘•¹Ð½‘”É•Ù¥•Ü°¹½Ð¹…Ñ¥Ù”½¡Õµ…¸…ÁÁÉ½Ù…°½È…ÕÑ¡½É¥é…Ñ¥½¸Ñ¼µ•É”¸()ÕÉÉ•¹Ð¡•­Ìè¹Á´¤À…™Ñ•ÈÑ¡”É•½É‘•¡•…‘•Èµ•áÑÉ…Ñ¥½¸½ÉÉ•Ñ¥½¸ì™¥¹…°™½ÕÍ•ÄäÌ¼ÄäÌ¼ÁÍ­¥À°ÑåÁ•¡•¬À°‰Õ¥±À°½µÁ¥±•¡•±ÀÀ°¹Á´Á…¬€´µ¥¹½É”µÍÉ¥ÁÑÌÀ…¹…É¡¥Ù”¥¹ÍÁ•Ñ¥½¸À€ ÌÈÝ•¹ÑÉ¥•ÌìÍ•Ù•¸•áÁ•Ñ•½µÁ¥±•½Í½ÕÉ”•¹ÑÉ¥•Ì‰åÑ”µµ…Ñ¡•¤¸9¼Á…­…”Ý…Ì¥¹ÍÑ…±±•½ÈÁÕ‰±¥Í¡•¸Õ±°ÍÕ¥Ñ”°½Ñ¡•È‰É½……Õ‘¥ÑÌ°]¥¹‘½ÝÌ½µ…=L°É•…°µ…¥¹Ñ•¹…¹”¡½ÍÐ…¹½µÁ±•Ñ”¥µµÕÑ…‰±”É•™•É•¹”½µÁ…É¥Í½¸É•µ…¥¸Õ¹Ù•É¥™¥•¸UÁÍÑÉ•…´µ‰½Õ¹‘…Éä•á¥ÑÌÄ¥‘•¹Ñ¥…±±ä½¸¡•­Á½¥¹Ð½…¹‘¥‘…Ñ”ìÑ¡”™…¥±ÕÉ”¥ÌÁÉ•Í•ÉÙ•…¹¹¼Ñ…Í¬¥Ì¡•­•½µÁ±•Ñ”¸()A½ÉÑ…‰±”•Ù¥‘•¹”…¹½µµ…¹‘Ìè‘½Ì½…Õ‘¥Ð½ÐÀäµµ…¹…•µÕÁ‘…Ñ”µÍÑ…”´ÈÀÈØ´ÄÀ´ÈØ¹µ…¹‘½Ì½…Õ‘¥Ð½•Ù¥‘•¹”½ÐÀäµÔå´ÈÀÈØ´ÄÀ´ÈØ¼¸…É±¥•È™…¥±•½µµ…¹‘Ì…¹Ñ¡”É•Ù¥•Ý•ÈÉ•ÁÉ½‘ÕÑ¥½¸É•µ…¥¸É•½É‘•…±½¹Í¥‘”½ÉÉ•Ñ•ÍÕ•ÍÍ•Ì¸!¥ÍÑ½É¥…°µ¥ÍÍ¥¹œÉ••¥ÁÑÌ…É”¹½Ð¥µÁ½ÉÑ•½È½¹Ù•ÉÑ•Ñ¼ÕÉÉ•¹ÐÁÉ½½˜¸I•¥ÍÑÉäÉ½ÝÌ½Á¥¹ÌÉ•µ…¥¸Õ¹¡…¹•¸•±¥Ù•ÈÑ¡¥Ì‰½Õ¹‘•…¹‘¥‘…Ñ”…Ì„‘É…™ÐAH……¥¹ÍÐÑ¡”½É¥¥¹…°‰…Í”‰É…¹ ìÉ•Í½±Ù”Ñ¡”É•Á½Í¥Ñ½ÉäÌ•á¥ÍÑ¥¹œÉ•™•É•¹”½ÁÉ½Ù•¹…¹”…Õ‘¥ÐµÁ½±¥ä½¹™±¥ÐÍ•Á…É…Ñ•±ä‰•™½É”±…¥µ¥¹œ…‘µ¥ÍÍ¥½¸¸½¹Ñ¥¹Õ”Ñ¡”½É‘•É•É½…‘µ…À½¹±äÝ¥Ñ Ñ¡½Í”‰±½­•ÉÌ…¹É•µ…¥¹¥¹œPÀäÉ•ÅÕ¥É•µ•¹ÑÌ•áÁ±¥¥ÐìPÀÔ½PÀÐ½PÀÜ…¹½±ÅÕ…É…¹Ñ¥¹”¥¹¥‘•¹ÐÉ•µ…¥¸Õ¹Ñ½Õ¡•¸((ŒŒŒ0ÐÜàƒŠPPÀä±¥™•å±”¥µÁ±•µ•¹Ñ•ìÍÑ…ÑÕÌÉ•µ…¥¹ÌAIQ%0()	½Õ¹‘…Éä…Õ‘¥ÐèÑ¡”•±•Ù•¸ÑÉ…­•™¥±•ÌÑ¡…Ð¹…µ•Ñ¡”É•™•É•¹”ÁÉ½‘ÕÐÝ•É”¹•ÕÑÉ…±¥Í•…ÐÍ½ÕÉ”€¡¹¼…±±½Ý±¥ÍÐ¡…¹”¤ì…Õ‘¥ÐéÕÁÍÑÉ•…´µ‰½Õ¹‘…Éå€Á…ÍÍ•Ì¸AÉ”µ•á¥ÍÑ¥¹œ$µ™…¥±¥¹œ‘•™•ÑÌÝ•É”™¥á•É…Ñ¡•ÈÑ¡…¸Í­¥ÁÁ•è¥¹ÍÑ…±±…Ñ¥½¸µ‘½Ñ½È¡¥±ÑÍá€É•Í½±ÕÑ¥½¸°„ÍÑ…±”Ý½É­ÍÁ…”µ…ÑÑÉ¥‰ÕÑ¥½¸‘¥•ÍÐÁ¥¸¥¸Ñ¡”¡¥±ÉÕ¹¹•È°ÍÑ…±”A¤€Ä¸ÄÝ½É­™±½Ü…ÍÍ•ÉÑ¥½¹Ì°…¸Õ¹…Ý…¥Ñ•…Íå¹ŒÑ•ÍÐ°…¸Õ¹Í•ÐPÀØ™¥áÑÕÉ”É½½Ð°Ñ¡”•Ù¥‘•¹”µ‰Õ¹‘±”Ù…±¥‘…Ñ½È¡…Éµ½‘¥¹œ€à•±±ÌÁ•ÈÁ±…Ñ™½É´Ý¡•¸Ñ¡”Á••È™±½½È•ÅÕ…±ÌÑ¡”‘•Ù•±½Áµ•¹ÐÙ•ÉÍ¥½¸€¡¹½Ü‘•É¥Ù•™É½´Ñ¡”Á±…¹¹•È¤°…¹Ñ¡”Á…¬Ù•É¥™¥•È…ÍÍ•ÉÑ¥¹œ¹¼Ñ½½±}…±±€¡…¹‘±•È…±Ñ¡½Õ Ñ¡”ÁÉ¥µ…ÉäÁ½±¥äÕ…ÉÉ•¥ÍÑ•ÉÌ•á…Ñ±ä½¹”¸()9•Ü•á•ÕÑ…‰±”ÍÕÉ™…”è…Í•¸µ…¹…•¥¹ÍÑ…±±ñÕÁÉ…‘•ñÉ½±±‰…­ñÕ¹¥¹ÍÑ…±±ñÉ•±•…Í•€°…Í•¸‰…­ÕÀ¡½µ•ñÙ•É¥™å€°…Í•¸É•ÍÑ½É”¡½µ•€€¡‘½Ì½¥¹ÍÑ…±±…Ñ¥½¸¹µ¤¸ÈÔÔÄä‘•Ñ…¡•µÍ¥¹…ÑÕÉ”…ÕÑ¡•¹Ñ¥¥Ñä……¥¹ÍÐ…¸•áÁ±¥¥ÐÑÉÕÍÐµ…¹¡½È™¥±”ì!QQALµ½¹±ä‰½Õ¹‘•…ÅÕ¥Í¥Ñ¥½¸ìÍÑ…•ÁÉ½‰”°©½ÕÉ¹…±±•…Ñ¥Ù…Ñ¥½¸°Á½ÍÐµ…Ñ¥Ù…Ñ¥½¸ÁÉ½‰”…¹…ÕÑ½µ…Ñ¥ŒÉ½±±‰…¬ì©½ÕÉ¹…°É…Í É•½Ù•Éäì¡•­ÍÕµµ•Í¥¹±”µ™¥±”‰…­ÕÀÝ¥Ñ ¹½¸µ½Ù•ÉÝÉ¥Ñ¥¹œÉ•ÍÑ½É”ì½Ý¹•ÉÍ¡¥ÀµÙ•É¥™¥•Õ¹¥¹ÍÑ…±°ÁÉ•Í•ÉÙ¥¹œ‘…Ñ„ì±½½Á‰…¬‰É½ÝÍ•È½¹Í•¹Ð¸!…É‘•¹¥¹œèµ…¹…•Á…Ñ ¥‘•¹Ñ¥Ñä¹½Ü¥¹±Õ‘•Ì‰¥ÉÑ Ñ¥µ”…¹„™É•Í Ù•ÉÍ¥½¹Ì‘¥É•Ñ½ÉäµÕÍÐ‰”•µÁÑä€¡É•å±•µ¥¹½‘”ÍÝ…À¤ì½¹™¥œ¹©Í½¹€¥Ì¹½ÜÝÉ¥ÑÑ•¸¥¸Ñ¡”±…Õ¹¡•ÈÍ¡•µ„¸()Ù¥‘•¹”€¡1¥¹Õà°9½‘”€ÈØÍ…¹‘‰½à½¹±ä¤è€ÈÌÉ•…°Ñ•ÍÑÌ¥¸Ñ•ÍÑÌ½ÐÀäµ±¥™•å±”¹Ñ•ÍÐ¹ÑÌ€¡É•…°™¥±•ÍåÍÑ•´°É•…°±½½Á‰…¬!QQ@°É•…°¡¥±1$¤Á…ÍÌ¸Õ±°ÍÕ¥Ñ”è€ÈÄØÜÑ•ÍÑÌ°™…¥±ÕÉ•Ì½¹±ä•¹Ù¥É½¹µ•¹Ñ…°€¡ÑÝ¼€´µ•áÁ•É¥µ•¹Ñ…°µÑÉ…¹Í™½É´µÑåÁ•Í€…Í•ÌÕ¹ÍÕÁÁ½ÉÑ•½¸9½‘”€ÈØ¤Á±ÕÌ½¹”Ñ¥µ¥¹œµÍ•¹Í¥Ñ¥Ù”Ñ•ÍÐ¥¸µ…¹…•µ…ÅÕ¥Í¥Ñ¥½¸µÙ•É¥™¥…Ñ¥½¸Ñ¡…Ð…±Í¼™…¥±Ì¥¹Ñ•Éµ¥ÑÑ•¹Ñ±ä½¸Ñ¡”ÁÉ¥½È…¹‘¥‘…Ñ”¸QåÁ•¡•¬°‰Õ¥±°Á…É¥Ñä½Í­¥±±Ì½Í­¥±°µÁ…É¥Ñä½µ•µ½ÉäµÁ…É¥Ñä½•½ÍåÍÑ•´½‰½Õ¹‘…Éä…Õ‘¥ÑÌ…¹Ù•É¥™äéÁ…­€Á…ÍÌ¸¸…‘Ù•ÉÍ…É¥…°É•Ù¥•Ü™½Õ¹„Íåµ±¥¹­•µ…¹•ÍÑ½ÈÁÉ•™¥à…•ÁÑ…¹”°„Á…ÉÑ¥…°Õ¹¥¹ÍÑ…±°‘¥Í…É‘¥¹œÉ•ÍÕµ”É•½É‘Ì…¹„É•ÍÑ½É”µÉ½±±‰…¬…Àì…±°Ñ¡É•”Ý•É”™¥á•Ý¥Ñ Ñ•ÍÑÌ¸()MÑ¥±°Õ¹ÁÉ½Ù•¸°Í¼PÀä¥Ì€¨©AIQ%0¨¨è]¥¹‘½ÝÌ½µ…=LÉÕ¹Ì€¡$½¹±ä¤°„É•…°±•…¸¡½ÍÐ°„É•…°Á…­…•M8Ñ¡É½Õ Ñ¡”µ…¹…•Á…Ñ €¡Á…­…•Ì…É”Íå¹Ñ¡•Ñ¥Œ¤°„É•…°‰É½ÝÍ•È±…Õ¹ °‘•ÍÉ¥ÁÑ½ÈµÉ•±…Ñ¥Ù”Õ¹¥¹ÍÑ…±°……¥¹ÍÐ„Í…µ”µÕÍ•ÈÉ…¥¹œÁÉ½•ÍÌ°ME1¥Ñ”µ½¹Í¥ÍÑ•¹Ð±¥Ù”‰…­ÕÀ°­•äÉ½Ñ…Ñ¥½¸½É•Ù½…Ñ¥½¸°…¹Ñ¡”™¥¹…°$É½Õ¹¸9½Ñ¡¥¹œÝ…Ìµ•É•½ÈÉ•±•…Í•¸((ŒŒŒ0ÐÜäƒŠP$É•½¹¥±¥…Ñ¥½¸™½ÈÑ¡”0ÐÜà…¹‘¥‘…Ñ”()AÕÍ¡•…¹‘¥‘…Ñ•Ì€àØÈÈÀØÀ°€ÙŒàØÅ°ˆÈÑˆØÄÔ°€ÜÀÕ‘••ˆ…¹€ÜÌÀÐØÅ„Ý•É”•… …¹…±åÍ•™É½´Ñ¡”$±½Ì‰•™½É”Ñ¡”¹•áÐ½ÉÉ•Ñ¥½¸¸¥á•™É½´±½ÌèA¤µ…ÑÉ¥àÉ••¥ÁÑÌ¡…Éµ½‘•ÍÑ…±”A¤Ù•ÉÍ¥½¹Ì€¡¹½Ü‘•É¥Ù•™É½´Ñ¡”Á±…¹¹•È¤°µ…=L…¹]¥¹‘½ÝÌ€à¸ÌÑ•µÀÉ½½ÑÌ™…¥±•Ñ¡”µ…¹…•…¹½¹¥…°µÉ½½Ð¡•¬€¡Ñ¡”Ñ•ÍÐÉÕ¹¹•È¹½Ü…¹½¹¥…±¥Í•ÌÑ¡”Ñ•µÀ‘¥É•Ñ½ÉäÝ¡•¸¥Ð‘¥™™•ÉÌìÑ¡”‘½Ñ½È™¥áÑÕÉ”É•…±Á…Ñ¡Ì¥ÑÌÉ½½Ð¤¸Ð€ÜÌÀÐØÅ„è…É¡¥Ñ•ÑÕÉ”°1¥¹Õà°µ…=LÑ•ÍÐ©½‰Ì…¹…±°Ñ¡É•”Á¤µÍÕÁÁ½ÉÐµµ…ÑÉ¥à©½‰ÌÁ…ÍÌìI•±•…Í”…Ñ”Á…­…•Ì…¹A¤€Ä¸ÈÉÕ¹Ñ¥µ”•Ù¥‘•¹”Á…ÍÍ•½¸Ñ¡”•…É±¥•È…¹‘¥‘…Ñ•Ì¸()=Á•¸è½¸]¥¹‘½ÝÌÉÕ¹¹•ÉÌÝ¡½Í”Ñ•µÀ‘¥É•Ñ½Éä¥Ì…¸€à¸ÌÍ¡½ÉÐÁ…Ñ °€ÄÐÁÉ”µ•á¥ÍÑ¥¹œµ…¹…•µ1$ÁÉ½‰”Ñ•ÍÑÌÑ¥µ”½ÕÐ€¡É•…Í½¸èÑ¥µ•½ÕÑ€°M%-%10…™Ñ•ÈÑ¡”€ÄÀÌ‘•…‘±¥¹”¤ìÑ¡•äÁ…ÍÌ½¸ÉÕ¹¹•ÉÌÝ¥Ñ „±½¹œÑ•µÀÁ…Ñ …¹™…¥°¥‘•¹Ñ¥…±±äÝ¥Ñ …¹Ý¥Ñ¡½ÕÐÑ¡”Ñ•µÀ…¹½¹¥…±¥Í…Ñ¥½¸°…¹Ý•É”¹½Ð‘¥…¹½Í•Ý¥Ñ¡½ÕÐ„]¥¹‘½ÝÌ¡½ÍÐ¸]¥¹‘½ÝÌ¥ÌÑ¡•É•™½É”¹½ÐÙ…±¥‘…Ñ•…¹PÀäÍÑ…åÌAIQ%0¸((ŒŒŒ0ÐàÀƒŠP‘½ÁÐPÄÄA¤µ½¹±äÍ½Á”™É½´•¹Ñ±”M¡•±°Ì…ÑÕ…°¥¹Ñ•É…Ñ¥½¸‰½Õ¹‘…Éä()UÍ•È¥¹ÍÑÉÕÑ¥½¸è€‰!…é±¼…Ï´ˆ°™½±±½Ý¥¹œÑ¡”…¹…±åÍ¥Ì½˜•¹Ñ±”M¡•±°¸•¥Í¥½¸èPÄÄ½Ù•ÉÌM8ÌA¤€Ä¸È¥¹Ñ•É…Ñ¥½¸½¹±ä¸Q¡”™É½é•¸•¹Ñ±”M¡•±°Í½ÕÉ”¥Ì„A¤µ¹…Ñ¥Ù”•áÑ•¹Í¥½¸ì•¹Ñ±”µ$Ì‰É½…‘•ÈÉÕ¹Ñ¥µ”¥¹Ù•¹Ñ½Éä‘½•Ì¹½Ð•ÍÑ…‰±¥Í Ñ¡…Ð•¹Ñ±”M¡•±°¥ÑÍ•±˜ÁÉ½Ù¥‘•Ì…‘…ÁÑ•ÉÌ™½ÈÑ¡½Í”±¥•¹ÑÌ¸áÑ•É¹…°±¥•¹ÑÌ…É”‘•™•ÉÉ•™½±±½Üµ½¸Ý½É¬…¹…É”¹½Ð¥µÁ±¥•ÍÕÁÁ½ÉÐ¸()ÕÉÉ•¹Ð¥µÁ±•µ•¹Ñ…Ñ¥½¸½•Ù¥‘•¹”èM8…±É•…‘äÙ…±¥‘…Ñ•ÌÑ¡”A¤¡½ÍÐ¥¸ÍÉŒ½ÉÕ¹Ñ¥µ”½Á¤µ¡½ÍÐ¹ÑÍ€…¹½µÁ½Í•Ì¥Ð¥¸•áÑ•¹Í¥½¹Ì½…Í•¸¹ÑÍ€ìÑ¡”¡½ÍÐÁÉ•™±¥¡Ð…¹½µÁ…Ñ¥‰¥±¥ÑäÑ•ÍÑÌÝ•É”½ÉÉ•Ñ•Ñ¼É•™±•ÐÕÉÉ•¹Ñ±äÉ•¥ÍÑ•É•PÄÀ‰…­É½Õ¹Ñ½½±Ì…¹½¹‘¥Ñ¥½¹…°µ•µ½Éä½Á±…¸Ñ½½±Ì¸¥É•Ð½µµ…¹¹½‘”€´µ¥µÁ½ÉÐÑÍà€´µÑ•ÍÐÑ•ÍÑÌ½Á¤µ¡½ÍÐµÁÉ•™±¥¡Ð¹Ñ•ÍÐ¹ÑÌÑ•ÍÑÌ½Á¤µ¡½ÍÐµ½µÁ…Ñ¥‰¥±¥Ñäµµ…ÑÉ¥à¹Ñ•ÍÐ¹ÑÍ€Á…ÍÍ•€ØÜ¼ØÜ°é•É¼Í­¥ÁÌì¹Á´ÉÕ¸ÑåÁ•¡•­€…¹¥Ð‘¥™˜€´µ¡•­€Á…ÍÍ•±½…±±ä¸Ù¥‘•¹”¥Ì™É½´Ñ¡”Õ¹½µµ¥ÑÑ•Ý½É­ÑÉ•”…¹¥Ì¹½Ð‰½Õ¹Ñ¼„½µµ¥ÑÑ•…¹‘¥‘…Ñ”M!¸%Ð‘½•Ì¹½Ð•ÍÑ…‰±¥Í ¡½ÍÐµµ½‘”‰•¡…Ù¥½È‰•å½¹Ñ¡½Í”Ñ•ÍÑÌ°Á±…Ñ™½É´Á…É¥Ñä°¥¹‘•Á•¹‘•¹ÐHÐ½È™Õ±°PÄÄ…•ÁÑ…¹”¸()PÄÄ¥Ì¹½ÜAIQ%1}	e}AQ}M=A€°¹½ÐU10èÉ•µ…¥¹¥¹œÝ½É¬¥ÌÑ¼Ù•É¥™ä…ÑÕ…°A¤M,‰•¡…Ù¥½È™½È•… ±…¥µ•µ½‘”°½‰Ñ…¥¸…ÁÁ±¥…‰±”¡½ÍÐ½Á±…Ñ™½É´•Ù¥‘•¹”°½µÁ±•Ñ”¥¹‘•Á•¹‘•¹ÐHÐ½¸Ñ¡”•á…Ð…¹‘¥‘…Ñ”…¹‰¥¹É••¥ÁÑÌÑ¼Ñ¡…Ð…¹‘¥‘…Ñ”¸9¼•áÑ•É¹…°µ±¥•¹ÐÍÕÁÁ½ÉÐ¥Ì±…¥µ•¸9¼Ñ…Í¬¡•­‰½à½ÈÉ•¥ÍÑÉä±…¥´¥ÌÁÉ½µ½Ñ•‰äÑ¡¥ÌÍ½Á”‘•¥Í¥½¸¸á¥ÍÑ¥¹œ¹¼µ½µµ¥Ð½¹¼µÁÕÍ ½¹ÍÑÉ…¥¹ÑÌ…¹Õ¹É•±…Ñ•PÄÀÝ½É­ÑÉ•”¡…¹•ÌÉ•µ…¥¸¥¸™½É”¸(
-
-T05 execution follow-up (2026-10-28; candidate pending publication): exact checkout freshness is now revalidated at review-session and RDD-result boundaries. A private in-process claim binds checkout directory identity, revision/tree/parent, index flags and clean tracked/untracked state; stale source drift invalidates the session and burns the result. Regression uses a real temporary Git repository, opens a materialized session, advances HEAD, and verifies a prior local PASS-shaped guard probe is rejected; the owned view is closed. Focused candidate/session/review-chain checks passed 26/26 and typecheck passed. This is local guard evidence only, not native RDD review or approval. T05 remains PARTIAL: public workspace/reviewer/correction/new-review/acceptance composition, real authenticated RDD, independent R4 signoff and exact-candidate cross-platform CI remain outstanding. The local Pi TUI matrix remains blocked by missing node-pty native build headers (fchown EINVAL); other base-head CI evidence is historical and does not validate this candidate.
-
-T05 local full-suite follow-up (2026-10-28): on the reconstructed source tree, `TMPDIR=/tmp npm run test` completed 2,217 PASS, 0 FAIL, 19 SKIP. Earlier attempts with a nonstandard TMPDIR caused fixture-precondition failures and are excluded. This is local evidence only; publication, exact-SHA CI and RDD/public-cycle evidence are still required.
-
-T05 Pi host setup resolution (2026-10-28): the earlier Linux TUI failure was caused by missing `node-pty` native output in this container. Official Node 24.22.1 headers were downloaded and safely extracted without owner metadata, then the existing dependency rebuild succeeded; no verifier/source code was changed. On exact local code candidate `1e8d486e7c0bf32547a8c3cdbd895ca3bbb8d2ee`, packed npm artifact Pi 1.2.0 Linux cells TUI/RPC/JSON/print all PASS with natural shutdown and zero model calls. The final docs-only SHA will rerun the candidate-bound matrix. Windows/macOS and public RDD workflow remain unverified.
-
-T05 R4 hardening follow-up (2026-10-28): an adversarial review of the first draft found that its session-source binding accepted a caller-supplied callback. The final implementation removes that callback, requires an issued checkout claim bound to the same repository/tree, and calls the controller-owned revalidator. A regression rejects forged checkout data. Focused suites now pass 27/27 and typecheck passes; exact-candidate CI is restarting for this corrected tree. T05 remains PARTIAL.
-
-
-T05 public workspace-flow follow-up (2026-10-28): /asen-review workspace now captures a private-index snapshot, blocks unexpected untracked paths, materializes exact diff and changed-file bytes, requests explicit consent for a fresh tool-free Pi reviewer model distinct from the author, and allows one finding-path-bounded correction with a different reviewer. A PASS is only passed-awaiting-tests; tests remain not-run and no delivery authority is granted. Focused tests 60/60; full local check 2229 pass, 0 fail, 19 skipped; typecheck/build/pack PASS. Pi matrix invocation halted before any cell because this worktree lacked a committed exact candidate SHA/tarball; no Pi matrix PASS is claimed. Local R4 fixed dot-dot-prefixed in-repo parent containment and surfaced out-of-scope untracked files. T05 remains PARTIAL pending real provider credentials, test execution/acceptance contract, restart/crash recovery, OS isolation, simultaneous-change and cross-platform exact-SHA CI, and independent external review.
-
-T05 exact Pi candidate follow-up (2026-10-28): published candidate 8aff8baf0ee1fa199d0d0611323d0adaf4f18ce2 passed packed Pi 1.2.0 Linux TUI/RPC/JSON/print matrix; natural shutdown and cleanup confirmed, zero model calls. Matrix output: /tmp/asen-t05-pi-matrix. The preceding note records the earlier pre-commit attempt and is superseded by this exact-SHA run. Windows/macOS matrix evidence and final CI remain pending.
-
-T05 final exact-SHA CI update (2026-10-28): documentation candidate 5a231ca080d0696b01d9b1c7b2907ed0df1f9cbf passed CI attempt 2, full test jobs Ubuntu/macOS/Windows, Pi host matrices Ubuntu/macOS/Windows, Phase 0, Pi 1.2 runtime evidence, and Release Gate on all three platforms. The first Windows full-suite attempt failed only the existing concurrent background-journal stress at its fixed 3-second lock boundary; the isolated test passed locally and the failed Windows job passed on exact-SHA retry without code or timeout changes. Pi Free Smoke was skipped, not passed. T05 remains PARTIAL: no authenticated live review/provider, candidate-bound tests/acceptance, restart recovery, OS isolation, simultaneous conflict evidence, or external independent R4 signoff.
-
-T05 cancellation follow-up â€” 2026-10-28: a temporary-Git integration test aborts after reviewer output arrives but before result binding. The attempt emits no approval, its owned view is disposed, and retry performs a fresh review (`tests/ordinary-review-workspace-flow.test.ts`, 4/4). `TMPDIR=/tmp npm run check` passed locally. This is in-process cancellation/retry evidence only; hard-crash/restart recovery, candidate-bound tests/acceptance, real provider auth, OS isolation, simultaneous conflict stress, external independent R4 and exact-new-SHA CI remain gates. T05 stays PARTIAL.
-
-T05 exact-SHA and review scope follow-up (2026-10-29): published candidate 8ae88a39c7ad40c33d504dff98eb482a34189f9b passed CI run 40795677318 full suite and Pi support matrix on Ubuntu, Windows and macOS; Release Gate 40795677329, Phase 0 40795677362 and Pi 1.2 runtime evidence 40795677386 passed. Pi Free Smoke and conditional NVIDIA review were skipped. A subsequent independent review reproduced tracked changes outside the stated scope reaching the reviewer. The follow-up adds explicit exact-path review selection, including tracked modifications and deletions, retained across correction; this is not a live write-authorization grant. Same-user path races, candidate-bound tests/acceptance, durable recovery, a real provider review and independent external R4 remain open. T05 stays PARTIAL; this follow-up requires exact-candidate CI.
-
-T05 review-scope candidate verification (2026-10-29): focused workspace-command tests 27/27 PASS; independent reinspection found no new blocker in the selection change, while unchanged gitlinks remain unsupported and are rejected before provider dispatch. On the local candidate, npm run check completed 2265 PASS, 0 FAIL, 19 conditional SKIP; typecheck, applicable audits, npm run build and npm run verify:pack passed. Normative ecosystem source proof is NOT ADMITTED. The NVIDIA CI job was adjusted after independent review to isolate candidate tests from provider credentials and to build the exact binary-preserving diff from complete Git history; no real provider review or final-SHA CI is yet claimed. T05 remains PARTIAL.
-
-T05 provider and scope follow-up (2026-10-29): candidate af171df097d78d7c677e55f8c51e4e0d097dc369 passed full suites and Pi matrices on Linux, macOS and Windows, Phase 0, Pi runtime and Release Gate, but CI run 40802870019 failed because a real NVIDIA response used explanation instead of the required description. The response also labeled a known high same-user path race nonblocking; it was rejected and is not approval. Raw artifact 12868361371 is retained. A follow-up clarifies the strict provider schema without accepting malformed output. The public command now checks selected changed paths before storing changed blobs or materializing a view, and privately reapplies selection during revalidation. Projection still reads the workspace, admitted views contain unchanged unselected files, and correction deltas within the original selection are checked after materialization. A disposable Git probe demonstrated that the existing test executor can write outside its worktree; it is not a sandbox. Writer provenance, protected snapshots, isolated candidate tests, acceptance and durable recovery remain open. T05 stays PARTIAL.
-
-T05 correction preflight follow-up (2026-10-29): the earlier note that correction deltas within the initial selection are checked only after view materialization is superseded. The public workspace command now compares the captured correction with a private immutable catalog of the genuine prior projection and rejects changes outside finding paths before writing changed blobs or creating a view. The constraint survives revalidation; temporary-Git tests cover the rejected delta and retry after an unchanged correction. This is a restriction on review, not an authorization of writes; prior and later workspace reads still lack OS isolation. T05 remains PARTIAL.
-
-T05 correction preflight local verification (2026-10-29): npm run check 2276 PASS, 0 FAIL, 19 conditional SKIP; typecheck and applicable audits PASS; retained normative ecosystem source proof remains NOT ADMITTED. npm run build and npm run verify:pack PASS; packed Pi 1.2 verification made zero model calls. Independent focused review/Git tests 58/58 and provider-contract tests 6/6 PASS. These are local results; publication and exact-SHA CI remain required. T05 remains PARTIAL.
-
-T05 cross-platform CI follow-up (2026-10-29): exact candidate 795258119d0fc8ea2575f32295fa599c2745c4ed failed Windows full-suite job 123288487357 in run 40825816368 when the concurrent background-job journal test received EPERM creating jobs.json.lock. Pi matrices, Phase 0, Pi runtime and Release Gate passed; remaining suite results require checking the run. The cause of EPERM is not established. A subsequent journal mitigation handles Windows EPERM only when exclusive creation failed and a safe regular lock exists; it retains the three-second limit, does not reclaim another lock and preserves the original error on unresolved denial. Fault-injection and real two-process tests were independently checked on Linux, but the actual Windows condition and exact new candidate still require CI. This change does not promote T10 or T05; T05 remains PARTIAL.
-
-T05 journal repair local verification (2026-10-29): npm run check on the final product code passed 2277 tests, 0 failed, 19 conditional skips; build and verify:pack passed. The two-process test cleanup adjustment was made after the full check began and was separately rerun successfully in focused tests. Independent journal/background-job checks passed 19/19 on Linux with Windows EPERM simulated. Windows real CI and exact new SHA remain pending; the EPERM root cause is unproven. T05 and T10 status unchanged.
-
-T05 writer-authorization binding follow-up (2026-10-29): controlled-plan writer grants now capture a private pre-run snapshot of the real Git toplevel, exact HEAD, root identity and original bounded surfaces, then revalidate before execution and bind the terminal result to actual tracked/untracked changes. Temporary real-Git regressions reject pre-start drift, a newer candidate, out-of-scope tracked/untracked writes, repository links and linked write surfaces; focused dispatcher/Pi/snapshot tests passed 87/87 and the full local product suite on 6960651a6f5a1ee73a3e8fbbd5ebec16d8a8316f passed 2281 / 0 failed / 19 skipped. The two-process journal, orphan-lock and bounded Windows-EPERM simulation also passed locally. This neither isolates execution at the OS level nor makes review/correction state durable across a hard restart, and it grants no candidate acceptance. Bubblewrap namespaces are unavailable on this host and Docker/Podman are absent. Real Windows/macOS CI, an isolated candidate-test/acceptance path, valid provider review, external R4 and final exact-SHA CI remain required. T05 stays PARTIAL.
-
-T05 Windows root-path correction (2026-10-29): exact candidate 16eea3f31e877f261390176a9c0734261f707099 failed Windows CI job 123409239402 because the new writer snapshot compared Git rev-parse to Node realpath as literal strings; Windows spelling/separator differences made the controlled grant fail before runner launch. This was not a journal EPERM recurrence. The fix reuses ASEN workspace identity comparison for that check. Targeted dispatcher/extension-runtime/Pi/snapshot tests passed 100/100; full local suite passed 2281 / 0 failed / 19 skipped; build, pack and applicable audits passed. A new exact-SHA cross-platform CI round is required. T05 remains PARTIAL; OS isolation, durable recovery, acceptance, valid provider review and external R4 remain open.
-
-T05 writer/recovery follow-up (2026-10-29): the Dispatcher now holds a cross-process Git workspace lease across an authorized writer run; dead-owner locks are reclaimed only after a fail-closed PID/inode/content check. Journal retry claims persist the operation digest, original lineage, candidate HEAD, path scope and expiry before dispatch, retain consumed claims and unresolved operations, and never automatically replay. Independent child-process tests exercise same-repository contention, different scopes, dead-writer recovery, out-of-scope edits, durable authorization reuse and hard SIGKILL after a real file write; the restarted registry reports an interrupted result and blocks replay. Focused T05/dispatcher/Pi tests passed 106/106 on Linux; typecheck passes. CI and full clean-checkout validation remain pending. T05 remains PARTIAL: the retry API is not yet wired to a user-facing issuer/consent flow, a same-user process can bypass Git-status checks between observations, public review/correction state is not restart-durable, and candidate-bound tests/acceptance, external R4 signoff, cross-platform final CI and a genuine NVIDIA Pi task have not yet been demonstrated.
-
-T05 clean-candidate local validation (2026-10-29, `cede4845dd0438ec05363f550e0a48c698199376`): `npm run check` exited 0: typecheck passed; 2,295 tests passed, 0 failed, 19 skipped; parity/skills/skill-parity/memory/ecosystem/upstream audits passed. `npm run build`, `npm run verify:pack` (Pi 1.2.0 packed install, restart/cross-session and natural-exit checks) and `git diff --check` passed. The 19 skipped tests remain skipped, not passes. This is Linux local evidence. NVIDIA credentials are not configured in this shell, so the live provider task was not run here; exact-SHA Actions, cross-platform results, user-facing retry consent, OS isolation, restart-durable review correction, and external R4 remain pending. T05 stays PARTIAL.
-
-T05 lock publication correction (2026-10-29): the R4 pass found that death between exclusive file creation and owner-record persistence could strand an empty canonical lock. The lease now writes/fsyncs a unique owner temp and atomically hard-links it as the canonical lock; a crash during preparation leaves only an ignored temp. A new regression preserves a partial orphan temp while acquiring/releasing a valid lease. Targeted workspace/Dispatcher/retry/journal tests pass 51/51 and typecheck passes. The previous full-suite result applies to the preceding tree; full clean-checkout validation and exact-SHA Actions must cover this correction. T05 remains PARTIAL.
-
-T05 Windows hard-stop portability correction (2026-10-29): CI run 40931024855 on published SHA `39be3dc7ee6743a3351d4b1f56fbdbf69a7eca07` passed Ubuntu and Pi matrices on Linux/macOS/Windows, Phase 0, Pi 1.2 runtime evidence, and Release Gate. The Windows full suite had one failure (`tests/authorized-job-retry.test.ts`): Windows reports child termination with `signal=null`, so the assertion requiring POSIX `SIGKILL` was not portable; 367 tests passed, one failed, and three were skipped in that Windows job. The assertion now accepts Windows' signal representation while still requiring the persisted file write and recovered `interrupted` state, which rejects a normally completed host. The corrected crash/lease tests pass 7/7 on Linux; the complete clean-checkout suite passed 2,296/0/19 on the source tree before this assertion-only portability adjustment. The next exact-SHA CI is required. T05 remains PARTIAL.
+YÂªÃ§Å x-Â®Ã©ÃœjÃ—ÂÂ¢Ã«iÂºÃš+Å Â§j[hâ€˜Ã©Ãœÿ
+‹§·7
+óøóo
+û
+á¼­{
+ËŠÃ
+‹
+Û_
+tŒMÿò6&–Æ—G’6ö×ÆWF–öà¤6ö×ÆWFRF†R&÷fVÿÿÔKYš\œÝØ\Xš[]H›ØYX\\Ú[™È^\Ý[™ÈÿÿÿEN mechanisms; later add presentation and cliý•¹Ð…‘…ÁÑ•ÉÌÝ¥Ñ¡½ÕÐ±…¥µ¥¹œÕ¹ÍÕÁÁ½ÉÑ••Åÿö—fÆVæ6Rà¤&6R'&æ6ƒ¢fVB÷7G&–7B×&—G’×ÿÿÙ\™\]Z\Ú]\ØÈÝ\œ™[[]™\žNˆ›Ý[™YÛÜÿÿÿbranches and reviewable PRs authorized at L47üÐ°¹¼µ•É”½É•±•…Í•Ìì¡•­Ìè™½ÕÍ•9½‘”½Ñÿ÷‚FW7G2ÂG—V6†V6²ö'V–ÆBÂÆ–6&ÆRVF—G2ÿÿÛ™\ÛÛ]Y›ÝšY\‹Yœ™YH›Ý\›™^\ËˆÛ\ˆÿÿÿal-only delivery entries remain historical.
+
+üŒŒMÁ•Ì((ŒŒŒLÄƒ‹Š
+³ŠtÕÑ¡½É¥é•½ÕÑ½µ”ÿöæB&VfW&Væ6R&÷VæF' ¥W6W"WF†÷&—¦F–öâÂÿÿÙ\˜˜][Nˆ˜Y[[HÛÛˆ\ÙH[ˆ‹‚‚•H\ÿÿÿed proposal compares the current ASEN implemeý¹Ñ…Ñ¥½¸Ý¥Ñ I•™•É•¹”É•±•…Í”ØÐ¸È¸Á€°Ñÿ÷&vWB6öÖÖ—BF6cC#C&VSS3“sv3“&FfSCfÿÿÌŽXˆHÙ\\˜]H™Y™\™[˜ÙHHÛÜšÜÜÿÿÿ experience is a later block, not a feature oý˜I•™•É•¹”Ì½¹™¥ÕÉ…Ñ¥½¸‰¥¹…Éä¸AÉ•Í•ÉÿöRF†R†—7F÷&–6Âg&÷¦VâV6÷7—7FVÒ6÷W&6RÿÿÙMŒØLŽX™LM˜™˜™YMÌXLÌNNXŒŒYŒM˜[™ÿÿÿs evidence. A new comparison target never silý•¹Ñ±äÉ•Á±…•ÌÑ¡…Ð‰…Í•±¥¹”½ÈÁÉ½µ½Ñ•Ì„ÿö–ÒâÃSWF†÷&—¦W2W6–ær–ç7FÆÆVB&VfW&VæÿÿÈÚ[ŒËŒ™Z]š[ÜˆÈ™\ÛÛ™H™[XZ[š[™Èÿÿÿoduct decisions; this does not silently rebasý•±¥¹”Ñ¡”ØÐ¸È¸À½µÁ…É¥Í½¸½È•ÍÑ…‰±¥Í É•µÿ÷FR×fW'6–öâWV—fÆVæ6Rà ¢2223":.(*Î(	Ò&WÿÿÙH[™][[™[ÜžB‚’[™[ÜžH[\[Yÿÿÿation, production composition, deterministic ýÑ•ÍÑÌ°É•…°µ¡½ÍÐ•Ù¥‘•¹”…¹É•µ…¥¹¥¹œ…ÁÌÿ÷6W&FVÇ’â&V6öæ6–ÆR7FÆRFö7VÖVçFF–öâÿÿÚ[œÝÛÝ\˜ÙKˆÛ\ÜÚYžHXXÚYÜYÝ\™˜XÙHÿÿÿ demonstrated, integration needed, evidence ný••‘•°µ¥ÍÍ¥¹œ½È•áÁ±¥¥Ñ±ä‘¥™™•É•¹Ð¸I•ÕÍÿòF†RW†—7F–ær&÷WF–ærÂF—7F6†W"ÂF6²ÂÖVÿÿÜžK›Ùš[H[™™]šY]ÈÛÛ\Û™[ËˆH^\ÿÿÿng `ecosystem-strict-parity.md` remains the dý•Ñ…¥±••½ÍåÍÑ•´•á•ÕÑ¥½¸‰…­±½œìÑ¡¥Ì‘½ÿ÷VÖVçB6ö÷&F–æFW2F†RæWvÇ’&÷fVB6ö×ÆWÿÿÛÛˆ›ÙÜ˜[H[™[šÜÈÈÜÙH[š]È˜]\ˆÿÿÿan creating replacement stores or duplicatingüÑ¡•¥È•Ù¥‘•¹”¸((ŒŒŒLÌƒ‹Š
+³ŠtAÉ½Á½ÉÑ¥½¹ÿöÂv÷&¶fÆ÷p ¥7W÷'BæGW&ÂÖÆæwVvR&WVW7ÿÿË™XY[Û›H[œÜXÝ[Û‹›ØÝ\ÙYÛ\šYšXØ]ÿÿÿ, direct small changes, durable substantial pý±…¹Ì°Ñ…Í¬‘•Á•¹‘•¹¥•Ì°‘•±•…Ñ¥½¸™½È„¹…ÿöVB&V6öâæBF—6¦ö–çB&ÆÆVÂv÷&²â¶VWÿÿÙ\ˆ™\]Z\™[Y[È[˜Ú[™ÙYXÜ›ÜÜÈ[™Ù™œËˆÿÿÿe consistent routing decision must serve the ý¡…Ð‰É¥‘”°½µµ…¹µ…Ñ•É¥…±¥é•È…¹…•¹ÐÿöF‡2â6öçF–çVRÇ&VG’ÖWF†÷&—¦VB&VBÖöæÇ’ÿÿÛÜšÈÚ]Ý]™Y[™[ÛÛ™š\›X][Û‹ˆÙY\Ûÿÿÿrent code/test/doc units reviewable; task couý¹Ð…¹™¥±”½Õ¹Ð…±½¹”µÕÍÐ¹½Ð™½É”‘•±•ÿ÷F–öâà ¢2223B:.(*Î(	ÒW&Ö—76–öâæB–FVçFÿÿÞH›Ý[™\šY\Â‚”™\Ù\™H^XÝXØ[™Y]K^ÿÿÿ-surface writer authorization; primary-sessioý¸…¹¡¥±µÁÉ½•ÍÌÕ…É‘ÌìÍ•¹Í¥Ñ¥Ù”µÁ…Ñ …ÿöBFW7G'V7F—fRÖ6öÖÖæB&÷FV7F–öã²&ö¦V7B÷6ÿÿÜÚ[Û‹ÝÛÜšÝ™YHÝÛ™\œÚ\È^XÚ]›Ü™ZYÛ‹\ÿÿÿject consent; and safe cancellation. A deniedü…±°µÕÍÐ•á•ÕÑ”é•É¼™½É‰¥‘‘•¸½Á•É…Ñ¥½¹ÌÿòW'6—7FVBFW67&—F–öç2ÂÖVÖ÷'’æB7V66W76ÿÿÛYÙ[Ý]]]\Ý™]™\ˆ™\ÝÜ™HÜˆX[Y˜ÿÿÿure permission.
+
+Approved sensitive-path poliýä€¡0ÄØ¤è‰±½¬Ñ½½°…•ÍÌÑ¼€¹¥Ñ€°€¹•¹ØÿöÂ¢çVÖæB¢æ¶W–âW6W"6÷'&V7F–öâ„Ã#ÿÿË™\˜˜][Nˆ™Z˜[ÈÛÛ[ÈÈ\ØHXÚY[™È™ÿÿÿrence". For the pending shell/PowerShell and ýA¤µ™±½½È‘•¥Í¥½¹Ì°…±¥¸Ý¥Ñ Ñ¡”¥¹ÍÑ…±±•ÿõ&VfW&Væ6R6†VÆÂ&VfW&Væ6R×–Bã2ã&V†f–ÿÿÎˆHZ[š[][HKŒ‹Œ[™™Y™\™[˜ÙH›Ü›X[[[Ùÿÿÿcommand admission rather than universal exactüµ•™™•Ñ¥Ù”µ½µµ…¹½¹™¥Éµ…Ñ¥½¸¸I•Í½±Ù”•á…ÿ÷B&VfW&Væ6RöÆ–7’g&öÒWF†÷&—¦VB–ç7FÆÆVÿÿÜÛÝ\˜ÙH™Y›Ü™H[\[Y[][ÛŽÈÈ›Ý[™™\ˆÿÿÿoption of unrelated YOLO/Auto modes, providerýÌ°‰…­É½Õ¹Ñ½½±Ì½ÈÍÑ½É•Ì¸AÉ•Í•ÉÙ”Í•¹Íÿ÷F—fR×F‚&÷FV7F–öâæB6†–ÆBWF†÷&—G’âFÿÿÛXØ[YZ\ÜÚ[Ûˆ™[XZ[œÈY™[œÙH[ˆ\ÿÿÿt shell/OS confinement; older host tests do ný½ÐÁÉ½Ù”Ñ¡”¹•Üµ¥¹¥µÕ´¸((ŒŒŒLÔƒ‹Š
+³ŠtIÿö6÷fW'’æB–æFWVæFVçB66WFæ6P ¤6ö×ÆWFRÿÿÚH™X[[\œ\Y]Üš]\ˆ›Ý\›™^H\Ú[™Èÿÿÿexisting ECO-06 harness, stores and inspectioý¸Ñ½½±Ì¸AÉ•Í•ÉÙ”Á…ÉÑ¥…°•‘¥ÑÌ™½È•áÁ±¥¥Ðÿ÷&W6öÇWF–öâÂ&V¦V7BWFöÖF–2&WÆ’æBF—'ÿÿËXØ[™Y]Hœ™\Ú\[ˆ[YÚXš[]KÜ™X]Hÿÿÿewly bound candidate/plan and obtain fresh oný”µÕÍ”…ÕÑ¡½É¥Ñä‰•™½É”…¹½Ñ¡•ÈÝÉ¥Ñ•È¸Y•É¥™ÿò–FVçF—G’&V¦V7F–öâÂ6æ6VÆÆF–öâ6ÆVçWÿÿÈ™\Ý\™Z]š[Ü‹ˆYÙ[ÛÛ\][Ûˆ[Û™Hÿÿÿer completes a linked task; independent accepýÑ…¹”µÕÍÐÉ•µ…¥¸•áÁ±¥¥Ð¸¸M8µ¡½ÍÐ­¥±ÿò—2æ÷B–æFWVæFVçB&ööböbâ''WB’Ö6ÿÿÛÚ[ÜˆZY]Üš]H\˜Xš[]K‚‚ˆÈÈÈÍˆ0èÿÿÿ¬â€ Tests and exact-change review
+
+Use appliý…‰±”Ñ•ÍÐµ™¥ÉÍÐ‘•Ù•±½Áµ•¹Ð°É•É•ÍÍ¥½¹Ì™½ÿòF÷V6†VBW†—7F–ær&V†f–÷"æB&÷÷'F–öæFÿÿÝ™\šYšXØ][Û‹ˆÛÛ\]HH^\Ý[™È™]šY]Èÿÿÿfecycle rather than adding competing authoritýä¸	¥¹É•Ù¥•ÜÑ¼…¸¥µµÕÑ…‰±”•á…Ð…¹‘¥‘…ÿöRÂfÆ–FFR&÷VæFVB6÷'&V7F–öç2Â–çfÆ–FFRÿÿÝ[H™\Ý[È[™\ØÛÜÙH[˜]˜Z[X›H™]šYÿÿÿ Keep review switch/consent human-owned. A reýÙ¥•ÜÉ•ÍÕ±Ð¹•Ù•È…ÕÑ¡½É¥é•ÌÁÕ‰±¥…Ñ¥½¸¸Mÿôâ×W7Bæ÷B7V—&RÖæFF÷'’W‡FW&æÂ&WfÿÿÝË\[[YH\[™[˜ÞK‚‚Ø[™Y]HÛXÞH™\ÿÿÿved by L51: support both committed commit/PR ýÉ…¹•Ì…¹¥µµÕÑ…‰±”±½…°Ý½É­ÍÁ…”Í¹…ÁÍ¡½ÿ÷2ÂföÆÆ÷v–ærF†RfW&–f–VB–ç7FÆÆVB&VfW&VæÿÿÈ™Z]š[Ü‹ˆØØ[Û˜\ÚÝÈ\ÙHHš]˜]H[ÿÿÿx/tree and owned read-only view without movinýœÑ¡”½¹ÑÉ¥‰ÕÑ½È!½‰É…¹ ½¥¹‘•àìÍ•±•Ñ•ÿòVçG&6¶VB66÷R×W7B&RW‡Æ–6—BæB7W'&VÿÿËXØ[™Y]HšY]\Ý[˜[Y]H™\Ý[Ëˆÿÿÿse ASEN candidate/controller/result/correctioý¸µ•¡…¹¥ÍµÌìÍ¹…ÁÍ¡½Ð‘…Ñ„¥Ì¹½Ð„Í•½¹ÿ÷&÷fÂWF†÷&—G’âvVæW&–2FöFòfW&–f–6F–öÿÿÚ\È›Ý˜]]™H™]šY]È\›Ý˜[‚‚ˆÈÈÈÍÈ0è¸ ÿÿÿ€ Memory, skills and code knowledge
+
+Keep thý”•á¥ÍÑ¥¹œ±½…°µ•µ½Éä¥µÁ±•µ•¹Ñ…Ñ¥½¸¸Y•É¥ÿ÷’W6VgVÂ&ö¦V7B6öçFW‡BÂ6V&6‚ÂFVÆWF–öâÂÿÿÙ\Ý\ÛÛ[Z]H[™›Ú™XÝ\ÛÛ][ÛˆÚ]ÿÿÿut storing credentials or restoring authorityü¸½µÁ±•Ñ”Í­¥±°Í•±•Ñ¥½¸½‘¥Í½Ù•Éä½…¡”Éÿög&W6‚ÂÖ—76–ær÷&V7&VFVB6÷W&6W2æB&VÂÖ†ÿÿÝY™XÞXÛHÛÝ™\˜YÙKˆ™\šYžHH[šYšYYÛÿÿÿGraph tool against a real disposable project,ü¥¹±Õ‘¥¹œÁ•Éµ¥ÑÑ•¥¹‘•à¥¹¥Ñ¥…±¥é…Ñ¥½¸…¹ÿò&VBÖöæÇ’VW&–W2âÆ—fRFö7VÖVçFF–öâ—2÷ÿÿÚ[Û˜[[™]\Ý™\Ù\™H\œÛÛ˜[ÛÛ™šYÝ\˜]ÿÿÿn and disclose unavailability.
+
+### S8 Ã¢â‚¬âþtAÉ½™¥±•Ì°Á•ÉÍ½¹„…¹ÕÍ…”()½µÁ±•Ñ”•™™ÿö7F—fRÖöFVÂöVff÷'B&÷WF–ærÂW'6—7FVæ6RÂfÿÿØ˜XÚÈ[™š\ÚX›HXÝX[›Ý][™ËˆÙY\\œÛÿÿÿ/style independent from permissions. Show onlýäµ•…ÍÕÉ•ÕÍ…”½½ÍÐ…¹ÁÉ½Ù¥‘•È±¥µ¥ÑÌÑ¡ÿ÷B6â7GVÆÇ’&RVæf÷&6VBââW7F–ÖFRÂ6ÿÿÙ[][ÛˆY\ˆ][ÝH˜Z[\™HÜˆÛÈ›Û\ÿÿÿs not a hard request/token ceiling. Optional ý¥¹Ñ•É…Ñ¥½¹Ì…¹Ñ•±•µ•ÑÉäÉ•ÅÕ¥É”•áÁ±¥¥ÐÿöVÆV7F–öâö6öç6VçC²Fòæ÷BFB†–FFVâG&ç6Ö—ÿÿÚ[Û‹‚‚ˆÈÈÈÎH0è¸ «8 'H[œÝ[][Ûˆ[™XZ[ÿÿÿnance
+
+User instruction, verbatim (L175): "haýé±¼½µ¼±¼¡…”É•™•É•¹”Í¡•±°ä½µÁ±•Ñ„ÿ÷7F'FRVRfÇFVâ6Vâ"â–×ÆVÖVçBF†RÿÿÚ\ÜÚ[™ÈTÑSˆ[œÝ[][Û‹ÛXZ[[˜[˜ÙHY™XÞÿÿÿe using the relevant logic of the already-autý¡½É¥é•¥¹ÍÑ…±±•I•™•É•¹”M¡•±°€Ð¸Ì¸ÀÉ•™•ÿöVæ6RâF†—27WW'6VFW2F†R&Wf–÷W26ÖÆÂÖf—ÿÿÛÛ›H[\[Y[][Ûˆ›Ý[™\žK›ÝHÙ\\ÿÿÿe execution/permission constraints in S12. ReýÑ…¥¸•á¥ÍÑ¥¹œM8µ•¡…¹¥ÍµÌ…¹‰¥¹Ñ¡”¥ÿ÷ÆVÖVçFF–öâVæ—G2Fò6öæ7&WFR&VfW&Væ6R&VÿÿÝš[Üˆ™Y›Ü™HÜš][™ÈÛÝ\˜ÙK‚‚•™\šYžHÛX[ˆÿÿÿtall, home/config precedence, spaces/Unicode,ü‘•±…É•Á±…Ñ™½É´ÍÕÁÁ½ÉÐ°Á…­…••áÁ½ÉÑÌÿò÷F–öæÂ6ö×öæVçG2÷&W6WG2Â6fRWFFRÂÿÿØÚÝ\Ü™\ÝÜ™K™XY[Û›HXYÛ›ÜÚ\È[™X[˜Yÿÿÿ-only removal. Preserve unrelated personal coý¹™¥ÕÉ…Ñ¥½¸…¹ÁÉ½©•Ð‘…Ñ„¸½Õµ•¹Ñ…Ñ¥½¸½ÿöVÇöW'&÷'2×W7BföÆÆ÷r6†—VB&V†f–÷"â&ÿÿÙH™\ÝÜ™H\ÈÙ[\È˜XÚÝ\Ü™X][Û‹ˆ›È[ÿÿÿaller or permission-changing action is authorý¥é•µ•É•±äÑ¼µ…­”„±½…°¡•¬Á…ÍÌ¸((ŒŒŒÿõ3:.(*Î(	Òv÷&·76RW‡W&–Væ6P ¤gFW"F†ÿÿØÛÜ™H\È™[XX›KÛÛ\ÜÙHÝ]\ËYÙ[Ëÿÿÿnges, task list, private history, background ý½µµ…¹½µÁ±•Ñ¥½¸°‰½Õ¹‘•É½ÍÌµÍ•ÍÍ¥½¸½ÿö×Væ–6F–öâÂFW&Ö–æÂ66W76–&–Æ—G’æB7W7FÿÿÚ^˜][Ûˆœ›ÛHH]]Üš]]]™H^\Ý[™ÈÝÿÿÿ. Views must not create a second task list orüÉ…¹Ð…ÕÑ¡½É¥Ñä¸	…­É½Õ¹©½‰ÌÉ•Á½ÉÐ½‰Íÿ÷'fVBW†—G2ÂæWfW"–æfW'&VB7V66W72âF†—2&ÆÿÿÚÈ\È\Ý[˜Ýœ›ÛH™Y™\™[˜ÙHˆ™[X\ÙH\]Zÿÿÿlence.
+
+### S11 Ã¢â‚¬â€ Additional clients
+
+ü¨©‘½ÁÑ•Í½Á”‘•¥Í¥½¸€¡0ÐàÀ¤è¨¨PÄÄ™½±±½ÿ÷2F†R7GVÂvVçFÆR6†VÆÂ–çFVw&F–öâ&÷VæFÿÿÞNˆH\È]È˜]]™HÜÝØÛY[ˆ›Üˆ\Èÿÿÿdmap, T11 covers ASEN's Pi 1.2 host integratiý½¸½¹±äì±…Õ‘”½‘”°½‘•à°=Á•¹½‘”°ÕÉÍ½ÿòÂvVÖ–æ’4Ä’æB÷F†W"'VçF–ÖW2&RFVfW'&VÿÿÙ›ÛÝË[ÛˆY\\œË›Ý[\YYLH™\]Z\™ÿÿÿnts. Gentle-AI's broader runtime inventory isü¹½Ð•Ù¥‘•¹”Ñ¡…Ð•¹Ñ±”M¡•±°¥ÑÍ•±˜¥µÁ±•ÿöVçG2F†÷6RFFW'2âF†—2FV6—6–öâ6†ævW2ÿÿÛÜHÛ›NÈ]Ù\È›Ý›Û[ÝHLHÈ•S‚ÿÿÿeuse ASEN's existing Pi host contract and decý±…É”Ñ¡”…Á…‰¥±¥Ñ¥•Ì…¹±¥µ¥ÑÌ…ÑÕ…±±äÍÕÿ÷÷'FVB'’V6‚’ÖöFRâFòæ÷BFBvVæW&–ÿÿØY\\ˆ^Y\ˆ[›\ÜÈHÛÛ˜Ü™]HÚ\™Y™Zÿÿÿor requires it. Preserve the Pi core's guaranýÑ••Ìì‘¼¹½Ð¥¹™•È¥‘•¹Ñ¥…°Ñ½½±Ì°‘•±•…Ñ¥ÿöâÂT’÷"W&Ö—76–öç27&÷72ÖöFW2âFòæ÷B6ÿÿÚ[H][KXÛY[\]Z]˜[[˜ÙHœ›ÛHK[Û›HÚÿÿÿks. Any future non-Pi adapter requires a concýÉ•Ñ”É•™•É•¹”½A$µ…ÁÁ¥¹œ°…¸•áÁ±¥¥Ð…Á…ÿö–Æ—G’6öçG&7BÂ–æFWVæFVçB&V†f–÷"÷6V7W&—ÿÿÈ\ÝÈ[™[[YKÜ]›Ü›H]šY[˜ÙK‚‚ˆÈÈÈÿÿÿ2 Ã¢â‚¬â€ Execution constraints and closure
+ü)AÉ•Í•ÉÙ”Ñ¡”™¥Ù”•á¥ÍÑ¥¹œÕ¹½µµ¥ÑÑ•<´ÿób7W&f6W2âv÷&²Æö6ÆÇ“²æò6÷W&6R6öÖÖ—G2ÿÿÜ\Ú‹ÛY\™ÙKÜ™[X\ÙK\›Z\ÜÚ[ÛˆÚ[™Ù\Ëÿÿÿestructive cleanup or paid/provider-backed ruý¹ÌÝ¥Ñ¡½ÕÐÍ•Á…É…Ñ”•áÁ±¥¥Ð…ÕÑ¡½É¥é…Ñ¥½¸¸ÿ÷&VfW"FWFW&Ö–æ—7F–2÷&÷f–FW"Ög&VRFW7G2&VfÿÿÙHHÙ\\˜][H]]Üš^™Y™X[›Ý\›™^KˆÝÿÿÿon failed or unavailable required proof; do ný½ÐÉ•ÑÉä‰±¥¹‘±ä°Ý•…­•¸Ñ•ÍÑÌ°ÑÉ…¹Í™•È½±ÿö6æF–FFRWf–FVæ6R÷"&öÖ÷FR&Vv—7G'’&÷w2ÿÿÜ›ÛHœ›ØYÒH[Û™KˆÈ›ÝÛZ[H[YKØÛÜÝÿÿÿperiority without comparable measurements.
+
+SýÑ…¹‘¥¹œÕÍ•È‘¥É•Ñ¥½¸€¡0ÔÄ¤°Ù•É‰…Ñ¥´è€‰Í¤ÿö–æVæW2wVæ÷G&GVFòFV6—6–öâVRFRfÿÿØHÛÛ\\˜HÛÛ[ÈÈXÙH™Y™\™[˜ÙHÚ[H\ÿÿÿca si logica, continua hasta terminar todos lý½ÌP‘”•Í„™½Éµ„ä¹¼µ”ÁÉ•Õ¹Ñ•Ìˆ¸½µÁ…ÉÿòWF†÷&—¦VB–ç7FÆÆVB÷&VfW&Væ6R6÷W&6RæBÿÿÜH]È™[]˜[ÙÚXÈÈ™[XZ[š[™È[‹\ØÛÜÿÿÿdecisions without routine product/local-test ýÅÕ•ÍÑ¥½¹Ì¸Q¡¥Ì‘½•Ì¹½ÐÉ…¹ÐÁÉ½Ù¥‘•È½¹…Ñ¥ÿöR6öç6VçBÂV&Æ–6F–öâÂFW7G'V7F—fRÖ–çFVæÿÿØÙK›Ú™XÝÛÛ[Z]ÈÜˆ™]ÈÝ]ÚYK]\™Ù]Úÿÿÿtall permissions. Continue independent authorý¥é•±½…°Ý½É¬ì‘¥Í±½Í”Õ¹…Ù…¥±…‰±”É•ÅÕ¥ÉÿöB&ööb2&Æö6¶VBÂæWfW"6ö×ÆWFRà ¤FF—F–ÿÿØ[\Ù\ˆÛÛ[Z]H[œÝXÝ[Û‹™\˜˜][H
+ÿÿÿ6): "despues de terminar la seccion de instalý…¥½¸½¹Ñ¥¹Õ„½¸PÄÀ±PÄÄäPÄÈÍ¤Ñ¥•¹•ÌÅÿöRFöÖ"VæFV6—6–öâ÷"ÆvòVRfÇF'W6ÿÿÈÛÛ[ÈÈXÙH™Y™\™[˜ÙHÚ[HÛÛˆÜš]XÚÿÿÿd toma la decision o informacion qeu te flta ý‘”•ÍÑ”•ÍÑÕ‘¥¼‘”É•™•É•¹”Í¡•±°ä½Ñ¥¹Õ„ÿöVâÖöFòWF÷–Æ÷Fò†7F6ö×ÆWF"FöF÷2Æ÷ÿÿÕ[™Y[\ÈHÛÛ\]\ˆ‹ˆÛÛ[YH›ÝYÿÿÿthe remaining tasks, critically deriving in-sý½Á”‘•¥Í¥½¹Ì™É½´Ñ¡”…ÕÑ¡½É¥é•I•™•É•¹”ÿõ6†VÆÂ&VfW&Væ6RâFòæ÷B7F÷ÖW&VÇ’&V6W6RÿÿÌH\ÈÛÛ\]HÜˆ›Üˆ›Ý][™H›ÙXÝÛØØ[ÿÿÿest questions. Preserve required explicit conýÍ•¹Ð…¹¡½¹•ÍÐ‰±½­•½Õ¹…Ù…¥±…‰±”•Ù¥‘•¹”ÿòWFöæö×’—2æ÷BWF†÷&—G’f÷"Vç&VÆFVB÷"ÿÿÜœ™]™\œÚX›HÜÝXÝ[ÛœË‚‚“ÝÛ™\ˆ\ÜÜÚ][ÿÿÿL190, verbatim reply: "si", to the exact requý•ÍÐ™½È„¹•Ü‰½Õ¹‘•¥¹Ù•ÍÑ¥…Ñ¥½¸½½ÉÉ•Ñ¥ÿöâöbF†Rv–æF÷w2FV×÷&'’ÖF—&V7F÷'’&VæÖRÿÿØZ[\™HÚ]Ý]Ú[™Ú[™È\›Z\ÜÚ[ÛœÈÜˆ\œÿÿÿal configuration. This reopens ONLY the L189 ýTÌ‘•¥Í¥½¸ÍÑ½À™½È„¹•Ü•Ù¥‘•¹”µ‘É¥Ù•¸Éÿ÷VæC²—BFöW2æ÷BW&6RF†Rf–ÆVB7÷BÂWFÿÿÜš^™H›[™™]šY\ËÜˆ™[Ü[ˆ[œ™[]Yÿÿÿ05/T07 stops.
+
+Latest user direction (L220), ýÙ•É‰…Ñ¥´è€‰Í¤°¹¼µ”ÁÉ•ÕÑ¹•Ì½Í…ÌÑ…¸‰…Íÿö62ÂVVF2WF÷&—¦Fò"âFBF†RV&Æ–26ÿÿÙHÈH™X[\Ý	ÜÈ˜Z[\™HXYÛ›ÜÝXÈÚ]ÿÿÿut repeating the suite now; avoid routine basý¥Œ±½…°…ÁÁÉ½Ù…°ÅÕ•ÍÑ¥½¹Ì¸Q¡¥Ì‘½•Ì¹½Ð…ÿ÷F†÷&—¦RV&Æ—6†–ærÂW&Ö—76–öâ6†ævW2ÂæFÿÿÙHÛÛœÙ[Üˆ›[™Ù^]\ÝY›ÛÙˆ™]šY\ËÿÿÿCurrent owner test authorization (L258), verbý…Ñ¥´è€‰ÅÕ•‘…Ì…ÕÑ½É¥é…‘¼Á…É„±½ÌÑ•ÍÐ±¹¼µ”ÿ÷&VwWFW26FfW¢"â'VâæV6W76'’–â×66÷RÿÿÛÝšY\‹Yœ™YHØØ[\ÝÈ[™ÛÛ\[\ˆÚXÚÜÿÿÿithout repeated routine approval questions; tý¡¥ÌÉ•Í½±Ù•ÌÑ¡”0ÈÔÜÁÉ½½˜µ‰Õ‘•ÐÍÑ½À™½ÈÿöæRg&W6‚&÷VæFVB6ö×–ÆW"W†V7WF–öâv—F‚F†ÿÿÜ›ÜÜÙYÛË[Z[]HÚ[YÙ]ˆXYÛ›ÜÙHÿÿÿexpected failures and preserve evidence ratheýÈÑ¡…¸É•ÑÉä‰±¥¹‘±ä½È±…¥´„Ñ¥µ•½ÕÐÁ…ÍÍÿöBâF†—2FöW2æ÷Bw&çB–B÷&÷f–FW"öæF—fRÿÿÙ]šY]ÈÛÛœÙ[\›Z\ÜÚ[ÛˆÚ[™Ù\Ë\ÝXÝÿÿÿe operations, package acquisition, source comýµ¥ÑÌ½ÈÁÕ‰±¥…Ñ¥½¸°…¹‘½•Ì¹½Ð•É…Í”Í•Á…ÿöFVÇ’7F÷VBCBõCRõCr66W2à ¤Æö6Âf—‡ÿÿÜ™HÛÜœ™XÝ[ÛœÈ[™™XÙ\ÜØ\žH›ÝšY\‹Yœ™YHÿÿÿrification of the same kind are authorized wiýÑ¡½ÕÐÉ•Á•…Ñ•É½ÕÑ¥¹”Á•Éµ¥ÍÍ¥½¸ÅÕ•ÍÑ¥½¹Ì€ÿôÃ’âF–væ÷6Rf–ÇW&W2&F†W"F†â&WG'’ÿÿÚ[™NÈ™\Ù\™H^XÝ\ÜÙ\[ÛœÈ[™™]š[ÿÿÿ receipts. This does not reopen explicit T04/ýPÀÔ½PÀÜÑ¥µ•½ÕÐÍÑ½ÁÌ°…ÕÑ¡½É¥é”…ÕÑ½µ…Ñ¥ŒÑÿöÖV÷WB&WG&–W2Â&÷f–FW"öæF—fR6öç6VçBÂW'ÿÿÛ˜[ÛÛ™šYÝ\˜][ÛˆÚ[™Ù\Ë[œÝ[ÈÜˆ[ÿÿÿry.
+
+### S13 Ã¢â‚¬â€ Audit ODD pending work ý……¥¹ÍÐ…ÑÕ…°¥µÁ±•µ•¹Ñ…Ñ¥½¸()UÍ•È¥¹ÍÑÉÕÑÿööâÂfW&&F–Ò„ÃC3r“¢'6’’Ö–VçG&2FçFò÷ÿÿÛÈÝX˜YÙ[H™]š\ÙHÜÈÙÈ[™Y[\ÈHÛÛÿÿÿaste los odd. md que hay con la realidad del ý½‘¥¼ˆ¸IÕ¸„Í•Á…É…Ñ”É•…µ½¹±ä…Õ‘¥Ð½˜ÁÿöæF–ærF6·2æB&ö¦V7BôDBÖ&¶F÷vâv–ç7ÿÿØXÝX[ÛÙH[™Ø]™Y›ÛÙ‹ÛÛ˜Ý\œ™[Hÿÿÿh the authorized T09-U9b supplemental compariýÍ½¹Ì¸I•Á½ÉÐ‘¥ÍÉ•Á…¹¥•Ì…¹µ¥ÍÍ¥¹œ•Ù¥‘•ÿö6Rv—F†÷WB6–ÆVçFÇ’6†æv–ær–×ÆVÖVçFF–öâÿÿÚ\ÝÜšXØ[™XÛÜ™ËÜˆYZ\ÜÚ[ÛˆÝ]\Ë‚‚ˆÿÿÿ S14 Ã¢â‚¬â€ Execute the functional-equivaleý¹”½µÁ±•Ñ¥½¸Á±…¸()UÍ•È½…°°Ù•É‰…Ñ¥´è€‰ÅÿöRÆâ&÷öæW2&6ö×ÇF"Æ÷2BVæF–VçÿÿÜÈ\˜H]YH\Ù[ˆH™Y™\™[˜ÙHÚ[ÙX[ˆ\›ÿÿÿos genemolos con mismas caractristicas y funcý¥½¹…±¥‘…‘•Ì€üˆ¸UÍ•È…ÁÁÉ½Ù…°½˜Ñ¡”ÁÉ½Á½Í•ÿòÆâÂfW&&F–Ò„ÃCC“¢&†¦Æò6’"à ¤W†V7WÿÿÈHXØÙ\YÙ\]Y[˜ÙNˆÛÛœÛÛY]HHØ\ÿÿÿility-to-code/public-entry/proof matrix and sýÑ…±”Ñ…Í¬µ•Ñ…‘…Ñ„ì…‘Ù…¹”¥¹‘•Á•¹‘•¹ÐPÀäÿö–çFVææ6RæBCR&Wf–WrVæ—G2–â&ÆÆVÃÿÿÜ™\ÛÛ™HÕÈ›ÛÙˆÝÜÈÛ›HÚ][ˆÿÿÿ explicit execution permissions; complete T10üÝ½É­ÍÁ…”‰•¡…Ù¥½È…¹É•™•É•¹”µ½¹™¥Éµ•ÿó6Æ–VçG3²W&f÷&ÒC"6†&VBV&Æ–266VæÿÿÛÜÈ[™\XØX›H]›Ü›H™\šYšXØ][Ûˆ\ÿÿÿ At most two independent implementation workeýÉÌ°Ý¥Ñ Í•Á…É…Ñ”É¥Í¬Ù•É¥™¥…Ñ¥½¸…¹Á…É•ÿ÷BÖ÷væVB–çFVw&F–öââ&WW6RW†—7F–ær7F÷&W2ÂÿÿÛÛ›Û\œÈ[™X›XÈÛÛ˜XÝËˆ[˜Ý[Û˜[ÿÿÿy still absent remains a gap, not a documentaýÑ¥½¸µ½¹±ä½µÁ±•Ñ¥½¸¸()M½Á•Á•Éµ¥ÍÍ¥½¸•áÿ÷F–öâ„ÃCC"“¢F†R÷væW"6VÆV7FVB$WF÷&—¦"ÿÿÛÛÈ\Ø\Èš\Ý\È[\Ü˜[\Èˆ›ÜˆPÓ\Xÿÿÿion/restoration only on newly created owned `ü¹…¡”½…Í•¸µÉ•Ù¥•ÜµÙ¥•Ü´©€™¥áÑÕÉ•Ì¥¸Ñ¡¥Ìÿ÷&ö¦V7BÂv—F†÷WBVÆWfF–öâÂ&VçBÖF—&V7F÷'’ÿÿÐÓÚ[™Ù\ÈÜˆ[ÙYšXØ][ÛœÈÈ^\Ý[™Èš[ÿÿÿ. This replaces the earlier no-ACL restrictioý¸½¹±ä™½ÈÑ¡½Í”™É•Í ½Ý¹•™¥áÑÕÉ•Ì…¹Ñ¡ÿö—"÷væVB6öçFVçG3²æ66†V—G6VÆbÂF†R&WÿÿÚ]ÜžH[™[žH™KY^\Ý[™È]È™[XZ[ˆ›Üÿÿÿdden targets. Feasibility proof must precede ý„ÍÕ•ÍÍ™Õ°]¥¹‘½ÝÌµ…Ñ•É¥…±¥é•È±…¥´¸()%¸ÿ÷66÷R6÷'&V7F–öâF—&V7F–öâ„ÃCCB’ÂfW&&F–ÓÿÿÈ˜]]Üš^›ËH›ÈYHY[˜\ÈHY\ˆ]]Üš^˜ÿÿÿon apra corregir eroroes". Diagnose and correýÐ•ÉÉ½ÉÌÝ¥Ñ¡¥¸…±É•…‘ä…ÕÑ¡½É¥é•ÍÕÉ™…•ÌÿöæBW&Ö—76–öâ&÷VæF&–W2Â&W6W'fR&–÷"fÿÿÛ\™\Ë[™\™›Ü›H™XÙ\ÜØ\žH›Ý[™Y™\šYšÿÿÿtion without repeated routine authorization qýÕ•ÍÑ¥½¹Ì¸Q¡¥Ì¥Ì¹½ÐÁ•Éµ¥ÍÍ¥½¸™½È‰±¥¹Õÿö6†ævVB&WG&–W2Â'&öFW"F&vWG2ÂVÆWfF–öâÿÿÙ^\›˜[XÝ[ÛœÈÜˆÛZ[\È[œÝ\ÜYžHÿÿÿof.
+
+The working behavior target is the alreaý‘äÍÑÕ‘¥•I•™•É•¹”M¡•±°Ð¸Ì¸À¸á¥ÍÑ¥¹œ¥µÿ÷WF&ÆR&VfW&Væ6RæB&VfW&Væ6R"–ç2æBÿÿÙZ\ÜÚ[ÛœÈ™[XZ[ˆ\ÝÜšXØ[]šY[˜ÙK›Ýÿÿÿilently rebased4.3.0 inventory. A complete imýµÕÑ…‰±”Ð¸Ì¸ÀÍ½ÕÉ”½¥¹Ù•¹Ñ½Éä‰¥¹‘¥¹œ…¹½ÿ÷G&öÆÆVB6ö×&—6öâWf–FVæ6R×W7B&RW7F&Æ—ÿÿÙY™Y›Ü™H[[˜Ý[Û˜[Y\]Z]˜[[˜ÙHÛZ[ÿÿÿ do not infer it from a package version or inýÍÑ…±±•µÕÑ…‰±”Á…Ñ¡Ì¸9¼¹•Ü½ÕÑÍ¥‘”µÁÉ½©•ÿò&VG2Â&÷f–FW"öæF—fR6öç6VçBÂ&VÂ–ç7FÿÿØ][ÛœË\ÝXÝ]™HÜÝXÝ[ÛœËÛÝ\˜ÙHÛÿÿÿits or publication are granted by this apprový…°¸AÉ¥½È•áÁ±¥¥Ð•á±ÕÍ¥½¹ÌÉ•µ…¥¸Ù¥Í¥‰±”ÿögVÆÂ×&—G’v2VçF–Â6W&FVÇ’&W6öÇfVBÂÿÿÛÝ]]ÛX]XØ[HYÜY\›Z\ÜÚ[ÛœË‚‚ˆÈÈÿÿÿks
+
+- [x] T00 | S1,S2,S12 | route: parent booý­­••Á¥¹œðI•½É…•ÁÑ•Í½Á”°ÕÉÉ•¹ÐÍ½ÿ÷&6R–FVçF—G’Â&RÖW†—7F–ær6†ævW2æB&Æö6ÿÿÜœÈÛÛ[Z]ˆ›Û™NÈ]šY[˜ÙNˆÛX[ˆ˜\ÙHYÿÿÿity and five existing ECO-06 surfaces observeý‰•™½É”Ñ¡¥Ì™¥±”¸(´mátPÀÄðLÄ±LÈðÉ½ÕÑÿó¢&VBÖöæÇ’W‡Æ÷&W"×f&&3'rÓ×£cÂÖ–ÿÿËØÛÛ^›Ý[™\žH›ÙXÙH™\œÚ[Û™Y™X]ÿÿÿ-to-source/test/evidence map and first boundeýÝ½É¬µÕ¹¥ÐÍÕÉ™…•Ìð½µµ¥Ðè¹½¹”ì•Ù¥‘•¹ÿó¢cÖ–âÃRÂ&VçBF—7F6†W"7÷BÖ6†V6ÿÿÈ™Y™\™[˜ÙHˆÛÝ\˜ÙH[˜]˜Z[X›HØØ[K›ÿÿÿquivalence claimed.
+- [x] T02 | S3 | route: cý½¹Ñ•áÐµ‰…­ÍÑ½À‰½Õ¹‘•Õ¹¥ÑÌìTÈ¥¹‘•Á•¹‘•¹ÿòWF†÷&—G’ö6öæ7W'&Væ7’fW&–f–W"Â&V6öæ6–ÆRÿÿÜ›ÜÜ[Û˜[›Ý][™È[™H˜]\˜[[[™ÝXYÿÿÿto-accepted-task path | commit: none; local dý•Ñ•Éµ¥¹¥ÍÑ¥Œ±½ÍÕÉ”èTÄ½TÈ€äÔÁ…ÍÍ•Ì­ÑåÁ•¡ÿö6²Â–æFWVæFVçBS"52Â&VçB&ÆÆVÂ7ÿÿËXÚXÚÈTÔÎÈLÈš[˜[ŒH\ÜÙ\ËÌHÚ[™ÝÜÈÿÿÿp+typecheck. Host/model adherence remains T12ü•Ù¥‘•¹”‘•‰Ð°¹½Ð±…¥µ•¸(´mátPÀÌðLÐÿò&÷WFS¢&÷VæFVB&VçB÷v÷&¶W'3²æ÷&ÖÂöfÆö÷ÿÿÝ[š][™\[™[H™\šYšYY›Üˆš\ÚÌ‹ÍKÿÿÿest-only checks | Complete local primary/chilýÕ…É‘Ì°¥‘•¹Ñ¥Ñä½™½É•¥¸µÁÉ½©•Ð½¹Í•¹Ð…ÿöB6æ6VÆÆF–öâ&ööbÂ6öÖÖ—C¢æöæS²Wf–FVæÿÿÎˆØÛÜY[™\[™[TÔÌLÌKÌUÚ[™ÝÜÔÚÚ\ÿÿÿs real host veto; P1 worker55/1skip+types, paýÉ•¹Ð½¹ÑÉ½±±•È¼È¥¸Ìä¸ÅÌ€¡0ÐÄ¤¸¥¹¥Ñ”M,ÿòã"ö6÷&Sã2v–æF÷w2Wf–FVæ6RöæÇ“²ÆÂÔõ2öÖöÿÿËÛ˜]]™K\™]šY]È[Z]È™[XZ[ˆL‹‚‹HÈHÿÿÿ S5 | route: provider-free local units verifiý•ìÉ•…°©½ÕÉ¹•äÉ•ÅÕ¥É•ÌÍ•Á…É…Ñ”½¹Í•¹Ððÿôf–æ—6‚T4òÓb&V6÷fW'’Wf–FVæ6Rv—F†÷WB&WÿÿØÚ[™ÈÝÜ™\ÈÜˆ™\^Z[™È]]Üš]HÝ]\ÿÿÿblocked, NOT complete; L1 PASS3/1POSIXskip+tyýÁ•Ìì0È½ÉÉ•Ñ•Á…É•¹Ð™½ÕÍ•Ä¼Ä­É•É•ÍÍ¥ÿöç3Sbóv–æF÷w56¶—·G—W2„ÃC‚’ÂT4óR÷6÷W&6RÿÿÝZ[™YÈÛÛ[Z]ˆ›Û™NÈXÝX[KÜ›ÝšY\‹ÛZÿÿÿrite/restart proof and legacy1.1 controller dý¥ÍÁ½Í¥Ñ¥½¸É•µ…¥¸É•ÅÕ¥É•¸(´ltPÀÔðLØðÿ÷&÷WFS¢6æF–FFR÷6æ6†÷B–çFVw&F–öâFW6–vÿÿÈ›Ý[™Y[\[Y[][Ûˆ[š]Ë˜[YY\š\ÚÈÿÿÿependent verification | Complete exact-changeüÉ•Ù¥•Ü°ÍÑ…±”µÉ•ÍÕ±ÐÉ•©•Ñ¥½¸…¹½ÉÉ•Ñ¥ÿöâö66WFæ6R6ö×÷6—F–öâÂ7FGW3¢”â$ôu$ÿÿÔÈMNÈÝ[™[Û™HLKÜX›K\]™Y›ÿÿÿt A2a1 and corrected nonmaterializing inspectý½ÈÉ„È=91=0Õ¹‘•ÈÑ¡•¥ÈÍ•Á…É…Ñ”¥¹‘•ÿöVæFVçBFÖ—76–öç2ÃCôÃCRôÃCRâ&"6W6ÿÿÔ‘Qðè¸ (8 &QÔ‘QSŒNKÌNKÝ\\Ì[™Ø[YK\™]šÿÿÿer PASS; admission97eb40f6Ã¢â‚¬Â¦2732f. A2b oýÝ¹•™¥±•ÍåÍÑ•´Ù¥•Ü½±¥™•Ñ¥µ”°½½…¹ÁÕ‰ÿö–2–çFVw&F–öâ&VÖ–âVæf–æ—6†VBâ†—7F÷&–6ÿÿÙ˜Z[\™\ËÛ[Z]È™\Ù\™YÈ›È˜]]™H\›Ýÿÿÿ or full T05 claim; commit: prohibited by owný•È¸(´mátPÀÔµÄðLØ±LÄÈðÉ½ÕÑ”è½É¥¥¹…°ÿö÷VæFVBw&—FW"Â6W6Â&VçB6÷'&V7F–öâÂ6ÿÿÈ[™\[™[™]šY]Ù\ˆ[™š[˜[\™[š[™ÿÿÿg | Capture and revalidate a data-only workspý…”ÁÉ½©•Ñ¥½¸Ý¥Ñ •áÁ±¥¥ÐÕ¹ÑÉ…­•Í½Á”ÿöæB&W÷6—F÷'’Ö6öFR—6öÆF–öâÂDôäRÄô4ÂÿÿÌK›Ý[™YÚ[™ÝÜÈ]šY[˜ÙH[™XÛ\™Yÿÿÿlink skip; original approximately400-line plaý¹¹¥¹œÑ…É•Ð•á••‘•…¹¹½ÐÝ…¥Ù•¸9¼¹…Ñÿ÷fRWF†÷&—G“²6öÖÖ—B&ö†–&—FVB'’÷væW"à¢ÒÿÿÞHKPL‹[X\Í‹ÌLˆ›Ý]NˆÛ™H™XY[Ûÿÿÿ explorer, parent ownership spot-check, one sý…™•Ñä¡…±±•¹”ð5…À½Ý¹•É•…µ½¹±äÉ•Ù¥•Üÿ÷f–WrÖFW&–Æ—¦F–öâæBÆ–fWF–ÖRÂDôäRFVÿÿÜÚ[ÛˆÎˆÜX›K\]™\™\]Z\Ú]K›Û‹ÿÿÿterializing tree inspection, then coherent maýÑ•É¥…±¥é…Ñ¥½¸­±¥™•Ñ¥µ”ì¹¼Õ¹ÍÕÁÁ½ÉÑ•]¥¹‘½ÿ÷2&VFöæÇ’6Æ–Ò÷"WF†÷&—G’W‡ç6–öã²6öÿÿÚ]ˆ›Û™K‚‹HÞHKPL˜LHÍ‹ÌLˆ›Ý]Nˆÿÿÿrent test-first, independent Risk2 verificatiý½¸ðY…±¥‘…Ñ”Á½ÉÑ…‰±”‘•ÍÑ¥¹…Ñ¥½¸Á…Ñ¡Ì…Ìÿ÷W&RVçG'W7FVBFF&Vf÷&RG&VR–ç7V7F–öâöÖÿÿÙ\šX[^˜][ÛˆÓ‘HÐÐSNÈ[™\[™[ÿÿÿ6/S12/Risk2 PASS,12/12 tests/tsc0,779-file/11üµÉ••¥ÁÐ‰¥¹‘¥¹œÉ•¡•­•¸MÑ…¹‘…±½¹”±•á¥ÿöÂ&VfÆ–v‡BöæÇ“²6öÖÖ—C¢&ö†–&—FVB'’÷væÿÿË‚‹HÞHKPL˜LˆÍ‹ÌLˆ›Ý]NˆÛÝ\˜ÙKXÿÿÿked design, context-backstop bounded writer, ý¥¹‘•Á•¹‘•¹ÐÍ•ÕÉ¥ÑäÙ•É¥™¥…Ñ¥½¸ð%¹ÍÁ•ÐÿöæF–FFRv—BG&VRv—F†÷WBÖFW&–Æ—¦–ærFÿÿÝ[˜][ÛˆÜˆÜ˜[[™È]]Üš]HÓ‘HÐÐSÿÿÿ415: same independent reviewer S6/S12/boundedýI¥Í¬ÈAML°…±°Í™¥¹‘¥¹ÌÉ•Í½±Ù•ìÁ…É•¹ÐÉ•ÿö†V6¶VCsƒ6÷W&6W2ó&Öæ–fW7G2ó3w&V6V—G2ÂFÖÿÿÜÚ[ÛŽMÙX°è¸ «0©ŒÌÌ™‹ˆÝ[™[Û™H›Û›X]ÿÿÿializing inspector only; original FAIL/incideý¹Ð…¹±¥µ¥ÑÌÁÉ•Í•ÉÙ•ì½µµ¥ÐèÁÉ½¡¥‰¥Ñ•ÿ÷’÷væW"à¢Ò·…ÒCbÂ3rÂ&÷WFS¢&WW6RW†—7ÿÿÛ™ÈÝÜ™KÜ™YÚ\ÝžNÈØÛÜYÑÈ[™YZ\ÜÚ[Ûÿÿÿharacterization | Complete memory continuity,ü‘•±•Ñ¥½¸½¥Í½±…Ñ¥½¸…¹Í­¥±°±¥™•å±”¥¹Ñ•ÿ÷&F–öâöWf–FVæ6RÂÄô4Â6Æ÷7W&RfW&–f–VC¢¦ÿÿÌLH^\Ý[™Í‹Í‹›ØŒLˆÑÚÜÝKÌJÝ\\Ë›Øÿÿÿ corrected admission1/1+types; scoped source ýÍ¹…ÁÍ¡½ÑÌ½<Ô°ÕÉÉ•¹ÐÜÌÐ•™ŒÅ™¸¸¸€¡0ØÈ¤ÿòæò&öGV7F–öâ6†ævRöæF—fV&÷fÃ²&÷f–ÿÿÜ‹ÔKXÚ[ÓÔËÛ˜]]™UÚ[Ø]Ú\ˆ[Z]][ÛœÈÿÿÿ4/T12, no all-OS/fullCLI claim; commit: none.ü(´ltPÀÜðLÜðÉ½ÕÑ”èÉ•…µ½¹±äÕ¹¥™¥•µÑÿööÂö&6¶VæBööffÆ–æRÖÂF†Vâ—6öÆFVB&÷f–ÿÿÜ‹Yœ™YHX›XÈÚXÚÜÈYˆ]˜Z[X›HÛÛ\]ÿÿÿreal CodeGraph lifecycle and optional documenýÑ…Ñ¥½¸¥¹Ñ•É…Ñ¥½¸ðÍÑ…ÑÕÌè	1=-½9=P½µÿöÆWFR„ÃcR“²4Ä’ÖöæÇ’Ö6ö×ÆWFRÂ&VÂ&6ÿÿÛ™Ù™›[™H™Z]š[Üˆ[œ›Ý™YÈš\œÝ][˜Ú\ÿÿÿ4 then corrected20sTIMEOUT, no behavioralRED/ýI8½ÑåÁ•Ì½‘¥™™•É•¹Ñ¥…°ìÁÉ½Á½Í•‘Õ¹¥ÑÉ½±±•‘ÿö6²'—FRÖ–FVçF–6Ã6f–ÆW2ÂWf–FVæ6R&WF–æVCÿÿÛ›È[Ü™H^XÝ][ÛˆÚ]Ý]^XÚ]XÚ\Ú[ÛŽÿÿÿommit: none; no current ASEN index mutation oýÈÕ¹…ÁÁÉ½Ù••áÑ•É¹…°¥¹ÍÑ…±°½½¹™¥œ½ÁÉ½Ù¥‘•ÿòöFö726ÆÇ2à¢Ò·…ÒC‚Â3‚Â&÷WFS¢&÷VæFVÿÿÜ\™[[š]È[™˜[YY\š\ÚÈ[™\[™[™\ÿÿÿication | Complete model routing, persona sepý…É…Ñ¥½¸°¡½¹•ÍÐÕÍ…”…¹½ÁÑ¥½¹…°µ½µÁ½¹•¹Ðÿö&÷VæF&–W2ÂÄô4Â6Æ÷7W&S¢S„Ãs"’ÅS&„Ãs’ÿÿÕL˜ŒJJKL˜ŒŠLMJKL˜ÊLŒÊKL™JLÎ
+Kÿÿÿ2(L153),U3(L163); latest7421189 exact liveRooýÐ½<Ô°TÌIØà½I8Øä ÐÁÁ…ÍÌÅ]¥¹‘½ÝÍA=M%aÿö¶—’÷G—W3söF–ffW&VçF–Ãsö–æFWVæFVçCs"¶fÿÿØ[ÎULËTÌL‹Tš\ÚÌÔTÔËˆÚ[\™\ÜYÙ[Xÿÿÿon is not provider-used routing; history costü¥Ì¹½ÐÙ•É¥™¥•‰¥±±¥¹œ…¹¹¼ÁÉ½Ù¥‘•ÈÅÕ½ÿö—26Æ–ÖVBâæF—fR&÷fÂÂ&÷f–FW"õ4D²ÿÿÛÜÝÙ[˜\Ù[[™KØ[\]›Ü›H›ÛÙˆ™[XZ[ˆÿÿÿ2 evidence debt. Historical failed attempts rý•µ…¥¸¥¸1½œ¸9¼Í½ÕÉ”½µµ¥ÑÌÁ•ÈÕÍ•È½¹ÿ÷G&–çC²6öÖÖ—C¢æöæRà ¢Ò²ÒC’Â3’Å3"ÂÿÿÛÝ]NˆÙ\]Y[X[›Ý[™YY™XÞXÛH[š]È[ÿÿÿnamed-risk verification | Complete installatiý½¸½ÕÁ‘…Ñ”½É•ÍÑ½É”½‘½Ñ½È½É•µ½Ù…°…¹‘½Ìðÿôâ$ôu$U52ÃCC¢÷væVB7Fv–ærö6FÆör÷6VÆVÿÿÚ[Û‹Ù^XÚ]][˜Ú[™X›XÈØÝÜˆØØ[ÿÿÿ admitted through L315; consistent export andü½ÉÉ•Ñ•™¥¹¥Ñ”‰…­ÕÀ…‘µ¥ÑÑ•0ÌÈä½0ÌÐÔìÿ÷&VFW"ö—6öÆFVB&W7F÷&R×7FvRö&Æö6¶W"ÆâÿÿÛZ]YÍMÓÍŒ‹ÓÍÌNÈX›XÈ˜XÚÝ\™]šYÿÿÿadmitted L394; strict acquisition decoder/bytý”½‰Í•ÉÙ•È½ÁÕ‰±¥ŒÕÁ‘…Ñ”ÁÉ•Ù¥•Ü…‘µ¥ÑÑ•0Ðÿó’ôÃC#‚ôÃC3‚â7GVÂ7V—6—F–öâ÷WFFR÷&öÆÆÿÿØÚËœ›ØY\ˆ^XÝ]X›H˜XÚÝ\]™H™\ÝÜ™ÿÿÿmanaged-only uninstall, browser consent and dý¥ÍÑÉ¥‰ÕÑ¥½¸½Á±…Ñ™½É´±½ÍÕÉ”É•µ…¥¸Õ¹™¥¹¥Í¡ÿöBâ†—7F÷&–6Âf–ÇW&W2&R&WF–æVBÂæ÷B7WÿÿÙ[[œ™\ÛÛ™YY™XÝÈÚ[ˆÝ\\œÙYYžHÿÿÿcoped admission. No whole-installer/native/alý°µ=L±…¥´ì½µµ¥ÐèÁÉ½¡¥‰¥Ñ•‰ä½Ý¹•È¸((ŒŒÿòC’v–æF÷w2fW&–f–W"6†V6·ö–çB:.(*Î(	Ò#ÿÿÍ‹LLLŽ‚’[š]X[ˆPQÌXØXL™MÙMNÿÿÿaf5681b7396d2307fb532` failed the Windows pacý­•µÁ…­…”ÍÑ…Ñ•™Õ°µ•Ù¥‘•¹”Ù•É¥™¥•Èè…™Ñ•ÿò7FF–âTôbF†R’6†–ÆBF–Bæ÷B6Æ÷6Rv—F†–ÿÿÝH^\Ý[™ÈK\ÙXÛÛ™Ü˜XÙH[™Ø\È›Ü˜ÙKZÿÿÿled; the test correctly rejected forced shutdý½Ý¸¸Q¡”½É¥¥¹…°Ý½É­™±½Ü…ÉÑ¥™…Ð‘½•Ì¹½Ðÿö6öçF–â&ö6W72÷7G&VÒWfVçBFWF–Ç2Â6òF†ÿÿÛÝÙ\‹[]™[Ø]\ÙH™[XZ[œÈ[œ›Ý™[‹ˆXYÛ›Üÿÿÿc candidate `c3da3bd40faf644a897241580b751e88üÉ‘…”Ñ”äÅ€…‘‘Ì‰½Õ¹‘•™…¥±ÕÉ”µ½¹±ä±¥™•å±ÿòF–væ÷7F–72æBf÷&6VB×6‡WFF÷vâ&Vw&W76–ÿÿÈÚ]Ý]Ú[™Ú[™È™Z]š[ÜˆÜˆ[Y[Ý]Ëˆ^ÿÿÿ-candidate Release Gate passed real packed Piü¥¹ÍÑ…±°½É•ÍÑ…ÉÐ½É½ÍÌµÍ•ÍÍ¥½¸•Ù¥‘•¹”½¸]ÿöæF÷w2ÂÆ–çW‚æBÖ4õ3²V6‚fW&–f–W"&ö6WÿÿÈ^]Y˜]\˜[H
+ÈØœÙ\™Y
+Kˆ]ÈÙ\\˜]ÿÿÿreal-package smoke also passed a local Ed2551üäµÍ¥¹•¥¹ÍÑ…±°€¡•Á¡•µ•É…°•áÁ±¥¥ÐÑÉÕÍÐ…ÿö6†÷"’ÂFö7F÷"ö–ç7FÆÆVB4Ä’Â&6·Wö–çFVw&—ÿÿÈÚXÚËÛX[‹]\™Ù]™\ÝÜ™HÚ]]KØÛÛ™ÿÿÿ comparison, and managed uninstall preservingüÍ…µÁ±”ÕÍ•È‘…Ñ„½¸…±°Ñ¡É•”=M•Ì¸Q¡¥Ì‘½ÿ÷2æ÷BFW7B…EE27V—6—F–öâÂfW'6–öâ×Fò×fWÿÿÚ[ÛˆXÝ]˜][Û‹Ü›Û˜XÚËÔS]KXXÝ]™HÛÛœÿÿÿtency, interrupted/corrupt restore recovery, ýÕ¹¥¹ÍÑ…±°Íåµ±¥¹¬½É…”…ÑÑ…­Ì°Í¥¹…ÑÕÉ”É•ÿöV7F–öâ÷&÷FF–öâ÷&Wfö6F–öâÂ÷"'&÷w6W"÷VæÿÿÙËˆ\È\È›Ý™\›ÙXÝ[Û‹›ÝHØ]\Ø[ÿÿÿ. CI run `40657477741` was still in progress ýÝ¡•¸É•½É‘•¸1½…°1¥¹Õà¹Á´ÉÕ¸¡•­€°ÿöçÒ'VâfW&–g“§6¶ÂæB’ã"ET’õ%2ô¥4ÿÿËÜš[X]š^\ÜÙY‚‚”\[™[˜ÞH™\ÚYÿÿÿ: `npm audit --json` on 2026-10-28 reports 1 ýµ½‘•É…Ñ”…¹€Ä¡¥ ™¥¹‘¥¹œÕ¹‘•È‘•Ù•±½Áµ•¹ÿò÷FW7B’†÷7BV&VæF–Â×v÷&·2÷’Ö6öF–ærÖvÿÿÝKŒ‹Œ0è¸ (8 &H[™XÚPŒLŒ˜[˜ÛY[ÿÿÿTLS certificate validation bypass GHSA-2m5v-pý Ø´ÜÑ¡à¸A¤¥µÁ½ÉÑÌÑ¡”U¹‘¥¤‘¥ÍÁ…Ñ¡•È¸ÿö’—2â÷F–öæÂVW"æB—G2FWVæFVæ7’G&ÿÿÈ\È›Ý[™YžHTÑSŽÈœIÜÈÝYÙÙ\ÝYÿÿÿ0.75.3` downgrade is a major-version mismatchü¸9¼½Ù•ÉÉ¥‘”½ÈA¤ÍÕ‰ÍÑ¥ÑÕÑ¥½¸Ý…ÌÕÍ•¸-ÿöWC’%D”ÂVçF–Â7W÷'FVB’×6–FRf—ÿÿÚ\È™\šYšYY‚‚‚•H™[XZ[œÈT•PSˆXÝX[ÿÿÿgned acquisition/activation/rollback, completý”‘…Ñ„É•ÍÑ½É”°É…”µÍ…™”µ…¹…•Õ¹¥¹ÍÑ…±°ÿöæB&VÂ'&÷w6W"ÆVæ6‚÷ÆFf÷&Ò&ööb&RæÿÿÈ[]šY[˜ÙYˆÈ›ÝÚ[™ÙHKÕLÕLHÿÿÿtes from this checkpoint. Preserve the opaqueüÍÕ™™¥à½˜Ñ¡¥Ì™¥±”‰åÑ”µ™½Èµ‰åÑ”¸((ŒŒŒPÀäÿö6öçF–çVF–öâ6†V6·ö–çBÒÒ##bÓÓ#€ ¥&V6öÿÿÚ\›YY™[[ÝHˆÌÍÈPQLMÌŒ™Œ™˜MŽLÿÿÿd4cc415b059a09ce004ec`. Added public CLI testýÌ™½ÈÍ¥¹•±½½Á‰…¬!QQAL¥¹ÍÑ…±°°µÑ¼µÿ÷w&FRæB&öÆÆ&6²v—F‚W6W"ÖFF&W6W'fÿÿÛÛ‹\È\ÛÛ]YÚ[\›ØÙ\ÜÈ™Z™XÝ[Ûˆÿÿÿan untrusted TLS root before any install effeýÐ…¹…•ÁÑ…¹”½˜Ñ¡”•áÁ±¥¥Ñ±äÑÉÕÍÑ•ÿöW7B4âgVÆÂÆö6Â7V—FS¢"Ã#76VBÂfÿÿÛYNHÛÛ™][Û˜[ÚÚ\ÎÈ\XÚXÚËZ[ÿÿÿ`npm run check`, `npm run verify:pack`, and dý¥™˜¡•¬Á…ÍÍ•¸Q¡”É•…°Ñ…É‰…±°¡½ÍÐµ‰½Õ¹ÿö'’6†V6²&W÷'G23cf–ÆW2Â#‚W‡÷'G2ÂÿÿÛÛ[X[™È[™MˆÛÛËˆ\ÙH™]È\ÝÈ\ÙHÿÿÿned fixture packages; they do not replace theüÉ•…°µÁ…­…”É½ÍÌµ=L±¥™•å±”É••¥ÁÑÌ½Èÿ÷&÷fRWw&FRöbF†R&VÂF&&ÆÂà ¥#C¢’ÿÿÌ‹ŒÝ[œš[™ÜÈ[Ù\˜]KÚYÚ[™XÚHYš\ÿÿÿies. The inspected HTTP dispatcher does not pý…ÍÌÑ¡”™Õ¹Ñ¥½¸µÙ…±Õ•Q1L½ÁÑ¥½¸‘•ÍÉ¥‰•ÿö–ât…4Ó&ÓWb×6ƒbÓsF‡‚Â'WBF†—2—2æ÷B&öÿÿÈ]]™\žHH™\]Y\Ý]\È[˜Y™™XÝYÈÿÿÿ downgrade or override was made. T09 remains ýAIQ%0è•á…ÐµM!$°É•…°µÁ…­…”!QQALÕÁÿöFR÷&öÆÆ&6²7&÷72õ6W2Â&W7F÷&R7&6‚ö6÷'ÿÿÜ[Ûˆ[™ÔS]H]šY[˜ÙK[š[œÝ[[šËØÿÿÿcurrent-path protection, real browser launch,ü…¹ÍÕÁÁ½ÉÑ•ÕÁÍÑÉ•…´‘•Á•¹‘•¹äÉ•µ•‘¥…Ñ¥ÿöâ&VÖ–â÷WG7FæF–ærâCRõCõC&RVæ6†ÿÿÙYˆÜ\]YHÝY™š^™\Ù\™Yž]KY›Ü‹Xž]K‚ÿÿÿ## T09 packed lifecycle follow-up -- 2026-10-üÈà()áÑ•¹‘•Ñ¡”…ÑÕ…°Á…­•M8¹Á´Íµ½­ÿó¢W†VÖW&ÂVC#SS’6–væ–ærÂÆö÷&6²…EE2ÿÿË]ËPˆ\Ü˜YH
+ŒKŒÈH™\œÚ[Û™YÛÜHÙÿÿÿhe tarball), installed version probe, data prý•Í•ÉÙ•…É½ÍÌÕÁ‘…Ñ”…¹É½±±‰…¬°É½±±‰…¬ÿ÷FòÂ&VÂ&6·WfW&–f–6F–öâÂ6÷''WB&6ÿÿÜ™\ÝÜ™H™Z™XÝYÚ]›È\™Ù]Y™™XÝËÿÿÿlid retry restores the same clean target withü‘…Ñ„½½¹™¥œ•ÅÕ…±¥Ñä°µ…¹…•Õ¹¥¹ÍÑ…±°…¹ÿ÷&W6W'fVBW6W"FFâÆ–çW‚æöFR#Bã#"ã7ÿÿÙˆHŒˆÛÜHÚ[™Ù\ÈÛ›HXÚØYÙH[™ÿÿÿwo compiled CLI version literals. First run fý½Õ¹„¡…É¹•ÍÌµ½¹±ä‘•…‘±½¬‰•…ÕÍ”Íå¹¡É½ÿö÷W26†–ÆBW†V7WF–öâ&Æö6¶VBF†R6ÖR×&ö6W7ÿÿÒÈÙ\™\ŽÈ\Þ[˜ÈÚ[^XÝ][Ûˆ\ÜÙYÿÿÿth TLS verification and original timeouts uncý¡…¹•¸QåÁ•¡•¬½‰Õ¥±½Ù•É¥™äµÁ…¬Á…ÍÍ•¸ÿö–æF÷w2öÖ4õ2W†7BÕ4„W†V7WF–öâöbF†—2W‡ÿÿÛ™Y™X[\XÚØYÙHÛ[ÚÙH™[XZ[œÈ[™[™Ëˆÿÿÿstays PARTIAL for interrupted/SQLite restore,ü½¹ÕÉÉ•¹ÐÕ¹¥¹ÍÑ…±°µÉ½ÕÑ”ÍÕ‰ÍÑ¥ÑÕÑ¥½¸°É•ÿöÂ'&÷w6W"ÆVæ6‚æB–æ†W&—FVB’FWVæFVæ7ÿÿÜš\ÚÎÈKÕLÕLH[˜Ú[™ÙY‚‚ˆÈÈÈHÛ[ÚÙÿÿÿunner correction -- 2026-10-28
+
+Release Gate ý€ÉÔÁ˜ÐØÑ‰ŒÀÔÐÀÐÕÝ•˜ÔÜÄÐÙ˜Á˜å‘•”å™ŒÈÌåÙ€™ÿö–ÆVB—G2V'VçGR&VÂ×6¶vR6Öö¶R&V6W6RÿÿÈ[œÈœ›ÛHH[\Ü˜\žHœK\›Ú™XÝÝÙ[™ÿÿÿe script resolved the TLS fixture from cwd (`ý9=9Q€¤¸Q¡”Íµ½­”¹½Ü…¹¡½ÉÌ™¥áÑÕÉ”Á…Ñ¡ÿòFò—G2÷vâÖöGVÆRÆö6F–öã²W†7B&W&öGV7ÿÿÛÛˆœ›ÛHH[\Ü˜\žHÝÙ\ÜÙYØØ[Kˆÿÿÿ failed Windows/macOS jobs were cancelled, noýÐÁ…ÍÍ•¸A¡…Í”€À…¹A¤ÉÕ¹Ñ¥µ”Á…ÍÍ•½¸ÑÿöB4„â6÷'&V7FVBW†7BÕ4„&VÆV6RvFRôÿÿÈ[ˆ\ÈÝ[™YYYˆHT•PSÈKÕLÿÿÿ1 unchanged.
+
+
+### T09 SQLite backup and restý½É”™½±±½ÜµÕÀƒ‹Š
+³Št€ÈÀÈØ´ÄÀ´Èà()AH€ŒÌÜ…ÿöF–FFR&6R–#3VSV6SS#63c63vVs#f3svSÿÿÌY™L˜ÌLØ›ÝÈÛ˜\ÚÝÈXÝ]™HÔS]H]Xÿÿÿes through read-only `VACUUM INTO`, validatesü¥¹Ñ•É¥Ñä…¹‰½Õ¹‘Ì°…¹•á±Õ‘•Ì]0½M!4½ÿö÷W&æÂ6–FV6'2âÆ—fRÕtÂ&Vw&W76–öâ&÷fÿÿÈÛÛ[Z][˜Û\Ú[Û‹Û˜\ÚÝ\ÛÛ][Ûˆ[™ÿÿÿlthy restored SQLite. An injected handled resýÑ½É”µÍÑ…”™…¥±ÕÉ”ÁÉ•Í•ÉÙ•ÌÑ¡”ÁÉ¥½ÈÑ…É•ÿòÂ6ÆVç2÷væVB7Fv–æræBW&Ö—G2&WG'’âfÿÿÝ\ÙY\ÝÈÍÈ[ÝZ]H‹ŒM\ÜÙYNÿÿÿonditional skips; npm run check, typecheck/buý¥±°Ù•É¥™äµÁ…¬°™½ÕÍ•É•É•ÍÍ¥½¹Ì…¹‘¥ÿöb6†V6²76VBöâF†RÆ§’Ö–×÷'B6æF–FFRÿÿÕ\È\È›ÝXœ\Ú[ÜÝÙ\‹[ÜÜÈ™XÛÝ™\žÿÿÿvidence. Exact-SHA CI and real-package cross-ýÁ±…Ñ™½É´ME1¥Ñ”ÁÉ½½˜É•µ…¥¸Á•¹‘¥¹œìPÀäÍÑÿ÷—2%D”ÂâCRõCõCVæ6†ævVBà  ¢222CÿÿÐÒKY\ØÛÝ™\™Y›ÙHŒˆÔS]HØ\›š[™È0è¸ «8ÿÿÿ 2026-10-28
+
+Exact candidate `49aa9e9c61cd01eüàÉ”Ñ˜ÜáˆÜÈÑ”ÑàØÜÍˆàÝ™•Í€™…¥±•I•±•…Í”…ÿöRw2V'VçGR6¶VB–ç7FÆÂ6Öö¶R&V6W6RVvÿÿÈ[[YH[\ÜÙˆ›ÙNœÜ[]X[Z]Y›ÿÿÿ 22 `ExperimentalWarning` on stderr, invalidaýÑ¥¹œÑ¡”±•…¸Ù•ÉÍ¥½¸µÁÉ½‰”½¹ÑÉ…Ðì1¥¹ÕàÿöæBv–æF÷w2FW7BÆöw26öæf—&ÒF†R6ÖR6W6ÿÿØXÜ›ÜÜÈL˜Z[\™\Ëˆ\ÙHH[[YK[ÿÿÿLinux package restart/cross-session receipts ýÁ…ÍÍ•¸¥á•±½…±±äÝ¥Ñ ±…éäME1¥Ñ”¥µÁ½ÉÿòæB6†–ÆB×&ö6W72fW'6–öâöæò×7FFW'"&Vw&ÿÿÜÚ[ÛŽÈ\Èš^]ØZ]È^XÝTÒHÒKˆÙY\ÿÿÿPARTIAL. Opaque suffix unchanged.
+
+
+T09 exactüµ…¹‘¥‘…Ñ”™½±±½ÜµÕÀ€ ÈÀÈØ´ÄÀ´Èà¤èÑ¡”…ÑÕ…ÿòçÒF&&ÆÂæ÷r76W26–væVB…EE2Ww&FÿÿÜ›Û˜XÚË]™HÔS]KUÐS˜XÚÝ\Û˜\ÚÝÿÿÿme restore/integrity, corrupt-restore no-effeýÑÌ…¹É•ÑÉä°…¹Õ¹¥¹ÍÑ…±°Ý¥Ñ ‘…Ñ„ÁÉ•Í•ÿ÷fF–öâöâÆ–çW‚æöFR#Bã#"ãâF†RÆ–fV7–6ÆRÿÿÝZ]H\ÜÙ\ÈÌÌÌ[˜ÛY[™ÈÒQÒÒS\š[™ÿÿÿestore staging; existing target survival and ýÉ•ÑÉäÁ…ÍÌ°‰ÕÐÑ¡”ÁÉ¥Ù…Ñ”Õ¹ÁÕ‰±¥Í¡•ÍÑ…ÿò&VÖ–ç2gFW"f÷&6VBFW&Ö–æF–öââ6æF–FFÿÿØLYLÎY\ÜÙY\ÙHÔH[[YH[™[^ÿÿÿindows Release Gate; macOS packed upgrade wasü­¥±±•…ÐÑ¡”Í…µ”€ØÀµÍ•½¹‰½Õ¹‘…Éä…ÌÑ¡ÿò–ææW"7V—6—F–öâF–ÖV÷WBÂ6òF†R†&æW72ÿÿÝÈ\Ù\ÈÍHÙXÛÛ™È\È›Ý[™Y™\]Y\ÝÕÈÿÿÿagnostics. Why macOS reaches the acquisition ý‘•…‘±¥¹”É•µ…¥¹ÌÕ¹½¹™¥Éµ•ì•á…Ðµ…¹‘¥‘…Ñÿò&W'Vâ—2VæF–ærâC’&VÖ–ç2%D”Ã²÷F†ÿÿÈ\ÚÈÝ]\È[˜Ú[™ÙY‚‚‚•HÒH›ÛÝË]\ÿÿÿ026-10-28): candidate 12e3f08 passed Phase 0,üA¤ÉÕ¹Ñ¥µ”°A¤ÍÕÁÁ½ÉÐµ…ÑÉ¥à…¹É•…°Á…­ÿöBÆ–fV7–6ÆR&VÆV6RvFRöâÆ–çW‚öÖ4õ2õv–æÿÿÝÜÎÈX[HÒH[ÛÈ\ÜÙYˆXXÓÔÈ[ÒHÿÿÿd out its single all-tests chunk at 600,183/6üÀÀ°ÀÀÀµÌÝ¥Ñ ±•…¹ÕÀ½¹™¥Éµ•…¹¹¼…ÍÍ•ÿ÷F–öâf–ÇW&Râ$TB&W&öGV6VB#f–ÆW2ÖÿÿÙÈÈÛ™HXXÓÔÈÚ[šÎÈÔ‘QSˆ›ÝÈ\Ù\ÈÙ\]Y[ÿÿÿal chunks of 50 with unchanged watchdogs; focýÕÍ•Ñ•ÍÐµÉÕ¹¹•ÈÑ•ÍÑÌÁ…ÍÌ€ÈÄ¼ÈÄ¸Õ±°±½…ÿò6†V6²æB6÷'&V7FVBW†7BÖ6æF–FFR4’&VÖÿÿÛˆ[™[™ÎÈÈ›Ý›Û[ÝHHÜˆÝ\ˆ\Úÿÿÿ
+
+
+T09 CI follow-up 2 (2026-10-28): Windows fýÕ±°ÍÕ¥Ñ”½¸€ÄÉ”Í˜Àà™½Õ¹Ñ¡”¹•ÜÉ•ÍÑ½É”µ­ÿöÆÂFW7BW6VB&rG&—fRÖÆWGFW"F‚2âÿÿÓH[\Ü˜Z[[™ÈÚ]T”—ÕS”ÕTÔ•QÑTÓWÿÿÿL_SCHEME before the staged checkpoint. The chý¥±¥µÁ½ÉÐ¹½ÜÕÍ•ÌÁ…Ñ¡Q½¥±•UI0…¹Ñ¡”Ñ…ÿövWFVBÆ–fV7–6ÆR&Vw&W76–öâ76W2Æö6ÆÇ’âÿÿÜ[›™\‹]\Ý[\XÚ]X[žHØ\È[ÛÈÛÜœ™XÝÿÿÿafter typecheck. Consolidated validation is rý•ÉÕ¹¹¥¹œì¹¼ÉÕ¹Ñ¥µ”ÁÉ½‘ÕÐ¡…¹”¸(()PÀäÿ÷'&V7F—fRÆö6ÂfÆ–FF–öâƒ##bÓÓ#‚“¢çÿÿÜ[ˆÚXÚØ\ÜÙ\È‹ŒMˆ\ÝË˜Z[\™\Ëÿÿÿ conditional skips; typecheck, build, verify-ýÁ…¬…¹‘¥™˜µ¡•¬Á…ÍÌ¸A¡…Í”½Í­¥±±Ì½µ•µ½Éÿò÷W7G&VÒÖ&÷VæF'’VF—G273²V6÷7—7FVÒæÿÿÛX]]™H›ÛÙˆ™[XZ[œÈ“ÕQRUQ™XØ]\ÙHÿÿÿ retained source repository is unavailable. Eýá…Ð$™½ÈÑ¡”½ÉÉ•Ñ¥Ù”…¹‘¥‘…Ñ”¥ÌÁ•¹‘ÿöærà ¢Ò·…ÒC’ÕSÂ3’Å3"Â&÷WFS¢&VçBÿÿÜœ›ÝÈš^ÛÛ^X˜XÚÜÝÜØXÚKXÛÛ›Û\ÿÿÿreparation, independent named-Risk3 verifier ýðI•©•ÐÕ¹…Ù…¥±…‰±”Í•ÑÕÀ‰•™½É”¡½µ”½½¹™¥ÿò÷'VçF–ÖR66W72æBF—66Æ÷6RF†R&÷VæF'’–ÿÿÚ[ÙØÜÈÐÐSÛÛ\]HMÍˆ‘QÌÈÙ]ÿÿÿfallthrough reproduced (combined scope incideý¹ÐÁÉ•Í•ÉÙ•¤°I8ÜÐ€ÄÔ¼ÄÔ°ÑåÁ•ÌÜÔ°‘¥™™•ÿöVçF–ÃsbR—'2ÂÆ—FW&Â–æFWVæFVçCsræÿÿÙš[˜[K\œ›^ÎK\ÛX[ÔÌL‹Ôš\ÚÌÔTÔÎÈˆ]]ÿÿÿred lines/3 surfaces, candidate7420018 and ECý<ÔÁÉ•Í•ÉÙ•ì™Õ±°Lä¹½Ð…‘µ¥ÑÑ•ì½µµ¥ÐèÿööæRW"W6W"6öç7G&–çBà¢Ò·…ÒC’ÕS"Â3’ÅÿÿÌˆ›Ý]Nˆ›Ý[™YÜš]\ŒŽÚ[™ÛHØ[˜Xÿÿÿcorrection2a, independent29/final2b | Add a týÉÕÑ¡™Õ°É•…µ½¹±äÍ•ÑÕÀÁ±…¸…¹ÁÉ•Í•ÉÙ”½ÑÿöW"ÆVæ6†W"6öçG&7G2ÂÄô4Â4ôÕÄUDRÃƒ3ÿÿØÛÜœ™XÝYÍKÔ‘QSŒËÌËÝ\\ËÙY™™\™[ÿÿÿal/parent81spot, independent82 exactPASS and ý™¥¹…°LäµTÈ½LÄÈ½I¥Í¬ÍAMLì½É¥¥¹…°ÐÀÌµ±¥¹”ÿö6÷RæB6÷'&V7F–öä4Ä“BóB÷FW7C3bó&WF–æVBÿÿÛ›ÝH[[œÝ[\ŽÈÛÛ[Z]ˆ›Û™K‚‹HÞHÿÿÿ-U3 | S9,S12 | route: staged ownership unit, ý‰½Õ¹‘•]¥¹‘½ÝÌ½¹…µ•ÍÁ…”™¥á•Ì°M5¥¹‘•Á•ÿöFVçC&l:.(
+(	“&|:.(
+(	“&‚ÂW7F&Æ—6‚÷væVÿÿÜ™Yš^[™˜[Y]YÙ]\ÝYÚ[™ÈÚ]Ý]ÿÿÿuching foreign data | LOCAL COMPLETE L199: fiý¹…°ÜÐÜÐÁ˜Í•±˜ØÅ½˜ØÄ½ÑåÁ•ÌÈÁ•á…Ñ‘¥™˜½=9¥¹‘ÿ÷VæFVçCF66U52ÇW27GVÃ&‚d”äÂ3’ÕS2ÿÿÌL‹Ôš\ÚÌ‹Ôš\ÚÍTÔÎÈš[ÜÙ”‘R‘PÕØ˜ÙÛÙÿÿÿEPERM/ENAMETOOLONG preserved, no fullinstalleýÈ½¹…Ñ¥Ù”½…±±=L…ÁÁÉ½Ù…°ì½µµ¥Ðè¹½¹”¸(´ltÿõC’ÕSBÂ3’Å3"Â&÷WFS¢6WVVçF–Â6÷W&6R÷ÿÿÙ™\™[˜ÙHX\Ë›Ý[™Y[\[Y[][Û‹˜[YYÿÿÿisk review | Verify metadata/CLI, select/actiýÙ…Ñ”°ÕÁ‘…Ñ”…¹É½±±‰…¬µ…¹…•Ù•ÉÍ¥½¹Ìðÿô”â$ôu$U53¢&–÷"SFö"ö2æB&VFW%SFC·6ÿÿÙXÝÜ•MˆYZ]YØØ[H›ÝYÚÍˆÝÿÿÿd selection is not execution/readiness. U4e eýáÁ±¥¥ÐÍ•±•Ñ•±…Õ¹ ±½…±±ä…‘µ¥ÑÑ•0ÈàÿògFW"6÷'&V7FVCS÷G—W3öF–ffW&VçF–Ã#Bö–æÿÿÜ[™[TÔÎÈMŒHY]Y]K[Û›HX›XÜÙ[Xÿÿÿon locally admitted L297, activation/update/rý½±±‰…¬Õ¹™¥¹¥Í¡•°¡¥ÍÑ½É¥…°™…¥±•É••¥Áÿ÷2&W6W'fVC²6öÖÖ—C¢&ö†–&—FVB'’÷væW"à¢ÒÿÿÞHKUMŒH0è¸ «8 'HÎKÔÌLŽÈ›Ý]Nˆ\™[ÿÿÿline, Risk2/Risk4 independent verifier after ý½‰Í•ÉÙ•¡•­Ìì½µµ¥ÐèÁÉ½¡¥‰¥Ñ•‰ä½Ý¹•Èÿò–×ÆVÖVçBF†Ræöâ×7FVÆ–ær÷væVBÖ–ç7FÆÂÖÿÿÛ[˜[˜ÙK[ØÚÈš[Z]]™HÛ›KX]š[™È^\Ýÿÿÿg private-store locks/default consumers and Cý1$½¹ÍÕµ•ÈÕ¹¡…¹•¸M½Á”…¹¡•­Ìè0ÈÈÿòâ7FGW3¢DôäRÄô4Â&÷VæFVC²$TCÖ—76–ærÿÿÔKÔ‘QSŒLÌL[™[\XØX›H\\Ìÿÿÿ56f3e10d0bÃ¢â‚¬Â¦, independent final2p S9-U4büÄ½LÄÈ½I¥Í¬È½I¥Í¬ÐAML…¹Á…É•¹ÐÍÁ½Ñ¡•¬ÿó##râ&–Ö—F—fRöæÇ“²æòW†—7F–ær’–çFVw&ÿÿÚ[Û‹ÜÙ\\˜]KZ[›ÚÙ\‹\›ØÙ\ÜËÝÚÛKZ[œÝ[ÿÿÿadmission.
+- [x] T09-U4b2 Ã¢â‚¬â€ S9/S12; roýÕÑ”èÁ…É•¹Ð¥¹±¥¹”Ñ¡•¸I¥Í¬È½I¥Í¬Ð¥¹‘•Á•¹‘ÿöçBfW&–f–W#²6öÖÖ—C¢&ö†–&—FVB'’÷væW"â–ÿÿÙYÜ˜]HHXØÙ\YÛÛ[[ÛˆXZ[[˜[˜ÙHš[ÿÿÿive into the explicit CLI probe only. Status:ü=91=0‰½Õ¹‘•…™Ñ•ÈÉ•…°IÐ‰•¡…Ù¥½Èÿöf–ÇW&W2Âu$TTãBæWr³RW†—7F–ær÷WGWB³bW†ÿÿÝ[™ÈÛÛ›Û[™[\\ÌÛÍMØØY™Ž0ÿÿÿ‚¬Â¦, independent final2q S9-U4b2/S12/Risk2/Rý¥Í¬ÐAMLÁ±ÕÌÁ…É•¹ÐÍÁ½Ñ¡•¬€¡0ÈÌÀ¤ìÍÑ…ÿöærö×VÇF’×fW'6–öâ–çFVw&F–öâ6W&FRà¢Ò·…ÿÿÕKUMË[X\0è¸ «8 'HÎKÔÌLŽÈ›Ý]NˆÓ‘H™Yÿÿÿence-ai-explore read-only compatibility/reuseüµ…À°Á…É•¹Ð½¹”ÍÁ½Ñ¡•¬½‘•¥Í¥½¸ì½µµ¥Ðèÿ÷&ö†–&—FVB'’÷væW"â7FGW3¢DôäRFV6—6–öâ÷ÿÿÝ\ÙHX\œˆ[™Û™H\™[\œÙT™XÙZ\ÜÝÿÿÿck L232. Reader-first additive optional root ý…Ñ…±½œÍ•±•Ñ•ìµ…ÀÌµ½‘Õ±”µÝ¥‘”µÑ•ÍÐÉ•ÿöÖÖVæFF–öâæ'&÷vVB'’7GVÂ6†ævVB6ÆÂÿÿÝËˆ›È›ÙXÝ[ÛˆY]ËØÚXÚÜÈ[ˆX\‚‹Hÿÿÿ T09-U4c1 Ã¢â‚¬â€ S9/S12; route: parent inliý¹”Ñ¡•¸¥¹‘•Á•¹‘•¹ÐI¥Í¬È½I¥Í¬ÐÙ•É¥™¥…Ñ¥½¸ÿò6öÖÖ—C¢&ö†–&—FVB'’÷væW"âFB&VBÖöæÇ’ÿÿÚ[š]H™\œÚ[ÛˆØ][ÙÈ[™[ÜžH™\Ù\š[™Èÿÿÿact legacy helpers/stage/v1 bytes; L233. StatýÕÌè=91=0‰½Õ¹‘•…™Ñ•ÈÉ•…°IÅ±•…åÿô52óVæWtd”ÂÂu$TTã3‚ó3‚7GVÂæWr¶6öç7VÖWÿÿØØ\Ù\È[™[\\ÌÛÍNMLŒŒLpè¸ «0©‹ÿÿÿinal2s S9/S12/Risk2/Risk4 PASS plus parent spý½Ñ¡•¬€¡0ÈÌÔ¤¸9¼µ•Ñ…‘…Ñ„ÝÉ¥Ñ•È½µ¥É…Ñ¥½¸ÿö7F—fF–öâà¢Ò·…ÒC’ÕSF3"ÖFW6–vâ:.(*Î(	ÒÿÿËÔÌLŽÈ›Ý]NˆÓ‘HØÛÜY™XY[Û›H\ÜÝ[\[ÿÿÿchallenge via prior explorer2r continuation; ý½µµ¥ÐèÁÉ½¡¥‰¥Ñ•‰ä½Ý¹•È¸MÑ…ÑÕÌè=9Íÿ÷VB6†ÆÆVævS'BæB&VçBg&÷¦Vç7FvSCcŒ:.ÿÿë8 'MŽ\ÜÝÚXÚÈŒÍËˆ™\ÝY™Yš^™Z™XÝÿÿÿ same-module private reuse selected. First smý…±°‰•¡…Ù¥½ÈµÁÉ•Í•ÉÙ¥¹œÍ½ÕÉ”µÕ…É•áÑÉ…ÑÿööâÃ#3‚Â×WFF÷"7F–ÆÂæ÷Bw&—GFVâà¢Ò·…ÒCÿÿËUMÌ˜H0è¸ «8 'HÎKÔÌLŽÈ›Ý]Nˆ\™[[›[ÿÿÿ Risk2/Risk4 independent after observed checkýÌì½µµ¥ÐèÁÉ½¡¥‰¥Ñ•‰ä½Ý¹•È¸áÑÉ…Ð=91dÿ÷F†RGvò6÷W&6RÖö'6W'fF–öâ÷&WfÆ–FF–öâÆö÷ÿÿÈ[Èš]˜]HØ[YK[[Ù[H[\œÎÈŒÎˆÝÿÿÿus: DONE LOCAL bounded: exact two-loop structýÕÉ…°É•Ù•ÉÍ…°½ÕÉÉ•¹ÐÍÑ…¥¹œÌÐ¼ÌÐ½ÑåÁ•ÌÀ½¸ÿóSƒƒƒFcf\:.(*Ì*bÂf–æÃ'R3’õ3"õ&—6³"õ&—6ÿÿÈTÔÈ[™\™[ÜÝÚXÚÈˆ›ÈY]Y]ÿÿÿwriter in this refactor.
+- [x] T09-U4c2b Ã¢â‚þ³ŠtLä½LÄÈìÉ½ÕÑ”èÁ…É•¹Ð¥¹±¥¹”°¥¹‘•Á•¹‘•ÿ÷B&—6³õ&—6³"õ&—6³B6÷W&6RöW†—7F–ærÖWf–FVæ6ÿÿÜ™]šY]ÌŽÈÛÛ[Z]ˆ›ÚXš]YžHÝÛ™\‹ˆÓ‘ÿÿÿOCAL bounded L248: final2v S9/S12/Risk1/2/4 PýML…¹Á…É•¹ÐÍ½ÕÉ”½É••¥ÁÐÍÁ½Ñ¡•¬½¸ÜÔÿó†C“ƒ&3Sœ:.(*Ì*c³’ó’æB6ö×ÆWFVB6†–ÆF6ö×ÿÿÛ\ŒYZ]YÝ]\ŒÌÝ[Y[Ý]™[XZ[œÈH˜ÿÿÿed envelope/closure limitation. No further exý•ÕÑ¥½¸É•ÅÕ¥É•¸9¼¹…Ñ¥Ù•…ÁÁÉ½Ù…°½…Ñ¥Ù…Ñ¥ÿöâ÷'VçF–ÖR÷v†öÆV–ç7FÆÆW"6Æ–Ó²÷&–v–æÃ‚ó’ÿÿÌÛÙÍ[™^Z[™YÈZ\œ›Üˆ[™[™ÈŒM‚‹Hÿÿÿ T09-U4d-map Ã¢â‚¬â€ S9/S12; route: ONEexploýÉ•ÈÉÜµÙ”ÄÔÈÉà´ÉÜµ Áá¨€¬Á…É•¹ÐÍ½ÕÉ”½É•™•Éÿöæ6R7÷F6†V6³²6öÖÖ—C¢&ö†–&—FVB'’÷væW"âÿÿÓÓ‘HX\NˆTÑSˆ\È›ÈÝ\œ™[Û][˜Ú\ˆÿÿÿnsumer; home selects Pidata, update passthrouý ¹½ÐÍ•±™ÕÁ‘…Ñ”¸I•™•É•¹”ÜÄã‹Š
+³ŠpÜÔä½ÿöF–æ'•v–æF÷w27W'&VçBöFöÖ–7w&—FW"6öæf—&ÖVÿÿÈY\™XY\‹Yš\œÝÜ™[˜\žYš[HÛ›K™Z™ÿÿÿ symlink/package-loaded maintenance/hostauthoýÉ¥Ñä½Áå¥¹œ¸9¼¥µÁ±•µ•¹Ñ…Ñ¥½¸½Ñ•ÍÑÌ¥¸µ…Àÿð¢Ò·…ÒC’ÕSFC:.(*Î(	Ò3’õ3#²&÷WFS¢&÷VÿÿÙY\™[ÝÛÜšÙ\ˆÛÜœ™XÝ[Ûˆ[™ÐSQH[™\ÿÿÿent Risk2/Risk4 reviewer; commit: prohibited ý‰ä½Ý¹•È¸=91=00ÈØÀè½ÉÉ•Ñ•ÜÔåÅ˜ÈÿòââV&Æ–5$TL:.(
+(	“S6ö'6W'fVE52‡GvòÆ–÷ÿÿÜÊKÝ\œ™[ÛÛ\[\ŒÍŒ[\Ëš[˜[]™ŒŽ\ÿÿÿ9/S12/Risk2/4PASS and parent source/receipt sýÁ½Ñ¡•¬¸I•©•Ñ•½É¥¥¹…±É•…‘•È½‘••ÁQ5@Á½ÿóRó#W7G—V÷WB&WF–æVBâæF—fR&÷fÂö7F—ÿÿÝ[Û‹Û][˜Ú\‹Ü[[YH™XY[™\ÜËØ[\]›Üÿÿÿfullinstaller not claimed.
+- [x] T09-U4d2 | Süä±LÄÈðÉ½ÕÑ”è½¹Ñ•áÐµ‰…­ÍÑ½ÀÝÉ¥Ñ•È°‰½Õ¹ÿöVB6ÆVçW6÷'&V7F–öâÂ4ÔR–æFWVæFVçB&—6ÿÿËÌ‹Í™]šY]Ù\ˆX›\ÚHÛÛ›ÛYÜ™[˜ÿÿÿ current-version selector using existing owneýµ¥¹ÍÑ…±°½±•…Í”½…Ñ½µ¥ŒµÝÉ¥Ñ”µ•¡…¹¥ÍµÌð=ÿôRÄô4ÂÃ#sC¢f–æÃscóƒ&c6Râââu$TTãóÿÿÞ\\Ì
+KÜÚ]]™H^\Ý[™Ìpè¸ (8 &LÐTÈ›Ûÿÿÿ SAMEverifier mvf4a7dx S9/S12/Risk1/2/4PASS aý¹Á…É•¹ÐÍ½ÕÉ”½Ñ•ÍÐ½¡…Í ½É••¥ÁÐÍÁ½Ñ¡•¬ÿò†—7F÷&–6Ä•$TBó†öc’÷&öög&V¦V7F–öâ&W6WÿÿÙYÈ›È˜]]™KØXÝ]˜][Û‹Ø[ÔËÝÚÛZ[œÝ[ÿÿÿ claim; commit: prohibited by owner.
+- [x] T0üäµTÑ”ðLä±LÄÈðÉ½ÕÑ”è‰½Õ¹‘•ÝÉ¥Ñ•È°Á…É•ÿ÷B$TBôu$TTâ÷G—W2öF–ffW&VçF–ÂÂ4ÔR–æFWVÿÿÙ[š\ÚÌKÌ‹ÍÛÜœ™XÝ[Ûˆ™X\ÜÙ\ÜÛY[[ÿÿÿrate explicit selected-version startup withouýÐÑÉ•…Ñ¥¹œÍÑ½É•Í•±•Ñ¥½¸…Ì•á•ÕÑ¥½¸Á•Éÿö—76–öâÂDôäRÄô4ÂÃ#ƒƒ¢6÷'&V7FVCsc"óƒC&ÿÿÎKLTÔËÝ\\ÌÙY™™\™[X[ÚYÚY[™LÿÿÿEverifier mvf7ek0c S9/S12/Risk1/Ã›ÂÂµÃ§khâ€˜ÿ§³
+Û
+ï
+Ç
+­y×'
+7Šw
+
+7
+‡Š›
+ç
+wŠ‹3
+
+÷ÿù\98Ü*^(	Ž(	Ü(9*(	Ü(9*8ž(
+.(	Ü(8(
+lÿÿð¨pã0¬0 x (°èp£x (°àpä0 x¡(°âx (°ãp¨0 p¯pçpÿÿÿ€¢Ââ‚¬Â¹Ââ€¦ÂÂ¡â€Â½ÃÃ„Ã€Âµâ€žÃÂ½ÃÂ½ÃÃþC
+×'Š‹
+C
+Ó
+£
+ó
+'
+÷
+÷.s
+Š›'G
+—Š‹Šÿü(Ü98Ì+Œ(ž(
+l9Ì+Ü+*^(J.(
+,(Ü:\(Ü+(	Ü+Ü*^ÿÿæ8 (°®päp©päpé0¯pãpäp¯pâx )°§x 'p x )°®p¤0 ÿÿÿ°â€¢Â¹Â¥ÂÂ¸Â½ÃÂ¥â€˜Ã‘Â Ââ€°â€¢Â¡â€¦Ã™Â¥Â½Ãþ#
+
+×W7C
+'Š‹
+×Š›
+—
+ã
+Š‹‡Š›
+7C³
+ÿôœ*\8Ü*Ì8Œ+Ì8Ì(*\+ž(	Ž(
+,8(
+,+ž(	Ž(
+,+œ9(ÿÿæx (°âp©x¡(°©p£x )°äp©p¯p®0 x¡(°¯p¬p¬p¯pçpãÿÿÿÃ‘Â¡â€Ââ„¢Â¥Â¹â€¦Â°ÂÂâ€¦Â¹â€˜Â¥â€˜â€¦Ã‘â€þw
+ã
+ç
+ó
+
+7
+÷
+×
+×
+—G3
+Ã
+7GŠ›
+w
+—
+çO
+ÿü(89\8Ü*+(8ž(
+,+\+Ü9(	Ü(ÒL+(+Ü9\98ÿÿéx &8 'p pâx (¸ )¸ &0ã0¬0 p¨p¯pãpä0¯pàpâp¯pÿÿÿ¥â€˜â€¢ÃˆÂ½0ÂÂ½ÃˆÂâ„¢Ã•Â±Â°ÂPÃ„Ã€Â½PÃ„Ãˆÿ
+
+7
+ÇŠ›
+—
+×3
+à £KKK
+ÃCcSK€	C
+ÿþ(
+,8(
+l8ž(	Ü((J,*\8œ8Ü9((Ü*(
+l+œ)Þ(
+,)ÿÿíp£p¯x &8 'p x ,8 )°£p«p§pâp¯påp®p¤0 pæx (°ÿÿÿ¥â„¢Â¥Ââ€¦Ã‘Â¥Â½Â¸()]Â½Ã‰Â­â€¢ÃˆÂÂµÃ™Ã€ÃˆÃ‰ÿƒs
+Óc
+Ó‡Šww
+Ó
+
+—
+×
+ÇŠ‹
+×Š‹
+çGÿü(9*(	Ü(88œ*\9ž(
+l9(	Ü((	Œ*\8Ü8+(
+lÿÿð­p¯p®p¬pé0 pâx (°àp¬x )°£x (°­x (°®pä0 x ,ÿÿÿ¢â„¢Â½Ã‰â€ÂÃ•Â¹ÂÂ¡â€¦Â¹Ââ€¢ÂÂÃÂ¥â€˜Ã‘Âþƒ
+
+7Š›
+Ç
+7W
+ÇŠ›G
+—
+÷
+ç3
+Š›
+ç
+C
+Šc
+ÿü(Ü9\+^(
+,+œ98Ì(9*(	Ü(8ž(
+l9Ì+\*^(	Ž(
+,ÿÿðäp©päpé0 x ,0¯påp®x &8 )°âpé0®0 Ipä0 pâx (ÿÿÿâ€¦Â¥Â¹ÃŒÂÃ‘Â¡â€Ââ€¢Ã¡Â¥ÃÃ‘Â¥Â¹Å“ÂÂâ€¦ÃþW7Š›
+Ã
+GŠ‹7C
+Ã
+'
+÷GŠ‹
+7GŠ‹
+C
+ÿü8Ü9(
+l9(	Ü+\(Ü+Ü+\+^(
+l+œ)(9(
+,8Ü98Ì(ÿÿà)°®p¤0 x (¸ )°âp¬p©x (°â0 pâx (°£x (°©pàpäÿÿÿÂ¸ÂIâ€¢ÃÂ½Ã‰Ã‘â€¢ÂÂÃ‘Â¡Ã‰â€¢â€ÂµÃÂ½Ã•Ã‰ÿ
+7Šw
+×Š›G
+ƒ
+
+7Š›
+çŠc
+—ŠcŠ›GŠwƒÿü9Œ:\)8œ):\Y,8Œ89L8œY,8Œ9Ì9(
+.(
+.(	ì9Œ9ÿÿø )¸ (¸ 'pâx (°£x '°å0èp£p¤0äx 'páp£x (°¤0æÿÿÿÃˆÃŒÃ„Ã™Å’Ã Ãâ€žÃ”ÃˆÃŒÃ…ÂÃ™ËœÃ¡Å’Ã Ã¤Ã…â€˜ÂþC
+
+‡Š›3
+
+ç
+ó
+u$TTã
+
+7
+ÇŠ›
+—
+Ó
+—Š‹ÿü+Œ((
+l8ž(
+,+œ9(8Ü8+Ü9+\(Ü*(
+,(Ü*Ì((ÿÿïp®x¡(°©pâp­pã0 Mx )°äp¨0®p­x )°è0¨0ä0¬pçp©ÿÿÿ˜Ã‘Â ÂµÃ€Â¹Â±â€¢Â¹ÂÃ‘Â Â¤Â°Ââ€˜â€¢Ã‘â€¦Â¥Â°ÿ
+G'W
+ç
+7Š›G
+—
+÷
+ã
+Ã
+Š‹
+—
+çŠ›
+Ã
+w
+ÿþ(	Œ9*(8Ü+*\(Þ(	Ü((
+l+œ)((
+l9\9*+Ü8ÿÿépäx )°äp©pæx 'p p¬p©x¡(¸ (°£pép£p¬x 'p p¯pÿÿÿ€¢Ã‰â€¦Ã‘Â¥Â½Â¹ÃŒÂÃ‰â€¢Âµâ€¦Â¥Â¸ÂÃ•Â¹ÂÂ¡â€þ›
+ç
+wŠ‹
+C
+à ¤'Š‹Š‹
+÷'Šw
+Š›
+ç“
+Š‹‡ÿø
+,(Ü9\9*\+Ü+Œ+(8(
+l8ž(
+,+œ9(*\+œ8Ü8(ÿÿð£päx (°¤0 päp¨x 'p pàpâx (°àx )°âx (°¤0 pâÿÿÿÂ¸Âµâ€¦Â±Â°Â½â€˜Â¥â„¢â„¢â€¢Ã‰â€¢Â¹Ã‘Â¥â€¦Â°Â½ÿ'
+÷ŠÃŠw
+7
+7'
+—G3
+ã
+G
+‡Šw
+w
+—
+ÿþ(	Œ+Ü9Ü8Ì(9:\8(
+,(Ü*(
+,(Ü*Ì(8+(
+l+Œ(ÿÿåpãx (°¤0 p®pàp­0®p£p­p¤0 x &0©pâx (°£päp¬pÿÿÿÃÂ¥Ã‘Â¡Â½Ã•ÃÂâ€žÂÃÂ¡â€¢Â±Â°Ã¬ÂÃ•Ãâ€ÂþG
+‡Šw
+Š‹W
+—gŠ›
+ÇŠ‹
+çC
+
+ç
+÷ŠcŠÿü(+œ+Þ(	Ž(
+'Ü+\+Þ(	Œ9\+(
+,8Ì+Ü9:\8(
+,8Ü(ÿÿâp©pàpä0¯x ,0©p®0¯päpãqd¸ «0­0­p®p¯Ep­p©pä0ÿÿÿ„¢Ã‰Â½Â´ÂÃ‘Â¡â€Ââ€¦ÂÃ‘Ã•â€¦Â°ÂÃâ€¦ÂÂ­âþ›
+wŠw
+7
+7'
+—C
+
+—
+ç7GŠ‹Š›
+C
+ã
+Gÿú(	Ü((	Œ*^(J.(J.(
+,8ž(
+,+œ9*^(
+l+)Ü8Ì(8ÿÿà(°£p¯p®p¤0 p¨p¯pãpäp©p¬x 'p­x )°âpâx )°é0 ÿÿÿ¢Â¥Ã¡Ã‘Ã•Ã‰â€ÂÂ¡â€¦ÃŒÂÂ¹Â¼ÂÃÃ•ÂµÂµâ€¦Ã‰Ãþ“
+Ã
+ŠÃWC
+Gw
+ó
+Š‹‡Š‹
+7GŠ‹
+C
+
+ÿþ(
+l8œ8œ+Ü9Ì(8œ+Ü9Ü8Ì(*\+œ(Ü+Ü8œ8ž(
+,(Ü9+ÿÿé0 x )¸ &8 &8 (°¤0 p¯p®x 'pë0 x &8 (°âp©pæxÿÿÿÂÂâ€˜Â¥â„¢â„¢â€¢Ã‰â€¢Â¹Ã‘Â¥â€¦Â°ÂµÃâ€¦Ã‰â€þ‹
+çC
+ç
+×
+§3
+
+7
+÷''Š‹
+7G3
+
+÷
+ç
+Ç“
+ÿù*+Ü8Þ(	Ü((
+,:8(
+,(Ü9(
+l9*\+Ü+œ8Ì(9ÿÿð päp¨x 'p x )°£päpåx )°¬0 påp®p£p¨x )°®p§xÿÿÿÂÂâ„¢Â¥Ã¡Ã‘Ã•Ã‰â€Â¸Â=Ã‰Â¥ÂÂ¥Â¹â€¦Â°ÂÃÃþ'Š‹Š›'Š‹
+C
+7
+7'
+—G3
+'Š‹
+×Š›ÿú\+Œ(9\+œ9+Ü9\(Ü*(
+,):Ì(+œ+Ì((
+,:(
+,(ÿÿåpäx (°¤0 pâx (°£x (°©pàpä0 p©pã0 pâx (°çpâÿÿÿÃ‘Ã‘â€¢Â¸Ââ€¦Â¹ÂÂÂ¹Â¼ÂÃÃ‰Â½â€˜Ã•ÂÃÂâ€þ›77Š‹'G
+—
+÷
+ã
+
+—3
+wŠ‹Š›
+·Š‹
+çŠ‹ÿù+Œ((
+,8œ*\9ž(
+,)(8œ9\+Œ+\8(
+l8ž(
+,+œ9ÿÿîp­pªpã0 x )¸ &8 &0ã0 x '° p£pâx (¸ )°äx 'pÿÿÿ¹â€¢ÃœÂÃ‰Ã•Â¸ÂµÂ½Â¹Ââ€ÂÂµâ€¦Ã‰Â­â€¢ÃˆÂ¸ÂýG
+‡
+—3
+
+—3
+G
+‡Šw
+Š‹
+—'7C
+Š‹‡Šÿü(Ü9\9*\+Ü+Œ(+Ü¹Ì((Ü*(
+l+œ)Þ(
+,)+\(Ü+Þ(ÿÿø 'p p£p¨x (°£p«pã0¬0 p®p¯pä0 x '° pâx (°äpÿÿÿ¤ÂÂ½ËœÂâ€žÂâ„¢â€¦Â¥Â±â€¢ÂÂÂÂ¡â€¢ÂÂ¬Â¸Âþ7
+÷
+ç7
+÷
+ÇŠw
+
+÷WGWC
+Š‹'
+÷
+Ó
+Gÿú(
+,8Þ(	Ü(++Ü(Þ(
+l+(88œ+Ü+Ü¹Ì(8œ9\+œ+ÿÿà(°âpã0 p©pã0 x &8 (°¬p©x ,8 (°âx )°äx 'p xÿÿÿÃ™Â¥â€˜â€¢Â¹Ââ€Â°ÂÂ¹Â½ÃÂÃÃ‰Â½â€˜Ã•ÂÃ‘Âþ—
+÷
+ã
+
+Ç
+÷
+w
+w
+—
+çO
+à ¥'W
+ã
+
+÷
+çŠw
+7Šÿú,8œ*^(
+l+(((
+l(Ü*Ü)Ü8œ+Ü9\+œ)(8*\8(ÿÿð¬p©p®x 'p pçp©päp¨0á0è0à0à0à0àp­pã0 p©p®p©ÿÿÿÂ¥â€¦Â°ÂÃâ€¢ÃˆÂµÂÂ¡â€¢ÂÂ¬ÂÂâ€¢Â¥Â±Â¥Â¹Âþw3£
+
+7
+÷
+×ŠÃ
+—
+çŠ‹
+C
+
+Ç
+—Š‹Š‹
+7—
+7
+ÿþ(	Ü+Ü89^(+*\Y,+\8Ü9(
+l9(	Ü(9(
+,8Ü9ÿÿð¬0 x &0©pâx (°£pä0 Tpépàx (“p£pâp©pàpä0 CLÿÿÿ°ÂÃ‘Â¡â€¢Â¸Ââ€¢Ã¡â€¦ÂÃÂÃÃ‰â€ÂµÃ•Â¹Â¥Ãÿ
+Šc
+—Š‹Š‹Š‹'Š‹
+çG
+—Š›
+Ã
+ã
+·Š‹Š‹ÿü(8Ü9(	Œ+Ü9\9+Ü8Ü9(	Ž(
+,8œ8Œ+Þ(
+,:*\9+ÿÿãp©p§p®x )°¬0 x )°®p¤0 x ,8 (¸¡(°¯pâx 'p¯x ÿÿÿ„¢Ã‘â€¢ÃˆÂâ„¢Â½Ã•ÃˆÂµâ„¢Â¥Â±â€ÂÂ¡â€¦ÃÂ¡â€þ‹3
+
+—
+ãŠ
+³
+ç
+7Š›
+7
+‡Šw
+÷C
+×Š{C
+÷ÿü+Ü8Ü9+\8ž(
+,)+L8Œ88Œ9Œ8L88Œ9•8:L8Ì98ÿÿåZ0­0á0ã0à0é0¯0®0 Späp¯pà0 päp¨x 'p pàp©pàxÿÿÿÂ±Â¥Â¹â€ÂÂ½Â¸ÂÃ‘Â¡â€Ââ„¢Â¥Ã‰ÃÃÂâ„¢â€¦ÿ
+—
+ÇW'Šw³
+
+ç
+ó
+Š›WG
+÷
+×Š›G
+—K
+ÿþ(
+,8œ9\+Œ+Œ(L((Ü+Þ(	Ž(
+,+\+Þ(	Ž(	Ü(TÔÑTÔÿÿàpâp¯påpäx 'p pçx )°ã0 pâx (¸¡(°åpãx (°¤0 xÿÿÿâ€¢â„¢Â½Ã‰â€Ââ€¢Ã¡â€¢ÂÃ•Ã‘Â¥Â½Â¸Ã¬ÂÃ‘Â¡â€þw
+7WŠÃ7Š‹WŠ‹
+çC
+Šc
+—'Š‹
+7C
+ÿôÔÑTÔÌ(8ž(
+,99\8œ+ž(
+,)(+ž(
+l9*\9ž(
+$œ*ÿÿãp«0 påp®x )°ãpãx (°ãpãx )¸ ,0¬x 'p x¡(°¯pâÿÿÿÂâ€¦ÂÂ¡â€Ââ€¦Â¹ÂÂâ€¦ÃÃÂ±Â¥â€¢ÂÂÃâ€þ‹
+7W'
+—G“
+Š‹7
+7Š›
+ÇŠ›G
+—
+÷
+ã
+
+—Gÿø
+,+L8Œ(**\)Ü*(9Ü*\9*(*\+ž(	Ž(
+,8(
+,ÿÿø &8 (°®päVx (°âp©x¡(°©x (°â0 pâx (°ápåp©pâÿÿÿ¢ÂÂ¸Â9Â¼ÂÃ‰â€¢Ã™Â¥â€¢ÃÃ•â€Â½Â¹â€¦Ã‘Â¥Ã™ÿŠw
+
+7
+÷
+çG
+—
+çWŠ›G
+—
+÷
+ã
+wŠ›3
+'Šÿú,99\8œ+ž(
+,)+(8Ü+Ì(+œ+Ü+ž(	Ü(*\8Ì(*\ÿÿø¡(¸ (°âpâx (°¤0®0 Nx )°­x (°¤0 Rp©pãp«0â0¯ÿÿÿÂÃ™â€¢Ã‰Â¥â„¢Â¥Ââ€¦Ã‘Â¥Â½Â¸Ââ„¢Â½Â±Â±Â½ÃÃþ3
+Š›
+7GWŠ›
+Ã
+
+7
+÷
+×
+ÇŠ‹GŠ‹
+C
+Š‹ÿùœ*^(	Ž(
+,+œ(Þ(	Ü+Œ(œ+Ì((J,9\++(8Ü9\*\9ÿÿà'p¬0 TUI0¬0 pàp¬x )°äx¡(°¯pâp­0¬0 pàpâp¯pæÿÿÿâ€˜â€¢ÃˆÂ°ÂÂ¹â€¦Ã‘Â¥Ã™â€Ââ€¦ÃÃÃ‰Â½Ã™â€¦ÂþÃ
+Ã
+
+7
+÷
+×
+×
+—G3
+Ã
+7GŠ›
+w
+—
+çO
+Ã
+ÿù\8Ü*(+Ü8Œ(8ž(
+,+\+Ü9(	Ü(ÒL+‚‚ŒY,Y,Y,(ÿÿä0æ0æ1¤±h ”0 Fpåp®p£päp©p¯p®x )°¬0 PASS0 pçÿÿÿÃ‘Â Ââ€žÂÂ¡â€¦Ã‰Â¹â€¢ÃÃŒÂÂ¥ÃÂ½Â±â€¦Ã‘Â¥Âþ÷
+ã
+
+wŠ›
+Ã
+
+ç
+ó
+Š›Šc
+×
+—77
+—
+÷
+à ¤ÿþ(
+l(Ü*Ü)Ü8œ+Ü9\+œ)(*œ+Ü¸l+L8Œ((Ü+Ü+\8+ÿÿè°äx (°¤0 x (°èp©pä0à0 p¯p®p£x 'p®0 Cp¯p­x ÿÿÿ¥Â¹â€¢ÂÂÂ±Â¥â„¢â€¢ÂÃ¥ÂÂ±â€Â½ÃÃ‘â€¦Ã‘â€ÿ
+'Š‹
+w'Š‹77
+—
+÷
+ã#gŠ›73
+÷§Š‹ÿøœ+Ì((J.(
+l*\++Ü:ž(
+,8œ+Ì(8Ü*Ü*\8(*\+Œ9ÿÿâ0ä0æ0âp­pã0ë0 x &0©pâx (°£pä0 päpépàx (°ã0ÿÿÿ€¢Ã¡Â¥ÃÃ€Â¼ÃˆÃ Ã˜Ã„Ã¥ÂµÃŒÃ¬Ââ€¢Ã¡â€¦ÂÃÂÃþ'Šw
+×W
+ç
+—C
+Šc
+—Š‹Š‹Š‹'Š‹
+çG
+—Šÿúl+((
+,:*\98+Ì8Ì:L9L8Ì8\+\8Ì+Œ(œ+Ü9\8Œÿÿðçx )°äp£p¨x (°¤0 pãp¯påpâp£x 'p¯päx (°ãpä0ÿÿÿ€˜Â½Å’Â½ÃÃ‰Â½Ã‘â€¢ÂÃ‘â€¢ÂÂÂ¡â€¦ÃÂ¡â€¢ÃŒÂþ'Š‹
+×Š›
+—
+çŠ‹
+C
+
+—ŠcŠ‹
+çG
+—
+7Š›
+Ã
+ÿü(8ž(
+,8Þ(
+,8œ9ž(	Ü((
+,9ž(
+,8œ:L(8ž(
+l9Ìÿÿðâx (°£x (°©pàpä0 påp®x &8 (°â8 «0®p£x )°£pÿÿÿ€Â½ÃÃ„Ã€Âµâ€žÃÂ½ÃÂ½ÃÃÂµÃ‰â€¢ÂÂ´ÃˆÃ€ÃˆÃþc#eC“3C#U£
+Ó3“
+ó³
+Šc
+óÿø+œ+Ü9(8ž(
+,9Ü8œ*\9(	Ü(9*(	Ü((Ü+Ü+\8ÿÿìx (°äx (°¤0 pâpåp®0 p¯pâ0 x &8 (°ãp£pâp©x ÿÿÿ€ÂÂ¥ÃÂâ€¦ÃŒÂâ„¢â€¦Â¥Â±â€¢ÂÂâ„¢Ã•Â¹ÂÃ‘ÿ
+—
+÷
+çŠ›
+Ã
+ŠÃŠ‹
+‡Š›g
+—
+÷#
+à ¥Š›'Šÿü+œ9(9*(
+,+Œ(*^(	Ž(
+,+œ9*^(J,*^(
+,)(ÿÿé°®0 p©pãp¯p¬x )°äp©p¯p®0 p¯p­p©pãpãp©p¯p®0ÿÿÿ¥Â¸ÂÃ‘Â¡â€ÂÂ±â€¦Ã•Â¹ÂÂ¡â€¢ÂÂÃ‰Ã•Â¹Â¹â€¢ÿ#£
+
+—C
+
+÷gŠ‹''
+—ŠcŠ‹3
+
+÷
+ç
+Ç“
+ÿõST+ÕT+ÕTTŒ((
+l+œ)((	Œ*\8Þ(
+n(+ÿÿè°ã0 päp¨x 'p päpãpè0 p£x )°£p¨x 'p¬0 x ,0åÿÿÿÂâ€˜Â½â€¢ÃŒÂÂ¹Â½ÃÂÃ‰â€¢â€˜Â¥Ã‰â€¢ÂÃÂ!=üÔS
+õU4U%$ôd”ÄS
+ã
+G
+‡Šw
+Š‹‡
+—7G
+—
+çOÿø8Ü9(
+l9(	Ü+\(Ü+Ü+\+^(
+l+œ)(8ž(
+,)Ü8ž(
+ÿÿãpãp©p¯p®0 p©p®p£p¬påx &8 (°ã0 p£pâx (¸ )°äÿÿÿ¢Ãâ€¢Â¹Ã¡Ã‘â€¢Â¹ÃÂ¥Â½Â¸Â Â¤ÂÃÂ¥Ã‘Â Ââ€þcŠ‹Š‹Š›W
+ÇC
+'
+÷Š‹
+—
+ÇŠ‹3
+÷7GŠÿü99\8Ì+Þ(	Œ+Ü(Ü9+Ü8Œ(8(
+l9*8Ì:Ì(9*(ÿÿð x (°èpäx (°®pãp©p¯p®0 x &8 (°âp©pæx (°ã0 ÿÿÿÂ¡Â½Ãâ€ÂÃâ€¦Ã‘Â¡ÃŒÂâ„¢Ã‰Â½Â´ÂÂ¡Â½Âµâ€¢âþc
+—#
+ƒ
+“
+Ã
+Š›
+ç
+C
+Š{
+
+×Š‹GŠ›ŠcŠ›ÿù(	ì+\+Ü+œ+:L((Ü*(
+,(Ü*Ì((Ü+Ü+ž(J,*\8œ+ÿÿã0 päp¨x )°ä0 p©p®p¨x (°âp©päx (°¤0 p¨p¯p­xÿÿÿÂÂ¥ÃŒÂÂ½Ã•Ã‘ÃÂ¥â€˜â€ÂÃ‘Â¡â€ÂÃÃ‰Â½Â©â€þ‹
+7C
+ã
+w
+‡Š‹G
+‡Š‹#
+Š‹‡
+—7G
+—
+çO
+ÿü88œ*\9ž(
+l9(	Ü((J,*\+(
+,8Ì(9Þ(
+,8ž(	Ü(ÿÿâx (¸ )°¤0 p©pã0 p®p¯pä0 x (°ãpäx )¸ ,0¬p©pÿÿÿ¡â€¢ÂÃ¬Ââ€˜Â¼ÂÂ¹Â½ÃÂÂ¥Â¹ÃÃâ€¢ÂÃÂÃ‘Âþ‡Š‹
+Ó
+
+÷#
+Š›77Š‹'C
+G
+‡Š›C
+
+ç
+ÿü(+Ü9\98Ü*^(	Ž(	Ü((
+l(Ü(Þ(
+,8Ü8Ì(+Ü(Ü(Ü9ÿÿâpâx (°¤0®0 Px )°âx (°®pä0 x )°äpäx (°­pàpäÿÿÿ¢ÂÂÂ©Â½â€°}ÃÃ‘Â½Ã€Ââ€¦â„¢Ã‘â€¢ÃˆÂÂ¥â€˜â€þ‹
+çG
+—Š‹—
+—
+çO
+G
+‡
+—3
+Ã
+ŠÃWC
+G
+ÿþ(	Ü(*œ+Ü¸l(*(
+l)((
+l+8ž(
+.(
+n(	Œ:L((ÿÿðèp©päx (°¤0à0ë0 p©pä0 pçx )°ã0 p®p¯pä0 p£xÿÿÿÂ¹Ââ€¢Â±Â±â€¢ÂÂ¸ÂQÂ¡Â¥ÃŒÂÂ¥ÃŒÂâ€žÂÃâ€¦ÿ'Š‹
+çC
+'Š‹Š‹
+Ç
+—
+w
+‡C
+
+wŠ›
+Ã
+ÿûœ+Ü9((	ì(8Ü+Ü9\8œ(Þ(	Ü+\(Ü+Þ(	Ž(	Ü((J.(ÿÿð©p¬påpâx 'p p¯pâ0 pàpâp¯p¯rç0 p¯rç0 p£p¯p­ÿÿÿÂ±â€¢Ã‘â€ÂÂ¥ÃÂ½Â±â€¦Ã‘Â¥Â½Â¸Â¸()PÃ„Ã€ÂµÃÿ
+
+—3
+
+ç
+÷C
+Š›Šc
+×
+—GGŠ‹
+C
+ã
+7G
+÷ÿø((J,9\8œ9*(
+,8Œ(9ž(
+,8œ*^(J,*\(Þ(
+l9*ÿÿïp®0 pàx (°®x &0©p®qdð p¯p®x 'p x &8 (°£p©pÿÿÿ¥Â½Â¸Ã¨Ââ€¦Ã•Ã‘Â¡Â½Ã‰Â¥Ã©â€Ââ€žÂÃÂ¥Â¹ÂÂþÇŠw
+Š‹'Š‹7
+ƒ
+
+7
+÷
+×ŠÃ
+—
+çŠ‹
+C
+×'Šÿü)Ü8ž(
+,8Ü8Ü*\+Ü+Œ((
+,:(
+,(Ü9\9*\+Ü+Œ(9Üÿÿðäp¨0 HOME0¯USERPROFILE0 x )°®p¤0 päx (°­pàÿÿÿÃ‰â€¦Ã‰Ã¤Â½ÂÂ½Â¹â„¢Â¥Å“ÂÃ‰Â½Â½Ã‘ÃŒÂâ€¢Ã¡Ãÿ
+Ç
+—
+7
+—G
+Ç“
+
+—7
+÷
+ÇŠ›GŠ‹
+C
+
+—
+ç7
+—ÿø	Ž(	Ü(9*(	Ü(88œ+Ü*ž(
+,(Ü9+(*\+œ*\9ÿÿø )°¬0 p­x )°èp©p­påp­0á0è0àpãx (°£p¯p®x &0ÿÿÿ°ÂÂ½ÃˆÂÂ±â€¢â€¦Ã™â€ÂÃ‘Â¡â€ÂÃ•Â¹Â¥ÃÂâ€þÃ
+Ç
+÷
+7
+·Š‹
+C
+ã
+G
+ó
+
+ç
+÷C
+'Š‹Š‹Š›ÿù(9*(	Ü(8Ü9\(Ü(Þ(
+,8Ü8Þ(J,9\+(9:\8(ÿÿð£p¨x (°£p«0 p¯pâ0 x &0©x¡(¸¡(¸ (°âx (°®päpÿÿÿ€¦Â°Â°Ââ€¦Â±Ã‘â€¢ÃˆÂÃÃ‰Â½â€˜Ã•ÂÃ‘Â¥Â½Â¸Âÿ
+7
+÷ŠcŠw
+
+×Š‹'Š‹
+Ç“
+Š‹
+÷#
+G
+‡
+—ÿü(*(
+l8œ+ž(
+,8Ü8Ì(*\8Ü8Ü9^(	Ü+(8ž(
+,8\9ÿÿà(°ãpä0 x )°£p£x (°ãpã0 päp¯0 päp¨x 'p pâx ÿÿÿ€¦Â°ÂÂ¡Â½Âµâ€Â°ÂÂ½ÃˆÂâ€¦Ã•Ã‘Â½Âµâ€¦Ã‘Â¥ÂÿŠ›
+Ç
+Ç“
+'Š‹'W
+ã
+ã
+'
+—7
+³#
+ó3
+
+—
+ÿþ(	Ž(
+,8(
+,+ž(	Ž(
+,+œ9(9ž(
+,8œ*^(J,*\(Þ(
+ÿÿäp©p¯p®0 pãpäp©p¬p¬0 x¡(°¯p¬p¬p¯pçpã0 pãpåxÿÿÿâ„¢Â¥ÂÂ¥â€¢Â¹ÃÂÃÂÂ½Ãâ€¢ÂÂÃÃ‰Â½Â½ËœÂ¸ÿ
+ç
+ó
+
+7
+÷
+×
+×
+—G3
+Ã
+7GŠ›
+w
+—
+çO
+Ã
+ÿø9\8Ü*+(ÒL+(*+Ü8Ü9+ÐPÓ(+Ü8(
+,8ž(
+ÿÿäp©p¯p®pã0¬0 x¡(°åp¬p¬0 pãpåp©päx 'p¬0 TUI0ÿÿÿÂ±â€¦Ã‘â„¢Â½Ã‰Â´Â½Â¹â€¦Ã‘Â¥Ã™â€ÂÂ½ÃˆÂÃÂ¡ÿ
+÷
+ÇŠw
+C
+õC#
+
+7
+ÇŠ›
+—
+×3
+à £KKÿù,(99Œ9Ìi,Z %(\9\9*+Ü8œ*\:ž(	Ü(+Ü+ž(ÿÿð pâx (°§pâx (°ãpãp©p¯p®0 pçp©päp¨0 pàpâp¯pÿÿÿ€¢ÂÃÂµÂ±Â½Ââ€¦Â°ÂÂ¡Â½Âµâ€Â½ÂÂ½Â¹â„¢Â¥Å“ÿ
+'
+÷
+÷G0 ¤g
+÷#
+G
+‡Šw
+
+—7
+÷
+ÇŠ›G
+ÿü+Ü+Œ((	Ž(
+,(Ü*\8Ü*\+Ü+Œ+(9\8Þ(
+,8Œ(8Þ(
+ÿÿìx (°£päx (°¤0 pæx (°âx ,8 )°äp©p­0ê8 «8 ,ÿÿÿ´Â°ÂÃÂ½Â±Â¼Ââ€¢Ãâ€žÂÃ‰â€¢ÂÃ‰â€¢ÃÂ§ÃÂþã
+G
+÷GŠ›
+Ç
+×Š‹
+çGŠw
+Š›
+—7
+ÇŠ›ŠcŠÿùì¸l+Œ(Þ(
+,+(
+,(Ü9(
+,)((Ü+Ü+œ8Þ(
+,8\9^(ÿÿð®p£x 'pê8 «8 ,p¯0 pâx (°àp©päp¯0 päpépàx ÿÿÿÂ¡â€¢ÂÂ¬ÂÂ¹Â¤Ââ€˜Â¥â„¢â€¢Ã‰â€¢Â¹ÂÂ¥â€¦Â°ÿ
+Ã
+
+ç
+ó
+
+7Š›
+×ŠÃ
+—
+ó
+
+ÇŠ{
+
+7
+÷''Š‹ÿøÜ(Ü*pì8Ü+Œ(:L(+œ+Ì((
+l(Ü(Þ(
+.(	Œ+Ì((
+l+ÿÿàpàx (°âx¡(°©p¬0 pâx (¸ )°¬0®2á° Rpåp®0 p¯pÿÿÿ±Ã¤ÂÃ‘Â¡â€ÂÃâ€¦Âµâ€ÂÂ±Â¥â„¢â€¢ÂÃ¥ÂÂ±âþw
+÷7GŠ›GŠw
+'Š‹
+w'Š‹77
+—
+÷
+ã
+
+÷ÿûœ(Þ(	Ü(9Ü*\9*((	ì8L:8+\8Þ(
+,(Ü+Ü+œ)(ÿÿãx (°©p¬p©p®qdð¬0 x¡(°âx (°ãp¨0 pàpâp¯pªx (ÿÿÿÃÂµÂ½ÃÂ¹â€¢ÂÂ!=5Â½UMIAI=%1Â°Ââ€¦ÃÃÿ
+Ç
+—
+7Š›G
+—
+÷
+ã
+÷
+7
+÷
+çŠ‹
+—O
+÷
+7Š›
+7
+‡ŠÿùÜ+Þ(	Ž(
+l9(	ì(8œ+Ü+Ü98Ì((
+l+œ)(9(
+,+ÿÿàp¯pâx )°âp©x (°ã0®0 Vx (°âp©x¡(°é0 päp¨x 'ÿÿÿâ€¢â„¢â„¢â€¢ÂÃ‘Â¥Ã™â€ÂÂÂ¡Â¥Â±ÂÂÂ¡Â½Âµâ€þw
+÷
+7
+÷
+çŠ‹
+—O
+'
+÷
+÷G3
+ŠÃŠ‹Š‹
+÷'ŠÿùÜ(*\+\8+Ü8œ9*\+œY<(9*(	Ü(9(
+,8Ü98Ìÿÿð x &0¯0 p®p¯pä0 p©p®p¨x (°âp©pä0 pàpâp¯pæpÿÿÿ€˜â€¢ÃˆÂÂÃ‰â€¢â€˜â€¢Â¹Ã‘Â¥â€¦Â±ÃŒÂÂ½ÃˆÂâ€þ›'ŠÃ
+—G'Š›'“
+Š‹‡GŠ‹'
+çŠ›
+Ã
+
+7ÿûÜ+ž(J,*\)Ü9\8ž(
+l9*\+Ü+Œ(+Ü9ž(
+,8œ8œ*^(	Žÿÿè°ã0®0 Tp¨p©pã0 p©pã0 p£p¯p®päpâp¯p¬p¬x (°¤ÿÿÿÃâ€¦Ã‘Â Â½ÂÂ½Â¹â„¢Â¥Å“ÂÂ¥ÃÂ½Â±â€¦Ã‘Â¥Â½Â¸ÿ
+Š‹
+÷#
+G
+‡Šw
+
+7
+‡Š‹
+7
+³
+Ã
+
+ç
+÷C
+Šÿúl+Œ(ÔÌ(8Þ(
+l+ž(	Ž(+Ü:((Ü+(
+l*\+L+‚‚”ÿÿïpåpâp£x 'p¯päx (°ãpä0¯x &0¯qd°¯pàpâp¯päx (ÿÿÿÃ‘â€¢ÂÂÂ¡â€¦ÃÂ¡â€¢ÃŒÂÂµÃ•ÃÃÂÃÃ‘â€¦Ã¤ÂþW
+ç
+7
+‡Š›
+ç
+wŠ‹
+C
+ã
+'Š‹7Š‹'gŠw
+ÿþ(
+l++(+Ü8œ*\)Ü*\+ž(
+l+(8ž(
+,(Þ(
+,*\89ÿÿã0 x )°®p¤0 päp¨x 'p L0ä0æ0æ0 p¬p©p­p©päx )ÿÿÿÂ¥Â½Â¸Ã¬Ââ€˜Â¼ÂÂ¹Â½ÃÂâ€¢Ã‰â€¦Ãâ€ÂÂ½ÃˆÂþ'Š‹G'
+÷Š›
+7G
+—gŠ‹
+Ç“
+Š›WG
+‡
+÷ÿü*\:ž(	Ü(8+Ü8Ü8Ü*^(+(	Ü((
+.(
+l8œ+*^(
+ÿÿâ0 p¯påpäpãp©x &8 'p pâx (¸ )¸ &0ã0®0 Np¯0 ÿÿÿ¦ÂÃ‘Ã•â€¦Â°ÂµÂ¡Â½Âµâ€ÂÂ¥Â¹ÃÃâ€¢ÂÃ‘Â¥Â½Âþã
+Ã
+'
+÷ŠcW
+7G
+—
+÷
+ã
+
+7
+‡Š›
+ç
+wŠ‹3ÿû(+ž(
+,9Ì(9:\8(
+,(Ü*(
+,(Ü*Ì+Þ(	Œ*^(J.(ÿÿø (°âx (°®päp©x )°¬0¯x¡(°åp¬p¬0­pãpåp©päx 'ÿÿÿÃ‰Ã•Â¸ÂÂ½ÃˆÂâ€¦Ã•Ã‘Â½Âµâ€¦Ã‘Â¥Å’ÂÃ‰â€¢Ã‘Ã‰ÿ“
+ã
+÷
+ã
+
+7
+÷
+×
+ÇŠ‹G
+—
+÷
+ã
+Š‹‡Š›
+×ÿú\+ž(	Ü(9*(	Ü((
+l(Ü99^(
+l+(8ž(
+,8Ü9\+ÿÿä0 x ,8 (¸¡(°¯pâx 'p p©p®x &8 (°àx (°®x &8 ÿÿÿ¹ÃÂÃ™â€¢Ã‰Â¥â„¢Â¥Ââ€¦Ã‘Â¥Â½Â¸ÂÂ½ÃˆÂÂ±Â½Âþ7Š›
+Ã
+Š›Šc
+×
+—77
+—
+÷
+ã
+ã
+÷G
+‡Š‹#
+ÿü8L9(8Ü(Ü+Ü8(	Ü+(+œ+Ì+\(Ü+Ü+\+\*\9+Ü+œÿÿð­x (°èpäx (°âp®x )°¬0¯p®p¯0­p¨p¯pãpä0¯ACL0ÿÿÿÂ½Â¹ÃÃ‘Ã‰â€¦Â¥Â¹Ã‘ÃŒÂâ€¦Â¹ÂÂÃÃ‘Â½ÃÃâ€þ‹
+C
+CC
+õCs
+õCS
+w
+÷'
+³
+'Š‹
+×Šÿúl*\+Œ(9\+œ(Ü*(
+l+œ)Þ(
+,)+‚‚ŒY,Y,Y,(99ÿÿè1¤±h ”0 Ox ,0ãx (°âpæx 'p p©pãp¯p¬x )°äx (ÿÿÿÂÃ‰â€¢ÂÃ‰â€¢ÃÃÂ¥Â½Â¸Ââ€¦Â¹ÂÂâ€°Â¥Â¹ÂÂþG
+‡Šw
+Š‹
+—
+çŠ›
+Ã
+
+7Š›
+çŠc
+—ŠcŠ›Gÿø	Ò‚\9\9*+Ü8œ*\:ž(
+,)(*œ+Ü¸l+L8Ì((Ü+Ü+ÿÿàp¬x (°äx (°¤0 p¯p®p£x 'pê0 x (°èp©pä0à0¬0 ÿÿÿÂ¼ÂÃ‘Â¥Âµâ€¢Â½Ã•ÃÂ½ÃÂ¥ÂÂ¹â€¦Â°Â½Â±â€¦Ã•Â¹ÿ
+7
+‡Š‹#
+Š‹''
+÷#
+ÃcC“g
+×3³
+ÿù(
+,8Ü9(8Ü9\+\+^(
+l8œ:L8Œ9œ8(
+l8Ü8Ì+Ü:ž(ÿÿðâp¯0 x¡(¸ )°©p¬0¯pêx (°âp¯0 pãp«p©pà0®0 Bpÿÿÿ‘Â ÂÃ‘â€¢ÃÃÂÃÃ•â€°ÃÃ‰Â½Ââ€¢ÃÃâ€¢ÃŒÂÿw'
+÷GŠw
+'Šw
+×
+—
+×
+÷'C
+
+‡
+÷
+×Šÿü+Ü9(
+,+\8+Ü(Ü+Ü+ž(J,*\Y<((Ü*(
+,(Ü*Ü8Ì(ÿÿø (°ãp¯p¬pæp©p®qdð pàp¨pépãp©p£x )°¬p¬pé0 pÿÿÿ¹ÃÂ¥â€˜â€ÂÃ‘Â¡â€ÂÂ¹â€¢Ãœâ‚¬Â¹Ââ€¦ÂÂ¡â€þw
+÷C
+×Š{C
+÷
+—7
+ó
+Ó#
+äT×
+£
+ó
+Š‹
+ÿü:99\8ž(	Ü+Œ(^(J.(J.(
+,(Ü9*\9ž(	Ü(ÓQL+ÿÿÓERPROFILE0¬0 APPDATA0¯LOCALAPPDATA0 x )°®pÿÿÿaÂÃ‰Â½Â½Ã‘ÃŒÂâ€¦Ã‰â€ÂÃÃ‰Â½Â©â€¢ÂÃÂµÿ
+Ç
+÷
+7Š›
+Ã³
+ŠÃ
+÷
+÷G7G'Š›
+Š‹
+çgÿú\8œ+Ü+œ+^(
+,+œ9(9Þ(
+l8Ì((
+l+++Ü9Ü+*\8ÿÿäx (°¤0 x )°®p¤0 p®p¯0 pàpâp¯pæp©x &8 (°â0 ÿÿÿÃ‰â€¢â€˜â€¢Â¹Ã‘Â¥â€¦Â±ÃŒÂÂ½ÃˆÂâ€¦Ã‰â€°Â¥Ã‘Ãþ'Š›'“
+
+7
+÷
+çŠ‹
+—
+wW'Š›G
+—
+÷
+ã
+
+÷gÿø
+,8œ8œ*^(	Ž(
+,8Ì(9Þ(
+,8ž(	Ü(*\+œ*(
+,8œ*\ÿÿø (°¤0®0 Tp¨p©pã0 p©pã0 pàx )°äp¨0¯p£p¯p®x¡ÿÿÿ¥Å“ÂÂ¥ÃÂ½Â±â€¦Ã‘Â¥Â½Â¸Â°ÂÂ¹Â½ÃÂâ€¦Â¸Â=Lÿ
+7Š›
+çŠcŠÃ
+÷ƒ
+
+wWŠ›'Š›
+çGŠ‹Šw
+ÿü(œ+Ü9\8Œ(8Ü+Ü9\8œ(Þ(	Ü+Ü9(
+,8Ü9+Þ(	Œ+ÜYÿÿïpàpâp¯päx (°£päx (°¤0 p¨x )°ãp¨x (°ã0 pâx ÿÿÿµâ€¦Â¥Â¹â€¢ÂÂÃ•Â¹ÂÂ¡â€¦Â¹Ââ€¢ÂÂ¸Â9Â¼ÂÃþG—Š‹
+7
+‡Š‹
+7
+³
+
+÷#
+Šc
+—Š‹Š‹Š‹'Šÿú,+œ9*^(
+l+(9Þ(
+l8Ì(8ž(
+,8(
+.(
+l9(
+,)ÿÿÊ
+Fpâx (°ãp¨8 «0®p£x )°£p¨x 'p¯pä0á0à0­x '°ÿÿÿ½Ââ€¦Â¹â€˜Â¥â€˜â€¦Ã‘â€Â´Ã€Ãâ€Ã˜Ã‰ÂËœÃ˜Â´ÿK
+ÓGŠ‹
+C
+×Š{“—K
+Óƒ#‡
+7
+CcÿøÌ9Œ9Œ9\¹Ì9Ì+œ*œ8Ü+Ü+Œ(ÒL8Œ9L9ž(	ì:L:9:\ÿÿðç0éx '°æ0éx &8 '°ép£rç0æ0àx 'pæp¤0è0é0è0å0ÿÿÿÃ¥â„¢â€žÃ”ÃœÃâ„¢â€°â€Ã Ã¤ÃË†Ã”ÃŒÃ‰â€¦â€Ãþ'.s—Kƒ3cW..—Š{SSGŠ‹
+C
+ŠÃÿú\+ž(	Œ8Ì9L8\8Ü+Ü9\8œ(Þ(	Ü+Þ(
+,9œ*^(	Ž(
+,+œ(ÿÿà'p¯pàpâp©p¯pâ0­x )¸ &0­p©pãpãp©p¯p®0¯pâp¯pÿÿÿÂµÂµâ€¦Â¹Â¥â„¢â€¢ÃÃÂâ€¢Â¹Ã‘Ã‰Â¥â€¢ÃŒÂ¸Â%ÿC
+
+—
+ç
+7
+ÇWŠcŠ‹3
+Š‹‡Š›
+7C
+'Šÿü+\9\+œ*\9(8Ü+ž(
+l88Ü*+Ü98Ì+((
+l(Ü99ÿÿà)°¬0ä0ã0­pãx (°£p¯p®p¤0 p£x )°åpãx )°¬0 REÿÿÿ°ÂÃÃ‰â€¢Ãâ€¦Ã‰â€¢ÂÂµÂ½Ã‰Â¥ÂÂ¥Â¹â€¦Â°Ââ€þ›
+ç
+C
+Š‹‡Š‹
+7WGŠ‹
+C
+×ŠcŠ‹'
+—gŠ‹
+ÿü(*(
+l8œ+ž(
+,8Ü8Þ(
+,8Ì+((J,*\8œ8Ü9((J,ÿÿð®p£päp©p¯p®x )°¬0 pâx (°£x (°©pàpäpã0 pçp©ÿÿÿÂ ÂÃ‘Â¡â€¢Â¥ÃˆÂÂ¥Â¹Â¡â€¢Ã‰Â¥Ã‘â€¢ÂÂµÂ¡Â½ÂµÿŠw
+
+Ç
+—
+×
+—GŠ›G
+—
+÷
+ã
+Ã
+Š›WG
+‡
+÷'
+ÿü9(
+l9*\9ž(	Ü(*\8Ü+Ü+(
+l9(
+,)(8ž(
+,)Üÿÿø (°ãpãp©p¯p®0 x )°®p¤0 x (°®pæp©pâp¯p®p­x ÿÿÿ¹ÃÂÃ‰â€¢Ââ€¢Â¥ÃÃ‘ÃŒÂ¸ÂÃ•Ã‰Ã‰â€¢Â¹ÃÂÃÿ
+÷W'
+7Š‹KS#cwŠ‹Š‡€.sscŠwÿü+(9(
+,8Ü9(	Ü:L9L9Ì9ž(
+,)9¼Z ,¹Ì:89Ü¸ÿÿè0¬0 x &0¯p£pã0ä0å0åx¡(¸ (°¤0ã0èñh ²ç0ã0æráÿÿÿÃ‰Ë†Ââ€¦Â¹ÂÂÃÃ‰Â½Ã‘â€¢ÂÃ‘â€¢ÂÂÃÃ‘â€¦ÃþGŠw
+GŠ‹7GŠ{WŠc.sŸ€.sƒÿøL(8ž(
+,+^(
+l*\+Œ((J,*\:(
+,)+Œ(Ü8œ*\)Ü*ÿÿîx )°¬0ã0à0­pãx (°£p¯p®p¤0 x¡(¸ )°©p¬påpâx ÿÿÿâ€¦Â¹ÂÂ0ÃÃ˜Ã˜ÂÂâ€¦Ã€Ââ€¦Ã‰â€ÂÃÃ‰â€¢ÿ7Š‹'gŠ‹
+C³
+
+ç
+ó
+'Š‹G'
+÷7Š‹
+7ÿù*\9ž(	Ü(+œ+Ì+\+Ü9\98Ü*^(	Ž(	Ü+\8ž(
+.(
+l)ÿÿàp£p¬x )°©p­0 p©pã0 p­x )¸ &8 'p®
+
+Op®x 'p ÿÿÿÂ¹â€˜â€¢Ãâ€¢Â¹â€˜â€¢Â¹ÃÂÃ™â€¢Ã‰Â¥â„¢Â¥â€¢Ãþ#
+
+ç
+÷s
+'Š‹g
+—Š‹w3
+3
+õ3#
+õ3ÿøL9((
+l+œ)(œ*\8Ü*Ì8Œ+Ì8Ì((
+l)Þ(
+l*\+œ8Üÿÿð päp¨p©pã0 x (°èx )°£pä0 p£x )°®x &0©x &8 ÿÿÿ‘â€Â°Ââ€¦ÂÃ‘Ã•â€¦Â°ÂÃÂ½Ã•Ã‰Ââ€Â°ÂÃ‰â€þ›s
+
+÷WG
+7
+÷
+×Š‹3
+Ã
+W
+ç
+7
+‡Š›
+ç
+wŠ‹ÿù(8ž(
+l9Ì+Ü+*^(J.(
+,(Ü:\(Ü+(	Ü+Ü9Ü*^(	Œ9ÿÿè0 x ,8 (°¨x )°æp©p¯pâ0 x )°®p¤0 p©pãp¯p¬x ÿÿÿ‘Â¥Â½Â¸ÂÂ±Â¥ÂµÂ¥Ã‘â€¦Ã‘Â¥Â½Â¸Â¸Â%ÃÂâ€˜Â½âþ‹3
+
+ç
+÷C
+'Š‹Š‹Š›C
+G
+‡Šw
+
+7
+÷ÿû\8+(
+,9(
+,)((Ü*(
+,(Ü*Ü8Ì+((Ü+Ü+\8*ÿÿìx (°â0 p¯pâ0 x &0©x¡(¸¡(¸ (°âx (°®päp©x )°ÿÿÿ¸ÂAâ€¦Ã‰â€¢Â¹ÃÂÃÂ¥Â±Â°ÂÂ¹Â½ÃÂâ€¦Â±Ã‘â€þ‹#
+7
+÷W'
+7Šw
+÷G'Š›
+7
+·Š‹#
+÷'
+÷ÿûÜ¹Ì((	Œ9\8œ*\+œY<(9*(
+l9(8œ9\+Œ+Œ(8ÿÿà0­A0ä0 pâx (°­x )°©p®pã0 påp®p£p¨x (°£p«x ÿÿÿÂÃ•Â¹Ã‘Â¥Â°ÂÂ¥Ã‘ÃŒÂÃ™â€¢Ã‰â€˜Â¥ÂÃÂâ€¦Âþç
+C
+Š‹
+—
+çŠ›
+Ã
+
+—
+çGŠ‹
+w'
+—G“
+'Šÿþ(
+n(	Ž((
+l(Ü*Ì:Ì(+œ+Ì((J,9\++(8Ü9\*\ÿÿø 'p¬0 TUI0¬0 x )°¬p¬0­pàp¬x )°äx¡(°¯pâp­0¬ÿÿÿÂ¹â€¦Ã‘Â¥Ã™â€Ââ€¦ÃÃÃ‰Â½Ã™â€¦Â°Â°ÂÃÂ¡Â½ÂþÇŠw
+C
+õC#
+
+÷#
+eTÄÃ
+
+7
+ÇŠ›
+—
+Ó
+ÿü(œ+Ì((Ü+Ü+\+\*\98Ì+(8Ü9(
+l)Ü*\+œY<+(ÿÿàpåpãp¨0¬0 pâx (°­p¯päx 'p CI0¬0 p¯påpäpãp©ÿÿÿ˜â€ÂÃ‰â€¢â€¦â€˜ÃŒÂ°Ââ€¦ÂÃ‘Ã•â€¦Â°ÂµÂ¡Â½ÂµÿŠw
+Š›
+7
+7Š‹73
+
+÷#
+7G
+÷Š‹
+C
+×ÿø8œ+Ü+Ü¹Ì((
+,:(
+,(Ü9\9*\+Ü+Œ+‚‚ŒY,Y,Y,(ÿÿä0æ0é1¤±h ”0 Ppâx (°ãx (°âpæx 'p PASS0 p£p¯ÿÿÿÃ‘â€¢Â¹ÃÂâ€°Ã•ÃÂâ€°Â±Â½ÂÂ¬ÂÂ½Â¸Ââ„¢â€¦ÿ
+—
+ÇŠ‹
+C
+gŠ‹'
+—Š‹
+—Š‹#
+
+Ç
+—Š‹Š‹
+7ÿú\(Ü+(	Ò‚•ž(
+,8œ*^(J,*^(
+,8Œ(+\9œ89¹Ì:\*ÿÿá0­0ç0­p®x ,0¬pª0 x &8 (°¬p©pæx (°âx (°¤0 pÿÿÿ€¦ÃÃÂµâ€¦Â¹ÃÃâ€¢ÃˆÂAMLÂâ„¢Â½ÃˆÂÃÂÂ½ÿŠ‹
+C
+3
+õ3#
+õ3C
+Š›
+ç
+C
+'
+—7ÿúÌ8Œ+Ì8Ì+(8ž(
+,8+Ü8œ9*\+œY<9L8L+Ì9L8L((ÿÿà)°®x &0©x &8 )°äx 'p pâx (¸¡(¸ (°âx (°®p£xÿÿÿÃŒÂ°ÃÂ¼ÃÂÃÃ‰â€ÂµÃ•Â¹Â¥ÃÂÃÂ¹â€¦ÃÃÂ¡Âþ÷G3
+Ã
+7GŠ›ŠÃ
+ÇŠw
+7
+÷W'
+7Šw
+÷ÿü+Ü9(
+,(Ü9(
+,)+Ü8œ+Ü+Ü9(*(
+l8Ü*(
+,8Ì+ÿÿàx (°èx )°£pä0 A0â0¯A0ã0 x )¸ &0­p©pãpãp©p¯ÿÿÿÂâ„¢Â¥Â±â€¢ÃŒÂ°ÂÂ¥Â¹Ã‘â€¢Â¹Ã‘Â¥Â½Â¹â€¦Â°ÂÃþ7W
+7
+7Š‹77
+÷#
+Šc
+÷
+7W
+×Š‹
+çGŠ›G
+ÿü+Ü+Œ((	Ž(
+,+9(	ì((
+l+œ)((
+l++(8ž(
+ÿÿäx )°©p®x (°¤0 x¡(°åp®p£päp©p¯p®x )°¬0¯p©pãÿÿÿÂ±â€¦Ã‘Â¥Â½Â¸Ââ€¢Ã™Â¥â€˜â€¢Â¹Ââ€Â¸ÂAÃ‰â€¢ÿ7Š‹'gŠw
+G
+‡Š›C
+'Š‹
+÷'C
+Š›ÿü((	Ž(
+,+*\9ž(
+,8ž(
+,)((Ü+Ü+œ9(
+,+œ9:Ìÿÿð©pä0 p©pã0 p®p¯pä0 x '° p£p¯p®x¡(°©pâp­x (ÿÿÿÂÃÃ•ÂÂâ€¢ÃÃâ„¢Ã•Â°ÂÃÃ•â€°â€¦Ââ€¢Â¹Ãÿ
+Š‹‡Š‹
+7WG
+—
+÷
+ã
+à ¥G
+‡Šw
+Š›WG
+‡
+ÿü8œ*\9(
+l9*\9ž(	Ü(9(
+l8Ü*Ì((Ü+Ü+\8+(
+ÿÿäp©p¯p®0 x (°®pæx (°¬p¯pàx 'p p©pã0 x¡(¸ )°ÿÿÿ±â€¢ÂÃ¨â‚¬â€°ÂÂ¡Â¥Â±ÂÂâ€¢Ã¡Â¥ÃÂÃ•Â¹ÂÂ½ÿ
+çŠ‹
+—'
+×Š‹
+C
+Š›Š‹GŠ‹#Š
+³
+×ÿøÌ:Ì((Þ(
+l8(
+l(Ü*\9:L(8\9^(
+l8ž(
+l+œ9*\ÿÿø (°¤2á°®0 Op®x 'p pâx (¸ )°¤0­p¯p®p¬pé0 päÿÿÿ¢Ã‰ÂµÂ¥Â¹â€¦Â°ÂÃÃ‘â€¦Ã‘Ã•ÃŒÂÂ¥Â¹ÃÃâ€¢ÂÃþG
+—
+÷
+ã
+
+7
+÷
+çŠ‹
+—'
+×3
+Š‹Š›
+—
+ÇŠ‹
+C
+ÿü8\9^(
+l8ž(
+l+œ9*\+ž(
+,)+Œ(œ+Ì(88œ+Ü(Þ(ÿÿðãpã0 p©x &8 (°®päp©päpé0 p¯pâ0 pãx )¸¡(¸ 'ÿÿÿÃ‰â€¢Â±â€¢â€¦Ãâ€ÂÂÂ½Â¹Ã‘Â¥Â¹Ã•â€¦Ã‘Â¥Â½Â¸ÿ
+wŠ›3
+7W
+Ç
+—Š‹
+C
+ã
+G
+ó
+
+ç
+÷C
+ÿü*\+ž(J.(
+,8Œ((
+,:*\98+((J,8ž(
+.(	Ü((ÿÿà)°àx )°£p©päpé0¬0 p«p©p¬p¬0 x )°®0 x )°âx ÿÿÿ¥Ã‘Ã‰â€¦Ã‰Ã¤Â9Â½â€˜â€ÂÃÃ‰Â½Ââ€¢ÃÃŒÂ°ÂÂþ—
+çg
+÷
+·Šw
+
+çŠ›G
+—gŠw
+'Š‹g
+—Š‹sÿø8ž(
+,(Ü+Ü9ž(
+,8œ:L+Ü8ž(
+,8Þ(
+,9+(8ž(
+,+ÿÿà)°åp®p£p¨0 päp¨p©pã0 p¯pâ0 x )°®p¯päp¨x (°ÿÿÿÃ™â€¢Ã‰Â¥â„¢Â¥â€¢ÃˆÂ°ÂÂ½ÃˆÂÃ‰â€¢Ãâ€¢â€¦Ãÿ
+
+7
+‡Š‹
+7
+·3
+ã
+ç
+ó
+7
+÷W'
+7Šw
+÷'
+ÿü+Ü¹Ì(+\9\9(
+l9*\+Ü+Œ(+Ü8Œ((J,*\+ž(
+l+ÿÿø )¸ &0­p©pãpãp©p¯p®0 pâx (°£x (°©pàpä0 pçxÿÿÿÃŒÂÂµâ€¦â€˜â€ÂÂ¥Â¸ÂÃ‰â€¢ÃÃÂ½Â¹Ãâ€Â¸Âü7Š›
+çŠc
+—ŠcŠ›GŠ‹Š{“ƒC—.sŸ€.sÿùL9L9(J,)+(*\8Ü+Ü+(
+l9(
+,)8Œ9”TÔÌ((ÿÿð®p¤0 pãpåp£p£x (°ãpãx¡(°åp¬0 päpépàx 'p¯x ÿÿÿ¥â„¢â„¢â€¢Ã‰â€¢Â¹Ã‘Â¥â€¦Â°ÂÃ‰â€¢Ââ€¢Â¥ÃÃ‘Ãþ3
+'Š‹
+×Š›
+—
+ã
+Š›gŠ›
+—
+ÇŠ›ŠÃ
+ÇŠw
+Ãÿø(9\9(8L8+PL9(8Ü9(
+l:\8Ì(9\+œ(Ü*ÿÿè°£p«x (°¤0 x )°®p¤0 Rp©pãp«0â0¯0ã0 x )¸ &0ÿÿÿ¥ÃÃÂ¥Â½Â¸ÂÂ¥ÃŒÂÂ¹Â½ÃÂÂÂ±Â½Ãâ€¢ÂÂ¸()9ÿŠ‹Š‹Šc3
+—
+÷W#
+ŠcŠ‹
+7
+—7
+—
+÷
+ã£
+ÿü+(
+.(
+l9ž(	Ü(8L8+PL9((++Ü(Ü*Þ(
+,)ÿÿðçp¨p©p¬x 'p päp¨x 'p p¯pçp®p©p®qdð pâpåp®pÿÿÿ¥Âµâ€ÂÃâ€¦â„¢â€¢Â±Ã¤ÂÃ‰â€¢ÃÂ½Â±Ã™â€¢ÃŒÂÿG
+‡Šw
+WŠ›'Š›
+çG
+—
+çŠ‹
+C
+
+7
+‡
+—
+Çÿù+(+Ü8Œ((
+,:8+*\(Ü*\9+:L(8+Ü8Ü98ÿÿïp®x 'p päp¨x 'p påp®x )¸ &0­p©päpäx (°¤0 pÿÿÿ¹Â¥ÃÂ¸ÂQÂ¡Â¥ÃŒÂÂ¥ÃŒÂâ€žÂÃ™â€¢Ã‰Â¥â„¢Â¥â€þ‹#
+÷'W
+çG
+—
+×Šw
+Š‹Š›
+—
+ÇW'Šw
+Ã
+
+ÿü+Ü9((	ì(+ž(
+,9Ü+:L(+Þ(8Þ(
+,8œ9ž(
+,)ÿÿðàpâp¯x &0åp£pä0 x¡(¸ )°©p¬påpâx 'p x )°®p¤ÿÿÿÂ¹Â½ÃÂâ€žÂÃ‰â€¢â€¦ÃÂ½Â¸Ââ„¢Â½ÃˆÂâ€¦Â¹Â½ÿG
+‡Š‹#
+GŠ‹7C
+ŠÃŠ›GGŠ‹'“
+ã
+çÿûÌ(8Ü9(
+l)Ü*\+œY<+((Ü+Ü+\+\*\98Ì+(89ÿÿãp¨0¬0 CI0¬0 p¯påpäpãp©x &8 'p¯p¨p¯pãpä0¯ACÿÿÿâ€¦ÂÃ‘Â¥Â½Â¹ÃŒÂÂ½ÃˆÂâ„¢Ã•Â±Â°ÂPÃ„Ã€Â½PÃ„ÿ#
+÷
+çŠ›G
+—gŠw
+÷
+ÇŠ›GŠ‹
+÷'
+Ó
+ôeTÄÃÿø(Ü+(
+l*\+L+Œ(*(	Ü(88œ*\+Ü8Œ8Ì8+\8Þ(ÿÿð£p¯p®p¤0 päp©p­x (°¯påpä0 x )°®p¤0 p©p®p¨xÿÿÿÃ‰Â¥Ã‘â€¢ÂÂµÂ¡Â½Âµâ€ÂÂ¥Â¹ÂÂ¥â€˜â€¢Â¹ÃÂÃþ'Š‹
+×Š›
+—
+ã
+
+‡
+—7G
+÷'
+—
+7Š›
+Ã³
+Šc
+ÿü(+œ+Ü9(8ž(
+,9Ü8œ*\9(	Ü(9*(
+,+L(+Ü8Œÿÿðàpâx (°ãx (°®pä0 päp¨p©pã0 p¬x )°ãpä0 x )°ÿÿÿÃâ€¢ÃˆÂâ€¦ÃŒÂâ€¦Â¸Ââ€¦ÃÃÃ‰Â½Ã™â€¢ÂÂÃþ'W
+çG
+—
+×Šw
+
+7
+Ç
+÷7W'Šw
+à £KKK
+Ãÿù9Ì8i,Z %(\9\9*+Ü8œ*\:ž(	Ü((+Ü9\+ž(ÿÿø (°¤0 pâx (¸ )°¤0­p¯p®p¬pé0 pâpåp®päp©p­x ÿÿÿâ€˜Â¥â€¦ÂÂ¹Â½ÃÂ¥ÃŒ()Â½ÃˆÂÃ‘Â¡â€ÂÃ‰Ã•Â¹ÿG
+—
+×Šw
+Šc
+—Š›
+w
+ç
+÷7
+—3
+WŠ‹7Gÿú\+Ü+Œ+(9\8Þ(
+,8Œ(8Þ(
+,+(
+,(Ü9(
+,)(9žÿÿè°âx ,8 )°äp©p­0ê8 «8 ,Ã°­0¬0 pâx (°æp©pãxÿÿÿÃˆÂâ€¢Â°ÂÃ‰Ã•Â¹Ã‘Â¥Âµâ€Ââ€¢Â¸Ââ€¢Ãâ€¦ÃŒÿ
+'WGŠ›3.
+ã
+G
+‡Šw
+7Š‹
+ÇŠ‹
+7GŠ‹ÿù(88ž(
+,9œ*^(
+,9Ì((
+l9\9*+Ü8œ*\:ž(
+,)ÿÿð¯p®p¬pé0 pâx (¸ )¸ &0©p®qdð pâx (°¬x )°äx ÿÿÿÂÂÂ½â€˜â€Â½â€˜Â½ÂÃ•Âµâ€¢Â¹Ã‘â€¦Ã‘Â¥Â½Â¸ÂþW
+çŠcŠ‹#
+G
+‡Š‹7Šw
+Gw
+ó
+Š›ŠÃÿü+Ü+9\9(	Ü(8(
+l(Ü*Þ(
+l)Þ(	Ü(9(
+l8œ)Þ(
+ÿÿäpã0 x¡(°¯pâ0 päp¨p©pã0 pãx (°ãpãp©p¯p®0ê0 ÿÿÿ©qUÃâ€¢Ã‰Ãqâ€¦Ãâ€¢Â¸Â¹â€°â€¦Â¹ÃÂ­â€¦Â±Â¥âþ‹eÃ
+ç
+•ÇŠ›
+wŠ‹
+çEÇ
+ç
+ÕÇ
+ç
+÷ŠcŠ‰÷
+ÿü+Þ(	Œ9\+(
+,8×8ž(
+.(J.(
+,8ž(
+,+œ(Þ(	Ü+\8*ÿÿàx )°®p¤0 C0ê\Upãx (°âpã\x )°ãx (°®0®x ,8 )ÿÿÿÃÂ­â€¦Â±Â¥â€¢Ã™qÃÃâ€¦Ã‘â€¦qIÂ½â€¦ÂµÂ¥Â¹ÂþuÇ
+ç
+ÕÇ
+ç
+÷ŠcŠ‰÷
+×
+÷ŠcW
+ÇŠ‹5ÄŠ‹Š›ÿøž(
+,+ž(	Œ*\++\9Ü+Ü8œ*Ü8×8*L+\(Ü+Þ(	Œ*\+œÿÿð­x )°§x (°®pä0®0 Np¯0 pàx )°£p«x )°§x 'p pÿÿÿ‰Â¥Ã‘â€¢ÃŒÂ°ÂÃÃ‰Â½Ââ€¢ÃÃŒÂÃ‘â€¢Ã‰ÂµÂ¥Â¹âþ›G
+—
+÷
+ã
+Ã
+'Š‹7GŠ›'C
+Ã
+WŠ›'Šÿúl+œ9*\+ž(	Ü(8ž(
+,+(
+.(
+l8Þ(	Ü+(8Þ(
+,8Üÿÿð©p¯p®0¯p£pâx (¸ &8 (°®päp©x )°¬0 p©p®pãpàxÿÿÿÂÃ‘Â¥Â½Â¸ÂÂ½ÃˆÂÃÂ¥â€˜â€¢ÃˆÂÂ½Ã•Ã‘ÃÂ¥â€˜ÿŠw
+Š›
+7
+7Š‹73
+wŠ›3
+Š›WG
+‡
+÷'
+ÿü:ž(
+,)+‚‚”œ9\+Œ(+Ü+ž(	Ü((+Ü9\+ž(	Ž(
+,)ÿÿàpâx (¸ )°¤0­p¯p®p¬pé0 pãp¯påpâp£x 'p p­x )ÿÿÿÃâ€¢ÃˆÂâ„¢Â½ÃˆÂÃ‘Â¡â€Ââ€¢Ã¡â€¦ÂÃÂâ„¢âþ›
+—
+ÇW'ŠwŠ
+³ŠÃ
+7
+‡
+—
+Ç
+C
+Š‹‡
+—C
+Wÿûœ(Ü+Ü+ž(J,*\8œ+^(
+,)((
+n(J,9(
+,8Ž(*Ì8L8ÿÿðàp­pã0ë0 p£x )°àx )°£p©päpé0 pápåx )°âx )°ÿÿÿ‘Â¥Â¹â€¢ÂË†Â¸Â%â€˜â€¢Â¹Ã‘Â¥â„¢Ã¤ÂÂ¥ÂµÃÂ±âþ‹
+×Š‹
+çGŠ›G
+—
+÷
+ã
+
+7
+÷
+çŠc
+—G
+—
+÷
+çÿü+(+*^(J.(
+,(Ü:\(Ü+(	Ü(+Ü9Ü+ž(
+,8œ8Ü**ÿÿà0 x )°®p¤0 x )°®pé0 x &0¯p£påp­x (°®päx (°ÿÿÿÃâ€¦â„¢â€Ââ€˜Â¥ÃÃÂ½ÃÂ¥Ã‘Â¥Â½Â¸Ã¬Ââ€˜Âþ—7G
+—
+ç
+wW
+—7
+ƒ
+
+—
+ç7GŠ›
+Ç
+ÇŠ‹
+C
+ÿü9(
+l9*\Y,((Ü+Þ(	Ž(	Ü((J,8œ+Ü+L(9*(	Üÿÿðåp®p«p®p¯pçp®0 p¬p©pæx 'p p£p¨p©p¬p¤0 pãpäÿÿÿ¦Ã‘â€Â¸ÂÂ¼ÂÂ¹Â½ÃÂÃ‰â€¢Ãâ€¢â€¦ÃÂÂâ€¦ÿ
+çŠc
+—ŠcŠ›GŠw
+gŠ‹'
+—Š‹
+—
+7Š›G
+—
+ÿü+Œ+Ü9(
+,8Ü98Ì(+Ü8Œ(*\+ž(J.(
+,8Œ((
+,:*ÿÿä0 p£p¯p®x¡(°©pâp­x )°äp©p¯p®0 x¡(°âp¯p­0 pÿÿÿ¡â€ÂÂ±â€¦ÃÃÂAMLÂÃ‘â€¢Ã¡ÃÂ¸ÂÂ¼ÂÂ¹Â½ÿC
+Š‹‡Š‹
+7WGŠw
+Š›
+7
+·Š›
+wŠw
+
+7ÿûÞ(	Ž(	Ü+(8ž(
+.(
+l)(88œ*\9ž(
+l9(	Ü(8Þÿÿè°ãpãp©p¯p®0¯p£p¯p®x¡(°©qdð x &8 )°äx '°¬0 ÿÿÿ¦Ã•Ã‘Â½Âµâ€¦Ã‘Â¥Ââ€¦Â±Â±Ã¤ÂÃ‰â€¢Ã‘Ã‰Ã¤Ââ€°ÿ
+Ç
+÷
+7
+·Š‹
+C
+G
+÷
+÷
+Ç3
+
+÷#
+Š‹
+÷
+Ç
+Ç
+÷ÿùÌ((	ì(*+Ü*\8Ü9(
+,)((	Ž(
+,8(
+,+ž(	Ž(
+ÿÿîp£pé0 p¯påpäpãp©x &8 'p päp¨x 'p päpçp¯0 pÿÿÿ‰â€¦Â¹Ã‘â€¢ÂÂÃ‰Â½Â½Ã‘ÃŒÂ¸Â%ËœÂÂµÂ½Ã‰â€ÂÿŠ›
+7
+7Š‹73
+
+÷#
+Š{
+
+×WGŠ›G
+—
+÷
+ãÿø*\8Ì(8ž(
+,8\9\*\8ž(
+,)+(8ž(
+,99\8œ+Œ(ÿÿïp®x 'p pàpâx (°£p©pãx 'p x &8 (°£p©pãp©p¯pÿÿÿÃÂ¥Ã‘Â ÂÃ‘â€¦Ã‰Ââ€¢ÃÂâ€¦Â¹ÂÂÂÂ½Â¹Ãâþ‹WŠ‹
+ç
+7Šw
+ã
+Š›'Š‹
+çC
+
+7
+÷
+çGŠÿú,:9(((
+l(Ü*Ü8Ü9+Ü8(8ž(
+,8\9\*\8ž(
+,ÿÿð päp¨p©pã0 p®x )°âpâp¯pç0 x &0©x )°§p®p¯pãÿÿÿÂ¥Å’ÂÂ¡â€¦Â¹â€˜Â½â„¢ËœÃ¬ÂPÃ„Ã€ÂµÃÂÃ‰â€¢Âþ×Š›
+—
+ç3
+W
+çŠ›Šc
+×
+—GGŠ‹
+C
+w
+‡
+—
+ÿþ(	Ü(9*(
+l9((
+,:9(
+,8œ+ž(
+l+(8œ9\+œÿÿð©p­x 'p p£p¯p®x &0©päp©p¯p®0 p©pã0 påp®pâxÿÿÿÃÂ½Â±Ã™â€¢ÂÂ¸((Å’Å’Å’Â0ÃÃœÃ„Æ’Å PÂÂ½Âµÿ
+ÇŠ‹GŠw
+7GŠ›G
+—K
+'W
+çG
+—
+×Šwÿø(	Œ*^(
+l)Ü+œ+Ü8Ü*\8Ì(9Ü*\9*+Ü9\9((Ü*ÿÿé°®p§p©p®qdð p©p®pãpäx )°¬p¬x )°äp©p¯p®
+
+Rxÿÿÿâ€¦ÂÂµÂ½Â¹Â±Ã¤ÂÂµâ€¦ÃÃâ€¢ÃˆÂÂµÃ™Ã€Ã•ÃÂÿ
+—O
+Óƒ
+×ŠÃg
+ãS
+
+7
+÷
+×
+ÇŠ‹GŠ‹
+C
+ÿü*(	Ü((
+l9\9*+Ü8œ*\:ž(
+,)(*\+œ8Ü8(
+,(ÿÿäp©p¯p®0®0 Ip®pãpäx )°¬p¬x (°¤0 pãpäx )°äp©ÿÿÿÂÂµâ€¢Ã‘â€¦â€˜â€¦Ã‘â€žÂÃ‰â€¢ÃÂ½Ã‰Ã‘ÃŒÂÃ‰âþ‹Š‹Š‹'Š‹
+ç
+7Šw
+×
+“C
+ã3
+ã
+Š›
+ç
+ÿü(*L(Ü+Þ(	Œ*\+œY<(\)Þ(
+,+œ98L+Œ9+Œ8:Ìÿÿðäp¨x (°ãx 'p x )°âx 'p p®p¯pä0 pàpâp¯p¯rç0ÿÿÿ½ËœÂÃ‘Â¡â€ÂÂ±Â½â€¦â€˜â€¢ÂÂÂ±Â¥Ã™â€ÂÃ™âþ‹'7
+—
+÷
+ç3
+ã
+7
+÷W'
+7Šw
+Š›
+wŠ‹
+çGÿøÌ+\8œ9\+œ+ž(
+,8Œ+œ98Ì8Œ98Ì+L8Œ99Ì+Ì:L89ÿÿí0é0á0á0¯0é0å0â0­0á0à0â0å0 pãx (°®x &0ã0 SIÿÿÿI4Ââ€¦â„¢Ã‘â€¢ÃˆÂ9Q}MQQ1Â°Ââ€¢ÃÂâþ›
+ÇŠ›GŠ‹3
+Š›Š‹GŠ‹##S
+×3
+Š›ÿûœ)(8ž(
+,8\9\*\8ž(
+,8Ì(+Þ(8Þ(
+,8œ9ž(
+,)ÿÿàp£p¨p©p¬p¤0 x (°èp©pä0 pçp©päp¨p©p®0á0à0à0ÿÿÿµÃŒÂÂ½Â¸Â]Â¥Â¹â€˜Â½ÃÃŒÂ°ÂÃÂ¡Â¥ÂÂ ÂÂ¡â€þ›3
+
+ç
+ó
+'
+÷
+7Š‹73
+×
+w'
+÷W
+'ÿûÞ((	Ü+Œ((
+l8ž(
+,+œ9(8Ü8+Ü9+\(Ü*(
+,ÿÿð«0 p¯rç0é0ã0ä0­0á0à0ã0è0 p£p¯p®x¡(°©pâp­pãÿÿÿÃ‰â€¢Ã…Ã•â€¢ÃÃ‘MÃ‘Â½Ã€Â°ÂÂµÂ¥ÃÃÂ¥Â¹Å“Â]Âþ—
+çŠc
+÷w3
+'
+÷ŠÃŠw
+Š›
+ç
+C
+Š‹Š›
+ÿü+(
+,)+Ü8\9^(
+l8ž(
+l+œ9*\+ž(
+,)((	Ž(
+.(ÿÿø &0¬p©p®x 'p p¬p¯p§p©qd°®0 RPC0 x )°§x (°®ÿÿÿ}Ãâ€¢Ã‘Ã‘Â±â€¢ÂÂÂ¥ÃŒÂÂ¹Â½ÃÂÃÃ‰Â½Ââ€¢Ãþ73
+GŠ‹'
+×
+—
+çŠ›G
+—
+÷
+ã³
+
+“
+'Kÿûœ+\)9Œ9Ì+L9Ì8L+Ì:L8L+L:L9L((
+l+œ)(8œ8Yÿÿíp­p¯x &8 'p®pªpã0å0ç0é0­0å0é0å0¯0æ0ã0é0­0æÿÿÿÃˆÂâ€˜Â½ÂÃ•Âµâ€¢Â¹ÃÂÃÃ‘â€˜Â¥Â¸Âµâ€¢Â¹ÂÂþŠc
+—7
+÷7Š›
+Ã
+ŠÃŠ‹Š‹
+÷'Šw
+Š‹‡ÿú\9+‚‚•*(	Ü((
+l+œ8Ü9Þ(
+,8Œ+\9*(
+,+Œ+^(ÿÿø )°©p¬x (°¤0 p¯påpäp£p¯p­x 'p p©pã0 pãp¯påÿÿÿÂâ€ÂµÂÂ½Â¹ÃÂ¥ÃÃ‘â€¢Â¹ÃÂ¸Ââ€¦Ãâ€¦ÂÂ¥ÿG“
+Ã
+w'
+—GŠ‹#
+
+7
+ÇŠ›
+—
+Ó
+Š›
+ç
+C
+ÿü8Ü(Ü8ž(
+l9(Ü*(+Ü9Ü+ž(
+,8œ8Ü**\8(8Ü9(ÿÿðé0 pâx (°ãx (°âpæx (°¤0 påp®päp©p¬0 p¬x )°ÿÿÿ€¢ÃˆÂÃÃ‰Â½Ã™â€¢Â¸Ââ€¢Ã¡Â¥ÃÂ¸ÂQÂ¡â€ÂÂ¥Âþç7GŠ›
+Ç
+ÇŠ‹
+C
+
+7
+÷ŠcŠw
+Š‹‡
+÷7Šÿü8Ì(+œ+Ì((	Œ+Ü(Ü9\+^(
+,+œ9(
+,)(8Þ(
+n(J.ÿÿçp p©p®0­pãx (°ãpãp©p¯p®0 pâx (°¬x (¸ )°ãx ÿÿÿÃ‘Â¡â€¦ÃÂÂ¥Â¹â€˜â€¢Ãâ€¢Â¹â€˜â€¢Â¹Ã‘Â±Ã¤Âÿ'
+÷gŠ‹3
+G
+‡
+—3
+w
+—
+çŠc
+÷w3
+
+7
+ÿü*\+))Ü8Ì((Ü9\8œ8ž(
+,+œ9(8Ü9(
+l9(	Ü+ŒÿÿÓpäx )°äpåpã0¯pâx (°ãpåp¬pä0 pâx (°àx (¸ )°ÿÿÿÃ‰â€¢ÂÂ½Ã‰â€˜â€¢ÂÂâ„¢â€¦Â¥Â±Ã•Ã‰â€Ã¬ÂU$ÿ
+7G
+÷
+Š‹‡
+7
+ÇWŠcŠ‹3
+Š‹
+—
+ç
+—7ÿú(
+,)(9(
+l8Ü*Ü8Ì:Ì((Þ(
+l+œ(Þ(
+,+(+^(
+ÿÿé0 p­p©pãp¬x (¸ )¸ &0©p®p§p¬pé0 pâx (°àp¯pâÿÿÿÂÂâ€¦Â¹Ââ€¢Â±Â±â€¦Ã‘Â¥Â½Â¸ÂÃÂ¡Â¥Â±â€ÂÃþ'Š‹WŠ‹7E7G
+÷
+'Š‹GW'
+ç3
+Š‹ÿø
+l8œ+:L((J,+Ü8Œ(9(
+,8œ+\*\+ž(
+l+((
+,+ÿÿäpâp©x (°ã0®0 Dp¯0 p®p¯pä0 p£x )°¬p¬0 p©pä0ÿÿÿ€¦ÃŒÂÃ‰â€¢ÂÂ½Ã™â€¢Ã‰Ã¤Â¸ÂQÂ¡â€ÂÂ±Â¥Ã™â€ÿ
+
+7Š›W7Šw
+Š›
+ç
+C
+'Š‹7Š‹
+çC
+
+ÿü**\+)+ÔQ((	Œ*\8Ü8+Ü8Ü*\9*\+Ü+Œ(8ž(ÿÿð­x )°©p®0 påp®p«p®p¯pçp®0ë0 p®p¯0 pàpâp¯p£ÿÿÿ¢ÃÃŒÂ½Ãâ€¦ÂÂ­â€¦Ââ€Â½Ã‰Ã•Â¹Ã‘Â¥Âµâ€ÂÂµÿWGŠ›G
+—
+÷
+ã
+
+÷#
+Š‹‡G'Š{
+
+7Š›
+çÿø	Œ*^(	Ž(
+l9(	Ü(9ž(
+,8œ*^(J,*\(Þ(
+l9*\+Ü+ÿÿàp¯p£p£påpâpâx (°¤0®
+
+Pp¯päx (°®päp©x )°¬0 ÿÿÿÂ¡Ã•Ã‘â€˜Â½ÃÂ¸ÂµÂÂ½Â¹Ã‘Ã‰â€¦ÂÃÂÂµÂ¥ÃÂµâþ›G
+7
+ƒ
+
+—3
+Š{
+
+‡—
+÷G
+‡Š‹7
+—3
+Ãÿø+œ+Ü9((	ì((	Ž(
+,+\+Ü+œ8Ü98ž(
+l9(
+,)(ÿÿìp©pæx 'p p£x )°åpãx 'p®0 A0 pãx )¸¡(¸ 'p pÿÿÿ€¢Ãâ€¦Â¥ÃˆÂÂâ€¦Â¹â€˜Â¥â€˜â€¦Ã‘â€ÂÃÂ½Ã•ÂþÇ
+C
+
+çŠ‹Š‹
+C
+G
+ó
+'Š‹7Š‹
+7C
+
+“ÿùÜ8Ì(+Ü8ž(	Ž(
+,8œ+:L(8Ü9(	Œ*\+Œ+\(Ü++Ü8ÿÿà'p x &0©pãpàp¯pãx )°¬0 x )°®p¤0 pâx (°äx )ÿÿÿÂ¸ÂÃÂ¥ÂÂ¹â€¦Â°Ââ€¢ÃÂâ€¦Â±â€¦Ã‘Â¥Â½Â¸Â½Âþ7
+Ç
+÷7W'Šw
+'
+÷
+÷.s
+Š‹
+÷#
+Š‹Š›
+ÿü+9\8ž(	Ü(+Ü8Œ((	Ž(
+.(
+n(	Œ+*\+ž(	Ü+(+ÿÿïpä0 p­x (°âx (°¬pé0 p©p®p£pâx (¸ )°ãx 'p xÿÿÿÂÃ‘Â¥Âµâ€¢Â½Ã•ÃÂ¸ÂIâ€¢â€¦ÂÂÃâ€¢Ã‰ÂµÂ¥Ãÿ7
+—
+÷
+ã
+Šc
+÷Š‹3
+
+ç
+÷C
+Š›WG
+‡
+÷'
+ÿü:ž(	Ü(9*(
+l9(8ž(
+,8(
+l*\8Œ(+Ü8Œ((Ü*ÿÿà)°®p§x (°ã0 päp¯0 päp¨x 'p p©p®pãpäx )°¬p¬ÿÿÿ¢ÂÂÃâ€¦ÂÂ­â€¦Ââ€Â¸Â9â€¢â€¢â€˜ÃŒÂâ€žÂÿ7Š‹Š›'Š›GŠw
+
+÷w
+çŠ‹#
+ŠcŠ‹
+7
+ÿü8Ü*\+Ü+Œ:Œ(88ž(
+,8(
+l8ž(	Ü((	ì((Ü+Ü+œ9ÿÿâp¯p¬p¬x (°¤0 pâx (°àx )°©pâ0 p©p®0 x )°®0 ÿÿÿÂ¸ÂµÃÃ‰Â½Â©â€¢ÂÃÂÂÂ½ÃÃ¤ÂÃÂ¥Ã‘Â¡Â½Ã•Ãÿ
+
+—
+ç7GŠ›
+Ç
+ÇŠ›G
+—
+÷
+ã
+÷'Š‹7GŠ›'ÿù8Ì+Ü88œ+Ü9œ*^(	Ž(
+,8Œ(88œ+Ü(Þ(
+,8Ü8Þ(
+,ÿÿð¬0 p¯pâ0 p¬x (¸ )°æx 'p päp¨x 'p p©p®pãpäxÿÿÿÂ±Â±â€¦Ã‘Â¥Â½Â¸ÂÃ•Â¹Ã‘Â½Ã•ÂÂ¡â€¢ÂÂâ€¦Â¹Âÿ
+
+ÇŠ‹C
+G
+‡Šw
+
+÷Š‹'Š›G
+÷#
+W7ÿø	Ü(9*(	Ü(+Ü9Ü+œ*\+œY<(*L(8Þ(
+,8Ü8Ü*\ÿÿð®0§pã0 p®p¯pâp­x )°¬0 p¬p©x¡(¸ (°£pép£p¬x ÿÿÿ¸Â9â€¢Â¥Ã‘Â¡â€¢ÃˆÂâ€žÂÂÂ½ÃÂ¥â€¢ÂÂÃâ€¦ÿG
+7
+ƒ
+
+ç
+÷#
+Š{
+53
+'Š‹
+÷'C
+Šÿü++Ü+ž(	Ü(8ž(
+,+(
+.(
+l8Þ(
+,8Ì(9*(	Ü((ÿÿåpâpâx (°®pä0 pápåx )°âx )°®päp©p®x 'p p¯pâÿÿÿâ€¦â€˜ÂµÂ¥Ã‘ÃŒÂPÃ„Ã€ÂµÃÂ¸Â9Â¼ÂÃÂ½Ã•Ã‰ÂÿŠw
+
+7
+÷
+×
+×
+—G3
+Ã
+7GŠ›
+w
+—
+çO
+Ã
+ÿù\8Ü*+(8ž(
+,+\+Ü9(	Ü(ÒL+(88œ*\9ž(
+l9ÿÿà'p pãx (°ãpãp©p¯p®pã0¯p£pâx (¸ &8 (°®päp©xÿÿÿÂ±ÃŒÂÂ½ÃˆÂÃÂ¥â€˜â€¢ÃˆÂÂ½Ã•Ã‘ÃÂ¥â€˜â€Ââþ›
+7
+7Š‹73
+à £KKK
+ÃCs#K€	C
+Wÿü*+Ü8œ*\:ž(	Ü(*\8Ü+Ü+(
+l9(
+,)(8ž(
+,8(ÿÿð©pâ0 p£x )°®x &0©x &8 )°äx 'p¬0 p®p¯pä0 p©ÿÿÿÃÃ‘â€¦Â±Â±â€¦Ã‘Â¥Â½Â¸ÂÂ½ÃˆÂÂ±Â¥Ã™â€ÂÃ‰â€þ‹
+7
+÷gŠ‹' ¥W7Š‹#
+7Š‹
+ÇŠ‹
+7GŠ‹
+ÿü(9ž(
+,8ž((
+l9*\+L:Ž(*Î(8ž(
+,8(
+l8ž(ÿÿðâ0 påp®0 pàx )°âp£p¨x 'p x (°®0 påp®x '° pÿÿÿ½ÃÂ¥â€žÂâ€¦Â¥ÃÂ±â€¦â€˜â€žË†ÂÃÂ¥Ã‘Â ÂÃÃþ'Š‹g
+—Š‹s£Š
+³ŠÁ'Š‹Š›'Š›#
+W
+ÿþ(	ì((Ü+Ü8œ8ž(
+,(Ü(Ü*pì8Ü+Œ((Þ(
+l+ž(	Œ*^(	ÿÿà)°äx '° pé0 pàpâpåx (¸ ,8 )°ã0 p£p¯p®0 pàpÿÿÿ½Ââ€¢ÃÂ½ÃŒÂÃÂ¥ÂµÃ•Â±â€¦â€˜Â½ÃŒÂâ€˜â€¢Â¹ÃþG'
+ó
+ŠcŠw
+Š
+³
+ç
+7Š›
+7
+‡Šw
+÷'W
+çG
+—ÿû^(	Ü+\(Ü**\+)+^(
+,:*\9+\8ž(
+,8(
+l*\8Œÿÿðªx «0 x (°®0 ASEN0®2á¸ «8 ,x ,0ªx (°äp©pæÿÿÿÃ¨ÂÃ‰â€¢ÃÃâ€¢Ã‘â€¦ÃˆÂâ€¢Â°ÂÂÂ¥â€¢Ã‰Ã‰â€þw
+
+÷'ŠcŠ‹
+çŠ›Šc
+ó
+ŠcŠ‹
+Ã
+4D³
+“
+ÿøÜ+Ü+œ8Þ(
+,8œ9ž(
+l8Œ(+(	ì((Ü+Ü+ž(J,*\8œ+^ÿÿé°£p©Ã°ãp®0 pâx (¸ )°¬0 x &8 'p pãx )°¬p©x ÿÿÿ€žÂ¸Â9Â¼Ââ€°â€¦ÃÃ‘â€žÂÂÂ½Â¸Ââ€¦Ã•Âµâ€¢ÂþçGŠ›#
+Š‹
+Ã
+G
+—
+×Š‹
+÷WC
+ã.Š
+³ŠÁ7
+ÿü+Œ(*\+œ8Ü9(
+l+(
+l(Ü*pì8Ü+Œ+(88œ+Ü(Þ(
+ÿÿãp¯pã0 Pp©0 pâx (¸ )°¬x (°ã0¬0 pàpâp¯pæx (¸ÿÿÿâ€˜Â½Ã‰â€¢ÃŒÂ°ÂÂÂ½ÂµÂµÂ¥Ã‘ÃŒÂ°ÂÃÃ•ÃÂ ÂÂþç
+“
+4“
+ã
+W
+Ã
+Š›'
+7
+‡Šw
+
+ç
+ó
+ŠcŠ‹ÿû\9^(
+,8Ü98ž(	ì(8\9^(	Ü((
+,+(**\*œ+Ì(ÿÿé°£päpåx )°¬0 p¨x )°éx '° päx (°âp­p©p®x )¸ÿÿÿÂ¼Â¸Ë†()Mâ€¢Ãâ€¦Ã‰â€¦Ã‘â€ÂÃ‰â€¢Ãâ€¦Â¥ÃˆÂµÿ
+7Š›
+çŠc
+—ŠcŠ›GŠw
+Š›WG
+‡
+÷'
+—G“ÿø*\8Ì((+Þ(	Œ)+Ü9(
+l8Ü*Ü8Ì+Ü8œ9\+œ9*\+^ÿÿçp­p£p¨p©p¬p¤0­x (°èp©pä0­pâx (°àx )°©pâ0®pÿÿÿ€˜â‚¬ÂLÃ„ÂµLÃÂ°ÂÃ‘Â¡Ã‰â€¢â€ÂÃ‘â€¦ÃÂ­ÃŒÂþÃ
+
+÷w
+çŠ‹
+C
+Š‹'Š‹7
+ƒ
+w
+÷'
+·7Šÿü(Þ(	Ü((*Ì+œ(Þ(
+l(Ü*(	Ü+Ü8œ9\+œ9*\+^(	Ü+\ÿÿð¨p©p¬p¤0­x (°èp©pä0­pâx (°àx )°©pâ0­IpâpèOÿÿÿ`Â½â‚¬Â¸Â%Â¹ÃÃ‘â€¦Â±Â±â€¢ÂÂÃâ€¦ÂÂ­â€¦ÂÿŠw
+'
+÷
+÷G3
+'Š‹
+×Š›
+—
+ã
+'Š‹Š›
+C
+ÿü+Ü+œ+:L(9\+ž(	Ž(
+,8Œ(99Ì8:Ì(+œ+Ì(+žÿÿè°ç0 p¯påpäpãp©x &8 'p pçpâp©päx 'p¬0 pàpâpÿÿÿâ€¢ÃÃŒÂÂÂ½Â¹Ã‘Ã‰Â½Â°Â°ÂÂ¥Â¹ÃÃ‘â€¦Â±Â°Â½ÿ'Š‹7GŠ›'C
+
+÷#
+'Š‹
+7
+÷gŠ‹'“
+ÿùÜ8ž(
+l+œ9+Œ(Ü+ž(	Ü((Ü+Ü+œ9(
+,:9+^((ÿÿð£p«pãpäp¯pà0 pçpâp©päx (°â0 pàpâx (°àx )°âÿÿÿ¢ÃŒÂâ€°Ã¥Ã‘â€Âµâ€°Â½Ã•Â¹ÂÂÂ½Ã‰Â¥ÂÂ¥Â¹â€¦ÿ
+Ç3
+÷
+7Š›
+çŠc
+—ŠcŠ›GŠw
+Š›
+ç
+C
+Š{
+ÿü89^(+*\Y,+\*\+œ9(
+,8ž(J.(
+l(Þ(	Ü(+\+Üÿÿð«x (°¤0 RED0 p£p¯p­p­x )°®p¤0ë0 pàx )°âx (ÿÿÿÃÂÂ½â€°Ãâ€¢Ã‰Ã™â€¢ÃŒÂâ€¦ÂÃ‘Ã•â€¦Â°ÂIÂþŠÃŠ‹Š‹
+÷'Šw
+Š›
+ç“
+
+7Š›
+çŠc
+—ŠcŠÿúl9(	Ü(++Ü)Ü*\Y,((Ü*(
+l+œ)Þ(	Ü+Œ(\++ÿÿø (°èx (°£påpäx )¸ ,0¬x 'p p£p¨x (°£p«pã0 pÿÿÿâ€ÂÂ±Â½Ââ€¦Â°ÂÂ¡Â½Âµâ€Â½ÂÂ½Â¹â„¢Â¥Å“Â½ÿGŠ‹
+×
+'
+÷
+÷G3
+Š›
+ç
+C
+
+ç
+ó
+'
+÷ÿùœ*^(	Ž(
+,8Œ((Ü8ž(
+.(	Ž(
+,+œ9*^(
+l+8Ì+Œ(ÿÿèp©pãpäp©p®qdð T0á0à0¯ASEN0 pãpåp£p£x (°ãpãÿÿÿ¢Ã•Â°ÂÂÂ¡â€¢ÂÂ­ÃŒÂâ€¦Ã‰â€ÂÂ¹Â½ÃÂÃ‰â€¢ÿŠ‹Š›GŠ‹
+C
+ã
+C
+ÔC
+7GŠ›—3
+ÿù\+œ(Ü*(
+,(Ü*Þ(
+,)((
+l+œ)(9\+ž(
+n(	Œ+\*ÿÿäpäx (°¤0ë0 x '° p£p¯pàp©x (°¤0 pâx (°àx )°ÿÿÿˆÂÂâ€¦Â¹Â¹Â½ÃÂÃÃ‰Â½Ã™â€ÂÂ½ÃˆÂÃ‰â€¢Â±âþ‹Š›7Šw
+
+—G3
+
+÷
+Ç
+C
+
+7
+‡
+—
+Ç
+C
+w3
+ÿø\9^(
+l8ž(
+l+œ9*\+ž(	Ü+‚‚ŒY,Y,Y,(99Ì8Ìi,ÿÿÀ”0 Apåpäp¨p¯pâp©pêx 'p x '° WIP0 pàpåx ,0¬ÿÿÿÂâ€¦Ã‘Â¥Â½Â¸ÂÂÂ¡â€¢ÂÂ­ÃÂ½Â¥Â¹ÃÂÃÂ¥Ã‘Âþƒ
+Š{
+
+÷'GŠ›ŠÃ
+ÇŠw
+
+7
+÷
+çG
+—
+çWŠÿúl9*\+Ü+Œ(8+(
+l+‚‚•\8Þ(
+,8Œ(8ž(
+,8\9^(
+ÿÿãpä0¬0 pæx (°âx ,8 )°äp©p­0ê8 «8 ,0àp¯x &0âÿÿÿâ€¦ÃŒÂÃÃ‰â€¢Ãâ€¦Ã‰â€¦ÃˆÂâ€¢Â°ÂÃÂ±â€¦Â¸ÂþŠcŠw
+
+7
+÷
+çG
+—
+çWŠ›
+7
+—
+÷
+ã
+Š›'Šÿùì(8\9^(	Ü(98ž(
+l8Ì(9\+Œ(89\8Ü*(89^ÿÿè¸ &8 '° päx (°âp­p©x )°®pâp¬p¯0 p£p¯p®0 Gpÿÿÿ‘Â¡Ã•Ë†Ââ€¢Â¸ÂÃ‰â€¢ÂµÂ½Ã‘Â¼â‚¬Ã¼Ë†Â¸Ââ„¢ÃþGŠ‹#
+7Š‹
+ÇŠ‹
+7G
+—
+çO
+Š{
+w
+—D‡W.ÿü+\(Ü+Ü+œ+ž(
+,(Ü9(
+,)((Ü+Þ(	Œ*\+œY<((
+l)ÿÿà(°®pä0¬0 päp¨x 'p påpãx (°â0 päp¨x (°®0 p©ÿÿÿÃÃ‘Ã‰Ã•ÂÃ‘â€¢ÂÃ¨â‚¬â€°Â¡â€¦Ã¨ÂÂÂ½ÂµÂµÂ¥ÃþC
+“
+W7
+ƒ.
+ã
+w
+‡Š‹
+ã
+Š›7
+·Š‹
+C
+ÿü9Ü*(
+,9*(
+,8Œ(9+Ì(89^(+*\8Ü*((
+ÿÿìp¬0 pàx (°®x &0©p®qdð ASEN0 p©p­pàp¬x (°­xÿÿÿÂ¹Ã‘â€¦Ã‘Â¥Â½Â¸ÂÃ‘Â½Ââ€¢Ã‘Â¡â€¢ÃˆÂÃÂ¥Ã‘Â ÿ
+G
+‡Šw
+
+ÇŠ›
+ã
+
+÷#
+
+÷
+ç
+Ç“
+G
+‡Šÿü(8+(
+l+Œ+(9*(	Ü(9\8Þ(
+,8Œ((
+l+œ8Ü9ÿÿà(°âx (°¤0ê8 «8 ,0£p¯p®0 x (°¬0 pàp¬x )°®2áÿÿÿ()QÂ¡Â¥ÃŒÂâ€¦Ã•Ã‘Â¡Â½Ã‰Â¥Ã©â€¢ÃŒÂÃ‘Â¡â€ÂÃþŠ›'Š‹
+çC
+G
+ó
+WŠÃ
+Ç
+—7
+ƒ
+G
+‡Šÿü(8(
+,+ž(	Œ*\+œY<(TÑSŒ(*\+\8+(
+,+^(
+,+ÿÿäx )°äp©p¯p®0 päp¯p§x (°äp¨x (°â0 pçp©päp¨0ÿÿÿ‘Â¡â€ÂÃÂ½Ã‰Ã‘â€¦â€°Â±â€ÂÂÂ½Â¹Ã‘Â¥Â¹Ã•â€þ›G
+—
+÷
+ã
+
+ÇŠ›
+ã
+Š›3
+Š{
+t•
+
+7
+‡Šÿú,(Ü*Ü8+Ü*\+œ9(+Ü+Œ(9*(	Ü((Ü9\8œ8ž(
+,ÿÿðä0 x¡(¸ (¸ )°äpåpâx 'p x ,0âx )°®p£p¨0¬0 xÿÿÿÃ¡ÂÂ±Ã•â€˜Â¥Â¹Å“ÂÂâ€¦ÂÂ¡â€¢ÃŒÂ°ÂÂÃ‰â€¢âþcŠ‹
+çG
+—Š›
+Ç3
+Š›
+ç
+C
+GŠ‹
+×
+÷'Šÿü8œ:L((
+l8œ9*^(J.(
+l(Ü98Ì+Œ(\9((	Œ+Þ(
+ÿÿã0 p®p¯pä0 x )°åpäp¨p¯pâp©pêx 'p päp¨p©pã0 ÿÿÿ˜Â½ÂÃ•Âµâ€¢Â¹Ã‘â€¦Ã‘Â¥Â½Â¸ÂÃÃ‰Â¥Ã‘â€¢ÃˆÂÃþG
+ó
+7GŠ›
+wŠw
+Ã
+
+7
+÷
+×
+×
+—C
+
+÷#
+ÿü8Ü*+((
+l+œ)(*\9((	Œ+Þ(
+,8Ì(+œ+Ü9(ÿÿðâx )°®pä0 p­x (°âp§x 'p¬0 pâx (°¬x (¸ )°ãxÿÿÿÂ°Ââ„¢Â½Ã‰Ââ€ÂµÃÃ•ÃÂ Â°ÂÃÃ‰Â½Ã™Â¥â€˜â€þ‹#
+÷
+çŠ›G
+—gŠw
+Š›'
+÷gŠ›
+Ã
+Ã
+ÿþ(
+l(Ü*Þ(
+l)Þ(	Ü(89^(+*\(Þ(
+l9*\+Ü+Œ(ÿÿðâ0 x &8 (°ãpäpâpåp£päp©pæx 'p­p¨p¯pãpä0 x ÿÿÿ•Ã‘Â¡Â½Ã‰Â¥Ã‘Ã¤Â¸Â9Â¼ÂÃÃ•ÃÂ ÂÂ¥ÃŒÂÂÂ±âþ›
+—
+×Š‹
+C
+
+‡Š‹'Šw
+ã
+G
+‡Šw
+
+÷'GŠÿún(+(	Ü(8ž(
+,+\+Ü9(	Ü(8+(
+l+Œ(*\8Ì(ÿÿàx &0¯p£pã0¯pâx (°­p¯päx 'p­p£p¯p®päp©p®påxÿÿÿÃ‘Â¥Â½Â¸Â¹Âµâ€˜â‚¬Â°ÂÃÂ¥Ã‘Â ÂÃ‰â€¢ÃÂ½ÃÂ¥ÿG
+÷'“
+
+wW
+—ŠcŠ›
+ç
+7Šw
+
+—
+ã
+
+tTåEÿü+œ+^(	Ž(*Ì:Ì(9**\8Ì((Þ(
+l+œ+Ü+œ*\(Þ(
+l+ÿÿàpäx )°ãp«0 p¬p¯qdð pâx (°­x )°©p®pã0 päp¨xÿÿÿÂÃÂ½Ã•Ã‰Ââ€ÂÂ½ËœÂÃ‘Ã‰Ã•Ã‘Â Ââ„¢Â½ÃˆÂÃþGŠ›7
+³
+Š›Šc
+×
+—77
+—
+÷
+ã
+Š›
+ç
+C
+ŠÃÿû+Ü(Ü*Þ(
+,8œ8Ì+‚‚•*(	Ü((Ü*(
+,(Ü*Ü8+Ü*\ÿÿðä0 p©pã0 x (°èpàp¬p©p£p©päp¬pé0 p®p¯pä0 FUÿÿÿÂÃâ€¦Ã‰Â¥Ã‘Ã¤Â¸ÂPÃ€Ã¤Â½PÃ„Ã€Â½PÃ„Ã„Â½PÃ„Ãˆÿ
+'Š‹
+×Š›
+—
+ã
+
+—
+ç
+7
+÷
+×
+ÇŠ‹GŠw
+Šÿü8Ì(8ž(
+,(Ü+Ü8ž(	Ž(
+,)((
+n(+Ü9ž(	Ü+((ÿÿð®p¤0 p­p©pãpãp©p®qdð p©p­pàp¬x (°­x (°®päxÿÿÿÃ‘Â¥Â½Â¸ÂÂ½ÃˆÂÃ‰â€¢Ã…Ã•Â¥Ã‰â€¢ÂÂâ€¢Ã™Â¥â€þcŠ‹
+ç
+7Šw
+7GŠ›—3
+ŠÃ
+Ç
+÷
+7
+·Š‹
+C
+÷ÿø(
+l8œ9*^(
+l++Œ(*\8Ü9+Ü8œ*\(Þ(
+l+((Þÿÿé°£p¨x 'p pâx (°£x (°©pàpäpã0 påp®x )°æx )°ÿÿÿ±â€¦â€°Â±â€ÂÃ‘Â¼Ââ€žÂÂÂ±â€¢â€¦Â¸ÂÃ‰â€¢Âþ×
+÷GŠw
+
+7
+Ç
+÷
+çŠw
+'Š‹
+×Š›
+—
+ã
+
+‡
+—ÿü9+Ü8œ*\(Þ(
+l+((Ü+(
+l*\+\8Ì(8ž(
+l9*(
+ÿÿâ0 päp¨x )°®0 pàp¯pâpäx )¸ ,0¬x 'p x )°àpàpÿÿÿ½Ã™â€¦Â°Â¸()QÂ¡â€ÂÂ¥ÃÂ½Â±â€¦Ã‘â€¢ÂÂÃ‰Ã•ÂþçG
+—
+×Šw
+×
+7
+‡
+—
+Ç
+C
+×Š‹‡
+—C
+'Š‹Šÿü*\8Œ(88œ+Ü)Ü8ž(
+,8Ü8Þ(
+,)(+Ü+œ+:L(9+ÿÿàx )°®0 p¯x ,0ãx (°âpæx (°¤0 RED0®0 Ipäpã0 ÿÿÿâ€¢Ã¡ÃÂÃÂ½Ã‰Â­â€¢ÃˆÂâ„¢â€¦Â¥Â±â€¢ÂÂÃÂ¥ÿG
+ƒ
+Täõ53
+Ã
+Š›
+ç
+C
+
+ÇŠ›GŠ‹#
+
+×Š‹ÿû\+Ü8œ:L+Ü(Ü+Ü+œ9(
+,:9(9Þ(
+l8Ì(+ž(
+,9Þ(ÿÿðâ0 päp¨x )°®0 päp¨x )°ä0 pçp¯pâp«x (°â0§pãÿÿÿÂ±Â½Ââ€¦Â°ÂÃ‘â€¦ÃÂ¬Ââ„¢Â¥Â±â€Â¸Â9Â¼ÂIüTTã
+Ã
+
+—
+ç7GŠ›
+Ç
+ÇŠ‹
+C
+×Š›
+7
+·Š›
+wŠÿùÜ((J,*\:+(+Ü8Œ(8ž(
+,(Ü+Ü9ž(
+,8œ:L+Þ(
+,ÿÿð©pä0 p£p¯p®x¡(°©pâp­x )°äp©p¯p®0 x¡(°¯pâ0 ÿÿÿÂ¡â€ÂÃ…Ã•â€¦Ã‰â€¦Â¹Ã‘Â¥Â¹â€¢ÂÂÂÃ•Ã‰Ã‰â€¢ÿ
+çC
+
+7
+‡
+—
+Ç
+C
+wŠ›3
+
+÷ŠÃGŠ›
+—
+çŠ‹ÿù+Œ(L(8Ü9^(8Þ(
+,8\9^(
+,+œ9(89^(+*ÿÿãx )°äp©p¯p®0 pàpâx (¸¡(°¬p©p§p¨pä0 p¯x ,0ãÿÿÿ¢Ã‰Ã™â€¢ÂÂâ„¢Ã‰â€¢â€Ââ€˜Â¥ÃÂ¬ÂÃÃâ€¦ÂÿŠw
+Ã
+ŠÃWC
+
+—C
+Šc
+—
+C
+
+ç
+÷C
+'Š‹ÿû(
+.(
+l8Þ(	Ü(8\9^(
+l8ž(
+l+œ9*\+ž(	Ü(+Ü8Œÿÿð£p¯p®pæx (°âpä0 päp¨x 'p p£p¯pàp©x (°¤0 pâÿÿÿ¢Ãâ€¦Â¥ÃˆÂÂ¥Â¹Ã‘Â¼ÂPÃ„Ã€ÂµÃÂâ€¦â€˜ÂµÂ¥Ãþ77
+—
+÷
+ã
+ã
+'Š‹7Š‹'gŠw
+G
+‡
+÷7Šwÿø(	Œ*\8Ü9*\+œ(Ü9*\+Ü+œ8Ì((
+l+œ)((	Œ+Ì(ÿÿîp¯pä0 pâx (°äpâpé0 p¯p¬p¤0 pãpäp¯pàpàx (°¤ÿÿÿÃÂ½Ã‰Â¬Ââ€°Â±Â¥Â¹â€˜Â±Ã¤Â¸((Å’Å’Å’Â0ÃÃœÃÿK€	C
+'Š‹
+7
+÷
+ç
+7
+—
+ÇŠw
+
+7
+ÇŠ‹Š›
+ã
+ÿþ(
+,+\+Ü9(	Ü((Ü*(
+,(Ü*Ü8+Ü*\+œ9((
+l+œ)ÿÿàpãx (°¬x (°£pä0 T0à0é0­U0ép¤
+
+Rx (°­p¯päx ÿÿÿÂâ„¢â€¢â€¦ÃÂ½ÃÃ‘Ã‰Â¥ÂÃÂµÃâ€¦Ã‰Â¥Ã‘Ã¤Âµÿ'Š‹'Š‹W
+—7
+—GŠ‹7Š
+³
+Š›
+ç
+C
+ÿü*(	Ü((Ü+(
+.(
+l+Œ((Ü++Ü+ž(	Ü((+Ü9*ÿÿðâx (°ãp¯p¬pæx 'p päp¯0 x «0äx '°äqd°çx 'pçÿÿÿâ€žÃ ÃœÃ™Ë†Ã ÃËœÃœÃ™Å’Ãâ€°â€°â„¢Å’ÃÂÃˆÃ˜Ãþc7ŠcŠ‹Š{'K.Š‹Š
+³
+ã
+'Š‹Š›
+C
+ÿðQÑS•Ì+œ+\)+((	Œ+Ü(Ü8Ì+Ü8ž(
+,+\+Ü9(	Ü+\ÿÿð¯p®päp©p®påx )°äp©p¯p®0®p­p¤0¬0 S0áñh “S0áÿÿÿÂ°ÂÂÃ•Ã‰Ã‰â€¢Â¹ÃÂÃ‘â€¦ÃÂ¬ÂÃ‰Â½ÃÃŒÂ°ÂÃþ'Š‹
+ÇŠ‹gŠ›
+çC
+'Š‹Š‹Š‹'Š‹
+ç
+7Šw
+ÿü+^(
+l88Ì(8L9Ì:+Ó8Œ:L8+Ó98Ì8+(L:\ÿÿð x )¸ &0­p©pãpãp©p¯p®0 L0ä0å0â0 x )°®p¤0 pÿÿÿ€¦Ã‘â€¢ÃÃÂ0ÃÃ˜Ã§Å M0ÃÃœÃŒÂ¸ÂMÂ½Ã•Ã‰Ââþw
+
+7
+÷
+çŠ‹
+—'
+×3
+G
+‡Š›C
+G
+‡Šw
+ÿü9^(+*\Y,(ÓL(+Ü+œ+:L(88ž(
+,9œ*^(
+,9ÿÿã0 påpàx &8 )°äx (°ã0ë0 p pãpäx )°§x (x )°ÿÿÿ€¦Ââ€¢â€˜ÂÃ…Ã•Â¥ÃÂ¥Ã‘Â¥Â½Â¹UÃâ€˜â€¦Ã‘â€¢ÿŠ
+³
+Š›
+Ç'Š‹Š›Šc“
+Š‹'Š‹
+÷'
+×3
+ÿþ(J,8ž(
+,8Ü*((
+,:8(
+,(Ü9(
+,)+^(:\9(ÿÿð pãpäx )°§p©p®qdð®0 Cx )°£p¨x 'p pâx (°£x ÿÿÿ¥ÃÃ‘ÃŒÂâ„¢Ã‰Â½Â´ÂÃ‘Â¡â€ÂÃÃ‰â€¢Ã™Â¥Â½Ã•Ãþ3
+
+×Š›
+7
+‡
+—
+çŠw
+Š›'Šw
+W
+çŠ›gŠ›
+ÿü+(
+n(+(	Ü((
+l+œ)((
+l8ž(	Ü(+œ+Ü9(9ÿÿâx (¸ )°äx (°¤0 x )°ã0 p£påpâpâx (°®pä0 pæxÿÿÿÃ‰Â¥â„¢Â¥Ââ€¦Ã‘Â¥Â½Â¸Â¸ÂPÃ€Ã”ÂµÃ‰Ë†Â½PÃ€Ãÿ
+õCs
+'Š‹
+×Š›
+—
+ã
+ŠÃ
+Ç
+÷
+7
+·Š‹
+C³
+ÿõ8L8+PL9(*\8Ì(9\+ž(
+n(	Œ+\*\99(
+,)(ÿÿé°®p¤0 p©päpã0 pãx (°àx )°âx )°äx 'p p©p®p£ÿÿÿâ€˜â€¢Â¹ÃÂÂ¥ÃŒÂÃ•Â¹Ã‘Â½Ã•ÂÂ¡â€¢ÂÂ¸ÂIâ€¢ÿ
+w
+—7G'“
+
+7
+ÇŠ›
+—
+×3
+7GŠ›“
+%DÿðS+‚‚”Þ(
+,+(
+,(Ü9(+Ü+ž(	Ü((	Ž(
+,8(
+,+žÿÿæ8 (°®p£pé0­pâx (¸ )¸ &0é0 pàpåx ,0¬p©qd° pÿÿÿ½ÂµÃÂ½ÃÂ¥Ã‘Â¥Â½Â¸Â°ÂPÃ€Ã¤ÂµTÃ¥Ââ‚¬Â¡LÃˆÂ½ý3C
+õ3“
+õ3#
+õ3C
+“£
+
+
+×Š›
+çŠ›
+wŠÿü)(9\8(	Ž(
+l9(	Þ(*Ì+L+\+^(
+l+œ*^(J.(
+,8Üÿÿø «0ìx )¸ ,0ãp¯p¬påpäx 'p­pªpãp¯p®0î8 «0­0­ÿÿÿâ€¦ÂÂ­â€¦Ââ€ÂµÃ‰Â½Â½Ãâ‚¬Ã±â€¦â€°ÃÂ½Â±Ã•ÃþGŠw
+×Šc
+—#ãŠ
+³
+Ó
+×7GŠ›
+wŠwŠ
+³
+Ó
+×—Šÿú,8Þ(*Ì+Œ(\:8+*\(Ü*\9((*Ì+L+\8Ü9(
+l)Þÿÿçx «0­0­péx (°ãx «0 pâx (°ápåx (°ãpäpã0 p¯pÿÿÿ±Ã¤ÂÂ¥Â¹â€¦ÂÃ‘Â¥Ã™â€ÂÂ±Â½Ââ€¦Â°ÂÃÃ‘â€¦ÿ
+w
+—
+çO
+
+—
+ã
+Š›
+ã
+Š‹‡
+—7G
+—
+çO
+
+÷ÿùÜ+ž(
+,)((*Ì;ÔÌ+\*+Ü+^(	Ü;Œ+Ì+ž(
+l8Þ(
+,+ÿÿà«0 pàpâx (¸¡(°©pè0®0 Rx (°åpãx 'p U0éqd° pÿÿÿ¥Ã‘Â¡Â½Ã•ÃÂÂÂ¡â€¦Â¹ÂÂ¥Â¹Å“ÂÃ‘Â¡â€Ââ€°âþ›
+7
+·Š‹
+ç
+C
+Ã
+
+—G3
+Š‹
+÷'
+×Š›G3
+Ã
+ÿü+(
+.(
+l8Þ(	Ü(+Ü8Œ((Ü+(
+.(
+l+œ9\8+Œ(8ÿÿà(°ãx (°âpæx 'p päp¨x 'p pàpâx (°æp©x (°ç0 ÿÿÿâ€¦Ã‰Ãâ€¢ÃˆÂ½A$Ââ€¦Â¹ÂÂâ€¢Ã¡Â¥ÃÃ‘Â¥Â¹Å“ÿ
+4Ä“
+ŠÃŠ‹
+‡Š›g
+—
+÷#
+ã
+gŠ›
+Ç
+—ŠcŠ›ÿù(	Ü()Ü8ž(
+l+\+^(
+l8Œ(((
+.(J,+Ü8ž(	Ü(LÿÿÏ0ë0 pàpâp¯päx (°£pä0 päp¨x 'p x (¸¡(¸¡(¸ (ÿÿÿÃ‘Â¥Ã™â€ÂÂÂ½Â¹â„¢Â¥ÂÃ•Ã‰â€¢ÂÂâ€˜â€¦Ã‘â€þ{
+
+‡
+÷
+×Šw
+
+ÇW3
+ŠcŠ‹Š‹Š›W
+ÇC
+ÿü*L+ÐTÑSŒ((	Ž(
+l9(	ì(*+Ü+^(
+,8Ì:Ì(8ž(
+,ÿÿø )°©p®0 pâx (¸ )°¬0 x¡(¸ )°©p¬påpâx 'p¯x )ÿÿÿâ€°Â¥ÂÃ•Â¥Ã‘Ã¤ÂÃ‰â€¢ÃÂ½Ã‰Ã‘ÃŒÂâ€¦Â¹ÂÂÂ¹ÿŠ‹gŠ‹#
+'Š‹G'“
+
+÷#
+7Š‹
+ÇŠ‹
+7ÿü+Þ(
+,:(
+,(Ü9\9(	Ü(8(
+l(Ü*Þ(
+l)Þ(	Ü((Ü+ÿÿà&8 'p®0 Np¯0 x &0¯pçp®p¬p¯x )°¤0¬0 x )°åpäÿÿÿâ€¢Â¹Ã‘Â¥ÂÂ¥Ã‘Ã¤Â°Ââ€¦ÂÃ‘Â¥Ã™â€¦Ã‘Â¥Â½Â¸Âÿ
+÷#
+Š‹W
+Ç
+Ã
+WŠcŠ›GŠ‹#
+
+7
+ÇŠ›
+ÿü+L+Œ(**\8Ì(*\8Ì((	ì((+Ü9\+ž(	Ž(
+,)ÿÿðãpäx (°à0 päp¯pçx )°âp¤0 päp¨x 'p pãpäx )°ÿÿÿ€Â½Ã™â€¢Ã‰Â¥â„¢Ã¤Â½Ã‰â€¢Ã‘â€¦Â¥Â¸ÂÃâ€¢Ã…Ã•ÿŠ‹
+ç
+7Šw
+
+×Š›Š‹
+C
+Š›C
+Ãsƒ
+Ãÿø+œ+Ü9(+ž(
+,9Ü+:L(9ž(
+,8œ*^(J,*^(
+,)(ÿÿà(¸¡(¸ (°âx (°®p£x 'p x (°ápåp©pæx )°¬x (°®ÿÿÿâ€Â¸()AÂ±â€¦Â¹Â¹â€¢ÂÂÃÃ•Ã‰â„¢â€¦Ââ€¢ÃŒÃ¨ÿ
+Š›ŠcŠc
+—G
+—gŠw
+Š›'7Š‹#
+÷G—ÿø(	Ü(*\+Œ(8Ü8œY,+Ü8œ9\+œ9*\+^(	Ü+Ü+(
+l9ÿÿîp£p¨x (°â0®päpã0¬0 x &0©pãpàx )°äp£p¨0¯p¨xÿÿÿÂ±Ã€ÂÂ¥Â¸ÂÃÃ‰Å’Â½ÂÂ±Â¤Â¹Ã‘ÃŒÂ°ÂÂ¹â€¢ÃœÂÿGŠ‹7G3
+÷
+×Š›
+çŠ›
+wŠ‹
+C
+×WŠcŠ›Gÿø	Ü+\8Ü9(
+l)Þ(	Ü+\(Ü+*L+œ9(
+,8Ü9+œ98Ì+ÿÿð©p®pãpäx )°¬p¬x )°äp©p¯p®0¯p£p¯p®päp©p®påxÿÿÿÃ‘Â¥Â½Â¸Â½Ãâ€¦Ã‰Â¥Ã‘Ã¤Ââ€˜Â½ÂÃ•Âµâ€¢Â¹Ã‘â€þ›G
+—
+÷
+ã
+Š›
+ç
+C
+G
+‡
+—3
+
+7Š›
+ç
+÷
+ç
+—
+ÿþ(
+l+(++ÜY<+Œ((
+,8Ü9+^(J,*\8œ8Ü9(89ÿÿà,0¬p©qd° RED0¬0 p©pãp¯p¬x )°äx (°¤0 CLI0 pÿÿÿµÂ½Â­â€Â°ÂÃ‰â€¢â„¢Ã•Ãâ€¦Â°Â½â€¦Âµâ€°Â¥ÂÃ•ÿ
+—G“
+÷'Š‹7Š‹'gŠ›G
+—
+÷
+ã
+Š›
+ç
+Cÿø8Ü*(
+l8ž(
+,)+\(Ü+Ü+\+^(
+l+œ)(8ž(
+,)Ü8žÿÿè°ãpãp©p¯p®pã0¬0 päpépàx (°£p¨x (°£p«0¯x ,0ÿÿÿ¥Â±ÂÃ¬ÂÂ¥Â¹â€˜â€¢Ãâ€¢Â¹â€˜â€¢Â¹ÃÂÂ¥Â¹ÃÃþGŠ›
+Ç
+ÇŠ›G
+—
+÷
+ã
+÷7Š‹
+7W'
+—G“
+÷7
+‡ÿø
+l8ž(
+,)+\(Ü+Ü+œ98ž(
+l(Ü9(8ž(
+,9œ*^(
+,9ÿÿàpâx (°ápåp©pâx (°¤0 x ,0é0 AGENTS0®p­p¤0 xÿÿÿâ€¢â„¢Â½Ã‰â€Ââ€˜â€¢Â±Â¥Ã™â€¢Ã‰Ã¤Â¸Â9â€¢ÃœÂþŠ‹
+—‡GW'Š‹3
+÷
+7
+‡Š‹
+7
+³
+'Š‹
+7Š‹ÿú\898Ì(+*\9ž(	Ü(+Ü+œ+:L(9\+ž(	Ž(
+,8Œ(ÿÿàpâp¯pªx (°£pä0­p¯pçp®x (°¤8 «0®p£x )°£p¨x ÿÿÿÃâ€¦Ã‘Â¡ÃŒÂ¸Â9Â¼ÂÃâ€¢Ã‰ÃÂ½Â¹â€¦Â°ÂÂÃ‰ÿŠ‹ŠcŠ‹
+çG
+—Š›
+Ç3
+Š›'Šw
+Š›77Šÿú,)(9+Ì((Ü*(
+,(Ü*Ü8Ì+Œ((
+,+*\9ž(
+,8œÿÿð p©pã0 p¯p®x 'p pçp¯pâp«0 x ,0âx )°®p£p¨0 ÿÿÿ¦Â¹ÂÂAHÂ°ÂÂ¹Â¼ÂÂµâ€¢Ã‰Ââ€Â½Ã‰â€¢Â±â€¢â€þ›7Šw
+ã
+S—
+C
+7GŠ›—3
+Š‹
+çŠc
+—
+çÿù<(9\+œ9*\+(9*(
+,8Þ(	Ü((Ü*(
+,(Ü*Ü8Ì(ÿÿà)°£päpåx )°¬p¬pé0 p£p¯p­pàp¬x (°äx 'p®
+
+Cpÿÿÿ€¢â€¦Â¸ÂÃâ€¢Ã‘Ã•Ã€ÂÃ•Ãâ€¢ÃŒÂ9Â½â€˜â€ÃˆÃþC
+ã##
+ãŠ
+³
+‡7Š›G
+—7Š‹
+—Š‹3Š
+³ãÓÿøŒ8Œ+Œ8L:L+Œ8*L+(+œ8+L8L8L+Œ:L+Œ8((
+l+ÿÿä0 päp¨x 'p päpâx )°£p«x (°¤0 p¬p¯p£p«x¡(°©ÿÿÿâ€Â¸ÂÂ¥Ã‰ÃÃÂÂÂ¹ÃÂ´ÂÂÂ¥â‚¬Ââ„¢â€¦Â¥ÿ
+ÇŠ‹
+C
+w
+‡
+—
+ÇŠw
+
+ç
+÷ŠcŠw
+×
+w—
+Šÿü:98ž(
+l(Ü9(
+,)((	Œ+Ü9Ü+œ++Þ(
+n(	Ž(
+,)ÿÿàNp¯x &8 'p p¨x (¸ )¸ &8 (°âpã0 pçp©päp¨0 pÿÿÿ¹ÃÃ•ÃÃÂ½Ã‰Ã‘â€¢ÂÂÂâ„¢ÂÂ¡Â½ÃÂ¹â‚¬â‚¬Â¡üT”ådÃ
+“
+ã
+'Š‹7Š‹'gŠw
+
+—G3
+
+Ç
+÷ÿù<+Œ(œ8ž(
+,8Ü*(+Þ(J.(J,*\(Ü*^(
+l+(9Œ8Œ9ÿÿî0â0â0®0á0 p¨x (¸ )¸ &8 (°âpã0 pçx (°âx 'p ÿÿÿ˜Â½ÃÂ¹Â±Â½â€¦â€˜â€¢ÂÂâ€¦Â¹ÂÂâ€¢Ã¡Ã‘Ã‰â€¦ÿ
+7GŠ‹
+C
+w
+—G
+ƒ
+—G
+‡
+÷
+ã
+w3
+ŠcŠ›ÿù(	ì((J,*\+9(
+,8Œ(*\+œ9+Ì(9*(	Ü((	ÿÿépãpàp¯pãx )¸ ,0¬x 'p pàpâp¯pªx (°£pä0 x (°ÿÿÿ™Â¥Ã‰Â½Â¹Âµâ€¢Â¹ÃÃ¬ÂÂÂ¹ÃÂ´ÂÂÂ¥â‚¬ÂÃÂ¥ÿG
+ƒ
+
+
+ç
+Õ÷
+7
+÷
+çŠ‹
+—
+u÷
+ç
+÷ŠcŠ‹Šc
+—ÿøž(*Ì(9*(
+,+Œ((
+,:*\9(
+,)8+((
+n(	Žÿÿæ8 (°¤0á0â0äpàx )°£p«x )°§x (°ã0®0 Np¯0 p©pÿÿÿÃ‘â€¦Â±Â±â€¢ÂÂ½Ââ€¦ÂÂ¡â€¢ÂÂM,ÂÃâ€¦ÃŒÿ
+
+7
+÷
+—Š‹
+C
+Š›
+ç
+C
+Š›
+7
+·Š›
+wŠw
+ÿü++Ü(Ü*Þ(J,*\+(	Ü((:\9(
+,8Ì((
+l8ž(	Ü(ÿÿåp®p£p¨x )°®p§x (°¤0®0 Lp¯p£p«x (°¤0 Pp©0á0ÿÿÿˆÂ¸Ã€Â½Ã‘ÃÃ ÃÂ¸ÃˆÃŒÂ¸Ã„Ã”Â½QÃ¥Ãâ€¢MÂÃ‰Â¥ÃþCS
+ã“
+ã3
+÷
+ç
+÷ŠcŠw
+×G“
+ã
+ã
+ÿü+^(
+l9(Ü*((+œ8+L(+8Î(*Ì+L+^(	Ž(
+,89ÿÿè0í0àx «0®0 Ip®pãpäx )°¬p¬x )°äp©p¯p®0 pãpåÿÿÿÂâ€¢ÃÃŒÂÂ¥ÃŒÂâ€¢Â¹Ã™Â¥Ã‰Â½Â¹Âµâ€¢Â¹ÃÂÃÿŠ‹GW
+Ã
+
+ç
+÷C
+Š{
+C“
+
+7
+ÇŠ‹Š›
+ÿü+\*+Ü8Ü9(88œ+Ü+Ü¹Ì+‚‚ŒY,Y,Y,(99Ì9Li,ÿÿÀ”0 Ox ,0ãx (°âpæx 'p p£x )°åpãx )°¬0 pàpåxÿÿÿÂ±Â¥Å’ÂIÂâ€¦Â¹ÂÂâ€¦Â¸Ââ€¢Ã¡Â¥ÃÃ‘Â¥Â¹ÅþO
+õ4•ƒ
+7GŠ›
+w
+—
+çO
+ŠÃ
+Ç
+÷
+7
+·Š‹  ÿõ*(	Ü(+ž(
+,9Ì(89^(+*\Y,(9(
+,8Ü98Ìÿÿø¡(¸ )°©p¬0 p¯p®0 päp¨x 'p p£p¨x (°£p«pàp¯pÿÿÿ¹ÃÂâ€°â€¢Ââ€¦Ã•Ãâ€Ââ‚¬Â´ÂµÃÃ‘â€¦Ââ€âþ
+³
+Ó
+×—Š‹7Š
+³
+
+—3
+W
+çŠ›gŠ›
+—
+ÇŠ›Šÿû+(	Þ(*Ì*(
+,:*\98Œ*L+Œ(\:*\8Ü9*\+œY<ÿÿø¡(°©pæx 'p­x¡(°©p¬x 'p pãp¨x )°âx (°¤0 CLIÿÿÿâ€°â€¦Ãâ€¢Â±Â¥Â¹â€ÂÃâ€¦ÃÃâ€¢ÃŒÃ„ÃˆÃ¤Â¼Ãþ#“
+w
+—G
+ƒ
+7GŠ›ŠÃ
+ÇŠw
+7
+÷W'
+7ÿø	Ü+Ü++Ü(Ü*Ì(*(
+l8Ü*(
+,8Ì+Œ(^(J,9(
+,8Œÿÿø )¸ &8 &0©päp©pæx 'p CLI0 p£p¯p­pàp¯pãp©päÿÿÿÂ½Â¸Â°Ââ„¢Â¥Ã‰ÃÃÂI8Ââ€¦Ã‘Ã‘â€¢ÂµÃÃÂþŠ›77Š‹3#S
+ó#ƒ
+ŠÃWC
+Š‹Š›
+—ÿû8Ì(9*(	Ü(9*8ž(
+.(	Ü(8Ü9\(Ü(Þ(
+,8Ü8Þÿÿè°åp¬0­pàpåx ,0¬p©p£x )°äp©p¯p®0 p£x )°ãx (ÿÿÿÂ¸ÂÂ¥â€¦ÂÂ¹Â½ÃÃ‘Â¥Å’ÂµÂ½Â¹Â±Ã¤ÂÃ‰â€¢Ã‰Ã•ÿ
+ã
+
+÷.s
+G
+‡
+÷7Šw
+G
+‡'Š‹Šw
+Š‹'Šÿü8Ü*((J,*\:99\8ž(
+,8Ì((
+,:8+Ü8Þ(
+,8Ì(ÿÿàMx )°®x )°§x (°¤0 x )°£pápåp©pãp©päp©p¯p®0ÿÿÿÂ½ÃÃ¤Ââ€˜â€¢ÃÃ‘Â¥Â¹â€¦Ã‘Â¥Â½Â¸Ââ€¦Â¹Ââ€þ‹7G
+÷#
+
+7
+‡Š›
+ç
+wŠ‹ŠcŠ
+³
+
+÷
+ã
+G
+‡ŠÿùÜ(88œ*\9ž(
+l9(	Ü(8Ü9(
+l)Þ(	Ü(8œ+Ü+Ü9ÿÿð x ,8 (¸¡(°¯pâx 'p pàpåx ,0¬p©p£x )°äp©p¯pÿÿÿ¸Â9â€¢ÃÃ‘â€¢ÂÂâ€˜Â¥Ã‰â€¢ÂÃ‘Â½Ã‰Ã¤ÂÂÃ‰âþ‹Š›G
+—
+÷
+ã
+
+ÇŠ‹
+w
+—G
+—
+×Š›GŠ‹
+Ç“
+ÿú\+œ(Ü8ž(
+,+^(
+,+œ98Ì((	ì(ÔÒV(8(
+l8ž(ÿÿð®pä0§pã0 p®p¬p©p®p«0ë0 x &8 (°ãpäp©p®x )°äÿÿÿÂ½Â¹UÂ¹ÂÂ¡â€¦Â¹Ââ€¢ÂÂÂ¥Â¹ÂÂ½Ã‰Ã‰â€¢ÂÃ‘ÂþÇ“
+G'Š‹Š›G3
+G
+‡Š›C
+
+×WGŠ›ŠÃÿû(	Ü((Ü+Ü9\+œ9((
+l8Ì(8*:\8Ü*\(Þ(
+l+(ÿÿéx &8 (°®päp©päpé0®0 L0ä0å0â0 x &0¯p£påp­x ÿÿÿ¹Ã‘â€¢ÂÂÂÂ½Â¹Ãâ€¢Ã‰Ã™â€¦Ã‘Â¥Ã™â€ÂÂÂ±â€þ‹Š›
+çW
+'Š‹GŠ‹
+çG
+—
+÷
+ã
+Ã
+ŠÃWC
+ÿü9**\8Ì((J,+Ü8œ9Þ(
+l8œ)+\(Ü+Ü8:L(8ž(
+.ÿÿè°åpãx )°¬0 x )°¬pãp¯0 pàpâx (°æx (°®päpã0 ÿÿÿÂ½Ã‰Âµâ€¦Â°ÂÂ¹â€¢ÃÃ‘â€¢ÂÂÃÃ‘â€¦ÂÂ¥Â¹Å“Âþ
+÷
+ã
+G
+‡
+—3
+Ç
+—
+çWƒ
+
+‡
+÷7C
+ã
+ç
+ó
+ÿþ(J.(
+l*\+9\8ž(	Ü(*\8Ì((
+n(	Œ+\*\99(
+,)ÿÿàp¯pâ0 p¨p©x &8 &8 (°®0®0 A0 päx (°ãpä0 p©pÿÿÿ‘â€¢Ã‰Ââ€¢ÃÃ‘Â¥Â½Â¸ÂÃâ€¦Ã‘Â ÂÃâ€¦ÃŒÂÂÿ
+÷''Š‹
+7GŠ‹
+C
+Š‹'
+÷
+Ó
+
+ç
+÷
+çŠ‹‡
+—ÿøÜ9(
+,+œ9(9ž(
+,8œ8Ü*\+Ü+œ8Ì+œ*œ8Ü+Ü+Œ(9ÿÿð päp¨x 'p x ,8 )°£p«x (°®p¤0§pã0 x )°£päpåÿÿÿ¦Â°ÂÂµâ€¦Â¹â€¦Ââ€¢ÂÂµÃ™â€¢Ã‰ÃÂ¥Â½Â¹ÃŒÂ¹Â©ÿ7
+÷
+ã
+ŠÃŠ‹Š‹
+÷'Šw
+G
+‡
+—3
+Šc
+—Š›ÿùÜ+œ+Ü8Ü9*\Y,:Ì(+œ+Ì(88œ+Þ(	Œ9\(Ü9*\+Ü+ÿÿàx ,8 (°¨x )°æp©p¯pâ0 pçx )°ã0 pçx (¸ )°«x ÿÿÿ¹â€¢ÂÂ¸()Ã¡Ãâ€¦Â¹ÂÂÃ‘Â¡Â¥ÃŒÂÃâ€¦Âµâ€ÂþŠÃ
+÷W
+çŠcŠ‹
+C
+W
+ç
+—C
+G
+ó
+7'K
+÷ÿøœ9\+œ9*\+^(	Ü+Ü+^(
+l+ž(
+l)Þ(
+,)+^(
+l(Ü8\9ÿÿépãp©päp©p¯p®0­p£p¯pàpé0®päpã0 x )°®p¤0 x 'ÿÿÿâ„¢Â½ÂÃ•Ãâ€¢ÂÂâ€˜Â¥Ã‰â€¢ÂÃÂÂÂ½ÃÂ¥â€¢ÿ#
+'Š‹
+w'Š‹77
+—
+÷
+ã
+Š‹
+—
+ÇŠw£
+ÿø
+,8œ+\*\9((	Ž(
+,8Ü9*\+ž(
+l9*\+Ü+Œ((	Œ*ÿÿâx (°£päp¯pâpé0 p£p¨p©p¬p¤0­p£p¯påp®pä0 p£pÿÿÿ€¦Â¹Ââ€¢ÃŒÂâ€˜Ã•Ã‰Â¥Â¹Å“Ââ„¢Â½Ã‰Ãâ€¦Ã‰ÂÂþ
+7
+÷“
+w
+‡
+—
+ÇŠw
+'Š‹GŠ›
+—
+ç
+—
+çOÿø(
+,:(
+l(Ü9((*\)Ü*\+œ9((	Ž(
+,9œ*\(Þ(ÿÿð¯p©p®p¯x &8 'p¬0 p«p©p®p¤0¬0 p£x )°®p¯p®p©ÿÿÿâ€¦Â°ÂÂÂ½Â¹Ã‘â€¦Â¥Â¹Âµâ€¢Â¹ÃÂâ€¦Â¹ÂÂÂµÂþ÷ŠcŠw
+
+7
+‡Š‹
+7
+·3
+ã
+7
+÷W'
+7Šw
+
+÷Šÿü8Þ(
+,8œ9ž(
+l9*\+Ü+Œ+(8ž(
+,)Ü9\+(
+l8Œ+^(ÿÿð©p¬x 'p pãp©p®p§p¬x 'p­p¬p©p®p«0 pâpåp¬x (ÿÿÿÂâ€¦Â¹ÂÂâ€˜Â¥Ã‰â€¢ÂÃ‘Â½Ã‰Ã¤ÂµÂÂ±â€¦Â¥Â´Âþ
+7
+ÇŠ‹Š›
+çW
+'Š‹
+×Š›
+—
+ã
+W
+ç
+7
+‡Šÿúl+œ)Þ(
+,)+Œ(\:*\8Ü9*\+œY<(8Ü:\+œ9*(
+ÿÿäp©qd° p©x &8 (°®päp©päpé0­pâx (°àp¬x )°£x ÿÿÿµâ€¢Â¹ÃÂâ€¦Â¹ÂÂÃ•Â¹Ââ€¢Ã‰Ã‘â€¦Â¥Â¸ÂµÂÂ±ÿŠ‹Š›
+çW
+GŠ‹7G3
+
+×W7C
+7GŠ›ÿúL((
+.(J.(J.(
+,(Ü9*\9ž(	Ü+Œ(**\8Ì(88žÿÿè°âx (°ápåp©pãp©päx 'p p©pã0 p®x (°£x (°ãpãÿÿÿ¦Ã‰Ã¤Ââ„¢Â½ÃˆÂâ€žÂâ„¢Ã•Â¹ÂÃ‘Â¥Â½Â¹Â¥Â¹Å“ÂþWŠÃ
+Ç
+—K
+'
+÷WGŠw³
+
+—
+çŠcŠ‹Šÿú,+ž(	Ž(
+,+œ9(8Ü*(
+l8ž(
+,)+\(Ü+Ü+œ98ž(
+ÿÿãpä0¯pãx (°£påpâp©päpé0¯x &8 )°äx '°­p©p®päÿÿÿ¢ÂÃ‰Â¥Ã‘Ã¤ÂÃ‰â€¢Ã™Â¥â€¢ÃœÂÂ¹Â½ÃœÂâ€¢Ã¡ÃÂþÇ
+—
+7
+—G
+Ç“
+
+—
+ç
+7
+ÇWŠcŠ‹3
+
+—C
+ã
+ÿøž(
+,8Þ(
+,8œ9ž(	Ü((J.(
+l*\+(
+,)((J,*\:9ÿÿåpâx (°ã0¯pâx (°£x (°©pàpäpã0®0 Np¯0 p¨p¯pãÿÿÿÂÂÂ±â€¢â€¦Â¹Ã•Ã€Â°ÂÂ¥Â¹ÃÃ‘â€¦Â±Â±â€¢ÂÂÃþ'W
+çG
+—
+×Šw
+
+×WGŠ›G
+—
+÷
+ã
+
+÷#
+
+÷
+ÿü)(8\9^(
+l8ž(
+l+œ9*\+ž(	Ü(9Ü+Ü8œ*Ì+‚‚ŒY,ÿÿñd° L0ä0ç0æ1¤±h ”0 Cp¯pâpâx (°£pä0 x &0©pâxÿÿÿÂÃ‘Â½Ã‰Ã¤ÂÂ½ÃÂ¹â€¢Ã‰ÃÂ¡Â¥Ã€ÂÂÂ¡â€¢ÂÂ­Ãþ3
+Š›
+ç
+C
+G
+‡Šw
+
+—
+çŠcŠ‹Š‹
+çŠcŠ‹ÿûœ9(+Ü9\989\9((J,*\+ž(	Œ*\+œY2‚L((	Œÿÿðâx (°£pä0 p®x (°ãpäx (°¤0¯pãp©x ,0¬p©p®qdðÿÿÿÂ½ÃÂ¥â€¢ÃˆÂIÂÃ‰â€¢ÃÃ‰Â½â€˜Ã•Ââ€¢ÃŒÂÃþG
+‡Šw
+õ4•ƒ
+'Š‹Š‹W7Š›
+Ã
+ã
+G
+‡Šw
+ÿù\+œ(Ü*(
+l+œ)Þ(
+,)((
+,:*\8Ü9*\+œY<((ÿÿé°£p«x (°®p¤0 päx (°ãpäpã0 x )°¬pãp¯0 x¡(¸ ÿÿÿ¥Â°Ââ€°â€¢â„¢Â½Ã‰â€ÂÃ‘Â¡â€ÂÂÂ½Ã‰Ã‰â€¢ÂÿG
+—
+÷
+ã
+Ã
+
+—
+ç
+7
+ÇWŠc
+—
+çO
+
+ÇŠ‹
+w
+—Gÿú\+^(
+l9(	Ü((Ü+(
+.(
+l+œ9\8((
+l8Ü8Þ(
+,8œÿÿð©p¯p®pã0®0 Tp¨x 'p pãx )°­x 'p p­påpäx )¸ ÿÿÿ±â€ÂÂ¹Â±Â¥Â¹Â¬ÂÂÂ½ÂµÃâ€¦Ã‰Â¥ÃÂ½Â¸Ââ€¦âþ‹Š‹Š‹
+7G3
+ŠÃ
+÷G
+ƒ
+Š‹
+÷'wŠ›'
+C
+ÿü(Ü+Ü8:L(9ž(
+l+*^(	Ž(
+l9*\+Ü+Œ((
+l+œ)(ÿÿäp¨x 'p p£p¬x (¸ )°®påpà0 x &0©pâx (°£päp¯pÿÿÿ¤ÂµÂÂ±â€¦Â¥Â´ÂÃ™â€¢Ã‰Â¥â„¢Â¥â€¢ÃˆÃ¬ÂÃ‘Â¡â€þw
+
+ÇŠ›GGŠ‹#
+G
+‡Š‹'Š‹Š‹
+÷'Šw
+Šÿúl+8Ü+Ì(+ž(
+.(
+.(	Œ8Ì((Ü+Ü8œ8ž(
+,(Ü9*\+Üÿÿð¬0 pãpåpàx (°âpãx (¸ &0©p®qdð L0ä0ç0å0§pã0ÿÿÿ¥Â¹Â¥Ã‘Â¥â€¦Â°ÂÂÂ±â€¢â€¦Â¹Ã•Ã€ÂµÃ•Â¹ÂÂ¡â€¦ÿ
+ç
+wŠ‹
+C
+7
+7
+÷Šw
+ã
+G
+—'Š‹
+7G
+÷'“ÿø(Ü+(
+l*\+\8Ì(8ž(
+,9(
+l*\+Œ(9*(
+,*\8Œÿÿðàpåx ,0¬p©qd° x &0©x )°§p®p¯pãpäp©qd° p®p¬ÿÿÿÂ¹Â¬Ââ„¢Â¥â€¢Â±ÂÂâ€°Ã•ÃÂÂ¥â€˜â€¢Â¹Ã‘Â¥Ã‘ÿ“
+W7Š‹3
+
+7Š›
+ç
+÷
+ç
+—
+7Š›
+Ã
+Šc
+—'ÿø
+,(Ü9+Ü8œ:L(8(
+l9*+((
+,:(
+l(Ü9((ÿÿép§p©p®pä0 x &8 (°æp©p£x 'p¯p©p®p¯x &8 'p xÿÿÿÂ¹ÂÂÂµÂ½â€˜â€Â°ÂÃÂ¥Ã‘Â ÂÂ¹Â¼ÂÃÂ½Ã•Ã‰Âþ7Šw
+÷Š‹
+—
+ÇŠw
+÷
+‡Š›7
+ƒ
+
+7
+‡Š›
+ç
+wŠ‹ÿü+Œ(œ+Ü+œ8ž(
+,(Ü9\8œ8Ü*\9ž(	Ü(8œ+^(	Œ*\8Œ(ÿÿàpâx (°ãx (°âpæx (°ã0 påp®p«p®p¯pçp®0 p£p¨pÿÿÿ±â€˜Ã‰â€¢Â¸Â¸ÂÃ¡Â¥ÃÃ‘Â¥Â¹Å“ÂÃ‰â€¢ÃÂ±â€¦Âþ7Š‹
+×Š‹
+çC
+Ã
+7Š›
+×Šw
+×
+—
+ç
+÷ŠcŠw
+Šÿú,+Ü8ž(
+,*\)Ü+Œ+^(:\9(	Ü+(8Ü:\+œ9*(
+,ÿÿð©qd° p¨p©p§p¨0­ID0¬0 pàx )°âpäp©x )°¬0­pçpÿÿÿ¥Ã‘â€Â°Ââ€˜â€¢ÃÂÃ‰Â¥ÃÃ‘Â½ÃˆÂµÂÂ±Â½Ãâ€ÿ
+Š›
+ç
+C
+
+ÇŠ‹
+wŠ›
+7“
+×7GŠ›
+wŠw
+GŠÿú,8Ü98Ì(8(
+l8Ü8Ì((
+n(J,9(
+,8Œ((Ü+Ü8œ8žÿÿè°£päp©p¯p®0®0 Ap®0 x )¸ &8 &0©päp©p¯p®x )°ÿÿÿÃ•Â¹Â­Â¹Â½ÃÂ¸ÂµÂÂ¡Â¥Â±ÂÂÃ‘â€¢ÃÃÂÃÃ‰Âþ÷gŠ‹3
+'Š‹GŠ‹
+çG
+—
+÷
+ã
+'Š›G
+‡Š‹ÿøŒ(9*(
+l+Œ(8ž(
+,(Ü9\8œ8Ü*\9ž(	Ü((	Ž(
+,+ÿÿà(°äp©p¯p®0®
+
+Ip®x &8 (°àx (°®x &8 (°®pä0 pÿÿÿ€¢Ã™Â¥â€¢Ãâ€¢ÃˆÂÃÃ€Ã¥}Â¥Â¹â€˜â€¢Ãâ€¢Â¹â€˜ÿŠ‹
+çE÷'Š‹g
+—Š‹s
+'Š‹'
+÷ŠcW
+7Šÿü)((	ì(+^(
+.(	Œ*\9\+L((Þ(
+l+ž(	Œ*^(	Ž(
+lÿÿø 'p x &8 (¸¡(¸ (°£pä0ê0 x '° pãpép®p£p¨pâpÿÿÿ¹Â½Ã•ÃŒÂÃÃ‘â€˜Â½Ã•ÃÂÂâ€¦Â±Â±â€°â€¦ÂÂ¬ÂÿŠ‹Š›
+—
+ÇW'Šw
+Š›Š‹GŠ‹#
+7W
+7
+7Šÿü8Ü8Þ(J,9\+(89^(+*\(Þ(
+l9*\+Ü+Œ(9Þ(
+ÿÿã0 p£x )°åp§p¨pä0 x )°®p¤0 x¡(¸ )°¬pãx (°¬pÿÿÿÂ±â€¦â€°â€¢Â±â€¢ÂÂÃÃ‰â€¢â„¢Â±Â¥ÂÂ¡ÃÂÃ‰ÿŠ‹Š‹W7Š›
+Ã
+Ã
+ŠcŠ‹7
+—GŠw
+
+7
+÷
+×ÿû\*\99(
+,)((Þ(
+l9(
+l++ÜY<(9ž(
+,8œ8Ü*\ÿÿð®pã0á0¯0â0®0 Px )°âx (°®pä0 x )¸ &8 &0ã0 xÿÿÿÂÂâ€¦Ã•Ãâ€¦Â°ÂIÂ°ÂÂµÂ½Ã™â€¢ÃŒÂÃÃ•ÂÂþ7Š‹77Š‹W
+Ã
+
+÷WGWC
+
+÷WG7
+—Šcÿø	Ü(9*(	Ü(+Ü8(
+,8ž(
+l9*\+Ü+ž(
+l+((Þ(ÿÿðäp£p¨0¬0 x )°®p¤0 pæx (°âp©x¡(°©x (°ã0 pàpÿÿÿ½Ãâ€¦Ââ€¦Ã‘Â¥Â½Â¸ÂÂ½ËœÂÃ‘Â¡â€ÂÂ½Ã‰Â¥ÂÂþ—
+çŠ›
+Ã
+
+÷WGWC
+Š‹''
+÷#
+w
+—G
+ÿü(+Ü+ž(	Ü(+Ü9\989\9((
+l99(
+,+\89+ÿÿð©p®päx )°£pä0 pãp¯påpâp£x 'p¯pàx (°âpãp¯p®ÿÿÿ¦Â°Ââ€˜â€¦Ã‘â€žÂ°ÂÃâ€¢Â±â€¢ÂÃ‘â€¢ÂÂÃ˜Ã„ÿ
+Š›
+ç
+C
+
+7
+÷
+×
+×
+—GGŠ‹
+C
+c#
+ã
+ç
+ó
+ÿü8ž(
+,98œ:L+Ü(Ü+Ü+\8(
+,+œ8Þ(
+l9*\+Ü+Œ(+Üÿÿð£påpâpã0®0 Nx (°ç0 x¡(°©p®x )°¬0 x¡(°¯p£påÿÿÿâ€¢ÂÂÃ‰Ã•Â¸Ã„Ã¤ÃŒÂ¼Ã„Ã¤ÃAMLÂ¼ÃÃÂ­Â¥ÃÃŒÿ
+Ã
+G—Š‹
+7
+‡Š‹
+7
+³
+Š›
+ç
+C
+ŠÃW
+—ÿû)8:Ì(8Ü+Ü9\8œ(Þ(	Ü((
+l+œ)((+Ü9*(ÿÿäx (°ãpä0 p¨x )°ãp¨x (°ã0 x )°âx 'p x ,0¯påÿÿÿÂÂÂ¥Â¸ÂÃ‘Â¡â€ÂÂÂ½Ã‰Ã‰â€¢ÂÃ‘â€¢ÂÂÃ‰â€þ‹
+7Š‹
+—G3
+ã
+G
+‡Šw
+Š‹Š›'
+Ç
+—Š‹#ÿü:L8”TÔÌ(8ž(
+,+^(
+l*\+œ8Ì((	ì(88ž(	Ü+\(ÿÿïpâpâx (°£päp©p¯p®0 pâx (°ãpåp¬pä0¬0 p®p¯päÿÿÿâ„¢Â¥Â¹â€¦Â°ÂÃÃ‰Â½Â½ËœÂ¸()QÂ¡â€ÂÂ½ÃÃ‘Â¥Âþ÷
+çŠ›
+Ã
+W7G'Š‹Š›
+Ó
+×ŠÃ
+÷W
+çŠcŠÿü8œ:L((
+l9^(	Œ*\9((
+,:*\98Ì8L(+Ü+Œ((ÿÿïpäp¨0 päp¨x 'p påp®päp¯påp£p¨x (°¤0 x &8 (ÿÿÿâ€¦ÂÂ¡â€¢ÂÂÂÂ¡â€¢ÂÂ­ÃÂ½Â¥Â¹ÃÂâ€¦Â¹ÂÂþG
+‡Šw
+
+7Š›
+çŠc
+—ŠcŠ›GŠw
+w
+—G
+ƒ
+ÿþ(
+,:(
+l(Ü9+:L(9*(	Ü(8Þ(
+l+^(	Ü8L8L(ÿÿø¡(¸¡(¸ (°®x &0©p®qdð pàx )°äp¨pã0®0 Np¯0 xÿÿÿÂ±Â±Â½ÃÂ±Â¥ÃÃÂ½Ã‘â€¢ÃÃÂÃâ€¢â€¦Â­â€¢Â¹Âþ—
+çO
+
+—3
+Š›
+Ç
+—Š‹
+C
+ã
+G
+‡
+—3
+
+—ÿûœ*(
+,8œ*\9(
+,)(8ž(
+,8+Ü8Ü*\9+Ü8œ:L((ÿÿïp®päpâp¯p¬0 x¡(¸ )°©p¬påpâx 'p pâx (°­x )°ÿÿÿ¹ÃŒÂâ€¦Â¸Ââ€¦â€˜ÂµÂ¥ÃÃÂ¥Â½Â¸Ââ€°Â±Â½ÂÂ­ÿŠ‹#£
+S—
+C
+7GŠ›—3
+W
+ç
+7
+‡Š‹
+7
+·ÿø
+,)+ÔT•PS+((
+l+œ)((	Ž(
+,+*\9ž(
+,8œÿÿð pçp©p¬p¬0 x ,8 'p x '° x &0âx )¸¡(°ä0 PR0ÿÿÿ€¢Ã™â€¢Â¸ÂÂ¥ËœÂâ€°Â½Ã•Â¹â€˜â€¢ÂÂÂÂ½â€˜â€þw
+'Š‹g
+—Š‹s
+Š›77Š‹3
+ã
+gW
+Ç
+Ãÿø8Ü9\*\9(	Ü+(8ž(
+,+\+Ü9(	Ü(ÒL+(8(
+lÿÿð«x )°§x 'p p©p®pãpäx )°¬p¬x )°äp©p¯p®0¬0 pÿÿÿ€¢â€¦Â°ÂÂµâ€¦Â¥Â¹Ã‘â€¢Â¹â€¦Â¹Ââ€ÂÂ¡Â½ÃÃ‘ÿ3
+Š›
+ç
+C
+w
+—
+çŠc
+÷w3
+÷
+×Š›
+4õ3
+'ÿûÜ+Ü¹Ì((
+l8ž(	Ü(+œ+Ü9(8ž(
+,88ž(
+,8Þ(
+,+ÿÿäx (°¤0 x ,0é0 päp¨x 'p x¡(°¯p£påpãx (°¤0 LÿÿÿÂ¹Ã•Ã ÂÃ‰Ã•Â¸Â¸()Ã¡â€¦ÂÃÂÂÂ¡â€¢ÂÂ­ÃÂ½ÿ
+—
+çC
+÷
+7Š›
+çŠc
+—ŠcŠ›GŠw
+4Ä“
+Šc
+—Šÿú.(J.(
+,8ž(
+,+œ9*^(
+l+(8(
+l8Ü8Þ(
+,8Ì8L9\ÿÿð¯p­pàx )°âp©pãp¯p®pã0 x )¸¡(°äx (°â0 p£p¯pÿÿÿ‰â€¢ÂÃ‘Â¥Â¹Å“ÂÂ¥Ã‘ÃŒÂÂ½ÃÂ¸ÂÂ¡â€¦Ã‰Â¹â€¢Ãþ73£
+
+÷
+ç
+Ç“
+G
+‡Šw
+
+÷
+çŠw
+Š‹‡
+Çÿú\(Ü*\9+:L((
+n(	Ž(	Ž(
+,)(*(
+,+8(+*ÿÿîx 'p p©pã0 p®p¯pâp­x )°¬p©pêx (°¤0ë0 x (°èÿÿÿÃÂ½ÃÃ‘â€˜Â½Ã•ÃÂ½ÃÃ‘â€˜â€¢Ã‰ÃˆÂâ€¦Â¹ÂÂÃþ'
+÷GŠ‹
+7GŠ‹
+C
+
+“
+÷Š‹
+ç
+C
+×
+÷.s
+×
+÷ÿü9*\+Ü+œ8Ì((
+l8œ)Ü9\+^(
+,+œ9(8ž(
+,(Ü+Ü8žÿÿæ0ã0 p¯päp¨x (°âpçp©pãx 'p p­x )°äp£p¨0®0 IÿÿÿÃŒÂâ„¢Â¥Ã‰ÃÃÂâ€¦Ã‘Ã‘â€¢ÂµÃÃÂÃ•Ãâ€¢ÂÂþG
+‡Šw
+W
+ç7W
+÷'GŠ‹
+C
+Š
+³
+Ó
+×
+‡ÿûÜ+^(	Ü(U(*+Ü+^(
+.(*Ì(+Ü8ž(	Ž(
+,8Œ((ÿÿð®p¤0 x )°£p£p©x &8 (°®päx )°¬p¬pé0 x¡(¸ (°ÿÿÿ°ÂÃ‘Â¡Ã‰Â½Ã•ÂÂ ÂÃ‘Â¼ÂÃ‘Â¡â€Ââ€°Ã•Â¹â€˜ÂþÇŠ‹
+C
+
+“
+4Ä“
+
+—
+ã
+G
+‡Šw
+
+—7
+÷
+ÇŠ›ÿù(
+,)(9(
+,8Ü9(*+Ü+^(	Ü:Ì(*\9(8ž(
+.ÿÿè°åpãx (°¤0 x¡(°¯pâ0 p­p©pãpãp©p®qdð p£pâx ÿÿÿ€˜â€¢Â¹Ã‘Â¥â€¦Â±ÃŒÂâ€¦Â¹ÂÂâ€¢Ã¡Â¥Ã‘â€¢ÂÂÿw
+—G
+‡
+÷WC
+Š{
+
+×
+÷ŠcŠ‹
+Ã
+
+7Š›
+Ç
+ÃÿûŒ(œ+Ì((Ü8ž(
+.(	Ž(
+,+œ9*^(
+l+8Ì(9Þ(
+,8žÿÿçp pãpåpàpàp¬p©x (°¤0 x )°®p¤0 p®p¯0 pàpâp¯ÿÿÿÂ¥â€˜â€¢ÃˆÂÂÃ‰â€¢â€˜Â¥Ã‘ÃŒÂÂ½ÃˆÂÃâ€¢Ã‰Ãÿ
+÷
+çŠ›
+Ã
+
+7
+÷
+çŠ‹
+—
+wW'Š›G
+—
+÷
+ã
+wŠÿú,8ž(	Ü(9\8Þ(
+,)+Œ(8ž(
+,8Þ(
+,8œ9ž(	Ü(9ÿÿø )°ä0 x¡(¸ )°©p¬x (°¤0 p¨x )°âp®x (°ãpã0 pÿÿÿ€¢Ââ€¢Â¥ÃÃÃ¬ÂÃ‘Â¡â€ÂÂÂ½Ã‰Ã‰â€¢ÂÃ‘â€¢ÂþC
+
+7Š›7Šw
+W7Š‹3
+7Š‹GW
+'Šÿú,9œ*^(
+,9Ì(9Ü*\9*((
+,:8+*\(Ü*\9(8ÿÿé°£p«x )°§x 'p pâp¯p¯pä0®0 Tp¨p©pã0 p©pã0 xÿÿÿÂÂ¡â€¦Ã‰Â¹â€¢ÃÃŒÂ½â€¢Â¹Ã™Â¥Ã‰Â½Â¹Âµâ€¢Â¹ÃÂþ
+×
+—7
+×Š›G
+7
+ƒ
+Ã
+
+ç
+÷C
+Š{
+
+7
+ÇŠ›
+—ÿû^(
+,)(88œ+Þ(	Œ9\(Ü9(8ž(
+,)Ü8ž(
+,8Ü8Ü*\ÿÿð®0 p¯pâ0 x )°åpäp¨p¯pâp©pêx )°äp©p¯p®0 päpÿÿÿÃ•Ãâ€ÂÃÃ‰Â½Ã™Â¥â€˜â€¢Ã‰ÃŒÂ¸((Å’Å’Å’Â0ÃÿssK€	C
+'
+—
+ç
+C
+7
+7
+÷Š‹
+C
+Š‹g
+—ŠÿùŽ(
+,+œ(Þ(	Ü:Ì(8ž(
+,9(
+l*\+Œ(8(
+l8œ9*^(ÿÿð¬0 pãpäx )°äx 'p x¡(°¯pâ0 x &0âx )¸¡(°ä0 xÿÿÿâ€¢Â±Â¥Ã™â€¢Ã‰Ã¤()%Â¹â€˜â€¢Ãâ€¢Â¹â€˜â€¢Â¹ÃÂþ'Š‹g
+—Š‹wŠ‹#
+C•÷
+—
+çŠcŠ‹Š‹ÿûž(	Ž(
+,+œ9Ü8ž(
+,9œ*^(
+,9Ì(8ž(
+,99\8œ+œ8Ìÿÿø ,0¯påp®x &8 (°¤0 PASS0 p¯p®0 päp¨x 'p p£pÿÿÿ‰Ã‰â€¢ÂÃ‘â€¢ÂÂÂâ€¦Â¹â€˜Â¥â€˜â€¦Ã‘â€Â°ÂÃþw
+—G
+ƒ
+
+—G3
+
+×Š‹Šc
+—W
+Ó
+
+÷WGWÿü((J,*\+ž(	Œ*\+œY<(8ž(
+,8Ü+Ü+9ž(
+,)((
+lÿÿð¤0 p®p¯0 pâx (°­x )°©p®p©p®qdð pãx (°æx (°ÿÿÿ€ÂÂÂ½â€˜â€Ââ„¢Â¥Â¹â€˜Â¥Â¹Å“Â¸Â%ÃÂÃ‰â€þ‹g
+—Š‹w3
+G
+‡Šw
+Š›
+7GWŠ›
+Ã“5ÿôÔÌ+Ü9:\8(
+,8Ì8+Ì8L9\(Ü+Ü+\8(
+l8œ*\8Ü+Ü+ÿÿàpâx (°£x (°©pàpäpã0 x )°®p¤0 x )°¬p¬0 pãx ÿÿÿ™â€¢Â¸ÂÃÂ½Ã•Ã‰Ââ€Â½Ã‘â€¢ÃÃÂ½â€˜â€¢Ãâ€¢ÿ
+çŠcŠ‹
+ç
+7“
+
+‡Š›7
+‡Š‹3
+'Š›G
+‡Š‹ÿøŒ(9*(
+l+Œ(8ž(
+,8+(
+l:\*\+œY<(8Ü9\*\9ÿÿà(°ã0®0 Cx )°®x &0©x &8 )°äx 'p CLI0 SHA0â0ÿÿÿ˜ÃœÃ¤ÃË†Ã¤Ã ÃÃ ÃÃÃ™â€˜ËœÃ¥ËœÃ˜Ã…Ââ€¦ËœÃÿŠcŠ{C“#W.s7Š{—.ƒgŠ‹Šw“#sgŠÿû¹Ì9\¸l::8ž(	ì9L9Œ:9^(J.(	ì8Þ(	Ü9L8Œ8L9Œÿÿðä0ä0ç0®0 Tp¨p©pã0 p©pã0 p©p®x &8 (°àx (°®xÿÿÿâ€¢Â¹ÃÂÂÂ½â€˜â€ÂÃ‰â€¢Ã™Â¥â€¢ÃœÂ°ÂÂ¹Â½Ãÿ
+
+çŠ›G
+—gŠw
+÷
+‡W
+×Š›
+ã
+Š›'
+÷gÿø
+l+(+Ü8Œ((
+l9\9*+Ü8œ*\:ž(
+l9*\+Ü+Œ(9ÿÿï0 p­x (°âp§x 'p®
+
+Cpåpâpâx (°®pä0 p£p¨x (°ÿÿÿ­ÃŒÃ¨ÂÂ¹ÃÂ´ÂÂÂ¤Ã€Ââ€¦â„¢Ã‘â€¢ÃˆÂÃ‘Â¡â€ÿ
+'Š‹
+7
+÷'ŠcŠ‹
+C
+
+‡Š‹Š›ŠcŠ‹#
+×Š‹ÿú98ž(
+l(Ü9*\+Ü+Œ((Ü+Ü8œ8ž(
+,(Ü9*\+Ü+Œ:Ìÿÿø¡(°©p®x )°¬0 x¡(°¯p£påpãx (°¤0á0é0ã0¯0á0é0ÿÿÿ¼ÃÃÂ­Â¥Ã€Â°ÂÃ‘Ã¥Ãâ€¢ÂÂ¡â€¢ÂÂ¬Ã€Â°Ââ€°ÃþW
+—
+Ç
+C
+Ã
+
+7
+÷
+×
+—
+ÇŠ‹
+C
+
+‡Š‹
+Ç
+ÿü(+œ8+L(8(
+l(Ü*Î(*Ì+L+\*\)Ü+œ+Ü8ž(	Ü+\8Üÿÿðâp©pàpäpã0à0 x )°®p¤0 x )°âp£p¨p©pæx 'p p©ÿÿÿÃÃâ€¢ÂÃ‘Â¥Â½Â¸Ã€â‚¬Â ÃŒÃˆÃâ€¢Â¹Ã‘Ã‰Â¥â€¢Ãþ3³
+7Š‹gŠ‹
+ã
+Š‹‡Š‹
+7GŠ‹
+C
+
+7
+÷ÿû\8*\+(
+,)+Ü8Ü+Ü9\8œ(Þ(	Ü((
+,+œ98œ*^(
+,ÿÿð x ,0épäx 'p­p­x )°äp£p¨x (°¤0©0®0 Np¯0 pàÿÿÿ¦ÂÂ­â€¦Ââ€ÂÃâ€¦ÃŒÂÂ¥Â¹ÃÃ‘â€¦Â±Â±â€¢ÂÂþ
+÷#
+WŠÃ
+Ç
+—7
+‡Š‹
+C
+ã
+gW
+Ç
+Ã
+7Wÿú\9(	Ü+(+Ü9*(
+,8Œ((8œ+Þ(
+l)((
+l9^(ÿÿð©päpã0¬0 Wp©p®x &0¯pçpã0¯p­x )°£OS0¬0 pâx ÿÿÿ€¦Â°ÂÂµâ€¦Â¥Â¹Ã‘â€¢Â¹â€¦Â¹Ââ€ÂÂ¡Â½ÃÃÂâþ›
+ç
+C
+
+7
+÷
+×
+ÇŠ‹GŠw
+
+—
+×
+×WGŠ›ŠÃÿû(	Ü(8ž(
+.(J.(
+,8ž(
+,+œ(Þ(	Ü((Ü+Ü+\8(
+l8ÿÿépãp¯p®0 pâx (°­x )°©p®0 påp®pæx (°âp©x¡(°©ÿÿÿ¢ÂÂ¸ÂUÃÃÃ‘Ã‰â€¢â€¦Â´Âµâ€°Â½Ã•Â¹â€˜â€¦Ã‰Ã¤ÿ
+Š‹‡
+—G3
+
+—ŠcŠ‹
+çG
+—
+7Š›
+Ç
+Ç“
+ÿûÜ+Œ((Ü*(
+,(Ü*Ü8+Ü*\+œ9+Ü(Þ(
+l+ž(	Œ*^(	Žÿÿé°äx 'pë0 päp¨x 'p x¡(¸ )°©p¬påpâx 'p p©pã0ÿÿÿÃ‰â€¢Ãâ€¢Ã‰Ã™â€¢ÂÂâ€¦Â¹ÂÂÂ¹Â¼ÂÃ‘â€¦ÃÂþ³
+
+—3
+
+7
+‡Š‹
+7
+·Š‹
+C
+
+7
+÷
+×
+ÇŠ‹GŠÿü+‚‚”+Ü8œ9(
+n(+(	Ü((
+,9œ*^(	Ž(
+,+œ(Þ(	ÿÿàx )°®p¤0 p£p¯p­p­x )°®x &0ã0ê0 x &0¯p£pã0¯ÿÿÿ¦Ã•â€˜Â¥ÃÂ½ÃÃ€Ã¤ÂµÂµâ€¦Â¹â€¦Ââ€¢ÂÂµÃ•Ãâ€þcŠ›GŠw
+×7GŠ›
+wŠw
+Ó##c
+Ó
+Ó#ÿü+œ+\)((
+l+œ)((	Œ+Ü(Ü8Ì+Þ(
+l9^(	Œ*\9+Þ(ÿÿðæp©x &8 (°®p£x 'p¯pä0à0é0­på0ép¤0­0â0à0â0æÿÿÿÃ„Ã€Â´ÃˆÃ˜Â¼Â¸Ââ€¦Ã‰Â±Â¥â€¢ÃˆÂâ„¢â€¦Â¥Â±â€þ‹
+C
+
+7
+÷
+×
+×Š›
+çŠc3
+Š›
+ç
+C
+G
+‡Šw
+ÿþ(
+,9œ*^(
+,9Þ(
+,8Œ(8ž(
+,88œ+Þ(	Œ9\(Ü9*\+Üÿÿð pâx (°­x )°©p®0 pâx (°£p¯pâx &8 (°¤0 x )°ÿÿÿ½Â¹ÂÃÂ¥â€˜â€ÂÂÂ½Ã‰Ã‰â€¢ÂÃ‘â€¢ÂÂÃÃ•Âÿ
+7Š‹77Š‹3
+ã
+‡
+—7G
+÷'
+—
+7Š›
+Ã
+
+×
+—ÿøÜ8Ü*\+œY<(8ž(
+,(Þ(
+,*\898Ì((
+l8ž(	Ü(+œÿÿðä0 p©p­pàp¯pâpäx (°¤0 p¯pâ0 p£p¯p®pæx (°âpÿÿÿ€¢ÂÂÃ‘Â¼ÂÂÃ•Ã‰Ã‰â€¢Â¹ÃÂÃÃ‰Â½Â½ËœÂ¸ÂIâþ‹
+w
+—7G'“
+'
+÷w3
+÷
+—
+ç3
+'Š‹
+×Šÿúl*\+Œ(9\+œ(Ü*(
+l+œ)Þ(
+,)+Œ((
+,+*\9ž(
+ÿÿâ0 päp¨p©pã0 x ,0¯påp®x &8 (°¤0 p£x )°®x &0ÿÿÿ€˜â€¦Ã‘â€Ââ€¦ÃŒÂâ€žÂâ€˜Ã‰â€¦â„¢ÃÂAHÂâ€þ›
+wŠ›
+—
+ç7C
+G
+‡Šw
+
+÷'
+—
+w
+—
+çŠ›
+Ã
+ÿø(
+l8Þ(	Ü((8ž(
+l+œ(Ü*:Ì(8ž(
+,8Ü+Ü+9žÿÿçp päp¨x 'p pâx (°àp¯pãp©päp¯pâpé0§pã0 x (°ÿÿÿ¥ÃÃ‘Â¥Â¹Å“ÂÃ‰â€¢â„¢â€¢Ã‰â€¢Â¹Ââ€Â½ÃÃ‰Â½ÃþgŠ‹
+çŠ›
+ç
+7Šw
+Š›WŠc
+—C
+×
+÷
+Ç
+—
+7“ÿø(Ü+Ü+ž(J,+*\(Ü9(8Þ(
+,8(
+l8ž(
+l9(
+,+:ÿÿàx ,8 (¸¡(°¯pâx 'p p£p¬x )°©p­p©p®qdð x )¸ ÿÿÿµÂ¥ÃÃÂ¥Â½Â¸Â¸ÂÂ½Â¹Ã‘Â¥Â¹Ã•â€ÂÃ‘Â¡â€ÂÂþ÷'ŠcŠ‹'Š‹
+C
+'
+÷Š›Šc
+×Š›
+
+÷
+ç
+Çÿü(9Ü*\9*(9*+Ü8Þ(	Ü((++Ü(Ü*Þ(
+,8œ8Ìÿÿø )°®p¤0 pâx (°­x )°©p®p©p®qdð T0à0é0 pâx (ÿÿÿÃ•Â¥Ã‰â€¢Âµâ€¢Â¹Ã‘ÃŒÂâ€¢Ã¡ÃÂ±Â¥ÂÂ¥ÃÃ¬ÂPÃþS
+õCC
+õCs
+Š›
+ç
+C
+
+÷
+Ç
+C
+WŠ›ÿþ(
+l+œ9*\+ž(	Ü(*\+œ(Ü*^(	Ž(
+,+œ9(8ž(
+,+^ÿÿé°©p®0 påp®päp¯påp£p¨x (°¤0®
+
+1d±d±d° L0ä0çÿÿÿÆ’Å PÂPÃ€Ã¤ÂÂ±Â¥â„¢â€¢ÂÃ¥ÂÂ±â€ÂÂ¥ÂµÃÂþÇŠ‹
+×Š‹
+çGŠ‹
+C³
+7GŠ›GW3
+'Š‹
+×ÿø
+l*\+œ8Ì(T•PS‚œ+Ü9\+ž(	Ž(
+l8œ:L((
+l9^ÿÿæ0©pä0ê0 päp¨x 'p x (°¬x (°æx (°®0 päpâx )°ÿÿÿ­â€¢ÂÂâ„¢Â¥Â±â€¢ÃŒÂÃ‘Â¡â€¦ÃÂÂ¹â€¦Âµâ€¢Âÿ
+G
+‡Šw
+'Š‹Š‹Š‹'Š‹
+ç
+7Šw
+'
+÷Šÿü9\(Ü9(9Þ(
+,8ž(	Ü(+ž(
+,9\98ž(
+l+*\8Þ(
+,ÿÿð x )°ä0 pãp¯påpâp£x 'x «0¨p®p¯0 x )°¬p¬p¯pÿÿÿ±Â¥ÃÃÂÂÂ¡â€¦Â¹Ââ€Â¤Ã¬ÂÂâ€¦Ã•â€˜Â¥ÃÃ©ÿW7G'Š‹Š›
+Ó
+×ŠÃ
+÷W
+çŠcŠ›'—Š
+³
+ÿø(
+l8Ü8Þ(
+,8Ì+Œ(8ž(	Ü+^(
+,:*\8Ü9*\+œY<(ÿÿÉ0­x¡(¸ )°©p¬p©p®qdð x &8 (¸¡(¸ (°£päpã0 pçÿÿÿ¢Ã‰â€Ââ„¢Â¥Ã¡â€¢ÂÂÃ‰â€¦Ã‘Â¡â€¢ÃˆÂÃ‘Â¡â€¦ÿ
+ã
+7
+·
+—Š‹
+C£
+
+—
+ç7GŠ›
+Ç
+ÇŠ›G
+ÿü+Ü+Œ+^(	Œ+Ü(Ü9+Ü8Œ((Ü**\+)((98Ü:(*ÿÿàpâx (°ãp¯p¬påpäp©p¯p®0¬0 x '° pãpäx )°¬x 'ÿÿÿÃÂ½Ã‰Â­ÃÃâ€¦Ââ€Âµâ€¦Ã‘Ã‘Ã‰Â¥â€°Ã•Ã‘Â¥Â½Âþã
+Šc
+—
+wŠ‹7C
+
+—
+ã
+
+—
+ã
+G
+‡Šw
+
+7ÿú*\+)(8œ9\+œ+ž(
+,8Œ+(8Ü9(
+l+(	Ü(*Nÿÿë0á0®0á0 pçp¯pâp«x¡(°¬p¯pç0 x )°ãpãx (°âpäpÿÿÿ½Â¹ÃŒÂ°Ââ€¦Â¸ÂÃ•Â¹â€¦Ãâ€¦Â¥Ã‘â€¢ÂÂâ€¦ÃÃþ—
+çK
+GŠ‹7C
+Ã
+Š›
+ã
+W
+ç7Š‹C
+Cÿü((J,*\:99\8ž(	Ü(8œ+Ü+Ü9+(9*(	Ü((
+ÿÿæp©x &8 (°®p£x 'p­x ,0åp®x &0¬x 'p pæx )°¬pÿÿÿ€˜â€¦Ã‘Â½ÃˆÂÂ¡â€¦Ã‰ÂÂµÂÂ½â€˜Â¥Â¹Å“â‚¬Ã ÂÂþ7Š‹
+Ç
+Ç3
+Š‹#
+
+ÇŠ›GŠ‹
+÷'
+Ó
+w
+ÿþ(
+,+Œ(9*(	Ü(8(
+.(
+,8Œ((J,++Ü+Ü8Œ((
+ÿÿápåx )°¬pã0 päp¨x 'p x &8 (°æx (°¬p¯pàp­x (ÿÿÿÃÂÃ™â€¢Ã‰ÃÂ¥Â½Â¸â‚¬Â¡Â¹Â½ÃœÂâ€˜â€¢Ã‰Â¥Ã™âþ‹
+C
+Š‹'
+÷
+Ó
+G
+‡Šw
+
+ÇŠ›
+ç
+çŠ‹#
+“ÿû((
+l+œ)(9*(	Ü(8(
+l(Ü*Ì(9ž(
+,8œ*^(Jÿÿéx (°â0 x )°ãpãx (°âpäp©p®qdð p®p¯0 p päp¯pÿÿÿ±}Ââ€¦Â±Â±â‚¬ÂÂ¡â€¦Â¹â€˜Â±â€¢ÃˆÂâ€¦Â±Ã‘Â¡Âþ÷W
+w
+ƒ
+G
+‡Šw
+'
+—
+×Š›'“
+
+÷
+Ç
+—
+ÿü:L()Ü9^(
+l8œ)(8ž(
+,)Ü*\8Ü9(
+,8œ8Ì((
+,:ÿÿà)°£päp¬pé0 p¯p®x 'p®
+
+Nx (°ç0 x (°èx (°£påÿÿÿâ€¦â€°Â±â€ÂÃÃ•Ã‰â„¢â€¦Ââ€Ã¨ÂÂâ€¦Ãâ€¢Âþã
+
+×Š›
+çŠ›
+wŠ‹
+C
+
+—
+ç7GŠ›
+Ç
+ÇÇW
+ÿü8ž(
+n(	Ž(
+,;8œ+Ü++((
+l(Ü*Ü;9\+œ*\+œ8Üÿÿø )°¬p¬pìpâx (°¬x (¸ )°ãx (¸ «0¬0 p x )°ãx ÿÿÿ¸Ââ€°â€¦ÂÂ­Ã•Ã€ÂÂ¡Â½Âµâ€¢Ã±Ã™â€¢Ã‰Â¥â„¢Ã¥âþ
+³
+Ã
+
+Š›7Š‹
+ã
+'Š‹7G
+÷'Šw
+
+‡
+÷
+×ÿø
+.(*Î(*Ì*(	Œ+Ü(Ü8Ì+Ü*\+œ8Ü9(
+l++(
+l9*\ÿÿð®0®p­p¤0©0®0 Ep¤0â0å0å0á0é0 x &8 (°äx )°£pÿÿÿ€¢ÂÂµÃÂ¥ÂÂ¹â€¦Ã‘Ã•Ã‰â€Ââ€¦Ã•Ã‘Â¡â€¢Â¹Ã‘Âþ—
+7
+—G“
+Š›
+wŠ›
+—
+ç7C
+Š›
+ã
+Š‹‡
+ÿü*\(Ü*\9(98œ9\8Ü9+^(
+l+œ(Ü*+Ü8Œ((J,*\+ÿÿà'pë0 HTTPS0­p¯p®p¬pé0 x ,0¯påp®x &8 (°¤0 xÿÿÿÂÃ…Ã•Â¥ÃÂ¥Ã‘Â¥Â½Â¸Ã¬ÂÃÃ‘â€¦Ââ€¢ÂÂÃÃ‰Âþ÷ŠÃŠw
+Ã
+
+§
+÷W'
+çŠ›
+Ç
+ÇŠ‹
+C
+Š›
+7G
+—ÿùž(
+l9*\+Ü+Œ+(8+Ü8Ü9+^(
+l(Ü9*\9ž(
+l9*ÿÿïp®0 pàpâp¯x ,8 'p x )°®p¤0 x )°åpäp¯p­x )°ÿÿÿ¥Å’ÂÃ‰Â½Â±Â±â€°â€¦ÂÂ¬Ã¬ÂÂ©Â½Ã•Ã‰Â¹â€¦Â°ÂÂþ7'Š›7
+ƒ
+'Š‹
+7
+÷gŠ‹'“³
+
+7
+‡Š‹
+7
+ÿü8Ü9\+\+^(
+,)(8Ü*\+œ)Ü+(	Ü+^(J,*\+(	Ü((ÿÿø )°£p«påpà0 pçp©päp¨0 p®p¯p®0­p¯pæx (°âpçpÿÿÿ¥Ã‘Â¥Â¹Å“ÂÃ‰â€¢ÃÃ‘Â½Ã‰â€Ã¬ÂÂ½ÃÂ¹â€¢Ã‰ÃÂþ‡
+—
+×gŠ‹'
+—Š‹
+—Š‹
+C
+W
+ç
+—
+ç7GŠ›
+ÿü+(88ž(
+,8Þ(
+,8œ9œ*\+œY<((	Ž(
+l9(	ì:Ì(ÿÿð¯p¯pàx ,8 )°£p«0 x ,0âp¯pçpãx (°â0 p£p¯p®pÿÿÿ€¢Â¹ÃÂ¸Â!â€¦Ã‰â€˜â€¢Â¹Â¥Â¹Å“Ã¨ÂÂµâ€¦Â¹â€¦ÂþwŠ‹
+C
+Š›G
+ƒ
+
+—ŠcŠ‹
+çG
+—G“
+
+ç
+÷ÿü(*\+œ(Ü+9^(	Ž(
+,8Ì((*\8œ9*(9*\+^(	ÿÿàx )°®p¤0 x '° x¡(°âx (°ãp¨0 pæx (°âpãp©p¯pÿÿÿŒÂâ€˜Â¥Ã‰â€¢ÂÃ‘Â½Ã‰Ã¤ÂÂµÃ•ÃÃÂâ€°â€Ââ€þ‹
+×G“Š
+³
+‡'Š‹
+7—
+7
+ÇŠ‹
+C
+×
+—
+ç
+÷ŠcŠÿùÜ(8Ü9Þ(
+l8*L:Ì(((Ü+Ü+ž(J,*\Y<+œ*œ8Ü+Ü+žÿÿë0 p©pã0 p®p¯pç0 pçpâp©päpäx (°®0 p©p®0 päpÿÿÿ€ÂÂ±â€¦Ã•Â¹ÂÂ¡â€¢ÃˆÂÃÂÂ¡â€¢Âµâ€žÂ¸()Ã™ÿ
+—ŠcŠ‹
+ç
+7ŠwŠ
+³
+„Ç
+—
+çWƒ
+Ã
+ç
+÷ŠcŠwŠ
+ÿü8Œ9Œ(8Þ(
+l+ž(	Ž(+Ü:(+Ü+œ+:L*L:Ž(*Ì8Œ8ÿÿàpâx (¸ )°¬0 päx (°ãpäpã0 p©p®0 päx (°ãpäpãÿÿÿÃÃ€Ã¤ÂµÂ±Â¥â„¢â€¢ÂÃ¥ÂÂ±â€Â¹Ã‘â€¢ÃÃÂ¹Ã‘Ãþ3Š
+³
+‡'Š‹Š›
+Ã
+Š‹
+—
+ÇŠ‹7—7GŠ‹
+Ó
+Ã
+ÿü8ž(
+.(
+l+(++Ü+Ü8((
+l(Ü*Ì(+(8ž(ÿÿø )°¬0 p£p¨p©p¬p¤0 CLI0©0 pàx )°ãpã0®0 Fpåpÿÿÿ°ÂÃÃ•Â¥Ã‘â€Ã¨â‚¬ÃˆÃ„Ã˜ÃœÂÃ‘â€¢ÃÃ‘ÃŒÂ°Ââþ‹Š›
+—
+ÇW'Š‹3
+
+÷
+ç
+Ç“
+Š‹
+çg
+—'
+÷
+ÿü+^(
+,+œ9(
+l+(*Ì*99Ü+Ì((*Ì+L+^(
+,:8(
+ÿÿâp©p­x (°®päx )°¬0­päpâx )°®pãx¡(°¯pâp­0­päÿÿÿÃâ€¢Ãâ‚¬ÂÂâ€¦Ãâ€¢ÃŒÂÃ•Â¹ÃÃ•ÃÃÂ½Ã‰Ã‘âþ‹
+C
+
+÷
+ã
+ç
+÷ŠcŠwŠ
+³#c
+“
+
+ÇW3
+
+÷ÿûž(	Ü(9*\+\*\+œY<+\8Þ(
+,+œ8Ü*\9*\9ž(	Ü(9ÿÿà(°ãpä0 p©p®0 p­x )°®x )°§x (°¤0­x )°£pápåpÿÿÿÂ¥Ã‘Â¥Â½Â¸ÂµÃ™â€¢Ã‰Â¥â„¢Â¥Ââ€¦Ã‘Â¥Â½Â¸ÂÃ‘Âþ‡Š›C
+Š›
+Ç7
+ó
+Š‹Š›
+—
+Ç3
+
+—
+çGŠ‹'ÿû\*\99(
+,+œ9+:L(+Ü+Œ(9*(	Ü(88œ*\+Üÿÿð p£x )°®x &0©x &8 )°äx 'p®0 Tpépàx (°£p¨x ÿÿÿÂ¬Â°Ââ€°Ã•Â¥Â±ÂÂ°ÂÃâ€¦Ã‰Â¥Ã‘Ã¤Â½ÃÂ­Â¥Â±ÿ
+Ç3
+÷7
+·
+—
+Ç
+Ã
+×Š›'
+—G“
+÷
+×Š‹
+×
+÷'ÿúL+\8(
+l8œ*\9:L+Þ(
+,(Ü+Ü8Ü:\8Ü9(
+,+L+Þ(ÿÿðåp®x &8 )°âpé0 x )°åx &0©päpã0 x )°®p¤0 p ÿÿÿâ€¢Ã‰Â¥â„¢Ã¤Ã©Ãâ€¦ÂÂ­â‚¬ÂÃâ€¦ÃÃŒÂ¸ÂÂ¸ÂþŠ›ŠcgŠ‹'7Š›'
+—Š›
+Ã
+'Š‹g
+—Š‹sÿø(J,+Ü9\+œ)((	ì(8Ü:\+\+*\+œ*Þ(
+,)+^(
+lÿÿð£x (°ãpäp¯pâ0 pàpâx (¸¡(°©pè0 x )°£p£x (°àÿÿÿâ€¦Â¹Ââ€Â°Ââ€žÂÃâ€¦Ã‰Ã‘Â¥â€¦Â°ÂÃ•Â¹Â¥Â¹ÿ7GŠ›
+Ç
+Ã
+Šc
+—7
+7Š›'Šc
+—
+çO
+'Š‹ÿü9\+^(	Ü(8ž(
+,(Ü+Ü8ž(	Œ8Ì((
+l+œ)((	ì(8žÿÿè°ãpäp¯pâx 'p­pâp¯p¬p¬x ,8 )°£p«0 p§x )°à0ëÿÿÿâ€¦Â±Â°ÂÃ‘Â¡Ã‰â€¢â€ÂÃâ€¢Ã‰â€Ââ„¢Â¥Ã¡â€¢ÿ
+C
+w
+—G
+ƒ
+GŠ‹7G3
+à ¥7G
+—
+Ç
+Ã
+W
+çÿø8œ+Ü9ž(
+,+Œ+(8Ü+Ì(8:L(*\8Î(*Ì*Œ*”T•ÿÿÁL0ª0ª0ê0 Wp©p®x &0¯pçpã0¯p­x )°£OS0 pâpåp®ÿÿÿâ‚¬Â¡$ÂÂ½Â¹Â±Ã¤Â¤Â°Ââ€žÂÃ‰â€¢â€¦Â°ÂÂÂ±âþ‹Š›
+ã
+
+‡
+÷7C
+Ã
+Š{
+'Š‹Š›
+Ã
+Š›
+ÿü*Þ(
+l)Þ(
+,)(TÑSŒ(9*8œ+Ü9\)Ü*(9*(	Üÿÿð­x )°®x )°§x (°¤0 pàx )°äp¨8 «0¨pàx )°£p«xÿÿÿÂâ€¢ÃŒÂâ€¦Ã‰â€ÂÃÃ¥Â¹Ã‘Â¡â€¢Ã‘Â¥Å’Â¤Â°Ââþ{
+'Š‹Š›
+Ã
+ŠÃ'
+÷w7Š‹#
+
+ÇŠ›W
+ç
+ÿü*+((	Ž(
+,8Ü(Ü8œ*\89+Ü8Œ+\8ž(
+,+(
+l9*ÿÿæx 'p påp®p©p®pãpäx )°¬p¬0 x )°§x )°©p®pãpäÿÿÿâ€žÂÃâ€¦Âµâ€ÂµÃ•Ãâ€¢ÃˆÂÃ‰â€¦ÂÂ¥Â¹Å“ÂÃÿ'
+÷
+7Š‹73
+Ã
+5Ç
+—GŠw
+×
+7
+÷
+ç7
+—7GŠÿú,+œ9(+*\9ž(	Ü(((
+l(Ü*Ü9\8+(*Þ(
+,:Lÿÿðâp¯päx )°äp©p¯p®0¯pâx (°æp¯p£x )°äp©p¯p®0¬ÿÿÿâ€¦Â¹ÂÂÃ‘Â¡â€Ââ„¢Â¥Â¹â€¦Â°Â$ÂÃ‰Â½Ã•Â¹ÂþC
+ã
+ç
+÷G
+‡
+—
+çO
+wŠ›3
+
+×Š‹'
+wŠ‹
+C
+ÿü+Ü8Œ(8ž(
+,+(
+.(
+l8Þ(
+,)+‚‚ŒY,Y,Y,(99Ìÿÿñ¤±h ”0 CI0 pâx (°£p¯p®p£p©p¬p©x )°äp©p¯p®0ÿÿÿ„¢Â½ÃˆÂÃ‘Â¡â€Â0ÃÃœÃ ÂÂâ€¦Â¹â€˜Â¥â€˜â€¦ÃþGŠt ¥W7
+‡Š‹
+C
+
+7Š›
+çŠc
+—ŠcŠ›GŠ‹ÿþ(*Ì:9Œ8Œ8Œ89Œ8+(*Ì9œ(ÜY,:9Œ8\)+(¸l8ÿÿärá°æ0á0å0¬8 «0ç0à0åx &8 (¸ (²á° x )°®p¤8 «ÿÿÿÃŒÃ€ÃÃ˜Ã…â€žÂÃâ€¢Ã‰â€Ââ€¢â€¦ÂÂ Ââ€¦Â¹âþ›
+Ç—7Š‹
+C
+Š‹'
+÷
+Ó
+G
+‡Šw
+4“
+
+Ç
+÷
+ÿü8Ì(((
+.(J,+Ü8ž(	Ü(9*(	Ü(+ž(
+,:9((ÿÿïpâpâx (°£päp©p¯p®0®0 Fp©pèx (°¤0 x¡(°âp¯p­ÿÿÿÂ±Â½ÂÃŒÃ¨ÂAÂ¤ÂÂµâ€¦Ã‘Ã‰Â¥Ã ÂÃ‰â€¢Ââ€¢Â¥ÃþG3
+
+‡Š›'
+C
+×
+7
+÷ŠcŠ‹
+C
+7GŠ›
+ÇŠwÿø*L(9ž(
+,8œ8Ü*\+Ü+œ8Î(*Ì*+œ+Ü9Ì((	Ž(
+,8ÿÿépæx (°¤0 x¡(°âp¯p­0 päp¨x 'p pàp¬x )°®p®x ÿÿÿˆÂ¤Â°ÂÂµâ€¦Â=LÂâ€¦Â¹ÂÂ]Â¥Â¹â€˜Â½ÃÃŒâ‚¬Ãþƒ
+ã3
+GŠ‹
+×
+'
+÷
+÷G3
+Š‹Š›
+—
+ÇŠ‹
+ÿü(9*(	Ü(+^(
+l+ž(
+l)Þ(
+,)((Þ(
+l+œ+Ü+œ*\ÿÿø )°¬0­pâp¯p¯pä0 p£p¨x (°£p«8 «0¨päp¨x 'p pÿÿÿ€¢ÃÃÂÃ‰Ã•Â¹Â¹â€¢ÃˆÂÂ¹Â½ÃœÂÂâ€¦Â¹Â½Â¹Â¥Âþ7Š›
+Ç
+—7Š‹3
+G
+‡Šw
+GŠ‹
+×
+Šc
+—'ÿø
+,(Ü9+Ü8œ:L(9Ü*(
+,+Œ(*\9((	Œ*^(J.(J.(ÿÿðâpã0ë0 päp¨x 'p x &0¯p£päp¯pâ0 x¡(°©pèpäpåÿÿÿâ€ÂÃ‰â€¢â€¦Â±Ãâ€¦Ã‘Â¡ÃŒÂÂ¥Ã‘ÃŒÂÃ‰Â½Â½ÃÂþ“
+ã
+CŠ
+³s3CcŠ{£
+Š›'
+7
+‡
+—GŠÿú,(Ü99\8ž(	Ü+(*\+œ9\:+(+^(
+l(ÓÔÌ(9(ÿÿðãpä0 pªp¯x ,0ã0 x )°®p¤0 x )°¬p¬0 päp¨pâx ÿÿÿ€ÂÃÂ¤ÂµÃÃ•ÃÃÂ½Ã‰ÃÂµÂµâ€¦Ã‘Ã‰Â¥Ã ÂÂ©Â½ÿŠÃ3
+Š›73³
+'Š‹
+ÇŠ‹Š›7Šw
+wŠ›ÿþ(	Ü(8(
+l(Ü*Þ(
+l)Þ(
+,8Ì((
+l+œ)(*N(*Ì8Lÿÿðâ0 pâpåp®päp©p­x 'p x (°æp©x &8 (°®p£x 'p ÿÿÿâ€¦ÃÃâ€¢ÂÂÂ½Â¸ÂÃ‘Â¡â€Ââ€¢â€¦Ã‰Â±Â¥â€¢Ãþ#
+
+7Š›
+çŠc
+—ŠcŠ›GŠ‹3
+à ¤÷Š‹
+ã£
+ÿûÜ+Œ(Ü*\+ž(	Œ+Ü9Ü8Ì(8œ9\+œ+ž(
+,8œ8Ì(9Ü*+ÿÿãx 'p päx (°­pà0 x &0©pâx (°£päp¯pâpé0 p©pãÿÿÿâ€¦Â¸â‚¬Ã Â¸ÃŒÂÃÂ¡Â½Ã‰ÃÂÃâ€¦Ã‘Â Â°â‚¬Ã„ÃþC
+'Šw
+×Š‹‡
+—7G
+—
+çO
+
+×Š›
+çŠ›
+wŠÿú,)+PÓL(88œ+Þ((	Ü(9(
+,8Ü98Ì(9*\+^ÿÿçp p¯påpä8 «0¨p pâx (¸ )°ãp¯p®0ê0 päp©p­x (ÿÿÿÃ•Ã‘â‚¬Â°ÂM%-%10Ââ€¦â„¢Ã‘â€¢ÃˆÂÃ‘Â¡â€â‚¬ÿ
+3
+ŠcŠ‹Š›Šc
+Ç
+—
+çŠw
+“³
+G
+‡Š‹ÿúL(8(
+l8Ü8Ì(+Ü+Œ(8œ9\+œ+ž(
+,8œ8Ì(9Ü*\9ÿÿð x '° p¬p¯p®qdð päx (°­pà0 pàx )°äp¨0 x )°ÿÿÿÂâ„¢â€¦Â¥Â°ÂÂ¥â€˜â€¢Â¹Ã‘Â¥Ââ€¦Â±Â±Ã¤ÂÃÂþ—G
+ƒ
+Š›
+ç
+C
+w
+—G
+‡
+÷WC
+G
+‡Šw
+GŠÿú,+\8((Þ(
+l+œ+Ü+œ*\(Þ(
+l+*\8Þ(
+l9*\+Ü+Œ+ÿÿàx )°®p¤0 pçx (°âx 'p p®p¯pä0 x &0©x )°§p®pÿÿÿâ€¢ÂÂÃÂ¥Ã‘Â¡Â½Ã•ÃÂâ€žÂ]Â¥Â¹â€˜Â½ÃÃŒÂÿ
+‡
+÷7C
+ã
+w
+—
+çŠc
+÷w3
+
+—3
+G
+‡Š‹'Šÿú.(J,+Ü8ž(	Ü(+œ+Ü9(9ž(
+l+*^(	Ž(
+l9(
+,)ÿÿø )°®p¤0 T0à0é0 pãpäx )°épã0 PARTIAL0®
+
+1d±ÿÿÿ’Â0ÃÃ Ã€Æ’Å PÂâ€˜Â½ÃÃÂPÃ„Ã„ÂAÂ¤ÂµÂ½Âþç
+Ç“
+7
+7
+÷Šw
+Š‹'
+÷
+Ó
+wŠ‹
+çG
+ÇŠwÿøÜ*(
+,++)Ü8Ì((
+l(Ü99^(
+l+(*\+œ9(
+,)ÿÿâx )°äp©p¯p®0 x ,0¯påp®x &8 )°âpé
+
+Upãx (°âÿÿÿÂ¥Â¹ÃÃ‘Ã‰Ã•ÂÃ‘Â¥Â½Â¸Ã¨â‚¬â€°!â€¦Ã©Â±Â¼Ââ€¦ÿ<;
+Ó.
+Ã
+Š‹
+÷
+Ç
+Ç
+÷w
+—
+çO
+G
+‡Šw
+Š›ÿûž(
+l+:\8Ü*\8Ì(+Ü¹Ì(Þ(
+,+œ9+(	Ü(Ü*(
+,ÿÿð¬0®0 Dx (°£p©pãp©p¯p®0ê0 T0á0á0 p£p¯pæx (°ÿÿÿŒÂM8ÂÃŒÂAÂ¤â‚¬Ã„Â¸ÃˆÂÂ¥Â¹Ã‘â€¢ÂÃ‰â€¦Ã‘ÿ
+—
+÷
+ã
+
+÷
+ç
+Ç“
+ã
+G
+‡Šw
+Š‹'
+÷§Š‹
+ã
+ÿþ(
+,+œ9+(	Ü(Ü*(
+,++(8Ü+Ü9\8œ(Þ(	Ü(*\ÿÿð x '° Pp©0­p®x )°äp©pæx 'p x (°èpäx (°®pãpÿÿÿ½Â¸Ã¬Ââ€¢Â¹Ã‘Â±â€Âµ$ÂÃŒÂâ€°Ã‰Â½â€¦â€˜â€þ‹#
+'W
+çG
+—
+×Šw
+
+—
+çgŠ‹
+çG
+÷'“
+ŠÿùŒ+Þ(
+,8Ì(+œ+Ü9((
+,8Ü9(
+n(+*\8Ü*(9ÿÿø )°ä0 Gx (°®päp¬x 'p Sp¨x (°¬p¬0 p©päpãx (ÿÿÿËœÂÃÃ‰Â½Ã™Â¥â€˜â€¢ÃŒÂâ€¦â€˜â€¦ÃÃ‘â€¢Ã‰ÃŒÂþŠ‹
+÷#
+G
+‡
+÷7Šw
+
+7
+Ç
+—Š‹
+çG3
+ã
+Wÿü9(
+,8œ+ž(
+l+((Ü+*^(
+,+œ98Ì((
+l8ž(	Ü(ÿÿæ8 (¸¡(¸ (°âpâx (°¤0 x¡(°¯p¬p¬p¯pç0­p¯p®0 pÿÿÿ½Ã‰Â¬Ââ€¦Â¹ÂÂâ€¦Ã‰â€ÂÂ¹Â½ÃÂÂ¥ÂµÃÂ±Â¥âþ‹
+C
+7W
+÷'C
+à ¤7W''Š‹
+çC
+
+—
+×ÿø+(
+,+^(
+,+œ9(
+l9*\+Ü+Œ+Þ(
+,9œ*^(	Ž(
+,+œÿÿø 'pê0 ASEN0 x )°¬pâx (¸ )¸ &0é0 pæx )°¬p©xÿÿÿâ€¦Ã‘â€¢ÃŒÂÃ‘Â¡â€ÂAÂ¤ÂÂ¡Â½ÃÃÂÂ¥Â¸ÂÂÃþ7'K
+÷'W
+çG
+—
+×Šw
+÷
+“
+×
+‡
+÷7C
+çG7ÿø*Ì((
+l+œ)((Ü+Ü+\8+Ü8Þ(
+,8Ì(*\9(*\+Œ(ÿÿàx (°èpäx (°®pãp©p¯p®pã0¯x )°ãx (°®0®päpãx ÿÿÿ¬ÂÃ‘Â¡â€ÂÂ¡Â½ÃÃÂÃÃ‰â€¢â„¢Â±Â¥ÂÂ¡ÃÂâþ›
+ç
+C
+
+7
+÷
+×Š›G
+—ŠÃ
+—
+Ç
+—G“
+GŠ‹ÿü98Ì(9Þ(
+,8ž(	Ü((Ü+Ü8œ8ž(
+,(Ü9(
+,)(9+ÿÿàpâx (¸¡(°¬x (°£pä0 p£påpâpâx (°®päp¬pé0 pâÿÿÿ¢ÂÂ¥ÃÃ‘â€¢Ã‰â€¢ÂÂPÃ„Ã€Ââ€°â€¦ÂÂ­ÂÃ‰Â½ÃþW
+ç
+C
+G
+÷
+÷
+Ç3
+Š›
+ç
+C
+
+7
+÷
+çŠc
+—G
+—
+ÿü+ž(
+l+(+^(
+,+\+Ü8œ:L+Ü8+(
+l+Œ(9+Ü+Ü+ÿÿð®0 Dp©pâx (°£pä0 p£p¯p­p­x )°®p¤0 p p®p¯x ÿÿÿ€â‚¬Â´ÂµÂ¥ÂµÃÂ½Ã‰ÃÂÃ‘ÃÃ â‚¬Â´ÂµÃ‘â€¢ÃÃÿ
+GŠ‹7G3
+÷
+“
+×
+‡
+÷7C
+×'Š‹Š‹
+Ç
+ÿü)Ü*9+œ9(
+,8Ü9+œ98Ì(9(
+,8Ü98Ì+Ü8*L+ÿÿèp¯pãpä0­p£p¯p­pàx )°äp©x ,0©p¬p©päpé0­p­x ÿÿÿ‘Ã‰Â¥Ã Â¹Ã‘â€¢ÃÃÂ¹Ã‘Ãâ‚¬ÂÃâ€¦ÃÃâ€¢Ââ‚þ³cs
+ócs
+Ã
+§Š‹'
+ó
+7
+·
+—3³
+
+
+çÿø+L(8œ9\+Œ(9:\8(
+,(Ü*(
+,(Ü*Þ(*Ì((
+l+œÿÿð p p§p©pä0 x &0©x¡(²ç8 «0­0­p£p¨x (°£p«x «ÿÿÿÃâ€¦ÃÃâ€¢ÂÂÂ±Â½Ââ€¦Â±Â±Ã¤Â¸ÂÃ™Â¥â€˜â€þ‹
+ç
+7Šw
+
+—3
+Š‹'
+÷
+Ó
+G
+‡Šw
+W
+ç
+7
+÷ÿû\+\*\99(
+,)(9Ü+Ü8œ*Ü98ž(
+.(	Ü((
+l+œ)ÿÿð©pã0 p®p¯pä0 x ,0¯påp®p¤0 päp¯0 x '° p£p¯pÿÿÿµÂ¥Ã‘Ã‘â€¢ÂÂÂâ€¦Â¹â€˜Â¥â€˜â€¦Ã‘â€ÂM!Â¸Âþ—C
+Šc
+÷Š‹3
+
+ç
+÷C
+Š‹7GŠ›ŠÃ
+Ç
+—ÿü*(*+Ü8Ü9+\+\+Þ(	Ž(	Ü(((
+,*(
+l9œ*\+Üÿÿð x ,8 (°ép¯p®p¤0 päp¨p¯pãx 'p päx (°ãpäpã0ÿÿÿÃÂ±â€¦Ã‘â„¢Â½Ã‰Â´ÂÃâ€¦Ã‰Â¥Ã‘Ã¤Â°ÂÂ¥Â¹â€˜ÿŠ‹Š‹
+çŠcŠ‹
+çC
+#C
+
+÷#
+Š‹W
+Ç
+Ã
+ÿü8L8L((
+l(Ü(Þ(
+,89(
+l+œ(Þ(	Ü+‚‚•8L8L(*\ÿÿð p®p¯pç0 p PARTIAL_BY_ACCEPTED_SCOPEx «0¬0ÿÿÿ¹Â½ÃÂU10Ã¨ÂÃ‰â€¢Âµâ€¦Â¥Â¹Â¥Â¹Å“ÂÃÂ½Ã‰Â¬ÿ
+
+—3
+G
+ó
+gŠ‹'
+—Š‹“
+Š›
+7GWŠ›
+Ãÿø*L(ÑÌ(((
+,*(
+l9œ*\+Ü8Œ((J,+Ü8Œ((
+ÿÿà)°£p¨0 p£p¬x )°©p­x (°¤0 p­p¯x &8 'p¬0 p¯xÿÿÿÃ‘â€¦Â¥Â¸Ââ€¦ÃÃÂ±Â¥Ââ€¦â€°Â±â€ÂÂ¡Â½ÃÃÿ
+÷
+ÇŠ›GŠ‹
+÷'
+Ó
+Š‹g
+—ŠcŠ‹
+ç
+7Šw
+Ãÿø(Ü+Ü+\8+(
+,9(	Ü(*\+ž(	Ž(
+,8(
+,+ž(	Ž(
+ÿÿîpä0 R0ä0 p¯p®0 päp¨x 'p x (°èx )°£pä0 p£x ÿÿÿ¹â€˜Â¥â€˜â€¦Ã‘â€Ââ€¦Â¹ÂÂâ€°Â¥Â¹ÂÂÃ‰â€¢Âþ7Š‹
+—G3
+G
+ó
+G
+‡Š›C
+
+7Š›
+çŠc
+—ŠÿùŽ(
+l9(	Ü+Œ(œ+Ì((
+,:9(
+,8œ+ž(
+l++\(Ü+ÿÿø (°®pä0 pãpåpàpàp¯pâpä0 p©pã0 p£p¬x )°©p­xÿÿÿÂÂ¸Â9Â¼ÂÃ‘â€¦ÃÂ¬ÂÂÂ¡â€¢ÂÂ­â€°Â½Ã ÂÂ½Ãþ#
+'Š‹
+w
+—7G'“
+
+7
+ÇŠ›
+—
+Ó
+
+—3
+ÿü+Ü+\+Ü9(
+,)((:L(9**\8Ì(8Ü(Ü+Ü8(	Üÿÿø &8 (°£p©pãp©p¯p®0®0 Epèp©pãpäp©p®qdð p®p¯ÿÿÿÂÂ½ÂµÂµÂ¥ÃÂ½Â¹Â¼ÂµÃÃ•ÃÂ ÂÂÂ½Â¹ÃÃ‘Ã‰â€¦ÿ
+—
+çG3
+Š›
+ç
+C
+W
+ç'Š‹
+ÇŠ›GŠ‹
+C
+Cÿü8(9Ü+Ü8œ*Ü98ž(
+.(	Ü((Ü*(
+l+œ)Þ(
+,8Ì(8ÿÿà(°­x )°©p®0 p©p®0 x¡(°¯pâp£x 'p®
+‚•H^ÿÿÿtion follow-up (2026-10-28; candidate pendingüÁÕ‰±¥…Ñ¥½¸¤è•á…Ð¡•­½ÕÐ™É•Í¡¹•ÍÌ¥Ì¹ÿ÷r&WfÆ–FFVBB&Wf–Wr×6W76–öâæB$DB×&W7ÿÿÝ›Ý[™\šY\ËˆHš]˜]H[‹\›ØÙ\ÜÈÛZ[Hšÿÿÿs checkout directory identity, revision/tree/ýÁ…É•¹Ð°¥¹‘•à™±…Ì…¹±•…¸ÑÉ…­•½Õ¹ÑÉ…ÿöVB7FFS²7FÆR6÷W&6RG&–gB–çfÆ–FFW2F†ÿÿÜÙ\ÜÚ[Ûˆ[™\›œÈH™\Ý[ˆ™YÜ™\ÜÚ[Ûˆ\ÿÿÿ a real temporary Git repository, opens a matý•É¥…±¥é•Í•ÍÍ¥½¸°…‘Ù…¹•Ì!°…¹Ù•É¥™¥ÿ÷2&–÷"Æö6Â52×6†VBwV&B&ö&R—2ÿÿÚ™XÝYÈHÝÛ™YšY]È\ÈÛÜÙYˆ›ØÝ\ÙYÿÿÿdidate/session/review-chain checks passed 26/üÈØ…¹ÑåÁ•¡•¬Á…ÍÍ•¸Q¡¥Ì¥Ì±½…°Õ…ÉÿöWf–FVæ6RöæÇ’Âæ÷BæF—fR$DB&Wf–Wr÷"ÿÿÝ˜[ˆH™[XZ[œÈT•PSˆX›XÈÛÜšÜÜXÙKÿÿÿviewer/correction/new-review/acceptance compoýÍ¥Ñ¥½¸°É•…°…ÕÑ¡•¹Ñ¥…Ñ•I°¥¹‘•Á•¹‘•¹ÐÿóB6–væöfbæBW†7BÖ6æF–FFR7&÷72×ÆFf÷&ÿÿÐÒH™[XZ[ˆÝ]Ý[™[™ËˆHØØ[HRHX]ÿÿÿx remains blocked by missing node-pty native ý‰Õ¥±¡•…‘•ÉÌ€¡™¡½Ý¸%9Y0¤ì½Ñ¡•È‰…Í”µ¡•ÿöB4’Wf–FVæ6R—2†—7F÷&–6ÂæBFöW2æ÷BfÿÿÙ]H\ÈØ[™Y]K‚‚•HØØ[[\ÝZ]Hÿÿÿllow-up (2026-10-28): on the reconstructed soýÕÉ”ÑÉ•”°Q5A%Hô½ÑµÀ¹Á´ÉÕ¸Ñ•ÍÑ€½µÁ±•ÿöVB"Ã#r52Âd”ÂÂ’4´•âV&Æ–W"GFÿÿÜÈÚ]H›ÛœÝ[™\™TTˆØ]\ÙYš^\ÿÿÿprecondition failures and are excluded. This ý¥Ì±½…°•Ù¥‘•¹”½¹±äìÁÕ‰±¥…Ñ¥½¸°•á…ÐµMÿô4’æB$DB÷V&Æ–2Ö7–6ÆRWf–FVæ6R&R7F–ÆÿÿÜ™\]Z\™Y‚‚•HHÜÝÙ]\™\ÛÛ][Ûˆ
+Œÿÿÿ-10-28): the earlier Linux TUI failure was caýÕÍ•‰äµ¥ÍÍ¥¹œ¹½‘”µÁÑå€¹…Ñ¥Ù”½ÕÑÁÕÐ¥¸ÿö†—26öçF–æW"âöff–6–ÂæöFR#Bã#"ã†VFW'ÿÿÝÙ\™HÝÛ›ØYY[™ØY™[H^˜XÝYÚ]Ýÿÿÿowner metadata, then the existing dependency ýÉ•‰Õ¥±ÍÕ••‘•ì¹¼Ù•É¥™¥•È½Í½ÕÉ”½‘”Ýÿ÷26†ævVBâöâW†7BÆö6Â6öFR6æF–FFRÿÿÙ™MØÌ™ŒÌMØNÌØÙ™MXØLØ˜˜Ž™YXXÿÿÿd npm artifact Pi 1.2.0 Linux cells TUI/RPC/JýM=8½ÁÉ¥¹Ð…±°AMLÝ¥Ñ ¹…ÑÕÉ…°Í¡ÕÑ‘½Ý¸…¹ÿ÷¦W&òÖöFVÂ6ÆÇ2âF†Rf–æÂFö72ÖöæÇ’4„vÿÿÛ™\[ˆHØ[™Y]KX›Ý[™X]š^ˆÚ[™ÝÜÿÿÿacOS and public RDD workflow remain unverifieý¸()PÀÔHÐ¡…É‘•¹¥¹œ™½±±½ÜµÕÀ€ ÈÀÈØ´ÄÀ´Èà¤èÿöâGfW'6&–Â&Wf–WröbF†Rf—'7BG&gBf÷ÿÿÙ]]ÈÙ\ÜÚ[Û‹\ÛÝ\˜ÙHš[™[™ÈXØÙ\Yÿÿÿcaller-supplied callback. The final implementý…Ñ¥½¸É•µ½Ù•ÌÑ¡…Ð…±±‰…¬°É•ÅÕ¥É•Ì…¸¥ÍÍÿöVB6†V6¶÷WB6Æ–Ò&÷VæBFòF†R6ÖR&W÷6—FÿÿÞKÝ™YK[™Ø[ÈHÛÛ›Û\‹[ÝÛ™Y™]˜ÿÿÿdator. A regression rejects forged checkout dý…Ñ„¸½ÕÍ•ÍÕ¥Ñ•Ì¹½ÜÁ…ÍÌ€ÈÜ¼ÈÜ…¹ÑåÁ•ÿöV6²76W3²W†7BÖ6æF–FFR4’—2&W7F'F–æÿÿÙ›Üˆ\ÈÛÜœ™XÝY™YKˆH™[XZ[œÈT•Pÿÿÿ
+
+
+T05 public workspace-flow follow-up (2026-üÄÀ´Èà¤è€½…Í•¸µÉ•Ù¥•ÜÝ½É­ÍÁ…”¹½Ü…ÁÑÕÉ•Ìÿò&—fFRÖ–æFW‚6æ6†÷BÂ&Æö6·2VæW‡V7FVBÿÿÝ˜XÚÙY]ËX]\šX[^™\È^XÝY™ˆ[™ÿÿÿanged-file bytes, requests explicit consent fý½È„™É•Í Ñ½½°µ™É•”A¤É•Ù¥•Ý•Èµ½‘•°‘¥ÍÑ¥ÿö7Bg&öÒF†RWF†÷"ÂæBÆÆ÷w2öæRf–æF–ær×ÿÿÝX›Ý[™YÛÜœ™XÝ[ÛˆÚ]HY™™\™[™]šÿÿÿer. A PASS is only passed-awaiting-tests; tesýÑÌÉ•µ…¥¸¹½ÐµÉÕ¸…¹¹¼‘•±¥Ù•Éä…ÕÑ¡½É¥Ñäÿ÷2w&çFVBâfö7W6VBFW7G2cóc²gVÆÂÆö6ÂÿÿÙXÚÈŒŒŽH\ÜË˜Z[NHÚÚ\YÈ\XÚXÿÿÿbuild/pack PASS. Pi matrix invocation halted ý‰•™½É”…¹ä•±°‰•…ÕÍ”Ñ¡¥ÌÝ½É­ÑÉ•”±…­•ÿö6öÖÖ—GFVBW†7B6æF–FFR4„÷F&&ÆÃ²æòÿÿÚHX]š^TÔÈ\ÈÛZ[YYˆØØ[š^Yÿÿÿdot-prefixed in-repo parent containment and sýÕÉ™…•½ÕÐµ½˜µÍ½Á”Õ¹ÑÉ…­•™¥±•Ì¸PÀÔÉ•ÿö–ç2%D”ÂVæF–ær&VÂ&÷f–FW"7&VFVçF–ÿÿÜË\Ý^XÝ][Û‹ØXØÙ\[˜ÙHÛÛ˜XÝ™\Ýÿÿÿt/crash recovery, OS isolation, simultaneous-ý¡…¹”…¹É½ÍÌµÁ±…Ñ™½É´•á…ÐµM!$°…¹ÿöæFWVæFVçBW‡FW&æÂ&Wf–Wrà ¥CRW†7B’6ÿÿÙY]H›ÛÝË]\
+Œ‹LLLŽ
+NˆX›\ÚYØÿÿÿidate 8aff8baf0ee1fa199d0d0611323d0adaf4f18ceüÈÁ…ÍÍ•Á…­•A¤€Ä¸È¸À1¥¹ÕàQU$½IA½)M=8½ÿ÷&–çBÖG&—ƒ²æGW&Â6‡WFF÷vâæB6ÆVçW6ÿÿÙš\›YY™\›È[Ù[Ø[ËˆX]š^Ý]]ˆÝÿÿÿ/asen-t05-pi-matrix. The preceding note recorý‘ÌÑ¡”•…É±¥•ÈÁÉ”µ½µµ¥Ð…ÑÑ•µÁÐ…¹¥ÌÍÕÁÿ÷'6VFVB'’F†—2W†7BÕ4„'Vââv–æF÷w2öÖ4õ2ÿÿØ]š^]šY[˜ÙH[™š[˜[ÒH™[XZ[ˆ[™[™ËÿÿÿT05 final exact-SHA CI update (2026-10-28): dý½Õµ•¹Ñ…Ñ¥½¸…¹‘¥‘…Ñ”€Õ„ÈÌÅ„ÀàÁÀØäÙˆÀÅåˆÿö3v##“vVCFcc–6&b76VB4’GFV×B"ÂgVÆÿÿÝ\Ý›ØœÈX[KÛXXÓÔËÕÚ[™ÝÜËHÜÝX]ÿÿÿces Ubuntu/macOS/Windows, Phase 0, Pi 1.2 runýÑ¥µ”•Ù¥‘•¹”°…¹I•±•…Í”…Ñ”½¸…±°Ñ¡É•”ÿ÷ÆFf÷&×2âF†Rf—'7Bv–æF÷w2gVÆÂ×7V—FRGFÿÿÜ˜Z[YÛ›HH^\Ý[™ÈÛÛ˜Ý\œ™[˜XÚÿÿÿound-journal stress at its fixed 3-second locý¬‰½Õ¹‘…ÉäìÑ¡”¥Í½±…Ñ•Ñ•ÍÐÁ…ÍÍ•±½…±±äÿöæBF†Rf–ÆVBv–æF÷w2¦ö"76VBöâW†7BÕÿÿÐH™]žHÚ]Ý]ÛÙHÜˆ[Y[Ý]Ú[™Ù\Ëˆÿÿÿree Smoke was skipped, not passed. T05 remainýÌAIQ%0è¹¼…ÕÑ¡•¹Ñ¥…Ñ•±¥Ù”É•Ù¥•Ü½ÁÉ½ÙÿöFW"Â6æF–FFRÖ&÷VæBFW7G2ö66WFæ6RÂ&W7FÿÿÝ™XÛÝ™\žKÔÈ\ÛÛ][Û‹Ú[][[™[Ý\ÈÛÛ™ÿÿÿct evidence, or external independent R4 signoý™˜¸()PÀÔ…¹•±±…Ñ¥½¸™½±±½ÜµÕÀƒ‹Š
+³Št€ÈÀÈÿòÓÓ#ƒ¢FV×÷&'’Ôv—B–çFVw&F–öâFW7B&ÿÿÝÈY\ˆ™]šY]Ù\ˆÝ]]\œš]™\È]™Y›Ü™ÿÿÿesult binding. The attempt emits no approval,ü¥ÑÌ½Ý¹•Ù¥•Ü¥Ì‘¥ÍÁ½Í•°…¹É•ÑÉäÁ•É™½ÿö×2g&W6‚&Wf–Wr†FW7G2ö÷&F–æ'’×&Wf–Wr×vÿÿÚÜÜXÙKY›ÝË\ÝØÍ
+KˆTTKÝ\œÿÿÿrun check` passed locally. This is in-processü…¹•±±…Ñ¥½¸½É•ÑÉä•Ù¥‘•¹”½¹±äì¡…ÉµÉ…Íÿò÷&W7F'B&V6÷fW'’Â6æF–FFRÖ&÷VæBFW7G2ö6ÿÿÜ[˜ÙK™X[›ÝšY\ˆ]]ÔÈ\ÛÛ][Û‹ÿÿÿultaneous conflict stress, external independeý¹ÐHÐ…¹•á…Ðµ¹•ÜµM!$É•µ…¥¸…Ñ•Ì¸PÀÔÿ÷7F—2%D”Âà ¥CRW†7BÕ4„æB&Wf–Wr66ÿÿÙH›ÛÝË]\
+Œ‹LLLŽJNˆX›\ÚYØ[™Yÿÿÿ 8ae88a39c7ad40c33d504dff98eb482a34189f9b pasýÍ•$ÉÕ¸€ÐÀÜäÔØÜÜÌÄà™Õ±°ÍÕ¥Ñ”…¹A¤ÍÕÁÿö÷'BÖG&—‚öâV'VçGRÂv–æF÷w2æBÖ4õ3²&VÿÿØ\ÙHØ]HÎMMÍÌÌŽK\ÙHÎMMÍÌÍŒˆÿÿÿ Pi 1.2 runtime evidence 40795677386 passed. ýA¤É•”Mµ½­”…¹½¹‘¥Ñ¥½¹…°9Y%%É•Ù¥•ÜÿöW&R6¶—VBâ7V'6WVVçB–æFWVæFVçB&Wf–WÿÿÜ™\›ÙXÙY˜XÚÙYÚ[™Ù\ÈÝ]ÚYHHÝ]ÿÿÿ scope reaching the reviewer. The follow-up aý‘‘Ì•áÁ±¥¥Ð•á…ÐµÁ…Ñ É•Ù¥•ÜÍ•±•Ñ¥½¸°¥¹ÿöÇVF–ærG&6¶VBÖöF–f–6F–öç2æBFVÆWF–öç2ÂÿÿÙ]Z[™YXÜ›ÜÜÈÛÜœ™XÝ[ÛŽÈ\È\È›ÝHÿÿÿ write-authorization grant. Same-user path raý•Ì°…¹‘¥‘…Ñ”µ‰½Õ¹Ñ•ÍÑÌ½…•ÁÑ…¹”°‘ÕÉ…‰ÿöR&V6÷fW'’Â&VÂ&÷f–FW"&Wf–WræB–æFWÿÿÛ™[^\›˜[™[XZ[ˆÜ[‹ˆHÝ^\ÈÿÿÿIAL; this follow-up requires exact-candidate ý$¸()PÀÔÉ•Ù¥•ÜµÍ½Á”…¹‘¥‘…Ñ”Ù•É¥™¥…Ñ¥½¸ÿòƒ##bÓÓ#’“¢fö7W6VBv÷&·76RÖ6öÖÖæBFW7ÿÿÈËÌÈTÔÎÈ[™\[™[™Z[œÜXÝ[Ûˆ›Ý[™ÿÿÿo new blocker in the selection change, while ýÕ¹¡…¹•¥Ñ±¥¹­ÌÉ•µ…¥¸Õ¹ÍÕÁÁ½ÉÑ•…¹…Éÿò&V¦V7FVB&Vf÷&R&÷f–FW"F—7F6‚âöâF†RÿÿØØ[Ø[™Y]KœH[ˆÚXÚÈÛÛ\]YŒÿÿÿASS, 0 FAIL, 19 conditional SKIP; typecheck, ý…ÁÁ±¥…‰±”…Õ‘¥ÑÌ°¹Á´ÉÕ¸‰Õ¥±…¹¹Á´ÉÕ¸ÿ÷fW&–g“§6²76VBâæ÷&ÖF—fRV6÷7—7FVÒ6÷WÿÿÙH›ÛÙˆ\È“ÕQRUQˆH•’QPHÒH›Øˆÿÿÿs adjusted after independent review to isolatý”…¹‘¥‘…Ñ”Ñ•ÍÑÌ™É½´ÁÉ½Ù¥‘•ÈÉ•‘•¹Ñ¥…±ÌÿöæBFò'V–ÆBF†RW†7B&–æ'’×&W6W'f–ærF–fÿÿÙœ›ÛHÛÛ\]HÚ]\ÝÜžNÈ›È™X[›ÝšY\ÿÿÿeview or final-SHA CI is yet claimed. T05 remý…¥¹ÌAIQ%0¸()PÀÔÁÉ½Ù¥‘•È…¹Í½Á”™½±±½Üÿ÷Wƒ##bÓÓ#’“¢6æF–FFRcsFc“vCs†Cv3ÿÿÍÙMMYŽÍLYMLMÙÌÍŽH\ÜÙY[ÝZ]\Èÿÿÿ Pi matrices on Linux, macOS and Windows, PhaýÍ”€À°A¤ÉÕ¹Ñ¥µ”…¹I•±•…Í”…Ñ”°‰ÕÐ$ÉÕÿòCƒ#ƒs’f–ÆVB&V6W6R&VÂåd”D”&ÿÿÜÛœÙH\ÙY^[˜][Ûˆ[œÝXYÙˆH™\]Zÿÿÿd description. The response also labeled a kný½Ý¸¡¥ Í…µ”µÕÍ•ÈÁ…Ñ É…”¹½¹‰±½­¥¹œì¥Ðÿ÷v2&V¦V7FVBæB—2æ÷B&÷fÂâ&r'F–fÿÿÝLŽŽÍŒLÍÌH\È™]Z[™YˆH›ÛÝË]\Û\ÿÿÿies the strict provider schema without acceptý¥¹œµ…±™½Éµ•½ÕÑÁÕÐ¸Q¡”ÁÕ‰±¥Œ½µµ…¹¹½Üÿö6†V6·26VÆV7FVB6†ævVBF‡2&Vf÷&R7F÷&–æÿÿØÚ[™ÙY›ØœÈÜˆX]\šX[^š[™ÈHšY]Ë[™ÿÿÿivately reapplies selection during revalidatiý½¸¸AÉ½©•Ñ¥½¸ÍÑ¥±°É•…‘ÌÑ¡”Ý½É­ÍÁ…”°…‘ÿö—GFVBf–Ww26öçF–âVæ6†ævVBVç6VÆV7FVBf–ÿÿÜË[™ÛÜœ™XÝ[Ûˆ[\ÈÚ][ˆHÜšYÚ[˜ÿÿÿselection are checked after materialization. ý‘¥ÍÁ½Í…‰±”¥ÐÁÉ½‰”‘•µ½¹ÍÑÉ…Ñ•Ñ¡…ÐÑ¡”ÿöW†—7F–ærFW7BW†V7WF÷"6âw&—FR÷WG6–FR—GÿÿÝÛÜšÝ™YNÈ]\È›ÝHØ[™›ÞˆÜš]\ˆ›Ý™ÿÿÿnce, protected snapshots, isolated candidate ýÑ•ÍÑÌ°…•ÁÑ…¹”…¹‘ÕÉ…‰±”É•½Ù•ÉäÉ•µ…¥ÿò÷VââCR7F—2%D”Âà ¥CR6÷'&V7F–öâÿÿÙ›YÚ›ÛÝË]\
+Œ‹LLLŽJNˆHX\›Y\ˆÿÿÿte that correction deltas within the initial ýÍ•±•Ñ¥½¸…É”¡•­•½¹±ä…™Ñ•ÈÙ¥•Üµ…Ñ•É¥ÿöÆ—¦F–öâ—27WW'6VFVBâF†RV&Æ–2v÷&·76ÿÿØÛÛ[X[™›ÝÈÛÛ\\™\ÈHØ\\™YÛÜœ™XÝ[ÿÿÿwith a private immutable catalog of the genuiý¹”ÁÉ¥½ÈÁÉ½©•Ñ¥½¸…¹É•©•ÑÌ¡…¹•Ì½ÕÑÍÿöFRf–æF–ærF‡2&Vf÷&Rw&—F–ær6†ævVB&ÆöÿÿÈÜˆÜ™X][™ÈHšY]ËˆHÛÛœÝ˜Z[Ý\š]™ÿÿÿrevalidation; temporary-Git tests cover the rý•©•Ñ•‘•±Ñ„…¹É•ÑÉä…™Ñ•È…¸Õ¹¡…¹•ÿ÷'&V7F–öââF†—2—2&W7G&–7F–öâöâ&Wf–WrÂÿÿÝ[ˆ]]Üš^˜][ÛˆÙˆÜš]\ÎÈš[Üˆ[™]ÿÿÿ workspace reads still lack OS isolation. T05üÉ•µ…¥¹ÌAIQ%0¸()PÀÔ½ÉÉ•Ñ¥½¸ÁÉ•™±¥¡Ðÿöö6ÂfW&–f–6F–öâƒ##bÓÓ#’“¢çÒ'Vâ6†VÿÿÈŒÍˆTÔËRSNHÛÛ™][Û˜[ÒÒTÈÿÿÿcheck and applicable audits PASS; retained noýÉµ…Ñ¥Ù”•½ÍåÍÑ•´Í½ÕÉ”ÁÉ½½˜É•µ…¥¹Ì9=PÿôÔ•EDTBâçÒ'Vâ'V–ÆBæBçÒ'VâfW&–g“§ÿÿÈTÔÎÈXÚÙYHKŒˆ™\šYšXØ][ÛˆXYH™\›ÿÿÿodel calls. Independent focused review/Git teýÍÑÌ€Ôà¼Ôà…¹ÁÉ½Ù¥‘•Èµ½¹ÑÉ…ÐÑ•ÍÑÌ€Ø¼ØAÿõ2âF†W6R&RÆö6Â&W7VÇG3²V&Æ–6F–öâæBÿÿÞXÝTÒHÒH™[XZ[ˆ™\]Z\™YˆH™[XZ[œÈÿÿÿIAL.
+
+T05 cross-platform CI follow-up (2026-1üÀ´Èä¤è•á…Ð…¹‘¥‘…Ñ”€ÜäÔÈÔàÄÄåÁ™Œá•„ÈÔÜÕ˜ÿó##“VfS“–3#sCV3FVBf–ÆVBv–æF÷w2gVÆÂ×7V—FÿÿÚ›ØˆLŒÌŽÌÍMÈ[ˆ[ˆNMŒÍŽÚ[ˆÿÿÿconcurrent background-job journal test receivý•AI4É•…Ñ¥¹œ©½‰Ì¹©Í½¸¹±½¬¸A¤µ…ÑÉ¥•ÿòÂ†6RÂ’'VçF–ÖRæB&VÆV6RvFR76ÿÿÎÈ™[XZ[š[™ÈÝZ]H™\Ý[È™\]Z\™HÚXÚÚ[™Èÿÿÿe run. The cause of EPERM is not established.üÍÕ‰Í•ÅÕ•¹Ð©½ÕÉ¹…°µ¥Ñ¥…Ñ¥½¸¡…¹‘±•Ì]¥¹ÿö÷w2UU$ÒöæÇ’v†VâW†6ÇW6—fR7&VF–öâf–ÆÿÿÈ[™HØY™H™YÝ[\ˆØÚÈ^\ÝÎÈ]™]Z[œÿÿÿhe three-second limit, does not reclaim anothý•È±½¬…¹ÁÉ•Í•ÉÙ•ÌÑ¡”½É¥¥¹…°•ÉÉ½È½¸ÿöç&W6öÇfVBFVæ–ÂâfVÇBÖ–æ¦V7F–öâæB&VÂÿÿÛË\›ØÙ\ÜÈ\ÝÈÙ\™H[™\[™[HÚXÚÙYÿÿÿ Linux, but the actual Windows condition and ý•á…Ð¹•Ü…¹‘¥‘…Ñ”ÍÑ¥±°É•ÅÕ¥É”$¸Q¡¥ÌÿöævRFöW2æ÷B&öÖ÷FRC÷"CS²CR&VÖ–ÿÿÈT•PS‚‚•H›Ý\›˜[™\Z\ˆØØ[™\šYšXÿÿÿion (2026-10-29): npm run check on the final ýÁÉ½‘ÕÐ½‘”Á…ÍÍ•€ÈÈÜÜÑ•ÍÑÌ°€À™…¥±•°€Ääÿö6öæF—F–öæÂ6¶—3²'V–ÆBæBfW&–g“§6²ÿÿÙYˆHÛË\›ØÙ\ÜÈ\ÝÛX[\Y\ÝY[ÿÿÿas made after the full check began and was seýÁ…É…Ñ•±äÉ•ÉÕ¸ÍÕ•ÍÍ™Õ±±ä¥¸™½ÕÍ•Ñ•ÍÑÌÿò–æFWVæFVçB¦÷W&æÂö&6¶w&÷VæBÖ¦ö"6†V6·2ÿÿÜÜÙYNKÌNHÛˆ[^Ú]Ú[™ÝÜÈTT“HÚ[]ÿÿÿted. Windows real CI and exact new SHA remainüÁ•¹‘¥¹œìÑ¡”AI4É½½Ð…ÕÍ”¥ÌÕ¹ÁÉ½Ù•¸¸ÿóRæBC7FGW2Væ6†ævVBà ¥CRw&—FW"ÖWÿÿÛÜš^˜][Ûˆš[™[™È›ÛÝË]\
+Œ‹LLLŽJNˆÿÿÿtrolled-plan writer grants now capture a privý…Ñ”ÁÉ”µÉÕ¸Í¹…ÁÍ¡½Ð½˜Ñ¡”É•…°¥ÐÑ½Á±•Ù•ÿòÂW†7B„TBÂ&ö÷B–FVçF—G’æB÷&–v–æÂ&÷ÿÿÙYÝ\™˜XÙ\Ë[ˆ™]˜[Y]H™Y›Ü™H^XÝ]ÿÿÿn and bind the terminal result to actual tracý­•½Õ¹ÑÉ…­•¡…¹•Ì¸Q•µÁ½É…ÉäÉ•…°µ¥ÐÉ•ÿ÷&W76–öç2&V¦V7B&R×7F'BG&–gBÂæWvW"6ÿÿÚY]KÝ][Ù‹\ØÛÜH˜XÚÙYÝ[˜XÚÙYÜš]ÿÿÿ repository links and linked write surfaces; ý™½ÕÍ•‘¥ÍÁ…Ñ¡•È½A¤½Í¹…ÁÍ¡½ÐÑ•ÍÑÌÁ…ÍÍ•€ÿóróƒræBF†RgVÆÂÆö6Â&öGV7B7V—FRöâc“ÿÿÍLXM™XLYYMÌØLÙN˜˜™YX™XÌM™NÌM™ˆ\ÜÙYÿÿÿ281 / 0 failed / 19 skipped. The two-process ý©½ÕÉ¹…°°½ÉÁ¡…¸µ±½¬…¹‰½Õ¹‘•]¥¹‘½ÝÌµAÿôÒ6–×VÆF–öâÇ6ò76VBÆö6ÆÇ’âF†—2æV—FÿÿÜˆ\ÛÛ]\È^XÝ][Ûˆ]HÔÈ]™[›ÜˆXÿÿÿs review/correction state durable across a haýÉÉ•ÍÑ…ÉÐ°…¹¥ÐÉ…¹ÑÌ¹¼…¹‘¥‘…Ñ”…•Áÿöæ6Râ'V&&ÆWw&æÖW76W2&RVæf–Æ&ÆRÿÿÛˆ\ÈÜÝ[™ØÚÙ\‹ÔÙX[ˆ\™HXœÙ[ˆÿÿÿl Windows/macOS CI, an isolated candidate-tesýÐ½…•ÁÑ…¹”Á…Ñ °Ù…±¥ÁÉ½Ù¥‘•ÈÉ•Ù¥•Ü°•áÿöW&æÂ#BæBf–æÂW†7BÕ4„4’&VÖ–â&WVÿÿÙYˆHÝ^\ÈT•PS‚‚•HÚ[™ÝÜÈ›ÛÝ\ÿÿÿ correction (2026-10-29): exact candidate 16eý•„Í˜ÌÅ”àÜÝ˜ÈØÄÌäÀÄÜÙ„åŒÀÜÌÐÈØÅ˜ÜÀÜÀää™…¥±•ÿõv–æF÷w24’¦ö"#3C“#3“C"&V6W6RF†RæWrÿÿÜš]\ˆÛ˜\ÚÝÛÛ\\™YÚ]™]‹\\œÙHÈ›ÿÿÿ realpath as literal strings; Windows spellinýœ½Í•Á…É…Ñ½È‘¥™™•É•¹•Ìµ…‘”Ñ¡”½¹ÑÉ½±±•ÿ÷&çBf–Â&Vf÷&R'VææW"ÆVæ6‚âF†—2v2æ÷ÿÿØH›Ý\›˜[TT“H™XÝ\œ™[˜ÙKˆHš^™]\Ù\ÈÿÿÿEN workspace identity comparison for that cheý¬¸Q…É•Ñ•‘¥ÍÁ…Ñ¡•È½•áÑ•¹Í¥½¸µÉÕ¹Ñ¥µ”½A¤ÿ÷6æ6†÷BFW7G276VBó²gVÆÂÆö6Â7ÿÿÝH\ÜÙYŒŽHÈ˜Z[YÈNHÚÚ\YÈZÿÿÿ, pack and applicable audits passed. A new exý…ÐµM!É½ÍÌµÁ±…Ñ™½É´$É½Õ¹¥ÌÉ•ÅÕ¥É•¸ÿõCR&VÖ–ç2%D”Ã²õ2—6öÆF–öâÂGW&&ÆRÿÿØÛÝ™\žKXØÙ\[˜ÙK˜[Y›ÝšY\ˆ™]šY]Èÿÿÿ external R4 remain open.
+
+T05 writer/recoverýä™½±±½ÜµÕÀ€ ÈÀÈØ´ÄÀ´Èä¤èÑ¡”¥ÍÁ…Ñ¡•È¹½Üÿö†öÆG27&÷72×&ö6W72v—Bv÷&·76RÆV6RÿÿÛÜÜÈ[ˆ]]Üš^™YÜš]\ˆ[ŽÈXY[ÝÛ™\ˆÿÿÿs are reclaimed only after a fail-closed PID/ý¥¹½‘”½½¹Ñ•¹Ð¡•¬¸)½ÕÉ¹…°É•ÑÉä±…¥µÌÁ•ÿ÷6—7BF†R÷W&F–öâF–vW7BÂ÷&–v–æÂÆ–æVvRÿÿØØ[™Y]HPQ]ØÛÜH[™^\žH™Y›Üÿÿÿdispatch, retain consumed claims and unresolvý•½Á•É…Ñ¥½¹Ì°…¹¹•Ù•È…ÕÑ½µ…Ñ¥…±±äÉ•Á±…ÿòâ–æFWVæFVçB6†–ÆB×&ö6W72FW7G2W†W&6—6RÿÿÛYK\™\ÜÚ]ÜžHÛÛ[[Û‹Y™™\™[ØÛÜ\Ëÿÿÿead-writer recovery, out-of-scope edits, duraý‰±”…ÕÑ¡½É¥é…Ñ¥½¸É•ÕÍ”…¹¡…ÉM%-%10…™Ñÿ÷"&VÂf–ÆRw&—FS²F†R&W7F'FVB&Vv—7G'’ÿÿÙ\ÜÈ[ˆ[\œ\Y™\Ý[[™›ØÚÜÈ™\ÿÿÿy. Focused T05/dispatcher/Pi tests passed 106ü¼ÄÀØ½¸1¥¹ÕàìÑåÁ•¡•¬Á…ÍÍ•Ì¸$…¹™Õ±°ÿö6ÆVâÖ6†V6¶÷WBfÆ–FF–öâ&VÖ–âVæF–ærâCÿÿÈ™[XZ[œÈT•PSˆH™]žHTH\È›ÝY]ÿÿÿred to a user-facing issuer/consent flow, a sý…µ”µÕÍ•ÈÁÉ½•ÍÌ…¸‰åÁ…ÍÌ¥ÐµÍÑ…ÑÕÌ¡•­ÿò&WGvVVâö'6W'fF–öç2ÂV&Æ–2&Wf–Wrö6÷'&V7ÿÿÛÛˆÝ]H\È›Ý™\Ý\Y\˜X›K[™Ø[™Yÿÿÿe-bound tests/acceptance, external R4 signoffü°É½ÍÌµÁ±…Ñ™½É´™¥¹…°$…¹„•¹Õ¥¹”9Y%ÿô’F6²†fRæ÷B–WB&VVâFVÖöç7G&FVBà ¥ÿÿÍHÛX[‹XØ[™Y]HØØ[˜[Y][Ûˆ
+Œ‹LLÿÿÿ9, `cede4845dd0438ec05363f550e0a48c698199376`ü¤è¹Á´ÉÕ¸¡•­€•á¥Ñ•€ÀèÑåÁ•¡•¬Á…ÍÍ•ÿó²"Ã#“RFW7G276VBÂf–ÆVBÂ’6¶—VC²ÿÿØ\š]KÜÚÚ[ËÜÚÚ[\\š]KÛY[[ÜžKÙXÛÜÞ\Ý[Kÿÿÿstream audits passed. `npm run build`, `npm rýÕ¸Ù•É¥™äéÁ…­€€¡A¤€Ä¸È¸ÀÁ…­•¥¹ÍÑ…±°°É•ÿ÷F'Bö7&÷72×6W76–öâæBæGW&ÂÖW†—B6†V6·2’ÿÿÛ™Ú]Y™ˆKXÚXÚØ\ÜÙYˆHNHÚÚ\ÿÿÿtests remain skipped, not passes. This is LinýÕà±½…°•Ù¥‘•¹”¸9Y%%É•‘•¹Ñ¥…±Ì…É”¹½ÿò6öæf–wW&VB–âF†—26†VÆÂÂ6òF†RÆ—fR&÷fÿÿÙ\ˆ\ÚÈØ\È›Ý[ˆ\™NÈ^XÝTÒHXÝ[Ûœÿÿÿcross-platform results, user-facing retry conýÍ•¹Ð°=L¥Í½±…Ñ¥½¸°É•ÍÑ…ÉÐµ‘ÕÉ…‰±”É•Ù¥•Üÿ÷'&V7F–öâÂæBW‡FW&æÂ#B&VÖ–âVæF–ærâCÿÿÈÝ^\ÈT•PS‚‚•HØÚÈX›XØ][ÛˆÛÜœ™ÿÿÿion (2026-10-29): the R4 pass found that deatý ‰•ÑÝ••¸•á±ÕÍ¥Ù”™¥±”É•…Ñ¥½¸…¹½Ý¹•ÈµÿöV6÷&BW'6—7FVæ6R6÷VÆB7G&æBâV×G’6æÿÿÚXØ[ØÚËˆHX\ÙH›ÝÈÜš]\ËÙœÞ[˜ÜÈH[ÿÿÿue owner temp and atomically hard-links it asüÑ¡”…¹½¹¥…°±½¬ì„É…Í ‘ÕÉ¥¹œÁÉ•Á…É…ÑÿööâÆVfW2öæÇ’â–væ÷&VBFV×âæWr&Vw&WÿÿÚ[Ûˆ™\Ù\™\ÈH\X[Üœ[ˆ[\Ú[Hÿÿÿuiring/releasing a valid lease. Targeted workýÍÁ…”½¥ÍÁ…Ñ¡•È½É•ÑÉä½©½ÕÉ¹…°Ñ•ÍÑÌÁ…ÍÌ€ÔÄÿóSæBG—V6†V6²76W2âF†R&Wf–÷W2gVÆÂ×ÿÿÚ]H™\Ý[\Y\ÈÈH™XÙY[™È™YNÈÿÿÿl clean-checkout validation and exact-SHA Actý¥½¹ÌµÕÍÐ½Ù•ÈÑ¡¥Ì½ÉÉ•Ñ¥½¸¸PÀÔÉ•µ…¥¹Ìÿõ%D”Âà ¥CRv–æF÷w2†&B×7F÷÷'F&–Æ—G’ÿÿÛÜœ™XÝ[Ûˆ
+Œ‹LLLŽJNˆÒH[ˆLÌLMHÿÿÿ published SHA `39be3dc7ee6743a3351d4b1f56fbdý‰˜Øå„Ý•„ÀÝ€Á…ÍÍ•U‰Õ¹ÑÔ…¹A¤µ…ÑÉ¥•Ì½ÿòÆ–çW‚öÖ4õ2õv–æF÷w2Â†6RÂ’ã"'VçF–ÿÿÈ]šY[˜ÙK[™™[X\ÙHØ]KˆHÚ[™ÝÜÈÿÿÿ suite had one failure (`tests/authorized-jobüµÉ•ÑÉä¹Ñ•ÍÐ¹ÑÍ€¤è]¥¹‘½ÝÌÉ•Á½ÉÑÌ¡¥±Ñ•ÉµÿöæF–öâv—F‚6–væÃÖçVÆÆÂ6òF†R76W'F–öâÿÿÙ\]Z\š[™ÈÔÒVÒQÒÒSØ\È›ÝÜX›NÈÿÿÿ7 tests passed, one failed, and three were ský¥ÁÁ•¥¸Ñ¡…Ð]¥¹‘½ÝÌ©½ˆ¸Q¡”…ÍÍ•ÉÑ¥½¸¹½Üÿö66WG2v–æF÷w2r6–væÂ&W&W6VçFF–öâv†–ÆÿÿÜÝ[™\]Z\š[™ÈH\œÚ\ÝYš[HÜš]H[ÿÿÿrecovered `interrupted` state, which rejects ý„¹½Éµ…±±ä½µÁ±•Ñ•¡½ÍÐ¸Q¡”½ÉÉ•Ñ•É…ÿö‚öÆV6RFW7G272róröâÆ–çWƒ²F†R6ö×ÆWÿÿÈÛX[‹XÚXÚÛÝ]ÝZ]H\ÜÙY‹ŽM‹ÌÌNHÛˆÿÿÿe source tree before this assertion-only portý…‰¥±¥Ñä…‘©ÕÍÑµ•¹Ð¸Q¡”¹•áÐ•á…ÐµM!$¥Ìÿ÷&WV—&VBâCR&VÖ–ç2%D”Âà ÿÿÿ\n\nT05 Pi/NVIDIA extension dependency correction (2026-10-29): CI run 40937400630 passed its 44 R4 regression checks and every other mandatory job; the sole failure was the real Pi 1.2.0 NVIDIA task. Its retained redacted evidence (`t05-r4-execution-21a31446419fc01a9120cedf05a5ec9ab5621d17`) records that the temporary authority extension could not import `./responsive-layout.js` from `workspace-attribution.ts`. The policy asset manifest now includes the existing `src/runtime/responsive-layout.ts` source pinned to SHA-256 `85f18f028443476b554127ff2dbe37e7a7345a6c`; the Pi runner fixture includes it, and a clean-temporary-root test loads the complete pinned authority extension and verifies hook/command registration. The consolidated exact-candidate CI and live NVIDIA rerun remain the admission evidence; this note does not claim T05 FULL.\n
