@@ -97,3 +97,15 @@ test("T10 scoped subscriptions reject cross-session and cross-project observers"
  unsubscribe();
  assert.deepEqual(received,["line","completed"]);
 });
+
+test("T10 scoped snapshots and cancellation reject cross-session and cross-project access",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"a",command:"long"});
+ assert.throws(()=>registry.snapshotScoped(job.id,"intruder","a"),/does not belong/);
+ assert.throws(()=>registry.snapshotScoped(job.id,"owner","b"),/does not belong/);
+ assert.throws(()=>registry.stopScoped(job.id,"intruder","a"),/does not belong/);
+ assert.throws(()=>registry.stopScoped(job.id,"owner","b"),/does not belong/);
+ assert.equal(registry.snapshotScoped(job.id,"owner","a").state,"running");
+ registry.stopScoped(job.id,"owner","a");
+ assert.equal(registry.snapshotScoped(job.id,"owner","a").state,"stopped");
+});
