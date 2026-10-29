@@ -79,7 +79,7 @@ const authorityDigest="6ff2d45585cef90ff0563660e0833f40d5dc1f95e4271aaa3ce5f0159
 const authorityAssets=Object.freeze([
  {source:"src/runtime/workspace-store.ts",target:"src/runtime/workspace-store.ts",sha256:"f0307f8c72b72dd714382eba68fd3d2e50ca2c538d11d5ff71028f682d5f8cef"},
  {source:"src/runtime/workspace-attribution.ts",target:"src/runtime/workspace-attribution.ts",sha256:"1ace31ce9e9a871e6b7a3d545ae60cc9a57c996e39108c6c901837b8d7211c02"},
- {source:"src/runtime/responsive-layout.ts",target:"src/runtime/responsive-layout.ts",sha256:"85f18f028443476b554127ff2dbe37e7a7345a6c"},
+ {source:"src/runtime/responsive-layout.ts",target:"src/runtime/responsive-layout.ts",sha256:"dbe9c0046f59d3e0d49d3f108caf9f84b4df90bd02a9086bdbf3423b50b14f90"},
  {source:"src/io/atomic-write.ts",target:"src/io/atomic-write.ts",sha256:"dda584a5c4b6f54dbb86968e38211ee6cf5cbd570e82b48294c93e14abb1b1c7"},
  {source:"src/io/exclusive-file-lock.ts",target:"src/io/exclusive-file-lock.ts",sha256:"1921d446891099a9cbf8373a6580f2033e873e89654ee3debebd11c80ff76308"},
  {source:"src/io/private-file.ts",target:"src/io/private-file.ts",sha256:"42d76fe5abfbfbd66f76e310157709890754595d83a63f74cf143110739e1332"},
