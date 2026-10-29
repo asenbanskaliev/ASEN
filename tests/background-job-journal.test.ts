@@ -67,3 +67,16 @@ try{
  }
 });
 
+
+test("interrupted retry claim is atomic and cannot be replayed",()=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-retry-claim-"));
+ try{
+  const journal=new BackgroundJobJournal(join(root,"jobs.json")),now=new Date().toISOString();
+  journal.record({id:"original",sessionId:"s",projectId:root,command:"original-command",mode:"background",state:"running",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[]});
+  const claim=journal.claimInterruptedForRetry({sessionId:"s",projectId:root,interruptedJobId:"original",newJobId:"retry-1",authorizedCommand:"safe-command",authorizationId:"fresh-approval"});
+  assert.equal(claim.resumable,false);assert.equal(claim.command,"safe-command");
+  assert.equal(journal.load("s",root).find(row=>row.id==="original")?.state,"stopped");
+  assert.throws(()=>journal.claimInterruptedForRetry({sessionId:"s",projectId:root,interruptedJobId:"original",newJobId:"retry-2",authorizedCommand:"safe-command",authorizationId:"another-approval"}),/not available/u);
+  assert.equal(journal.load("s",root).filter(row=>row.id.startsWith("retry-")).length,1);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
