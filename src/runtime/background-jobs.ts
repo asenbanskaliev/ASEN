@@ -6,6 +6,22 @@ import type {BackgroundJobJournal} from "./background-job-journal.js";
 export type BackgroundJobState="queued"|"running"|"interrupted"|"completed"|"failed"|"stopped"|"timed_out"|"flooded";
 export interface BackgroundJobEvent{readonly id:string;readonly jobId:string;readonly sessionId:string;readonly projectId:string;readonly mode:"background"|"monitor";readonly kind:"started"|"line"|"completed"|"stopped"|"failed"|"timed_out"|"flooded";readonly line?:string;readonly exitCode?:number|null;readonly at:string;}
 export interface BackgroundJobSnapshot{readonly id:string;readonly sessionId:string;readonly projectId:string;readonly command:string;readonly mode:"background"|"monitor";readonly state:BackgroundJobState;readonly createdAt:string;readonly updatedAt:string;readonly exitCode:number|null;readonly eventCount:number;readonly tail:readonly string[];readonly persistenceError?:string;readonly deliveryState?:"pending"|"enqueued";readonly deliveryError?:string;}
+/** Deterministic, plain-text status for narrow terminals and screen readers. */
+export function formatBackgroundJobStatus(job:BackgroundJobSnapshot,width=80):string{
+ if(!Number.isSafeInteger(width)||width<20||width>500)throw new Error("Terminal width is invalid");
+ const states:Record<BackgroundJobState,string>={queued:"Queued",running:"Running",interrupted:"Interrupted",completed:"Completed",failed:"Failed",stopped:"Stopped",timed_out:"Timed out",flooded:"Output limit exceeded"};
+ const state=states[job.state];
+ const outcome=job.state==="completed"&&job.exitCode===0?"Succeeded":state;
+ const message=`Job ${job.id}: ${outcome}${job.exitCode===null?"":`; exit code ${job.exitCode}`}`;
+ return message.length<=width?message:message.slice(0,width-3)+"...";
+}
+/** Only observed terminal states can generate a completion notification. */
+export function backgroundJobTerminalNotification(job:BackgroundJobSnapshot):Readonly<{id:string;message:string}>|null{
+ if(job.state==="running"||job.state==="queued")return null;
+ const terminal=["completed","failed","stopped","timed_out","flooded","interrupted"] as const;
+ if(!terminal.includes(job.state as typeof terminal[number]))return null;
+ return Object.freeze({id:`${job.id}:${job.state}:${job.updatedAt}`,message:formatBackgroundJobStatus(job)});
+}
 export interface BackgroundJobOptions{readonly sessionId:string;readonly projectId?:string;readonly command:string;readonly mode?:"background"|"monitor";readonly maxTailLines?:number;readonly maxLineChars?:number;readonly maxEventsPerMinute?:number;readonly timeoutMs?:number;}
 export interface BackgroundProcessOptions extends BackgroundJobOptions{readonly args?:readonly string[];readonly cwd?:string;readonly env?:NodeJS.ProcessEnv;}
 export interface BackgroundExecutionOptions{readonly onData:(chunk:Buffer)=>void;readonly signal:AbortSignal;readonly timeoutMs?:number;readonly env?:NodeJS.ProcessEnv;}
