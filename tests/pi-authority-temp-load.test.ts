@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
 import {createRequire} from "node:module";
-import {mkdtemp, mkdir, copyFile, rm} from "node:fs/promises";
+import {mkdtemp, mkdir, copyFile, rm, writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {dirname,join} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -21,6 +21,7 @@ const pinnedAssets=[
 test("pinned authority extension and its complete dependency bundle load in a clean temporary root",async t=>{
  const root=await mkdtemp(join(tmpdir(),"asen-pi-authority-clean-load-"));
  t.after(()=>rm(root,{recursive:true,force:true}));
+ await writeFile(join(root,"package.json"),JSON.stringify({type:"module"})+"\\n");
  for(const source of pinnedAssets){
   const target=join(root,source);
   await mkdir(dirname(target),{recursive:true});
