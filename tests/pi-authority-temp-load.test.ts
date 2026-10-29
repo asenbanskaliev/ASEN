@@ -47,6 +47,6 @@ process.stdout.write("authority extension loaded\\n");`;
   child.once("close",value=>{clearTimeout(timer);resolve(value??-1);});
  });
  assert.equal(code,0,stderr||stdout);
- assert.equal(stdout,"authority extension loaded\\n");
+ assert.equal(stdout.trim(),"authority extension loaded");
  assert.equal(stderr,"");
 });
