@@ -58,3 +58,19 @@ test("writer outcome rejects a symlink substituted after authorization",async t=
  }
  assert.throws(()=>assertWriterAuthorizationSnapshotOutcome(snapshot),/surface is symbolic link/);
 });
+
+test("writer outcome rejects a newly introduced untracked symlink inside an allowed directory",async t=>{
+ const {repository,candidate}=await fixture(t);
+ const {mkdir}=await import("node:fs/promises");
+ await mkdir(join(repository,"allowed"));
+ await writeFile(join(repository,"allowed","original.txt"),"before\\n");
+ execFileSync("git",["-C",repository,"add","allowed/original.txt"]);
+ execFileSync("git",["-C",repository,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-qm","add allowed directory"]);
+ const revision=execFileSync("git",["-C",repository,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+ const snapshot=captureWriterAuthorizationSnapshot({...candidate,revision},["allowed"]);
+ const external=await mkdtemp(join(tmpdir(),"asen-writer-external-"));
+ t.after(()=>rm(external,{recursive:true,force:true}));
+ try{await symlink(join(external,"target.txt"),join(repository,"allowed","link.txt"),"file");}
+ catch(error){if(["EPERM","EACCES"].includes((error as NodeJS.ErrnoException).code??"")){t.skip("The host does not permit file symlinks");return;}throw error;}
+ assert.throws(()=>assertWriterAuthorizationSnapshotOutcome(snapshot),/surface is symbolic link/);
+});
