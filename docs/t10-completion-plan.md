@@ -124,3 +124,38 @@ T10 sigue **PARTIAL**: la API Pi no ofrece acuse durable y no se promete entrega
 - Se intentó ejecutar la TUI real de Pi 1.2 con `node-pty`. El paquete no tenía su módulo nativo; `npm rebuild node-pty` falló al extraer los headers de Node con `TAR_ENTRY_ERROR EINVAL: invalid argument, fchown`. Por tanto no se afirma prueba interactiva. El smoke Pi RPC sí está demostrado por `verify:pack` y por el workflow del SHA `5a0b36f6`.
 
 T10 permanece **PARTIAL**. Siguen abiertos la coordinación de consulta de sesiones entre procesos (el directorio es process-local), la interacción de teclado/TUI real y la revisión R4 independiente del candidato actualizado. Las pruebas de agente, workspace y notificación aportan cobertura de componentes; el nuevo recorrido integrado solo cierra job → proceso → entrega → recuperación sin replay. Ninguna prueba local se presenta como matriz multiplataforma del candidato nuevo.
+
+## Seguimiento de cierre — 2026-10-29
+
+La rama de trabajo T10 se separó sobre `feat/t09-managed-update-stage`; se trasladaron únicamente los commits T10 recientes que estaban encima del PR T05. PR #38 y sus cambios T05 no se modificaron.
+
+### Corrección implementada en este candidato
+
+- `pendingBackgroundJobNotifications` ahora forma parte del arranque real de la extensión. Al iniciar Pi, ASEN consulta el journal dentro de la pareja activa sesión/proyecto y vuelve a encolar solamente resultados terminales pendientes. No vuelve a ejecutar el comando. El resultado se marca `enqueued` después de que Pi acepte la llamada síncrona; el mensaje y sus detalles declaran `deliveryConfirmed: false` porque Pi no ofrece un acuse durable de presentación.
+- El estado de entrega de un job recuperado se actualiza bajo el lock existente del journal y vuelve a validar job, sesión y proyecto en el punto de escritura. No se creó un almacén de autorizaciones ni de notificaciones paralelo.
+- El ID de evento es estable y opaco: se deriva mediante SHA-256 de sesión, proyecto y job, sin filtrar el path del proyecto en metadatos del evento.
+- Se añadió un recorrido integrado con un proceso Node real que sale con código 7, fallo inyectado de transporte, reinicio de la extensión, reintento con el mismo ID y comprobación de que el comando no se repite. Una tercera instancia no vuelve a encolar el resultado ya aceptado.
+
+### Verificación ejecutada en esta rama
+
+- `npm ci --ignore-scripts` terminó correctamente.
+- `npm run check` pasó: typecheck, suite completa 2.224 PASS / 0 FAIL / 19 SKIP y auditorías de parity, skills, memory, ecosystem y upstream boundary. La auditoría de ecosystem conserva 16 claims PARTIAL y la prueba normativa queda NOT ADMITTED.
+- `npm run build`, `npm run verify:pack` y `git diff --check` pasaron. El paquete instalado registró 11 comandos, 16 herramientas, cero llamadas a modelos, reinicio y aislamiento cross-session en Pi RPC; este recibo no cubre TUI.
+- Pruebas enfocadas de jobs, journal, herramientas Pi, entrega integrada, atribución y comandos: 54/54 en el baseline previo al cambio; tras el cambio, typecheck y subconjunto jobs/journal/entrega: 27/27.
+- Los procesos reales probados incluyen salida 0, salida 7 y timeout. El caso de entrega pendiente cubre también recuperación tras reinicio y deduplicación por ID estable.
+- La matriz interactiva no se ejecutó: `npm rebuild node-pty` falló descargando los headers de Node 24.22.1 con `TAR_ENTRY_ERROR EINVAL: invalid argument, fchown`. Se conserva como bloqueo de entorno, no como prueba superada.
+
+Estos resultados son locales y no equivalen a CI multiplataforma, TUI Pi real ni revisión independiente R4.
+
+### Hallazgos R4 que siguen abiertos
+
+| Severidad | Hallazgo reproducible | Corrección requerida | Regresión requerida |
+| --- | --- | --- | --- |
+| Alta | `findPotentialWorkspaceConflicts` solo clasifica cambios del log por actores y path; `/asen-changes` obtiene entradas de la sesión activa. No compara versiones/contenido, no identifica conflictos confirmados y no puede resolverlos. La prueba existente solo comprueba la señal heurística y el aislamiento de sesiones. | Diseñar sobre el almacén de workspace y la autoridad ya existente una operación explícita, de un solo uso, vinculada a sesión/proyecto/path/hash esperado; validar obsolescencia antes del write y dejar decisión/resultados recuperables. | Dos procesos reales sobre el mismo archivo; diff previo; autorización válida, caducada, reutilizada y obsoleta; interrupción/reinicio; segundo proyecto/sesión aislados. |
+| Alta | Las acciones de espacio de trabajo expuestas son de inspección (`asen-status`, `asen-agents`, `asen-changes`, `asen-todos`); no hay flujo integrado para aprobar y ejecutar resolución o descartar/reconocer un aviso. Una vista no concede permisos, pero falta el punto de ejecución autorizado solicitado. | Integrar la acción en el gate de escritura actual, con validación final de identidad/estado en el momento de mutar y registro de resultado; mantener la inspección solo lectura. | Acción autorizada y rechazada, estado obsoleto, reintento, operación ya ejecutada y acceso cruzado. |
+| Media | El journal permite reintentar avisos que quedaron `pending`, usando el mismo ID. Si el proceso cae después de que `sendMessage` acepte el mensaje y antes de persistir `enqueued`, Pi no expone acuse/idempotencia durable que permita saber si el usuario lo recibió. El reintento puede duplicar el aviso, aunque no el job; marcarlo entregado antes del envío permitiría perderlo. | Mantener el contrato como reintento de encolado best-effort, documentar el límite y deduplicar por ID en un consumidor solo si Pi ofrece una interfaz demostrable. No afirmar exactamente-una-vez ni lectura confirmada. | Fallo antes y después de enqueue, reinicio en ambas ventanas y comparación del mismo ID; una futura prueba de acuse solo si la API lo admite. |
+| Alta | Las pruebas de formato comprueban ancho y sanitización, pero no la navegación por teclado ni la TUI nativa Pi 1.2.0. La prueba TUI histórica quedó bloqueada al compilar `node-pty` por `fchown EINVAL`; no es un PASS. | Completar una matriz TTY/no-TTY de la interfaz real de Pi 1.2.0 o registrar un bloqueo de entorno reproducible; documentar controles de teclado compatibles con Pi. | Terminales 120/80/60/40 columnas, sin color, teclado/escape/cancelación, error/carga y reinicio. |
+
+### Dictamen
+
+T10 sigue **PARTIAL**. La recuperación de avisos pendientes queda conectada al uso real; la resolución autorizada de conflictos, las acciones mutables, la prueba TUI/teclado y la revisión independiente R4 no están cerradas. La API de Pi limita la promesa de entrega a encolado best-effort con ID estable. No se infiere FULL de esta tanda.
