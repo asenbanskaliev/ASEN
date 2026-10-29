@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
-import {BackgroundJobRegistry} from "../src/runtime/background-jobs.js";
+import {BackgroundJobRegistry,backgroundJobTerminalNotification,formatBackgroundJobStatus,pendingBackgroundJobNotifications} from "../src/runtime/background-jobs.js";
 import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
 
 test("bounds output, emits completion once, and keeps session isolation",()=>{
@@ -84,3 +84,79 @@ test("timeout terminates a real child",async()=>{
  const result=await child.done;assert.equal(result.state,"timed_out");
 });
 
+
+test("T10 scoped subscriptions reject cross-session and cross-project observers",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"project-a",command:"task"});
+ const received:string[]=[];
+ assert.throws(()=>registry.subscribeScoped(job.id,"intruder","project-a",()=>{}),/does not belong/);
+ assert.throws(()=>registry.subscribeScoped(job.id,"owner","project-b",()=>{}),/does not belong/);
+ assert.throws(()=>registry.subscribeScoped(job.id,"","project-a",()=>{}),/scope is invalid/);
+ const unsubscribe=registry.subscribeScoped(job.id,"owner","project-a",event=>received.push(event.kind));
+ registry.append(job.id,"output");registry.finish(job.id,"completed",0);
+ unsubscribe();
+ assert.deepEqual(received,["line","completed"]);
+});
+
+test("T10 scoped snapshots and cancellation reject cross-session and cross-project access",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"a",command:"long"});
+ assert.throws(()=>registry.snapshotScoped(job.id,"intruder","a"),/does not belong/);
+ assert.throws(()=>registry.snapshotScoped(job.id,"owner","b"),/does not belong/);
+ assert.throws(()=>registry.stopScoped(job.id,"intruder","a"),/does not belong/);
+ assert.throws(()=>registry.stopScoped(job.id,"owner","b"),/does not belong/);
+ assert.equal(registry.snapshotScoped(job.id,"owner","a").state,"running");
+ registry.stopScoped(job.id,"owner","a");
+ assert.equal(registry.snapshotScoped(job.id,"owner","a").state,"stopped");
+});
+
+test("T10 notifications use observed terminal state and stable identity",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"p",command:"task"});
+ assert.equal(backgroundJobTerminalNotification(job),null);
+ registry.finish(job.id,"failed",7);
+ const observed=registry.snapshot(job.id);
+ const first=backgroundJobTerminalNotification(observed);
+ assert.ok(first);assert.match(first.message,/Failed/);assert.match(first.message,/exit code 7/);
+ assert.deepEqual(backgroundJobTerminalNotification(observed),first);
+});
+test("T10 accessible status is bounded and requires no color or terminal controls",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",command:"task"});
+ registry.finish(job.id,"completed",0);
+ const status=formatBackgroundJobStatus(registry.snapshot(job.id),24);
+ assert.ok(status.length<=24);assert.doesNotMatch(status,/\\x1b/);
+ assert.match(formatBackgroundJobStatus(registry.snapshot(job.id)),/Succeeded/);
+ assert.throws(()=>formatBackgroundJobStatus(registry.snapshot(job.id),10),/width/);
+});
+
+test("T10 terminal notification identity does not change on subsequent status updates",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"project",command:"task"});
+ registry.finish(job.id,"failed",1);
+ const initial=backgroundJobTerminalNotification(registry.snapshot(job.id));
+ assert.ok(initial);
+ assert.doesNotMatch(initial.id,/project|[\x00-\x1f\x7f-\x9f]/u);
+ registry.setDeliveryState(job.id,"pending","retry");
+ const retried=backgroundJobTerminalNotification(registry.snapshot(job.id));
+ assert.equal(initial.id,retried?.id);
+});
+test("T10 accessible output removes terminal controls from untrusted job identity",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"project",command:"task"});
+ assert.doesNotMatch(formatBackgroundJobStatus({...job,id:"unsafe\\x1b[31m\\nnext"}),/[\x00-\x1f\x7f-\x9f]/u);
+});
+
+test("T10 recovery projection deduplicates and respects project and session boundaries",()=>{
+ const registry=new BackgroundJobRegistry();
+ const own=registry.start({sessionId:"owner",projectId:"project",command:"one"});
+ const other=registry.start({sessionId:"intruder",projectId:"project",command:"two"});
+ registry.finish(own.id,"failed",3);registry.finish(other.id,"failed",4);
+ const ownSnapshot=registry.snapshot(own.id),otherSnapshot=registry.snapshot(other.id);
+ const pending=pendingBackgroundJobNotifications([ownSnapshot,otherSnapshot,ownSnapshot],"owner","project");
+ assert.equal(pending.length,1);
+ assert.equal(pending[0]?.id,backgroundJobTerminalNotification(ownSnapshot)?.id);
+ registry.setDeliveryState(own.id,"enqueued");
+ assert.equal(pendingBackgroundJobNotifications([registry.snapshot(own.id)],"owner","project").length,0);
+ assert.throws(()=>pendingBackgroundJobNotifications([],"","project"),/scope/);
+});
