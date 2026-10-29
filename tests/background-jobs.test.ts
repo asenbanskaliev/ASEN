@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
-import {BackgroundJobRegistry} from "../src/runtime/background-jobs.js";
+import {BackgroundJobRegistry,backgroundJobTerminalNotification,formatBackgroundJobStatus} from "../src/runtime/background-jobs.js";
 import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
 
 test("bounds output, emits completion once, and keeps session isolation",()=>{
@@ -108,4 +108,24 @@ test("T10 scoped snapshots and cancellation reject cross-session and cross-proje
  assert.equal(registry.snapshotScoped(job.id,"owner","a").state,"running");
  registry.stopScoped(job.id,"owner","a");
  assert.equal(registry.snapshotScoped(job.id,"owner","a").state,"stopped");
+});
+
+test("T10 notifications use observed terminal state and stable identity",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"p",command:"task"});
+ assert.equal(backgroundJobTerminalNotification(job),null);
+ registry.finish(job.id,"failed",7);
+ const observed=registry.snapshot(job.id);
+ const first=backgroundJobTerminalNotification(observed);
+ assert.ok(first);assert.match(first.message,/Failed/);assert.match(first.message,/exit code 7/);
+ assert.deepEqual(backgroundJobTerminalNotification(observed),first);
+});
+test("T10 accessible status is bounded and requires no color or terminal controls",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",command:"task"});
+ registry.finish(job.id,"completed",0);
+ const status=formatBackgroundJobStatus(registry.snapshot(job.id),24);
+ assert.ok(status.length<=24);assert.doesNotMatch(status,/\\x1b/);
+ assert.match(formatBackgroundJobStatus(registry.snapshot(job.id)),/Succeeded/);
+ assert.throws(()=>formatBackgroundJobStatus(registry.snapshot(job.id),10),/width/);
 });
