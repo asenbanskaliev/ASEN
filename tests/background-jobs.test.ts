@@ -84,3 +84,16 @@ test("timeout terminates a real child",async()=>{
  const result=await child.done;assert.equal(result.state,"timed_out");
 });
 
+
+test("T10 scoped subscriptions reject cross-session and cross-project observers",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"project-a",command:"task"});
+ const received:string[]=[];
+ assert.throws(()=>registry.subscribeScoped(job.id,"intruder","project-a",()=>{}),/does not belong/);
+ assert.throws(()=>registry.subscribeScoped(job.id,"owner","project-b",()=>{}),/does not belong/);
+ assert.throws(()=>registry.subscribeScoped(job.id,"","project-a",()=>{}),/scope is invalid/);
+ const unsubscribe=registry.subscribeScoped(job.id,"owner","project-a",event=>received.push(event.kind));
+ registry.append(job.id,"output");registry.finish(job.id,"completed",0);
+ unsubscribe();
+ assert.deepEqual(received,["line","completed"]);
+});
