@@ -26,6 +26,12 @@ const taskId=`t05-live-${randomUUID()}`,target="docs/t05-live-execution.txt";
 const content=`T05 NVIDIA live write\nCandidate: ${expectedSha}\nPurpose: demonstrate one authorized Pi workspace edit\n`;
 let piProcessId:number|undefined,startedAt=new Date().toISOString();
 const finishAt=()=>new Date().toISOString();
+function redact(value:string):string{
+ let output=value;
+ const secret=process.env.NVIDIA_API_KEY;
+ if(secret)output=output.split(secret).join("[REDACTED]");
+ return output.replace(/(authorization\s*[:=]\s*bearer\s+)[^\s"'<>]+/giu,"$1[REDACTED]").replace(/((?:api[_-]?key|token|secret)\s*[:=]\s*)[^\s,;"']+/giu,"$1[REDACTED]").replace(/nvapi-[A-Za-z0-9_-]+/gu,"[REDACTED]").slice(-16_384);
+}
 try{
  execFileSync("git",["-C",sourceRoot,"worktree","add","--detach",taskRoot,expectedSha],{stdio:"ignore"});
  const root=realpathSync(taskRoot),baseSha=git(root,"rev-parse","HEAD");
@@ -39,10 +45,13 @@ try{
  const skillPaths=selectSkills(skillContext).map(skill=>skill.path);
  const evidence=new EvidenceStore();
  for(const [id,kind] of [["work-unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const)evidence.add(candidate,{id:`${taskId}:${id}`,kind,status:"pass",summary:`Exact ${target} write admitted for isolated live-provider fixture`,createdAt:new Date().toISOString()});
- const runner=new PiProcessRunner({command:process.env.PI_EXECUTABLE??"pi",policyRoot:sourceRoot,providerCredential:"NVIDIA_API_KEY",timeoutMs:120_000,maxOutputBytes:128_000,maxStreamBytes:512_000,onProcessStart:pid=>{piProcessId=pid;}});
+ let processExit:{code:number|null;signal:NodeJS.Signals|null;stderr:string}|undefined;
+ const runner=new PiProcessRunner({command:process.env.PI_EXECUTABLE??"pi",policyRoot:sourceRoot,providerCredential:"NVIDIA_API_KEY",timeoutMs:120_000,maxOutputBytes:128_000,maxStreamBytes:512_000,onProcessStart:pid=>{piProcessId=pid;},onProcessClose:details=>{processExit={...details,stderr:redact(details.stderr)};}});
  const request={id:`${taskId}:worker`,role:"worker" as const,repository:root,isolationKey:`${taskId}:session`,prompt:`Create exactly one file at ${target} with the following exact UTF-8 contents, including the final newline:\n\n${content}\nUse only the ASEN-authorized file writing tools. Do not run shell commands or alter any other path. This is the complete task.`,candidate,writeSurfaces:[target],skillContext,skillPaths,writerAdmission,model:"nvidia/nemotron-3.5-lightning-30b-a3b",thinking:"minimal" as const};
  const result=await new Dispatcher(runner,evidence).dispatch(request);
  const completedAt=finishAt();
+ mkdirSync(evidenceDirectory,{recursive:true});
+ writeFileSync(join(evidenceDirectory,"live-write-attempt.json"),JSON.stringify({candidateSha:expectedSha,baseSha,taskId,sessionId:request.isolationKey,project:root,hostProcessId:process.pid,piProcessId,provider:"nvidia",model:request.model,authorizationId:taskId,allowedPaths:[target],startedAt,completedAt,processExit,resultOk:result.ok,resultSummary:redact(result.output).slice(0,4_000),observedPaths:git(root,"status","--porcelain=v1","--untracked-files=all").split(/\r?\n/u).filter(Boolean)},null,2)+"\n",{mode:0o600});
  assert.equal(result.ok,true,"Pi/NVIDIA authorized task failed; inspect the redacted process logs and retained evidence");
  assert.equal(readFileSync(join(root,target),"utf8"),content,"provider output did not produce the required exact authorized edit");
  const status=execFileSync("git",["-C",root,"status","--porcelain=v1","-z","--untracked-files=all"],{encoding:"utf8"});
@@ -53,7 +62,6 @@ try{
  try{patch=execFileSync("git",["-C",root,"diff","--binary","--no-index","--","/dev/null",target],{encoding:"utf8",stdio:["ignore","pipe","pipe"]});}
  catch(error){const failure=error as NodeJS.ErrnoException&{status?:number;stdout?:Buffer|string};if(failure.status!==1)throw error;patch=Buffer.isBuffer(failure.stdout)?failure.stdout.toString("utf8"):String(failure.stdout??"");}
  const fileSha256=createHash("sha256").update(readFileSync(join(root,target))).digest("hex");
- mkdirSync(evidenceDirectory,{recursive:true});
  writeFileSync(join(evidenceDirectory,"live-write.diff"),patch,{mode:0o600});
  writeFileSync(join(evidenceDirectory,"live-write-evidence.json"),JSON.stringify({candidateSha:expectedSha,baseSha,taskId,sessionId:request.isolationKey,project:root,processId:process.pid,piProcessId,provider:"nvidia",model:request.model,authorizationId:taskId,allowedPaths:[target],observedPaths:changedPaths,contentSha256:fileSha256,patchSha256:createHash("sha256").update(patch).digest("hex"),startedAt,completedAt,result:"PASS"},null,2)+"\n",{mode:0o600});
  process.stdout.write(JSON.stringify({candidateSha:expectedSha,taskId,provider:"nvidia",model:request.model,allowedPaths:[target],observedPaths:changedPaths,result:"PASS"})+"\n");

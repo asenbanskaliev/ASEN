@@ -25,6 +25,7 @@ export interface PiProcessOptions{
  policyRoot?:string;
  providerCredential?:PiProviderCredential;
  onProcessStart?:(pid:number)=>void;
+ onProcessClose?:(details:{code:number|null;signal:NodeJS.Signals|null;stderr:string})=>void;
 }
 export interface PiChildSelectionObservation{
  readonly taskId:string;readonly sessionId:string;readonly projectId:string;
@@ -260,6 +261,7 @@ export class PiProcessRunner implements AgentRunner{
    child.stderr.on("data",data=>{streamBytes+=Buffer.byteLength(data);if(streamBytes>maxStream){overflow=true;stop({id:request.id,ok:false,output:`pi stream exceeded ${maxStream} bytes`});return;}stderr=(stderr+String(data)).slice(-16_384);});
    child.on("error",error=>{if(!stopResult)finish({id:request.id,ok:false,output:`pi process error: ${String(error)}`});});
    child.on("close",code=>{
+    try{this.options.onProcessClose?.({code,signal:child.signalCode,stderr});}catch{/* Evidence observers cannot alter Pi execution. */}
     if(stopResult)return;
     if(!policyLoaded)return finish({id:request.id,ok:false,output:"pi ASEN policy extension was not confirmed"});
     if(code===0&&!overflow){
