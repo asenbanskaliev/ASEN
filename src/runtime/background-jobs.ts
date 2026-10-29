@@ -22,6 +22,19 @@ export function backgroundJobTerminalNotification(job:BackgroundJobSnapshot):Rea
  if(!terminal.includes(job.state as typeof terminal[number]))return null;
  return Object.freeze({id:`${job.sessionId}:${job.projectId}:${job.id}:terminal`,message:formatBackgroundJobStatus(job)});
 }
+/** Deterministic, scoped view for pending delivery after a restart. */
+export function pendingBackgroundJobNotifications(jobs:readonly BackgroundJobSnapshot[],sessionId:string,projectId:string):readonly Readonly<{id:string;message:string}>[]{
+ if(!sessionId||!projectId)throw new Error("Notification scope is invalid");
+ const seen=new Set<string>();
+ const pending:Readonly<{id:string;message:string}>[]=[];
+ for(const job of jobs){
+  if(job.sessionId!==sessionId||job.projectId!==projectId||job.deliveryState==="enqueued")continue;
+  const notification=backgroundJobTerminalNotification(job);
+  if(!notification||seen.has(notification.id))continue;
+  seen.add(notification.id);pending.push(notification);
+ }
+ return Object.freeze(pending);
+}
 export interface BackgroundJobOptions{readonly sessionId:string;readonly projectId?:string;readonly command:string;readonly mode?:"background"|"monitor";readonly maxTailLines?:number;readonly maxLineChars?:number;readonly maxEventsPerMinute?:number;readonly timeoutMs?:number;}
 export interface BackgroundProcessOptions extends BackgroundJobOptions{readonly args?:readonly string[];readonly cwd?:string;readonly env?:NodeJS.ProcessEnv;}
 export interface BackgroundExecutionOptions{readonly onData:(chunk:Buffer)=>void;readonly signal:AbortSignal;readonly timeoutMs?:number;readonly env?:NodeJS.ProcessEnv;}
