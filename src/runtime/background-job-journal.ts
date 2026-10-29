@@ -50,12 +50,16 @@ export class BackgroundJobJournal{
   return validateRows(value);
  }
  private withExclusiveLock<T>(operation:()=>T):T{
-  privatePath(this.file);const lock=`${this.file}.lock`,deadline=Date.now()+3_000,waitCell=new Int32Array(new SharedArrayBuffer(4));let fd:number|undefined,identity:{dev:number;ino:number}|undefined;
+  privatePath(this.file);const lock=`${this.file}.lock`,deadline=Date.now()+3_000,waitCell=new Int32Array(new SharedArrayBuffer(4));let fd:number|undefined,identity:{dev:number;ino:number}|undefined,permissionError:unknown;
   while(fd===undefined){
    try{fd=openSync(lock,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);const stat=fstatSync(fd);identity={dev:stat.dev,ino:stat.ino};writeFileSync(fd,JSON.stringify({pid:process.pid,createdAt:Date.now()}));fsyncSync(fd);}
-   catch(error){if(fd!==undefined){try{closeSync(fd);}catch{}fd=undefined;if(identity)try{const current=lstatSync(lock);if(current.dev===identity.dev&&current.ino===identity.ino)unlinkSync(lock);}catch{/* Preserve an unowned replacement lock. */}identity=undefined;}if((error as NodeJS.ErrnoException).code!=="EEXIST")throw error;
-    try{const observed=lstatSync(lock);if(!observed.isFile()||observed.isSymbolicLink()||(process.platform!=="win32"&&(observed.mode&0o077)!==0))throw new Error("Background journal lock is unsafe");}catch(lockError){if((lockError as NodeJS.ErrnoException).code!=="ENOENT")throw lockError;}
-    if(Date.now()>=deadline)throw new Error("Background journal is busy; refusing a concurrent overwrite");Atomics.wait(waitCell,0,0,10);
+   catch(error){const failedToCreate=fd===undefined;if(fd!==undefined){try{closeSync(fd);}catch{}fd=undefined;if(identity)try{const current=lstatSync(lock);if(current.dev===identity.dev&&current.ino===identity.ino)unlinkSync(lock);}catch{/* Preserve an unowned replacement lock. */}identity=undefined;}
+    const code=(error as NodeJS.ErrnoException).code,windowsPermission=failedToCreate&&process.platform==="win32"&&code==="EPERM";
+    if(!failedToCreate||code!=="EEXIST"&&!windowsPermission)throw error;
+    try{const observed=lstatSync(lock);if(!observed.isFile()||observed.isSymbolicLink()||(process.platform!=="win32"&&(observed.mode&0o077)!==0))throw new Error("Background journal lock is unsafe");}
+    catch(lockError){if(windowsPermission)throw error;if((lockError as NodeJS.ErrnoException).code!=="ENOENT")throw lockError;}
+    if(windowsPermission)permissionError??=error;
+    if(Date.now()>=deadline){if(permissionError)throw permissionError;throw new Error("Background journal is busy; refusing a concurrent overwrite");}Atomics.wait(waitCell,0,0,10);
    }
   }
   try{return operation();}finally{try{closeSync(fd);}finally{try{const current=lstatSync(lock);if(identity&&current.dev===identity.dev&&current.ino===identity.ino)unlinkSync(lock);}catch{/* Never unlink a lock owned by another process. */}}}
