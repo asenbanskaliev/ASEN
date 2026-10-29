@@ -121,7 +121,7 @@ jobs:
       github.event_name == 'pull_request' &&
       github.head_ref == 'feat/t05-independent-review' &&
       github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'
-    needs: test
+    needs: architecture
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -162,6 +162,11 @@ jobs:
         run: |
           set -euo pipefail
           node --import tsx --test tests/pi-authority-temp-load.test.ts tests/ordinary-review-workspace-flow.test.ts tests/background-job-journal.test.ts tests/workspace-writer-lease.test.ts tests/authorized-job-retry.test.ts 2>&1 | tee r4-scenarios.log
+      - name: T04 hard-kill recovery and T05 writer authorization joint evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx --test tests/authorized-job-retry.test.ts tests/background-job-journal.test.ts tests/workspace-writer-lease.test.ts 2>&1 | tee t04-t05-recovery-evidence.log
       - name: Real Pi 1.2.0 NVIDIA authorized ASEN workspace write
         shell: bash
         env:
@@ -181,6 +186,7 @@ jobs:
           name: t05-r4-execution-${{ github.event.pull_request.head.sha }}
           path: |
             r4-scenarios.log
+            t04-t05-recovery-evidence.log
             r4-provider-evidence/
           if-no-files-found: warn
           retention-days: 30
