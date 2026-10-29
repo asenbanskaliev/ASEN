@@ -157,6 +157,36 @@ jobs:
           npm run audit:upstream-boundary
           npm run audit:skills
           npm run audit:skill-parity
+      - name: R4 real Git and process regression scenarios
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx --test tests/ordinary-review-workspace-flow.test.ts 2>&1 | tee r4-scenarios.log
+      - name: Real Pi 1.2.0 NVIDIA API execution probe (not an audit verdict)
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t05-pi-config
+          ASEN_T05_EVIDENCE_DIR: ${{ github.workspace }}/r4-provider-evidence
+        run: |
+          set -euo pipefail
+          test -n "$NVIDIA_API_KEY" || { echo "::error::NVIDIA_API_KEY missing; real provider execution not demonstrated"; exit 1; }
+          mkdir -p "$PI_CODING_AGENT_DIR" "$ASEN_T05_EVIDENCE_DIR"
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.2.0
+          timeout 120s pi --no-session --no-tools --no-extensions --no-mcp --no-skills --no-context-files --no-prompt-templates --no-themes --no-approve --provider nvidia --model nvidia/nemotron-3.5-lightning-30b-a3b --print --system-prompt 'Return only the requested token. Do not execute tools.' -- 'Reply with ASEN_T05_PI_LIVE_OK' > "$ASEN_T05_EVIDENCE_DIR/pi-live-output.txt"
+          grep -Fq 'ASEN_T05_PI_LIVE_OK' "$ASEN_T05_EVIDENCE_DIR/pi-live-output.txt"
+          printf '%s\n' "$ASEN_EXPECTED_SHA" > "$ASEN_T05_EVIDENCE_DIR/candidate.sha"
+      - name: Preserve real execution evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: t05-r4-execution-${{ github.event.pull_request.head.sha }}
+          path: |
+            r4-scenarios.log
+            r4-provider-evidence/
+          if-no-files-found: warn
+          retention-days: 30
       - name: Preserve R4 audit scope evidence
         if: always()
         uses: actions/upload-artifact@v6
