@@ -49,6 +49,13 @@ export class BackgroundJobRegistry{
   this.observeDone(job.id,mutable,done);
   return {job,done};
  }
+ /** Session-scoped observation never exposes a job from another session or project. */
+ subscribeScoped(id:string,sessionId:string,projectId:string,listener:BackgroundJobListener):()=>void{
+  if(typeof sessionId!=="string"||!sessionId||typeof projectId!=="string"||!projectId)throw new Error("Background job observation scope is invalid");
+  const job=this.require(id);
+  if(job.options.sessionId!==sessionId||job.options.projectId!==projectId)throw new Error("Background job does not belong to the requested scope");
+  return this.subscribe(id,listener);
+ }
  subscribe(id:string,listener:BackgroundJobListener):()=>void{const job=this.require(id);if(typeof listener!=="function")throw new TypeError("Job listener is invalid");job.listeners.add(listener);return()=>job.listeners.delete(listener);}
  append(id:string,chunk:string):void{const job=this.require(id);if(job.state!=="running")throw new Error("Background job is not running");if(typeof chunk!=="string")throw new TypeError("Job output must be text");for(const line of chunk.split(/\r?\n/u).filter(Boolean)){const now=Date.now();if(now-job.windowStart>=60_000){job.windowStart=now;job.windowEvents=0;}if(++job.windowEvents>job.options.maxEventsPerMinute){this.finish(id,"flooded",null);return;}const bounded=line.slice(-job.options.maxLineChars);job.tail.push(bounded);if(job.tail.length>job.options.maxTailLines)job.tail.splice(0,job.tail.length-job.options.maxTailLines);job.eventCount++;this.emit(id,"line",bounded);}}
  finish(id:string,state:"completed"|"failed"|"stopped"|"timed_out"|"flooded",exitCode:number|null):void{const job=this.require(id);if(job.state!=="running")return;job.state=state;job.exitCode=exitCode;job.updatedAt=new Date().toISOString();if(job.timer)clearTimeout(job.timer);if(state!=="completed"){job.abort?.abort();if(job.child&&!job.child.killed){try{if(process.platform!=="win32"&&job.child.pid)process.kill(-job.child.pid,"SIGTERM");else job.child.kill();}catch{try{job.child.kill("SIGKILL");}catch{/* Best effort after terminal state is durable. */}}}}try{this.journal?.record(this.snapshot(id));delete job.persistenceError;}catch{job.persistenceError="Background journal could not persist the terminal result";}this.emit(id,state);this.prune();}
