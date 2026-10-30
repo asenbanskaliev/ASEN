@@ -6,10 +6,9 @@ on:
         description: 'Gemini model (explicit; avoid overloaded default)'
         required: true
         type: choice
-        default: gemini-2.5-flash
+        default: gemini-3.8-flash
         options:
-          - gemini-2.5-flash
-          - gemini-2.5-pro
+          - gemini-3.8-flash
 
 permissions:
   contents: read
