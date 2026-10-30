@@ -410,3 +410,36 @@ test("canonical CodeGraph sync requires fresh authorization and existing index",
   assert.equal(approvals.length,2,"each synchronization must request fresh approval");
   assert.deepEqual(calls,[["sync"],["sync"]]);
 });
+
+
+test("T07 init tolerates an index deleted during a previous in-flight initialization",async t=>{
+  const f=fixture(t);
+  let launches=0;
+  const tool=createCodeGraphTool(async(args,options)=>{
+    launches++;
+    if(args[0]==="init"){
+      mkdirSync(join(options.cwd,".codegraph"),{recursive:true});
+      writeFileSync(join(options.cwd,".codegraph","marker"),"ready");
+    }
+    return {stdout:"ok",stderr:""};
+  });
+  const ui={hasUI:true,ui:{confirm:async()=>true}};
+  assert.equal((await call(tool,f.root,{operation:"init"},undefined,ui)).details.status,"completed");
+  rmSync(join(f.root,".codegraph"),{recursive:true,force:true});
+  assert.equal((await call(tool,f.root,{operation:"init"},undefined,ui)).details.status,"completed");
+  assert.equal(launches,2);
+});
+
+test("T07 sync returns not_initialized without launching when index disappears",async t=>{
+  const f=fixture(t);
+  let launches=0;
+  const tool=createCodeGraphTool(async()=>{launches++;return {stdout:"unexpected",stderr:""};});
+  mkdirSync(join(f.root,".codegraph"));
+  writeFileSync(join(f.root,".codegraph","marker"),"ready");
+  const result=await call(tool,f.root,{operation:"sync"},undefined,{hasUI:true,ui:{confirm:async()=>{
+    rmSync(join(f.root,".codegraph"),{recursive:true,force:true});
+    return true;
+  }}});
+  assert.equal(result.details.status,"failed");
+  assert.equal(launches,0);
+});
