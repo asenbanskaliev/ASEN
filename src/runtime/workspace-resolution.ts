@@ -1,6 +1,6 @@
 import {createHash,randomUUID} from "node:crypto";
 import {execFileSync} from "node:child_process";
-import {closeSync,constants,fsyncSync,lstatSync,openSync,readFileSync,renameSync,unlinkSync,writeFileSync} from "node:fs";
+import {closeSync,constants,fchmodSync,fsyncSync,lstatSync,openSync,readFileSync,renameSync,unlinkSync,writeFileSync} from "node:fs";
 import {join,resolve,relative,sep} from "node:path";
 import {hasSensitiveName} from "../security/primary-tool-policy.js";
 import {acquireWorkspaceWriter} from "./workspace-writer-lease.js";
@@ -29,13 +29,13 @@ function pathParts(root:string,relativePath:string):{target:string;parts:string[
  }
  return {target,parts};
 }
-function inspected(root:string,relativePath:string):{target:string;data:Buffer;device:number;inode:number}{
+function inspected(root:string,relativePath:string):{target:string;data:Buffer;device:number;inode:number;mode:number}{
  const {target}=pathParts(root,relativePath);
  const before=lstatSync(target);
  if(!before.isFile()||before.isSymbolicLink()||before.size>MAX_BYTES)throw new Error("Workspace correction requires an ordinary bounded text file");
  const data=readFileSync(target),after=lstatSync(target);
  if(data.length>MAX_BYTES||before.dev!==after.dev||before.ino!==after.ino||before.size!==after.size||before.mtimeMs!==after.mtimeMs||!Buffer.from(data.toString("utf8"),"utf8").equals(data)||data.includes(0))throw new Error("Workspace correction source is unsafe or changed");
- return {target,data,device:after.dev,inode:after.ino};
+ return {target,data,device:after.dev,inode:after.ino,mode:after.mode};
 }
 function git(root:string,...args:string[]):string{
  return execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:5000,maxBuffer:1048576,windowsHide:true}).trim();
@@ -72,6 +72,7 @@ export function applyWorkspaceCorrection(candidate:WorkspaceCorrectionCandidate,
   if(latest.device!==candidate.device||latest.inode!==candidate.inode||hash(latest.data)!==candidate.sha256)throw new Error("Workspace correction source changed during admission");
   if(Buffer.from(replacement,"utf8").equals(latest.data))throw new Error("Workspace correction does not change the candidate");
   fd=openSync(temp,constants.O_CREAT|constants.O_EXCL|constants.O_WRONLY|(constants.O_NOFOLLOW??0),0o600);
+  if(process.platform!=="win32")fchmodSync(fd,old.mode&0o777);
   writeFileSync(fd,replacement,"utf8");fsyncSync(fd);closeSync(fd);fd=undefined;
   hooks?.beforePublish?.();
   lease.verify();assertWorkspaceRootIdentity(root,candidate.identity);

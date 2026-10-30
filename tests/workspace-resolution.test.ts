@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import {mkdtempSync,readFileSync,rmSync,symlinkSync,writeFileSync} from "node:fs";
+import {chmodSync,mkdtempSync,readFileSync,rmSync,statSync,symlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {acquireWorkspaceWriter} from "../src/runtime/workspace-writer-lease.js";
@@ -24,6 +24,14 @@ test("exact, one-use manual workspace correction modifies only its approved file
  assert.equal(readFileSync(join(f.root,"unrelated.txt"),"utf8"),"keep\n");
  assert.throws(()=>applyWorkspaceCorrection(candidate,"second\n"),/already been consumed/);
  assert.match(f.git("status","--porcelain"),/shared.txt/);
+});
+test("manual workspace correction preserves the existing executable permission bits",t=>{
+ if(process.platform==="win32"){t.skip("POSIX file mode bits are not portable to Windows");return;}
+ const f=fixture(t),file=join(f.root,"shared.txt");
+ chmodSync(file,0o755);f.git("add","shared.txt");f.git("commit","-qm","mark executable");
+ const candidate=prepareWorkspaceCorrection({root:f.root,relativePath:"shared.txt"});
+ applyWorkspaceCorrection(candidate,"replaced executable\n");
+ assert.equal(statSync(file).mode&0o777,0o755);
 });
 test("changed contents invalidate the candidate without overwriting the newer file",t=>{
  const f=fixture(t),candidate=prepareWorkspaceCorrection({root:f.root,relativePath:"shared.txt"});
@@ -48,6 +56,7 @@ test("correction rejects unsafe paths and symlinks before permitting a writer",t
  for(const path of ["../outside","/etc/passwd",".git/config",".env","src\\..\\shared.txt"]){
   assert.throws(()=>prepareWorkspaceCorrection({root:f.root,relativePath:path}));
  }
+ if(process.platform==="win32"){t.skip("File symlink creation requires optional Windows privileges");return;}
  const outside=join(f.root,"outside.txt");writeFileSync(outside,"outside");
  symlinkSync(outside,join(f.root,"symlink.txt"));
  assert.throws(()=>prepareWorkspaceCorrection({root:f.root,relativePath:"symlink.txt"}),/ordinary/);
