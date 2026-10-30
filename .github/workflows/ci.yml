@@ -134,7 +134,7 @@ jobs:
           ./node_modules/.bin/codegraph query --limit 10 -- changedSymbol > final-symbol-result.txt
           grep -q 'changedSymbol' final-symbol-result.txt
           echo '--- Real ASEN/Pi registered tool + genuine CodeGraph CLI ---'
-          export PATH="$PWD/node_modules/.bin:$PATH"
+          export ASEN_T07_CODEGRAPH_PACKAGE_ROOT="$PWD/node_modules/@colbymchenry/codegraph"
           cd "$GITHUB_WORKSPACE"
           npm ci --ignore-scripts
           node --import tsx --test tests/t07-real-asen-codegraph.test.ts
