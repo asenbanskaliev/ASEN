@@ -44,6 +44,7 @@ jobs:
         uses: google-github-actions/run-gemini-cli@387c8ddb7a72078825da941758b811b9153c71e8
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini_cli_version: '0.66.0'
           prompt: |
             Review ASEN PR #40 at the checked-out SHA for T07 CodeGraph.
             Read AGENTS.md, docs/remote-continuation.md and
@@ -55,7 +56,24 @@ jobs:
             correctness, security and subprocess lifecycle defects, with
             file paths and evidence. Respond in concise Spanish. State
             explicitly that no tests were executed.
+            Output sections: VEREDICTO, HALLAZGOS, LIMITACIONES.
+            Each finding must include severity, file path, exact code evidence,
+            consequence and a minimal proposed fix. If evidence is insufficient,
+            label it as a hypothesis. Never claim FULL or PASS without proof.
           settings: '{"tools":{"core":["read_file","glob","grep_search"]},"telemetry":{"enabled":false}}'
+      - name: Validate review content
+        if: steps.gemini.outcome == 'success'
+        env:
+          SUMMARY: ${{ steps.gemini.outputs.summary }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUMMARY//[[:space:]]/}"
+          test "${#SUMMARY}" -ge 100
+          test "${#SUMMARY}" -le 50000
+          for section in VEREDICTO HALLAZGOS LIMITACIONES; do
+            grep -qi "$section" <<< "$SUMMARY" || { echo "Missing review section: $section" >&2; exit 1; }
+          done
       - name: Verify PR head has not changed
         id: freshness
         if: steps.gemini.outcome == 'success'
@@ -89,8 +107,3 @@ jobs:
             printf '%s\n' "$SUMMARY"
           } > "$RUNNER_TEMP/gemini-review.md"
           gh api --method POST "repos/$REPO/issues/40/comments" --field "body=@$RUNNER_TEMP/gemini-review.md" --jq '.html_url'
-      - name: Require a nonempty review
-        if: steps.gemini.outcome == 'success' && steps.gemini.outputs.summary == ''
-        run: |
-          echo 'Gemini returned an empty summary; review not published.' >&2
-          exit 1
