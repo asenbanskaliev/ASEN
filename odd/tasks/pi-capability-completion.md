@@ -54,7 +54,7 @@ After the core is reliable, compose status, agents, changes, task list, private 
 
 ### S11 — Additional clients
 
-**Adopted scope decision (L480):** T11 follows the actual Gentle Shell integration boundary: Pi is its native host/client. For this roadmap, T11 covers ASEN's Pi 1.2 host integration only; Claude Code, Codex, OpenCode, Cursor, Gemini CLI and other runtimes are deferred follow-on adapters, not implied T11 requirements. Gentle-AI's broader runtime inventory is not evidence that Gentle Shell itself implements those adapters. This decision changes scope only; it does not promote T11 to FULL.
+**Adopted scope decision (L480):** T11 follows the verified native Pi host integration boundary. For this roadmap, T11 covers ASEN's Pi 1.2 host integration only; Claude Code, Codex, OpenCode, Cursor, Gemini CLI and other runtimes are deferred follow-on adapters, not implied T11 requirements. A broader runtime inventory is not evidence that the Pi host itself implements those adapters. This decision changes scope only; it does not promote T11 to FULL.
 
 Reuse ASEN's existing Pi host contract and declare the capabilities and limits actually supported by each Pi mode. Do not add a generic adapter layer unless a concrete shared behavior requires it. Preserve the Pi core's guarantees; do not infer identical tools, delegation, UI or permissions across modes. Do not claim multi-client equivalence from Pi-only checks. Any future non-Pi adapter requires a concrete reference/API mapping, an explicit capability contract, independent behavior/security tests and runtime/platform evidence.
 
