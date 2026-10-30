@@ -20,6 +20,14 @@ test("shared session metadata remains project-bound with local one-use consent",
  assert.throws(()=>b.consult(grant.token,"requester","target","project-a"),/valid unused consent/);
  a.remove("target");assert.deepEqual(b.list("project-a"),[]);
 });
+test("a shared record from another project cannot displace an owned session identity",t=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-shared-project-collision-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const local=new SharedSessionDirectory(join(root,"private")),other=new SharedSessionDirectory(join(root,"private"));
+ local.publish(entry("same","project-a"));other.publish(entry("same","project-b"));
+ assert.deepEqual(local.list("project-b"),[]);
+ assert.deepEqual(local.list("project-a").map(row=>row.sessionId),["same"]);
+ local.remove("same");other.remove("same");
+});
 test("a separate Node process can publish and withdraw only its own session metadata",async t=>{
  const root=mkdtempSync(join(tmpdir(),"asen-session-cross-process-"));t.after(()=>rmSync(root,{recursive:true,force:true,maxRetries:20,retryDelay:100}));
  const directory=join(root,"private"),source=pathToFileURL(join(process.cwd(),"src/runtime/shared-session-directory.ts")).href;

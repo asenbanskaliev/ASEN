@@ -92,7 +92,7 @@ export class SharedSessionDirectory extends SessionDirectory{
    const record=readRecord(path.join(this.#root,name));
    if(!record)continue;
    if(name!==nameOf(record.entry.projectId,record.entry.sessionId))throw new Error("Shared-session file identity is inconsistent");
-   if(record.entry.projectId!==projectId||localIds.has(record.entry.sessionId)||!alive(record))continue;
+   if(record.entry.projectId!==projectId||localIds.has(record.entry.sessionId)||this.#owned.has(record.entry.sessionId)||!alive(record))continue;
    super.publish(record.entry);
    this.#imported.add(record.entry.sessionId);
   }
