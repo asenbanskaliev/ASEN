@@ -170,7 +170,8 @@ test("canonical CodeGraph tool validates an existing index with lstat and never 
       calls++;
       return {stdout:"unexpected",stderr:""};
     });
-    await assert.rejects(()=>tool.execute("probe",{operation:"init"},undefined,undefined,{cwd:f.root} as any),/real directory/i);
+    const blocked=await tool.execute("probe",{operation:"init"},undefined,undefined,{cwd:f.root} as any);
+    assert.equal(blocked.details.status,"failed");
     assert.equal(calls,0);
   }
 });
@@ -218,6 +219,15 @@ test("canonical CodeGraph tool truncates output and returns upstream-compatible 
   const fallback=await unavailable.execute("probe",{operation:"explore",query:"symbol"},undefined,undefined,{cwd:f.root} as any);
   assert.deepEqual(fallback.details,{status:"unavailable",operation:"explore",cwd:f.root,fallback:"Use read, grep, and find for this exploration."});
   assert.match(textOf(fallback.content[0]),/binary was not found/);
+});
+
+test("canonical CodeGraph fails closed on invalid input and project roots",async t=>{
+  const f=fixture(t);
+  let launches=0;
+  const tool=createCodeGraphTool(async()=>{launches++;return {stdout:"unexpected",stderr:""};});
+  assert.equal((await call(tool,f.root,{operation:"query",query:""})).details.status,"failed");
+  assert.equal((await call(tool,join(f.root,"child"),{operation:"query",query:"symbol"})).details.status,"failed");
+  assert.equal(launches,0);
 });
 
 test("canonical registration and ASEN integration expose only one CodeGraph tool",t=>{
