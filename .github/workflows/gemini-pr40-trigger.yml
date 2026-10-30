@@ -55,14 +55,29 @@ jobs:
             correctness, security and subprocess lifecycle defects, with
             file paths and evidence. Respond in concise Spanish. State
             explicitly that no tests were executed.
-          settings: '{"tools":{"exclude":["run_shell_command","write_file","replace","save_memory"]}}'
+          settings: '{"tools":{"core":["read_file","glob","grep_search"]},"telemetry":{"enabled":false}}'
+      - name: Verify PR head has not changed
+        id: freshness
+        if: steps.gemini.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REVIEWED_SHA: ${{ steps.candidate.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current="$(gh api "repos/$REPO/pulls/40" --jq '.head.sha')"
+          if [[ "$current" != "$REVIEWED_SHA" ]]; then
+            echo 'PR changed during review; refusing to publish stale findings.' >&2
+            exit 1
+          fi
       - name: Publish review using GitHub REST API
-        if: steps.gemini.outcome == 'success' && steps.gemini.outputs.gemini_response != ''
+        if: steps.gemini.outcome == 'success' && steps.freshness.outcome == 'success' && steps.gemini.outputs.summary != ''
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SHA: ${{ steps.candidate.outputs.sha }}
-          SUMMARY: ${{ steps.gemini.outputs.gemini_response }}
+          SUMMARY: ${{ steps.gemini.outputs.summary }}
         shell: bash
         run: |
           set -euo pipefail
@@ -75,7 +90,7 @@ jobs:
           } > "$RUNNER_TEMP/gemini-review.md"
           gh api --method POST "repos/$REPO/issues/40/comments" --field "body=@$RUNNER_TEMP/gemini-review.md" --jq '.html_url'
       - name: Require a nonempty review
-        if: steps.gemini.outcome == 'success' && steps.gemini.outputs.gemini_response == ''
+        if: steps.gemini.outcome == 'success' && steps.gemini.outputs.summary == ''
         run: |
           echo 'Gemini returned an empty summary; review not published.' >&2
           exit 1
