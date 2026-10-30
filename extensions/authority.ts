@@ -22,9 +22,10 @@ function canonicalTarget(path:string):string{
   }
  }
 }
+function workspacePath(path:string):string{return path.replace(/\\/g,"/");}
 export async function recordSuccessfulWorkspaceWrite(authority:ToolAuthority,toolName:"edit"|"write",input:Record<string,unknown>,beforeExists:boolean,storeFile:string):Promise<void>{
  if(!authority.agentId||!authority.sessionId||!storeFile||!authorizeToolCall(authority,toolName,input)||typeof input.path!=="string")throw new Error("ASEN writer attribution identity or scope is invalid");
- const repo=realpathSync(authority.repository),target=canonicalTarget(resolve(repo,input.path)),path=relative(repo,target);
+ const repo=realpathSync(authority.repository),target=canonicalTarget(resolve(repo,input.path)),path=workspacePath(relative(repo,target));
  if(!path||path==="."||path.startsWith("..")||isAbsolute(path))throw new Error("ASEN writer attribution path is invalid");
  const store=await PersistentWorkspaceStore.open(storeFile);
  await store.append({path,actor:{kind:"agent",id:authority.agentId},sessionId:authority.sessionId,projectId:repo,worktree:repo,operation:beforeExists?"modify":"create",at:new Date().toISOString()});
@@ -70,7 +71,7 @@ export default function(pi:ExtensionAPI):void{
   if(!authorizeToolCall(authority,event.toolName,event.input))return {block:true,reason:"ASEN tool authority denied"};
   if(event.toolName!=="edit"&&event.toolName!=="write")return;
   if(!authority.agentId||!authority.sessionId||!authority.attributionFile)return {block:true,reason:"ASEN writer attribution is not configured"};
-  const repo=realpathSync(authority.repository),target=canonicalTarget(resolve(repo,event.input.path as string)),path=relative(repo,target),receipt=authority.exactWriteReceipt;
+  const repo=realpathSync(authority.repository),target=canonicalTarget(resolve(repo,event.input.path as string)),path=workspacePath(relative(repo,target)),receipt=authority.exactWriteReceipt;
   if(!path||path==="."||path.startsWith("..")||isAbsolute(path))return {block:true,reason:"ASEN writer attribution path is invalid"};
   if(receipt&&path===receipt.path){if(event.toolName!=="write")return {block:true,reason:"ASEN exact write receipt requires the write tool"};if(claimedReceiptPaths.has(path))return {block:true,reason:"ASEN exact write receipt already consumed"};claimedReceiptPaths.add(path);}
   pending.set(event.toolCallId,{path,operation:existsSync(target)?"modify":"create"});
@@ -78,7 +79,7 @@ export default function(pi:ExtensionAPI):void{
  pi.on("tool_result",async event=>{
   const change=pending.get(event.toolCallId);pending.delete(event.toolCallId);if(!change||event.isError)return;
   try{
-   const resultRepo=realpathSync(authority.repository),resultTarget=canonicalTarget(resolve(resultRepo,String(event.input.path??""))),resultPath=relative(resultRepo,resultTarget);
+   const resultRepo=realpathSync(authority.repository),resultTarget=canonicalTarget(resolve(resultRepo,String(event.input.path??""))),resultPath=workspacePath(relative(resultRepo,resultTarget));
    if(resultPath!==change.path)throw new Error("ASEN writer result path does not match its authorized tool call");
    const receipt=authority.exactWriteReceipt;
    if(receipt&&change.path===receipt.path){
@@ -100,3 +101,4 @@ export default function(pi:ExtensionAPI):void{
  });
  pi.registerCommand("asen-authority-status",{description:"Report ASEN tool authority policy",handler:async(_args,ctx)=>{ctx.ui.notify(`ASEN ${authority.role} tool policy active`,"info");}});
 }
+
