@@ -22,9 +22,10 @@ test("T12 integrates read-only code research, one-use workspace correction, sess
  const graph=createCodeGraphTool(async args=>{argv.push([...args]);return {stdout:"trackedSymbol",stderr:""};});
  const context={cwd:root};
  const query=await graph.execute("t12-read",{operation:"query",query:"trackedSymbol"},undefined,undefined,context as any);
- assert.equal(query.details.status,"completed");
+ assert.equal((query.details as {status:string}).status,"completed");
  assert.equal(existsSync(index),false,"read-only CodeGraph queries must not initialize an index");
- assert.equal((await graph.execute("t12-init",{operation:"init"},undefined,undefined,context as any)).details.status,"authorization_required");
+ const rejectedInit=await graph.execute("t12-init",{operation:"init"},undefined,undefined,context as any);
+ assert.equal((rejectedInit.details as {status:string}).status,"authorization_required");
  assert.deepEqual(argv,[["query","--limit","10","--","trackedSymbol"]],"no unexpected index-writing commands");
  const directory=join(temporary,"shared");
  const first=new SharedSessionDirectory(directory),second=new SharedSessionDirectory(directory);
