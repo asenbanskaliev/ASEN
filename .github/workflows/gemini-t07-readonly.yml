@@ -1,0 +1,52 @@
+name: Gemini T07 read-only review
+# Phase 1: opt-in review only. No code edits, no push, no automatic CI fan-out.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/gemini-t07-readonly.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: gemini-t07-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.number == 40 &&
+       github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN' &&
+       github.event.pull_request.head.ref == 'feat/t07-codegraph-completion')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Read-only Gemini review
+        id: gemini
+        uses: google-github-actions/run-gemini-cli@v1
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          prompt: |
+            Review the checked-out ASEN T07 CodeGraph change, read AGENTS.md,
+            docs/remote-continuation.md and the canonical ODD before conclusions.
+            Focus on concrete correctness, security and lifecycle risks.
+            READ-ONLY: do not edit files, execute shell commands, commit, push,
+            merge, or call GitHub write APIs. Do not claim tests were executed.
+            Return concise Spanish findings with file paths and limitations.
+          settings: '{"tools":{"exclude":["run_shell_command","write_file","replace","save_memory"]}}'
+      - name: Publish review comment on PR 40
+        if: github.event_name == 'pull_request' && steps.gemini.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUMMARY: ${{ steps.gemini.outputs.summary }}
+        run: |
+          printf '%s\n' '### Gemini T07 — revisión de solo lectura' '' "$SUMMARY" > "$RUNNER_TEMP/gemini-review.md"
+          gh pr comment 40 --repo asenbanskaliev/ASEN --body-file "$RUNNER_TEMP/gemini-review.md"
