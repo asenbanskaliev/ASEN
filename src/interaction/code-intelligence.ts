@@ -251,6 +251,7 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
       }catch{
         return {content:[{type:"text" as const,text:`CodeGraph cannot access a valid project or index. ${FALLBACK_INSTRUCTIONS}`}],details:{status:"failed",fallback:FALLBACK_INSTRUCTIONS}};
       }
+      try{
       if(request.operation==="sync"&&!indexHasEntries(root))return {content:[{type:"text" as const,text:"CodeGraph index is missing. Initialize it with explicit approval before synchronization."}],details:{status:"not_initialized",operation:"sync",cwd:root}};
       if(request.operation==="init"){
         if(signal?.aborted)return {content:[{type:"text" as const,text:"CodeGraph initialization was cancelled."}],details:{status:"cancelled",operation:"init",cwd:root}};
@@ -294,6 +295,9 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
         const status=signal?.aborted?"cancelled":fallbackStatus(error);
         const message=status==="cancelled"?"CodeGraph execution was cancelled.":status==="unavailable"?`CodeGraph is unavailable because the codegraph binary was not found. ${FALLBACK_INSTRUCTIONS}`:`CodeGraph failed to run. ${FALLBACK_INSTRUCTIONS}`;
         return {content:[{type:"text" as const,text:message}],details:{status,operation:request.operation,cwd:root,fallback:FALLBACK_INSTRUCTIONS}};
+      }
+      }catch{
+        return {content:[{type:"text" as const,text:`CodeGraph index inspection failed. ${FALLBACK_INSTRUCTIONS}`}],details:{status:"failed",operation:request.operation,cwd:root,fallback:FALLBACK_INSTRUCTIONS}};
       }
     },
   };

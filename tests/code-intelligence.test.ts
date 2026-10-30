@@ -427,6 +427,28 @@ test("T07 init fails closed when the index becomes a symlink during approval",as
   assert.equal(launches,0);
 });
 
+test("T07 reports an index race as failed instead of rejecting the tool call",async t=>{
+  const f=fixture(t);
+  const outside=join(f.root,"outside-index");mkdirSync(outside);
+  let release!:(value:{stdout:string;stderr:string})=>void;
+  let launches=0;
+  const tool=createCodeGraphTool(async()=>{
+    launches++;
+    return new Promise(resolve=>{release=resolve;});
+  });
+  const ui={hasUI:true,ui:{confirm:async()=>true}};
+  const first=call(tool,f.root,{operation:"init"},undefined,ui);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(launches,1);
+  const second=call(tool,f.root,{operation:"init"},undefined,ui);
+  await new Promise(resolve=>setImmediate(resolve));
+  symlinkSync(outside,join(f.root,".codegraph"),"junction");
+  release({stdout:"first completed",stderr:""});
+  assert.equal((await first).details.status,"completed");
+  assert.equal((await second).details.status,"failed");
+  assert.equal(launches,1,"an unsafe index must never trigger a second subprocess");
+});
+
 test("T07 init tolerates an index deleted during a previous in-flight initialization",async t=>{
   const f=fixture(t);
   let launches=0;
