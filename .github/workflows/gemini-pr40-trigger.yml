@@ -62,7 +62,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SHA: ${{ steps.candidate.outputs.sha }}
-          SUMMARY: ${{ steps.gemini.outputs.summary }}
+          SUMMARY: ${{ steps.gemini.outputs.gemini_response }}
         shell: bash
         run: |
           set -euo pipefail
@@ -75,7 +75,7 @@ jobs:
           } > "$RUNNER_TEMP/gemini-review.md"
           gh api --method POST "repos/$REPO/issues/40/comments" --field "body=@$RUNNER_TEMP/gemini-review.md" --jq '.html_url'
       - name: Require a nonempty review
-        if: steps.gemini.outcome == 'success' && steps.gemini.outputs.summary == ''
+        if: steps.gemini.outcome == 'success' && steps.gemini.outputs.gemini_response == ''
         run: |
           echo 'Gemini returned an empty summary; review not published.' >&2
           exit 1
