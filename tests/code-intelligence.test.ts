@@ -244,6 +244,40 @@ test("canonical CodeGraph fails closed on invalid input and project roots",async
   assert.equal(launches,0);
 });
 
+test("CodeGraph real subprocess fixture survives restart and keeps index read-only on queries",async t=>{
+  const f=fixture(t,`import {existsSync,mkdirSync,readFileSync,writeFileSync} from "node:fs";
+import {join} from "node:path";
+const args=process.argv.slice(2);
+const index=join(process.cwd(),".codegraph");
+if(args[0]==="init"){mkdirSync(index);writeFileSync(join(index,"snapshot"),"ready");console.log("indexed");}
+else if(!existsSync(join(index,"snapshot"))){process.stderr.write("index unavailable");process.exitCode=2;}
+else console.log(JSON.stringify({operation:args[0],query:args.at(-1),snapshot:readFileSync(join(index,"snapshot"),"utf8")}));
+`);
+  const first=createCodeGraphTool(async(args,options)=>{
+    const {execFile}=await import("node:child_process");
+    const {promisify}=await import("node:util");
+    const observed=await promisify(execFile)(process.execPath,[f.script,...args],{cwd:options.cwd,signal:options.signal,timeout:5000,maxBuffer:options.maxBuffer});
+    return {stdout:String(observed.stdout),stderr:String(observed.stderr)};
+  });
+  const ui={hasUI:true,ui:{confirm:async()=>true}};
+  const missing=await call(first,f.root,{operation:"query",query:"symbol"});
+  assert.equal(missing.details.status,"failed");
+  assert.equal(existsSync(join(f.root,".codegraph")),false);
+  const init=await call(first,f.root,{operation:"init"},undefined,ui);
+  assert.equal(init.details.status,"completed");
+  const query=await call(first,f.root,{operation:"query",query:"symbol"});
+  assert.equal(query.details.status,"completed");
+  assert.equal(JSON.parse(textOf(query.content[0])).snapshot,"ready");
+  const restarted=createCodeGraphTool(async(args,options)=>{
+    const {execFile}=await import("node:child_process");
+    const {promisify}=await import("node:util");
+    const observed=await promisify(execFile)(process.execPath,[f.script,...args],{cwd:options.cwd,timeout:5000,maxBuffer:options.maxBuffer});
+    return {stdout:String(observed.stdout),stderr:String(observed.stderr)};
+  });
+  assert.equal((await call(restarted,f.root,{operation:"init"})).details.status,"already_initialized");
+  assert.equal((await call(restarted,f.root,{operation:"explore",query:"symbol"})).details.status,"completed");
+});
+
 test("canonical registration and ASEN integration expose only one CodeGraph tool",t=>{
   const direct:any[]=[];
   registerCodeGraphTool({registerTool:(tool:any)=>direct.push(tool)} as any);
