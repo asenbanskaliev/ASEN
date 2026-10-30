@@ -205,6 +205,24 @@ test("unified CodeGraph tool uses ASEN approval only for one-time initialization
   assert.equal(tool.annotations?.readOnlyHint,false);assert.equal(tool.annotations?.destructiveHint,true);
 });
 
+test("CodeGraph requires fresh approval after an externally deleted index",async t=>{
+  const f=fixture(t);
+  let approvals=0,initializations=0;
+  const tool=createCodeGraphTool(async(args,options)=>{
+    if(args[0]==="init"){initializations++;mkdirSync(join(options.cwd,".codegraph"));}
+    return {stdout:"indexed",stderr:""};
+  });
+  const context={hasUI:true,ui:{confirm:async()=>{approvals++;return true;}}};
+  assert.equal((await call(tool,f.root,{operation:"init"},undefined,context)).details.status,"completed");
+  rmSync(join(f.root,".codegraph"),{recursive:true});
+  const withoutApproval=await call(tool,f.root,{operation:"init"});
+  assert.equal(withoutApproval.details.status,"authorization_required");
+  assert.equal(initializations,1);
+  assert.equal((await call(tool,f.root,{operation:"init"},undefined,context)).details.status,"completed");
+  assert.equal(initializations,2);
+  assert.equal(approvals,2);
+});
+
 test("CodeGraph rechecks the index path after Pi authorization",async t=>{
   const f=fixture(t);let calls=0;const outside=join(f.root,"outside");mkdirSync(outside);
   const tool=createCodeGraphTool(async()=>{calls++;return {stdout:"unexpected",stderr:""};});
