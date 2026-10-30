@@ -4,7 +4,11 @@ import {constants} from "node:fs";
 import {dirname} from "node:path";
 import type {BackgroundJobSnapshot} from "./background-jobs.js";
 
-export interface BackgroundJobJournalEntry extends BackgroundJobSnapshot{readonly recoveredAt:string;readonly resumable:false;}
+export interface BackgroundJobJournalEntry extends BackgroundJobSnapshot{
+ readonly recoveredAt:string;readonly resumable:false;
+ readonly authorizationId?:string;readonly operationDigest?:string;readonly originalJobId?:string;
+ readonly expectedHead?:string;readonly allowedPaths?:readonly string[];readonly authorizationExpiresAt?:string;
+}
 const MAX_JOURNAL_BYTES=2*1024*1024,MAX_ENTRIES=500,MAX_TAIL_LINES=200,MAX_LINE_CHARS=10_000;
 function privatePath(file:string):void{
  const parent=dirname(file);mkdirSync(parent,{recursive:true,mode:0o700});const directory=lstatSync(parent);
@@ -19,6 +23,7 @@ function validateRows(value:unknown):BackgroundJobJournalEntry[]{
   if(!row||typeof row!=="object")throw new Error("Background job journal entry is malformed");
   const entry=row as BackgroundJobJournalEntry;
   if(typeof entry.id!=="string"||!entry.id||entry.id.length>256||seen.has(entry.id)||typeof entry.sessionId!=="string"||!entry.sessionId||entry.sessionId.length>256||typeof entry.projectId!=="string"||!entry.projectId||entry.projectId.length>4096||typeof entry.command!=="string"||entry.command.length>16_384||!(["background","monitor"].includes(entry.mode))||!(["running","completed","failed","stopped","timed_out","flooded","interrupted"].includes(entry.state))||typeof entry.createdAt!=="string"||!Number.isFinite(Date.parse(entry.createdAt))||typeof entry.updatedAt!=="string"||!Number.isFinite(Date.parse(entry.updatedAt))||!(entry.exitCode===null||Number.isInteger(entry.exitCode))||!Number.isSafeInteger(entry.eventCount)||entry.eventCount<0||!Array.isArray(entry.tail)||entry.tail.length>MAX_TAIL_LINES||entry.tail.some(line=>typeof line!=="string"||line.length>MAX_LINE_CHARS)||typeof entry.recoveredAt!=="string"||!Number.isFinite(Date.parse(entry.recoveredAt))||entry.resumable!==false||(entry.deliveryState!==undefined&&entry.deliveryState!=="pending"&&entry.deliveryState!=="enqueued")||(entry.deliveryError!==undefined&&(typeof entry.deliveryError!=="string"||entry.deliveryError.length>500)))throw new Error("Background job journal entry is malformed");
+  if((entry.authorizationId!==undefined&&(typeof entry.authorizationId!=="string"||!entry.authorizationId))||(entry.operationDigest!==undefined&&!/^[0-9a-f]{64}$/u.test(entry.operationDigest))||(entry.originalJobId!==undefined&&(typeof entry.originalJobId!=="string"||!entry.originalJobId))||(entry.expectedHead!==undefined&&!/^[0-9a-f]{40,64}$/u.test(entry.expectedHead))||(entry.allowedPaths!==undefined&&(!Array.isArray(entry.allowedPaths)||entry.allowedPaths.some(path=>typeof path!=="string"||!path)))||(entry.authorizationExpiresAt!==undefined&&!Number.isFinite(Date.parse(entry.authorizationExpiresAt)))||(entry.args!==undefined&&(!Array.isArray(entry.args)||entry.args.length>256||entry.args.some(arg=>typeof arg!=="string"||arg.length>16_384)))||(entry.cwd!==undefined&&(typeof entry.cwd!=="string"||!entry.cwd||entry.cwd.length>4096)))throw new Error("Background retry binding is malformed");
   seen.add(entry.id);
  }
  return value as BackgroundJobJournalEntry[];
@@ -36,6 +41,32 @@ export class BackgroundJobJournal{
    this.writeRows([...current,entry]);
   });
  }
+ /** Claim an interrupted operation for a fresh, explicitly authorized attempt.
+  * Never replays the old command or revives its authority. Atomic across processes.
+  * A competing writer or a repeated claim fails closed.
+  */
+ claimInterruptedForRetry(input:{readonly sessionId:string;readonly projectId:string;readonly interruptedJobId:string;readonly newJobId:string;readonly authorizedCommand:string;readonly authorizationId:string;readonly operationDigest:string;readonly expectedHead:string;readonly allowedPaths:readonly string[];readonly authorizationExpiresAt:string}):BackgroundJobJournalEntry{
+  const {sessionId,projectId,interruptedJobId,newJobId,authorizedCommand,authorizationId,operationDigest,expectedHead,allowedPaths,authorizationExpiresAt}=input;
+  if([sessionId,projectId,interruptedJobId,newJobId,authorizedCommand,authorizationId,authorizationExpiresAt].some(value=>typeof value!=="string"||!value.trim())||interruptedJobId===newJobId||newJobId.length>256||authorizedCommand.length>16_384||!/^[0-9a-f]{64}$/u.test(operationDigest)||!/^[0-9a-f]{40,64}$/u.test(expectedHead)||!Array.isArray(allowedPaths)||!allowedPaths.length||allowedPaths.some(path=>typeof path!=="string"||!path)||!Number.isFinite(Date.parse(authorizationExpiresAt))||Date.parse(authorizationExpiresAt)<=Date.now())throw new Error("Retry requires a fresh, unexpired authorization bound to this operation");
+  return this.withExclusiveLock(()=>{
+   const rows=this.readAll(),previous=rows.find(row=>row.id===interruptedJobId);
+   if(!previous||previous.sessionId!==sessionId||previous.projectId!==projectId||!(previous.state==="running"||previous.state==="interrupted"))throw new Error("Interrupted operation is not available for retry");
+   if(rows.some(row=>row.id===newJobId||row.authorizationId===authorizationId))throw new Error("Retry conflict: job or authorization already consumed");
+   const rootOperationId=previous.originalJobId??previous.id;
+   if(rows.some(row=>row.originalJobId===rootOperationId))throw new Error("Retry blocked: an earlier attempt has an uncertain outcome; do not replay it");
+   // Persist before dispatch. A crash after this point is deliberately blocked:
+   // a generic command cannot prove whether its side effects ran.
+   const now=new Date().toISOString();
+   const claim:BackgroundJobJournalEntry={id:newJobId,sessionId,projectId,command:authorizedCommand,mode:previous.mode,state:"interrupted",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[],recoveredAt:now,resumable:false,authorizationId,operationDigest,originalJobId:rootOperationId,expectedHead,allowedPaths:Object.freeze([...allowedPaths]),authorizationExpiresAt};
+   const updated=rows.map(row=>row.id===interruptedJobId?{...row,state:"stopped" as const,updatedAt:now}:row);
+   updated.push(claim);
+   const serialized=JSON.stringify(validateRows(updated))+"\n";
+   if(Buffer.byteLength(serialized)>MAX_JOURNAL_BYTES)throw new Error("Retry journal exceeds retention bound");
+   privatePath(this.file);const temporary=`${this.file}.tmp-${process.pid}-${randomUUID()}`;let fd:number|undefined;
+   try{fd=openSync(temporary,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);writeFileSync(fd,serialized,{encoding:"utf8"});fsyncSync(fd);closeSync(fd);fd=undefined;renameSync(temporary,this.file);}catch(error){if(fd!==undefined)try{closeSync(fd);}catch{}try{unlinkSync(temporary);}catch{}throw error;}
+   return Object.freeze(claim);
+  });
+ }
  /** Persist an enqueue attempt for a recovered job without changing its ownership. */
  updateDeliveryState(id:string,sessionId:string,projectId:string,state:"pending"|"enqueued",error?:string):BackgroundJobJournalEntry{
   if(typeof id!=="string"||!id||typeof sessionId!=="string"||!sessionId||typeof projectId!=="string"||!projectId||!(state==="pending"||state==="enqueued")||(error!==undefined&&(typeof error!=="string"||error.length>500)))throw new Error("Background delivery identity is invalid");
@@ -45,15 +76,21 @@ export class BackgroundJobJournal{
    if(!current||current.sessionId!==sessionId||current.projectId!==projectId)throw new Error("Background job does not belong to the requested scope");
    if(current.state==="running")throw new Error("Cannot deliver a running job result");
    updated={...current,deliveryState:state,...(state==="pending"&&error?{deliveryError:error}:{})};
-   if(state==="enqueued")delete (updated as {deliveryError?:string}).deliveryError;
+   if(state==="enqueued"||!error)delete (updated as {deliveryError?:string}).deliveryError;
    rows[index]=updated;this.writeRows(rows);
   });
   return updated!;
  }
  private writeRows(rows:BackgroundJobJournalEntry[]):void{
   const perSession=new Map<string,BackgroundJobJournalEntry[]>();for(const row of rows){const entries=perSession.get(row.sessionId)??[];entries.push(row);perSession.set(row.sessionId,entries);}
-  const retained=[...perSession.values()].flatMap(entries=>entries.sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt)).slice(-100));
-  retained.sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt));const bounded=retained.slice(-MAX_ENTRIES),serialized=JSON.stringify(bounded)+"\n";if(Buffer.byteLength(serialized)>MAX_JOURNAL_BYTES)throw new Error("Background job journal exceeds its byte limit");
+  const retained=[...perSession.values()].flatMap(entries=>{
+   const protectedRows=entries.filter(row=>row.authorizationId!==undefined||row.state==="running"||row.state==="interrupted"),ordinary=entries.filter(row=>row.authorizationId===undefined&&row.state!=="running"&&row.state!=="interrupted").sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt));
+   if(protectedRows.length>MAX_ENTRIES)throw new Error("Background unresolved operation ledger reached its safe retention limit");
+   return [...ordinary.slice(-Math.max(0,100-protectedRows.length)),...protectedRows];
+  });
+  const protectedRows=retained.filter(row=>row.authorizationId!==undefined||row.state==="running"||row.state==="interrupted"),ordinary=retained.filter(row=>row.authorizationId===undefined&&row.state!=="running"&&row.state!=="interrupted").sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt));
+  if(protectedRows.length>MAX_ENTRIES)throw new Error("Background unresolved operation ledger reached its safe retention limit");
+  const bounded=[...ordinary.slice(-Math.max(0,MAX_ENTRIES-protectedRows.length)),...protectedRows].sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt)),serialized=JSON.stringify(bounded)+"\n";if(Buffer.byteLength(serialized)>MAX_JOURNAL_BYTES)throw new Error("Background job journal exceeds its byte limit");
   const temporary=`${this.file}.tmp-${process.pid}-${randomUUID()}`;let fd:number|undefined;
   try{
    fd=openSync(temporary,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);writeFileSync(fd,serialized,{encoding:"utf8"});fsyncSync(fd);closeSync(fd);fd=undefined;renameSync(temporary,this.file);
@@ -67,12 +104,16 @@ export class BackgroundJobJournal{
   return validateRows(value);
  }
  private withExclusiveLock<T>(operation:()=>T):T{
-  privatePath(this.file);const lock=`${this.file}.lock`,deadline=Date.now()+3_000,waitCell=new Int32Array(new SharedArrayBuffer(4));let fd:number|undefined,identity:{dev:number;ino:number}|undefined;
+  privatePath(this.file);const lock=`${this.file}.lock`,deadline=Date.now()+3_000,waitCell=new Int32Array(new SharedArrayBuffer(4));let fd:number|undefined,identity:{dev:number;ino:number}|undefined,permissionError:unknown;
   while(fd===undefined){
    try{fd=openSync(lock,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);const stat=fstatSync(fd);identity={dev:stat.dev,ino:stat.ino};writeFileSync(fd,JSON.stringify({pid:process.pid,createdAt:Date.now()}));fsyncSync(fd);}
-   catch(error){if(fd!==undefined){try{closeSync(fd);}catch{}fd=undefined;if(identity)try{const current=lstatSync(lock);if(current.dev===identity.dev&&current.ino===identity.ino)unlinkSync(lock);}catch{/* Preserve an unowned replacement lock. */}identity=undefined;}const code=(error as NodeJS.ErrnoException).code,windowsCollision=process.platform==="win32"&&code==="EPERM";if(code!=="EEXIST"&&!windowsCollision)throw error;
-    let lockExists=false;try{const observed=lstatSync(lock);if(!observed.isFile()||observed.isSymbolicLink()||(process.platform!=="win32"&&(observed.mode&0o077)!==0))throw new Error("Background journal lock is unsafe");lockExists=true;}catch(lockError){if((lockError as NodeJS.ErrnoException).code!=="ENOENT")throw lockError;}if(windowsCollision&&!lockExists)throw error;
-    if(Date.now()>=deadline)throw new Error("Background journal is busy; refusing a concurrent overwrite");Atomics.wait(waitCell,0,0,10);
+   catch(error){const failedToCreate=fd===undefined;if(fd!==undefined){try{closeSync(fd);}catch{}fd=undefined;if(identity)try{const current=lstatSync(lock);if(current.dev===identity.dev&&current.ino===identity.ino)unlinkSync(lock);}catch{/* Preserve an unowned replacement lock. */}identity=undefined;}
+    const code=(error as NodeJS.ErrnoException).code,windowsPermission=failedToCreate&&process.platform==="win32"&&code==="EPERM";
+    if(!failedToCreate||code!=="EEXIST"&&!windowsPermission)throw error;
+    try{const observed=lstatSync(lock);if(!observed.isFile()||observed.isSymbolicLink()||(process.platform!=="win32"&&(observed.mode&0o077)!==0))throw new Error("Background journal lock is unsafe");}
+    catch(lockError){if(windowsPermission&&(lockError as NodeJS.ErrnoException).code!=="ENOENT")throw error;if((lockError as NodeJS.ErrnoException).code!=="ENOENT")throw lockError;}
+    if(windowsPermission)permissionError??=error;
+    if(Date.now()>=deadline){if(permissionError)throw permissionError;throw new Error("Background journal is busy; refusing a concurrent overwrite");}Atomics.wait(waitCell,0,0,10);
    }
   }
   try{return operation();}finally{try{closeSync(fd);}finally{try{const current=lstatSync(lock);if(identity&&current.dev===identity.dev&&current.ino===identity.ino)unlinkSync(lock);}catch{/* Never unlink a lock owned by another process. */}}}

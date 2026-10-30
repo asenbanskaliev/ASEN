@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test,{after} from "node:test";
+import {execFileSync} from "node:child_process";
+import {mkdirSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import {Dispatcher,type AgentRunner} from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
@@ -8,18 +12,20 @@ import {admitRouteEvidence} from "./helpers/route-evidence.js";
 import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";
 import {issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";
 
-const candidate={id:"candidate",repository:"repo",revision:"sha",createdAt:"now"};
-const decisionFor=(taskId:string,repository="repo")=>issueOddDecision({
- taskId,repository,
+const repository=mkdtempSync(join(tmpdir(),"asen-orchestrated-writer-"));mkdirSync(join(repository,"src"));writeFileSync(join(repository,"src/a.ts"),"export const a=1;\n");writeFileSync(join(repository,"src/b.ts"),"export const b=1;\n");execFileSync("git",["-C",repository,"init","-q"]);execFileSync("git",["-C",repository,"config","user.name","ASEN tests"]);execFileSync("git",["-C",repository,"config","user.email","asen-tests@example.invalid"]);execFileSync("git",["-C",repository,"add","."]);execFileSync("git",["-C",repository,"commit","-qm","fixture"]);
+after(()=>rmSync(repository,{recursive:true,force:true}));
+const candidate={id:"candidate",repository,revision:execFileSync("git",["-C",repository,"rev-parse","HEAD"],{encoding:"utf8"}).trim(),createdAt:"now"};
+const decisionFor=(taskId:string,repositoryRoot=repository)=>issueOddDecision({
+ taskId,repository:repositoryRoot,
  paths:["src/a.ts","src/b.ts"],
  writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"behavior"}],
  reviewKind:"dual_explicit",
 });
-const writerAdmissionFor=(plan:ReturnType<typeof buildOrchestrationPlan>,taskId:string)=>issueOrganicWriterAdmission(decideLifecycleApplicability(plan.decision,{taskIdentity:taskId,repositoryIdentity:"repo",candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"unspecified",affectedSubsystems:["orchestration"],expectedPaths:["src/a.ts","src/b.ts"],requiredArtifacts:[]}),["src/a.ts","src/b.ts"]);
+const writerAdmissionFor=(plan:ReturnType<typeof buildOrchestrationPlan>,taskId:string)=>issueOrganicWriterAdmission(decideLifecycleApplicability(plan.decision,{taskIdentity:taskId,repositoryIdentity:repository,candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},explicitMode:"unspecified",affectedSubsystems:["orchestration"],expectedPaths:["src/a.ts","src/b.ts"],requiredArtifacts:[]}),["src/a.ts","src/b.ts"]);
 
 test("orchestrated writer cannot execute until its mutation evidence is complete",async()=>{
  const plan=buildOrchestrationPlan(
-  {taskId:"task",repository:"repo",prompt:"change behavior",codeChange:true,behaviorChange:true,filesTouched:4,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
+  {taskId:"task",repository,prompt:"change behavior",codeChange:true,behaviorChange:true,filesTouched:4,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
   decisionFor("task")
  );
  const worker=plan.agents.find(agent=>agent.role==="worker");
@@ -44,7 +50,7 @@ test("orchestrated writer cannot execute until its mutation evidence is complete
 
 test("orchestrated writer cannot use evidence from another revision",async()=>{
  const plan=buildOrchestrationPlan(
-  {taskId:"task",repository:"repo",prompt:"change code",codeChange:true,filesTouched:4,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
+  {taskId:"task",repository,prompt:"change code",codeChange:true,filesTouched:4,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
   decisionFor("task")
  );
  const worker=plan.agents.find(agent=>agent.role==="worker");
@@ -60,7 +66,7 @@ test("orchestrated writer cannot use evidence from another revision",async()=>{
 
 test("orchestrated writer skill context cannot be downgraded after planning",()=>{
  const plan=buildOrchestrationPlan(
-  {taskId:"task",repository:"repo",prompt:"change code",codeChange:true,filesTouched:4,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
+  {taskId:"task",repository,prompt:"change code",codeChange:true,filesTouched:4,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
   decisionFor("task")
  );
  const worker=plan.agents.find(agent=>agent.role==="worker");
@@ -72,11 +78,11 @@ test("orchestrated writer skill context cannot be downgraded after planning",()=
 
 test("writer cannot reuse another task's issued skill context",async()=>{
  const first=buildOrchestrationPlan(
-  {taskId:"first",repository:"repo",prompt:"change code",codeChange:true,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
+  {taskId:"first",repository,prompt:"change code",codeChange:true,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
   decisionFor("first")
  );
  const second=buildOrchestrationPlan(
-  {taskId:"second",repository:"repo",prompt:"change code",codeChange:true,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
+  {taskId:"second",repository,prompt:"change code",codeChange:true,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
   decisionFor("second")
  );
  const firstWorker=first.agents.find(agent=>agent.role==="worker");
@@ -93,7 +99,7 @@ test("writer cannot reuse another task's issued skill context",async()=>{
 });
 
 test("read-only agents cannot exchange their phase authorities",async()=>{
- const plan=buildOrchestrationPlan({taskId:"roles",repository:"repo",prompt:"inspect",candidate},issueOddDecision({taskId:"roles",repository:"repo",intent:"incident"}));
+ const plan=buildOrchestrationPlan({taskId:"roles",repository,prompt:"inspect",candidate},issueOddDecision({taskId:"roles",repository,intent:"incident"}));
  const explorer=plan.agents.find(agent=>agent.role==="explorer");
  const reviewer=plan.agents.find(agent=>agent.role==="reviewer");
  assert.ok(explorer?.skillContext&&explorer.skillPaths&&reviewer?.skillContext);
@@ -105,9 +111,9 @@ test("read-only agents cannot exchange their phase authorities",async()=>{
 });
 
 test("read-only agent authority cannot cross tasks or revisions",async()=>{
- const first=buildOrchestrationPlan({taskId:"first",repository:"repo",prompt:"inspect",candidate},issueOddDecision({taskId:"first",repository:"repo",intent:"incident"}));
+ const first=buildOrchestrationPlan({taskId:"first",repository,prompt:"inspect",candidate},issueOddDecision({taskId:"first",repository,intent:"incident"}));
  const next={...candidate,revision:"next"};
- const second=buildOrchestrationPlan({taskId:"second",repository:"repo",prompt:"inspect",candidate:next},issueOddDecision({taskId:"second",repository:"repo",intent:"incident"}));
+ const second=buildOrchestrationPlan({taskId:"second",repository,prompt:"inspect",candidate:next},issueOddDecision({taskId:"second",repository,intent:"incident"}));
  const old=first.agents.find(agent=>agent.role==="explorer"),explorer=second.agents.find(agent=>agent.role==="explorer");
  assert.ok(old?.skillContext&&old.skillPaths&&explorer);
  let ran=false;
@@ -120,7 +126,7 @@ test("read-only agent authority cannot cross tasks or revisions",async()=>{
 
 test("ECO-06 plan-only delegation cannot start a worker even with complete evidence",async()=>{
  const plan=buildOrchestrationPlan(
-  {taskId:"plan-only",repository:"repo",prompt:"change behavior",codeChange:true,behaviorChange:true,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
+  {taskId:"plan-only",repository,prompt:"change behavior",codeChange:true,behaviorChange:true,writeSurfaces:["src/a.ts","src/b.ts"],candidate},
   decisionFor("plan-only")
  );
  const worker=plan.agents.find(agent=>agent.role==="worker");
@@ -137,7 +143,7 @@ test("ECO-06 plan-only delegation cannot start a worker even with complete evide
 });
 
 test("ECO-06 every planned read-only role stays outside write admission",async()=>{
- const plan=buildOrchestrationPlan({taskId:"read-only-roles",repository:"repo",prompt:"inspect",candidate},issueOddDecision({taskId:"read-only-roles",repository:"repo",intent:"incident"}));
+ const plan=buildOrchestrationPlan({taskId:"read-only-roles",repository,prompt:"inspect",candidate},issueOddDecision({taskId:"read-only-roles",repository,intent:"incident"}));
  let calls=0;
  const dispatcher=new Dispatcher({run:async r=>{calls++;return{id:r.id,ok:true,output:"ok"};}},new EvidenceStore());
  for(const role of ["explorer","reviewer","verifier"] as const){

@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";import test from "node:test";import {execFile} from "node:child_process";import {readFileSync} from "node:fs";import {access,copyFile,mkdir,mkdtemp,readFile,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment} from "../src/agents/pi-process-runner.js";
+import assert from "node:assert/strict";import test from "node:test";import {execFile,execFileSync} from "node:child_process";import {readFileSync} from "node:fs";import {access,copyFile,mkdir,mkdtemp,readFile,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment} from "../src/agents/pi-process-runner.js";
 import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {createTestSkillLifecycle} from "./helpers/lifecycle-applicability.js";
 import {Dispatcher} from "../src/agents/dispatcher.js";
@@ -48,7 +48,7 @@ async function waitForProcessStopped(pid:number,expectedStartTime?:string,timeou
 async function fixture(body:string,policy=true,skillsMode:"exact"|"missing"|"extra"|"altered"="exact"){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-pi-"))),p=join(d,"pi-fixture.mjs"),scenario=join(d,"scenario.mjs");
  await mkdir(join(d,"extensions"));await copyFile(fileURLToPath(new URL("../extensions/authority.ts",import.meta.url)),join(d,"extensions/authority.ts"));
- for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(fileURLToPath(new URL(`../${source}`,import.meta.url)),target);}
+ for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/runtime/responsive-layout.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(fileURLToPath(new URL(`../${source}`,import.meta.url)),target);}
  await writeFile(scenario,body);
  await writeFile(p,`import {spawn} from "node:child_process";
 import {resolve} from "node:path";
@@ -295,6 +295,17 @@ test("read-only artifact audit disables every Pi tool",async()=>{
  const args=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!).args as string[];
  assert.ok(args.includes("--no-tools"));assert.ok(!args.includes("--tools"));
 });
+test("Pi runner exposes bounded tool lifecycle observations without raw tool data",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"tool_execution_start",toolName:"read",toolCallId:"call-1",input:{path:"secret"}}));console.log(JSON.stringify({type:"tool_execution_end",toolName:"read",toolCallId:"call-1",isError:false,content:"secret"}));console.log(JSON.stringify({type:"response",id:f.id,success:true}));console.log(JSON.stringify({type:"agent_end"}));});');
+ const observed:unknown[]=[];
+ const result=await runner(p,{onToolExecution:event=>{observed.push(event);if(observed.length===1)throw new Error("observer failure must be isolated");}}).run({id:"tool-observer",role:"explorer",prompt:"inspect",repository:d});
+ assert.equal(result.ok,true,result.output);
+ assert.deepEqual(observed.map(event=>Object.keys(event as object).sort()),[["pid","toolCallId","toolName","type"],["isError","pid","toolCallId","toolName","type"]]);
+ assert.deepEqual(observed.map(event=>({...(event as object),pid:0})),[
+  {type:"tool_execution_start",pid:0,toolName:"read",toolCallId:"call-1"},
+  {type:"tool_execution_end",pid:0,toolName:"read",toolCallId:"call-1",isError:false},
+ ]);
+});
 test("read-only Pi runner fails closed when a model attempts a tool",{timeout:process.platform==="win32"?45_000:5_000},async t=>{
  const marker=join(tmpdir(),`asen-denied-tool-${process.pid}-${Date.now()}`);t.after(()=>rm(marker,{force:true}));
  const {d,p}=await fixture(`import {writeFileSync} from "node:fs";const marker=${JSON.stringify(marker)};let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{JSON.parse(x.trim());console.log(JSON.stringify({type:"tool_execution_start",toolName:"write",toolCallId:"forbidden"}));setTimeout(()=>writeFileSync(marker,"tool side effect"),1500);});`);
@@ -380,8 +391,9 @@ test("Pi RPC adapter blocks caller-supplied skill overrides",async()=>{
 test("organic writer reaches Pi adapter through one exact Dispatcher receiver without SDD",async t=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2),authority:JSON.parse(process.env.ASEN_PI_AUTHORITY)}));});');
  t.after(()=>rm(d,{recursive:true,force:true}));
+ await mkdir(join(d,"src"),{recursive:true});await writeFile(join(d,"src/a"),"fixture\n");execFileSync("git",["-C",d,"init","-q"]);execFileSync("git",["-C",d,"config","user.name","ASEN tests"]);execFileSync("git",["-C",d,"config","user.email","asen-tests@example.invalid"]);execFileSync("git",["-C",d,"add","."]);execFileSync("git",["-C",d,"commit","-qm","fixture"]);
  const {issueOddDecision}=await import("./helpers/odd-routing.js"),{buildOrchestrationPlan}=await import("../src/orchestration/orchestrator.js"),{decideLifecycleApplicability}=await import("../src/lifecycle/applicability.js"),{issueOrganicWriterAdmission}=await import("../src/lifecycle/skill-lifecycle.js");
- const candidate={id:"organic",repository:d,revision:"revision",createdAt:"now"},decision=issueOddDecision({taskId:"organic",repository:d,paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});
+ const candidate={id:"organic",repository:d,revision:execFileSync("git",["-C",d,"rev-parse","HEAD"],{encoding:"utf8"}).trim(),createdAt:"now"},decision=issueOddDecision({taskId:"organic",repository:d,paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});
  buildOrchestrationPlan({taskId:"organic",repository:d,candidate,prompt:"write"},decision);
  const app=decideLifecycleApplicability(decision,{taskIdentity:"organic",repositoryIdentity:d,candidate:{id:candidate.id,repository:d,revision:candidate.revision},explicitMode:"unspecified",affectedSubsystems:["Pi"],expectedPaths:["src/a"],requiredArtifacts:[]});
  assert.equal(app.outcome,"organic");

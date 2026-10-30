@@ -1,7 +1,7 @@
 import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
-import {chmodSync,lstatSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync,rmdirSync,unlinkSync,writeFileSync} from "node:fs";
-import {dirname,isAbsolute,join,relative,resolve} from "node:path";
+import {chmodSync,lstatSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmdirSync,unlinkSync,writeFileSync} from "node:fs";
+import {dirname,isAbsolute,join,relative,resolve,sep} from "node:path";
 import {tmpdir} from "node:os";
 import type {CandidateGitTreeManifest,CandidateGitTreeEntry} from "./review-tree-inspection.js";
 import {validatePortableReviewPaths} from "./review-tree-paths.js";
@@ -96,6 +96,18 @@ function assertOrdinaryReviewParents(root:string,path:string):void {
  }
 }
 
+function createReviewParents(root:string,path:string,assertRoot:()=>void):void {
+ let current=root;
+ for(const part of path.split("/").slice(0,-1)){
+  assertRoot();
+  const next=join(current,part),existing=lstatSync(next,{throwIfNoEntry:false});
+  if(!existing)mkdirSync(next,{mode:0o700});
+  const info=lstatSync(next);
+  if(!info.isDirectory()||info.isSymbolicLink())throw new Error("Review view parent directory is unsafe");
+  assertRoot();current=next;
+ }
+}
+
 function ownedViewDirectories(view:ReviewView):string[] {
  validatePortableReviewPaths(view.paths);
  const expectedFiles=new Set(view.paths),expectedDirectories=new Set<string>();
@@ -129,27 +141,37 @@ export function materializeReviewView(manifest:CandidateGitTreeManifest,parent:s
  const parentClaim=assertDirectory(parent,"Review view parent");
  const repositoryRoot=realpathSync(manifest.repositoryRoot);
  const parentRelative=relative(repositoryRoot,parentClaim.realPath);
- if(!parentRelative||(!parentRelative.startsWith("..")&&!isAbsolute(parentRelative)))throw new Error("Review view parent must be outside the repository");
+ const parentIsInside=parentRelative===""||(!isAbsolute(parentRelative)&&parentRelative!==".."&&!parentRelative.startsWith(`..${sep}`));
+ if(parentIsInside)throw new Error("Review view parent must be outside the repository");
  const paths=manifest.entries.map(entry=>entry.path);
  validatePortableReviewPaths(paths);
  for(const entry of manifest.entries)validateEntry(entry);
  const manifestDigest=digestManifest(manifest);
  const root=mkdtempSync(join(parentClaim.realPath,"asen-review-view-"));
- let committed=false;
  try {
+  const original=lstatSync(root),originalReal=realpathSync(root);
+  const assertOwnedRoot=()=>{
+   const current=lstatSync(root,{throwIfNoEntry:false});
+   if(!current||!current.isDirectory()||current.isSymbolicLink()||current.dev!==original.dev||current.ino!==original.ino||current.birthtimeMs!==original.birthtimeMs||realpathSync(root)!==originalReal)throw new Error("Review view root changed during materialization");
+  };
+  assertOwnedRoot();
   for(const entry of manifest.entries){
+   assertOwnedRoot();
    const target=join(root,...entry.path.split("/"));
    const rootRelative=relative(root,target);
-   if(!rootRelative||rootRelative.startsWith("..")||isAbsolute(rootRelative))throw new Error("Review view path escaped its root");
+   if(!rootRelative||rootRelative===".."||rootRelative.startsWith(".."+sep)||isAbsolute(rootRelative))throw new Error("Review view path escaped its root");
    const directory=dirname(target);
-   if(directory!==root)mkdirSync(directory,{recursive:true,mode:0o700});
+   if(directory!==root)createReviewParents(root,entry.path,assertOwnedRoot);
+   assertOwnedRoot();assertOrdinaryReviewParents(root,entry.path);
    writeFileSync(target,Buffer.from(entry.bytesBase64!,"base64"),{flag:"wx",mode:entry.mode==="100755"?0o500:0o400});
+   assertOwnedRoot();assertOrdinaryReviewParents(root,entry.path);
    if(process.platform!=="win32")chmodSync(target,entry.mode==="100755"?0o500:0o400);
   }
+  assertOwnedRoot();
   if(process.platform==="win32")applyWindowsReadOnlyAcl(root);else chmodSync(root,0o500);
+  assertOwnedRoot();
   const info=lstatSync(root);
   if(!info.isDirectory()||info.isSymbolicLink())throw new Error("Review view root changed during materialization");
-  committed=true;
   const view=Object.freeze({schemaVersion:1 as const,root,candidateTree:manifest.treeIdentity,manifestDigest,
    viewIdentity:createHash("sha256").update(`${root}\0${info.dev}\0${info.ino}\0${manifestDigest}`).digest("hex"),
    entryCount:manifest.entries.length,platform:process.platform==="win32"?"windows" as const:"posix" as const,rootDev:info.dev,rootIno:info.ino,
@@ -157,8 +179,10 @@ export function materializeReviewView(manifest:CandidateGitTreeManifest,parent:s
    entries:Object.freeze(manifest.entries.map(entry=>Object.freeze({path:entry.path,size:entry.size!,contentSha256:entry.contentSha256!,mode:entry.mode as "100644"|"100755"})))});
   liveViewClaims.set(view,{root,realRoot:realpathSync(root),dev:info.dev,ino:info.ino,manifestDigest});
   return view;
- } finally {
-  if(!committed)rmSync(root,{recursive:true,force:true});
+ } catch(error) {
+  // A failed creation has no live ownership claim. Retain the path rather than
+  // recursively removing a directory that another process could have replaced.
+  throw new Error(`Review view materialization failed; temporary path retained at ${root}`,{cause:error});
  }
 }
 
@@ -189,7 +213,7 @@ export function readReviewViewFile(view:ReviewView,path:string):Buffer {
  const target=join(view.root,...path.split("/"));
  assertOrdinaryReviewParents(view.root,path);
  const rootRelative=relative(view.root,target);
- if(!rootRelative||rootRelative.startsWith("..")||isAbsolute(rootRelative))throw new Error("Review view path escaped its root");
+ if(!rootRelative||rootRelative===".."||rootRelative.startsWith(".."+sep)||isAbsolute(rootRelative))throw new Error("Review view path escaped its root");
  const info=lstatSync(target);
  if(!info.isFile()||info.isSymbolicLink())throw new Error("Review view file is unsafe");
  const expected=view.entries.find(entry=>entry.path===path);

@@ -1,5 +1,5 @@
 import {spawn,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";
-import {join,resolve as resolvePath} from "node:path";
+import {isAbsolute,join,resolve as resolvePath} from "node:path";
 import {mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {createHash} from "node:crypto";
@@ -22,8 +22,19 @@ export interface PiProcessOptions{
  providerExtension?:string;
  noTools?:boolean;
  attributionFile?:string;
+ /**
+  * Binds a worker turn to one exact file result.  The authority extension
+  * consumes the path before the first write tool can run, so a model retry
+  * cannot create a second side effect in that turn.  A barrier is optional
+  * operational evidence: it is written after the exact bytes and attribution
+  * are durable, before Pi is allowed to process the tool result.
+  */
+ exactWriteReceipt?:Readonly<{path:string;fileSha256:string;barrierFile?:string}>;
  policyRoot?:string;
  providerCredential?:PiProviderCredential;
+ onProcessStart?:(pid:number)=>void;
+ onProcessClose?:(details:{code:number|null;signal:NodeJS.Signals|null;stderr:string})=>void;
+ onToolExecution?:(event:Readonly<{type:"tool_execution_start"|"tool_execution_end";pid:number;toolName?:string;toolCallId?:string;isError?:boolean}>)=>void;
 }
 export interface PiChildSelectionObservation{
  readonly taskId:string;readonly sessionId:string;readonly projectId:string;
@@ -73,14 +84,25 @@ export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">
 }
 
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
-const authorityDigest="6ff2d45585cef90ff0563660e0833f40d5dc1f95e4271aaa3ce5f0159ac27fb8";
+const authorityDigest="29ff989dc899d4c9cd5d54ba9d2b201df7ca2cc0f084e31247fd4d10ff159244";
 const authorityAssets=Object.freeze([
  {source:"src/runtime/workspace-store.ts",target:"src/runtime/workspace-store.ts",sha256:"f0307f8c72b72dd714382eba68fd3d2e50ca2c538d11d5ff71028f682d5f8cef"},
  {source:"src/runtime/workspace-attribution.ts",target:"src/runtime/workspace-attribution.ts",sha256:"1ace31ce9e9a871e6b7a3d545ae60cc9a57c996e39108c6c901837b8d7211c02"},
+ {source:"src/runtime/responsive-layout.ts",target:"src/runtime/responsive-layout.ts",sha256:"dbe9c0046f59d3e0d49d3f108caf9f84b4df90bd02a9086bdbf3423b50b14f90"},
  {source:"src/io/atomic-write.ts",target:"src/io/atomic-write.ts",sha256:"dda584a5c4b6f54dbb86968e38211ee6cf5cbd570e82b48294c93e14abb1b1c7"},
  {source:"src/io/exclusive-file-lock.ts",target:"src/io/exclusive-file-lock.ts",sha256:"1921d446891099a9cbf8373a6580f2033e873e89654ee3debebd11c80ff76308"},
  {source:"src/io/private-file.ts",target:"src/io/private-file.ts",sha256:"42d76fe5abfbfbd66f76e310157709890754595d83a63f74cf143110739e1332"},
 ]);
+
+function exactWriteReceipt(value:PiProcessOptions["exactWriteReceipt"],request:AgentRequest):{path:string;fileSha256:string;barrierFile?:string}|undefined{
+ if(value===undefined)return undefined;
+ if(request.role!=="worker"||!request.writeSurfaces?.length)throw new Error("Exact write receipt requires a worker with write authority");
+ const {path,fileSha256,barrierFile}=value;
+ if(typeof path!=="string"||!path||path!==path.trim()||isAbsolute(path)||path.includes("\\")||path.split("/").some(part=>!part||part==="."||part==="..")||!request.writeSurfaces.includes(path))throw new Error("Exact write receipt path must be one declared write surface");
+ if(typeof fileSha256!=="string"||!/^[0-9a-f]{64}$/u.test(fileSha256))throw new Error("Exact write receipt hash is invalid");
+ if(barrierFile!==undefined&&(typeof barrierFile!=="string"||!isAbsolute(barrierFile)))throw new Error("Exact write receipt barrier must be an absolute path");
+ return Object.freeze({path,fileSha256,...(barrierFile===undefined?{}:{barrierFile})});
+}
 
 async function terminateTree(child:ChildProcess,closed:Promise<void>):Promise<void>{
  if(!child.pid){await closed;return;}
@@ -156,6 +178,8 @@ export class PiProcessRunner implements AgentRunner{
   if(writer&&!receiverValid)return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
   if(writer&&!authorizePiWriteGrant(request))return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an active, exact ASEN apply-phase grant"});
   let routeArgs:string[];try{routeArgs=piRuntimeRouteArgs(request);}catch(error){return Promise.resolve({id:request.id,ok:false,output:String(error)});}
+  let receipt:{path:string;fileSha256:string;barrierFile?:string}|undefined;
+  try{receipt=exactWriteReceipt(this.options.exactWriteReceipt,request);}catch(error){return Promise.resolve({id:request.id,ok:false,output:error instanceof Error?error.message:String(error)});}
   const providerExtension=this.options.providerExtension;
   if(providerExtension&&providerExtension!=="npm:pi-free")return Promise.resolve({id:request.id,ok:false,output:"untrusted Pi provider extension"});
   const policyRoot=this.options.policyRoot??request.repository,candidatePolicy=resolvePath(policyRoot,"extensions/authority.ts");
@@ -189,10 +213,11 @@ export class PiProcessRunner implements AgentRunner{
   return new Promise(resolve=>{
    const child=spawnContained(command,args,{
     cwd:request.repository,
-    env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{})})},
+    env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{}),...(receipt?{exactWriteReceipt:receipt}:{})})},
     stdio:["pipe","pipe","pipe"],
     detached:process.platform!=="win32"
    }) as ChildProcessWithoutNullStreams;
+   if(child.pid!==undefined){try{this.options.onProcessStart?.(child.pid);}catch{/* Evidence observers cannot alter Pi execution. */}}
    let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,agentEnded=false,streamBytes=0,retainedBytes=0,stopResult:AgentResult|undefined;
    const preflightId=`asen-policy:${request.id}`,selectionId=`asen-selection:${request.id}`;
    let selectionRequested=false,selectionResponded=false;
@@ -220,8 +245,16 @@ export class PiProcessRunner implements AgentRunner{
     let end;while((end=buffer.indexOf("\n"))>=0){
      const line=buffer.slice(0,end).trim();buffer=buffer.slice(end+1);
      let record:unknown;try{record=JSON.parse(line);}catch{record=line;}
-     const response=(record&&typeof record==="object"?record:{}) as {type?:string;id?:string;command?:string;success?:boolean;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>;} };
+     const response=(record&&typeof record==="object"?record:{}) as {type?:string;id?:string;command?:string;success?:boolean;toolName?:unknown;toolCallId?:unknown;isError?:unknown;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>;} };
      const type=response.type;
+     if((type==="tool_execution_start"||type==="tool_execution_end")&&child.pid!==undefined){
+      const event=Object.freeze({type,pid:child.pid,
+       ...(typeof response.toolName==="string"?{toolName:response.toolName}:{}),
+       ...(typeof response.toolCallId==="string"?{toolCallId:response.toolCallId}:{}),
+       ...(typeof response.isError==="boolean"?{isError:response.isError}:{}),
+      });
+      try{this.options.onToolExecution?.(event);}catch{/* Evidence observers cannot alter Pi execution. */}
+     }
      if(selectionOwner&&selectionSubscriptions.length&&type==="response"&&(response.id===selectionId||response.command==="get_state")){
       if(selectionRequested&&!selectionResponded&&response.id===selectionId&&policyLoaded&&!settled&&!stopResult&&!agentEnded&&!signal?.aborted){
        selectionResponded=true;
@@ -258,6 +291,7 @@ export class PiProcessRunner implements AgentRunner{
    child.stderr.on("data",data=>{streamBytes+=Buffer.byteLength(data);if(streamBytes>maxStream){overflow=true;stop({id:request.id,ok:false,output:`pi stream exceeded ${maxStream} bytes`});return;}stderr=(stderr+String(data)).slice(-16_384);});
    child.on("error",error=>{if(!stopResult)finish({id:request.id,ok:false,output:`pi process error: ${String(error)}`});});
    child.on("close",code=>{
+    try{this.options.onProcessClose?.({code,signal:child.signalCode,stderr});}catch{/* Evidence observers cannot alter Pi execution. */}
     if(stopResult)return;
     if(!policyLoaded)return finish({id:request.id,ok:false,output:"pi ASEN policy extension was not confirmed"});
     if(code===0&&!overflow){

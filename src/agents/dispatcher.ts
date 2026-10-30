@@ -5,7 +5,7 @@ import {EvidenceStore} from "../evidence/store.js";
 import {selectSkills} from "../skills/registry.js";
 import {consumeIssuedWorkerContext,isIssuedSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {verifySkillEvidence} from "../verify/verifier.js";
-import {consumePhaseGrant,issueAdmittedWriterPhaseGrant,retirePhaseGrant,consumeWriterAdmission} from "../lifecycle/skill-lifecycle.js";
+import {consumePhaseGrant,issueAdmittedWriterPhaseGrant,retirePhaseGrant,consumeWriterAdmission,assertActiveWriterSnapshot,assertActiveWriterSnapshotOutcome,acquireActiveWriterLease} from "../lifecycle/skill-lifecycle.js";
 import type {AgentLifecycleSink} from "../runtime/agent-lifecycle.js";
 import {sameWorkspaceIdentityPath} from "../runtime/workspace-store.js";
 
@@ -71,7 +71,7 @@ export class Dispatcher {
  cancel(id:string,sessionId:string,projectId:string):boolean{const control=this.#controls.get(id);if(!control||control.sessionId!==sessionId||!sameWorkspaceIdentityPath(control.projectId,projectId)||control.controller.signal.aborted)return false;control.controller.abort();return true;}
  async dispatch(request:AgentRequest):Promise<AgentResult>{
   const token=typeof request==="object"&&request!==null&&!types.isProxy(request)?Object.getOwnPropertyDescriptor(request,"writerAdmission")?.value:undefined;
-  let runnerRequest:AgentRequest;
+  let runnerRequest:AgentRequest,writerLease:{verify:()=>void;release:()=>void}|undefined;
   try{
    const data=plainData(request),{writerAdmission:_admission,runnerWriteReceiver:_receiver,...forwarded}=data;
    // SAFETY: plainData and requestArray validate every forwarded request field before reconstruction.
@@ -126,14 +126,16 @@ export class Dispatcher {
    if(request.candidate&&(!request.skillContext||!request.skillPaths))throw new Error("Candidate-bound delegation requires issued skill context and exact paths");
    if(request.role==="worker"&&(request.expectedPhase||request.candidate||request.writeSurfaces)&&!consumePhaseGrant(request))throw new Error("Worker phase requires an unused, identity-bound ASEN lifecycle grant");
    if(request.role==="worker"&&request.candidate&&!consumeIssuedWorkerContext(request.skillContext!))throw new Error("Candidate-bound worker requires unused worker context");
+   if(request.writeSurfaces){assertActiveWriterSnapshot(request);writerLease=acquireActiveWriterLease(request);writerLease?.verify();}
    if(receiver)runnerReceivers.set(receiver,{request:runnerRequest,used:false});
    const result=await this.runner.run(runnerRequest,controller.signal);
    if(!result||result.id!==request.id||typeof result.ok!=="boolean"||typeof result.output!=="string")throw new Error("Agent runner returned an invalid or mismatched result");
+   if(request.writeSurfaces){assertActiveWriterSnapshotOutcome(request);writerLease?.verify();}
    const acceptedResult=Object.freeze({...result});validatedRunnerResults.set(acceptedResult,{lifecycle:this.lifecycle,id:request.id,sessionId:request.isolationKey??"default",projectId:request.repository,consumed:false});
    if(controller.signal.aborted){const pending=this.lifecycle?.cancelled(request.id,result.output);if(isPromise(pending))await pending;terminalState=true;lifecycleRunning=false;return {id:request.id,ok:false,output:"Cancellation requested; completion was not accepted"};}
    const terminal=acceptedResult.ok?this.lifecycle?.completed(request.id,acceptedResult):this.lifecycle?.failed(request.id,acceptedResult.output);if(isPromise(terminal))await terminal;
    terminalState=true;lifecycleRunning=false;return acceptedResult;
   } catch(error){if(!terminalState){try{if(controller.signal.aborted)await this.lifecycle?.cancelled(request.id,error instanceof Error?error.message:String(error));else if(lifecycleRunning)await this.lifecycle?.failed(request.id,error instanceof Error?error.message:String(error));else await this.lifecycle?.failed(request.id,error instanceof Error?error.message:String(error));}catch{/* Preserve the original dispatch failure when terminal persistence also fails. */}}throw error;
-  } finally {this.#controls.delete(request.id);retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);if(grant){const i=this.#active.indexOf(grant);if(i>=0)this.#active.splice(i,1);}if(acquired)this.#release();}
+  } finally {writerLease?.release();this.#controls.delete(request.id);retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);if(grant){const i=this.#active.indexOf(grant);if(i>=0)this.#active.splice(i,1);}if(acquired)this.#release();}
  }
 }

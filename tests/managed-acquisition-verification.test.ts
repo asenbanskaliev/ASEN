@@ -338,7 +338,7 @@ test("revalidates relevant ancestors after first close before the next file",asy
   if(!seen.has(owner)){
    seen.add(owner);
    const close=owner.close.bind(owner);
-   owner.close=async()=>{await close();if(!injected){injected=true;await writeFile(path.join(root,"dir/injected"),"ancestor-change",{flag:"wx"});}};
+   owner.close=async()=>{await close();if(!injected){injected=true;await rename(path.join(root,"dir"),path.join(root,"dir-replaced"));await mkdir(path.join(root,"dir"));await writeFile(path.join(root,"dir/b"),"beta",{flag:"wx"});await writeFile(path.join(root,"dir/injected"),"ancestor-change",{flag:"wx"});}};
   }
   return originalRead.apply(this,args);
  };

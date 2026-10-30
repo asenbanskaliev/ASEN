@@ -106,6 +106,7 @@ function isolatedEnvironment():NodeJS.ProcessEnv{
  result.GIT_CONFIG_GLOBAL=process.platform==="win32"?"NUL":"/dev/null";
  result.GIT_TERMINAL_PROMPT="0";
  result.GIT_OPTIONAL_LOCKS="0";
+ result.GIT_NO_LAZY_FETCH="1";
  result.GIT_ALLOW_PROTOCOL="";
  result.GIT_PROTOCOL_FROM_USER="0";
  result.NO_COLOR="1";
@@ -124,7 +125,7 @@ function disposeScratch(scratch:PhysicalDirectory):void{
 }
 function gitArguments(root:string,gitDirectory:string|null,hooks:string,args:readonly string[]):string[]{
  const location=gitDirectory?["-c","core.bare=true",`--git-dir=${gitDirectory}`]:["-C",root];
- return ["--no-lazy-fetch","--no-replace-objects","--no-pager",
+ return ["--no-replace-objects","--no-pager",
   "-c","protocol.allow=never","-c","protocol.file.allow=never","-c","protocol.ext.allow=never",
   "-c","core.fsmonitor=false","-c",`core.hooksPath=${hooks}`,"-c","diff.external=",
   "-c","filter.allow=false","-c","gc.auto=0","-c","maintenance.auto=false",...location,...args];
@@ -196,6 +197,30 @@ function repositoryBinding(root:PhysicalDirectory,facts:{git:string;common:strin
   throw new Error("Worktree Git relationship is inconsistent");
  }
  return {control,gitDirectory,commonDirectory,relationshipFiles:Object.freeze([commonFile,backFile])};
+}
+
+const repositoryClaims=new WeakMap<object,{root:PhysicalDirectory;binding:RepositoryBinding}>();
+/** Captures the physical Git relationship without granting read or write authority. */
+export function captureReviewRepositoryBinding(repositoryRoot:string):Readonly<Record<string,never>>{
+ if(typeof repositoryRoot!=="string"||!isAbsolute(repositoryRoot)||resolve(repositoryRoot)!==repositoryRoot)throw new Error("Repository root must be canonical");
+ const root=observeDirectory(repositoryRoot),deadline={expiresAt:monotonicMilliseconds()+operationLimit};
+ if(!equalPath(root.realPath,repositoryRoot))throw new Error("Repository root must be canonical");
+ const scratch=scratchDirectory();let primaryError:unknown;
+ try{
+  const facts=parseRepositoryFacts(text(runGit(root,null,scratch,deadline,null,["rev-parse","--path-format=absolute","--show-toplevel","--absolute-git-dir","--git-common-dir","--show-object-format"])));
+  if(!equalPath(realpathSync(facts.top),root.realPath))throw new Error("Repository root must be the canonical Git toplevel");
+  const binding=repositoryBinding(root,facts);assertRepositoryBinding(binding);
+  if(!samePhysicalDirectory(root))throw new Error("Repository physical identity changed");
+  const claim=Object.freeze({});repositoryClaims.set(claim,{root,binding});return claim;
+ }catch(error){primaryError=error;throw error;}
+ finally{try{disposeScratch(scratch);}catch(error){if(!primaryError)throw error;}}
+}
+
+/** Rejects replaced roots and altered Git relationships for a genuine captured claim. */
+export function assertReviewRepositoryBinding(value:unknown):void{
+ const claim=typeof value==="object"&&value!==null?repositoryClaims.get(value):undefined;
+ if(!claim||!samePhysicalDirectory(claim.root))throw new Error("Repository physical identity changed");
+ assertRepositoryBinding(claim.binding);
 }
 function parseListing(buffer:Buffer,oidLength:number,deadline:Deadline):ListedObject[]{
  const records:ListedObject[]=[];

@@ -43,10 +43,10 @@ test("ECO-07 successful durable link is visible after restart without redispatch
  const runner={run:async(request:{id:string})=>{runs++;return {id:request.id,ok:true,output:"verified read-only result"};}};
  const runtime=await AgentRuntime.open({storeFile:join(dir,"agents.json"),runner:runner as never});
  const binder=new TrustedTaskAgentBinder(todos,runtime,links);
- const id=await runtime.startExplorer({prompt:"Read only",session:identity,onQueued:(agentId,dispatch)=>binder.launch(task.taskId,agentId,identity,dispatch)});
+ let launchedId="",resolveTerminal!:(state:string)=>void;const terminal=new Promise<string>(resolve=>{resolveTerminal=resolve;}),unsubscribe=runtime.subscribeTerminal(record=>{if(record.id===launchedId)resolveTerminal(record.state);});t.after(unsubscribe);
+ const id=await runtime.startExplorer({prompt:"Read only",session:identity,onQueued:(agentId,dispatch)=>{launchedId=agentId;return binder.launch(task.taskId,agentId,identity,dispatch);}});
  assert.ok(id.startsWith("agent-"));
- for(let attempt=0;attempt<100&&(await runtime.query(id,identity))?.record.state!=="completed";attempt++)await new Promise(resolve=>setTimeout(resolve,5));
- assert.equal((await runtime.query(id,identity))?.record.state,"completed");
+ assert.equal(id,launchedId);assert.equal(await terminal,"completed");assert.equal((await runtime.query(id,identity))?.record.state,"completed");
  assert.equal(runs,1);
  const restarted=await AgentRuntime.open({storeFile:join(dir,"agents.json"),runner:runner as never});
  const reconciler=new TaskAgentTodoReconciler(todos,restarted,links);

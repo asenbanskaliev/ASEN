@@ -106,6 +106,9 @@ function constrainedEnvironment():NodeJS.ProcessEnv {
   for(const key of ["PATH","Path","HOME","USERPROFILE","SystemRoot","TEMP","TMP","LANG","LC_ALL"]){
     if(process.env[key])env[key]=process.env[key];
   }
+  env.CODEGRAPH_NO_DOWNLOAD="1";
+  env.CODEGRAPH_TELEMETRY="0";
+  env.DO_NOT_TRACK="1";
   return env;
 }
 

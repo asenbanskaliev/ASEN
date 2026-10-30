@@ -4,7 +4,7 @@ import {createHash} from "node:crypto";
 import {mkdtempSync,realpathSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {openReviewSession,revalidateReviewSession,closeReviewSession,assertReviewSessionOpen} from "../src/review/review-session.js";
+import {openReviewSession,revalidateReviewSession,closeReviewSession,assertReviewSessionOpen,bindReviewSessionSource} from "../src/review/review-session.js";
 import type {CandidateGitTreeManifest} from "../src/review/review-tree-inspection.js";
 
 function manifest(repositoryRoot:string,contents:string):CandidateGitTreeManifest{
@@ -29,4 +29,13 @@ test("rejects candidate drift before review consumption",()=>{
   assert.throws(()=>revalidateReviewSession(session,manifest(repository,"two")),/drifted/);
   closeReviewSession(session);
  } finally {rmSync(repository,{recursive:true,force:true});rmSync(parent,{recursive:true,force:true});}
+});
+
+test("source binding refuses a caller-forged checkout and accepts no caller validator",()=>{
+ const repository=realpathSync(mkdtempSync(join(tmpdir(),"asen-session-binding-repo-"))),parent=realpathSync(mkdtempSync(join(tmpdir(),"asen-session-binding-parent-")));
+ try{
+  const input=manifest(repository,"candidate"),session=openReviewSession(repository,input,parent,{riskId:"binding",reason:"source claim",severity:"low",lenses:["reliability"]});
+  assert.throws(()=>bindReviewSessionSource(session,{repository,treeIdentity:input.treeIdentity} as any),/genuine/u);
+  closeReviewSession(session);
+ }finally{rmSync(repository,{recursive:true,force:true});rmSync(parent,{recursive:true,force:true});}
 });

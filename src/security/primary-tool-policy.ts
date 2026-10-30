@@ -15,7 +15,7 @@ function sensitiveName(value:string):boolean{
  const name=process.platform==="win32"?value.toLowerCase():value;
  return name===".git"||name.startsWith(".env")||name.endsWith(".pem")||name.endsWith(".key");
 }
-function hasSensitiveName(value:string):boolean{
+export function hasSensitiveName(value:string):boolean{
  const normalized=path.normalize(value),root=path.parse(normalized).root;
  return normalized.slice(root.length).split(path.sep).filter(Boolean).some(sensitiveName);
 }

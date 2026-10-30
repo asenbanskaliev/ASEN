@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {chmodSync,lstatSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync,unlinkSync,writeFileSync} from "node:fs";
+import {execFileSync} from "node:child_process";
+import {chmodSync,lstatSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync,unlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {join,resolve} from "node:path";
+import {pathToFileURL} from "node:url";
 import {disposeReviewView,materializeReviewView,readReviewViewFile,revalidateReviewView,type ReviewView} from "../src/review/review-view.js";
 
 function manifest(bytes="hello\n"){
@@ -34,6 +36,43 @@ test("rejects links and invalid content before materializing",()=>{
   assert.throws(()=>materializeReviewView(invalid,parent),/links and gitlinks/);
   assert.equal(readdirSync(parent).length,0);
  } finally {rmSync(parent,{recursive:true,force:true});}
+});
+
+test("rejects an in-repository parent whose name begins with two dots",()=>{
+ const repository=realpathSync("."),parent=join(repository,"..asen-review-inside-test");
+ mkdirSync(parent);
+ try{
+  assert.throws(()=>materializeReviewView(manifest(),parent),/outside the repository/u);
+  assert.deepEqual(readdirSync(parent),[]);
+ }finally{rmSync(parent,{recursive:true,force:true});}
+});
+
+test("allows a candidate directory name beginning with two dots",()=>{
+ const parent=mkdtempSync(join(tmpdir(),"asen-review-parent-"));
+ try{
+  const base=manifest(),candidate={...base,entries:[{...base.entries[0]!,path:"..config/file.txt"}]};
+  const view=materializeReviewView(candidate,parent);
+  assert.equal(readReviewViewFile(view,"..config/file.txt").toString(),"hello\n");
+  disposeReviewView(view);
+ }finally{rmSync(parent,{recursive:true,force:true});}
+});
+
+for(const failWrite of [true,false])test(`materialization rejects a substituted directory with ${failWrite?"failed":"successful"} write`,{skip:process.platform==="win32"?"POSIX fixture replaces an open directory":false},()=>{
+ const parent=mkdtempSync(join(tmpdir(),"asen-review-parent-"));
+ try{
+  const source=pathToFileURL(resolve("src/review/review-view.ts")).href;
+  const script=`import fs from 'node:fs'; import {syncBuiltinESMExports} from 'node:module'; import path from 'node:path';
+   const original=fs.writeFileSync;let swapped='';
+   fs.writeFileSync=function(target,...args){if(typeof target==='string'&&target.endsWith(path.join('src','file.txt'))){
+    swapped=path.dirname(path.dirname(target));fs.renameSync(swapped,swapped+'-original');fs.mkdirSync(swapped);fs.mkdirSync(path.join(swapped,'src'));original(path.join(swapped,'foreign.txt'),'preserve');
+    if(${failWrite})throw new Error('injected failure');return original.call(this,target,...args);
+   }return original.call(this,target,...args);};syncBuiltinESMExports();
+   const {materializeReviewView}=await import(${JSON.stringify(source)});let failed=false;
+   try{materializeReviewView(${JSON.stringify(manifest())},${JSON.stringify(parent)});}catch(error){failed=String(error).includes('retained');}
+   process.stdout.write(JSON.stringify({failed,foreign:fs.readFileSync(path.join(swapped,'foreign.txt'),'utf8'),original:fs.existsSync(swapped+'-original')}));`;
+  const value=JSON.parse(execFileSync(process.execPath,["--import","tsx","--input-type=module","--eval",script],{encoding:"utf8"}));
+  assert.deepEqual(value,{failed:true,foreign:"preserve",original:true});
+ }finally{rmSync(parent,{recursive:true,force:true});}
 });
 
 test("does not remove a replaced view root",()=>{

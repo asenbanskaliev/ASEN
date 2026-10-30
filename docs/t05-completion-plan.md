@@ -2,6 +2,8 @@
 
 Fecha de contraste: 2026-10-27
 
+> **Scope update (2026-10-30):** this historical plan records the original T05/S6 acceptance bar and must not be used to admit the renegotiated FULL label. The current bounded acceptance criteria are in `docs/audit/t04-t05-full-closure-plan-2026-10-30.md`. In particular, real-provider review, restart-durable public state, OS sandboxing and external R4 signoff remain disclosed debt; the bounded label still requires its exact contract tests, fresh candidate CI and an independent R4 review for the PR #38 rescue.
+
 PR observado: #37, rama `feat/t09-managed-update-stage`
 
 HEAD remoto observado: `ec43aab347b6d47c5060788fc8d8f88cd5e501a2`
@@ -219,3 +221,27 @@ No se acepta como FULL si una ejecución deja cleanup pendiente, si el resultado
 - Estado local más reciente tras el parche de ACL/reintento: cinco módulos T05 **34/34 PASS**, `npm run typecheck`, `npm run build`, `git diff --check` y `scripts/audit-upstream-boundary.mjs` PASS. La suite completa 2.175/0/18 pertenece al primer lote antes del cambio ACL; no se repitió tras este ajuste localizado. La corrección aún necesita la segunda ejecución Windows.
 - Revisión adversarial independiente acotada del WeakMap: PASS para falsificación/clonación y compatibilidad; no cubre TOCTOU ni autenticidad RDD. El nuevo preflight impide tocar ACL con datos inesperados; aún falta R4 independiente de la ruta ACL corregida.
 - Estado actual T05: PARTIAL. Persisten composición pública completa, snapshot workspace, reintento/cierre parcial, RDD auténtico verificable, macOS específico, CI final en el SHA corregido y admisión ODD. No se afirma FULL.
+
+## Reconciliación de ejecución — 2026-10-28
+
+### Reconciliación posterior — flujo público de workspace
+
+Se añadió la composición local `/asen-review workspace`: snapshot privado del workspace, manifiesto y vista de solo lectura, diff Git completo y bytes de archivos cambiados, revisión mediante una llamada Pi fresca sin tools y consentimiento explícito de envío. Detecta untracked fuera del alcance, invalida resultado ante drift y permite una corrección limitada a rutas señaladas con un modelo diferente. El PASS solo se informa como `passed-awaiting-tests`; no ejecuta pruebas ni acepta ni autoriza entrega. Suite enfocada 60/60, `npm run check` 2,229/0/19, typecheck/build y empaquetado PASS. La primera matriz Pi se detuvo antes de iniciar porque faltaban SHA confirmado y tarball limpios; no cuenta como resultado. Tras publicar SHA `8aff8baf0ee1fa199d0d0611323d0adaf4f18ce2`, la matriz del paquete Pi 1.2.0 Linux pasó TUI/RPC/JSON/print, con salida natural y cero model calls. El siguiente SHA de documentación se validará de nuevo.
+
+La revisión R4 local encontró y corrigió (1) el chequeo de contención que confundía nombres de segmento con prefijo `..` y (2) la omisión de untracked inesperados en la proyección pública. Persisten: llamada real autenticada no ejecutada, el resultado no es aprobación RDD nativa ni identidad humana, pruebas del candidato no se ejecutan, recuperación de corrección tras crash no existe, aislamiento frente a mismo usuario no se demuestra, pruebas de conflicto simultáneo y matriz final por SO pendientes. T05 continúa PARTIAL. Esta reconciliación reemplaza las notas anteriores que afirmaban que todavía no existía composición pública, sin borrar sus límites históricos.
+
+La ejecución remota se reconstruyó desde el HEAD real de PR #37 (`18e98728e2e39c8b1a4ebf66019574ee7d1b32a6`) en la rama `feat/t05-independent-review`, preservando su historial. Se añadió revalidación del checkout Git exacto en el límite de sesión y de resultado, con identidad física del directorio, HEAD/tree/padre, flags del índice y estado limpio comprobados con configuración Git aislada. El claim de sesión conserva privados el manifiesto y checkout emitido por el controlador; una deriva invalida el resultado. La regresión usa commits reales en repo temporal, abre vista/sesión, altera HEAD y prueba que el resultado PASS local probe no se consume; la vista propia se cierra.
+
+Validación de esta reconstrucción: typecheck PASS; las tres suites enfocadas (`work-unit-review-candidate`, `review-session`, `review-chain`) PASS 26/26. El primer intento de suite completa configuró `TMPDIR` dentro del repo y provocó falsos fallos de fixtures que requieren temporales externos; se corrigió la ubicación. La suite completa se volvió a ejecutar y su resultado se registrará aquí al concluir. `npm ci` estándar falla al compilar `node-pty` porque el extractor de headers Node 24 del contenedor devuelve `fchown EINVAL`; `npm ci --ignore-scripts` instala el resto y no habilita TUI.
+
+T05 continúa PARTIAL: no se implementó ni simuló un reviewer RDD real, no existe la composición pública de corrección→nueva revisión→aceptación, no hay signoff independiente ni CI del SHA nuevo. La matriz Pi 1.2 requiere ejecución remota exacta; evidencia heredada de #37 no sustituye esa ejecución. El checker RDD existente solo valida datos externos y no autentica un reviewer.
+
+### Seguimiento de cancelación — 2026-10-28
+
+Se añadió una integración sobre repo Git temporal para interrumpir la llamada revisora antes de ligar el resultado. El intento no produce aprobación; la vista se cierra y un reintento hace una revisión nueva (`tests/ordinary-review-workspace-flow.test.ts`, 4/4). `TMPDIR=/tmp npm run check` pasa localmente. Esto no cubre terminación abrupta ni reinicio del proceso, ejecución de pruebas sobre el candidato, aceptación, autenticación de proveedor ni aislamiento del sistema operativo. T05 sigue PARTIAL.
+
+Consolidated verification on the reconstructed source tree: `TMPDIR=/tmp npm run test` passed 2,217, failed 0, skipped 19. The failed attempts with nonstandard TMPDIR are excluded from evidence; selected temporary directories inside the candidate violated test preconditions. This suite result is from source after the final controller hardening, before no further code changes.
+
+Exact candidate `1e8d486e7c0bf32547a8c3cdbd895ca3bbb8d2ee` package Pi 1.2.0 Linux matrix: TUI, RPC, JSON and print all PASS from the generated npm tarball. Tarball SHA binding and clean-checkout preconditions passed; all child processes shut down naturally. The earlier TUI failure was environmental (`node-pty` native binary absent); compiling against the official Node 24.22.1 headers extracted without owner preservation resolved the host setup without source changes.
+
+R4 adversarial check found and removed a callback-injection weakness in the first candidate draft: source binding now takes no caller-supplied validator. It requires a private issued checkout claim for the exact repository/tree and calls the controller-owned revalidator. A regression rejects forged checkout data. The focused suite is now 27/27 PASS and typecheck passes on this hardening. Full suite, exact-package matrix and CI must bind the corrected final SHA.

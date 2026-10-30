@@ -1,6 +1,10 @@
 import {consumeRunnerWriteReceiver} from "../src/agents/dispatcher.js";
 import assert from "node:assert/strict";
+import {execFileSync} from "node:child_process";
 import test from "node:test";
+import {mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import {Dispatcher,type AgentRequest} from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
@@ -9,15 +13,19 @@ import {issueOrganicWriterAdmission,consumeWriterAdmission} from "../src/lifecyc
 import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";
 import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";
-const candidate={id:"candidate",repository:"r",revision:"sha",createdAt:"now"};
+const repository=realpathSync(mkdtempSync(join(tmpdir(),"asen-writer-admission-")));
+test.after(()=>rmSync(repository,{recursive:true,force:true}));
+writeFileSync(join(repository,"seed.txt"),"seed\n");execFileSync("git",["init","-q",repository]);execFileSync("git",["-C",repository,"add","."]);execFileSync("git",["-C",repository,"-c","user.name=ASEN Test","-c","user.email=test@example.invalid","commit","-q","-m","fixture"]);
+const revision=execFileSync("git",["-C",repository,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+const candidate={id:"candidate",repository,revision,createdAt:"now"};
 function applicability(writes=true,paths=["src/a"],defect=false){
- const decision=issueOddDecision({taskId:"task",repository:"r",intent:writes?(defect?"defect":"implementation"):"analysis",paths,writes:writes?[{path:paths[0]!,changeKind:"behavior"}]:[]});
- buildOrchestrationPlan({taskId:"task",repository:"r",candidate,prompt:"task"},decision);
- return decideLifecycleApplicability(decision,{taskIdentity:"task",repositoryIdentity:"r",candidate:{id:candidate.id,repository:"r",revision:"sha"},explicitMode:"unspecified",affectedSubsystems:["runtime"],expectedPaths:paths,requiredArtifacts:[]});
+ const decision=issueOddDecision({taskId:"task",repository,intent:writes?(defect?"defect":"implementation"):"analysis",paths,writes:writes?[{path:paths[0]!,changeKind:"behavior"}]:[]});
+ buildOrchestrationPlan({taskId:"task",repository,candidate,prompt:"task"},decision);
+ return decideLifecycleApplicability(decision,{taskIdentity:"task",repositoryIdentity:repository,candidate:{id:candidate.id,repository,revision},explicitMode:"unspecified",affectedSubsystems:["runtime"],expectedPaths:paths,requiredArtifacts:[]});
 }
 function request():AgentRequest{
- const skillContext=issueSkillContext("task:worker","r",candidate,{phase:"apply",codeChange:true});
- return {id:"task:worker",role:"worker",repository:"r",prompt:"write",candidate,skillContext,skillPaths:selectSkills(skillContext).map(s=>s.path),writeSurfaces:["src/a"]};
+ const skillContext=issueSkillContext("task:worker",repository,candidate,{phase:"apply",codeChange:true});
+ return {id:"task:worker",role:"worker",repository,prompt:"write",candidate,skillContext,skillPaths:selectSkills(skillContext).map(s=>s.path),writeSurfaces:["src/a"]};
 }
 function evidence(){const e=new EvidenceStore();for(const kind of ["scope","rollback","work-unit"] as const)e.add(candidate,{id:kind,kind,status:"pass",createdAt:"now",summary:"bounded"});return e;}
 const admission=()=>issueOrganicWriterAdmission(applicability(),["src/a"]);
@@ -56,7 +64,7 @@ test("organic admission cannot drop genuine original defect intent before dispat
  const dispatcher=new Dispatcher({run:async r=>{calls++;return{id:r.id,ok:true,output:"must not run"};}},evidence());
  await assert.rejects(()=>dispatcher.dispatch({...request(),writerAdmission:token}),/admission/);
  assert.equal(calls,0);assert.equal(consumeWriterAdmission(token,request()),false);
- const genuineDefectContext=issueSkillContext("task:worker","r",candidate,{phase:"apply",codeChange:true,defect:true});
+ const genuineDefectContext=issueSkillContext("task:worker",repository,candidate,{phase:"apply",codeChange:true,defect:true});
  const preserved={...request(),skillContext:genuineDefectContext,skillPaths:selectSkills(genuineDefectContext).map(s=>s.path)};
  const second=issueOrganicWriterAdmission(applicability(true,["src/a"],true),["src/a"]);
  await assert.rejects(()=>dispatcher.dispatch({...preserved,writerAdmission:second}),/defect-intake/);
@@ -68,7 +76,7 @@ for(const kind of ["forged","getter","proxy"] as const)test(`organic defect admi
  const token=issueOrganicWriterAdmission(applicability(true,["src/a"],true),["src/a"]);
  assert.equal(consumeWriterAdmission(token,{...request(),skillContext:supplied as never}),false);
  assert.equal(callbacks,0);
- const genuine=issueSkillContext("task:worker","r",candidate,{phase:"apply",codeChange:true,defect:true});
+ const genuine=issueSkillContext("task:worker",repository,candidate,{phase:"apply",codeChange:true,defect:true});
  assert.equal(consumeWriterAdmission(token,{...request(),skillContext:genuine}),false,"a rejected context must burn admission");
 });
 test("R2 Dispatcher burns admission before failed identity, context and evidence gates",async()=>{

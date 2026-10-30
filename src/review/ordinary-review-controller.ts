@@ -1,12 +1,11 @@
 import {execFileSync} from "node:child_process";
-import {realpathSync} from "node:fs";
-import {assertExactGitCandidate} from "../evidence/execution.js";
+import {lstatSync,realpathSync} from "node:fs";
 import {createHash} from "node:crypto";
 import {isProxy} from "node:util/types";
 import {claimWorkUnitReviewCandidate,type WorkUnitReviewCandidate} from "../delivery/work-unit-review-candidate.js";
 import {exactRecord,text} from "../delivery/work-unit-policy.js";
 import {materializeReviewView,type ReviewView} from "./review-view.js";
-import {openReviewSession,type ReviewSession} from "./review-session.js";
+import {bindReviewSessionSource,openReviewSession,type ReviewSession} from "./review-session.js";
 import type {ReviewRiskInput} from "./review-risk.js";
 import type {CandidateGitTreeManifest} from "./review-tree-inspection.js";
 export interface OrdinaryReviewInput{
@@ -17,6 +16,23 @@ export interface OrdinaryReviewRequest{
  readonly candidate:WorkUnitReviewCandidate;readonly participants:Readonly<OrdinaryReviewInput>;
 }
 const issued=new WeakSet<object>(),consumed=new WeakSet<object>(),issuedCheckouts=new WeakSet<object>(),consumedCheckouts=new WeakSet<object>();
+interface CheckoutClaim{readonly repository:string;readonly dev:number;readonly ino:number;readonly revision:string;readonly treeIdentity:string;readonly parentIdentity:string;}
+const checkoutClaims=new WeakMap<object,CheckoutClaim>();
+function observeCheckout(request:OrdinaryReviewRequest,root:string):{dev:number;ino:number;tree:string;parent:string}{
+ const filesystem=lstatSync(root);if(!filesystem.isDirectory()||filesystem.isSymbolicLink())throw new Error("checkout root changed");const identity={dev:filesystem.dev,ino:filesystem.ino};
+ const git=(...args:string[])=>execFileSync("git",["-c","core.fsmonitor=false","--no-replace-objects","-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"],env:{PATH:process.env.PATH??"",HOME:process.platform==="win32"?process.env.USERPROFILE??"":process.env.HOME??"",GIT_CONFIG_NOSYSTEM:"1",GIT_CONFIG_GLOBAL:"",GIT_OPTIONAL_LOCKS:"0",GIT_NO_REPLACE_OBJECTS:"1",GIT_EXTERNAL_DIFF:"",GIT_TERMINAL_PROMPT:"0",GIT_ALLOW_PROTOCOL:"file"}}).trim();
+ const rootIdentity=realpathSync(root);if(rootIdentity!==root)throw new Error("checkout path changed");
+ const tags=git("ls-files","-v","-z").split("\0").filter(Boolean);if(tags.some(line=>line[0]!=="H"))throw new Error("index flags changed");
+ if(git("status","--porcelain=v1","--untracked-files=all"))throw new Error("checkout is dirty");
+ const head=git("rev-parse","HEAD"),tree=git("rev-parse","HEAD^{tree}"),parent=git("rev-parse","HEAD^");
+ if(head!==request.candidate.revision||tree!==request.candidate.treeIdentity||parent!==request.candidate.completedWorkUnit.commit.parentIdentity)throw new Error("checkout identity changed");
+ return {...identity,tree,parent};
+}
+function revalidateClaim(value:unknown):void{
+ if(typeof value!=="object"||value===null)throw new Error("review checkout is not genuine");const claim=checkoutClaims.get(value);
+ if(!claim)throw new Error("review checkout is not genuine");const checkout=value as OrdinaryReviewCheckout,info=observeCheckout(checkout.request,claim.repository);
+ if(info.dev!==claim.dev||info.ino!==claim.ino||info.tree!==claim.treeIdentity||info.parent!==claim.parentIdentity)throw new Error("review checkout changed after preparation; stale approval rejected");
+}
 /** Preparación descriptiva: IDs declarados no autentican al usuario o al revisor. */
 export function prepareOrdinaryReview(value:WorkUnitReviewCandidate,input:OrdinaryReviewInput):OrdinaryReviewRequest{
  const candidate=claimWorkUnitReviewCandidate(value);
@@ -44,23 +60,19 @@ export interface OrdinaryReviewCheckout{
 /** Observa Git local; la relación URL→directorio sigue siendo una declaración del llamante. */
 export function bindOrdinaryReviewCheckout(value:OrdinaryReviewRequest,sessionId:string,repository:string):OrdinaryReviewCheckout{
  const request=claimOrdinaryReviewRequest(value,sessionId);
- const root=text(repository,"repositorio local");let observed:string[];
+ const root=text(repository,"repositorio local");let observed:{dev:number;ino:number;tree:string;parent:string};
  try{
-  if(realpathSync(root)!==root)throw new Error("ruta no canónica");
-  const candidate={id:request.candidate.identity,repository:root,revision:request.candidate.revision,createdAt:"preparación de revisión"};
-  const assertCheckout=()=>{
-   const args=["--no-replace-objects","-C",root];
-   const tags=execFileSync("git",[...args,"ls-files","-v","-z"],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).split("\0").filter(Boolean);
-   if(tags.some(line=>line[0]!=="H"))throw new Error("flags del índice no verificables");
-   if(execFileSync("git",[...args,"status","--porcelain=v1","--untracked-files=all"],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim())throw new Error("checkout modificado");
-   assertExactGitCandidate(candidate,root);
-  };
-  assertCheckout();
-  observed=execFileSync("git",["--no-replace-objects","-C",root,"rev-parse","HEAD^{tree}","HEAD^"],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim().split("\n");
-  assertCheckout();
+  observed=observeCheckout(request,root);
  }catch{throw new Error("No se pudo verificar el checkout exacto de revisión");}
- if(observed.length!==2||observed[0]!==request.candidate.treeIdentity||observed[1]!==request.candidate.completedWorkUnit.commit.parentIdentity)throw new Error("Árbol o padre de revisión no coincide");
- const checkout=Object.freeze({request,repository:root,revision:request.candidate.revision,treeIdentity:observed[0]!,parentIdentity:observed[1]!});issuedCheckouts.add(checkout);return checkout;
+ const checkout=Object.freeze({request,repository:root,revision:request.candidate.revision,treeIdentity:observed.tree,parentIdentity:observed.parent});issuedCheckouts.add(checkout);checkoutClaims.set(checkout,{repository:root,dev:observed.dev,ino:observed.ino,revision:checkout.revision,treeIdentity:checkout.treeIdentity,parentIdentity:checkout.parentIdentity});return checkout;
+}
+
+/** Rechecks source identity after a reviewer has consumed its frozen view. */
+export function revalidateOrdinaryReviewCheckout(value:unknown):void{revalidateClaim(value);}
+
+/** Exposes a predicate-like assertion without revealing or minting checkout authority. */
+export function assertOrdinaryReviewCheckoutGenuine(value:unknown):asserts value is OrdinaryReviewCheckout{
+ if(typeof value!=="object"||value===null||!issuedCheckouts.has(value)||!checkoutClaims.has(value))throw new Error("review checkout is not genuine");
 }
 
 /** Consumes genuine checkout provenance for an external review transaction. */
@@ -73,6 +85,7 @@ export function claimOrdinaryReviewCheckout(value:unknown):OrdinaryReviewCheckou
 /** Binds one frozen tree manifest to the exact checkout before creating a reviewer view. */
 export function materializeOrdinaryReviewView(value:unknown,parent:string,manifest:CandidateGitTreeManifest):ReviewView{
  const checkout=claimOrdinaryReviewCheckout(value);
+ revalidateClaim(checkout);
  if(manifest.repositoryRoot!==checkout.repository||manifest.treeIdentity!==checkout.treeIdentity){
   throw new Error("Review view manifest does not bind the exact checkout");
  }
@@ -82,8 +95,11 @@ export function materializeOrdinaryReviewView(value:unknown,parent:string,manife
 /** Opens the public review composition only from a genuine exact checkout. */
 export function openOrdinaryReviewSession(value:unknown,parent:string,manifest:CandidateGitTreeManifest,risk:ReviewRiskInput):ReviewSession{
  const checkout=claimOrdinaryReviewCheckout(value);
+ revalidateClaim(checkout);
  if(manifest.repositoryRoot!==checkout.repository||manifest.treeIdentity!==checkout.treeIdentity){
   throw new Error("Review session manifest does not bind the exact checkout");
  }
- return openReviewSession(checkout.repository,manifest,parent,risk);
+ const session=openReviewSession(checkout.repository,manifest,parent,risk);
+ bindReviewSessionSource(session,checkout);
+ return session;
 }

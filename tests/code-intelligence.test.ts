@@ -107,6 +107,13 @@ test("tools omit an absent AbortSignal from injected runner options and preserve
   assert.ok(calls.slice(2).every(call=>call.signal===controller.signal));
 });
 
+test("CodeGraph subprocesses disable telemetry and network fallback",async t=>{
+  const f=fixture(t,'console.log(JSON.stringify({download:process.env.CODEGRAPH_NO_DOWNLOAD,telemetry:process.env.CODEGRAPH_TELEMETRY,doNotTrack:process.env.DO_NOT_TRACK,unapproved:process.env.UNAPPROVED_CODEGRAPH_SETTING}))');
+  const result=await call(createCodeIntelligenceTool({executable:process.execPath,script:f.script}),f.root,{operation:"query",query:"symbol"});
+  assert.equal(result.details.status,"completed");
+  assert.deepEqual(JSON.parse(result.content[0].text),{download:"1",telemetry:"0",doNotTrack:"1"});
+});
+
 test("canonical CodeGraph tool exposes upstream metadata and exact scoped argv without automatic init",async t=>{
   const f=fixture(t);
   const calls:Array<{args:readonly string[];cwd:string;maxBuffer:number}>=[];

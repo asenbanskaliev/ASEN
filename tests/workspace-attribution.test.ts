@@ -1,5 +1,5 @@
 import test from "node:test";import assert from "node:assert/strict";import path from "node:path";import {findPotentialWorkspaceConflicts,groupChanges,recordWorkspaceChange,visibleWorkspaceConflictRows,visibleWorkspaceRows} from "../src/runtime/workspace-attribution.js";import {visibleWidth} from "../src/runtime/responsive-layout.js";
-import {mkdtemp,mkdir,readFile,realpath,rm} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {PersistentWorkspaceStore,parseWorkspaceFile,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";import authorityExtension,{recordSuccessfulWorkspaceWrite} from "../extensions/authority.js";
+import {mkdtemp,mkdir,readFile,realpath,rm,writeFile} from "node:fs/promises";import {createHash} from "node:crypto";import {tmpdir} from "node:os";import {join} from "node:path";import {PersistentWorkspaceStore,parseWorkspaceFile,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";import authorityExtension,{recordSuccessfulWorkspaceWrite} from "../extensions/authority.js";
 const base={path:"src/a.ts",actor:{kind:"agent" as const,id:"worker-1"},sessionId:"s1",projectId:"p1",worktree:path.resolve("repo"),operation:"modify" as const,at:"2026-10-06T00:00:00Z"};
 test("workspace display sanitizes control and format characters before bounding without mutating attribution",()=>{
  const controls="\u001b\u0007\u009b\u009d\u007f\n\r\t\u202e\u2066\u200b\u2028\u2029";
@@ -93,4 +93,25 @@ test("Pi authority records only successful writes from the exact authorized tool
  assert.deepEqual(call({toolCallId:"write-2",toolName:"write",input:{path:"secrets/token"}}),{block:true,reason:"ASEN tool authority denied"});
  assert.equal(call({toolCallId:"write-3",toolName:"edit",input:{path:"src/other.ts"}}),undefined);await result({toolCallId:"write-3",toolName:"edit",input:{path:"src/forged.ts"},isError:false});
  assert.deepEqual((await (await PersistentWorkspaceStore.open(storeFile)).list({sessionId:"session-2",projectId:canonicalRoot,worktree:canonicalRoot})).map(row=>row.change.path),["src/output.ts"]);
+});
+
+test("Pi authority exact receipts stop duplicate writes before a second effect",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-authority-receipt-"));t.after(()=>rm(root,{recursive:true,force:true}));await mkdir(join(root,"src"));const canonicalRoot=await realpath(root),storeFile=join(root,".asen","workspace.json"),target=join(root,"src","output.ts"),content="one exact authorized write\n",hash=createHash("sha256").update(content).digest("hex"),handlers=new Map<string,(event:any)=>unknown>();await writeFile(target,content);
+ const original=process.env.ASEN_PI_AUTHORITY;process.env.ASEN_PI_AUTHORITY=JSON.stringify({repository:root,role:"worker",writeSurfaces:["src/output.ts"],agentId:"agent-receipt",sessionId:"session-receipt",attributionFile:storeFile,exactWriteReceipt:{path:"src/output.ts",fileSha256:hash}});t.after(()=>{if(original===undefined)delete process.env.ASEN_PI_AUTHORITY;else process.env.ASEN_PI_AUTHORITY=original;});
+ authorityExtension({on:(name:string,handler:(event:any)=>unknown)=>handlers.set(name,handler),registerCommand:()=>{}} as any);
+ const call=handlers.get("tool_call")!,result=handlers.get("tool_result")!;
+ assert.equal(call({toolCallId:"write-1",toolName:"write",input:{path:"src/output.ts"}}),undefined);
+ assert.deepEqual(call({toolCallId:"write-2",toolName:"write",input:{path:"src/output.ts"}}),{block:true,reason:"ASEN exact write receipt already consumed"});
+ assert.deepEqual(call({toolCallId:"edit-1",toolName:"edit",input:{path:"src/output.ts"}}),{block:true,reason:"ASEN exact write receipt requires the write tool"});
+ await result({toolCallId:"write-1",toolName:"write",input:{path:"src/output.ts"},isError:false});
+ assert.deepEqual((await (await PersistentWorkspaceStore.open(storeFile)).list({sessionId:"session-receipt",projectId:canonicalRoot,worktree:canonicalRoot})).map(row=>row.change.path),["src/output.ts"]);
+});
+
+test("Pi authority exact receipts do not attest bytes that differ from the authorized operation",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-authority-receipt-mismatch-"));t.after(()=>rm(root,{recursive:true,force:true}));await mkdir(join(root,"src"));const canonicalRoot=await realpath(root),storeFile=join(root,".asen","workspace.json"),target=join(root,"src","output.ts"),wanted="authorized bytes\n",handlers=new Map<string,(event:any)=>unknown>();await writeFile(target,"wrong bytes\n");
+ const original=process.env.ASEN_PI_AUTHORITY;process.env.ASEN_PI_AUTHORITY=JSON.stringify({repository:root,role:"worker",writeSurfaces:["src/output.ts"],agentId:"agent-mismatch",sessionId:"session-mismatch",attributionFile:storeFile,exactWriteReceipt:{path:"src/output.ts",fileSha256:createHash("sha256").update(wanted).digest("hex")}});t.after(()=>{if(original===undefined)delete process.env.ASEN_PI_AUTHORITY;else process.env.ASEN_PI_AUTHORITY=original;});
+ authorityExtension({on:(name:string,handler:(event:any)=>unknown)=>handlers.set(name,handler),registerCommand:()=>{}} as any);
+ const call=handlers.get("tool_call")!,result=handlers.get("tool_result")!;assert.equal(call({toolCallId:"write-1",toolName:"write",input:{path:"src/output.ts"}}),undefined);
+ const outcome=await result({toolCallId:"write-1",toolName:"write",input:{path:"src/output.ts"},isError:false}) as {isError?:boolean;content?:Array<{text?:string}>};assert.equal(outcome.isError,true);assert.match(outcome.content?.[0]?.text??"",/bytes do not match/);
+ assert.deepEqual(await (await PersistentWorkspaceStore.open(storeFile)).list({sessionId:"session-mismatch",projectId:canonicalRoot,worktree:canonicalRoot}),[]);
 });
