@@ -28,6 +28,15 @@ test("a shared record from another project cannot displace an owned session iden
  assert.deepEqual(local.list("project-a").map(row=>row.sessionId),["same"]);
  local.remove("same");other.remove("same");
 });
+test("a second Pi host in the same process may recover a session without the previous host deleting the new record",t=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-local-session-recovery-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const path=join(root,"private"),first=new SharedSessionDirectory(path),restarted=new SharedSessionDirectory(path);
+ first.publish(entry("recover"));
+ restarted.publish({...entry("recover"),subject:"Recovered Pi host"});
+ first.remove("recover");
+ assert.equal(restarted.list("project-a")[0]?.subject,"Recovered Pi host");
+ restarted.remove("recover");assert.deepEqual(restarted.list("project-a"),[]);
+});
 test("a separate Node process can publish and withdraw only its own session metadata",async t=>{
  const root=mkdtempSync(join(tmpdir(),"asen-session-cross-process-"));t.after(()=>rmSync(root,{recursive:true,force:true,maxRetries:20,retryDelay:100}));
  const directory=join(root,"private"),source=pathToFileURL(join(process.cwd(),"src/runtime/shared-session-directory.ts")).href;
