@@ -55,9 +55,8 @@ async function interruptedWriterChild():Promise<void>{
  const input=writerInputs(root,taskId,sessionId,rejectedContent),now=new Date().toISOString(),journal=new BackgroundJobJournal(journalFile);
  journal.record({id:taskId,sessionId,projectId:root,command:"asen-pi-authorized-write",args:[target,sha256(rejectedContent)],cwd:root,mode:"background",state:"running",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[],authorizationId,expectedHead:input.baseSha,allowedPaths:[target],authorizationExpiresAt:new Date(Date.now()+10*60_000).toISOString()});
  let piPid=0;
- const runner=new PiProcessRunner({command:process.env.PI_EXECUTABLE??"pi",policyRoot:sourceRoot,providerCredential:"NVIDIA_API_KEY",attributionFile:join(dirname(journalFile),"workspace-attribution.json"),timeoutMs:180_000,maxOutputBytes:128_000,maxStreamBytes:512_000,
+ const runner=new PiProcessRunner({command:process.env.PI_EXECUTABLE??"pi",policyRoot:sourceRoot,providerCredential:"NVIDIA_API_KEY",attributionFile:join(dirname(journalFile),"workspace-attribution.json"),exactWriteReceipt:{path:target,fileSha256:sha256(rejectedContent),barrierFile:barrier},timeoutMs:180_000,maxOutputBytes:128_000,maxStreamBytes:512_000,
   onProcessStart:pid=>{piPid=pid;writeFileSync(pids,JSON.stringify({controllerPid:process.pid,piPid:pid,taskId,sessionId,authorizationId,startedAt:new Date().toISOString()})+"\n",{mode:0o600});},
-  onToolExecution:event=>{if(event.type!=="tool_execution_end"||event.isError===true||!existsSync(join(root,target))||readFileSync(join(root,target),"utf8")!==rejectedContent)return;process.kill(event.pid,"SIGSTOP");writeFileSync(barrier,JSON.stringify({taskId,sessionId,authorizationId,controllerPid:process.pid,piPid:event.pid,toolName:event.toolName,toolCallId:event.toolCallId,reachedAt:new Date().toISOString(),fileSha256:sha256(readFileSync(join(root,target)))})+"\n",{mode:0o600});}
  });
  const result=await new Dispatcher(runner,input.evidence).dispatch(input.request);
  const filePresent=existsSync(join(root,target)),exactBytes=filePresent&&readFileSync(join(root,target),"utf8")===rejectedContent;
@@ -88,7 +87,7 @@ async function hardKillInitialWriter(root:string,stateDir:string,taskId:string,s
  let stderr="";child.stderr.setEncoding("utf8").on("data",chunk=>stderr=(stderr+String(chunk)).slice(-16_384));
  try{await waitForFile(barrier,180_000,child);}catch(error){try{if(child.pid&&child.exitCode===null&&child.signalCode===null)process.kill(child.pid,"SIGKILL");}catch{}throw new Error(`${error instanceof Error?error.message:"Interrupted writer failed"}; child stderr: ${redact(stderr)}`,{cause:error});}
  const processEvidence=JSON.parse(readFileSync(pids,"utf8")) as {controllerPid:number;piPid:number},barrierEvidence=JSON.parse(readFileSync(barrier,"utf8"));
- assert.equal(processEvidence.controllerPid,child.pid);assert.ok(processEvidence.piPid>0);assert.equal(readFileSync(join(root,target),"utf8"),rejectedContent);
+ assert.equal(processEvidence.controllerPid,child.pid);assert.ok(processEvidence.piPid>0);assert.equal(barrierEvidence.agentId,taskId);assert.equal(barrierEvidence.sessionId,sessionId);assert.equal(barrierEvidence.path,target);assert.equal(barrierEvidence.fileSha256,sha256(rejectedContent));assert.equal(readFileSync(join(root,target),"utf8"),rejectedContent);
  // Kill the controller first while Pi is stopped. Otherwise the controller can
  // observe Pi's death and persist a misleading terminal result before it dies.
  process.kill(child.pid!,"SIGKILL");process.kill(processEvidence.piPid,"SIGKILL");
@@ -97,7 +96,7 @@ async function hardKillInitialWriter(root:string,stateDir:string,taskId:string,s
 }
 async function runWriter(root:string,taskId:string,sessionId:string,content:string){
  const input=writerInputs(root,taskId,sessionId,content);let piProcessId=0,processExit:unknown;
- const runner=new PiProcessRunner({command:process.env.PI_EXECUTABLE??"pi",policyRoot:sourceRoot,providerCredential:"NVIDIA_API_KEY",attributionFile:join(evidenceDirectory!,`workspace-${taskId}.json`),timeoutMs:180_000,maxOutputBytes:128_000,maxStreamBytes:512_000,onProcessStart:pid=>{piProcessId=pid;},onProcessClose:details=>{processExit={...details,stderr:redact(details.stderr)};}});
+ const runner=new PiProcessRunner({command:process.env.PI_EXECUTABLE??"pi",policyRoot:sourceRoot,providerCredential:"NVIDIA_API_KEY",attributionFile:join(evidenceDirectory!,`workspace-${taskId}.json`),exactWriteReceipt:{path:target,fileSha256:sha256(content)},timeoutMs:180_000,maxOutputBytes:128_000,maxStreamBytes:512_000,onProcessStart:pid=>{piProcessId=pid;},onProcessClose:details=>{processExit={...details,stderr:redact(details.stderr)};}});
  const result=await new Dispatcher(runner,input.evidence).dispatch(input.request);assert.equal(result.ok,true,redact(result.output));assert.equal(readFileSync(join(root,target),"utf8"),content);assert.deepEqual(git(root,"status","--porcelain=v1","--untracked-files=all").split(/\r?\n/u).filter(Boolean).map(row=>row.slice(3)),[target]);
  return {taskId,sessionId,authorizationId:input.request.id,authorizationConsumed:true,allowedPaths:[target],piProcessId,processExit,baseSha:input.baseSha,fileSha256:sha256(content)};
 }

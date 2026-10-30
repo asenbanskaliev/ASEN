@@ -1,5 +1,5 @@
 import {spawn,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";
-import {join,resolve as resolvePath} from "node:path";
+import {isAbsolute,join,resolve as resolvePath} from "node:path";
 import {mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {createHash} from "node:crypto";
@@ -22,6 +22,14 @@ export interface PiProcessOptions{
  providerExtension?:string;
  noTools?:boolean;
  attributionFile?:string;
+ /**
+  * Binds a worker turn to one exact file result.  The authority extension
+  * consumes the path before the first write tool can run, so a model retry
+  * cannot create a second side effect in that turn.  A barrier is optional
+  * operational evidence: it is written after the exact bytes and attribution
+  * are durable, before Pi is allowed to process the tool result.
+  */
+ exactWriteReceipt?:Readonly<{path:string;fileSha256:string;barrierFile?:string}>;
  policyRoot?:string;
  providerCredential?:PiProviderCredential;
  onProcessStart?:(pid:number)=>void;
@@ -76,7 +84,7 @@ export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">
 }
 
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
-const authorityDigest="6ff2d45585cef90ff0563660e0833f40d5dc1f95e4271aaa3ce5f0159ac27fb8";
+const authorityDigest="597c2c352f8466f043aceb7a16753a4f34edaff1fdccc5b59720ef87fc3120b7";
 const authorityAssets=Object.freeze([
  {source:"src/runtime/workspace-store.ts",target:"src/runtime/workspace-store.ts",sha256:"f0307f8c72b72dd714382eba68fd3d2e50ca2c538d11d5ff71028f682d5f8cef"},
  {source:"src/runtime/workspace-attribution.ts",target:"src/runtime/workspace-attribution.ts",sha256:"1ace31ce9e9a871e6b7a3d545ae60cc9a57c996e39108c6c901837b8d7211c02"},
@@ -85,6 +93,16 @@ const authorityAssets=Object.freeze([
  {source:"src/io/exclusive-file-lock.ts",target:"src/io/exclusive-file-lock.ts",sha256:"1921d446891099a9cbf8373a6580f2033e873e89654ee3debebd11c80ff76308"},
  {source:"src/io/private-file.ts",target:"src/io/private-file.ts",sha256:"42d76fe5abfbfbd66f76e310157709890754595d83a63f74cf143110739e1332"},
 ]);
+
+function exactWriteReceipt(value:PiProcessOptions["exactWriteReceipt"],request:AgentRequest):{path:string;fileSha256:string;barrierFile?:string}|undefined{
+ if(value===undefined)return undefined;
+ if(request.role!=="worker"||!request.writeSurfaces?.length)throw new Error("Exact write receipt requires a worker with write authority");
+ const {path,fileSha256,barrierFile}=value;
+ if(typeof path!=="string"||!path||path!==path.trim()||isAbsolute(path)||path.includes("\\")||path.split("/").some(part=>!part||part==="."||part==="..")||!request.writeSurfaces.includes(path))throw new Error("Exact write receipt path must be one declared write surface");
+ if(typeof fileSha256!=="string"||!/^[0-9a-f]{64}$/u.test(fileSha256))throw new Error("Exact write receipt hash is invalid");
+ if(barrierFile!==undefined&&(typeof barrierFile!=="string"||!isAbsolute(barrierFile)))throw new Error("Exact write receipt barrier must be an absolute path");
+ return Object.freeze({path,fileSha256,...(barrierFile===undefined?{}:{barrierFile})});
+}
 
 async function terminateTree(child:ChildProcess,closed:Promise<void>):Promise<void>{
  if(!child.pid){await closed;return;}
@@ -160,6 +178,8 @@ export class PiProcessRunner implements AgentRunner{
   if(writer&&!receiverValid)return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
   if(writer&&!authorizePiWriteGrant(request))return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an active, exact ASEN apply-phase grant"});
   let routeArgs:string[];try{routeArgs=piRuntimeRouteArgs(request);}catch(error){return Promise.resolve({id:request.id,ok:false,output:String(error)});}
+  let receipt:{path:string;fileSha256:string;barrierFile?:string}|undefined;
+  try{receipt=exactWriteReceipt(this.options.exactWriteReceipt,request);}catch(error){return Promise.resolve({id:request.id,ok:false,output:error instanceof Error?error.message:String(error)});}
   const providerExtension=this.options.providerExtension;
   if(providerExtension&&providerExtension!=="npm:pi-free")return Promise.resolve({id:request.id,ok:false,output:"untrusted Pi provider extension"});
   const policyRoot=this.options.policyRoot??request.repository,candidatePolicy=resolvePath(policyRoot,"extensions/authority.ts");
@@ -193,7 +213,7 @@ export class PiProcessRunner implements AgentRunner{
   return new Promise(resolve=>{
    const child=spawnContained(command,args,{
     cwd:request.repository,
-    env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{})})},
+    env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{}),...(receipt?{exactWriteReceipt:receipt}:{})})},
     stdio:["pipe","pipe","pipe"],
     detached:process.platform!=="win32"
    }) as ChildProcessWithoutNullStreams;

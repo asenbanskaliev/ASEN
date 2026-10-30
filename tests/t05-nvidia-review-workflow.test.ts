@@ -21,7 +21,7 @@ test("T04/T05 CI runs a real Pi 1.2 NVIDIA cycle through ASEN writer and reviewe
 
 test("live provider evidence binds interruption, recovery, correction and independent review",()=>{
  assert.match(liveTask,/assert\.equal\(git\(sourceRoot,"rev-parse","HEAD"\),expectedSha/u);
- assert.match(liveTask,/SIGSTOP/u);assert.match(liveTask,/SIGKILL/u);
+ assert.match(liveTask,/exactWriteReceipt:\{path:target,fileSha256:sha256\(rejectedContent\),barrierFile:barrier\}/u);assert.match(liveTask,/SIGKILL/u);
  assert.match(liveTask,/reconcileInterruptedAuthorizedWrite/u);assert.match(liveTask,/replayExecutions,0/u);
  assert.match(liveTask,/runReviewer[\s\S]*"fail"/u);assert.match(liveTask,/runReviewer[\s\S]*"pass"/u);
  assert.match(liveTask,/acceptance:\{authority:"asen-deterministic-evidence-gate",accepted:true/u);
