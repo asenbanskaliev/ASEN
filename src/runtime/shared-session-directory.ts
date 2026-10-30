@@ -12,9 +12,9 @@ function rootVerified(root:string):string{
  const absolute=path.resolve(root);
  mkdirSync(absolute,{recursive:true,mode:0o700});
  const stat=lstatSync(absolute);
- if(!stat.isDirectory()||stat.isSymbolicLink()||(process.platform!=="win32"&&(stat.mode&0o077)!==0)||realpathSync.native(absolute)!==absolute)
+ if(!stat.isDirectory()||stat.isSymbolicLink()||(process.platform!=="win32"&&(stat.mode&0o077)!==0))
   throw new Error("ASEN shared-session directory must be private and canonical");
- return absolute;
+ return realpathSync.native(absolute);
 }
 function nameOf(projectId:string,sessionId:string):string{
  return createHash("sha256").update(projectId).update("\0").update(sessionId).digest("hex")+".json";
@@ -56,6 +56,8 @@ export class SharedSessionDirectory extends SessionDirectory{
      !Number.isFinite(Date.parse(entry.updatedAt))||!["read","write","review"].includes(entry.classification)||
      (entry.taskAlias!==undefined&&!safe(entry.taskAlias,512)))throw new Error("Shared-session metadata is invalid");
   const filename=nameOf(entry.projectId,entry.sessionId),file=path.join(this.#root,filename);
+  const prior=this.#owned.get(entry.sessionId);
+  if(prior&&prior!==filename)this.remove(entry.sessionId); // Project switch invalidates the previous entry.
   rootVerified(this.#root);
   const existing=readRecord(file);
   if(existing&&existing.owner!==this.#owner&&alive(existing))throw new Error("Another active Pi process already owns this session");
