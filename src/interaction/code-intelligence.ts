@@ -11,7 +11,7 @@ export interface CodeIntelligenceOptions {
   timeoutMs?:number;
   maxOutputBytes?:number;
 }
-export interface CodeGraphToolParameters {operation:"init"|"query"|"explore";query?:string;limit?:number}
+export interface CodeGraphToolParameters {operation:"init"|"sync"|"query"|"explore";query?:string;limit?:number}
 export interface CodeGraphCommandResult {stdout:string;stderr:string}
 export interface CodeGraphRunOptions {cwd:string;signal?:AbortSignal;maxBuffer:number}
 export type CodeGraphRunner=(args:readonly string[],options:CodeGraphRunOptions)=>Promise<CodeGraphCommandResult>;
@@ -39,7 +39,7 @@ const CODEGRAPH_TOOL_PARAMETERS={
   additionalProperties:false,
   required:["operation"],
   properties:{
-    operation:{type:"string",enum:["init","query","explore"]},
+    operation:{type:"string",enum:["init","sync","query","explore"]},
     query:{type:"string",minLength:1,maxLength:2000},
     limit:{type:"integer",minimum:1,maximum:20},
   },
@@ -192,14 +192,15 @@ function canonicalParameters(value:unknown):CodeGraphToolParameters {
   const operation=descriptors.operation?.value;
   const query=descriptors.query?.value;
   const limit=descriptors.limit?.value;
-  if(operation!=="init"&&operation!=="query"&&operation!=="explore")throw new Error("Invalid CodeGraph operation");
+  if(operation!=="init"&&operation!=="sync"&&operation!=="query"&&operation!=="explore")throw new Error("Invalid CodeGraph operation");
   if(limit!==undefined&&(!Number.isInteger(limit)||limit<1||limit>20))throw new Error("CodeGraph limit must be an integer between 1 and 20.");
-  if(operation!=="init"&&(typeof query!=="string"||!query.trim()||query.length>2000||/[\u0000-\u001f\u007f]/.test(query)))throw new Error("CodeGraph query is required for query and explore operations.");
+  if(operation!=="init"&&operation!=="sync"&&(typeof query!=="string"||!query.trim()||query.length>2000||/[\u0000-\u001f\u007f]/.test(query)))throw new Error("CodeGraph query is required for query and explore operations.");
   return {operation,...(query===undefined?{}:{query:query as string}),...(limit===undefined?{}:{limit:limit as number})};
 }
 
 function commandArguments(parameters:CodeGraphToolParameters,cwd:string):string[] {
   if(parameters.operation==="init")return ["init",cwd];
+  if(parameters.operation==="sync")return ["sync"];
   const limit=parameters.limit??DEFAULT_LIMIT;
   // CodeGraph resolves its project from cwd. Neither query nor explore accepts --path.
   // Explore has no documented --max-files flag; limit only applies to symbol queries.
@@ -230,11 +231,11 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
     name:ASEN_CODEGRAPH_TOOL_NAME,
     renderShell:"self",
     label:"CodeGraph",
-    description:"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.",
+    description:"Initialize, synchronize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.",
     promptSnippet:"Initialize and query CodeGraph for the current workspace without shell access",
     promptGuidelines:[
       "Use query or explore directly for read-only code research; they never initialize or modify the index.",
-      "Use operation init only when the user has asked to build the CodeGraph index. ASEN requests a one-run approval before indexing.",
+      "Use operation init or sync only when the user has explicitly requested indexing or refreshing the CodeGraph index. ASEN requests a one-run approval before either write.",
       "Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.",
     ],
     annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false,openWorldHint:false},
@@ -250,6 +251,7 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
       }catch{
         return {content:[{type:"text" as const,text:`CodeGraph cannot access a valid project or index. ${FALLBACK_INSTRUCTIONS}`}],details:{status:"failed",fallback:FALLBACK_INSTRUCTIONS}};
       }
+      if(request.operation==="sync"&&!lstatIndexIsDirectory(root))return {content:[{type:"text" as const,text:"CodeGraph index is missing. Initialize it with explicit approval before synchronization."}],details:{status:"not_initialized",operation:"sync",cwd:root}};
       if(request.operation==="init"){
         if(signal?.aborted)return {content:[{type:"text" as const,text:"CodeGraph initialization was cancelled."}],details:{status:"cancelled",operation:"init",cwd:root}};
         const previous=initialized.get(root);
@@ -271,6 +273,16 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
         if(!approved||signal?.aborted)return {content:[{type:"text" as const,text:signal?.aborted?"CodeGraph initialization was cancelled.":"CodeGraph initialization was not authorized. No index was created."}],details:{status:signal?.aborted?"cancelled":"denied",operation:"init",cwd:root}};
         try{if(rootFor(context.cwd)!==root)throw new Error("Project root changed during authorization");assertSafeIndexDirectory(root);}
         catch{return {content:[{type:"text" as const,text:"The project or CodeGraph index changed during approval. No initialization was run."}],details:{status:"failed",operation:"init",cwd:root}};}
+      }
+      if(request.operation==="sync"){
+        if(signal?.aborted)return {content:[{type:"text" as const,text:"CodeGraph synchronization was cancelled."}],details:{status:"cancelled",operation:"sync",cwd:root}};
+        if(context.hasUI!==true||typeof context.ui?.confirm!=="function")return {content:[{type:"text" as const,text:"CodeGraph synchronization requires interactive approval."}],details:{status:"authorization_required",operation:"sync",cwd:root}};
+        let approved=false;
+        try{approved=await context.ui.confirm("Authorize CodeGraph index synchronization?",`CodeGraph may update ${join(root,".codegraph")} for this project. Approval applies only to this synchronization.`,signal===undefined?undefined:{signal});}
+        catch{return {content:[{type:"text" as const,text:"CodeGraph synchronization authorization was interrupted."}],details:{status:signal?.aborted?"cancelled":"authorization_unavailable",operation:"sync",cwd:root}};}
+        if(!approved||signal?.aborted)return {content:[{type:"text" as const,text:"CodeGraph synchronization was not authorized."}],details:{status:signal?.aborted?"cancelled":"denied",operation:"sync",cwd:root}};
+        try{if(rootFor(context.cwd)!==root)throw new Error("Project changed");assertSafeIndexDirectory(root);if(!lstatIndexIsDirectory(root))throw new Error("Index disappeared");}
+        catch{return {content:[{type:"text" as const,text:"Project or index changed during authorization."}],details:{status:"failed",operation:"sync",cwd:root}};}
       }
       const args=commandArguments(request,root);
       try{
