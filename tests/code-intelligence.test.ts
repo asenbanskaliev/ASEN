@@ -24,7 +24,7 @@ test("registered read-only CodeGraph adapter keeps malicious query as one litera
   const f=fixture(t);assert.ok(f.tool,"public code-intelligence tool must exist");
   const query='--help; $(touch forbidden) & "á"';const result=await call(f.tool,f.root,{operation:"query",query,limit:2});
   assert.equal(result.details.status,"completed",JSON.stringify({status:result.details.status,root:f.root,gitRoot:execFileSync("git",["-C",f.root,"rev-parse","--show-toplevel"],{encoding:"utf8"}).trim()}));const data=JSON.parse(result.content[0].text);
-  assert.deepEqual(data.args,["query","--path",f.root,"--limit","2","--",query]);assert.equal(data.cwd,f.root);
+  assert.deepEqual(data.args,["query","--limit","2","--",query]);assert.equal(data.cwd,f.root);
   assert.equal((await call(f.tool,f.root,{operation:"explore",query:"symbol"})).details.status,"completed");
   const alias=join(f.root,"root-alias");symlinkSync(f.root,alias,"junction");
   const aliased=await call(f.tool,alias,{operation:"query",query:"symbol"});assert.equal(aliased.details.status,"completed");assert.equal(JSON.parse(aliased.content[0].text).args[2],f.root);rmSync(alias);
@@ -150,8 +150,8 @@ test("canonical CodeGraph tool exposes upstream metadata and exact scoped argv w
   const init=await tool.execute("probe",{operation:"init"},undefined,undefined,{...context,hasUI:true,ui:{confirm:async()=>true}} as any);
   assert.equal(existsSync(join(f.root,".codegraph")),true,"explicit init may create only the fixture index");
   assert.deepEqual(calls.map(call=>call.args),[
-    ["query","--path",f.root,"--limit","4","--","--help"],
-    ["explore","--path",f.root,"--max-files","3","--","call path"],
+    ["query","--limit","4","--","--help"],
+    ["explore","--","call path"],
     ["init",f.root],
   ]);
   assert.ok(calls.every(call=>call.cwd===f.root&&call.maxBuffer>100000));
