@@ -108,8 +108,11 @@ jobs:
           printf 'export function changedSymbol() { return 42; }\\n' > sample.js
           git add sample.js
           git commit -qm changed
-          ./node_modules/.bin/codegraph init .
-          ./node_modules/.bin/codegraph query --limit 10 -- changedSymbol
+          ./node_modules/.bin/codegraph sync
+          ./node_modules/.bin/codegraph query --limit 10 -- changedSymbol > changed-symbol-result.txt
+          cat changed-symbol-result.txt
+          grep -q 'sample.js' changed-symbol-result.txt
+          grep -q 'changedSymbol' changed-symbol-result.txt
           test -d .codegraph
   architecture:
     runs-on: ubuntu-24.04
