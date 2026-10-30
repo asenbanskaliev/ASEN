@@ -321,6 +321,25 @@ test("ASEN/Pi registered CodeGraph cancels an actual running subprocess",async t
   const result=await running;
   assert.equal(result.details.status,"cancelled");
   assert.equal(existsSync(join(f.root,".codegraph")),false);
+  // Windows can retain a cwd handle briefly after an aborted child exits.
+  // Wait for the OS to release it before fixture teardown, without masking failures.
+  if(process.platform==="win32"){
+    const {renameSync}=await import("node:fs");
+    const renamed=join(f.root,"cancelled-child-release-check");
+    let released=false;
+    for(let attempt=0;attempt<30;attempt++){
+      try{
+        renameSync(f.script,renamed);
+        renameSync(renamed,f.script);
+        released=true;
+        break;
+      }catch(error){
+        if((error as NodeJS.ErrnoException).code!=="EBUSY"&&(error as NodeJS.ErrnoException).code!=="EPERM")throw error;
+        await new Promise(resolve=>setTimeout(resolve,100));
+      }
+    }
+    assert.ok(released,"Windows must release the cancelled subprocess file handle");
+  }
 });
 
 test("ASEN/Pi registered CodeGraph preserves authorization and query lifecycle across restart",async t=>{
