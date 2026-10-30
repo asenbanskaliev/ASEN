@@ -221,6 +221,18 @@ test("canonical CodeGraph tool truncates output and returns upstream-compatible 
   assert.match(textOf(fallback.content[0]),/binary was not found/);
 });
 
+test("CodeGraph rejects unsafe Windows npm package entries",t=>{
+  const f=fixture(t);
+  const pkg=join(f.root,"node_modules","@colbymchenry","codegraph");
+  mkdirSync(pkg,{recursive:true});
+  writeFileSync(join(pkg,"package.json"),JSON.stringify({bin:{codegraph:"../../../../outside.mjs"}}));
+  assert.throws(()=>resolveCodeGraphEntry(pkg),/Invalid package entry/);
+  writeFileSync(join(pkg,"package.json"),JSON.stringify({bin:{codegraph:"bin/codegraph.mjs"}}));
+  mkdirSync(join(pkg,"bin"));
+  writeFileSync(join(pkg,"bin","codegraph.mjs"),"");
+  assert.equal(resolveCodeGraphEntry(pkg),realpathSync.native(join(pkg,"bin","codegraph.mjs")));
+});
+
 test("canonical CodeGraph fails closed on invalid input and project roots",async t=>{
   const f=fixture(t);
   let launches=0;
