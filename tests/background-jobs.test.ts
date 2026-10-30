@@ -136,6 +136,7 @@ test("T10 terminal notification identity does not change on subsequent status up
  registry.finish(job.id,"failed",1);
  const initial=backgroundJobTerminalNotification(registry.snapshot(job.id));
  assert.ok(initial);
+ assert.doesNotMatch(initial.id,/project|[\x00-\x1f\x7f-\x9f]/u);
  registry.setDeliveryState(job.id,"pending","retry");
  const retried=backgroundJobTerminalNotification(registry.snapshot(job.id));
  assert.equal(initial.id,retried?.id);

@@ -38,23 +38,7 @@ export class BackgroundJobJournal{
  record(snapshot:BackgroundJobSnapshot):void{
   this.withExclusiveLock(()=>{
    privatePath(this.file);const current=this.readAll().filter(row=>row.id!==snapshot.id),entry={...snapshot,recoveredAt:new Date().toISOString(),resumable:false as const};
-   const perSession=new Map<string,BackgroundJobJournalEntry[]>();for(const row of [...current,entry]){const entries=perSession.get(row.sessionId)??[];entries.push(row);perSession.set(row.sessionId,entries);}
-   const sessionRetained=[...perSession.values()].flatMap(rows=>{
-    // Keep unresolved operations visible across restart, along with every consumed
-    // retry entitlement. Only terminal, unbound history is eligible for eviction.
-    const protectedRows=rows.filter(row=>row.authorizationId!==undefined||row.state==="running"||row.state==="interrupted"),ordinary=rows.filter(row=>row.authorizationId===undefined&&row.state!=="running"&&row.state!=="interrupted").sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt));
-    if(protectedRows.length>MAX_ENTRIES)throw new Error("Background unresolved operation ledger reached its safe retention limit");
-    return [...ordinary.slice(-Math.max(0,100-protectedRows.length)),...protectedRows];
-   });
-   const protectedRows=sessionRetained.filter(row=>row.authorizationId!==undefined||row.state==="running"||row.state==="interrupted"),ordinary=sessionRetained.filter(row=>row.authorizationId===undefined&&row.state!=="running"&&row.state!=="interrupted").sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt));
-   if(protectedRows.length>MAX_ENTRIES)throw new Error("Background unresolved operation ledger reached its safe retention limit");
-   const retained=[...ordinary.slice(-Math.max(0,MAX_ENTRIES-protectedRows.length)),...protectedRows].sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt));
-   const serialized=JSON.stringify(retained)+"\n";if(Buffer.byteLength(serialized)>MAX_JOURNAL_BYTES)throw new Error("Background job journal exceeds its byte limit");
-   const temporary=`${this.file}.tmp-${process.pid}-${randomUUID()}`;let fd:number|undefined;
-   try{
-    fd=openSync(temporary,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);writeFileSync(fd,serialized,{encoding:"utf8"});fsyncSync(fd);closeSync(fd);fd=undefined;renameSync(temporary,this.file);
-    try{const dirFd=openSync(dirname(this.file),constants.O_RDONLY);try{fsyncSync(dirFd);}finally{closeSync(dirFd);}}catch{/* Some platforms do not support syncing directories; file data is already flushed. */}
-   }catch(error){if(fd!==undefined)try{closeSync(fd);}catch{}try{unlinkSync(temporary);}catch{}throw error;}
+   this.writeRows([...current,entry]);
   });
  }
  /** Claim an interrupted operation for a fresh, explicitly authorized attempt.
@@ -82,6 +66,36 @@ export class BackgroundJobJournal{
    try{fd=openSync(temporary,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);writeFileSync(fd,serialized,{encoding:"utf8"});fsyncSync(fd);closeSync(fd);fd=undefined;renameSync(temporary,this.file);}catch(error){if(fd!==undefined)try{closeSync(fd);}catch{}try{unlinkSync(temporary);}catch{}throw error;}
    return Object.freeze(claim);
   });
+ }
+ /** Persist an enqueue attempt for a recovered job without changing its ownership. */
+ updateDeliveryState(id:string,sessionId:string,projectId:string,state:"pending"|"enqueued",error?:string):BackgroundJobJournalEntry{
+  if(typeof id!=="string"||!id||typeof sessionId!=="string"||!sessionId||typeof projectId!=="string"||!projectId||!(state==="pending"||state==="enqueued")||(error!==undefined&&(typeof error!=="string"||error.length>500)))throw new Error("Background delivery identity is invalid");
+  let updated:BackgroundJobJournalEntry|undefined;
+  this.withExclusiveLock(()=>{
+   const rows=this.readAll(),index=rows.findIndex(row=>row.id===id),current=rows[index];
+   if(!current||current.sessionId!==sessionId||current.projectId!==projectId)throw new Error("Background job does not belong to the requested scope");
+   if(current.state==="running")throw new Error("Cannot deliver a running job result");
+   updated={...current,deliveryState:state,...(state==="pending"&&error?{deliveryError:error}:{})};
+   if(state==="enqueued"||!error)delete (updated as {deliveryError?:string}).deliveryError;
+   rows[index]=updated;this.writeRows(rows);
+  });
+  return updated!;
+ }
+ private writeRows(rows:BackgroundJobJournalEntry[]):void{
+  const perSession=new Map<string,BackgroundJobJournalEntry[]>();for(const row of rows){const entries=perSession.get(row.sessionId)??[];entries.push(row);perSession.set(row.sessionId,entries);}
+  const retained=[...perSession.values()].flatMap(entries=>{
+   const protectedRows=entries.filter(row=>row.authorizationId!==undefined||row.state==="running"||row.state==="interrupted"),ordinary=entries.filter(row=>row.authorizationId===undefined&&row.state!=="running"&&row.state!=="interrupted").sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt));
+   if(protectedRows.length>MAX_ENTRIES)throw new Error("Background unresolved operation ledger reached its safe retention limit");
+   return [...ordinary.slice(-Math.max(0,100-protectedRows.length)),...protectedRows];
+  });
+  const protectedRows=retained.filter(row=>row.authorizationId!==undefined||row.state==="running"||row.state==="interrupted"),ordinary=retained.filter(row=>row.authorizationId===undefined&&row.state!=="running"&&row.state!=="interrupted").sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt));
+  if(protectedRows.length>MAX_ENTRIES)throw new Error("Background unresolved operation ledger reached its safe retention limit");
+  const bounded=[...ordinary.slice(-Math.max(0,MAX_ENTRIES-protectedRows.length)),...protectedRows].sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt)),serialized=JSON.stringify(bounded)+"\n";if(Buffer.byteLength(serialized)>MAX_JOURNAL_BYTES)throw new Error("Background job journal exceeds its byte limit");
+  const temporary=`${this.file}.tmp-${process.pid}-${randomUUID()}`;let fd:number|undefined;
+  try{
+   fd=openSync(temporary,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);writeFileSync(fd,serialized,{encoding:"utf8"});fsyncSync(fd);closeSync(fd);fd=undefined;renameSync(temporary,this.file);
+   try{const dirFd=openSync(dirname(this.file),constants.O_RDONLY);try{fsyncSync(dirFd);}finally{closeSync(dirFd);}}catch{/* Some platforms do not support syncing directories; file data is already flushed. */}
+  }catch(error){if(fd!==undefined)try{closeSync(fd);}catch{}try{unlinkSync(temporary);}catch{}throw error;}
  }
  private readAll():BackgroundJobJournalEntry[]{
   privatePath(this.file);let fd:number;try{fd=openSync(this.file,constants.O_RDONLY|(constants.O_NOFOLLOW??0));}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return [];throw error;}

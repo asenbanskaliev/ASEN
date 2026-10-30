@@ -94,3 +94,26 @@ test("authorization identifiers are durably single-use and ambiguous attempts ca
   assert.equal(journal.load("s",root).filter(row=>row.originalJobId==="first").length,1);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
+
+test("delivery-state persistence preserves unresolved T04 retry entitlements",()=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-retry-delivery-retention-"));
+ try{
+  const journal=new BackgroundJobJournal(join(root,"jobs.json")),now=new Date().toISOString();
+  journal.record({id:"original",sessionId:"s",projectId:root,command:"old-command",mode:"background",state:"running",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[]});
+  const binding={sessionId:"s",projectId:root,interruptedJobId:"original",authorizedCommand:"safe-command",operationDigest:"e".repeat(64),expectedHead:"f".repeat(40),allowedPaths:["allowed.txt"],authorizationExpiresAt:new Date(Date.now()+60_000).toISOString()};
+  journal.claimInterruptedForRetry({...binding,newJobId:"retry-1",authorizationId:"one-use"});
+  for(let index=0;index<105;index++){
+   const at=new Date(Date.now()+index).toISOString();
+   journal.record({id:`ordinary-${index}`,sessionId:"s",projectId:root,command:"test",mode:"background",state:"completed",createdAt:at,updatedAt:at,exitCode:0,eventCount:0,tail:[]});
+  }
+  journal.record({id:"delivered",sessionId:"s",projectId:root,command:"test",mode:"background",state:"completed",createdAt:now,updatedAt:new Date(Date.now()+200).toISOString(),exitCode:0,eventCount:0,tail:[]});
+  journal.updateDeliveryState("delivered","s",root,"enqueued");
+  journal.updateDeliveryState("delivered","s",root,"pending","temporary delivery failure");
+  journal.updateDeliveryState("delivered","s",root,"pending");
+  const rows=journal.load("s",root);
+  assert.equal(rows.find(row=>row.id==="delivered")?.deliveryError,undefined);
+  assert.equal(rows.find(row=>row.id==="retry-1")?.authorizationId,"one-use");
+  assert.equal(rows.find(row=>row.id==="retry-1")?.state,"interrupted");
+  assert.throws(()=>journal.claimInterruptedForRetry({...binding,interruptedJobId:"retry-1",newJobId:"retry-2",authorizationId:"one-use"}),/already consumed/u);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});

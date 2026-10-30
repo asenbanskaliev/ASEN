@@ -8,11 +8,13 @@ import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview} fr
 import {availableIndependentPiReviewers,runIndependentPiReview,type PiReviewRegistry,type PiReviewEvent,type PiReviewerModel} from "../src/review/pi-model-reviewer.js";
 
 const author={provider:"provider-a",id:"writer"},reviewer={provider:"provider-b",id:"reviewer"};
-function fixture(t:unknown){
+function fixture(t:unknown,sensitivePath?:string){
  const root=mkdtempSync(join(tmpdir(),"asen-pi-reviewer-repo-")),parent=mkdtempSync(join(tmpdir(),"asen-pi-reviewer-view-"));
  (t as {after(callback:()=>void):void}).after(()=>{rmSync(root,{recursive:true,force:true});rmSync(parent,{recursive:true,force:true});});
  const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
- git("init","-q");git("config","user.name","ASEN test");git("config","user.email","asen@example.invalid");writeFileSync(join(root,"src.txt"),"before\n");git("add","src.txt");git("commit","-qm","base");writeFileSync(join(root,"src.txt"),"after\n");
+ git("init","-q");git("config","user.name","ASEN test");git("config","user.email","asen@example.invalid");writeFileSync(join(root,"src.txt"),"before\n");git("add","src.txt");git("commit","-qm","base");
+ if(sensitivePath){writeFileSync(join(root,sensitivePath),"sensitive-test-marker\n");git("add",sensitivePath);git("commit","-qm","add sensitive path");writeFileSync(join(root,sensitivePath),"changed sensitive-test-marker\n");}
+ writeFileSync(join(root,"src.txt"),"after\n");
  const workspace=openWorkspaceReview({repositoryRoot:resolve(root),intendedUntracked:[],sessionId:"s",reviewerId:"provider-b/reviewer",viewParent:resolve(parent),risk:{riskId:"T05",reason:"test review",severity:"high",lenses:["risk"]}});
  return {workspace,evidence:readWorkspaceReviewEvidence(workspace)};
 }
@@ -52,5 +54,12 @@ test("requires findings for FAIL and rejects reviewer tool use",async t=>{
  await assert.rejects(()=>runIndependentPiReview({registry:models.value,model:reviewer,author,evidence,requirements:"review"}),/requires at least one finding/u);
  const toolCall=registry("",[{type:"toolcall_start"}]);
  await assert.rejects(()=>runIndependentPiReview({registry:toolCall.value,model:reviewer,author,evidence,requirements:"review"}),/tool call/u);
+ closeWorkspaceReview(workspace);
+});
+
+test("refuses sensitive-path evidence before calling the external reviewer",async t=>{
+ const {workspace,evidence}=fixture(t,".env.local"),models=registry(response());
+ await assert.rejects(()=>runIndependentPiReview({registry:models.value,model:reviewer,author,evidence,requirements:"review"}),/sensitive path/u);
+ assert.equal(models.called(),undefined);
  closeWorkspaceReview(workspace);
 });

@@ -82,6 +82,7 @@ export async function runIndependentPiReview(input:{registry:PiReviewRegistry;mo
  if(!availableIndependentPiReviewers(registry,author).some(item=>item.provider===model.provider&&item.id===model.id))throw new Error("Independent reviewer model is unavailable or equals the author model");
  if(typeof input.requirements!=="string"||!input.requirements.trim()||input.requirements.length>20_000)throw new Error("Review requirements are missing or exceed their bound");
  if(!evidence||typeof evidence.diff!=="string")throw new Error("Exact review evidence is unavailable");
+ if([...evidence.modifiedFiles,...evidence.candidateFiles].some(file=>hasSensitiveName(file.path)))throw new Error("Independent review evidence contains a sensitive path");
  const payload=JSON.stringify({requirements:input.requirements,candidate:evidence.candidate,repositoryState:evidence.repositoryState,modifiedFiles:evidence.modifiedFiles,candidateFiles:evidence.candidateFiles,diff:evidence.diff,
   tests:evidence.tests,risks:evidence.risks,requestId:evidence.requestId,sessionId:evidence.sessionId,reviewerId:"pi-model:"+model.provider+"/"+model.id});
  if(payload.length>maxEvidenceCharacters)throw new Error("Complete candidate evidence exceeds the reviewer input bound");
@@ -104,3 +105,4 @@ export async function runIndependentPiReview(input:{registry:PiReviewRegistry;mo
 }
 import {isProxy} from "node:util/types";
 import {isWorkspaceReviewEvidenceGenuine,type WorkspaceReviewEvidence} from "./workspace-review-session.js";
+import {hasSensitiveName} from "../security/primary-tool-policy.js";

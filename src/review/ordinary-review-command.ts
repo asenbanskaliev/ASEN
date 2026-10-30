@@ -10,6 +10,7 @@ import {assertReviewSessionOpen} from "./review-session.js";
 import {assertWorkspaceProjectionRepository,revalidateWorkspaceReviewProjection,type WorkspaceReviewProjection} from "./workspace-review-projection.js";
 import {captureReviewRepositoryBinding,assertReviewRepositoryBinding} from "./review-tree-inspection.js";
 import {validatePortableReviewPaths} from "./review-tree-paths.js";
+import {hasSensitiveName} from "../security/primary-tool-policy.js";
 
 interface ReviewCommandContext{
  cwd:string;hasUI?:boolean;signal?:AbortSignal;modelRegistry?:PiReviewRegistry;model?:PiReviewerModel;
@@ -38,6 +39,9 @@ function reserveCorrectionSlot():{evicted?:readonly [string,CorrectionState]}|un
 function changedCandidatePaths(before:readonly Readonly<{path:string;mode:string;objectId:string}>[],after:readonly Readonly<{path:string;mode:string;objectId:string}>[]):string[]{
  const previous=new Map(before.map(file=>[file.path,file.mode+":"+file.objectId])),current=new Map(after.map(file=>[file.path,file.mode+":"+file.objectId]));
  return [...new Set([...previous.keys(),...current.keys()])].filter(path=>previous.get(path)!==current.get(path)).sort();
+}
+function assertNoSensitiveReviewPaths(paths:readonly string[]):void{
+ if(paths.some(hasSensitiveName))throw new Error("La revisión independiente no puede incluir rutas sensibles (.env*, *.pem, *.key)");
 }
 async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:string):Promise<unknown>{
  const sessionId=context.sessionManager?.getSessionId?.(),registry=context.modelRegistry,author=context.model;
@@ -86,8 +90,13 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
    // The selection spans both the base and candidate trees: a deleted path
    // and a new path may overlap or differ only by case, although each tree
    // is materialized separately under its own stricter collision rules.
-   reviewPaths=Object.freeze(selected.map(path=>validatePortableReviewPaths([path])[0]!).sort());
-  }catch{throw new Error("El alcance de revisión debe ser un array JSON de rutas exactas válidas");}
+   const validated=selected.map(path=>validatePortableReviewPaths([path])[0]!);
+   assertNoSensitiveReviewPaths(validated);
+   reviewPaths=Object.freeze(validated.sort());
+  }catch(error){
+   if(error instanceof Error&&error.message.startsWith("La revisión independiente no puede incluir rutas sensibles"))throw error;
+   throw new Error("El alcance de revisión debe ser un array JSON de rutas exactas válidas");
+  }
  }
  let intendedUntracked:string[];
  if(correction)intendedUntracked=[...correction.intendedUntracked];
@@ -95,8 +104,15 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
   const untrackedText=await context.ui.editor("Rutas untracked que deben incluirse (JSON array; [] si ninguna)","[]");
   assertContextCurrent();
   if(!untrackedText)return {status:"cancelled"};
-  try{const parsed:unknown=JSON.parse(untrackedText);if(!Array.isArray(parsed))throw new Error();intendedUntracked=parsed;}catch{throw new Error("El alcance untracked debe ser un array JSON válido");}
+  try{
+   const parsed:unknown=JSON.parse(untrackedText);if(!Array.isArray(parsed))throw new Error();
+   const validated=validatePortableReviewPaths(parsed);assertNoSensitiveReviewPaths(validated);intendedUntracked=[...validated];
+  }catch(error){
+   if(error instanceof Error&&error.message.startsWith("La revisión independiente no puede incluir rutas sensibles"))throw error;
+   throw new Error("El alcance untracked debe ser un array JSON válido y no incluir rutas sensibles");
+  }
  }
+ assertNoSensitiveReviewPaths([...reviewPaths,...intendedUntracked]);
  const reviewerId="pi-model:"+model.provider+"/"+model.id;
  let workspace:ReturnType<typeof openWorkspaceReview>;
  try{workspace=openWorkspaceReview({repositoryRoot:projectRoot,intendedUntracked,sessionId,reviewerId,viewParent:tmpdir(),
@@ -129,6 +145,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
  }};
  try{
   const evidence=readWorkspaceReviewEvidence(workspace),paths=evidence.modifiedFiles.map(file=>file.path);
+  assertNoSensitiveReviewPaths([...evidence.modifiedFiles.map(file=>file.path),...evidence.candidateFiles.map(file=>file.path)]);
   if(correction){
    const currentFiles=workspace.manifest.entries.map(entry=>({path:entry.path,mode:entry.mode,objectId:entry.objectId})),changed=changedCandidatePaths(correction.priorFiles,currentFiles);
    if(workspace.projection.baseCommit!==correction.baseCommit||workspace.projection.baseTree!==correction.baseTree){
@@ -154,6 +171,8 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
   assertContextCurrent();assertReviewSessionOpen(workspace.session);
   if(!consent)return {status:"cancelled",requestId:workspace.requestId,candidate:evidence.candidate};
   assertCorrectionReserved();
+  assertNoSensitiveReviewPaths([...evidence.modifiedFiles.map(file=>file.path),...evidence.candidateFiles.map(file=>file.path)]);
+  revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
   const verdict=await runIndependentPiReview({registry,model,author,evidence,requirements,...(context.signal?{signal:context.signal}:{})});
   assertCorrectionReserved();assertContextCurrent();
   if(context.signal?.aborted)throw new Error("Independent review was cancelled");

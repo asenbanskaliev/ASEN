@@ -1,4 +1,4 @@
-import {randomUUID} from "node:crypto";
+import {createHash,randomUUID} from "node:crypto";
 import {spawnContained} from "../evidence/spawn-contained.js";
 import type {ChildProcessWithoutNullStreams} from "node:child_process";
 import type {BackgroundJobJournal} from "./background-job-journal.js";
@@ -20,18 +20,19 @@ export function backgroundJobTerminalNotification(job:BackgroundJobSnapshot):Rea
  if(job.state==="running"||job.state==="queued")return null;
  const terminal=["completed","failed","stopped","timed_out","flooded","interrupted"] as const;
  if(!terminal.includes(job.state as typeof terminal[number]))return null;
- return Object.freeze({id:`${job.sessionId}:${job.projectId}:${job.id}:terminal`,message:formatBackgroundJobStatus(job)});
+ const identity=createHash("sha256").update(`${job.sessionId}\0${job.projectId}\0${job.id}`).digest("hex");
+ return Object.freeze({id:`asen:background:${identity}:terminal`,message:formatBackgroundJobStatus(job)});
 }
 /** Deterministic, scoped view for pending delivery after a restart. */
-export function pendingBackgroundJobNotifications(jobs:readonly BackgroundJobSnapshot[],sessionId:string,projectId:string):readonly Readonly<{id:string;message:string}>[]{
+export function pendingBackgroundJobNotifications(jobs:readonly BackgroundJobSnapshot[],sessionId:string,projectId:string):readonly Readonly<{id:string;message:string;jobId:string;sessionId:string;projectId:string}>[]{
  if(!sessionId||!projectId)throw new Error("Notification scope is invalid");
  const seen=new Set<string>();
- const pending:Readonly<{id:string;message:string}>[]=[];
+ const pending:Readonly<{id:string;message:string;jobId:string;sessionId:string;projectId:string}>[]=[];
  for(const job of jobs){
   if(job.sessionId!==sessionId||job.projectId!==projectId||job.deliveryState==="enqueued")continue;
   const notification=backgroundJobTerminalNotification(job);
   if(!notification||seen.has(notification.id))continue;
-  seen.add(notification.id);pending.push(notification);
+  seen.add(notification.id);pending.push(Object.freeze({...notification,jobId:job.id,sessionId:job.sessionId,projectId:job.projectId}));
  }
  return Object.freeze(pending);
 }
@@ -106,6 +107,16 @@ export class BackgroundJobRegistry{
  finish(id:string,state:"completed"|"failed"|"stopped"|"timed_out"|"flooded",exitCode:number|null):void{const job=this.require(id);if(job.state!=="running")return;job.state=state;job.exitCode=exitCode;job.updatedAt=new Date().toISOString();if(job.timer)clearTimeout(job.timer);if(state!=="completed"){job.abort?.abort();if(job.child&&!job.child.killed){try{if(process.platform!=="win32"&&job.child.pid)process.kill(-job.child.pid,"SIGTERM");else job.child.kill();}catch{try{job.child.kill("SIGKILL");}catch{/* Best effort after terminal state is durable. */}}}}try{this.journal?.record(this.snapshot(id));delete job.persistenceError;}catch{job.persistenceError="Background journal could not persist the terminal result";}this.emit(id,state);this.prune();}
  stop(id:string):void{this.finish(id,"stopped",null);}
  setDeliveryState(id:string,state:"pending"|"enqueued",error?:string):BackgroundJobSnapshot{const job=this.require(id);if(job.state==="running")throw new Error("Cannot deliver a running job result");job.deliveryState=state;if(state==="pending"&&error)job.deliveryError=error;else delete job.deliveryError;try{this.journal?.record(this.snapshot(id));delete job.persistenceError;}catch{job.persistenceError="Background journal could not persist delivery state";}return this.snapshot(id);}
+ /** Scope checks are repeated at the persistence boundary, including after a restart. */
+ setDeliveryStateScoped(id:string,sessionId:string,projectId:string,state:"pending"|"enqueued",error?:string):BackgroundJobSnapshot{
+  if(!sessionId||!projectId)throw new Error("Background delivery scope is invalid");
+  const job=this.#jobs.get(id);
+  if(job){this.assertScope(id,sessionId,projectId);return this.setDeliveryState(id,state,error);}
+  if(!this.journal)throw new Error("Background job is unavailable after restart");
+  const row=this.journal.updateDeliveryState(id,sessionId,projectId,state,error);
+  const {recoveredAt:_recoveredAt,resumable:_resumable,...snapshot}=row;
+  return Object.freeze(snapshot);
+ }
  snapshot(id:string):BackgroundJobSnapshot{const job=this.require(id),identity=job.retryIdentity;return Object.freeze({id,sessionId:job.options.sessionId,projectId:job.options.projectId,command:job.options.command,...(job.options.args?{args:job.options.args}:{}),...(job.options.cwd?{cwd:job.options.cwd}:{}),mode:job.options.mode,state:job.state,createdAt:job.createdAt,updatedAt:job.updatedAt,exitCode:job.exitCode,eventCount:job.eventCount,tail:Object.freeze([...job.tail]),...(identity?{authorizationId:identity.authorizationId,operationDigest:identity.operationDigest,originalJobId:identity.originalJobId,expectedHead:identity.expectedHead,allowedPaths:identity.allowedPaths,authorizationExpiresAt:identity.authorizationExpiresAt}:{}),...(job.persistenceError?{persistenceError:job.persistenceError}:{}),...(job.deliveryState?{deliveryState:job.deliveryState}:{}),...(job.deliveryError?{deliveryError:job.deliveryError}:{})});}
  list(sessionId:string,projectId?:string):readonly BackgroundJobSnapshot[]{const active=[...this.#jobs.keys()].map(id=>this.snapshot(id)).filter(job=>job.sessionId===sessionId&&(projectId===undefined||job.projectId===projectId)),known=new Set(active.map(job=>job.id)),recovered=this.journal?.load(sessionId,projectId).filter(job=>!known.has(job.id))??[];return Object.freeze([...active,...recovered].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)));}
  async disposeSession(sessionId:string):Promise<void>{const owned=[...this.#jobs].filter(([,job])=>job.options.sessionId===sessionId);for(const [id,job] of owned){job.disposeRequested=true;if(job.state==="running")this.finish(id,"stopped",null);if(!job.done)this.#jobs.delete(id);}
@@ -125,4 +136,3 @@ export class BackgroundJobRegistry{
  }
  private emit(id:string,kind:BackgroundJobEvent["kind"],line?:string):void{const job=this.require(id),eventId=kind==="line"?`${id}:line:${job.eventCount}`:`${id}:${kind}`,event:BackgroundJobEvent={id:eventId,jobId:id,sessionId:job.options.sessionId,projectId:job.options.projectId,mode:job.options.mode,kind,at:new Date().toISOString(),...(line!==undefined?{line}:{}) ,...(job.exitCode!==undefined?{exitCode:job.exitCode}:{})};for(const listener of [...job.listeners]){try{listener(Object.freeze(event));}catch{/* Observers cannot alter job lifecycle. */}}}
 }
-

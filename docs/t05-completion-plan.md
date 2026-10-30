@@ -2,6 +2,8 @@
 
 Fecha de contraste: 2026-10-27
 
+> **Scope update (2026-10-30):** this historical plan records the original T05/S6 acceptance bar and must not be used to admit the renegotiated FULL label. The current bounded acceptance criteria are in `docs/audit/t04-t05-full-closure-plan-2026-10-30.md`. In particular, real-provider review, restart-durable public state, OS sandboxing and external R4 signoff remain disclosed debt; the bounded label still requires its exact contract tests, fresh candidate CI and an independent R4 review for the PR #38 rescue.
+
 PR observado: #37, rama `feat/t09-managed-update-stage`
 
 HEAD remoto observado: `ec43aab347b6d47c5060788fc8d8f88cd5e501a2`

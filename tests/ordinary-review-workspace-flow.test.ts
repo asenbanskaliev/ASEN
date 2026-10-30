@@ -95,6 +95,31 @@ test("unexpected untracked files block dispatch to the external reviewer",async 
  assert.equal(result.status,"blocked");assert.deepEqual(result.unexpectedFiles,["outside-scope.txt"]);assert.equal(state.calls(),0);
 });
 
+test("tracked and untracked sensitive paths are rejected before creating a review snapshot or dispatching",async t=>{
+ for(const sensitivePath of [".env.local","private.pem","private.key"]){
+  for(const kind of ["tracked","untracked"] as const){
+   const state=setup(t,[{verdict:"pass",findings:[]}]),root=state.context.cwd;
+   const bytes="sensitive-test-marker";
+   if(kind==="tracked"){
+    writeFileSync(join(root,sensitivePath),bytes+"\n");
+    execFileSync("git",["-C",root,"add",sensitivePath]);execFileSync("git",["-C",root,"commit","-qm","add sensitive path"]);
+    writeFileSync(join(root,sensitivePath),bytes+" changed\n");
+   }else writeFileSync(join(root,sensitivePath),bytes+"\n");
+   state.context.ui.editor=async title=>{
+    if(title.includes("untracked"))return kind==="untracked"?JSON.stringify([sensitivePath]):"[]";
+    if(title.includes("Rutas exactas"))return JSON.stringify(kind==="tracked"?["target.txt",sensitivePath]:["target.txt"]);
+    return "Check the task requirements";
+   };
+   const parent=mkdtempSync(join(tmpdir(),"asen-sensitive-review-preflight-")),prior=process.env.TMPDIR;
+   try{
+    process.env.TMPDIR=parent;
+    await assert.rejects(()=>state.handler("workspace",state.context),/rutas sensibles/u);
+    assert.equal(state.calls(),0);assert.doesNotMatch(state.messages.join("\n"),new RegExp(bytes,"u"));assert.deepEqual(readdirSync(parent),[]);
+   }finally{if(prior===undefined)delete process.env.TMPDIR;else process.env.TMPDIR=prior;rmSync(parent,{recursive:true,force:true});}
+  }
+ }
+});
+
 test("a modified tracked file outside the selected review scope blocks model dispatch",async t=>{
  const state=setup(t,[{verdict:"pass",findings:[]}]),root=state.context.cwd;
  writeFileSync(join(root,"outside.txt"),"before\n");

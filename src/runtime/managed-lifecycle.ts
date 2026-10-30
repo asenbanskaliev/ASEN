@@ -174,6 +174,8 @@ export async function uninstallManaged(request:Readonly<{prefix:string;confirmed
  if(!records)return fail("FOREIGN_ROOT","Managed root has no valid ASEN ownership record; nothing was removed");
  const retained:string[]=[];let removedFiles=0;
  const body=async()=>{
+  const records=await readManagedOwnershipRecords(managedRoot);
+  if(!records)return fail("FOREIGN_ROOT","Managed ownership records changed before uninstall; nothing further was removed");
   for(const version of records.versions){
    const versionRoot=path.join(managedRoot,"versions",version.version),info=await lstat(versionRoot).catch(()=>undefined);
    if(!info)continue;
@@ -195,11 +197,9 @@ export async function uninstallManaged(request:Readonly<{prefix:string;confirmed
   await rmdirIfEmpty(path.join(managedRoot,"staging"),retained);
   // Ownership records are the only proof needed to resume, so they stay while anything remains.
   if(retained.length===0)for(const name of ["managed-versions.json","managed-install.json"])await unlink(path.join(managedRoot,name)).catch(error=>{if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;});
+  if(retained.length===0)await clearJournal(prefix);
  };
- const inspection=await inspectManagedInstall({prefix});
- if(inspection.status==="owned")await withManagedMaintenanceLock({prefix,confirmed:true},body);
- else await body();
- if(retained.length===0)await unlink(path.join(prefix,MANAGED_JOURNAL_NAME)).catch(error=>{if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;});
+ await withManagedMaintenanceLock({prefix,confirmed:true,allowPartialInventory:true},body);
  await rmdirIfEmpty(managedRoot,retained);
  const unique=[...new Set(retained)];
  return Object.freeze({schema:"asen.managed-uninstall-report/v1",operation:"uninstall",status:unique.length?"partial":"removed",managedRoot,removedFiles,retained:Object.freeze(unique),userDataTouched:false});
