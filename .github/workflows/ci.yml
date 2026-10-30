@@ -68,7 +68,8 @@ jobs:
   t07-real-codegraph:
     if: >-
       github.event_name == 'pull_request' &&
-      github.head_ref == 'feat/t07-codegraph-completion' &&
+      (github.head_ref == 'feat/t07-codegraph-completion' ||
+       github.head_ref == 'feat/t12-integrated-acceptance') &&
       github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'
     strategy:
       fail-fast: false
@@ -138,6 +139,46 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           npm ci --ignore-scripts
           node --import tsx --test tests/t07-real-asen-codegraph.test.ts
+  t12-integrated-security:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.head_ref == 'feat/t12-integrated-acceptance' &&
+      github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Verify exact candidate and checks
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm ci --ignore-scripts
+          npm run typecheck
+          npm run audit:upstream-boundary
+      - name: Provider-free integrated security journeys
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx --test tests/t12-integrated-boundaries.test.ts tests/workspace-resolution.test.ts tests/shared-session-directory.test.ts tests/workspace-writer-lease.test.ts tests/workspace-attribution.test.ts tests/workspace-snapshot.test.ts tests/t09-lifecycle.test.ts tests/code-intelligence.test.ts 2>&1 | tee t12-integrated-security.log
+      - name: Retain exact-SHA security receipt
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: t12-security-${{ github.event.pull_request.head.sha }}
+          path: t12-integrated-security.log
+          if-no-files-found: warn
+          retention-days: 30
   architecture:
     runs-on: ubuntu-24.04
     steps:
