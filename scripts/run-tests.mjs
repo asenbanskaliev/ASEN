@@ -1,4 +1,6 @@
 import {spawn} from "node:child_process";
+import {realpathSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {fileURLToPath} from "node:url";
 import {isAbsolute,relative,resolve} from "node:path";
 import {discoverTestFiles,planTestRuns} from "./test-plan.mjs";
@@ -133,13 +135,23 @@ export function runChildWithWatchdog({
  });
 }
 
+// Managed-install tests require canonical roots; the macOS /var link and Windows 8.3 short names are not.
+// The environment is rewritten only when the canonical form actually differs.
+function canonicalTemporaryEnvironment(env){
+ try{
+  const lexical=tmpdir(),canonical=realpathSync.native(lexical);
+  if(canonical===lexical)return env;
+  return process.platform==="win32"?{...env,TEMP:canonical,TMP:canonical}:{...env,TMPDIR:canonical};
+ }catch{return env;}
+}
+
 function spawnNode(args,context){
  return runChildWithWatchdog({
   ...context,
   args,
   spawnChild:context.spawnChild??(spawnArgs=>spawn(process.execPath,spawnArgs,{
    stdio:"inherit",
-   env:process.env,
+   env:canonicalTemporaryEnvironment(process.env),
    detached:context.platform!=="win32",
   })),
  });

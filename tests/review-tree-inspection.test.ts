@@ -346,7 +346,7 @@ test("does not lazily fetch a missing promisor blob or invoke local transport",t
  source.git("add",".");source.git("commit","-q","-m","promisor source");
  const owner=resolve(source.root,".."),remote=join(owner,"remote.git"),marker=join(owner,"transport.marker"),wrapper=join(owner,"upload-pack.cjs");
  execFileSync("git",["clone","-q","--bare",source.root,remote]);
- execFileSync("git",["-C",remote,"config","uploadpack.allowFilter","true"]);
+ execFileSync("git",["--git-dir",remote,"config","uploadpack.allowFilter","true"]);
  writeFileSync(wrapper,`require('node:fs').appendFileSync(${JSON.stringify(marker)},'called\\n');const {spawnSync}=require('node:child_process');const r=spawnSync('git-upload-pack',process.argv.slice(2),{stdio:'inherit'});process.exit(r.status??1);\n`);
  const quote=(value:string)=>`'${value.replaceAll("\\","/").replaceAll("'","'\\''")}'`;
  const upload=`${quote(process.execPath)} ${quote(wrapper)}`;

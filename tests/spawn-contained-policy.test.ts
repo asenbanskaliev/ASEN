@@ -33,8 +33,8 @@ test("legacy contained spawn preserves its existing default command contract",as
   const call=calls[0];assert(call);assert.equal(call.options.cwd,f.root);assert.equal(call.options.env,process.env);
   assert.deepEqual(call.options.stdio,["ignore","pipe","pipe"]);assert.equal(call.options.shell,false);
   if(process.platform==="win32"){
-   assert.equal(call.command,"powershell.exe");assert.deepEqual(call.args.slice(0,-1),["-NoLogo","-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-EncodedCommand"]);
-   assert.equal(call.options.detached,false);assert.equal(call.options.windowsHide,true);
+   assert.equal(call.command,process.execPath);assert.deepEqual(call.args,["--version"]);
+   assert.equal(call.options.shell,false);assert.equal(call.options.detached,false);assert.equal(call.options.windowsHide,true);
   }else{assert.equal(call.command,process.execPath);assert.deepEqual(call.args,["--version"]);}
   fake.emit("close",0,null);
  });
@@ -46,12 +46,8 @@ test("inherited contained spawn pins policy and private payload without shell",a
   assert.equal(calls.length,1);const call=calls[0];assert(call);assert.equal(call.options.shell,false);
   assert.equal(call.options.cwd,f.root);assert.equal(call.options.env,process.env);
   if(process.platform==="win32"){
-   const root=process.env.SystemRoot??process.env.SYSTEMROOT;assert(root);
-   assert.equal(call.command,path.join(root,"System32","WindowsPowerShell","v1.0","powershell.exe"));
-   assert.deepEqual(call.args.slice(0,-1),["-NoLogo","-NoProfile","-NonInteractive","-EncodedCommand"]);
-   assert.equal(call.args.some(arg=>/ExecutionPolicy|Bypass/u.test(arg)),false);
-   const names=await readdir(f.parent);assert.equal(names.length,1);
-   assert.equal((await stat(path.join(f.parent,names[0]!))).isDirectory(),true);
+   assert.equal(call.command,process.execPath);assert.deepEqual(call.args,["--version"]);
+   assert.equal(call.options.detached,false);assert.equal(call.options.windowsHide,true);
   }else{assert.equal(call.command,process.execPath);assert.deepEqual(call.args,["--version"]);}
   fake.emit("close",0,null);assert.deepEqual(await readdir(f.parent),[]);
  });
@@ -64,8 +60,8 @@ test("inherited contained spawn refuses a relative payload parent before effects
  });
 });
 
-for(const replacement of [false,true]){
- test(`inherited payload cleanup preserves ${replacement?"replaced":"unlisted"} data`,{skip:process.platform!=="win32"?"Windows-only payload transport":false},async()=>{
+ for(const replacement of [false,true]){
+ test(`inherited payload cleanup preserves ${replacement?"replaced":"unlisted"} data`,{skip:"The Windows PowerShell payload bridge was removed after the hosted-runner hang was reproduced"},async()=>{
   const launch=await inherited(),f=await fixture();await recording(async(calls,fake)=>{
    launch(process.execPath,["--version"],{cwd:f.root,env:process.env},f.parent);assert.equal(calls.length,1);
    const names=await readdir(f.parent);assert.equal(names.length,1);const payload=path.join(f.parent,names[0]!);

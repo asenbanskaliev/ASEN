@@ -32,6 +32,7 @@ export const WINDOWS_PROCESS_TESTS=Object.freeze([
 
 const WINDOWS_REMAINING_CHUNK_SIZE=50;
 const WINDOWS_PROCESS_CHUNK_SIZE=4;
+const MACOS_CHUNK_SIZE=50;
 const comparePaths=(left,right)=>left<right?-1:left>right?1:0;
 
 export async function discoverTestFiles(root){
@@ -59,6 +60,14 @@ export function planTestRuns({platform,testFiles,nodeOptions}){
  }
  const sorted=[...testFiles].sort(comparePaths);
  const base=["--import","tsx","--test",...nodeOptions];
+ if(platform==="darwin"){
+  const runs=[];
+  for(let index=0;index<sorted.length;index+=MACOS_CHUNK_SIZE){
+   const chunk=sorted.slice(index,index+MACOS_CHUNK_SIZE);
+   runs.push({name:`macos-${Math.floor(index/MACOS_CHUNK_SIZE)+1}`,args:[...base,...chunk]});
+  }
+  return runs;
+ }
  if(platform!=="win32")return [{name:"all",args:[...base,...sorted]}];
  for(const file of WINDOWS_PROCESS_TESTS){
   if(!seen.has(file))throw new Error(`Missing Windows process test: ${file}`);

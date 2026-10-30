@@ -7,6 +7,11 @@ test("agent status is bounded for narrow terminals and preserves the task id bef
  assert.ok(normal.endsWith("…"),"long summaries should be truncated after the task id");
  assert.ok(agentStatusRows([q],30)[0]!.length<=30);
 });
+test("interrupted agent status keeps the review-required warning visible at 80 columns",()=>{
+ const q=createAgentRecord({id:"agent-package-interrupted",role:"explorer",owner:{kind:"user",id:"pi:asen-package-reopen-session"},sessionId:"s",projectId:"p",createdAt:"2026-10-06T00:00:00Z"});
+ const row=agentStatusRows([{...q,state:"interrupted",summary:"Interrupted; explicit review is required before continuing"}],80)[0]!;
+ assert.ok(row.includes(q.id));assert.ok(row.includes("review required"));assert.ok(row.indexOf(q.id)<row.indexOf("review required"));assert.ok(row.length<=80);
+});
 test("registered agent status command makes hostile display controls visible without mutating provider records",async()=>{
  const hostile=createAgentRecord({id:"agent\u200b-id",role:"work\u2028er",owner:{kind:"agent",id:"own\u2029er"},sessionId:"s",projectId:"p",createdAt:"2028-10-06T00:00:00Z"});
  const benign=createAgentRecord({id:"task-plain",role:"worker",owner:{kind:"user",id:"owner"},sessionId:"s",projectId:"p",createdAt:"2029-10-06T00:00:00Z"});

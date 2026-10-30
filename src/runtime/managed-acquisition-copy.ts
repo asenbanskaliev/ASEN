@@ -124,12 +124,13 @@ async function sourceUnchanged(item:Seen,start:number,root?:string):Promise<void
 
 async function destinationUnchanged(item:Seen,start:number,root?:string):Promise<void>{
  const current=await observe(item.absolute,item.kind,start,root);
+ // These are directories: creating/removing child directories changes POSIX
+ // nlink without changing ownership. File single-link checks remain separate.
  if(item.absolute!==current.absolute
   ||item.canonical!==current.canonical
   ||item.kind!==current.kind
   ||item.dev!==current.dev
   ||item.ino!==current.ino
-  ||item.nlink!==current.nlink
   ||item.mode!==current.mode){
   fail(`Managed acquisition copy destination ancestor changed: ${item.absolute}`);
  }
@@ -177,7 +178,9 @@ export async function verifyManagedAcquisitionDestinationDirectoryClaim(
 ):Promise<boolean>{
  try{
   const item=await observe(absolute,"directory",performance.now());
-  return item.canonical===claim.canonicalPath&&item.dev===claim.dev&&item.ino===claim.ino&&item.mode===claim.mode&&item.nlink===claim.nlink;
+  // Cleanup still uses nonrecursive rmdir on exactly claimed empty paths.
+  // A mutable child count is not directory identity; unknown children survive.
+  return item.canonical===claim.canonicalPath&&item.dev===claim.dev&&item.ino===claim.ino&&item.mode===claim.mode;
  }catch{return false;}
 }
 

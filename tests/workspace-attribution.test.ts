@@ -1,4 +1,4 @@
-import test from "node:test";import assert from "node:assert/strict";import path from "node:path";import {findPotentialWorkspaceConflicts,groupChanges,recordWorkspaceChange,visibleWorkspaceConflictRows,visibleWorkspaceRows} from "../src/runtime/workspace-attribution.js";
+import test from "node:test";import assert from "node:assert/strict";import path from "node:path";import {findPotentialWorkspaceConflicts,groupChanges,recordWorkspaceChange,visibleWorkspaceConflictRows,visibleWorkspaceRows} from "../src/runtime/workspace-attribution.js";import {visibleWidth} from "../src/runtime/responsive-layout.js";
 import {mkdtemp,mkdir,readFile,realpath,rm} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {PersistentWorkspaceStore,parseWorkspaceFile,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";import authorityExtension,{recordSuccessfulWorkspaceWrite} from "../extensions/authority.js";
 const base={path:"src/a.ts",actor:{kind:"agent" as const,id:"worker-1"},sessionId:"s1",projectId:"p1",worktree:path.resolve("repo"),operation:"modify" as const,at:"2026-10-06T00:00:00Z"};
 test("workspace display sanitizes control and format characters before bounding without mutating attribution",()=>{
@@ -9,7 +9,7 @@ test("workspace display sanitizes control and format characters before bounding 
  assert.deepEqual(change,before);
  const benign={...base,path:"src/café-日本.ts"};
  assert.deepEqual(visibleWorkspaceRows([benign]),["modify agent:worker-1 src/café-日本.ts"]);
- assert.deepEqual(visibleWorkspaceRows([change],30),[`modify agent:worker-1 …é-日本.ts`]);
+ const narrow=visibleWorkspaceRows([change],30);assert.deepEqual(narrow,[`modify agent:worker-1 …日本.ts`]);assert.ok(narrow.every(row=>visibleWidth(row)<=30));
  const injected={...base,actor:{kind:"agent" as const,id:"x\u001b[31m"},operation:"mo\u0007dify" as "modify"};
  assert.deepEqual(visibleWorkspaceRows([injected]),["mo�dify agent:x�[31m src/a.ts"]);
 });
@@ -23,7 +23,7 @@ test("workspace conflict display sanitizes controls but preserves raw conflict i
  assert.deepEqual(conflicts,before);
  assert.equal(conflicts[0]!.path,first.path);
  const bounded=visibleWorkspaceConflictRows(conflicts,20);
- assert.deepEqual(bounded,["potential conflict a"]);
+ assert.deepEqual(bounded,["potential conflict …"]);assert.ok(bounded.every(row=>visibleWidth(row)<=20));
 });
 
 test("workspace attribution binds actor session project and worktree",()=>{const c=recordWorkspaceChange(base);assert.equal(c.actor.id,"worker-1");assert.equal(groupChanges([c]).get("agent:worker-1")?.length,1);});
@@ -49,6 +49,11 @@ test("workspace conflict review folds case on Windows and macOS, while preservin
  assert.equal(findPotentialWorkspaceConflicts(changes,"win32").length,1);
  assert.equal(findPotentialWorkspaceConflicts(changes,"darwin").length,1);
  assert.equal(findPotentialWorkspaceConflicts(changes,"linux").length,0);
+});
+test("workspace conflict identity includes the worktree so parallel checkouts do not collide",()=>{
+ const first=recordWorkspaceChange({...base,path:"src/same.ts",worktree:path.resolve("worktree-a"),actor:{kind:"agent",id:"worker-a"}});
+ const second=recordWorkspaceChange({...base,path:"src/same.ts",worktree:path.resolve("worktree-b"),actor:{kind:"user",id:"user"}});
+ assert.deepEqual(findPotentialWorkspaceConflicts([first,second]),[]);
 });
 test("workspace change paths use portable separators and reject Windows absolute paths",()=>{assert.equal(recordWorkspaceChange({...base,path:"src\\nested\\file.ts"}).path,"src/nested/file.ts");assert.throws(()=>recordWorkspaceChange({...base,path:"C:\\secrets\\token"}),/escapes/);});
 test("workspace identity compares Win32 realpath and extended-length forms",()=>{

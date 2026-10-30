@@ -31,7 +31,7 @@ export function validateEvidenceBundle({candidate,sourceCommit,sourceManifestSha
  const cells=[],receipts=[];
  for(const group of groups){
   const expected=planPiSupportMatrix().filter(cell=>cell.platform===group.platform);
-  assert.equal(group.matrix.length,8);assert.equal(group.receipts.length,6);
+  assert.equal(group.matrix.length,expected.length);assert.equal(group.receipts.length,6);
   const selected=new Map();let artifact;
   for(const entry of group.matrix){
    const row=JSON.parse(entry.bytes),cell=expected.find(cell=>cell.id===row.id);
@@ -57,8 +57,8 @@ export function validateEvidenceBundle({candidate,sourceCommit,sourceManifestSha
    for(const key of ["command","observation"])assert.ok(typeof row[key]==="string"&&row[key].trim());
    assert.equal(hash(entry.log),row.logSha256,"Receipt log bytes disagree");
    if(row.class!=="DETERMINISTIC_EXECUTION"){
-    const references=JSON.parse(entry.log);assert.ok(Array.isArray(references));assert.equal(references.length,8);
-    assert.equal(new Set(references.map(item=>item.id)).size,8);
+    const references=JSON.parse(entry.log);assert.ok(Array.isArray(references));assert.equal(references.length,planPiSupportMatrix().filter(cell=>cell.platform===group.platform).length);
+    assert.equal(new Set(references.map(item=>item.id)).size,references.length);
     for(const reference of references){assert.ok(selected.has(reference.id));assert.equal(reference.sha256,selected.get(reference.id));}
    }
    receipts.push({id:row.id,kind:row.kind,platform:group.platform,sha256:hash(entry.bytes),sourceManifestCheckoutSha256:row.sourceManifestSha256});
@@ -83,7 +83,7 @@ export function validateEvidenceBundle({candidate,sourceCommit,sourceManifestSha
    receipts.push({id:row.id,kind:row.kind,platform:group.platform,sha256:hash(entry.bytes),sourceManifestCheckoutSha256:row.sourceManifestSha256});
   }
  }
- assert.equal(cells.length,24);assert.equal(new Set(cells.map(cell=>cell.id)).size,24);
+ assert.equal(cells.length,planPiSupportMatrix().length);assert.equal(new Set(cells.map(cell=>cell.id)).size,cells.length);
  assert.ok(kinds.every(kind=>receipts.some(receipt=>receipt.kind===kind)));
  return {schema:"asen.ecosystem-evidence-bundle/v1",candidate,sourceCommit,sourceManifestSha256,
   cells,receipts,kinds,consistency:"PASS",claimsPromotion:false,

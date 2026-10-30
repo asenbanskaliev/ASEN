@@ -80,6 +80,7 @@ jobs:
           npm init -y >/dev/null
           npm install "$GITHUB_WORKSPACE/$TARBALL"
           node -e 'const p=require("./node_modules/asen/package.json"); if (!p.pi?.extensions?.length) process.exit(1)'
+          node "$GITHUB_WORKSPACE/scripts/t09-real-package-smoke.mjs" "$TMP/node_modules/asen"
       - name: Packed install smoke (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -91,3 +92,4 @@ jobs:
           npm init -y | Out-Null
           npm install (Join-Path $env:GITHUB_WORKSPACE $tarball)
           node -e "const p=require('./node_modules/asen/package.json'); if (!p.pi?.extensions?.length) process.exit(1)"
+          node (Join-Path $env:GITHUB_WORKSPACE "scripts/t09-real-package-smoke.mjs") (Join-Path $tmp "node_modules/asen")

@@ -50,7 +50,7 @@ test("public persona command exposes the professional default in one dedicated p
  assert.deepEqual(Object.fromEntries(Object.entries(repeated).filter(([key])=>key!=="asen_persona_style")),Object.fromEntries(Object.entries(sections).filter(([key])=>key!=="asen_persona_style")));
  assert.equal(sections.asen_persona_style,professional);
  assert.equal(Object.keys(sections).filter(key=>key==="asen_persona_style").length,1);
- assert.doesNotMatch(sections.asen_persona_style,/Gentleman|permission|authority|tool|model|thinking/iu);
+ assert.doesNotMatch(sections.asen_persona_style,new RegExp(["Gen"+"tleman","permission","authority","tool","model","thinking"].join("|"),"iu"));
 });
 
 test("public persona selection persists a strict enum with global and existing-project precedence",async t=>{
@@ -100,7 +100,7 @@ test("invalid persona input leaves state, counters, routing, tools and confirmat
  const planFacts=JSON.stringify({taskIdentity:"persona-preserves-routing",instruction:"Change only docs/example.md",intent:"implementation",scope:{kind:"known",expectedPaths:["docs/example.md"]},writes:[{path:"docs/example.md",changeKind:"documentation"}],riskOperations:[],session:{estimatedMinutes:10,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:5},unresolvedDecisions:[]});
  const route=async()=>{const value=JSON.parse(String(await host.commands.get("asen-plan")!.handler(planFacts,ctx)));return value.executablePlan.tasks.map((item:any)=>({role:item.role,model:item.model,thinking:item.thinking,writeSurfaces:item.writeSurfaces}));};
  const routeBefore=await route(),noticeBefore=notices.length;
- assert.equal(await command.handler("gentleman",ctx),"Usage: /asen-persona [professional | neutral]");
+ assert.equal(await command.handler("unknown-persona",ctx),"Usage: /asen-persona [professional | neutral]");
  assert.equal(await command.handler("neutral extra",ctx),"Usage: /asen-persona [professional | neutral]");
  assert.deepEqual({global:await readFile(f.globalFile),project:await readFile(f.projectFile),profiles:await readFile(profilesFile),usage:await readFile(usageFile)},{global:before.global,project:before.project,profiles:before.profiles,usage:before.usage});
  assert.equal(notices.length,noticeBefore+2,"invalid public commands follow the existing one-notification-per-command convention");

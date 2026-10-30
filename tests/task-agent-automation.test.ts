@@ -42,7 +42,7 @@ test("automatic advancement stops at a clarification instead of inventing missin
  assert.equal((await runtime.list(identity)).length,0);
 });
 
-test("successful DAG steps advance separately from independent final verification",async t=>{
+test("a model-generated passing verifier summary still requires explicit user acceptance",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-plan-auto-verify-"));t.after(()=>rm(dir,{recursive:true,force:true}));
  const identity={sessionId:"session-b",projectId:dir},todos=await SessionTodoStore.open(join(dir,"todos.json")),links=new TaskAgentLinkStore(join(dir,"links.json"));
  const [explorer,verifier]=await todos.addPlan([
@@ -61,10 +61,12 @@ test("successful DAG steps advance separately from independent final verificatio
  await links.bind({taskId:verifier.taskId,agentId:"task:verifier",...identity,createdAt:"2026-10-14T00:00:02.000Z"});
  records=[...records,{id:"task:verifier",role:"verifier",owner:{kind:"user",id:"user"},state:"completed",createdAt:"2026-10-14T00:00:02.000Z",updatedAt:"2026-10-14T00:00:03.000Z",summary:JSON.stringify({verdict:"pass",evidence:["Reviewed the final diff","Required local checks passed"]}),...identity}];
  await reconciler.reconcile(identity);
- assert.equal((await todos.list(identity)).find(row=>row.taskId===verifier.taskId)?.current.state,"done");
+ const verifierTask=(await todos.list(identity)).find(row=>row.taskId===verifier.taskId);
+ assert.equal(verifierTask?.current.state,"blocked");
+ assert.match(verifierTask?.current.reason??"",/explicit user acceptance/u);
 });
 
-test("a passing linked verifier closes its successful upstream writer without a second acceptance",async t=>{
+test("a model-generated passing verifier summary cannot close its upstream writer",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-plan-auto-close-writer-"));t.after(()=>rm(dir,{recursive:true,force:true}));
  const identity={sessionId:"session-writer-verify",projectId:dir},todos=await SessionTodoStore.open(join(dir,"todos.json")),links=new TaskAgentLinkStore(join(dir,"links.json")),selection={phase:"apply" as const,risk:"low" as const,codeChange:true,behaviorChange:false,filesTouched:1},candidate={id:"candidate-writer",repository:dir,revision:"a".repeat(40),createdAt:"2026-10-14T00:00:00.000Z"};
  const [worker,unrelatedWorker,verifier]=await todos.addPlan([
@@ -83,10 +85,10 @@ test("a passing linked verifier closes its successful upstream writer without a 
   {id:"task:verifier",role:"verifier",owner:{kind:"user" as const,id:"user"},state:"completed" as const,createdAt:"2026-10-14T00:00:01.000Z",updatedAt:"2026-10-14T00:00:02.000Z",summary:JSON.stringify({verdict:"pass",evidence:["Only the authorized file changed","Local checks passed"]}),...identity},
  ]};
  await new TaskAgentTodoReconciler(todos,agents as never,links).reconcile(identity);
- const rows=await todos.list(identity);assert.equal(rows.find(row=>row.taskId===worker.taskId)?.current.state,"done");assert.match(rows.find(row=>row.taskId===worker.taskId)?.current.reason??"",/Independent verifier task:verifier/u);assert.equal(rows.find(row=>row.taskId===verifier.taskId)?.current.state,"done");assert.equal(rows.find(row=>row.taskId===unrelatedWorker.taskId)?.current.state,"succeeded","verification cannot close an unrelated writer from the same session");
+ const rows=await todos.list(identity);assert.equal(rows.find(row=>row.taskId===worker.taskId)?.current.state,"succeeded");assert.equal(rows.find(row=>row.taskId===verifier.taskId)?.current.state,"blocked");assert.equal(rows.find(row=>row.taskId===unrelatedWorker.taskId)?.current.state,"succeeded","verification cannot close an unrelated writer from the same session");
 });
 
-test("verifier cannot finish a plan without a structured passing verdict",async t=>{
+test("verifier results require explicit acceptance regardless of summary shape",async t=>{
  for(const [name,summary] of [["free text","Looks good"],["failed verdict",JSON.stringify({verdict:"fail",evidence:["Tests failed"]})],["missing evidence",JSON.stringify({verdict:"pass",evidence:[]})]] as const){
   const dir=await mkdtemp(join(tmpdir(),`asen-plan-auto-reject-${name}-`));t.after(()=>rm(dir,{recursive:true,force:true}));
   const identity={sessionId:`session-${name.replaceAll(" ","-")}`,projectId:dir},todos=await SessionTodoStore.open(join(dir,"todos.json")),links=new TaskAgentLinkStore(join(dir,"links.json"));
@@ -97,6 +99,6 @@ test("verifier cannot finish a plan without a structured passing verdict",async 
   const agents={list:async()=>[{id:"task:verifier",role:"verifier",owner:{kind:"user" as const,id:"user"},state:"completed" as const,createdAt:"2026-10-14T00:00:00.000Z",updatedAt:"2026-10-14T00:00:01.000Z",summary,...identity}]};
   await new TaskAgentTodoReconciler(todos,agents as never,links).reconcile(identity);
   const current=(await todos.list(identity)).find(row=>row.taskId===task!.taskId)?.current;
-  assert.equal(current?.state,"blocked",name);assert.match(current?.reason??"",/valid successful result/u,name);
+  assert.equal(current?.state,"blocked",name);assert.match(current?.reason??"",/explicit user acceptance/u,name);
  }
 });

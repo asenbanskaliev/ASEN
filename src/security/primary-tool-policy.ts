@@ -6,7 +6,9 @@ import {classifyNormalShellCommand} from "./normal-shell-policy.js";
 export type PrimaryToolPolicyHandler=(event:ToolCallEvent,context:ExtensionContext)=>Promise<ToolCallEventResult|undefined>;
 
 const fileTools=new Set(["read","edit","write","grep","find","ls"]);
-const shellTools=new Set(["bash","bash_background","monitor"]);
+// Custom ASEN job launch is a shell-capable tool too. Keep it in the same
+// admission path so its name cannot become an authorization bypass.
+const shellTools=new Set(["bash","bash_background","monitor","asen_background_start"]);
 const denied=(reason:string):ToolCallEventResult=>({block:true,reason:`ASEN primary tool policy blocked ${reason}`});
 
 function sensitiveName(value:string):boolean{
@@ -68,8 +70,9 @@ export function createPrimaryToolPolicyHandler():PrimaryToolPolicyHandler{
    const input=event.input;
    if(shellTools.has(toolName)){
     if(!input||typeof input!=="object"||Array.isArray(input))return undefined;
-    const command=(input as {command?:unknown}).command;
-    if(typeof command!=="string")return undefined;
+    const command=(input as {command?:unknown;args?:unknown}).command;
+    if(typeof command!=="string")return toolName==="asen_background_start"?denied("malformed background command"):undefined;
+    if(toolName==="asen_background_start"&&(Object.hasOwn(input,"args")||Object.keys(input).some(key=>key!=="command"&&key!=="timeoutMs"&&key!=="monitor")))return denied("unsupported background command shape");
     const decision=classifyNormalShellCommand(command);
     if(decision.action==="pass")return undefined;
     if(decision.action==="deny")return denied("destructive shell command");

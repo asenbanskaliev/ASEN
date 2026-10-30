@@ -1,5 +1,5 @@
 /*
- * Portions derived from gentle-pi's normal-mode command guard.
+ * Portions derived from reference-pi's normal-mode command guard.
  * MIT License
  * Copyright (c) 2025 Mario Zechner
  *

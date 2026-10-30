@@ -1,0 +1,221 @@
+# T05 — Plan quirúrgico de revisión exacta
+
+Fecha de contraste: 2026-10-27
+
+PR observado: #37, rama `feat/t09-managed-update-stage`
+
+HEAD remoto observado: `ec43aab347b6d47c5060788fc8d8f88cd5e501a2`
+
+Estado del documento: plan; no acredita implementación, ejecución ni admisión de T05.
+
+## 1. Resultado buscado
+
+Completar T05 para Pi 1.2 componiendo revisión de cambios exactos sobre dos candidatos admitidos por el contrato del proyecto: commits/rangos confirmados y snapshot local de workspace. La revisión debe usar bytes congelados del candidato, invalidarse si cambia cualquiera de sus fuentes, producir un resultado ligado a identidad exacta y conservar una separación estricta entre evidencia de revisión y autoridad de entrega.
+
+La experiencia pública debe tener inicio, progreso, resultado, corrección acotada, revalidación y cierre visibles desde la superficie Pi. Si no existe revisor nativo disponible o no se puede demostrar el aislamiento de la vista, informar `unavailable`/bloqueado; nunca generar un veredicto local sustituto.
+
+## 2. Estado comprobado en HEAD remoto
+
+El Log ODD (`odd/tasks/pi-capability-completion.md`, T05 en L100–104) conserva T05 como IN PROGRESS: A1, A2a1 y A2a2 constan como admisiones locales independientes; A2b (vista/lifetime propia), B/C/D e integración pública siguen abiertos. Registra una incertidumbre de fixture ACL Windows y explícitamente no afirma aprobación nativa.
+
+El mapa (`odd/tasks/ecosystem-final-parity-map.md`, tabla T05) resume A1/A2a1/A2a2 y marca composición pública del snapshot pendiente. La descripción está incompleta respecto al código actual: en HEAD ya existen `openOrdinaryReviewSession()` y `materializeOrdinaryReviewView()` en `src/review/ordinary-review-controller.ts`. Aun así, la ruta pública `/asen-review` en `src/review/ordinary-review-command.ts` solo consume la solicitud, verifica checkout y devuelve el checkout; no crea el manifiesto/vista/sesión, no recibe el resultado RDD y no entrega una conclusión revisable. El mapa debe actualizarse cuando una unidad de implementación y su evidencia exacta se admitan, no solo porque existan funciones.
+
+### Código existente que se debe reutilizar
+
+| Área | Código y prueba existente | Alcance real observado |
+|---|---|---|
+| Snapshot del workspace | `src/review/workspace-review-projection.ts`; `tests/workspace-review-projection.test.ts` | Índice privado, alcance explícito de untracked, identidad base/candidato y revalidación de fuentes/índice. No es todavía una entrada de sesión pública completa. |
+| Preflight portable | `src/review/review-tree-paths.ts`; `tests/review-tree-paths.test.ts` | Rechazo de paths no portables antes de materializar. |
+| Inspección del árbol | `src/review/review-tree-inspection.ts`; `tests/review-tree-inspection.test.ts` | Inspección bounded/no materializante, verificación de blobs y relaciones Git, aislando configuración/hook/transport; rechaza tipos y enlaces no admitidos. |
+| Vista propiedad de ASEN | `src/review/review-view.ts`; `tests/review-view.test.ts` | Crea archivos regulares desde manifest, hash al leer/revalidar, disposición por inventario y comprobación de identidad. En Windows intenta ACL con `icacls` para el usuario actual; la capacidad no está probada en el host de CI disponible según el registro T05. |
+| Sesión y riesgo | `src/review/review-session.ts`, `review-risk.ts`; `tests/review-session.test.ts`, `review-risk.test.ts` | Vista + plan de riesgo; rechaza drift manifiesto y dispone al cerrar. La sesión no es persistente ni por sí sola un controlador público. |
+| Checkout/solicitud | `src/review/ordinary-review-controller.ts`; `tests/work-unit-review-candidate.test.ts` | Provenance de candidate genuino, IDs de participantes declarativos, one-use, sesión Pi, checkout limpio/HEAD/árbol/padre exactos. Los IDs no autentican a personas. |
+| Resultado y corrección | `src/review/native-rdd-result.ts`, `bounded-correction.ts`; `tests/review-chain.test.ts` | Bind exacto de resultado RDD externo y una corrección tras FAIL; la prueba sintética solo prueba el validador, no ejecuta revisor nativo. |
+| Entrada Pi | `extensions/asen.ts` registra `/asen-review`; `ordinary-review-command.ts` | Comando conectado, pero sin composición de materialización/resultado/sesión/cierre en su flujo de host. |
+
+## 3. Comparación con implementación de referencia
+
+El repo contiene una copia de auditoría local de implementación de referencia cuyo `package.json` declara 4.3.0 y cuyo checkout visible es `c5313157b798a9c31ff122204f6b8c7dde1c3d75` (2026-10-17). La propia documentación de ASEN advierte que el pin congelado de Reference A (`08de420…`) no demuestra por sí solo la versión 4.3.0; `6e681f1…` es complemento de la misma referencia, no una segunda autoridad. Por ello, esta comparación usa el contrato fuente presente en el snapshot local de auditoría y el análisis ya guardado en `odd/tasks/reference-extension-parity.md`; no se debe etiquetar como prueba de paridad byte-a-byte con 4.3.0 hasta cerrar un inventario inmutable de esa versión.
+
+| Punto | implementación de referencia observado | ASEN en HEAD | Decisión quirúrgica para T05 |
+|---|---|---|---|
+| Autoridad | motor externo de revisión (Go) es dueño de worktree, lineage, freeze, selección de lentes, corrección, validator y burn de aprobación. cliente Pi externo transporta tokens opacos; no reconstruye estado. | ASEN posee validadores/provenance internos; no hay receptor de extensión que haga recorrido RDD completo. | Implementar adapter de composición Pi que transporte datos/resultado y no invente autoridad. No crear una segunda autoridad durable si el runtime/provider no ofrece el protocolo. |
+| Entrada y evaluación | `assess` antes de `inspect`; se revisa si la evaluación indica `reviewDue` o el usuario pide revisión. Review switch es propiedad del usuario. | No se observó un flujo equivalente público en el comando actual; el registro solo prepara y verifica. | Conservar la política RDD existente del proyecto. Añadir estado y explicación explícitos para “no requerido”, “solicitado”, “indisponible”; nunca encender switch ni consentir automáticamente. |
+| Candidato | El provider ofrece el único START, retiene lineage/revision/target/workspaceRoot y congela una vez. Soporta repositorio explícitamente autorizado distinto. | Commit candidate y checkout exacto existen. Snapshot local tiene proyección privada A1, pero no conecta a `/asen-review`. | Unir proyección local → identidad de árbol → manifest → sesión. Primero documentar si revisión de PR/rango llega por candidate ya existente; no duplicar snapshot ni tocar HEAD/index. Repositorio cruzado queda fuera salvo consentimiento y contrato explícitos. |
+| Inmutabilidad y vista | El provider emite materialization token y bytes del árbol congelado; reviewer solo ve ese contexto. cliente Pi externo no pasa candidato vía `/tmp` ni usa worktree/index/HEAD vivo. | ASEN inspecciona Git tree y materializa una vista temporal; el filesystem no es un sandbox contra proceso concurrente del mismo usuario. | Usar solo manifest exacto y archivos regulares. Revalidar hash + identidad antes de lectura, despacho, resultado, corrección y cierre. Registrar la limitación same-user/TOCTOU, sin proclamar aislamiento OS. No ejecutar contenido del candidato. |
+| Reviewer y salida | Captura in-process recibe prompt congelado como mensaje único; sin tools/session/hooks/child y salida bounded o error tipado. Selección sale de model registry del usuario; no hay fallback. | Pi 1.2 ofrece `ctx.modelRegistry.streamSimple()` para llamadas de modelo anidadas y la API de extensión da comandos/UI. ASEN puede bindear resultado externo exacto, pero no ejecuta o integra un capturador en el comando. | Puede implementarse un reviewer como llamada anidada provider-neutral, alimentada con los bytes exactos y sin herramientas. Eso genera evidencia analítica, no identidad independiente/autenticada ni autoridad RDD del provider. Salida no confiable hasta schema/provenance verificados; sin fallback ni ejecución de tools del reviewer. No añadir dependencia externa obligatoria. |
+| Lentes y finding | Selección de risk/resilience/readability/reliability según superficie tocada, no conteo de archivos; solo findings graves causados por candidato bloquean y causa desconocida escala. | `review-risk.ts` produce plan y candidate review tiene result/correction validators; no consta análisis causal completo de findings en la superficie. | El plan de riesgo existente elige lentes. Si el contrato nativo no expone causalidad, T05 no debe emularla: reportar limitación del veredicto y dejar la severidad al reviewer/autoridad definida. |
+| Consentimiento y cancelación | Consentimiento es por candidato; Relay lossless; cancelar/declinar no equivale a apagar el switch. Error/unavailable no aprueba. | Falta flujo público conectado; IDs de participante son metadatos, no autenticación. | Consentimiento host es explícito por candidato, cancelar cierra y dispone. Rechazo/no UI/headless/error → `unavailable`; no permitir que `authorId` o `reviewerId` acrediten identidad. |
+| Corrección | El provider provee ruta acotada ligada a findings/lineage; como máximo una bounded correction; luego reevalúa el candidato corregido exacto. | `openBoundedCorrection()` acepta solo resultado fail genuino y `validateBoundedCorrection()` consume una ronda, pero no actualiza ni vuelve a inspeccionar el candidato. | Mantener una ronda; requiere nueva proyección/tree/manifest y nuevo resultado ligado a revisión previa. Un PASS viejo no valida revisión del candidato nuevo. Hallazgos fuera de scope, revisión unavailable o schema malo bloquean. |
+| Estado, retry y cierre | Cada transición viene de provider STATUS; no repetir mutaciones tras timeout incierto; acknowledgement exacto quema la autoridad; detener no aprueba entrega. | Solicitud/checkout/result son WeakSet/WeakMap in-memory de un proceso; no existe restart/recovery integrado. Checkout one-use. | En T05 alcance Pi de una sesión, declarar no-resumible tras reinicio y exigir preparar de nuevo. No retry automático; si no puede saberse si ocurrió una acción, bloquear y pedir nueva revisión. La recepción de resultado es informativa, nunca commit/push/merge/release. |
+| Entrega | Commit/push/PR/release permanecen bajo política normal; aprobar review no autoriza delivery. | Validadores no exponen delivery fields; el comando notifica que no hay autorización. | Preservar esa separación y añadir tests negativos para todos los caminos. |
+
+implementación de referencia sirve como referencia de responsabilidades y ciclo, no como autorización para copiar su protocolo, UI, branding o garantías de aislamiento. La futura paridad con proveedor nativo exige un binding de fuente/inventario y un contrato runtime observado.
+
+## 4. Plan de ejecución ordenado
+
+Cada unidad debe tener dueño, alcance de archivos, RED causal antes del cambio (cuando el comportamiento esté ausente), GREEN, typecheck aplicable, revisión de seguridad independiente de esa misma unidad y binding de hashes/commit. No acumular todos los cambios y pedir una revisión difusa al final. El plan no declara evidencia de ninguno de estos pasos.
+
+### T05-1 — Cerrar y corregir el bloqueo Windows de la vista
+
+**Alcance:** `src/review/review-view.ts`, `tests/review-view.test.ts`, instrumento/evidencia en ODD.
+
+1. Obtener una reproducción controlada en Windows con la fixture existente, acotada a `.cache/asen-review-view-*` recién creada y propiedad del test. La autorización ODD L442 cubre solo ACL de esas vistas propias y sus contenidos; no cambiar ACL de `.cache`, repo, archivos previos ni elevar permisos.
+2. Instrumentar fases (`mkdtemp`, escritura, ACL, verificación, cleanup), status/stdio/error exacto, identidad dev/ino, ACL previa y posterior, listado de contenido y cleanup. Asegurar `icacls` argumento literal, timeout y captura de salida para una sola ejecución diagnóstica.
+3. Reprobar/confirmar: si `icacls` no puede demostrar protección, mantener fail-closed `review-unavailable`; no afirmar vista read-only Windows. Investigar cleanup por propiedad: hoy `disposeReviewView()` usa `chmodSync` POSIX incluso en Windows, y la ACL RX aplicada puede impedir la eliminación; probar el dueño de la vista y disposición sin abrir permisos a terceros. Solo restaurar/cambiar ACL del directorio exacto propio y si se puede probar identidad; de lo contrario retener e informar ubicación, nunca `rm -rf` ciego.
+4. Añadir regresiones del camino de éxito, ACL no disponible, ACL parcial, reemplazo de root, archivo añadido/symlink, interferencia/rename entre pasos y cleanup repetible/seguro. Windows CI es requerido para admitir A2b; un skip debe figurar como pendiente, no PASS.
+
+**Gate:** el test demuestra quién posee cada path, no modifica ACL ajenas y deja cero objetos propios huérfanos en éxito. Si Windows no puede probarlo, candidato Windows permanece no disponible y T05 no alcanza FULL multiplataforma.
+
+### T05-2 — Composición de snapshot de workspace (A2b)
+
+**Alcance:** controller + tipos en `src/review/ordinary-review-controller.ts` o módulo fino del mismo dominio; tests existentes workspace projection / tree inspection / view / session.
+
+1. Construir manifest desde tree identity de la proyección exacta, sin `git add`, checkout, branch/HEAD mutation ni índice real; confirmar base commit/tree, índice privado y conjunto `intendedUntracked` iguales antes/después.
+2. Encadenar preflight portable → inspección bounded del tree → materialización solo después de inspección aceptada → apertura de sesión de riesgo. Rechazar symlink/gitlink/paths no portables, árboles sobre límites, Git repo/config/worktree sustituidos y errores de `git`; ninguna escritura dentro del repo candidato.
+3. Crear claim opaque en memoria de sesión con raíz física (realpath/dev/ino), base/candidate tree, manifest digest, proyección source/index identity, scope untracked, plan-risk y lifecycle state. No reconstruirlo desde JSON/clones. Tras proceso reiniciado solo permitir comenzar otra revisión.
+4. Antes de cualquier read/capture/result/correction/close, revalidar proyección y manifest completos, comprobar candidate/view hashes y estado sesión. Cualquier drift consume/cierra la solicitud y rechaza resultado viejo.
+5. Cerrar exactamente una vez; disposición por lista allowlisted creada por esta materialización. Si hay entrada no propia o identidad incierta, no borrar; fallar seguro con retención diagnóstica acotada.
+
+**RED/GREEN objetivo:** forjar manifest, cambiar archivo fuente, añadir/quitar intended-untracked, swap de índice/árbol, cambiar bytes vista, insertar enlace/sibling, root replacement, path collision case/NFC/Windows, llamar dos veces y reusar clone debe fallar antes de revisor/corrección; el camino legítimo conserva byte-identidad exacta.
+
+### T05-3 — Resultado y ciclo de vida públicos (B/C)
+
+**Alcance:** `ordinary-review-command.ts`, `ordinary-review-controller.ts`, `extensions/asen.ts`, adapter Pi y tests del comando/host.
+
+1. Definir tipos discriminados: `not-required`, `unavailable`, `awaiting-consent`, `in-progress`, `passed`, `failed`, `correction-required`, `closed`. Sin booleano `approved` ambiguo.
+2. La superficie pública prepara un candidato genuino, aplica política de switch/riesgo, hace bind del session ID del host, compone vista y devuelve al host el material exacto permitido por la API. Si el host no ofrece interfaz de reviewer confiable, mantener la capability `unavailable`; no improvisar una segunda interfaz o subprocess.
+3. Añadir recepción de resultado una sola vez. Revisar schema exacto y cross-binding: request/session/reviewer/revision/tree/parent; IDs declarados no autenticación. Resumen/finding strings son datos no confiables con límites de tamaño/controles Unicode, sin renderizar markup ni ejecutar instrucciones.
+4. Tras esperar al revisor y antes de aceptar el resultado, revalidar candidato/vista. Cancelación, sesión cerrada, vista alterada, reviewer distinto, timeout, host sin UI o restart deben invalidar/retirar la transacción sin PASS.
+5. Con FAIL, abrir a lo sumo una corrección acotada al set de findings válidos; capturar candidato corregido nuevo y nueva vista; correr validación final sobre ese nuevo tree. Rechazar PASS del tree anterior, revisión independiente falsificada, resultado replay y corrección múltiple.
+6. Resultado terminal solo se proyecta como evidencia de review. No llama a delivery/commit/merge/push/release ni cambia switches/permisos.
+
+**Cuestión de arquitectura que se resuelve sin ampliar alcance:** la extensión Pi 1.2 sí puede llamar modelos anidados mediante `ctx.modelRegistry.streamSimple()` y presentar interacción del host; por tanto, no es correcto tratar Pi como incapaz de efectuar revisión. La capacidad distinta aún no demostrada es RDD nativo con identidad/ciclo de autoridad verificable. Implementar reviewer model-driven solo si el T05 adoptado lo admite como evidencia informativa y se ejecuta sin tools sobre candidate freeze exacto; no traducir esa salida a autenticación, aprobación RDD o autoridad. Si no se puede demostrar separación de reviewer y datos de salida estructurados, estado `unavailable`/`unverified`, no `passed` independiente. No fingir soporte por probar `bindNativeRddResult()` con un objeto local.
+
+### T05-4 — Integración visible y recuperación por nueva sesión (C/D)
+
+1. Documentar comando y UX disponible en `docs/runtime-tools.md`/guía adecuada solo después de conectar los tipos públicos; distinguir revisión committed de snapshot local y explicar scope untracked.
+2. Confirmar registro único en Pi 1.2, comportamiento headless/cancelación/error/cierre, comandos duplicados y collision con host. El mensaje debe revelar explícitamente cuando revisión no está disponible.
+3. Tras restart, no restaurar sesiones/claims WeakMap desde historial, cache o modelo. Exigir preparación fresca y nuevo resultado; no transferir autoridad entre proyectos, clones o sesiones.
+4. Actualizar el mapa parity y Log ODD después de admitir evidencias, preservando fallos y límites históricos. No marcar checkbox por documentación o pruebas puramente sintéticas.
+
+### T05-5 — R4 independiente y cierre
+
+Revisión adversarial separada del autor, sobre SHA exacto de la unidad integrada:
+
+- Confused deputy: request de otra instancia/sesión/proyecto; ID de reviewer igual al autor; candidate clone; replay, expiración y reinicio.
+- Manipulación de Git: replace refs, alternar index flags, hooks/config/filter/attributes, worktree `.git` pointer, object format, promisor/lazy fetch, symlink/gitlink, concurrent rename/ref update y archivos cambiantes.
+- Path/OS: `..`, absolute, drive/UNC, ADS `:`, backslash, nombres reservados, colisiones case-folding/NFC, permisos/DACL, junction/reparse point, root/file replacement y cleanup parcial Windows/POSIX/macOS.
+- Resultado/corrección: extra keys, proxies/accessors, Unicode/control injection, oversized data, wrong parent/tree/session/reviewer, PASS antiguo, finding fabricated, duplicate/late result, timeout/cancel y segunda ronda.
+- Revisión de semántica: salida de modelo/prosa/caché nunca autoridad; reviewer unavailable nunca PASS; no delivery authority; no dependencia obligatoria adicional; límites de bytes/entradas/tiempo explícitos y coste de procesos Git acotado.
+
+**FULL T05** requiere: committed candidate + local workspace candidate exactos; flujo público host real; vista y disposición verificadas en los tres OS (sin afirmar un aislamiento mayor que el que ofrece el SO); resultado real RDD ligado al candidate; corrección y nueva validación cuando haya FAIL; tests CI de tres OS/Pi 1.2; R4 sin críticos/altos pendientes; evidencia y mapa/Log ODD actualizados al SHA exacto. Si RDD host/provider o Windows fixture no se prueba, mantener PARTIAL/BLOCKED con el límite concreto.
+
+## 5. Lotes y presupuesto de verificación
+
+1. **Lote 1 (bloqueante):** diagnóstico Windows A2b en una única ejecución instrumentada; arreglar solo la causa probada; RED/GREEN vista+lifetime. No aumentar timeout global como sustituto de diagnóstico.
+2. **Lote 2:** snapshot→manifest→view→session, con regresiones enfocadas; una invocación de suite focal y un typecheck, conservando artefactos/logs.
+3. **Lote 3:** adapter Pi/result/correction y escenarios públicos; decidir honestamente `unavailable` si no hay RDD nativo observable.
+4. **Lote 4:** una auditoría R4 adversarial y correcciones agrupadas. Ejecutar la suite completa localmente disponible una sola vez y publicar una sola tanda coherente de CI después de resolver fallos locales. Ningún cambio doc-only debe disparar CI.
+
+No correr workflows manuales de sondeo. Ante fallo, inspeccionar log/artefacto exacto antes de cualquier reintento; no convertir skips, timeout exterior ni salida sintética en evidencia positiva.
+
+## 6. Evidencia y estado
+
+Fuentes internas inspeccionadas: `odd/tasks/pi-capability-completion.md` L31–35, L87, L100–104, L442; `odd/tasks/ecosystem-final-parity-map.md` T05; `docs/remote-continuation.md` C; `odd/tasks/reference-extension-parity.md` tabla/contrato; código y pruebas listados arriba. El análisis de implementación de referencia local tiene checkout `c5313157b798a9c31ff122204f6b8c7dde1c3d75` pero con dos archivos modificados, y commits congelados `08de420…`/`6e681f1…` no están en su base de objetos local. Antes de elevar cualquier afirmación source-by-source, obtener esos commits inmutables o cerrar el binding de la copia local y conservar rutas/hash por archivo; el contrato observado en la copia no se presenta como prueba de los commits ausentes.
+
+**Resultado de esta tanda:** plan elaborado a partir del HEAD remoto citado; no hubo cambios de runtime, pruebas ejecutadas, PR update, commit, push, aprobación RDD ni admisión. T05 permanece abierto.
+
+## 7. Auditoría del propio plan
+
+Esta sección corrige ambigüedades detectadas al revisar el plan contra el ODD y la fuente de referencia:
+
+1. **Referencia 4.3.0 no está ligada al commit citado.** La copia local consultada declara paquete 4.3.0 y tiene HEAD `c531315…`, pero está modificada en `archivo de extensión del motor externo` y `prueba de contrato de instrucciones del revisor`. Los commits congelados `08de420…` y `6e681f1…` ni siquiera están en su object database local. Por tanto, lo descrito en la tabla de comparación es una observación del snapshot de auditoría/contrato presente, con esos cambios sin resolver; no es evidencia reproducible de implementación de referencia 4.3.0. Antes de usarlo para cerrar decisiones de compatibilidad, el primer prerequisito es obtener checkout limpio de fuente exacta y registrar commit/tree + hash de archivos utilizados. No importar ningún cambio o protocolo del snapshot actual sin resolver esa procedencia.
+2. **L442 es permiso acotado, no prohibición.** El ODD sí autoriza DACL solo para el directorio nuevo `.cache/asen-review-view-*` y contenido que el test acaba de crear, sin elevación ni cambios a `.cache`, repo o rutas previas. El diagnóstico de T05-1 puede modificar/restaurar ACL en esa raíz propia. La autorización no cubre experimentar en carpetas temporales arbitrarias ni la fixture histórica; verificar que la ruta probada está dentro del patrón autorizado antes de empezar. La disposición debe limpiar el árbol de prueba; si la identidad se pierde, parar y conservar evidencia, no ampliar ACL.
+3. **A2b no es íntegramente “sin implementar”.** La vista/sesión y su cierre existen en código. El gap abierto es su garantía Windows aún no admitida, la composición snapshot→manifest→view y su uso desde el camino público, además de demostrar lifetime/cleanup en cada OS. Mantener esa separación al actualizar el mapa evita duplicar módulos ya hechos.
+4. **Committed review y snapshot no son una sola ruta de captura.** El controller actual valida un checkout committed limpio. La captura de workspace compara HEAD/índice/fuentes y produce otra identidad de árbol. El plan debe usar un discriminador de candidato inequívoco y dos adaptadores pequeños hacia el mismo consumo de manifest/vista; jamás forzar el workspace dentro de `bindOrdinaryReviewCheckout()` ni interpretar árbol de workspace como commit.
+5. **La recepción del resultado no autentica al reviewer.** `bindNativeRddResult()` verifica campos y una sola recepción, pero los valores `reviewerId`, `verdict` y `summary` son declarativos. La prueba de cadena usa un objeto creado por el test y no demuestra identidad de proceso/reviewer ni RDD real. Un resultado solo puede considerarse RDD observado si el host aporta una fuente de identidad/capacidad verificable; si no, debe llamarse “resultado externo no autenticado” y no `passed` de revisión independiente.
+6. **Permisos de escritura de la vista no equivalen a inmutabilidad.** POSIX mode bits y una ACL Windows reducen escrituras ordinarias, pero mismo usuario/proceso privilegiado puede alterar la vista; validar hashes detecta cambios observados, no elimina una carrera entre última validación y lectura del reviewer. Si el host recibe un path y otro proceso abre ese path después, hay un TOCTOU real. T05 debe definir y probar el boundary de consumo (bytes transferidos directamente o un reader que revalida inmediatamente); si solo pasa path a un proceso, documentar este límite y no prometer snapshot inmutable. No crear subprocess/sandbox nuevo salvo que el host API ya lo soporte y la threat model lo requiera.
+7. **“Stale” necesita una definición de invalidación.** Para workspace, comparar de nuevo base commit/tree, índice real (incluidos flags/stages), hashes/modos de paths tracked, scope untracked y candidate tree. Para committed candidate, comprobar revision + tree + parent + objeto Git y estado del checkout conforme al contrato; los cambios no relacionados fuera del candidate no deben accidentalmente reescribirlo, pero un checkout alterado no debe hacer que el candidato cambie de significado. Añadir pruebas de carreras deterministas entre verificación y consumo; no basta con cambiar un archivo antes de llamar a revalidate.
+8. **Límites de costos/operaciones quedan como criterios medibles.** Registrar cantidad de invocaciones Git, duración máxima whole-operation, bytes/entries máximos y tamaño de respuesta RDD. El código ejecuta Git varias veces y crea directorios hooks temporales por operación; evitar duplicar inspecciones y hooks durante la composición, sin saltarse una revalidación necesaria. Comparar identidad de bytes del manifest para asegurar que optimizar no cambie semantics.
+9. **La secuencia no debe esperar a un RDD inalcanzable para completar lo técnicamente cerrable.** A2b Windows/lifetime y composición pura se pueden implementar/admitir de forma aislada antes de decidir si el host realmente ofrece RDD. El camino público puede quedar con `unavailable` explícito hasta que esa interfaz exista. FULL, sin embargo, debe requerir prueba del flujo real según el criterio de T05/ODD; no transformar mocks en evidencia host.
+10. **Corrección no debe ampliar autoridad.** La API actual de bounded correction valida ids/revisions declarados y una ronda, pero no prueba que `correctedRevision` existe ni que es el candidate recién congelado. El futuro adaptador debe enlazar la nueva revisión con captura genuina nueva y el conjunto de findings anterior; no aceptar una cadena de texto proporcionada por caller como revisión. Una validación PASS de corrección sigue siendo review evidence únicamente.
+
+### Orden final revisado y puertas de parada
+
+| Orden | Unidad cerrada | Entrega verificable | Si falla |
+|---|---|---|---|
+| 0 | Proveniencia implementación de referencia | Checkout limpio, commit/tree y hashes de contrato/archivos; confirmar versión y alcance exactos | Congelar comparación; continuar ASEN usando solo contrato local ya incorporado, sin claim de equivalencia |
+| 1 | Fixture Windows A2b | Una ejecución diagnóstica instrumentada dentro de raíz ACL autorizada; evidencia de create/read/revalidate/dispose y error causal | Conservar error y salida `unavailable` en Windows; no tocar permisos fuera del scope |
+| 2 | Candidate adapters | Tests separados para committed y workspace; un contrato común de manifest con discriminador y linaje | No mezclar tipos ni ampliar checkout contract |
+| 3 | Materialización/lifetime | RED/GREEN de ownership, hashes, drift, cancelación y cleanup en Windows/Linux/macOS; prueba de carrera relevante | Retener vista solo cuando propiedad probada; no borrar desconocidos |
+| 4 | Host/RDD capability | Prueba de API Pi 1.2 que consume bytes y devuelve resultado con procedencia identificable | Implementación termina honestamente en `unavailable`; sin `pass`, sin credenciales/modelos alternos |
+| 5 | Corrección + revalidación | FAIL real produce una nueva captura/tree y revisión; PASS viejo/replay/múltiples rondas rechazados | Bloquear resultado terminal y disponer sesión con seguridad |
+| 6 | R4/CI/admisión | Auditor independiente del SHA exacto, matrices por OS, logs vinculados y ODD actualizado solo con hechos | Estado T05 permanece PARTIAL; no pedir ronda CI adicional hasta analizar la evidencia fallida |
+
+**Conclusión R4 del documento:** el plan ahora identifica los riesgos técnicos centrales y los prerequisitos que podían convertir pruebas sintéticas o un snapshot modificado en afirmaciones de implementación de referencia/RDD. Sigue siendo un plan; no resuelve el bloqueo Windows ni valida el RDD.
+
+## 9. Preparación ejecutada de las dos comprobaciones
+
+### Pi 1.2 y ruta de revisión
+
+- El `package-lock.json` del candidato fija `@earendil-works/pi-coding-agent` en `1.2.0`; la carpeta `node_modules` no está instalada en este entorno. Se leyó el documento oficial de extensiones en tag `v1.2.0`: `ExtensionContext` da acceso al model runtime y documenta `ctx.modelRegistry.streamSimple()` para llamadas anidadas provider-neutral; hay comandos y UI de extensión. Esto confirma que puede construirse una pasada de revisión basada en modelo dentro de Pi, no que exista RDD nativo.
+- La extensión oficial separada `earendil-works/pi-review` publica `/review` y `/end-review`; declara objetivos uncommitted/base/commit/PR/folder snapshot. Esto demuestra el patrón de producto “revisión como extensión”, no que sea equivalente al RDD de motor externo de revisión ni que sus propiedades satisfagan T05.
+- Resultado de la comprobación: no cerrar T05-3 con “Pi no tiene revisión”. Separar (a) revisión analítica que ASEN puede orquestar con nested model call, si el scope la permite, de (b) aprobación/autenticación/consentimiento RDD, que no aparece en el contrato de extensión consultado. El modelo jamás recibe tools; candidate bytes/scope se congelan antes, y la salida es no confiable hasta validación. Consultar el model registry puede usar credenciales/provider ya configurados por el usuario; no se ha hecho ninguna llamada a modelo ni consumo de provider.
+
+### Diagnóstico y corrección Windows — ejecución del 2026-10-27
+
+- En SHA `48cf83dca51b8415f5715b5ecb96b6be635ee53b`, la suite completa Windows informó 411 PASS y un fallo: la prueba T05 llegó a materializar, leer y revalidar; `disposeReviewView()` falló con `EPERM` en `unlink`.
+- La instrumentación observó que `.cache` concedía `F` a la identidad del runner y la vista materializada quedó con un ACE explícito heredable `(OI)(CI)(RX)`. La implementación llamaba `chmodSync(root, 0o700)`, que no eliminó ese DACL de Windows. La causa concreta es el permiso de solo lectura heredado por archivos/directorios al cerrar, no una ruta corta 8.3 ni un timeout.
+- La regresión Windows se acotó: no crea ni cambia `.cache`; si no existe el parent preexistente, la prueba hace skip. Solo la vista nueva bajo `.cache/asen-review-view-*` se usa para el ciclo ACL/materialización/lectura/cierre. La fixture de manifest vive en un temporal separado. No hay fallback recursivo que toque contenido desconocido.
+- Corrección local: antes del borrado, se valida recursivamente que el árbol contenga exactamente los archivos/directorios del inventario emitido; si hay entradas ajenas, falla antes de relajar ACL. En Windows se reemplaza el ACE de lectura de la raíz propia por un ACE heredable de control total del mismo usuario, luego se borran solo las rutas inventariadas. El parent no se altera. El CI final debe probar la propagación DACL y limpieza real en Windows.
+- Este resultado es una reproducción Windows auténtica del fallo y su causa. La corrección aún no tiene ejecución Windows posterior en un SHA con el parche; no declarar el defecto cerrado hasta esa CI.
+
+## 8. Segunda pasada: riesgos de ejecución que faltaban
+
+La revisión adicional del código concreto encontró que el plan anterior todavía daba por sentado que “close” y “cleanup” son una operación repetible y segura. Hoy no lo son necesariamente; deben convertirse en trabajo explícito antes de aceptar A2b.
+
+### Hallazgos nuevos
+
+| ID | Riesgo comprobable en el diseño actual | Consecuencia | Cambio requerido en el plan/criterio |
+|---|---|---|---|
+| R4-T05-01 | `disposeReviewView()` podía intentar borrar secuencialmente sin preflight exacto; en Windows `chmodSync` no retiraba el DACL de solo lectura heredable aplicado durante materialización y producía `EPERM` al hacer `unlink`. | Riesgo de residuo/cleanup parcial y causa reproducida en Windows. | Implementado localmente: inventario exacto antes de cambios ACL, rechaza contenido extra, y reemplaza DACL únicamente en la raíz de vista propia con permiso heredable para el usuario actual. Pendiente CI Windows para comprobar cleanup y confirmar no hay residuo. El estado de sesión/retry parcial sigue abierto. |
+| R4-T05-02 | `materializeReviewView()` hace cleanup recursivo en `finally` si falla antes de `committed`, pero después de aplicar ACL Windows restrictiva el cleanup puede no tener permiso; además puede ocultar el error original. | Falla de materialización más residuo temporal con causa primaria perdida. | Preservar error primario y reportar cleanup como error secundario; hacer cleanup explícito por identidad/inventario y registrar `cleanup-pending` con path acotado. No relajar DACL genérica para “hacer pasar” la prueba. |
+| R4-T05-03 | La API solo comprueba que `parent` sea canónico, directorio y exterior al repo. No demuestra que el parent sea privado/confiable o no escribible por terceros. | Un parent compartido puede exponer metadatos/árbol, provocar presión de recursos o facilitar carreras sobre entradas aún no materializadas. | El caller debe usar un parent privado cuya propiedad/permisos/DACL se hayan probado sin modificar una ruta existente; si no puede probarlo, devolver `unavailable`. Incluir ACL de parent en Windows y permisos + symlink/replacement checks en Unix. |
+| R4-T05-04 | La ruta `ReviewView.root` se entrega como string. Validar hash justo antes de que otro proceso abra ese path aún deja una ventana TOCTOU; revisar cada archivo en `revalidateReviewView()` y después consumir el path no es atomicidad. | El reviewer podría leer bytes distintos a los validados si comparte usuario/directorio con un escritor concurrente. | Elegir contrato: (a) host consume bytes/stream originados desde API que valida durante lectura, o (b) transferir el directorio a un consumidor que garantice el handle/namespace estable. Si Pi solo admite path y no hay aislamiento del consumidor, marcar esta amenaza residual y bloquear el claim de “candidate inmutable”; no describir ACL como solución contra mismo usuario. |
+| R4-T05-05 | `closeReviewSession()` solo dispone la vista y devuelve un objeto cerrado; la sesión es inmutable, no mantiene estado de intento, y la disposición actual no puede reconciliar un árbol parcialmente borrado. | Cancelar/cerrar tras error no tiene semántica segura de repetición. | Añadir estado interno one-use para cancelación/cleanup, separando “resultado terminal” de “disposición confirmada”; definir salida observable cuando cleanup queda pendiente y evitar reabrir consumo RDD después de iniciar cierre. |
+| R4-T05-06 | `ReviewView` expone `paths`/`entries`; la identidad pública y la forma congelada no impedían construir una vista falsa con raíz/inode ajenos. | Un `disposeReviewView()` estructural podía borrar archivos ajenos listados por el caller. | Corregido localmente: WeakMap privado exigido por read/revalidate/dispose; falsificación y clones rechazan. La carrera de sustitución del filesystem sigue abierta y no queda resuelta por el claim. |
+| R4-T05-07 | Las vistas guardan contenido fuente en disco temporal. En SSD/journaling, `unlink` no es borrado seguro y el temporal puede quedar en backup/indexado; el plan hablaba de cleanup sin clasificar privacidad. | Puede sobrevivir contenido de código/datos sensibles aunque el path desaparezca. | Especificar que cleanup significa retirar entradas y confirmar ausencia en el namespace, no borrado forense. Limitar el parent, documentar que el contenido candidato se escribe temporalmente y no almacenar secretos por política; si la amenaza exige borrado criptográfico, no prometerlo con `unlink`. |
+| R4-T05-08 | El candidate workspace puede cambiar entre captura de proyección y construcción del manifest, o durante materialización; ejecutar `revalidate` en varios puntos no vuelve indivisible la transacción. | Snapshot mezcla bytes o revisa tree distinto a lo que el usuario quiso seleccionar. | Capturar una única identidad tree cerrada desde proyección; materializar únicamente desde los blobs verificados de ese tree, y revalidar identidad fuente después. Resultado consume exactamente ese tree; el cambio concurrente invalida la transacción entera. Escribir pruebas con hooks deterministas/barriers entre fases, no tests de carrera probabilísticos. |
+| R4-T05-09 | Comparación de candidate de commit y workspace podría usar el mismo estado público `passed`; un committed checkout estricto hoy rechaza worktree sucio, mientras el contrato de candidate local permite cambios. | Silenciosamente se excluyen ediciones o se llama “reviewed” un rango distinto. | El resultado debe incluir `candidateKind`, base/revision/tree y scope exactos; UI resume tracked/untracked/deletions incluidos y excluidos. Ningún estado terminal puede reducir la identidad al commit SHA cuando el candidate es un workspace tree. |
+| R4-T05-10 | El plan trata la CI de tres SO como evidencia final pero no exige artefactos que permitan reconstruir el defecto o verificar limpieza/restricciones. | “PASS” sin evidencia sobre ACL/cleanup ni identidad de candidato. | Para cada OS conservar recibo acotado: SHA/tree, versiones OS/Node/Pi, pruebas exactas, ACL/modos antes/después en la raíz propia, paths restantes, tamaños/hash, duración Git/memoria o límites observados, resultado/cancelación y hashes de logs. Redactar nombres de usuario/paths sensibles; jamás incluir bytes del candidato. |
+
+### Cambios insertados al orden de trabajo
+
+Reordenar T05-1/2 antes de construir el comando completo:
+
+1. **T05-0A: fijar amenaza y contenido.** Decidir qué puede incluir el candidate (secret-scanning/redaction no debe reescribir bytes en silencio), dónde vive la vista temporal, quién puede leerla y quién la elimina. Añadir prueba de que `.git`, credenciales excluidas por alcance, symlinks y gitlinks nunca se copian ni recorren.
+2. **T05-0B: probar primitivas reales de lifetime.** Sobre vista sintética sin secretos: fallo de materialización después de N entradas, fallo de cleanup después de N eliminaciones, sustitución de root, entrada extra, archivo omitido, symlink insertado, ACL parcial y segundo cleanup. Acordar estado terminal/pendiente y nunca perder el error primario.
+3. **T05-1: diagnosticar la fixture Windows autorizada.** Una sola ejecución controlada dentro del scope de L442. Instrumentar creación, lectura, revalidación y cleanup, con prueba real de retirada de ACL explícita; usar API de Windows adecuada para permisos solo si ya forma parte del runtime/dependencias permitidas. Si requiere elevar privilegios o tocar parent/preexistentes, parar en `unavailable`.
+4. **T05-2: enlazar los dos candidatos.** Separar committed y workspace, congelar bytes por Git object ID, y tener una sola ruta de lectura desde el manifest. Persistir los hashes/IDs del candidate en el resultado, pero no serializar la autoridad opaca.
+5. **T05-3: integrar Pi/RDD.** Antes de diseñar UI, demostrar con API Pi 1.2 qué objeto/bytes puede consumir la revisión y cómo llega un resultado de vuelta. Si no existe interface de reviewer autenticable, solo publicar preparación y `unavailable`; no añadir ejecutable, servicio/modelo o protocolo ad hoc dentro de T05.
+6. **T05-4: corrección/terminal.** Una ronda solo si el RDD real reporta FAIL, seguida de nuevo capture/view y result binding; cerrar vista anterior con cleanup reconciliable. FAIL del cleanup no debe convertir FAIL de review en PASS ni dejar result consumible.
+7. **T05-5: matriz/CI/R4.** Luego del trabajo local, ejecutar la matriz final una vez por SHA final y revisar evidence bundle antes de cualquier admisión. Cualquier cambio de código posterior invalida evidencia de ese SHA.
+
+### Aclaración del cierre FULL
+
+Hay dos decisiones distintas que no deben mezclarse:
+
+- **FULL de T05 como capability segura:** requiere candidate committed y workspace, composición host real, RDD real verificable, cancelación/fallo/corrección, stale rejection, cleanup recuperable y cobertura Windows/Linux/macOS con evidencia exacta.
+- **Paridad con implementación de referencia 4.3.0:** exige además fijar fuente inmutable 4.3.0 y comparar escenarios compartidos; T05 puede cumplir el contrato ASEN sin afirmar esta paridad global. La fuente de referencia no debe convertirse en requisito de acceso a servicio/proveedor si la capacidad se puede verificar con contrato runtime local autorizado.
+
+No se acepta como FULL si una ejecución deja cleanup pendiente, si el resultado no identifica el tipo/árbol exacto, si el revisor no está autenticado/verificable según el contrato real o si la comparación implementación de referencia continúa basada en checkout modificado sin pins.
+
+### Avance local comprobable — 2026-10-27
+
+- HEAD inicial remoto del PR #37: `ec43aab347b6d47c5060788fc8d8f88cd5e501a2`. Primer lote publicado: `48cf83dca51b8415f5715b5ecb96b6be635ee53b`; abrió workflows con los cambios locales de esa versión.
+- Auditoría de `disposeReviewView()` encontró que la autorización de borrado dependía de campos públicos (`root`, `rootDev`, `rootIno`, `paths`) que se podían construir sin materializar una vista. La función podía borrar un archivo ajeno si esos campos apuntaban a un directorio ajeno con valores de identidad compatibles. Se corrigió localmente con un `WeakMap` privado por instancia, validación de ruta real/inode antes de cerrar y regresión que prueba vista falsificada y clonada, preservando un archivo marcador ajeno.
+- En el primer lote, empaquetado ubuntu/windows/macos PASS; Pi runtime evidence y Pi support matrices Linux/macOS/Windows PASS. El CI full suite Linux/macOS se detuvo después en el upstream-boundary audit por el nombre de referencia en el nuevo plan. Windows ejecutó la suite y obtuvo 411 PASS/1 FAIL: la única falla fue el diagnóstico T05 `EPERM` ya descrito. Phase 0/Release Gate también fallaron por ese mismo texto del documento, no por una regresión de tests de producto. La versión saneada del plan ya pasa el auditor local; el nuevo SHA debe reejecutar los gates.
+- Estado local más reciente tras el parche de ACL/reintento: cinco módulos T05 **34/34 PASS**, `npm run typecheck`, `npm run build`, `git diff --check` y `scripts/audit-upstream-boundary.mjs` PASS. La suite completa 2.175/0/18 pertenece al primer lote antes del cambio ACL; no se repitió tras este ajuste localizado. La corrección aún necesita la segunda ejecución Windows.
+- Revisión adversarial independiente acotada del WeakMap: PASS para falsificación/clonación y compatibilidad; no cubre TOCTOU ni autenticidad RDD. El nuevo preflight impide tocar ACL con datos inesperados; aún falta R4 independiente de la ruta ACL corregida.
+- Estado actual T05: PARTIAL. Persisten composición pública completa, snapshot workspace, reintento/cierre parcial, RDD auténtico verificable, macOS específico, CI final en el SHA corregido y admisión ODD. No se afirma FULL.

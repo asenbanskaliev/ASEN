@@ -1,4 +1,5 @@
 import {consumeValidatedAgentResult,type AgentResult} from "../agents/dispatcher.js";
+import {sanitizeTerminalText,truncateForTerminal} from "./responsive-layout.js";
 export type PublicAgentState="queued"|"running"|"interrupted"|"cancelled"|"failed"|"completed";
 export interface PublicAgentRecord{id:string;role:string;owner:{kind:"user"|"agent"|"system";id:string};sessionId:string;projectId:string;state:PublicAgentState;createdAt:string;updatedAt:string;summary?:string}
 export interface AgentLifecycleSink{createdAt():string;queued(input:Omit<PublicAgentRecord,"state"|"updatedAt">):void|Promise<void>;running(id:string,at?:string):void|Promise<void>;completed(id:string,result:AgentResult,at?:string):void|Promise<void>;failed(id:string,summary?:string,at?:string):void|Promise<void>;cancelled(id:string,summary?:string,at?:string):void|Promise<void>;snapshot():readonly PublicAgentRecord[]}
@@ -10,8 +11,8 @@ export function transitionAgent(record:PublicAgentRecord,next:PublicAgentState,a
 /** Creates the sole valid completed projection from a live, one-use Dispatcher receipt. */
 export function completeAgentRecord(record:PublicAgentRecord,result:AgentResult,sink:AgentLifecycleSink,at:string):PublicAgentRecord{if(!record||record.state!=="running"||!consumeValidatedAgentResult(result,sink,record.id,record.sessionId,record.projectId)||result.id!==record.id||result.ok!==true)throw new Error("Agent completion requires a successful, unused Dispatcher result for this sink and task identity");return applyTransition(record,"completed",at,result.output,true);}
 /** Display only: keep authoritative lifecycle identity intact and make controls visibly inert. */
-function displayText(value:string):string{return value.replace(/[\p{Cc}\p{Cf}\u2028\u2029]/gu,"�");}
-export function agentStatusRows(records:readonly PublicAgentRecord[],width=120):string[]{return records.map(r=>{const p=`${r.state.padEnd(11)} ${displayText(r.role)} ${r.owner.kind}:${displayText(r.owner.id)} `,detail=`${displayText(r.id)}${r.summary?` — ${displayText(r.summary).replace(/\s+/gu," ").trim()}`:""}`,room=Math.max(4,width-p.length),value=detail.length>room?detail.slice(0,room-1)+"…":detail;return (p+value).slice(0,width);});}
+function displayText(value:string):string{return sanitizeTerminalText(value);}
+export function agentStatusRows(records:readonly PublicAgentRecord[],width=120):string[]{return records.map(r=>{const summary=r.state==="interrupted"?"review required":r.summary?displayText(r.summary).replace(/\s+/gu," ").trim():"",owner=r.state==="interrupted"?"":`${r.owner.kind}:${displayText(r.owner.id)} `;return truncateForTerminal(`${r.state.padEnd(11)} ${displayText(r.role)} ${owner}${displayText(r.id)}${summary?` — ${summary}`:""}`,width);});}
 export function createAgentLifecycleSink(now:()=>string=()=>new Date().toISOString()):AgentLifecycleSink{
  const records=new Map<string,PublicAgentRecord>();
  const move=(id:string,state:Exclude<PublicAgentState,"queued">,summary?:string,at=now())=>{const current=records.get(id);if(!current)throw new Error("Agent lifecycle record does not exist");records.set(id,transitionAgent(current,state,at,summary));};

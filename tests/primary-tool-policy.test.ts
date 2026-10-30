@@ -86,6 +86,20 @@ test("guarded confirmation decline, cancel and headless contexts block with zero
  });
 });
 
+test("background executable and argv use the primary shell admission policy",async t=>{
+ let executions=0,confirmations=0;
+ const ctx=context(process.cwd(),{ui:{confirm:async()=>{confirmations++;return false;}}});
+ const deniedPush=await invoke(event("asen_background_start",{command:"git push origin main"}),ctx,()=>{executions++;});
+ assert.equal(deniedPush?.block,true,"unapproved git push must not spawn");
+ assert.equal(executions,0);
+ assert.equal(confirmations,1,"guarded push requires fresh human approval");
+ const destructive=await invoke(event("asen_background_start",{command:"rm -rf /"}),ctx,()=>{executions++;});
+ assert.equal(destructive?.block,true,"hard-denied argv must not spawn");
+ assert.equal(executions,0);
+ const malformed=await policy(event("asen_background_start",{command:"git push",args:["origin"]}),ctx);
+ assert.equal(malformed?.block,true);
+});
+
 test("a guarded confirmation promise error is thrown so the host fails closed",async()=>{
  let executions=0;const failure=new Error("dialog failed"),ctx=context(process.cwd(),{ui:{confirm:async()=>{throw failure;}}});
  await assert.rejects(()=>invoke(event("bash",{command:"git rebase main"}),ctx,()=>{executions++;}),error=>error===failure);

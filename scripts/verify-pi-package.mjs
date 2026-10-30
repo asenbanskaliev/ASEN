@@ -12,6 +12,7 @@ import {settleVerifierChild} from "./pi-verifier-exit.mjs";
 if(!process.argv[2])throw new Error("Usage: node scripts/verify-pi-package.mjs <installed-package-root> [pi-cli-path]");
 const packageRoot=path.resolve(process.argv[2]);
 const root=mkdtempSync(path.join(tmpdir(),"asen-installed-pi-"));
+const verifierEnvironment=()=>({...createPiVerifierEnvironment(process.env),ASEN_PI_VERIFIER_TRACE:"1"});
 try {
   process.env.HOME=root;process.env.USERPROFILE=root;
   process.env.PI_CODING_AGENT_DIR=path.join(root,"agent");
@@ -25,7 +26,9 @@ try {
   const loaded=loader.getExtensions();
   assert.deepEqual(loaded.errors,[]);
   assert.deepEqual(loaded.extensions.map(e=>path.basename(e.path)),["asen.ts"],"installed primary must exclude child authority");
-  assert.equal(loaded.extensions.some(e=>e.handlers.has("tool_call")),false,"primary install must not inherit child tool denial");
+  // The primary policy guard is the only tool_call handler; child authority is excluded by the extension list above.
+  assert.equal(loaded.extensions.filter(e=>e.handlers.has("tool_call")).length,1,"primary install must carry exactly the primary tool policy");
+  assert.equal(loaded.extensions[0].handlers.get("tool_call").length,1,"primary install must not stack child tool denial");
   assert.ok(loaded.extensions[0].handlers.has("session_start"),"public preflight must wait for initialized host context");
   assert.equal(loaded.extensions[0].commands.size,0,"commands must not register before collision inventories are initialized");
   const defaultPiCli=path.join(path.dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))),"bundle","cli.js");
@@ -57,7 +60,7 @@ try {
   const assertInterruptedAgentVisible=message=>{
     assert.ok(message.includes(agentId),`restored agent identity must be visible: ${message}`);
     assert.ok(message.includes("interrupted"),`restored agent state must be visible: ${message}`);
-    assert.ok(message.includes("explicit review"),`interrupted work must require review before continuation: ${message}`);
+    assert.ok(message.includes("review required"),`interrupted work must require review before continuation: ${message}`);
   };
   writeFileSync(path.join(asenHome,"workspace.json"),JSON.stringify({schema:"asen.workspace/v1",revision:2,changes:[
     {revision:1,id:"change-package-owned",change:workspaceChange(sessionId,"src/owned.ts","user-owned")},
@@ -71,7 +74,7 @@ try {
     });
   }`);
   const child=spawn(process.execPath,[cli,"--mode","rpc","--session-id",sessionId,"--no-extensions","--extension",primary,"--extension",probe,"--no-skills"],{
-    cwd:root,env:createPiVerifierEnvironment(process.env),stdio:["pipe","pipe","pipe"]});
+    cwd:root,env:verifierEnvironment(),stdio:["pipe","pipe","pipe"]});
   // Pi 0.85.1 decides whether to enter RPC from the first available stdin bytes.
   child.stdin.write(JSON.stringify({id:"commands",type:"get_commands"})+"\n");
   const closed=new Promise(resolve=>child.once("close",(code,signal)=>resolve({code,signal})));
@@ -146,7 +149,7 @@ try {
   }
   // Reopen the same durable Pi session in a fresh process and re-read both persisted projections.
   const reopened=spawn(process.execPath,[cli,"--mode","rpc","--session-id",sessionId,"--no-extensions","--extension",primary,"--no-skills"],{
-    cwd:root,env:createPiVerifierEnvironment(process.env),stdio:["pipe","pipe","pipe"]});
+    cwd:root,env:verifierEnvironment(),stdio:["pipe","pipe","pipe"]});
   const reopenedClosed=new Promise(resolve=>reopened.once("close",(code,signal)=>resolve({code,signal})));
   let reopenedVerified=false;
   const seen=[];let reopenedRecoveryNotice="",reopenedTodoRecoveryNotice="";
@@ -171,7 +174,7 @@ try {
   assert.deepEqual(seen,["asen-agents","asen-todos","asen-task-agents","asen-changes"]);
   // Open a different real Pi session against the same project and durable stores.
   const foreign=spawn(process.execPath,[cli,"--mode","rpc","--session-id","asen-package-foreign-session","--no-extensions","--extension",primary,"--no-skills"],{
-    cwd:root,env:createPiVerifierEnvironment(process.env),stdio:["pipe","pipe","pipe"]});
+    cwd:root,env:verifierEnvironment(),stdio:["pipe","pipe","pipe"]});
   const foreignClosed=new Promise(resolve=>foreign.once("close",(code,signal)=>resolve({code,signal})));
   let foreignVerified=false;
   await new Promise((resolve,reject)=>{

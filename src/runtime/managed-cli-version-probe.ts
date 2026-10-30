@@ -20,7 +20,7 @@ export interface ManagedCliVersionObservation {
 }
 interface DirectoryClaim {path:string;identity:string;canonical:string}
 /** @internal Shared immutable execution target; metadata never grants execution authority. */
-export interface ManagedCliCandidateBinding {managed:DirectoryClaim;versionRoot:string;entryPoint:string;fingerprint:string}
+export interface ManagedCliCandidateBinding {managed:DirectoryClaim;versionRoot:string;launchRoot:string;entryPoint:string;fingerprint:string}
 type Execution=Pick<ManagedCliVersionObservation,"stdout"|"stderr"|"exitCode"|"signal"|"launcherPid"|"termination"|"error"|"reason">;
 const identity=(stat:Awaited<ReturnType<typeof lstat>>)=>String(stat.dev)+":"+String(stat.ino);
 const errorText=(error:unknown)=>(error instanceof Error?error.message:String(error)).slice(0,4096);
@@ -44,10 +44,15 @@ export async function bindCandidate(input:Pick<ManagedCliProbeRequest,"prefix"|"
  const managed=await directoryClaim(candidate.managedRoot),version=await directoryClaim(candidate.versionRoot);
  const expectedVersion=path.join(managed.canonical,"versions",input.version);
  if(version.canonical!==expectedVersion)throw new Error("Managed CLI version directory escaped its owned root");
- const entryPoint=path.join(version.canonical,...candidate.bin.split("/")),entry=await lstat(entryPoint);
- if(!entry.isFile()||entry.isSymbolicLink()||await realpath(entryPoint)!==entryPoint)throw new Error("Managed CLI entry is not the canonical listed regular file");
- const fingerprint=createHash("sha256").update(JSON.stringify({managed,version,entryPoint,entryIdentity:identity(entry),files:candidate.files})).digest("hex");
- return {managed,versionRoot:version.canonical,entryPoint,fingerprint};
+ // Keep the physical canonical path for ownership checks, but launch from the
+ // lexical absolute path. Windows can expose an 8.3 alias through realpath;
+ // passing that alias as cwd/argv makes CreateProcess hang on some runners.
+ const launchRoot=path.resolve(candidate.versionRoot);
+ if(await realpath(launchRoot)!==version.canonical)throw new Error("Managed CLI launch path is not the bound canonical directory");
+ const entryPoint=path.join(launchRoot,...candidate.bin.split("/")),entry=await lstat(entryPoint);
+ if(!entry.isFile()||entry.isSymbolicLink()||await realpath(entryPoint)!==path.join(version.canonical,...candidate.bin.split("/")))throw new Error("Managed CLI entry is not the canonical listed regular file");
+ const fingerprint=createHash("sha256").update(JSON.stringify({managed,version,launchRoot,entryPoint,entryIdentity:identity(entry),files:candidate.files})).digest("hex");
+ return {managed,versionRoot:version.canonical,launchRoot,entryPoint,fingerprint};
 }
 /** @internal Re-run the full verifier and compare the physical/source binding. */
 export async function stableCandidate(input:Pick<ManagedCliProbeRequest,"prefix"|"version">,bound:ManagedCliCandidateBinding):Promise<boolean>{
@@ -60,10 +65,16 @@ async function privateEnvironment(root:string,known:DirectoryClaim[]):Promise<No
   await mkdir(file);known.push(await directoryClaim(file));
  }
  const systemRoot=process.env.SystemRoot??process.env.SYSTEMROOT;
- const env:NodeJS.ProcessEnv={PATH:path.dirname(process.execPath),HOME:home,USERPROFILE:home,
+ // Windows PowerShell's Add-Type bridge needs the native command interpreter and
+ // system tools to start its compiler. Keep that small runtime bootstrap while
+ // continuing to exclude credentials, NODE_OPTIONS and provider configuration.
+ const windowsPath=systemRoot&&process.platform==="win32"
+  ? [path.dirname(process.execPath),path.join(systemRoot,"System32"),systemRoot,path.join(systemRoot,"System32","Wbem")].join(path.delimiter)
+  : path.dirname(process.execPath);
+ const env:NodeJS.ProcessEnv={PATH:windowsPath,HOME:home,USERPROFILE:home,
   TEMP:temp,TMP:temp,TMPDIR:temp,APPDATA:roaming,LOCALAPPDATA:local,
   XDG_CONFIG_HOME:config,XDG_CACHE_HOME:cache,XDG_DATA_HOME:data};
- if(systemRoot){env.SystemRoot=systemRoot;env.WINDIR=systemRoot;}
+ if(systemRoot){env.SystemRoot=systemRoot;env.WINDIR=systemRoot;env.ComSpec=process.env.ComSpec??process.env.COMSPEC??path.join(systemRoot,"System32","cmd.exe");env.COMSPEC=env.ComSpec;}
  if(process.env.OS)env.OS=process.env.OS;
  if(process.env.PATHEXT)env.PATHEXT=process.env.PATHEXT;
  return env;
@@ -87,7 +98,7 @@ async function disposeTemporary(root:string,known:DirectoryClaim[],managed:Direc
 function observe(candidate:ManagedCliCandidateBinding,root:string,env:NodeJS.ProcessEnv,input:ManagedCliProbeRequest,timeoutMs:number,maxOutputBytes:number):Promise<Execution>{
  let child:ReturnType<typeof spawnContainedWithInheritedPolicy>;
  try{child=spawnContainedWithInheritedPolicy(process.execPath,[candidate.entryPoint,"--version"],{
-  cwd:candidate.versionRoot,env,shell:false,stdio:["ignore","pipe","pipe"],
+  cwd:candidate.launchRoot,env,shell:false,stdio:["ignore","pipe","pipe"],
  },path.join(root,"payload"));}
  catch(error){return Promise.resolve({stdout:"",stderr:"",exitCode:null,signal:null,launcherPid:null,termination:"not-started",error:errorText(error),reason:"launch-failed"});}
  return new Promise(resolve=>{

@@ -172,11 +172,12 @@ function within(root: string, value: string): boolean {
 }
 async function defaultMetadata(absolutePath: string): Promise<ManagedPathMetadata | undefined> {
  try {
-  const value = await lstat(absolutePath);
+  const value = await lstat(absolutePath, {bigint: true});
   if (value.isSymbolicLink()) return {kind: "link", canonicalPath: absolutePath};
   const canonicalPath = await realpath(absolutePath);
-  const identity = `${value.dev}:${value.ino}`;
-  if (value.isFile()) return {kind: "file", canonicalPath, size: value.size, identity};
+  // Birth time distinguishes a recreated path that the filesystem gave a recycled inode number.
+  const identity = `${value.dev}:${value.ino}:${value.birthtimeNs}`;
+  if (value.isFile()) return {kind: "file", canonicalPath, size: Number(value.size), identity};
   if (value.isDirectory()) return {kind: "directory", canonicalPath, identity};
   return {kind: "link", canonicalPath: absolutePath};
  } catch (error) {
@@ -680,6 +681,8 @@ export async function stageManagedInstall(request:ManagedInstallRequest):Promise
     throw new Error("Managed installation root identity changed before publication");
    }
    if(destination)throw new Error("Managed version destination appeared before publication");
+   // Identity can be recycled quickly; this fresh directory must still hold nothing before our publication.
+   if((await readdir(versionsRoot)).length>0)throw new Error("Managed installation root identity changed before publication");
   };
   await publishStage(stageRoot,versionRoot,async()=>{
    await validatePublicationPaths();
@@ -1075,4 +1078,21 @@ export async function selectManagedVersion(request:ManagedVersionSelectionReques
   throw new ManagedVersionSelectionError(freezeSelection(result),{cause});
  }
  return freezeSelection(result);
+}
+
+/** Reads ownership records only (no file verification) so an interrupted removal can be resumed safely. */
+export async function readManagedOwnershipRecords(managedRoot:string):Promise<Readonly<{canonicalManagedRoot:string;versions:readonly ManagedVersionInventory[]}>|undefined>{
+ const root=await defaultMetadata(managedRoot);
+ if(!root||root.kind!=="directory")return undefined;
+ const receipt=await ownedReceipt(managedRoot,root);
+ if(!receipt)return undefined;
+ let versions:ManagedVersionInventory[]=[{version:receipt.version,files:receipt.files}];
+ try{
+  const parsed=parseVersionCatalog(JSON.parse(await readFile(path.join(managedRoot,VERSION_CATALOG),"utf8")),root.canonicalPath,receipt);
+  if(!parsed)return undefined;
+  versions=parsed;
+ }catch(error){
+  if((error as NodeJS.ErrnoException).code!=="ENOENT")return undefined;
+ }
+ return Object.freeze({canonicalManagedRoot:root.canonicalPath,versions:Object.freeze(versions)});
 }

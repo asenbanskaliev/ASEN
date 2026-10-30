@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import {mkdir,readFile,realpath,rm,writeFile} from "node:fs/promises";
+import {mkdir,mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
+import {tmpdir} from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {createPiExtension} from "../extensions/asen.js";
@@ -42,8 +43,10 @@ function tool(host:ReturnType<typeof fakePiHost>,name:string){
 }
 
 test("persisted historical approval text cannot authorize a fresh valid writer plan",async t=>{
- const fixtureRoot=process.env.ASEN_T06_FIXTURE_ROOT;
- assert.ok(fixtureRoot&&path.isAbsolute(fixtureRoot),"ASEN_T06_FIXTURE_ROOT must be an absolute parent-owned fixture path");
+ const supplied=process.env.ASEN_T06_FIXTURE_ROOT;
+ assert.ok(!supplied||path.isAbsolute(supplied),"ASEN_T06_FIXTURE_ROOT must be an absolute parent-owned fixture path");
+ const fixtureRoot=supplied||await mkdtemp(path.join(tmpdir(),"asen-t06-"));
+ if(!supplied)t.after(()=>rm(fixtureRoot,{recursive:true,force:true}));
  const root=path.join(fixtureRoot,"memory-writer-admission"),home=path.join(root,"home"),projectPath=path.join(root,"candidate");
  await rm(root,{recursive:true,force:true});
  await Promise.all([mkdir(home,{recursive:true}),mkdir(projectPath,{recursive:true})]);

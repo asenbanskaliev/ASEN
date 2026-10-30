@@ -10,7 +10,7 @@ ASEN is a Pi-native engineering harness focused on deterministic workflows, dele
 
 Setup execution is not shipped yet. `asen setup` and `asen setup --yes` exit with code `2` and direct users to the preview, while unsupported setup arguments are rejected before launcher home/config/runtime access. `--yes` combined with `--dry-run` still only previews. The preview performs no installation, update, activation, download, version probe, backup, restore, or removal.
 
-ASEN still lacks the complete installation and maintenance lifecycle, including automatic activation, update and rollback, backup/restore, managed-only removal, acquisition, and browser consent. Those capabilities remain pending; this preview is not an installer or proof of host/platform support.
+Signed install, upgrade, rollback, backup/restore and managed-only uninstall are available as `asen managed …`, `asen backup home` and `asen restore home` (see docs/installation.md); this preview itself is not an installer or proof of host/platform support.
 
 ## Retained-version selection
 

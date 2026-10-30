@@ -8,6 +8,8 @@ import {runAsen} from "../src/cli.js";
 import {parseAsenArgs} from "../src/runtime/launcher.js";
 import {stageAdditionalManagedVersion,stageManagedInstall} from "../src/runtime/managed-install.js";
 
+// Children run from isolated cwds, so tsx must be resolved from this checkout, not from the child cwd.
+const TSX_IMPORT=import.meta.resolve("tsx");
 const VERSION="1.2.0";
 const SCHEMA="asen.installation-doctor/v1";
 const USAGE="Unsupported ASEN doctor command. Expected: [--link|--isolated|--home PATH] [--package-root PATH] doctor.\n";
@@ -37,7 +39,7 @@ async function stage(f:Fixture,version=VERSION,engine=">=0.0.0",additional=false
  if(additional)await stageAdditionalManagedVersion(request);else await stageManagedInstall(request);
 }
 async function fixture(t:test.TestContext,name="doctor ü"){
- const base=process.env.TEMP??process.env.TMP??tmpdir(),root=await fs.mkdtemp(path.join(base,"doc-"));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+ const base=process.env.TEMP??process.env.TMP??tmpdir(),root=await fs.realpath(await fs.mkdtemp(path.join(base,"doc-")));t.after(()=>fs.rm(root,{recursive:true,force:true}));
  const home=path.join(root,"home "+name),prefix=path.join(home,".asen"),data=path.join(root,"data home"),effective=path.join(root,"effective package ü"),cwd=path.join(root,"caller cwd");
  for(const dir of [home,prefix,data,effective,cwd])await fs.mkdir(dir,{recursive:true});
  return{root,home,prefix,data,effective,cwd,managed:path.join(prefix,"install"),current:path.join(prefix,"install","current"),config:path.join(prefix,"config.json"),marker:path.join(prefix,"install",".asen-maintenance.lock"),sentinel:path.join(root,"PI-EXECUTED"),managedSentinel:path.join(root,"MANAGED-EXECUTED")};
@@ -49,7 +51,7 @@ function env(f:Fixture,extra:NodeJS.ProcessEnv={}):NodeJS.ProcessEnv{
   XDG_CONFIG_HOME:path.join(f.root,"xc"),XDG_CACHE_HOME:path.join(f.root,"xd"),XDG_DATA_HOME:path.join(f.root,"xx"),TSX_DISABLE_CACHE:"1",ASEN_NO_SKILL_REGISTRY:"1",...extra};
 }
 function invoke(f:Fixture,args:readonly string[],extra:NodeJS.ProcessEnv={},cwd=f.cwd){
- const result=spawnSync(process.execPath,["--import","tsx",path.resolve("src/cli.ts"),...args],{cwd,env:env(f,extra),shell:false,timeout:10000,maxBuffer:1024*1024,encoding:"utf8"});
+ const result=spawnSync(process.execPath,["--import",TSX_IMPORT,path.resolve("src/cli.ts"),...args],{cwd,env:env(f,extra),shell:false,timeout:10000,maxBuffer:1024*1024,encoding:"utf8"});
  assert.equal(result.error,undefined);assert.equal(result.signal,null);return{code:result.status,stdout:result.stdout,stderr:result.stderr};
 }
 function jsonResult(result:ReturnType<typeof invoke>,code=0,stderr=""):Json{

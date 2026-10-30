@@ -97,12 +97,12 @@ test("Pi guidance keeps explicitly scoped read-only parallelism proportional and
  });
 });
 
-test("ASEN registers the natural-language planning tool and injects its guidance into Pi turns",()=>{
+test("ASEN registers the natural-language planning tool and injects its guidance into Pi turns",async()=>{
  const events=new Map<string,(...args:any[])=>unknown>(),tools=new Map<string,unknown>();
  const pi={registerCommand(){},registerTool(tool:{name:string}){tools.set(tool.name,tool);},on(name:string,handler:(...args:any[])=>unknown){events.set(name,handler);}};
  createAsenExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false})(pi);
  assert.ok(tools.has(ASEN_PLAN_REQUEST_TOOL));
- const options={sections:{} as Record<string,string>};events.get("before_agent_start")?.({systemPromptOptions:options},{});
+ const options={sections:{} as Record<string,string>};await events.get("before_agent_start")?.({systemPromptOptions:options},{});
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/ordinary language/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Never ask the user to write JSON/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/asen_todo_inspect_interrupted_write/u);

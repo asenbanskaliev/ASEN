@@ -5,6 +5,10 @@ import {createHash} from "node:crypto";
 import {isProxy} from "node:util/types";
 import {claimWorkUnitReviewCandidate,type WorkUnitReviewCandidate} from "../delivery/work-unit-review-candidate.js";
 import {exactRecord,text} from "../delivery/work-unit-policy.js";
+import {materializeReviewView,type ReviewView} from "./review-view.js";
+import {openReviewSession,type ReviewSession} from "./review-session.js";
+import type {ReviewRiskInput} from "./review-risk.js";
+import type {CandidateGitTreeManifest} from "./review-tree-inspection.js";
 export interface OrdinaryReviewInput{
  readonly authorId:string;readonly reviewerId:string;readonly sessionId:string;
 }
@@ -64,4 +68,22 @@ export function claimOrdinaryReviewCheckout(value:unknown):OrdinaryReviewCheckou
  if(typeof value!=="object"||value===null||!issuedCheckouts.has(value))throw new Error("Se requiere checkout de revisión genuino");
  if(consumedCheckouts.has(value))throw new Error("El checkout de revisión ya fue consumido");
  consumedCheckouts.add(value);return value as OrdinaryReviewCheckout;
+}
+
+/** Binds one frozen tree manifest to the exact checkout before creating a reviewer view. */
+export function materializeOrdinaryReviewView(value:unknown,parent:string,manifest:CandidateGitTreeManifest):ReviewView{
+ const checkout=claimOrdinaryReviewCheckout(value);
+ if(manifest.repositoryRoot!==checkout.repository||manifest.treeIdentity!==checkout.treeIdentity){
+  throw new Error("Review view manifest does not bind the exact checkout");
+ }
+ return materializeReviewView(manifest,parent);
+}
+
+/** Opens the public review composition only from a genuine exact checkout. */
+export function openOrdinaryReviewSession(value:unknown,parent:string,manifest:CandidateGitTreeManifest,risk:ReviewRiskInput):ReviewSession{
+ const checkout=claimOrdinaryReviewCheckout(value);
+ if(manifest.repositoryRoot!==checkout.repository||manifest.treeIdentity!==checkout.treeIdentity){
+  throw new Error("Review session manifest does not bind the exact checkout");
+ }
+ return openReviewSession(checkout.repository,manifest,parent,risk);
 }

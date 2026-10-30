@@ -18,6 +18,10 @@ export type ManagedUpdatePreviewArgs=
  |Readonly<{kind:"none"}>
  |Readonly<{kind:"invalid"}>
  |Readonly<{kind:"preview";selectorArgs:readonly string[];manifestPath:string;packageRoot:string}>;
+export type ManagedUpdateStageArgs=
+ |Readonly<{kind:"none"}>
+ |Readonly<{kind:"invalid"}>
+ |Readonly<{kind:"stage";selectorArgs:readonly string[];manifestPath:string;packageRoot:string}>;
 export type DoctorArgs=
  |Readonly<{kind:"none"}>
  |Readonly<{kind:"invalid"}>
@@ -31,7 +35,7 @@ const exactVersion=(value:string)=>/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\
 type SelectorPrelude=Readonly<{kind:"none"}>|Readonly<{kind:"command";selectorArgs:readonly string[];packageRoot:boolean;index:number;command:string}>;
 type ManagedPrelude=Readonly<{kind:"none"}>|Readonly<{kind:"managed";selectorArgs:readonly string[];packageRoot:boolean;index:number}>;
 
-function parseSelectorPrelude(argv:readonly string[]):SelectorPrelude{
+export function parseSelectorPrelude(argv:readonly string[]):SelectorPrelude{
  const selectors:string[]=[];let packageRoot=false,index=0;
  while(index<argv.length){
   const argument=argv[index]!;
@@ -76,7 +80,7 @@ export function parseDoctorArgs(argv:readonly string[]):DoctorArgs{
  return {kind:"doctor",selectorArgs:prelude.selectorArgs};
 }
 
-function fullyQualifiedLocalPath(value:unknown):value is string{
+export function fullyQualifiedLocalPath(value:unknown):value is string{
  if(typeof value!=="string"||value.length===0||value.length>4096||/[\p{Cc}]/u.test(value))return false;
  if(!path.isAbsolute(value))return false;
  if(process.platform==="win32"&&(!/^[A-Za-z]:[\\/]/u.test(value)||/^\\\\/u.test(value)||/^\\\\[?.]\\/u.test(value)))return false;
@@ -90,6 +94,15 @@ export function parseManagedUpdatePreviewArgs(argv:readonly string[]):ManagedUpd
  const manifestFlag=argv[prelude.index+2],manifestPath=argv[prelude.index+3],packageFlag=argv[prelude.index+4],packageRoot=argv[prelude.index+5],dryRun=argv[prelude.index+6];
  if(prelude.packageRoot||manifestFlag!=="--manifest"||!fullyQualifiedLocalPath(manifestPath)||packageFlag!=="--package-root"||!fullyQualifiedLocalPath(packageRoot)||dryRun!=="--dry-run"||argv.length!==prelude.index+7)return {kind:"invalid"};
  return {kind:"preview",selectorArgs:prelude.selectorArgs,manifestPath,packageRoot};
+}
+
+/** Add explicit inactive staging without changing the observation-only parser's contract. */
+export function parseManagedUpdateStageArgs(argv:readonly string[]):ManagedUpdateStageArgs{
+ const prelude=parseManagedPrelude(argv);if(prelude.kind==="none")return prelude;
+ if(argv[prelude.index+1]!=="update"||argv[prelude.index+6]!=="--stage")return {kind:"none"};
+ const manifestFlag=argv[prelude.index+2],manifestPath=argv[prelude.index+3],packageFlag=argv[prelude.index+4],packageRoot=argv[prelude.index+5];
+ if(prelude.packageRoot||manifestFlag!=="--manifest"||!fullyQualifiedLocalPath(manifestPath)||packageFlag!=="--package-root"||!fullyQualifiedLocalPath(packageRoot)||argv[prelude.index+7]!=="--yes"||argv.length!==prelude.index+8)return {kind:"invalid"};
+ return {kind:"stage",selectorArgs:prelude.selectorArgs,manifestPath,packageRoot};
 }
 
 /** Recognize only the explicit managed run namespace before the ordinary end-of-options boundary. */

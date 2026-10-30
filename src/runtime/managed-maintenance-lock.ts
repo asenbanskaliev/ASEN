@@ -2,7 +2,7 @@ import {randomUUID} from "node:crypto";
 import type {Stats} from "node:fs";
 import {lstat,open,readFile,realpath,unlink} from "node:fs/promises";
 import path from "node:path";
-import {inspectManagedInstall} from "./managed-install.js";
+import {inspectManagedInstall,readManagedOwnershipRecords} from "./managed-install.js";
 
 export interface ManagedMaintenanceLockRequest {
  readonly prefix:string;
@@ -10,6 +10,7 @@ export interface ManagedMaintenanceLockRequest {
  /** Acquisition wait only; never a deadline for the active operation. */
  readonly timeoutMs?:number;
  readonly signal?:AbortSignal;
+ readonly allowPartialInventory?:boolean;
 }
 export type ManagedMaintenanceLockErrorCode="CONFIRMATION_REQUIRED"|"INVALID_REQUEST"|"OWNED_ROOT_REQUIRED"|"ROOT_CHANGED"|"LOCK_TIMEOUT"|"LOCK_CANCELLED"|"LOCK_INIT_FAILED"|"LOCK_RETAINED";
 export class ManagedMaintenanceLockError extends Error {
@@ -36,10 +37,13 @@ async function physicalRoot(root:string):Promise<Stats>{
 async function unchangedRoot(root:string,expected:Stats):Promise<void>{
  if(!same(expected,await physicalRoot(root)))fail("ROOT_CHANGED","Managed maintenance root identity changed");
 }
-async function stillOwned(prefix:string,root:string,expected:Stats):Promise<void>{
+async function stillOwned(prefix:string,root:string,expected:Stats,allowPartialInventory=false):Promise<void>{
  await unchangedRoot(root,expected);
  const inventory=await inspectManagedInstall({prefix});
- if(inventory.status!=="owned"||canonical(inventory.managedRoot)!==canonical(root))fail("OWNED_ROOT_REQUIRED","Managed maintenance requires an existing owned installation");
+ if(allowPartialInventory){
+  const records=await readManagedOwnershipRecords(root);
+  if(!records||canonical(records.canonicalManagedRoot)!==canonical(root))fail("OWNED_ROOT_REQUIRED","Managed maintenance requires valid ownership records");
+ }else if(inventory.status!=="owned"||canonical(inventory.managedRoot)!==canonical(root))fail("OWNED_ROOT_REQUIRED","Managed maintenance requires an existing owned installation");
  await unchangedRoot(root,expected);
 }
 async function ownMarker(root:string,rootIdentity:Stats,lock:string,fileIdentity:Stats,bytes:string):Promise<boolean>{
@@ -62,9 +66,14 @@ export async function withManagedMaintenanceLock<T>(request:ManagedMaintenanceLo
  cancelled(request.signal);
  const prefix=path.resolve(request.prefix),root=path.join(prefix,"install");
  const inventory=await inspectManagedInstall({prefix});
- if(inventory.status!=="owned")fail("OWNED_ROOT_REQUIRED","Managed maintenance requires an existing owned installation");
+ const ownership=request.allowPartialInventory?await readManagedOwnershipRecords(root):undefined;
+ if(request.allowPartialInventory
+  ?!ownership||canonical(ownership.canonicalManagedRoot)!==canonical(root)
+  :inventory.status!=="owned"||canonical(inventory.managedRoot)!==canonical(root)){
+  fail("OWNED_ROOT_REQUIRED",request.allowPartialInventory?"Managed maintenance requires valid ownership records":"Managed maintenance requires an existing owned installation");
+ }
  const rootIdentity=await physicalRoot(root);
- await stillOwned(prefix,root,rootIdentity);
+ await stillOwned(prefix,root,rootIdentity,request.allowPartialInventory);
  const bytes=JSON.stringify({schema:"asen.managed-maintenance-lock/v1",pid:process.pid,token:randomUUID(),createdAt:Date.now()})+"\n";
  const lock=path.join(root,".asen-maintenance.lock"),deadline=performance.now()+timeoutMs;
  let handle:Awaited<ReturnType<typeof open>>;
@@ -86,7 +95,7 @@ export async function withManagedMaintenanceLock<T>(request:ManagedMaintenanceLo
  if(initializationFailed||!fileIdentity)throw new ManagedMaintenanceLockError("LOCK_INIT_FAILED","Managed maintenance marker initialization failed; marker retained",lock,{cause:initializationError});
  let result:T|undefined,operationError:unknown,operationFailed=false;
  try{
-  await stillOwned(prefix,root,rootIdentity);
+  await stillOwned(prefix,root,rootIdentity,request.allowPartialInventory);
   if(!await ownMarker(root,rootIdentity,lock,fileIdentity,bytes))fail("LOCK_RETAINED","Managed maintenance marker changed before operation; marker retained",lock);
   cancelled(request.signal);result=await operation();
  }catch(error){operationError=error;operationFailed=true;}
