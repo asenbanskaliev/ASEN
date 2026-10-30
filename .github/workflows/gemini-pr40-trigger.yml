@@ -39,6 +39,8 @@ jobs:
           persist-credentials: false
       - name: Review with Gemini CLI (no write or shell tools)
         id: gemini
+        env:
+          GEMINI_CLI_TRUST_WORKSPACE: 'true'
         uses: google-github-actions/run-gemini-cli@387c8ddb7a72078825da941758b811b9153c71e8
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
@@ -55,7 +57,7 @@ jobs:
             explicitly that no tests were executed.
           settings: '{"tools":{"exclude":["run_shell_command","write_file","replace","save_memory"]}}'
       - name: Publish review using GitHub REST API
-        if: steps.gemini.outcome == 'success' && steps.gemini.outputs.summary != ''
+        if: steps.gemini.outcome == 'success' && steps.gemini.outputs.gemini_response != ''
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
