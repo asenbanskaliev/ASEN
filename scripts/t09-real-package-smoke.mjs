@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import {execFileSync,execFile} from "node:child_process";
+import {execFileSync,execFile,spawn} from "node:child_process";
 import {access,readFile,mkdir,writeFile,rm,cp,stat} from "node:fs/promises";
 import path from "node:path";
 import {tmpdir} from "node:os";
 import {mkdtemp,realpath} from "node:fs/promises";
 import https from "node:https";
-import {fileURLToPath} from "node:url";
+import {fileURLToPath,pathToFileURL} from "node:url";
 
 const repositoryRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const tlsFixture=path.join(repositoryRoot,"tests","fixtures");
@@ -142,6 +142,33 @@ try{
   assert.deepEqual(restoredSqlite.prepare("SELECT value FROM entries ORDER BY rowid").all().map(row=>row.value),["committed-before-packed-backup"]);
  }finally{restoredSqlite.close();}
 
+ const interruptedHome=path.join(root,"interrupted-restore-home"),interruptedConfig=path.join(root,"interrupted-restore-config.json");
+ const restoreModule=pathToFileURL(path.join(realPackageRoot,"dist","runtime","home-backup.js")).href;
+ const restoreSource=`import {restoreHomeBackup} from ${JSON.stringify(restoreModule)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(interruptedHome)},targetConfig:${JSON.stringify(interruptedConfig)},replace:true,confirmed:true,hooks:{afterStagedConfigCreate(){process.stdout.write("CONFIG_STAGE_CREATED\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
+ const restoreChild=spawn(process.execPath,["--input-type=module","-e",restoreSource],{cwd:root,env,stdio:["ignore","pipe","pipe"],windowsHide:true});let restoreOutput="",restoreErrors="";
+ restoreChild.stdout.setEncoding("utf8").on("data",chunk=>restoreOutput+=chunk);restoreChild.stderr.setEncoding("utf8").on("data",chunk=>restoreErrors+=chunk);
+ const restoreClosed=new Promise((resolve,reject)=>{restoreChild.once("error",reject);restoreChild.once("close",(code,signal)=>resolve({code,signal}));});
+ let restoreStopped,restoreOwner;
+ try{
+  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{restoreChild.kill();reject(new Error("packed restore child did not reach staged config creation"));},30_000);const ready=()=>{if(restoreOutput.includes("CONFIG_STAGE_CREATED")){clearTimeout(timer);restoreChild.stdout.off("data",ready);resolve();}};restoreChild.stdout.on("data",ready);restoreChild.once("close",()=>{clearTimeout(timer);reject(new Error(`packed restore child exited before config staging: ${restoreErrors}`));});});
+  restoreOwner=JSON.parse(await readFile(`${interruptedHome}.restore-owner.json`,"utf8"));
+  assert.equal(restoreOwner.stagedConfig.identity,undefined,"the packed recovery marker records the config temp path before the temp is created");
+  assert.equal((await stat(restoreOwner.stagedConfig.path)).size,0);
+  restoreChild.kill("SIGKILL");
+  restoreStopped=await restoreClosed;
+ }finally{
+  if(restoreChild.exitCode===null&&restoreChild.signalCode===null)restoreChild.kill("SIGKILL");
+  restoreStopped??=await restoreClosed;
+ }
+ assert.notEqual(restoreStopped.code,0,"the packed restore child was forcibly terminated");
+ const {restoreHomeBackup}=await import(restoreModule);
+ const recovered=await restoreHomeBackup({backup,targetHome:interruptedHome,targetConfig:interruptedConfig,replace:true,confirmed:true});
+ assert.equal(recovered.configRestored,true);
+ assert.equal(await readFile(interruptedConfig,"utf8"),await readFile(path.join(home,".asen","config.json"),"utf8"));
+ assert.equal(await readFile(path.join(interruptedHome,"t09-smoke-data.json"),"utf8"),await readFile(personalData,"utf8"));
+ await assert.rejects(access(restoreOwner.stagedConfig.path),{code:"ENOENT"},"packed recovery removes its abandoned staged config");
+ await assert.rejects(access(`${interruptedHome}.restore-owner.json`),{code:"ENOENT"},"packed recovery clears its marker after retry");
+
  const removed=report(["managed","uninstall","--yes"]);
  assert.equal(removed.status,"removed");
  assert.equal(removed.userDataTouched,false);
@@ -149,7 +176,7 @@ try{
  await access(path.join(home,".asen","config.json"));
  await assert.rejects(access(path.join(home,".asen","install")),{code:"ENOENT"});
  success=true;
- console.log(JSON.stringify({schema:"asen.t09-real-package-smoke/v1",status:"passed",packageVersion:packageJson.version,updatedVersion:nextVersion,trust:"ephemeral-explicit-ed25519-anchor-and-verified-loopback-tls",operations:["npm-packed-package","signed-install","metadata-doctor","installed-cli-version","real-package-https-upgrade","updated-cli-version","user-data-preserved-across-update","rollback-to-original","user-data-preserved-across-rollback","backup","active-sqlite-wal-backup","backup-verify","corrupt-restore-no-effects","clean-target-restore-recovery","sqlite-integrity-and-snapshot-time-data-restore","managed-uninstall","user-data-preserved"]}));
+ console.log(JSON.stringify({schema:"asen.t09-real-package-smoke/v1",status:"passed",packageVersion:packageJson.version,updatedVersion:nextVersion,trust:"ephemeral-explicit-ed25519-anchor-and-verified-loopback-tls",operations:["npm-packed-package","signed-install","metadata-doctor","installed-cli-version","real-package-https-upgrade","updated-cli-version","user-data-preserved-across-update","rollback-to-original","user-data-preserved-across-rollback","backup","active-sqlite-wal-backup","backup-verify","corrupt-restore-no-effects","clean-target-restore-recovery","sqlite-integrity-and-snapshot-time-data-restore","sigkill-during-staged-config-creation","staged-config-recovery-and-retry","managed-uninstall","user-data-preserved"]}));
 }catch(error){
  console.error(`T09 real package smoke failed; disposable state retained at ${root}: ${error instanceof Error?error.stack:String(error)}`);
  throw error;

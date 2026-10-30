@@ -2,9 +2,37 @@
 
 ## Estado y alcance
 
-Este plan se fija sobre PR #37, rama `feat/t09-managed-update-stage`, HEAD remoto observado `3635ca8e2ef0a206ac2cbe74f5f098486c28a09c`. En ese SHA los workflows observados (CI, Release Gate, Phase 0 Architecture y Pi 1.2 runtime evidence) terminaron en éxito; Pi Free Smoke fue omitido por condición. Esos resultados no prueban el ciclo de mantenimiento ni corrigen el histórico de Windows.
+Este plan conserva el historial de T09 abajo, pero su baseline inicial `3635ca8e...` está obsoleto. El baseline remoto reconciliado el 2026-10-30 es PR #37, rama `feat/t09-managed-update-stage`, HEAD `18e98728e2e39c8b1a4ebf66019574ee7d1b32a6`. En ese SHA pasaron CI Linux/macOS/Windows, package/Release Gate en los tres sistemas, Pi support matrix en los tres, Phase 0 Architecture y Pi 1.2 runtime evidence. `authenticated-free-model` fue omitido; no es evidencia ni requisito de este alcance provider-free. Estas comprobaciones no prueban por sí solas el cierre del ciclo de mantenimiento.
 
-T09 permanece **PARTIAL** hasta demostrar instalación limpia de paquete real, autenticidad y adquisición, actualización/rollback, backup/restauración, desinstalación con preservación de datos, navegador real donde corresponda, plataformas requeridas, auditoría R4 y CI verde en el SHA final. Este plan no autoriza merge a `main`, releases, mutaciones de instalaciones personales, cambios de permisos para forzar tests ni debilitamiento de validaciones.
+### Renegociación crítica del FULL — 2026-10-30
+
+Por instrucción del usuario, T09 se renegocia a **FULL solamente para el ciclo de mantenimiento administrado por ASEN en prefijos desechables**. No equivale a FULL del S9 histórico ni a paridad con Reference Shell. Se retiran como puertas únicamente la apertura del navegador por el sistema operativo (se mantiene el contrato de consentimiento/callback) y el advisory heredado de Undici dentro del host de prueba Pi, que no está empaquetado por ASEN ni puede corregirlo este repo. Ambos siguen como deuda externa explícita.
+
+No se rebajan los controles de integridad, firma/TLS, no-efectos ante rechazo, consistencia SQLite, recuperación ante interrupción, preservación de datos, prevención de traversal/symlink/carrera, revisión R4 del código propio ni cobertura de todos los sistemas operativos declarados. La evidencia de un SHA anterior no se transfiere al candidato final.
+
+FULL scoped requiere demostrar, sobre el artefacto npm real de un SHA exacto y raíces/home/config temporales:
+
+1. Instalación limpia e idempotente, `doctor` read-only, precedencia home/config, rutas con espacios/Unicode, exports y componentes opcionales.
+2. Adquisición HTTPS de loopback con CA y clave efímeras explícitas; instalación A → descarga/verificación/firma → activación B → rollback; firma/CA/bytes/manifiesto incorrectos deben fallar antes de ejecutar o mutar la instalación.
+3. Backup SQLite consistente con WAL activo; restore en destino limpio con igualdad de datos e integrity check; backup corrupto y SIGKILL en staging/publicación no dañan el destino previo y el reinicio recupera o limpia staging propio sin perder datos.
+4. Desinstalación managed-only que conserva datos/config ajenos; carreras de mismo usuario, sustitución de ruta, symlink/junction y concurrencia fallan cerradas, sin borrar fuera del prefijo propio.
+5. Consentimiento/cancelación/callback local: estado anti-CSRF, secretos no expuestos, timeout, puerto ocupado y limpieza del listener. No se afirma que el SO haya abierto un navegador.
+6. Gate final exacto en Linux, macOS y Windows: suite, paquete real/lifecycle, typecheck/build, auditorías y Pi 1.2 host evidence aplicable; Pi Free Smoke u otros jobs condicionales se anotan como `skipped`.
+7. Revisión R4 independiente del código T09 de ASEN sin hallazgos Critical/High abiertos; el advisory heredado externo queda listado por separado.
+
+Un requisito que falle, no corra o carezca de receipt deja T09 scoped en PARTIAL. FULL solo se marca al satisfacer todos los puntos y actualizar ODD/mapa con SHA y artefactos. No se autoriza merge, release, instalación en el host personal, uso de credenciales reales, cambios de permisos ni debilitamiento de pruebas.
+
+### Orden de ejecución
+
+1. **R0 — Reconciliar candidate**: continuar en PR #37 y preservar incidentes; no usar el worktree T05 como si fuera el head T09.
+2. **R1 — Artefacto e instalación**: re-ejecutar smoke del tarball real para instalación limpia/repetida, `doctor`, config precedence, Unicode/spaces y exports/optional components.
+3. **R2 — Confianza y A→B**: conectar adquisición TLS de loopback a los bytes del paquete real, probar entradas inválidas sin efectos, activación B y rollback A; reproducir en los tres OS.
+4. **R3 — Restore durable**: combinar snapshot SQLite/WAL con el paquete real; inyectar corrupción y SIGKILL antes/durante/después de publicación y verificar restart recovery.
+5. **R4 — Uninstall concurrente**: pruebas multi-proceso de reemplazo de ruta, enlaces y carreras de mismo usuario; comparar inventarios y centinelas externos. Si la identidad es incierta, detenerse y conservar.
+6. **R5 — Consent y docs**: cubrir callback/denial/cancel/error/cleanup y alinear `docs/installation.md`, help y errores; la apertura del navegador del SO no bloquea este FULL.
+7. **R6 — Revisión independiente y aceptación**: revisión R4 del diff; focused tests, typecheck/build y gate exacto en Windows/Linux/macOS; actualizar ODD y mapa. Solo entonces marcar T09 scoped FULL.
+
+Las correcciones son test-first y acotadas por fase. Para jobs fallidos, inspeccionar artifacts/logs antes de cualquier reejecución. No cambiar deadlines o suprimir casos como atajo. El trabajo futuro sigue PR #37; esta planificación no afirma que R1–R6 estén ejecutadas.
 
 ## Reglas de ejecución
 
@@ -178,3 +206,9 @@ Release Gate on `12e3f08d57810bdb34aded2df3193699750d9c36` passed all real packe
 The same `12e3f08` Windows suite exposed a portability bug in the new SIGKILL regression: a drive-letter path was interpolated as an ESM module specifier, and Node 22 returned `ERR_UNSUPPORTED_ESM_URL_SCHEME` before the child reached staging. The regression now constructs a `file:` URL with `pathToFileURL`; the isolated lifecycle test passes on Linux. The planner regression also received explicit TypeScript types after the first validation pass stopped at typecheck. Re-run the consolidated validation on the corrected worktree; publish only after it passes.
 
 Corrected worktree validation completed locally: `npm run check` passed 2,216 tests, 0 failures, 19 conditional skips; all declared parity/skills/memory/upstream-boundary audits passed, with ecosystem normative source proof explicitly NOT ADMITTED because the retained source repository is unavailable. `npm run typecheck`, `npm run build`, `npm run verify:pack` and `git diff --check` passed. The actual tarball smoke passed Linux Node 24.22.1 previously on the same package source; the current changes affect only test planning and regression portability. Exact corrective-candidate CI is still required.
+
+## Staged-config recovery follow-up — current worktree
+
+The independent review found a concrete interruption window: a config restore temp file could be created and written before its path/identity was durable in the recovery marker. The restore now journals the UUID temp path before creation, journals its file identity before writing bytes, and on retry removes an owned partial file or only an empty temp whose identity was not yet recorded. A lifecycle regression SIGKILLs at the creation/journal boundary; the packed-package smoke also kills the real packaged implementation, retries, and checks restored config/home bytes and marker/temp cleanup. On this worktree, `tests/t09-lifecycle.test.ts` passed 34/34, typecheck/build, `verify:pack`, the Linux real-tarball HTTPS/SQLite/restore/uninstall smoke and the applicable audits passed. Independent review of this specific recovery delta found no concrete issue.
+
+The full `npm run check` was attempted on Node 26.12.1 and failed 4/2,239 tests: two use the removed `--experimental-transform-types` option, and two fsmonitor fixtures did not create their marker files. These are unrelated to T09; the suite stopped before its audit chain, which was run separately and passed except that ecosystem normative source proof remains NOT ADMITTED. No exact-SHA CI has run for this candidate. T09 stays PARTIAL: concurrent uninstall route-substitution evidence and exact-candidate Windows/macOS/Linux gates remain outstanding, as do the already disclosed external browser-opening and inherited Pi-host advisory limits.

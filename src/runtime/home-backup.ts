@@ -15,7 +15,7 @@ const MAX_MANIFEST_BYTES=8*1024*1024;
 const HASH_BYTES=32;
 const SQLITE_HEADER=Buffer.from("SQLite format 3\0","ascii");
 
-export type HomeBackupErrorCode="INVALID_REQUEST"|"CONFIRMATION_REQUIRED"|"DESTINATION_EXISTS"|"DESTINATION_INSIDE_SOURCE"|"SOURCE_LINK"|"SOURCE_UNSUPPORTED"|"SOURCE_CHANGED"|"SQLITE_SNAPSHOT_FAILED"|"BOUNDS_EXCEEDED"|"BACKUP_CORRUPT"|"BACKUP_INCOMPATIBLE"|"TARGET_EXISTS"|"TARGET_UNSAFE"|"RESTORE_FAILED";
+export type HomeBackupErrorCode="INVALID_REQUEST"|"CONFIRMATION_REQUIRED"|"DESTINATION_EXISTS"|"DESTINATION_INSIDE_SOURCE"|"SOURCE_LINK"|"SOURCE_UNSUPPORTED"|"SOURCE_CHANGED"|"SQLITE_SNAPSHOT_FAILED"|"BOUNDS_EXCEEDED"|"BACKUP_CORRUPT"|"BACKUP_INCOMPATIBLE"|"TARGET_EXISTS"|"TARGET_UNSAFE"|"RECOVERY_REQUIRED"|"RESTORE_FAILED";
 export class HomeBackupError extends Error{
  constructor(readonly code:HomeBackupErrorCode,message:string,options?:{cause?:unknown}){super(message,{cause:options?.cause});this.name="HomeBackupError";}
 }
@@ -271,7 +271,7 @@ export interface RestoreHomeBackupRequest{
  readonly replace?:boolean;
  readonly confirmed:boolean;
  /** @internal deterministic failure injection for restore recovery tests. */
- readonly hooks?:Readonly<{afterStagedFile?:(relativePath:string)=>void|Promise<void>;beforePublish?:()=>void|Promise<void>}>;
+ readonly hooks?:Readonly<{afterStagedFile?:(relativePath:string)=>void|Promise<void>;afterStagedConfigCreate?:()=>void|Promise<void>;beforePublish?:()=>void|Promise<void>;afterHomePublish?:()=>void|Promise<void>;afterConfigMove?:()=>void|Promise<void>;afterConfigPublish?:()=>void|Promise<void>;beforeConfigRecovery?:()=>void|Promise<void>;afterRecoveryStageRemoved?:()=>void|Promise<void>}>;
 }
 export interface HomeRestoreReport{
  readonly schema:"asen.home-restore-report/v1";
@@ -282,6 +282,250 @@ export interface HomeRestoreReport{
  readonly configRestored:boolean;
  readonly movedAside:readonly string[];
  readonly backupSha256:string;
+}
+
+interface RestorePathIdentity{readonly dev:number;readonly ino:number;readonly birthtimeMs:number}
+interface RestoreStageOwner{
+ readonly schema:"asen.home-restore-stage/v1";
+ readonly phase:"staging"|"cleanup";
+ readonly target:string;
+ readonly stageRoot:string;
+ readonly pid:number;
+ readonly stageIdentity?:RestorePathIdentity;
+ readonly targetState:"absent"|"empty"|"moved";
+ readonly previousTargetIdentity?:RestorePathIdentity;
+ readonly movedTarget?:string;
+ readonly configTarget?:string;
+ readonly configState?:"absent"|"existing";
+ readonly previousConfigIdentity?:RestorePathIdentity;
+ readonly movedConfig?:string;
+ readonly stagedConfig?:Readonly<{path:string;identity?:RestorePathIdentity;size:number;sha256:string}>;
+ readonly directories:readonly string[];
+ readonly files:readonly Readonly<{path:string;size:number;sha256:string}>[];
+}
+const restoreOwnerPath=(target:string)=>`${target}.restore-owner.json`;
+const sameRestoreIdentity=(left:{dev:number;ino:number;birthtimeMs:number},right:{dev:number;ino:number;birthtimeMs:number})=>
+ left.dev===right.dev&&left.ino===right.ino&&left.birthtimeMs===right.birthtimeMs;
+const validRestoreIdentity=(value:unknown):value is RestorePathIdentity=>!!value&&typeof value==="object"
+ &&Number.isFinite((value as RestorePathIdentity).dev)&&Number.isFinite((value as RestorePathIdentity).ino)&&Number.isFinite((value as RestorePathIdentity).birthtimeMs);
+function validMovedAsidePath(original:string,value:unknown):value is string{
+ if(typeof value!=="string"||path.dirname(value)!==path.dirname(original)||!value.startsWith(`${original}.pre-restore-`))return false;
+ return /^\d{10,16}-[0-9a-f]{8}$/u.test(value.slice(`${original}.pre-restore-`.length));
+}
+function validStagedConfigPath(config:string,value:unknown):value is string{
+ if(typeof value!=="string"||path.dirname(value)!==path.dirname(config)||!value.startsWith(`${config}.`)||!value.endsWith(".tmp"))return false;
+ return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.tmp$/iu.test(value.slice(`${config}.`.length));
+}
+function restoreProcessAlive(pid:number):boolean{
+ try{process.kill(pid,0);return true;}
+ catch(error){const code=(error as NodeJS.ErrnoException).code;if(code==="ESRCH")return false;if(code==="EPERM")return true;throw error;}
+}
+async function clearRestoreOwner(ownerFile:string,expectedInfo:{dev:number;ino:number;birthtimeMs:number},expectedBytes:Buffer):Promise<void>{
+ const current=await lstat(ownerFile).catch(error=>enoent(error)?undefined:Promise.reject(error));
+ if(!current||!sameRestoreIdentity(expectedInfo,current)||!(await readBoundedOrdinaryFile(ownerFile,8*1024*1024)).equals(expectedBytes))
+  return fail("RECOVERY_REQUIRED","Restore recovery marker changed; preserving it");
+ await unlink(ownerFile);
+}
+async function writeRestoreOwner(ownerFile:string,owner:RestoreStageOwner,previous?:{info:{dev:number;ino:number;birthtimeMs:number};bytes:Buffer}){
+ const bytes=Buffer.from(JSON.stringify(owner)+"\n"),temporary=`${ownerFile}.${randomUUID()}.tmp`;
+ const handle=await open(temporary,"wx",0o600);let info:{dev:number;ino:number;birthtimeMs:number};
+ try{await handle.writeFile(bytes);await handle.sync();info=await handle.stat();}finally{await handle.close();}
+ try{
+  if(previous){
+   const current=await lstat(ownerFile);
+   if(!sameRestoreIdentity(previous.info,current)||!(await readBoundedOrdinaryFile(ownerFile,8*1024*1024)).equals(previous.bytes))
+    return fail("RECOVERY_REQUIRED","Restore recovery marker changed; preserving it");
+   await rename(temporary,ownerFile);
+  }else await link(temporary,ownerFile);
+  const committed=await lstat(ownerFile);
+  if(!sameRestoreIdentity(info,committed)||!(await readBoundedOrdinaryFile(ownerFile,8*1024*1024)).equals(bytes))
+   return fail("RECOVERY_REQUIRED","Restore recovery marker publication is uncertain");
+  await unlink(temporary).catch(()=>undefined);
+  return {info:committed,bytes};
+ }catch(error){
+  await unlink(temporary).catch(()=>undefined);
+  throw error;
+ }
+}
+async function removeRestoreOwnedFile(stageRoot:string,relativePath:string,expected:{size:number;sha256:string}):Promise<void>{
+ const parts=relativePath.split("/");let parent=stageRoot;
+ for(const part of parts.slice(0,-1)){
+  parent=path.join(parent,part);
+  const info=await lstat(parent).catch(error=>enoent(error)?undefined:Promise.reject(error));
+  if(!info)return;
+  if(!info.isDirectory()||info.isSymbolicLink())return fail("RECOVERY_REQUIRED","Restore staging contains an unexpected linked path");
+ }
+ const file=path.join(parent,parts.at(-1)!),info=await lstat(file).catch(error=>enoent(error)?undefined:Promise.reject(error));
+ if(!info)return;
+ if(!info.isFile()||info.isSymbolicLink())return fail("RECOVERY_REQUIRED","Restore staging contains an unexpected file type");
+ const bytes=await readBoundedOrdinaryFile(file,HOME_BACKUP_MAX_FILE_BYTES);
+ if(bytes.length!==expected.size||sha256(bytes)!==expected.sha256)return fail("RECOVERY_REQUIRED","Restore staging bytes changed; preserving the stage for inspection");
+ await unlink(file);
+}
+async function moveConfigFileNoReplace(source:string,destination:string,expected:RestorePathIdentity):Promise<void>{
+ const sourceInfo=await lstat(source);
+ if(!sourceInfo.isFile()||sourceInfo.isSymbolicLink()||!sameRestoreIdentity(sourceInfo,expected))
+  return fail("RECOVERY_REQUIRED","Restore config identity changed; preserving it");
+ await link(source,destination);
+ const linked=await lstat(destination);
+ if(!sameRestoreIdentity(linked,sourceInfo))return fail("RECOVERY_REQUIRED","Restore config move is uncertain; preserving both paths");
+ const current=await lstat(source).catch(error=>enoent(error)?undefined:Promise.reject(error));
+ if(!current||!sameRestoreIdentity(current,sourceInfo))return fail("RECOVERY_REQUIRED","Restore config changed during move; preserving both paths");
+ await unlink(source);
+}
+async function restoreConfigFileNoReplace(moved:string,destination:string,expected:RestorePathIdentity):Promise<void>{
+ const movedInfo=await lstat(moved).catch(error=>enoent(error)?undefined:Promise.reject(error));
+ const targetInfo=await lstat(destination).catch(error=>enoent(error)?undefined:Promise.reject(error));
+ if(targetInfo&&sameRestoreIdentity(targetInfo,expected)){
+  if(movedInfo){
+   if(!sameRestoreIdentity(movedInfo,expected))return fail("RECOVERY_REQUIRED","Moved-aside restore config identity changed; preserving it");
+   await unlink(moved);
+  }
+  return;
+ }
+ if(targetInfo)return fail("RECOVERY_REQUIRED","Restore config destination is occupied; preserving all paths");
+ if(!movedInfo||!movedInfo.isFile()||movedInfo.isSymbolicLink()||!sameRestoreIdentity(movedInfo,expected))
+  return fail("RECOVERY_REQUIRED","Original restore config is missing or changed; preserving staged data");
+ try{await link(moved,destination);}
+ catch(error){if((error as NodeJS.ErrnoException).code==="EEXIST")return fail("RECOVERY_REQUIRED","Restore config destination appeared; preserving all paths",error);throw error;}
+ const linked=await lstat(destination);
+ if(!sameRestoreIdentity(linked,movedInfo))return fail("RECOVERY_REQUIRED","Restore config recovery is uncertain; preserving both paths");
+ const current=await lstat(moved).catch(error=>enoent(error)?undefined:Promise.reject(error));
+ if(!current||!sameRestoreIdentity(current,movedInfo))return fail("RECOVERY_REQUIRED","Moved-aside restore config changed; preserving both paths");
+ await unlink(moved);
+}
+async function removeStagedConfig(owner:NonNullable<RestoreStageOwner["stagedConfig"]>):Promise<void>{
+ const info=await lstat(owner.path).catch(error=>enoent(error)?undefined:Promise.reject(error));
+ if(!info)return;
+ if(!info.isFile()||info.isSymbolicLink())return fail("RECOVERY_REQUIRED","Staged restore config changed type; preserving it");
+ if(owner.identity){
+  if(!sameRestoreIdentity(info,owner.identity))return fail("RECOVERY_REQUIRED","Staged restore config identity changed; preserving it");
+ }else if(info.size!==0)return fail("RECOVERY_REQUIRED","Unidentified staged restore config is not empty; preserving it");
+ await unlink(owner.path);
+}
+async function restorePriorStateComplete(owner:RestoreStageOwner):Promise<boolean>{
+ const targetInfo=await lstat(owner.target).catch(error=>enoent(error)?undefined:Promise.reject(error));
+ if(owner.targetState==="absent"&&targetInfo)return false;
+ if(owner.targetState==="empty"&&(!targetInfo||!targetInfo.isDirectory()||targetInfo.isSymbolicLink()||(await readdir(owner.target)).length!==0))return false;
+ if(owner.targetState==="moved"&&(!targetInfo||!sameRestoreIdentity(targetInfo,owner.previousTargetIdentity!)||await lstat(owner.movedTarget!).then(()=>true,error=>enoent(error)?false:Promise.reject(error))))return false;
+ if(owner.configTarget){
+  const configInfo=await lstat(owner.configTarget).catch(error=>enoent(error)?undefined:Promise.reject(error));
+  if(owner.configState==="absent"&&configInfo)return false;
+  if(owner.configState==="existing"&&(!configInfo||!sameRestoreIdentity(configInfo,owner.previousConfigIdentity!)
+   ||await lstat(owner.movedConfig!).then(()=>true,error=>enoent(error)?false:Promise.reject(error))))return false;
+  if(owner.stagedConfig&&await lstat(owner.stagedConfig.path).then(()=>true,error=>enoent(error)?false:Promise.reject(error)))return false;
+ }
+ return true;
+}
+async function recoverAbandonedRestoreStage(target:string,hooks?:RestoreHomeBackupRequest["hooks"]):Promise<void>{
+ const ownerFile=restoreOwnerPath(target);let ownerInfo=await lstat(ownerFile).catch(error=>enoent(error)?undefined:Promise.reject(error));
+ if(!ownerInfo)return;
+ if(!ownerInfo.isFile()||ownerInfo.isSymbolicLink())return fail("RECOVERY_REQUIRED","Restore recovery marker is not an ordinary file");
+ let ownerBytes=await readBoundedOrdinaryFile(ownerFile,8*1024*1024);
+ let owner:Partial<RestoreStageOwner>;
+ try{owner=JSON.parse(ownerBytes.toString("utf8")) as Partial<RestoreStageOwner>;}
+ catch(error){return fail("RECOVERY_REQUIRED","Restore recovery marker is malformed",error);}
+ const stageRoot=owner.stageRoot;
+ const stageSuffix=typeof stageRoot==="string"?path.basename(stageRoot).slice(`${path.basename(target)}.restore-`.length):"";
+ if(owner.schema!=="asen.home-restore-stage/v1"||owner.target!==target||!["staging","cleanup"].some(phase=>phase===owner.phase)||!Number.isSafeInteger(owner.pid)||owner.pid!<=0||typeof stageRoot!=="string"
+  ||path.dirname(stageRoot)!==path.dirname(target)||!stageRoot.startsWith(`${target}.restore-`)
+  ||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(stageSuffix)
+  ||owner.stageIdentity!==undefined&&!validRestoreIdentity(owner.stageIdentity)
+  ||!["absent","empty","moved"].some(state=>state===owner.targetState)
+  ||owner.targetState!=="absent"&&!validRestoreIdentity(owner.previousTargetIdentity)
+  ||owner.targetState==="absent"&&owner.previousTargetIdentity!==undefined
+  ||owner.targetState==="moved"&&!validMovedAsidePath(target,owner.movedTarget)
+  ||owner.targetState!=="moved"&&owner.movedTarget!==undefined
+  ||owner.configTarget!==undefined&&(!path.isAbsolute(owner.configTarget!)||within(target,owner.configTarget!)||within(owner.configTarget!,target))
+  ||owner.configTarget===undefined&&(owner.configState!==undefined||owner.previousConfigIdentity!==undefined||owner.movedConfig!==undefined||owner.stagedConfig!==undefined)
+  ||owner.configTarget!==undefined&&owner.configState!=="absent"&&owner.configState!=="existing"
+  ||owner.configState==="existing"&&(!validRestoreIdentity(owner.previousConfigIdentity)||!validMovedAsidePath(owner.configTarget!,owner.movedConfig))
+  ||owner.configState==="absent"&&(owner.previousConfigIdentity!==undefined||owner.movedConfig!==undefined)
+  ||owner.stagedConfig!==undefined&&(!owner.stagedConfig||typeof owner.stagedConfig!=="object"||typeof owner.stagedConfig.path!=="string"
+   ||!validStagedConfigPath(owner.configTarget!,owner.stagedConfig.path)
+   ||owner.stagedConfig.identity!==undefined&&!validRestoreIdentity(owner.stagedConfig.identity)
+   ||!Number.isSafeInteger(owner.stagedConfig.size)||owner.stagedConfig.size<0||!/^[a-f0-9]{64}$/u.test(owner.stagedConfig.sha256))
+  ||!Array.isArray(owner.directories)||owner.directories.length>HOME_BACKUP_MAX_ENTRIES
+  ||!owner.directories.every(directory=>typeof directory==="string")
+  ||!Array.isArray(owner.files)||owner.files.length>HOME_BACKUP_MAX_ENTRIES
+  ||!owner.files.every(file=>!!file&&typeof file==="object"&&typeof file.path==="string"&&Number.isSafeInteger(file.size)&&typeof file.sha256==="string"))
+  return fail("RECOVERY_REQUIRED","Restore recovery marker is malformed");
+ if(restoreProcessAlive(owner.pid!))return fail("RECOVERY_REQUIRED","Another restore operation is still active");
+ let stageInfo=await lstat(stageRoot).catch(error=>enoent(error)?undefined:Promise.reject(error));
+ if(!owner.stageIdentity){
+  if(!stageInfo){await clearRestoreOwner(ownerFile,ownerInfo,ownerBytes);return;}
+  if(!stageInfo.isDirectory()||stageInfo.isSymbolicLink()||(await readdir(stageRoot)).length!==0)
+   return fail("RECOVERY_REQUIRED","Unidentified restore staging is not empty; preserving it");
+  await rmdir(stageRoot);await clearRestoreOwner(ownerFile,ownerInfo,ownerBytes);return;
+ }
+ if(!stageInfo&&owner.phase==="cleanup"){
+  if(!await restorePriorStateComplete(owner as RestoreStageOwner))return fail("RECOVERY_REQUIRED","Restore cleanup state is uncertain; preserving the marker");
+  await clearRestoreOwner(ownerFile,ownerInfo,ownerBytes);return;
+ }
+ let targetInfo=await lstat(target).catch(error=>enoent(error)?undefined:Promise.reject(error));
+ if(!stageInfo&&targetInfo&&sameRestoreIdentity(targetInfo,owner.stageIdentity)){
+  await rename(target,stageRoot);stageInfo=await lstat(stageRoot);targetInfo=undefined;
+ }
+ if(!stageInfo||!stageInfo.isDirectory()||stageInfo.isSymbolicLink()||!sameRestoreIdentity(stageInfo,owner.stageIdentity!))
+  return fail("RECOVERY_REQUIRED","Restore staging identity changed; preserving all paths");
+ if(targetInfo&&(!owner.previousTargetIdentity||!sameRestoreIdentity(targetInfo,owner.previousTargetIdentity)))
+  return fail("RECOVERY_REQUIRED","Restore target identity changed; preserving all paths");
+ if(owner.targetState==="moved"){
+  const asideInfo=await lstat(owner.movedTarget!).catch(error=>enoent(error)?undefined:Promise.reject(error));
+  if(asideInfo){
+   if(!sameRestoreIdentity(asideInfo,owner.previousTargetIdentity!))
+    return fail("RECOVERY_REQUIRED","Moved-aside restore target identity changed; preserving it");
+   if(targetInfo)return fail("RECOVERY_REQUIRED","Both original and moved-aside restore targets exist; preserving both");
+   await rename(owner.movedTarget!,target);
+  }else if(!targetInfo)return fail("RECOVERY_REQUIRED","Original restore target is missing; preserving the staged data");
+ }else if(owner.targetState==="empty"){
+  if(!targetInfo)await mkdir(target);
+ }else if(targetInfo)return fail("RECOVERY_REQUIRED","Unexpected target appeared during restore recovery");
+ if(owner.configTarget){
+  const configTarget=owner.configTarget,configInfo=await lstat(configTarget).catch(error=>enoent(error)?undefined:Promise.reject(error));
+  const movedInfo=owner.movedConfig?await lstat(owner.movedConfig).catch(error=>enoent(error)?undefined:Promise.reject(error)):undefined;
+  const staged=owner.stagedConfig;
+  if(staged?.identity&&configInfo&&sameRestoreIdentity(configInfo,staged.identity)){
+   const bytes=await readBoundedOrdinaryFile(configTarget,HOME_BACKUP_MAX_FILE_BYTES);
+   if(bytes.length!==staged.size||sha256(bytes)!==staged.sha256)return fail("RECOVERY_REQUIRED","Published restore config changed; preserving it");
+   await unlink(configTarget);
+  }else if(configInfo&&(!owner.previousConfigIdentity||!sameRestoreIdentity(configInfo,owner.previousConfigIdentity)))
+   return fail("RECOVERY_REQUIRED","Restore config identity changed; preserving it");
+  if(owner.configState==="existing"){
+   if(movedInfo){
+    if(!sameRestoreIdentity(movedInfo,owner.previousConfigIdentity!))return fail("RECOVERY_REQUIRED","Moved-aside restore config identity changed; preserving it");
+    await hooks?.beforeConfigRecovery?.();
+    await restoreConfigFileNoReplace(owner.movedConfig!,configTarget,owner.previousConfigIdentity!);
+   }else if(!await lstat(configTarget).then(()=>true,error=>enoent(error)?false:Promise.reject(error)))
+    return fail("RECOVERY_REQUIRED","Original restore config is missing; preserving staged data");
+  }
+  if(staged){
+   await removeStagedConfig(staged);
+  }
+ }
+ const files=owner.files as Array<{path:string;size:number;sha256:string}>;
+ const directories=owner.directories as string[];
+ for(const file of files){
+  const relativePath=safeRelative(file?.path);
+  if(!Number.isSafeInteger(file.size)||file.size<0||typeof file.sha256!=="string"||!/^[a-f0-9]{64}$/u.test(file.sha256))
+   return fail("RECOVERY_REQUIRED","Restore recovery file inventory is malformed");
+  await removeRestoreOwnedFile(stageRoot,relativePath,file);
+ }
+ const allDirectories=new Set(directories);
+ for(const file of files){let parent=path.posix.dirname(file.path);while(parent!=="."){allDirectories.add(parent);parent=path.posix.dirname(parent);}}
+ for(const directory of [...allDirectories].sort((a,b)=>b.length-a.length)){
+  safeRelative(directory);
+  const targetDirectory=path.join(stageRoot,...directory.split("/"));
+  const info=await lstat(targetDirectory).catch(error=>enoent(error)?undefined:Promise.reject(error));
+  if(!info)continue;
+  if(!info.isDirectory()||info.isSymbolicLink())return fail("RECOVERY_REQUIRED","Restore staging contains an unexpected directory type");
+  try{await rmdir(targetDirectory);}catch(error){if((error as NodeJS.ErrnoException).code!=="ENOENT")return fail("RECOVERY_REQUIRED","Restore staging contains unowned entries; preserving the stage",error);}
+ }
+ const cleanupOwner=await writeRestoreOwner(ownerFile,{...owner as RestoreStageOwner,phase:"cleanup"},{info:ownerInfo,bytes:ownerBytes});
+ ownerInfo=cleanupOwner.info;ownerBytes=cleanupOwner.bytes;
+ try{await rmdir(stageRoot);}catch(error){return fail("RECOVERY_REQUIRED","Restore staging contains unowned entries; preserving the stage",error);}
+ await hooks?.afterRecoveryStageRemoved?.();
+ await clearRestoreOwner(ownerFile,ownerInfo,ownerBytes);
 }
 
 async function isEmptyDirectory(directory:string):Promise<boolean|undefined>{
@@ -301,16 +545,39 @@ export async function restoreHomeBackup(request:RestoreHomeBackupRequest):Promis
  if(config&&within(target,config))return fail("TARGET_UNSAFE","Config target must be outside the restored home");
  const parent=path.dirname(target),parentInfo=await lstat(parent).catch(()=>undefined);
  if(!parentInfo||parentInfo.isSymbolicLink()||!parentInfo.isDirectory())return fail("TARGET_UNSAFE","Restore target parent must be an existing ordinary directory");
+ await recoverAbandonedRestoreStage(target,request.hooks);
+ const targetInfo=await lstat(target).catch(error=>enoent(error)?undefined:Promise.reject(error));
  const empty=await isEmptyDirectory(target);
  if(empty===false&&request.replace!==true)return fail("TARGET_EXISTS","Restore target is not empty; refusing to overwrite (use --replace to move it aside)");
- const configExists=config?await lstat(config).then(()=>true,()=>false):false;
+ const configInfo=config?await lstat(config).catch(error=>enoent(error)?undefined:Promise.reject(error)):undefined;
+ const configExists=!!configInfo;
+ if(configInfo&&(!configInfo.isFile()||configInfo.isSymbolicLink()))return fail("TARGET_UNSAFE","Restore config target must be an ordinary file");
  if(config&&configExists&&request.replace!==true)return fail("TARGET_EXISTS","Config target exists; refusing to overwrite");
  const stageRoot=`${target}.restore-${randomUUID()}`,movedAside:string[]=[];
+ const movedTarget=empty===false?`${target}.pre-restore-${Date.now()}-${randomUUID().slice(0,8)}`:undefined;
+ const movedConfig=config&&configExists?`${config}.pre-restore-${Date.now()}-${randomUUID().slice(0,8)}`:undefined;
  const configEntry=verified._manifest.entries.findIndex(entry=>entry.root==="config");
- await mkdir(stageRoot,{mode:0o700});
- let published=false,movedTarget:string|undefined,movedConfig:string|undefined,configPublished=false;
+ const ownerFile=restoreOwnerPath(target);let ownerInfo:{dev:number;ino:number;birthtimeMs:number}|undefined,ownerBytes:Buffer|undefined;
+ let published=false,configPublished=false,stagedConfig:string|undefined,stagedConfigCreated=false,stagedConfigOwner:NonNullable<RestoreStageOwner["stagedConfig"]>|undefined;
  try{
-  for(const directory of verified._manifest.dirs)await mkdir(path.join(stageRoot,...directory.path.split("/")),{recursive:true,mode:0o700});
+  const ownerBase:RestoreStageOwner={
+   schema:"asen.home-restore-stage/v1",phase:"staging",target,stageRoot,pid:process.pid,
+   targetState:empty===undefined?"absent":empty?"empty":"moved",
+   ...(targetInfo?{previousTargetIdentity:{dev:targetInfo.dev,ino:targetInfo.ino,birthtimeMs:targetInfo.birthtimeMs}}:{}),
+   ...(movedTarget?{movedTarget}:{}),
+   ...(config?{configTarget:config,configState:configExists?"existing":"absent"}:{}),
+   ...(configInfo?{previousConfigIdentity:{dev:configInfo.dev,ino:configInfo.ino,birthtimeMs:configInfo.birthtimeMs}}:{}),
+   ...(movedConfig?{movedConfig}:{}),
+   directories:verified._manifest.dirs.filter(directory=>directory.root==="home").map(directory=>directory.path),
+   files:verified._manifest.entries.filter(entry=>entry.root==="home").map(entry=>({path:entry.path,size:entry.size,sha256:entry.sha256})),
+  };
+  const initialOwner=await writeRestoreOwner(ownerFile,ownerBase);
+  ownerInfo=initialOwner.info;ownerBytes=initialOwner.bytes;
+  await mkdir(stageRoot,{mode:0o700});
+  const stageInfo=await lstat(stageRoot);
+  const committedOwner=await writeRestoreOwner(ownerFile,{...ownerBase,stageIdentity:{dev:stageInfo.dev,ino:stageInfo.ino,birthtimeMs:stageInfo.birthtimeMs}},{info:ownerInfo,bytes:ownerBytes});
+  ownerInfo=committedOwner.info;ownerBytes=committedOwner.bytes;
+  for(const directory of verified._manifest.dirs.filter(item=>item.root==="home"))await mkdir(path.join(stageRoot,...directory.path.split("/")),{recursive:true,mode:0o700});
   let restored=0;
   for(const [index,entry] of verified._manifest.entries.entries()){
    if(entry.root!=="home")continue;
@@ -325,37 +592,60 @@ export async function restoreHomeBackup(request:RestoreHomeBackupRequest):Promis
    await request.hooks?.afterStagedFile?.(entry.path);
    restored++;
   }
-  let stagedConfig:string|undefined;
   if(config&&configEntry>=0){
    const entry=verified._manifest.entries[configEntry]!;
    stagedConfig=`${config}.${randomUUID()}.tmp`;
+   const data=verified._bytes.subarray(verified._offsets[configEntry]!,verified._offsets[configEntry]!+entry.size);
+   const plannedOwner=await writeRestoreOwner(ownerFile,{...ownerBase,stageIdentity:{dev:stageInfo.dev,ino:stageInfo.ino,birthtimeMs:stageInfo.birthtimeMs},
+    stagedConfig:{path:stagedConfig,size:entry.size,sha256:entry.sha256}},
+    {info:ownerInfo!,bytes:ownerBytes!});
+   ownerInfo=plannedOwner.info;ownerBytes=plannedOwner.bytes;
+   stagedConfigOwner={path:stagedConfig,size:entry.size,sha256:entry.sha256};
    const handle=await open(stagedConfig,"wx",0o600);
-   try{await handle.writeFile(verified._bytes.subarray(verified._offsets[configEntry]!,verified._offsets[configEntry]!+entry.size));await handle.sync();}finally{await handle.close();}
+   stagedConfigCreated=true;
+   try{
+    await request.hooks?.afterStagedConfigCreate?.();
+    const stagedConfigInfo=await handle.stat();
+    stagedConfigOwner={...stagedConfigOwner,identity:{dev:stagedConfigInfo.dev,ino:stagedConfigInfo.ino,birthtimeMs:stagedConfigInfo.birthtimeMs}};
+    const updatedOwner=await writeRestoreOwner(ownerFile,{...ownerBase,stageIdentity:{dev:stageInfo.dev,ino:stageInfo.ino,birthtimeMs:stageInfo.birthtimeMs},
+     stagedConfig:stagedConfigOwner},
+     {info:ownerInfo!,bytes:ownerBytes!});
+    ownerInfo=updatedOwner.info;ownerBytes=updatedOwner.bytes;
+    await handle.writeFile(data);await handle.sync();
+   }finally{await handle.close();}
+   const stagedBytes=await readBoundedOrdinaryFile(stagedConfig,HOME_BACKUP_MAX_FILE_BYTES);
+   if(stagedBytes.length!==entry.size||sha256(stagedBytes)!==entry.sha256)return fail("RESTORE_FAILED","Staged config bytes differ from the backup");
   }
   try{
    await request.hooks?.beforePublish?.();
-   if(empty===false){movedTarget=`${target}.pre-restore-${Date.now()}-${randomUUID().slice(0,8)}`;await rename(target,movedTarget);movedAside.push(movedTarget);}
+   if(empty===false){await rename(target,movedTarget!);movedAside.push(movedTarget!);}
    else if(empty===true)await rmdir(target);
-   if(config&&configExists){movedConfig=`${config}.pre-restore-${Date.now()}-${randomUUID().slice(0,8)}`;await rename(config,movedConfig);movedAside.push(movedConfig);}
+   if(config&&configExists){await moveConfigFileNoReplace(config,movedConfig!,ownerBase.previousConfigIdentity!);movedAside.push(movedConfig!);await request.hooks?.afterConfigMove?.();}
    await rename(stageRoot,target);published=true;
-   if(stagedConfig){await link(stagedConfig,config!);configPublished=true;}
+   await request.hooks?.afterHomePublish?.();
+   if(stagedConfig){await link(stagedConfig,config!);configPublished=true;await request.hooks?.afterConfigPublish?.();}
   }catch(error){
    if(!published){
     if(movedTarget)await rename(movedTarget,target).catch(()=>undefined);
     else if(empty===true)await mkdir(target).catch(()=>undefined);
-    if(movedConfig&&config)await rename(movedConfig,config).catch(()=>undefined);
+    if(movedConfig&&config)await restoreConfigFileNoReplace(movedConfig,config,ownerBase.previousConfigIdentity!).catch(()=>undefined);
    }else{
     // Home was published but the config step failed: restore the previous home as it was.
     await rename(target,stageRoot).catch(()=>undefined);published=false;
     if(movedTarget)await rename(movedTarget,target).catch(()=>undefined);
     else if(empty===true)await mkdir(target).catch(()=>undefined);
-    if(movedConfig&&config)await rename(movedConfig,config).catch(()=>undefined);
+    if(movedConfig&&config)await restoreConfigFileNoReplace(movedConfig,config,ownerBase.previousConfigIdentity!).catch(()=>undefined);
    }
    throw error;
-  }finally{if(stagedConfig)await unlink(stagedConfig).catch(()=>undefined);}
+  }finally{if(stagedConfigCreated&&stagedConfigOwner)await removeStagedConfig(stagedConfigOwner);}
+  await clearRestoreOwner(ownerFile,ownerInfo!,ownerBytes!);
   return Object.freeze({schema:"asen.home-restore-report/v1",operation:"restore-home",status:"restored",targetHome:target,files:restored,configRestored:configPublished,movedAside:Object.freeze(movedAside),backupSha256:verified.sha256});
  }catch(error){
-  if(!published)await rm(stageRoot,{recursive:true,force:true}).catch(()=>undefined);
+  if(!published){
+   if(stagedConfigCreated&&stagedConfigOwner)await removeStagedConfig(stagedConfigOwner);
+   await rm(stageRoot,{recursive:true,force:true}).catch(()=>undefined);
+   if(ownerInfo&&ownerBytes)await clearRestoreOwner(ownerFile,ownerInfo,ownerBytes).catch(()=>undefined);
+  }
   if(error instanceof HomeBackupError)throw error;
   throw new HomeBackupError("RESTORE_FAILED","Restore failed and the previous state was kept: "+(error instanceof Error?error.message:String(error)),{cause:error});
  }

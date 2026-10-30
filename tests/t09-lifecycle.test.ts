@@ -200,6 +200,22 @@ test("a partial uninstall keeps ownership records so a later uninstall can finis
  assert.equal(second.status,"removed");
 });
 
+test("uninstall waits for the maintenance lease and preserves the installation on contention",async()=>{
+ const {prefix,dataHome,v1,base}=await setupInstall("uninstallbusy");
+ await installManaged({...base,source:v1.source,dataHome});
+ const cli=path.join(prefix,"install","versions","1.0.0","cli.cjs");
+ const journal=path.join(prefix,"managed-update-journal.json");
+ const marker=path.join(prefix,"install",".asen-maintenance.lock");
+ await fs.writeFile(journal,"transaction marker\n");
+ await fs.writeFile(marker,"another maintenance operation\n");
+ await assert.rejects(()=>uninstallManaged({prefix,confirmed:true}),{code:"LOCK_TIMEOUT"});
+ assert.equal(await fs.readFile(cli,"utf8"),GOOD_CLI("1.0.0"));
+ assert.equal(await fs.readFile(journal,"utf8"),"transaction marker\n");
+ await fs.rm(marker);
+ await fs.rm(journal);
+ assert.equal((await uninstallManaged({prefix,confirmed:true})).status,"removed");
+});
+
 test("foreign (non-ASEN) managed roots are never touched by install or uninstall",async()=>{
  const {prefix,dataHome,v1,base}=await setupInstall("foreign");
  await fs.mkdir(path.join(prefix,"install"),{recursive:true});await fs.writeFile(path.join(prefix,"install","stranger.txt"),"not ours");
@@ -391,17 +407,94 @@ test("restore failure during staging cleans temporary data and can be retried",a
 test("a killed restore during staging preserves the old target and a retry completes",async()=>{
  const {root,home}=await homeFixture("restore-kill"),backup=path.join(root,"interrupted.asenbak"),target=path.join(root,"interrupted-target");
  await createHomeBackup({homeDir:home,destination:backup,asenVersion:"0.1.0"});await fs.mkdir(target);await fs.writeFile(path.join(target,"precious"),"retain-after-kill");
- const childSource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},replace:true,confirmed:true,hooks:{afterStagedFile(){process.stdout.write("RESTORE_STAGE_READY\\n");return new Promise(()=>{});}}});`;
+ const childSource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},replace:true,confirmed:true,hooks:{afterStagedFile(){process.stdout.write("RESTORE_STAGE_READY\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
  const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",childSource],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"],windowsHide:true});let output="",errors="";
  child.stdout.setEncoding("utf8").on("data",chunk=>output+=chunk);child.stderr.setEncoding("utf8").on("data",chunk=>errors+=chunk);
  const closed=new Promise<{code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{child.once("error",reject);child.once("close",(code,signal)=>resolve({code,signal}));});
  await new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>{child.kill();reject(new Error("restore child did not reach its staged-file checkpoint"));},30_000);const ready=()=>{if(output.includes("RESTORE_STAGE_READY")){clearTimeout(timer);child.stdout.off("data",ready);resolve();}};child.stdout.on("data",ready);child.once("close",()=>{clearTimeout(timer);reject(new Error(`restore child exited before staging checkpoint: ${errors}`));});});
+ const stageOwner=JSON.parse(await fs.readFile(`${target}.restore-owner.json`,"utf8")) as {pid:number};
+ assert.equal(stageOwner.pid,child.pid);
+ assert.doesNotThrow(()=>process.kill(stageOwner.pid,0));
+ await assert.rejects(()=>restoreHomeBackup({backup,targetHome:target,replace:true,confirmed:true}),{code:"RECOVERY_REQUIRED"},"a live restore must not have its stage reclaimed");
+ assert.equal(await fs.readFile(path.join(target,"precious"),"utf8"),"retain-after-kill");
  child.kill("SIGKILL");const stopped=await closed;assert.notEqual(stopped.code,0,"the staging child was forcibly terminated");
  assert.equal(await fs.readFile(path.join(target,"precious"),"utf8"),"retain-after-kill");
- const abandoned=(await fs.readdir(root)).filter(name=>name.startsWith("interrupted-target.restore-"));assert.equal(abandoned.length,1,"only a private, unpublished stage may remain after forced termination");
+ const abandoned=(await fs.readdir(root)).filter(name=>/^interrupted-target\.restore-[0-9a-f]{8}-/u.test(name));assert.equal(abandoned.length,1,"only a private, unpublished stage may remain after forced termination");
  const restored=await restoreHomeBackup({backup,targetHome:target,replace:true,confirmed:true});
  assert.equal(await fs.readFile(path.join(target,"settings.json"),"utf8"),'{"theme":"dark"}');
  assert.equal(await fs.readFile(path.join(restored.movedAside[0]!,"precious"),"utf8"),"retain-after-kill");
+ assert.deepEqual((await fs.readdir(root)).filter(name=>/^interrupted-target\.restore-[0-9a-f]{8}-/u.test(name)),[],"retry removes only the abandoned private stage");
+ await assert.rejects(()=>fs.lstat(`${target}.restore-owner.json`),{code:"ENOENT"},"retry removes its recovery marker");
+});
+
+test("a killed restore before config staging is journaled removes only its empty staged file",async()=>{
+ const {root,home,config}=await homeFixture("restore-config-stage-kill"),backup=path.join(root,"config-stage.asenbak"),target=path.join(root,"config-stage-target"),targetConfig=path.join(root,"config-stage-target.json");
+ await createHomeBackup({homeDir:home,configFile:config,destination:backup,asenVersion:"0.1.0"});
+ const childSource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},targetConfig:${JSON.stringify(targetConfig)},replace:true,confirmed:true,hooks:{afterStagedConfigCreate(){process.stdout.write("CONFIG_STAGE_CREATED\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
+ const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",childSource],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"],windowsHide:true});let output="",errors="";
+ child.stdout.setEncoding("utf8").on("data",chunk=>output+=chunk);child.stderr.setEncoding("utf8").on("data",chunk=>errors+=chunk);
+ const closed=new Promise<{code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{child.once("error",reject);child.once("close",(code,signal)=>resolve({code,signal}));});
+ await new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>{child.kill();reject(new Error("restore child did not reach staged config creation"));},30_000);const ready=()=>{if(output.includes("CONFIG_STAGE_CREATED")){clearTimeout(timer);child.stdout.off("data",ready);resolve();}};child.stdout.on("data",ready);child.once("close",()=>{clearTimeout(timer);reject(new Error(`restore child exited before staged config creation: ${errors}`));});});
+ const owner=JSON.parse(await fs.readFile(`${target}.restore-owner.json`,"utf8")) as {stagedConfig:{path:string;identity?:unknown}};
+ assert.equal(owner.stagedConfig.identity,undefined,"the owner marker must record the staged path before file creation is journaled");
+ assert.equal((await fs.stat(owner.stagedConfig.path)).size,0,"SIGKILL leaves only an empty uncommitted file");
+ child.kill("SIGKILL");const stopped=await closed;assert.notEqual(stopped.code,0);
+ const restored=await restoreHomeBackup({backup,targetHome:target,targetConfig,replace:true,confirmed:true});
+ assert.equal(await fs.readFile(targetConfig,"utf8"),'{"home":"isolated"}');
+ assert.equal(await fs.readFile(path.join(target,"settings.json"),"utf8"),'{"theme":"dark"}');
+ assert.equal(restored.configRestored,true);
+ await assert.rejects(()=>fs.lstat(owner.stagedConfig.path),{code:"ENOENT"},"recovery removes its abandoned config staging file");
+ await assert.rejects(()=>fs.lstat(`${target}.restore-owner.json`),{code:"ENOENT"},"recovery removes its marker after retry");
+});
+
+test("a killed restore after publication rolls back the owned target and config before retry",async()=>{
+ const {root,home,config}=await homeFixture("restore-publish-kill"),backup=path.join(root,"published.asenbak"),target=path.join(root,"published-target"),targetConfig=path.join(root,"published-config.json");
+ await createHomeBackup({homeDir:home,configFile:config,destination:backup,asenVersion:"0.1.0"});
+ await fs.mkdir(target);await fs.writeFile(path.join(target,"precious"),"keep-before-publish");
+ await fs.writeFile(targetConfig,"original-config");
+ const childSource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},targetConfig:${JSON.stringify(targetConfig)},replace:true,confirmed:true,hooks:{afterConfigPublish(){process.stdout.write("RESTORE_PUBLISHED\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
+ const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",childSource],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"],windowsHide:true});let output="",errors="";
+ child.stdout.setEncoding("utf8").on("data",chunk=>output+=chunk);child.stderr.setEncoding("utf8").on("data",chunk=>errors+=chunk);
+ const closed=new Promise<{code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{child.once("error",reject);child.once("close",(code,signal)=>resolve({code,signal}));});
+ await new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>{child.kill();reject(new Error("restore child did not reach its publication checkpoint"));},30_000);const ready=()=>{if(output.includes("RESTORE_PUBLISHED")){clearTimeout(timer);child.stdout.off("data",ready);resolve();}};child.stdout.on("data",ready);child.once("close",()=>{clearTimeout(timer);reject(new Error(`restore child exited before publication checkpoint: ${errors}`));});});
+ child.kill("SIGKILL");const stopped=await closed;assert.notEqual(stopped.code,0,"the publication child was forcibly terminated");
+ const recoverySource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},targetConfig:${JSON.stringify(targetConfig)},replace:true,confirmed:true,hooks:{afterRecoveryStageRemoved(){process.stdout.write("RECOVERY_STAGE_REMOVED\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
+ const recovery=spawn(process.execPath,["--import","tsx","--input-type=module","-e",recoverySource],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"],windowsHide:true});let recoveryOutput="",recoveryErrors="";
+ recovery.stdout.setEncoding("utf8").on("data",chunk=>recoveryOutput+=chunk);recovery.stderr.setEncoding("utf8").on("data",chunk=>recoveryErrors+=chunk);
+ const recoveryClosed=new Promise<{code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{recovery.once("error",reject);recovery.once("close",(code,signal)=>resolve({code,signal}));});
+ await new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>{recovery.kill();reject(new Error("recovery child did not reach its cleanup checkpoint"));},30_000);const ready=()=>{if(recoveryOutput.includes("RECOVERY_STAGE_REMOVED")){clearTimeout(timer);recovery.stdout.off("data",ready);resolve();}};recovery.stdout.on("data",ready);recovery.once("close",()=>{clearTimeout(timer);reject(new Error(`recovery child exited before cleanup checkpoint: ${recoveryErrors}`));});});
+ recovery.kill("SIGKILL");const recoveryStopped=await recoveryClosed;assert.notEqual(recoveryStopped.code,0,"the recovery child was forcibly terminated before marker cleanup");
+ const recovered=await restoreHomeBackup({backup,targetHome:target,targetConfig,replace:true,confirmed:true});
+ assert.equal(await fs.readFile(path.join(target,"settings.json"),"utf8"),'{"theme":"dark"}');
+ assert.equal(await fs.readFile(targetConfig,"utf8"),'{"home":"isolated"}');
+ const movedContents=await Promise.all(recovered.movedAside.map(async candidate=>Promise.all([
+  fs.readFile(path.join(candidate,"precious"),"utf8").catch(()=>undefined),fs.readFile(candidate,"utf8").catch(()=>undefined),
+ ])));
+ assert.ok(movedContents.some(([homeBytes])=>homeBytes==="keep-before-publish"),"the original target contents survive recovery");
+ assert.ok(movedContents.some(([,configBytes])=>configBytes==="original-config"),"the original config survives recovery");
+ assert.deepEqual((await fs.readdir(root)).filter(name=>/^published-target\.restore-[0-9a-f]{8}-/u.test(name)),[]);
+ await assert.rejects(()=>fs.lstat(`${target}.restore-owner.json`),{code:"ENOENT"});
+});
+
+test("restore recovery refuses to replace a config path that appears during recovery",async()=>{
+ const {root,home,config}=await homeFixture("restore-config-race"),backup=path.join(root,"race.asenbak"),target=path.join(root,"race-target"),targetConfig=path.join(root,"race-config.json");
+ await createHomeBackup({homeDir:home,configFile:config,destination:backup,asenVersion:"0.1.0"});
+ await fs.mkdir(target);await fs.writeFile(path.join(target,"precious"),"preserve");
+ await fs.writeFile(targetConfig,"original-config");
+ const childSource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},targetConfig:${JSON.stringify(targetConfig)},replace:true,confirmed:true,hooks:{afterConfigMove(){process.stdout.write("CONFIG_MOVED\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
+ const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",childSource],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"],windowsHide:true});let output="",errors="";
+ child.stdout.setEncoding("utf8").on("data",chunk=>output+=chunk);child.stderr.setEncoding("utf8").on("data",chunk=>errors+=chunk);
+ const closed=new Promise<{code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{child.once("error",reject);child.once("close",(code,signal)=>resolve({code,signal}));});
+ await new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>{child.kill();reject(new Error("restore child did not reach config move"));},30_000);const ready=()=>{if(output.includes("CONFIG_MOVED")){clearTimeout(timer);child.stdout.off("data",ready);resolve();}};child.stdout.on("data",ready);child.once("close",()=>{clearTimeout(timer);reject(new Error(`restore child exited before config move: ${errors}`));});});
+ child.kill("SIGKILL");const stopped=await closed;assert.notEqual(stopped.code,0);
+ await assert.rejects(()=>restoreHomeBackup({backup,targetHome:target,targetConfig,replace:true,confirmed:true,hooks:{beforeConfigRecovery:async()=>fs.writeFile(targetConfig,"concurrent-config")}}),{code:"RECOVERY_REQUIRED"});
+ assert.equal(await fs.readFile(targetConfig,"utf8"),"concurrent-config");
+ assert.equal(await fs.readFile(path.join(target,"precious"),"utf8"),"preserve");
+ await fs.rm(targetConfig);
+ const recovered=await restoreHomeBackup({backup,targetHome:target,targetConfig,replace:true,confirmed:true});
+ assert.equal(await fs.readFile(targetConfig,"utf8"),'{"home":"isolated"}');
+ assert.equal(await fs.readFile(path.join(target,"settings.json"),"utf8"),'{"theme":"dark"}');
+ assert.ok(await Promise.all(recovered.movedAside.map(candidate=>fs.readFile(candidate,"utf8").catch(()=>undefined))).then(items=>items.includes("original-config")));
 });
 
 test("corrupt, truncated, foreign and incompatible backups are detected and restore changes nothing",async()=>{
