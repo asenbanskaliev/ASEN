@@ -244,6 +244,19 @@ test("canonical CodeGraph fails closed on invalid input and project roots",async
   assert.equal(launches,0);
 });
 
+test("canonical CodeGraph classifies an aborted running query as cancelled",async t=>{
+  const f=fixture(t);
+  const controller=new AbortController();
+  const tool=createCodeGraphTool(async(_args,options)=>{
+    assert.equal(options.signal,controller.signal);
+    controller.abort();
+    throw Object.assign(new Error("aborted"),{name:"AbortError",code:"ABORT_ERR"});
+  });
+  const result=await call(tool,f.root,{operation:"query",query:"symbol"},controller.signal);
+  assert.equal(result.details.status,"cancelled");
+  assert.equal(existsSync(join(f.root,".codegraph")),false);
+});
+
 test("CodeGraph real subprocess fixture survives restart and keeps index read-only on queries",async t=>{
   const f=fixture(t,`import {existsSync,mkdirSync,readFileSync,writeFileSync} from "node:fs";
 import {join} from "node:path";
