@@ -60,7 +60,7 @@ export class SharedSessionDirectory extends SessionDirectory{
   if(prior&&prior!==filename)this.remove(entry.sessionId); // Project switch invalidates the previous entry.
   rootVerified(this.#root);
   const existing=readRecord(file);
-  if(existing&&existing.owner!==this.#owner&&alive(existing))throw new Error("Another active Pi process already owns this session");
+  if(existing&&existing.owner!==this.#owner&&existing.pid!==process.pid&&alive(existing))throw new Error("Another active Pi process already owns this session");
   const record:RecordFile={schema:SCHEMA,entry:structuredClone(entry),pid:process.pid,owner:this.#owner,expiresAt:new Date(Date.now()+TTL_MS).toISOString()};
   const contents=JSON.stringify(record)+"\n";
   if(Buffer.byteLength(contents,"utf8")>MAX_BYTES)throw new Error("Shared-session metadata exceeds the bounded file limit");
@@ -71,7 +71,7 @@ export class SharedSessionDirectory extends SessionDirectory{
    writeFileSync(fd,contents,"utf8");fsyncSync(fd);closeSync(fd);fd=undefined;
    rootVerified(this.#root);
    const checked=readRecord(file);
-   if(checked&&checked.owner!==this.#owner&&alive(checked))throw new Error("Another Pi process took the session identity");
+   if(checked&&checked.owner!==this.#owner&&checked.pid!==process.pid&&alive(checked))throw new Error("Another Pi process took the session identity");
    renameSync(temp,file);
    super.publish(entry);
    this.#owned.set(entry.sessionId,filename);
