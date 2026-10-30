@@ -14,7 +14,7 @@ Incluye:
 - No existe replay automático. La continuación solo puede ser una operación nueva, con candidato y autorización explícita nuevos y de un solo uso.
 - Las ediciones parciales permanecen para resolución explícita y la recuperación sobrevive reinicio del store.
 
-Fuera de este FULL: interrupción de un proceso Pi/provider real, juicio de salida del modelo, compatibilidad del controlador histórico Pi 1.1 y prueba multiplataforma del host. El ciclo NVIDIA es evidencia separada y nunca asciende por sí mismo este estado.
+Fuera de este FULL: interrupción de un proceso Pi/provider real, juicio de salida del modelo, compatibilidad del controlador histórico Pi 1.1 y prueba multiplataforma del host. El ciclo NVIDIA es evidencia separada y nunca asciende por sí mismo este estado; su job en CI requiere opt-in explícito con la variable de repositorio `ASEN_ENABLE_LIVE_T04_T05_NVIDIA=true`.
 
 ### T05 — FULL del contrato público determinista de revisión exacta
 
