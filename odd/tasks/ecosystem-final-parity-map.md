@@ -75,6 +75,8 @@ T09 remains **PARTIAL**: automated loopback consent tests are not a real browser
 
 On the PR #37 worktree based on `18e98728e2e39c8b1a4ebf66019574ee7d1b32a6`, restore now records the staged-config UUID path before creation and its file identity before writing bytes. The lifecycle regression and the actual npm-tarball smoke both exercise SIGKILL during config staging and recovery/retry; local Linux smoke, 34/34 lifecycle tests, typecheck/build, `verify:pack`, and applicable audits passed. Independent review of this recovery delta found no concrete issue. The full local `npm run check` on Node 26.12.1 failed four unrelated tests: two use the removed `--experimental-transform-types` option and two fsmonitor fixtures lacked expected marker files. Ecosystem normative-source proof remains NOT ADMITTED. This is local evidence only, not an exact-SHA platform receipt; concurrent uninstall route-substitution evidence also remains outstanding. T09 stays PARTIAL.
 
+Exact candidate `f7bcae79` passed Linux and macOS packed lifecycle smoke, but the Windows packed smoke failed with `RECOVERY_REQUIRED` during post-recovery marker publication. The cause was not distinguished between file-object identity and byte verification. The worktree now validates renamed marker publication by device/inode and exact bytes, retaining the observed committed identity for later ownership checks; this correction still needs a fresh exact-SHA Windows gate. No T09 FULL claim is admitted.
+
 ## Canonical implementation order
 
 Reverse-inventory preparation remains first so omitted surfaces are visible, but it does not reorder execution. The strict tracker phases control:

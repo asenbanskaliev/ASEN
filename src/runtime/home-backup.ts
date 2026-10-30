@@ -306,6 +306,7 @@ interface RestoreStageOwner{
 const restoreOwnerPath=(target:string)=>`${target}.restore-owner.json`;
 const sameRestoreIdentity=(left:{dev:number;ino:number;birthtimeMs:number},right:{dev:number;ino:number;birthtimeMs:number})=>
  left.dev===right.dev&&left.ino===right.ino&&left.birthtimeMs===right.birthtimeMs;
+const sameRestoreFileObject=(left:{dev:number;ino:number},right:{dev:number;ino:number})=>left.dev===right.dev&&left.ino===right.ino;
 const validRestoreIdentity=(value:unknown):value is RestorePathIdentity=>!!value&&typeof value==="object"
  &&Number.isFinite((value as RestorePathIdentity).dev)&&Number.isFinite((value as RestorePathIdentity).ino)&&Number.isFinite((value as RestorePathIdentity).birthtimeMs);
 function validMovedAsidePath(original:string,value:unknown):value is string{
@@ -338,7 +339,9 @@ async function writeRestoreOwner(ownerFile:string,owner:RestoreStageOwner,previo
    await rename(temporary,ownerFile);
   }else await link(temporary,ownerFile);
   const committed=await lstat(ownerFile);
-  if(!sameRestoreIdentity(info,committed)||!(await readBoundedOrdinaryFile(ownerFile,8*1024*1024)).equals(bytes))
+  // A rename can change reported birth time on Windows while preserving the same file object.
+  const identityMatches=previous?sameRestoreFileObject(info,committed):sameRestoreIdentity(info,committed);
+  if(!committed.isFile()||committed.isSymbolicLink()||!identityMatches||!(await readBoundedOrdinaryFile(ownerFile,8*1024*1024)).equals(bytes))
    return fail("RECOVERY_REQUIRED","Restore recovery marker publication is uncertain");
   await unlink(temporary).catch(()=>undefined);
   return {info:committed,bytes};
