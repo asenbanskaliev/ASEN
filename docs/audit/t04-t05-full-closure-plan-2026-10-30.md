@@ -33,13 +33,22 @@ Fuera de este FULL: autenticación/respuesta válida de un proveedor real, persi
 El FULL acotado se admite solo con los tests provider-free existentes, enfocados en los contratos anteriores, typecheck/build y auditorías aplicables. En este checkout:
 
 - T04: `eco06-interrupted-writer`, `authorized-write-recovery` y `authorized-job-retry` — 9/9 PASS.
-- T05: `ordinary-review-workspace-flow`, `workspace-review-session` y `t05-nvidia-review-workflow` — 42/42 PASS.
+- T05: `ordinary-review-workspace-flow`, `workspace-review-session` y `t05-nvidia-review-workflow` — 43/43 PASS en el candidato reconciliado.
 - Typecheck y build — PASS; auditoría de parity y validación de metadata/claims del ecosistema — PASS.
 
-El full check local en Node 26 falló en otras cinco pruebas; se conserva como limitación, no se declara verde. El SHA `dc80a9880136c4dd6199c2c00b9120a3c6f5896c` también tiene CI Windows fallido por contención del journal y gate Pi/NVIDIA omitido. Esos resultados bloquean el FULL amplio/multiplataforma, pero no invalidan los contratos deterministas que pasan sus tests enfocados. No se altera ni aumenta el límite de lock de 3 segundos.
+El full check local de un candidato anterior con Node 26 falló en otras cinco pruebas; el candidato reconciliado final conservó dos fallos de procesos hijos porque esa versión de Node no admite `--experimental-transform-types`. No se declara verde localmente. El SHA `dc80a9880136c4dd6199c2c00b9120a3c6f5896c` también tiene CI Windows fallido por contención del journal y gate Pi/NVIDIA omitido. Esos resultados históricos bloquean el FULL amplio/multiplataforma, pero no invalidan los contratos deterministas aceptados abajo, que tienen evidencia exacta nueva en CI Node 22.
+
+### Cierre exacto de PR #38 — candidato `a523fd5a7f9d970d7ea471a031197506dbaa2e7e`
+
+- Aceptación renegociada T04/T05: 52/52; regresiones focalizadas T04/T05/T10/R4: 104/104.
+- Typecheck, build y auditorías aplicables: PASS. Revisión independiente T04/T10 y revisión manual independiente R4: sin hallazgos.
+- CI run `41080035408`: suites completas y matrices Pi en Linux/macOS/Windows, más `t05-r4-audit`, PASS. Release Gate `41080035571` en los tres sistemas, Phase 0 `41080035569` y Pi runtime `41080035294`, PASS.
+- Pi Free Smoke y el job live NVIDIA se omitieron por sus gates; no se invocó proveedor. Ninguna evidencia de esos jobs se considera parte del FULL acotado.
+
+Esta evidencia admite T04 FULL solo como contrato local durable de recuperación y T05 FULL solo como contrato público determinista de revisión exacta. S5/S6 históricos y la paridad global siguen PARTIAL. No se altera ni aumenta el límite de lock de 3 segundos.
 
 ## Estado y límites
 
 Se puede declarar **T04 FULL (contrato local de recuperación)** y **T05 FULL (contrato público determinista de revisión)** al cumplir la evidencia anterior. No se debe cambiar las filas del registro global de paridad de PARTIAL a FULL ni declarar T04/T05 FULL bajo el alcance original S5/S6. Cualquier claim breve debe incluir el descriptor entre paréntesis o enlazar este alcance.
 
-La contención Windows, el ciclo Pi/NVIDIA auténtico, el controlador Pi 1.1, la recuperación pública durable de T05, sandbox y revisión R4 externa quedan como deuda explícita para el FULL amplio. Sin provider/credits, publicación, commits ni mutación remota; solo pruebas locales provider-free autorizadas.
+La revisión R4 independiente exigida para el candidato indicado arriba se completó sin hallazgos. La contención Windows fuera de los tests y gates ejecutados, el ciclo Pi/NVIDIA auténtico, el controlador Pi 1.1, la recuperación pública durable de T05, sandbox y cualquier signoff formal externo siguen como deuda para un FULL amplio. Sin llamadas a proveedor/uso de créditos; el job live sigue opt-in.
