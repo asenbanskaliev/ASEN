@@ -114,6 +114,25 @@ jobs:
           grep -q 'sample.js' changed-symbol-result.txt
           grep -q 'changedSymbol' changed-symbol-result.txt
           test -d .codegraph
+          echo '--- Index recovery after deletion (disposable fixture only) ---'
+          rm -rf .codegraph
+          ./node_modules/.bin/codegraph init .
+          ./node_modules/.bin/codegraph query --limit 10 -- changedSymbol > recovered-symbol-result.txt
+          cat recovered-symbol-result.txt
+          grep -q 'sample.js' recovered-symbol-result.txt
+          grep -q 'changedSymbol' recovered-symbol-result.txt
+          echo '--- Invalid index path must not be silently accepted ---'
+          rm -rf .codegraph
+          printf 'not an index directory' > .codegraph
+          if ./node_modules/.bin/codegraph init . > invalid-index.log 2>&1; then
+            echo 'CLI accepted a regular file in place of the index directory; inspect behavior'
+            cat invalid-index.log
+            exit 1
+          fi
+          rm -f .codegraph
+          ./node_modules/.bin/codegraph init .
+          ./node_modules/.bin/codegraph query --limit 10 -- changedSymbol > final-symbol-result.txt
+          grep -q 'changedSymbol' final-symbol-result.txt
   architecture:
     runs-on: ubuntu-24.04
     steps:
