@@ -27,7 +27,7 @@ test("registered read-only CodeGraph adapter keeps malicious query as one litera
   assert.deepEqual(data.args,["query","--limit","2","--",query]);assert.equal(data.cwd,f.root);
   assert.equal((await call(f.tool,f.root,{operation:"explore",query:"symbol"})).details.status,"completed");
   const alias=join(f.root,"root-alias");symlinkSync(f.root,alias,"junction");
-  const aliased=await call(f.tool,alias,{operation:"query",query:"symbol"});assert.equal(aliased.details.status,"completed");assert.equal(JSON.parse(aliased.content[0].text).args[2],f.root);rmSync(alias);
+  const aliased=await call(f.tool,alias,{operation:"query",query:"symbol"});assert.equal(aliased.details.status,"completed");assert.equal(JSON.parse(aliased.content[0].text).cwd,f.root);rmSync(alias);
 });
 test("model cannot change roots, executable, limits or initialize an index",async t=>{
   const f=fixture(t,'throw Error("runner must never execute")');assert.ok(f.tool);
