@@ -4,7 +4,7 @@ import {mkdtempSync,writeFileSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {execFileSync} from "node:child_process";
-import {createCodeGraphTool} from "../src/interaction/code-intelligence.js";
+import {resolveCodeGraphEntry} from "../src/interaction/code-intelligence.js";
 import {createAsenExtension} from "../extensions/asen.js";
 
 test("real CodeGraph CLI through ASEN/Pi registration: init, query, sync, restart",async t=>{
@@ -17,9 +17,13 @@ test("real CodeGraph CLI through ASEN/Pi registration: init, query, sync, restar
   writeFileSync(source,"export function initialSymbol() { return 1; }\n");
   execFileSync("git",["-C",root,"add","sample.js"]);
   execFileSync("git",["-C",root,"commit","-qm","initial"]);
+  const packageRoot=process.env.ASEN_T07_CODEGRAPH_PACKAGE_ROOT;
+  assert.ok(packageRoot,"Real CodeGraph package path must be supplied by CI");
+  const script=resolveCodeGraphEntry(packageRoot);
+  const options={codeIntelligence:{script}};
   const tools=new Map<string,any>();
-  createAsenExtension({} as any)({registerCommand(){},registerTool(tool:any){tools.set(tool.name,tool);}} as any);
-  const tool=tools.get("codegraph")??createCodeGraphTool();
+  createAsenExtension(options as any)({registerCommand(){},registerTool(tool:any){tools.set(tool.name,tool);}} as any);
+  const tool=tools.get("codegraph");
   assert.ok(tool);
   let approvals=0;
   const context={cwd:root,hasUI:true,ui:{confirm:async()=>{approvals++;return true;}}};
@@ -38,7 +42,10 @@ test("real CodeGraph CLI through ASEN/Pi registration: init, query, sync, restar
   assert.equal(changed.details.status,"completed",JSON.stringify(changed));
   assert.match(changed.content[0].text,/updatedSymbol/);
   assert.equal(approvals,2,"init and sync each require approval");
-  const restarted=createCodeGraphTool();
+  const afterRestart=new Map<string,any>();
+  createAsenExtension(options as any)({registerCommand(){},registerTool(tool:any){afterRestart.set(tool.name,tool);}} as any);
+  const restarted=afterRestart.get("codegraph");
+  assert.ok(restarted);
   const again=await restarted.execute("restart",{operation:"query",query:"updatedSymbol"},undefined,undefined,{cwd:root} as any);
   assert.equal((again.details as {status:string}).status,"completed",JSON.stringify(again));
   assert.equal(again.content[0]?.type,"text");
