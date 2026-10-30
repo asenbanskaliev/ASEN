@@ -119,7 +119,7 @@ test("canonical CodeGraph tool exposes upstream metadata and exact scoped argv w
   const calls:Array<{args:readonly string[];cwd:string;maxBuffer:number}>=[];
   const runner:CodeGraphRunner=async(args,options)=>{
     calls.push({args,cwd:options.cwd,maxBuffer:options.maxBuffer});
-    if(args[0]==="init")mkdirSync(join(options.cwd,".codegraph"));
+    if(args[0]==="init")mkdirSync(join(options.cwd,".codegraph"));writeFileSync(join(options.cwd,".codegraph","fixture-index"),"present");
     return {stdout:"indexed",stderr:""};
   };
   const tool=createCodeGraphTool(runner);
@@ -182,7 +182,7 @@ test("unified CodeGraph tool uses ASEN approval only for one-time initialization
   const f=fixture(t);assert.ok(f.canonical);
   let prompts=0,initializations=0;
   const runner:CodeGraphRunner=async(args,options)=>{
-    if(args[0]==="init"){initializations++;mkdirSync(join(options.cwd,".codegraph"));}
+    if(args[0]==="init"){initializations++;mkdirSync(join(options.cwd,".codegraph"));writeFileSync(join(options.cwd,".codegraph","fixture-index"),"present");}
     return {stdout:"ok",stderr:""};
   };
   const tool=createCodeGraphTool(runner);
@@ -209,7 +209,7 @@ test("CodeGraph requires fresh approval after an externally deleted index",async
   const f=fixture(t);
   let approvals=0,initializations=0;
   const tool=createCodeGraphTool(async(args,options)=>{
-    if(args[0]==="init"){initializations++;mkdirSync(join(options.cwd,".codegraph"));}
+    if(args[0]==="init"){initializations++;mkdirSync(join(options.cwd,".codegraph"));writeFileSync(join(options.cwd,".codegraph","fixture-index"),"present");}
     return {stdout:"indexed",stderr:""};
   });
   const context={hasUI:true,ui:{confirm:async()=>{approvals++;return true;}}};
@@ -395,7 +395,7 @@ test("canonical CodeGraph sync requires fresh authorization and existing index",
   const ui={confirm:async(title:string)=>{approvals.push(title);return true;}};
   assert.equal((await call(tool,f.root,{operation:"sync"},undefined,{hasUI:true,ui})).details.status,"not_initialized");
   assert.equal(calls.length,0);
-  mkdirSync(join(f.root,".codegraph"));
+  mkdirSync(join(f.root,".codegraph"));writeFileSync(join(f.root,".codegraph","fixture-index"),"present");
   assert.equal((await call(tool,f.root,{operation:"sync"})).details.status,"authorization_required");
   assert.equal(calls.length,0);
   const denied=await call(tool,f.root,{operation:"sync"},undefined,{hasUI:true,ui:{confirm:async()=>false}});
