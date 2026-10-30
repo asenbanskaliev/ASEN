@@ -1,4 +1,4 @@
-import {randomUUID} from "node:crypto";
+import {createHash,randomUUID} from "node:crypto";
 import {spawnContained} from "../evidence/spawn-contained.js";
 import type {ChildProcessWithoutNullStreams} from "node:child_process";
 import type {BackgroundJobJournal} from "./background-job-journal.js";
@@ -6,6 +6,36 @@ import type {BackgroundJobJournal} from "./background-job-journal.js";
 export type BackgroundJobState="queued"|"running"|"interrupted"|"completed"|"failed"|"stopped"|"timed_out"|"flooded";
 export interface BackgroundJobEvent{readonly id:string;readonly jobId:string;readonly sessionId:string;readonly projectId:string;readonly mode:"background"|"monitor";readonly kind:"started"|"line"|"completed"|"stopped"|"failed"|"timed_out"|"flooded";readonly line?:string;readonly exitCode?:number|null;readonly at:string;}
 export interface BackgroundJobSnapshot{readonly id:string;readonly sessionId:string;readonly projectId:string;readonly command:string;readonly mode:"background"|"monitor";readonly state:BackgroundJobState;readonly createdAt:string;readonly updatedAt:string;readonly exitCode:number|null;readonly eventCount:number;readonly tail:readonly string[];readonly persistenceError?:string;readonly deliveryState?:"pending"|"enqueued";readonly deliveryError?:string;}
+/** Deterministic, plain-text status for narrow terminals and screen readers. */
+export function formatBackgroundJobStatus(job:BackgroundJobSnapshot,width=80):string{
+ if(!Number.isSafeInteger(width)||width<20||width>500)throw new Error("Terminal width is invalid");
+ const states:Record<BackgroundJobState,string>={queued:"Queued",running:"Running",interrupted:"Interrupted",completed:"Completed",failed:"Failed",stopped:"Stopped",timed_out:"Timed out",flooded:"Output limit exceeded"};
+ const state=states[job.state];
+ const outcome=job.state==="completed"&&job.exitCode===0?"Succeeded":state;
+ const message=`Job ${job.id}: ${outcome}${job.exitCode===null?"":`; exit code ${job.exitCode}`}`.replace(/[\x00-\x1f\x7f-\x9f]/gu," ");
+ return message.length<=width?message:message.slice(0,width-3)+"...";
+}
+/** Only observed terminal states can generate a completion notification. */
+export function backgroundJobTerminalNotification(job:BackgroundJobSnapshot):Readonly<{id:string;message:string}>|null{
+ if(job.state==="running"||job.state==="queued")return null;
+ const terminal=["completed","failed","stopped","timed_out","flooded","interrupted"] as const;
+ if(!terminal.includes(job.state as typeof terminal[number]))return null;
+ const identity=createHash("sha256").update(`${job.sessionId}\0${job.projectId}\0${job.id}`).digest("hex");
+ return Object.freeze({id:`asen:background:${identity}:terminal`,message:formatBackgroundJobStatus(job)});
+}
+/** Deterministic, scoped view for pending delivery after a restart. */
+export function pendingBackgroundJobNotifications(jobs:readonly BackgroundJobSnapshot[],sessionId:string,projectId:string):readonly Readonly<{id:string;message:string;jobId:string;sessionId:string;projectId:string}>[]{
+ if(!sessionId||!projectId)throw new Error("Notification scope is invalid");
+ const seen=new Set<string>();
+ const pending:Readonly<{id:string;message:string;jobId:string;sessionId:string;projectId:string}>[]=[];
+ for(const job of jobs){
+  if(job.sessionId!==sessionId||job.projectId!==projectId||job.deliveryState==="enqueued")continue;
+  const notification=backgroundJobTerminalNotification(job);
+  if(!notification||seen.has(notification.id))continue;
+  seen.add(notification.id);pending.push(Object.freeze({...notification,jobId:job.id,sessionId:job.sessionId,projectId:job.projectId}));
+ }
+ return Object.freeze(pending);
+}
 export interface BackgroundJobOptions{readonly sessionId:string;readonly projectId?:string;readonly command:string;readonly mode?:"background"|"monitor";readonly maxTailLines?:number;readonly maxLineChars?:number;readonly maxEventsPerMinute?:number;readonly timeoutMs?:number;}
 export interface BackgroundProcessOptions extends BackgroundJobOptions{readonly args?:readonly string[];readonly cwd?:string;readonly env?:NodeJS.ProcessEnv;}
 export interface BackgroundExecutionOptions{readonly onData:(chunk:Buffer)=>void;readonly signal:AbortSignal;readonly timeoutMs?:number;readonly env?:NodeJS.ProcessEnv;}
@@ -49,11 +79,33 @@ export class BackgroundJobRegistry{
   this.observeDone(job.id,mutable,done);
   return {job,done};
  }
+ /** Session-scoped observation never exposes a job from another session or project. */
+ snapshotScoped(id:string,sessionId:string,projectId:string):BackgroundJobSnapshot{this.assertScope(id,sessionId,projectId);return this.snapshot(id);}
+ stopScoped(id:string,sessionId:string,projectId:string):void{this.assertScope(id,sessionId,projectId);this.stop(id);}
+ private assertScope(id:string,sessionId:string,projectId:string):void{
+  if(typeof sessionId!=="string"||!sessionId||typeof projectId!=="string"||!projectId)throw new Error("Background job observation scope is invalid");
+  const job=this.require(id);
+  if(job.options.sessionId!==sessionId||job.options.projectId!==projectId)throw new Error("Background job does not belong to the requested scope");
+ }
+ subscribeScoped(id:string,sessionId:string,projectId:string,listener:BackgroundJobListener):()=>void{
+  this.assertScope(id,sessionId,projectId);
+  return this.subscribe(id,listener);
+ }
  subscribe(id:string,listener:BackgroundJobListener):()=>void{const job=this.require(id);if(typeof listener!=="function")throw new TypeError("Job listener is invalid");job.listeners.add(listener);return()=>job.listeners.delete(listener);}
  append(id:string,chunk:string):void{const job=this.require(id);if(job.state!=="running")throw new Error("Background job is not running");if(typeof chunk!=="string")throw new TypeError("Job output must be text");for(const line of chunk.split(/\r?\n/u).filter(Boolean)){const now=Date.now();if(now-job.windowStart>=60_000){job.windowStart=now;job.windowEvents=0;}if(++job.windowEvents>job.options.maxEventsPerMinute){this.finish(id,"flooded",null);return;}const bounded=line.slice(-job.options.maxLineChars);job.tail.push(bounded);if(job.tail.length>job.options.maxTailLines)job.tail.splice(0,job.tail.length-job.options.maxTailLines);job.eventCount++;this.emit(id,"line",bounded);}}
  finish(id:string,state:"completed"|"failed"|"stopped"|"timed_out"|"flooded",exitCode:number|null):void{const job=this.require(id);if(job.state!=="running")return;job.state=state;job.exitCode=exitCode;job.updatedAt=new Date().toISOString();if(job.timer)clearTimeout(job.timer);if(state!=="completed"){job.abort?.abort();if(job.child&&!job.child.killed){try{if(process.platform!=="win32"&&job.child.pid)process.kill(-job.child.pid,"SIGTERM");else job.child.kill();}catch{try{job.child.kill("SIGKILL");}catch{/* Best effort after terminal state is durable. */}}}}try{this.journal?.record(this.snapshot(id));delete job.persistenceError;}catch{job.persistenceError="Background journal could not persist the terminal result";}this.emit(id,state);this.prune();}
  stop(id:string):void{this.finish(id,"stopped",null);}
  setDeliveryState(id:string,state:"pending"|"enqueued",error?:string):BackgroundJobSnapshot{const job=this.require(id);if(job.state==="running")throw new Error("Cannot deliver a running job result");job.deliveryState=state;if(state==="pending"&&error)job.deliveryError=error;else delete job.deliveryError;try{this.journal?.record(this.snapshot(id));delete job.persistenceError;}catch{job.persistenceError="Background journal could not persist delivery state";}return this.snapshot(id);}
+ /** Scope checks are repeated at the persistence boundary, including after a restart. */
+ setDeliveryStateScoped(id:string,sessionId:string,projectId:string,state:"pending"|"enqueued",error?:string):BackgroundJobSnapshot{
+  if(!sessionId||!projectId)throw new Error("Background delivery scope is invalid");
+  const job=this.#jobs.get(id);
+  if(job){this.assertScope(id,sessionId,projectId);return this.setDeliveryState(id,state,error);}
+  if(!this.journal)throw new Error("Background job is unavailable after restart");
+  const row=this.journal.updateDeliveryState(id,sessionId,projectId,state,error);
+  const {recoveredAt:_recoveredAt,resumable:_resumable,...snapshot}=row;
+  return Object.freeze(snapshot);
+ }
  snapshot(id:string):BackgroundJobSnapshot{const job=this.require(id);return Object.freeze({id,sessionId:job.options.sessionId,projectId:job.options.projectId,command:job.options.command,mode:job.options.mode,state:job.state,createdAt:job.createdAt,updatedAt:job.updatedAt,exitCode:job.exitCode,eventCount:job.eventCount,tail:Object.freeze([...job.tail]),...(job.persistenceError?{persistenceError:job.persistenceError}:{}),...(job.deliveryState?{deliveryState:job.deliveryState}:{}),...(job.deliveryError?{deliveryError:job.deliveryError}:{})});}
  list(sessionId:string,projectId?:string):readonly BackgroundJobSnapshot[]{const active=[...this.#jobs.keys()].map(id=>this.snapshot(id)).filter(job=>job.sessionId===sessionId&&(projectId===undefined||job.projectId===projectId)),known=new Set(active.map(job=>job.id)),recovered=this.journal?.load(sessionId,projectId).filter(job=>!known.has(job.id))??[];return Object.freeze([...active,...recovered].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)));}
  async disposeSession(sessionId:string):Promise<void>{const owned=[...this.#jobs].filter(([,job])=>job.options.sessionId===sessionId);for(const [id,job] of owned){job.disposeRequested=true;if(job.state==="running")this.finish(id,"stopped",null);if(!job.done)this.#jobs.delete(id);}
