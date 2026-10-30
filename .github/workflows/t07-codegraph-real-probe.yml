@@ -50,3 +50,14 @@ jobs:
           ./node_modules/.bin/codegraph query --limit 10 -- calculateTotal
           echo '--- Actual exploration ---'
           ./node_modules/.bin/codegraph explore -- calculateTotal
+          echo '--- Restart: fresh CLI process queries existing index ---'
+          ./node_modules/.bin/codegraph query --limit 10 -- calculateTotal
+          echo '--- Change tracked source, reindex and query new symbol ---'
+          printf 'export function calculateTotal(a, b) { return a + b; }\\nexport function changedSymbol() { return calculateTotal(2, 3); }\\n' > sample.js
+          git add sample.js
+          git commit -qm update-fixture
+          ./node_modules/.bin/codegraph init .
+          ./node_modules/.bin/codegraph query --limit 10 -- changedSymbol
+          echo '--- Verify index persisted after separate invocations ---'
+          test -d .codegraph || { echo 'No .codegraph index directory found'; exit 1; }
+          echo 'T07 genuine CLI lifecycle completed'
