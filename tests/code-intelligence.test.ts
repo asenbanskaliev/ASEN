@@ -309,6 +309,46 @@ else console.log(JSON.stringify({operation:args[0],query:args.at(-1),snapshot:re
   assert.equal((await call(restarted,f.root,{operation:"explore",query:"symbol"})).details.status,"completed");
 });
 
+test("ASEN/Pi registered CodeGraph cancels an actual running subprocess",async t=>{
+  const f=fixture(t,`setTimeout(()=>console.log("should not finish"),10000);`);
+  const controller=new AbortController();
+  const registered=f.canonical;
+  assert.ok(registered,"ASEN must register the canonical Pi tool");
+  const running=call(registered,f.root,{operation:"query",query:"symbol"},controller.signal);
+  // Give the spawned Node subprocess time to start before interrupting it.
+  await new Promise(resolve=>setTimeout(resolve,300));
+  controller.abort();
+  const result=await running;
+  assert.equal(result.details.status,"cancelled");
+  assert.equal(existsSync(join(f.root,".codegraph")),false);
+});
+
+test("ASEN/Pi registered CodeGraph preserves authorization and query lifecycle across restart",async t=>{
+  const f=fixture(t,`import {existsSync,mkdirSync,writeFileSync,readFileSync} from "node:fs";
+import {join} from "node:path";
+const index=join(process.cwd(),".codegraph");
+if(process.argv[2]==="init"){mkdirSync(index,{recursive:true});writeFileSync(join(index,"symbol"),"realSymbol");console.log("indexed");}
+else if(!existsSync(join(index,"symbol"))){console.error("missing index");process.exitCode=2;}
+else console.log(readFileSync(join(index,"symbol"),"utf8"));
+`);
+  const first=f.canonical;
+  assert.equal((await call(first,f.root,{operation:"init"})).details.status,"authorization_required");
+  const approved=await call(first,f.root,{operation:"init"},undefined,{hasUI:true,ui:{confirm:async()=>true}});
+  assert.equal(approved.details.status,"completed");
+  const searched=await call(first,f.root,{operation:"query",query:"realSymbol"});
+  assert.equal(searched.details.status,"completed");
+  assert.match(textOf(searched.content[0]),/realSymbol/);
+  const restarted=createCodeGraphTool(async(args,options)=>{
+    const {execFile}=await import("node:child_process");
+    const {promisify}=await import("node:util");
+    const output=await promisify(execFile)(process.execPath,[f.script,...args],{cwd:options.cwd,signal:options.signal,maxBuffer:options.maxBuffer,timeout:5000});
+    return {stdout:String(output.stdout),stderr:String(output.stderr)};
+  });
+  assert.equal((await call(restarted,f.root,{operation:"init"})).details.status,"already_initialized");
+  const again=await call(restarted,f.root,{operation:"query",query:"realSymbol"});
+  assert.match(textOf(again.content[0]),/realSymbol/);
+});
+
 test("canonical registration and ASEN integration expose only one CodeGraph tool",t=>{
   const direct:any[]=[];
   registerCodeGraphTool({registerTool:(tool:any)=>direct.push(tool)} as any);
