@@ -254,8 +254,14 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
         if(signal?.aborted)return {content:[{type:"text" as const,text:"CodeGraph initialization was cancelled."}],details:{status:"cancelled",operation:"init",cwd:root}};
         const previous=initialized.get(root);
         if(previous){
-          try{await previous;return {content:[{type:"text" as const,text:"CodeGraph is already initialized for this project in the current Pi session."}],details:{status:"already_initialized",operation:"init",cwd:root}};}
-          catch{/* A failed initialization can be explicitly retried after fresh approval. */}
+          try{
+            await previous;
+            assertSafeIndexDirectory(root);
+            if(lstatIndexIsDirectory(root))return {content:[{type:"text" as const,text:"CodeGraph is already initialized for this project in the current Pi session."}],details:{status:"already_initialized",operation:"init",cwd:root}};
+            initialized.delete(root); // An external cleanup removed the index; require fresh approval.
+          }catch{
+            initialized.delete(root); // Failed or interrupted initialization must be explicitly retried.
+          }
         }
         if(lstatIndexIsDirectory(root))return {content:[{type:"text" as const,text:"The CodeGraph index already exists for this project. No initialization was run."}],details:{status:"already_initialized",operation:"init",cwd:root}};
         if(typeof context.hasUI!=="boolean"||context.hasUI!==true||typeof context.ui?.confirm!=="function")return {content:[{type:"text" as const,text:"CodeGraph initialization needs approval in Pi's interactive interface. No index was created."}],details:{status:"authorization_required",operation:"init",cwd:root}};
