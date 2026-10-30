@@ -156,9 +156,9 @@ test("canonical CodeGraph tool exposes upstream metadata and exact scoped argv w
   ]);
   assert.ok(calls.every(call=>call.cwd===f.root&&call.maxBuffer>100000));
   assert.deepEqual(query.details,{status:"completed",operation:"query",cwd:f.root,args:calls[0]!.args});
-  assert.equal(explore.details.status,"completed");
+  assert.equal((explore.details as {status:string}).status,"completed");
   assert.deepEqual(explore.content,[{type:"text",text:"indexed"}]);
-  assert.equal(init.details.status,"completed");
+  assert.equal((init.details as {status:string}).status,"completed");
   assert.deepEqual(init.content,[{type:"text",text:"indexed"}]);
 });
 
@@ -173,7 +173,7 @@ test("canonical CodeGraph tool validates an existing index with lstat and never 
       return {stdout:"unexpected",stderr:""};
     });
     const blocked=await tool.execute("probe",{operation:"init"},undefined,undefined,{cwd:f.root} as any);
-    assert.equal(blocked.details.status,"failed");
+    assert.equal((blocked.details as {status:string}).status,"failed");
     assert.equal(calls,0);
   }
 });
@@ -277,7 +277,7 @@ else console.log(JSON.stringify({operation:args[0],query:args.at(-1),snapshot:re
   assert.equal(missing.details.status,"failed");
   assert.equal(existsSync(join(f.root,".codegraph")),false);
   const init=await call(first,f.root,{operation:"init"},undefined,ui);
-  assert.equal(init.details.status,"completed");
+  assert.equal((init.details as {status:string}).status,"completed");
   const query=await call(first,f.root,{operation:"query",query:"symbol"});
   assert.equal(query.details.status,"completed");
   assert.equal(JSON.parse(textOf(query.content[0])).snapshot,"ready");
