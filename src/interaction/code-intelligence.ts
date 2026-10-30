@@ -251,7 +251,7 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
       }catch{
         return {content:[{type:"text" as const,text:`CodeGraph cannot access a valid project or index. ${FALLBACK_INSTRUCTIONS}`}],details:{status:"failed",fallback:FALLBACK_INSTRUCTIONS}};
       }
-      if(request.operation==="sync"&&(!lstatIndexIsDirectory(root)||readdirSync(join(root,".codegraph")).length===0))return {content:[{type:"text" as const,text:"CodeGraph index is missing. Initialize it with explicit approval before synchronization."}],details:{status:"not_initialized",operation:"sync",cwd:root}};
+      if(request.operation==="sync"&&!indexHasEntries(root))return {content:[{type:"text" as const,text:"CodeGraph index is missing. Initialize it with explicit approval before synchronization."}],details:{status:"not_initialized",operation:"sync",cwd:root}};
       if(request.operation==="init"){
         if(signal?.aborted)return {content:[{type:"text" as const,text:"CodeGraph initialization was cancelled."}],details:{status:"cancelled",operation:"init",cwd:root}};
         const previous=initialized.get(root);
@@ -259,7 +259,7 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
           try{
             await previous;
             assertSafeIndexDirectory(root);
-            if(lstatIndexIsDirectory(root)&&readdirSync(join(root,".codegraph")).length>0)return {content:[{type:"text" as const,text:"CodeGraph is already initialized for this project in the current Pi session."}],details:{status:"already_initialized",operation:"init",cwd:root}};
+            if(indexHasEntries(root))return {content:[{type:"text" as const,text:"CodeGraph is already initialized for this project in the current Pi session."}],details:{status:"already_initialized",operation:"init",cwd:root}};
             initialized.delete(root); // An external cleanup removed the index; require fresh approval.
           }catch{
             initialized.delete(root); // Failed or interrupted initialization must be explicitly retried.
@@ -297,6 +297,13 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
       }
     },
   };
+}
+
+function indexHasEntries(root:string):boolean {
+  try{
+    assertSafeIndexDirectory(root);
+    return lstatIndexIsDirectory(root)&&readdirSync(join(root,".codegraph")).length>0;
+  }catch{return false;}
 }
 
 function lstatIndexIsDirectory(root:string):boolean {
