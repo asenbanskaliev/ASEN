@@ -128,7 +128,7 @@ test("canonical CodeGraph tool exposes upstream metadata and exact scoped argv w
   assert.equal(tool.promptSnippet,"Initialize and query CodeGraph for the current workspace without shell access");
   assert.deepEqual(tool.promptGuidelines,[
     "Use query or explore directly for read-only code research; they never initialize or modify the index.",
-    "Use operation init only when the user has asked to build the CodeGraph index. ASEN requests a one-run approval before indexing.",
+    "Use operation init or sync only when the user has explicitly requested indexing or refreshing the CodeGraph index. ASEN requests a one-run approval before either write.",
     "Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.",
   ]);
   assert.equal(tool.annotations?.readOnlyHint,false,"the unified tool includes an initialization operation that can write an index");
@@ -138,7 +138,7 @@ test("canonical CodeGraph tool exposes upstream metadata and exact scoped argv w
     additionalProperties:false,
     required:["operation"],
     properties:{
-      operation:{type:"string",enum:["init","query","explore"]},
+      operation:{type:"string",enum:["init","sync","query","explore"]},
       query:{type:"string",minLength:1,maxLength:2000},
       limit:{type:"integer",minimum:1,maximum:20},
     },
