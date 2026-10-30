@@ -39,7 +39,9 @@ test("real CodeGraph CLI through ASEN/Pi registration: init, query, sync, restar
   assert.match(changed.content[0].text,/updatedSymbol/);
   assert.equal(approvals,2,"init and sync each require approval");
   const restarted=createCodeGraphTool();
-  const again=await restarted.execute("restart",{operation:"query",query:"updatedSymbol"},undefined,undefined,{cwd:root});
-  assert.equal(again.details.status,"completed",JSON.stringify(again));
+  const again=await restarted.execute("restart",{operation:"query",query:"updatedSymbol"},undefined,undefined,{cwd:root} as any);
+  assert.equal((again.details as {status:string}).status,"completed",JSON.stringify(again));
+  assert.equal(again.content[0]?.type,"text");
+  if(again.content[0]?.type!=="text")throw new Error("Expected text result");
   assert.match(again.content[0].text,/updatedSymbol/);
 });
