@@ -201,7 +201,11 @@ function canonicalParameters(value:unknown):CodeGraphToolParameters {
 function commandArguments(parameters:CodeGraphToolParameters,cwd:string):string[] {
   if(parameters.operation==="init")return ["init",cwd];
   const limit=parameters.limit??DEFAULT_LIMIT;
-  return [parameters.operation,"--path",cwd,parameters.operation==="query"?"--limit":"--max-files",String(limit),"--",parameters.query!];
+  // CodeGraph resolves its project from cwd. Neither query nor explore accepts --path.
+  // Explore has no documented --max-files flag; limit only applies to symbol queries.
+  return parameters.operation==="query"
+    ?["query","--limit",String(limit),"--",parameters.query!]
+    :["explore","--",parameters.query!];
 }
 function truncateOutput(output:string):string {
   return output.length<=MAX_OUTPUT_CHARS?output:`${output.slice(0,MAX_OUTPUT_CHARS)}\n\n[CodeGraph output truncated]`;
