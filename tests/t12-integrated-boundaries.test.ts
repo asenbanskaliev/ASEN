@@ -32,6 +32,7 @@ test("T12 integrates read-only code research, one-use workspace correction, sess
  const session={sessionId:"t12-session",subject:"Current Pi session",projectId:root,classification:"read" as const,updatedAt:new Date().toISOString()};
  first.publish(session);
  assert.deepEqual(second.list(join(temporary,"other-project")),[],"cross-project metadata must stay unavailable");
+ assert.deepEqual(second.list(root).map(row=>row.sessionId),["t12-session"],"shared session must be discovered before consent");
  assert.throws(()=>second.consult("forged","requester","t12-session",root),/valid unused consent/);
  const grant=second.issueConsent({requesterSessionId:"requester",targetSessionId:"t12-session",projectId:root});
  assert.equal(second.consult(grant.token,"requester","t12-session",root).sessionId,"t12-session");
