@@ -1,6 +1,9 @@
 name: T07 CodeGraph real CLI probe
 on:
   workflow_dispatch:
+  push:
+    branches: [feat/t07-codegraph-completion]
+    paths: [.github/workflows/t07-codegraph-real-probe.yml]
 permissions:
   contents: read
 jobs:
@@ -29,9 +32,10 @@ jobs:
           git add sample.js
           git commit -qm fixture
           npm init -y >/dev/null
-          npm install --ignore-scripts --no-audit --no-fund @colbymchenry/codegraph
+          npm install --no-audit --no-fund --save-exact @colbymchenry/codegraph
           echo '--- Installed package version ---'
           node -p "require('./node_modules/@colbymchenry/codegraph/package.json').version"
+          npm ls @colbymchenry/codegraph --depth=0
           echo '--- CLI help ---'
           ./node_modules/.bin/codegraph --help
           echo '--- Init help ---'
