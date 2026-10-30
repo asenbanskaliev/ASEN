@@ -1,5 +1,5 @@
 import {execFile,execFileSync} from "node:child_process";
-import {accessSync,constants,lstatSync,readFileSync,realpathSync,statSync} from "node:fs";
+import {accessSync,constants,readdirSync,lstatSync,readFileSync,realpathSync,statSync} from "node:fs";
 import {homedir,tmpdir} from "node:os";
 import {delimiter,isAbsolute,join,relative,resolve} from "node:path";
 import {promisify,types} from "node:util";
@@ -223,7 +223,7 @@ function fallbackStatus(error:unknown):"unavailable"|"failed"|"cancelled" {
   return "failed";
 }
 
-/** Canonical upstream-compatible CodeGraph tool. Only explicit `init` can create an index. */
+/** Canonical upstream-compatible CodeGraph tool. Index writes require explicit approval. */
 export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner()):AnnotatedToolDefinition {
   let initialized=initializedRoots.get(runner);
   if(!initialized){initialized=new Map();initializedRoots.set(runner,initialized);}
@@ -251,7 +251,7 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
       }catch{
         return {content:[{type:"text" as const,text:`CodeGraph cannot access a valid project or index. ${FALLBACK_INSTRUCTIONS}`}],details:{status:"failed",fallback:FALLBACK_INSTRUCTIONS}};
       }
-      if(request.operation==="sync"&&!lstatIndexIsDirectory(root))return {content:[{type:"text" as const,text:"CodeGraph index is missing. Initialize it with explicit approval before synchronization."}],details:{status:"not_initialized",operation:"sync",cwd:root}};
+      if(request.operation==="sync"&&(!lstatIndexIsDirectory(root)||readdirSync(join(root,".codegraph")).length===0))return {content:[{type:"text" as const,text:"CodeGraph index is missing. Initialize it with explicit approval before synchronization."}],details:{status:"not_initialized",operation:"sync",cwd:root}};
       if(request.operation==="init"){
         if(signal?.aborted)return {content:[{type:"text" as const,text:"CodeGraph initialization was cancelled."}],details:{status:"cancelled",operation:"init",cwd:root}};
         const previous=initialized.get(root);
@@ -259,13 +259,13 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
           try{
             await previous;
             assertSafeIndexDirectory(root);
-            if(lstatIndexIsDirectory(root))return {content:[{type:"text" as const,text:"CodeGraph is already initialized for this project in the current Pi session."}],details:{status:"already_initialized",operation:"init",cwd:root}};
+            if(lstatIndexIsDirectory(root)&&readdirSync(join(root,".codegraph")).length>0)return {content:[{type:"text" as const,text:"CodeGraph is already initialized for this project in the current Pi session."}],details:{status:"already_initialized",operation:"init",cwd:root}};
             initialized.delete(root); // An external cleanup removed the index; require fresh approval.
           }catch{
             initialized.delete(root); // Failed or interrupted initialization must be explicitly retried.
           }
         }
-        if(lstatIndexIsDirectory(root))return {content:[{type:"text" as const,text:"The CodeGraph index already exists for this project. No initialization was run."}],details:{status:"already_initialized",operation:"init",cwd:root}};
+        if(lstatIndexIsDirectory(root)&&readdirSync(join(root,".codegraph")).length>0)return {content:[{type:"text" as const,text:"The CodeGraph index already exists for this project. No initialization was run."}],details:{status:"already_initialized",operation:"init",cwd:root}};
         if(typeof context.hasUI!=="boolean"||context.hasUI!==true||typeof context.ui?.confirm!=="function")return {content:[{type:"text" as const,text:"CodeGraph initialization needs approval in Pi's interactive interface. No index was created."}],details:{status:"authorization_required",operation:"init",cwd:root}};
         let approved=false;
         try{approved=await context.ui.confirm("Authorize CodeGraph index creation?",`ASEN will run CodeGraph init for this project only. It may create or update ${join(root,".codegraph")} and read project files to build the index. This approval applies to this initialization only.`,signal===undefined?undefined:{signal});}
