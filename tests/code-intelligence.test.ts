@@ -119,7 +119,7 @@ test("canonical CodeGraph tool exposes upstream metadata and exact scoped argv w
   const calls:Array<{args:readonly string[];cwd:string;maxBuffer:number}>=[];
   const runner:CodeGraphRunner=async(args,options)=>{
     calls.push({args,cwd:options.cwd,maxBuffer:options.maxBuffer});
-    if(args[0]==="init")mkdirSync(join(options.cwd,".codegraph"));writeFileSync(join(options.cwd,".codegraph","fixture-index"),"present");
+    if(args[0]==="init"){mkdirSync(join(options.cwd,".codegraph"));writeFileSync(join(options.cwd,".codegraph","fixture-index"),"present");}
     return {stdout:"indexed",stderr:""};
   };
   const tool=createCodeGraphTool(runner);
