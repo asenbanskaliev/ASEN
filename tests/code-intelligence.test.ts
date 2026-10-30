@@ -325,12 +325,14 @@ test("ASEN/Pi registered CodeGraph cancels an actual running subprocess",async t
   // Wait for the OS to release it before fixture teardown, without masking failures.
   if(process.platform==="win32"){
     const {renameSync}=await import("node:fs");
-    const renamed=join(f.root,"cancelled-child-release-check");
+    // Renaming a file inside the directory does not prove the child released its cwd.
+    // Rename the directory itself; only then can fixture teardown remove it safely.
+    const renamed=f.root+"-release-check";
     let released=false;
-    for(let attempt=0;attempt<30;attempt++){
+    for(let attempt=0;attempt<80;attempt++){
       try{
-        renameSync(f.script,renamed);
-        renameSync(renamed,f.script);
+        renameSync(f.root,renamed);
+        renameSync(renamed,f.root);
         released=true;
         break;
       }catch(error){
@@ -338,7 +340,7 @@ test("ASEN/Pi registered CodeGraph cancels an actual running subprocess",async t
         await new Promise(resolve=>setTimeout(resolve,100));
       }
     }
-    assert.ok(released,"Windows must release the cancelled subprocess file handle");
+    assert.ok(released,"Windows must release the cancelled subprocess cwd before teardown");
   }
 });
 
