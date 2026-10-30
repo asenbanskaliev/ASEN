@@ -223,9 +223,15 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
     parameters:CODEGRAPH_TOOL_PARAMETERS,
     executionMode:"sequential",
     execute:async(_id,input,signal,_update,context)=>{
-      const request=canonicalParameters(input);
-      const root=rootFor(context.cwd);
-      assertSafeIndexDirectory(root);
+      let request:CodeGraphToolParameters;
+      let root:string;
+      try{
+        request=canonicalParameters(input);
+        root=rootFor(context.cwd);
+        assertSafeIndexDirectory(root);
+      }catch{
+        return {content:[{type:"text" as const,text:`CodeGraph cannot access a valid project or index. ${FALLBACK_INSTRUCTIONS}`}],details:{status:"failed",fallback:FALLBACK_INSTRUCTIONS}};
+      }
       if(request.operation==="init"){
         if(signal?.aborted)return {content:[{type:"text" as const,text:"CodeGraph initialization was cancelled."}],details:{status:"cancelled",operation:"init",cwd:root}};
         const previous=initialized.get(root);
