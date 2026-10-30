@@ -55,14 +55,20 @@ async function interruptedWriterChild():Promise<void>{
  const input=writerInputs(root,taskId,sessionId,rejectedContent),now=new Date().toISOString(),journal=new BackgroundJobJournal(journalFile);
  journal.record({id:taskId,sessionId,projectId:root,command:"asen-pi-authorized-write",args:[target,sha256(rejectedContent)],cwd:root,mode:"background",state:"running",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[],authorizationId,expectedHead:input.baseSha,allowedPaths:[target],authorizationExpiresAt:new Date(Date.now()+10*60_000).toISOString()});
  let piPid=0;
+ const toolEvents:Array<{type:string;toolName?:string;toolCallId?:string;isError?:boolean}>=[];
  const runner=new PiProcessRunner({command:process.env.PI_EXECUTABLE??"pi",policyRoot:sourceRoot,providerCredential:"NVIDIA_API_KEY",attributionFile:join(dirname(journalFile),"workspace-attribution.json"),exactWriteReceipt:{path:target,fileSha256:sha256(rejectedContent),barrierFile:barrier},timeoutMs:180_000,maxOutputBytes:128_000,maxStreamBytes:512_000,
   onProcessStart:pid=>{piPid=pid;writeFileSync(pids,JSON.stringify({controllerPid:process.pid,piPid:pid,taskId,sessionId,authorizationId,startedAt:new Date().toISOString()})+"\n",{mode:0o600});},
+  onToolExecution:event=>{toolEvents.push({type:event.type,...(event.toolName?{toolName:event.toolName}:{}),...(event.toolCallId?{toolCallId:event.toolCallId}:{}),...(event.isError!==undefined?{isError:event.isError}:{})});},
  });
  const result=await new Dispatcher(runner,input.evidence).dispatch(input.request);
  const filePresent=existsSync(join(root,target)),exactBytes=filePresent&&readFileSync(join(root,target),"utf8")===rejectedContent;
- writeFileSync(join(dirname(journalFile),"initial-writer-attempt.json"),JSON.stringify({taskId,sessionId,authorizationId,piPid,resultOk:result.ok,resultSummary:redact(result.output).slice(-4_000),filePresent,exactBytes,...(filePresent?{fileSha256:sha256(readFileSync(join(root,target)))}:{})},null,2)+"\\n",{mode:0o600});
+ const barrierReached=existsSync(barrier),attributionPresent=existsSync(join(dirname(journalFile),"workspace-attribution.json"));
+ const observedWriteCalls=toolEvents.filter(event=>event.type==="tool_execution_start"&&event.toolName==="write").length;
+ const providerFailure=/502|Bad Gateway|Upstream request failed|auto_retry_start/u.test(result.output);
+ const outcome=barrierReached?"BARRIER_REACHED":filePresent||attributionPresent||observedWriteCalls>0?"UNCERTAIN_WRITE_EFFECT":"NO_OBSERVED_WRITE";
+ writeFileSync(join(dirname(journalFile),"initial-writer-attempt.json"),JSON.stringify({taskId,sessionId,authorizationId,piPid,resultOk:result.ok,resultSummary:redact(result.output).slice(-4_000),filePresent,exactBytes,barrierReached,attributionPresent,observedWriteCalls,toolEvents,providerFailure,outcome,...(filePresent?{fileSha256:sha256(readFileSync(join(root,target)))}:{})},null,2)+"\\n",{mode:0o600});
  journal.record({id:taskId,sessionId,projectId:root,command:"asen-pi-authorized-write",args:[target,sha256(rejectedContent)],cwd:root,mode:"background",state:result.ok?"completed":"failed",createdAt:now,updatedAt:new Date().toISOString(),exitCode:result.ok?0:1,eventCount:0,tail:[redact(result.output)],authorizationId,expectedHead:input.baseSha,allowedPaths:[target],authorizationExpiresAt:new Date(Date.now()+10*60_000).toISOString()});
- throw new Error(`Interruption barrier was not reached; Pi pid ${piPid}, result ${result.ok}; output ${redact(result.output).slice(-4_000)}`);
+ throw new Error(`Interruption barrier was not reached; outcome=${outcome}; providerFailure=${providerFailure}; observedWriteCalls=${observedWriteCalls}; Pi pid ${piPid}, result ${result.ok}. No automatic replay is permitted without reconciling the workspace and journal; see initial-writer-attempt.json.`);
 }
 async function waitForFile(file:string,timeoutMs:number,child:ReturnType<typeof spawn>):Promise<void>{
  const deadline=Date.now()+timeoutMs;
