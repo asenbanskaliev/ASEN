@@ -209,8 +209,13 @@ function truncateOutput(output:string):string {
 function compatibilityResult(status:string,output="Use read/grep for exploration; no automatic index initialization.") {
   return {content:[{type:"text" as const,text:output}],details:{status}};
 }
-function fallbackStatus(error:unknown):"unavailable"|"failed" {
-  return typeof error==="object"&&error!==null&&"code" in error&&(error as NodeJS.ErrnoException).code==="ENOENT"?"unavailable":"failed";
+function fallbackStatus(error:unknown):"unavailable"|"failed"|"cancelled" {
+  if(typeof error==="object"&&error!==null){
+    const failure=error as NodeJS.ErrnoException;
+    if(failure.code==="ABORT_ERR"||failure.name==="AbortError")return "cancelled";
+    if(failure.code==="ENOENT")return "unavailable";
+  }
+  return "failed";
 }
 
 /** Canonical upstream-compatible CodeGraph tool. Only explicit `init` can create an index. */
@@ -264,8 +269,8 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
         const output=truncateOutput([observed.stdout,observed.stderr].filter(Boolean).join("\n"));
         return {content:[{type:"text" as const,text:output||"CodeGraph completed without output."}],details:{status:"completed",operation:request.operation,cwd:root,args}};
       }catch(error){
-        const status=fallbackStatus(error);
-        const message=status==="unavailable"?`CodeGraph is unavailable because the codegraph binary was not found. ${FALLBACK_INSTRUCTIONS}`:`CodeGraph failed to run. ${FALLBACK_INSTRUCTIONS}`;
+        const status=signal?.aborted?"cancelled":fallbackStatus(error);
+        const message=status==="cancelled"?"CodeGraph execution was cancelled.":status==="unavailable"?`CodeGraph is unavailable because the codegraph binary was not found. ${FALLBACK_INSTRUCTIONS}`:`CodeGraph failed to run. ${FALLBACK_INSTRUCTIONS}`;
         return {content:[{type:"text" as const,text:message}],details:{status,operation:request.operation,cwd:root,fallback:FALLBACK_INSTRUCTIONS}};
       }
     },
