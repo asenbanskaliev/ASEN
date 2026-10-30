@@ -8,7 +8,7 @@ import {createCodeGraphTool,createCodeIntelligenceTool,normalizePathEntry,regist
 import {createAsenExtension} from "../extensions/asen.js";
 
 function fixture(t:test.TestContext,body='console.log(JSON.stringify({args:process.argv.slice(2),cwd:process.cwd()}))'){
-  const root=realpathSync.native(mkdtempSync(join(tmpdir(),"asen graph á ")));t.after(()=>rmSync(root,{recursive:true,force:true}));
+  const root=realpathSync.native(mkdtempSync(join(tmpdir(),"asen graph á ")));t.after(()=>rmSync(root,{recursive:true,force:true,maxRetries:20,retryDelay:100}));
   execFileSync("git",["init","-q",root]);const script=join(root,"fixture.mjs");writeFileSync(script,body);mkdirSync(join(root,"child"));
   const tools=new Map<string,any>();createAsenExtension({codeIntelligence:{executable:process.execPath,script}} as any)({registerCommand(){},registerTool(tool:any){tools.set(tool.name,tool);}} as any);
   return {root,script,tool:createCodeIntelligenceTool({executable:process.execPath,script}),canonical:tools.get("codegraph"),registered:[...tools.keys()]};
@@ -384,4 +384,29 @@ test("canonical registration and ASEN integration expose only one CodeGraph tool
   assert.equal(tools.get("codegraph").annotations.destructiveHint,true);
   assert.deepEqual(f.registered.filter(name=>name.includes("code")),["codegraph"],"Pi must expose exactly one CodeGraph tool");
   assert.equal(f.tool.name,"asen_code_intelligence","the read-only adapter remains constructible for internal compatibility");
+});
+
+test("canonical CodeGraph sync requires fresh authorization and existing index",async t=>{
+  const f=fixture(t);
+  const calls:string[][]=[];
+  const runner:CodeGraphRunner=async args=>{calls.push([...args]);return {stdout:"ok",stderr:""};};
+  const tool=createCodeGraphTool(runner);
+  const approvals:string[]=[];
+  const ui={confirm:async(title:string)=>{approvals.push(title);return true;}};
+  assert.equal((await call(tool,f.root,{operation:"sync"},undefined,{hasUI:true,ui})).details.status,"not_initialized");
+  assert.equal(calls.length,0);
+  mkdirSync(join(f.root,".codegraph"));
+  assert.equal((await call(tool,f.root,{operation:"sync"})).details.status,"authorization_required");
+  assert.equal(calls.length,0);
+  const denied=await call(tool,f.root,{operation:"sync"},undefined,{hasUI:true,ui:{confirm:async()=>false}});
+  assert.equal(denied.details.status,"denied");
+  assert.equal(calls.length,0);
+  const approved=await call(tool,f.root,{operation:"sync"},undefined,{hasUI:true,ui});
+  assert.equal(approved.details.status,"completed");
+  assert.deepEqual(calls,[["sync"]]);
+  assert.equal(approvals.length,1);
+  const repeat=await call(tool,f.root,{operation:"sync"},undefined,{hasUI:true,ui});
+  assert.equal(repeat.details.status,"completed");
+  assert.equal(approvals.length,2,"each synchronization must request fresh approval");
+  assert.deepEqual(calls,[["sync"],["sync"]]);
 });
