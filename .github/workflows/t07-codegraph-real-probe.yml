@@ -1,0 +1,63 @@
+name: T07 CodeGraph real CLI probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/t07-codegraph-completion]
+    paths: [.github/workflows/t07-codegraph-real-probe.yml]
+permissions:
+  contents: read
+jobs:
+  codegraph-real:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Probe genuine CodeGraph CLI in disposable Git repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/t07-codegraph-probe"
+          cd "${RUNNER_TEMP}/t07-codegraph-probe"
+          git init -q
+          git config user.email "probe@example.invalid"
+          git config user.name "T07 Probe"
+          printf 'export function calculateTotal(a, b) { return a + b; }\n' > sample.js
+          git add sample.js
+          git commit -qm fixture
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund --save-exact @colbymchenry/codegraph
+          echo '--- Installed package version ---'
+          node -p "require('./node_modules/@colbymchenry/codegraph/package.json').version"
+          npm ls @colbymchenry/codegraph --depth=0
+          echo '--- CLI help ---'
+          ./node_modules/.bin/codegraph --help
+          echo '--- Init help ---'
+          ./node_modules/.bin/codegraph init --help
+          echo '--- Query help ---'
+          ./node_modules/.bin/codegraph query --help
+          echo '--- Explore help ---'
+          ./node_modules/.bin/codegraph explore --help
+          echo '--- Actual indexing ---'
+          ./node_modules/.bin/codegraph init .
+          echo '--- Actual symbol query ---'
+          ./node_modules/.bin/codegraph query --limit 10 -- calculateTotal
+          echo '--- Actual exploration ---'
+          ./node_modules/.bin/codegraph explore -- calculateTotal
+          echo '--- Restart: fresh CLI process queries existing index ---'
+          ./node_modules/.bin/codegraph query --limit 10 -- calculateTotal
+          echo '--- Change tracked source, reindex and query new symbol ---'
+          printf 'export function calculateTotal(a, b) { return a + b; }\\nexport function changedSymbol() { return calculateTotal(2, 3); }\\n' > sample.js
+          git add sample.js
+          git commit -qm update-fixture
+          ./node_modules/.bin/codegraph init .
+          ./node_modules/.bin/codegraph query --limit 10 -- changedSymbol
+          echo '--- Verify index persisted after separate invocations ---'
+          test -d .codegraph || { echo 'No .codegraph index directory found'; exit 1; }
+          echo 'T07 genuine CLI lifecycle completed'

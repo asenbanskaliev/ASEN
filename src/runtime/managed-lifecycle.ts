@@ -131,20 +131,51 @@ export interface ManagedUninstallReport{
  readonly retained:readonly string[];
  readonly userDataTouched:false;
 }
-async function removeOwnedFile(versionRoot:string,relative:string,file:Pick<ManagedInstallFile,"size"|"sha256">):Promise<"removed"|"absent"|"retained">{
- const parts=relative.split("/");let current=versionRoot;
- for(const part of parts.slice(0,-1)){
-  current=path.join(current,part);
-  const info=await lstat(current).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
-  if(!info)return "absent";
+export interface ManagedUninstallHooks{
+ /** Deterministic test seam: simulate another same-user process changing a path after inspection. */
+ readonly beforeOwnedFileRemoval?:(target:string)=>Promise<void>;
+}
+function sameUninstallIdentity(left:{dev:number;ino:number;birthtimeMs:number},right:{dev:number;ino:number;birthtimeMs:number}):boolean{
+ return left.dev===right.dev&&left.ino===right.ino&&left.birthtimeMs===right.birthtimeMs;
+}
+async function removeOwnedFile(versionRoot:string,relative:string,file:Pick<ManagedInstallFile,"size"|"sha256">,hooks?:ManagedUninstallHooks):Promise<"removed"|"absent"|"retained">{
+ const parts=relative.split("/"),directories=[versionRoot];
+ for(const part of parts.slice(0,-1))directories.push(path.join(directories.at(-1)!,part));
+ const observedDirs=[];
+ for(const directory of directories){
+  const info=await lstat(directory).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
+  if(!info)return "retained";
   if(!info.isDirectory()||info.isSymbolicLink())return "retained";
+  observedDirs.push(info);
  }
- const target=path.join(current,parts.at(-1)!),info=await lstat(target).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
- if(!info)return "absent";
- if(!info.isFile()||info.isSymbolicLink())return "retained";
- const bytes=await readFile(target);
- if(bytes.length!==file.size||createHash("sha256").update(bytes).digest("hex")!==file.sha256)return "retained";
- await unlink(target);return "removed";
+ const target=path.join(directories.at(-1)!,parts.at(-1)!);
+ const before=await lstat(target).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
+ if(!before)return "absent";
+ if(!before.isFile()||before.isSymbolicLink()||before.size!==file.size)return "retained";
+ let handle;
+ try{handle=await open(target,constants.O_RDONLY|(constants.O_NOFOLLOW??0));}
+ catch(error){if(["ENOENT","ELOOP","EPERM"].includes((error as NodeJS.ErrnoException).code??""))return "retained";throw error;}
+ try{
+  const held=await handle.stat();
+  if(!held.isFile()||!sameUninstallIdentity(before,held))return "retained";
+  const bytes=await handle.readFile();
+  if(bytes.length!==file.size||createHash("sha256").update(bytes).digest("hex")!==file.sha256)return "retained";
+  await hooks?.beforeOwnedFileRemoval?.(target);
+  // An ordinary maintenance lock does not exclude hostile same-user path changes.
+  // Recheck the complete path chain, object identity and bytes immediately before unlink.
+  for(let i=0;i<directories.length;i++){
+   const current=await lstat(directories[i]!).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
+   if(!current||!current.isDirectory()||current.isSymbolicLink()||!sameUninstallIdentity(observedDirs[i]!,current))return "retained";
+  }
+  const after=await lstat(target).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
+  const heldAfter=await handle.stat();
+  if(!after||!after.isFile()||after.isSymbolicLink()||!sameUninstallIdentity(before,after)||!sameUninstallIdentity(held,heldAfter)||after.mtimeMs!==before.mtimeMs||after.size!==before.size)return "retained";
+  const currentBytes=await readFile(target);
+  if(currentBytes.length!==file.size||createHash("sha256").update(currentBytes).digest("hex")!==file.sha256)return "retained";
+  const finalStat=await lstat(target).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
+  if(!finalStat||!finalStat.isFile()||finalStat.isSymbolicLink()||!sameUninstallIdentity(before,finalStat))return "retained";
+  await unlink(target);return "removed";
+ }finally{await handle.close();}
 }
 async function rmdirIfEmpty(directory:string,retained:string[]):Promise<void>{
  try{
@@ -163,7 +194,7 @@ async function rmdirIfEmpty(directory:string,retained:string[]):Promise<void>{
  * Removes only ASEN-owned managed software: files listed in the ownership receipt/catalog whose bytes still
  * match, the selector, and receipts. User data, launcher config, sessions and Pi installations are never touched.
  */
-export async function uninstallManaged(request:Readonly<{prefix:string;confirmed:boolean}>):Promise<ManagedUninstallReport>{
+export async function uninstallManaged(request:Readonly<{prefix:string;confirmed:boolean;hooks?:ManagedUninstallHooks}>):Promise<ManagedUninstallReport>{
  if(request.confirmed!==true)fail("CONFIRMATION_REQUIRED","Managed uninstall requires explicit confirmation");
  if(!path.isAbsolute(request.prefix))fail("INVALID_REQUEST","Installation prefix must be absolute");
  const prefix=path.resolve(request.prefix),managedRoot=path.join(prefix,"install");
@@ -181,7 +212,7 @@ export async function uninstallManaged(request:Readonly<{prefix:string;confirmed
    if(!info)continue;
    if(info.isSymbolicLink()||!info.isDirectory()){retained.push(versionRoot);continue;}
    for(const file of version.files){
-    const outcome=await removeOwnedFile(versionRoot,file.path,file);
+    const outcome=await removeOwnedFile(versionRoot,file.path,file,request.hooks);
     if(outcome==="removed")removedFiles++;
     else if(outcome==="retained")retained.push(path.join(versionRoot,...file.path.split("/")));
    }

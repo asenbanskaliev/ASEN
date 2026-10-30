@@ -26,7 +26,7 @@ export interface PotentialWorkspaceConflict{path:string;earlier:WorkspaceChange;
 export function findPotentialWorkspaceConflicts(changes:readonly WorkspaceChange[],platform:NodeJS.Platform=process.platform):PotentialWorkspaceConflict[]{
  const latest=new Map<string,WorkspaceChange>(),conflicts=new Map<string,PotentialWorkspaceConflict>();
  for(const raw of changes){
-  const change=recordWorkspaceChange(raw),normalizedPath=platform==="win32"||platform==="darwin"?change.path.normalize("NFC").toLowerCase().normalize("NFC"):change.path,key=`${change.projectId}\0${change.worktree}\0${normalizedPath}`,previous=latest.get(key);
+  const change=recordWorkspaceChange(raw),normalizedPath=platform==="win32"||platform==="darwin"?change.path.normalize("NFC").toLowerCase().normalize("NFC"):change.path,key=`${change.sessionId}\0${change.projectId}\0${change.worktree}\0${normalizedPath}`,previous=latest.get(key);
   if(previous&&(previous.actor.kind!==change.actor.kind||previous.actor.id!==change.actor.id))conflicts.set(key,{path:change.path,earlier:previous,later:change});
   latest.set(key,change);
  }
