@@ -50,6 +50,13 @@ test("workspace conflict review folds case on Windows and macOS, while preservin
  assert.equal(findPotentialWorkspaceConflicts(changes,"darwin").length,1);
  assert.equal(findPotentialWorkspaceConflicts(changes,"linux").length,0);
 });
+test("workspace conflict attribution is isolated by session even in the same worktree",()=>{
+ const first=recordWorkspaceChange({...base,path:"src/shared.ts",sessionId:"s1",actor:{kind:"agent",id:"worker-a"}});
+ const second=recordWorkspaceChange({...base,path:"src/shared.ts",sessionId:"s2",actor:{kind:"agent",id:"worker-b"}});
+ assert.deepEqual(findPotentialWorkspaceConflicts([first,second]),[]);
+ assert.equal(findPotentialWorkspaceConflicts([first,{...second,sessionId:"s1"}]).length,1);
+});
+
 test("workspace conflict identity includes the worktree so parallel checkouts do not collide",()=>{
  const first=recordWorkspaceChange({...base,path:"src/same.ts",worktree:path.resolve("worktree-a"),actor:{kind:"agent",id:"worker-a"}});
  const second=recordWorkspaceChange({...base,path:"src/same.ts",worktree:path.resolve("worktree-b"),actor:{kind:"user",id:"user"}});

@@ -159,3 +159,28 @@ Estos resultados son locales y no equivalen a CI multiplataforma, TUI Pi real ni
 ### Dictamen
 
 T10 sigue **PARTIAL**. La recuperación de avisos pendientes queda conectada al uso real; la resolución autorizada de conflictos, las acciones mutables, la prueba TUI/teclado y la revisión independiente R4 no están cerradas. La API de Pi limita la promesa de entrega a encolado best-effort con ID estable. No se infiere FULL de esta tanda.
+
+
+### T10 — Workspace status/attribution hardening, 2026-10-31
+
+A new bounded continuation addresses three concrete weaknesses of the existing read-only `/asen-changes` path: Git rename/copy records now retain and render their original path and reject incomplete NUL-framed status; a directory nested under another Git worktree is reported unavailable rather than silently attributed as its own Git root; and conflict warnings are scoped to the owning session as well as project/worktree/path. Tests include an actual `git mv` in a disposable repository and negative parser/root/session scenarios. This unit neither authorizes filesystem writes nor resolves conflicts. T10 remains **PARTIAL**: authorized workspace actions, cross-process coordination, interactive terminal accessibility, and independent exact-candidate R4 evidence are not admitted by this change alone. CI results are pending for the published candidate; prior test receipts are not transferred to it.
+
+
+### T10 manual correction / Pi interactive action continuation
+
+The existing /asen-changes command now supports an explicit \`resolve\` subaction for a recorded same-session conflict. It is unavailable without an active interactive Pi selector, editor and confirmation, and does not accept arbitrary model-supplied paths or shell arguments. It selects only attribution conflicts in the current project/worktree, prepares a bounded tracked text-file candidate tied to the current HEAD and file bytes, requires fresh human confirmation, acquires the existing exclusive workspace writer lease, rechecks source/root identity, atomically replaces that one file and attributes the user edit. Dirty or stale candidates, symlinks, sensitive paths, locks and missing UI fail closed. No commit, automatic merge or independent-review acceptance is performed. The implementation is cooperative concurrency protection, not OS confinement against malicious same-user path substitution. Tests cover one-use, stale content, competing writers, publication drift and unsafe paths.
+
+The Pi child-process integrity pin for workspace attribution was updated from the verified original source digest to the exact new reviewed attribution source SHA-256. The pinned guard was not disabled. This iteration remains PARTIAL pending exact-SHA CI, interactive TUI evidence, cross-process coordination and the remaining original T10 scope.
+
+
+Follow-up R4 portability correction: on POSIX the atomic replacement preserves the original file permission bits (including executable mode); an explicit regression commits an executable source and verifies its mode after correction. Windows-only file symlink setup is declared an environment-dependent skip instead of assuming privileged symlink creation. Neither change weakens the path, HEAD, one-use, or writer-lease checks.
+
+
+### T10 — metadata de sesión compartida entre procesos (continuación)
+
+`enableWorkspaceRuntime` activa el directorio privado `SharedSessionDirectory`, que conserva solo etiquetas, clasificación y sesión/proyecto mediante registros finitos por PID y caducidad. La consulta desde otro proceso vuelve a requerir consentimiento interactivo de un uso, ligado al solicitante y proyecto; los tokens no se comparten. Las pruebas incluyen dos instancias de directorio, un proceso Node independiente, aislamiento entre proyectos, caducidad de una sesión cerrada y rechazo de enlaces simbólicos. Sin este opt-in se mantiene el directorio process-local anterior. Este mecanismo no comparte transcripciones, credenciales ni permisos.
+
+Riesgos residuales: los registros solo verifican vida del PID, no autentican un proceso del mismo usuario; un proceso malicioso con igual identidad del sistema puede modificar los metadatos. Los registros caducan tras cuatro horas sin renovación de sesión. La consulta requiere una segunda comprobación y no concede escritura. Falta TUI multiinstancia real, rendimiento bajo concurrencia y R4 exact-SHA antes de FULL.
+
+
+Same-process session recovery regression: two Pi host instances with the same PID may transfer ownership of a metadata record for the same session identity. The old host's shutdown only removes records whose random owner token still matches, so it cannot erase the new host's record. A different live PID remains blocked from taking that identity. No authority or consent token is transferred.
