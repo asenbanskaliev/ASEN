@@ -1,0 +1,1024 @@
+{
+  "schema": "asen.t09-u9d-scoped-evidence/v1",
+  "baseCommit": "4a4c7e71a876b83f76c0bbfc0d26163dfa2c1b0f",
+  "node": "24.22.1",
+  "npm": "11.9.0",
+  "platform": "linux-x64",
+  "finalCandidateFiles": {
+    "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+    "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+    "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+    "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+    "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+    "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+    "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+  },
+  "receipts": [
+    {
+      "name": "backend-baseline",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "--test-concurrency=1",
+        "tests/managed-acquisition-update.test.ts",
+        "tests/managed-additional-stage.test.ts"
+      ],
+      "exit": 1,
+      "elapsedSeconds": 5.172,
+      "before": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "585775c3d649599175feec752a1b926959e086b55114fd0d957c739ff6c4941a",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "585775c3d649599175feec752a1b926959e086b55114fd0d957c739ff6c4941a",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 36476,
+          "sha256": "15dc1bca288bf1b65d680da1df1336a4a4874fd432ea21dd356adb29374d433f"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {
+        "tests": "31",
+        "pass": "19",
+        "fail": "12",
+        "skipped": "0"
+      }
+    },
+    {
+      "name": "build-corrected",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exit": 0,
+      "elapsedSeconds": 5.488,
+      "before": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 50,
+          "sha256": "557e897b40a4b3ba5307d43e40d4e1e9420d56cdcf71ae9c2b718535cb020edb",
+          "text": "\n> asen@0.1.0 build\n> tsc -p tsconfig.build.json\n\n"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {}
+    },
+    {
+      "name": "build",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exit": 0,
+      "elapsedSeconds": 5.19,
+      "before": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "7a814626814e461b142f611b58ca3c271b5b2d4c0ed0bb7001f2f5d8a127f06f",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "7a814626814e461b142f611b58ca3c271b5b2d4c0ed0bb7001f2f5d8a127f06f",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 50,
+          "sha256": "557e897b40a4b3ba5307d43e40d4e1e9420d56cdcf71ae9c2b718535cb020edb",
+          "text": "\n> asen@0.1.0 build\n> tsc -p tsconfig.build.json\n\n"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {}
+    },
+    {
+      "name": "built-cli-help",
+      "command": [
+        "node",
+        "dist/cli.js",
+        "--help"
+      ],
+      "exit": 0,
+      "elapsedSeconds": 0.059,
+      "before": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 1038,
+          "sha256": "d9524a42644b3dd73e9f6f7a74f41327ff94a4f67bec3c2dd2c71d350196f7db",
+          "text": "Usage: asen [--link|--isolated|--home PATH] [Pi arguments]\n       asen home\n       asen setup --dry-run [--yes]  Preview setup intent (no changes)\n       asen [--link|--isolated|--home PATH] backup project-memory --project <project-id> --destination <absolute-path> --dry-run  Preview only; no backup created\n       asen [--link|--isolated|--home PATH] managed run <version> -- [Pi arguments]  Current-user execution; publisher unverified\n       asen [--link|--isolated|--home PATH] managed select <version> --expected-current <version>  Select retained metadata only; no activation\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run  Observe only; software prefix remains OS home/.asen\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes  Stage local bytes only; no selection or execution\n       asen [--link|--isolated|--home PATH] [--package-root PATH] doctor\n       asen --version\n"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {}
+    },
+    {
+      "name": "cli-differential-corrected",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        ".cache/remote-t09/cli-differential.ts"
+      ],
+      "exit": 0,
+      "elapsedSeconds": 0.432,
+      "before": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 99,
+          "sha256": "6f566c0253e02e8483370e6606baa63cf74cedf3b3f782e387ebe85a69791f29",
+          "text": "PASS 15 exact checkpoint/candidate CLI comparisons; only the single declared help line normalized.\n"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {}
+    },
+    {
+      "name": "cli-differential",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        ".cache/remote-t09/cli-differential.ts"
+      ],
+      "exit": 1,
+      "elapsedSeconds": 1.072,
+      "before": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        },
+        "stderr": {
+          "bytes": 960,
+          "sha256": "aea949d441d0ce3a68b83f0cf3d613259dea0787eae43d8903e17d65c6109479",
+          "savedAs": "cli-differential.stderr",
+          "text": "No API key found for the selected model.\n\nUse /login to log into a provider via OAuth or API key. See:\n  /workspace/scratch/52e5d39ebfa0/ASEN/node_modules/@earendil-works/pi-coding-agent/docs/providers.md\n  /workspace/scratch/52e5d39ebfa0/ASEN/node_modules/@earendil-works/pi-coding-agent/docs/models.md\nnode:internal/modules/run_main:107\n    triggerUncaughtException(\n    ^\n\nAssertionError [ERR_ASSERTION]: explicit-home\n+ actual - expected\n\n  {\n    code: 1,\n+   stderr: '',\n-   stderr: 'Pi runtime not found\\n',\n    stdout: ''\n  }\n\n    at <anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/cli-differential.ts:23:115)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: { code: 1, stdout: '', stderr: '' },\n  expected: { code: 1, stdout: '', stderr: 'Pi runtime not found\\n' },\n  operator: 'deepStrictEqual',\n  diff: 'simple'\n}\n\nNode.js v24.22.1\n"
+        }
+      },
+      "testSummary": {}
+    },
+    {
+      "name": "directory-count-red",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "tests/managed-acquisition-copy.test.ts"
+      ],
+      "exit": 1,
+      "elapsedSeconds": 0.312,
+      "before": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "585775c3d649599175feec752a1b926959e086b55114fd0d957c739ff6c4941a",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "585775c3d649599175feec752a1b926959e086b55114fd0d957c739ff6c4941a",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 1301,
+          "sha256": "75472994d7961bc94b3b8bd05a1e57067a23bafcb1fad7aab5d4de91b21bce3a",
+          "savedAs": "directory-count-red.stdout",
+          "text": "✖ copy permits its own nested and sibling directories to change destination link counts (18.934199ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 268.611368\n\n✖ failing tests:\n\ntest at tests/managed-acquisition-copy.test.ts:1:251\n✖ copy permits its own nested and sibling directories to change destination link counts (18.934199ms)\n  Error [ManagedAcquisitionCopyError]: Managed acquisition copy destination ancestor changed: /workspace/scratch/52e5d39ebfa0/ASEN/.cache/u9d-directory-count-vEhEMm/stage\n      at fail (/workspace/scratch/52e5d39ebfa0/ASEN/src/runtime/managed-acquisition-copy.ts:53:8)\n      at destinationUnchanged (/workspace/scratch/52e5d39ebfa0/ASEN/src/runtime/managed-acquisition-copy.ts:134:3)\n      at async revalidateAncestors (/workspace/scratch/52e5d39ebfa0/ASEN/src/runtime/managed-acquisition-copy.ts:170:3)\n      at async copyManagedAcquisitionToStage (/workspace/scratch/52e5d39ebfa0/ASEN/src/runtime/managed-acquisition-copy.ts:335:3)\n      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-acquisition-copy.test.ts:17:2)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)\n"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {
+        "tests": "1",
+        "pass": "0",
+        "fail": "1",
+        "skipped": "0"
+      }
+    },
+    {
+      "name": "focused-corrected",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "--test-concurrency=1",
+        "tests/launcher.test.ts",
+        "tests/managed-update-preview-cli.test.ts",
+        "tests/managed-catalog-selection-cli.test.ts",
+        "tests/installation-doctor-cli.test.ts",
+        "tests/project-memory-backup-preview-cli.test.ts",
+        "tests/managed-acquisition-copy.test.ts",
+        "tests/managed-update-stage-cli.test.ts",
+        "tests/managed-acquisition-update.test.ts",
+        "tests/managed-additional-stage.test.ts"
+      ],
+      "exit": 0,
+      "elapsedSeconds": 27.06,
+      "before": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 14678,
+          "sha256": "5561d99656e5c48857170da54f9a52adf97cab8d40d0a202a27bf159ebc2b262",
+          "savedAs": "focused-corrected.stdout"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {
+        "tests": "193",
+        "pass": "193",
+        "fail": "0",
+        "skipped": "0"
+      }
+    },
+    {
+      "name": "focused-final",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "--test-concurrency=1",
+        "tests/launcher.test.ts",
+        "tests/managed-update-preview-cli.test.ts",
+        "tests/managed-catalog-selection-cli.test.ts",
+        "tests/installation-doctor-cli.test.ts",
+        "tests/project-memory-backup-preview-cli.test.ts",
+        "tests/managed-acquisition-copy.test.ts",
+        "tests/managed-update-stage-cli.test.ts",
+        "tests/managed-acquisition-update.test.ts",
+        "tests/managed-additional-stage.test.ts"
+      ],
+      "exit": 0,
+      "elapsedSeconds": 25.47,
+      "before": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "7a814626814e461b142f611b58ca3c271b5b2d4c0ed0bb7001f2f5d8a127f06f",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "7a814626814e461b142f611b58ca3c271b5b2d4c0ed0bb7001f2f5d8a127f06f",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 14565,
+          "sha256": "dd984a7a24923729a9ebef4c8f4f5406d4812d6ad2c19b5f0ce7d176b0949e23"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {
+        "tests": "192",
+        "pass": "192",
+        "fail": "0",
+        "skipped": "0"
+      }
+    },
+    {
+      "name": "pack",
+      "command": [
+        "npm",
+        "pack",
+        "--ignore-scripts",
+        "--json",
+        "--pack-destination",
+        ".cache/remote-t09"
+      ],
+      "exit": 0,
+      "elapsedSeconds": 0.971,
+      "before": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 36107,
+          "sha256": "687646574470d0a7729cb4a12e015f170ab17e6bb2583b5f5fb6a429f40dc159"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {}
+    },
+    {
+      "name": "package-inspection",
+      "command": [
+        "python",
+        ".cache/remote-t09/package-inspection.py"
+      ],
+      "exit": 0,
+      "elapsedSeconds": 0.06,
+      "before": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 1001,
+          "sha256": "25ba851a29a5d3baebf87d5415d177fb42b494765436fede3562625ef08386fc",
+          "text": "{\"file\": \"asen-0.1.0.tgz\", \"entryCount\": 327, \"sha256\": \"c53311209dfde6a3329ee4c8efd74982305ae7155b3a50379147256e73f3625c\", \"checked\": [{\"path\": \"dist/cli.js\", \"sha256\": \"80d3df82a15736af8e206592007993401c5db402a2791978f7c9787a7188cea1\"}, {\"path\": \"dist/runtime/launcher.js\", \"sha256\": \"f5ca84c846363722c7dd751ee4774c7635849335b487cdfea3b64e061df5cbde\"}, {\"path\": \"dist/runtime/managed-acquisition-copy.js\", \"sha256\": \"b798222b707eabd85a2ebdd007757c1a9de919aa4f3d4f06699b1dbb84285f0b\"}, {\"path\": \"dist/runtime/managed-acquisition-update.js\", \"sha256\": \"67464fd5c169be44b8e587b5601b3eb306cca70bf7a9dbbed82c124dd3b27610\"}, {\"path\": \"src/cli.ts\", \"sha256\": \"793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447\"}, {\"path\": \"src/runtime/launcher.ts\", \"sha256\": \"ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6\"}, {\"path\": \"src/runtime/managed-acquisition-copy.ts\", \"sha256\": \"27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d\"}], \"installationExecuted\": false}\n"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {}
+    },
+    {
+      "name": "review-stdout-failure",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--input-type=module",
+        "-e",
+        "import fs from \"node:fs/promises\";import path from \"node:path\";import {createHash} from \"node:crypto\";import {stageManagedInstall,inspectManagedInstall} from \"./src/runtime/managed-install.ts\";import {runAsen} from \"./src/cli.ts\";const root=await fs.mkdtemp(path.join(process.cwd(),\".cache/review-u9d-output-\")),home=path.join(root,\"home\"),prefix=path.join(home,\".asen\"),source=path.join(root,\"source\"),manifest=path.join(root,\"manifest.json\");await fs.mkdir(source);await fs.writeFile(path.join(source,\"file\"),\"bytes\");const files=[{sourcePath:\"file\",destinationPath:\"dist/file\"}];await stageManagedInstall({prefix,packageRoot:source,version:\"1.0.0\",files,confirmed:true,protectedPaths:[]});await fs.writeFile(manifest,JSON.stringify({schema:\"asen.managed-acquisition/v1\",version:\"2.0.0\",files:[{...files[0],size:5,sha256:createHash(\"sha256\").update(\"bytes\").digest(\"hex\")}]}));let stderr=\"\",stdoutCalls=0;const result=await runAsen([\"managed\",\"update\",\"--manifest\",manifest,\"--package-root\",source,\"--stage\",\"--yes\"],{}, {homeDirectory:()=>home,stdout:()=>{stdoutCalls++;throw new Error(\"output unavailable\");},stderr:text=>{stderr+=text;}});console.log(JSON.stringify({result,stdoutCalls,stderr,versions:(await inspectManagedInstall({prefix})).versions.map(v=>v.version)}));"
+      ],
+      "exit": 0,
+      "elapsedSeconds": 0.339,
+      "before": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "7a814626814e461b142f611b58ca3c271b5b2d4c0ed0bb7001f2f5d8a127f06f",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "7a814626814e461b142f611b58ca3c271b5b2d4c0ed0bb7001f2f5d8a127f06f",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 122,
+          "sha256": "1fc7e4cea2b4a650b682087bfc3bf6e5b38689d630563c6949566965ce64a020",
+          "savedAs": "review-stdout-failure.stdout",
+          "text": "{\"result\":1,\"stdoutCalls\":1,\"stderr\":\"Managed update staging refused: output unavailable\\n\",\"versions\":[\"1.0.0\",\"2.0.0\"]}\n"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {}
+    },
+    {
+      "name": "shared-baseline",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "--test-concurrency=1",
+        "tests/launcher.test.ts",
+        "tests/managed-update-preview-cli.test.ts",
+        "tests/managed-catalog-selection-cli.test.ts",
+        "tests/installation-doctor-cli.test.ts",
+        "tests/project-memory-backup-preview-cli.test.ts"
+      ],
+      "exit": 0,
+      "elapsedSeconds": 15.331,
+      "before": {
+        "src/cli.ts": "8bdaf6c8d11cb2dab70d0866d6812a86fc5a5c36d547cb563da9732736d1c6bb",
+        "src/runtime/launcher.ts": "3ee16259135d060fd9a28abd0cf54f399c404febf75cdd27c73b2143eeb829c3",
+        "tests/managed-update-stage-cli.test.ts": "cb9c1322767ef53492be454e6c13183245e30ba2492cf9d2f8dfdca0c44e7dc4",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "8bdaf6c8d11cb2dab70d0866d6812a86fc5a5c36d547cb563da9732736d1c6bb",
+        "src/runtime/launcher.ts": "3ee16259135d060fd9a28abd0cf54f399c404febf75cdd27c73b2143eeb829c3",
+        "tests/managed-update-stage-cli.test.ts": "cb9c1322767ef53492be454e6c13183245e30ba2492cf9d2f8dfdca0c44e7dc4",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 9092,
+          "sha256": "8d76e378d3ad856b1fa6da24a51fc579cf23e163b3bda9d48a4ee5464e9ace2a"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {
+        "tests": "129",
+        "pass": "129",
+        "fail": "0",
+        "skipped": "0"
+      }
+    },
+    {
+      "name": "stage-diagnostic",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "--test-name-pattern=confirmed public|isolated real|catalog rename",
+        "tests/managed-update-stage-cli.test.ts"
+      ],
+      "exit": 1,
+      "elapsedSeconds": 1.54,
+      "before": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "585775c3d649599175feec752a1b926959e086b55114fd0d957c739ff6c4941a",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "585775c3d649599175feec752a1b926959e086b55114fd0d957c739ff6c4941a",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 6589,
+          "sha256": "656442086112802572dea4a78a0f382942457f8a278a6a343f7ef922b3d82082"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {
+        "tests": "3",
+        "pass": "0",
+        "fail": "3",
+        "skipped": "0"
+      }
+    },
+    {
+      "name": "stage-green-01",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "--test-concurrency=1",
+        "tests/managed-update-stage-cli.test.ts"
+      ],
+      "exit": 1,
+      "elapsedSeconds": 3.327,
+      "before": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "473936c6ad14e9e9d5162edccc1662e261811184055a9f1854096d0add6106e8",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "473936c6ad14e9e9d5162edccc1662e261811184055a9f1854096d0add6106e8",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 3963,
+          "sha256": "2960bc6f89dfaa106ed4f9bff41f6ced15662d24a76aba5a3e44f3675e96e782"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {
+        "tests": "28",
+        "pass": "25",
+        "fail": "3",
+        "skipped": "0"
+      }
+    },
+    {
+      "name": "stage-red",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "--test-concurrency=1",
+        "tests/managed-update-stage-cli.test.ts"
+      ],
+      "exit": 1,
+      "elapsedSeconds": 1.481,
+      "before": {
+        "src/cli.ts": "8bdaf6c8d11cb2dab70d0866d6812a86fc5a5c36d547cb563da9732736d1c6bb",
+        "src/runtime/launcher.ts": "3ee16259135d060fd9a28abd0cf54f399c404febf75cdd27c73b2143eeb829c3",
+        "tests/managed-update-stage-cli.test.ts": "cb9c1322767ef53492be454e6c13183245e30ba2492cf9d2f8dfdca0c44e7dc4",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "8bdaf6c8d11cb2dab70d0866d6812a86fc5a5c36d547cb563da9732736d1c6bb",
+        "src/runtime/launcher.ts": "3ee16259135d060fd9a28abd0cf54f399c404febf75cdd27c73b2143eeb829c3",
+        "tests/managed-update-stage-cli.test.ts": "cb9c1322767ef53492be454e6c13183245e30ba2492cf9d2f8dfdca0c44e7dc4",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 28531,
+          "sha256": "46a09d2392208309843b0caab5e02a5df3b91ae4b52ad50274f9d80527cbdf69",
+          "savedAs": "stage-red.stdout"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {
+        "tests": "28",
+        "pass": "0",
+        "fail": "28",
+        "skipped": "0"
+      }
+    },
+    {
+      "name": "staging-green-02",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "--test-concurrency=1",
+        "tests/managed-acquisition-copy.test.ts",
+        "tests/managed-update-stage-cli.test.ts",
+        "tests/managed-acquisition-update.test.ts",
+        "tests/managed-additional-stage.test.ts"
+      ],
+      "exit": 0,
+      "elapsedSeconds": 8.032,
+      "before": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "585775c3d649599175feec752a1b926959e086b55114fd0d957c739ff6c4941a",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "585775c3d649599175feec752a1b926959e086b55114fd0d957c739ff6c4941a",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 5258,
+          "sha256": "39f7f93e1de379638ed0388b81d3baf71ab322f84b61a21960c46f2d5623ddfa"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {
+        "tests": "60",
+        "pass": "60",
+        "fail": "0",
+        "skipped": "0"
+      }
+    },
+    {
+      "name": "stdout-red",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "--test-name-pattern=output failure after committed",
+        "tests/managed-update-stage-cli.test.ts"
+      ],
+      "exit": 1,
+      "elapsedSeconds": 0.447,
+      "before": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 906,
+          "sha256": "0609e1ad3e8032ad812c8825e22a87fc65b1c849ecead1e2edc549914077ebfe",
+          "savedAs": "stdout-red.stdout",
+          "text": "✖ output failure after committed staging propagates without reclassifying or retrying the completed operation (156.816599ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 407.716233\n\n✖ failing tests:\n\ntest at tests/managed-update-stage-cli.test.ts:3:5784\n✖ output failure after committed staging propagates without reclassifying or retrying the completed operation (156.816599ms)\n  AssertionError [ERR_ASSERTION]: Missing expected rejection.\n      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:177:2)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    operator: 'rejects',\n    diff: 'simple'\n  }\n"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {
+        "tests": "1",
+        "pass": "0",
+        "fail": "1",
+        "skipped": "0"
+      }
+    },
+    {
+      "name": "typecheck-corrected",
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "exit": 0,
+      "elapsedSeconds": 12.417,
+      "before": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 40,
+          "sha256": "42cf5741fda41b0ae928bde6d88a83b6c6816d5aec9f7fe65952f0ddafb5717b",
+          "text": "\n> asen@0.1.0 typecheck\n> tsc --noEmit\n\n"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {}
+    },
+    {
+      "name": "typecheck",
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "exit": 0,
+      "elapsedSeconds": 10.36,
+      "before": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "7a814626814e461b142f611b58ca3c271b5b2d4c0ed0bb7001f2f5d8a127f06f",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "7a814626814e461b142f611b58ca3c271b5b2d4c0ed0bb7001f2f5d8a127f06f",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 40,
+          "sha256": "42cf5741fda41b0ae928bde6d88a83b6c6816d5aec9f7fe65952f0ddafb5717b",
+          "text": "\n> asen@0.1.0 typecheck\n> tsc --noEmit\n\n"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      "testSummary": {}
+    },
+    {
+      "name": "upstream-boundary-baseline",
+      "command": [
+        "node",
+        ".cache/remote-t09/audit-baseline/scripts/audit-upstream-boundary.mjs"
+      ],
+      "exit": 1,
+      "elapsedSeconds": 0.085,
+      "before": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "7a814626814e461b142f611b58ca3c271b5b2d4c0ed0bb7001f2f5d8a127f06f",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "7a814626814e461b142f611b58ca3c271b5b2d4c0ed0bb7001f2f5d8a127f06f",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        },
+        "stderr": {
+          "bytes": 398,
+          "sha256": "525d226e64fc4ff702dc4dd8e900712e78a8260c5afe4b75f640825bd6b86a7c",
+          "savedAs": "upstream-boundary-baseline.stderr",
+          "text": "External reference in tracked tree:\nAGENTS.md\ndocs/remote-continuation.md\ndocs/runtime-tools.md\nodd/handoffs/pi-capability-completion-resume.md\nodd/tasks/ecosystem-final-parity-map.md\nodd/tasks/pi-capability-completion.md\nodd/tasks/runtime-child-exit-repair.md\nsrc/security/destructive-command-guard.ts\nsrc/security/normal-shell-policy.ts\nsrc/security/shell-command-syntax.ts\ntests/persona.test.ts\n"
+        }
+      },
+      "testSummary": {}
+    },
+    {
+      "name": "upstream-boundary",
+      "command": [
+        "npm",
+        "run",
+        "audit:upstream-boundary"
+      ],
+      "exit": 1,
+      "elapsedSeconds": 0.218,
+      "before": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "7a814626814e461b142f611b58ca3c271b5b2d4c0ed0bb7001f2f5d8a127f06f",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "6e0c3eb813f942ca79fe1f6728f2ee2f9ac53aa4caa03285fc00d796d181020c",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "tests/managed-update-stage-cli.test.ts": "7a814626814e461b142f611b58ca3c271b5b2d4c0ed0bb7001f2f5d8a127f06f",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 82,
+          "sha256": "8cc98b25164381e5919cdf3d10d6a8bca320386f41d4eda5fd6c8beb1eb598c9",
+          "text": "\n> asen@0.1.0 audit:upstream-boundary\n> node scripts/audit-upstream-boundary.mjs\n\n"
+        },
+        "stderr": {
+          "bytes": 398,
+          "sha256": "525d226e64fc4ff702dc4dd8e900712e78a8260c5afe4b75f640825bd6b86a7c",
+          "savedAs": "upstream-boundary.stderr",
+          "text": "External reference in tracked tree:\nAGENTS.md\ndocs/remote-continuation.md\ndocs/runtime-tools.md\nodd/handoffs/pi-capability-completion-resume.md\nodd/tasks/ecosystem-final-parity-map.md\nodd/tasks/pi-capability-completion.md\nodd/tasks/runtime-child-exit-repair.md\nsrc/security/destructive-command-guard.ts\nsrc/security/normal-shell-policy.ts\nsrc/security/shell-command-syntax.ts\ntests/persona.test.ts\n"
+        }
+      },
+      "testSummary": {}
+    },
+    {
+      "name": "upstream-boundary-staged",
+      "command": [
+        "npm",
+        "run",
+        "audit:upstream-boundary"
+      ],
+      "exit": 1,
+      "elapsedSeconds": 0.192,
+      "before": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "after": {
+        "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+        "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+        "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+        "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+        "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+        "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+        "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+      },
+      "streams": {
+        "stdout": {
+          "bytes": 82,
+          "sha256": "8cc98b25164381e5919cdf3d10d6a8bca320386f41d4eda5fd6c8beb1eb598c9",
+          "text": "\n> asen@0.1.0 audit:upstream-boundary\n> node scripts/audit-upstream-boundary.mjs\n\n"
+        },
+        "stderr": {
+          "bytes": 398,
+          "sha256": "525d226e64fc4ff702dc4dd8e900712e78a8260c5afe4b75f640825bd6b86a7c",
+          "text": "External reference in tracked tree:\nAGENTS.md\ndocs/remote-continuation.md\ndocs/runtime-tools.md\nodd/handoffs/pi-capability-completion-resume.md\nodd/tasks/ecosystem-final-parity-map.md\nodd/tasks/pi-capability-completion.md\nodd/tasks/runtime-child-exit-repair.md\nsrc/security/destructive-command-guard.ts\nsrc/security/normal-shell-policy.ts\nsrc/security/shell-command-syntax.ts\ntests/persona.test.ts\n"
+        }
+      }
+    }
+  ],
+  "setup": {
+    "initialNpmCiExit": 1,
+    "initialNpmCiLogSha256": "ca964c2f3a781368337cde310115e51f96670901bbd5044efefb1699185244aa",
+    "cause": "node-gyp Node header extraction fchown EINVAL",
+    "correctedNpmCiExit": 0,
+    "correctedNpmCiLog": "npm warn Unknown env config \"http-proxy\". This will stop working in the next major version of npm.\nnpm warn Unknown env config \"nodedir\". This will stop working in the next major version of npm.\nnpm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead\n\nadded 124 packages in 5s\n",
+    "correction": "fresh official v24.22.1 headers extracted with Python tarfile data filter, npm_config_nodedir; same lockfile"
+  }
+}

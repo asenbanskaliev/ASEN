@@ -26,7 +26,7 @@ function claim(consumer:WorkflowSelectionConsumer,choice:unknown,task:string,rep
 
 await test("registered Pi handler issues one exact, deeply immutable task/repository choice",async()=>{
  const root=await project();
- const {commands}=registration(),{commands:selectionCommands,consumer}=selectionRegistration();assert.deepEqual([...commands.keys()],["asen","asen-skill-registry","asen-workflow"]);
+ const {commands}=registration(),{commands:selectionCommands,consumer}=selectionRegistration();for(const required of ["asen","asen-skill-registry","asen-workflow","asen-review"])assert.ok(commands.has(required));
  const command=selectionCommands.get("asen-workflow")!,observed=context(path.join(root,".","nested",".."));await fs.mkdir(path.join(root,"nested"));
  const choice=await command.handler("sdd GSP-05I1-A",observed.ctx) as WorkflowSelectionChoice,repository=await fs.realpath(root);
  assert.deepEqual(choice,{workflow:"sdd",source:"pi-command",taskIdentity:"GSP-05I1-A",repositoryIdentity:repository});

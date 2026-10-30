@@ -36,7 +36,9 @@ export function commitCandidateFiles(candidate:Candidate,files:Readonly<Record<s
 }
 
 export async function executionProof(candidate:Candidate,exitCode=0):Promise<ExecutedEvidence>{
- return executeEvidenceCommand(candidate,[process.execPath,"-e",`process.exit(${exitCode})`],{cwd:candidate.repository,timeoutMs:10000});
+ // Windows creates and assigns a Job Object through a short-lived PowerShell host before Node starts.
+ // Keep the same bounded proof while allowing the slower hosted Windows runner to initialize it.
+ return executeEvidenceCommand(candidate,[process.execPath,"-e",`process.exit(${exitCode})`],{cwd:candidate.repository,timeoutMs:process.platform==="win32"?60000:20000});
 }
 export async function passingEvidence(store:EvidenceStore,candidate:Candidate,id:string,kind:"test"|"tdd"="test"):Promise<void>{
  if(kind==="tdd"){

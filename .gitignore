@@ -5,6 +5,10 @@ node_modules/
 coverage/
 dist/
 
+# Repository-local generated state
+/.cache/
+/.codegraph/
+
 # Local environment files
 .env
 .env.*

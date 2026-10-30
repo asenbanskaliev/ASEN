@@ -2,6 +2,7 @@ import type { Risk } from "../core/types.js";
 
 export interface ChangeFacts {
   filesTouched?: number;
+  nonTrivialWrites?: number;
   destructiveGit?: boolean;
   externalWrite?: boolean;
   securitySensitive?: boolean;
@@ -11,7 +12,7 @@ export interface ChangeFacts {
 export function assessRisk(facts: ChangeFacts): Risk {
   if (facts.unknownScope) return "unknown";
   if (facts.destructiveGit || facts.externalWrite || facts.securitySensitive) return "high";
-  if ((facts.filesTouched ?? 0) >= 3) return "medium";
+  if ((facts.nonTrivialWrites ?? 0) > 0) return "medium";
   return "low";
 }
 

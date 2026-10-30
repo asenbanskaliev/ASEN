@@ -1,0 +1,11 @@
+export type LayoutMode="wide"|"compact"|"narrow"|"minimum";
+const segmenter=typeof Intl.Segmenter==="function"?new Intl.Segmenter("en",{granularity:"grapheme"}):undefined;
+const pictographic=/\p{Extended_Pictographic}/u,emoji=/\p{Emoji_Presentation}/u,mark=/\p{Mark}/u;
+function wideCodePoint(value:string):boolean{const point=value.codePointAt(0)!;return point>=0x1100&&(point<=0x115f||point===0x2329||point===0x232a||(point>=0x2e80&&point<=0xa4cf&&point!==0x303f)||(point>=0xac00&&point<=0xd7a3)||(point>=0xf900&&point<=0xfaff)||(point>=0xfe10&&point<=0xfe19)||(point>=0xfe30&&point<=0xfe6f)||(point>=0xff00&&point<=0xff60)||(point>=0xffe0&&point<=0xffe6)||(point>=0x20000&&point<=0x3fffd));}
+function graphemes(value:string):string[]{return segmenter?[...segmenter.segment(value)].map(item=>item.segment):Array.from(value);}
+function graphemeWidth(value:string):number{if(pictographic.test(value)||emoji.test(value))return 2;let width=0;for(const point of Array.from(value)){if(mark.test(point)||point==="\u200d"||/[\uFE00-\uFE0F]/u.test(point))continue;width=Math.max(width,wideCodePoint(point)?2:1);}return width;}
+export function sanitizeTerminalText(value:string):string{return value.replace(/[\p{Cc}\p{Cf}\u2028\u2029]/gu,character=>character==="\u200d"?character:"�");}
+export function visibleWidth(value:string):number{return graphemes(value).reduce((sum,item)=>sum+graphemeWidth(item),0);}
+export function layoutMode(columns:number):LayoutMode{if(!Number.isSafeInteger(columns)||columns<1)throw new Error("Terminal width is invalid");return columns>=100?"wide":columns>=70?"compact":columns>=50?"narrow":"minimum";}
+export function truncateForTerminal(value:string,columns:number):string{const width=Math.max(1,columns),clean=sanitizeTerminalText(value);if(visibleWidth(clean)<=width)return clean;let output="",used=0;for(const item of graphemes(clean)){const itemWidth=graphemeWidth(item);if(used+itemWidth>width-1)break;output+=item;used+=itemWidth;}return output+"…";}
+export function truncateStartForTerminal(value:string,columns:number):string{const width=Math.max(1,columns),clean=sanitizeTerminalText(value);if(visibleWidth(clean)<=width)return clean;let output="",used=0;for(const item of graphemes(clean).reverse()){const itemWidth=graphemeWidth(item);if(used+itemWidth>width-1)break;output=item+output;used+=itemWidth;}return "…"+output;}
