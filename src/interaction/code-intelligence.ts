@@ -91,7 +91,16 @@ function command(options:CodeIntelligenceOptions):ExecutableCommand {
     try{
       if(process.platform==="win32"){
         try{return {executable:regular(join(directory,"codegraph.exe")),prefix:[]};}catch{/* Fall through to the contained npm entry. */}
-        return {executable:regular(process.execPath),prefix:[resolveCodeGraphEntry(join(directory,"node_modules","@colbymchenry","codegraph"))]};
+        // npm global packages may live in a separate prefix from PATH shims.
+        // Check both common layouts without running cmd, PowerShell or npx.
+        for(const packageRoot of [
+          join(directory,"node_modules","@colbymchenry","codegraph"),
+          resolve(directory,"..","node_modules","@colbymchenry","codegraph"),
+        ]){
+          try{return {executable:regular(process.execPath),prefix:[resolveCodeGraphEntry(packageRoot)]};}
+          catch{/* Try the next known npm layout. */}
+        }
+        continue;
       }
       const executable=regular(join(directory,"codegraph"));
       accessSync(executable,constants.X_OK);
