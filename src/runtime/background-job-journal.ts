@@ -70,8 +70,8 @@ export class BackgroundJobJournal{
   privatePath(this.file);const lock=`${this.file}.lock`,deadline=Date.now()+3_000,waitCell=new Int32Array(new SharedArrayBuffer(4));let fd:number|undefined,identity:{dev:number;ino:number}|undefined;
   while(fd===undefined){
    try{fd=openSync(lock,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);const stat=fstatSync(fd);identity={dev:stat.dev,ino:stat.ino};writeFileSync(fd,JSON.stringify({pid:process.pid,createdAt:Date.now()}));fsyncSync(fd);}
-   catch(error){if(fd!==undefined){try{closeSync(fd);}catch{}fd=undefined;if(identity)try{const current=lstatSync(lock);if(current.dev===identity.dev&&current.ino===identity.ino)unlinkSync(lock);}catch{/* Preserve an unowned replacement lock. */}identity=undefined;}if((error as NodeJS.ErrnoException).code!=="EEXIST")throw error;
-    try{const observed=lstatSync(lock);if(!observed.isFile()||observed.isSymbolicLink()||(process.platform!=="win32"&&(observed.mode&0o077)!==0))throw new Error("Background journal lock is unsafe");}catch(lockError){if((lockError as NodeJS.ErrnoException).code!=="ENOENT")throw lockError;}
+   catch(error){if(fd!==undefined){try{closeSync(fd);}catch{}fd=undefined;if(identity)try{const current=lstatSync(lock);if(current.dev===identity.dev&&current.ino===identity.ino)unlinkSync(lock);}catch{/* Preserve an unowned replacement lock. */}identity=undefined;}const code=(error as NodeJS.ErrnoException).code,windowsCollision=process.platform==="win32"&&code==="EPERM";if(code!=="EEXIST"&&!windowsCollision)throw error;
+    let lockExists=false;try{const observed=lstatSync(lock);if(!observed.isFile()||observed.isSymbolicLink()||(process.platform!=="win32"&&(observed.mode&0o077)!==0))throw new Error("Background journal lock is unsafe");lockExists=true;}catch(lockError){if((lockError as NodeJS.ErrnoException).code!=="ENOENT")throw lockError;}if(windowsCollision&&!lockExists)throw error;
     if(Date.now()>=deadline)throw new Error("Background journal is busy; refusing a concurrent overwrite");Atomics.wait(waitCell,0,0,10);
    }
   }
