@@ -174,3 +174,10 @@ The Pi child-process integrity pin for workspace attribution was updated from th
 
 
 Follow-up R4 portability correction: on POSIX the atomic replacement preserves the original file permission bits (including executable mode); an explicit regression commits an executable source and verifies its mode after correction. Windows-only file symlink setup is declared an environment-dependent skip instead of assuming privileged symlink creation. Neither change weakens the path, HEAD, one-use, or writer-lease checks.
+
+
+### T10 — metadata de sesión compartida entre procesos (continuación)
+
+`enableWorkspaceRuntime` activa el directorio privado `SharedSessionDirectory`, que conserva solo etiquetas, clasificación y sesión/proyecto mediante registros finitos por PID y caducidad. La consulta desde otro proceso vuelve a requerir consentimiento interactivo de un uso, ligado al solicitante y proyecto; los tokens no se comparten. Las pruebas incluyen dos instancias de directorio, un proceso Node independiente, aislamiento entre proyectos, caducidad de una sesión cerrada y rechazo de enlaces simbólicos. Sin este opt-in se mantiene el directorio process-local anterior. Este mecanismo no comparte transcripciones, credenciales ni permisos.
+
+Riesgos residuales: los registros solo verifican vida del PID, no autentican un proceso del mismo usuario; un proceso malicioso con igual identidad del sistema puede modificar los metadatos. Los registros caducan tras cuatro horas sin renovación de sesión. La consulta requiere una segunda comprobación y no concede escritura. Falta TUI multiinstancia real, rendimiento bajo concurrencia y R4 exact-SHA antes de FULL.

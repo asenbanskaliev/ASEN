@@ -62,6 +62,7 @@ import {BackgroundJobRegistry,backgroundJobTerminalNotification,pendingBackgroun
 import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
 import {registerBackgroundJobTools} from "../src/runtime/background-job-tools.js";
 import {SessionDirectory} from "../src/runtime/session-directory.js";
+import {SharedSessionDirectory} from "../src/runtime/shared-session-directory.js";
 import {snapshotWorkspaceRoots} from "../src/runtime/workspace-snapshot.js";
 import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtime/workspace-resolution.js";
 import {layoutMode,sanitizeTerminalText,truncateForTerminal} from "../src/runtime/responsive-layout.js";
@@ -188,7 +189,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     try{backgroundJobs.setDeliveryStateScoped(result.id,result.sessionId,result.projectId,"pending",error instanceof Error?error.message.slice(0,500):"Pi transport rejected result enqueue");}catch{/* Preserve the original pending journal entry if delivery-state persistence also fails. */}
    }
   };
-  const sessionDirectory=new SessionDirectory();
+  const sessionDirectory=dependencies.enableWorkspaceRuntime?new SharedSessionDirectory(path.join(home(),".asen","session-directory")):new SessionDirectory();
   const suppliedAgentRuntime=dependencies.agentRuntimeFactory?.();
   const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})})):undefined;
   const childSelectionSource=composedAgentRunner&&"subscribeChildSelection" in composedAgentRunner&&typeof composedAgentRunner.subscribeChildSelection==="function"?composedAgentRunner as AgentRunner&Pick<PiProcessRunner,"subscribeChildSelection">:undefined;
