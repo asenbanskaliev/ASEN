@@ -300,10 +300,8 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
 }
 
 function indexHasEntries(root:string):boolean {
-  try{
-    assertSafeIndexDirectory(root);
-    return lstatIndexIsDirectory(root)&&readdirSync(join(root,".codegraph")).length>0;
-  }catch{return false;}
+  assertSafeIndexDirectory(root);
+  return lstatIndexIsDirectory(root)&&readdirSync(join(root,".codegraph")).length>0;
 }
 
 function lstatIndexIsDirectory(root:string):boolean {

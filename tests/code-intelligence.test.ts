@@ -412,6 +412,19 @@ test("canonical CodeGraph sync requires fresh authorization and existing index",
 });
 
 
+test("T07 init fails closed when the index becomes a symlink during approval",async t=>{
+  const f=fixture(t);
+  const outside=join(f.root,"outside-index");mkdirSync(outside);
+  let launches=0;
+  const tool=createCodeGraphTool(async()=>{launches++;return {stdout:"unexpected",stderr:""};});
+  const result=await call(tool,f.root,{operation:"init"},undefined,{hasUI:true,ui:{confirm:async()=>{
+    symlinkSync(outside,join(f.root,".codegraph"),"junction");
+    return true;
+  }}});
+  assert.equal(result.details.status,"failed");
+  assert.equal(launches,0);
+});
+
 test("T07 init tolerates an index deleted during a previous in-flight initialization",async t=>{
   const f=fixture(t);
   let launches=0;
@@ -430,7 +443,7 @@ test("T07 init tolerates an index deleted during a previous in-flight initializa
   assert.equal(launches,2);
 });
 
-test("T07 sync returns not_initialized without launching when index disappears",async t=>{
+test("T07 sync fails closed without launching when index disappears after approval",async t=>{
   const f=fixture(t);
   let launches=0;
   const tool=createCodeGraphTool(async()=>{launches++;return {stdout:"unexpected",stderr:""};});
