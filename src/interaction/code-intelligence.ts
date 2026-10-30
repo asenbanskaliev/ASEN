@@ -265,7 +265,7 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
             initialized.delete(root); // Failed or interrupted initialization must be explicitly retried.
           }
         }
-        if(lstatIndexIsDirectory(root)&&readdirSync(join(root,".codegraph")).length>0)return {content:[{type:"text" as const,text:"The CodeGraph index already exists for this project. No initialization was run."}],details:{status:"already_initialized",operation:"init",cwd:root}};
+        if(indexHasEntries(root))return {content:[{type:"text" as const,text:"The CodeGraph index already exists for this project. No initialization was run."}],details:{status:"already_initialized",operation:"init",cwd:root}};
         if(typeof context.hasUI!=="boolean"||context.hasUI!==true||typeof context.ui?.confirm!=="function")return {content:[{type:"text" as const,text:"CodeGraph initialization needs approval in Pi's interactive interface. No index was created."}],details:{status:"authorization_required",operation:"init",cwd:root}};
         let approved=false;
         try{approved=await context.ui.confirm("Authorize CodeGraph index creation?",`ASEN will run CodeGraph init for this project only. It may create or update ${join(root,".codegraph")} and read project files to build the index. This approval applies to this initialization only.`,signal===undefined?undefined:{signal});}
