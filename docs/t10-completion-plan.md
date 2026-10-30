@@ -159,3 +159,8 @@ Estos resultados son locales y no equivalen a CI multiplataforma, TUI Pi real ni
 ### Dictamen
 
 T10 sigue **PARTIAL**. La recuperación de avisos pendientes queda conectada al uso real; la resolución autorizada de conflictos, las acciones mutables, la prueba TUI/teclado y la revisión independiente R4 no están cerradas. La API de Pi limita la promesa de entrega a encolado best-effort con ID estable. No se infiere FULL de esta tanda.
+
+
+### T10 — Workspace status/attribution hardening, 2026-10-31
+
+A new bounded continuation addresses three concrete weaknesses of the existing read-only `/asen-changes` path: Git rename/copy records now retain and render their original path and reject incomplete NUL-framed status; a directory nested under another Git worktree is reported unavailable rather than silently attributed as its own Git root; and conflict warnings are scoped to the owning session as well as project/worktree/path. Tests include an actual `git mv` in a disposable repository and negative parser/root/session scenarios. This unit neither authorizes filesystem writes nor resolves conflicts. T10 remains **PARTIAL**: authorized workspace actions, cross-process coordination, interactive terminal accessibility, and independent exact-candidate R4 evidence are not admitted by this change alone. CI results are pending for the published candidate; prior test receipts are not transferred to it.
