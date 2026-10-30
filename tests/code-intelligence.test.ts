@@ -155,8 +155,10 @@ test("canonical CodeGraph tool exposes upstream metadata and exact scoped argv w
     ["init",f.root],
   ]);
   assert.ok(calls.every(call=>call.cwd===f.root&&call.maxBuffer>100000));
-  assert.deepEqual(query.details,{operation:"query",cwd:f.root,args:calls[0]!.args});
+  assert.deepEqual(query.details,{status:"completed",operation:"query",cwd:f.root,args:calls[0]!.args});
+  assert.equal(explore.details.status,"completed");
   assert.deepEqual(explore.content,[{type:"text",text:"indexed"}]);
+  assert.equal(init.details.status,"completed");
   assert.deepEqual(init.content,[{type:"text",text:"indexed"}]);
 });
 
