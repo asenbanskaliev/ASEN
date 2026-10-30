@@ -101,4 +101,3 @@ export default function(pi:ExtensionAPI):void{
  });
  pi.registerCommand("asen-authority-status",{description:"Report ASEN tool authority policy",handler:async(_args,ctx)=>{ctx.ui.notify(`ASEN ${authority.role} tool policy active`,"info");}});
 }
-
