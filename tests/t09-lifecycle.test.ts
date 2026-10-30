@@ -187,6 +187,47 @@ test("uninstall refuses a modified owned file and never follows symlinks out of 
  assert.ok(report instanceof Error||report.status==="partial");
 });
 
+test("uninstall retains a matching-byte replacement made by a second same-user actor",async t=>{
+ if(process.platform==="win32"){t.skip("Windows holds open file handles while unlink/rename is attempted");return;}
+ const {prefix,dataHome,v1,base}=await setupInstall("uninstall-same-bytes-substitution");
+ await installManaged({...base,source:v1.source,dataHome});
+ const cli=path.join(prefix,"install","versions","1.0.0","cli.cjs"),old=cli+".before-swap";
+ let injected=false;
+ const result=await uninstallManaged({prefix,confirmed:true,hooks:{beforeOwnedFileRemoval:async target=>{
+  if(injected||target!==cli)return;
+  injected=true;
+  const bytes=await fs.readFile(cli);
+  await fs.rename(cli,old);
+  await fs.writeFile(cli,bytes);
+ }}});
+ assert.equal(injected,true);
+ assert.equal(result.status,"partial");
+ assert.equal(await fs.readFile(cli,"utf8"),GOOD_CLI("1.0.0"));
+ assert.equal(await fs.readFile(old,"utf8"),GOOD_CLI("1.0.0"));
+ assert.ok(result.retained.includes(cli));
+});
+
+test("uninstall never traverses a managed version directory replaced by a foreign symlink",async t=>{
+ if(process.platform==="win32"){t.skip("Directory symlink behavior needs explicit Windows privileges");return;}
+ const {root,prefix,dataHome,v1,base}=await setupInstall("uninstall-route-replacement");
+ await installManaged({...base,source:v1.source,dataHome});
+ const versionRoot=path.join(prefix,"install","versions","1.0.0"),moved=versionRoot+".old";
+ const outside=path.join(root,"foreign-version");
+ await fs.mkdir(outside);
+ await fs.writeFile(path.join(outside,"cli.cjs"),GOOD_CLI("1.0.0"));
+ let injected=false;
+ const result=await uninstallManaged({prefix,confirmed:true,hooks:{beforeOwnedFileRemoval:async target=>{
+  if(injected||!target.endsWith("cli.cjs"))return;
+  injected=true;
+  await fs.rename(versionRoot,moved);
+  await fs.symlink(outside,versionRoot,"dir");
+ }}}).catch(error=>error);
+ assert.equal(injected,true);
+ assert.ok(result instanceof Error||result.status==="partial");
+ assert.equal(await fs.readFile(path.join(outside,"cli.cjs"),"utf8"),GOOD_CLI("1.0.0"));
+ assert.equal(await fs.readFile(path.join(moved,"cli.cjs"),"utf8"),GOOD_CLI("1.0.0"));
+});
+
 test("a partial uninstall keeps ownership records so a later uninstall can finish",async()=>{
  const {prefix,dataHome,v1,base}=await setupInstall("uninstallresume");
  await installManaged({...base,source:v1.source,dataHome});
