@@ -262,7 +262,7 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
         const run=request.operation==="init"?runInitialization(initialized,root,()=>runner(args,{cwd:root,maxBuffer:PROCESS_MAX_BUFFER,...(signal===undefined?{}:{signal})})):runner(args,{cwd:root,maxBuffer:PROCESS_MAX_BUFFER,...(signal===undefined?{}:{signal})});
         const observed=await run;
         const output=truncateOutput([observed.stdout,observed.stderr].filter(Boolean).join("\n"));
-        return {content:[{type:"text" as const,text:output||"CodeGraph completed without output."}],details:{operation:request.operation,cwd:root,args}};
+        return {content:[{type:"text" as const,text:output||"CodeGraph completed without output."}],details:{status:"completed",operation:request.operation,cwd:root,args}};
       }catch(error){
         const status=fallbackStatus(error);
         const message=status==="unavailable"?`CodeGraph is unavailable because the codegraph binary was not found. ${FALLBACK_INSTRUCTIONS}`:`CodeGraph failed to run. ${FALLBACK_INSTRUCTIONS}`;
