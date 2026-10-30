@@ -19,8 +19,8 @@ assert.notEqual(evidence.firstReview.taskId,evidence.secondReview.taskId);assert
 assert.equal(evidence.acceptance.authority,"asen-deterministic-evidence-gate");assert.equal(evidence.acceptance.accepted,true);assert.equal(evidence.acceptance.acceptedRevision,evidence.correction.acceptedRevision);assert.match(evidence.acceptance.fileSha256,/^[a-f0-9]{64}$/u);
 const common={candidateSha:sha,provider:evidence.provider,model:evidence.model,providerEvidence:"live-cycle-evidence.json",r4ScenarioEvidence:`t05-r4-execution-${sha}`,checkedAt:new Date().toISOString()};
 const verdicts={
- T04:{...common,result:"FULL",reason:"Un escritor Pi/NVIDIA autorizado fue detenido después de completar su tool de escritura y antes de que ASEN persistiera un resultado terminal; un controlador nuevo recuperó la interrupción durable, reconcilió los bytes exactos y prohibió la repetición."},
- T05:{...common,result:"FULL",reason:"Un revisor Pi/NVIDIA separado y sin tools rechazó el candidato reconciliado exacto; una autorización nueva y acotada permitió corregirlo, otro proceso y sesión lo revisaron de nuevo, y solo la compuerta determinista ligada al SHA lo aceptó."}
+ T04:{...common,scenarioResult:"PASS",taskStatus:"PARTIAL",reason:"Este escenario prueba una interrupción Pi/NVIDIA, reconciliación exacta y no repetición; no sustituye los demás criterios ECO-06 ni la disposición del controlador Pi 1.1."},
+ T05:{...common,scenarioResult:"PASS",taskStatus:"PARTIAL",reason:"Este escenario prueba rechazo, corrección y revisión Pi/NVIDIA independiente; no sustituye la integración pública de revisión, recuperación durable, aislamiento ni las demás admisiones T05."}
 };
 writeFileSync(join(root,"t04-t05-verdicts.json"),JSON.stringify(verdicts,null,2)+"\n",{mode:0o600});
 process.stdout.write(JSON.stringify(verdicts)+"\n");

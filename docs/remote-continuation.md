@@ -32,11 +32,11 @@ Use the audited, phased execution checklist in [`docs/t09-autopilot-closure-plan
 
 Advance real update/restore/managed removal/browser/bootstrap/distribution work. Reuse admitted selection, launch, doctor, finite backup, reader, isolated restore-stage, preview, and expected-byte staging pieces. Version rollback is not data restore; a preview is not an executed installation. Keep acquisition, authenticity, activation, live restore, uninstall preservation, clean-machine behavior, and platform proof explicit.
 
-L478 adds the public lifecycle commands (signed install/upgrade/rollback, backup/restore, managed-only uninstall, browser consent); T09 stays PARTIAL until Windows/macOS, clean-host and real-package evidence exist. T09-U9d adds explicit local `managed update ... --stage --yes` composition plus a reproduced POSIX directory-link-count correction. Follow its PR evidence and admission state in the canonical Log. This operation stages only already-local declared bytes in an existing owned prefix; it does not download, select or run a version. Remaining T09 lifecycle work precedes T05 → T10 → T11 → T04/T07 required proof → T12 acceptance. The full immutable Reference4.3.0 reference binding is still missing; no new reference equivalence is inferred from this public operation.
+L478 adds the public lifecycle commands (signed install/upgrade/rollback, backup/restore, managed-only uninstall, browser consent); T09 stays PARTIAL until Windows/macOS, clean-host and real-package evidence exist. T09-U9d adds explicit local `managed update ... --stage --yes` composition plus a reproduced POSIX directory-link-count correction. Follow its PR evidence and admission state in the canonical Log. This operation stages only already-local declared bytes in an existing owned prefix; it does not download, select or run a version. T07's bounded local CodeGraph lifecycle is now FULL on the exact locally evidenced source/runtime, while Pi-host/platform/global parity remain excluded. Remaining T09 lifecycle work precedes T05 → T10 → T11 → T12 acceptance. The full immutable Reference4.3.0 reference binding is still missing; no new reference equivalence is inferred from this public operation.
 
-### C. Finish T05 review composition
+### C. T05 review composition — renegotiated local FULL
 
-Complete owned materialization and lifetime, then public candidate/controller/correction/acceptance integration. Preserve admitted A1/A2a1/A2a2 units. Do not treat a writable copy, stale result, model output, or cached verdict as authority. The retained Windows ACL fixture and restoration uncertainty require an ownership-safe disposition before claiming a ready review view.
+The 2026-10-30 owner-approved scope admits **FULL only for the deterministic public `/asen-review workspace` exact-change review/correction contract**, as defined in `odd/tasks/pi-capability-completion.md` and `docs/audit/t04-t05-full-closure-plan-2026-10-30.md`. Preserve admitted A1/A2a1/A2a2 units. Do not treat a writable copy, stale result, model output, or cached verdict as authority. Real-provider authentication, restart-durable public review state, OS sandboxing and external R4 remain excluded debt; this is not full Reference parity.
 
 ### D. Finish T10 workspace behavior
 
@@ -46,9 +46,9 @@ Implement bounded units for observed background-job exits, agents, cross-session
 
 Add client adapters only after mapping an actual reference client and its capabilities. Keep Pi guarantees shared where valid, but do not fabricate identical tools, delegation, permissions, or host behavior across clients.
 
-### F. Resolve T04 and T07 honestly
+### F. T04/T07 — scoped recovery and CodeGraph FULL
 
-T04 needs real interrupted-child recovery, restart, retained-edit, and fresh-authority evidence. T07 needs a real disposable-project CodeGraph/offline lifecycle. Mocks, an ancestor/existing index, or launcher presence are insufficient. Preserve prior stopped jobs and failed envelopes; do not retry blindly.
+The 2026-10-30 owner-approved T04 scope admits **FULL only for provider-free durable local writer recovery**, including interruption classification, read-only inspection, retained edits, no replay and fresh one-use authority, as defined in the canonical ODD and scoped closure plan. Real Pi/provider interruption and legacy Pi 1.1 controller disposition remain debt outside that FULL. T07 now admits **FULL only for the bounded local CodeGraph lifecycle**: verified real 1.6.2 npm artifacts, offline disposable-project init approval, read-only query/explore, changed on-disk source and fresh-process restart. The exact receipt and reproducible network-isolated gate are linked from the canonical ODD. Pi UI/RPC, Windows/macOS, source-change reindex, optional documentation integration and global parity remain unclaimed. Preserve prior stopped jobs and failed envelopes; do not retry blindly.
 
 ### G. Run T12 last
 

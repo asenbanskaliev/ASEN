@@ -4,6 +4,7 @@ import test from "node:test";
 
 const workflow=readFileSync(new URL("../.github/workflows/ci.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
 const liveTask=readFileSync(new URL("../scripts/t04-t05-nvidia-cycle.ts",import.meta.url),"utf8");
+const verdict=readFileSync(new URL("../scripts/t04-t05-integrated-verdict.ts",import.meta.url),"utf8");
 
 test("T04/T05 CI runs a real Pi 1.2 NVIDIA cycle through ASEN writer and reviewer paths",()=>{
  assert.match(workflow,/@earendil-works\/pi-coding-agent@1\.2\.0/u);
@@ -30,4 +31,9 @@ test("live provider evidence binds interruption, recovery, correction and indepe
 test("missing NVIDIA credentials are an explicit blocked result and are never logged",()=>{
  assert.match(liveTask,/if\(!process\.env\.NVIDIA_API_KEY\)throw new Error\("NVIDIA_API_KEY missing; the integrated Pi\/NVIDIA scenario is BLOCKED"\)/u);
  assert.doesNotMatch(liveTask,/stdout\.write\([^\n]*NVIDIA_API_KEY|JSON\.stringify\([^\n]*NVIDIA_API_KEY/u);
+});
+
+test("one live provider cycle cannot promote T04 or T05 to FULL",()=>{
+ assert.match(verdict,/scenarioResult:"PASS",taskStatus:"PARTIAL"/u);
+ assert.doesNotMatch(verdict,/result:"FULL"/u);
 });

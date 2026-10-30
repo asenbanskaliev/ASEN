@@ -1,0 +1,178 @@
+{
+  "schema": "asen.t07.codegraph-live.v1",
+  "candidate": {
+    "commit": "dc80a9880136c4dd6199c2c00b9120a3c6f5896c",
+    "branch": "feat/t05-independent-review",
+    "workingTreeStatus": [
+      "M docs/remote-continuation.md",
+      " M odd/tasks/ecosystem-final-parity-map.md",
+      " M odd/tasks/pi-capability-completion.md",
+      " M scripts/t04-t05-integrated-verdict.ts",
+      " M src/interaction/code-intelligence.ts",
+      " M tests/code-intelligence.test.ts",
+      " M tests/t05-nvidia-review-workflow.test.ts",
+      "?? docs/audit/evidence/t07-codegraph-live-dc80a98.json",
+      "?? docs/audit/t04-t05-full-closure-plan-2026-10-30.md",
+      "?? scripts/t07-codegraph-live.mjs"
+    ]
+  },
+  "implementation": {
+    "source": {
+      "path": "src/interaction/code-intelligence.ts",
+      "sha256": "5e50251c06ab17381be16b57ff15263009f2c9eecb0c07de95215f35c1052a37"
+    },
+    "focusedTests": {
+      "path": "tests/code-intelligence.test.ts",
+      "sha256": "673ec0a074f178a18d63b8d58c90c72bfc35edca21c98431e56e1e35f1b0853b"
+    },
+    "liveGate": {
+      "path": "scripts/t07-codegraph-live.mjs",
+      "sha256": "6c59370dfdd728fb25689f422fd1d24f99bc3f83f610c400c835a6e8dcf79a9c"
+    }
+  },
+  "runtime": {
+    "package": "@colbymchenry/codegraph",
+    "version": "1.6.2",
+    "integrity": "sha512-hODH/mGnCf3IUMs6rzktv/zbecJIKJfdZAYHZ9mqecb0G7ZkHaA8CZafDVnswANFEL1YFcG+lfAwc5SIXzUH6Q==",
+    "shasum": "372b7b4f0190197b07d444116d6692240883a2d5",
+    "verifiedArchiveFileCount": 265,
+    "platformBundle": "@colbymchenry/codegraph-linux-x64",
+    "platformBundleVersion": "1.6.2",
+    "platformBundleIntegrity": "sha512-DJWizz1qHNr1MsbK6fz1mjVUQjeTH3T+L0D2BGaLkygWzBnNMG30MvLq1ae0m6cUV414U8aEow5Eb/kIORA8+w==",
+    "platformBundleShasum": "7fca3d49db06571846ca98bca778c4ee6e83553c",
+    "platformBundleVerifiedArchiveFileCount": 1321,
+    "platform": "linux",
+    "architecture": "x64",
+    "nodeVersion": "v26.12.1"
+  },
+  "isolation": {
+    "networkNamespace": "unshare --net",
+    "networkFallbackDisabled": true,
+    "telemetryDisabled": true,
+    "projectHome": "temporary isolated HOME"
+  },
+  "scenarios": {
+    "queryBeforeInit": {
+      "status": "failed",
+      "operation": "query",
+      "content": [
+        "CodeGraph failed to run. Use read, grep, and find for this exploration."
+      ]
+    },
+    "initializationDenied": {
+      "status": "denied",
+      "operation": "init",
+      "content": [
+        "CodeGraph initialization was not authorized. No index was created."
+      ]
+    },
+    "approvedInitialization": {
+      "status": "completed",
+      "operation": "init",
+      "args": [
+        "init",
+        "<project>"
+      ],
+      "content": [
+        "┌  Initializing CodeGraph\n│\n◆  Initialized in <project>\n│\nScanning files...\nParsing code...\nResolving refs...\nLinking dynamic dispatch...\n│\n◆  Indexed 1 files\n│\n●  2 nodes, 1 edges in 339ms\n│\n└  Done\n\n"
+      ]
+    },
+    "query": {
+      "status": "completed",
+      "operation": "query",
+      "args": [
+        "query",
+        "--path",
+        "<project>",
+        "--limit",
+        "5",
+        "--",
+        "greet"
+      ],
+      "content": [
+        "\nSearch Results for \"greet\":\n\nfunction    greet\n  sample.js:1\n  (name)\n\n"
+      ]
+    },
+    "explore": {
+      "status": "completed",
+      "operation": "explore",
+      "args": [
+        "explore",
+        "--path",
+        "<project>",
+        "--max-files",
+        "5",
+        "--",
+        "greet"
+      ],
+      "content": [
+        "**Exploration: greet**\n\nFound 1 symbol across 1 file.\n\n**Source Code**\n\n> The code below is the **verbatim, current on-disk source** of these files — re-read from disk on this call and line-numbered, byte-for-byte identical to what the Read tool returns. It is NOT a summary, outline, or stale cache. Treat each block as a Read you have already performed: do not Read a file shown here.\n\n**`sample.js`** — greet(function)\n\n```javascript\n1\texport function greet(name) { return `hello ${name}`; }\n```\n\n"
+      ]
+    },
+    "changedSourceExplore": {
+      "status": "completed",
+      "operation": "explore",
+      "args": [
+        "explore",
+        "--path",
+        "<project>",
+        "--max-files",
+        "5",
+        "--",
+        "greet"
+      ],
+      "content": [
+        "**Exploration: greet**\n\nFound 1 symbol across 1 file.\n\n**Source Code**\n\n> The code below is the **verbatim, current on-disk source** of these files — re-read from disk on this call and line-numbered, byte-for-byte identical to what the Read tool returns. It is NOT a summary, outline, or stale cache. Treat each block as a Read you have already performed: do not Read a file shown here.\n\n**`sample.js`** — greet(function) · ⚠ changed since last index sync — source below is current; the symbol list may be outdated\n\n```javascript\n1\texport function greet(name) { return `updated ${name}`; }\n```\n\n\n> ⚠ Changed on disk after the last index sync: sample.js. Line numbers referencing this file elsewhere in this response (flow steps, blast radius, symbol lists) may be shifted until that project's next sync re-indexes it.\n"
+      ]
+    },
+    "freshProcessAfterRestart": {
+      "query": {
+        "status": "completed",
+        "operation": "query",
+        "args": [
+          "query",
+          "--path",
+          "<project>",
+          "--limit",
+          "5",
+          "--",
+          "greet"
+        ],
+        "content": [
+          "\nSearch Results for \"greet\":\n\nfunction    greet\n  sample.js:1\n  (name)\n\n"
+        ]
+      },
+      "explore": {
+        "status": "completed",
+        "operation": "explore",
+        "args": [
+          "explore",
+          "--path",
+          "<project>",
+          "--max-files",
+          "5",
+          "--",
+          "greet"
+        ],
+        "content": [
+          "**Exploration: greet**\n\nFound 1 symbol across 1 file.\n\n**Source Code**\n\n> The code below is the **verbatim, current on-disk source** of these files — re-read from disk on this call and line-numbered, byte-for-byte identical to what the Read tool returns. It is NOT a summary, outline, or stale cache. Treat each block as a Read you have already performed: do not Read a file shown here.\n\n**`sample.js`** — greet(function) · ⚠ changed since last index sync — source below is current; the symbol list may be outdated\n\n```javascript\n1\texport function greet(name) { return `updated ${name}`; }\n```\n\n\n> ⚠ Changed on disk after the last index sync: sample.js. Line numbers referencing this file elsewhere in this response (flow steps, blast radius, symbol lists) may be shifted until that project's next sync re-indexes it.\n"
+        ]
+      }
+    }
+  },
+  "assertions": {
+    "queryDidNotInitialize": true,
+    "deniedInitHadNoIndex": true,
+    "approvedInitCreatedIndex": true,
+    "telemetryNoticeAbsent": true,
+    "queryAndExplorePreservedIndexBytes": true,
+    "exploreReturnedChangedOnDiskSource": true,
+    "freshProcessQueriedPersistedIndex": true,
+    "restartQueriesPreservedIndexBytes": true
+  },
+  "limitations": [
+    "Linux x64 only; no Pi host UI/RPC lifecycle or Windows/macOS evidence.",
+    "Optional documentation integration was not exercised; it is not required for this bounded CodeGraph contract.",
+    "The updated source is read from disk by explore; index rebuild/reconciliation after source changes is not claimed."
+  ]
+}
