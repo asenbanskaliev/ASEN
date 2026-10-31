@@ -1,5 +1,5 @@
 import {RegistryLifecycle,registryStartupDisabled,type RegistryLifecycleOptions} from "../src/skills/registry-lifecycle.js";
-import {access,lstat,readFile,realpath} from "node:fs/promises";
+import {access,lstat,mkdir,readFile,realpath,writeFile} from "node:fs/promises";
 import {W_OK,X_OK} from "node:constants";
 import {homedir} from "node:os";
 import {execFileSync} from "node:child_process";
@@ -395,6 +395,18 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   });
   registerData("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
   registerData("asen-commands",{description:"List ASEN public commands; pass text to filter them",handler:(args?:string)=>{const query=String(args??"").trim().toLowerCase();const rows=ASEN_COMMAND_CATALOG.map(c=>({name:c.name,group:c.group,implemented:c.implemented})).filter(row=>!query||row.name.includes(query)||row.group.includes(query));return rows.length?rows:[{name:"asen-help",group:"core",implemented:false}];}});
+  registerData("asen-language",{description:"Show/switch ASEN language with /asen language <en|es>",handler:async(args?:string,ctx?:CommandContext):Promise<any>=>{
+   const parts = String(args??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
+   const requested = parts.length>1 ? parts[1] : "";
+   const homePath = dependencies.homeDir?.() ?? home();
+   const prefFile = path.join(homePath, ".asen", "language.json");
+   async function readLanguage(): Promise<"en"|"es">{try{const raw=await readFile(prefFile,"utf8");const value=JSON.parse(raw);return value.lang==="es"||value.language==="es"?"es":"en";}catch{return "en";}}
+   async function setLanguage(next:"en"|"es"){await mkdir(path.dirname(prefFile),{recursive:true});await writeFile(prefFile,JSON.stringify({lang:next})+"\n","utf8");}
+   const current=await readLanguage();
+   if(!parts.length||requested==="status"||requested==="show") return {language:current,note:"Use `/asen language en` or `/asen language es`"};
+   if(requested==="en"||requested==="es"){if(requested!==current)await setLanguage(requested);return {language:requested};}
+   return {error:"Use `/asen language show`, `/asen language en` or `/asen language es`"};
+  }});
   registerData("asen-help",{description:"Plain-language guide for one ASEN command",handler:(args?:string)=>{const name=String(args??"").trim().toLowerCase();const entry=ASEN_COMMAND_CATALOG.find(command=>command.name===name);if(!entry)return [{what:"Unknown command",use:"Run /asen help to print the full ASEN list",next:"Try /asen-commands"}];return [{what:`${entry.name} performs its ${entry.group} function in ASEN.`,use:`Type /${entry.name}`,next:entry.implemented?"Read the command output and follow its next step":"This surface is still pending"}];}});
   pi.registerCommand?.("asen-banner",{description:"Report startup banner support without creating a separate datastore",handler:async(_args:any,ctx:any)=>{const message="ASEN startup banner: no separate persisted preference is shipped; startup presentation is owned by the Pi host and can be inspected through `asen-status`."; ctx?.ui?.notify?.(message,"info"); return [message];}});
   pi.registerCommand?.("asen-research-probe",{description:"Opt-in ASEN outbound probe, disabled by default until an explicit URL is supplied",handler:async(args:string,ctx:any)=>{
