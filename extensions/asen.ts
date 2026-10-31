@@ -430,6 +430,19 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ctx.ui.notify(`Selected palette entry: ${selected.replace(/.*: /,"").replace(/ - .*/,"")}`, "info");
   }});
   registerData("asen-continue",{description:"Resume current pending work in plain language",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(!todoStorePromise)return ["Continue unavailable: no local task store."];let identity:any;try{identity=await sessionIdentity(ctx);}catch{return ["Continue unavailable: no active Pi session/project."];}try{const rows=await (await todoStorePromise).list(identity),unfinished=rows.filter((row:any)=>row.current?.state!=="done");if(!unfinished.length)return ["Continue: no active tasks. You can start a new request."];const out=["Restarting from where you left off:","- unfinished tasks: "+unfinished.length];for(const row of unfinished.slice(0,5))out.push(`  ${row.taskId}: ${row.title ?? row.current?.state ?? "pending"} (${String(row.current?.state??"pending")})`);if(unfinished.length>5)out.push(`  ... plus ${unfinished.length-5} more`);return out;}catch{return ["Continue unavailable: could not load local task data."]}}});
+  registerData("asen-presentation",{description:"Show/switch short vs rich ASEN presentation mode: [status | compact | complete]",handler:async(args?:string,ctx?:CommandContext)=>{
+   const homePath=dependencies.homeDir?.() ?? home();
+   const parts=String(args??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
+   const requested=parts.length>0?parts[0]:"status";
+   const prefFile=path.join(homePath,".asen","presentation.json");
+   async function read():Promise<"compact"|"complete">{try{const raw=await readFile(prefFile,"utf8");const value=JSON.parse(raw);return value.mode==="complete"?"complete":"compact";}catch{return "compact";}}
+   async function save(next:"compact"|"complete"){await mkdir(path.dirname(prefFile),{recursive:true});await writeFile(prefFile,JSON.stringify({mode:next},null,2)+"\n","utf8");}
+   const current=await read();
+   if(requested==="status"||requested==="show"||!parts.length) return {mode:current,note:"Use /asen-presentation compact or /asen-presentation complete"};
+   if(requested==="compact"||requested==="complete"){if(requested!==current)await save(requested);return {mode:requested};}
+   return {error:"Use /asen presentation status, /asen presentation compact or /asen presentation complete"};
+  }});
+
   registerData("asen-customize",{description:"Report ASEN customization surfaces and their current owner commands without changing configuration",handler:()=>({ customize_surfaces:[{name:"asen-profiles",role:"model and routing profiles"},{name:"asen-persona",role:"reply tone and persona"},{name:"asen-history",role:"local task/session history"},{name:"asen-usage",role:"runtime usage and accounting"},{name:"asen-stats",role:"Pi history aggregates"},{name:"asen-workflow",role:"ODD/SDD routing evidence"}], implemented:true, note:"No separate global customize datastore exists; these supported surfaces are the customization contract."})});
   registerData("asen-telemetry",{description:"Report ASEN telemetry status and where to act without changing consent",handler:()=>({telemetry:"managed through asen-usage (status, preview, enable, disable)",related_commands:["asen-usage","asen-stats","asen-commands"],implemented:true,note:"Telemetry state is not split into a second global screen in this shell; the same lifecycle entry points own the state."})});
   registerData("asen-status",{description:"Show bounded local ASEN status",handler:async(_args:string|undefined,ctx:CommandContext|undefined)=>{
