@@ -187,6 +187,41 @@ test("uninstall refuses a modified owned file and never follows symlinks out of 
  assert.ok(report instanceof Error||report.status==="partial");
 });
 
+test("managed uninstall refuses an equal-byte current selector replaced after validation",async t=>{
+ if(process.platform==="win32"){t.skip("The Windows reader holds an open handle during this injected rename");return;}
+ const {prefix,dataHome,v1,base}=await setupInstall("uninstall-current-same-bytes");
+ await installManaged({...base,source:v1.source,dataHome});
+ const selector=path.join(prefix,"install","current"),moved=selector+".foreign";
+ let injected=false;
+ const result=await uninstallManaged({prefix,confirmed:true,hooks:{beforeSelectorRemoval:async target=>{
+  if(injected||target!==selector)return;
+  injected=true;
+  const original=await fs.readFile(target);
+  await fs.rename(target,moved);
+  await fs.writeFile(target,original);
+ }}});
+ assert.equal(injected,true,"the real owned selector was inspected before the injection");
+ assert.equal(result.status,"partial");
+ assert.ok(result.retained.includes(selector));
+ assert.equal(await fs.readFile(selector,"utf8"),"1.0.0\n");
+ assert.equal(await fs.readFile(moved,"utf8"),"1.0.0\n");
+});
+
+test("managed uninstall does not follow an untrusted symlink at the current selector",async t=>{
+ if(process.platform==="win32"){t.skip("Creating Windows symlinks requires additional privileges");return;}
+ const {root,prefix,dataHome,v1,base}=await setupInstall("uninstall-current-symlink");
+ await installManaged({...base,source:v1.source,dataHome});
+ const selector=path.join(prefix,"install","current"),outside=path.join(root,"user-secret");
+ await fs.writeFile(outside,"outside must remain private\n");
+ await fs.unlink(selector);
+ await fs.symlink(outside,selector,"file");
+ const result=await uninstallManaged({prefix,confirmed:true});
+ assert.equal(result.status,"partial");
+ assert.ok(result.retained.includes(selector));
+ assert.equal(await fs.readFile(outside,"utf8"),"outside must remain private\n");
+ assert.equal((await fs.lstat(selector)).isSymbolicLink(),true);
+});
+
 test("uninstall retains a matching-byte replacement made by a second same-user actor",async t=>{
  if(process.platform==="win32"){t.skip("Windows holds open file handles while unlink/rename is attempted");return;}
  const {prefix,dataHome,v1,base}=await setupInstall("uninstall-same-bytes-substitution");
