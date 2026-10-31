@@ -3,6 +3,7 @@ import {createHash} from "node:crypto";
 import {isAbsolute,join,relative,resolve,dirname} from "node:path";
 import type {ExtensionAPI} from "@earendil-works/pi-coding-agent";
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
+import {hasSensitiveName} from "../src/security/primary-tool-policy.js";
 
 export interface ExactWriteReceipt{path:string;fileSha256:string;barrierFile?:string;}
 export interface ToolAuthority{repository:string;role:"explorer"|"worker"|"reviewer"|"verifier";writeSurfaces:readonly string[];agentId?:string;sessionId?:string;attributionFile?:string;exactWriteReceipt?:ExactWriteReceipt;}
@@ -37,6 +38,7 @@ export function authorizeToolCall(authority:ToolAuthority,toolName:string,input:
  try{
   const repo=realpathSync(authority.repository),target=canonicalTarget(resolve(repo,input.path));
   if(!inside(repo,target))return false;
+  if(hasSensitiveName(input.path)||hasSensitiveName(relative(repo,target)))return false;
   if(toolName==="read")return true;
   return authority.writeSurfaces.some(scope=>{
    if(!scope||isAbsolute(scope)||scope.split(/[/\\]/).some(segment=>segment===".."||segment==="."))return false;

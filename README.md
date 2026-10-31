@@ -45,12 +45,12 @@ The remaining ecosystem scope includes full interaction presentation and mutatio
 ## Release gate and permanent debt (important)
 
 
-pm run release:check is the mandatory local gate (	ypecheck + tests + all ASEN audits + build + pack verification). Publishing a release requires it, plus exact-SHA CI evidence across all supported platforms.
+npm run release:check is the mandatory local gate (typecheck + tests + all ASEN audits + build + pack verification). Publishing a release requires it, plus exact-SHA CI evidence across all supported platforms.
 
 Self-audit is sufficient for task admission in ODD, but it does not replace release gates. Permanent release debt while it exists:
 
 - Host-dependent skipped tests on Windows (symlink/EbUSY assumptions).
-- Inherited Pi peer Undici advisory (\GHSA-2m5v-pch6-74hx\); no override and no Pi substitute is allowed. All HTTP request paths remain evidence gaps until a clean Pi resolution is available.
+- Inherited Pi peer Undici advisory (GHSA-2m5v-pch6-74hx); no override and no Pi substitute is allowed. All HTTP request paths remain evidence gaps until a clean Pi resolution is available.
 - Normative source proof remains NOT ADMITTED while the retained baseline repository is unavailable.
 - Browser launch, multi-OS platform execution, and exact package-registration release checks remain tracked work.
 

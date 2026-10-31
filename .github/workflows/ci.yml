@@ -22,7 +22,7 @@ jobs:
         run: node -e "const {execFileSync}=require('node:child_process');if(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==process.env.ASEN_EXPECTED_SHA)process.exit(1)"
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: "22.19.0"
       - run: npm install
       - name: Prepare frozen ecosystem Git objects
         run: node .github/scripts/prepare-frozen-ecosystem-baseline.mjs
@@ -155,7 +155,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: "22.19.0"
       - name: Verify exact candidate and checks
         env:
           ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
@@ -201,7 +201,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: "22.19.0"
       - name: Install pinned real Pi and node-pty
         run: npm ci
       - name: Drive real Pi T10 selection, editor cancellation and user-approved write
@@ -259,7 +259,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: "22.19.0"
       - run: npm ci
       - name: Semantic evidence admission gate
         run: node --import tsx --test tests/pi-support-matrix.test.ts tests/ecosystem-execution-receipts.test.ts tests/ecosystem-claims.test.ts tests/ecosystem-evidence-bundle.test.ts tests/pi-matrix-pty-helper.test.ts tests/pi-verifier-exit.test.ts tests/pi-matrix-cleanup.test.ts tests/ecosystem-package-receipts.test.ts

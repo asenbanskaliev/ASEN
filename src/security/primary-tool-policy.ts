@@ -13,7 +13,11 @@ const denied=(reason:string):ToolCallEventResult=>({block:true,reason:`ASEN prim
 
 function sensitiveName(value:string):boolean{
  const name=process.platform==="win32"?value.toLowerCase():value;
- return name===".git"||name.startsWith(".env")||name.endsWith(".pem")||name.endsWith(".key");
+ return name===".git"||name.startsWith(".env")||name.endsWith(".pem")||name.endsWith(".key")||name===".npmrc"||name===".netrc"||name===".pypirc"||name===".aws"||name===".ssh"||name==="id_rsa"||name.startsWith("id_ed25519")||name.endsWith(".p12")||name.endsWith(".pfx");
+}
+function sensitivePath(value:string):boolean{
+ const normalized=value.replace(/\\/g,"/");
+ return hasSensitiveName(normalized)||/\/\.docker\/config\.json$/iu.test(normalized)||/\/\.aws\/.+/iu.test(normalized)||/\/\.ssh\/.+/iu.test(normalized)||/\/\.netrc$/iu.test(normalized);
 }
 export function hasSensitiveName(value:string):boolean{
  const normalized=path.normalize(value),root=path.parse(normalized).root;
@@ -86,7 +90,7 @@ export function createPrimaryToolPolicyHandler():PrimaryToolPolicyHandler{
    if(rawPath!==undefined&&typeof rawPath!=="string"||rawPath===undefined&&!optional)return denied("malformed file path");
    const requested=rawPath===undefined?".":rawPath as string,{lexical,canonical}=await canonicalTarget(requested,cwd);
    if(event.toolName!==toolName||event.toolCallId!==toolCallId||event.input!==input||(input as {path?:unknown}).path!==rawPath||context.cwd!==cwd||context.signal!==signal||signal?.aborted)return denied("file call identity or path drift");
-   if(hasSensitiveName(lexical)||hasSensitiveName(canonical))return denied("sensitive path access");
+   if(hasSensitiveName(lexical)||hasSensitiveName(canonical)||sensitivePath(lexical)||sensitivePath(canonical))return denied("sensitive path access");
    if(toolName==="grep"||toolName==="find"||toolName==="ls")try{await assertSafeTraversal(toolName,canonical);}catch{return denied("safe directory traversal cannot be established");}
    if(event.toolName!==toolName||event.toolCallId!==toolCallId||event.input!==input||(input as {path?:unknown}).path!==rawPath||context.cwd!==cwd||context.signal!==signal||signal?.aborted)return denied("file call identity or path drift");
    return undefined;
