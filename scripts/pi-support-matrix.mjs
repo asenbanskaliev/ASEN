@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {spawn,execFileSync} from "node:child_process";
-import {readFileSync,writeFileSync,mkdirSync,mkdtempSync} from "node:fs";
+import {existsSync,readFileSync,writeFileSync,mkdirSync,mkdtempSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -50,13 +50,14 @@ export function validateCellObservation(cell,result){
  assert.equal(result.exitCode,0);
  assert.equal(result.signal,null);
  assert.equal(result.timedOut,false,"forced shutdown is not natural exit");
+ if(cell.mode==="tui")assert.equal(result.keyboardCommandObserved,true,"real Pi TUI must run the keyboard-submitted ASEN changes command");
 }
 
 async function runCell(cell,cli,packageRoot,root){
  const work=join(root,cell.id);mkdirSync(work);
- const observation=join(work,"observation.json"),probe=join(work,"probe.ts");
+ const observation=join(work,"observation.json"),probe=join(work,"probe.ts"),ready=join(work,"tui-ready"),ack=join(work,"tui-ack");
  const primary=join(packageRoot,"extensions","asen.ts");
- writeFileSync(probe,`import {writeFileSync} from 'node:fs';
+ writeFileSync(probe,`import {writeFileSync,readFileSync} from 'node:fs';
  export default function(pi){
   let modelCalls=0;
   pi.on('before_agent_start',()=>{modelCalls++;throw Error('Matrix forbids model calls');});
@@ -68,7 +69,13 @@ async function runCell(cell,cli,packageRoot,root){
   pi.on('session_shutdown',(_event,ctx)=>observe(ctx,true));
   pi.on('session_start',(_event,ctx)=>{
    observe(ctx,false);
-   if(ctx.mode==='tui')setTimeout(()=>ctx.shutdown(),100);
+   if(ctx.mode==='tui'){
+    writeFileSync(${JSON.stringify(ready)},"ready");
+    const pulse=setInterval(()=>{
+     try{if(readFileSync(${JSON.stringify(ack)},"utf8")==="ack"){clearInterval(pulse);clearTimeout(safety);ctx.shutdown();}}catch{}
+    },80);
+    const safety=setTimeout(()=>{clearInterval(pulse);ctx.shutdown();},15000);
+   }
   });
  }`);
  const args=[cli,"--no-extensions","--extension",primary,"--extension",probe,
@@ -77,7 +84,7 @@ async function runCell(cell,cli,packageRoot,root){
  else if(cell.mode!=="tui")args.push("--mode",cell.mode);
  const env={...createPiVerifierEnvironment(process.env),HOME:work,USERPROFILE:work,
   PI_CODING_AGENT_DIR:join(work,"agent"),ASEN_NO_SKILL_REGISTRY:"1",TERM:"xterm-256color"};
- let log="",timedOut=false,exitCode,signal=null;
+ let log="",timedOut=false,exitCode,signal=null,keyboardAcknowledged=false;
  if(cell.mode==="tui"){
   prepareDarwinPtyHelper();
   const pty=await import("node-pty");
@@ -85,8 +92,20 @@ async function runCell(cell,cli,packageRoot,root){
   await new Promise((done,reject)=>{
    const timer=setTimeout(()=>{timedOut=true;child.kill();},60_000);
    const finalTimer=setTimeout(()=>reject(Error("PTY cleanup unconfirmed")),65_000);
-   child.onData(data=>{log=(log+data).slice(-1_000_000);});
-   child.onExit(result=>{clearTimeout(timer);clearTimeout(finalTimer);exitCode=result.exitCode;signal=result.signal?String(result.signal):null;done();});
+   let sent=false;
+   const sendKeyboard=setInterval(()=>{
+    if(!sent&&existsSync(ready)){
+     sent=true;
+     setTimeout(()=>{try{child.write("/asen-changes\r");}catch{/* Natural-exit and keyboard admission still fail. */}},1500);
+    }
+   },100);
+   child.onData(data=>{
+    log=(log+data).slice(-1_000_000);
+    if(!keyboardAcknowledged&&log.includes("Current Git state")&&log.includes("Session-attributed changes:")){
+     keyboardAcknowledged=true;writeFileSync(ack,"ack");
+    }
+   });
+   child.onExit(result=>{clearTimeout(timer);clearTimeout(finalTimer);clearInterval(sendKeyboard);exitCode=result.exitCode;signal=result.signal?String(result.signal):null;done();});
   });
  }else{
   const child=spawn(process.execPath,args,{cwd:work,env,stdio:["pipe","pipe","pipe"]});
@@ -104,7 +123,7 @@ async function runCell(cell,cli,packageRoot,root){
  try{observed=JSON.parse(readFileSync(observation,"utf8"));}
  catch{observed={mode:null,hasUI:null,commands:[],tools:[],modelCalls:null};}
  assert.ok(!log.includes('"type":"agent_start"'),"host must not start an agent");
- return {...observed,exitCode,signal,timedOut,logSha256:createHash("sha256").update(log).digest("hex"),log};
+ return {...observed,...(cell.mode==="tui"?{keyboardCommandObserved:keyboardAcknowledged}:{}),exitCode,signal,timedOut,logSha256:createHash("sha256").update(log).digest("hex"),log};
 }
 
 export async function main({tarball=process.argv[2],output=process.argv[3],candidate=process.env.ASEN_EXPECTED_SHA}={}){

@@ -8,7 +8,12 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"skills",name:"asen-skill-registry",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-profiles",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-persona",implemented:true,owner:"extensions/asen.ts"},
- {group:"configuration",name:"asen-customize",implemented:false,owner:"ECO-14"},
+ {group:"configuration",name:"asen-customize",implemented:true,owner:"extensions/asen.ts"},
+ {group:"configuration",name:"asen-language",implemented:true,owner:"extensions/asen.ts"},
+ {group:"configuration",name:"asen-telemetry",implemented:true,owner:"extensions/asen.ts"},
+ {group:"configuration",name:"asen-banner",implemented:true,owner:"extensions/asen.ts"},
+ {group:"diagnostics",name:"asen-research-probe",implemented:true,owner:"extensions/asen.ts"},
+ {group:"session",name:"asen-palette",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-commands",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-changes",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-agents",implemented:true,owner:"extensions/asen.ts"},
@@ -19,7 +24,8 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"memory",name:"asen-memory",implemented:true,owner:"extensions/asen.ts"},
  {group:"diagnostics",name:"asen-status",implemented:true,owner:"extensions/asen.ts"},
  {group:"diagnostics",name:"asen-doctor",implemented:true,owner:"extensions/asen.ts"},
- {group:"diagnostics",name:"asen-authority-status",implemented:true,owner:"extensions/authority.ts"}
+ {group:"diagnostics",name:"asen-authority-status",implemented:true,owner:"extensions/authority.ts"},
+ {group:"configuration",name:"asen-help",implemented:true,owner:"extensions/asen.ts"},
 ] as const;
 export function implementedCommands(){return ASEN_COMMAND_CATALOG.filter(c=>c.implemented).map(c=>c.name);}
 export function missingCommands(){return ASEN_COMMAND_CATALOG.filter(c=>!c.implemented).map(c=>c.name);}

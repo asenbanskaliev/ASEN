@@ -80,7 +80,7 @@ async function openReceiptKey(path:string):Promise<Buffer>{
  }
  throw new Error("Invalid ASEN agent receipt key");
 }
-async function write(file:string,value:AgentStoreFile):Promise<void>{await preparePrivateFile(file,true);await atomicWriteText(file,`${JSON.stringify(value,null,2)}\n`);}
+async function write(file:string,value:AgentStoreFile):Promise<void>{await preparePrivateFile(file,true);await atomicWriteText(file,`${JSON.stringify(value)}\n`);}
 function event(record:PublicAgentRecord,revision:number):AgentStateEvent{return {id:record.id,revision,state:record.state,at:record.updatedAt,...(record.summary!==undefined?{summary:record.summary.slice(0,MAX_OUTPUT)}:{})};}
 function sameIdentity(record:PublicAgentRecord,input:Omit<PublicAgentRecord,"state"|"updatedAt">):boolean{return record.id===input.id&&record.role===input.role&&record.owner.kind===input.owner.kind&&record.owner.id===input.owner.id&&record.sessionId===input.sessionId&&record.projectId===input.projectId;}
 

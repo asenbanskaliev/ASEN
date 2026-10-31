@@ -1,4 +1,4 @@
-import {constants,closeSync,fstatSync,fsyncSync,linkSync,lstatSync,mkdirSync,openSync,readFileSync,realpathSync,unlinkSync,writeFileSync} from "node:fs";
+import {constants,closeSync,fstatSync,fsyncSync,linkSync,lstatSync,openSync,readFileSync,realpathSync,unlinkSync,writeFileSync} from "node:fs";
 import {execFileSync} from "node:child_process";
 import {randomUUID} from "node:crypto";
 import {join,resolve} from "node:path";

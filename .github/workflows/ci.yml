@@ -5,6 +5,9 @@ on:
     branches: [main]
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     strategy:
@@ -22,7 +25,7 @@ jobs:
         run: node -e "const {execFileSync}=require('node:child_process');if(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==process.env.ASEN_EXPECTED_SHA)process.exit(1)"
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: "22.19.0"
       - run: npm install
       - name: Prepare frozen ecosystem Git objects
         run: node .github/scripts/prepare-frozen-ecosystem-baseline.mjs
@@ -65,6 +68,172 @@ jobs:
         run: npm run audit:ecosystem
       - name: Upstream boundary audit
         run: npm run audit:upstream-boundary
+  t07-real-codegraph:
+    if: >-
+      github.event_name == 'pull_request' &&
+      (github.head_ref == 'feat/t07-codegraph-completion' ||
+       github.head_ref == 'feat/t12-integrated-acceptance') &&
+      github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Genuine CodeGraph CLI lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/t07-codegraph"
+          cd "${RUNNER_TEMP}/t07-codegraph"
+          git init -q
+          git config user.email "probe@example.invalid"
+          git config user.name "T07 Probe"
+          printf 'export function calculateTotal(a,b) { return a+b; }\\n' > sample.js
+          git add sample.js
+          git commit -qm initial
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund --save-exact @colbymchenry/codegraph
+          node -p "require('./node_modules/@colbymchenry/codegraph/package.json').version"
+          ./node_modules/.bin/codegraph --help
+          ./node_modules/.bin/codegraph init --help
+          ./node_modules/.bin/codegraph query --help
+          ./node_modules/.bin/codegraph explore --help
+          ./node_modules/.bin/codegraph init .
+          ./node_modules/.bin/codegraph query --limit 10 -- calculateTotal
+          ./node_modules/.bin/codegraph explore -- calculateTotal
+          printf 'export function changedSymbol() { return 42; }\\n' > sample.js
+          git add sample.js
+          git commit -qm changed
+          ./node_modules/.bin/codegraph sync
+          ./node_modules/.bin/codegraph query --limit 10 -- changedSymbol > changed-symbol-result.txt
+          cat changed-symbol-result.txt
+          grep -q 'sample.js' changed-symbol-result.txt
+          grep -q 'changedSymbol' changed-symbol-result.txt
+          test -d .codegraph
+          echo '--- Index recovery after deletion (disposable fixture only) ---'
+          rm -rf .codegraph
+          ./node_modules/.bin/codegraph init .
+          ./node_modules/.bin/codegraph query --limit 10 -- changedSymbol > recovered-symbol-result.txt
+          cat recovered-symbol-result.txt
+          grep -q 'sample.js' recovered-symbol-result.txt
+          grep -q 'changedSymbol' recovered-symbol-result.txt
+          echo '--- Invalid index path must not be silently accepted ---'
+          rm -rf .codegraph
+          printf 'not an index directory' > .codegraph
+          if ./node_modules/.bin/codegraph init . > invalid-index.log 2>&1; then
+            echo 'CLI accepted a regular file in place of the index directory; inspect behavior'
+            cat invalid-index.log
+            exit 1
+          fi
+          rm -f .codegraph
+          ./node_modules/.bin/codegraph init .
+          ./node_modules/.bin/codegraph query --limit 10 -- changedSymbol > final-symbol-result.txt
+          grep -q 'changedSymbol' final-symbol-result.txt
+          echo '--- Real ASEN/Pi registered tool + genuine CodeGraph CLI ---'
+          export ASEN_T07_CODEGRAPH_PACKAGE_ROOT="$PWD/node_modules/@colbymchenry/codegraph"
+          cd "$GITHUB_WORKSPACE"
+          npm ci --ignore-scripts
+          node --import tsx --test tests/t07-real-asen-codegraph.test.ts
+  t12-integrated-security:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.head_ref == 'feat/t12-integrated-acceptance' &&
+      github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+      - name: Verify exact candidate and checks
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm ci --ignore-scripts
+          npm run typecheck
+          npm run audit:upstream-boundary
+      - name: Provider-free integrated security journeys
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx --test tests/t12-integrated-boundaries.test.ts tests/workspace-resolution.test.ts tests/shared-session-directory.test.ts tests/workspace-writer-lease.test.ts tests/workspace-attribution.test.ts tests/workspace-snapshot.test.ts tests/t09-lifecycle.test.ts tests/code-intelligence.test.ts 2>&1 | tee t12-integrated-security.log
+      - name: Retain exact-SHA security receipt
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: t12-security-${{ github.event.pull_request.head.sha }}
+          path: t12-integrated-security.log
+          if-no-files-found: warn
+          retention-days: 30
+  t12-real-pi-tui-dialog:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.head_ref == 'feat/t12-integrated-acceptance' &&
+      github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+      - name: Install pinned real Pi and node-pty
+        run: npm ci
+      - name: Drive real Pi T10 selection, editor cancellation and user-approved write
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/t12-pi-native-supervisor.mjs cancel
+          node scripts/t12-pi-native-supervisor.mjs apply
+      - name: Drive real Pi 1.2 T10 responsive views
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/t10-real-pi-tui-matrix.mjs
+      - name: Retain exact-candidate real UI receipt
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: t12-real-pi-tui-${{ runner.os }}-${{ github.event.pull_request.head.sha }}
+          path: t12-real-pi-tui-*.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Retain exact-candidate real UI receipt
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: t10-real-pi-tui-${{ runner.os }}-${{ github.event.pull_request.head.sha }}
+          path: t10-real-pi-tui-matrix-*.json
+          if-no-files-found: warn
+          retention-days: 30
   architecture:
     runs-on: ubuntu-24.04
     steps:
@@ -93,7 +262,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: "22.19.0"
       - run: npm ci
       - name: Semantic evidence admission gate
         run: node --import tsx --test tests/pi-support-matrix.test.ts tests/ecosystem-execution-receipts.test.ts tests/ecosystem-claims.test.ts tests/ecosystem-evidence-bundle.test.ts tests/pi-matrix-pty-helper.test.ts tests/pi-verifier-exit.test.ts tests/pi-matrix-cleanup.test.ts tests/ecosystem-package-receipts.test.ts

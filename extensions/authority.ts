@@ -1,8 +1,10 @@
 import {closeSync,constants,existsSync,fsyncSync,lstatSync,openSync,readFileSync,realpathSync,writeFileSync} from "node:fs";
 import {createHash} from "node:crypto";
-import {isAbsolute,join,relative,resolve,dirname} from "node:path";
+import {isAbsolute,relative,resolve,dirname} from "node:path";
 import type {ExtensionAPI} from "@earendil-works/pi-coding-agent";
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
+import { canonicalPathSync } from "../src/security/path-safety.js";
+import {hasSensitiveName} from "../src/security/primary-tool-policy.js";
 
 export interface ExactWriteReceipt{path:string;fileSha256:string;barrierFile?:string;}
 export interface ToolAuthority{repository:string;role:"explorer"|"worker"|"reviewer"|"verifier";writeSurfaces:readonly string[];agentId?:string;sessionId?:string;attributionFile?:string;exactWriteReceipt?:ExactWriteReceipt;}
@@ -11,16 +13,7 @@ function inside(base:string,target:string):boolean{
  return rest===""||rest!==".."&&!rest.startsWith(`..${process.platform==="win32"?"\\":"/"}`)&&!isAbsolute(rest);
 }
 function canonicalTarget(path:string):string{
- let parent=resolve(path);
- const suffix:string[]=[];
- for(;;){
-  try{return join(realpathSync(parent),...suffix.reverse());}
-  catch(error){
-   const next=dirname(parent);
-   if(next===parent)throw error;
-   suffix.push(parent.slice(next.length).replace(/^[/\\]/,""));parent=next;
-  }
- }
+ return canonicalPathSync(path);
 }
 function workspacePath(path:string):string{return path.replace(/\\/g,"/");}
 export async function recordSuccessfulWorkspaceWrite(authority:ToolAuthority,toolName:"edit"|"write",input:Record<string,unknown>,beforeExists:boolean,storeFile:string):Promise<void>{
@@ -37,6 +30,7 @@ export function authorizeToolCall(authority:ToolAuthority,toolName:string,input:
  try{
   const repo=realpathSync(authority.repository),target=canonicalTarget(resolve(repo,input.path));
   if(!inside(repo,target))return false;
+  if(hasSensitiveName(input.path)||hasSensitiveName(relative(repo,target)))return false;
   if(toolName==="read")return true;
   return authority.writeSurfaces.some(scope=>{
    if(!scope||isAbsolute(scope)||scope.split(/[/\\]/).some(segment=>segment===".."||segment==="."))return false;

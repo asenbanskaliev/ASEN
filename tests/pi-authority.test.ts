@@ -7,6 +7,7 @@ import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {spawnSync} from "node:child_process";
 import {authorizeToolCall} from "../extensions/authority.js";
+import {writeFile} from "node:fs/promises";
 
 test("Pi authority rejects redelegation and writes beyond exact surfaces",async t=>{
  const repo=await mkdtemp(join(tmpdir(),"asen-tool-authority-"));
@@ -33,4 +34,15 @@ test("real Pi loads the explicit ASEN policy extension with discovery disabled",
  const response=records.find(record=>record.type==="response"&&record.id==="policy");
  assert.equal(response?.success,true,result.stdout);
  assert.equal(response.data.commands.filter((command:{source:string})=>command.source==="extension").some((command:{name:string})=>command.name==="asen-authority-status"),true,"ASEN authority extension did not load");
+});
+
+
+test("Pi authority rejects sensitive reads delegated from primary policy", async t => {
+ const repo=await (async()=>{const {mkdtemp, rm}=await import("node:fs/promises");const dir=await mkdtemp(join(tmpdir(),"asen-sensitive-read-"));t.after(async()=>{await rm(dir,{recursive:true,force:true});});return dir;})();
+ await writeFile(join(repo,".env"),"secret");
+ await (async()=>{const {mkdir}=await import("node:fs/promises");await mkdir(join(repo,".aws"),{recursive:true});await writeFile(join(repo,".aws","credentials"),"secret");})();
+ const authority={repository:repo,role:"worker",writeSurfaces:[],agentId:"worker",sessionId:"session",attributionFile:"/tmp/attribution.json"};
+ for (const target of [".env",".npmrc","id_rsa",".aws",".aws/credentials"]) {
+  assert.equal(authorizeToolCall(authority as any, "read" as any, {path: target}), false, target);
+ }
 });

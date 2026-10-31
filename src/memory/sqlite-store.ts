@@ -1,12 +1,13 @@
 import {Buffer} from "node:buffer";
 import { DatabaseSync } from "node:sqlite";
 import {createHash,randomUUID} from "node:crypto";
+import { redactSecrets , stripPrivateTags } from "../security/redact.js";
 import {existsSync,rmSync} from "node:fs";
 import {withExclusiveFileLockSync} from "../io/exclusive-file-lock.js";
 import {validateMemoryImport} from "./export-validation.js";
 import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemoryExport, MemoryRelation, MemoryRelationInput, MemorySessionState, MemorySessionSummary, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
 
-const CURRENT_SCHEMA_VERSION=8;
+const CURRENT_SCHEMA_VERSION=9;
 const SQLITE_STARTUP_LOCK_TIMEOUT_MS=30_000;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
 const DEFAULT_DEDUPE_WINDOW_MS=15*60_000;
@@ -54,7 +55,17 @@ const migrations:readonly Migration[]=[
   `);}},
  {version:8,apply(db){db.exec(`
    ALTER TABLE memory_relations ADD COLUMN reviewed_at TEXT;
-  `);}}
+  `);}},
+ {version:9,apply(db){
+  db.exec(`DROP TRIGGER IF EXISTS memory_ai;DROP TRIGGER IF EXISTS memory_ad;DROP TRIGGER IF EXISTS memory_au;`);
+  db.exec(`CREATE VIRTUAL TABLE memory_fts_new USING fts5(id UNINDEXED,project_id UNINDEXED,content,content='memory',content_rowid='rowid');`);
+  db.exec("INSERT INTO memory_fts_new(rowid,id,project_id,content) SELECT rowid,id,project_id,content FROM memory;");
+  db.exec(`DROP TABLE memory_fts;`);
+  db.exec(`ALTER TABLE memory_fts_new RENAME TO memory_fts;`);
+  db.exec(`CREATE TRIGGER IF NOT EXISTS memory_ai AFTER INSERT ON memory BEGIN INSERT INTO memory_fts(rowid,id,project_id,content) VALUES(new.rowid,new.id,new.project_id,new.content); END;`);
+  db.exec(`CREATE TRIGGER IF NOT EXISTS memory_ad AFTER DELETE ON memory BEGIN INSERT INTO memory_fts(memory_fts,rowid,id,project_id,content) VALUES('delete',old.rowid,old.id,old.project_id,old.content); END;`);
+  db.exec(`CREATE TRIGGER IF NOT EXISTS memory_au AFTER UPDATE ON memory BEGIN INSERT INTO memory_fts(memory_fts,rowid,id,project_id,content) VALUES('delete',old.rowid,old.id,old.project_id,old.content); INSERT INTO memory_fts(rowid,id,project_id,content) VALUES(new.rowid,new.id,new.project_id,new.content); END;`);
+ }}
 ];
 function schemaVersion(db:DatabaseSync):number{
  const value=(db.prepare("PRAGMA user_version").get() as {user_version?:unknown}|undefined)?.user_version;
@@ -177,7 +188,7 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  }
  #save(item:MemoryItem,expected?:MemoryItem,createOnly=false):void{
   this.#requireIdentity(item.projectId,item.sessionId);
-  const content=stripPrivateTags(item.content);
+  const content=stripPrivateTags(redactSecrets(item.content));
   if(!content)throw new Error("Memory content is empty");
   this.#transaction(()=>{
    const session=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(item.sessionId) as {project_id:string;status:string}|undefined;
@@ -198,7 +209,7 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  }
  addObservation(item:MemoryObservationInput):string{
   this.#requireIdentity(item.projectId,item.sessionId);
-  const title=stripPrivateTags(item.title);
+  const title=stripPrivateTags(redactSecrets(item.title));
   if(!title)throw new Error("Memory observation title is required");
   const content=prepareStoredContent(item.content);
   if(!content)throw new Error("Memory observation content is required");
@@ -398,10 +409,40 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  search(projectId:string,query:string):MemoryItem[]{return this.searchWithOptions(projectId,query);}
  searchWithOptions(projectId:string,query:string,options:MemorySearchOptions={}):MemoryItem[]{
   const matchMode=options.matchMode??"all";if(matchMode!=="all"&&matchMode!=="any")throw new Error("Invalid memory search match mode");
-  const limit=Math.min(Math.max(Math.trunc(options.limit??10),1),20),fts=memoryFtsQuery(query,matchMode);
-  if(!fts)return [];
-  const rows=this.#db.prepare(`SELECT m.* FROM memory_fts f JOIN memory m ON m.id=f.id WHERE f.project_id=? AND m.deleted_at IS NULL AND memory_fts MATCH ? ORDER BY rank LIMIT ?`).all(projectId,fts,limit) as Record<string,unknown>[];
-  return rows.map(row);
+  const limit=Math.min(Math.max(Math.trunc(options.limit??10),1),20);
+  if(process.env.ASEN_MEMORY_RANKING!=="v2"||matchMode==="any"){
+   const fts=memoryFtsQuery(query,matchMode);
+   if(!fts)return [];
+   const rows=this.#db.prepare(`SELECT m.*, bm25(memory_fts,0,0,8,4,1) AS memory_rank FROM memory_fts f JOIN memory m ON m.rowid=f.rowid WHERE f.project_id=? AND m.deleted_at IS NULL AND memory_fts MATCH ? ORDER BY rank LIMIT ?`).all(projectId,fts,limit) as Record<string,unknown>[];
+   return rows.map(row);
+  }
+  const terms=query.trim().split(/\s+/u).map(term=>term.replace(/"/g,'""')).filter(Boolean);
+  if(!terms.length)return [];
+  const candidateLimit=Math.min(limit*3,50);
+  const queries:string[]=[];
+  const exact=terms.map(term=>`"${term}"`).join(" AND ");
+  if(exact)queries.push(exact);
+  const prefix=terms.map(term=>term.length>=3?`"${term}*"`:`"${term}"`).join(" AND ");
+  if(prefix!==exact&&prefix)queries.push(prefix);
+  const broad=terms.map(term=>`"${term}"`).join(" OR ");
+  if(broad!==exact&&broad)queries.push(broad);
+  const seen=new Set<string>();
+  const candidates:Array<Record<string,unknown>>=[];
+  for(const fts of queries){
+   const rows=this.#db.prepare(`SELECT m.*, bm25(memory_fts,0,0,8,4,1) AS memory_rank FROM memory_fts f JOIN memory m ON m.rowid=f.rowid WHERE f.project_id=? AND m.deleted_at IS NULL AND memory_fts MATCH ? ORDER BY rank LIMIT ?`).all(projectId,fts,candidateLimit) as Record<string,unknown>[];
+   for(const row of rows){const id=String(row.id);if(seen.has(id))continue;seen.add(id);candidates.push(row);if(candidates.length>=candidateLimit)break;}
+   if(candidates.length>=limit&&fts===exact)break;
+  }
+  const now=Date.now();
+  return candidates
+   .map(row=>{
+    const rank=typeof row.memory_rank==="number"?row.memory_rank:0,createdAt=Date.parse(String(row.created_at??"")),ageMs=Number.isFinite(createdAt)?Math.min(now-createdAt,365*24*60*60*1000):365*24*60*60*1000;
+    const structural=(row.pinned?0.35:0)+((String(row.kind)==="decision"||String(row.kind)==="bugfix")?0.15:0)-(ageMs/(365*24*60*60*1000))*0.05;
+    return {row,score:rank-structural};
+   })
+   .sort((a,b)=>a.score-b.score)
+   .slice(0,limit)
+   .map(entry=>entry.row as unknown as MemoryItem);
  }
  searchPreviews(projectId:string,query:string,options:MemorySearchOptions={}):MemorySearchPreview[]{
   return this.searchWithOptions(projectId,query,options).map(item=>{const chars=Array.from(item.content),preview=chars.slice(0,300).join("");return {id:item.id,kind:item.kind,...(item.title!==undefined?{title:item.title}:{}),preview,truncated:chars.length>300,...(item.topicKey!==undefined?{topicKey:item.topicKey}:{})};});
@@ -439,7 +480,6 @@ function prepareStoredContent(content:string):string{
  while(end>0&&(bytes[end]!&0xc0)===0x80)end--;
  return bytes.subarray(0,end).toString("utf8")+"... [truncated]";
 }
-function stripPrivateTags(value:string):string{return value.replace(/<private>.*?<\/private>/gis,"[REDACTED]").trim();}
 function hashNormalizedContent(content:string):string{return createHash("sha256").update(content.toLowerCase().split(/\s+/u).filter(Boolean).join(" ")).digest("hex");}
 function replaceObservationContent(content:string,find:string,replacement:string):{content:string;noop:boolean}{
  const marker="... [truncated]";

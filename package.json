@@ -18,6 +18,9 @@
     "verify:pack": "node scripts/verify-pack-environment.mjs",
     "verify:pi-matrix": "node scripts/pi-support-matrix.mjs",
     "verify:package-receipts": "node scripts/ecosystem-package-receipts.mjs",
+    "pin:authority": "node scripts/authority-pin.mjs",
+    "check:authority-pin": "node scripts/authority-pin.mjs check",
+    "check:fast": "npm run typecheck && node --import tsx --test tests/command-catalog.test.ts tests/extension-runtime-commands.test.ts tests/status-doctor.test.ts tests/persona.test.ts",
     "audit:parity": "node scripts/validate-phase10-parity.mjs",
     "audit:skills": "node scripts/audit-behavior-skills.mjs",
     "audit:skill-parity": "node scripts/validate-skill-contract-parity.mjs",
@@ -25,7 +28,9 @@
     "audit:upstream-boundary": "node scripts/audit-upstream-boundary.mjs",
     "audit:ecosystem": "node scripts/ecosystem-baseline.mjs && node scripts/validate-ecosystem-claims.mjs",
     "audit:ecosystem-candidate": "node scripts/ecosystem-candidate-report.mjs",
-    "prepack": "npm run build"
+    "release:check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills && npm run audit:skill-parity && npm run audit:memory-parity && npm run audit:upstream-boundary && npm run audit:ecosystem && npm run build && npm run verify:pack",
+    "prepack": "npm run build",
+    "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json"
   },
   "pi": {
     "extensions": [

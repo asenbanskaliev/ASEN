@@ -104,5 +104,5 @@ export async function runIndependentPiReview(input:{registry:PiReviewRegistry;mo
  return parseVerdict(final,"pi-model:"+model.provider+"/"+model.id);
 }
 import {isProxy} from "node:util/types";
-import {isWorkspaceReviewEvidenceGenuine,type WorkspaceReviewEvidence} from "./workspace-review-session.js";
+import {isWorkspaceReviewEvidenceGenuine} from "./workspace-review-session.js";
 import {hasSensitiveName} from "../security/primary-tool-policy.js";
