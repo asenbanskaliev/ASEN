@@ -30,7 +30,8 @@
     "audit:ecosystem-candidate": "node scripts/ecosystem-candidate-report.mjs",
     "release:check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills && npm run audit:skill-parity && npm run audit:memory-parity && npm run audit:upstream-boundary && npm run audit:ecosystem && npm run build && npm run verify:pack",
     "prepack": "npm run build",
-    "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json"
+    "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json",
+    "check:skip-baseline": "node scripts/check-skip-count.mjs"
   },
   "pi": {
     "extensions": [
