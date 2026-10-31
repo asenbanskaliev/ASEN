@@ -39,7 +39,7 @@ export function parseWorkspaceFile(raw:string):WorkspaceFile{
  if(value.revision!==value.changes.length)throw new Error("Invalid ASEN workspace revision");return {schema:SCHEMA,revision:Number(value.revision),changes:structuredClone(value.changes as StoredWorkspaceChange[])};
 }
 async function read(file:string):Promise<WorkspaceFile>{if(!await preparePrivateFile(file))return empty();return parseWorkspaceFile(await readFile(file,"utf8"));}
-async function write(file:string,value:WorkspaceFile){await preparePrivateFile(file,true);await atomicWriteText(file,`${JSON.stringify(value,null,2)}\n`);}
+async function write(file:string,value:WorkspaceFile){await preparePrivateFile(file,true);await atomicWriteText(file,`${JSON.stringify(value)}\n`);}
 
 /** Durable attribution for successful child writes; records actor, owning session, project and worktree. */
 export class PersistentWorkspaceStore{
