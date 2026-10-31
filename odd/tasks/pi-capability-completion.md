@@ -288,3 +288,36 @@ Not admitted: sin verificacion independiente; sin integracion con Pi/extension; 
 Commit: be76084 on feat/t12-integrated-acceptance.
 Auto-audit note: cambio breaking del `id` semantico se documenta. Consumers futuros deben usar `eventId` (que NO cambia por silencio) para dedup canonico. Self-audit, no admission.
 
+
+### T10-2 — monitor durable delivery (tanda bounded closure)
+
+Work unit: closing the residual documented gap ("acuse durable/replay") of the T10-2 area. Code path already had durable delivery: `BackgroundJobRegistry` persists `deliveryState` as "pending" or "enqueued" via `setDeliveryState`/`setDeliveryStateScoped`; `BackgroundJobJournal.updateDeliveryState` mutates atomically under the private lock; `pendingBackgroundJobNotifications` collects only jobs scoped to the active session/project whose deliveryState is not "enqueued"; the extension surfaces them after restart from the journal (per 2026-10-29 register, 59 commits above). No new code was written today because a slice that re-implemented this would be a duplicate.
+
+Tests baseline: `tests/background-jobs.test.ts` + `tests/background-job-journal.test.ts` + `tests/background-job-delivery.integration.test.ts` = 31 PASS / 0 FAIL / 0 SKIP on local Node 24. Additionally T10-6 session-notification bus was re-hardened with identity + TTL + capacity (be76084/cf19d1b), providing the bounded bus that T10-2 relies on for monitor batches.
+
+### T10-8 — integracion final y R4 self-audit (single bundled commit)
+
+Cierre parcial documentado (self-audit only, no subagent):
+
+Evidencia local del candidato:
+- typecheck = 0 errors (run 2026-10-31)
+- audit:parity = PASS (500 ids, 350 P0 contracts, 6/6 six-pass, reverse clean)
+- audit:skills = 27 PASS
+- audit:skill-parity = PASS (12 skills)
+- monitor suite = 31/0/0
+- TUI real PTY matrix (T10-7) = 4/4 widths, no wrapped
+- Unit suites relevantes = 10 + 5 + 7 + 8 pass without fails
+- T12 real Pi TUI smoke (cancel/apply) = CI green at d7b742 (per log), to be re-cut at the current SHA by CI trigger
+
+Veredicto R4 (auto, no independent):
+- R4-01 (unlik race): PARTIAL (T09-U12 reduced harm and persisted threat model; descriptor-relative deletion unavailable on Node, patente out-of-scope)
+- R4-04 (TTY keyboard/ESC/cancel): PASS at unit + integrated real Pi PTY level; final go-no-go depende de CI green on OS matrix 120/80/60/40
+- R4-05 (claim integrity, 16 *source unavailable*): BLOCKED by missing retained reference repo; cannot pass locally; stays NOT ADMITTED
+- R4-06 (same-user isolation): PASS on disclosure (documented)
+- Undici moderate/high under Pi 1.2.0 (GHSA-2m5v-pch6-74hx): UNCHANGED (Pi peer; no override done; pending upstream)
+- Independiente cross-triple: still unattainable locally because subagent is disabled in this runtime (see `opencode.json` two edits on disk, require restart). Treat each local PASS as self-audit.
+
+Decision: T10 keeps PARTIAL until (a) CI on the exact auto-pass SHA is fully green at 4 widths x 3 OS, and (b) a real independent review can be invoked. These conditions cannot be met in this session.
+
+Risk: item 6 (all TUI-width measurements are host-dependent; re-measure on Pi upgrade) and item 1 (deliverability of notification delivery without durable ack across daemon restart).
+
