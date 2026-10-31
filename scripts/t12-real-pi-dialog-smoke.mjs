@@ -101,7 +101,7 @@ try{
  const failure={schemaVersion:1,candidate:expected,host:"@earendil-works/pi-coding-agent",version:metadata.version,
   platform:process.platform,mode:"tui",scenario:"public-asen-changes-resolve-selector-editor-escape",
   phase,events,exitCode,signal,timedOut,logSha256:createHash("sha256").update(log).digest("hex"),result:"FAIL"};
- writeFileSync(join(repo,"t12-real-pi-tui.json"),JSON.stringify(failure,null,2)+"\\n");
+ writeFileSync(join(repo,"t12-real-pi-tui.json"),JSON.stringify(failure,null,2)+"\n");
  process.exitCode=1;
 }finally{
  if(child&&!exited)try{child.kill();}catch{/* Best-effort cleanup after a failed interactive run. */}
