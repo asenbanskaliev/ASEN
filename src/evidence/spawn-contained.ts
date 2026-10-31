@@ -15,7 +15,7 @@ function spawnWindowsNative(command:string,args:readonly string[],options:SpawnO
   return child;
 }
 
-/** On Windows, start the exact command suspended and assign it to a kill-on-close Job Object before resume. */
+/** On Windows, launch natively without a Job Object; terminate descendant roots with taskkill when the root exits. */
 export function spawnContained(command:string,args:readonly string[],options:SpawnOptions={}):ChildProcess {
  if(process.platform==="win32")return spawnWindowsNative(command,args,options);
   return spawn(command,[...args],options);
