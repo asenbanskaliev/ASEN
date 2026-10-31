@@ -30,6 +30,9 @@ test("real CodeGraph CLI through ASEN/Pi registration: init, query, sync, restar
   const invoke=(operation:string,query?:string)=>tool.execute("real",{operation,...(query?{query}:{})},undefined,undefined,context);
   const init=await invoke("init");
   assert.equal(init.details.status,"completed",JSON.stringify(init));
+  assert.ok(["added","present"].includes(init.details.localExclude?.status),"approved init must exclude its local index from Git status");
+  assert.equal(execFileSync("git",["-C",root,"status","--porcelain"],{encoding:"utf8"}).trim(),"","index creation must not leave untracked review noise");
+
   const first=await invoke("query","initialSymbol");
   assert.equal(first.details.status,"completed",JSON.stringify(first));
   assert.match(first.content[0].text,/initialSymbol/);
@@ -38,6 +41,8 @@ test("real CodeGraph CLI through ASEN/Pi registration: init, query, sync, restar
   execFileSync("git",["-C",root,"commit","-qm","updated"]);
   const sync=await invoke("sync");
   assert.equal(sync.details.status,"completed",JSON.stringify(sync));
+  assert.equal(sync.details.localExclude?.status,"present","sync must not duplicate the Git-local exclude");
+
   const changed=await invoke("query","updatedSymbol");
   assert.equal(changed.details.status,"completed",JSON.stringify(changed));
   assert.match(changed.content[0].text,/updatedSymbol/);

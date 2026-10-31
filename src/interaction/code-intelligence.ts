@@ -4,6 +4,7 @@ import {homedir,tmpdir} from "node:os";
 import {delimiter,isAbsolute,join,relative,resolve} from "node:path";
 import {promisify,types} from "node:util";
 import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
+import {excludeCodeGraphIndexLocally} from "./codegraph-local-exclude.js";
 
 export interface CodeIntelligenceOptions {
   executable?:string;
@@ -269,7 +270,7 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
         if(indexHasEntries(root))return {content:[{type:"text" as const,text:"The CodeGraph index already exists for this project. No initialization was run."}],details:{status:"already_initialized",operation:"init",cwd:root}};
         if(typeof context.hasUI!=="boolean"||context.hasUI!==true||typeof context.ui?.confirm!=="function")return {content:[{type:"text" as const,text:"CodeGraph initialization needs approval in Pi's interactive interface. No index was created."}],details:{status:"authorization_required",operation:"init",cwd:root}};
         let approved=false;
-        try{approved=await context.ui.confirm("Authorize CodeGraph index creation?",`ASEN will run CodeGraph init for this project only. It may create or update ${join(root,".codegraph")} and read project files to build the index. This approval applies to this initialization only.`,signal===undefined?undefined:{signal});}
+        try{approved=await context.ui.confirm("Authorize CodeGraph index creation?",`ASEN will run CodeGraph init for this project only. It may create or update ${join(root,".codegraph")}, read project files, and add .codegraph/ to Git\'s local info/exclude file to avoid untracked index artifacts. This approval applies to this initialization only.`,signal===undefined?undefined:{signal});}
         catch{return {content:[{type:"text" as const,text:"CodeGraph initialization was cancelled before any files were changed."}],details:{status:signal?.aborted?"cancelled":"authorization_unavailable",operation:"init",cwd:root}};}
         if(!approved||signal?.aborted)return {content:[{type:"text" as const,text:signal?.aborted?"CodeGraph initialization was cancelled.":"CodeGraph initialization was not authorized. No index was created."}],details:{status:signal?.aborted?"cancelled":"denied",operation:"init",cwd:root}};
         try{if(rootFor(context.cwd)!==root)throw new Error("Project root changed during authorization");assertSafeIndexDirectory(root);}
@@ -279,7 +280,7 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
         if(signal?.aborted)return {content:[{type:"text" as const,text:"CodeGraph synchronization was cancelled."}],details:{status:"cancelled",operation:"sync",cwd:root}};
         if(context.hasUI!==true||typeof context.ui?.confirm!=="function")return {content:[{type:"text" as const,text:"CodeGraph synchronization requires interactive approval."}],details:{status:"authorization_required",operation:"sync",cwd:root}};
         let approved=false;
-        try{approved=await context.ui.confirm("Authorize CodeGraph index synchronization?",`CodeGraph may update ${join(root,".codegraph")} for this project. Approval applies only to this synchronization.`,signal===undefined?undefined:{signal});}
+        try{approved=await context.ui.confirm("Authorize CodeGraph index synchronization?",`CodeGraph may update ${join(root,".codegraph")} and add .codegraph/ to Git\'s local info/exclude file. Approval applies only to this synchronization.`,signal===undefined?undefined:{signal});}
         catch{return {content:[{type:"text" as const,text:"CodeGraph synchronization authorization was interrupted."}],details:{status:signal?.aborted?"cancelled":"authorization_unavailable",operation:"sync",cwd:root}};}
         if(!approved||signal?.aborted)return {content:[{type:"text" as const,text:"CodeGraph synchronization was not authorized."}],details:{status:signal?.aborted?"cancelled":"denied",operation:"sync",cwd:root}};
         try{if(rootFor(context.cwd)!==root)throw new Error("Project changed");assertSafeIndexDirectory(root);if(!lstatIndexIsDirectory(root))throw new Error("Index disappeared");}
@@ -290,7 +291,16 @@ export function createCodeGraphTool(runner:CodeGraphRunner=createCodeGraphRunner
         const run=request.operation==="init"?runInitialization(initialized,root,()=>runner(args,{cwd:root,maxBuffer:PROCESS_MAX_BUFFER,...(signal===undefined?{}:{signal})})):runner(args,{cwd:root,maxBuffer:PROCESS_MAX_BUFFER,...(signal===undefined?{}:{signal})});
         const observed=await run;
         const output=truncateOutput([observed.stdout,observed.stderr].filter(Boolean).join("\n"));
-        return {content:[{type:"text" as const,text:output||"CodeGraph completed without output."}],details:{status:"completed",operation:request.operation,cwd:root,args}};
+        // Only an explicitly approved indexing operation may write Git-local metadata.
+        // Query and explore are strictly read-only even when an index already exists.
+        const localExclude=request.operation==="init"||request.operation==="sync"
+          ?excludeCodeGraphIndexLocally(root):undefined;
+        const note=localExclude?.status==="failed"
+          ?"\nCodeGraph indexing succeeded, but Git-local index exclusion failed. Check .git/info/exclude before reviewing changes.":"";
+        return {
+          content:[{type:"text" as const,text:truncateOutput((output||"CodeGraph completed without output.")+note)}],
+          details:{status:"completed",operation:request.operation,cwd:root,args,...(localExclude?{localExclude}:{})},
+        };
       }catch(error){
         const status=signal?.aborted?"cancelled":fallbackStatus(error);
         const message=status==="cancelled"?"CodeGraph execution was cancelled.":status==="unavailable"?`CodeGraph is unavailable because the codegraph binary was not found. ${FALLBACK_INSTRUCTIONS}`:`CodeGraph failed to run. ${FALLBACK_INSTRUCTIONS}`;
