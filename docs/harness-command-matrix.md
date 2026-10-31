@@ -40,3 +40,8 @@ ASEN has strong equivalence for orchestration and evidence but explicit gaps rem
 - standalone live-research opt-in command
 
 These are now explicit tracked parity tasks and are not silent omissions.
+
+
+## Notes on presentation-only surfaces
+
+`asen-commands` is the supported functional equivalent of a command palette: it lists implemented and missing public surfaces by group (`core`, `workflow`, `review`, `skills`, `configuration`, `session`, `memory`, `diagnostics`). It is delivered through the Pi-facing command surface and registered in `extensions/asen.ts`. The remaining gap is visual shell richness (a full interactive palette/panel), not inventory/discovery. Likewise, startup banner and telemetry are consolidated into `asen-status` and `asen-usage`; they are not separately branded controls. These are deliberate bounded surfaces rather than accidental missing functionality.
