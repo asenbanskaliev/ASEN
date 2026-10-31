@@ -41,3 +41,16 @@ This is current-user execution intent, not verified human consent, publisher aut
 Implemented and tested foundations include 27 Pi-native Skills, ODD routing and writer-admission primitives, evidence/review controls, registry discovery/refresh and startup/watch lifecycle, bounded choice/question interaction, a read-only code-intelligence adapter, signed recovery, and admitted local memory R01–R09. These primitives and the injectable extension facade are not proof of a production ODD workflow. The public extension export resolves to the shipped entry; packed-install verification checks the real Pi host boundary and visible commands, not TUI journeys.
 
 The remaining ecosystem scope includes full interaction presentation and mutation-consumer integration, real CodeGraph CLI/index lifecycle, complete public agent lifecycle, cross-platform registry startup/watch evidence, workspace and production profile providers, history selector/import/migration and broader host evidence, metrics, and presentation. Status, doctor, agents, changes, and profiles commands still lack configured production providers where applicable; facade fixtures are not production integration. The shipped interfaces and limits are described in [runtime tools](docs/runtime-tools.md). See [the current reconciliation](odd/tasks/ecosystem-reconciliation.md) and [canonical roadmap](odd/tasks/ecosystem-strict-parity.md). `npm run audit:ecosystem` validates honest claims; a passing validator or general CI does not establish complete runtime parity. Provider-limited Skill evidence stays PARTIAL under the accepted GSP-06 closure.
+
+## Release gate and permanent debt (important)
+
+
+pm run release:check is the mandatory local gate (	ypecheck + tests + all ASEN audits + build + pack verification). Publishing a release requires it, plus exact-SHA CI evidence across all supported platforms.
+
+Self-audit is sufficient for task admission in ODD, but it does not replace release gates. Permanent release debt while it exists:
+
+- Host-dependent skipped tests on Windows (symlink/EbUSY assumptions).
+- Inherited Pi peer Undici advisory (\GHSA-2m5v-pch6-74hx\); no override and no Pi substitute is allowed. All HTTP request paths remain evidence gaps until a clean Pi resolution is available.
+- Normative source proof remains NOT ADMITTED while the retained baseline repository is unavailable.
+- Browser launch, multi-OS platform execution, and exact package-registration release checks remain tracked work.
+
