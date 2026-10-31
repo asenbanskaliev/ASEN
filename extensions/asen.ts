@@ -23,6 +23,7 @@ import {ALL_INTERACTION_TOOL_NAMES,registerInteractionTools} from "../src/intera
 import {createLocalBashOperations,type ToolDefinition} from "@earendil-works/pi-coding-agent";
 import {ASEN_CODEGRAPH_TOOL_NAME,registerCodeGraphTools,type CodeIntelligenceOptions} from "../src/interaction/code-intelligence.js";
 import {buildStatus,statusLines,type AsenStatusInput} from "../src/runtime/status.js";
+import {bannerLines, effectivePresentation, normalizePresentation, type PresentationSettings} from "../src/runtime/presentation.js";
 import { readAsenLanguage, writeAsenLanguage } from "../src/runtime/language.js";
 import {doctorChecks,doctorExitCode} from "../src/runtime/doctor.js";
 import {controlledInstructionPlanCommand,routePreviewCommand} from "../src/runtime/route-command.js";
@@ -395,6 +396,33 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }
   });
   registerData("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
+  registerData("asen-presentation",{description:"Show/switch ASEN presentation mode: [show | pretty | quiet | banner on|off | color auto|always|never]",handler:async(args?:string,ctx?:CommandContext)=>{
+   const parts=String(args??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
+   const homePath=dependencies.homeDir?.() ?? home();
+   const requested=parts.length?parts[0]:"show";
+   const supported=async(presentation:PresentationSettings)=>effectivePresentation(presentation,{tty:ctx?.hasUI===true,noColor:false,width:terminalColumns()});
+   let current:PresentationSettings={mode:"pretty",color:"auto",banner:true};
+   try{
+    const raw=await readFile(path.join(homePath,".asen","presentation.json"),"utf8");
+    const parsed=normalizePresentation(JSON.parse(raw));
+    if(parsed)current=parsed;
+   }catch{/* Missing config is valid. */}
+   if(requested==="show"||!parts.length){
+    const input=await readAsenLanguage(homePath);
+    return {...current,effective:supported(current),language:input};
+   }
+   const next={...current};
+   if(requested==="pretty"||requested==="quiet")next.mode=requested==="pretty"?"pretty":"quiet";
+   else if(parts[0]==="banner"&&(parts[1]==="on"||parts[1]==="off"))next.banner=parts[1]==="on";
+   else if(parts[0]==="color"&&parts.length===2)next.color=parts[1] as "auto"|"always"|"never";
+   else return [{error:"Usage: /asen-presentation [show | pretty | quiet | banner on|off | color auto|always]"}];
+   const valid=normalizePresentation(next);
+   if(!valid)return [{error:"Invalid presentation settings",...current,effective:supported(current)}];
+   await mkdir(path.join(homePath,".asen"),{recursive:true});
+   await writeFile(path.join(homePath,".asen","presentation.json"),JSON.stringify(valid,null,2)+"\n","utf8");
+   return {...valid,effective:supported(valid),note:"Saved in .asen/presentation.json"};
+  }});
+
   registerData("asen-commands",{description:"List ASEN public commands; pass text to filter them",handler:(args?:string)=>{const query=String(args??"").trim().toLowerCase();const rows=ASEN_COMMAND_CATALOG.map(c=>({name:c.name,group:c.group,implemented:c.implemented})).filter(row=>!query||row.name.includes(query)||row.group.includes(query));return rows.length?rows:[{name:"asen-help",group:"core",implemented:false}];}});
   registerData("asen-language",{description:"Show/switch ASEN language with /asen language <en|es>",handler:async(args?:string,ctx?:CommandContext):Promise<any>=>{
    const parts = String(args??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
