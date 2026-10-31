@@ -389,6 +389,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   });
   registerData("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
   registerData("asen-commands",{description:"List ASEN public commands",handler:()=>ASEN_COMMAND_CATALOG.map(c=>({name:c.name,group:c.group,implemented:c.implemented}))});
+  pi.registerCommand?.("asen-palette",{description:"Open a grouped read-only ASEN command palette",handler:async(_args:any,ctx:any)=>{
+    const labels=ASEN_COMMAND_CATALOG.map(c=>`${c.name} (${c.group})${c.implemented?"":" [surface pending]"}`);
+    if(typeof ctx?.ui?.select !== "function"){ctx?.ui?.notify?.(labels.join("\n"),"info");return;}
+    const selected=await ctx.ui.select("ASEN command palette",labels,{signal:ctx.signal});
+    if(!selected)return;
+    ctx.ui.notify(`Command selected: ${selected.replace(/ \(.*$/,"")}. Run the matching /asen-* command to execute it.`,"info");
+  }});
   registerData("asen-customize",{description:"Report ASEN customization surfaces and their current owner commands without changing configuration",handler:()=>({ customize_surfaces:[{name:"asen-profiles",role:"model and routing profiles"},{name:"asen-persona",role:"reply tone and persona"},{name:"asen-history",role:"local task/session history"},{name:"asen-usage",role:"runtime usage and accounting"},{name:"asen-stats",role:"Pi history aggregates"},{name:"asen-workflow",role:"ODD/SDD routing evidence"}], implemented:true, note:"No separate global customize datastore exists; these supported surfaces are the customization contract."})});
   registerData("asen-telemetry",{description:"Report ASEN telemetry status and where to act without changing consent",handler:()=>({telemetry:"managed through asen-usage (status, preview, enable, disable)",related_commands:["asen-usage","asen-stats","asen-commands"],implemented:true,note:"Telemetry state is not split into a second global screen in this shell; the same lifecycle entry points own the state."})});
   registerData("asen-status",{description:"Show bounded local ASEN status",handler:async(_args:string|undefined,ctx:CommandContext|undefined)=>{
