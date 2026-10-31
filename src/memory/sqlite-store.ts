@@ -209,7 +209,7 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  }
  addObservation(item:MemoryObservationInput):string{
   this.#requireIdentity(item.projectId,item.sessionId);
-  const title=stripPrivateTags(item.title);
+  const title=stripPrivateTags(redactSecrets(item.title));
   if(!title)throw new Error("Memory observation title is required");
   const content=prepareStoredContent(item.content);
   if(!content)throw new Error("Memory observation content is required");
