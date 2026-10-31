@@ -169,5 +169,6 @@ try{
 // assertions and temporary-project cleanup have completed. On Windows node-pty
 // may retain a native host handle, keeping this *test harness* event loop alive.
 // End only the harness explicitly, without promoting a forced Pi-child exit to PASS.
+console.error('T12_NODEPTY_ACTIVE_HANDLES:', Array.isArray(process._getActiveHandles)?process._getActiveHandles().length:'unknown');
 if(fullEvidenceSucceeded&&(process.exitCode===undefined||process.exitCode===0))process.exit(0);
 if(process.exitCode)process.exit(process.exitCode);
