@@ -14,3 +14,8 @@ Reviewed source candidate: ASEN PR #43, previous full-green SHA `7656a5b49776cc8
 ## Required next evidence
 
 The consolidated CI must pass the general and CodeGraph real-CLI suites on Linux, Windows and macOS, Release Gate, Pi runtime and model-free real keyboard TUI. Review the exact source for the above threat conditions, then validate actual Pi TUI editor and selector on a disposable Git repository. No automatic merge, production installation, or paid-provider request is authorized by this review.
+
+
+## Native editor/approval witness extension
+
+At source `fddecd76188c0f0fd4b3c2dd33a98090e700682f`, a real Pi TUI performed public conflict selection and editor cancellation on Ubuntu; it did not modify the tracked file or run an AI model. The expanded follow-up candidate introduces paired negative (Escape) and positive (explicit confirmation) native UI paths on Windows/macOS/Linux. The positive path is **a hypothesis under test**, not a claim: pass criteria require a changed tracked file, an unchanged Git HEAD, a visible authorized result, a bounded session receipt and no model invocations. Post-publication same-user races and the high T09 unlink-by-path risk remain open regardless of TUI results.
