@@ -260,5 +260,6 @@ Behavior:
 
 Not admitted: no independent verification; the host of the verification run cannot call external tools beyond local. T10 remains PARTIAL (T10-8 integration and the R4 findings stay open). Risk: item 6.
 
+Commit: 8688665 on feat/t12-integrated-acceptance.
 Auto-audit note: discovery was validated against a real local repository and a linked worktree; the helper returns an empty list on Git failure or missing exec, so a missing worktree command cannot wedge the command. No subprocess is left behind past the bounded timeout. This is a documented self-audit, not independent admission.
 
