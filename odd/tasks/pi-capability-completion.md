@@ -246,3 +246,19 @@ Owner authorization: on 2026-10-31 the owner explicitly requested commit and pus
 
 Not admitted: no independent verification (`subagent` still denied in this runtime; self-audit only), no exact-SHA CI for this commit yet, and R4-04 / R4-06 / R4-05 remain open. T10 stays PARTIAL. Risk: item 6 (delivery/environment — terminal width assumption embedded in shipped code; the constant must be re-measured on Pi updates).
 
+
+### T10-4 — discover linked worktrees instead of silently dropping them
+
+Work unit: `/asen-changes` previously only inspected the primary project root plus the worktree paths that happened to be recorded in the session attribution store. A session that touched a linked worktree whose change was not yet attributed, or whose root was deleted between enqueue and snapshot, could become invisible. T10-4 closes that gap with read-only discovery.
+
+Files: `src/runtime/workspace-snapshot.ts` (new `parseWorktreeListOutput` and `discoverWorkspaceWorktrees`, invoked from the `/asen-changes` handler via `extensions/asen.ts`), tests/t10-workspace-roots.test.ts (5 new tests including a real `git worktree add` on a temp repo and a listener that throws instead of crashing the handler).
+
+Behavior:
+- Discovery is read-only (`git worktree list --porcelain`) with a 5 s timeout, no extra worktree is created or mutated. It returns the primary root plus each linked root; failures yield an empty list instead of propagating, so `/asen-changes` keeps rendering.
+- The discovered roots are merged with session-attributed and project roots, deduplicated, and snapshotted with the existing identity/birthtime checks, so a root removed or replaced mid-process yields an unavailable snapshot row instead of fabricated Git state.
+- Link survival on Windows keeps two checks symlink-permission-skipped rather than environment-only flakiness.
+
+Not admitted: no independent verification; the host of the verification run cannot call external tools beyond local. T10 remains PARTIAL (T10-8 integration and the R4 findings stay open). Risk: item 6.
+
+Auto-audit note: discovery was validated against a real local repository and a linked worktree; the helper returns an empty list on Git failure or missing exec, so a missing worktree command cannot wedge the command. No subprocess is left behind past the bounded timeout. This is a documented self-audit, not independent admission.
+
