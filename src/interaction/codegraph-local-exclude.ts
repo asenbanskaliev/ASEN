@@ -1,5 +1,5 @@
 import {execFileSync} from "node:child_process";
-import {constants,closeSync,fsyncSync,fstatSync,lstatSync,openSync,readSync,realpathSync,writeSync} from "node:fs";
+import {constants,closeSync,fsyncSync,fstatSync,lstatSync,openSync,readSync,realpathSync,statSync,writeSync} from "node:fs";
 import {dirname,isAbsolute,join,resolve} from "node:path";
 
 const PATTERN=".codegraph/";
@@ -16,7 +16,7 @@ function git(root:string,argument:string):string{
  }).trim();
 }
 function sameFile(a:{dev:number;ino:number},b:{dev:number;ino:number}):boolean{
- return a.dev===b.dev&&a.ino===b.ino;
+ return a.ino!==0&&b.ino!==0&&a.dev===b.dev&&a.ino===b.ino;
 }
 function failure(reason:string):CodeGraphLocalExclude{
  return {status:"failed",reason:reason.slice(0,400)};
@@ -28,9 +28,9 @@ export function excludeCodeGraphIndexLocally(root:string):CodeGraphLocalExclude{
  try{
   const common=realpathSync.native(git(root,"common"));
   const raw=git(root,"path"),file=isAbsolute(raw)?resolve(raw):resolve(root,raw);
-  const parent=dirname(file),canonicalParent=realpathSync.native(parent);
-  const commonInfo=join(common,"info"),ordinary=lstatSync(parent);
-  if(canonicalParent!==commonInfo||!ordinary.isDirectory()||ordinary.isSymbolicLink())
+  const parent=dirname(file);
+  const commonInfo=join(common,"info"),ordinary=lstatSync(parent),expectedInfo=statSync(commonInfo);
+  if(!sameFile(ordinary,expectedInfo)||!ordinary.isDirectory()||ordinary.isSymbolicLink())
    return failure("Git exclusion path is not the ordinary repository-local info/exclude file");
   let info;
   try{info=lstatSync(file);}
