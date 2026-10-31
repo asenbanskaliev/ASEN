@@ -389,7 +389,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }
   });
   registerData("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
-  registerData("asen-commands",{description:"List ASEN public commands",handler:()=>ASEN_COMMAND_CATALOG.map(c=>({name:c.name,group:c.group,implemented:c.implemented}))});
+  registerData("asen-commands",{description:"List ASEN public commands; pass text to filter them",handler:(args?:string)=>{const query=String(args??"").trim().toLowerCase();const rows=ASEN_COMMAND_CATALOG.map(c=>({name:c.name,group:c.group,implemented:c.implemented})).filter(row=>!query||row.name.includes(query)||row.group.includes(query));return rows.length?rows:[{name:"asen-help",group:"core",implemented:false}];}});
   pi.registerCommand?.("asen-banner",{description:"Report startup banner support without creating a separate datastore",handler:async(_args:any,ctx:any)=>{const message="ASEN startup banner: no separate persisted preference is shipped; startup presentation is owned by the Pi host and can be inspected through `asen-status`."; ctx?.ui?.notify?.(message,"info"); return [message];}});
   pi.registerCommand?.("asen-research-probe",{description:"Opt-in ASEN outbound probe, disabled by default until an explicit URL is supplied",handler:async(args:string,ctx:any)=>{
     const parsed=String(args||"").trim();
