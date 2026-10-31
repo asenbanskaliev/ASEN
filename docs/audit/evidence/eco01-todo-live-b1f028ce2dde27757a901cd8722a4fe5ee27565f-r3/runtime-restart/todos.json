@@ -1,0 +1,38 @@
+{
+  "schema": "asen.todo/v1",
+  "revision": 3,
+  "items": [
+    {
+      "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+      "title": "Continue safely",
+      "events": [
+        {
+          "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+          "sessionId": "eco01-restart",
+          "projectId": "/eco01-project",
+          "revision": 1,
+          "state": "planned",
+          "at": "2026-10-16T16:21:52.728Z"
+        },
+        {
+          "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+          "sessionId": "eco01-restart",
+          "projectId": "/eco01-project",
+          "revision": 2,
+          "state": "running",
+          "at": "2026-10-16T16:21:52.731Z"
+        },
+        {
+          "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+          "sessionId": "eco01-restart",
+          "projectId": "/eco01-project",
+          "revision": 3,
+          "state": "blocked",
+          "at": "2026-10-16T16:21:52.735Z",
+          "reason": "ASEN restarted while this task was running; explicit review is required before continuing"
+        }
+      ],
+      "requestId": "eco01-restart-request"
+    }
+  ]
+}

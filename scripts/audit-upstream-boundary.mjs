@@ -23,9 +23,14 @@ if(provenanceIssues.length){
 const referenceName=memoryManifest.targets[0].repository.split("/").at(-1);
 const forbidden=new RegExp(["gen"+"tle","gen"+"tleman",referenceName].filter(Boolean).join("|"),"i");
 const provenanceAllowlist=new Set([
- "registry/parity/skill-sources-v1.json",memoryManifestPath,"registry/parity/memory-foundation-contracts-v1.json",
+ "registry/parity/skill-sources-v1.json","registry/parity/ecosystem-sources-v1.json","registry/parity/ecosystem-media-v1.json",memoryManifestPath,"registry/parity/memory-foundation-contracts-v1.json",
  observationWriteManifestPath,retrievalSearchManifestPath,contextTimelineManifestPath,projectIdentityManifestPath,
  sessionTransportManifestPath,sessionStoreManifestPath,passiveCaptureManifestPath,relationManifestPath,
+ "docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3/todo-pair-evidence.json",
+ "docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3/source-tests.log",
+ "docs/audit/evidence/eco01-todo-authorization-live-2e8444c42429102a2294e86fd9277963c8850353/todo-authorization-pair.json",
+ "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/logs/source.stdout.log",
+ "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/asen-full-check.log",
  ...additionalParityFixturePaths
 ]);
 const tracked=execFileSync("git",["ls-files","-z"],{cwd:root}).toString("utf8").split("\0").filter(Boolean);

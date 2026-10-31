@@ -1,0 +1,85 @@
+name: ECO-07 OpenRouter task recovery
+on:
+  # Manual evidence remains one explicitly selected OS per dispatch.
+  workflow_dispatch:
+    inputs:
+      os:
+        description: Hosted runner used for this evidence attempt
+        required: true
+        type: choice
+        options:
+          - ubuntu-24.04
+          - macos-15
+          - windows-2025
+      expected_sha:
+        description: Exact 40-character candidate SHA
+        required: true
+        type: string
+# Provider-backed evidence is opt-in and runs only after a manual exact-SHA dispatch.
+permissions:
+  contents: read
+concurrency:
+  group: eco07-openrouter-recovery-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  pi-recovery:
+    if: github.repository == 'asenbanskaliev/ASEN' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1
+    name: >-
+      Pi recovery
+      (${{ inputs.os }})
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 15
+    env:
+      ASEN_RESOLVED_EXPECTED_SHA: >-
+        ${{ inputs.expected_sha }}
+      ASEN_RESOLVED_OS: >-
+        ${{ inputs.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.ASEN_RESOLVED_EXPECTED_SHA }}
+          persist-credentials: false
+      - name: Prepare empty evidence destination
+        run: mkdir -p eco07-pi-evidence
+        shell: bash
+      - name: Validate credential-free checkout boundary
+        env:
+          ASEN_TRIGGER_KIND: manual
+          ASEN_REPOSITORY: ${{ github.repository }}
+          ASEN_RUN_ATTEMPT: ${{ github.run_attempt }}
+          ASEN_SELECTED_OS: ${{ env.ASEN_RESOLVED_OS }}
+          ASEN_EXPECTED_SHA: ${{ env.ASEN_RESOLVED_EXPECTED_SHA }}
+          ASEN_GITHUB_SHA: ${{ github.sha }}
+          ASEN_EVENT_HEAD_SHA: ${{ github.sha }}
+          ASEN_DISPATCH_BRANCH: ${{ github.ref_name }}
+          ASEN_EXPECTED_BRANCH: feat/strict-parity-prerequisites
+          ASEN_ECO07_PROVIDER: openrouter
+          ASEN_ECO07_MODEL: nvidia/nemotron-3.5-lightning:free
+        run: node scripts/eco07-pi-recovery-preflight.mjs boundary
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+      - run: npm ci
+      - name: Validate installed repository-local runtime
+        run: node scripts/eco07-pi-recovery-preflight.mjs runtime
+      - name: Execute Pi interruption, restart, and ASEN Todo resume
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ASEN_ECO07_PROVIDER: openrouter
+          ASEN_ECO07_MODEL: nvidia/nemotron-3.5-lightning:free
+          ASEN_EXPECTED_SHA: ${{ env.ASEN_RESOLVED_EXPECTED_SHA }}
+        run: |
+          set -euo pipefail
+          test -n "$OPENROUTER_API_KEY"
+          node --import tsx scripts/eco07-pi-recovery-e2e.mjs
+        shell: bash
+      - name: Preserve ECO-07 process and event evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: >-
+            eco07-openrouter-recovery-${{ env.ASEN_RESOLVED_EXPECTED_SHA }}-
+            ${{ env.ASEN_RESOLVED_OS }}
+          path: eco07-pi-evidence/
+          if-no-files-found: error
+          retention-days: 30

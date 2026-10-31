@@ -1,0 +1,25 @@
+✔ applyTodo write replaces the list, assigns ids, defaults to pending, and records the turn (2.020974ms)
+✔ applyTodo write keeps ids the model passes back and drops the rest (0.254304ms)
+✔ applyTodo add, update, and clear mutate one task at a time and validate ids (0.280965ms)
+✔ applyTodo accepts completed as an alias of done, rejects unknown statuses, and sanitizes text (0.25146ms)
+✔ applyTodo list reports the state without changing it (0.241305ms)
+✔ todoSummary and staleTurns describe progress and how long the list went untouched (0.228565ms)
+✔ replayTodo rebuilds the latest state from Gentle and rpiv tool results alike (0.466825ms)
+✔ todoPromptBlock lists open work with the rules, and stays silent when there is nothing open (0.406614ms)
+✔ renderTodoCard draws the framed list with status glyphs and keeps every line at width (17.939803ms)
+✔ renderTodoCard folds a long list: done tasks become one row and the open ones are capped (1.501149ms)
+✔ renderTodoCard keeps the configured collapse shortcut in the header while stale state remains visible (1.239092ms)
+✔ renderTodoCard keeps English controls visible and falls back to their icons at narrow widths (2.42216ms)
+✔ completed titles strike only title cells across wrapped lines, never padding or rails (3.316663ms)
+✔ renderTodoCard paints the sidebar rail and the bottom widget with the same rose INFO frame (0.703973ms)
+✔ renderTodoCard paints its clickable header control in the shared hover role when hovered (0.753599ms)
+✔ renderTodoCard keeps stale indicators and collapse hints in scrollable lists (2.10424ms)
+✔ renderTodoCard uses custom shortcuts, omits disabled shortcuts, and remains width-safe when hints cannot fit (8.365373ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 235.17705

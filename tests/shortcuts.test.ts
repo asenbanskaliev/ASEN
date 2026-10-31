@@ -1,0 +1,3 @@
+import test from "node:test";import assert from "node:assert/strict";import {ASEN_SHORTCUTS,resolveShortcut,validateShortcuts} from "../src/runtime/shortcuts.js";
+test("shortcut inventory exposes availability instead of pretending registration",()=>{assert.equal(resolveShortcut(ASEN_SHORTCUTS,"ctrl+c"),"cancel-dialog");assert.equal(resolveShortcut(ASEN_SHORTCUTS,"ctrl+p"),undefined);});
+test("shortcut conflicts and malformed keys fail closed",()=>{assert.throws(()=>validateShortcuts([{action:"a",key:"ctrl+x",available:true},{action:"b",key:"CTRL+X",available:true}]),/conflict/);assert.throws(()=>validateShortcuts([{action:"a",key:"x",available:true}]),/Invalid/);});

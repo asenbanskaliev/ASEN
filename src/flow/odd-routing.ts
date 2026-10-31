@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { Risk } from "../core/types.js";
 import { verificationLevel } from "./risk.js";
 
-export type OddIntent = "implementation" | "analysis" | "incident" | "verification";
+export type OddIntent = "implementation" | "analysis" | "incident" | "verification" | "defect";
 export type OddChangeKind = "behavior" | "schema" | "security" | "configuration" | "migration" | "documentation" | "format" | "generated";
 export type OddRiskOperation = "destructive_git" | "external_write" | "credential_or_auth" | "security_boundary";
 export type OddReviewKind = "none" | "ordinary" | "dual_explicit";
@@ -35,7 +35,7 @@ export interface OddRouteDecision {
 }
 
 const requestKeys = ["taskIdentity", "repositoryIdentity", "intent", "scope", "writes", "riskOperations", "session", "testing", "review", "unresolvedDecisions"] as const;
-const intents = ["implementation", "analysis", "incident", "verification"] as const;
+const intents = ["implementation", "analysis", "incident", "verification", "defect"] as const;
 const changeKinds = ["behavior", "schema", "security", "configuration", "migration", "documentation", "format", "generated"] as const;
 const riskOperations = ["destructive_git", "external_write", "credential_or_auth", "security_boundary"] as const;
 const reviewKinds = ["none", "ordinary", "dual_explicit"] as const;
@@ -128,7 +128,8 @@ export function deriveOddFacts(value: OddRoutingRequest): OddDerivedFacts {
   const high = operations.length > 0 || writes.some(write => write.changeKind === "security");
   const unknown = scope.kind === "unknown" || unresolvedDecisions.length > 0;
   const filesTouched = scope.kind === "known" ? scope.expectedPaths.length : 0;
-  const risk: Risk = high ? "high" : unknown ? "unknown" : filesTouched >= 3 ? "medium" : "low";
+  const medium = writes.some(write => nonTrivialKinds.has(write.changeKind));
+  const risk: Risk = high ? "high" : unknown ? "unknown" : medium ? "medium" : "low";
   const facts = Object.freeze({
     taskIdentity: text(input.taskIdentity, "task identity"), repositoryIdentity: text(input.repositoryIdentity, "repository identity"),
     intent: member(input.intent, intents, "intent"), scope, writes: Object.freeze(writes), riskOperations: Object.freeze(operations), session,
@@ -151,11 +152,8 @@ export function planOddRoute(facts: OddDerivedFacts): OddRouteDecision {
   else if (facts.verificationIntent) { route = "verify"; reasons = ["verification-intent"]; }
   else if (facts.scope.kind === "unknown" || facts.unresolvedDecisions.length) { route = "plan"; reasons = [...(facts.scope.kind === "unknown" ? ["unknown-scope"] : []), ...(facts.unresolvedDecisions.length ? ["unresolved-decisions"] : [])]; }
   else if (facts.risk === "high") { route = "plan"; reasons = ["high-risk"]; }
-  else {
-    reasons = [...(facts.filesTouched >= 4 ? ["four-or-more-files"] : []), ...(facts.nonTrivialWrites >= 2 ? ["two-or-more-nontrivial-writes"] : []), ...(facts.longSession ? ["long-session"] : []), ...(facts.review.kind !== "none" ? ["review-requested"] : []), ...(facts.review.estimatedMinutes >= 60 ? ["review-at-least-60-minutes"] : [])];
-    route = reasons.length ? "orchestrate" : "direct";
-    if (!reasons.length) reasons = ["simple-bounded-request"];
-  }
+  else if (facts.review.kind === "dual_explicit") { route = "orchestrate"; reasons = ["explicit-independent-review"]; }
+  else { route = "direct"; reasons = ["bounded-work-with-controlled-risk"]; }
   const payload = { taskIdentity: facts.taskIdentity, repositoryIdentity: facts.repositoryIdentity, route, risk: facts.risk, verification: verificationLevel(facts.risk), reasons, requiresSingleWriter: route === "orchestrate" || route === "incident", requiresIsolatedChild: route === "orchestrate" || route === "incident" || route === "verify" };
   const decision = Object.freeze({ decisionId: createHash("sha256").update(JSON.stringify(payload)).digest("hex"), ...payload, reasons: Object.freeze(reasons) });
   issuedDecisions.add(decision);
