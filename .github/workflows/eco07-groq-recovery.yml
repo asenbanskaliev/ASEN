@@ -35,7 +35,7 @@ jobs:
       ASEN_RESOLVED_OS: >-
         ${{ inputs.os }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
           ref: ${{ env.ASEN_RESOLVED_EXPECTED_SHA }}
           persist-credentials: false
@@ -56,7 +56,7 @@ jobs:
           ASEN_ECO07_PROVIDER: openrouter
           ASEN_ECO07_MODEL: nvidia/nemotron-3.5-lightning:free
         run: node scripts/eco07-pi-recovery-preflight.mjs boundary
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: "22.19.0"
       - run: npm ci
@@ -75,7 +75,7 @@ jobs:
         shell: bash
       - name: Preserve ECO-07 process and event evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: >-
             eco07-openrouter-recovery-${{ env.ASEN_RESOLVED_EXPECTED_SHA }}-

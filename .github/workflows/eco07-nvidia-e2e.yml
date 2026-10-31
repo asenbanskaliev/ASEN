@@ -43,7 +43,7 @@ jobs:
       ASEN_EXPECTED_SHA: ${{ inputs.expected_sha || github.sha }}
       ASEN_SELECTED_OS: ${{ inputs.os || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -63,7 +63,7 @@ jobs:
           test "$(git ls-remote origin "refs/heads/$GITHUB_REF_NAME" | cut -f1)" = "$ASEN_EXPECTED_SHA"
           mkdir -p eco07-pi-evidence
           test -z "$(ls -A eco07-pi-evidence)"
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: "22.19.0"
       - run: npm ci
@@ -84,7 +84,7 @@ jobs:
           node --import tsx scripts/eco07-pi-recovery-e2e.mjs
       - name: Preserve process and event evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: eco07-nvidia-recovery-${{ inputs.expected_sha || github.sha }}-${{ inputs.os || 'ubuntu-24.04' }}
           path: eco07-pi-evidence/

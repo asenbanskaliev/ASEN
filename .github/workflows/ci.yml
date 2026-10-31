@@ -16,14 +16,14 @@ jobs:
         os: [ubuntu-24.04, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Assert exact candidate checkout
         env:
           ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: node -e "const {execFileSync}=require('node:child_process');if(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==process.env.ASEN_EXPECTED_SHA)process.exit(1)"
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: "22.19.0"
       - run: npm ci
@@ -48,7 +48,7 @@ jobs:
           exit "$witness_status"
       - name: Upload macOS retained-source witness
         if: always() && runner.os == 'macOS'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: retained-source-macos-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
@@ -81,10 +81,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: 24
       - name: Genuine CodeGraph CLI lifecycle
@@ -152,11 +152,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: "22.19.0"
       - name: Verify exact candidate and checks
@@ -176,7 +176,7 @@ jobs:
           node --import tsx --test tests/t12-integrated-boundaries.test.ts tests/workspace-resolution.test.ts tests/shared-session-directory.test.ts tests/workspace-writer-lease.test.ts tests/workspace-attribution.test.ts tests/workspace-snapshot.test.ts tests/t09-lifecycle.test.ts tests/code-intelligence.test.ts 2>&1 | tee t12-integrated-security.log
       - name: Retain exact-SHA security receipt
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: t12-security-${{ github.event.pull_request.head.sha }}
           path: t12-integrated-security.log
@@ -198,11 +198,11 @@ jobs:
     env:
       ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: "22.19.0"
       - name: Install pinned real Pi and node-pty
@@ -220,7 +220,7 @@ jobs:
           node scripts/t10-real-pi-tui-matrix.mjs
       - name: Retain exact-candidate real UI receipt
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: t12-real-pi-tui-${{ runner.os }}-${{ github.event.pull_request.head.sha }}
           path: t12-real-pi-tui-*.json
@@ -228,7 +228,7 @@ jobs:
           retention-days: 30
       - name: Retain exact-candidate real UI receipt
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: t10-real-pi-tui-${{ runner.os }}-${{ github.event.pull_request.head.sha }}
           path: t10-real-pi-tui-matrix-*.json
@@ -237,7 +237,7 @@ jobs:
   architecture:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Assert exact candidate checkout
@@ -257,10 +257,10 @@ jobs:
     env:
       ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: "22.19.0"
       - run: npm ci
@@ -276,7 +276,7 @@ jobs:
         run: node scripts/ecosystem-execution-receipts.mjs contract-evidence matrix-evidence
       - name: Upload exact candidate matrix and receipts
         if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: pi-support-${{ runner.os }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
@@ -299,12 +299,12 @@ jobs:
       ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
       ASEN_T05_BASE_SHA: 18e98728e2e39c8b1a4ebf66019574ee7d1b32a6
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: "22.19.0"
       - name: R4 exact-candidate and scope integrity
@@ -338,7 +338,7 @@ jobs:
           node --import tsx --test tests/authorized-job-retry.test.ts tests/authorized-write-recovery.test.ts tests/background-job-journal.test.ts tests/workspace-writer-lease.test.ts 2>&1 | tee t04-t05-recovery-evidence.log
       - name: Preserve real execution evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: t05-r4-execution-${{ github.event.pull_request.head.sha }}
           path: |
@@ -348,7 +348,7 @@ jobs:
           retention-days: 30
       - name: Preserve R4 audit scope evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: t05-r4-scope-${{ github.event.pull_request.head.sha }}
           path: |
@@ -371,12 +371,12 @@ jobs:
     env:
       ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: "22.19.0"
       - name: Verify exact clean provider candidate
@@ -403,7 +403,7 @@ jobs:
           tsx scripts/t04-t05-integrated-verdict.ts
       - name: Preserve exact-SHA live T04/T05 evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: t04-t05-live-nvidia-${{ github.event.pull_request.head.sha }}
           path: ${{ runner.temp }}/asen-t04-t05-evidence/

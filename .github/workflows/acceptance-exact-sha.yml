@@ -24,7 +24,7 @@ jobs:
         os: [ubuntu-24.04, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
           ref: ${{ inputs.candidate_sha }}
       - name: Assert exact candidate checkout
@@ -33,7 +33,7 @@ jobs:
         run: node -e "const {execFileSync}=require('node:child_process');if(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==process.env.ASEN_EXPECTED_SHA)process.exit(1)"
       - name: Assert clean tree
         run: node -e "const {execFileSync}=require('node:child_process');const out=execFileSync('git',['status','--porcelain'],{encoding:'utf8'}).trim();if(out)process.exit(1)"
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: "22.19.0"
       - run: npm ci
@@ -41,7 +41,7 @@ jobs:
       - run: npm run audit:upstream-boundary
       - name: Write candidate marker
         run: printf 'candidate_sha=%s\nrunner=%s\n' "${{ inputs.candidate_sha }}" "${{ github.run_id }}" > acceptance-marker.txt
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: acceptance-candidate-marker-${{ inputs.candidate_sha }}-${{ matrix.os }}
           path: acceptance-marker.txt
