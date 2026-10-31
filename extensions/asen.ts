@@ -22,7 +22,7 @@ import type {TaskEvent} from "../src/runtime/task-replay.js";
 import {ALL_INTERACTION_TOOL_NAMES,registerInteractionTools} from "../src/interaction/pi-tools.js";
 import {createLocalBashOperations,type ToolDefinition} from "@earendil-works/pi-coding-agent";
 import {ASEN_CODEGRAPH_TOOL_NAME,registerCodeGraphTools,type CodeIntelligenceOptions} from "../src/interaction/code-intelligence.js";
-import {statusLines,type AsenStatusInput} from "../src/runtime/status.js";
+import {buildStatus,statusLines,type AsenStatusInput} from "../src/runtime/status.js";
 import {doctorChecks,doctorExitCode} from "../src/runtime/doctor.js";
 import {controlledInstructionPlanCommand,routePreviewCommand} from "../src/runtime/route-command.js";
 import {ASEN_COMMAND_CATALOG} from "../src/runtime/command-catalog.js";
@@ -250,6 +250,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    invalidateChildSelection();
    const selectionScope=Object.freeze({generation:selectionGeneration,context:ctx,manager:ctx.sessionManager,sessionId:ctx.sessionManager?.getSessionId?.(),cwd:ctx.cwd});selectionOwner=selectionScope;
    if(ctx.sessionManager?.getSessionId?.())await inheritedProfile(await sessionIdentity(ctx));
+   try {
+    const startupSnapshot = dependencies.status?.();
+    const startupSummary = startupSnapshot ? buildStatus(startupSnapshot).summary : "Listo para empezar";
+    ctx.ui?.notify?.(`ASEN: ${startupSummary}`, "info");
+   } catch {/* Best effort only; never interrupt Pi startup. */}
    validationActivities.clear();agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});await lifecycle.start(ctx,registryStartupDisabled(undefined));
    if(ctx.sessionManager?.getSessionId?.()){
     agentDeliveryContext=ctx;agentDeliveryIdentity=await sessionIdentity(ctx);sessionDirectory.publish({sessionId:agentDeliveryIdentity.sessionId,subject:"Local Pi session",projectId:agentDeliveryIdentity.projectId,classification:"read",updatedAt:new Date().toISOString()});
