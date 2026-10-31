@@ -18,3 +18,10 @@ Exact-SHA CI, release packaged smoke, Pi support matrix on Linux/Windows/macOS, 
 
 ### Exact proof correction
 The integration security job at SHA `881c7c0ce61951df767750a953c60e5a9fc40375` observed a missing session-discovery step in the new T12 scenario; this test-only sequence was fixed in `27564ea2dfb59eab9b35b4727116209a4b32c8bd`. That candidate's provider-free T12 security job passed. Subsequent T10 same-process session recovery fixes are incorporated here, and require independent exact-SHA revalidation before any closure. Historical failed receipts are preserved.
+
+
+### Adversarial TUI and publication follow-up — next exact candidate
+
+The Pi host matrix now drives an actual `/asen-changes` command using native PTY keyboard input for all three OS TUI cells. Admission requires both public ASEN output markers, no model call, and natural Pi shutdown. This is a keyboard/command-routing test, **not** a test of the selection/editor/confirmation widgets. An isolated session claim race test demonstrates a second publisher cannot be replaced by a stale first publisher after it checked an empty record; new records use atomic hard-link publication. Existing recorded session restart is still supported, but adversarial same-user file tampering is outside OS isolation.
+
+For the manual workspace correction, the post-write verification is now explicit: if the exact file has already been renamed but another actor changes the workspace immediately afterward, ASEN persists the user's edit and warns about the failed post-publication verification rather than reporting a false no-write failure. The new test injects a real Git modification immediately after rename. None of these additions is considered validated until an exact-SHA CI passes.

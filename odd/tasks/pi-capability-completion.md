@@ -182,3 +182,11 @@ T09 exact-candidate platform result (57e706b3): CI and Release Gate passed on Li
 - T10: PR #39 integrated background terminal notices and recovery into the feature base; PR #41 extends it with manual workspace conflict correction, shared session labels between Pi processes and real Git snapshots. Same-process Pi restart regression was corrected at SHA efa007d28d036094fe1c77b58fa613ce5d22b5d4. Original scope remains PARTIAL pending multi-instance TUI behavior, security admission and applicable platform evidence.
 - T11: FULL only inside the adopted Pi 1.2 host contract recorded in docs/t11-completion-plan.md; external clients are explicitly deferred and no multi-runtime parity is claimed.
 - T12: PR #43 composes the above separate branches with provider-free integrated tests and extra exact-SHA CI gates. It is IN PROGRESS, not a complete global equivalence claim. Provider-backed, native TUI keyboard and reference-source equivalence need their own valid receipts.
+
+
+### R4 hardening candidate — T10/T12 native Pi keyboard and publication races
+
+- New native PTY keyboard exercise in each Pi TUI cell: executes ASEN's public `/asen-changes` handler, requires rendered output and zero model calls; pending exact-SHA results. The test does **not** automate interactive editor/selection flow.
+- New owner publication regression: a second same-user process claiming a session metadata file between check and publish must not be overwritten; new records use no-clobber hardlink. Stale-record replacement and same-user malicious path operations still require a separate threat model.
+- New post-publication correction regression: if a foreign Git change arrives just after the authorized rename, the exact change must be reported as published, attributed and accompanied by a warning; never presented as a failure with no side effects.
+- Overall task status remains T07 CI-validated, T09 and T10 conditional/limited FULL at most pending risk disposition, and T12 IN PROGRESS pending original-reference and independent R4. Prior exact SHA `7656a5b49776cc81a4ec0eba326d8108ffc8202f` is CI PASS on all three platforms; this next candidate requires its own gates.
