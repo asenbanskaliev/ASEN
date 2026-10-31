@@ -139,8 +139,16 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRou
   }
   agents.push(applyRuntimeProfile(worker,input.runtimeProfiles));
   if(facts.incident||facts.review.kind!=="none"){
-    const reviewer=contextFor("review","adversarial-review",true);
-    agents.push(applyRuntimeProfile({id:`${input.taskId}:review`,role:"reviewer",...base,skillContext:reviewer.context,skillPaths:reviewer.skillPaths},input.runtimeProfiles));
+    // A dual_explicit review requires two independently identified judges over
+    // the same frozen candidate. Keep the single reviewer for ordinary/independent review.
+    const judgeCount=facts.review.kind==="dual_explicit"?2:1;
+    for(let index=0; index<judgeCount; index++){
+      const reviewer=contextFor(index===0?"review":`review:${index+1}`,"adversarial-review",true);
+      agents.push(applyRuntimeProfile({
+        id:index===0?`${input.taskId}:review`:`${input.taskId}:review:${index+1}`,
+        role:"reviewer",...base,skillContext:reviewer.context,skillPaths:reviewer.skillPaths,
+      },input.runtimeProfiles));
+    }
   }
   const verifier=contextFor("verify","verify",true);
   agents.push(applyRuntimeProfile({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext:verifier.context,skillPaths:verifier.skillPaths},input.runtimeProfiles));

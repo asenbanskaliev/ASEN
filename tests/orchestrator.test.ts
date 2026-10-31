@@ -25,7 +25,7 @@ const invokeWithUnknownDecision=(input:Parameters<typeof buildOrchestrationPlan>
 test("orchestration uses one writer and read-only reviewer/verifier",()=>{
  const decision=orchestrated();
  const p=buildOrchestrationPlan({taskId:"t",repository:"r",prompt:"p",writeSurfaces:["src"],candidate},decision);
- assert.deepEqual(p.agents.map(a=>a.role),["worker","reviewer","verifier"]);
+ assert.deepEqual(p.agents.map(a=>a.role),["worker","reviewer","reviewer","verifier"]);
  assert.equal(p.agents.filter(a=>a.writeSurfaces?.length).length,1);
  assert.equal(p.decision,decision);
  assert.equal(Object.isFrozen(p.decision),true);
@@ -64,7 +64,7 @@ test("persisted session/project/global routes reach each agent request after rel
  const p=buildOrchestrationPlan({taskId:"profiled",repository:"r",prompt:"p",candidate,runtimeProfiles},orchestrated("profiled"));
  assert.deepEqual(p.agents.map(a=>[a.role,a.model,a.thinking]),[
   ["worker","session/worker","high"],
-  ["reviewer",undefined,undefined],["verifier","global/verifier",undefined],
+  ["reviewer",undefined,undefined],["reviewer",undefined,undefined],["verifier","global/verifier",undefined],
  ]);
 });
 
