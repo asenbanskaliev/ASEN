@@ -1,7 +1,7 @@
 import {Buffer} from "node:buffer";
 import { DatabaseSync } from "node:sqlite";
 import {createHash,randomUUID} from "node:crypto";
-import { redactSecrets } from "../security/redact.js";
+import { redactSecrets , stripPrivateTags } from "../security/redact.js";
 import {existsSync,rmSync} from "node:fs";
 import {withExclusiveFileLockSync} from "../io/exclusive-file-lock.js";
 import {validateMemoryImport} from "./export-validation.js";
@@ -440,7 +440,6 @@ function prepareStoredContent(content:string):string{
  while(end>0&&(bytes[end]!&0xc0)===0x80)end--;
  return bytes.subarray(0,end).toString("utf8")+"... [truncated]";
 }
-function stripPrivateTags(value:string):string{return value.replace(/<private>.*?<\/private>/gis,"[REDACTED]").trim();}
 function hashNormalizedContent(content:string):string{return createHash("sha256").update(content.toLowerCase().split(/\s+/u).filter(Boolean).join(" ")).digest("hex");}
 function replaceObservationContent(content:string,find:string,replacement:string):{content:string;noop:boolean}{
  const marker="... [truncated]";

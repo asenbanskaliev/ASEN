@@ -1,4 +1,4 @@
-import { redactSecrets } from "../security/redact.js";
+import { redactSecrets , stripPrivateTags } from "../security/redact.js";
 const learningHeader=/^#{2,3}\s+(?:Aprendizajes(?:\s+Clave)?|Key\s+Learnings?|Learnings?):?\s*$/i;
 export function extractKeyLearnings(text:string):string[]{
  const lines=text.split(/\r?\n/),sections:string[][]=[];
@@ -7,4 +7,3 @@ export function extractKeyLearnings(text:string):string[]{
 }
 function items(lines:string[],pattern:RegExp):string[]{return lines.flatMap(line=>{const m=pattern.exec(line);if(!m)return[];const v=stripPrivateTags(redactSecrets(m[1]!)).replace(/\*\*(.*?)\*\*/g,"$1").replace(/\`([^\`]+)\`/g,"$1").replace(/\*(.*?)\*/g,"$1").replace(/\s+/g," ").trim();return Buffer.byteLength(v,"utf8")>=20&&v.split(/\s+/).length>=4?[v]:[];});}
 
-function stripPrivateTags(value:string):string{return value.replace(/<private>.*?<\/private>/gis,"[REDACTED]");}
