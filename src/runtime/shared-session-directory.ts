@@ -79,10 +79,19 @@ export class SharedSessionDirectory extends SessionDirectory{
     catch(error){if((error as NodeJS.ErrnoException).code==="EEXIST")throw new Error("Another Pi process concurrently claimed this session");throw error;}
     unlinkSync(temp);
    }else{
-    // Preserve same-process restart and stale-record recovery without blind overwrite.
-    const latest=readRecord(file);
-    if(!latest||JSON.stringify(latest)!==JSON.stringify(checked))throw new Error("Shared session changed before replacement");
-    renameSync(temp,file);
+    // A no-clobber claim serializes replacement among cooperative Pi processes.
+    // A crashed process may leave the claim behind: fail closed rather than
+    // deleting a possibly live claimant's lock based on a racy PID check.
+    const claim=file+".claim";
+    let claimFd:number|undefined;
+    try{
+     claimFd=openSync(claim,constants.O_CREAT|constants.O_EXCL|constants.O_WRONLY|(constants.O_NOFOLLOW??0),0o600);
+     const latest=readRecord(file);
+     if(!latest||JSON.stringify(latest)!==JSON.stringify(checked))throw new Error("Shared session changed before replacement");
+     renameSync(temp,file);
+    }finally{
+     if(claimFd!==undefined){closeSync(claimFd);unlinkSync(claim);}
+    }
    }
    super.publish(entry);
    this.#owned.set(entry.sessionId,filename);

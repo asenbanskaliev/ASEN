@@ -48,6 +48,17 @@ test("a racing Pi process cannot overwrite an atomically claimed session identit
  second.remove("raced");
  assert.deepEqual(first.list("project-a"),[]);
 });
+test("a concurrent replacement of an existing record fails closed before overwriting the winner",t=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-session-replace-race-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const directory=join(root,"private"),first=new SharedSessionDirectory(directory),second=new SharedSessionDirectory(directory);
+ first.publish(entry("recover"));
+ // Both contenders observe the old record, but only the second may publish.
+ assert.throws(()=>first.publish({...entry("recover"),subject:"loser"},{beforePublish:()=>second.publish({...entry("recover"),subject:"winner"})}),/changed before replacement/);
+ assert.equal(second.list("project-a")[0]?.subject,"winner");
+ first.remove("recover");
+ assert.equal(second.list("project-a")[0]?.subject,"winner");
+ second.remove("recover");
+});
 test("a separate Node process can publish and withdraw only its own session metadata",async t=>{
  const root=mkdtempSync(join(tmpdir(),"asen-session-cross-process-"));t.after(()=>rmSync(root,{recursive:true,force:true,maxRetries:20,retryDelay:100}));
  const directory=join(root,"private"),source=pathToFileURL(join(process.cwd(),"src/runtime/shared-session-directory.ts")).href;
