@@ -65,7 +65,7 @@ import {SessionDirectory} from "../src/runtime/session-directory.js";
 import {SharedSessionDirectory} from "../src/runtime/shared-session-directory.js";
 import {snapshotWorkspaceRoots} from "../src/runtime/workspace-snapshot.js";
 import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtime/workspace-resolution.js";
-import {layoutMode,sanitizeTerminalText,truncateForTerminal} from "../src/runtime/responsive-layout.js";
+import {hostContentColumns,layoutMode,sanitizeTerminalText,truncateForTerminal} from "../src/runtime/responsive-layout.js";
 
 type CommandContext={cwd:string;hasUI?:boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void}};
 type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void};
@@ -124,7 +124,7 @@ function untrustedAgentText(value:string|undefined):string|undefined{
  const bounded=value.replace(/[\u0000-\u001f\u007f-\u009f]/gu," ").replace(/\s+/gu," ").trim().slice(0,8_000);
  return bounded||undefined;
 }
-function terminalColumns():number{return Number.isSafeInteger(process.stdout.columns)&&Number(process.stdout.columns)>0?Number(process.stdout.columns):100;}
+function terminalColumns():number{const columns=Number.isSafeInteger(process.stdout.columns)&&Number(process.stdout.columns)>0?Number(process.stdout.columns):100;return hostContentColumns(columns);}
 
 export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(pi:PiLike)=>AsenExtensionFacade {
  const home=dependencies.homeDir??homedir,packageRoot=dependencies.packageRoot??productionPackageRoot,refresh=dependencies.refresh??refreshSkillRegistry;

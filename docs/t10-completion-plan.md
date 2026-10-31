@@ -89,7 +89,31 @@ Cada unidad debe incluir implementación, pruebas RED/GREEN, comandos ejecutados
 - R4 independiente de ejecución, identidad, límites, rutas, logs, corrupción, shutdown races, stale delivery y permisos. Resolver todo Critical/High antes de declarar T10 completo.
 - Pruebas locales enfocadas, typecheck, build, auditorías pertinentes. Después, una ronda final en SHA único: Pi 1.2.0 y CI Windows/Linux/macOS, incluyendo matriz host/package según workflows. Revisar artifacts y logs antes de repetir cualquier job.
 
-## Criterio T10 FULL
+## Descubrimiento T10-7 (2026-10-31, SHA pendiente)
+
+### Host real Pi 1.2.0
+
+- La prueba integrada `scripts/t10-real-pi-tui-matrix.mjs` ejecuta la extensión en Pi real sobre un PTY nativo a 120/80/60/40 columnas con `NO_COLOR=1`, importando Pi 1.2.0 fijado Y ejecuta `/asen-status`, `/asen-agents`, `/asen-changes`, una entrada inválida (`/asen-changes bogus`), una Escape y un re-render subsequente.
+- Descubrimiento: renderizar exactamente a `process.stdout.columns` hace que el transcript de Pi corte la línea a `columnas - 3` y envíe el resto al renglón siguiente (el ancho disponible es 37 a 40 columnas), eliminando el marcador de truncamiento. Por eso `terminalColumns()` en `extensions/asen.ts` ahora aplica `hostContentColumns` de `src/runtime/responsive-layout.ts`, que resta 3 columnas documentadas (vista no vacía).
+- El gutter se midió, no se supuso: las mismas vistas pasaron a quedar intactas en los cuatro anchos tras la corrección, sin cambiar el truncamiento del helper.
+- Cancelación y reinicio: Escape reenvía el foco a Pi y el siguiente `/asen-status` vuelve a renderizarse; el caso de selección/editor/confirmación se cubre además por `scripts/t12-real-pi-dialog-smoke.mjs` sobre el host real.
+- Directorio de evidencia local: `t10-real-pi-tui-matrix-win32.json` contiene `result=PASS, wrapped=[]` en cada uno de los cuatro anchos; no se confunden con PASS global.
+
+### Controles de teclado compatibles con Pi
+
+Las vistas de ASEN se publican como resultados de `registerData` y se consumen dentro del bloque de entrada/comandos de Pi. La interacción anuló el teclado por convención del host:
+
+- `/asen-changes` sin argumento muestra la vista; `/asen-changes resolve` abre el recorrido interactive.
+- Selección con flechas, confirmación con `Enter`, cancelación con `Escape`; el editor respeta `Ctrl+C` y el aborto del efecto del comando.
+- En vistas de solo lectura (`status`, `agents`, `changes`), no hay acción destructiva: un comando erróneo (`/asen-changes bogus`) devuelve un mensaje acotado y no muta estado.
+- Diffs completos no se despliegan en la vista; se abre la herramienta/editor de Pi existente. ASEN no intercepta teclas propias ni instala bindings nuevos.
+- La TUI de Pi es la fuente de verdad para teclas; ASEN solo ofrece strings dentro del budget y deja al host los atajos, el scroll, el historial y el redimensionado.
+
+### Pruebas cubiertas
+
+- `tests/t10-responsive-matrix.test.ts`: ancho visible real con `visibleWidth`, sin splitting de graphemes/combining/emoji ZWJ, sin control leaves, vistas vacías, layout por ancho, `hostContentColumns`, inert escape.
+- `scripts/t10-real-pi-tui-matrix.mjs`: real host TUI, 4 widths, no color, render idéntico sin corte, escape, error y re-render.
+- Hallazgo ALTA inicial (solo helper) queda rebajado: ahora existe prueba integrada Pi TUI, aunque R4 independiente y CI multiplataforma siguen pendientes antes de promover T10.
 
 Requiere todas las unidades 1–8 demostradas en un SHA exacto; ninguna ruta de ejecución evade la política primaria; jobs y agentes notifican sin confundir salida con autorización; ningún trabajo se repite al reiniciar; coordinación/perfiles no cruzan sesiones; vistas funcionan en Pi 1.2.0 y terminales estrechos; Windows/Linux/macOS pasan; R4 no deja hallazgos Critical/High pendientes; el log canónico y mapa se actualizan solo con recibos del SHA admitido.
 

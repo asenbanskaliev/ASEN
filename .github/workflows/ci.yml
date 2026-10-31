@@ -210,12 +210,25 @@ jobs:
           set -euo pipefail
           node scripts/t12-pi-native-supervisor.mjs cancel
           node scripts/t12-pi-native-supervisor.mjs apply
+      - name: Drive real Pi 1.2 T10 responsive views
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/t10-real-pi-tui-matrix.mjs
       - name: Retain exact-candidate real UI receipt
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: t12-real-pi-tui-${{ runner.os }}-${{ github.event.pull_request.head.sha }}
           path: t12-real-pi-tui-*.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Retain exact-candidate real UI receipt
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: t10-real-pi-tui-${{ runner.os }}-${{ github.event.pull_request.head.sha }}
+          path: t10-real-pi-tui-matrix-*.json
           if-no-files-found: warn
           retention-days: 30
   architecture:
