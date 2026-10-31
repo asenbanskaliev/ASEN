@@ -80,9 +80,9 @@ test("asen-plan composes the existing ODD and orchestrator without retrieving, r
 test("asen-plan previews bounded orchestration roles without dispatching or granting execution",async()=>{
  const h=host();createAsenExtension()(h.pi);const command=h.commands.get("asen-plan")!,paths=["src/a.ts","src/b.ts","src/c.ts","src/d.ts"];
  const result=JSON.parse(await command.handler(JSON.stringify({taskIdentity:"orchestrated-plan",instruction:"Implement the bounded change",intent:"implementation",scope:{kind:"known",expectedPaths:paths},writes:[{path:"src/a.ts",changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:20,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:0},unresolvedDecisions:[]}),{cwd:process.cwd(),sessionManager:{getSessionId:()=>"orchestrator-session"}}) as string);
- assert.equal(result.route,"orchestrate");assert.deepEqual(result.requiredAgentRoles,["worker","reviewer","verifier"]);
+ assert.equal(result.route,"orchestrate");assert.deepEqual(result.requiredAgentRoles,["worker","reviewer","reviewer","verifier"]);
  assert.equal(result.requiresSingleWriter,true);assert.equal(result.requiresIsolatedChild,true);assert.deepEqual(result.execution,{started:false,authorized:false});
- assert.deepEqual(result.executablePlan.tasks.map((task:any)=>task.role),["worker","reviewer","verifier"]);
+ assert.deepEqual(result.executablePlan.tasks.map((task:any)=>task.role),["worker","reviewer","reviewer","verifier"]);\n assert.deepEqual(result.executablePlan.tasks.filter((task:any)=>task.role==="reviewer").map((task:any)=>task.id),["orchestrated-plan:reviewer","orchestrated-plan:reviewer:2"]);\n assert.deepEqual(result.executablePlan.tasks.find((task:any)=>task.role==="verifier").dependsOn,["orchestrated-plan:worker","orchestrated-plan:reviewer","orchestrated-plan:reviewer:2"]);
  assert.equal(result.persistence.status,"unavailable");
  assert.deepEqual(result.actions,{informationRetrieved:false,reviewRequested:false});
 });

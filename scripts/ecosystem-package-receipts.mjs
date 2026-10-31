@@ -8,7 +8,7 @@ const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
 
 /** Admits completed observations only. Log consistency is not independent execution authenticity. */
 export function admitPackageJourneyResult(result){
- assert.equal(result.status,0);assert.equal(result.signal,null);assert.equal(result.error,undefined);
+ assert.equal(result.status,0,`Packed Pi verification failed (exit=${result.status}, signal=${result.signal}): ${String(result.stderr).slice(-4000)}`);assert.equal(result.signal,null);assert.equal(result.error,undefined);
  const stdout=String(result.stdout);
  const rows=stdout.split(/\r?\n/).flatMap(line=>{try{return [JSON.parse(line)];}catch{return [];}});
  const journeys=rows.filter(row=>row?.installedPiPackageVerified!==undefined);

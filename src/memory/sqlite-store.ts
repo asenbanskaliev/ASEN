@@ -143,7 +143,7 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  endSession(projectId:string,sessionId:string,summary?:string):void{
   this.#requireIdentity(projectId,sessionId);
   const prepared=summary===undefined?undefined:prepareStoredContent(summary);
-  if(summary!==undefined&&!prepared)throw new Error("Memory session summary is required");
+  if(summary!==undefined&&!prepared?.trim())throw new Error("Memory session summary is required");
   this.#transaction(()=>{
    const existing=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(sessionId) as {project_id:string;status:string}|undefined;
    if(!existing||existing.project_id!==projectId)throw new Error("Memory session identity conflict");
@@ -189,7 +189,7 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  #save(item:MemoryItem,expected?:MemoryItem,createOnly=false):void{
   this.#requireIdentity(item.projectId,item.sessionId);
   const content=stripPrivateTags(redactSecrets(item.content));
-  if(!content)throw new Error("Memory content is empty");
+  if(!content.trim())throw new Error("Memory content is empty");
   this.#transaction(()=>{
    const session=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(item.sessionId) as {project_id:string;status:string}|undefined;
    if(!session||session.project_id!==item.projectId)throw new Error("Memory session identity conflict");
@@ -210,9 +210,9 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  addObservation(item:MemoryObservationInput):string{
   this.#requireIdentity(item.projectId,item.sessionId);
   const title=stripPrivateTags(redactSecrets(item.title));
-  if(!title)throw new Error("Memory observation title is required");
+  if(!title.trim())throw new Error("Memory observation title is required");
   const content=prepareStoredContent(item.content);
-  if(!content)throw new Error("Memory observation content is required");
+  if(!content.trim())throw new Error("Memory observation content is required");
   let id:string=randomUUID();
   const scope=normalizeScope(item.scope),topicKey=normalizeTopicKey(item.topic??"");
   const normalizedHash=hashNormalizedContent(content);
@@ -254,7 +254,7 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   if(hasFind!==hasReplace||hasContent&&(hasFind||hasReplace))throw new Error("Find and replace must be paired and cannot be combined with content");
   if(!hasKind&&!hasTitle&&!hasContent&&!hasProjectId&&!hasScope&&!hasTopicKey&&!hasFind)throw new Error("Memory observation update requires a field");
   const title=hasTitle?stripPrivateTags(input.title!):undefined;
-  if(title!==undefined&&!title)throw new Error("Memory observation title is required");
+  if(title!==undefined&&!title.trim())throw new Error("Memory observation title is required");
   if(hasFind&&(Buffer.byteLength(input.find!,"utf8")>MAX_OBSERVATION_LENGTH_BYTES||Buffer.byteLength(input.replace!,"utf8")>MAX_OBSERVATION_LENGTH_BYTES))throw new Error("Find and replace values exceed the observation byte limit");
   const directContent=hasContent?prepareStoredContent(input.content!):undefined;
   if(directContent!==undefined&&!directContent)throw new Error("Memory observation content is required");

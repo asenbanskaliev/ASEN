@@ -45,8 +45,8 @@ export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:str
  const decision=plan.decision,taskId=decision.taskIdentity;
  if(!taskId||!decision.repositoryIdentity||typeof instruction!=="string"||!instruction.trim()||instruction!==instruction.trim()||instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(instruction))throw new Error("Executable plan identity or instruction is invalid");
  const tasks:PlannedTask[]=[],priority:Readonly<Record<PlannedTaskRole,number>>={clarifier:1,primary:1,explorer:1,worker:2,reviewer:3,verifier:4};
- const add=(role:PlannedTaskRole,title:string,text:string,dependsOn:string[],skills:readonly string[],skillPaths:readonly string[]=[],skillSelection?:SkillSelectionContext,status:PlannedTask["status"]="waiting",model?:string,thinking?:AgentRequest["thinking"])=>{
-  const id=`${taskId}:${role}`;
+ const add=(role:PlannedTaskRole,title:string,text:string,dependsOn:string[],skills:readonly string[],skillPaths:readonly string[]=[],skillSelection?:SkillSelectionContext,status:PlannedTask["status"]="waiting",model?:string,thinking?:AgentRequest["thinking"],suffix?:string)=>{
+  const id=`${taskId}:${role}${suffix??""}`;
   tasks.push(Object.freeze({id,role,title,instruction:text,dependsOn:Object.freeze(dependsOn),priority:priority[role],skills:Object.freeze([...skills]),skillPaths:Object.freeze([...skillPaths]),...(skillSelection?{skillSelection:Object.freeze({...skillSelection})}:{}),...(model?{model}:{}),...(thinking?{thinking}:{}),status,execution:"not_started",authorization:"required_before_dispatch"}));
   return id;
  };
@@ -56,24 +56,25 @@ export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:str
   const selection=selectionOf(plan.skillContext);
   add("primary","Carry out the bounded primary-session task",instruction,[],plan.skills,selection?selectSkills(selection).map(skill=>skill.path):[],selection,"ready");
  }else{
-  const byRole=new Map(plan.agents.map(agent=>[agent.role,agent]));
   const ids=new Map<string,string>();
+  const reviewerIds:string[]=[];
   for(const role of ["explorer","worker","reviewer","verifier"] as const){
-   const agent=byRole.get(role);if(!agent)continue;
-   const dependencies=role==="worker"?[ids.get("explorer")].filter((id):id is string=>!!id):role==="reviewer"?[ids.get("worker")].filter((id):id is string=>!!id):role==="verifier"?[ids.get("worker"),ids.get("reviewer")].filter((id):id is string=>!!id):[];
-   const text=role==="explorer"?`Inspect only the repository areas relevant to this broad task and report concise evidence for: ${instruction}. Do not change files or expand the authorized scope.`:role==="worker"?`Perform only the authorized, scoped work for: ${instruction}`:role==="reviewer"?`Independently review the actual changes against the original acceptance criteria: ${instruction}. Return exactly one JSON object with keys verdict and evidence. verdict must be pass or fail. evidence must be a non-empty array of concise findings. Do not mark pass if a material criterion fails.`:`Independently verify the actual changes and acceptance criteria for: ${instruction}. Run the relevant local checks and inspect the final diff. Return exactly one JSON object with keys verdict and evidence. verdict must be pass or fail. evidence must be a non-empty array of concise findings, including the checks run and their result. Do not mark pass if a material criterion fails.`;
-   const selection=selectionOf(agent.skillContext);
-   const id=add(role,`${role[0]!.toUpperCase()}${role.slice(1)} task`,text,dependencies,selection?selectSkills(selection).map(skill=>skill.id):[],agent.skillPaths??[],selection,dependencies.length?"waiting":"ready",agent.model,agent.thinking);
-   const task=tasks.find(item=>item.id===id)!;
-   if(role==="explorer"&&agent.candidate){
-    const bound=Object.freeze({...task,candidateRevision:agent.candidate.revision});
-    tasks[tasks.indexOf(task)]=bound;
+   const agents=plan.agents.filter(agent=>agent.role===role);
+   for(const [index,agent] of agents.entries()){
+    const dependencies=role==="worker"?[ids.get("explorer")].filter((id):id is string=>!!id):role==="reviewer"?[ids.get("worker")].filter((id):id is string=>!!id):role==="verifier"?[ids.get("worker"),...reviewerIds].filter((id):id is string=>!!id):[];
+    const text=role==="explorer"?`Inspect only the repository areas relevant to this broad task and report concise evidence for: ${instruction}. Do not change files or expand the authorized scope.`:role==="worker"?`Perform only the authorized, scoped work for: ${instruction}`:role==="reviewer"?`Independently review the actual changes against the original acceptance criteria: ${instruction}. Return exactly one JSON object with keys verdict and evidence. verdict must be pass or fail. evidence must be a non-empty array of concise findings. Do not mark pass if a material criterion fails.`:`Independently verify the actual changes and acceptance criteria for: ${instruction}. Run the relevant local checks and inspect the final diff. Return exactly one JSON object with keys verdict and evidence. verdict must be pass or fail. evidence must be a non-empty array of concise findings, including the checks run and their result. Do not mark pass if a material criterion fails.`;
+    const selection=selectionOf(agent.skillContext);
+    const id=add(role,`${role[0]!.toUpperCase()}${role.slice(1)} task`,text,dependencies,selection?selectSkills(selection).map(skill=>skill.id):[],agent.skillPaths??[],selection,dependencies.length?"waiting":"ready",agent.model,agent.thinking,index===0?"":`:${index+1}`);
+    const task=tasks.find(item=>item.id===id)!;
+    if(role==="explorer"&&agent.candidate){
+     tasks[tasks.indexOf(task)]=Object.freeze({...task,candidateRevision:agent.candidate.revision});
+    }
+    if(role==="worker"&&agent.writeSurfaces?.length&&agent.candidate&&writerAuthorizationBasis){
+     tasks[tasks.indexOf(task)]=Object.freeze({...task,candidate:Object.freeze({...agent.candidate}),writeSurfaces:Object.freeze([...agent.writeSurfaces]),writerAuthorizationBasis});
+    }
+    if(role==="reviewer")reviewerIds.push(id);
+    else ids.set(role,id);
    }
-   if(role==="worker"&&agent.writeSurfaces?.length&&agent.candidate&&writerAuthorizationBasis){
-    const writable=Object.freeze({...task,candidate:Object.freeze({...agent.candidate}),writeSurfaces:Object.freeze([...agent.writeSurfaces]),writerAuthorizationBasis});
-    tasks[tasks.indexOf(task)]=writable;
-   }
-   ids.set(role,id);
   }
  }
  const byId=new Map(tasks.map(item=>[item.id,item]));

@@ -17,6 +17,7 @@ const pinnedAssets=[
  "src/io/atomic-write.ts",
  "src/io/exclusive-file-lock.ts",
  "src/io/private-file.ts",
+ "src/security/path-safety.ts",
 ];
 
 test("pinned authority extension and its complete dependency bundle load in a clean temporary root",async t=>{
