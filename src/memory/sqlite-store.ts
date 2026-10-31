@@ -409,10 +409,40 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  search(projectId:string,query:string):MemoryItem[]{return this.searchWithOptions(projectId,query);}
  searchWithOptions(projectId:string,query:string,options:MemorySearchOptions={}):MemoryItem[]{
   const matchMode=options.matchMode??"all";if(matchMode!=="all"&&matchMode!=="any")throw new Error("Invalid memory search match mode");
-  const limit=Math.min(Math.max(Math.trunc(options.limit??10),1),20),fts=memoryFtsQuery(query,matchMode);
-  if(!fts)return [];
-  const rows=this.#db.prepare(`SELECT m.* FROM memory_fts f JOIN memory m ON m.id=f.id WHERE f.project_id=? AND m.deleted_at IS NULL AND memory_fts MATCH ? ORDER BY rank LIMIT ?`).all(projectId,fts,limit) as Record<string,unknown>[];
-  return rows.map(row);
+  const limit=Math.min(Math.max(Math.trunc(options.limit??10),1),20);
+  if(process.env.ASEN_MEMORY_RANKING!=="v2"||matchMode==="any"){
+   const fts=memoryFtsQuery(query,matchMode);
+   if(!fts)return [];
+   const rows=this.#db.prepare(`SELECT m.*, bm25(memory_fts,0,0,8,4,1) AS memory_rank FROM memory_fts f JOIN memory m ON m.rowid=f.rowid WHERE f.project_id=? AND m.deleted_at IS NULL AND memory_fts MATCH ? ORDER BY rank LIMIT ?`).all(projectId,fts,limit) as Record<string,unknown>[];
+   return rows.map(row);
+  }
+  const terms=query.trim().split(/\s+/u).map(term=>term.replace(/"/g,'""')).filter(Boolean);
+  if(!terms.length)return [];
+  const candidateLimit=Math.min(limit*3,50);
+  const queries:string[]=[];
+  const exact=terms.map(term=>`"${term}"`).join(" AND ");
+  if(exact)queries.push(exact);
+  const prefix=terms.map(term=>term.length>=3?`"${term}*"`:`"${term}"`).join(" AND ");
+  if(prefix!==exact&&prefix)queries.push(prefix);
+  const broad=terms.map(term=>`"${term}"`).join(" OR ");
+  if(broad!==exact&&broad)queries.push(broad);
+  const seen=new Set<string>();
+  const candidates:Array<Record<string,unknown>>=[];
+  for(const fts of queries){
+   const rows=this.#db.prepare(`SELECT m.*, bm25(memory_fts,0,0,8,4,1) AS memory_rank FROM memory_fts f JOIN memory m ON m.rowid=f.rowid WHERE f.project_id=? AND m.deleted_at IS NULL AND memory_fts MATCH ? ORDER BY rank LIMIT ?`).all(projectId,fts,candidateLimit) as Record<string,unknown>[];
+   for(const row of rows){const id=String(row.id);if(seen.has(id))continue;seen.add(id);candidates.push(row);if(candidates.length>=candidateLimit)break;}
+   if(candidates.length>=limit&&fts===exact)break;
+  }
+  const now=Date.now();
+  return candidates
+   .map(row=>{
+    const rank=typeof row.memory_rank==="number"?row.memory_rank:0,createdAt=Date.parse(String(row.created_at??"")),ageMs=Number.isFinite(createdAt)?Math.min(now-createdAt,365*24*60*60*1000):365*24*60*60*1000;
+    const structural=(row.pinned?0.35:0)+((String(row.kind)==="decision"||String(row.kind)==="bugfix")?0.15:0)-(ageMs/(365*24*60*60*1000))*0.05;
+    return {row,score:rank-structural};
+   })
+   .sort((a,b)=>a.score-b.score)
+   .slice(0,limit)
+   .map(entry=>entry.row as unknown as MemoryItem);
  }
  searchPreviews(projectId:string,query:string,options:MemorySearchOptions={}):MemorySearchPreview[]{
   return this.searchWithOptions(projectId,query,options).map(item=>{const chars=Array.from(item.content),preview=chars.slice(0,300).join("");return {id:item.id,kind:item.kind,...(item.title!==undefined?{title:item.title}:{}),preview,truncated:chars.length>300,...(item.topicKey!==undefined?{topicKey:item.topicKey}:{})};});
