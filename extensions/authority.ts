@@ -3,6 +3,7 @@ import {createHash} from "node:crypto";
 import {isAbsolute,join,relative,resolve,dirname} from "node:path";
 import type {ExtensionAPI} from "@earendil-works/pi-coding-agent";
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
+import { canonicalPathSync } from "../src/security/path-safety.js";
 import {hasSensitiveName} from "../src/security/primary-tool-policy.js";
 
 export interface ExactWriteReceipt{path:string;fileSha256:string;barrierFile?:string;}
@@ -12,16 +13,7 @@ function inside(base:string,target:string):boolean{
  return rest===""||rest!==".."&&!rest.startsWith(`..${process.platform==="win32"?"\\":"/"}`)&&!isAbsolute(rest);
 }
 function canonicalTarget(path:string):string{
- let parent=resolve(path);
- const suffix:string[]=[];
- for(;;){
-  try{return join(realpathSync(parent),...suffix.reverse());}
-  catch(error){
-   const next=dirname(parent);
-   if(next===parent)throw error;
-   suffix.push(parent.slice(next.length).replace(/^[/\\]/,""));parent=next;
-  }
- }
+ return canonicalPathSync(path);
 }
 function workspacePath(path:string):string{return path.replace(/\\/g,"/");}
 export async function recordSuccessfulWorkspaceWrite(authority:ToolAuthority,toolName:"edit"|"write",input:Record<string,unknown>,beforeExists:boolean,storeFile:string):Promise<void>{

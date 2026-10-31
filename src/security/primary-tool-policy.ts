@@ -1,4 +1,5 @@
 import {lstat,readdir,realpath} from "node:fs/promises";
+import { canonicalPathSync } from "./path-safety.js";
 import path from "node:path";
 import type {ExtensionContext,ToolCallEvent,ToolCallEventResult} from "@earendil-works/pi-coding-agent";
 import {classifyNormalShellCommand} from "./normal-shell-policy.js";
@@ -24,19 +25,11 @@ export function hasSensitiveName(value:string):boolean{
  return normalized.slice(root.length).split(path.sep).filter(Boolean).some(sensitiveName);
 }
 async function canonicalTarget(value:string,cwd:string):Promise<{lexical:string;canonical:string}>{
- if(!value||value.includes("\0")||!cwd||cwd.includes("\0"))throw new Error("invalid path");
- const lexical=path.resolve(cwd,value),suffix:string[]=[];let candidate=lexical;
- for(;;){
-  try{return {lexical,canonical:path.resolve(await realpath(candidate),...suffix)};}
-  catch(error){
-   if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;
-   try{if((await lstat(candidate)).isSymbolicLink())throw new Error("unresolvable symbolic link");}
-   catch(metadataError){if((metadataError as NodeJS.ErrnoException).code!=="ENOENT")throw metadataError;}
-   const parent=path.dirname(candidate);if(parent===candidate)throw error;
-   suffix.unshift(path.basename(candidate));candidate=parent;
-  }
- }
+ if(value.length===0||value.includes("\0")||!cwd||cwd.includes("\0"))throw new Error("invalid path");
+ const lexical=path.resolve(cwd,value);
+ return {lexical,canonical:canonicalPathSync(lexical)};
 }
+
 const traversalEntryLimit=10_000,traversalDepthLimit=64;
 async function assertSafeTraversal(toolName:string,target:string):Promise<void>{
  const metadata=await lstat(target);if(!metadata.isDirectory())return;
