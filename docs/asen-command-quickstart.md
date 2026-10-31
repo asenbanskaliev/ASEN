@@ -1,6 +1,8 @@
 # ASEN Quick Commands
 
-This is a short, simple guide for daily work. Use these commands instead of memorizing long ones.\n\n## Quick Start
+This is a short, simple guide for daily work. Use these commands instead of memorizing long ones.
+
+## Quick Start
 
 - `/asen-status` -> see current state
 - `/asen-commands` -> list all ASEN commands
@@ -9,8 +11,15 @@ This is a short, simple guide for daily work. Use these commands instead of memo
 - `/asen-memory` -> save/find project memory
 - `/asen-changes` -> see and fix workspace changes
 - `/asen-review` -> review scope
-- `/asen-doctor` -> health checks\n\n## If You Don't Remember
+- `/asen-doctor` -> health checks
 
-Run `/asen help` or `/asen-commands` and choose the listed name.\n\n## Daily Checklist
+## If You Don't Remember
 
-1. Check status\n2. Make change\n3. Run test\n4. Close only when passing\n
+Run `/asen help` or `/asen-commands` and choose the listed name.
+
+## Daily Checklist
+
+1. Check status
+2. Make change
+3. Run test
+4. Close only when passing
