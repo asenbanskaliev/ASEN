@@ -131,7 +131,7 @@ export class SessionTodoStore{
  async #archiveCompletedProject(file:string,data:TodoFile):Promise<void>{
   const snapshot=parseTodoFile(JSON.stringify(data)),raw=`${JSON.stringify(snapshot,null,2)}\n`,digest=createHash("sha256").update(raw).digest("hex"),archiveName=`archive-${snapshot.revision}-${digest.slice(0,12)}.json`,archiveFile=path.join(path.dirname(file),"archive",archiveName),markerFile=`${file}.archive-pending.json`;
   await atomicWriteText(markerFile,`${JSON.stringify({schema:"asen.todo-archive-transaction/v1",archiveFile:archiveName,sha256:digest,revision:snapshot.revision})}\n`);
-  await write(archiveFile,snapshot);const verified=await readFile(archiveFile,"utf8");if(createHash("sha256").update(verified).digest("hex")!==digest||JSON.stringify(parseTodoFile(verified))!==JSON.stringify(snapshot))throw new Error("ASEN Todo archive verification failed; active data was preserved");
+  await atomicWriteText(archiveFile,raw);const verified=await readFile(archiveFile,"utf8");if(createHash("sha256").update(verified).digest("hex")!==digest||JSON.stringify(parseTodoFile(verified))!==JSON.stringify(snapshot))throw new Error("ASEN Todo archive verification failed; active data was preserved");
   await write(file,emptyTodoFile(snapshot.revision+1));await rm(markerFile,{force:true});
  }
  async #readSnapshot(context:TodoContext):Promise<TodoFile>{const file=this.#file(context);await preparePrivateFile(file,true);return read(file);}
