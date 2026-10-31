@@ -55,7 +55,7 @@ export function prepareWorkspaceCorrection(input:{root:string;relativePath:strin
 }
 
 /** One-use exact-file correction, invoked only after Pi's interactive user consent. */
-export function applyWorkspaceCorrection(candidate:WorkspaceCorrectionCandidate,replacement:string,hooks?:{beforePublish?:()=>void}):Readonly<{status:"updated";path:string;beforeSha256:string;afterSha256:string;head:string}>{
+export function applyWorkspaceCorrection(candidate:WorkspaceCorrectionCandidate,replacement:string,hooks?:{beforePublish?:()=>void;afterPublish?:()=>void}):Readonly<{status:"updated";path:string;beforeSha256:string;afterSha256:string;head:string;postPublicationWarning?:string}>{
  if(!candidate||!issued.has(candidate)||consumed.has(candidate))throw new Error("Workspace correction candidate is not issued or has already been consumed");
  consumed.add(candidate);
  if(typeof replacement!=="string"||replacement.includes("\0")||Buffer.byteLength(replacement,"utf8")>MAX_BYTES)throw new Error("Workspace correction replacement is invalid");
@@ -79,8 +79,19 @@ export function applyWorkspaceCorrection(candidate:WorkspaceCorrectionCandidate,
   const final=inspected(root,candidate.relativePath);
   if(final.device!==candidate.device||final.inode!==candidate.inode||hash(final.data)!==candidate.sha256)throw new Error("Workspace correction source changed before publication");
   renameSync(temp,old.target);
-  lease.verify();
-  return Object.freeze({status:"updated" as const,path:candidate.relativePath,beforeSha256:candidate.sha256,afterSha256:hash(Buffer.from(replacement,"utf8")),head:candidate.expectedHead});
+  // After rename, reporting failure without acknowledging the write would lose attribution.
+  // Post-publication drift is an explicit warning, never a false "no write happened".
+  const replacementHash=hash(Buffer.from(replacement,"utf8"));
+  let postPublicationWarning:string|undefined;
+  try{
+   hooks?.afterPublish?.();
+   lease.verify();
+   const finalPublished=inspected(root,candidate.relativePath);
+   if(hash(finalPublished.data)!==replacementHash)throw new Error("Published file changed");
+  }catch{
+   postPublicationWarning="The file was published, but final workspace verification failed; inspect Git and the file before continuing.";
+  }
+  return Object.freeze({status:"updated" as const,path:candidate.relativePath,beforeSha256:candidate.sha256,afterSha256:replacementHash,head:candidate.expectedHead,...(postPublicationWarning?{postPublicationWarning}:{})});
  }finally{
   if(fd!==undefined)try{closeSync(fd);}catch{/* preserve the original error */}
   try{unlinkSync(temp);}catch(error){if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}

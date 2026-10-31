@@ -51,6 +51,15 @@ test("concurrent file drift during publication fails closed and preserves observ
  assert.throws(()=>applyWorkspaceCorrection(candidate,"replacement\n",{beforePublish:()=>writeFileSync(join(f.root,"shared.txt"),"external\n")}),/source changed/);
  assert.equal(readFileSync(join(f.root,"shared.txt"),"utf8"),"external\n");
 });
+test("after-publication drift is reported as a committed edit with an explicit warning",t=>{
+ const f=fixture(t),candidate=prepareWorkspaceCorrection({root:f.root,relativePath:"shared.txt"});
+ const result=applyWorkspaceCorrection(candidate,"new exact contents\n",{afterPublish:()=>writeFileSync(join(f.root,"unrelated.txt"),"external change\n")});
+ assert.equal(result.status,"updated");
+ assert.match(result.postPublicationWarning??"",/file was published/);
+ assert.equal(readFileSync(join(f.root,"shared.txt"),"utf8"),"new exact contents\n");
+ assert.equal(readFileSync(join(f.root,"unrelated.txt"),"utf8"),"external change\n");
+ assert.throws(()=>applyWorkspaceCorrection(candidate,"retry\n"),/already been consumed/);
+});
 test("correction rejects unsafe paths and symlinks before permitting a writer",t=>{
  const f=fixture(t);
  for(const path of ["../outside","/etc/passwd",".git/config",".env","src\\..\\shared.txt"]){
