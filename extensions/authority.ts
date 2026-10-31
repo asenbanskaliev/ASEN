@@ -3,8 +3,7 @@ import {createHash} from "node:crypto";
 import {isAbsolute,relative,resolve,dirname} from "node:path";
 import type {ExtensionAPI} from "@earendil-works/pi-coding-agent";
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
-import { canonicalPathSync } from "../src/security/path-safety.js";
-import {hasSensitiveName} from "../src/security/primary-tool-policy.js";
+import { canonicalPathSync, hasSensitiveName } from "../src/security/path-safety.js";
 
 export interface ExactWriteReceipt{path:string;fileSha256:string;barrierFile?:string;}
 export interface ToolAuthority{repository:string;role:"explorer"|"worker"|"reviewer"|"verifier";writeSurfaces:readonly string[];agentId?:string;sessionId?:string;attributionFile?:string;exactWriteReceipt?:ExactWriteReceipt;}

@@ -3,6 +3,7 @@ import { canonicalPathSync } from "./path-safety.js";
 import path from "node:path";
 import type {ExtensionContext,ToolCallEvent,ToolCallEventResult} from "@earendil-works/pi-coding-agent";
 import {classifyNormalShellCommand} from "./normal-shell-policy.js";
+import { hasSensitiveName, sensitivePath, sensitiveName } from "./path-safety.js";
 
 export type PrimaryToolPolicyHandler=(event:ToolCallEvent,context:ExtensionContext)=>Promise<ToolCallEventResult|undefined>;
 
@@ -12,18 +13,6 @@ const fileTools=new Set(["read","edit","write","grep","find","ls"]);
 const shellTools=new Set(["bash","bash_background","monitor","asen_background_start"]);
 const denied=(reason:string):ToolCallEventResult=>({block:true,reason:`ASEN primary tool policy blocked ${reason}`});
 
-function sensitiveName(value:string):boolean{
- const name=process.platform==="win32"?value.toLowerCase():value;
- return name===".git"||name.startsWith(".env")||name.endsWith(".pem")||name.endsWith(".key")||name===".npmrc"||name===".netrc"||name===".pypirc"||name===".aws"||name===".ssh"||name==="id_rsa"||name.startsWith("id_ed25519")||name.endsWith(".p12")||name.endsWith(".pfx");
-}
-function sensitivePath(value:string):boolean{
- const normalized=value.replace(/\\/g,"/");
- return hasSensitiveName(normalized)||/\/\.docker\/config\.json$/iu.test(normalized)||/\/\.aws\/.+/iu.test(normalized)||/\/\.ssh\/.+/iu.test(normalized)||/\/\.netrc$/iu.test(normalized);
-}
-export function hasSensitiveName(value:string):boolean{
- const normalized=path.normalize(value),root=path.parse(normalized).root;
- return normalized.slice(root.length).split(path.sep).filter(Boolean).some(sensitiveName);
-}
 async function canonicalTarget(value:string,cwd:string):Promise<{lexical:string;canonical:string}>{
  if(value.length===0||value.includes("\0")||!cwd||cwd.includes("\0"))throw new Error("invalid path");
  const lexical=path.resolve(cwd,value);
@@ -90,3 +79,4 @@ export function createPrimaryToolPolicyHandler():PrimaryToolPolicyHandler{
   }catch{return denied("ambiguous or unresolvable input");}
  };
 }
+export { hasSensitiveName, sensitivePath } from "./path-safety.js";

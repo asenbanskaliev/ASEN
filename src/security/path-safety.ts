@@ -1,5 +1,6 @@
 import {lstatSync, realpathSync} from "node:fs";
 import {dirname, join} from "node:path";
+import path from "node:path";
 
 export function canonicalPathSync(lexicalTarget: string): string {
  const lexical = lexicalTarget;
@@ -26,4 +27,18 @@ export function canonicalPathSync(lexicalTarget: string): string {
 
 export async function canonicalPathAsync(lexicalTarget: string): Promise<string> {
  return canonicalPathSync(lexicalTarget);
+}
+
+
+export function sensitiveName(value:string):boolean{
+ const name=process.platform==="win32"?value.toLowerCase():value;
+ return name===".git"||name.startsWith(".env")||name.endsWith(".pem")||name.endsWith(".key")||name===".npmrc"||name===".netrc"||name===".pypirc"||name===".aws"||name===".ssh"||name==="id_rsa"||name.startsWith("id_ed25519")||name.endsWith(".p12")||name.endsWith(".pfx");
+}
+export function sensitivePath(value:string):boolean{
+ const normalized=path.normalize(value.replace(/\\/g,"/"));
+ return sensitiveName(normalized)||/\/\.docker\/config\.json$/iu.test(normalized)||/\/\.aws\/.+/iu.test(normalized)||/\/\.ssh\/.+/iu.test(normalized)||/\/\.netrc$/iu.test(normalized);
+}
+export function hasSensitiveName(value:string):boolean{
+ const normalized=path.normalize(value),root=path.parse(normalized).root;
+ return normalized.slice(root.length).split(path.sep).filter(Boolean).some(sensitiveName)||sensitivePath(normalized);
 }
