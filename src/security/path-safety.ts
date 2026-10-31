@@ -1,5 +1,5 @@
 import {lstatSync, realpathSync} from "node:fs";
-import {dirname, join, resolve} from "node:path";
+import {dirname, join} from "node:path";
 
 export function canonicalPathSync(lexicalTarget: string): string {
  const lexical = lexicalTarget;

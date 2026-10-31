@@ -29,7 +29,8 @@
     "audit:ecosystem": "node scripts/ecosystem-baseline.mjs && node scripts/validate-ecosystem-claims.mjs",
     "audit:ecosystem-candidate": "node scripts/ecosystem-candidate-report.mjs",
     "release:check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills && npm run audit:skill-parity && npm run audit:memory-parity && npm run audit:upstream-boundary && npm run audit:ecosystem && npm run build && npm run verify:pack",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json"
   },
   "pi": {
     "extensions": [

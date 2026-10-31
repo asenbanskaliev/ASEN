@@ -17,7 +17,6 @@ const testing={oneOf:[
 ]};
 const review={type:"object",additionalProperties:false,required:["kind","estimatedMinutes"],properties:{kind:{type:"string",enum:["none","ordinary","dual_explicit"]},estimatedMinutes:{type:"integer",minimum:0,maximum:100000}}};
 const unresolvedDecisions={type:"array",maxItems:64,items:{type:"string",minLength:1,maxLength:2048}};
-const text=(value:unknown):string=>typeof value==="string"?value:"";
 
 function assertExactRequest(value:unknown):asserts value is Record<(typeof planKeys)[number],unknown>{
  if(!value||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype||Object.keys(value).length!==planKeys.length||planKeys.some(key=>!Object.hasOwn(value,key)))throw new Error("ASEN plan request is incomplete; inspect the project and resolve material uncertainty before planning.");

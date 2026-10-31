@@ -1,6 +1,6 @@
 import {closeSync,constants,existsSync,fsyncSync,lstatSync,openSync,readFileSync,realpathSync,writeFileSync} from "node:fs";
 import {createHash} from "node:crypto";
-import {isAbsolute,join,relative,resolve,dirname} from "node:path";
+import {isAbsolute,relative,resolve,dirname} from "node:path";
 import type {ExtensionAPI} from "@earendil-works/pi-coding-agent";
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 import { canonicalPathSync } from "../src/security/path-safety.js";
