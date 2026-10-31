@@ -21,6 +21,8 @@ interface HandleState { closeCalls: number; closed: boolean }
 interface InstrumentOptions {
   failures?: Partial<Record<Step, Error>>;
   closeFailures?: Error[];
+  renameFailures?: Error[];
+  beforeRename?: (from: string, to: string) => Promise<void>;
   afterRename?: (from: string) => Promise<void>;
   unlink?: (path: string) => Promise<void>;
 }
@@ -30,6 +32,7 @@ function instrumentFileSystem(
   options: InstrumentOptions = {},
 ): AtomicWriteFileSystem {
   const closeFailures = [...(options.closeFailures ?? [])];
+  const renameFailures = [...(options.renameFailures ?? [])];
   return {
     async mkdir(path, settings) {
       events.push("mkdir");
@@ -63,7 +66,9 @@ function instrumentFileSystem(
     },
     async rename(from, to) {
       events.push("rename");
-      if (options.failures?.rename) throw options.failures.rename;
+      await options.beforeRename?.(from, to);
+      const failure = renameFailures.shift() ?? options.failures?.rename;
+      if (failure) throw failure;
       await fs.rename(from, to);
       await options.afterRename?.(from);
     },
@@ -217,6 +222,142 @@ test("operation failures preserve the first error and clean only the owned temp"
       assert.deepEqual(await entries(directory), ["registry.md"]);
     });
   }
+});
+
+test("Windows retries commit-stage EPERM with the same temp while preserving the destination", async () => {
+  await withTempDir(async (directory) => {
+    const destination = join(directory, "registry.md");
+    const temporary = join(directory, ".owned.tmp");
+    const eperm = Object.assign(new Error("temporarily locked"), { code: "EPERM" });
+    const events: string[] = [];
+    const handles: HandleState[] = [];
+    const renameSources: string[] = [];
+    const delays: number[] = [];
+    await fs.writeFile(destination, "old", "utf8");
+
+    await atomicWriteText(destination, "new", {
+      fileSystem: instrumentFileSystem(events, handles, {
+        renameFailures: [eperm, eperm],
+        async beforeRename(from, to) {
+          renameSources.push(from);
+          assert.equal(to, destination);
+          assert.equal(await fs.readFile(destination, "utf8"), "old");
+          assert.equal(await fs.readFile(from, "utf8"), "new");
+        },
+      }),
+      temporaryPath: () => temporary,
+      retryRuntime: {
+        platform: "win32",
+        async delay(milliseconds) {
+          delays.push(milliseconds);
+        },
+      },
+    });
+
+    assert.deepEqual(delays, [10, 20]);
+    assert.deepEqual(renameSources, [temporary, temporary, temporary]);
+    assert.equal(await fs.readFile(destination, "utf8"), "new");
+    assert.equal(events.filter((event) => event === "rename").length, 3);
+    assert.equal(events.includes("unlink"), false);
+  });
+});
+
+test("Windows preserves first-create semantics while retrying commit-stage EPERM", async () => {
+  await withTempDir(async (directory) => {
+    const destination = join(directory, "registry.md");
+    const temporary = join(directory, ".owned.tmp");
+    const eperm = Object.assign(new Error("temporarily locked"), { code: "EPERM" });
+    let destinationWasAbsent = false;
+
+    await atomicWriteText(destination, "new", {
+      fileSystem: instrumentFileSystem([], [], {
+        renameFailures: [eperm],
+        async beforeRename(_from, to) {
+          destinationWasAbsent = await fs.access(to).then(() => false, () => true);
+        },
+      }),
+      temporaryPath: () => temporary,
+      retryRuntime: { platform: "win32", async delay() {} },
+    });
+
+    assert.equal(destinationWasAbsent, true);
+    assert.equal(await fs.readFile(destination, "utf8"), "new");
+  });
+});
+
+test("Windows bounds permanent EPERM retries and cleans only the owned temp", async () => {
+  await withTempDir(async (directory) => {
+    const destination = join(directory, "registry.md");
+    const temporary = join(directory, ".owned.tmp");
+    const primary = Object.assign(new Error("permanently denied"), { code: "EPERM" });
+    const events: string[] = [];
+    const delays: number[] = [];
+    await fs.writeFile(destination, "old", "utf8");
+    await fs.writeFile(join(directory, ".foreign.tmp"), "foreign", "utf8");
+
+    await assert.rejects(
+      atomicWriteText(destination, "new", {
+        fileSystem: instrumentFileSystem(events, [], { failures: { rename: primary } }),
+        temporaryPath: () => temporary,
+        retryRuntime: {
+          platform: "win32",
+          async delay(milliseconds) {
+            delays.push(milliseconds);
+          },
+        },
+      }),
+      (error) => error === primary,
+    );
+
+    assert.deepEqual(delays, [10, 20, 40, 80, 160]);
+    assert.equal(events.filter((event) => event === "rename").length, 6);
+    assert.equal(events.at(-1), "unlink");
+    assert.equal(await fs.readFile(destination, "utf8"), "old");
+    assert.equal(await fs.readFile(join(directory, ".foreign.tmp"), "utf8"), "foreign");
+    assert.deepEqual(await entries(directory), [".foreign.tmp", "registry.md"]);
+  });
+});
+
+test("Windows does not retry non-EPERM rename failures", async () => {
+  await withTempDir(async (directory) => {
+    const primary = Object.assign(new Error("busy"), { code: "EBUSY" });
+    const events: string[] = [];
+    await assert.rejects(
+      atomicWriteText(join(directory, "registry.md"), "new", {
+        fileSystem: instrumentFileSystem(events, [], { failures: { rename: primary } }),
+        temporaryPath: () => join(directory, ".owned.tmp"),
+        retryRuntime: {
+          platform: "win32",
+          async delay() {
+            throw new Error("unexpected delay");
+          },
+        },
+      }),
+      (error) => error === primary,
+    );
+    assert.equal(events.filter((event) => event === "rename").length, 1);
+  });
+});
+
+test("non-Windows does not retry commit-stage EPERM", async () => {
+  await withTempDir(async (directory) => {
+    const primary = Object.assign(new Error("denied"), { code: "EPERM" });
+    const events: string[] = [];
+    await assert.rejects(
+      atomicWriteText(join(directory, "registry.md"), "new", {
+        fileSystem: instrumentFileSystem(events, [], { failures: { rename: primary } }),
+        temporaryPath: () => join(directory, ".owned.tmp"),
+        retryRuntime: {
+          platform: "linux",
+          async delay() {
+            throw new Error("unexpected delay");
+          },
+        },
+      }),
+      (error) => error === primary,
+    );
+    assert.equal(events.filter((event) => event === "rename").length, 1);
+  });
 });
 
 test("cleanup failure never masks a prior failure", async () => {

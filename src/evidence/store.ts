@@ -1,3 +1,5 @@
+import {claimRddDefectBinding,parseRddDefectRecord,type RddDefectBinding} from "../defects/rdd-defect-binding.js";
+import {isProxy} from "node:util/types";
 import {createHash,createHmac,timingSafeEqual,randomUUID} from "node:crypto";
 import {open,readFile,rename,unlink} from "node:fs/promises";
 import {basename,dirname,join} from "node:path";
@@ -25,7 +27,7 @@ function routeMetadata(value:RouteDecisionMetadata):RouteDecisionMetadata{
  };
  return {id:text("id"),summary:text("summary"),createdAt:text("createdAt")};
 }
-const legacyKinds=new Set(["test","review","command","audit","tdd","route-decision","work-unit","scope","rollback"]),kinds=new Set([...legacyKinds,"lifecycle-completion"]);
+const legacyKinds=new Set(["test","review","command","audit","tdd","route-decision","work-unit","scope","rollback"]),kinds=new Set([...legacyKinds,"lifecycle-completion","defect-intake"]);
 const statuses=new Set(["pass","fail","expected-fail"]);
 function sign(value:EnvelopeV1|EnvelopeV2,key:Buffer,domain=""):string{
  if(key.length<32)throw new Error("Evidence recovery requires a 32-byte secret");
@@ -37,13 +39,26 @@ function exact(value:unknown,keys:readonly string[],noun:string):Record<string,u
  return Object.fromEntries(keys.map(key=>{const descriptor=Object.getOwnPropertyDescriptor(value,key);if(!descriptor?.enumerable||!("value" in descriptor))throw new Error(`${noun} shape is invalid`);return [key,descriptor.value];}));
 }
 function array(value:unknown,noun:string):unknown[]{if(!Array.isArray(value)||Object.getPrototypeOf(value)!==Array.prototype)throw new Error(`${noun} must be an exact array`);const indexes=Array.from({length:value.length},(_,i)=>String(i)),own=Reflect.ownKeys(value);if(own.some(key=>typeof key!=="string"||key!=="length"&&!indexes.includes(key))||indexes.some(key=>!Object.hasOwn(value,key)))throw new Error(`${noun} must be an exact array`);return indexes.map(key=>{const descriptor=Object.getOwnPropertyDescriptor(value,key);if(!descriptor?.enumerable||!("value" in descriptor))throw new Error(`${noun} must be an exact array`);return descriptor.value;});}
-function candidateData(value:unknown):Candidate{const raw=exact(value,["id","repository","revision","createdAt"],"evidence candidate");for(const key of ["id","repository","revision","createdAt"] as const)if(typeof raw[key]!=="string"||!raw[key])throw new Error("Evidence recovery candidate mismatch");/* SAFETY: exact() and the loop prove the complete Candidate data shape. */return raw as unknown as Candidate;}
+function candidateData(value:unknown):Candidate{if(isProxy(value))throw new Error("Evidence candidate must be plain data");const raw=exact(value,["id","repository","revision","createdAt"],"evidence candidate");for(const key of ["id","repository","revision","createdAt"] as const)if(typeof raw[key]!=="string"||!raw[key])throw new Error("Evidence recovery candidate mismatch");/* SAFETY: exact() and the loop prove the complete Candidate data shape. */return raw as unknown as Candidate;}
+function evidenceData(value:unknown):Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">{
+ if(isProxy(value)||typeof value!=="object"||value===null)throw new Error("Los metadatos de evidencia deben ser datos planos exactos");
+ const optional=["execution","review","tdd","completion","defect"].filter(key=>Object.hasOwn(value,key));
+ // Los descriptores fijan una instantánea sin ejecutar accesores del llamante.
+ return exact(value,["id","kind","status","summary","createdAt",...optional],"evidence metadata") as unknown as Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">;
+}
+function defectId(record:RddDefectBinding):string{return `defect-intake:${createHash("sha256").update("asen.evidence.defect-intake.v1\0").update(JSON.stringify(record)).digest("hex")}`;}
 function completionId(record:unknown):string{return `lifecycle-completion:${createHash("sha256").update("asen.evidence.lifecycle-completion.v1\0").update(JSON.stringify(record)).digest("hex")}`;}
 function validateItem(value:unknown,candidate:Candidate,allowLifecycle:boolean):Evidence{
- const possible=["execution","review","tdd","completion"].filter(key=>typeof value==="object"&&value!==null&&Object.hasOwn(value,key)),raw=exact(value,["id","candidateRepository","candidateId","candidateRevision","kind","status","summary","createdAt",...possible],"evidence item");
+ const possible=["execution","review","tdd","completion","defect"].filter(key=>typeof value==="object"&&value!==null&&Object.hasOwn(value,key)),raw=exact(value,["id","candidateRepository","candidateId","candidateRevision","kind","status","summary","createdAt",...possible],"evidence item");
  if(typeof raw.id!=="string"||!raw.id||typeof raw.summary!=="string"||typeof raw.createdAt!=="string"||typeof raw.kind!=="string"||!kinds.has(raw.kind)||typeof raw.status!=="string"||!statuses.has(raw.status)||raw.candidateRepository!==candidate.repository||raw.candidateId!==candidate.id)throw new Error("Evidence recovery item mismatch");
  if(raw.kind!=="tdd"&&raw.candidateRevision!==candidate.revision||typeof raw.candidateRevision!=="string")throw new Error("Evidence recovery item mismatch");
  if(raw.completion!==undefined&&raw.kind!=="lifecycle-completion"||raw.kind==="lifecycle-completion"&&!allowLifecycle)throw new Error("Lifecycle completion is unavailable in legacy evidence");
+ if(raw.kind==="defect-intake"){
+  if(!allowLifecycle||raw.status!=="pass"||raw.execution!==undefined||raw.review!==undefined||raw.tdd!==undefined||raw.completion!==undefined||raw.defect===undefined)throw new Error("Defect intake semantics are invalid");
+  const defect=parseRddDefectRecord(raw.defect),c=defect.reproduction.candidate;
+  if(c.repository!==candidate.repository||c.id!==candidate.id||c.revision!==candidate.revision||raw.id!==defectId(defect))throw new Error("Defect intake candidate mismatch");
+  raw.defect=defect;
+ }else if(raw.defect!==undefined)throw new Error("Only defect intake may carry defect metadata");
  if(raw.execution!==undefined){const x=exact(raw.execution,["command","cwd","exitCode","startedAt","finishedAt"],"evidence execution"),command=array(x.command,"evidence command");if(!command.length||command.some(item=>typeof item!=="string"||!item)||typeof x.cwd!=="string"||!x.cwd||!Number.isInteger(x.exitCode)||typeof x.startedAt!=="string"||!x.startedAt||typeof x.finishedAt!=="string"||!x.finishedAt)throw new Error("Evidence execution semantics are invalid");}
  if(raw.review!==undefined){if(raw.kind!=="review")throw new Error("Only review evidence may carry review metadata");const review=exact(raw.review,["taskId","reviewerId","authorId"],"evidence review");if(Object.values(review).some(item=>typeof item!=="string"||!item))throw new Error("Evidence review semantics are invalid");}
  if(raw.tdd!==undefined){const t=raw.tdd as Record<string,unknown>,keys=["cycleId","stage",...(Object.hasOwn(t,"previousRevision")?["previousRevision"]:[])];exact(t,keys,"TDD metadata");}
@@ -86,11 +101,18 @@ function validateTddHistory(candidate:Candidate,items:Evidence[]):void{
 export class EvidenceStore {
  readonly #items=new Map<string,Evidence>();
  add(candidate:Candidate,evidence:Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">):Evidence{
+  evidence=evidenceData(evidence);
+  if(evidence.kind==="defect-intake"||evidence.defect!==undefined)throw new Error("Defect intake requires genuine binding");
   if(evidence.kind==="lifecycle-completion")throw new Error("Lifecycle-completion evidence requires genuine lifecycle admission");
   if(evidence.kind==="route-decision")throw new Error("Route-decision evidence requires genuine orchestration proof");
   if(evidence.status==="pass"&&(evidence.kind==="test"||evidence.kind==="tdd"))throw new Error(`Passing ${evidence.kind} evidence requires executed proof`);
   if(evidence.status==="pass"&&evidence.kind==="review")throw new Error("Passing review evidence requires authenticated reviewer proof");
   return this.#insert(candidate,evidence);
+ }
+ addDefectIntake(candidate:Candidate,proof:RddDefectBinding):Evidence {
+  const claimed=claimRddDefectBinding(proof),bound=candidateData(candidate),defect=parseRddDefectRecord(claimed),c=defect.reproduction.candidate;
+  if(c.repository!==bound.repository||c.id!==bound.id||c.revision!==bound.revision)throw new Error("Defect intake candidate mismatch");
+  return this.#insert(bound,{id:defectId(defect),kind:"defect-intake",status:"pass",summary:"Admisión de defecto verificada",createdAt:bound.createdAt,defect});
  }
  addRouteDecision(candidate:Candidate,proof:OrchestrationRouteEvidence,metadata:RouteDecisionMetadata):Evidence{
   claimOrchestrationRouteEvidence(candidate,proof);
@@ -105,6 +127,8 @@ export class EvidenceStore {
  addExecuted(candidate:Candidate,proof:ExecutedEvidence,evidence:Omit<Evidence,"candidateRepository"|"candidateId"|"candidateRevision">):Evidence{
   if(!isExecutedEvidence(proof))throw new Error("Executed evidence requires ASEN-issued execution proof");
   if(proof.candidateRepository!==candidate.repository||proof.candidateId!==candidate.id||proof.candidateRevision!==candidate.revision)throw new Error("Executed evidence candidate mismatch");
+  evidence=evidenceData(evidence);
+  if(evidence.defect!==undefined)throw new Error("Defect intake requires genuine binding");
   if(evidence.kind!=="test")throw new Error("TDD evidence requires an ordered TddCycle");
   if(evidence.status==="pass"&&proof.exitCode!==0)throw new Error("Passing executed evidence requires exit code 0");
   if(evidence.status==="expected-fail"&&proof.exitCode===0)throw new Error("Expected failing evidence requires a failing execution");
@@ -152,8 +176,8 @@ export class EvidenceStore {
   const items=array(value.items,"evidence items").map(item=>validateItem(item,bound,version===2));validateTddHistory(bound,items);
   const store=new EvidenceStore();for(const item of items){
    if(version===1&&!legacyKinds.has(item.kind))throw new Error("Lifecycle completion is unavailable in legacy evidence");
-   const itemCandidate={...bound,revision:item.candidateRevision},metadata={id:item.id,kind:item.kind,status:item.status,summary:item.summary,createdAt:item.createdAt,...(item.execution?{execution:item.execution}:{}),...(item.review?{review:item.review}:{}),...(item.tdd?{tdd:item.tdd}:{}),...(item.completion?{completion:item.completion}:{})};
-   if(item.kind==="lifecycle-completion")store.#insert(itemCandidate,metadata);else store.#restoreVerified(itemCandidate,metadata);
+   const itemCandidate={...bound,revision:item.candidateRevision},metadata={id:item.id,kind:item.kind,status:item.status,summary:item.summary,createdAt:item.createdAt,...(item.execution?{execution:item.execution}:{}),...(item.review?{review:item.review}:{}),...(item.tdd?{tdd:item.tdd}:{}),...(item.completion?{completion:item.completion}:{}),...(item.defect?{defect:item.defect}:{})};
+   if(item.kind==="lifecycle-completion"||item.kind==="defect-intake")store.#insert(itemCandidate,metadata);else store.#restoreVerified(itemCandidate,metadata);
   }
   return store;
  }

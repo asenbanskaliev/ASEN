@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "candidate": "e74780abc23825521ce8e5a5e30e0faca2790820",
+  "host": "@earendil-works/pi-coding-agent",
+  "version": "1.2.0",
+  "platform": "win32",
+  "mode": "tui-matrix",
+  "color": "disabled",
+  "widths": [
+    120,
+    80,
+    60,
+    40
+  ],
+  "results": [
+    {
+      "width": 120,
+      "phases": [
+        "agents/empty:empty-view",
+        "status/agents:fits",
+        "status/workspace:fits",
+        "status/history:fits",
+        "changes/git:fits",
+        "error-path:bounded",
+        "restart:re-rendered"
+      ],
+      "wrapped": [],
+      "rendered": [
+        " profile: default",
+        " agents: 0 running, 0 queued, 0 interrupted, 0 failed",
+        " workspace changes: 0",
+        " history: disabled (opt-in)",
+        " telemetry: disabled (opt-in) No entries.",
+        " Current Git state (read-only; separate from session attribution):",
+        " Git master 23d136d3cd58 — 0 changed — C:\\Users\\asenb\\AppData\\Local\\Temp\\asen-t10-matrix-5LE44S\\project"
+      ]
+    },
+    {
+      "width": 80,
+      "phases": [
+        "agents/empty:empty-view",
+        "status/agents:fits",
+        "status/workspace:fits",
+        "status/history:fits",
+        "changes/git:fits",
+        "error-path:bounded",
+        "restart:re-rendered"
+      ],
+      "wrapped": [],
+      "rendered": [
+        " profile: default",
+        " agents: 0 running, 0 queued, 0 interrupted, 0 failed",
+        " workspace changes: 0",
+        " history: disabled (opt-in)",
+        " telemetry: disabled (opt-in) No entries.",
+        " Current Git state (read-only; separate from session attribution):",
+        " Git master 23d136d3cd58 — 0 changed — C:\\Users\\asenb\\AppData\\Local\\Temp\\asen…"
+      ]
+    },
+    {
+      "width": 60,
+      "phases": [
+        "agents/empty:empty-view",
+        "status/agents:fits",
+        "status/workspace:fits",
+        "status/history:fits",
+        "changes/git:fits",
+        "error-path:bounded",
+        "restart:re-rendered"
+      ],
+      "wrapped": [],
+      "rendered": [
+        " profile: default",
+        " agents: 0 running, 0 queued, 0 interrupted, 0 failed",
+        " workspace changes: 0",
+        " history: disabled (opt-in)",
+        " telemetry: disabled (opt-in) No entries.",
+        " Current Git state (read-only; separate from session",
+        " Git master 23d136d3cd58 — 0 changed — C:\\Users\\asenb\\App…"
+      ]
+    },
+    {
+      "width": 40,
+      "phases": [
+        "agents/empty:empty-view",
+        "status/agents:fits",
+        "status/workspace:fits",
+        "status/history:fits",
+        "changes/git:fits",
+        "error-path:bounded",
+        "restart:re-rendered"
+      ],
+      "wrapped": [],
+      "rendered": [
+        " profile: default",
+        " agents: 0 running, 0 queued, 0 inter…",
+        " workspace changes: 0",
+        " history: disabled (opt-in)",
+        " telemetry: disabled (opt-in) No entries.",
+        " Current Git state (read-only; separate",
+        " Git master 23d136d3cd58 — 0 changed …"
+      ]
+    }
+  ],
+  "result": "PASS",
+  "wrapped": []
+}
