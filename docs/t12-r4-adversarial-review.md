@@ -23,3 +23,10 @@ The consolidated CI must pass the general and CodeGraph real-CLI suites on Linux
 At source `fddecd76188c0f0fd4b3c2dd33a98090e700682f`, a real Pi TUI performed public conflict selection and editor cancellation on Ubuntu; it did not modify the tracked file or run an AI model. The expanded follow-up candidate introduces paired negative (Escape) and positive (explicit confirmation) native UI paths on Windows/macOS/Linux. The positive path is **a hypothesis under test**, not a claim: pass criteria require a changed tracked file, an unchanged Git HEAD, a visible authorized result, a bounded session receipt and no model invocations. Post-publication same-user races and the high T09 unlink-by-path risk remain open regardless of TUI results.
 
 
+
+
+## R4-08 — Windows path spelling and native PTY cleanup (2026-10-31)
+
+The exact Windows job in run 41174921209 logged `No hay conflictos de esta sesión registrados para corregir.` after `/asen-changes resolve`; Linux and macOS passed the same native TUI scenario. Investigation identified an OS-sensitive exact-string worktree filter in `extensions/asen.ts`, following a store lookup which already allowed Windows-equivalent path spellings. The next source candidate uses the existing `sameWorkspaceIdentityPath` comparer for both sides, with a native Win32 uppercase-alias regression. A synthetic conflict now seeds from the **live Pi command context** rather than an asynchronous startup callback, making the fixture's active session identity auditable.
+
+The previous Windows failure also left native PTY handles open until the fifteen-minute workflow limit. The candidate uses an explicit failure-only watchdog, bounded process-tree cleanup on Windows and a five-minute job limit. Timeout **fails the gate**, never counts as successful interaction. This is a concrete bug fix under verification; Windows native selector/editor/approval remains **NOT PROVEN** until the exact candidate job passes. Same-user OS adversaries, automatic review acceptance and provider-backed flow remain outside this test.
