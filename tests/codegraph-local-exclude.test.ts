@@ -5,6 +5,7 @@ import {mkdtempSync,mkdirSync,readFileSync,rmSync,symlinkSync,writeFileSync} fro
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {excludeCodeGraphIndexLocally} from "../src/interaction/codegraph-local-exclude.js";
+import {createCodeGraphTool,type CodeGraphRunner} from "../src/interaction/code-intelligence.js";
 
 function setup(t:test.TestContext){
  const root=mkdtempSync(join(tmpdir(),"asen-codegraph-exclude-"));
@@ -48,4 +49,31 @@ test("Local exclusion must follow the common git directory for linked worktrees"
  const result=excludeCodeGraphIndexLocally(worktree);
  assert.equal(result.status,"added",JSON.stringify(result));
  assert.match(readFileSync(join(root,".git","info","exclude"),"utf8"),/\.codegraph\//u);
+});
+
+test("Only approved indexing may change Git-local exclude; model queries remain read-only",async t=>{
+ const {root,git}=setup(t),file=join(root,".git","info","exclude");
+ const before=readFileSync(file,"utf8");
+ const runner:CodeGraphRunner=async args=>{
+  if(args[0]==="init"){
+   const directory=join(root,".codegraph");mkdirSync(directory);
+   writeFileSync(join(directory,".gitignore"),"*\n!.gitignore\n");
+  }
+  return {stdout:"indexed",stderr:""};
+ };
+ const tool=createCodeGraphTool(runner),call=async(operation:"init"|"query"|"sync",allowed:boolean)=>
+  await tool.execute("t07-exclude",{operation,...(operation==="query"?{query:"symbol"}:{})},undefined,undefined,{
+   cwd:root,hasUI:true,ui:{confirm:async()=>allowed},
+  } as any);
+ assert.equal((await call("query",false)).details.status,"completed");
+ assert.equal(readFileSync(file,"utf8"),before,"read-only query must never edit Git metadata");
+ assert.equal((await call("init",false)).details.status,"denied");
+ assert.equal(readFileSync(file,"utf8"),before,"declined init must not edit Git metadata");
+ const init=await call("init",true);
+ assert.equal(init.details.status,"completed");
+ assert.equal((init.details as {localExclude:{status:string}}).localExclude.status,"added");
+ assert.equal(git("status","--porcelain"),"","approved init must hide its index from status");
+ assert.equal((await call("sync",false)).details.status,"denied");
+ assert.equal((await call("sync",true)).details.status,"completed");
+ assert.equal(readFileSync(file,"utf8").split(/\r?\n/u).filter(line=>line===".codegraph/").length,1);
 });
