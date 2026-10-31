@@ -1,5 +1,5 @@
 import {parentPort,workerData} from "node:worker_threads";
-import {SqliteMemoryStore} from "../src/memory/sqlite-store.ts";
+import {SqliteMemoryStore} from "../src/memory/sqlite-store.js";
 
 const gate=new Int32Array(workerData.gate);
 const store=new SqliteMemoryStore(workerData.path);

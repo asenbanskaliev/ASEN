@@ -14,7 +14,6 @@ function backupFiles(path:string):string[]{return readdirSync(dirname(path)).fil
 function version(path:string):number{const db=new DatabaseSync(path);try{return Number((db.prepare("PRAGMA user_version").get() as {user_version:number}).user_version);}finally{db.close();}}
 const cleanup=(path:string)=>rm(path,{recursive:true,force:true});
 function workerExecArgv():string[]{
- const importIndex=process.execArgv.indexOf("--import"),loader=process.execArgv[importIndex+1],typeFlag=process.execArgv.find(argument=>argument==="--experimental-strip-types"||argument==="--experimental-transform-types");
  // Workers must resolve TypeScript .js specifiers through tsx, not native strip-types.
  return ["--import","tsx"];
 }

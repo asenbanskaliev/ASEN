@@ -1,7 +1,7 @@
 import {randomUUID} from "node:crypto";
 import {closeSync,fsyncSync,openSync,readFileSync,renameSync,rmSync,writeFileSync} from "node:fs";
 import {parentPort,workerData} from "node:worker_threads";
-import {SqliteMemoryStore} from "../src/memory/sqlite-store.ts";
+import {SqliteMemoryStore} from "../src/memory/sqlite-store.js";
 
 const gate=new Int32Array(workerData.gate);
 if(workerData.mode==="holder"){

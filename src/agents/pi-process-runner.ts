@@ -85,7 +85,7 @@ export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">
 }
 
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
-const authorityDigest="29ff989dc899d4c9cd5d54ba9d2b201df7ca2cc0f084e31247fd4d10ff159244";
+const authorityDigest="35731adec8525b6043dec7e06d8c35406388bd5d61f6fc2b9ace5c6528b199dd";
 
 
 function exactWriteReceipt(value:PiProcessOptions["exactWriteReceipt"],request:AgentRequest):{path:string;fileSha256:string;barrierFile?:string}|undefined{

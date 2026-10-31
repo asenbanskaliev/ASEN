@@ -7,6 +7,6 @@ test("accepted GSP-06 closure cannot automatically spend provider quota",()=>{
   assert.match(workflow,/^  workflow_dispatch:/m);
   assert.doesNotMatch(workflow,/^  (?:pull_request|push|schedule|workflow_run):/m);
   assert.match(workflow,/inputs\.expected_sha == github\.sha/);
-  assert.match(workflow,/github\.ref == 'refs\/heads\/feat\/strict-parity-prerequisites'/);
+  assert.match(workflow,/github\.ref == [\"']refs\/heads\/feat\/strict-parity-prerequisites[\"']/);
   assert.match(workflow,/ASEN_EXPECTED_SHA: \$\{\{ inputs\.expected_sha \}\}/);
 });

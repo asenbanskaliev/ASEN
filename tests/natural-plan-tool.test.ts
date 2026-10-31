@@ -40,7 +40,7 @@ test("registered natural intake preserves controlled command routing and instruc
  const cases=[
   {name:"direct primary",taskIdentity:"parity-direct",route:"direct",taskRoles:["primary"],delegatedRoles:[],facts:{...request(),instruction:"Inspect the bounded form behavior without changing it",writes:[],testing:{kind:"n_a",reason:"Read-only inspection"}}},
   {name:"material clarification",taskIdentity:"parity-clarify",route:"plan",taskRoles:["clarifier"],delegatedRoles:[],facts:{...request(),instruction:"Update the form while preserving its current normalization contract",unresolvedDecisions:["Should surrounding whitespace be rejected or normalized?"]}},
-  {name:"explicit coordinated review",taskIdentity:"parity-review",route:"orchestrate",taskRoles:["worker","reviewer","verifier"],delegatedRoles:["worker","reviewer","verifier"],facts:{...request(),instruction:"Implement the bounded form change with explicit coordinated review",scope:{kind:"known",expectedPaths:["src/form.ts","src/form-rules.ts","tests/form.test.ts","docs/form.md"]},review:{kind:"dual_explicit",estimatedMinutes:10}}},
+  {name:"explicit coordinated review",taskIdentity:"parity-review",route:"orchestrate",taskRoles:["worker","reviewer","reviewer","verifier"],delegatedRoles:["worker","reviewer","reviewer","verifier"],facts:{...request(),instruction:"Implement the bounded form change with explicit coordinated review",scope:{kind:"known",expectedPaths:["src/form.ts","src/form-rules.ts","tests/form.test.ts","docs/form.md"]},review:{kind:"dual_explicit",estimatedMinutes:10}}},
   {name:"verification",taskIdentity:"parity-verify",route:"verify",taskRoles:["verifier"],delegatedRoles:["verifier"],facts:{...request(),instruction:"Verify the completed form behavior independently",intent:"verification",scope:{kind:"known",expectedPaths:[]},writes:[]}},
  ] as const;
  for(const item of cases)await t.test(item.name,async()=>{
@@ -121,8 +121,8 @@ test("natural-language plan request persists the real planner output without aut
   const context={cwd:process.cwd(),sessionManager:{getSessionId:()=>"natural-plan-session"},ui:{notify(){}}};
   const result=await tool.execute("call",requestFacts,undefined,undefined,context);
   const persisted=await todos.list({sessionId:"natural-plan-session",projectId:process.cwd()});
-  assert.equal(persisted.length,3);
-  assert.deepEqual(persisted.map(row=>row.plan?.role),["worker","reviewer","verifier"]);
+  assert.equal(persisted.length,4);
+  assert.deepEqual(persisted.map(row=>row.plan?.role),["worker","reviewer","reviewer","verifier"]);
   assert.ok(persisted.every(row=>row.current.state==="planned"));
   assert.ok(persisted.find(row=>row.plan?.role==="worker")?.plan?.candidate?.revision);
   assert.equal(result.details.execution.started,false);
