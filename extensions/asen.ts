@@ -403,11 +403,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     }catch(error){const message=`Research probe failed: ${error instanceof Error?error.message:String(error)}`; ctx?.ui?.notify?.(message,"error"); return [message];}
   }});
   pi.registerCommand?.("asen-palette",{description:"Open a grouped read-only ASEN command palette",handler:async(_args:any,ctx:any)=>{
-    const labels=ASEN_COMMAND_CATALOG.map(c=>`${c.name} (${c.group})${c.implemented?"":" [surface pending]"}`);
-    if(typeof ctx?.ui?.select !== "function"){ctx?.ui?.notify?.(labels.join("\n"),"info");return;}
-    const selected=await ctx.ui.select("ASEN command palette",labels,{signal:ctx.signal});
+    const descriptions={asen:"Show harness status", "asen-workflow":"Route ODD/SDD workflow", "asen-route":"Plan route with ODD facts", "asen-plan":"Plan tasks from ODD facts", "asen-review":"Review a scoped request or workspace", "asen-skill-registry":"Refresh skill registry", "asen-profiles":"Show/apply model profiles", "asen-persona":"Select professional/neutral persona", "asen-customize":"Show customization surface", "asen-telemetry":"Show telemetry posture", "asen-banner":"Show startup banner status", "asen-changes":"Attributed Git changes / resolve", "asen-agents":"Show active agents", "asen-todos":"Task progress", "asen-history":"Prompt history", "asen-usage":"Usage and consent", "asen-stats":"Local usage aggregate", "asen-memory":"Semantic memory operations", "asen-status":"Bounded status", "asen-doctor":"Diagnostics", "asen-authority-status":"Authority state", "asen-research-probe":"Opt-in web probe"} as Record<string,string>;
+    const lines=[...ASEN_COMMAND_CATALOG].sort((a,b)=>a.group===b.group?a.name.localeCompare(b.name):a.group.localeCompare(b.group)).map(c=>`${c.group}: ${c.name} - ${descriptions[c.name]||"operator command"}`);
+    const labels=[...new Set(ASEN_COMMAND_CATALOG.map(c=>c.group))].sort().map(group=>`=== ${group.toUpperCase()} ===`).concat("----").concat(lines);
+    if(typeof ctx?.ui?.select !== "function"){ctx?.ui?.notify?.(lines.join("\n"),"info");return;}
+    const selected=await ctx.ui.select("ASEN visual palette",labels,{signal:ctx.signal});
     if(!selected)return;
-    ctx.ui.notify(`Command selected: ${selected.replace(/ \(.*$/,"")}. Run the matching /asen-* command to execute it.`,"info");
+    ctx.ui.notify(`Selected palette entry: ${selected.replace(/.*: /,"").replace(/ - .*/,"")}`, "info");
   }});
   registerData("asen-customize",{description:"Report ASEN customization surfaces and their current owner commands without changing configuration",handler:()=>({ customize_surfaces:[{name:"asen-profiles",role:"model and routing profiles"},{name:"asen-persona",role:"reply tone and persona"},{name:"asen-history",role:"local task/session history"},{name:"asen-usage",role:"runtime usage and accounting"},{name:"asen-stats",role:"Pi history aggregates"},{name:"asen-workflow",role:"ODD/SDD routing evidence"}], implemented:true, note:"No separate global customize datastore exists; these supported surfaces are the customization contract."})});
   registerData("asen-telemetry",{description:"Report ASEN telemetry status and where to act without changing consent",handler:()=>({telemetry:"managed through asen-usage (status, preview, enable, disable)",related_commands:["asen-usage","asen-stats","asen-commands"],implemented:true,note:"Telemetry state is not split into a second global screen in this shell; the same lifecycle entry points own the state."})});
