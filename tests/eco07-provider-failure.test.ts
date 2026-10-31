@@ -84,7 +84,7 @@ test("ECO-07 exact-SHA workflow uses NVIDIA only and supports a guarded branch r
  assert.ok(compact.includes("ASEN_EXPECTED_SHA: ${{ inputs.expected_sha || github.sha }}"));
  assert.ok(compact.includes("test \"$ASEN_EXPECTED_SHA\" = \"$GITHUB_EVENT_SHA\""));
  assert.ok(compact.includes("git ls-remote origin"));
- assert.ok(workflow.includes("actions/upload-artifact@v6"));
+ assert.ok(workflow.includes("actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3"));
  assert.ok(workflow.includes("eco07-nvidia-recovery-${{ inputs.expected_sha || github.sha }}-${{ inputs.os || 'ubuntu-24.04' }}"));
  assert.ok(!compact.includes("pull_request:"));
 });

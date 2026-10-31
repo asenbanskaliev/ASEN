@@ -57,7 +57,7 @@ await test("runtime evidence keeps its trigger, pinning, offline, and permission
   assert.notEqual(lineIndex("contents: read"), -1);
   assert.equal(workflow.includes("contents: write"), false);
 
-  assert.match(workflow, /uses: actions\/checkout@v7[\s\S]*?ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
+  assert.match(workflow, /uses: actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\.1\.6[\s\S]*?ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
   assert.match(workflow, /npm install -g --ignore-scripts @earendil-works\/pi-coding-agent@1\.2\.0/);
   assert.match(workflow, /PI_OFFLINE: "1"/);
   assert.match(workflow, /PI_TELEMETRY: "0"/);
