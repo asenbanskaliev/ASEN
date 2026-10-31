@@ -134,6 +134,8 @@ export interface ManagedUninstallReport{
 export interface ManagedUninstallHooks{
  /** Deterministic test seam: simulate another same-user process changing a path after inspection. */
  readonly beforeOwnedFileRemoval?:(target:string)=>Promise<void>;
+ /** Test-only interleaving before a recognized managed current-selector is removed. */
+ readonly beforeSelectorRemoval?:(target:string)=>Promise<void>;
 }
 function sameUninstallIdentity(left:{dev:number;ino:number;birthtimeMs:number},right:{dev:number;ino:number;birthtimeMs:number}):boolean{
  return left.dev===right.dev&&left.ino===right.ino&&left.birthtimeMs===right.birthtimeMs;
@@ -222,9 +224,27 @@ export async function uninstallManaged(request:Readonly<{prefix:string;confirmed
    await rmdirIfEmpty(versionRoot,retained);
   }
   await rmdirIfEmpty(path.join(managedRoot,"versions"),retained);
-  const selector=path.join(managedRoot,"current"),selectorBytes=await readFile(selector).catch(()=>undefined);
-  if(selectorBytes&&records.versions.some(item=>selectorBytes.equals(Buffer.from(item.version+"\n"))))await unlink(selector);
-  else if(selectorBytes)retained.push(selector);
+  // The current selector is an ordinary ASEN-owned file, not an arbitrary pathname.
+  // Use the same no-follow descriptor, exact bytes and inode checks as installed files.
+  // A symlink must not even be read, let alone unlinked as a recognized selector.
+  const selector=path.join(managedRoot,"current");
+  const selectorStat=await lstat(selector).catch(error=>{
+   if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;
+   throw error;
+  });
+  if(selectorStat){
+   let removed=false;
+   for(const version of records.versions){
+    const bytes=Buffer.from(version.version+"\n");
+    const selectorHooks=request.hooks?.beforeSelectorRemoval
+      ?{beforeOwnedFileRemoval:request.hooks.beforeSelectorRemoval}:undefined;
+    const outcome=await removeOwnedFile(managedRoot,"current",{
+     size:bytes.length,sha256:createHash("sha256").update(bytes).digest("hex"),
+    },selectorHooks);
+    if(outcome==="removed"||outcome==="absent"){removed=true;break;}
+   }
+   if(!removed)retained.push(selector);
+  }
   await rmdirIfEmpty(path.join(managedRoot,"staging"),retained);
   // Ownership records are the only proof needed to resume, so they stay while anything remains.
   if(retained.length===0)for(const name of ["managed-versions.json","managed-install.json"])await unlink(path.join(managedRoot,name)).catch(error=>{if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;});
