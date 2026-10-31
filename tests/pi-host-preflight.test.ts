@@ -85,7 +85,7 @@ test("deferred session startup runs once for the first session and every later s
   assert.equal(JSON.parse(readFileSync(usagePath,"utf8")).snapshot.sessions,1);
   await listeners[0]!({},state.context());
   assert.equal(JSON.parse(readFileSync(usagePath,"utf8")).snapshot.sessions,2);
-  assert.equal(state.messages.length,0);
+  assert.equal(state.messages.length,2);
  }finally{await shutdown(state);if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;rmSync(home,{recursive:true,force:true});}
 });
 

@@ -135,7 +135,7 @@ export class Dispatcher {
    if(controller.signal.aborted){const pending=this.lifecycle?.cancelled(request.id,result.output);if(isPromise(pending))await pending;terminalState=true;lifecycleRunning=false;return {id:request.id,ok:false,output:"Cancellation requested; completion was not accepted"};}
    const terminal=acceptedResult.ok?this.lifecycle?.completed(request.id,acceptedResult):this.lifecycle?.failed(request.id,acceptedResult.output);if(isPromise(terminal))await terminal;
    terminalState=true;lifecycleRunning=false;return acceptedResult;
-  } catch(error){if(!terminalState){try{if(controller.signal.aborted)await this.lifecycle?.cancelled(request.id,error instanceof Error?error.message:String(error));else if(lifecycleRunning)await this.lifecycle?.failed(request.id,error instanceof Error?error.message:String(error));else await this.lifecycle?.failed(request.id,error instanceof Error?error.message:String(error));}catch{/* Preserve the original dispatch failure when terminal persistence also fails. */}}throw error;
+  } catch(error){ if(!terminalState){try{if(controller.signal.aborted)await this.lifecycle?.cancelled(request.id,error instanceof Error?error.message:String(error));else if(lifecycleRunning)await this.lifecycle?.failed(request.id,error instanceof Error?error.message:String(error));else await this.lifecycle?.failed(request.id,error instanceof Error?error.message:String(error));}catch{/* Preserve the original dispatch failure when terminal persistence also fails. */}}throw error;
   } finally {writerLease?.release();this.#controls.delete(request.id);retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);if(grant){const i=this.#active.indexOf(grant);if(i>=0)this.#active.splice(i,1);}if(acquired)this.#release();}
  }
 }
