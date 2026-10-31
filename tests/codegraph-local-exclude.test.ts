@@ -61,7 +61,7 @@ test("Only approved indexing may change Git-local exclude; model queries remain 
   }
   return {stdout:"indexed",stderr:""};
  };
- const tool=createCodeGraphTool(runner),call=async(operation:"init"|"query"|"sync",allowed:boolean)=>
+ const tool=createCodeGraphTool(runner),call=async(operation:"init"|"query"|"sync",allowed:boolean):Promise<any>=>
   await tool.execute("t07-exclude",{operation,...(operation==="query"?{query:"symbol"}:{})},undefined,undefined,{
    cwd:root,hasUI:true,ui:{confirm:async()=>allowed},
   } as any);
