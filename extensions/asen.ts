@@ -31,7 +31,7 @@ import {findPotentialWorkspaceConflicts,visibleWorkspaceConflictRows,visibleWork
 import {readProfilesFile,mutateProfilesFile} from "../src/runtime/profile-store.js";
 import {globalRuntimeRoutingFacts,resolveRuntimeRoute,setActiveProfile,type ProfileLayer,type RuntimeProfilesFile} from "../src/runtime/profiles.js";
 import {canonicalProfilePartition,captureSessionProfile,clearSessionProfiles,selectSessionProfile,resetSessionProfile,type ProfileSessionIdentity,type SessionProfileSnapshot} from "../src/runtime/session-profile-binding.js";
-import {ASEN_PERSONA_STYLE_SECTION,ASEN_PERSONA_USAGE,personaConfigPaths,personaStyleText,resolvePersonaStyle,selectPersonaStyle,type PersonaStyle} from "../src/runtime/persona.js";
+import {ASEN_PERSONA_STYLE_SECTION,ASEN_PERSONA_USAGE,isPersonaStyle,personaConfigPaths,personaStyleText,resolvePersonaStyle,selectPersonaStyle,type PersonaStyle} from "../src/runtime/persona.js";
 import {parseHistoryStore,emptyHistoryStore} from "../src/runtime/history-store.js";
 import {parseUsageFile,emptyUsageFile} from "../src/runtime/usage-store.js";
 import {runHistoryCommand,recordHistoryInput,type HistoryCommandResult} from "../src/runtime/history-command.js";
@@ -554,7 +554,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   }});
   registerData("asen-persona",{description:"Show or select the ASEN communication style",handler:async(args:string|undefined,ctx:CommandContext)=>{
    const input=(args??"").trim();
-   if(input!==""&&input!=="professional"&&input!=="neutral")return ASEN_PERSONA_USAGE;
+   if(input!==""&&!isPersonaStyle(input))return ASEN_PERSONA_USAGE;
    let files:Awaited<ReturnType<typeof personaFiles>>;try{files=await personaFiles(ctx);}catch{return {style:"professional",source:"default",available:false};}
    if(input==="")try{return await resolvePersonaStyle(files.globalFile,files.projectFile);}catch{return {style:"professional",source:"default",available:false};}
    return selectPersonaStyle(files.globalFile,files.projectFile,input as PersonaStyle);

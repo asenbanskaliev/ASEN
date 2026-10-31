@@ -8,6 +8,7 @@ import {createAsenExtension} from "../extensions/asen.js";
 const schema="asen.persona/v1";
 const professional="Use a professional, direct, and respectful communication style. Keep responses clear and concise.";
 const neutral="Use a neutral, direct, and concise communication style.";
+const forbidden=new RegExp(["Gen"+"tleman","permission","authority","tool","model","thinking"].join("|"),"iu");
 
 type RegisteredCommand={description:string;handler:(args?:string,context?:any)=>unknown};
 function publicHost(){
@@ -100,12 +101,23 @@ test("invalid persona input leaves state, counters, routing, tools and confirmat
  const planFacts=JSON.stringify({taskIdentity:"persona-preserves-routing",instruction:"Change only docs/example.md",intent:"implementation",scope:{kind:"known",expectedPaths:["docs/example.md"]},writes:[{path:"docs/example.md",changeKind:"documentation"}],riskOperations:[],session:{estimatedMinutes:10,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:5},unresolvedDecisions:[]});
  const route=async()=>{const value=JSON.parse(String(await host.commands.get("asen-plan")!.handler(planFacts,ctx)));return value.executablePlan.tasks.map((item:any)=>({role:item.role,model:item.model,thinking:item.thinking,writeSurfaces:item.writeSurfaces}));};
  const routeBefore=await route(),noticeBefore=notices.length;
- assert.equal(await command.handler("unknown-persona",ctx),"Usage: /asen-persona [professional | neutral]");
- assert.equal(await command.handler("neutral extra",ctx),"Usage: /asen-persona [professional | neutral]");
+ assert.equal(await command.handler("unknown-persona",ctx),"Usage: /asen-persona [professional | neutral | simple]");
+ assert.equal(await command.handler("neutral extra",ctx),"Usage: /asen-persona [professional | neutral | simple]");
  assert.deepEqual({global:await readFile(f.globalFile),project:await readFile(f.projectFile),profiles:await readFile(profilesFile),usage:await readFile(usageFile)},{global:before.global,project:before.project,profiles:before.profiles,usage:before.usage});
  assert.equal(notices.length,noticeBefore+2,"invalid public commands follow the existing one-notification-per-command convention");
  const noticesBeforeRouteCheck=notices.length;assert.deepEqual(await route(),routeBefore);assert.equal(notices.length,noticesBeforeRouteCheck+1,"the existing plan command keeps its notification convention");
  assert.deepEqual([...host.events.keys()].sort(),before.events);assert.deepEqual([...host.tools.keys()].sort(),before.tools);
  assert.equal(confirms.value,0,"persona selection and invalid input must not cross permission confirmations");
  assert.equal((await promptSections(host.events,ctx)).asen_persona_style,professional,"invalid input cannot change the effective project style");
+});
+
+test("simple persona selects a plain-language style that is short, self-contained and free of internal vocabulary",async t=>{
+ const f=await fixture(t),host=publicHost();
+ createAsenExtension({homeDir:()=>f.home,packageRoot:f.root})(host.pi as any);
+ const command=host.commands.get("asen-persona");assert.ok(command,"public persona command is required");
+ assert.deepEqual(await command.handler("simple",context(f.project)),{style:"simple",source:"global",available:true});
+ assert.deepEqual(JSON.parse(await readFile(f.globalFile,"utf8")),{schema,style:"simple"});
+ const text=(await promptSections(host.events,context(f.project))).asen_persona_style??"";
+ assert.match(text,/never programmed/u);assert.match(text,/everyday words/u);assert.match(text,/real-life example/u);
+ assert.doesNotMatch(text,forbidden);assert.ok(text.length<1200,"the injected style is paid on every turn and must stay small");
 });
