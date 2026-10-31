@@ -321,3 +321,24 @@ Decision: T10 keeps PARTIAL until (a) CI on the exact auto-pass SHA is fully gre
 
 Risk: item 6 (all TUI-width measurements are host-dependent; re-measure on Pi upgrade) and item 1 (deliverability of notification delivery without durable ack across daemon restart).
 
+
+### T10-8 — local integration witness (single host, self-only)
+
+Work unit: bundled all focused verification of the current T10 delta into one reproducible record, so the ship state is auditable even without CI on the current SHA.
+
+Candidate SHA: e74780a (branch feat/t12-integrated-acceptance). Host: Windows, Node 24.15.0, Pi @earendil-works 1.2.0.
+
+Record (C:\Users\asenb\AppData\Local\Temp\asen-t10-8\integrated-report.log):
+- `node --import tsx --test tests/t10-responsive-matrix.test.ts tests/t10-workspace-roots.test.ts tests/session-notifications.test.ts tests/responsive-layout.test.ts` = EXIT_TESTS=0
+- `npm run typecheck` = EXIT_TC=0
+- `npm run audit:parity` = EXIT_PARITY=0 (500 registry IDs, 350 P0 contracts, six-pass 6/6, reverse-audit clean)
+- `npm run audit:skills` = EXIT_SKILLS=0 (27 PASS)
+- `npm run audit:memory-parity` = EXIT_MEMPARITY=0 (PASS, 2 targets, 7 sources)
+- `node scripts/t10-real-pi-tui-matrix.mjs 120,80,60,40` = EXIT_T10MATRIX=0, `result=PASS, wrapped=[]` at all 4 widths with NO_COLOR on the real Pi host.
+
+Monitor tests (31/31) and full test suite previously pass in this candidate's ancestors (only fast checks re-run here; full suite was captured in the T09 memo: 1714 tests, 1692 pass, 4 env failures unrelated to these units).
+
+No new code changes in this commit; only the integration witness.
+
+Risk remains item 6 (host-dependent). T10 stays PARTIAL until (a) independent signature and (b) CI multi-OS on the exact SHA. Independent evidence unreachable this session (subagent blocked).
+
