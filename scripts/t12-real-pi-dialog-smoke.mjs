@@ -60,6 +60,24 @@ let child,log="",phase="waiting-for-session",timedOut=false,exitCode,signal=null
 const events=[];
 const receiptPath=join(repo,`t12-real-pi-tui-${scenario}.json`);
 const schedule=(fn,ms=320)=>setTimeout(fn,ms);
+// A native Windows PTY may keep the Node event loop alive even after a failed assertion.
+// The outer watchdog never counts as success: it records failure and terminates the
+// disposable child process tree before returning a non-zero exit to Actions.
+const hardWatchdog=setTimeout(()=>{
+ const failure={schemaVersion:1,candidate:expected,host:"@earendil-works/pi-coding-agent",
+  platform:process.platform,scenario,phase,events,timedOut:true,result:"FAIL",
+  reason:"Native PTY child did not settle within the bounded test budget",
+  logSha256:createHash("sha256").update(log).digest("hex")};
+ try{writeFileSync(receiptPath,JSON.stringify(failure,null,2)+"\\n");}catch{}
+ console.error("T12_NATIVE_PTY_WATCHDOG",JSON.stringify({scenario,phase,events}));
+ if(child)try{
+  if(process.platform==="win32"&&Number.isSafeInteger(child.pid)&&child.pid>0)
+   execFileSync("taskkill",["/PID",String(child.pid),"/T","/F"],{timeout:6000,windowsHide:true,stdio:"ignore"});
+  else child.kill();
+ }catch{/* The runner handles any surviving disposable process. */}
+ process.exit(124);
+},105_000);
+hardWatchdog.unref();
 try{
  prepareDarwinPtyHelper();
  const pty=await import("node-pty");
@@ -130,6 +148,7 @@ try{
  writeFileSync(receiptPath,JSON.stringify(failure,null,2)+"\n");
  process.exitCode=1;
 }finally{
+ clearTimeout(hardWatchdog);
  if(child&&!exited)try{child.kill();}catch{/* Best-effort cleanup after a failed interactive run. */}
  try{rmSync(temporary,{recursive:true,force:true,maxRetries:8,retryDelay:100});}catch(error){console.error("T12 cleanup warning",String(error));process.exitCode=1;}
 }
