@@ -229,3 +229,20 @@ Not admitted: no exact-SHA CI, no Linux/macOS execution of the POSIX symlink sce
 Self-audit of T09-U12 (the `subagent` tool is denied in this runtime, so no independent verifier could run; this is an author self-audit and must never be cited as sign-off): the safety property holds — the only `unlink` on a managed file is `unlink(staged)` after `sameUninstallIdentity(held,moved)` — and the function is module-private with two call sites, both in `uninstallManaged`. Four advisories were recorded rather than fixed: a preserved object yields both the vanished original path and its staged path in `retained`; `beforeOwnedFileUnlink` is not wired for the current-selector path, so that scenario has no seam; an exception after quarantine creation (for example a failing `unlink(staged)`) leaves the `.removal-*` directory behind; and a preserved quarantine had no recovery regression until the `a preserved removal keeps the install recoverable and a later uninstall can finish` test was added, which now passes locally on Windows.
 
 Local environment failures observed while running the full check on this workstation, unrelated to this unit: four tests fail in `tests/setup.test.ts` and `tests/review-view.test.ts` with `EPERM` from `symlink` (Windows privilege) and from `rm` of a temp directory. Neither file imports `managed-lifecycle`, and both reproduce when run alone, so they are environment failures on this machine, not regressions from this unit. They are not evidence of a passing suite and must not be reported as one.
+
+### T10-7 — views respect the Pi host content budget
+
+Work unit: the Pi 1.2 transcript does not grant the full terminal width to command output; a row ASEN rounds up to the terminal width is wrapped onto the next line and loses its truncation marker. `terminalColumns()` in `extensions/asen.ts` now passes through `hostContentColumns()` of `src/runtime/responsive-layout.ts`, which reserves 3 columns (PI_TRANSCRIPT_RESERVE=3, measured empirically: 37 usable at 40, intact at 120/80/60). `layoutMode` and `truncateForTerminal` still key off the real measurement.
+
+Files: `src/runtime/responsive-layout.ts`, `extensions/asen.ts`, `tests/t10-responsive-matrix.test.ts`, `scripts/t10-real-pi-tui-matrix.mjs`, `.github/workflows/ci.yml` (job step added), `docs/t10-completion-plan.md`.
+
+Unit evidence: `tests/responsive-layout.test.ts` + `tests/t10-responsive-matrix.test.ts` = 10 pass / 0 fail; eight matrix cases x 4 widths bounded to (<= 117 / 77 / 57 / 37 visible columns respectively); empty views produce no rows; graphemes, combining marks and emoji ZWJ remain whole; controls replaced, never forwarded; `hostContentColumns` clamps at one column.
+
+Integrated evidence: `scripts/t10-real-pi-tui-matrix.mjs` drove real Pi 1.2.0 on a native PTY at 120/80/60/40 with `NO_COLOR=1`, running `/asen-status`, `/asen-agents` (empty view), `/asen-changes`, a usage error (`/asen-changes bogus` produces a bounded message), an Escape and a re-render of `/asen-status`, with no row wrapping (`result: PASS, wrapped: []`). `scripts/t12-real-pi-dialog-smoke.mjs` remains the witness for selection, editor and confirm/cancel.
+
+Keyboard: no new bindings were added. Views are `registerData` results inside Pi's command block; arrows select, Enter confirms, Escape cancels, diffs open through Pi's own editor/tooling. Documented in `docs/t10-completion-plan.md`.
+
+Owner authorization: on 2026-10-31 the owner explicitly requested commit and push for this unit (T10-7). Commit: c5065e9 on feat/t12-integrated-acceptance (functional changes).
+
+Not admitted: no independent verification (`subagent` still denied in this runtime; self-audit only), no exact-SHA CI for this commit yet, and R4-04 / R4-06 / R4-05 remain open. T10 stays PARTIAL. Risk: item 6 (delivery/environment — terminal width assumption embedded in shipped code; the constant must be re-measured on Pi updates).
+
