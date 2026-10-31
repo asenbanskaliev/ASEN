@@ -7,15 +7,17 @@ on:
         required: true
         type: string
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: gsp06-pi-free-${{ inputs.expected_sha }}
   cancel-in-progress: false
 jobs:
-  gsp06-pi-free:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && inputs.expected_sha == github.sha
+  execute:
+    if: github.event_name == "workflow_dispatch" && github.ref == "refs/heads/feat/strict-parity-prerequisites" && inputs.expected_sha == github.sha
     runs-on: ubuntu-24.04
     timeout-minutes: 12
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -58,6 +60,22 @@ jobs:
           path: registry/evidence/ecosystem/eco05-pi-model.json
           if-no-files-found: error
           retention-days: 30
+  publish-receipt:
+    name: Publish guarded receipt only
+    needs: execute
+    if: needs.execute.result == "success" && github.ref == "refs/heads/feat/strict-parity-prerequisites" && inputs.expected_sha == github.sha
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/download-artifact@v6
+        with:
+          name: eco05-pi-model-${{ inputs.expected_sha }}
+          path: registry/evidence/ecosystem
       - name: Publish ECO-05 model receipt without overwriting concurrent branch updates
         env:
           EXPECTED_SHA: ${{ inputs.expected_sha }}
@@ -69,6 +87,6 @@ jobs:
           test "$(git diff --cached --name-only)" = "registry/evidence/ecosystem/eco05-pi-model.json"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
           git commit -m "test(eco05): record authenticated Pi model evidence"
           git push origin "HEAD:refs/heads/$GH_REF_NAME"
