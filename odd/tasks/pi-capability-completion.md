@@ -263,3 +263,28 @@ Not admitted: no independent verification; the host of the verification run cann
 Commit: 8688665 on feat/t12-integrated-acceptance.
 Auto-audit note: discovery was validated against a real local repository and a linked worktree; the helper returns an empty list on Git failure or missing exec, so a missing worktree command cannot wedge the command. No subprocess is left behind past the bounded timeout. This is a documented self-audit, not independent admission.
 
+
+### T10-6 — bus de notificaciones por identidad (slice bounded)
+
+Work unit: se reescribio `src/runtime/session-notifications.ts` para cumplir el contrato documentado en T10-6 que la version anterior violaba de facto: dedupe por identidad del evento, no por texto; TTL; cupo; acuse; metadatos eventId/sourceId/createdAt/expiresAt/acknowledged; replay que no revival.
+
+Antes: el bus generaba `id = sessionId:kind:size+1` (numeric), dedupe-aba por `sessionId+kind+message` cuando no acknowledged (esto colapsaba mensajes distintos que por azar fueran iguales y permitia re-emitir identidades colapsadas), sin TTL ni cupo, y `replay` simplemente listaba. Los 4 items altamente integrados prometidos (perfiles por rol, shutdown cleanup, doble evento mismo id/texto, TL/TTL+ack+fallo de renderer) quedan en cola para la siguiente pasada porque este runtime aun no enlaza profile binding con la extencion Pi.
+
+Files: `src/runtime/session-notifications.ts`, `tests/session-notifications.test.ts` (7 tests, all pass).
+
+Tests:
+- dedup por fuente vs texto (dos sourceId iguales se colapsan, incluso con mensajes distintos; identidades distintas sobreviven aunque el texto coincida)
+- aislamiento por sesion y kind
+- acknowledged + TTL: acknowledged y expirados salen de list/replay
+- cupo excedido lanza y no destruye el evento original
+- ack distinto/foreign rechazos
+- metadatos de identidad y expiracion
+- constructor rechaza ttl/capacity invalidos
+
+Ci evidence (local): 7 pass / 0 fail; typecheck limpio. No consumers inyectados al repo aun.
+
+Not admitted: sin verificacion independiente; sin integracion con Pi/extension; T10 sigue PARTIAL. Risk: item 3 (logica compartida, notification identity ahora es una interfaz para consumidores que podrian asumir el numeric id viejo). Costo de romper compat: nulo — SessionNotificationBus solo la testaba.
+
+Commit: be76084 on feat/t12-integrated-acceptance.
+Auto-audit note: cambio breaking del `id` semantico se documenta. Consumers futuros deben usar `eventId` (que NO cambia por silencio) para dedup canonico. Self-audit, no admission.
+
