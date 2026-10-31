@@ -1,6 +1,6 @@
 import {execFileSync} from "node:child_process";
 import {constants,closeSync,fsyncSync,fstatSync,lstatSync,openSync,readSync,realpathSync,writeSync} from "node:fs";
-import {dirname,isAbsolute,join,relative,resolve} from "node:path";
+import {dirname,isAbsolute,join,resolve} from "node:path";
 
 const PATTERN=".codegraph/";
 const EQUIVALENT=new Set([".codegraph",".codegraph/","/.codegraph","/.codegraph/"]);
@@ -30,7 +30,7 @@ export function excludeCodeGraphIndexLocally(root:string):CodeGraphLocalExclude{
   const raw=git(root,"path"),file=isAbsolute(raw)?resolve(raw):resolve(root,raw);
   const parent=dirname(file),canonicalParent=realpathSync.native(parent);
   const commonInfo=join(common,"info"),ordinary=lstatSync(parent);
-  if(canonicalParent!==commonInfo||!ordinary.isDirectory()||ordinary.isSymbolicLink()||relative(common,file)!=="info"+(process.platform==="win32"?"\\":"/")+"exclude")
+  if(canonicalParent!==commonInfo||!ordinary.isDirectory()||ordinary.isSymbolicLink())
    return failure("Git exclusion path is not the ordinary repository-local info/exclude file");
   let info;
   try{info=lstatSync(file);}
@@ -49,7 +49,12 @@ export function excludeCodeGraphIndexLocally(root:string):CodeGraphLocalExclude{
   const held=fstatSync(fd),current=lstatSync(file);
   if(!held.isFile()||!current.isFile()||current.isSymbolicLink()||!sameFile(held,current)||held.size>MAX_BYTES)return failure("Git exclusion file identity changed");
   const buffer=Buffer.alloc(MAX_BYTES+1);
-  const count=readSync(fd,buffer,0,buffer.length,0);
+  let count=0;
+  while(count<buffer.length){
+   const bytes=readSync(fd,buffer,count,buffer.length-count,count);
+   if(bytes===0)break;
+   count+=bytes;
+  }
   if(count>MAX_BYTES||buffer.subarray(0,count).includes(0))return failure("Git exclusion file is oversized or malformed");
   const original=buffer.subarray(0,count).toString("utf8");
   if(original.split(/\r?\n/u).some(line=>EQUIVALENT.has(line.trim())))return {status:"present",path:file};
