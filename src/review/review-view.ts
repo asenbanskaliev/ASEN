@@ -2,7 +2,6 @@ import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {chmodSync,lstatSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmdirSync,unlinkSync,writeFileSync} from "node:fs";
 import {dirname,isAbsolute,join,relative,resolve,sep} from "node:path";
-import {tmpdir} from "node:os";
 import type {CandidateGitTreeManifest,CandidateGitTreeEntry} from "./review-tree-inspection.js";
 import {validatePortableReviewPaths} from "./review-tree-paths.js";
 

@@ -6,6 +6,14 @@ function graphemes(value:string):string[]{return segmenter?[...segmenter.segment
 function graphemeWidth(value:string):number{if(pictographic.test(value)||emoji.test(value))return 2;let width=0;for(const point of Array.from(value)){if(mark.test(point)||point==="\u200d"||/[\uFE00-\uFE0F]/u.test(point))continue;width=Math.max(width,wideCodePoint(point)?2:1);}return width;}
 export function sanitizeTerminalText(value:string):string{return value.replace(/[\p{Cc}\p{Cf}\u2028\u2029]/gu,character=>character==="\u200d"?character:"�");}
 export function visibleWidth(value:string):number{return graphemes(value).reduce((sum,item)=>sum+graphemeWidth(item),0);}
+/**
+ * Columns the Pi 1.2 transcript does not give back to command output. Measured
+ * against the real host: at 40 columns a row of exactly 40 wrapped, while a
+ * 37-wide row stayed on one line. Rendering at the full terminal width makes the
+ * host wrap the row, which is unreadable and hides the truncation marker.
+ */
+export const PI_TRANSCRIPT_RESERVE=3;
+export function hostContentColumns(columns:number):number{if(!Number.isSafeInteger(columns)||columns<1)throw new Error("Terminal width is invalid");return Math.max(1,columns-PI_TRANSCRIPT_RESERVE);}
 export function layoutMode(columns:number):LayoutMode{if(!Number.isSafeInteger(columns)||columns<1)throw new Error("Terminal width is invalid");return columns>=100?"wide":columns>=70?"compact":columns>=50?"narrow":"minimum";}
 export function truncateForTerminal(value:string,columns:number):string{const width=Math.max(1,columns),clean=sanitizeTerminalText(value);if(visibleWidth(clean)<=width)return clean;let output="",used=0;for(const item of graphemes(clean)){const itemWidth=graphemeWidth(item);if(used+itemWidth>width-1)break;output+=item;used+=itemWidth;}return output+"…";}
 export function truncateStartForTerminal(value:string,columns:number):string{const width=Math.max(1,columns),clean=sanitizeTerminalText(value);if(visibleWidth(clean)<=width)return clean;let output="",used=0;for(const item of graphemes(clean).reverse()){const itemWidth=graphemeWidth(item);if(used+itemWidth>width-1)break;output=item+output;used+=itemWidth;}return "…"+output;}

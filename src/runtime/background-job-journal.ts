@@ -90,7 +90,7 @@ export class BackgroundJobJournal{
   });
   const protectedRows=retained.filter(row=>row.authorizationId!==undefined||row.state==="running"||row.state==="interrupted"),ordinary=retained.filter(row=>row.authorizationId===undefined&&row.state!=="running"&&row.state!=="interrupted").sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt));
   if(protectedRows.length>MAX_ENTRIES)throw new Error("Background unresolved operation ledger reached its safe retention limit");
-  const bounded=[...ordinary.slice(-Math.max(0,MAX_ENTRIES-protectedRows.length)),...protectedRows].sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt)),serialized=JSON.stringify(bounded)+"\n";if(Buffer.byteLength(serialized)>MAX_JOURNAL_BYTES)throw new Error("Background job journal exceeds its byte limit");
+  const bounded=[...ordinary.slice(-Math.max(0,MAX_ENTRIES-protectedRows.length)),...protectedRows].sort((a,b)=>a.updatedAt < b.updatedAt ? -1 : a.updatedAt > b.updatedAt ? 1 : 0),serialized=JSON.stringify(bounded)+"\n";if(Buffer.byteLength(serialized)>MAX_JOURNAL_BYTES)throw new Error("Background job journal exceeds its byte limit");
   const temporary=`${this.file}.tmp-${process.pid}-${randomUUID()}`;let fd:number|undefined;
   try{
    fd=openSync(temporary,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);writeFileSync(fd,serialized,{encoding:"utf8"});fsyncSync(fd);closeSync(fd);fd=undefined;renameSync(temporary,this.file);

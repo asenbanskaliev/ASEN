@@ -2,6 +2,7 @@ import {createHash} from "node:crypto";
 import {lstat,mkdir,mkdtemp,realpath,rmdir} from "node:fs/promises";
 import path from "node:path";
 import {spawnContainedWithInheritedPolicy} from "../evidence/spawn-contained.js";
+import { terminateManagedChildTree } from "../evidence/process-tree.js";
 import {resolveManagedCliCandidate} from "./managed-version-verification.js";
 import {ManagedMaintenanceLockError,withManagedMaintenanceLock} from "./managed-maintenance-lock.js";
 
@@ -98,7 +99,7 @@ async function disposeTemporary(root:string,known:DirectoryClaim[],managed:Direc
 function observe(candidate:ManagedCliCandidateBinding,root:string,env:NodeJS.ProcessEnv,input:ManagedCliProbeRequest,timeoutMs:number,maxOutputBytes:number):Promise<Execution>{
  let child:ReturnType<typeof spawnContainedWithInheritedPolicy>;
  try{child=spawnContainedWithInheritedPolicy(process.execPath,[candidate.entryPoint,"--version"],{
-  cwd:candidate.launchRoot,env,shell:false,stdio:["ignore","pipe","pipe"],
+  cwd:candidate.launchRoot,env,shell:false,stdio:["ignore","pipe","pipe"],detached:process.platform!=="win32",
  },path.join(root,"payload"));}
  catch(error){return Promise.resolve({stdout:"",stderr:"",exitCode:null,signal:null,launcherPid:null,termination:"not-started",error:errorText(error),reason:"launch-failed"});}
  return new Promise(resolve=>{
@@ -112,7 +113,7 @@ function observe(candidate:ManagedCliCandidateBinding,root:string,env:NodeJS.Pro
   };
   const stop=(reason:string)=>{
    if(done||stopReason)return;stopReason=reason;
-   try{child.kill("SIGKILL");}catch(error){failure=errorText(error);}
+   try{terminateManagedChildTree(child);}catch(error){failure=errorText(error);}
    grace=setTimeout(()=>finish("uncertain",child.exitCode,child.signalCode),1000);
   };
   const abort=()=>stop("cancelled");

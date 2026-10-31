@@ -114,7 +114,7 @@ export async function launchManagedSelectedVersion(input:ManagedSelectedLaunchRe
     const childArgs=[candidate.entryPoint,"--home",home,"--package-root",candidate.versionRoot,"--",...input.args];
     let child:ChildProcess;
     try{
-     child=spawnContainedWithInheritedPolicy(process.execPath,childArgs,{cwd,env:{...input.env,PI_CODING_AGENT_DIR:home,ASEN_PACKAGE_ROOT:candidate.versionRoot},stdio:"inherit",shell:false},payload.payload.path);
+     child=spawnContainedWithInheritedPolicy(process.execPath,childArgs,{cwd,env:{...input.env,PI_CODING_AGENT_DIR:home,ASEN_PACKAGE_ROOT:candidate.versionRoot},stdio:"inherit",shell:false,detached:process.platform!=="win32"},payload.payload.path);
      attempts=1;
     }catch(error){result=refuse("launch-failed",errorText(error));return;}
     const execution=await observe(child);

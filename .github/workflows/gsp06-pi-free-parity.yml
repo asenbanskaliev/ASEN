@@ -7,19 +7,22 @@ on:
         required: true
         type: string
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: gsp06-pi-free-${{ inputs.expected_sha }}
   cancel-in-progress: false
 jobs:
-  gsp06-pi-free:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && inputs.expected_sha == github.sha
+  execute:
+    if: github.event_name == "workflow_dispatch" && github.ref == "refs/heads/feat/strict-parity-prerequisites" && inputs.expected_sha == github.sha
     runs-on: ubuntu-24.04
     timeout-minutes: 12
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: "22.19.0"
@@ -27,8 +30,10 @@ jobs:
       - run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.2.0
       - run: pi install npm:pi-free@2.8.4
       - name: Exact candidate and deterministic gates
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
         run: |
-          test "$(git rev-parse HEAD)" = "${{ inputs.expected_sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           npm run typecheck
           npm run audit:skill-parity
           npm run verify:pack
@@ -55,15 +60,33 @@ jobs:
           path: registry/evidence/ecosystem/eco05-pi-model.json
           if-no-files-found: error
           retention-days: 30
+  publish-receipt:
+    name: Publish guarded receipt only
+    needs: execute
+    if: needs.execute.result == "success" && github.ref == "refs/heads/feat/strict-parity-prerequisites" && inputs.expected_sha == github.sha
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/download-artifact@v6
+        with:
+          name: eco05-pi-model-${{ inputs.expected_sha }}
+          path: registry/evidence/ecosystem
       - name: Publish ECO-05 model receipt without overwriting concurrent branch updates
         env:
           EXPECTED_SHA: ${{ inputs.expected_sha }}
           GH_REF_NAME: ${{ github.ref_name }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           test "$(git ls-remote origin "refs/heads/$GH_REF_NAME" | cut -f1)" = "$EXPECTED_SHA"
           git add registry/evidence/ecosystem/eco05-pi-model.json
           test "$(git diff --cached --name-only)" = "registry/evidence/ecosystem/eco05-pi-model.json"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
           git commit -m "test(eco05): record authenticated Pi model evidence"
           git push origin "HEAD:refs/heads/$GH_REF_NAME"

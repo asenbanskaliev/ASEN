@@ -17,7 +17,7 @@ export function parseUsageFile(raw:string):UsageFile{
  return {schema:SCHEMA,revision:Number(v.revision),snapshot:{...v.snapshot},...(telemetryConsent?{telemetryConsent}:{})};
 }
 export async function readUsageFile(file:string):Promise<UsageFile>{if(!await preparePrivateFile(file))return emptyUsageFile();return parseUsageFile(await readFile(file,"utf8"));}
-async function write(file:string,value:UsageFile):Promise<void>{await preparePrivateFile(file,true);await atomicWriteText(file,`${JSON.stringify(value,null,2)}\n`);}
+async function write(file:string,value:UsageFile):Promise<void>{await preparePrivateFile(file,true);await atomicWriteText(file,`${JSON.stringify(value)}\n`);}
 export async function updateUsageFile(file:string,change:(current:UsageFile)=>UsageFile):Promise<UsageFile>{
  await preparePrivateFile(file,true);return withExclusiveFileLock(file,async()=>{
   const current=await readUsageFile(file),next=change(structuredClone(current));if(next.revision!==current.revision+1)throw new Error("Usage revision must advance once");const checked=parseUsageFile(JSON.stringify(next));await write(file,checked);return checked;

@@ -1,7 +1,9 @@
 import {lstat,readdir,realpath} from "node:fs/promises";
+import { canonicalPathSync } from "./path-safety.js";
 import path from "node:path";
 import type {ExtensionContext,ToolCallEvent,ToolCallEventResult} from "@earendil-works/pi-coding-agent";
 import {classifyNormalShellCommand} from "./normal-shell-policy.js";
+import { hasSensitiveName, sensitivePath, sensitiveName } from "./path-safety.js";
 
 export type PrimaryToolPolicyHandler=(event:ToolCallEvent,context:ExtensionContext)=>Promise<ToolCallEventResult|undefined>;
 
@@ -11,28 +13,12 @@ const fileTools=new Set(["read","edit","write","grep","find","ls"]);
 const shellTools=new Set(["bash","bash_background","monitor","asen_background_start"]);
 const denied=(reason:string):ToolCallEventResult=>({block:true,reason:`ASEN primary tool policy blocked ${reason}`});
 
-function sensitiveName(value:string):boolean{
- const name=process.platform==="win32"?value.toLowerCase():value;
- return name===".git"||name.startsWith(".env")||name.endsWith(".pem")||name.endsWith(".key");
-}
-export function hasSensitiveName(value:string):boolean{
- const normalized=path.normalize(value),root=path.parse(normalized).root;
- return normalized.slice(root.length).split(path.sep).filter(Boolean).some(sensitiveName);
-}
 async function canonicalTarget(value:string,cwd:string):Promise<{lexical:string;canonical:string}>{
- if(!value||value.includes("\0")||!cwd||cwd.includes("\0"))throw new Error("invalid path");
- const lexical=path.resolve(cwd,value),suffix:string[]=[];let candidate=lexical;
- for(;;){
-  try{return {lexical,canonical:path.resolve(await realpath(candidate),...suffix)};}
-  catch(error){
-   if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;
-   try{if((await lstat(candidate)).isSymbolicLink())throw new Error("unresolvable symbolic link");}
-   catch(metadataError){if((metadataError as NodeJS.ErrnoException).code!=="ENOENT")throw metadataError;}
-   const parent=path.dirname(candidate);if(parent===candidate)throw error;
-   suffix.unshift(path.basename(candidate));candidate=parent;
-  }
- }
+ if(value.length===0||value.includes("\0")||!cwd||cwd.includes("\0"))throw new Error("invalid path");
+ const lexical=path.resolve(cwd,value);
+ return {lexical,canonical:canonicalPathSync(lexical)};
 }
+
 const traversalEntryLimit=10_000,traversalDepthLimit=64;
 async function assertSafeTraversal(toolName:string,target:string):Promise<void>{
  const metadata=await lstat(target);if(!metadata.isDirectory())return;
@@ -86,10 +72,11 @@ export function createPrimaryToolPolicyHandler():PrimaryToolPolicyHandler{
    if(rawPath!==undefined&&typeof rawPath!=="string"||rawPath===undefined&&!optional)return denied("malformed file path");
    const requested=rawPath===undefined?".":rawPath as string,{lexical,canonical}=await canonicalTarget(requested,cwd);
    if(event.toolName!==toolName||event.toolCallId!==toolCallId||event.input!==input||(input as {path?:unknown}).path!==rawPath||context.cwd!==cwd||context.signal!==signal||signal?.aborted)return denied("file call identity or path drift");
-   if(hasSensitiveName(lexical)||hasSensitiveName(canonical))return denied("sensitive path access");
+   if(hasSensitiveName(lexical)||hasSensitiveName(canonical)||sensitivePath(lexical)||sensitivePath(canonical))return denied("sensitive path access");
    if(toolName==="grep"||toolName==="find"||toolName==="ls")try{await assertSafeTraversal(toolName,canonical);}catch{return denied("safe directory traversal cannot be established");}
    if(event.toolName!==toolName||event.toolCallId!==toolCallId||event.input!==input||(input as {path?:unknown}).path!==rawPath||context.cwd!==cwd||context.signal!==signal||signal?.aborted)return denied("file call identity or path drift");
    return undefined;
   }catch{return denied("ambiguous or unresolvable input");}
  };
 }
+export { hasSensitiveName, sensitivePath } from "./path-safety.js";

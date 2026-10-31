@@ -5,8 +5,8 @@ import {withExclusiveFileLock} from "../io/exclusive-file-lock.js";
 
 export const ASEN_PERSONA_SCHEMA="asen.persona/v1" as const;
 export const ASEN_PERSONA_STYLE_SECTION="asen_persona_style" as const;
-export const ASEN_PERSONA_USAGE="Usage: /asen-persona [professional | neutral]" as const;
-export type PersonaStyle="professional"|"neutral";
+export const ASEN_PERSONA_USAGE="Usage: /asen-persona [professional | neutral | simple]" as const;
+export type PersonaStyle="professional"|"neutral"|"simple";
 export type PersonaSource="project"|"global"|"default";
 export interface PersonaSelection{style:PersonaStyle;source:PersonaSource;available:true}
 interface PersonaFile{schema:typeof ASEN_PERSONA_SCHEMA;style:PersonaStyle}
@@ -14,9 +14,11 @@ interface PersonaFile{schema:typeof ASEN_PERSONA_SCHEMA;style:PersonaStyle}
 const styleText:Readonly<Record<PersonaStyle,string>>=Object.freeze({
  professional:"Use a professional, direct, and respectful communication style. Keep responses clear and concise.",
  neutral:"Use a neutral, direct, and concise communication style.",
+ simple:"Write for someone who has never programmed. Use short sentences and everyday words. Start with the answer in one or two lines, then add details only if they help. If you must use a technical word, explain it at once in plain words with a small real-life example, such as: a branch is like a photocopy of a document where you can try changes without touching the original. Avoid jargon, acronyms, file paths and code unless asked; if they are needed, put them last. Prefer short numbered steps or a few bullets over long paragraphs. Say what you did, what happens next, and what the person must decide. If something failed, say what it means for them and the one best next step. Reply in the language the person uses.",
 });
 
-function isStyle(value:unknown):value is PersonaStyle{return value==="professional"||value==="neutral";}
+export function isPersonaStyle(value:unknown):value is PersonaStyle{return value==="professional"||value==="neutral"||value==="simple";}
+const isStyle=isPersonaStyle;
 function parsePersona(raw:string):PersonaFile{
  let value:unknown;try{value=JSON.parse(raw);}catch{throw new Error("Invalid persona configuration");}
  if(!value||typeof value!=="object"||Array.isArray(value))throw new Error("Invalid persona configuration");

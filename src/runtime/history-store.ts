@@ -26,7 +26,7 @@ export function parseHistoryStore(raw:string):HistoryFile{
  return {schema:SCHEMA,revision:Number(v.revision),policy:{...policy},entries:entries.map(e=>({...e})),tombstones:[...tombstones]};
 }
 export async function readHistoryStore(file:string):Promise<HistoryFile>{if(!await preparePrivateFile(file))return emptyHistoryStore();return parseHistoryStore(await readFile(file,"utf8"));}
-async function write(file:string,value:HistoryFile):Promise<void>{await preparePrivateFile(file,true);await atomicWriteText(file,`${JSON.stringify(value,null,2)}\n`);}
+async function write(file:string,value:HistoryFile):Promise<void>{await preparePrivateFile(file,true);await atomicWriteText(file,`${JSON.stringify(value)}\n`);}
 export async function migrateHistoryStore(file:string,expectedRevision:number):Promise<HistoryMigrationResult>{
  await preparePrivateFile(file,true);return withExclusiveFileLock(file,async()=>{
   if(!await preparePrivateFile(file)){if(expectedRevision!==0)throw new Error("History revision conflict");return {status:"unchanged",redactedEntries:0,evictedEntries:0,addedTombstones:0};}

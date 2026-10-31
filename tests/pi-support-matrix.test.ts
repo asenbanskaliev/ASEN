@@ -43,8 +43,8 @@ test("support matrix rejects malformed or below-floor Pi version contracts",()=>
 
 test("matrix admission rejects forced exit, model calls and missing host inventory",()=>{
  const cell=planPiSupportMatrix()[0];
- const valid={mode:cell.mode,hasUI:true,commands:["asen"],tools:["asen_ask_choice","ask_user_choice","ask_user_question"],modelCalls:0,shutdownObserved:true,exitCode:0,signal:null,timedOut:false};
+ const valid={mode:cell.mode,hasUI:true,commands:["asen"],tools:["asen_ask_choice","ask_user_choice","ask_user_question"],modelCalls:0,shutdownObserved:true,exitCode:0,signal:null,timedOut:false,keyboardCommandObserved:true};
  assert.doesNotThrow(()=>validateCellObservation(cell,valid));
- for(const patch of [{mode:"unknown"},{commands:[]},{tools:[]},{tools:["asen_ask_choice"]},{modelCalls:1},{shutdownObserved:false},{exitCode:1},{signal:"SIGTERM"},{timedOut:true}])
+ for(const patch of [{mode:"unknown"},{commands:[]},{tools:[]},{tools:["asen_ask_choice"]},{modelCalls:1},{shutdownObserved:false},{exitCode:1},{signal:"SIGTERM"},{timedOut:true},{keyboardCommandObserved:false}])
   assert.throws(()=>validateCellObservation(cell,{...valid,...patch}));
 });

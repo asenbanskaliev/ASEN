@@ -1,5 +1,5 @@
 import {randomUUID} from "node:crypto";
-import {access,constants,lstat,mkdir,open,readFile,rmdir,unlink,writeFile} from "node:fs/promises";
+import {access,constants,lstat,mkdir,open,readFile,rename,rmdir,unlink,writeFile} from "node:fs/promises";
 import path from "node:path";
 import {createHash} from "node:crypto";
 import {
@@ -131,20 +131,91 @@ export interface ManagedUninstallReport{
  readonly retained:readonly string[];
  readonly userDataTouched:false;
 }
-async function removeOwnedFile(versionRoot:string,relative:string,file:Pick<ManagedInstallFile,"size"|"sha256">):Promise<"removed"|"absent"|"retained">{
- const parts=relative.split("/");let current=versionRoot;
- for(const part of parts.slice(0,-1)){
-  current=path.join(current,part);
-  const info=await lstat(current).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
-  if(!info)return "absent";
+export interface ManagedUninstallHooks{
+ /** Deterministic test seam: simulate another same-user process changing a path after inspection. */
+ readonly beforeOwnedFileRemoval?:(target:string)=>Promise<void>;
+ /** Test-only interleaving before a recognized managed current-selector is removed. */
+ readonly beforeSelectorRemoval?:(target:string)=>Promise<void>;
+ /**
+  * Deterministic test seam: simulate another same-user process changing the pathname after the final
+  * verification and immediately before removal. Removal is an atomic move, so a substituted object is
+  * preserved rather than deleted.
+  */
+ readonly beforeOwnedFileUnlink?:(target:string)=>Promise<void>;
+}
+interface RemovalStage{
+ /** Creates the private removal directory once, on first use. */
+ readonly directory:()=>Promise<string>;
+ readonly created:()=>string|undefined;
+}
+function removalStage(managedRoot:string):RemovalStage{
+ let directory:string|undefined;
+ return {
+  created:()=>directory,
+  directory:async()=>{
+   if(directory)return directory;
+   const candidate=path.join(managedRoot,`.removal-${randomUUID()}`);
+   await mkdir(candidate,{mode:0o700});
+   directory=candidate;
+   return candidate;
+  },
+ };
+}
+function sameUninstallIdentity(left:{dev:number;ino:number;birthtimeMs:number},right:{dev:number;ino:number;birthtimeMs:number}):boolean{
+ return left.dev===right.dev&&left.ino===right.ino&&left.birthtimeMs===right.birthtimeMs;
+}
+async function removeOwnedFile(versionRoot:string,relative:string,file:Pick<ManagedInstallFile,"size"|"sha256">,hooks:ManagedUninstallHooks|undefined,quarantine:RemovalStage,preserved:string[]):Promise<"removed"|"absent"|"retained">{
+ const parts=relative.split("/"),directories=[versionRoot];
+ for(const part of parts.slice(0,-1))directories.push(path.join(directories.at(-1)!,part));
+ const observedDirs=[];
+ for(const directory of directories){
+  const info=await lstat(directory).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
+  if(!info)return "retained";
   if(!info.isDirectory()||info.isSymbolicLink())return "retained";
+  observedDirs.push(info);
  }
- const target=path.join(current,parts.at(-1)!),info=await lstat(target).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
- if(!info)return "absent";
- if(!info.isFile()||info.isSymbolicLink())return "retained";
- const bytes=await readFile(target);
- if(bytes.length!==file.size||createHash("sha256").update(bytes).digest("hex")!==file.sha256)return "retained";
- await unlink(target);return "removed";
+ const target=path.join(directories.at(-1)!,parts.at(-1)!);
+ const before=await lstat(target).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
+ if(!before)return "absent";
+ if(!before.isFile()||before.isSymbolicLink()||before.size!==file.size)return "retained";
+ let handle;
+ try{handle=await open(target,constants.O_RDONLY|(constants.O_NOFOLLOW??0));}
+ catch(error){if(["ENOENT","ELOOP","EPERM"].includes((error as NodeJS.ErrnoException).code??""))return "retained";throw error;}
+ try{
+  const held=await handle.stat();
+  if(!held.isFile()||!sameUninstallIdentity(before,held))return "retained";
+  const bytes=await handle.readFile();
+  if(bytes.length!==file.size||createHash("sha256").update(bytes).digest("hex")!==file.sha256)return "retained";
+  await hooks?.beforeOwnedFileRemoval?.(target);
+  // An ordinary maintenance lock does not exclude hostile same-user path changes.
+  // Recheck the complete path chain, object identity and bytes immediately before unlink.
+  for(let i=0;i<directories.length;i++){
+   const current=await lstat(directories[i]!).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
+   if(!current||!current.isDirectory()||current.isSymbolicLink()||!sameUninstallIdentity(observedDirs[i]!,current))return "retained";
+  }
+  const after=await lstat(target).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
+  const heldAfter=await handle.stat();
+  if(!after||!after.isFile()||after.isSymbolicLink()||!sameUninstallIdentity(before,after)||!sameUninstallIdentity(held,heldAfter)||after.mtimeMs!==before.mtimeMs||after.size!==before.size)return "retained";
+  const currentBytes=await readFile(target);
+  if(currentBytes.length!==file.size||createHash("sha256").update(currentBytes).digest("hex")!==file.sha256)return "retained";
+  const finalStat=await lstat(target).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
+  if(!finalStat||!finalStat.isFile()||finalStat.isSymbolicLink()||!sameUninstallIdentity(before,finalStat))return "retained";
+  await hooks?.beforeOwnedFileUnlink?.(target);
+  // Pathname checks can never be atomic against a same-user writer. Move the object to a private
+  // directory first: the rename is atomic, and the moved object is re-identified afterwards, so a
+  // pathname substituted after the last verification is preserved instead of deleted.
+  const staged=path.join(await quarantine.directory(),randomUUID());
+  try{await rename(target,staged);}
+  catch(error){
+   const code=(error as NodeJS.ErrnoException).code??"";
+   if(code==="ENOENT")return "absent";
+   if(["EACCES","EPERM","EBUSY","EXDEV","ENOTEMPTY","EISDIR","ENOTDIR"].includes(code))return "retained";
+   throw error;
+  }
+  const moved=await lstat(staged).catch(()=>undefined);
+  if(!moved||!moved.isFile()||moved.isSymbolicLink()||!sameUninstallIdentity(held,moved)){preserved.push(staged);return "retained";}
+  await unlink(staged);return "removed";
+ }finally{await handle.close();}
 }
 async function rmdirIfEmpty(directory:string,retained:string[]):Promise<void>{
  try{
@@ -163,7 +234,7 @@ async function rmdirIfEmpty(directory:string,retained:string[]):Promise<void>{
  * Removes only ASEN-owned managed software: files listed in the ownership receipt/catalog whose bytes still
  * match, the selector, and receipts. User data, launcher config, sessions and Pi installations are never touched.
  */
-export async function uninstallManaged(request:Readonly<{prefix:string;confirmed:boolean}>):Promise<ManagedUninstallReport>{
+export async function uninstallManaged(request:Readonly<{prefix:string;confirmed:boolean;hooks?:ManagedUninstallHooks}>):Promise<ManagedUninstallReport>{
  if(request.confirmed!==true)fail("CONFIRMATION_REQUIRED","Managed uninstall requires explicit confirmation");
  if(!path.isAbsolute(request.prefix))fail("INVALID_REQUEST","Installation prefix must be absolute");
  const prefix=path.resolve(request.prefix),managedRoot=path.join(prefix,"install");
@@ -174,6 +245,7 @@ export async function uninstallManaged(request:Readonly<{prefix:string;confirmed
  if(!records)return fail("FOREIGN_ROOT","Managed root has no valid ASEN ownership record; nothing was removed");
  const retained:string[]=[];let removedFiles=0;
  const body=async()=>{
+  const stage=removalStage(managedRoot),preserved:string[]=[];
   const records=await readManagedOwnershipRecords(managedRoot);
   if(!records)return fail("FOREIGN_ROOT","Managed ownership records changed before uninstall; nothing further was removed");
   for(const version of records.versions){
@@ -181,7 +253,7 @@ export async function uninstallManaged(request:Readonly<{prefix:string;confirmed
    if(!info)continue;
    if(info.isSymbolicLink()||!info.isDirectory()){retained.push(versionRoot);continue;}
    for(const file of version.files){
-    const outcome=await removeOwnedFile(versionRoot,file.path,file);
+    const outcome=await removeOwnedFile(versionRoot,file.path,file,request.hooks,stage,preserved);
     if(outcome==="removed")removedFiles++;
     else if(outcome==="retained")retained.push(path.join(versionRoot,...file.path.split("/")));
    }
@@ -191,9 +263,32 @@ export async function uninstallManaged(request:Readonly<{prefix:string;confirmed
    await rmdirIfEmpty(versionRoot,retained);
   }
   await rmdirIfEmpty(path.join(managedRoot,"versions"),retained);
-  const selector=path.join(managedRoot,"current"),selectorBytes=await readFile(selector).catch(()=>undefined);
-  if(selectorBytes&&records.versions.some(item=>selectorBytes.equals(Buffer.from(item.version+"\n"))))await unlink(selector);
-  else if(selectorBytes)retained.push(selector);
+  // The current selector is an ordinary ASEN-owned file, not an arbitrary pathname.
+  // Use the same no-follow descriptor, exact bytes and inode checks as installed files.
+  // A symlink must not even be read, let alone unlinked as a recognized selector.
+  const selector=path.join(managedRoot,"current");
+  const selectorStat=await lstat(selector).catch(error=>{
+   if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;
+   throw error;
+  });
+  if(selectorStat){
+   let removed=false;
+   for(const version of records.versions){
+    const bytes=Buffer.from(version.version+"\n");
+    const selectorHooks=request.hooks?.beforeSelectorRemoval
+      ?{beforeOwnedFileRemoval:request.hooks.beforeSelectorRemoval}:undefined;
+    const outcome=await removeOwnedFile(managedRoot,"current",{
+     size:bytes.length,sha256:createHash("sha256").update(bytes).digest("hex"),
+    },selectorHooks,stage,preserved);
+    if(outcome==="removed"||outcome==="absent"){removed=true;break;}
+   }
+   if(!removed)retained.push(selector);
+  }
+  // A preserved object keeps its own path visible so the user can inspect it; the private removal
+  // directory is reported instead of being silently deleted when it still holds something.
+  const quarantine=stage.created();
+  if(quarantine)await rmdirIfEmpty(quarantine,retained);
+  for(const entry of preserved)retained.push(entry);
   await rmdirIfEmpty(path.join(managedRoot,"staging"),retained);
   // Ownership records are the only proof needed to resume, so they stay while anything remains.
   if(retained.length===0)for(const name of ["managed-versions.json","managed-install.json"])await unlink(path.join(managedRoot,name)).catch(error=>{if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;});

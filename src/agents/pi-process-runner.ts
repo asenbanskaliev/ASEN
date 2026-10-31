@@ -9,6 +9,7 @@ import {selectSkills} from "../skills/registry.js";
 import {authorizePiWriteGrant} from "../lifecycle/skill-lifecycle.js";
 import {consumeRunnerWriteReceiver} from "./dispatcher.js";
 import {spawnContained} from "../evidence/spawn-contained.js";
+import {authorityAssets} from "./pi-authority-assets.js";
 
 export interface PiProcessOptions{
  command?:string;
@@ -85,14 +86,7 @@ export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">
 
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
 const authorityDigest="29ff989dc899d4c9cd5d54ba9d2b201df7ca2cc0f084e31247fd4d10ff159244";
-const authorityAssets=Object.freeze([
- {source:"src/runtime/workspace-store.ts",target:"src/runtime/workspace-store.ts",sha256:"f0307f8c72b72dd714382eba68fd3d2e50ca2c538d11d5ff71028f682d5f8cef"},
- {source:"src/runtime/workspace-attribution.ts",target:"src/runtime/workspace-attribution.ts",sha256:"1ace31ce9e9a871e6b7a3d545ae60cc9a57c996e39108c6c901837b8d7211c02"},
- {source:"src/runtime/responsive-layout.ts",target:"src/runtime/responsive-layout.ts",sha256:"dbe9c0046f59d3e0d49d3f108caf9f84b4df90bd02a9086bdbf3423b50b14f90"},
- {source:"src/io/atomic-write.ts",target:"src/io/atomic-write.ts",sha256:"dda584a5c4b6f54dbb86968e38211ee6cf5cbd570e82b48294c93e14abb1b1c7"},
- {source:"src/io/exclusive-file-lock.ts",target:"src/io/exclusive-file-lock.ts",sha256:"1921d446891099a9cbf8373a6580f2033e873e89654ee3debebd11c80ff76308"},
- {source:"src/io/private-file.ts",target:"src/io/private-file.ts",sha256:"42d76fe5abfbfbd66f76e310157709890754595d83a63f74cf143110739e1332"},
-]);
+
 
 function exactWriteReceipt(value:PiProcessOptions["exactWriteReceipt"],request:AgentRequest):{path:string;fileSha256:string;barrierFile?:string}|undefined{
  if(value===undefined)return undefined;
@@ -188,9 +182,9 @@ export class PiProcessRunner implements AgentRunner{
   try{
    policySource=readFileSync(candidatePolicy,"utf8").replace(/\r\n/g,"\n");
    const digest=createHash("sha256").update(policySource).digest("hex");
-   if(digest!==authorityDigest)throw new Error("mismatch");
+   if(digest!==authorityDigest)throw new Error("candidate policy digest mismatch");
    policyFiles=authorityAssets.map(asset=>{const source=readFileSync(resolvePath(policyRoot,asset.source),"utf8").replace(/\r\n/g,"\n");if(createHash("sha256").update(source).digest("hex")!==asset.sha256)throw new Error("mismatch");return {target:asset.target,source};});
-  }catch{return Promise.resolve({id:request.id,ok:false,output:"pi authority extension integrity check failed"});}
+  }catch(error){return Promise.resolve({id:request.id,ok:false,output:`pi authority extension integrity check failed: ${error instanceof Error?error.message:"unknown error"}`});}
   let policyDirectory:string;
   try{
    policyDirectory=mkdtempSync(join(tmpdir(),"asen-policy-"));

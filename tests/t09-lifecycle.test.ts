@@ -187,6 +187,148 @@ test("uninstall refuses a modified owned file and never follows symlinks out of 
  assert.ok(report instanceof Error||report.status==="partial");
 });
 
+test("managed uninstall refuses an equal-byte current selector replaced after validation",async t=>{
+ const {prefix,dataHome,v1,base}=await setupInstall("uninstall-current-same-bytes");
+ await installManaged({...base,source:v1.source,dataHome});
+ const selector=path.join(prefix,"install","current"),moved=selector+".foreign";
+ let injected=false;
+ const result=await uninstallManaged({prefix,confirmed:true,hooks:{beforeSelectorRemoval:async target=>{
+  if(injected||target!==selector)return;
+  injected=true;
+  const original=await fs.readFile(target);
+  await fs.rename(target,moved);
+  await fs.writeFile(target,original);
+ }}});
+ assert.equal(injected,true,"the real owned selector was inspected before the injection");
+ assert.equal(result.status,"partial");
+ assert.ok(result.retained.includes(selector));
+ assert.equal(await fs.readFile(selector,"utf8"),"1.0.0\n");
+ assert.equal(await fs.readFile(moved,"utf8"),"1.0.0\n");
+});
+
+test("managed uninstall does not follow an untrusted symlink at the current selector",async t=>{
+ if(process.platform==="win32"){t.skip("Creating Windows symlinks requires additional privileges");return;}
+ const {root,prefix,dataHome,v1,base}=await setupInstall("uninstall-current-symlink");
+ await installManaged({...base,source:v1.source,dataHome});
+ const selector=path.join(prefix,"install","current"),outside=path.join(root,"user-secret");
+ await fs.writeFile(outside,"outside must remain private\n");
+ await fs.unlink(selector);
+ await fs.symlink(outside,selector,"file");
+ const result=await uninstallManaged({prefix,confirmed:true});
+ assert.equal(result.status,"partial");
+ assert.ok(result.retained.includes(selector));
+ assert.equal(await fs.readFile(outside,"utf8"),"outside must remain private\n");
+ assert.equal((await fs.lstat(selector)).isSymbolicLink(),true);
+});
+
+test("uninstall retains a matching-byte replacement made by a second same-user actor",async t=>{
+ const {prefix,dataHome,v1,base}=await setupInstall("uninstall-same-bytes-substitution");
+ await installManaged({...base,source:v1.source,dataHome});
+ const cli=path.join(prefix,"install","versions","1.0.0","cli.cjs"),old=cli+".before-swap";
+ let injected=false;
+ const result=await uninstallManaged({prefix,confirmed:true,hooks:{beforeOwnedFileRemoval:async target=>{
+  if(injected||target!==cli)return;
+  injected=true;
+  const bytes=await fs.readFile(cli);
+  await fs.rename(cli,old);
+  await fs.writeFile(cli,bytes);
+ }}});
+ assert.equal(injected,true);
+ assert.equal(result.status,"partial");
+ assert.equal(await fs.readFile(cli,"utf8"),GOOD_CLI("1.0.0"));
+ assert.equal(await fs.readFile(old,"utf8"),GOOD_CLI("1.0.0"));
+ assert.ok(result.retained.includes(cli));
+});
+
+test("managed uninstall preserves an object substituted after the last verification",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("uninstall-post-verification-swap");
+ await installManaged({...base,source:v1.source,dataHome});
+ const cli=path.join(prefix,"install","versions","1.0.0","cli.cjs");
+ const displaced=path.join(root,"displaced-owned-cli.cjs"),foreignBytes="foreign content that must survive\n";
+ let injected=false;
+ const result=await uninstallManaged({prefix,confirmed:true,hooks:{beforeOwnedFileUnlink:async target=>{
+  if(injected||target!==cli)return;
+  injected=true;
+  await fs.rename(cli,displaced);
+  await fs.writeFile(cli,foreignBytes);
+ }}});
+ assert.equal(injected,true,"the owned file was verified before the injected substitution");
+ assert.equal(result.status,"partial");
+ let survivors=0;
+ for(const candidate of [cli,...result.retained]){
+  const bytes=await fs.readFile(candidate,"utf8").catch(()=>undefined);
+  if(bytes===foreignBytes)survivors++;
+ }
+ assert.ok(survivors>=1,"a substituted object must be preserved, never deleted");
+ assert.equal(await fs.readFile(displaced,"utf8"),GOOD_CLI("1.0.0"));
+});
+
+test("managed uninstall never follows a symlink substituted after the last verification",async t=>{
+ if(process.platform==="win32"){t.skip("Creating Windows symlinks requires additional privileges");return;}
+ const {root,prefix,dataHome,v1,base}=await setupInstall("uninstall-post-verification-symlink");
+ await installManaged({...base,source:v1.source,dataHome});
+ const cli=path.join(prefix,"install","versions","1.0.0","cli.cjs");
+ const displaced=path.join(root,"displaced-owned-cli.cjs"),outside=path.join(root,"outside-secret.txt");
+ await fs.writeFile(outside,"outside must remain private\n");
+ let injected=false;
+ const result=await uninstallManaged({prefix,confirmed:true,hooks:{beforeOwnedFileUnlink:async target=>{
+  if(injected||target!==cli)return;
+  injected=true;
+  await fs.rename(cli,displaced);
+  await fs.symlink(outside,cli,"file");
+ }}});
+ assert.equal(injected,true);
+ assert.equal(result.status,"partial");
+ assert.equal(await fs.readFile(outside,"utf8"),"outside must remain private\n");
+});
+
+test("a preserved removal keeps the install recoverable and a later uninstall can finish",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("uninstall-preserved-recovery");
+ await installManaged({...base,source:v1.source,dataHome});
+ const cli=path.join(prefix,"install","versions","1.0.0","cli.cjs"),displaced=path.join(root,"displaced-owned-cli.cjs");
+ const foreignBytes="foreign content that must survive\n";
+ let injected=false;
+ const first=await uninstallManaged({prefix,confirmed:true,hooks:{beforeOwnedFileUnlink:async target=>{
+  if(injected||target!==cli)return;
+  injected=true;
+  await fs.rename(cli,displaced);
+  await fs.writeFile(cli,foreignBytes);
+ }}});
+ assert.equal(injected,true);
+ assert.equal(first.status,"partial");
+ const inspection=await inspectManagedInstall({prefix});
+ assert.notEqual(inspection.status,"absent","ownership records must survive a preserved removal");
+ const second=await uninstallManaged({prefix,confirmed:true});
+ assert.ok(second.status==="partial"||second.status==="removed");
+ let survivors=0;
+ for(const candidate of [cli,...second.retained,...first.retained]){
+  const bytes=await fs.readFile(candidate,"utf8").catch(()=>undefined);
+  if(bytes===foreignBytes)survivors++;
+ }
+ assert.ok(survivors>=1,"the preserved object must still be reachable after a later uninstall");
+ assert.equal(await fs.readFile(displaced,"utf8"),GOOD_CLI("1.0.0"));
+});
+
+test("uninstall never traverses a managed version directory replaced by a foreign symlink",async t=>{ if(process.platform==="win32"){t.skip("Directory symlink behavior needs explicit Windows privileges");return;}
+ const {root,prefix,dataHome,v1,base}=await setupInstall("uninstall-route-replacement");
+ await installManaged({...base,source:v1.source,dataHome});
+ const versionRoot=path.join(prefix,"install","versions","1.0.0"),moved=versionRoot+".old";
+ const outside=path.join(root,"foreign-version");
+ await fs.mkdir(outside);
+ await fs.writeFile(path.join(outside,"cli.cjs"),GOOD_CLI("1.0.0"));
+ let injected=false;
+ const result=await uninstallManaged({prefix,confirmed:true,hooks:{beforeOwnedFileRemoval:async target=>{
+  if(injected||!target.endsWith("cli.cjs"))return;
+  injected=true;
+  await fs.rename(versionRoot,moved);
+  await fs.symlink(outside,versionRoot,"dir");
+ }}}).catch(error=>error);
+ assert.equal(injected,true);
+ assert.ok(result instanceof Error||result.status==="partial");
+ assert.equal(await fs.readFile(path.join(outside,"cli.cjs"),"utf8"),GOOD_CLI("1.0.0"));
+ assert.equal(await fs.readFile(path.join(moved,"cli.cjs"),"utf8"),GOOD_CLI("1.0.0"));
+});
+
 test("a partial uninstall keeps ownership records so a later uninstall can finish",async()=>{
  const {prefix,dataHome,v1,base}=await setupInstall("uninstallresume");
  await installManaged({...base,source:v1.source,dataHome});

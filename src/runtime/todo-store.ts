@@ -61,7 +61,7 @@ export function parseTodoFile(raw:string):TodoFile{
  return {schema:SCHEMA,revision:Number(value.revision),items:items.map(item=>structuredClone(item))};
 }
 async function read(file:string):Promise<TodoFile>{if(!await preparePrivateFile(file))return {schema:SCHEMA,revision:0,items:[]};return parseTodoFile(await readFile(file,"utf8"));}
-async function write(file:string,value:TodoFile){await preparePrivateFile(file,true);await atomicWriteText(file,`${JSON.stringify(value,null,2)}\n`);}
+async function write(file:string,value:TodoFile){await preparePrivateFile(file,true);await atomicWriteText(file,`${JSON.stringify(value)}\n`);}
 
 function isCorruptTodoError(error:unknown):boolean{return error instanceof SyntaxError||error instanceof Error&&["Invalid ASEN Todo store","Duplicate ASEN Todo task id","ASEN Todo dependency cycle","Todo dependency identity mismatch","ASEN Todo history exceeds its limit"].includes(error.message);}
 

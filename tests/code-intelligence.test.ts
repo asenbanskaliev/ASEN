@@ -8,7 +8,7 @@ import {createCodeGraphTool,createCodeIntelligenceTool,normalizePathEntry,regist
 import {createAsenExtension} from "../extensions/asen.js";
 
 function fixture(t:test.TestContext,body='console.log(JSON.stringify({args:process.argv.slice(2),cwd:process.cwd()}))'){
-  const root=realpathSync.native(mkdtempSync(join(tmpdir(),"asen graph á ")));t.after(()=>rmSync(root,{recursive:true,force:true}));
+  const root=realpathSync.native(mkdtempSync(join(tmpdir(),"asen graph á ")));t.after(()=>rmSync(root,{recursive:true,force:true,maxRetries:20,retryDelay:100}));
   execFileSync("git",["init","-q",root]);const script=join(root,"fixture.mjs");writeFileSync(script,body);mkdirSync(join(root,"child"));
   const tools=new Map<string,any>();createAsenExtension({codeIntelligence:{executable:process.execPath,script}} as any)({registerCommand(){},registerTool(tool:any){tools.set(tool.name,tool);}} as any);
   return {root,script,tool:createCodeIntelligenceTool({executable:process.execPath,script}),canonical:tools.get("codegraph"),registered:[...tools.keys()]};
@@ -24,10 +24,10 @@ test("registered read-only CodeGraph adapter keeps malicious query as one litera
   const f=fixture(t);assert.ok(f.tool,"public code-intelligence tool must exist");
   const query='--help; $(touch forbidden) & "á"';const result=await call(f.tool,f.root,{operation:"query",query,limit:2});
   assert.equal(result.details.status,"completed",JSON.stringify({status:result.details.status,root:f.root,gitRoot:execFileSync("git",["-C",f.root,"rev-parse","--show-toplevel"],{encoding:"utf8"}).trim()}));const data=JSON.parse(result.content[0].text);
-  assert.deepEqual(data.args,["query","--path",f.root,"--limit","2","--",query]);assert.equal(data.cwd,f.root);
+  assert.deepEqual(data.args,["query","--limit","2","--",query]);assert.equal(data.cwd,f.root);
   assert.equal((await call(f.tool,f.root,{operation:"explore",query:"symbol"})).details.status,"completed");
   const alias=join(f.root,"root-alias");symlinkSync(f.root,alias,"junction");
-  const aliased=await call(f.tool,alias,{operation:"query",query:"symbol"});assert.equal(aliased.details.status,"completed");assert.equal(JSON.parse(aliased.content[0].text).args[2],f.root);rmSync(alias);
+  const aliased=await call(f.tool,alias,{operation:"query",query:"symbol"});assert.equal(aliased.details.status,"completed");assert.equal(JSON.parse(aliased.content[0].text).cwd,f.root);rmSync(alias);
 });
 test("model cannot change roots, executable, limits or initialize an index",async t=>{
   const f=fixture(t,'throw Error("runner must never execute")');assert.ok(f.tool);
@@ -119,7 +119,7 @@ test("canonical CodeGraph tool exposes upstream metadata and exact scoped argv w
   const calls:Array<{args:readonly string[];cwd:string;maxBuffer:number}>=[];
   const runner:CodeGraphRunner=async(args,options)=>{
     calls.push({args,cwd:options.cwd,maxBuffer:options.maxBuffer});
-    if(args[0]==="init")mkdirSync(join(options.cwd,".codegraph"));
+    if(args[0]==="init"){mkdirSync(join(options.cwd,".codegraph"));writeFileSync(join(options.cwd,".codegraph","fixture-index"),"present");}
     return {stdout:"indexed",stderr:""};
   };
   const tool=createCodeGraphTool(runner);
@@ -128,7 +128,7 @@ test("canonical CodeGraph tool exposes upstream metadata and exact scoped argv w
   assert.equal(tool.promptSnippet,"Initialize and query CodeGraph for the current workspace without shell access");
   assert.deepEqual(tool.promptGuidelines,[
     "Use query or explore directly for read-only code research; they never initialize or modify the index.",
-    "Use operation init only when the user has asked to build the CodeGraph index. ASEN requests a one-run approval before indexing.",
+    "Use operation init or sync only when the user has explicitly requested indexing or refreshing the CodeGraph index. ASEN requests a one-run approval before either write.",
     "Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.",
   ]);
   assert.equal(tool.annotations?.readOnlyHint,false,"the unified tool includes an initialization operation that can write an index");
@@ -138,7 +138,7 @@ test("canonical CodeGraph tool exposes upstream metadata and exact scoped argv w
     additionalProperties:false,
     required:["operation"],
     properties:{
-      operation:{type:"string",enum:["init","query","explore"]},
+      operation:{type:"string",enum:["init","sync","query","explore"]},
       query:{type:"string",minLength:1,maxLength:2000},
       limit:{type:"integer",minimum:1,maximum:20},
     },
@@ -150,13 +150,15 @@ test("canonical CodeGraph tool exposes upstream metadata and exact scoped argv w
   const init=await tool.execute("probe",{operation:"init"},undefined,undefined,{...context,hasUI:true,ui:{confirm:async()=>true}} as any);
   assert.equal(existsSync(join(f.root,".codegraph")),true,"explicit init may create only the fixture index");
   assert.deepEqual(calls.map(call=>call.args),[
-    ["query","--path",f.root,"--limit","4","--","--help"],
-    ["explore","--path",f.root,"--max-files","3","--","call path"],
+    ["query","--limit","4","--","--help"],
+    ["explore","--","call path"],
     ["init",f.root],
   ]);
   assert.ok(calls.every(call=>call.cwd===f.root&&call.maxBuffer>100000));
-  assert.deepEqual(query.details,{operation:"query",cwd:f.root,args:calls[0]!.args});
+  assert.deepEqual(query.details,{status:"completed",operation:"query",cwd:f.root,args:calls[0]!.args});
+  assert.equal((explore.details as {status:string}).status,"completed");
   assert.deepEqual(explore.content,[{type:"text",text:"indexed"}]);
+  assert.equal((init.details as {status:string}).status,"completed");
   assert.deepEqual(init.content,[{type:"text",text:"indexed"}]);
 });
 
@@ -170,7 +172,8 @@ test("canonical CodeGraph tool validates an existing index with lstat and never 
       calls++;
       return {stdout:"unexpected",stderr:""};
     });
-    await assert.rejects(()=>tool.execute("probe",{operation:"init"},undefined,undefined,{cwd:f.root} as any),/real directory/i);
+    const blocked=await tool.execute("probe",{operation:"init"},undefined,undefined,{cwd:f.root} as any);
+    assert.equal((blocked.details as {status:string}).status,"failed");
     assert.equal(calls,0);
   }
 });
@@ -179,7 +182,7 @@ test("unified CodeGraph tool uses ASEN approval only for one-time initialization
   const f=fixture(t);assert.ok(f.canonical);
   let prompts=0,initializations=0;
   const runner:CodeGraphRunner=async(args,options)=>{
-    if(args[0]==="init"){initializations++;mkdirSync(join(options.cwd,".codegraph"));}
+    if(args[0]==="init"){initializations++;mkdirSync(join(options.cwd,".codegraph"));writeFileSync(join(options.cwd,".codegraph","fixture-index"),"present");}
     return {stdout:"ok",stderr:""};
   };
   const tool=createCodeGraphTool(runner);
@@ -202,6 +205,24 @@ test("unified CodeGraph tool uses ASEN approval only for one-time initialization
   assert.equal(tool.annotations?.readOnlyHint,false);assert.equal(tool.annotations?.destructiveHint,true);
 });
 
+test("CodeGraph requires fresh approval after an externally deleted index",async t=>{
+  const f=fixture(t);
+  let approvals=0,initializations=0;
+  const tool=createCodeGraphTool(async(args,options)=>{
+    if(args[0]==="init"){initializations++;mkdirSync(join(options.cwd,".codegraph"));writeFileSync(join(options.cwd,".codegraph","fixture-index"),"present");}
+    return {stdout:"indexed",stderr:""};
+  });
+  const context={hasUI:true,ui:{confirm:async()=>{approvals++;return true;}}};
+  assert.equal((await call(tool,f.root,{operation:"init"},undefined,context)).details.status,"completed");
+  rmSync(join(f.root,".codegraph"),{recursive:true});
+  const withoutApproval=await call(tool,f.root,{operation:"init"});
+  assert.equal(withoutApproval.details.status,"authorization_required");
+  assert.equal(initializations,1);
+  assert.equal((await call(tool,f.root,{operation:"init"},undefined,context)).details.status,"completed");
+  assert.equal(initializations,2);
+  assert.equal(approvals,2);
+});
+
 test("CodeGraph rechecks the index path after Pi authorization",async t=>{
   const f=fixture(t);let calls=0;const outside=join(f.root,"outside");mkdirSync(outside);
   const tool=createCodeGraphTool(async()=>{calls++;return {stdout:"unexpected",stderr:""};});
@@ -220,6 +241,135 @@ test("canonical CodeGraph tool truncates output and returns upstream-compatible 
   assert.match(textOf(fallback.content[0]),/binary was not found/);
 });
 
+test("CodeGraph rejects unsafe Windows npm package entries",t=>{
+  const f=fixture(t);
+  const pkg=join(f.root,"node_modules","@colbymchenry","codegraph");
+  mkdirSync(pkg,{recursive:true});
+  writeFileSync(join(pkg,"package.json"),JSON.stringify({bin:{codegraph:"../../../../outside.mjs"}}));
+  assert.throws(()=>resolveCodeGraphEntry(pkg),/Invalid package entry/);
+  writeFileSync(join(pkg,"package.json"),JSON.stringify({bin:{codegraph:"bin/codegraph.mjs"}}));
+  mkdirSync(join(pkg,"bin"));
+  writeFileSync(join(pkg,"bin","codegraph.mjs"),"");
+  assert.equal(resolveCodeGraphEntry(pkg),realpathSync.native(join(pkg,"bin","codegraph.mjs")));
+});
+
+test("canonical CodeGraph fails closed on invalid input and project roots",async t=>{
+  const f=fixture(t);
+  let launches=0;
+  const tool=createCodeGraphTool(async()=>{launches++;return {stdout:"unexpected",stderr:""};});
+  assert.equal((await call(tool,f.root,{operation:"query",query:""})).details.status,"failed");
+  assert.equal((await call(tool,join(f.root,"child"),{operation:"query",query:"symbol"})).details.status,"failed");
+  assert.equal(launches,0);
+});
+
+test("canonical CodeGraph classifies an aborted running query as cancelled",async t=>{
+  const f=fixture(t);
+  const controller=new AbortController();
+  const tool=createCodeGraphTool(async(_args,options)=>{
+    assert.equal(options.signal,controller.signal);
+    controller.abort();
+    throw Object.assign(new Error("aborted"),{name:"AbortError",code:"ABORT_ERR"});
+  });
+  const result=await call(tool,f.root,{operation:"query",query:"symbol"},controller.signal);
+  assert.equal(result.details.status,"cancelled");
+  assert.equal(existsSync(join(f.root,".codegraph")),false);
+});
+
+test("CodeGraph real subprocess fixture survives restart and keeps index read-only on queries",async t=>{
+  const f=fixture(t,`import {existsSync,mkdirSync,readFileSync,writeFileSync} from "node:fs";
+import {join} from "node:path";
+const args=process.argv.slice(2);
+const index=join(process.cwd(),".codegraph");
+if(args[0]==="init"){mkdirSync(index);writeFileSync(join(index,"snapshot"),"ready");console.log("indexed");}
+else if(!existsSync(join(index,"snapshot"))){process.stderr.write("index unavailable");process.exitCode=2;}
+else console.log(JSON.stringify({operation:args[0],query:args.at(-1),snapshot:readFileSync(join(index,"snapshot"),"utf8")}));
+`);
+  const first=createCodeGraphTool(async(args,options)=>{
+    const {execFile}=await import("node:child_process");
+    const {promisify}=await import("node:util");
+    const observed=await promisify(execFile)(process.execPath,[f.script,...args],{cwd:options.cwd,signal:options.signal,timeout:5000,maxBuffer:options.maxBuffer});
+    return {stdout:String(observed.stdout),stderr:String(observed.stderr)};
+  });
+  const ui={hasUI:true,ui:{confirm:async()=>true}};
+  const missing=await call(first,f.root,{operation:"query",query:"symbol"});
+  assert.equal(missing.details.status,"failed");
+  assert.equal(existsSync(join(f.root,".codegraph")),false);
+  const init=await call(first,f.root,{operation:"init"},undefined,ui);
+  assert.equal((init.details as {status:string}).status,"completed");
+  const query=await call(first,f.root,{operation:"query",query:"symbol"});
+  assert.equal(query.details.status,"completed");
+  assert.equal(JSON.parse(textOf(query.content[0])).snapshot,"ready");
+  const restarted=createCodeGraphTool(async(args,options)=>{
+    const {execFile}=await import("node:child_process");
+    const {promisify}=await import("node:util");
+    const observed=await promisify(execFile)(process.execPath,[f.script,...args],{cwd:options.cwd,timeout:5000,maxBuffer:options.maxBuffer});
+    return {stdout:String(observed.stdout),stderr:String(observed.stderr)};
+  });
+  assert.equal((await call(restarted,f.root,{operation:"init"})).details.status,"already_initialized");
+  assert.equal((await call(restarted,f.root,{operation:"explore",query:"symbol"})).details.status,"completed");
+});
+
+test("ASEN/Pi registered CodeGraph cancels an actual running subprocess",async t=>{
+  const f=fixture(t,`setTimeout(()=>console.log("should not finish"),10000);`);
+  const controller=new AbortController();
+  const registered=f.canonical;
+  assert.ok(registered,"ASEN must register the canonical Pi tool");
+  const running=call(registered,f.root,{operation:"query",query:"symbol"},controller.signal);
+  // Give the spawned Node subprocess time to start before interrupting it.
+  await new Promise(resolve=>setTimeout(resolve,300));
+  controller.abort();
+  const result=await running;
+  assert.equal(result.details.status,"cancelled");
+  assert.equal(existsSync(join(f.root,".codegraph")),false);
+  // Windows can retain a cwd handle briefly after an aborted child exits.
+  // Wait for the OS to release it before fixture teardown, without masking failures.
+  if(process.platform==="win32"){
+    const {renameSync}=await import("node:fs");
+    // Renaming a file inside the directory does not prove the child released its cwd.
+    // Rename the directory itself; only then can fixture teardown remove it safely.
+    const renamed=f.root+"-release-check";
+    let released=false;
+    for(let attempt=0;attempt<80;attempt++){
+      try{
+        renameSync(f.root,renamed);
+        renameSync(renamed,f.root);
+        released=true;
+        break;
+      }catch(error){
+        if((error as NodeJS.ErrnoException).code!=="EBUSY"&&(error as NodeJS.ErrnoException).code!=="EPERM")throw error;
+        await new Promise(resolve=>setTimeout(resolve,100));
+      }
+    }
+    assert.ok(released,"Windows must release the cancelled subprocess cwd before teardown");
+  }
+});
+
+test("ASEN/Pi registered CodeGraph preserves authorization and query lifecycle across restart",async t=>{
+  const f=fixture(t,`import {existsSync,mkdirSync,writeFileSync,readFileSync} from "node:fs";
+import {join} from "node:path";
+const index=join(process.cwd(),".codegraph");
+if(process.argv[2]==="init"){mkdirSync(index,{recursive:true});writeFileSync(join(index,"symbol"),"realSymbol");console.log("indexed");}
+else if(!existsSync(join(index,"symbol"))){console.error("missing index");process.exitCode=2;}
+else console.log(readFileSync(join(index,"symbol"),"utf8"));
+`);
+  const first=f.canonical;
+  assert.equal((await call(first,f.root,{operation:"init"})).details.status,"authorization_required");
+  const approved=await call(first,f.root,{operation:"init"},undefined,{hasUI:true,ui:{confirm:async()=>true}});
+  assert.equal(approved.details.status,"completed");
+  const searched=await call(first,f.root,{operation:"query",query:"realSymbol"});
+  assert.equal(searched.details.status,"completed");
+  assert.match(textOf(searched.content[0]),/realSymbol/);
+  const restarted=createCodeGraphTool(async(args,options)=>{
+    const {execFile}=await import("node:child_process");
+    const {promisify}=await import("node:util");
+    const output=await promisify(execFile)(process.execPath,[f.script,...args],{cwd:options.cwd,signal:options.signal,maxBuffer:options.maxBuffer,timeout:5000});
+    return {stdout:String(output.stdout),stderr:String(output.stderr)};
+  });
+  assert.equal((await call(restarted,f.root,{operation:"init"})).details.status,"already_initialized");
+  const again=await call(restarted,f.root,{operation:"query",query:"realSymbol"});
+  assert.match(textOf(again.content[0]),/realSymbol/);
+});
+
 test("canonical registration and ASEN integration expose only one CodeGraph tool",t=>{
   const direct:any[]=[];
   registerCodeGraphTool({registerTool:(tool:any)=>direct.push(tool)} as any);
@@ -236,4 +386,97 @@ test("canonical registration and ASEN integration expose only one CodeGraph tool
   assert.equal(tools.get("codegraph").annotations.destructiveHint,true);
   assert.deepEqual(f.registered.filter(name=>name.includes("code")),["codegraph"],"Pi must expose exactly one CodeGraph tool");
   assert.equal(f.tool.name,"asen_code_intelligence","the read-only adapter remains constructible for internal compatibility");
+});
+
+test("canonical CodeGraph sync requires fresh authorization and existing index",async t=>{
+  const f=fixture(t);
+  const calls:string[][]=[];
+  const runner:CodeGraphRunner=async args=>{calls.push([...args]);return {stdout:"ok",stderr:""};};
+  const tool=createCodeGraphTool(runner);
+  const approvals:string[]=[];
+  const ui={confirm:async(title:string)=>{approvals.push(title);return true;}};
+  assert.equal((await call(tool,f.root,{operation:"sync"},undefined,{hasUI:true,ui})).details.status,"not_initialized");
+  assert.equal(calls.length,0);
+  mkdirSync(join(f.root,".codegraph"));writeFileSync(join(f.root,".codegraph","fixture-index"),"present");
+  assert.equal((await call(tool,f.root,{operation:"sync"})).details.status,"authorization_required");
+  assert.equal(calls.length,0);
+  const denied=await call(tool,f.root,{operation:"sync"},undefined,{hasUI:true,ui:{confirm:async()=>false}});
+  assert.equal(denied.details.status,"denied");
+  assert.equal(calls.length,0);
+  const approved=await call(tool,f.root,{operation:"sync"},undefined,{hasUI:true,ui});
+  assert.equal(approved.details.status,"completed");
+  assert.deepEqual(calls,[["sync"]]);
+  assert.equal(approvals.length,1);
+  const repeat=await call(tool,f.root,{operation:"sync"},undefined,{hasUI:true,ui});
+  assert.equal(repeat.details.status,"completed");
+  assert.equal(approvals.length,2,"each synchronization must request fresh approval");
+  assert.deepEqual(calls,[["sync"],["sync"]]);
+});
+
+
+test("T07 init fails closed when the index becomes a symlink during approval",async t=>{
+  const f=fixture(t);
+  const outside=join(f.root,"outside-index");mkdirSync(outside);
+  let launches=0;
+  const tool=createCodeGraphTool(async()=>{launches++;return {stdout:"unexpected",stderr:""};});
+  const result=await call(tool,f.root,{operation:"init"},undefined,{hasUI:true,ui:{confirm:async()=>{
+    symlinkSync(outside,join(f.root,".codegraph"),"junction");
+    return true;
+  }}});
+  assert.equal(result.details.status,"failed");
+  assert.equal(launches,0);
+});
+
+test("T07 reports an index race as failed instead of rejecting the tool call",async t=>{
+  const f=fixture(t);
+  const outside=join(f.root,"outside-index");mkdirSync(outside);
+  let release!:(value:{stdout:string;stderr:string})=>void;
+  let launches=0;
+  const tool=createCodeGraphTool(async()=>{
+    launches++;
+    return new Promise(resolve=>{release=resolve;});
+  });
+  const ui={hasUI:true,ui:{confirm:async()=>true}};
+  const first=call(tool,f.root,{operation:"init"},undefined,ui);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(launches,1);
+  const second=call(tool,f.root,{operation:"init"},undefined,ui);
+  await new Promise(resolve=>setImmediate(resolve));
+  symlinkSync(outside,join(f.root,".codegraph"),"junction");
+  release({stdout:"first completed",stderr:""});
+  assert.equal((await first).details.status,"completed");
+  assert.equal((await second).details.status,"failed");
+  assert.equal(launches,1,"an unsafe index must never trigger a second subprocess");
+});
+
+test("T07 init tolerates an index deleted during a previous in-flight initialization",async t=>{
+  const f=fixture(t);
+  let launches=0;
+  const tool=createCodeGraphTool(async(args,options)=>{
+    launches++;
+    if(args[0]==="init"){
+      mkdirSync(join(options.cwd,".codegraph"),{recursive:true});
+      writeFileSync(join(options.cwd,".codegraph","marker"),"ready");
+    }
+    return {stdout:"ok",stderr:""};
+  });
+  const ui={hasUI:true,ui:{confirm:async()=>true}};
+  assert.equal((await call(tool,f.root,{operation:"init"},undefined,ui)).details.status,"completed");
+  rmSync(join(f.root,".codegraph"),{recursive:true,force:true});
+  assert.equal((await call(tool,f.root,{operation:"init"},undefined,ui)).details.status,"completed");
+  assert.equal(launches,2);
+});
+
+test("T07 sync fails closed without launching when index disappears after approval",async t=>{
+  const f=fixture(t);
+  let launches=0;
+  const tool=createCodeGraphTool(async()=>{launches++;return {stdout:"unexpected",stderr:""};});
+  mkdirSync(join(f.root,".codegraph"));
+  writeFileSync(join(f.root,".codegraph","marker"),"ready");
+  const result=await call(tool,f.root,{operation:"sync"},undefined,{hasUI:true,ui:{confirm:async()=>{
+    rmSync(join(f.root,".codegraph"),{recursive:true,force:true});
+    return true;
+  }}});
+  assert.equal(result.details.status,"failed");
+  assert.equal(launches,0);
 });
