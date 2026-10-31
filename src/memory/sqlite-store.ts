@@ -7,7 +7,7 @@ import {withExclusiveFileLockSync} from "../io/exclusive-file-lock.js";
 import {validateMemoryImport} from "./export-validation.js";
 import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemoryExport, MemoryRelation, MemoryRelationInput, MemorySessionState, MemorySessionSummary, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
 
-const CURRENT_SCHEMA_VERSION=8;
+const CURRENT_SCHEMA_VERSION=9;
 const SQLITE_STARTUP_LOCK_TIMEOUT_MS=30_000;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
 const DEFAULT_DEDUPE_WINDOW_MS=15*60_000;
@@ -55,7 +55,17 @@ const migrations:readonly Migration[]=[
   `);}},
  {version:8,apply(db){db.exec(`
    ALTER TABLE memory_relations ADD COLUMN reviewed_at TEXT;
-  `);}}
+  `);}},
+ {version:9,apply(db){
+  db.exec(`DROP TRIGGER IF EXISTS memory_ai;DROP TRIGGER IF EXISTS memory_ad;DROP TRIGGER IF EXISTS memory_au;`);
+  db.exec(`CREATE VIRTUAL TABLE memory_fts_new USING fts5(id UNINDEXED,project_id UNINDEXED,content,content='memory',content_rowid='rowid');`);
+  db.exec("INSERT INTO memory_fts_new(rowid,id,project_id,content) SELECT rowid,id,project_id,content FROM memory;");
+  db.exec(`DROP TABLE memory_fts;`);
+  db.exec(`ALTER TABLE memory_fts_new RENAME TO memory_fts;`);
+  db.exec(`CREATE TRIGGER IF NOT EXISTS memory_ai AFTER INSERT ON memory BEGIN INSERT INTO memory_fts(rowid,id,project_id,content) VALUES(new.rowid,new.id,new.project_id,new.content); END;`);
+  db.exec(`CREATE TRIGGER IF NOT EXISTS memory_ad AFTER DELETE ON memory BEGIN INSERT INTO memory_fts(memory_fts,rowid,id,project_id,content) VALUES('delete',old.rowid,old.id,old.project_id,old.content); END;`);
+  db.exec(`CREATE TRIGGER IF NOT EXISTS memory_au AFTER UPDATE ON memory BEGIN INSERT INTO memory_fts(memory_fts,rowid,id,project_id,content) VALUES('delete',old.rowid,old.id,old.project_id,old.content); INSERT INTO memory_fts(rowid,id,project_id,content) VALUES(new.rowid,new.id,new.project_id,new.content); END;`);
+ }}
 ];
 function schemaVersion(db:DatabaseSync):number{
  const value=(db.prepare("PRAGMA user_version").get() as {user_version?:unknown}|undefined)?.user_version;
