@@ -15,7 +15,8 @@ function version(path:string):number{const db=new DatabaseSync(path);try{return 
 const cleanup=(path:string)=>rm(path,{recursive:true,force:true});
 function workerExecArgv():string[]{
  const importIndex=process.execArgv.indexOf("--import"),loader=process.execArgv[importIndex+1],typeFlag=process.execArgv.find(argument=>argument==="--experimental-strip-types"||argument==="--experimental-transform-types");
- // Workers must resolve TypeScript .js specifiers through tsx, not native strip-types.\n return ["--import","tsx"];
+ // Workers must resolve TypeScript .js specifiers through tsx, not native strip-types.
+ return ["--import","tsx"];
 }
 function workerMessage(worker:Worker,predicate:(message:Record<string,unknown>)=>boolean,timeoutMs=15000):Promise<Record<string,unknown>>{
  return new Promise((resolve,reject)=>{
