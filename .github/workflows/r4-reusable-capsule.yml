@@ -1,0 +1,52 @@
+name: R4 Reusable Capsule
+# Low-intrusion reusable R4: exact candidate, static gates, evidence identity.
+# Intentionally does NOT run task-specific severity batteries (e.g. T05 authority tests).
+on:
+  workflow_call:
+    inputs:
+      candidate_sha:
+        required: true
+        type: string
+      task_label:
+        required: false
+        type: string
+        default: generic
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r4-capsule-\${{ inputs.candidate_sha }}-\${{ inputs.task_label }}
+  cancel-in-progress: false
+
+jobs:
+  exact-candidate-and-static-gates:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-latest]
+    runs-on: \${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: \${{ inputs.candidate_sha }}
+      - name: Assert exact candidate checkout
+        env:
+          ASEN_EXPECTED_SHA: \${{ inputs.candidate_sha }}
+        run: node -e "const {execFileSync}=require('node:child_process');if(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==process.env.ASEN_EXPECTED_SHA)process.exit(1)"
+      - name: Assert clean tree
+        run: node -e "const {execFileSync}=require('node:child_process');const out=execFileSync('git',['status','--porcelain'],{encoding:'utf8'}).trim();if(out)process.exit(1)"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run audit:upstream-boundary
+      - name: Evidence identity
+        run: printf 'candidate_sha=%s\nos=%s\ntask=%s\n' "\${{ inputs.candidate_sha }}" "\${{ matrix.os }}" "\${{ inputs.task_label }}" > r4-capsule-marker.txt
+      - uses: actions/upload-artifact@v6
+        with:
+          name: r4-capsule-\${{ inputs.task_label }}-\${{ inputs.candidate_sha }}-\${{ matrix.os }}
+          path: r4-capsule-marker.txt
+          if-no-files-found: warn
+          retention-days: 30
