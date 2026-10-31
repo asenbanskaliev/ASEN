@@ -9,6 +9,7 @@ import {prepareDarwinPtyHelper} from "./pi-matrix-pty-helper.mjs";
 
 const repo=fileURLToPath(new URL("../",import.meta.url));
 const expected=process.env.ASEN_EXPECTED_SHA;
+const scenario=process.env.ASEN_T12_DIALOG_SCENARIO==="apply"?"apply":"cancel";
 assert.match(expected??"",/^[0-9a-f]{40}$/u);
 assert.equal(execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim(),expected);
 const metadata=JSON.parse(readFileSync(join(repo,"node_modules","@earendil-works","pi-coding-agent","package.json"),"utf8"));
@@ -52,6 +53,7 @@ const env={...process.env,HOME:home,USERPROFILE:home,PI_CODING_AGENT_DIR:join(ho
 for(const key of Object.keys(env))if(key.startsWith("GIT_")||/^(OPENAI|ANTHROPIC|GROQ|NVIDIA|OPENROUTER|GOOGLE|GEMINI).*(_KEY|_TOKEN)$/u.test(key))delete env[key];
 let child,log="",phase="waiting-for-session",timedOut=false,exitCode,signal=null,exited=false;
 const events=[];
+const receiptPath=join(repo,`t12-real-pi-tui-${scenario}.json`);
 const schedule=(fn,ms=320)=>setTimeout(fn,ms);
 try{
  prepareDarwinPtyHelper();
@@ -73,9 +75,19 @@ try{
    if(phase==="command-sent"&&log.includes("Selecciona un archivo con conflicto atribuido")){
     phase="selection-visible";events.push("selection-visible");schedule(()=>{child.write("\r");phase="selection-confirmed";events.push("selection-confirmed");});
    }else if(phase==="selection-confirmed"&&log.includes("Editar una corrección para shared.txt")){
-    phase="editor-visible";events.push("editor-visible");schedule(()=>{child.write("\x1b");phase="editor-cancelled";events.push("editor-escape-sent");});
+    phase="editor-visible";events.push("editor-visible");
+    if(scenario==="cancel")schedule(()=>{child.write("\x1b");phase="editor-cancelled";events.push("editor-escape-sent");});
+    else schedule(()=>{
+     child.write("NATIVE_T12");events.push("edited-input-sent");
+     setTimeout(()=>{child.write("\r");phase="editor-submitted";events.push("editor-submitted");},300);
+    });
    }else if(phase==="editor-cancelled"&&log.includes("Corrección cancelada.")){
     phase="cancellation-visible";events.push("cancellation-visible");writeFileSync(ack,"ack");
+   }else if(phase==="editor-submitted"&&log.includes("Aplicar corrección limitada al archivo seleccionado?")){
+    phase="confirmation-visible";events.push("confirmation-visible");
+    schedule(()=>{child.write("y");setTimeout(()=>{child.write("\r");phase="consent-sent";events.push("consent-sent");},250);});
+   }else if(phase==="consent-sent"&&log.includes("Archivo corregido con autorización de un uso:")){
+    phase="applied-visible";events.push("applied-visible");writeFileSync(ack,"ack");
    }
   });
   child.onExit(result=>{clearTimeout(timeout);clearTimeout(safety);clearInterval(poll);exitCode=result.exitCode;signal=result.signal?String(result.signal):null;exited=true;resolve();});
@@ -83,25 +95,32 @@ try{
  assert.equal(timedOut,false,"Real Pi TUI must shut down without timeout");
  assert.equal(exitCode,0,"Real Pi TUI must exit without forced termination");
  assert.equal(signal,null);
- assert.equal(phase,"cancellation-visible","TUI must show selector/editor and a real Escape cancellation");
- assert.deepEqual(events,["command-sent","selection-visible","selection-confirmed","editor-visible","editor-escape-sent","cancellation-visible"]);
- assert.equal(readFileSync(target,"utf8"),"original\n","cancelling the editor must preserve the original tracked file");
- assert.equal(git("status","--porcelain"),"","the real Pi UI cancellation must not leave Git changes");
- assert.equal(git("log","-1","--pretty=%s"),"baseline");
+ if(scenario==="cancel"){
+  assert.equal(phase,"cancellation-visible","TUI must show selector/editor and a real Escape cancellation");
+  assert.deepEqual(events,["command-sent","selection-visible","selection-confirmed","editor-visible","editor-escape-sent","cancellation-visible"]);
+  assert.equal(readFileSync(target,"utf8"),"original\n","cancelling the editor must preserve the original tracked file");
+  assert.equal(git("status","--porcelain"),"","the real Pi UI cancellation must not leave Git changes");
+ }else{
+  assert.equal(phase,"applied-visible","TUI must submit a modified editor and explicit UI approval");
+  assert.notEqual(readFileSync(target,"utf8"),"original\n","the consented edit must change the tracked file");
+  assert.match(readFileSync(target,"utf8"),/NATIVE_T12/);
+  assert.match(git("status","--porcelain"),/shared\.txt/);
+ }
+ assert.equal(git("log","-1","--pretty=%s"),"baseline","no UI correction commits automatically");
  assert.equal(readFileSync(join(temporary,"shutdown"),"utf8"),"0","the probe must reject model invocations");
  const report={schemaVersion:1,candidate:expected,host:"@earendil-works/pi-coding-agent",version:metadata.version,
-  platform:process.platform,mode:"tui",scenario:"public-asen-changes-resolve-selector-editor-escape",
-  events,modelCalls:0,exitCode,signal,timedOut,sourceFileUnchanged:true,
+  platform:process.platform,mode:"tui",scenario:`public-asen-changes-resolve-${scenario}`,
+  events,modelCalls:0,exitCode,signal,timedOut,sourceFileUnchanged:scenario==="cancel",
   logSha256:createHash("sha256").update(log).digest("hex"),result:"PASS"};
- writeFileSync(join(repo,"t12-real-pi-tui.json"),JSON.stringify(report,null,2)+"\n");
+ writeFileSync(receiptPath,JSON.stringify(report,null,2)+"\n");
  console.log("T12_REAL_PI_TUI_DIALOG_PASS",JSON.stringify({platform:report.platform,events:report.events,sha:report.logSha256}));
 }catch(error){
  console.error("T12_REAL_PI_TUI_DIALOG_FAIL",error);
  console.error("Observed phase",phase,"events",events,"stderr/tui-tail",log.slice(-3800));
  const failure={schemaVersion:1,candidate:expected,host:"@earendil-works/pi-coding-agent",version:metadata.version,
-  platform:process.platform,mode:"tui",scenario:"public-asen-changes-resolve-selector-editor-escape",
+  platform:process.platform,mode:"tui",scenario:`public-asen-changes-resolve-${scenario}`,
   phase,events,exitCode,signal,timedOut,logSha256:createHash("sha256").update(log).digest("hex"),result:"FAIL"};
- writeFileSync(join(repo,"t12-real-pi-tui.json"),JSON.stringify(failure,null,2)+"\n");
+ writeFileSync(receiptPath,JSON.stringify(failure,null,2)+"\n");
  process.exitCode=1;
 }finally{
  if(child&&!exited)try{child.kill();}catch{/* Best-effort cleanup after a failed interactive run. */}
