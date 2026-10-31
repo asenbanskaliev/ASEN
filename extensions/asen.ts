@@ -389,6 +389,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   });
   registerData("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
   registerData("asen-commands",{description:"List ASEN public commands",handler:()=>ASEN_COMMAND_CATALOG.map(c=>({name:c.name,group:c.group,implemented:c.implemented}))});
+  registerData("asen-customize",{description:"Report ASEN customization surfaces and their current owner commands without changing configuration",handler:()=>({ customize_surfaces:[{name:"asen-profiles",role:"model and routing profiles"},{name:"asen-persona",role:"reply tone and persona"},{name:"asen-history",role:"local task/session history"},{name:"asen-usage",role:"runtime usage and accounting"},{name:"asen-stats",role:"Pi history aggregates"},{name:"asen-workflow",role:"ODD/SDD routing evidence"}], implemented:true, note:"No separate global customize datastore exists; these supported surfaces are the customization contract."})});
   registerData("asen-status",{description:"Show bounded local ASEN status",handler:async(_args:string|undefined,ctx:CommandContext|undefined)=>{
    if(dependencies.status)return statusLines(dependencies.status(),terminalColumns());
    let agents:readonly PublicAgentRecord[]=[],changes:readonly WorkspaceChange[]=[],agentsAvailable=false,changesAvailable=false;

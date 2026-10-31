@@ -78,7 +78,7 @@ ASEN enforces the same concepts:
 
 These are the principal differences that are not merely naming:
 
-1. `asen-customize` is intentionally cataloged but `implemented:false`.
+1. `asen-customize` was previously cataloged `implemented:false`; it is now implemented as a read-only parameter hub with no new mutable datastore.
 2. Generic model-management verb equivalent to `gentle:models` is not exposed as a standalone command; `asen-profiles` covers the primary route.
 3. Gentle exposes an explicit `gentle:telemetry` command and startup banner toggle controls.
 4. Gentle exposes `gentle-live-research-probe` (test-shaped opt-in verification).
