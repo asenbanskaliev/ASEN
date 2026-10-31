@@ -1,5 +1,5 @@
 import {createHash,randomUUID} from "node:crypto";
-import {closeSync,constants,fsyncSync,lstatSync,mkdirSync,openSync,readFileSync,readdirSync,realpathSync,renameSync,unlinkSync,writeFileSync} from "node:fs";
+import {closeSync,constants,fsyncSync,linkSync,lstatSync,mkdirSync,openSync,readFileSync,readdirSync,realpathSync,renameSync,unlinkSync,writeFileSync} from "node:fs";
 import path from "node:path";
 import {SessionDirectory,type SessionDirectoryEntry} from "./session-directory.js";
 
@@ -50,7 +50,7 @@ export class SharedSessionDirectory extends SessionDirectory{
  readonly #owned=new Map<string,string>();
  readonly #imported=new Set<string>();
  constructor(root:string){super();this.#root=rootVerified(root);}
- override publish(entry:SessionDirectoryEntry):void{
+ override publish(entry:SessionDirectoryEntry,hooks?:{beforePublish?:()=>void}):void{
   // Validate a prospective local record before any file mutations.
   if(!safe(entry?.sessionId,512)||!safe(entry?.projectId,4096)||!safe(entry?.subject,512)||!safe(entry?.updatedAt,40)||
      !Number.isFinite(Date.parse(entry.updatedAt))||!["read","write","review"].includes(entry.classification)||
@@ -72,7 +72,18 @@ export class SharedSessionDirectory extends SessionDirectory{
    rootVerified(this.#root);
    const checked=readRecord(file);
    if(checked&&checked.owner!==this.#owner&&checked.pid!==process.pid&&alive(checked))throw new Error("Another Pi process took the session identity");
-   renameSync(temp,file);
+   hooks?.beforePublish?.();
+   if(!checked){
+    // New identities must be published without replacing a concurrent claimant.
+    try{linkSync(temp,file);}
+    catch(error){if((error as NodeJS.ErrnoException).code==="EEXIST")throw new Error("Another Pi process concurrently claimed this session");throw error;}
+    unlinkSync(temp);
+   }else{
+    // Preserve same-process restart and stale-record recovery without blind overwrite.
+    const latest=readRecord(file);
+    if(!latest||JSON.stringify(latest)!==JSON.stringify(checked))throw new Error("Shared session changed before replacement");
+    renameSync(temp,file);
+   }
    super.publish(entry);
    this.#owned.set(entry.sessionId,filename);
   }finally{

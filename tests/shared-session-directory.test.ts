@@ -37,6 +37,17 @@ test("a second Pi host in the same process may recover a session without the pre
  assert.equal(restarted.list("project-a")[0]?.subject,"Recovered Pi host");
  restarted.remove("recover");assert.deepEqual(restarted.list("project-a"),[]);
 });
+test("a racing Pi process cannot overwrite an atomically claimed session identity",t=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-session-claim-race-"));
+ t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const directory=join(root,"private"),first=new SharedSessionDirectory(directory),second=new SharedSessionDirectory(directory);
+ assert.throws(()=>first.publish({...entry("raced"),subject:"first"},{beforePublish:()=>second.publish({...entry("raced"),subject:"second"})}),/concurrently claimed/);
+ assert.equal(second.list("project-a").find(row=>row.sessionId==="raced")?.subject,"second");
+ first.remove("raced");
+ assert.equal(second.list("project-a").find(row=>row.sessionId==="raced")?.subject,"second");
+ second.remove("raced");
+ assert.deepEqual(first.list("project-a"),[]);
+});
 test("a separate Node process can publish and withdraw only its own session metadata",async t=>{
  const root=mkdtempSync(join(tmpdir(),"asen-session-cross-process-"));t.after(()=>rmSync(root,{recursive:true,force:true,maxRetries:20,retryDelay:100}));
  const directory=join(root,"private"),source=pathToFileURL(join(process.cwd(),"src/runtime/shared-session-directory.ts")).href;
