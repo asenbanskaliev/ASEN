@@ -1,6 +1,7 @@
 import {Buffer} from "node:buffer";
 import { DatabaseSync } from "node:sqlite";
 import {createHash,randomUUID} from "node:crypto";
+import { redactSecrets } from "../security/redact.js";
 import {existsSync,rmSync} from "node:fs";
 import {withExclusiveFileLockSync} from "../io/exclusive-file-lock.js";
 import {validateMemoryImport} from "./export-validation.js";
@@ -177,7 +178,7 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  }
  #save(item:MemoryItem,expected?:MemoryItem,createOnly=false):void{
   this.#requireIdentity(item.projectId,item.sessionId);
-  const content=stripPrivateTags(item.content);
+  const content=stripPrivateTags(redactSecrets(item.content));
   if(!content)throw new Error("Memory content is empty");
   this.#transaction(()=>{
    const session=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(item.sessionId) as {project_id:string;status:string}|undefined;
