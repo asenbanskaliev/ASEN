@@ -365,7 +365,7 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
    const sessions=(this.#db.prepare("SELECT * FROM memory_sessions WHERE project_id=? ORDER BY session_id").all(projectId) as Array<{project_id:string;session_id:string;root_session_id:string;parent_session_id:string|null;status:"live"|"ended"}>).map(r=>({projectId:r.project_id,sessionId:r.session_id,rootSessionId:r.root_session_id,...(r.parent_session_id?{parentSessionId:r.parent_session_id}:{}),status:r.status} satisfies MemorySessionState));
    const soft=(this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NOT NULL").all(projectId) as Record<string,unknown>[]).map(r=>({id:String(r.id),projectId:String(r.project_id),deletedAt:String(r.deleted_at),mode:"soft" as const,item:row(r)}));
    const hard=(this.#db.prepare("SELECT id,project_id,deleted_at FROM memory_tombstones WHERE project_id=?").all(projectId) as Array<{id:string;project_id:string;deleted_at:string}>).map(r=>({id:r.id,projectId:r.project_id,deletedAt:r.deleted_at,mode:"hard" as const}));
-   const deletions=[...soft,...hard].sort((a,b)=>a.id.localeCompare(b.id));
+   const deletions=[...soft,...hard].sort((a,b)=>a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
    return {version:1,projectId,observations,relations,summaries,sessions,deletions};
   },"DEFERRED");
  }
