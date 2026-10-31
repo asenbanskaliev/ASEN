@@ -11,6 +11,7 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"configuration",name:"asen-customize",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-telemetry",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-banner",implemented:true,owner:"extensions/asen.ts"},
+ {group:"diagnostics",name:"asen-research-probe",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-palette",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-commands",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-changes",implemented:true,owner:"extensions/asen.ts"},
