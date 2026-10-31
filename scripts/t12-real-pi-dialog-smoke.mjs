@@ -3,7 +3,7 @@ import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {existsSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {dirname,join} from "node:path";
+import {join} from "node:path";
 import {fileURLToPath,pathToFileURL} from "node:url";
 import {prepareDarwinPtyHelper} from "./pi-matrix-pty-helper.mjs";
 
@@ -50,35 +50,35 @@ writeFileSync(probe,probeLines.join("\n")+"\n");
 const env={...process.env,HOME:home,USERPROFILE:home,PI_CODING_AGENT_DIR:join(home,"agent"),
  ASEN_NO_SKILL_REGISTRY:"1",PI_TELEMETRY:"0",TERM:"xterm-256color"};
 for(const key of Object.keys(env))if(key.startsWith("GIT_")||/^(OPENAI|ANTHROPIC|GROQ|NVIDIA|OPENROUTER|GOOGLE|GEMINI).*(_KEY|_TOKEN)$/u.test(key))delete env[key];
-let pty,log="",phase="waiting-for-session",timedOut=false,exitCode,signal=null;
+let child,log="",phase="waiting-for-session",timedOut=false,exitCode,signal=null,exited=false;
 const events=[];
 const schedule=(fn,ms=320)=>setTimeout(fn,ms);
 try{
  prepareDarwinPtyHelper();
- pty=await import("node-pty");
- const cli=pty.spawn(process.execPath,[binary,"--no-extensions","--extension",primary,"--extension",probe,
+ const pty=await import("node-pty");
+ child=pty.spawn(process.execPath,[binary,"--no-extensions","--extension",primary,"--extension",probe,
   "--no-skills","--no-builtin-tools","--provider","openai","--model","gpt-4o"],
   {cwd:project,env,cols:120,rows:40,name:"xterm-256color"});
  await new Promise((resolve,reject)=>{
-  const timeout=setTimeout(()=>{timedOut=true;cli.kill();},40000);
+  const timeout=setTimeout(()=>{timedOut=true;child.kill();},40000);
   const safety=setTimeout(()=>reject(Error("Real Pi TUI child cleanup not observed")),45000);
   const poll=setInterval(()=>{
    if(phase==="waiting-for-session"&&existsSync(ready)){
     phase="command-sent";events.push("command-sent");
-    schedule(()=>cli.write("/asen-changes resolve\r"),1250);
+    schedule(()=>child.write("/asen-changes resolve\r"),1250);
    }
   },80);
-  cli.onData(chunk=>{
+  child.onData(chunk=>{
    log=(log+chunk).slice(-250000);
    if(phase==="command-sent"&&log.includes("Selecciona un archivo con conflicto atribuido")){
-    phase="selection-visible";events.push("selection-visible");schedule(()=>{cli.write("\r");phase="selection-confirmed";events.push("selection-confirmed");});
+    phase="selection-visible";events.push("selection-visible");schedule(()=>{child.write("\r");phase="selection-confirmed";events.push("selection-confirmed");});
    }else if(phase==="selection-confirmed"&&log.includes("Editar una corrección para shared.txt")){
-    phase="editor-visible";events.push("editor-visible");schedule(()=>{cli.write("\x1b");phase="editor-cancelled";events.push("editor-escape-sent");});
+    phase="editor-visible";events.push("editor-visible");schedule(()=>{child.write("\x1b");phase="editor-cancelled";events.push("editor-escape-sent");});
    }else if(phase==="editor-cancelled"&&log.includes("Corrección cancelada.")){
     phase="cancellation-visible";events.push("cancellation-visible");writeFileSync(ack,"ack");
    }
   });
-  cli.onExit(result=>{clearTimeout(timeout);clearTimeout(safety);clearInterval(poll);exitCode=result.exitCode;signal=result.signal?String(result.signal):null;resolve();});
+  child.onExit(result=>{clearTimeout(timeout);clearTimeout(safety);clearInterval(poll);exitCode=result.exitCode;signal=result.signal?String(result.signal):null;exited=true;resolve();});
  });
  assert.equal(timedOut,false,"Real Pi TUI must shut down without timeout");
  assert.equal(exitCode,0,"Real Pi TUI must exit without forced termination");
@@ -100,6 +100,6 @@ try{
  console.error("Observed phase",phase,"events",events,"stderr/tui-tail",log.slice(-3800));
  process.exitCode=1;
 }finally{
- try{if(pty&&typeof pty==="object"){} }catch{}
+ if(child&&!exited)try{child.kill();}catch{/* Best-effort cleanup after a failed interactive run. */}
  try{rmSync(temporary,{recursive:true,force:true,maxRetries:8,retryDelay:100});}catch(error){console.error("T12 cleanup warning",String(error));process.exitCode=1;}
 }
