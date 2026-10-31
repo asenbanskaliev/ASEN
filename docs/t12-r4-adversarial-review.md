@@ -45,3 +45,19 @@ CI 41176359512 proved the first Windows journey (selection/editor/Escape) PASS. 
 ## R4-10 — Windows Pi host exit versus native PTY test-harness exit
 
 A fail-closed independent supervisor (run `41176954180`) reported timeout even though the inner Windows witness emitted `T12_REAL_PI_TUI_DIALOG_PASS` and a complete genuine cancellation trace. The inner witness only emits PASS **after Pi's native child `onExit` reports exit 0 without signal, TUI phases are complete, the Git project remains unmodified and the Pi `session_shutdown` observation says zero model calls**. The remaining live handle belongs to the observer's `node-pty` module, not to a still-running Pi host. The follow-up test-only correction explicitly terminates its observer process **after** all those assertions, a stored exact-candidate receipt and cleanup; any failed child exit, missing phase, wrong Git state or cleanup error keeps nonzero exit. The parent supervisor continues to demand normal successful observer exit and exact receipt and never promotes a timeout/forced child kill. The positive Windows correction/approval journey and all applicable SHA gates remain unverified until fresh CI.
+
+
+## R4-01 disposition — removal is an atomic move, the race is narrowed and accepted
+
+R4-01 stays open as a threat-model boundary, not as an unaddressed defect. Descriptor-relative deletion (`unlinkat` with a parent directory descriptor, or the Windows handle-based equivalent) is not exposed by Node's filesystem API; adding a native addon for it would introduce a new compiled dependency into the shipped package, which is out of scope. The accepted threat model for managed removal is therefore **cooperative same-user processes**: identity is checked, not enforced.
+
+The remaining harm is now bounded rather than open-ended. Removal previously re-verified the pathname and then unlinked that pathname, so a substitution between the last check and the unlink caused deletion of an object ASEN had never verified. Removal now:
+
+1. verifies the complete path chain, the open no-follow descriptor, the object identity and the exact manifest bytes;
+2. atomically renames the target into a private per-operation directory (`.removal-<uuid>`, mode `0700`, inside the managed root, therefore the same filesystem);
+3. re-identifies the *moved* object against the descriptor that was verified;
+4. deletes only that re-identified object, and otherwise preserves it at its staged path and reports it in `retained` with `status: "partial"`.
+
+Consequences to keep honest: a substituted object is preserved instead of deleted, and the deletion target is no longer a stable, attacker-known pathname. The window is narrowed to a single syscall against an unpredictable name in a private directory, but an actively hostile same-user writer can still win it, and the final unlink is still pathname-based. No test in this repository proves atomicity, and none may be described as doing so.
+
+Deterministic coverage: `managed uninstall preserves an object substituted after the last verification` and `managed uninstall never follows a symlink substituted after the last verification` (POSIX only) use the new `beforeOwnedFileUnlink` seam. Two previously Windows-skipped regressions (`equal-byte current selector replaced after validation`, `matching-byte replacement by a second same-user actor`) now execute on Windows: their recorded skip reason proved stale on this Node 24/libuv build, where renaming a file whose descriptor is open succeeds. That is a local Windows observation, not a cross-platform result. The POSIX-only symlink scenario has not been executed locally on this workstation and requires exact-SHA Linux/macOS CI, plus independent review, before any claim moves.

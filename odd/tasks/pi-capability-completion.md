@@ -195,3 +195,37 @@ T09 exact-candidate platform result (57e706b3): CI and Release Gate passed on Li
 ### T07 reference-parity delta — Git-local index hygiene (2026-10-31)
 
 Public Pi-native reference revision `14f44d11cacbb0e39b73a172113a86b1e3cbfc58` was newly inspected rather than extrapolated from ASEN tests. It revealed Git-local `.codegraph/` exclusion missing in ASEN's earlier exact-CI-green T07 candidate. A new source candidate introduces the exclusion after explicit init/sync authorization, preserving read-only query/explore and failing with a visible warning if the Git metadata cannot be safely updated. Deterministic ordinary/symlink/linked-worktree and genuine CodeGraph/Git status tests are added. **T07 previous green CI does not establish full baseline functional parity; this exact candidate requires its own CI.** Reference mapping for network drive aliases and longer index query durations remains a distinct evidence gap, not implicitly closed.
+
+
+### Exact-candidate green CI recorded at d7b7422 — 2026-10-31
+
+Observed evidence only; no task state is promoted by this entry. The previously recorded "this exact candidate requires its own CI" condition is satisfied for source candidate `d7b7422c65cf7b2fc141fafb67fdf658e45bd516` (PR #43 head, branch `feat/t12-integrated-acceptance`).
+
+- CI run `41181781032`: `test` ubuntu-24.04, windows-latest and macos-latest PASS; `architecture` PASS; `pi-support-matrix` on all three platforms PASS; `t07-real-codegraph` on all three platforms PASS; `t12-integrated-security` PASS; `t12-real-pi-tui-dialog` on all three platforms PASS.
+- Release Gate run `41181781094`: `package` ubuntu-24.04, windows-latest and macos-latest PASS.
+- Phase 0 Architecture run `41181781040` PASS; Pi 1.0 runtime evidence run `41181781107` PASS.
+- Skipped by their explicit opt-in gates, not passed: `t05-r4-audit`, `t04-t05-live-nvidia`, and Pi Free Smoke `authenticated-free-model`. No provider was invoked.
+- Merge state at this SHA: `MERGEABLE` / `CLEAN`. Mergeability is not admission and grants no delivery authority.
+
+What this does not change: T07 still needs independent exact-candidate R4 admission and reference equivalence; T09 stays PARTIAL (final-check-to-unlink race disposition, OS browser launch, inherited Pi 1.2.0 Undici advisories); T10 stays PARTIAL (authorized workspace actions, cross-process coordination, interactive terminal accessibility, independent exact-candidate R4); T12 stays IN PROGRESS until an independent non-self R4 signature exists on an exact SHA and the reference-source gap is resolved. `docs/t12-r4-adversarial-review.md` remains a self-review risk register, not a sign-off.
+
+Local toolchain note: this worktree had no `node_modules` at this checkpoint, so no local suite result exists for `d7b7422` from this session. CI results above are the remote evidence; do not restate them as local runs.
+
+
+### T09-U12 — removal is an atomic move with post-move re-identification (local, uncommitted)
+
+Work unit: managed uninstall no longer deletes whatever the pathname holds at unlink time. After the existing path-chain, descriptor, identity and exact-byte verification, the target is atomically renamed into a private per-operation directory (`.removal-<uuid>`, mode `0700`, inside the managed root) and the moved object is re-identified against the verified descriptor; only a re-identified object is deleted. A pathname substituted after the last verification is preserved at its staged path and reported in `retained` with `status: "partial"`.
+
+Why: R4-01 records that a same-user writer can substitute a pathname between the final check and `unlink`, which previously deleted an object ASEN had never verified. Descriptor-relative deletion is not exposed by Node and a native addon is out of scope for the shipped package, so the harm and window are narrowed rather than closed. The accepted threat model is cooperative same-user processes; `docs/installation.md` and `docs/t12-r4-adversarial-review.md` now state that boundary explicitly.
+
+Files: `src/runtime/managed-lifecycle.ts` (new `beforeOwnedFileUnlink` seam, `removalStage`, move-then-verify removal, quarantine cleanup and reporting), `tests/t09-lifecycle.test.ts` (two new regressions, two stale Windows skip reasons removed), `docs/installation.md`, `docs/t12-r4-adversarial-review.md`.
+
+Local evidence on this workstation (Node 24.15.0, Windows): `npm run typecheck` passes; `tests/t09-lifecycle.test.ts` passes 38 with 3 Windows symlink skips; the two new substitution regressions pass on Windows except the POSIX-only symlink scenario, which did not execute here. Full `npm run check` on this machine: 1714 tests, 1692 passed, 4 failed, 18 skipped. All four failures are `EPERM` environment failures in `tests/review-view.test.ts` (2) and `tests/setup.test.ts` (2) — Windows `symlink` privilege and `rm` of a temporary directory — reproduced in isolation, in files that do not import `managed-lifecycle`; they are not a passing suite and are not attributable to this unit. Audits after the test stage were run separately because `npm run check` stops on a test failure: `audit:parity` PASS, `audit:skills` PASS (27), `audit:skill-parity` PASS (12 skills), `audit:memory-parity` PASS, `audit:ecosystem` claims PASS with normative source proof NOT ADMITTED (retained baseline repository unavailable), `audit:upstream-boundary` PASS.
+
+Owner authorization: on 2026-10-31 the owner explicitly requested commit and push for this unit, superseding the earlier "commit prohibited by owner" note for T09-U12 only.
+
+Not admitted: no exact-SHA CI, no Linux/macOS execution of the POSIX symlink scenario, no independent review. R4-01 remains an open threat-model boundary and T09 stays PARTIAL. Do not describe the removal path as atomic, confined or race-free.
+
+Self-audit of T09-U12 (the `subagent` tool is denied in this runtime, so no independent verifier could run; this is an author self-audit and must never be cited as sign-off): the safety property holds — the only `unlink` on a managed file is `unlink(staged)` after `sameUninstallIdentity(held,moved)` — and the function is module-private with two call sites, both in `uninstallManaged`. Four advisories were recorded rather than fixed: a preserved object yields both the vanished original path and its staged path in `retained`; `beforeOwnedFileUnlink` is not wired for the current-selector path, so that scenario has no seam; an exception after quarantine creation (for example a failing `unlink(staged)`) leaves the `.removal-*` directory behind; and a preserved quarantine had no recovery regression until the `a preserved removal keeps the install recoverable and a later uninstall can finish` test was added, which now passes locally on Windows.
+
+Local environment failures observed while running the full check on this workstation, unrelated to this unit: four tests fail in `tests/setup.test.ts` and `tests/review-view.test.ts` with `EPERM` from `symlink` (Windows privilege) and from `rm` of a temp directory. Neither file imports `managed-lifecycle`, and both reproduce when run alone, so they are environment failures on this machine, not regressions from this unit. They are not evidence of a passing suite and must not be reported as one.
