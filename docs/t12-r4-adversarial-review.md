@@ -35,3 +35,8 @@ The previous Windows failure also left native PTY handles open until the fifteen
 ## T09 current-selector provenance hardening — exact candidate pending
 
 A separate same-user file substitution risk was found in `uninstallManaged`: after deleting owned version files it read `install/current` by ordinary `readFile` and removed the pathname if its bytes resembled any known version. A symlink at that pathname could be read outside the installation root; an equal-byte foreign replacement could be deleted without an object identity check. The next candidate replaces that branch with the existing `removeOwnedFile` verification path (no-follow open descriptor, full parent identity, inode, exact expected bytes, final checks). Two regressions retain an equal-byte substituted selector and a symlink targeting foreign content. These are fail-closed provenance checks, **not** OS confinement: a malicious same-user actor can still race after the last path validation. No FULL promotion until exact-candidate lifecycle smoke and R4 proof.
+
+
+## R4-09 — Windows affirmative native editor stalls after cancellation PASS
+
+CI 41176359512 proved the first Windows journey (selection/editor/Escape) PASS. The second affirmative write never produced its required PASS receipt; cancellation of the job is a genuine failed admission, not an allowed skip. Native node-pty can hold the JS event loop and defeat an in-process timer. The next candidate isolates Pi TUI work behind a separate Node supervisor and demands the exact child exit plus candidate/scenario receipt. Timeout remains FAIL, with bounded cleanup and last phase evidence. This is a diagnostic and resilience correction, **not** evidence that Ctrl+Enter/Enter approval semantics already work on Windows.
