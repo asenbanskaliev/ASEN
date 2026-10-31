@@ -52,7 +52,7 @@ import {TrustedTaskAgentBinder} from "../src/runtime/trusted-task-agent-binder.j
 import {TaskAgentTodoReconciler} from "../src/runtime/task-agent-reconciler.js";
 import {dispatchNextPlanTask} from "../src/runtime/plan-dispatcher.js";
 import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-tools.js";
-import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
+import {PersistentWorkspaceStore,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";
 import {todoProgressSummary,todoProgressWidget,todoStatusRows} from "../src/runtime/todo-presentation.js";
 import {addAsenRequestGuidance} from "../src/runtime/request-guidance.js";
 import {ASEN_PLAN_REQUEST_TOOL,registerAsenPlanRequestTool} from "../src/runtime/natural-plan-tool.js";
@@ -456,7 +456,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(ctx?.hasUI!==true||typeof ctx.ui?.select!=="function"||typeof ctx.ui.editor!=="function"||typeof ctx.ui.confirm!=="function")return ["La corrección requiere una sesión Pi interactiva con selección, editor y confirmación."];
    const identity=await sessionIdentity(ctx),store=await workspaceStorePromise;
    const recorded=(await store.list(identity)).map(row=>row.change);
-   const conflicts=findPotentialWorkspaceConflicts(recorded).filter(row=>row.earlier.worktree===identity.projectId);
+   const conflicts=findPotentialWorkspaceConflicts(recorded).filter(row=>sameWorkspaceIdentityPath(row.earlier.worktree,identity.projectId)&&sameWorkspaceIdentityPath(row.later.worktree,identity.projectId));
    const choices=[...new Set(conflicts.map(row=>row.path))];
    if(!choices.length)return ["No hay conflictos de esta sesión registrados para corregir."];
    const selected=await ctx.ui.select("Selecciona un archivo con conflicto atribuido",choices,ctx.signal?{signal:ctx.signal}:undefined);

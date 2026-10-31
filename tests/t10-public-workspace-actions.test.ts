@@ -7,7 +7,7 @@ import {join} from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 
-async function fixture(t:test.TestContext){
+async function fixture(t:test.TestContext,options:{recordedWorktree?:(root:string)=>string}={}){
  const home=mkdtempSync(join(tmpdir(),"asen-workspace-command-"));
  t.after(()=>rmSync(home,{recursive:true,force:true,maxRetries:20,retryDelay:100}));
  const requested=join(home,"project");mkdirSync(requested);const root=realpathSync.native(requested);
@@ -15,7 +15,7 @@ async function fixture(t:test.TestContext){
  git("init","-q");git("config","user.name","ASEN acceptance");git("config","user.email","acceptance@example.invalid");
  writeFileSync(join(root,"shared.txt"),"original\n");git("add","shared.txt");git("commit","-qm","baseline");
  const file=join(home,".asen","workspace.json"),store=await PersistentWorkspaceStore.open(file);
- const entry={path:"shared.txt",sessionId:"s1",projectId:root,worktree:root,operation:"modify" as const,at:new Date().toISOString()};
+ const entry={path:"shared.txt",sessionId:"s1",projectId:root,worktree:options.recordedWorktree?.(root)??root,operation:"modify" as const,at:new Date().toISOString()};
  await store.append({...entry,actor:{kind:"agent",id:"first"}});
  await store.append({...entry,actor:{kind:"user",id:"second"}});
  const commands=new Map<string,{handler:(args:string,context:unknown)=>Promise<unknown>}>();
@@ -62,4 +62,22 @@ test("public Pi changes action refuses a different selection or declined consent
  assert.match(declined.join("\n"),/no autorizada/i);
  assert.equal(approved,1);
  assert.equal(readFileSync(file,"utf8"),"original\n");
+});
+
+test("native Windows Pi correction recognizes a recorded worktree with equivalent casing",async t=>{
+ if(process.platform!=="win32"){t.skip("Windows path-identity regression");return;}
+ const f=await fixture(t,{recordedWorktree:root=>root.toUpperCase()});
+ let selected=false;
+ const result=await f.command.handler("resolve",{
+  cwd:f.root,hasUI:true,sessionManager:{getSessionId:()=>"s1"},
+  ui:{
+   select:async(_prompt:string,choices:string[])=>{selected=true;assert.deepEqual(choices,["shared.txt"]);return undefined;},
+   editor:async()=>{throw Error("Cancelled selection must not open editor");},
+   confirm:async()=>{throw Error("Cancelled selection must not ask approval");},
+   notify:()=>{},
+  },
+ }) as string[];
+ assert.equal(selected,true,"a Win32 path alias must not hide a valid same-project conflict");
+ assert.match(result.join("\n"),/cancelada/i);
+ assert.equal(readFileSync(join(f.root,"shared.txt"),"utf8"),"original\n");
 });
