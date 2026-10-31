@@ -23,7 +23,7 @@ const git=(...args)=>execFileSync("git",["-C",project,...args],{encoding:"utf8"}
 git("init","-q");git("config","user.name","T12 TUI acceptance");git("config","user.email","t12@example.invalid");
 const target=join(project,"shared.txt");
 writeFileSync(target,"original\n");git("add","shared.txt");git("commit","-qm","baseline");
-const ready=join(temporary,"ready"),ack=join(temporary,"ack"),probe=join(temporary,"probe.ts");
+const ready=join(temporary,"ready"),seedAck=join(temporary,"seed-ack"),ack=join(temporary,"ack"),probe=join(temporary,"probe.ts");
 const workspaceFile=join(home,".asen","workspace.json");
 const workspaceModule=pathToFileURL(join(repo,"src","runtime","workspace-store.ts")).href;
 const probeLines=[
@@ -32,13 +32,18 @@ const probeLines=[
  'export default function(pi){',
  ' let modelCalls=0;',
  ' pi.on("before_agent_start",()=>{modelCalls++;throw Error("T12 forbids model calls");});',
- ' pi.on("session_start",async(_event,ctx)=>{',
+ ' pi.registerCommand("t12-seed-conflict",{description:"T12 disposable Git fixture only",handler:async(_args,ctx)=>{',
  '  const store=await PersistentWorkspaceStore.open('+JSON.stringify(workspaceFile)+');',
  '  const projectId=realpathSync(ctx.cwd),sessionId=ctx.sessionManager.getSessionId();',
  '  const change={path:"shared.txt",sessionId,projectId,worktree:projectId,operation:"modify",at:new Date().toISOString()};',
  '  await store.append({...change,actor:{kind:"agent",id:"first-writer"}});',
  '  await store.append({...change,actor:{kind:"user",id:"second-writer"}});',
- '  writeFileSync('+JSON.stringify(ready)+',JSON.stringify({sessionId,projectId,modelCalls}));',
+ '  const recorded=await store.list({sessionId,projectId,worktree:projectId});',
+ '  if(recorded.length!==2)throw Error("Seeded conflict is not visible under active command identity");',
+ '  writeFileSync('+JSON.stringify(seedAck)+',JSON.stringify({count:recorded.length,modelCalls}));',
+ ' }});',
+ ' pi.on("session_start",(_event,ctx)=>{',
+ '  writeFileSync('+JSON.stringify(ready)+',"ready");',
  '  const interval=setInterval(()=>{',
  '   try{if(readFileSync('+JSON.stringify(ack)+',"utf8")==="ack"){clearInterval(interval);clearTimeout(safety);ctx.shutdown();}}catch{}',
  '  },80);',
@@ -66,8 +71,10 @@ try{
   const safety=setTimeout(()=>reject(Error("Real Pi TUI child cleanup not observed")),45000);
   const poll=setInterval(()=>{
    if(phase==="waiting-for-session"&&existsSync(ready)){
+    phase="seeding";schedule(()=>child.write("/t12-seed-conflict\r"),900);
+   }else if(phase==="seeding"&&existsSync(seedAck)){
     phase="command-sent";events.push("command-sent");
-    schedule(()=>child.write("/asen-changes resolve\r"),1250);
+    schedule(()=>child.write("/asen-changes resolve\r"),900);
    }
   },80);
   child.onData(chunk=>{
