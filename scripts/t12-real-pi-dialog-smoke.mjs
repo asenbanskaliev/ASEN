@@ -57,6 +57,7 @@ const env={...process.env,HOME:home,USERPROFILE:home,PI_CODING_AGENT_DIR:join(ho
  ASEN_NO_SKILL_REGISTRY:"1",PI_TELEMETRY:"0",TERM:"xterm-256color"};
 for(const key of Object.keys(env))if(key.startsWith("GIT_")||/^(OPENAI|ANTHROPIC|GROQ|NVIDIA|OPENROUTER|GOOGLE|GEMINI).*(_KEY|_TOKEN)$/u.test(key))delete env[key];
 let child,log="",phase="waiting-for-session",timedOut=false,exitCode,signal=null,exited=false;
+let fullEvidenceSucceeded=false;
 const events=[];
 const receiptPath=join(repo,`t12-real-pi-tui-${scenario}.json`);
 const schedule=(fn,ms=320)=>setTimeout(fn,ms);
@@ -148,6 +149,7 @@ try{
   logSha256:createHash("sha256").update(log).digest("hex"),result:"PASS"};
  writeFileSync(receiptPath,JSON.stringify(report,null,2)+"\n");
  console.log("T12_REAL_PI_TUI_DIALOG_PASS",JSON.stringify({platform:report.platform,events:report.events,sha:report.logSha256}));
+ fullEvidenceSucceeded=true;
 }catch(error){
  console.error("T12_REAL_PI_TUI_DIALOG_FAIL",error);
  console.error("Observed phase",phase,"events",events,"stderr/tui-tail",log.slice(-3800));
@@ -162,3 +164,10 @@ try{
  if(child&&!exited)try{child.kill();}catch{/* Best-effort cleanup after a failed interactive run. */}
  try{rmSync(temporary,{recursive:true,force:true,maxRetries:8,retryDelay:100});}catch(error){console.error("T12 cleanup warning",String(error));process.exitCode=1;}
 }
+
+// Pi's own native child has already emitted onExit with code 0, and all bounded
+// assertions and temporary-project cleanup have completed. On Windows node-pty
+// may retain a native host handle, keeping this *test harness* event loop alive.
+// End only the harness explicitly, without promoting a forced Pi-child exit to PASS.
+if(fullEvidenceSucceeded&&(process.exitCode===undefined||process.exitCode===0))process.exit(0);
+if(process.exitCode)process.exit(process.exitCode);
