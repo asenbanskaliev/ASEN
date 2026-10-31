@@ -55,4 +55,5 @@ if(!timeout&&outcome.code===0){
  process.stderr.write("T12_SUPERVISOR_FAIL "+JSON.stringify(failure)+"\n");
  process.stderr.write("T12_SUPERVISOR_TAIL "+tail.slice(-1700)+"\n");
  process.exitCode=1;
+ if(outcome.signal==="cleanup-timeout")process.exit(124);
 }

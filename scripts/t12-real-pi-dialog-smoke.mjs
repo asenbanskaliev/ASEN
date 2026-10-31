@@ -60,6 +60,15 @@ let child,log="",phase="waiting-for-session",timedOut=false,exitCode,signal=null
 const events=[];
 const receiptPath=join(repo,`t12-real-pi-tui-${scenario}.json`);
 const schedule=(fn,ms=320)=>setTimeout(fn,ms);
+const phaseTraceFile=join(repo,"t12-debug-phase-"+scenario+".json");
+let lastObservedPhase="";
+const phaseMonitor=setInterval(()=>{
+ if(phase===lastObservedPhase)return;
+ lastObservedPhase=phase;
+ try{writeFileSync(phaseTraceFile,JSON.stringify({scenario,phase,events})+"\\n");}catch{}
+ console.log("T12_PHASE",JSON.stringify({scenario,phase}));
+},200);
+phaseMonitor.unref();
 // A native Windows PTY may keep the Node event loop alive even after a failed assertion.
 // The outer watchdog never counts as success: it records failure and terminates the
 // disposable child process tree before returning a non-zero exit to Actions.
@@ -148,6 +157,7 @@ try{
  writeFileSync(receiptPath,JSON.stringify(failure,null,2)+"\n");
  process.exitCode=1;
 }finally{
+ clearInterval(phaseMonitor);
  clearTimeout(hardWatchdog);
  if(child&&!exited)try{child.kill();}catch{/* Best-effort cleanup after a failed interactive run. */}
  try{rmSync(temporary,{recursive:true,force:true,maxRetries:8,retryDelay:100});}catch(error){console.error("T12 cleanup warning",String(error));process.exitCode=1;}

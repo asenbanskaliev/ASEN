@@ -208,8 +208,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/t12-real-pi-dialog-smoke.mjs
-          ASEN_T12_DIALOG_SCENARIO=apply node scripts/t12-real-pi-dialog-smoke.mjs
+          node scripts/t12-pi-native-supervisor.mjs cancel
+          node scripts/t12-pi-native-supervisor.mjs apply
       - name: Retain exact-candidate real UI receipt
         if: always()
         uses: actions/upload-artifact@v6
