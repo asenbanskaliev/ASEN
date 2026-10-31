@@ -65,7 +65,7 @@ let lastObservedPhase="";
 const phaseMonitor=setInterval(()=>{
  if(phase===lastObservedPhase)return;
  lastObservedPhase=phase;
- try{writeFileSync(phaseTraceFile,JSON.stringify({scenario,phase,events})+"\\n");}catch{}
+ try{writeFileSync(phaseTraceFile,JSON.stringify({scenario,phase,events})+"\n");}catch{}
  console.log("T12_PHASE",JSON.stringify({scenario,phase}));
 },200);
 phaseMonitor.unref();
