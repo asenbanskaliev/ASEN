@@ -96,7 +96,7 @@ async function runCell(cell,cli,packageRoot,root){
    const sendKeyboard=setInterval(()=>{
     if(!sent&&existsSync(ready)){
      sent=true;
-     setTimeout(()=>{try{child.write("/asen-changes\\r");}catch{/* Natural-exit and keyboard admission still fail. */}},1000);
+     setTimeout(()=>{try{child.write("/asen-changes\r");}catch{/* Natural-exit and keyboard admission still fail. */}},1500);
     }
    },100);
    child.onData(data=>{
