@@ -23,6 +23,7 @@ import {ALL_INTERACTION_TOOL_NAMES,registerInteractionTools} from "../src/intera
 import {createLocalBashOperations,type ToolDefinition} from "@earendil-works/pi-coding-agent";
 import {ASEN_CODEGRAPH_TOOL_NAME,registerCodeGraphTools,type CodeIntelligenceOptions} from "../src/interaction/code-intelligence.js";
 import {buildStatus,statusLines,type AsenStatusInput} from "../src/runtime/status.js";
+import { readAsenLanguage, writeAsenLanguage } from "../src/runtime/language.js";
 import {doctorChecks,doctorExitCode} from "../src/runtime/doctor.js";
 import {controlledInstructionPlanCommand,routePreviewCommand} from "../src/runtime/route-command.js";
 import {ASEN_COMMAND_CATALOG} from "../src/runtime/command-catalog.js";
@@ -399,12 +400,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const parts = String(args??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
    const requested = parts.length>1 ? parts[1] : "";
    const homePath = dependencies.homeDir?.() ?? home();
-   const prefFile = path.join(homePath, ".asen", "language.json");
-   async function readLanguage(): Promise<"en"|"es">{try{const raw=await readFile(prefFile,"utf8");const value=JSON.parse(raw);return value.lang==="es"||value.language==="es"?"es":"en";}catch{return "en";}}
-   async function setLanguage(next:"en"|"es"){await mkdir(path.dirname(prefFile),{recursive:true});await writeFile(prefFile,JSON.stringify({lang:next})+"\n","utf8");}
-   const current=await readLanguage();
+   const current=await readAsenLanguage(homePath);
    if(!parts.length||requested==="status"||requested==="show") return {language:current,note:"Use `/asen language en` or `/asen language es`"};
-   if(requested==="en"||requested==="es"){if(requested!==current)await setLanguage(requested);return {language:requested};}
+   if(requested==="en"||requested==="es"){if(requested!==current)await writeAsenLanguage(homePath,requested as any);return {language:requested};}
    return {error:"Use `/asen language show`, `/asen language en` or `/asen language es`"};
   }});
   registerData("asen-help",{description:"Plain-language guide for one ASEN command",handler:(args?:string)=>{const name=String(args??"").trim().toLowerCase();const entry=ASEN_COMMAND_CATALOG.find(command=>command.name===name);if(!entry)return [{what:"Unknown command",use:"Run /asen help to print the full ASEN list",next:"Try /asen-commands"}];return [{what:`${entry.name} performs its ${entry.group} function in ASEN.`,use:`Type /${entry.name}`,next:entry.implemented?"Read the command output and follow its next step":"This surface is still pending"}];}});
@@ -434,7 +432,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   registerData("asen-customize",{description:"Report ASEN customization surfaces and their current owner commands without changing configuration",handler:()=>({ customize_surfaces:[{name:"asen-profiles",role:"model and routing profiles"},{name:"asen-persona",role:"reply tone and persona"},{name:"asen-history",role:"local task/session history"},{name:"asen-usage",role:"runtime usage and accounting"},{name:"asen-stats",role:"Pi history aggregates"},{name:"asen-workflow",role:"ODD/SDD routing evidence"}], implemented:true, note:"No separate global customize datastore exists; these supported surfaces are the customization contract."})});
   registerData("asen-telemetry",{description:"Report ASEN telemetry status and where to act without changing consent",handler:()=>({telemetry:"managed through asen-usage (status, preview, enable, disable)",related_commands:["asen-usage","asen-stats","asen-commands"],implemented:true,note:"Telemetry state is not split into a second global screen in this shell; the same lifecycle entry points own the state."})});
   registerData("asen-status",{description:"Show bounded local ASEN status",handler:async(_args:string|undefined,ctx:CommandContext|undefined)=>{
-   if(dependencies.status)return statusLines(dependencies.status(),terminalColumns());
+   if(dependencies.status){const language=await readAsenLanguage(home());return statusLines({...dependencies.status(),language},terminalColumns());}
    let agents:readonly PublicAgentRecord[]=[],changes:readonly WorkspaceChange[]=[],agentsAvailable=false,changesAvailable=false;
    if(agentRuntimePromise&&ctx){const rows=await (await agentRuntimePromise).list(await sessionIdentity(ctx));agents=rows;agentsAvailable=true;}else if(dependencies.agents){agents=dependencies.agents();agentsAvailable=true;}
    if(workspaceStorePromise&&ctx){changes=(await (await workspaceStorePromise).list(await sessionIdentity(ctx))).map(row=>row.change);changesAvailable=true;}else if(dependencies.changes){changes=dependencies.changes();changesAvailable=true;}
