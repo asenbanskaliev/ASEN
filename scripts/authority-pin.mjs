@@ -1,16 +1,7 @@
 import {createHash} from "node:crypto";
 import {readFileSync, writeFileSync} from "node:fs";
-import path from "node:path";
 
-const file="src/agents/pi-process-runner.ts";
-const assets=[
-  "src/io/atomic-write.ts",
-  "src/io/exclusive-file-lock.ts",
-  "src/io/private-file.ts",
-  "src/runtime/responsive-layout.ts",
-  "src/runtime/workspace-attribution.ts",
-  "src/runtime/workspace-store.ts"
-];
+const file="src/agents/pi-authority-assets.ts";
 
 function normalize(source){
   return source.replace(/\r\n/g,"\n");
@@ -21,31 +12,40 @@ function hashFile(source){
   return createHash("sha256").update(normalize(content)).digest("hex");
 }
 
+const moduleSource = readFileSync(file, "utf8");
+const assets = moduleSource.split(/\r?\n/)
+  .map((line) => line.match(/source:"([^"]+)"/))
+  .filter(Boolean)
+  .map((match) => match[1]);
+
 const expected={};
 for(const asset of assets) expected[asset]=hashFile(asset);
 
-function replaceHash(manifest,asset,hash){
- const source=`src/runtime/${asset}`.replace("src/",""); 
- const re=new RegExp(`source:"${asset}",target:"${asset}",sha256:"[0-9a-f]{64}"`);
- const next=manifest.replace(re,`source:"${asset}",target:"${asset}",sha256:"${hash}"`);
- if(next===manifest) throw new Error(`Authority pin entry not found: ${asset}`);
- return next;
-}
-
-let manifest=readFileSync(file,"utf8");
-const mismatches=[];
-for(const asset of assets){
- const entryAsset=asset;
- const re=new RegExp(`source:"${asset}",target:"${asset}",sha256:"([0-9a-f]{64})"`);
- const match=manifest.match(re);
- const pinned=match?.[1] ?? null;
- const computed=expected[asset];
- if(pinned!==computed) mismatches.push({asset,expected:computed,actual:pinned});
+function replaceHash(manifest, asset, hash){
+  const lines=manifest.split(/\r?\n/);
+  let found=false;
+  const updated=lines.map((line)=>{
+    const match=line.match(new RegExp(`source:"${asset}"`));
+    if(!match) return line;
+    if(!new RegExp('sha256:"[0-9a-f]{64}"').test(line)) return line;
+    found=true;
+    return line.replace(/sha256:"[0-9a-f]{64}"/, `sha256:"${hash}"`);
+  });
+  if(!found) throw new Error(`Authority pin entry not found: ${asset}`);
+  return updated.join("\n") + (manifest.endsWith("\n") ? "\n" : "");
 }
 
 const mode=process.argv.includes("check") ? "check" : "write";
 
 if(mode==="check"){
+ const manifest=readFileSync(file,"utf8");
+ const mismatches=[];
+ for(const asset of assets){
+  const match = manifest.match(new RegExp(`source:"${asset}"[\\s\\S]*?sha256:"([0-9a-f]{64})"`));
+  const pinned=match?.[1] ?? null;
+  const computed=expected[asset];
+  if(pinned!==computed) mismatches.push({asset,expected:computed,actual:pinned});
+ }
  if(mismatches.length){
   for(const item of mismatches){
    console.error(`AUTHORITY PIN MISMATCH: ${item.asset}`);
@@ -58,9 +58,9 @@ if(mode==="check"){
  process.exit(0);
 }
 
+let manifest=readFileSync(file,"utf8");
 for(const asset of assets){
- const computed=expected[asset];
- manifest=replaceHash(manifest,asset,computed);
+ manifest=replaceHash(manifest,asset,expected[asset]);
 }
 writeFileSync(file,manifest,"utf8");
 console.log(`Authority pin updated: ${assets.length} files`);
