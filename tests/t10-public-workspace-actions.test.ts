@@ -98,5 +98,5 @@ test("native Windows Pi final authorization accepts an equivalent real worktree 
  assert.equal(approvals,1);
  assert.match(result.join("\n"),/Archivo corregido con autorización de un uso/i);
  assert.equal(readFileSync(join(f.root,"shared.txt"),"utf8"),"win32 accepted\n");
- assert.match(f.git("status","--porcelain"),/shared\\.txt/);
+ assert.match(f.git("status","--porcelain"),/shared\.txt/);
 });
