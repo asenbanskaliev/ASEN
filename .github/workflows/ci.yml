@@ -179,6 +179,37 @@ jobs:
           path: t12-integrated-security.log
           if-no-files-found: warn
           retention-days: 30
+  t12-real-pi-tui-dialog:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.head_ref == 'feat/t12-integrated-acceptance' &&
+      github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install pinned real Pi and node-pty
+        run: npm ci
+      - name: Drive public T10 selector, editor and cancellation over native PTY
+        run: node scripts/t12-real-pi-dialog-smoke.mjs
+      - name: Retain exact-candidate real UI receipt
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: t12-real-pi-tui-${{ github.event.pull_request.head.sha }}
+          path: t12-real-pi-tui.json
+          if-no-files-found: warn
+          retention-days: 30
   architecture:
     runs-on: ubuntu-24.04
     steps:
