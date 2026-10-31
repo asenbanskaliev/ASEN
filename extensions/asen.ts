@@ -471,7 +471,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(!confirmed||ctx.signal?.aborted)return ["Corrección no autorizada."];
    const current=await sessionIdentity(ctx);
    if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)return ["La sesión o el proyecto han cambiado; la corrección no se aplicó."];
-   if(!findPotentialWorkspaceConflicts((await store.list(identity)).map(row=>row.change)).some(row=>row.path===selected&&row.earlier.worktree===identity.projectId))return ["El conflicto cambió durante la autorización; no se aplicó."];
+   if(!findPotentialWorkspaceConflicts((await store.list(identity)).map(row=>row.change)).some(row=>row.path===selected&&sameWorkspaceIdentityPath(row.earlier.worktree,identity.projectId)&&sameWorkspaceIdentityPath(row.later.worktree,identity.projectId)))return ["El conflicto cambió durante la autorización; no se aplicó."];
    const applied=applyWorkspaceCorrection(candidate,replacement);
    const warning=applied.postPublicationWarning?["Advertencia: el archivo se escribió, pero la comprobación posterior detectó cambios externos; revisa el estado Git antes de continuar."]:[];
    try{await store.append({path:selected,actor:{kind:"user",id:identity.sessionId},sessionId:identity.sessionId,projectId:identity.projectId,worktree:identity.projectId,operation:"modify",at:new Date().toISOString()});}

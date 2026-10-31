@@ -81,3 +81,22 @@ test("native Windows Pi correction recognizes a recorded worktree with equivalen
  assert.match(result.join("\n"),/cancelada/i);
  assert.equal(readFileSync(join(f.root,"shared.txt"),"utf8"),"original\n");
 });
+
+test("native Windows Pi final authorization accepts an equivalent real worktree spelling",async t=>{
+ if(process.platform!=="win32"){t.skip("Native Windows path equivalence");return;}
+ const f=await fixture(t,{recordedWorktree:root=>root.toUpperCase()});
+ let approvals=0;
+ const result=await f.command.handler("resolve",{
+  cwd:f.root,hasUI:true,sessionManager:{getSessionId:()=>"s1"},
+  ui:{
+   select:async(_prompt:string,choices:string[])=>{assert.deepEqual(choices,["shared.txt"]);return "shared.txt";},
+   editor:async(_prompt:string,content:string)=>{assert.equal(content,"original\n");return "win32 accepted\n";},
+   confirm:async()=>{approvals++;return true;},
+   notify:()=>{},
+  },
+ }) as string[];
+ assert.equal(approvals,1);
+ assert.match(result.join("\n"),/Archivo corregido con autorización de un uso/i);
+ assert.equal(readFileSync(join(f.root,"shared.txt"),"utf8"),"win32 accepted\n");
+ assert.match(f.git("status","--porcelain"),/shared\\.txt/);
+});
