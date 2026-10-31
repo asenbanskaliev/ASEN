@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: "22.19.0"
-      - run: npm install
+      - run: npm ci
       - name: Prepare frozen ecosystem Git objects
         run: node .github/scripts/prepare-frozen-ecosystem-baseline.mjs
       # Same checks and order as npm run check, split into timed Actions steps.

@@ -249,7 +249,7 @@ Observed evidence only; no task state is promoted by this entry. The previously 
 
 - CI run `41181781032`: `test` ubuntu-24.04, windows-latest and macos-latest PASS; `architecture` PASS; `pi-support-matrix` on all three platforms PASS; `t07-real-codegraph` on all three platforms PASS; `t12-integrated-security` PASS; `t12-real-pi-tui-dialog` on all three platforms PASS.
 - Release Gate run `41181781094`: `package` ubuntu-24.04, windows-latest and macos-latest PASS.
-- Phase 0 Architecture run `41181781040` PASS; Pi 1.0 runtime evidence run `41181781107` PASS.
+- Phase 0 Architecture run `41181781040` PASS; Pi 1.2 runtime evidence run `41181781107` PASS.
 - Skipped by their explicit opt-in gates, not passed: `t05-r4-audit`, `t04-t05-live-nvidia`, and Pi Free Smoke `authenticated-free-model`. No provider was invoked.
 - Merge state at this SHA: `MERGEABLE` / `CLEAN`. Mergeability is not admission and grants no delivery authority.
 
