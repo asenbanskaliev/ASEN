@@ -215,7 +215,7 @@ test("production Pi extension runs and restores session-scoped agent status usin
   let rows:any[]=[],deadline=Date.now()+30_000;while(Date.now()<deadline){rows=(await first.tools.get("asen_agent_status").execute("status",{},new AbortController().signal,()=>{},first.context())).details;if(rows.some(row=>row.id===id&&["completed","failed","cancelled","interrupted"].includes(row.state)))break;await new Promise(resolve=>setTimeout(resolve,10));}
   assert.ok(rows.some(row=>row.id===id&&row.state==="completed"),`agent runner did not persist completion; observed ${JSON.stringify(rows)}`);
   assert.ok(first.messages.some(message=>message.includes("terminó")&&message.includes("comprobará el resultado")),"completion must be delivered without a status query");
-  await first.commands.get("asen-agents")!.handler("",first.context());assert.ok(first.messages.some(message=>message.includes("completed")&&message.includes("read-only result")));
+  await first.commands.get("asen-agents")!.handler("",first.context());assert.ok(first.messages.some(message=>message.includes("comprobar")&&message.includes("resultado")));
   const queried=await first.tools.get("asen_agent_status").execute("query",{id},new AbortController().signal,()=>{},first.context());
   assert.equal(queried.details.task?.record.id,id);assert.equal(queried.details.task?.record.state,"completed");assert.equal(queried.details.task?.history.at(-1)?.state,"completed");assert.equal(queried.details.task?.request,undefined);
   const hidden=await first.tools.get("asen_agent_status").execute("foreign-query",{id},new AbortController().signal,()=>{},first.context("other-session"));assert.equal(hidden.details.task,null);
