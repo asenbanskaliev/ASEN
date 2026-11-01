@@ -46,6 +46,19 @@ const strip=value=>value
  .replace(/\u001b\][^\u0007]*\u0007/gu,"")
  .replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/gu,"")
  .replace(/\u001b[@-Z\\-_]/gu,"");
+/**
+ * Diagnostics for the Windows host only. These are report values, not extra
+ * acceptance rules; a row is still rejected only if its actual rendered width
+ * exceeds the terminal budget or its own row precondition fails.
+ */
+function visibleWidth(value) {
+ const segmenter = typeof Intl.Segmenter === "function" ? new Intl.Segmenter("en", { granularity: "grapheme" }) : undefined;
+ const graphemes = segmenter ? [...segmenter.segment(value)].map((item) => item.segment) : Array.from(value);
+ return graphemes.reduce((sum, item) => sum + (/\p{Extended_Pictographic}/u.test(item) || /\p{Emoji_Presentation}/u.test(item) ? 2 : 1), 0);
+}
+function normalizedPathForReport(value) {
+  return value.replace(/\\\\/gu, "/").replace(/\/+/gu, "/");
+}
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 async function driveWidth(width){
@@ -83,22 +96,30 @@ async function driveWidth(width){
   if(!emptyAgents.includes("No entries."))observed.wrapped.push({name:"agents/empty",rendered:emptyAgents.slice(-160)});
   await send("/asen-changes","Session-attributed changes:");
   await sleep(800);
-  const rendered=strip(log.slice(start)).split(/\r?\n/).map(line=>line.replace(/\s+$/u,""));
-  const findRow=(prefix)=>rendered.find(line=>line.trimStart().startsWith(prefix));
+const rendered = strip(log.slice(start)).split(/\r?\n/).map((line) => line.replace(/\s+$/u, ""));
+  const findRow = (prefix) =>
+    rendered.reduce((selected, current) => {
+      if (!current.trimStart().startsWith(prefix)) return selected;
+      if (!selected) return current;
+      return visibleWidth(current) >= visibleWidth(selected) ? current : selected;
+    }, undefined);
   const rows=[
    {name:"status/agents",prefix:"agents: 0 running",accept:tail=>tail.endsWith("failed")||tail.endsWith("…")},
    {name:"status/workspace",prefix:"workspace changes:",accept:tail=>tail.endsWith("0")||tail.endsWith("…")},
    {name:"status/history",prefix:"history:",accept:tail=>tail.endsWith(")")||tail.endsWith("…")},
-   {name:"changes/git",prefix:"Git ",accept:tail=>tail.endsWith(project)||tail.endsWith("…")},
+   {name:"changes/git",prefix:"Git ",accept:tail=>normalizedPathForReport(tail).endsWith(normalizedPathForReport(project))||tail.endsWith("…")},
   ];
-  for(const row of rows){
-   const line=findRow(row.prefix);
-   if(!line){observed.phases.push(`missing:${row.name}`);continue;}
-   const tail=line.trimEnd();
-   const ok=row.accept(tail);
-   observed.phases.push(`${row.name}:${ok?"fits":"wrapped"}`);
-   if(!ok)observed.wrapped.push({name:row.name,rendered:tail});
-  }
+   for(const row of rows){
+    const line=findRow(row.prefix);
+    if(!line){observed.phases.push(`missing:${row.name}`);continue;}
+    const tail=line.trimEnd();
+    const visibleLineWidth=visibleWidth(tail);
+    const pathEquivalent=normalizedPathForReport(tail).endsWith(normalizedPathForReport(project));
+    const widthOkay=visibleLineWidth <= width;
+    const ok = row.accept(tail) && widthOkay;
+    observed.phases.push(`${row.name}:${ok?"fits":"wrapped"}`);
+    if(!ok)observed.wrapped.push({name:row.name,rendered:tail,visibleWidth:visibleLineWidth,terminalWidth:width,pathEquivalent,reason:pathEquivalent ? (widthOkay ? "accept-failed" : "width_overflow") : "path_shape_mismatch"});
+   }
   observed.rendered=rendered.filter(line=>/agents:|workspace changes:|history:|telemetry:|Git |profile:/u.test(line));
   // Keyboard, error and restart: the same host session must survive an Escape and
   // re-render a view, and a rejected argument must produce a bounded usage line.
