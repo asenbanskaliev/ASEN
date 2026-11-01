@@ -63,3 +63,9 @@ El propietario autorizó ejecutar F0 y reanclar las tareas. GitHub compare `dc47
 - F1-04 NOOP: background-job-delivery + session-notifications (9 pass), extension-runtime-commands (12 pass + 1 skip POSIX en Windows).
 - F1-05 NOOP: t12-integrated-boundaries (1 pass), typecheck PASS.
 - Node v24.15.0. Sin push, sin proveedores, sin CI.
+## Registro F2 - 2026-11-01
+
+- F2-01 NOOP: tests/orchestrator (27 pass), instruction-triage + plan-dispatcher-role-boundaries (19 pass).
+- F2-02 NOOP: dispatcher (41 pass), workspace-writer-lease (5 pass), plan-dispatcher-role-boundaries (12 pass), pi-process-runner (46 pass).
+- Brechas destinadas a F3 permanecen: R4-06/R4-08/R4-10/R4-11/R4-18/R4-20 ya registradas en plan.
+- Sin push, sin CI ni proveedores; Node v24.15.0.
