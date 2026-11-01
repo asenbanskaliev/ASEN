@@ -266,7 +266,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     agentDeliveryContext=ctx;agentDeliveryIdentity=await sessionIdentity(ctx);notificationProjection.activate(agentDeliveryIdentity,ctx.ui);sessionDirectory.publish({sessionId:agentDeliveryIdentity.sessionId,subject:"Local Pi session",projectId:agentDeliveryIdentity.projectId,classification:"read",updatedAt:new Date().toISOString()});
     try{
      const jobs=backgroundJobs.list(agentDeliveryIdentity.sessionId,agentDeliveryIdentity.projectId),pendingIds=new Set(pendingBackgroundJobNotifications(jobs,agentDeliveryIdentity.sessionId,agentDeliveryIdentity.projectId).map(item=>item.id));
-     for(const job of jobs)if(pendingIds.has(backgroundJobTerminalNotification(job)?.id??""))await enqueueBackgroundResult(job,ctx);
+     // A journaled "running" operation is projected as interrupted after restart, but
+     // its on-disk row is still running and another Pi process may own it.
+     // Do not treat this observation as a deliverable terminal result or claim
+     // it enqueued; doing so could repeat unconfirmed messages on every restart.
+     const unresolved=jobs.filter(job=>job.state==="interrupted"&&job.deliveryState!=="enqueued");
+     if(unresolved.length)try{ctx.ui.notify(`ASEN detectó ${unresolved.length} trabajo(s) con resultado incierto tras reiniciar. No ha repetido ni entregado automáticamente estos avisos; consulta asen_background_status.`,"error");}catch{/* Non-authoritative UI. */}
+     for(const job of jobs)if(job.state!=="interrupted"&&pendingIds.has(backgroundJobTerminalNotification(job)?.id??""))await enqueueBackgroundResult(job,ctx);
     }catch{try{ctx.ui.notify("ASEN no pudo recuperar los avisos pendientes de tareas de fondo; consulta asen_background_status.","error");}catch{/* Recovery diagnostics are best-effort. */}}
    }
    try{

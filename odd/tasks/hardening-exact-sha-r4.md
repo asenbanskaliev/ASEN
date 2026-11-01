@@ -320,3 +320,10 @@ F5-01/F5-02 remain IN_PROGRESS until the final source SHA passes all mandatory g
 ## T09 staged-quarantine hardening check (owner R4 SELF_AUDIT_ONLY, 2026-11-01)
 
 A new T09 regression uses a second OS process to replace the private quarantine directory at the deterministic move boundary; the managed uninstall must fail closed and preserve both owned and foreign bytes. `removalStage` tracks root/stage object identity and checks it before and after moving an object for deletion. R4 automated self-audit statically enforces this identity guard and runs the dynamic attack. This is **not** a complete same-user attacker confinement proof: path checks do not make unlink-by-name atomic against continuous substitution. F5-01/F5-02 remain in_progress pending the final exact-SHA CI. No promotion to FULL or independent review claim.
+
+
+## T10 fail-closed virtual interruption at startup — 2026-11-01
+
+At PR #45 HEAD `95178fff208bfd5bc96b549751ac587dbc6dd6fc`, Release Gate, Pi runtime, Architecture, CodeGraph real CLI, R4 SELF_AUDIT_ONLY and F5 static all passed. CI general was still IN_PROGRESS on Windows at checkpoint; Ubuntu and macOS full suites passed. Do not transfer old SHA results to this candidate.
+
+New T10 issue: journal `load` presents a persisted `running` row as virtually `interrupted`. Automatic startup resend treated this view as a durable terminal row, leading to a failed `enqueued` write and potentially repeated notifications across restarts. The correction conservatively **suppresses automatic delivery of interrupted observations only**, without suppressing persisted completed/failed notifications. It notifies the user to inspect `asen_background_status`, never re-executes an uncertain command, and does not mutate the journal to claim delivery. Integration tests demonstrate repeat-startup stability. A new R4 SELF_AUDIT_ONLY source guard and adversarial mutation check protect this contract. Owner-fenced durable recovery and actual display receipt are still open, as are T09 residual same-user races and ECO reference parity. F5-01/F5-02 remain IN_PROGRESS until exact-SHA verification of the new batch.

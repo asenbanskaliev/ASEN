@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {evaluateR4SelfSnapshot} from "../scripts/r4-self-audit.mjs";
 const base=()=>{
  const sha="1".repeat(40);
- return {expectedSha:sha,headSha:sha,claims:{rows:Array.from({length:16},(_,i)=>({id:"ECO-"+String(i+1).padStart(2,"0"),status:"PARTIAL"}))},capability:"- [ ] T09 | PARTIAL aggregate\n",extension:'pendingBackgroundJobNotifications( setDeliveryStateScoped(result.id,result.sessionId,result.projectId,"enqueued") deliveryConfirmed:false notificationProjection.publish( const notificationProjection=new PiNotificationProjection() notificationProjection.deactivate(agentDeliveryIdentity)',projection:"class PiNotificationProjection SessionNotificationBus this.#bus.clear(partition(previous)) this.#bus.clear(partition(current))",managedUninstall:"beforeQuarantineMove quarantine.verified() sameUninstallIdentity(stageIdentity,stage)",workflow:"name: R4 self audit\npermissions: contents: read",f5:"SELF_AUDIT_ONLY / NOT independent"};
+ return {expectedSha:sha,headSha:sha,claims:{rows:Array.from({length:16},(_,i)=>({id:"ECO-"+String(i+1).padStart(2,"0"),status:"PARTIAL"}))},capability:"- [ ] T09 | PARTIAL aggregate\n",extension:'pendingBackgroundJobNotifications( setDeliveryStateScoped(result.id,result.sessionId,result.projectId,"enqueued") deliveryConfirmed:false const unresolved=jobs.filter(job=>job.state==="interrupted"&&job.deliveryState!=="enqueued") if(job.state!=="interrupted"&&pendingIds.has( notificationProjection.publish( const notificationProjection=new PiNotificationProjection() notificationProjection.deactivate(agentDeliveryIdentity)',projection:"class PiNotificationProjection SessionNotificationBus this.#bus.clear(partition(previous)) this.#bus.clear(partition(current))",managedUninstall:"beforeQuarantineMove quarantine.verified() sameUninstallIdentity(stageIdentity,stage)",workflow:"name: R4 self audit\npermissions: contents: read",f5:"SELF_AUDIT_ONLY / NOT independent"};
 };
 test("the self-audit PASS never claims an independent reviewer",()=>{
  const result=evaluateR4SelfSnapshot(base());
@@ -40,4 +40,11 @@ test("T09 unbound or substituted private removal stage fails the automated secur
  assert.equal(evaluateR4SelfSnapshot(b).status,"FAIL");
  const c=base();c.managedUninstall=c.managedUninstall.replace("sameUninstallIdentity(stageIdentity,stage)","");
  assert.equal(evaluateR4SelfSnapshot(c).status,"FAIL");
+});
+
+test("a stale running journal row must never be promoted by automatic startup delivery",()=>{
+ const snapshot=base();snapshot.extension=snapshot.extension.replace('if(job.state!=="interrupted"&&pendingIds.has(','if(pendingIds.has(');
+ assert.equal(evaluateR4SelfSnapshot(snapshot).status,"FAIL");
+ const missingWarning=base();missingWarning.extension=missingWarning.extension.replace('const unresolved=jobs.filter(job=>job.state==="interrupted"&&job.deliveryState!=="enqueued")','');
+ assert.equal(evaluateR4SelfSnapshot(missingWarning).status,"FAIL");
 });

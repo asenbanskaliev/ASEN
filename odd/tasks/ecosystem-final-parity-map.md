@@ -201,3 +201,8 @@ Ephemeral Pi projection now evicts its notification bus partition upon scope cha
 ## T09 executable stage hardening evidence — 2026-11-01
 
 The managed uninstall private quarantine directory is now identity-bound to the originally created managed root and per-operation staging directory, with checks before and after the staged move, and test-only injection of a second same-user process replacing the directory. R4 SELF_AUDIT_ONLY runs the concrete regression. This prevents an identified staged-route substitution under the recorded interleaving but cannot prove atomic rename/unlink confinement against an adversarial same-user writer at every possible nanosecond. Keep global ECO and T09 PARTIAL; exact-SHA three-OS evidence for this source change is pending.
+
+
+## T10 recovered-interruption delivery safety (2026-11-01)
+
+Read-time `running` → `interrupted` projection is not proof of a durable, owner-fenced terminal state. Automatic startup delivery is now skipped for such uncertain observations; a scoped diagnostic directs status inspection without command re-execution or false enqueued receipt. The existing completed/failed pending-notice recovery remains. Static self-audit and integration tests cover repeated startup. ECO-10 and all 16 global ECO claims stay PARTIAL; no native Pi receipt, cross-process ownership fencing, or upstream Reference parity is asserted.

@@ -5,6 +5,7 @@ import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
+import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
 
 function host(){
  const events=new Map<string,Function[]>(),commands=new Map<string,any>(),tools=new Map<string,any>(),messages:any[]=[];
@@ -72,4 +73,33 @@ test("a failed real child leaves a durable pending notice and startup retries it
  const third=host();createAsenExtension(dependencies)(third.pi as any);await third.events.get("session_start")![0]!({},context);
  assert.equal(third.messages.length,0,"an accepted enqueue must not be replayed after restart");
  await third.events.get("session_shutdown")![0]!({},context);
+});
+
+test("startup reports uncertain interrupted jobs but cannot replay or mark a still-running disk entry as enqueued",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-uncertain-startup-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const journalPath=path.join(root,"jobs.json"),journal=new BackgroundJobJournal(journalPath);
+ const sessionId="uncertain-session",projectId=process.cwd(),now=new Date().toISOString();
+ journal.record({id:"uncertain-1",sessionId,projectId,command:"must never run automatically",mode:"background",state:"running",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[]});
+ const diskBefore=journal.load(sessionId,projectId);assert.equal(diskBefore[0]?.state,"interrupted");
+ const prior=process.env.ASEN_NO_SKILL_REGISTRY;process.env.ASEN_NO_SKILL_REGISTRY="1";
+ t.after(()=>{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;});
+ let starts=0;
+ const dependencies={homeDir:()=>root,backgroundJobJournalFile:journalPath,backgroundExecutor:async()=>{starts++;return{exitCode:0};},enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false};
+ const notices:string[]=[];
+ const context={mode:"rpc",hasUI:true,cwd:projectId,sessionManager:{getSessionId:()=>sessionId},ui:{notify(message:string){notices.push(message);},confirm:async()=>true,setWidget(){}}};
+ for(let restart=0;restart<2;restart++){
+  const instance=host();createAsenExtension(dependencies)(instance.pi as any);
+  await instance.events.get("session_start")![0]!({},context);
+  assert.equal(instance.messages.length,0,"uncertain operation must not be falsely delivered, even after repeated restarts");
+  assert.equal(starts,0,"interruption must never re-execute an unapproved child");
+  assert.ok(notices.some(message=>message.includes("resultado incierto")&&message.includes("asen_background_status")),"startup must warn without claiming delivery");
+  const status=await instance.tools.get("asen_background_status").execute("uncertain-status",{},new AbortController().signal,()=>{},context);
+  assert.equal(status.details[0]?.state,"interrupted");
+  assert.equal(status.details[0]?.deliveryState,undefined);
+  await instance.events.get("session_shutdown")![0]!({},context);
+ }
+ // The original disk identity is retained as running, not silently rewritten to
+ // a terminal result or to an enqueue receipt without explicit ownership fencing.
+ assert.equal(journal.load(sessionId,projectId)[0]?.state,"interrupted");
+ assert.throws(()=>journal.updateDeliveryState("uncertain-1",sessionId,projectId,"enqueued"),/Cannot deliver a running job result/u);
 });
