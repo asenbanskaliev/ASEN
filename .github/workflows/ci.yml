@@ -72,7 +72,8 @@ jobs:
     if: >-
       github.event_name == 'pull_request' &&
       (github.head_ref == 'feat/t07-codegraph-completion' ||
-       github.head_ref == 'feat/t12-integrated-acceptance') &&
+       github.head_ref == 'feat/t12-integrated-acceptance' ||
+       github.head_ref == 'feat/t12-integrated-acceptance-merge') &&
       github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'
     strategy:
       fail-fast: false
@@ -145,7 +146,8 @@ jobs:
   t12-integrated-security:
     if: >-
       github.event_name == 'pull_request' &&
-      github.head_ref == 'feat/t12-integrated-acceptance' &&
+      (github.head_ref == 'feat/t12-integrated-acceptance' ||
+       github.head_ref == 'feat/t12-integrated-acceptance-merge') &&
       github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -185,7 +187,8 @@ jobs:
   t12-real-pi-tui-dialog:
     if: >-
       github.event_name == 'pull_request' &&
-      github.head_ref == 'feat/t12-integrated-acceptance' &&
+      (github.head_ref == 'feat/t12-integrated-acceptance' ||
+       github.head_ref == 'feat/t12-integrated-acceptance-merge') &&
       github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'
     strategy:
       fail-fast: false
