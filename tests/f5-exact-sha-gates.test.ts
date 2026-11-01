@@ -40,7 +40,7 @@ test("F5 shellcheck corrections preserve branch cleanliness and provider-safe wo
  const release=readFileSync(new URL("../.github/workflows/release-gate.yml",import.meta.url),"utf8");
  assert.match(gsp,/test -z "\$\(git status --porcelain=v1\)"/);
  assert.doesNotMatch(gsp,/\| test ! -s \/dev\/stdin/);
- assert.match(pi,/ASEN_RECOVERY_FILE="\$\(mktemp\)"\n\s+export ASEN_RECOVERY_FILE/);
+ assert.match(pi,/ASEN_RECOVERY_FILE="\$\(mktemp\)"\r?\n\s+export ASEN_RECOVERY_FILE/);
  assert.match(pi,/ASEN_RECOVERY_KEY="\$\(node -e/);
  assert.match(pi,/export ASEN_RECOVERY_KEY/);
  assert.match(pi,/^  workflow_dispatch:/m);
@@ -48,4 +48,13 @@ test("F5 shellcheck corrections preserve branch cleanliness and provider-safe wo
  assert.match(release,/throw new Error\("Expected Pi 1\.2\.0, got "\+p\.version\)/);
  assert.match(release,/console\.log\("Using installed Pi "\+p\.version\)/);
  assert.doesNotMatch(release,/\$\{p\.version\}/);
+});
+
+test("F5 recovery-file assertion accepts both LF and CRLF without relaxing token shape",()=>{
+ const pattern=/ASEN_RECOVERY_FILE="\$\(mktemp\)"\r?\n\s+export ASEN_RECOVERY_FILE/;
+ for(const eol of ["\n","\r\n"]){
+  const example='ASEN_RECOVERY_FILE="$(mktemp)"'+eol+"          export ASEN_RECOVERY_FILE";
+  assert.match(example,pattern);
+ }
+ assert.doesNotMatch('ASEN_RECOVERY_FILE="other"\n export ASEN_RECOVERY_FILE',pattern);
 });
