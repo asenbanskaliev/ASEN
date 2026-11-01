@@ -29,7 +29,9 @@ export function pendingBackgroundJobNotifications(jobs:readonly BackgroundJobSna
  const seen=new Set<string>();
  const pending:Readonly<{id:string;message:string;jobId:string;sessionId:string;projectId:string}>[]=[];
  for(const job of jobs){
-  if(job.sessionId!==sessionId||job.projectId!==projectId||job.deliveryState==="enqueued")continue;
+  // A projected or persisted interruption is an uncertain operation, not a
+  // durably completed result eligible for automatic Pi notification replay.
+  if(job.state==="interrupted"||job.sessionId!==sessionId||job.projectId!==projectId||job.deliveryState==="enqueued")continue;
   const notification=backgroundJobTerminalNotification(job);
   if(!notification||seen.has(notification.id))continue;
   seen.add(notification.id);pending.push(Object.freeze({...notification,jobId:job.id,sessionId:job.sessionId,projectId:job.projectId}));
@@ -106,7 +108,7 @@ export class BackgroundJobRegistry{
  append(id:string,chunk:string):void{const job=this.require(id);if(job.state!=="running")throw new Error("Background job is not running");if(typeof chunk!=="string")throw new TypeError("Job output must be text");for(const line of chunk.split(/\r?\n/u).filter(Boolean)){const now=Date.now();if(now-job.windowStart>=60_000){job.windowStart=now;job.windowEvents=0;}if(++job.windowEvents>job.options.maxEventsPerMinute){this.finish(id,"flooded",null);return;}const bounded=line.slice(-job.options.maxLineChars);job.tail.push(bounded);if(job.tail.length>job.options.maxTailLines)job.tail.splice(0,job.tail.length-job.options.maxTailLines);job.eventCount++;this.emit(id,"line",bounded);}}
  finish(id:string,state:"completed"|"failed"|"stopped"|"timed_out"|"flooded",exitCode:number|null):void{const job=this.require(id);if(job.state!=="running")return;job.state=state;job.exitCode=exitCode;job.updatedAt=new Date().toISOString();if(job.timer)clearTimeout(job.timer);if(state!=="completed"){job.abort?.abort();if(job.child&&!job.child.killed){try{if(process.platform!=="win32"&&job.child.pid)process.kill(-job.child.pid,"SIGTERM");else job.child.kill();}catch{try{job.child.kill("SIGKILL");}catch{/* Best effort after terminal state is durable. */}}}}try{this.journal?.record(this.snapshot(id));delete job.persistenceError;}catch{job.persistenceError="Background journal could not persist the terminal result";}this.emit(id,state);this.prune();}
  stop(id:string):void{this.finish(id,"stopped",null);}
- setDeliveryState(id:string,state:"pending"|"enqueued",error?:string):BackgroundJobSnapshot{const job=this.require(id);if(job.state==="running")throw new Error("Cannot deliver a running job result");job.deliveryState=state;if(state==="pending"&&error)job.deliveryError=error;else delete job.deliveryError;try{this.journal?.record(this.snapshot(id));delete job.persistenceError;}catch{job.persistenceError="Background journal could not persist delivery state";}return this.snapshot(id);}
+ setDeliveryState(id:string,state:"pending"|"enqueued",error?:string):BackgroundJobSnapshot{const job=this.require(id);if(job.state==="running")throw new Error("Cannot deliver a running job result");if(job.state==="interrupted")throw new Error("Cannot deliver an interrupted job result");job.deliveryState=state;if(state==="pending"&&error)job.deliveryError=error;else delete job.deliveryError;try{this.journal?.record(this.snapshot(id));delete job.persistenceError;}catch{job.persistenceError="Background journal could not persist delivery state";}return this.snapshot(id);}
  /** Scope checks are repeated at the persistence boundary, including after a restart. */
  setDeliveryStateScoped(id:string,sessionId:string,projectId:string,state:"pending"|"enqueued",error?:string):BackgroundJobSnapshot{
   if(!sessionId||!projectId)throw new Error("Background delivery scope is invalid");

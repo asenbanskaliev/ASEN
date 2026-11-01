@@ -150,9 +150,25 @@ setInterval(()=>{},1000);`;
  assert.equal(rows.length,1);assert.equal(rows[0]?.id,"crashed-job");assert.equal(rows[0]?.state,"interrupted");assert.equal(rows[0]?.resumable,false);
  assert.equal(journal.load("unrelated-session",root).length,0);
  const pending=pendingBackgroundJobNotifications(rows,"crash-session",root);
- assert.equal(pending.length,1);assert.match(pending[0]!.message,/Interrupted/u);
+ assert.equal(pending.length,0,"a read-time interruption is visible through status but must not be auto-enqueued");
  const before=readFileSync(journalPath,"utf8");
  assert.throws(()=>journal.updateDeliveryState("crashed-job","crash-session",root,"enqueued"),/Cannot deliver a running job result/u,"a stale disk running record must not be falsely acknowledged by a competing process");
  assert.equal(readFileSync(journalPath,"utf8"),before);
  assert.equal(readFileSync(marker,"utf8"),"once\n","recovery never silently reruns the terminated command");
+});
+
+
+test("durably interrupted retry claims cannot be marked delivered by a competing session",()=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-interrupted-delivery-denied-"));
+ try{
+  const journal=new BackgroundJobJournal(join(root,"jobs.json")),now=new Date().toISOString();
+  journal.record({id:"uncertain",sessionId:"s",projectId:root,command:"unknown",mode:"background",state:"interrupted",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[]});
+  const before=readFileSync(join(root,"jobs.json"),"utf8");
+  for(const state of ["pending","enqueued"] as const){
+   assert.throws(()=>journal.updateDeliveryState("uncertain","s",root,state),/Cannot deliver an interrupted job result/u);
+   assert.equal(readFileSync(join(root,"jobs.json"),"utf8"),before,"a refused acknowledgement cannot mutate a durable retry claim");
+  }
+  journal.record({id:"terminal",sessionId:"s",projectId:root,command:"known failure",mode:"background",state:"failed",createdAt:now,updatedAt:now,exitCode:8,eventCount:0,tail:[]});
+  assert.equal(journal.updateDeliveryState("terminal","s",root,"enqueued").deliveryState,"enqueued","real terminal failure delivery remains usable");
+ }finally{rmSync(root,{recursive:true,force:true});}
 });

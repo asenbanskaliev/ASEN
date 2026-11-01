@@ -75,6 +75,7 @@ export class BackgroundJobJournal{
    const rows=this.readAll(),index=rows.findIndex(row=>row.id===id),current=rows[index];
    if(!current||current.sessionId!==sessionId||current.projectId!==projectId)throw new Error("Background job does not belong to the requested scope");
    if(current.state==="running")throw new Error("Cannot deliver a running job result");
+   if(current.state==="interrupted")throw new Error("Cannot deliver an interrupted job result");
    updated={...current,deliveryState:state,...(state==="pending"&&error?{deliveryError:error}:{})};
    if(state==="enqueued"||!error)delete (updated as {deliveryError?:string}).deliveryError;
    rows[index]=updated;this.writeRows(rows);

@@ -71,3 +71,10 @@ This is a scoped vulnerability hardening **candidate**, not proof of atomic OS-l
 ## Sixth batch: no false delivery for virtual interrupted journal rows
 
 Investigation found that `BackgroundJobJournal.load` returns `interrupted` as a read-only projection over on-disk `running` rows. Startup recovery previously attempted `pi.sendMessage` and `setDeliveryStateScoped(...,"enqueued")` on that virtual view. The latter is rightly rejected while the durable row still says `running`, but the next restart could try again. The T10 fix filters these uncertain results out of *automatic* delivery and shows a status-only diagnostic. The normal pending recovery for durably terminal results remains intact. A new test boots two separate extension instances against the same journal, verifies no re-run or enqueue and rejects a false journal receipt. R4 SELF_AUDIT_ONLY enforces the source-bound invariant. This batch is not yet CI-accepted; it requires exact-SHA workflow receipts.
+
+
+## Seventh batch: T10 durable interrupted ownership boundary (2026-11-01)
+
+The previous T10 startup guard alone did not guarantee that other users of `pendingBackgroundJobNotifications` and `BackgroundJobJournal.updateDeliveryState` would respect read-time virtual interruptions and persisted retry claims. Production now excludes all `interrupted` snapshots from automatic pending delivery and fails closed on both `pending` and `enqueued` writes for durably interrupted records. In-memory delivery mutation also denies interrupted state. Regression tests show a projected SIGKILL interruption produces zero automatically deliverable notices, a recorded retry claim remains byte-for-byte unchanged after refused acknowledgement, and genuinely failed terminal deliveries remain possible. R4 self-audit gets source-bound guards plus adversarial removal tests.
+
+This closes another identifiable unsafe status transition, not the unknown outcome of the interrupted command. Real Pi display acknowledgement, owner-fenced interrupted recovery, the T09 persistent same-user race, and Reference Shell parity remain open; do not promote T10/ECO or F5 before exact-SHA CI.

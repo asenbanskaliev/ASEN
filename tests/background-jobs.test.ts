@@ -160,3 +160,17 @@ test("T10 recovery projection deduplicates and respects project and session boun
  assert.equal(pendingBackgroundJobNotifications([registry.snapshot(own.id)],"owner","project").length,0);
  assert.throws(()=>pendingBackgroundJobNotifications([],"","project"),/scope/);
 });
+
+
+test("T10 interruption is status-only, never an automatic delivery candidate",()=>{
+ const registry=new BackgroundJobRegistry();
+ const a=registry.start({sessionId:"owner",projectId:"project",command:"real work"});
+ registry.finish(a.id,"failed",7);
+ const completed=registry.snapshot(a.id),uncertain={...completed,id:"uncertain",state:"interrupted" as const};
+ assert.match(backgroundJobTerminalNotification(uncertain)?.message??"",/Interrupted/u,"uncertainty remains observable via read-only status");
+ const pending=pendingBackgroundJobNotifications([uncertain,completed,uncertain],"owner","project");
+ assert.equal(pending.length,1,"only the durably terminal event may be replayed");
+ assert.equal(pending[0]?.jobId,a.id);
+ assert.equal(pendingBackgroundJobNotifications([uncertain],"owner","project").length,0);
+ assert.equal(pendingBackgroundJobNotifications([{...uncertain,sessionId:"other"}],"owner","project").length,0);
+});

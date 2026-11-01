@@ -206,3 +206,8 @@ The managed uninstall private quarantine directory is now identity-bound to the 
 ## T10 recovered-interruption delivery safety (2026-11-01)
 
 Read-time `running` → `interrupted` projection is not proof of a durable, owner-fenced terminal state. Automatic startup delivery is now skipped for such uncertain observations; a scoped diagnostic directs status inspection without command re-execution or false enqueued receipt. The existing completed/failed pending-notice recovery remains. Static self-audit and integration tests cover repeated startup. ECO-10 and all 16 global ECO claims stay PARTIAL; no native Pi receipt, cross-process ownership fencing, or upstream Reference parity is asserted.
+
+
+## T10-R8 provider-free integrity improvement
+
+The pending-notification helper excludes `interrupted` (including read-time `running -> interrupted` observation); both delivery-state APIs reject a persisted/in-memory interrupted claim, not just running. No automatic false acknowledgement or stale claim mutation may occur. Tests prove status-only behavior and preservation of the durable record on rejected writes. R4 SELF_AUDIT_ONLY checks source contracts. Global ECO registry remains 16 PARTIAL / 0 FULL; host Pi display receipt and final program parity are not proven.
