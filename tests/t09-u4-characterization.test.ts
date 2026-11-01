@@ -35,8 +35,8 @@ test("T09-U4 characterization: successful upgrade can be explicitly rolled back 
   const first = await release(await pkg("1.0.0"));
   const second = await release(await pkg("2.0.0"));
 
-  const common = { prefix, protectedPaths: [dataHome], confirmed: true as const, dataHome, launcherConfig: { mode: "test" } };
-  const installed = await installManaged({ ...common, source: first.source, trustedKeyPath: first.anchor });
+  const common = { prefix, protectedPaths: [dataHome], confirmed: true as const };
+  const installed = await installManaged({ ...common, source: first.source, trustedKeyPath: first.anchor, dataHome, launcherConfig: { mode: "isolated" } });
   assert.equal(installed.status, "installed");
   assert.equal(installed.activeVersion, "1.0.0");
 

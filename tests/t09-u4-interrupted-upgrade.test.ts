@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { installManaged, upgradeManaged, rollbackManaged } from "../src/runtime/managed-lifecycle.js";
+import { installManaged, upgradeManaged } from "../src/runtime/managed-lifecycle.js";
 import { inspectManagedInstall } from "../src/runtime/managed-install.js";
 import { buildManagedManifest, generateManagedSigningKeyPair, signManagedManifest } from "../src/runtime/managed-trust.js";
 
@@ -41,7 +41,7 @@ test("T09-U4 characterization: an after-activation crash leaves an explicit roll
     protectedPaths: [dataHome],
     dataHome,
     confirmed: true as const,
-    launcherConfig: { mode: "test" },
+    launcherConfig: { mode: "isolated" },
   });
 
   await assert.rejects(
@@ -51,7 +51,6 @@ test("T09-U4 characterization: an after-activation crash leaves an explicit roll
         source: second.source,
         trustedKeyPath: second.anchor,
         protectedPaths: [dataHome],
-        dataHome,
         confirmed: true,
         hooks: { afterActivation: async () => { throw new Error("simulated activation crash"); } },
       }).then((result) => {
