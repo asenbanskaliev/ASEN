@@ -211,6 +211,38 @@ test("manual rollback to unhealthy recorded predecessor retains its recovery jou
  assert.equal((await rollbackManaged({prefix,expectedCurrentVersion:"1.0.0",confirmed:true})).status,"unchanged");
  await assert.rejects(()=>fs.stat(journal),{code:"ENOENT"});
 });
+test("T09 uncertain activation preserves journal when the selector is externally replaced",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("unverified-activation");
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ const selector=path.join(prefix,"install","current"),journal=path.join(prefix,"managed-update-journal.json");
+ await fs.writeFile(path.join(dataHome,"keep.txt"),"personal state");
+ const result=await upgradeManaged({...base,source:v2.source,hooks:{beforeActivation:async()=>{
+  await fs.writeFile(selector,"not-a-managed-version\n");
+ }}});
+ assert.equal(result.status,"ambiguous","unknown selector may not be reported as not-activated");
+ assert.equal(result.activeVersion,null);
+ assert.match(result.reason??"",/recovery journal retained/u);
+ assert.equal(JSON.parse(await fs.readFile(journal,"utf8")).from,"1.0.0");
+ assert.equal(await fs.readFile(selector,"utf8"),"not-a-managed-version\n");
+ assert.equal(await fs.readFile(path.join(dataHome,"keep.txt"),"utf8"),"personal state");
+ await assert.rejects(()=>upgradeManaged({...base,source:v2.source}),{code:"RECOVERY_REQUIRED"});
+});
+
+test("T09 another actor selecting the target does not grant this upgrade false ownership",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("foreign-activation");
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ const selector=path.join(prefix,"install","current"),journal=path.join(prefix,"managed-update-journal.json");
+ const result=await upgradeManaged({...base,source:v2.source,hooks:{beforeActivation:async()=>{
+  await fs.writeFile(selector,"2.0.0\n");
+ }}});
+ assert.equal(result.status,"ambiguous","another writer may not furnish activation proof");
+ assert.equal(result.activeVersion,"2.0.0");
+ assert.match(result.reason??"",/recovery journal retained/u);
+ await fs.stat(journal);
+ await assert.rejects(()=>upgradeManaged({...base,source:v2.source}),{code:"RECOVERY_REQUIRED"});
+});
 test("uninstall removes only owned files, keeps data/config, and retains foreign files",async()=>{
  const {prefix,dataHome,v1,base}=await setupInstall("uninstall");
  await installManaged({...base,source:v1.source,dataHome,launcherConfig:{mode:"isolated"}});

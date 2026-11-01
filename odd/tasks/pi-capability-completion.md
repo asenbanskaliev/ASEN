@@ -14,6 +14,7 @@ This section is the current disposition over historical execution notes below; h
 - F5: e9229568 technical CI, Release Gate, architecture, Pi runtime, T07 probe and actionlint/authority-pin gates PASS. Independent R4 on PR #45 was absent at this baseline and is postponed, not PASS. F5-01/F5-02 remain IN_PROGRESS; the final commit has no inherited CI receipt.
 - Canonical ECO registry intentionally retains 16 PARTIAL / 0 FULL. Do not promote ECO status from bounded T status or a waiver.
 - Evidence annex: odd/evidence/odd-code-reconciliation-2026-11-01.md; no new execution backlog is created by this reconciliation.
+- PR #45 reconciliation addendum (2026-11-01): on `eba94512e9658acd6e834fb5b2fa38f473b84488`, R4 SELF_AUDIT_ONLY, Architecture, Release Gate, Pi runtime, F5 static, T07 CodeGraph, and Ubuntu general CI have PASS; macOS/Windows general CI were still in progress at addendum authoring. The subsequent T09-R8 candidate hardens activation publication uncertainty (distinct `selected/not-started/uncertain`, retains recovery journal on unproven selector selection, no actor-owned claim from a competitor's readback) with regression and self-audit checks. No candidate or aggregate T09/ECO FULL is claimed until the new exact-SHA suite finishes. Earlier baseline e922 and older log entries are historical, not current HEAD claims.
 
 ## Specs
 

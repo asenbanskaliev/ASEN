@@ -443,14 +443,15 @@ export interface ManagedUpgradeRequest extends CommonRequest{
  readonly protectedPaths:readonly string[];
  readonly allowDowngrade?:boolean;
 }
-async function selectOrReconcile(prefix:string,to:string,from:string):Promise<{ok:boolean;reason:string|null}>{
- try{await selectManagedVersion({prefix,version:to,expectedCurrentVersion:from,confirmed:true});return {ok:true,reason:null};}
+async function selectOrReconcile(prefix:string,to:string,from:string):Promise<Readonly<{state:"selected"|"not-started"|"uncertain";reason:string|null;observedActive:string|null}>>{
+ try{await selectManagedVersion({prefix,version:to,expectedCurrentVersion:from,confirmed:true});return {state:"selected",reason:null,observedActive:to};}
  catch(error){
   const inspection=await inspectManagedInstall({prefix}).catch(()=>undefined);
-  const active=inspection?.status==="owned"?inspection.activeVersion:undefined;
-  if(error instanceof ManagedVersionSelectionError&&active===from&&error.report.publication==="not-started")return {ok:false,reason:text(error)};
-  if(active===to)return {ok:true,reason:null};
-  return {ok:false,reason:text(error)};
+  const active=inspection?.status==="owned"?inspection.activeVersion:null;
+  // A target selector written by another same-user process is not proof of our CAS.
+  if(error instanceof ManagedVersionSelectionError&&active===from&&error.report.publication==="not-started")return {state:"not-started",reason:text(error),observedActive:from};
+  if(error instanceof ManagedVersionSelectionError&&active===to&&error.report.publication==="committed")return {state:"selected",reason:null,observedActive:to};
+  return {state:"uncertain",reason:text(error),observedActive:active??null};
  }
 }
 
@@ -482,7 +483,8 @@ export async function upgradeManaged(request:ManagedUpgradeRequest):Promise<Mana
   await request.hooks?.beforeActivation?.();
   await writeJournal(prefix,{schema:JOURNAL_SCHEMA,from,to,startedAt:new Date().toISOString()});
   const selected=await selectOrReconcile(prefix,to,from);
-  if(!selected.ok){await clearJournal(prefix);return notActivated(`Activation refused: ${selected.reason}`);}
+  if(selected.state==="not-started"){await clearJournal(prefix);return notActivated(`Activation refused: ${selected.reason}`);}
+  if(selected.state==="uncertain")return report({operation:"upgrade",status:"ambiguous",version:to,previousVersion:from,activeVersion:selected.observedActive,signerKeyId,reason:`Activation outcome could not be verified (${selected.reason}); recovery journal retained`});
   let postReason:string|null=null;
   try{
    await request.hooks?.afterActivation?.();

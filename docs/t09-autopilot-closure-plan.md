@@ -2,6 +2,12 @@
 
 ## Estado y alcance
 
+### Estado reconciliado PR #45 — 2026-11-01
+
+The historical execution order below was drafted for PR #37 and is retained for traceability. Current integrated candidate lives on PR #45 (`feat/t12-integrated-acceptance-merge`), SHA `eba94512e9658acd6e834fb5b2fa38f473b84488` prior to the next bounded T09-R8 batch. The next batch hardens selection uncertainty and tests same-user pre-CAS selector changes; it is not evidence of native descriptor-relative deletion or global Reference Shell parity. Final acceptance requires exact-SHA Ubuntu, Windows, macOS CI, R4 SELF_AUDIT_ONLY (not independent), package and Release Gate. Do not merge to main, alter user installations, use paid providers or promote aggregate T09 / 16 ECO claims from a bounded positive test.
+
+
+
 Este plan conserva el historial de T09 abajo, pero su baseline inicial `3635ca8e...` está obsoleto. El baseline remoto reconciliado el 2026-10-30 es PR #37, rama `feat/t09-managed-update-stage`, HEAD `18e98728e2e39c8b1a4ebf66019574ee7d1b32a6`. En ese SHA pasaron CI Linux/macOS/Windows, package/Release Gate en los tres sistemas, Pi support matrix en los tres, Phase 0 Architecture y Pi 1.2 runtime evidence. `authenticated-free-model` fue omitido; no es evidencia ni requisito de este alcance provider-free. Estas comprobaciones no prueban por sí solas el cierre del ciclo de mantenimiento.
 
 ### Renegociación crítica del FULL — 2026-10-30
