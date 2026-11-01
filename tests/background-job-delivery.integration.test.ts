@@ -130,7 +130,12 @@ test("a losing process cannot send or acknowledge an unpersisted terminal outcom
  const deadline=Date.now()+5000;let observed:any;
  do{observed=await first.tools.get("asen_background_status").execute("status",{},new AbortController().signal,()=>{},context);if(observed.details[0]?.persistenceError)break;await new Promise(resolve=>setTimeout(resolve,10));}while(Date.now()<deadline);
  assert.match(observed.details[0]?.persistenceError??"",/could not persist the terminal result/u);
- await new Promise(resolve=>setImmediate(resolve));
+ // finish() records persistenceError synchronously, but the extension's
+ // done.then callback still awaits monitor flushing and canonical session
+ // identity before notifying the owning UI. setImmediate is not that receipt.
+ const diagnosticDeadline=Date.now()+5_000;
+ while(!notices.some(message=>message.includes("no pudo guardar el resultado"))&&Date.now()<diagnosticDeadline)
+  await new Promise(resolve=>setTimeout(resolve,10));
  assert.equal(first.messages.length,0,"never enqueue a terminal result that lost its durable record");
  assert.ok(notices.some(message=>message.includes("no pudo guardar el resultado")),"user gets a scoped diagnostic, not a false success");
  const durable=journal.load(sessionId,projectId)[0]!;assert.equal(durable.state,"failed");assert.equal(durable.exitCode,9);assert.equal(durable.deliveryState,"enqueued");
