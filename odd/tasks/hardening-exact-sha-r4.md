@@ -1,5 +1,5 @@
 # ASEN — Hardening exact-SHA R4: plan ODD canónico y registro
-**ACTUALIZACION 2026-11-01: F0-02 DONE.** Ejecutado en entorno Windows valido: RED por comillas dobles, GREEN tras cambio a comillas simples, npm run typecheck PASS, actionlint WAIVED parcial por indisponibilidad. Commit 3a42ae3ffd1e549e84b42db5b956e59d67e2535e. F0-03 y F0-04 siguen pending. Este plan no reemplaza el ODD general: odd/tasks/pi-capability-completion.md es la autoridad de admision/capacidades conforme a AGENTS.md.
+**ACTUALIZACION 2026-11-01: F0-03/F0-04 DONE.** F0-02 previo (fix 3a42ae3). F0-03 caracterizo gates (test cbd4e10) y F0-04 admitio la rama -merge (cad2b37). Tests combinados PASS, typecheck PASS. F0-05 pending. Este plan no reemplaza el ODD general: odd/tasks/pi-capability-completion.md es la autoridad de admision/capacidades conforme a AGENTS.md.
 
 
 ## Fuente y baseline
@@ -76,8 +76,8 @@ Sin PR con `head.ref` exacta y `head.repo.full_name` igual a `asenbanskaliev/ASE
 |---|---|---|---|---|---:|
 | [F0-01](hardening-exact-sha-r4/F0-01.md) | F0 | P0 | done | — | 1.50 |
 | [F0-02](hardening-exact-sha-r4/F0-02.md) | F0 | P0 | done | F0-01 | 2.00 |
-| [F0-03](hardening-exact-sha-r4/F0-03.md) | F0 | P1 | pending | F0-02 | 1.50 |
-| [F0-04](hardening-exact-sha-r4/F0-04.md) | F0 | P0 | pending | F0-03 | 2.00 |
+| [F0-03](hardening-exact-sha-r4/F0-03.md) | F0 | P1 | done | F0-02 | 1.50 |
+| [F0-04](hardening-exact-sha-r4/F0-04.md) | F0 | P0 | done | F0-03 | 2.00 |
 | [F1-01](hardening-exact-sha-r4/F1-01.md) | F1 | P1 | pending | F0-04 | 0.75 |
 | [F1-02](hardening-exact-sha-r4/F1-02.md) | F1 | P1 | pending | F0-04 | 0.75 |
 | [F1-03](hardening-exact-sha-r4/F1-03.md) | F1 | P1 | pending | F0-04 | 0.50 |
@@ -209,3 +209,15 @@ Preparación = **exactamente un commit** `docs(odd): add hardening exact-SHA R4 
 - actionlint: no instalado -> WAIVED parcial (no PASS).
 - Node: v24.15.0 (cumple >=22.19.0). Entorno Windows PowerShell.
 - No se modificaron extensiones/authority, pin, otros workflows ni package.json.
+
+## Registro de ejecucion F0-03 y F0-04 - 2026-11-01 (entorno valido)
+
+- F0-03 done. Test inicial rojo: cbd4e10 (test(ci): characterize admission of specialized gates).
+  RED: 'node --import tsx --test tests/ci-specialized-gates.test.ts' fail porque ci.yml aun no admitia '-merge'.
+  Final consolidado en commit F0-04 (refinements incluidos).
+- F0-04 done. Commit fix: cad2b37 (ci.yml añade alternativa exacta '-merge' en t07, t12 security y t12 TUI;
+  conserva github.event_name == 'pull_request' y repo full_name; sin startsWith).
+- GREEN: 'node --import tsx --test tests/ci-specialized-gates.test.ts tests/provider-scope.test.ts' -> 2 pass, 0 fail.
+- npm run typecheck -> PASS. git diff --check -> PASS.
+- Node: v24.15.0; entorno Windows PowerShell.
+- No se tocaron jobs T05, triggers generales, matrices ni permisos.
