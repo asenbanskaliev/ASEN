@@ -13,10 +13,6 @@ async function directory():Promise<string>{return mkdtemp(join(tmpdir(),"asen-me
 function backupFiles(path:string):string[]{return readdirSync(dirname(path)).filter(name=>name.startsWith(`${basename(path)}.pre-migration-`));}
 function version(path:string):number{const db=new DatabaseSync(path);try{return Number((db.prepare("PRAGMA user_version").get() as {user_version:number}).user_version);}finally{db.close();}}
 const cleanup=(path:string)=>rm(path,{recursive:true,force:true});
-function workerExecArgv():string[]{
- // Workers must resolve TypeScript .js specifiers through tsx, not native strip-types.
- return ["--import","tsx"];
-}
 function workerMessage(worker:Worker,predicate:(message:Record<string,unknown>)=>boolean,timeoutMs=15000):Promise<Record<string,unknown>>{
  return new Promise((resolve,reject)=>{
   const timeout=setTimeout(()=>{cleanupListeners();reject(new Error("Timed out waiting for memory open worker phase"));},timeoutMs);
@@ -73,10 +69,10 @@ test("a holder worker serializes the complete migration startup before an opener
  const dir=await directory();t.after(()=>cleanup(dir));
  const path=join(dir,"worker-serialized.db"),legacy=new DatabaseSync(path);legacy.exec(legacyTable);legacy.close();
  const workerUrl=new URL("./memory-store-open-worker.mjs",import.meta.url),holderGate=new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT),openerGate=new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
- const holder=new Worker(workerUrl,{workerData:{mode:"holder",gate:holderGate,path},execArgv:workerExecArgv()});
+ const holder=new Worker(workerUrl,{workerData:{mode:"holder",gate:holderGate,path},execArgv:[]});
  t.after(()=>holder.terminate());
  assert.deepEqual(await workerMessage(holder,message=>message.phase==="holder:acquired"),{phase:"holder:acquired"});
- const opener=new Worker(workerUrl,{workerData:{mode:"opener",gate:openerGate,path,id:"serialized-worker"},execArgv:workerExecArgv()});
+ const opener=new Worker(workerUrl,{workerData:{mode:"opener",gate:openerGate,path,id:"serialized-worker"},execArgv:[]});
  t.after(()=>opener.terminate());
  assert.deepEqual(await workerMessage(opener,message=>message.phase==="startup:ready"),{phase:"startup:ready"});
  const entered=workerMessage(opener,message=>message.phase==="startup:enter-constructor"),completed=workerMessage(opener,message=>message.ok!==undefined,10000);
@@ -99,7 +95,7 @@ test("serializes simultaneous opens and commits one migration before either stor
  const path=join(dir,"parallel.db"),legacy=new DatabaseSync(path);legacy.exec(legacyTable);legacy.close();
  const gate=new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT),workerUrl=new URL("./memory-store-open-worker.mjs",import.meta.url);
  const open=(id:string)=>new Promise<{ok:boolean;error?:string}>((resolve,reject)=>{
-  const worker=new Worker(workerUrl,{workerData:{gate,path,id},execArgv:workerExecArgv()});
+  const worker=new Worker(workerUrl,{workerData:{gate,path,id},execArgv:[]});
   worker.once("message",resolve);worker.once("error",reject);worker.once("exit",code=>{if(code!==0)reject(new Error(`memory open worker exited ${code}`));});
  });
  assert.deepEqual(await Promise.all([open("worker-a"),open("worker-b")]),[{ok:true},{ok:true}]);

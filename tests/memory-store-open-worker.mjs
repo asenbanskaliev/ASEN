@@ -1,7 +1,11 @@
 import {randomUUID} from "node:crypto";
 import {closeSync,fsyncSync,openSync,readFileSync,renameSync,rmSync,writeFileSync} from "node:fs";
 import {parentPort,workerData} from "node:worker_threads";
-import {SqliteMemoryStore} from "../src/memory/sqlite-store.js";
+import {tsImport} from "tsx/esm/api";
+
+// Resolve this TypeScript source and its .js specifiers in this worker, independently
+// of the test runner process and without relying on emitted JavaScript.
+const {SqliteMemoryStore}=await tsImport("../src/memory/sqlite-store.ts",import.meta.url);
 
 const gate=new Int32Array(workerData.gate);
 if(workerData.mode==="holder"){

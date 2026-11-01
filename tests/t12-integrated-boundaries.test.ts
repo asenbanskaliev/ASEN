@@ -37,9 +37,9 @@ test("T12 integrates read-only code research, one-use workspace correction, sess
  const grant=second.issueConsent({requesterSessionId:"requester",targetSessionId:"t12-session",projectId:root});
  assert.equal(second.consult(grant.token,"requester","t12-session",root).sessionId,"t12-session");
  const candidate=prepareWorkspaceCorrection({root,relativePath:"symbol.ts"});
- const change=applyWorkspaceCorrection(candidate,"export const trackedSymbol = 2;\n");
+ const change=applyWorkspaceCorrection(candidate,"export const trackedSymbol = 200;\n");
  assert.equal(change.path,"symbol.ts");
- assert.equal(readFileSync(source,"utf8"),"export const trackedSymbol = 2;\n");
+ assert.equal(readFileSync(source,"utf8"),"export const trackedSymbol = 200;\n");
  assert.throws(()=>applyWorkspaceCorrection(candidate,"export const trackedSymbol = 3;\n"),/already been consumed/);
  const observed=snapshotWorkspaceRoots([root])[0]!;
  assert.equal(observed.error,undefined);
