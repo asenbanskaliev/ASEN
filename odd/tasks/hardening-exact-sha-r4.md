@@ -1,5 +1,5 @@
 # ASEN — Hardening exact-SHA R4: plan ODD canónico y registro
-**ACTUALIZACION 2026-11-01: F0-03/F0-04 DONE.** F0-02 previo (fix 3a42ae3). F0-03 caracterizo gates (test cbd4e10) y F0-04 admitio la rama -merge (cad2b37). Tests combinados PASS, typecheck PASS. F0-05 pending. Este plan no reemplaza el ODD general: odd/tasks/pi-capability-completion.md es la autoridad de admision/capacidades conforme a AGENTS.md.
+**ACTUALIZACION 2026-11-01: F0-05 no iniciada. F0 comprobaciones 1/2 OK; HEAD reescrito con 97a787c + e6aa00f. Tests combinados PASS y package.json sin cambios. Este plan no reemplaza el ODD general: odd/tasks/pi-capability-completion.md es la autoridad de admision/capacidades conforme a AGENTS.md.
 
 
 ## Fuente y baseline
@@ -215,9 +215,28 @@ Preparación = **exactamente un commit** `docs(odd): add hardening exact-SHA R4 
 - F0-03 done. Test inicial rojo: cbd4e10 (test(ci): characterize admission of specialized gates).
   RED: 'node --import tsx --test tests/ci-specialized-gates.test.ts' fail porque ci.yml aun no admitia '-merge'.
   Final consolidado en commit F0-04 (refinements incluidos).
-- F0-04 done. Commit fix: cad2b37 (ci.yml añade alternativa exacta '-merge' en t07, t12 security y t12 TUI;
+- F0-04 done. Commit fix: 97a787c (ci.yml añade alternativa exacta '-merge' en t07, t12 security y t12 TUI;
   conserva github.event_name == 'pull_request' y repo full_name; sin startsWith).
 - GREEN: 'node --import tsx --test tests/ci-specialized-gates.test.ts tests/provider-scope.test.ts' -> 2 pass, 0 fail.
 - npm run typecheck -> PASS. git diff --check -> PASS.
 - Node: v24.15.0; entorno Windows PowerShell.
 - No se tocaron jobs T05, triggers generales, matrices ni permisos.
+
+## Comprobacion 1 y 2 - 2026-11-01
+
+### Comprobacion 1: cbd4e10 deja el test en rojo
+- Resultado: SI, rojo (cb...dr). Rebase fixup realizado para no dejar commits en rojo.
+- Original SHA test: cbd4e10 (eliminado por rebase).
+- Fix F0-04 reescrito: 97a787c.
+- Docs reescrito: e6aa00f.
+- HEAD final previo a este commit de docs: por definir tras este registro.
+- Verificacion de identidad del arbol: git diff 997bed0 (antiguo HEAD) .. HEAD salio vacio tras rebase.
+
+### Comprobacion 2: mutaciones aisladas
+| Mutacion | Resultado |
+|---|---|
+| quitar -merge solo de t12-integrated-security | DETECTADA (falla) |
+| quitar -merge solo de t12-real-pi-tui-dialog | DETECTADA (falla) |
+| quitar -merge solo de t07-real-codegraph | DETECTADA (falla) |
+| startsWith(github.head_ref, 'feat/t12') en security | DETECTADA (falla) |
+Ninguna mutacion paso en verde; el test actual aisla correctamente cada job.
