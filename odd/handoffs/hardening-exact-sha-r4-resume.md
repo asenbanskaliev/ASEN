@@ -79,3 +79,7 @@ El propietario autorizó ejecutar F0 y reanclar las tareas. GitHub compare `dc47
 - F3-06 NOOP: code-intelligence (27 pass), incluyendo absent executable ENOENT -> unavailable, no init ni false PASS. No se instaló CodeGraph.
 - actionlint no disponible: BLOCKED/WAIVED parcial, no PASS.
 - Node v24.15.0. Sin push, sin CI ni proveedores.
+## Registro F4 - 2026-11-01
+- F4-01 done con CI 41291213760 + T07 probe 41291781415.
+- F4-02 bloqueado por fallo windows TUI T12 y test ubuntu/general pendiente/fallando.
+- No push, no CI adicional, no proveedores.

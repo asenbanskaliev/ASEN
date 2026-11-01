@@ -91,8 +91,8 @@ Sin PR con `head.ref` exacta y `head.repo.full_name` igual a `asenbanskaliev/ASE
 | [F3-04](hardening-exact-sha-r4/F3-04.md) | F3 | P1 | noop | F2-01 | 1.00 |
 | [F3-05](hardening-exact-sha-r4/F3-05.md) | F3 | P1 | noop | F1-04, F2-02 | 1.25 |
 | [F3-06](hardening-exact-sha-r4/F3-06.md) | F3 | P1 | noop | F2-02 | 1.25 |
-| [F4-01](hardening-exact-sha-r4/F4-01.md) | F4 | P0 | pending | F0-04, F3-01, F3-02, F3-03, F3-04, F3-05, F3-06 | 2.00 |
-| [F4-02](hardening-exact-sha-r4/F4-02.md) | F4 | P0 | pending | F4-01 | 2.00 |
+| [F4-01](hardening-exact-sha-r4/F4-01.md) | F4 | P0 | done | F0-04, F3-01, F3-02, F3-03, F3-04, F3-05, F3-06 | 2.00 |
+| [F4-02](hardening-exact-sha-r4/F4-02.md) | F4 | P0 | blocked | F4-01 | 2.00 |
 | [F5-01](hardening-exact-sha-r4/F5-01.md) | F5 | P0 | pending | F4-02 | 3.00 |
 | [F5-02](hardening-exact-sha-r4/F5-02.md) | F5 | P0 | pending | F5-01 | 1.50 |
 
@@ -249,3 +249,9 @@ Ninguna mutacion paso en verde; el test actual aisla correctamente cada job.
 - Validaciones: typecheck PASS; tests `ci-specialized-gates + provider-scope` PASS; `git diff --check` PASS.
 - actionlint: no instalado -> BLOCKED/WAIVED parcial, nunca PASS.
 - package.json/package-lock.json: sin cambios respecto a dc47d8d.
+## Registro F4 - 2026-11-01
+
+- F4-01 DONE: run CI 41291213760 con SHA exacto y CodeGraph matrix/Pi support tests PASS en 3 OS; T07 workflow_dispatch 41291781415 headSha 7a497e5 con ubuntu/macos/windows PASS.
+- F4-02 BLOCKED/FAIL: run CI 41291213760 SHA exacto. t12-integrated-security PASS Ubuntu; t12-real-pi-tui-dialog PASS Ubuntu/macOS pero FAIL/CANCELLED Windows; tests generales con failures/timeout.
+- No se ejecutó workflow general adicional; no se usaron proveedores.
+- Run de F4 sigue in_progress por test runner Windows al momento del registro.
