@@ -282,6 +282,38 @@ test("managed uninstall never follows a symlink substituted after the last verif
  assert.equal(await fs.readFile(outside,"utf8"),"outside must remain private\n");
 });
 
+test("T09 same-user second process cannot redirect quarantine removal to a replaced directory",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("uninstall-quarantine-interprocess");
+ await installManaged({...base,source:v1.source,dataHome});
+ const cli=path.join(prefix,"install","versions","1.0.0","cli.cjs");
+ const outside=path.join(root,"external-user-data.txt");
+ await fs.writeFile(outside,"unrelated personal data must survive\\n");
+ let injected=false,stagedDirectory="";
+ const result=await uninstallManaged({prefix,confirmed:true,hooks:{beforeQuarantineMove:async(directory,target)=>{
+  if(injected||target!==cli)return;
+  injected=true;stagedDirectory=directory;
+  // A real, distinct same-user process replaces the private staging directory
+  // with a different ordinary directory (works on Windows without symlink privileges).
+  const script='const fs=require("node:fs");const path=require("node:path");const dir=process.argv[1];fs.renameSync(dir,dir+".original");fs.mkdirSync(dir,{mode:0o700});fs.writeFileSync(path.join(dir,"foreign.txt"),"second-process-owned\\\\n");';
+  const child=spawn(process.execPath,["-e",script,directory],{windowsHide:true,stdio:["ignore","ignore","pipe"]});
+  let stderr="";
+  child.stderr.setEncoding("utf8").on("data",chunk=>stderr+=String(chunk).slice(0,2000));
+  const code=await new Promise<number|null>((resolve,reject)=>{
+   const timer=setTimeout(()=>{child.kill();reject(new Error("Second actor exceeded bounded deadline"));},10000);
+   child.once("error",error=>{clearTimeout(timer);reject(error);});
+   child.once("close",code=>{clearTimeout(timer);resolve(code);});
+  });
+  assert.equal(code,0,"second actor must actually replace the directory: "+stderr);
+ }}}); 
+ assert.equal(injected,true);
+ assert.equal(result.status,"partial","replaced quarantine identity must fail closed");
+ assert.equal(await fs.readFile(cli,"utf8"),GOOD_CLI("1.0.0"),"verified ASEN file must not be moved via a replaced stage");
+ assert.equal(await fs.readFile(outside,"utf8"),"unrelated personal data must survive\\n");
+ assert.equal(await fs.readFile(path.join(stagedDirectory,"foreign.txt"),"utf8"),"second-process-owned\\n");
+ assert.ok(result.retained.includes(cli));
+ assert.ok(result.retained.includes(stagedDirectory),"foreign stage must remain visible for inspection");
+});
+
 test("a preserved removal keeps the install recoverable and a later uninstall can finish",async()=>{
  const {root,prefix,dataHome,v1,base}=await setupInstall("uninstall-preserved-recovery");
  await installManaged({...base,source:v1.source,dataHome});

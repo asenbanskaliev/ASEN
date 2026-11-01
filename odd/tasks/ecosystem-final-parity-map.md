@@ -196,3 +196,8 @@ Corrected local validation: `npm run check` passed 2,216 tests, 0 failed, 19 con
 ## Bounded T10 / ECO-10 follow-up — 2026-11-01
 
 Ephemeral Pi projection now evicts its notification bus partition upon scope change and shutdown, with regression tests for identity reactivation and capacity release. A real killed writer test proves journal interruption is observed without implicit retry, while a stale on-disk `running` record refuses delivery-state promotion by another process. This is fail-closed evidence, **not** a host acknowledgement; ECO-10 remains PARTIAL and every ECO registry row remains unchanged. The same-user T09 unlink race, external browser launch and inherited Pi host advisory remain open. Parent e47a795 evidence cannot be attributed to the follow-up commit.
+
+
+## T09 executable stage hardening evidence — 2026-11-01
+
+The managed uninstall private quarantine directory is now identity-bound to the originally created managed root and per-operation staging directory, with checks before and after the staged move, and test-only injection of a second same-user process replacing the directory. R4 SELF_AUDIT_ONLY runs the concrete regression. This prevents an identified staged-route substitution under the recorded interleaving but cannot prove atomic rename/unlink confinement against an adversarial same-user writer at every possible nanosecond. Keep global ECO and T09 PARTIAL; exact-SHA three-OS evidence for this source change is pending.

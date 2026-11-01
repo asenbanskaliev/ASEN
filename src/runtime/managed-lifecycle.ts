@@ -142,21 +142,41 @@ export interface ManagedUninstallHooks{
   * preserved rather than deleted.
   */
  readonly beforeOwnedFileUnlink?:(target:string)=>Promise<void>;
+ /** Test-only: external same-user replacement of the private staging directory before moving a file. */
+ readonly beforeQuarantineMove?:(directory:string,target:string)=>Promise<void>;
 }
 interface RemovalStage{
  /** Creates the private removal directory once, on first use. */
  readonly directory:()=>Promise<string>;
  readonly created:()=>string|undefined;
+ readonly verified:()=>Promise<boolean>;
 }
 function removalStage(managedRoot:string):RemovalStage{
  let directory:string|undefined;
+ let rootIdentity:{dev:number;ino:number;birthtimeMs:number}|undefined;
+ let stageIdentity:{dev:number;ino:number;birthtimeMs:number}|undefined;
+ const verified=async():Promise<boolean>=>{
+  if(!directory||!rootIdentity||!stageIdentity)return false;
+  try{
+   const root=await lstat(managedRoot),stage=await lstat(directory);
+   return root.isDirectory()&&!root.isSymbolicLink()&&sameUninstallIdentity(rootIdentity,root)&&
+    stage.isDirectory()&&!stage.isSymbolicLink()&&sameUninstallIdentity(stageIdentity,stage)&&
+    (process.platform==="win32"||(stage.mode&0o077)===0);
+  }catch{return false;}
+ };
  return {
   created:()=>directory,
+  verified,
   directory:async()=>{
    if(directory)return directory;
+   const root=await lstat(managedRoot);
+   if(!root.isDirectory()||root.isSymbolicLink())throw new Error("Managed root changed before removal staging");
    const candidate=path.join(managedRoot,`.removal-${randomUUID()}`);
    await mkdir(candidate,{mode:0o700});
    directory=candidate;
+   const stage=await lstat(candidate);
+   rootIdentity=root;stageIdentity=stage;
+   if(!await verified())throw new Error("Managed removal stage is not a private owned directory");
    return candidate;
   },
  };
@@ -204,7 +224,10 @@ async function removeOwnedFile(versionRoot:string,relative:string,file:Pick<Mana
   // Pathname checks can never be atomic against a same-user writer. Move the object to a private
   // directory first: the rename is atomic, and the moved object is re-identified afterwards, so a
   // pathname substituted after the last verification is preserved instead of deleted.
-  const staged=path.join(await quarantine.directory(),randomUUID());
+  const stageDirectory=await quarantine.directory();
+  await hooks?.beforeQuarantineMove?.(stageDirectory,target);
+  if(!await quarantine.verified())return "retained";
+  const staged=path.join(stageDirectory,randomUUID());
   try{await rename(target,staged);}
   catch(error){
    const code=(error as NodeJS.ErrnoException).code??"";
@@ -212,6 +235,9 @@ async function removeOwnedFile(versionRoot:string,relative:string,file:Pick<Mana
    if(["EACCES","EPERM","EBUSY","EXDEV","ENOTEMPTY","EISDIR","ENOTDIR"].includes(code))return "retained";
    throw error;
   }
+  // A same-user process can also replace the private stage pathname. Check its identity
+  // before unlinking any moved object; preserve ambiguity instead of deleting it.
+  if(!await quarantine.verified()){preserved.push(staged);return "retained";}
   const moved=await lstat(staged).catch(()=>undefined);
   if(!moved||!moved.isFile()||moved.isSymbolicLink()||!sameUninstallIdentity(held,moved)){preserved.push(staged);return "retained";}
   await unlink(staged);return "removed";

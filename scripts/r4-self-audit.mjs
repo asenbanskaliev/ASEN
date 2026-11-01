@@ -11,6 +11,7 @@ export function evaluateR4SelfSnapshot(snapshot){
  check("exact_sha",shaOk(snapshot.expectedSha)&&snapshot.expectedSha===snapshot.headSha,"Git HEAD equals the immutable PR head");
  check("ecosystem_claims",Array.isArray(snapshot.claims?.rows)&&snapshot.claims.rows.length===16&&snapshot.claims.rows.every(x=>x.status==="PARTIAL"),"Global ECO claims remain evidence-bounded PARTIAL");
  check("t09_scope",/^- \[ \] T09 \|[^\r\n]*PARTIAL aggregate/mu.test(snapshot.capability),"T09 cannot self-promote to aggregate FULL");
+ check("t09_stage_identity",typeof snapshot.managedUninstall==="string"&&snapshot.managedUninstall.includes("beforeQuarantineMove")&&snapshot.managedUninstall.includes("quarantine.verified()")&&snapshot.managedUninstall.includes("sameUninstallIdentity(stageIdentity,stage)"),"T09 owned removal stage must be identity-bound before and after an atomic move");
  check("t10_journal",snapshot.extension.includes("pendingBackgroundJobNotifications(")&&snapshot.extension.includes('setDeliveryStateScoped(result.id,result.sessionId,result.projectId,"enqueued")'),"Durable background journal still owns delivery state");
  check("t10_no_false_ack",snapshot.extension.includes("deliveryConfirmed:false")&&!snapshot.extension.includes("deliveryConfirmed:true"),"Pi enqueue is not a confirmed presentation");
  check("t10_projection_only",snapshot.projection.includes("class PiNotificationProjection")&&snapshot.projection.includes("SessionNotificationBus")&&!snapshot.projection.includes("pi.sendMessage")&&!snapshot.projection.includes("acknowledge(")&&snapshot.extension.includes("notificationProjection.publish("),"Ephemeral widget is not the Pi transport");
@@ -26,7 +27,7 @@ function snapshotFromRepository(){
  const root=resolve(fileURLToPath(new URL("..",import.meta.url)));
  const read=path=>readFileSync(resolve(root,path),"utf8");
  const headSha=execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8",timeout:5000}).trim();
- return {expectedSha:process.env.ASEN_EXPECTED_SHA??"",headSha,claims:JSON.parse(read("registry/parity/ecosystem-claims-v1.json")),capability:read("odd/tasks/pi-capability-completion.md"),extension:read("extensions/asen.ts"),projection:read("src/runtime/notification-projection.ts"),workflow:read(".github/workflows/r4-self-audit.yml"),f5:read("odd/tasks/hardening-exact-sha-r4.md")};
+ return {expectedSha:process.env.ASEN_EXPECTED_SHA??"",headSha,claims:JSON.parse(read("registry/parity/ecosystem-claims-v1.json")),capability:read("odd/tasks/pi-capability-completion.md"),extension:read("extensions/asen.ts"),projection:read("src/runtime/notification-projection.ts"),managedUninstall:read("src/runtime/managed-lifecycle.ts"),workflow:read(".github/workflows/r4-self-audit.yml"),f5:read("odd/tasks/hardening-exact-sha-r4.md")};
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  try{
