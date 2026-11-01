@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {requestGracefulPtyExit} from "./t10-pty-shutdown.mjs";
 import {evaluateGitRow} from "./t10-git-row-validation.mjs";
 import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
@@ -60,13 +61,17 @@ function visibleWidth(value) {
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 async function driveWidth(width){
- const ready=join(temporary,`ready-${width}`);
- rmSync(ready,{force:true});
+ const ready=join(temporary,`ready-${width}`),shutdown=join(temporary,`shutdown-${width}`);
+ rmSync(ready,{force:true});rmSync(shutdown,{force:true});
  writeFileSync(probe,[
-  'import {writeFileSync} from "node:fs";',
+  'import {existsSync,writeFileSync} from "node:fs";',
   'export default function(pi){',
   ' pi.on("before_agent_start",()=>{throw Error("T10-7 forbids model calls");});',
-  ' pi.on("session_start",()=>writeFileSync('+JSON.stringify(ready)+',"ready"));',
+  ' pi.on("session_start",(_event,ctx)=>{',
+  '  writeFileSync('+JSON.stringify(ready)+',"ready");',
+  '  const poll=setInterval(()=>{if(existsSync('+JSON.stringify(shutdown)+')){clearInterval(poll);clearTimeout(safety);ctx.shutdown();}},80);',
+  '  const safety=setTimeout(()=>{clearInterval(poll);ctx.shutdown();},60000);',
+  ' });',
   '}'
  ].join("\n")+"\n");
  const {spawn}=require("node-pty");
@@ -77,6 +82,7 @@ async function driveWidth(width){
  child.onData(chunk=>{log=(log+chunk).slice(-400000);});
  child.onExit(result=>{exit=result;});
  const observed={width,phases:[],wrapped:[]};
+ let cleanExit=false;
  try{
   for(let attempt=0;attempt<120&&!existsSync(ready)&&!exit;attempt++)await sleep(250);
   assert.ok(existsSync(ready),"the real Pi host must reach session_start");
@@ -130,8 +136,17 @@ const rendered = strip(log.slice(start)).split(/\r?\n/).map((line) => line.repla
   const restarted=await send("/asen-status","profile:");
   observed.phases.push(`restart:${restarted.includes("profile:")?"re-rendered":"missing"}`);
   if(!restarted.includes("profile:"))observed.wrapped.push({name:"restart/status",rendered:restarted.slice(-160)});
+  if(exit)throw Error("Pi TUI exited before shutdown request");
+  try{
+   await requestGracefulPtyExit({child,shutdownFile:shutdown,timeoutMs:15_000});
+   cleanExit=true;
+   observed.phases.push("shutdown:clean-exit");
+  }catch(error){
+   observed.phases.push("shutdown:failed");
+   observed.wrapped.push({name:"host/shutdown",reason:"pty_exit_unconfirmed",rendered:String(error)});
+  }
  }finally{
-  try{child.kill();}catch{/* The runner reaps any surviving disposable child. */}
+  if(!cleanExit&&!exit)try{child.kill();}catch{/* Failed test only; never marks PASS. */}
  }
  return observed;
 }
