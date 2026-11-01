@@ -82,7 +82,7 @@ export class BackgroundJobJournal{
    // Persist before dispatch. A crash after this point is deliberately blocked:
    // a generic command cannot prove whether its side effects ran.
    const now=new Date().toISOString();
-   const claim:BackgroundJobJournalEntry={id:newJobId,sessionId,projectId,command:authorizedCommand,mode:previous.mode,state:"interrupted",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[],recoveredAt:now,resumable:false,authorizationId,operationDigest,originalJobId:rootOperationId,expectedHead,allowedPaths:Object.freeze([...allowedPaths]),authorizationExpiresAt};
+   const claim:BackgroundJobJournalEntry={id:newJobId,sessionId,projectId,command:authorizedCommand,mode:previous.mode,...(previous.args?{args:Object.freeze([...previous.args])}:{}),...(previous.cwd?{cwd:previous.cwd}:{}),state:"interrupted",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[],recoveredAt:now,resumable:false,authorizationId,operationDigest,originalJobId:rootOperationId,expectedHead,allowedPaths:Object.freeze([...allowedPaths]),authorizationExpiresAt};
    const updated=rows.map(row=>row.id===interruptedJobId?{...row,state:"stopped" as const,updatedAt:now}:row);
    updated.push(claim);
    const serialized=JSON.stringify(validateRows(updated))+"\n";

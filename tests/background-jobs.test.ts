@@ -225,7 +225,7 @@ test("T04 an authorized retry still executes once through the real journal-backe
  const root=await mkdtemp(path.join(tmpdir(),"asen-claimed-retry-registry-"));t.after(()=>rm(root,{recursive:true,force:true}));
  const journal=new BackgroundJobJournal(path.join(root,"jobs.json"));
  const first=new BackgroundJobRegistry(journal),original=first.start({sessionId:"session",projectId:root,command:"old command"});
- const grant={sessionId:"session",projectId:root,interruptedJobId:original.id,newJobId:"new-claimed-retry",authorizedCommand:"approved command",authorizationId:"single-use",operationDigest:"a".repeat(64),expectedHead:"b".repeat(40),allowedPaths:["safe.txt"],authorizationExpiresAt:new Date(Date.now()+60_000).toISOString()};
+ const grant={sessionId:"session",projectId:root,interruptedJobId:original.id,newJobId:"12345678-1234-4234-8234-123456789abc",authorizedCommand:"approved command",authorizationId:"single-use",operationDigest:"a".repeat(64),expectedHead:"b".repeat(40),allowedPaths:["safe.txt"],authorizationExpiresAt:new Date(Date.now()+60_000).toISOString()};
  journal.claimInterruptedForRetry(grant);
  let executed=0;
  const retry=new BackgroundJobRegistry(journal,async()=>{executed++;return{exitCode:0};});

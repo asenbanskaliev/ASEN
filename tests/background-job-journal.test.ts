@@ -178,10 +178,12 @@ test("T04 retry claim cannot be overwritten by stale original child, and a bound
  const root=mkdtempSync(join(tmpdir(),"asen-retry-record-guard-"));
  try{
   const file=join(root,"journal.json"),journal=new BackgroundJobJournal(file),now=new Date().toISOString();
-  const original={id:"original",sessionId:"s",projectId:root,command:"original command",mode:"background" as const,state:"running" as const,createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[]};
+  const original={id:"original",sessionId:"s",projectId:root,command:"original command",mode:"background" as const,args:["--input","safe"],cwd:root,state:"running" as const,createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[]};
   journal.record(original);
   const auth={sessionId:"s",projectId:root,interruptedJobId:"original",newJobId:"retry-1",authorizedCommand:"approved command",authorizationId:"one-use-approval",operationDigest:"a".repeat(64),expectedHead:"b".repeat(40),allowedPaths:["owned.txt"],authorizationExpiresAt:new Date(Date.now()+60_000).toISOString()};
   const claim=journal.claimInterruptedForRetry(auth),before=readFileSync(file,"utf8");
+  assert.equal(claim.cwd,root,"claim must carry working-directory identity");
+  assert.deepEqual(claim.args,original.args,"claim must carry original argument identity");
   assert.throws(()=>journal.record({...original,state:"completed",exitCode:0,updatedAt:new Date(Date.now()+10_000).toISOString()}),/record conflict/u);
   assert.equal(readFileSync(file,"utf8"),before,"a stale original process cannot erase consumed authorization");
   assert.throws(()=>journal.claimInterruptedForRetry({...auth,newJobId:"retry-2",authorizationId:"new approval"}),/not available/u);
