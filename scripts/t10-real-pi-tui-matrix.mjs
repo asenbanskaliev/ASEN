@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {evaluateGitRow} from "./t10-git-row-validation.mjs";
 import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {createRequire} from "node:module";
@@ -56,9 +57,6 @@ function visibleWidth(value) {
  const graphemes = segmenter ? [...segmenter.segment(value)].map((item) => item.segment) : Array.from(value);
  return graphemes.reduce((sum, item) => sum + (/\p{Extended_Pictographic}/u.test(item) || /\p{Emoji_Presentation}/u.test(item) ? 2 : 1), 0);
 }
-function normalizedPathForReport(value) {
-  return value.replace(/\\\\/gu, "/").replace(/\/+/gu, "/");
-}
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 async function driveWidth(width){
@@ -107,18 +105,19 @@ const rendered = strip(log.slice(start)).split(/\r?\n/).map((line) => line.repla
    {name:"status/agents",prefix:"agents: 0 running",accept:tail=>tail.endsWith("failed")||tail.endsWith("…")},
    {name:"status/workspace",prefix:"workspace changes:",accept:tail=>tail.endsWith("0")||tail.endsWith("…")},
    {name:"status/history",prefix:"history:",accept:tail=>tail.endsWith(")")||tail.endsWith("…")},
-   {name:"changes/git",prefix:"Git ",accept:tail=>normalizedPathForReport(tail).endsWith(normalizedPathForReport(project))||tail.endsWith("…")},
+   {name:"changes/git",prefix:"Git "},
   ];
    for(const row of rows){
     const line=findRow(row.prefix);
     if(!line){observed.phases.push(`missing:${row.name}`);continue;}
     const tail=line.trimEnd();
     const visibleLineWidth=visibleWidth(tail);
-    const pathEquivalent=normalizedPathForReport(tail).endsWith(normalizedPathForReport(project));
+    const gitCheck=row.name==="changes/git"?evaluateGitRow({row:tail,project,width,renderedWidth:visibleLineWidth}):null;
+    const pathEquivalent=gitCheck?.pathEquivalent??false;
     const widthOkay=visibleLineWidth <= width;
-    const ok = row.accept(tail) && widthOkay;
+    const ok=gitCheck?gitCheck.ok:row.accept(tail)&&widthOkay;
     observed.phases.push(`${row.name}:${ok?"fits":"wrapped"}`);
-    if(!ok)observed.wrapped.push({name:row.name,rendered:tail,visibleWidth:visibleLineWidth,terminalWidth:width,pathEquivalent,reason:pathEquivalent ? (widthOkay ? "accept-failed" : "width_overflow") : "path_shape_mismatch"});
+    if(!ok)observed.wrapped.push({name:row.name,rendered:tail,visibleWidth:visibleLineWidth,terminalWidth:width,pathEquivalent,reason:gitCheck?.reason??(widthOkay?"accept-failed":"width_overflow"),...(gitCheck?{diagnostics:gitCheck.diagnostics}:{})});
    }
   observed.rendered=rendered.filter(line=>/agents:|workspace changes:|history:|telemetry:|Git |profile:/u.test(line));
   // Keyboard, error and restart: the same host session must survive an Escape and
