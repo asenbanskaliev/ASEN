@@ -157,7 +157,7 @@ Estados: `pending|in_progress|done|noop|blocked|waived`. `noop` requiere GREEN/c
 13. T12 security Ubuntu dedicado más cobertura equivalente en suite general 3 OS; T12 TUI dedicado 3 OS, todos PASS exact-SHA. Si se exige security dedicado 3 OS, la versión actual es BLOCKED pendiente autorización extra.
 14. Authority pin intacto y `npm run check:authority-pin` PASS, R4 críticos sin FAIL, auditor independiente genuino PASS del SHA final. Cualquier REQUIRED SKIPPED/WAIVED/BLOCKED = NO FULL.
 
-**WAIVED explícitos permitidos:** live NVIDIA T04/T05, Pi Free Smoke con proveedor y paridad Reference Shell global. El workflow GSP-06 debe parsear aunque esté sin ejecutar. FULL del programa ≠ paridad global ASEN/Gentle Shell.
+**WAIVED explícitos permitidos:** live NVIDIA T04/T05, Pi Free Smoke con proveedor y paridad Reference Shell global. El workflow GSP-06 debe parsear aunque esté sin ejecutar. FULL del programa no implica paridad funcional global con el sistema de referencia externo.
 
 ## Plantilla implementador (PASS / FAIL / BLOCKED)
 
