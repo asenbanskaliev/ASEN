@@ -47,3 +47,11 @@
 | Bloqueo | Solo avanzar si tests focalizados GREEN con Node/tsx compatibles y sin archivos fuera de allowlist; aquí no hay checkout ni tsx |
 
 **STOP/BLOCKED**: árbol sucio ajeno, SHA desconocido, RED inesperado, GREEN fallido, cambio de hashes/authority, necesidad de múltiples subsistemas, PR inexistente para gate, cuota/proveedor, merge/release o consentimiento pendiente. Conservar la causa; no convertirlo en PASS o WAIVED.
+
+## Registro de reanudación — 2026-11-01: entorno BLOCKED
+
+El propietario autorizó ejecutar F0 y reanclar las tareas. GitHub compare `dc47d8d..f2d8d238940a0a08be78a9d17a8e35eb1cb09aa8` confirmó **3 commits / 22 archivos añadidos solo bajo `odd/`**. PR #45 abierto, head de rama `feat/t12-integrated-acceptance-merge` en `f2d8d238940a0a08be78a9d17a8e35eb1cb09aa8` antes de este cambio documental. Se reanclaron los 21 microarchivos mediante `sha_base=f2d8d238940a0a08be78a9d17a8e35eb1cb09aa8` como base histórica, no resultado de pruebas.
+
+**F0-02 BLOCKED:** sin checkout completo porque `git ls-remote` y `git clone` no resuelven `github.com`; Node disponible `22.16.0` no cumple `.nvmrc=22.19.0` ni engines `>=22.19.0`; `nvm install` no encuentra versión por falta de acceso remoto; instalación `actionlint` vía Go falla por DNS `proxy.golang.org`. `npm ci`, el test oficial RED/GREEN y typecheck NO SE EJECUTARON. La prueba aislada previa queda sin validez de evidencia. Actionlint se registra BLOCKED auxiliar, no PASS.
+
+**Estado:** F0-01 DONE histórico; F0-02 **BLOCKED por entorno**; F0-03 y F0-04 PENDING; F1–F5 no iniciadas. Ningún workflow, proveedor o CI lanzado y ningún archivo de código, YAML o test cambiado. Este commit es solo actualización del ODD. Al reanudar: comprobar el HEAD nuevo, preparar checkout, Node >=22.19.0, npm ci; ejecutar F0-02 oficial antes de F0-03/F0-04. Los tres commits funcionales deben seguir separados.

@@ -1,6 +1,6 @@
 # ASEN — Hardening exact-SHA R4: plan ODD canónico y registro
 
-**PREPARACIÓN ÚNICAMENTE.** Ninguna tarea funcional F0-02…F5 ha sido ejecutada en esta sesión. Este plan especializado no reemplaza el ODD general: `odd/tasks/pi-capability-completion.md` es la autoridad de admisión/capacidades conforme a `AGENTS.md`.
+**ACTUALIZACIÓN 2026-11-01: F0-02 BLOCKED por entorno.** No se ejecutó ninguna tarea funcional F0-02…F5; la prueba aislada anterior no constituye evidencia de RED/GREEN oficial. Este plan especializado no reemplaza el ODD general: `odd/tasks/pi-capability-completion.md` es la autoridad de admisión/capacidades conforme a `AGENTS.md`.
 
 ## Fuente y baseline
 
@@ -75,7 +75,7 @@ Sin PR con `head.ref` exacta y `head.repo.full_name` igual a `asenbanskaliev/ASE
 | ID | Fase | Prioridad | Estado | Dependencias | Horas |
 |---|---|---|---|---|---:|
 | [F0-01](hardening-exact-sha-r4/F0-01.md) | F0 | P0 | done | — | 1.50 |
-| [F0-02](hardening-exact-sha-r4/F0-02.md) | F0 | P0 | pending | F0-01 | 2.00 |
+| [F0-02](hardening-exact-sha-r4/F0-02.md) | F0 | P0 | blocked | F0-01 | 2.00 |
 | [F0-03](hardening-exact-sha-r4/F0-03.md) | F0 | P1 | pending | F0-02 | 1.50 |
 | [F0-04](hardening-exact-sha-r4/F0-04.md) | F0 | P0 | pending | F0-03 | 2.00 |
 | [F1-01](hardening-exact-sha-r4/F1-01.md) | F1 | P1 | pending | F0-04 | 0.75 |
@@ -108,7 +108,7 @@ Sin PR con `head.ref` exacta y `head.repo.full_name` igual a `asenbanskaliev/ASE
 
 Estados: `pending|in_progress|done|noop|blocked|waived`. `noop` requiere GREEN/caracterización y justificación. `waived` no satisface PASS. `blocked` no libera dependencias.
 
-## Modo automático ODD + TDD (ejecución futura, no autorizada ahora)
+## Modo automático ODD + TDD (requiere checkout y entorno válidos)
 
 1. Leer los tres documentos AGENTS/remote-continuation/ODD global; luego este plan, el handoff y el microarchivo. Confirmar autorización de ejecución del owner.
 2. Leer tabla; escoger primera `pending` cuyas dependencias estén `done` o `noop`; congelar HEAD/PR y ejecutar `git status --porcelain=v1`. Árbol sucio ajeno o nueva HEAD de tercero → BLOCKED.
@@ -189,3 +189,13 @@ Preparación = **exactamente un commit** `docs(odd): add hardening exact-SHA R4 
 - **F0-01 DONE (baseline remoto):** HEAD inicial `a2a4765d1c7a4b577d63b3794bfa2fe7abebcfdc`, PR #45 abierto hacia main, rama `feat/t12-integrated-acceptance-merge`. La rama coincide con el commit base. GitHub Actions muestra Phase 0 run 41286809743 PASS, Pi 1.2 runtime run 41286809715 PASS y Release Gate 41286809731 PASS; CI run 41286809701 estaba en ejecución durante la consulta y Pi Free Smoke 41286809722 SKIPPED.
 - **Entorno de ejecución:** en el contenedor de esta conversación Node v22.16.0, npm 10.9.2, git disponible, pero sin checkout del repo y sin `tsx`/`actionlint`. Este Node no alcanza el mínimo declarado en `package.json` (>=22.19.0). Es una **limitación explícita**: no declarar un `git status --porcelain` local de ASEN ni pruebas locales del repositorio como PASS. La CI hospedada usa Node 22.19.0 en `ci.yml`; su evidencia solo vale para su SHA exacto.
 - **Protocolo:** la comprobación del contenido remoto mediante API Git y CI no equivale a un checkout limpio local. Los trabajos siguientes requieren GREEN focalizado exacto en un entorno compatible antes de su commit de implementación; sin él deben marcarse BLOCKED según el plan.
+
+## Reconciliación y STOP por entorno — 2026-11-01
+
+- **Comparación exacta** `dc47d8d9b2ead9423a0a613e5cad6ce6ca5233f1..f2d8d238940a0a08be78a9d17a8e35eb1cb09aa8`: GitHub compare confirma 3 commits adelante y **22 archivos añadidos, todos bajo `odd/`**, cero cambios fuera. PR #45 sigue abierto, rama `feat/t12-integrated-acceptance-merge`, head `f2d8d238940a0a08be78a9d17a8e35eb1cb09aa8` comprobado antes de este registro.
+- **Reanclaje de metadata autorizado:** `sha_base=f2d8d238940a0a08be78a9d17a8e35eb1cb09aa8` en los 21 microarchivos F0-01…F5-02. Esta base es la referencia anterior al commit documental; NO acredita ejecución sobre ella. F0-01 conserva sus resultados históricos; F0-02 pasa a BLOCKED; F0-03/F0-04 siguen PENDING. Antes de reanudar, obtener el nuevo HEAD y volver a reconciliarlo.
+- **Bloqueo del checkout:** `git ls-remote https://github.com/asenbanskaliev/ASEN.git ...` y `git clone --no-checkout --filter=blob:none https://github.com/asenbanskaliev/ASEN.git repo` → `Could not resolve host: github.com`. No checkout completo ni working tree examinable mediante `git status`.
+- **Bloqueo del runtime:** host Node `v22.16.0` y npm `10.9.2`; `.nvmrc=22.19.0`, `engines.node >=22.19.0`. `nvm install 22.19.0` devolvió `Version '22.19.0' not found` en un entorno sin acceso al índice remoto.
+- **Actionlint** no instalado; `go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7` falló por DNS de `proxy.golang.org`. Estado **BLOCKED de verificación auxiliar**; no PASS. La posible exención parcial de actionlint no elimina el bloqueo de checkout/Node/tsx y no se presenta como FULL.
+- **No ejecutado:** `npm ci`, `node --import tsx --test tests/provider-scope.test.ts` (RED/GREEN oficial), `npm run typecheck`, F0-03 y F0-04. Se descarta expresamente la prueba aislada anterior como evidencia. No se modificaron workflows ni tests, no se iniciaron CI, workflows ni proveedores.
+- **STOP obligatorio:** ningún estado posterior se promociona. Reanudar F0-02 solo con checkout completo, Node compatible, `npm ci` y TDD oficial; mantener commits funcionales independientes para F0-02, F0-03 y F0-04 y conservar los filtros exactos del PR #45.
