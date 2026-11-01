@@ -209,7 +209,7 @@ test("T10 terminal receipt and scope cannot be overwritten by a later stale reco
   journal.record(terminal);
   journal.updateDeliveryState("j","s",root,"enqueued");
   const before=readFileSync(file,"utf8");
-  assert.throws(()=>journal.record({...terminal,state:"completed",exitCode:0,deliveryState:undefined}),/record conflict/u);
+  assert.throws(()=>journal.record({...terminal,state:"completed",exitCode:0}),/record conflict/u);
   assert.throws(()=>journal.record({...terminal,sessionId:"foreign",deliveryState:"enqueued" as const}),/record conflict/u);
   assert.equal(readFileSync(file,"utf8"),before,"the terminal result and delivery receipt must remain byte-identical");
   assert.equal(journal.load("s",root)[0]?.deliveryState,"enqueued");
