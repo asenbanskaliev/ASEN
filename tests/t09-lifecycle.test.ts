@@ -162,6 +162,55 @@ test("an interrupted upgrade (crash after activation) is recovered by rollback v
  assert.equal(final.status==="owned"&&final.activeVersion,"1.0.0");
 });
 
+test("unhealthy automatic rollback retains its journal until an actually healthy retry",async()=>{
+ const root=await tmp("rollback-probe"),{prefix,dataHome}=env(root),marker=path.join(root,"fail-v1-probe");
+ const oldCli=`const fs=require("node:fs");if(fs.existsSync(${JSON.stringify(marker)}))process.exit(6);process.stdout.write(${JSON.stringify("1.0.0\n")});`;
+ const v1=await release(root,await pkg(root,"v1","1.0.0",oldCli));
+ const base={prefix,trustedKeyPath:v1.anchor,protectedPaths:[dataHome],confirmed:true as const};
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ const failed=await upgradeManaged({...base,source:v2.source,hooks:{afterActivation:async()=>{
+  await fs.writeFile(marker,"unhealthy previous version\n");
+  throw new Error("simulated post-activation crash");
+ }}});
+ assert.equal(failed.status,"ambiguous","an unhealthy restored version is not a successful rollback");
+ assert.equal(failed.activeVersion,"1.0.0");
+ assert.match(failed.reason??"",/recovery journal retained/u);
+ const journal=path.join(prefix,"managed-update-journal.json");
+ assert.equal(JSON.parse(await fs.readFile(journal,"utf8")).from,"1.0.0");
+ await assert.rejects(()=>upgradeManaged({...base,source:v2.source}),{code:"RECOVERY_REQUIRED"});
+ await assert.rejects(()=>rollbackManaged({prefix,expectedCurrentVersion:"1.0.0",toVersion:"2.0.0",confirmed:true}),{code:"RECOVERY_REQUIRED"},"an interrupted journal cannot be cleared by selecting its failed target");
+ const unhealthy=await rollbackManaged({prefix,expectedCurrentVersion:"1.0.0",confirmed:true});
+ assert.equal(unhealthy.status,"ambiguous");
+ await fs.stat(journal);
+ await fs.unlink(marker);
+ const recovered=await rollbackManaged({prefix,expectedCurrentVersion:"1.0.0",confirmed:true});
+ assert.equal(recovered.status,"unchanged");
+ await assert.rejects(()=>fs.stat(journal),{code:"ENOENT"});
+ const healthy=await upgradeManaged({...base,source:v2.source});
+ assert.equal(healthy.status,"upgraded");
+});
+test("manual rollback to unhealthy recorded predecessor retains its recovery journal",async()=>{
+ const root=await tmp("rollback-selected-probe"),{prefix,dataHome}=env(root),marker=path.join(root,"make-old-unhealthy");
+ const oldCli=`const fs=require("node:fs");if(fs.existsSync(${JSON.stringify(marker)}))process.exit(7);process.stdout.write(${JSON.stringify("1.0.0\n")});`;
+ const v1=await release(root,await pkg(root,"v1","1.0.0",oldCli));
+ const base={prefix,trustedKeyPath:v1.anchor,protectedPaths:[dataHome],confirmed:true as const};
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ assert.equal((await upgradeManaged({...base,source:v2.source})).status,"upgraded");
+ const journal=path.join(prefix,"managed-update-journal.json");
+ await fs.writeFile(journal,JSON.stringify({schema:"asen.managed-update-journal/v1",from:"1.0.0",to:"2.0.0",startedAt:new Date().toISOString()})+"\n",{flag:"wx"});
+ await fs.writeFile(marker,"unhealthy prior CLI\n");
+ const failed=await rollbackManaged({prefix,expectedCurrentVersion:"2.0.0",confirmed:true});
+ assert.equal(failed.status,"ambiguous","selecting the previous version without a successful CLI probe is not a successful rollback");
+ assert.equal(failed.activeVersion,"1.0.0");
+ assert.match(failed.reason??"",/recovery journal retained/u);
+ await fs.stat(journal);
+ await assert.rejects(()=>upgradeManaged({...base,source:v2.source}),{code:"RECOVERY_REQUIRED"});
+ await fs.unlink(marker);
+ assert.equal((await rollbackManaged({prefix,expectedCurrentVersion:"1.0.0",confirmed:true})).status,"unchanged");
+ await assert.rejects(()=>fs.stat(journal),{code:"ENOENT"});
+});
 test("uninstall removes only owned files, keeps data/config, and retains foreign files",async()=>{
  const {prefix,dataHome,v1,base}=await setupInstall("uninstall");
  await installManaged({...base,source:v1.source,dataHome,launcherConfig:{mode:"isolated"}});

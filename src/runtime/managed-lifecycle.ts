@@ -494,8 +494,9 @@ export async function upgradeManaged(request:ManagedUpgradeRequest):Promise<Mana
   try{
    await selectManagedVersion({prefix,version:from,expectedCurrentVersion:to,confirmed:true});
    const restored=await probe(prefix,from);
+   if(!restored.ok)return report({operation:"upgrade",status:"ambiguous",version:to,previousVersion:from,activeVersion:from,signerKeyId,reason:`${postReason}; previous version probe failed after rollback (${restored.reason}); recovery journal retained`});
    await clearJournal(prefix);
-   return report({operation:"upgrade",status:"rolled-back",version:to,previousVersion:from,activeVersion:from,signerKeyId,reason:postReason+(restored.ok?"":`; previous version probe: ${restored.reason}`)});
+   return report({operation:"upgrade",status:"rolled-back",version:to,previousVersion:from,activeVersion:from,signerKeyId,reason:postReason});
   }catch(error){
    return report({operation:"upgrade",status:"ambiguous",version:to,previousVersion:from,activeVersion:to,signerKeyId,reason:`${postReason}; automatic rollback failed: ${text(error)}; journal retained`});
   }
@@ -516,14 +517,17 @@ export async function rollbackManaged(request:ManagedRollbackRequest):Promise<Ma
  const current=inspection.activeVersion;
  const target=request.toVersion??journal?.from;
  if(!target)return fail("INVALID_REQUEST","Rollback needs --to or an interrupted upgrade journal");
+ if(journal&&target!==journal.from)return fail("RECOVERY_REQUIRED","Interrupted upgrade recovery must target its recorded previous version");
  if(current!==request.expectedCurrentVersion)return fail("INVALID_REQUEST",`Active version is ${current??"none"}, not ${request.expectedCurrentVersion}`);
  if(current===target){
+  const health=await probe(prefix,target);
+  if(!health.ok)return report({operation:"rollback",status:"ambiguous",version:target,previousVersion:current,activeVersion:current,signerKeyId:null,reason:`Recovery target probe failed (${health.reason}); ${journal?"recovery journal retained":"no recovery journal exists"}`});
   if(journal)await clearJournal(prefix);
   return report({operation:"rollback",status:"unchanged",version:target,previousVersion:current,activeVersion:current,signerKeyId:null,reason:null});
  }
  if(!inspection.versions.some(item=>item.version===target))return fail("INVALID_REQUEST",`Version ${target} is not retained`);
  await selectManagedVersion({prefix,version:target,expectedCurrentVersion:current,confirmed:true});
  const health=await probe(prefix,target);
- if(journal)await clearJournal(prefix);
- return report({operation:"rollback",status:health.ok?"rolled-back":"ambiguous",version:target,previousVersion:current,activeVersion:target,signerKeyId:null,reason:health.reason});
+ if(health.ok&&journal)await clearJournal(prefix);
+ return report({operation:"rollback",status:health.ok?"rolled-back":"ambiguous",version:target,previousVersion:current,activeVersion:target,signerKeyId:null,reason:health.ok?null:`${health.reason}; ${journal?"recovery journal retained":"no recovery journal exists"}`});
 }
