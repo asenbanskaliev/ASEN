@@ -86,3 +86,8 @@ El propietario autorizó ejecutar F0 y reanclar las tareas. GitHub compare `dc47
 ## Correccion quirurgica - 2026-11-01
 - A: commit 2ef5724, prueba CLI GREEN.
 - B: Windows TUI FAIL exacto CI, PASS local; AttachConsole + row wrap, causa no resuelta.
+## Correccion detector - 2026-11-01
+- Trigger: el artefacto CI mostraba trailing ellipsis "…", pero el detector solo aceptaba "." ASCII.
+- Cambio: scripts/t10-real-pi-tui-matrix.mjs con comparación normalizada y diagnósticos.
+- Validacion local: matrix PASS 120/80/60/40, node --check PASS, typecheck PASS.
+- Nota: el fallo de AttachConsole no se ha demostrado como causa.

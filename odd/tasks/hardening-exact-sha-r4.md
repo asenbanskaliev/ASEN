@@ -259,3 +259,8 @@ Ninguna mutacion paso en verde; el test actual aisla correctamente cada job.
 ## Correccion quirurgica - 2026-11-01
 - A: commit 2ef5724; prueba CLI GREEN.
 - B: Windows TUI PASS local concluido, FAIL exacto en CI por row wrap + AttachConsole.
+## Correccion detector - 2026-11-01
+- Trigger: el artefacto CI mostraba trailing ellipsis "…", pero el detector solo aceptaba "." ASCII.
+- Cambio: scripts/t10-real-pi-tui-matrix.mjs con comparación normalizada y diagnósticos.
+- Validacion local: matrix PASS 120/80/60/40, node --check PASS, typecheck PASS.
+- Nota: el fallo de AttachConsole no se ha demostrado como causa.
