@@ -1,6 +1,6 @@
 # ASEN — Hardening exact-SHA R4: plan ODD canónico y registro
+**ACTUALIZACION 2026-11-01: F0-02 DONE.** Ejecutado en entorno Windows valido: RED por comillas dobles, GREEN tras cambio a comillas simples, npm run typecheck PASS, actionlint WAIVED parcial por indisponibilidad. Commit 3a42ae3ffd1e549e84b42db5b956e59d67e2535e. F0-03 y F0-04 siguen pending. Este plan no reemplaza el ODD general: odd/tasks/pi-capability-completion.md es la autoridad de admision/capacidades conforme a AGENTS.md.
 
-**ACTUALIZACIÓN 2026-11-01: F0-02 BLOCKED por entorno.** No se ejecutó ninguna tarea funcional F0-02…F5; la prueba aislada anterior no constituye evidencia de RED/GREEN oficial. Este plan especializado no reemplaza el ODD general: `odd/tasks/pi-capability-completion.md` es la autoridad de admisión/capacidades conforme a `AGENTS.md`.
 
 ## Fuente y baseline
 
@@ -75,7 +75,7 @@ Sin PR con `head.ref` exacta y `head.repo.full_name` igual a `asenbanskaliev/ASE
 | ID | Fase | Prioridad | Estado | Dependencias | Horas |
 |---|---|---|---|---|---:|
 | [F0-01](hardening-exact-sha-r4/F0-01.md) | F0 | P0 | done | — | 1.50 |
-| [F0-02](hardening-exact-sha-r4/F0-02.md) | F0 | P0 | blocked | F0-01 | 2.00 |
+| [F0-02](hardening-exact-sha-r4/F0-02.md) | F0 | P0 | done | F0-01 | 2.00 |
 | [F0-03](hardening-exact-sha-r4/F0-03.md) | F0 | P1 | pending | F0-02 | 1.50 |
 | [F0-04](hardening-exact-sha-r4/F0-04.md) | F0 | P0 | pending | F0-03 | 2.00 |
 | [F1-01](hardening-exact-sha-r4/F1-01.md) | F1 | P1 | pending | F0-04 | 0.75 |
@@ -199,3 +199,13 @@ Preparación = **exactamente un commit** `docs(odd): add hardening exact-SHA R4 
 - **Actionlint** no instalado; `go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7` falló por DNS de `proxy.golang.org`. Estado **BLOCKED de verificación auxiliar**; no PASS. La posible exención parcial de actionlint no elimina el bloqueo de checkout/Node/tsx y no se presenta como FULL.
 - **No ejecutado:** `npm ci`, `node --import tsx --test tests/provider-scope.test.ts` (RED/GREEN oficial), `npm run typecheck`, F0-03 y F0-04. Se descarta expresamente la prueba aislada anterior como evidencia. No se modificaron workflows ni tests, no se iniciaron CI, workflows ni proveedores.
 - **STOP obligatorio:** ningún estado posterior se promociona. Reanudar F0-02 solo con checkout completo, Node compatible, `npm ci` y TDD oficial; mantener commits funcionales independientes para F0-02, F0-03 y F0-04 y conservar los filtros exactos del PR #45.
+
+## Registro de ejecucion F0-02 - 2026-11-01 (entorno valido)
+
+- SHA base historico al iniciar: bc6fdec81eefa83f200b15872685824097a3da5d (rama feat/t12-integrated-acceptance-merge).
+- F0-02 DONE. Commit fix: 3a42ae3ffd1e549e84b42db5b956e59d67e2535e.
+- RED: comando 'node --import tsx --test tests/provider-scope.test.ts' -> AssertionError /github\.event_name == 'workflow_dispatch'/ por expresiones con comillas dobles.
+- GREEN: mismo comando -> 1 pass, 0 fail; 'npm run typecheck' -> PASS.
+- actionlint: no instalado -> WAIVED parcial (no PASS).
+- Node: v24.15.0 (cumple >=22.19.0). Entorno Windows PowerShell.
+- No se modificaron extensiones/authority, pin, otros workflows ni package.json.
