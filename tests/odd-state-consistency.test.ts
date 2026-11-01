@@ -62,15 +62,17 @@ test("legacy MEM checkboxes are reconciled against existing v3 scope, not global
  assert.match(read("src/memory/sqlite-store.ts"),/class SqliteMemoryStore/u);
 });
 
-test("notification bus is explicitly non-production; durable background enqueue must not imply delivery",()=>{
+test("notification bus is wired only as non-authoritative Pi status projection; durable enqueue is unchanged",()=>{
  const bus=read("src/runtime/session-notifications.ts");
  assert.match(bus,/export class SessionNotificationBus/u);
- assert.doesNotMatch(extension,/\bSessionNotificationBus\b/u);
+ assert.match(extension,/\bPiNotificationProjection\b/u);
+ assert.match(extension,/notificationProjection\.publish\(/u);
+ assert.match(read("src/runtime/notification-projection.ts"),/SessionNotificationBus/u);
  assert.match(extension,/pendingBackgroundJobNotifications\(/u);
  assert.match(extension,/deliveryConfirmed:false/u);
  assert.match(extension,/setDeliveryStateScoped\(result\.id,result\.sessionId,result\.projectId,"enqueued"\)/u);
- assert.match(t10,/NOT_WIRED/u);
- assert.match(t10,/not import or register that bus/u);
+ assert.match(t10,/CONNECTED_PROJECTION/u);
+ assert.match(t10,/no confirmed display acknowledgement/u);
  assert.match(read("tests/background-job-journal-corruption.test.ts"),/truncateSync\(file, 2 \* 1024 \* 1024 \+ 1\)/u);
 });
 

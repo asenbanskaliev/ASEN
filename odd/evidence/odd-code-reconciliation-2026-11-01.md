@@ -36,3 +36,12 @@ The baseline e9229568 passed CI 41328305297, Release Gate 41328305277, Phase 0 4
 ## Batch and release boundary
 
 This is one documentation/test batch on the PR branch. Use a single non-force branch update; one resulting PR workflow set (CI + Release Gate + static/architecture/T07 gates) is the final test cycle. Do not merge or publish release packages. On any failure, inspect job artifacts and correct the precise cause; preserve the failed run. Admission of a subsequent fix needs its own exact-SHA CI, not inherited green from this baseline.
+
+## Second batch: live notification projection (implementation candidate)
+
+The earlier NOT_WIRED matrix above describes the first documentation-only reconciliation; it is retained as historical evidence, not the latest code disposition.
+
+- New `src/runtime/notification-projection.ts` binds `SessionNotificationBus` to the optional Pi `ui.setWidget` as a read-only status projection, keyed by both session and project. Only observed, generated short job/agent status strings reach the widget. Raw stdout, model output, credentials and filesystem paths do not.
+- `extensions/asen.ts` activates the projection per Pi session, sends a best-effort status for terminal job and agent outcomes, and deactivates on session shutdown. The existing `BackgroundJobJournal`, `pendingBackgroundJobNotifications`, `pi.sendMessage`, and `deliveryConfirmed:false` remain unchanged as the authority and transport boundaries. No journal replay is replaced by the in-memory bus.
+- `tests/notification-projection.test.ts` covers source-ID dedup, distinct same-text events, session/project isolation, stale callbacks, unsafe terminal-control content, renderer failure, capacity overflow and restart non-durability. `tests/background-job-delivery.integration.test.ts` asserts observed live child completion renders a Pi widget and shutdown clears it without changing the persisted enqueue contract. `tests/odd-state-consistency.test.ts` is aligned to the now-wired non-authoritative projection.
+- State: **CONNECTED_PROJECTION / integration tests added; no confirmed display acknowledgement**. Pi has not supplied a durable human-visible delivery receipt. The first-batch technical CI is not evidence for this new source change, and no independent R4 review is fabricated.

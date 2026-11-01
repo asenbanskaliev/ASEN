@@ -24,16 +24,21 @@ test("public background tool runs one real child, delivers an untrusted terminal
  const create=()=>host(),first=create();
  const dependencies={homeDir:()=>root,backgroundJobJournalFile:path.join(root,"jobs.json"),backgroundExecutor,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false};
  createAsenExtension(dependencies)(first.pi as any);
- const context={mode:"rpc",hasUI:true,cwd:process.cwd(),sessionManager:{getSessionId:()=>"integration-session"},ui:{notify(){},confirm:async()=>true,setWidget(){}}};
+ const widgets:Array<{key:string;lines:string[]|undefined}>=[];
+ const context={mode:"rpc",hasUI:true,cwd:process.cwd(),sessionManager:{getSessionId:()=>"integration-session"},ui:{notify(){},confirm:async()=>true,setWidget(key:string,lines:string[]|undefined){widgets.push({key,lines});}}};
  await first.events.get("session_start")![0]!({},context);
  const started=await first.tools.get("asen_background_start").execute("start",{command:"integration child"},new AbortController().signal,()=>{},context);
  const job=started.details as {id:string;sessionId:string;state:string};assert.equal(job.sessionId,"integration-session");assert.equal(job.state,"running");
  const deadline=Date.now()+5_000;while(first.messages.length===0&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,10));
  assert.equal(childStarts,1);assert.equal(first.messages.length,1);
  const delivered=first.messages[0]!;assert.equal(delivered.message.customType,"asen.background.result");assert.equal(delivered.options.triggerTurn,false);assert.equal(delivered.message.details.trusted,false);assert.equal(delivered.message.details.state,"completed");assert.equal(delivered.message.details.deliveryState,"enqueued");assert.equal(delivered.message.details.deliveryConfirmed,false);assert.match(delivered.message.content,/integration output/u);
+ const widgetDeadline=Date.now()+5_000;while(!widgets.some(entry=>entry.key==="asen-notifications"&&entry.lines?.join("\n").includes("recent outcomes"))&&Date.now()<widgetDeadline)await new Promise(resolve=>setTimeout(resolve,10));
+ assert.ok(widgets.some(entry=>entry.key==="asen-notifications"&&entry.lines?.join("\n").includes("recent outcomes")),"observed job completion must project to the Pi widget");
+ assert.ok(widgets.some(entry=>entry.lines?.join("\n").includes("Succeeded")),"the widget must show only the public job status");
  const current=await first.tools.get("asen_background_status").execute("status",{},new AbortController().signal,()=>{},context);
  assert.equal(current.details[0].deliveryState,"enqueued");
  await first.events.get("session_shutdown")![0]!({},context);
+ assert.equal(widgets.filter(entry=>entry.key==="asen-notifications").at(-1)?.lines,undefined,"shutdown must clear ephemeral notifications");
 
  const restarted=create();createAsenExtension(dependencies)(restarted.pi as any);await restarted.events.get("session_start")![0]!({},context);
  assert.equal(childStarts,1,"restart must never execute the retained command again");assert.equal(restarted.messages.length,0,"Pi's enqueue API has no durable delivery acknowledgement, so recovery must not replay stale output");

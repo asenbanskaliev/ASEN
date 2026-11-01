@@ -2,6 +2,15 @@
 
 ## Estado reconciliado - 2026-11-01
 
+### Implementacion funcional T10-N1/T10-N2 - proyeccion de estado no autoritativa
+
+**T10-6 notification decision: CONNECTED_PROJECTION, NOT DURABLE DELIVERY.** `extensions/asen.ts` now instantiates `PiNotificationProjection` from `src/runtime/notification-projection.ts`, using the existing `SessionNotificationBus` to show a bounded, ephemeral Pi widget of observed background-job and agent outcomes. Event keys are scoped to both session and project. The widget never includes untrusted job output or agent summaries; its input is a generated public status only. The isolated projection has identity deduplication, TTL, capacity and UI-failure protection. Its production integration is exercised in `tests/background-job-delivery.integration.test.ts`; additional source-bound scenarios live in `tests/notification-projection.test.ts`.
+
+**There is no confirmed display acknowledgement.** The persistent `BackgroundJobJournal` remains the sole source for terminal outcome and pending/enqueued status. `pi.sendMessage` and `ui.notify` remain the actual delivery transports, independent of the widget; success of synchronous enqueue still sets `deliveryConfirmed:false`. An in-memory bus acknowledgment does not prove Pi displayed a message and is never used to mutate the journal or to authorize work. The widget is cleared on session shutdown and cannot show events from a different session/project. Renderer failures, a full bus, expiration or context mismatch cannot prevent sending or persisting notifications; a process restart reconstructs pending work from the journal, not from the widget.
+
+**Remaining work:** host-level observable delivery acknowledgement, real cross-process crash-window evidence, multi-instance concurrency, interactive keyboard/TUI acceptance and independent R4. Unless a supported host API offers an actual acknowledgement, exactly-once delivery is **not** promised. The prior NOT_WIRED observations below are historical. No new exact-SHA CI result is claimed before GitHub Actions validates this implementation.
+
+
 Current disposition: **ACCEPTED_WITH_WAIVER (bounded T10 scope), NOT global FULL**. This supersedes older intermediate PARTIAL/FULL statements as a status summary; historical evidence and owners' waivers are retained below.
 
 **T10-6 notification decision: NOT_WIRED.** `src/runtime/session-notifications.ts` implements a bounded in-memory `SessionNotificationBus` with event identity, TTL, capacity and local acknowledgement. `extensions/asen.ts` does not import or register that bus. The production route for background-job final notices is `BackgroundJobJournal` -> `pendingBackgroundJobNotifications` -> `pi.sendMessage` / `ui.notify`. A successful send only records `deliveryState: "enqueued"`; `deliveryConfirmed: false` deliberately stays false. Calling `acknowledge` on an in-memory bus would NOT prove that Pi displayed a message. No replacement of the journal, automatic re-execution, exactly-once delivery or provider-backed verification is authorized by this documentation work.
