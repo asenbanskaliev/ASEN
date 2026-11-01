@@ -39,46 +39,50 @@ The user explicitly authorized this reconciliation to continue while GSP-06 rema
 
 The original basic-SQLite baseline in this tracker is superseded by the completed memory-v3 work. Current code includes schema version 8, persistent project/session handling, observation lifecycle, FTS retrieval/context, relationships, summaries/recovery, doctor/repair, and validated export/import. Exact closure and test evidence remains in `odd/tasks/memory-v3-parity.md`.
 
+## Current checklist disposition - 2026-11-01
+
+MEM-01 through MEM-09 below are **RECONCILED/COVERED only for the admitted local memory-v3 core**, by the existing R01-R09 evidence map. Checked boxes close obsolete duplicate implementation tasks, NOT strict global parity or unadmitted optional CLI/HTTP/MCP/provider/Cloud surfaces. Never use these checkboxes to promote a global FULL claim. The historical requirement descriptions remain below for traceability; verified capabilities and explicit exclusions are defined in the existing R01-R09 map.
+
 ## Tasks
 
-- [ ] MEM-01 — Freeze the upstream local-memory contract and add an honest parity matrix.
+- [x] MEM-01 — Freeze the upstream local-memory contract and add an honest parity matrix.
   - Record exact source commit, local core documents, hashes, public tool contracts, and intentional cloud/TUI deferrals.
   - Replace broad memory parity claims with observable FULL/PARTIAL/MISSING evidence.
   - Add a validator that rejects unsupported FULL claims.
-- [ ] MEM-02 — Add schema v1, versioned migrations, connection safety, and compatibility import.
+- [x] MEM-02 — Add schema v1, versioned migrations, connection safety, and compatibility import.
   - Tables: projects, sessions, observations, observation FTS, user prompts, prompt FTS, relations, and schema metadata.
   - Reject future schemas without mutation; make migrations idempotent and transactional.
   - Preserve current ASEN rows, IDs, project/session association, and content.
   - Add WAL/local-filesystem checks, busy timeout, bounded writer retry, and concurrent-open tests.
-- [ ] MEM-03 — Implement canonical project identity and persistent sessions.
+- [x] MEM-03 — Implement canonical project identity and persistent sessions.
   - Resolve validated explicit project, existing session, nearest `.asen/config.json`, stable Git/worktree binding, child project, then basename fallback.
   - Fail closed on ambiguity, invalid config, collisions, or unwritable binding.
   - Start/end sessions with canonical directory, ownership, lease, summary, and terminal state.
   - Reject non-mutating cross-project and missing-session writes.
-- [ ] MEM-04 — Implement observation lifecycle and privacy.
+- [x] MEM-04 — Implement observation lifecycle and privacy.
   - Structured title/content/type/scope/topic/provenance fields.
   - Topic-key upsert with revision count; exact duplicate suppression.
   - Partial update, soft delete, hard delete, pin/unpin, and typed failure envelopes.
   - Private redaction and UTF-8 byte limits before persistence and indexing.
-- [ ] MEM-05 — Implement retrieval and context.
+- [x] MEM-05 — Implement retrieval and context.
   - Weighted FTS over title/topic/content, safe query parsing, all/any matching, short-term fallback, filters, previews, and limits.
   - Project-scoped get/search by default; explicit all-project reads only.
   - Context, timeline, recent items, pins, prompts, stale-review state, and total UTF-8 context budget.
-- [ ] MEM-06 — Implement relationships and memory review.
+- [x] MEM-06 — Implement relationships and memory review.
   - Conflict candidates after save; pending relationship records.
   - Judge/compare with related, compatible, scoped, conflicts-with, supersedes, and not-conflict outcomes.
   - Cross-project guard, provenance, stale review, mark-reviewed, and deleted-target rendering.
-- [ ] MEM-07 — Integrate ASEN and Pi lifecycle.
+- [x] MEM-07 — Integrate ASEN and Pi lifecycle.
   - Pi-native save/search/context/get/update/delete/session/summary/timeline/pin/review/judge/compare/doctor tools.
   - Bind writes to the actual Pi runtime session; never trust a model-supplied replacement session ID.
   - Curated passive capture from explicit key learnings; no transcript sink.
   - Prompt capture is best-effort and separately stored; automated artifacts can disable it.
-- [ ] MEM-08 — Implement compaction recovery and operational safety.
+- [x] MEM-08 — Implement compaction recovery and operational safety.
   - Persist structured session summary exactly once before/after compaction according to confirmed/failed/unknown/unavailable outcomes.
   - Unknown outcomes never replay blindly.
   - Memory failure must not suppress the user's final response.
   - Doctor/repair, integrity and FTS checks, backup, atomic versioned export/import, and safe rollback.
-- [ ] MEM-09 — Add local interfaces and complete strict verification.
+- [x] MEM-09 — Add local interfaces and complete strict verification.
   - Thin library, minimal CLI, local HTTP, and MCP adapters over one memory core.
   - Unit, migration, integration, multi-process, security, restart, corruption, and Pi Free lifecycle tests.
   - Promote CAP-MEM-001/002 and parity rows only after exact automated evidence; keep cloud/TUI/sync deferrals explicit.

@@ -1,5 +1,13 @@
 # T10 — Plan auditado y criterios de cierre
 
+## Estado reconciliado - 2026-11-01
+
+Current disposition: **ACCEPTED_WITH_WAIVER (bounded T10 scope), NOT global FULL**. This supersedes older intermediate PARTIAL/FULL statements as a status summary; historical evidence and owners' waivers are retained below.
+
+**T10-6 notification decision: NOT_WIRED.** `src/runtime/session-notifications.ts` implements a bounded in-memory `SessionNotificationBus` with event identity, TTL, capacity and local acknowledgement. `extensions/asen.ts` does not import or register that bus. The production route for background-job final notices is `BackgroundJobJournal` -> `pendingBackgroundJobNotifications` -> `pi.sendMessage` / `ui.notify`. A successful send only records `deliveryState: "enqueued"`; `deliveryConfirmed: false` deliberately stays false. Calling `acknowledge` on an in-memory bus would NOT prove that Pi displayed a message. No replacement of the journal, automatic re-execution, exactly-once delivery or provider-backed verification is authorized by this documentation work.
+
+Decision for this batch: **retain the tested durable journal delivery and treat the bus as an unintegrated optional primitive**, rather than inserting a new delivery gate that could lose or duplicate notices. A future functional integration requires a separately tested consumer contract, crash windows before/after sending and persisting, restart replay, source-id collisions, TTL/capacity, session/project isolation and Pi host confirmation limits. Until those tests and actual wiring exist, T10-6 integration remains PARTIAL and is excluded from the bounded acceptance. The technical CI on baseline e9229568 was green; a later source commit requires new exact-SHA evidence.
+
 ## Propósito y estado
 
 T10 completa la experiencia de workspace de ASEN en Pi: trabajos y monitores en segundo plano, entrega de resultados de agentes, cambios Git por raíz/worktree, coordinación entre sesiones, perfiles vinculados a sesión, notificaciones y vistas utilizables en terminales estrechos.

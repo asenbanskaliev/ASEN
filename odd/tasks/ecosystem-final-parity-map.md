@@ -1,5 +1,19 @@
 # Final ecosystem parity map
 
+## Current T-to-ECO reconciliation - 2026-11-01
+
+This is an evidence overlay, not a replacement execution backlog. The immutable ecosystem claims registry remains 16 PARTIAL / 0 FULL even when smaller T tasks are accepted within narrower scopes. No claim is promoted in this batch.
+
+| Scope | Implementation and integration at baseline e9229568 | Admission / unresolved ECO obligation |
+| --- | --- | --- |
+| T07 -> ECO-04 / R12 | CodeGraph init/sync/query/explore and real ASEN/Pi lifecycle verified | Bounded T07 FULL; ECO-04 PARTIAL until complete reference and ecosystem proof |
+| T09-U4 -> ECO-09 / R01-R02 | Managed install/upgrade/rollback implemented with characterization/recovery tests | T09 aggregate PARTIAL: browser, hostile same-user removal, distribution/reference proof excluded |
+| T10 -> ECO-10 / R05-R06 and R13 | Workspace, Pi terminal and background-journal recovery implemented; SessionNotificationBus NOT_WIRED to Pi extension | ACCEPTED_WITH_WAIVER only for bounded scope; ECO-10 PARTIAL; no confirmed/exactly-once delivery |
+| T11 -> additional-host adapters | Pi 1.2 integration only | T11 FULL Pi-only; external clients deferred |
+| T12 -> ECO-16 / R20 | Provider-free bounded acceptance tests and three-OS CI baseline | T12 bounded FULL; ECO-16 PARTIAL pending all-source/reference evidence |
+| MEM-01..09 -> R19 | Local memory-v3 R01-R09 covers legacy checklist | RECONCILED local core; ECO R19 and global parity remain PARTIAL |
+| F5/R4 -> release gates | CI/Release Gate/Pi/T07/actionlint/authority pin PASS on e9229568 | Independent review deferred; technical PASS is not independent admission and a newer SHA needs its own CI |
+
 ## Purpose
 
 This is the controlling reverse-audit map for final ASEN ecosystem closure; `ecosystem-strict-parity.md` remains the sole execution backlog. A numbered ECO unit is not sufficient evidence by itself. Closure requires every observable Reference A surface to map to an ASEN behavior, an automated/runtime proof, or an honestly disclosed disposition.
