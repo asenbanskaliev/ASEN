@@ -22,7 +22,7 @@ jobs:
         run: |
           test "$GITHUB_REF_NAME" = "feat/strict-parity-prerequisites"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          git status --porcelain=v1 | test ! -s /dev/stdin
+          test -z "$(git status --porcelain=v1)"
       - name: Install dependencies and Pi Free
         run: |
           npm install --ignore-scripts

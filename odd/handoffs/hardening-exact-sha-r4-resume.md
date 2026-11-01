@@ -107,3 +107,7 @@ El propietario autorizó ejecutar F0 y reanclar las tareas. GitHub compare `dc47
 - `T07 CodeGraph real CLI probe` preserva workflow_dispatch/push y añade PR exacto con 3 SO; exigir éxito del checkout `head.sha` y los tres jobs, no atribuir los PASS antiguos de 7a497e5 al nuevo SHA.
 - Tests de admisión de workflow y CI general deben ser PASS. GitHub Actions se activa por una sola publicación consolidada, sin reruns manuales.
 - Auditor externo A5 genuino sigue BLOCKED: PR #45 tenía cero reviews y no corresponde autocertificar un análisis del mismo agente. F5-01 IN_PROGRESS, F5-02 PENDING hasta evidencia adicional, sin merge ni proveedores.
+
+## F5 — hallazgos de actionlint y próxima prueba exacta
+
+RED comprobado: run 41311756034, actionlint FAIL por 4 avisos reales de ShellCheck; authority-pin PASS. F5-LINT-RED prepara reparaciones acotadas en tres workflows existentes y prueba adversarial adicional sin usar proveedor. Rehacer solo una tanda consolidada tras el cambio. Cero revisiones humanas/independientes registradas en PR #45; F5-01 IN_PROGRESS y F5-02 PENDING.

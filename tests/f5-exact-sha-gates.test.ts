@@ -33,3 +33,19 @@ test("T07 CLI real probe preserves dispatch and original push while admitting on
  assert.match(t07,/test "\$\(git rev-parse HEAD\)" = "\$ASEN_EXPECTED_SHA"/);
  assert.doesNotMatch(t07,/startsWith\s*\(/);
 });
+
+test("F5 shellcheck corrections preserve branch cleanliness and provider-safe workflow semantics",()=>{
+ const gsp=readFileSync(new URL("../.github/workflows/gsp-05e-authenticated-rdd.yml",import.meta.url),"utf8");
+ const pi=readFileSync(new URL("../.github/workflows/pi-free-smoke.yml",import.meta.url),"utf8");
+ const release=readFileSync(new URL("../.github/workflows/release-gate.yml",import.meta.url),"utf8");
+ assert.match(gsp,/test -z "\$\(git status --porcelain=v1\)"/);
+ assert.doesNotMatch(gsp,/\| test ! -s \/dev\/stdin/);
+ assert.match(pi,/ASEN_RECOVERY_FILE="\$\(mktemp\)"\n\s+export ASEN_RECOVERY_FILE/);
+ assert.match(pi,/ASEN_RECOVERY_KEY="\$\(node -e/);
+ assert.match(pi,/export ASEN_RECOVERY_KEY/);
+ assert.match(pi,/^  workflow_dispatch:/m);
+ assert.doesNotMatch(pi,/^  (?:push|schedule):/m);
+ assert.match(release,/throw new Error\("Expected Pi 1\.2\.0, got "\+p\.version\)/);
+ assert.match(release,/console\.log\("Using installed Pi "\+p\.version\)/);
+ assert.doesNotMatch(release,/\$\{p\.version\}/);
+});

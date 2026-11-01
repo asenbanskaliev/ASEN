@@ -282,3 +282,7 @@ Ninguna mutacion paso en verde; el test actual aisla correctamente cada job.
 - Test `tests/f5-exact-sha-gates.test.ts`: condiciones fail-closed, protección frente a fork/prefijos y comprobación exact-SHA. No constituye prueba real sin CI.
 - La firma de un auditor R4 distinto del implementador sigue ausente; la autoverificación no la suplanta. Los gates serán PENDING hasta comprobar todos los jobs del nuevo SHA, no se declara FULL.
 - Cero modificaciones de producción/authority, cero cuotas y cero merges.
+
+## F5-LINT-RED — falla real del nuevo gate (2026-11-01)
+
+El workflow F5 static run 41311756034 ha validado el pin de autoridad, pero actionlint v1.7.12 devolvió FAIL con cuatro avisos ShellCheck (GSP-05E SC2266, Pi Free Smoke SC2155 x2, Release Gate SC2016). La microtarea F5-LINT-RED modifica exactamente tres workflows históricos y el test F5, sin tocar filtros de autorización ni proveedores. No usar flags de ignore. Nuevo SHA y verificación GREEN pendientes. F5-01 IN_PROGRESS, sin revisión genuinamente independiente.
