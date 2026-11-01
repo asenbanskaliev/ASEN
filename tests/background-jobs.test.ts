@@ -181,15 +181,17 @@ test("T10 live delivery state updates preserve newer cross-process terminal resu
  const root=await mkdtemp(path.join(tmpdir(),"asen-background-cas-"));t.after(()=>rm(root,{recursive:true,force:true}));
  const file=path.join(root,"journal.json"),writer=new BackgroundJobJournal(file),registry=new BackgroundJobRegistry(writer);
  const j=registry.start({sessionId:"s",projectId:"p",command:"run"});
- registry.finish(j.id,"completed",0);
  const owned=registry.snapshot(j.id);
- // Another real Pi process publishes a newer terminal outcome into the same journal.
+ // A separate Pi process closes the shared running row before the stale owner
+ // observes completion. The stale owner must not replace the new result.
  const later={...owned,state:"failed" as const,exitCode:7,updatedAt:new Date(Date.now()+60_000).toISOString(),tail:["newer terminal result"],eventCount:1};
  const moduleUrl=pathToFileURL(path.join(process.cwd(),"src/runtime/background-job-journal.ts")).href;
  const script=`import {BackgroundJobJournal} from ${JSON.stringify(moduleUrl)};new BackgroundJobJournal(process.env.ASEN_CAS_FILE).record(JSON.parse(process.env.ASEN_CAS_SNAPSHOT));`;
  const child=spawnSync(process.execPath,["--import","tsx","--input-type=module","-e",script],{cwd:process.cwd(),windowsHide:true,encoding:"utf8",timeout:15000,env:{...process.env,ASEN_CAS_FILE:file,ASEN_CAS_SNAPSHOT:JSON.stringify(later)}});
  assert.equal(child.status,0,"independent writer must update the journal: "+child.stderr);
  const other=new BackgroundJobJournal(file);
+ registry.finish(j.id,"completed",0);
+ assert.match(registry.snapshot(j.id).persistenceError??"",/could not persist the terminal result/u);
  assert.throws(()=>registry.setDeliveryStateScoped(j.id,"s","p","enqueued"),/delivery conflict/u);
  assert.equal(registry.snapshot(j.id).deliveryState,undefined,"a failed disk CAS must not be reported as delivered in memory");
  assert.match(registry.snapshot(j.id).persistenceError??"",/could not persist delivery state/u);
@@ -216,4 +218,26 @@ test("T10 delivery CAS preserves a concurrent enqueue and the terminal job paylo
  assert.deepEqual(unchanged.tail,["real output"]);
  // A restarted or live reader can still query the terminal record safely.
  assert.equal(registry.list("s","p")[0]?.state,"failed");
+});
+
+
+test("T04 an authorized retry still executes once through the real journal-backed registry",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-claimed-retry-registry-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const journal=new BackgroundJobJournal(path.join(root,"jobs.json"));
+ const first=new BackgroundJobRegistry(journal),original=first.start({sessionId:"session",projectId:root,command:"old command"});
+ const grant={sessionId:"session",projectId:root,interruptedJobId:original.id,newJobId:"new-claimed-retry",authorizedCommand:"approved command",authorizationId:"single-use",operationDigest:"a".repeat(64),expectedHead:"b".repeat(40),allowedPaths:["safe.txt"],authorizationExpiresAt:new Date(Date.now()+60_000).toISOString()};
+ journal.claimInterruptedForRetry(grant);
+ let executed=0;
+ const retry=new BackgroundJobRegistry(journal,async()=>{executed++;return{exitCode:0};});
+ const identity={jobId:grant.newJobId,authorizationId:grant.authorizationId,operationDigest:grant.operationDigest,originalJobId:original.id,expectedHead:grant.expectedHead,allowedPaths:grant.allowedPaths,authorizationExpiresAt:grant.authorizationExpiresAt};
+ const {done}=retry.runAuthorizedRetry({sessionId:"session",projectId:root,command:grant.authorizedCommand},identity);
+ const completed=await done;
+ assert.equal(executed,1);
+ assert.equal(completed.state,"completed");
+ assert.equal(completed.persistenceError,undefined);
+ const rows=journal.load("session",root);
+ assert.equal(rows.find(row=>row.id===original.id)?.state,"stopped");
+ assert.equal(rows.find(row=>row.id===grant.newJobId)?.state,"completed");
+ assert.equal(rows.find(row=>row.id===grant.newJobId)?.authorizationId,grant.authorizationId);
+ assert.throws(()=>journal.claimInterruptedForRetry({...grant,newJobId:"another",authorizationId:"different"}),/not available|uncertain outcome/u);
 });

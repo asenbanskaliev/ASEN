@@ -37,8 +37,33 @@ export class BackgroundJobJournal{
  }
  record(snapshot:BackgroundJobSnapshot):void{
   this.withExclusiveLock(()=>{
-   privatePath(this.file);const current=this.readAll().filter(row=>row.id!==snapshot.id),entry={...snapshot,recoveredAt:new Date().toISOString(),resumable:false as const};
-   this.writeRows([...current,entry]);
+   privatePath(this.file);
+   const rows=this.readAll(),previous=rows.find(row=>row.id===snapshot.id);
+   if(previous){
+    // A job identity is immutable across processes. Never let a stale child
+    // replace a claimed/stopped/terminal row or erase a delivery receipt.
+    const bindingMatches=previous.authorizationId===snapshot.authorizationId&&
+     previous.operationDigest===snapshot.operationDigest&&previous.originalJobId===snapshot.originalJobId&&
+     previous.expectedHead===snapshot.expectedHead&&
+     JSON.stringify(previous.allowedPaths??[])===JSON.stringify(snapshot.allowedPaths??[])&&
+     previous.authorizationExpiresAt===snapshot.authorizationExpiresAt;
+    if(previous.sessionId!==snapshot.sessionId||previous.projectId!==snapshot.projectId||
+     previous.command!==snapshot.command||previous.mode!==snapshot.mode||
+     JSON.stringify(previous.args??[])!==JSON.stringify(snapshot.args??[])||
+     previous.cwd!==snapshot.cwd||!bindingMatches||
+     previous.deliveryState!==snapshot.deliveryState||previous.deliveryError!==snapshot.deliveryError)
+     throw new Error("Background journal record conflict: immutable identity or delivery receipt changed");
+    if(previous.state==="interrupted"&&previous.authorizationId){
+     // The authorized retry claim is the one valid exception: it starts once
+     // with the exact durable authorization, and never returns to queued.
+     if(snapshot.state!=="running")throw new Error("Background journal record conflict: claimed retry is not starting");
+    }else if(previous.state!=="running"||!["completed","failed","stopped","timed_out","flooded"].includes(snapshot.state)||
+     previous.createdAt!==snapshot.createdAt){
+     throw new Error("Background journal record conflict: stale, duplicate or nonterminal job transition");
+    }
+   }
+   const entry={...snapshot,recoveredAt:new Date().toISOString(),resumable:false as const};
+   this.writeRows([...rows.filter(row=>row.id!==snapshot.id),entry]);
   });
  }
  /** Claim an interrupted operation for a fresh, explicitly authorized attempt.

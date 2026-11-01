@@ -172,3 +172,46 @@ test("durably interrupted retry claims cannot be marked delivered by a competing
   assert.equal(journal.updateDeliveryState("terminal","s",root,"enqueued").deliveryState,"enqueued","real terminal failure delivery remains usable");
  }finally{rmSync(root,{recursive:true,force:true});}
 });
+
+
+test("T04 retry claim cannot be overwritten by stale original child, and a bound retry starts only once",()=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-retry-record-guard-"));
+ try{
+  const file=join(root,"journal.json"),journal=new BackgroundJobJournal(file),now=new Date().toISOString();
+  const original={id:"original",sessionId:"s",projectId:root,command:"original command",mode:"background" as const,state:"running" as const,createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[]};
+  journal.record(original);
+  const auth={sessionId:"s",projectId:root,interruptedJobId:"original",newJobId:"retry-1",authorizedCommand:"approved command",authorizationId:"one-use-approval",operationDigest:"a".repeat(64),expectedHead:"b".repeat(40),allowedPaths:["owned.txt"],authorizationExpiresAt:new Date(Date.now()+60_000).toISOString()};
+  const claim=journal.claimInterruptedForRetry(auth),before=readFileSync(file,"utf8");
+  assert.throws(()=>journal.record({...original,state:"completed",exitCode:0,updatedAt:new Date(Date.now()+10_000).toISOString()}),/record conflict/u);
+  assert.equal(readFileSync(file,"utf8"),before,"a stale original process cannot erase consumed authorization");
+  assert.throws(()=>journal.claimInterruptedForRetry({...auth,newJobId:"retry-2",authorizationId:"new approval"}),/not available/u);
+  const live={...claim,state:"running" as const,createdAt:new Date(Date.now()+1000).toISOString(),updatedAt:new Date(Date.now()+1000).toISOString()};
+  assert.throws(()=>journal.record({...live,authorizationId:"other"}),/record conflict/u,"retry authority cannot be substituted");
+  journal.record(live);
+  const afterStart=readFileSync(file,"utf8");
+  assert.throws(()=>journal.record(live),/record conflict/u,"claimed job must not start twice");
+  assert.equal(readFileSync(file,"utf8"),afterStart);
+  journal.record({...live,state:"completed",exitCode:0,updatedAt:new Date(Date.now()+2000).toISOString()});
+  const rows=journal.load("s",root),retry=rows.find(row=>row.id==="retry-1");
+  assert.equal(retry?.state,"completed");assert.equal(retry?.authorizationId,auth.authorizationId);
+  assert.equal(retry?.originalJobId,"original");
+  assert.equal(rows.find(row=>row.id==="original")?.state,"stopped");
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
+
+test("T10 terminal receipt and scope cannot be overwritten by a later stale record",()=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-record-finality-"));
+ try{
+  const file=join(root,"journal.json"),journal=new BackgroundJobJournal(file),now=new Date().toISOString();
+  const started={id:"j",sessionId:"s",projectId:root,command:"cmd",mode:"background" as const,state:"running" as const,createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[]};
+  journal.record(started);
+  const terminal={...started,state:"failed" as const,exitCode:7,updatedAt:new Date(Date.now()+1000).toISOString(),tail:["real failure"]};
+  journal.record(terminal);
+  journal.updateDeliveryState("j","s",root,"enqueued");
+  const before=readFileSync(file,"utf8");
+  assert.throws(()=>journal.record({...terminal,state:"completed",exitCode:0,deliveryState:undefined}),/record conflict/u);
+  assert.throws(()=>journal.record({...terminal,sessionId:"foreign",deliveryState:"enqueued" as const}),/record conflict/u);
+  assert.equal(readFileSync(file,"utf8"),before,"the terminal result and delivery receipt must remain byte-identical");
+  assert.equal(journal.load("s",root)[0]?.deliveryState,"enqueued");
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
