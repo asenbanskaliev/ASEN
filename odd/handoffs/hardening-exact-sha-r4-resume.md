@@ -69,3 +69,13 @@ El propietario autorizó ejecutar F0 y reanclar las tareas. GitHub compare `dc47
 - F2-02 NOOP: dispatcher (41 pass), workspace-writer-lease (5 pass), plan-dispatcher-role-boundaries (12 pass), pi-process-runner (46 pass).
 - Brechas destinadas a F3 permanecen: R4-06/R4-08/R4-10/R4-11/R4-18/R4-20 ya registradas en plan.
 - Sin push, sin CI ni proveedores; Node v24.15.0.
+## Registro F3 - 2026-11-01
+
+- F3-01 NOOP: tests/dispatcher (36 pass), plan-dispatcher-role-boundaries (12 pass). Grant ajeno a otra sesion/proyecto se rechaza sin runner ni escritura.
+- F3-02 NOOP: tests/pi-process-runner (46 pass), check:authority-pin (7 files), pi-authority-temp-load (1 pass). No se mutaron archivos reales ni pins.
+- F3-03 NOOP/BLOCKED: materializeExecutablePlan impone dependencias worker+ambos revisores; no existe entrada pública para omitir un reviewer sin internals.
+- F3-04 NOOP: IDs reviewer/reviewer:2 existen y son únicos; contextos independientes; no se permite inyección de duplicado en API pública.
+- F3-05 NOOP: background-job-delivery (9 pass), session-notifications (9 pass), extension-runtime-commands (12 pass + 1 skip POSIX). Terminal único y dedupe por identidad demostrados.
+- F3-06 NOOP: code-intelligence (27 pass), incluyendo absent executable ENOENT -> unavailable, no init ni false PASS. No se instaló CodeGraph.
+- actionlint no disponible: BLOCKED/WAIVED parcial, no PASS.
+- Node v24.15.0. Sin push, sin CI ni proveedores.
