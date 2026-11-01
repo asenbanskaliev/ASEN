@@ -1,4 +1,6 @@
 # ASEN — Hardening exact-SHA R4: plan ODD canónico y registro
+
+**Estado vigente de esta pasada, 2026-11-01:** F4-01 DONE histórico; F4-02 DONE técnico (CI exacto de candidato `0b85676c0a879366051bf8c6e616101f73bdaa94`), F5-01 IN_PROGRESS con auditor independiente/actionlint/T07 manual exact-SHA pendientes; F5-02 PENDING. Los registros históricos de preparación posteriores se conservan tal como ocurrieron.
 **ACTUALIZACION 2026-11-01: F0 auditoria cerrada con correccion de aislamiento de test. HEAD local d9e8092. Tests PASS, typecheck PASS, package.json sin cambios. actionlint BLOCKED/WAIVED. No se avanzo a F1. Este plan no reemplaza el ODD general: odd/tasks/pi-capability-completion.md es la autoridad de admision/capacidades conforme a AGENTS.md.
 
 
@@ -92,8 +94,8 @@ Sin PR con `head.ref` exacta y `head.repo.full_name` igual a `asenbanskaliev/ASE
 | [F3-05](hardening-exact-sha-r4/F3-05.md) | F3 | P1 | noop | F1-04, F2-02 | 1.25 |
 | [F3-06](hardening-exact-sha-r4/F3-06.md) | F3 | P1 | noop | F2-02 | 1.25 |
 | [F4-01](hardening-exact-sha-r4/F4-01.md) | F4 | P0 | done | F0-04, F3-01, F3-02, F3-03, F3-04, F3-05, F3-06 | 2.00 |
-| [F4-02](hardening-exact-sha-r4/F4-02.md) | F4 | P0 | blocked | F4-01 | 2.00 |
-| [F5-01](hardening-exact-sha-r4/F5-01.md) | F5 | P0 | pending | F4-02 | 3.00 |
+| [F4-02](hardening-exact-sha-r4/F4-02.md) | F4 | P0 | done | F4-01 | 2.00 |
+| [F5-01](hardening-exact-sha-r4/F5-01.md) | F5 | P0 | in_progress | F4-02 | 3.00 |
 | [F5-02](hardening-exact-sha-r4/F5-02.md) | F5 | P0 | pending | F5-01 | 1.50 |
 
 | Fase | Tareas | Horas |
@@ -264,3 +266,10 @@ Ninguna mutacion paso en verde; el test actual aisla correctamente cada job.
 - Cambio: scripts/t10-real-pi-tui-matrix.mjs con comparación normalizada y diagnósticos.
 - Validacion local: matrix PASS 120/80/60/40, node --check PASS, typecheck PASS.
 - Nota: el fallo de AttachConsole no se ha demostrado como causa.
+
+## Registro de cierre F4 y apertura F5 — 2026-11-01
+
+- **F4 cerrado para alcance técnico** sobre el SHA probado `0b85676c0a879366051bf8c6e616101f73bdaa94`: CI 41307948302 SUCCESS (test, T07 integrado, Pi support y T12 TUI 3 OS; security Ubuntu); Release Gate 41307948290 SUCCESS 3 SO; Phase 0 41307948301 SUCCESS; Pi runtime 41307948294 SUCCESS. `t12-real-pi-tui-dialog` Windows job 124852136544 PASS; T10 REAL matrix 120/80/60/40 PASS sin AttachConsole en ese log. Los fallos previos quedan históricos.
+- **F4-01 T07 manual** fue PASS 3 SO en workflow_dispatch 41291781415, pero `head_sha=7a497e5`, no `0b85676c0a879366051bf8c6e616101f73bdaa94`; F4-01 permanece DONE como evidencia histórica y el requisito de equivalencia exact-SHA final pasa a F5 criterio 12.
+- **F5-01 IN_PROGRESS, solo revisión preliminar propia:** revisar matriz 14 criterios, riesgos R4-10/11, actionlint, check:authority-pin, hash exacto, auditor A5. PR #45 sin reviews. Sin firma independiente no FULL, aun con CI verde. `t05-r4-audit` y proveedores SKIPPED no son PASS.
+- Esta actualización **solo modifica documentación bajo `odd/`**. Tras publicar el nuevo commit documental se requiere CI y evidencia exact-SHA del nuevo HEAD para cualquier admisión final; no utilizar los runs anteriores como si fueran del nuevo commit. F5-02 PENDING y `odd/tasks/pi-capability-completion.md` sin modificar por allowlist.

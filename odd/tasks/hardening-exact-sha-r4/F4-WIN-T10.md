@@ -2,7 +2,7 @@
 id: "F4-WIN-T10"
 fase: "F4"
 prioridad: "P0"
-estado: "blocked"
+estado: "done"
 depends_on: ["F4-01"]
 sha_base: "149f3d90c9549f99c898c464a8a16b6590948762"
 archivos_editables: ["scripts/t10-real-pi-tui-matrix.mjs","scripts/t10-git-row-validation.mjs","tests/t10-git-row-validation.test.ts","odd/tasks/hardening-exact-sha-r4/F4-WIN-T10.md","odd/tasks/hardening-exact-sha-r4/F4-02.md"]
@@ -34,3 +34,9 @@ CI exacta 41300749078, job 124830945008, CANCELLED. El detector registró una l�
 **Pruebas aisladas**: nueve casos con Node 22.16.0, 9 PASS, incluyendo falso positivo 8.3 mediante simulación de metadatos, carpetas distintas, datos no fiables, ruta ausente, desbordamiento auténtico y plataformas POSIX. No constituye prueba de Windows real sobre el nuevo SHA.
 
 **Incidencia separada:** `node-pty: AttachConsole failed` persiste en la ejecución remota previa. No se cambia ni se silencia; diagnosticar por separado. Revisión independiente pendiente.
+
+## Cierre documentado de la microtarea F4-WIN-T10
+
+- Evidencia final: SHA `0b85676c0a879366051bf8c6e616101f73bdaa94`, CI [41307948302](https://github.com/asenbanskaliev/ASEN/actions/runs/41307948302), job Windows `124852136544` SUCCESS, T10 matrix PASS en 120/80/60/40.
+- La comparación de rutas con identidad de directorio corrige el rechazo del alias 8.3 observado en SHAs anteriores. Los tests adversariales forman parte de la suite general 3 SO aprobada. Revisión R4 externa no afirmada; se trata en F5.
+- **Resultado: DONE técnico en SHA 0b85676c0a879366051bf8c6e616101f73bdaa94.** Las secciones previas describen estados históricos y no el estado final.

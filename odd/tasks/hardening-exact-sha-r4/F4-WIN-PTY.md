@@ -2,7 +2,7 @@
 id: "F4-WIN-PTY"
 fase: "F4"
 prioridad: "P0"
-estado: "blocked"
+estado: "done"
 depends_on: ["F4-01"]
 sha_base: "bb0510b3197d87fa1f30e1cc2a048e00d9b7b380"
 archivos_editables: ["scripts/t10-real-pi-tui-matrix.mjs","scripts/t10-pty-shutdown.mjs","tests/t10-pty-shutdown.test.ts","odd/tasks/hardening-exact-sha-r4/F4-WIN-PTY.md","odd/tasks/hardening-exact-sha-r4/F4-02.md"]
@@ -20,3 +20,9 @@ El tiempo máximo de Actions no se aumenta; no se cambian producción, permisos,
 ## Verificación
 Las seis pruebas unitarias puras de petición/cierre superaron node --experimental-strip-types --test con Node 22.16.0 en el entorno de este chat. No se dispone de la instalación Pi/nativa de Windows para demostrar el comportamiento ConPTY en local. Pendientes: CI exact-SHA en Windows sin CANCELLED, prueba Pi real, suite Node 22.19.0 y revisión independiente. El error AttachConsole no se silencia ni se atribuye como resuelto.
 Estado F4-02: BLOCKED hasta los gates reales PASS.
+
+## Cierre documentado de F4-WIN-PTY
+
+- Evidencia final SHA `0b85676c0a879366051bf8c6e616101f73bdaa94`, CI 41307948302, job Windows `124852136544` SUCCESS. T12 cancel/apply PASS y T10 matrix PASS cuatro anchos con cierre `ctx.shutdown()` y espera `onExit`.
+- No se observa `AttachConsole failed` en ese log. Esto prueba que la ejecución finalizó correctamente, aunque no demuestra de forma aislada la causa interna del error ConPTY histórico.
+- **Resultado: DONE técnico**, con historial de fallos conservado. La independencia de la auditoría es un gate F5, no se declara aquí.

@@ -91,3 +91,12 @@ El propietario autorizó ejecutar F0 y reanclar las tareas. GitHub compare `dc47
 - Cambio: scripts/t10-real-pi-tui-matrix.mjs con comparación normalizada y diagnósticos.
 - Validacion local: matrix PASS 120/80/60/40, node --check PASS, typecheck PASS.
 - Nota: el fallo de AttachConsole no se ha demostrado como causa.
+
+## Reanudación actualizada — 2026-11-01: F4 DONE técnico, F5 abierto
+
+- Último SHA completamente probado antes del commit de cierre documental: `0b85676c0a879366051bf8c6e616101f73bdaa94`. PR #45 abierto, base main, no merge.
+- CI 41307948302 SUCCESS: pruebas generales y TUI 3 SO, CodeGraph integrado 3 SO, Pi support 3 SO y seguridad dedicada Ubuntu. Windows TUI job 124852136544 SUCCESS y T10 120/80/60/40 PASS.
+- Release Gate 41307948290, Phase 0 41307948301, Pi runtime 41307948294: SUCCESS. F4-02 pasa a DONE técnico; F4-01 histórico DONE.
+- F5-01 IN_PROGRESS; bloqueos: (a) acción T07 CLI manual PASS solo en SHA 7a497e5, falta en SHA final; (b) `actionlint` no acreditado; (c) no consta auditor externo/A5 independiente en el PR; (d) `check:authority-pin` explícito del SHA final pendiente; (e) un commit de documentación cambia el SHA y requiere validación posterior. F5-02 PENDING, no FULL.
+- Nota R4: F3-03 y F3-04 NOOP no equivalen a demostrar inyección adversarial de reviewers; revisión independiente requerida. Live NVIDIA, Pi Free Smoke y T05 audit SKIPPED, nunca PASS.
+- Sin cambios de producción ni de `odd/tasks/pi-capability-completion.md`, sin ejecución de proveedores, sin merge ni release. Siguiente ejecutor debe reconciliar HEAD remoto real y no usar SHAs históricos como evidencia de HEAD nuevo.
