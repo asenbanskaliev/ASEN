@@ -111,3 +111,10 @@ El propietario autorizó ejecutar F0 y reanclar las tareas. GitHub compare `dc47
 ## F5 — hallazgos de actionlint y próxima prueba exacta
 
 RED comprobado: run 41311756034, actionlint FAIL por 4 avisos reales de ShellCheck; authority-pin PASS. F5-LINT-RED prepara reparaciones acotadas en tres workflows existentes y prueba adversarial adicional sin usar proveedor. Rehacer solo una tanda consolidada tras el cambio. Cero revisiones humanas/independientes registradas en PR #45; F5-01 IN_PROGRESS y F5-02 PENDING.
+
+## Handoff F5-02 — 2026-11-01
+
+- Instrucción owner: aplazar auditor R4 independiente, seguir F5-02. Auditoría **no realizada**, no PASS, no auto-certificación, no merge. F5-01 IN_PROGRESS; F5-02 IN_PROGRESS de documentación solamente.
+- SHA fuente CI anterior 032934527afca2c238cfe7cdee47d3757a666fcd. CI #41312104530: Windows FAIL test 31 regex LF contra CRLF (510 PASS/1 FAIL/1 SKIP), Ubuntu PASS, macOS in_progress al corte. No afirmar CI verde.
+- F5-WIN-CRLF microfix en test con regex \r?\n y control LF/CRLF, commit 3a1a31c (aún sin verificación CI en ese SHA). F5 actionlint/pin 41312104555 PASS; T07 CLI 41312104546 PASS; Release Gate 41312104553 PASS; Architecture 41312104571 PASS; Pi runtime 41312104548 PASS sobre SHA 0329345.
+- Verificar HEAD nuevo y resultados exact-SHA tras publicación. No ejecutar CI por commit, solo la tanda consolidada. En ausencia de auditor independiente el FULL acotado permanece BLOQUEADO; el propietario solo autorizó aplazar y avanzar documentación. No tocar ODD canónico global.

@@ -96,7 +96,7 @@ Sin PR con `head.ref` exacta y `head.repo.full_name` igual a `asenbanskaliev/ASE
 | [F4-01](hardening-exact-sha-r4/F4-01.md) | F4 | P0 | done | F0-04, F3-01, F3-02, F3-03, F3-04, F3-05, F3-06 | 2.00 |
 | [F4-02](hardening-exact-sha-r4/F4-02.md) | F4 | P0 | done | F4-01 | 2.00 |
 | [F5-01](hardening-exact-sha-r4/F5-01.md) | F5 | P0 | in_progress | F4-02 | 3.00 |
-| [F5-02](hardening-exact-sha-r4/F5-02.md) | F5 | P0 | pending | F5-01 | 1.50 |
+| [F5-02](hardening-exact-sha-r4/F5-02.md) | F5 | P0 | in_progress (documental; aceptación bloqueada) | F5-01 | 1.50 |
 
 | Fase | Tareas | Horas |
 |---|---:|---:|
@@ -286,3 +286,9 @@ Ninguna mutacion paso en verde; el test actual aisla correctamente cada job.
 ## F5-LINT-RED — falla real del nuevo gate (2026-11-01)
 
 El workflow F5 static run 41311756034 ha validado el pin de autoridad, pero actionlint v1.7.12 devolvió FAIL con cuatro avisos ShellCheck (GSP-05E SC2266, Pi Free Smoke SC2155 x2, Release Gate SC2016). La microtarea F5-LINT-RED modifica exactamente tres workflows históricos y el test F5, sin tocar filtros de autorización ni proveedores. No usar flags de ignore. Nuevo SHA y verificación GREEN pendientes. F5-01 IN_PROGRESS, sin revisión genuinamente independiente.
+
+## Decisión de admisión F5-02 y corrección Windows, 2026-11-01
+
+- Owner aplaza expresamente auditoría independiente R4 y autoriza continuar al siguiente punto. Por tanto, **F5-01 IN_PROGRESS, F5-02 IN_PROGRESS solo documental**, con dependencia F5-01 no satisfecha para FULL. Ningún waiver equivale a auditoría ejecutada.
+- CI 41312104530 en SHA 0329345: Windows test FAIL por regex LF frente a CRLF; Ubuntu test PASS; macOS aún in_progress cuando se inspeccionó. El resto de jobs obligatorios registrados PASS incluyendo T12 TUI 3 OS; F5 actionlint/pin 41312104555 SUCCESS, T07 CLI 41312104546 SUCCESS, Release Gate 41312104553 SUCCESS, Architecture 41312104571 SUCCESS, Pi runtime 41312104548 SUCCESS. No estado global verde.
+- Se implementa microfix F5-WIN-CRLF en test solamente, sin cambiar workflow ni relajar contenido esperado: regex admite CRLF y LF, test adversarial añadido. Commit correctivo anterior 3a1a31c, preparado antes del commit de documentación. Tras publicar ambos en un solo update de ref, CI debe probar nuevo SHA. **No marcar F5-02 DONE ni FULL hasta evaluar el SHA nuevo**; auditoría R4 seguirá aplazada aunque CI sea verde.
