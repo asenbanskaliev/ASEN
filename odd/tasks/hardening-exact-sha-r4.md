@@ -1,5 +1,5 @@
 # ASEN — Hardening exact-SHA R4: plan ODD canónico y registro
-**ACTUALIZACION 2026-11-01: F0-05 no iniciada. F0 comprobaciones 1/2 OK; HEAD reescrito con 97a787c + e6aa00f. Tests combinados PASS y package.json sin cambios. Este plan no reemplaza el ODD general: odd/tasks/pi-capability-completion.md es la autoridad de admision/capacidades conforme a AGENTS.md.
+**ACTUALIZACION 2026-11-01: F0 auditoria cerrada con correccion de aislamiento de test. HEAD local d9e8092. Tests PASS, typecheck PASS, package.json sin cambios. actionlint BLOCKED/WAIVED. No se avanzo a F1. Este plan no reemplaza el ODD general: odd/tasks/pi-capability-completion.md es la autoridad de admision/capacidades conforme a AGENTS.md.
 
 
 ## Fuente y baseline
@@ -240,3 +240,12 @@ Preparación = **exactamente un commit** `docs(odd): add hardening exact-SHA R4 
 | quitar -merge solo de t07-real-codegraph | DETECTADA (falla) |
 | startsWith(github.head_ref, 'feat/t12') en security | DETECTADA (falla) |
 Ninguna mutacion paso en verde; el test actual aisla correctamente cada job.
+## Auditoria critica de cierre F0 - 2026-11-01
+
+- HEAD local final tras correccion: d9e8092 (commit de aislamiento del test).
+- Defecto confirmado: `block()` para `t12-real-pi-tui-dialog` usaba `null` y absorbía jobs posteriores.
+- Correccion aplicada solo en `tests/ci-specialized-gates.test.ts`: fin de bloque en `  architecture:`.
+- Mutaciones repetidas (TUI pull_request y repo.full_name, mas las 4 anteriores): todas detectadas (rojo).
+- Validaciones: typecheck PASS; tests `ci-specialized-gates + provider-scope` PASS; `git diff --check` PASS.
+- actionlint: no instalado -> BLOCKED/WAIVED parcial, nunca PASS.
+- package.json/package-lock.json: sin cambios respecto a dc47d8d.
