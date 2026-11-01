@@ -87,7 +87,7 @@ Sin PR con `head.ref` exacta y `head.repo.full_name` igual a `asenbanskaliev/ASE
 | [F2-02](hardening-exact-sha-r4/F2-02.md) | F2 | P1 | noop | F2-01 | 1.75 |
 | [F3-01](hardening-exact-sha-r4/F3-01.md) | F3 | P1 | noop | F2-02 | 1.25 |
 | [F3-02](hardening-exact-sha-r4/F3-02.md) | F3 | P1 | noop | F2-02 | 1.25 |
-| [F3-03](hardening-exact-sha-r4/F3-03.md) | F3 | P1 | pending | F2-01 | 1.25 |
+| [F3-03](hardening-exact-sha-r4/F3-03.md) | F3 | P1 | noop | F2-01 | 1.25 |
 | [F3-04](hardening-exact-sha-r4/F3-04.md) | F3 | P1 | pending | F2-01 | 1.00 |
 | [F3-05](hardening-exact-sha-r4/F3-05.md) | F3 | P1 | pending | F1-04, F2-02 | 1.25 |
 | [F3-06](hardening-exact-sha-r4/F3-06.md) | F3 | P1 | pending | F2-02 | 1.25 |
