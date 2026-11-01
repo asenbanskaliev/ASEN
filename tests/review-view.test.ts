@@ -1,7 +1,7 @@
 import test from "node:test";
+import {execFileSync} from "node:child_process";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {execFileSync} from "node:child_process";
 import {chmodSync,lstatSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync,unlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
@@ -16,6 +16,17 @@ function manifest(bytes="hello\n"){
  }]};
 }
 
+function removeReviewViewTestFixtureTree(root:string):void {
+ if (process.platform === "win32") {
+  const username=process.env.USERNAME;
+  if (username) {
+   try { execFileSync("icacls",[root,"/grant:r",`${username}:F`,"/t","/c"],{stdio:"ignore",windowsHide:true,timeout:10000}); }
+   catch { /* allow rmSync to report the real cleanup failure */ }
+  }
+ }
+ rmSync(root,{recursive:true,force:true});
+}
+
 test("materializes one immutable read-only candidate view and disposes only owned files",()=>{
  const parent=mkdtempSync(join(tmpdir(),"asen-review-parent-"));
  try{
@@ -26,7 +37,7 @@ test("materializes one immutable read-only candidate view and disposes only owne
   assert.throws(()=>readReviewViewFile(view,"../outside"),/Unsafe portable review path/);
   disposeReviewView(view);
   assert.throws(()=>readFileSync(view.root),/ENOENT/);
- } finally {rmSync(parent,{recursive:true,force:true});}
+ } finally {removeReviewViewTestFixtureTree(parent);}
 });
 
 test("rejects links and invalid content before materializing",()=>{
@@ -35,7 +46,7 @@ test("rejects links and invalid content before materializing",()=>{
   const invalid={...manifest(),entries:[{...manifest().entries[0]!,kind:"symlink" as const,mode:"120000" as const,bytesBase64:null,size:null,contentSha256:null}]};
   assert.throws(()=>materializeReviewView(invalid,parent),/links and gitlinks/);
   assert.equal(readdirSync(parent).length,0);
- } finally {rmSync(parent,{recursive:true,force:true});}
+ } finally {removeReviewViewTestFixtureTree(parent);}
 });
 
 test("rejects an in-repository parent whose name begins with two dots",()=>{
@@ -44,7 +55,7 @@ test("rejects an in-repository parent whose name begins with two dots",()=>{
  try{
   assert.throws(()=>materializeReviewView(manifest(),parent),/outside the repository/u);
   assert.deepEqual(readdirSync(parent),[]);
- }finally{rmSync(parent,{recursive:true,force:true});}
+ }finally{removeReviewViewTestFixtureTree(parent);}
 });
 
 test("allows a candidate directory name beginning with two dots",()=>{
@@ -54,7 +65,7 @@ test("allows a candidate directory name beginning with two dots",()=>{
   const view=materializeReviewView(candidate,parent);
   assert.equal(readReviewViewFile(view,"..config/file.txt").toString(),"hello\n");
   disposeReviewView(view);
- }finally{rmSync(parent,{recursive:true,force:true});}
+ }finally{removeReviewViewTestFixtureTree(parent);}
 });
 
 for(const failWrite of [true,false])test(`materialization rejects a substituted directory with ${failWrite?"failed":"successful"} write`,{skip:process.platform==="win32"?"POSIX fixture replaces an open directory":false},()=>{
@@ -72,17 +83,18 @@ for(const failWrite of [true,false])test(`materialization rejects a substituted 
    process.stdout.write(JSON.stringify({failed,foreign:fs.readFileSync(path.join(swapped,'foreign.txt'),'utf8'),original:fs.existsSync(swapped+'-original')}));`;
   const value=JSON.parse(execFileSync(process.execPath,["--import","tsx","--input-type=module","--eval",script],{encoding:"utf8"}));
   assert.deepEqual(value,{failed:true,foreign:"preserve",original:true});
- }finally{rmSync(parent,{recursive:true,force:true});}
+ }finally{removeReviewViewTestFixtureTree(parent);}
 });
 
 test("does not remove a replaced view root",()=>{
  const parent=mkdtempSync(join(tmpdir(),"asen-review-parent-"));
  try{
   const view=materializeReviewView(manifest(),parent),old=view.root;
+  if (process.platform === "win32" && process.env.USERNAME) execFileSync("icacls",[old,"/grant:r",`${process.env.USERNAME}:(OI)(CI)F`,"/t","/c"],{stdio:"ignore",windowsHide:true,timeout:10000});
   chmodSync(old,0o700);rmSync(old,{recursive:true,force:true});writeFileSync(old,"foreign");
   assert.throws(()=>disposeReviewView(view),/ownership is uncertain/);
   assert.throws(()=>readReviewViewFile(view,"src/file.txt"),/ownership is uncertain/);
- } finally {rmSync(parent,{recursive:true,force:true});}
+ } finally {removeReviewViewTestFixtureTree(parent);}
 });
 
 test("rejects forged or cloned view ownership without deleting unrelated files",()=>{
@@ -100,7 +112,7 @@ test("rejects forged or cloned view ownership without deleting unrelated files",
   assert.throws(()=>readReviewViewFile(clone,"src/file.txt"),/ownership is uncertain/);
   assert.throws(()=>disposeReviewView(clone),/ownership is uncertain/);
   disposeReviewView(view);
- } finally {rmSync(parent,{recursive:true,force:true});}
+ } finally {removeReviewViewTestFixtureTree(parent);}
 });
 
 test("refuses to relax view ACLs when unexpected data has entered the owned root",{skip:process.platform==="win32"?"POSIX fixture mutates directory mode bits":false},()=>{
@@ -110,7 +122,7 @@ test("refuses to relax view ACLs when unexpected data has entered the owned root
   chmodSync(view.root,0o700);writeFileSync(foreign,"preserve me\n");
   assert.throws(()=>disposeReviewView(view),/contains unowned data/);
   assert.equal(readFileSync(foreign,"utf8"),"preserve me\n");
- } finally {rmSync(parent,{recursive:true,force:true});}
+ } finally {removeReviewViewTestFixtureTree(parent);}
 });
 
 test("resumes disposal after an owned entry was already removed",{skip:process.platform==="win32"?"POSIX fixture mutates directory mode bits":false},()=>{
@@ -122,15 +134,16 @@ test("resumes disposal after an owned entry was already removed",{skip:process.p
   chmodSync(view.root,0o700);chmodSync(join(view.root,"src"),0o700);unlinkSync(source);
   disposeReviewView(view);
   assert.throws(()=>lstatSync(view.root),/ENOENT/);
- } finally {rmSync(parent,{recursive:true,force:true});}
+ } finally {removeReviewViewTestFixtureTree(parent);}
 });
 
 test("rejects reviewer-view bytes changed after materialization",()=>{
  const parent=mkdtempSync(join(tmpdir(),"asen-review-parent-"));
  try{
   const candidate=manifest(),view=materializeReviewView(candidate,parent),file=join(view.root,"src/file.txt");
+  if (process.platform === "win32" && process.env.USERNAME) execFileSync("icacls",[view.root,"/grant:r",`${process.env.USERNAME}:(OI)(CI)F`,"/t","/c"],{stdio:"ignore",windowsHide:true,timeout:10000});
   chmodSync(view.root,0o700);chmodSync(join(view.root,"src"),0o700);chmodSync(file,0o600);writeFileSync(file,"tampered\n");
   assert.throws(()=>readReviewViewFile(view,"src/file.txt"),/contents drifted from the candidate/);
   assert.throws(()=>revalidateReviewView(view,candidate),/contents drifted from the candidate/);
- } finally {rmSync(parent,{recursive:true,force:true});}
+ } finally {removeReviewViewTestFixtureTree(parent);}
 });

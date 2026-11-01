@@ -14,7 +14,10 @@ function npm(args,options={}) {
 }
 try {
 const raw=npm(["pack","--json","--pack-destination",temp]);
-const result=JSON.parse(raw)[0];
+const parsed=JSON.parse(raw);
+const result=Array.isArray(parsed) ? parsed[0] : (parsed.asen ?? Object.values(parsed)[0]);
+if(!result||typeof result!=="object"||Array.isArray(result.files)===false||typeof result.filename!=="string")
+ throw new Error("npm pack --json did not return artifact metadata");
 const names=result.files.map((f)=>f.path);
 const required=["package.json","dist/cli.js","src/cli.ts","extensions/asen.ts","skills/asen-safe-change/SKILL.md"];
 for(const file of required) if(!names.includes(file)) throw new Error(`packed artifact missing ${file}`);
