@@ -211,6 +211,45 @@ test("manual rollback to unhealthy recorded predecessor retains its recovery jou
  assert.equal((await rollbackManaged({prefix,expectedCurrentVersion:"1.0.0",confirmed:true})).status,"unchanged");
  await assert.rejects(()=>fs.stat(journal),{code:"ENOENT"});
 });
+test("T09 stale recovery journal refuses to overwrite a newer active version",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("stale-journal-current");
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ assert.equal((await upgradeManaged({...base,source:v2.source})).status,"upgraded");
+ const v3=await release(root,await pkg(root,"v3","3.0.0"),v1.keys);
+ assert.equal((await upgradeManaged({...base,source:v3.source})).status,"upgraded");
+ const journal=path.join(prefix,"managed-update-journal.json");
+ const bytes=JSON.stringify({schema:"asen.managed-update-journal/v1",from:"1.0.0",to:"2.0.0",startedAt:new Date().toISOString()})+String.fromCharCode(10);
+ await fs.writeFile(journal,bytes,{flag:"wx"});
+ await assert.rejects(()=>rollbackManaged({prefix,confirmed:true,expectedCurrentVersion:"3.0.0"}),{code:"RECOVERY_REQUIRED"});
+ await assert.rejects(()=>rollbackManaged({prefix,confirmed:true,expectedCurrentVersion:"3.0.0",toVersion:"1.0.0"}),{code:"RECOVERY_REQUIRED"});
+ const inspection=await inspectManagedInstall({prefix});
+ assert.equal(inspection.status,"owned");
+ assert.equal(inspection.activeVersion,"3.0.0");
+ assert.equal(await fs.readFile(journal,"utf8"),bytes,"rejected recovery must retain the exact journal");
+ await assert.rejects(()=>upgradeManaged({...base,source:v2.source}),{code:"RECOVERY_REQUIRED"});
+});
+
+test("T09 malformed update journals block recovery without changing the current version",async()=>{
+ const {prefix,dataHome,v1,base}=await setupInstall("malformed-journal");
+ await installManaged({...base,source:v1.source,dataHome});
+ const journal=path.join(prefix,"managed-update-journal.json");
+ const good={schema:"asen.managed-update-journal/v1",from:"1.0.0",to:"2.0.0",startedAt:new Date().toISOString()};
+ for(const malformed of [
+  {...good,from:"../outside"},
+  {...good,to:"1.0.0"},
+  {...good,startedAt:"invalid"},
+  {...good,startedAt:undefined},
+  {...good,to:"2.0.0-beta"},
+ ]){
+  const bytes=JSON.stringify(malformed)+String.fromCharCode(10);
+  await fs.writeFile(journal,bytes);
+  await assert.rejects(()=>rollbackManaged({prefix,confirmed:true,expectedCurrentVersion:"1.0.0"}),{code:"RECOVERY_REQUIRED"});
+  assert.equal((await inspectManagedInstall({prefix})).activeVersion,"1.0.0");
+  assert.equal(await fs.readFile(journal,"utf8"),bytes);
+ }
+});
+
 test("T09 uncertain activation preserves journal when the selector is externally replaced",async()=>{
  const {root,prefix,dataHome,v1,base}=await setupInstall("unverified-activation");
  await installManaged({...base,source:v1.source,dataHome});

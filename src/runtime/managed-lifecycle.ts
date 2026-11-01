@@ -424,7 +424,11 @@ const journalPath=(prefix:string)=>path.join(prefix,MANAGED_JOURNAL_NAME);
 async function readJournal(prefix:string):Promise<Journal|undefined>{
  try{
   const value=JSON.parse((await readBoundedOrdinaryFile(journalPath(prefix),4096)).toString("utf8")) as Journal;
-  if(value.schema!==JOURNAL_SCHEMA||typeof value.from!=="string"||typeof value.to!=="string")throw new Error("Update journal is malformed");
+  if(value.schema!==JOURNAL_SCHEMA||typeof value.from!=="string"||typeof value.to!=="string"||typeof value.startedAt!=="string"
+   ||!/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u.test(value.from)
+   ||!/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u.test(value.to)
+   ||value.from===value.to||!Number.isFinite(Date.parse(value.startedAt))
+   ||new Date(value.startedAt).toISOString()!==value.startedAt)throw new Error("Update journal is malformed");
   return value;
  }catch(error){
   if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;
@@ -521,6 +525,7 @@ export async function rollbackManaged(request:ManagedRollbackRequest):Promise<Ma
  if(!target)return fail("INVALID_REQUEST","Rollback needs --to or an interrupted upgrade journal");
  if(journal&&target!==journal.from)return fail("RECOVERY_REQUIRED","Interrupted upgrade recovery must target its recorded previous version");
  if(current!==request.expectedCurrentVersion)return fail("INVALID_REQUEST",`Active version is ${current??"none"}, not ${request.expectedCurrentVersion}`);
+ if(journal&&current!==journal.from&&current!==journal.to)return fail("RECOVERY_REQUIRED","Interrupted upgrade journal does not match the active version; inspect before retrying");
  if(current===target){
   const health=await probe(prefix,target);
   if(!health.ok)return report({operation:"rollback",status:"ambiguous",version:target,previousVersion:current,activeVersion:current,signerKeyId:null,reason:`Recovery target probe failed (${health.reason}); ${journal?"recovery journal retained":"no recovery journal exists"}`});
