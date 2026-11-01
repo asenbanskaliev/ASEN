@@ -26,7 +26,7 @@ function safeText(text:string):string{
 }
 export class PiNotificationProjection {
  readonly #bus:SessionNotificationBus;
- #active?:Readonly<NotificationProjectionIdentity&{ui:NotificationProjectionUI}>;
+ #active:Readonly<NotificationProjectionIdentity&{ui:NotificationProjectionUI}>|undefined;
  constructor(options:{capacity?:number;ttlMs?:number}={}){
   this.#bus=new SessionNotificationBus(options);
  }
