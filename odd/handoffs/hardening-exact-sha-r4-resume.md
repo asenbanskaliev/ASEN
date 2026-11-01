@@ -36,14 +36,14 @@
 
 | Elemento | Estado |
 |---|---|
-| Estado global | PREPARADO |
-| Próxima microtarea | F0-01, **tras permiso explícito para ejecución** |
+| Estado global | F0-01 DONE (baseline remoto), F0-02 pendiente de GREEN exacto |
+| Próxima microtarea | F0-02, autorización del owner recibida en este turno; GREEN exacto obligatorio |
 | SHA original fuente | `dc47d8d9b2ead9423a0a613e5cad6ce6ca5233f1` |
 | SHA del commit documental | consultar HEAD remoto inmediatamente después de publicación |
-| SHA último ejecutado | ninguno |
+| SHA último ejecutado | a2a4765d1c7a4b577d63b3794bfa2fe7abebcfdc (baseline remoto, sin test local) |
 | Tests de implementación ejecutados esta sesión | ninguno |
 | Trabajos de proveedor ejecutados | ninguno |
 | Editor de `odd/tasks/pi-capability-completion.md` | no autorizado en este plan salvo ampliar allowlist futura |
-| Bloqueo | no iniciar trabajo de implementación hasta confirmación |
+| Bloqueo | Solo avanzar si tests focalizados GREEN con Node/tsx compatibles y sin archivos fuera de allowlist; aquí no hay checkout ni tsx |
 
 **STOP/BLOCKED**: árbol sucio ajeno, SHA desconocido, RED inesperado, GREEN fallido, cambio de hashes/authority, necesidad de múltiples subsistemas, PR inexistente para gate, cuota/proveedor, merge/release o consentimiento pendiente. Conservar la causa; no convertirlo en PASS o WAIVED.

@@ -74,7 +74,7 @@ Sin PR con `head.ref` exacta y `head.repo.full_name` igual a `asenbanskaliev/ASE
 
 | ID | Fase | Prioridad | Estado | Dependencias | Horas |
 |---|---|---|---|---|---:|
-| [F0-01](hardening-exact-sha-r4/F0-01.md) | F0 | P0 | pending | — | 1.50 |
+| [F0-01](hardening-exact-sha-r4/F0-01.md) | F0 | P0 | done | — | 1.50 |
 | [F0-02](hardening-exact-sha-r4/F0-02.md) | F0 | P0 | pending | F0-01 | 2.00 |
 | [F0-03](hardening-exact-sha-r4/F0-03.md) | F0 | P1 | pending | F0-02 | 1.50 |
 | [F0-04](hardening-exact-sha-r4/F0-04.md) | F0 | P0 | pending | F0-03 | 2.00 |
@@ -183,3 +183,9 @@ Estados: `pending|in_progress|done|noop|blocked|waived`. `noop` requiere GREEN/c
 ## Política de commits y parada
 
 Preparación = **exactamente un commit** `docs(odd): add hardening exact-SHA R4 plan`, solo archivos `odd/`. Ejecución posterior = un commit por microtarea y por separado F0-02/F0-04. STOP si falta autorización owner, PR/gate, RED/GREEN, independencia crítica, autoridad segura o aparecen defectos multicausa. No modificar ODD canónico global sin nueva allowlist/documentación aprobada. Documento de continuación: `odd/handoffs/hardening-exact-sha-r4-resume.md`.
+
+## Registro de ejecución F0 — 2026-11-01
+
+- **F0-01 DONE (baseline remoto):** HEAD inicial `a2a4765d1c7a4b577d63b3794bfa2fe7abebcfdc`, PR #45 abierto hacia main, rama `feat/t12-integrated-acceptance-merge`. La rama coincide con el commit base. GitHub Actions muestra Phase 0 run 41286809743 PASS, Pi 1.2 runtime run 41286809715 PASS y Release Gate 41286809731 PASS; CI run 41286809701 estaba en ejecución durante la consulta y Pi Free Smoke 41286809722 SKIPPED.
+- **Entorno de ejecución:** en el contenedor de esta conversación Node v22.16.0, npm 10.9.2, git disponible, pero sin checkout del repo y sin `tsx`/`actionlint`. Este Node no alcanza el mínimo declarado en `package.json` (>=22.19.0). Es una **limitación explícita**: no declarar un `git status --porcelain` local de ASEN ni pruebas locales del repositorio como PASS. La CI hospedada usa Node 22.19.0 en `ci.yml`; su evidencia solo vale para su SHA exacto.
+- **Protocolo:** la comprobación del contenido remoto mediante API Git y CI no equivale a un checkout limpio local. Los trabajos siguientes requieren GREEN focalizado exacto en un entorno compatible antes de su commit de implementación; sin él deben marcarse BLOCKED según el plan.
