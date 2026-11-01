@@ -13,7 +13,7 @@ test("specialized CI gates retain pull_request and exact branch admission", () =
 
   const t07 = block(workflow, "t07-real-codegraph", "t12-integrated-security:");
   const security = block(workflow, "t12-integrated-security", "t12-real-pi-tui-dialog:");
-  const tui = block(workflow, "t12-real-pi-tui-dialog", null);
+  const tui = block(workflow, "t12-real-pi-tui-dialog", "  architecture:");
 
   for (const jobBlock of [t07, security, tui]) {
     assert.match(jobBlock, /github\.event_name == 'pull_request'/);
