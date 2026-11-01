@@ -11,13 +11,13 @@ export function formatBackgroundJobStatus(job:BackgroundJobSnapshot,width=80):st
  if(!Number.isSafeInteger(width)||width<20||width>500)throw new Error("Terminal width is invalid");
  const states:Record<BackgroundJobState,string>={queued:"Queued",running:"Running",interrupted:"Interrupted",completed:"Completed",failed:"Failed",stopped:"Stopped",timed_out:"Timed out",flooded:"Output limit exceeded"};
  const state=states[job.state];
- const outcome=job.state==="completed"&&job.exitCode===0?"Succeeded":state;
+ const outcome=job.persistenceError?"Result not persisted":job.state==="completed"&&job.exitCode===0?"Succeeded":state;
  const message=`Job ${job.id}: ${outcome}${job.exitCode===null?"":`; exit code ${job.exitCode}`}`.replace(/[\x00-\x1f\x7f-\x9f]/gu," ");
  return message.length<=width?message:message.slice(0,width-3)+"...";
 }
 /** Only observed terminal states can generate a completion notification. */
 export function backgroundJobTerminalNotification(job:BackgroundJobSnapshot):Readonly<{id:string;message:string}>|null{
- if(job.state==="running"||job.state==="queued")return null;
+ if(job.state==="running"||job.state==="queued"||job.persistenceError)return null;
  const terminal=["completed","failed","stopped","timed_out","flooded","interrupted"] as const;
  if(!terminal.includes(job.state as typeof terminal[number]))return null;
  const identity=createHash("sha256").update(`${job.sessionId}\0${job.projectId}\0${job.id}`).digest("hex");

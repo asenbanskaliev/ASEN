@@ -23,6 +23,14 @@ test("public background tool runs one real child, delivers an untrusted terminal
   child.stdout.on("data",onData);child.stderr.on("data",onData);child.once("error",reject);child.once("close",code=>resolve({exitCode:code}));
  });
  const create=()=>host(),first=create();
+ // Pi can only receive a terminal result after its journal entry is durable.
+ const originalSend=first.pi.sendMessage;
+ first.pi.sendMessage=(message:any,options:any)=>{
+  const durable=new BackgroundJobJournal(path.join(root,"jobs.json")).load("integration-session",process.cwd())[0];
+  assert.equal(durable?.state,"completed");
+  assert.equal(durable?.deliveryState,"pending","persist pending before Pi enqueue");
+  originalSend(message,options);
+ };
  const dependencies={homeDir:()=>root,backgroundJobJournalFile:path.join(root,"jobs.json"),backgroundExecutor,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false};
  createAsenExtension(dependencies)(first.pi as any);
  const widgets:Array<{key:string;lines:string[]|undefined}>=[];
@@ -102,4 +110,32 @@ test("startup reports uncertain interrupted jobs but cannot replay or mark a sti
  // a terminal result or to an enqueue receipt without explicit ownership fencing.
  assert.equal(journal.load(sessionId,projectId)[0]?.state,"interrupted");
  assert.throws(()=>journal.updateDeliveryState("uncertain-1",sessionId,projectId,"enqueued"),/Cannot deliver a running job result/u);
+});
+
+
+test("a losing process cannot send or acknowledge an unpersisted terminal outcome",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-background-stale-terminal-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const before=process.env.ASEN_NO_SKILL_REGISTRY;process.env.ASEN_NO_SKILL_REGISTRY="1";t.after(()=>{if(before===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=before;});
+ const file=path.join(root,"jobs.json"),journal=new BackgroundJobJournal(file),sessionId="stale-terminal-session",projectId=process.cwd();
+ let finish!: (outcome:{exitCode:number|null})=>void;
+ const backgroundExecutor=()=>new Promise<{exitCode:number|null}>(resolve=>{finish=resolve;});
+ const dependencies={homeDir:()=>root,backgroundJobJournalFile:file,backgroundExecutor,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false};
+ const notices:string[]=[],context={mode:"rpc",hasUI:true,cwd:projectId,sessionManager:{getSessionId:()=>sessionId},ui:{notify(message:string){notices.push(message);},confirm:async()=>true,setWidget(){}}};
+ const first=host();createAsenExtension(dependencies)(first.pi as any);await first.events.get("session_start")![0]!({},context);
+ const started=await first.tools.get("asen_background_start").execute("start",{command:"synthetic journal race"},new AbortController().signal,()=>{},context),job=started.details as {id:string};
+ const disk=journal.load(sessionId,projectId)[0]!;
+ journal.record({...disk,state:"failed",exitCode:9,updatedAt:new Date(Date.now()+1000).toISOString(),tail:["other process outcome"]});
+ journal.updateDeliveryState(job.id,sessionId,projectId,"enqueued");
+ finish({exitCode:0});
+ const deadline=Date.now()+5000;let observed:any;
+ do{observed=await first.tools.get("asen_background_status").execute("status",{},new AbortController().signal,()=>{},context);if(observed.details[0]?.persistenceError)break;await new Promise(resolve=>setTimeout(resolve,10));}while(Date.now()<deadline);
+ assert.match(observed.details[0]?.persistenceError??"",/could not persist the terminal result/u);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(first.messages.length,0,"never enqueue a terminal result that lost its durable record");
+ assert.ok(notices.some(message=>message.includes("no pudo guardar el resultado")),"user gets a scoped diagnostic, not a false success");
+ const durable=journal.load(sessionId,projectId)[0]!;assert.equal(durable.state,"failed");assert.equal(durable.exitCode,9);assert.equal(durable.deliveryState,"enqueued");
+ await first.events.get("session_shutdown")![0]!({},context);
+ const restarted=host();createAsenExtension(dependencies)(restarted.pi as any);await restarted.events.get("session_start")![0]!({},context);
+ assert.equal(restarted.messages.length,0,"stale completion never turns into a restart replay");
+ await restarted.events.get("session_shutdown")![0]!({},context);
 });

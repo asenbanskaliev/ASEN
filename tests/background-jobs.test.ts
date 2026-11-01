@@ -192,6 +192,9 @@ test("T10 live delivery state updates preserve newer cross-process terminal resu
  const other=new BackgroundJobJournal(file);
  registry.finish(j.id,"completed",0);
  assert.match(registry.snapshot(j.id).persistenceError??"",/could not persist the terminal result/u);
+ assert.match(formatBackgroundJobStatus(registry.snapshot(j.id)),/Result not persisted/u);
+ assert.equal(backgroundJobTerminalNotification(registry.snapshot(j.id)),null,"a non-durable terminal observation cannot become a Pi delivery");
+ assert.equal(pendingBackgroundJobNotifications([registry.snapshot(j.id)],"s","p").length,0,"failed persistence cannot be replayed on restart");
  assert.throws(()=>registry.setDeliveryStateScoped(j.id,"s","p","enqueued"),/delivery conflict/u);
  assert.equal(registry.snapshot(j.id).deliveryState,undefined,"a failed disk CAS must not be reported as delivered in memory");
  assert.match(registry.snapshot(j.id).persistenceError??"",/could not persist delivery state/u);

@@ -31,7 +31,7 @@ test("public Pi changes action confirms and edits one recorded conflict without 
   cwd:f.root,hasUI:true,sessionManager:{getSessionId:()=>"s1"},
   ui:{
    select:async(_:string,choices:string[])=>{selected++;assert.deepEqual(choices,["shared.txt"]);return "shared.txt";},
-   editor:async(_:string,previous:string)=>{edited++;assert.equal(previous,"original\n");return "resolved\n";},
+   editor:async(_:string,previous:string)=>{edited++;assert.equal(previous,"original\n");return "resolved after consent\n";},
    confirm:async()=>{approved++;return true;},
    notify:()=>{}
   }
@@ -39,11 +39,22 @@ test("public Pi changes action confirms and edits one recorded conflict without 
  const result=await f.command.handler("resolve",context) as string[];
  assert.match(result.join("\n"),/Archivo corregido/);
  assert.deepEqual([selected,edited,approved],[1,1,1]);
- assert.equal(readFileSync(join(f.root,"shared.txt"),"utf8"),"resolved\n");
+ assert.equal(readFileSync(join(f.root,"shared.txt"),"utf8"),"resolved after consent\n");
  assert.match(f.git("status","--porcelain"),/shared.txt/);
  assert.equal(f.git("log","-1","--pretty=%s"),"baseline","the UI must not publish a commit");
  const history=await f.store.list({sessionId:"s1",projectId:f.root,worktree:f.root});
  assert.equal(history.at(-1)?.change.actor.kind,"user");
+});
+test("same-size correction preserves exact bytes and keeps HEAD and index unchanged",async t=>{
+ const f=await fixture(t);
+ const context={cwd:f.root,hasUI:true,sessionManager:{getSessionId:()=>"s1"},ui:{
+  select:async()=> "shared.txt",editor:async()=> "resolved\n",confirm:async()=>true,notify:()=>{}
+ }};
+ const result=await f.command.handler("resolve",context) as string[];
+ assert.match(result.join("\n"),/Archivo corregido/);
+ assert.equal(readFileSync(join(f.root,"shared.txt"),"utf8"),"resolved\n","a replacement with identical byte length must really change the file");
+ assert.equal(f.git("show","HEAD:shared.txt"),"original","no commit is created");
+ assert.equal(f.git("show",":shared.txt"),"original","correction never stages index content");
 });
 test("public Pi changes action refuses a different selection or declined consent without writes",async t=>{
  const f=await fixture(t),file=join(f.root,"shared.txt");
