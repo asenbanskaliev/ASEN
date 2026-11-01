@@ -137,7 +137,7 @@ Estados: `pending|in_progress|done|noop|blocked|waived`. `noop` requiere GREEN/c
 | T12 security dedicado | SKIPPED | pendiente | Ubuntu PASS; 3 OS equivalente documentado |
 | T12 TUI dialog | SKIPPED | pendiente | 3 OS PASS |
 | Authority pin | sin cambio documental | pendiente | `check:authority-pin` PASS sin repin |
-| R4 + auditor independiente | inventario estático | pendiente | PASS independiente para SHA exacto |
+| R4 autoauditoría (sustitución explícita del propietario) | inventario estático | pendiente | SELF_AUDIT_ONLY PASS, sin atribución de independencia, SHA exacto y regresiones de riesgos |
 | T04/T05 live NVIDIA | SKIPPED/opt-in | WAIVED posible | **Nunca PASS implícito** |
 | Pi Free Smoke provider-backed | SKIPPED | WAIVED posible | **Nunca PASS implícito** |
 | Paridad global externa | PARTIAL histórica | WAIVED posible | Fuera de FULL acotado |
@@ -157,7 +157,7 @@ Estados: `pending|in_progress|done|noop|blocked|waived`. `noop` requiere GREEN/c
 11. Pi support matrix Ubuntu/Windows/macOS: PASS exact-SHA.
 12. T07 CLI real **y** T07 ASEN/Pi integrado, ambos 3 OS y exact-SHA; uno solo no vale.
 13. T12 security Ubuntu dedicado más cobertura equivalente en suite general 3 OS; T12 TUI dedicado 3 OS, todos PASS exact-SHA. Si se exige security dedicado 3 OS, la versión actual es BLOCKED pendiente autorización extra.
-14. Authority pin intacto y `npm run check:authority-pin` PASS, R4 críticos sin FAIL, auditor independiente genuino PASS del SHA final. Cualquier REQUIRED SKIPPED/WAIVED/BLOCKED = NO FULL.
+14. Authority pin intacto y `npm run check:authority-pin` PASS, R4 críticos sin FAIL y workflow `r4-self-audit.yml` SELF_AUDIT_ONLY PASS en el SHA final. Por decisión explícita del propietario de 2026-11-01, la firma independiente se sustituye **solo para aceptación acotada interna** por esta autoauditoría reproducible; `independentReviewPerformed=false` es obligatorio. Otros gates REQUIRED SKIPPED/BLOCKED siguen impidiendo FULL y no se acredita paridad global.
 
 **WAIVED explícitos permitidos:** live NVIDIA T04/T05, Pi Free Smoke con proveedor y paridad Reference Shell global. El workflow GSP-06 debe parsear aunque esté sin ejecutar. FULL del programa no implica paridad funcional global con el sistema de referencia externo.
 
@@ -299,3 +299,12 @@ El workflow F5 static run 41311756034 ha validado el pin de autoridad, pero acti
 GitHub Actions for PR #45 HEAD `e9229568e457785a884de8e08b1b9ad9404d256b`: CI [41328305297](https://github.com/asenbanskaliev/ASEN/actions/runs/41328305297) SUCCESS, Release Gate [41328305277](https://github.com/asenbanskaliev/ASEN/actions/runs/41328305277) SUCCESS, Phase 0 [41328305307](https://github.com/asenbanskaliev/ASEN/actions/runs/41328305307) SUCCESS, Pi runtime [41328305319](https://github.com/asenbanskaliev/ASEN/actions/runs/41328305319) SUCCESS, T07 real CLI [41328305298](https://github.com/asenbanskaliev/ASEN/actions/runs/41328305298) SUCCESS, F5 exact-SHA static [41328305299](https://github.com/asenbanskaliev/ASEN/actions/runs/41328305299) SUCCESS. Pi Free Smoke 41328305285 was SKIPPED, not PASS. These results supersede the older Windows CRLF FAIL as the latest *observed baseline*, but do not rewrite its history. The technical gates are green for e9229568, not automatically for the commit that adds this note.
 
 F5-01 and F5-02 stay IN_PROGRESS: the PR had zero recorded independent review submissions at this checkpoint. Owner-deferred independent R4 is **PENDING/WAIVED FOR CONTINUATION**, never a PASS and never evidence for criterion 14 FULL. No production authority pins, provider credentials, main merge, or release changed. Refer to `odd/evidence/odd-code-reconciliation-2026-11-01.md` for the audited scope matrix.
+
+
+## Criterio actualizado F5/R4 — sustitución automática autorizada (2026-11-01)
+
+Se sustituye la firma A5 independiente para la **aceptación interna acotada** de PR #45 por una autoauditoría R4 reproducible. El nuevo workflow `.github/workflows/r4-self-audit.yml` ejecuta sin modelos ni créditos: verificación del HEAD exacto, instalación bloqueada, `check:authority-pin`, `typecheck`, pruebas adversariales de autoridad/estado, recorridos T10 y T09 focalizados, y `scripts/r4-self-audit.mjs` con evidencia JSON. Se etiqueta **SELF_AUDIT_ONLY / NOT independent**: no es segunda opinión independiente, ni certificación de seguridad, ni demostración de paridad Reference Shell. Los tests no pueden convertirse en revisión humana por su resultado PASS.
+
+La autoauditoría tendrá estado PENDING hasta publicar y verificar el workflow en el SHA real. Si falla una prueba o hay riesgo Critical/High sin solución, no se declara cierre R4 automático. El resto de los 14 criterios exact-SHA siguen intactos. Se mantienen F5-01/F5-02 IN_PROGRESS hasta CI real; no merge a main, release, cuota de proveedor ni cambio del pin de autoridad.
+
+Incidencia preexistente en `a106188ff8747ac18dbf3ae111007a9017786ad1`: `CI` 41334284790 FAILURE en test `controlled writer cancellation supports a fresh plan and explicit acceptance` (observó Todo `running` antes de su reconciliación `blocked`) en Ubuntu, Windows y macOS; Release Gate/Pi runtime/CodeGraph/Architecture/F5 static PASS en ese SHA. La nueva prueba de sincronización espera la transición real y conserva un plazo acotado de 5 s, sin cambiar la política de cancelación.

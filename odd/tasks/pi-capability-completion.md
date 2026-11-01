@@ -407,3 +407,10 @@ Risk remains item 6 (host-dependent). T10 FULL per owner waiver (2026-10-31): ow
 - `BLOCKED` means a required gate failed or unavailable evidence prevents acceptance.
 - `WAIVED` means an explicit owner waiver allowed continuation/shipping; it does **not** convert missing evidence into `FULL`.
 - Never reinterpret a waiver as proof that an omitted check passed.
+
+
+## R4 owner-authorized automatic review policy - 2026-11-01
+
+For PR #45 the owner has explicitly replaced the independent A5 R4 signoff with deterministic, exact-SHA automatic **SELF_AUDIT_ONLY / NOT independent** review. scripts/r4-self-audit.mjs and .github/workflows/r4-self-audit.yml must PASS alongside all existing mandatory CI, Release Gate, security and platform proofs. Report independentReviewPerformed=false; no independent review, native authority, real provider access or global reference parity is claimed. F5-01/F5-02 remain IN_PROGRESS pending exact-SHA evidence. Existing T09 and ECO PARTIAL obligations remain open; a review-policy substitution does not close them.
+
+The last inspected SHA a106188ff8747ac18dbf3ae111007a9017786ad1 had PASS Release Gate, Pi runtime, CodeGraph, architecture and F5 static, but CI 41334284790 FAIL across three platforms due a stale Todo state observed on an early notification refresh in the cancellation acceptance test. This batch changes synchronization without weakening cancellation or authorization assertions. Historical failures remain preserved; the corrective commit must pass its own CI.

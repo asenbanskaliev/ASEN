@@ -18,7 +18,7 @@ FULL scoped requiere demostrar, sobre el artefacto npm real de un SHA exacto y r
 4. Desinstalación managed-only que conserva datos/config ajenos; carreras de mismo usuario, sustitución de ruta, symlink/junction y concurrencia fallan cerradas, sin borrar fuera del prefijo propio.
 5. Consentimiento/cancelación/callback local: estado anti-CSRF, secretos no expuestos, timeout, puerto ocupado y limpieza del listener. No se afirma que el SO haya abierto un navegador.
 6. Gate final exacto en Linux, macOS y Windows: suite, paquete real/lifecycle, typecheck/build, auditorías y Pi 1.2 host evidence aplicable; Pi Free Smoke u otros jobs condicionales se anotan como `skipped`.
-7. Revisión R4 independiente del código T09 de ASEN sin hallazgos Critical/High abiertos; el advisory heredado externo queda listado por separado.
+7. Autoauditoría R4 basada en pruebas del código T09 y SHA final, sin hallazgos Critical/High conocidos no resueltos; por elección expresa del propietario sustituye solo la firma independiente en el FULL interno acotado. Debe declararse SELF_AUDIT_ONLY / NOT independent y conservar el advisory heredado externo por separado.
 
 Un requisito que falle, no corra o carezca de receipt deja T09 scoped en PARTIAL. FULL solo se marca al satisfacer todos los puntos y actualizar ODD/mapa con SHA y artefactos. No se autoriza merge, release, instalación en el host personal, uso de credenciales reales, cambios de permisos ni debilitamiento de pruebas.
 
@@ -228,3 +228,8 @@ The managed uninstall path now keeps an open no-follow file descriptor for candi
 ### Security continuation: recognized current-selector identity (2026-10-31)
 
 The managed uninstall path had a separate pointer cleanup weakness: `install/current` was read through an ordinary pathname and then unlinked based only on matching version bytes. A same-byte replacement or a symlink could be treated as recognized. A staged candidate now reuses the already-bounded `removeOwnedFile` no-follow open, descriptor/parent/inode and byte-verification contract for each known version selector. New deterministic tests retain substituted identical bytes and an external symlink target. The candidate is **not admitted** without exact-SHA CI and does not close the remaining final-check-to-unlink race under an actively hostile process with the same OS account.
+
+
+### Revisión R4 automatizada — sustitución de 2026-11-01
+
+En PR #45 se sustituye la firma independiente por el workflow `r4-self-audit.yml` con `check:authority-pin`, tipado, pruebas T09 de interrupción/rollback, T10 de entrega/reinicio y comprobación estática de que no se promocionan claims globales. La revisión sigue siendo propia; faltan pruebas hostiles de desinstalación same-user y apertura real del navegador, y el aviso del host Pi no desaparece por esta sustitución. No se promueve T09 a FULL global; solo se puede valorar el alcance renegociado si sus recibos exact-SHA y los demás criterios son verdes.

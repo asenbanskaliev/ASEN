@@ -1,0 +1,39 @@
+import {execFileSync} from "node:child_process";
+import {readFileSync} from "node:fs";
+import {resolve} from "node:path";
+import {fileURLToPath} from "node:url";
+
+/** R4 SELF_AUDIT_ONLY is not an independent reviewer, certification, or reference-parity attestation. */
+export function evaluateR4SelfSnapshot(snapshot){
+ const checks=[];
+ const check=(id,passed,reason)=>checks.push(Object.freeze({id,passed:Boolean(passed),reason}));
+ const shaOk=value=>typeof value==="string"&&/^[0-9a-f]{40}$/u.test(value);
+ check("exact_sha",shaOk(snapshot.expectedSha)&&snapshot.expectedSha===snapshot.headSha,"Git HEAD equals the immutable PR head");
+ check("ecosystem_claims",Array.isArray(snapshot.claims?.rows)&&snapshot.claims.rows.length===16&&snapshot.claims.rows.every(x=>x.status==="PARTIAL"),"Global ECO claims remain evidence-bounded PARTIAL");
+ check("t09_scope",/^- \[ \] T09 \|[^\r\n]*PARTIAL aggregate/mu.test(snapshot.capability),"T09 cannot self-promote to aggregate FULL");
+ check("t10_journal",snapshot.extension.includes("pendingBackgroundJobNotifications(")&&snapshot.extension.includes('setDeliveryStateScoped(result.id,result.sessionId,result.projectId,"enqueued")'),"Durable background journal still owns delivery state");
+ check("t10_no_false_ack",snapshot.extension.includes("deliveryConfirmed:false")&&!snapshot.extension.includes("deliveryConfirmed:true"),"Pi enqueue is not a confirmed presentation");
+ check("t10_projection_only",snapshot.projection.includes("class PiNotificationProjection")&&snapshot.projection.includes("SessionNotificationBus")&&!snapshot.projection.includes("pi.sendMessage")&&!snapshot.projection.includes("acknowledge(")&&snapshot.extension.includes("notificationProjection.publish("),"Ephemeral widget is not the Pi transport");
+ check("t10_host_boundary",snapshot.extension.includes("const notificationProjection=new PiNotificationProjection()")&&snapshot.extension.includes("notificationProjection.deactivate(agentDeliveryIdentity)"),"Session scope is explicit and cleared at shutdown");
+ check("no_provider_credits",!/(?:OPENAI_API_KEY|NVIDIA_API_KEY|GROQ_API_KEY|OPENROUTER_API_KEY|secrets\.)/iu.test(snapshot.workflow),"Self-audit must not use a live provider or secrets");
+ check("review_disclosure",snapshot.f5.includes("SELF_AUDIT_ONLY")&&snapshot.f5.includes("NOT independent"),"Owner waiver cannot be presented as independent review");
+ const passed=checks.every(x=>x.passed);
+ return Object.freeze({schema:"asen-r4-self-audit-v1",mode:"SELF_AUDIT_ONLY",independentReviewPerformed:false,sha:snapshot.headSha,status:passed?"PASS":"FAIL",checks,unresolved:["no independent reviewer","real OS browser launch","inherited Pi host dependency advisory","hostile same-user uninstall proof","global Reference Shell parity"]});
+}
+
+function snapshotFromRepository(){
+ const root=resolve(fileURLToPath(new URL("..",import.meta.url)));
+ const read=path=>readFileSync(resolve(root,path),"utf8");
+ const headSha=execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8",timeout:5000}).trim();
+ return {expectedSha:process.env.ASEN_EXPECTED_SHA??"",headSha,claims:JSON.parse(read("registry/parity/ecosystem-claims-v1.json")),capability:read("odd/tasks/pi-capability-completion.md"),extension:read("extensions/asen.ts"),projection:read("src/runtime/notification-projection.ts"),workflow:read(".github/workflows/r4-self-audit.yml"),f5:read("odd/tasks/hardening-exact-sha-r4.md")};
+}
+if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+ try{
+  const report=evaluateR4SelfSnapshot(snapshotFromRepository());
+  process.stdout.write(JSON.stringify(report,null,2)+"\n");
+  if(report.status!=="PASS")process.exitCode=1;
+ }catch(error){
+  process.stderr.write("R4_SELF_AUDIT_BLOCKED: "+(error instanceof Error?error.message:"unknown error")+"\n");
+  process.exitCode=1;
+ }
+}
