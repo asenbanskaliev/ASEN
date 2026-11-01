@@ -82,6 +82,15 @@ export class SessionNotificationBus{
 
  list(sessionId:string):readonly SessionNotification[]{valid(sessionId,"session id");this.#pruneExpired();return Object.freeze([...this.#events.values()].filter(event=>event.sessionId===sessionId&&!event.acknowledged));}
 
+ /** Forget only the specified ephemeral projection scope, never any other session.
+  * This does not acknowledge or mutate the durable background-job journal.
+  */
+ clear(sessionId:string):void{
+  valid(sessionId,"session id");
+  for(const [key,event] of this.#events)if(event.sessionId===sessionId)this.#events.delete(key);
+ }
+
+
  acknowledge(sessionId:string,id:string):void{
   valid(sessionId,"session id");valid(id,"notification id");
   const event=this.#events.get([...this.#events.entries()].find(([,v])=>v.id===id)?.[0] ?? "");

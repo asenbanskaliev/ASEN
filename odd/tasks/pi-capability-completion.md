@@ -414,3 +414,12 @@ Risk remains item 6 (host-dependent). T10 FULL per owner waiver (2026-10-31): ow
 For PR #45 the owner has explicitly replaced the independent A5 R4 signoff with deterministic, exact-SHA automatic **SELF_AUDIT_ONLY / NOT independent** review. scripts/r4-self-audit.mjs and .github/workflows/r4-self-audit.yml must PASS alongside all existing mandatory CI, Release Gate, security and platform proofs. Report independentReviewPerformed=false; no independent review, native authority, real provider access or global reference parity is claimed. F5-01/F5-02 remain IN_PROGRESS pending exact-SHA evidence. Existing T09 and ECO PARTIAL obligations remain open; a review-policy substitution does not close them.
 
 The last inspected SHA a106188ff8747ac18dbf3ae111007a9017786ad1 had PASS Release Gate, Pi runtime, CodeGraph, architecture and F5 static, but CI 41334284790 FAIL across three platforms due a stale Todo state observed on an early notification refresh in the cancellation acceptance test. This batch changes synchronization without weakening cancellation or authorization assertions. Historical failures remain preserved; the corrective commit must pass its own CI.
+
+
+## Fourth implementation batch - T10 isolation and crash observations, 2026-11-01
+
+The PR #45 baseline e47a7956fbb3cd04ee20901af30581ae4e9f8c2f had SUCCESS on Release Gate 41335871606, R4 SELF_AUDIT_ONLY 41335871683, F5 static 41335871577, Phase 0 41335871584, Pi runtime 41335871565 and T07 CLI 41335871640; CI 41335871610 had Ubuntu/macOS full suites PASS with Windows full suite still IN_PROGRESS at checkpoint. The new batch has no inherited exact-SHA proof.
+
+T10: the ephemeral Pi notification bus is now purged for only the relevant session/project identity on switch and shutdown; repeated same-identity reactivation cannot replay a stale status or retain capacity. Separate process kill/reopen characterizes a crash window: a running on-disk record appears interrupted and non-resumable on read, and a competing attempt to mark the still-running durable entry enqueued is correctly rejected. This does NOT implement owner fencing or confirmed delivery. T10 globally remains bounded/partial; registry ECO retains 16 PARTIAL / 0 FULL.
+
+F5-01/F5-02: remain IN_PROGRESS; owner-authorized R4 is SELF_AUDIT_ONLY, NOT independent. Final CI, R4 and Release Gate must be checked against the upcoming SHA. T09 hostile same-user path substitution after final check, real browser launch, inherited Pi host advisory and global Reference parity remain unresolved; no FULL promotion, merge or release.

@@ -63,3 +63,17 @@ test("constructor rejects invalid ttl or capacity",()=>{
  assert.throws(()=>new SessionNotificationBus({ttlMs:0}),"non-positive TTL");
  assert.throws(()=>new SessionNotificationBus({capacity:0}),"non-positive capacity");
 });
+
+
+test("clearing a presentation partition never clears unrelated sessions or claims durable delivery",()=>{
+ const bus=new SessionNotificationBus({capacity:2});
+ const one=bus.emit("session-project-a","job","result a","source-a");
+ const two=bus.emit("session-project-b","job","result b","source-b");
+ bus.clear("session-project-a");
+ assert.equal(bus.list("session-project-a").length,0);
+ assert.deepEqual(bus.list("session-project-b").map(item=>item.eventId),[two.eventId]);
+ assert.throws(()=>bus.acknowledge("session-project-a",one.id),/unavailable/u);
+ assert.equal(bus.emit("session-project-b","job","result c","source-c").acknowledged,false,"freed capacity is presentation-only");
+ assert.equal(bus.list("session-project-b").length,2);
+ assert.throws(()=>bus.clear(""),/invalid session id/u);
+});

@@ -32,7 +32,7 @@ export class PiNotificationProjection {
  }
  activate(identity:NotificationProjectionIdentity,ui:NotificationProjectionUI):void{
   const previous=this.#active;
-  if(previous)try{previous.ui.setWidget?.(WIDGET_KEY,undefined,{placement:"belowEditor"});}catch{/* View is optional. */}
+  if(previous){this.#bus.clear(partition(previous));try{previous.ui.setWidget?.(WIDGET_KEY,undefined,{placement:"belowEditor"});}catch{/* View is optional. */}}
   this.#active={...identity,ui};
   this.#render(this.#active);
  }
@@ -40,6 +40,7 @@ export class PiNotificationProjection {
   const current=this.#active;
   if(!current||current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)return;
   this.#active=undefined;
+  this.#bus.clear(partition(current));
   try{current.ui.setWidget?.(WIDGET_KEY,undefined,{placement:"belowEditor"});}catch{/* View is optional. */}
  }
  /**

@@ -225,3 +225,10 @@ Riesgos residuales: los registros solo verifican vida del PID, no autentican un 
 
 
 Same-process session recovery regression: two Pi host instances with the same PID may transfer ownership of a metadata record for the same session identity. The old host's shutdown only removes records whose random owner token still matches, so it cannot erase the new host's record. A different live PID remains blocked from taking that identity. No authority or consent token is transferred.
+
+
+### T10 state isolation and process-death characterization — 2026-11-01 batch
+
+`PiNotificationProjection` now clears the internal `SessionNotificationBus` partition during scope changes and shutdown, instead of only clearing the rendered Pi widget. This prevents old session/project messages from reappearing if an identical identity is activated again and frees ephemeral bus capacity; it does **not** acknowledge a durable delivery. `tests/notification-projection.test.ts` and `tests/session-notifications.test.ts` cover stale same-identity reactivation, scope isolation and capacity recycling.
+
+`tests/background-job-journal.test.ts` adds a real separate Node process killed after a journaled `running` record is fsynced, then observes a non-resumable `interrupted` view on restart. Pending interruption notification identity is visible without executing the command again. A disk row still marked `running` **must refuse** a forced `enqueued` mutation from another process; the test verifies journal bytes remain unchanged. This is a deliberate fail-closed boundary, not delivery success. A future owner-fenced crash-confirmation protocol is required before safe automatic acknowledgement of that uncertain record. No exactly-once or user-visible confirmation claim is made. New SHA CI remains to be observed.

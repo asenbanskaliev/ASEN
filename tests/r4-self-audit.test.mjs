@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {evaluateR4SelfSnapshot} from "../scripts/r4-self-audit.mjs";
 const base=()=>{
  const sha="1".repeat(40);
- return {expectedSha:sha,headSha:sha,claims:{rows:Array.from({length:16},(_,i)=>({id:"ECO-"+String(i+1).padStart(2,"0"),status:"PARTIAL"}))},capability:"- [ ] T09 | PARTIAL aggregate\n",extension:'pendingBackgroundJobNotifications( setDeliveryStateScoped(result.id,result.sessionId,result.projectId,"enqueued") deliveryConfirmed:false notificationProjection.publish( const notificationProjection=new PiNotificationProjection() notificationProjection.deactivate(agentDeliveryIdentity)',projection:"class PiNotificationProjection SessionNotificationBus",workflow:"name: R4 self audit\npermissions: contents: read",f5:"SELF_AUDIT_ONLY / NOT independent"};
+ return {expectedSha:sha,headSha:sha,claims:{rows:Array.from({length:16},(_,i)=>({id:"ECO-"+String(i+1).padStart(2,"0"),status:"PARTIAL"}))},capability:"- [ ] T09 | PARTIAL aggregate\n",extension:'pendingBackgroundJobNotifications( setDeliveryStateScoped(result.id,result.sessionId,result.projectId,"enqueued") deliveryConfirmed:false notificationProjection.publish( const notificationProjection=new PiNotificationProjection() notificationProjection.deactivate(agentDeliveryIdentity)',projection:"class PiNotificationProjection SessionNotificationBus this.#bus.clear(partition(previous)) this.#bus.clear(partition(current))",workflow:"name: R4 self audit\npermissions: contents: read",f5:"SELF_AUDIT_ONLY / NOT independent"};
 };
 test("the self-audit PASS never claims an independent reviewer",()=>{
  const result=evaluateR4SelfSnapshot(base());
@@ -28,4 +28,9 @@ test("unwired or transport-taking projection is rejected",()=>{
 test("provider credentials and false independent signoff cannot pass",()=>{
  assert.equal(evaluateR4SelfSnapshot({...base(),workflow:"env: OPENAI_API_KEY: secrets.API_KEY"}).status,"FAIL");
  assert.equal(evaluateR4SelfSnapshot({...base(),f5:"independent PASS"}).status,"FAIL");
+});
+
+test("closing session must remove the projection's old in-memory identities",()=>{
+ const snapshot=base();snapshot.projection=snapshot.projection.replace("this.#bus.clear(partition(current))","");
+ assert.equal(evaluateR4SelfSnapshot(snapshot).status,"FAIL");
 });

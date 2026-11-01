@@ -191,3 +191,8 @@ On `12e3f08d57810bdb34aded2df3193699750d9c36`, Release Gate passed Linux/macOS/W
 Windows full CI on `12e3f08` also caught that the new restore-kill test emitted a drive-letter path instead of a file URL in its child ESM import (`ERR_UNSUPPORTED_ESM_URL_SCHEME`). It now imports via `pathToFileURL`. The macOS chunk planner test has explicit types after local typecheck caught an implicit-any. Targeted lifecycle test passes locally; full consolidated validation is in progress. No runtime product change.
 
 Corrected local validation: `npm run check` passed 2,216 tests, 0 failed, 19 conditional skips; parity, skills, memory and upstream-boundary audits passed. Ecosystem normative source proof is NOT ADMITTED (retained reference repository unavailable), so this remains a limitation, not a clean parity claim. Typecheck/build/verify-pack/diff check passed. The product tree is unchanged; exact corrective-candidate CI is pending.
+
+
+## Bounded T10 / ECO-10 follow-up — 2026-11-01
+
+Ephemeral Pi projection now evicts its notification bus partition upon scope change and shutdown, with regression tests for identity reactivation and capacity release. A real killed writer test proves journal interruption is observed without implicit retry, while a stale on-disk `running` record refuses delivery-state promotion by another process. This is fail-closed evidence, **not** a host acknowledgement; ECO-10 remains PARTIAL and every ECO registry row remains unchanged. The same-user T09 unlink race, external browser launch and inherited Pi host advisory remain open. Parent e47a795 evidence cannot be attributed to the follow-up commit.

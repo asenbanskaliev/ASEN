@@ -6,6 +6,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {pathToFileURL} from "node:url";
 import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
+import {pendingBackgroundJobNotifications} from "../src/runtime/background-jobs.js";
 
 test("records terminal jobs for recovery without making them resumable",()=>{
  const root=mkdtempSync(join(tmpdir(),"asen-job-journal-"));try{const journal=new BackgroundJobJournal(join(root,"jobs.json"));journal.record({id:"j1",sessionId:"s1",projectId:root,command:"echo",mode:"background",state:"completed",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),exitCode:0,eventCount:1,tail:["ok"]});const rows=journal.load("s1");assert.equal(rows.length,1);assert.equal(rows[0]!.resumable,false);assert.equal(journal.load("s2").length,0);}finally{rmSync(root,{recursive:true,force:true});}
@@ -116,4 +117,42 @@ test("delivery-state persistence preserves unresolved T04 retry entitlements",()
   assert.equal(rows.find(row=>row.id==="retry-1")?.state,"interrupted");
   assert.throws(()=>journal.claimInterruptedForRetry({...binding,interruptedJobId:"retry-1",newJobId:"retry-2",authorizationId:"one-use"}),/already consumed/u);
  }finally{rmSync(root,{recursive:true,force:true});}
+});
+
+test("forced termination of a real writer recovers interruption without replay or forged delivery",async t=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-job-crash-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const journalPath=join(root,"jobs.json"),marker=join(root,"executions.txt"),moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/background-job-journal.ts")).href;
+ const childScript=`import {BackgroundJobJournal} from ${JSON.stringify(moduleUrl)};
+import {writeFileSync} from "node:fs";
+const journal=new BackgroundJobJournal(process.env.ASEN_TEST_JOURNAL);
+const now=new Date().toISOString();
+journal.record({id:"crashed-job",sessionId:"crash-session",projectId:process.env.ASEN_TEST_PROJECT,command:"synthetic authorized child",mode:"background",state:"running",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[]});
+writeFileSync(process.env.ASEN_TEST_MARKER,"once\\n");
+process.stdout.write("PERSISTED\\n");
+setInterval(()=>{},1000);`;
+ const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",childScript],{cwd:process.cwd(),env:{...process.env,ASEN_TEST_JOURNAL:journalPath,ASEN_TEST_PROJECT:root,ASEN_TEST_MARKER:marker},stdio:["ignore","pipe","pipe"],windowsHide:true});
+ t.after(()=>{if(child.exitCode===null&&!child.killed)child.kill("SIGKILL");});
+ let stderr="";
+ child.stderr.setEncoding("utf8").on("data",(chunk:string)=>{stderr+=chunk.slice(0,1000);});
+ await new Promise<void>((resolve,reject)=>{
+  let observed="",done=false;
+  const finish=(error?:Error)=>{if(done)return;done=true;clearTimeout(timer);if(error)reject(error);else resolve();};
+  const timer=setTimeout(()=>{child.kill("SIGKILL");finish(new Error("child did not persist a ready journal before bounded deadline: "+stderr));},12000);
+  child.stdout.setEncoding("utf8").on("data",(chunk:string)=>{observed+=chunk;if(observed.includes("PERSISTED"))finish();});
+  child.once("error",(error:Error)=>finish(error));
+  child.once("close",(code:number|null)=>finish(new Error("child exited before crash injection: "+code+" "+stderr)));
+ });
+ const closed=new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error("SIGKILL did not terminate isolated writer")),5000);child.once("close",()=>{clearTimeout(timer);resolve();});});
+ assert.equal(child.kill("SIGKILL"),true,"test injects one real forced process termination");
+ await closed;
+ const journal=new BackgroundJobJournal(journalPath);
+ const rows=journal.load("crash-session",root);
+ assert.equal(rows.length,1);assert.equal(rows[0]?.id,"crashed-job");assert.equal(rows[0]?.state,"interrupted");assert.equal(rows[0]?.resumable,false);
+ assert.equal(journal.load("unrelated-session",root).length,0);
+ const pending=pendingBackgroundJobNotifications(rows,"crash-session",root);
+ assert.equal(pending.length,1);assert.match(pending[0]!.message,/Interrupted/u);
+ const before=readFileSync(journalPath,"utf8");
+ assert.throws(()=>journal.updateDeliveryState("crashed-job","crash-session",root,"enqueued"),/Cannot deliver a running job result/u,"a stale disk running record must not be falsely acknowledged by a competing process");
+ assert.equal(readFileSync(journalPath,"utf8"),before);
+ assert.equal(readFileSync(marker,"utf8"),"once\n","recovery never silently reruns the terminated command");
 });

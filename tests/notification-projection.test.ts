@@ -66,3 +66,21 @@ test("widget errors and bus saturation do not break ongoing delivery",()=>{
  const v=widget();q.activate(A,v.ui);
  assert.equal(v.visible(),"","the projection is intentionally non-durable; the background journal handles restart");
 });
+
+
+test("session shutdown and a later same-identity activation cannot resurrect stale private widget events",()=>{
+ const w=widget(),projection=new PiNotificationProjection({capacity:1});
+ projection.activate(A,w.ui);
+ assert.equal(projection.publish(A,w.ui,"job","former-job","previous result"),true);
+ projection.deactivate(A);
+ assert.equal(w.visible(),"");
+ projection.activate(A,w.ui);
+ assert.doesNotMatch(w.visible(),/previous result/u);
+ assert.equal(projection.publish(A,w.ui,"job","new-job","fresh result"),true,"closing the previous session frees its ephemeral capacity");
+ assert.match(w.visible(),/fresh result/u);
+ projection.activate(B,w.ui);
+ projection.activate(A,w.ui);
+ assert.doesNotMatch(w.visible(),/fresh result/u);
+ assert.equal(projection.publish(A,w.ui,"agent","new-agent","new safe status"),true);
+ assert.match(w.visible(),/new safe status/u);
+});
