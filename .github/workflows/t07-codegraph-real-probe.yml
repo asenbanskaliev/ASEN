@@ -4,10 +4,18 @@ on:
   push:
     branches: [feat/t07-codegraph-completion]
     paths: [.github/workflows/t07-codegraph-real-probe.yml]
+  pull_request:
+    branches: [main]
 permissions:
   contents: read
 jobs:
   codegraph-real:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/feat/t07-codegraph-completion') ||
+      (github.event_name == 'pull_request' &&
+       github.head_ref == 'feat/t12-integrated-acceptance-merge' &&
+       github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN')
     strategy:
       fail-fast: false
       matrix:
@@ -15,8 +23,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Assert exact T07 candidate SHA
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          echo "T07_EXACT_SHA_CHECK_PASS sha=$ASEN_EXPECTED_SHA"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: '24'
       - name: Probe genuine CodeGraph CLI in disposable Git repository

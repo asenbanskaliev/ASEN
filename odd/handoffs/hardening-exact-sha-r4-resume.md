@@ -100,3 +100,10 @@ El propietario autorizó ejecutar F0 y reanclar las tareas. GitHub compare `dc47
 - F5-01 IN_PROGRESS; bloqueos: (a) acción T07 CLI manual PASS solo en SHA 7a497e5, falta en SHA final; (b) `actionlint` no acreditado; (c) no consta auditor externo/A5 independiente en el PR; (d) `check:authority-pin` explícito del SHA final pendiente; (e) un commit de documentación cambia el SHA y requiere validación posterior. F5-02 PENDING, no FULL.
 - Nota R4: F3-03 y F3-04 NOOP no equivalen a demostrar inyección adversarial de reviewers; revisión independiente requerida. Live NVIDIA, Pi Free Smoke y T05 audit SKIPPED, nunca PASS.
 - Sin cambios de producción ni de `odd/tasks/pi-capability-completion.md`, sin ejecución de proveedores, sin merge ni release. Siguiente ejecutor debe reconciliar HEAD remoto real y no usar SHAs históricos como evidencia de HEAD nuevo.
+
+## F5 — reanudación tras la tanda de gates (2026-11-01)
+
+- Nuevo workflow PR `F5 exact-SHA static verification` debe confirmar jobs independientes `authority-pin` y `actionlint` en el SHA final; la validación `actionlint` usa 1.7.12 y la verificación del pin es read-only.
+- `T07 CodeGraph real CLI probe` preserva workflow_dispatch/push y añade PR exacto con 3 SO; exigir éxito del checkout `head.sha` y los tres jobs, no atribuir los PASS antiguos de 7a497e5 al nuevo SHA.
+- Tests de admisión de workflow y CI general deben ser PASS. GitHub Actions se activa por una sola publicación consolidada, sin reruns manuales.
+- Auditor externo A5 genuino sigue BLOCKED: PR #45 tenía cero reviews y no corresponde autocertificar un análisis del mismo agente. F5-01 IN_PROGRESS, F5-02 PENDING hasta evidencia adicional, sin merge ni proveedores.

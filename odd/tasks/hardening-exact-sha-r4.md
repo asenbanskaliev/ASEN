@@ -273,3 +273,12 @@ Ninguna mutacion paso en verde; el test actual aisla correctamente cada job.
 - **F4-01 T07 manual** fue PASS 3 SO en workflow_dispatch 41291781415, pero `head_sha=7a497e5`, no `0b85676c0a879366051bf8c6e616101f73bdaa94`; F4-01 permanece DONE como evidencia histórica y el requisito de equivalencia exact-SHA final pasa a F5 criterio 12.
 - **F5-01 IN_PROGRESS, solo revisión preliminar propia:** revisar matriz 14 criterios, riesgos R4-10/11, actionlint, check:authority-pin, hash exacto, auditor A5. PR #45 sin reviews. Sin firma independiente no FULL, aun con CI verde. `t05-r4-audit` y proveedores SKIPPED no son PASS.
 - Esta actualización **solo modifica documentación bajo `odd/`**. Tras publicar el nuevo commit documental se requiere CI y evidencia exact-SHA del nuevo HEAD para cualquier admisión final; no utilizar los runs anteriores como si fueran del nuevo commit. F5-02 PENDING y `odd/tasks/pi-capability-completion.md` sin modificar por allowlist.
+
+## F5 — tanda exact-SHA de gates ausentes (2026-11-01)
+
+- Base inspeccionada: `19a1660040794f9d4cce2867508c026a9f13ae97` del PR #45. F4 técnico DONE, F5-01 IN_PROGRESS y F5-02 PENDING.
+- Para dar una evidencia reproduci ble y gratuita, se agrega workflow `f5-static-verification.yml` con dos jobs aislados: `npm run check:authority-pin` y `actionlint` versión 1.7.12. Ambos comprueban el commit exacto, no usan proveedores ni modifican el pin.
+- Se extiende el probe T07 CLI real con trigger `pull_request` restringido a rama `feat/t12-integrated-acceptance-merge` y repositorio propio. Se mantienen disparadores manual y push originales; el checkout deja de depender del SHA de merge y exige `github.event.pull_request.head.sha`. Matriz real de tres SO.
+- Test `tests/f5-exact-sha-gates.test.ts`: condiciones fail-closed, protección frente a fork/prefijos y comprobación exact-SHA. No constituye prueba real sin CI.
+- La firma de un auditor R4 distinto del implementador sigue ausente; la autoverificación no la suplanta. Los gates serán PENDING hasta comprobar todos los jobs del nuevo SHA, no se declara FULL.
+- Cero modificaciones de producción/authority, cero cuotas y cero merges.
