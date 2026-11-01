@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   execute:
-    if: github.event_name == "workflow_dispatch" && github.ref == "refs/heads/feat/strict-parity-prerequisites" && inputs.expected_sha == github.sha
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && inputs.expected_sha == github.sha
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     permissions:
@@ -63,7 +63,7 @@ jobs:
   publish-receipt:
     name: Publish guarded receipt only
     needs: execute
-    if: needs.execute.result == "success" && github.ref == "refs/heads/feat/strict-parity-prerequisites" && inputs.expected_sha == github.sha
+    if: needs.execute.result == 'success' && github.ref == 'refs/heads/feat/strict-parity-prerequisites' && inputs.expected_sha == github.sha
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
