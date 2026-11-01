@@ -83,3 +83,6 @@ El propietario autorizó ejecutar F0 y reanclar las tareas. GitHub compare `dc47
 - F4-01 done con CI 41291213760 + T07 probe 41291781415.
 - F4-02 bloqueado por fallo windows TUI T12 y test ubuntu/general pendiente/fallando.
 - No push, no CI adicional, no proveedores.
+## Correccion quirurgica - 2026-11-01
+- A: commit 2ef5724, prueba CLI GREEN.
+- B: Windows TUI FAIL exacto CI, PASS local; AttachConsole + row wrap, causa no resuelta.

@@ -255,3 +255,7 @@ Ninguna mutacion paso en verde; el test actual aisla correctamente cada job.
 - F4-02 BLOCKED/FAIL: run CI 41291213760 SHA exacto. t12-integrated-security PASS Ubuntu; t12-real-pi-tui-dialog PASS Ubuntu/macOS pero FAIL/CANCELLED Windows; tests generales con failures/timeout.
 - No se ejecutó workflow general adicional; no se usaron proveedores.
 - Run de F4 sigue in_progress por test runner Windows al momento del registro.
+
+## Correccion quirurgica - 2026-11-01
+- A: commit 2ef5724; prueba CLI GREEN.
+- B: Windows TUI PASS local concluido, FAIL exacto en CI por row wrap + AttachConsole.
