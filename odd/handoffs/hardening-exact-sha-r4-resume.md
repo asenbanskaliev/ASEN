@@ -55,3 +55,11 @@ El propietario autorizó ejecutar F0 y reanclar las tareas. GitHub compare `dc47
 **F0-02 BLOCKED:** sin checkout completo porque `git ls-remote` y `git clone` no resuelven `github.com`; Node disponible `22.16.0` no cumple `.nvmrc=22.19.0` ni engines `>=22.19.0`; `nvm install` no encuentra versión por falta de acceso remoto; instalación `actionlint` vía Go falla por DNS `proxy.golang.org`. `npm ci`, el test oficial RED/GREEN y typecheck NO SE EJECUTARON. La prueba aislada previa queda sin validez de evidencia. Actionlint se registra BLOCKED auxiliar, no PASS.
 
 **Estado:** F0-01 DONE histórico; F0-02 **BLOCKED por entorno**; F0-03 y F0-04 PENDING; F1–F5 no iniciadas. Ningún workflow, proveedor o CI lanzado y ningún archivo de código, YAML o test cambiado. Este commit es solo actualización del ODD. Al reanudar: comprobar el HEAD nuevo, preparar checkout, Node >=22.19.0, npm ci; ejecutar F0-02 oficial antes de F0-03/F0-04. Los tres commits funcionales deben seguir separados.
+## Registro F1 - 2026-11-01
+
+- F1-01 NOOP: tests/orchestrator (27 pass), plan-dispatcher-role-boundaries (12 pass).
+- F1-02 NOOP: authority-pin (2 pass), check:authority-pin (7 files), pi-process-runner (46 pass). Hashes intactos.
+- F1-03 NOOP: memory-migrations + memory-session-identity (14 pass).
+- F1-04 NOOP: background-job-delivery + session-notifications (9 pass), extension-runtime-commands (12 pass + 1 skip POSIX en Windows).
+- F1-05 NOOP: t12-integrated-boundaries (1 pass), typecheck PASS.
+- Node v24.15.0. Sin push, sin proveedores, sin CI.
