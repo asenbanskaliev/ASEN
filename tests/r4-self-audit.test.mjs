@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {evaluateR4SelfSnapshot} from "../scripts/r4-self-audit.mjs";
 const base=()=>{
  const sha="1".repeat(40);
- return {expectedSha:sha,headSha:sha,claims:{rows:Array.from({length:16},(_,i)=>({id:"ECO-"+String(i+1).padStart(2,"0"),status:"PARTIAL"}))},capability:"- [ ] T09 | PARTIAL aggregate\n",extension:'pendingBackgroundJobNotifications( setDeliveryStateScoped(result.id,result.sessionId,result.projectId,"enqueued") deliveryConfirmed:false const unresolved=jobs.filter(job=>job.state==="interrupted"&&job.deliveryState!=="enqueued") if(job.state!=="interrupted"&&pendingIds.has( notificationProjection.publish( const notificationProjection=new PiNotificationProjection() notificationProjection.deactivate(agentDeliveryIdentity)',backgroundJobs:'job.state==="interrupted"||job.sessionId!==sessionId if(job.state==="interrupted")throw new Error("Cannot deliver an interrupted job result")',backgroundJournal:'if(current.state==="interrupted")throw new Error("Cannot deliver an interrupted job result")',projection:"class PiNotificationProjection SessionNotificationBus this.#bus.clear(partition(previous)) this.#bus.clear(partition(current))",managedUninstall:"beforeQuarantineMove quarantine.verified() sameUninstallIdentity(stageIdentity,stage)",workflow:"name: R4 self audit\npermissions: contents: read",f5:"SELF_AUDIT_ONLY / NOT independent"};
+ return {expectedSha:sha,headSha:sha,claims:{rows:Array.from({length:16},(_,i)=>({id:"ECO-"+String(i+1).padStart(2,"0"),status:"PARTIAL"}))},capability:"- [ ] T09 | PARTIAL aggregate\n",extension:'pendingBackgroundJobNotifications( setDeliveryStateScoped(result.id,result.sessionId,result.projectId,"enqueued") deliveryConfirmed:false const unresolved=jobs.filter(job=>job.state==="interrupted"&&job.deliveryState!=="enqueued") if(job.state!=="interrupted"&&pendingIds.has( notificationProjection.publish( const notificationProjection=new PiNotificationProjection() notificationProjection.deactivate(agentDeliveryIdentity)',backgroundJobs:'job.state==="interrupted"||job.sessionId!==sessionId if(job.state==="interrupted")throw new Error("Cannot deliver an interrupted job result") this.journal?.updateDeliveryState(id,job.options.sessionId,job.options.projectId,state,error,expected) throw error;',backgroundJournal:'if(current.state==="interrupted")throw new Error("Cannot deliver an interrupted job result") current.deliveryState!==expected.deliveryState Background job delivery conflict',projection:"class PiNotificationProjection SessionNotificationBus this.#bus.clear(partition(previous)) this.#bus.clear(partition(current))",managedUninstall:"beforeQuarantineMove quarantine.verified() sameUninstallIdentity(stageIdentity,stage)",workflow:"name: R4 self audit\npermissions: contents: read",f5:"SELF_AUDIT_ONLY / NOT independent"};
 };
 test("the self-audit PASS never claims an independent reviewer",()=>{
  const result=evaluateR4SelfSnapshot(base());
@@ -55,4 +55,12 @@ test("T10 impossible-to-confirm interrupted recovery must be blocked in both jou
  assert.equal(evaluateR4SelfSnapshot(first).status,"FAIL");
  const second=base();second.backgroundJournal=second.backgroundJournal.replace('if(current.state==="interrupted")throw new Error("Cannot deliver an interrupted job result")','');
  assert.equal(evaluateR4SelfSnapshot(second).status,"FAIL");
+});
+
+
+test("T10 live delivery CAS must not be removed or replaced by a stale journal overwrite",()=>{
+ const old=base();old.backgroundJobs=old.backgroundJobs.replace("this.journal?.updateDeliveryState(id,job.options.sessionId,job.options.projectId,state,error,expected)","this.journal?.record(this.snapshot(id))");
+ assert.equal(evaluateR4SelfSnapshot(old).status,"FAIL");
+ const changed=base();changed.backgroundJournal=changed.backgroundJournal.replace("current.deliveryState!==expected.deliveryState","");
+ assert.equal(evaluateR4SelfSnapshot(changed).status,"FAIL");
 });

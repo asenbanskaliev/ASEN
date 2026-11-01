@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
+import {spawnSync} from "node:child_process";
+import {pathToFileURL} from "node:url";
 import {BackgroundJobRegistry,backgroundJobTerminalNotification,formatBackgroundJobStatus,pendingBackgroundJobNotifications} from "../src/runtime/background-jobs.js";
 import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
 
@@ -173,4 +175,45 @@ test("T10 interruption is status-only, never an automatic delivery candidate",()
  assert.equal(pending[0]?.jobId,a.id);
  assert.equal(pendingBackgroundJobNotifications([uncertain],"owner","project").length,0);
  assert.equal(pendingBackgroundJobNotifications([{...uncertain,sessionId:"other"}],"owner","project").length,0);
+});
+
+test("T10 live delivery state updates preserve newer cross-process terminal results",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-background-cas-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const file=path.join(root,"journal.json"),writer=new BackgroundJobJournal(file),registry=new BackgroundJobRegistry(writer);
+ const j=registry.start({sessionId:"s",projectId:"p",command:"run"});
+ registry.finish(j.id,"completed",0);
+ const owned=registry.snapshot(j.id);
+ // Another real Pi process publishes a newer terminal outcome into the same journal.
+ const later={...owned,state:"failed" as const,exitCode:7,updatedAt:new Date(Date.now()+60_000).toISOString(),tail:["newer terminal result"],eventCount:1};
+ const moduleUrl=pathToFileURL(path.join(process.cwd(),"src/runtime/background-job-journal.ts")).href;
+ const script=`import {BackgroundJobJournal} from ${JSON.stringify(moduleUrl)};new BackgroundJobJournal(process.env.ASEN_CAS_FILE).record(JSON.parse(process.env.ASEN_CAS_SNAPSHOT));`;
+ const child=spawnSync(process.execPath,["--import","tsx","--input-type=module","-e",script],{cwd:process.cwd(),windowsHide:true,encoding:"utf8",timeout:15000,env:{...process.env,ASEN_CAS_FILE:file,ASEN_CAS_SNAPSHOT:JSON.stringify(later)}});
+ assert.equal(child.status,0,"independent writer must update the journal: "+child.stderr);
+ const other=new BackgroundJobJournal(file);
+ assert.throws(()=>registry.setDeliveryStateScoped(j.id,"s","p","enqueued"),/delivery conflict/u);
+ assert.equal(registry.snapshot(j.id).deliveryState,undefined,"a failed disk CAS must not be reported as delivered in memory");
+ assert.match(registry.snapshot(j.id).persistenceError??"",/could not persist delivery state/u);
+ const recovered=other.load("s","p")[0]!;
+ assert.equal(recovered.state,"failed");
+ assert.equal(recovered.exitCode,7);
+ assert.deepEqual(recovered.tail,["newer terminal result"]);
+ assert.equal(recovered.deliveryState,undefined,"a stale owner must not forge a receipt");
+ assert.equal(recovered.eventCount,1);
+});
+
+test("T10 delivery CAS preserves a concurrent enqueue and the terminal job payload",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-background-cas-enqueued-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const file=path.join(root,"journal.json"),journal=new BackgroundJobJournal(file),registry=new BackgroundJobRegistry(journal);
+ const j=registry.start({sessionId:"s",projectId:"p",command:"run"});
+ registry.append(j.id,"real output");
+ registry.finish(j.id,"failed",6);
+ const external=new BackgroundJobJournal(file);
+ external.updateDeliveryState(j.id,"s","p","enqueued");
+ assert.throws(()=>registry.setDeliveryState(j.id,"pending","late failure"),/delivery conflict/u,"stale pending must not undo a competing confirmed enqueue call");
+ const unchanged=external.load("s","p")[0]!;
+ assert.equal(unchanged.deliveryState,"enqueued");
+ assert.equal(unchanged.exitCode,6);
+ assert.deepEqual(unchanged.tail,["real output"]);
+ // A restarted or live reader can still query the terminal record safely.
+ assert.equal(registry.list("s","p")[0]?.state,"failed");
 });

@@ -68,7 +68,7 @@ export class BackgroundJobJournal{
   });
  }
  /** Persist an enqueue attempt for a recovered job without changing its ownership. */
- updateDeliveryState(id:string,sessionId:string,projectId:string,state:"pending"|"enqueued",error?:string):BackgroundJobJournalEntry{
+ updateDeliveryState(id:string,sessionId:string,projectId:string,state:"pending"|"enqueued",error?:string,expected?:BackgroundJobSnapshot):BackgroundJobJournalEntry{
   if(typeof id!=="string"||!id||typeof sessionId!=="string"||!sessionId||typeof projectId!=="string"||!projectId||!(state==="pending"||state==="enqueued")||(error!==undefined&&(typeof error!=="string"||error.length>500)))throw new Error("Background delivery identity is invalid");
   let updated:BackgroundJobJournalEntry|undefined;
   this.withExclusiveLock(()=>{
@@ -76,6 +76,16 @@ export class BackgroundJobJournal{
    if(!current||current.sessionId!==sessionId||current.projectId!==projectId)throw new Error("Background job does not belong to the requested scope");
    if(current.state==="running")throw new Error("Cannot deliver a running job result");
    if(current.state==="interrupted")throw new Error("Cannot deliver an interrupted job result");
+   // A live process must never overwrite a newer terminal result or a delivery
+   // state committed by another Pi process. This compare-and-set shares the
+   // journal lock with the update and changes only delivery metadata.
+   if(expected&&(current.state!==expected.state||current.updatedAt!==expected.updatedAt||
+    current.command!==expected.command||current.mode!==expected.mode||
+    current.exitCode!==expected.exitCode||current.eventCount!==expected.eventCount||
+    current.cwd!==expected.cwd||JSON.stringify(current.args??[])!==JSON.stringify(expected.args??[])||
+    JSON.stringify(current.tail)!==JSON.stringify(expected.tail)||
+    current.deliveryState!==expected.deliveryState||current.deliveryError!==expected.deliveryError))
+    throw new Error("Background job delivery conflict: persisted result or delivery state changed");
    updated={...current,deliveryState:state,...(state==="pending"&&error?{deliveryError:error}:{})};
    if(state==="enqueued"||!error)delete (updated as {deliveryError?:string}).deliveryError;
    rows[index]=updated;this.writeRows(rows);
