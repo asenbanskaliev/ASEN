@@ -32,8 +32,8 @@ test("public background tool runs one real child, delivers an untrusted terminal
  const deadline=Date.now()+5_000;while(first.messages.length===0&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,10));
  assert.equal(childStarts,1);assert.equal(first.messages.length,1);
  const delivered=first.messages[0]!;assert.equal(delivered.message.customType,"asen.background.result");assert.equal(delivered.options.triggerTurn,false);assert.equal(delivered.message.details.trusted,false);assert.equal(delivered.message.details.state,"completed");assert.equal(delivered.message.details.deliveryState,"enqueued");assert.equal(delivered.message.details.deliveryConfirmed,false);assert.match(delivered.message.content,/integration output/u);
- const widgetDeadline=Date.now()+5_000;while(!widgets.some(entry=>entry.key==="asen-notifications"&&entry.lines?.join("\n").includes("recent outcomes"))&&Date.now()<widgetDeadline)await new Promise(resolve=>setTimeout(resolve,10));
- assert.ok(widgets.some(entry=>entry.key==="asen-notifications"&&entry.lines?.join("\n").includes("recent outcomes")),"observed job completion must project to the Pi widget");
+ const widgetDeadline=Date.now()+5_000;while(!widgets.some(entry=>entry.key==="asen-notifications"&&entry.lines?.join("\n").includes("ASEN outcomes"))&&Date.now()<widgetDeadline)await new Promise(resolve=>setTimeout(resolve,10));
+ assert.ok(widgets.some(entry=>entry.key==="asen-notifications"&&entry.lines?.join("\n").includes("ASEN outcomes")),"observed job completion must project to the Pi widget");
  assert.ok(widgets.some(entry=>entry.lines?.join("\n").includes("Succeeded")),"the widget must show only the public job status");
  const current=await first.tools.get("asen_background_status").execute("status",{},new AbortController().signal,()=>{},context);
  assert.equal(current.details[0].deliveryState,"enqueued");

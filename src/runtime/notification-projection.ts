@@ -64,7 +64,7 @@ export class PiNotificationProjection {
    const lines=items.slice(-MAX_VISIBLE).map(e=>"- "+e.message);
    const remaining=items.length-lines.length;
    if(remaining>0)lines.unshift("("+remaining+" previous outcomes not displayed)");
-   active.ui.setWidget?.(WIDGET_KEY,lines.length?["ASEN - recent outcomes (not delivery confirmation)",...lines]:undefined,{placement:"belowEditor"});
+   active.ui.setWidget?.(WIDGET_KEY,lines.length?["ASEN outcomes (unconfirmed)",...lines]:undefined,{placement:"belowEditor"});
   }catch{/* No UI error may alter delivery authority or persisted state. */}
  }
 }

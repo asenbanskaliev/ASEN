@@ -18,9 +18,10 @@ function fixture(t:test.TestContext){
 }
 test("exact, one-use manual workspace correction modifies only its approved file",t=>{
  const f=fixture(t),candidate=prepareWorkspaceCorrection({root:f.root,relativePath:"shared.txt"});
- const outcome=applyWorkspaceCorrection(candidate,"resolved\n");
+ // Different byte length avoids a false clean status caused by coarse Windows Git stat timestamps.
+ const outcome=applyWorkspaceCorrection(candidate,"resolved different\n");
  assert.equal(outcome.status,"updated");assert.equal(outcome.path,"shared.txt");
- assert.equal(readFileSync(join(f.root,"shared.txt"),"utf8"),"resolved\n");
+ assert.equal(readFileSync(join(f.root,"shared.txt"),"utf8"),"resolved different\n");
  assert.equal(readFileSync(join(f.root,"unrelated.txt"),"utf8"),"keep\n");
  assert.throws(()=>applyWorkspaceCorrection(candidate,"second\n"),/already been consumed/);
  assert.match(f.git("status","--porcelain"),/shared.txt/);

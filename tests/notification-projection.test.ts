@@ -16,7 +16,7 @@ test("production projection uses the identity bus without becoming a Pi delivery
  p.activate(A,v.ui);
  assert.equal(p.publish(A,v.ui,"job","job-a","Job A: Succeeded"),true);
  assert.match(v.visible(),/Job A: Succeeded/u);
- assert.match(v.visible(),/not delivery confirmation/u);
+ assert.match(v.visible(),/unconfirmed/u);
  assert.equal(p.publish(A,v.ui,"job","job-a","Job A: Succeeded"),true);
  assert.equal(v.visible().match(/Job A: Succeeded/gu)?.length,1,"same source id cannot duplicate the UI status");
  assert.equal(p.publish(A,v.ui,"job","job-b","Job A: Succeeded"),true);
