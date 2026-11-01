@@ -38,3 +38,46 @@ test('T10: POSIX paths remain case sensitive',()=>{
  const result=evaluateGitRow({row:value,project:base,width:120,renderedWidth:value.length,platform:'linux'});
  assert.equal(result.ok,false);
 });
+
+test('T10 Windows: actual 8.3 alias and long form match by directory identity without text equivalence',()=>{
+ const alias=project.replace('runneradmin','RUNNER~1');
+ const identity=Object.freeze({dev:3n,ino:912345n,birthtimeNs:1000n,isDirectory:()=>true});
+ const fsOps={canonicalize:(value:string)=>value,stat:(value:string)=>{
+  if(value===project||value===alias)return identity;
+  throw Object.assign(new Error('ENOENT'),{code:'ENOENT'});
+ }};
+ const result=inspect(row(project),{project:alias,fsOps});
+ assert.equal(result.ok,true);assert.equal(result.pathEquivalent,true);
+ assert.equal(result.diagnostics.pathMatchMethod,'stat-identity');
+ assert.notEqual(alias.toLowerCase(),project.toLowerCase());
+});
+
+test('T10: different inode, device, birthtime, missing inode or file cannot pass',()=>{
+ const alias=project.replace('runneradmin','RUNNER~1');
+ const same={dev:3n,ino:912345n,birthtimeNs:1000n,isDirectory:()=>true};
+ for(const difference of [
+  {ino:912346n},{dev:4n},{birthtimeNs:1001n},{ino:0n},{isDirectory:()=>false}
+ ]){
+  const other={...same,...difference};
+  const fsOps={canonicalize:(value:string)=>value,stat:(value:string)=>value===alias?other:same};
+  const result=inspect(row(project),{project:alias,fsOps});
+  assert.equal(result.ok,false);
+  assert.equal(result.diagnostics.pathMatchMethod,'stat-mismatch');
+ }
+});
+
+test('T10: unavailable filesystem identity must not accept aliases',()=>{
+ const alias=project.replace('runneradmin','RUNNER~1');
+ const fsOps={canonicalize:()=>{throw Error('ENOENT');},stat:()=>{throw Error('ENOENT');}};
+ const result=inspect(row(project),{project:alias,fsOps});
+ assert.equal(result.ok,false);assert.equal(result.diagnostics.pathMatchMethod,'stat-unavailable');
+});
+
+test('T10: file identity is not permission to exceed terminal width',()=>{
+ const alias=project.replace('runneradmin','RUNNER~1');
+ const identity={dev:3n,ino:912345n,birthtimeNs:1000n,isDirectory:()=>true};
+ const fsOps={canonicalize:(value:string)=>value,stat:()=>identity};
+ const result=inspect(row(project),{project:alias,fsOps,renderedWidth:121});
+ assert.equal(result.pathEquivalent,true);assert.equal(result.ok,false);
+ assert.equal(result.reason,'width_overflow');
+});

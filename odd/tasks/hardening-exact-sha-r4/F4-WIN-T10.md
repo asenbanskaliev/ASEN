@@ -3,7 +3,7 @@ id: "F4-WIN-T10"
 fase: "F4"
 prioridad: "P0"
 estado: "blocked"
-depends_on: ["F4-02"]
+depends_on: ["F4-01"]
 sha_base: "149f3d90c9549f99c898c464a8a16b6590948762"
 archivos_editables: ["scripts/t10-real-pi-tui-matrix.mjs","scripts/t10-git-row-validation.mjs","tests/t10-git-row-validation.test.ts","odd/tasks/hardening-exact-sha-r4/F4-WIN-T10.md","odd/tasks/hardening-exact-sha-r4/F4-02.md"]
 archivos_prohibidos: ["extensions/authority.ts","src/agents/pi-authority-assets.ts","src/agents/pi-process-runner.ts","package.json","package-lock.json","extensions/asen.ts","src/runtime/responsive-layout.ts"]
@@ -24,3 +24,13 @@ No se ha modificado la representación de ASEN, los anchos de la matriz ni los l
 - Nueva CI exact-SHA Windows: PENDIENTE.
 - AttachConsole failed: incidencia independiente pendiente de aislamiento; no se silencia.
 - F4-02 permanece BLOCKED. No FULL sin resultado exact-SHA y auditoría independiente.
+
+## Revisión del bloqueo en SHA 289e27c — Windows 8.3
+
+CI exacta 41300749078, job 124830945008, CANCELLED. El detector registró una línea de 109 columnas para un terminal de 120 y `path_shape_mismatch`. La ruta visible tenía 70 caracteres, la ruta esperada 67; primera diferencia en posición 15: `a` frente a `~`. Esto es coherente con el alias Windows 8.3, pero la identidad del directorio requiere prueba real en el runner.
+
+**Corrección mínima:** el validador del renglón Git compara primero texto normalizado, luego `realpathSync.native`, y después `statSync({bigint:true})`. Se exige que ambos destinos sean directorios con `dev`, `ino` no cero y `birthtimeNs` coincidentes; si no se puede probar, el resultado sigue siendo rechazo. No se modifica `extensions/asen.ts`, el presupuesto de ancho, los permisos, la política de authority ni las dependencias. La tarea correctiva depende de F4-01; F4-02 continúa bloqueada hasta que el runner la verifique.
+
+**Pruebas aisladas**: nueve casos con Node 22.16.0, 9 PASS, incluyendo falso positivo 8.3 mediante simulación de metadatos, carpetas distintas, datos no fiables, ruta ausente, desbordamiento auténtico y plataformas POSIX. No constituye prueba de Windows real sobre el nuevo SHA.
+
+**Incidencia separada:** `node-pty: AttachConsole failed` persiste en la ejecución remota previa. No se cambia ni se silencia; diagnosticar por separado. Revisión independiente pendiente.
