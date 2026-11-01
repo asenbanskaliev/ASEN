@@ -140,7 +140,9 @@ export class BackgroundJobJournal{
   return validateRows(value);
  }
  private withExclusiveLock<T>(operation:()=>T):T{
-  privatePath(this.file);const lock=`${this.file}.lock`,deadline=Date.now()+3_000,waitCell=new Int32Array(new SharedArrayBuffer(4));let fd:number|undefined,identity:{dev:number;ino:number}|undefined,permissionError:unknown;
+  privatePath(this.file);const lock=`${this.file}.lock`,startedAt=Date.now(),absoluteDeadline=startedAt+15_000,waitCell=new Int32Array(new SharedArrayBuffer(4));
+   let inactiveDeadline=startedAt+3_000,journalIdentity:string|undefined;
+   let fd:number|undefined,identity:{dev:number;ino:number}|undefined,permissionError:unknown;
   while(fd===undefined){
    try{fd=openSync(lock,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);const stat=fstatSync(fd);identity={dev:stat.dev,ino:stat.ino};writeFileSync(fd,JSON.stringify({pid:process.pid,createdAt:Date.now()}));fsyncSync(fd);}
    catch(error){const failedToCreate=fd===undefined;if(fd!==undefined){try{closeSync(fd);}catch{}fd=undefined;if(identity)try{const current=lstatSync(lock);if(current.dev===identity.dev&&current.ino===identity.ino)unlinkSync(lock);}catch{/* Preserve an unowned replacement lock. */}identity=undefined;}
@@ -149,7 +151,19 @@ export class BackgroundJobJournal{
     try{const observed=lstatSync(lock);if(!observed.isFile()||observed.isSymbolicLink()||(process.platform!=="win32"&&(observed.mode&0o077)!==0))throw new Error("Background journal lock is unsafe");}
     catch(lockError){if(windowsPermission&&(lockError as NodeJS.ErrnoException).code!=="ENOENT")throw error;if((lockError as NodeJS.ErrnoException).code!=="ENOENT")throw lockError;}
     if(windowsPermission)permissionError??=error;
-    if(Date.now()>=deadline){if(permissionError)throw permissionError;throw new Error("Background journal is busy; refusing a concurrent overwrite");}Atomics.wait(waitCell,0,0,10);
+    // A concurrent owner may commit many short transactions before this writer
+     // gets the lock. Renew the idle budget only for *observable durable journal
+     // progress*; never use an untrusted lock PID as an ownership/cleanup grant.
+     // An unchanged orphan expires after 3s. Even continuous file replacement
+     // has a hard 15s cap, and no foreign lock is removed.
+     let observedIdentity="absent";
+     try{const stat=lstatSync(this.file);if(!stat.isFile()||stat.isSymbolicLink())throw new Error("Background journal is not a safe regular file");observedIdentity=`${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}`;}
+     catch(journalError){if((journalError as NodeJS.ErrnoException).code!=="ENOENT")throw journalError;}
+     if(journalIdentity!==undefined&&journalIdentity!==observedIdentity)
+      inactiveDeadline=Math.min(absoluteDeadline,Date.now()+3_000);
+     journalIdentity=observedIdentity;
+     if(Date.now()>=absoluteDeadline||Date.now()>=inactiveDeadline){if(permissionError)throw permissionError;throw new Error("Background journal is busy; refusing a concurrent overwrite");}
+     Atomics.wait(waitCell,0,0,10);
    }
   }
   try{return operation();}finally{try{closeSync(fd);}finally{try{const current=lstatSync(lock);if(identity&&current.dev===identity.dev&&current.ino===identity.ino)unlinkSync(lock);}catch{/* Never unlink a lock owned by another process. */}}}

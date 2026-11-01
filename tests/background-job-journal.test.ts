@@ -32,7 +32,7 @@ test("journal refuses to reclaim an orphaned lock by pathname and resumes after 
  const root=mkdtempSync(join(tmpdir(),"asen-job-journal-orphan-lock-"));try{const file=join(root,"jobs.json"),lock=`${file}.lock`,journal=new BackgroundJobJournal(file);writeFileSync(lock,JSON.stringify({pid:999999999,createdAt:0}),{mode:0o600});assert.throws(()=>journal.record({id:"j1",sessionId:"s1",projectId:root,command:"echo",mode:"background",state:"completed",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),exitCode:0,eventCount:0,tail:[]}),/busy/u);assert.equal(readFileSync(lock,"utf8"),JSON.stringify({pid:999999999,createdAt:0}));unlinkSync(lock);journal.record({id:"j1",sessionId:"s1",projectId:root,command:"echo",mode:"background",state:"completed",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),exitCode:0,eventCount:0,tail:[]});assert.equal(journal.load("s1").length,1);}finally{rmSync(root,{recursive:true,force:true});}
 });
 
-test("Windows lock EPERM handling keeps contention bounded and never claims another lock",t=>{
+test("Windows lock EPERM and concurrent durable progress remain bounded without claiming another lock",t=>{
  const root=mkdtempSync(join(tmpdir(),"asen-job-journal-eperm-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
  const moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/background-job-journal.ts")).href;
  const script=`
@@ -44,25 +44,35 @@ const scenario=process.env.ASEN_TEST_SCENARIO,root=process.env.ASEN_TEST_ROOT,fi
 if(scenario!=="non-windows")Object.defineProperty(process,"platform",{value:"win32"});
 const originalOpen=fs.openSync,originalWrite=fs.writeFileSync,originalClose=fs.closeSync,originalSync=fs.fsyncSync,originalWait=Atomics.wait,originalNow=Date.now;
 const denied=Object.assign(new Error("injected lock denial"),{code:"EPERM"}),exists=Object.assign(new Error("injected post-open failure"),{code:"EEXIST"});let attempts=0,lockFd,waits=0,clock=0;
-if(["recover","persistent"].includes(scenario))originalWrite(lock,"other owner");
+if(["recover","persistent","progress","churn"].includes(scenario))originalWrite(lock,"other owner");
 if(scenario==="unsafe")fs.mkdirSync(lock);
 if(scenario==="symlink")fs.symlinkSync("foreign-target",lock);
 fs.openSync=function(path,...args){if(path===lock){attempts++;if(["recover","persistent","missing","vanished","unsafe","symlink","non-windows"].includes(scenario)&&(!["recover","vanished"].includes(scenario)||attempts===1))throw denied;const result=originalOpen.call(this,path,...args);lockFd=result;return result;}return originalOpen.call(this,path,...args);};
 fs.writeFileSync=function(path,...args){if(path===lockFd&&["post-open","post-open-swap"].includes(scenario))throw denied;if(path===lockFd&&scenario==="post-open-eexist")throw exists;return originalWrite.call(this,path,...args);};
 fs.fsyncSync=function(fd){if(scenario==="post-fsync"&&fd===lockFd)throw denied;return originalSync.call(this,fd);};
 fs.closeSync=function(fd){const result=originalClose.call(this,fd);if(["cleanup-swap","post-open-swap"].includes(scenario)&&fd===lockFd){fs.renameSync(lock,lock+".original");originalWrite(lock,"foreign replacement");}return result;};
-Atomics.wait=function(){waits++;if(scenario==="recover"){assert.equal(fs.readFileSync(lock,"utf8"),"other owner");fs.unlinkSync(lock);}clock+=1000;return "ok";};
+Atomics.wait=function(){waits++;
+  if(scenario==="recover"){assert.equal(fs.readFileSync(lock,"utf8"),"other owner");fs.unlinkSync(lock);}
+  if(scenario==="progress"||scenario==="churn"){
+   // Simulate a different owner completing distinct atomic journal versions.
+   // Its real lock is never reclaimed by the waiting process.
+   originalWrite(file,"[]"+(" ".repeat(waits)));
+   if(scenario==="progress"&&waits===5)fs.unlinkSync(lock);
+  }
+  clock+=1000;return "ok";};
 Date.now=()=>clock;
 syncBuiltinESMExports();
 const now=new Date().toISOString(),snapshot={id:"one",sessionId:"s",projectId:root,command:"test",mode:"background",state:"completed",createdAt:now,updatedAt:now,exitCode:0,eventCount:0,tail:[]};
 try{
  const journal=new BackgroundJobJournal(file);
  if(scenario==="recover"||scenario==="vanished"){journal.record(snapshot);assert.equal(attempts,2);assert.equal(waits,1);assert.equal(journal.load("s").length,1);}
+  else if(scenario==="progress"){journal.record(snapshot);assert.equal(attempts,6);assert.equal(waits,5);assert.equal(journal.load("s").length,1);}
+  else if(scenario==="churn"){assert.throws(()=>journal.record(snapshot),/busy/u);assert.equal(attempts,16);assert.equal(waits,15);assert.equal(fs.readFileSync(lock,"utf8"),"other owner");}
  else if(scenario==="cleanup-swap"){journal.record(snapshot);assert.equal(fs.readFileSync(lock,"utf8"),"foreign replacement");assert.equal(fs.readFileSync(lock+".original","utf8").includes("pid"),true);}
  else{assert.throws(()=>journal.record(snapshot),error=>error===(scenario==="post-open-eexist"?exists:denied));assert.equal(fs.existsSync(file),false);if(scenario==="persistent"||scenario==="missing"){assert.equal(attempts,4);assert.equal(waits,3);if(scenario==="persistent")assert.equal(fs.readFileSync(lock,"utf8"),"other owner");}else{assert.equal(attempts,1);assert.equal(waits,0);if(scenario==="unsafe")assert.equal(fs.lstatSync(lock).isDirectory(),true);if(scenario==="symlink")assert.equal(fs.lstatSync(lock).isSymbolicLink(),true);if(scenario==="post-open-swap")assert.equal(fs.readFileSync(lock,"utf8"),"foreign replacement");if(["post-open","post-open-eexist","post-fsync"].includes(scenario))assert.equal(fs.existsSync(lock),false);}}
 }finally{fs.openSync=originalOpen;fs.writeFileSync=originalWrite;fs.closeSync=originalClose;fs.fsyncSync=originalSync;Atomics.wait=originalWait;Date.now=originalNow;syncBuiltinESMExports();}
 `;
- for(const scenario of ["recover","persistent","missing","vanished","unsafe","post-open","post-open-swap","post-open-eexist","post-fsync","cleanup-swap",...(process.platform==="win32"?[]:["non-windows","symlink"])]){
+ for(const scenario of ["recover","persistent","progress","churn","missing","vanished","unsafe","post-open","post-open-swap","post-open-eexist","post-fsync","cleanup-swap",...(process.platform==="win32"?[]:["non-windows","symlink"])]){
   const result=spawnSync(process.execPath,["--import","tsx","--input-type=module","-e",script],{cwd:process.cwd(),env:{...process.env,ASEN_TEST_ROOT:root,ASEN_TEST_SCENARIO:scenario},encoding:"utf8",timeout:15000});
   assert.equal(result.status,0,`${scenario}: ${result.stderr||result.error?.message||"unknown error"}`);
  }
