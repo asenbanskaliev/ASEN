@@ -1,6 +1,6 @@
 name: ASEN real-agent functional acceptance
 
-# Push runs perform offline validation. One deliberate opt-in commit authorizes a bounded provider smoke; Writer remains blocked.
+# Read-only Ollama Cloud smoke and disposable code-fixture reasoning are bounded to one opt-in commit; Writer remains blocked.
 on:
   push:
     branches:
