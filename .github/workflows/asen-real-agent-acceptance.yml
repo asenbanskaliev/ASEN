@@ -1,6 +1,6 @@
 name: ASEN real-agent functional acceptance
 
-# Read-only connectivity, fixture exploration and plan grading run only on explicit opt-in; Writer remains blocked.
+# Explicit one-shot opt-in runs bounded real provider, fixture, plan and ASEN dispatcher probes; Writer stays blocked.
 on:
   push:
     branches:
