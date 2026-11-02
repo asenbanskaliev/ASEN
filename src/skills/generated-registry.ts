@@ -38,6 +38,13 @@ export interface RefreshSkillRegistryResult {
 }
 interface RegistryCache {schemaVersion:1;sourceFingerprint:string;registrySha256:string;entries:SkillRegistryEntry[];skipped:SkillSkipDiagnostic[]}
 
+
+export function summarizeSkillRegistryDiagnostics(skipped: readonly SkillSkipDiagnostic[]): string {
+  if (skipped.length === 0) return "none";
+  const counts = new Map<string, number>();
+  for (const diagnostic of skipped) counts.set(diagnostic.reason, (counts.get(diagnostic.reason) ?? 0) + 1);
+  return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([reason, count]) => reason + "=" + count).join(", ");
+}
 const rank={project:0,user:1,global:2} as const;
 const sha256=(content:string)=>createHash("sha256").update(content).digest("hex");
 const text=(value:unknown):value is string=>typeof value==="string";

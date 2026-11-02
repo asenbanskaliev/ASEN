@@ -5,7 +5,7 @@ import {homedir} from "node:os";
 import {execFileSync} from "node:child_process";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
-import {refreshSkillRegistry,type SkillRegistryMirror} from "../src/skills/generated-registry.js";
+import {refreshSkillRegistry,summarizeSkillRegistryDiagnostics,type SkillRegistryMirror} from "../src/skills/generated-registry.js";
 import type {SkillSource} from "../src/skills/discovery.js";
 import {claimWorkflowSelection,readWorkflowSelection,registerWorkflowSelectionCommand} from "../src/lifecycle/workflow-selection.js";
 import {decideLifecycleApplicability,decideLifecycleApplicabilityWithSelection,type LifecycleApplicability,type LifecycleApplicabilityInput} from "../src/lifecycle/applicability.js";
@@ -674,8 +674,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   pi.registerCommand?.("asen-skill-registry",{description:"Refresh the generated ASEN skill registry",handler:async(args:string|undefined,ctx:CommandContext)=>{
    if(args?.trim()!=="refresh"){ctx.ui.notify(usage,"info");return usage;}
    try{
-    const result=await lifecycle.refresh(ctx.cwd),empty=result.count===0?" (empty when zero)":"",memory=result.persistence.status;
-    const message=`ASEN skill registry refreshed: path=${result.path}; skills=${result.count}${empty}; cache=${result.cache}; diagnostics=${result.skipped.length}; memory=${memory}.`;
+    const result=await lifecycle.refresh(ctx.cwd),empty=result.count===0?" (empty when zero)":"",registryMirror=result.persistence.status,diagnosticSummary=summarizeSkillRegistryDiagnostics(result.skipped);
+    const message=`ASEN skill registry refreshed: path=${result.path}; skills=${result.count}${empty}; cache=${result.cache}; diagnostics=${result.skipped.length}${diagnosticSummary? " (" + diagnosticSummary + ")" : ""}; registryMirror=${registryMirror}.`;
     ctx.ui.notify(message,"info");return message;
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});

@@ -27,7 +27,7 @@ await test("refresh command scans four ordered sources, persists exact output, h
   for(let index=0;index<roots.length;index++){await addSkill(roots[index]!,"shared","shared",descriptions[index]!);await addSkill(roots[index]!,`only-${index}`,`only-${index}`,`unique ${index}`);}
   const command=commandFor({homeDir:()=>home,packageRoot:pkg}),observed=context(project);
   const first=await command.handler(" refresh ",observed.ctx),canonical=await fs.realpath(project),registryPath=path.join(canonical,SKILL_REGISTRY_RELATIVE_PATH),cachePath=path.join(canonical,SKILL_REGISTRY_CACHE_RELATIVE_PATH);
-  const exact=`ASEN skill registry refreshed: path=${registryPath}; skills=5; cache=regenerated; diagnostics=3; memory=unavailable.`;
+  const exact=`ASEN skill registry refreshed: path=${registryPath}; skills=5; cache=regenerated; diagnostics=3 (duplicate-name=3); registryMirror=unavailable.`
   assert.equal(first,exact);assert.deepEqual(observed.notifications,[{message:exact,level:"info"}]);
   const before=await fs.readFile(registryPath),cacheBefore=await fs.readFile(cachePath),cache=JSON.parse(cacheBefore.toString()),mtime=(await fs.stat(registryPath)).mtimeMs,cacheMtime=(await fs.stat(cachePath)).mtimeMs;
   assert.equal(cache.entries.length,5);assert.match(before.toString(),/project winner/);assert.doesNotMatch(before.toString(),/project agents loser|user loser|global loser/);
@@ -45,7 +45,7 @@ await test("empty roots produce valid empty output and path-identical sources co
  const root=await fixture();try{
   const project=path.join(root,"project"),home=path.join(root,"home");await fs.mkdir(project);await fs.mkdir(home);
   const command=commandFor({homeDir:()=>home,packageRoot:project}),observed=context(project),result=await command.handler("refresh",observed.ctx);
-  const canonical=await fs.realpath(project),expected=`ASEN skill registry refreshed: path=${path.join(canonical,SKILL_REGISTRY_RELATIVE_PATH)}; skills=0 (empty when zero); cache=regenerated; diagnostics=3; memory=unavailable.`;
+  const canonical=await fs.realpath(project),expected=`ASEN skill registry refreshed: path=${path.join(canonical,SKILL_REGISTRY_RELATIVE_PATH)}; skills=0 (empty when zero); cache=regenerated; diagnostics=3 (missing-source=3); registryMirror=unavailable.`;
   assert.equal(result,expected);const registry=await fs.readFile(path.join(canonical,SKILL_REGISTRY_RELATIVE_PATH),"utf8");
   assert.match(registry,/## Skills \(0\)\n\n_None\._/);assert.equal((registry.match(/`project-skills`/g)??[]).length,1);assert.doesNotMatch(registry,/`package-skills`/);
  }finally{await fs.rm(root,{recursive:true,force:true});}
@@ -78,7 +78,7 @@ await test("mirror saved, failed, and unavailable states are reported on misses 
   ] as const){
    const project=path.join(root,name),home=path.join(project,"home"),pkg=path.join(project,"package");await fs.mkdir(project);await fs.mkdir(home);await fs.mkdir(pkg);await addSkill(path.join(project,"skills"),"one","one","One");
    const command=commandFor({homeDir:()=>home,packageRoot:pkg,...(mirror?{mirror}:{})}),observed=context(project);
-   for(const cache of ["regenerated","hit"]){const result=await command.handler("refresh",observed.ctx);assert.match(String(result),new RegExp(`cache=${cache}; diagnostics=3; memory=${status}\\.$`));}
+   for(const cache of ["regenerated","hit"]){const result=await command.handler("refresh",observed.ctx);assert.ok(String(result).includes(`cache=${cache}; diagnostics=3 (missing-source=3); registryMirror=${status}.`));}
   }
  }finally{await fs.rm(root,{recursive:true,force:true});}
 });
