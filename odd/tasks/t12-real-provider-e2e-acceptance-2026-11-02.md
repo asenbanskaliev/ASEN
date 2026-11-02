@@ -21,7 +21,7 @@ Demonstrate real Pi + authenticated Ollama Cloud operation through a reproducibl
 | F1-A | Pin provider plugin and inspect live model catalog | Exact plugin/version, chosen provider/model identifiers in safe artifact; no secret material | PARTIAL (dynamic model selection; identity reporting needs review) |
 | F1-B | Authenticated, single-call provider probe | Real `ASEN_PROVIDER_OK`, bounded wall clock/inference, authenticated secret injected only by Actions | DONE for prior candidate, must be rerun at final SHA |
 | F1-C | Negative authentication, provider unavailable, unknown model and quota classification | Controlled error and zero authority escalation, no secret leaks | TODO |
-| F2-A | Disposable fixture repository with known coding defects | Fixed expected defects and immutable checksums; read-only agent response grounds file/line evidence | TODO |
+| F2-A | Disposable fixture repository with known coding defects | Fixed expected defects and immutable checksums; read-only agent response grounds file/line evidence | PARTIAL (fixture + deterministic grader implemented, CI pending) |
 | F2-B | Actual explorer over fixture via Pi + configured model | Correct defect identification verified programmatically; zero writes to fixture | TODO |
 | F3-A | Persist structured bounded plan from explorer output | Real model inference drives plan; exact paths/dependencies/tests match fixture; invented files rejected | TODO |
 | F3-B | Verify routing across explorer/plan and no implicit fallback | Captured selected model and deterministic validation; explicit missing-model rejection | PARTIAL |
@@ -56,3 +56,4 @@ Demonstrate real Pi + authenticated Ollama Cloud operation through a reproducibl
 ## Running log
 
 - 2026-11-02 initial baseline: `3911e095`, acceptance run `41501668895` PASS; general CI `41501681198` in progress. Plan created; future publications require recheck and fresh evidence.
+\n- 2026-11-02 execution A: implemented `scripts/t12-real-agent-fixture.mjs` with three deliberate defects (`pricing`, `authorization`, `parsing`), SHA-256 fixture integrity checks and deterministic grading, plus `tests/t12-real-agent-fixture.test.ts` verifying three correct findings, partial failure and mutation rejection. Final code SHA before this ODD log: `e6325301efa57a7b2e00e7655c21655dc729b80a`; CI run `41503117819` and acceptance `41503112996` were queued/pending. This is fixture/tooling only: no genuine explorer call or plan-model inference yet, no F2/F3 FULL claim.\n
