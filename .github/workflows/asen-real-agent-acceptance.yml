@@ -89,7 +89,10 @@ jobs:
           retention-days: 14
 
   real-provider-acceptance:
-    if: github.repository == 'asenbanskaliev/ASEN' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.event.head_commit.message == 'ci: one-time Ollama Cloud provider smoke'))
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.event.head_commit.message == 'ci: one-time Ollama Cloud provider smoke'))
     name: Real Ollama Cloud / Beam functional acceptance
     runs-on: ubuntu-24.04
     timeout-minutes: 35
