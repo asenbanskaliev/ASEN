@@ -59,8 +59,8 @@ function childSelection(owner:ChildSelectionOwner,data:unknown):PiChildSelection
  if(thinking!==undefined&&(typeof thinking!=="string"||!["off","minimal","low","medium","high"].includes(thinking)))return;
  return Object.freeze({...owner,source:"child-reported",model,...(thinking!==undefined?{thinking:thinking as AgentRequest["thinking"]}:{})});
 }
-export type PiProviderCredential="OPENROUTER_API_KEY"|"LLM7_API_KEY"|"GROQ_API_KEY"|"NVIDIA_API_KEY";
-const providerCredentialNames=new Set<PiProviderCredential>(["OPENROUTER_API_KEY","LLM7_API_KEY","GROQ_API_KEY","NVIDIA_API_KEY"]);
+export type PiProviderCredential="OPENROUTER_API_KEY"|"LLM7_API_KEY"|"GROQ_API_KEY"|"NVIDIA_API_KEY"|"OLLAMA_API_KEY";
+const providerCredentialNames=new Set<PiProviderCredential>(["OPENROUTER_API_KEY","LLM7_API_KEY","GROQ_API_KEY","NVIDIA_API_KEY","OLLAMA_API_KEY"]);
 export function configuredPiProviderCredential(environment:NodeJS.ProcessEnv):PiProviderCredential|undefined{
  const selected=environment.ASEN_AGENT_PROVIDER_CREDENTIAL;
  if(selected===undefined||selected==="")return undefined;
