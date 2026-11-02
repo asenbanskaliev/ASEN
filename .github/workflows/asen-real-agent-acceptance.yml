@@ -1,6 +1,6 @@
 name: ASEN real-agent functional acceptance
 
-# Manual, exact-branch acceptance only. Never triggered automatically on PRs.
+# Push runs perform offline validation. One explicitly named push authorizes a single bounded provider smoke; Writer remains blocked.
 on:
   push:
     branches:
@@ -89,7 +89,7 @@ jobs:
           retention-days: 14
 
   real-provider-acceptance:
-    if: github.repository == 'asenbanskaliev/ASEN' && github.event_name == 'workflow_dispatch'
+    if: github.repository == 'asenbanskaliev/ASEN' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.event.head_commit.message == 'ci: one-time Ollama Cloud provider smoke'))
     name: Real Ollama Cloud / Beam functional acceptance
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -99,7 +99,7 @@ jobs:
     env:
       ASEN_PROVIDER: ollama-cloud
       ASEN_MODEL: beam:cloud
-      ASEN_MAX_INFERENCE_CALLS: ${{ inputs.max-inference-calls }}
+      ASEN_MAX_INFERENCE_CALLS: ${{ inputs.max-inference-calls || '1' }}
       ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
@@ -128,9 +128,9 @@ jobs:
           mkdir -p "$HOME/.asen"
           export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
           mkdir -p asen-acceptance-evidence
-          printf '%s\n' '{"id":"asen-provider-smoke","type":"prompt","message":"Reply with exactly: ASEN_PROVIDER_OK"}' > asen-acceptance-evidence/provider-smoke.prompt
+          printf '%s\n' 'Reply with exactly ASEN_PROVIDER_OK' > asen-acceptance-evidence/provider-smoke.prompt
           export PI_PROVIDER=ollama-cloud
-          timeout 90s node_modules/.bin/pi --provider ollama-cloud --model "${ASEN_MODEL}" --no-session --no-tools --no-approve < asen-acceptance-evidence/provider-smoke.prompt > asen-acceptance-evidence/provider-smoke.jsonl
+          timeout 90s node_modules/.bin/pi --provider ollama-cloud --model "${ASEN_MODEL}" --no-session --print "Reply with exactly ASEN_PROVIDER_OK" > asen-acceptance-evidence/provider-smoke.jsonl
           grep -q "ASEN_PROVIDER_OK" asen-acceptance-evidence/provider-smoke.jsonl
           echo "provider smoke passed within the declared inference budget"
       - name: Real-provider acceptance deferred steps
