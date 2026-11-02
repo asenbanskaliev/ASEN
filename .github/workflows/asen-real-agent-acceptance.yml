@@ -1,6 +1,6 @@
 name: ASEN real-agent functional acceptance
 
-# Read-only Ollama Cloud smoke and disposable code-fixture reasoning are bounded to one opt-in commit; Writer remains blocked.
+# Read-only connectivity, fixture exploration and plan grading run only on explicit opt-in; Writer remains blocked.
 on:
   push:
     branches:
