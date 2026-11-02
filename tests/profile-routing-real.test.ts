@@ -50,17 +50,28 @@ test("real profile files reach planner and agent requests", async t=>{
  assert.ok(finished,"Agent must reach a durable terminal state before fixture cleanup");
 });
 
-test("missing profiles fail closed on agent dispatch", async t=>{
+test("missing profiles preserve Pi's active default model without an explicit route override", async t=>{
  const home=await mkdtemp(path.join(tmpdir(),"asen-real-profile-missing-"));
  const project=await realpath(await mkdtemp(path.join(tmpdir(),"asen-real-profile-missingproj-")));
  const commands=new Map<string,any>(); const tools=new Map<string,any>(); const events=new Map<string,Function[]>();
+ const dispatched: any[]=[]; const waiting=new Map<string,(request:any)=>void>();
  const pi={registerCommand:(n:string,c:any)=>commands.set(n,c),registerTool:(tool:any)=>tools.set(tool.name,tool),on:(n:string,h:Function)=>events.set(n,[...(events.get(n)??[]),h]),getCommands:()=>[],getAllTools:()=>[]};
  await mkdir(path.join(home,".asen"),{recursive:true});
- createAsenExtension({homeDir:()=>home,profilesFile:path.join(home,".asen","profiles.json"),enableAgentRuntime:true,enableTodoRuntime:false,enableMemoryRuntime:false,autoAdvancePlans:false,agentStoreFile:path.join(home,".asen","agents.json"),agentRunner:{run:async (_request:any)=>{throw new Error("Rejected missing-profile routing must never run");}}})(pi as any);
+ createAsenExtension({homeDir:()=>home,profilesFile:path.join(home,".asen","profiles.json"),enableAgentRuntime:true,enableTodoRuntime:false,enableMemoryRuntime:false,autoAdvancePlans:false,agentStoreFile:path.join(home,".asen","agents.json"),agentRunner:{run:async (request:any)=>{dispatched.push(request);waiting.get(request.id)?.(request);return{id:request.id,ok:true,output:"inert"};}}})(pi as any);
  t.after(async()=>{await rm(home,{recursive:true,force:true}); await rm(project,{recursive:true,force:true});});
  const ctx={cwd:project,hasUI:true,sessionManager:{getSessionId:()=> "sess-missing-profile"},ui:{notify:()=>{}}};
  for(const h of events.get("session_start")??[]) await h({},ctx);
- await assert.rejects(()=>tools.get("asen_agent_start").execute("missing-agent",{prompt:"inspect missing"},new AbortController().signal,()=>{},ctx),/No valid model resolved/);
+ const started=await tools.get("asen_agent_start").execute("missing-agent",{prompt:"inspect missing"},new AbortController().signal,()=>{},ctx);
+ const request=dispatched.find((item:any)=>item.id===started.details.id)??await new Promise<any>(resolve=>waiting.set(started.details.id,resolve));
+ assert.equal(request.model,undefined,"Default Pi model must not be replaced by an invented or stale profile route");
+ assert.equal(started.details.routing.source,"default");
+ let finished=false;
+ for(let attempt=0;attempt<100;attempt++){
+  const status=await tools.get("asen_agent_status").execute("missing-status",{id:started.details.id},new AbortController().signal,()=>{},ctx);
+  if(status.details?.task?.record?.state==="completed"){finished=true;break;}
+  await new Promise(resolve=>setTimeout(resolve,25));
+ }
+ assert.ok(finished,"Default-model agent must reach a durable terminal state before fixture cleanup");
  const status=await tools.get("asen_agent_status").execute("missing-status",{},new AbortController().signal,()=>{},ctx);
- assert.deepEqual(status.details,[],"Rejected routing must not enqueue an agent");
+ assert.equal(status.details.length,1,"Agent dispatched with Pi's active model should be visible in session status");
 });

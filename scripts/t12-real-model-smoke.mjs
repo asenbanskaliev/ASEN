@@ -3,6 +3,7 @@ import {mkdtemp,readFile,writeFile,rm,mkdir} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {spawn} from "node:child_process";
+import {reserveInferenceCall} from "./t12-inference-budget.mjs";
 import {prepare,grade} from "./t12-real-agent-fixture.mjs";
 
 const selectedPath=process.env.RUNNER_TEMP && join(process.env.RUNNER_TEMP,"asen-selected-model");
@@ -21,6 +22,7 @@ try{
  for(const name of ["src/pricing.js","src/access.js","src/parse.js"]){
   chunks.push("FILE: "+name+"\n"+await readFile(join(fixture,name),"utf8"));
  }
+ await reserveInferenceCall("fixture-explorer");
  const answer=await new Promise((resolveAnswer,reject)=>{
   const child=spawn(join(process.cwd(),"node_modules",".bin","pi"),["--provider","ollama-cloud","--model",model,"--no-session","--print",chunks.join("\n")],{env:process.env,stdio:["ignore","pipe","pipe"]});
   let stdout="",stderr="";

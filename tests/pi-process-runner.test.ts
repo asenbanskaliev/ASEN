@@ -118,6 +118,21 @@ test("Pi rejects an untrusted provider extension without leaking a policy direct
  assert.equal(result.ok,false);assert.match(result.output,/untrusted Pi provider extension/);
  assert.deepEqual(leaked,[]);
 });
+test("Pi expressly loads the pinned Ollama Cloud extension while arbitrary extensions stay disabled",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
+ const context=issueSkillContext("ollama-extension",d,undefined,{phase:"explore"});
+ const result=await runner(p,{providerExtension:"npm:pi-ollama-cloud@0.13.1",noTools:true}).run({
+  id:"ollama-extension",role:"explorer",prompt:"inspect",repository:d,skillContext:context,skillPaths:selectSkills(context).map(skill=>skill.path),
+ });
+ assert.equal(result.ok,true,result.output);
+ const args=JSON.parse(result.output.trim().split(/\r?\n/u).at(-1)!).args as string[];
+ const extensionIndices=args.flatMap((arg,index)=>arg==="--extension"?[index]:[]);
+ assert.ok(args.includes("--no-extensions"));
+ assert.equal(extensionIndices.length,2);
+ assert.match(args[extensionIndices[0]!+1]!,/[\\/]asen-policy-[^\\/]+[\\/]extensions[\\/]authority\.ts$/u);
+ assert.equal(args[extensionIndices[1]!+1],"npm:pi-ollama-cloud@0.13.1");
+ assert.ok(args.includes("--no-tools"));
+});
 test("Pi policy digest accepts Windows checkout line endings",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
  const {readFile}=await import("node:fs/promises"),path=join(d,"extensions/authority.ts");

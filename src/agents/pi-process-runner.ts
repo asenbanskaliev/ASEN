@@ -61,6 +61,7 @@ function childSelection(owner:ChildSelectionOwner,data:unknown):PiChildSelection
 }
 export type PiProviderCredential="OPENROUTER_API_KEY"|"LLM7_API_KEY"|"GROQ_API_KEY"|"NVIDIA_API_KEY"|"OLLAMA_API_KEY";
 const providerCredentialNames=new Set<PiProviderCredential>(["OPENROUTER_API_KEY","LLM7_API_KEY","GROQ_API_KEY","NVIDIA_API_KEY","OLLAMA_API_KEY"]);
+const trustedProviderExtensions=new Set(["npm:pi-free","npm:pi-free@2.8.4","npm:pi-ollama-cloud@0.13.1"]);
 export function configuredPiProviderCredential(environment:NodeJS.ProcessEnv):PiProviderCredential|undefined{
  const selected=environment.ASEN_AGENT_PROVIDER_CREDENTIAL;
  if(selected===undefined||selected==="")return undefined;
@@ -192,7 +193,7 @@ export class PiProcessRunner implements AgentRunner{
   let receipt:{path:string;fileSha256:string;barrierFile?:string}|undefined;
   try{receipt=exactWriteReceipt(this.options.exactWriteReceipt,request);}catch(error){return Promise.resolve({id:request.id,ok:false,output:error instanceof Error?error.message:String(error)});}
   const providerExtension=this.options.providerExtension;
-  if(providerExtension&&providerExtension!=="npm:pi-free")return Promise.resolve({id:request.id,ok:false,output:"untrusted Pi provider extension"});
+  if(providerExtension!==undefined&&!trustedProviderExtensions.has(providerExtension))return Promise.resolve({id:request.id,ok:false,output:"untrusted Pi provider extension"});
   const policyRoot=this.options.policyRoot??request.repository,candidatePolicy=resolvePath(policyRoot,"extensions/authority.ts");
   let policySource:string;
   let policyFiles:Array<{target:string;source:string}>;

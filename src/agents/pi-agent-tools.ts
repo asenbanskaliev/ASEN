@@ -53,7 +53,6 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const requested:RouteChoice=persistedPlan?{...(persistedPlan.model!==undefined?{model:persistedPlan.model}:{}),...(persistedPlan.thinking!==undefined?{thinking:persistedPlan.thinking}:{})}:{};
   let resolved:RouteChoice,routeSource:"session"|"project"|"global"|"default"|"persisted-plan";
   if(persistedPlan){resolved={...requested};routeSource="persisted-plan";}else{const route=resolveRouting?await resolveRouting(dispatchRole,session):{source:"default" as const};resolved=route.choice??{};routeSource=route.source;}
-  if(typeof resolved.model!=="string"||!resolved.model.trim())throw new Error("No valid model resolved for agent dispatch");
   const routing=runtimeRoutingMetadata(requested,resolved,routeSource);
   throwIfCancelled(signal);
   const active=await runtime(),taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...(typeof todoId==="string"?{onQueued:async(agentId:string,dispatch:()=>void)=>{const validate=async()=>{const current=await identity(context);if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before Todo agent dispatch");};await validate();await (await todoLink!.binder()).launch(todoId,agentId,session,dispatch,validate);}}:{})},signal);

@@ -17,17 +17,17 @@ Demonstrate real Pi + authenticated Ollama Cloud operation through a reproducibl
 | Unit | Task / deliverable | Evidence / pass condition | State |
 |---|---|---|---|
 | F0-A | Reconcile remote HEAD, CI and existing capability ODD | Written exact-SHA baseline and truthful PASS/FAIL/SKIP/BLOCKED | DONE for initial baseline |
-| F0-B | Isolate test homes and artifacts, prevent flaky cleanup | Focused suite verifies terminal state before removal; no unrelated tests fail | PARTIAL (prior focused PASS; full CI needs confirmation) |
-| F1-A | Pin provider plugin and inspect live model catalog | Exact plugin/version, chosen provider/model identifiers in safe artifact; no secret material | PARTIAL (dynamic model selection; identity reporting needs review) |
-| F1-B | Authenticated, single-call provider probe | Real `ASEN_PROVIDER_OK`, bounded wall clock/inference, authenticated secret injected only by Actions | DONE for prior candidate, must be rerun at final SHA |
+| F0-B | Isolate test homes and artifacts, prevent flaky cleanup | Focused suite verifies terminal state before removal; no unrelated tests fail | PARTIAL (focused PASS; full suite running; exact-SHA CI pending) |
+| F1-A | Pin provider plugin and inspect live model catalog | Exact plugin/version, chosen provider/model identifiers in safe artifact; no secret material | PARTIAL (pinned extension and dynamic catalog selection implemented; current-SHA live receipt pending) |
+| F1-B | Authenticated, single-call provider probe | Real `ASEN_PROVIDER_OK`, bounded wall clock/inference, authenticated secret injected only by Actions | Historical PASS at SHA `305704b7`, run `41508660475`; current code SHA rerun pending |
 | F1-C | Negative authentication, provider unavailable, unknown model and quota classification | Controlled error and zero authority escalation, no secret leaks | TODO |
 | F2-A | Disposable fixture repository with known coding defects | Fixed expected defects and immutable checksums; read-only agent response grounds file/line evidence | PARTIAL (fixture + deterministic grader implemented, CI pending) |
 | F2-B | Actual explorer over fixture via Pi + configured model | Correct defect identification verified programmatically; zero writes to fixture | PASS for direct Pi model reasoning (run 41503626125, SHA 560c73bf), but ASEN explorer dispatcher NOT TESTED |
-| F3-A | Persist structured bounded plan from explorer output | Real model inference drives plan; exact paths/dependencies/tests match fixture; invented files rejected | PARTIAL (validator and tests implemented; persistence/live inference still TODO) |
-| F3-B | Verify routing across explorer/plan and no implicit fallback | Captured selected model and deterministic validation; explicit missing-model rejection | PARTIAL |
+| F3-A | Persist structured bounded plan from explorer output | Real model inference drives plan; exact paths/dependencies/tests match fixture; invented files rejected | PARTIAL (strict schema, grader and invalid-response evidence implemented; current-SHA live inference pending) |
+| F3-B | Verify routing across explorer/plan and no implicit fallback | Captured selected model and deterministic validation; explicit missing-model rejection | PARTIAL (default Pi model routing regression fixed and tested; current-SHA integrated provider receipt pending) |
 | F4-A | Real writer with interactive one-time approval on disposable repo | Exact task/commit/path grant, one consumption, diff restricted, output verified | BLOCKED_INTERACTIVE (do not simulate grant in CI) |
 | F4-B | Writer denial and replay tests | Denied/no grant produces zero writes; stale grant unusable | TODO |
-| F5-A | Review and verification of produced patch | Real review plus independent deterministic behavioral tests; reviewer cannot grant delivery | TODO |
+| F5-A | Review and verification of produced patch | Real review plus independent deterministic behavioral tests; reviewer cannot grant delivery | PARTIAL (read-only Dispatcher stages and strict evidence graders implemented/tested; real provider calls pending) |
 | F5-B | One bounded correction after a demonstrated FAIL | Only authorized correction paths; failure history retained | TODO |
 | F6-A | Restart interrupted read-only session and recover | Durable state verified; no unauthorized replay or duplicate mutations | TODO |
 | F6-B | Provider timeout, quota exhaustion, invalid credentials, concurrent change | Safe failure, deterministic classification, no false PASS, no secret leak | TODO |
