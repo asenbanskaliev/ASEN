@@ -1,11 +1,10 @@
-import {spawn,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";
-import {isAbsolute,join,resolve as resolvePath} from "node:path";
+import {spawn,spawnSync,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";import {isAbsolute,join,resolve as resolvePath} from "node:path";
 import {mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {createHash} from "node:crypto";
 import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
 import {matchesIssuedSkillContext} from "../skills/context.js";
-import {selectSkills} from "../skills/registry.js";
+import {checkPiVersion} from "../runtime/launcher.js";import {selectSkills} from "../skills/registry.js";
 import {authorizePiWriteGrant} from "../lifecycle/skill-lifecycle.js";
 import {consumeRunnerWriteReceiver} from "./dispatcher.js";
 import {spawnContained} from "../evidence/spawn-contained.js";
@@ -32,6 +31,8 @@ export interface PiProcessOptions{
   */
  exactWriteReceipt?:Readonly<{path:string;fileSha256:string;barrierFile?:string}>;
  policyRoot?:string;
+ validateRuntimeVersion?:boolean;
+ minimumRuntimeVersion?:string;
  providerCredential?:PiProviderCredential;
  onProcessStart?:(pid:number)=>void;
  onProcessClose?:(details:{code:number|null;signal:NodeJS.Signals|null;stderr:string})=>void;
@@ -135,6 +136,7 @@ function promptWithSkills(request:AgentRequest):string{
 
 export class PiProcessRunner implements AgentRunner{
  readonly #selectionSubscriptions=new Set<ChildSelectionSubscription>();
+ #runtimeVerified=false;
  constructor(private readonly options:PiProcessOptions={}){}
  /** Optional, nonpersistent selection reports; subscription replacement never revives old launches. */
  subscribeChildSelection(listener:ChildSelectionListener):()=>void{
@@ -160,6 +162,21 @@ export class PiProcessRunner implements AgentRunner{
   }
   if(request.writeSurfaces?.length&&request.skillContext?.phase!=="apply")return Promise.resolve({id:request.id,ok:false,output:"Pi write authority requires issued apply phase"});
   const command=this.options.command??"pi";
+  if (this.options.validateRuntimeVersion && !this.#runtimeVerified) {
+   const minimumRuntimeVersion = this.options.minimumRuntimeVersion ?? "1.2.0";
+   const versionArguments = [...(this.options.rpcArgs ?? ["--mode","rpc"]), "--version"];
+   let versionEnvironment: NodeJS.ProcessEnv;
+   try { versionEnvironment = piRuntimeEnvironment(process.env, this.options.providerCredential); }
+   catch (error) { return Promise.resolve({ id: request.id, ok: false, output: (error instanceof Error ? error.message : "Invalid Pi runtime environment") }); }
+   const versionResult = spawnSync(command, versionArguments, { encoding: "utf8", timeout: 5000, env: versionEnvironment, windowsHide: true, maxBuffer: 64 * 1024 });
+   if (versionResult.error || (versionResult.status !== 0 && versionResult.signal === null))
+    return Promise.resolve({ id: request.id, ok: false, output: "Pi runtime version check failed: " + String(versionResult.error ?? versionResult.stderr ?? "nonzero exit") });
+   const observed = String(versionResult.stdout ?? "") + String(versionResult.stderr ?? "");
+   const validated = checkPiVersion(observed, minimumRuntimeVersion);
+   if (!validated.ok)
+    return Promise.resolve({ id: request.id, ok: false, output: "Pi runtime " + (validated.version ?? "unknown") + " is not compatible; minimum is " + minimumRuntimeVersion });
+   this.#runtimeVerified = true;
+  }
   let childEnvironment:NodeJS.ProcessEnv;try{childEnvironment=piRuntimeEnvironment(process.env,this.options.providerCredential);}catch(error){return Promise.resolve({id:request.id,ok:false,output:error instanceof Error?error.message:"Invalid Pi runtime environment"});}
   let message:string;
   try{message=promptWithSkills(request);}

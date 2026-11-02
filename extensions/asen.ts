@@ -3,8 +3,7 @@ import {access,lstat,mkdir,readFile,realpath,writeFile} from "node:fs/promises";
 import {W_OK,X_OK} from "node:constants";
 import {homedir} from "node:os";
 import {execFileSync} from "node:child_process";
-import path from "node:path";
-import {fileURLToPath} from "node:url";
+import path from "node:path";import {existsSync} from "node:fs";import {fileURLToPath} from "node:url";
 import {refreshSkillRegistry,summarizeSkillRegistryDiagnostics,type SkillRegistryMirror} from "../src/skills/generated-registry.js";
 import type {SkillSource} from "../src/skills/discovery.js";
 import {claimWorkflowSelection,readWorkflowSelection,registerWorkflowSelectionCommand} from "../src/lifecycle/workflow-selection.js";
@@ -207,7 +206,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const sessionDirectory=dependencies.enableWorkspaceRuntime?new SharedSessionDirectory(path.join(home(),".asen","session-directory")):new SessionDirectory();
   const suppliedAgentRuntime=dependencies.agentRuntimeFactory?.();
-  const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})})):undefined;
+  const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,...(existsSync(path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"))?{command:process.execPath,rpcArgs:[path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"),"--mode","rpc"],validateRuntimeVersion:true}:{command:"pi"}),...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})})):undefined;
   const childSelectionSource=composedAgentRunner&&"subscribeChildSelection" in composedAgentRunner&&typeof composedAgentRunner.subscribeChildSelection==="function"?composedAgentRunner as AgentRunner&Pick<PiProcessRunner,"subscribeChildSelection">:undefined;
   const environmentAgentLimit = (()=>{const raw=process.env.ASEN_MAX_AGENTS;if(typeof raw!=="string"||!raw.trim())return undefined;const value=Number(raw);return Number.isSafeInteger(value)&&value>0?value:undefined;})();
  const agentRuntimePromise=suppliedAgentRuntime??(composedAgentRunner?AgentRuntime.open({storeFile:dependencies.agentStoreFile??path.join(home(),".asen","agents.json"),runner:composedAgentRunner,...((dependencies.agentMaxConcurrency??environmentAgentLimit)!==undefined?{maxConcurrency:(dependencies.agentMaxConcurrency??environmentAgentLimit)!}:{})}):undefined);
