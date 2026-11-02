@@ -1,6 +1,6 @@
 name: ASEN real-agent functional acceptance
 
-# Push runs perform offline validation. One explicitly named push authorizes a single bounded provider smoke; Writer remains blocked.
+# Push runs perform offline validation. Only the exact opt-in commit message authorizes one provider smoke; Writer remains blocked.
 on:
   push:
     branches:
