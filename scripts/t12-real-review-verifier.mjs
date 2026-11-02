@@ -29,9 +29,9 @@ const runner=new PiArtifactRunner(new PiProcessRunner({
  providerExtension:"npm:pi-ollama-cloud@0.13.1",providerCredential:"OLLAMA_API_KEY",timeoutMs:120_000,noTools:true,
 }));
 const dispatcher=new Dispatcher(runner,new EvidenceStore(),1);
-async function reject(status,diagnostic){
+async function reject(status,diagnostic,metadata={}){
  await writeFile(join(evidenceDirectory,"real-review-verifier.json"),JSON.stringify({
-  passed:false,status,diagnostic,candidateSha:revision,candidateId:candidate.id,
+  ...metadata,passed:false,status,diagnostic,candidateSha:revision,candidateId:candidate.id,
   provider:"ollama-cloud",model,toolsAllowed:false,writerAuthorized:false,authorization:"NOT_GRANTED",
  },null,2)+"\n",{mode:0o600});
  throw new Error(`T12 review/verifier rejected: ${status}`);
@@ -70,7 +70,7 @@ const proposed={
 `,
 };
 
-async function dispatch(role,prompt){
+async function dispatch(role,prompt,failureMetadata={}){
  const id=`${candidate.id}:${role}`;
  const phase=role==="reviewer"?"adversarial-review":"verify";
  const skillContext=issueSkillContext(id,repository,candidate,{phase,risk:"low",verification:true});
@@ -79,15 +79,15 @@ async function dispatch(role,prompt){
   id,role,repository,prompt,candidate,expectedPhase:phase,skillContext,
   skillPaths:selectSkills(skillContext).map(skill=>skill.path),
  });
- if(!result.ok)await reject(`${role.toUpperCase()}_DISPATCH_FAILED`,result.output.slice(0,200));
- if(result.artifactProof?.candidateRevision!==revision)await reject(`${role.toUpperCase()}_PROVENANCE_INVALID`,"Agent artifact proof did not match the candidate SHA");
+ if(!result.ok)await reject(`${role.toUpperCase()}_DISPATCH_FAILED`,result.output.slice(0,200),failureMetadata);
+ if(result.artifactProof?.candidateRevision!==revision)await reject(`${role.toUpperCase()}_PROVENANCE_INVALID`,"Agent artifact proof did not match the candidate SHA",failureMetadata);
  let artifact;
  try{artifact=JSON.parse(result.output);}
- catch{await reject(`${role.toUpperCase()}_ARTIFACT_INVALID_JSON`,"Agent result was not a provenance-bound artifact");}
+ catch{await reject(`${role.toUpperCase()}_ARTIFACT_INVALID_JSON`,"Agent result was not a provenance-bound artifact",failureMetadata);}
  if(artifact.repository!==repository||artifact.candidateId!==candidate.id||artifact.revision!==revision)
-  await reject(`${role.toUpperCase()}_PROVENANCE_INVALID`,"Agent artifact metadata did not match the exact candidate");
+  await reject(`${role.toUpperCase()}_PROVENANCE_INVALID`,"Agent artifact metadata did not match the exact candidate",failureMetadata);
  try{return JSON.parse(artifact.content);}
- catch{await reject(`${role.toUpperCase()}_OUTPUT_INVALID_JSON`,"Agent output did not satisfy the structured contract");}
+ catch{await reject(`${role.toUpperCase()}_OUTPUT_INVALID_JSON`,"Agent output did not satisfy the structured contract",failureMetadata);}
 }
 
 try{
@@ -132,20 +132,25 @@ assert.throws(() => parseCount("12abc"));
  catch(error){await reject("REVIEWER_FINDING_UNGROUNDED",error instanceof Error?error.message:"review contract rejected");}
 
  const verificationPrompt=[
-  "Independently verify the proposed patch using the deterministic results below. You are read-only; do not write files, execute actions, or grant authorization.",
+  "Evaluate the proposed patch only from the source and deterministic results included below. All required information is already supplied; do not invoke tools, run commands, read files, write files, request access, execute actions, or grant authorization.",
   'Return exactly {"verdict":"fail or pass","evidence":[{"kind":"test","exitCode":1,"criterion":"...","observation":"..."},{"kind":"scope","candidateSha":"...","paths":["..."],"observation":"..."},{"kind":"review","path":"src/access.js","reason":"..."}]}. Do not add or omit keys.',
+  "Output only the JSON object. Do not use any Pi tools or request tool output.",
   "A test failure or missing scoped evidence must be rejected, never converted to success.",
   "Exact candidate SHA:",revision,
   "Deterministic test result:",JSON.stringify(testEvidence),
   "Reviewer result:",JSON.stringify(review),
   "Changed paths (report sorted):",JSON.stringify(Object.keys(proposed).sort()),
  ].join("\n");
- const verification=await dispatch("verifier",verificationPrompt);
+ const verification=await dispatch("verifier",verificationPrompt,{
+  reviewer:reviewGrade,deterministicTests:testEvidence,changedPaths:Object.keys(proposed),
+ });
  let verificationGrade;
  try{verificationGrade=gradeRealVerification(verification,{
   candidateSha:revision,changedPaths:Object.keys(proposed),testEvidence,review:reviewGrade,
  });}
- catch(error){await reject("VERIFIER_EVIDENCE_INCOMPLETE",error instanceof Error?error.message:"verifier contract rejected");}
+ catch(error){await reject("VERIFIER_EVIDENCE_INCOMPLETE",error instanceof Error?error.message:"verifier contract rejected",{
+  reviewer:reviewGrade,verification,deterministicTests:testEvidence,changedPaths:Object.keys(proposed),
+ });}
  await writeFile(join(evidenceDirectory,"real-review-verifier.json"),JSON.stringify({
   passed:true,status:"PASS_NEGATIVE_REJECTION",candidateSha:revision,candidateId:candidate.id,
   provider:"ollama-cloud",model,reviewer:reviewGrade,
