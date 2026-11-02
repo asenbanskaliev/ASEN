@@ -79,7 +79,7 @@ jobs:
             tests/writer-authorization-snapshot.test.ts
       - name: F2/F3 deterministic fixture and planning contracts
         shell: bash
-        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-inference-budget.test.ts tests/t12-review-grader.test.ts
+        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-inference-budget.test.ts tests/t12-review-grader.test.ts tests/t12-real-provider-workflow.test.ts
       - name: Ollama scoped child credential regression
         run: node --import tsx --test tests/t12-ollama-child-credential.test.ts
       - name: Validate repository diff hygiene
@@ -178,6 +178,7 @@ jobs:
           ASEN_EXPECTED_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+          export PATH="$PWD/node_modules/.bin:$PATH"
           export HOME="$RUNNER_TEMP/asen-pi-home"
           export USERPROFILE="$HOME"
           export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
@@ -190,6 +191,7 @@ jobs:
           ASEN_EXPECTED_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+          export PATH="$PWD/node_modules/.bin:$PATH"
           export HOME="$RUNNER_TEMP/asen-pi-home"
           export USERPROFILE="$HOME"
           export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
@@ -203,6 +205,7 @@ jobs:
           ASEN_EXPECTED_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+          export PATH="$PWD/node_modules/.bin:$PATH"
           export HOME="$RUNNER_TEMP/asen-pi-home"
           export USERPROFILE="$HOME"
           export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
