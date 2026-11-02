@@ -77,6 +77,9 @@ jobs:
             tests/pi-verifier-exit.test.ts \
             tests/pi-model-reviewer.test.ts \
             tests/writer-authorization-snapshot.test.ts
+      - name: F2/F3 deterministic fixture and planning contracts
+        shell: bash
+        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts
       - name: Validate repository diff hygiene
         run: git diff --check
       - name: Preserve provider-free validation evidence
