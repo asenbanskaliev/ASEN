@@ -181,3 +181,18 @@ test("production composition registers one selective primary guard without repla
  const childEvents=new Map<string,Function>();authority({on:(name:string,handler:Function)=>childEvents.set(name,handler),registerCommand(){}} as any);
  assert.deepEqual(childEvents.get("tool_call")!({toolName:"bash",toolCallId:"child-shell",input:{command:"echo denied"}}),{block:true,reason:"ASEN tool authority denied"});
 });
+
+test("optional history shortcut is opt-in, delegates selection, and stays disabled by default", async t => {
+ const root = await mkdtemp(path.join(tmpdir(), "asen-optin-shortcut-")); t.after(() => rm(root, { recursive: true, force: true }));
+ const commands = new Map<string, { handler: (...args: any[]) => unknown }>();
+ let shortcut: any;
+ const pi = { on() {}, registerCommand(name: string, command: any) { commands.set(name, command); }, registerTool() {}, registerShortcut(key: string, options: any) { shortcut = { key, ...options }; }, getCommands() { return []; }, getAllTools() { return []; } };
+ createAsenExtension({ homeDir: () => root, enableAgentRuntime: false, enableTodoRuntime: false, enableWorkspaceRuntime: false, enableMemoryRuntime: false, historyShortcutKey: "ctrl+h" })(pi as any);
+ assert.ok(shortcut, "explicit opt-in registers Pi's native shortcut");
+ assert.equal(shortcut.key, "ctrl+h");
+ assert.match(shortcut.description, /history/iu);
+ const result = shortcut.handler({ cwd: root, hasUI: true, sessionManager: { getSessionId: () => "optin-session" }, ui: { notify() {} } });
+ await result;
+ const noop = { on() {}, registerCommand() {}, registerTool() {}, registerShortcut() { throw new Error("disabled-by-default regression"); }, getCommands() { return []; }, getAllTools() { return []; } };
+ createAsenExtension({ homeDir: () => root, enableAgentRuntime: false, enableTodoRuntime: false, enableWorkspaceRuntime: false, enableMemoryRuntime: false })(noop as any);
+});

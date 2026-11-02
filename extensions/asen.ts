@@ -71,13 +71,13 @@ import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtim
 import {hostContentColumns,layoutMode,sanitizeTerminalText,truncateForTerminal} from "../src/runtime/responsive-layout.js";
 
 type CommandContext={cwd:string;hasUI?:boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void}};
-type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void};
+type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
 const ASEN_SESSION_TOOL_NAMES=Object.freeze(["asen_session_consult"] as const);
 const activationRegistryRoot=globalThis as typeof globalThis&{[activationRegistryKey]?:WeakSet<object>};
 const activatedPiHosts=activationRegistryRoot[activationRegistryKey]??(activationRegistryRoot[activationRegistryKey]=new WeakSet<object>());
-export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>;enableMemoryRuntime?:boolean;memoryStoreFile?:string;memoryStoreFactory?:()=>Promise<PiMemoryStore>;backgroundExecutor?:BackgroundJobExecutor;backgroundJobJournalFile?:string}
+export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>;enableMemoryRuntime?:boolean;memoryStoreFile?:string;memoryStoreFactory?:()=>Promise<PiMemoryStore>;backgroundExecutor?:BackgroundJobExecutor;backgroundJobJournalFile?:string;historyShortcutKey?:string}
 export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;startSession(context:CommandContext):Promise<void>;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
 
 const usage="Usage: /asen-skill-registry refresh";
@@ -444,7 +444,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     }catch(error){const message=`Research probe failed: ${error instanceof Error?error.message:String(error)}`; ctx?.ui?.notify?.(message,"error"); return [message];}
   }});
   pi.registerCommand?.("asen-palette",{description:"Open a grouped read-only ASEN command palette",handler:async(_args:any,ctx:any)=>{
-    const descriptions={asen:"Show harness status", "asen-workflow":"Route ODD/SDD workflow", "asen-route":"Plan route with ODD facts", "asen-plan":"Plan tasks from ODD facts", "asen-review":"Review a scoped request or workspace", "asen-skill-registry":"Refresh skill registry", "asen-profiles":"Show/apply model profiles", "asen-persona":"Select communication persona style", "asen-customize":"Show customization surface", "asen-telemetry":"Show telemetry posture", "asen-banner":"Show startup banner status", "asen-changes":"Attributed Git changes / resolve", "asen-agents":"Show active agents", "asen-todos":"Task progress", "asen-history":"Prompt history", "asen-usage":"Usage and consent", "asen-stats":"Local usage aggregate", "asen-memory":"Semantic memory operations", "asen-status":"Bounded status", "asen-doctor":"Diagnostics", "asen-authority-status":"Authority state", "asen-research-probe":"Opt-in web probe"} as Record<string,string>;
+    const descriptions={asen:"Show harness status", "asen-workflow":"Route ODD/SDD workflow", "asen-route":"Plan route with ODD facts", "asen-plan":"Plan tasks from ODD facts", "asen-review":"Review a scoped request or workspace", "asen-skill-registry":"Refresh skill registry", "asen-profiles":"Show/apply model profiles", "asen-persona":"Select professional, neutral, or simple persona", "asen-customize":"Show customization surface", "asen-telemetry":"Show telemetry posture", "asen-banner":"Show startup banner status", "asen-changes":"Attributed Git changes / resolve", "asen-agents":"Show active agents", "asen-todos":"Task progress", "asen-history":"Prompt history", "asen-usage":"Usage and consent", "asen-stats":"Local usage aggregate", "asen-memory":"Semantic memory operations", "asen-status":"Bounded status", "asen-doctor":"Diagnostics", "asen-authority-status":"Authority state", "asen-research-probe":"Opt-in web probe"} as Record<string,string>;
     const humanGroup=(group:string)=>({"core":"Start","workflow":"Work","review":"Review","skills":"Skills","configuration":"Settings","session":"Session","memory":"Memory","diagnostics":"Health"} as Record<string,string>)[group] ?? group;;
     const  lines=[...ASEN_COMMAND_CATALOG].sort((a,b)=>a.group===b.group?a.name.localeCompare(b.name):a.group.localeCompare(b.group)).map(c=>`${humanGroup(c.group)}: ${c.name} - ${descriptions[c.name]||"operator command"}`);
     const labels=Array.from(new Set(ASEN_COMMAND_CATALOG.map(c=>humanGroup(c.group)))).sort().map(group=>`▌ ${group.toUpperCase()} ▌`).concat(["-------"]).concat(lines);
@@ -629,6 +629,43 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }
    catch(error){if(selecting){ctx.ui.notify("ASEN history selection failed.","error");return;}ctx.ui.notify(`ASEN history failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
+  if (typeof pi.registerShortcut === "function") {
+   const requestedShortcut = dependencies.historyShortcutKey ?? process.env.ASEN_HISTORY_SHORTCUT;
+   if (typeof requestedShortcut === "string" && requestedShortcut.trim()) {
+    try {
+     pi.registerShortcut(requestedShortcut as any, {
+      description: "Open ASEN history selection",
+      handler: async (context: any) => {
+        if (!context || typeof context !== "object") return;
+        const sessionId = context.sessionManager?.getSessionId?.();
+        if (typeof sessionId !== "string" || !sessionId) {
+         context?.ui?.notify?.("ASEN history is unavailable without a current session.","error");
+         return;
+        }
+        if (!context.ui?.select) { context?.ui?.notify?.("ASEN history selection is unavailable.","info"); return; }
+        try {
+         const result = await runHistoryCommand("select", {
+          storePath: historyFile,
+          projectId: await canonical(context.cwd),
+          sessionId,
+          hasUI: context.hasUI === true,
+          ...(context.signal ? { signal: context.signal } : {}),
+          select: context.ui.select.bind(context.ui),
+          ...(context.ui.confirm ? { confirm: context.ui.confirm.bind(context.ui) } : {})
+         }) as any;
+         let message: string;
+         switch (result.state) { case "selected": message = "History entry selected."; break; case "cancelled": message = "History selection cancelled."; break; case "empty": message = "No matching history entries."; break; default: message = "ASEN history selection is unavailable."; }
+         context.ui.notify(message, "info");
+        } catch {
+         context?.ui?.notify?.("ASEN history selection failed.", "error");
+        }
+      }
+     });
+    } catch {
+     // Optional host keybinding support never changes routing, permissions, or authority.
+    }
+   }
+  }
   pi.registerCommand?.("asen-usage",{description:"Show, delete and review local ASEN usage and telemetry consent",handler:async(args:string,ctx:CommandContext)=>{
    try{const result=await runUsageCommand(args,{storePath:usageFile,hasUI:ctx.hasUI===true,...(ctx.ui.confirm?{confirm:ctx.ui.confirm.bind(ctx.ui)}:{})});ctx.ui.notify(result,"info");return result;}
    catch(error){ctx.ui.notify(`ASEN usage failed: ${safeErrorMessage(error)}`,"error");throw error;}
