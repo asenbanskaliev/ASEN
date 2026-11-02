@@ -39,6 +39,15 @@ test("real profile files reach planner and agent requests", async t=>{
  const id=started.details.id;
  const request = captured.find((r:any)=>r.id===id) ?? await new Promise<any>(resolve=>waiting.set(id,resolve));
  assert.equal(request.model,"project/model"); assert.equal(request.thinking,"high");
+ // The runner is asynchronous: wait for its durable terminal state before deleting
+ // its temporary home and agent store.
+ let finished=false;
+ for(let attempt=0;attempt<100;attempt++){
+  const status=await tools.get("asen_agent_status").execute("real-agent-status",{id},new AbortController().signal,()=>{},ctx);
+  if(status.details?.task?.record?.state==="completed"){finished=true;break;}
+  await new Promise(resolve=>setTimeout(resolve,25));
+ }
+ assert.ok(finished,"Agent must reach a durable terminal state before fixture cleanup");
 });
 
 test("missing profiles fail closed on agent dispatch", async t=>{
