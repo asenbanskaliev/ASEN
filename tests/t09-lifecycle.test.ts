@@ -24,6 +24,15 @@ const GOOD_CLI=(version:string)=>`process.stdout.write(${JSON.stringify(version+
 // Passes the pre-activation probe, then fails once `current` selects this version.
 const BAD_AFTER_SELECT=(version:string)=>`const fs=require("fs"),path=require("path");let cur="";try{cur=fs.readFileSync(path.join(__dirname,"..","..","current"),"utf8").trim();}catch{}
 if(cur===${JSON.stringify(version)}){process.exit(1);}process.stdout.write(${JSON.stringify(version+"\n")});`;
+function switchActiveDuringProbe(marker:string,replacement="2.0.0\n"):string{
+ return [
+  "const fs=require('node:fs'),path=require('node:path');",
+  "const selector=path.join(__dirname,'..','..','current');",
+  `if(fs.existsSync(${JSON.stringify(marker)})&&fs.readFileSync(selector,'utf8').trim()==='1.0.0')fs.writeFileSync(selector,${JSON.stringify(replacement)});`,
+  `process.stdout.write(${JSON.stringify("1.0.0\n")});`,
+ ].join("");
+}
+
 async function pkg(root:string,name:string,version:string,cli=GOOD_CLI(version),extra:Record<string,string>={}){
  const dir=path.join(root,name);await fs.mkdir(dir,{recursive:true});
  await fs.writeFile(path.join(dir,"package.json"),JSON.stringify({name:"asen",version,engines:{node:">=0.0.0"},bin:{asen:"./cli.cjs"}}));
@@ -211,6 +220,93 @@ test("manual rollback to unhealthy recorded predecessor retains its recovery jou
  assert.equal((await rollbackManaged({prefix,expectedCurrentVersion:"1.0.0",confirmed:true})).status,"unchanged");
  await assert.rejects(()=>fs.stat(journal),{code:"ENOENT"});
 });
+test("T09 manual rollback must recheck active version after successful CLI probe",async()=>{
+ const root=await tmp("manual-probe-readback"),{prefix,dataHome}=env(root),marker=path.join(root,"switch-on-probe");
+ const v1=await release(root,await pkg(root,"v1","1.0.0",switchActiveDuringProbe(marker)));
+ const base={prefix,trustedKeyPath:v1.anchor,protectedPaths:[dataHome],confirmed:true as const};
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ assert.equal((await upgradeManaged({...base,source:v2.source})).status,"upgraded");
+ const journal=path.join(prefix,"managed-update-journal.json");
+ await fs.writeFile(journal,JSON.stringify({schema:"asen.managed-update-journal/v1",from:"1.0.0",to:"2.0.0",startedAt:new Date().toISOString()})+String.fromCharCode(10),{flag:"wx"});
+ await fs.writeFile(marker,"switch");
+ const result=await rollbackManaged({prefix,expectedCurrentVersion:"2.0.0",confirmed:true});
+ assert.equal(result.status,"ambiguous");
+ assert.equal(result.activeVersion,"2.0.0");
+ assert.match(result.reason??"",/Active selector changed during CLI probe/);
+ assert.equal((await inspectManagedInstall({prefix})).activeVersion,"2.0.0");
+ await fs.stat(journal);
+ await assert.rejects(()=>upgradeManaged({...base,source:v2.source}),{code:"RECOVERY_REQUIRED"});
+});
+
+test("T09 automatic rollback must recheck selection after restored CLI probe",async()=>{
+ const root=await tmp("auto-probe-readback"),{prefix,dataHome}=env(root),marker=path.join(root,"switch-on-probe");
+ const v1=await release(root,await pkg(root,"v1","1.0.0",switchActiveDuringProbe(marker)));
+ const base={prefix,trustedKeyPath:v1.anchor,protectedPaths:[dataHome],confirmed:true as const};
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0",BAD_AFTER_SELECT("2.0.0")),v1.keys);
+ const result=await upgradeManaged({...base,source:v2.source,hooks:{afterActivation:async()=>{await fs.writeFile(marker,"switch");}}});
+ assert.equal(result.status,"ambiguous");
+ assert.equal(result.activeVersion,"2.0.0");
+ assert.match(result.reason??"",/Active selector changed during CLI probe/);
+ assert.equal((await inspectManagedInstall({prefix})).activeVersion,"2.0.0");
+ await fs.stat(path.join(prefix,"managed-update-journal.json"));
+ await assert.rejects(()=>upgradeManaged({...base,source:v2.source}),{code:"RECOVERY_REQUIRED"});
+});
+
+test("T09 already-selected recovery must not clear journal if CLI moves selector",async()=>{
+ const root=await tmp("already-selected-probe"),{prefix,dataHome}=env(root),marker=path.join(root,"switch-on-probe");
+ const v1=await release(root,await pkg(root,"v1","1.0.0",switchActiveDuringProbe(marker)));
+ const base={prefix,trustedKeyPath:v1.anchor,protectedPaths:[dataHome],confirmed:true as const};
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ assert.equal((await upgradeManaged({...base,source:v2.source})).status,"upgraded");
+ assert.equal((await rollbackManaged({prefix,expectedCurrentVersion:"2.0.0",toVersion:"1.0.0",confirmed:true})).status,"rolled-back");
+ const journal=path.join(prefix,"managed-update-journal.json");
+ await fs.writeFile(journal,JSON.stringify({schema:"asen.managed-update-journal/v1",from:"1.0.0",to:"2.0.0",startedAt:new Date().toISOString()})+String.fromCharCode(10),{flag:"wx"});
+ await fs.writeFile(marker,"switch");
+ const result=await rollbackManaged({prefix,expectedCurrentVersion:"1.0.0",confirmed:true});
+ assert.equal(result.status,"ambiguous");
+ assert.equal(result.activeVersion,"2.0.0");
+ assert.match(result.reason??"",/Active selector changed during CLI probe/);
+ await fs.stat(journal);
+ assert.equal((await inspectManagedInstall({prefix})).activeVersion,"2.0.0");
+});
+
+test("T09 manual rollback without a journal rejects post-probe selector drift",async()=>{
+ const root=await tmp("manual-probe-no-journal"),{prefix,dataHome}=env(root),marker=path.join(root,"switch-on-probe");
+ const v1=await release(root,await pkg(root,"v1","1.0.0",switchActiveDuringProbe(marker)));
+ const base={prefix,trustedKeyPath:v1.anchor,protectedPaths:[dataHome],confirmed:true as const};
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ assert.equal((await upgradeManaged({...base,source:v2.source})).status,"upgraded");
+ await fs.writeFile(marker,"switch");
+ const report=await rollbackManaged({prefix,expectedCurrentVersion:"2.0.0",toVersion:"1.0.0",confirmed:true});
+ assert.equal(report.status,"ambiguous");
+ assert.equal(report.activeVersion,"2.0.0");
+ assert.match(report.reason??"",/Active selector changed during CLI probe/);
+ assert.equal((await inspectManagedInstall({prefix})).activeVersion,"2.0.0");
+ await assert.rejects(()=>fs.stat(path.join(prefix,"managed-update-journal.json")),{code:"ENOENT"});
+});
+
+test("T09 manual recovery retains journal when probe corrupts the selector",async()=>{
+ const root=await tmp("manual-probe-corrupt"),{prefix,dataHome}=env(root),marker=path.join(root,"switch-on-probe");
+ const v1=await release(root,await pkg(root,"v1","1.0.0",switchActiveDuringProbe(marker,"unrecognized-version\n")));
+ const base={prefix,trustedKeyPath:v1.anchor,protectedPaths:[dataHome],confirmed:true as const};
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ assert.equal((await upgradeManaged({...base,source:v2.source})).status,"upgraded");
+ const journal=path.join(prefix,"managed-update-journal.json");
+ await fs.writeFile(journal,JSON.stringify({schema:"asen.managed-update-journal/v1",from:"1.0.0",to:"2.0.0",startedAt:new Date().toISOString()})+String.fromCharCode(10),{flag:"wx"});
+ await fs.writeFile(marker,"switch");
+ const result=await rollbackManaged({prefix,expectedCurrentVersion:"2.0.0",confirmed:true});
+ assert.equal(result.status,"ambiguous");
+ assert.equal(result.activeVersion,null);
+ assert.match(result.reason??"",/Active selector changed during CLI probe/);
+ await fs.stat(journal);
+ assert.equal(await fs.readFile(path.join(prefix,"install","current"),"utf8"),"unrecognized-version\n");
+});
+
 test("T09 stale recovery journal refuses to overwrite a newer active version",async()=>{
  const {root,prefix,dataHome,v1,base}=await setupInstall("stale-journal-current");
  await installManaged({...base,source:v1.source,dataHome});

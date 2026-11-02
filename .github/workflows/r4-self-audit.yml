@@ -36,7 +36,7 @@ jobs:
       - name: R4 self-test and focused adversarial integration
         run: |
           node --test tests/r4-self-audit.test.mjs
-          node --import tsx --test --test-name-pattern='T09 (same-user second process cannot redirect quarantine removal|stale recovery journal refuses to overwrite a newer active version|malformed update journals block recovery without changing the current version|uninstall does not erase a malformed recovery journal or the installation)' tests/t09-lifecycle.test.ts
+          node --import tsx --test --test-name-pattern='T09 (manual rollback must recheck active version after successful CLI probe|manual rollback without a journal rejects post-probe selector drift|manual recovery retains journal when probe corrupts the selector|automatic rollback must recheck selection after restored CLI probe|already-selected recovery must not clear journal if CLI moves selector|same-user second process cannot redirect quarantine removal|stale recovery journal refuses to overwrite a newer active version|malformed update journals block recovery without changing the current version|uninstall does not erase a malformed recovery journal or the installation)' tests/t09-lifecycle.test.ts
           node --import tsx --test tests/extension-runtime-commands.test.ts tests/background-job-delivery.integration.test.ts tests/background-job-journal.test.ts tests/background-jobs.test.ts tests/authorized-job-retry.test.ts tests/notification-projection.test.ts tests/session-notifications.test.ts tests/odd-state-consistency.test.ts tests/workspace-resolution.test.ts tests/t09-u4-interrupted-upgrade.test.ts
       - name: Generate exact-SHA self-audit report
         env:

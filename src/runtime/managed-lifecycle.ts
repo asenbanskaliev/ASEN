@@ -120,6 +120,20 @@ async function probe(prefix:string,version:string):Promise<{ok:boolean;reason:st
  return {ok:observation.cliVersion==="observed",reason:observation.cliVersion==="observed"?null:`${observation.cliVersion}: ${observation.reason??observation.error??"unknown"}`};
 }
 
+/** CLI success is not proof the target remains selected after the probe. */
+async function probeSelectedVersion(prefix:string,version:string):Promise<Readonly<{ok:boolean;reason:string|null;activeVersion:string|null}>>{
+ let health:{ok:boolean;reason:string|null};
+ try{health=await probe(prefix,version);}
+ catch(error){return {ok:false,reason:`CLI probe failed (${text(error)})`,activeVersion:null};}
+ let observed:Awaited<ReturnType<typeof inspectManagedInstall>>;
+ try{observed=await inspectManagedInstall({prefix});}
+ catch(error){return {ok:false,reason:`Active version inspection failed (${text(error)})`,activeVersion:null};}
+ const activeVersion=observed.status==="owned"?observed.activeVersion:null;
+ if(!health.ok)return {ok:false,reason:health.reason,activeVersion};
+ if(observed.status!=="owned"||activeVersion!==version)return {ok:false,reason:"Active selector changed during CLI probe",activeVersion};
+ return {ok:true,reason:null,activeVersion};
+}
+
 // ---------------------------------------------------------------- uninstall
 
 export interface ManagedUninstallReport{
@@ -501,8 +515,8 @@ export async function upgradeManaged(request:ManagedUpgradeRequest):Promise<Mana
   if(!postReason){await clearJournal(prefix);return report({operation:"upgrade",status:"upgraded",version:to,previousVersion:from,activeVersion:to,signerKeyId,reason:null});}
   try{
    await selectManagedVersion({prefix,version:from,expectedCurrentVersion:to,confirmed:true});
-   const restored=await probe(prefix,from);
-   if(!restored.ok)return report({operation:"upgrade",status:"ambiguous",version:to,previousVersion:from,activeVersion:from,signerKeyId,reason:`${postReason}; previous version probe failed after rollback (${restored.reason}); recovery journal retained`});
+   const restored=await probeSelectedVersion(prefix,from);
+   if(!restored.ok)return report({operation:"upgrade",status:"ambiguous",version:to,previousVersion:from,activeVersion:restored.activeVersion,signerKeyId,reason:`${postReason}; previous version verification failed after rollback (${restored.reason}); recovery journal retained`});
    await clearJournal(prefix);
    return report({operation:"upgrade",status:"rolled-back",version:to,previousVersion:from,activeVersion:from,signerKeyId,reason:postReason});
   }catch(error){
@@ -529,14 +543,14 @@ export async function rollbackManaged(request:ManagedRollbackRequest):Promise<Ma
  if(current!==request.expectedCurrentVersion)return fail("INVALID_REQUEST",`Active version is ${current??"none"}, not ${request.expectedCurrentVersion}`);
  if(journal&&current!==journal.from&&current!==journal.to)return fail("RECOVERY_REQUIRED","Interrupted upgrade journal does not match the active version; inspect before retrying");
  if(current===target){
-  const health=await probe(prefix,target);
-  if(!health.ok)return report({operation:"rollback",status:"ambiguous",version:target,previousVersion:current,activeVersion:current,signerKeyId:null,reason:`Recovery target probe failed (${health.reason}); ${journal?"recovery journal retained":"no recovery journal exists"}`});
+  const health=await probeSelectedVersion(prefix,target);
+  if(!health.ok)return report({operation:"rollback",status:"ambiguous",version:target,previousVersion:current,activeVersion:health.activeVersion,signerKeyId:null,reason:`Recovery target verification failed (${health.reason}); ${journal?"recovery journal retained":"no recovery journal exists"}`});
   if(journal)await clearJournal(prefix);
   return report({operation:"rollback",status:"unchanged",version:target,previousVersion:current,activeVersion:current,signerKeyId:null,reason:null});
  }
  if(!inspection.versions.some(item=>item.version===target))return fail("INVALID_REQUEST",`Version ${target} is not retained`);
  await selectManagedVersion({prefix,version:target,expectedCurrentVersion:current,confirmed:true});
- const health=await probe(prefix,target);
+ const health=await probeSelectedVersion(prefix,target);
  if(health.ok&&journal)await clearJournal(prefix);
- return report({operation:"rollback",status:health.ok?"rolled-back":"ambiguous",version:target,previousVersion:current,activeVersion:target,signerKeyId:null,reason:health.ok?null:`${health.reason}; ${journal?"recovery journal retained":"no recovery journal exists"}`});
+ return report({operation:"rollback",status:health.ok?"rolled-back":"ambiguous",version:target,previousVersion:current,activeVersion:health.activeVersion,signerKeyId:null,reason:health.ok?null:`${health.reason}; ${journal?"recovery journal retained":"no recovery journal exists"}`});
 }

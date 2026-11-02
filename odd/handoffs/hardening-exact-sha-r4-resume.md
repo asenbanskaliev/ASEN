@@ -1,5 +1,13 @@
 # ASEN — Handoff de reanudación hardening exact-SHA R4
 
+## Current continuation checkpoint — PR #45, 2026-11-02
+
+The historical "PREPARADO, SOLO DOCUMENTACIÓN" section below records the initial planning phase, not current permissions or progress. The real work branch is `feat/t12-integrated-acceptance-merge`; parent HEAD before this candidate was `111e2f14ec9e8f2e12caa62c2c474b7a818c0011`, PR #45 open and unmerged. At the last exact-SHA inspection on this parent, Release Gate all three OS, F5 actionlint/authority pin, R4 automated SELF_AUDIT_ONLY, T07 CodeGraph, architecture, Pi runtime and Ubuntu/macOS full suites were PASS; Windows general suite was still IN_PROGRESS. No claim is inherited by the new commit.
+
+The next bounded candidate T09-R11 adds post-probe active-selector readback for explicit rollback, recovery of an already selected version and automatic rollback; four signed disposable-package regressions cover valid competing selection and invalid selector replacement. The preexisting T09-R10 protections (journal checked under the uninstall maintenance lock) remain intact. R4 self-audit source/mutation checks and the focused workflow cover the new cases. The prepublication structural evaluation passed, but there was no checkout/Node+tsx execution from this conversation: use exact-SHA CI and Release Gate to admit the new candidate. Continue only after inspecting all individual jobs and artifacts, not just workflow headings.
+
+F5-01/F5-02 remain IN_PROGRESS until the final source SHA meets all 14 scoped criteria. The R4 substitution is explicitly `SELF_AUDIT_ONLY / NOT independent`, not an external signature. Pi Free Smoke/provider-backed gates SKIPPED are not PASS; T09 aggregate and the 16 ECO registry claims stay PARTIAL, no global Reference Shell parity. Continuous hostile same-user path races and host-visible notification ACK are outside the demonstrated scope. No merge to main, release, paid provider or credential changes. Group subsequent source changes into one consolidated CI batch.
+
 ## Estado inicial
 
 **PREPARADO, SOLO DOCUMENTACIÓN.** No ejecutar F0-02 ni implementación hasta confirmación posterior del propietario. Fuente global: `AGENTS.md`, `docs/remote-continuation.md`, `odd/tasks/pi-capability-completion.md`; plan específico: `odd/tasks/hardening-exact-sha-r4.md`.
