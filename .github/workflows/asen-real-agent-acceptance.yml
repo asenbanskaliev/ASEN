@@ -179,6 +179,16 @@ jobs:
           export PI_OLLAMA_WEB_TOOLS=0
           export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
           node scripts/t12-real-model-smoke.mjs
+      - name: Real model planning on graded findings
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-pi-home"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export PI_OLLAMA_WEB_TOOLS=0
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          node scripts/t12-real-model-plan.mjs
       - name: Real-provider acceptance deferred steps
         shell: bash
         run: |
