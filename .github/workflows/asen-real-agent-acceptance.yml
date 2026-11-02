@@ -119,6 +119,23 @@ jobs:
           set -euo pipefail
           node --version
           if test -f node_modules/.bin/pi; then ./node_modules/.bin/pi --version; fi
+      - name: Install pinned Ollama Cloud provider extension
+        shell: bash
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-pi-home"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          test -n "$OLLAMA_API_KEY" || { echo "::error::OLLAMA_API_KEY missing"; exit 1; }
+          node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+          PI_OLLAMA_WEB_TOOLS=0 node_modules/.bin/pi --list-models > "$RUNNER_TEMP/asen-ollama-models.txt"
+          if ! grep -F 'ollama-cloud' "$RUNNER_TEMP/asen-ollama-models.txt" | grep -Fq 'beam:cloud'; then
+            echo "::error::Ollama Cloud provider registered but requested beam:cloud model is unavailable"
+            exit 1
+          fi
       - name: Bounded Ollama Cloud provider smoke
         shell: bash
         run: |
@@ -127,7 +144,8 @@ jobs:
           if ! test -f node_modules/.bin/pi; then echo "::error::No Pi runtime is available in the installed dependencies"; exit 1; fi
           export HOME="$RUNNER_TEMP/asen-pi-home"
           export USERPROFILE="$HOME"
-          export PI_CODING_AGENT_DIR="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export PI_OLLAMA_WEB_TOOLS=0
           mkdir -p "$HOME/.asen"
           export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
           mkdir -p asen-acceptance-evidence
