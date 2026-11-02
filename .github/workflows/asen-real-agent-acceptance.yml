@@ -202,7 +202,7 @@ jobs:
           export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
           export PI_OLLAMA_WEB_TOOLS=0
           export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
-          node scripts/t12-ollama-asen-dispatcher.mjs
+          node --import tsx scripts/t12-ollama-asen-dispatcher.mjs
       - name: Real-provider acceptance deferred steps
         shell: bash
         run: |
