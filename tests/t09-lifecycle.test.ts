@@ -282,6 +282,29 @@ test("T09 another actor selecting the target does not grant this upgrade false o
  await fs.stat(journal);
  await assert.rejects(()=>upgradeManaged({...base,source:v2.source}),{code:"RECOVERY_REQUIRED"});
 });
+test("T09 uninstall does not erase a malformed recovery journal or the installation",async()=>{
+ const {prefix,dataHome,v1,base}=await setupInstall("uninstall-invalid-journal");
+ await installManaged({...base,source:v1.source,dataHome});
+ const journal=path.join(prefix,"managed-update-journal.json");
+ const marker=path.join(dataHome,"keep.txt");
+ await fs.writeFile(marker,"must not change");
+ const bytes=JSON.stringify({schema:"asen.managed-update-journal/v1",from:"1.0.0",to:"1.0.0",startedAt:new Date().toISOString()})+String.fromCharCode(10);
+ await fs.writeFile(journal,bytes,{flag:"wx"});
+ await assert.rejects(()=>uninstallManaged({prefix,confirmed:true}),{code:"RECOVERY_REQUIRED"});
+ assert.equal(await fs.readFile(journal,"utf8"),bytes);
+ assert.equal(await fs.readFile(marker,"utf8"),"must not change");
+ const inspection=await inspectManagedInstall({prefix});
+ assert.equal(inspection.status,"owned");
+ assert.equal(inspection.activeVersion,"1.0.0");
+ await fs.unlink(journal); // Explicit manual cleanup of the invalid test-owned marker.
+ const valid=JSON.stringify({schema:"asen.managed-update-journal/v1",from:"1.0.0",to:"2.0.0",startedAt:new Date().toISOString()})+String.fromCharCode(10);
+ await fs.writeFile(journal,valid,{flag:"wx"});
+ const done=await uninstallManaged({prefix,confirmed:true});
+ assert.equal(done.status,"removed");
+ await assert.rejects(()=>fs.stat(journal),{code:"ENOENT"},"a confirmed uninstall may clear a well-formed journal");
+ assert.equal(await fs.readFile(marker,"utf8"),"must not change");
+});
+
 test("uninstall removes only owned files, keeps data/config, and retains foreign files",async()=>{
  const {prefix,dataHome,v1,base}=await setupInstall("uninstall");
  await installManaged({...base,source:v1.source,dataHome,launcherConfig:{mode:"isolated"}});

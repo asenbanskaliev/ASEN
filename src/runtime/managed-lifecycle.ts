@@ -274,6 +274,8 @@ export async function uninstallManaged(request:Readonly<{prefix:string;confirmed
   const stage=removalStage(managedRoot),preserved:string[]=[];
   const records=await readManagedOwnershipRecords(managedRoot);
   if(!records)return fail("FOREIGN_ROOT","Managed ownership records changed before uninstall; nothing further was removed");
+  // Check the journal under the maintenance lock before removing any owned file.
+  await readJournal(prefix);
   for(const version of records.versions){
    const versionRoot=path.join(managedRoot,"versions",version.version),info=await lstat(versionRoot).catch(()=>undefined);
    if(!info)continue;
