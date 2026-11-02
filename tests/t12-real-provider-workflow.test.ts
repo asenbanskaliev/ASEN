@@ -3,6 +3,7 @@ import test from "node:test";
 import {readFileSync} from "node:fs";
 
 const workflow=readFileSync(new URL("../.github/workflows/asen-real-agent-acceptance.yml",import.meta.url),"utf8");
+const planner=readFileSync(new URL("../scripts/t12-real-model-plan.mjs",import.meta.url),"utf8");
 
 test("T12 Pi child stages resolve the npm-installed runtime from PATH",()=>{
  for(const name of [
@@ -18,4 +19,14 @@ test("T12 Pi child stages resolve the npm-installed runtime from PATH",()=>{
   assert.match(stage,/export PATH="\$PWD\/node_modules\/\.bin:\$PATH"/,
    `${name} must expose the pinned, locally installed Pi executable to spawned ASEN children`);
  }
+});
+
+test("T12 Planner uses the ASEN Dispatcher with pinned no-tools provider isolation",()=>{
+ assert.match(planner,/new Dispatcher\(runner,new EvidenceStore\(\),1\)/);
+ assert.match(planner,/new PiArtifactRunner\(new PiProcessRunner/);
+ assert.match(planner,/expectedPhase:"tasks"/);
+ assert.match(planner,/noTools:true/);
+ assert.match(planner,/providerExtension:"npm:pi-ollama-cloud@0\.13\.1"/);
+ assert.match(planner,/providerCredential:"OLLAMA_API_KEY"/);
+ assert.doesNotMatch(planner,/\bspawn\(/);
 });

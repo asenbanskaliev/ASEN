@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
+import {execFileSync} from "node:child_process";
 import {readFile,writeFile} from "node:fs/promises";
 import {resolve,join} from "node:path";
-import {spawn} from "node:child_process";
+import {Dispatcher} from "../src/agents/dispatcher.js";
+import {PiArtifactRunner,isIssuedAgentArtifactProof} from "../src/agents/pi-artifact-runner.js";
+import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
+import {EvidenceStore} from "../src/evidence/store.js";
+import {issueSkillContext} from "../src/skills/context.js";
+import {selectSkills} from "../src/skills/registry.js";
 import {gradePlan} from "./t12-plan-grader.mjs";
 import {reserveInferenceCall} from "./t12-inference-budget.mjs";
 
@@ -11,13 +17,25 @@ const expected=process.env.GITHUB_SHA;
 const candidateId="t12-disposable-fixture";
 assert.ok(expected&&/^[a-f0-9]{40}$/.test(expected),"Exact Actions SHA required");
 assert.ok(process.env.OLLAMA_API_KEY,"Ollama Cloud key missing");
+const repository=resolve(".");
+assert.equal(execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8"}).trim(),expected,"Candidate SHA mismatch");
 const model=(await readFile(join(process.env.RUNNER_TEMP??"","asen-selected-model"),"utf8")).trim();
 assert.ok(model&&!/[\r\n]/.test(model),"Selected model invalid");
 const findings=JSON.parse(await readFile(join(evidence,"fixture-response.json"),"utf8"));
 const raw=JSON.stringify(findings);
 assert.ok(raw.length<16000,"Excessive findings payload");
+const candidate={id:candidateId,repository,revision:expected,createdAt:new Date().toISOString()};
+const requestId=`${candidateId}:planner`;
+const skillContext=issueSkillContext(requestId,repository,candidate,{phase:"tasks",risk:"low"});
+const skillPaths=selectSkills(skillContext).map(skill=>skill.path);
+const runner=new PiArtifactRunner(new PiProcessRunner({
+ extraArgs:["--no-session","--provider","ollama-cloud","--model",model],
+ providerExtension:"npm:pi-ollama-cloud@0.13.1",providerCredential:"OLLAMA_API_KEY",
+ timeoutMs:90_000,maxOutputBytes:64_000,maxStreamBytes:1_000_000,noTools:true,
+}));
+const dispatcher=new Dispatcher(runner,new EvidenceStore(),1);
 const prompt=[
- "Create an implementation plan only from the findings below. Do not execute actions, grant permissions, invent files, or modify any fixture.",
+ "Create an implementation plan only from the findings below. Do not execute actions, grant permissions, invent files, modify any fixture, or use tools.",
  "Return exactly one valid JSON object, with no Markdown, prose, code fences, or additional keys.",
  "The top-level keys must be candidateId, candidateSha, scope, tasks.",
  `Set candidateId to ${candidateId}, candidateSha to ${expected}, and scope to disposable-fixture exactly.`,
@@ -33,9 +51,9 @@ async function writeFailure(status,diagnostic,details={}){
  await writeFile(join(evidence,"fixture-plan-grade.json"),JSON.stringify({
   passed:false,status,candidateId,candidateSha:expected,provider:"ollama-cloud",model,
   diagnostic,responseSha256:details.response?createHash("sha256").update(details.response).digest("hex"):undefined,
+  artifactSha256:details.artifact?createHash("sha256").update(details.artifact).digest("hex"):undefined,
   responseBytes:details.response===undefined?undefined:Buffer.byteLength(details.response),
-  stderrSha256:details.stderr?createHash("sha256").update(details.stderr).digest("hex"):undefined,
-  exitCode:details.exitCode,timedOut:details.timedOut===true,
+  toolsAllowed:false,writerAuthorized:false,authorization:"NOT_GRANTED",
  },null,2)+"\n",{mode:0o600});
  throw new Error(`T12 plan rejected: ${status}`);
 }
@@ -44,42 +62,43 @@ let reservation;
 try{reservation=await reserveInferenceCall("real-plan");}
 catch(error){await writeFailure("CALL_BUDGET_EXHAUSTED",error instanceof Error?error.message:"inference budget unavailable");}
 
-let execution;
+let result;
 try{
- execution=await new Promise((resolveExecution,reject)=>{
-  const child=spawn(join(process.cwd(),"node_modules",".bin","pi"),["--provider","ollama-cloud","--model",model,"--no-session","--print",prompt],{env:process.env,stdio:["ignore","pipe","pipe"]});
-  let stdout="",stderr="",timedOut=false,tooLarge=false;
-  const timer=setTimeout(()=>{timedOut=true;child.kill("SIGKILL");},90_000);
-  child.stdout.on("data",buffer=>{stdout+=buffer;if(Buffer.byteLength(stdout)>16384){tooLarge=true;child.kill("SIGKILL");}});
-  child.stderr.on("data",buffer=>{stderr=(stderr+String(buffer)).slice(-4096);});
-  child.on("error",error=>{clearTimeout(timer);reject(error);});
-  child.on("close",code=>{clearTimeout(timer);resolveExecution({stdout,stderr,code,timedOut,tooLarge});});
+ result=await dispatcher.dispatch({
+  id:requestId,role:"clarifier",expectedPhase:"tasks",repository,prompt,candidate,
+  skillContext,skillPaths,
  });
-}catch(error){
- await writeFailure("PI_RUNTIME_UNAVAILABLE",error instanceof Error?error.name:"Pi process could not start");
-}
-const answer=execution.stdout;
+}catch(error){await writeFailure("PLAN_DISPATCH_FAILED",error instanceof Error?error.message:"ASEN Dispatcher rejected the plan");}
+if(!result.ok)await writeFailure("PLAN_DISPATCH_FAILED",result.output.slice(0,240),{response:result.output});
+const proof=result.artifactProof;
+if(!isIssuedAgentArtifactProof(proof)||proof.requestId!==requestId||proof.role!=="clarifier"||proof.repository!==repository||
+ proof.candidateId!==candidateId||proof.candidateRevision!==expected)
+ await writeFailure("PLAN_ARTIFACT_PROVENANCE_INVALID","ASEN Dispatcher did not issue proof for this exact planning task",{artifact:result.output});
+let artifact;
+try{artifact=JSON.parse(result.output);}
+catch(error){await writeFailure("PLAN_ARTIFACT_INVALID_JSON",error instanceof Error?error.message:"invalid Dispatcher artifact",{artifact:result.output});}
+if(artifact.repository!==repository||artifact.candidateId!==candidateId||artifact.revision!==expected||artifact.kind!=="task-plan"||typeof artifact.content!=="string")
+ await writeFailure("PLAN_ARTIFACT_PROVENANCE_INVALID","Dispatcher artifact identity or task-plan kind did not match",{artifact:result.output});
+if(Buffer.byteLength(artifact.content)>16000)
+ await writeFailure("MODEL_RESPONSE_TOO_LARGE","Planner artifact content exceeded 16 KiB",{artifact:result.output});
+const answer=artifact.content;
 await writeFile(join(evidence,"fixture-plan-response.json"),answer,{mode:0o600});
-if(execution.timedOut)await writeFailure("PROVIDER_TIMEOUT","Planning inference exceeded 90 seconds",{...execution,response:answer});
-if(execution.tooLarge)await writeFailure("MODEL_RESPONSE_TOO_LARGE","Model response exceeded 16 KiB",{...execution,response:answer});
-if(execution.code!==0){
- const message=execution.stderr.toLowerCase();
- const status=/\b(429|quota|rate.?limit)\b/u.test(message)?"PROVIDER_QUOTA":
-  /\b(401|403|unauthori[sz]ed|forbidden|api.?key)\b/u.test(message)?"PROVIDER_AUTH":
-  /\b(404|unknown model|model not found|model unavailable)\b/u.test(message)?"PROVIDER_MODEL":
-  /\b(econn|etimedout|enotfound|network|fetch failed|socket)\b/u.test(message)?"PROVIDER_NETWORK":"PROVIDER_FAILURE";
- await writeFailure(status,"Pi planning process failed",{...execution,response:answer});
-}
-
+await writeFile(join(evidence,"fixture-plan-artifact.json"),JSON.stringify({
+ repository:artifact.repository,candidateId:artifact.candidateId,revision:artifact.revision,
+ kind:artifact.kind,requestId:proof.requestId,role:proof.role,skillPaths:proof.skillPaths,
+ contentSha256:createHash("sha256").update(answer).digest("hex"),
+},null,2)+"\n",{mode:0o600});
 let report;
 try{
  const parsed=JSON.parse(answer.trim());
  report=gradePlan(parsed,{candidateId,candidateSha:expected});
 }catch(error){
  const status=error instanceof SyntaxError?"PLAN_INVALID_JSON":"PLAN_SCHEMA_INVALID";
- await writeFailure(status,error instanceof Error?error.message:"invalid model plan",{...execution,response:answer});
+ await writeFailure(status,error instanceof Error?error.message:"invalid model plan",{artifact:result.output,response:answer});
 }
 await writeFile(join(evidence,"fixture-plan-grade.json"),JSON.stringify({
  ...report,provider:"ollama-cloud",model,inferenceCall:reservation.call,inferenceLimit:reservation.limit,
+ artifactSha256:createHash("sha256").update(result.output).digest("hex"),
+ toolsAllowed:false,writerAuthorized:false,authorization:"NOT_GRANTED",
 },null,2)+"\n",{mode:0o600});
-console.log("T12 real-model plan grade PASS (writer authorization NOT_GRANTED)");
+console.log("T12 real ASEN Dispatcher plan grade PASS (tools disabled; writer authorization NOT_GRANTED)");

@@ -57,6 +57,22 @@ test("dispatcher blocks writes without exact candidate and selected skills",asyn
  await assert.rejects(()=>d.dispatch({id:"b",role:"worker",prompt:"x",repository:"r",writeSurfaces:["src/a"],candidate}),/skill selection context/);
 });
 
+test("dispatcher admits a read-only task-plan phase without writer authority",async()=>{
+ const planCandidate={...candidate,id:"plan-candidate"},id="plan-candidate:planner";
+ const skillContext=issueSkillContext(id,planCandidate.repository,planCandidate,{phase:"tasks",risk:"low"});
+ const skillPaths=selectSkills(skillContext).map(skill=>skill.path);
+ const runner:AgentRunner={run:async request=>{
+  assert.equal(request.role,"clarifier");assert.equal(request.expectedPhase,"tasks");
+  assert.equal(request.writeSurfaces,undefined);assert.equal(request.writerAdmission,undefined);
+  return{id:request.id,ok:true,output:"bounded plan"};
+ }};
+ const result=await new Dispatcher(runner,new EvidenceStore()).dispatch({
+  id,role:"clarifier",expectedPhase:"tasks",prompt:"plan",repository:planCandidate.repository,
+  candidate:planCandidate,skillContext,skillPaths,
+ });
+ assert.equal(result.ok,true);assert.equal(result.output,"bounded plan");
+});
+
 test("dispatcher blocks writes when mandatory mutation evidence is missing",async()=>{
  let ran=false;const runner:AgentRunner={run:async r=>{ran=true;return{id:r.id,ok:true,output:"bad"}}};
  const evidence=new EvidenceStore();

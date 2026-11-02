@@ -118,6 +118,14 @@ test("Pi rejects an untrusted provider extension without leaking a policy direct
  assert.equal(result.ok,false);assert.match(result.output,/untrusted Pi provider extension/);
  assert.deepEqual(leaked,[]);
 });
+test("Pi rejects an unversioned npm provider extension before child invocation",async t=>{
+ const marker=join(tmpdir(),`asen-unversioned-provider-${process.pid}-${Date.now()}`);
+ const {d,p}=await fixture(`import {writeFileSync} from "node:fs";writeFileSync(${JSON.stringify(marker)},"invoked");`);
+ t.after(async()=>{await rm(marker,{force:true});await rm(d,{recursive:true,force:true});});
+ const result=await runner(p,{providerExtension:"npm:pi-free"}).run({id:"unversioned-provider",role:"explorer",prompt:"inspect",repository:d});
+ assert.equal(result.ok,false);assert.match(result.output,/untrusted Pi provider extension/);
+ await assert.rejects(()=>access(marker),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
+});
 test("Pi expressly loads the pinned Ollama Cloud extension while arbitrary extensions stay disabled",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
  const context=issueSkillContext("ollama-extension",d,undefined,{phase:"explore"});
@@ -152,6 +160,17 @@ test("Pi artifact runner passes only a completed assistant JSON artifact to life
  const candidate={id:"c",repository:d,revision:"r",createdAt:"now"};
  const r=await new PiArtifactRunner(runner(p)).run({id:"task:explorer",role:"explorer",prompt:"inspect",repository:d,candidate,skillContext:issueSkillContext("task:explorer",d,candidate,{phase:"explore"}),skillPaths:["skills/asen-phase-protocol/SKILL.md","skills/asen-explore/SKILL.md"]});
  assert.equal(r.ok,true);assert.deepEqual(JSON.parse(r.output),{kind:"exploration-report",content:"inspected",repository:d,candidateId:"c",revision:"r"});
+});
+test("Pi task-plan artifact traverses Dispatcher with tools disabled",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim()),value={kind:"task-plan",content:JSON.stringify({args:process.argv.slice(2)}),repository:process.cwd(),candidateId:"c",revision:"r"};console.log(JSON.stringify({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:JSON.stringify(value)}]}}));console.log(JSON.stringify({type:"agent_end"}));console.log(JSON.stringify({type:"response",id:f.id,success:true}));});');
+ const candidate={id:"c",repository:d,revision:"r",createdAt:"now"},id="task:planner";
+ const skillContext=issueSkillContext(id,d,candidate,{phase:"tasks",risk:"low"}),skillPaths=selectSkills(skillContext).map(skill=>skill.path);
+ const dispatcher=new Dispatcher(new PiArtifactRunner(runner(p,{providerExtension:"npm:pi-ollama-cloud@0.13.1",noTools:true})),new EvidenceStore());
+ const result=await dispatcher.dispatch({id,role:"clarifier",expectedPhase:"tasks",prompt:"plan",repository:d,candidate,skillContext,skillPaths});
+ assert.equal(result.ok,true,result.output);assert.equal(result.artifactProof?.role,"clarifier");
+ const artifact=JSON.parse(result.output),content=JSON.parse(artifact.content);
+ assert.equal(artifact.kind,"task-plan");assert.ok(content.args.includes("--no-tools"));
+ assert.ok(content.args.includes("npm:pi-ollama-cloud@0.13.1"));
 });
 test("Pi RPC artifact advances one phase only with exact candidate output",async()=>{
  const source='let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:JSON.stringify({kind:"project-context",content:"context inspected",repository:process.cwd(),candidateId:"c",revision:"r"})}]}}));console.log(JSON.stringify({type:"agent_end"}));console.log(JSON.stringify({type:"response",id:f.id,success:true}));});';

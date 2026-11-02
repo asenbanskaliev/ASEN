@@ -61,7 +61,7 @@ function childSelection(owner:ChildSelectionOwner,data:unknown):PiChildSelection
 }
 export type PiProviderCredential="OPENROUTER_API_KEY"|"LLM7_API_KEY"|"GROQ_API_KEY"|"NVIDIA_API_KEY"|"OLLAMA_API_KEY";
 const providerCredentialNames=new Set<PiProviderCredential>(["OPENROUTER_API_KEY","LLM7_API_KEY","GROQ_API_KEY","NVIDIA_API_KEY","OLLAMA_API_KEY"]);
-const trustedProviderExtensions=new Set(["npm:pi-free","npm:pi-free@2.8.4","npm:pi-ollama-cloud@0.13.1"]);
+const trustedProviderExtensions=new Set(["npm:pi-free@2.8.4","npm:pi-ollama-cloud@0.13.1"]);
 export function configuredPiProviderCredential(environment:NodeJS.ProcessEnv):PiProviderCredential|undefined{
  const selected=environment.ASEN_AGENT_PROVIDER_CREDENTIAL;
  if(selected===undefined||selected==="")return undefined;
