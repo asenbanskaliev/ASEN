@@ -19,8 +19,7 @@ async function missingLinks(file: string): Promise<string[]> {
 }
 
 test("selected ASEN documentation has resolvable internal links", async () => {
-  const files = [path.join(root, "README.md"), path.join(root, "docs", "runtime-tools.md"), path.join(root, "docs", "installation.md")];
-  for (const file of files) {
+  const files = [path.join(root, "README.md"), path.join(root, "docs", "development-setup.md"), path.join(root, "docs", "runtime-tools.md"), path.join(root, "docs", "installation.md")];  for (const file of files) {
     const missing = await missingLinks(file);
     assert.deepEqual(missing, [], `${path.relative(root, file)} has broken internal links`);
   }

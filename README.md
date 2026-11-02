@@ -12,8 +12,11 @@ Setup execution is not shipped yet. `asen setup` and `asen setup --yes` exit wit
 
 Signed install, upgrade, rollback, backup/restore and managed-only uninstall are available as `asen managed …`, `asen backup home` and `asen restore home` (see docs/installation.md); this preview itself is not an installer or proof of host/platform support.
 
-## Retained-version selection
+## Development setup
 
+See [docs/development-setup.md](docs/development-setup.md) for running ASEN locally without relying on hidden machine state.
+
+## Retained-version selection
 `asen [--link|--isolated|--home PATH] managed select <exact-target-version> --expected-current <exact-current-version>` changes only the ordinary stored selector for an already inventoried managed version. Both versions are mandatory and the expected current value is compare-and-set intent: stale or absent metadata is refused, while selecting the matching current version is unchanged and lock-free.
 
 The software prefix remains `<launcher-home>/.asen`; data-home flags, environment, and configuration do not redirect it. The command does not resolve Pi, execute package code, acquire or stage software, restore data, activate a version, or establish runtime readiness. Successful reports are emitted as JSON. An uncertain backend result retains its real report, exits nonzero, and is not retried or rolled back automatically. This is explicit metadata selection, not full update/rollback, native approval, or publisher trust. See [installation and managed execution](docs/installation.md).
