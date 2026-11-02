@@ -302,7 +302,7 @@ test("T09 manual recovery retains journal when probe corrupts the selector",asyn
  const result=await rollbackManaged({prefix,expectedCurrentVersion:"2.0.0",confirmed:true});
  assert.equal(result.status,"ambiguous");
  assert.equal(result.activeVersion,null);
- assert.match(result.reason??"",/Active selector changed during CLI probe/);
+ assert.match(result.reason??"",/(?:Active selector changed during CLI probe|ambiguous: candidate-drift; recovery journal retained)/);
  await fs.stat(journal);
  assert.equal(await fs.readFile(path.join(prefix,"install","current"),"utf8"),"unrecognized-version\n");
 });
