@@ -80,6 +80,8 @@ jobs:
       - name: F2/F3 deterministic fixture and planning contracts
         shell: bash
         run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts
+      - name: Ollama scoped child credential regression
+        run: node --import tsx --test tests/t12-ollama-child-credential.test.ts
       - name: Validate repository diff hygiene
         run: git diff --check
       - name: Preserve provider-free validation evidence
@@ -189,6 +191,18 @@ jobs:
           export PI_OLLAMA_WEB_TOOLS=0
           export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
           node scripts/t12-real-model-plan.mjs
+      - name: Real ASEN Dispatcher explorer with Ollama Cloud (read-only)
+        shell: bash
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-pi-home"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export PI_OLLAMA_WEB_TOOLS=0
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          node scripts/t12-ollama-asen-dispatcher.mjs
       - name: Real-provider acceptance deferred steps
         shell: bash
         run: |
