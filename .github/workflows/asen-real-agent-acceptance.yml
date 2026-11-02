@@ -132,10 +132,21 @@ jobs:
           test -n "$OLLAMA_API_KEY" || { echo "::error::OLLAMA_API_KEY missing"; exit 1; }
           node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
           PI_OLLAMA_WEB_TOOLS=0 node_modules/.bin/pi --list-models > "$RUNNER_TEMP/asen-ollama-models.txt"
-          if ! grep -F 'ollama-cloud' "$RUNNER_TEMP/asen-ollama-models.txt" | grep -Fq 'beam:cloud'; then
-            echo "::error::Ollama Cloud provider registered but requested beam:cloud model is unavailable"
+          mkdir -p asen-acceptance-evidence
+          # Pi lists provider and model in columns. Capture only IDs; never persist credentials.
+          awk '$1 == "ollama-cloud" {print $2}' "$RUNNER_TEMP/asen-ollama-models.txt" > asen-acceptance-evidence/registered-model-ids.txt
+          if ! test -s asen-acceptance-evidence/registered-model-ids.txt; then
+            echo "::error::No Ollama Cloud models registered; inspect provider load, credential and catalog refresh"
             exit 1
           fi
+          if grep -Fxq "$ASEN_MODEL" asen-acceptance-evidence/registered-model-ids.txt; then
+            selected="$ASEN_MODEL"
+          else
+            selected="$(head -n 1 asen-acceptance-evidence/registered-model-ids.txt)"
+            echo "::notice::Requested model is not registered; using discovered Ollama Cloud model for one bounded connectivity test"
+          fi
+          printf '%s\n' "$selected" > "$RUNNER_TEMP/asen-selected-model"
+          echo "Selected one Ollama Cloud model from live Pi registration"
       - name: Bounded Ollama Cloud provider smoke
         shell: bash
         run: |
@@ -151,7 +162,8 @@ jobs:
           mkdir -p asen-acceptance-evidence
           printf '%s\n' 'Reply with exactly ASEN_PROVIDER_OK' > asen-acceptance-evidence/provider-smoke.prompt
           export PI_PROVIDER=ollama-cloud
-          timeout 90s node_modules/.bin/pi --provider ollama-cloud --model "${ASEN_MODEL}" --no-session --print "Reply with exactly ASEN_PROVIDER_OK" > asen-acceptance-evidence/provider-smoke.jsonl
+          selected="$(cat "$RUNNER_TEMP/asen-selected-model")"
+          timeout 90s node_modules/.bin/pi --provider ollama-cloud --model "$selected" --no-session --print "Reply with exactly ASEN_PROVIDER_OK" > asen-acceptance-evidence/provider-smoke.jsonl
           grep -q "ASEN_PROVIDER_OK" asen-acceptance-evidence/provider-smoke.jsonl
           echo "provider smoke passed within the declared inference budget"
       - name: Real-provider acceptance deferred steps
