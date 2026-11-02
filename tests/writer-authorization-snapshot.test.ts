@@ -74,3 +74,11 @@ test("writer outcome rejects a newly introduced untracked symlink inside an allo
  catch(error){if(["EPERM","EACCES"].includes((error as NodeJS.ErrnoException).code??"")){t.skip("The host does not permit file symlinks");return;}throw error;}
  assert.throws(()=>assertWriterAuthorizationSnapshotOutcome(snapshot),/surface is symbolic link/);
 });
+test("writer authorization ignores ASEN-managed project metadata", async t => {
+ const {repository,candidate}=await fixture(t);
+ const {mkdir,writeFile}=await import("node:fs/promises");
+ await mkdir(join(repository,".asen"),{recursive:true});
+ await writeFile(join(repository,".asen","skill-registry.md"),"generated metadata\n");
+ const snapshot=captureWriterAuthorizationSnapshot(candidate,["allowed.txt"]);
+ assert.equal(snapshot.repository,repository);
+});

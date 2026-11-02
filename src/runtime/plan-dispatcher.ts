@@ -1,5 +1,6 @@
 import {execFileSync} from "node:child_process";
 import type {AgentRuntime,AgentSessionIdentity} from "../agents/agent-runtime.js";
+import type {ProfileLayer} from "./profiles.js";
 import type {Candidate} from "../core/types.js";
 import {deriveOddFacts,planOddRoute,type OddRoutingRequest} from "../flow/odd-routing.js";
 import {decideLifecycleApplicability} from "../lifecycle/applicability.js";
@@ -27,14 +28,14 @@ export function sameApprovedTaskSnapshot(before:TodoItem&{current:{state:string}
 }
 
 type PlanDispatchTask={id:string;title:string;role:string;instruction:string;writeSurfaces?:readonly string[];candidateRevision?:string};
-type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean};
+type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer};
 type DispatchResult={status:"dispatched";todoId:string;agentId:string;role:string}|{status:"inline";todoId:string;revision:number;role:"primary";instruction:string}|{status:"blocked";reason:string};
 
 function currentRevision(repository:string):string{
  try{return execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:2000,windowsHide:true}).trim();}
  catch(error){const revision=error&&typeof error==="object"&&"status" in error&&error.status===0&&"stdout" in error?String(error.stdout).trim():"";if(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(revision))throw error;return revision;}
 }
-async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,input:Pick<DispatchInput,"todos"|"agents"|"links">):Promise<{candidate:Candidate;writeSurfaces:string[];instruction:string;taskIdentity:string;routeEvidence:NonNullable<ReturnType<typeof buildOrchestrationPlan>["routeEvidence"]>;workerSelection:SkillSelectionContext;admission:object}|{reason:string}>{
+async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,input:Pick<DispatchInput,"todos"|"agents"|"links"|"runtimeProfiles">):Promise<{candidate:Candidate;writeSurfaces:string[];instruction:string;taskIdentity:string;routeEvidence:NonNullable<ReturnType<typeof buildOrchestrationPlan>["routeEvidence"]>;workerSelection:SkillSelectionContext;admission:object}|{reason:string}>{
  const metadata=task.plan,basisText=metadata?.writerAuthorizationBasis,candidate=metadata?.candidate,surfaces=metadata?.writeSurfaces;
  if(!metadata||metadata.role!=="worker"||!metadata.skillSelection||metadata.skillSelection.phase!=="apply"||!basisText||!candidate||!surfaces?.length)return {reason:"The worker plan lacks a persisted candidate, exact file scope or original ODD authorization facts; rebuild the plan in a Git project."};
  if(candidate.repository!==identity.projectId)return {reason:"The persisted worker candidate belongs to another project; rebuild the plan."};
@@ -53,7 +54,7 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
  if(exactSurfaces.length!==surfaces.length||exactSurfaces.some((surface,index)=>surface!==surfaces[index])||exactSurfaces.some(surface=>!originalScope.expectedPaths.includes(surface)))return {reason:"The persisted worker write scope differs from the exact ODD request."};
  const candidateBound={id:candidate.id,repository:candidate.repository,revision:candidate.revision,createdAt:candidate.createdAt},decision=planOddRoute(facts);
  let plan:ReturnType<typeof buildOrchestrationPlan>;
- try{plan=buildOrchestrationPlan({taskId:facts.taskIdentity,repository:identity.projectId,prompt:instruction,candidate:candidateBound,writeSurfaces:exactSurfaces},decision);}catch{return {reason:"The original ODD route no longer authorizes this worker plan."};}
+ try{plan=buildOrchestrationPlan({taskId:facts.taskIdentity,repository:identity.projectId,prompt:instruction,candidate:candidateBound,writeSurfaces:exactSurfaces,...(input.runtimeProfiles?{runtimeProfiles:input.runtimeProfiles}:{})},decision);}catch{return {reason:"The original ODD route no longer authorizes this worker plan."};}
  if(decision.route!=="orchestrate")return {reason:"The original ODD route does not authorize delegated worker execution."};
  const worker=plan.agents.find(agent=>agent.role==="worker");
  if(!worker?.skillContext||!worker.skillPaths||!worker.writeSurfaces||worker.writeSurfaces.length!==exactSurfaces.length||worker.writeSurfaces.some((surface,index)=>surface!==exactSurfaces[index]))return {reason:"The current ODD plan does not produce the exact persisted worker scope."};

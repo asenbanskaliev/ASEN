@@ -225,7 +225,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let profilePartitionPromise:Promise<string>|undefined;
   const profilePartition=()=>profilePartitionPromise??=canonicalProfilePartition(profilesFile);
   const inheritedProfile=async(identity:ProfileSessionIdentity)=>captureSessionProfile(await profilePartition(),identity,()=>readProfilesFile(profilesFile));
-  const profileLayer=async(identity:ProfileSessionIdentity):Promise<ProfileLayer>=>{const chosen=await inheritedProfile(identity);return chosen.source==="explicit-session"?{session:chosen.file}:{global:chosen.file};};
+  const profileLayer=async(identity:ProfileSessionIdentity):Promise<ProfileLayer>=>{
+   const chosen=await inheritedProfile(identity);
+   const projectFile=path.join(identity.projectId,".asen","profiles.json");
+   const project=await readProfilesFile(projectFile).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return undefined;throw error;});
+   const hasProject=!!project&&(project.active!==undefined||project.profiles.length>0);
+   if(chosen.source==="explicit-session") return hasProject?{session:chosen.file,project}:{session:chosen.file};
+   return hasProject?{project,global:chosen.file}:{global:chosen.file};
+  };
   const refreshTodoWidget=async(ctx:CommandContext):Promise<void>=>{
    if(!ctx?.ui?.setWidget)return;
    try{
@@ -249,7 +256,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;if(advancingPlans.has(key))return {started:false,authorized:false,reason:"ASEN is already advancing this plan."};advancingPlans.add(key);
    try{
     const [todos,agents]=await Promise.all([todoStorePromise,agentRuntimePromise]);
-    const result=await dispatchNextPlanTask({todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,validateIdentity:async()=>{const current=await sessionIdentity(ctx);if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw new Error("Pi session or project changed during automatic plan advancement");},confirm:async task=>{
+    const result=await dispatchNextPlanTask({todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,runtimeProfiles:await profileLayer(identity),validateIdentity:async()=>{const current=await sessionIdentity(ctx);if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw new Error("Pi session or project changed during automatic plan advancement");},confirm:async task=>{
      if(task.role==="clarifier")return false;
      if(!task.writeSurfaces)return true;
      if(ctx.hasUI!==true||typeof ctx.ui.confirm!=="function")return false;

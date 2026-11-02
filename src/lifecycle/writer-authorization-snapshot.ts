@@ -61,8 +61,33 @@ function assertSafeSurfacePaths(root:string,surfaces:readonly string[]):void{
   }
  }
 }
-function cleanWorkspace(root:string):void{
- if(git(root,["status","--porcelain=v1","-z","--untracked-files=all"]).length!==0)throw new Error("Writer authorization requires an unchanged workspace snapshot");
+function isAseManagedWorkspacePath(value:string):boolean {
+ return value === ".asen" || value.startsWith(".asen/");
+}
+
+function unmanagedWorkspacePaths(root:string):string[] {
+ const raw = git(root,["status","--porcelain=v1","-z","--untracked-files=all"]).toString("utf8");
+ if(!raw) return [];
+ const fields = raw.split("\0");
+ const paths:string[] = [];
+ let index = 0;
+ while(index < fields.length){
+  const entry = fields[index++];
+  if(typeof entry !== "string" || entry.trim() === "") continue;
+  if(entry.length < 4 || entry[2] !== " ") continue;
+  const path = entry.slice(3).trim();
+  if(!path) continue;
+  paths.push(path);
+  if(entry.startsWith("R") || entry.startsWith("C")){
+   const renamed=fields[index];
+   if(index < fields.length && typeof renamed === "string" && renamed.trim() !== ""){paths.push(renamed.trim());index++;}
+  }
+ }
+ return [...new Set(paths)].filter(path => !isAseManagedWorkspacePath(path));
+}
+
+function cleanWorkspace(root:string):void {
+ if(unmanagedWorkspacePaths(root).length !== 0) throw new Error("Writer authorization requires an unchanged workspace snapshot");
 }
 function assertRoot(snapshot:WriterAuthorizationSnapshot):void{
  const root=realpathSync(snapshot.repository),info=lstatSync(root);
