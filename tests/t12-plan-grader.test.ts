@@ -18,12 +18,12 @@ test("F3: scoped plan receives a deterministic grade but not authority",()=>{
 });
 test("F3: rejects stale SHA, unknown paths, duplicate IDs and unverified changes",()=>{
  let p=valid();p.candidateSha="b".repeat(40);assert.throws(()=>gradePlan(p,{candidateSha:sha}),/SHA mismatch/);
- p=valid();p.tasks[0].paths=["../outside"];assert.throws(()=>gradePlan(p,{candidateSha:sha}),/Out-of-scope/);
- p=valid();p.tasks[1].id="pricing-fix";assert.throws(()=>gradePlan(p,{candidateSha:sha}),/duplicate task/);
- p=valid();p.tasks[0].verification="none";assert.throws(()=>gradePlan(p,{candidateSha:sha}),/verification/);
+ p=valid();p.tasks[0]!.paths=["../outside"];assert.throws(()=>gradePlan(p,{candidateSha:sha}),/Out-of-scope/);
+ p=valid();p.tasks[1]!.id="pricing-fix";assert.throws(()=>gradePlan(p,{candidateSha:sha}),/duplicate task/);
+ p=valid();p.tasks[0]!.verification="none";assert.throws(()=>gradePlan(p,{candidateSha:sha}),/verification/);
 });
 test("F3: rejects cycles, self-dependencies and unknown findings",()=>{
- let p=valid();p.tasks[0].dependsOn=["parsing-fix"];assert.throws(()=>gradePlan(p,{candidateSha:sha}),/Cyclic/);
- p=valid();p.tasks[0].dependsOn=["pricing-fix"];assert.throws(()=>gradePlan(p,{candidateSha:sha}),/Invalid dependency/);
- p=valid();p.tasks[0].findingId="imaginary";assert.throws(()=>gradePlan(p,{candidateSha:sha}),/Unknown/);
+ let p=valid();p.tasks[0]!.dependsOn=["parsing-fix"];assert.throws(()=>gradePlan(p,{candidateSha:sha}),/Cyclic/);
+ p=valid();p.tasks[0]!.dependsOn=["pricing-fix"];assert.throws(()=>gradePlan(p,{candidateSha:sha}),/Invalid dependency/);
+ p=valid();p.tasks[0]!.findingId="imaginary";assert.throws(()=>gradePlan(p,{candidateSha:sha}),/Unknown/);
 });
