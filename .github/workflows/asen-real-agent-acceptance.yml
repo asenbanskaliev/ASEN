@@ -89,7 +89,7 @@ jobs:
           retention-days: 14
 
   real-provider-acceptance:
-    if: github.repository == 'asenbanskaliev/ASEN' && github.event_name == 'workflow_dispatch' && secrets.OLLAMA_API_KEY != ''
+    if: github.repository == 'asenbanskaliev/ASEN' && github.event_name == 'workflow_dispatch'
     name: Real Ollama Cloud / Beam functional acceptance
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -160,7 +160,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p asen-acceptance-evidence
-          printf '%s\n' 'Writer remains BLOCKED in automated CI.' '' 'Reason:' '- Worker execution requires a one-time interactive Pi UI authorization.' '- The one-use grant binds candidate, repository, revision, and exact file scope.' '- GitHub Actions cannot legitimately supply or simulate that consent.' '' 'Safe future enablement:' '1. Use a private daemon or service account only if Pi exposes an explicit non-interactive consent token contract.' '2. Bind that token to one candidate and one bounded file set.' '3. Consume it once.' '4. Run assertWriterAuthorizationSnapshotCurrent before execution and assertWriterAuthorizationSnapshotOutcome after.' > asen-acceptance-evidence/writer-blocked.md'
+          printf '%s\n' 'Writer remains BLOCKED in automated CI.' '' 'Reason:' '- Worker execution requires a one-time interactive Pi UI authorization.' '- The one-use grant binds candidate, repository, revision, and exact file scope.' '- GitHub Actions cannot legitimately supply or simulate that consent.' '' 'Safe future enablement:' '1. Use a private daemon or service account only if Pi exposes an explicit non-interactive consent token contract.' '2. Bind that token to one candidate and one bounded file set.' '3. Consume it once.' '4. Run assertWriterAuthorizationSnapshotCurrent before execution and assertWriterAuthorizationSnapshotOutcome after.' > asen-acceptance-evidence/writer-blocked.md
       - name: Preserve blocked-writer evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
