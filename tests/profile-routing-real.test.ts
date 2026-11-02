@@ -47,9 +47,11 @@ test("missing profiles fail closed on agent dispatch", async t=>{
  const commands=new Map<string,any>(); const tools=new Map<string,any>(); const events=new Map<string,Function[]>();
  const pi={registerCommand:(n:string,c:any)=>commands.set(n,c),registerTool:(tool:any)=>tools.set(tool.name,tool),on:(n:string,h:Function)=>events.set(n,[...(events.get(n)??[]),h]),getCommands:()=>[],getAllTools:()=>[]};
  await mkdir(path.join(home,".asen"),{recursive:true});
- createAsenExtension({homeDir:()=>home,profilesFile:path.join(home,".asen","profiles.json"),enableAgentRuntime:true,enableTodoRuntime:false,enableMemoryRuntime:false,autoAdvancePlans:false,agentStoreFile:path.join(home,".asen","agents.json"),agentRunner:{run:async (request:any)=>({id:request.id,ok:true,output:"inert"})}})(pi as any);
+ createAsenExtension({homeDir:()=>home,profilesFile:path.join(home,".asen","profiles.json"),enableAgentRuntime:true,enableTodoRuntime:false,enableMemoryRuntime:false,autoAdvancePlans:false,agentStoreFile:path.join(home,".asen","agents.json"),agentRunner:{run:async (_request:any)=>{throw new Error("Rejected missing-profile routing must never run");}}})(pi as any);
  t.after(async()=>{await rm(home,{recursive:true,force:true}); await rm(project,{recursive:true,force:true});});
  const ctx={cwd:project,hasUI:true,sessionManager:{getSessionId:()=> "sess-missing-profile"},ui:{notify:()=>{}}};
  for(const h of events.get("session_start")??[]) await h({},ctx);
  await assert.rejects(()=>tools.get("asen_agent_start").execute("missing-agent",{prompt:"inspect missing"},new AbortController().signal,()=>{},ctx),/No valid model resolved/);
+ const status=await tools.get("asen_agent_status").execute("missing-status",{},new AbortController().signal,()=>{},ctx);
+ assert.deepEqual(status.details,[],"Rejected routing must not enqueue an agent");
 });
