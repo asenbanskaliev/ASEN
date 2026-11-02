@@ -1,6 +1,6 @@
 name: ASEN real-agent functional acceptance
 
-# Explicit opt-in runs bounded provider, fixture, planning and ASEN dispatcher probes; no Writer grant.
+# Bounded opt-in verifies direct provider and genuine read-only Dispatcher; no lifecycle bypass or Writer grant.
 on:
   push:
     branches:
