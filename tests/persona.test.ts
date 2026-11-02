@@ -120,4 +120,10 @@ test("simple persona selects a plain-language style that is short, self-containe
  const text=(await promptSections(host.events,context(f.project))).asen_persona_style??"";
  assert.match(text,/never programmed/u);assert.match(text,/everyday words/u);assert.match(text,/real-life example/u);
  assert.doesNotMatch(text,forbidden);assert.ok(text.length<1200,"the injected style is paid on every turn and must stay small");
+ assert.match(text,/When explaining tasks, phases, changes, problems, or improvements/u);
+ assert.match(text,/prefer a compact table/u);
+ assert.match(text,/Tarea \| Qué hace \| Para qué sirve/u);
+ assert.match(text,/separate done, pending, blocked/u);
+ assert.match(text,/one passed test proves only what it checks/u);
+ assert.match(text,/Keep detailed explanations available when asked/u);
 });

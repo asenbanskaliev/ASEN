@@ -91,7 +91,7 @@ A runtime supplied through `agentRuntimeFactory` does not expose its actual runn
 
 ## Persona style
 
-`/asen-persona` reports the effective communication style. `/asen-persona professional` and `/asen-persona neutral` select one of the two package-owned styles; arbitrary persona text is rejected. With no saved configuration, `professional` is the default.
+`/asen-persona` reports the effective communication style. `/asen-persona professional`, `/asen-persona neutral` and `/asen-persona simple` select one of the three package-owned styles; arbitrary persona text is rejected. With no saved configuration, `professional` is the default.
 
 Selections are stored atomically in `~/.asen/persona.json`. If the active project already has `.asen/persona.json`, the same selection updates that existing override as well. ASEN never creates a project override automatically. An existing project value takes precedence when the effective style is read. Malformed or unsafe state is reported as unavailable rather than as a successful write.
 
