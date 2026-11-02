@@ -166,7 +166,7 @@ jobs:
           timeout 90s node_modules/.bin/pi --provider ollama-cloud --model "$selected" --no-session --print "Reply with exactly ASEN_PROVIDER_OK" > asen-acceptance-evidence/provider-smoke.jsonl
           grep -q "ASEN_PROVIDER_OK" asen-acceptance-evidence/provider-smoke.jsonl
           echo "provider smoke passed within the declared inference budget"
-      - name: Real model reasoning on disposable code fixture (read-only)
+      - name: Real model reasoning on disposable code fixture
         shell: bash
         run: |
           set -euo pipefail
@@ -175,16 +175,7 @@ jobs:
           export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
           export PI_OLLAMA_WEB_TOOLS=0
           export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
-          mkdir -p asen-acceptance-evidence
-          node scripts/t12-real-agent-fixture.mjs prepare "$RUNNER_TEMP/asen-real-code-fixture" > asen-acceptance-evidence/fixture-manifest.json
-          selected="$(cat "$RUNNER_TEMP/asen-selected-model")"
-          prompt="$(cat "$RUNNER_TEMP/asen-real-code-fixture/README.md")"
-          for source in src/pricing.js src/access.js src/parse.js; do
-            prompt="$(printf '%s\nFILE: %s\n%s\n' "$prompt" "$source" "$(cat "$RUNNER_TEMP/asen-real-code-fixture/$source")")"
-          done
-          timeout 90s node_modules/.bin/pi --provider ollama-cloud --model "$selected" --no-session --print "$prompt" > asen-acceptance-evidence/fixture-response.json
-          test "$(wc -c < asen-acceptance-evidence/fixture-response.json)" -le 16384 || { echo "::error::Provider response exceeded grading limit"; exit 1; }
-          node scripts/t12-real-agent-fixture.mjs grade "$RUNNER_TEMP/asen-real-code-fixture" asen-acceptance-evidence/fixture-response.json > asen-acceptance-evidence/fixture-grade.json
+          node scripts/t12-real-model-smoke.mjs
       - name: Real-provider acceptance deferred steps
         shell: bash
         run: |
