@@ -91,7 +91,7 @@ jobs:
   real-provider-acceptance:
     if: github.repository == 'asenbanskaliev/ASEN' && github.event_name == 'workflow_dispatch' && secrets.OLLAMA_API_KEY != ''
     name: Real Ollama Cloud / Beam functional acceptance
-    runs-on: ${{ inputs.os }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     environment: ollama-cloud-beam
     permissions:
