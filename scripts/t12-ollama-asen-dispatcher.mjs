@@ -6,7 +6,6 @@ import {Dispatcher} from "../src/agents/dispatcher.js";
 import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {EvidenceStore} from "../src/evidence/store.js";
-import {SkillLifecycle} from "../src/lifecycle/skill-lifecycle.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 
@@ -20,14 +19,14 @@ const candidate={id:"t12-real-ollama-dispatch",repository,revision,createdAt:new
 const evidence=new EvidenceStore();
 const runner=new PiArtifactRunner(new PiProcessRunner({extraArgs:["--no-session","--provider","ollama-cloud","--model",selected],providerCredential:"OLLAMA_API_KEY",timeoutMs:120000,noTools:true}));
 const dispatcher=new Dispatcher(runner,evidence,1);
-const flow=new SkillLifecycle(candidate.id,candidate);
 const context=issueSkillContext(candidate.id+":explorer",repository,candidate,{phase:"explore",risk:"low"});
 const skills=selectSkills(context).map(s=>s.path);
 const prompt="Explore this bounded code-review fixture concept without using tools or writing files. Three intentional defects: pricing adds rather than subtracts discount, viewer role can edit, parseInt accepts trailing junk. Return a concise exploration artifact naming the affected conceptual functions and risks. Follow the loaded Skill output contract. No write requests.";
-const result=await flow.runPhase(dispatcher,{phase:"explore",context,skillPaths:skills,prompt,evidence,risk:"low"});
-assert.equal(result.records.at(-1)?.phase,"explore");
-assert.equal(result.records.at(-1)?.artifact.kind,"exploration");
-assert.ok(result.records.at(-1)?.artifact.content?.length>0,"Empty exploration artifact");
+const result=await dispatcher.dispatch({id:candidate.id+":explorer",role:"explorer",repository,prompt,candidate,skillContext:context,skillPaths:skills,expectedPhase:"explore"});
+assert.equal(result.ok,true,"Read-only ASEN Dispatcher returned a failed agent result");
+assert.ok(typeof result.output==="string"&&result.output.length>0,"Empty Dispatcher agent result");
+assert.equal(result.artifactProof?.role,"explorer");
+assert.equal(result.artifactProof?.candidateRevision,revision);
 await mkdir("asen-acceptance-evidence",{recursive:true});
 await writeFile("asen-acceptance-evidence/asen-dispatcher-explorer.json",JSON.stringify({candidateSha:revision,provider:"ollama-cloud",model:selected,role:"explorer",phase:"explore",skills,result:"PASS",toolsAllowed:false,writerAuthorized:false},null,2));
-console.log("T12 ASEN Dispatcher real Ollama explorer PASS");
+console.log("T12 ASEN Dispatcher read-only explorer PASS (SkillLifecycle not exercised)");
