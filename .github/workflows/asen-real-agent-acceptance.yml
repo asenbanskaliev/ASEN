@@ -180,12 +180,16 @@ jobs:
           selected="$(cat "$RUNNER_TEMP/asen-selected-model")"
           prompt="$(cat "$RUNNER_TEMP/asen-real-code-fixture/README.md")"
           for source in src/pricing.js src/access.js src/parse.js; do
-            prompt="$prompt"
+            prompt="$(printf '%s\nFILE: %s\n%s\n' "$prompt" "$source" "$(cat "$RUNNER_TEMP/asen-real-code-fixture/$source")")"
+          done
+          timeout 90s node_modules/.bin/pi --provider ollama-cloud --model "$selected" --no-session --print "$prompt" > asen-acceptance-evidence/fixture-response.json
+          test "$(wc -c < asen-acceptance-evidence/fixture-response.json)" -le 16384 || { echo "::error::Provider response exceeded grading limit"; exit 1; }
+          node scripts/t12-real-agent-fixture.mjs grade "$RUNNER_TEMP/asen-real-code-fixture" asen-acceptance-evidence/fixture-response.json > asen-acceptance-evidence/fixture-grade.json
+      - name: Real-provider acceptance deferred steps
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s\n' 'BLOCKED: Writer requires interactive Pi one-time approval.' 'Supported automatically by this workflow design: offline validation, provider environment smoke, bounded candidate checkout.' 'Requires explicit Pi UI approval: controlled worker execution and post-write outcome validation.' >> asen-acceptance-evidence/real-provider-status.txt
-          echo "Provider lane is prepared; only provider-independent evidence is deterministic-safe."
+          printf '%s\n' 'BLOCKED: Writer requires interactive Pi one-time approval.' 'Read-only model fixture is a limited reasoning probe, not the real ASEN agent dispatcher.' > asen-acceptance-evidence/real-provider-status.txt
       - name: Preserve provider evidence without exporting secrets
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
