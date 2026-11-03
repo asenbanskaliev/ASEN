@@ -24,7 +24,7 @@ Run `/asen help` or `/asen-commands` and choose the listed name.
 3. Run test
 4. Close only when passing
 
-## Primary permission modes (Gentle Shell parity — partial)
+## Primary permission modes (reference-mode compatibility — partial)
 
 - `/asen-mode status` — show live mode, saved default and Auto availability
 - `/asen-mode normal` — return this primary TUI session to manual permissions
@@ -33,4 +33,4 @@ Run `/asen help` or `/asen-commands` and choose the listed name.
 - `/asen-mode default yolo` — save the preference for eligible future primary TUI sessions (current mode unchanged)
 - `/asen-mode default normal` — restore the safe default
 
-Only the live primary Pi TUI can change these permissions. YOLO does **not** waive destructive operations, human restrictions, native Writer consent or agent-child boundaries. `auto` requires an independent classifier and is unavailable until that integration is complete. `super-yolo` is not implemented. Neither mode guarantees unattended end-to-end correction today. See `odd/tasks/permission-mode-parity-gentle-shell-2026-11-03.md`.
+Only the live primary Pi TUI can change these permissions. YOLO does **not** waive destructive operations, human restrictions, native Writer consent or agent-child boundaries. `auto` requires an independent classifier and is unavailable until that integration is complete. `super-yolo` is not implemented. Neither mode guarantees unattended end-to-end correction today. See `odd/tasks/asen-permission-modes-2026-11-03.md`.
