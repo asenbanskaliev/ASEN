@@ -241,6 +241,10 @@ assert.throws(() => parseCount("12abc"));
  });}
  catch(error){await reject("VERIFIER_EVIDENCE_INCOMPLETE","Verifier output failed exact-candidate deterministic grading",{
   gradingError:error instanceof Error?error.message.split("\n",1)[0].slice(0,160):"Unknown deterministic grading error",
+  verifierResponseKeys:verification.answer&&typeof verification.answer==="object"&&!Array.isArray(verification.answer)?
+   Object.keys(verification.answer).filter(key=>["verdict","evidence"].includes(key)).sort():[],
+  verifierEvidenceContainer:Array.isArray(verification.answer?.evidence)?"array":typeof verification.answer?.evidence,
+  verifierEvidenceCount:Array.isArray(verification.answer?.evidence)?verification.answer.evidence.length:0,
   reviewerJudgments:judgeResults,verificationSha256:verification.responseSha256,
   verificationBytes:verification.responseBytes,changedPaths,deterministicTests:testEvidence,
   // Bounded non-sensitive shape diagnostics, never raw model text.

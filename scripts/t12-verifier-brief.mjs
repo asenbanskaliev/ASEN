@@ -35,8 +35,17 @@ export function createT12VerifierBrief({candidateSha,fixtureSha256,checks,change
   throw new Error("Verifier brief contains missing, duplicated or mismatched evidence");
  const scope=Object.freeze({candidateSha,fixtureSha256,paths:[...changedPaths]});
  const input=Object.freeze({scope,failedTests:testRows,gradedReviewFindings:findings});
+ // This is only an output SHAPE, never a model answer or accepted receipt.
+ // The grader rejects every "?" unless the real model supplies grounded analysis.
+ const outputSkeleton=Object.freeze({verdict:"fail",evidence:[
+  {kind:"tests",checks:testRows.map(c=>({id:c.id,exitCode:c.exitCode,
+   criterion:c.criterion,observation:"?"}))},
+  {kind:"scope",candidateSha,fixtureSha256,paths:[...changedPaths],observation:"?"},
+  {kind:"review",findings:findings.map(f=>({path:f.path,codeEvidence:f.codeEvidence,
+   acceptanceCriterion:f.acceptanceCriterion,reason:"?"}))},
+ ]});
  return Object.freeze({
-  input,
+  input,outputSkeleton,
   prompt:[
    "You are a separate read-only Verifier. Reject the three deliberate defects, using the observed assertions and two existing blind reviewer judgments as evidence. No tools, filesystem access, authorizations, or code changes.",
    "Respond with exactly one JSON object, no Markdown, keys only: verdict and evidence.",
@@ -48,6 +57,9 @@ export function createT12VerifierBrief({candidateSha,fixtureSha256,checks,change
    'Write your OWN specific failure observations and reviewer-reconciliation reasons, each at least 20 characters. Each test observation must explain an actual failed assertion; do not invent an executed check.',
    "Input evidence, frozen and already graded by separate deterministic checks:",
    JSON.stringify(input),
+   "MANDATORY COMPLETE JSON RESPONSE SKELETON. All three entries in evidence are required. Copy the immutable fields literally and REPLACE EVERY QUESTION MARK with your own independent reason backed by INPUT. A question mark is never acceptable evidence:",
+   JSON.stringify(outputSkeleton),
+   "Never omit evidence, tests, scope or review. Do not copy question marks. The strict grader will reject incomplete or fabricated reasoning.",
    "Final check before responding: three tests with exact literal criteria, one frozen scope, three review findings with exact code expressions; no authorization granted, and no additional fields.",
   ].join("\n"),
  });

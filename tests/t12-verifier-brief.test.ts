@@ -26,7 +26,7 @@ const reviewFindings=[
 ];
 const input=()=>({candidateSha,fixtureSha256,changedPaths,checks,reviewFindings});
 test("EF-402 Beam Verifier receives canonical criteria and bounded observed failure signals",()=>{
- const {input:brief,prompt}=createT12VerifierBrief(input());
+ const {input:brief,prompt,outputSkeleton}=createT12VerifierBrief(input());
  assert.equal(brief.failedTests.length,3);
  assert.deepEqual(brief.failedTests.map((x:{criterion:string})=>x.criterion),checks.map(x=>x.criterion));
  assert.deepEqual(brief.scope,{candidateSha,fixtureSha256,paths:changedPaths});
@@ -35,7 +35,15 @@ test("EF-402 Beam Verifier receives canonical criteria and bounded observed fail
  assert.doesNotMatch(prompt,/ at runtime\.js/u,"stack traces do not need to be interpreted as task evidence");
  assert.match(prompt,/COPY the id, criterion, exitCode/u);
  assert.match(prompt,/Write your OWN specific failure observations/u);
- assert.ok(prompt.length<6500,"five-call run must preserve bounded Pi context");
+ assert.deepEqual(outputSkeleton.evidence.map((row:{kind:string})=>row.kind),["tests","scope","review"]);
+ assert.equal(outputSkeleton.verdict,"fail");
+ assert.deepEqual(outputSkeleton.evidence[0].checks.map((row:{criterion:string})=>row.criterion),checks.map(row=>row.criterion));
+ assert.ok(outputSkeleton.evidence[0].checks.every((row:{observation:string})=>row.observation==="?"));
+ assert.equal(outputSkeleton.evidence[1].observation,"?");
+ assert.ok(outputSkeleton.evidence[2].findings.every((row:{reason:string})=>row.reason==="?"));
+ assert.match(prompt,/MANDATORY COMPLETE JSON RESPONSE SKELETON/u);
+ assert.match(prompt,/REPLACE EVERY QUESTION MARK/u);
+ assert.ok(prompt.length<7800,"five-call run must preserve bounded Pi context");
 });
 test("EF-402 verifier prompt compiler fails closed on missing or forged prior evidence",()=>{
  const base=input();

@@ -154,7 +154,7 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 
 - [ ] EF-201 Igualar consulta CodeGraph-first, búsqueda local/web autorizada y fallback. **PARCIAL:** CodeGraph-first y fallback sin comparación observada A/B.
 - [x] EF-202 Implementar disparadores observables de presupuesto y no repetición. **VERIFICADO:** `src/runtime/explorer-budget.ts` + `tests/explorer-budget.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
-- [ ] EF-203 Retorno compacto de pruebas y comprobaciones de no escritura. **PARCIAL:** Contrato Explorer T12 reforzado con validación de evidencias, hallazgos acotados, rutas seguras y controles de inyección; falta ejecución auténtica y demostrar ausencia de escrituras.
+- [ ] EF-203 Retorno compacto de pruebas y comprobaciones de no escritura. **PARCIAL:** Explorer Pi real con Beam PASS en fixture aislado sin herramientas y sin Writer (run `41723090941`, SHA `fe0198e`); falta demostrar uso auténtico de herramientas, comparación A/B y preservación de archivos con permisos reales.
 - **Gate:** C02–C03.
 
 ### F3 — Writer
@@ -175,8 +175,8 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 ### F5 — Reviewer
 
 - [ ] EF-501 Alinear vía de evaluación del riesgo, identidad del cambio y revisión nativa. **PARCIAL:** Falta contraste de revisión nativa y riesgos con A/B.
-- [ ] EF-502 Comparar perspectivas, resultado congelado, bloqueo, corrección y reevaluación. **PARCIAL:** Cierre/revisión congelada simulado; falta reevaluación real de perspectivas.
-- [ ] EF-503 Probar reviewer real independiente sin sustituir evidencias faltantes por simulaciones. **BLOQUEADO:** Reviewer independiente real sin recibos verificables.
+- [ ] EF-502 Comparar perspectivas, resultado congelado, bloqueo, corrección y reevaluación. **PARCIAL:** Dos juicios Reviewer reales ciegos sobre el mismo candidato con Beam PASS (run `41723090941`, SHA `fe0198e`); falta revisión independiente externa, corrección real y reevaluación de perspectivas A/B.
+- [ ] EF-503 Probar reviewer real independiente sin sustituir evidencias faltantes por simulaciones. **BLOQUEADO:** Hay dos recibos reales de Reviewer con el mismo modelo Beam, pero no una revisión externa realmente independiente ni verificación positiva del Verifier; no sustituyen el criterio.
 - **Gate:** C11–C12 y C17.
 
 ### F6 — Segundo plano y recuperación
@@ -190,7 +190,7 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 ### F7 — Validación real y cierre
 
 - [ ] EF-701 Comparar C01–C20 con snapshots A/B y ASEN final; no heredar recibos entre SHAs. **BLOQUEADO:** Nuevo comparador triple A/B/ASEN por cada caso, scaffold de 40+20 capturas y auditor de integridad; siguen faltando ejecuciones auténticas y auditoría independiente de sus recibos.
-- [ ] EF-702 Probar selección de modelos reales gratuitos, error de cuota/red y consumo por agente. **BLOQUEADO:** Ollama Cloud real no activado; credenciales y recibos pendientes.
+- [ ] EF-702 Probar selección de modelos reales gratuitos, error de cuota/red y consumo por agente. **PARCIAL:** Ollama Cloud autenticado y cinco inferencias Beam registradas en run `41723090941` / SHA `fe0198e` (Explorer, Planner, dos Reviewer, Verifier); no hay prueba real de agotamiento de cuota/red, ni garantía documentada de coste cero para nuevas ejecuciones.
 - [ ] EF-703 Verificar tres OS, suite global, permisos, Pi interactivo, Writer, revisión, eventos y recuperación. **PARCIAL:** CI global exact-SHA y recorrido real Writer/Pi incompletos.
 - [ ] EF-704 Auditoría final de diferencias. Solo cambiar estado a **FULL** cuando todos los gates anteriores y S01–S11 estén satisfechos. **BLOQUEADO:** S01–S11, C01–C20 y auditoría final aún sin cerrar.
 - **Gate:** C01–C20 PASS obligatorios y ninguna diferencia esencial pendiente.
@@ -547,3 +547,13 @@ El primer gate sin proveedor del SHA `310b058` identificó `TS2345` en la etique
 - La validación sin proveedor `41722716135` / SHA `de75844` superó TypeScript y falló únicamente en la nueva prueba `EF-203 schema diagnostics expose only bounded field codes`: esperaba rechazo de un valor que contenía barras invertidas literales seguidas de `n`/`u202e`. Estos caracteres **no son** controles Unicode; el validador hizo bien en aceptarlos.
 - Se corrige el propio fixture para usar saltos de línea y dirección Unicode reales, manteniendo un control positivo que acepta una barra invertida literal. Ni `clean()`, ni `validValues()`, ni los gates de contenido se debilitan.
 - No se produjo inferencia Beam en este SHA porque la etapa de preflight impidió `real-provider-acceptance`. Se solicita de nuevo una tanda de cinco llamadas condicionada a la aprobación previa, sin reintentar automáticamente una llamada fallida.
+
+### Cierre de la tanda Beam R2c — cinco inferencias reales y límites de paridad (2026-11-03)
+
+- **Recibo reproducible:** `ASEN real-agent functional acceptance`, run `41723090941`, SHA `fe0198ea72e3d29aded0be0d4a9901b018f6d7c5`. La validación sin proveedor es **PASS**. La evidencia autenticada `asen-real-provider-fe0198e.../inference-budget-summary.json` contiene `limit:5, reserved:5, remaining:0, authorization:NOT_GRANTED`; modelo seleccionado por Pi: `ollama-cloud/beam` (alias registrado de `beam:cloud`).
+- **Explorer (EF-203, F2): PASS acotado.** `asen-dispatcher-explorer.json` confirma `passed:true` y fixture inalterado, salida estructurada y ejecución con `noTools:true`. No acredita consulta CodeGraph real ni herramientas Explorer en A/B.
+- **Planner (EF-101/103, F3): PASS acotado.** `fixture-plan-grade.json` confirma `passed:true`, candidato exacto y tres tareas vinculadas a los defectos. No acredita plan A/B ni continuidad real tras reinicio.
+- **Reviewer A y B (EF-501/502, F5): PASS acotado para ambos.** El artefacto `real-review-verifier.json` conserva dos respuestas de modelo distintas (hashes distintos), ambas graduadas `passed:true` con tres defectos reproducibles. Las dos usan **el mismo proveedor/modelo**, no revisión externa independiente.
+- **Verifier (EF-402/503, F5): FAIL.** `VERIFIER_EVIDENCE_INCOMPLETE`; el grader exige exactamente las secciones `tests`, `scope`, `review`, pero el recibo de fallo registra `verifierEvidenceKinds:[]` y `verifierReviewPaths:[]`. La aceptación completa `PASS_BOUNDED_READ_ONLY` NO se obtuvo. Nunca convertir un Verifier sin pruebas suficientes en PASS.
+- **Corrección siguiente, aún sin nueva inferencia:** `scripts/t12-verifier-brief.mjs` incorpora una estructura JSON completa de tres secciones, vinculada a los valores del input, con `?` en todas las observaciones y razones que el modelo debe generar. El grader rechaza literalmente esos placeholders; no hay normalización ni relleno posterior de respuestas. El fallo registra solo metadatos de forma `verifierResponseKeys`, `verifierEvidenceContainer`, `verifierEvidenceCount` (nunca el texto del modelo) para futuros diagnósticos.
+- **Decisión de consumo:** no relanzar automáticamente cinco llamadas adicionales por un único fallo de formato. La ejecución de la nueva petición requerirá comprobar disponibilidad y cuota real del modelo; el presupuesto de esta tanda está consumido. Los casos C01–C20 comparativos A/B, Writer Pi con consentimiento humano y consumo efectivo de notificaciones siguen **PENDING/BLOCKED**. Resumen de checks verificables sigue siendo 7/28; FULL no alcanzado.
