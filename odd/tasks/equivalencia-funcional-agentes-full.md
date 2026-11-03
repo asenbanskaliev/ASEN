@@ -319,3 +319,27 @@ Estado **IMPLEMENTED_PENDING_CI**, no FULL. Cambios previstos en el mismo commit
 Se ejecutan los dos nuevos tests EF-604 integrados con el anfitrión Pi de prueba junto con EF-601/603/202. El journal **no confirma consumo**: `attempted` y `enqueued` permanecen diferenciados para evitar duplicados y falsas garantías. C13–C15/C18 siguen exigiendo evidencias Pi real, proceso real y comparación con referencia. No se usan modelos pagados ni se hace merge a `main`.
 
 **Próximos bloqueos externos para FULL:** snapshots genuinos de A/B sobre C01–C20, proveedor gratuito autenticado y su cuota, consentimiento Writer interactivo, recuperación con proceso real, revisión independiente de riesgo y CI exact-SHA en tres OS. No promocionar ninguna unidad por pruebas con mocks.
+
+## Macrotanda F6 — EF-601/602/604: paridad del enrutador ocupado/inactivo y CI integral (2026-11-03)
+
+**Estado: CODE_READY / PENDING_EXACT_SHA_CI. FULL NO ALCANZADO.** Se consolida el cambio en una publicación para no multiplicar CI de tres sistemas.
+
+### Diagnóstico reproducible del SHA precedente
+
+- CI general `41684034554` del SHA `11aab4e`: falla en Ubuntu/macOS/Windows aunque arquitectura, F5, Release Gate, Pi Runtime, CodeGraph y aceptación funcional sin proveedor eran PASS.
+- Tres defectos de la misma integración `tests/pi-agent-runtime.test.ts`: línea 184 invocaba solo el primer listener de `tool_execution_end` y dejaba la barra de validación en `Comprobando`; línea 525 esperaba un ID visible antiguo en lugar del hash estable del journal; línea 532 esperaba el aviso de error antiguo, provocando timeout.
+- Corrección: los finales de herramientas pasan por **todos** los observadores registrados; los asserts verifican formato de hash, semántica de fallo incierto y protección del resultado duradero. No se desactiva ninguna prueba ni se maquilla una falla del proveedor.
+- El siguiente CI deberá demostrar suite global completa con esas tres regresiones solucionadas en las tres plataformas, además de preservar los gates ya verdes. Cualquier FAIL restante mantiene el estado PARTIAL.
+
+### Semántica F6 aplicada
+
+- Contrato de referencia A inspeccionado directamente en la baseline `813ec110`, `extensions/gentle-agents.ts` líneas 1162–1189 y 1209–1259: padre ejecutando recibe `steer + triggerTurn:true`; padre inactivo recibe contenido encolado `triggerTurn:false` y un wake separado; ocupado sin turno del modelo retiene hasta un límite de ciclo. No se ha ejecutado aún la referencia en vivo ni la referencia B.
+- ASEN adopta ese criterio mediante `agentParentRoute` y `agentTerminalWakeOptions`. El contexto Pi `isIdle()`, el estado `agent_start`/`agent_settled`, `turn_end` y los límites de compactación determinan la entrega. Sin identidad TUI válida, no se inicia otro turno. No hay sondeo de estado ni reejecución de agentes por una señal de wake.
+- El journal `AgentNotificationJournal` sigue siendo el árbitro de deduplicación: en `hold` la entrada queda `pending`, y una frontera de turno solo puede entregar tras consultar de nuevo el estado terminal verdadero y comprobar la sesión y el proyecto. Nunca se recupera `attempted` automáticamente ni se reenvía una entrada `enqueued`.
+- Para padres inactivos, el mensaje de resultados se encola y confirma **antes** de programar un único wake oculto, consolidado por ráfaga. Un wake se identifica como mensaje generado por ASEN, sin permisos ni supuesto consentimiento humano. Un fallo de wake conserva el resultado consultable; no lo reinyecta ni simula un acuse.
+- Nuevas pruebas: rutas puras `run/idle/hold/headless` y tres integraciones Pi TUI simuladas (padre activo, inactivo y compactación). Son pruebas con host instrumentado y runner simulado: **no prueban** todavía que un Pi real acepte y procese el wake, ni demuestran consumo, reinicio de proceso real o paridad total.
+
+### Gate y próximos cierres
+
+- Aceptación requerida: `node --import tsx --test --test-name-pattern='EF-601|EF-603|EF-202|EF-604' tests/pi-agent-runtime.test.ts`, suite completa Ubuntu/Windows/macOS, Typecheck, Build, F5, arquitectura, Release Gate y R4 `SELF_AUDIT_ONLY / NOT independent`.
+- Pendientes FULL: EF-002 observaciones A/B genuinas C01–C20, EF-102/103 continuidad ODD revisada, EF-201/203 Explorer con fuentes reales, EF-301–304 Writer con autorización TUI auténtica, EF-402–503 revisión/verificación real, EF-601 wake Pi real bajo padre activo e inactivo, EF-702 proveedor gratuito autorizado y recibos exact-SHA finales. **Ningún mock promociona C13/C15/C19/C20 a PASS.**

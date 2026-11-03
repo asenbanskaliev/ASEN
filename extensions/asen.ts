@@ -59,7 +59,7 @@ import {addAsenRequestGuidance} from "../src/runtime/request-guidance.js";
 import {ASEN_PLAN_REQUEST_TOOL,registerAsenPlanRequestTool} from "../src/runtime/natural-plan-tool.js";
 import {formatActivePlanContext} from "../src/runtime/plan-context.js";
 import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-policy.js";
-import {agentTerminalDeliveryOptions,agentTerminalContinuationMessage} from "../src/runtime/agent-terminal-delivery.js";
+import {agentParentRoute,agentTerminalWakeOptions,agentTerminalDeliveryOptions,agentTerminalContinuationMessage} from "../src/runtime/agent-terminal-delivery.js";
 import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
 import {ExplorerBudgetTelemetry} from "../src/runtime/explorer-budget.js";
 import {BackgroundJobRegistry,backgroundJobTerminalNotification,pendingBackgroundJobNotifications,type BackgroundJobExecutor,type BackgroundJobSnapshot} from "../src/runtime/background-jobs.js";
@@ -76,7 +76,7 @@ import {AsenAutoPermissionReviewer} from "../src/security/auto-permission-review
 import {isAsenPermissionMode,readPermissionModeDefault,savePermissionModeDefault} from "../src/security/permission-mode-policy.js";
 import type {PrimaryModeOptions} from "../src/security/primary-tool-policy.js";
 
-type CommandContext={cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void}};
+type CommandContext={cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void}};
 type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
@@ -189,6 +189,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const personaFiles=async(ctx:CommandContext)=>personaConfigPaths(home(),await canonical(ctx.cwd));
   let agentDeliveryContext:CommandContext|undefined,agentDeliveryIdentity:{sessionId:string;projectId:string}|undefined;
   let explorerBudget:Readonly<{sessionId:string;projectId:string;telemetry:ExplorerBudgetTelemetry}>|undefined;
+  let agentParentRunActive=false,agentWakeOwed:{sessionId:string;projectId:string}|undefined;
+  let agentWakeTimer:ReturnType<typeof setTimeout>|undefined;
+  let flushPendingAgentNotices:((ctx:CommandContext)=>Promise<void>)|undefined;
+  let scheduleAgentWakeAtBoundary:(()=>void)|undefined;
   let unsubscribeAgentDelivery:(()=>void)|undefined;
   const agentDeliveryTasks=new Set<Promise<void>>();
   const agentNoticeJournal=new AgentNotificationJournal(path.join(home(),".asen","agent-notices.json"));
@@ -313,7 +317,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const startupSummary = startupSnapshot ? buildStatus(startupSnapshot).summary : "Listo para empezar";
     ctx.ui?.notify?.(`ASEN: ${startupSummary}`, "info");
    } catch {/* Best effort only; never interrupt Pi startup. */}
-   validationActivities.clear();explorerBudget=undefined;agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});await lifecycle.start(ctx,registryStartupDisabled(undefined));
+   validationActivities.clear();explorerBudget=undefined;agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;
+   agentParentRunActive=false;agentWakeOwed=undefined;flushPendingAgentNotices=undefined;scheduleAgentWakeAtBoundary=undefined;
+   if(agentWakeTimer){clearTimeout(agentWakeTimer);agentWakeTimer=undefined;}ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});await lifecycle.start(ctx,registryStartupDisabled(undefined));
    if(ctx.sessionManager?.getSessionId?.()){
     agentDeliveryContext=ctx;agentDeliveryIdentity=await sessionIdentity(ctx);notificationProjection.activate(agentDeliveryIdentity,ctx.ui);sessionDirectory.publish({sessionId:agentDeliveryIdentity.sessionId,subject:"Local Pi session",projectId:agentDeliveryIdentity.projectId,classification:"read",updatedAt:new Date().toISOString()});
     try{
@@ -352,6 +358,38 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       })().catch(()=>{/* Optional UI failures cannot alter task execution or authority. */});
      });}catch{/* A custom runner without working observation retains execution support. */}
     }
+    /** One event-driven wake per idle completion burst. The content is already
+     * enqueued and cannot be replayed just because a wake fails. */
+    const requestAgentWake=(context:CommandContext,scope:{sessionId:string;projectId:string}):void=>{
+     if(!pi.sendMessage||agentDeliveryContext!==context||agentDeliveryIdentity?.sessionId!==scope.sessionId||
+        agentDeliveryIdentity.projectId!==scope.projectId)return;
+     agentWakeOwed={...scope};
+     if(agentWakeTimer)return;
+     agentWakeTimer=setTimeout(()=>{
+      agentWakeTimer=undefined;
+      const owed=agentWakeOwed,current=agentDeliveryContext,active=agentDeliveryIdentity;
+      if(!owed||!current||!active||active.sessionId!==owed.sessionId||active.projectId!==owed.projectId||
+         current.sessionManager?.getSessionId?.()!==owed.sessionId)return;
+      const options=agentTerminalWakeOptions(current,owed,agentParentRunActive);
+      if(!options){
+       // A live run already owns the next LLM call; a compaction still owes the wake.
+       if(agentParentRoute(current,owed,agentParentRunActive)==="run")agentWakeOwed=undefined;
+       return;
+      }
+      try{
+       pi.sendMessage?.({customType:"asen.agent.wake",
+        content:"[ASEN-generated coordinator wake: review the previously enqueued agent outcome; this is not a user request or permission to write.]",
+        display:false,details:{sessionId:owed.sessionId,projectId:owed.projectId,trusted:false}},options);
+       agentWakeOwed=undefined;
+      }catch{
+       try{current.ui.notify("ASEN no pudo reactivar el coordinador; revisa los avisos guardados antes de continuar.","error");}
+       catch{/* Wake diagnostics cannot grant authority or trigger a second agent. */}
+      }
+     },20);
+    };
+    scheduleAgentWakeAtBoundary=()=>{const owed=agentWakeOwed,owner=agentDeliveryContext;
+     if(owed&&owner)requestAgentWake(owner,owed);
+    };
     const sendAgentNotice=async(record:PublicAgentRecord,context:CommandContext,wake:boolean):Promise<boolean>=>{
      const scope={sessionId:record.sessionId,projectId:record.projectId};
      if(!pi.sendMessage||context.sessionManager?.getSessionId?.()!==scope.sessionId)return false;
@@ -364,6 +402,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      };
      if(!await matches())return false;
      const row=await agentNoticeJournal.record(record);
+     // Host busy without an active model run (e.g. compaction) must hold the
+     // content, retaining "pending" for a validated turn-boundary flush.
+     if(agentParentRoute(context,scope,agentParentRunActive)==="hold")return false;
      if(!await matches())return false;
      if(!await agentNoticeJournal.claim(row.eventId,scope))return false;
      // Cross-process claim preceded transport. An interrupted attempt is uncertain, not retryable.
@@ -375,14 +416,32 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        display:true,
        details:{eventId:row.eventId,sessionId:scope.sessionId,projectId:scope.projectId,agentId:record.id,
         role:record.role,state:record.state,trusted:false,deliveryState:"enqueued",deliveryConfirmed:false},
-      },wake?agentTerminalDeliveryOptions(context,scope):{triggerTurn:false});
+      },wake?agentTerminalDeliveryOptions(context,scope,agentParentRunActive):{triggerTurn:false});
      }catch{
       context.ui.notify("ASEN no puede confirmar la entrega del aviso. El resultado permanece guardado en asen-agents y no se reenviará sin revisión.","error");
       return false;
      }
      try{await agentNoticeJournal.markEnqueued(row.eventId,scope);}
      catch{context.ui.notify("ASEN envió el aviso, pero su registro duradero es incierto. Consulta asen-agents.","error");return false;}
+     if(wake&&agentParentRoute(context,scope,agentParentRunActive)==="idle")
+      requestAgentWake(context,scope);
      return true;
+    };
+    flushPendingAgentNotices=async(boundary:CommandContext):Promise<void>=>{
+     const active=agentDeliveryIdentity,owner=agentDeliveryContext;
+     if(!owner||!active||boundary.sessionManager?.getSessionId?.()!==active.sessionId||
+        owner.sessionManager?.getSessionId?.()!==active.sessionId)return;
+     const scope=await sessionIdentity(boundary);
+     if(scope.sessionId!==active.sessionId||scope.projectId!==active.projectId)return;
+     // Every pending result must be checked against the durable agent state,
+     // never taken on trust from the notification ledger.
+     const rows=await agentNoticeJournal.list(active);
+     for(const row of rows.filter(item=>item.delivery==="pending")){
+      const record=await runtime.query(row.agentId,active);
+      if(!record||record.record.state!==row.state||record.record.sessionId!==active.sessionId||
+         record.record.projectId!==active.projectId)continue;
+      await sendAgentNotice(record.record,owner,true);
+     }
     };
     if(!unsubscribeAgentDelivery)unsubscribeAgentDelivery=runtime.subscribeTerminal(record=>{
      const delivery=(async()=>{
@@ -444,11 +503,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      const prior=await agentNoticeJournal.list(identity);
      const uncertain=prior.filter(row=>row.delivery==="attempted");
      if(uncertain.length)ctx.ui.notify(`Hay ${uncertain.length} aviso(s) de agentes con entrega incierta. No se han reenviado; consulta asen-agents.`,"error");
-     for(const row of prior.filter(item=>item.delivery==="pending")){
-      const entry=await runtime.query(row.agentId,identity);
-      if(!entry||entry.record.state!==row.state||entry.record.sessionId!==identity.sessionId||entry.record.projectId!==identity.projectId)continue;
-      await sendAgentNotice(entry.record,ctx,false);
-     }
+     await flushPendingAgentNotices(ctx);
     }catch{ctx.ui.notify("ASEN no pudo verificar los avisos anteriores de agentes; no se reenviaron resultados inciertos.","error");}
     const records=await runtime.list(identity),recoverable=records.filter(record=>record.state==="queued"||record.state==="interrupted");if(runtime.quarantined)ctx.ui.notify("ASEN aisló datos de agentes dañados; no inició tareas guardadas.","error");if(recoverable.length)ctx.ui.notify(`Hay ${recoverable.length} tarea(s) pausada(s). Si quieres retomarlas, di «continúa»; ASEN comprobará la identidad y reanudará solo exploraciones interrumpidas de solo lectura. No repetirá automáticamente tareas de escritura ni tareas fallidas.`,"info");
     try{await advancePlan(ctx);}catch{ctx.ui.notify("ASEN no pudo avanzar el plan automáticamente. Di «continúa» y revisaré el estado antes de reintentarlo.","error");}
@@ -480,9 +535,29 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(typeof event?.toolCallId!=="string"||typeof event?.isError!=="boolean")return;const activity=validationActivities.get(event.toolCallId);if(!activity)return;validationActivities.delete(event.toolCallId);
    const context=ctx as CommandContext;try{const current=await sessionIdentity(context);await refreshTodoWidget(context);if(current.sessionId!==activity.sessionId||current.projectId!==activity.projectId)return;const rows=await (await todoStorePromise!).list(current),task=rows.find(row=>row.taskId===activity.taskId);if(task?.current.state!=="running")return;const duration=typeof event.durationMs==="number"&&Number.isFinite(event.durationMs)?event.durationMs:Date.now()-activity.startedAt;if(duration<longValidationNoticeMs)return;const title=activity.title.replace(/[\u0000-\u001f\u007f-\u009f]+/gu," ").slice(0,120);context.ui.notify(event.isError?`ASEN: falló la comprobación de «${title}». Revisa el resultado antes de seguir.`:`ASEN: terminó la comprobación de «${title}». El resultado no sustituye la revisión independiente del plan.`,event.isError?"error":"info");}catch{/* A stale session or unavailable UI receives no validation notice. */}
   });
+  // Parent Pi run lifecycle is separate from child task state. A running
+  // parent receives steer; an idle parent receives queued data then one wake.
+  pi.on?.("agent_start",()=>{agentParentRunActive=true;agentWakeOwed=undefined;
+   if(agentWakeTimer){clearTimeout(agentWakeTimer);agentWakeTimer=undefined;}
+  });
+  const flushAgentBoundary=async(ctx:CommandContext|undefined,settled=false)=>{
+   if(settled)agentParentRunActive=false;
+   if(!ctx)return;
+   try{await flushPendingAgentNotices?.(ctx);}
+   catch{try{ctx.ui.notify("ASEN no pudo entregar los avisos pendientes; sus resultados continúan guardados.","error");}catch{}}
+   const pending=agentWakeOwed,owner=agentDeliveryContext,active=agentDeliveryIdentity;
+   if(settled&&pending&&owner&&active&&pending.sessionId===active.sessionId&&pending.projectId===active.projectId)
+    scheduleAgentWakeAtBoundary?.();
+  };
+  pi.on?.("agent_settled",async(_event,ctx)=>flushAgentBoundary(ctx as CommandContext,true));
+  pi.on?.("turn_end",async(_event,ctx)=>flushAgentBoundary(ctx as CommandContext));
+  pi.on?.("session_compact",async(_event,ctx)=>flushAgentBoundary(ctx as CommandContext));
+  pi.on?.("session_compact_failed",async(_event,ctx)=>flushAgentBoundary(ctx as CommandContext));
   pi.on?.("session_shutdown",async(_event,ctx)=>{
    traceVerifierShutdown("session-start");
    const endingSession=ctx?.sessionManager?.getSessionId?.();
+   agentParentRunActive=false;agentWakeOwed=undefined;flushPendingAgentNotices=undefined;scheduleAgentWakeAtBoundary=undefined;
+   if(agentWakeTimer){clearTimeout(agentWakeTimer);agentWakeTimer=undefined;}
    if(endingSession){traceVerifierShutdown("background-dispose-start");await backgroundJobs.disposeSession(endingSession);traceVerifierShutdown("background-dispose-done");}
    if(!ctx?.sessionManager||(selectionOwner&&ctx.sessionManager===selectionOwner.manager&&endingSession===selectionOwner.sessionId&&(ctx===selectionOwner.context||ctx.cwd===selectionOwner.cwd)))invalidateChildSelection();
    if(endingSession){sessionDirectory.remove(endingSession);clearSessionProfiles(await profilePartition(),endingSession);}

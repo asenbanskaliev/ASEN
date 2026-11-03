@@ -4,20 +4,39 @@
 export interface AgentDeliveryScope{sessionId:string;projectId:string;}
 export interface AgentDeliveryContext{
  mode?:string;hasUI?:boolean;
+ isIdle?:()=>boolean;
  sessionManager?:{getSessionId?:()=>string};
 }
-export type AgentDeliveryOptions={triggerTurn:true;deliverAs:"followUp"}|{triggerTurn:false};
-/** If Pi is interactive, followUp continues after the current parent turn; if
- * idle, triggerTurn starts one. RPC/headless only enqueue the result. */
-export function agentTerminalDeliveryOptions(
- context:AgentDeliveryContext,scope:AgentDeliveryScope,
-):AgentDeliveryOptions{
+export type AgentParentRoute="run"|"idle"|"hold"|"headless";
+export type AgentDeliveryOptions={triggerTurn:true;deliverAs:"steer"}|{triggerTurn:false};
+/** The live Pi host is authoritative about idleness. An occupied host without
+ * an active model run (e.g. compaction) holds completion until a turn boundary.
+ * A successful enqueue is NOT proof that the parent has read the message. */
+export function agentParentRoute(
+ context:AgentDeliveryContext,scope:AgentDeliveryScope,parentRunActive=false,
+):AgentParentRoute{
  try{
-  if(context.hasUI===true&&context.mode==="tui"&&
-   context.sessionManager?.getSessionId?.()===scope.sessionId)
-   return {triggerTurn:true,deliverAs:"followUp"};
- }catch{/* A broken UI cannot grant a wake. */}
- return {triggerTurn:false};
+  if(context?.mode!=="tui"||context.hasUI!==true||
+     context.sessionManager?.getSessionId?.()!==scope.sessionId)return "headless";
+  const idle=context.isIdle?.();
+  if(idle===true)return "idle";
+  if(idle===false&&parentRunActive)return "run";
+  return "hold";
+ }catch{return "headless";}
+}
+/** Busy *running* parent consumes steering before its next LLM call;
+ * idle parent receives stored content first, then a separate coalesced wake. */
+export function agentTerminalDeliveryOptions(
+ context:AgentDeliveryContext,scope:AgentDeliveryScope,parentRunActive=false,
+):AgentDeliveryOptions{
+ return agentParentRoute(context,scope,parentRunActive)==="run"
+  ?{triggerTurn:true,deliverAs:"steer"}:{triggerTurn:false};
+}
+export function agentTerminalWakeOptions(
+ context:AgentDeliveryContext,scope:AgentDeliveryScope,parentRunActive=false,
+):AgentDeliveryOptions|undefined{
+ return agentParentRoute(context,scope,parentRunActive)==="idle"
+  ?{triggerTurn:true,deliverAs:"steer"}:undefined;
 }
 export function agentTerminalContinuationMessage(input:{
  id:string;role:string;state:string;summary:string|undefined;
