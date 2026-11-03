@@ -183,7 +183,7 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 
 - [ ] EF-601 Entrega del resultado según estado del padre, con reactivación real cuando esté inactivo. **BLOQUEADO:** Wake y consumo por Pi real aún no demostrados.
 - [x] EF-602 Suprimir sondeo/sleep innecesario, duplicados y avisos caducados. **VERIFICADO:** `src/runtime/agent-notification-journal.ts` + `tests/agent-notification-journal.test.ts` · CI `41689422912` / SHA `07f9793517f8d6a57b3d67cc21b589be8002abb1`.
-- [ ] EF-603 No relanzar tareas activas equivalentes: misma identidad y alcance verificable. **PARCIAL:** Añadida prueba de contención real entre dos procesos Node para el mismo Explorer ad-hoc; pendiente CI y equivalencia de unidades planificadas.
+- [ ] EF-603 No relanzar tareas activas equivalentes: misma identidad y alcance verificable. **PARCIAL:** Coalescencia Explorer ad-hoc multiproceso y nueva protección de planes públicos: snapshot exacto, candidato Git actual, CAS de lanzamiento y rechazo de un segundo agente para la misma tarea; pendientes CI exact-SHA y equivalencia real de otros roles.
 - [ ] EF-604 Recuperación tras reinicio, estado incierto y preguntas del hijo sin permiso inventado. **PARCIAL:** Recuperación y journal probados; faltan decisiones humanas reales del hijo.
 - **Gate:** C13–C15 y C18.
 
@@ -432,3 +432,13 @@ El primer gate funcional del SHA `9cc7fb0` mostró una prueba negativa mal plant
 ### F6 multiproceso — corrección de tipo de etiqueta (2026-11-03)
 
 El primer gate sin proveedor del SHA `310b058` identificó `TS2345` en la etiqueta del archivo de barrera del fixture F6, porque TypeScript consideraba que una etiqueta leída de `process.argv` podía estar ausente. La validación ahora usa una guarda literal `label !== "one" && label !== "two"` que valida y estrecha su tipo, sin cambiar el algoritmo de deduplicación, la autoridad del agente ni el resto de pruebas. Se requiere nuevo CI exact-SHA; EF-603 y FULL siguen abiertos.
+
+### Macrotanda siguiente — candado de planes públicos y reparación del CI Windows (2026-11-03)
+
+**Estado: IMPLEMENTADO; CI exact-SHA y validación funcional real pendientes. FULL sigue BLOQUEADO.**
+
+- **EF-603/EF-103:** la herramienta pública `asen_agent_start` ya no utiliza el vínculo laxo `onQueued` para tareas con un plan. Emplea `onPrepared` y el candado `TrustedTaskAgentBinder.launchExact`, con instantánea persistida idéntica y transición CAS antes del primer efecto de encolado. El mismo Todo no puede arrancar una segunda vez mientras esté `running`, ni aunque el agente previo haya terminado y falte conciliación. Las tareas ordinarias no planificadas conservan el vínculo anterior.
+- **Control del candidato:** cuando Explorer/Reviewer/Verifier guarda `candidateRevision`, se verifica el HEAD de Git antes de la preparación y dentro del candado, inmediatamente antes del encolado. Cambios de sesión, proyecto, instrucciones, selección o plan bloquean sin crear un nuevo agente.
+- **Pruebas:** `tests/planned-agent-public-dispatch.test.ts` cubre dos lanzamientos concurrentes del mismo Todo, rechazo de revisión Git obsoleta, aceptación del HEAD actual, único registro y ausencia de segunda ejecución. Estas pruebas no son una ejecución de modelos reales.
+- **CI Windows:** el fallo del run `41705481790` se concentra en `tests/profile-routing-real.test.ts`: `ENOTEMPTY` al borrar el directorio `.asen` durante cierre. Ambos fixtures ahora ejecutan los hooks de `session_shutdown` antes de `rm`, que además usa los reintentos finitos nativos de Node para carreras transitorias del filesystem.
+- **Criterio de salida:** typecheck, regresiones y test completo en los tres sistemas; CI consolidado en un único SHA. No marcar EF-603 ni FULL mientras falten las pruebas reales y el gate exact-SHA.

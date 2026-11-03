@@ -1,4 +1,5 @@
 import {AgentProjectAccess} from "./agent-project-access.js";
+import {execFileSync} from "node:child_process";
 import {realpath} from "node:fs/promises";
 import {isAbsolute,resolve} from "node:path";
 import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
@@ -17,6 +18,15 @@ const text={type:"string",minLength:1,maxLength:32000};
 const rootSchema={type:"string",minLength:1,maxLength:4096};
 const idSchema={type:"string",minLength:1,maxLength:1024};
 const MAX_VISIBLE_AGENT_INSTRUCTION=4096;
+/** A public Todo launch cannot bypass the candidate-bound planned dispatcher. */
+function assertCurrentReadOnlyCandidate(plan:TodoPlanMetadata,projectId:string):void{
+ const expected=plan.candidateRevision;
+ if(expected===undefined)return;
+ let current:string;
+ try{current=execFileSync("git",["rev-parse","HEAD"],{cwd:projectId,encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:2000,windowsHide:true}).trim();}
+ catch{throw new Error("Planned read-only candidate is unavailable; rebuild the plan before dispatch");}
+ if(current!==expected)throw new Error("Planned read-only candidate changed; rebuild the plan before dispatch");
+}
 function cancelled():Error{const error=new Error("Agent task cancelled");error.name="AbortError";return error;}
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted)throw cancelled();}
 async function confirmWithAbort(confirm:(signal?:AbortSignal)=>Promise<boolean>,signal?:AbortSignal):Promise<boolean>{
@@ -42,12 +52,13 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const todoId=(params as {todoId?:unknown}).todoId;
   let dispatchRole:"explorer"|"reviewer"|"verifier"="explorer";
   let planSkillSelection:SkillSelectionContext|undefined,persistedPlan:TodoPlanMetadata|undefined;
+  let plannedTodoSnapshot:Awaited<ReturnType<SessionTodoStore["list"]>>[number]|undefined;
   if(todoId!==undefined){
    if(typeof todoId!=="string"||!todoId.trim()||!todoLink)throw new Error("Todo binding is unavailable");
    const task=(await (await todoLink.todos()).list(session)).find(item=>item.taskId===todoId);
    if(!task||task.current.state==="done"||task.current.state==="cancelled"||task.current.state==="blocked")throw new Error("Todo must be an active, owned task before agent launch");
    if(task.description&&prompt!==task.description)throw new Error("A planned Todo agent must receive the exact persisted task instruction");
-   if(task.plan){if(task.plan.role!=="explorer"&&task.plan.role!=="reviewer"&&task.plan.role!=="verifier")throw new Error(`Planned ${task.plan.role} work requires a controlled ${task.plan.role} dispatcher`);const expectedPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[task.plan.role];if(task.plan.skillSelection?.phase!==expectedPhase)throw new Error(`Planned ${task.plan.role} Todo is missing its exact ASEN skill selection`);const expectedPaths=selectSkills(task.plan.skillSelection).map(skill=>skill.path);if(expectedPaths.length!==task.plan.skillPaths.length||expectedPaths.some((path,index)=>path!==task.plan!.skillPaths[index]))throw new Error("Persisted ASEN skill registry selection changed; rebuild this plan before dispatch");dispatchRole=task.plan.role;planSkillSelection=task.plan.skillSelection;persistedPlan=task.plan;}
+   if(task.plan){if(task.current.state!=="planned")throw new Error("Planned Todo must be unclaimed before a new agent dispatch; reconcile the existing outcome first");if(task.plan.role!=="explorer"&&task.plan.role!=="reviewer"&&task.plan.role!=="verifier")throw new Error(`Planned ${task.plan.role} work requires a controlled ${task.plan.role} dispatcher`);const expectedPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[task.plan.role];if(task.plan.skillSelection?.phase!==expectedPhase)throw new Error(`Planned ${task.plan.role} Todo is missing its exact ASEN skill selection`);const expectedPaths=selectSkills(task.plan.skillSelection).map(skill=>skill.path);if(expectedPaths.length!==task.plan.skillPaths.length||expectedPaths.some((path,index)=>path!==task.plan!.skillPaths[index]))throw new Error("Persisted ASEN skill registry selection changed; rebuild this plan before dispatch");dispatchRole=task.plan.role;planSkillSelection=task.plan.skillSelection;persistedPlan=task.plan;plannedTodoSnapshot=task;assertCurrentReadOnlyCandidate(task.plan,session.projectId);}
   }
   throwIfCancelled(signal);
   const requested:RouteChoice=persistedPlan?{...(persistedPlan.model!==undefined?{model:persistedPlan.model}:{}),...(persistedPlan.thinking!==undefined?{thinking:persistedPlan.thinking}:{})}:{};
@@ -55,7 +66,21 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   if(persistedPlan){resolved={...requested};routeSource="persisted-plan";}else{const route=resolveRouting?await resolveRouting(dispatchRole,session):{source:"default" as const};resolved=route.choice??{};routeSource=route.source;}
   const routing=runtimeRoutingMetadata(requested,resolved,routeSource);
   throwIfCancelled(signal);
-  const active=await runtime(),taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...(typeof todoId==="string"?{onQueued:async(agentId:string,dispatch:()=>void)=>{const validate=async()=>{const current=await identity(context);if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before Todo agent dispatch");};await validate();await (await todoLink!.binder()).launch(todoId,agentId,session,dispatch,validate);}}:{})},signal);
+  const binding=typeof todoId==="string"?(plannedTodoSnapshot?
+   {onPrepared:async(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>{
+    const validate=async()=>{
+     const current=await identity(context);
+     if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before planned Todo dispatch");
+     assertCurrentReadOnlyCandidate(persistedPlan!,session.projectId);
+    };
+    await validate();
+    await (await todoLink!.binder()).launchExact(plannedTodoSnapshot,agentId,session,enqueue,dispatch,validate);
+   }}:
+   {onQueued:async(agentId:string,dispatch:()=>void)=>{
+    const validate=async()=>{const current=await identity(context);if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before Todo agent dispatch");};
+    await validate();await (await todoLink!.binder()).launch(todoId,agentId,session,dispatch,validate);
+   }}):{};
+  const active=await runtime(),taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...binding},signal);
   return result({id:taskId,state:"queued",role:dispatchRole,routing,...(typeof todoId==="string"?{todoId}:{})});
  }});
  pi.registerTool?.({name:"asen_agent_status",label:"ASEN agent status",description:"List owned agent tasks, or query one task and its durable state history by id.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{id:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{

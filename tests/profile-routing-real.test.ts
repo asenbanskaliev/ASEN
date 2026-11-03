@@ -27,7 +27,7 @@ test("real profile files reach planner and agent requests", async t=>{
  await writeProfilesFile(path.join(home,".asen","profiles.json"),profile("global","global/model","low"));
  await layer(project,"project","project/model","high");
  createAsenExtension({homeDir:()=>home,profilesFile:path.join(home,".asen","profiles.json"),enableAgentRuntime:true,enableTodoRuntime:false,enableMemoryRuntime:false,autoAdvancePlans:false,agentStoreFile:path.join(home,".asen","agents.json"),agentRunner:{run:async (request:any)=>{captured.push(request);waiting.get(request.id)?.(request);return{id:request.id,ok:true,output:"inert"};}}})(pi as any);
- t.after(async()=>{for(const ctx of []){} await rm(home,{recursive:true,force:true}); await rm(project,{recursive:true,force:true});});
+ t.after(async()=>{for(const shutdown of events.get("session_shutdown")??[])await shutdown({},ctx);await rm(home,{recursive:true,force:true,maxRetries:6,retryDelay:100});await rm(project,{recursive:true,force:true,maxRetries:6,retryDelay:100});});
  const ctx={cwd:project,hasUI:true,sessionManager:{getSessionId:()=> "sess-real-profile"},ui:{notify:()=>{}}};
  for(const h of events.get("session_start")??[]) await h({},ctx);
  // Plan command should prefer project model
@@ -58,7 +58,7 @@ test("missing profiles preserve Pi's active default model without an explicit ro
  const pi={registerCommand:(n:string,c:any)=>commands.set(n,c),registerTool:(tool:any)=>tools.set(tool.name,tool),on:(n:string,h:Function)=>events.set(n,[...(events.get(n)??[]),h]),getCommands:()=>[],getAllTools:()=>[]};
  await mkdir(path.join(home,".asen"),{recursive:true});
  createAsenExtension({homeDir:()=>home,profilesFile:path.join(home,".asen","profiles.json"),enableAgentRuntime:true,enableTodoRuntime:false,enableMemoryRuntime:false,autoAdvancePlans:false,agentStoreFile:path.join(home,".asen","agents.json"),agentRunner:{run:async (request:any)=>{dispatched.push(request);waiting.get(request.id)?.(request);return{id:request.id,ok:true,output:"inert"};}}})(pi as any);
- t.after(async()=>{await rm(home,{recursive:true,force:true}); await rm(project,{recursive:true,force:true});});
+ t.after(async()=>{for(const shutdown of events.get("session_shutdown")??[])await shutdown({},ctx);await rm(home,{recursive:true,force:true,maxRetries:6,retryDelay:100});await rm(project,{recursive:true,force:true,maxRetries:6,retryDelay:100});});
  const ctx={cwd:project,hasUI:true,sessionManager:{getSessionId:()=> "sess-missing-profile"},ui:{notify:()=>{}}};
  for(const h of events.get("session_start")??[]) await h({},ctx);
  const started=await tools.get("asen_agent_start").execute("missing-agent",{prompt:"inspect missing"},new AbortController().signal,()=>{},ctx);
