@@ -14,6 +14,7 @@ import {prepare} from "./t12-real-agent-fixture.mjs";
 import {reserveInferenceCall} from "./t12-inference-budget.mjs";
 import {classifyT12ProviderFailure} from "./t12-provider-failure.mjs";
 import {gradeRealReview,gradeRealVerification,normalizeVerifierTestEvidence} from "./t12-review-grader.mjs";
+import {createT12VerifierBrief} from "./t12-verifier-brief.mjs";
 
 const repository=resolve(".");
 const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8"}).trim();
@@ -217,25 +218,18 @@ assert.throws(() => parseCount("12abc"));
   judgments:judgeResults,changedPaths,
  });}
 
+ // Use graded, compact evidence rather than repeating complete stack traces.
+ // No change to the strict model-result grader or inference-call count.
+ const verifierBrief=createT12VerifierBrief({
+  candidateSha:revision,fixtureSha256:candidateSha256,
+  checks:verificationTestEvidence.checks,changedPaths,
+  reviewFindings:judgeResults[0].grade.findings,
+ });
  const verificationPrompt=[
-  "Verify this exact candidate only from the evidence below. All three deterministic assertions have already been executed by the parent and their results are supplied; do not invoke tools, run commands, read files, write files, request access, launch agents, or grant authorization.",
-  'Return exactly {"verdict":"fail","evidence":[{"kind":"tests","checks":[{"id":"...","exitCode":1,"criterion":"...","observation":"..."}]},{"kind":"scope","candidateSha":"...","fixtureSha256":"...","paths":["..."],"observation":"..."},{"kind":"review","findings":[{"path":"...","codeEvidence":"...","acceptanceCriterion":"...","reason":"..."}]}]}. Do not add or omit keys.',
-  "A failed test must remain failed. Verify all three failures, the exact SHA and snapshot digest, every changed path, and the two blinded review judgments. Keep authorization NOT_GRANTED.",
-  "Preserve every required key and value from the supplied evidence exactly; do not omit fields or paraphrase identifiers, paths, criteria, evidence strings, hashes or exit codes. Every failed test observation must include `AssertionError` or the word `failed`; each review reason must explicitly connect the defect to its failed criterion.",
-  "The review evidence MUST contain exactly three entries. Include one and only one of src/pricing.js, src/access.js and src/parse.js; preserve that exact order and NEVER collapse or summarize any finding.",
-  "Reconcile every item from Judge A, even if both reviewers agree. Copy every exact path, codeEvidence and acceptanceCriterion from the canonical required review list below. Each item also needs a reason (at least twenty characters) clearly describing a failure, defect, bypass, rejection or failed acceptance criterion.",
-  "Required review.findings objects, one per path, in canonical order (reason must explain the defect and mention its failed criterion):",
-  JSON.stringify(judgeResults[0].grade.findings.map(item=>({
-   path:item.path,codeEvidence:item.codeEvidence,acceptanceCriterion:item.acceptanceCriterion,
-   reason:"The reviewed defect fails the acceptance criterion: "+item.reason,
-  }))),
-  "The criterion must exactly equal the corresponding `failedCriterion` input value. Required id-to-criterion values:",
-  JSON.stringify(testEvidence.checks.map(({id,failedCriterion})=>({id,criterion:failedCriterion}))),
-  `Exact candidate SHA: ${revision}`,
-  `Exact disposable snapshot SHA-256: ${candidateSha256}`,
-  "Deterministic test results:",JSON.stringify(verificationTestEvidence),
-  "Both separate blinded Reviewer judgments:",JSON.stringify(judgeResults.map(item=>item.grade)),
-  "Changed paths:",JSON.stringify(changedPaths),
+  verifierBrief.prompt,
+  "Second blind Reviewer judgment, graded separately on this frozen candidate:",
+  JSON.stringify(judgeResults[1].grade.findings.map(item=>({path:item.path,reason:item.reason}))),
+  "Read both reviewer reasons, but retain the literal criterion strings and exact evidence from the pinned input.",
  ].join("\n");
  const verification=await dispatch("verifier","verifier",verificationPrompt,{
   reviewerJudgments:judgeResults,deterministicTests:testEvidence,changedPaths,
