@@ -24,9 +24,12 @@ const review={passed:true,status:"PASS_NEGATIVE_REJECTION",provider:"ollama-clou
  candidateId:"t12-review-"+ "f".repeat(12),fixtureSha256:"f".repeat(64),
  changedPaths:["src/access.js","src/parse.js","src/pricing.js"],
  deterministicTests:{checks:[
-  {id:"authorization",exitCode:1,failedCriterion:"viewers cannot edit documents they do not own"},
-  {id:"parsing",exitCode:1,failedCriterion:"integer parsing rejects trailing non-digits"},
-  {id:"pricing",exitCode:1,failedCriterion:"discounts reduce totals"},
+  {id:"authorization",exitCode:1,failureObserved:true,failedCriterion:"viewers cannot edit documents they do not own",
+   command:"node --input-type=module -e <bounded fixture assertion>",observation:"AssertionError: viewer edit was wrongly permitted"},
+  {id:"parsing",exitCode:1,failureObserved:true,failedCriterion:"integer parsing rejects trailing non-digits",
+   command:"node --input-type=module -e <bounded fixture assertion>",observation:"AssertionError: trailing non-digits were accepted"},
+  {id:"pricing",exitCode:1,failureObserved:true,failedCriterion:"discounts reduce totals",
+   command:"node --input-type=module -e <bounded fixture assertion>",observation:"AssertionError: applied discount increased total"},
  ]},toolsAllowed:false,writerAuthorized:false,authorization:"NOT_GRANTED",
  reviewer:[
  {id:"t12-review-"+ "f".repeat(12)+":judge-a",responseSha256:"c".repeat(64),responseBytes:200,grade:{passed:true,candidateSha:sha,verdict:"fail",findings:canonicalReview.map(item=>({...item}))}},
@@ -151,4 +154,22 @@ test("T12 final Reviewer/Verifier receipt cannot be borrowed from another frozen
  assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,
   reviewer:review.reviewer.map((judge,i)=>i===0?{...judge,id:"other-fixture:judge-a"}:judge)}}),
   /Reviewer judgment identity or order mismatch/);
+});
+
+test("T12 F5 final grade rejects invented, missing or unbounded deterministic failure observations",()=>{
+ const base=ready();
+ const corrupt=(delta:Record<string,unknown>)=>({...review,deterministicTests:{
+  checks:review.deterministicTests.checks.map((check,index)=>index===0?{...check,...delta}:check),
+ }});
+ for(const [invalid,expected] of [
+  [{failureObserved:false},/actually observed failure/],
+  [{failureObserved:undefined},/actually observed failure/],
+  [{observation:""},/bounded deterministic assertion evidence/],
+  [{observation:"passed successfully"},/bounded deterministic assertion evidence/],
+  [{observation:"AssertionError: "+ "x".repeat(1000)},/bounded deterministic assertion evidence/],
+  [{command:"echo fabricated pass"},/deterministic test execution command/],
+ ] as const){
+  assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:corrupt(invalid)}),expected);
+ }
+ assert.equal(gradeLiveAcceptanceEvidence(base).status,"PASS_BOUNDED_READ_ONLY");
 });

@@ -94,6 +94,13 @@ export function gradeLiveAcceptanceEvidence({sha,model,maxCalls,budget,receipts,
    "Reviewer/Verifier deterministic test IDs mismatch");
   for(const check of review.deterministicTests.checks){
    assert.equal(check.exitCode,1,"Reviewer/Verifier must observe a failed test");
+   assert.equal(check.failureObserved,true,
+    "Reviewer/Verifier must record the actually observed failure");
+   assert.ok(typeof check.observation==="string"&&check.observation.length>0&&
+    check.observation.length<=500&&/AssertionError/iu.test(check.observation),
+    "Reviewer/Verifier must include bounded deterministic assertion evidence");
+   assert.equal(check.command,"node --input-type=module -e <bounded fixture assertion>",
+    "Reviewer/Verifier must bind deterministic test execution command");
    assert.equal(check.failedCriterion,expectedDefects[check.id]?.acceptanceCriterion,
     "Reviewer/Verifier deterministic acceptance criterion mismatch");
   }

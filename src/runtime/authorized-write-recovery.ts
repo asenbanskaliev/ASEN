@@ -52,7 +52,11 @@ export function reconcileInterruptedAuthorizedWrite(input:{
  for(const path of expectedPaths)if(!/^[0-9a-f]{64}$/u.test(input.expectedFileSha256[path]!))throw new Error("Recovery expected output hash is invalid");
  const root=realpathSync(projectId),entry=journal.load(sessionId,root).find(row=>row.id===interruptedJobId);
  if(!entry||entry.state!=="interrupted"||entry.projectId!==root||entry.expectedHead!==expectedHead||!entry.allowedPaths||[...entry.allowedPaths].sort().join("\0")!==[...allowed].sort().join("\0"))throw new Error("Interrupted write does not match its durable authorization");
- const observed=statusPaths(root);
+ // A corrupt or unreadable Git index is not proof of a clean worktree.
+ // Recovery must quarantine the operation rather than throw or infer a retry.
+ let observed:string[];
+ try{observed=statusPaths(root);}
+ catch{return Object.freeze({state:"uncertain",action:"manual-reconciliation-required",observedPaths:Object.freeze([]),reason:"Git recovery status is unavailable or malformed"});}
  let head:string;try{head=execFileSync("git",["-C",root,"rev-parse","HEAD"],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();}catch{return Object.freeze({state:"uncertain",action:"manual-reconciliation-required",observedPaths:Object.freeze(observed),reason:"Git candidate identity is unavailable"});}
  if(head!==expectedHead)return Object.freeze({state:"uncertain",action:"manual-reconciliation-required",observedPaths:Object.freeze(observed),reason:"Candidate HEAD changed after interruption"});
  if(observed.length===0)return Object.freeze({state:"pending",action:"fresh-authorization-required",observedPaths:Object.freeze([]),reason:"No authorized output is present; the interrupted grant is never reused"});

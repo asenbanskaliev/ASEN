@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import {execFileSync} from "node:child_process";
-import {mkdtempSync,rmSync,writeFileSync,symlinkSync} from "node:fs";
+import {mkdtempSync,rmSync,writeFileSync,symlinkSync,renameSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import test,{type TestContext} from "node:test";
@@ -61,4 +61,30 @@ test("recovery never treats a symbolic link as proof of completed authorized byt
  const result=f.recover();
  assert.equal(result.state,"uncertain");
  assert.equal(result.action,"manual-reconciliation-required");
+});
+
+
+test("F6 interrupted authorized write remains quarantined when Git metadata is unavailable",t=>{
+ const state=fixture(t);
+ writeFileSync(join(state.root,"target.txt"),state.expected);
+ renameSync(join(state.root,".git"),join(state.root,".git-quarantined"));
+ const first=state.recover(),second=state.recover();
+ assert.equal(first.state,"uncertain");
+ assert.equal(first.action,"manual-reconciliation-required");
+ assert.match(first.reason,/Git recovery status is unavailable or malformed/);
+ assert.deepEqual(first,second);
+ assert.deepEqual(first.observedPaths,[]);
+ assert.equal(first.state!=="completed",true,"Missing Git status cannot prove completed edits");
+});
+
+test("F6 corrupt candidate Git index never becomes authorization to rerun an interrupted Writer",t=>{
+ const state=fixture(t);
+ writeFileSync(join(state.root,"target.txt"),state.expected);
+ const indexFile=join(state.root,".git","index");
+ // A corrupt Git index causes status to fail before rev-parse is checked.
+ writeFileSync(indexFile,"not a valid Git index\n");
+ const result=state.recover();
+ assert.equal(result.state,"uncertain");
+ assert.equal(result.action,"manual-reconciliation-required");
+ assert.match(result.reason,/Git recovery status is unavailable or malformed/);
 });
