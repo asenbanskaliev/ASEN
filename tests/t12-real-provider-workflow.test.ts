@@ -134,3 +134,12 @@ test("T12 live acceptance requires exact-SHA grades and retains explicit opt-in"
  assert.match(workflow,/PASS_BOUNDED_READ_ONLY/);
  assert.match(workflow,/PARTIAL_CALL_BUDGET/);
 });
+
+test("T12 Verifier prompt requires all three canonical reviewer findings after a real omission",()=>{
+ assert.match(reviewVerifier,/review evidence MUST contain exactly three entries/);
+ assert.match(reviewVerifier,/Required review\.findings objects, one per path, in canonical order/);
+ assert.match(reviewVerifier,/judgeResults\[0\]\.grade\.findings\.map/);
+ assert.match(reviewVerifier,/verifierReviewPaths/);
+ assert.match(reviewVerifier,/verifierEvidenceKinds/);
+ assert.match(reviewVerifier,/verificationSha256:verification\.responseSha256/);
+});

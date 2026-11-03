@@ -61,6 +61,10 @@ test("T12 Verifier grade requires all failed tests, exact SHA/scope and review e
  assert.throws(()=>gradeRealVerification(staleFixture,{candidateSha:sha,fixtureSha256:fixtureSha,changedPaths,testEvidence,review}),/different fixture snapshot/);
  const incomplete=verification();incomplete.evidence[0].checks.pop();
  assert.throws(()=>gradeRealVerification(incomplete,{candidateSha:sha,fixtureSha256:fixtureSha,changedPaths,testEvidence,review}),/omitted deterministic test evidence/);
+ const missingReviewedFinding=verification();missingReviewedFinding.evidence[2].findings.pop();
+ assert.throws(()=>gradeRealVerification(missingReviewedFinding,{candidateSha:sha,fixtureSha256:fixtureSha,changedPaths,testEvidence,review}),/did not reconcile every reviewer finding/);
+ const duplicateReviewedFinding=verification();duplicateReviewedFinding.evidence[2].findings[2]=duplicateReviewedFinding.evidence[2].findings[0]!;
+ assert.throws(()=>gradeRealVerification(duplicateReviewedFinding,{candidateSha:sha,fixtureSha256:fixtureSha,changedPaths,testEvidence,review}),/did not reconcile every reviewer finding/);
  const duplicated=verification();assert.equal(Reflect.set(duplicated.evidence[2],"kind","scope"),true);
  assert.throws(()=>gradeRealVerification(duplicated,{candidateSha:sha,fixtureSha256:fixtureSha,changedPaths,testEvidence,review}),/unique and complete/);
 });

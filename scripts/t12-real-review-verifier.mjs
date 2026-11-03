@@ -222,6 +222,13 @@ assert.throws(() => parseCount("12abc"));
   'Return exactly {"verdict":"fail","evidence":[{"kind":"tests","checks":[{"id":"...","exitCode":1,"criterion":"...","observation":"..."}]},{"kind":"scope","candidateSha":"...","fixtureSha256":"...","paths":["..."],"observation":"..."},{"kind":"review","findings":[{"path":"...","codeEvidence":"...","acceptanceCriterion":"...","reason":"..."}]}]}. Do not add or omit keys.',
   "A failed test must remain failed. Verify all three failures, the exact SHA and snapshot digest, every changed path, and the two blinded review judgments. Keep authorization NOT_GRANTED.",
   "Preserve every required key and value from the supplied evidence exactly; do not omit fields or paraphrase identifiers, paths, criteria, evidence strings, hashes or exit codes. Every failed test observation must include `AssertionError` or the word `failed`; each review reason must explicitly connect the defect to its failed criterion.",
+  "The review evidence MUST contain exactly three entries. Include one and only one of src/pricing.js, src/access.js and src/parse.js; preserve that exact order and NEVER collapse or summarize any finding.",
+  "Reconcile every item from Judge A, even if both reviewers agree. Copy every exact path, codeEvidence and acceptanceCriterion from the canonical required review list below. Each item also needs a reason (at least twenty characters) clearly describing a failure, defect, bypass, rejection or failed acceptance criterion.",
+  "Required review.findings objects, one per path, in canonical order (reason must explain the defect and mention its failed criterion):",
+  JSON.stringify(judgeResults[0].grade.findings.map(item=>({
+   path:item.path,codeEvidence:item.codeEvidence,acceptanceCriterion:item.acceptanceCriterion,
+   reason:"The reviewed defect fails the acceptance criterion: "+item.reason,
+  }))),
   "The criterion must exactly equal the corresponding `failedCriterion` input value. Required id-to-criterion values:",
   JSON.stringify(testEvidence.checks.map(({id,failedCriterion})=>({id,criterion:failedCriterion}))),
   `Exact candidate SHA: ${revision}`,
@@ -242,6 +249,16 @@ assert.throws(() => parseCount("12abc"));
   gradingError:error instanceof Error?error.message.split("\n",1)[0].slice(0,160):"Unknown deterministic grading error",
   reviewerJudgments:judgeResults,verificationSha256:verification.responseSha256,
   verificationBytes:verification.responseBytes,changedPaths,deterministicTests:testEvidence,
+  // Bounded non-sensitive shape diagnostics, never raw model text.
+  verifierEvidenceKinds:Array.isArray(verification.answer?.evidence)?
+   verification.answer.evidence.map(item=>typeof item?.kind==="string"?item.kind.slice(0,24):"INVALID").slice(0,8):[],
+  verifierReviewPaths:Array.isArray(verification.answer?.evidence)&&
+   Array.isArray(verification.answer.evidence.find(item=>item?.kind==="review")?.findings)?
+   verification.answer.evidence.find(item=>item?.kind==="review").findings
+    .filter(item=>typeof item?.path==="string")
+    .map(item=>["src/pricing.js","src/access.js","src/parse.js"].includes(item.path)?item.path:"OUT_OF_SCOPE")
+    .slice(0,8):[],
+
  });}
  await writeFile(join(evidenceDirectory,"real-review-verifier.json"),JSON.stringify({
   passed:true,status:"PASS_NEGATIVE_REJECTION",candidateSha:revision,candidateId:candidate.id,
