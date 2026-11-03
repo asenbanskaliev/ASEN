@@ -384,3 +384,7 @@ La primera ejecución del commit `0ec8234` rechazó `TS2322/TS2345` por inferenc
 ### CI global: inventario público de comandos
 
 La ejecución completa `41696159173` del SHA `2ea767e` detectó un rechazo en `tests/command-catalog.test.ts`: la lista estática esperada no incluía `asen-accept-review`. Se incorpora el comando en su posición alfabética sin eliminar el control de unicidad, la comprobación de comandos ausentes ni la lista de comandos implementados. El tipo, la lógica de autorización y el almacenamiento permanecen intactos. Confirmar el nuevo SHA antes de cerrar el gate de tres sistemas.
+
+### EF-603 — cierre ordenado de procesos en la prueba de coalescencia
+
+La aceptación sin proveedor del SHA `28906cb` falló en el hook de limpieza de un test que había validado el ID de dos Explorer idénticos: `ENOTEMPTY` borrando `.asen` antes de terminar la persistencia del agente de otra sesión. Se corrige el fixture para cerrar primero ambas sesiones con sus hooks Pi y eliminar después la raíz aislada con reintentos finitos. No se añaden sleeps de ejecución ni sondeo de agentes, no se cambia el sistema productivo y la prueba sigue exigiendo identidad/de-duplicación correctas.

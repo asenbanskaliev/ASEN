@@ -706,8 +706,16 @@ test("EF-601 Pi TUI idle stores completion and sends a separate wake after the e
  for(const stop of state.events.get("session_shutdown")??[])await stop({},ctx);
 });
 test("EF-603 identical ad-hoc Explorer launches reuse one running Pi task, never an unrelated session",async t=>{
- const home=await mkdtemp(join(tmpdir(),"asen-agent-coalesce-"));t.after(()=>rm(home,{recursive:true,force:true}));
+ const home=await mkdtemp(join(tmpdir(),"asen-agent-coalesce-"));
  const state=host(),root=await realpath(process.cwd()),ctx=state.context("coalesce-session",root);
+ let foreignContext:ReturnType<typeof state.context>|undefined;
+ t.after(async()=>{
+  // The foreign queued agent must not persist into a directory already being
+  // deleted. Shutdown both isolated owners before cleaning the fixture.
+  for(const context of [foreignContext,ctx])if(context)
+   for(const shutdown of state.events.get("session_shutdown")??[])await shutdown({},context);
+  await rm(home,{recursive:true,force:true,maxRetries:20,retryDelay:100});
+ });
  let runs=0;const finish=new Map<string,(value:{id:string;ok:true;output:string})=>void>();
  let signalFirst!:()=>void,signalSecond!:()=>void;
  const startedFirst=new Promise<void>(resolve=>{signalFirst=resolve;});
@@ -725,7 +733,7 @@ test("EF-603 identical ad-hoc Explorer launches reuse one running Pi task, never
  assert.equal(a.details.id,b.details.id);
  await startedFirst;
  assert.equal(runs,1);
- const foreign=state.context("other-session",root);
+ const foreign=state.context("other-session",root);foreignContext=foreign;
  const extra=await tool.execute("foreign",{prompt:"Inspect identical project sources"},new AbortController().signal,()=>{},foreign);
  assert.notEqual(extra.details.id,a.details.id);
  // A runtime with one available worker slot must still avoid a duplicate
