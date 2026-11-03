@@ -38,6 +38,16 @@ export function agentTerminalWakeOptions(
  return agentParentRoute(context,scope,parentRunActive)==="idle"
   ?{triggerTurn:true,deliverAs:"steer"}:undefined;
 }
+/** Durable record labels are data too: task-derived IDs can contain Unicode
+ * direction controls even when control characters were disallowed upstream.
+ * Never let labels create paragraphs or an unbounded model-facing message. */
+function displayLabel(value:unknown):string{
+ if(typeof value!=="string")return "[unknown]";
+ const text=value.replace(/[\p{Cc}\p{Cf}\u2028\u2029]/gu," ")
+  .replace(/\s+/gu," ").trim();
+ const letters=Array.from(text);
+ return letters.length>160?letters.slice(0,160).join("")+"…":text||"[empty]";
+}
 export function agentTerminalContinuationMessage(input:{
  id:string;role:string;state:string;summary:string|undefined;eventId?:string;
 }):string{
@@ -53,7 +63,7 @@ export function agentTerminalContinuationMessage(input:{
  const result=(bounded.length>1200?bounded.slice(0,1200).join("")+"… [truncated; consult durable task for full evidence]":cleaned)
   ||"No trustworthy output summary was persisted; inspect the durable task at a real orchestration decision boundary.";
  return [
-  `ASEN background agent ${input.role} (${input.id}) ended: ${input.state}.`,
+  `ASEN background agent ${displayLabel(input.role)} (${displayLabel(input.id)}) ended: ${displayLabel(input.state)}.`,
   ...(typeof input.eventId==="string"&&/^asen:agent:[0-9a-f]{64}:terminal$/u.test(input.eventId)
    ?[`Durable notice event ID: ${input.eventId}`,
       "After inspecting the actual durable result, call asen_agent_ack with that eventId to record only a coordinator action. Do not acknowledge only from this summary."] : []),

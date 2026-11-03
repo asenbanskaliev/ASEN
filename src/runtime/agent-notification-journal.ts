@@ -75,7 +75,11 @@ export class AgentNotificationJournal{
  async record(subject:AgentNoticeSubject):Promise<AgentNoticeRow>{
   const eventId=agentNoticeEventId(subject);
   return this.#change(file=>{
-   const existing=file.entries.find(x=>x.eventId===eventId);
+   // Existing versions keyed events to the literal project path. Reuse the
+   // durable event for an equivalent owned workspace (notably Windows path
+   // casing/8.3 aliases) without rewriting old event ids or replaying a send.
+   const existing=file.entries.find(x=>x.eventId===eventId||
+    (x.agentId===subject.id&&x.state===subject.state&&sameScope(x,subject)));
    if(existing)return{result:structuredClone(existing),changed:false};
    if(file.entries.length===MAX_ENTRIES)throw new Error("Agent notice journal capacity exceeded");
    const now=new Date().toISOString(),row:AgentNoticeRow={

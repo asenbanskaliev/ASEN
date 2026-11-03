@@ -96,3 +96,36 @@ test("EF-601/604 foreign scope and forged terminal identity cannot acknowledge",
  await assert.rejects(()=>journal.acknowledge(row.eventId,subject,subject.id,"failed"),/owned terminal/);
  assert.equal((await journal.list(subject))[0]?.delivery,"enqueued");
 });
+
+test("EF-601 duplicate terminal notification cannot be resent via canonical Windows project aliases",async t=>{
+ const {file,journal}=await fixture(t);
+ const first={...subject,projectId:"C:\\Work\\ASEN"};
+ const alternate={...subject,projectId:"c:\\work\\asen"};
+ const original=await journal.record(first);
+ await journal.claim(original.eventId,first);
+ await journal.markEnqueued(original.eventId,first);
+ const again=await new AgentNotificationJournal(file).record(alternate);
+ const entries=JSON.parse(await readFile(file,"utf8")).entries;
+ if(process.platform==="win32"){
+  assert.equal(again.eventId,original.eventId);
+  assert.equal(again.delivery,"enqueued");
+  assert.equal(entries.length,1);
+  assert.equal(await journal.claim(original.eventId,alternate),false);
+ }else{
+  assert.notEqual(again.eventId,original.eventId);
+  assert.equal(entries.length,2,"case-distinct POSIX paths must remain isolated");
+  assert.equal((await journal.list(first)).length,1);
+  assert.equal((await journal.list(alternate)).length,1);
+ }
+});
+test("EF-601 repeated terminal record from two instances is idempotent even after acknowledgement",async t=>{
+ const {file,journal}=await fixture(t),other=new AgentNotificationJournal(file);
+ const records=await Promise.all([journal.record(subject),other.record(subject)]);
+ assert.equal(records[0]?.eventId,records[1]?.eventId);
+ assert.equal((await journal.list(subject)).length,1);
+ const eventId=records[0]!.eventId;
+ await journal.claim(eventId,subject);await journal.markEnqueued(eventId,subject);
+ await journal.acknowledge(eventId,subject,subject.id,"completed");
+ assert.equal((await other.record(subject)).delivery,"acknowledged");
+ assert.equal((await journal.list(subject)).length,1);
+});
