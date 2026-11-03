@@ -218,6 +218,7 @@ assert.throws(() => parseCount("12abc"));
   "Verify this exact candidate only from the evidence below. All three deterministic assertions have already been executed by the parent and their results are supplied; do not invoke tools, run commands, read files, write files, request access, launch agents, or grant authorization.",
   'Return exactly {"verdict":"fail","evidence":[{"kind":"tests","checks":[{"id":"...","exitCode":1,"criterion":"...","observation":"..."}]},{"kind":"scope","candidateSha":"...","fixtureSha256":"...","paths":["..."],"observation":"..."},{"kind":"review","findings":[{"path":"...","codeEvidence":"...","acceptanceCriterion":"...","reason":"..."}]}]}. Do not add or omit keys.',
   "A failed test must remain failed. Verify all three failures, the exact SHA and snapshot digest, every changed path, and the two blinded review judgments. Keep authorization NOT_GRANTED.",
+  "Preserve every required key and value from the supplied evidence exactly; do not omit fields or paraphrase identifiers, paths, criteria, evidence strings, hashes or exit codes. Every failed test observation must include `AssertionError` or the word `failed`; each review reason must explicitly connect the defect to its failed criterion.",
   `Exact candidate SHA: ${revision}`,
   `Exact disposable snapshot SHA-256: ${candidateSha256}`,
   "Deterministic test results:",JSON.stringify(testEvidence),
@@ -232,7 +233,8 @@ assert.throws(() => parseCount("12abc"));
   candidateSha:revision,fixtureSha256:candidateSha256,changedPaths,testEvidence,
   review:judgeResults[0].grade,
  });}
- catch{await reject("VERIFIER_EVIDENCE_INCOMPLETE","Verifier output failed exact-candidate deterministic grading",{
+ catch(error){await reject("VERIFIER_EVIDENCE_INCOMPLETE","Verifier output failed exact-candidate deterministic grading",{
+  gradingError:error instanceof Error?error.message.split("\n",1)[0].slice(0,160):"Unknown deterministic grading error",
   reviewerJudgments:judgeResults,verificationSha256:verification.responseSha256,
   verificationBytes:verification.responseBytes,changedPaths,deterministicTests:testEvidence,
  });}
