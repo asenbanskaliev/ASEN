@@ -357,3 +357,7 @@ La aceptación funcional del commit `f72a2c0` superó Typecheck y las tres nueva
 El cambio de protección se aplica también al **origen**: `materializeExecutablePlan` propaga `candidateRevision` desde los agentes de la ruta ODD para Explorer, Reviewer y Verifier. De este modo la comprobación de HEAD del despachador no depende de que un tercero construya manualmente el metadato. Se añaden dos pruebas usando decisiones ODD auténticas, una ruta con dos revisores y otra con Verifier explícito. No se reconstruye una revisión candidata si ha cambiado la rama: se bloquea la unidad y se solicita volver a planificar.
 
 El workflow sin proveedor incluye ahora las pruebas de ODD persistente y tres regresiones de candidato caducado, la vista de dependencias bloqueadas, la propagación del materializador y el evento Pi EF-201. Todas deben cerrar en el **mismo SHA de publicación**, sin reclamar FULL por un fixture.
+
+### Corrección de compilación exact-SHA
+
+La primera ejecución `41693250792` del SHA `af26679` rechazó TypeScript `TS2345`: el tipo inferido para `flatMap` solo aceptaba `missing`, aunque las dependencias pueden tener cualquier `TaskState`. Se añade `<{id:string;state:string}>` al `flatMap` sin cambiar la lógica, los datos persistidos ni las pruebas de bloqueo. La aceptación de la nueva revisión queda pendiente del siguiente CI.
