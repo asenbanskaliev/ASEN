@@ -52,7 +52,8 @@ test('EF-003 rejects duplicate, unknown and malformed trace records before compa
   assert.throws(()=>compareAgentObservations(pair([], [entry('C01'),entry('C01')])),/duplicate/);
   assert.throws(()=>compareAgentObservations(pair([], [entry('C99')])),/Unknown/);
   assert.throws(()=>compareAgentObservations(pair([], [entry('C01','ASEN',{trace:{route:'direct'}})])),/exactly/);
-  assert.thrrows(()=>compareAgentObservations(pair([], [entry('C01'','ASEN',{trace:{...trace(),guards:['approve\nfalse']}})])),/token/);
+  assert.throws(()=>compareAgentObservations(pair([], [entry('C01','ASEN',{trace:{...trace(),roles:['god']}})])),/role/);
+  assert.throws(()=>compareAgentObservations(pair([], [entry('C01','ASEN',{trace:{...trace(),guards:['approve\\nfalse']}})])),/token/);
 });
 test('EF-003 even 20 matching fixtures cannot directly authorize FULL', () => {
   const ids=CASE_IDS;

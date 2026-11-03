@@ -284,3 +284,8 @@ Estado **IMPLEMENTED_PENDING_CI**, no FULL. Cambios previstos en el mismo commit
 - **EF-003: código implementado, aceptación remota pendiente. EF-002: BLOCKED hasta obtener observaciones reales A/B.** Los escenarios C01–C20 permanecen PENDING/BLOCKED y no se transforma ningún MATCH de fixture en FULL.
 
 **Siguiente bloque:** captura auténtica A/B + ASEN, comparación por escenario y recibos verificados; proseguir F1/F2/F6 (continuidad, presupuesto de Explorer y acuse tras reinicio) y después F3/F4/F5 con Writer interactivo. Sin merge a `main`, sin gasto de modelos.
+
+### EF-003 — corrección de transcripción de la prueba (2026-11-03)
+
+- La primera publicación `9bd7d94` falló en el paso **Typecheck** de la aceptación sin proveedor, run `41670537262`, por una línea mal transcrita en `tests/agent-observable-parity.test.ts` (TS1005/TS1127/TS1002). Era un error sintáctico del test, no un resultado de equivalencia.
+- Se restablecen los dos asserts de rechazo de rol desconocido y token con salto de línea, conservando el comparador y sus siete escenarios. Pendiente resultado CI exact-SHA de esta corrección; no calificar aún PASS ni FULL.
