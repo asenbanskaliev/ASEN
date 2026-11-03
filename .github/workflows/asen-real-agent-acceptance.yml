@@ -74,6 +74,7 @@ jobs:
             tests/profile-routing-real.test.ts \
             tests/orchestrator.test.ts \
             tests/functional-role-parity-matrix.test.ts \
+            tests/agent-observable-parity.test.ts \
             tests/natural-plan-tool.test.ts \
             tests/orchestrator-dispatcher-integration.test.ts \
             tests/agent-terminal-delivery.test.ts \

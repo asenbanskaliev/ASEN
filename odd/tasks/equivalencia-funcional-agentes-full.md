@@ -272,3 +272,15 @@ Estado **IMPLEMENTED_PENDING_CI**, no FULL. Cambios previstos en el mismo commit
 | EF-701 | Gate sin proveedor reforzado para rutas reales | PARTIAL: falta aceptación de referencia y proveedor |
 
 **Restricciones:** no alterar permisos de Writer, ni activar inferencia de proveedores reales, ni proclamar C01–C20 PASS sin recibo. R4 sigue `SELF_AUDIT_ONLY / NOT independent`. Un CI verde futuro no es FULL funcional. No fusionar `main`. Preparar siguientes bloques grandes EF-102/103/201–203/602–604 y después Writer/Verifier/Reviewer con sus pruebas reales.
+
+## Tanda EF-003 — comparador de observables (2026-11-03)
+
+**Estado: IMPLEMENTED_PENDING_EXACT_SHA_CI; FULL NO ALCANZADO.** Se incorpora `scripts/agent-observable-parity.mjs`, una herramienta de lectura que compara rutas, roles, restricciones, comprobaciones, notificaciones y efectos (no respuestas libres). El conjunto de aceptación continúa siendo C01–C20 y las referencias congeladas A/B de este ODD.
+
+- Captura: JSON `asen-agent-observable-v1`, objeto con `subject` (`reference` o `asen`) y `cases`, cada caso con `id`, `source`, `sha`, `execution`, `environment`, `model`, `receipt` y `trace`. El `trace` exige exactamente seis campos: `route`, `roles`, `guards`, `checks`, `notifications`, `effects`; solo permite valores de control limitados. El campo `receipt` es un localizador de evidencia para auditoría, no prueba automática de autenticidad.
+- Uso en entorno aislado, con capturas reales ya obtenidas: `node scripts/agent-observable-parity.mjs <reference.json> <asen.json> <sha-candidato-exacto>`. Presenta MATCH/FAIL/BLOCKED para cada C y sale con código no cero si falta evidencia o hay diferencias. Una coincidencia necesita verificar recibos externos; el programa **siempre devuelve globalFull:false**.
+- Rechaza esquemas ajenos, casos repetidos/extraños, trazas mal formadas y reutilización de SHA; la evidencia estática o simulada queda BLOCKED aunque coincida en contenido. No se crean capturas A/B ni se atribuyen ejecuciones reales inexistentes.
+- Prueba local focal de siete escenarios en Node 22.16.0: 7/7 PASS con `node --experimental-strip-types --test tests/agent-observable-parity.test.ts`. La nueva prueba se integra en la aceptación sin proveedor. El typecheck y CI remoto exact-SHA **aún no están certificados**.
+- **EF-003: código implementado, aceptación remota pendiente. EF-002: BLOCKED hasta obtener observaciones reales A/B.** Los escenarios C01–C20 permanecen PENDING/BLOCKED y no se transforma ningún MATCH de fixture en FULL.
+
+**Siguiente bloque:** captura auténtica A/B + ASEN, comparación por escenario y recibos verificados; proseguir F1/F2/F6 (continuidad, presupuesto de Explorer y acuse tras reinicio) y después F3/F4/F5 con Writer interactivo. Sin merge a `main`, sin gasto de modelos.
