@@ -82,6 +82,7 @@ jobs:
             tests/session-notifications.test.ts \
             tests/notification-projection.test.ts \
             tests/plan-dispatcher-role-boundaries.test.ts \
+            tests/review-acceptance.test.ts \
             tests/plan-dispatcher-candidate-guard.test.ts \
             tests/executable-plan-candidate-propagation.test.ts \
             tests/task-agent-coordinator.test.ts \

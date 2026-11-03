@@ -361,3 +361,18 @@ El workflow sin proveedor incluye ahora las pruebas de ODD persistente y tres re
 ### Corrección de compilación exact-SHA
 
 La primera ejecución `41693250792` del SHA `af26679` rechazó TypeScript `TS2345`: el tipo inferido para `flatMap` solo aceptaba `missing`, aunque las dependencias pueden tener cualquier `TaskState`. Se añade `<{id:string;state:string}>` al `flatMap` sin cambiar la lógica, los datos persistidos ni las pruebas de bloqueo. La aceptación de la nueva revisión queda pendiente del siguiente CI.
+
+## Macrotanda F4/F5 — aceptación humana verificable de Reviewer/Verifier (2026-11-03)
+
+**IMPLEMENTADO / CI DEL SHA EXACTO PENDIENTE — ESTADO GLOBAL PARTIAL, NO FULL.**
+
+- Se incorpora el comando interactivo `/asen-accept-review <todo-id>` en el catálogo de Pi, separado de `/asen-review`. No es una herramienta invocable por el modelo y no funciona en RPC/headless: exige TUI activa, sesión y proyecto idénticos, `ui.confirm` humano y autorización de un solo uso. No acepta un Writer y **no autoriza escritura ni merge**.
+- El nuevo verificador `acceptIndependentReview` exige un Todo de Reviewer/Verifier realmente bloqueado por su resultado terminal, `candidateRevision` persistido, un único enlace durable y un registro de agente completado autenticado desde `AgentRuntime.query` para la misma sesión/proyecto/rol. El dictamen JSON contiene únicamente `verdict` y `evidence` y debe ser `pass` con hallazgos no vacíos; los fallos, estructuras inesperadas, texto libre con controles terminales, duplicación de claves y evidencia excesiva bloquean.
+- Antes de la autorización y dentro del cierre se verifica Git HEAD exacto y árbol/índice sin cambios. Cualquier modificación en el diálogo, cambio de sesión o cambio del resultado invalida la aprobación. Un resultado declarado `pass` por el modelo **no se convierte en aceptación automática ni demuestra que el hallazgo es verdadero**: se presenta al usuario para juicio explícito.
+- `SessionTodoStore.acceptReviewedTask` ejecuta la confirmación en una única transacción con bloqueo entre procesos y control de instantánea CAS. Registra `blocked→running→done` como transiciones auditables del acto humano (sin reejecutar el agente), valida dependencias y se niega a escribir si el evento/plan cambió. Dos confirmaciones concurrentes no pueden registrar dos aceptaciones.
+- Se añaden pruebas de veredicto, formato e inyección; Reviewer y Verifier con almacenes reales, dos confirmaciones simultáneas, denegación, fallo de dictamen, SHA caducado, árbol alterado durante el diálogo, vínculo inexistente y cierre de interfaz interrumpido. El gate sin proveedor las ejecuta junto con todas las pruebas F1–F6 existentes.
+- **Límite reconocido:** este comando habilita continuar desde una revisión *realmente completada y aprobada* de un commit congelado, pero aún no demuestra el criterio FULL de equivalencia A/B, ni suple una auditoría independiente ni fabrica firma o consentimiento Writer. Cuando el Worker cambió HEAD, la revisión basada en la revisión antigua se bloquea; hay que preparar una nueva revisión sobre el candidato actual, no rebautizarla silenciosamente. Las verificaciones reales de los cinco roles y C01–C20 siguen pendientes.
+
+### Criterio de aceptación de esta macrotanda
+
+Aceptar únicamente tras typecheck, tests unitarios y de integración del comando y del journal, suite global Windows/Ubuntu/macOS, los gates de seguridad, Release Gate y el mismo SHA en CI. Ollama Cloud omitido y R4 autoauditoría NO independiente mantienen FULL bloqueado aunque todos los tests sin proveedor estén verdes.

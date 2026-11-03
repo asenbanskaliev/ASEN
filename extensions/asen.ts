@@ -51,6 +51,7 @@ import {TaskAgentCoordinator} from "../src/runtime/task-agent-coordinator.js";
 import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 import {TrustedTaskAgentBinder} from "../src/runtime/trusted-task-agent-binder.js";
 import {TaskAgentTodoReconciler} from "../src/runtime/task-agent-reconciler.js";
+import {acceptIndependentReview} from "../src/runtime/review-acceptance.js";
 import {dispatchNextPlanTask} from "../src/runtime/plan-dispatcher.js";
 import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-tools.js";
 import {PersistentWorkspaceStore,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";
@@ -841,6 +842,38 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     binding.store.deleteObservation(id,binding.projectId);for(let index=binding.saved.length-1;index>=0;index--)if(binding.saved[index]?.id===id)binding.saved.splice(index,1);return ["Recuerdo borrado de la memoria activa del proyecto."];
    }
    return ["Uso: /asen-memory [status | search <texto> | forget <id>"];
+  }});
+  registerData("asen-accept-review",{description:"Human-confirm a passing independent Reviewer/Verifier result for an immutable clean Git candidate; never automatic",handler:async(args:string|undefined,ctx:CommandContext)=>{
+   const requested=(args??"").trim();
+   if(!requested||requested.length>256||/\s/u.test(requested))return "Uso: /asen-accept-review <todo-id>. Selecciona un Todo de revisión o verificación bloqueado.";
+   if(ctx.hasUI!==true||ctx.mode!=="tui"||typeof ctx.ui.confirm!=="function")
+    return "La aceptación requiere confirmación humana en una sesión Pi TUI activa.";
+   if(!todoStorePromise||!agentRuntimePromise||!taskAgentLinks)
+    return "La coordinación de revisiones no está disponible en esta sesión.";
+   const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd;
+   if(!manager||!sessionId)return "La aceptación requiere la sesión Pi actual.";
+   const identity=await sessionIdentity(ctx);
+   const validateIdentity=async()=>{
+    if(ctx.signal?.aborted||ctx.mode!=="tui"||ctx.hasUI!==true||
+       ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)
+     throw new Error("La sesión de aceptación ha cambiado o se ha cancelado");
+    const current=await sessionIdentity(ctx);
+    if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
+     throw new Error("La sesión o el proyecto de la revisión han cambiado");
+   };
+   const result=await acceptIndependentReview({
+    todos:await todoStorePromise,agents:await agentRuntimePromise,links:taskAgentLinks,
+    identity,taskId:requested,validateIdentity,
+    ...(ctx.signal?{signal:ctx.signal}:{}),
+    confirm:async detail=>ctx.ui.confirm!(
+     "Aceptar evidencia independiente y finalizar este Todo?",
+     `Rol: ${detail.role}\nTodo: ${detail.taskId}\nAgente verificado: ${detail.agentId}\nRevisión Git: ${detail.candidateRevision}\n\nHallazgos proporcionados por el agente (no verificados como hechos):\n${detail.evidence.map((item,index)=>`${index+1}. ${item}`).join("\n")}\n\nEl repositorio debe seguir limpio y en el mismo commit. Esta acción SOLO registra tu aceptación del dictamen; no autoriza escritura ni merge.`
+    ),
+   });
+   if(result.status!=="accepted")return `No se ha aceptado la revisión: ${result.reason}`;
+   await refreshTodoWidget(ctx);
+   const advanced=await advancePlan(ctx);
+   return `Revisión ${result.role} aceptada para el Todo ${result.taskId}. ${advanced.started?"Se ha despachado el siguiente agente según las reglas vigentes.":advanced.reason??"No hay un siguiente trabajo preparado."} Sin merge ni permiso adicional de escritura.`;
   }});
   registerData("asen-task-agents",{description:"Show read-only task, dependency readiness and agent coordination for the current Pi session",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(!todoStorePromise||!agentRuntimePromise)return ["ASEN task-agent coordination requires both local stores."];const identity=await sessionIdentity(ctx);const coordinator=new TaskAgentCoordinator(await todoStorePromise,await agentRuntimePromise,taskAgentLinks);const view=await coordinator.snapshot(identity);return view.tasks.map(task=>({taskId:task.id,title:task.title,state:task.state,revision:task.revision,dependsOn:task.dependsOn,blockedBy:task.blockedBy,ready:task.ready,agents:task.agents}));}});
   registerData("asen-profiles",{description:"Show/apply profiles: [show | session <profile> | session --inherit | global <profile>]; actual routing remains unknown",handler:async(args:string|undefined,ctx:CommandContext|undefined)=>{

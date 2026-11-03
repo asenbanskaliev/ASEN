@@ -205,6 +205,50 @@ export class SessionTodoStore{
    }
   },30000);
  }
+ /** Finalize an explicitly accepted independent review in one private journal
+  * transaction. Never infer authorization from model output or a blocked task.
+  * The intermediate running state records the human acceptance step, not a
+  * re-execution of the agent. No agent is started here. */
+ async acceptReviewedTask(expected:TodoItem&{current:TaskEvent},context:TodoContext,agentId:string,verify:()=>Promise<void>,signal?:AbortSignal):Promise<void>{
+  if(!expected||!identity(expected.taskId)||!identity(agentId)||
+     !["reviewer","verifier"].includes(expected.plan?.role??"")||
+     expected.current.state!=="blocked"||
+     expected.current.reason!=="Linked review result requires explicit user acceptance"||
+     typeof expected.plan?.candidateRevision!=="string")
+   throw new Error("Review acceptance requires an exact blocked independent review");
+  const original=structuredClone(expected);
+  delete (original as {current?:TaskEvent}).current;
+  await this.#mutate(context,async data=>{
+   const item=data.items.find(row=>row.taskId===expected.taskId&&
+    row.events.at(-1)?.sessionId===context.sessionId&&
+    sameWorkspaceIdentityPath(row.events.at(-1)!.projectId,context.projectId));
+   if(!item||JSON.stringify(item)!==JSON.stringify(original)||
+      !item.plan||!["reviewer","verifier"].includes(item.plan.role))
+    throw new Error("Review acceptance snapshot changed; refresh and reconfirm");
+   const previous=replayTask(item.events);
+   if(!previous||previous.state!=="blocked"||
+      previous.reason!=="Linked review result requires explicit user acceptance"||
+      previous.revision!==expected.current.revision)
+    throw new Error("Review acceptance state changed; refresh and reconfirm");
+   for(const id of item.dependsOn??[]){
+    const dependency=data.items.find(row=>row.taskId===id&&
+     row.events.at(-1)?.sessionId===context.sessionId&&
+     sameWorkspaceIdentityPath(row.events.at(-1)!.projectId,context.projectId));
+    const dependencyState=dependency?replayTask(dependency.events)?.state:undefined;
+    if(dependencyState!=="done"&&dependencyState!=="succeeded")
+     throw new Error("Review acceptance has an unverified or missing dependency");
+   }
+   await verify();
+   const at=this.now();
+   const approved=applyTaskEvent(previous,{taskId:item.taskId,sessionId:context.sessionId,
+    projectId:previous.projectId,revision:previous.revision+1,state:"running",at,
+    reason:"Interactive Pi confirmation of independent review evidence"});
+   const finished=applyTaskEvent(approved,{taskId:item.taskId,sessionId:context.sessionId,
+    projectId:previous.projectId,revision:approved.revision+1,state:"done",at,
+    reason:`Human accepted verified review outcome from agent ${agentId}`});
+   item.events.push(approved,finished);
+  },signal);
+ }
  async list(context:TodoContext):Promise<readonly (TodoItem&{current:TaskEvent})[]>{if(!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN Todo session");const data=await this.#readSnapshot(context);return data.items.flatMap(item=>{const current=replayTask(item.events);return current&&current.sessionId===context.sessionId&&sameWorkspaceIdentityPath(current.projectId,context.projectId)?[{...structuredClone(item),current}]:[];});}
  async archived(context:TodoContext):Promise<readonly (TodoItem&{current:TaskEvent})[]>{if(!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN Todo session");return this.#archivedItems(this.#file(context),context);}
  async history(taskId:string,context:TodoContext):Promise<readonly TaskEvent[]>{const data=await this.#readSnapshot(context);let item=data.items.find(x=>x.taskId===taskId&&x.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(x.events.at(-1)!.projectId,context.projectId));if(!item)item=(await this.archived(context)).find(x=>x.taskId===taskId);return item?item.events.map(event=>structuredClone(event)):[];}

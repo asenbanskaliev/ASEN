@@ -5,6 +5,7 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"workflow",name:"asen-route",implemented:true,owner:"extensions/asen.ts"},
  {group:"workflow",name:"asen-plan",implemented:true,owner:"extensions/asen.ts"},
  {group:"review",name:"asen-review",implemented:true,owner:"src/review/ordinary-review-command.ts"},
+ {group:"review",name:"asen-accept-review",implemented:true,owner:"extensions/asen.ts"},
  {group:"skills",name:"asen-skill-registry",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-profiles",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-persona",implemented:true,owner:"extensions/asen.ts"},
