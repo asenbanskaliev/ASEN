@@ -347,3 +347,7 @@ Se ejecutan los dos nuevos tests EF-604 integrados con el anfitrión Pi de prueb
 ### Ajustes de integración de la tanda
 
 El SHA inicial de esta tanda detectó dos rechazos reales de gates: TypeScript `TS2379` al pasar una propiedad opcional con `undefined` explícito en un fixture, y rechazo por la política de no introducir nombres de procedencia externos fuera de los manifiestos. Se corrige el fixture construyendo un contexto sin esa propiedad; el ODD conserva las líneas y SHA de referencia sin el literal prohibido. Estas correcciones no prueban FULL ni cambian los permisos de ejecución.
+
+### CI de F6 — sustitución de expectativa `followUp` obsoleta
+
+La aceptación funcional del commit `f72a2c0` superó Typecheck y las tres nuevas pruebas Pi TUI de enrutamiento, pero otra prueba `EF-601` todavía exigía `followUp`. Se mantiene la prueba y se actualiza a la semántica S07: resultado primero encolado, wake separado con `steer`, una sola vez y sin acuse de consumo ficticio. Se limpia también la sesión de prueba. Falta confirmar el CI completo exact-SHA; no promocionar a FULL.
