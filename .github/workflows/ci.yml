@@ -27,6 +27,8 @@ jobs:
         with:
           node-version: "22.19.0"
       - run: npm ci
+      - name: Verify EF checklist against traceable evidence
+        run: npm run audit:ef-plan
       - name: Prepare frozen ecosystem Git objects
         run: node .github/scripts/prepare-frozen-ecosystem-baseline.mjs
       # Same checks and order as npm run check, split into timed Actions steps.

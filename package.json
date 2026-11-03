@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "test": "node scripts/run-tests.mjs",
-    "check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills && npm run audit:skill-parity && npm run audit:memory-parity && npm run audit:ecosystem && npm run audit:upstream-boundary",
+    "check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills && npm run audit:skill-parity && npm run audit:memory-parity && npm run audit:ecosystem && npm run audit:upstream-boundary && npm run audit:ef-plan",
     "verify:pack": "node scripts/verify-pack-environment.mjs",
     "verify:pi-matrix": "node scripts/pi-support-matrix.mjs",
     "verify:package-receipts": "node scripts/ecosystem-package-receipts.mjs",
@@ -28,10 +28,11 @@
     "audit:upstream-boundary": "node scripts/audit-upstream-boundary.mjs",
     "audit:ecosystem": "node scripts/ecosystem-baseline.mjs && node scripts/validate-ecosystem-claims.mjs",
     "audit:ecosystem-candidate": "node scripts/ecosystem-candidate-report.mjs",
-    "release:check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills && npm run audit:skill-parity && npm run audit:memory-parity && npm run audit:upstream-boundary && npm run audit:ecosystem && npm run build && npm run verify:pack",
+    "release:check": "npm run typecheck && npm test && npm run audit:parity && npm run audit:skills && npm run audit:skill-parity && npm run audit:memory-parity && npm run audit:upstream-boundary && npm run audit:ecosystem && npm run build && npm run verify:pack && npm run audit:ef-plan",
     "prepack": "npm run build",
     "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json",
-    "check:skip-baseline": "node scripts/check-skip-count.mjs"
+    "check:skip-baseline": "node scripts/check-skip-count.mjs",
+    "audit:ef-plan": "node scripts/audit-ef-plan.mjs"
   },
   "pi": {
     "extensions": [

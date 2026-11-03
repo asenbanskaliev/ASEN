@@ -137,63 +137,65 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 
 ### F0 — Puntos de partida y comparación
 
-- [x] EF-000 Auditar código de A/B y ASEN, congelar SHA y registrar diferencias. **Solo evidencia de código**, no equivalencia FULL.
-- [ ] EF-001 Resolver 2 fallos de confirmación de baseline en tres OS, con preservación de excepción y nueva prueba de caducidad; cerrar tras CI exact-SHA.
-- [ ] EF-002 Obtener observaciones reales C01–C20 del comportamiento A/B con entorno aislado y registrar resultados canónicos.
-- [ ] EF-003 Crear harness de comparación de decisiones observables sin depender del texto libre del modelo.
+- [x] EF-000 Auditar código de A/B y ASEN, congelar SHA y registrar diferencias. **Solo evidencia de código**, no equivalencia FULL. **VERIFICADO:** `registry/parity/skill-sources-v1.json` + `tests/agent-observable-parity.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
+- [ ] EF-001 Resolver 2 fallos de confirmación de baseline en tres OS, con preservación de excepción y nueva prueba de caducidad; cerrar tras CI exact-SHA. **PARCIAL:** Falta prueba nominal de ambos defectos de confirmación vinculada a CI exact-SHA.
+- [ ] EF-002 Obtener observaciones reales C01–C20 del comportamiento A/B con entorno aislado y registrar resultados canónicos. **BLOQUEADO:** No se han ejecutado C01–C20 sobre ambas referencias A/B.
+- [x] EF-003 Crear harness de comparación de decisiones observables sin depender del texto libre del modelo. **VERIFICADO:** `scripts/agent-observable-parity.mjs` + `tests/agent-observable-parity.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
 - **Gate:** baseline CI limpia, referencias trazables, comparación válida; no modificar el registro global ECO.
 
 ### F1 — Planner/decisión
 
-- [ ] EF-101 Alinear rutas directa/plan/delegación sin usar solo tamaño o cantidad de archivos.
-- [ ] EF-102 Conservar ODD, S#, tareas y mirror con conflictos visibles y próximos pasos honestos.
-- [ ] EF-103 Continuar por dependencias con identidad, sesión y candidato revalidados.
+- [ ] EF-101 Alinear rutas directa/plan/delegación sin usar solo tamaño o cantidad de archivos. **PARCIAL:** Rutas ASEN probadas; falta contraste observable A/B.
+- [x] EF-102 Conservar ODD, S#, tareas y mirror con conflictos visibles y próximos pasos honestos. **VERIFICADO:** `src/flow/odd-task-tracking.ts` + `tests/odd-task-tracking.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
+- [x] EF-103 Continuar por dependencias con identidad, sesión y candidato revalidados. **VERIFICADO:** `src/runtime/plan-dispatcher.ts` + `tests/plan-dispatcher-candidate-guard.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
 - **Gate:** C01, C04, C05.
 
 ### F2 — Explorer
 
-- [ ] EF-201 Igualar consulta CodeGraph-first, búsqueda local/web autorizada y fallback.
-- [ ] EF-202 Implementar disparadores observables de presupuesto y no repetición.
-- [ ] EF-203 Retorno compacto de pruebas y comprobaciones de no escritura.
+- [ ] EF-201 Igualar consulta CodeGraph-first, búsqueda local/web autorizada y fallback. **PARCIAL:** CodeGraph-first y fallback sin comparación observada A/B.
+- [x] EF-202 Implementar disparadores observables de presupuesto y no repetición. **VERIFICADO:** `src/runtime/explorer-budget.ts` + `tests/explorer-budget.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
+- [ ] EF-203 Retorno compacto de pruebas y comprobaciones de no escritura. **PARCIAL:** Contrato compacto/read-only sin ejecución completa del Explorer auténtico.
 - **Gate:** C02–C03.
 
 ### F3 — Writer
 
-- [ ] EF-301 Handoff exacto: task, requisitos, habilidades, pruebas y archivos permitidos.
-- [ ] EF-302 Pruebas RED/GREEN/PRESERVE, correcciones acotadas y retorno estructurado.
-- [ ] EF-303 Paralelismo seguro disjunto y rechazo de ámbitos superpuestos.
-- [ ] EF-304 Probar write real Pi con consentimiento genuino, revocación y resultado exacto.
+- [x] EF-301 Handoff exacto: task, requisitos, habilidades, pruebas y archivos permitidos. **VERIFICADO:** `src/runtime/plan-dispatcher.ts` + `tests/writer-authorization-snapshot.test.ts` · CI `41689422912` / SHA `07f9793517f8d6a57b3d67cc21b589be8002abb1`.
+- [ ] EF-302 Pruebas RED/GREEN/PRESERVE, correcciones acotadas y retorno estructurado. **PARCIAL:** RED/GREEN/PRESERVE sin ciclo Writer real integral.
+- [ ] EF-303 Paralelismo seguro disjunto y rechazo de ámbitos superpuestos. **PARCIAL:** Falta paralelismo genuino de Writers disjuntos y rechazo solapado.
+- [ ] EF-304 Probar write real Pi con consentimiento genuino, revocación y resultado exacto. **BLOQUEADO:** Falta Writer Pi real con autorización interactiva y revocación.
 - **Gate:** C06–C08, C17, C19.
 
 ### F4 — Verifier
 
-- [ ] EF-401 Alinear criterio de riesgo: cuándo se lanza y cuándo no.
-- [ ] EF-402 Pruebas independientes basadas en petición original, scratch y baseline.
-- [ ] EF-403 Prueba real de defecto de alto riesgo, detección y revalidación tras fix.
+- [ ] EF-401 Alinear criterio de riesgo: cuándo se lanza y cuándo no. **PARCIAL:** Matriz de riesgo ASEN probada; referencia A/B no ejecutada.
+- [ ] EF-402 Pruebas independientes basadas en petición original, scratch y baseline. **PARCIAL:** Sin pruebas independientes reales contra la petición y baseline.
+- [ ] EF-403 Prueba real de defecto de alto riesgo, detección y revalidación tras fix. **BLOQUEADO:** Sin defecto grave real detectado, corregido y revalidado.
 - **Gate:** C09–C10.
 
 ### F5 — Reviewer
 
-- [ ] EF-501 Alinear vía de evaluación del riesgo, identidad del cambio y revisión nativa.
-- [ ] EF-502 Comparar perspectivas, resultado congelado, bloqueo, corrección y reevaluación.
-- [ ] EF-503 Probar reviewer real independiente sin sustituir evidencias faltantes por simulaciones.
+- [ ] EF-501 Alinear vía de evaluación del riesgo, identidad del cambio y revisión nativa. **PARCIAL:** Falta contraste de revisión nativa y riesgos con A/B.
+- [ ] EF-502 Comparar perspectivas, resultado congelado, bloqueo, corrección y reevaluación. **PARCIAL:** Cierre/revisión congelada simulado; falta reevaluación real de perspectivas.
+- [ ] EF-503 Probar reviewer real independiente sin sustituir evidencias faltantes por simulaciones. **BLOQUEADO:** Reviewer independiente real sin recibos verificables.
 - **Gate:** C11–C12 y C17.
 
 ### F6 — Segundo plano y recuperación
 
-- [ ] EF-601 Entrega del resultado según estado del padre, con reactivación real cuando esté inactivo.
-- [ ] EF-602 Suprimir sondeo/sleep innecesario, duplicados y avisos caducados.
-- [ ] EF-603 No relanzar tareas activas equivalentes: misma identidad y alcance verificable.
-- [ ] EF-604 Recuperación tras reinicio, estado incierto y preguntas del hijo sin permiso inventado.
+- [ ] EF-601 Entrega del resultado según estado del padre, con reactivación real cuando esté inactivo. **BLOQUEADO:** Wake y consumo por Pi real aún no demostrados.
+- [x] EF-602 Suprimir sondeo/sleep innecesario, duplicados y avisos caducados. **VERIFICADO:** `src/runtime/agent-notification-journal.ts` + `tests/agent-notification-journal.test.ts` · CI `41689422912` / SHA `07f9793517f8d6a57b3d67cc21b589be8002abb1`.
+- [ ] EF-603 No relanzar tareas activas equivalentes: misma identidad y alcance verificable. **PARCIAL:** Solo Explorer ad-hoc idéntico; faltan planes y multiproceso.
+- [ ] EF-604 Recuperación tras reinicio, estado incierto y preguntas del hijo sin permiso inventado. **PARCIAL:** Recuperación y journal probados; faltan decisiones humanas reales del hijo.
 - **Gate:** C13–C15 y C18.
 
 ### F7 — Validación real y cierre
 
-- [ ] EF-701 Comparar C01–C20 con snapshots A/B y ASEN final; no heredar recibos entre SHAs.
-- [ ] EF-702 Probar selección de modelos reales gratuitos, error de cuota/red y consumo por agente.
-- [ ] EF-703 Verificar tres OS, suite global, permisos, Pi interactivo, Writer, revisión, eventos y recuperación.
-- [ ] EF-704 Auditoría final de diferencias. Solo cambiar estado a **FULL** cuando todos los gates anteriores y S01–S11 estén satisfechos.
+- [ ] EF-701 Comparar C01–C20 con snapshots A/B y ASEN final; no heredar recibos entre SHAs. **BLOQUEADO:** Faltan veinte pares de trazas A/B y ASEN auténticas.
+- [ ] EF-702 Probar selección de modelos reales gratuitos, error de cuota/red y consumo por agente. **BLOQUEADO:** Ollama Cloud real no activado; credenciales y recibos pendientes.
+- [ ] EF-703 Verificar tres OS, suite global, permisos, Pi interactivo, Writer, revisión, eventos y recuperación. **PARCIAL:** CI global exact-SHA y recorrido real Writer/Pi incompletos.
+- [ ] EF-704 Auditoría final de diferencias. Solo cambiar estado a **FULL** cuando todos los gates anteriores y S01–S11 estén satisfechos. **BLOQUEADO:** S01–S11, C01–C20 y auditoría final aún sin cerrar.
 - **Gate:** C01–C20 PASS obligatorios y ninguna diferencia esencial pendiente.
+
+**Resumen del plan:** 7/28 EF marcados como verificados en su alcance concreto; 21 siguen abiertos. Los checks no certifican FULL ni equivalencia C01–C20.
 
 ## Estrategia de tandas grandes y CI
 
@@ -404,3 +406,11 @@ La aceptación sin proveedor del SHA `28906cb` falló en el hook de limpieza de 
 ### Validación F7 — diferencia entre formato y autenticidad del árbol (2026-11-03)
 
 El primer gate funcional del SHA `9cc7fb0` mostró una prueba negativa mal planteada: esperaba que un digest de 40 caracteres válido sintácticamente fuera rechazado **antes** de descargar su árbol. El validador de manifiestos comprueba formato y coincidencia de commits entre documentos; la comprobación de autenticidad del árbol se hace **después de** `git fetch`. Se corrige el fixture a un valor de formato inválido y se mantiene intacta la prueba que simula un árbol Git incorrecto y exige rechazo sin exportar la ruta de evidencia. No se reduce la verificación de procedencia ni se declara FULL.
+
+
+## Reconciliación del plan ejecutable (2026-11-03)
+
+- Se marcaron 7 EF con código, pruebas y una ejecución de CI satisfactoria que corresponde al alcance específico. No se extrapola un PASS de tests simulados a equivalencia de proveedor auténtico.
+- Los otros 21 siguen `[ ]`, diferenciando `PARCIAL` de `BLOQUEADO`, con el motivo de cierre visible en cada tarea.
+- La nueva auditoría del checklist impedirá comprobar un EF sin ruta de código, ruta de prueba y CI exact-SHA; no sustituye la autenticidad de una evidencia real A/B ni cierra el gate F7.
+- La autoauditoría R4 y la aceptación sin proveedor no equivalen a independencia ni a ejecución de modelos reales.

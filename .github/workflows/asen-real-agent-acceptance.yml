@@ -65,6 +65,8 @@ jobs:
         run: npm run typecheck
       - name: Build
         run: npm run build
+      - name: F7 audit EF checklist and check its negative regression tests
+        run: npm run audit:ef-plan && node --import tsx --test tests/audit-ef-plan.test.ts
       - name: Focused profile, routing, reviewer, verifier and authorization tests
         shell: bash
         run: |
