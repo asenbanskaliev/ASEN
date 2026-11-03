@@ -11,6 +11,7 @@ import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {gradePlan} from "./t12-plan-grader.mjs";
 import {reserveInferenceCall} from "./t12-inference-budget.mjs";
+import {classifyT12ProviderFailure} from "./t12-provider-failure.mjs";
 
 const evidence=resolve("asen-acceptance-evidence");
 const expected=process.env.GITHUB_SHA;
@@ -50,7 +51,7 @@ const prompt=[
 async function writeFailure(status,diagnostic,details={}){
  await writeFile(join(evidence,"fixture-plan-grade.json"),JSON.stringify({
   passed:false,status,candidateId,candidateSha:expected,provider:"ollama-cloud",model,
-  diagnostic,responseSha256:details.response?createHash("sha256").update(details.response).digest("hex"):undefined,
+  diagnostic,providerFailureCode:details.providerFailureCode,responseSha256:details.response?createHash("sha256").update(details.response).digest("hex"):undefined,
   artifactSha256:details.artifact?createHash("sha256").update(details.artifact).digest("hex"):undefined,
   responseBytes:details.response===undefined?undefined:Buffer.byteLength(details.response),
   toolsAllowed:false,writerAuthorized:false,authorization:"NOT_GRANTED",
@@ -68,8 +69,14 @@ try{
   id:requestId,role:"clarifier",expectedPhase:"tasks",repository,prompt,candidate,
   skillContext,skillPaths,
  });
-}catch(error){await writeFailure("PLAN_DISPATCH_FAILED",error instanceof Error?error.message:"ASEN Dispatcher rejected the plan");}
-if(!result.ok)await writeFailure("PLAN_DISPATCH_FAILED",result.output.slice(0,240),{response:result.output});
+}catch(error){
+ const classified=classifyT12ProviderFailure(error);
+ await writeFailure("PLAN_DISPATCH_FAILED",classified.diagnostic,{providerFailureCode:classified.code});
+}
+if(!result.ok){
+ const classified=classifyT12ProviderFailure(result.output);
+ await writeFailure("PLAN_DISPATCH_FAILED",classified.diagnostic,{response:result.output,providerFailureCode:classified.code});
+}
 const proof=result.artifactProof;
 if(!isIssuedAgentArtifactProof(proof)||proof.requestId!==requestId||proof.role!=="clarifier"||proof.repository!==repository||
  proof.candidateId!==candidateId||proof.candidateRevision!==expected)

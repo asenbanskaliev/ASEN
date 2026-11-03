@@ -40,6 +40,12 @@ const expected=Object.freeze({
   authorization:"src/access.js",
   parsing:"src/parse.js",
 });
+// Require defect-specific reasoning, not merely known IDs and file paths.
+const reasonSignals=Object.freeze({
+ pricing:[/discount/iu,/add|plus|subtract|reduc|increas|decreas|inflat|overcharg/iu],
+ authorization:[/viewer/iu,/edit|authoriz|allow|permission|own/iu],
+ parsing:[/parse|integer|digit|input|number/iu,/trail|suffix|junk|prefix|non.?digit|invalid|malform|abc/iu],
+});
 const sha=s=>createHash("sha256").update(s).digest("hex");
 function target(args){
   const dir=args[0];
@@ -80,11 +86,20 @@ async function grade(dir,responseFile){
   const parsed=JSON.parse(await readFile(responseFile,"utf8"));
   assert.ok(parsed && Array.isArray(parsed.findings),"Model output must include findings[]");
   const accepted=new Set();
+  let valid=parsed.findings.length===Object.keys(expected).length;
   for(const finding of parsed.findings){
-    assert.ok(finding && typeof finding.id==="string" && typeof finding.path==="string","Invalid finding");
-    if(Object.hasOwn(expected,finding.id) && finding.path===expected[finding.id] && typeof finding.reason==="string" && finding.reason.trim().length>=20)accepted.add(finding.id);
+    if(!finding || typeof finding!=="object" || Array.isArray(finding) ||
+       Object.keys(finding).sort().join(",")!=="id,path,reason" ||
+       typeof finding.id!=="string" || !Object.hasOwn(expected,finding.id) ||
+       accepted.has(finding.id) || finding.path!==expected[finding.id] ||
+       typeof finding.reason!=="string" || finding.reason.trim().length<20 ||
+       !reasonSignals[finding.id].every(pattern=>pattern.test(finding.reason))){
+      valid=false;
+      continue;
+    }
+    accepted.add(finding.id);
   }
-  return {passed:accepted.size===Object.keys(expected).length,found:[...accepted].sort(),expected:Object.keys(expected).sort(),fixtureUnchanged:true};
+  return {passed:valid&&accepted.size===Object.keys(expected).length,found:[...accepted].sort(),expected:Object.keys(expected).sort(),fixtureUnchanged:true};
 }
 if(process.argv[1]?.endsWith("t12-real-agent-fixture.mjs")){
   const [operation,...args]=process.argv.slice(2);

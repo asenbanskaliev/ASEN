@@ -40,3 +40,24 @@ test("T12 fixture rejects unexpected files and directories instead of claiming u
  await rm(join(fixture,"hidden"),{recursive:true});
  assert.equal((await grade(fixture,answer)).fixtureUnchanged,true);
 });
+
+test("T12 grader rejects duplicate, invented and ungrounded findings",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-t12-strict-"));
+ t.after(async()=>rm(root,{recursive:true,force:true}));
+ const fixture=join(root,"fixture");await prepare(fixture);
+ const answer=join(root,"answer.json");
+ const valid=[
+  {id:"pricing",path:"src/pricing.js",reason:"The function adds the discount instead of reducing the total."},
+  {id:"authorization",path:"src/access.js",reason:"The viewer is improperly allowed to edit another owner's document."},
+  {id:"parsing",path:"src/parse.js",reason:"Parsing accepts a prefix and ignores trailing characters."},
+ ];
+ const gradeFindings=async(findings:unknown[])=>{
+  await writeFile(answer,JSON.stringify({findings}));
+  return (await grade(fixture,answer)).passed;
+ };
+ assert.equal(await gradeFindings(valid),true);
+ assert.equal(await gradeFindings([...valid,valid[0]]),false);
+ assert.equal(await gradeFindings([...valid,{id:"invented",path:"src/other.js",reason:"Invented evidence not present in the fixture."}]),false);
+ assert.equal(await gradeFindings([...valid.slice(0,2),{...valid[2],reason:"This generic statement makes no reference to the actual bug."}]),false);
+ assert.equal(await gradeFindings([...valid.slice(0,2),{...valid[2],path:"src/access.js"}]),false);
+});

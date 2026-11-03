@@ -12,6 +12,7 @@ import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {prepare,grade} from "./t12-real-agent-fixture.mjs";
 import {reserveInferenceCall} from "./t12-inference-budget.mjs";
+import {classifyT12ProviderFailure} from "./t12-provider-failure.mjs";
 
 const repository=resolve(".");
 const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8"}).trim();
@@ -53,11 +54,23 @@ try{
  }));
  const dispatcher=new Dispatcher(runner,new EvidenceStore(),1);
  const reservation=await reserveInferenceCall("asen-dispatcher-explorer");
- const result=await dispatcher.dispatch({
-  id:candidate.id+":explorer",role:"explorer",repository,prompt,candidate,
-  skillContext:context,skillPaths:skills,expectedPhase:"explore",
- });
- if(!result.ok)await failure("AGENT_DISPATCH_FAILED",result.output.slice(0,240));
+ let result;
+ try{
+  result=await dispatcher.dispatch({
+   id:candidate.id+":explorer",role:"explorer",repository,prompt,candidate,
+   skillContext:context,skillPaths:skills,expectedPhase:"explore",
+  });
+ }catch(error){
+  const classified=classifyT12ProviderFailure(error);
+  await failure("AGENT_DISPATCH_FAILED",classified.diagnostic,{providerFailureCode:classified.code});
+ }
+ if(!result.ok){
+  const classified=classifyT12ProviderFailure(result.output);
+  await failure("AGENT_DISPATCH_FAILED",classified.diagnostic,{
+   providerFailureCode:classified.code,
+   responseSha256:createHash("sha256").update(result.output).digest("hex"),
+  });
+ }
  if(result.artifactProof?.role!=="explorer"||result.artifactProof.candidateRevision!==revision||result.artifactProof.repository!==repository)
   await failure("ARTIFACT_PROVENANCE_INVALID","Dispatcher artifact proof did not match the exact explorer candidate");
  let artifact;

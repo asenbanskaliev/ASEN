@@ -12,6 +12,7 @@ import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {prepare} from "./t12-real-agent-fixture.mjs";
 import {reserveInferenceCall} from "./t12-inference-budget.mjs";
+import {classifyT12ProviderFailure} from "./t12-provider-failure.mjs";
 import {gradeRealReview,gradeRealVerification,normalizeVerifierTestEvidence} from "./t12-review-grader.mjs";
 
 const repository=resolve(".");
@@ -106,14 +107,15 @@ async function dispatch(label,role,prompt,failureMetadata={}){
   });
  }catch(error){
   await reject(`${role.toUpperCase()}_DISPATCH_FAILED`,"ASEN Dispatcher did not complete the bounded read-only request",{
-   stage:label,dispatchErrorName:error instanceof Error?error.name:"UnknownError",...failureMetadata,
+   stage:label,dispatchErrorName:error instanceof Error?error.name:"UnknownError",
+   providerFailureCode:classifyT12ProviderFailure(error).code,...failureMetadata,
   });
  }
  if(!result.ok){
   const toolRejected=/attempted a tool/u.test(result.output);
   await reject(`${role.toUpperCase()}_${toolRejected?"TOOL_CALL_REJECTED":"DISPATCH_FAILED"}`,
    toolRejected?"PiProcessRunner rejected a model tool call while --no-tools was enforced":"Pi Dispatcher returned no successful agent result",
-   {stage:label,...outputEvidence(result.output),...failureMetadata});
+   {stage:label,providerFailureCode:classifyT12ProviderFailure(result.output).code,...outputEvidence(result.output),...failureMetadata});
  }
  const proof=result.artifactProof;
  if(!isIssuedAgentArtifactProof(proof)||proof.requestId!==id||proof.role!==role||proof.repository!==repository||
