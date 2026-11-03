@@ -20,7 +20,7 @@ export function agentTerminalDeliveryOptions(
  return {triggerTurn:false};
 }
 export function agentTerminalContinuationMessage(input:{
- id:string;role:string;state:string;summary?:string;
+ id:string;role:string;state:string;summary:string|undefined;
 }):string{
  const result=input.summary?.trim()||"No trustworthy output summary was persisted; inspect the durable task at a real orchestration decision boundary.";
  return [
