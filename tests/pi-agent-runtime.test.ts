@@ -347,7 +347,7 @@ test("Pi project changes while the Todo launch lock is held prevent agent dispat
  const state=host(),context=state.context(session.sessionId),runner:AgentRunner={run:async request=>{runnerCalls++;return{id:request.id,ok:true,output:"must not execute after identity change"};}};createPiExtension({homeDir:()=>home,agentRunner:runner,agentStoreFile:agentFile,todoStoreFile:todoFile,autoAdvancePlans:false})(state.pi as any);await state.events.get("session_start")![0]!({},context);
  await writeFile(`${todoFile}.lock`,JSON.stringify({pid:process.pid,token:"held-by-test",createdAt:Date.now()}));const pending=state.tools.get("asen_agent_start").execute("wait-for-todo-lock",{prompt:instruction,todoId:task.taskId},new AbortController().signal,()=>{},context);
  await new Promise(resolve=>setTimeout(resolve,35));context.cwd=home;await rm(`${todoFile}.lock`);await assert.rejects(pending,/session or project changed before Todo agent dispatch/u);
- assert.equal(runnerCalls,0);assert.equal((await todos.list(session))[0]?.current.state,"planned");assert.deepEqual(await links.list(session),[]);assert.equal(JSON.parse(await readFile(agentFile,"utf8")).entries[0]?.record.state,"cancelled");await state.events.get("session_shutdown")![0]!({},context);
+ assert.equal(runnerCalls,0);assert.equal((await todos.list(session))[0]?.current.state,"planned");assert.deepEqual(await links.list(session),[]);assert.deepEqual(JSON.parse(await readFile(agentFile,"utf8")).entries,[],"stale pre-launch identity must not persist an agent at all");await state.events.get("session_shutdown")![0]!({},context);
 });
 
 test("persisted plan reviewer and verifier roles dispatch only their exact read-only skill phases",async t=>{

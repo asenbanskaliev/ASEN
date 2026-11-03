@@ -13,6 +13,10 @@ if(!process.argv[2])throw new Error("Usage: node scripts/verify-pi-package.mjs <
 const packageRoot=path.resolve(process.argv[2]);
 const root=mkdtempSync(path.join(tmpdir(),"asen-installed-pi-"));
 const verifierEnvironment=()=>({...createPiVerifierEnvironment(process.env),ASEN_PI_VERIFIER_TRACE:"1"});
+// Windows CI runs several native Pi/RPC processes under heavy concurrent load.
+// Keep a strict, finite watchdog but avoid confusing startup slowness with
+// a failed security or session-isolation invariant.
+const RPC_COMMAND_WATCHDOG_MS=process.platform==="win32"?45_000:20_000;
 try {
   process.env.HOME=root;process.env.USERPROFILE=root;
   process.env.PI_CODING_AGENT_DIR=path.join(root,"agent");
@@ -85,7 +89,7 @@ try {
     await new Promise((resolve,reject)=>{
       const names=["asen","asen-commands","asen-status","asen-doctor","asen-agents","asen-changes","asen-todos","asen-task-agents","asen-profiles","asen-route","asen-plan"];
       let buffer="",stdout="",stderr="",index=0,notifications=0,lastNotification="";
-      const timer=setTimeout(()=>fail(Error(`Installed RPC commands timed out: ${stderr.slice(-1000)}`)),20000);
+      const timer=setTimeout(()=>fail(Error(`Installed RPC commands timed out at command ${names[index]??"startup"} (${index}/${names.length}): ${stderr.slice(-1000)}`)),RPC_COMMAND_WATCHDOG_MS);
       const fail=error=>{clearTimeout(timer);reject(error);};
       const send=value=>child.stdin.write(JSON.stringify(value)+"\n");
       const routeFacts={taskIdentity:"package-route",intent:"analysis",scope:{kind:"known",expectedPaths:[]},writes:[],riskOperations:[],session:{estimatedMinutes:1,continuation:false},testing:{kind:"required"},review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]};
@@ -142,7 +146,7 @@ try {
     const matches=host.commands.filter(row=>row.name===name&&row.source==="extension"&&fromPrimary(row));
     assert.equal(matches.length,1,`${name} must have one canonical installed-source registration`);
   }
-  const toolNames=["asen_ask_choice","asen_ask_question","ask_user_choice","ask_user_question","asen_agent_start","asen_agent_status","asen_agent_cancel","asen_agent_continue","asen_agent_retry","asen_plan_dispatch_next","asen_plan_request","asen_todo_add","asen_todo_update","asen_todo_list","asen_todo_accept_result","codegraph"];
+  const toolNames=["asen_ask_choice","asen_ask_question","ask_user_choice","ask_user_question","asen_agent_start","asen_agent_status","asen_agent_ack","asen_agent_cancel","asen_agent_continue","asen_agent_retry","asen_plan_dispatch_next","asen_plan_request","asen_todo_add","asen_todo_update","asen_todo_list","asen_todo_accept_result","codegraph"];
   for(const name of toolNames){
     const matches=host.tools.filter(row=>row.name===name&&realpathSync(row.path)===realpathSync(primary));
     assert.equal(matches.length,1,`${name} must have one canonical installed-source registration`);
@@ -155,7 +159,7 @@ try {
   const seen=[];let reopenedRecoveryNotice="",reopenedTodoRecoveryNotice="";
   await new Promise((resolve,reject)=>{
     const names=["asen-agents","asen-todos","asen-task-agents","asen-changes"];let buffer="",stderr="",index=-1,notifications=0,lastNotification="";
-    const timer=setTimeout(()=>fail(Error(`Reopened Pi session timed out: ${stderr.slice(-1000)}`)),20000);
+    const timer=setTimeout(()=>fail(Error(`Reopened Pi session timed out at command ${names[index]??"startup"} (${index}/${names.length}): ${stderr.slice(-1000)}`)),RPC_COMMAND_WATCHDOG_MS);
     const fail=error=>{clearTimeout(timer);reject(error);};
     const send=value=>reopened.stdin.write(JSON.stringify(value)+"\n");
     const requestNext=()=>{index++;if(index===names.length){clearTimeout(timer);resolve();return;}send({id:`reopen-${names[index]}`,type:"prompt",message:`/${names[index]}`});};
@@ -180,7 +184,7 @@ try {
   await new Promise((resolve,reject)=>{
     const names=["asen-agents","asen-todos","asen-task-agents","asen-changes"];
     let buffer="",stderr="",index=-1,notifications=0,lastNotification="";
-    const timer=setTimeout(()=>fail(Error(`Foreign Pi session timed out: ${stderr.slice(-1000)}`)),20000);
+    const timer=setTimeout(()=>fail(Error(`Foreign Pi session timed out at command ${names[index]??"startup"} (${index}/${names.length}): ${stderr.slice(-1000)}`)),RPC_COMMAND_WATCHDOG_MS);
     const fail=error=>{clearTimeout(timer);reject(error);};
     const send=value=>foreign.stdin.write(JSON.stringify(value)+"\n");
     const next=()=>{index++;if(index===names.length){clearTimeout(timer);resolve();return;}send({id:`foreign-${names[index]}`,type:"prompt",message:`/${names[index]}`});};
