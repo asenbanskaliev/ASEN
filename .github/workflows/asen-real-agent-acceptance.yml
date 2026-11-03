@@ -73,6 +73,7 @@ jobs:
             tests/profile-selection.test.ts \
             tests/profile-routing-real.test.ts \
             tests/orchestrator.test.ts \
+            tests/agent-terminal-delivery.test.ts \
             tests/plan-dispatcher-role-boundaries.test.ts \
             tests/task-agent-automation.test.ts \
             tests/pi-verifier-exit.test.ts \
@@ -107,6 +108,8 @@ jobs:
         run: node --import tsx --test tests/t12-ollama-child-credential.test.ts
       - name: Pi retry settings preserve installed extensions
         run: node --import tsx --test tests/t12-pi-retry-settings.test.ts
+      - name: EF-601/EF-603 real runtime event and duplicate-start regression (mock runner)
+        run: node --import tsx --test --test-name-pattern='EF-601|EF-603' tests/pi-agent-runtime.test.ts
       - name: F7 create exact-SHA provider-free acceptance ledger (never claim FULL)
         env:
           ASEN_OFFLINE_TESTS_PASSED: '1'

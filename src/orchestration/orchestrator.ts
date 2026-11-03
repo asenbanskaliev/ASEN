@@ -150,7 +150,12 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRou
       },input.runtimeProfiles));
     }
   }
-  const verifier=contextFor("verify","verify",true);
-  agents.push(applyRuntimeProfile({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext:verifier.context,skillPaths:verifier.skillPaths},input.runtimeProfiles));
+  // Medium-risk work retains writer tests and any explicitly requested
+  // reviewers, but does not spend an independent Verifier by default.
+  // Verification intent above and genuinely high-risk incidents are distinct.
+  if(decision.verification==="independent"){
+   const verifier=contextFor("verify","verify",true);
+   agents.push(applyRuntimeProfile({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext:verifier.context,skillPaths:verifier.skillPaths},input.runtimeProfiles));
+  }
   return planned({decision,agents,skills});
 }

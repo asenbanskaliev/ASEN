@@ -166,3 +166,49 @@ test("ECO-07 persistence rejects forged authority on an explorer before disk wri
   await assert.rejects(()=>store.enqueue(candidateRequest,owner),/Authority-bearing agent requests cannot be serialized/);
  assert.deepEqual(await store.list("session-a","/repo"),[]);
 });
+
+test("EF-603 coalesces only equivalent active ad-hoc explorers under one durable lock",async t=>{
+ const file=await fixture(t),{store}=await PersistentAgentStore.open(file);
+ const launch=(id:string,project="/repo",session="session-a",model="free-model")=>({
+  ...req(id,session,project),prompt:"Inspect the exact same source in this workspace",
+  model,dedupeKey:"a".repeat(64),
+ });
+ const [first,second]=await Promise.all([
+  store.enqueueAdHocExplorerOrReuse(launch("one"),owner),
+  store.enqueueAdHocExplorerOrReuse(launch("two"),owner),
+ ]);
+ assert.equal(first.id,second.id);
+ assert.equal([first.reused,second.reused].filter(Boolean).length,1);
+ assert.equal((await store.list("session-a","/repo")).length,1);
+ await store.running(first.id);
+ const third=await store.enqueueAdHocExplorerOrReuse(launch("three"),owner);
+ assert.deepEqual(third,{id:first.id,reused:true,state:"running"});
+ const foreign=await store.enqueueAdHocExplorerOrReuse(launch("foreign","/other"),owner);
+ const otherSession=await store.enqueueAdHocExplorerOrReuse(launch("other-session","/repo","session-b"),owner);
+ const otherModel=await store.enqueueAdHocExplorerOrReuse(launch("other-model","/repo","session-a","different-model"),owner);
+ assert.equal(foreign.reused,false);
+ assert.equal(otherSession.reused,false);
+ assert.equal(otherModel.reused,false);
+ await store.failed(first.id,"The agent did not complete");
+ const fresh=await store.enqueueAdHocExplorerOrReuse(launch("fresh"),owner);
+ assert.equal(fresh.reused,false,"A failed or terminal task is never treated as still executing");
+ assert.notEqual(fresh.id,first.id);
+});
+test("EF-603 durable task reuse works across two live store instances without relaunch",async t=>{
+ const file=await fixture(t),first=(await PersistentAgentStore.open(file)).store,second=(await PersistentAgentStore.open(file)).store;
+ const make=(id:string)=>({...req(id),prompt:"Read the same bounded fixture",dedupeKey:"f".repeat(64)});
+ const [a,b]=await Promise.all([
+  first.enqueueAdHocExplorerOrReuse(make("a"),owner),
+  second.enqueueAdHocExplorerOrReuse(make("b"),owner),
+ ]);
+ assert.equal(a.id,b.id);
+ assert.equal([a.reused,b.reused].filter(Boolean).length,1);
+ assert.equal((await second.list("session-a","/repo")).length,1);
+});
+test("EF-603 never accepts forged or authority-bearing deduplication receipts",async t=>{
+ const file=await fixture(t),{store}=await PersistentAgentStore.open(file);
+ const base={...req("invalid"),dedupeKey:"g".repeat(64)};
+ await assert.rejects(()=>store.enqueueAdHocExplorerOrReuse(base,owner),/Only fresh|unaﬃliated|coalescing|Invalid/i);
+ await assert.rejects(()=>store.enqueueAdHocExplorerOrReuse({...base,dedupeKey:"a".repeat(64),role:"worker"} as any,owner),/unaffiliated|read-only/u);
+ await assert.rejects(()=>store.enqueueAdHocExplorerOrReuse({...base,dedupeKey:"a".repeat(64),skillPaths:["untrusted"]} as any,owner),/unaffiliated/u);
+});

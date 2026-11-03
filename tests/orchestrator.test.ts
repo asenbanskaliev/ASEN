@@ -22,10 +22,10 @@ const orchestrated=(taskId="t",repository="r")=>issueOddDecision({
 const invokeWithUnknownDecision=(input:Parameters<typeof buildOrchestrationPlan>[0],decision:unknown)=>
  Reflect.apply(buildOrchestrationPlan,undefined,[input,decision]);
 
-test("orchestration uses one writer and read-only reviewer/verifier",()=>{
+test("medium/low risk orchestration uses one writer and reviewers without redundant Verifier",()=>{
  const decision=orchestrated();
  const p=buildOrchestrationPlan({taskId:"t",repository:"r",prompt:"p",writeSurfaces:["src"],candidate},decision);
- assert.deepEqual(p.agents.map(a=>a.role),["worker","reviewer","reviewer","verifier"]);
+ assert.deepEqual(p.agents.map(a=>a.role),["worker","reviewer","reviewer"]);
  assert.equal(p.agents.filter(a=>a.writeSurfaces?.length).length,1);
  assert.equal(p.decision,decision);
  assert.equal(Object.isFrozen(p.decision),true);
@@ -64,7 +64,7 @@ test("persisted session/project/global routes reach each agent request after rel
  const p=buildOrchestrationPlan({taskId:"profiled",repository:"r",prompt:"p",candidate,runtimeProfiles},orchestrated("profiled"));
  assert.deepEqual(p.agents.map(a=>[a.role,a.model,a.thinking]),[
   ["worker","session/worker","high"],
-  ["reviewer",undefined,undefined],["reviewer",undefined,undefined],["verifier","global/verifier",undefined],
+  ["reviewer",undefined,undefined],["reviewer",undefined,undefined],
  ]);
 });
 
@@ -84,7 +84,7 @@ test("incident routing preserves its existing non-admitted worker role",()=>{
   {taskId:"incident",repository:"r",prompt:"diagnose",codeChange:true,behaviorChange:true,filesTouched:99,candidate},
   issueOddDecision({taskId:"incident",repository:"r",intent:"incident"}),
  );
- assert.deepEqual(plan.agents.map(agent=>agent.role),["explorer","worker","reviewer","verifier"]);
+ assert.deepEqual(plan.agents.map(agent=>agent.role),["explorer","worker","reviewer"]);
  assert.equal(plan.agents.find(agent=>agent.role==="worker")?.writeSurfaces,undefined);
 });
 
@@ -259,15 +259,15 @@ test("orchestration passes exact selected SKILL.md paths to delegated agents",()
  ]);
  assert.ok(reviewer?.skillPaths?.includes("skills/asen-adversarial-review/SKILL.md"));
  assert.equal(reviewer?.skillPaths?.includes("skills/asen-apply/SKILL.md"),false);
- assert.ok(verifier?.skillPaths?.includes("skills/asen-verify/SKILL.md"));
- assert.equal(verifier?.skillPaths?.includes("skills/asen-apply/SKILL.md"),false);
+ assert.equal(verifier,undefined,"A low-risk explicit review does not require independent verification");
+ 
 });
 
 test("delegated role contexts are independently issued and task-bound",()=>{
  const p=buildOrchestrationPlan({taskId:"phase",repository:"r",prompt:"implement",skillPhase:"apply",codeChange:true,filesTouched:4,writeSurfaces:["src"],candidate},orchestrated("phase"));
  assert.equal(p.agents.find(a=>a.role==="worker")?.skillContext?.taskId,"phase:worker");
  assert.equal(p.agents.find(a=>a.role==="reviewer")?.skillContext?.taskId,"phase:review");
- assert.equal(p.agents.find(a=>a.role==="verifier")?.skillContext?.taskId,"phase:verify");
+ assert.equal(p.agents.some(a=>a.role==="verifier"),false);
 });
 
 test("rejects legacy, manual, and cloned route decisions",()=>{
@@ -318,4 +318,21 @@ test("ECO-06 planning never issues writer admission or runner write receivers",(
  for(const key of ["writerAdmission","runnerWriteReceiver","phaseGrant"]){
   assert.equal(Object.hasOwn(worker,key),false);
  }
+});
+
+test("EF-401 high-risk incident retains independent Verifier and an explicit verification route still launches one",()=>{
+ const incident=issueOddDecision({
+  taskId:"high-incident",repository:"r",intent:"incident",
+  riskOperations:["security_boundary"],reviewKind:"ordinary",
+ });
+ assert.equal(incident.verification,"independent");
+ const planned=buildOrchestrationPlan({taskId:"high-incident",repository:"r",
+  prompt:"Inspect this exact security incident",candidate},incident);
+ assert.deepEqual(planned.agents.map(agent=>agent.role),["explorer","worker","reviewer","verifier"]);
+ const verifier=planned.agents.find(agent=>agent.role==="verifier");
+ assert.ok(verifier?.skillPaths?.includes("skills/asen-verify/SKILL.md"));
+ assert.equal(verifier?.writeSurfaces,undefined);
+ const intentional=issueOddDecision({taskId:"verify-explicit",repository:"r",intent:"verification"});
+ const plan=buildOrchestrationPlan({taskId:"verify-explicit",repository:"r",prompt:"Verify the original acceptance"},intentional);
+ assert.deepEqual(plan.agents.map(agent=>agent.role),["verifier"]);
 });

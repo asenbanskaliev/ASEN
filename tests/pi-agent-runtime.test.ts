@@ -675,3 +675,57 @@ test("foreign-project agents require live consent and are cancelled with the own
  await state.events.get("session_shutdown")![0]!({},ctx);assert.equal(cleaned,true);
  await assert.rejects(state.tools.get("asen_agent_status").execute("expired",{id:task.details.id,root:foreign},new AbortController().signal,()=>{},ctx),/permission is unavailable/);
 });
+
+test("EF-601 Pi TUI receives one automatic follow-up when ad-hoc Explorer completes",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-agent-wake-"));t.after(()=>rm(home,{recursive:true,force:true}));
+ const state=host(),ctx={...state.context("wake-session",await realpath(process.cwd())),mode:"tui"};
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:true,enableTodoRuntime:false,
+  enableWorkspaceRuntime:false,enableMemoryRuntime:false,
+  agentRunner:{run:async request=>({id:request.id,ok:true,output:"Bounded explorer evidence"})},
+ })(state.pi as any);
+ await startPublicSession(state,ctx);
+ const started=await state.tools.get("asen_agent_start").execute("wake",{prompt:"Read scoped evidence"},
+  new AbortController().signal,()=>{},ctx);
+ assert.ok(started.details.id);
+ await state.waitForMessage(message=>message.includes("ASEN terminó"));
+ const sent=state.sentMessages.filter(x=>x.message.customType==="asen.agent.result");
+ assert.equal(sent.length,1);
+ assert.deepEqual(sent[0].options,{triggerTurn:true,deliverAs:"followUp"});
+ assert.equal(sent[0].message.details.deliveryConfirmed,false);
+ assert.match(sent[0].message.content,/do not sleep, poll agent status repeatedly/iu);
+});
+test("EF-603 identical ad-hoc Explorer launches reuse one running Pi task, never an unrelated session",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-agent-coalesce-"));t.after(()=>rm(home,{recursive:true,force:true}));
+ const state=host(),root=await realpath(process.cwd()),ctx=state.context("coalesce-session",root);
+ let runs=0;const finish=new Map<string,(value:{id:string;ok:true;output:string})=>void>();
+ let signalFirst!:()=>void,signalSecond!:()=>void;
+ const startedFirst=new Promise<void>(resolve=>{signalFirst=resolve;});
+ const startedSecond=new Promise<void>(resolve=>{signalSecond=resolve;});
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:true,enableTodoRuntime:false,
+  enableWorkspaceRuntime:false,enableMemoryRuntime:false,
+  agentRunner:{run:async request=>{runs++;if(runs===1)signalFirst();if(runs===2)signalSecond();return await new Promise(resolve=>{finish.set(request.id,value=>resolve(value));});}},
+ })(state.pi as any);
+ await startPublicSession(state,ctx);
+ const tool=state.tools.get("asen_agent_start");
+ const [a,b]=await Promise.all([
+  tool.execute("a",{prompt:"Inspect identical project sources"},new AbortController().signal,()=>{},ctx),
+  tool.execute("b",{prompt:"Inspect identical project sources"},new AbortController().signal,()=>{},ctx),
+ ]);
+ assert.equal(a.details.id,b.details.id);
+ await startedFirst;
+ assert.equal(runs,1);
+ const foreign=state.context("other-session",root);
+ const extra=await tool.execute("foreign",{prompt:"Inspect identical project sources"},new AbortController().signal,()=>{},foreign);
+ assert.notEqual(extra.details.id,a.details.id);
+ await startedSecond;
+ assert.equal(runs,2);
+ const completed=new Promise<void>(resolve=>{
+  const send=state.pi.sendMessage;
+  state.pi.sendMessage=(message:any,options:any)=>{
+   send(message,options);
+   if(state.sentMessages.filter(item=>item.message.customType==="asen.agent.result").length>=2)resolve();
+  };
+ });
+ for(const [id,resolve] of finish)resolve({id,ok:true,output:"Done"});
+ await completed;
+});

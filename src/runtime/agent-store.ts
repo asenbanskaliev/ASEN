@@ -12,14 +12,14 @@ import {selectSkills} from "../skills/registry.js";
 const SCHEMA="asen.agents/v1" as const,MAX_RECORDS=2000,MAX_EVENTS=20000,MAX_PROMPT=32000,MAX_OUTPUT=1_000_000;
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted){const error=new Error("Agent task cancelled");error.name="AbortError";throw error;}}
 type AgentRole=AgentRequest["role"];
-export interface AgentTaskSpec{ id:string;role:AgentRole;prompt:string;repository:string;isolationKey:string;createdAt:string;ownerProcessId?:number;model?:string;thinking?:AgentRequest["thinking"];continuationOf?:string; }
+export interface AgentTaskSpec{ id:string;role:AgentRole;prompt:string;repository:string;isolationKey:string;createdAt:string;ownerProcessId?:number;model?:string;thinking?:AgentRequest["thinking"];continuationOf?:string;dedupeKey?:string; }
 export interface AgentExecutionReceipt{ id:string;ok:true;output:string;sha256:string; }
 export interface AgentStateEvent{ id:string;revision:number;state:PublicAgentRecord["state"];at:string;summary?:string; }
 export interface AgentStoreEntry{ record:PublicAgentRecord;request:AgentTaskSpec;events:AgentStateEvent[];result?:AgentExecutionReceipt; }
 export interface AgentStoreFile{schema:typeof SCHEMA;revision:number;entries:AgentStoreEntry[];}
 const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
 const identifier=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<=1024&&v===v.trim()&&v===v.normalize("NFC")&&!/[\u0000-\u001f\u007f-\u009f]/u.test(v);
-function specFrom(request:AgentRequest,createdAt:string,controlledWorker=false):AgentTaskSpec{
+function specFrom(request:AgentRequest&{dedupeKey?:string},createdAt:string,controlledWorker=false):AgentTaskSpec{
  if(!identifier(request.id)||!identifier(request.repository)||!identifier(request.isolationKey??"default")||typeof request.prompt!=="string"||!request.prompt.trim()||request.prompt.length>MAX_PROMPT||/\u0000/u.test(request.prompt)||!(["clarifier","explorer","worker","reviewer","verifier"] as unknown[]).includes(request.role))throw new Error("Invalid persistent agent request");
  const safeControlledWorker=controlledWorker&&request.role==="worker"&&!!request.candidate&&Array.isArray(request.writeSurfaces)&&request.writeSurfaces.length>0&&!!request.writerAdmission&&!request.phaseGrant;
  if(!(["clarifier","explorer","reviewer","verifier"] as unknown[]).includes(request.role)&&!safeControlledWorker||request.writeSurfaces?.length&&!safeControlledWorker||request.candidate&&!safeControlledWorker||request.writerAdmission&&!safeControlledWorker||request.phaseGrant)throw new Error("Authority-bearing agent requests cannot be serialized; create a fresh authorized dispatch");
@@ -30,16 +30,18 @@ function specFrom(request:AgentRequest,createdAt:string,controlledWorker=false):
  }
  if(request.model!==undefined&&(typeof request.model!=="string"||!identifier(request.model)))throw new Error("Invalid persistent agent model");
  if(request.thinking!==undefined&&!(["off","minimal","low","medium","high"] as unknown[]).includes(request.thinking))throw new Error("Invalid persistent agent thinking level");
- const {model,thinking}=request;
- return {id:request.id,role:request.role,prompt:request.prompt,repository:request.repository,isolationKey:request.isolationKey??"default",createdAt,ownerProcessId:process.pid,...(model?{model}:{}),...(thinking?{thinking}:{}),...(request.parentId?{continuationOf:request.parentId}:{})};
+ const {model,thinking,dedupeKey}=request;
+ if(dedupeKey!==undefined&&(request.role!=="explorer"||request.parentId||controlledWorker||!/^[0-9a-f]{64}$/u.test(dedupeKey)))
+  throw new Error("Only fresh, unaffiliated explorer work may be coalesced");
+ return {id:request.id,role:request.role,prompt:request.prompt,repository:request.repository,isolationKey:request.isolationKey??"default",createdAt,ownerProcessId:process.pid,...(model?{model}:{}),...(thinking?{thinking}:{}),...(request.parentId?{continuationOf:request.parentId}:{}),...(dedupeKey?{dedupeKey}:{})};
 }
 function specValue(v:unknown):v is AgentTaskSpec{
  if(!v||typeof v!=="object"||Array.isArray(v))return false;
- const keys=["id","role","prompt","repository","isolationKey","createdAt",...(Object.hasOwn(v,"ownerProcessId")?["ownerProcessId"]:[]),...(Object.hasOwn(v,"model")?["model"]:[]),...(Object.hasOwn(v,"thinking")?["thinking"]:[]),...(Object.hasOwn(v,"continuationOf")?["continuationOf"]:[])];
+ const keys=["id","role","prompt","repository","isolationKey","createdAt",...(Object.hasOwn(v,"ownerProcessId")?["ownerProcessId"]:[]),...(Object.hasOwn(v,"model")?["model"]:[]),...(Object.hasOwn(v,"thinking")?["thinking"]:[]),...(Object.hasOwn(v,"continuationOf")?["continuationOf"]:[]),...(Object.hasOwn(v,"dedupeKey")?["dedupeKey"]:[])];
  if(!exact(v,keys))return false;
  // SAFETY: exact validated the complete persisted task-spec key set before field validation below.
  const x=v as unknown as AgentTaskSpec;
- return identifier(x.id)&&(["clarifier","explorer","worker","reviewer","verifier"] as unknown[]).includes(x.role)&&typeof x.prompt==="string"&&x.prompt.length>0&&x.prompt.length<=MAX_PROMPT&&!/[\u0000]/u.test(x.prompt)&&identifier(x.repository)&&identifier(x.isolationKey)&&typeof x.createdAt==="string"&&Number.isFinite(Date.parse(x.createdAt))&&(x.ownerProcessId===undefined||Number.isSafeInteger(x.ownerProcessId)&&x.ownerProcessId>0)&&(x.model===undefined||identifier(x.model))&&(x.thinking===undefined||(["off","minimal","low","medium","high"] as unknown[]).includes(x.thinking))&&(x.continuationOf===undefined||identifier(x.continuationOf));
+ return identifier(x.id)&&(["clarifier","explorer","worker","reviewer","verifier"] as unknown[]).includes(x.role)&&typeof x.prompt==="string"&&x.prompt.length>0&&x.prompt.length<=MAX_PROMPT&&!/[\u0000]/u.test(x.prompt)&&identifier(x.repository)&&identifier(x.isolationKey)&&typeof x.createdAt==="string"&&Number.isFinite(Date.parse(x.createdAt))&&(x.ownerProcessId===undefined||Number.isSafeInteger(x.ownerProcessId)&&x.ownerProcessId>0)&&(x.model===undefined||identifier(x.model))&&(x.thinking===undefined||(["off","minimal","low","medium","high"] as unknown[]).includes(x.thinking))&&(x.continuationOf===undefined||identifier(x.continuationOf))&&(x.dedupeKey===undefined||x.role==="explorer"&&x.continuationOf===undefined&&/^[0-9a-f]{64}$/u.test(x.dedupeKey));
 }
 function processIsAlive(pid:number):boolean{
  try{process.kill(pid,0);return true;}catch(error){return !!error&&typeof error==="object"&&"code" in error&&(error as NodeJS.ErrnoException).code==="EPERM";}
@@ -109,6 +111,43 @@ export class PersistentAgentStore implements AgentLifecycleSink{
   await this.#mutate(data=>{throwIfCancelled(signal);if(data.entries.some(x=>x.record.id===spec.id))throw new Error("Agent task id already exists");data.entries.push(entry);},signal);this.#records.set(record.id,structuredClone(record));
  }
  async enqueue(request:AgentRequest,owner:PublicAgentRecord["owner"],signal?:AbortSignal):Promise<void>{return this.#enqueue(request,owner,signal,false);}
+ /** Atomically reuse the identical, unlinked read-only explorer in this session.
+  * Running/queued tasks are not relaunched; interrupted tasks require review.
+  */
+ async enqueueAdHocExplorerOrReuse(
+  request:AgentRequest&{dedupeKey:string},owner:PublicAgentRecord["owner"],signal?:AbortSignal,
+ ):Promise<{id:string;reused:boolean;state:PublicAgentRecord["state"]}>{
+  throwIfCancelled(signal);
+  if(request.role!=="explorer"||!request.dedupeKey||request.skillContext||request.skillPaths||
+     request.parentId||request.candidate||request.writeSurfaces||request.writerAdmission||request.phaseGrant)
+   throw new Error("Coalescing requires an unaffiliated read-only explorer request");
+  const at=this.now(),spec=specFrom(request,at);
+  let found:{id:string;reused:boolean;state:PublicAgentRecord["state"]}|undefined;
+  await this.#mutate(data=>{
+   throwIfCancelled(signal);
+   const existing=data.entries.find(entry=>
+    (entry.record.state==="queued"||entry.record.state==="running")&&
+    entry.request.dedupeKey===spec.dedupeKey&&entry.record.role==="explorer"&&
+    entry.record.sessionId===spec.isolationKey&&
+    sameWorkspaceIdentityPath(entry.record.projectId,spec.repository)&&
+    entry.record.owner.kind===owner.kind&&entry.record.owner.id===owner.id&&
+    entry.request.prompt===spec.prompt&&entry.request.model===spec.model&&
+    entry.request.thinking===spec.thinking);
+   if(existing){found={id:existing.record.id,reused:true,state:existing.record.state};return;}
+   if(data.entries.some(entry=>entry.record.id===spec.id))throw new Error("Agent task id already exists");
+   const record=createAgentRecord({id:spec.id,role:spec.role,owner,sessionId:spec.isolationKey,projectId:spec.repository,createdAt:at});
+   data.entries.push({record,request:spec,events:[event(record,1)]});
+   found={id:record.id,reused:false,state:"queued"};
+  },signal);
+  if(!found)throw new Error("Explorer launch claim is unavailable");
+  const claimed=found as {id:string;reused:boolean;state:PublicAgentRecord["state"]};
+  if(!claimed.reused){
+   const entry=await this.get(claimed.id,spec.isolationKey,spec.repository);
+   if(entry)this.#records.set(claimed.id,structuredClone(entry.record));
+  }
+  return claimed;
+ }
+
  /** Persists only a descriptive worker record; candidate, file scope and one-use authority remain in memory. */
  async enqueueControlledWorker(request:AgentRequest,owner:PublicAgentRecord["owner"],signal?:AbortSignal):Promise<void>{return this.#enqueue(request,owner,signal,true);}
  /** Atomically claims one interrupted parent and persists its fresh continuation identity. */
