@@ -30,3 +30,20 @@ test("T12 Planner uses the ASEN Dispatcher with pinned no-tools provider isolati
  assert.match(planner,/providerCredential:"OLLAMA_API_KEY"/);
  assert.doesNotMatch(planner,/\bspawn\(/);
 });
+
+test("T12 provider-free acceptance runs the existing interruption, recovery, timeout and quota suites",()=>{
+ const heading="      - name: F6 interruption, restart, authorization and provider failure regressions";
+ const start=workflow.indexOf(heading);
+ assert.notEqual(start,-1,"Missing bounded F6 provider-free regression stage");
+ const end=workflow.indexOf("\n      - name:",start+heading.length);
+ const stage=workflow.slice(start,end===-1?undefined:end);
+ for(const path of [
+  "tests/agent-store.test.ts",
+  "tests/authorized-write-recovery.test.ts",
+  "tests/eco06-interrupted-writer.test.ts",
+  "tests/eco07-provider-failure.test.ts",
+  "tests/pi-process-runner.test.ts",
+  "tests/pi-session-recovery-e2e.test.ts",
+  "tests/session-recovery-e2e.test.ts",
+ ])assert.ok(stage.includes(path),`F6 acceptance omits ${path}`);
+});
