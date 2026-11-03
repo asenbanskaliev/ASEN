@@ -50,3 +50,31 @@ test("EF-203 Explorer schema rejects false evidence, unsafe paths, injected keys
  assert.equal(inspectExplorerSchema({...base,extra:"write now"}).passed,false);
  assert.equal(inspectExplorerSchema({...base,findings:[{id:"x",path:"src/a.ts",reason:"evidence"}]}).passed,true);
 });
+
+test("EF-203 all eight field types can be correct while exact value rules still reject a real Beam response",()=>{
+ const candidate={...response(),evidence:[],unknowns:[" not-trimmed"],
+  findings:[{id:"pricing",path:"../unexpected.txt",reason:" Unsafe reason "}],
+ };
+ const actual=inspectExplorerSchema(candidate);
+ assert.equal(actual.passed,false);
+ assert.deepEqual(actual.observedShape,{
+  currentState:"string",affectedAreas:"array",approaches:"array",evidence:"array",
+  risks:"array",unknowns:"array",readiness:"string",findings:"array",
+ });
+ assert.ok(actual.invalidFields.includes("evidence.empty"));
+ assert.ok(actual.invalidFields.includes("unknowns.items"));
+ assert.ok(actual.invalidFields.includes("findings[0].path"));
+ assert.ok(actual.invalidFields.includes("findings[0].reason"));
+});
+test("EF-203 schema diagnostics expose only bounded field codes, never untrusted model text",()=>{
+ const secret="SYNTHETIC_SUPPLIED_CONTENT_DO_NOT_EXPORT";
+ const candidate={...response(),evidence:[secret+"\\n"],findings:[
+  {id:"pricing",path:"src/pricing.js",reason:secret+"\\u202e"}
+ ]};
+ const result=inspectExplorerSchema(candidate);
+ assert.equal(result.passed,false);
+ assert.ok(Array.isArray(result.invalidFields));
+ assert.ok(result.invalidFields.length<=24);
+ assert.ok(result.invalidFields.every((field:string)=>/^[a-zA-Z0-9.[\\]]+$/u.test(field)));
+ assert.doesNotMatch(JSON.stringify(result),/SYNTHETIC_SUPPLIED_CONTENT_DO_NOT_EXPORT/u);
+});
