@@ -142,8 +142,8 @@ test("ECO-06 plan-only delegation cannot start a worker even with complete evide
  assert.equal(ran,false);
 });
 
-test("ECO-06 every planned read-only role stays outside write admission",async()=>{
- const plan=buildOrchestrationPlan({taskId:"read-only-roles",repository,prompt:"inspect",candidate},issueOddDecision({taskId:"read-only-roles",repository,intent:"incident"}));
+test("ECO-06 high-risk incident delegates read-only Explorer Reviewer Verifier without write admission",async()=>{
+ const plan=buildOrchestrationPlan({taskId:"read-only-roles",repository,prompt:"inspect",candidate},issueOddDecision({taskId:"read-only-roles",repository,intent:"incident",riskOperations:["security_boundary"]}));
  let calls=0;
  const dispatcher=new Dispatcher({run:async r=>{calls++;return{id:r.id,ok:true,output:"ok"};}},new EvidenceStore());
  for(const role of ["explorer","reviewer","verifier"] as const){
@@ -156,4 +156,20 @@ test("ECO-06 every planned read-only role stays outside write admission",async()
   assert.equal(result.ok,true);
  }
  assert.equal(calls,3);
+});
+
+test("medium-risk orchestrated review preserves independent review but never adds an unrequested Verifier",()=>{
+ const plan=buildOrchestrationPlan(
+  {taskId:"medium-risk-review",repository,prompt:"review the bounded behavior",candidate},
+  issueOddDecision({taskId:"medium-risk-review",repository,
+   reviewKind:"dual_explicit",
+   writes:[{path:"src/a.ts",changeKind:"behavior"}],
+   paths:["src/a.ts","src/b.ts"],
+  }),
+ );
+ assert.equal(plan.decision.risk,"medium");
+ assert.equal(plan.decision.verification,"tests");
+ assert.equal(plan.agents.filter(agent=>agent.role==="reviewer").length,2);
+ assert.equal(plan.agents.some(agent=>agent.role==="verifier"),false);
+ assert.ok(plan.agents.every(agent=>agent.role==="worker"||agent.writeSurfaces===undefined));
 });

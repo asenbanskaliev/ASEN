@@ -40,7 +40,7 @@ test("registered natural intake preserves controlled command routing and instruc
  const cases=[
   {name:"direct primary",taskIdentity:"parity-direct",route:"direct",taskRoles:["primary"],delegatedRoles:[],facts:{...request(),instruction:"Inspect the bounded form behavior without changing it",writes:[],testing:{kind:"n_a",reason:"Read-only inspection"}}},
   {name:"material clarification",taskIdentity:"parity-clarify",route:"plan",taskRoles:["clarifier"],delegatedRoles:[],facts:{...request(),instruction:"Update the form while preserving its current normalization contract",unresolvedDecisions:["Should surrounding whitespace be rejected or normalized?"]}},
-  {name:"explicit coordinated review",taskIdentity:"parity-review",route:"orchestrate",taskRoles:["worker","reviewer","reviewer","verifier"],delegatedRoles:["worker","reviewer","reviewer","verifier"],facts:{...request(),instruction:"Implement the bounded form change with explicit coordinated review",scope:{kind:"known",expectedPaths:["src/form.ts","src/form-rules.ts","tests/form.test.ts","docs/form.md"]},review:{kind:"dual_explicit",estimatedMinutes:10}}},
+  {name:"explicit coordinated review, medium risk",taskIdentity:"parity-review",route:"orchestrate",taskRoles:["worker","reviewer","reviewer"],delegatedRoles:["worker","reviewer","reviewer"],facts:{...request(),instruction:"Implement the bounded form change with explicit coordinated review",scope:{kind:"known",expectedPaths:["src/form.ts","src/form-rules.ts","tests/form.test.ts","docs/form.md"]},review:{kind:"dual_explicit",estimatedMinutes:10}}},
   {name:"verification",taskIdentity:"parity-verify",route:"verify",taskRoles:["verifier"],delegatedRoles:["verifier"],facts:{...request(),instruction:"Verify the completed form behavior independently",intent:"verification",scope:{kind:"known",expectedPaths:[]},writes:[]}},
  ] as const;
  for(const item of cases)await t.test(item.name,async()=>{
@@ -121,8 +121,8 @@ test("natural-language plan request persists the real planner output without aut
   const context={cwd:process.cwd(),sessionManager:{getSessionId:()=>"natural-plan-session"},ui:{notify(){}}};
   const result=await tool.execute("call",requestFacts,undefined,undefined,context);
   const persisted=await todos.list({sessionId:"natural-plan-session",projectId:process.cwd()});
-  assert.equal(persisted.length,4);
-  assert.deepEqual(persisted.map(row=>row.plan?.role),["worker","reviewer","reviewer","verifier"]);
+  assert.equal(persisted.length,3);
+  assert.deepEqual(persisted.map(row=>row.plan?.role),["worker","reviewer","reviewer"]);
   assert.ok(persisted.every(row=>row.current.state==="planned"));
   assert.ok(persisted.find(row=>row.plan?.role==="worker")?.plan?.candidate?.revision);
   assert.equal(result.details.execution.started,false);
@@ -192,4 +192,17 @@ test("high-risk requests stay blocked without a stale clarification task",async(
   assert.match(result.content[0].text,/límite de riesgo alto/u);
   assert.match(result.content[0].text,/No inicies tareas ni escribas/u);
  }finally{await rm(directory,{recursive:true,force:true});}
+});
+
+test("risk-based natural plan keeps two blind reviewers but does not invent independent Verifier for medium risk",async()=>{
+ const medium={...request(),scope:{kind:"known" as const,expectedPaths:["src/form.ts","tests/form.test.ts"]},
+  review:{kind:"dual_explicit" as const,estimatedMinutes:15}};
+ let registered:any;
+ registerAsenPlanRequestTool({registerTool:tool=>{registered=tool;}},async(args)=>{
+  return controlledInstructionPlanCommand(args,"/repo");
+ },()=>"medium-risk-review-no-unneeded-verifier");
+ const actual=(await registered.execute("call",medium,undefined,undefined,{cwd:"/repo"})).details;
+ assert.deepEqual(actual.requiredAgentRoles,["worker","reviewer","reviewer"]);
+ assert.equal(actual.executablePlan.tasks.some((entry:{role:string})=>entry.role==="verifier"),false);
+ assert.equal(actual.verification,"tests");
 });

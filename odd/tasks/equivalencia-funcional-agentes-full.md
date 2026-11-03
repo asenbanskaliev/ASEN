@@ -247,3 +247,28 @@ Estado **IMPLEMENTED_PENDING_CI**, no FULL. Cambios previstos en el mismo commit
 - Se reconciliaron los mismos casos de tres tareas (Writer + dos Reviewers) en `tests/extension-runtime-commands.test.ts`, `tests/extension-state-commands.test.ts`, `tests/instruction-triage.test.ts` y `scripts/verify-pi-package.mjs`, conservando sus dependencias y comprobaciones de no ejecución sin autorización. Las pruebas de verificación explícita y de incidente de riesgo alto continúan esperando Verifier independiente.
 - Las correcciones de pruebas se hacen porque el contrato intencionado ahora es proporcional al riesgo; no se han eliminado permisos ni se ha declarado innecesaria una verificación de riesgo alto. La aceptación definitiva requiere reejecutar todos los gates de los tres sistemas sobre el SHA nuevo.
 - Estado global **PARTIAL**: el objetivo FULL sigue condicionado a los escenarios C01-C20, pruebas reales de Pi y los cinco roles, despertar confirmado, Writer con consentimiento y comparación contra la referencia congelada.
+
+## Tanda consolidada EF-101 + EF-401 + EF-601 + F0 (2026-11-03)
+
+**Estado: PENDING exact-SHA CI; FULL NO ALCANZADO.** Baseline verificada antes de esta tanda: PR #45 HEAD `766fa4b602f4bc8933f87d2b496e69735aa7a4c5`. Los controles Arquitectura, Release Gate, F5, R4 automático, Pi Runtime, CodeGraph y aceptación T12 sin proveedor dieron PASS; **la suite CI general dio FAIL en los tres sistemas** (run `41663079512`) por cuatro regresiones comunes de expectativas antiguas, no por evidencia de que Verifier faltara en una situación de alto riesgo.
+
+### Auditoría F0 del CI y decisiones quirúrgicas
+
+- `tests/natural-plan-tool.test.ts`: dos pruebas esperaban un cuarto agente Verifier para una revisión `dual_explicit` de riesgo medio. La política vigente, y la verificación proporcional pretendida, solo requieren Worker y dos Reviewers; los tests deben reflejar esa decisión sin rebajar riesgo alto.
+- `tests/orchestrator-dispatcher-integration.test.ts`: la prueba decía cubrir la presencia de Explorer, Reviewer y Verifier en un incidente, pero no incluía ninguna operación de riesgo alto. Se añade `security_boundary` **a ese fixture concreto**, que pasa a verificar realmente la presencia de Verifier independiente y que ningún agente de lectura recibe autoridad de escritura.
+- `tests/functional-role-parity-matrix.test.ts`: nueva matriz semántica que ejerce ruta pequeña directa, planificación ante alcance incierto, dos jueces sin Verifier en riesgo medio, incidente alto con Explorer/Reviewer/Verifier, verificación explícita sin Writer y revisión doble de bajo riesgo. Son pruebas deterministas del comportamiento ASEN; **no** sustituyen la ejecución A/B.
+- `src/runtime/agent-terminal-delivery.ts`: se acota a 1200 caracteres el resumen de un agente y se eliminan secuencias ANSI y controles para evitar desbordar la reactivación del coordinador con salida no confiable. El resultado completo continúa en el almacén duradero; nunca se pierde el ID del agente ni se convierte su texto en consentimiento.
+- `tests/agent-terminal-delivery.test.ts`: escenarios de resumen enorme, controles de terminal y persistencia del enlace a la tarea. La salida se etiqueta expresamente como dato no confiable, no nueva instrucción.
+- `.github/workflows/asen-real-agent-acceptance.yml`: añadir las pruebas funcionales de Planner y Verifier al gate sin proveedor de la misma revisión antes de cualquier inferencia real.
+
+### Correspondencia con el ODD
+
+| Unidad | Avance técnico de esta tanda | Estado admisible |
+| --- | --- | --- |
+| EF-001 | Corrección previa de control de confirmaciones y test de caducidad existente en HEAD | PASS focal histórico; verificar CI nuevo |
+| EF-101 | C01/C04/C05: selección proporcional, seis escenarios ASEN | PARTIAL: referencia A/B no ejecutada |
+| EF-401 | C09/C10: medium no Verifier, high incidente exige uno, test de no acceso a Writer | PARTIAL: falta prueba Pi real |
+| EF-601 | C13/C14: acotar la carga no confiable de una notificación de finalización | PARTIAL: falta despertar Pi real y acuse |
+| EF-701 | Gate sin proveedor reforzado para rutas reales | PARTIAL: falta aceptación de referencia y proveedor |
+
+**Restricciones:** no alterar permisos de Writer, ni activar inferencia de proveedores reales, ni proclamar C01–C20 PASS sin recibo. R4 sigue `SELF_AUDIT_ONLY / NOT independent`. Un CI verde futuro no es FULL funcional. No fusionar `main`. Preparar siguientes bloques grandes EF-102/103/201–203/602–604 y después Writer/Verifier/Reviewer con sus pruebas reales.
