@@ -77,6 +77,8 @@ jobs:
             tests/orchestrator.test.ts \
             tests/functional-role-parity-matrix.test.ts \
             tests/agent-observable-parity.test.ts \
+            tests/agent-observable-scaffold.test.ts \
+            tests/agent-observable-receipts.test.ts \
             tests/frozen-ecosystem-source.test.ts \
             tests/natural-plan-tool.test.ts \
             tests/orchestrator-dispatcher-integration.test.ts \
@@ -94,6 +96,7 @@ jobs:
             tests/pi-model-reviewer.test.ts \
             tests/writer-authorization-snapshot.test.ts \
             tests/permission-modes.test.ts \
+            tests/ef001-confirmation-regressions.test.ts \
             tests/auto-permission-reviewer.test.ts \
             tests/auto-permission-evidence.test.ts \
             tests/yolo-temp-scratch.test.ts
@@ -103,6 +106,7 @@ jobs:
           set -euo pipefail
           node --import tsx --test \
             tests/agent-store.test.ts \
+            tests/agent-coalesce-multiprocess.test.ts \
             tests/odd-task-tracking.test.ts \
             tests/authorized-write-recovery.test.ts \
             tests/eco06-interrupted-writer.test.ts \

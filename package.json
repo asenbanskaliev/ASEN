@@ -32,7 +32,10 @@
     "prepack": "npm run build",
     "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json",
     "check:skip-baseline": "node scripts/check-skip-count.mjs",
-    "audit:ef-plan": "node scripts/audit-ef-plan.mjs"
+    "audit:ef-plan": "node scripts/audit-ef-plan.mjs",
+    "scaffold:agent-observations": "node scripts/agent-observable-scaffold.mjs",
+    "compare:agent-observations": "node scripts/agent-observable-parity.mjs",
+    "audit:agent-observation-receipts": "node scripts/agent-observable-receipts.mjs"
   },
   "pi": {
     "extensions": [

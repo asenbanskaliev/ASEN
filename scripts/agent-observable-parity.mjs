@@ -41,13 +41,14 @@ function validateDocument(document, subject) {
   assert.ok(exactKeys(document, ['schema', 'subject', 'cases']), 'Unexpected observation document shape');
   assert.equal(document.schema, 'asen-agent-observable-v1');
   assert.equal(document.subject, subject);
-  assert.ok(Array.isArray(document.cases) && document.cases.length <= CASE_IDS.length,
+  assert.ok(Array.isArray(document.cases) && document.cases.length <= CASE_IDS.length * (subject === 'reference' ? 2 : 1),
     'Observation cases exceed the acceptance matrix');
   const cases = new Map();
   for (const entry of document.cases) {
     assert.ok(exactKeys(entry, ['id', 'source', 'sha', 'execution', 'environment', 'model', 'receipt', 'trace']),
       'Observation entry requires exact provenance and trace fields');
-    assert.ok(CASE_IDS.includes(entry.id) && !cases.has(entry.id), 'Unknown or duplicate acceptance case');
+    const key = subject === 'reference' ? `${entry.id}:${entry.source}` : entry.id;
+    assert.ok(CASE_IDS.includes(entry.id) && !cases.has(key), 'Unknown or duplicate acceptance case');
     assert.ok(subject === 'reference' ? Object.hasOwn(REFERENCE_SHA, entry.source) : entry.source === 'ASEN',
       'Observation source does not match document subject');
     assert.ok(typeof entry.sha === 'string' && shaPattern.test(entry.sha), 'Observation requires a full commit SHA');
@@ -58,37 +59,46 @@ function validateDocument(document, subject) {
         `Invalid observation ${key}`);
     }
     validatedTrace(entry.trace);
-    cases.set(entry.id, entry);
+    cases.set(key, entry);
   }
   return cases;
 }
 
-/** Missing, stale or simulated evidence is BLOCKED, never a false PASS. */
-export function compareAgentObservations({ reference, candidate, candidateSha }) {
-  assert.ok(typeof candidateSha === 'string' && shaPattern.test(candidateSha),
-    'Comparison requires a precise ASEN candidate commit');
-  const refs = validateDocument(reference, 'reference');
-  const local = validateDocument(candidate, 'asen');
-  const results = CASE_IDS.map(id => {
-    const a = refs.get(id), b = local.get(id);
-    if (!a || !b) return { id, status: 'BLOCKED', reason: !a ? 'REFERENCE_MISSING' : 'ASEN_MISSING' };
-    if (a.sha !== REFERENCE_SHA[a.source]) return { id, status: 'BLOCKED', reason: 'REFERENCE_SHA_STALE' };
-    if (b.sha !== candidateSha) return { id, status: 'BLOCKED', reason: 'ASEN_SHA_STALE' };
-    if (a.execution !== 'real' || b.execution !== 'real') return { id, status: 'BLOCKED', reason: 'REAL_EXECUTION_NOT_PROVEN' };
-    const match = traceKeys.every(key => JSON.stringify(a.trace[key]) === JSON.stringify(b.trace[key]));
-    return match ? { id, status: 'MATCH', referenceReceipt: a.receipt, asenReceipt: b.receipt } :
-      { id, status: 'FAIL', reason: 'OBSERVABLE_BEHAVIOR_DIFFERS', referenceReceipt: a.receipt, asenReceipt: b.receipt,
-        differences: traceKeys.filter(key => JSON.stringify(a.trace[key]) !== JSON.stringify(b.trace[key])) };
-  });
-  const counts = Object.fromEntries(['MATCH', 'FAIL', 'BLOCKED'].map(status =>
-    [status.toLowerCase(), results.filter(result => result.status === status).length]));
-  return {
-    schema: 'asen-agent-observable-comparison-v1', candidateSha,
-    baseline: REFERENCE_SHA, results, counts,
-    classification: counts.fail > 0 ? 'DIFFERENCES_FOUND' : counts.blocked > 0 ? 'EVIDENCE_INCOMPLETE' : 'MATCH_REQUIRES_RECEIPT_AUDIT',
-    globalFull: false,
-    disclaimer: 'A deterministic match does not verify receipt authenticity, live providers, Writer consent, three-OS CI or R4 independence.',
-  };
+/** EF-701: compare the SAME C01–C20 scenario against both frozen A and B,
+ * and the exact ASEN commit. A missing reference cannot be silently replaced by
+ * the other reference. MATCH is observable agreement, NEVER a FULL attestation.
+ */
+export function compareAgentObservations({reference,candidate,candidateSha}) {
+ assert.ok(typeof candidateSha === 'string' && shaPattern.test(candidateSha),
+  'Comparison requires a precise ASEN candidate commit');
+ const refs=validateDocument(reference,'reference');
+ const local=validateDocument(candidate,'asen');
+ const results=CASE_IDS.map(id=>{
+  const a=refs.get(`${id}:A`),b=refs.get(`${id}:B`),asen=local.get(id);
+  if(!a||!b||!asen)return {id,status:'BLOCKED',
+   reason:!a?'REFERENCE_A_MISSING':!b?'REFERENCE_B_MISSING':'ASEN_MISSING'};
+  if(a.sha!==REFERENCE_SHA.A)return {id,status:'BLOCKED',reason:'REFERENCE_A_SHA_STALE'};
+  if(b.sha!==REFERENCE_SHA.B)return {id,status:'BLOCKED',reason:'REFERENCE_B_SHA_STALE'};
+  if(asen.sha!==candidateSha)return {id,status:'BLOCKED',reason:'ASEN_SHA_STALE'};
+  if(a.execution!=='real'||b.execution!=='real'||asen.execution!=='real')
+   return {id,status:'BLOCKED',reason:'REAL_EXECUTION_NOT_PROVEN'};
+  const ab=traceKeys.filter(key=>JSON.stringify(a.trace[key])!==JSON.stringify(b.trace[key]));
+  if(ab.length)return {id,status:'FAIL',reason:'REFERENCE_A_B_BEHAVIOR_DIFFERS',
+   referenceAReceipt:a.receipt,referenceBReceipt:b.receipt,asenReceipt:asen.receipt,differences:ab};
+  const ac=traceKeys.filter(key=>JSON.stringify(a.trace[key])!==JSON.stringify(asen.trace[key]));
+  if(ac.length)return {id,status:'FAIL',reason:'ASEN_BEHAVIOR_DIFFERS',
+   referenceAReceipt:a.receipt,referenceBReceipt:b.receipt,asenReceipt:asen.receipt,differences:ac};
+  return {id,status:'MATCH',referenceAReceipt:a.receipt,referenceBReceipt:b.receipt,asenReceipt:asen.receipt};
+ });
+ const counts=Object.fromEntries(['MATCH','FAIL','BLOCKED'].map(status=>
+  [status.toLowerCase(),results.filter(row=>row.status===status).length]));
+ return {
+  schema:'asen-agent-observable-comparison-v2',candidateSha,baseline:REFERENCE_SHA,
+  requiredSources:['A','B','ASEN'],results,counts,
+  classification:counts.fail>0?'DIFFERENCES_FOUND':counts.blocked>0?'EVIDENCE_INCOMPLETE':'MATCH_REQUIRES_RECEIPT_AUDIT',
+  globalFull:false,
+  disclaimer:'A claimed real execution and matching text are not proof of independent receipts, live providers, Writer consent, Pi parent consumption or FULL.',
+ };
 }
 
 async function main() {
@@ -99,7 +109,8 @@ async function main() {
     JSON.parse(await readFile(resolve(p), 'utf8'))));
   const report = compareAgentObservations({ reference, candidate, candidateSha: sha });
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  if (report.counts.fail > 0 || report.counts.blocked > 0) process.exitCode = 1;
+  // F7 is fail-closed: even 20 triple matches still require independent receipt audit.
+  if (!report.globalFull) process.exitCode = 1;
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   try { await main(); } catch (error) { console.error(error); process.exitCode = 1; }

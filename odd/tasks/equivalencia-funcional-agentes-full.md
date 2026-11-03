@@ -138,7 +138,7 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 ### F0 — Puntos de partida y comparación
 
 - [x] EF-000 Auditar código de A/B y ASEN, congelar SHA y registrar diferencias. **Solo evidencia de código**, no equivalencia FULL. **VERIFICADO:** `registry/parity/skill-sources-v1.json` + `tests/agent-observable-parity.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
-- [ ] EF-001 Resolver 2 fallos de confirmación de baseline en tres OS, con preservación de excepción y nueva prueba de caducidad; cerrar tras CI exact-SHA. **PARCIAL:** Falta prueba nominal de ambos defectos de confirmación vinculada a CI exact-SHA.
+- [ ] EF-001 Resolver 2 fallos de confirmación de baseline en tres OS, con preservación de excepción y nueva prueba de caducidad; cerrar tras CI exact-SHA. **PARCIAL:** Tres regresiones nominales añadidas (error Pi preservado, aprobación caducada y revocación tras reinicio); requieren PASS exact-SHA en los tres OS antes de marcar `[x]`.
 - [ ] EF-002 Obtener observaciones reales C01–C20 del comportamiento A/B con entorno aislado y registrar resultados canónicos. **BLOQUEADO:** No se han ejecutado C01–C20 sobre ambas referencias A/B.
 - [x] EF-003 Crear harness de comparación de decisiones observables sin depender del texto libre del modelo. **VERIFICADO:** `scripts/agent-observable-parity.mjs` + `tests/agent-observable-parity.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
 - **Gate:** baseline CI limpia, referencias trazables, comparación válida; no modificar el registro global ECO.
@@ -183,13 +183,13 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 
 - [ ] EF-601 Entrega del resultado según estado del padre, con reactivación real cuando esté inactivo. **BLOQUEADO:** Wake y consumo por Pi real aún no demostrados.
 - [x] EF-602 Suprimir sondeo/sleep innecesario, duplicados y avisos caducados. **VERIFICADO:** `src/runtime/agent-notification-journal.ts` + `tests/agent-notification-journal.test.ts` · CI `41689422912` / SHA `07f9793517f8d6a57b3d67cc21b589be8002abb1`.
-- [ ] EF-603 No relanzar tareas activas equivalentes: misma identidad y alcance verificable. **PARCIAL:** Solo Explorer ad-hoc idéntico; faltan planes y multiproceso.
+- [ ] EF-603 No relanzar tareas activas equivalentes: misma identidad y alcance verificable. **PARCIAL:** Añadida prueba de contención real entre dos procesos Node para el mismo Explorer ad-hoc; pendiente CI y equivalencia de unidades planificadas.
 - [ ] EF-604 Recuperación tras reinicio, estado incierto y preguntas del hijo sin permiso inventado. **PARCIAL:** Recuperación y journal probados; faltan decisiones humanas reales del hijo.
 - **Gate:** C13–C15 y C18.
 
 ### F7 — Validación real y cierre
 
-- [ ] EF-701 Comparar C01–C20 con snapshots A/B y ASEN final; no heredar recibos entre SHAs. **BLOQUEADO:** Faltan veinte pares de trazas A/B y ASEN auténticas.
+- [ ] EF-701 Comparar C01–C20 con snapshots A/B y ASEN final; no heredar recibos entre SHAs. **BLOQUEADO:** Nuevo comparador triple A/B/ASEN por cada caso, scaffold de 40+20 capturas y auditor de integridad; siguen faltando ejecuciones auténticas y auditoría independiente de sus recibos.
 - [ ] EF-702 Probar selección de modelos reales gratuitos, error de cuota/red y consumo por agente. **BLOQUEADO:** Ollama Cloud real no activado; credenciales y recibos pendientes.
 - [ ] EF-703 Verificar tres OS, suite global, permisos, Pi interactivo, Writer, revisión, eventos y recuperación. **PARCIAL:** CI global exact-SHA y recorrido real Writer/Pi incompletos.
 - [ ] EF-704 Auditoría final de diferencias. Solo cambiar estado a **FULL** cuando todos los gates anteriores y S01–S11 estén satisfechos. **BLOQUEADO:** S01–S11, C01–C20 y auditoría final aún sin cerrar.
@@ -414,3 +414,17 @@ El primer gate funcional del SHA `9cc7fb0` mostró una prueba negativa mal plant
 - Los otros 21 siguen `[ ]`, diferenciando `PARCIAL` de `BLOQUEADO`, con el motivo de cierre visible en cada tarea.
 - La nueva auditoría del checklist impedirá comprobar un EF sin ruta de código, ruta de prueba y CI exact-SHA; no sustituye la autenticidad de una evidencia real A/B ni cierra el gate F7.
 - La autoauditoría R4 y la aceptación sin proveedor no equivalen a independencia ni a ejecución de modelos reales.
+
+## Macrotanda F7/F6/F0 — evidencias A/B/ASEN, concurrencia y confirmación Pi (2026-11-03)
+
+**Estado de publicación: IMPLEMENTED_PENDING_EXACT_SHA_CI; FULL NO.** Alcance: EF-701, EF-603 y EF-001. Los checks siguen 7/28 hasta pasar los gates y cerrar los requisitos completos.
+
+- **EF-701: comparativa triple por caso.** El comparador v2 exige **ambas referencias A y B, además de ASEN**, para cada C01–C20. Un caso solo con A, solo con B o sin ASEN se clasifica BLOCKED. Si A y B difieren en rutas, roles, guardas, checks, notificaciones o efectos, el caso es FAIL aun cuando ASEN coincida con una de ellas. Se comprueban los tres commits congelados y que cada ejecución se declara real; una declaración textual de `real` todavía no demuestra autenticidad. Hasta 40 registros de referencia son válidos; el duplicado de una misma referencia/caso falla.
+- **F7: cierre negativo del CLI.** Incluso 40+20 trazas coincidentes dejan `globalFull:false` y el comparador CLI devuelve exit code 1: las coincidencias deterministas no constituyen un recibo independiente. Tests de divergencia A/B, referencia ausente, SHA caducado, simulación, identidad duplicada y ejecución real del proceso de CLI.
+- **F7: preparación de capturas.** `npm run scaffold:agent-observations -- <SHA_ASEN> <directorio-nuevo>` genera `reference.json` (A+B, 40 entradas) y `asen.json` (20 entradas), todas **STATIC / NOT_CAPTURED**. No crea ni inventa ejecuciones. Falla si el directorio ya existe. Su README exige correr los 20 casos en ambas referencias y en ASEN y conservar recibos, modelo, ambiente y SHA.
+- **F7: auditor de integridad local.** `npm run audit:agent-observation-receipts -- <reference.json> <asen.json> <SHA_ASEN> <raíz-recibos>` comprueba la ruta canónica, tamaño y digest SHA-256 de cada archivo citado, su fuente A/B/ASEN, caso, commit, entorno, modelo y traza. Rechaza archivos faltantes, desviaciones y datos manipulados. El resultado positivo se llama `INTEGRITY_ONLY`, no `REAL_VERIFIED`: los hashes proporcionados por quien capturó la evidencia no prueban que ejecutó el proveedor. El CLI nunca da exit 0 como certificado FULL.
+- **EF-603: concurrencia entre procesos.** Nuevo fixture de dos procesos Node independientes con barrera, un almacén en disco, el mismo alcance/rol/modelo y una reclamación duradera. Exige un único ID y que, al finalizar los procesos, la unidad quede interrumpida sin relanzamiento automático. La coalescencia semántica de tareas planificadas sigue fuera del cierre.
+- **EF-001: autorización primaria.** Regresiones de modo Normal sin getter, propagación intacta de la excepción del diálogo, revocación entre presentación y aceptación del consentimiento y protección frente a un segundo `session_start` que intentaría restaurar una preferencia elevada. Ni el modelo ni los tests conceden un permiso real de escritura.
+- **Gate nuevo:** tests de todas estas rutas añadidos a la aceptación sin proveedor y a la suite completa de 3 OS; typecheck, build, seguridad, Release Gate y auditor ODD deben aprobar en el SHA final. Sin A/B reales, credenciales autorizadas de Ollama, consentimiento Writer genuino y prueba de consumo del padre, el proyecto sigue PARTIAL.
+
+**Criterio para marcar:** EF-001 requiere los tres SO en verde; EF-603 no debe marcarse mientras falte equivalencia de unidades planificadas; EF-701 permanece BLOQUEADO hasta 20 escenarios reales ejecutados y recibos externos auditados, por más que la infraestructura de comparación ya esté implementada.
