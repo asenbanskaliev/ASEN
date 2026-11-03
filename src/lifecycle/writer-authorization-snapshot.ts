@@ -43,7 +43,7 @@ function repositoryRoot(candidate:Candidate):{root:string;info:Stats} {
 function safeSurfaces(surfaces:readonly string[]):string[]{
  if(!Array.isArray(surfaces)||!surfaces.length||surfaces.length>256)throw new Error("Writer authorization requires bounded surfaces");
  const clean=surfaces.map(surface=>{
-  if(typeof surface!=="string"||!surface||surface!==surface.trim()||isAbsolute(surface)||surface.includes("\\")||surface.includes(":"))throw new Error("Writer authorization surface is invalid");
+  if(typeof surface!=="string"||!surface||surface!==surface.trim()||isAbsolute(surface)||surface.includes("\\")||surface.includes(":")||/[\u0000-\u001f\u007f]/u.test(surface))throw new Error("Writer authorization surface is invalid");
   const value=surface.replace(/\/$/u,"");
   if(!value||value.split("/").some(part=>!part||part==="."||part===".."))throw new Error("Writer authorization surface is invalid");
   return value;
@@ -66,24 +66,26 @@ function isAseManagedWorkspacePath(value:string):boolean {
 }
 
 function unmanagedWorkspacePaths(root:string):string[] {
- const raw = git(root,["status","--porcelain=v1","-z","--untracked-files=all"]).toString("utf8");
- if(!raw) return [];
- const fields = raw.split("\0");
- const paths:string[] = [];
- let index = 0;
- while(index < fields.length){
-  const entry = fields[index++];
-  if(typeof entry !== "string" || entry.trim() === "") continue;
-  if(entry.length < 4 || entry[2] !== " ") continue;
-  const path = entry.slice(3).trim();
-  if(!path) continue;
+ const raw=git(root,["status","--porcelain=v1","-z","--untracked-files=all"]).toString("utf8");
+ if(!raw)return [];
+ const fields=raw.split("\0");
+ if(fields.pop()!=="")throw new Error("Git returned malformed writer authorization status");
+ const paths:string[]=[];
+ for(let index=0;index<fields.length;index++){
+  const entry=fields[index]!;
+  if(entry.length<4||entry[2]!==" ")throw new Error("Git returned malformed writer authorization status");
+  const path=entry.slice(3);
+  if(!path)throw new Error("Git returned malformed writer authorization path");
   paths.push(path);
-  if(entry.startsWith("R") || entry.startsWith("C")){
-   const renamed=fields[index];
-   if(index < fields.length && typeof renamed === "string" && renamed.trim() !== ""){paths.push(renamed.trim());index++;}
+  // Either status column may report a rename/copy; consume both source and destination.
+  if(/[RC]/u.test(entry.slice(0,2))){
+   const renamed=fields[++index];
+   if(!renamed)throw new Error("Git returned incomplete writer authorization rename status");
+   paths.push(renamed);
   }
  }
- return [...new Set(paths)].filter(path => !isAseManagedWorkspacePath(path));
+ // Do not trim Git paths: leading/trailing spaces are meaningful file names.
+ return [...new Set(paths)].filter(path=>!isAseManagedWorkspacePath(path));
 }
 
 function cleanWorkspace(root:string):void {

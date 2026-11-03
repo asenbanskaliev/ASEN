@@ -227,3 +227,38 @@ test("T10 terminal receipt and scope cannot be overwritten by a later stale reco
   assert.equal(journal.load("s",root)[0]?.deliveryState,"enqueued");
  }finally{rmSync(root,{recursive:true,force:true});}
 });
+
+test("F4-B expired, malformed or repeated Writer retry grants cannot revive an interrupted operation",()=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-t12-expired-retry-"));
+ try{
+  const journal=new BackgroundJobJournal(join(root,"jobs.json")),now=new Date().toISOString();
+  journal.record({id:"original",sessionId:"s",projectId:root,command:"old",
+   mode:"background",state:"running",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[]});
+  const input={sessionId:"s",projectId:root,interruptedJobId:"original",newJobId:"retry-1",
+   authorizedCommand:"approved safe command",authorizationId:"one-time-consent",
+   operationDigest:"a".repeat(64),expectedHead:"b".repeat(40),allowedPaths:["allowed.txt"]};
+  const before=readFileSync(join(root,"jobs.json"),"utf8");
+  for(const authorizationExpiresAt of [
+   new Date(Date.now()-60_000).toISOString(),
+   new Date(0).toISOString(),
+   "not-a-date",
+  ]){
+   assert.throws(()=>journal.claimInterruptedForRetry({...input,authorizationExpiresAt}),
+    /fresh, unexpired authorization/);
+   assert.equal(readFileSync(join(root,"jobs.json"),"utf8"),before,
+    "An expired or malformed grant may not change durable state");
+  }
+  const valid={...input,authorizationExpiresAt:new Date(Date.now()+60_000).toISOString()};
+  const claimed=journal.claimInterruptedForRetry(valid);
+  assert.equal(claimed.authorizationId,"one-time-consent");
+  assert.equal(claimed.resumable,false);
+  const committed=readFileSync(join(root,"jobs.json"),"utf8");
+  assert.throws(()=>journal.claimInterruptedForRetry(valid),/not available|already consumed/);
+  assert.equal(readFileSync(join(root,"jobs.json"),"utf8"),committed);
+  assert.throws(()=>journal.claimInterruptedForRetry({...valid,newJobId:"retry-2",
+   authorizationId:"different-approval"}),/not available|uncertain outcome/);
+  assert.equal(readFileSync(join(root,"jobs.json"),"utf8"),committed);
+  const rows=journal.load("s",root);
+  assert.equal(rows.filter(row=>row.originalJobId==="original").length,1);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});

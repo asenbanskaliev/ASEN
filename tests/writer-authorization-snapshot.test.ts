@@ -82,3 +82,37 @@ test("writer authorization ignores ASEN-managed project metadata", async t => {
  const snapshot=captureWriterAuthorizationSnapshot(candidate,["allowed.txt"]);
  assert.equal(snapshot.repository,repository);
 });
+
+test("F4-B denies control characters, ADS, traversal and duplicate writer authorization scopes",async t=>{
+ const {candidate}=await fixture(t);
+ const invalid=[
+  ["allowed.txt\noutside"],["allowed.txt\r"],["allowed.txt\u0000"],
+  ["allowed.txt\u007f"],["allowed.txt:stream"],["../outside.txt"],
+  ["allowed.txt","allowed.txt"],["allowed.txt/../../outside.txt"],
+ ];
+ for(const surfaces of invalid)
+  assert.throws(()=>captureWriterAuthorizationSnapshot(candidate,surfaces),
+   /surface is invalid|surfaces must be unique/,
+   "Rejected unsafe scoped writer authorization");
+});
+test("F4-B Git worktree rename never moves an authorized file outside its original scope",async t=>{
+ const {repository,candidate}=await fixture(t);
+ const snapshot=captureWriterAuthorizationSnapshot(candidate,["allowed.txt"]);
+ execFileSync("git",["-C",repository,"mv","allowed.txt","out-of-scope.txt"]);
+ assert.throws(()=>assertWriterAuthorizationSnapshotOutcome(snapshot),
+  /outside its exact scope/);
+ assert.throws(()=>assertWriterAuthorizationSnapshotCurrent(snapshot),
+  /unchanged workspace snapshot/);
+});
+test("F4-B an external tracked-file rename prevents a new writer authorization",async t=>{
+ const {repository,candidate}=await fixture(t);
+ execFileSync("git",["-C",repository,"mv","outside.txt","renamed-outside.txt"]);
+ assert.throws(()=>captureWriterAuthorizationSnapshot(candidate,["allowed.txt"]),
+  /unchanged workspace snapshot/);
+});
+test("F4-B a lookalike ASEN metadata filename remains a dirty workspace and cannot grant Writer",async t=>{
+ const {repository,candidate}=await fixture(t);
+ await writeFile(join(repository,".asen-metadata-lookalike"),"not managed metadata\n");
+ assert.throws(()=>captureWriterAuthorizationSnapshot(candidate,["allowed.txt"]),
+  /unchanged workspace snapshot/);
+});

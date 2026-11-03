@@ -87,6 +87,7 @@ jobs:
             tests/authorized-write-recovery.test.ts \
             tests/eco06-interrupted-writer.test.ts \
             tests/eco07-provider-failure.test.ts \
+            tests/background-job-journal.test.ts \
             tests/pi-process-runner.test.ts \
             tests/pi-session-recovery-e2e.test.ts \
             tests/session-recovery-e2e.test.ts
@@ -97,11 +98,16 @@ jobs:
           node --import tsx --test tests/t12-inference-budget.test.ts
       - name: F2/F3 deterministic fixture and planning contracts
         shell: bash
-        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-review-grader.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-disposable-correction.test.ts tests/t12-live-evidence-gate.test.ts tests/t12-explorer-schema.test.ts
+        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-review-grader.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-disposable-correction.test.ts tests/t12-live-evidence-gate.test.ts tests/t12-explorer-schema.test.ts tests/t12-acceptance-ledger.test.ts
       - name: Ollama scoped child credential regression
         run: node --import tsx --test tests/t12-ollama-child-credential.test.ts
       - name: Pi retry settings preserve installed extensions
         run: node --import tsx --test tests/t12-pi-retry-settings.test.ts
+      - name: F7 create exact-SHA provider-free acceptance ledger (never claim FULL)
+        env:
+          ASEN_OFFLINE_TESTS_PASSED: '1'
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+        run: node scripts/t12-acceptance-ledger.mjs
       - name: Validate repository diff hygiene
         run: git diff --check
       - name: Preserve provider-free validation evidence

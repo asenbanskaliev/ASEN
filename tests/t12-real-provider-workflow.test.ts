@@ -204,3 +204,23 @@ test("T12 Reviewer candidate and both judgment IDs are derived from the same fro
  assert.match(gate,/judge\.id,review\.candidateId\+":"\+/u);
  assert.match(reviewVerifier,/t12-review-\$\{candidateSha256\.slice\(0,12\)\}/u);
 });
+
+test("T12 combined F1/F4/F7 batch keeps negative, expiry and exact-SHA closure evidence in offline CI",()=>{
+ const offline=workflow.slice(workflow.indexOf("  offline-static-validation:"),workflow.indexOf("  real-provider-acceptance:"));
+ assert.match(offline,/tests\/background-job-journal\.test\.ts/u);
+ assert.match(offline,/tests\/writer-authorization-snapshot\.test\.ts/u);
+ assert.match(offline,/tests\/t12-provider-failure\.test\.ts/u);
+ assert.match(offline,/tests\/t12-acceptance-ledger\.test\.ts/u);
+ assert.match(offline,/F7 create exact-SHA provider-free acceptance ledger \(never claim FULL\)/u);
+ assert.match(offline,/ASEN_OFFLINE_TESTS_PASSED: '1'/u);
+ assert.match(offline,/ASEN_EXPECTED_SHA: \$\{\{ github\.sha \}\}/u);
+ assert.match(offline,/node scripts\/t12-acceptance-ledger\.mjs/u);
+ assert.ok(offline.indexOf("F2/F3 deterministic fixture and planning contracts")<
+  offline.indexOf("F7 create exact-SHA provider-free acceptance ledger"),
+  "The F7 ledger must not be produced before offline negative and recovery tests");
+ const ledger=readFileSync(new URL("../scripts/t12-acceptance-ledger.mjs",import.meta.url),"utf8");
+ assert.match(ledger,/globalFull:false/u);
+ assert.match(ledger,/externalCi:"NOT_ASSERTED_BY_THIS_REPORT"/u);
+ assert.match(ledger,/F4:"BLOCKED_INTERACTIVE"/u);
+ assert.match(ledger,/F7:"SELF_AUDIT_ONLY"/u);
+});
