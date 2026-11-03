@@ -69,6 +69,7 @@ import {discoverWorkspaceWorktrees,snapshotWorkspaceRoots} from "../src/runtime/
 import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtime/workspace-resolution.js";
 import {hostContentColumns,layoutMode,sanitizeTerminalText,truncateForTerminal} from "../src/runtime/responsive-layout.js";
 import {AsenPermissionSession} from "../src/security/permission-session.js";
+import {AsenAutoPermissionReviewer} from "../src/security/auto-permission-reviewer.js";
 import {isAsenPermissionMode,readPermissionModeDefault,savePermissionModeDefault} from "../src/security/permission-mode-policy.js";
 import type {PrimaryModeOptions} from "../src/security/primary-tool-policy.js";
 
@@ -759,14 +760,18 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
   return localBash.exec(settings.shellCommandPrefix?`${settings.shellCommandPrefix}\n${command}`:command,cwd,{onData:options.onData,signal:options.signal,...(options.env?{env:options.env}:{})});
  };
  const permissionSession=dependencies.permissionSession??new AsenPermissionSession();
+ const autoPermission=new AsenAutoPermissionReviewer();
+ const autoReview=dependencies.autoPermissionReview??autoPermission.review.bind(autoPermission);
+ pi.on("input",(event,ctx)=>autoPermission.capture(event,ctx));
  pi.on("tool_call",createPrimaryToolPolicyHandler({
   getMode:ctx=>permissionSession.mode(ctx),
-  ...(dependencies.autoPermissionReview?{reviewAuto:dependencies.autoPermissionReview}:{}),
+  reviewAuto:autoReview,
  }));
  const commandNames=ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name);
  const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...ASEN_SESSION_TOOL_NAMES,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES),...(dependencies.enableMemoryRuntime===false&&!dependencies.memoryStoreFactory?[]:ASEN_MEMORY_TOOL_NAMES)];
  let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext)=>Promise<void>)|undefined;
  pi.on("session_start",async(_event,ctx)=>{
+  autoPermission.revoke();
   if(attempted){if(registrationsReady){validatePiExecutionContext(ctx);await sessionStart?.(ctx);}return;}
   attempted=true;
   const token=++generation;let publicWrites=0;
@@ -774,7 +779,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
    validatePiExecutionContext(ctx);
    // Pi's public inventory methods can exist before their runtime is initialized; read them only here.
    validatePiRegistrationCollisions(pi,commandNames,toolNames);
-   const facade=createAsenExtension({...dependencies,permissionSession,backgroundExecutor,enableAgentRuntime:dependencies.enableAgentRuntime??true,enableTodoRuntime:dependencies.enableTodoRuntime??true,enableWorkspaceRuntime:dependencies.enableWorkspaceRuntime??true,enableMemoryRuntime:dependencies.enableMemoryRuntime??true,deferSessionStart:true})({
+   const facade=createAsenExtension({...dependencies,permissionSession,autoPermissionReview:autoReview,backgroundExecutor,enableAgentRuntime:dependencies.enableAgentRuntime??true,enableTodoRuntime:dependencies.enableTodoRuntime??true,enableWorkspaceRuntime:dependencies.enableWorkspaceRuntime??true,enableMemoryRuntime:dependencies.enableMemoryRuntime??true,deferSessionStart:true})({
     on:(event,handler)=>pi.on(event as any,(...args:any[])=>{
      if(token!==generation||!registrationsReady)return undefined;
      validatePiExecutionContext(args[1]);

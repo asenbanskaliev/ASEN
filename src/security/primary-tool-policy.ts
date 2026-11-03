@@ -19,6 +19,8 @@ export function isYoloRoutinePush(command:string):boolean{
 }
 export interface PrimaryModeOptions{
  readonly getMode?:(context:ExtensionContext)=>AsenPermissionMode;
+ /** Human-owned private preference file; model tool calls can never edit it. */
+ readonly protectedPreferenceFile?:string;
  /** Optional independent reviewer only. Unavailable/untrusted classifier fails closed. */
  readonly reviewAuto?:(event:ToolCallEvent,context:ExtensionContext)=>Promise<boolean>;
 }
@@ -89,6 +91,8 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
    if(shellTools.has(toolName)){
     if(!input||typeof input!=="object"||Array.isArray(input))return undefined;
     const command=(input as {command?:unknown;args?:unknown}).command;
+    if(typeof command==="string"&&/(?:permission-mode\.json|asen-mode\s+default)/iu.test(command))
+     return denied("human-owned permission configuration");
     if(typeof command!=="string")return autoRequested||toolName==="asen_background_start"?denied("malformed background command"):undefined;
     if(toolName==="asen_background_start"&&(Object.hasOwn(input,"args")||Object.keys(input).some(key=>key!=="command"&&key!=="timeoutMs"&&key!=="monitor")))return denied("unsupported background command shape");
     const decision=classifyNormalShellCommand(command);
@@ -107,6 +111,13 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
    const requested=rawPath===undefined?".":rawPath as string,{lexical,canonical}=await canonicalTarget(requested,cwd);
    if(event.toolName!==toolName||event.toolCallId!==toolCallId||event.input!==input||(input as {path?:unknown}).path!==rawPath||context.cwd!==cwd||context.signal!==signal||signal?.aborted)return denied("file call identity or path drift");
    if(hasSensitiveName(lexical)||hasSensitiveName(canonical)||sensitivePath(lexical)||sensitivePath(canonical))return denied("sensitive path access");
+   if((toolName==="write"||toolName==="edit")&&options.protectedPreferenceFile){
+    const parent=path.dirname(options.protectedPreferenceFile);
+    const resolvedParent=canonicalPathSync(parent);
+    if(canonical===canonicalPathSync(options.protectedPreferenceFile)||
+      canonical===resolvedParent||canonical.startsWith(resolvedParent+path.sep))
+     return denied("human-owned permission configuration");
+   }
    if(toolName==="grep"||toolName==="find"||toolName==="ls")try{await assertSafeTraversal(toolName,canonical);}catch{return denied("safe directory traversal cannot be established");}
    if(event.toolName!==toolName||event.toolCallId!==toolCallId||event.input!==input||(input as {path?:unknown}).path!==rawPath||context.cwd!==cwd||context.signal!==signal||signal?.aborted)return denied("file call identity or path drift");
    if(autoRequested&&!(await autoAllowed()))return denied("Auto independent review is unavailable or denied");

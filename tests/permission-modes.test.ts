@@ -128,3 +128,25 @@ test("ASEN primary commands require live Pi UI and do not grant Auto without an 
  await assert.rejects(async()=>run("asen-yolo","enable",{...context,mode:"rpc"}),/primary Pi TUI/);
  assert.equal((await run("asen-mode","status") as any).session,"normal");
 });
+
+test("Permission mode defaults cannot be rewritten through model file or shell tools",async t=>{
+ const cwd=mkdtempSync(join(tmpdir(),"asen-human-configuration-"));
+ t.after(()=>rmSync(cwd,{recursive:true,force:true}));
+ const pref=permissionModeFile(cwd);
+ savePermissionModeDefault(cwd,"normal");
+ const context:any={cwd,mode:"tui",hasUI:true,ui:{confirm:async()=>true}};
+ const policy=createPrimaryToolPolicyHandler({
+  getMode:()=> "yolo",protectedPreferenceFile:pref,
+ });
+ const call=(toolName:string,input:unknown)=>policy({toolName,toolCallId:"one",input} as any,context);
+ const target=join(cwd,".asen","permission-mode.json");
+ const result=await call("write",{path:target,content:'{"schema":"asen.permission-mode/v1","mode":"yolo"}'});
+ assert.equal((result as any).block,true);
+ assert.match((result as any).reason,/human-owned permission configuration/);
+ assert.equal((await call("edit",{path:target,oldText:"normal",newText:"yolo"}) as any).block,true);
+ const shell=await call("bash",{command:"printf yolo > .asen/permission-mode.json"});
+ assert.equal((shell as any).block,true);
+ const allowed=await call("write",{path:join(cwd,"ordinary.txt"),content:"ordinary"});
+ assert.equal(allowed,undefined,"Independent native execution policy still applies to ordinary files");
+ assert.equal(readPermissionModeDefault(cwd).mode,"normal");
+});
