@@ -25,7 +25,7 @@ export function autoScriptEvidence(command:unknown,cwd:string):AutoEvidenceResul
    (parts[1]==="test"||parts[1]==="run"&&/^(?:test|check|build|lint|typecheck)$/u.test(parts[2]??"")))
   selected="package.json";
  else return {kind:"none"};
- if(!literalPath(selected))return {kind:"invalid"};
+ if(typeof selected!=="string"||!literalPath(selected))return {kind:"invalid"};
  try{
   const workspace=realpathSync(cwd),target=resolve(workspace,selected),actual=realpathSync(target);
   const rest=relative(workspace,actual);
