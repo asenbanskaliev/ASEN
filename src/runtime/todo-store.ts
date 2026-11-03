@@ -20,6 +20,21 @@ const projectKey=(value:string)=>createHash("sha256").update(workspaceIdentityPa
 export function todoProjectStorageFile(root:string,projectId:string):string{return path.join(root,"projects",projectKey(projectId),"active.json");}
 const emptyTodoFile=(revision=0):TodoFile=>({schema:SCHEMA,revision,items:[]});
 const terminal=(item:TodoItem)=>{const state=replayTask(item.events)?.state;return state==="done"||state==="cancelled";};
+/** An exact semantic match for two independent planned Explorer tasks.
+ * A distinct task ID never grants permission to run the same candidate,
+ * instruction and read-only skill phase twice at the same time.
+ * Do not reuse a result or silently mark another Todo successful.
+ */
+function equivalentPlannedExplorer(left:TodoItem,right:TodoItem):boolean{
+ if(left.taskId===right.taskId||left.plan?.role!=="explorer"||right.plan?.role!=="explorer"||
+    typeof left.description!=="string"||typeof right.description!=="string")return false;
+ const fingerprint=(item:TodoItem)=>JSON.stringify([
+  item.description,item.dependsOn??[],item.plan?.role,item.plan?.candidateRevision??null,
+  item.plan?.model??null,item.plan?.thinking??null,item.plan?.skillPaths??[],
+  item.plan?.skillSelection??null,
+ ]);
+ return fingerprint(left)===fingerprint(right);
+}
 const allTerminal=(data:TodoFile)=>data.items.length>0&&data.items.every(terminal);
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted){const error=new Error("Todo update cancelled");error.name="AbortError";throw error;}}
 const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
@@ -184,6 +199,15 @@ export class SessionTodoStore{
    if(!item)throw new Error("Todo task is unavailable to this session or project");
    const current=replayTask(item.events);
    if(!current||!(current.state==="planned"||current.state==="running"))throw new Error("Todo must remain active before agent launch");
+   if(current.state==="planned"&&item.plan?.role==="explorer"){
+    // The complete project Todo journal is locked here, including other task
+    // identities, so two processes cannot claim semantically identical
+    // Explorer plans simultaneously by using different task IDs.
+    const competing=data.items.some(other=>other.events.at(-1)?.sessionId===context.sessionId&&
+     sameWorkspaceIdentityPath(other.events.at(-1)!.projectId,context.projectId)&&
+     replayTask(other.events)?.state==="running"&&equivalentPlannedExplorer(item,other));
+    if(competing)throw new Error("Equivalent planned Explorer already running; reconcile its persisted outcome before launching another");
+   }
    for(const dependency of item.dependsOn??[]){const prerequisite=data.items.find(candidate=>candidate.taskId===dependency&&candidate.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(candidate.events.at(-1)!.projectId,context.projectId)),prerequisiteState=prerequisite&&replayTask(prerequisite.events);if(prerequisiteState?.state!=="succeeded"&&prerequisiteState?.state!=="done")throw new Error("Todo dependencies must be verified done or have a successful execution awaiting review before agent launch");}
    await prepare();await validateContext?.();
    const transitionedToRunning=current.state==="planned";

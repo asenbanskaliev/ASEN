@@ -31,10 +31,10 @@ async function fixture(t:import("node:test").TestContext,hold=false){
  });
  const selection={phase:"explore" as const};
  const paths=selectSkills(selection).map(skill=>skill.path);
- const create=async(id:string,candidateRevision?:string)=>todos.add("Inspect locked candidate",identity,undefined,undefined,
-  "asen-plan:"+id+":explorer",[],"Read the exact planned project scope",
+ const create=async(id:string,candidateRevision?:string,prompt="Read the exact planned project scope")=>todos.add("Inspect locked candidate",identity,undefined,undefined,
+  "asen-plan:"+id+":explorer",[],prompt,
   {role:"explorer",skillPaths:paths,skillSelection:selection,...(candidateRevision?{candidateRevision}:{})});
- const start=(taskId:string)=>tools.get("asen_agent_start").execute("planned-direct",{prompt:"Read the exact planned project scope",todoId:taskId},new AbortController().signal,()=>{},context);
+ const start=(taskId:string,prompt="Read the exact planned project scope")=>tools.get("asen_agent_start").execute("planned-direct",{prompt,todoId:taskId},new AbortController().signal,()=>{},context);
  return {home,identity,todos,create,start,getLaunches:()=>launches,tools,context};
 }
 
@@ -67,4 +67,28 @@ test("EF-603 public plan start binds a real HEAD candidate and refuses a second 
  assert.equal(result.details.todoId,task.taskId);
  await assert.rejects(()=>f.start(task.taskId),/unclaimed|reconcile/i);
  assert.equal((await f.todos.list(f.identity))[0]?.current.state,"running");
+});
+
+test("EF-603 two different Todo IDs with identical Explorer scope cannot start twice across the journal lock",async t=>{
+ const f=await fixture(t,true),first=await f.create("semantic-a"),second=await f.create("semantic-b");
+ const outcomes=await Promise.allSettled([f.start(first.taskId),f.start(second.taskId)]);
+ assert.equal(outcomes.filter(o=>o.status==="fulfilled").length,1);
+ assert.equal(outcomes.filter(o=>o.status==="rejected").length,1);
+ const failure=outcomes.find(o=>o.status==="rejected");
+ assert.match(String(failure&&"reason" in failure?failure.reason:""),/Equivalent planned Explorer already running/);
+ const rows=await f.todos.list(f.identity);
+ assert.equal(rows.filter(row=>row.current.state==="running").length,1);
+ assert.equal(rows.filter(row=>row.current.state==="planned").length,1);
+ const agents=(await f.tools.get("asen_agent_status").execute("status",{},new AbortController().signal,()=>{},f.context)).details;
+ assert.equal(agents.length,1);
+ assert.ok(f.getLaunches()<=1);
+});
+test("EF-603 genuinely different Explorer instructions retain independent read-only dispatch",async t=>{
+ const f=await fixture(t,true);
+ const first=await f.create("different-a",undefined,"Inspect endpoint A without changes");
+ const second=await f.create("different-b",undefined,"Inspect endpoint B without changes");
+ const rows=await Promise.all([f.start(first.taskId,"Inspect endpoint A without changes"),
+  f.start(second.taskId,"Inspect endpoint B without changes")]);
+ assert.equal(rows.length,2);
+ assert.equal((await f.todos.list(f.identity)).filter(row=>row.current.state==="running").length,2);
 });
