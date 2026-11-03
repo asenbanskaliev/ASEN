@@ -97,7 +97,7 @@ jobs:
           node --import tsx --test tests/t12-inference-budget.test.ts
       - name: F2/F3 deterministic fixture and planning contracts
         shell: bash
-        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-inference-budget.test.ts tests/t12-review-grader.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-disposable-correction.test.ts
+        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-inference-budget.test.ts tests/t12-review-grader.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-disposable-correction.test.ts tests/t12-live-evidence-gate.test.ts
       - name: Ollama scoped child credential regression
         run: node --import tsx --test tests/t12-ollama-child-credential.test.ts
       - name: Pi retry settings preserve installed extensions
@@ -168,9 +168,13 @@ jobs:
           fi
           if grep -Fxq "$ASEN_MODEL" asen-acceptance-evidence/registered-model-ids.txt; then
             selected="$ASEN_MODEL"
+          elif grep -Fxq "beam" asen-acceptance-evidence/registered-model-ids.txt; then
+            # The pinned cloud provider currently advertises this canonical Beam ID.
+            selected="beam"
+            echo "::notice::Using registered Beam alias; no unrelated model fallback permitted"
           else
-            selected="$(head -n 1 asen-acceptance-evidence/registered-model-ids.txt)"
-            echo "::notice::Requested model is not registered; using discovered Ollama Cloud model for one bounded connectivity test"
+            echo "::error::Neither the pinned Beam model nor its registered alias is available; refusing any model inference"
+            exit 1
           fi
           printf '%s\n' "$selected" > "$RUNNER_TEMP/asen-selected-model"
           echo "Selected one Ollama Cloud model from live Pi registration"
@@ -244,14 +248,21 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s\n' '{"status":"BLOCKED_CALL_BUDGET","reviewer":"NOT_RUN","verifier":"NOT_RUN","authorization":"NOT_GRANTED"}' > asen-acceptance-evidence/real-review-verifier.json
+      - name: Verify real provider grades and exact-SHA call receipts without inference
+        shell: bash
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          node scripts/t12-live-evidence-gate.mjs
       - name: Real-provider acceptance deferred steps
         shell: bash
         run: |
           set -euo pipefail
           if test "$ASEN_MAX_INFERENCE_CALLS" = "5"; then
-            printf '%s\n' 'PASS: authenticated Ollama Cloud Explorer, Planner, two separate blind Reviewer judgments and Verifier ran through the bounded read-only acceptance stages.' 'LIMITATION: both Reviewer judgments use the same selected provider and model; they are not independent external review.' 'BLOCKED_INTERACTIVE: Writer requires Pi one-time approval; no authorization was simulated.' 'DEFERRED: provider-backed restart, quota exhaustion and timeout recovery remain unverified.' > asen-acceptance-evidence/real-provider-status.txt
+            printf '%s\n' 'PASS_BOUNDED_READ_ONLY: authenticated Explorer, Planner, two separate Reviewer judgments and Verifier were accepted by the exact-SHA evidence gate.' 'LIMITATION: both Reviewer judgments use the same selected provider and model; they are not independent external review.' 'BLOCKED_INTERACTIVE: Writer requires Pi one-time approval; no authorization was simulated.' 'DEFERRED: provider-backed restart, quota exhaustion and timeout recovery remain unverified.' > asen-acceptance-evidence/real-provider-status.txt
           else
-            printf '%s\n' 'PARTIAL: authenticated Ollama Cloud Explorer and Planner ran within the selected 3-call limit.' 'BLOCKED_CALL_BUDGET: Reviewer and Verifier were not run; SKIPPED is not PASS.' 'BLOCKED_INTERACTIVE: Writer requires Pi one-time approval; no authorization was simulated.' 'DEFERRED: provider-backed restart, quota exhaustion and timeout recovery remain unverified.' > asen-acceptance-evidence/real-provider-status.txt
+            printf '%s\n' 'PARTIAL_CALL_BUDGET: authenticated Explorer and Planner passed the exact-SHA evidence gate; Reviewer and Verifier did not run.' 'BLOCKED_CALL_BUDGET: Reviewer and Verifier were not run; SKIPPED is not PASS.' 'BLOCKED_INTERACTIVE: Writer requires Pi one-time approval; no authorization was simulated.' 'DEFERRED: provider-backed restart, quota exhaustion and timeout recovery remain unverified.' > asen-acceptance-evidence/real-provider-status.txt
           fi
       - name: Inspect call receipts without spending another inference request
         if: always()

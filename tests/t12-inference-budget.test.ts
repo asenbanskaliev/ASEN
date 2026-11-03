@@ -98,3 +98,45 @@ test("T12 budget inspection does not spend calls and refuses over-limit receipts
  await writeFile(join(directory,"asen-inference-budget","6.json"),JSON.stringify({call:6,label:"forbidden",limit:5}));
  await assert.rejects(()=>inspectInferenceBudget({directory}),/outside the declared limit/);
 });
+
+test("T12 consumed slot cannot be reused after a receipt is deleted",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-replay-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ assert.deepEqual(await reserveInferenceCall("first",{limit:3,directory}),{call:1,limit:3});
+ const folder=join(directory,"asen-inference-budget");
+ assert.deepEqual(JSON.parse(await readFile(join(folder,"1.claim"),"utf8")),{call:1,label:"first",limit:3});
+ await unlink(join(folder,"1.json"));
+ assert.deepEqual(await reserveInferenceCall("second",{limit:3,directory}),{call:2,limit:3},
+  "A deleted receipt must never reopen the first claim");
+ assert.deepEqual(await reserveInferenceCall("third",{limit:3,directory}),{call:3,limit:3});
+ await assert.rejects(()=>reserveInferenceCall("replayed",{limit:3,directory}),/budget exhausted/);
+ await assert.rejects(()=>inspectInferenceBudget({directory}),/history has a gap or incomplete receipt/);
+});
+test("T12 crash after claim but before receipt burns the abandoned slot",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-crash-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ await reserveInferenceCall("initial",{limit:3,directory});
+ const folder=join(directory,"asen-inference-budget");
+ await writeFile(join(folder,"2.claim"),JSON.stringify({call:2,label:"interrupted",limit:3}));
+ assert.deepEqual(await reserveInferenceCall("after-crash",{limit:3,directory}),{call:3,limit:3});
+ await assert.rejects(()=>reserveInferenceCall("exceeded",{limit:3,directory}),/budget exhausted/);
+ await assert.rejects(()=>inspectInferenceBudget({directory}),/history has a gap or incomplete receipt/);
+});
+test("T12 independent claim detects mutation of one receipt and cannot claim a green recovery",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-tamper-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ await reserveInferenceCall("first",{limit:5,directory});
+ const folder=join(directory,"asen-inference-budget");
+ await writeFile(join(folder,"1.json"),JSON.stringify({call:1,label:"changed",limit:5}));
+ await assert.rejects(()=>inspectInferenceBudget({directory}),/reservation is malformed/);
+ assert.deepEqual(await reserveInferenceCall("later",{limit:5,directory}),{call:2,limit:5});
+ await assert.rejects(()=>inspectInferenceBudget({directory}),/reservation is malformed/);
+});
+test("T12 claim-only entries outside the declared ceiling are rejected",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-outside-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ await reserveInferenceCall("first",{limit:3,directory});
+ const folder=join(directory,"asen-inference-budget");
+ await writeFile(join(folder,"4.claim"),JSON.stringify({call:4,label:"outside",limit:3}));
+ await assert.rejects(()=>inspectInferenceBudget({directory}),/outside the declared limit/);
+});

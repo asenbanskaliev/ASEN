@@ -12,7 +12,7 @@ export type AuthorizedWriteRecoveryDecision=
 function boundedPaths(value:readonly string[],label:string):string[]{
  if(!Array.isArray(value)||!value.length||value.length>256)throw new Error(`${label} must contain bounded repository paths`);
  const paths=value.map(path=>{
-  if(typeof path!=="string"||!path||path!==path.trim()||isAbsolute(path)||path.includes("\\")||path.split("/").some(part=>!part||part==="."||part===".."))throw new Error(`${label} contains an unsafe path`);
+  if(typeof path!=="string"||!path||path!==path.trim()||isAbsolute(path)||path.includes("\\")||/[\u0000-\u001f\u007f:]/u.test(path)||path.split("/").some(part=>!part||part==="."||part===".."))throw new Error(`${label} contains an unsafe path`);
   return path;
  });
  if(new Set(paths).size!==paths.length)throw new Error(`${label} contains duplicate paths`);
@@ -63,7 +63,16 @@ export function reconcileInterruptedAuthorizedWrite(input:{
   const target=resolve(root,path),inside=relative(root,target);
   if(!inside||inside.startsWith("..")||isAbsolute(inside))return Object.freeze({state:"uncertain",action:"manual-reconciliation-required",observedPaths:Object.freeze(observed),reason:"Authorized output escaped the project"});
   try{
-   const stat=lstatSync(target);if(!stat.isFile()||stat.isSymbolicLink())throw new Error("unsafe output");
+   // Git paths can point through a symbolic-link directory. Refuse every
+   // path component, not only the final file, before accepting a recovery.
+   const parts=path.split("/");
+   let cursor=root;
+   for(const [index,part] of parts.entries()){
+    cursor=resolve(cursor,part);
+    const stat=lstatSync(cursor);
+    if(stat.isSymbolicLink()||(index===parts.length-1?!stat.isFile():!stat.isDirectory()))
+     throw new Error("unsafe output");
+   }
    hashes[path]=createHash("sha256").update(readFileSync(target)).digest("hex");
   }catch{return Object.freeze({state:"uncertain",action:"manual-reconciliation-required",observedPaths:Object.freeze(observed),reason:"Authorized output is missing or is not a regular file"});}
   if(hashes[path]!==input.expectedFileSha256[path])return Object.freeze({state:"uncertain",action:"manual-reconciliation-required",observedPaths:Object.freeze(observed),reason:"Authorized output bytes do not match the declared operation"});

@@ -43,13 +43,24 @@ export async function reserveInferenceCall(label,{limit=configuredLimit(),direct
  await mkdir(reservations,{recursive:true,mode:0o700});
  await assertBudgetPolicy(reservations,limit);
  for(let call=1;call<=limit;call++){
+  // Claim first: a crash between claim and receipt burns this slot.
+  // This prevents a restarted process from replaying an issued inference.
+  const temporary=join(reservations,".slot-"+call+"-"+randomUUID()+".tmp");
+  const payload=JSON.stringify({call,label,limit})+"\n";
+  await writeFile(temporary,payload,{flag:"wx",mode:0o600});
   try{
-   await writeFile(join(reservations,`${call}.json`),JSON.stringify({call,label,limit})+"\n",{flag:"wx",mode:0o600});
+   try{await link(temporary,join(reservations,call+".claim"));}
+   catch(error){
+    if(error&&typeof error==="object"&&"code" in error&&error.code==="EEXIST")continue;
+    throw error;
+   }
+   // Independent inodes preserve evidence if a receipt is later overwritten.
+   const receiptTemporary=join(reservations,".receipt-"+call+"-"+randomUUID()+".tmp");
+   await writeFile(receiptTemporary,payload,{flag:"wx",mode:0o600});
+   try{await link(receiptTemporary,join(reservations,call+".json"));}
+   finally{await unlink(receiptTemporary);}
    return Object.freeze({call,limit});
-  }catch(error){
-   if(error&&typeof error==="object"&&"code" in error&&error.code==="EEXIST")continue;
-   throw error;
-  }
+  }finally{await unlink(temporary);}
  }
  try{
   await writeFile(join(reservations,"exhausted.json"),JSON.stringify({label,limit,exhausted:true})+"\n",{flag:"wx",mode:0o600});
@@ -79,27 +90,33 @@ export async function inspectInferenceBudget({directory=process.env.RUNNER_TEMP}
  const names=await readdir(folder);
  let reserved=0,missingEarlierSlot=false;
  for(let call=1;call<=policy.limit;call++){
-  const file=join(folder,call+".json");
-  let fileStat;
-  try{fileStat=await lstat(file);}
-  catch(error){
-   if(error&&typeof error==="object"&&"code" in error&&error.code==="ENOENT"){missingEarlierSlot=true;continue;}
-   throw error;
-  }
-  if(missingEarlierSlot)throw new Error("T12 inference reservation history has a gap");
-  if(!fileStat.isFile()||fileStat.isSymbolicLink())throw new Error("T12 inference reservation is not a regular file");
-  let item;
-  try{item=JSON.parse(await readFile(file,"utf8"));}
-  catch{throw new Error("T12 inference reservation is malformed");}
+  const receipt=join(folder,call+".json"),claim=join(folder,call+".claim");
+  let receiptStat,claimStat;
+  try{receiptStat=await lstat(receipt);}
+  catch(error){if(!(error&&typeof error==="object"&&"code" in error&&error.code==="ENOENT"))throw error;}
+  try{claimStat=await lstat(claim);}
+  catch(error){if(!(error&&typeof error==="object"&&"code" in error&&error.code==="ENOENT"))throw error;}
+  if(!claimStat&&!receiptStat){missingEarlierSlot=true;continue;}
+  if(missingEarlierSlot||!claimStat||!receiptStat)
+   throw new Error("T12 inference reservation history has a gap or incomplete receipt");
+  if(!receiptStat.isFile()||receiptStat.isSymbolicLink()||
+     !claimStat.isFile()||claimStat.isSymbolicLink())
+   throw new Error("T12 inference reservation is not a regular file");
+  let item,proof;
+  try{
+   item=JSON.parse(await readFile(receipt,"utf8"));
+   proof=JSON.parse(await readFile(claim,"utf8"));
+  }catch{throw new Error("T12 inference reservation is malformed");}
   if(!item||typeof item!=="object"||Array.isArray(item)||
      Object.keys(item).sort().join(",")!=="call,label,limit"||
      item.call!==call||item.limit!==policy.limit||
-     typeof item.label!=="string"||!/^[a-z0-9-]{1,48}$/i.test(item.label))
+     typeof item.label!=="string"||!/^[a-z0-9-]{1,48}$/i.test(item.label)||
+     JSON.stringify(proof)!==JSON.stringify(item))
    throw new Error("T12 inference reservation is malformed");
   reserved++;
  }
- if(names.some(name=>/^[0-9]+\.json$/.test(name)&&
-   (!/^[1-9][0-9]*\.json$/.test(name)||Number(name.slice(0,-5))>policy.limit)))
+ if(names.some(name=>/^[0-9]+\.(?:json|claim)$/.test(name)&&
+   (!/^[1-9][0-9]*\.(?:json|claim)$/.test(name)||Number(name.split(".")[0])>policy.limit)))
   throw new Error("T12 inference reservation outside the declared limit");
  return Object.freeze({limit:policy.limit,reserved,remaining:policy.limit-reserved,authorization:"NOT_GRANTED"});
 }

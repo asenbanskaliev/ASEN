@@ -117,3 +117,20 @@ test("T12 workflow tests durable budget recovery and a disposable correction wit
  assert.match(workflow,/Inspect call receipts without spending another inference request/);
  assert.match(workflow,/node scripts\/t12-inference-budget\.mjs --report/);
 });
+
+test("T12 real acceptance never selects a miscellaneous Ollama model as fallback",()=>{
+ const start=workflow.indexOf("      - name: Install pinned Ollama Cloud provider extension");
+ const end=workflow.indexOf("\n      - name:",start+12);
+ const section=workflow.slice(start,end);
+ assert.match(section,/elif grep -Fxq "beam" asen-acceptance-evidence\/registered-model-ids\.txt/);
+ assert.match(section,/Neither the pinned Beam model nor its registered alias is available/);
+ assert.doesNotMatch(section,/selected="\$\(head -n 1/);
+});
+test("T12 live acceptance requires exact-SHA grades and retains explicit opt-in",()=>{
+ assert.match(workflow,/github\.event\.head_commit\.message == 'ci: one-time Ollama Cloud provider smoke'/);
+ assert.match(workflow,/Verify real provider grades and exact-SHA call receipts without inference/);
+ assert.match(workflow,/node scripts\/t12-live-evidence-gate\.mjs/);
+ assert.match(workflow,/tests\/t12-live-evidence-gate\.test\.ts/);
+ assert.match(workflow,/PASS_BOUNDED_READ_ONLY/);
+ assert.match(workflow,/PARTIAL_CALL_BUDGET/);
+});

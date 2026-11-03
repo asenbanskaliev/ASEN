@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import {execFileSync} from "node:child_process";
-import {mkdtempSync,rmSync,writeFileSync} from "node:fs";
+import {mkdtempSync,rmSync,writeFileSync,symlinkSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import test,{type TestContext} from "node:test";
@@ -17,7 +17,7 @@ function fixture(t:TestContext){
  journal.record({id,sessionId,projectId:root,command:"asen-pi-authorized-write",args:["target.txt"],cwd:root,mode:"background",state:"running",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[],authorizationId:"authorization-one",expectedHead:head,allowedPaths,authorizationExpiresAt:new Date(Date.now()+60_000).toISOString()});
  const expected="expected exact bytes\n",expectedFileSha256={"target.txt":createHash("sha256").update(expected).digest("hex")};
  const recover=()=>reconcileInterruptedAuthorizedWrite({journal,sessionId,projectId:root,interruptedJobId:id,expectedHead:head,allowedPaths,expectedFileSha256});
- return {root,git,expected,recover};
+ return {root,git,expected,recover,journal,sessionId,id,head};
 }
 
 test("recovery classifies no write as pending and requires fresh authorization",t=>{
@@ -35,4 +35,30 @@ test("recovery blocks partial, external and changed-HEAD outcomes as uncertain",
  const partial=fixture(t);writeFileSync(join(partial.root,"target.txt"),"partial");assert.equal(partial.recover().state,"uncertain");
  const external=fixture(t);writeFileSync(join(external.root,"target.txt"),external.expected);writeFileSync(join(external.root,"outside.txt"),"external\n");assert.equal(external.recover().state,"uncertain");
  const stale=fixture(t);writeFileSync(join(stale.root,"target.txt"),stale.expected);writeFileSync(join(stale.root,"new.txt"),"commit\n");stale.git("add","new.txt");stale.git("commit","-qm","advance");assert.equal(stale.recover().state,"uncertain");
+});
+
+test("recovery refuses unsafe alternate-data-stream and control-character paths",t=>{
+ const f=fixture(t);
+ const expectedFileSha256={ "target:stream":createHash("sha256").update(f.expected).digest("hex") };
+ const input={journal:f.journal,sessionId:f.sessionId,projectId:f.root,
+  interruptedJobId:f.id,expectedHead:f.head,allowedPaths:["target:stream"]};
+ assert.throws(()=>reconcileInterruptedAuthorizedWrite({...input,expectedFileSha256}),/unsafe path/);
+ assert.throws(()=>reconcileInterruptedAuthorizedWrite({
+  ...input,allowedPaths:["target\u0000.txt"],expectedFileSha256:{"target\u0000.txt":expectedFileSha256["target:stream"]},
+ }),/unsafe path/);
+});
+test("recovery never treats a symbolic link as proof of completed authorized bytes",t=>{
+ const f=fixture(t),external=resolve(mkdtempSync(join(tmpdir(),"asen-write-external-")));
+ t.after(()=>rmSync(external,{recursive:true,force:true}));
+ writeFileSync(join(external,"payload.txt"),f.expected);
+ try{symlinkSync(join(external,"payload.txt"),join(f.root,"target.txt"),"file");}
+ catch(error){
+  if(["EPERM","EACCES"].includes((error as NodeJS.ErrnoException).code??"")){
+   t.skip("File symlink creation is unavailable on this host");return;
+  }
+  throw error;
+ }
+ const result=f.recover();
+ assert.equal(result.state,"uncertain");
+ assert.equal(result.action,"manual-reconciliation-required");
 });
