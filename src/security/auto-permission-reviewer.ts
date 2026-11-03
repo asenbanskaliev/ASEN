@@ -100,14 +100,20 @@ export class AsenAutoPermissionReviewer{
     })
    ]);
    if(outcome.kind!=="result"||!stillCurrent())return false;
-   const message=outcome.value;
+   if(!outcome.value||typeof outcome.value!=="object"||Array.isArray(outcome.value))return false;
+   const message=outcome.value as {
+    usage?:{totalTokens?:number;cost?:{total?:number}};
+    stopReason?:string;provider?:string;responseModel?:string;model?:string;
+    content?:Array<{type?:string;text?:string}>;
+   };
    const u=message.usage;
    if(u&&typeof u.totalTokens==="number"&&Number.isFinite(u.totalTokens))this.totalTokens+=Math.max(0,u.totalTokens);
    if(u?.cost&&typeof u.cost.total==="number"&&Number.isFinite(u.cost.total))this.totalCost+=Math.max(0,u.cost.total);
+   const item=message.content?.[0];
    if(message.stopReason!=="stop"||message.provider!==selectedModel.provider||
-    (message.responseModel??message.model)!==selectedModel.id||message.content.length!==1||
-    message.content[0]?.type!=="text"||Buffer.byteLength(message.content[0].text)>1024)return false;
-   const value:unknown=JSON.parse(message.content[0].text.trim());
+    (message.responseModel??message.model)!==selectedModel.id||message.content?.length!==1||
+    item?.type!=="text"||typeof item.text!=="string"||Buffer.byteLength(item.text)>1024)return false;
+   const value:unknown=JSON.parse(item.text.trim());
    if(!value||typeof value!=="object"||Array.isArray(value))return false;
    const verdict=value as {decision?:unknown;reason?:unknown};
    if(Object.keys(verdict).sort().join(",")!=="decision,reason"||
