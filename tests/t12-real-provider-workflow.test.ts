@@ -21,6 +21,8 @@ test("T12 Pi child stages resolve the npm-installed runtime from PATH",()=>{
   const stage=workflow.slice(start,end===-1?undefined:end);
   assert.match(stage,/export PATH="\$PWD\/node_modules\/\.bin:\$PATH"/,
    `${name} must expose the pinned, locally installed Pi executable to spawned ASEN children`);
+  assert.match(stage,/node --import tsx scripts\/t12-[^ ]+\.mjs/u,
+   `${name} imports TypeScript-authored modules and must install the tsx loader`);
  }
 });
 
