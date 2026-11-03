@@ -74,7 +74,7 @@ test("F6 interrupted authorized write remains quarantined when Git metadata is u
  assert.match(first.reason,/Git recovery status is unavailable or malformed/);
  assert.deepEqual(first,second);
  assert.deepEqual(first.observedPaths,[]);
- assert.equal(first.state!=="completed",true,"Missing Git status cannot prove completed edits");
+ assert.equal(first.action,"manual-reconciliation-required","Missing Git status cannot prove completed edits");
 });
 
 test("F6 corrupt candidate Git index never becomes authorization to rerun an interrupted Writer",t=>{
