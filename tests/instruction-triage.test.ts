@@ -27,9 +27,9 @@ test("ECO-06 exact ODD input compiles to an immutable ordered task DAG without g
  const value=JSON.parse(controlledInstructionPlanCommand(oddInput(),"/repo"));
  const graph=value.executablePlan;
  assert.equal(graph.taskId,"ECO-06-A1");assert.equal(graph.route,"orchestrate");
- assert.deepEqual(graph.tasks.map((task:{role:string})=>task.role),["worker","reviewer","reviewer","verifier"]);
- assert.deepEqual(graph.tasks.map((task:{dependsOn:string[]})=>task.dependsOn.length),[0,1,1,3]);
- assert.deepEqual(graph.tasks.map((task:{priority:number})=>task.priority),[2,3,3,4]);
+ assert.deepEqual(graph.tasks.map((task:{role:string})=>task.role),["worker","reviewer","reviewer"]);
+ assert.deepEqual(graph.tasks.map((task:{dependsOn:string[]})=>task.dependsOn.length),[0,1,1]);
+ assert.deepEqual(graph.tasks.map((task:{priority:number})=>task.priority),[2,3,3]);
  assert.deepEqual(graph.topologicalOrder,graph.tasks.map((task:{id:string})=>task.id));
  assert.equal(graph.tasks[0].status,"ready");assert.equal(graph.tasks[1].status,"waiting");
  assert.equal(graph.execution,"not_started");assert.equal(graph.authorization,"required_before_dispatch");
@@ -42,7 +42,6 @@ test("ECO-06 persists the active profile model and thinking route with each agen
   ["worker","nvidia/nemotron-3.5-lightning-30b-a3b","low"],
   ["reviewer","nvidia/nemotron-3.5-lightning-30b-a3b",undefined],
   ["reviewer","nvidia/nemotron-3.5-lightning-30b-a3b",undefined],
-  ["verifier","nvidia/nemotron-3.5-lightning-30b-a3b",undefined],
  ]);
 });
 test("ECO-06 keeps ordinary review work in the main session",()=>{

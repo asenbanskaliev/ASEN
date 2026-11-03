@@ -80,22 +80,22 @@ test("asen-plan composes the existing ODD and orchestrator without retrieving, r
 test("asen-plan previews bounded orchestration roles without dispatching or granting execution",async()=>{
  const h=host();createAsenExtension()(h.pi);const command=h.commands.get("asen-plan")!,paths=["src/a.ts","src/b.ts","src/c.ts","src/d.ts"];
  const result=JSON.parse(await command.handler(JSON.stringify({taskIdentity:"orchestrated-plan",instruction:"Implement the bounded change",intent:"implementation",scope:{kind:"known",expectedPaths:paths},writes:[{path:"src/a.ts",changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:20,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:0},unresolvedDecisions:[]}),{cwd:process.cwd(),sessionManager:{getSessionId:()=>"orchestrator-session"}}) as string);
- assert.equal(result.route,"orchestrate");assert.deepEqual(result.requiredAgentRoles,["worker","reviewer","reviewer","verifier"]);
+ assert.equal(result.route,"orchestrate");assert.deepEqual(result.requiredAgentRoles,["worker","reviewer","reviewer"]);
  assert.equal(result.requiresSingleWriter,true);assert.equal(result.requiresIsolatedChild,true);assert.deepEqual(result.execution,{started:false,authorized:false});
- assert.deepEqual(result.executablePlan.tasks.map((task:any)=>task.role),["worker","reviewer","reviewer","verifier"]);
+ assert.deepEqual(result.executablePlan.tasks.map((task:any)=>task.role),["worker","reviewer","reviewer"]);
  assert.deepEqual(result.executablePlan.tasks.filter((task:any)=>task.role==="reviewer").map((task:any)=>task.id),["orchestrated-plan:reviewer","orchestrated-plan:reviewer:2"]);
- assert.deepEqual(result.executablePlan.tasks.find((task:any)=>task.role==="verifier").dependsOn,["orchestrated-plan:worker","orchestrated-plan:reviewer","orchestrated-plan:reviewer:2"]);
+ assert.equal(result.executablePlan.tasks.some((task:any)=>task.role==="verifier"),false,"Low/medium risk dual review does not automatically require Verifier");
  assert.equal(result.persistence.status,"unavailable");
  assert.deepEqual(result.actions,{informationRetrieved:false,reviewRequested:false});
 });
 test("asen-plan persists its DAG in the active Todo store and enforces predecessor completion",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-plan-dag-"));t.after(()=>rm(root,{recursive:true,force:true}));const store=await SessionTodoStore.open(path.join(root,"todos.json")),h=host();createAsenExtension({todoStoreFactory:async()=>store})(h.pi);
  const paths=["src/a.ts","src/b.ts","src/c.ts","src/d.ts"],session={sessionManager:{getSessionId:()=>"dag-session"},cwd:process.cwd()},result=JSON.parse(await h.commands.get("asen-plan")!.handler(JSON.stringify({taskIdentity:"dag-plan",instruction:"Implement bounded change",intent:"implementation",scope:{kind:"known",expectedPaths:paths},writes:[{path:"src/a.ts",changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:20,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:0},unresolvedDecisions:[]}),session) as string);
- assert.equal(result.persistence.status,"saved");assert.equal(result.execution.started,false);assert.equal(result.persistedTasks.length,4);
+ assert.equal(result.persistence.status,"saved");assert.equal(result.execution.started,false);assert.equal(result.persistedTasks.length,3);
  assert.match(result.notice,/Do not ask the user to inspect Todo state or run commands/);assert.doesNotMatch(result.notice,/inspect its Todo state/u);
- const projectId=await realpath(process.cwd()),identity={sessionId:"dag-session",projectId},rows=await store.list(identity);assert.equal(rows.length,4);
+ const projectId=await realpath(process.cwd()),identity={sessionId:"dag-session",projectId},rows=await store.list(identity);assert.equal(rows.length,3);
  const todoById=new Map(rows.map(row=>[row.taskId,row]));const graph=new Map(result.persistedTasks.map((item:any)=>[item.planTaskId,item]));
- const worker=graph.get("dag-plan:worker") as any,reviewer=graph.get("dag-plan:reviewer") as any,reviewer2=graph.get("dag-plan:reviewer:2") as any,verifier=graph.get("dag-plan:verifier") as any;assert.ok(worker&&reviewer&&reviewer2&&verifier);assert.deepEqual(reviewer.dependsOn,[worker.todoId]);assert.deepEqual(reviewer2.dependsOn,[worker.todoId]);assert.deepEqual(verifier.dependsOn,[worker.todoId,reviewer.todoId,reviewer2.todoId]);
+ const worker=graph.get("dag-plan:worker") as any,reviewer=graph.get("dag-plan:reviewer") as any,reviewer2=graph.get("dag-plan:reviewer:2") as any;assert.ok(worker&&reviewer&&reviewer2);assert.deepEqual(reviewer.dependsOn,[worker.todoId]);assert.deepEqual(reviewer2.dependsOn,[worker.todoId]);assert.equal(graph.has("dag-plan:verifier"),false);
  const workerTodo=todoById.get(worker.todoId)!;assert.equal(workerTodo.plan?.role,"worker");assert.equal(workerTodo.plan?.priority,2);assert.equal(workerTodo.plan?.skillSelection?.phase,"apply");assert.equal(todoById.get(reviewer.todoId)?.plan?.priority,3);
  await assert.rejects(()=>store.update(reviewer.todoId,identity,1,"running"),/dependencies must be verified done/);
  assert.equal(todoById.get(reviewer.todoId)?.current.state,"planned");
