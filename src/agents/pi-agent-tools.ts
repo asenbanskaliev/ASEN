@@ -45,6 +45,10 @@ export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent
 /** Exposes only read-only explorer work by default; write agents require an internal fresh ASEN grant. */
 export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default"}>,notificationJournal?:AgentNotificationJournal):()=>void{
  const access=new AgentProjectAccess();
+ // An exact status query records only a short-lived coordinator inspection
+ // attempt; it is neither Pi model consumption nor approval for further work.
+ const inspected=new Map<string,{sessionId:string;projectId:string;agentId:string;state:string;at:number}>();
+ const INSPECTION_WINDOW_MS=300_000;
  const selectedIdentity=async(root:unknown,context:any,launch:boolean,signal?:AbortSignal)=>access.resolve(root,context,await identity(context),launch,()=>confirmWithAbort(dialogSignal=>context.ui.confirm("Authorize another project?",`Start a read-only ASEN agent in ${String(root)}? Access applies only to this live session and project.`,dialogSignal?{signal:dialogSignal}:undefined),signal),signal);
  pi.registerTool?.({name:"asen_agent_start",label:"Start ASEN agent",description:"Queue an isolated, read-only Pi agent task in the current session and project.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["prompt"],properties:{prompt:text,root:rootSchema,todoId:idSchema}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);
@@ -75,7 +79,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
     const validate=async()=>{
      const current=await identity(context);
      if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)
-      throw new Error("Pi session or project changed before Todo dispatch");
+      throw new Error("Pi session or project changed before Todo agent dispatch");
      if(persistedPlan)assertCurrentReadOnlyCandidate(persistedPlan,session.projectId);
     };
     await validate();
@@ -90,7 +94,24 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const taskId=(params as {id?:unknown})?.id;
   if(taskId!==undefined&&(typeof taskId!=="string"||!taskId.trim()||taskId.length>1024))throw new Error("Invalid agent task id");
   const active=await runtime(),session=await selectedIdentity((params as {root?:unknown}).root,context,false,signal);throwIfCancelled(signal);
-  if(typeof taskId==="string")return result({id:taskId,task:await active.query(taskId,session)});
+  if(typeof taskId==="string"){
+   const task=await active.query(taskId,session);
+   if(task&&notificationJournal&&context?.mode==="tui"&&context?.hasUI===true&&
+      ["completed","failed","cancelled"].includes(task.record.state)&&
+      task.record.sessionId===session.sessionId&&sameWorkspaceIdentityPath(task.record.projectId,session.projectId)){
+    try{
+     const events=await notificationJournal.list(session);
+     const row=events.find(event=>event.agentId===taskId&&event.state===task.record.state&&
+      (event.delivery==="enqueued"||event.delivery==="acknowledged"));
+     if(row){
+      if(inspected.size>=64)inspected.delete(inspected.keys().next().value!);
+      inspected.set(row.eventId,{sessionId:session.sessionId,projectId:session.projectId,
+       agentId:row.agentId,state:row.state,at:Date.now()});
+     }
+    }catch{/* Corrupted journal does not prevent a read-only status query. */}
+   }
+   return result({id:taskId,task});
+  }
   const rows=await active.list(session);
   return result(rows.map(({id,role,state,createdAt,updatedAt,summary})=>({id,role,state,createdAt,updatedAt,...(summary?{summary}:{})})));
  }});
@@ -104,6 +125,12 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const session=await identity(context),rows=await notificationJournal.list(session);
   const row=rows.find(entry=>entry.eventId===eventId);
   if(!row)throw new Error("Agent notice is not available to this Pi session and project");
+  const inspection=inspected.get(row.eventId);
+  if(!inspection||inspection.sessionId!==session.sessionId||
+     !sameWorkspaceIdentityPath(inspection.projectId,session.projectId)||
+     inspection.agentId!==row.agentId||inspection.state!==row.state||
+     Date.now()-inspection.at>INSPECTION_WINDOW_MS)
+   throw new Error("Inspect this exact terminal agent with asen_agent_status before acknowledging it");
   const entry=await (await runtime()).query(row.agentId,session);
   if(!entry||entry.record.id!==row.agentId||entry.record.state!==row.state||
      entry.record.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(entry.record.projectId,session.projectId))
@@ -177,5 +204,5 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   throwIfCancelled(signal);const inspection=inspectInterruptedWrite({repository:session.projectId,expectedRevision:todo.plan.candidate.revision,writeSurfaces:todo.plan.writeSurfaces});
   return result({task:{title:todo.title,role:"worker",state:todo.current.state},agent:{id:agentId,state:entry.record.state},...inspection});
  }});
- return ()=>access.reset();
+ return ()=>{inspected.clear();access.reset();};
 }

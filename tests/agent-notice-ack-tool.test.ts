@@ -13,7 +13,7 @@ test("EF-601 Pi ack only confirms an authenticated coordinator action in the sam
  const row=await journal.record({id:"agent-ack",state:"completed",...identity});
  await journal.claim(row.eventId,identity);await journal.markEnqueued(row.eventId,identity);
  let durableState="completed";
- const runtime={query:async(id:string,scope:typeof identity)=>id==="agent-ack"&&scope.sessionId===identity.sessionId
+ const runtime={list:async()=>[],query:async(id:string,scope:typeof identity)=>id==="agent-ack"&&scope.sessionId===identity.sessionId
   ?{record:{id,role:"explorer",state:durableState,...identity}}:null};
  const tools=new Map<string,any>();
  registerAgentTools({registerTool:(tool:any)=>tools.set(tool.name,tool)} as never,async()=>runtime as never,
@@ -23,9 +23,18 @@ test("EF-601 Pi ack only confirms an authenticated coordinator action in the sam
   new AbortController().signal,()=>{},context);
  await assert.rejects(()=>ack(row.eventId,{...ctx,mode:"rpc"}),/Pi TUI/u);
  await assert.rejects(()=>ack(row.eventId,{...ctx,sessionManager:{getSessionId:()=>"foreign"}}),/not available/u);
+ await assert.rejects(()=>ack(row.eventId),/Inspect this exact terminal agent/u);
+ const query=()=>tools.get("asen_agent_status").execute("status",{id:"agent-ack"},
+  new AbortController().signal,()=>{},ctx);
+ const listed=await tools.get("asen_agent_status").execute("list",{},
+  new AbortController().signal,()=>{},ctx);
+ assert.ok(Array.isArray(listed.details));
+ await assert.rejects(()=>ack(row.eventId),/Inspect this exact terminal agent/u);
  durableState="failed";
- await assert.rejects(()=>ack(row.eventId),/authenticated durable terminal/u);
+ await query();
+ await assert.rejects(()=>ack(row.eventId),/Inspect this exact terminal agent/u);
  durableState="completed";
+ await query();
  const results=await Promise.all([ack(row.eventId),ack(row.eventId)]);
  assert.deepEqual(results.map((r:any)=>r.details.acknowledged).sort(),[false,true]);
  assert.ok(results.every((r:any)=>r.details.writerAuthorized===false&&r.details.humanReadConfirmed===false&&
