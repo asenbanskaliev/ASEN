@@ -75,6 +75,6 @@ test("EF-203 schema diagnostics expose only bounded field codes, never untrusted
  assert.equal(result.passed,false);
  assert.ok(Array.isArray(result.invalidFields));
  assert.ok(result.invalidFields.length<=24);
- assert.ok(result.invalidFields.every((field:string)=>/^[a-zA-Z0-9.[\\]]+$/u.test(field)));
+ assert.ok(result.invalidFields.every((field:string)=>field.length<=48&&[...field].every(ch=> "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._[]".includes(ch))));
  assert.doesNotMatch(JSON.stringify(result),/SYNTHETIC_SUPPLIED_CONTENT_DO_NOT_EXPORT/u);
 });
