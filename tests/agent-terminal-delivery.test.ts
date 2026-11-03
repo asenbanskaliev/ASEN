@@ -22,7 +22,8 @@ test("EF-601 Pi parent routing: active steer, idle stored+separate wake, compact
   assert.deepEqual(agentTerminalDeliveryOptions(invalid,id,true),{triggerTurn:false});
   assert.equal(agentTerminalWakeOptions(invalid,id,true),undefined);
  }
- assert.equal(agentParentRoute({...context,isIdle:undefined},id,false),"hold");
+ const unknownIdle={mode:"tui",hasUI:true,sessionManager:context.sessionManager};
+ assert.equal(agentParentRoute(unknownIdle,id,false),"hold");
 });
 test("EF-601 completion notice states that agent text is not an instruction or new consent",()=>{
  const output=agentTerminalContinuationMessage({id:"agent-fixture",role:"explorer",state:"completed",summary:"Found 3 locations"});

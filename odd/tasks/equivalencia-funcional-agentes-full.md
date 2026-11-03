@@ -333,7 +333,7 @@ Se ejecutan los dos nuevos tests EF-604 integrados con el anfitrión Pi de prueb
 
 ### Semántica F6 aplicada
 
-- Contrato de referencia A inspeccionado directamente en la baseline `813ec110`, `extensions/gentle-agents.ts` líneas 1162–1189 y 1209–1259: padre ejecutando recibe `steer + triggerTurn:true`; padre inactivo recibe contenido encolado `triggerTurn:false` y un wake separado; ocupado sin turno del modelo retiene hasta un límite de ciclo. No se ha ejecutado aún la referencia en vivo ni la referencia B.
+- Contrato de referencia A inspeccionado directamente en la baseline `813ec110`, módulo de agentes de la referencia líneas 1162–1189 y 1209–1259: padre ejecutando recibe `steer + triggerTurn:true`; padre inactivo recibe contenido encolado `triggerTurn:false` y un wake separado; ocupado sin turno del modelo retiene hasta un límite de ciclo. No se ha ejecutado aún la referencia en vivo ni la referencia B.
 - ASEN adopta ese criterio mediante `agentParentRoute` y `agentTerminalWakeOptions`. El contexto Pi `isIdle()`, el estado `agent_start`/`agent_settled`, `turn_end` y los límites de compactación determinan la entrega. Sin identidad TUI válida, no se inicia otro turno. No hay sondeo de estado ni reejecución de agentes por una señal de wake.
 - El journal `AgentNotificationJournal` sigue siendo el árbitro de deduplicación: en `hold` la entrada queda `pending`, y una frontera de turno solo puede entregar tras consultar de nuevo el estado terminal verdadero y comprobar la sesión y el proyecto. Nunca se recupera `attempted` automáticamente ni se reenvía una entrada `enqueued`.
 - Para padres inactivos, el mensaje de resultados se encola y confirma **antes** de programar un único wake oculto, consolidado por ráfaga. Un wake se identifica como mensaje generado por ASEN, sin permisos ni supuesto consentimiento humano. Un fallo de wake conserva el resultado consultable; no lo reinyecta ni simula un acuse.
@@ -343,3 +343,7 @@ Se ejecutan los dos nuevos tests EF-604 integrados con el anfitrión Pi de prueb
 
 - Aceptación requerida: `node --import tsx --test --test-name-pattern='EF-601|EF-603|EF-202|EF-604' tests/pi-agent-runtime.test.ts`, suite completa Ubuntu/Windows/macOS, Typecheck, Build, F5, arquitectura, Release Gate y R4 `SELF_AUDIT_ONLY / NOT independent`.
 - Pendientes FULL: EF-002 observaciones A/B genuinas C01–C20, EF-102/103 continuidad ODD revisada, EF-201/203 Explorer con fuentes reales, EF-301–304 Writer con autorización TUI auténtica, EF-402–503 revisión/verificación real, EF-601 wake Pi real bajo padre activo e inactivo, EF-702 proveedor gratuito autorizado y recibos exact-SHA finales. **Ningún mock promociona C13/C15/C19/C20 a PASS.**
+
+### Ajustes de integración de la tanda
+
+El SHA inicial de esta tanda detectó dos rechazos reales de gates: TypeScript `TS2379` al pasar una propiedad opcional con `undefined` explícito en un fixture, y rechazo por la política de no introducir nombres de procedencia externos fuera de los manifiestos. Se corrige el fixture construyendo un contexto sin esa propiedad; el ODD conserva las líneas y SHA de referencia sin el literal prohibido. Estas correcciones no prueban FULL ni cambian los permisos de ejecución.
