@@ -224,3 +224,30 @@ test("T12 combined F1/F4/F7 batch keeps negative, expiry and exact-SHA closure e
  assert.match(ledger,/F4:"BLOCKED_INTERACTIVE"/u);
  assert.match(ledger,/F7:"SELF_AUDIT_ONLY"/u);
 });
+
+test("T12 real inference cannot begin before the exact-SHA offline acceptance succeeds",()=>{
+ const start=workflow.indexOf("  real-provider-acceptance:");
+ assert.ok(start>=0,"Real Ollama provider job must exist");
+ const provider=workflow.slice(start);
+ assert.match(provider,/needs: offline-static-validation/u);
+ assert.match(provider,/github\.run_attempt == 1/u);
+ assert.match(provider,/ASEN_STRICT_INFERENCE_ORDER: '1'/u);
+ assert.match(provider,/F7 reconcile exact-SHA real evidence after strict gate \(never FULL\)/u);
+ const evidenceGate=provider.indexOf("node scripts/t12-live-evidence-gate.mjs");
+ const ledger=provider.indexOf("node scripts/t12-acceptance-ledger.mjs");
+ assert.ok(evidenceGate>0&&ledger>evidenceGate,
+  "F7 must recheck evidence only after the original strict live gate has passed");
+ assert.match(provider,/ASEN_INCLUDE_VALIDATED_LIVE_EVIDENCE: '1'/u);
+ assert.match(provider,/ASEN_OFFLINE_TESTS_PASSED: '1'/u);
+});
+test("T12 live F7 ledger recomputes the strict grade from original receipts instead of trusting status JSON",()=>{
+ const ledger=readFileSync(new URL("../scripts/t12-acceptance-ledger.mjs",import.meta.url),"utf8");
+ assert.match(ledger,/readInferenceBudgetReceipts\(\{directory:temp\}\)/u);
+ assert.match(ledger,/inspectInferenceBudget\(\{directory:temp\}\)/u);
+ assert.match(ledger,/loadJson\("asen-dispatcher-explorer\.json"\)/u);
+ assert.match(ledger,/loadJson\("fixture-plan-grade\.json"\)/u);
+ assert.match(ledger,/loadJson\("real-review-verifier\.json"\)/u);
+ assert.match(ledger,/gradeLiveAcceptanceEvidence\(\{/u);
+ assert.match(ledger,/matchT12ValidatedLiveGate\(\{reported,computed\}\)/u);
+ assert.match(ledger,/globalFull:false/u);
+});

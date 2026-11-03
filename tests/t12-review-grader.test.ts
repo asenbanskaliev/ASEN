@@ -68,3 +68,22 @@ test("T12 Verifier grade requires all failed tests, exact SHA/scope and review e
  const duplicated=verification();assert.equal(Reflect.set(duplicated.evidence[2],"kind","scope"),true);
  assert.throws(()=>gradeRealVerification(duplicated,{candidateSha:sha,fixtureSha256:fixtureSha,changedPaths,testEvidence,review}),/unique and complete/);
 });
+
+test("T12 Verifier accepts exactly the three changed files irrespective of returned order",()=>{
+ const review=gradeRealReview(reviewer(),{candidateSha:sha});
+ const reversedPaths=["src/pricing.js","src/parse.js","src/access.js"];
+ const response=verification(reversedPaths);
+ assert.equal(gradeRealVerification(response,{
+  candidateSha:sha,fixtureSha256:fixtureSha,changedPaths,testEvidence,review,
+ }).passed,true);
+ assert.deepEqual(response.evidence[1].paths,reversedPaths,
+  "Grade must not mutate model-output evidence while comparing scoped paths");
+ const duplicate=verification(["src/access.js","src/access.js","src/pricing.js"]);
+ assert.throws(()=>gradeRealVerification(duplicate,{
+  candidateSha:sha,fixtureSha256:fixtureSha,changedPaths,testEvidence,review,
+ }),/exact changed path set/);
+ const foreign=verification(["src/access.js","src/parse.js","src/secret.js"]);
+ assert.throws(()=>gradeRealVerification(foreign,{
+  candidateSha:sha,fixtureSha256:fixtureSha,changedPaths,testEvidence,review,
+ }),/exact changed path set/);
+});

@@ -7,8 +7,19 @@ import assert from "node:assert/strict";
 import {readFile,writeFile,mkdir} from "node:fs/promises";
 import {resolve,join} from "node:path";
 import {fileURLToPath} from "node:url";
+import {inspectInferenceBudget,readInferenceBudgetReceipts} from "./t12-inference-budget.mjs";
+import {gradeLiveAcceptanceEvidence} from "./t12-live-evidence-gate.mjs";
 
 const positiveStates=new Set(["PASS_BOUNDED_READ_ONLY","PARTIAL_CALL_BUDGET"]);
+
+/** Accept the report only when it is byte-for-byte the strict graded result.
+ * Never treat a standalone status JSON file as provider authorization.
+ */
+export function matchT12ValidatedLiveGate({reported,computed}){
+ assert.deepEqual(reported,computed,
+  "T12 live acceptance ledger differs from strict real-evidence gate");
+ return Object.freeze(computed);
+}
 export function buildT12AcceptanceLedger({sha,offlineConfirmed,liveEvidence=null}){
  assert.match(sha,/^[0-9a-f]{40}$/u,"T12 acceptance ledger needs an exact SHA");
  assert.equal(offlineConfirmed,true,"T12 provider-free tests must have completed successfully");
@@ -26,10 +37,10 @@ export function buildT12AcceptanceLedger({sha,offlineConfirmed,liveEvidence=null
   assert.equal(liveEvidence.liveProviderRecovery,"NOT_VERIFIED","T12 live recovery cannot be inferred");
   assert.equal(liveEvidence.independentAudit,"NOT_PERFORMED","T12 audit independence cannot be inferred");
   assert.equal(liveEvidence.toolsAllowed,false,"T12 bounded provider must not use tools");
+  assert.equal(liveEvidence.explorer,"PASS","T12 Explorer has no real PASS");
+  assert.equal(liveEvidence.planner,"PASS","T12 Planner has no real PASS");
   if(liveEvidence.status==="PASS_BOUNDED_READ_ONLY"){
    assert.equal(liveEvidence.inferenceCalls,5,"T12 five model invocations required");
-   assert.equal(liveEvidence.explorer,"PASS","T12 Explorer has no real PASS");
-   assert.equal(liveEvidence.planner,"PASS","T12 Planner has no real PASS");
    assert.equal(liveEvidence.reviewer,"PASS_TWO_JUDGMENTS","T12 two blind Reviewers required");
    assert.equal(liveEvidence.verifier,"PASS_NEGATIVE_REJECTION","T12 real Verifier receipt required");
   }else{
@@ -39,17 +50,18 @@ export function buildT12AcceptanceLedger({sha,offlineConfirmed,liveEvidence=null
   }
   liveState=liveEvidence.status;
  }
+ const hasRealExplorerPlanner=positiveStates.has(liveState);
  const readOnlyComplete=liveState==="PASS_BOUNDED_READ_ONLY";
  return Object.freeze({
-  schema:1,candidateSha:sha,classification:"SELF_ASSESSED_PROVIDER_FREE",
+  schema:1,candidateSha:sha,classification:hasRealExplorerPlanner?"SELF_ASSESSED_WITH_REAL_RECEIPT":"SELF_ASSESSED_PROVIDER_FREE",
   globalStatus:"PARTIAL",globalFull:false,
-  evidenceType:readOnlyComplete?"REAL_READ_ONLY_PLUS_PROVIDER_FREE":"PROVIDER_FREE_ONLY",
+  evidenceType:readOnlyComplete?"REAL_READ_ONLY_PLUS_PROVIDER_FREE":hasRealExplorerPlanner?"REAL_EXPLORER_PLANNER_PARTIAL_PLUS_PROVIDER_FREE":"PROVIDER_FREE_ONLY",
   independentAudit:"NOT_PERFORMED",authorization:"NOT_GRANTED",
   externalCi:"NOT_ASSERTED_BY_THIS_REPORT",
   units:Object.freeze({
    F0:"PARTIAL_CI_MATRIX_PENDING",F1:"PARTIAL_LIVE_NEGATIVE_MISSING",
-   F2:readOnlyComplete?"PASS_REAL_READ_ONLY":"PASS_PROVIDER_FREE_ONLY",
-   F3:readOnlyComplete?"PASS_REAL_READ_ONLY":"PASS_PROVIDER_FREE_ONLY",
+   F2:hasRealExplorerPlanner?"PASS_REAL_READ_ONLY":"PASS_PROVIDER_FREE_ONLY",
+   F3:hasRealExplorerPlanner?"PASS_REAL_READ_ONLY":"PASS_PROVIDER_FREE_ONLY",
    F4:"BLOCKED_INTERACTIVE",
    F5:readOnlyComplete?"PASS_BOUNDED_NEGATIVE_REJECTION":"PARTIAL_REAL_VERIFIER_MISSING",
    F6:"PARTIAL_REAL_PROVIDER_RECOVERY_MISSING",
@@ -72,9 +84,27 @@ async function main(){
  const dir=resolve("asen-acceptance-evidence");
  let liveEvidence=null;
  if(process.env.ASEN_INCLUDE_VALIDATED_LIVE_EVIDENCE==="1"){
-  // Only the canonical output from the strict live evidence gate is considered.
-  // This flag must not be set in ordinary provider-free CI.
-  liveEvidence=JSON.parse(await readFile(join(dir,"live-evidence-gate.json"),"utf8"));
+  // Replay every deterministic real-evidence grade from original agent reports
+  // and the durable inference ledger. A plausible status JSON alone cannot pass.
+  // Offline acceptance is a prerequisite of the real-provider job in Actions.
+  assert.ok(typeof process.env.RUNNER_TEMP==="string"&&process.env.RUNNER_TEMP,
+   "T12 original inference receipts are unavailable");
+  const temp=process.env.RUNNER_TEMP;
+  const loadJson=async name=>JSON.parse(await readFile(join(dir,name),"utf8"));
+  const [reported,budget,receipts,explorer,planner,review,model]=await Promise.all([
+   loadJson("live-evidence-gate.json"),
+   inspectInferenceBudget({directory:temp}),
+   readInferenceBudgetReceipts({directory:temp}),
+   loadJson("asen-dispatcher-explorer.json"),
+   loadJson("fixture-plan-grade.json"),
+   loadJson("real-review-verifier.json"),
+   readFile(join(temp,"asen-selected-model"),"utf8"),
+  ]);
+  const computed=gradeLiveAcceptanceEvidence({
+   sha,model:model.trim(),maxCalls:Number(process.env.ASEN_MAX_INFERENCE_CALLS),
+   budget,receipts,explorer,planner,review,
+  });
+  liveEvidence=matchT12ValidatedLiveGate({reported,computed});
  }
  const report=buildT12AcceptanceLedger({sha,offlineConfirmed:true,liveEvidence});
  await mkdir(dir,{recursive:true});

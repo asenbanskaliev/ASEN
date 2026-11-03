@@ -61,7 +61,10 @@ export function gradeRealVerification(verification,{candidateSha,fixtureSha256,c
  assert.ok(exactKeys(scope,["kind","candidateSha","fixtureSha256","paths","observation"]),"Verifier must provide candidate- and fixture-bound scope evidence");
  assert.equal(scope.candidateSha,candidateSha,"Verifier cited a different candidate SHA");
  assert.equal(scope.fixtureSha256,fixtureSha256,"Verifier cited a different fixture snapshot");
- assert.deepEqual(scope.paths,[...changedPaths].sort(),"Verifier must compare the exact changed path set");
+ assert.ok(Array.isArray(scope.paths)&&scope.paths.every(path=>typeof path==="string"),
+  "Verifier scope paths must be a string array");
+ assert.deepEqual([...scope.paths].sort(),[...changedPaths].sort(),
+  "Verifier must compare the exact changed path set");
  assert.ok(text(scope.observation),"Verifier scope evidence is incomplete");
  const reviewed=verification.evidence.find(item=>item?.kind==="review");
  assert.ok(exactKeys(reviewed,["kind","findings"]),"Verifier must reconcile the grounded reviewer findings");

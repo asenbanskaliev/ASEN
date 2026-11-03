@@ -120,6 +120,7 @@ jobs:
           retention-days: 14
 
   real-provider-acceptance:
+    needs: offline-static-validation
     if: >-
       github.repository == 'asenbanskaliev/ASEN' &&
       github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
@@ -264,6 +265,12 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/t12-live-evidence-gate.mjs
+      - name: F7 reconcile exact-SHA real evidence after strict gate (never FULL)
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+          ASEN_OFFLINE_TESTS_PASSED: '1'
+          ASEN_INCLUDE_VALIDATED_LIVE_EVIDENCE: '1'
+        run: node scripts/t12-acceptance-ledger.mjs
       - name: Real-provider acceptance deferred steps
         shell: bash
         run: |
