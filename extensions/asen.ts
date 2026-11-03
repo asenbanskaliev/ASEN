@@ -284,7 +284,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    await Promise.all(links.filter(link=>link.taskId===taskId).map(link=>runtime.cancel(link.agentId,identity)));
   }:undefined,taskAgentLinks&&agentRuntimePromise?{links:async()=>taskAgentLinks,agents:async()=>agentRuntimePromise}:undefined,async host=>{await advancePlan(host as CommandContext);},async host=>refreshTodoWidget(host as CommandContext));
   if(memoryStorePromise)registerPiMemoryTools(pi,host=>currentMemoryBinding(host));
-  const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks),links:async()=>taskAgentLinks}:undefined,async(role,identity)=>resolveRuntimeRoute(await profileLayer(identity),role)):undefined;
+  const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks),links:async()=>taskAgentLinks}:undefined,async(role,identity)=>resolveRuntimeRoute(await profileLayer(identity),role),agentNoticeJournal):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const advancingPlans=new Set<string>();
   const advancePlan=async(ctx:CommandContext):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
@@ -413,7 +413,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      try{
       pi.sendMessage({
        customType:"asen.agent.result",
-       content:agentTerminalContinuationMessage({id:record.id,role:record.role,state:record.state,summary:untrustedAgentText(record.summary)}),
+       content:agentTerminalContinuationMessage({id:record.id,role:record.role,state:record.state,summary:untrustedAgentText(record.summary),eventId:row.eventId}),
        display:true,
        details:{eventId:row.eventId,sessionId:scope.sessionId,projectId:scope.projectId,agentId:record.id,
         role:record.role,state:record.state,trusted:false,deliveryState:"enqueued",deliveryConfirmed:false},

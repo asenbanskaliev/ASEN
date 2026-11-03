@@ -38,3 +38,15 @@ test("T12 Explorer schema diagnostics show only types, not model content or secr
  });
  assert.equal(JSON.stringify(observed).includes(secret),false);
 });
+
+test("EF-203 Explorer schema rejects false evidence, unsafe paths, injected keys and control characters",()=>{
+ const base=response();
+ assert.equal(inspectExplorerSchema({...base,evidence:[]}).passed,false);
+ assert.equal(inspectExplorerSchema({...base,currentState:"\u001b[2Jfake"}).passed,false);
+ assert.equal(inspectExplorerSchema({...base,unknowns:["\u202einjected"]}).passed,false);
+ assert.equal(inspectExplorerSchema({...base,findings:[{id:"fake",path:"../secrets.txt",reason:"claimed"}]}).passed,false);
+ assert.equal(inspectExplorerSchema({...base,findings:[{id:"x",path:"src/a.ts",reason:"claim"},{id:"x",path:"src/b.ts",reason:"duplicate id"}]}).passed,false);
+ assert.equal(inspectExplorerSchema({...base,findings:[{id:"x",path:"src/a.ts",reason:"claim",authority:"write"}]}).passed,false);
+ assert.equal(inspectExplorerSchema({...base,extra:"write now"}).passed,false);
+ assert.equal(inspectExplorerSchema({...base,findings:[{id:"x",path:"src/a.ts",reason:"evidence"}]}).passed,true);
+});

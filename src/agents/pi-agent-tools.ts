@@ -6,6 +6,7 @@ import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
 import type {AgentRuntime} from "./agent-runtime.js";
 import type {AgentSessionIdentity} from "./agent-runtime.js";
 import type {TrustedTaskAgentBinder} from "../runtime/trusted-task-agent-binder.js";
+import type {AgentNotificationJournal} from "../runtime/agent-notification-journal.js";
 import type {TaskAgentLinkStore} from "../runtime/task-agent-link-store.js";
 import type {SessionTodoStore,TodoPlanMetadata} from "../runtime/todo-store.js";
 import {runtimeRoutingMetadata,type RouteChoice} from "../runtime/profiles.js";
@@ -40,9 +41,9 @@ async function identity(context:any):Promise<AgentSessionIdentity>{
  if(typeof sessionId!=="string"||!sessionId||sessionId!==sessionId.trim()||typeof cwd!=="string"||!isAbsolute(cwd))throw new Error("ASEN agent tools require the active Pi session and project");
  return {sessionId,projectId:await realpath(resolve(cwd))};
 }
-export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent_status","asen_agent_cancel","asen_agent_continue","asen_agent_retry","asen_plan_dispatch_next","asen_todo_inspect_interrupted_write"] as const);
+export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent_status","asen_agent_ack","asen_agent_cancel","asen_agent_continue","asen_agent_retry","asen_plan_dispatch_next","asen_todo_inspect_interrupted_write"] as const);
 /** Exposes only read-only explorer work by default; write agents require an internal fresh ASEN grant. */
-export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default"}>):()=>void{
+export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default"}>,notificationJournal?:AgentNotificationJournal):()=>void{
  const access=new AgentProjectAccess();
  const selectedIdentity=async(root:unknown,context:any,launch:boolean,signal?:AbortSignal)=>access.resolve(root,context,await identity(context),launch,()=>confirmWithAbort(dialogSignal=>context.ui.confirm("Authorize another project?",`Start a read-only ASEN agent in ${String(root)}? Access applies only to this live session and project.`,dialogSignal?{signal:dialogSignal}:undefined),signal),signal);
  pi.registerTool?.({name:"asen_agent_start",label:"Start ASEN agent",description:"Queue an isolated, read-only Pi agent task in the current session and project.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["prompt"],properties:{prompt:text,root:rootSchema,todoId:idSchema}},execute:async(_id,params,signal,_update,context)=>{
@@ -52,13 +53,14 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const todoId=(params as {todoId?:unknown}).todoId;
   let dispatchRole:"explorer"|"reviewer"|"verifier"="explorer";
   let planSkillSelection:SkillSelectionContext|undefined,persistedPlan:TodoPlanMetadata|undefined;
-  let plannedTodoSnapshot:Awaited<ReturnType<SessionTodoStore["list"]>>[number]|undefined;
+  let todoSnapshot:Awaited<ReturnType<SessionTodoStore["list"]>>[number]|undefined;
   if(todoId!==undefined){
    if(typeof todoId!=="string"||!todoId.trim()||!todoLink)throw new Error("Todo binding is unavailable");
    const task=(await (await todoLink.todos()).list(session)).find(item=>item.taskId===todoId);
-   if(!task||task.current.state==="done"||task.current.state==="cancelled"||task.current.state==="blocked")throw new Error("Todo must be an active, owned task before agent launch");
+   if(!task||task.current.state!=="planned")throw new Error("Todo must be an unclaimed planned-state task before a new agent launch; reconcile the existing outcome first");
+   todoSnapshot=task;
    if(task.description&&prompt!==task.description)throw new Error("A planned Todo agent must receive the exact persisted task instruction");
-   if(task.plan){if(task.current.state!=="planned")throw new Error("Planned Todo must be unclaimed before a new agent dispatch; reconcile the existing outcome first");if(task.plan.role!=="explorer"&&task.plan.role!=="reviewer"&&task.plan.role!=="verifier")throw new Error(`Planned ${task.plan.role} work requires a controlled ${task.plan.role} dispatcher`);const expectedPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[task.plan.role];if(task.plan.skillSelection?.phase!==expectedPhase)throw new Error(`Planned ${task.plan.role} Todo is missing its exact ASEN skill selection`);const expectedPaths=selectSkills(task.plan.skillSelection).map(skill=>skill.path);if(expectedPaths.length!==task.plan.skillPaths.length||expectedPaths.some((path,index)=>path!==task.plan!.skillPaths[index]))throw new Error("Persisted ASEN skill registry selection changed; rebuild this plan before dispatch");dispatchRole=task.plan.role;planSkillSelection=task.plan.skillSelection;persistedPlan=task.plan;plannedTodoSnapshot=task;assertCurrentReadOnlyCandidate(task.plan,session.projectId);}
+   if(task.plan){if(task.plan.role!=="explorer"&&task.plan.role!=="reviewer"&&task.plan.role!=="verifier")throw new Error(`Planned ${task.plan.role} work requires a controlled ${task.plan.role} dispatcher`);const expectedPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[task.plan.role];if(task.plan.skillSelection?.phase!==expectedPhase)throw new Error(`Planned ${task.plan.role} Todo is missing its exact ASEN skill selection`);const expectedPaths=selectSkills(task.plan.skillSelection).map(skill=>skill.path);if(expectedPaths.length!==task.plan.skillPaths.length||expectedPaths.some((path,index)=>path!==task.plan!.skillPaths[index]))throw new Error("Persisted ASEN skill registry selection changed; rebuild this plan before dispatch");dispatchRole=task.plan.role;planSkillSelection=task.plan.skillSelection;persistedPlan=task.plan;assertCurrentReadOnlyCandidate(task.plan,session.projectId);}
   }
   throwIfCancelled(signal);
   const requested:RouteChoice=persistedPlan?{...(persistedPlan.model!==undefined?{model:persistedPlan.model}:{}),...(persistedPlan.thinking!==undefined?{thinking:persistedPlan.thinking}:{})}:{};
@@ -66,20 +68,20 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   if(persistedPlan){resolved={...requested};routeSource="persisted-plan";}else{const route=resolveRouting?await resolveRouting(dispatchRole,session):{source:"default" as const};resolved=route.choice??{};routeSource=route.source;}
   const routing=runtimeRoutingMetadata(requested,resolved,routeSource);
   throwIfCancelled(signal);
-  const binding=typeof todoId==="string"?(plannedTodoSnapshot?
-   {onPrepared:async(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>{
+  // Fresh starts of both planned and legacy Todos require the exact saved
+  // planned snapshot. Continuation and retry have separate guarded routes.
+  const binding=todoSnapshot?{
+   onPrepared:async(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>{
     const validate=async()=>{
      const current=await identity(context);
-     if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before planned Todo dispatch");
-     assertCurrentReadOnlyCandidate(persistedPlan!,session.projectId);
+     if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)
+      throw new Error("Pi session or project changed before Todo dispatch");
+     if(persistedPlan)assertCurrentReadOnlyCandidate(persistedPlan,session.projectId);
     };
     await validate();
-    await (await todoLink!.binder()).launchExact(plannedTodoSnapshot,agentId,session,enqueue,dispatch,validate);
-   }}:
-   {onQueued:async(agentId:string,dispatch:()=>void)=>{
-    const validate=async()=>{const current=await identity(context);if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before Todo agent dispatch");};
-    await validate();await (await todoLink!.binder()).launch(todoId,agentId,session,dispatch,validate);
-   }}):{};
+    await (await todoLink!.binder()).launchExact(todoSnapshot,agentId,session,enqueue,dispatch,validate);
+   },
+  }:{};
   const active=await runtime(),taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...binding},signal);
   return result({id:taskId,state:"queued",role:dispatchRole,routing,...(typeof todoId==="string"?{todoId}:{})});
  }});
@@ -91,6 +93,28 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   if(typeof taskId==="string")return result({id:taskId,task:await active.query(taskId,session)});
   const rows=await active.list(session);
   return result(rows.map(({id,role,state,createdAt,updatedAt,summary})=>({id,role,state,createdAt,updatedAt,...(summary?{summary}:{})})));
+ }});
+ pi.registerTool?.({name:"asen_agent_ack",label:"Acknowledge ASEN terminal notice",description:"Explicit coordinator acknowledgement after inspecting an enqueued durable Pi agent result. Not proof of UI display, human reading, independent review or write permission.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["eventId"],properties:{eventId:idSchema}},execute:async(_id,params,signal,_update,context)=>{
+  throwIfCancelled(signal);
+  if(!notificationJournal||context?.mode!=="tui"||context?.hasUI!==true)
+   throw new Error("Agent notice acknowledgement requires an active Pi TUI coordinator and journal");
+  const eventId=(params as {eventId?:unknown})?.eventId;
+  if(typeof eventId!=="string"||!/^asen:agent:[0-9a-f]{64}:terminal$/u.test(eventId))
+   throw new Error("Invalid durable agent notice ID");
+  const session=await identity(context),rows=await notificationJournal.list(session);
+  const row=rows.find(entry=>entry.eventId===eventId);
+  if(!row)throw new Error("Agent notice is not available to this Pi session and project");
+  const entry=await (await runtime()).query(row.agentId,session);
+  if(!entry||entry.record.id!==row.agentId||entry.record.state!==row.state||
+     entry.record.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(entry.record.projectId,session.projectId))
+   throw new Error("Agent notice does not match an authenticated durable terminal agent");
+  throwIfCancelled(signal);
+  const current=await identity(context);
+  if(current.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(current.projectId,session.projectId))
+   throw new Error("Pi coordinator session or project changed before acknowledgement");
+  const acknowledged=await notificationJournal.acknowledge(row.eventId,session,row.agentId,row.state);
+  return result({eventId:row.eventId,agentId:row.agentId,state:row.state,acknowledged,
+   evidence:"COORDINATOR_ACTION_ONLY",humanReadConfirmed:false,writerAuthorized:false});
  }});
  pi.registerTool?.({name:"asen_agent_cancel",label:"Cancel ASEN agent",description:"Cancel a queued or running task owned by the current Pi session and project.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["id"],properties:{id:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);const taskId=(params as {id?:unknown})?.id;if(typeof taskId!=="string")throw new Error("Invalid agent task id");const active=await runtime();return result({id:taskId,cancelled:await active.cancel(taskId,await selectedIdentity((params as {root?:unknown}).root,context,false,signal))});

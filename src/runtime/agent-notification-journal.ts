@@ -9,7 +9,7 @@ import {sameWorkspaceIdentityPath} from "./workspace-store.js";
 /** A durable *enqueue* ledger, deliberately not a Pi-consumption receipt.
  * "attempted" is an uncertain crash or transport boundary: never auto-replay it.
  */
-export type AgentNoticeDelivery="pending"|"attempted"|"enqueued";
+export type AgentNoticeDelivery="pending"|"attempted"|"enqueued"|"acknowledged";
 export type AgentNoticeTerminalState="completed"|"failed"|"cancelled";
 export interface AgentNoticeScope{sessionId:string;projectId:string;}
 export interface AgentNoticeSubject extends AgentNoticeScope{id:string;state:string;}
@@ -20,7 +20,7 @@ export interface AgentNoticeRow extends AgentNoticeScope{
 interface File{schema:"asen.agent-notices/v1";revision:number;entries:AgentNoticeRow[];}
 const MAX_ENTRIES=20000;
 const terminal=new Set(["completed","failed","cancelled"]);
-const modes=new Set(["pending","attempted","enqueued"]);
+const modes=new Set(["pending","attempted","enqueued","acknowledged"]);
 const valid=(s:unknown):s is string=>typeof s==="string"&&s.length>0&&s.length<=1024&&s===s.trim()&&s===s.normalize("NFC")&&!/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(s);
 const validDate=(s:unknown):s is string=>typeof s==="string"&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString()===s;
 const keys=(v:unknown,wanted:readonly string[])=>v!==null&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype&&Object.keys(v).sort().join("|")===([...wanted].sort().join("|"));
@@ -103,9 +103,25 @@ export class AgentNotificationJournal{
   return this.#change(file=>{
    const row=file.entries.find(x=>x.eventId===eventId);
    if(!row||!sameScope(row,scope))throw new Error("Agent notice is unavailable in this session and project");
-   if(row.delivery==="enqueued")return{result:false,changed:false};
+   if(row.delivery==="enqueued"||row.delivery==="acknowledged")return{result:false,changed:false};
    if(row.delivery!=="attempted")throw new Error("Agent notice must be claimed before enqueue");
    (row as {delivery:AgentNoticeDelivery}).delivery="enqueued";
+   (row as {updatedAt:string}).updatedAt=new Date().toISOString();
+   return{result:true,changed:true};
+  });
+ }
+ /** Explicit Pi coordinator acknowledgement, not a human-read or UI-consumption proof.
+  * Cannot replay an uncertain send or grant additional permissions. */
+ async acknowledge(eventId:string,scope:AgentNoticeScope,agentId:string,state:AgentNoticeTerminalState):Promise<boolean>{
+  if(!valid(eventId)||!valid(scope.sessionId)||!valid(scope.projectId)||!valid(agentId)||!terminal.has(state))
+   throw new Error("Invalid agent notice acknowledgement");
+  return this.#change(file=>{
+   const row=file.entries.find(x=>x.eventId===eventId);
+   if(!row||!sameScope(row,scope)||row.agentId!==agentId||row.state!==state)
+    throw new Error("Agent notice acknowledgement does not match the owned terminal result");
+   if(row.delivery==="acknowledged")return{result:false,changed:false};
+   if(row.delivery!=="enqueued")throw new Error("Agent notice must be enqueued before coordinator acknowledgement");
+   (row as {delivery:AgentNoticeDelivery}).delivery="acknowledged";
    (row as {updatedAt:string}).updatedAt=new Date().toISOString();
    return{result:true,changed:true};
   });

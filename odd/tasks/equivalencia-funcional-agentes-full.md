@@ -154,7 +154,7 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 
 - [ ] EF-201 Igualar consulta CodeGraph-first, búsqueda local/web autorizada y fallback. **PARCIAL:** CodeGraph-first y fallback sin comparación observada A/B.
 - [x] EF-202 Implementar disparadores observables de presupuesto y no repetición. **VERIFICADO:** `src/runtime/explorer-budget.ts` + `tests/explorer-budget.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
-- [ ] EF-203 Retorno compacto de pruebas y comprobaciones de no escritura. **PARCIAL:** Contrato compacto/read-only sin ejecución completa del Explorer auténtico.
+- [ ] EF-203 Retorno compacto de pruebas y comprobaciones de no escritura. **PARCIAL:** Contrato Explorer T12 reforzado con validación de evidencias, hallazgos acotados, rutas seguras y controles de inyección; falta ejecución auténtica y demostrar ausencia de escrituras.
 - **Gate:** C02–C03.
 
 ### F3 — Writer
@@ -181,10 +181,10 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 
 ### F6 — Segundo plano y recuperación
 
-- [ ] EF-601 Entrega del resultado según estado del padre, con reactivación real cuando esté inactivo. **BLOQUEADO:** Wake y consumo por Pi real aún no demostrados.
+- [ ] EF-601 Entrega del resultado según estado del padre, con reactivación real cuando esté inactivo. **PARCIAL:** Encolado y wake diferenciados con acuse explícito del coordinador; faltan lectura/consumo real del padre y prueba auténtica de Pi.
 - [x] EF-602 Suprimir sondeo/sleep innecesario, duplicados y avisos caducados. **VERIFICADO:** `src/runtime/agent-notification-journal.ts` + `tests/agent-notification-journal.test.ts` · CI `41689422912` / SHA `07f9793517f8d6a57b3d67cc21b589be8002abb1`.
-- [ ] EF-603 No relanzar tareas activas equivalentes: misma identidad y alcance verificable. **PARCIAL:** Coalescencia Explorer ad-hoc multiproceso y nueva protección de planes públicos: snapshot exacto, candidato Git actual, CAS de lanzamiento y rechazo de un segundo agente para la misma tarea; pendientes CI exact-SHA y equivalencia real de otros roles.
-- [ ] EF-604 Recuperación tras reinicio, estado incierto y preguntas del hijo sin permiso inventado. **PARCIAL:** Recuperación y journal probados; faltan decisiones humanas reales del hijo.
+- [ ] EF-603 No relanzar tareas activas equivalentes: misma identidad y alcance verificable. **PARCIAL:** CAS y snapshot para Todo público planificado y legacy, más deduplicación Explorer ad-hoc multiproceso; faltan recibos exact-SHA y equivalencia entre distintas tareas semánticamente idénticas.
+- [ ] EF-604 Recuperación tras reinicio, estado incierto y preguntas del hijo sin permiso inventado. **PARCIAL:** Recuperación y journal con cuatro estados, CAS multiproceso y aislamiento; faltan decisiones humanas reales del hijo.
 - **Gate:** C13–C15 y C18.
 
 ### F7 — Validación real y cierre
@@ -442,3 +442,14 @@ El primer gate sin proveedor del SHA `310b058` identificó `TS2345` en la etique
 - **Pruebas:** `tests/planned-agent-public-dispatch.test.ts` cubre dos lanzamientos concurrentes del mismo Todo, rechazo de revisión Git obsoleta, aceptación del HEAD actual, único registro y ausencia de segunda ejecución. Estas pruebas no son una ejecución de modelos reales.
 - **CI Windows:** el fallo del run `41705481790` se concentra en `tests/profile-routing-real.test.ts`: `ENOTEMPTY` al borrar el directorio `.asen` durante cierre. Ambos fixtures ahora ejecutan los hooks de `session_shutdown` antes de `rm`, que además usa los reintentos finitos nativos de Node para carreras transitorias del filesystem.
 - **Criterio de salida:** typecheck, regresiones y test completo en los tres sistemas; CI consolidado en un único SHA. No marcar EF-603 ni FULL mientras falten las pruebas reales y el gate exact-SHA.
+
+
+### Macrotanda EF-203/601/603/604 — acuse de coordinador y Todo único (2026-11-03)
+
+**Implementación agrupada sin esperar al CI ni al Release Gate. FULL NO ALCANZADO.**
+
+- **EF-601/604:** el journal durable conserva `pending → attempted → enqueued → acknowledged`. El nuevo `asen_agent_ack` de Pi solo actúa desde la sesión/proyecto TUI actual cuando el aviso está encolado y el agente terminal coincide con la fuente duradera. El acuse es atómico e idempotente entre procesos y no reenvía resultados. No prueba lectura humana, consumo por el modelo, revisión independiente ni consentimiento de Writer. Un aviso en estado `attempted` sigue siendo incierto y nunca se auto-reproduce.
+- **EF-603:** todas las tareas Todo nuevas invocadas por `asen_agent_start`, incluidas las antiguas sin metadata de plan, pasan por `launchExact` y exigen `planned`, instantánea y CAS bajo bloqueo. No se permite una segunda ejecución durante la ventana entre fin del agente y reconciliación. `asen_agent_retry` y `asen_agent_continue` siguen con autorización y límites propios.
+- **EF-203:** el esquema T12 Explorer añade validación de claves exactas, longitudes, ausencia de caracteres de control/bidi, evidencias no vacías, rutas relativas y IDs de hallazgos únicos; los diagnósticos siguen exponiendo solo tipos y nunca contenido del modelo. Esto no acredita que una observación sea verdadera.
+- **Tests:** regresiones de estado y concurrencia del journal, TUI en el acuse, aislamiento de sesión, resultado terminal cambiado, doble lanzamiento Todo legacy antes y después del fin del agente, notificación con ID validado y datos de Explorer hostiles.
+- **Pendiente para marcar checks:** suite exact-SHA completa en los tres sistemas, Pi real y consumo, observaciones A/B para C01–C20, Writer interactivo y proveedor real autenticado. El gate R4 automatizado en PR #45 no se equipara a auditoría independiente.

@@ -73,3 +73,26 @@ test("EF-604 control identities cannot poison a persisted event or alias another
  await assert.rejects(()=>journal.record({...subject,sessionId:"s\u202e"}),/Invalid terminal/);
  assert.deepEqual(await journal.list(subject),[]);
 });
+
+test("EF-601/604 coordinator acknowledgement is atomic and never implied by enqueue",async t=>{
+ const {file,journal}=await fixture(t),row=await journal.record(subject);
+ await assert.rejects(()=>journal.acknowledge(row.eventId,subject,subject.id,"completed"),/enqueued/);
+ await journal.claim(row.eventId,subject);
+ await assert.rejects(()=>journal.acknowledge(row.eventId,subject,subject.id,"completed"),/enqueued/);
+ await journal.markEnqueued(row.eventId,subject);
+ const other=new AgentNotificationJournal(file);
+ const outcomes=await Promise.all([journal.acknowledge(row.eventId,subject,subject.id,"completed"),
+  other.acknowledge(row.eventId,subject,subject.id,"completed")]);
+ assert.deepEqual(outcomes.sort(),[false,true]);
+ assert.equal((await new AgentNotificationJournal(file).list(subject))[0]?.delivery,"acknowledged");
+ assert.equal(await journal.claim(row.eventId,subject),false);
+ assert.equal(await journal.markEnqueued(row.eventId,subject),false);
+});
+test("EF-601/604 foreign scope and forged terminal identity cannot acknowledge",async t=>{
+ const {journal}=await fixture(t),row=await journal.record(subject);
+ await journal.claim(row.eventId,subject);await journal.markEnqueued(row.eventId,subject);
+ await assert.rejects(()=>journal.acknowledge(row.eventId,{...subject,sessionId:"foreign"},subject.id,"completed"),/owned terminal/);
+ await assert.rejects(()=>journal.acknowledge(row.eventId,subject,"other-agent","completed"),/owned terminal/);
+ await assert.rejects(()=>journal.acknowledge(row.eventId,subject,subject.id,"failed"),/owned terminal/);
+ assert.equal((await journal.list(subject))[0]?.delivery,"enqueued");
+});
