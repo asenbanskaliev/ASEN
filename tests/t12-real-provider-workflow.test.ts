@@ -52,19 +52,17 @@ test("T12 five-call live lane spends the budget on Explorer, Planner, two blind 
  assert.match(reviewVerifier,/gradeRealVerification/u);
  assert.match(reviewVerifier,/candidateSha/u);
  assert.match(workflow,/Real ASEN Reviewer \(two blind judgments\) and Verifier reject deliberate defects[\s\S]{0,160}if: env\.ASEN_MAX_INFERENCE_CALLS == '5'/u);
- assert.match(workflow,/"retry":\{"enabled":false,"maxRetries":0,"provider":\{"maxRetries":0\}\}/u,
-  "Pi internal agent and provider retries must be disabled to honor the inference-call cap");
  const setupHeading="      - name: Install pinned Ollama Cloud provider extension";
  const setupStart=workflow.indexOf(setupHeading);
  assert.notEqual(setupStart,-1,"Missing pinned provider setup stage");
  const setupEnd=workflow.indexOf("\n      - name:",setupStart+setupHeading.length);
  const setup=workflow.slice(setupStart,setupEnd===-1?undefined:setupEnd);
- const evidenceDirectoryIndex=setup.indexOf("mkdir -p asen-acceptance-evidence");
- const copyIndex=setup.indexOf('cp "$PI_CODING_AGENT_DIR/settings.json"');
- assert.notEqual(evidenceDirectoryIndex,-1,"Missing provider evidence directory creation");
- assert.notEqual(copyIndex,-1,"Missing isolated Pi retry settings evidence");
- assert.ok(evidenceDirectoryIndex<copyIndex,
-  "Provider retry evidence must be copied only after creating the evidence directory");
+ assert.match(setup,/node scripts\/t12-pi-retry-settings\.mjs > asen-acceptance-evidence\/pi-retry-settings\.json/u,
+  "Provider retry settings must be merged after installation and only the redacted summary may be preserved");
+ assert.doesNotMatch(setup,/cp .*settings\.json/u,
+  "Full Pi settings must not be copied into provider evidence");
+ assert.match(workflow,/name: Pi retry settings preserve installed extensions[\s\S]{0,100}tests\/t12-pi-retry-settings\.test\.ts/u,
+  "The installed-extension preservation regression must run in provider-free CI");
  assert.match(adversarialReview,/one blind judge/u,
   "Each dispatched reviewer must perform only its assigned judgment");
  assert.match(adversarialReview,/tools are unavailable/u,

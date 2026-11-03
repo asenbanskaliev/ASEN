@@ -94,6 +94,8 @@ jobs:
         run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-inference-budget.test.ts tests/t12-review-grader.test.ts tests/t12-real-provider-workflow.test.ts
       - name: Ollama scoped child credential regression
         run: node --import tsx --test tests/t12-ollama-child-credential.test.ts
+      - name: Pi retry settings preserve installed extensions
+        run: node --import tsx --test tests/t12-pi-retry-settings.test.ts
       - name: Validate repository diff hygiene
         run: git diff --check
       - name: Preserve provider-free validation evidence
@@ -149,9 +151,7 @@ jobs:
           test -n "$OLLAMA_API_KEY" || { echo "::error::OLLAMA_API_KEY missing"; exit 1; }
           node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
           mkdir -p asen-acceptance-evidence
-          printf '%s\n' '{"retry":{"enabled":false,"maxRetries":0,"provider":{"maxRetries":0}}}' > "$PI_CODING_AGENT_DIR/settings.json"
-          cp "$PI_CODING_AGENT_DIR/settings.json" asen-acceptance-evidence/pi-retry-settings.json
-          node --input-type=module -e 'import {readFileSync} from "node:fs";const value=JSON.parse(readFileSync(process.env.PI_CODING_AGENT_DIR+"/settings.json","utf8"));if(value.retry?.enabled!==false||value.retry?.maxRetries!==0||value.retry?.provider?.maxRetries!==0)process.exit(1)'
+          node scripts/t12-pi-retry-settings.mjs > asen-acceptance-evidence/pi-retry-settings.json
           PI_OLLAMA_WEB_TOOLS=0 node_modules/.bin/pi --list-models > "$RUNNER_TEMP/asen-ollama-models.txt"
           mkdir -p asen-acceptance-evidence
           # Pi lists provider and model in columns. Capture only IDs; never persist credentials.
