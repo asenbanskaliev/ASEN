@@ -49,20 +49,18 @@ export class AgentRuntime{
   const requiredPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[input.role as Exclude<typeof input.role,"clarifier">];
   if(input.role==="clarifier"&&input.skillSelection)throw new Error("clarifier dispatch cannot receive a skill phase");
   if(input.skillSelection&&input.skillSelection.phase!==requiredPhase)throw new Error(`${input.role} dispatch requires a ${requiredPhase}-phase skill selection`);
-  const request:AgentRequest&{dedupeKey?:string}={id:`agent-${randomUUID()}`,role:input.role,prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:input.owner??{kind:"user",id:`pi:${input.session.sessionId}`},...(input.model?{model:input.model}:{}),...(input.thinking?{thinking:input.thinking}:{})};
+  const request:AgentRequest={id:`agent-${randomUUID()}`,role:input.role,prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:input.owner??{kind:"user",id:`pi:${input.session.sessionId}`},...(input.model?{model:input.model}:{}),...(input.thinking?{thinking:input.thinking}:{})};
   if(input.skillSelection){request.skillContext=issueSkillContext(request.id,request.repository,undefined,input.skillSelection);request.skillPaths=selectSkills(request.skillContext).map(skill=>skill.path);}
   // Only unaffiliated ad-hoc Explorer work may reuse the identical active task.
   // Planned jobs and all reviewers/verifiers always retain unique identity.
   if(input.role==="explorer"&&!input.owner&&!input.skillSelection&&!input.onQueued&&!input.onPrepared){
-   request.dedupeKey=createHash("sha256").update(JSON.stringify([
+   const dedupeKey=createHash("sha256").update(JSON.stringify([
     "asen.explorer.active.v1",input.session.sessionId,input.session.projectId,
     input.role,input.prompt,request.model??null,request.thinking??null,
    ])).digest("hex");
-   const claim=await this.store.enqueueAdHocExplorerOrReuse(request,request.owner!,signal);
+   const claim=await this.store.enqueueAdHocExplorerOrReuse({...request,dedupeKey},request.owner!,signal);
    if(claim.reused)return claim.id;
-   // The stable coalescing key is stored only in the durable queue. The Pi
-   // Dispatcher accepts an exact public AgentRequest without added fields.
-   delete request.dedupeKey;
+
    if(signal?.aborted){
     await this.store.cancelled(request.id,"Explorer launch cancelled before dispatch").catch(()=>{});
     throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});
