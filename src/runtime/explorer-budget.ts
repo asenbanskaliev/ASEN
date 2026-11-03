@@ -2,7 +2,7 @@
 export const EXPLORER_QUERY_LIMIT=3;
 export const EXPLORER_OUTPUT_LIMIT_BYTES=40*1024;
 const READ_TOOLS=new Set(["read","grep","find","ls","codegraph","asen_code_intelligence","web_search","web_fetch"]);
-export interface ExplorerBudgetObservation{toolCallId:string;toolName:string;result?:unknown;content?:unknown;}
+export interface ExplorerBudgetObservation{toolCallId:string;toolName:string;args?:unknown;result?:unknown;content?:unknown;}
 export interface ExplorerBudgetSnapshot{
  readonly queries:number;readonly outputBytes:number;readonly firstTool:string|undefined;
  readonly overBudget:boolean;readonly recommendationIssued:boolean;
@@ -34,6 +34,14 @@ export class ExplorerBudgetTelemetry{
   if(this.#recommendationIssued)return false;
   if(!event||typeof event.toolCallId!=="string"||!event.toolCallId||event.toolCallId.length>512||
      typeof event.toolName!=="string"||!READ_TOOLS.has(event.toolName)||this.#seen.has(event.toolCallId))return false;
+  // The canonical CodeGraph tool also exposes init/sync (index writes).
+  // Never misclassify those as Explorer read-only research.
+  if(event.toolName==="codegraph"||event.toolName==="asen_code_intelligence"){
+   const input=event.args as {operation?:unknown}|undefined;
+   const output=event.result as {details?:{operation?:unknown}}|undefined;
+   const operation=input?.operation??output?.details?.operation;
+   if(operation==="init"||operation==="sync")return false;
+  }
   this.#seen.add(event.toolCallId);
   this.#firstTool??=event.toolName;
   this.#queries++;

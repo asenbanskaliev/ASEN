@@ -44,3 +44,15 @@ test("EF-202 observation snapshots never retain private tool output",()=>{
  assert.equal(JSON.stringify(tracker.snapshot()).includes("PRIVATE_MARKER_123"),false);
  assert.equal(tracker.snapshot().outputBytes,18);
 });
+
+test("EF-201 write-capable CodeGraph init/sync are never counted as read queries",()=>{
+ const tracker=new ExplorerBudgetTelemetry();
+ assert.equal(tracker.observe({...observation("init","codegraph","X".repeat(50_000)),args:{operation:"init"}}),false);
+ assert.equal(tracker.observe({...observation("sync","codegraph","X".repeat(50_000)),result:{details:{operation:"sync"},content:[{type:"text",text:"X".repeat(50_000)}]}}),false);
+ assert.equal(tracker.observe({...observation("legacy","asen_code_intelligence"),args:{operation:"init"}}),false);
+ assert.deepEqual(tracker.snapshot().queries,0);
+ assert.deepEqual(tracker.snapshot().outputBytes,0);
+ assert.equal(tracker.observe({...observation("query","codegraph"),args:{operation:"query"}}),false);
+ assert.equal(tracker.snapshot().firstTool,"codegraph");
+ assert.equal(tracker.snapshot().queries,1);
+});

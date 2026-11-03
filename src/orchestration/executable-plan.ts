@@ -66,7 +66,7 @@ export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:str
     const selection=selectionOf(agent.skillContext);
     const id=add(role,`${role[0]!.toUpperCase()}${role.slice(1)} task`,text,dependencies,selection?selectSkills(selection).map(skill=>skill.id):[],agent.skillPaths??[],selection,dependencies.length?"waiting":"ready",agent.model,agent.thinking,index===0?"":`:${index+1}`);
     const task=tasks.find(item=>item.id===id)!;
-    if(role==="explorer"&&agent.candidate){
+    if((role==="explorer"||role==="reviewer"||role==="verifier")&&agent.candidate){
      tasks[tasks.indexOf(task)]=Object.freeze({...task,candidateRevision:agent.candidate.revision});
     }
     if(role==="worker"&&agent.writeSurfaces?.length&&agent.candidate&&writerAuthorizationBasis){

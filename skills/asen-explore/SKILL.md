@@ -5,7 +5,7 @@ description: "Trigger: explore, investigate, understand codebase, compare approa
 ## Activation Contract
 Use when scope, mechanism, affected areas or viable approaches require investigation.
 ## Hard Rules
-- Exploration is read-only.
+- Exploration is read-only. CodeGraph init/sync may write an index: never call them as read-only exploration; require separate interactive approval if explicitly needed.
 - Read actual entry points, implementation and tests; never infer architecture from filenames alone.
 - Separate observed facts from hypotheses.
 - Do not authorize implementation.
@@ -24,6 +24,14 @@ Use when scope, mechanism, affected areas or viable approaches require investiga
 6. Identify risks, unknowns and the smallest next decision.
 ## Output Contract
 Return current state, affected areas, approaches, evidence, risks, unknowns and readiness for proposal.
+- Attribute observations to a bounded path, source excerpt or executable check; distinguish reported child text from verified facts.
+- State explicitly whether CodeGraph was available, which read-only fallback was used and what was not inspected.
+- Include a compact next-step decision that cannot grant a write, retry or merge.
+- Never claim an absent tool or skipped test passed; the primary session must revalidate results before a write.
 ## References
 None.
-\n## Background Completion Contract\n- Return a compact read-only report tied to the original question; distinguish observed facts from assumptions and unknowns.\n- When started asynchronously, retain the task ID; completion is delivered by an event, not by sleep or repeated status polling. Inspect status only when there is a genuine next orchestration decision.\n- Never interpret an Explorer report as permission to write, merge, rerun a failed worker, or accept a reviewer result.\n
+
+## Background Completion Contract
+- Return a compact read-only report tied to the original question; distinguish observed facts from assumptions and unknowns.
+- When started asynchronously, retain the task ID; completion is delivered by an event, not by sleep or repeated status polling. Inspect status only when there is a genuine next orchestration decision.
+- Never interpret an Explorer report as permission to write, merge, rerun a failed worker, or accept a reviewer result.

@@ -774,6 +774,26 @@ test("EF-202 active Pi read budget warns once without starting a provider",async
  for(const stop of state.events.get("session_shutdown")??[])await stop({},context);
 });
 
+test("EF-201 Pi exploration telemetry excludes approved CodeGraph indexing from read-only budget",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-explorer-index-budget-"));
+ t.after(()=>rm(home,{recursive:true,force:true}));
+ const state=host(),root=await realpath(process.cwd()),context=state.context("index-budget-session",root);
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,
+  enableWorkspaceRuntime:false,enableMemoryRuntime:false})(state.pi as any);
+ await startPublicSession(state,context);
+ const handlers=state.events.get("tool_execution_end")??[];
+ const emit=async(id:string,operation:"init"|"sync"|"query")=>{
+  for(const fn of handlers)await fn({toolCallId:id,toolName:"codegraph",isError:false,
+   args:{operation},result:{details:{operation},content:[{type:"text",text:"X".repeat(50_000)}]}},context);
+ };
+ await emit("init","init");await emit("sync","sync");
+ assert.equal(state.messages.some(m=>m.includes("presupuesto de exploración directa")),false);
+ await emit("first-read","query");
+ assert.equal(state.messages.filter(m=>m.includes("presupuesto de exploración directa")).length,1);
+ assert.equal(state.sentMessages.length,0,"telemetry does not start a Pi agent, shell or provider");
+ for(const stop of state.events.get("session_shutdown")??[])await stop({},context);
+});
+
 test("EF-604 agent notice marks only Pi enqueue and never resends after restart",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-agent-notice-resume-"));
  t.after(()=>rm(home,{recursive:true,force:true}));

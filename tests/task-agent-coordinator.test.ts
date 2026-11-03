@@ -41,3 +41,28 @@ test("ECO-07 read-only projection preserves blocked tasks across restart",async 
  assert.equal(view?.history.at(-1)?.state,"blocked");
  assert.equal((await coordinator.snapshot(own)).tasks[0]?.state,"blocked");
 });
+
+test("EF-103 coordination projection preserves missing dependencies as blocking evidence",async()=>{
+ const identity={sessionId:"session",projectId:"/project"};
+ const task={taskId:"todo-dependent",title:"Verifier must not run before prerequisite",current:{state:"planned",revision:1},dependsOn:["todo-prerequisite"],requestId:"asen-plan:verification"};
+ const todos={list:async()=>[task],history:async()=>[]};
+ const coordinator=new TaskAgentCoordinator(todos as never,{list:async()=>[]} as never);
+ const projection=await coordinator.snapshot(identity);
+ assert.deepEqual(projection.tasks[0]?.dependsOn,["todo-prerequisite"]);
+ assert.deepEqual(projection.tasks[0]?.blockedBy,[{id:"todo-prerequisite",state:"missing"}]);
+ assert.equal(projection.tasks[0]?.ready,false);
+ assert.equal(projection.tasks[0]?.state,"planned");
+});
+test("EF-103 a running, blocked or cancelled dependency is never projected as ready",async()=>{
+ const identity={sessionId:"session",projectId:"/project"};
+ for(const state of ["planned","running","blocked","cancelled","failed"]){
+  const rows=[
+   {taskId:"dependency",title:"Prerequisite",current:{state,revision:2}},
+   {taskId:"dependent",title:"Dependent",dependsOn:["dependency"],current:{state:"planned",revision:1}},
+  ];
+  const coordinator=new TaskAgentCoordinator({list:async()=>rows} as never,{list:async()=>[]} as never);
+  const row=(await coordinator.snapshot(identity)).tasks.find(item=>item.id==="dependent");
+  assert.deepEqual(row?.blockedBy,[{id:"dependency",state}]);
+  assert.equal(row?.ready,false);
+ }
+});

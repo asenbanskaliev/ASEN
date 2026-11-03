@@ -351,3 +351,9 @@ El SHA inicial de esta tanda detectó dos rechazos reales de gates: TypeScript `
 ### CI de F6 — sustitución de expectativa `followUp` obsoleta
 
 La aceptación funcional del commit `f72a2c0` superó Typecheck y las tres nuevas pruebas Pi TUI de enrutamiento, pero otra prueba `EF-601` todavía exigía `followUp`. Se mantiene la prueba y se actualiza a la semántica S07: resultado primero encolado, wake separado con `steer`, una sola vez y sin acuse de consumo ficticio. Se limpia también la sesión de prueba. Falta confirmar el CI completo exact-SHA; no promocionar a FULL.
+
+### Extensión de F1: materializador de planes y recibos de referencia
+
+El cambio de protección se aplica también al **origen**: `materializeExecutablePlan` propaga `candidateRevision` desde los agentes de la ruta ODD para Explorer, Reviewer y Verifier. De este modo la comprobación de HEAD del despachador no depende de que un tercero construya manualmente el metadato. Se añaden dos pruebas usando decisiones ODD auténticas, una ruta con dos revisores y otra con Verifier explícito. No se reconstruye una revisión candidata si ha cambiado la rama: se bloquea la unidad y se solicita volver a planificar.
+
+El workflow sin proveedor incluye ahora las pruebas de ODD persistente y tres regresiones de candidato caducado, la vista de dependencias bloqueadas, la propagación del materializador y el evento Pi EF-201. Todas deben cerrar en el **mismo SHA de publicación**, sin reclamar FULL por un fixture.

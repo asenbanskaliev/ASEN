@@ -14,8 +14,16 @@ export class TaskAgentCoordinator {
   return {tasks:tasks.map(task=>{
    const explicit=new Set(links.filter(link=>link.taskId===task.taskId&&link.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(link.projectId,identity.projectId)).map(link=>link.agentId));
    const correlated:AgentView[]=owned.filter(agent=>explicit.has(agent.id)||["explorer","worker","reviewer","verifier"].some(role=>agent.id===task.taskId+":"+role&&agent.role===role)).map(agent=>({id:agent.id,role:agent.role,state:agent.state,...(agent.summary?{summary:agent.summary}:{})}));
-   const dependsOn=(task.dependsOn??[]).map(id=>byId.get(id)).filter((value):value is NonNullable<typeof value>=>!!value),blockedBy=dependsOn.filter(value=>value.current.state!=="done"&&value.current.state!=="succeeded").map(value=>({id:value.taskId,state:value.current.state}));
-   return {id:task.taskId,title:task.title,state:task.current.state,revision:task.current.revision,dependsOn:dependsOn.map(value=>value.taskId),blockedBy,ready:task.current.state==="planned"&&blockedBy.length===0,agents:correlated};
+   // A missing dependency cannot be silently removed from a recovered plan.
+   // The projection must fail closed just like the durable launch transaction.
+   const dependsOn=task.dependsOn??[],blockedBy=dependsOn.flatMap(id=>{
+    const prerequisite=byId.get(id);
+    if(!prerequisite)return [{id,state:"missing" as const}];
+    return ["succeeded","done"].includes(prerequisite.current.state)?[]:
+     [{id,state:prerequisite.current.state}];
+   });
+   return {id:task.taskId,title:task.title,state:task.current.state,revision:task.current.revision,
+    dependsOn:[...dependsOn],blockedBy,ready:task.current.state==="planned"&&blockedBy.length===0,agents:correlated};
   })};
  }
  async task(taskId:string,identity:AgentSessionIdentity){

@@ -527,7 +527,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        current.sessionId!==active.sessionId||current.projectId!==active.projectId)return;
     if(!explorerBudget||explorerBudget.sessionId!==current.sessionId||explorerBudget.projectId!==current.projectId)
      explorerBudget={...current,telemetry:new ExplorerBudgetTelemetry()};
-    if(explorerBudget.telemetry.observe({toolCallId:event.toolCallId,toolName:event.toolName,result:event.result,content:event.content}))
+    if(explorerBudget.telemetry.observe({toolCallId:event.toolCallId,toolName:event.toolName,args:event.args,result:event.result,content:event.content}))
      context.ui.notify("ASEN: presupuesto de exploración directa superado (3 consultas o 40 KiB). Si hace falta investigar más, conviene un único Explorer de solo lectura; no se ha iniciado ningún agente.", "info");
    }catch{/* Telemetry cannot affect Pi tool execution, authorization, or provider state. */}
   });
