@@ -12,7 +12,7 @@ const {commit,tree}=ecosystem,repository=skills.baseline.repository;
 test("F7 frozen reference provenance uses two matching checked-in manifests",()=>{
  assert.deepEqual(frozenSourceBinding(ecosystem,skills),{repository,commit,tree});
  for(const bad of [
-  [{commit,tree:"0".repeat(40)},skills],
+  [{commit,tree:"not-a-tree"},skills],
   [ecosystem,{baseline:{repository,commit:"0".repeat(40)}}],
   [ecosystem,{baseline:{repository:"../evil",commit}}],
   [ecosystem,{baseline:{repository:"other/scope/subpath",commit}}],
