@@ -717,15 +717,23 @@ test("EF-603 identical ad-hoc Explorer launches reuse one running Pi task, never
  const foreign=state.context("other-session",root);
  const extra=await tool.execute("foreign",{prompt:"Inspect identical project sources"},new AbortController().signal,()=>{},foreign);
  assert.notEqual(extra.details.id,a.details.id);
- await startedSecond;
- assert.equal(runs,2);
- const completed=new Promise<void>(resolve=>{
+ // A runtime with one available worker slot must still avoid a duplicate
+ // launch. Finish the owner before expecting the foreign task to execute.
+ const firstDelivered=new Promise<void>(resolve=>{
   const send=state.pi.sendMessage;
   state.pi.sendMessage=(message:any,options:any)=>{
    send(message,options);
-   if(state.sentMessages.filter(item=>item.message.customType==="asen.agent.result").length>=2)resolve();
+   if(message.customType==="asen.agent.result"&&message.details.agentId===a.details.id)resolve();
   };
  });
- for(const [id,resolve] of finish)resolve({id,ok:true,output:"Done"});
- await completed;
+ const releaseFirst=finish.get(a.details.id);
+ assert.ok(releaseFirst);
+ releaseFirst({id:a.details.id,ok:true,output:"Done"});
+ await firstDelivered;
+ await startedSecond;
+ assert.equal(runs,2);
+ const releaseForeign=finish.get(extra.details.id);
+ assert.ok(releaseForeign);
+ releaseForeign({id:extra.details.id,ok:true,output:"Done"});
+
 });
