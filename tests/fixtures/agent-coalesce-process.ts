@@ -3,7 +3,7 @@ import {join} from "node:path";
 import {PersistentAgentStore} from "../../src/runtime/agent-store.js";
 
 const [file,barrier,label]=process.argv.slice(2);
-if(!file||!barrier||!["one","two"].includes(label??""))throw new Error("Invalid EF-603 subprocess fixture arguments");
+if(!file||!barrier||(label!=="one"&&label!=="two"))throw new Error("Invalid EF-603 subprocess fixture arguments");
 const owner={kind:"user" as const,id:"pi:cross-process-session"};
 const {store}=await PersistentAgentStore.open(file);
 await writeFile(join(barrier,`ready-${label}`),label,{flag:"wx"});

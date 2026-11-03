@@ -428,3 +428,7 @@ El primer gate funcional del SHA `9cc7fb0` mostró una prueba negativa mal plant
 - **Gate nuevo:** tests de todas estas rutas añadidos a la aceptación sin proveedor y a la suite completa de 3 OS; typecheck, build, seguridad, Release Gate y auditor ODD deben aprobar en el SHA final. Sin A/B reales, credenciales autorizadas de Ollama, consentimiento Writer genuino y prueba de consumo del padre, el proyecto sigue PARTIAL.
 
 **Criterio para marcar:** EF-001 requiere los tres SO en verde; EF-603 no debe marcarse mientras falte equivalencia de unidades planificadas; EF-701 permanece BLOQUEADO hasta 20 escenarios reales ejecutados y recibos externos auditados, por más que la infraestructura de comparación ya esté implementada.
+
+### F6 multiproceso — corrección de tipo de etiqueta (2026-11-03)
+
+El primer gate sin proveedor del SHA `310b058` identificó `TS2345` en la etiqueta del archivo de barrera del fixture F6, porque TypeScript consideraba que una etiqueta leída de `process.argv` podía estar ausente. La validación ahora usa una guarda literal `label !== "one" && label !== "two"` que valida y estrecha su tipo, sin cambiar el algoritmo de deduplicación, la autoridad del agente ni el resto de pruebas. Se requiere nuevo CI exact-SHA; EF-603 y FULL siguen abiertos.
