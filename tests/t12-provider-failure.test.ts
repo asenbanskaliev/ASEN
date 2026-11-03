@@ -28,7 +28,7 @@ test("T12 arbitrary provider input cannot leak unrecognized objects",()=>{
 
 test("T12 F1-C distinguishes negative authentication, quota, billing, model, timeout and service errors",()=>{
  const credential="SYNTHETIC_SECRET_F1C_NEVER_PRINT";
- const cases=[
+ const cases: Array<readonly [string,string]>=[
   ["HTTP 401: invalid api key","AUTH"],
   ["HTTP 403: permission denied","AUTH"],
   ["HTTP 403 quota_exceeded","QUOTA"],
