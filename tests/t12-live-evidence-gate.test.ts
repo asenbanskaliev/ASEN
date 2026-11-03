@@ -65,10 +65,10 @@ test("T12 three-call evidence can only be PARTIAL, never claim Reviewer or Verif
 test("T12 provider call receipts must bind the precise stage labels, sequence and limits",()=>{
  const base=ready();
  const duplicate=receipts5.map(x=>({...x}));
- duplicate[4].label="real-judge-b";
+ duplicate[4]!.label="real-judge-b";
  assert.throws(()=>gradeLiveAcceptanceEvidence({...base,receipts:duplicate}),/stage receipt identities/);
  const unknown=receipts5.map(x=>({...x}));
- unknown[0].label="provider-connectivity";
+ unknown[0]!.label="provider-connectivity";
  assert.throws(()=>gradeLiveAcceptanceEvidence({...base,receipts:unknown}),/stage receipt identities/);
  const inverted=receipts5.slice().reverse();
  assert.throws(()=>gradeLiveAcceptanceEvidence({...base,receipts:inverted}),/stage receipt identities/);
