@@ -737,3 +737,28 @@ test("EF-603 identical ad-hoc Explorer launches reuse one running Pi task, never
  releaseForeign({id:extra.details.id,ok:true,output:"Done"});
 
 });
+
+test("EF-202 active Pi read budget warns once without starting a provider",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-explorer-budget-"));
+ t.after(()=>rm(home,{recursive:true,force:true}));
+ const state=host(),root=await realpath(process.cwd()),context=state.context("budget-session",root);
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,
+  enableWorkspaceRuntime:false,enableMemoryRuntime:false})(state.pi as any);
+ await startPublicSession(state,context);
+ const handlers=state.events.get("tool_execution_end")??[];
+ const emit=async(id:string,name:string,ctx=context)=>{
+  for(const fn of handlers)await fn({toolCallId:id,toolName:name,isError:false,
+   result:{content:[{type:"text",text:"observed"}]}},ctx);
+ };
+ for(let n=0;n<3;n++)await emit("read-"+n,"read");
+ assert.equal(state.messages.filter(m=>m.includes("presupuesto de exploración directa")).length,0);
+ await emit("read-3","codegraph");
+ await emit("read-4","read");
+ await emit("read-4","read");
+ assert.equal(state.messages.filter(m=>m.includes("presupuesto de exploración directa")).length,1);
+ assert.equal(state.sentMessages.length,0,"no Pi turn or provider may start due to telemetry");
+ const foreign=state.context("foreign-session",root);
+ for(let n=0;n<4;n++)await emit("foreign-"+n,"read",foreign);
+ assert.equal(state.messages.filter(m=>m.includes("presupuesto de exploración directa")).length,1);
+ for(const stop of state.events.get("session_shutdown")??[])await stop({},context);
+});

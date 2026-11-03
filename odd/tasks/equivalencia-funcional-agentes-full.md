@@ -302,3 +302,14 @@ Estado **IMPLEMENTED_PENDING_CI**, no FULL. Cambios previstos en el mismo commit
 - El comparador EF-003 de la tanda anterior recibió aceptación sin proveedor PASS sobre `5d9eaf8` (run `41670808497`); la suite CI completa y Release Gate deben verificarse por separado en el nuevo SHA. Los casos C13–C15 no se declaran equivalentes a A/B sin ejecución real.
 
 **Siguiente bloque:** registrar/validar acuse persistente de agente y recuperar resultados bajo identidad de sesión/proyecto, sin reejecutar efectos inciertos; EF-201/202 presupuestos reales de Explorer; EF-102/103 reanudación exacta de ODD; luego Writer/Reviewer/Verifier auténticos.
+
+## Tanda F2 — EF-202: presupuesto de Explorer observado (2026-11-03)
+
+**Estado: IMPLEMENTED_PENDING_EXACT_SHA_CI, FULL NO ALCANZADO.**
+
+- Telemetría `ExplorerBudgetTelemetry` para herramientas de lectura conocidas (`read`, `grep`, `find`, `ls`, `codegraph`, `asen_code_intelligence`, `web_search`, `web_fetch`), deduplicadas por `toolCallId`. Mide bytes UTF-8 de los bloques de texto observados, pero no almacena contenidos de herramientas.
+- Los umbrales del ODD son **más de tres consultas o más de 40 KiB**. Si una lectura supera el presupuesto, el Pi anfitrión recomienda una sola delegación Explorer de solo lectura *si todavía falta investigar*. No ejecuta modelos, no lanza agentes y no concede permisos. El estado se reinicia en cada inicio/cierre de sesión, y la identidad de sesión/proyecto se valida después de la consulta asíncrona.
+- Se añaden seis pruebas focales del medidor y una prueba de eventos Pi de no gasto/no notificación cruzada. El test de integración EF-202 y la prueba unitaria están incluidos en aceptación sin proveedor. En entorno Node aislado pasaron los seis tests unitarios equivalentes; no se declara todavía PASS de typecheck general ni de CI sobre el SHA final.
+- **EF-202: PARTIAL**. No prueba todavía la necesidad real de delegación, las consultas hechas mediante herramientas no instrumentadas, ni el orden CodeGraph-first cuando no está disponible. Tampoco acredita comportamiento A/B ni Pi con proveedor real.
+
+**Siguiente:** EF-102/103 para ODD persistente y reanudación, EF-601/604 para acuse duradero y recuperación tras reinicio, y observaciones reales C01–C20 antes de afirmar FULL.

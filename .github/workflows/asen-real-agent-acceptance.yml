@@ -78,6 +78,7 @@ jobs:
             tests/natural-plan-tool.test.ts \
             tests/orchestrator-dispatcher-integration.test.ts \
             tests/agent-terminal-delivery.test.ts \
+            tests/explorer-budget.test.ts \
             tests/session-notifications.test.ts \
             tests/notification-projection.test.ts \
             tests/plan-dispatcher-role-boundaries.test.ts \
@@ -115,7 +116,7 @@ jobs:
       - name: Pi retry settings preserve installed extensions
         run: node --import tsx --test tests/t12-pi-retry-settings.test.ts
       - name: EF-601/EF-603 real runtime event and duplicate-start regression (mock runner)
-        run: node --import tsx --test --test-name-pattern='EF-601|EF-603' tests/pi-agent-runtime.test.ts
+        run: node --import tsx --test --test-name-pattern='EF-601|EF-603|EF-202' tests/pi-agent-runtime.test.ts
       - name: F7 create exact-SHA provider-free acceptance ledger (never claim FULL)
         env:
           ASEN_OFFLINE_TESTS_PASSED: '1'

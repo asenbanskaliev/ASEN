@@ -60,6 +60,7 @@ import {ASEN_PLAN_REQUEST_TOOL,registerAsenPlanRequestTool} from "../src/runtime
 import {formatActivePlanContext} from "../src/runtime/plan-context.js";
 import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-policy.js";
 import {agentTerminalDeliveryOptions,agentTerminalContinuationMessage} from "../src/runtime/agent-terminal-delivery.js";
+import {ExplorerBudgetTelemetry} from "../src/runtime/explorer-budget.js";
 import {BackgroundJobRegistry,backgroundJobTerminalNotification,pendingBackgroundJobNotifications,type BackgroundJobExecutor,type BackgroundJobSnapshot} from "../src/runtime/background-jobs.js";
 import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
 import {PiNotificationProjection} from "../src/runtime/notification-projection.js";
@@ -186,6 +187,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const profilesFile=dependencies.profilesFile??path.join(home(),".asen","profiles.json");
   const personaFiles=async(ctx:CommandContext)=>personaConfigPaths(home(),await canonical(ctx.cwd));
   let agentDeliveryContext:CommandContext|undefined,agentDeliveryIdentity:{sessionId:string;projectId:string}|undefined;
+  let explorerBudget:Readonly<{sessionId:string;projectId:string;telemetry:ExplorerBudgetTelemetry}>|undefined;
   let unsubscribeAgentDelivery:(()=>void)|undefined;
   const agentDeliveryTasks=new Set<Promise<void>>();
   const deliveredAgentResultIds=new Set<string>();
@@ -310,7 +312,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const startupSummary = startupSnapshot ? buildStatus(startupSnapshot).summary : "Listo para empezar";
     ctx.ui?.notify?.(`ASEN: ${startupSummary}`, "info");
    } catch {/* Best effort only; never interrupt Pi startup. */}
-   validationActivities.clear();agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});await lifecycle.start(ctx,registryStartupDisabled(undefined));
+   validationActivities.clear();explorerBudget=undefined;agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});await lifecycle.start(ctx,registryStartupDisabled(undefined));
    if(ctx.sessionManager?.getSessionId?.()){
     agentDeliveryContext=ctx;agentDeliveryIdentity=await sessionIdentity(ctx);notificationProjection.activate(agentDeliveryIdentity,ctx.ui);sessionDirectory.publish({sessionId:agentDeliveryIdentity.sessionId,subject:"Local Pi session",projectId:agentDeliveryIdentity.projectId,classification:"read",updatedAt:new Date().toISOString()});
     try{
@@ -386,6 +388,21 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(!todoStorePromise||!validationCommand(event?.toolName,event?.args)||typeof event?.toolCallId!=="string"||!event.toolCallId||event.toolCallId.length>512)return;
    try{const identity=await sessionIdentity(ctx as CommandContext),rows=await (await todoStorePromise).list(identity),running=rows.filter(row=>row.current.state==="running");if(running.length!==1)return;const task=running[0]!;validationActivities.set(event.toolCallId,{taskId:task.taskId,title:task.title,sessionId:identity.sessionId,projectId:identity.projectId,startedAt:Date.now()});await refreshTodoWidget(ctx as CommandContext);}catch{/* Progress is optional and cannot block Pi tool execution. */}
   });
+  // EF-202: only primary-session read telemetry; no provider or agent dispatch.
+  pi.on?.("tool_execution_end",async(event,ctx)=>{
+   const context=ctx as CommandContext,active=agentDeliveryIdentity;
+   if(!active||!context?.sessionManager||typeof event?.toolCallId!=="string"||
+      typeof event?.toolName!=="string"||context.sessionManager.getSessionId?.()!==active.sessionId)return;
+   try{
+    const current=await sessionIdentity(context);
+    if(agentDeliveryIdentity!==active||context.sessionManager.getSessionId?.()!==active.sessionId||
+       current.sessionId!==active.sessionId||current.projectId!==active.projectId)return;
+    if(!explorerBudget||explorerBudget.sessionId!==current.sessionId||explorerBudget.projectId!==current.projectId)
+     explorerBudget={...current,telemetry:new ExplorerBudgetTelemetry()};
+    if(explorerBudget.telemetry.observe({toolCallId:event.toolCallId,toolName:event.toolName,result:event.result,content:event.content}))
+     context.ui.notify("ASEN: presupuesto de exploración directa superado (3 consultas o 40 KiB). Si hace falta investigar más, conviene un único Explorer de solo lectura; no se ha iniciado ningún agente.", "info");
+   }catch{/* Telemetry cannot affect Pi tool execution, authorization, or provider state. */}
+  });
   pi.on?.("tool_execution_end",async(event,ctx)=>{
    if(typeof event?.toolCallId!=="string"||typeof event?.isError!=="boolean")return;const activity=validationActivities.get(event.toolCallId);if(!activity)return;validationActivities.delete(event.toolCallId);
    const context=ctx as CommandContext;try{const current=await sessionIdentity(context);await refreshTodoWidget(context);if(current.sessionId!==activity.sessionId||current.projectId!==activity.projectId)return;const rows=await (await todoStorePromise!).list(current),task=rows.find(row=>row.taskId===activity.taskId);if(task?.current.state!=="running")return;const duration=typeof event.durationMs==="number"&&Number.isFinite(event.durationMs)?event.durationMs:Date.now()-activity.startedAt;if(duration<longValidationNoticeMs)return;const title=activity.title.replace(/[\u0000-\u001f\u007f-\u009f]+/gu," ").slice(0,120);context.ui.notify(event.isError?`ASEN: falló la comprobación de «${title}». Revisa el resultado antes de seguir.`:`ASEN: terminó la comprobación de «${title}». El resultado no sustituye la revisión independiente del plan.`,event.isError?"error":"info");}catch{/* A stale session or unavailable UI receives no validation notice. */}
@@ -398,7 +415,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(endingSession){sessionDirectory.remove(endingSession);clearSessionProfiles(await profilePartition(),endingSession);}
    for(const [id,activity] of validationActivities)if(activity.sessionId===endingSession)validationActivities.delete(id);
    if(agentDeliveryIdentity&&agentDeliveryIdentity.sessionId===endingSession)notificationProjection.deactivate(agentDeliveryIdentity);
-   agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;
+   agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;explorerBudget=undefined;resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;
    if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{traceVerifierShutdown("todo-recovery-start");await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");traceVerifierShutdown("todo-recovery-done");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue after best-effort recovery. */}}
    if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{traceVerifierShutdown("agent-cancel-start");const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());traceVerifierShutdown("agent-cancel-done");}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}
    traceVerifierShutdown("delivery-drain-start");while(agentDeliveryTasks.size)await Promise.all([...agentDeliveryTasks]);traceVerifierShutdown("delivery-drain-done");
