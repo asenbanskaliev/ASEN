@@ -44,7 +44,7 @@ const expected=Object.freeze({
 const reasonSignals=Object.freeze({
  pricing:[/discount/iu,/add|plus|subtract|reduc|increas|decreas|inflat|overcharg/iu],
  authorization:[/viewer/iu,/edit|authoriz|allow|permission|own/iu],
- parsing:[/parse|integer|digit|input|number/iu,/trail|suffix|junk|prefix|non.?digit|invalid|malform|abc/iu],
+ parsing:[/pars|integer|digit|input|number/iu,/trail|suffix|junk|prefix|non.?digit|invalid|malform|abc/iu],
 });
 const sha=s=>createHash("sha256").update(s).digest("hex");
 function target(args){
