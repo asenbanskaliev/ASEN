@@ -45,7 +45,7 @@ test("T12 concurrent stages allocate distinct calls under the same ceiling",asyn
  t.after(()=>rm(directory,{recursive:true,force:true}));
  const reservations=await Promise.all(["explorer","planner","review-a","review-b","verifier"].map(label=>
   reserveInferenceCall(label,{limit:5,directory})));
- assert.deepEqual(reservations.map(item=>item.call).sort((a:number,b:number)=>a-b),[1,2,3,4,5]);
+ assert.deepEqual(reservations.map((item:{call:number;limit:number})=>item.call).sort((a:number,b:number)=>a-b),[1,2,3,4,5]);
  await assert.rejects(()=>reserveInferenceCall("replay",{limit:5,directory}),/budget exhausted/);
 });
 test("T12 invalid manifest fails closed instead of resetting inference allowance",async t=>{
