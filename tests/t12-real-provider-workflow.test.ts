@@ -109,3 +109,11 @@ test("T12 push scope includes the real-provider acceptance scripts, not just tes
  assert.match(workflow,/^\s+- tests\/\*\*$/mu);
  assert.match(workflow,/^\s+- src\/\*\*$/mu);
 });
+
+test("T12 workflow tests durable budget recovery and a disposable correction without agent authority",()=>{
+ assert.match(workflow,/F6 cross-process inference recovery, corruption and negative checks/);
+ assert.match(workflow,/node --import tsx --test tests\/t12-inference-budget\.test\.ts/);
+ assert.match(workflow,/tests\/t12-disposable-correction\.test\.ts/);
+ assert.match(workflow,/Inspect call receipts without spending another inference request/);
+ assert.match(workflow,/node scripts\/t12-inference-budget\.mjs --report/);
+});

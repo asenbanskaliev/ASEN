@@ -1,4 +1,4 @@
-import {writeFile,mkdir,readFile,lstat,link,unlink} from "node:fs/promises";
+import {writeFile,mkdir,readFile,lstat,link,unlink,readdir} from "node:fs/promises";
 import {randomUUID} from "node:crypto";
 import {isAbsolute,join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -59,10 +59,59 @@ export async function reserveInferenceCall(label,{limit=configuredLimit(),direct
  throw new Error(`T12 inference call budget exhausted (${limit})`);
 }
 
+
+/** Inspect durable inference receipts across process restarts. This is read-only. */
+export async function inspectInferenceBudget({directory=process.env.RUNNER_TEMP}={}){
+ if(typeof directory!=="string"||!isAbsolute(directory))throw new Error("RUNNER_TEMP must be an absolute path");
+ const folder=join(directory,"asen-inference-budget");
+ const stat=await lstat(folder);
+ if(!stat.isDirectory()||stat.isSymbolicLink())throw new Error("T12 inference budget directory must be a real directory");
+ const policyFile=join(folder,"limit.json");
+ const policyStat=await lstat(policyFile);
+ if(!policyStat.isFile()||policyStat.isSymbolicLink())throw new Error("T12 inference budget policy must be a regular file");
+ let policy;
+ try{policy=JSON.parse(await readFile(policyFile,"utf8"));}
+ catch{throw new Error("T12 inference budget policy is malformed");}
+ if(!policy||typeof policy!=="object"||Array.isArray(policy)||
+    Object.keys(policy).sort().join(",")!=="limit,schema"||
+    policy.schema!==1||![3,5].includes(policy.limit))
+  throw new Error("T12 inference budget policy is malformed");
+ const names=await readdir(folder);
+ let reserved=0,missingEarlierSlot=false;
+ for(let call=1;call<=policy.limit;call++){
+  const file=join(folder,call+".json");
+  let fileStat;
+  try{fileStat=await lstat(file);}
+  catch(error){
+   if(error&&typeof error==="object"&&"code" in error&&error.code==="ENOENT"){missingEarlierSlot=true;continue;}
+   throw error;
+  }
+  if(missingEarlierSlot)throw new Error("T12 inference reservation history has a gap");
+  if(!fileStat.isFile()||fileStat.isSymbolicLink())throw new Error("T12 inference reservation is not a regular file");
+  let item;
+  try{item=JSON.parse(await readFile(file,"utf8"));}
+  catch{throw new Error("T12 inference reservation is malformed");}
+  if(!item||typeof item!=="object"||Array.isArray(item)||
+     Object.keys(item).sort().join(",")!=="call,label,limit"||
+     item.call!==call||item.limit!==policy.limit||
+     typeof item.label!=="string"||!/^[a-z0-9-]{1,48}$/i.test(item.label))
+   throw new Error("T12 inference reservation is malformed");
+  reserved++;
+ }
+ if(names.some(name=>/^[0-9]+\.json$/.test(name)&&
+   (!/^[1-9][0-9]*\.json$/.test(name)||Number(name.slice(0,-5))>policy.limit)))
+  throw new Error("T12 inference reservation outside the declared limit");
+ return Object.freeze({limit:policy.limit,reserved,remaining:policy.limit-reserved,authorization:"NOT_GRANTED"});
+}
+
 if(process.argv[1]&&fileURLToPath(import.meta.url)===resolve(process.argv[1])){
  try{
-  const reservation=await reserveInferenceCall(process.argv[2]??"unspecified");
-  console.log(`T12 inference call reserved ${reservation.call}/${reservation.limit}`);
+  if(process.argv[2]==="--report"){
+   console.log(JSON.stringify(await inspectInferenceBudget()));
+  }else{
+   const reservation=await reserveInferenceCall(process.argv[2]??"unspecified");
+   console.log(`T12 inference call reserved ${reservation.call}/${reservation.limit}`);
+  }
  }catch(error){
   console.error(error instanceof Error?error.message:"T12 inference budget reservation failed");
   process.exitCode=1;

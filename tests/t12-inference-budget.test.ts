@@ -1,10 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
+import {mkdtemp,readFile,rm,writeFile,unlink} from "node:fs/promises";
+import {spawnSync} from "node:child_process";
+import {fileURLToPath} from "node:url";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 // @ts-expect-error JavaScript-only budget helper.
-import {reserveInferenceCall} from "../scripts/t12-inference-budget.mjs";
+import {reserveInferenceCall,inspectInferenceBudget} from "../scripts/t12-inference-budget.mjs";
 
 test("T12 inference budget reserves bounded child calls exactly once",async t=>{
  const directory=await mkdtemp(join(tmpdir(),"asen-inference-budget-"));
@@ -54,4 +56,45 @@ test("T12 invalid manifest fails closed instead of resetting inference allowance
  await reserveInferenceCall("explorer",{limit:3,directory});
  await writeFile(join(directory,"asen-inference-budget","limit.json"),'{"limit":5}');
  await assert.rejects(()=>reserveInferenceCall("planner",{limit:3,directory}),/policy is malformed/);
+});
+
+test("T12 interprocess restart does not reset the spent inference ceiling",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-restart-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ const script=fileURLToPath(new URL("../scripts/t12-inference-budget.mjs",import.meta.url));
+ const env={...process.env,RUNNER_TEMP:directory,ASEN_MAX_INFERENCE_CALLS:"3",OLLAMA_API_KEY:"SYNTHETIC_DO_NOT_LOG"};
+ const run=(label:string)=>spawnSync(process.execPath,[script,label],{env,encoding:"utf8",timeout:10000});
+ for(const [i,label] of ["explorer","planner","verifier"].entries()){
+  const child=run(label);
+  assert.equal(child.status,0,child.stderr);
+  assert.match(child.stdout,new RegExp("reserved "+(i+1)+"/3"));
+  assert.doesNotMatch(child.stdout+child.stderr,/SYNTHETIC_DO_NOT_LOG/);
+ }
+ const restarted=run("duplicate");
+ assert.notEqual(restarted.status,0);
+ assert.match(restarted.stderr,/budget exhausted/);
+ assert.deepEqual(await inspectInferenceBudget({directory}),{limit:3,reserved:3,remaining:0,authorization:"NOT_GRANTED"});
+ const report=run("--report");
+ assert.equal(report.status,0,report.stderr);
+ assert.deepEqual(JSON.parse(report.stdout),{limit:3,reserved:3,remaining:0,authorization:"NOT_GRANTED"});
+});
+test("T12 budget inspection detects corrupted or deleted receipts after restart",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-damaged-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ await reserveInferenceCall("explorer",{directory,limit:3});
+ await reserveInferenceCall("planner",{directory,limit:3});
+ const file=join(directory,"asen-inference-budget","1.json");
+ await writeFile(file,"{incomplete");
+ await assert.rejects(()=>inspectInferenceBudget({directory}),/reservation is malformed/);
+ await writeFile(file,JSON.stringify({call:1,label:"explorer",limit:3}));
+ await unlink(file);
+ await assert.rejects(()=>inspectInferenceBudget({directory}),/history has a gap/);
+});
+test("T12 budget inspection does not spend calls and refuses over-limit receipts",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-status-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ await reserveInferenceCall("explorer",{directory,limit:5});
+ assert.deepEqual(await inspectInferenceBudget({directory}),{limit:5,reserved:1,remaining:4,authorization:"NOT_GRANTED"});
+ await writeFile(join(directory,"asen-inference-budget","6.json"),JSON.stringify({call:6,label:"forbidden",limit:5}));
+ await assert.rejects(()=>inspectInferenceBudget({directory}),/outside the declared limit/);
 });

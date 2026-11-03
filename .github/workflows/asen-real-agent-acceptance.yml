@@ -90,9 +90,14 @@ jobs:
             tests/pi-process-runner.test.ts \
             tests/pi-session-recovery-e2e.test.ts \
             tests/session-recovery-e2e.test.ts
+      - name: F6 cross-process inference recovery, corruption and negative checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx --test tests/t12-inference-budget.test.ts
       - name: F2/F3 deterministic fixture and planning contracts
         shell: bash
-        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-inference-budget.test.ts tests/t12-review-grader.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts
+        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-inference-budget.test.ts tests/t12-review-grader.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-disposable-correction.test.ts
       - name: Ollama scoped child credential regression
         run: node --import tsx --test tests/t12-ollama-child-credential.test.ts
       - name: Pi retry settings preserve installed extensions
@@ -247,6 +252,14 @@ jobs:
             printf '%s\n' 'PASS: authenticated Ollama Cloud Explorer, Planner, two separate blind Reviewer judgments and Verifier ran through the bounded read-only acceptance stages.' 'LIMITATION: both Reviewer judgments use the same selected provider and model; they are not independent external review.' 'BLOCKED_INTERACTIVE: Writer requires Pi one-time approval; no authorization was simulated.' 'DEFERRED: provider-backed restart, quota exhaustion and timeout recovery remain unverified.' > asen-acceptance-evidence/real-provider-status.txt
           else
             printf '%s\n' 'PARTIAL: authenticated Ollama Cloud Explorer and Planner ran within the selected 3-call limit.' 'BLOCKED_CALL_BUDGET: Reviewer and Verifier were not run; SKIPPED is not PASS.' 'BLOCKED_INTERACTIVE: Writer requires Pi one-time approval; no authorization was simulated.' 'DEFERRED: provider-backed restart, quota exhaustion and timeout recovery remain unverified.' > asen-acceptance-evidence/real-provider-status.txt
+          fi
+      - name: Inspect call receipts without spending another inference request
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -d "$RUNNER_TEMP/asen-inference-budget"; then
+            node scripts/t12-inference-budget.mjs --report > asen-acceptance-evidence/inference-budget-summary.json
           fi
       - name: Preserve provider evidence without exporting secrets
         if: always()
