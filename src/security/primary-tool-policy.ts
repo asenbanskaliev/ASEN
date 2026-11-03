@@ -71,6 +71,7 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
   const mode=options.getMode?.(context)??"normal";
   const startEpoch=options.modeEpoch?.();
   const autoRequested=mode==="auto";
+  let confirmationRejected=false;
   const autoAllowed=async()=>{
    if(!options.reviewAuto)return false;
    const name=event.toolName,id=event.toolCallId,input=event.input,cwd=context.cwd,signal=context.signal;
@@ -111,10 +112,12 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
        isYoloRoutineDelivery(command))return undefined;
     if(context.hasUI!==true||typeof context.ui?.confirm!=="function")return denied("guarded shell command requires interactive confirmation");
     const id=event.toolCallId,inputAtReview=event.input,cwd=context.cwd,signal=context.signal;
-    const approved=await context.ui.confirm(`ASEN · ${decision.title}`,decision.preview??"");
+    let approved:boolean;
+    try{approved=await context.ui.confirm(`ASEN · ${decision.title}`,decision.preview??"");}
+    catch(error){confirmationRejected=true;throw error;}
     if(approved!==true)return denied("guarded shell command was not confirmed");
     if(event.toolCallId!==id||event.input!==inputAtReview||context.cwd!==cwd||
-     context.signal!==signal||signal?.aborted||options.getMode?.(context)!==mode||
+     context.signal!==signal||signal?.aborted||(options.getMode?.(context)??"normal")!==mode||
      options.modeEpoch?.()!==startEpoch||(event.input as {command?:unknown}).command!==command)
      return denied("guarded shell confirmation expired");
     return undefined;
@@ -138,7 +141,12 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
    if(event.toolName!==toolName||event.toolCallId!==toolCallId||event.input!==input||(input as {path?:unknown}).path!==rawPath||context.cwd!==cwd||context.signal!==signal||signal?.aborted)return denied("file call identity or path drift");
    if(autoRequested&&!(await autoAllowed()))return denied("Auto independent review is unavailable or denied");
    return undefined;
-  }catch{return denied("ambiguous or unresolvable input");}
+  }catch(error){
+   // A failed native consent dialog belongs to the host and must propagate unchanged.
+   // Untrusted path/classifier errors still block with zero execution.
+   if(confirmationRejected)throw error;
+   return denied("ambiguous or unresolvable input");
+  }
  };
 }
 export { hasSensitiveName, sensitivePath } from "./path-safety.js";

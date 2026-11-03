@@ -152,3 +152,13 @@ test("shell selection matches Normal mode and malformed recognized shell input p
 test("unknown custom tools are outside this narrow primary policy",async()=>{
  assert.equal(await policy(event("custom_extension_tool",{path:".env"}),context(process.cwd())),undefined);
 });
+
+
+test("a human-approved shell action cannot reuse consent after a mode epoch changes",async()=>{
+ let epoch=1;
+ const guarded=createPrimaryToolPolicyHandler({getMode:()=>"normal",modeEpoch:()=>epoch});
+ const ctx=context(process.cwd(),{ui:{confirm:async()=>{epoch++;return true;}}});
+ const result=await guarded(event("bash",{command:"git push origin main"}),ctx);
+ assert.equal(result?.block,true);
+ assert.match(result?.reason??"",/guarded shell confirmation expired/);
+});
