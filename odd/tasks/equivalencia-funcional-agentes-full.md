@@ -289,3 +289,16 @@ Estado **IMPLEMENTED_PENDING_CI**, no FULL. Cambios previstos en el mismo commit
 
 - La primera publicación `9bd7d94` falló en el paso **Typecheck** de la aceptación sin proveedor, run `41670537262`, por una línea mal transcrita en `tests/agent-observable-parity.test.ts` (TS1005/TS1127/TS1002). Era un error sintáctico del test, no un resultado de equivalencia.
 - Se restablecen los dos asserts de rechazo de rol desconocido y token con salto de línea, conservando el comparador y sus siete escenarios. Pendiente resultado CI exact-SHA de esta corrección; no calificar aún PASS ni FULL.
+
+## Tanda F6 — EF-601/602: notificaciones protegidas y sin repetición (2026-11-03)
+
+**Estado: IMPLEMENTED_PENDING_EXACT_SHA_CI; FULL NO ALCANZADO.**
+
+- `SessionNotificationBus` conserva la identidad de un aviso reconocido hasta su TTL: la misma notificación terminal no reaparece después del acuse. Los registros reconocidos caducan y siguen contando en la capacidad en memoria hasta entonces; la saturación falla cerrada y nunca elimina una identidad consumida para aceptar una repetición.
+- Se rechazan separadores de clave y caracteres de control en identificadores de sesión, tipo y origen, evitando suplantación de particiones. Los mensajes siguen admitiendo texto multilínea acotado.
+- `agentTerminalContinuationMessage` elimina controles ANSI CSI/OSC, formatos Unicode y saltos de línea de datos del hijo; resume a 1200 puntos de código y encapsula el resultado en texto JSON etiquetado como no confiable. No se concede autoridad de Writer ni se cambia el criterio para reactivar Pi.
+- Se añaden regresiones de reenvío tras acuse, capacidad/expiración, aislamiento de identidades y carga maliciosa del agente. En entorno local aislado, seis pruebas focales de Node comprobaron los contratos equivalentes (6/6 PASS); las suites de ASEN y los CI de GitHub quedan pendientes del SHA de publicación.
+- **EF-601/602: PARTIAL**. No se ha demostrado aún acuse duradero ni despertar del padre Pi real tras reinicio. Esta corrección actúa sobre el bus efímero de presentación y sobre el mensaje entregado; no sustituye el almacén persistente de resultados.
+- El comparador EF-003 de la tanda anterior recibió aceptación sin proveedor PASS sobre `5d9eaf8` (run `41670808497`); la suite CI completa y Release Gate deben verificarse por separado en el nuevo SHA. Los casos C13–C15 no se declaran equivalentes a A/B sin ejecución real.
+
+**Siguiente bloque:** registrar/validar acuse persistente de agente y recuperar resultados bajo identidad de sesión/proyecto, sin reejecutar efectos inciertos; EF-201/202 presupuestos reales de Explorer; EF-102/103 reanudación exacta de ODD; luego Writer/Reviewer/Verifier auténticos.

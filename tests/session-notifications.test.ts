@@ -77,3 +77,35 @@ test("clearing a presentation partition never clears unrelated sessions or claim
  assert.equal(bus.list("session-project-b").length,2);
  assert.throws(()=>bus.clear(""),/invalid session id/u);
 });
+ 
+test("EF-602 C14 acknowledged agent outcome cannot be re-enqueued during TTL",()=>{
+ const bus=new SessionNotificationBus({capacity:2,ttlMs:60_000});
+ const original=bus.emit("session","agent","finished","agent-id");
+ bus.acknowledge("session",original.id);
+ const duplicate=bus.emit("session","agent","forged later result","agent-id");
+ assert.equal(duplicate.id,original.id);
+ assert.equal(duplicate.acknowledged,true);
+ assert.deepEqual(bus.replay("session"),[]);
+ assert.deepEqual(bus.list("session"),[]);
+ bus.acknowledge("session",original.id);
+});
+test("EF-602 bounded tombstones fail closed and expire to free capacity",async()=>{
+ const bus=new SessionNotificationBus({capacity:1,ttlMs:25});
+ const first=bus.emit("session","agent","one","agent-a");
+ bus.acknowledge("session",first.id);
+ assert.throws(()=>bus.emit("session","agent","two","agent-b"),/capacity/u);
+ await new Promise(resolve=>setTimeout(resolve,40));
+ const newer=bus.emit("session","agent","two","agent-b");
+ assert.notEqual(first.id,newer.id);
+ assert.equal(bus.list("session").length,1);
+});
+test("EF-602 C14 scope separators and Unicode controls cannot alias notification identities",()=>{
+ const bus=new SessionNotificationBus({capacity:3});
+ const own=bus.emit("session","job","done","task-id");
+ assert.throws(()=>bus.emit("session\u001fjob","fake","done","task-id"),/invalid session id/u);
+ assert.throws(()=>bus.emit("session","job\u001ffake","done","task-id"),/invalid notification kind/u);
+ assert.throws(()=>bus.emit("session","job","done","task\u001fid"),/invalid source identity/u);
+ assert.throws(()=>bus.emit("session\u202eforeign","job","done","task-id"),/invalid session id/u);
+ assert.equal(bus.list("session")[0]?.id,own.id);
+});
+

@@ -29,6 +29,10 @@ export interface SessionNotificationBusOptions{
 
 function valid(value:unknown,name:string):void{
  if(typeof value!=="string"||value.length===0||value!==value.trim())throw new Error(`invalid ${name}`);
+ // Identity components must not contain the map-key separator or Unicode controls.
+ // Message text may be multiline, but is bounded to prevent oversized UI entries.
+ if(name==="notification message"){if(value.length>10_000)throw new Error(`invalid ${name}`);}
+ else if(value.length>1024||/[\p{Cc}\p{Cf}]/u.test(value))throw new Error(`invalid ${name}`);
 }
 
 export class SessionNotificationBus{
@@ -52,11 +56,11 @@ export class SessionNotificationBus{
 
  #pruneExpired(now=Date.now()):void{
   for(const [key,value] of this.#events){
-   if(!value.acknowledged&&Date.parse(value.expiresAt)<=now)this.#events.delete(key);
+   // Expire acknowledged tombstones as well as visible events.
+   if(Date.parse(value.expiresAt)<=now)this.#events.delete(key);
   }
  }
 
- #unacknowledgedCount():number{let count=0;for(const v of this.#events.values())if(!v.acknowledged)count++;return count;}
 
  emit(sessionId:string,kind:string,message:string,sourceId?:string):SessionNotification{
   valid(sessionId,"session id");valid(kind,"notification kind");valid(message,"notification message");
@@ -65,8 +69,12 @@ export class SessionNotificationBus{
   this.#pruneExpired();
   const key=`${sessionId}\u001f${kind}\u001f${identity}`;
   const existing=this.#events.get(key);
-  if(existing&&!existing.acknowledged&&Date.parse(existing.expiresAt)>this.#now())return existing;
-  if(this.#unacknowledgedCount()>=this.#capacity)throw new Error("Notification capacity exceeded");
+  // Acknowledgment hides an event but must not permit the same terminal identity
+  // to be re-emitted before its TTL expires.
+  if(existing&&Date.parse(existing.expiresAt)>this.#now())return existing;
+  // Tombstones count against capacity: fail closed instead of silently discarding
+  // dedupe state and allowing an already-consumed event to return.
+  if(this.#events.size>=this.#capacity)throw new Error("Notification capacity exceeded");
   const createdAt=new Date().toISOString();
   const event=Object.freeze({
    id:`${sessionId}:${kind}:${identity}:${++this.#sequence}`,
@@ -93,10 +101,14 @@ export class SessionNotificationBus{
 
  acknowledge(sessionId:string,id:string):void{
   valid(sessionId,"session id");valid(id,"notification id");
-  const event=this.#events.get([...this.#events.entries()].find(([,v])=>v.id===id)?.[0] ?? "");
-  if(!event||event.sessionId!==sessionId)throw new Error("Notification is unavailable");
-  const key=[...this.#events.keys()].find(k=>this.#events.get(k)?.id===id);
-  if(key)this.#events.set(key,Object.freeze({...event,acknowledged:true}));
+  this.#pruneExpired();
+  for(const [key,event] of this.#events){
+   if(event.id!==id)continue;
+   if(event.sessionId!==sessionId)throw new Error("Notification is unavailable");
+   if(!event.acknowledged)this.#events.set(key,Object.freeze({...event,acknowledged:true}));
+   return;
+  }
+  throw new Error("Notification is unavailable");
  }
 
  replay(sessionId:string):readonly SessionNotification[]{return this.list(sessionId);}

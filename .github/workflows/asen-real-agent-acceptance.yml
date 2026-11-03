@@ -78,6 +78,8 @@ jobs:
             tests/natural-plan-tool.test.ts \
             tests/orchestrator-dispatcher-integration.test.ts \
             tests/agent-terminal-delivery.test.ts \
+            tests/session-notifications.test.ts \
+            tests/notification-projection.test.ts \
             tests/plan-dispatcher-role-boundaries.test.ts \
             tests/task-agent-automation.test.ts \
             tests/pi-verifier-exit.test.ts \
