@@ -77,7 +77,8 @@ jobs:
             tests/task-agent-automation.test.ts \
             tests/pi-verifier-exit.test.ts \
             tests/pi-model-reviewer.test.ts \
-            tests/writer-authorization-snapshot.test.ts
+            tests/writer-authorization-snapshot.test.ts \
+            tests/permission-modes.test.ts
       - name: F6 interruption, restart, authorization and provider failure regressions
         shell: bash
         run: |

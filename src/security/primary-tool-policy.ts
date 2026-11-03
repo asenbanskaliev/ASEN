@@ -3,9 +3,26 @@ import { canonicalPathSync } from "./path-safety.js";
 import path from "node:path";
 import type {ExtensionContext,ToolCallEvent,ToolCallEventResult} from "@earendil-works/pi-coding-agent";
 import {classifyNormalShellCommand} from "./normal-shell-policy.js";
+import type {AsenPermissionMode} from "./permission-mode-policy.js";
+
 import { hasSensitiveName, sensitivePath, sensitiveName } from "./path-safety.js";
 
 export type PrimaryToolPolicyHandler=(event:ToolCallEvent,context:ExtensionContext)=>Promise<ToolCallEventResult|undefined>;
+/** Conservative primary-only routine delivery waiver. Compound shell, ambiguous remote,
+ * deletion, ref rewriting and forced Git commands continue through the original guard. */
+export function isYoloRoutinePush(command:string):boolean{
+ if(typeof command!=="string"||command.length>512||/[;&|\x60$<>\\\r\n]/u.test(command))return false;
+ const match=/^git\s+push\s+(?:(?:-u|--set-upstream)\s+)?origin\s+((?:feat|feature|fix|chore|docs|test)\/[A-Za-z0-9._/-]+)\s*$/u.exec(command.trim());
+ if(!match)return false;
+ const ref=match[1]!;
+ return !ref.split("/").some(part=>!part||part==="."||part==="..")&&!ref.includes("..")&&!ref.endsWith(".lock");
+}
+export interface PrimaryModeOptions{
+ readonly getMode?:(context:ExtensionContext)=>AsenPermissionMode;
+ /** Optional independent reviewer only. Unavailable/untrusted classifier fails closed. */
+ readonly reviewAuto?:(event:ToolCallEvent,context:ExtensionContext)=>Promise<boolean>;
+}
+
 
 const fileTools=new Set(["read","edit","write","grep","find","ls"]);
 // Custom ASEN job launch is a shell-capable tool too. Keep it in the same
@@ -48,20 +65,37 @@ async function assertSafeTraversal(toolName:string,target:string):Promise<void>{
 }
 
 /** Primary-session policy. Child authority remains owned by extensions/authority.ts. */
-export function createPrimaryToolPolicyHandler():PrimaryToolPolicyHandler{
+export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):PrimaryToolPolicyHandler{
  return async(event,context)=>{
+  const mode=options.getMode?.(context)??"normal";
+  const autoRequested=mode==="auto";
+  const autoAllowed=async()=>{
+   if(!options.reviewAuto)return false;
+   const name=event.toolName,id=event.toolCallId,input=event.input,cwd=context.cwd,signal=context.signal;
+   let before:string;
+   try{before=JSON.stringify(input);if(before.length>8192)return false;}catch{return false;}
+   try{
+    if(await options.reviewAuto(event,context)!==true)return false;
+    return event.toolName===name&&event.toolCallId===id&&event.input===input&&
+     JSON.stringify(event.input)===before&&context.cwd===cwd&&context.signal===signal&&
+     signal?.aborted!==true&&options.getMode?.(context)==="auto";
+   }catch{return false;}
+  };
   try{
    const toolName=event.toolName;
-   if(!fileTools.has(toolName)&&!shellTools.has(toolName))return undefined;
+   if(!fileTools.has(toolName)&&!shellTools.has(toolName))
+    return autoRequested?denied("unreviewed custom tool in Auto mode"):undefined;
    const input=event.input;
    if(shellTools.has(toolName)){
     if(!input||typeof input!=="object"||Array.isArray(input))return undefined;
     const command=(input as {command?:unknown;args?:unknown}).command;
-    if(typeof command!=="string")return toolName==="asen_background_start"?denied("malformed background command"):undefined;
+    if(typeof command!=="string")return autoRequested||toolName==="asen_background_start"?denied("malformed background command"):undefined;
     if(toolName==="asen_background_start"&&(Object.hasOwn(input,"args")||Object.keys(input).some(key=>key!=="command"&&key!=="timeoutMs"&&key!=="monitor")))return denied("unsupported background command shape");
     const decision=classifyNormalShellCommand(command);
-    if(decision.action==="pass")return undefined;
     if(decision.action==="deny")return denied("destructive shell command");
+    if(autoRequested&&!(await autoAllowed()))return denied("Auto independent review is unavailable or denied");
+    if(decision.action==="pass")return undefined;
+    if(mode==="yolo"&&decision.guardedKey==="gitPush"&&isYoloRoutinePush(command))return undefined;
     if(context.hasUI!==true||typeof context.ui?.confirm!=="function")return denied("guarded shell command requires interactive confirmation");
     return context.ui.confirm(`ASEN · ${decision.title}`,decision.preview??"").then(approved=>approved===true?undefined:denied("guarded shell command was not confirmed"));
    }
@@ -75,6 +109,7 @@ export function createPrimaryToolPolicyHandler():PrimaryToolPolicyHandler{
    if(hasSensitiveName(lexical)||hasSensitiveName(canonical)||sensitivePath(lexical)||sensitivePath(canonical))return denied("sensitive path access");
    if(toolName==="grep"||toolName==="find"||toolName==="ls")try{await assertSafeTraversal(toolName,canonical);}catch{return denied("safe directory traversal cannot be established");}
    if(event.toolName!==toolName||event.toolCallId!==toolCallId||event.input!==input||(input as {path?:unknown}).path!==rawPath||context.cwd!==cwd||context.signal!==signal||signal?.aborted)return denied("file call identity or path drift");
+   if(autoRequested&&!(await autoAllowed()))return denied("Auto independent review is unavailable or denied");
    return undefined;
   }catch{return denied("ambiguous or unresolvable input");}
  };

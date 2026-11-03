@@ -68,15 +68,18 @@ import {SharedSessionDirectory} from "../src/runtime/shared-session-directory.js
 import {discoverWorkspaceWorktrees,snapshotWorkspaceRoots} from "../src/runtime/workspace-snapshot.js";
 import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtime/workspace-resolution.js";
 import {hostContentColumns,layoutMode,sanitizeTerminalText,truncateForTerminal} from "../src/runtime/responsive-layout.js";
+import {AsenPermissionSession} from "../src/security/permission-session.js";
+import {isAsenPermissionMode,readPermissionModeDefault,savePermissionModeDefault} from "../src/security/permission-mode-policy.js";
+import type {PrimaryModeOptions} from "../src/security/primary-tool-policy.js";
 
-type CommandContext={cwd:string;hasUI?:boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void}};
+type CommandContext={cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void}};
 type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
 const ASEN_SESSION_TOOL_NAMES=Object.freeze(["asen_session_consult"] as const);
 const activationRegistryRoot=globalThis as typeof globalThis&{[activationRegistryKey]?:WeakSet<object>};
 const activatedPiHosts=activationRegistryRoot[activationRegistryKey]??(activationRegistryRoot[activationRegistryKey]=new WeakSet<object>());
-export interface AsenExtensionDependencies {homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>;enableMemoryRuntime?:boolean;memoryStoreFile?:string;memoryStoreFactory?:()=>Promise<PiMemoryStore>;backgroundExecutor?:BackgroundJobExecutor;backgroundJobJournalFile?:string;historyShortcutKey?:string}
+export interface AsenExtensionDependencies {permissionSession?:AsenPermissionSession;autoPermissionReview?:PrimaryModeOptions["reviewAuto"];homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>;enableMemoryRuntime?:boolean;memoryStoreFile?:string;memoryStoreFactory?:()=>Promise<PiMemoryStore>;backgroundExecutor?:BackgroundJobExecutor;backgroundJobJournalFile?:string;historyShortcutKey?:string}
 export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;startSession(context:CommandContext):Promise<void>;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
 
 const usage="Usage: /asen-skill-registry refresh";
@@ -147,6 +150,27 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     return result instanceof Promise?result.then(publish):publish(result);
    }
   });
+  const permissionSession=dependencies.permissionSession??new AsenPermissionSession();
+  const permissionDefault=()=>readPermissionModeDefault(home());
+  const permissionStatus=(ctx:CommandContext)=>({
+   session:permissionSession.mode(ctx),savedDefault:permissionDefault().mode,
+   malformedDefault:permissionDefault().malformed,
+   autoReviewerAvailable:typeof dependencies.autoPermissionReview==="function",
+   superYoloAvailable:false,
+   boundary:"Primary-only mode; delegated Writer consent, destructive confirmations and recovery permissions stay independent.",
+  });
+  const requirePrimaryPermissionUI=(ctx:CommandContext)=>{
+   if(ctx?.hasUI!==true||ctx.mode!=="tui"||!ctx.sessionManager?.getSessionId?.())
+    throw new Error("ASEN permission changes require the live primary Pi TUI");
+  };
+  const applyPermissionMode=(mode:unknown,ctx:CommandContext)=>{
+   requirePrimaryPermissionUI(ctx);
+   if(!isAsenPermissionMode(mode))throw new Error("Unsupported ASEN permission mode");
+   if(mode==="auto"&&typeof dependencies.autoPermissionReview!=="function")
+    throw new Error("ASEN Auto requires an independent classifier; no Auto permission was granted");
+   if(!permissionSession.set(mode,ctx))throw new Error("ASEN session permission identity unavailable");
+   return permissionStatus(ctx);
+  };
   const registryObservations=new Map<string,number>(),registryRefreshGeneration=new Map<string,number>();
   const observedRefresh:Refresh=async options=>{const project=path.resolve(options.projectId),generation=(registryRefreshGeneration.get(project)??0)+1;registryRefreshGeneration.set(project,generation);registryObservations.delete(project);try{const result=await refresh(options);if(registryRefreshGeneration.get(project)===generation)registryObservations.set(project,result.count);return result;}catch(error){if(registryRefreshGeneration.get(project)===generation)registryObservations.delete(project);throw error;}};
   const lifecycle=new RegistryLifecycle({refresh:observedRefresh,prepare:async cwd=>{
@@ -269,6 +293,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }finally{advancingPlans.delete(key);}
   };
   const startSession=async(ctx:CommandContext)=>{
+   const preference=permissionDefault();
+   permissionSession.initialize(preference.malformed?"normal":preference.mode==="auto"&&
+    typeof dependencies.autoPermissionReview!=="function"?"normal":preference.mode,ctx);
    invalidateChildSelection();
    const selectionScope=Object.freeze({generation:selectionGeneration,context:ctx,manager:ctx.sessionManager,sessionId:ctx.sessionManager?.getSessionId?.(),cwd:ctx.cwd});selectionOwner=selectionScope;
    if(ctx.sessionManager?.getSessionId?.())await inheritedProfile(await sessionIdentity(ctx));
@@ -407,6 +434,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     delete options.sections[ASEN_PERSONA_STYLE_SECTION];
     try{const files=await personaFiles(ctx as CommandContext),selection=await resolvePersonaStyle(files.globalFile,files.projectFile);options.sections[ASEN_PERSONA_STYLE_SECTION]=personaStyleText(selection.style);}
     catch{options.sections[ASEN_PERSONA_STYLE_SECTION]=personaStyleText("professional");}
+    delete options.sections.asen_permission_mode;
+    const selectedPermission=permissionSession.mode(ctx as CommandContext);
+    if(selectedPermission==="yolo")options.sections.asen_permission_mode="ASEN YOLO primary standing permission is active only for ordinary work within the human-authorized scope. Ordinary reversible feature-branch delivery may proceed without redundant questions when the host guard admits it. Never bypass independent Writer admission, explicit restrictions, destructive confirmations, sensitive paths, credential/destination ambiguity, recovery consent or native review. Delegated children never inherit YOLO.";
+    if(selectedPermission==="auto")options.sections.asen_permission_mode="ASEN Auto requires a fresh independent pre-tool reviewer verdict. Failed, absent or stale checks block execution. Do not bypass denials through alternate tools or subagents; ask the human when approval is essential. Independent Writer and destructive consent remain separate.";
     delete options.sections.asen_request_handling;
     delete options.sections.asen_project_memory;
     delete options.sections.asen_project_memory_context;
@@ -423,6 +454,27 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }
   });
   registerData("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
+  registerData("asen-mode",{description:"Primary permissions: status | normal | auto | yolo | default <normal|auto|yolo>",handler:(raw:string|undefined,ctx:CommandContext)=>{
+   const args=String(raw??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
+   if(!args.length||args[0]==="status")return permissionStatus(ctx);
+   if(args[0]==="default"&&args.length===2){
+    requirePrimaryPermissionUI(ctx);
+    const mode=args[1];if(!isAsenPermissionMode(mode))throw new Error("Invalid default permission mode");
+    if(mode==="auto"&&typeof dependencies.autoPermissionReview!=="function")
+     throw new Error("ASEN Auto default requires a working independent classifier");
+    savePermissionModeDefault(home(),mode);
+    return permissionStatus(ctx);
+   }
+   if(args.length!==1)throw new Error("Use /asen-mode status, normal, auto, yolo or default <mode>");
+   return applyPermissionMode(args[0],ctx);
+  }});
+  registerData("asen-yolo",{description:"Session-only YOLO toggle: enable | disable | status",handler:(raw:string|undefined,ctx:CommandContext)=>{
+   const value=String(raw??"").trim().toLowerCase();
+   if(!value||value==="status")return permissionStatus(ctx);
+   if(value==="enable")return applyPermissionMode("yolo",ctx);
+   if(value==="disable")return applyPermissionMode("normal",ctx);
+   throw new Error("Use /asen-yolo enable, disable or status");
+  }});
 // asen-presentation rich mode removed to avoid duplicate command with compact/complete mode below.
 
   registerData("asen-commands",{description:"List ASEN public commands; pass text to filter them",handler:(args?:string)=>{const query=String(args??"").trim().toLowerCase();const rows=ASEN_COMMAND_CATALOG.map(c=>({name:c.name,group:c.group,implemented:c.implemented})).filter(row=>!query||row.name.includes(query)||row.group.includes(query));return rows.length?rows:[{name:"asen-help",group:"core",implemented:false}];}});
@@ -706,7 +758,11 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
   const localBash=createLocalBashOperations(settings.shellPath?{shellPath:settings.shellPath}:{});
   return localBash.exec(settings.shellCommandPrefix?`${settings.shellCommandPrefix}\n${command}`:command,cwd,{onData:options.onData,signal:options.signal,...(options.env?{env:options.env}:{})});
  };
- pi.on("tool_call",createPrimaryToolPolicyHandler());
+ const permissionSession=dependencies.permissionSession??new AsenPermissionSession();
+ pi.on("tool_call",createPrimaryToolPolicyHandler({
+  getMode:ctx=>permissionSession.mode(ctx),
+  ...(dependencies.autoPermissionReview?{reviewAuto:dependencies.autoPermissionReview}:{}),
+ }));
  const commandNames=ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name);
  const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...ASEN_SESSION_TOOL_NAMES,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES),...(dependencies.enableMemoryRuntime===false&&!dependencies.memoryStoreFactory?[]:ASEN_MEMORY_TOOL_NAMES)];
  let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext)=>Promise<void>)|undefined;
@@ -718,7 +774,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
    validatePiExecutionContext(ctx);
    // Pi's public inventory methods can exist before their runtime is initialized; read them only here.
    validatePiRegistrationCollisions(pi,commandNames,toolNames);
-   const facade=createAsenExtension({...dependencies,backgroundExecutor,enableAgentRuntime:dependencies.enableAgentRuntime??true,enableTodoRuntime:dependencies.enableTodoRuntime??true,enableWorkspaceRuntime:dependencies.enableWorkspaceRuntime??true,enableMemoryRuntime:dependencies.enableMemoryRuntime??true,deferSessionStart:true})({
+   const facade=createAsenExtension({...dependencies,permissionSession,backgroundExecutor,enableAgentRuntime:dependencies.enableAgentRuntime??true,enableTodoRuntime:dependencies.enableTodoRuntime??true,enableWorkspaceRuntime:dependencies.enableWorkspaceRuntime??true,enableMemoryRuntime:dependencies.enableMemoryRuntime??true,deferSessionStart:true})({
     on:(event,handler)=>pi.on(event as any,(...args:any[])=>{
      if(token!==generation||!registrationsReady)return undefined;
      validatePiExecutionContext(args[1]);

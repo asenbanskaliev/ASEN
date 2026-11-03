@@ -8,6 +8,8 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"skills",name:"asen-skill-registry",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-profiles",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-persona",implemented:true,owner:"extensions/asen.ts"},
+ {group:"configuration",name:"asen-mode",implemented:true,owner:"extensions/asen.ts"},
+ {group:"configuration",name:"asen-yolo",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-customize",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-language",implemented:true,owner:"extensions/asen.ts"},
  {group:"configuration",name:"asen-telemetry",implemented:true,owner:"extensions/asen.ts"},
