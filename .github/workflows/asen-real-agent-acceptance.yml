@@ -116,6 +116,8 @@ jobs:
   real-provider-acceptance:
     if: >-
       github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.run_attempt == 1 &&
       (github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && github.event.head_commit.message == 'ci: one-time Ollama Cloud provider smoke'))
     name: Real Ollama Cloud functional acceptance

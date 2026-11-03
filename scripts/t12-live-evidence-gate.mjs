@@ -81,10 +81,10 @@ export function gradeLiveAcceptanceEvidence({sha,model,maxCalls,budget,receipts,
   assert.equal(review.toolsAllowed,false,"Reviewer/Verifier tool use forbidden");
   assert.equal(review.writerAuthorized,false,"Reviewer/Verifier cannot grant Writer");
   assert.equal(review.authorization,"NOT_GRANTED","Reviewer/Verifier authorization mismatch");
-  assert.equal(review.candidateId.startsWith("t12-review-"),true,
-   "Review candidate identity invalid");
   assert.match(review.fixtureSha256??"",/^[0-9a-f]{64}$/u,
    "Reviewer/Verifier frozen fixture digest missing");
+  assert.equal(review.candidateId,"t12-review-"+review.fixtureSha256.slice(0,12),
+   "Reviewer candidate is not bound to the frozen fixture digest");
   assert.deepEqual(review.changedPaths,expectedPaths,
    "Reviewer/Verifier changed paths mismatch");
   assert.ok(Array.isArray(review.deterministicTests?.checks)&&
@@ -100,7 +100,7 @@ export function gradeLiveAcceptanceEvidence({sha,model,maxCalls,budget,receipts,
   assert.ok(Array.isArray(review.reviewer)&&review.reviewer.length===2,
    "Two real blind Reviewer judgments required");
   for(const [index,judge] of review.reviewer.entries()){
-   assert.ok(typeof judge.id==="string"&&judge.id.endsWith(":"+(index===0?"judge-a":"judge-b")),
+   assert.equal(judge.id,review.candidateId+":"+(index===0?"judge-a":"judge-b"),
     "Reviewer judgment identity or order mismatch");
    assert.match(judge.responseSha256??"",/^[0-9a-f]{64}$/u,"Reviewer receipt hash required");
    assert.ok(Number.isSafeInteger(judge.responseBytes)&&judge.responseBytes>0,

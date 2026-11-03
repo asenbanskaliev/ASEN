@@ -21,7 +21,7 @@ const canonicalReview=[
  {path:"src/pricing.js",codeEvidence:"return unitPrice * quantity + discount;",acceptanceCriterion:"discounts reduce totals"},
 ];
 const review={passed:true,status:"PASS_NEGATIVE_REJECTION",provider:"ollama-cloud",model,candidateSha:sha,
- candidateId:"t12-review-test",fixtureSha256:"f".repeat(64),
+ candidateId:"t12-review-"+ "f".repeat(12),fixtureSha256:"f".repeat(64),
  changedPaths:["src/access.js","src/parse.js","src/pricing.js"],
  deterministicTests:{checks:[
   {id:"authorization",exitCode:1,failedCriterion:"viewers cannot edit documents they do not own"},
@@ -29,8 +29,8 @@ const review={passed:true,status:"PASS_NEGATIVE_REJECTION",provider:"ollama-clou
   {id:"pricing",exitCode:1,failedCriterion:"discounts reduce totals"},
  ]},toolsAllowed:false,writerAuthorized:false,authorization:"NOT_GRANTED",
  reviewer:[
- {id:"t12-review-test:judge-a",responseSha256:"c".repeat(64),responseBytes:200,grade:{passed:true,candidateSha:sha,verdict:"fail",findings:canonicalReview.map(item=>({...item}))}},
- {id:"t12-review-test:judge-b",responseSha256:"d".repeat(64),responseBytes:210,grade:{passed:true,candidateSha:sha,verdict:"fail",findings:canonicalReview.map(item=>({...item}))}}],
+ {id:"t12-review-"+ "f".repeat(12)+":judge-a",responseSha256:"c".repeat(64),responseBytes:200,grade:{passed:true,candidateSha:sha,verdict:"fail",findings:canonicalReview.map(item=>({...item}))}},
+ {id:"t12-review-"+ "f".repeat(12)+":judge-b",responseSha256:"d".repeat(64),responseBytes:210,grade:{passed:true,candidateSha:sha,verdict:"fail",findings:canonicalReview.map(item=>({...item}))}}],
  verifier:{responseSha256:"e".repeat(64),responseBytes:245,grade:{passed:true,verdict:"fail",checkCount:3,findingCount:3,authorization:"NOT_GRANTED"}}};
 const budget={limit:5,reserved:5,remaining:0,authorization:"NOT_GRANTED"};
 const receipts5=[
@@ -140,4 +140,15 @@ test("T12 historical malformed Explorer and incomplete real Verifier can never b
  assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,
   verifier:{...review.verifier,grade:{...review.verifier.grade,findingCount:2}}}}),
   /Verifier omitted reviewer defects/);
+});
+
+test("T12 final Reviewer/Verifier receipt cannot be borrowed from another frozen fixture",()=>{
+ const base=ready();
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,
+  fixtureSha256:"a".repeat(64)}}),/Reviewer candidate is not bound/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,
+  candidateId:"t12-review-"+ "a".repeat(12)}}),/Reviewer candidate is not bound/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,
+  reviewer:review.reviewer.map((judge,i)=>i===0?{...judge,id:"other-fixture:judge-a"}:judge)}}),
+  /Reviewer judgment identity or order mismatch/);
 });

@@ -282,3 +282,27 @@ test("T12 concurrent independent strict processes can claim the same first stage
  assert.deepEqual(await inspectInferenceBudget({directory}),
   {limit:5,reserved:2,remaining:3,authorization:"NOT_GRANTED"});
 });
+
+test("T12 GitHub rerun cannot replenish a strict provider-call budget after attempt one",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-rerun-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ const script=fileURLToPath(new URL("../scripts/t12-inference-budget.mjs",import.meta.url));
+ const env={...process.env,RUNNER_TEMP:directory,ASEN_MAX_INFERENCE_CALLS:"5",
+  ASEN_STRICT_INFERENCE_ORDER:"1",GITHUB_ACTIONS:"true",GITHUB_RUN_ATTEMPT:"2",
+  OLLAMA_API_KEY:"SYNTHETIC_RERUN_SECRET_NOT_TO_LOG"};
+ const rejected=spawnSync(process.execPath,[script,"asen-dispatcher-explorer"],{env,encoding:"utf8"});
+ assert.notEqual(rejected.status,0);
+ assert.match(rejected.stderr,/real-provider rerun is not authorized/);
+ assert.equal((rejected.stdout+rejected.stderr).includes("SYNTHETIC_RERUN_SECRET_NOT_TO_LOG"),false);
+ await assert.rejects(()=>inspectInferenceBudget({directory}),/ENOENT/,
+  "Second attempt cannot create even an initial inference budget");
+ const first=spawnSync(process.execPath,[script,"asen-dispatcher-explorer"],{
+  env:{...env,GITHUB_RUN_ATTEMPT:"1"},encoding:"utf8",
+ });
+ assert.equal(first.status,0,first.stderr);
+ const again=spawnSync(process.execPath,[script,"real-plan"],{env,encoding:"utf8"});
+ assert.notEqual(again.status,0);
+ assert.match(again.stderr,/real-provider rerun is not authorized/);
+ assert.deepEqual(await inspectInferenceBudget({directory}),
+  {limit:5,reserved:1,remaining:4,authorization:"NOT_GRANTED"});
+});

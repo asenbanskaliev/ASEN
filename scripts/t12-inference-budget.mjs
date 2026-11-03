@@ -49,6 +49,10 @@ export async function reserveInferenceCall(label,{limit=configuredLimit(),direct
  if(!/^[a-z0-9-]{1,48}$/i.test(label))throw new Error("Invalid inference call label");
  if(!Number.isInteger(limit)||![3,5].includes(limit))throw new Error("Invalid inference call budget");
  if(typeof strictOrder!=="boolean")throw new Error("Invalid inference stage-order policy");
+ // GitHub reruns receive a fresh temporary directory; do not let them
+ // replenish a supposedly one-time five-call allowance.
+ if(strictOrder&&process.env.GITHUB_ACTIONS==="true"&&process.env.GITHUB_RUN_ATTEMPT!=="1")
+  throw new Error("T12 real-provider rerun is not authorized to reserve another inference call");
  if(typeof directory!=="string"||!isAbsolute(directory))throw new Error("RUNNER_TEMP must be an absolute path");
  const reservations=join(directory,"asen-inference-budget");
  await mkdir(reservations,{recursive:true,mode:0o700});

@@ -186,3 +186,21 @@ test("T12 real-provider workflow pins the immutable strict stage-order mode with
  assert.match(budget,/readInferenceBudgetReceipts\(\{directory\}\)/u);
  assert.match(budget,/if\(policy\.schema===2&&item\.label!==stageLabels\(policy\.limit\)\[call-1\]\)/u);
 });
+
+test("T12 real Ollama calls remain one-shot, branch-pinned and cannot run on GitHub rerun",()=>{
+ const section=workflow.slice(workflow.indexOf("  real-provider-acceptance:"));
+ assert.match(section,/github\.ref == 'refs\/heads\/feat\/t12-integrated-acceptance-merge'/u);
+ assert.match(section,/github\.run_attempt == 1/u);
+ assert.match(section,/head_commit\.message == 'ci: one-time Ollama Cloud provider smoke'/u);
+ assert.match(section,/environment: ollama-cloud-beam/u);
+ assert.match(section,/ASEN_STRICT_INFERENCE_ORDER: '1'/u);
+ const budget=readFileSync(new URL("../scripts/t12-inference-budget.mjs",import.meta.url),"utf8");
+ assert.match(budget,/GITHUB_ACTIONS==="true"&&process\.env\.GITHUB_RUN_ATTEMPT!=="1"/u);
+ assert.match(budget,/real-provider rerun is not authorized/u);
+});
+test("T12 Reviewer candidate and both judgment IDs are derived from the same frozen fixture",()=>{
+ const gate=readFileSync(new URL("../scripts/t12-live-evidence-gate.mjs",import.meta.url),"utf8");
+ assert.match(gate,/review\.candidateId,"t12-review-"\+review\.fixtureSha256\.slice\(0,12\)/u);
+ assert.match(gate,/judge\.id,review\.candidateId\+":"\+/u);
+ assert.match(reviewVerifier,/t12-review-\$\{candidateSha256\.slice\(0,12\)\}/u);
+});
