@@ -9,7 +9,7 @@ import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
 import {TaskAgentTodoReconciler} from "../src/runtime/task-agent-reconciler.js";
 import {acceptIndependentReview,parseReviewVerdict} from "../src/runtime/review-acceptance.js";
-import {selectSkills} from "../src/skills/registry.js";
+import {selectSkills,type SkillSelectionContext} from "../src/skills/registry.js";
 
 const good=JSON.stringify({verdict:"pass",evidence:["Test passed on the scoped candidate","Reviewed the exact Git revision"]});
 async function makeFixture(t:import("node:test").TestContext,role:"reviewer"|"verifier"="reviewer",
@@ -24,7 +24,7 @@ async function makeFixture(t:import("node:test").TestContext,role:"reviewer"|"ve
  const identity={sessionId:"review-session",projectId:root},todos=await SessionTodoStore.open(join(home,"todos.json"));
  const links=new TaskAgentLinkStore(join(home,"links.json"));
  const phase=role==="reviewer"?"adversarial-review":"verify";
- const selection={phase,risk:"low" as const,codeChange:false,behaviorChange:false,filesTouched:0};
+ const selection:SkillSelectionContext={phase,risk:"low",codeChange:false,behaviorChange:false,filesTouched:0};
  const [task]=await todos.addPlan([{requestId:`asen-plan:review-${role}`,title:"Independent review",
   dependsOn:[],description:"Check only the exact frozen candidate",
   plan:{role,priority:1,skillSelection:selection,skillPaths:selectSkills(selection).map(x=>x.path),

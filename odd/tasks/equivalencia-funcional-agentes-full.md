@@ -376,3 +376,7 @@ La primera ejecución `41693250792` del SHA `af26679` rechazó TypeScript `TS234
 ### Criterio de aceptación de esta macrotanda
 
 Aceptar únicamente tras typecheck, tests unitarios y de integración del comando y del journal, suite global Windows/Ubuntu/macOS, los gates de seguridad, Release Gate y el mismo SHA en CI. Ollama Cloud omitido y R4 autoauditoría NO independiente mantienen FULL bloqueado aunque todos los tests sin proveedor estén verdes.
+
+### Ajuste TS estricto de la aceptación interactiva
+
+La primera ejecución del commit `0ec8234` rechazó `TS2322/TS2345` por inferencia amplia de `phase` en el fixture de Reviewer/Verifier. Se anota `selection: SkillSelectionContext` en el test de integración; no se modifican verificadores, permisos, journal ni límites de aceptación. Queda pendiente comprobar el siguiente CI exact-SHA.
