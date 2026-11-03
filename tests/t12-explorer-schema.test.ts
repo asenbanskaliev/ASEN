@@ -68,10 +68,13 @@ test("EF-203 all eight field types can be correct while exact value rules still 
 });
 test("EF-203 schema diagnostics expose only bounded field codes, never untrusted model text",()=>{
  const secret="SYNTHETIC_SUPPLIED_CONTENT_DO_NOT_EXPORT";
- const candidate={...response(),evidence:[secret+"\\n"],findings:[
-  {id:"pricing",path:"src/pricing.js",reason:secret+"\\u202e"}
+ const candidate={...response(),evidence:[secret+"\n"],findings:[
+  {id:"pricing",path:"src/pricing.js",reason:secret+"\u202e"}
  ]};
  const result=inspectExplorerSchema(candidate);
+ const literalEscapes={...response(),evidence:[secret+"\\\\n"]};
+ assert.equal(inspectExplorerSchema(literalEscapes).passed,true,
+  "A literal backslash+n is ordinary source data, not a terminal control");
  assert.equal(result.passed,false);
  assert.ok(Array.isArray(result.invalidFields));
  assert.ok(result.invalidFields.length<=24);

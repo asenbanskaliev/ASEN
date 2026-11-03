@@ -541,3 +541,9 @@ El primer gate sin proveedor del SHA `310b058` identificó `TS2345` en la etique
 - La aceptación exact-SHA `41722428699` / `c188bb3` no alcanzó Ollama: `offline-static-validation` se detuvo en `TS1508` (`tests/t12-explorer-schema.test.ts:78`), una clase de caracteres con un cierre `] ` que el compilador TypeScript rechaza. `real-provider-acceptance` quedó `SKIPPED`; **cero nuevas llamadas Beam**.
 - La comprobación estática del nombre de campo se sustituye por verificación explícita de longitud y caracteres de un alfabeto fijo, evitando diferencias de parseo de regex y conservando el criterio de no exponer el contenido del modelo. No se altera el schema de producción ni el gate de aceptación.
 - Nueva ejecución limitada a las cinco reservas originales, condicionada al PASS del preflight. Su resultado se evaluará por recibos del mismo SHA, no por el verde de jobs sin proveedor.
+
+### Tanda Beam R2c — fixture con controles reales frente a escapes textuales (2026-11-03)
+
+- La validación sin proveedor `41722716135` / SHA `de75844` superó TypeScript y falló únicamente en la nueva prueba `EF-203 schema diagnostics expose only bounded field codes`: esperaba rechazo de un valor que contenía barras invertidas literales seguidas de `n`/`u202e`. Estos caracteres **no son** controles Unicode; el validador hizo bien en aceptarlos.
+- Se corrige el propio fixture para usar saltos de línea y dirección Unicode reales, manteniendo un control positivo que acepta una barra invertida literal. Ni `clean()`, ni `validValues()`, ni los gates de contenido se debilitan.
+- No se produjo inferencia Beam en este SHA porque la etapa de preflight impidió `real-provider-acceptance`. Se solicita de nuevo una tanda de cinco llamadas condicionada a la aprobación previa, sin reintentar automáticamente una llamada fallida.
