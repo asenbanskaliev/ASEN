@@ -4,12 +4,15 @@ import {readFileSync} from "node:fs";
 
 const workflow=readFileSync(new URL("../.github/workflows/asen-real-agent-acceptance.yml",import.meta.url),"utf8");
 const planner=readFileSync(new URL("../scripts/t12-real-model-plan.mjs",import.meta.url),"utf8");
+const reviewVerifier=readFileSync(new URL("../scripts/t12-real-review-verifier.mjs",import.meta.url),"utf8");
+const adversarialReview=readFileSync(new URL("../skills/asen-adversarial-review/SKILL.md",import.meta.url),"utf8");
+const verificationSkill=readFileSync(new URL("../skills/asen-verify/SKILL.md",import.meta.url),"utf8");
 
 test("T12 Pi child stages resolve the npm-installed runtime from PATH",()=>{
  for(const name of [
   "Real ASEN Dispatcher explorer with Ollama Cloud (read-only)",
   "Real model planning on graded ASEN Explorer findings",
-  "Real ASEN Reviewer and Verifier reject a deliberate defect",
+  "Real ASEN Reviewer (two blind judgments) and Verifier reject deliberate defects",
  ]){
   const heading=`      - name: ${name}`;
   const start=workflow.indexOf(heading);
@@ -29,6 +32,47 @@ test("T12 Planner uses the ASEN Dispatcher with pinned no-tools provider isolati
  assert.match(planner,/providerExtension:"npm:pi-ollama-cloud@0\.13\.1"/);
  assert.match(planner,/providerCredential:"OLLAMA_API_KEY"/);
  assert.doesNotMatch(planner,/\bspawn\(/);
+});
+
+test("T12 five-call live lane spends the budget on Explorer, Planner, two blind reviewers and Verifier",()=>{
+ const smokeHeading="      - name: Bounded Ollama Cloud provider smoke";
+ const smokeStart=workflow.indexOf(smokeHeading);
+ assert.notEqual(smokeStart,-1,"Missing bounded Ollama connectivity smoke");
+ const smokeEnd=workflow.indexOf("\n      - name:",smokeStart+smokeHeading.length);
+ const smoke=workflow.slice(smokeStart,smokeEnd===-1?undefined:smokeEnd);
+ assert.match(smoke,/ASEN_MAX_INFERENCE_CALLS.*3/u,"Standalone smoke belongs only to the 3-call lane");
+ assert.ok(smoke.indexOf('if test "$ASEN_MAX_INFERENCE_CALLS" != "3"')<smoke.indexOf("node scripts/t12-inference-budget.mjs"),
+  "Five-call mode must skip, not merely relabel, the standalone smoke request");
+
+ assert.match(reviewVerifier,/for\s*\(const judge of \["judge-a","judge-b"\]\)/u,
+  "The ASEN adversarial-review stage requires two separate blind judgments");
+ assert.match(reviewVerifier,/reserveInferenceCall/u);
+ assert.match(reviewVerifier,/noTools:true/u);
+ assert.match(reviewVerifier,/gradeRealReview/u);
+ assert.match(reviewVerifier,/gradeRealVerification/u);
+ assert.match(reviewVerifier,/candidateSha/u);
+ assert.match(workflow,/Real ASEN Reviewer \(two blind judgments\) and Verifier reject deliberate defects[\s\S]{0,160}if: env\.ASEN_MAX_INFERENCE_CALLS == '5'/u);
+ assert.match(workflow,/"retry":\{"enabled":false,"maxRetries":0,"provider":\{"maxRetries":0\}\}/u,
+  "Pi internal agent and provider retries must be disabled to honor the inference-call cap");
+ const setupHeading="      - name: Install pinned Ollama Cloud provider extension";
+ const setupStart=workflow.indexOf(setupHeading);
+ assert.notEqual(setupStart,-1,"Missing pinned provider setup stage");
+ const setupEnd=workflow.indexOf("\n      - name:",setupStart+setupHeading.length);
+ const setup=workflow.slice(setupStart,setupEnd===-1?undefined:setupEnd);
+ const evidenceDirectoryIndex=setup.indexOf("mkdir -p asen-acceptance-evidence");
+ const copyIndex=setup.indexOf('cp "$PI_CODING_AGENT_DIR/settings.json"');
+ assert.notEqual(evidenceDirectoryIndex,-1,"Missing provider evidence directory creation");
+ assert.notEqual(copyIndex,-1,"Missing isolated Pi retry settings evidence");
+ assert.ok(evidenceDirectoryIndex<copyIndex,
+  "Provider retry evidence must be copied only after creating the evidence directory");
+ assert.match(adversarialReview,/one blind judge/u,
+  "Each dispatched reviewer must perform only its assigned judgment");
+ assert.match(adversarialReview,/tools are unavailable/u,
+  "Complete frozen evidence must not trigger a tool request");
+ assert.match(verificationSkill,/already supplied by the caller/u,
+  "The verifier must consume fresh supplied execution evidence without requesting tools");
+ assert.match(verificationSkill,/report non-compliant/u,
+  "Missing execution evidence must remain a failure");
 });
 
 test("T12 provider-free acceptance runs the existing interruption, recovery, timeout and quota suites",()=>{

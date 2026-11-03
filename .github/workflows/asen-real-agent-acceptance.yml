@@ -148,6 +148,10 @@ jobs:
           mkdir -p "$PI_CODING_AGENT_DIR"
           test -n "$OLLAMA_API_KEY" || { echo "::error::OLLAMA_API_KEY missing"; exit 1; }
           node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+          mkdir -p asen-acceptance-evidence
+          printf '%s\n' '{"retry":{"enabled":false,"maxRetries":0,"provider":{"maxRetries":0}}}' > "$PI_CODING_AGENT_DIR/settings.json"
+          cp "$PI_CODING_AGENT_DIR/settings.json" asen-acceptance-evidence/pi-retry-settings.json
+          node --input-type=module -e 'import {readFileSync} from "node:fs";const value=JSON.parse(readFileSync(process.env.PI_CODING_AGENT_DIR+"/settings.json","utf8"));if(value.retry?.enabled!==false||value.retry?.maxRetries!==0||value.retry?.provider?.maxRetries!==0)process.exit(1)'
           PI_OLLAMA_WEB_TOOLS=0 node_modules/.bin/pi --list-models > "$RUNNER_TEMP/asen-ollama-models.txt"
           mkdir -p asen-acceptance-evidence
           # Pi lists provider and model in columns. Capture only IDs; never persist credentials.
@@ -168,6 +172,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if test "$ASEN_MAX_INFERENCE_CALLS" != "3"; then
+            echo "Skipping standalone smoke so the five-call budget covers Explorer, Planner, two blind reviewers and Verifier."
+            exit 0
+          fi
           test -n "${ASEN_OLLAMA_API_KEY}" || { echo "::error::OLLAMA_API_KEY is not configured"; exit 1; }
           if ! test -f node_modules/.bin/pi; then echo "::error::No Pi runtime is available in the installed dependencies"; exit 1; fi
           node scripts/t12-inference-budget.mjs provider-connectivity
@@ -210,7 +218,7 @@ jobs:
           export PI_OLLAMA_WEB_TOOLS=0
           export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
           node scripts/t12-real-model-plan.mjs
-      - name: Real ASEN Reviewer and Verifier reject a deliberate defect
+      - name: Real ASEN Reviewer (two blind judgments) and Verifier reject deliberate defects
         shell: bash
         if: env.ASEN_MAX_INFERENCE_CALLS == '5'
         env:
@@ -235,7 +243,7 @@ jobs:
         run: |
           set -euo pipefail
           if test "$ASEN_MAX_INFERENCE_CALLS" = "5"; then
-            printf '%s\n' 'PASS: authenticated Ollama Cloud Explorer, Planner, Reviewer and Verifier ran through the documented read-only acceptance stages.' 'BLOCKED_INTERACTIVE: Writer requires Pi one-time approval; no authorization was simulated.' 'DEFERRED: provider-backed restart, quota exhaustion and timeout recovery remain unverified.' > asen-acceptance-evidence/real-provider-status.txt
+            printf '%s\n' 'PASS: authenticated Ollama Cloud Explorer, Planner, two separate blind Reviewer judgments and Verifier ran through the bounded read-only acceptance stages.' 'LIMITATION: both Reviewer judgments use the same selected provider and model; they are not independent external review.' 'BLOCKED_INTERACTIVE: Writer requires Pi one-time approval; no authorization was simulated.' 'DEFERRED: provider-backed restart, quota exhaustion and timeout recovery remain unverified.' > asen-acceptance-evidence/real-provider-status.txt
           else
             printf '%s\n' 'PARTIAL: authenticated Ollama Cloud Explorer and Planner ran within the selected 3-call limit.' 'BLOCKED_CALL_BUDGET: Reviewer and Verifier were not run; SKIPPED is not PASS.' 'BLOCKED_INTERACTIVE: Writer requires Pi one-time approval; no authorization was simulated.' 'DEFERRED: provider-backed restart, quota exhaustion and timeout recovery remain unverified.' > asen-acceptance-evidence/real-provider-status.txt
           fi

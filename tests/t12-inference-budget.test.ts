@@ -17,6 +17,15 @@ test("T12 inference budget reserves bounded child calls exactly once",async t=>{
  assert.deepEqual(reservations.map(value=>JSON.parse(value).call),[1,2,3]);
 });
 
+test("T12 five-call budget covers Explorer, Planner, two blind reviewers and Verifier",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-budget-five-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ const labels=["explorer","plan","reviewer-judge-a","reviewer-judge-b","verifier"];
+ for(const [index,label] of labels.entries())
+  assert.deepEqual(await reserveInferenceCall(label,{limit:5,directory}),{call:index+1,limit:5});
+ await assert.rejects(()=>reserveInferenceCall("unexpected-retry",{limit:5,directory}),/budget exhausted/);
+});
+
 test("T12 inference budget rejects invalid labels, limits and non-absolute roots",async()=>{
  await assert.rejects(()=>reserveInferenceCall("../credential",{limit:3,directory:tmpdir()}),/label/);
  await assert.rejects(()=>reserveInferenceCall("invalid-limit",{limit:6,directory:tmpdir()}),/budget/);
