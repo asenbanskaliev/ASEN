@@ -13,7 +13,7 @@ const expectedDefects=Object.freeze({
 const expectedIds=Object.keys(expectedDefects);
 const expectedPaths=Object.values(expectedDefects).map(item=>item.path).sort();
 const exactDefectSet=(items,label)=>{
- assert.deepEqual(items,expectedIds,label+" must bind exactly the original three defects");
+ assert.deepEqual(items,expectedIds,label+" must include exactly three known defects (no duplicates, omissions or substitutions)");
 };
 
 export function gradeLiveAcceptanceEvidence({sha,model,maxCalls,budget,receipts,explorer,planner,review}){
