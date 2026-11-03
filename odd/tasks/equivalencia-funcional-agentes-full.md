@@ -161,7 +161,7 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 
 - [x] EF-301 Handoff exacto: task, requisitos, habilidades, pruebas y archivos permitidos. **VERIFICADO:** `src/runtime/plan-dispatcher.ts` + `tests/writer-authorization-snapshot.test.ts` · CI `41689422912` / SHA `07f9793517f8d6a57b3d67cc21b589be8002abb1`.
 - [ ] EF-302 Pruebas RED/GREEN/PRESERVE, correcciones acotadas y retorno estructurado. **PARCIAL:** RED/GREEN/PRESERVE sin ciclo Writer real integral.
-- [ ] EF-303 Paralelismo seguro disjunto y rechazo de ámbitos superpuestos. **PARCIAL:** Falta paralelismo genuino de Writers disjuntos y rechazo solapado.
+- [ ] EF-303 Paralelismo seguro disjunto y rechazo de ámbitos superpuestos. **PARCIAL:** Comprobación previa de worktrees y ámbitos disjuntos, con dos leases reales aislados bajo prueba; faltan consentimiento Writer real por carril, ejecución paralela de agentes con permisos independientes y reconciliación segura.
 - [ ] EF-304 Probar write real Pi con consentimiento genuino, revocación y resultado exacto. **BLOQUEADO:** Falta Writer Pi real con autorización interactiva y revocación.
 - **Gate:** C06–C08, C17, C19.
 
@@ -485,3 +485,10 @@ El primer gate sin proveedor del SHA `310b058` identificó `TS2345` en la etique
 - **Regresiones:** test de dos arranques concurrentes de Explorer con distintos IDs pero alcance exacto (un único `running`) y de dos instrucciones diferentes (dos lanzamientos independientes). El bloqueo queda dentro del candado de proyecto; su efecto no depende de una carrera de lectura fuera del candado.
 - **CI exact-SHA `f589fd7`:** las tres matrices Pi encontraron un fixture de `tests/ecosystem-evidence-bundle.test.ts` que declaraba 16 herramientas. Se actualiza a 17 (incluida `asen_agent_ack`) sin relajar `admitPackageJourneyResult`; el gate sigue rechazando recibos antiguos o incompletos. Los fallos de subida de artefactos eran consecuencia de no haber generado evidencias al fallar la fase semántica.
 - **FULL:** continúa pendiente. No marcar EF-603 hasta CI exact-SHA y resto de roles. EF-701 y EF-702 necesitan capturas externas/modelos reales y EF-304 autorización genuina.
+
+### Tanda de implementación EF-303 — worktrees aislados y límites de autoridad (2026-11-03)
+
+- **Readiness real, no autorización:** nuevo `src/runtime/parallel-writer-readiness.ts`. Antes de aceptar dos carriles, comprueba que corresponden a dos worktrees Git distintos con índices independientes del mismo repositorio, mismo HEAD congelado, estado limpio y superficies exactas sin solapamiento, aliases de ruta ni enlaces simbólicos en el ámbito. Si el mismo archivo o una carpeta ancestro se comparte, falla cerrado. Devuelve explícitamente `READINESS_ONLY`, `humanApproval:false` e `integrationApproved:false`.
+- **Prueba de Git y disco:** `tests/parallel-writer-readiness.test.ts` crea worktrees Git vinculados reales con un mismo commit; obtiene simultáneamente dos leases de Writer existentes con distintas autorizaciones, escribe únicamente en sus respectivos archivos y confirma que el otro worktree y el checkout base no cambian. Añade casos de solapamiento exacto, ruta padre, worktree compartido, SHA obsoleto, árbol sucio, otro repositorio, scope malformado y enlace simbólico (POSIX).
+- **Sin escalada:** la prueba utiliza autorizaciones de fixture, no la UI Pi; no se habilita ningún merge, cambio automático de rama, permisos heredados ni publicación de resultados. La decisión previa es sensible al tiempo y el Writer debe volver a verificar candidata, ruta y autorización al ejecutar.
+- **Salida abierta:** completar la integración de dos agentes reales, consentimiento interactivo separado por carril, pruebas RED/GREEN/PRESERVE, revisión y aceptación explícita de cada resultado y de su reconciliación. La referencia A/B C06 y C07 aún no tiene recibos reales; EF-303 y FULL siguen abiertos.
