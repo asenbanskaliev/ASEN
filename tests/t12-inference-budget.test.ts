@@ -31,6 +31,7 @@ test("T12 five-call budget covers Explorer, Planner, two blind reviewers and Ver
 test("T12 inference budget rejects invalid labels, limits and non-absolute roots",async()=>{
  await assert.rejects(()=>reserveInferenceCall("../credential",{limit:3,directory:tmpdir()}),/label/);
  await assert.rejects(()=>reserveInferenceCall("invalid-limit",{limit:6,directory:tmpdir()}),/budget/);
+ await assert.rejects(()=>reserveInferenceCall("invalid-four",{limit:4,directory:tmpdir()}),/budget/);
  await assert.rejects(()=>reserveInferenceCall("relative-root",{limit:3,directory:"relative"}),/absolute/);
 });
 
@@ -193,4 +194,91 @@ test("T12 many independent Pi-stage processes race for five calls and cannot exc
  assert.deepEqual(await inspectInferenceBudget({directory}),
   {limit:5,reserved:5,remaining:0,authorization:"NOT_GRANTED"});
  await assert.rejects(()=>reserveInferenceCall("post-race",{directory,limit:5}),/budget exhausted/);
+});
+
+
+test("T12 strict five-call stages cannot skip, replay or impersonate earlier model calls",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-strict-five-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ const reserve=(label:string)=>reserveInferenceCall(label,{limit:5,directory,strictOrder:true});
+ await assert.rejects(()=>reserve("real-plan"),/duplicated or out of order/);
+ await assert.rejects(()=>reserve("provider-connectivity"),/unapproved inference stage label/);
+ assert.deepEqual(await inspectInferenceBudget({directory}),{
+  limit:5,reserved:0,remaining:5,authorization:"NOT_GRANTED",
+ });
+ const labels=["asen-dispatcher-explorer","real-plan","real-judge-a","real-judge-b","real-verifier"];
+ for(const [index,label] of labels.entries()){
+  assert.deepEqual(await reserve(label),{call:index+1,limit:5});
+  await assert.rejects(()=>reserve(label),/duplicated or out of order/);
+  if(index+1<labels.length)await assert.rejects(()=>reserve(labels[index+1+1]??"unapproved"),/duplicated or out of order|unapproved/);
+ }
+ assert.deepEqual(JSON.parse(await readFile(join(directory,"asen-inference-budget","limit.json"),"utf8")),
+  {schema:2,limit:5,strict:true});
+ assert.deepEqual((await readInferenceBudgetReceipts({directory})).map((item:{label:string})=>item.label),labels);
+ await assert.rejects(()=>reserve("real-verifier"),/duplicated or out of order/);
+ await assert.rejects(()=>reserveInferenceCall("sixth",{limit:5,directory,strictOrder:false}),/stage-order policy/);
+});
+
+test("T12 strict three-call mode preserves connectivity then Explorer then Planner order",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-strict-three-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ const reserve=(label:string)=>reserveInferenceCall(label,{limit:3,directory,strictOrder:true});
+ await assert.rejects(()=>reserve("asen-dispatcher-explorer"),/out of order/);
+ assert.deepEqual(await reserve("provider-connectivity"),{call:1,limit:3});
+ await assert.rejects(()=>reserve("real-plan"),/out of order/);
+ assert.deepEqual(await reserve("asen-dispatcher-explorer"),{call:2,limit:3});
+ assert.deepEqual(await reserve("real-plan"),{call:3,limit:3});
+ assert.deepEqual((await readInferenceBudgetReceipts({directory})).map((row:{label:string})=>row.label),
+  ["provider-connectivity","asen-dispatcher-explorer","real-plan"]);
+ await assert.rejects(()=>reserve("real-judge-a"),/unapproved inference stage label/);
+});
+
+test("T12 a corrupted or interrupted strict claim blocks the next inference stage",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-strict-corrupt-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ await reserveInferenceCall("asen-dispatcher-explorer",{limit:5,directory,strictOrder:true});
+ const folder=join(directory,"asen-inference-budget");
+ await unlink(join(folder,"1.json"));
+ await assert.rejects(()=>reserveInferenceCall("real-plan",{limit:5,directory,strictOrder:true}),
+  /gap or incomplete receipt/);
+ await assert.rejects(()=>inspectInferenceBudget({directory}),/gap or incomplete receipt/);
+});
+
+test("T12 stage-order policy is immutable even if a process changes its environment",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-mode-drift-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ await reserveInferenceCall("asan-test",{limit:3,directory,strictOrder:false});
+ await assert.rejects(()=>reserveInferenceCall("asen-dispatcher-explorer",{limit:3,directory,strictOrder:true}),
+  /stage-order policy cannot change/);
+ await assert.rejects(()=>reserveInferenceCall("asana",{limit:5,directory,strictOrder:false}),
+  /budget cannot change/);
+});
+
+test("T12 concurrent independent strict processes can claim the same first stage only once",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-strict-race-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ const script=fileURLToPath(new URL("../scripts/t12-inference-budget.mjs",import.meta.url));
+ const env={...process.env,ASEN_MAX_INFERENCE_CALLS:"5",RUNNER_TEMP:directory,
+  ASEN_STRICT_INFERENCE_ORDER:"1",OLLAMA_API_KEY:"STRICT_SYNTHETIC_SECRET_DO_NOT_LOG"};
+ const attempts=Array.from({length:4},()=>new Promise<{code:number|null;message:string}>(resolve=>{
+  const child=spawn(process.execPath,[script,"asen-dispatcher-explorer"],{env,windowsHide:true,stdio:["ignore","pipe","pipe"]});
+  let message="";
+  child.stdout?.on("data",(data:Buffer)=>{message+=data.toString("utf8").slice(0,800);});
+  child.stderr?.on("data",(data:Buffer)=>{message+=data.toString("utf8").slice(0,800);});
+  child.once("error",err=>resolve({code:-1,message:err.name}));
+  child.once("close",code=>resolve({code,message}));
+ }));
+ const results=await Promise.all(attempts);
+ assert.equal(results.filter(item=>item.code===0).length,1,JSON.stringify(results));
+ assert.equal(results.filter(item=>item.code!==0).length,3,JSON.stringify(results));
+ assert.equal(results.some(item=>item.message.includes("STRICT_SYNTHETIC_SECRET_DO_NOT_LOG")),false);
+ assert.deepEqual((await readInferenceBudgetReceipts({directory})).map((row:{label:string})=>row.label),
+  ["asen-dispatcher-explorer"]);
+ const next=spawnSync(process.execPath,[script,"real-plan"],{env,encoding:"utf8"});
+ assert.equal(next.status,0,next.stderr);
+ const replay=spawnSync(process.execPath,[script,"asen-dispatcher-explorer"],{env,encoding:"utf8"});
+ assert.notEqual(replay.status,0);
+ assert.match(replay.stderr,/duplicated or out of order/);
+ assert.deepEqual(await inspectInferenceBudget({directory}),
+  {limit:5,reserved:2,remaining:3,authorization:"NOT_GRANTED"});
 });

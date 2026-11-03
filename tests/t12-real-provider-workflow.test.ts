@@ -171,3 +171,18 @@ test("T12 provider evidence verifies ordered inference receipts before reporting
  assert.match(budget,/export async function readInferenceBudgetReceipts/u);
  assert.match(workflow,/tests\/t12-live-evidence-gate\.test\.ts/u);
 });
+
+test("T12 real-provider workflow pins the immutable strict stage-order mode without enabling Ollama by default",()=>{
+ const budget=readFileSync(new URL("../scripts/t12-inference-budget.mjs",import.meta.url),"utf8");
+ const start=workflow.indexOf("  real-provider-acceptance:");
+ assert.ok(start>=0,"Missing real provider job");
+ const job=workflow.slice(start);
+ assert.match(job,/ASEN_STRICT_INFERENCE_ORDER: '1'/u);
+ assert.match(job,/ASEN_MAX_INFERENCE_CALLS:/u);
+ assert.match(job,/head_commit\.message == 'ci: one-time Ollama Cloud provider smoke'/u);
+ assert.match(budget,/stage-order policy cannot change within one run/u);
+ assert.match(budget,/duplicated or out of order/u);
+ assert.match(budget,/unapproved inference stage label/u);
+ assert.match(budget,/readInferenceBudgetReceipts\(\{directory\}\)/u);
+ assert.match(budget,/if\(policy\.schema===2&&item\.label!==stageLabels\(policy\.limit\)\[call-1\]\)/u);
+});

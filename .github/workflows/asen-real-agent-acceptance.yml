@@ -127,6 +127,7 @@ jobs:
     env:
       ASEN_PROVIDER: ollama-cloud
       ASEN_MODEL: beam:cloud
+      ASEN_STRICT_INFERENCE_ORDER: '1'
       ASEN_MAX_INFERENCE_CALLS: ${{ inputs.max-inference-calls || '5' }}
       ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
     steps:

@@ -3,6 +3,12 @@ import {randomUUID} from "node:crypto";
 import {isAbsolute,join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 
+const boundedStages=Object.freeze({
+ 3:Object.freeze(["provider-connectivity","asen-dispatcher-explorer","real-plan"]),
+ 5:Object.freeze(["asen-dispatcher-explorer","real-plan","real-judge-a","real-judge-b","real-verifier"]),
+});
+const stageLabels=limit=>boundedStages[limit];
+const exactKeys=(object,keys)=>Object.keys(object).sort().join(",")===keys.slice().sort().join(",");
 function configuredLimit(value=process.env.ASEN_MAX_INFERENCE_CALLS){
  if(value!=="3"&&value!=="5")throw new Error("ASEN_MAX_INFERENCE_CALLS must be 3 or 5");
  return Number(value);
@@ -11,12 +17,12 @@ function configuredLimit(value=process.env.ASEN_MAX_INFERENCE_CALLS){
 /** Lock the provider-call ceiling across separate Pi processes before spending it.
  * A hard link atomically publishes fully written policy bytes, without a read/write race.
  */
-async function assertBudgetPolicy(reservations,limit){
+async function assertBudgetPolicy(reservations,limit,strictOrder){
  const root=await lstat(reservations);
  if(!root.isDirectory()||root.isSymbolicLink())throw new Error("T12 inference budget directory must be a real directory");
  const policy=join(reservations,"limit.json");
  const temporary=join(reservations,".limit-"+randomUUID()+".tmp");
- await writeFile(temporary,JSON.stringify({schema:1,limit})+"\n",{flag:"wx",mode:0o600});
+ await writeFile(temporary,JSON.stringify(strictOrder?{schema:2,limit,strict:true}:{schema:1,limit})+"\n",{flag:"wx",mode:0o600});
  try{
   try{await link(temporary,policy);}
   catch(error){
@@ -28,21 +34,35 @@ async function assertBudgetPolicy(reservations,limit){
  let recorded;
  try{recorded=JSON.parse(await readFile(policy,"utf8"));}
  catch{throw new Error("T12 inference budget policy is malformed");}
- if(!recorded||typeof recorded!=="object"||Array.isArray(recorded)||recorded.schema!==1||
-    !Number.isInteger(recorded.limit)||recorded.limit<1||recorded.limit>5||
-    Object.keys(recorded).sort().join(",")!=="limit,schema")
+ if(!recorded||typeof recorded!=="object"||Array.isArray(recorded)||
+    ![3,5].includes(recorded.limit)||
+    !(recorded.schema===1&&exactKeys(recorded,["limit","schema"])||
+      recorded.schema===2&&recorded.strict===true&&exactKeys(recorded,["limit","schema","strict"])))
   throw new Error("T12 inference budget policy is malformed");
  if(recorded.limit!==limit)throw new Error("T12 inference call budget cannot change within one run");
+ if((recorded.schema===2)!==strictOrder)
+  throw new Error("T12 inference stage-order policy cannot change within one run");
 }
 
-export async function reserveInferenceCall(label,{limit=configuredLimit(),directory=process.env.RUNNER_TEMP}={}){
+export async function reserveInferenceCall(label,{limit=configuredLimit(),directory=process.env.RUNNER_TEMP,
+ strictOrder=process.env.ASEN_STRICT_INFERENCE_ORDER==="1"}={}){
  if(!/^[a-z0-9-]{1,48}$/i.test(label))throw new Error("Invalid inference call label");
- if(!Number.isInteger(limit)||limit<1||limit>5)throw new Error("Invalid inference call budget");
+ if(!Number.isInteger(limit)||![3,5].includes(limit))throw new Error("Invalid inference call budget");
+ if(typeof strictOrder!=="boolean")throw new Error("Invalid inference stage-order policy");
  if(typeof directory!=="string"||!isAbsolute(directory))throw new Error("RUNNER_TEMP must be an absolute path");
  const reservations=join(directory,"asen-inference-budget");
  await mkdir(reservations,{recursive:true,mode:0o700});
- await assertBudgetPolicy(reservations,limit);
- for(let call=1;call<=limit;call++){
+ await assertBudgetPolicy(reservations,limit,strictOrder);
+ let onlySlot;
+ if(strictOrder){
+  const target=stageLabels(limit).indexOf(label);
+  if(target<0)throw new Error("T12 unapproved inference stage label");
+  // A failed or interrupted prior stage is never silently skipped or retried.
+  const previous=await readInferenceBudgetReceipts({directory});
+  if(previous.length!==target)throw new Error("T12 inference stage is duplicated or out of order");
+  onlySlot=target+1;
+ }
+ for(const call of strictOrder?[onlySlot]:Array.from({length:limit},(_,index)=>index+1)){
   // Claim first: a crash between claim and receipt burns this slot.
   // This prevents a restarted process from replaying an issued inference.
   const temporary=join(reservations,".slot-"+call+"-"+randomUUID()+".tmp");
@@ -51,7 +71,10 @@ export async function reserveInferenceCall(label,{limit=configuredLimit(),direct
   try{
    try{await link(temporary,join(reservations,call+".claim"));}
    catch(error){
-    if(error&&typeof error==="object"&&"code" in error&&error.code==="EEXIST")continue;
+    if(error&&typeof error==="object"&&"code" in error&&error.code==="EEXIST"){
+     if(strictOrder)throw new Error("T12 inference stage already claimed");
+     continue;
+    }
     throw error;
    }
    // Independent inodes preserve evidence if a receipt is later overwritten.
@@ -84,8 +107,9 @@ export async function inspectInferenceBudget({directory=process.env.RUNNER_TEMP}
  try{policy=JSON.parse(await readFile(policyFile,"utf8"));}
  catch{throw new Error("T12 inference budget policy is malformed");}
  if(!policy||typeof policy!=="object"||Array.isArray(policy)||
-    Object.keys(policy).sort().join(",")!=="limit,schema"||
-    policy.schema!==1||![3,5].includes(policy.limit))
+    ![3,5].includes(policy.limit)||
+    !(policy.schema===1&&exactKeys(policy,["limit","schema"])||
+      policy.schema===2&&policy.strict===true&&exactKeys(policy,["limit","schema","strict"])))
   throw new Error("T12 inference budget policy is malformed");
  const names=await readdir(folder);
  let reserved=0,missingEarlierSlot=false;
@@ -113,6 +137,8 @@ export async function inspectInferenceBudget({directory=process.env.RUNNER_TEMP}
      typeof item.label!=="string"||!/^[a-z0-9-]{1,48}$/i.test(item.label)||
      JSON.stringify(proof)!==JSON.stringify(item))
    throw new Error("T12 inference reservation is malformed");
+  if(policy.schema===2&&item.label!==stageLabels(policy.limit)[call-1])
+   throw new Error("T12 inference stage-order receipt is invalid");
   reserved++;
  }
  if(names.some(name=>/^[0-9]+\.(?:json|claim)$/.test(name)&&
