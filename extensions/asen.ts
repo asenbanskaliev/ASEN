@@ -60,6 +60,7 @@ import {ASEN_PLAN_REQUEST_TOOL,registerAsenPlanRequestTool} from "../src/runtime
 import {formatActivePlanContext} from "../src/runtime/plan-context.js";
 import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-policy.js";
 import {agentTerminalDeliveryOptions,agentTerminalContinuationMessage} from "../src/runtime/agent-terminal-delivery.js";
+import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
 import {ExplorerBudgetTelemetry} from "../src/runtime/explorer-budget.js";
 import {BackgroundJobRegistry,backgroundJobTerminalNotification,pendingBackgroundJobNotifications,type BackgroundJobExecutor,type BackgroundJobSnapshot} from "../src/runtime/background-jobs.js";
 import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
@@ -190,7 +191,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let explorerBudget:Readonly<{sessionId:string;projectId:string;telemetry:ExplorerBudgetTelemetry}>|undefined;
   let unsubscribeAgentDelivery:(()=>void)|undefined;
   const agentDeliveryTasks=new Set<Promise<void>>();
-  const deliveredAgentResultIds=new Set<string>();
+  const agentNoticeJournal=new AgentNotificationJournal(path.join(home(),".asen","agent-notices.json"));
   let selectionGeneration=0,unsubscribeChildSelection:(()=>void)|undefined;
   let selectionOwner:Readonly<{generation:number;context:CommandContext;manager:CommandContext["sessionManager"];sessionId:string|undefined;cwd:string}>|undefined;
   const invalidateChildSelection=()=>{
@@ -351,32 +352,104 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       })().catch(()=>{/* Optional UI failures cannot alter task execution or authority. */});
      });}catch{/* A custom runner without working observation retains execution support. */}
     }
+    const sendAgentNotice=async(record:PublicAgentRecord,context:CommandContext,wake:boolean):Promise<boolean>=>{
+     const scope={sessionId:record.sessionId,projectId:record.projectId};
+     if(!pi.sendMessage||context.sessionManager?.getSessionId?.()!==scope.sessionId)return false;
+     const matches=async()=>{
+      const active=agentDeliveryIdentity;
+      if(!active||agentDeliveryContext!==context||active.sessionId!==scope.sessionId||active.projectId!==scope.projectId)return false;
+      const current=await sessionIdentity(context);
+      return agentDeliveryIdentity===active&&agentDeliveryContext===context&&current.sessionId===scope.sessionId&&
+       current.projectId===scope.projectId&&context.sessionManager?.getSessionId?.()===scope.sessionId;
+     };
+     if(!await matches())return false;
+     const row=await agentNoticeJournal.record(record);
+     if(!await matches())return false;
+     if(!await agentNoticeJournal.claim(row.eventId,scope))return false;
+     // Cross-process claim preceded transport. An interrupted attempt is uncertain, not retryable.
+     if(!await matches())return false;
+     try{
+      pi.sendMessage({
+       customType:"asen.agent.result",
+       content:agentTerminalContinuationMessage({id:record.id,role:record.role,state:record.state,summary:untrustedAgentText(record.summary)}),
+       display:true,
+       details:{eventId:row.eventId,sessionId:scope.sessionId,projectId:scope.projectId,agentId:record.id,
+        role:record.role,state:record.state,trusted:false,deliveryState:"enqueued",deliveryConfirmed:false},
+      },wake?agentTerminalDeliveryOptions(context,scope):{triggerTurn:false});
+     }catch{
+      context.ui.notify("ASEN no puede confirmar la entrega del aviso. El resultado permanece guardado en asen-agents y no se reenviará sin revisión.","error");
+      return false;
+     }
+     try{await agentNoticeJournal.markEnqueued(row.eventId,scope);}
+     catch{context.ui.notify("ASEN envió el aviso, pero su registro duradero es incierto. Consulta asen-agents.","error");return false;}
+     return true;
+    };
     if(!unsubscribeAgentDelivery)unsubscribeAgentDelivery=runtime.subscribeTerminal(record=>{
-     const current=agentDeliveryContext,active=agentDeliveryIdentity;if(!current||!active||record.sessionId!==active.sessionId||record.projectId!==active.projectId||current.sessionManager?.getSessionId?.()!==active.sessionId)return;
-     const roleLabels:Record<string,string>={primary:"la tarea",explorer:"la exploración",worker:"el cambio",reviewer:"la revisión",verifier:"la verificación",clarifier:"la aclaración"};
-     const completed=record.state==="completed",failed=record.state==="failed",notifyTerminal=(wake=true,quiet=false)=>{const latest=agentDeliveryContext,latestIdentity=agentDeliveryIdentity;if(!latest||!latestIdentity||record.sessionId!==latestIdentity.sessionId||record.projectId!==latestIdentity.projectId||latest.sessionManager?.getSessionId?.()!==latestIdentity.sessionId)return;if(!quiet)latest.ui.notify(completed?`ASEN terminó ${roleLabels[record.role]??"una tarea"}; comprobará el resultado antes de cerrar el plan.`:failed?`ASEN no pudo completar ${roleLabels[record.role]??"una tarea"}. Si quieres reintentarlo, di «continúa» y revisaré el estado primero.`:`ASEN pausó ${roleLabels[record.role]??"una tarea"}. Di «continúa» cuando quieras que revise cómo retomarla.`,completed?"info":"error");notificationProjection.publish({sessionId:record.sessionId,projectId:record.projectId},latest.ui,"agent",`asen:agent:${record.id}:${record.state}`,`Agent ${record.role}: ${record.state}`);const summary=untrustedAgentText(record.summary),eventId=`asen:agent:${record.id}:${record.state}`;if(pi.sendMessage&&!deliveredAgentResultIds.has(eventId)){deliveredAgentResultIds.add(eventId);while(deliveredAgentResultIds.size>2_000)deliveredAgentResultIds.delete(deliveredAgentResultIds.values().next().value!);try{pi.sendMessage({customType:"asen.agent.result",content:agentTerminalContinuationMessage({id:record.id,role:record.role,state:record.state,summary}),display:true,details:{eventId,sessionId:record.sessionId,projectId:record.projectId,agentId:record.id,role:record.role,state:record.state,trusted:false,deliveryState:"enqueued",deliveryConfirmed:false}},wake?agentTerminalDeliveryOptions(latest,{sessionId:record.sessionId,projectId:record.projectId}):{triggerTurn:false});}catch{deliveredAgentResultIds.delete(eventId);try{latest.ui.notify("ASEN no pudo encolar el resultado del agente; sigue disponible en asen-agents.","info");}catch{/* Delivery diagnostics cannot change execution state. */}}}};
-     if(todoStorePromise&&taskAgentLinks){
-      const delivery=Promise.all([todoStorePromise,agentRuntimePromise]).then(async([store,agents])=>{
-       const identity={sessionId:record.sessionId,projectId:record.projectId},linked=(await taskAgentLinks.list(identity)).some(link=>link.agentId===record.id);
-       if(!linked){notifyTerminal();return;}
+     const delivery=(async()=>{
+      // Preserve an evidence row even if the original session is no longer active.
+      await agentNoticeJournal.record(record);
+      const current=agentDeliveryContext,active=agentDeliveryIdentity;
+      if(!current||!active||record.sessionId!==active.sessionId||record.projectId!==active.projectId||
+         current.sessionManager?.getSessionId?.()!==active.sessionId)return;
+      const labels:Record<string,string>={primary:"la tarea",explorer:"la exploración",worker:"el cambio",reviewer:"la revisión",verifier:"la verificación",clarifier:"la aclaración"};
+      const completed=record.state==="completed",failed=record.state==="failed";
+      const notifyTerminal=async(wake=true,quiet=false)=>{
+       const latest=agentDeliveryContext,owner=agentDeliveryIdentity;
+       if(!latest||!owner||record.sessionId!==owner.sessionId||record.projectId!==owner.projectId||
+          latest.sessionManager?.getSessionId?.()!==owner.sessionId)return;
+       // The Pi message is queued before visible completion so tests and UI see a consistent transition.
+       await sendAgentNotice(record,latest,wake);
+       if(!quiet)latest.ui.notify(completed?`ASEN terminó ${labels[record.role]??"una tarea"}; comprobará el resultado antes de cerrar el plan.`:failed?`ASEN no pudo completar ${labels[record.role]??"una tarea"}. Si quieres reintentarlo, di «continúa» y revisaré el estado primero.`:`ASEN pausó ${labels[record.role]??"una tarea"}. Di «continúa» cuando quieras que revise cómo retomarla.`,completed?"info":"error");
+       notificationProjection.publish({sessionId:record.sessionId,projectId:record.projectId},latest.ui,"agent",
+        `asen:agent:${record.id}:${record.state}`,`Agent ${record.role}: ${record.state}`);
+      };
+      if(todoStorePromise&&taskAgentLinks){
+       const [store,agents]=await Promise.all([todoStorePromise,agentRuntimePromise]);
+       const owner={sessionId:record.sessionId,projectId:record.projectId};
+       const linked=(await taskAgentLinks.list(owner)).some(link=>link.agentId===record.id);
+       if(!linked){await notifyTerminal();return;}
        if(record.state!=="completed"){
-        notifyTerminal();await new TaskAgentTodoReconciler(store,agents!,taskAgentLinks).reconcile(identity);
-        const latest=agentDeliveryContext,currentIdentity=agentDeliveryIdentity;
-        if(latest&&currentIdentity&&record.sessionId===currentIdentity.sessionId&&record.projectId===currentIdentity.projectId)await refreshTodoWidget(latest);
+        await notifyTerminal();
+        await new TaskAgentTodoReconciler(store,agents!,taskAgentLinks).reconcile(owner);
+        const latest=agentDeliveryContext,identity=agentDeliveryIdentity;
+        if(latest&&identity&&owner.sessionId===identity.sessionId&&owner.projectId===identity.projectId)
+         await refreshTodoWidget(latest);
         return;
        }
-       await new TaskAgentTodoReconciler(store,agents!,taskAgentLinks).reconcile(identity);
-       const latest=agentDeliveryContext,currentIdentity=agentDeliveryIdentity;
-       if(latest&&currentIdentity&&record.sessionId===currentIdentity.sessionId&&record.projectId===currentIdentity.projectId&&latest.sessionManager?.getSessionId?.()===currentIdentity.sessionId){
+       await new TaskAgentTodoReconciler(store,agents!,taskAgentLinks).reconcile(owner);
+       const latest=agentDeliveryContext,identity=agentDeliveryIdentity;
+       if(latest&&identity&&owner.sessionId===identity.sessionId&&owner.projectId===identity.projectId&&
+          latest.sessionManager?.getSessionId?.()===identity.sessionId){
         const next=await advancePlan(latest);
-        if(!next.started){notifyTerminal(true,true);const rows=await store.list(currentIdentity);if(rows.length)latest.ui.notify(todoProgressSummary(rows),"info");else{const archived=await store.archived(currentIdentity);if(archived.length)latest.ui.notify(todoProgressSummary(archived),"info");}}else notifyTerminal(false,true);
+        if(!next.started){
+         await notifyTerminal(true,true);
+         const rows=await store.list(identity);
+         if(rows.length)latest.ui.notify(todoProgressSummary(rows),"info");
+         else{const archived=await store.archived(identity);if(archived.length)latest.ui.notify(todoProgressSummary(archived),"info");}
+        }else await notifyTerminal(false,true);
         await refreshTodoWidget(latest);
        }
-      }).catch(()=>{try{notifyTerminal();}catch{/* Delivery failures must not escape the agent runner. */}});
-      agentDeliveryTasks.add(delivery);
-      void delivery.then(()=>agentDeliveryTasks.delete(delivery));
-     }else try{notifyTerminal();}catch{/* Delivery failures must not escape the agent runner. */}
+      }else await notifyTerminal();
+     })().catch(()=>{
+      try{const current=agentDeliveryContext,identity=agentDeliveryIdentity;
+       if(current&&identity&&record.sessionId===identity.sessionId&&record.projectId===identity.projectId)
+        current.ui.notify("ASEN no pudo reconciliar la notificación del agente; el resultado sigue guardado en asen-agents.","error");
+      }catch{/* Never alter a terminal record on a notification error. */}
+     });
+     agentDeliveryTasks.add(delivery);
+     void delivery.finally(()=>agentDeliveryTasks.delete(delivery));
     });
+    try{
+     // Only unattempted, verified terminal results may be enqueued on restart.
+     const prior=await agentNoticeJournal.list(identity);
+     const uncertain=prior.filter(row=>row.delivery==="attempted");
+     if(uncertain.length)ctx.ui.notify(`Hay ${uncertain.length} aviso(s) de agentes con entrega incierta. No se han reenviado; consulta asen-agents.`,"error");
+     for(const row of prior.filter(item=>item.delivery==="pending")){
+      const entry=await runtime.query(row.agentId,identity);
+      if(!entry||entry.record.state!==row.state||entry.record.sessionId!==identity.sessionId||entry.record.projectId!==identity.projectId)continue;
+      await sendAgentNotice(entry.record,ctx,false);
+     }
+    }catch{ctx.ui.notify("ASEN no pudo verificar los avisos anteriores de agentes; no se reenviaron resultados inciertos.","error");}
     const records=await runtime.list(identity),recoverable=records.filter(record=>record.state==="queued"||record.state==="interrupted");if(runtime.quarantined)ctx.ui.notify("ASEN aisló datos de agentes dañados; no inició tareas guardadas.","error");if(recoverable.length)ctx.ui.notify(`Hay ${recoverable.length} tarea(s) pausada(s). Si quieres retomarlas, di «continúa»; ASEN comprobará la identidad y reanudará solo exploraciones interrumpidas de solo lectura. No repetirá automáticamente tareas de escritura ni tareas fallidas.`,"info");
     try{await advancePlan(ctx);}catch{ctx.ui.notify("ASEN no pudo avanzar el plan automáticamente. Di «continúa» y revisaré el estado antes de reintentarlo.","error");}
    }

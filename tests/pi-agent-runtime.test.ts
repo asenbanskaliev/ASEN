@@ -762,3 +762,50 @@ test("EF-202 active Pi read budget warns once without starting a provider",async
  assert.equal(state.messages.filter(m=>m.includes("presupuesto de exploración directa")).length,1);
  for(const stop of state.events.get("session_shutdown")??[])await stop({},context);
 });
+
+test("EF-604 agent notice marks only Pi enqueue and never resends after restart",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-agent-notice-resume-"));
+ t.after(()=>rm(home,{recursive:true,force:true}));
+ const first=host(),ctx=first.context("notice-session");
+ createPiExtension({homeDir:()=>home,autoAdvancePlans:false,
+  agentRunner:{run:async request=>({id:request.id,ok:true,output:"verified read-only result"})}})(first.pi as any);
+ await startPublicSession(first,ctx);
+ const started=await first.tools.get("asen_agent_start").execute("first",{prompt:"Inspect once"},
+  new AbortController().signal,()=>{},ctx);
+ await first.waitForMessage(s=>s.includes("ASEN terminó"));
+ const stored=JSON.parse(await readFile(join(home,".asen","agent-notices.json"),"utf8"));
+ assert.equal(stored.entries.length,1);
+ assert.equal(stored.entries[0].delivery,"enqueued");
+ assert.equal(stored.entries[0].agentId,started.details.id);
+ assert.equal("consumed" in stored.entries[0],false);
+ assert.equal(first.sentMessages.filter(x=>x.message.customType==="asen.agent.result").length,1);
+ for(const stop of first.events.get("session_shutdown")??[])await stop({},ctx);
+ const second=host();
+ createPiExtension({homeDir:()=>home,autoAdvancePlans:false,
+  agentRunner:{run:async()=>{throw new Error("must not restart any completed agent");}}})(second.pi as any);
+ await startPublicSession(second,second.context("notice-session"));
+ assert.equal(second.sentMessages.filter(x=>x.message.customType==="asen.agent.result").length,0);
+ for(const stop of second.events.get("session_shutdown")??[])await stop({},second.context("notice-session"));
+});
+test("EF-604 transport uncertainty is durably visible and never auto-replayed",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-agent-notice-uncertain-"));
+ t.after(()=>rm(home,{recursive:true,force:true}));
+ const first=host(),ctx=first.context("uncertain-session");
+ first.pi.sendMessage=()=>{throw new Error("transport may have queued before throwing");};
+ createPiExtension({homeDir:()=>home,autoAdvancePlans:false,
+  agentRunner:{run:async request=>({id:request.id,ok:true,output:"result remains queryable"})}})(first.pi as any);
+ await startPublicSession(first,ctx);
+ await first.tools.get("asen_agent_start").execute("start",{prompt:"Inspect"},
+  new AbortController().signal,()=>{},ctx);
+ await first.waitForMessage(s=>s.includes("no puede confirmar la entrega"));
+ const snapshot=JSON.parse(await readFile(join(home,".asen","agent-notices.json"),"utf8"));
+ assert.equal(snapshot.entries[0].delivery,"attempted");
+ for(const stop of first.events.get("session_shutdown")??[])await stop({},ctx);
+ const second=host(),ctx2=second.context("uncertain-session");
+ createPiExtension({homeDir:()=>home,autoAdvancePlans:false,
+  agentRunner:{run:async()=>{throw new Error("do not restart");}}})(second.pi as any);
+ await startPublicSession(second,ctx2);
+ assert.equal(second.sentMessages.filter(x=>x.message.customType==="asen.agent.result").length,0);
+ assert.ok(second.messages.some(x=>x.includes("entrega incierta")));
+ for(const stop of second.events.get("session_shutdown")??[])await stop({},ctx2);
+});

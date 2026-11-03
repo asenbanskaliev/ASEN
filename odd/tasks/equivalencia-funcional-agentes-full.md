@@ -313,3 +313,9 @@ Estado **IMPLEMENTED_PENDING_CI**, no FULL. Cambios previstos en el mismo commit
 - **EF-202: PARTIAL**. No prueba todavía la necesidad real de delegación, las consultas hechas mediante herramientas no instrumentadas, ni el orden CodeGraph-first cuando no está disponible. Tampoco acredita comportamiento A/B ni Pi con proveedor real.
 
 **Siguiente:** EF-102/103 para ODD persistente y reanudación, EF-601/604 para acuse duradero y recuperación tras reinicio, y observaciones reales C01–C20 antes de afirmar FULL.
+
+### Control de aceptación F6 y criterio de cierre
+
+Se ejecutan los dos nuevos tests EF-604 integrados con el anfitrión Pi de prueba junto con EF-601/603/202. El journal **no confirma consumo**: `attempted` y `enqueued` permanecen diferenciados para evitar duplicados y falsas garantías. C13–C15/C18 siguen exigiendo evidencias Pi real, proceso real y comparación con referencia. No se usan modelos pagados ni se hace merge a `main`.
+
+**Próximos bloqueos externos para FULL:** snapshots genuinos de A/B sobre C01–C20, proveedor gratuito autenticado y su cuota, consentimiento Writer interactivo, recuperación con proceso real, revisión independiente de riesgo y CI exact-SHA en tres OS. No promocionar ninguna unidad por pruebas con mocks.
