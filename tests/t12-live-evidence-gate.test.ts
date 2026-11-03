@@ -6,16 +6,32 @@ import {gradeLiveAcceptanceEvidence} from "../scripts/t12-live-evidence-gate.mjs
 const sha="a".repeat(40),model="beam";
 const explorer={passed:true,status:"PASS",provider:"ollama-cloud",model,candidateSha:sha,
  inferenceCall:1,inferenceLimit:5,toolsAllowed:false,writerAuthorized:false,fixtureUnchanged:true,
- role:"explorer",phase:"explore",artifactKind:"exploration",findings:["authorization","parsing","pricing"]};
+ role:"explorer",phase:"explore",artifactKind:"exploration",candidateId:"t12-real-ollama-dispatch",artifactSha256:"e".repeat(64),findings:["authorization","parsing","pricing"]};
 const planner={passed:true,provider:"ollama-cloud",model,candidateSha:sha,
  inferenceCall:2,inferenceLimit:5,toolsAllowed:false,writerAuthorized:false,authorization:"NOT_GRANTED",taskCount:3,
- scope:"disposable-fixture",findings:["authorization","parsing","pricing"]};
+ scope:"disposable-fixture",candidateId:"t12-disposable-fixture",findings:["authorization","parsing","pricing"],
+ tasks:[
+  {id:"authorization-fix",findingId:"authorization",role:"worker",paths:["src/access.js"]},
+  {id:"parsing-fix",findingId:"parsing",role:"worker",paths:["src/parse.js"]},
+  {id:"pricing-fix",findingId:"pricing",role:"worker",paths:["src/pricing.js"]},
+ ]};
+const canonicalReview=[
+ {path:"src/access.js",codeEvidence:'return user.id === document.ownerId || user.role === "viewer";',acceptanceCriterion:"viewers cannot edit documents they do not own"},
+ {path:"src/parse.js",codeEvidence:"const parsed = Number.parseInt(value, 10);",acceptanceCriterion:"integer parsing rejects trailing non-digits"},
+ {path:"src/pricing.js",codeEvidence:"return unitPrice * quantity + discount;",acceptanceCriterion:"discounts reduce totals"},
+];
 const review={passed:true,status:"PASS_NEGATIVE_REJECTION",provider:"ollama-cloud",model,candidateSha:sha,
- toolsAllowed:false,writerAuthorized:false,authorization:"NOT_GRANTED",
+ candidateId:"t12-review-test",fixtureSha256:"f".repeat(64),
+ changedPaths:["src/access.js","src/parse.js","src/pricing.js"],
+ deterministicTests:{checks:[
+  {id:"authorization",exitCode:1,failedCriterion:"viewers cannot edit documents they do not own"},
+  {id:"parsing",exitCode:1,failedCriterion:"integer parsing rejects trailing non-digits"},
+  {id:"pricing",exitCode:1,failedCriterion:"discounts reduce totals"},
+ ]},toolsAllowed:false,writerAuthorized:false,authorization:"NOT_GRANTED",
  reviewer:[
- {id:"t12-review-fixture:judge-a",responseSha256:"c".repeat(64),responseBytes:200,grade:{passed:true,candidateSha:sha,verdict:"fail",findings:[1,2,3]}},
- {id:"t12-review-fixture:judge-b",responseSha256:"d".repeat(64),responseBytes:210,grade:{passed:true,candidateSha:sha,verdict:"fail",findings:[1,2,3]}}],
- verifier:{responseSha256:"e".repeat(64),responseBytes:245,grade:{passed:true,verdict:"fail",checkCount:3,findingCount:3}}};
+ {id:"t12-review-test:judge-a",responseSha256:"c".repeat(64),responseBytes:200,grade:{passed:true,candidateSha:sha,verdict:"fail",findings:canonicalReview.map(item=>({...item}))}},
+ {id:"t12-review-test:judge-b",responseSha256:"d".repeat(64),responseBytes:210,grade:{passed:true,candidateSha:sha,verdict:"fail",findings:canonicalReview.map(item=>({...item}))}}],
+ verifier:{responseSha256:"e".repeat(64),responseBytes:245,grade:{passed:true,verdict:"fail",checkCount:3,findingCount:3,authorization:"NOT_GRANTED"}}};
 const budget={limit:5,reserved:5,remaining:0,authorization:"NOT_GRANTED"};
 const receipts5=[
  {call:1,label:"asen-dispatcher-explorer",limit:5},{call:2,label:"real-plan",limit:5},
@@ -82,4 +98,46 @@ test("T12 provider evidence requires exact Explorer identity, scoped Planner and
  assert.throws(()=>gradeLiveAcceptanceEvidence({...base,planner:{...planner,scope:"production-repository"}}),/disposable fixture scope/);
  assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,reviewer:[review.reviewer[1],review.reviewer[0]]}}),/identity or order mismatch/);
  assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,verifier:{...review.verifier,responseSha256:"bad"}}}),/Verifier response hash/);
+});
+
+test("T12 live-gate detects forged duplicate or unrelated Planner/Explorer findings and task paths",()=>{
+ const base=ready();
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,planner:{...planner,
+  findings:["authorization","authorization","pricing"]}}),/Planner findings/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,planner:{...planner,
+  tasks:planner.tasks.map(item=>({...item,paths:item.findingId==="pricing"?["src/secret.js"]:item.paths}))}}),
+  /approved file/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,planner:{...planner,
+  tasks:planner.tasks.map(item=>({...item,findingId:"pricing"}))}}),/distinct defect/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,explorer:{...explorer,
+  candidateId:"other-candidate"}}),/Explorer candidate identity/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,explorer:{...explorer,
+  artifactSha256:"forged"}}),/Explorer artifact digest/);
+});
+test("T12 live-gate rejects mismatched Reviewers, tampered code evidence and partial deterministic tests",()=>{
+ const base=ready();
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,
+  changedPaths:["src/access.js","src/pricing.js","src/unapproved.js"]}}),/changed paths mismatch/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,
+  deterministicTests:{checks:review.deterministicTests.checks.slice(0,2)}}}),/failed-test evidence/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,
+  deterministicTests:{checks:review.deterministicTests.checks.map(item=>({...item,exitCode:0}))}}}),/observe a failed test/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,
+  reviewer:review.reviewer.map((judge,i)=>({...judge,grade:{...judge.grade,
+   findings:judge.grade.findings.map((item,j)=>i===0&&j===0?{...item,codeEvidence:"unrelated"}:item)}}))}}),
+  /code evidence is not from frozen fixture/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,
+  verifier:{...review.verifier,grade:{...review.verifier.grade,authorization:"GRANTED"}}}}),
+  /no-authorization status/);
+});
+
+test("T12 historical malformed Explorer and incomplete real Verifier can never become a green receipt",()=>{
+ const base=ready();
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,explorer:{...explorer,
+  passed:false,status:"EXPLORATION_SCHEMA_INVALID"}}),/Explorer must have a positive grade/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,
+  passed:false,status:"VERIFIER_EVIDENCE_INCOMPLETE"}}),/Verifier needs a real negative-rejection grade/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,
+  verifier:{...review.verifier,grade:{...review.verifier.grade,findingCount:2}}}}),
+  /Verifier omitted reviewer defects/);
 });

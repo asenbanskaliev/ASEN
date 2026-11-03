@@ -5,6 +5,17 @@ import {join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {inspectInferenceBudget,readInferenceBudgetReceipts} from "./t12-inference-budget.mjs";
 
+const expectedDefects=Object.freeze({
+ authorization:Object.freeze({path:"src/access.js",codeEvidence:'return user.id === document.ownerId || user.role === "viewer";',acceptanceCriterion:"viewers cannot edit documents they do not own"}),
+ parsing:Object.freeze({path:"src/parse.js",codeEvidence:"const parsed = Number.parseInt(value, 10);",acceptanceCriterion:"integer parsing rejects trailing non-digits"}),
+ pricing:Object.freeze({path:"src/pricing.js",codeEvidence:"return unitPrice * quantity + discount;",acceptanceCriterion:"discounts reduce totals"}),
+});
+const expectedIds=Object.keys(expectedDefects);
+const expectedPaths=Object.values(expectedDefects).map(item=>item.path).sort();
+const exactDefectSet=(items,label)=>{
+ assert.deepEqual(items,expectedIds,label+" must bind exactly the original three defects");
+};
+
 export function gradeLiveAcceptanceEvidence({sha,model,maxCalls,budget,receipts,explorer,planner,review}){
  assert.match(sha,/^[0-9a-f]{40}$/u,"T12 exact commit SHA required");
  assert.ok(typeof model==="string"&&["beam","beam:cloud"].includes(model),"T12 unapproved model");
@@ -38,13 +49,28 @@ export function gradeLiveAcceptanceEvidence({sha,model,maxCalls,budget,receipts,
  assert.equal(explorer.role,"explorer","Explorer role mismatch");
  assert.equal(explorer.phase,"explore","Explorer phase mismatch");
  assert.equal(explorer.artifactKind,"exploration","Explorer artifact kind mismatch");
- assert.deepEqual(explorer.findings,["authorization","parsing","pricing"],
-  "Explorer grade must include exactly three known defects");
+ exactDefectSet(explorer.findings,"Explorer grade");
+ assert.equal(explorer.candidateId,"t12-real-ollama-dispatch","Explorer candidate identity mismatch");
+ assert.match(explorer.artifactSha256??"",/^[0-9a-f]{64}$/u,"Explorer artifact digest required");
  assert.equal(planner.authorization,"NOT_GRANTED","Planner authorization must be denied");
  assert.equal(planner.taskCount,3,"Planner must produce all three scoped tasks");
  assert.equal(planner.scope,"disposable-fixture","Planner escaped disposable fixture scope");
- assert.ok(Array.isArray(planner.findings)&&planner.findings.length===3,
-  "Planner must bind the three original findings");
+ exactDefectSet(planner.findings,"Planner findings");
+ assert.equal(planner.candidateId,"t12-disposable-fixture","Planner candidate identity mismatch");
+ assert.equal(planner.candidateSha,sha,"Planner exact candidate mismatch");
+ assert.ok(Array.isArray(planner.tasks)&&planner.tasks.length===3,
+  "Planner exact three task receipts required");
+ const taskIds=planner.tasks.map(task=>task?.findingId);
+ assert.deepEqual([...taskIds].sort(),expectedIds,"Planner tasks must bind each distinct defect");
+ for(const task of planner.tasks){
+  assert.deepEqual(task.paths,[expectedDefects[task.findingId]?.path],
+   "Planner task escaped the approved file");
+  assert.equal(task.role,"worker","Planner must not grant Writer or change worker role");
+  assert.ok(typeof task.id==="string"&&/^[a-z0-9-]{1,48}$/.test(task.id),
+   "Planner task identity is malformed");
+ }
+ assert.equal(new Set(planner.tasks.map(task=>task.id)).size,3,
+  "Planner cannot duplicate task identifiers");
  let stage;
  if(maxCalls===5){
   assert.ok(review&&review.passed===true&&review.status==="PASS_NEGATIVE_REJECTION",
@@ -55,6 +81,22 @@ export function gradeLiveAcceptanceEvidence({sha,model,maxCalls,budget,receipts,
   assert.equal(review.toolsAllowed,false,"Reviewer/Verifier tool use forbidden");
   assert.equal(review.writerAuthorized,false,"Reviewer/Verifier cannot grant Writer");
   assert.equal(review.authorization,"NOT_GRANTED","Reviewer/Verifier authorization mismatch");
+  assert.equal(review.candidateId.startsWith("t12-review-"),true,
+   "Review candidate identity invalid");
+  assert.match(review.fixtureSha256??"",/^[0-9a-f]{64}$/u,
+   "Reviewer/Verifier frozen fixture digest missing");
+  assert.deepEqual(review.changedPaths,expectedPaths,
+   "Reviewer/Verifier changed paths mismatch");
+  assert.ok(Array.isArray(review.deterministicTests?.checks)&&
+   review.deterministicTests.checks.length===3,
+   "Reviewer/Verifier deterministic failed-test evidence is incomplete");
+  assert.deepEqual(review.deterministicTests.checks.map(item=>item.id).sort(),expectedIds,
+   "Reviewer/Verifier deterministic test IDs mismatch");
+  for(const check of review.deterministicTests.checks){
+   assert.equal(check.exitCode,1,"Reviewer/Verifier must observe a failed test");
+   assert.equal(check.failedCriterion,expectedDefects[check.id]?.acceptanceCriterion,
+    "Reviewer/Verifier deterministic acceptance criterion mismatch");
+  }
   assert.ok(Array.isArray(review.reviewer)&&review.reviewer.length===2,
    "Two real blind Reviewer judgments required");
   for(const [index,judge] of review.reviewer.entries()){
@@ -67,6 +109,15 @@ export function gradeLiveAcceptanceEvidence({sha,model,maxCalls,budget,receipts,
    assert.equal(judge.grade?.candidateSha,sha,"Reviewer judgment SHA mismatch");
    assert.equal(judge.grade?.verdict,"fail","Reviewer judgment must reject the defects");
    assert.equal(judge.grade?.findings?.length,3,"Reviewer omitted grounded defects");
+   assert.deepEqual(judge.grade.findings.map(item=>item.path).sort(),expectedPaths,
+    "Reviewer findings must contain exact approved paths");
+   for(const finding of judge.grade.findings){
+    const expected=Object.values(expectedDefects).find(item=>item.path===finding.path);
+    assert.equal(finding.codeEvidence,expected?.codeEvidence,
+     "Reviewer code evidence is not from frozen fixture");
+    assert.equal(finding.acceptanceCriterion,expected?.acceptanceCriterion,
+     "Reviewer acceptance criterion is not from frozen fixture");
+   }
   }
   assert.match(review.verifier?.responseSha256??"",/^[0-9a-f]{64}$/u,
    "Real Verifier response hash required");
@@ -76,6 +127,8 @@ export function gradeLiveAcceptanceEvidence({sha,model,maxCalls,budget,receipts,
   assert.equal(review.verifier.grade.verdict,"fail","Verifier must reject deliberate defects");
   assert.equal(review.verifier.grade.checkCount,3,"Verifier omitted failed tests");
   assert.equal(review.verifier.grade.findingCount,3,"Verifier omitted reviewer defects");
+  assert.equal(review.verifier.grade.authorization,"NOT_GRANTED",
+   "Verifier grade must retain explicit no-authorization status");
   stage="PASS_BOUNDED_READ_ONLY";
  }else{
   assert.ok(review&&review.status==="BLOCKED_CALL_BUDGET"&&review.reviewer==="NOT_RUN"&&

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {mkdtemp,readFile,rm,writeFile,unlink} from "node:fs/promises";
-import {spawnSync} from "node:child_process";
+import {spawn,spawnSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
@@ -163,4 +163,34 @@ test("T12 missing, changed, or mismatched claimed receipts cannot satisfy stage 
  await writeFile(join(folder,"1.json"),JSON.stringify({call:1,label:"first",limit:3})+"\n");
  await writeFile(join(folder,"1.claim"),JSON.stringify({call:1,label:"first",limit:3,extra:"tampered"})+"\n");
  await assert.rejects(()=>readInferenceBudgetReceipts({directory}),/malformed|differs/);
+});
+
+test("T12 many independent Pi-stage processes race for five calls and cannot exceed the ceiling",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-process-race-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ const script=fileURLToPath(new URL("../scripts/t12-inference-budget.mjs",import.meta.url));
+ const env={...process.env,RUNNER_TEMP:directory,ASEN_MAX_INFERENCE_CALLS:"5",
+  OLLAMA_API_KEY:"SYNTHETIC_CONCURRENCY_SECRET"};
+ const launches=Array.from({length:12},(_,i)=>new Promise<{status:number|null;out:string}>(resolve=>{
+  const child=spawn(process.execPath,[script,"race-"+i],{env,windowsHide:true,stdio:["ignore","pipe","pipe"]});
+  let out="";
+  child.stdout?.on("data",(data:Buffer)=>{out+=data.toString("utf8").slice(0,1000);});
+  child.stderr?.on("data",(data:Buffer)=>{out+=data.toString("utf8").slice(0,1000);});
+  child.once("error",error=>resolve({status:-1,out:String(error.name)}));
+  child.once("close",status=>resolve({status,out}));
+ }));
+ const results=await Promise.all(launches);
+ const winners=results.filter(row=>row.status===0);
+ const failures=results.filter(row=>row.status!==0);
+ assert.equal(winners.length,5,JSON.stringify(results));
+ assert.equal(failures.length,7);
+ for(const row of failures)assert.match(row.out,/budget exhausted/);
+ assert.equal(results.some(row=>row.out.includes("SYNTHETIC_CONCURRENCY_SECRET")),false);
+ const receipts=await readInferenceBudgetReceipts({directory});
+ assert.equal(receipts.length,5);
+ assert.deepEqual(receipts.map((item:{call:number})=>item.call),[1,2,3,4,5]);
+ assert.equal(new Set(receipts.map((item:{label:string})=>item.label)).size,5);
+ assert.deepEqual(await inspectInferenceBudget({directory}),
+  {limit:5,reserved:5,remaining:0,authorization:"NOT_GRANTED"});
+ await assert.rejects(()=>reserveInferenceCall("post-race",{directory,limit:5}),/budget exhausted/);
 });
