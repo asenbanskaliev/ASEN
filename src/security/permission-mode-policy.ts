@@ -2,10 +2,10 @@ import {constants,closeSync,fsyncSync,lstatSync,mkdirSync,openSync,readFileSync,
 import {randomUUID} from "node:crypto";
 import {dirname,join} from "node:path";
 
-export type AsenPermissionMode="normal"|"auto"|"yolo";
+export type AsenPermissionMode="normal"|"auto"|"yolo"|"super-yolo";
 export const ASEN_PERMISSION_MODE_SCHEMA="asen.permission-mode/v1";
 export function isAsenPermissionMode(value:unknown):value is AsenPermissionMode{
- return value==="normal"||value==="auto"||value==="yolo";
+ return value==="normal"||value==="auto"||value==="yolo"||value==="super-yolo";
 }
 export function permissionModeFile(home:string):string{return join(home,".asen","permission-mode.json");}
 export function parsePermissionModeDefault(raw:string):AsenPermissionMode|undefined{

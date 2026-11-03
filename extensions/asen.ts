@@ -80,7 +80,7 @@ const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
 const ASEN_SESSION_TOOL_NAMES=Object.freeze(["asen_session_consult"] as const);
 const activationRegistryRoot=globalThis as typeof globalThis&{[activationRegistryKey]?:WeakSet<object>};
 const activatedPiHosts=activationRegistryRoot[activationRegistryKey]??(activationRegistryRoot[activationRegistryKey]=new WeakSet<object>());
-export interface AsenExtensionDependencies {permissionSession?:AsenPermissionSession;autoPermissionReview?:PrimaryModeOptions["reviewAuto"];homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>;enableMemoryRuntime?:boolean;memoryStoreFile?:string;memoryStoreFactory?:()=>Promise<PiMemoryStore>;backgroundExecutor?:BackgroundJobExecutor;backgroundJobJournalFile?:string;historyShortcutKey?:string}
+export interface AsenExtensionDependencies {permissionSession?:AsenPermissionSession;autoPermissionReview?:PrimaryModeOptions["reviewAuto"];autoPermissionStatus?:()=>{calls:number;totalTokens:number;totalCost:number;pending:boolean};homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>;enableMemoryRuntime?:boolean;memoryStoreFile?:string;memoryStoreFactory?:()=>Promise<PiMemoryStore>;backgroundExecutor?:BackgroundJobExecutor;backgroundJobJournalFile?:string;historyShortcutKey?:string}
 export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;startSession(context:CommandContext):Promise<void>;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
 
 const usage="Usage: /asen-skill-registry refresh";
@@ -157,8 +157,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    session:permissionSession.mode(ctx),savedDefault:permissionDefault().mode,
    malformedDefault:permissionDefault().malformed,
    autoReviewerAvailable:typeof dependencies.autoPermissionReview==="function",
-   superYoloAvailable:false,
-   boundary:"Primary-only mode; delegated Writer consent, destructive confirmations and recovery permissions stay independent.",
+   autoUsage:dependencies.autoPermissionStatus?.()??null,
+   superYoloAvailable:true,
+   boundary:"Primary-only mode; delegated Writer consent, recovery authorization and critical sensitive-path guards stay independent.",
   });
   const requirePrimaryPermissionUI=(ctx:CommandContext)=>{
    if(ctx?.hasUI!==true||ctx.mode!=="tui"||!ctx.sessionManager?.getSessionId?.())
@@ -438,6 +439,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     delete options.sections.asen_permission_mode;
     const selectedPermission=permissionSession.mode(ctx as CommandContext);
     if(selectedPermission==="yolo")options.sections.asen_permission_mode="ASEN YOLO primary standing permission is active only for ordinary work within the human-authorized scope. Ordinary reversible feature-branch delivery may proceed without redundant questions when the host guard admits it. Never bypass independent Writer admission, explicit restrictions, destructive confirmations, sensitive paths, credential/destination ambiguity, recovery consent or native review. Delegated children never inherit YOLO.";
+    if(selectedPermission==="super-yolo")options.sections.asen_permission_mode="ASEN Super YOLO primary-only standing permission is active, explicitly selected by a human or a trusted private default. Routine and guarded confirmation prompts for shell actions may be waived, but code-level catastrophic denials and sensitive credential paths remain blocked. Never bypass explicit live human restrictions, independently owned Writer permission, native review/recovery consent, ask_user tools or child bounds. Never push with force, hard-reset or erase root/home paths. This is not a sandbox.";
     if(selectedPermission==="auto")options.sections.asen_permission_mode="ASEN Auto requires a fresh independent pre-tool reviewer verdict. Failed, absent or stale checks block execution. Do not bypass denials through alternate tools or subagents; ask the human when approval is essential. Independent Writer and destructive consent remain separate.";
     delete options.sections.asen_request_handling;
     delete options.sections.asen_project_memory;
@@ -455,7 +457,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }
   });
   registerData("asen",{description:"Show ASEN harness status",handler:()=>({product:"ASEN",mode:"pi-native",status:"ready",principle:"ASEN extends Pi; it does not replace Pi."})});
-  registerData("asen-mode",{description:"Primary permissions: status | normal | auto | yolo | default <normal|auto|yolo>",handler:(raw:string|undefined,ctx:CommandContext)=>{
+  registerData("asen-mode",{description:"Primary permissions: status | normal | auto | yolo | super-yolo | default <mode>",handler:(raw:string|undefined,ctx:CommandContext)=>{
    const args=String(raw??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
    if(!args.length||args[0]==="status")return permissionStatus(ctx);
    if(args[0]==="default"&&args.length===2){
@@ -466,7 +468,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     savePermissionModeDefault(home(),mode);
     return permissionStatus(ctx);
    }
-   if(args.length!==1)throw new Error("Use /asen-mode status, normal, auto, yolo or default <mode>");
+   if(args.length!==1)throw new Error("Use /asen-mode status, normal, auto, yolo, super-yolo or default <mode>");
    return applyPermissionMode(args[0],ctx);
   }});
   registerData("asen-yolo",{description:"Session-only YOLO toggle: enable | disable | status",handler:(raw:string|undefined,ctx:CommandContext)=>{
@@ -526,7 +528,37 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return {error:"Use /asen presentation status, /asen presentation compact or /asen presentation complete"};
   }});
 
-  registerData("asen-customize",{description:"Report ASEN customization surfaces and their current owner commands without changing configuration",handler:()=>({ customize_surfaces:[{name:"asen-profiles",role:"model and routing profiles"},{name:"asen-persona",role:"reply tone and persona"},{name:"asen-history",role:"local task/session history"},{name:"asen-usage",role:"runtime usage and accounting"},{name:"asen-stats",role:"Pi history aggregates"},{name:"asen-workflow",role:"ODD/SDD routing evidence"}], implemented:true, note:"No separate global customize datastore exists; these supported surfaces are the customization contract."})});
+  registerData("asen-customize",{description:"Show ASEN customization surfaces or choose current/default permission modes with /asen-customize permissions",handler:async(raw:string|undefined,ctx:CommandContext)=>{
+   if(String(raw??"").trim()!=="permissions")return {customize_surfaces:[
+    {name:"asen-profiles",role:"model and routing profiles"},
+    {name:"asen-persona",role:"reply tone and persona"},
+    {name:"asen-mode",role:"primary session and global permission defaults"},
+    {name:"asen-history",role:"local task/session history"},
+    {name:"asen-usage",role:"runtime usage and accounting"},
+    {name:"asen-stats",role:"Pi history aggregates"},
+    {name:"asen-workflow",role:"ODD/SDD routing evidence"}],
+    implemented:true,note:"Use /asen-customize permissions for the live primary selection menu."};
+   requirePrimaryPermissionUI(ctx);
+   if(typeof ctx.ui.select!=="function")throw new Error("ASEN permission menu requires native Pi select UI");
+   const identity=await sessionIdentity(ctx),manager=ctx.sessionManager;
+   const modes=["normal","auto","yolo","super-yolo"] as const;
+   const choices=[...modes.map(mode=>"Session: "+mode),...modes.map(mode=>"Default: "+mode)];
+   const selected=await ctx.ui.select("ASEN primary permission modes",choices,
+    ctx.signal?{signal:ctx.signal}:undefined);
+   if(ctx.signal?.aborted||ctx.sessionManager!==manager)throw new Error("ASEN permission menu was cancelled or its session changed");
+   const current=await sessionIdentity(ctx);
+   if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
+    throw new Error("ASEN permission menu authorization expired");
+   if(!selected)return {cancelled:true,...permissionStatus(ctx)};
+   if(!choices.includes(selected))throw new Error("ASEN permission menu returned an unknown choice");
+   const [kind,mode]=selected.split(": ");
+   if(!isAsenPermissionMode(mode))throw new Error("Invalid ASEN permission menu mode");
+   if(kind==="Session")return applyPermissionMode(mode,ctx);
+   if(mode==="auto"&&typeof dependencies.autoPermissionReview!=="function")
+    throw new Error("ASEN Auto default requires an independent classifier");
+   savePermissionModeDefault(home(),mode);
+   return permissionStatus(ctx);
+  }});
   registerData("asen-telemetry",{description:"Report ASEN telemetry status and where to act without changing consent",handler:()=>({telemetry:"managed through asen-usage (status, preview, enable, disable)",related_commands:["asen-usage","asen-stats","asen-commands"],implemented:true,note:"Telemetry state is not split into a second global screen in this shell; the same lifecycle entry points own the state."})});
   registerData("asen-status",{description:"Show bounded local ASEN status",handler:async(_args:string|undefined,ctx:CommandContext|undefined)=>{
    if(dependencies.status){const language=await readAsenLanguage(home());return statusLines({...dependencies.status(),language},terminalColumns());}
@@ -760,11 +792,12 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
   return localBash.exec(settings.shellCommandPrefix?`${settings.shellCommandPrefix}\n${command}`:command,cwd,{onData:options.onData,signal:options.signal,...(options.env?{env:options.env}:{})});
  };
  const permissionSession=dependencies.permissionSession??new AsenPermissionSession();
- const autoPermission=new AsenAutoPermissionReviewer();
+ const autoPermission=new AsenAutoPermissionReviewer(()=>pi.getAllTools?.()??[]);
  const autoReview=dependencies.autoPermissionReview??autoPermission.review.bind(autoPermission);
  pi.on("input",(event,ctx)=>autoPermission.capture(event,ctx));
  pi.on("tool_call",createPrimaryToolPolicyHandler({
   getMode:ctx=>permissionSession.mode(ctx),
+  modeEpoch:()=>permissionSession.epoch,
   reviewAuto:autoReview,
  }));
  const commandNames=ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name);
@@ -779,7 +812,8 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
    validatePiExecutionContext(ctx);
    // Pi's public inventory methods can exist before their runtime is initialized; read them only here.
    validatePiRegistrationCollisions(pi,commandNames,toolNames);
-   const facade=createAsenExtension({...dependencies,permissionSession,autoPermissionReview:autoReview,backgroundExecutor,enableAgentRuntime:dependencies.enableAgentRuntime??true,enableTodoRuntime:dependencies.enableTodoRuntime??true,enableWorkspaceRuntime:dependencies.enableWorkspaceRuntime??true,enableMemoryRuntime:dependencies.enableMemoryRuntime??true,deferSessionStart:true})({
+   const facade=createAsenExtension({...dependencies,permissionSession,autoPermissionReview:autoReview,
+    autoPermissionStatus:()=>autoPermission.status(),backgroundExecutor,enableAgentRuntime:dependencies.enableAgentRuntime??true,enableTodoRuntime:dependencies.enableTodoRuntime??true,enableWorkspaceRuntime:dependencies.enableWorkspaceRuntime??true,enableMemoryRuntime:dependencies.enableMemoryRuntime??true,deferSessionStart:true})({
     on:(event,handler)=>pi.on(event as any,(...args:any[])=>{
      if(token!==generation||!registrationsReady)return undefined;
      validatePiExecutionContext(args[1]);

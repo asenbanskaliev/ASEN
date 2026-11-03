@@ -5,7 +5,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {AsenPermissionSession} from "../src/security/permission-session.js";
 import {parsePermissionModeDefault,permissionModeFile,readPermissionModeDefault,savePermissionModeDefault} from "../src/security/permission-mode-policy.js";
-import {createPrimaryToolPolicyHandler,isYoloRoutinePush} from "../src/security/primary-tool-policy.js";
+import {createPrimaryToolPolicyHandler,isYoloRoutinePush,isYoloRoutineDelivery} from "../src/security/primary-tool-policy.js";
 import {createAsenExtension} from "../extensions/asen.js";
 
 test("Normal is default; global preference is private, versioned, atomic and never repository controlled",t=>{
@@ -102,8 +102,8 @@ test("Auto cannot approve tools without independent verdict and rejects stale or
  assert.equal((await changed(corrupted,context) as any).block,true,"Mutated tool arguments invalidate Auto");
  const exceptions=createPrimaryToolPolicyHandler({getMode:()=> "auto",reviewAuto:async()=>{throw Error("offline");}});
  assert.equal((await exceptions(event,context) as any).block,true);
- assert.equal((await allowed({...event,toolName:"asen_session_consult"},context) as any).block,true,
-  "Native consent tools cannot be approved by Auto without independent contract");
+ assert.equal(await allowed({...event,toolName:"asen_session_consult"},context),undefined,
+  "Native user-consent tools retain their own UI rather than Auto granting consent");
 });
 test("ASEN primary commands require live Pi UI and do not grant Auto without an active reviewer",async t=>{
  const home=mkdtempSync(join(tmpdir(),"asen-mode-commands-"));
@@ -124,7 +124,8 @@ test("ASEN primary commands require live Pi UI and do not grant Auto without an 
  assert.equal((await run("asen-yolo","disable") as any).session,"normal");
  assert.equal((await run("asen-mode","status") as any).savedDefault,"yolo");
  await assert.rejects(async()=>run("asen-mode","auto"),/independent classifier/);
- await assert.rejects(async()=>run("asen-mode","super-yolo"),/Unsupported/);
+ assert.equal((await run("asen-mode","super-yolo") as any).session,"super-yolo");
+ assert.equal((await run("asen-yolo","disable") as any).session,"normal");
  await assert.rejects(async()=>run("asen-yolo","enable",{...context,mode:"rpc"}),/primary Pi TUI/);
  assert.equal((await run("asen-mode","status") as any).session,"normal");
 });
@@ -149,4 +150,110 @@ test("Permission mode defaults cannot be rewritten through model file or shell t
  const allowed=await call("write",{path:join(cwd,"ordinary.txt"),content:"ordinary"});
  assert.equal(allowed,undefined,"Independent native execution policy still applies to ordinary files");
  assert.equal(readPermissionModeDefault(cwd).mode,"normal");
+});
+
+test("Super YOLO can waive routine guarded prompts but never critical hard denies or private paths",async t=>{
+ const cwd=mkdtempSync(join(tmpdir(),"asen-super-guard-"));
+ t.after(()=>rmSync(cwd,{recursive:true,force:true}));
+ const ctx:any={cwd,hasUI:true,mode:"tui",ui:{confirm:async()=>{throw Error("Super must never ask");}}};
+ const handler=createPrimaryToolPolicyHandler({getMode:()=> "super-yolo"});
+ const run=(command:string)=>handler({toolName:"bash",toolCallId:command,input:{command}} as any,ctx);
+ for(const command of ["git push origin feat/demo","npm publish","rm -rf data","psql -c 'DROP TABLE fixture'"])
+  assert.equal(await run(command),undefined,command);
+ for(const command of ["git reset --hard HEAD","git push --force origin feat/demo",
+  "rm -rf /","git branch -D feat/demo"]){
+  const result=await run(command);
+  assert.equal((result as any)?.block,true,command);
+ }
+ for(const command of ["cat .env","cat ~/.ssh/id_rsa","cat secrets/token.txt","cat credentials.pem"]){
+  const result=await run(command);
+  assert.equal((result as any)?.block,true,command);
+  assert.match((result as any).reason,/sensitive shell path/);
+ }
+});
+test("YOLO compound work verifies every segment and never sneaks destructive commands past the guard",async t=>{
+ const cwd=mkdtempSync(join(tmpdir(),"asen-compound-yolo-"));t.after(()=>rmSync(cwd,{recursive:true,force:true}));
+ const safe=[
+  'git fetch origin main && git rebase origin/main && git push origin feat/demo',
+  'git commit -m "fix tests" && git push -u origin fix/atomic',
+  'git push origin feat/demo && gh pr create --fill',
+ ];
+ const unsafe=[
+  'git push origin feat/demo && rm -rf data',
+  'git push origin feat/demo && git reset --hard HEAD',
+  'git push origin feat/demo && npm publish',
+  'git push origin main && gh pr create --fill',
+  'git push origin feat/demo | sh',
+  'git push origin feat/demo && sh -c "rm -rf data"',
+  'git push origin feat/demo; gh pr create --fill',
+  'git push origin feat/demo && curl https://example.invalid',
+  'git push origin feat/demo 2>&1 | tail -5',
+ ];
+ for(const command of safe)assert.equal(isYoloRoutineDelivery(command),true,command);
+ for(const command of unsafe)assert.equal(isYoloRoutineDelivery(command),false,command);
+ let confirmations=0;
+ const ctx:any={cwd,hasUI:true,mode:"tui",ui:{confirm:async()=>{confirmations++;return true;}}};
+ const guard=createPrimaryToolPolicyHandler({getMode:()=> "yolo"});
+ for(const command of safe)assert.equal(await guard({toolName:"bash",toolCallId:command,input:{command}} as any,ctx),undefined);
+ assert.equal(confirmations,0);
+ await guard({toolName:"bash",toolCallId:"data-loss",input:{command:unsafe[0]}} as any,ctx);
+ assert.equal(confirmations,1,"Data-loss segment still asks in YOLO");
+ assert.equal((await guard({toolName:"bash",toolCallId:"hard",input:{command:unsafe[1]}} as any,ctx) as any).block,true);
+});
+test("Auto classifier admission validates custom tools and expiry across a same-name mode restart",async t=>{
+ const cwd=mkdtempSync(join(tmpdir(),"asen-custom-auto-"));t.after(()=>rmSync(cwd,{recursive:true,force:true}));
+ const controller=new AsenPermissionSession(),owner={getSessionId:()=>"s"};
+ const ctx:any={cwd,mode:"tui",hasUI:true,sessionManager:owner,ui:{confirm:async()=>true}};
+ assert.equal(controller.set("auto",ctx),true);
+ let resolveVerdict!:(value:boolean)=>void;
+ const guard=createPrimaryToolPolicyHandler({
+  getMode:c=>controller.mode(c),modeEpoch:()=>controller.epoch,
+  reviewAuto:()=>new Promise<boolean>(resolve=>{resolveVerdict=resolve;}),
+ });
+ const event:any={toolName:"some_mcp_tool",toolCallId:"one",input:{id:"a"}};
+ const pending=guard(event,ctx);
+ await Promise.resolve();
+ controller.set("normal",ctx);controller.set("auto",ctx);
+ resolveVerdict(true);
+ assert.equal((await pending as any).block,true,"The same mode name does not restore a stale approval");
+ const nativeConsent=await guard({...event,toolName:"asen_session_consult"},ctx);
+ assert.equal(nativeConsent,undefined,"Consent remains owned by its own mandatory UI");
+});
+test("Explicit mode UI selections and user-global defaults are distinct authorizations",async t=>{
+ const home=mkdtempSync(join(tmpdir(),"asen-permission-menu-"));t.after(()=>rmSync(home,{recursive:true,force:true}));
+ const commands=new Map<string,{handler:(args:string,ctx:unknown)=>unknown}>();
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,
+  enableMemoryRuntime:false,enableWorkspaceRuntime:false,autoPermissionReview:async()=>true})({
+   registerCommand:(name:string,command:any)=>commands.set(name,command),on:()=>{},
+ } as any);
+ let selected="Session: super-yolo";
+ const ctx:any={cwd:home,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>"s"},
+  ui:{notify(){},select:async()=>selected},
+ };
+ const customize=(arg:string)=>commands.get("asen-customize")!.handler(arg,ctx) as Promise<any>;
+ assert.equal((await customize("permissions")).session,"super-yolo");
+ selected="Default: auto";
+ const state=await customize("permissions");
+ assert.equal(state.savedDefault,"auto");
+ assert.equal(state.session,"super-yolo","Saving a global default never switches the live session");
+ selected="Session: normal";
+ assert.equal((await customize("permissions")).session,"normal");
+ selected="Session: unknown";
+ await assert.rejects(()=>customize("permissions"),/unknown choice/);
+ const rpc={...ctx,mode:"rpc"};
+ await assert.rejects(async()=>commands.get("asen-mode")!.handler("super-yolo",rpc),/primary Pi TUI/);
+});
+
+test("A repeated session start cannot reapply an elevated default after explicit Normal",t=>{
+ const cwd=mkdtempSync(join(tmpdir(),"asen-default-replay-"));t.after(()=>rmSync(cwd,{recursive:true,force:true}));
+ const manager={getSessionId:()=>"session-one"},ctx={cwd,mode:"tui",hasUI:true,sessionManager:manager};
+ const session=new AsenPermissionSession();
+ assert.equal(session.initialize("super-yolo",ctx),true);
+ assert.equal(session.mode(ctx),"super-yolo");
+ assert.equal(session.set("normal",ctx),true);
+ assert.equal(session.initialize("super-yolo",ctx),false,"Already bound session cannot inherit default twice");
+ assert.equal(session.mode(ctx),"normal");
+ const other={...ctx,sessionManager:{getSessionId:()=>"session-two"}};
+ assert.equal(session.initialize("yolo",other),true,"Fresh primary session may receive the saved default");
+ assert.equal(session.mode(other),"yolo");
 });

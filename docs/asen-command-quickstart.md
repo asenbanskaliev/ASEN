@@ -24,13 +24,25 @@ Run `/asen help` or `/asen-commands` and choose the listed name.
 3. Run test
 4. Close only when passing
 
-## Primary permission modes (reference-mode compatibility — partial)
+## Primary permission modes
 
-- `/asen-mode status` — show live mode, saved default and Auto availability
-- `/asen-mode normal` — return this primary TUI session to manual permissions
-- `/asen-yolo enable` — allow narrowly scoped routine feature-branch pushes without repeated confirmation
-- `/asen-yolo disable` — revoke that session's YOLO permission
-- `/asen-mode default yolo` — save the preference for eligible future primary TUI sessions (current mode unchanged)
-- `/asen-mode default normal` — restore the safe default
+Select permissions in the live primary Pi TUI:
 
-Only the live primary Pi TUI can change these permissions. YOLO does **not** waive destructive operations, human restrictions, native Writer consent or agent-child boundaries. `auto` uses an independent check with the selected Pi model, but only when its registered costs are explicitly zero. Without a live human request, a free model, a valid verdict or unchanged session/action, Auto denies the tool. Auto adds model inference overhead and is not yet feature-equivalent to the full upstream classifier. `super-yolo` is not implemented. Neither mode guarantees unattended end-to-end correction today. See `odd/tasks/asen-permission-modes-2026-11-03.md`.
+- `/asen-mode status` — show current session mode, user-global default and separate Auto usage
+- `/asen-mode normal` — the ordinary confirmation policy
+- `/asen-mode auto` — independent model review of eligible tool calls, using the selected model only when its cost is explicitly declared as zero
+- `/asen-mode yolo` — routine authorized primary work with scoped reversible non-force delivery; destructive confirmation remains
+- `/asen-mode super-yolo` — deliberate high-autonomy primary session; routine and recognized destructive confirmations are waived, **but hard-denied catastrophic commands, private credential access and independent consent are not**
+- `/asen-yolo enable | disable | status` — session-only YOLO shortcut
+- `/asen-mode default normal | auto | yolo | super-yolo` — save future-session preference, without changing the current session
+- `/asen-customize permissions` — use the interactive menu to set session or future default
+
+Only an interactive, identified primary Pi TUI can change mode/default. Headless tools, child agents, repo config and transcripts cannot select elevated mode. A human's explicit restrictions, child Writer authorization, independent result/recovery consent, and hard security boundaries remain in force.
+
+**Auto:** One independent tool-free classifier call evaluates each eligible action. Unknown, nonzero or missing model cost, missing live human intent, private text, provider failure, timeout, changed action/model/mode/session, or malformed verdict means DENY. Extra calls have their own token accounting. The reviewer can read a tiny bounded local script or package manifest as untrusted evidence, not as a grant. This is not an OS sandbox.
+
+**YOLO:** The default waiver is restricted to single or simple compound literal commands whose entire set consists of recognized routine operations (builds/checks, selected Git commits/rebases/feature pushes, and `gh pr create --fill`). A session-owned `mktemp` scratch directory can be removed without a destructive dialog when the host verifies ownership and exact target; other broad deletions still ask or block. No force pushes, main-branch delivery waiver, arbitrary shell wrappers or bypasses through pipes.
+
+**Super YOLO:** Explicitly increases risk. It cannot disable code-level hard denials (`git reset --hard`, forced Git clean/push, deletion of root/home, forced branch deletion), sensitive credential-path protection, or native human-owned consent tools. Shell recognition is lexical and does not provide OS isolation. Use a disposable workspace and scoped credentials for untrusted commands.
+
+See `odd/tasks/asen-permission-modes-2026-11-03.md` for validation gaps and exact parity status.

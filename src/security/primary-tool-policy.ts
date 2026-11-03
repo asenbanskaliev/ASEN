@@ -4,21 +4,16 @@ import path from "node:path";
 import type {ExtensionContext,ToolCallEvent,ToolCallEventResult} from "@earendil-works/pi-coding-agent";
 import {classifyNormalShellCommand} from "./normal-shell-policy.js";
 import type {AsenPermissionMode} from "./permission-mode-policy.js";
+import {isYoloRoutineDelivery,isSensitiveShellAction} from "./yolo-delivery-policy.js";
+import {isYoloTempScratchRemoval} from "./yolo-temp-scratch.js";
 
 import { hasSensitiveName, sensitivePath, sensitiveName } from "./path-safety.js";
 
 export type PrimaryToolPolicyHandler=(event:ToolCallEvent,context:ExtensionContext)=>Promise<ToolCallEventResult|undefined>;
-/** Conservative primary-only routine delivery waiver. Compound shell, ambiguous remote,
- * deletion, ref rewriting and forced Git commands continue through the original guard. */
-export function isYoloRoutinePush(command:string):boolean{
- if(typeof command!=="string"||command.length>512||/[;&|\x60$<>\\\r\n]/u.test(command))return false;
- const match=/^git\s+push\s+(?:(?:-u|--set-upstream)\s+)?origin\s+((?:feat|feature|fix|chore|docs|test)\/[A-Za-z0-9._/-]+)\s*$/u.exec(command.trim());
- if(!match)return false;
- const ref=match[1]!;
- return !ref.split("/").some(part=>!part||part==="."||part==="..")&&!ref.includes("..")&&!ref.endsWith(".lock");
-}
+export {isYoloRoutinePush,isYoloRoutineDelivery} from "./yolo-delivery-policy.js";
 export interface PrimaryModeOptions{
  readonly getMode?:(context:ExtensionContext)=>AsenPermissionMode;
+ readonly modeEpoch?:()=>number;
  /** Human-owned private preference file; model tool calls can never edit it. */
  readonly protectedPreferenceFile?:string;
  /** Optional independent reviewer only. Unavailable/untrusted classifier fails closed. */
@@ -30,6 +25,10 @@ const fileTools=new Set(["read","edit","write","grep","find","ls"]);
 // Custom ASEN job launch is a shell-capable tool too. Keep it in the same
 // admission path so its name cannot become an authorization bypass.
 const shellTools=new Set(["bash","bash_background","monitor","asen_background_start"]);
+// Native user consent decisions have their own independent UI; Auto must not
+// answer them, and YOLO/Super YOLO must not inherit them to children.
+const consentTools=new Set(["ask_user","ask_user_question","question","asen_session_consult",
+ "asen_todo_accept_result","asen_plan_dispatch_next"]);
 const denied=(reason:string):ToolCallEventResult=>({block:true,reason:`ASEN primary tool policy blocked ${reason}`});
 
 async function canonicalTarget(value:string,cwd:string):Promise<{lexical:string;canonical:string}>{
@@ -70,6 +69,7 @@ async function assertSafeTraversal(toolName:string,target:string):Promise<void>{
 export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):PrimaryToolPolicyHandler{
  return async(event,context)=>{
   const mode=options.getMode?.(context)??"normal";
+  const startEpoch=options.modeEpoch?.();
   const autoRequested=mode==="auto";
   const autoAllowed=async()=>{
    if(!options.reviewAuto)return false;
@@ -80,13 +80,17 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
     if(await options.reviewAuto(event,context)!==true)return false;
     return event.toolName===name&&event.toolCallId===id&&event.input===input&&
      JSON.stringify(event.input)===before&&context.cwd===cwd&&context.signal===signal&&
-     signal?.aborted!==true&&options.getMode?.(context)==="auto";
+     signal?.aborted!==true&&options.getMode?.(context)==="auto"&&
+     options.modeEpoch?.()===startEpoch;
    }catch{return false;}
   };
   try{
    const toolName=event.toolName;
-   if(!fileTools.has(toolName)&&!shellTools.has(toolName))
-    return autoRequested?denied("unreviewed custom tool in Auto mode"):undefined;
+   if(!fileTools.has(toolName)&&!shellTools.has(toolName)){
+    if(consentTools.has(toolName))return undefined; // Native UI owns the decision.
+    return autoRequested&&!(await autoAllowed())?
+     denied("Auto independent review is unavailable or denied"):undefined;
+   }
    const input=event.input;
    if(shellTools.has(toolName)){
     if(!input||typeof input!=="object"||Array.isArray(input))return undefined;
@@ -94,14 +98,26 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
     if(typeof command==="string"&&/(?:permission-mode\.json|asen-mode\s+default)/iu.test(command))
      return denied("human-owned permission configuration");
     if(typeof command!=="string")return autoRequested||toolName==="asen_background_start"?denied("malformed background command"):undefined;
+    if(isSensitiveShellAction(command))return denied("sensitive shell path");
     if(toolName==="asen_background_start"&&(Object.hasOwn(input,"args")||Object.keys(input).some(key=>key!=="command"&&key!=="timeoutMs"&&key!=="monitor")))return denied("unsupported background command shape");
     const decision=classifyNormalShellCommand(command);
     if(decision.action==="deny")return denied("destructive shell command");
     if(autoRequested&&!(await autoAllowed()))return denied("Auto independent review is unavailable or denied");
     if(decision.action==="pass")return undefined;
-    if(mode==="yolo"&&decision.guardedKey==="gitPush"&&isYoloRoutinePush(command))return undefined;
+    if(mode==="super-yolo")return undefined; // Hard denies and credential paths already checked.
+    if(mode==="yolo"&&decision.dataLossKind==="filesystem"&&
+     isYoloTempScratchRemoval(command))return undefined;
+    if(mode==="yolo"&&decision.dataLossKind===undefined&&
+       isYoloRoutineDelivery(command))return undefined;
     if(context.hasUI!==true||typeof context.ui?.confirm!=="function")return denied("guarded shell command requires interactive confirmation");
-    return context.ui.confirm(`ASEN · ${decision.title}`,decision.preview??"").then(approved=>approved===true?undefined:denied("guarded shell command was not confirmed"));
+    const id=event.toolCallId,inputAtReview=event.input,cwd=context.cwd,signal=context.signal;
+    const approved=await context.ui.confirm(`ASEN · ${decision.title}`,decision.preview??"");
+    if(approved!==true)return denied("guarded shell command was not confirmed");
+    if(event.toolCallId!==id||event.input!==inputAtReview||context.cwd!==cwd||
+     context.signal!==signal||signal?.aborted||options.getMode?.(context)!==mode||
+     options.modeEpoch?.()!==startEpoch||(event.input as {command?:unknown}).command!==command)
+     return denied("guarded shell confirmation expired");
+    return undefined;
    }
    const toolCallId=event.toolCallId,cwd=context.cwd,signal=context.signal;
    if(!input||typeof input!=="object")return denied("malformed tool input");

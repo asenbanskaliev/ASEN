@@ -21,6 +21,7 @@ export class AsenPermissionSession{
  private owner:Owner|undefined;
  private liveMode:AsenPermissionMode="normal";
  private generation=0;
+ private readonly initialized=new WeakMap<object,Set<string>>();
  get epoch():number{return this.generation;}
  revoke():void{this.generation++;this.owner=undefined;this.liveMode="normal";}
  mode(ctx:PermissionContext):AsenPermissionMode{
@@ -36,8 +37,17 @@ export class AsenPermissionSession{
   if(!next)return false;
   this.owner=next;this.liveMode=mode;return true;
  }
- /** Used only at an actual new trusted primary session start, never by the model. */
+ /** Apply the trusted global default at most once per live manager/session/workspace.
+  * A second session_start cannot undo a human's explicit Normal revocation.
+  */
  initialize(mode:AsenPermissionMode,ctx:PermissionContext):boolean{
+  const found=identity(ctx);
+  if(!found){this.revoke();return false;}
+  const key=found.sessionId+"\0"+found.workspace;
+  let seen=this.initialized.get(found.manager);
+  if(!seen){seen=new Set<string>();this.initialized.set(found.manager,seen);}
+  if(seen.has(key)){this.mode(ctx);return false;}
+  seen.add(key);
   return this.set(mode,ctx);
  }
 }
