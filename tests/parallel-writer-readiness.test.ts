@@ -33,16 +33,22 @@ test("EF-303 disjoint linked worktrees have two independent real leases and pres
  assert.equal(readiness.status,"READINESS_ONLY");
  assert.equal(readiness.humanApproval,false);
  assert.equal(readiness.integrationApproved,false);
+ // Compare unchanged bytes with each worktree's own checkout baseline.
+ // Git may legitimately materialize LF as CRLF on Windows.
+ const untouchedA=readFileSync(join(f.b,"src","a.ts"));
+ const untouchedB=readFileSync(join(f.a,"src","b.ts"));
+ const untouchedRootA=readFileSync(join(f.root,"src","a.ts"));
+ const untouchedRootB=readFileSync(join(f.root,"src","b.ts"));
  const one=acquireWorkspaceWriter({root:f.a,expectedHead:f.head,allowedPaths:a.paths,authorizationId:"authorization-a"});
  const two=acquireWorkspaceWriter({root:f.b,expectedHead:f.head,allowedPaths:b.paths,authorizationId:"authorization-b"});
  try{
   writeFileSync(join(f.a,"src","a.ts"),"a1\n");
   writeFileSync(join(f.b,"src","b.ts"),"b1\n");
   one.verify();two.verify();
-  assert.equal(readFileSync(join(f.a,"src","b.ts"),"utf8"),"b0\n");
-  assert.equal(readFileSync(join(f.b,"src","a.ts"),"utf8"),"a0\n");
-  assert.equal(readFileSync(join(f.root,"src","a.ts"),"utf8"),"a0\n");
-  assert.equal(readFileSync(join(f.root,"src","b.ts"),"utf8"),"b0\n");
+  assert.deepEqual(readFileSync(join(f.a,"src","b.ts")),untouchedB);
+  assert.deepEqual(readFileSync(join(f.b,"src","a.ts")),untouchedA);
+  assert.deepEqual(readFileSync(join(f.root,"src","a.ts")),untouchedRootA);
+  assert.deepEqual(readFileSync(join(f.root,"src","b.ts")),untouchedRootB);
  }finally{one.release();two.release();}
 });
 test("EF-303 duplicate worktree and overlapping file or folder scopes fail closed",t=>{

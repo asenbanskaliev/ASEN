@@ -507,3 +507,9 @@ El primer gate sin proveedor del SHA `310b058` identificó `TS2345` en la etique
 - **Saneamiento de etiquetas en mensajes al coordinador:** `agentTerminalContinuationMessage` neutraliza controles de terminal, Unicode de dirección, saltos de línea y cadenas excesivas en **ID, rol y estado**, además del saneamiento de `summary` ya existente. Se conserva el ID duradero válido para confirmaciones explícitas; los datos del hijo nunca aportan permiso Writer.
 - **Regresiones:** dos instancias que registran simultáneamente el mismo evento; intento de segundo registro tras acuse; alias Windows sin segundo encolado frente a rutas distintas en POSIX; identificadores manipulados con Unicode bidi, multilínea y exceso de longitud.
 - **Límite de evidencia:** estos son contratos verificables por fixtures y CI, no demuestra consumo real del modelo Pi, vigilia efectiva del padre, ni autorización humana; EF-601/604 y FULL continúan abiertos. No se habilita un reenvío desde estados de entrega inciertos.
+
+### Corrección del CI Windows de aislamiento de Writers (2026-11-03)
+
+- **Fallo comprobado:** en `test (windows-latest)` del SHA `4fcb299`, el caso `EF-303 disjoint linked worktrees...` falló al comparar `"b0\\r\\n"` con el literal `"b0\\n"`. El checkout Git de Windows transforma válidamente LF en CRLF; la prueba de preservación no debía asumir bytes de origen Linux.
+- **Corrección sin rebajar el criterio:** `tests/parallel-writer-readiness.test.ts` captura los bytes reales de los cuatro archivos de control antes de las dos escrituras y exige después identidad exacta de buffers, tanto en cada worktree ajeno como en el checkout base. Es una comprobación de no modificación más precisa que comparar texto con un LF prescrito. Los cambios autorizados siguen verificándose con ambos leases.
+- **Evidencia pendiente:** CI exact-SHA en Ubuntu, macOS y Windows del candidato corregido; un PASS del empaquetado Pi no implica capacidad Writer interactiva ni FULL.
