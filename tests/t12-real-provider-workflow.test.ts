@@ -5,6 +5,7 @@ import {readFileSync} from "node:fs";
 const workflow=readFileSync(new URL("../.github/workflows/asen-real-agent-acceptance.yml",import.meta.url),"utf8");
 const planner=readFileSync(new URL("../scripts/t12-real-model-plan.mjs",import.meta.url),"utf8");
 const reviewVerifier=readFileSync(new URL("../scripts/t12-real-review-verifier.mjs",import.meta.url),"utf8");
+const verifierBrief=readFileSync(new URL("../scripts/t12-verifier-brief.mjs",import.meta.url),"utf8");
 const adversarialReview=readFileSync(new URL("../skills/asen-adversarial-review/SKILL.md",import.meta.url),"utf8");
 const verificationSkill=readFileSync(new URL("../skills/asen-verify/SKILL.md",import.meta.url),"utf8");
 
@@ -53,10 +54,10 @@ test("T12 five-call live lane spends the budget on Explorer, Planner, two blind 
  assert.match(reviewVerifier,/gradeRealReview/u);
  assert.match(reviewVerifier,/gradeRealVerification/u);
  assert.match(reviewVerifier,/candidateSha/u);
- assert.match(reviewVerifier,/Every failed test observation must include `AssertionError` or the word `failed`/u,
-  "Verifier prompt must explicitly require evidence fields accepted by the deterministic grader");
- assert.match(reviewVerifier,/criterion must exactly equal the corresponding `failedCriterion` input value/u,
-  "Verifier prompt must preserve the exact deterministic acceptance criterion");
+  assert.match(reviewVerifier,/createT12VerifierBrief\(/u,"Verifier must build its prompt from validated immutable evidence");
+  assert.match(verifierBrief,/AssertionError/u,"Only actual failed assertions may enter the compact model prompt");
+  assert.match(verifierBrief,/COPY the id, criterion, exitCode/u,"Verifier prompt must preserve literal acceptance criteria");
+  assert.match(verifierBrief,/Write your OWN specific failure observations/u,"Verifier must produce original failure explanations");
  assert.match(reviewVerifier,/gradingError:error instanceof Error\?error\.message\.split\("\\n",1\)\[0\]\.slice\(0,160\)/u,
   "Verifier rejection evidence must preserve a bounded deterministic grading diagnostic");
  assert.match(reviewVerifier,/verificationSha256:verification\.responseSha256/u,
@@ -136,9 +137,10 @@ test("T12 live acceptance requires exact-SHA grades and retains explicit opt-in"
 });
 
 test("T12 Verifier prompt requires all three canonical reviewer findings after a real omission",()=>{
- assert.match(reviewVerifier,/review evidence MUST contain exactly three entries/);
- assert.match(reviewVerifier,/Required review\.findings objects, one per path, in canonical order/);
- assert.match(reviewVerifier,/judgeResults\[0\]\.grade\.findings\.map/);
+  assert.match(verifierBrief,/exactly three records: tests, scope, review/u);
+  assert.match(verifierBrief,/Include all three reviewer findings/u);
+  assert.match(reviewVerifier,/reviewFindings:judgeResults\[0\]\.grade\.findings/u);
+  assert.match(reviewVerifier,/judgeResults\[1\]\.grade\.findings\.map/u);
  assert.match(reviewVerifier,/verifierReviewPaths/);
  assert.match(reviewVerifier,/verifierEvidenceKinds/);
  assert.match(reviewVerifier,/verificationSha256:verification\.responseSha256/);
