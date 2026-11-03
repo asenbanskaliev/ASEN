@@ -7,7 +7,7 @@
  * The model response MUST be JSON: {"findings":[{"id":"...","path":"...","reason":"..."}]}.
  */
 import assert from "node:assert/strict";
-import {readFile, mkdir, writeFile, readdir, realpath} from "node:fs/promises";
+import {readFile, mkdir, writeFile, readdir, realpath, lstat} from "node:fs/promises";
 import {resolve, join, isAbsolute} from "node:path";
 import {createHash} from "node:crypto";
 
@@ -58,7 +58,23 @@ async function prepare(dir){
   }
   return {fixture:await realpath(dir),manifest:Object.fromEntries(Object.entries(files).map(([p,s])=>[p,sha(s)])),expectedIds:Object.keys(expected)};
 }
+async function assertFixtureTreeUnchanged(dir){
+  const root=await lstat(dir);
+  assert.ok(root.isDirectory()&&!root.isSymbolicLink(),"Fixture root must be a real directory");
+  const rootNames=(await readdir(dir)).sort();
+  assert.deepEqual(rootNames,["README.md","src"],"Fixture root contains missing or unexpected entries");
+  const srcDir=join(dir,"src");
+  const srcStat=await lstat(srcDir);
+  assert.ok(srcStat.isDirectory()&&!srcStat.isSymbolicLink(),"Fixture src must be a real directory");
+  const sourceNames=(await readdir(srcDir)).sort();
+  assert.deepEqual(sourceNames,["access.js","parse.js","pricing.js"],"Fixture src contains missing or unexpected entries");
+  for(const name of Object.keys(files)){
+    const stat=await lstat(join(dir,name));
+    assert.ok(stat.isFile()&&!stat.isSymbolicLink(),`Fixture entry is not a regular file: ${name}`);
+  }
+}
 async function grade(dir,responseFile){
+  await assertFixtureTreeUnchanged(dir);
   const observed=Object.fromEntries(await Promise.all(Object.keys(files).map(async p=>[p,sha(await readFile(join(dir,p),"utf8"))])));
   for(const [p,s] of Object.entries(files))assert.equal(observed[p],sha(s),`Fixture was modified: ${p}`);
   const parsed=JSON.parse(await readFile(responseFile,"utf8"));
