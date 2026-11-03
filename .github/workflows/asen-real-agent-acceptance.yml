@@ -14,6 +14,7 @@ on:
       - .github/workflows/**
       - extensions/**
       - src/**
+      - scripts/t12-*.mjs
       - tests/**
   workflow_dispatch:
     inputs:

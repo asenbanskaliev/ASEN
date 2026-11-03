@@ -103,3 +103,9 @@ test("T12 provider-free acceptance runs the existing interruption, recovery, tim
   "tests/session-recovery-e2e.test.ts",
  ])assert.ok(stage.includes(path),`F6 acceptance omits ${path}`);
 });
+
+test("T12 push scope includes the real-provider acceptance scripts, not just tests or workflow YAML",()=>{
+ assert.match(workflow,/^\s+- scripts\/t12-\*\.mjs$/mu);
+ assert.match(workflow,/^\s+- tests\/\*\*$/mu);
+ assert.match(workflow,/^\s+- src\/\*\*$/mu);
+});
