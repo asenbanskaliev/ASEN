@@ -461,3 +461,11 @@ El primer gate sin proveedor del SHA `310b058` identificó `TS2345` en la etique
 - **EF-601/604:** `asen_agent_ack` exige ahora consulta previa por `asen_agent_status` con ID exacto, resultado terminal validado y mismo alcance TUI. El marcador efímero de consulta caduca a los 5 minutos, está acotado a 64 entradas, se borra al restablecer la sesión y no es una prueba de lectura/consumo del modelo, aceptación humana o consentimiento Writer. Una mera lista de agentes no emite marcador.
 - **Pruebas:** rechazo antes de consultar, tras listado genérico o tras consulta con terminal divergente; aceptación idempotente después de consulta exacta, sin relanzamiento de tareas ni reenvío de avisos.
 - **Pendiente:** CI completo exact-SHA tres sistemas, 20 casos A/B/ASEN reales, proveedor gratuito autenticado, consentimiento Writer y observación del consumo genuino del padre. Los checks no cambian hasta acreditar cierre integral.
+
+
+### F3 — control preventivo de rutas y alias de Writer (2026-11-03)
+
+- Se endurece `acquireWorkspaceWriter`: SHA solo de 40 o 64 hexadecimales, autorización con ID Unicode válido y acotado, rutas exactas canonizadas, sin controles ni bidi, sin unidades Windows, sin `.git`, sin duplicados o solapamiento exacto, máximo 512 superficies.
+- Antes del candado y también en `verify()` se recorren los componentes reales de cada ruta autorizada y cada ruta modificada: un enlace simbólico preexistente o introducido durante la ejecución obliga a detener el Writer, sin borrar los cambios para que puedan inspeccionarse. Los directorios y archivos nuevos normales siguen permitidos cuando la autorización es exacta.
+- Pruebas Linux/macOS de sustitución por symlink después de obtener el permiso y de symlink presente al solicitarlo; pruebas multiplataforma de rutas ambiguas, malformadas y autorizaciones no canónicas.
+- **Límite EF-303:** el candado sigue siendo exclusivo para un mismo workspace y no habilita ejecución paralela insegura. El paralelismo de Writer solo se considerará con aislamiento genuino por worktree y reconciliación explícita. FULL y este check siguen abiertos.

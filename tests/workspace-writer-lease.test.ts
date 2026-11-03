@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
 import {execFileSync} from "node:child_process";
-import {mkdtempSync,readFileSync,rmSync,writeFileSync} from "node:fs";
+import {mkdtempSync,readFileSync,rmSync,writeFileSync,symlinkSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {pathToFileURL} from "node:url";
@@ -68,4 +68,33 @@ test("writer verification preserves and rejects a modification outside the grant
  writeFileSync(join(root,"outside.txt"),"preserve me\n");
  assert.throws(()=>lease.verify(),/unauthorized path: outside.txt/u);
  assert.equal(readFileSync(join(root,"outside.txt"),"utf8"),"preserve me\n");lease.release();
+});
+
+test("EF-303 writer admission rejects aliased or ambiguous exact scopes before filesystem mutation",t=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-writer-invalid-scope-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const head="a".repeat(40),base={root,expectedHead:head,authorizationId:"reviewed",allowedPaths:["target.txt"]};
+ for(const allowedPaths of [["src/../secrets.txt"],[".git/config"],["src\\out.txt"],
+  ["C:/other"],["src//other"],["x\u202e.txt"],["target.txt","target.txt"],["target.txt","target.txt/"]]){
+  assert.throws(()=>acquireWorkspaceWriter({...base,allowedPaths}),/Invalid writer authorization/u);
+ }
+ for(const authorizationId of ["\u202eFORGED","    ","a".repeat(257)]){
+  assert.throws(()=>acquireWorkspaceWriter({...base,authorizationId}),/Invalid writer authorization/u);
+ }
+ for(const expectedHead of ["a".repeat(41),"A".repeat(40),"a".repeat(63)]){
+  assert.throws(()=>acquireWorkspaceWriter({...base,expectedHead}),/Invalid writer authorization/u);
+ }
+});
+test("EF-303 writer lease rejects symlink scopes and a symlink swap after admission",t=>{
+ if(process.platform==="win32"){t.skip("POSIX symlink test requires link creation privilege");return;}
+ const root=mkdtempSync(join(tmpdir(),"asen-writer-symlink-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8"}).trim();
+ git("init","-q");git("config","user.name","ASEN writer");git("config","user.email","asan@example.invalid");
+ writeFileSync(join(root,"target.txt"),"original\n");git("add","target.txt");git("commit","-qm","base");
+ const authorization={root,expectedHead:git("rev-parse","HEAD"),authorizationId:"path-bound",allowedPaths:["link.txt"]};
+ const lease=acquireWorkspaceWriter(authorization);
+ symlinkSync(join(root,"target.txt"),join(root,"link.txt"));
+ assert.throws(()=>lease.verify(),/symlink/u);
+ lease.release();
+ git("add","link.txt");git("commit","-qm","tracked-symlink");
+ assert.throws(()=>acquireWorkspaceWriter({...authorization,expectedHead:git("rev-parse","HEAD")}),/symlink/u);
 });

@@ -22,10 +22,28 @@ function recoverDeadWriterLock(lock:string):boolean{
 export function acquireWorkspaceWriter(input:{root:string;expectedHead:string;authorizationId:string;allowedPaths:readonly string[]}){
  const {root,expectedHead,authorizationId}=input,requestedPaths=input.allowedPaths;
  const allowedPaths=Array.isArray(requestedPaths)?requestedPaths.map(path=>typeof path==="string"?path.replace(/\/$/u,""):path):requestedPaths;
- if(!/^[0-9a-f]{40,64}$/.test(expectedHead)||!authorizationId||!Array.isArray(allowedPaths)||allowedPaths.length===0
-  ||allowedPaths.some(path=>typeof path!=="string"||!path||path.startsWith("/")||path.includes("\\")||path.split("/").some(part=>part===".."||part==="."||!part)))
+ const scoped=(path:unknown):path is string=>typeof path==="string"&&path.length>0&&path.length<=1024&&
+  path===path.trim()&&path===path.normalize("NFC")&&!/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(path)&&
+  !path.startsWith("/")&&!path.includes("\\")&&!path.includes(":")&&
+  path.split("/").every(part=>!!part&&part!=="."&&part!==".."&&part!==".git");
+ if(!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u.test(expectedHead)||
+  typeof authorizationId!=="string"||!authorizationId.trim()||authorizationId.length>256||
+  authorizationId!==authorizationId.trim()||authorizationId!==authorizationId.normalize("NFC")||
+  /[\p{Cc}\p{Cf}\u2028\u2029]/u.test(authorizationId)||
+  !Array.isArray(allowedPaths)||allowedPaths.length===0||allowedPaths.length>512||
+  allowedPaths.some(path=>!scoped(path))||new Set(allowedPaths).size!==allowedPaths.length)
   throw new Error("Invalid writer authorization");
  const worktree=resolve(root);
+ // Recheck symlink traversal both before granting a lease and after the runner:
+ // an exact relative path does not authorize an aliased path outside the repo.
+ const assertNoScopeSymlinks=(relative:string)=>{
+  let current=worktree;
+  for(const part of relative.split("/")){
+   current=join(current,part);
+   try{if(lstatSync(current).isSymbolicLink())throw new Error("Writer scope may not traverse a symlink");}
+   catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")break;throw error;}
+  }
+ };
  const git=(...args:string[])=>execFileSync("git",["-C",worktree,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
  const changedPaths=()=>{
   const output=execFileSync("git",["-C",worktree,"status","--porcelain=v1","-z","--untracked-files=all"],{encoding:"utf8",stdio:["ignore","pipe","pipe"]});
@@ -42,6 +60,7 @@ export function acquireWorkspaceWriter(input:{root:string;expectedHead:string;au
  const rootPath=realpathSync.native(worktree),toplevel=resolve(git("rev-parse","--show-toplevel"));
  if(!sameWorkspaceIdentityPath(toplevel,worktree))throw new Error("Writer must own the exact Git root");
  const gitDir=resolve(worktree,git("rev-parse","--git-dir"));
+ for(const scope of allowedPaths)assertNoScopeSymlinks(scope);
  const lock=join(gitDir,"asen-t05-writer.lock");
  const token=randomUUID(),temporary=`${lock}.tmp-${process.pid}-${token}`;
  let fd:number,identity:ReturnType<typeof fstatSync>;
@@ -62,7 +81,7 @@ export function acquireWorkspaceWriter(input:{root:string;expectedHead:string;au
   if(git("rev-parse","HEAD")!==expectedHead)throw new Error("Stale writer authorization: HEAD changed");
   if(changedPaths().length)throw new Error("Writer requires a clean workspace");
   return Object.freeze({authorizationId,expectedHead,allowedPaths:Object.freeze([...allowedPaths]),
-   verify:()=>{if(released)throw new Error("Writer lease released");const current=lstatSync(lock),currentRoot=lstatSync(worktree);if(current.dev!==identity.dev||current.ino!==identity.ino)throw new Error("Writer lease replaced");if(!currentRoot.isDirectory()||currentRoot.isSymbolicLink()||currentRoot.dev!==rootStat.dev||currentRoot.ino!==rootStat.ino||realpathSync.native(worktree)!==rootPath)throw new Error("Writer repository identity changed");if(git("rev-parse","HEAD")!==expectedHead)throw new Error("Writer candidate changed");for(const path of changedPaths())if(!allowedPaths.some(scope=>path===scope||path.startsWith(scope+"/")))throw new Error(`Writer modified unauthorized path: ${path}`);},
+   verify:()=>{if(released)throw new Error("Writer lease released");const current=lstatSync(lock),currentRoot=lstatSync(worktree);if(current.dev!==identity.dev||current.ino!==identity.ino)throw new Error("Writer lease replaced");if(!currentRoot.isDirectory()||currentRoot.isSymbolicLink()||currentRoot.dev!==rootStat.dev||currentRoot.ino!==rootStat.ino||realpathSync.native(worktree)!==rootPath)throw new Error("Writer repository identity changed");if(git("rev-parse","HEAD")!==expectedHead)throw new Error("Writer candidate changed");for(const scope of allowedPaths)assertNoScopeSymlinks(scope);for(const path of changedPaths()){assertNoScopeSymlinks(path);if(!allowedPaths.some(scope=>path===scope||path.startsWith(scope+"/")))throw new Error(`Writer modified unauthorized path: ${path}`);}},
    release});
  }catch(error){release();throw error;}
 }
