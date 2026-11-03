@@ -62,3 +62,26 @@ test('EF-003 even 20 matching fixtures cannot directly authorize FULL', () => {
   assert.equal(result.globalFull,false);
   assert.equal(result.classification,'MATCH_REQUIRES_RECEIPT_AUDIT');
 });
+
+test('EF-003 comparator CLI enforces full exact-SHA input and prints BLOCKED (not FULL)', async t => {
+  const {mkdtemp,writeFile,rm} = await import('node:fs/promises');
+  const {tmpdir} = await import('node:os');
+  const {join} = await import('node:path');
+  const {spawnSync} = await import('node:child_process');
+  const folder=await mkdtemp(join(tmpdir(),'asen-ef003-cli-'));
+  t.after(()=>rm(folder,{recursive:true,force:true}));
+  const ref=join(folder,'reference.json'),local=join(folder,'candidate.json');
+  await writeFile(ref,JSON.stringify(document('reference',[entry('C01','A')])));
+  await writeFile(local,JSON.stringify(document('asen',[entry('C01')])));
+  const result=spawnSync(process.execPath,['scripts/agent-observable-parity.mjs',ref,local,current],
+   {encoding:'utf8',timeout:15000,cwd:process.cwd()});
+  assert.equal(result.status,1,'incomplete 20-case evidence must reject overall FULL');
+  const report=JSON.parse(result.stdout);
+  assert.equal(report.counts.match,1);
+  assert.equal(report.counts.blocked,19);
+  assert.equal(report.globalFull,false);
+  const malformed=spawnSync(process.execPath,['scripts/agent-observable-parity.mjs',ref,local],
+   {encoding:'utf8',timeout:15000,cwd:process.cwd()});
+  assert.equal(malformed.status,1);
+  assert.match(malformed.stderr,/Usage:/);
+});

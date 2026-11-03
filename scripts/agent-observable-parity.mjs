@@ -93,7 +93,7 @@ export function compareAgentObservations({ reference, candidate, candidateSha })
 
 async function main() {
   const [referencePath, candidatePath, sha] = process.argv.slice(2);
-  if (!referencePath || !candidatePath || !sha || process.argvnlength !== 5)
+  if (!referencePath || !candidatePath || !sha || process.argv.length !== 5)
     throw new Error('Usage: node scripts/agent-observable-parity.mjs <reference.json> <asen.json> <exact-candidate-sha>');
   const [reference, candidate] = await Promise.all([referencePath, candidatePath].map(async p =>
     JSON.parse(await readFile(resolve(p), 'utf8'))));
