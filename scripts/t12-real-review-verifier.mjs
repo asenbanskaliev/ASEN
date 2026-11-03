@@ -12,7 +12,7 @@ import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {prepare} from "./t12-real-agent-fixture.mjs";
 import {reserveInferenceCall} from "./t12-inference-budget.mjs";
-import {gradeRealReview,gradeRealVerification} from "./t12-review-grader.mjs";
+import {gradeRealReview,gradeRealVerification,normalizeVerifierTestEvidence} from "./t12-review-grader.mjs";
 
 const repository=resolve(".");
 const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8"}).trim();
@@ -183,6 +183,7 @@ assert.throws(() => parseCount("12abc"));
   });
  }
  const testEvidence={checks};
+ const verificationTestEvidence=normalizeVerifierTestEvidence(testEvidence);
  const reviewPrompt=[
   "Bounded T12 evidence-only review: this invocation is one blind read-only judge in a parent-controlled pair. Do not start another judge, corrections, or tools.",
   "The frozen candidate SHA, disposable fixture digest, all baseline/proposed source, acceptance criteria and deterministic test results are included. Tools are unavailable and forbidden; assess only this supplied material and report any actually missing evidence in the JSON.",
@@ -219,9 +220,11 @@ assert.throws(() => parseCount("12abc"));
   'Return exactly {"verdict":"fail","evidence":[{"kind":"tests","checks":[{"id":"...","exitCode":1,"criterion":"...","observation":"..."}]},{"kind":"scope","candidateSha":"...","fixtureSha256":"...","paths":["..."],"observation":"..."},{"kind":"review","findings":[{"path":"...","codeEvidence":"...","acceptanceCriterion":"...","reason":"..."}]}]}. Do not add or omit keys.',
   "A failed test must remain failed. Verify all three failures, the exact SHA and snapshot digest, every changed path, and the two blinded review judgments. Keep authorization NOT_GRANTED.",
   "Preserve every required key and value from the supplied evidence exactly; do not omit fields or paraphrase identifiers, paths, criteria, evidence strings, hashes or exit codes. Every failed test observation must include `AssertionError` or the word `failed`; each review reason must explicitly connect the defect to its failed criterion.",
+  "The criterion must exactly equal the corresponding `failedCriterion` input value. Required id-to-criterion values:",
+  JSON.stringify(testEvidence.checks.map(({id,failedCriterion})=>({id,criterion:failedCriterion}))),
   `Exact candidate SHA: ${revision}`,
   `Exact disposable snapshot SHA-256: ${candidateSha256}`,
-  "Deterministic test results:",JSON.stringify(testEvidence),
+  "Deterministic test results:",JSON.stringify(verificationTestEvidence),
   "Both separate blinded Reviewer judgments:",JSON.stringify(judgeResults.map(item=>item.grade)),
   "Changed paths:",JSON.stringify(changedPaths),
  ].join("\n");
@@ -230,7 +233,7 @@ assert.throws(() => parseCount("12abc"));
  });
  let verificationGrade;
  try{verificationGrade=gradeRealVerification(verification.answer,{
-  candidateSha:revision,fixtureSha256:candidateSha256,changedPaths,testEvidence,
+  candidateSha:revision,fixtureSha256:candidateSha256,changedPaths,testEvidence:verificationTestEvidence,
   review:judgeResults[0].grade,
  });}
  catch(error){await reject("VERIFIER_EVIDENCE_INCOMPLETE","Verifier output failed exact-candidate deterministic grading",{

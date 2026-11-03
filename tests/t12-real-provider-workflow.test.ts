@@ -55,10 +55,16 @@ test("T12 five-call live lane spends the budget on Explorer, Planner, two blind 
  assert.match(reviewVerifier,/candidateSha/u);
  assert.match(reviewVerifier,/Every failed test observation must include `AssertionError` or the word `failed`/u,
   "Verifier prompt must explicitly require evidence fields accepted by the deterministic grader");
+ assert.match(reviewVerifier,/criterion must exactly equal the corresponding `failedCriterion` input value/u,
+  "Verifier prompt must preserve the exact deterministic acceptance criterion");
  assert.match(reviewVerifier,/gradingError:error instanceof Error\?error\.message\.split\("\\n",1\)\[0\]\.slice\(0,160\)/u,
   "Verifier rejection evidence must preserve a bounded deterministic grading diagnostic");
  assert.match(reviewVerifier,/verificationSha256:verification\.responseSha256/u,
   "Verifier rejection evidence must bind its response hash without uploading raw output");
+ assert.match(reviewVerifier,/normalizeVerifierTestEvidence\(testEvidence\)/u,
+  "Runtime `failedCriterion` evidence must be normalized before it reaches the Verifier grader");
+ assert.match(reviewVerifier,/testEvidence:verificationTestEvidence/u,
+  "Verifier grading must consume normalized evidence with exact criterion values");
  assert.match(workflow,/Real ASEN Reviewer \(two blind judgments\) and Verifier reject deliberate defects[\s\S]{0,160}if: env\.ASEN_MAX_INFERENCE_CALLS == '5'/u);
  const setupHeading="      - name: Install pinned Ollama Cloud provider extension";
  const setupStart=workflow.indexOf(setupHeading);

@@ -26,6 +26,21 @@ export function gradeRealReview(review,{candidateSha}={}){
  return Object.freeze({passed:true,verdict:"fail",candidateSha,findings:Object.freeze(findings),authorization:"NOT_GRANTED"});
 }
 
+export function normalizeVerifierTestEvidence(evidence){
+ assert.ok(evidence&&Array.isArray(evidence.checks)&&evidence.checks.length>0,"Verifier requires at least one failed check");
+ const checks=evidence.checks.map(check=>{
+  assert.ok(check&&typeof check.id==="string"&&check.id.length>0,"Verifier check requires an id");
+  assert.equal(check.exitCode,1,"Verifier check must be a failed test");
+  assert.ok(text(check.failedCriterion),"Verifier check requires a failed criterion");
+  assert.ok(typeof check.observation==="string"&&check.observation.length>0,"Verifier check requires a failure observation");
+  return Object.freeze({
+   id:check.id,exitCode:check.exitCode,criterion:check.failedCriterion,observation:check.observation,
+  });
+ });
+ assert.equal(new Set(checks.map(check=>check.id)).size,checks.length,"Verifier check ids must be unique");
+ return Object.freeze({checks:Object.freeze(checks)});
+}
+
 export function gradeRealVerification(verification,{candidateSha,fixtureSha256,changedPaths,testEvidence,review}={}){
  assert.ok(exactKeys(verification,["verdict","evidence"]),"Verifier response fields do not match the required schema");
  assert.equal(verification.verdict,"fail","Verifier must reject failed deterministic evidence");

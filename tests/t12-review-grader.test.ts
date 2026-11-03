@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 // @ts-expect-error JavaScript-only review contract helper.
-import {gradeRealReview,gradeRealVerification} from "../scripts/t12-review-grader.mjs";
+import {gradeRealReview,gradeRealVerification,normalizeVerifierTestEvidence} from "../scripts/t12-review-grader.mjs";
 
 const sha="a".repeat(40);
 const fixtureSha="b".repeat(64);
@@ -30,6 +30,13 @@ const verification=(paths=["src/access.js","src/parse.js","src/pricing.js"]):Ver
  {kind:"review",findings:reviewer().findings.map(item=>({...item,reason:"The reviewer-identified defect is confirmed by the deterministic failure."}))},
 ]});
 const changedPaths=["src/access.js","src/parse.js","src/pricing.js"];
+
+test("T12 normalizes runtime failedCriterion evidence without changing the grade",()=>{
+ const runtimeEvidence={checks:checks.map(({id,exitCode,criterion,observation})=>({id,exitCode,failedCriterion:criterion,observation}))};
+ assert.deepEqual(normalizeVerifierTestEvidence(runtimeEvidence),testEvidence);
+ assert.throws(()=>normalizeVerifierTestEvidence({checks:[]}),/at least one failed check/);
+ assert.throws(()=>normalizeVerifierTestEvidence({checks:[{...runtimeEvidence.checks[0],exitCode:0}]}),/must be a failed test/);
+});
 
 test("T12 two blind Reviewer judgments require exact candidate and all grounded defects",()=>{
  assert.equal(gradeRealReview(reviewer(),{candidateSha:sha}).passed,true);
