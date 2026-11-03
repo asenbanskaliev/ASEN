@@ -54,6 +54,8 @@ test("EF-303 duplicate worktree and overlapping file or folder scopes fail close
  assert.throws(()=>inspectParallelWriterReadiness([a,{root:f.b,head:"0".repeat(40),paths:["src/b.ts"]}]),/Stale/u);
  assert.throws(()=>inspectParallelWriterReadiness([a,{root:f.b,head:f.head,paths:["src/b.ts","src/b.ts"]}]),/Invalid/u);
  assert.throws(()=>inspectParallelWriterReadiness([a,{root:f.b,head:f.head,paths:[".git/config"]}]),/Invalid/u);
+ assert.throws(()=>inspectParallelWriterReadiness([a,{root:f.b,head:f.head,paths:["src/A.ts"]}]),/overlap/u);
+ assert.throws(()=>inspectParallelWriterReadiness([a,{root:f.b,head:f.head,paths:["src/b.ts","src/B.ts"]}]),/Invalid/u);
 });
 test("EF-303 worktree must be clean and on the same repository with exact SHA",t=>{
  const f=setup(t),a={root:f.a,head:f.head,paths:["src/a.ts"]};
