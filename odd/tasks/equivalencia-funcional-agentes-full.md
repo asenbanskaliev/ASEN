@@ -380,3 +380,7 @@ Aceptar únicamente tras typecheck, tests unitarios y de integración del comand
 ### Ajuste TS estricto de la aceptación interactiva
 
 La primera ejecución del commit `0ec8234` rechazó `TS2322/TS2345` por inferencia amplia de `phase` en el fixture de Reviewer/Verifier. Se anota `selection: SkillSelectionContext` en el test de integración; no se modifican verificadores, permisos, journal ni límites de aceptación. Queda pendiente comprobar el siguiente CI exact-SHA.
+
+### CI global: inventario público de comandos
+
+La ejecución completa `41696159173` del SHA `2ea767e` detectó un rechazo en `tests/command-catalog.test.ts`: la lista estática esperada no incluía `asen-accept-review`. Se incorpora el comando en su posición alfabética sin eliminar el control de unicidad, la comprobación de comandos ausentes ni la lista de comandos implementados. El tipo, la lógica de autorización y el almacenamiento permanecen intactos. Confirmar el nuevo SHA antes de cerrar el gate de tres sistemas.
