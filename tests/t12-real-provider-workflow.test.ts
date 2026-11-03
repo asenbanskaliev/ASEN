@@ -143,3 +143,12 @@ test("T12 Verifier prompt requires all three canonical reviewer findings after a
  assert.match(reviewVerifier,/verifierEvidenceKinds/);
  assert.match(reviewVerifier,/verificationSha256:verification\.responseSha256/);
 });
+
+test("T12 Explorer binds an explicit eight-field JSON schema and never logs model text on schema failure",()=>{
+ const explorer=readFileSync(new URL("../scripts/t12-ollama-asen-dispatcher.mjs",import.meta.url),"utf8");
+ assert.match(explorer,/inspectExplorerSchema\(content\)/);
+ assert.match(explorer,/EXPLORATION_SCHEMA_INVALID/);
+ assert.match(explorer,/observedShape:shape\.observedShape/);
+ assert.match(explorer,/All eight top-level fields are REQUIRED/);
+ assert.match(workflow,/tests\/t12-explorer-schema\.test\.ts/);
+});
