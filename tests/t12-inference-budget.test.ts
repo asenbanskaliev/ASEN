@@ -6,7 +6,7 @@ import {fileURLToPath} from "node:url";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 // @ts-expect-error JavaScript-only budget helper.
-import {reserveInferenceCall,inspectInferenceBudget} from "../scripts/t12-inference-budget.mjs";
+import {reserveInferenceCall,inspectInferenceBudget,readInferenceBudgetReceipts} from "../scripts/t12-inference-budget.mjs";
 
 test("T12 inference budget reserves bounded child calls exactly once",async t=>{
  const directory=await mkdtemp(join(tmpdir(),"asen-inference-budget-"));
@@ -139,4 +139,28 @@ test("T12 claim-only entries outside the declared ceiling are rejected",async t=
  const folder=join(directory,"asen-inference-budget");
  await writeFile(join(folder,"4.claim"),JSON.stringify({call:4,label:"outside",limit:3}));
  await assert.rejects(()=>inspectInferenceBudget({directory}),/outside the declared limit/);
+});
+
+test("T12 receipt reader binds each durable call number to its stage without consuming a call",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-stage-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ await reserveInferenceCall("asen-dispatcher-explorer",{limit:5,directory});
+ await reserveInferenceCall("real-plan",{limit:5,directory});
+ assert.deepEqual(await readInferenceBudgetReceipts({directory}),[
+  {call:1,label:"asen-dispatcher-explorer",limit:5},
+  {call:2,label:"real-plan",limit:5},
+ ]);
+ assert.deepEqual(await inspectInferenceBudget({directory}),
+  {limit:5,reserved:2,remaining:3,authorization:"NOT_GRANTED"});
+});
+test("T12 missing, changed, or mismatched claimed receipts cannot satisfy stage acceptance",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-claim-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ await reserveInferenceCall("first",{limit:3,directory});
+ const folder=join(directory,"asen-inference-budget");
+ await writeFile(join(folder,"1.json"),JSON.stringify({call:1,label:"changed",limit:3})+"\n");
+ await assert.rejects(()=>readInferenceBudgetReceipts({directory}),/malformed|differs/);
+ await writeFile(join(folder,"1.json"),JSON.stringify({call:1,label:"first",limit:3})+"\n");
+ await writeFile(join(folder,"1.claim"),JSON.stringify({call:1,label:"first",limit:3,extra:"tampered"})+"\n");
+ await assert.rejects(()=>readInferenceBudgetReceipts({directory}),/malformed|differs/);
 });

@@ -121,6 +121,30 @@ export async function inspectInferenceBudget({directory=process.env.RUNNER_TEMP}
  return Object.freeze({limit:policy.limit,reserved,remaining:policy.limit-reserved,authorization:"NOT_GRANTED"});
 }
 
+/** Read verified, sanitized per-stage receipts only after the run has stopped.
+ * Never issues a provider request or exposes credentials.
+ */
+export async function readInferenceBudgetReceipts({directory=process.env.RUNNER_TEMP}={}){
+ const summary=await inspectInferenceBudget({directory});
+ const folder=join(directory,"asen-inference-budget");
+ const receipts=[];
+ for(let call=1;call<=summary.reserved;call++){
+  const receipt=await readFile(join(folder,call+".json"),"utf8");
+  const claim=await readFile(join(folder,call+".claim"),"utf8");
+  if(receipt!==claim)throw new Error("T12 inference receipt differs from its claimed call");
+  let record;
+  try{record=JSON.parse(receipt);}
+  catch{throw new Error("T12 inference reservation is malformed");}
+  if(!record||typeof record!=="object"||Array.isArray(record)||
+     Object.keys(record).sort().join(",")!=="call,label,limit"||
+     record.call!==call||record.limit!==summary.limit||
+     typeof record.label!=="string"||!/^[a-z0-9-]{1,48}$/i.test(record.label))
+   throw new Error("T12 inference reservation is malformed");
+  receipts.push(Object.freeze({call:record.call,label:record.label,limit:record.limit}));
+ }
+ return Object.freeze(receipts);
+}
+
 if(process.argv[1]&&fileURLToPath(import.meta.url)===resolve(process.argv[1])){
  try{
   if(process.argv[2]==="--report"){

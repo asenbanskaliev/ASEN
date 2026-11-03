@@ -5,7 +5,7 @@ import {mkdtemp,readFile,writeFile,mkdir,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {resolve,join} from "node:path";
 import {Dispatcher} from "../src/agents/dispatcher.js";
-import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
+import {PiArtifactRunner,isIssuedAgentArtifactProof} from "../src/agents/pi-artifact-runner.js";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
@@ -76,8 +76,11 @@ try{
    responseSha256:createHash("sha256").update(result.output).digest("hex"),
   });
  }
- if(result.artifactProof?.role!=="explorer"||result.artifactProof.candidateRevision!==revision||result.artifactProof.repository!==repository)
-  await failure("ARTIFACT_PROVENANCE_INVALID","Dispatcher artifact proof did not match the exact explorer candidate");
+ const proof=result.artifactProof;
+ if(!isIssuedAgentArtifactProof(proof)||proof.requestId!==candidate.id+":explorer"||
+    proof.role!=="explorer"||proof.candidateId!==candidate.id||
+    proof.candidateRevision!==revision||proof.repository!==repository)
+  await failure("ARTIFACT_PROVENANCE_INVALID","Dispatcher did not issue proof for this exact explorer request");
  let artifact;
  try{artifact=JSON.parse(result.output);}
  catch{await failure("ARTIFACT_INVALID_JSON","Dispatcher result was not a provenance-bound artifact");}

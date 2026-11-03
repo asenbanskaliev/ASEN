@@ -5,15 +5,24 @@ import {gradeLiveAcceptanceEvidence} from "../scripts/t12-live-evidence-gate.mjs
 
 const sha="a".repeat(40),model="beam";
 const explorer={passed:true,status:"PASS",provider:"ollama-cloud",model,candidateSha:sha,
- inferenceCall:1,inferenceLimit:5,toolsAllowed:false,writerAuthorized:false,fixtureUnchanged:true};
+ inferenceCall:1,inferenceLimit:5,toolsAllowed:false,writerAuthorized:false,fixtureUnchanged:true,
+ role:"explorer",phase:"explore",artifactKind:"exploration",findings:["authorization","parsing","pricing"]};
 const planner={passed:true,provider:"ollama-cloud",model,candidateSha:sha,
- inferenceCall:2,inferenceLimit:5,toolsAllowed:false,writerAuthorized:false,authorization:"NOT_GRANTED",taskCount:3};
+ inferenceCall:2,inferenceLimit:5,toolsAllowed:false,writerAuthorized:false,authorization:"NOT_GRANTED",taskCount:3,
+ scope:"disposable-fixture",findings:["authorization","parsing","pricing"]};
 const review={passed:true,status:"PASS_NEGATIVE_REJECTION",provider:"ollama-cloud",model,candidateSha:sha,
  toolsAllowed:false,writerAuthorized:false,authorization:"NOT_GRANTED",
- reviewer:[{grade:{passed:true,findings:[1,2,3]}},{grade:{passed:true,findings:[1,2,3]}}],
- verifier:{grade:{passed:true,verdict:"fail",checkCount:3,findingCount:3}}};
+ reviewer:[
+ {id:"t12-review-fixture:judge-a",responseSha256:"c".repeat(64),responseBytes:200,grade:{passed:true,candidateSha:sha,verdict:"fail",findings:[1,2,3]}},
+ {id:"t12-review-fixture:judge-b",responseSha256:"d".repeat(64),responseBytes:210,grade:{passed:true,candidateSha:sha,verdict:"fail",findings:[1,2,3]}}],
+ verifier:{responseSha256:"e".repeat(64),responseBytes:245,grade:{passed:true,verdict:"fail",checkCount:3,findingCount:3}}};
 const budget={limit:5,reserved:5,remaining:0,authorization:"NOT_GRANTED"};
-const ready=()=>({sha,model,maxCalls:5,budget,explorer,planner,review});
+const receipts5=[
+ {call:1,label:"asen-dispatcher-explorer",limit:5},{call:2,label:"real-plan",limit:5},
+ {call:3,label:"real-judge-a",limit:5},{call:4,label:"real-judge-b",limit:5},
+ {call:5,label:"real-verifier",limit:5},
+];
+const ready=()=>({sha,model,maxCalls:5,budget,receipts:receipts5,explorer,planner,review});
 
 test("T12 only exact-SHA real graded evidence can yield bounded read-only PASS",()=>{
  const result=gradeLiveAcceptanceEvidence(ready());
@@ -26,8 +35,8 @@ test("T12 only exact-SHA real graded evidence can yield bounded read-only PASS",
 });
 test("T12 missing real verifier, wrong SHA, changed model and incomplete calls reject PASS",()=>{
  const base=ready();
- assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,verifier:undefined}}),/Verifier grade/);
- assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,verifier:{grade:{passed:false}}}}),/Verifier grade/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,verifier:undefined}}),/Verifier response hash/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,verifier:{...review.verifier,grade:{passed:false}}}}),/Verifier grade/);
  assert.throws(()=>gradeLiveAcceptanceEvidence({...base,planner:{...planner,candidateSha:"b".repeat(40)}}),/candidate SHA mismatch/);
  assert.throws(()=>gradeLiveAcceptanceEvidence({...base,explorer:{...explorer,model:"other"}}),/model mismatch/);
  assert.throws(()=>gradeLiveAcceptanceEvidence({...base,model:"unapproved-free-model"}),/unapproved model/);
@@ -37,6 +46,11 @@ test("T12 missing real verifier, wrong SHA, changed model and incomplete calls r
 });
 test("T12 three-call evidence can only be PARTIAL, never claim Reviewer or Verifier",()=>{
  const three={sha,model,maxCalls:3,budget:{limit:3,reserved:3,remaining:0,authorization:"NOT_GRANTED"},
+  receipts:[
+   {call:1,label:"provider-connectivity",limit:3},
+   {call:2,label:"asen-dispatcher-explorer",limit:3},
+   {call:3,label:"real-plan",limit:3},
+  ],
   explorer:{...explorer,inferenceCall:2,inferenceLimit:3},
   planner:{...planner,inferenceCall:3,inferenceLimit:3},
   review:{status:"BLOCKED_CALL_BUDGET",reviewer:"NOT_RUN",verifier:"NOT_RUN",authorization:"NOT_GRANTED"}};
@@ -46,4 +60,26 @@ test("T12 three-call evidence can only be PARTIAL, never claim Reviewer or Verif
  assert.equal(result.writer,"BLOCKED_INTERACTIVE");
  assert.throws(()=>gradeLiveAcceptanceEvidence({...three,review:{...three.review,verifier:"PASS"}}),/must not claim/);
  assert.throws(()=>gradeLiveAcceptanceEvidence({...three,explorer:{...three.explorer,inferenceCall:1}}),/call order/);
+});
+
+test("T12 provider call receipts must bind the precise stage labels, sequence and limits",()=>{
+ const base=ready();
+ const duplicate=receipts5.map(x=>({...x}));
+ duplicate[4].label="real-judge-b";
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,receipts:duplicate}),/stage receipt identities/);
+ const unknown=receipts5.map(x=>({...x}));
+ unknown[0].label="provider-connectivity";
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,receipts:unknown}),/stage receipt identities/);
+ const inverted=receipts5.slice().reverse();
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,receipts:inverted}),/stage receipt identities/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,receipts:receipts5.slice(0,4)}),/stage receipt identities/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,receipts:undefined}),/stage-specific inference receipts/);
+});
+test("T12 provider evidence requires exact Explorer identity, scoped Planner and distinct Reviewer receipts",()=>{
+ const base=ready();
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,explorer:{...explorer,role:"worker"}}),/Explorer role mismatch/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,explorer:{...explorer,findings:["pricing","parsing","pricing"]}}),/three known defects/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,planner:{...planner,scope:"production-repository"}}),/disposable fixture scope/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,reviewer:[review.reviewer[1],review.reviewer[0]]}}),/identity or order mismatch/);
+ assert.throws(()=>gradeLiveAcceptanceEvidence({...base,review:{...review,verifier:{...review.verifier,responseSha256:"bad"}}}),/Verifier response hash/);
 });

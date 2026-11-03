@@ -152,3 +152,22 @@ test("T12 Explorer binds an explicit eight-field JSON schema and never logs mode
  assert.match(explorer,/All eight top-level fields are REQUIRED/);
  assert.match(workflow,/tests\/t12-explorer-schema\.test\.ts/);
 });
+
+test("T12 Explorer requires an issued in-memory artifact proof for exact request and candidate",()=>{
+ const explorer=readFileSync(new URL("../scripts/t12-ollama-asen-dispatcher.mjs",import.meta.url),"utf8");
+ assert.match(explorer,/isIssuedAgentArtifactProof\(proof\)/u);
+ assert.match(explorer,/proof\.requestId!==candidate\.id\+":explorer"/u);
+ assert.match(explorer,/proof\.candidateId!==candidate\.id/u);
+ assert.match(explorer,/proof\.candidateRevision!==revision/u);
+ assert.match(explorer,/proof\.repository!==repository/u);
+});
+test("T12 provider evidence verifies ordered inference receipts before reporting any live acceptance",()=>{
+ const gate=readFileSync(new URL("../scripts/t12-live-evidence-gate.mjs",import.meta.url),"utf8");
+ const budget=readFileSync(new URL("../scripts/t12-inference-budget.mjs",import.meta.url),"utf8");
+ assert.match(gate,/readInferenceBudgetReceipts\(\{directory:temp\}\)/u);
+ assert.match(gate,/expectedLabels\.map\(\(label,index\)=>/u);
+ assert.match(gate,/real-judge-a/u);
+ assert.match(gate,/real-verifier/u);
+ assert.match(budget,/export async function readInferenceBudgetReceipts/u);
+ assert.match(workflow,/tests\/t12-live-evidence-gate\.test\.ts/u);
+});
