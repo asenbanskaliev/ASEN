@@ -165,7 +165,7 @@ test("Super YOLO can waive routine guarded prompts but never critical hard denie
   const result=await run(command);
   assert.equal((result as any)?.block,true,command);
  }
- for(const command of ["cat .env","cat ~/.ssh/id_rsa","cat secrets/token.txt","cat credentials.pem"]){
+ for(const command of ["cat .env","cat ~/.ssh/id_rsa","cat ~/.ssh/config","cat ~/.aws/credentials","cat secrets/token.txt","cat credentials.pem"]){
   const result=await run(command);
   assert.equal((result as any)?.block,true,command);
   assert.match((result as any).reason,/sensitive shell path/);
@@ -227,17 +227,20 @@ test("Explicit mode UI selections and user-global defaults are distinct authoriz
    registerCommand:(name:string,command:any)=>commands.set(name,command),on:()=>{},
  } as any);
  let selected="Session: super-yolo";
+ const indicators:string[]=[];
  const ctx:any={cwd:home,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>"s"},
-  ui:{notify(){},select:async()=>selected},
+  ui:{notify(){},select:async()=>selected,setStatus:(_key:string,value:string|undefined)=>indicators.push(value??"NORMAL")},
  };
  const customize=(arg:string)=>commands.get("asen-customize")!.handler(arg,ctx) as Promise<any>;
  assert.equal((await customize("permissions")).session,"super-yolo");
+ assert.ok(indicators.includes("ASEN SUPER-YOLO"));
  selected="Default: auto";
  const state=await customize("permissions");
  assert.equal(state.savedDefault,"auto");
  assert.equal(state.session,"super-yolo","Saving a global default never switches the live session");
  selected="Session: normal";
  assert.equal((await customize("permissions")).session,"normal");
+ assert.equal(indicators.at(-1),"NORMAL");
  selected="Session: unknown";
  await assert.rejects(()=>customize("permissions"),/unknown choice/);
  const rpc={...ctx,mode:"rpc"};

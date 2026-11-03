@@ -32,5 +32,7 @@ export function isYoloRoutineDelivery(command:string):boolean{
 /** Lexical defense-in-depth for literal sensitive shell paths, not a sandbox. */
 export function isSensitiveShellAction(command:string):boolean{
  if(typeof command!=="string")return true;
- return /(?:^|[^\w])(?:\.env(?:\.[A-Za-z0-9_-]+)?|\.ssh(?:\/|\\)|\.aws(?:\/|\\)|\.npmrc\b|\.netrc\b|secrets[\/\\]|id_rsa\b|id_ed25519\b|[^\s/\\]+\.(?:pem|key|p12|pfx)\b|keychain\b)(?:$|[^\w])/iu.test(command);
+ const files=/(?:^|[^\w])(?:\.env(?:\.[A-Za-z0-9_-]+)?|\.npmrc|\.netrc|id_rsa|id_ed25519|keychain|[^\s/\\]+\.(?:pem|key|p12|pfx))(?=$|[^A-Za-z0-9_-])/iu;
+ const directories=/(?:^|[\/\\\s"'~])(?:\.ssh|\.aws|secrets)(?:[\/\\]|$)/iu;
+ return files.test(command)||directories.test(command);
 }

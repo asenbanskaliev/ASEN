@@ -3,7 +3,7 @@
  * Project registered metadata without invoking getters, toJSON or prototype hooks.
  */
 const maxNodes=512,maxDepth=12,maxBytes=8192;
-const secretText=/(?:-----BEGIN [A-Z ]*PRIVATE KEY|sk-proj-|ghp_[a-z0-9]{20}|(?:password|api[_-]?key|credential|private[_-]?key|bearer)[=:]\s*["']?\S+)/iu;
+const secretText=/(?:-----BEGIN [A-Z ]*PRIVATE KEY|sk-proj-|ghp_[a-z0-9]{20}|(?:password|passwd|api[_-]?key|credential|private[_-]?key|bearer|secret|token)[=:]\s*["']?\S+)/iu;
 function project(value:unknown,depth:number,budget:{nodes:number}):unknown{
  if(++budget.nodes>maxNodes||depth>maxDepth)throw Error("Tool metadata bounds exceeded");
  if(value===null||typeof value==="boolean")return value;
@@ -47,7 +47,11 @@ export function projectAutoToolContext(
   const parameters=Object.getOwnPropertyDescriptor(found,"parameters");
   if(!description||!Object.hasOwn(description,"value")||typeof description.value!=="string"||
    !parameters||!Object.hasOwn(parameters,"value"))return undefined;
-  const result:AutoToolContext={name:toolName,description:description.value,
+  // Descriptions and parameter schemas are equally untrusted; neither may
+  // bypass credential and byte limits merely by being a top-level string.
+  const descriptionValue=project(description.value,0,{nodes:0});
+  if(typeof descriptionValue!=="string")return undefined;
+  const result:AutoToolContext={name:toolName,description:descriptionValue,
    parameters:project(parameters.value,0,{nodes:0})};
   return Buffer.byteLength(JSON.stringify(result))<=maxBytes?Object.freeze(result):undefined;
  }catch{return undefined;}

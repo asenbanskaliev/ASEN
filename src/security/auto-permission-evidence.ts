@@ -6,7 +6,7 @@ import {hasSensitiveName} from "./path-safety.js";
 export interface AutoScriptEvidence{path:string;content:string;bytes:number;}
 export type AutoEvidenceResult={kind:"none"}|{kind:"invalid"}|
  {kind:"evidence";items:readonly AutoScriptEvidence[]};
-const credential=/(?:-----BEGIN [A-Z ]*PRIVATE KEY|sk-proj-|ghp_[a-z0-9]{20}|(?:api[_ -]?key|password|bearer|credential)\s*[=:]\s*\S+)/iu;
+const credential=/(?:-----BEGIN [A-Z ]*PRIVATE KEY|sk-proj-|ghp_[a-z0-9]{20}|(?:api[_ -]?key|password|passwd|secret|token|bearer|credential|private[_ -]?key)\s*[=:]\s*\S+)/iu;
 function literalPath(value:string):boolean{
  return value.length>0&&value.length<=256&&
   /^[A-Za-z0-9_./-]+$/u.test(value)&&!value.split("/").includes("..")&&

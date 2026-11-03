@@ -119,6 +119,7 @@ test("Auto registration metadata is bounded, plain, accessor-free and cannot gra
  assert.equal(projectAutoToolContext([withSerializer],"my_mcp_tool"),undefined);
  assert.equal(projectAutoToolContext([{...good[0],description:"x".repeat(9000)}],"my_mcp_tool"),undefined);
  assert.equal(projectAutoToolContext([{...good[0],description:"api_key=SECRET_NOT_TO_LOG"}],"my_mcp_tool"),undefined);
+ assert.equal(projectAutoToolContext([{...good[0],description:"token=ANOTHER_SECRET"}],"my_mcp_tool"),undefined);
 });
 test("Auto independent call includes a real bounded registered tool description only as untrusted context",async t=>{
  const f=fixture(t),requests:unknown[]=[];

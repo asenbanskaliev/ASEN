@@ -41,7 +41,7 @@ export class AsenAutoPermissionReviewer{
   // Long or potentially secret-bearing requests must not be sent to a second model.
   // They cannot be silently truncated into a broader authorization.
   const text=event.text.trim();
-  if(!text||Buffer.byteLength(text)>6000||/(?:-----BEGIN [A-Z ]*PRIVATE KEY|sk-proj-|ghp_[a-z0-9]{20}|api[_ -]?key\s*[=:]\s*\S+)/iu.test(text)){
+  if(!text||Buffer.byteLength(text)>6000||/(?:-----BEGIN [A-Z ]*PRIVATE KEY|sk-proj-|ghp_[a-z0-9]{20}|(?:api[_ -]?key|password|secret|token|credential|private[_ -]?key)\s*[=:]\s*\S+)/iu.test(text)){
    this.revoke();return;
   }
   this.messages.push(text);
@@ -66,7 +66,7 @@ export class AsenAutoPermissionReviewer{
   let snapshot:string,content:string;
   try{
    snapshot=JSON.stringify(event.input);
-   if(Buffer.byteLength(snapshot)>8192||/(?:-----BEGIN [A-Z ]*PRIVATE KEY|sk-proj-|ghp_[a-z0-9]{20}|api[_ -]?key\s*[=:]\s*\S+)/iu.test(snapshot))return false;
+   if(Buffer.byteLength(snapshot)>8192||/(?:-----BEGIN [A-Z ]*PRIVATE KEY|sk-proj-|ghp_[a-z0-9]{20}|(?:api[_ -]?key|password|secret|token|credential|private[_ -]?key)\s*[=:]\s*\S+)/iu.test(snapshot))return false;
    const descriptor=projectAutoToolContext(this.listTools(),toolName);
    const evidence=["bash","bash_background","monitor","asen_background_start"].includes(toolName)?
     autoScriptEvidence((event.input as {command?:unknown})?.command,ctx.cwd):{kind:"none" as const};

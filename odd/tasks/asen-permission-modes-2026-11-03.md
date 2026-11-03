@@ -47,3 +47,10 @@ Implementation:
 - P-CI: fixed exact public command catalog regression that was the common CI test failure across Ubuntu, Windows and macOS at `b54ffaf`. Provider-free tests cover hard denies, cross-mode epoch drift, Super Yolo, compound shell authorization, owned scratch removal, mode menu spoofing, tool metadata safety, long-session first/last instructions, and read-only script inspection. Successful provider-free fixtures are NOT live remote verifier evidence.
 
 **Remaining before reporting full validated parity:** repeat exact-SHA CI on all three OS after this grouped commit; run a real primary Pi TUI with each mode, selected-model independent Auto inference, native Customize and host answers, and verify model quotas/errors, dynamic guardrail configuration, background commands and OS containment boundaries. Confirm per-tool plugin/adaptor semantics and user-global preference ownership under Windows. Super YOLO is intrinsically higher-risk and cannot be certified as safe by lexical tests alone. Do not confuse mode implementation with T12 Writer FULL or independent R4. No provider inference was started by the grouped patch; no merge to main.
+
+
+## Focused CI audit and hardening (same grouped batch)
+
+- At `675fa88` the first focal run found a strict TypeScript path narrowing problem; `1e55eb4` corrected it. The next focal run found **two real safety defects**, not environmental CI issues: unsafe top-level registered-tool descriptions were not being screened like their parameter schemas, and the Super YOLO lexical check missed nested `secrets/` paths. The follow-up security patch fixes both and expands checks for `.ssh/config`, `.aws/credentials` and token-like fields.
+- A user-visible live mode status indicator is published to Pi via an optional status UI, including revocation to Normal. Repeated same-session start events cannot re-enable a revoked default.
+- These test-driven changes do not authorize Writer, bypass independent native consent, or assert successful live model calls. Exact-SHA checks must complete before parity can be claimed.

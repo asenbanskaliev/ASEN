@@ -73,7 +73,7 @@ import {AsenAutoPermissionReviewer} from "../src/security/auto-permission-review
 import {isAsenPermissionMode,readPermissionModeDefault,savePermissionModeDefault} from "../src/security/permission-mode-policy.js";
 import type {PrimaryModeOptions} from "../src/security/primary-tool-policy.js";
 
-type CommandContext={cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void}};
+type CommandContext={cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void}};
 type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
@@ -153,14 +153,16 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   });
   const permissionSession=dependencies.permissionSession??new AsenPermissionSession();
   const permissionDefault=()=>readPermissionModeDefault(home());
-  const permissionStatus=(ctx:CommandContext)=>({
-   session:permissionSession.mode(ctx),savedDefault:permissionDefault().mode,
-   malformedDefault:permissionDefault().malformed,
-   autoReviewerAvailable:typeof dependencies.autoPermissionReview==="function",
-   autoUsage:dependencies.autoPermissionStatus?.()??null,
-   superYoloAvailable:true,
-   boundary:"Primary-only mode; delegated Writer consent, recovery authorization and critical sensitive-path guards stay independent.",
-  });
+  const permissionStatus=(ctx:CommandContext)=>{
+   const live=permissionSession.mode(ctx),defaultValue=permissionDefault();
+   try{ctx.ui?.setStatus?.("asen:permissions",live==="normal"?undefined:"ASEN "+live.toUpperCase());}
+   catch{/* Status UI is best effort and cannot confer authority. */}
+   return {session:live,savedDefault:defaultValue.mode,malformedDefault:defaultValue.malformed,
+    autoReviewerAvailable:typeof dependencies.autoPermissionReview==="function",
+    autoUsage:dependencies.autoPermissionStatus?.()??null,superYoloAvailable:true,
+    boundary:"Primary-only mode; delegated Writer consent, recovery authorization and critical sensitive-path guards stay independent.",
+   };
+  };
   const requirePrimaryPermissionUI=(ctx:CommandContext)=>{
    if(ctx?.hasUI!==true||ctx.mode!=="tui"||!ctx.sessionManager?.getSessionId?.())
     throw new Error("ASEN permission changes require the live primary Pi TUI");
@@ -298,6 +300,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const preference=permissionDefault();
    permissionSession.initialize(preference.malformed?"normal":preference.mode==="auto"&&
     typeof dependencies.autoPermissionReview!=="function"?"normal":preference.mode,ctx);
+   permissionStatus(ctx);
    invalidateChildSelection();
    const selectionScope=Object.freeze({generation:selectionGeneration,context:ctx,manager:ctx.sessionManager,sessionId:ctx.sessionManager?.getSessionId?.(),cwd:ctx.cwd});selectionOwner=selectionScope;
    if(ctx.sessionManager?.getSessionId?.())await inheritedProfile(await sessionIdentity(ctx));
