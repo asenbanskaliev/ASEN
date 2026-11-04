@@ -56,3 +56,12 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - En `46ab623731f1493ba5fd60703089b821f54653cc`, la aceptación Beam real ejecutó Explorer y Planner con PASS y el primer Reviewer fue rechazado como `REVIEWER_FINDING_UNGROUNDED`; run [41928158752](https://github.com/asenbanskaliev/ASEN/actions/runs/41928158752), artefacto [13370920410](https://github.com/asenbanskaliev/ASEN/actions/runs/41928158752/artifacts/13370920410).
 - Se usaron 3 de 5 llamadas permitidas; no se ejecutó Verifier ni el segundo Reviewer y no se dio Writer consentimiento. El proveedor/modelo fue Ollama Cloud Beam real.
 - Root cause exacta no estaba en el recibo agregado porque conserva solo hash y longitud. El candidato siguiente mejora el prompt de copia literal y registra un código de error determinista sin texto crudo; conserva intactos los criterios de aceptación.
+
+
+## Recepción y continuación — 2026-11-04
+
+- HEAD confirmado: `c1542b48d187f575fc360fc8e6c0e2f1b4120516`.
+- La aceptación exact-SHA `41929195297` pasó con Beam real y 5/5 llamadas máximas para Explorer, Planner, dos Reviewer y Verifier; rechazo negativo del fixture PASS. Artefacto provider `13371211276`; sin Writer ni herramientas. No son dos revisores independientes.
+- Release Gate `41929204975`, Phase 0 `41929204955`, F5 `41929204958`, CodeGraph `41929204826`, Pi Runtime `41929204898` y R4 self-audit `41929204803` SUCCESS; CI `41929204808` seguía ejecutándose al comprobar. Pi Free Smoke SKIPPED.
+- Siguiente cambio consolidado: prueba multiproceso de concurrencia del acuse de una notificación persistente, junto con actualización del ODD. Después publicar con el mensaje opt-in de Pi parent + Pi RPC child Beam y revisar sus recibos. Reconciliar todos los resultados por SHA.
+- Continuar con 8/28 EF; EF-601/603/604 PARTIAL, A/B C01–C20 BLOCKED, Writer humano BLOCKED, Reviewer independiente ausente, FULL=false. No merge a main ni modelos pagados.
