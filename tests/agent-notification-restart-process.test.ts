@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {spawnSync} from "node:child_process";
-import {mkdir,mkdtemp,readFile,rm} from "node:fs/promises";
+import {mkdir,mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
+import {agentTerminalNoticeContent} from "../src/runtime/agent-terminal-delivery.js";
 
 const sourceUrl=new URL("../src/runtime/agent-notification-journal.ts",import.meta.url).href;
 function separateProcess(stage:string,file:string,subject:object){
@@ -59,4 +60,29 @@ test("EF-604 real process termination after claim cannot replay or fabricate ack
  assert.deepEqual(await journal.list(subject),before);
  const foreign=await journal.list({...subject,sessionId:"foreign-session"});
  assert.deepEqual(foreign,[],"A different session cannot consume or enumerate the uncertain notice");
+});
+
+
+test("EF-601 restart keeps an old pending notice durable but composes it without stale report text",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-restart-stale-pending-"));
+ t.after(()=>rm(root,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const scope={sessionId:"same-pi-session",projectId:join(root,"project")};
+ await mkdir(scope.projectId);
+ const file=join(root,"notices.json"),writer=new AgentNotificationJournal(file);
+ const recorded=await writer.record({...scope,id:"old-completed-agent",state:"completed"});
+ const old=new Date(Date.now()-120_000).toISOString();
+ const data=JSON.parse(await readFile(file,"utf8"));
+ data.entries[0].createdAt=old;data.entries[0].updatedAt=old;
+ await writeFile(file,JSON.stringify(data)+"\\n");
+ // A separate journal instance models a restarted Pi host reading durable pending data.
+ const reopened=new AgentNotificationJournal(file),rows=await reopened.list(scope),row=rows[0]!;
+ assert.equal(row.eventId,recorded.eventId);
+ assert.equal(row.delivery,"pending","Fresh host must leave an old, unclaimed notice eligible for one compact delivery");
+ const notice=agentTerminalNoticeContent({id:row.agentId,role:"explorer",state:row.state,
+  summary:"PRIVATE_OLD_RESULT",eventId:row.eventId,createdAt:row.createdAt,now:Date.now()});
+ assert.equal(notice.stale,true);
+ assert.doesNotMatch(notice.content,/PRIVATE_OLD_RESULT/u);
+ assert.ok(notice.content.includes(row.eventId));
+ assert.equal((await reopened.list(scope))[0]?.delivery,"pending",
+  "Composition alone may not claim, acknowledge or change delivery state");
 });

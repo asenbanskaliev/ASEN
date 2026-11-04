@@ -175,3 +175,9 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - CI `41935962856` y Release Gate `41935962878` estaban IN_PROGRESS al registrar. La publicación de este checkpoint cancela esos resultados parciales; consultar nuevos workflows del nuevo SHA exacto. No afirmar CI/RG PASS.
 - Checkpoints EF601-STALE-RESULT-01 y EF601-STALE-WIRING-01 acotan el formato y su composición con timestamp persistente. EF-601 global continúa PARTIAL, canónicos 8/28. Falta recovery TUI con inferencia/reinicio, consumo después de restart, A/B C01–C20, Writer humano, Reviewer independiente. FULL=false.
 - Próxima macrotanda elegida: EF-601/604, cubrir pending viejo en flujo de restauración del host y evento/ack real, usando el mismo journal; conservar regla de no replay de `attempted` y sin notificar como leído hasta acción de status+ack.
+
+
+## EF-601 — pending envejecido después de reabrir journal
+
+- Nueva regresión agrupada: escritura de aviso durable `pending`, envejecimiento controlado de sus marcas de tiempo válidas, reapertura desde instancia de journal separada y composición stale sin resumen. Comprueba eventId/estado y que el compositor no claim/ack.
+- Pendiente preflight exact-SHA del próximo commit. La prueba no representa host TUI ni un LLM real. Estado global 8/28 y FULL=false.

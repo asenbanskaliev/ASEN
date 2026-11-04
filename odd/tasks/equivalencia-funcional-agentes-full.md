@@ -1453,3 +1453,6 @@ La nueva aserción de workflow tenía una comilla final mal colocada. La inspecc
 - EF601-STALE-RESULT-01 permanece PASS para contrato/filtro; ambos son subchecks acotados y no incrementan la cuenta canónica. EF-601 sigue PARTIAL, 8/28, FULL=false.
 
 - **No promoción canónica:** esto no demuestra reanudación TUI real con aviso envejecido, acción de lectura efectiva ni A/B C14; EF-601 canónico sigue `[ ]`.
+
+
+- [ ] EF601-STALE-REOPEN-01 — probar reapertura del journal `pending` con edad real >90 s y usar el mismo compositor de `extensions/asen.ts` para omitir salida obsoleta sin alterar estado/eventId. **Pendiente** de aceptación provider-free exact-SHA; no simula TUI ni consumo Pi.
