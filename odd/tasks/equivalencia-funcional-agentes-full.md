@@ -692,3 +692,9 @@ El run `41781460824` del SHA `3e3b720` bloqueó la aceptación auténtica antes 
 - El evaluador exige correspondencia entre el evento encolado, el agente solicitado, el registro devuelto, el acuse solicitado y la respuesta del acuse. Se mantienen los límites de turno, modelo gratuito, ausencia de Writer y conservación del proyecto.
 - Se añaden diez casos negativos de identidad, estado y campos omitidos; ninguna respuesta falsa o incompleta debe alcanzar `PASS_REAL_PI_PARENT_BOUNDED`.
 - **Criterio de recepción:** typecheck, tests, gates y nueva ejecución Pi/Beam en el SHA exacto. Hasta entonces esta evidencia es solo código revisable. No se marcan nuevos EF ni se declara FULL; se mantienen 8/28.
+
+### EF-601 — opt-in de cuota Ollama Beam autorizado (2026-11-04)
+
+El usuario autorizó expresamente consumir cuota de Ollama. Esta tanda solicita **una única ejecución real** del padre Pi con el modelo gratuito `ollama-cloud/beam` mediante el disparador exacto ya existente `ci: one-time Pi parent Beam proof` en GitHub Actions. El workflow mantiene `github.run_attempt == 1`, el entorno `ollama-cloud-beam`, los secretos gestionados por GitHub, la verificación de SHA, el límite de tiempo y el hijo fixture solo lectura. No se autoriza Writer ni proveedores de pago; no se cambia ningún gate.
+
+**Resultado aún desconocido al crear el commit:** comprobar el job `real-parent-consumption`, el grader reforzado de identidad/estado y el artefacto `asen-parent-real-<SHA>-<run>`. Si falta el secreto, el modelo, el permiso de entorno o la cuota, registrar FAIL/SKIP sin inferir PASS. La ejecución previa no se reutiliza para cerrar EF-601. EF canónico permanece 8/28; no FULL ni merge.
