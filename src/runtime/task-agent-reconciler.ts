@@ -2,6 +2,7 @@ import type {AgentSessionIdentity,AgentRuntime} from "../agents/agent-runtime.js
 import type {SessionTodoStore} from "./todo-store.js";
 import type {TaskAgentLinkStore} from "./task-agent-link-store.js";
 import {sameWorkspaceIdentityPath} from "./workspace-store.js";
+import {CONFIRMED_FAILED_READ_ONLY_RETRY_REASON} from "./trusted-task-agent-binder.js";
 
 const terminal=new Set(["completed","failed","cancelled","interrupted"]);
 /** Closes read-only exploration automatically; review results require explicit user acceptance. */
@@ -31,7 +32,13 @@ export class TaskAgentTodoReconciler{
    // history running indefinitely, even if the replacement is still queued.
    const predecessors=related.slice(0,-1);
    const latest=related[related.length-1]!;
-   const validRecoveryChain=predecessors.every(previous=>
+   const confirmedFailedReadOnlyRetry=related.length===2&&
+    task.current.reason===CONFIRMED_FAILED_READ_ONLY_RETRY_REASON&&
+    predecessors[0]?.state==="failed"&&
+    predecessors[0]?.role===latest.role&&
+    ["explorer","reviewer","verifier"].includes(latest.role)&&
+    (!task.plan||latest.role===task.plan.role);
+   const validRecoveryChain=confirmedFailedReadOnlyRetry||predecessors.every(previous=>
     previous?.state==="interrupted"&&(!task.plan||previous.role===task.plan.role));
    if(!validRecoveryChain){
     try{await this.todos.update(task.taskId,identity,task.current.revision,"blocked",

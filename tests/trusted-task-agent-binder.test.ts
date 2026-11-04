@@ -5,7 +5,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
 import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
-import {TrustedTaskAgentBinder} from "../src/runtime/trusted-task-agent-binder.js";
+import {CONFIRMED_FAILED_READ_ONLY_RETRY_REASON,TrustedTaskAgentBinder} from "../src/runtime/trusted-task-agent-binder.js";
 import {selectSkills} from "../src/skills/registry.js";
 test("ECO-07 binder rejects unowned agents and foreign Todos without writing links",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-binder-"));t.after(()=>rm(dir,{recursive:true,force:true}));
@@ -199,3 +199,58 @@ test("EF-604 a prior interrupted agent with a changed role or identity cannot au
  assert.equal(launches,2);assert.deepEqual((await links.list(identity)).map(x=>x.agentId),["old-agent","fresh-agent"]);
 });
 
+
+test("EF-603 a confirmed failed read-only attempt retries once, never through normal interrupted recovery",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-ef603-failed-confirmed-"));
+ t.after(()=>rm(dir,{recursive:true,force:true}));
+ const identity={sessionId:"failed-ui-confirmed",projectId:dir};
+ const todos=await SessionTodoStore.open(join(dir,"todos.json"));
+ const selection={phase:"explore" as const};
+ const task=await todos.add("Retry one failed Explorer",identity,undefined,undefined,
+  "asen-plan:failed-ui",[],"Inspect the bounded project",{
+   role:"explorer",skillSelection:selection,skillPaths:selectSkills(selection).map(x=>x.path),
+  });
+ const states=new Map<string,string>([["original","queued"],["replacement","queued"],["duplicate","queued"]]);
+ const host={query:async(id:string)=>states.has(id)?{record:{id,...identity,role:"explorer",state:states.get(id)}}:null};
+ const links=new TaskAgentLinkStore(join(dir,"links.json"));
+ const binder=new TrustedTaskAgentBinder(todos,host as never,links);
+ let dispatches=0;
+ await binder.launch(task.taskId,"original",identity,()=>{dispatches++;});
+ states.set("original","failed");
+ await todos.update(task.taskId,identity,2,"blocked","Original read-only attempt failed");
+ const confirmed=await todos.update(task.taskId,identity,3,"running",CONFIRMED_FAILED_READ_ONLY_RETRY_REASON);
+ const revision=confirmed.events.at(-1)!.revision;
+ await assert.rejects(()=>binder.launch(task.taskId,"replacement",identity,()=>{dispatches++;}),
+  /interrupted linked agent/u,"Normal recovery cannot treat failed as interrupted");
+ await assert.rejects(()=>binder.launchConfirmedFailedRetry(task.taskId,"replacement",identity,
+  "original",revision-1,()=>{dispatches++;}),/snapshot or linked scope changed/u);
+ assert.deepEqual((await links.list(identity)).map(x=>x.agentId),["original"]);
+ await binder.launchConfirmedFailedRetry(task.taskId,"replacement",identity,"original",revision,()=>{dispatches++;});
+ assert.equal(dispatches,2);
+ assert.deepEqual((await links.list(identity)).map(x=>x.agentId),["original","replacement"]);
+ await assert.rejects(()=>binder.launchConfirmedFailedRetry(task.taskId,"duplicate",identity,
+  "original",revision,()=>{dispatches++;}),/snapshot or linked scope changed/u);
+ assert.equal(dispatches,2,"A second retry may not consume another runner slot");
+});
+test("EF-603 explicit failed-retry route rejects interrupted, live or completed predecessors",async t=>{
+ for(const previousState of ["interrupted","running","completed"]){
+  const dir=await mkdtemp(join(tmpdir(),"asen-ef603-failed-negative-"));
+  t.after(()=>rm(dir,{recursive:true,force:true}));
+  const identity={sessionId:"negative-"+previousState,projectId:dir};
+  const todos=await SessionTodoStore.open(join(dir,"todos.json"));
+  const task=await todos.add("Never reinterpret an earlier outcome",identity);
+  const links=new TaskAgentLinkStore(join(dir,"links.json"));
+  const state={old:previousState,role:"explorer"};
+  const host={query:async(id:string)=>({record:{id,...identity,role:id==="old"?state.role:"explorer",state:id==="old"?state.old:"queued"}})};
+  const binder=new TrustedTaskAgentBinder(todos,host as never,links);
+  await links.bind({taskId:task.taskId,agentId:"old",...identity,createdAt:new Date().toISOString()});
+  await todos.update(task.taskId,identity,1,"running");
+  await todos.update(task.taskId,identity,2,"blocked","Explicit review required");
+  const claimed=await todos.update(task.taskId,identity,3,"running",CONFIRMED_FAILED_READ_ONLY_RETRY_REASON);
+  let count=0;
+  await assert.rejects(()=>binder.launchConfirmedFailedRetry(task.taskId,"new",identity,
+   "old",claimed.events.at(-1)!.revision,()=>{count++;}),/exact failed read-only predecessor|duplicate launch rejected/u);
+  assert.equal(count,0);
+  assert.equal((await links.list(identity)).length,1);
+ }
+});

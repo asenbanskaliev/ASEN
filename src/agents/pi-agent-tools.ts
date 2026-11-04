@@ -5,7 +5,7 @@ import {isAbsolute,resolve} from "node:path";
 import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
 import type {AgentRuntime} from "./agent-runtime.js";
 import type {AgentSessionIdentity} from "./agent-runtime.js";
-import type {TrustedTaskAgentBinder} from "../runtime/trusted-task-agent-binder.js";
+import {CONFIRMED_FAILED_READ_ONLY_RETRY_REASON,type TrustedTaskAgentBinder} from "../runtime/trusted-task-agent-binder.js";
 import type {AgentNotificationJournal} from "../runtime/agent-notification-journal.js";
 import type {TaskAgentLinkStore} from "../runtime/task-agent-link-store.js";
 import type {SessionTodoStore,TodoPlanMetadata} from "../runtime/todo-store.js";
@@ -181,9 +181,9 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   throwIfCancelled(signal);const confirmedIdentity=await identity(context);if(confirmedIdentity.sessionId!==session.sessionId||confirmedIdentity.projectId!==session.projectId)throw new Error("Pi session or project changed before agent retry");
   const fresh=(await todos.list(session)).find(item=>item.taskId===todo.taskId),latest=await active.query(agentId,session);
   if(!fresh||fresh.current.state!=="blocked"||fresh.current.revision!==todo.current.revision||!latest||latest.record.state!=="failed")throw new Error("Failed Todo or agent changed during retry confirmation; refresh before retry");
-  await todos.update(todo.taskId,session,todo.current.revision,"running","User confirmed a new read-only retry in Pi UI",signal);
+  const retryClaim=await todos.update(todo.taskId,session,todo.current.revision,"running",CONFIRMED_FAILED_READ_ONLY_RETRY_REASON,signal);
   try{
-   const next=await active.startReadOnly({role,prompt:instruction,session,...(prior.request.model!==undefined?{model:prior.request.model}:{}),...(prior.request.thinking!==undefined?{thinking:prior.request.thinking}:{}),...(selection?{skillSelection:selection}:{}),onQueued:async(id,dispatch)=>{const validate=async()=>{const currentIdentity=await identity(context);if(currentIdentity.sessionId!==session.sessionId||currentIdentity.projectId!==session.projectId)throw new Error("Pi session or project changed before agent retry dispatch");};await validate();await (await todoLink.binder()).launch(todo.taskId,id,session,dispatch,validate);}},signal);
+   const next=await active.startReadOnly({role,prompt:instruction,session,...(prior.request.model!==undefined?{model:prior.request.model}:{}),...(prior.request.thinking!==undefined?{thinking:prior.request.thinking}:{}),...(selection?{skillSelection:selection}:{}),onQueued:async(id,dispatch)=>{const validate=async()=>{const currentIdentity=await identity(context);if(currentIdentity.sessionId!==session.sessionId||currentIdentity.projectId!==session.projectId)throw new Error("Pi session or project changed before agent retry dispatch");};await validate();await (await todoLink.binder()).launchConfirmedFailedRetry(todo.taskId,id,session,agentId,retryClaim.events.at(-1)!.revision,dispatch,validate);}},signal);
    return result({id:next,state:"queued",retriedFrom:agentId,role,todoId:todo.taskId});
   }catch(error){const current=(await todos.list(session)).find(item=>item.taskId===todo.taskId);if(current?.current.state==="running")await todos.update(current.taskId,session,current.current.revision,"blocked","Read-only retry was not dispatched; review is required",undefined).catch(()=>{});throw error;}
  }});

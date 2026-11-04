@@ -8,7 +8,7 @@ import {join} from "node:path";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
 import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 import {TaskAgentTodoReconciler} from "../src/runtime/task-agent-reconciler.js";
-import {TrustedTaskAgentBinder} from "../src/runtime/trusted-task-agent-binder.js";
+import {CONFIRMED_FAILED_READ_ONLY_RETRY_REASON,TrustedTaskAgentBinder} from "../src/runtime/trusted-task-agent-binder.js";
 import {selectSkills} from "../src/skills/registry.js";
 
 type Role="explorer"|"worker"|"reviewer"|"verifier";
@@ -192,3 +192,32 @@ test("EF-604 an interrupted predecessor with queued replacement remains running"
  assert.equal((await f.current())?.current.state,"running");
 });
 
+
+test("EF-603/604 a confirmed single failed read-only retry may finish after durable restart",async t=>{
+ const f=await fixture(t);
+ await f.append("first-failed","failed","Initial failure is retained");
+ await f.todos.update(f.task.taskId,f.identity,2,"blocked","First read-only task failed");
+ await f.todos.update(f.task.taskId,f.identity,3,"running",CONFIRMED_FAILED_READ_ONLY_RETRY_REASON);
+ await f.append("single-retry","completed","Saved confirmed retry findings");
+ assert.deepEqual(await f.reconcile(),[]);
+ const row=await f.current();
+ assert.equal(row?.current.state,"done");
+ assert.deepEqual((await new TaskAgentLinkStore(f.linkFile).list(f.identity)).map(x=>x.agentId),
+  ["first-failed","single-retry"]);
+ assert.deepEqual(await f.reconcile(),[],"No second completion after rereading persistent records");
+ assert.equal((await f.current())?.events.length,5);
+});
+test("EF-603 a failed attempt never authorizes unconfirmed or multi-attempt success",async t=>{
+ for(const confirmed of [false,true]){
+  const f=await fixture(t);
+  await f.append("first-failed","failed");
+  if(confirmed){
+   await f.todos.update(f.task.taskId,f.identity,2,"blocked","First read-only task failed");
+   await f.todos.update(f.task.taskId,f.identity,3,"running",CONFIRMED_FAILED_READ_ONLY_RETRY_REASON);
+   await f.append("unexpected-third","failed");
+  }
+  await f.append("injected-success","completed","Plausible untrusted completion");
+  assert.deepEqual(await f.reconcile(),[f.task.taskId]);
+  assert.equal((await f.current())?.current.state,"blocked");
+ }
+});
