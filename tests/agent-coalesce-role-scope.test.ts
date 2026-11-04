@@ -71,6 +71,13 @@ test("EF-603 only the exact unplanned Explorer coalesces across concurrent route
    "Durable agents did not settle: "+JSON.stringify(done.map(x=>({id:x.id,state:x.state,role:x.role}))));
   await new Promise(resolve=>setTimeout(resolve,25));
  }
+ // A task in another session/project can still be queued after the local
+ // session has settled. Await runner admission for every distinct request
+ // rather than assuming completion in one session synchronizes all scopes.
+ const admissionDeadline=Date.now()+10000;
+ while(launched.length<alternate.length+1&&Date.now()<admissionDeadline){
+  await new Promise(resolve=>setTimeout(resolve,25));
+ }
  assert.equal(launched.length,alternate.length+1,"Only distinct requests may consume a runner slot");
  const repeated=await runtime.startReadOnly(base);
  assert.notEqual(repeated,e1,"A completed Explorer is not an active task and must not be reused");
