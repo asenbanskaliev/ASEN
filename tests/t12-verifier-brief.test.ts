@@ -44,6 +44,9 @@ test("EF-402 Beam Verifier receives canonical criteria and bounded observed fail
  assert.equal(outputSkeleton.evidence[1].observation,"?");
  assert.ok(outputSkeleton.evidence[2].findings.every((row:{reason:string})=>row.reason==="?"));
  assert.match(prompt,/MANDATORY COMPLETE JSON RESPONSE SKELETON/u);
+ assert.match(prompt,/Every test observation MUST begin with/u);
+ assert.match(prompt,/pricing, authorization AND parsing/u);
+ assert.match(prompt,/Number\.parseInt accepted trailing non-digits/u);
  assert.match(prompt,/REPLACE EVERY QUESTION MARK/u);
  assert.ok(prompt.length<7800,"five-call run must preserve bounded Pi context");
 });

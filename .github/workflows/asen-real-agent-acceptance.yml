@@ -112,6 +112,7 @@ jobs:
             tests/eco06-interrupted-writer.test.ts \
             tests/eco07-provider-failure.test.ts \
             tests/background-job-journal.test.ts \
+            tests/agent-notification-multiprocess.test.ts \
             tests/pi-process-runner.test.ts \
             tests/pi-session-recovery-e2e.test.ts \
             tests/session-recovery-e2e.test.ts
