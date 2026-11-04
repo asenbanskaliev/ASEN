@@ -4,7 +4,7 @@ import {isAbsolute} from "node:path";
 import {atomicWriteText} from "../io/atomic-write.js";
 import {withExclusiveFileLock} from "../io/exclusive-file-lock.js";
 import {preparePrivateFile} from "../io/private-file.js";
-import {sameWorkspaceIdentityPath} from "./workspace-store.js";
+import {sameWorkspaceIdentityPath,workspaceIdentityPathKey} from "./workspace-store.js";
 
 /** A durable *enqueue* ledger, deliberately not a Pi-consumption receipt.
  * "attempted" is an uncertain crash or transport boundary: never auto-replay it.
@@ -39,11 +39,17 @@ function parse(raw:string):File{
  const o=d as File;
  if(o.schema!=="asen.agent-notices/v1"||!Number.isSafeInteger(o.revision)||o.revision<0||!Array.isArray(o.entries)||o.entries.length>MAX_ENTRIES)throw new Error("Invalid ASEN agent notice journal");
  const seen=new Set<string>();
+ // One terminal outcome per agent in an owned session/project. A different
+ // terminal state must never create a second independent delivery identity.
+ const terminalOwners=new Set<string>();
  for(const e of o.entries){
   if(!keys(e,["eventId","agentId","sessionId","projectId","state","delivery","createdAt","updatedAt"])||
      !valid(e.agentId)||!valid(e.sessionId)||!valid(e.projectId)||!terminal.has(e.state)||!modes.has(e.delivery)||
      !validDate(e.createdAt)||!validDate(e.updatedAt)||e.updatedAt<e.createdAt||e.eventId!==agentNoticeEventId({id:e.agentId,sessionId:e.sessionId,projectId:e.projectId,state:e.state})||seen.has(e.eventId))
    throw new Error("Invalid ASEN agent notice journal");
+  const terminalOwner=JSON.stringify([e.agentId,e.sessionId,workspaceIdentityPathKey(e.projectId)]);
+  if(terminalOwners.has(terminalOwner))throw new Error("Invalid ASEN agent notice journal: conflicting terminal outcomes");
+  terminalOwners.add(terminalOwner);
   seen.add(e.eventId);
  }
  return structuredClone(o);
@@ -81,6 +87,8 @@ export class AgentNotificationJournal{
    const existing=file.entries.find(x=>x.eventId===eventId||
     (x.agentId===subject.id&&x.state===subject.state&&sameScope(x,subject)));
    if(existing)return{result:structuredClone(existing),changed:false};
+   if(file.entries.some(x=>x.agentId===subject.id&&sameScope(x,subject)))
+    throw new Error("Conflicting terminal outcome for owned agent; refusing duplicate notification");
    if(file.entries.length===MAX_ENTRIES)throw new Error("Agent notice journal capacity exceeded");
    const now=new Date().toISOString(),row:AgentNoticeRow={
     eventId,agentId:subject.id,sessionId:subject.sessionId,projectId:subject.projectId,

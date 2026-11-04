@@ -129,3 +129,42 @@ test("EF-601 repeated terminal record from two instances is idempotent even afte
  assert.equal((await other.record(subject)).delivery,"acknowledged");
  assert.equal((await journal.list(subject)).length,1);
 });
+
+test("EF-601/604 rejects a second contradictory terminal result without changing the durable journal",async t=>{
+ const {file,journal}=await fixture(t);
+ const completed=await journal.record(subject);
+ const before=await readFile(file,"utf8");
+ await assert.rejects(()=>journal.record({...subject,state:"failed"}),/Conflicting terminal outcome/);
+ await assert.rejects(()=>new AgentNotificationJournal(file).record({...subject,state:"cancelled"}),/Conflicting terminal outcome/);
+ assert.equal(await readFile(file,"utf8"),before,"No secondary event or revision may be written");
+ assert.deepEqual(await journal.list(subject),[completed]);
+ assert.equal((await journal.record(subject)).eventId,completed.eventId,"Same outcome stays idempotent");
+ const differentSession=await journal.record({...subject,sessionId:"other-session",state:"failed"});
+ assert.notEqual(differentSession.eventId,completed.eventId,"A separate owned session is independent");
+});
+test("EF-601/604 concurrent contradictory terminal writers commit exactly one state",async t=>{
+ const {file,journal}=await fixture(t),other=new AgentNotificationJournal(file);
+ const outcomes=await Promise.allSettled([
+  journal.record({...subject,state:"completed"}),
+  other.record({...subject,state:"failed"}),
+ ]);
+ assert.equal(outcomes.filter(x=>x.status==="fulfilled").length,1);
+ const failure=outcomes.find(x=>x.status==="rejected");
+ assert.ok(failure&&failure.status==="rejected");
+ assert.match(String(failure.reason),/Conflicting terminal outcome/);
+ const persisted=await new AgentNotificationJournal(file).list(subject);
+ assert.equal(persisted.length,1);
+ const saved=JSON.parse(await readFile(file,"utf8"));
+ assert.equal(saved.revision,1);
+ assert.equal(saved.entries.length,1);
+});
+test("EF-604 corrupt legacy journal with contradictory terminal identities fails closed",async t=>{
+ const {file,journal}=await fixture(t);
+ const original=await journal.record(subject);
+ const newer={...original,eventId:agentNoticeEventId({...subject,state:"failed"}),state:"failed"};
+ const corrupt=JSON.stringify({schema:"asen.agent-notices/v1",revision:2,entries:[original,newer]})+"\n";
+ await writeFile(file,corrupt);
+ await assert.rejects(()=>journal.list(subject),/conflicting terminal outcomes/);
+ await assert.rejects(()=>journal.record(subject),/conflicting terminal outcomes/);
+ assert.equal(await readFile(file,"utf8"),corrupt);
+});
