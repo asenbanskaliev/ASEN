@@ -78,13 +78,17 @@ try{
   prompt:"This is a bounded read-only streaming diagnostic. Write a numbered list of 120 short, distinct facts about the arithmetic sequence 1, 2, 3, ... in plain text. Do not invoke tools. Do not write files. Begin the list immediately."
  },abort.signal);
  createdId=id;
+ stage="WAIT_TERMINAL";
  const record=await terminal;
+ flags.terminal=record.state;
+ stage="CHECK_REAL_STREAM";
  assert.equal(record.id,id);
  assert.equal(record.state,"cancelled","An aborted model stream must not be marked completed");
  assert.ok(Number.isSafeInteger(flags.nativePid)&&flags.nativePid>0,"Native Pi OS process not observed");
  assert.ok(flags.deltaObservations>=1&&flags.textCharacters>0,"A real assistant text delta must precede interruption");
  assert.equal((await runtime.query(id,session))?.record.state,"cancelled");
  assert.ok(flags.processClose&&flags.processClose.code!==0,"Aborted Pi process must not exit as a successful completion");
+ stage="CHECK_PROJECT_PRESERVED";
  assert.equal(git("status","--porcelain"),"","The isolated project cannot change");
  assert.equal(git("rev-parse","HEAD"),baseline);
  stage="DURABLE_FAILURE_REOPEN";
@@ -138,6 +142,9 @@ try{
    status:"FAIL_OR_INCOMPLETE",stage,candidateSha:sha,model,
    providerCallsReserved:1,writerAuthorized:false,globalFull:false,
    diagnostic:error instanceof Error?error.name:"UnknownError",
+   observed:{nativePidObserved:Number.isSafeInteger(flags.nativePid)&&flags.nativePid>0,
+    textDeltaCount:flags.deltaObservations,terminalState:flags.terminal,
+    childClosedNonzero:!!flags.processClose&&flags.processClose.code!==0},
   })+"\n",{flag:"wx",mode:0o600});
  }catch{/* Missing receipt is itself a CI failure. */}
  console.error("EF604_REAL_BEAM_STREAM_INTERRUPTION_FAILED "+stage);

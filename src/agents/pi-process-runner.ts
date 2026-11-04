@@ -234,6 +234,7 @@ export class PiProcessRunner implements AgentRunner{
    }) as ChildProcessWithoutNullStreams;
    if(child.pid!==undefined){try{this.options.onProcessStart?.(child.pid);}catch{/* Evidence observers cannot alter Pi execution. */}}
    let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,agentEnded=false,streamBytes=0,retainedBytes=0,stopResult:AgentResult|undefined;
+   let assistantStreamActive=false;
    const preflightId=`asen-policy:${request.id}`,selectionId=`asen-selection:${request.id}`;
    let selectionRequested=false,selectionResponded=false;
    const closed=new Promise<void>(resolveClosed=>{child.once("close",()=>resolveClosed());child.once("error",()=>{if(child.pid===undefined)resolveClosed();});});
@@ -262,13 +263,21 @@ export class PiProcessRunner implements AgentRunner{
      let record:unknown;try{record=JSON.parse(line);}catch{record=line;}
      const response=(record&&typeof record==="object"?record:{}) as {type?:string;id?:string;command?:string;success?:boolean;toolName?:unknown;toolCallId?:unknown;isError?:unknown;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>;} };
      const type=response.type;
+     // Pi 1.2 RPC wire strips cumulative message from message_update; bind
+     // text deltas to a preceding native message_start(role=assistant), never
+     // to a model-controlled property or an untracked stream fragment.
+     if(type==="message_start"&&policyLoaded)
+      assistantStreamActive=(record as {message?:{role?:unknown}}).message?.role==="assistant";
+     if(type==="message_end"||type==="agent_end")assistantStreamActive=false;
      // A native Pi assistant text delta proves the provider returned actual
      // partial output. Read-only diagnostics receive counts, never model text.
      if(type==="message_update"&&policyLoaded&&!agentEnded&&!settled&&!stopResult&&
         !signal?.aborted&&child.pid!==undefined&&this.options.onAssistantTextDelta){
       const update=record as {message?:{role?:unknown};assistantMessageEvent?:{type?:unknown;delta?:unknown}};
       const delta=update.assistantMessageEvent;
-      if(update.message?.role==="assistant"&&delta?.type==="text_delta"&&
+      if(assistantStreamActive&&
+         (update.message===undefined||update.message?.role==="assistant")&&
+         delta?.type==="text_delta"&&
          typeof delta.delta==="string"&&delta.delta.length>0){
        const observation=Object.freeze({pid:child.pid,requestId:request.id,
         observedCharacters:Math.min(delta.delta.length,4096)});
