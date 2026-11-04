@@ -49,3 +49,10 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - Regresión añadida en `tests/task-agent-recovery-chain.test.ts` para un Reviewer activo enlazado a un Todo Explorer.
 - El plan maestro registra la causa y conserva 8/28; las pruebas del nuevo SHA quedan pendientes. Reconsultar HEAD y workflows al reanudar. No tratar el CI cancelado o en curso del SHA base como evidencia del nuevo commit.
 - Próxima validación: CI multiplataforma + Release Gate y, por el mensaje exacto del commit, aceptación Ollama Cloud Beam limitada a cinco inferencias. Comprobar que el proveedor/modelo registrado es Beam y no aceptar fallback de pago.
+
+
+## Recepción real posterior — 2026-11-04
+
+- En `46ab623731f1493ba5fd60703089b821f54653cc`, la aceptación Beam real ejecutó Explorer y Planner con PASS y el primer Reviewer fue rechazado como `REVIEWER_FINDING_UNGROUNDED`; run [41928158752](https://github.com/asenbanskaliev/ASEN/actions/runs/41928158752), artefacto [13370920410](https://github.com/asenbanskaliev/ASEN/actions/runs/41928158752/artifacts/13370920410).
+- Se usaron 3 de 5 llamadas permitidas; no se ejecutó Verifier ni el segundo Reviewer y no se dio Writer consentimiento. El proveedor/modelo fue Ollama Cloud Beam real.
+- Root cause exacta no estaba en el recibo agregado porque conserva solo hash y longitud. El candidato siguiente mejora el prompt de copia literal y registra un código de error determinista sin texto crudo; conserva intactos los criterios de aceptación.

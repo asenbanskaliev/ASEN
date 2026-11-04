@@ -1355,3 +1355,12 @@ El job provider-free `41867876731` del SHA `242ba26b` terminó FAIL: 232/233 pru
 
 **Verificación pendiente:** la prueba determinista está añadida a `tests/task-agent-recovery-chain.test.ts`, que ya forma parte de las suites CI y de aceptación provider-free. Aún no se atribuye PASS al candidato nuevo. No se cierra EF ni cambia 8/28 hasta CI exact-SHA y recibos nativos exigidos. El commit se prepara para ejecutar la aceptación limitada Ollama Cloud Beam de máximo cinco inferencias; solo se contará si Actions confirma el run exact-SHA y sus recibos.
 
+
+
+### Recepción EF-503/702 — primera aceptación Beam exact-SHA rechazada por Reviewer (2026-11-04)
+
+- Run real [41928158752](https://github.com/asenbanskaliev/ASEN/actions/runs/41928158752), SHA `46ab623731f1493ba5fd60703089b821f54653cc`, instaló el plugin Ollama Cloud y registró el modelo gratuito `beam`; la llamada de humo independiente se omitió por diseño dentro del máximo de cinco inferencias. La ejecución auténtica de Explorer y Planner terminó PASS. El primer juicio Reviewer terminó `REVIEWER_FINDING_UNGROUNDED`; Verifier y el segundo juicio no se ejecutaron. El contador final registró 3/5 reservas y 2 restantes; no se excedió el límite.
+- El artefacto [13370920410](https://github.com/asenbanskaliev/ASEN/actions/runs/41928158752/artifacts/13370920410) conserva SHA de respuesta, tamaño y estado, pero omite intencionadamente la respuesta cruda. El estado agregado no expone qué campo del contrato exacto falló. No se atribuye la causa a cuota ni se declara Reviewer PASS.
+- **Corrección de aceptación:** el siguiente intento pide explícitamente copiar literalmente `codeEvidence` y `acceptanceCriterion`, manteniendo todas las comprobaciones originales. El recibo fallido añade solo un código de diagnóstico estático (esquema, candidato, veredicto, recuento, razón, evidencia o criterio); no persiste texto del modelo. No se han reducido expectativas ni se simula independencia: ambos jueces siguen usando el mismo Beam.
+- Estado canónico EF-503 continúa PARTIAL; EF-702 continúa PARTIAL; 8/28 checks verificados; FULL=false. Repetir la aceptación requiere un workflow nuevo exact-SHA y vuelve a estar limitado a cinco llamadas.
+

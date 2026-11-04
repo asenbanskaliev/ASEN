@@ -73,6 +73,17 @@ function snapshotHash(files){
 function outputEvidence(output){
  return {responseSha256:createHash("sha256").update(output).digest("hex"),responseBytes:Buffer.byteLength(output)};
 }
+function reviewGradeFailureCode(error){
+ const message=error instanceof Error?error.message:"";
+ if(/response fields do not match|Grounded finding is required|must be unique and limited/u.test(message))return "REVIEW_SCHEMA_INVALID";
+ if(/different candidate SHA/u.test(message))return "REVIEW_CANDIDATE_SHA_MISMATCH";
+ if(/reject the deliberate defects/u.test(message))return "REVIEW_VERDICT_INVALID";
+ if(/all three deliberate defects/u.test(message))return "REVIEW_FINDING_COUNT_INVALID";
+ if(/reason is too short|does not explain the defect/u.test(message))return "REVIEW_REASON_UNGROUNDED";
+ if(/exact vulnerable expression/u.test(message))return "REVIEW_CODE_EVIDENCE_MISMATCH";
+ if(/violated criterion/u.test(message))return "REVIEW_CRITERION_MISMATCH";
+ return "REVIEW_GRADE_REJECTED";
+}
 
 const candidateSha256=snapshotHash(proposed);
 const changedPaths=Object.keys(proposed).filter(path=>original[path]!==proposed[path]).sort();
@@ -207,8 +218,8 @@ assert.throws(() => parseCount("12abc"));
   const result=await dispatch(judge,"reviewer",reviewPrompt,{priorJudgments:judgeResults.map(item=>item.responseSha256),changedPaths});
   let grade;
   try{grade=gradeRealReview(result.answer,{candidateSha:revision});}
-  catch{await reject("REVIEWER_FINDING_UNGROUNDED","Reviewer output failed exact-scope deterministic grading",{
-   stage:judge,responseSha256:result.responseSha256,responseBytes:result.responseBytes,changedPaths,
+  catch(error){await reject("REVIEWER_FINDING_UNGROUNDED","Reviewer output failed exact-scope deterministic grading",{
+   stage:judge,gradeFailureCode:reviewGradeFailureCode(error),responseSha256:result.responseSha256,responseBytes:result.responseBytes,changedPaths,
   });}
   judgeResults.push({id:result.id,responseSha256:result.responseSha256,responseBytes:result.responseBytes,grade});
  }
