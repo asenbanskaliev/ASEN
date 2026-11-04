@@ -1032,3 +1032,11 @@ El test nuevo de `62d094ef` provocó errores TypeScript TS2345 en `tests/agent-t
 **No heredamos ejecución A/B ni ningún test de modelo desde estos fixtures.** La suite CI global `41824890185` y Release Gate `41824890191` estaban en ejecución en los tres sistemas al registrar este recibo. El subcheck `MEGA-EF703-3OS-01` sigue abierto; la ejecución Pi con un hijo LLM interrumpido, el consentimiento Writer de una persona real y la revisión externa independiente siguen pendientes.
 
 La equivalencia canónica conserva `8/28` EF verificados; `globalFull=false`. No merge a `main`.
+
+### Macrotanda EF-701 — raíz de recibos canónica y sin alias (2026-11-04)
+
+**Defecto concreto identificado:** el auditor de recibos verificaba que cada fichero individual fuese regular, único y no simbólico, pero aceptaba una `root` que fuese enlace simbólico o atravesase un ancestro simbólico porque `realpath(resolve(root))` normalizaba silenciosamente el alias. Esto podía ocultar la identidad física de la ubicación aportada por el operador, aunque nunca autorizaba FULL.
+
+**Corrección acotada:** rechazar una raíz que no sea directorio real, sea enlace simbólico o cuyo camino canónico difiera del solicitado; conservar las comprobaciones por descriptor, inode, tamaño y digest de cada recibo. Añadir regresión con raíz simbólica y control positivo de raíz ordinaria; en Windows sin permiso para crear enlaces, el caso negativo se declara SKIP explícito. No se modifica la política de permisos, no se amplía el alcance del auditor y no se acepta una observación autoatestada como ejecución real.
+
+**Recepción pendiente del SHA de esta tanda:** typecheck, prueba `tests/agent-ab-combined-gate.test.ts`, auditoría de arquitectura, CI y Release Gate. No marcar EF-701 ni EF-704 como FULL por esta corrección; la matriz C01–C20 sigue necesitando 60 trazas reales y auditoría independiente. El plan canónico permanece 8/28 hasta evidencia adicional. Sin Writer ni merge.

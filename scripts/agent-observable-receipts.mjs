@@ -66,7 +66,12 @@ function validInside(root,target){
 export async function auditObservableReceipts({reference,candidate,candidateSha,root}){
  compareAgentObservations({reference,candidate,candidateSha}); // strict schemas
  if(typeof root!=='string'||!root.trim())throw new Error('An explicit receipt root is required');
- const base=await realpath(resolve(root));
+ const requestedRoot=resolve(root);
+ const rootStat=await lstat(requestedRoot,{bigint:true});
+ if(!rootStat.isDirectory()||rootStat.isSymbolicLink())
+  throw new Error('Receipt root must be a real directory, not a symbolic link');
+ const base=await realpath(requestedRoot);
+ if(base!==requestedRoot)throw new Error('Receipt root or ancestor is a symbolic link');
  const rows=[];
  for(const id of CASE_IDS)for(const source of REFS){
   const entry=observed({reference,candidate},id,source);

@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {mkdtemp,mkdir,readFile,rm,writeFile} from "node:fs/promises";
+import {mkdtemp,mkdir,readFile,rm,symlink,writeFile} from "node:fs/promises";
 import {spawnSync} from "node:child_process";
-import {join} from "node:path";
+import {basename,dirname,join} from "node:path";
 import {tmpdir} from "node:os";
 // @ts-expect-error Provider-free composite evidence gate intentionally remains ESM.
 import {assembleAgentABAcceptance} from "../scripts/agent-ab-combined-gate.mjs";
@@ -113,4 +113,23 @@ test("EF-704 CLI produces create-only exact-SHA A/B evidence report without fabr
  const repeated=run();
  assert.notEqual(repeated.status,0,"A second run cannot overwrite an evidence file");
  assert.match(repeated.stderr,/EEXIST|file already exists/iu);
+});
+
+test("EF-701 refuses symlinked receipt root even if all supplied bytes match",
+ {timeout:25000},async t=>{
+ const f=await fixture(t);
+ const link=join(dirname(f.root),"asen-ab-root-link-"+basename(f.root));
+ try{
+  await symlink(f.root,link,process.platform==="win32"?"junction":"dir");
+ }catch(error){
+  if(process.platform==="win32"&&(error as NodeJS.ErrnoException).code==="EPERM"){
+   t.skip("Windows runner does not permit creating directory links");return;
+  }
+  throw error;
+ }
+ t.after(()=>rm(link,{force:true}));
+ await assert.rejects(assembleAgentABAcceptance({...f,root:link}),/symbolic link/u);
+ const ordinary=await assembleAgentABAcceptance(f);
+ assert.equal(ordinary.globalFull,false);
+ assert.equal(ordinary.casesBlocked,20);
 });
