@@ -14,6 +14,7 @@ test("EF-603 native Beam run is one-shot, provider-free prerequisite and strict 
   "github.run_attempt == 1",
   "github.event_name == 'push'",
   "ci: one-time Pi EF-603 coalesced Explorer Beam proof",
+  "github.event.head_commit.message == 'ci: one-time Pi EF-603 coalesced Explorer Beam proof',
   "environment: ollama-cloud-beam",
   "persist-credentials: false",
   "ASEN_EXPECTED_SHA: $"+"{{ github.sha }}",
@@ -26,6 +27,8 @@ test("EF-603 native Beam run is one-shot, provider-free prerequisite and strict 
   "timeout 220s",
  ])assert.ok(lane.includes(required),"Missing safe live coalescing condition: "+required);
  assert.doesNotMatch(lane,/OPENROUTER_API_KEY|GROQ_API_KEY|NVIDIA_API_KEY|writerAuthorized: true|continue-on-error: true/u);
+ assert.doesNotMatch(lane,/contains\s*\(\s*github\.event\.head_commit\.message/u,
+  "The provider lane must require the exact one-time message rather than a partial match");
  assert.match(lane,/timeout-minutes: 12/u);
 });
 test("EF-603 provider-free acceptance always runs the grader/workflow regressions",()=>{

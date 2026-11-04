@@ -30,7 +30,7 @@ assert.ok(runnerTemp&&resolve(runnerTemp)===runnerTemp);
 const root=await mkdtemp(join(tmpdir(),"asen-ef603-real-pi-"));
 const output=join(repo,"asen-acceptance-evidence","real-ef603-coalescing.json");
 const reservation=join(runnerTemp,"asen-ef603-one-beam-request.claim");
-let stage="INIT",callsReserved=0,realStarts=0,recordState=null;
+let stage="INIT",callsReserved=0,realStarts=0,recordState=null,textDeltaCount=0,textCharacters=0;
 try{
  await writeFile(reservation,"one-read-only-beam-call:"+sha+"\n",{flag:"wx",mode:0o600});
  callsReserved=1;
@@ -51,9 +51,15 @@ try{
   validateRuntimeVersion:true,policyRoot:repo,noTools:true,
   timeoutMs:130000,maxOutputBytes:450000,
   onProcessStart:()=>{realStarts++;},
+  onAssistantTextDelta:observation=>{textDeltaCount++;textCharacters+=observation.observedCharacters;},
  });
  const runtime=await AgentRuntime.open({
   storeFile:join(privateHome,"agents.json"),runner,maxConcurrency:4
+ });
+ const selections=[];
+ const unsubscribeSelection=runner.subscribeChildSelection(observation=>{
+  if(observation.sessionId===session.sessionId&&observation.projectId===session.projectId)
+   selections.push({provider:observation.model?.provider??null,model:observation.model?.id??null,source:observation.source});
  });
  const prompt="Perform a read-only diagnostic. In three short sentences explain why two simultaneous callers of the same exact read-only analysis should share a single running task. Do not call tools, run commands, create files or modify the project.";
  const done=new Promise((resolve,reject)=>{
@@ -80,6 +86,12 @@ try{
  assert.equal(terminal.role,"explorer");
  assert.equal(terminal.state,"completed",
   "The genuine Pi Beam inference must finish successfully, not merely start");
+ unsubscribeSelection();
+ assert.equal(selections.length,1,"Exactly one child-reported Pi model selection must accompany the one deduplicated process");
+ assert.equal(selections[0]?.provider,"ollama-cloud");
+ assert.equal(selections[0]?.model,model);
+ assert.equal(selections[0]?.source,"child-reported","Selection provenance must remain explicit");
+ assert.ok(textDeltaCount>0&&textCharacters>0,"A real assistant text delta must be observed from the single Pi process");
  const persisted=await runtime.list(session);
  assert.equal(persisted.length,1,"Coalescing may not persist a duplicate task");
  assert.equal(persisted[0].state,"completed");
@@ -92,7 +104,11 @@ try{
   schema:"asen-ef603-real-pi-coalescing/v1",candidateSha:sha,
   status:"PASS_REAL_PI_EXPLORER_ONE_EXECUTION",piVersion:pkg.version,
   provider:"ollama-cloud",model,logicalRequests:3,uniqueAgentIds:1,
-  nativePiProcessCount:realStarts,providerCallsReserved:callsReserved,
+  nativePiProcessCount:realStarts,providerCallsReserved:callsReserved,providerCallsActuallyObserved:null,
+  selectionObservations:selections.length,selectionSource:selections[0]?.source??null,
+  selectedProvider:selections[0]?.provider??null,selectedModel:selections[0]?.model??null,
+  assistantTextDeltaObserved:textDeltaCount>0,assistantTextDeltaCount:textDeltaCount,
+  assistantCharactersObserved:textCharacters,
   durableAgents:1,durableState:"completed",role:"explorer",
   reviewerVerifierPolicy:"DISTINCT_RUNS_NO_COALESCING",
   sameSession:true,sameProject:true,gitUnchanged:true,noTools:true,

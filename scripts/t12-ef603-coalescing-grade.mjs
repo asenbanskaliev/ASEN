@@ -6,7 +6,8 @@ import assert from "node:assert/strict";
 const keys=[
  "schema","candidateSha","status","piVersion","provider","model",
  "logicalRequests","uniqueAgentIds","nativePiProcessCount",
- "providerCallsReserved","durableAgents","durableState","role",
+ "providerCallsReserved","providerCallsActuallyObserved","selectionObservations","selectionSource","selectedProvider","selectedModel",
+ "assistantTextDeltaObserved","assistantTextDeltaCount","assistantCharactersObserved","durableAgents","durableState","role",
  "reviewerVerifierPolicy","sameSession","sameProject","gitUnchanged",
  "noTools","writerAuthorized","humanConsent","independentABParity",
  "globalFull",
@@ -26,6 +27,15 @@ export function gradeEf603LiveCoalescing(report,sha){
  assert.equal(report.uniqueAgentIds,1);
  assert.equal(report.nativePiProcessCount,1);
  assert.equal(report.providerCallsReserved,1);
+ assert.equal(report.providerCallsActuallyObserved,null,"A reservation and child selection are not an authenticated HTTP call count");
+ assert.equal(report.selectionObservations,1);
+ assert.equal(report.selectionSource,"child-reported");
+ assert.equal(report.selectedProvider,"ollama-cloud");
+ assert.ok(report.selectedModel==="beam"||report.selectedModel==="beam:cloud");
+ assert.equal(report.model,report.selectedModel);
+ assert.equal(report.assistantTextDeltaObserved,true);
+ assert.ok(Number.isSafeInteger(report.assistantTextDeltaCount)&&report.assistantTextDeltaCount>0&&report.assistantTextDeltaCount<=128);
+ assert.ok(Number.isSafeInteger(report.assistantCharactersObserved)&&report.assistantCharactersObserved>0&&report.assistantCharactersObserved<=524288);
  assert.equal(report.durableAgents,1);
  assert.equal(report.durableState,"completed");
  assert.equal(report.role,"explorer");

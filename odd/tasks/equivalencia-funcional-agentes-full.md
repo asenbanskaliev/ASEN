@@ -1393,3 +1393,11 @@ La prueba multiproceso de EF-601/604 compite con dos procesos independientes por
 ### Corrección de la regresión del gate de opt-in EF-604 — 2026-11-04
 
 La auditoría del test añadió una comprobación para impedir que el job de Beam se ejecute por coincidencia parcial de mensaje. Detectó un escape duplicado en la regex negativa, que podía dejar el bypass sin comprobar. La expresión se corrigió para detectar `contains(github.event.head_commit.message)` incluso con espacios. La condición productiva continúa siendo igualdad exacta del mensaje. Evidencia del test queda pendiente de CI exact-SHA.
+
+
+### EF-604 recibo real de interrupción Beam — 2026-11-04
+
+- [x] EF604-REAL-STREAM-01 — **PASS acotado**, SHA exacto `1b5f1e4358a2032c1f97fe19ccc1b89693743566`: workflow [41931282240](https://github.com/asenbanskaliev/ASEN/actions/runs/41931282240), artefacto [13372590402](https://github.com/asenbanskaliev/ASEN/actions/runs/41931282240/artifacts/13372590402). Pi 1.2 RPC real, modelo child-reported Ollama Cloud Beam, un text-delta auténtico observado (6 caracteres), proceso cancelado no-cero, estado terminal durable `cancelled`, reapertura desde otro proceso sin credenciales y cero replay; proyecto sin cambios y sin herramientas/Writer.
+- No es reinicio interactivo del host/TUI ni reanudación de la inferencia; la entrega quedó `pending`. EF-604 canónico sigue PARTIAL por esas brechas, Writer humano y A/B C14–C15.
+- Release Gate `41931293807` y CI `41931293790` estaban IN_PROGRESS al avanzar a la tanda siguiente; no heredar sus resultados. Phase 0 `41931293782`, F5 `41931293839`, Pi Runtime `41931293840`, R4 SELF_AUDIT_ONLY `41931293783` y CodeGraph `41931293869` SUCCESS; Pi Free Smoke SKIPPED.
+- La revisión del siguiente EF-603 live harness detectó que recibía solo el resultado final, sin evidencia separada de selección del modelo ni de text-delta. Nueva tanda: exigir una única selección child-reported Ollama Cloud/Beam y al menos un text-delta del único Pi RPC; conservar explícitamente `providerCallsActuallyObserved: null` porque no existe telemetría autenticada del HTTP exacto. Ejecutar el job coalescing real con exactamente una reserva, sin declarar cardinalidad HTTP.

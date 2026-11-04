@@ -89,3 +89,12 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - Commit base `a081046f1ff84a903577d39d2f87cc70799bc3ff` activó el job Beam de interrupción en streaming.
 - La revisión del nuevo test detectó que la expresión regular negativa tenía backslashes duplicados; podía pasar sin inspeccionar un `contains(...)` con el mensaje de commit. Se reemplazó por una regex válida, sensible a espacios, que detecta ese bypass. No se cambia el workflow ni se relaja el disparador exacto.
 - No atribuir el resultado del test fallido/anterior a este SHA. Volver a verificar las pruebas y el recibo del proveedor con el nuevo HEAD.
+
+
+## Recibo de interrupción real y siguiente EF-603 — 2026-11-04
+
+- SHA confirmado del recibo EF-604: `1b5f1e4358a2032c1f97fe19ccc1b89693743566`; workflow [41931282240](https://github.com/asenbanskaliev/ASEN/actions/runs/41931282240), artifact [13372590402](https://github.com/asenbanskaliev/ASEN/actions/runs/41931282240/artifacts/13372590402).
+- Resultado auténtico: 1 text-delta de Beam por Pi RPC, cancelación observada, persistencia `cancelled`, proceso separado sin credenciales reabre el resultado, 0 replay. Esto no cubre reinicio TUI/host interactivo y no cambia EF-604 canónico PARTIAL.
+- En ese SHA, CI `41931293790` y Release Gate `41931293807` IN_PROGRESS al checkpoint; Phase 0/F5/Pi Runtime/R4 self-audit/CodeGraph SUCCESS, Pi Free Smoke SKIPPED. R4 no es independiente.
+- Siguiente tanda: aumentar EF-603 live proof para exigir selección de modelo reportada por el hijo Pi y respuesta text-delta observada mientras se coalescen tres solicitudes; el número de llamadas HTTP real sigue sin observación autenticada y permanecerá `null`. Disparar solo Beam registrado, una reserva y sin Writer.
+- Canonical: 8/28; EF-601/603/604 PARTIAL; A/B bloqueado; FULL=false.
