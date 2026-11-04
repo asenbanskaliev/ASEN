@@ -403,9 +403,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      };
      if(!await matches())return false;
      const row=await agentNoticeJournal.record(record);
-     // Host busy without an active model run (e.g. compaction) must hold the
-     // content, retaining "pending" for a validated turn-boundary flush.
-     if(agentParentRoute(context,scope,agentParentRunActive)==="hold")return false;
+     // Only an authenticated live TUI parent may consume a terminal notice.
+     // Compaction (hold) and headless/RPC (headless) both retain pending.
+     // A headless Pi host must NEVER mark an undelivered event as enqueued.
+     const route=agentParentRoute(context,scope,agentParentRunActive);
+     if(route!=="run"&&route!=="idle")return false;
      if(!await matches())return false;
      if(!await agentNoticeJournal.claim(row.eventId,scope))return false;
      // Cross-process claim preceded transport. An interrupted attempt is uncertain, not retryable.

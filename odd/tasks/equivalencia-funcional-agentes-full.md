@@ -954,3 +954,18 @@ Se mantienen las restricciones de permisos; Writer humano y paridad C01–C20 si
 - [ ] EF604-FULL-RESTART — Prueba **interactiva** de interrupción durante ejecución real del hijo Pi y recuperación del coordinador con consulta/acuse legítimos; NO cubierta por RPC headless ni por el runner determinista.
 
 **Recepción previa relevante:** Release Gate `41819643941` del commit `0f206263ca50ae78fa5f49d2c410017480f18a67` terminó PASS en Linux, macOS y Windows. Su CI general `41819644492` había terminado Ubuntu SUCCESS y seguía ejecutándose en otros sistemas durante la consulta. Estos recibos no certifican el nuevo SHA ni cambian las tareas canónicas: EF 8/28, MEGA 7/9, FULL NO ALCANZADO. No merge a `main`.
+
+### EF-604 incidente detectado por prueba real — headless no puede afirmar `enqueued` (2026-11-04)
+
+**Defecto real encontrado y solución implementada, pendiente de CI exact-SHA.** En el run `41820582785`, SHA `03e244b1e26e543ae30e6dc52d3f3e0dc3a3e75f`, el test `tests/ef604-native-pi-headless-restart.test.ts` arrancó un host real Pi RPC y detectó una modificación indebida del journal `pending`: el primer host pasó la validación de sesión nativa pero falló la aserción de bytes del journal después de iniciar el host. El F6 preflight terminó **FAIL** por esa regresión; no se marcó el test como completado.
+
+La causa está en `extensions/asen.ts`, función `sendAgentNotice`: el código devolvía `false` solo para ruta `hold`; la ruta `headless` — que `agentParentRoute` produce explícitamente para RPC sin UI — podía reclamar una notificación `pending` y llamar a `pi.sendMessage` con `triggerTurn:false`, avanzando a `enqueued` **sin coordinador TUI real**. Aunque `agent-terminal-delivery.ts` clasificaba `headless` correctamente, el consumidor no respetaba esa clasificación.
+
+**Fix:** `sendAgentNotice` solo permite transmisión si la ruta es exactamente `run` o `idle`. `hold` y `headless` conservan `pending` hasta un host TUI válido. La regresión de integración usa el ejecutable auténtico `pi --mode rpc --session`, el almacén real con HMAC y el journal persistente; exige que la sesión reiniciada no envíe ni reconozca ningún mensaje por ser headless, y comprueba además aislamiento de una sesión ajena. No se añaden sleeps ni bucles de polling a producción, ni permisos Writer.
+
+**Checklist:**
+- [ ] EF604-HEADLESS-01 — Typecheck y prueba Pi RPC nativa de reinicio PASS sobre el SHA del fix, con `pending` intacto y `attempted` no retransmitido.
+- [ ] EF604-HEADLESS-02 — Preflight de seguridad, CI completo Windows/macOS/Ubuntu y Release Gate exact-SHA del fix PASS.
+- [ ] EF604-LIVE-CHILD-01 — Pi real interactivo interrumpido durante trabajo de hijo y reanudado con autorización/acuse genuino: aún no realizado.
+
+Se mantiene la semántica estricta: `enqueued` es solo transporte, nunca lectura humana, ni revisión independiente, ni aprobación Writer. EF-604 canónico sigue PARCIAL hasta pruebas de hijo/Writer genuinas y comparación A/B C14–C15. El estado global permanece 8/28 EF, FULL no alcanzado, sin merge.

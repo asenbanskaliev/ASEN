@@ -107,6 +107,9 @@ test("EF-604 two genuine Pi RPC host processes reopen one durable session withou
  assert.equal(await journal.claim(first.eventId,scope),true);
  const second=await journal.record({...scope,id:pending.id,state:pending.state});
  const before=await readFile(noticePath);
+ const digest=(bytes:Buffer)=>createHash("sha256").update(bytes).digest("hex");
+ const stableJournal=async()=>digest(await readFile(noticePath));
+ const baselineDigest=digest(before);
  assert.deepEqual((await journal.list(scope)).map(x=>x.delivery),["attempted","pending"]);
  const probe=join(root,"native-probe.ts"),trace=join(root,"native-trace.jsonl");
  await writeFile(probe,probeCode(),{flag:"wx",mode:0o600});
@@ -134,7 +137,8 @@ test("EF-604 two genuine Pi RPC host processes reopen one durable session withou
  const firstRun=run(sessionFile);
  assert.equal(firstRun.state.sessionId,sessionId);
  assert.equal(firstRun.state.sessionFile,sessionFile);
- assert.deepEqual(await readFile(noticePath),before,"Headless Pi must not transmit or update either notice");
+ assert.deepEqual((await journal.list(scope)).map(x=>x.delivery),["attempted","pending"]);
+ assert.equal(await stableJournal(),baselineDigest,"Headless Pi must not transmit or update either notice");
  const secondRun=run(sessionFile);
  assert.equal(secondRun.state.sessionId,sessionId);
  assert.equal(secondRun.state.sessionFile,sessionFile);
@@ -145,7 +149,8 @@ test("EF-604 two genuine Pi RPC host processes reopen one durable session withou
   "No model start or unsolicited agent execution may occur");
  assert.deepEqual(events.map(e=>e.sessionId),[sessionId,sessionId]);
  assert.deepEqual(events.map(e=>e.cwd),[scope.projectId,scope.projectId]);
- assert.deepEqual(await readFile(noticePath),before,"Pi restart must not acknowledge or replay notices");
+ assert.deepEqual((await journal.list(scope)).map(x=>x.delivery),["attempted","pending"]);
+ assert.equal(await stableJournal(),baselineDigest,"Pi restart must not acknowledge or replay notices");
  const recovered=await AgentRuntime.open({storeFile:storePath,runner:{run:async()=>{throw Error("RESTART_DISPATCH_FORBIDDEN");}}});
  const tasks=await recovered.list(scope);
  assert.equal(tasks.length,2);
@@ -162,7 +167,7 @@ test("EF-604 two genuine Pi RPC host processes reopen one durable session withou
  const foreign=run(other.getSessionFile()!);
  assert.notEqual(foreign.state.sessionId,sessionId);
  assert.deepEqual(await journal.list({sessionId:foreign.state.sessionId,projectId:scope.projectId}),[]);
- assert.deepEqual(await readFile(noticePath),before);
+ assert.equal(await stableJournal(),baselineDigest);
  const evidence={schema:"asen-native-pi-restart/v1",status:"PASS_NATIVE_PI_HEADLESS_RESTART_BOUNDED",
   piVersion:packageMetadata.version,hostProcessCount:3,sameSessionRestarts:2,
   nativeSessionIdentityPreserved:true,foreignSessionIsolated:true,
