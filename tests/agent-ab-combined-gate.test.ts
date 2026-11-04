@@ -156,3 +156,52 @@ test("EF-701 zero-byte receipt fails closed and cannot authorize Writer",
  assert.equal(report.writerAuthorized,false);
  assert.equal(report.globalFull,false);
 });
+
+test("EF-701 combined CLI consumes genuinely bounded reference and ASEN manifests",
+ {timeout:30000},async t=>{
+ const f=await fixture(t),refs=join(f.root,"ref.json"),candidate=join(f.root,"asen.json");
+ await writeFile(refs,JSON.stringify(f.reference),{flag:"wx"});
+ await writeFile(candidate,JSON.stringify(f.candidate),{flag:"wx"});
+ const invoke=(out:string)=>spawnSync(process.execPath,[
+  "scripts/agent-ab-combined-gate.mjs",refs,candidate,f.root],{
+  cwd:process.cwd(),encoding:"utf8",timeout:15000,windowsHide:true,
+  env:{...process.env,ASEN_EXPECTED_SHA:candidateSha,ASEN_AB_COMBINED_OUTPUT:out},
+ });
+ const output=join(f.root,"result.json");
+ const pass=invoke(output);
+ assert.equal(pass.status,0,pass.stderr);
+ const observed=JSON.parse(await readFile(output,"utf8"));
+ assert.equal(observed.expectedSlots,60);
+ assert.equal(observed.casesBlocked,20);
+ assert.equal(observed.globalFull,false);
+ await writeFile(candidate,Buffer.alloc(1024*1024+1,32));
+ const oversize=invoke(join(f.root,"no-oversize.json"));
+ assert.notEqual(oversize.status,0);
+ assert.match(oversize.stderr,/Unsafe A\/B manifest/u);
+ await assert.rejects(()=>readFile(join(f.root,"no-oversize.json")),(e:any)=>e.code==="ENOENT");
+ await writeFile(candidate,Buffer.from([0x7b,0x22,0xc3,0x28,0x22,0x7d]));
+ const badUtf8=invoke(join(f.root,"no-bad-utf8.json"));
+ assert.notEqual(badUtf8.status,0);
+ assert.match(badUtf8.stderr,/Invalid UTF-8 JSON/u);
+});
+test("EF-701 combined report cannot write through an operator-supplied symlink directory",
+ {timeout:30000},async t=>{
+ const f=await fixture(t),actual=join(f.root,"physical-output"),
+  alias=join(f.root,"alias-output");
+ await mkdir(actual);
+ try{await symlink(actual,alias,process.platform==="win32"?"junction":"dir");}
+ catch(error){
+  if(process.platform==="win32"&&(error as NodeJS.ErrnoException).code==="EPERM"){
+   t.skip("Windows runtime lacks symlink privileges");return;
+  }
+  throw error;
+ }
+ const child=spawnSync(process.execPath,["scripts/agent-ab-combined-gate.mjs"],{
+  cwd:process.cwd(),encoding:"utf8",timeout:15000,windowsHide:true,
+  env:{...process.env,ASEN_EXPECTED_SHA:candidateSha,
+   ASEN_AB_COMBINED_OUTPUT:join(alias,"falsely-canonical.json")},
+ });
+ assert.notEqual(child.status,0);
+ assert.match(child.stderr,/alias or symlink/u);
+ await assert.rejects(()=>readFile(join(actual,"falsely-canonical.json")),(e:any)=>e.code==="ENOENT");
+});

@@ -1,9 +1,21 @@
 /** Classify model or provider errors without ever storing raw messages or tokens. */
+/** Provider errors may be Error subclasses with throwing getters, Proxy traps or
+ * attacker-controlled causes. Only own DATA properties of a real Error are
+ * inspected; never invoke a getter or stringify an untrusted object. */
+function boundedFailureText(value){
+ if(typeof value==="string")return value.length>4096?value.slice(0,2048)+" "+value.slice(-2048):value;
+ try{
+  if(!(value instanceof Error))return "";
+  const name=Object.getOwnPropertyDescriptor(value,"name");
+  const message=Object.getOwnPropertyDescriptor(value,"message");
+  const raw=(typeof name?.value==="string"?name.value:"Error")+" "+
+   (typeof message?.value==="string"?message.value:"");
+  return raw.length>4096?raw.slice(0,2048)+" "+raw.slice(-2048):raw;
+ }catch{return "";} // Revoked proxies and custom descriptor traps fail closed.
+}
 export function classifyT12ProviderFailure(value){
- // Do not inspect arbitrary thrown objects or include their raw text in the result.
- // A bounded excerpt prevents untrusted provider messages from dominating diagnostics.
- const raw=value instanceof Error?value.name+" "+value.message:typeof value==="string"?value:"";
- const message=raw.length>4096?raw.slice(0,2048)+" "+raw.slice(-2048):raw;
+ // No arbitrary getters, causes, stacks or credential-bearing details in output.
+ const message=boundedFailureText(value);
  let code="UNKNOWN";
  // An explicit billing failure is different from an exhausted free-model quota:
  // never suggest silently switching to paid inference.

@@ -141,3 +141,57 @@ test("EF-604 a transport attempt remains uncertain across TUI restart and cannot
  assert.equal(calls,1);
  await recovered.fire("session_shutdown");
 });
+
+test("EF-601 Pi TUI changing to hold BEFORE the durable claim leaves a retryable pending notice",
+ {timeout:35000},async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-route-flip-before-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const scope={sessionId:"route-change-before-claim",projectId:await realpath(process.cwd())};
+ let calls=0,started=0;
+ const host=await open(home,scope,"tui",async id=>{
+  started++;return {id,ok:true,output:"Bounded provider-free read-only result"};
+ });
+ host.context.isIdle=()=>++calls===1;
+ const task=await host.use("asen_agent_start",{prompt:"Check race before a notification claim"});
+ await host.waitNotice(s=>s.includes("ASEN terminó"));
+ const before=(await fileState(home,scope)).rows;
+ assert.equal(before.length,1);
+ assert.equal(before[0]!.agentId,task.details.id);
+ assert.equal(before[0]!.delivery,"pending");
+ assert.equal(host.sent.filter(x=>x.message.customType==="asen.agent.result").length,0);
+ await host.fire("session_shutdown");
+ const recovered=await open(home,scope,"tui",async()=>{throw Error("DUPLICATE_AGENT_DISPATCH");});
+ assert.equal(recovered.sent.filter(x=>x.message.customType==="asen.agent.result").length,1);
+ assert.equal((await fileState(home,scope)).rows[0]!.delivery,"enqueued");
+ assert.equal(started,1);
+ await recovered.fire("session_shutdown");
+});
+test("EF-604 Pi TUI changing to hold AFTER a claim cannot send, replay or acknowledge",
+ {timeout:35000},async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-route-flip-after-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const scope={sessionId:"route-change-after-claim",projectId:await realpath(process.cwd())};
+ let calls=0,started=0;
+ const host=await open(home,scope,"tui",async id=>{
+  started++;return {id,ok:true,output:"Bounded provider-free read-only result"};
+ });
+ host.context.isIdle=()=>++calls<=2;
+ const task=await host.use("asen_agent_start",{prompt:"Check race after the durable claim"});
+ await host.waitNotice(s=>s.includes("ASEN terminó"));
+ const before=(await fileState(home,scope)).rows;
+ assert.equal(before.length,1);
+ assert.equal(before[0]!.agentId,task.details.id);
+ assert.equal(before[0]!.delivery,"attempted","An interrupted post-claim transition must be uncertain");
+ assert.equal(host.sent.filter(x=>x.message.customType==="asen.agent.result").length,0);
+ assert.ok(host.notices.some(s=>s.includes("aviso queda incierto")));
+ await host.fire("session_shutdown");
+ const recovered=await open(home,scope,"tui",async()=>{throw Error("REPLAY_AFTER_UNCERTAIN_SEND");});
+ assert.equal(recovered.sent.filter(x=>x.message.customType==="asen.agent.result").length,0);
+ const lookedUp=await recovered.use("asen_agent_status",{id:task.details.id});
+ assert.equal(lookedUp.details.task.record.state,"completed");
+ await assert.rejects(()=>recovered.use("asen_agent_ack",{eventId:before[0]!.eventId}),
+  /Inspect this exact terminal agent|enqueued/u);
+ assert.equal((await fileState(home,scope)).rows[0]!.delivery,"attempted");
+ assert.equal(started,1);
+ await recovered.fire("session_shutdown");
+});

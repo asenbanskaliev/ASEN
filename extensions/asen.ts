@@ -60,7 +60,7 @@ import {addAsenRequestGuidance} from "../src/runtime/request-guidance.js";
 import {ASEN_PLAN_REQUEST_TOOL,registerAsenPlanRequestTool} from "../src/runtime/natural-plan-tool.js";
 import {formatActivePlanContext} from "../src/runtime/plan-context.js";
 import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-policy.js";
-import {agentParentRoute,agentTerminalWakeOptions,agentTerminalDeliveryOptions,agentTerminalContinuationMessage} from "../src/runtime/agent-terminal-delivery.js";
+import {agentParentRoute,agentTerminalWakeOptions,agentTerminalContinuationMessage} from "../src/runtime/agent-terminal-delivery.js";
 import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
 import {ExplorerBudgetTelemetry} from "../src/runtime/explorer-budget.js";
 import {BackgroundJobRegistry,backgroundJobTerminalNotification,pendingBackgroundJobNotifications,type BackgroundJobExecutor,type BackgroundJobSnapshot} from "../src/runtime/background-jobs.js";
@@ -408,10 +408,16 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      // A headless Pi host must NEVER mark an undelivered event as enqueued.
      const route=agentParentRoute(context,scope,agentParentRunActive);
      if(route!=="run"&&route!=="idle")return false;
-     if(!await matches())return false;
+     // A route can change across the journal I/O and identity checks.
+     // Never claim a notice using a stale Pi parent TUI state.
+     if(!await matches()||agentParentRoute(context,scope,agentParentRunActive)!==route)return false;
      if(!await agentNoticeJournal.claim(row.eventId,scope))return false;
-     // Cross-process claim preceded transport. An interrupted attempt is uncertain, not retryable.
-     if(!await matches())return false;
+     // After claiming, any change of session or route leaves an *attempted*
+     // uncertainty. Never enqueue, reclassify or silently replay such a claim.
+     if(!await matches()||agentParentRoute(context,scope,agentParentRunActive)!==route){
+      try{context.ui.notify("ASEN detectó un cambio del estado de Pi durante la entrega. El aviso queda incierto; consulta asen-agents.","error");}catch{}
+      return false;
+     }
      try{
       pi.sendMessage({
        customType:"asen.agent.result",
@@ -419,15 +425,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        display:true,
        details:{eventId:row.eventId,sessionId:scope.sessionId,projectId:scope.projectId,agentId:record.id,
         role:record.role,state:record.state,trusted:false,deliveryState:"enqueued",deliveryConfirmed:false},
-      },wake?agentTerminalDeliveryOptions(context,scope,agentParentRunActive):{triggerTurn:false});
+      },wake&&route==="run"?{triggerTurn:true,deliverAs:"steer"}:{triggerTurn:false});
      }catch{
       context.ui.notify("ASEN no puede confirmar la entrega del aviso. El resultado permanece guardado en asen-agents y no se reenviará sin revisión.","error");
       return false;
      }
      try{await agentNoticeJournal.markEnqueued(row.eventId,scope);}
      catch{context.ui.notify("ASEN envió el aviso, pero su registro duradero es incierto. Consulta asen-agents.","error");return false;}
-     if(wake&&agentParentRoute(context,scope,agentParentRunActive)==="idle")
-      requestAgentWake(context,scope);
+     if(wake&&route==="idle")requestAgentWake(context,scope);
      return true;
     };
     flushPendingAgentNotices=async(boundary:CommandContext):Promise<void>=>{

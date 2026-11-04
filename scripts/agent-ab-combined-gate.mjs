@@ -3,13 +3,14 @@
  * self-written JSON can promote a real execution, Writer consent or FULL.
  */
 import assert from "node:assert/strict";
-import {mkdir,readFile,writeFile} from "node:fs/promises";
+import {mkdir,lstat,realpath,writeFile} from "node:fs/promises";
 import {dirname,resolve,isAbsolute} from "node:path";
 import {fileURLToPath} from "node:url";
 import {buildAgentABCaseReadiness} from "./agent-ab-case-readiness.mjs";
 import {buildObservationScaffold} from "./agent-observable-scaffold.mjs";
 import {CASE_IDS,REFERENCE_SHA,compareAgentObservations} from "./agent-observable-parity.mjs";
 import {auditObservableReceipts} from "./agent-observable-receipts.mjs";
+import {readAgentABManifest} from "./agent-ab-manifest-reader.mjs";
 const SOURCES=Object.freeze(["A","B","ASEN"]);
 const EXPLICIT=/^[a-f0-9]{40}$/u;
 const REASONS=Object.freeze({
@@ -90,11 +91,15 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
    throw Error("Exact candidate SHA and absolute output path required");
   const evidenceRoot=process.argv.length===5?resolve(process.argv[4]):resolve(".");
   const docs=process.argv.length===5?{
-   reference:JSON.parse(await readFile(resolve(process.argv[2]),"utf8")),
-   candidate:JSON.parse(await readFile(resolve(process.argv[3]),"utf8")),
+   reference:await readAgentABManifest(resolve(process.argv[2])),
+   candidate:await readAgentABManifest(resolve(process.argv[3])),
   }:{};
   const result=await assembleAgentABAcceptance({candidateSha,root:evidenceRoot,...docs});
   await mkdir(dirname(output),{recursive:true});
+  const outputDir=await lstat(dirname(output));
+  if(!outputDir.isDirectory()||outputDir.isSymbolicLink()||
+     await realpath(dirname(output))!==dirname(output))
+   throw Error("A/B report directory cannot be an alias or symlink");
   await writeFile(output,JSON.stringify(result,null,2)+"\n",{flag:"wx",mode:0o600});
   console.log("EF701_AB_COMBINED_BLOCKED "+JSON.stringify({cases:result.totalCases,
    receiptSlots:result.expectedSlots,integrityOnly:result.integrityOnly,

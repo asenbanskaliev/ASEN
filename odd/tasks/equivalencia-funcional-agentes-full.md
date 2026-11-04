@@ -1044,3 +1044,35 @@ La equivalencia canónica conserva `8/28` EF verificados; `globalFull=false`. No
 ### Macrotanda EF-701 — recibos vacíos y alias físicos (2026-11-04)
 
 **Cambios propuestos, sujetos a CI exact-SHA:** rechazo temprano de recibos vacíos en el lector acotado y regresiones para archivo vacío y enlace físico (nlink>1). Los casos deben permanecer BLOCKED, Writer no autorizado y globalFull=false. Ningún digest ni test local acredita ejecuciones A/B/ASEN. Criterios de recepción: typecheck, pruebas focales, Architecture, CI y Release Gate en SHA publicado. EF-701/704 siguen abiertos; 8/28 EF, sin FULL ni merge.
+
+### SUPERMEGATANDA ÚNICA — EF-601/604 + EF-002/701 + EF-702/703/704 (2026-11-04)
+
+**Objetivo:** resolver tres riesgos de producción independientes en una sola publicación, con preflight consolidado y **un único trigger opt-in de Pi real con Ollama Beam**, sin permitir Writer, proveedores de pago ni merge. **BASE**: `9bc8ca0b1d4a94be75bbc24ad926a3034e60deaa`, cuyos `CI` `41831048003` y Release Gate `41831047915` se verificaron **SUCCESS**, junto a arquitectura, F5, Pi 1.2, CodeGraph y R4 automático. Los nuevos cambios deben superar **su propio SHA**; ningún PASS se hereda automáticamente.
+
+**Bloque A — EF-601/604: cerrar la carrera de ruta de avisos**
+- `extensions/asen.ts` revalida la ruta exacta `idle`/`run` **antes del claim y después del I/O de claim**; un cambio de modo Pi no permite enviar por el canal equivocado, crear un nuevo turno o conservar `enqueued` ficticio. Si cambia tras el claim, la notificación queda `attempted` incierta, se informa al usuario y **no se retransmite automáticamente**.
+- El envío usa las opciones capturadas y verificadas, no vuelve a calcular la ruta dentro de `pi.sendMessage`. El despertar por `idle` sigue condicionado a la comprobación posterior en `requestAgentWake`.
+- `tests/agent-rpc-tui-handoff.test.ts` incorpora dos regresiones con el runtime/almacén/journal reales, pero runner determinista sin modelo: cambio de ruta **antes** de reclamar conserva `pending` y permite entrega en TUI nuevo; cambio **después** de reclamar conserva `attempted`, sin mensaje, replay ni acuse. Complementa los tests Pi RPC auténticos previos, no los sustituye.
+
+**Bloque B — EF-701/002: entrada segura de datos A/B**
+- Nuevo `scripts/agent-ab-manifest-reader.mjs` limita a **1 MiB** cada manifiesto, usa descriptores abiertos, compara metadatos antes/después, rechaza symlinks y hardlinks y requiere UTF-8/JSON válidos. Esto reduce riesgo de archivos sustituidos o entrada masiva; una coincidencia criptográfica sigue siendo solo `INTEGRITY_ONLY`, no ejecución A/B auténtica.
+- `scripts/agent-ab-combined-gate.mjs` aplica el lector nuevo a documentos de referencia/candidato en modo CLI y rechaza un directorio de salida alias/symlink. El modo sin manifest mantiene explícitamente `casesBlocked:20`, `sourceCasesExecutedAndAttested:0` y `globalFull:false`.
+- `tests/agent-ab-manifest-reader.test.ts` y `tests/agent-ab-combined-gate.test.ts`: pruebas de límite, archivo alias, JSON/UTF-8 inválido, sustitución de origen, salida alias, CLI con dos manifiestos reales de fixture, sin falsificar fuentes A/B.
+
+**Bloque C — EF-702: errores de proveedor sin ejecución de propiedades peligrosas**
+- `scripts/t12-provider-failure.mjs` no accede a getters, stacks, causas ni propiedades de un Error de origen no confiable. Acepta solo propiedades *data* propias de un Error o texto explícito acotado; `Proxy` con trampas o Error con getter malicioso se clasifica `UNKNOWN` sin fuga, excepción ni fallback de pago.
+- `tests/t12-provider-failure.test.ts` cubre mensajes de cuota/billing normales, credenciales sintéticas, getters que lanzan, proxy y cadena `cause` no inspeccionada. **No** se pretende haber agotado una cuota real.
+
+**Bloque D — EF-703: integración exact-SHA y consumo Beam autorizado**
+- `.github/workflows/asen-real-agent-acceptance.yml` ejecuta en el mismo preflight las nuevas pruebas de seguridad, A/B y rutas; conserva los gates previos de Pi nativo y 60 slots.
+- La publicación usa el mensaje exacto `ci: one-time Pi busy-parent Beam proof` para ejecutar una vez el **Pi TUI padre ocupado y Pi RPC Explorer auténticos con Ollama Beam**, `environment: ollama-cloud-beam`, sin herramientas Writer, sin fallback, `run_attempt=1` y recibo exact-SHA. La inferencia real solo demuestra EF-601 ocupado para ese SHA; no prueba recuperación de hijo LLM interrumpido.
+
+**Checks del bloque — dejar sin marcar hasta recibir evidencia:**
+- [ ] SUPER-EF601-ROUTE-01 — Dos transiciones before/after claim probadas, sin wake falso, reenvío ni acuse ilegítimo, preflight exact-SHA PASS.
+- [ ] SUPER-EF701-INPUT-01 — Lectura bounded de manifests A/B, JSON/UTF-8, symlink, hardlink, salida y CLI, preflight exact-SHA PASS.
+- [ ] SUPER-EF702-SAFE-01 — Clasificación de quota/billing/auth y fallos de getters/proxy/cause sin secretos, preflight exact-SHA PASS.
+- [ ] SUPER-EF601-BEAM-01 — Pi TUI ocupado + Pi Explorer RPC auténticos, Ollama Beam y acuse duradero sobre el SHA nuevo, artefacto PASS.
+- [ ] SUPER-EF703-MATRIX-01 — CI completo Ubuntu/macOS/Windows y Release Gate exact-SHA PASS.
+- [ ] SUPER-EF704-ODD-01 — Plan auditado sin promover EF canónico ni FULL, SHA final reconciliado.
+
+**Limitaciones no negociables:** 8/28 EF completos en su alcance anterior; las 40 trazas reales A/B, 20 ASEN y el host B de agentes provisionado faltan; la escritura por Writer exige autorización humana genuina que ninguna CI puede conceder; una autoauditoría R4 no reemplaza una revisión externa independiente; no se ha probado el reinicio de un hijo LLM auténtico interrumpido. **FULL NO ALCANZADO**, sin merge ni release.

@@ -70,3 +70,31 @@ test("T12 F1-C cannot leak a huge provider error or accidentally classify arbitr
   assert.equal(JSON.stringify(result).includes(secret),false);
  }
 });
+
+test("EF-702 malicious Error accessors, nested causes and proxies cannot read secrets or crash classification",()=>{
+ const secret="EF702_SYNTHETIC_NEVER_LEAK";
+ let accessed=0;
+ const thrown=new Error("ignored");
+ Object.defineProperty(thrown,"message",{get(){accessed++;throw Error("SECRET "+secret);}});
+ Object.defineProperty(thrown,"name",{get(){accessed++;throw Error("SECRET "+secret);}});
+ assert.equal(classifyT12ProviderFailure(thrown).code,"UNKNOWN");
+ assert.equal(accessed,0,"Error getters must never be invoked");
+ const disguised=new Error("429 rate limit exceeded");
+ Object.defineProperty(disguised,"message",{get(){accessed++;return "Payment Required "+secret;}});
+ assert.equal(classifyT12ProviderFailure(disguised).code,"UNKNOWN",
+  "An accessor cannot override classification with paid/credit claims");
+ const proxy=new Proxy(new Error("429 quota exceeded"),{
+  getOwnPropertyDescriptor(){throw Error(secret);},
+ });
+ assert.deepEqual(classifyT12ProviderFailure(proxy),{
+  code:"UNKNOWN",diagnostic:"Provider or agent stage failed without a classified cause",
+ });
+ const caused=new Error("unclassified");
+ (caused as Error&{cause:unknown}).cause={get token(){accessed++;throw Error(secret);}};
+ const classified=classifyT12ProviderFailure(caused);
+ assert.equal(classified.code,"UNKNOWN");
+ assert.equal(accessed,0);
+ assert.doesNotMatch(JSON.stringify(classified),/EF702_SYNTHETIC_NEVER_LEAK/u);
+ assert.equal(classifyT12ProviderFailure(new Error("429 quota exceeded")).code,"QUOTA");
+ assert.equal(classifyT12ProviderFailure(new Error("402 Payment Required")).code,"BILLING");
+});

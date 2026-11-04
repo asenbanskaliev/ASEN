@@ -78,6 +78,7 @@ jobs:
           node --check scripts/t12-revalidation-contract.mjs
           node --check scripts/t12-real-repair-revalidation.mjs
           node --check scripts/t12-parent-consumption-grade.mjs
+          node --check scripts/agent-ab-manifest-reader.mjs
           node --check scripts/agent-ab-case-readiness.mjs
           node --check scripts/agent-ab-host-smoke.mjs
       - name: Typecheck
@@ -153,7 +154,7 @@ jobs:
           node --import tsx --test tests/t12-inference-budget.test.ts
       - name: F2/F3 deterministic fixture and planning contracts
         shell: bash
-        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-review-grader.test.ts tests/t12-verifier-brief.test.ts tests/t12-parent-consumption-grade.test.ts tests/t12-real-child-parent-grade.test.ts tests/t12-real-busy-parent-grade.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-disposable-correction.test.ts tests/t12-revalidation-contract.test.ts tests/agent-ab-combined-gate.test.ts tests/t12-live-evidence-gate.test.ts tests/t12-explorer-schema.test.ts tests/t12-acceptance-ledger.test.ts
+        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-review-grader.test.ts tests/t12-verifier-brief.test.ts tests/t12-parent-consumption-grade.test.ts tests/t12-real-child-parent-grade.test.ts tests/t12-real-busy-parent-grade.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-disposable-correction.test.ts tests/t12-revalidation-contract.test.ts tests/agent-ab-manifest-reader.test.ts tests/agent-ab-combined-gate.test.ts tests/t12-live-evidence-gate.test.ts tests/t12-explorer-schema.test.ts tests/t12-acceptance-ledger.test.ts
       - name: Ollama scoped child credential regression
         run: node --import tsx --test tests/t12-ollama-child-credential.test.ts
       - name: Pi retry settings preserve installed extensions
