@@ -5,8 +5,7 @@ import {mkdtemp,rm,writeFile} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 // @ts-expect-error Standalone JS acceptance contract intentionally has no declarations.
-import {executeCorrectionFixture,confirmCorrectionUnchanged,
- gradeCorrectedReviewer,gradeCorrectedVerifier,correctedPaths} from "../scripts/t12-revalidation-contract.mjs";
+import {executeCorrectionFixture,confirmCorrectionUnchanged,gradeCorrectedReviewer,gradeCorrectedVerifier,correctedPaths} from "../scripts/t12-revalidation-contract.mjs";
 const sha="a".repeat(40),fixtureSha="b".repeat(64),reviewHash="c".repeat(64),testsSha="d".repeat(64);
 const reasons=[
  {path:"src/access.js",text:"Editing is now limited to the correct document owner, even when the user is a viewer."},
