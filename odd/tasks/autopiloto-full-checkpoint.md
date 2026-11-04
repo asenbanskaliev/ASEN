@@ -181,3 +181,9 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 
 - Nueva regresión agrupada: escritura de aviso durable `pending`, envejecimiento controlado de sus marcas de tiempo válidas, reapertura desde instancia de journal separada y composición stale sin resumen. Comprueba eventId/estado y que el compositor no claim/ack.
 - Pendiente preflight exact-SHA del próximo commit. La prueba no representa host TUI ni un LLM real. Estado global 8/28 y FULL=false.
+
+
+## Corrección preventiva del fixture EF-601 pending-stale — 2026-11-04
+
+- La revisión de fuente antes de ejecutar CI encontró `\\n` literal en la escritura JSON del nuevo fixture; `JSON.parse` habría fallado por el sufijo. Se reemplaza por el salto de línea escapado correcto. No se hereda ni declara PASS para `074e0d1720c98c4faec5fdc81b1b87cc6d6b5814`.
+- Ejecutar preflight provider-free y CI exact-SHA del commit correctivo; EF601-STALE-REOPEN-01 permanece sin marcar. 8/28, FULL=false.

@@ -73,7 +73,7 @@ test("EF-601 restart keeps an old pending notice durable but composes it without
  const old=new Date(Date.now()-120_000).toISOString();
  const data=JSON.parse(await readFile(file,"utf8"));
  data.entries[0].createdAt=old;data.entries[0].updatedAt=old;
- await writeFile(file,JSON.stringify(data)+"\\n");
+ await writeFile(file,JSON.stringify(data)+"\n");
  // A separate journal instance models a restarted Pi host reading durable pending data.
  const reopened=new AgentNotificationJournal(file),rows=await reopened.list(scope),row=rows[0]!;
  assert.equal(row.eventId,recorded.eventId);

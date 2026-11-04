@@ -1456,3 +1456,5 @@ La nueva aserción de workflow tenía una comilla final mal colocada. La inspecc
 
 
 - [ ] EF601-STALE-REOPEN-01 — probar reapertura del journal `pending` con edad real >90 s y usar el mismo compositor de `extensions/asen.ts` para omitir salida obsoleta sin alterar estado/eventId. **Pendiente** de aceptación provider-free exact-SHA; no simula TUI ni consumo Pi.
+
+- Nota de revisión antes de validación: la primera transcripción del nuevo fixture dejó `\\n` literal en vez de un salto de línea JSON. Se corrige en el commit siguiente antes de considerar el preflight; no se atribuye validez al fixture anterior.
