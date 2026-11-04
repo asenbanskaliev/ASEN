@@ -258,3 +258,27 @@ test("EF-603 explicit failed-retry route rejects interrupted, live or completed 
   assert.equal((await links.list(identity)).length,1);
  }
 });
+
+test("EF-603 confirmed failed retry: legacy plan-less Todo admits only Explorer; planned Todo rejects role mismatch",async t=>{
+ for(const scenario of [{name:"legacy-explorer",planned:false,role:"explorer",ok:true},{name:"legacy-reviewer",planned:false,role:"reviewer",ok:false},{name:"planned-mismatch",planned:true,role:"reviewer",ok:false}]){
+  const dir=await mkdtemp(join(tmpdir(),"asen-ef603-legacy-retry-"));
+  t.after(()=>rm(dir,{recursive:true,force:true}));
+  const identity={sessionId:"s-"+scenario.name,projectId:dir};
+  const todos=await SessionTodoStore.open(join(dir,"todos.json"));
+  const selection={phase:"explore" as const};
+  const task=scenario.planned
+   ?await todos.add("Planned",identity,undefined,undefined,"asen-plan:"+scenario.name,[],"Inspect only",{role:"explorer",skillSelection:selection,skillPaths:selectSkills(selection).map(x=>x.path)})
+   :await todos.add("Legacy",identity,undefined,undefined,undefined,[],"Inspect only");
+  const links=new TaskAgentLinkStore(join(dir,"links.json"));
+  const host={query:async(id:string)=>({record:{id,...identity,role:id==="old"?scenario.role:scenario.role,state:id==="old"?"failed":"queued"}})};
+  const binder=new TrustedTaskAgentBinder(todos,host as never,links);
+  await links.bind({taskId:task.taskId,agentId:"old",...identity,createdAt:new Date().toISOString()});
+  await todos.update(task.taskId,identity,1,"running");
+  await todos.update(task.taskId,identity,2,"blocked","Original failed");
+  const claimed=await todos.update(task.taskId,identity,3,"running",CONFIRMED_FAILED_READ_ONLY_RETRY_REASON);
+  let count=0;
+  const launch=()=>binder.launchConfirmedFailedRetry(task.taskId,"new",identity,"old",claimed.events.at(-1)!.revision,()=>{count++;});
+  if(scenario.ok){await launch();assert.equal(count,1);}
+  else{await assert.rejects(launch,/snapshot or linked scope changed/u);assert.equal(count,0);assert.equal((await links.list(identity)).length,1);}
+ }
+});

@@ -31,8 +31,11 @@ export class TrustedTaskAgentBinder{
    task.current.reason===CONFIRMED_FAILED_READ_ONLY_RETRY_REASON&&
    previousLinks.length===1&&previousLinks[0]?.agentId===retry.originalAgentId&&
    ["explorer","reviewer","verifier"].includes(agent.record.role)&&
-   !!task.plan&&task.plan.role===agent.record.role&&
-   task.plan.skillSelection?.phase===({explorer:"explore",reviewer:"adversarial-review",verifier:"verify"} as const)[agent.record.role as "explorer"|"reviewer"|"verifier"]&&
+   // A persisted plan must match role and phase; a legacy plan-less Todo can only be an Explorer.
+   (task.plan?
+    task.plan.role===agent.record.role&&
+    task.plan.skillSelection?.phase===({explorer:"explore",reviewer:"adversarial-review",verifier:"verify"} as const)[agent.record.role as "explorer"|"reviewer"|"verifier"]:
+    agent.record.role==="explorer")&&
    !!task.description;
   if(retry&&!confirmedRetry)
    throw new Error("Confirmed failed-agent retry snapshot or linked scope changed; review before dispatch");

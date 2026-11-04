@@ -37,8 +37,10 @@ export class TaskAgentTodoReconciler{
     predecessors[0]?.state==="failed"&&
     predecessors[0]?.role===latest.role&&
     ["explorer","reviewer","verifier"].includes(latest.role)&&
-    !!task.plan&&latest.role===task.plan.role&&
-    task.plan.skillSelection?.phase===({explorer:"explore",reviewer:"adversarial-review",verifier:"verify"} as const)[latest.role as "explorer"|"reviewer"|"verifier"];
+    (task.plan?
+     latest.role===task.plan.role&&
+     task.plan.skillSelection?.phase===({explorer:"explore",reviewer:"adversarial-review",verifier:"verify"} as const)[latest.role as "explorer"|"reviewer"|"verifier"]:
+     latest.role==="explorer");
    const validRecoveryChain=confirmedFailedReadOnlyRetry||predecessors.every(previous=>
     previous?.state==="interrupted"&&(!task.plan||previous.role===task.plan.role));
    if(!validRecoveryChain){
