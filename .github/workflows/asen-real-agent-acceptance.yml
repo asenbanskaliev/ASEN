@@ -68,6 +68,14 @@ jobs:
         with:
           node-version: "22.19.0"
       - run: npm ci
+      - name: Syntax-check provider entrypoints before any authenticated execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/t12-real-child-parent-consumption.mjs
+          node --check scripts/t12-real-parent-consumption.mjs
+          node --check scripts/t12-real-child-parent-grade.mjs
+          node --check scripts/agent-ab-case-readiness.mjs
       - name: Typecheck
         run: npm run typecheck
       - name: Build

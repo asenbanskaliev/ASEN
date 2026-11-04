@@ -73,13 +73,13 @@ try{
  const result=gradeRealChildParentConsumption({
   candidateSha:expected,model,events,notice:ledger.entries[0],
  });
- assert.equal(git("status","--porcelain"),"",Read-only Pi parent+child acceptance must preserve the project");
+ assert.equal(git("status","--porcelain"),"","Read-only Pi parent+child acceptance must preserve the project");
  mkdirSync(join(repo,"asen-acceptance-evidence"),{recursive:true});
  writeFileSync(output,JSON.stringify({...result,
   piVersion:packageJson.version,platform:process.platform,
   nativeTuiSha256:visibleHash.digest("hex"),projectUnchanged:true,
  },null,2)+"\n",{flag:"wx",mode:0o600});
- console.log("T12_REAL_PI_PARENT_CONSUMPTION_PASS "+
+ console.log("T12_REAL_PI_PARENT_CHILD_CONSUMPTION_PASS "+
   JSON.stringify({status:result.status,verifiedParentToolActions:2,globalFull:false}));
 }catch(error){
  console.error("T12_REAL_PI_PARENT_CHILD_CONSUMPTION_FAIL",error instanceof Error?error.message:"Unknown error");

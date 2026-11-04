@@ -189,7 +189,7 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 
 ### F7 — Validación real y cierre
 
-- [ ] EF-701 Comparar C01–C20 con snapshots A/B y ASEN final; no heredar recibos entre SHAs. **BLOQUEADO:** Fuente A/B verificada por Git real exact-SHA (run `41787200198`); nuevo contrato de preparación C01–C20 y 60 slots en `registry/parity/agent-ab-case-readiness-v1.json`, con validador offline y CI pendiente. Mantiene `evidenceCaptured:0`, `casesBlocked:20`; faltan 40 capturas de referencia, 20 de ASEN y auditoría independiente.
+- [ ] EF-701 Comparar C01–C20 con snapshots A/B y ASEN final; no heredar recibos entre SHAs. **BLOQUEADO:** Fuente A/B Git real y contrato de 20 escenarios/60 slots verificados en Actions `41797370720` / SHA `b47244f`, artefacto `13305748173`; siguen `evidenceCaptured:0`, `casesBlocked:20`. Faltan 40 capturas de referencia, 20 de ASEN y auditoría independiente.
 - [ ] EF-702 Probar selección de modelos reales gratuitos, error de cuota/red y consumo por agente. **PARCIAL:** Cinco inferencias auténticas con Beam en `41783370317` / `8add734` y una aceptación del coordinador Pi en `41787200198` / `44c9ad0`; el nuevo hijo Pi RPC con `OLLAMA_API_KEY` explícito y modelo fijado está pendiente de ejecución. Sin modelos alternativos de pago; faltan errores reales de cuota/red, recuperación por rol y confirmación de gratuidad futura.
 - [ ] EF-703 Verificar tres OS, suite global, permisos, Pi interactivo, Writer, revisión, eventos y recuperación. **PARCIAL:** CI anterior 3 OS PASS (`41724028665`) y nueva aceptación Pi padre+Beam con consulta/acuse real PASS (`41787200198` / `44c9ad0`); faltan hijo Pi LLM real, Writer autorizado, recuperación con proveedor, matriz A/B y revisión externa independiente; CI del candidato posterior debe verificarse por su propio SHA.
 - [ ] EF-704 Auditoría final de diferencias. Solo cambiar estado a **FULL** cuando todos los gates anteriores y S01–S11 estén satisfechos. **BLOQUEADO:** S01–S11, C01–C20 y auditoría final aún sin cerrar.
@@ -641,8 +641,8 @@ El run `41781460824` del SHA `3e3b720` bloqueó la aceptación auténtica antes 
 - [x] MEGA-AB-02 — GitHub Actions obtuvo ambos commits/árboles/blobs A/B y publicó `SOURCE_OBJECTS_VERIFIED`, artefacto `13302125750`, run `41787200198` / SHA `44c9ad0`; **0/20 casos ejecutados**.
 - [x] MEGA-PI-02 — Pi 1.2.0 TUI + Ollama Beam auténticos despertaron el padre, consultaron `asen_agent_status` y llamaron `asen_agent_ack` para el mismo evento; artefacto `13301807519`, run `41787200198` / SHA `44c9ad0`, fixture hijo de lectura.
 - [ ] MEGA-PI-03 — Pi TUI padre con un hijo Pi LLM real, no fixture, consume la notificación.
-- [ ] MEGA-AB-04 — Inventario de 20 escenarios y 60 slots verificable offline, con recibo `READINESS_ONLY_NOT_EXECUTED` exact-SHA.
-- [ ] MEGA-PI-04 — Pruebas adversariales de las dos inferencias y prohibición de permisos Writer superadas en CI exact-SHA.
+- [x] MEGA-AB-04 — Inventario de C01–C20 y 60 slots PASS en Actions `41797370720` / SHA `b47244f`, artefacto `13305748173` con `READINESS_ONLY_NOT_EXECUTED`, `evidenceCaptured:0` y `globalFull:false`.
+- [x] MEGA-PI-04 — Validador offline de hijo+padre y pruebas negativas de estado, modelo, identidad, ausencia de Writer y orden PASS en preflight `41797370720` / SHA `b47244f`; **el modelo hijo todavía no se ha ejecutado**.
 - [ ] MEGA-WRITER-01 — consentimiento humano, rechazo y revocación en archivo exacto, con recibo vivo.
 - [ ] MEGA-AB-03 — 40 observaciones A/B y 20 ASEN con per-case A/B/ASEN y fuente verificada.
  
@@ -727,3 +727,11 @@ El usuario autorizó expresamente consumir cuota de Ollama. Esta tanda solicita 
 El SHA `8e752924c52038bf3837fe3305d15d9de2bb6918` activó `ASEN real-agent functional acceptance` run `41797023658`, pero el preflight falló antes de la fase autenticada por **errores de tipo del propio test** `tests/t12-real-child-parent-grade.test.ts`: TS2345 sobre el argumento `undefined` de `assert.throws` y TS2538 sobre índices potencialmente `undefined` en la prueba de secuencia invertida. R4 y Pi Runtime registraron el mismo problema en `typecheck`. **No existe en ese SHA prueba Pi padre+hijo válida ni una llamada Beam de esa fase**; el job remoto fue `skipped`.
 
 Se reemplaza el predicado omitido por `Error` (sin relajar el gate) y se tipan los pares de índices con `as const`, manteniendo las pruebas negativas de falta de modelo, identidades cruzadas, permisos y orden. La siguiente publicación se disparará una sola vez para el nuevo SHA; los 8/28 EF y los nuevos subchecks MEGA mantienen su estado mientras no haya PASS real.
+
+### F6/F7 — recibos de preparación y fallo sintáctico del hijo Pi (2026-11-04)
+
+El run `41797370720`, SHA `b47244facefe53a7a72234f84e8694e999a93a44`, confirmó `Provider-free static and ASEN validation: PASS` y `Frozen A/B source objects: PASS`. El artefacto `13305748173`, `ab-case-readiness.json`, declara `casesPrepared:20`, `sourceSlotsRequired:60`, `evidenceCaptured:0`, `casesBlocked:20`, `modelCalls:0` y `globalFull:false`. Por eso se marcan los checks acotados **MEGA-AB-04** y **MEGA-PI-04** (contrato offline del validador), sin cerrar EF-002/601/701 ni C01–C20.
+
+**Fallo real de la prueba Pi padre/hijo:** el mismo run detuvo `Real Pi parent notices with Beam` antes de invocar el modelo: `SyntaxError: missing ) after argument list` en `scripts/t12-real-child-parent-consumption.mjs:76`, causado por un literal de aserción sin comillas. El intento no dejó recibo `PASS_REAL_PI_PARENT_AND_CHILD_BOUNDED`; **no contar como inferencia auténtica**. La siguiente tanda corrige solo las comillas y la etiqueta de log de éxito, sin cambiar el validador; agrega `node --check` de los cuatro entrypoints ESM al preflight sin proveedor. Ninguna llamada puede autorizarse si vuelve a fallar sintaxis.
+
+**Estado estructural al cerrar este commit:** 8/28 EF cerrados; 6 checks MEGA verificados en su alcance concreto; MEGA-PI-03 (hijo modelo), MEGA-AB-03 (60 ejecuciones) y MEGA-WRITER-01 (consentimiento humano) todavía pendientes. El nuevo test con Beam requiere un recibo exact-SHA propio; tampoco demuestra revisión independiente ni FULL.
