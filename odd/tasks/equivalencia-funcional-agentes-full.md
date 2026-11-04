@@ -1406,3 +1406,10 @@ La auditoría del test añadió una comprobación para impedir que el job de Bea
 ### Corrección sintáctica de test EF-603 exact opt-in — 2026-11-04
 
 La nueva aserción de workflow tenía una comilla final mal colocada. La inspección estática antes del resultado del CI la detectó y el test se corrigió para compilar y exigir la igualdad exacta del mensaje. No cambia el workflow productivo. El resultado exact-SHA queda pendiente.
+
+
+### Corrección del fixture de modelo Beam EF-603 — 2026-11-04
+
+- El preflight provider-free exact-SHA del commit `853b9f76b478d0068fc93f9983d38a7257c216d4` falló en `tests/t12-ef603-coalescing-grade.test.ts`: el fixture declaraba `beam`, mientras que el contrato del grader permite que Pi informe el identificador canónico `beam:cloud`. No fue un fallo de producción ni se ejecutó el carril Beam real, porque depende del preflight PASS.
+- Se normaliza el fixture positivo a `beam:cloud`; el grader sigue admitiendo los dos nombres Beam documentados y conserva los rechazos para proveedor/modelo ajenos. La regresión conserva el rechazo de cambios no permitidos.
+- Esta corrección no añade evidencia ni cambia el estado canónico: **8/28**, EF-603 PARTIAL, FULL=false. Pendientes el preflight, aceptación Beam real exact-SHA, CI y Release Gate para el SHA correctivo.

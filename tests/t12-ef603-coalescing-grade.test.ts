@@ -6,9 +6,9 @@ const sha="a".repeat(40);
 const valid=()=>({
  schema:"asen-ef603-real-pi-coalescing/v1",candidateSha:sha,
  status:"PASS_REAL_PI_EXPLORER_ONE_EXECUTION",piVersion:"1.2.0",
- provider:"ollama-cloud",model:"beam",logicalRequests:3,
+ provider:"ollama-cloud",model:"beam:cloud",logicalRequests:3,
  providerCallsActuallyObserved:null,selectionObservations:1,selectionSource:"child-reported",
- selectedProvider:"ollama-cloud",selectedModel:"beam",assistantTextDeltaObserved:true,
+ selectedProvider:"ollama-cloud",selectedModel:"beam:cloud",assistantTextDeltaObserved:true,
  assistantTextDeltaCount:1,assistantCharactersObserved:23,
  uniqueAgentIds:1,nativePiProcessCount:1,providerCallsReserved:1,
  durableAgents:1,durableState:"completed",role:"explorer",

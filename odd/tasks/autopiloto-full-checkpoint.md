@@ -104,3 +104,11 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 
 - En el commit `bdc3301ca075efdc1924b50970fae6e4995f8586`, la nueva aserción de igualdad exacta del mensaje del workflow tenía una comilla final mal colocada.
 - La auditoría de la fuente la detectó antes de aceptar CI; se corrigió sin cambiar la condición productiva ni habilitar un trigger más amplio. No tratar los resultados del SHA anterior como validación de este test.
+
+
+## Fallo de preflight EF-603 y corrección del fixture — 2026-11-04
+
+- HEAD confirmado antes de corregir: `853b9f76b478d0068fc93f9983d38a7257c216d4`; aceptación exact-SHA [41932099773](https://github.com/asenbanskaliev/ASEN/actions/runs/41932099773) falló en el preflight provider-free. La prueba estricta comparó `beam` esperado con `beam:cloud` real y permitido por el grader. El carril real EF-603 no se ejecutó por su dependencia del preflight.
+- Corrección preparada: hacer que el fixture positivo use `beam:cloud`, manteniendo las variantes negativas de modelo y proveedor. La clasificación no cambia y no se atribuye PASS al SHA fallido.
+- CI y Release Gate exact-SHA `853b9f76b478d0068fc93f9983d38a7257c216d4`: CI `41932107288` y Release Gate `41932107562` seguían en curso al inspeccionarlos. Phase 0, F5, Pi runtime, CodeGraph y R4 autoauditoría SUCCESS; Pi Free Smoke SKIPPED.
+- Próxima reanudación: verificar que el HEAD siga siendo el padre previsto, publicar fixture y este registro como un commit consolidado; después comprobar preflight, carril Beam EF-603, CI y Release Gate por su SHA. EF canónicos verificados: **8/28**; EF-601/603/604 PARTIAL, A/B y consentimiento humano Writer pendientes, FULL=false. Sin merge.
