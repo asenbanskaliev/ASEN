@@ -2,11 +2,12 @@
  * A self-asserted "real" receipt with a correct digest is NOT independent
  * proof of an actual provider/host execution and must never imply FULL. */
 import {createHash} from 'node:crypto';
-import {readFile,realpath,lstat,open} from 'node:fs/promises';
+import {realpath,lstat,open} from 'node:fs/promises';
 import {constants as fsConstants} from 'node:fs';
 import {join,resolve,relative,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {CASE_IDS,REFERENCE_SHA,compareAgentObservations} from './agent-observable-parity.mjs';
+import {readAgentABManifest} from './agent-ab-manifest-reader.mjs';
 const REFS=['A','B','ASEN'];
 const SCHEMA='asen-agent-observable-receipt-v1';
 const receiptPattern=/^receipts\/(A|B|ASEN)\/(C(?:0[1-9]|1[0-9]|20))\.json#sha256=([0-9a-f]{64})$/u;
@@ -113,7 +114,10 @@ if(process.argv[1]&&fileURLToPath(import.meta.url)===resolve(process.argv[1])){
  try{
   const [referencePath,candidatePath,candidateSha,root]=process.argv.slice(2);
   if(!root||process.argv.length!==6)throw new Error('Usage: node scripts/agent-observable-receipts.mjs <reference.json> <asen.json> <candidate-sha> <receipt-root>');
-  const [reference,candidate]=await Promise.all([referencePath,candidatePath].map(path=>readFile(resolve(path),'utf8').then(JSON.parse)));
+  // Match the strict combined gate: no unbounded pathname reads, symlink
+  // aliases, invalid UTF-8 or input replacement during a concurrent write.
+  const [reference,candidate]=await Promise.all([referencePath,candidatePath].map(path=>
+   readAgentABManifest(resolve(path))));
   const result=await auditObservableReceipts({reference,candidate,candidateSha,root});
   process.stdout.write(JSON.stringify(result,null,2)+'\n');
   process.exitCode=1; // No self-attestation permits FULL.

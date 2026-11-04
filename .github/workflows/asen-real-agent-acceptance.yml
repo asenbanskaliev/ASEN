@@ -79,6 +79,7 @@ jobs:
           node --check scripts/t12-real-repair-revalidation.mjs
           node --check scripts/t12-parent-consumption-grade.mjs
           node --check scripts/agent-ab-manifest-reader.mjs
+          node --check scripts/agent-observable-receipts.mjs
           node --check scripts/agent-ab-case-readiness.mjs
           node --check scripts/agent-ab-host-smoke.mjs
       - name: Typecheck

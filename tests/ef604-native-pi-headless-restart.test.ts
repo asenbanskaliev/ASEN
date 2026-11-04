@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import test from "node:test";
-import {execFileSync,spawnSync} from "node:child_process";
+import {execFileSync,spawn,spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {mkdtemp,mkdir,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {readFileSync,existsSync} from "node:fs";
@@ -77,7 +77,7 @@ async function completedReadOnly(runtime:AgentRuntime,session:{sessionId:string;
  assert.equal((await runtime.query(id,session))?.record.state,"completed");
  return record;
 }
-test("EF-604 two genuine Pi RPC host processes reopen one durable session without replaying uncertain results",
+test("EF-604 authentic Pi RPC host restart, forced process death and durable isolation never replay uncertain results",
  {timeout:180000},async t=>{
  const root=await mkdtemp(join(tmpdir(),"asen-native-pi-restart-"));
  t.after(()=>rm(root,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
@@ -168,8 +168,64 @@ test("EF-604 two genuine Pi RPC host processes reopen one durable session withou
  assert.notEqual(foreign.state.sessionId,sessionId);
  assert.deepEqual(await journal.list({sessionId:foreign.state.sessionId,projectId:scope.projectId}),[]);
  assert.equal(await stableJournal(),baselineDigest);
+ // A genuine Pi RPC process must survive a normal get_state response until
+ // explicitly killed; this is a hard OS failure, not a clean session_shutdown.
+ const cmdId="native-hard-kill";
+ const argv=[binary,"--mode","rpc","--session",sessionFile,
+  "--no-extensions","--extension",probe,"--no-skills","--no-builtin-tools"];
+ const killed=await new Promise<{pid:number;code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{
+  const child=spawn(process.execPath,argv,{cwd:project,env,stdio:["pipe","pipe","pipe"],
+   windowsHide:true});
+  let stdout="",stderr="",answered=false,requestedKill=false,settled=false;
+  const finish=(error?:Error,code:number|null=null,signal:NodeJS.Signals|null=null)=>{
+   if(settled)return;
+   settled=true;clearTimeout(timeout);
+   if(error)reject(error);
+   else if(!answered||!requestedKill||!child.pid||code===0)
+    reject(Error("Pi did not survive RPC request until forced termination"));
+   else resolve({pid:child.pid,code,signal});
+  };
+  const timeout=setTimeout(()=>{
+   child.kill("SIGKILL");finish(Error("Native Pi did not respond before forced termination"));
+  },30000);
+  child.stdout.on("data",(chunk:Buffer)=>{
+   stdout+=chunk.toString("utf8");
+   if(stdout.length>131072){child.kill("SIGKILL");finish(Error("Unbounded Pi RPC output"));return;}
+   for(let newline=stdout.indexOf("\n");newline>=0;newline=stdout.indexOf("\n")){
+    const line=stdout.slice(0,newline).trim();stdout=stdout.slice(newline+1);
+    let reply:any;try{reply=JSON.parse(line);}catch{continue;}
+    if(reply?.type!=="response"||reply.id!==cmdId)continue;
+    if(reply.success!==true||reply.command!=="get_state"||reply.data?.sessionId!==sessionId){
+     child.kill("SIGKILL");finish(Error("Native Pi response did not bind owned session"));return;
+    }
+    answered=true;requestedKill=child.kill("SIGKILL");
+    if(!requestedKill)finish(Error("Forced Pi host termination was not delivered"));
+    break;
+   }
+  });
+  child.stderr.on("data",(chunk:Buffer)=>{
+   stderr+=chunk.toString("utf8");if(stderr.length>131072)stderr=stderr.slice(-8192);
+  });
+  child.on("error",error=>finish(error));
+  child.on("close",(code,signal)=>finish(undefined,code,signal));
+  child.stdin.write(JSON.stringify({id:cmdId,type:"get_state"})+"\n");
+ });
+ assert.ok(killed.pid>0,"A real native Pi OS process must have been forcibly terminated");
+ const afterKill=run(sessionFile);
+ assert.equal(afterKill.state.sessionId,sessionId);
+ assert.equal(afterKill.state.sessionFile,sessionFile);
+ assert.notEqual(afterKill.pid,killed.pid);
+ assert.equal(await stableJournal(),baselineDigest,
+  "Forced Pi death plus restart cannot mutate or replay uncertain notices");
+ assert.deepEqual((await journal.list(scope)).map(row=>row.delivery),["attempted","pending"]);
+ const allEvents=readTrace(trace);
+ assert.equal(allEvents.length,5,"Exactly five real Pi processes should start");
+ assert.deepEqual(allEvents.map(event=>event.kind),Array(5).fill("native_session_start"));
+ assert.deepEqual(allEvents.map(event=>event.sessionId),
+  [sessionId,sessionId,foreign.state.sessionId,sessionId,sessionId]);
  const evidence={schema:"asen-native-pi-restart/v1",status:"PASS_NATIVE_PI_HEADLESS_RESTART_BOUNDED",
-  piVersion:packageMetadata.version,hostProcessCount:3,sameSessionRestarts:2,
+  piVersion:packageMetadata.version,hostProcessCount:5,sameSessionRestarts:3,
+  osForcedTerminationObserved:true,
   nativeSessionIdentityPreserved:true,foreignSessionIsolated:true,
   persistedReadOnlyTasks:2,noticeStates:["attempted","pending"],
   observedModelCalls:0,writerAuthorized:false,coordinatorConsumption:false,globalFull:false,

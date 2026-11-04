@@ -1068,11 +1068,28 @@ La equivalencia canónica conserva `8/28` EF verificados; `globalFull=false`. No
 - La publicación usa el mensaje exacto `ci: one-time Pi busy-parent Beam proof` para ejecutar una vez el **Pi TUI padre ocupado y Pi RPC Explorer auténticos con Ollama Beam**, `environment: ollama-cloud-beam`, sin herramientas Writer, sin fallback, `run_attempt=1` y recibo exact-SHA. La inferencia real solo demuestra EF-601 ocupado para ese SHA; no prueba recuperación de hijo LLM interrumpido.
 
 **Checks del bloque — dejar sin marcar hasta recibir evidencia:**
-- [ ] SUPER-EF601-ROUTE-01 — Dos transiciones before/after claim probadas, sin wake falso, reenvío ni acuse ilegítimo, preflight exact-SHA PASS.
-- [ ] SUPER-EF701-INPUT-01 — Lectura bounded de manifests A/B, JSON/UTF-8, symlink, hardlink, salida y CLI, preflight exact-SHA PASS.
-- [ ] SUPER-EF702-SAFE-01 — Clasificación de quota/billing/auth y fallos de getters/proxy/cause sin secretos, preflight exact-SHA PASS.
-- [ ] SUPER-EF601-BEAM-01 — Pi TUI ocupado + Pi Explorer RPC auténticos, Ollama Beam y acuse duradero sobre el SHA nuevo, artefacto PASS.
-- [ ] SUPER-EF703-MATRIX-01 — CI completo Ubuntu/macOS/Windows y Release Gate exact-SHA PASS.
-- [ ] SUPER-EF704-ODD-01 — Plan auditado sin promover EF canónico ni FULL, SHA final reconciliado.
+- [x] SUPER-EF601-ROUTE-01 — **VERIFICADO**: transiciones antes/después de claim, pending/attempted sin wake/replay ni acuse; tests 24/25 PASS, preflight `41839113451` / SHA `e980fed72f8a63144a202acd4e7d17d0585fa579`. Runner determinista, no consentimiento.
+- [x] SUPER-EF701-INPUT-01 — **VERIFICADO**: entrada A/B acotada a 1 MiB, UTF-8/JSON/alias, tests de manifest y combined CLI PASS, preflight `41839113451` / SHA `e980fed72f8a63144a202acd4e7d17d0585fa579`. Sin fuentes A/B realmente ejecutadas.
+- [x] SUPER-EF702-SAFE-01 — **VERIFICADO**: clasificador de cuota/billing/auth con errores, proxies y getters peligrosos sin evaluar causas/secretos; `tests/t12-provider-failure.test.ts` PASS, `41839113451` / SHA `e980fed72f8a63144a202acd4e7d17d0585fa579`. No agotamiento real de cuota.
+- [x] SUPER-EF601-BEAM-01 — **VERIFICADO**: padre Pi TUI ocupado e hijo Explorer Pi RPC auténticos con Ollama Beam, `PASS_REAL_PI_BUSY_PARENT_AND_CHILD_BOUNDED`, Actions `41839113451` / SHA `e980fed72f8a63144a202acd4e7d17d0585fa579`, artefacto `13327788719`; 2 acciones reales del coordinador, `globalFull:false`.
+- [x] SUPER-EF703-MATRIX-01 — **VERIFICADO**: CI `41839122226` 14/14 jobs SUCCESS, suites completas Ubuntu/macOS/Windows y Release Gate `41839122026` 3/3 SUCCESS, ambos SHA `e980fed72f8a63144a202acd4e7d17d0585fa579`.
+- [x] SUPER-EF704-ODD-01 — **VERIFICADO EN SU ALCANCE**: gate `audit:ef-plan` dentro del preflight `41839113451` PASS, resultados exact-SHA `e980fed72f8a63144a202acd4e7d17d0585fa579`, sin promover EF canónico (8/28) ni FULL. La recepción documental posterior se conserva separada.
 
 **Limitaciones no negociables:** 8/28 EF completos en su alcance anterior; las 40 trazas reales A/B, 20 ASEN y el host B de agentes provisionado faltan; la escritura por Writer exige autorización humana genuina que ninguna CI puede conceder; una autoauditoría R4 no reemplaza una revisión externa independiente; no se ha probado el reinicio de un hijo LLM auténtico interrumpido. **FULL NO ALCANZADO**, sin merge ni release.
+
+### Recepción de la SUPERMEGATANDA previa y nueva tanda EF-604/701/703 — 2026-11-04
+
+**Recepción cerrada para el SHA histórico `e980fed72f8a63144a202acd4e7d17d0585fa579`:** preflight + prueba Beam `41839113451` SUCCESS; `T12_REAL_PI_BUSY_PARENT_CHILD_CONSUMPTION_PASS` con `globalFull:false` y artefacto `13327788719`; Release Gate `41839122026` PASS en 3 sistemas y CI `41839122226` SUCCESS en 14/14 jobs (Windows, macOS y Ubuntu incluidos). Los **seis subchecks SUPER-** de arriba se marcan sin promover EF-601, EF-604, EF-701, EF-702 o EF-704 canónicos. El consentimiento humano Writer y A/B C01–C20 continúan sin acreditarse.
+
+**Nueva megatanda agrupada, cambios preparados para un SHA nuevo y sin herencia de PASS:**
+
+- **EF-604 — terminación forzada del host Pi real:** `tests/ef604-native-pi-headless-restart.test.ts` amplía la prueba Pi 1.2 nativo RPC sin proveedor: crea un proceso Pi auténtico, obtiene `get_state` de una sesión persistida con mismo `sessionId`, mantiene abierto su stdin, lo termina con `SIGKILL` desde el proceso padre **sin `session_shutdown`** y reinicia otro CLI nativo. Exige identidades de sesión/PID distintas, cinco arranques observados, dos tareas Explorer persistidas, journal `attempted/pending` sin replay, proyecto Git intacto y cero modelo/Writer. Este test prueba la muerte del **host**, **NO** un LLM hijo a mitad de inferencia.
+- **EF-701 — ambas CLIs protegen igual los manifiestos A/B:** `scripts/agent-observable-receipts.mjs` reutiliza el lector de documentos descriptor-bound `readAgentABManifest` ya usado por `agent-ab-combined-gate.mjs`, evitando la lectura por pathname sin límites del CLI antiguo. Pruebas añadidas a `tests/agent-ab-combined-gate.test.ts` exigen rechazo de entrada superior a 1 MiB, UTF-8 inválido, enlace simbólico y preservación del estado `globalFull:false` incluso con manifiestos ordinarios. El CLI conserva salida 1 en modo auditoría no atestada.
+- **EF-703 — validación consolidada:** el preflight `.github/workflows/asen-real-agent-acceptance.yml` verifica sintaxis del auditor reforzado y ejecuta en su matriz existente tanto EF-604 nativo como EF-701 legacy. El SHA nuevo no requiere cuota Ollama: la inferencia Beam acreditada queda vinculada al commit anterior.
+
+**Nuevos subchecks, pendientes hasta PASS exact-SHA:**
+- [ ] MEGAF604-KILL-01 — Proceso Pi 1.2.0 auténtico interrumpido por el OS y segundo proceso restablecido con estado durable, sin duplicar ni acusar `attempted`; preflight PASS.
+- [ ] MEGAF701-LEGACY-01 — Auditor legacy A/B usa lector seguro bounded, rechaza symlink/UTF-8/oversize y nunca devuelve FULL, preflight PASS.
+- [ ] MEGAF703-3OS-01 — CI, Release Gate y arquitectura exact-SHA del nuevo commit, PASS Windows/macOS/Ubuntu.
+
+**Bloqueos globales no simulados:** 8/28 EF canónicos, falta inferencia LLM interrumpida y reanudada, consentimiento Writer real, las 60 capturas A/B/ASEN, host B y auditor externo. `FULL=false`; `main` intacta.

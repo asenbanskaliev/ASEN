@@ -205,3 +205,53 @@ test("EF-701 combined report cannot write through an operator-supplied symlink d
  assert.match(child.stderr,/alias or symlink/u);
  await assert.rejects(()=>readFile(join(actual,"falsely-canonical.json")),(e:any)=>e.code==="ENOENT");
 });
+
+test("EF-701 legacy observable-receipts CLI uses descriptor-safe bounded manifests and cannot certify FULL",
+ {timeout:35000},async t=>{
+ const f=await fixture(t),refs=join(f.root,"ref-legacy.json"),candidate=join(f.root,"asen-legacy.json");
+ await writeFile(refs,JSON.stringify(f.reference),{flag:"wx"});
+ await writeFile(candidate,JSON.stringify(f.candidate),{flag:"wx"});
+ const call=(source:string)=>spawnSync(process.execPath,[
+  "scripts/agent-observable-receipts.mjs",source,candidate,candidateSha,f.root],{
+  cwd:process.cwd(),env:process.env,encoding:"utf8",timeout:16000,windowsHide:true,
+  maxBuffer:512*1024,
+ });
+ const valid=call(refs);
+ assert.equal(valid.status,1,"Self-attestation CLI never returns success for a parity claim");
+ const report=JSON.parse(valid.stdout);
+ assert.equal(report.expected,60);
+ assert.equal(report.globalFull,false);
+ assert.equal(report.counts.integrityOnly,0);
+ assert.equal(report.counts.blocked,60);
+ await writeFile(refs,Buffer.alloc(1024*1024+1,32));
+ const big=call(refs);
+ assert.equal(big.status,1);
+ assert.equal(big.stdout.trim(),"","Unsafe manifest must not print a report");
+ assert.match(big.stderr,/Unsafe A\/B manifest/u);
+ await writeFile(refs,Buffer.from([0x7b,0x22,0xc3,0x28,0x22,0x7d]));
+ const utf8=call(refs);
+ assert.equal(utf8.status,1);
+ assert.equal(utf8.stdout.trim(),"");
+ assert.match(utf8.stderr,/Invalid UTF-8 JSON/u);
+});
+test("EF-701 legacy receipt CLI cannot ingest an aliased manifest even when JSON bytes match",
+ {timeout:25000},async t=>{
+ const f=await fixture(t),refs=join(f.root,"reference-legacy.json"),alias=join(f.root,"alias-legacy.json"),
+  candidate=join(f.root,"candidate-legacy.json");
+ await writeFile(refs,JSON.stringify(f.reference),{flag:"wx"});
+ await writeFile(candidate,JSON.stringify(f.candidate),{flag:"wx"});
+ try{await symlink(refs,alias);}
+ catch(error){
+  if(process.platform==="win32"&&(error as NodeJS.ErrnoException).code==="EPERM"){
+   t.skip("Windows runner cannot create file symlinks");return;
+  }
+  throw error;
+ }
+ const result=spawnSync(process.execPath,[
+  "scripts/agent-observable-receipts.mjs",alias,candidate,candidateSha,f.root],{
+  cwd:process.cwd(),env:process.env,encoding:"utf8",timeout:15000,windowsHide:true,
+ });
+ assert.notEqual(result.status,0);
+ assert.equal(result.stdout.trim(),"");
+ assert.match(result.stderr,/Unsafe A\/B manifest/u);
+});
