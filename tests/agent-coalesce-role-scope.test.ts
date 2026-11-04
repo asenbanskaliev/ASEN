@@ -15,7 +15,7 @@ async function fixture(t:import("node:test").TestContext){
  return {home,first:await realpath(first),second:await realpath(second)};
 }
 test("EF-603 only the exact unplanned Explorer coalesces across concurrent route/role/scope requests",
- {timeout:25000},async t=>{
+ {timeout:45000},async t=>{
  const f=await fixture(t);
  let release!:()=>void;
  const gate=new Promise<void>(resolve=>{release=resolve;});
@@ -61,21 +61,26 @@ test("EF-603 only the exact unplanned Explorer coalesces across concurrent route
  assert.ok(records.every(x=>x.state==="queued"||x.state==="running"));
  release();
  const expected=records.length;
- for(let attempt=0;attempt<300;attempt++){
+ // Windows runners can be saturated by parallel multi-OS CI tests. Bound
+ // by elapsed time, not a fixed number of filesystem-heavy list operations.
+ const settleDeadline=Date.now()+20000;
+ while(true){
   const done=await runtime.list(session);
   if(done.length===expected&&done.every(x=>x.state==="completed"))break;
-  if(attempt===299)assert.fail("Durable agents did not settle after releasing the deterministic runner");
-  await new Promise(resolve=>setTimeout(resolve,10));
+  if(Date.now()>=settleDeadline)assert.fail(
+   "Durable agents did not settle: "+JSON.stringify(done.map(x=>({id:x.id,state:x.state,role:x.role}))));
+  await new Promise(resolve=>setTimeout(resolve,25));
  }
  assert.equal(launched.length,alternate.length+1,"Only distinct requests may consume a runner slot");
  const repeated=await runtime.startReadOnly(base);
  assert.notEqual(repeated,e1,"A completed Explorer is not an active task and must not be reused");
  // One final dispatch is allowed; it is still a provider-free deterministic runner.
- for(let attempt=0;attempt<50;attempt++){
+ const repeatDeadline=Date.now()+10000;
+ while(true){
   const item=(await runtime.list(session)).find(x=>x.id===repeated);
   if(item?.state==="completed")break;
-  if(attempt===49)assert.fail("Post-completion Explorer did not settle");
-  await new Promise(resolve=>setTimeout(resolve,10));
+  if(Date.now()>=repeatDeadline)assert.fail("Post-completion Explorer did not settle: "+item?.state);
+  await new Promise(resolve=>setTimeout(resolve,25));
  }
 });
 test("EF-603 a planned Explorer cannot inherit an ad-hoc task even with identical prompt",

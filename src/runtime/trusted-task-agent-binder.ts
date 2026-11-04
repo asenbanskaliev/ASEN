@@ -31,7 +31,9 @@ export class TrustedTaskAgentBinder{
    task.current.reason===CONFIRMED_FAILED_READ_ONLY_RETRY_REASON&&
    previousLinks.length===1&&previousLinks[0]?.agentId===retry.originalAgentId&&
    ["explorer","reviewer","verifier"].includes(agent.record.role)&&
-   (!task.plan||task.plan.role===agent.record.role)&&!!task.description;
+   !!task.plan&&task.plan.role===agent.record.role&&
+   task.plan.skillSelection?.phase===({explorer:"explore",reviewer:"adversarial-review",verifier:"verify"} as const)[agent.record.role as "explorer"|"reviewer"|"verifier"]&&
+   !!task.description;
   if(retry&&!confirmedRetry)
    throw new Error("Confirmed failed-agent retry snapshot or linked scope changed; review before dispatch");
   // A task-agent link is an audit record, not a renewable launch permit.

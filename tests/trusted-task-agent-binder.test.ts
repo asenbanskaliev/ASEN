@@ -238,7 +238,11 @@ test("EF-603 explicit failed-retry route rejects interrupted, live or completed 
   t.after(()=>rm(dir,{recursive:true,force:true}));
   const identity={sessionId:"negative-"+previousState,projectId:dir};
   const todos=await SessionTodoStore.open(join(dir,"todos.json"));
-  const task=await todos.add("Never reinterpret an earlier outcome",identity);
+  const selection={phase:"explore" as const};
+  const task=await todos.add("Never reinterpret an earlier outcome",identity,undefined,undefined,
+   "asen-plan:negative-"+previousState,[],"Inspect only",{
+    role:"explorer",skillSelection:selection,skillPaths:selectSkills(selection).map(x=>x.path),
+   });
   const links=new TaskAgentLinkStore(join(dir,"links.json"));
   const state={old:previousState,role:"explorer"};
   const host={query:async(id:string)=>({record:{id,...identity,role:id==="old"?state.role:"explorer",state:id==="old"?state.old:"queued"}})};
