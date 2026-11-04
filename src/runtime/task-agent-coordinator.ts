@@ -14,6 +14,9 @@ export class TaskAgentCoordinator {
   return {tasks:tasks.map(task=>{
    const linked=links.filter(link=>link.taskId===task.taskId&&link.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(link.projectId,identity.projectId));
    const explicit=new Set(linked.map(link=>link.agentId));
+   // The most recent link is only a persisted attempt identity; this is not
+   // proof that its Pi request executed or that a provider was contacted.
+   const latestLinkedAgentId=linked.at(-1)?.agentId??null;
    // With an explicit journal, legacy taskId:role coincidence is not evidence
    // of ownership. Keep that fallback only for callers without a link store.
    const correlated:AgentView[]=owned.filter(agent=>explicit.has(agent.id)||(!this.links&&["explorer","worker","reviewer","verifier"].some(role=>agent.id===task.taskId+":"+role&&agent.role===role))).map(agent=>({id:agent.id,role:agent.role,state:agent.state,...(agent.summary?{summary:agent.summary}:{})}));
@@ -27,7 +30,8 @@ export class TaskAgentCoordinator {
    });
    const launchRequiresReconciliation=task.current.state==="planned"&&linked.length>0;
    return {id:task.taskId,title:task.title,state:task.current.state,revision:task.current.revision,
-    dependsOn:[...dependsOn],blockedBy,linkedAttempts:linked.length,launchRequiresReconciliation,
+    dependsOn:[...dependsOn],blockedBy,linkedAttempts:linked.length,latestLinkedAgentId,
+    launchRequiresReconciliation,
     ready:task.current.state==="planned"&&blockedBy.length===0&&!launchRequiresReconciliation,agents:correlated};
   })};
  }

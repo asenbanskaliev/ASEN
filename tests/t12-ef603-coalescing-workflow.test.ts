@@ -44,6 +44,7 @@ test("EF-603/604 provider-free job exercises trusted launch/recovery regressions
   "tests/agent-coalesce-role-scope.test.ts",
   "tests/planned-explorer-multiprocess.test.ts",
   "tests/trusted-task-agent-binder.test.ts",
+  "tests/task-agent-recovery-chain.test.ts",
  ])assert.ok(offline.includes(required),"Missing EF-603/604 launch regression: "+required);
  assert.ok(offline.includes("git rev-parse HEAD"),"Provider-free acceptance must bind an exact commit");
 });

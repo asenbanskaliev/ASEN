@@ -70,3 +70,23 @@ test("EF-601/604 explicit link journal disables unverified taskId:role fallback 
  assert.deepEqual((await legacy.task(task.taskId,identity))?.agents.map(a=>a.id),[task.taskId+":explorer"]);
 });
 
+
+test("EF-601 latest linked agent is displayed as an attempt, never an authorization or completion",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-coordinator-chain-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const identity={sessionId:"attempt-view",projectId:dir};
+ const todos=await SessionTodoStore.open(join(dir,"todos.json"));
+ const task=await todos.add("Show durable attempt identities",identity);
+ const links=new TaskAgentLinkStore(join(dir,"links.json"));
+ for(const id of ["agent-interrupted","agent-replacement"])
+  await links.bind({taskId:task.taskId,agentId:id,...identity,createdAt:new Date().toISOString()});
+ const records=[{id:"agent-interrupted",role:"explorer",state:"interrupted",...identity},
+  {id:"agent-replacement",role:"explorer",state:"running",...identity}];
+ const coordinator=new TaskAgentCoordinator(todos,{list:async()=>records} as never,links);
+ const view=await coordinator.task(task.taskId,identity);
+ assert.equal(view?.linkedAttempts,2);
+ assert.equal(view?.latestLinkedAgentId,"agent-replacement");
+ assert.equal(view?.launchRequiresReconciliation,true);
+ assert.equal(view?.ready,false);
+ assert.equal(view?.state,"planned","A read-only projection never infers a transition from links");
+});
+

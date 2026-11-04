@@ -147,6 +147,7 @@ jobs:
             tests/trusted-task-agent-binder.test.ts \
             tests/task-agent-coordinator-links.test.ts \
             tests/task-agent-automation.test.ts \
+            tests/task-agent-recovery-chain.test.ts \
             tests/odd-task-tracking.test.ts \
             tests/authorized-write-recovery.test.ts \
             tests/eco06-interrupted-writer.test.ts \

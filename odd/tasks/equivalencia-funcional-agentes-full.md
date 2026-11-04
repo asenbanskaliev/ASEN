@@ -1274,3 +1274,14 @@ El job provider-free `41867876731` del SHA `242ba26b` terminó FAIL: 232/233 pru
 
 **Recepción:** preflight, CI multi-OS y Release Gate exact-SHA pendientes. No se infiere Pi real ni llamadas Ollama por un test mock. Se mantienen EF-601/603/604 PARTIAL, 8/28 verificados, Writer humano y las 60 observaciones A/B/ASEN aún pendientes. Sin merge, sin acceso de pago y FULL=false.
 
+
+### MEGATANDA EF-601/603/604/302/703 — reconciliación de cadenas reales de intentos (2026-11-04)
+
+**Bug de producción confirmado por inspección:** al recuperarse una tarea, el binder preserva inmutable el vínculo del agente interrumpido y añade un vínculo nuevo, pero `TaskAgentTodoReconciler` exigía `related.length === 1` para admitir cualquier resultado satisfactorio. Todo intento recuperado con dos o más vínculos terminaba necesariamente `blocked`, aunque el último agente hubiera completado un Explorer válido. Esto impedía el cierre de la propia recuperación diseñada en EF-604.
+
+**Corrección:** el reconciliador ahora evalúa la **cadena completa y ordenada por journal**: todos los predecesores deben estar `interrupted` y tener el rol del Todo; el último intento debe corresponder al rol y ámbito de la tarea, terminar `completed` y conservar un resumen no vacío. Solo entonces Explorer puede pasar a `done`, y un Worker *ya ejecutado con autoridad propia* pasa a `succeeded` **pendiente de revisión independiente**, nunca `done` ni Writer autorizado por el reconciliador. Reviewer/Verifier permanecen `blocked` hasta aceptación humana explícita. La ausencia de registros, contradicciones en los intentos, estados activos o cambio de rol siguen bloqueando o esperando de forma conservadora.
+
+**Mejoras de coordinación:** la proyección del Todo identifica `latestLinkedAgentId` como último intento persistido, únicamente informativo; jamás equipara el vínculo con ejecución Pi auténtica, notificación consumida ni llamada real al proveedor. Se añaden pruebas de encadenamiento con journal y almacenamiento reales, reinicio de objetos, tres intentos, último intento activo, predecesor fraudulento, Worker sin resumen, Worker correcto aún sujeto a revisión y Reviewer sin permiso. El preflight del workflow ejecuta el nuevo test `task-agent-recovery-chain.test.ts`, y su prueba de cobertura exige su presencia.
+
+**Recepción exact-SHA:** pendiente PASS del preflight, CI tres sistemas, Release Gate y recibos Pi auténticos de recuperación/consumo. Los tests con runtime simulado no cuentan como Ollama ejecutado ni como Writer autorizado. Se mantienen EF-601, EF-603, EF-604, EF-302 y EF-703 PARTIAL; EF-002/701 sin A/B C01–C20, EF-304 sin consentimiento humano real. Casillas canónicas: 8/28. FULL=false; sin merge a main ni proveedores de pago.
+

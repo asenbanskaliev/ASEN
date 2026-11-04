@@ -27,12 +27,33 @@ export class TaskAgentTodoReconciler{
     continue;
    }
    if(related.some(agent=>!terminal.has(agent!.state)))continue;
-   const exactSingleAgent=related.length===1&&!!related[0],agent=related[0],succeeded=exactSingleAgent&&!!task.plan&&agent?.state==="completed"&&agent.role===task.plan.role&&agent.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(agent.projectId,identity.projectId);
-   const hasSavedResult=typeof agent?.summary==="string"&&!!agent.summary.trim();
-   const acceptedExplorer=succeeded&&task.plan?.role==="explorer"&&hasSavedResult;
-   const accepted=succeeded&&(task.plan?.role==="worker"||acceptedExplorer);
+   // The immutable link journal is ordered by launch attempts. An interrupted
+   // predecessor is not a second active agent and must not prevent a valid
+   // replacement from completing. Conversely, an earlier completed/failed
+   // agent can never be rewritten as an interrupted predecessor to certify
+   // the last attempt. This evaluates the entire chain before any Todo move.
+   const latest=related[related.length-1]!;
+   const predecessors=related.slice(0,-1);
+   const validRecoveryChain=predecessors.every(previous=>
+    previous?.state==="interrupted"&&(!task.plan||previous.role===task.plan.role));
+   const succeeded=validRecoveryChain&&!!task.plan&&latest.state==="completed"&&
+    latest.role===task.plan.role&&latest.sessionId===identity.sessionId&&
+    sameWorkspaceIdentityPath(latest.projectId,identity.projectId);
+   const hasSavedResult=typeof latest.summary==="string"&&!!latest.summary.trim();
+   // Both Explorer and Writer outcomes must carry a durable non-empty summary.
+   // A recorded terminal flag alone is not an observed successful result.
+   const accepted=succeeded&&hasSavedResult&&
+    (task.plan?.role==="explorer"||task.plan?.role==="worker");
    const nextState=accepted?(task.plan?.role==="worker"?"succeeded":"done"):"blocked";
-   const reason=accepted?(task.plan?.role==="worker"?"Worker execution succeeded; downstream independent review is still required":"Read-only exploration completed with a saved result"):succeeded&&(task.plan?.role==="reviewer"||task.plan?.role==="verifier")?"Linked review result requires explicit user acceptance":task.plan?"Linked agent did not return a valid successful result; review before continuing":"Linked agent finished; independent verification is required before completing this Todo";
+   const reason=!validRecoveryChain?
+    "Linked agent recovery history is inconsistent; previous attempts must be interrupted; explicit review required":
+    accepted?(task.plan?.role==="worker"?
+     "Worker execution succeeded; downstream independent review is still required":
+     "Read-only exploration completed with a saved result"):
+    succeeded&&(task.plan?.role==="reviewer"||task.plan?.role==="verifier")?
+     "Linked review result requires explicit user acceptance":
+    task.plan?"Linked agent did not return a valid successful result; review before continuing":
+     "Linked agent finished; independent verification is required before completing this Todo";
    try{await this.todos.update(task.taskId,identity,task.current.revision,nextState,reason);if(nextState==="blocked")blocked.push(task.taskId);}catch(error){
     if(!(error instanceof Error)||!(/revision conflict|Invalid task transition/u.test(error.message)))throw error;
    }
