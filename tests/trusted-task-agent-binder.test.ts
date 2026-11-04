@@ -57,3 +57,61 @@ test("ECO-07 revalidates Pi identity after persistence and before invoking the r
  await assert.rejects(()=>binder.launch(task.taskId,"agent-race",own,()=>{dispatches++;},()=>{if(++validations===6)throw new Error("Pi session or project changed");}),/session or project changed/);
  assert.equal(validations,6);assert.equal(dispatches,0);assert.equal((await links.list(own)).length,1,"the durable attempted binding remains auditable");assert.equal((await todos.list(own))[0]?.current.state,"blocked","a claimed launch that fails final identity validation requires review");
 });
+
+test("EF-603 same agent ID may never be dispatched twice, even after interruption",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-ef603-no-replay-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const identity={sessionId:"ef603-replay",projectId:dir},todos=await SessionTodoStore.open(join(dir,"todos.json"));
+ const item=await todos.add("Single Pi identity",identity),links=new TaskAgentLinkStore(join(dir,"links.json"));
+ const records=new Map<string,string>([["agent-once","running"],["agent-fresh","queued"]]);
+ const runtime={query:async(id:string)=>records.has(id)?{record:{id,sessionId:identity.sessionId,projectId:identity.projectId,state:records.get(id)}}:null};
+ const binder=new TrustedTaskAgentBinder(todos,runtime as never,links);let dispatches=0;
+ await binder.launch(item.taskId,"agent-once",identity,()=>{dispatches++;});
+ await assert.rejects(()=>binder.launch(item.taskId,"agent-once",identity,()=>{dispatches++;}),/duplicate launch rejected/);
+ records.set("agent-once","interrupted");
+ await assert.rejects(()=>binder.launch(item.taskId,"agent-once",identity,()=>{dispatches++;}),/duplicate launch rejected/);
+ assert.equal(dispatches,1);assert.equal((await links.list(identity)).length,1);
+ await binder.launch(item.taskId,"agent-fresh",identity,()=>{dispatches++;});
+ assert.equal(dispatches,2,"An interrupted attempt needs a distinct durable agent ID");
+ assert.deepEqual((await links.list(identity)).map(x=>x.agentId),["agent-once","agent-fresh"]);
+});
+test("EF-604 orphan running Todo cannot invent a prior interrupted Pi agent",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-ef604-orphan-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const identity={sessionId:"ef604-orphan",projectId:dir},todos=await SessionTodoStore.open(join(dir,"todos.json"));
+ const item=await todos.add("Orphan running item",identity);await todos.update(item.taskId,identity,1,"running");
+ const links=new TaskAgentLinkStore(join(dir,"links.json"));
+ const runtime={query:async(id:string)=>({record:{id,...identity,state:"queued"}})};
+ const binder=new TrustedTaskAgentBinder(todos,runtime as never,links);let dispatches=0;
+ await assert.rejects(()=>binder.launch(item.taskId,"agent-fresh",identity,()=>{dispatches++;}),/interrupted linked agent/);
+ assert.equal(dispatches,0);assert.deepEqual(await links.list(identity),[]);
+ assert.equal((await todos.list(identity))[0]?.current.state,"running");
+});
+test("EF-603 concurrent recovery creates just one new binding after a genuine interruption",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-ef603-race-recover-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const identity={sessionId:"ef603-recover",projectId:dir},todos=await SessionTodoStore.open(join(dir,"todos.json"));
+ const item=await todos.add("Exactly one replacement",identity),links=new TaskAgentLinkStore(join(dir,"links.json"));
+ const states=new Map<string,string>([["agent-old","running"],["agent-new-a","queued"],["agent-new-b","queued"]]);
+ const runtime={query:async(id:string)=>states.has(id)?{record:{id,...identity,state:states.get(id)}}:null};
+ const binder=new TrustedTaskAgentBinder(todos,runtime as never,links);let dispatches=0;
+ await binder.launch(item.taskId,"agent-old",identity,()=>{dispatches++;});
+ states.set("agent-old","interrupted");
+ const results=await Promise.allSettled(["agent-new-a","agent-new-b"].map(id=>
+  binder.launch(item.taskId,id,identity,()=>{dispatches++;})));
+ assert.equal(results.filter(x=>x.status==="fulfilled").length,1);
+ assert.equal(results.filter(x=>x.status==="rejected").length,1);
+ assert.equal(dispatches,2,"The old execution and exactly one fresh recovery may dispatch");
+ const history=await links.list(identity);assert.equal(history.length,2);
+ const selected=history.find(x=>x.agentId!=="agent-old");assert.ok(selected);
+ assert.equal((await todos.list(identity))[0]?.current.state,"running");
+});
+test("EF-604 terminal completed link is not interrupted authority for a new launch",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-ef604-completed-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const identity={sessionId:"ef604-completed",projectId:dir},todos=await SessionTodoStore.open(join(dir,"todos.json"));
+ const item=await todos.add("Do not replay a finished Pi job",identity),links=new TaskAgentLinkStore(join(dir,"links.json"));
+ const states=new Map<string,string>([["agent-completed","running"],["agent-new","queued"]]);
+ const runtime={query:async(id:string)=>({record:{id,...identity,state:states.get(id)}})};
+ const binder=new TrustedTaskAgentBinder(todos,runtime as never,links);let dispatches=0;
+ await binder.launch(item.taskId,"agent-completed",identity,()=>{dispatches++;});
+ states.set("agent-completed","completed");
+ await assert.rejects(()=>binder.launch(item.taskId,"agent-new",identity,()=>{dispatches++;}),/interrupted linked agent/);
+ assert.equal(dispatches,1);assert.equal((await links.list(identity)).length,1);
+});

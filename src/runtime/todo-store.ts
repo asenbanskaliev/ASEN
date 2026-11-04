@@ -16,6 +16,8 @@ export interface TodoPlanDraft{title:string;requestId:string;dependsOn:readonly 
 export interface TodoItem{taskId:string;title:string;events:TaskEvent[];requestId?:string;dependsOn?:string[];description?:string;plan?:TodoPlanMetadata;}
 export interface TodoFile{schema:typeof SCHEMA;revision:number;items:TodoItem[];}
 export interface TodoContext{sessionId:string;projectId:string;}
+/** A duplicate launch is a stale plan snapshot, not a recoverable dispatch. */
+export class TodoAlreadyRunningError extends Error{}
 const projectKey=(value:string)=>createHash("sha256").update(workspaceIdentityPathKey(value)).digest("hex");
 export function todoProjectStorageFile(root:string,projectId:string):string{return path.join(root,"projects",projectKey(projectId),"active.json");}
 const emptyTodoFile=(revision=0):TodoFile=>({schema:SCHEMA,revision,items:[]});
@@ -190,8 +192,10 @@ export class SessionTodoStore{
   await this.#mutate(context,data=>{validateContext?.();const item=data.items.find(x=>x.taskId===taskId&&x.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(x.events.at(-1)!.projectId,context.projectId));if(!item)throw new Error("Todo task is unavailable to this session or project");const current=replayTask(item.events);if(!current||current.revision!==expectedRevision)throw new Error("Todo revision conflict");if(state==="running")for(const dependency of item.dependsOn??[]){const prerequisite=data.items.find(candidate=>candidate.taskId===dependency&&candidate.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(candidate.events.at(-1)!.projectId,context.projectId)),prerequisiteState=prerequisite&&replayTask(prerequisite.events);if(prerequisiteState?.state!=="succeeded"&&prerequisiteState?.state!=="done")throw new Error("Todo dependencies must be verified done or have a successful execution awaiting review before this task can run");}const event:TaskEvent={taskId,sessionId:context.sessionId,projectId:current.projectId,revision:expectedRevision+1,state,at:this.now(),...(reason?{reason}:{})};const next=applyTaskEvent(current,event);item.events.push(next);updated=structuredClone(item);},signal);return updated!;
  }
  /** Serialize an agent launch claim with Todo updates. `launch` runs synchronously
-  * after the durable running event and before the Todo lock is released. */
- async withAgentLaunch(taskId:string,context:TodoContext,prepare:()=>Promise<void>,launch:()=>void,validateContext?:()=>void|Promise<void>):Promise<void>{
+  * after the durable running event and before the Todo lock is released.
+  * Running-task recovery is opt-in and requires the binder to verify a distinct
+  * interrupted agent identity while this lock remains held. */
+ async withAgentLaunch(taskId:string,context:TodoContext,prepare:()=>Promise<void>,launch:()=>void,validateContext?:()=>void|Promise<void>,allowInterruptedRecovery=false):Promise<void>{
   if(!identity(taskId)||!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN agent launch identity");
   const file=this.#file(context);await preparePrivateFile(file,true);
   await withExclusiveFileLock(file,async()=>{
@@ -199,6 +203,10 @@ export class SessionTodoStore{
    if(!item)throw new Error("Todo task is unavailable to this session or project");
    const current=replayTask(item.events);
    if(!current||!(current.state==="planned"||current.state==="running"))throw new Error("Todo must remain active before agent launch");
+   // A running task is not a second dispatch permit. Only the trusted binder
+   // may retry after independently checking a prior interrupted agent link.
+   if(current.state==="running"&&!allowInterruptedRecovery)
+    throw new TodoAlreadyRunningError("Todo is already running; explicit interrupted-agent recovery required");
    if(current.state==="planned"&&item.plan?.role==="explorer"){
     // The complete project Todo journal is locked here, including other task
     // identities, so two processes cannot claim semantically identical

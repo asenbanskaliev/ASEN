@@ -143,6 +143,8 @@ jobs:
             tests/agent-store.test.ts \
             tests/agent-coalesce-multiprocess.test.ts \
             tests/agent-coalesce-role-scope.test.ts \
+            tests/planned-explorer-multiprocess.test.ts \
+            tests/trusted-task-agent-binder.test.ts \
             tests/odd-task-tracking.test.ts \
             tests/authorized-write-recovery.test.ts \
             tests/eco06-interrupted-writer.test.ts \

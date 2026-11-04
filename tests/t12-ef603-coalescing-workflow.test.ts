@@ -37,3 +37,13 @@ test("EF-603 provider-free acceptance always runs the grader/workflow regression
   "node --check scripts/t12-ef603-coalescing-grade.mjs",
  ])assert.ok(offline.includes(name),"EF603 preflight does not guard "+name);
 });
+
+test("EF-603/604 provider-free job exercises trusted launch/recovery regressions on the exact SHA",()=>{
+ const offline=workflow.slice(workflow.indexOf("  offline-static-validation:"),from);
+ for(const required of [
+  "tests/agent-coalesce-role-scope.test.ts",
+  "tests/planned-explorer-multiprocess.test.ts",
+  "tests/trusted-task-agent-binder.test.ts",
+ ])assert.ok(offline.includes(required),"Missing EF-603/604 launch regression: "+required);
+ assert.ok(offline.includes("git rev-parse HEAD"),"Provider-free acceptance must bind an exact commit");
+});

@@ -64,3 +64,17 @@ test("EF-603 two independent Pi-like processes cannot claim equivalent planned E
  assert.equal(rows.filter(row=>row.current.state==="running").length,1);
  assert.equal(rows.filter(row=>row.current.state==="planned").length,1);
 });
+
+test("EF-603 Todo running state cannot be reused as a direct second dispatch permit",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-ef603-running-guard-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const context={sessionId:"ef603-running",projectId:await realpath(process.cwd())},file=join(home,"todos.json");
+ const store=await SessionTodoStore.open(file),task=await store.add("One launch",context);
+ let dispatches=0;await store.withAgentLaunch(task.taskId,context,async()=>{},()=>{dispatches++;});
+ await assert.rejects(()=>store.withAgentLaunch(task.taskId,context,async()=>{},()=>{dispatches++;}),
+  /already running; explicit interrupted-agent recovery required/u);
+ const secondProcessView=await SessionTodoStore.open(file);
+ await assert.rejects(()=>secondProcessView.withAgentLaunch(task.taskId,context,async()=>{},()=>{dispatches++;}),
+  /already running; explicit interrupted-agent recovery required/u);
+ assert.equal(dispatches,1);assert.equal((await store.list(context))[0]?.current.state,"running");
+});
