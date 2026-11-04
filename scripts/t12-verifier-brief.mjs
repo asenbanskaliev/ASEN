@@ -8,11 +8,18 @@ export function createT12VerifierBrief({candidateSha,fixtureSha256,checks,change
     !Array.isArray(changedPaths)||changedPaths.length!==3||
     !Array.isArray(reviewFindings)||reviewFindings.length!==3)
   throw new Error("Verifier brief requires exact frozen candidate, fixture and three checks");
+ const exactCases=Object.freeze({
+  pricing:{path:"src/pricing.js",criterion:"discounts reduce totals"},
+  authorization:{path:"src/access.js",criterion:"viewers cannot edit documents they do not own"},
+  parsing:{path:"src/parse.js",criterion:"integer parsing rejects trailing non-digits"},
+ });
  const safeText=(s,max=320)=>typeof s==="string"&&s.length>0?s.slice(0,max):"";
  const testRows=checks.map(c=>{
   if(!c||typeof c.id!=="string"||typeof c.criterion!=="string"||
      typeof c.observation!=="string"||c.exitCode!==1||!c.criterion.trim())
    throw new Error("Verifier brief requires real failed test observations");
+  if(!Object.hasOwn(exactCases,c.id)||c.criterion!==exactCases[c.id].criterion)
+   throw new Error("Verifier brief rejects missing or mismatched test criteria");
   // Retain only the assertion lines, rather than a repeated Node stack trace.
   const signal=c.observation.split(/\r?\n/u).map(line=>line.trim()).filter(line=>
    /AssertionError|Missing expected exception| !== |Expected values|expected exception/iu.test(line)).slice(0,5).join(" | ");
@@ -26,6 +33,9 @@ export function createT12VerifierBrief({candidateSha,fixtureSha256,checks,change
      typeof f.codeEvidence!=="string"||typeof f.acceptanceCriterion!=="string"||
      typeof f.reason!=="string"||f.reason.length<20)
    throw new Error("Verifier brief requires graded source-grounded findings");
+  const namedCheck=Object.values(exactCases).find(x=>x.path===f.path);
+  if(!namedCheck||f.acceptanceCriterion!==namedCheck.criterion)
+   throw new Error("Verifier brief rejects a reviewer criterion inconsistent with observed tests");
   return Object.freeze({path:f.path,codeEvidence:f.codeEvidence,
    acceptanceCriterion:f.acceptanceCriterion,judgment:safeText(f.reason,400)});
  });

@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+// @ts-expect-error Pure ESM deterministic review grader.
+import {gradeRealReview,gradeRealVerification} from "../scripts/t12-review-grader.mjs";
 // @ts-expect-error JavaScript-only prompt compiler for the real Pi verifier.
 import {createT12VerifierBrief} from "../scripts/t12-verifier-brief.mjs";
 
@@ -53,4 +55,51 @@ test("EF-402 verifier prompt compiler fails closed on missing or forged prior ev
  assert.throws(()=>createT12VerifierBrief({...base,checks:[{...checks[0],observation:"test looks okay"},...checks.slice(1)]}),/assertion failure/u);
  assert.throws(()=>createT12VerifierBrief({...base,changedPaths:["src/secret.js",...changedPaths.slice(1)]}),/mismatched/u);
  assert.throws(()=>createT12VerifierBrief({...base,fixtureSha256:"not-a-digest"}),/frozen candidate/u);
+});
+
+test("EF-402 verifier skeleton is NEVER a valid completed model answer; real reasoning is required",()=>{
+ const {outputSkeleton,prompt}=createT12VerifierBrief(input());
+ const review=gradeRealReview({candidateSha,verdict:"fail",findings:reviewFindings},{
+  candidateSha,
+ });
+ const context={candidateSha,fixtureSha256,changedPaths,
+  testEvidence:{checks:checks.map(x=>({...x}))},review};
+ assert.throws(()=>gradeRealVerification(outputSkeleton,context),/observed failure/u,
+  "The skeleton is input guidance only, never fake model evidence");
+ const filled=structuredClone(outputSkeleton);
+ const rows=filled.evidence as Array<Record<string,any>>;
+ for(const row of rows[0]!.checks){
+  const original=checks.find(x=>x.id===row.id);
+  assert.ok(original);
+  row.observation="AssertionError: "+original.criterion+" failed in executed fixture";
+ }
+ rows[1]!.observation="Compared all three actual changed paths with the exact fixture and candidate digests";
+ for(const finding of rows[2]!.findings){
+  finding.reason="The reviewed defect fails the required criterion: "+finding.acceptanceCriterion;
+ }
+ assert.equal(gradeRealVerification(filled,context).passed,true,
+  "A fully populated, human-authored report is accepted by the existing strict grader");
+ const stale=structuredClone(filled);
+ (stale.evidence as Array<Record<string,any>>)[1]!.candidateSha="c".repeat(40);
+ assert.throws(()=>gradeRealVerification(stale,context),/different candidate SHA/u);
+ const omission=structuredClone(filled);
+ (omission.evidence as Array<Record<string,any>>)[2]!.findings.pop();
+ assert.throws(()=>gradeRealVerification(omission,context),/every reviewer finding/u);
+ const tampered=structuredClone(filled);
+ (tampered.evidence as Array<Record<string,any>>)[0]!.checks[0]!.criterion="invented criterion";
+ assert.throws(()=>gradeRealVerification(tampered,context),/changed the failed criterion/u);
+ assert.match(prompt,/MANDATORY COMPLETE JSON RESPONSE SKELETON/u);
+});
+test("EF-402 verifier brief fails closed when test and reviewer claims disagree",()=>{
+ const base=input();
+ assert.throws(()=>createT12VerifierBrief({...base,checks:[
+  {...checks[0],criterion:"discounts increase totals"},...checks.slice(1),
+ ]}),/mismatched test criteria/u);
+ assert.throws(()=>createT12VerifierBrief({...base,checks:[
+  {...checks[0],id:"unrelated"},...checks.slice(1),
+ ]}),/mismatched test criteria/u);
+ assert.throws(()=>createT12VerifierBrief({...base,reviewFindings:[
+  {...reviewFindings[0],acceptanceCriterion:"discounts increase totals"},
+  ...reviewFindings.slice(1),
+ ]}),/reviewer criterion inconsistent/u);
 });
