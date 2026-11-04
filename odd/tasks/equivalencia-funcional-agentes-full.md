@@ -867,3 +867,9 @@ Run `41810035714` / SHA `255288e7fa1c0e9234226edb5ba48eb285391353`: la Arquitect
 - [ ] EF701-RCPT-03 — Recibos independientes reales A/B/ASEN; **BLOQUEADO** hasta disponer del entorno B y 60 observaciones ejecutadas.
 
 No se modifica el estado EF-701 [ ], EF-704 [ ], MEGA-AB-03 [ ] ni se autoriza merge a `main`.
+
+### Macrotanda EF-701 — rechazo de alias simbólicos (2026-11-04)
+
+**Implementación de regresión, pendiente de CI exact-SHA:** se añade un test de seguridad que intenta sustituir un recibo por un enlace simbólico al mismo contenido y, después, sustituir su directorio padre por un enlace simbólico. Ambos deben producir `RECEIPT_FILE_UNAVAILABLE_OR_UNSAFE` y mantener `globalFull:false`. Se verifica que la igualdad de bytes o digest no autoriza una ruta alternativa. No se altera el runtime ni se relajan gates.
+
+**Evidencia previa observada en HEAD e866c2d:** Release Gate, arquitectura, F5, Pi runtime, CodeGraph y R4 PASS; CI Ubuntu PASS, Windows/macOS pendientes durante la consulta. Los tests añadidos requieren nuevo CI exact-SHA antes de marcar EF701-RCPT-01/02. EF-701 y EF-704 continúan abiertos: no hay ejecución independiente de C01–C20 ni consentimiento Writer genuino. No se consume cuota Ollama porque esta regresión es local y no requiere inferencia; el consumo futuro sigue condicionado a carriles reales y límites de cuota.

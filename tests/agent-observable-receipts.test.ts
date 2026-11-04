@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {link,mkdtemp,mkdir,readFile,rm,writeFile} from 'node:fs/promises';
+import {link,mkdtemp,mkdir,readFile,rm,symlink,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 // @ts-expect-error Offline evidence audit is deliberately standalone ESM.
@@ -109,5 +109,26 @@ test('EF-701 receipt size is bounded at the descriptor and never grants attestat
  result=await auditObservableReceipts({...f,candidateSha:sha});
  assert.equal(result.rows.find((r:{id:string;source:string})=>r.id==='C01'&&r.source==='ASEN')?.reason,
   'RECEIPT_FILE_UNAVAILABLE_OR_UNSAFE');
+ assert.equal(result.globalFull,false);
+});
+
+test('EF-701 symlinked receipt and parent directory fail closed', {skip:process.platform==='win32'?'Windows symlink privileges vary':false},async t=>{
+ const f=await fixture(t);
+ const file=await addEvidence(f,'A');
+ const alias=join(f.root,'alias.json');
+ await writeFile(alias,await readFile(file));
+ await rm(file);
+ await symlink(alias,file,'file');
+ let result=await auditObservableReceipts({...f,candidateSha:sha});
+ assert.equal(result.rows.find((r:{id:string;source:string})=>r.id==='C01'&&r.source==='A')?.reason,'RECEIPT_FILE_UNAVAILABLE_OR_UNSAFE');
+ await rm(file);
+ await writeFile(file,await readFile(alias));
+ const directory=join(f.root,'receipts','A');
+ const moved=join(f.root,'real-A');
+ const {rename}=await import('node:fs/promises');
+ await rename(directory,moved);
+ await symlink(moved,directory,'dir');
+ result=await auditObservableReceipts({...f,candidateSha:sha});
+ assert.equal(result.rows.find((r:{id:string;source:string})=>r.id==='C01'&&r.source==='A')?.reason,'RECEIPT_FILE_UNAVAILABLE_OR_UNSAFE');
  assert.equal(result.globalFull,false);
 });
