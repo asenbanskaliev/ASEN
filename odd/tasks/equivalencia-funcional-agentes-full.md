@@ -969,3 +969,16 @@ La causa está en `extensions/asen.ts`, función `sendAgentNotice`: el código d
 - [ ] EF604-LIVE-CHILD-01 — Pi real interactivo interrumpido durante trabajo de hijo y reanudado con autorización/acuse genuino: aún no realizado.
 
 Se mantiene la semántica estricta: `enqueued` es solo transporte, nunca lectura humana, ni revisión independiente, ni aprobación Writer. EF-604 canónico sigue PARCIAL hasta pruebas de hijo/Writer genuinas y comparación A/B C14–C15. El estado global permanece 8/28 EF, FULL no alcanzado, sin merge.
+
+### EF-604 — resultado real Pi y reconciliación del host falso en tests (2026-11-04)
+
+En el run `41821175271`, SHA `b3eb026b76d4ff1541d3f8a04570301a62001f85`, la prueba nativa `tests/ef604-native-pi-headless-restart.test.ts` **PASÓ**: el log indica `EF604_NATIVE_PI_HEADLESS_RESTART_PASS`, Pi 1.2.0, 3 procesos reales, 2 reinicios de la misma sesión, una sesión extra aislada y journal intacto `attempted/pending`. El fix productivo del modo `headless` quedó confirmado. El **preflight global siguió en FAIL** en otra fase, por lo que no se hereda el PASS a una nueva versión ni se cierra EF-604 canónico.
+
+El segundo fallo surgió en `tests/pi-agent-runtime.test.ts`: varios mocks tenían `mode:"rpc"` por defecto pero esperaban que `pi.sendMessage` entregase avisos al padre. Antes del fix, ese comportamiento erróneo permitía que los tests pasaran; después, el primer test EF-603 se quedó esperando una entrega que **correctamente no debe ocurrir en RPC headless**, causando ocho tests siguientes cancelados. El fix de los fixtures cambia a `mode:"tui"`, `isIdle:()=>true` solamente los casos que requieren entrega visible, conservando los casos RPC para aislamiento. Añade también una prueba negativa específica que ejecuta completado/arranque/reapertura de un host mock RPC y verifica `pending`, cero `asen.agent.result`, sin replay. No se debilita el test Pi nativo ni se concede Writer.
+
+**Checks nuevos del corte:**
+- [ ] EF604-MOCK-HOST-01 — Mock TUI fiel a ruta real en pruebas de envío, cola y acuse; EF-603 y EF-601 no quedan bloqueados por RPC indebidamente usado. Preflight exact-SHA PASS.
+- [ ] EF604-MOCK-HOST-02 — Nueva prueba negativa RPC headless y la prueba nativa Pi 1.2.0 conservan `pending`; ninguna llama a un modelo. Preflight exact-SHA PASS.
+- [ ] EF604-CI-GATE-03 — CI tres OS y Release Gate del SHA publicado, sin heredar resultados de `b3eb026`.
+
+**Límite:** la recuperación auténtica del host Pi ahora es observable en RPC sin proveedor; la recuperación de un hijo Pi modelo interrumpido durante una ejecución TUI y la decisión humana Writer continúan pendientes. 8/28 EF canónicos, FULL NO ALCANZADO.
