@@ -127,11 +127,11 @@ test("EF-601/604 two independent coordinators cannot both acknowledge one termin
  }
  const coordinators=[launch(),launch()];
  await Promise.all(coordinators.map(x=>x.ready));
- for(const coordinator of coordinators)coordinator.child.stdin.end("ACK\\n");
+ for(const coordinator of coordinators)coordinator.child.stdin.end("ACK\n");
  const exits=await Promise.all(coordinators.map(x=>x.finished));
- assert.deepEqual(exits,[0,0],coordinators.map(x=>x.stderr()).join("\\n"));
+ assert.deepEqual(exits,[0,0],coordinators.map(x=>x.stderr()).join("\n"));
  const outcomes=coordinators.map(coordinator=>{
-  const line=coordinator.stdout().split(/\\r?\\n/u).find(value=>value.startsWith("ACK:"));
+  const line=coordinator.stdout().split(/\r?\n/u).find(value=>value.startsWith("ACK:"));
   assert.ok(line,"An independent coordinator must report its journal result");
   return JSON.parse(line.slice(4)) as {acknowledged:boolean};
  });

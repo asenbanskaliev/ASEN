@@ -1374,3 +1374,8 @@ El job provider-free `41867876731` del SHA `242ba26b` terminó FAIL: 232/233 pru
 - En la misma revisión exact-SHA, Release Gate `41929204975`, Phase 0 `41929204955`, F5 `41929204958`, CodeGraph `41929204826`, runtime Pi `41929204898` y autoauditoría R4 `41929204803` SUCCESS; CI general `41929204808` aún IN_PROGRESS al consultar. Pi Free Smoke SKIPPED. Ningún resultado se hereda para el SHA siguiente.
 - No se eleva el total canónico: **8/28 EF**, FULL=false. EF-503 sigue PARTIAL porque ambos revisores usan el mismo Beam y no son independientes; EF-702 sigue PARTIAL porque no se probó recuperación real de cuota/proveedor; EF-601/603/604 permanecen PARTIAL sin sus pruebas parent/child, coalescing o restart requeridas.
 - Siguiente megatanda: añadir regresión de concurrencia con dos procesos independientes compitiendo por el acuse del mismo evento persistido; después disparar la aceptación nativa Pi parent + Pi RPC child con Beam en el entorno aislado mediante el único mensaje opt-in `ci: one-time Pi parent-child Beam proof`. Es prueba acotada de EF-601, no de A/B ni FULL.
+
+
+### Revisión de la prueba concurrente de acuse — pendiente de CI exact-SHA (2026-11-04)
+
+La prueba multiproceso de EF-601/604 compite con dos procesos independientes por confirmar el mismo evento encolado y exige que exactamente uno devuelva `acknowledged=true`, con el diario persistente en estado final `acknowledged`. La auditoría detectó un escape duplicado en el separador de salida antes de aceptar CI; se corrigió en el commit siguiente y la validación exact-SHA sigue pendiente. Esta prueba de concurrencia no acredita por sí sola consumo de un turno Pi.

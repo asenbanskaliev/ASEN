@@ -65,3 +65,10 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - Release Gate `41929204975`, Phase 0 `41929204955`, F5 `41929204958`, CodeGraph `41929204826`, Pi Runtime `41929204898` y R4 self-audit `41929204803` SUCCESS; CI `41929204808` seguía ejecutándose al comprobar. Pi Free Smoke SKIPPED.
 - Siguiente cambio consolidado: prueba multiproceso de concurrencia del acuse de una notificación persistente, junto con actualización del ODD. Después publicar con el mensaje opt-in de Pi parent + Pi RPC child Beam y revisar sus recibos. Reconciliar todos los resultados por SHA.
 - Continuar con 8/28 EF; EF-601/603/604 PARTIAL, A/B C01–C20 BLOCKED, Writer humano BLOCKED, Reviewer independiente ausente, FULL=false. No merge a main ni modelos pagados.
+
+
+## Corrección preventiva de la regresión multiproceso — 2026-11-04
+
+- El commit `156309e497a17574114c42872cbea72be1bf04a5` añadió competencia de dos procesos por acuse y activó CI más la lane Beam parent-child.
+- La revisión inmediata detectó escapes demasiado duplicados en el literal de entrada y la separación de líneas de la nueva prueba. La prueba habría reconocido el evento READY, pero no habría separado de forma fiable la respuesta ACK. Se corrigieron los literales antes de atribuir cualquier resultado; no se usa evidencia de CI del SHA previo para este test.
+- Base de la corrección: `156309e497a17574114c42872cbea72be1bf04a5`. Volver a inspeccionar HEAD antes de publicación. Los EF permanecen 8/28, FULL=false.
