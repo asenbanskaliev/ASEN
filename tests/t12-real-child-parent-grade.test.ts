@@ -65,11 +65,11 @@ test("EF-601 fail closed for a simulated child or insufficient real Pi RPC proof
  for(const [i,change] of cases.entries()){
   const value=structuredClone(original);
   change(value);
-  assert.throws(()=>gradeRealChildParentConsumption(value),undefined,"negative #"+i);
+  assert.throws(()=>gradeRealChildParentConsumption(value),Error,"negative #"+i);
  }
 });
 test("EF-601 child cannot be considered consumed if the parent starts early or acknowledges before reading",()=>{
- for(const [a,b] of [[3,4],[7,8]]){
+ for(const [a,b] of [[3,4],[7,8]] as const){
   const v=fixture();
   const first=v.events[a]!,second=v.events[b]!;
   v.events[a]=second;v.events[b]=first;

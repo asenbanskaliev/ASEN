@@ -721,3 +721,9 @@ El usuario autorizó expresamente consumir cuota de Ollama. Esta tanda solicita 
 - Solo una publicación con tests y preflight sin proveedor, F5/actionlint, auditor de EF, CI general tres OS, Release Gate, R4 como autoauditoría y una ejecución Beam del nuevo padre/hijo. No se relanza el paquete anterior de cinco inferencias.
 - EF-601, EF-702 y EF-703 permanecen PARCIAL; EF-002, EF-304 y EF-701 siguen BLOQUEADO. El checklist canónico continúa en **8/28 EF**; no se marca ni un solo EF sin ejecutar los criterios restantes. Los subchecks MEGA-PI-03/04 y MEGA-AB-04 requieren su PASS del SHA nuevo para cambiar a `[x]`; MEGA-AB-03 y MEGA-WRITER-01 siguen abiertos.
 - No se publica paquete ni se fusiona `main`. No se afirma consentimiento humano, revisión externa independiente, gratuidad perpetua del proveedor ni FULL.
+
+### F6/F7 — corrección de compilación del primer intento agrupado (2026-11-04)
+
+El SHA `8e752924c52038bf3837fe3305d15d9de2bb6918` activó `ASEN real-agent functional acceptance` run `41797023658`, pero el preflight falló antes de la fase autenticada por **errores de tipo del propio test** `tests/t12-real-child-parent-grade.test.ts`: TS2345 sobre el argumento `undefined` de `assert.throws` y TS2538 sobre índices potencialmente `undefined` en la prueba de secuencia invertida. R4 y Pi Runtime registraron el mismo problema en `typecheck`. **No existe en ese SHA prueba Pi padre+hijo válida ni una llamada Beam de esa fase**; el job remoto fue `skipped`.
+
+Se reemplaza el predicado omitido por `Error` (sin relajar el gate) y se tipan los pares de índices con `as const`, manteniendo las pruebas negativas de falta de modelo, identidades cruzadas, permisos y orden. La siguiente publicación se disparará una sola vez para el nuevo SHA; los 8/28 EF y los nuevos subchecks MEGA mantienen su estado mientras no haya PASS real.
