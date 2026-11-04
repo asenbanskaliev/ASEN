@@ -469,11 +469,15 @@ The corrective SHA 4bae3bc69cd2216a3764c41caea04951e3e5791b unblocked TypeScript
 
 **Diagnóstico exacto:** Release Gate run `41798632460` / HEAD `c4547a23f75920f297d8365d38c262de311ff3d7`: Linux y macOS paquete PASS; Windows `Packed install smoke` FAIL durante `managed upgrade` firmado por TLS localhost. Razón persistida: `Managed acquisition copy exceeded its cooperative deadline` (30 s). La versión activa `0.1.0` permaneció intacta y la nueva `0.1.1` no se activó; el estado es `not-activated`. Esto **no** es equivalente a T09 FULL en Windows.
 
-- [ ] T09-WIN-01 — Separar plazos: verificación origen 30 s, copia por archivo/ancestros 60 s, ambos monotónicos/limitados; prueba de agotamiento cooperativo sin modificar origen.
-- [ ] T09-WIN-02 — Mantener todos los hash, descriptor, nlink, confinamiento, fsync, rollback y preservación de datos en el producto empaquetado.
-- [ ] T09-WIN-03 — Ejecutar Release Gate Windows `Packed install smoke` completo en exact-SHA y confirmar PASS; comprobar también Linux y macOS.
+- [x] T09-WIN-01 — **PASS acotado** Release Gate `41802645970` / SHA `71f5bf89bc844e5f3c27158faeb5a61e1f459b95`, 3 OS: verificación origen 30 s y copia por archivo/ancestros 60 s, monotónicos/limitados, con prueba de vencimiento sin publicación.
+- [x] T09-WIN-02 — **PASS acotado** del smoke de producto real Windows/Linux/macOS en `41802645970` / `71f5bf8`: hash, descriptor, nlink, confinamiento, fsync, rollback, backup y preservación de datos; sin saltarse firmas/TLS.
+- [x] T09-WIN-03 — Release Gate `41802645970` exact-SHA `71f5bf89bc844e5f3c27158faeb5a61e1f459b95`: package Windows, Linux y macOS **SUCCESS 3/3** y artefactos por sistema.
 - [ ] T09-WIN-04 — Reconciliar los resultados del nuevo SHA y revocar cualquier suposición de FULL basada en el CI anterior mientras el gate Windows no pase.
 
 **Cambios propuestos en una sola publicación:** `src/runtime/managed-acquisition-copy.ts` define `MANAGED_ACQUISITION_COPY_DEADLINE_MS=60_000`; no altera `MANAGED_ACQUISITION_DEADLINE_MS=30_000` ni el verificador. `scripts/t09-real-package-smoke.mjs` amplía únicamente a 150 s el proceso Windows que incluye adquisición y copia, no las invariantes de seguridad. `tests/managed-acquisition-copy.test.ts` cubre los límites y el fallo sin staged publish; `.github/workflows/release-gate.yml` lanza estos tests en los tres sistemas antes del empaquetado.
 
 **Alcance:** no confundir tiempo operativo con autorización o readiness. La prueba se considera pendiente hasta evidencia verde del job real; R4 es `SELF_AUDIT_ONLY / NOT independent`. No merge a main ni lanzamiento de paquetes.
+
+**Seguimiento tras el primer PASS Windows (2026-11-04):** el CI completo `41802645690` del mismo SHA todavía no es verde: tres tests de `tests/managed-acquisition-update.test.ts` usaban `now=30001` para simular el agotamiento del antiguo plazo de copia de 30 s. Tras fijar COPIA a 60 s ya no vencía el tiempo, y el test esperaba falsamente una excepción. Los tres puntos se reescriben como `MANAGED_ACQUISITION_COPY_DEADLINE_MS+1` para conservar su valor de prueba adversarial y seguir verificando cierre único de descriptores, staged sin publicar y retención segura. También se reconcilia un fallo de Phase 0 por nombres externos fuera del registro de procedencia; no se desactiva el auditor.
+
+**T09-WIN-04 queda abierto** hasta CI global y arquitectura PASS del nuevo SHA. Los checks T09-WIN-01/02/03 se marcaron exclusivamente por el Release Gate 3/3 real de `71f5bf8`, no por un test local ni por promesa de corrección futura.

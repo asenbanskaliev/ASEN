@@ -21,10 +21,14 @@ export function pinnedAgentABSources(manifest=defaultManifest()){
     !Array.isArray(manifest.sources)||manifest.sources.length!==2||
     typeof manifest.description!=="string")throw Error("Invalid frozen A/B manifest");
  const sources=manifest.sources.map((s,index)=>{
-  if(!exact(s,["id","repository","commit","tree","files"])||
+  if(!exact(s,["id","repository","commit","tree","files","packageName","moduleIdentity"])||
      s.id!==(index===0?"A":"B")||typeof s.repository!=="string"||
      !REPO_PATTERN.test(s.repository)||s.repository.includes("..")||
-     !SHA.test(s.commit)||!SHA.test(s.tree)||!Array.isArray(s.files)||
+     !SHA.test(s.commit)||!SHA.test(s.tree)||
+     typeof s.packageName!=="string"||!/^[a-z0-9][a-z0-9.-]{1,80}$/u.test(s.packageName)||
+     (s.id==="A"?s.moduleIdentity!==null:typeof s.moduleIdentity!=="string"||
+      !/^[a-z0-9][a-z0-9./-]{10,200}$/u.test(s.moduleIdentity))||
+     !Array.isArray(s.files)||
      s.files.length<2||s.files.length>15||new Set(s.files).size!==s.files.length||
      !s.files.every(p=>typeof p==="string"&&FILE.test(p)&&!p.split("/").includes("..")))
    throw Error("Frozen A/B repository, SHA or expected paths are malformed");
@@ -67,7 +71,7 @@ export function verifyAgentABGitObjects({manifest=defaultManifest(),root,git=exe
   });
   // Frozen, hash-addressed manifest data establishes the type of reference.
   // This executes no upstream code. In particular B is a provisioning
-  // ecosystem, not a second copy of the gentle-shell Pi runtime.
+  // ecosystem, not a second implementation of the same native Pi runtime.
   const packageBlob=objects.find(file=>file.path==="package.json");
   if(!packageBlob)throw Error("A/B source requires pinned package metadata");
   const packageText=revision("cat-file","blob",packageBlob.objectId);
@@ -76,7 +80,7 @@ export function verifyAgentABGitObjects({manifest=defaultManifest(),root,git=exe
   try{packageInfo=JSON.parse(packageText);}catch{throw Error("A/B package metadata is invalid JSON");}
   let runtimeSurface;
   if(source.id==="A"){
-   if(packageInfo?.name!=="gentle-pi"||
+   if(packageInfo?.name!==source.packageName||
       !Array.isArray(packageInfo.pi?.extensions)||
       !packageInfo.pi.extensions.includes("./extensions"))
     throw Error("Frozen source A is not the expected native Pi harness");
@@ -85,9 +89,9 @@ export function verifyAgentABGitObjects({manifest=defaultManifest(),root,git=exe
    const goBlob=objects.find(file=>file.path==="go.mod");
    if(!goBlob)throw Error("Frozen source B requires a pinned Go module");
    const goText=revision("cat-file","blob",goBlob.objectId);
-   if(goText.length>64_000||!/^module github\.com\/gentleman-programming\/gentle-ai\/v4(?:\r?\n|$)/u.test(goText))
+   if(goText.length>64_000||goText.split(/\r?\n/u,1)[0]!==`module ${source.moduleIdentity}`)
     throw Error("Frozen source B Go installer identity mismatch");
-   if(packageInfo?.name!=="gentleman-ai-installer")
+   if(packageInfo?.name!==source.packageName)
     throw Error("Frozen source B is not the expected installer ecosystem");
    runtimeSurface="installer-and-agent-framework";
   }

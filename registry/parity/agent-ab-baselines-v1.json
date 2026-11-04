@@ -1,6 +1,6 @@
 {
   "schema": "asen-agent-ab-baselines/v1",
-  "description": "Pinned public source-only A/B identities for C01-C20 observable validation; these are not runtime attestations.",
+  "description": "Pinned public source-only A/B identities for C01-C20 observable validation; these are not runtime attestations. Reference package names and B module identity are kept only in this audited registry.",
   "sources": [
     {
       "id": "A",
@@ -11,7 +11,9 @@
         "README.md",
         "package.json",
         "extensions/gentle-agents.ts"
-      ]
+      ],
+      "packageName": "gentle-pi",
+      "moduleIdentity": null
     },
     {
       "id": "B",
@@ -22,7 +24,9 @@
         "README.md",
         "go.mod",
         "package.json"
-      ]
+      ],
+      "packageName": "gentleman-ai-installer",
+      "moduleIdentity": "github.com/gentleman-programming/gentle-ai/v4"
     }
   ]
 }

@@ -29,9 +29,9 @@ function fakeGit({wrongCommit="",wrongTree="",missingFile="",wrongBlob="",wrongP
   if(end[0]==="cat-file"&&end[1]==="blob"){
    if(end[2]==="b".repeat(40))
     return wrongGoModule===id?"module github.com/forged/package/v1\n":
-     "module github.com/gentleman-programming/gentle-ai/v4\n";
+     ("module "+src.moduleIdentity+"\n");
    if(end[2]==="c".repeat(40)){
-    const name=wrongPackage===id?"impostor":id==="A"?"gentle-pi":"gentleman-ai-installer";
+    const name=wrongPackage===id?"impostor":src.packageName;
     return JSON.stringify({name,pi:{extensions:id==="A"?["./extensions"]:[]}})+"\n";
    }
    throw Error("Unknown frozen blob");
@@ -70,9 +70,9 @@ test("EF-002 two isolated real-Git-object command flows are source-only and do n
  assert.equal(report.referenceParity,false);
  assert.equal(report.identicalHostRuntime,false);
  assert.equal(report.referenceBRequiresProvisionedTarget,true);
- assert.equal(report.sources[0].packageName,"gentle-pi");
+ assert.equal(report.sources[0].packageName,manifest.sources[0].packageName);
  assert.equal(report.sources[0].runtimeSurface,"native-pi-agent-runtime");
- assert.equal(report.sources[1].packageName,"gentleman-ai-installer");
+ assert.equal(report.sources[1].packageName,manifest.sources[1].packageName);
  assert.equal(report.sources[1].runtimeSurface,"installer-and-agent-framework");
  assert.equal(report.sources.length,2);
  assert.ok(report.sources.every((s:{sourceOnly:boolean})=>s.sourceOnly));
@@ -120,4 +120,8 @@ test("EF-002 manifest rejects poisoned object identities or repository/path trav
  mutate(m=>m.sources[1].id="A");
  mutate(m=>m.sources[1].repository=m.sources[0].repository);
  mutate(m=>m.sources[1].commit=m.sources[0].commit);
+ mutate(m=>m.sources[0].moduleIdentity="unexpected-module");
+ mutate(m=>m.sources[1].moduleIdentity=null);
+ mutate(m=>m.sources[1].packageName="../untrusted");
+
 });
