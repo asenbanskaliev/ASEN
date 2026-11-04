@@ -15,6 +15,9 @@ export const REFERENCE_SHA = Object.freeze({
 export const CASE_IDS = Object.freeze(Array.from({ length: 20 }, (_, i) => `C${String(i + 1).padStart(2, '0')}`));
 const shaPattern = /^[0-9a-f]{40}$/u;
 const tokenPattern = /^[a-z0-9][a-z0-9:._/-]{0,119}$/u;
+// Reject invisible directional and terminal controls in claimed provenance.
+// These fields reach CLI output and review records: display spoofing is not evidence.
+const forbiddenProvenance = /[\u0000-\u001f\u007f-\u009f\u200e-\u200f\u2028-\u202e\u2066-\u2069]/u;
 const traceKeys = ['route', 'roles', 'guards', 'checks', 'notifications', 'effects'];
 const allowedRoutes = new Set(['direct', 'plan', 'delegate', 'verify', 'incident', 'blocked', 'none']);
 const allowedRoles = new Set(['primary', 'explorer', 'planner', 'writer', 'reviewer', 'verifier']);
@@ -55,7 +58,7 @@ function validateDocument(document, subject) {
     assert.ok(['real', 'simulated', 'static'].includes(entry.execution), 'Invalid execution classification');
     for (const key of ['environment', 'model', 'receipt']) {
       assert.ok(typeof entry[key] === 'string' && entry[key].trim() === entry[key] &&
-        entry[key].length > 0 && entry[key].length <= 2048 && !/[\u0000-\u001f\u007f]/u.test(entry[key]),
+        entry[key].length > 0 && entry[key].length <= 2048 && !forbiddenProvenance.test(entry[key]),
         `Invalid observation ${key}`);
     }
     validatedTrace(entry.trace);

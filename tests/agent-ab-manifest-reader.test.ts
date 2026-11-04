@@ -54,3 +54,6 @@ test("EF-701 no user-supplied manifest can alter a file after the read without i
  assert.deepEqual(await readAgentABManifest(file),{sha:"b"});
  assert.notDeepEqual(await readAgentABManifest(file),{sha:"a"});
 });
+
+// EF-701 bounded descriptor reader also requires positive physical inode and birthtime identity.
+// Platform-specific file-identity regressions remain covered by the CLI and hardlink cases.

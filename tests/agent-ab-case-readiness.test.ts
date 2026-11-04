@@ -48,3 +48,20 @@ test("EF-701 no stale or fabricated candidate SHA can initialize source-only rea
  for(const value of ["not-sha","A".repeat(40),"a".repeat(39),"b".repeat(64),undefined])
   assert.throws(()=>buildAgentABCaseReadiness({candidateSha:value}));
 });
+
+test('EF-002 readiness scenario names and descriptions are bounded and resist deceptive terminal direction controls',()=>{
+ const mutations:Array<(m:any)=>void>=[
+  m=>{m.description='Safe source descriptor '+('\u202e')+' spoofed long description';},
+  m=>{m.description='Safe source descriptor '+('\u001b[31m')+' false PASS';},
+  m=>{m.description='x'.repeat(1025);},
+  m=>{m.cases[0].scenario='A legitimate scenario '+('\u2066')+'spoofed';},
+  m=>{m.cases[0].scenario='A legitimate scenario '+('\u009b31m')+'colored';},
+  m=>{m.cases[0].scenario='A'.repeat(513);},
+  m=>{m.cases[0].scenario='A normal scenario'+('\u2028')+'PASS';},
+ ];
+ for(const [i,mutate] of mutations.entries()){
+  const m=structuredClone(original);mutate(m);
+  assert.throws(()=>validateAgentABCaseReadiness(m),Error,'Spoofed readiness mutation '+i);
+ }
+ assert.equal(validateAgentABCaseReadiness(structuredClone(original)).length,20);
+});

@@ -6,13 +6,13 @@ import {constants as flags} from "node:fs";
 import {lstat,open,realpath} from "node:fs/promises";
 import {resolve,isAbsolute} from "node:path";
 const MAX_BYTES=1024*1024;
-const fields=["dev","ino","mode","size","nlink","ctimeNs","mtimeNs"];
+const fields=["dev","ino","mode","size","nlink","birthtimeNs","ctimeNs","mtimeNs"];
 const same=(a,b)=>a&&b&&fields.every(k=>typeof a[k]==="bigint"&&a[k]===b[k]);
 export async function readAgentABManifest(path){
  if(typeof path!=="string"||!isAbsolute(path)||resolve(path)!==path)
   throw Error("A/B manifest requires an absolute normalized path");
  const before=await lstat(path,{bigint:true});
- if(!before.isFile()||before.isSymbolicLink()||before.nlink!==1n||
+ if(!before.isFile()||before.isSymbolicLink()||before.ino<=0n||before.nlink!==1n||
     before.size<1n||before.size>BigInt(MAX_BYTES)||await realpath(path)!==path)
   throw Error("Unsafe A/B manifest path, identity or size");
  const file=await open(path,flags.O_RDONLY|(process.platform==="win32"?0:(flags.O_NOFOLLOW??0)));

@@ -14,6 +14,7 @@ const ALLOWED_FIELDS=new Set(["route","roles","guards","checks","notifications",
 const MODES=new Set(["direct","read-only","safety","planning","write","review",
  "notification","recovery","provider-unavailable","human-decision","end-to-end"]);
 const WRITE_APPROVAL=new Set(["C06","C07","C08","C18","C19","C20"]);
+const unsafeDisplay=/[\u0000-\u001f\u007f-\u009f\u200e-\u200f\u2028-\u202e\u2066-\u2069]/u;
 const EXACT_KEYS=(value,keys)=>Boolean(value&&typeof value==="object"&&!Array.isArray(value)&&
  Object.keys(value).sort().join("|")===keys.slice().sort().join("|"));
 const manifestFile=new URL("../registry/parity/agent-ab-case-readiness-v1.json",import.meta.url);
@@ -24,6 +25,7 @@ export function validateAgentABCaseReadiness(manifest){
     JSON.stringify(manifest.comparisonFields)!==JSON.stringify([...ALLOWED_FIELDS])||
     JSON.stringify(manifest.sources)!==JSON.stringify(["A","B","ASEN"])||
     typeof manifest.description!=="string"||manifest.description.length<30||
+    manifest.description.length>1024||unsafeDisplay.test(manifest.description)||
     !Array.isArray(manifest.cases)||manifest.cases.length!==CASE_IDS.length)
   throw Error("Invalid C01-C20 readiness manifest header");
  for(const [i,entry] of manifest.cases.entries()){
@@ -31,6 +33,7 @@ export function validateAgentABCaseReadiness(manifest){
     "requiresHumanConsent","stage"])||
     entry.id!==CASE_IDS[i]||typeof entry.scenario!=="string"||
     entry.scenario.trim()!==entry.scenario||entry.scenario.length<12||
+    entry.scenario.length>512||unsafeDisplay.test(entry.scenario)||
     !MODES.has(entry.mode)||typeof entry.requiresHumanConsent!=="boolean"||
     entry.requiresHumanConsent!==WRITE_APPROVAL.has(entry.id)||
     entry.stage!=="NOT_EXECUTED"||

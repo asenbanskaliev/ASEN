@@ -137,3 +137,15 @@ test('EF-701 comparator CLI remains nonzero even with matching 40/20 claimed rea
  assert.equal(report.counts.match,20);
  assert.equal(report.globalFull,false);
 });
+
+test('EF-701 provenance rejects terminal controls and Unicode direction spoofing in all claimed evidence fields',()=>{
+ const dangerous=['\u001b[31m','\u009b31m','\u202espoof','\u2066rtl\u2069','\u200ehidden','\u2028line'];
+ for(const field of ['environment','model','receipt'] as const)for(const payload of dangerous){
+  const forged=entry('C01','ASEN',{[field]:'safe-'+payload+'-end'});
+  assert.throws(()=>compareAgentObservations(pair([entry('C01','A'),entry('C01','B')],[forged])),
+   new RegExp('Invalid observation '+field),'Unsafe '+field+' must be rejected before a MATCH claim');
+ }
+ const report=compareAgentObservations(pair([entry('C01','A'),entry('C01','B')],[entry('C01')]));
+ assert.equal(report.results[0].status,'MATCH');
+ assert.equal(report.globalFull,false);
+});
