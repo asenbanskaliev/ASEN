@@ -118,7 +118,7 @@ test("EF-604 unknown native Pi activity cannot trigger steering or wake",()=>{
  const base={mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>scope.sessionId}};
  for(const context of [
   {...base},
-  {...base,isIdle:()=>undefined},
+  {...base,isIdle:():boolean=>undefined as unknown as boolean},
   {...base,isIdle:()=>{throw Error("Pi idle probe unavailable");}},
  ]){
   assert.equal(agentParentRoute(context,scope,true)==="run",false);
