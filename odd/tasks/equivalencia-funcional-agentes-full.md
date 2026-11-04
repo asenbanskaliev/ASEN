@@ -1263,3 +1263,14 @@ El job provider-free `41867876731` del SHA `242ba26b` terminó FAIL: 232/233 pru
 
 **Recepción pendiente:** CI + Release Gate de los tres OS del nuevo SHA y recibos Pi nativos para las rutas que se declaren completas; no debe heredarse el `SUCCESS` de `41871323714` (SHA anterior). EF-603/604 siguen parciales; EF-701 no ha observado C01–C20. La revisión independiente, Writer humano y evidencia A/B siguen bloqueadas. Casillas canónicas: 8/28; FULL=false, sin merge.
 
+
+### MEGATANDA EF-601/603/604 — proyección de disponibilidad y recuperación de vínculos inciertos (2026-11-04)
+
+**Defectos demostrables por inspección:** la vista `TaskAgentCoordinator.snapshot` presentaba como `ready` cualquier Todo `planned` sin dependencias, aunque el journal de vínculos conservara un intento de agente que todavía necesita reconciliación. Con un almacén de links explícito, además aceptaba la coincidencia heurística `taskId:role` de agentes que no estaban vinculados al Todo, dando falsa correlación visual. El `TaskAgentTodoReconciler.reconcile` dejaba eternamente `running` tanto los Todos sin vínculo como los que referían a un ID de agente perdido o ausente tras reinicio/quarantine.
+
+**Correcciones:** la proyección distingue `linkedAttempts` y `launchRequiresReconciliation` y declara `ready:false` ante un link previo incierto. La heurística antigua `taskId:role` se conserva solo en modo legado **sin** journal de vínculos, nunca para una correlación que asegura ser explícita. El reconciliador bloquea con motivo claro los trabajos `running` sin link o con link a agente ausente; conserva en `running` trabajos con agente realmente `queued` o `running`. Las transiciones conservan revision/CAS y no relanzan ningún agente; Writer no se autoriza.
+
+**Pruebas añadidas:** ventana pre-dispatch con vínculo y Todo planned, coincidencia simbólica sin link, vínculo a ID perdido, Todo running huérfano y agente real running que no debe bloquearse. Workflow provider-free ejecuta también las suites `task-agent-coordinator-links` y `task-agent-automation` bajo el SHA exacto. El riesgo de carrera residual de snapshots de varios ficheros se preserva como límite conocido: el estado mostrado es observacional, no un permiso para ejecutar.
+
+**Recepción:** preflight, CI multi-OS y Release Gate exact-SHA pendientes. No se infiere Pi real ni llamadas Ollama por un test mock. Se mantienen EF-601/603/604 PARTIAL, 8/28 verificados, Writer humano y las 60 observaciones A/B/ASEN aún pendientes. Sin merge, sin acceso de pago y FULL=false.
+

@@ -102,3 +102,40 @@ test("verifier results require explicit acceptance regardless of summary shape",
   assert.equal(current?.state,"blocked",name);assert.match(current?.reason??"",/explicit user acceptance/u,name);
  }
 });
+
+test("EF-604 lost agent record blocks a running Todo instead of wedging or granting recovery",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-plan-missing-agent-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const identity={sessionId:"lost-runner",projectId:dir},todos=await SessionTodoStore.open(join(dir,"todos.json"));
+ const links=new TaskAgentLinkStore(join(dir,"links.json"));
+ const task=await todos.add("Recovery uncertain",identity);
+ await todos.update(task.taskId,identity,1,"running");
+ await links.bind({taskId:task.taskId,agentId:"agent-lost",...identity,createdAt:new Date().toISOString()});
+ const reconciler=new TaskAgentTodoReconciler(todos,{list:async()=>[]} as never,links);
+ assert.deepEqual(await reconciler.reconcile(identity),[task.taskId]);
+ const item=(await todos.list(identity))[0];
+ assert.equal(item?.current.state,"blocked");
+ assert.match(item?.current.reason??"",/record is missing.*explicit review/u);
+ assert.deepEqual(await reconciler.reconcile(identity),[],"Recovery cannot auto-replay a blocked task");
+});
+test("EF-604 orphan running Todo without a durable agent link becomes blocked, never done",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-plan-orphan-runner-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const identity={sessionId:"unlinked-runner",projectId:dir},todos=await SessionTodoStore.open(join(dir,"todos.json"));
+ const task=await todos.add("No agent link",identity),links=new TaskAgentLinkStore(join(dir,"links.json"));
+ await todos.update(task.taskId,identity,1,"running");
+ const reconciler=new TaskAgentTodoReconciler(todos,{list:async()=>[]} as never,links);
+ assert.deepEqual(await reconciler.reconcile(identity),[task.taskId]);
+ const current=(await todos.list(identity))[0]?.current;
+ assert.equal(current?.state,"blocked");assert.match(current?.reason??"",/no durable agent link/u);
+});
+test("EF-604 active linked agent is not blocked as missing or auto-completed",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-plan-active-runner-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const identity={sessionId:"active-runner",projectId:dir},todos=await SessionTodoStore.open(join(dir,"todos.json"));
+ const task=await todos.add("Live agent",identity),links=new TaskAgentLinkStore(join(dir,"links.json"));
+ await todos.update(task.taskId,identity,1,"running");
+ await links.bind({taskId:task.taskId,agentId:"agent-live",...identity,createdAt:new Date().toISOString()});
+ const runner={list:async()=>[{id:"agent-live",state:"running",role:"explorer",...identity}]};
+ const reconciler=new TaskAgentTodoReconciler(todos,runner as never,links);
+ assert.deepEqual(await reconciler.reconcile(identity),[]);
+ assert.equal((await todos.list(identity))[0]?.current.state,"running");
+});
+

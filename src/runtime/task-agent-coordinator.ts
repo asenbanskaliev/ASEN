@@ -12,8 +12,11 @@ export class TaskAgentCoordinator {
   const owned=agents.filter(agent=>agent.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(agent.projectId,identity.projectId));
   const byId=new Map(tasks.map(task=>[task.taskId,task]));
   return {tasks:tasks.map(task=>{
-   const explicit=new Set(links.filter(link=>link.taskId===task.taskId&&link.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(link.projectId,identity.projectId)).map(link=>link.agentId));
-   const correlated:AgentView[]=owned.filter(agent=>explicit.has(agent.id)||["explorer","worker","reviewer","verifier"].some(role=>agent.id===task.taskId+":"+role&&agent.role===role)).map(agent=>({id:agent.id,role:agent.role,state:agent.state,...(agent.summary?{summary:agent.summary}:{})}));
+   const linked=links.filter(link=>link.taskId===task.taskId&&link.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(link.projectId,identity.projectId));
+   const explicit=new Set(linked.map(link=>link.agentId));
+   // With an explicit journal, legacy taskId:role coincidence is not evidence
+   // of ownership. Keep that fallback only for callers without a link store.
+   const correlated:AgentView[]=owned.filter(agent=>explicit.has(agent.id)||(!this.links&&["explorer","worker","reviewer","verifier"].some(role=>agent.id===task.taskId+":"+role&&agent.role===role))).map(agent=>({id:agent.id,role:agent.role,state:agent.state,...(agent.summary?{summary:agent.summary}:{})}));
    // A missing dependency cannot be silently removed from a recovered plan.
    // The projection must fail closed just like the durable launch transaction.
    const dependsOn=task.dependsOn??[],blockedBy=dependsOn.flatMap<{id:string;state:string}>(id=>{
@@ -22,8 +25,10 @@ export class TaskAgentCoordinator {
     return ["succeeded","done"].includes(prerequisite.current.state)?[]:
      [{id,state:prerequisite.current.state}];
    });
+   const launchRequiresReconciliation=task.current.state==="planned"&&linked.length>0;
    return {id:task.taskId,title:task.title,state:task.current.state,revision:task.current.revision,
-    dependsOn:[...dependsOn],blockedBy,ready:task.current.state==="planned"&&blockedBy.length===0,agents:correlated};
+    dependsOn:[...dependsOn],blockedBy,linkedAttempts:linked.length,launchRequiresReconciliation,
+    ready:task.current.state==="planned"&&blockedBy.length===0&&!launchRequiresReconciliation,agents:correlated};
   })};
  }
  async task(taskId:string,identity:AgentSessionIdentity){

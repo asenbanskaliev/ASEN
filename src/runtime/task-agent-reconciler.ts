@@ -13,8 +13,20 @@ export class TaskAgentTodoReconciler{
   const blocked:string[]=[];
   for(const task of tasks){
    if(task.current.state!=="running")continue;
-   const related=links.filter(link=>link.taskId===task.taskId&&link.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(link.projectId,identity.projectId)).map(link=>ownedAgents.get(link.agentId));
-   if(!related.length||related.some(agent=>!agent||!terminal.has(agent.state)))continue;
+   const taskLinks=links.filter(link=>link.taskId===task.taskId&&link.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(link.projectId,identity.projectId));
+   const related=taskLinks.map(link=>ownedAgents.get(link.agentId));
+   // An already-running Todo with no durable link, or an unresolvable linked
+   // identity, has an unknown outcome. It must not remain apparently active
+   // forever or be promoted to success by some other agent.
+   if(!related.length||related.some(agent=>!agent)){
+    const reason=!related.length?
+     "Running Todo has no durable agent link; execution outcome unknown; explicit review required":
+     "Linked agent record is missing; execution outcome unknown; explicit review required";
+    try{await this.todos.update(task.taskId,identity,task.current.revision,"blocked",reason);blocked.push(task.taskId);}
+    catch(error){if(!(error instanceof Error)||!(/revision conflict|Invalid task transition/u.test(error.message)))throw error;}
+    continue;
+   }
+   if(related.some(agent=>!terminal.has(agent!.state)))continue;
    const exactSingleAgent=related.length===1&&!!related[0],agent=related[0],succeeded=exactSingleAgent&&!!task.plan&&agent?.state==="completed"&&agent.role===task.plan.role&&agent.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(agent.projectId,identity.projectId);
    const hasSavedResult=typeof agent?.summary==="string"&&!!agent.summary.trim();
    const acceptedExplorer=succeeded&&task.plan?.role==="explorer"&&hasSavedResult;

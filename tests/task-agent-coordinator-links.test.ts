@@ -41,3 +41,32 @@ test("ECO-06 coordination projection reports dependency blockers and readiness b
  await todos.update(prerequisite.taskId,identity,1,"running");await todos.update(prerequisite.taskId,identity,2,"done","human verification");view=await coordinator.task(dependent.taskId,identity);
  assert.deepEqual(view?.blockedBy,[]);assert.equal(view?.ready,true);
 });
+
+test("EF-601/604 a planned Todo with a persisted link is not ready for a second launch",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-coordinator-uncertain-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const identity={sessionId:"uncertain-session",projectId:dir};
+ const todos=await SessionTodoStore.open(join(dir,"todos.json")),task=await todos.add("Uncertain dispatch",identity);
+ const links=new TaskAgentLinkStore(join(dir,"links.json"));
+ await links.bind({taskId:task.taskId,agentId:"agent-unknown",...identity,createdAt:new Date().toISOString()});
+ const agents={list:async()=>[{id:"agent-unknown",role:"explorer",state:"interrupted",...identity}]};
+ const coordinator=new TaskAgentCoordinator(todos,agents as never,links);
+ const view=await coordinator.task(task.taskId,identity);
+ assert.equal(view?.state,"planned");assert.equal(view?.linkedAttempts,1);
+ assert.equal(view?.launchRequiresReconciliation,true);assert.equal(view?.ready,false);
+ assert.deepEqual(view?.agents.map(a=>a.id),["agent-unknown"]);
+ assert.equal((await todos.list(identity))[0]?.current.state,"planned","Projection cannot mutate the Todo");
+});
+test("EF-601/604 explicit link journal disables unverified taskId:role fallback correlation",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-coordinator-opaque-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const identity={sessionId:"explicit-scope",projectId:dir},todos=await SessionTodoStore.open(join(dir,"todos.json"));
+ const task=await todos.add("No symbolic agent inference",identity);
+ const agents={list:async()=>[{id:task.taskId+":explorer",role:"explorer",state:"completed",...identity}]};
+ const links=new TaskAgentLinkStore(join(dir,"links.json"));
+ const strict=new TaskAgentCoordinator(todos,agents as never,links);
+ const view=await strict.task(task.taskId,identity);
+ assert.deepEqual(view?.agents,[]);assert.equal(view?.linkedAttempts,0);
+ assert.equal(view?.launchRequiresReconciliation,false);assert.equal(view?.ready,true);
+ const legacy=new TaskAgentCoordinator(todos,agents as never);
+ assert.deepEqual((await legacy.task(task.taskId,identity))?.agents.map(a=>a.id),[task.taskId+":explorer"]);
+});
+
