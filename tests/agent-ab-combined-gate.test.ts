@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {mkdtemp,mkdir,readFile,rm,symlink,writeFile} from "node:fs/promises";
+import {mkdtemp,mkdir,readFile,rm,symlink,writeFile,link} from "node:fs/promises";
 import {spawnSync} from "node:child_process";
 import {basename,dirname,join} from "node:path";
 import {tmpdir} from "node:os";
@@ -132,4 +132,27 @@ test("EF-701 refuses symlinked receipt root even if all supplied bytes match",
  const ordinary=await assembleAgentABAcceptance(f);
  assert.equal(ordinary.globalFull,false);
  assert.equal(ordinary.casesBlocked,20);
+});
+
+test("EF-701 hardlinked receipt bytes never count as independent execution",
+ {timeout:25000},async t=>{
+ const f=await fixture(t);
+ const target=await addReceipt(f,"A");
+ await link(target,join(f.root,"receipt-alias.json"));
+ const report=await assembleAgentABAcceptance(f);
+ assert.equal(report.rows[0].receipts[0].status,"BLOCKED");
+ assert.equal(report.rows[0].receipts[0].reason,"RECEIPT_FILE_UNAVAILABLE_OR_UNSAFE");
+ assert.equal(report.integrityOnly,0);
+ assert.equal(report.globalFull,false);
+});
+test("EF-701 zero-byte receipt fails closed and cannot authorize Writer",
+ {timeout:25000},async t=>{
+ const f=await fixture(t);
+ const target=await addReceipt(f,"ASEN");
+ await writeFile(target,Buffer.alloc(0));
+ const report=await assembleAgentABAcceptance(f);
+ assert.equal(report.rows[0].receipts[2].status,"BLOCKED");
+ assert.equal(report.rows[0].receipts[2].reason,"RECEIPT_FILE_UNAVAILABLE_OR_UNSAFE");
+ assert.equal(report.writerAuthorized,false);
+ assert.equal(report.globalFull,false);
 });

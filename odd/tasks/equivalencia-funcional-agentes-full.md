@@ -1040,3 +1040,7 @@ La equivalencia canónica conserva `8/28` EF verificados; `globalFull=false`. No
 **Corrección acotada:** rechazar una raíz que no sea directorio real, sea enlace simbólico o cuyo camino canónico difiera del solicitado; conservar las comprobaciones por descriptor, inode, tamaño y digest de cada recibo. Añadir regresión con raíz simbólica y control positivo de raíz ordinaria; en Windows sin permiso para crear enlaces, el caso negativo se declara SKIP explícito. No se modifica la política de permisos, no se amplía el alcance del auditor y no se acepta una observación autoatestada como ejecución real.
 
 **Recepción pendiente del SHA de esta tanda:** typecheck, prueba `tests/agent-ab-combined-gate.test.ts`, auditoría de arquitectura, CI y Release Gate. No marcar EF-701 ni EF-704 como FULL por esta corrección; la matriz C01–C20 sigue necesitando 60 trazas reales y auditoría independiente. El plan canónico permanece 8/28 hasta evidencia adicional. Sin Writer ni merge.
+
+### Macrotanda EF-701 — recibos vacíos y alias físicos (2026-11-04)
+
+**Cambios propuestos, sujetos a CI exact-SHA:** rechazo temprano de recibos vacíos en el lector acotado y regresiones para archivo vacío y enlace físico (nlink>1). Los casos deben permanecer BLOCKED, Writer no autorizado y globalFull=false. Ningún digest ni test local acredita ejecuciones A/B/ASEN. Criterios de recepción: typecheck, pruebas focales, Architecture, CI y Release Gate en SHA publicado. EF-701/704 siguen abiertos; 8/28 EF, sin FULL ni merge.

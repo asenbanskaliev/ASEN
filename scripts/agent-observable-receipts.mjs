@@ -44,6 +44,7 @@ async function readBoundedReceipt(target){
    count+=bytesRead;
   }
   if(count>MAX_RECEIPT_BYTES)throw new Error('Receipt grew beyond bounded read');
+  if(count===0)throw new Error('Empty receipt is not evidence');
   const [after,atPath,real]=await Promise.all([
    handle.stat({bigint:true}),lstat(target,{bigint:true}),realpath(target),
   ]);
