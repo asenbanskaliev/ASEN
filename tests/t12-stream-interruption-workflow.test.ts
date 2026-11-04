@@ -16,6 +16,7 @@ test("EF-703 streamed Beam interruption is a single opt-in exact-SHA readonly jo
   "github.run_attempt == 1",
   "github.event_name == 'push'",
   "ci: one-time Pi streamed-child interruption Beam proof",
+  "github.event.head_commit.message == 'ci: one-time Pi streamed-child interruption Beam proof'",
   "environment: ollama-cloud-beam",
   "persist-credentials: false",
   "ASEN_EXPECTED_SHA: $"+"{{ github.sha }}",
@@ -27,6 +28,8 @@ test("EF-703 streamed Beam interruption is a single opt-in exact-SHA readonly jo
   "real-pi-stream-interruption.json",
  ])assert.ok(lane.includes(item),"Missing read-only one-shot guard "+item);
  assert.doesNotMatch(lane,/(?:OPENROUTER_API_KEY|GROQ_API_KEY|NVIDIA_API_KEY|WRITE_GRANT|writerAuthorized: true|continue-on-error: true)/u);
+ assert.doesNotMatch(lane,/contains\\(github\\.event\\.head_commit\\.message/u,
+  "The free-model acceptance must require the exact opt-in commit message");
  assert.match(lane,/timeout 220s/u);
  assert.match(lane,/timeout-minutes: 12/u);
  assert.ok(lane.includes("github.sha")&&!lane.includes("github.ref_name"),

@@ -1379,3 +1379,12 @@ El job provider-free `41867876731` del SHA `242ba26b` terminó FAIL: 232/233 pru
 ### Revisión de la prueba concurrente de acuse — pendiente de CI exact-SHA (2026-11-04)
 
 La prueba multiproceso de EF-601/604 compite con dos procesos independientes por confirmar el mismo evento encolado y exige que exactamente uno devuelva `acknowledged=true`, con el diario persistente en estado final `acknowledged`. La auditoría detectó un escape duplicado en el separador de salida antes de aceptar CI; se corrigió en el commit siguiente y la validación exact-SHA sigue pendiente. Esta prueba de concurrencia no acredita por sí sola consumo de un turno Pi.
+
+
+### EF-601 recibo real de consumo parent-child Pi — 2026-11-04
+
+- [x] EF601-REAL-PARENT-CHILD-01 — **PASS acotado**, SHA exacto `03be1c4c9a772f54b4f6c9ee77dc5fe4ba36ed5a`: workflow [41930346960](https://github.com/asenbanskaliev/ASEN/actions/runs/41930346960), artefacto [13372350121](https://github.com/asenbanskaliev/ASEN/actions/runs/41930346960/artifacts/13372350121), `PASS_REAL_PI_PARENT_AND_CHILD_BOUNDED`. Evidencia: proceso hijo Pi RPC Explorer real, inferencia Ollama Cloud Beam observada, Pi TUI 1.2.0 padre real, entrega terminal, idle wake, mismo-turno status exacto y ack confirmado; un resultado en diario `acknowledged`; checkout desechable intacto. Sin Writer ni consentimiento simulado.
+- La ruta probada fue **padre inactivo**. No cubre padre ocupado, reinicio del TUI durante una inferencia, la comparación A/B C13 ni independencia externa. Por ello EF-601 canónico permanece PARTIAL, y EF-604 permanece PARTIAL. FULL=false.
+- La regresión de concurrencia del acuse (dos procesos sobre un solo evento) pasó dentro del job provider-free de esta misma aceptación exact-SHA; no equivale a consumo de un turno Pi.
+- En SHA `03be1c4`: Release Gate `41930355820` SUCCESS, Phase 0 `41930355793`, F5 `41930355717`, Pi Runtime `41930355971`, R4 self-audit `41930356042` y CodeGraph `41930355931` SUCCESS; CI general `41930355876` seguía IN_PROGRESS al registrar. Autoauditoría no es revisión independiente. A/B tiene cero escenarios ejecutados y el total canónico permanece 8/28.
+- Siguiente megatanda: lanzar el test aislado de EF-604 que interrumpe una inferencia real de Pi RPC tras observar el primer text-delta y verifica el estado durable desde otro proceso sin credenciales; reforzar su prueba de workflow para exigir el mensaje opt-in exacto. No lo presentará como reanudación de TUI interactivo.

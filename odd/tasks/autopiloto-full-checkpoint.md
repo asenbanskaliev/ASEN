@@ -72,3 +72,13 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - El commit `156309e497a17574114c42872cbea72be1bf04a5` añadió competencia de dos procesos por acuse y activó CI más la lane Beam parent-child.
 - La revisión inmediata detectó escapes demasiado duplicados en el literal de entrada y la separación de líneas de la nueva prueba. La prueba habría reconocido el evento READY, pero no habría separado de forma fiable la respuesta ACK. Se corrigieron los literales antes de atribuir cualquier resultado; no se usa evidencia de CI del SHA previo para este test.
 - Base de la corrección: `156309e497a17574114c42872cbea72be1bf04a5`. Volver a inspeccionar HEAD antes de publicación. Los EF permanecen 8/28, FULL=false.
+
+
+## Recibo parent-child real y próxima prueba — 2026-11-04
+
+- Último commit confirmado: `03be1c4c9a772f54b4f6c9ee77dc5fe4ba36ed5a`.
+- Aceptación [41930346960](https://github.com/asenbanskaliev/ASEN/actions/runs/41930346960) provider-free + parent-child real terminó SUCCESS. Artefacto [13372350121](https://github.com/asenbanskaliev/ASEN/actions/runs/41930346960/artifacts/13372350121): Pi RPC Explorer y Pi TUI 1.2.0 parent consumieron una notificación real con Ollama Cloud Beam; status y ack del evento exacto, proyecto sin cambios, Writer no autorizado. Esto verifica el carril de padre inactivo solamente.
+- Sobre ese SHA: Release Gate `41930355820` SUCCESS; Phase 0 `41930355793`, F5 `41930355717`, Pi Runtime `41930355971`, R4 SELF_AUDIT_ONLY `41930356042`, CodeGraph `41930355931` SUCCESS; CI general `41930355876` IN_PROGRESS al checkpoint. No heredar CI al SHA posterior.
+- La nueva regresión de dos coordinadores/procesos compitiendo por un ack de journal terminó dentro del preflight provider-free SUCCESS. La salida solo prueba una transición de diario.
+- Estado canónico 8/28, EF-601/603/604 PARTIAL, EF-002/701 A/B BLOCKED, Writer humano BLOCKED, EF-503 independencia externa ausente, FULL=false.
+- Próxima tanda publicada: reforzar el gate que exige el mensaje opt-in exacto para stream interruption y lanzar `ci: one-time Pi streamed-child interruption Beam proof`. El job limita a una inferencia autenticada, no reintenta, limpia credenciales del proceso revisor y no autoriza Writer.
