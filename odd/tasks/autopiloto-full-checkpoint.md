@@ -98,3 +98,9 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - En ese SHA, CI `41931293790` y Release Gate `41931293807` IN_PROGRESS al checkpoint; Phase 0/F5/Pi Runtime/R4 self-audit/CodeGraph SUCCESS, Pi Free Smoke SKIPPED. R4 no es independiente.
 - Siguiente tanda: aumentar EF-603 live proof para exigir selección de modelo reportada por el hijo Pi y respuesta text-delta observada mientras se coalescen tres solicitudes; el número de llamadas HTTP real sigue sin observación autenticada y permanecerá `null`. Disparar solo Beam registrado, una reserva y sin Writer.
 - Canonical: 8/28; EF-601/603/604 PARTIAL; A/B bloqueado; FULL=false.
+
+
+## Corrección de sintaxis del guard EF-603 — 2026-11-04
+
+- En el commit `bdc3301ca075efdc1924b50970fae6e4995f8586`, la nueva aserción de igualdad exacta del mensaje del workflow tenía una comilla final mal colocada.
+- La auditoría de la fuente la detectó antes de aceptar CI; se corrigió sin cambiar la condición productiva ni habilitar un trigger más amplio. No tratar los resultados del SHA anterior como validación de este test.

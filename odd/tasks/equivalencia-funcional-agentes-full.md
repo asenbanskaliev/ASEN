@@ -1401,3 +1401,8 @@ La auditoría del test añadió una comprobación para impedir que el job de Bea
 - No es reinicio interactivo del host/TUI ni reanudación de la inferencia; la entrega quedó `pending`. EF-604 canónico sigue PARTIAL por esas brechas, Writer humano y A/B C14–C15.
 - Release Gate `41931293807` y CI `41931293790` estaban IN_PROGRESS al avanzar a la tanda siguiente; no heredar sus resultados. Phase 0 `41931293782`, F5 `41931293839`, Pi Runtime `41931293840`, R4 SELF_AUDIT_ONLY `41931293783` y CodeGraph `41931293869` SUCCESS; Pi Free Smoke SKIPPED.
 - La revisión del siguiente EF-603 live harness detectó que recibía solo el resultado final, sin evidencia separada de selección del modelo ni de text-delta. Nueva tanda: exigir una única selección child-reported Ollama Cloud/Beam y al menos un text-delta del único Pi RPC; conservar explícitamente `providerCallsActuallyObserved: null` porque no existe telemetría autenticada del HTTP exacto. Ejecutar el job coalescing real con exactamente una reserva, sin declarar cardinalidad HTTP.
+
+
+### Corrección sintáctica de test EF-603 exact opt-in — 2026-11-04
+
+La nueva aserción de workflow tenía una comilla final mal colocada. La inspección estática antes del resultado del CI la detectó y el test se corrigió para compilar y exigir la igualdad exacta del mensaje. No cambia el workflow productivo. El resultado exact-SHA queda pendiente.

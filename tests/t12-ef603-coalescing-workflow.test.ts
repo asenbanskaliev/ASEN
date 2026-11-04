@@ -14,7 +14,7 @@ test("EF-603 native Beam run is one-shot, provider-free prerequisite and strict 
   "github.run_attempt == 1",
   "github.event_name == 'push'",
   "ci: one-time Pi EF-603 coalesced Explorer Beam proof",
-  "github.event.head_commit.message == 'ci: one-time Pi EF-603 coalesced Explorer Beam proof',
+  "github.event.head_commit.message == 'ci: one-time Pi EF-603 coalesced Explorer Beam proof'",
   "environment: ollama-cloud-beam",
   "persist-credentials: false",
   "ASEN_EXPECTED_SHA: $"+"{{ github.sha }}",
