@@ -95,6 +95,27 @@ test("an aborted maintenance waiter preserves the existing marker",{concurrency:
  }finally{t.mock.restoreAll();syncBuiltinESMExports();}
 });
 
+test("maintenance marker uses native physical file identity, not copyable bytes or rounded milliseconds",async t=>{
+ const {withManagedMaintenanceLock,sameManagedMaintenanceMarkerIdentity}=await api();
+ const f=await fixture(t);
+ await withManagedMaintenanceLock({prefix:f.prefix,confirmed:true},async()=>{
+  const original=await fs.lstat(f.lock,{bigint:true});
+  assert.ok(original.ino>0n,"A missing native file ID must not be treated as proof of ownership");
+  assert.equal(sameManagedMaintenanceMarkerIdentity(original,original),true);
+  const changed=(patch:Record<string,bigint>)=>
+   Object.assign(Object.create(Object.getPrototypeOf(original)),original,patch) as typeof original;
+  for(const patch of [
+   {ino:original.ino+1n},
+   {birthtimeNs:original.birthtimeNs+1n},
+   {ctimeNs:original.ctimeNs+1n},
+   {mtimeNs:original.mtimeNs+1n},
+   {nlink:2n},
+  ])assert.equal(sameManagedMaintenanceMarkerIdentity(original,changed(patch)),false,
+   "Copied marker contents cannot establish physical identity");
+ });
+ await assert.rejects(()=>fs.lstat(f.lock),{code:"ENOENT"});
+});
+
 test("copied marker bytes on a different physical file are retained",async t=>{
  const {withManagedMaintenanceLock}=await api(),f=await fixture(t);let expected="",calls=0;
  await assert.rejects(()=>withManagedMaintenanceLock({prefix:f.prefix,confirmed:true},async()=>{

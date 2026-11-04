@@ -1,5 +1,5 @@
 import {randomUUID} from "node:crypto";
-import type {Stats} from "node:fs";
+import type {Stats,BigIntStats} from "node:fs";
 import {lstat,open,readFile,realpath,unlink} from "node:fs/promises";
 import path from "node:path";
 import {inspectManagedInstall,readManagedOwnershipRecords} from "./managed-install.js";
@@ -19,6 +19,19 @@ export class ManagedMaintenanceLockError extends Error {
 const fail=(code:ManagedMaintenanceLockErrorCode,message:string,lockPath?:string,cause?:unknown):never=>{throw new ManagedMaintenanceLockError(code,message,lockPath,{cause});};
 const canonical=(value:string)=>process.platform==="win32"?path.resolve(value).toLowerCase():path.resolve(value);
 const same=(a:Stats,b:Stats)=>a.dev===b.dev&&a.ino===b.ino&&a.birthtimeMs===b.birthtimeMs;
+/** A marker's physical identity is stronger than its copyable token/bytes.
+ * In particular Windows Stats millisecond timestamps can alias for two
+ * different files created within the same clock tick. Compare BigInt metadata
+ * recorded AFTER writing and syncing, including native file ID and creation
+ * and change times; uncertainty retains the marker rather than deleting it.
+ */
+export const sameManagedMaintenanceMarkerIdentity=(a:BigIntStats,b:BigIntStats)=>a.dev===b.dev
+ &&a.ino>0n&&a.ino===b.ino
+ &&a.nlink===1n&&b.nlink===1n
+ &&a.mode===b.mode&&a.size===b.size
+ &&a.birthtimeNs===b.birthtimeNs&&a.ctimeNs===b.ctimeNs
+ &&a.mtimeNs===b.mtimeNs;
+
 function cancelled(signal?:AbortSignal):void{if(signal?.aborted)fail("LOCK_CANCELLED","Managed maintenance lock wait cancelled");}
 function wait(ms:number,signal?:AbortSignal):Promise<void>{
  cancelled(signal);
@@ -46,15 +59,15 @@ async function stillOwned(prefix:string,root:string,expected:Stats,allowPartialI
  }else if(inventory.status!=="owned"||canonical(inventory.managedRoot)!==canonical(root))fail("OWNED_ROOT_REQUIRED","Managed maintenance requires an existing owned installation");
  await unchangedRoot(root,expected);
 }
-async function ownMarker(root:string,rootIdentity:Stats,lock:string,fileIdentity:Stats,bytes:string):Promise<boolean>{
+async function ownMarker(root:string,rootIdentity:Stats,lock:string,fileIdentity:BigIntStats,bytes:string):Promise<boolean>{
  try{
   await unchangedRoot(root,rootIdentity);
-  const before=await lstat(lock);
-  if(!before.isFile()||before.isSymbolicLink()||!same(before,fileIdentity)||canonical(await realpath(lock))!==canonical(lock))return false;
+  const before=await lstat(lock,{bigint:true});
+  if(!before.isFile()||before.isSymbolicLink()||!sameManagedMaintenanceMarkerIdentity(before,fileIdentity)||canonical(await realpath(lock))!==canonical(lock))return false;
   if(await readFile(lock,"utf8")!==bytes)return false;
-  const after=await lstat(lock);
+  const after=await lstat(lock,{bigint:true});
   await unchangedRoot(root,rootIdentity);
-  return after.isFile()&&!after.isSymbolicLink()&&same(after,fileIdentity)&&before.size===after.size&&before.mtimeMs===after.mtimeMs;
+  return after.isFile()&&!after.isSymbolicLink()&&sameManagedMaintenanceMarkerIdentity(after,fileIdentity)&&sameManagedMaintenanceMarkerIdentity(after,before);
  }catch{return false;}
 }
 
@@ -88,8 +101,8 @@ export async function withManagedMaintenanceLock<T>(request:ManagedMaintenanceLo
    if(performance.now()>=deadline)fail("LOCK_TIMEOUT","Timed out waiting for managed maintenance lock",lock);
   }
  }
- let fileIdentity:Stats|undefined,initializationError:unknown,initializationFailed=false;
- try{fileIdentity=await handle.stat();await handle.writeFile(bytes);await handle.sync();}
+ let fileIdentity:BigIntStats|undefined,initializationError:unknown,initializationFailed=false;
+ try{await handle.writeFile(bytes);await handle.sync();fileIdentity=await handle.stat({bigint:true});}
  catch(error){initializationFailed=true;initializationError=error;}
  try{await handle.close();}catch(error){initializationError=initializationFailed?new AggregateError([initializationError,error],"Maintenance marker initialization and close failed"):error;initializationFailed=true;}
  if(initializationFailed||!fileIdentity)throw new ManagedMaintenanceLockError("LOCK_INIT_FAILED","Managed maintenance marker initialization failed; marker retained",lock,{cause:initializationError});
