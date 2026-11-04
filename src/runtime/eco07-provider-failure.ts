@@ -9,7 +9,7 @@ export function eco07ProviderRateLimitError(value:unknown):string|undefined{
  const message=event.message as {stopReason?:unknown;errorMessage?:unknown};
  if(message.stopReason!=="error"||typeof message.errorMessage!=="string")return undefined;
  const error=message.errorMessage;
- if(/\\b429\\b/u.test(error))return "Provider rate limit (HTTP 429)";
+ if(/\b429\b/u.test(error))return "Provider rate limit (HTTP 429)";
  if(/quota(?:[_ -]?(?:exceeded|exhausted|limit))?/iu.test(error))return "Provider quota exhausted";
  if(/rate[ -]?limit|too many requests/iu.test(error))return "Provider rate limit";
  return undefined;
