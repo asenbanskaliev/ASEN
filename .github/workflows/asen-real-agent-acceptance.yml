@@ -133,6 +133,7 @@ jobs:
             tests/eco07-provider-failure.test.ts \
             tests/background-job-journal.test.ts \
             tests/agent-notification-multiprocess.test.ts \
+            tests/agent-notification-restart-process.test.ts \
             tests/agent-notification-journal.test.ts \
             tests/agent-terminal-routing-journal.test.ts \
             tests/managed-acquisition-copy.test.ts \

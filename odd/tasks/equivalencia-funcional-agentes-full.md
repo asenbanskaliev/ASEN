@@ -181,7 +181,7 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 
 ### F6 — Segundo plano y recuperación
 
-- [ ] EF-601 Entrega del resultado según estado del padre, con reactivación real cuando esté inactivo. **PARCIAL:** Padre/hijo Pi con Beam PASS real (`41798018569`, SHA `616d2655`, artefacto `13306048302`) para padre inactivo. Se añadió una corrección conservadora de estados Pi contradictorios (`isIdle=true` con corrida activa → HOLD) y pruebas de cinco rutas de host + ledger, pendientes de CI nuevo. Falta ejecución del padre realmente ocupado con Beam, reconexión/reinicio y comparación A/B C13.
+- [ ] EF-601 Entrega del resultado según estado del padre, con reactivación real cuando esté inactivo. **PARCIAL:** Padre/hijo Pi con Beam PASS real (`41798018569`, SHA `616d2655`, artefacto `13306048302`) para padre inactivo. Se añadió una corrección conservadora de estados Pi contradictorios (`isIdle=true` con corrida activa → HOLD) y pruebas de cinco rutas de host + ledger, pendientes de CI nuevo. El padre realmente ocupado con Beam dio PASS acotado en Actions `41815369175` / SHA `0578c3f17150d649f95296819c70a002380d791d`. Siguen faltando reconexión/reinicio de Pi y comparación A/B C13.
 - [x] EF-602 Suprimir sondeo/sleep innecesario, duplicados y avisos caducados. **VERIFICADO:** `src/runtime/agent-notification-journal.ts` + `tests/agent-notification-journal.test.ts` · CI `41689422912` / SHA `07f9793517f8d6a57b3d67cc21b589be8002abb1`.
 - [ ] EF-603 No relanzar tareas activas equivalentes: misma identidad y alcance verificable. **PARCIAL:** CAS, veto exacto entre IDs Explorer planificados y pruebas con dos procesos Node y journal real superaron CI exact-SHA `41724028665` (3 OS); faltan equivalencia de otros roles y prueba de lanzamiento de agentes Pi auténticos, sin confundir multiproceso Node con modelo real.
 - [ ] EF-604 Recuperación tras reinicio, estado incierto y preguntas del hijo sin permiso inventado. **PARCIAL:** Journal multiproceso, registro/CAS/claim/aislamiento previamente PASS (`41782747238`); se añade prueba de reinicio real del almacenamiento con envío `attempted` incierto y sin reenvío/ack automático (pendiente CI). Siguen faltando reanudación de Pi/Writer y decisión humana real.
@@ -884,9 +884,17 @@ No se modifica el estado EF-701 [ ], EF-704 [ ], MEGA-AB-03 [ ] ni se autoriza m
 - La recuperación tras interrupción mantiene el contrato existente `pending/attempted/enqueued/acknowledged` y sus tests multiproceso. **No se declara recuperado un proceso Pi auténtico** sin un recibo separado con corte, reinicio y revisión humana de efectos inciertos.
 
 **Checks de la tanda:**
-- [ ] EF601-BUSY-01 — Typecheck, pruebas negativas y preflight de aceptación exact-SHA PASS.
-- [ ] EF601-BUSY-02 — Pi TUI ocupado + Pi RPC Explorer real con Beam, `steer` y status/ack del mismo evento en artefacto verificado.
-- [ ] EF601-BUSY-03 — CI tres sistemas y Release Gate exact-SHA PASS.
-- [ ] EF604-RESTART-01 — Recuperación Pi auténtica tras reinicio con entrega `attempted` sin reejecución ni permiso supuesto: **BLOQUEADO** sin experimento de reinicio provisionado.
+- [x] EF601-BUSY-01 — **VERIFICADO:** Typecheck, build y pruebas negativas del grader en preflight `41815369175` / SHA `0578c3f17150d649f95296819c70a002380d791d` / job Provider-free static and ASEN validation SUCCESS.
+- [x] EF601-BUSY-02 — **VERIFICADO:** Pi TUI ocupado + Explorer Pi RPC auténtico, Ollama Beam, entrega `steer` sin `idle_wake`, status+ack real y proyecto intacto: Actions `41815369175` / SHA `0578c3f17150d649f95296819c70a002380d791d` / artefacto `13313944479`; `PASS_REAL_PI_BUSY_PARENT_AND_CHILD_BOUNDED` y `globalFull:false`.
+- [ ] EF601-BUSY-03 — CI tres sistemas y Release Gate exact-SHA PASS. CI `41815376939` y Release Gate `41815376988` estaban en ejecución durante la recepción del test Beam; no heredar pruebas incompletas.
+- [ ] EF604-RESTART-01 — Recuperación Pi auténtica tras reinicio con entrega `attempted` sin reejecución ni permiso supuesto: **BLOQUEADO** sin experimento de reinicio provisionado. Se añade una regresión separada de terminación/reapertura de proceso Node, que prueba solo el journal, pendiente de CI.
 
 EF-601/604 y C13–C15 continúan **PARCIAL**; A/B C01–C20 siguen sin ejecuciones completas, Writer humano bloqueado y FULL NO ALCANZADO. No merge a `main`.
+
+### Recepción EF-601 Busy y nueva regresión EF-604 (2026-11-04)
+
+El job `Real Pi parent notices with Beam` del run `41815369175` / SHA `0578c3f17150d649f95296819c70a002380d791d` finalizó **SUCCESS**. El log real informa `T12_REAL_PI_BUSY_PARENT_CHILD_CONSUMPTION_PASS` y el grader `PASS_REAL_PI_BUSY_PARENT_AND_CHILD_BOUNDED`, dos acciones verificadas del padre, `globalFull:false`; el artefacto `13313944479` contiene el recibo exact-SHA. El preflight provider-free y el witness A/B source-only también son SUCCESS. Se marcan **EF601-BUSY-01/02**, pero **no EF-601**: la comparación B provisionada, A/B C13 y las pruebas reales de reinicio permanecen abiertas.
+
+**EF-604 — proceso real terminado en límite de entrega:** `tests/agent-notification-restart-process.test.ts` ejecuta un proceso Node independiente que registra una notificación terminal y sale con estado 73 justo después de un claim duradero, antes del transporte. Otro proceso independiente abre el mismo journal, intenta registro/reclamación/acuso y debe verificar: mismo ID, `attempted` intacto, `claim=false`, acuso rechazado, bytes sin cambios y aislamiento de sesión. Es una regresión del almacenamiento de producción, **no** la recuperación de un host Pi real ni una confirmación de modelo. El workflow la ejecuta dentro de F6 sin credenciales ni cuotas. La publicación requiere su CI exact-SHA; no se marca EF604-RESTART-01 ni EF-604.
+
+Se mantienen las restricciones de permisos; Writer humano y paridad C01–C20 siguen pendientes. Sin merge a `main`.
