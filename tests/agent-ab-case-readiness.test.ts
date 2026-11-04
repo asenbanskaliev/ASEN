@@ -78,7 +78,7 @@ test("EF-002/701 report output rejects directory aliases and preserves an existi
  assert.throws(()=>writeAgentABReadinessCreateOnly({file,report}),
   (error:any)=>error.code==="EEXIST");
  assert.equal(readFileSync(file,"utf8"),original);
- assert.throws(()=>writeAgentABReadinessCreateOnly({file:join(dir,"..","evidence","new.json"),report}),
+ assert.throws(()=>writeAgentABReadinessCreateOnly({file:dir+"/../evidence/new.json",report}),
   /normalized absolute/u);
  assert.throws(()=>writeAgentABReadinessCreateOnly({file:join(dir,"unverified.json"),report:{...report,globalFull:true}}),
   /cannot claim completed/u);

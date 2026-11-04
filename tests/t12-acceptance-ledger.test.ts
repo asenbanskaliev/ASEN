@@ -122,7 +122,7 @@ test("EF-703/704 T12 ledger is create-only and rejects symlinked output parents"
  await assert.rejects(()=>writeT12AcceptanceLedgerCreateOnly({file,report}),
   (error:any)=>error.code==="EEXIST");
  assert.equal(await readFile(file,"utf8"),before,"The original evidence must not be overwritten");
- await assert.rejects(()=>writeT12AcceptanceLedgerCreateOnly({file:join(directory,"..","physical","t12-acceptance-ledger.json"),report}),
+ await assert.rejects(()=>writeT12AcceptanceLedgerCreateOnly({file:directory+"/../physical/t12-acceptance-ledger.json",report}),
   /normalized absolute output path/u);
  const alias=join(home,"alias");
  try{await symlink(directory,alias,process.platform==="win32"?"junction":"dir");}
