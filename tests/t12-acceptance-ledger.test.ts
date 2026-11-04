@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 // @ts-expect-error Deliberately JavaScript-only, provider-free acceptance helper.
-import {buildT12AcceptanceLedger,matchT12ValidatedLiveGate} from "../scripts/t12-acceptance-ledger.mjs";
+import {buildT12AcceptanceLedger,matchT12ValidatedLiveGate,writeT12AcceptanceLedgerCreateOnly} from "../scripts/t12-acceptance-ledger.mjs";
 
 const sha="a".repeat(40);
 const real=()=>({
@@ -105,4 +105,29 @@ test("F7 a real bounded receipt is self-assessed, not independent external audit
  assert.equal(report.externalCi,"NOT_ASSERTED_BY_THIS_REPORT");
  assert.equal(report.independentAudit,"NOT_PERFORMED");
  assert.equal(report.globalFull,false);
+});
+
+
+test("EF-703/704 T12 ledger is create-only and rejects symlinked output parents",async t=>{
+ const {mkdtemp,mkdir,rm,readFile,realpath,symlink}=await import("node:fs/promises");
+ const {join}=await import("node:path");
+ const {tmpdir}=await import("node:os");
+ const home=await realpath(await mkdtemp(join(tmpdir(),"asen-t12-evidence-write-")));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:5,retryDelay:100}));
+ const directory=join(home,"physical");await mkdir(directory);
+ const file=join(directory,"t12-acceptance-ledger.json");
+ const report=buildT12AcceptanceLedger({sha,offlineConfirmed:true});
+ await writeT12AcceptanceLedgerCreateOnly({file,report});
+ const before=await readFile(file,"utf8");
+ await assert.rejects(()=>writeT12AcceptanceLedgerCreateOnly({file,report}),
+  (error:any)=>error.code==="EEXIST");
+ assert.equal(await readFile(file,"utf8"),before,"The original evidence must not be overwritten");
+ await assert.rejects(()=>writeT12AcceptanceLedgerCreateOnly({file:join(directory,"..","physical","t12-acceptance-ledger.json"),report}),
+  /normalized absolute output path/u);
+ const alias=join(home,"alias");
+ try{await symlink(directory,alias,process.platform==="win32"?"junction":"dir");}
+ catch(error){if(process.platform==="win32"&&(error as NodeJS.ErrnoException).code==="EPERM"){t.skip("Windows symlinks need privileges");return;}throw error;}
+ await assert.rejects(()=>writeT12AcceptanceLedgerCreateOnly({file:join(alias,"t12-acceptance-ledger.json"),report}),
+  /physical and canonical/u);
+ assert.equal(await readFile(file,"utf8"),before);
 });

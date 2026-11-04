@@ -15,7 +15,9 @@ const valid=()=>({
 });
 test("EF-603 strict grader admits only one real Pi Explorer execution, never global FULL",()=>{
  const grade=gradeEf603LiveCoalescing(valid(),sha);
- assert.equal(grade.oneNativePiProcess,true);
+ assert.equal(grade.receiptConsistentWithOneNativePiProcess,true);
+ assert.equal(grade.independentPiAttestation,false);
+ assert.equal("authenticatedNativePi" in grade,false,"Self-authored JSON cannot independently attest Pi");
  assert.equal(grade.oneProviderCallReserved,true);
  assert.equal(grade.providerCallsActuallyObserved,null,"Reservation is not proof of authenticated request count");
  assert.equal("oneProviderCall" in grade,false,"Do not assert provider call cardinality from reservation alone");

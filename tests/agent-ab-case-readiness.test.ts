@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 // @ts-expect-error Provider-free source-only readiness contract is a standalone ESM module.
-import {buildAgentABCaseReadiness,validateAgentABCaseReadiness} from "../scripts/agent-ab-case-readiness.mjs";
+import {buildAgentABCaseReadiness,validateAgentABCaseReadiness,writeAgentABReadinessCreateOnly} from "../scripts/agent-ab-case-readiness.mjs";
 // @ts-expect-error Provider-free comparator has no TypeScript declaration.
 import {CASE_IDS} from "../scripts/agent-observable-parity.mjs";
 
@@ -64,4 +64,28 @@ test('EF-002 readiness scenario names and descriptions are bounded and resist de
   assert.throws(()=>validateAgentABCaseReadiness(m),Error,'Spoofed readiness mutation '+i);
  }
  assert.equal(validateAgentABCaseReadiness(structuredClone(original)).length,20);
+});
+
+test("EF-002/701 report output rejects directory aliases and preserves an existing witness",async t=>{
+ const {mkdtempSync,mkdirSync,rmSync,readFileSync,realpathSync,symlinkSync}=await import("node:fs");
+ const {tmpdir}=await import("node:os");const {join}=await import("node:path");
+ const home=realpathSync(mkdtempSync(join(tmpdir(),"asen-ab-ready-write-")));
+ t.after(()=>rmSync(home,{recursive:true,force:true,maxRetries:5,retryDelay:100}));
+ const dir=join(home,"evidence");mkdirSync(dir);
+ const file=join(dir,"readiness.json"),report=buildAgentABCaseReadiness({candidateSha:candidate});
+ writeAgentABReadinessCreateOnly({file,report});
+ const original=readFileSync(file,"utf8");
+ assert.throws(()=>writeAgentABReadinessCreateOnly({file,report}),
+  (error:any)=>error.code==="EEXIST");
+ assert.equal(readFileSync(file,"utf8"),original);
+ assert.throws(()=>writeAgentABReadinessCreateOnly({file:join(dir,"..","evidence","new.json"),report}),
+  /normalized absolute/u);
+ assert.throws(()=>writeAgentABReadinessCreateOnly({file:join(dir,"unverified.json"),report:{...report,globalFull:true}}),
+  /cannot claim completed/u);
+ const alias=join(home,"alias");
+ try{symlinkSync(dir,alias,process.platform==="win32"?"junction":"dir");}
+ catch(error){if(process.platform==="win32"&&(error as NodeJS.ErrnoException).code==="EPERM"){t.skip("Windows symlinks need privileges");return;}throw error;}
+ assert.throws(()=>writeAgentABReadinessCreateOnly({file:join(alias,"wrong.json"),report}),
+  /physical and canonical/u);
+ assert.equal(readFileSync(file,"utf8"),original);
 });

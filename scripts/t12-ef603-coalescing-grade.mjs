@@ -37,5 +37,5 @@ export function gradeEf603LiveCoalescing(report,sha){
  for(const key of ["writerAuthorized","humanConsent","independentABParity","globalFull"])
   assert.equal(report[key],false,"EF-603 cannot confer "+key);
  return Object.freeze({status:report.status,candidateSha:sha,
-  authenticatedNativePi:true,oneNativePiProcess:true,oneProviderCallReserved:true,providerCallsActuallyObserved:null,writerAuthorized:false,globalFull:false});
+  receiptConsistentWithOneNativePiProcess:true,independentPiAttestation:false,oneProviderCallReserved:true,providerCallsActuallyObserved:null,writerAuthorized:false,globalFull:false});
 }

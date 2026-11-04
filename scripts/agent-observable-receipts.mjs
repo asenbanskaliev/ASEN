@@ -96,9 +96,14 @@ export async function auditObservableReceipts({reference,candidate,candidateSha,
   try{record=JSON.parse(new TextDecoder('utf8',{fatal:true}).decode(bytes));}
   catch{result.status='FAIL';result.reason='RECEIPT_JSON_INVALID';rows.push(result);continue;}
   const keys=['schema','id','source','sha','execution','environment','model','trace'];
+  const traceKeys=['route','roles','guards','checks','notifications','effects'];
+  // JSON object property order is not part of the six-field observable contract.
+  // Arrays remain ordered, and extra/omitted trace keys still fail closed.
+  const sameTrace=exact(record?.trace,traceKeys)&&traceKeys.every(key=>
+   JSON.stringify(record.trace[key])===JSON.stringify(entry.trace[key]));
   if(!exact(record,keys)||record.schema!==SCHEMA||record.id!==id||record.source!==source||
      record.sha!==sha||record.execution!=='real'||record.environment!==entry.environment||
-     record.model!==entry.model||JSON.stringify(record.trace)!==JSON.stringify(entry.trace)){
+     record.model!==entry.model||!sameTrace){
    result.status='FAIL';result.reason='RECEIPT_CONTENT_MISMATCH';rows.push(result);continue;
   }
   rows.push({id,source,status:'INTEGRITY_ONLY',reason:'INDEPENDENT_EXECUTION_NOT_ATTESTED',digest:match[3]});

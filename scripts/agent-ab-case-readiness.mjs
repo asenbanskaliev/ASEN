@@ -3,8 +3,8 @@
  * it does not execute reference A/B or ASEN and never creates "real" receipts.
  */
 import assert from "node:assert/strict";
-import {readFileSync,writeFileSync} from "node:fs";
-import {isAbsolute,resolve} from "node:path";
+import {readFileSync,writeFileSync,lstatSync,realpathSync} from "node:fs";
+import {isAbsolute,resolve,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {CASE_IDS,REFERENCE_SHA,compareAgentObservations} from "./agent-observable-parity.mjs";
 import {buildObservationScaffold} from "./agent-observable-scaffold.mjs";
@@ -79,6 +79,19 @@ export function buildAgentABCaseReadiness({candidateSha,manifest=JSON.parse(read
   limitation:"The scenario contract, frozen Git objects and static placeholders cannot prove any of the 60 runtime observations.",
  });
 }
+/** EF-002/701: create-only report in a physically canonical output directory.
+ * No caller-controlled alias or old receipt may become a new source witness. */
+export function writeAgentABReadinessCreateOnly({file,report}){
+ if(typeof file!=="string"||!isAbsolute(file)||resolve(file)!==file)
+  throw Error("A/B readiness requires a normalized absolute report path");
+ const parent=dirname(file),stat=lstatSync(parent);
+ if(!stat.isDirectory()||stat.isSymbolicLink()||realpathSync(parent)!==parent)
+  throw Error("A/B readiness output directory must be physical and canonical");
+ if(report?.globalFull!==false||report?.status!=="READINESS_ONLY_NOT_EXECUTED")
+  throw Error("A/B readiness output cannot claim completed observations");
+ writeFileSync(file,JSON.stringify(report,null,2)+"\n",{flag:"wx",mode:0o600});
+}
+
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  try{
   if(process.argv.length!==2||!process.env.ASEN_EXPECTED_SHA||
@@ -86,8 +99,7 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
      !isAbsolute(process.env.ASEN_AB_CASE_READINESS_OUTPUT))
    throw Error("Exact candidate and absolute create-only output path required");
   const result=buildAgentABCaseReadiness({candidateSha:process.env.ASEN_EXPECTED_SHA});
-  writeFileSync(process.env.ASEN_AB_CASE_READINESS_OUTPUT,JSON.stringify(result,null,2)+"\n",
-   {flag:"wx",mode:0o600});
+  writeAgentABReadinessCreateOnly({file:process.env.ASEN_AB_CASE_READINESS_OUTPUT,report:result});
   console.log("ASEN_AB_CASE_READINESS_ONLY "+JSON.stringify({
    casesPrepared:result.casesPrepared,sourceSlotsRequired:result.sourceSlotsRequired,
    evidenceCaptured:0,globalFull:false,

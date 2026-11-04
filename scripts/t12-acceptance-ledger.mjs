@@ -4,8 +4,8 @@
  * Provider-free tests cannot produce a real-provider PASS or global FULL.
  */
 import assert from "node:assert/strict";
-import {readFile,writeFile,mkdir} from "node:fs/promises";
-import {resolve,join} from "node:path";
+import {readFile,writeFile,mkdir,lstat,realpath} from "node:fs/promises";
+import {resolve,join,dirname,isAbsolute,basename} from "node:path";
 import {fileURLToPath} from "node:url";
 import {inspectInferenceBudget,readInferenceBudgetReceipts} from "./t12-inference-budget.mjs";
 import {gradeLiveAcceptanceEvidence} from "./t12-live-evidence-gate.mjs";
@@ -77,6 +77,18 @@ export function buildT12AcceptanceLedger({sha,offlineConfirmed,liveEvidence=null
  });
 }
 
+/** EF-703/704: retain the original exact-SHA report. A repeated run must fail
+ * rather than silently replacing earlier acceptance evidence. */
+export async function writeT12AcceptanceLedgerCreateOnly({file,report}){
+ assert.ok(typeof file==="string"&&isAbsolute(file)&&resolve(file)===file&&
+  basename(file)==="t12-acceptance-ledger.json","T12 ledger needs a normalized absolute output path");
+ const parent=dirname(file),stat=await lstat(parent);
+ assert.ok(stat.isDirectory()&&!stat.isSymbolicLink()&&await realpath(parent)===parent,
+  "T12 ledger output directory must be physical and canonical");
+ assert.equal(report?.globalFull,false,"T12 self-assessment cannot grant FULL");
+ await writeFile(file,JSON.stringify(report,null,2)+"\n",{flag:"wx",mode:0o600});
+}
+
 async function main(){
  assert.equal(process.env.ASEN_OFFLINE_TESTS_PASSED,"1",
   "T12 ledger may only be produced after offline tests have passed");
@@ -108,9 +120,7 @@ async function main(){
  }
  const report=buildT12AcceptanceLedger({sha,offlineConfirmed:true,liveEvidence});
  await mkdir(dir,{recursive:true});
- await writeFile(join(dir,"t12-acceptance-ledger.json"),JSON.stringify(report,null,2)+"\n",{
-  mode:0o600,
- });
+ await writeT12AcceptanceLedgerCreateOnly({file:join(dir,"t12-acceptance-ledger.json"),report});
  console.log("T12 exact-SHA acceptance ledger: PARTIAL (no global FULL, no Writer authorization)");
 }
 if(process.argv[1]&&fileURLToPath(import.meta.url)===resolve(process.argv[1])){

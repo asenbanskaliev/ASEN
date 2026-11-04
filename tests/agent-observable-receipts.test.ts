@@ -132,3 +132,23 @@ test('EF-701 symlinked receipt and parent directory fail closed', {skip:process.
  assert.equal(result.rows.find((r:{id:string;source:string})=>r.id==='C01'&&r.source==='A')?.reason,'RECEIPT_FILE_UNAVAILABLE_OR_UNSAFE');
  assert.equal(result.globalFull,false);
 });
+
+test('EF-701 integrity comparison ignores JSON field insertion order but rejects extra trace authority',async t=>{
+ const f=await fixture(t);const file=await addEvidence(f,'ASEN');
+ const entry=f.candidate.cases.find((x:{id:string})=>x.id==='C01');
+ assert.ok(entry);
+ const receipt=JSON.parse(await readFile(file,'utf8'));
+ receipt.trace=Object.fromEntries(Object.entries(receipt.trace).reverse());
+ let bytes=Buffer.from(JSON.stringify(receipt));
+ await writeFile(file,bytes);entry.receipt=`receipts/ASEN/C01.json#sha256=${digest(bytes)}`;
+ let report=await auditObservableReceipts({...f,candidateSha:sha});
+ assert.equal(report.rows[2].status,'INTEGRITY_ONLY','Object key order must not cause false evidence failure');
+ assert.equal(report.globalFull,false);
+ receipt.trace={...receipt.trace,writerAuthorized:true};
+ bytes=Buffer.from(JSON.stringify(receipt));
+ await writeFile(file,bytes);entry.receipt=`receipts/ASEN/C01.json#sha256=${digest(bytes)}`;
+ report=await auditObservableReceipts({...f,candidateSha:sha});
+ assert.equal(report.rows[2].status,'FAIL');
+ assert.equal(report.rows[2].reason,'RECEIPT_CONTENT_MISMATCH');
+ assert.equal(report.globalFull,false);
+});
