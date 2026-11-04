@@ -1016,11 +1016,19 @@ El test nuevo de `62d094ef` provocó errores TypeScript TS2345 en `tests/agent-t
 - `.github/workflows/asen-real-agent-acceptance.yml` añade las tres suites al preflight existente y produce el informe `asen-acceptance-evidence/ab-combined.json` para el SHA del commit con `casesBlocked:20`, `expectedSlots:60`, `globalFull:false`; la evidencia es provider-free y no supone ejecución C01–C20.
 
 **Checks de esta tanda — NO cerrar hasta recibir pruebas del commit:**
-- [ ] MEGA-EF604-TRANSFER-01 — RPC pending → TUI enqueued con inspección exacta y ack legítimo, sin replay tras el siguiente reinicio; provider-free preflight exact-SHA PASS.
-- [ ] MEGA-EF604-UNCERTAIN-02 — TUI transport `attempted` permanece incierto y sin acuse ni segundo envío; provider-free preflight exact-SHA PASS.
-- [ ] MEGA-EF603-SCOPES-01 — Coalescing 3→1 para un Explorer no planificado y aislamiento por ruta/rol/owner/sesión/proyecto; provider-free preflight exact-SHA PASS.
-- [ ] MEGA-EF701-RECEIPTS-01 — Auditoría conjunta 20/60, rechazos de falso `real`, SHA/digest y divergencia no atestada; provider-free preflight exact-SHA PASS.
-- [ ] MEGA-EF704-GATES-01 — Typecheck, Build, aceptación F6/F7 y evidencia de 60 slots del SHA del commit, sin FULL; provider-free preflight exact-SHA PASS.
+- [x] MEGA-EF604-TRANSFER-01 — **PASS exact-SHA:** `tests/agent-rpc-tui-handoff.test.ts` (RPC pending → TUI enqueued, inspección exacta, ack, reinicio sin replay). Preflight `41824882694` / SHA `68847c330fe677942610d32a687f150e3c58896d`, test `ok 22`, `fail=0`. Runner determinista, no modelo.
+- [x] MEGA-EF604-UNCERTAIN-02 — **PASS exact-SHA:** `tests/agent-rpc-tui-handoff.test.ts` `attempted` permanece incierto, sin retransmisión ni acuse tras reinicio; preflight `41824882694` / SHA `68847c330fe677942610d32a687f150e3c58896d`, test `ok 23`. No Writer.
+- [x] MEGA-EF603-SCOPES-01 — **PASS exact-SHA:** `tests/agent-coalesce-role-scope.test.ts` prueba 3→1 Explorer y separación por rol, modelo, thinking, owner, sesión, proyecto y tarea planificada. Preflight `41824882694` / SHA `68847c330fe677942610d32a687f150e3c58896d` (`ok 2` y `ok 3`). Sin agente Pi auténtico en esta unidad.
+- [x] MEGA-EF701-RECEIPTS-01 — **PASS exact-SHA:** `tests/agent-ab-combined-gate.test.ts` cubre 20/60 slots y rechaza falsos `real`, digest, SHA y divergencias no atestadas; preflight `41824882694` / SHA `68847c330fe677942610d32a687f150e3c58896d`, 5/5 nuevos tests PASS. Ninguna ejecución A/B acreditada.
+- [x] MEGA-EF704-GATES-01 — **PASS exact-SHA:** Typecheck, build, F6, F7 y el informe combinado `EF701_AB_COMBINED_BLOCKED` con `cases=20`, `receiptSlots=60`, `integrityOnly=0`, `globalFull=false`, preflight `41824882694` / SHA `68847c330fe677942610d32a687f150e3c58896d`. No certifica FULL.
 - [ ] MEGA-EF703-3OS-01 — CI Windows/Ubuntu/macOS y Release Gate PASS del SHA final de la megatanda.
 
 **Bloqueos que permanecen y NO se simulan:** los 40 casos ejecutados en referencias A/B, las 20 ejecuciones de ASEN, un modelo/hijo real interrumpido en Pi interactivo, la autorización Writer humana vinculada a la tarea y la verificación externa. Se mantienen las 28 tareas canónicas **8/28**, sin FULL y sin merge a `main`. La CLI de preparación y el informe de digests `INTEGRITY_ONLY` no pueden elevar C01–C20 a ejecutados.
+
+### Recepción de la megatanda agrupada (2026-11-04)
+
+**Commit verificado:** `68847c330fe677942610d32a687f150e3c58896d`. El job `Provider-free static and ASEN validation` de `ASEN real-agent functional acceptance`, run `41824882694`, terminó **SUCCESS**. Los logs muestran ejecución real del runtime de ASEN bajo runner de prueba de solo lectura: handoff headless→TUI `ok 22`, incertidumbre `ok 23`, coalescing/aislamiento `ok 2` y `ok 3`; el bloque C01–C20 5/5 PASS en tests de validez del auditor, con `EF701_AB_COMBINED_BLOCKED {cases:20, receiptSlots:60, integrityOnly:0, globalFull:false}`. Los cinco subchecks anteriores se marcan solo con ese alcance y ese SHA.
+
+**No heredamos ejecución A/B ni ningún test de modelo desde estos fixtures.** La suite CI global `41824890185` y Release Gate `41824890191` estaban en ejecución en los tres sistemas al registrar este recibo. El subcheck `MEGA-EF703-3OS-01` sigue abierto; la ejecución Pi con un hijo LLM interrumpido, el consentimiento Writer de una persona real y la revisión externa independiente siguen pendientes.
+
+La equivalencia canónica conserva `8/28` EF verificados; `globalFull=false`. No merge a `main`.
