@@ -3,7 +3,7 @@
  * lifecycle fixture, NOT an interrupted Beam generation.
  */
 import {spawn} from "node:child_process";
-import {writeFileSync,readFileSync,realpathSync} from "node:fs";
+import {writeFileSync,readFileSync,realpathSync,existsSync} from "node:fs";
 import {join} from "node:path";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
@@ -24,6 +24,14 @@ export default function(pi:any):void{
   try{
    const scope:Scope={sessionId:ctx.sessionManager.getSessionId(),projectId:realpathSync(ctx.cwd)};
    if(phase==="start"){
+    // A fresh Pi TUI session has an ID in memory, but its JSONL file is
+    // materialized only after an entry. Persist one inert extension entry
+    // before simulating a crash; it does not participate in model context.
+    if(typeof pi.appendEntry!=="function")throw Error("Native Pi extension cannot append a session entry");
+    pi.appendEntry("asen.ef604.tui-crash-seed",{readOnly:true,modelCalls:0});
+    const sessionFile=ctx.sessionManager.getSessionFile?.();
+    if(typeof sessionFile!=="string"||!existsSync(sessionFile))
+     throw Error("Native Pi session file did not persist before forced TUI death");
     let started=false;
     const runtime=await AgentRuntime.open({storeFile:store,maxConcurrency:1,runner:{
      run:async request=>{
@@ -61,7 +69,7 @@ export default function(pi:any):void{
           const pending=await journal.record({...scope,id:"tui-crash-fixture-pending",state:"completed"});
           const attempted=await journal.record({...scope,id:"tui-crash-fixture-attempted",state:"failed"});
           if(!await journal.claim(attempted.eventId,scope))throw Error("Fixture claim failed");
-          writeFileSync(idFile,JSON.stringify({scope,agentId:request.id,parentPid:process.pid,
+          writeFileSync(idFile,JSON.stringify({scope,sessionFile,agentId:request.id,parentPid:process.pid,
            childPid,noticeEvents:[pending.eventId,attempted.eventId],nativePiRpcGetState:true}));
           writeFileSync(marker,JSON.stringify({phase,ready:true,modelCalls:0}));
          })().catch(error=>writeFileSync(marker,JSON.stringify({phase,error:String(error)})));
@@ -78,6 +86,13 @@ export default function(pi:any):void{
     const original=JSON.parse(readFileSync(idFile,"utf8"));
     if(original.scope.sessionId!==scope.sessionId||original.scope.projectId!==scope.projectId)
      throw Error("Native Pi TUI restart did not preserve exact session/project");
+    if(original.sessionFile!==ctx.sessionManager.getSessionFile?.())
+     throw Error("Native Pi TUI did not reload the same session JSONL file");
+    const events=ctx.sessionManager.getEntries?.();
+    if(!Array.isArray(events)||!events.some((entry:any)=>
+      entry?.type==="custom"&&entry.customType==="asen.ef604.tui-crash-seed"&&
+      entry.data?.readOnly===true&&entry.data?.modelCalls===0))
+     throw Error("Restarted Pi session did not read the durable extension seed");
     let dispatches=0;
     const runtime=await AgentRuntime.open({storeFile:store,maxConcurrency:1,
      runner:{run:async()=>{dispatches++;throw Error("AUTOMATIC_PROVIDER_REPLAY_FORBIDDEN");}}});

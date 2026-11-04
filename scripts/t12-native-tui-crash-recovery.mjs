@@ -41,9 +41,11 @@ try{
  const pty=await import("node-pty");
  function launch(mode){
   const marker=join(temp,mode+"-ready.json");
+  const persistedSessionFile=mode==="reopen"?JSON.parse(readFileSync(identityFile,"utf8")).sessionFile:sessionFile;
+  if(typeof persistedSessionFile!=="string")throw Error("Pi TUI persisted session path missing");
   const child=pty.spawn(process.execPath,[piBinary,
    "--no-extensions","--extension",extension,"--extension",probe,
-   "--no-skills","--no-builtin-tools","--session",sessionFile,
+   "--no-skills","--no-builtin-tools","--session",persistedSessionFile,
    "--provider","openai","--model","gpt-4o"],
    {cwd:project,cols:120,rows:35,name:"xterm-256color",
     env:{...env,ASEN_TUI_CRASH_PHASE:mode,ASEN_TUI_CRASH_MARKER:marker}});
@@ -80,6 +82,9 @@ try{
  assert.equal(start.nativePiRpcGetState,true,"A real native Pi RPC child must confirm get_state");
  assert.equal(start.scope.projectId,realpathSync(project));
  assert.equal(start.parentPid,original.child.pid);
+ assert.equal(typeof start.sessionFile,"string");
+ assert.equal(existsSync(start.sessionFile),true,
+  "Pi must write its own session JSONL before the TUI crash");
  // Verify liveness immediately before OS kills the actual native Pi TUI.
  assert.equal(process.kill(start.childPid,0),true,
   "Real native Pi RPC child must still be alive when parent is killed");
