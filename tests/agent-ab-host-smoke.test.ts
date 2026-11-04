@@ -31,7 +31,7 @@ function fixture(){
    if(args.includes("status"))return malformed==="dirty"?" M README.md\n":"";
    if(args.includes("checkout")&&id==="A"){
     const name=source[0].repository.split("/").at(-1);
-    writeFileSync(join(args[1],"package.json"),JSON.stringify({bin:{entry:"bin/"+name+".mjs"}}));
+    writeFileSync(join(args[1]!,"package.json"),JSON.stringify({bin:{entry:"bin/"+name+".mjs"}}));
    }
    return "";
   }
