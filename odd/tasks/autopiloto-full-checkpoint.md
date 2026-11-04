@@ -40,3 +40,12 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 3. Leer el final actualizado de `odd/tasks/equivalencia-funcional-agentes-full.md` y los últimos workflows.
 4. Continuar EF-601/603/604 con cambios provider-free verificables; conservar los requisitos de reinicio/consumo real como pendientes hasta que exista el recibo auténtico.
 5. No marcar casillas canónicas ni declarar FULL sin los criterios de aceptación y evidencia exigidos. No merge a `main`, no force push y no usar modelos de pago.
+
+
+## Siguiente tanda publicada desde este checkpoint
+
+- Base confirmada: `a2369372084b8ec5bf867e6f5c96f800647e0b37`.
+- Cambio preparado en `src/runtime/task-agent-reconciler.ts`: el reconciliador bloquea el Todo si el último intento queued/running tiene identidad/rol incompatible; legacy sin plan solo admite Explorer.
+- Regresión añadida en `tests/task-agent-recovery-chain.test.ts` para un Reviewer activo enlazado a un Todo Explorer.
+- El plan maestro registra la causa y conserva 8/28; las pruebas del nuevo SHA quedan pendientes. Reconsultar HEAD y workflows al reanudar. No tratar el CI cancelado o en curso del SHA base como evidencia del nuevo commit.
+- Próxima validación: CI multiplataforma + Release Gate y, por el mensaje exacto del commit, aceptación Ollama Cloud Beam limitada a cinco inferencias. Comprobar que el proveedor/modelo registrado es Beam y no aceptar fallback de pago.

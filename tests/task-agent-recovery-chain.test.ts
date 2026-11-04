@@ -221,3 +221,13 @@ test("EF-603 a failed attempt never authorizes unconfirmed or multi-attempt succ
   assert.equal((await f.current())?.current.state,"blocked");
  }
 });
+
+
+test("EF-603 latest queued or running attempt with a role mismatch is blocked instead of left active",async t=>{
+ const f=await fixture(t);
+ await f.append("wrong-live-role","running",undefined,"reviewer");
+ assert.deepEqual(await f.reconcile(),[f.task.taskId]);
+ const row=await f.current();
+ assert.equal(row?.current.state,"blocked");
+ assert.match(row?.current.reason??"",/Latest linked agent identity or role does not match the Todo plan/u);
+});

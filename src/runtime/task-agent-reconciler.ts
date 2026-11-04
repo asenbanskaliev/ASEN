@@ -50,6 +50,19 @@ export class TaskAgentTodoReconciler{
     }catch(error){if(!(error instanceof Error)||!(/revision conflict|Invalid task transition/u.test(error.message)))throw error;}
     continue;
    }
+   // A queued/running last attempt is allowed to continue only when it still
+   // belongs to this Todo role and workspace. Otherwise return would leave a
+   // contradictory task apparently active forever after restart.
+   const latestMatchesTask=latest.sessionId===identity.sessionId&&
+    sameWorkspaceIdentityPath(latest.projectId,identity.projectId)&&
+    (task.plan?latest.role===task.plan.role:latest.role==="explorer");
+   if(!latestMatchesTask){
+    try{await this.todos.update(task.taskId,identity,task.current.revision,"blocked",
+     "Latest linked agent identity or role does not match the Todo plan; explicit review required");
+     blocked.push(task.taskId);
+    }catch(error){if(!(error instanceof Error)||!(/revision conflict|Invalid task transition/u.test(error.message)))throw error;}
+    continue;
+   }
    if(!terminal.has(latest.state))continue;
    // The immutable link journal is ordered by launch attempts. An interrupted
    // predecessor is not a second active agent and must not prevent a valid

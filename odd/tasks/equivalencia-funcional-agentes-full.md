@@ -1345,3 +1345,13 @@ El job provider-free `41867876731` del SHA `242ba26b` terminó FAIL: 232/233 pru
 - Bloqueos que siguen abiertos: EF-002/701 necesitan 60 observaciones C01–C20 de A/B/ASEN y un host B provisionado; EF-304 necesita decisión humana auténtica ligada al candidato Writer; EF-503 requiere Reviewer realmente independiente; EF-604 requiere interrupción/reinicio del host TUI durante inferencia real y recuperación/consumo observados; EF-702 requiere recibos de proveedor gratuito realmente ejecutado sin gasto. No se simula ni se rebaja ninguno.
 - Próximo paso: recoger el resultado completo del CI exacto `41926003150`; corregir cualquier fallo antes de acumular cambios dependientes. Después continuar la macrotanda EF-601/603/604 con harness provider-free y recibos Pi disponibles, sin alterar los 8/28 hasta que los criterios canónicos se satisfagan.
 
+
+
+### Macrotanda EF-603/604 — validar también el último intento activo tras reinicio (2026-11-04)
+
+**Defecto encontrado en revisión de código:** `TaskAgentTodoReconciler` validaba rol y estado de los predecesores, pero devolvía `running` sin transición cuando el último agente estaba `queued` o `running`, incluso si su rol no coincidía con el plan persistido. Un vínculo contradictorio podía mantener la tarea aparentemente activa indefinidamente tras reinicio. El binder bloquea el lanzamiento normal, pero el reconciliador debe ser seguro ante historial durable legado o corrupto.
+
+**Corrección implementada:** antes del atajo para intentos activos, el reconciliador valida identidad session/project y el rol exacto del último agente contra el plan; un Todo legacy sin plan solo admite Explorer. Las discrepancias se marcan `blocked` con motivo explícito y CAS, sin despacho, replay ni restauración de permisos. Se agrega regresión con último Reviewer activo vinculado a Todo Explorer.
+
+**Verificación pendiente:** la prueba determinista está añadida a `tests/task-agent-recovery-chain.test.ts`, que ya forma parte de las suites CI y de aceptación provider-free. Aún no se atribuye PASS al candidato nuevo. No se cierra EF ni cambia 8/28 hasta CI exact-SHA y recibos nativos exigidos. El commit se prepara para ejecutar la aceptación limitada Ollama Cloud Beam de máximo cinco inferencias; solo se contará si Actions confirma el run exact-SHA y sus recibos.
+
