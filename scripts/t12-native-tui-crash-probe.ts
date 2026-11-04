@@ -24,11 +24,17 @@ export default function(pi:any):void{
   try{
    const scope:Scope={sessionId:ctx.sessionManager.getSessionId(),projectId:realpathSync(ctx.cwd)};
    if(phase==="start"){
-    // A fresh Pi TUI session has an ID in memory, but its JSONL file is
-    // materialized only after an entry. Persist one inert extension entry
-    // before simulating a crash; it does not participate in model context.
-    if(typeof pi.appendEntry!=="function")throw Error("Native Pi extension cannot append a session entry");
+    // Pi 1.2 SessionManager._hasConversation() does NOT persist JSONL for
+    // extension entries alone. Supply one explicitly synthetic user-message
+    // fixture directly to the manager: no agent turn, no API key, no consent.
+    // This is a disposable Pi session file, never an actual user's transcript.
+    if(typeof pi.appendEntry!=="function"||
+       typeof ctx.sessionManager.appendMessage!=="function")
+     throw Error("Native Pi session persistence API unavailable");
     pi.appendEntry("asen.ef604.tui-crash-seed",{readOnly:true,modelCalls:0});
+    ctx.sessionManager.appendMessage({role:"user",
+     content:[{type:"text",text:"ASEN_SYNTHETIC_TUI_CRASH_SESSION_FIXTURE_NO_MODEL_TURN"}],
+     timestamp:Date.now()});
     const sessionFile=ctx.sessionManager.getSessionFile?.();
     if(typeof sessionFile!=="string"||!existsSync(sessionFile))
      throw Error("Native Pi session file did not persist before forced TUI death");
@@ -93,6 +99,10 @@ export default function(pi:any):void{
       entry?.type==="custom"&&entry.customType==="asen.ef604.tui-crash-seed"&&
       entry.data?.readOnly===true&&entry.data?.modelCalls===0))
      throw Error("Restarted Pi session did not read the durable extension seed");
+    if(!events.some((entry:any)=>entry?.type==="message"&&entry.message?.role==="user"&&
+       Array.isArray(entry.message.content)&&entry.message.content.some((part:any)=>
+        part?.type==="text"&&part.text==="ASEN_SYNTHETIC_TUI_CRASH_SESSION_FIXTURE_NO_MODEL_TURN")))
+     throw Error("Restarted Pi TUI did not load the synthetic persistence fixture message");
     let dispatches=0;
     const runtime=await AgentRuntime.open({storeFile:store,maxConcurrency:1,
      runner:{run:async()=>{dispatches++;throw Error("AUTOMATIC_PROVIDER_REPLAY_FORBIDDEN");}}});
