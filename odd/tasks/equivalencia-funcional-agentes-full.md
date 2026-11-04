@@ -683,3 +683,12 @@ El run `41781460824` del SHA `3e3b720` bloqueó la aceptación auténtica antes 
 - `scripts/t12-parent-consumption-grade.mjs`: exigir identidad exacta `inspection.agentId === result.agentId` y `taskFound === true` antes de admitir `PASS_REAL_PI_PARENT_BOUNDED`.
 - `tests/t12-parent-consumption-grade.test.ts`: regresiones negativas para agente distinto, consulta sin ID, tarea no completada y ausencia de resultado.
 - **Validación pendiente:** pruebas focales y CI exact-SHA, y nueva ejecución real del padre Pi con Beam solo cuando exista disparador opt-in autorizado; el éxito histórico `41787200198` no prueba este contrato reforzado. EF-601 permanece PARCIAL y el plan EF en 8/28. Sin Writer, sin A/B funcional y sin merge.
+
+### Macrotanda EF-601 — comprobación de respuestas reales de ambas herramientas Pi (2026-11-04)
+
+**Cambio de aceptación propuesto sobre el SHA de esta tanda, sin atribuirle recibos anteriores.** La evidencia de la macrotanda anterior verificaba el ID solicitado a `asen_agent_status` y un booleano `taskFound`, pero no comprobaba por separado el `record.id` realmente devuelto. El acuse se verificaba por el ID solicitado y `acknowledged: true`, sin contrastar los tres campos devueltos por `asen_agent_ack`. El journal de producción tiene sus propias validaciones; el hueco estaba en la **fidelidad del testigo de ejecución real**.
+
+- El testigo registra `returnedAgentId` y `returnedState` de `asen_agent_status`, y `returnedEventId`, `returnedAgentId`, `returnedState` de `asen_agent_ack`. Son valores de respuestas reales de herramientas Pi, no derivados de los argumentos ni inventados por el grader.
+- El evaluador exige correspondencia entre el evento encolado, el agente solicitado, el registro devuelto, el acuse solicitado y la respuesta del acuse. Se mantienen los límites de turno, modelo gratuito, ausencia de Writer y conservación del proyecto.
+- Se añaden diez casos negativos de identidad, estado y campos omitidos; ninguna respuesta falsa o incompleta debe alcanzar `PASS_REAL_PI_PARENT_BOUNDED`.
+- **Criterio de recepción:** typecheck, tests, gates y nueva ejecución Pi/Beam en el SHA exacto. Hasta entonces esta evidencia es solo código revisable. No se marcan nuevos EF ni se declara FULL; se mantienen 8/28.

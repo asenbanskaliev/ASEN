@@ -10,8 +10,8 @@ const sample=()=>({
   {kind:"result_enqueued",eventId,agentId:"read-only-child",options:{triggerTurn:false}},
   {kind:"idle_wake",options:{triggerTurn:true,deliverAs:"steer"}},
   {kind:"parent_turn_start"},
-  {kind:"status_inspected",agentId:"read-only-child",taskFound:true},
-  {kind:"acknowledged",eventId,confirmed:true},
+  {kind:"status_inspected",agentId:"read-only-child",returnedAgentId:"read-only-child",returnedState:"completed",taskFound:true},
+  {kind:"acknowledged",eventId,returnedEventId:eventId,returnedAgentId:"read-only-child",returnedState:"completed",confirmed:true},
   {kind:"parent_turn_end"},
  ],
  notice:{eventId,agentId:"read-only-child",state:"completed",delivery:"acknowledged"},
@@ -44,6 +44,16 @@ test("EF-601 stale identity, wrong scope or replay never gains a native Pi ackno
  bad(v=>v.events[3].agentId=undefined);
  bad(v=>v.events[3].taskFound=false);
  bad(v=>v.events[3].taskFound=undefined);
+ bad(v=>v.events[3].returnedAgentId="other-agent");
+ bad(v=>v.events[3].returnedAgentId=undefined);
+ bad(v=>v.events[3].returnedState="failed");
+ bad(v=>v.events[3].returnedState=undefined);
+ bad(v=>v.events[4].returnedEventId="asen:agent:"+"c".repeat(64)+":terminal");
+ bad(v=>v.events[4].returnedEventId=undefined);
+ bad(v=>v.events[4].returnedAgentId="other-agent");
+ bad(v=>v.events[4].returnedAgentId=undefined);
+ bad(v=>v.events[4].returnedState="failed");
+ bad(v=>v.events[4].returnedState=undefined);
  bad(v=>v.notice.agentId="other-agent");
  bad(v=>v.notice.state="failed");
  bad(v=>v.events[4].eventId="asen:agent:"+"c".repeat(64)+":terminal");

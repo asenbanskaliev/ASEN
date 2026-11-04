@@ -22,8 +22,13 @@ export function gradeParentConsumption({candidateSha,model,events,notice}){
  assert.equal(wake.options?.deliverAs,"steer","Wake must enter Pi steering channel");
  assert.equal(inspection.agentId,result.agentId,"Pi parent must inspect the exact terminal agent, not a different task or the list");
  assert.equal(inspection.taskFound,true,"Pi parent must observe the completed durable task, not a missing or unfinished result");
+ assert.equal(inspection.returnedAgentId,result.agentId,"Status response must identify the same durable agent");
+ assert.equal(inspection.returnedState,"completed","Status response must report the completed terminal state");
  assert.equal(ack.eventId,result.eventId,"Acknowledgement must belong to exactly this stored terminal result");
  assert.equal(ack.confirmed,true,"The real Pi tool must confirm a durable acknowledgement");
+ assert.equal(ack.returnedEventId,result.eventId,"Acknowledgement tool response must return the same durable event");
+ assert.equal(ack.returnedAgentId,result.agentId,"Acknowledgement tool response must identify the same agent");
+ assert.equal(ack.returnedState,"completed","Acknowledgement tool response must confirm the completed state");
  assert.ok(notice&&notice.eventId===result.eventId&&notice.delivery==="acknowledged"&&
   notice.agentId===result.agentId&&notice.state==="completed",
   "Actual durable journal must contain the same acknowledged terminal agent");

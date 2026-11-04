@@ -36,10 +36,15 @@ export default function parentProbe(pi:any):void{
    pi.registerTool({...tool,execute:async(...args:any[])=>{
     const response=await tool.execute(...args);
     if(tool.name==="asen_agent_status")record("status_inspected",{
-     agentId:args[1]?.id,taskFound:response?.details?.task?.record?.state==="completed",
+     agentId:args[1]?.id,
+     returnedAgentId:response?.details?.task?.record?.id,
+     returnedState:response?.details?.task?.record?.state,
+     taskFound:response?.details?.task?.record?.state==="completed",
     });
     if(tool.name==="asen_agent_ack")record("acknowledged",{
-     eventId:args[1]?.eventId,confirmed:response?.details?.acknowledged===true,
+     eventId:args[1]?.eventId,returnedEventId:response?.details?.eventId,
+     returnedAgentId:response?.details?.agentId,returnedState:response?.details?.state,
+     confirmed:response?.details?.acknowledged===true,
     });
     return response;
    }});
