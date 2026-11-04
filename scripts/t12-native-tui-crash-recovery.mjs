@@ -133,7 +133,17 @@ try{
  console.log("EF604_NATIVE_TUI_CRASH_NO_MODEL_PASS "+JSON.stringify({
   status:report.status,hostProcesses:2,providerCalls:0,globalFull:false}));
 }catch(error){
- console.error("EF604_NATIVE_TUI_CRASH_FAILED "+phase+" "+(error instanceof Error?error.name:"Error"));
+ const reason=(error instanceof Error?error.message:"unknown")
+  .replaceAll(temp,"[TEMP]").replaceAll(repo,"[REPO]").slice(0,360);
+ console.error("EF604_NATIVE_TUI_CRASH_FAILED "+phase+" "+reason);
+ try{
+  mkdirSync(join(repo,"asen-acceptance-evidence"),{recursive:true});
+  writeFileSync(output,JSON.stringify({
+   schema:"asen-native-pi-tui-crash-failure/v1",candidateSha:sha,
+   status:"FAIL_NOT_VERIFIED",stage:phase,reason,
+   providerCalls:0,writerAuthorized:false,globalFull:false
+  })+"\n",{flag:"wx",mode:0o600});
+ }catch{/* Missing evidence remains a CI failure. */}
  process.exitCode=1;
 }finally{
  for(const host of [original,second])if(host&&!host.isExited())try{host.child.kill();}catch{}
