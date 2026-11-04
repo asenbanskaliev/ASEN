@@ -10,7 +10,7 @@ const sample=()=>({
   {kind:"result_enqueued",eventId,agentId:"read-only-child",options:{triggerTurn:false}},
   {kind:"idle_wake",options:{triggerTurn:true,deliverAs:"steer"}},
   {kind:"parent_turn_start"},
-  {kind:"status_inspected"},
+  {kind:"status_inspected",agentId:"read-only-child",taskFound:true},
   {kind:"acknowledged",eventId,confirmed:true},
   {kind:"parent_turn_end"},
  ],
@@ -40,6 +40,10 @@ test("EF-601 stale identity, wrong scope or replay never gains a native Pi ackno
   assert.throws(()=>gradeParentConsumption(v));
  };
  bad(v=>v.notice.delivery="enqueued");
+ bad(v=>v.events[3].agentId="unrelated-task");
+ bad(v=>v.events[3].agentId=undefined);
+ bad(v=>v.events[3].taskFound=false);
+ bad(v=>v.events[3].taskFound=undefined);
  bad(v=>v.notice.agentId="other-agent");
  bad(v=>v.notice.state="failed");
  bad(v=>v.events[4].eventId="asen:agent:"+"c".repeat(64)+":terminal");

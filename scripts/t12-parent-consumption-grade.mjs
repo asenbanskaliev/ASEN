@@ -15,11 +15,13 @@ export function gradeParentConsumption({candidateSha,model,events,notice}){
  const order=["result_enqueued","idle_wake","parent_turn_start","status_inspected","acknowledged","parent_turn_end"];
  const positions=order.map(kind=>at(kind)[0]);
  assert.ok(positions.every((x,i)=>i===0||x>positions[i-1]),"Pi parent must inspect and acknowledge AFTER idle wake in the same turn");
- const result=events[positions[0]],wake=events[positions[1]],ack=events[positions[4]];
+ const result=events[positions[0]],wake=events[positions[1]],inspection=events[positions[3]],ack=events[positions[4]];
  assert.ok(EVENT.test(result.eventId),"Result must carry a durable ASEN notice identity");
  assert.equal(result.options?.triggerTurn,false,"Result must be stored without injecting a turn");
  assert.equal(wake.options?.triggerTurn,true,"Real Pi idle wake must trigger a new model turn");
  assert.equal(wake.options?.deliverAs,"steer","Wake must enter Pi steering channel");
+ assert.equal(inspection.agentId,result.agentId,"Pi parent must inspect the exact terminal agent, not a different task or the list");
+ assert.equal(inspection.taskFound,true,"Pi parent must observe the completed durable task, not a missing or unfinished result");
  assert.equal(ack.eventId,result.eventId,"Acknowledgement must belong to exactly this stored terminal result");
  assert.equal(ack.confirmed,true,"The real Pi tool must confirm a durable acknowledgement");
  assert.ok(notice&&notice.eventId===result.eventId&&notice.delivery==="acknowledged"&&

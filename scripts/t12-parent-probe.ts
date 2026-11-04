@@ -35,7 +35,9 @@ export default function parentProbe(pi:any):void{
    if(!allowed.has(tool.name))return;
    pi.registerTool({...tool,execute:async(...args:any[])=>{
     const response=await tool.execute(...args);
-    if(tool.name==="asen_agent_status")record("status_inspected");
+    if(tool.name==="asen_agent_status")record("status_inspected",{
+     agentId:args[1]?.id,taskFound:response?.details?.task?.record?.state==="completed",
+    });
     if(tool.name==="asen_agent_ack")record("acknowledged",{
      eventId:args[1]?.eventId,confirmed:response?.details?.acknowledged===true,
     });
