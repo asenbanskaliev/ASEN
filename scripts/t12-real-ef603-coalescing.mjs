@@ -103,7 +103,7 @@ try{
  await writeFile(output,JSON.stringify(report,null,2)+"\n",{flag:"wx",mode:0o600});
  console.log("EF603_REAL_PI_EXPLORER_ONCE_PASS "+JSON.stringify({
   status:report.status,logicalRequests:3,nativePiProcesses:realStarts,
-  providerCallsReserved:1,globalFull:false
+  providerCallsReserved:1,providerCallsActuallyObserved:null,globalFull:false
  }));
 }catch(error){
  try{

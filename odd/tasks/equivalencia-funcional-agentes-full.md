@@ -1216,3 +1216,11 @@ El run de aceptación `41855777234` sobre `f867016dcef28200332427aa460775c1e53d5
 - [ ] EF603-MEGA-04 — Reconciliar `EF-603` con recibo exact-SHA, actualizar checks canónicos 8→9 y auditar `audit:ef-plan`. Requiere los tres checks anteriores y no promueve C01–C20 ni FULL.
 
 **Límites:** se demuestra deduplicación de Explorer bajo identidad exacta, no una heurística de equivalencia semántica universal. Por diseño Reviewer y Verifier deben ser invocaciones distintas para asegurar contraste. EF-002/701 requieren fuentes A/B reales y Writer humano permanece bloqueado; FULL global NO alcanzado.
+
+### EF-603 — reconciliación de cardinalidad Pi/proveedor (2026-11-04)
+
+**Defecto de evidencia detectado:** el grader devolvía `oneProviderCall:true` basándose únicamente en `providerCallsReserved:1` y `nativePiProcessCount:1`. Un proceso nativo Pi puede emitir más de una petición a un proveedor (reintentos, regeneración o errores) y el candado local solo limita los procesos iniciados, no acredita el número de solicitudes autenticadas remotas. Por tanto, **no se puede concluir una llamada efectiva** a partir de esa reserva.
+
+- El evaluador pasa a informar `oneNativePiProcess:true`, `oneProviderCallReserved:true` y `providerCallsActuallyObserved:null`; elimina el campo ambiguo `oneProviderCall`. El recibo generado por el runner también explicita `providerCallsActuallyObserved:null` en el resumen del log. No se modifica el mecanismo de deduplicación, los límites de inferencia, los secretos ni la autorización Writer.
+- La prueba negativa exige que el grader no eleve una reserva a cardinalidad remota. **Recepción pendiente:** CI exact-SHA y Release Gate de los tres OS; el trabajo macOS del run `41861267479` quedó CANCELLED, por lo que ese Release Gate no es PASS, aunque Ubuntu y Windows terminaron SUCCESS.
+- El job real EF-603 del run `41861255486` fue PASS en el SHA `52a731a1`, pero demuestra una única ejecución Pi y tres solicitudes coalescidas; **no acredita por sí solo el número real de peticiones HTTP**. La casilla canónica EF-603 permanece abierta (8/28), a la espera de trazas fiables de llamadas, CI completo y contraste de los roles pendientes. No reutilizar ese recibo como éxito del nuevo SHA. FULL no alcanzado.

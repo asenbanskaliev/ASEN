@@ -14,7 +14,11 @@ const valid=()=>({
  writerAuthorized:false,humanConsent:false,independentABParity:false,globalFull:false
 });
 test("EF-603 strict grader admits only one real Pi Explorer execution, never global FULL",()=>{
- assert.equal(gradeEf603LiveCoalescing(valid(),sha).oneProviderCall,true);
+ const grade=gradeEf603LiveCoalescing(valid(),sha);
+ assert.equal(grade.oneNativePiProcess,true);
+ assert.equal(grade.oneProviderCallReserved,true);
+ assert.equal(grade.providerCallsActuallyObserved,null,"Reservation is not proof of authenticated request count");
+ assert.equal("oneProviderCall" in grade,false,"Do not assert provider call cardinality from reservation alone");
  assert.equal(gradeEf603LiveCoalescing({...valid(),model:"beam:cloud"},sha).globalFull,false);
 });
 test("EF-603 fail-closed mutation tests prevent dual calls, role aliases, stale SHA and fake permissions",()=>{
