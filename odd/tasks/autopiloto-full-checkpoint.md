@@ -150,3 +150,12 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - CI de `0fc9ddc65559892d64bb0cda3fd7a4085b85d5e1`: Phase 0 Architecture run `41934918613` falló en `audit-upstream-boundary` porque la nota de continuidad incluía el nombre de una referencia congelada. La semántica y las pruebas no fueron causa del fallo.
 - La nota ahora usa la etiqueta local `referencia A` y enlaza a `registry/parity/agent-ab-baselines-v1.json`, cuya fila A guarda la procedencia. No se cambia el código funcional ni se relaja el auditor.
 - La siguiente inspección volvió a fallar porque el encabezado de checkpoint conservaba la etiqueta externa; se elimina en este commit. Los resultados previos no se heredan. Preflight/CI/Release Gate del SHA correctivo pendientes. EF-601 PARTIAL; 8/28; FULL=false.
+
+
+## EF-601 stale notice: recepción de pruebas y progreso CI — 2026-11-04
+
+- Implementación en SHA `0fc9ddc65559892d64bb0cda3fd7a4085b85d5e1`: aceptación provider-free [41934910473](https://github.com/asenbanskaliev/ASEN/actions/runs/41934910473) SUCCESS; test `EF-601 stale terminal results...` = `ok 53`, frescura durable = `ok 54`; suites foco `242/242`, `240/240`, `106/106`, todas con `fail=0`. Carriles reales quedaron SKIPPED por mensaje de commit no opt-in. No se ejecutó modelo.
+- El primer Architecture run `41934918613` falló solo en audit-upstream-boundary porque docs/comentario usaban una etiqueta de origen fuera de la ubicación de procedencia permitida. Corrección publicada. `audit-upstream-boundary` del SHA `5035e5d7da619363d4465dbfd26773ef773e35c0` terminó PASS en Phase 0 `41935325296`.
+- Para SHA `5035e5d7da619363d4465dbfd26773ef773e35c0`: CI `41935325288` y Release Gate `41935325237` estaban IN_PROGRESS. El siguiente commit documental cancelará esos runs y lanzará la validación exacta de su propio SHA; no se atribuirá PASS. Último HEAD de trabajo confirmado: `5035e5d7da619363d4465dbfd26773ef773e35c0`.
+- 8/28 EF canónicos; EF-601 PARTIAL. FULL=false. Pendientes: recuperación real TUI con resultado/modelo y aviso stale, CI + Release Gate exact-SHA, A/B C01–C20, Writer humano y Reviewer independiente.
+- Próximo: seguir EF-601/604 con el mismo journal: prueba provider-free de aviso terminal envejecido en restauración + revisión de consumo exacto post-reinicio; preservar el límite de no replay y el estado incierto.
