@@ -142,6 +142,7 @@ jobs:
             tests/managed-acquisition-copy.test.ts \
             tests/pi-process-runner.test.ts \
             tests/pi-session-recovery-e2e.test.ts \
+            tests/ef604-native-pi-headless-restart.test.ts \
             tests/session-recovery-e2e.test.ts
       - name: F6 cross-process inference recovery, corruption and negative checks
         shell: bash

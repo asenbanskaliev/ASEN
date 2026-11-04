@@ -938,3 +938,19 @@ Se mantienen las restricciones de permisos; Writer humano y paridad C01–C20 si
 `ASEN real-agent functional acceptance` run `41819341700`, commit `4b15c494a8cad718b30d1b2c4e06eceebd4de15e`: `Provider-free static and ASEN validation` **SUCCESS**. TypeScript, build, nueva prueba `tests/agent-notice-ack-tool.test.ts`, matriz F6 y `tests/t12-revalidation-contract.test.ts` superaron el gate de aceptación; `Writer authorization design lock` SUCCESS. Se marcan los tres **subchecks** EF403-FIX-01, EF403-PRESERVE-02 y EF604-ACK-02, limitados a lo que cada uno verifica, sin afirmar reinicio auténtico Pi, permisos de Writer ni test real de proveedor en este SHA. La prueba real Beam positiva sigue atada al SHA `ebf5515d140a1f73f0d15f3060f1012500261994` y artefacto `13315214638`, no se hereda.
 
 **Pendiente:** CI global y Release Gate del SHA `4b15c494a8cad718b30d1b2c4e06eceebd4de15e`; Writer humano EF-304, A/B real C01–C20, reinicio de Pi EF604-PI-RESTART y auditoría independiente. 8/28 EF canónicos, sin FULL ni merge.
+
+### MEGATANDA EF-604 — reinicio auténtico de host Pi con journal y aislamiento (2026-11-04)
+
+**Alcance publicado, pendiente de pruebas exact-SHA: Pi 1.2.0 real en RPC headless, SIN inferencia ni consentimiento Writer.** Se mejora respecto de la prueba anterior entre procesos Node: dos procesos independientes del CLI nativo `@earendil-works/pi-coding-agent` arrancan **con la misma sesión Pi persistida**; un tercero abre una sesión distinta. Se carga de verdad `createAsenExtension` en los tres hosts con `AgentRuntime` y `AgentNotificationJournal` existentes.
+
+- `tests/ef604-native-pi-headless-restart.test.ts` crea un proyecto Git aislado, inicia una sesión mediante el `SessionManager` real, persiste dos tareas Explorer de solo lectura mediante el `AgentRuntime` real y su store con recibo autenticado; el runner es deliberadamente determinista, **no** Pi modelo. En el journal real deja una notificación `attempted` y otra `pending` antes de reiniciar.
+- Dos arranques nativos independientes se verifican con RPC `get_state`, el mismo identificador de sesión y archivo de Pi, distintos PID y dos eventos `session_start` observados por una extensión probe. El store conserva sus resultados y el journal no retransmite, no acusa `attempted`, no transforma `pending` en entregado y no relanza trabajos. Un tercer host con otro sessionId no obtiene avisos ajenos.
+- No hay llamadas de modelo, descarga de proveedores, funciones Writer, consentimiento ficticio ni cambios en los archivos Git. El test falla si hay un `agent_start` inesperado, cambio de SHA/identidad, cambio de bytes del journal o pérdida del recibo persistente. A diferencia de la evidencia histórica de recuperación solo de Node, aquí se ejercita **el CLI auténtico de Pi en tres procesos distintos**.
+- El carril F6 existente en `.github/workflows/asen-real-agent-acceptance.yml` incluye el test provider-free. No se utiliza Ollama para un test que no necesita inferencia.
+
+**Checklist:**
+- [ ] EF604-NATIVE-01 — Pi 1.2.0 real RPC reiniciado en la misma sesión y aislamiento de la tercera, resultados persistidos y journal `attempted/pending` sin replay, preflight exact-SHA PASS.
+- [ ] EF604-NATIVE-02 — Suite completa tres OS + Release Gate del SHA publicado, PASS.
+- [ ] EF604-FULL-RESTART — Prueba **interactiva** de interrupción durante ejecución real del hijo Pi y recuperación del coordinador con consulta/acuse legítimos; NO cubierta por RPC headless ni por el runner determinista.
+
+**Recepción previa relevante:** Release Gate `41819643941` del commit `0f206263ca50ae78fa5f49d2c410017480f18a67` terminó PASS en Linux, macOS y Windows. Su CI general `41819644492` había terminado Ubuntu SUCCESS y seguía ejecutándose en otros sistemas durante la consulta. Estos recibos no certifican el nuevo SHA ni cambian las tareas canónicas: EF 8/28, MEGA 7/9, FULL NO ALCANZADO. No merge a `main`.
