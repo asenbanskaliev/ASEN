@@ -110,3 +110,17 @@ test("ECO-07 exact-SHA workflow uses NVIDIA only and supports a guarded branch r
  assert.ok(workflow.includes("eco07-nvidia-recovery-${{ inputs.expected_sha || github.sha }}-${{ inputs.os || 'ubuntu-24.04' }}"));
  assert.ok(!compact.includes("pull_request:"));
 });
+
+test("EF-702 only terminal Pi failure envelopes may classify provider quota, and large errors are rejected",()=>{
+ const errorMessage="HTTP 429: https://provider.invalid?token=SYNTHETIC_SECRET";
+ for(const type of ["tool_execution_start","tool_execution_end","message_start","message_update","message_delta","assistant_delta","unknown",null,429]){
+  assert.equal(eco07ProviderRateLimitError({type,message:{stopReason:"error",errorMessage}}),undefined,String(type));
+ }
+ assert.equal(eco07ProviderRateLimitError({type:"message_end",message:{stopReason:"error",errorMessage}}),
+  "Provider rate limit (HTTP 429)");
+ assert.equal(eco07ProviderRateLimitError({type:"turn_end",message:{stopReason:"error",errorMessage:"quota_exceeded"}}),
+  "Provider quota exhausted");
+ assert.equal(eco07ProviderRateLimitError({type:"message_end",message:{stopReason:"error",errorMessage:"x".repeat(64*1024)+" 429"}}),undefined);
+ assert.equal(eco07ProviderRateLimitError({type:"message_end",message:{stopReason:"stop",errorMessage}}),undefined);
+});
+

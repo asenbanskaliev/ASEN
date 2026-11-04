@@ -39,8 +39,11 @@ export class ExplorerBudgetTelemetry{
   if(event.toolName==="codegraph"||event.toolName==="asen_code_intelligence"){
    const input=event.args as {operation?:unknown}|undefined;
    const output=event.result as {details?:{operation?:unknown}}|undefined;
-   const operation=input?.operation??output?.details?.operation;
-   if(operation==="init"||operation==="sync")return false;
+   // Either the requested or the observed operation may reveal a write.
+   // Do not let an untrusted "query" argument mask an actual sync/init
+   // response, and never treat an unknown CodeGraph operation as read-only.
+   const requested=input?.operation,observed=output?.details?.operation;
+   if([requested,observed].some(op=>op!==undefined&&op!=="query"))return false;
   }
   this.#seen.add(event.toolCallId);
   this.#firstTool??=event.toolName;

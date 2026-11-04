@@ -49,6 +49,11 @@ export class TrustedTaskAgentBinder{
    throw new Error("ASEN dispatch requires a fresh queued agent identity");
   if(task.plan&&agent.record.role!==task.plan.role)
    throw new Error("ASEN agent role does not match the confirmed Todo role");
+  // Legacy unplanned Todo links have no candidate or skill/phase contract.
+  // Only the original bounded read-only Explorer path is permissible here.
+  // In particular, a direct caller cannot bind a Worker to a plan-less Todo.
+  if(!task.plan&&agent.record.role!=="explorer")
+   throw new Error("Unplanned Todo may bind only a read-only Explorer");
   // A previously linked but still-planned Todo is an uncertain pre-dispatch
   // window. Only explicit reconciliation may decide the next transition.
   if(task.current.state==="planned"&&previousLinks.length)

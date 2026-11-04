@@ -56,3 +56,35 @@ test("EF-201 write-capable CodeGraph init/sync are never counted as read queries
  assert.equal(tracker.snapshot().firstTool,"codegraph");
  assert.equal(tracker.snapshot().queries,1);
 });
+
+test("EF-201 unknown CodeGraph operations and conflicting write receipts never consume read-only Explorer budget",()=>{
+ const tracker=new ExplorerBudgetTelemetry();
+ const event=observation("write","codegraph","X".repeat(50_000));
+ const variants=[
+  {...event,args:{operation:"query"},result:{...event.result,details:{operation:"sync"}}},
+  {...event,toolCallId:"init-conflict",args:{operation:"init"},result:{...event.result,details:{operation:"query"}}},
+  {...event,toolCallId:"unknown",args:{operation:"reindex"}},
+  {...event,toolCallId:"non-string",args:{operation:17}},
+  {...event,toolCallId:"legacy-write",toolName:"asen_code_intelligence",result:{...event.result,details:{operation:"init"}}},
+ ];
+ for(const attempt of variants)assert.equal(tracker.observe(attempt),false);
+ assert.equal(tracker.snapshot().queries,0);
+ assert.equal(tracker.snapshot().outputBytes,0);
+ assert.equal(tracker.snapshot().firstTool,undefined);
+ assert.equal(tracker.snapshot().recommendationIssued,false);
+ assert.equal(tracker.observe({...event,toolCallId:"safe",args:{operation:"query"},result:{...event.result,content:[{type:"text",text:"q"}],details:{operation:"query"}}}),false);
+ assert.equal(tracker.snapshot().queries,1);
+ assert.equal(tracker.snapshot().outputBytes,1);
+ assert.equal(tracker.snapshot().firstTool,"codegraph");
+});
+test("EF-202 only four observed read queries trigger one suggestion after rejected CodeGraph writes",()=>{
+ const tracker=new ExplorerBudgetTelemetry();
+ for(let i=0;i<8;i++)assert.equal(tracker.observe({...observation(`write-${i}`,"codegraph"),args:{operation:"sync"}}),false);
+ for(let i=0;i<3;i++)assert.equal(tracker.observe({...observation(`read-${i}`,"codegraph"),args:{operation:"query"}}),false);
+ assert.equal(tracker.snapshot().queries,3);
+ assert.equal(tracker.observe({...observation("read-3","codegraph"),args:{operation:"query"}}),true);
+ assert.equal(tracker.observe(observation("read-4")),false);
+ assert.equal(tracker.snapshot().queries,4);
+ assert.equal(tracker.snapshot().recommendationIssued,true);
+});
+
