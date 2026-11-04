@@ -852,3 +852,18 @@ Run `41810035714` / SHA `255288e7fa1c0e9234226edb5ba48eb285391353`: la Arquitect
 - `tests/eco07-provider-failure.test.ts`: prioridad de HTTP 429 frente al texto de cuota cuando coexisten, ausencia de filtración de secretos sintéticos y rechazo de estructuras Pi inválidas. No se crean reintentos automáticos ni cambios de proveedor o coste.
 
 **Evidencia previa de la rama `8f848a037ab0f6d0a51c09fd5db26af482e45820`:** Phase 0, F5, Pi Runtime, CodeGraph, R4 y Release Gate SUCCESS; CI Ubuntu y macOS SUCCESS, Windows todavía `in_progress` durante la revisión. El cierre de `T09-LOCK-01/02/03` y `ABSEC-04` permanece sin marcar mientras no exista la suite global PASS del SHA de este commit. Esta ampliación no eleva EF ni MEGA a FULL, no ejecuta A/B C01–C20, no usa cuota de modelo y no autoriza Writer.
+
+### Macrotanda EF-701 — recibos de observación con lectura acotada y anclaje físico (2026-11-04)
+
+**Estado: IMPLEMENTED_PENDING_EXACT_SHA_CI; FULL NO ALCANZADO.** La auditoría de evidencia observacional usaba `lstat + realpath` seguidos de `readFile(path)`: una sustitución o ampliación posterior a la primera comprobación podía cambiar qué bytes se leían o permitir una lectura de tamaño no acotado. El resultado anterior seguía siendo `INTEGRITY_ONLY`, pero esa carrera no debe contaminar ni siquiera un recibo de integridad.
+
+- `scripts/agent-observable-receipts.mjs` abre un descriptor de solo lectura, exige identidad de fichero nativa no nula, un único enlace y ruta canónica; lee como máximo 256 KiB + 1 byte para detectar ampliaciones y contrasta dispositivo/inodo, enlaces, modo, tamaño y marcas nanosegundo antes y después, tanto por descriptor como por ruta. Aplica `O_NOFOLLOW` donde el sistema lo admite. Toda duda produce `RECEIPT_FILE_UNAVAILABLE_OR_UNSAFE`, nunca una certificación.
+- `tests/agent-observable-receipts.test.ts` comprueba divergencias de identidad física, rechaza un recibo con hardlink, y cubre el límite inclusivo de 256 KiB y su sobrepaso sin promoción a FULL. El auditor no descarga modelos ni ejecuta código de referencias.
+- El límite de evidencia permanece: un digest local coincide con un archivo, **no** demuestra que A/B o ASEN hayan ejecutado C01–C20 bajo un host independiente. Los 60 escenarios y las decisiones humanas Writer continúan abiertos.
+
+**Checklist específico sin sustituir las 28 tareas EF:**
+- [ ] EF701-RCPT-01 — Typecheck, tests focalizados y auditoría de arquitectura sobre el SHA exacto de esta macrotanda.
+- [ ] EF701-RCPT-02 — CI general en Windows, macOS y Ubuntu + Release Gate exact-SHA PASS con el lector acotado.
+- [ ] EF701-RCPT-03 — Recibos independientes reales A/B/ASEN; **BLOQUEADO** hasta disponer del entorno B y 60 observaciones ejecutadas.
+
+No se modifica el estado EF-701 [ ], EF-704 [ ], MEGA-AB-03 [ ] ni se autoriza merge a `main`.

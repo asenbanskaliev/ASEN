@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {mkdtemp,mkdir,readFile,rm,writeFile} from 'node:fs/promises';
+import {link,mkdtemp,mkdir,readFile,rm,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 // @ts-expect-error Offline evidence audit is deliberately standalone ESM.
-import {auditObservableReceipts} from '../scripts/agent-observable-receipts.mjs';
+import {auditObservableReceipts,sameObservableReceiptIdentity} from '../scripts/agent-observable-receipts.mjs';
 // @ts-expect-error Pure evidence scaffold is ESM.
 import {buildObservationScaffold} from '../scripts/agent-observable-scaffold.mjs';
 const sha='a'.repeat(40);
@@ -72,4 +72,42 @@ test('EF-701 receipt payload cannot substitute a different environment, model or
  const result=await auditObservableReceipts({...f,candidateSha:sha});
  assert.equal(result.rows.find((x:{source:string;id:string})=>x.source==='ASEN'&&x.id==='C01')?.reason,
  'RECEIPT_CONTENT_MISMATCH');
+});
+
+test('EF-701 physical identity rejects reused bytes, missing inodes and metadata changes',()=>{
+ const old={dev:1n,ino:13n,mode:0o100600n,size:42n,nlink:1n,
+  birthtimeNs:100n,ctimeNs:101n,mtimeNs:102n};
+ assert.equal(sameObservableReceiptIdentity(old,{...old}),true);
+ for(const key of ['dev','ino','mode','size','nlink','birthtimeNs','ctimeNs','mtimeNs']){
+  assert.equal(sameObservableReceiptIdentity(old,{...old,[key]:old[key as keyof typeof old]+1n}),false,key);
+ }
+ assert.equal(sameObservableReceiptIdentity(old,{...old,ino:0n}),false);
+ assert.equal(sameObservableReceiptIdentity({...old,nlink:2n},{...old,nlink:2n}),false);
+ assert.equal(sameObservableReceiptIdentity(null,old),false);
+});
+test('EF-701 hardlinked receipts are not accepted as private single-owner evidence',async t=>{
+ const f=await fixture(t);
+ const file=await addEvidence(f,'A');
+ await link(file,join(f.root,'outside-alias.json'));
+ const result=await auditObservableReceipts({...f,candidateSha:sha});
+ assert.equal(result.rows.find((r:{id:string;source:string})=>r.id==='C01'&&r.source==='A')?.reason,
+  'RECEIPT_FILE_UNAVAILABLE_OR_UNSAFE');
+ assert.equal(result.globalFull,false);
+});
+test('EF-701 receipt size is bounded at the descriptor and never grants attestation',async t=>{
+ const f=await fixture(t);
+ const file=await addEvidence(f,'ASEN');
+ const entry=f.candidate.cases.find((x:{id:string})=>x.id==='C01');
+ const original=await readFile(file);
+ const bounded=Buffer.concat([original,Buffer.alloc(256*1024-original.length,0x20)]);
+ await writeFile(file,bounded);
+ entry.receipt='receipts/ASEN/C01.json#sha256='+digest(bounded);
+ let result=await auditObservableReceipts({...f,candidateSha:sha});
+ assert.equal(result.rows.find((r:{id:string;source:string})=>r.id==='C01'&&r.source==='ASEN')?.status,'INTEGRITY_ONLY');
+ assert.equal(result.globalFull,false);
+ await writeFile(file,Buffer.concat([bounded,Buffer.from(' ')]));
+ result=await auditObservableReceipts({...f,candidateSha:sha});
+ assert.equal(result.rows.find((r:{id:string;source:string})=>r.id==='C01'&&r.source==='ASEN')?.reason,
+  'RECEIPT_FILE_UNAVAILABLE_OR_UNSAFE');
+ assert.equal(result.globalFull,false);
 });

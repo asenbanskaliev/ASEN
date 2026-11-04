@@ -2,7 +2,8 @@
  * A self-asserted "real" receipt with a correct digest is NOT independent
  * proof of an actual provider/host execution and must never imply FULL. */
 import {createHash} from 'node:crypto';
-import {readFile,realpath,lstat} from 'node:fs/promises';
+import {readFile,realpath,lstat,open} from 'node:fs/promises';
+import {constants as fsConstants} from 'node:fs';
 import {join,resolve,relative,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {CASE_IDS,REFERENCE_SHA,compareAgentObservations} from './agent-observable-parity.mjs';
@@ -12,6 +13,46 @@ const receiptPattern=/^receipts\/(A|B|ASEN)\/(C(?:0[1-9]|1[0-9]|20))\.json#sha25
 const exact=(value,keys)=>value&&typeof value==='object'&&!Array.isArray(value)&&
  Object.keys(value).sort().join('|')===keys.slice().sort().join('|');
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
+const MAX_RECEIPT_BYTES=256*1024;
+const identityFields=['dev','ino','mode','size','nlink','birthtimeNs','ctimeNs','mtimeNs'];
+/** Physical identity, not copyable marker bytes or millisecond-rounded metadata.
+ * Missing native identities, aliases (hardlinks) and changes fail closed. */
+export function sameObservableReceiptIdentity(before,after){
+ return before!==null&&after!==null&&typeof before==='object'&&typeof after==='object'&&
+  typeof before.ino==='bigint'&&before.ino>0n&&before.nlink===1n&&
+  identityFields.every(field=>typeof before[field]==='bigint'&&before[field]===after[field]);
+}
+/** Read from one bounded descriptor, never a pathname checked before a later read.
+ * On platforms without O_NOFOLLOW, pre/post realpath and inode comparisons
+ * still reject observable replacements; no method claims to prevent all races. */
+async function readBoundedReceipt(target){
+ const before=await lstat(target,{bigint:true});
+ if(!before.isFile()||before.isSymbolicLink()||before.ino<=0n||
+    before.nlink!==1n||before.size>BigInt(MAX_RECEIPT_BYTES)||
+    await realpath(target)!==target)throw new Error('Unsafe receipt path or size');
+ const flags=fsConstants.O_RDONLY|(process.platform==='win32'?0:(fsConstants.O_NOFOLLOW??0));
+ const handle=await open(target,flags);
+ try{
+  const opened=await handle.stat({bigint:true});
+  if(!opened.isFile()||!sameObservableReceiptIdentity(before,opened))
+   throw new Error('Receipt changed before open');
+  const buffer=Buffer.alloc(MAX_RECEIPT_BYTES+1);
+  let count=0;
+  while(count<buffer.length){
+   const {bytesRead}=await handle.read(buffer,count,buffer.length-count,count);
+   if(bytesRead===0)break;
+   count+=bytesRead;
+  }
+  if(count>MAX_RECEIPT_BYTES)throw new Error('Receipt grew beyond bounded read');
+  const [after,atPath,real]=await Promise.all([
+   handle.stat({bigint:true}),lstat(target,{bigint:true}),realpath(target),
+  ]);
+  if(real!==target||!sameObservableReceiptIdentity(opened,after)||
+     !sameObservableReceiptIdentity(opened,atPath)||BigInt(count)!==opened.size)
+   throw new Error('Receipt changed during bounded read');
+  return buffer.subarray(0,count);
+ }finally{await handle.close();}
+}
 function observed(docs,id,source){
  const doc=source==='ASEN'?docs.candidate:docs.reference;
  return doc.cases.find(item=>item.id===id&&item.source===source);
@@ -41,12 +82,8 @@ export async function auditObservableReceipts({reference,candidate,candidateSha,
   const candidatePath=resolve(base,'receipts',source,`${id}.json`);
   if(!validInside(base,candidatePath)){result.reason='RECEIPT_OUTSIDE_ROOT';rows.push(result);continue;}
   let bytes;
-  try{
-   const [actual,stat]=await Promise.all([realpath(candidatePath),lstat(candidatePath)]);
-   if(actual!==candidatePath||!stat.isFile()||stat.isSymbolicLink()||stat.size>256*1024)
-    throw new Error('Receipt is unsafe');
-   bytes=await readFile(candidatePath);
-  }catch{result.reason='RECEIPT_FILE_UNAVAILABLE_OR_UNSAFE';rows.push(result);continue;}
+  try{bytes=await readBoundedReceipt(candidatePath);}
+  catch{result.reason='RECEIPT_FILE_UNAVAILABLE_OR_UNSAFE';rows.push(result);continue;}
   if(digest(bytes)!==match[3]){result.status='FAIL';result.reason='RECEIPT_DIGEST_MISMATCH';rows.push(result);continue;}
   let record;
   try{record=JSON.parse(new TextDecoder('utf8',{fatal:true}).decode(bytes));}
