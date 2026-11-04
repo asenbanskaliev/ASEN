@@ -6,13 +6,13 @@ import {auditEfPlanMarkdown,readEfPlan,EF_IDS} from "../scripts/audit-ef-plan.mj
 test("F7 all 28 EF remain ordered, evidence-linked and honest about FULL",()=>{
  const result=auditEfPlanMarkdown(readEfPlan());
  assert.equal(result.total,28);
- assert.ok(result.verified>=7);
+ assert.ok(result.verified>=8);
  assert.equal(result.partial+result.blocked,28-result.verified);
  assert.equal(result.globalFull,false);
  assert.deepEqual(result.entries.map((item:{id:string})=>item.id),EF_IDS);
  const verified=new Set(result.entries.filter((item:{status:string})=>item.status==="VERIFICADO")
   .map((item:{id:string})=>item.id));
- for(const id of ["EF-000","EF-003","EF-102","EF-103","EF-202","EF-301","EF-602"])
+ for(const id of ["EF-000","EF-001","EF-003","EF-102","EF-103","EF-202","EF-301","EF-602"])
   assert.ok(verified.has(id),`Previously verified ${id} must not regress`);
 });
 test("F7 unchecked or untracked EF cannot silently appear completed",()=>{
@@ -41,6 +41,27 @@ test("F7 partial or blocked tasks require a concrete remaining criterion",()=>{
 });
 test("F7 the displayed total cannot diverge from the checkboxes",()=>{
  const doc=readEfPlan();
- assert.throws(()=>auditEfPlanMarkdown(doc.replace("Resumen del plan:** 7/28","Resumen del plan:** 8/28")),/summary disagrees/);
+ const count=auditEfPlanMarkdown(doc).verified;
+ const tampered=doc.replace(
+  /\*\*Resumen del plan:\*\* [0-9]{1,2}\/28 EF/u,
+  `**Resumen del plan:** ${count===0?1:count-1}/28 EF`,
+ );
+ assert.notEqual(tampered,doc,"Summary marker must exist");
+ assert.throws(()=>auditEfPlanMarkdown(tampered),/summary disagrees/);
 });
 
+
+test("F0 EF-001 closure is traceable to a real three-OS CI run and primary-tool consent tests",()=>{
+ const record=auditEfPlanMarkdown(readEfPlan()).entries
+  .find((item:{id:string})=>item.id==="EF-001") as
+  {id:string;status:string;source:string;test:string;ciRun:string;ciSha:string}|undefined;
+ assert.ok(record);
+ assert.equal(record.status,"VERIFICADO");
+ assert.equal(record.source,"src/security/primary-tool-policy.ts");
+ assert.equal(record.test,"tests/ef001-confirmation-regressions.test.ts");
+ assert.equal(record.ciRun,"41724028665");
+ assert.equal(record.ciSha,"e05ed7525b214591501ea085767e3d8c33c42ff1");
+ const summary=auditEfPlanMarkdown(readEfPlan());
+ assert.ok(summary.verified>=8,"EF-001 closure must not regress in future grouped batches");
+ assert.equal(summary.globalFull,false);
+});

@@ -138,7 +138,7 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 ### F0 — Puntos de partida y comparación
 
 - [x] EF-000 Auditar código de A/B y ASEN, congelar SHA y registrar diferencias. **Solo evidencia de código**, no equivalencia FULL. **VERIFICADO:** `registry/parity/skill-sources-v1.json` + `tests/agent-observable-parity.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
-- [x] EF-001 Resolver 2 fallos de confirmación de baseline en tres OS, con preservación de excepción y nueva prueba de caducidad. **VERIFICADO:** `tests/ef001-confirmation-regressions.test.ts`, tres subtests `ok` en Ubuntu/macOS/Windows dentro de CI `41724028665` / SHA `e05ed7525b214591501ea085767e3d8c33c42ff1`; jobs `test` 3/3 PASS sin fallos. Cierra únicamente EF-001, no acredita consentimiento Writer.
+- [x] EF-001 Resolver 2 fallos de confirmación de baseline en tres OS, con preservación de excepción y nueva prueba de caducidad. **VERIFICADO:** `src/security/primary-tool-policy.ts` + `tests/ef001-confirmation-regressions.test.ts` · CI `41724028665` / SHA `e05ed7525b214591501ea085767e3d8c33c42ff1`.
 - [ ] EF-002 Obtener observaciones reales C01–C20 del comportamiento A/B con entorno aislado y registrar resultados canónicos. **BLOQUEADO:** No se han ejecutado C01–C20 sobre ambas referencias A/B.
 - [x] EF-003 Crear harness de comparación de decisiones observables sin depender del texto libre del modelo. **VERIFICADO:** `scripts/agent-observable-parity.mjs` + `tests/agent-observable-parity.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
 - **Gate:** baseline CI limpia, referencias trazables, comparación válida; no modificar el registro global ECO.
@@ -195,7 +195,7 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 - [ ] EF-704 Auditoría final de diferencias. Solo cambiar estado a **FULL** cuando todos los gates anteriores y S01–S11 estén satisfechos. **BLOQUEADO:** S01–S11, C01–C20 y auditoría final aún sin cerrar.
 - **Gate:** C01–C20 PASS obligatorios y ninguna diferencia esencial pendiente.
 
-**Resumen del plan:** 7/28 EF marcados como verificados en su alcance concreto; 21 siguen abiertos. Los checks no certifican FULL ni equivalencia C01–C20.
+**Resumen del plan:** 8/28 EF marcados como verificados en su alcance concreto; 20 siguen abiertos. Los checks no certifican FULL ni equivalencia C01–C20.
 
 ## Estrategia de tandas grandes y CI
 
@@ -570,3 +570,7 @@ El primer gate sin proveedor del SHA `310b058` identificó `TS2345` en la etique
 - **Evidencia de aceptación nueva:** esta publicación exige primero gates focalizados y CI exact-SHA; `Real Ollama Cloud functional acceptance` debe figurar `no SKIPPED`, recibir como máximo cinco reservas y demostrar `PASS_BOUNDED_READ_ONLY` sin aceptar el esqueleto sin contenido. Registrar en otra reconciliación el resultado real; no presumirlo antes del run.
 
 **Progreso del checklist por evidencia:** 8/28 comprobaciones cerradas (antes 7/28); FULL sigue NO alcanzado.
+
+### Corrección de auditoría de EF-001 sin retroceder su prueba real (2026-11-04)
+
+El run `41781460824` del SHA `3e3b720` bloqueó la aceptación auténtica antes de gastar una llamada de Beam: `audit:ef-plan` requiere que cada tarea `[x]` tenga el par `src + tests`, run y SHA con sintaxis canónica, y que el resumen estructural coincida con el número de checks. El recibo EF-001 ya estaba acreditado por `CI 41724028665` (tres OS) pero se escribió con un formato narrativo distinto. Se restablece el formato exigido, `8/28`, y se refuerza la prueba de regresión del propio auditor. **No se cambia el significado del PASS EF-001 ni se concede una autorización Writer.** La aceptación real en el siguiente SHA sigue subordinada al preflight íntegro.
