@@ -998,3 +998,29 @@ EF-604 canónico sigue **PARCIAL** porque falta prueba de hijo LLM auténtico in
 El test nuevo de `62d094ef` provocó errores TypeScript TS2345 en `tests/agent-terminal-delivery.test.ts:124–127`: una señal `isIdle:()=>undefined` es deliberadamente inválida en ejecución, pero el contrato estático `AgentDeliveryContext.isIdle` exige `()=>boolean`. La compilación detenía por ello preflight `41821936272`, Release Gate `41821947295` y auditoría `41821947541`, todos del SHA exacto de esa prueba.
 
 **Corrección quirúrgica:** la prueba conserva íntegra la señal malformada en ejecución mediante un *cast* limitado al valor del callback, sin cambiar el contrato de producción, el runtime ni las expectativas de seguridad de las rutas `hold/headless`. La nueva publicación requiere Typecheck, preflight, CI y Release Gate exact-SHA; no se declara PASS antes de recibirlos. Las cuatro comprobaciones de reinicio Pi marcadas arriba siguen respaldadas específicamente por `41821784608` / `45586c0d`, no se extienden automáticamente a otro HEAD. No permisos Writer, FULL ni merge.
+
+### MEGATANDA CONSOLIDADA EF-601/603/604 + EF-002/701/704 (2026-11-04)
+
+**Una única publicación con múltiples bloques y un preflight consolidado.** Se trabaja sobre la rama `feat/t12-integrated-acceptance-merge`, sin mezclar resultados de SHAs anteriores, sin inferencia adicional y sin permitir ningún cambio de Writer por estos tests. Los tres bloques son independientes y se ejecutan dentro de un único workflow de aceptación; los tres OS y el Release Gate siguen como validaciones posteriores del mismo SHA.
+
+**Bloque A — EF-601/604: traspaso RPC headless → TUI con journal y acuse duradero.**
+- Nuevo `tests/agent-rpc-tui-handoff.test.ts` ejerce la extensión y el runtime ASEN reales con un runner **deliberadamente determinista y sin proveedor**, el almacén con recibos y el journal de producción. Un Explorer finalizado en RPC deja `pending`, el arranque de otra sesión no ve ni consume el aviso, el TUI de la sesión correcta lo reclama/enfila una vez, el coordinador debe consultar el ID exacto antes de `asen_agent_ack`, y el siguiente arranque no lo retransmite ni crea una ejecución duplicada.
+- Caso adversarial separado: el envío TUI puede lanzar después de haber reclamado, creando `attempted`. La nueva instancia conserva el resultado pero no lo reenvía ni acepta acuse. Un resultado de TUI encolado no implica lectura humana, decisión Writer, autorización ni revisión externa.
+
+**Bloque B — EF-603: identidad fuerte de deduplicación con varios roles y rutas.**
+- Nuevo `tests/agent-coalesce-role-scope.test.ts` valida el `AgentRuntime` y su `PersistentAgentStore` auténticos con solicitudes concurrentes. Tres exploraciones ad hoc idénticas reutilizan un solo ID; diferencias de prompt, modelo, thinking, sesión, proyecto o propietario, así como Reviewer/Verifier repetidos, conservan identidades distintas. Dos exploraciones planificadas mediante frontera `onPrepared` tampoco heredan la exploración ad hoc y el ciclo posterior a completar exige ID nuevo. Sin llamadas a un modelo.
+
+**Bloque C — EF-002/701: contraste acoplado de 20 casos y 60 recibos.**
+- Nuevo `scripts/agent-ab-combined-gate.mjs` reúne inventario C01–C20, comparador de seis campos y auditoría de los 60 archivos de evidencia A/B/ASEN. La matriz muestra por caso la causa de bloqueo y si existe fallo de integridad, distingue `MATCH` textual de `INDEPENDENT_EXECUTION_NOT_ATTESTED`, conserva las seis casuísticas de consentimiento explícito, nunca acepta por sí sola Writer ni `globalFull`, y permite posteriormente consumir registros reales sin convertirlos en pruebas externas independientes.
+- Nuevo `tests/agent-ab-combined-gate.test.ts` ejerce 60 huecos, tres recibos íntegros falsamente declarados `real`, digest corrupto, SHA de referencia alterado, divergencia A/B autodeclarada y CLI create-only. Todos los casos carecen aún de captura de referencias A/B auténticas y del consentimiento requerido.
+- `.github/workflows/asen-real-agent-acceptance.yml` añade las tres suites al preflight existente y produce el informe `asen-acceptance-evidence/ab-combined.json` para el SHA del commit con `casesBlocked:20`, `expectedSlots:60`, `globalFull:false`; la evidencia es provider-free y no supone ejecución C01–C20.
+
+**Checks de esta tanda — NO cerrar hasta recibir pruebas del commit:**
+- [ ] MEGA-EF604-TRANSFER-01 — RPC pending → TUI enqueued con inspección exacta y ack legítimo, sin replay tras el siguiente reinicio; provider-free preflight exact-SHA PASS.
+- [ ] MEGA-EF604-UNCERTAIN-02 — TUI transport `attempted` permanece incierto y sin acuse ni segundo envío; provider-free preflight exact-SHA PASS.
+- [ ] MEGA-EF603-SCOPES-01 — Coalescing 3→1 para un Explorer no planificado y aislamiento por ruta/rol/owner/sesión/proyecto; provider-free preflight exact-SHA PASS.
+- [ ] MEGA-EF701-RECEIPTS-01 — Auditoría conjunta 20/60, rechazos de falso `real`, SHA/digest y divergencia no atestada; provider-free preflight exact-SHA PASS.
+- [ ] MEGA-EF704-GATES-01 — Typecheck, Build, aceptación F6/F7 y evidencia de 60 slots del SHA del commit, sin FULL; provider-free preflight exact-SHA PASS.
+- [ ] MEGA-EF703-3OS-01 — CI Windows/Ubuntu/macOS y Release Gate PASS del SHA final de la megatanda.
+
+**Bloqueos que permanecen y NO se simulan:** los 40 casos ejecutados en referencias A/B, las 20 ejecuciones de ASEN, un modelo/hijo real interrumpido en Pi interactivo, la autorización Writer humana vinculada a la tarea y la verificación externa. Se mantienen las 28 tareas canónicas **8/28**, sin FULL y sin merge a `main`. La CLI de preparación y el informe de digests `INTEGRITY_ONLY` no pueden elevar C01–C20 a ejecutados.

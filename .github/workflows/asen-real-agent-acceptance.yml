@@ -129,6 +129,7 @@ jobs:
           node --import tsx --test \
             tests/agent-store.test.ts \
             tests/agent-coalesce-multiprocess.test.ts \
+            tests/agent-coalesce-role-scope.test.ts \
             tests/odd-task-tracking.test.ts \
             tests/authorized-write-recovery.test.ts \
             tests/eco06-interrupted-writer.test.ts \
@@ -137,6 +138,7 @@ jobs:
             tests/agent-notification-multiprocess.test.ts \
             tests/agent-notification-restart-process.test.ts \
             tests/agent-notice-ack-tool.test.ts \
+            tests/agent-rpc-tui-handoff.test.ts \
             tests/agent-notification-journal.test.ts \
             tests/agent-terminal-routing-journal.test.ts \
             tests/managed-acquisition-copy.test.ts \
@@ -151,7 +153,7 @@ jobs:
           node --import tsx --test tests/t12-inference-budget.test.ts
       - name: F2/F3 deterministic fixture and planning contracts
         shell: bash
-        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-review-grader.test.ts tests/t12-verifier-brief.test.ts tests/t12-parent-consumption-grade.test.ts tests/t12-real-child-parent-grade.test.ts tests/t12-real-busy-parent-grade.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-disposable-correction.test.ts tests/t12-revalidation-contract.test.ts tests/t12-live-evidence-gate.test.ts tests/t12-explorer-schema.test.ts tests/t12-acceptance-ledger.test.ts
+        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-review-grader.test.ts tests/t12-verifier-brief.test.ts tests/t12-parent-consumption-grade.test.ts tests/t12-real-child-parent-grade.test.ts tests/t12-real-busy-parent-grade.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-disposable-correction.test.ts tests/t12-revalidation-contract.test.ts tests/agent-ab-combined-gate.test.ts tests/t12-live-evidence-gate.test.ts tests/t12-explorer-schema.test.ts tests/t12-acceptance-ledger.test.ts
       - name: Ollama scoped child credential regression
         run: node --import tsx --test tests/t12-ollama-child-credential.test.ts
       - name: Pi retry settings preserve installed extensions
@@ -163,6 +165,17 @@ jobs:
           ASEN_OFFLINE_TESTS_PASSED: '1'
           ASEN_EXPECTED_SHA: ${{ github.sha }}
         run: node scripts/t12-acceptance-ledger.mjs
+      - name: EF-701 cross-audit all C01-C20 A/B/ASEN evidence slots (not live attestation)
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+          ASEN_AB_COMBINED_OUTPUT: ${{ github.workspace }}/asen-acceptance-evidence/ab-combined.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          node --check scripts/agent-ab-combined-gate.mjs
+          node scripts/agent-ab-combined-gate.mjs
+          node -e 'const x=require("./asen-acceptance-evidence/ab-combined.json"); if(x.totalCases!==20||x.expectedSlots!==60||x.casesBlocked!==20||x.sourceCasesExecutedAndAttested!==0||x.integrityOnly!==0||x.globalFull!==false||x.writerAuthorized!==false)process.exit(1);'
       - name: Validate repository diff hygiene
         run: git diff --check
       - name: Preserve provider-free validation evidence
