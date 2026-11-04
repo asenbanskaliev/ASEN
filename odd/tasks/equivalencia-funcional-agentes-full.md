@@ -1252,3 +1252,14 @@ El job provider-free `41867876731` del SHA `242ba26b` terminó FAIL: 232/233 pru
 
 
 **Compatibilidad del planificador:** el rechazo temprano de Todo `running` produce un error tipado `TodoAlreadyRunningError`; `TrustedTaskAgentBinder.launchExact` conserva el contrato público `TodoLaunchConflictError`, de forma que el planificador devuelve el estado `blocked` y pide refrescar el plan, en lugar de propagar una excepción genérica. La regresión existente de snapshots Writer sigue siendo aplicable; no se concede autoridad nueva.
+
+### MEGATANDA EF-603/604/701 — invariantes de vinculación nativa Pi y equivalencia de planes (2026-11-04)
+
+**Hallazgos en la ruta de producción:** el binder vinculaba agentes de cualquier estado (incluidos `completed`, `running`, `failed` e `interrupted`) al llamar a `launch`, y no exigía que el rol de agente coincidiera con el rol del Todo planificado. Para un Todo todavía `planned` con vínculo anterior, también podía añadir otro agente si el primero era terminal: un crash entre vínculo y transacción Todo no es una nueva autorización. Por separado, `equivalentPlannedExplorer` usaba `JSON.stringify` sobre `dependsOn` y `skillSelection`: una permutación de dependencias o del orden de claves JSON eludía la deduplicación entre planes idénticos.
+
+**Correcciones agrupadas:** `TrustedTaskAgentBinder.#bindOwned` requiere ahora agente **nuevo en estado `queued`**, coincidencia estricta del rol si hay plan, y cero vínculos previos al lanzar un Todo `planned`. La ruta de recuperación de un Todo `running` sigue requiriendo que todos los agentes anteriores estén realmente `interrupted`; no se inventan permisos ni consentimiento Writer. `equivalentPlannedExplorer` normaliza solo el orden del conjunto de dependencias y las claves del objeto `skillSelection`, sin normalizar texto, órdenes de skills ni diferencias de modelo/candidato.
+
+**Pruebas negativas y positivas:** agente terminal/running/interrupted no se puede vincular, cambio de rol no se admite, Explorer `queued` correcto sí; Todo `planned` con vínculo previo completed queda bloqueado; agente anterior sin registro no habilita recuperación; equivalencia de planes con dependencias y claves JSON permutadas impide segundo lanzamiento, pero cambiar de modelo mantiene un trabajo independiente. Cobertura CI del provider-free ya incluye `tests/trusted-task-agent-binder.test.ts` y `tests/planned-explorer-multiprocess.test.ts` en el SHA exacto.
+
+**Recepción pendiente:** CI + Release Gate de los tres OS del nuevo SHA y recibos Pi nativos para las rutas que se declaren completas; no debe heredarse el `SUCCESS` de `41871323714` (SHA anterior). EF-603/604 siguen parciales; EF-701 no ha observado C01–C20. La revisión independiente, Writer humano y evidencia A/B siguen bloqueadas. Casillas canónicas: 8/28; FULL=false, sin merge.
+

@@ -30,10 +30,13 @@ const terminal=(item:TodoItem)=>{const state=replayTask(item.events)?.state;retu
 function equivalentPlannedExplorer(left:TodoItem,right:TodoItem):boolean{
  if(left.taskId===right.taskId||left.plan?.role!=="explorer"||right.plan?.role!=="explorer"||
     typeof left.description!=="string"||typeof right.description!=="string")return false;
+ // Dependency order and JSON object insertion order do not change the
+ // planned read-only work. Keep skill path order: Pi loads skills in order.
  const fingerprint=(item:TodoItem)=>JSON.stringify([
-  item.description,item.dependsOn??[],item.plan?.role,item.plan?.candidateRevision??null,
+  item.description,[...(item.dependsOn??[])].sort(),item.plan?.role,item.plan?.candidateRevision??null,
   item.plan?.model??null,item.plan?.thinking??null,item.plan?.skillPaths??[],
-  item.plan?.skillSelection??null,
+  item.plan?.skillSelection?Object.fromEntries(
+   Object.entries(item.plan.skillSelection).sort(([a],[b])=>a<b?-1:a>b?1:0)):null,
  ]);
  return fingerprint(left)===fingerprint(right);
 }

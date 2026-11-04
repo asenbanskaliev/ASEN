@@ -23,6 +23,16 @@ export class TrustedTaskAgentBinder{
   // Reusing its agent ID (even after interruption) must never invoke Pi twice.
   if(previousLinks.some(link=>link.agentId===agentId))
    throw new Error("ASEN Todo agent ID already linked; duplicate launch rejected");
+  // An already completed, cancelled, failed, running or interrupted agent must
+  // never be dispatched again under another Todo or a newly invented link.
+  if(agent.record.state!=="queued")
+   throw new Error("ASEN dispatch requires a fresh queued agent identity");
+  if(task.plan&&agent.record.role!==task.plan.role)
+   throw new Error("ASEN agent role does not match the confirmed Todo role");
+  // A previously linked but still-planned Todo is an uncertain pre-dispatch
+  // window. Only explicit reconciliation may decide the next transition.
+  if(task.current.state==="planned"&&previousLinks.length)
+   throw new Error("Previously linked planned Todo requires explicit reconciliation before another launch");
   if(task.current.state==="running"&&!previousLinks.length)
    throw new Error("Running Todo requires an interrupted linked agent for explicit recovery");
   for(const link of previousLinks){

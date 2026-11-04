@@ -78,3 +78,32 @@ test("EF-603 Todo running state cannot be reused as a direct second dispatch per
   /already running; explicit interrupted-agent recovery required/u);
  assert.equal(dispatches,1);assert.equal((await store.list(context))[0]?.current.state,"running");
 });
+
+test("EF-603 planned Explorer fingerprint ignores dependency ordering and skill-selection JSON order, not different models",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-ef603-selection-order-"));
+ t.after(()=>rm(root,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const context={sessionId:"equivalent-plans",projectId:await realpath(process.cwd())};
+ const store=await SessionTodoStore.open(join(root,"todos.json"));
+ const p1=await store.add("Prerequisite A",context),p2=await store.add("Prerequisite B",context);
+ for(const task of [p1,p2]){
+  await store.update(task.taskId,context,1,"running");
+  await store.update(task.taskId,context,2,"done");
+ }
+ const selectionA={phase:"explore" as const,risk:"low" as const,filesTouched:2};
+ const selectionB={filesTouched:2,risk:"low" as const,phase:"explore" as const};
+ const common={role:"explorer" as const,skillPaths:selectSkills(selectionA).map(s=>s.path)};
+ const first=await store.add("Explorer A",context,undefined,undefined,"asen-plan:order-a:explorer",
+  [p1.taskId,p2.taskId],"Inspect the same read-only artifact",{...common,skillSelection:selectionA});
+ const second=await store.add("Explorer B",context,undefined,undefined,"asen-plan:order-b:explorer",
+  [p2.taskId,p1.taskId],"Inspect the same read-only artifact",{...common,skillSelection:selectionB});
+ const distinct=await store.add("Explorer other model",context,undefined,undefined,"asen-plan:order-model:explorer",
+  [p1.taskId,p2.taskId],"Inspect the same read-only artifact",{...common,skillSelection:selectionA,model:"beam:cloud"});
+ let launches=0;
+ await store.withAgentLaunch(first.taskId,context,async()=>{},()=>{launches++;});
+ await assert.rejects(()=>store.withAgentLaunch(second.taskId,context,async()=>{},()=>{launches++;}),
+  /Equivalent planned Explorer already running/u);
+ await store.withAgentLaunch(distinct.taskId,context,async()=>{},()=>{launches++;});
+ assert.equal(launches,2,"Semantically equivalent metadata is one launch, different model is separate");
+ assert.equal((await store.list(context)).find(x=>x.taskId===second.taskId)?.current.state,"planned");
+});
+
