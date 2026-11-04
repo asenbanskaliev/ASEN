@@ -98,3 +98,29 @@ test("EF-702 malicious Error accessors, nested causes and proxies cannot read se
  assert.equal(classifyT12ProviderFailure(new Error("429 quota exceeded")).code,"QUOTA");
  assert.equal(classifyT12ProviderFailure(new Error("402 Payment Required")).code,"BILLING");
 });
+
+test("EF-702 billing must never be mistaken for free quota exhaustion or silently retried",()=>{
+ const cases: Array<readonly [string,string]>=[
+  ["HTTP 429 rate limit exceeded","QUOTA"],
+  ["HTTP 402 Payment Required after 429 retry","BILLING"],
+  ["insufficient credits; quota exceeded","BILLING"],
+  ["HTTP 403 quota_exceeded","QUOTA"],
+  ["HTTP 403 forbidden","AUTH"],
+  ["ECONNRESET network failure","UNAVAILABLE"],
+  ["ETIMEDOUT after connection refused","TIMEOUT"],
+ ];
+ for(const [raw,expected] of cases){
+  const result=classifyT12ProviderFailure(new Error(raw+" EF702_SECRET_DO_NOT_PERSIST"));
+  assert.equal(result.code,expected,raw);
+  assert.equal(JSON.stringify(result).includes("EF702_SECRET_DO_NOT_PERSIST"),false);
+  assert.equal(JSON.stringify(result).includes(raw),false);
+ }
+});
+test("EF-702 never promotes an untrusted error object to a provider success receipt",()=>{
+ for(const value of [{code:"200",status:"success"},Object.create(null),new Proxy({},{
+  get(){throw Error("EF702_SECRET");},
+ })]){
+  const result=classifyT12ProviderFailure(value);
+  assert.deepEqual(result,{code:"UNKNOWN",diagnostic:"Provider or agent stage failed without a classified cause"});
+ }
+});
