@@ -873,3 +873,20 @@ No se modifica el estado EF-701 [ ], EF-704 [ ], MEGA-AB-03 [ ] ni se autoriza m
 **Implementación de regresión, pendiente de CI exact-SHA:** se añade un test de seguridad que intenta sustituir un recibo por un enlace simbólico al mismo contenido y, después, sustituir su directorio padre por un enlace simbólico. Ambos deben producir `RECEIPT_FILE_UNAVAILABLE_OR_UNSAFE` y mantener `globalFull:false`. Se verifica que la igualdad de bytes o digest no autoriza una ruta alternativa. No se altera el runtime ni se relajan gates.
 
 **Evidencia previa observada en HEAD e866c2d:** Release Gate, arquitectura, F5, Pi runtime, CodeGraph y R4 PASS; CI Ubuntu PASS, Windows/macOS pendientes durante la consulta. Los tests añadidos requieren nuevo CI exact-SHA antes de marcar EF701-RCPT-01/02. EF-701 y EF-704 continúan abiertos: no hay ejecución independiente de C01–C20 ni consentimiento Writer genuino. No se consume cuota Ollama porque esta regresión es local y no requiere inferencia; el consumo futuro sigue condicionado a carriles reales y límites de cuota.
+
+### EF-601/604 — tanda Pi ocupado + recuperación duradera (2026-11-04)
+
+**Estado: IMPLEMENTED_PENDING_LIVE_CI.** Se incorpora una vía real opt-in para probar la ruta `run` del coordinador Pi, que hasta ahora tenía cobertura simulada y evidencia real solo de la ruta `idle`. Se usa un Explorer hijo Pi RPC de solo lectura y un padre Pi TUI con Ollama Beam. No se autoriza Writer.
+
+- `scripts/t12-parent-real-child-probe.ts` incorpora una herramienta de aceptación aislada `asen_busy_parent_probe` que arranca **un único** Explorer y mantiene un tool call real del padre activo hasta recibir la notificación de ASEN. Registra los eventos del host `parent_turn_start`, `busy_tool_started`, `result_enqueued`, `busy_tool_finished`, consulta real de estado y acuse. No se espera por sondeo del estado del agente.
+- `scripts/t12-real-child-parent-consumption.mjs` admite `ASEN_PARENT_WITNESS_MODE=busy`; el grader exige señal nativa `isIdle=false`, actividad efectiva del turno, `triggerTurn:true` y `deliverAs:steer`, **cero** `idle_wake`, un solo evento y acuse duradero en el mismo proyecto/sesión. El padre debe usar las herramientas de estado y acuse después de salir del tool call. Cualquier timeout, cambio de modelo o estado, falta de uso de herramientas o evento duplicado es FAIL.
+- `tests/t12-real-busy-parent-grade.test.ts` aporta cobertura negativa de rutas sustituidas, actividad falsificada, duplicados, estados no confirmados y modelos ajenos. El workflow incluye pruebas sin proveedor y una ejecución real opt-in bajo `ci: one-time Pi busy-parent Beam proof`, con entorno `ollama-cloud-beam`, `run_attempt == 1`, SHA exacto, límite de tiempo y artefacto `real-pi-parent-child-busy.json`.
+- La recuperación tras interrupción mantiene el contrato existente `pending/attempted/enqueued/acknowledged` y sus tests multiproceso. **No se declara recuperado un proceso Pi auténtico** sin un recibo separado con corte, reinicio y revisión humana de efectos inciertos.
+
+**Checks de la tanda:**
+- [ ] EF601-BUSY-01 — Typecheck, pruebas negativas y preflight de aceptación exact-SHA PASS.
+- [ ] EF601-BUSY-02 — Pi TUI ocupado + Pi RPC Explorer real con Beam, `steer` y status/ack del mismo evento en artefacto verificado.
+- [ ] EF601-BUSY-03 — CI tres sistemas y Release Gate exact-SHA PASS.
+- [ ] EF604-RESTART-01 — Recuperación Pi auténtica tras reinicio con entrega `attempted` sin reejecución ni permiso supuesto: **BLOQUEADO** sin experimento de reinicio provisionado.
+
+EF-601/604 y C13–C15 continúan **PARCIAL**; A/B C01–C20 siguen sin ejecuciones completas, Writer humano bloqueado y FULL NO ALCANZADO. No merge a `main`.

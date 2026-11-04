@@ -6,7 +6,8 @@ import {gradeParentConsumption} from "./t12-parent-consumption-grade.mjs";
 const digest=/^[a-f0-9]{64}$/u;
 export function gradeRealChildParentConsumption(input){
  const base=gradeParentConsumption(input);
- const {events,notice,model}=input;
+ const {events,model}=input;
+ const busy=input.route==="busy";
  const position=kind=>events.flatMap((event,index)=>event?.kind===kind?[index]:[]);
  for(const kind of ["child_pi_requested","child_pi_started","child_pi_selected","child_pi_finished"])
   assert.equal(position(kind).length,1,"Actual Pi RPC child evidence requires exactly one "+kind);
@@ -15,6 +16,9 @@ export function gradeRealChildParentConsumption(input){
  const indexes=stages.map(kind=>position(kind)[0]);
  assert.ok(indexes.every((x,index)=>index===0||x>indexes[index-1]),
   "Child Pi RPC inference must complete before ASEN publishes a terminal result");
+ if(busy)assert.ok(position("busy_tool_started")[0]<indexes[0]&&
+  indexes[3]<position("busy_tool_finished")[0],
+  "Real Pi child must finish entirely inside one active parent tool call");
  const [requested,started,selected,finished]=indexes.slice(0,4).map(x=>events[x]);
  assert.equal(requested.role,"explorer","Child Pi must be a read-only Explorer");
  assert.equal(requested.agentId,base.agentId,"Requested Pi child identity must match the durable agent");
@@ -34,8 +38,9 @@ export function gradeRealChildParentConsumption(input){
   "Parent must not exceed the configured turn budget");
  return Object.freeze({...base,
   schema:"asen-real-pi-parent-child-consumption/v1",
-  status:"PASS_REAL_PI_PARENT_AND_CHILD_BOUNDED",
-  source:"Native Pi RPC child and native Pi TUI parent, both using Ollama Beam",
+  status:busy?"PASS_REAL_PI_BUSY_PARENT_AND_CHILD_BOUNDED":"PASS_REAL_PI_PARENT_AND_CHILD_BOUNDED",
+  source:busy?"Native Pi RPC child completed during a native Pi TUI active tool call; both use Ollama Beam":
+   "Native Pi RPC child and native Pi TUI parent, both using Ollama Beam",
   childUsesModel:true,childRole:"explorer",
   childProvider:"ollama-cloud",childModel:selected.model,
   childPiProcessObserved:true,childAssistantResponseObserved:true,

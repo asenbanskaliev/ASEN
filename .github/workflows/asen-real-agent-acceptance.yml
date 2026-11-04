@@ -75,6 +75,7 @@ jobs:
           node --check scripts/t12-real-child-parent-consumption.mjs
           node --check scripts/t12-real-parent-consumption.mjs
           node --check scripts/t12-real-child-parent-grade.mjs
+          node --check scripts/t12-parent-consumption-grade.mjs
           node --check scripts/agent-ab-case-readiness.mjs
           node --check scripts/agent-ab-host-smoke.mjs
       - name: Typecheck
@@ -145,7 +146,7 @@ jobs:
           node --import tsx --test tests/t12-inference-budget.test.ts
       - name: F2/F3 deterministic fixture and planning contracts
         shell: bash
-        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-review-grader.test.ts tests/t12-verifier-brief.test.ts tests/t12-parent-consumption-grade.test.ts tests/t12-real-child-parent-grade.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-disposable-correction.test.ts tests/t12-live-evidence-gate.test.ts tests/t12-explorer-schema.test.ts tests/t12-acceptance-ledger.test.ts
+        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-review-grader.test.ts tests/t12-verifier-brief.test.ts tests/t12-parent-consumption-grade.test.ts tests/t12-real-child-parent-grade.test.ts tests/t12-real-busy-parent-grade.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-disposable-correction.test.ts tests/t12-live-evidence-gate.test.ts tests/t12-explorer-schema.test.ts tests/t12-acceptance-ledger.test.ts
       - name: Ollama scoped child credential regression
         run: node --import tsx --test tests/t12-ollama-child-credential.test.ts
       - name: Pi retry settings preserve installed extensions
@@ -261,7 +262,8 @@ jobs:
       github.run_attempt == 1 &&
       github.event_name == 'push' &&
       (github.event.head_commit.message == 'ci: one-time Pi parent Beam proof' ||
-      github.event.head_commit.message == 'ci: one-time Pi parent-child Beam proof')
+      github.event.head_commit.message == 'ci: one-time Pi parent-child Beam proof' ||
+      github.event.head_commit.message == 'ci: one-time Pi busy-parent Beam proof')
     name: Real Pi parent notices with Beam (fixture or real RPC child)
     runs-on: ubuntu-24.04
     timeout-minutes: 12
@@ -315,7 +317,9 @@ jobs:
           export ASEN_SELECTED_MODEL
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           mkdir -p asen-acceptance-evidence
-          if test "$ASEN_ACCEPTANCE_COMMIT_MESSAGE" = "ci: one-time Pi parent-child Beam proof"; then
+          if test "$ASEN_ACCEPTANCE_COMMIT_MESSAGE" = "ci: one-time Pi busy-parent Beam proof"; then
+            ASEN_PARENT_WITNESS_MODE=busy timeout 250s node scripts/t12-real-child-parent-consumption.mjs
+          elif test "$ASEN_ACCEPTANCE_COMMIT_MESSAGE" = "ci: one-time Pi parent-child Beam proof"; then
             timeout 250s node scripts/t12-real-child-parent-consumption.mjs
           elif test "$ASEN_ACCEPTANCE_COMMIT_MESSAGE" = "ci: one-time Pi parent Beam proof"; then
             timeout 160s node scripts/t12-real-parent-consumption.mjs
@@ -330,6 +334,7 @@ jobs:
           path: |
             asen-acceptance-evidence/real-pi-parent-wake.json
             asen-acceptance-evidence/real-pi-parent-child-wake.json
+            asen-acceptance-evidence/real-pi-parent-child-busy.json
           if-no-files-found: warn
           retention-days: 14
 

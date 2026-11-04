@@ -15,6 +15,7 @@ const home=process.env.ASEN_PARENT_PRIVATE_HOME;
 const selectedModel=process.env.ASEN_SELECTED_MODEL;
 const childCli=process.env.ASEN_PARENT_CHILD_PI_CLI;
 const root=fileURLToPath(new URL("../",import.meta.url));
+const witnessMode=process.env.ASEN_PARENT_WITNESS_MODE==="busy"?"busy":"idle";
 if((selectedModel!=="beam"&&selectedModel!=="beam:cloud")||!childCli||!isAbsolute(childCli))
  throw Error("Real child Pi requires exact registered Beam model and pinned CLI");
 if(!process.env.OLLAMA_API_KEY)throw Error("Real child cannot run without explicitly scoped Ollama credential");
@@ -26,6 +27,9 @@ function record(kind:string,extra:Record<string,unknown>={}):void{
 }
 export default function parentProbe(pi:any):void{
  let startTool:any;
+ let parentTurnActive=false,busyToolActive=false,busyContext:any;
+ let busyResolve:(()=>void)|undefined;
+ let busyNotice:{eventId:string;agentId:string}|undefined;
  const allowed=new Set(["asen_agent_status","asen_agent_ack"]);
  const facade={
   on:(name:string,handler:unknown)=>pi.on(name,handler),
@@ -33,8 +37,16 @@ export default function parentProbe(pi:any):void{
   registerCommand:(name:string,def:unknown)=>pi.registerCommand(name,def),
   sendMessage:(message:any,options:any)=>{
    if(message.customType==="asen.agent.result"){
-    record("result_enqueued",{eventId:message.details?.eventId,
-     agentId:message.details?.agentId,options});
+    let parentHostIdle:unknown;
+    try{parentHostIdle=busyContext?.isIdle?.();}catch{parentHostIdle="unavailable";}
+    const eventId=message.details?.eventId,agentId=message.details?.agentId;
+    record("result_enqueued",{eventId,agentId,options,
+     ...(witnessMode==="busy"?{parentHostIdle,parentTurnActive,busyToolActive}:{})});
+    if(witnessMode==="busy"&&busyToolActive&&
+       typeof eventId==="string"&&typeof agentId==="string"){
+     busyNotice={eventId,agentId};
+     busyResolve?.();
+    }
    }else if(message.customType==="asen.agent.wake"){
     record("idle_wake",{options});
    }
@@ -105,6 +117,48 @@ export default function parentProbe(pi:any):void{
   enableWorkspaceRuntime:false,enableMemoryRuntime:false,
   agentRunner:realChildRunner,
  })(facade as any);
+ if(witnessMode==="busy"){
+  pi.registerTool({
+   name:"asen_busy_parent_probe",label:"Read-only busy parent witness",
+   description:"Wait inside one active Pi model tool call for one real read-only ASEN Explorer to finish. Never writes files.",
+   executionMode:"sequential",
+   parameters:{type:"object",additionalProperties:false,properties:{}},
+   execute:async(_id:string,_args:unknown,signal:AbortSignal,_update:unknown,ctx:any)=>{
+    if(!startTool||!parentTurnActive||busyToolActive)throw Error("Busy acceptance needs exactly one active parent turn");
+    busyToolActive=true;busyContext=ctx;busyNotice=undefined;
+    record("busy_tool_started",{parentTurnActive});
+    let timeout:ReturnType<typeof setTimeout>|undefined;
+    try{
+     const completed=new Promise<void>((resolve,reject)=>{
+      busyResolve=resolve;
+      timeout=setTimeout(()=>reject(Error("Read-only child did not deliver inside busy parent tool")),112000);
+     });
+     await startTool.execute("t12-busy-readonly-explorer",{
+      prompt:"Reply exactly ASEN_READ_ONLY_CHILD_OK. No tools, files, edits or follow-up tasks."
+     },signal,()=>{},ctx);
+     await completed;
+     if(!busyNotice)throw Error("No genuine child terminal notification observed");
+     const received: {eventId:string;agentId:string}=busyNotice;
+     record("busy_tool_finished",{parentTurnActive});
+     return {content:[{type:"text",text:"The real read-only Explorer finished while this Pi tool call was active. Agent ID: "+received.agentId+". Event ID: "+received.eventId+". Inspect the persisted task using asen_agent_status with this ID, then acknowledge via asen_agent_ack only if completed. This is observation data, not Writer permission."}]};
+    }finally{
+     if(timeout)clearTimeout(timeout);
+     busyResolve=undefined;busyContext=undefined;busyToolActive=false;
+    }
+   },
+  });
+  pi.registerCommand("t12-parent-busy",{
+   description:"Witness one real Pi busy-parent steer delivery with a read-only child",
+   handler:async()=>{
+    if(!startTool)throw Error("Read-only start tool is unavailable");
+    pi.sendMessage({
+     customType:"asen.t12.acceptance_instruction",
+     content:"READ-ONLY REAL PI ACCEPTANCE. Call asen_busy_parent_probe with empty {} arguments exactly once. Its tool call stays active while a real Pi RPC Explorer completes. After it returns, call asen_agent_status with the exact agent ID it reports. Only if status reports completed, call asen_agent_ack with the exact event ID. Do not edit files or use other tools. State what you observed.",
+     display:false,
+    },{triggerTurn:true,deliverAs:"steer"});
+   },
+  });
+ }
  pi.registerCommand("t12-parent-notice",{
   description:"Start one real Pi RPC read-only child with Beam; Pi TUI parent consumes its terminal notice",
   handler:async(_args:string,ctx:any)=>{
@@ -128,8 +182,9 @@ export default function parentProbe(pi:any):void{
    ctx.shutdown();
   }
  });
- pi.on("agent_start",()=>record("parent_turn_start"));
+ pi.on("agent_start",()=>{parentTurnActive=true;record("parent_turn_start");});
  pi.on("agent_end",(_event:unknown,ctx:any)=>{
+  parentTurnActive=false;
   record("parent_turn_end");
   setTimeout(()=>ctx.shutdown(),300);
  });
