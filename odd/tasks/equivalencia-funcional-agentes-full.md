@@ -982,3 +982,7 @@ El segundo fallo surgió en `tests/pi-agent-runtime.test.ts`: varios mocks tení
 - [ ] EF604-CI-GATE-03 — CI tres OS y Release Gate del SHA publicado, sin heredar resultados de `b3eb026`.
 
 **Límite:** la recuperación auténtica del host Pi ahora es observable en RPC sin proveedor; la recuperación de un hijo Pi modelo interrumpido durante una ejecución TUI y la decisión humana Writer continúan pendientes. 8/28 EF canónicos, FULL NO ALCANZADO.
+
+### EF-604 — regresión de señal de actividad Pi desconocida (2026-11-04)
+
+La regresión `tests/agent-terminal-delivery.test.ts` comprueba que señales `isIdle` ausentes, indefinidas o que lanzan excepción, y hosts RPC/JSON/sin UI, nunca producen `run`, `idle`, steering ni wake. Es una prueba determinista sin proveedor: no demuestra Pi TUI auténtico, hijo LLM ni consentimiento Writer. Se ejecutará con CI del nuevo SHA; no se marca ningún EF adicional ni se reutilizan recibos anteriores. FULL sigue bloqueado.

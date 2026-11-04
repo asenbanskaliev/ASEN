@@ -112,3 +112,27 @@ test("EF-601 terminal labels sanitize task-derived bidi and multiline identity t
  assert.ok(lengthy.length<1800);
  assert.doesNotMatch(lengthy,new RegExp("a".repeat(200)));
 });
+
+test("EF-604 unknown native Pi activity cannot trigger steering or wake",()=>{
+ const scope={sessionId:"native-session",projectId:"/isolated/project"};
+ const base={mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>scope.sessionId}};
+ for(const context of [
+  {...base},
+  {...base,isIdle:()=>undefined},
+  {...base,isIdle:()=>{throw Error("Pi idle probe unavailable");}},
+ ]){
+  assert.equal(agentParentRoute(context,scope,true)==="run",false);
+  assert.equal(agentParentRoute(context,scope,true)==="idle",false);
+  assert.deepEqual(agentTerminalDeliveryOptions(context,scope,true),{triggerTurn:false});
+  assert.equal(agentTerminalWakeOptions(context,scope,true),undefined);
+ }
+ for(const context of [
+  {...base,mode:"rpc",isIdle:()=>false},
+  {...base,mode:"json",isIdle:()=>true},
+  {...base,hasUI:false,isIdle:()=>false},
+ ]){
+  assert.equal(agentParentRoute(context,scope,true),"headless");
+  assert.deepEqual(agentTerminalDeliveryOptions(context,scope,true),{triggerTurn:false});
+  assert.equal(agentTerminalWakeOptions(context,scope,true),undefined);
+ }
+});
