@@ -26,16 +26,26 @@ export class TaskAgentTodoReconciler{
     catch(error){if(!(error instanceof Error)||!(/revision conflict|Invalid task transition/u.test(error.message)))throw error;}
     continue;
    }
-   if(related.some(agent=>!terminal.has(agent!.state)))continue;
+   // A live latest attempt may legitimately continue, but an earlier live
+   // attempt means two launches overlap. Never leave this contradictory
+   // history running indefinitely, even if the replacement is still queued.
+   const predecessors=related.slice(0,-1);
+   const latest=related[related.length-1]!;
+   const validRecoveryChain=predecessors.every(previous=>
+    previous?.state==="interrupted"&&(!task.plan||previous.role===task.plan.role));
+   if(!validRecoveryChain){
+    try{await this.todos.update(task.taskId,identity,task.current.revision,"blocked",
+     "Linked agent recovery history is inconsistent; previous attempts must be interrupted; explicit review required");
+     blocked.push(task.taskId);
+    }catch(error){if(!(error instanceof Error)||!(/revision conflict|Invalid task transition/u.test(error.message)))throw error;}
+    continue;
+   }
+   if(!terminal.has(latest.state))continue;
    // The immutable link journal is ordered by launch attempts. An interrupted
    // predecessor is not a second active agent and must not prevent a valid
    // replacement from completing. Conversely, an earlier completed/failed
    // agent can never be rewritten as an interrupted predecessor to certify
    // the last attempt. This evaluates the entire chain before any Todo move.
-   const latest=related[related.length-1]!;
-   const predecessors=related.slice(0,-1);
-   const validRecoveryChain=predecessors.every(previous=>
-    previous?.state==="interrupted"&&(!task.plan||previous.role===task.plan.role));
    const succeeded=validRecoveryChain&&!!task.plan&&latest.state==="completed"&&
     latest.role===task.plan.role&&latest.sessionId===identity.sessionId&&
     sameWorkspaceIdentityPath(latest.projectId,identity.projectId);

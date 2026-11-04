@@ -167,3 +167,28 @@ test("EF-603/604 binder and reconciler agree on a durable Explorer recovery afte
  assert.deepEqual((await journal.list(identity)).filter(row=>row.taskId===task.taskId)
   .map(row=>row.agentId),["bound-one","bound-two"]);
 });
+
+test("EF-604 a live predecessor cannot coexist with a queued replacement indefinitely",async t=>{
+ const f=await fixture(t);
+ await f.append("original","running");
+ await f.append("replacement","queued");
+ assert.deepEqual(await f.reconcile(),[f.task.taskId]);
+ assert.equal((await f.current())?.current.state,"blocked");
+ assert.match((await f.current())?.current.reason??"",/recovery history is inconsistent/u);
+ assert.deepEqual(await f.reconcile(),[],"Blocked task is never relaunched");
+});
+test("EF-604 a live predecessor and completed replacement are not accepted as success",async t=>{
+ const f=await fixture(t);
+ await f.append("original","running");
+ await f.append("replacement","completed","Forged terminal success");
+ assert.deepEqual(await f.reconcile(),[f.task.taskId]);
+ assert.equal((await f.current())?.current.state,"blocked");
+});
+test("EF-604 an interrupted predecessor with queued replacement remains running",async t=>{
+ const f=await fixture(t);
+ await f.append("original","interrupted");
+ await f.append("replacement","queued");
+ assert.deepEqual(await f.reconcile(),[]);
+ assert.equal((await f.current())?.current.state,"running");
+});
+

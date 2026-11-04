@@ -1296,3 +1296,11 @@ El job provider-free `41867876731` del SHA `242ba26b` terminó FAIL: 232/233 pru
 
 **Estado:** pendiente PASS exact-SHA de preflight, suite global multiplataforma y Release Gate del nuevo commit. EF-601/603/604/703 continúan parciales. 8/28 checks cerrados, C01–C20 A/B sin capturas auténticas, auditoría independiente y autorización Writer humana todavía pendientes. FULL=false; sin merge.
 
+
+### MACROTANDA EF-603/604/703 — no permitir predecesores activos tras reemplazo (2026-11-04)
+
+**Defecto real:** `TaskAgentTodoReconciler` comprobaba si *cualquier* agente vinculado estaba activo antes de validar la cadena de recuperaciones. Con un predecesor `running` y un reemplazo `queued` o `completed`, la función salía silenciosamente y mantenía el Todo `running` para siempre, ocultando un solapamiento imposible de autorizar. La comprobación del historial debía preceder al atajo para el último agente activo.
+
+**Corrección:** se comprueba primero que todos los intentos previos estén `interrupted` y sean del rol planificado; si no, el Todo pasa a `blocked` con motivo explícito, respetando revision/CAS. Solo el último intento puede permanecer `queued` o `running` sin bloquearse. Se añaden tres regresiones (predecesor running + reemplazo queued, predecesor running + reemplazo completed, predecesor interrupted + reemplazo queued), incluidas en la suite de aceptación provider-free existente. No hay inferencia, consentimiento Writer ni lanzamiento automático.
+
+**Recepción:** pendiente PASS exact-SHA del nuevo commit y evidencias nativas Pi. Se conservan 8/28 checks; EF-603/604/703 PARTIAL, FULL=false, sin merge.
