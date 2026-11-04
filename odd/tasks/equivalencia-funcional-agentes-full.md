@@ -645,3 +645,9 @@ El run `41781460824` del SHA `3e3b720` bloqueó la aceptación auténtica antes 
 - [ ] MEGA-AB-03 — 40 observaciones A/B y 20 ASEN con per-case A/B/ASEN y fuente verificada.
  
 **Auditoría de estado:** el checklist EF conserva **8/28 [x]**. Ninguna de las tareas EF-002, EF-304, EF-601, EF-701 cambia a [x] basándose en código o un CI todavía no observado. EF-503/702 siguen PARCIAL bajo sus requisitos propios; no merge a `main`.
+
+### F7/F6 — primera comprobación de la macrotanda y ajuste de tipos (2026-11-04)
+
+- El run `41786966087`, SHA `0328b190eecdfe7a2d96201fa4c5c84518fe2206`, detuvo `offline-static-validation` en TypeScript `TS2322` en `tests/t12-parent-consumption-grade.test.ts`: la prueba negativa intercambiaba dos posiciones de array que el compilador, con `noUncheckedIndexedAccess`, considera potencialmente `undefined`.
+- La corrección usa referencias explícitas no nulas a ambos eventos antes del intercambio, sin cambiar la semántica negativa ni el criterio que exige consulta real previa al acuse. En ese SHA los jobs `ab-frozen-source-witness` y `real-parent-consumption` quedaron omitidos por preflight; **no se consultaron los modelos ni se descargó la referencia como ejecución del workflow**.
+- El siguiente commit mantiene el mismo único disparador para Pi/Beam, con ausencia de Writer y cero herencia de resultados entre SHA. Los 8/28 EF verificados no cambian hasta recibir nuevas evidencias positivas.

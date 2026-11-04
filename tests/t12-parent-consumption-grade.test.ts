@@ -53,6 +53,7 @@ test("EF-601 stale identity, wrong scope or replay never gains a native Pi ackno
 });
 test("EF-601 Pi cannot acknowledge before it actually inspects the exact durable result",()=>{
  const v=sample();
- [v.events[3],v.events[4]]=[v.events[4],v.events[3]];
+ const inspected=v.events[3]!,ack=v.events[4]!;
+ v.events[3]=ack;v.events[4]=inspected;
  assert.throws(()=>gradeParentConsumption(v),/AFTER idle wake/u);
 });
