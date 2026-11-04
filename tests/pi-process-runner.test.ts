@@ -444,3 +444,32 @@ test("organic writer reaches Pi adapter through one exact Dispatcher receiver wi
  assert.equal(captured?.expectedPhase,"apply");assert.ok(captured?.phaseGrant,"Dispatcher must materialize the exact apply-phase grant before Pi starts");assert.ok(captured);
  const replay=await pi.run(captured);assert.equal(replay.ok,false);assert.match(replay.output,/exact dispatcher receiver/);
 });
+
+test("EF-604 Pi stream witness aborts an authentic adapter child only after assistant text delta",{timeout:30000},async()=>{
+ const {d,p}=await fixture('let input="";process.stdin.on("data",chunk=>{input+=String(chunk);let end;while((end=input.indexOf("\\n"))>=0){const request=JSON.parse(input.slice(0,end));input=input.slice(end+1);if(request.type!=="prompt")continue;process.stdout.write(JSON.stringify({type:"message_update",message:{role:"assistant"},assistantMessageEvent:{type:"text_delta",delta:"NEVER_EXPOSE_MODEL_OUTPUT"}})+"\\n");setInterval(()=>{},1000);}});');
+ const controller=new AbortController();
+ const observations:Array<{pid:number;requestId:string;observedCharacters:number}>=[];
+ const result=await runner(p,{signal:controller.signal,timeoutMs:15000,noTools:true,
+  onAssistantTextDelta:event=>{observations.push(event);controller.abort();},
+ }).run({id:"real-delta-abort",role:"explorer",prompt:"Produce text, no tools",repository:d});
+ assert.equal(result.ok,false);
+ assert.match(result.output,/cancelled/u);
+ assert.equal(observations.length,1);
+ assert.equal(observations[0]!.requestId,"real-delta-abort");
+ assert.ok(observations[0]!.pid>0);
+ assert.equal(observations[0]!.observedCharacters,"NEVER_EXPOSE_MODEL_OUTPUT".length);
+ assert.deepEqual(Object.keys(observations[0]!).sort(),["observedCharacters","pid","requestId"]);
+ assert.doesNotMatch(JSON.stringify(observations),/NEVER_EXPOSE_MODEL_OUTPUT/u);
+});
+test("EF-604 Pi stream witness rejects fabricated or empty deltas and never elevates a model to authority",{timeout:30000},async()=>{
+ const {d,p}=await fixture('let input="";process.stdin.on("data",chunk=>{input+=String(chunk);let end;while((end=input.indexOf("\\n"))>=0){const request=JSON.parse(input.slice(0,end));input=input.slice(end+1);if(request.type!=="prompt")continue;for(const event of [{type:"message_update",message:{role:"user"},assistantMessageEvent:{type:"text_delta",delta:"spoof"}},{type:"message_update",message:{role:"assistant"},assistantMessageEvent:{type:"text_delta",delta:""}},{type:"message_update",message:{role:"assistant"},assistantMessageEvent:{type:"thinking_delta",delta:"thinking"}},{type:"message_update",message:{role:"assistant"},assistantMessageEvent:{type:"text_delta",delta:"safe"}}])process.stdout.write(JSON.stringify(event)+"\\n");process.stdout.write(JSON.stringify({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"DONE"}]}})+"\\n");process.stdout.write(JSON.stringify({type:"agent_end"})+"\\n");process.stdout.write(JSON.stringify({type:"response",id:request.id,success:true})+"\\n");}});');
+ const observations:Array<{pid:number;requestId:string;observedCharacters:number}>=[];
+ const result=await runner(p,{timeoutMs:12000,noTools:true,onAssistantTextDelta:event=>{
+  observations.push(event);throw Error("Observer errors cannot change Pi execution");
+ }}).run({id:"validated-delta",role:"explorer",prompt:"Read only",repository:d});
+ assert.equal(result.ok,true,result.output);
+ assert.equal(observations.length,1);
+ assert.equal(observations[0]!.observedCharacters,4);
+ assert.equal(observations[0]!.requestId,"validated-delta");
+ assert.doesNotMatch(JSON.stringify(observations),/spoof|thinking|safe/u);
+});

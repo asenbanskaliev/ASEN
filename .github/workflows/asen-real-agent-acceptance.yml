@@ -77,6 +77,9 @@ jobs:
           node --check scripts/t12-real-child-parent-grade.mjs
           node --check scripts/t12-revalidation-contract.mjs
           node --check scripts/t12-real-repair-revalidation.mjs
+          node --check scripts/t12-real-stream-interruption.mjs
+          node --check scripts/t12-stream-interruption-reopen.mjs
+          node --check scripts/t12-stream-interruption-grade.mjs
           node --check scripts/t12-parent-consumption-grade.mjs
           node --check scripts/agent-ab-manifest-reader.mjs
           node --check scripts/agent-observable-receipts.mjs
@@ -147,6 +150,7 @@ jobs:
             tests/pi-process-runner.test.ts \
             tests/pi-session-recovery-e2e.test.ts \
             tests/ef604-native-pi-headless-restart.test.ts \
+            tests/t12-stream-interruption-reopen.test.ts \
             tests/session-recovery-e2e.test.ts
       - name: F6 cross-process inference recovery, corruption and negative checks
         shell: bash
@@ -155,7 +159,7 @@ jobs:
           node --import tsx --test tests/t12-inference-budget.test.ts
       - name: F2/F3 deterministic fixture and planning contracts
         shell: bash
-        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-review-grader.test.ts tests/t12-verifier-brief.test.ts tests/t12-parent-consumption-grade.test.ts tests/t12-real-child-parent-grade.test.ts tests/t12-real-busy-parent-grade.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-disposable-correction.test.ts tests/t12-revalidation-contract.test.ts tests/agent-ab-manifest-reader.test.ts tests/agent-ab-combined-gate.test.ts tests/t12-live-evidence-gate.test.ts tests/t12-explorer-schema.test.ts tests/t12-acceptance-ledger.test.ts
+        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-review-grader.test.ts tests/t12-verifier-brief.test.ts tests/t12-parent-consumption-grade.test.ts tests/t12-real-child-parent-grade.test.ts tests/t12-real-busy-parent-grade.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-stream-interruption-grade.test.ts tests/t12-stream-interruption-workflow.test.ts tests/t12-disposable-correction.test.ts tests/t12-revalidation-contract.test.ts tests/agent-ab-manifest-reader.test.ts tests/agent-ab-combined-gate.test.ts tests/t12-live-evidence-gate.test.ts tests/t12-explorer-schema.test.ts tests/t12-acceptance-ledger.test.ts
       - name: Ollama scoped child credential regression
         run: node --import tsx --test tests/t12-ollama-child-credential.test.ts
       - name: Pi retry settings preserve installed extensions
@@ -355,6 +359,75 @@ jobs:
             asen-acceptance-evidence/real-pi-parent-wake.json
             asen-acceptance-evidence/real-pi-parent-child-wake.json
             asen-acceptance-evidence/real-pi-parent-child-busy.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  real-stream-interruption:
+    needs: offline-static-validation
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.run_attempt == 1 &&
+      github.event_name == 'push' &&
+      github.event.head_commit.message == 'ci: one-time Pi streamed-child interruption Beam proof'
+    name: EF-604 real Pi Beam streaming interruption and separate-process recovery
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: ollama-cloud-beam
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+      PI_OLLAMA_WEB_TOOLS: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - run: npm ci
+      - name: Select only the pinned registered Ollama Beam model in isolated Pi home
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-stream-pi"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          test -n "$ASEN_OLLAMA_API_KEY" || { echo "::error::Isolated Ollama key unavailable"; exit 1; }
+          OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+          OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" PI_OLLAMA_WEB_TOOLS=0 node_modules/.bin/pi --list-models > "$RUNNER_TEMP/asen-stream-models.txt"
+          awk '$1 == "ollama-cloud" {print $2}' "$RUNNER_TEMP/asen-stream-models.txt" > "$RUNNER_TEMP/asen-stream-model-ids.txt"
+          if grep -Fxq "beam:cloud" "$RUNNER_TEMP/asen-stream-model-ids.txt"; then
+            selected="beam:cloud"
+          elif grep -Fxq "beam" "$RUNNER_TEMP/asen-stream-model-ids.txt"; then
+            selected="beam"
+          else
+            echo "::error::No Beam model, no provider fallback"; exit 1
+          fi
+          printf '%s\n' "$selected" > "$RUNNER_TEMP/asen-stream-selected-model"
+      - name: Interrupt one authentic Pi RPC child only after a streamed model text delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-stream-pi"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          ASEN_SELECTED_MODEL="$(cat "$RUNNER_TEMP/asen-stream-selected-model")"
+          export ASEN_SELECTED_MODEL
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          mkdir -p asen-acceptance-evidence
+          timeout 220s node --import tsx scripts/t12-real-stream-interruption.mjs
+      - name: Preserve bounded positive or failure evidence without model transcript
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-stream-interruption-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/real-pi-stream-interruption.json
           if-no-files-found: warn
           retention-days: 14
 

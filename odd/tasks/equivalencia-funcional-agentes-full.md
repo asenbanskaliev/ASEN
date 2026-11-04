@@ -1088,8 +1088,32 @@ La equivalencia canónica conserva `8/28` EF verificados; `globalFull=false`. No
 - **EF-703 — validación consolidada:** el preflight `.github/workflows/asen-real-agent-acceptance.yml` verifica sintaxis del auditor reforzado y ejecuta en su matriz existente tanto EF-604 nativo como EF-701 legacy. El SHA nuevo no requiere cuota Ollama: la inferencia Beam acreditada queda vinculada al commit anterior.
 
 **Nuevos subchecks, pendientes hasta PASS exact-SHA:**
-- [ ] MEGAF604-KILL-01 — Proceso Pi 1.2.0 auténtico interrumpido por el OS y segundo proceso restablecido con estado durable, sin duplicar ni acusar `attempted`; preflight PASS.
-- [ ] MEGAF701-LEGACY-01 — Auditor legacy A/B usa lector seguro bounded, rechaza symlink/UTF-8/oversize y nunca devuelve FULL, preflight PASS.
+- [x] MEGAF604-KILL-01 — **VERIFICADO**: Pi nativo 1.2.0 en cinco procesos reales, terminación forzada del host y reapertura con estado durable `attempted/pending`, sin replay. Preflight `41843178923`, SHA `40e454ff8809bc4d52bb26732cb3ec60218ab9fc`, `EF604_NATIVE_PI_HEADLESS_RESTART_PASS`, cero llamadas LLM.
+- [x] MEGAF701-LEGACY-01 — **VERIFICADO**: auditor legacy acepta solo manifiestos bounded descriptor-based; negativos symlink, oversize y UTF-8 PASS, nunca FULL. Preflight `41843178923`, SHA `40e454ff8809bc4d52bb26732cb3ec60218ab9fc`, tests EF-701 `ok 11/12`.
 - [ ] MEGAF703-3OS-01 — CI, Release Gate y arquitectura exact-SHA del nuevo commit, PASS Windows/macOS/Ubuntu.
 
 **Bloqueos globales no simulados:** 8/28 EF canónicos, falta inferencia LLM interrumpida y reanudada, consentimiento Writer real, las 60 capturas A/B/ASEN, host B y auditor externo. `FULL=false`; `main` intacta.
+
+### Macrotanda EF-604 — inferencia Pi auténtica interrumpida durante streaming y reapertura estricta (2026-11-04)
+
+**Ejecución agrupada en un solo commit, estado PENDIENTE de CI exact-SHA en esta sección.** La tanda anterior `40e454ff8809bc4d52bb26732cb3ec60218ab9fc` ya obtuvo SUCCESS en `41843178923` para el preflight provider-free y `41843189183` para Release Gate (Ubuntu/macOS/Windows). Dos subchecks acotados MEGAF604-KILL-01 / MEGAF701-LEGACY-01 se marcaron con el run exacto; el CI general `41843188676` mantenía macOS y Windows ejecutándose en el momento de preparar este corte. El resto del plan sigue 8/28 EF completos.
+
+**Bloque A — observación nativa segura de streaming en el ejecutor real.** `src/agents/pi-process-runner.ts` incorpora un callback opcional `onAssistantTextDelta`, que solo se activa después de confirmar la política Pi, ante un evento RPC **nativo** `message_update` con emisor `assistant`, `assistantMessageEvent.type=text_delta` y fragmento de texto no vacío; no expone texto al callback, solo PID, ID del agente y longitud acotada. El observador no tiene privilegios de escritura ni altera el resultado de un agente normal; cualquier excepción del listener queda aislada.
+
+**Bloque B — aborto después de evidencia real de inferencia Ollama Beam.** `scripts/t12-real-stream-interruption.mjs` reserva exactamente una ejecución antes de contactar el proveedor, crea un proyecto Git desechable, arranca un Explorer ASEN de solo lectura a través de `AgentRuntime`, `Dispatcher` y `PiProcessRunner` nativos `1.2.0`, usando exclusivamente el modelo registrado `ollama-cloud/beam`, `noTools:true`. En cuanto aparece el primer delta de texto real, aborta mediante la cadena productiva `AbortSignal`→Dispatcher→PiProcessRunner y comprueba la cancelación durable, la terminación del proceso hijo y la integridad del Git temporal. Si el proveedor falla, no emite un PASS ni reintenta una segunda solicitud.
+
+**Bloque C — recuperación en otro proceso OS sin credencial.** `scripts/t12-stream-interruption-reopen.mjs` se ejecuta en un **proceso Node separado**, con las claves de acceso eliminadas del entorno. Lee el store HMAC auténtico y el journal `AgentNotificationJournal`, exige tarea `cancelled` y aviso `pending`, impide `AgentRuntime.continue` por falta de estado `interrupted` y comprueba cero invocaciones del runner. La cancelación es **del hijo**, no una terminación host-Pi TUI ni un reinicio que reanude automáticamente la inferencia; eso continúa fuera del alcance demostrado.
+
+**Bloque D — grader y casos adversariales.** `scripts/t12-stream-interruption-grade.mjs` valida esquema exacto, SHA del commit, modelo/proveedor, delta observado, estado `cancelled`, límites y cero autoridad Writer, consentimiento o A/B. `tests/pi-process-runner.test.ts` añade prueba positiva de un flujo RPC sintético y rechazos de delta vacío, usuario suplantado y evento de pensamiento; `tests/t12-stream-interruption-grade.test.ts` añade 25 mutaciones que deben fallar; `tests/t12-stream-interruption-reopen.test.ts` verifica el contrato entre procesos sin gastar cuota. Las pruebas sintéticas no se presentan como inferencia real.
+
+**Bloque E — un solo carril proveedor CI.** `.github/workflows/asen-real-agent-acceptance.yml` incorpora un job `real-stream-interruption` estrictamente opt-in, activado **solo** por `ci: one-time Pi streamed-child interruption Beam proof`, `github.run_attempt == 1`, rama exacta y preflight provider-free ya aprobado. Pin del runtime y plugin `npm:pi-ollama-cloud@0.13.1`, secreto del entorno `ollama-cloud-beam`, sin fallback a pago ni herramientas, una reserva atómica de llamada, timeout y artefacto `real-pi-stream-interruption.json` sin transcript. `tests/t12-stream-interruption-workflow.test.ts` audita los guardas del job.
+
+**Plan ejecutable de recepción, todo pendiente de evidencias del SHA nuevo:**
+- [ ] EF604-STREAM-01 — Un `message_update` genuino con delta texto de modelo Pi RPC inicia cancelación, con recibo real Ollama Beam; no se acepta evento inventado ni solo `agent_start`.
+- [ ] EF604-STREAM-02 — Task `cancelled` persistido, no reanudable, leída en otro proceso sin claves; journal `pending`, sin doble llamada ni Writer; artefacto SHA-bound PASS.
+- [ ] EF604-STREAM-03 — Regresiones provider-free de observación, fraude, grader y script de reopen, Typecheck/Build/Tests PASS en preflight.
+- [ ] EF703-STREAM-04 — Job Beam solo un intento `run_attempt==1`, modelo fijado, entorno protegido y resultado verificable; sin fallback.
+- [ ] EF704-STREAM-05 — Release Gate, arquitectura, CI 3OS y plan ODD exact-SHA PASS.
+- [ ] EF604-FULL-CHILD-RESTART — Interrupción host TUI **durante** una inferencia Pi real, reactivación legítima del coordinador y correlación completa del resultado. El test actual de `cancelled` no demuestra `interrupted` de una inferencia ni reanudación automática y **no permite declarar EF-604 FULL**.
+
+**Resto de bloqueos:** 60 trazas reales C01–C20 (A+B+ASEN), Writer con consentimiento humano auténtico, auditoría externa y resto de criterios EF. No se fusiona a `main`; 8/28 EF canónicos FULL incompleto, `globalFull:false`.

@@ -37,6 +37,9 @@ export interface PiProcessOptions{
  onProcessStart?:(pid:number)=>void;
  onProcessClose?:(details:{code:number|null;signal:NodeJS.Signals|null;stderr:string})=>void;
  onToolExecution?:(event:Readonly<{type:"tool_execution_start"|"tool_execution_end";pid:number;toolName?:string;toolCallId?:string;isError?:boolean}>)=>void;
+ /** Optional bounded native streaming witness. Never supplies model text or
+  * authority; cancellation from a listener uses the existing AbortSignal. */
+ onAssistantTextDelta?:(event:Readonly<{pid:number;requestId:string;observedCharacters:number}>)=>void;
 }
 export interface PiChildSelectionObservation{
  readonly taskId:string;readonly sessionId:string;readonly projectId:string;
@@ -259,6 +262,19 @@ export class PiProcessRunner implements AgentRunner{
      let record:unknown;try{record=JSON.parse(line);}catch{record=line;}
      const response=(record&&typeof record==="object"?record:{}) as {type?:string;id?:string;command?:string;success?:boolean;toolName?:unknown;toolCallId?:unknown;isError?:unknown;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>;} };
      const type=response.type;
+     // A native Pi assistant text delta proves the provider returned actual
+     // partial output. Read-only diagnostics receive counts, never model text.
+     if(type==="message_update"&&policyLoaded&&!agentEnded&&!settled&&!stopResult&&
+        !signal?.aborted&&child.pid!==undefined&&this.options.onAssistantTextDelta){
+      const update=record as {message?:{role?:unknown};assistantMessageEvent?:{type?:unknown;delta?:unknown}};
+      const delta=update.assistantMessageEvent;
+      if(update.message?.role==="assistant"&&delta?.type==="text_delta"&&
+         typeof delta.delta==="string"&&delta.delta.length>0){
+       const observation=Object.freeze({pid:child.pid,requestId:request.id,
+        observedCharacters:Math.min(delta.delta.length,4096)});
+       try{this.options.onAssistantTextDelta(observation);}catch{/* Observers cannot affect processing. */}
+      }
+     }
      if((type==="tool_execution_start"||type==="tool_execution_end")&&child.pid!==undefined){
       const event=Object.freeze({type,pid:child.pid,
        ...(typeof response.toolName==="string"?{toolName:response.toolName}:{}),
