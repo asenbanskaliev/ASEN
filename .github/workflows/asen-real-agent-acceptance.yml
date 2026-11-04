@@ -1,6 +1,8 @@
 name: ASEN real-agent functional acceptance
 
 # Bounded opt-in verifies direct provider and genuine read-only Dispatcher; no lifecycle bypass or Writer grant.
+# To exercise the native parent lane, change this workflow in the same commit whose exact
+# message is 'ci: one-time Pi parent Beam proof'. A docs-only commit does not match paths.
 on:
   push:
     branches:
