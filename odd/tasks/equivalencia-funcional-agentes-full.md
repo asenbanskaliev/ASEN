@@ -795,7 +795,7 @@ Además `Phase 0 Architecture` `41802645916` FAIL por nombres externos en códig
 **Checklist de este corte:**
 - [x] ABSEC-01 — Release Gate exact-SHA `41803698306` y CI completo `41803698313`, tres OS, PASS; T09 preserva verificaciones y plazos finitos.
 - [x] ABSEC-02 — STAB-03/04/05 respaldados con tests y CI exact-SHA, sin reclamar Pi real ocupado ni paridad A/B.
-- [ ] ABSEC-03 — Prueba externa **real** de ayuda del CLI A y binario Go B, con árboles exactos, recibos y ausencia de cambios, pendiente del nuevo job.
+- [x] ABSEC-03 — **VERIFICADO** runtime `--help` de A (Node/Pi) y compilación + `--help` de B (Go) en dos checkouts Git con SHA y árbol exactos; ambos exit 0 y Git limpio. `scripts/agent-ab-host-smoke.mjs` + `tests/agent-ab-host-smoke.test.ts` · Actions run `41810325787` / SHA `cd114cbde1f31b5a45030acd39e30888ee0584cb`, artefacto `13312266529` `REFERENCE_HOST_HELP_ONLY`. `executedCases=0`.
 - [ ] ABSEC-04 — Clasificación de cuotas normalizada y sanitizada supera las pruebas de CI exact-SHA y el auditor de seguridad.
 
 **Estado global:** el plan mantiene **8/28 EF y 7/9 MEGA**, pendientes de acciones humanas Writer, A/B C01–C20 y auditoría verdaderamente independiente. Una ejecución de `--help` no marca `MEGA-AB-03` ni `EF-701`. No se hace merge a `main`.
@@ -818,3 +818,9 @@ El run `41808956830` / SHA `8c26bb38acb1331c4bf6808fda63dba03497f0c1` pasó Type
 ### AB-HOST — corrección TS de la prueba sintética (2026-11-04)
 
 Run `41810035714` / SHA `255288e7fa1c0e9234226edb5ba48eb285391353`: la Arquitectura sí pasó, pero el preflight y R4 se detuvieron en `TS2345` de `tests/agent-ab-host-smoke.test.ts:34`: el test de checkout simulado pasaba `args[1]` como `string | undefined` bajo `noUncheckedIndexedAccess`. Se afirma expresamente `args[1]!` tras una estructura de argumentos de Git controlada por el harness; la producción no cambia. No se ejecutó el job remoto de referencia en ese SHA. El nuevo commit mantiene 8/28 EF, 7/9 MEGA; ninguna llamada adicional Beam ni permiso Writer.
+
+### AB-HOST — dos binarios fuente ejecutados y recibo exacto (2026-11-04)
+
+**Prueba externa, no inferida:** `ASEN real-agent functional acceptance` run `41810325787`, SHA `cd114cbde1f31b5a45030acd39e30888ee0584cb`. `Provider-free static and ASEN validation`, `Frozen A/B source objects` y `Native A/B pinned CLI help` terminaron **SUCCESS**. Artefacto `asen-ab-native-host-cd114cb...-41810325787`, ID `13312266529`, inspeccionado como JSON: `schema:"asen-ab-native-host-smoke/v1"`, `status:"REFERENCE_HOST_HELP_ONLY"`, dos entradas, `exitCode:0` ambas, `repositoryClean:true` ambas, `outputSha256` A `f65425655f26c3904409511bb51d9d308f4c81583b664d9509088a0b0feec4b2` (7219 bytes) y B `6bffa35a3021a0d1be58edd7c24ebc610f3dd570e9be24cd723767fa7a8ad` (4744 bytes). Se han verificado los commits y árboles del manifiesto de procedencia exacto. `modelCalls:0`, `executedCases:0`, `writerAuthorized:false`, `referenceBProvisioned:false`, `fullParity:false`. Se marca **ABSEC-03**, **no** MEGA-AB-03 ni EF-002/701: una ayuda CLI ejecutada no es una observación C01–C20.
+
+**Integridad y límites:** el auditor de arquitectura `41810332860`, F5 `41810333103`, Pi Runtime `41810332912`, CodeGraph `41810332957`, R4 autoauditoría `41810332907` y Release Gate `41810333053` están en PASS para este SHA. El CI general `41810332929` permanece en curso mientras se redacta este recibo; `ABSEC-04` todavía no se cierra hasta observar el resultado exact-SHA. La clasificación ECO-07 se normaliza, no copia errores del proveedor y no autoriza reintentos ni costes. FULL y Writer humano siguen pendientes.
