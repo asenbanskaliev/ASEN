@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {agentParentRoute,agentTerminalDeliveryOptions,agentTerminalWakeOptions,agentTerminalContinuationMessage,agentNoticeIsStale,AGENT_NOTICE_STALE_AFTER_MS} from "../src/runtime/agent-terminal-delivery.js";
+import {agentParentRoute,agentTerminalDeliveryOptions,agentTerminalWakeOptions,agentTerminalContinuationMessage,agentNoticeIsStale,AGENT_NOTICE_STALE_AFTER_MS,agentTerminalNoticeContent} from "../src/runtime/agent-terminal-delivery.js";
 
 const id={sessionId:"primary-a",projectId:"/workspace/a"};
 test("EF-601 Pi parent routing: active steer, idle stored+separate wake, compaction holds",()=>{
@@ -156,4 +156,18 @@ test("EF-601 durable notice freshness uses the pinned threshold and fails closed
  assert.equal(agentNoticeIsStale(new Date(1_100_000).toISOString(),1_000_000),false,
   "Small clock skew must not label a future receipt stale");
  assert.equal(agentNoticeIsStale("invalid",1_000_000),true);
+});
+
+test("EF-601 extension notice composer applies freshness to the durable timestamp",()=>{
+ const eventId=`asen:agent:${"c".repeat(64)}:terminal`;
+ const createdAt=new Date(1_000_000).toISOString();
+ const old=agentTerminalNoticeContent({id:"agent-old",role:"explorer",state:"completed",
+  summary:"PRIVATE_STALE_SUMMARY",eventId,createdAt,now:1_090_000});
+ assert.equal(old.stale,true);
+ assert.doesNotMatch(old.content,/PRIVATE_STALE_SUMMARY/u);
+ assert.ok(old.content.includes(eventId));
+ const fresh=agentTerminalNoticeContent({id:"agent-fresh",role:"explorer",state:"completed",
+  summary:"CURRENT_SUMMARY",eventId,createdAt,now:1_089_999});
+ assert.equal(fresh.stale,false);
+ assert.match(fresh.content,/CURRENT_SUMMARY/u);
 });

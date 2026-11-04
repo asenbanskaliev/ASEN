@@ -59,6 +59,16 @@ export function agentNoticeIsStale(createdAt:string,now=Date.now()):boolean{
  const created=Date.parse(createdAt);
  return !Number.isFinite(created)||now-created>=AGENT_NOTICE_STALE_AFTER_MS;
 }
+export function agentTerminalNoticeContent(input:{
+ id:string;role:string;state:string;summary:string|undefined;eventId:string;
+ createdAt:string;now?:number;
+}):{stale:boolean;content:string}{
+ const stale=agentNoticeIsStale(input.createdAt,input.now);
+ return {stale,content:agentTerminalContinuationMessage({
+  id:input.id,role:input.role,state:input.state,
+  summary:stale?undefined:input.summary,eventId:input.eventId,stale,
+ })};
+}
 export function agentTerminalContinuationMessage(input:{
  id:string;role:string;state:string;summary:string|undefined;eventId?:string;stale?:boolean;
 }):string{

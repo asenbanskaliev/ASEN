@@ -159,3 +159,11 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - Para SHA `5035e5d7da619363d4465dbfd26773ef773e35c0`: CI `41935325288` y Release Gate `41935325237` estaban IN_PROGRESS. El siguiente commit documental cancelará esos runs y lanzará la validación exacta de su propio SHA; no se atribuirá PASS. Último HEAD de trabajo confirmado: `5035e5d7da619363d4465dbfd26773ef773e35c0`.
 - 8/28 EF canónicos; EF-601 PARTIAL. FULL=false. Pendientes: recuperación real TUI con resultado/modelo y aviso stale, CI + Release Gate exact-SHA, A/B C01–C20, Writer humano y Reviewer independiente.
 - Próximo: seguir EF-601/604 con el mismo journal: prueba provider-free de aviso terminal envejecido en restauración + revisión de consumo exacto post-reinicio; preservar el límite de no replay y el estado incierto.
+
+
+## EF-601 stale notice composer — integración de política
+
+- Base de trabajo: HEAD `519192dd36743c52947dae61af952feecc1eac2c`. La tanda anterior pasó el preflight exact-SHA `41934910473` para helper/formatter, y Phase 0 de `5035e5d7da619363d4465dbfd26773ef773e35c0` pasó tras corregir el límite de procedencia.
+- Cambio agrupado: `agentTerminalNoticeContent` combina el timestamp persistido, resumen y eventId; `extensions/asen.ts` usa su `content` directamente. Regresión separa fresco (summary presente) de viejo (summary ausente) y mantiene identidad. No modifica wake, ack, journal state, ni autoriza replay.
+- Run CI `41935809966` y Release Gate `41935809746` del HEAD anterior estaban queued/pending; este commit los cancela y lanza exact-SHA nuevos. No heredar resultados. Mantener 8/28 y EF-601 PARTIAL.
+- Próxima verificación: preflight completo, Phase 0, CI y Release Gate del SHA nuevo. Registrar resultado antes de la siguiente macrotanda.

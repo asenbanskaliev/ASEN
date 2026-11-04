@@ -1444,3 +1444,9 @@ La nueva aserción de workflow tenía una comilla final mal colocada. La inspecc
 
 
 - [x] EF601-STALE-RESULT-01 — **PASS de preflight exact-SHA**, SHA `0fc9ddc65559892d64bb0cda3fd7a4085b85d5e1`, run [41934910473](https://github.com/asenbanskaliev/ASEN/actions/runs/41934910473), job provider-free SUCCESS. Tests 53 y 54 prueban que un aviso de al menos 90 s no reinyecta el resumen y preserva el eventId, umbral y fechas inválidas. Acredita policy/message con suite, no una recuperación TUI real; el EF-601 canónico permanece PARTIAL.
+
+
+### EF-601 — cableado de frescura al envío real de avisos — 2026-11-04
+
+- La aceptación anterior verificó el umbral y el formato, pero la antigüedad todavía se combinaba inline dentro de `extensions/asen.ts`. Nueva regresión agrupada: extraer el compositor `agentTerminalNoticeContent`, que recibe el `createdAt` durable y decide en una sola función si conserva u omite el resumen antes de que `sendMessage` lo reciba; la extensión consume directamente ese resultado.
+- La prueba nueva contrasta resumen viejo y fresco en el límite de 90 s y comprueba la supresión/preservación de contenido junto con eventId. Recepción exact-SHA pendiente; EF601-STALE-RESULT-01 queda en PASS para contrato/filtro previo, este cableado sigue pendiente hasta preflight nuevo. EF-601 canónico PARTIAL, 8/28, FULL=false.
