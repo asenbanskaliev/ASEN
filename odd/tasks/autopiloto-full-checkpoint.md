@@ -135,3 +135,11 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - Evidencia específica: 5 procesos Pi, 3 reinicios misma sesión, scope ajeno aislado, estado durable `attempted/pending`, 0 llamadas de modelo; y SIGKILL de TUI con RPC Pi hijo vivo, reapertura de la sesión, Explorer `interrupted`, 2 avisos no re-enviados/acuse bloqueado, 0 replay. Sin consumo por coordinador ni Writer.
 - Release Gate `41933070271` SUCCESS; CI `41933070344` aún IN_PROGRESS al comprobar. El total canónico sigue 8/28 y EF-601/603/604 siguen PARTIAL. Hay recibo Beam EF-603 de una ejecución Explorer en artifact `13371799033`; contador real HTTP no observado. A/B, Writer humano, reviewer independiente y consumo tras restart pendientes.
 - Próxima macrotanda: preparar un lane opt-in exact-SHA para un único stream Beam durante reinicio TUI, si se puede vincular el hijo durable y garantizar no reejecución/doble llamada; incluir consumption/ack exactos al reabrir. Mantener provider-free preflight y no falsear `interrupted`/resumed. Antes de publicar, leer HEAD de PR y rama.
+
+
+## Próxima tanda EF-601 — política de frescura Gentle Shell
+
+- Base observada: PR #45 / rama `feat/t12-integrated-acceptance-merge`, HEAD `d4676ce1398b441b96ce932ac7445d00d41861d5`. La auditoría del Gentle Shell congelado A `813ec110600c8451c5f2bb9c35c12d8cf9b1c11e` encontró que un resultado con antigüedad ≥90 s se comunica como aviso compacto y no se vuelve a inyectar completo; su lectura queda bajo acción explícita de herramienta.
+- ASEN conservaba avisos durablemente (protege frente a pérdidas) pero reinyectaba el resumen íntegro al restaurar cualquier aviso `pending`, sin caducidad. Cambio agrupado: misma ventana de 90 s, con aviso compacto y salida completa omitida al superar el umbral; frescos no cambian. Pruebas unitarias cubren límite/clock skew/fecha inválida, resumen suprimido, ID/estado preservados.
+- CI `41933969890` y Release Gate `41933969684` del commit documental `d4676ce1398b441b96ce932ac7445d00d41861d5` estaban IN_PROGRESS; se cancelarán al publicar el nuevo SHA y no se reutilizarán. Cabeza del nuevo commit debe verificarse contra PR y ref antes de actualizar.
+- Estado base: 8/28 EF, EF-601/603/604 PARTIAL, A/B C01–C20 sin ejecuciones, Writer sin consentimiento humano, Reviewer independiente pendiente, FULL=false.

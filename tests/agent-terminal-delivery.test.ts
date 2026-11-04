@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {agentParentRoute,agentTerminalDeliveryOptions,agentTerminalWakeOptions,agentTerminalContinuationMessage} from "../src/runtime/agent-terminal-delivery.js";
+import {agentParentRoute,agentTerminalDeliveryOptions,agentTerminalWakeOptions,agentTerminalContinuationMessage,agentNoticeIsStale,AGENT_NOTICE_STALE_AFTER_MS} from "../src/runtime/agent-terminal-delivery.js";
 
 const id={sessionId:"primary-a",projectId:"/workspace/a"};
 test("EF-601 Pi parent routing: active steer, idle stored+separate wake, compaction holds",()=>{
@@ -135,4 +135,25 @@ test("EF-604 unknown native Pi activity cannot trigger steering or wake",()=>{
   assert.deepEqual(agentTerminalDeliveryOptions(context,scope,true),{triggerTurn:false});
   assert.equal(agentTerminalWakeOptions(context,scope,true),undefined);
  }
+});
+
+
+test("EF-601 stale terminal results are announced without replaying their full report",()=>{
+ const eventId=`asen:agent:${"b".repeat(64)}:terminal`;
+ const msg=agentTerminalContinuationMessage({id:"agent-stale",role:"explorer",state:"completed",
+  summary:"PRIVATE_OLD_REPORT",eventId,stale:true});
+ assert.match(msg,/at least 90 seconds old/u);
+ assert.match(msg,/asen_agent_status/u);
+ assert.doesNotMatch(msg,/PRIVATE_OLD_REPORT/u);
+ assert.ok(msg.includes(eventId));
+ assert.match(msg,/Never turn this message into Writer authorization/u);
+ assert.equal(AGENT_NOTICE_STALE_AFTER_MS,90_000);
+});
+test("EF-601 durable notice freshness uses the pinned threshold and fails closed on invalid timestamps",()=>{
+ const createdAt=new Date(1_000_000).toISOString();
+ assert.equal(agentNoticeIsStale(createdAt,1_000_000+89_999),false);
+ assert.equal(agentNoticeIsStale(createdAt,1_000_000+90_000),true);
+ assert.equal(agentNoticeIsStale(new Date(1_100_000).toISOString(),1_000_000),false,
+  "Small clock skew must not label a future receipt stale");
+ assert.equal(agentNoticeIsStale("invalid",1_000_000),true);
 });

@@ -60,7 +60,7 @@ import {addAsenRequestGuidance} from "../src/runtime/request-guidance.js";
 import {ASEN_PLAN_REQUEST_TOOL,registerAsenPlanRequestTool} from "../src/runtime/natural-plan-tool.js";
 import {formatActivePlanContext} from "../src/runtime/plan-context.js";
 import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-policy.js";
-import {agentParentRoute,agentTerminalWakeOptions,agentTerminalContinuationMessage} from "../src/runtime/agent-terminal-delivery.js";
+import {agentParentRoute,agentTerminalWakeOptions,agentTerminalContinuationMessage,agentNoticeIsStale} from "../src/runtime/agent-terminal-delivery.js";
 import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
 import {ExplorerBudgetTelemetry} from "../src/runtime/explorer-budget.js";
 import {BackgroundJobRegistry,backgroundJobTerminalNotification,pendingBackgroundJobNotifications,type BackgroundJobExecutor,type BackgroundJobSnapshot} from "../src/runtime/background-jobs.js";
@@ -418,10 +418,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       try{context.ui.notify("ASEN detectó un cambio del estado de Pi durante la entrega. El aviso queda incierto; consulta asen-agents.","error");}catch{}
       return false;
      }
+     const stale=agentNoticeIsStale(row.createdAt);
      try{
       pi.sendMessage({
        customType:"asen.agent.result",
-       content:agentTerminalContinuationMessage({id:record.id,role:record.role,state:record.state,summary:untrustedAgentText(record.summary),eventId:row.eventId}),
+       content:agentTerminalContinuationMessage({id:record.id,role:record.role,state:record.state,summary:stale?undefined:untrustedAgentText(record.summary),eventId:row.eventId,stale}),
        display:true,
        details:{eventId:row.eventId,sessionId:scope.sessionId,projectId:scope.projectId,agentId:record.id,
         role:record.role,state:record.state,trusted:false,deliveryState:"enqueued",deliveryConfirmed:false},
