@@ -52,7 +52,7 @@ function displayLabel(value:unknown):string{
  const letters=Array.from(text);
  return letters.length>160?letters.slice(0,160).join("")+"…":text||"[empty]";
 }
-/** Match Gentle Shell's 90-second freshness window: stale reports are announced,
+/** Match frozen reference A's 90-second freshness window: stale reports are announced,
  * but their full text is not replayed into the parent model context. */
 export const AGENT_NOTICE_STALE_AFTER_MS=90_000;
 export function agentNoticeIsStale(createdAt:string,now=Date.now()):boolean{
