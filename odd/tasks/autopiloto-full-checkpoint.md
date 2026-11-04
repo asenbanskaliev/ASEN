@@ -112,3 +112,10 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - Corrección preparada: hacer que el fixture positivo use `beam:cloud`, manteniendo las variantes negativas de modelo y proveedor. La clasificación no cambia y no se atribuye PASS al SHA fallido.
 - CI y Release Gate exact-SHA `853b9f76b478d0068fc93f9983d38a7257c216d4`: CI `41932107288` y Release Gate `41932107562` seguían en curso al inspeccionarlos. Phase 0, F5, Pi runtime, CodeGraph y R4 autoauditoría SUCCESS; Pi Free Smoke SKIPPED.
 - Próxima reanudación: verificar que el HEAD siga siendo el padre previsto, publicar fixture y este registro como un commit consolidado; después comprobar preflight, carril Beam EF-603, CI y Release Gate por su SHA. EF canónicos verificados: **8/28**; EF-601/603/604 PARTIAL, A/B y consentimiento humano Writer pendientes, FULL=false. Sin merge.
+
+
+## EF-603: preflight corregido y lanzamiento Beam acotado — 2026-11-04
+
+- SHA `18c0ce712115b491a0abfd9c23794f5101fa4786`: aceptación provider-free [41932735996](https://github.com/asenbanskaliev/ASEN/actions/runs/41932735996) SUCCESS; se corrigió el fixture de alias Beam que falló en `853b9f76b478d0068fc93f9983d38a7257c216d4`. Phase 0, F5, Pi runtime, CodeGraph y autoauditoría R4 SUCCESS; Pi Free Smoke SKIPPED. CI `41932742617` y Release Gate `41932742617` estaban en curso; comprobar run IDs individuales antes de atribuir estado.
+- Próximo SHA contiene una regresión explícita que acepta `beam:cloud` solo cuando coincide con el identificador child-reported y rechaza alias discordantes. Commit con el mensaje exacto opt-in lanzará la ejecución auténtica de un Explorer Pi RPC y Beam.
+- Sin nueva casilla canónica hasta PASS de la aceptación real y CI/Release Gate exact-SHA. Estado 8/28; EF-603 PARTIAL; no se prueba cardinalidad HTTP (permanece `null`), A/B no ejecutado, Writer no autorizado, FULL=false.

@@ -24,7 +24,9 @@ test("EF-603 strict grader admits only one real Pi Explorer execution, never glo
  assert.equal(grade.oneProviderCallReserved,true);
  assert.equal(grade.providerCallsActuallyObserved,null,"Reservation is not proof of authenticated request count");
  assert.equal("oneProviderCall" in grade,false,"Do not assert provider call cardinality from reservation alone");
- assert.equal(gradeEf603LiveCoalescing({...valid(),model:"beam:cloud"},sha).globalFull,false);
+ assert.equal(gradeEf603LiveCoalescing({...valid(),model:"beam:cloud",selectedModel:"beam:cloud"},sha).globalFull,false);
+ assert.throws(()=>gradeEf603LiveCoalescing({...valid(),model:"beam"},sha),Error,
+  "The selected child model must match the requested Beam alias exactly");
 });
 test("EF-603 fail-closed mutation tests prevent dual calls, role aliases, stale SHA and fake permissions",()=>{
  const mutations:Array<(x:any)=>void>=[

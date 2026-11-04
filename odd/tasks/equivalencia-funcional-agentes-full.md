@@ -1413,3 +1413,10 @@ La nueva aserción de workflow tenía una comilla final mal colocada. La inspecc
 - El preflight provider-free exact-SHA del commit `853b9f76b478d0068fc93f9983d38a7257c216d4` falló en `tests/t12-ef603-coalescing-grade.test.ts`: el fixture declaraba `beam`, mientras que el contrato del grader permite que Pi informe el identificador canónico `beam:cloud`. No fue un fallo de producción ni se ejecutó el carril Beam real, porque depende del preflight PASS.
 - Se normaliza el fixture positivo a `beam:cloud`; el grader sigue admitiendo los dos nombres Beam documentados y conserva los rechazos para proveedor/modelo ajenos. La regresión conserva el rechazo de cambios no permitidos.
 - Esta corrección no añade evidencia ni cambia el estado canónico: **8/28**, EF-603 PARTIAL, FULL=false. Pendientes el preflight, aceptación Beam real exact-SHA, CI y Release Gate para el SHA correctivo.
+
+
+### EF-603 Beam alias regression and exact-SHA live run — 2026-11-04
+
+- La aceptación provider-free `41932735996` sobre `18c0ce712115b491a0abfd9c23794f5101fa4786` terminó SUCCESS: preflight y regresiones EF-603/604 pasaron. Esto valida el fixture normalizado `beam:cloud`; todavía no prueba la ejecución Beam EF-603.
+- Se añade una aserción explícita para el alias `beam:cloud` y para rechazar una discrepancia entre el modelo solicitado y el modelo child-reported. El grader conserva el resultado `globalFull:false` y no convierte una reserva en conteo HTTP.
+- Este commit usa el único disparador autorizado de la lane real: `ci: one-time Pi EF-603 coalesced Explorer Beam proof`. La ejecución está limitada a un Pi RPC Explorer read-only, máximo una reserva, sin herramientas ni Writer y sin fallback. Clasificación EF-603 continúa PARTIAL; 8/28, FULL=false hasta recibir el artefacto, CI y Release Gate del mismo SHA.
