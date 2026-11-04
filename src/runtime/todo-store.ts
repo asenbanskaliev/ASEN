@@ -27,7 +27,7 @@ const terminal=(item:TodoItem)=>{const state=replayTask(item.events)?.state;retu
  * instruction and read-only skill phase twice at the same time.
  * Do not reuse a result or silently mark another Todo successful.
  */
-function equivalentPlannedExplorer(left:TodoItem,right:TodoItem):boolean{
+export function equivalentPlannedExplorer(left:TodoItem,right:TodoItem):boolean{
  if(left.taskId===right.taskId||left.plan?.role!=="explorer"||right.plan?.role!=="explorer"||
     typeof left.description!=="string"||typeof right.description!=="string")return false;
  // Dependency order and JSON object insertion order do not change the

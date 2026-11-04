@@ -41,6 +41,14 @@ export class TrustedTaskAgentBinder{
     throw new Error("ASEN Todo already has an active linked agent; duplicate launch rejected");
    if(task.current.state==="running"&&previous?.record.state!=="interrupted")
     throw new Error("Running Todo requires an interrupted linked agent for explicit recovery");
+   // A prior interruption from another session, project, role or agent ID
+   // cannot authorize replacing this Todo's execution. Reconcile first.
+   if(task.current.state==="running"&&(!previous||
+      previous.record.id!==link.agentId||
+      previous.record.sessionId!==identity.sessionId||
+      !sameWorkspaceIdentityPath(previous.record.projectId,identity.projectId)||
+      (task.plan!==undefined&&previous.record.role!==task.plan.role)))
+    throw new Error("Interrupted prior agent identity or role mismatch; explicit recovery review required");
   }
   return this.links.bind({taskId,agentId,sessionId:identity.sessionId,projectId:identity.projectId,createdAt:new Date().toISOString()});
  }

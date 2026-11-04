@@ -1,5 +1,5 @@
 import type {AgentSessionIdentity,AgentRuntime} from "../agents/agent-runtime.js";
-import type {SessionTodoStore} from "./todo-store.js";
+import {equivalentPlannedExplorer,type SessionTodoStore} from "./todo-store.js";
 import type {TaskAgentLinkStore} from "./task-agent-link-store.js";
 import {sameWorkspaceIdentityPath} from "./workspace-store.js";
 
@@ -28,11 +28,17 @@ export class TaskAgentCoordinator {
     return ["succeeded","done"].includes(prerequisite.current.state)?[]:
      [{id,state:prerequisite.current.state}];
    });
+   // Mirror the exact launch-time semantic fingerprint, not a UI heuristic.
+   // This is an advisory snapshot: the Todo lock still decides dispatch.
+   const equivalentRunningExplorerId=task.current.state==="planned"&&task.plan?.role==="explorer"?
+    tasks.find(other=>other.current.state==="running"&&
+     equivalentPlannedExplorer(task,other))?.taskId??null:null;
    const launchRequiresReconciliation=task.current.state==="planned"&&linked.length>0;
    return {id:task.taskId,title:task.title,state:task.current.state,revision:task.current.revision,
     dependsOn:[...dependsOn],blockedBy,linkedAttempts:linked.length,latestLinkedAgentId,
-    launchRequiresReconciliation,
-    ready:task.current.state==="planned"&&blockedBy.length===0&&!launchRequiresReconciliation,agents:correlated};
+    launchRequiresReconciliation,equivalentRunningExplorerId,
+    ready:task.current.state==="planned"&&blockedBy.length===0&&!launchRequiresReconciliation&&
+     equivalentRunningExplorerId===null,agents:correlated};
   })};
  }
  async task(taskId:string,identity:AgentSessionIdentity){

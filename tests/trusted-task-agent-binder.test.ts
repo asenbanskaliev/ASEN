@@ -169,3 +169,33 @@ test("EF-604 missing previous process state never becomes permission for a runni
  assert.equal(dispatches,0);assert.equal((await links.list(identity)).length,1);
 });
 
+
+test("EF-604 a prior interrupted agent with a changed role or identity cannot authorize a new dispatch",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-ef604-prior-identity-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const identity={sessionId:"recovery-role",projectId:root},todos=await SessionTodoStore.open(join(root,"todos.json"));
+ const plan={role:"explorer" as const,skillPaths:selectSkills({phase:"explore"}).map(s=>s.path),
+  skillSelection:{phase:"explore" as const}};
+ const task=await todos.add("Read-only role bound",identity,undefined,undefined,"asen-plan:prior-role",[],
+  "Inspect source only",plan);
+ const links=new TaskAgentLinkStore(join(root,"links.json"));
+ const old={id:"old-agent",...identity,role:"explorer",state:"queued"};
+ const fresh={id:"fresh-agent",...identity,role:"explorer",state:"queued"};
+ const agents=new Map([["old-agent",old],["fresh-agent",fresh]]);
+ const runtime={query:async(id:string)=>{const agent=agents.get(id);return agent?{record:{...agent}}:null;}};
+ const binder=new TrustedTaskAgentBinder(todos,runtime as never,links);let launches=0;
+ await binder.launch(task.taskId,"old-agent",identity,()=>{launches++;});old.state="interrupted";
+ old.role="reviewer";
+ await assert.rejects(()=>binder.launch(task.taskId,"fresh-agent",identity,()=>{launches++;}),
+  /prior agent identity or role mismatch/u);
+ old.role="explorer";old.projectId=root+"/foreign";
+ await assert.rejects(()=>binder.launch(task.taskId,"fresh-agent",identity,()=>{launches++;}),
+  /prior agent identity or role mismatch/u);
+ old.projectId=root;old.id="spoofed-agent";
+ await assert.rejects(()=>binder.launch(task.taskId,"fresh-agent",identity,()=>{launches++;}),
+  /prior agent identity or role mismatch/u);
+ assert.equal(launches,1);assert.deepEqual((await links.list(identity)).map(x=>x.agentId),["old-agent"]);
+ old.id="old-agent";
+ await binder.launch(task.taskId,"fresh-agent",identity,()=>{launches++;});
+ assert.equal(launches,2);assert.deepEqual((await links.list(identity)).map(x=>x.agentId),["old-agent","fresh-agent"]);
+});
+

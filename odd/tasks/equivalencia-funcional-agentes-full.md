@@ -1285,3 +1285,14 @@ El job provider-free `41867876731` del SHA `242ba26b` terminó FAIL: 232/233 pru
 
 **Recepción exact-SHA:** pendiente PASS del preflight, CI tres sistemas, Release Gate y recibos Pi auténticos de recuperación/consumo. Los tests con runtime simulado no cuentan como Ollama ejecutado ni como Writer autorizado. Se mantienen EF-601, EF-603, EF-604, EF-302 y EF-703 PARTIAL; EF-002/701 sin A/B C01–C20, EF-304 sin consentimiento humano real. Casillas canónicas: 8/28. FULL=false; sin merge a main ni proveedores de pago.
 
+
+### MEGATANDA EF-601/603/604/703 — visualización de coalescing y recuperación de identidad anterior (2026-11-04)
+
+**Dos defectos funcionales observados por inspección:** la vista `TaskAgentCoordinator.snapshot` podía presentar un segundo Todo Explorer como `ready:true` mientras un Explorer semánticamente equivalente seguía `running` en el mismo journal, aunque `withAgentLaunch` lo rechazaba bajo lock; esto daba instrucciones contradictorias al operador. Además, `TrustedTaskAgentBinder` exigía que el agente anterior estuviese `interrupted`, pero no comparaba expresamente su ID, sesión, proyecto y rol con el vínculo/tarea al decidir si un nuevo intento tenía antecedentes legítimos.
+
+**Corrección agrupada:** `equivalentPlannedExplorer` se exporta como criterio compartido por el lock de lanzamiento y la proyección de coordinación; la vista expone `equivalentRunningExplorerId` como bloqueo observacional y `ready:false`, sin convertir la vista en permiso de inferencia. Un Explorer de distinta sesión, modelo o rol no hereda bloqueo impropio. En el binder, toda recuperación de Todo `running` exige verificar identidad real (ID/sesión/proyecto) y rol del agente interrumpido contra la cadena de vínculos. Los cambios de ámbito/rol o sustituciones del ID producen rechazo antes de crear otro vínculo o invocar el callback de despacho.
+
+**Recepción probatoria:** pruebas nuevas de mismo Explorer con skillSelection reordenado, modelo distinto, Reviewer distinto, separación por sesión, coincidencia entre proyección y rechazo autoritativo; pruebas negativas de agente anterior con rol/proyecto/ID falsificados y positiva con recuperación real del journal (runner mock). El workflow ya ejecuta `task-agent-coordinator-links` y `trusted-task-agent-binder` en preflight; su prueba de cobertura exact-SHA se amplía. No se cuenta el mock como prueba Pi/Ollama ni como consentimiento Writer.
+
+**Estado:** pendiente PASS exact-SHA de preflight, suite global multiplataforma y Release Gate del nuevo commit. EF-601/603/604/703 continúan parciales. 8/28 checks cerrados, C01–C20 A/B sin capturas auténticas, auditoría independiente y autorización Writer humana todavía pendientes. FULL=false; sin merge.
+

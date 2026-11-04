@@ -6,6 +6,7 @@ import {join} from "node:path";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";
 import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 import {TaskAgentCoordinator} from "../src/runtime/task-agent-coordinator.js";
+import {selectSkills} from "../src/skills/registry.js";
 test("ECO-07 explicit persisted links survive restart without altering Todo state",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-coordinator-links-"));t.after(()=>rm(dir,{recursive:true,force:true}));
  const identity={sessionId:"session-a",projectId:"/project"},other={sessionId:"session-b",projectId:"/project"};
@@ -88,5 +89,52 @@ test("EF-601 latest linked agent is displayed as an attempt, never an authorizat
  assert.equal(view?.launchRequiresReconciliation,true);
  assert.equal(view?.ready,false);
  assert.equal(view?.state,"planned","A read-only projection never infers a transition from links");
+});
+
+
+test("EF-603 coordinator hides equivalent active planned Explorer but preserves distinct model and role",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-ef603-view-dedupe-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const identity={sessionId:"parallel-plan",projectId:root};
+ const todos=await SessionTodoStore.open(join(root,"todos.json"));
+ const selection={phase:"explore" as const,risk:"low" as const,filesTouched:1};
+ const equivalentSelection={filesTouched:1,risk:"low" as const,phase:"explore" as const};
+ const skillPaths=selectSkills(selection).map(skill=>skill.path);
+ const plan={role:"explorer" as const,skillPaths,skillSelection:selection};
+ const active=await todos.add("First Explorer",identity,undefined,undefined,"asen-plan:projection:first",[],
+  "Read the same bounded source files",plan);
+ const duplicate=await todos.add("Equivalent Explorer",identity,undefined,undefined,"asen-plan:projection:second",[],
+  "Read the same bounded source files",{...plan,skillSelection:equivalentSelection});
+ const differentModel=await todos.add("Different model",identity,undefined,undefined,"asen-plan:projection:model",[],
+  "Read the same bounded source files",{...plan,model:"beam:cloud"});
+ const otherRole=await todos.add("Independent review",identity,undefined,undefined,"asen-plan:projection:review",[],
+  "Read the same bounded source files",{role:"reviewer",skillPaths:[],skillSelection:{phase:"adversarial-review"}});
+ await todos.update(active.taskId,identity,1,"running");
+ const coordinator=new TaskAgentCoordinator(todos,{list:async()=>[]} as never,new TaskAgentLinkStore(join(root,"links.json")));
+ const view=await coordinator.snapshot(identity);const byId=new Map(view.tasks.map(item=>[item.id,item]));
+ assert.equal(byId.get(duplicate.taskId)?.equivalentRunningExplorerId,active.taskId);
+ assert.equal(byId.get(duplicate.taskId)?.ready,false);
+ assert.equal(byId.get(differentModel.taskId)?.equivalentRunningExplorerId,null);
+ assert.equal(byId.get(differentModel.taskId)?.ready,true);
+ assert.equal(byId.get(otherRole.taskId)?.equivalentRunningExplorerId,null);
+ assert.equal(byId.get(otherRole.taskId)?.ready,true);
+ assert.equal(byId.get(active.taskId)?.ready,false);
+ assert.equal((await todos.list(identity)).find(item=>item.taskId===duplicate.taskId)?.current.state,"planned");
+ await assert.rejects(()=>todos.withAgentLaunch(duplicate.taskId,identity,async()=>{},()=>{}),
+  /Equivalent planned Explorer already running/u,"Projection and lock use the same semantics");
+});
+test("EF-603 an active Explorer in a different session is not a false same-scope conflict",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-ef603-view-scope-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const own={sessionId:"own",projectId:root},foreign={sessionId:"foreign",projectId:root};
+ const todos=await SessionTodoStore.open(join(root,"todos.json"));
+ const plan={role:"explorer" as const,skillPaths:selectSkills({phase:"explore"}).map(x=>x.path),
+  skillSelection:{phase:"explore" as const}};
+ const competing=await todos.add("Foreign",foreign,undefined,undefined,"asen-plan:foreign",[],
+  "Analyze same data",plan);
+ const ownTask=await todos.add("Own",own,undefined,undefined,"asen-plan:own",[],
+  "Analyze same data",plan);
+ await todos.update(competing.taskId,foreign,1,"running");
+ const coordinator=new TaskAgentCoordinator(todos,{list:async()=>[]} as never);
+ const view=await coordinator.task(ownTask.taskId,own);
+ assert.equal(view?.equivalentRunningExplorerId,null);assert.equal(view?.ready,true);
 });
 
