@@ -168,15 +168,15 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 ### F4 — Verifier
 
 - [ ] EF-401 Alinear criterio de riesgo: cuándo se lanza y cuándo no. **PARCIAL:** Matriz de riesgo ASEN probada; referencia A/B no ejecutada.
-- [ ] EF-402 Pruebas independientes basadas en petición original, scratch y baseline. **PARCIAL:** Sin pruebas independientes reales contra la petición y baseline.
+- [ ] EF-402 Pruebas independientes basadas en petición original, scratch y baseline. **PARCIAL:** Verifier Pi real con Beam PASS para rechazo de tres defectos, pruebas deterministas fallidas, fixture aislado y SHA congelado (run `41783370317` / SHA `8add734`); falta ejecutar pruebas nuevas propias/independientes frente a la petición original y comparar A/B.
 - [ ] EF-403 Prueba real de defecto de alto riesgo, detección y revalidación tras fix. **BLOQUEADO:** Sin defecto grave real detectado, corregido y revalidado.
 - **Gate:** C09–C10.
 
 ### F5 — Reviewer
 
 - [ ] EF-501 Alinear vía de evaluación del riesgo, identidad del cambio y revisión nativa. **PARCIAL:** Falta contraste de revisión nativa y riesgos con A/B.
-- [ ] EF-502 Comparar perspectivas, resultado congelado, bloqueo, corrección y reevaluación. **PARCIAL:** Dos juicios Reviewer reales ciegos sobre el mismo candidato con Beam PASS (run `41723090941`, SHA `fe0198e`); falta revisión independiente externa, corrección real y reevaluación de perspectivas A/B.
-- [ ] EF-503 Probar reviewer real independiente sin sustituir evidencias faltantes por simulaciones. **BLOQUEADO:** Hay dos recibos reales de Reviewer con el mismo modelo Beam, pero no una revisión externa realmente independiente ni verificación positiva del Verifier; no sustituyen el criterio.
+- [ ] EF-502 Comparar perspectivas, resultado congelado, bloqueo, corrección y reevaluación. **PARCIAL:** Reviewer A/B real con dos juicios distintos y Verifier real PASS del rechazo sobre candidato fijo (run `41783370317` / SHA `8add734`); faltan corrección real, reevaluación de perspectivas y contraste externo A/B.
+- [ ] EF-503 Probar reviewer real independiente sin sustituir evidencias faltantes por simulaciones. **PARCIAL:** Dos invocaciones separadas de Reviewer y una de Verifier PASS con Ollama Beam y hashes de respuesta diferentes (`41783370317`); no son una revisión externa independiente ni un modelo distinto, requisito todavía abierto.
 - **Gate:** C11–C12 y C17.
 
 ### F6 — Segundo plano y recuperación
@@ -190,7 +190,7 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 ### F7 — Validación real y cierre
 
 - [ ] EF-701 Comparar C01–C20 con snapshots A/B y ASEN final; no heredar recibos entre SHAs. **BLOQUEADO:** Nuevo comparador triple A/B/ASEN por cada caso, scaffold de 40+20 capturas y auditor de integridad; siguen faltando ejecuciones auténticas y auditoría independiente de sus recibos.
-- [ ] EF-702 Probar selección de modelos reales gratuitos, error de cuota/red y consumo por agente. **PARCIAL:** Ollama Cloud autenticado y cinco inferencias Beam registradas en run `41723090941` / SHA `fe0198e` (Explorer, Planner, dos Reviewer, Verifier); no hay prueba real de agotamiento de cuota/red, ni garantía documentada de coste cero para nuevas ejecuciones.
+- [ ] EF-702 Probar selección de modelos reales gratuitos, error de cuota/red y consumo por agente. **PARCIAL:** Cinco inferencias auténticas con Ollama Cloud Beam y recibos exact-SHA `41783370317` / `8add734`, límite alcanzado sin pagos alternativos; faltan fallos reales de cuota/red, recuperación por rol y garantía de que nuevas llamadas sigan siendo gratuitas.
 - [ ] EF-703 Verificar tres OS, suite global, permisos, Pi interactivo, Writer, revisión, eventos y recuperación. **PARCIAL:** CI exact-SHA `41724028665` en Ubuntu/macOS/Windows PASS, T12 Pi TUI real PASS 3/3, Arquitectura/Release/Pi Matrix PASS; faltan Writer autorizado, consumo real por el padre, recuperación con proveedor, A/B y revisión independiente.
 - [ ] EF-704 Auditoría final de diferencias. Solo cambiar estado a **FULL** cuando todos los gates anteriores y S01–S11 estén satisfechos. **BLOQUEADO:** S01–S11, C01–C20 y auditoría final aún sin cerrar.
 - **Gate:** C01–C20 PASS obligatorios y ninguna diferencia esencial pendiente.
@@ -596,3 +596,24 @@ El run `41781460824` del SHA `3e3b720` bloqueó la aceptación auténtica antes 
 **F6 con recibo acotado:** la nueva prueba de procesos reales PASS no significa que Pi recibiera, leyera o consumiera el evento; únicamente acredita un `claim` y un `enqueue` por identidad entre procesos sin respuesta de modelo. EF-601/604 continúan PARCIAL, y el `asen_agent_ack` nativo permanece sujeto a identidad/entrega registrada. El riesgo de confundir una fila `enqueued` con un acuse de humano o con Writer `authorized` sigue prohibido.
 
 **Resultado y límites:** Se conservan 8/28 checks completados: ningún nuevo check se marca solo por un PASS offline. EF-402/503 siguen con prueba real de Verifier pendiente, EF-002/701 dependen de A/B C01–C20, EF-304 exige consentimiento humano y EF-601 consumo real del coordinador. No merge a main, ni proveedor de pago, ni auditoría presentada como independiente. Publicar una sola tanda con CI y aceptación autenticada limitada a cinco llamadas, y decidir por recibos exact-SHA.
+
+### Cierre verificable R3: aceptación real completa dentro de su alcance (2026-11-04)
+
+**Recibo de proveedor real:** `ASEN real-agent functional acceptance` run `41783370317`, SHA exacto `8add73424613f9bdae7b334e8a24c5b5d27fb0c8`, artefacto `asen-real-provider-8add734...-41783370317` (ID `13299214875`). Las evidencias `real-review-verifier.json`, `live-evidence-gate.json`, `inference-budget-summary.json` y `t12-acceptance-ledger.json` fueron contrastadas. Los dos Reviewer aprobaron tres hallazgos con hashes de respuesta distintos; el Verifier produjo `passed:true`, `checkCount:3`, `findingCount:3`, `verdict:fail` sobre los defectos deliberados. El gate final aceptó los cinco recibos secuenciales como `PASS_BOUNDED_READ_ONLY`. El presupuesto real fue `limit=5`, `reserved=5`, `remaining=0`. El entorno continuó `authorization=NOT_GRANTED`, `toolsAllowed=false`, `writer=BLOCKED_INTERACTIVE`. No se deduce de esto ninguna tarifa futura, autorización de escritura ni FULL.
+
+**Checks granulares de la aceptación autenticada** (independientes de los 28 EF de paridad):
+
+- [x] BEAM-R3-01 — Explorer autenticado, lectura acotada, salida observada y validada en el SHA indicado.
+- [x] BEAM-R3-02 — Planner autenticado, tres tareas y contrato de planificación sobre fixture real aislado.
+- [x] BEAM-R3-03 — Reviewer A y B, dos llamadas ciegas separadas, tres hallazgos correctos por cada una.
+- [x] BEAM-R3-04 — Verifier auténtico, tres tests fallidos, alcance/digests inmutables y tres razones causales; gate estricto PASS sin editar la respuesta.
+- [x] BEAM-R3-05 — Presupuesto exacto cinco llamadas y Writer no autorizado, con huellas y archivo de evidencia.
+- [x] BEAM-R3-06 — Preflight F6 con dos procesos Node reales compitiendo por una única notificación; **sin** afirmar consumo Pi.
+- [ ] BEAM-R3-07 — Consumo comprobado por un turno del coordinador Pi inactivo y acuse vinculado al resultado real.
+- [ ] BEAM-R3-08 — Writer Pi con aprobación y rechazo humano auténticos, revocación y preservación de archivos.
+- [ ] BEAM-R3-09 — Pruebas auténticas C01–C20 en las referencias A y B, y comparación exact-SHA ASEN.
+- [ ] BEAM-R3-10 — Recuperación de proveedor/cuota/red y segunda revisión externa verdaderamente independiente.
+
+**Reconciliación de estado:** la aceptación acotada F2/F3/F5 es PASS real; por ello EF-402, EF-502, EF-503 y EF-702 incorporan nueva evidencia, pero siguen `PARCIAL` y **sin** `[x]` a nivel EF: todos contienen requisitos adicionales no probados. EF-601/604 mantienen solo el PASS multiproceso del journal, no del consumidor Pi. El plan canónico mantiene **8/28 EF verificados, 20 abiertos y FULL NO**. La autoauditoría R4 sigue `SELF_AUDIT_ONLY / NOT independent`.
+
+**Cierre de tanda y paso siguiente:** no lanzar otras cinco llamadas de Beam para repetir un recorrido ya aceptado. Priorizar una tanda de aceptación con consumo real Pi/Writer y A/B, bajo los permisos auténticos disponibles. El commit documental de reconciliación no contiene el disparador de Ollama; el último PASS autenticado permanece anclado al SHA `8add734`, nunca se hereda a commits posteriores.
