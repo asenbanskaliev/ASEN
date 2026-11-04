@@ -139,7 +139,7 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 
 - [x] EF-000 Auditar código de A/B y ASEN, congelar SHA y registrar diferencias. **Solo evidencia de código**, no equivalencia FULL. **VERIFICADO:** `registry/parity/skill-sources-v1.json` + `tests/agent-observable-parity.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
 - [x] EF-001 Resolver 2 fallos de confirmación de baseline en tres OS, con preservación de excepción y nueva prueba de caducidad. **VERIFICADO:** `src/security/primary-tool-policy.ts` + `tests/ef001-confirmation-regressions.test.ts` · CI `41724028665` / SHA `e05ed7525b214591501ea085767e3d8c33c42ff1`.
-- [ ] EF-002 Obtener observaciones reales C01–C20 del comportamiento A/B con entorno aislado y registrar resultados canónicos. **BLOQUEADO:** Identidades A/B comprobadas como objetos Git externos, y captura de procedencia con dos repositorios congelados implementada (pendiente CI); faltan ejecuciones reales de C01–C20 sobre ambas referencias, con 40 trazas atribuibles y auditadas.
+- [ ] EF-002 Obtener observaciones reales C01–C20 del comportamiento A/B con entorno aislado y registrar resultados canónicos. **BLOQUEADO:** Procedencia de ambos repositorios A/B comprobada realmente en Actions, `SOURCE_OBJECTS_VERIFIED` / run `41787200198` / SHA `44c9ad0`; faltan los 20 escenarios sobre cada referencia, 40 trazas conductuales atribuibles y su auditoría independiente.
 - [x] EF-003 Crear harness de comparación de decisiones observables sin depender del texto libre del modelo. **VERIFICADO:** `scripts/agent-observable-parity.mjs` + `tests/agent-observable-parity.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
 - **Gate:** baseline CI limpia, referencias trazables, comparación válida; no modificar el registro global ECO.
 
@@ -181,7 +181,7 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 
 ### F6 — Segundo plano y recuperación
 
-- [ ] EF-601 Entrega del resultado según estado del padre, con reactivación real cuando esté inactivo. **PARCIAL:** Encolado/wake y journal multiproceso PASS; se ha preparado un escenario Pi TUI real con un turno del modelo Beam, consulta `asen_agent_status` y acuse `asen_agent_ack`, cuya evidencia está pendiente del CI nuevo. El hijo es un fixture de solo lectura, NO un segundo modelo; faltan prueba integrada con hijo Pi auténtico, concurrencia y recuperación.
+- [ ] EF-601 Entrega del resultado según estado del padre, con reactivación real cuando esté inactivo. **PARCIAL:** Pi TUI 1.2.0 + Beam reales lograron `PASS_REAL_PI_PARENT_BOUNDED`, con un despertar, turno del modelo, consulta y acuse duradero del mismo aviso (run `41787200198`, SHA `44c9ad0`). El hijo fue un fixture de lectura, NO un segundo modelo Pi; faltan hijo Pi LLM auténtico, padre ocupado, recuperación y comparación A/B C13.
 - [x] EF-602 Suprimir sondeo/sleep innecesario, duplicados y avisos caducados. **VERIFICADO:** `src/runtime/agent-notification-journal.ts` + `tests/agent-notification-journal.test.ts` · CI `41689422912` / SHA `07f9793517f8d6a57b3d67cc21b589be8002abb1`.
 - [ ] EF-603 No relanzar tareas activas equivalentes: misma identidad y alcance verificable. **PARCIAL:** CAS, veto exacto entre IDs Explorer planificados y pruebas con dos procesos Node y journal real superaron CI exact-SHA `41724028665` (3 OS); faltan equivalencia de otros roles y prueba de lanzamiento de agentes Pi auténticos, sin confundir multiproceso Node con modelo real.
 - [ ] EF-604 Recuperación tras reinicio, estado incierto y preguntas del hijo sin permiso inventado. **PARCIAL:** Journal con cuatro estados, recuperación y prueba multiproceso Node con registro/CAS/claim/aislamiento PASS en preflight `41782747238`; faltan decisiones humanas auténticas del hijo y reanudación de Pi/Writer tras reinicio.
@@ -189,9 +189,9 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 
 ### F7 — Validación real y cierre
 
-- [ ] EF-701 Comparar C01–C20 con snapshots A/B y ASEN final; no heredar recibos entre SHAs. **BLOQUEADO:** Comparador triple y auditor de integridad disponibles; nuevo witness exacto de commits/trees/blobs A/B es fuente-only, no observación conductual. Faltan las 60 capturas auténticas, modelo real y auditoría independiente de recibos.
+- [ ] EF-701 Comparar C01–C20 con snapshots A/B y ASEN final; no heredar recibos entre SHAs. **BLOQUEADO:** Fuente A/B verificada por Git real exact-SHA en run `41787200198` y comparador triple existente; la prueba source-only registra `executedCases:0`. Faltan las 40 capturas conductuales de referencia y 20 de ASEN sobre el SHA final, además de revisión independiente.
 - [ ] EF-702 Probar selección de modelos reales gratuitos, error de cuota/red y consumo por agente. **PARCIAL:** Cinco inferencias auténticas con Ollama Cloud Beam y recibos exact-SHA `41783370317` / `8add734`, límite alcanzado sin pagos alternativos; faltan fallos reales de cuota/red, recuperación por rol y garantía de que nuevas llamadas sigan siendo gratuitas.
-- [ ] EF-703 Verificar tres OS, suite global, permisos, Pi interactivo, Writer, revisión, eventos y recuperación. **PARCIAL:** CI exact-SHA `41724028665` en Ubuntu/macOS/Windows PASS, T12 Pi TUI real PASS 3/3, Arquitectura/Release/Pi Matrix PASS; faltan Writer autorizado, consumo real por el padre, recuperación con proveedor, A/B y revisión independiente.
+- [ ] EF-703 Verificar tres OS, suite global, permisos, Pi interactivo, Writer, revisión, eventos y recuperación. **PARCIAL:** CI anterior 3 OS PASS (`41724028665`) y nueva aceptación Pi padre+Beam con consulta/acuse real PASS (`41787200198` / `44c9ad0`); faltan hijo Pi LLM real, Writer autorizado, recuperación con proveedor, matriz A/B y revisión externa independiente; CI del candidato posterior debe verificarse por su propio SHA.
 - [ ] EF-704 Auditoría final de diferencias. Solo cambiar estado a **FULL** cuando todos los gates anteriores y S01–S11 estén satisfechos. **BLOQUEADO:** S01–S11, C01–C20 y auditoría final aún sin cerrar.
 - **Gate:** C01–C20 PASS obligatorios y ninguna diferencia esencial pendiente.
 
@@ -637,9 +637,9 @@ El run `41781460824` del SHA `3e3b720` bloqueó la aceptación auténtica antes 
 
 **Checks de la macrotanda (distintos de los 28 EF):**
 - [x] MEGA-AB-01 — procedencia A y B, commit y árbol obtenidos y contrastados con objetos GitHub públicos, **solo identidad**.
-- [ ] MEGA-PI-01 — contrato de rechazo de un ack/replay sin consumo implementado con unit tests, **pendiente PASS del CI nuevo**.
-- [ ] MEGA-AB-02 — GitHub Actions clona/verifica realmente los dos árboles exactos y emite artefactos source-only.
-- [ ] MEGA-PI-02 — Pi TUI real con Beam despierta y confirma consulta/ack en el mismo aviso.
+- [x] MEGA-PI-01 — validador de consulta y acuse exactos, con pruebas negativas, PASS en preflight `41787200198` / SHA `44c9ad0`; no sustituye una sesión Pi real.
+- [x] MEGA-AB-02 — GitHub Actions obtuvo ambos commits/árboles/blobs A/B y publicó `SOURCE_OBJECTS_VERIFIED`, artefacto `13302125750`, run `41787200198` / SHA `44c9ad0`; **0/20 casos ejecutados**.
+- [x] MEGA-PI-02 — Pi 1.2.0 TUI + Ollama Beam auténticos despertaron el padre, consultaron `asen_agent_status` y llamaron `asen_agent_ack` para el mismo evento; artefacto `13301807519`, run `41787200198` / SHA `44c9ad0`, fixture hijo de lectura.
 - [ ] MEGA-PI-03 — Pi TUI padre con un hijo Pi LLM real, no fixture, consume la notificación.
 - [ ] MEGA-WRITER-01 — consentimiento humano, rechazo y revocación en archivo exacto, con recibo vivo.
 - [ ] MEGA-AB-03 — 40 observaciones A/B y 20 ASEN con per-case A/B/ASEN y fuente verificada.
@@ -660,3 +660,17 @@ El run `41781460824` del SHA `3e3b720` bloqueó la aceptación auténtica antes 
 - Regresiones en `tests/agent-notification-journal.test.ts`: conflicto secuencial, carrera entre dos instancias, aislamiento entre sesiones, historial inconsistente y preservación exacta de los bytes. La aceptación sin proveedor las incluye expresamente. Ningún test concede autorización ni prueba el turno padre Pi.
 - **Aceptar solo tras recibo exact-SHA**: CI Ubuntu/macOS/Windows, Typecheck, Build, Release Gate, Arquitectura, Pi Runtime, F6 y R4 (SELF_AUDIT_ONLY). Esta publicación no opta a ninguna nueva inferencia Beam ni Writer.
 - EF-601/604 quedan PARCIAL hasta que Pi real consuma el resultado y se demuestre recuperación; EF-002/701 y EF-304 permanecen bloqueadas en A/B y consentimiento humano genuino. Total: **8/28 EF verificados**, sin nuevos checks ni FULL.
+
+### Cierre R4 de la macrotanda: A/B source-only y consumo auténtico del padre Pi (2026-11-04)
+
+**Recibos exactos, no simulaciones:** `ASEN real-agent functional acceptance`, run `41787200198` sobre `44c9ad044b7652031e088404c62e5631878fbed7` terminó con `Provider-free static and ASEN validation: SUCCESS`, `Frozen A/B source objects: SUCCESS`, `Real Pi parent notices with Ollama Beam: SUCCESS` y `Writer authorization design lock: SUCCESS`. La aceptación anterior de cinco roles con Beam fue **omitida intencionalmente** para no gastar otras cinco llamadas sin necesidad. El preflight incluyó las pruebas negativas de `tests/agent-ab-source-witness.test.ts` y `tests/t12-parent-consumption-grade.test.ts`.
+
+**A/B, prueba fuente real:** el artefacto `13302125750`, `asen-ab-source-only-44c9ad0-41787200198`, informa `SOURCE_OBJECTS_VERIFIED`, dos repositorios distintos, dos commits exactos, dos árboles exactos y tres blobs de fuente en cada uno. Sus campos `executedCases:0`, `runtimeAttested:false`, `globalFull:false` prohíben expresamente usarlo como paridad A/B. Se marca **MEGA-AB-02**, no EF-002 ni EF-701.
+
+**Pi padre y Ollama Beam auténticos:** el artefacto `13301807519`, `asen-parent-real-44c9ad0-41787200198`, contiene `PASS_REAL_PI_PARENT_BOUNDED` en Pi 1.2.0 Linux con `beam`. El host observó exactamente `result_enqueued → idle_wake → parent_turn_start → status_inspected → acknowledged → parent_turn_end`. El padre llamó a dos herramientas públicas reales, `asen_agent_status` y `asen_agent_ack`; el journal confirmó el mismo `eventId` en `acknowledged`. Proyecto Git descartable inalterado. `childUsesModel:false`, `writerAuthorized:false`, `humanReadConfirmed:false`, `independentReferenceParity:false`, `globalFull:false`. Se marcan **MEGA-PI-01** y **MEGA-PI-02**, no EF-601 completo.
+
+**Writer:** no existe recibo de una decisión humana real. Un diálogo TUI que CI responde con teclas automatizadas demuestra el mecanismo, no consentimiento genuino. MEGA-WRITER-01 y EF-304 quedan sin marcar. Los contratos de permiso, revocación y preservación deben aplicarse a un Writer Pi real controlado por una persona y a un worktree descartable.
+
+**Interferencia de cambios concurrentes reconciliada:** tras `44c9ad0` se publicó `1dd34aad726aa9824ae4a9e9a7ffba0d640412ea`, que añade rechazo de estados terminales contradictorios e incluye nuevas regresiones en el journal; el cambio se conserva. Su `F5 exact-SHA static verification` run `41787331592` falló por `actionlint`/ShellCheck `SC2155` en el script de la nueva prueba Pi: `export ASEN_SELECTED_MODEL="$(cat ...)"` ocultaba el código de salida. Se separa asignación y exportación, sin alterar el modelo elegido, la cuota ni la autoridad. El CI global de dicho SHA estaba aún en ejecución durante esta reconciliación. No se heredan resultados de un SHA a otro.
+
+**Balance de checks tras recibos:** los subchecks MEGA-AB-01, MEGA-AB-02, MEGA-PI-01 y MEGA-PI-02 están `[x]`; MEGA-PI-03, MEGA-AB-03 y MEGA-WRITER-01 siguen abiertos. El plan EF canónico continúa en **8/28 cerrados y 20 abiertos**, porque cada EF requiere todos sus criterios, no solo evidencia parcial. No se declara FULL, no se usa una auditoría automática como independiente y no se fusiona a `main`.

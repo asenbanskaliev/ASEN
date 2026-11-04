@@ -242,7 +242,8 @@ jobs:
           export HOME="$RUNNER_TEMP/asen-pi-parent"
           export USERPROFILE="$HOME"
           export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
-          export ASEN_SELECTED_MODEL="$(cat "$RUNNER_TEMP/asen-parent-selected-model")"
+          ASEN_SELECTED_MODEL="$(cat "$RUNNER_TEMP/asen-parent-selected-model")"
+          export ASEN_SELECTED_MODEL
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           mkdir -p asen-acceptance-evidence
           timeout 160s node scripts/t12-real-parent-consumption.mjs
