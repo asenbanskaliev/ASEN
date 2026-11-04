@@ -4,7 +4,7 @@
  * Claims of real execution still require independent verification of receipts.
  */
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import {readAgentABManifest} from './agent-ab-manifest-reader.mjs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -105,8 +105,10 @@ async function main() {
   const [referencePath, candidatePath, sha] = process.argv.slice(2);
   if (!referencePath || !candidatePath || !sha || process.argv.length !== 5)
     throw new Error('Usage: node scripts/agent-observable-parity.mjs <reference.json> <asen.json> <exact-candidate-sha>');
-  const [reference, candidate] = await Promise.all([referencePath, candidatePath].map(async p =>
-    JSON.parse(await readFile(resolve(p), 'utf8'))));
+  // A/B input must not bypass the bounded, descriptor-identity-safe reader
+  // used by both other acceptance CLIs. Matching JSON is not attested runtime.
+  const [reference,candidate]=await Promise.all([referencePath,candidatePath]
+    .map(p=>readAgentABManifest(resolve(p))));
   const report = compareAgentObservations({ reference, candidate, candidateSha: sha });
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   // F7 is fail-closed: even 20 triple matches still require independent receipt audit.

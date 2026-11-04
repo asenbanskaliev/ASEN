@@ -83,6 +83,9 @@ jobs:
           node --check scripts/t12-parent-consumption-grade.mjs
           node --check scripts/agent-ab-manifest-reader.mjs
           node --check scripts/agent-observable-receipts.mjs
+          node --check scripts/agent-observable-parity.mjs
+          node --check scripts/t12-native-tui-crash-recovery.mjs
+          node --check scripts/t12-native-tui-crash-grade.mjs
           node --check scripts/agent-ab-case-readiness.mjs
           node --check scripts/agent-ab-host-smoke.mjs
       - name: Typecheck
@@ -101,6 +104,7 @@ jobs:
             tests/orchestrator.test.ts \
             tests/functional-role-parity-matrix.test.ts \
             tests/agent-observable-parity.test.ts \
+            tests/agent-ab-triple-cli-security.test.ts \
             tests/agent-observable-scaffold.test.ts \
             tests/agent-observable-receipts.test.ts \
             tests/agent-ab-source-witness.test.ts \
@@ -152,6 +156,15 @@ jobs:
             tests/ef604-native-pi-headless-restart.test.ts \
             tests/t12-stream-interruption-reopen.test.ts \
             tests/session-recovery-e2e.test.ts
+      - name: EF-604 real native Pi TUI parent hard death and live Pi RPC subprocess recovery (no model)
+        shell: bash
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          timeout 110s node scripts/t12-native-tui-crash-recovery.mjs
+          node -e 'const x=require("./asen-acceptance-evidence/native-tui-crash-recovery.json");if(x.candidateSha!==process.env.ASEN_EXPECTED_SHA||x.status!=="PASS_NATIVE_TUI_PARENT_CRASH_WITH_ACTIVE_PI_RPC_CHILD"||x.providerCalls!==0||x.replayedCalls!==0||x.writerAuthorized!==false||x.globalFull!==false)process.exit(1);'
       - name: F6 cross-process inference recovery, corruption and negative checks
         shell: bash
         run: |
@@ -159,7 +172,7 @@ jobs:
           node --import tsx --test tests/t12-inference-budget.test.ts
       - name: F2/F3 deterministic fixture and planning contracts
         shell: bash
-        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-review-grader.test.ts tests/t12-verifier-brief.test.ts tests/t12-parent-consumption-grade.test.ts tests/t12-real-child-parent-grade.test.ts tests/t12-real-busy-parent-grade.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-stream-interruption-grade.test.ts tests/t12-stream-interruption-workflow.test.ts tests/t12-disposable-correction.test.ts tests/t12-revalidation-contract.test.ts tests/agent-ab-manifest-reader.test.ts tests/agent-ab-combined-gate.test.ts tests/t12-live-evidence-gate.test.ts tests/t12-explorer-schema.test.ts tests/t12-acceptance-ledger.test.ts
+        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-review-grader.test.ts tests/t12-verifier-brief.test.ts tests/t12-parent-consumption-grade.test.ts tests/t12-real-child-parent-grade.test.ts tests/t12-real-busy-parent-grade.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-stream-interruption-grade.test.ts tests/t12-stream-interruption-workflow.test.ts tests/t12-native-tui-crash-grade.test.ts tests/t12-disposable-correction.test.ts tests/t12-revalidation-contract.test.ts tests/agent-ab-manifest-reader.test.ts tests/agent-ab-combined-gate.test.ts tests/t12-live-evidence-gate.test.ts tests/t12-explorer-schema.test.ts tests/t12-acceptance-ledger.test.ts
       - name: Ollama scoped child credential regression
         run: node --import tsx --test tests/t12-ollama-child-credential.test.ts
       - name: Pi retry settings preserve installed extensions
