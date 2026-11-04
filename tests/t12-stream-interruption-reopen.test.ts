@@ -49,7 +49,7 @@ test("EF-604 provider-free cancelled Explorer survives a separate coordinator pr
  assert.equal((await cancellable.query(id,scope))?.record.state,"cancelled");
  const row=await new AgentNotificationJournal(journal).record({id,state:"cancelled",...scope});
  assert.equal(row.delivery,"pending");
- const env={...process.env,
+ const env:NodeJS.ProcessEnv={...process.env,
   ASEN_STREAM_STORE:store,ASEN_STREAM_JOURNAL:journal,
   ASEN_STREAM_AGENT:id,ASEN_STREAM_SESSION:scope.sessionId,
   ASEN_STREAM_PROJECT:scope.projectId,
