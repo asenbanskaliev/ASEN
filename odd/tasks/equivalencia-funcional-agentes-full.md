@@ -910,7 +910,7 @@ Se mantienen las restricciones de permisos; Writer humano y paridad C01–C20 si
 
 **Subchecks de la megatanda:**
 - [x] EF604-NODE-01 — Proceso independiente terminó después del claim y otro lo reabrió sin replay/ack, prueba focal `tests/agent-notification-restart-process.test.ts` incluida en preflight `41815920521`, SHA `9d5d764a1258f8f48c24210e7d2375a2a189e50b`.
-- [ ] EF403-FIX-01 — RED 3/3, GREEN 3/3, PRESERVE y regresiones de huellas validadas en el SHA de esta publicación.
+- [x] EF403-FIX-01 — **VERIFICADO en preflight provider-free:** RED 3/3, GREEN 3/3, PRESERVE en `tests/t12-revalidation-contract.test.ts` y código `scripts/t12-revalidation-contract.mjs`, Actions `41819341700` / SHA `4b15c494a8cad718b30d1b2c4e06eceebd4de15e` (Ubuntu). No equivale a Writer Pi con consentimiento.
 - [x] EF403-FIX-02 — **VERIFICADO solo en SHA histórico `ebf5515d140a1f73f0d15f3060f1012500261994`:** Ollama Beam real Reviewer + Verifier, dos llamadas `noTools`, resultado `EF403_REPAIRED_READONLY_REVALIDATION_PASS`, Actions `41818629889` / artefacto `13315214638`. No equivale a ejecución Writer real ni acredita el SHA posterior.
 - [x] EF502-REVIEW-01 — **VERIFICADO en alcance de fixture read-only:** rechazo negativo anterior en `41783370317` y validación positiva independiente por rol, pero **mismo modelo/proveedor**, en `41818629889` / SHA `ebf5515d140a1f73f0d15f3060f1012500261994` / artefacto `13315214638`; no equivale a revisión independiente externa ni comparación A/B.
 - [ ] EF604-PI-RESTART — Recuperación de un host Pi real interrumpido, sin retransmisión incierta y sin permiso inventado; sigue pendiente.
@@ -927,8 +927,14 @@ Se mantienen las restricciones de permisos; Writer humano y paridad C01–C20 si
 - El preflight F6 de `.github/workflows/asen-real-agent-acceptance.yml` incluye explícitamente el nuevo test de herramienta pública. No necesita Ollama para esta regresión y no puede usar el resultado como consentimiento.
 
 **Checks adicionales:**
-- [ ] EF403-PRESERVE-02 — Huellas README/package y árbol completo bajo los tests del SHA de esta publicación, sin secretos en subprocesos.
-- [ ] EF604-ACK-02 — Nueva registración del coordinador rechaza el acuse de un estado `attempted` o de una inspección anterior, PASS exact-SHA.
+- [x] EF403-PRESERVE-02 — **VERIFICADO en preflight provider-free:** huellas de README/package, árbol completo, fallos ante alteración y entorno sin claves en subprocesos; `tests/t12-revalidation-contract.test.ts`, Actions `41819341700` / SHA `4b15c494a8cad718b30d1b2c4e06eceebd4de15e`. El CI global tres OS sigue separado.
+- [x] EF604-ACK-02 — **VERIFICADO en preflight provider-free:** nueva registración descarta autoridad de inspección previa, listado no cuenta como inspección y `attempted` no es acusado; `tests/agent-notice-ack-tool.test.ts`, Actions `41819341700` / SHA `4b15c494a8cad718b30d1b2c4e06eceebd4de15e`. No demuestra reinicio de host Pi.
 - [ ] EF604-PI-RESTART-02 — Reinicio REAL del proceso Pi con sesión persistente, recibos y sin duplicados: no demostrado por estas pruebas, sigue pendiente.
 
 **Global:** los 28 EF canónicos permanecen 8/28; FULL NO ALCANZADO, Writer humano, A/B C01–C20 y revisor externo aún abiertos. Sin merge a `main`.
+
+### Recepción exact-SHA de las regresiones agrupadas (2026-11-04)
+
+`ASEN real-agent functional acceptance` run `41819341700`, commit `4b15c494a8cad718b30d1b2c4e06eceebd4de15e`: `Provider-free static and ASEN validation` **SUCCESS**. TypeScript, build, nueva prueba `tests/agent-notice-ack-tool.test.ts`, matriz F6 y `tests/t12-revalidation-contract.test.ts` superaron el gate de aceptación; `Writer authorization design lock` SUCCESS. Se marcan los tres **subchecks** EF403-FIX-01, EF403-PRESERVE-02 y EF604-ACK-02, limitados a lo que cada uno verifica, sin afirmar reinicio auténtico Pi, permisos de Writer ni test real de proveedor en este SHA. La prueba real Beam positiva sigue atada al SHA `ebf5515d140a1f73f0d15f3060f1012500261994` y artefacto `13315214638`, no se hereda.
+
+**Pendiente:** CI global y Release Gate del SHA `4b15c494a8cad718b30d1b2c4e06eceebd4de15e`; Writer humano EF-304, A/B real C01–C20, reinicio de Pi EF604-PI-RESTART y auditoría independiente. 8/28 EF canónicos, sin FULL ni merge.
