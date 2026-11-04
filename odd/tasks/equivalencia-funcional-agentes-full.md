@@ -1449,4 +1449,7 @@ La nueva aserción de workflow tenía una comilla final mal colocada. La inspecc
 ### EF-601 — cableado de frescura al envío real de avisos — 2026-11-04
 
 - La aceptación anterior verificó el umbral y el formato, pero la antigüedad todavía se combinaba inline dentro de `extensions/asen.ts`. Nueva regresión agrupada: extraer el compositor `agentTerminalNoticeContent`, que recibe el `createdAt` durable y decide en una sola función si conserva u omite el resumen antes de que `sendMessage` lo reciba; la extensión consume directamente ese resultado.
-- La prueba nueva contrasta resumen viejo y fresco en el límite de 90 s y comprueba la supresión/preservación de contenido junto con eventId. Recepción exact-SHA pendiente; EF601-STALE-RESULT-01 queda en PASS para contrato/filtro previo, este cableado sigue pendiente hasta preflight nuevo. EF-601 canónico PARTIAL, 8/28, FULL=false.
+- [x] EF601-STALE-WIRING-01 — **PASS provider-free exact-SHA** en `886bb7f702f8e853ee2815cf37d0024dfaface29`, aceptación `41935953720`, job provider-free SUCCESS. Prueba composer contrasta resumen viejo/fresco en el límite de 90 s y conserva eventId; test de frescura previo `ok 53`/`ok 54`. Sin llamada al modelo ni Writer.
+- EF601-STALE-RESULT-01 permanece PASS para contrato/filtro; ambos son subchecks acotados y no incrementan la cuenta canónica. EF-601 sigue PARTIAL, 8/28, FULL=false.
+
+- **No promoción canónica:** esto no demuestra reanudación TUI real con aviso envejecido, acción de lectura efectiva ni A/B C14; EF-601 canónico sigue `[ ]`.

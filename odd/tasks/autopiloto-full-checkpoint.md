@@ -167,3 +167,11 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - Cambio agrupado: `agentTerminalNoticeContent` combina el timestamp persistido, resumen y eventId; `extensions/asen.ts` usa su `content` directamente. Regresión separa fresco (summary presente) de viejo (summary ausente) y mantiene identidad. No modifica wake, ack, journal state, ni autoriza replay.
 - Run CI `41935809966` y Release Gate `41935809746` del HEAD anterior estaban queued/pending; este commit los cancela y lanza exact-SHA nuevos. No heredar resultados. Mantener 8/28 y EF-601 PARTIAL.
 - Próxima verificación: preflight completo, Phase 0, CI y Release Gate del SHA nuevo. Registrar resultado antes de la siguiente macrotanda.
+
+
+## EF-601 composer receipt — 2026-11-04
+
+- SHA `886bb7f702f8e853ee2815cf37d0024dfaface29`: aceptación provider-free [41935953720](https://github.com/asenbanskaliev/ASEN/actions/runs/41935953720) preflight SUCCESS; test integrado composer fresco/viejo y Typecheck/Build pass. Carriles reales se omitieron, no hubo modelo ni Writer. Phase 0 `41935962862`, F5 `41935963039`, Pi runtime `41935962883`, CodeGraph `41935962853` y R4 self-audit `41935962849` SUCCESS; Pi Free Smoke `41935962852` SKIPPED.
+- CI `41935962856` y Release Gate `41935962878` estaban IN_PROGRESS al registrar. La publicación de este checkpoint cancela esos resultados parciales; consultar nuevos workflows del nuevo SHA exacto. No afirmar CI/RG PASS.
+- Checkpoints EF601-STALE-RESULT-01 y EF601-STALE-WIRING-01 acotan el formato y su composición con timestamp persistente. EF-601 global continúa PARTIAL, canónicos 8/28. Falta recovery TUI con inferencia/reinicio, consumo después de restart, A/B C01–C20, Writer humano, Reviewer independiente. FULL=false.
+- Próxima macrotanda elegida: EF-601/604, cubrir pending viejo en flujo de restauración del host y evento/ack real, usando el mismo journal; conservar regla de no replay de `attempted` y sin notificar como leído hasta acción de status+ack.
