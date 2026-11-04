@@ -17,6 +17,7 @@ function fixture(){
   assert.equal(options.stdio[0],"ignore");
   assert.equal(options.maxBuffer,131072);
   assert.equal(options.env.PI_OFFLINE,"1");
+  assert.equal(options.env.GOFLAGS,"-mod=readonly -modcacherw");
   assert.equal(options.env.GIT_TERMINAL_PROMPT,"0");
   assert.equal("OPENAI_API_KEY" in options.env,false);
   const directory=command==="git"?String(args[1]):String(options.cwd);
@@ -28,21 +29,25 @@ function fixture(){
     (malformed==="tree"? "0".repeat(40):identity.tree)+"\n":
     (malformed==="commit"? "0".repeat(40):identity.commit)+"\n";
    if(args.includes("status"))return malformed==="dirty"?" M README.md\n":"";
+   if(args.includes("checkout")&&id==="A"){
+    const name=source[0].repository.split("/").at(-1);
+    writeFileSync(join(args[1],"package.json"),JSON.stringify({bin:{entry:"bin/"+name+".mjs"}}));
+   }
    return "";
   }
   if(command==="go"){
    assert.deepEqual(args.slice(0,2),["build","-trimpath"]);
-   assert.equal(args.at(-1),"./cmd/gentle-ai");
-   writeFileSync(join(root,"gentle-ai-smoke"),"synthetic built file",{flag:"wx"});
+   assert.equal(args.at(-1),"./cmd/"+source[1].repository.split("/").at(-1));
+   writeFileSync(join(root,"reference-b-cli"),"synthetic built file",{flag:"wx"});
    return "";
   }
   if(command===process.execPath){
    assert.equal(args.at(-1),"--help");
-   return badHelp?"":("usage: gentle-shell pi provider subagents ".repeat(2));
+   return badHelp?"":("usage: pi launcher and subagents ".repeat(2));
   }
-  if(command===join(root,"gentle-ai-smoke")){
+  if(command===join(root,"reference-b-cli")){
    assert.deepEqual(args,["--help"]);
-   return badHelp?"":("Usage: gentle-ai installer and agent framework ".repeat(2));
+   return badHelp?"":("Usage: native framework installer ".repeat(2));
   }
   throw Error("Unexpected external command");
  };

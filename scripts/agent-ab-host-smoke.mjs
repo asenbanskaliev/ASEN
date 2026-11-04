@@ -15,9 +15,9 @@ const hash=text=>createHash("sha256").update(text).digest("hex");
 const trusted=(home)=>({
  PATH:process.env.PATH,HOME:home,USERPROFILE:home,TMPDIR:home,TMP:home,TEMP:home,
  LANG:"C",LC_ALL:"C",GIT_TERMINAL_PROMPT:"0",GIT_ASKPASS:"",
- PI_OFFLINE:"1",GENTLE_SHELL_NO_UPDATE_CHECK:"1",GOTOOLCHAIN:"local",
+ PI_OFFLINE:"1",GOTOOLCHAIN:"local",
  GOPROXY:"https://proxy.golang.org",GOSUMDB:"sum.golang.org",
- GOFLAGS:"-mod=readonly",GOWORK:"off",CGO_ENABLED:"0",
+ GOFLAGS:"-mod=readonly -modcacherw",GOWORK:"off",CGO_ENABLED:"0",
 });
 export function validateReferenceHostSmoke(report,sourceList=pinnedAgentABSources()){
  assert.equal(report?.schema,"asen-ab-native-host-smoke/v1");
@@ -64,10 +64,16 @@ export function runReferenceHostSmoke({root,runCommand=execFileSync}){
    throw Error("A/B executable source mismatch for "+src.id);
   let output;
   if(src.id==="A"){
-   output=run(process.execPath,[join(dir,"bin","gentle-shell.mjs"),"--help"],dir,45000);
+   const manifest=JSON.parse(readFileSync(join(dir,"package.json"),"utf8"));
+   const entries=manifest?.bin&&typeof manifest.bin==="object"?Object.values(manifest.bin):[];
+   if(entries.length!==1||typeof entries[0]!=="string"||!/^bin\/[A-Za-z0-9_-]+\.mjs$/u.test(entries[0]))
+    throw Error("A native Pi bin entrypoint is missing from pinned package metadata");
+   output=run(process.execPath,[join(dir,...entries[0].split("/")),"--help"],dir,45000);
   }else{
-   const binary=join(root,"gentle-ai-smoke");
-   run("go",["build","-trimpath","-o",binary,"./cmd/gentle-ai"],dir,300000);
+   const binary=join(root,"reference-b-cli");
+   const cliName=src.repository.split("/").at(-1);
+   if(!cliName||!/^[A-Za-z0-9_-]+$/u.test(cliName))throw Error("Invalid frozen B host name");
+   run("go",["build","-trimpath","-o",binary,"./cmd/"+cliName],dir,300000);
    if(!statSync(binary).isFile())throw Error("B native binary missing after build");
    output=run(binary,["--help"],dir,45000);
   }
