@@ -28,7 +28,7 @@ test("EF-703 streamed Beam interruption is a single opt-in exact-SHA readonly jo
   "real-pi-stream-interruption.json",
  ])assert.ok(lane.includes(item),"Missing read-only one-shot guard "+item);
  assert.doesNotMatch(lane,/(?:OPENROUTER_API_KEY|GROQ_API_KEY|NVIDIA_API_KEY|WRITE_GRANT|writerAuthorized: true|continue-on-error: true)/u);
- assert.doesNotMatch(lane,/contains\\(github\\.event\\.head_commit\\.message/u,
+ assert.doesNotMatch(lane,/contains\s*\(\s*github\.event\.head_commit\.message/u,
   "The free-model acceptance must require the exact opt-in commit message");
  assert.match(lane,/timeout 220s/u);
  assert.match(lane,/timeout-minutes: 12/u);

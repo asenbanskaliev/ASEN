@@ -1388,3 +1388,8 @@ La prueba multiproceso de EF-601/604 compite con dos procesos independientes por
 - La regresión de concurrencia del acuse (dos procesos sobre un solo evento) pasó dentro del job provider-free de esta misma aceptación exact-SHA; no equivale a consumo de un turno Pi.
 - En SHA `03be1c4`: Release Gate `41930355820` SUCCESS, Phase 0 `41930355793`, F5 `41930355717`, Pi Runtime `41930355971`, R4 self-audit `41930356042` y CodeGraph `41930355931` SUCCESS; CI general `41930355876` seguía IN_PROGRESS al registrar. Autoauditoría no es revisión independiente. A/B tiene cero escenarios ejecutados y el total canónico permanece 8/28.
 - Siguiente megatanda: lanzar el test aislado de EF-604 que interrumpe una inferencia real de Pi RPC tras observar el primer text-delta y verifica el estado durable desde otro proceso sin credenciales; reforzar su prueba de workflow para exigir el mensaje opt-in exacto. No lo presentará como reanudación de TUI interactivo.
+
+
+### Corrección de la regresión del gate de opt-in EF-604 — 2026-11-04
+
+La auditoría del test añadió una comprobación para impedir que el job de Beam se ejecute por coincidencia parcial de mensaje. Detectó un escape duplicado en la regex negativa, que podía dejar el bypass sin comprobar. La expresión se corrigió para detectar `contains(github.event.head_commit.message)` incluso con espacios. La condición productiva continúa siendo igualdad exacta del mensaje. Evidencia del test queda pendiente de CI exact-SHA.

@@ -82,3 +82,10 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - La nueva regresión de dos coordinadores/procesos compitiendo por un ack de journal terminó dentro del preflight provider-free SUCCESS. La salida solo prueba una transición de diario.
 - Estado canónico 8/28, EF-601/603/604 PARTIAL, EF-002/701 A/B BLOCKED, Writer humano BLOCKED, EF-503 independencia externa ausente, FULL=false.
 - Próxima tanda publicada: reforzar el gate que exige el mensaje opt-in exacto para stream interruption y lanzar `ci: one-time Pi streamed-child interruption Beam proof`. El job limita a una inferencia autenticada, no reintenta, limpia credenciales del proceso revisor y no autoriza Writer.
+
+
+## Corrección de auditoría R4 al gate de opt-in EF-604 — 2026-11-04
+
+- Commit base `a081046f1ff84a903577d39d2f87cc70799bc3ff` activó el job Beam de interrupción en streaming.
+- La revisión del nuevo test detectó que la expresión regular negativa tenía backslashes duplicados; podía pasar sin inspeccionar un `contains(...)` con el mensaje de commit. Se reemplazó por una regex válida, sensible a espacios, que detecta ese bypass. No se cambia el workflow ni se relaja el disparador exacto.
+- No atribuir el resultado del test fallido/anterior a este SHA. Volver a verificar las pruebas y el recibo del proveedor con el nuevo HEAD.
