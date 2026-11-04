@@ -106,6 +106,10 @@ test("maintenance marker uses native physical file identity, not copyable bytes 
    Object.assign(Object.create(Object.getPrototypeOf(original)),original,patch) as typeof original;
   for(const patch of [
    {ino:original.ino+1n},
+   {ino:0n},
+   {dev:original.dev+1n},
+   {mode:original.mode^0o100n},
+   {size:original.size+1n},
    {birthtimeNs:original.birthtimeNs+1n},
    {ctimeNs:original.ctimeNs+1n},
    {mtimeNs:original.mtimeNs+1n},

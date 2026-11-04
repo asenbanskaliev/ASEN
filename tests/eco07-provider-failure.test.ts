@@ -32,6 +32,10 @@ test("ECO-07 provider error receipts never echo token, URL, prompt or untrusted 
   assert.ok(result.length<64);
  }
  assert.equal(eco07ProviderRateLimitError({type:"message_end",message:{stopReason:"error",errorMessage:"invalid token: "+secret}}),undefined);
+ assert.equal(eco07ProviderRateLimitError({message:{stopReason:"error",errorMessage:`quota exhausted and HTTP 429 ${secret}`}}),"Provider rate limit (HTTP 429)");
+ for(const malformed of [[],null,{},42,"quota_exceeded",{stopReason:"error",errorMessage:"429"},{message:[]},{message:{stopReason:"stop",errorMessage:"429"}},{message:{stopReason:"error",errorMessage:{message:"quota_exceeded"}}}]){
+  assert.equal(eco07ProviderRateLimitError(malformed),undefined);
+ }
 });
 
 test("ECO-07 validates provider metadata without reading a credential",()=>{

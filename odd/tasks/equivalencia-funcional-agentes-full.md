@@ -843,3 +843,12 @@ Run `41810035714` / SHA `255288e7fa1c0e9234226edb5ba48eb285391353`: la Arquitect
 - [ ] T09-LOCK-03 — Conservación de un bloqueo ajeno, fallo de cierre, estado original y archivos de usuario, sin elevación de autoridad, bajo regresión exact-SHA.
 
 **Balance:** 8/28 EF completos, 7/9 MEGA completos. ABSEC-03 pasa a `[x]` por recibo real A/B de ayuda; ABSEC-04 depende de la suite global y del auditor de seguridad exact-SHA. EF-002/601/604/701/702/703 mantienen requisitos auténticos abiertos, y FULL NO alcanzado. No merge a `main`.
+
+### Megatanda T09/ECO-07 — ampliación adversarial de regresiones (2026-11-04)
+
+**Estado: IMPLEMENTED_PENDING_EXACT_SHA_CI.** Se amplían dos suites de seguridad sin cambiar el runtime ni las políticas:
+
+- `tests/managed-maintenance-lock.test.ts`: rechazos adicionales de inode cero, dispositivo distinto, modo modificado y tamaño alterado; conserva los casos de sustitución física, hardlinks, tiempos nanosegundo y raíz reemplazada. Son pruebas de contrato local, no demostración de una carrera externa concurrente.
+- `tests/eco07-provider-failure.test.ts`: prioridad de HTTP 429 frente al texto de cuota cuando coexisten, ausencia de filtración de secretos sintéticos y rechazo de estructuras Pi inválidas. No se crean reintentos automáticos ni cambios de proveedor o coste.
+
+**Evidencia previa de la rama `8f848a037ab0f6d0a51c09fd5db26af482e45820`:** Phase 0, F5, Pi Runtime, CodeGraph, R4 y Release Gate SUCCESS; CI Ubuntu y macOS SUCCESS, Windows todavía `in_progress` durante la revisión. El cierre de `T09-LOCK-01/02/03` y `ABSEC-04` permanece sin marcar mientras no exista la suite global PASS del SHA de este commit. Esta ampliación no eleva EF ni MEGA a FULL, no ejecuta A/B C01–C20, no usa cuota de modelo y no autoriza Writer.
