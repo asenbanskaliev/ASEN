@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import {copyManagedAcquisitionToStage,verifyManagedAcquisitionDestinationDirectoryClaim,type ManagedAcquisitionDestinationDirectoryClaim} from "../src/runtime/managed-acquisition-copy.js";
+import {copyManagedAcquisitionToStage,verifyManagedAcquisitionDestinationDirectoryClaim,MANAGED_ACQUISITION_COPY_DEADLINE_MS,type ManagedAcquisitionDestinationDirectoryClaim} from "../src/runtime/managed-acquisition-copy.js";
+import {MANAGED_ACQUISITION_DEADLINE_MS} from "../src/runtime/managed-acquisition-verification.js";
+import {performance} from "node:perf_hooks";
 import {ManagedAdditionalStageError,stageAdditionalManagedVersion,stageManagedInstall} from "../src/runtime/managed-install.js";
 
 test("copy permits its own nested and sibling directories to change destination link counts",async()=>{
@@ -58,4 +60,42 @@ test("expected cleanup retains unknown child directories after the parent's link
  assert.equal(await fs.readFile(path.join(foreign,"keep"),"utf8"),"FOREIGN");
  await assert.rejects(()=>fs.lstat(path.join(prefix,"install","versions","2.0.0")),{code:"ENOENT"});
  assert.equal(await fs.readFile(path.join(prefix,"install","versions","1.0.0","dist","file"),"utf8"),"bytes");
+});
+
+test("T09 Windows packed-copy deadline is separately bounded without weakening 30-second source verification",()=>{
+ assert.equal(MANAGED_ACQUISITION_DEADLINE_MS,30_000);
+ assert.equal(MANAGED_ACQUISITION_COPY_DEADLINE_MS,60_000);
+ assert.ok(Number.isSafeInteger(MANAGED_ACQUISITION_COPY_DEADLINE_MS));
+ assert.ok(MANAGED_ACQUISITION_COPY_DEADLINE_MS<120_000,
+  "Managed copy must remain a bounded operation");
+});
+
+test("T09 copy still aborts on a 60-second cooperative expiry before publishing a staged file",async t=>{
+ const cache=path.join(process.cwd(),".cache");
+ await fs.mkdir(cache,{recursive:true});
+ const root=await fs.mkdtemp(path.join(cache,"u9d-copy-deadline-"));
+ t.after(()=>fs.rm(root,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const source=path.join(root,"source"),stage=path.join(root,"stage");
+ await fs.mkdir(source);await fs.mkdir(stage);
+ await fs.writeFile(path.join(source,"payload"),"immutable content",{flag:"wx"});
+ const data="immutable content";
+ const manifest={
+  schema:"asen.managed-acquisition/v1" as const,
+  version:"1.0.0",
+  files:[{sourcePath:"payload",destinationPath:"payload",size:Buffer.byteLength(data),
+   sha256:createHash("sha256").update(data).digest("hex")}],
+ };
+ const proto=Object.getPrototypeOf(performance) as {now:()=>number};
+ const original=proto.now;
+ let reads=0;
+ proto.now=function(){reads++;return reads>=3?60_201:100;};
+ try{
+  await assert.rejects(
+   copyManagedAcquisitionToStage(source,stage,manifest),
+   /Managed acquisition copy exceeded its cooperative deadline/u,
+  );
+ }finally{proto.now=original;}
+ assert.ok(reads>=3,"Monotonic deadline was reached during real file metadata work");
+ assert.equal(await fs.readFile(path.join(source,"payload"),"utf8"),data);
+ assert.deepEqual(await fs.readdir(stage),[],"A timed-out copy must not appear staged");
 });

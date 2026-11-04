@@ -65,12 +65,40 @@ export function verifyAgentABGitObjects({manifest=defaultManifest(),root,git=exe
     throw Error("Frozen A/B source is not an immutable Git blob for "+source.id);
    return {path,objectId:found[2],mode:found[1]};
   });
+  // Frozen, hash-addressed manifest data establishes the type of reference.
+  // This executes no upstream code. In particular B is a provisioning
+  // ecosystem, not a second copy of the gentle-shell Pi runtime.
+  const packageBlob=objects.find(file=>file.path==="package.json");
+  if(!packageBlob)throw Error("A/B source requires pinned package metadata");
+  const packageText=revision("cat-file","blob",packageBlob.objectId);
+  if(packageText.length>64_000)throw Error("A/B package metadata exceeds bounded limit");
+  let packageInfo;
+  try{packageInfo=JSON.parse(packageText);}catch{throw Error("A/B package metadata is invalid JSON");}
+  let runtimeSurface;
+  if(source.id==="A"){
+   if(packageInfo?.name!=="gentle-pi"||
+      !Array.isArray(packageInfo.pi?.extensions)||
+      !packageInfo.pi.extensions.includes("./extensions"))
+    throw Error("Frozen source A is not the expected native Pi harness");
+   runtimeSurface="native-pi-agent-runtime";
+  }else{
+   const goBlob=objects.find(file=>file.path==="go.mod");
+   if(!goBlob)throw Error("Frozen source B requires a pinned Go module");
+   const goText=revision("cat-file","blob",goBlob.objectId);
+   if(goText.length>64_000||!/^module github\.com\/gentleman-programming\/gentle-ai\/v4(?:\r?\n|$)/u.test(goText))
+    throw Error("Frozen source B Go installer identity mismatch");
+   if(packageInfo?.name!=="gentleman-ai-installer")
+    throw Error("Frozen source B is not the expected installer ecosystem");
+   runtimeSurface="installer-and-agent-framework";
+  }
   rows.push(Object.freeze({source:source.id,repository:source.repository,
-   commit:source.commit,tree:source.tree,files:objects,sourceOnly:true}));
+   commit:source.commit,tree:source.tree,files:objects,
+   packageName:packageInfo.name,runtimeSurface,sourceOnly:true}));
  }
  return Object.freeze({schema:"asen-ab-source-witness/v1",status:"SOURCE_OBJECTS_VERIFIED",
   sources:rows,checkedSources:2,executedCases:0,modelCalls:0,
   runtimeAttested:false,referenceParity:false,globalFull:false,
+  identicalHostRuntime:false,referenceBRequiresProvisionedTarget:true,
   limitation:"Immutable Git objects do not prove runtime decisions, models, Pi parent consumption or Writer consent."});
 }
 

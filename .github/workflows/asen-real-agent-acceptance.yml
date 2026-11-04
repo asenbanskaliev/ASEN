@@ -131,6 +131,8 @@ jobs:
             tests/background-job-journal.test.ts \
             tests/agent-notification-multiprocess.test.ts \
             tests/agent-notification-journal.test.ts \
+            tests/agent-terminal-routing-journal.test.ts \
+            tests/managed-acquisition-copy.test.ts \
             tests/pi-process-runner.test.ts \
             tests/pi-session-recovery-e2e.test.ts \
             tests/session-recovery-e2e.test.ts
@@ -193,7 +195,7 @@ jobs:
           mkdir -p asen-acceptance-evidence
           node scripts/agent-ab-source-witness.mjs
           node scripts/agent-ab-case-readiness.mjs
-          node -e 'const w=require("./asen-acceptance-evidence/ab-source-witness.json"),r=require("./asen-acceptance-evidence/ab-case-readiness.json"); if(w.checkedSources!==2||w.executedCases!==0||w.globalFull!==false||w.runtimeAttested!==false||r.casesPrepared!==20||r.sourceSlotsRequired!==60||r.evidenceCaptured!==0||r.globalFull!==false)process.exit(1);'
+          node -e 'const w=require("./asen-acceptance-evidence/ab-source-witness.json"),r=require("./asen-acceptance-evidence/ab-case-readiness.json"); if(w.checkedSources!==2||w.executedCases!==0||w.globalFull!==false||w.runtimeAttested!==false||w.identicalHostRuntime!==false||w.referenceBRequiresProvisionedTarget!==true||w.sources[0].runtimeSurface!=="native-pi-agent-runtime"||w.sources[1].runtimeSurface!=="installer-and-agent-framework"||r.casesPrepared!==20||r.sourceSlotsRequired!==60||r.evidenceCaptured!==0||r.globalFull!==false)process.exit(1);'
       - name: Preserve only source provenance (no fabricated behavioral capture)
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3

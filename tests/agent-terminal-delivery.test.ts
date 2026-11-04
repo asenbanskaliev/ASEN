@@ -25,6 +25,20 @@ test("EF-601 Pi parent routing: active steer, idle stored+separate wake, compact
  const unknownIdle={mode:"tui",hasUI:true,sessionManager:context.sessionManager};
  assert.equal(agentParentRoute(unknownIdle,id,false),"hold");
 });
+test("EF-601 C13 contradictory native Pi activity signals hold the durable result rather than double-wake",()=>{
+ const scope={sessionId:"s1",projectId:"/isolated/workspace"};
+ const context={mode:"tui",hasUI:true,
+  sessionManager:{getSessionId:()=>scope.sessionId},isIdle:()=>true};
+ assert.equal(agentParentRoute(context,scope,true),"hold");
+ assert.deepEqual(agentTerminalDeliveryOptions(context,scope,true),{triggerTurn:false});
+ assert.equal(agentTerminalWakeOptions(context,scope,true),undefined);
+ assert.equal(agentParentRoute(context,scope,false),"idle");
+ assert.deepEqual(agentTerminalWakeOptions(context,scope,false),{triggerTurn:true,deliverAs:"steer"});
+ const busy={...context,isIdle:()=>false};
+ assert.equal(agentParentRoute(busy,scope,true),"run");
+ assert.equal(agentTerminalWakeOptions(busy,scope,true),undefined);
+});
+
 test("EF-601 completion notice states that agent text is not an instruction or new consent",()=>{
  const output=agentTerminalContinuationMessage({id:"agent-fixture",role:"explorer",state:"completed",summary:"Found 3 locations"});
  assert.match(output,/Found 3 locations/u);

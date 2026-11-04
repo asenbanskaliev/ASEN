@@ -19,6 +19,10 @@ export function agentParentRoute(
   if(context?.mode!=="tui"||context.hasUI!==true||
      context.sessionManager?.getSessionId?.()!==scope.sessionId)return "headless";
   const idle=context.isIdle?.();
+  // Two native Pi signals can race at the model-turn boundary. Never trigger
+  // an additional turn if the host claims it is idle but the current agent
+  // run has not reached its observed end. Hold the durable notice instead.
+  if(idle===true&&parentRunActive)return "hold";
   if(idle===true)return "idle";
   if(idle===false&&parentRunActive)return "run";
   return "hold";

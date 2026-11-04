@@ -5,11 +5,20 @@ import path from "node:path";
 import {performance} from "node:perf_hooks";
 import type {ManagedAcquisitionManifest} from "./managed-install.js";
 import {
- MANAGED_ACQUISITION_DEADLINE_MS,
  MANAGED_ACQUISITION_MAX_FILE_BYTES,
  MANAGED_ACQUISITION_MAX_TOTAL_BYTES,
  MANAGED_ACQUISITION_READ_CHUNK_BYTES,
 } from "./managed-acquisition-verification.js";
+
+/**
+ * Copying an npm-packed managed tree performs a synchronous fsync and a
+ * full ancestor identity recheck for every manifest file. Windows hosted
+ * runners can exceed the verifier's 30-second budget despite successful
+ * per-file operations. Keep verification at 30 seconds; give COPY a separate,
+ * still strictly finite 60-second monotonic cooperative deadline.
+ * This does not skip any path, hash, descriptor or ownership checks.
+ */
+export const MANAGED_ACQUISITION_COPY_DEADLINE_MS=60_000;
 
 export class ManagedAcquisitionCopyError extends Error {
  constructor(message:string,options?:ErrorOptions){
@@ -77,7 +86,7 @@ function same(left:Seen,right:Seen):boolean{
 }
 
 function checkDeadline(start:number):void{
- if(performance.now()-start>MANAGED_ACQUISITION_DEADLINE_MS){
+ if(performance.now()-start>MANAGED_ACQUISITION_COPY_DEADLINE_MS){
   fail("Managed acquisition copy exceeded its cooperative deadline");
  }
 }

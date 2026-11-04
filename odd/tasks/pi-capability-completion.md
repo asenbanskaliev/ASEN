@@ -464,3 +464,16 @@ Investigation: BackgroundJobJournal.record blindly replaced the current durable 
 ## T04/T10-R11: real authorized retry claim identity correction (2026-11-01)
 
 The corrective SHA 4bae3bc69cd2216a3764c41caea04951e3e5791b unblocked TypeScript, but R4 SELF_AUDIT_ONLY failed its own authorized-retry fixture because its newJobId was not a 36-character UUID; full macOS/Windows CI also uncovered a production regression: the hard-kill authorized-retry test could not start after the new journal finality guard. Root cause: claimInterruptedForRetry persisted the original operation identity and command but omitted original args and cwd. The subsequent running snapshot included those values and correctly failed a binding mismatch. The bounded correction preserves args and cwd from the original durable row in the one-use claim. The test fixture uses a valid UUID, a journal regression asserts retention of both fields, and R4 focuses the real authorized hard-kill test with a source/mutation guard. Finality and one-use authorization validation are not weakened. No PASS is claimed for this candidate pending its exact-SHA CI, R4 and Release Gate. T04/T10 and all 16 ECO items remain evidence-bounded PARTIAL; F5 stays IN_PROGRESS. No independent review, main merge or release.
+
+### T09 Windows packed lifecycle — candidate macrotanda 2026-11-04 (CI PENDING)
+
+**Diagnóstico exacto:** Release Gate run `41798632460` / HEAD `c4547a23f75920f297d8365d38c262de311ff3d7`: Linux y macOS paquete PASS; Windows `Packed install smoke` FAIL durante `managed upgrade` firmado por TLS localhost. Razón persistida: `Managed acquisition copy exceeded its cooperative deadline` (30 s). La versión activa `0.1.0` permaneció intacta y la nueva `0.1.1` no se activó; el estado es `not-activated`. Esto **no** es equivalente a T09 FULL en Windows.
+
+- [ ] T09-WIN-01 — Separar plazos: verificación origen 30 s, copia por archivo/ancestros 60 s, ambos monotónicos/limitados; prueba de agotamiento cooperativo sin modificar origen.
+- [ ] T09-WIN-02 — Mantener todos los hash, descriptor, nlink, confinamiento, fsync, rollback y preservación de datos en el producto empaquetado.
+- [ ] T09-WIN-03 — Ejecutar Release Gate Windows `Packed install smoke` completo en exact-SHA y confirmar PASS; comprobar también Linux y macOS.
+- [ ] T09-WIN-04 — Reconciliar los resultados del nuevo SHA y revocar cualquier suposición de FULL basada en el CI anterior mientras el gate Windows no pase.
+
+**Cambios propuestos en una sola publicación:** `src/runtime/managed-acquisition-copy.ts` define `MANAGED_ACQUISITION_COPY_DEADLINE_MS=60_000`; no altera `MANAGED_ACQUISITION_DEADLINE_MS=30_000` ni el verificador. `scripts/t09-real-package-smoke.mjs` amplía únicamente a 150 s el proceso Windows que incluye adquisición y copia, no las invariantes de seguridad. `tests/managed-acquisition-copy.test.ts` cubre los límites y el fallo sin staged publish; `.github/workflows/release-gate.yml` lanza estos tests en los tres sistemas antes del empaquetado.
+
+**Alcance:** no confundir tiempo operativo con autorización o readiness. La prueba se considera pendiente hasta evidencia verde del job real; R4 es `SELF_AUDIT_ONLY / NOT independent`. No merge a main ni lanzamiento de paquetes.

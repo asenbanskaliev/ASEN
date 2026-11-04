@@ -8,7 +8,7 @@ import {pinnedAgentABSources,verifyAgentABGitObjects} from "../scripts/agent-ab-
 const manifest=JSON.parse(readFileSync(new URL("../registry/parity/agent-ab-baselines-v1.json",import.meta.url),"utf8"));
 const root=join(process.cwd(),"tmp-agent-ab-fixture");
 
-function fakeGit({wrongCommit="",wrongTree="",missingFile="",wrongBlob=""}={}){
+function fakeGit({wrongCommit="",wrongTree="",missingFile="",wrongBlob="",wrongPackage="",wrongGoModule=""}={}){
  const calls:string[][]=[];
  function invoke(_bin:string,args:string[]){
   assert.equal(_bin,"git");
@@ -26,10 +26,21 @@ function fakeGit({wrongCommit="",wrongTree="",missingFile="",wrongBlob=""}={}){
    return (wrongTree===id?"0".repeat(40):src.tree)+"\n";
   if(end[0]==="cat-file"&&end[1]==="-t")
    return (end[2]===src.commit?"commit":wrongBlob===id?"tree":"blob")+"\n";
+  if(end[0]==="cat-file"&&end[1]==="blob"){
+   if(end[2]==="b".repeat(40))
+    return wrongGoModule===id?"module github.com/forged/package/v1\n":
+     "module github.com/gentleman-programming/gentle-ai/v4\n";
+   if(end[2]==="c".repeat(40)){
+    const name=wrongPackage===id?"impostor":id==="A"?"gentle-pi":"gentleman-ai-installer";
+    return JSON.stringify({name,pi:{extensions:id==="A"?["./extensions"]:[]}})+"\n";
+   }
+   throw Error("Unknown frozen blob");
+  }
   if(end[0]==="ls-tree"){
    const path=end.at(-1);
+   const fileId=path==="go.mod"?"b":path==="package.json"?"c":"a";
    return missingFile===id&&path===src.files[0]?"":
-    "100644 blob "+"a".repeat(40)+"\t"+path+"\n";
+    "100644 blob "+fileId.repeat(40)+"\t"+path+"\n";
   }
   throw Error("Unexpected git arguments "+end.join(" "));
  }
@@ -57,6 +68,12 @@ test("EF-002 two isolated real-Git-object command flows are source-only and do n
  assert.equal(report.globalFull,false);
  assert.equal(report.runtimeAttested,false);
  assert.equal(report.referenceParity,false);
+ assert.equal(report.identicalHostRuntime,false);
+ assert.equal(report.referenceBRequiresProvisionedTarget,true);
+ assert.equal(report.sources[0].packageName,"gentle-pi");
+ assert.equal(report.sources[0].runtimeSurface,"native-pi-agent-runtime");
+ assert.equal(report.sources[1].packageName,"gentleman-ai-installer");
+ assert.equal(report.sources[1].runtimeSurface,"installer-and-agent-framework");
  assert.equal(report.sources.length,2);
  assert.ok(report.sources.every((s:{sourceOnly:boolean})=>s.sourceOnly));
  const fetchCalls=calls.filter(x=>x.includes("fetch"));
@@ -78,6 +95,18 @@ test("EF-002 source provenance must fail closed on forged commits, trees and mis
    /identity mismatch|required source file|immutable Git blob/u,key);
  }
 });
+test("EF-002 source provenance rejects confusing a framework installer with a second Pi runtime",()=>{
+ for(const [label,issue] of [
+  ["A wrong native runtime",{wrongPackage:"A"}],
+  ["B wrong installer package",{wrongPackage:"B"}],
+  ["B wrong Go module",{wrongGoModule:"B"}],
+ ] as const){
+  const git=fakeGit(issue);
+  assert.throws(()=>verifyAgentABGitObjects({manifest,root,git:git.invoke}),
+   /native Pi harness|installer ecosystem|Go installer identity/u,label);
+ }
+});
+
 test("EF-002 manifest rejects poisoned object identities or repository/path traversal",()=>{
  const mutate=(change:(m:any)=>void)=>{
   const m=structuredClone(manifest);change(m);

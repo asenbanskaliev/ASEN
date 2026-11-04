@@ -29,6 +29,8 @@ jobs:
       # audits for this exact candidate SHA. Keep this gate focused on the
       # platform-specific build and packed-package receipts below.
       - run: npm run typecheck && npm run build
+      - name: T09 finite copy and strict verification budget regressions
+        run: node --import tsx --test tests/managed-acquisition-copy.test.ts
       - name: Packed restart and cross-session execution receipts
         run: npm run verify:package-receipts -- stateful-evidence
       - name: Retain exact-candidate package session evidence

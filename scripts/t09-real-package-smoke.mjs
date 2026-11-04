@@ -105,7 +105,10 @@ try{
  const releaseServer=await serveSignedPackage(nextPackageRoot,nextManifest,nextSignature);
  try{
   let upgraded;
-  try{upgraded=await reportAsync(["managed","upgrade","--source-url",releaseServer.url,"--trust-anchor",trustAnchor,"--yes"],75_000);}
+  // The signed Windows packed release rechecks each copied file and directory.
+  // Preserve a finite process timeout without killing the 60-second copy stage.
+  const upgradeProcessDeadlineMs=process.platform==="win32"?150_000:75_000;
+  try{upgraded=await reportAsync(["managed","upgrade","--source-url",releaseServer.url,"--trust-anchor",trustAnchor,"--yes"],upgradeProcessDeadlineMs);}
   catch(error){error.message+=`\nloopback requests=${JSON.stringify(releaseServer.requests)}\nTLS/server errors=${JSON.stringify(releaseServer.serverErrors)}`;throw error;}
   assert.deepEqual(releaseServer.requests.map(request=>request.path),["asen-manifest.json","asen-manifest.sig.json",...JSON.parse(await readFile(nextManifest,"utf8")).files.map(file=>file.sourcePath)]);
   assert.equal(upgraded.status,"upgraded");assert.equal(upgraded.activeVersion,nextVersion);
