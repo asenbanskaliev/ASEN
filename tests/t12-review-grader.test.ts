@@ -69,6 +69,19 @@ test("T12 Verifier grade requires all failed tests, exact SHA/scope and review e
  assert.throws(()=>gradeRealVerification(duplicated,{candidateSha:sha,fixtureSha256:fixtureSha,changedPaths,testEvidence,review}),/unique and complete/);
 });
 
+test("EF-503 reviewed defect diagnostics identify the precise failing path without exposing model content",()=>{
+ const review=gradeRealReview(reviewer(),{candidateSha:sha});
+ for(const path of changedPaths){
+  const actual=verification();
+  const finding=actual.evidence[2].findings.find(item=>item.path===path);
+  assert.ok(finding);
+  finding.reason="A problem exists here with incorrect behavior";
+  assert.throws(()=>gradeRealVerification(actual,{
+   candidateSha:sha,fixtureSha256:fixtureSha,changedPaths,testEvidence,review,
+  }),error=>error instanceof Error&&error.message==="Verifier must explain the reviewed defect for "+path);
+ }
+});
+
 test("T12 Verifier accepts exactly the three changed files irrespective of returned order",()=>{
  const review=gradeRealReview(reviewer(),{candidateSha:sha});
  const reversedPaths=["src/pricing.js","src/parse.js","src/access.js"];

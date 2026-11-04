@@ -44,6 +44,9 @@ test("EF-402 Beam Verifier receives canonical criteria and bounded observed fail
  assert.equal(outputSkeleton.evidence[1].observation,"?");
  assert.ok(outputSkeleton.evidence[2].findings.every((row:{reason:string})=>row.reason==="?"));
  assert.match(prompt,/MANDATORY COMPLETE JSON RESPONSE SKELETON/u);
+ assert.match(prompt,/REVIEW FINDINGS MUST HAVE THREE EXPLICIT CAUSAL REASONS/u);
+ assert.match(prompt,/The defect fails the acceptance criterion because/u);
+ assert.match(prompt,/All review\.findings reasons must contain the literal word/u);
  assert.match(prompt,/Every test observation MUST begin with/u);
  assert.match(prompt,/pricing, authorization AND parsing/u);
  assert.match(prompt,/Number\.parseInt accepted trailing non-digits/u);

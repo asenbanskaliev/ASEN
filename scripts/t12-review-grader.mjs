@@ -75,7 +75,7 @@ export function gradeRealVerification(verification,{candidateSha,fixtureSha256,c
   assert.ok(exactKeys(actual,["path","codeEvidence","acceptanceCriterion","reason"]),"Verifier review reconciliation is malformed");
   assert.equal(actual.codeEvidence,finding.codeEvidence,"Verifier changed the reviewed code evidence");
   assert.equal(actual.acceptanceCriterion,finding.acceptanceCriterion,"Verifier changed the reviewed criterion");
-  assert.ok(text(actual.reason)&&/fail|defect|bypass|reject|accept/iu.test(actual.reason),"Verifier must explain the reviewed defect");
+  assert.ok(text(actual.reason)&&/fail|defect|bypass|reject|accept/iu.test(actual.reason),"Verifier must explain the reviewed defect for "+finding.path);
  }
  return Object.freeze({passed:true,verdict:"fail",authorization:"NOT_GRANTED",checkCount:tests.checks.length,findingCount:review.findings.length});
 }
