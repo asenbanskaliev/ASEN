@@ -949,7 +949,7 @@ Se mantienen las restricciones de permisos; Writer humano y paridad C01–C20 si
 - El carril F6 existente en `.github/workflows/asen-real-agent-acceptance.yml` incluye el test provider-free. No se utiliza Ollama para un test que no necesita inferencia.
 
 **Checklist:**
-- [ ] EF604-NATIVE-01 — Pi 1.2.0 real RPC reiniciado en la misma sesión y aislamiento de la tercera, resultados persistidos y journal `attempted/pending` sin replay, preflight exact-SHA PASS.
+- [x] EF604-NATIVE-01 — **PASS en SHA `45586c0d0e25e97dc00578f91a12f54537071784`**: Pi 1.2.0 real RPC, tres procesos/dos reinicios de sesión, aislamiento, store autenticado y journal `attempted/pending` conservado; Actions `41821784608`, log `EF604_NATIVE_PI_HEADLESS_RESTART_PASS`. Cero inferencias y `globalFull:false`.
 - [ ] EF604-NATIVE-02 — Suite completa tres OS + Release Gate del SHA publicado, PASS.
 - [ ] EF604-FULL-RESTART — Prueba **interactiva** de interrupción durante ejecución real del hijo Pi y recuperación del coordinador con consulta/acuse legítimos; NO cubierta por RPC headless ni por el runner determinista.
 
@@ -964,7 +964,7 @@ La causa está en `extensions/asen.ts`, función `sendAgentNotice`: el código d
 **Fix:** `sendAgentNotice` solo permite transmisión si la ruta es exactamente `run` o `idle`. `hold` y `headless` conservan `pending` hasta un host TUI válido. La regresión de integración usa el ejecutable auténtico `pi --mode rpc --session`, el almacén real con HMAC y el journal persistente; exige que la sesión reiniciada no envíe ni reconozca ningún mensaje por ser headless, y comprueba además aislamiento de una sesión ajena. No se añaden sleeps ni bucles de polling a producción, ni permisos Writer.
 
 **Checklist:**
-- [ ] EF604-HEADLESS-01 — Typecheck y prueba Pi RPC nativa de reinicio PASS sobre el SHA del fix, con `pending` intacto y `attempted` no retransmitido.
+- [x] EF604-HEADLESS-01 — **PASS en SHA `45586c0d0e25e97dc00578f91a12f54537071784`**: Typecheck + F6 con Pi nativo; `pending` intacto y `attempted` sin retransmisión; Actions `41821784608`. No acredita hijo LLM real.
 - [ ] EF604-HEADLESS-02 — Preflight de seguridad, CI completo Windows/macOS/Ubuntu y Release Gate exact-SHA del fix PASS.
 - [ ] EF604-LIVE-CHILD-01 — Pi real interactivo interrumpido durante trabajo de hijo y reanudado con autorización/acuse genuino: aún no realizado.
 
@@ -977,8 +977,8 @@ En el run `41821175271`, SHA `b3eb026b76d4ff1541d3f8a04570301a62001f85`, la prue
 El segundo fallo surgió en `tests/pi-agent-runtime.test.ts`: varios mocks tenían `mode:"rpc"` por defecto pero esperaban que `pi.sendMessage` entregase avisos al padre. Antes del fix, ese comportamiento erróneo permitía que los tests pasaran; después, el primer test EF-603 se quedó esperando una entrega que **correctamente no debe ocurrir en RPC headless**, causando ocho tests siguientes cancelados. El fix de los fixtures cambia a `mode:"tui"`, `isIdle:()=>true` solamente los casos que requieren entrega visible, conservando los casos RPC para aislamiento. Añade también una prueba negativa específica que ejecuta completado/arranque/reapertura de un host mock RPC y verifica `pending`, cero `asen.agent.result`, sin replay. No se debilita el test Pi nativo ni se concede Writer.
 
 **Checks nuevos del corte:**
-- [ ] EF604-MOCK-HOST-01 — Mock TUI fiel a ruta real en pruebas de envío, cola y acuse; EF-603 y EF-601 no quedan bloqueados por RPC indebidamente usado. Preflight exact-SHA PASS.
-- [ ] EF604-MOCK-HOST-02 — Nueva prueba negativa RPC headless y la prueba nativa Pi 1.2.0 conservan `pending`; ninguna llama a un modelo. Preflight exact-SHA PASS.
+- [x] EF604-MOCK-HOST-01 — **PASS en SHA `45586c0d0e25e97dc00578f91a12f54537071784`**: mocks TUI fieles al host, EF-603 y EF-601 superaron prueba focal; Actions `41821784608`, cero tests cancelados.
+- [x] EF604-MOCK-HOST-02 — **PASS en SHA `45586c0d0e25e97dc00578f91a12f54537071784`**: prueba negativa RPC y Pi 1.2.0 auténtico retienen `pending` sin modelo; Actions `41821784608`. No hay Writer ni FULL.
 - [ ] EF604-CI-GATE-03 — CI tres OS y Release Gate del SHA publicado, sin heredar resultados de `b3eb026`.
 
 **Límite:** la recuperación auténtica del host Pi ahora es observable en RPC sin proveedor; la recuperación de un hijo Pi modelo interrumpido durante una ejecución TUI y la decisión humana Writer continúan pendientes. 8/28 EF canónicos, FULL NO ALCANZADO.
@@ -986,3 +986,9 @@ El segundo fallo surgió en `tests/pi-agent-runtime.test.ts`: varios mocks tení
 ### EF-604 — regresión de señal de actividad Pi desconocida (2026-11-04)
 
 La regresión `tests/agent-terminal-delivery.test.ts` comprueba que señales `isIdle` ausentes, indefinidas o que lanzan excepción, y hosts RPC/JSON/sin UI, nunca producen `run`, `idle`, steering ni wake. Es una prueba determinista sin proveedor: no demuestra Pi TUI auténtico, hijo LLM ni consentimiento Writer. Se ejecutará con CI del nuevo SHA; no se marca ningún EF adicional ni se reutilizan recibos anteriores. FULL sigue bloqueado.
+
+### Recepción de los subchecks nativos, sin promover EF canónico (2026-11-04)
+
+`ASEN real-agent functional acceptance` run `41821784608`, commit `45586c0d0e25e97dc00578f91a12f54537071784`: **SUCCESS** en el preflight provider-free. Ejecutó TypeScript, build, F6, tres procesos auténticos Pi 1.2, reanudación RPC de la sesión, ensayo contra otra sesión y las regresiones EF-601/603/604 con `fail=0` y `cancelled=0`. El log incluye `EF604_NATIVE_PI_HEADLESS_RESTART_PASS`, con `globalFull:false` y ningún uso de proveedor. Quedan marcados los cuatro checks de alcance específico anteriores. El commit concurrente `62d094ef1f34cb73a5ca2b385266b9a7d116d34e` añade una regresión diferente sobre estado de inactividad desconocido, que exige su propio CI: no hereda el PASS de `45586c0d0e25e97dc00578f91a12f54537071784`.
+
+EF-604 canónico sigue **PARCIAL** porque falta prueba de hijo LLM auténtico interrumpido, recuperación TUI con acuse legítimo, decisiones Writer humanas y comparación C14–C15 A/B. El CI general y Release Gate del último HEAD continúan como validaciones exact-SHA separadas. 8/28 EF completos, FULL NO ALCANZADO, sin merge a `main`.
