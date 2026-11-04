@@ -72,7 +72,7 @@ test("EF-002 native host smoke rejects fake commit, tree, dirty source and missi
   const f=fixture();t.after(f.dispose);
   if(name==="help")f.setBadHelp();else f.setError(name);
   assert.throws(()=>runReferenceHostSmoke({root:f.root,runCommand:f.invoke}),
-   /identity mismatch|modified its pinned checkout|invalid bounded output/u,name);
+   /executable source mismatch|modified its pinned checkout|invalid bounded output/u,name);
  }
 });
 test("EF-701 native A/B receipt cannot assert C01-C20 or substitute Go for a Pi runtime",()=>{

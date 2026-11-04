@@ -799,3 +799,7 @@ Además `Phase 0 Architecture` `41802645916` FAIL por nombres externos en códig
 - [ ] ABSEC-04 — Clasificación de cuotas normalizada y sanitizada supera las pruebas de CI exact-SHA y el auditor de seguridad.
 
 **Estado global:** el plan mantiene **8/28 EF y 7/9 MEGA**, pendientes de acciones humanas Writer, A/B C01–C20 y auditoría verdaderamente independiente. Una ejecución de `--help` no marca `MEGA-AB-03` ni `EF-701`. No se hace merge a `main`.
+
+### AB-HOST — preflight de primera publicación y corrección de expectativa (2026-11-04)
+
+Run `41808663891` / SHA `792e76bef34abe872eb84597b291762025575378`: `Provider-free static and ASEN validation` FAIL en `tests/agent-ab-host-smoke.test.ts` por una **expectativa de texto incorrecta**. El mock devolvió realmente `A/B executable source mismatch for A` al simular un commit Git falsificado; la aserción esperaba `identity mismatch`. El propio mecanismo de rechazo funcionó como estaba diseñado. Preflight focalizado: 220 PASS, 1 FAIL. Jobs remotos `ab-frozen-source-witness`, `ab-native-host-smoke` y Pi/Beam quedaron SKIPPED, por dependencia; **no existe recibo remoto A/B de este SHA**. El test ahora acepta el código de rechazo exacto sin cambiar la comparación del commit o del árbol. Se solicita un nuevo único disparador de CLI nativo después de preflight íntegro, sin repetir inferencias Beam, Writer ni cuota.
