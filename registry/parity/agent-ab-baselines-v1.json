@@ -1,0 +1,28 @@
+{
+  "schema": "asen-agent-ab-baselines/v1",
+  "description": "Pinned public source-only A/B identities for C01-C20 observable validation; these are not runtime attestations.",
+  "sources": [
+    {
+      "id": "A",
+      "repository": "Gentleman-Programming/gentle-shell",
+      "commit": "813ec110600c8451c5f2bb9c35c12d8cf9b1c11e",
+      "tree": "7adff2898dff18740c00bdc65031c5f9044cd8e2",
+      "files": [
+        "README.md",
+        "package.json",
+        "extensions/gentle-agents.ts"
+      ]
+    },
+    {
+      "id": "B",
+      "repository": "Gentleman-Programming/gentle-ai",
+      "commit": "fd99d8492adb6c23c29f3e9fbd59fc756b76b6ff",
+      "tree": "c4ad4b7f79b3a0be36176657904090803e6d2b70",
+      "files": [
+        "README.md",
+        "go.mod",
+        "package.json"
+      ]
+    }
+  ]
+}
