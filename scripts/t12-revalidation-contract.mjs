@@ -25,7 +25,11 @@ async function sources(fixture){
  return result;
 }
 function check(fixture,code){
- const run=spawnSync(process.execPath,["--input-type=module","-e",code],{cwd:fixture,encoding:"utf8",timeout:12000,windowsHide:true});
+ // The fixture assertions need no provider credentials or repository secrets.
+ const env={...process.env};
+ for(const key of Object.keys(env))if(/(?:^|_)(?:API_KEY|TOKEN|SECRET|PASSWORD)$/iu.test(key))delete env[key];
+ const run=spawnSync(process.execPath,["--input-type=module","-e",code],{
+  cwd:fixture,encoding:"utf8",timeout:12000,windowsHide:true,env});
  assert.equal(run.error,undefined);return {exitCode:run.status,assertion:/AssertionError/u.test(run.stderr),stderrHash:hash(run.stderr)};
 }
 export async function executeCorrectionFixture(root){
@@ -41,13 +45,24 @@ export async function executeCorrectionFixture(root){
  assert.deepEqual((await readdir(fixture)).sort(),["README.md","package.json","src"]);
  assert.deepEqual((await readdir(join(fixture,"src"))).sort(),["access.js","parse.js","pricing.js"]);
  const originalSha=hashMap(before),fixtureSha=hashMap(after);
+ const preservedFiles=Object.freeze({readmeSha:hash(readme),packageSha:hash(await readFile(join(fixture,"package.json")))});
  assert.notEqual(originalSha,fixtureSha);
  return {fixture,before,after,red,green,originalSha,fixtureSha,testsSha:hash(JSON.stringify({red,green})),
-   correctedPaths,writerAuthorized:false,globalFull:false};
+   correctedPaths,preservedFiles,writerAuthorized:false,globalFull:false};
 }
 export async function confirmCorrectionUnchanged(e){
  assert.deepEqual(await sources(e.fixture),e.after,"Fixture changed after model acceptance");
  assert.equal(hashMap(await sources(e.fixture)),e.fixtureSha,"Exact corrected fixture SHA is stale");
+ assert.deepEqual((await readdir(e.fixture)).sort(),["README.md","package.json","src"],
+  "Unapproved fixture root entries appeared");
+ assert.deepEqual((await readdir(join(e.fixture,"src"))).sort(),["access.js","parse.js","pricing.js"],
+  "Unapproved source paths appeared");
+ for(const [name,sha] of [["README.md",e.preservedFiles.readmeSha],
+  ["package.json",e.preservedFiles.packageSha]]){
+  const path=join(e.fixture,name),stat=await lstat(path);
+  assert.ok(stat.isFile()&&!stat.isSymbolicLink(),"Auxiliary fixture entry is not a regular file");
+  assert.equal(hash(await readFile(path)),sha,"Unrelated fixture file changed: "+name);
+ }
 }
 const exact=(x,keys)=>x&&typeof x==="object"&&!Array.isArray(x)&&Object.keys(x).sort().join("|")===keys.slice().sort().join("|");
 const patterns={

@@ -23,6 +23,15 @@ test("EF-403 tests RED 3/3, repaired GREEN 3/3 and preservation without Pi Write
  assert.equal(result.writerAuthorized,false);
  assert.equal(result.globalFull,false);
  await confirmCorrectionUnchanged(result);
+ const originalReadme=readFileSync(join(result.fixture,"README.md"));
+ await writeFile(join(result.fixture,"README.md"),"tampered unrelated content");
+ await assert.rejects(()=>confirmCorrectionUnchanged(result),/Unrelated fixture file changed/u);
+ await writeFile(join(result.fixture,"README.md"),originalReadme);
+ const originalPackage=readFileSync(join(result.fixture,"package.json"));
+ await writeFile(join(result.fixture,"package.json"),'{"type":"commonjs"}');
+ await assert.rejects(()=>confirmCorrectionUnchanged(result),/Unrelated fixture file changed/u);
+ await writeFile(join(result.fixture,"package.json"),originalPackage);
+ await confirmCorrectionUnchanged(result);
  await writeFile(join(result.fixture,"src/pricing.js"),"tampered content");
  await assert.rejects(()=>confirmCorrectionUnchanged(result),/Fixture changed/u);
 });

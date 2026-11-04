@@ -911,8 +911,24 @@ Se mantienen las restricciones de permisos; Writer humano y paridad C01–C20 si
 **Subchecks de la megatanda:**
 - [x] EF604-NODE-01 — Proceso independiente terminó después del claim y otro lo reabrió sin replay/ack, prueba focal `tests/agent-notification-restart-process.test.ts` incluida en preflight `41815920521`, SHA `9d5d764a1258f8f48c24210e7d2375a2a189e50b`.
 - [ ] EF403-FIX-01 — RED 3/3, GREEN 3/3, PRESERVE y regresiones de huellas validadas en el SHA de esta publicación.
-- [ ] EF403-FIX-02 — Dos llamadas reales a Pi Reviewer/Verifier con Beam y recibos exactos de candidato/snapshot.
-- [ ] EF502-REVIEW-01 — Contraste de resultados negativos y positivos con procedencia validada; sin atribuir independencia externa.
+- [x] EF403-FIX-02 — **VERIFICADO solo en SHA histórico `ebf5515d140a1f73f0d15f3060f1012500261994`:** Ollama Beam real Reviewer + Verifier, dos llamadas `noTools`, resultado `EF403_REPAIRED_READONLY_REVALIDATION_PASS`, Actions `41818629889` / artefacto `13315214638`. No equivale a ejecución Writer real ni acredita el SHA posterior.
+- [x] EF502-REVIEW-01 — **VERIFICADO en alcance de fixture read-only:** rechazo negativo anterior en `41783370317` y validación positiva independiente por rol, pero **mismo modelo/proveedor**, en `41818629889` / SHA `ebf5515d140a1f73f0d15f3060f1012500261994` / artefacto `13315214638`; no equivale a revisión independiente externa ni comparación A/B.
 - [ ] EF604-PI-RESTART — Recuperación de un host Pi real interrumpido, sin retransmisión incierta y sin permiso inventado; sigue pendiente.
 
 **Limitaciones:** revisión de dos roles en el mismo proveedor no es auditoría externa independiente; corregir un fixture no equivale al flujo Writer con consentimiento humano genuino; A/B C01–C20 siguen sin 60 observaciones reales. El total canónico permanece **8/28**, FULL no alcanzado, sin merge a `main`.
+
+### Megatanda EF-403/502 + EF-604: inmovilidad del fixture y autoridad del acuse (2026-11-04)
+
+**Recepción real:** la ejecución `41818629889` del commit `ebf5515d140a1f73f0d15f3060f1012500261994` terminó `SUCCESS` en preflight y en el job `EF-403 real corrected read-only Reviewer and Verifier with Beam`, artefacto `13315214638`. El registro real imprime `EF403_REPAIRED_READONLY_REVALIDATION_PASS` con RED 3/3, GREEN 3/3 y `globalFull:false`. El resultado corresponde **solo a aquel SHA**; no se hereda automáticamente al nuevo HEAD.
+
+**Nuevas regresiones seguras, pendientes de CI exact-SHA:**
+- `scripts/t12-revalidation-contract.mjs` elimina credenciales de los subprocesos de assertions y comprueba además la integridad exacta de `README.md`, `package.json` y estructura de directorios **después** de las respuestas del modelo. `tests/t12-revalidation-contract.test.ts` introduce alteración de README, package y archivo de código como fallos obligatorios.
+- `tests/agent-notice-ack-tool.test.ts` reinicializa la registración de herramientas (simulación controlada de un nuevo proceso del coordinador), rechaza un acuse heredado de una inspección previa, demuestra que listar no equivale a inspeccionar el agente y que una entrega `attempted` no queda confirmable aun tras consulta. Solo una inspección exacta de `enqueued` permite `asen_agent_ack`; conserva `writerAuthorized:false` y `humanReadConfirmed:false`.
+- El preflight F6 de `.github/workflows/asen-real-agent-acceptance.yml` incluye explícitamente el nuevo test de herramienta pública. No necesita Ollama para esta regresión y no puede usar el resultado como consentimiento.
+
+**Checks adicionales:**
+- [ ] EF403-PRESERVE-02 — Huellas README/package y árbol completo bajo los tests del SHA de esta publicación, sin secretos en subprocesos.
+- [ ] EF604-ACK-02 — Nueva registración del coordinador rechaza el acuse de un estado `attempted` o de una inspección anterior, PASS exact-SHA.
+- [ ] EF604-PI-RESTART-02 — Reinicio REAL del proceso Pi con sesión persistente, recibos y sin duplicados: no demostrado por estas pruebas, sigue pendiente.
+
+**Global:** los 28 EF canónicos permanecen 8/28; FULL NO ALCANZADO, Writer humano, A/B C01–C20 y revisor externo aún abiertos. Sin merge a `main`.

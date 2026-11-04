@@ -42,3 +42,46 @@ test("EF-601 Pi ack only confirms an authenticated coordinator action in the sam
  assert.equal((await new AgentNotificationJournal(join(root,"notices.json")).list(identity))[0]?.delivery,"acknowledged");
  await assert.rejects(()=>ack("asen:agent:"+"0".repeat(64)+":terminal"),/not available/u);
 });
+
+test("EF-604 re-registering Pi tools after a restart discards earlier inspection authority",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-pi-ack-restart-"));
+ t.after(()=>rm(root,{recursive:true,force:true,maxRetries:6,retryDelay:100}));
+ const owner={sessionId:"persistent-pi-session",projectId:await realpath(process.cwd())};
+ const journal=new AgentNotificationJournal(join(root,"notices.json"));
+ const task={id:"read-only-completed",state:"completed",...owner};
+ const row=await journal.record(task);
+ await journal.claim(row.eventId,owner);
+ await journal.markEnqueued(row.eventId,owner);
+ const uncertain=await journal.record({...task,id:"uncertain-before-restart"});
+ await journal.claim(uncertain.eventId,owner); // attempted: no confirmed transport
+ const runtime={list:async()=>[],query:async(id:string,scope:typeof owner)=>
+  scope.sessionId===owner.sessionId&&scope.projectId===owner.projectId&&
+  (id===task.id||id==="uncertain-before-restart")
+  ?{record:{id,role:"explorer",state:"completed",...owner}}:null};
+ const ctx={mode:"tui",hasUI:true,cwd:owner.projectId,
+  sessionManager:{getSessionId:()=>owner.sessionId},ui:{notify:()=>{}}};
+ const register=()=>{
+  const exposed=new Map<string,any>();
+  registerAgentTools({registerTool:(tool:any)=>exposed.set(tool.name,tool)} as never,
+   async()=>runtime as never,undefined,undefined,journal);
+  const call=(name:string,args:object)=>exposed.get(name).execute(name,args,
+   new AbortController().signal,()=>{},ctx);
+  return {status:(id?:string)=>call("asen_agent_status",id?{id}:{}),
+   ack:(eventId:string)=>call("asen_agent_ack",{eventId})};
+ };
+ const first=register();
+ await first.status(task.id);
+ const reopened=register(); // new registration drops the old in-memory inspection map
+ await assert.rejects(()=>reopened.ack(row.eventId),/Inspect this exact terminal agent/u);
+ await reopened.status(); // listing is not specific inspection
+ await assert.rejects(()=>reopened.ack(row.eventId),/Inspect this exact terminal agent/u);
+ await reopened.status("uncertain-before-restart");
+ await assert.rejects(()=>reopened.ack(uncertain.eventId),/Inspect this exact terminal agent/u);
+ assert.equal((await journal.list(owner)).find(x=>x.eventId===uncertain.eventId)?.delivery,"attempted");
+ await reopened.status(task.id);
+ const confirmed=await reopened.ack(row.eventId);
+ assert.equal(confirmed.details.acknowledged,true);
+ assert.equal(confirmed.details.writerAuthorized,false);
+ assert.equal(confirmed.details.humanReadConfirmed,false);
+ assert.equal((await journal.list(owner)).find(x=>x.eventId===row.eventId)?.delivery,"acknowledged");
+});
