@@ -137,7 +137,7 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - Próxima macrotanda: preparar un lane opt-in exact-SHA para un único stream Beam durante reinicio TUI, si se puede vincular el hijo durable y garantizar no reejecución/doble llamada; incluir consumption/ack exactos al reabrir. Mantener provider-free preflight y no falsear `interrupted`/resumed. Antes de publicar, leer HEAD de PR y rama.
 
 
-## Próxima tanda EF-601 — política de frescura Gentle Shell
+## Próxima tanda EF-601 — comparación de frescura con referencia A
 
 - Base observada: PR #45 / rama `feat/t12-integrated-acceptance-merge`, HEAD `d4676ce1398b441b96ce932ac7445d00d41861d5`. La auditoría de la referencia A congelada (fila A en `registry/parity/agent-ab-baselines-v1.json`) encontró que un resultado con antigüedad ≥90 s se comunica como aviso compacto y no se vuelve a inyectar completo; su lectura queda bajo acción explícita de herramienta.
 - ASEN conservaba avisos durablemente (protege frente a pérdidas) pero reinyectaba el resumen íntegro al restaurar cualquier aviso `pending`, sin caducidad. Cambio agrupado: misma ventana de 90 s, con aviso compacto y salida completa omitida al superar el umbral; frescos no cambian. Pruebas unitarias cubren límite/clock skew/fecha inválida, resumen suprimido, ID/estado preservados.
@@ -147,6 +147,6 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 
 ## Corrección de gate externo — referencia de frescura — 2026-11-04
 
-- CI de `0fc9ddc65559892d64bb0cda3fd7a4085b85d5e1`: Phase 0 Architecture run `41934918613` falló en `audit-upstream-boundary` porque la nueva nota y el comentario de producción escribían un identificador externo directamente en archivos ordinarios. La semántica y las pruebas no fueron causa del fallo.
-- Se reemplaza esa mención por la referencia local permitida `registry/parity/agent-ab-baselines-v1.json`, cuya fila A contiene la procedencia congelada, y se mantiene el comentario sin identificadores externos. No se cambia el código funcional ni se relaja el auditor.
-- No reutilizar resultados como PASS para el próximo SHA. Preflight/CI/Release Gate de ese SHA están pendientes. EF-601 PARTIAL; 8/28; FULL=false.
+- CI de `0fc9ddc65559892d64bb0cda3fd7a4085b85d5e1`: Phase 0 Architecture run `41934918613` falló en `audit-upstream-boundary` porque la nota de continuidad incluía el nombre de una referencia congelada. La semántica y las pruebas no fueron causa del fallo.
+- La nota ahora usa la etiqueta local `referencia A` y enlaza a `registry/parity/agent-ab-baselines-v1.json`, cuya fila A guarda la procedencia. No se cambia el código funcional ni se relaja el auditor.
+- La siguiente inspección volvió a fallar porque el encabezado de checkpoint conservaba la etiqueta externa; se elimina en este commit. Los resultados previos no se heredan. Preflight/CI/Release Gate del SHA correctivo pendientes. EF-601 PARTIAL; 8/28; FULL=false.
