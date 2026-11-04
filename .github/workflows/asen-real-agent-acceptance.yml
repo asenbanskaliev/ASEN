@@ -76,6 +76,7 @@ jobs:
           node --check scripts/t12-real-parent-consumption.mjs
           node --check scripts/t12-real-child-parent-grade.mjs
           node --check scripts/agent-ab-case-readiness.mjs
+          node --check scripts/agent-ab-host-smoke.mjs
       - name: Typecheck
         run: npm run typecheck
       - name: Build
@@ -96,6 +97,7 @@ jobs:
             tests/agent-observable-receipts.test.ts \
             tests/agent-ab-source-witness.test.ts \
             tests/agent-ab-case-readiness.test.ts \
+            tests/agent-ab-host-smoke.test.ts \
             tests/frozen-ecosystem-source.test.ts \
             tests/natural-plan-tool.test.ts \
             tests/orchestrator-dispatcher-integration.test.ts \
@@ -204,6 +206,50 @@ jobs:
           path: |
             asen-acceptance-evidence/ab-source-witness.json
             asen-acceptance-evidence/ab-case-readiness.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  ab-native-host-smoke:
+    needs: [offline-static-validation, ab-frozen-source-witness]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.run_attempt == 1 &&
+      github.event_name == 'push' &&
+      github.event.head_commit.message == 'ci: one-time A/B native host smoke'
+    name: Native A/B pinned CLI help — no C01-C20 claims
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.25.10"
+          cache: false
+      - name: Execute frozen A Pi launcher help and B Go binary help, never install
+        shell: bash
+        env:
+          ASEN_AB_HOST_SMOKE_OUTPUT: ${{ github.workspace }}/asen-acceptance-evidence/ab-native-host-smoke.json
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          mkdir -p asen-acceptance-evidence
+          timeout 740s node scripts/agent-ab-host-smoke.mjs
+          node -e 'const r=require("./asen-acceptance-evidence/ab-native-host-smoke.json"); if(r.status!=="REFERENCE_HOST_HELP_ONLY"||r.hosts?.length!==2||r.executedCases!==0||r.modelCalls!==0||r.fullParity!==false||r.referenceBProvisioned!==false)process.exit(1);'
+      - name: Preserve native executable entrypoint receipt only
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-ab-native-host-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/ab-native-host-smoke.json
           if-no-files-found: warn
           retention-days: 14
 

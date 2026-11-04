@@ -8,12 +8,30 @@ import {resolveEco07Provider,validateEco07ProviderSelection} from "../scripts/ec
 
 test("ECO-07 detects provider quota failures without treating normal Pi replies as failures",()=>{
  const error='429: {"message":"Rate limit exceeded: free-models-per-day","code":429}';
- assert.equal(eco07ProviderRateLimitError({type:"message_end",message:{stopReason:"error",errorMessage:error}}),error);
- assert.equal(eco07ProviderRateLimitError({type:"turn_end",message:{stopReason:"error",errorMessage:"quota_exceeded"}}),"quota_exceeded");
+ assert.equal(eco07ProviderRateLimitError({type:"message_end",message:{stopReason:"error",errorMessage:error}}),"Provider rate limit (HTTP 429)");
+ assert.equal(eco07ProviderRateLimitError({type:"turn_end",message:{stopReason:"error",errorMessage:"quota_exceeded"}}),"Provider quota exhausted");
  for(const value of [undefined,null,[],{}, {type:"message_end",message:{stopReason:"stop",errorMessage:error}}, {type:"message_end",message:{stopReason:"error",errorMessage:"invalid request"}}, {type:"message_end",message:{stopReason:"error"}}]){
   assert.equal(eco07ProviderRateLimitError(value),undefined);
  }
- assert.equal(eco07ProviderRateLimitError({message:{stopReason:"error",errorMessage:"x".repeat(1500)+" 429"}})?.length,1200);
+ assert.equal(eco07ProviderRateLimitError({message:{stopReason:"error",errorMessage:"x".repeat(1500)+" 429"}}),"Provider rate limit (HTTP 429)");
+});
+
+test("ECO-07 provider error receipts never echo token, URL, prompt or untrusted control characters",()=>{
+ const secret="SYNTHETIC_SECRET_DO_NOT_LOG";
+ const attempts=[
+  `HTTP 429 Bearer ${secret} https://host.invalid/?api_key=${secret}`,
+  `quota_exceeded Authorization: Bearer ${secret}`,
+  `rate limit: ${secret}\\u202e\\u001b[31m prompt: ${secret}`,
+  `Too Many Requests, token=${secret}`,
+ ];
+ for(const errorMessage of attempts){
+  const result=eco07ProviderRateLimitError({type:"message_end",message:{stopReason:"error",errorMessage}});
+  assert.ok(result);
+  assert.ok(result.startsWith("Provider "));
+  assert.doesNotMatch(result,/SYNTHETIC_SECRET_DO_NOT_LOG|Bearer|host\\.invalid|\\x1b|\\u202e|prompt:/u);
+  assert.ok(result.length<64);
+ }
+ assert.equal(eco07ProviderRateLimitError({type:"message_end",message:{stopReason:"error",errorMessage:"invalid token: "+secret}}),undefined);
 });
 
 test("ECO-07 validates provider metadata without reading a credential",()=>{
