@@ -1525,3 +1525,10 @@ La nueva aserción de workflow tenía una comilla final mal colocada. La inspecc
 - La aceptación [41945944693](https://github.com/asenbanskaliev/ASEN/actions/runs/41945944693) en SHA 505d5bb467f068b75976d8f31f3110ca1732a79a bloqueó correctamente todas las lanes de proveedor porque falló el test provider-free `EF-403 live repaired Reviewer and Verifier lane cannot authorize or write`.
 - Causa: el test exigía `humanConsent:false` en el texto del harness; el reporte no incluye ese campo. El contrato comprobable sí expresa `writerAuthorized:false`, `authorization:NOT_GRANTED` y `independentReview:false`. La expectativa adicional era ajena al contrato y se elimina; no se debilita ninguna autorización de Writer.
 - Resultado: cero llamada/reserva de proveedor en ese run, ningún subcheck EF-403 cerrado. Se vuelve a ejecutar solo después del preflight exact-SHA corregido.
+
+
+## EF-403 — Reviewer/Verifier live Beam fallo sin causa observable — 2026-11-05
+
+- En SHA 7d99b3cde60f82d0be288fe7fbac4dee308aff14, preflight provider-free PASS y carga/selección del proveedor Beam PASS; el job live [126980183141](https://github.com/asenbanskaliev/ASEN/actions/runs/41946364721/job/126980183141) falló durante la etapa `REVIEWER_PI_RPC` en acceptance [41946364721](https://github.com/asenbanskaliev/ASEN/actions/runs/41946364721). El log no distingue cuota, respuesta del modelo, RPC o contrato del artifact; llamada HTTP efectiva desconocida.
+- La lane no llegó a invocar Verifier. El harness reserva el slot Reviewer antes de Pi RPC y no permite reintentos dentro del workflow. No hay subcheck EF-403 PASS ni se repetirá el proveedor a ciegas; el recibo no demuestra que haya habido HTTP.
+- La siguiente mejora de evidencia clasifica fallos a un enum acotado, guarda la cantidad de slots lógicos reservados y conserva `providerCallsActuallyObserved:null`, sin almacenar output/model transcript/credenciales. El test no convierte el fallo actual en PASS ni promete recuperación del proveedor.

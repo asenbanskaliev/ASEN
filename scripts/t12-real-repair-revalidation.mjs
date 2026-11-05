@@ -15,7 +15,7 @@ import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {executeCorrectionFixture,confirmCorrectionUnchanged,gradeCorrectedReviewer,
- gradeCorrectedVerifier,correctedPaths} from "./t12-revalidation-contract.mjs";
+ gradeCorrectedVerifier,correctedPaths,classifyRevalidationFailure} from "./t12-revalidation-contract.mjs";
 const repo=resolve("."),sha=process.env.ASEN_EXPECTED_SHA,model=process.env.ASEN_SELECTED_MODEL;
 const digest=s=>createHash("sha256").update(s).digest("hex");
 assert.match(sha??"",/^[0-9a-f]{40}$/u);
@@ -31,7 +31,7 @@ await mkdir(budget,{mode:0o700});
 const evidence=resolve("asen-acceptance-evidence");
 await mkdir(evidence,{recursive:true});
 const output=join(evidence,"real-repaired-review-verification.json");
-let stage="PREPARE",completed=false;
+let stage="PREPARE",completed=false,callsReserved=0,failureCode="UNCLASSIFIED";
 const runner=new PiArtifactRunner(new PiProcessRunner({
  extraArgs:["--no-session","--provider","ollama-cloud","--model",model],
  providerExtension:"npm:pi-ollama-cloud@0.13.1",
@@ -45,6 +45,7 @@ async function reserve(stageLabel,index){
  // Atomic, write-once reservation BEFORE the provider call: a crash burns the call.
  await writeFile(join(budget,index+".claim"),index+":"+stageLabel+":"+sha+"\n",
   {flag:"wx",mode:0o600});
+ callsReserved++;
 }
 async function callAgent(label,role,prompt,fixtureSha){
  const index=role==="reviewer"?1:2;
@@ -55,7 +56,10 @@ async function callAgent(label,role,prompt,fixtureSha){
  const context=issueSkillContext(id,repo,candidate,{phase,risk:"low",verification:role==="verifier"});
  const result=await dispatcher.dispatch({id,role,repository:repo,candidate,expectedPhase:phase,
   skillContext:context,skillPaths:selectSkills(context).map(s=>s.path),prompt});
- assert.equal(result.ok,true,"Bounded Pi RPC agent failed");
+ if(!result.ok){
+  failureCode=classifyRevalidationFailure({output:result.output,errorName:"AgentResultRejected"});
+  throw new Error("Pi role returned a non-success result");
+ }
  const proof=result.artifactProof;
  assert.ok(isIssuedAgentArtifactProof(proof),"Missing ASEN-issued artifact proof");
  assert.equal(proof.requestId,id);assert.equal(proof.role,role);
@@ -107,16 +111,19 @@ try{
   red:fixture.red.length,green:fixture.green.length,preserved:true,
   reviewer:{...reviewed,responseHash:first.responseHash,responseBytes:first.responseBytes},
   verifier:{...verified,responseHash:second.responseHash,responseBytes:second.responseBytes},
-  callsReserved:2,writerAuthorized:false,authorization:"NOT_GRANTED",
+  callsReserved,providerCallsActuallyObserved:null,writerAuthorized:false,authorization:"NOT_GRANTED",
   independentReview:false,referenceParity:false,globalFull:false};
  await writeFile(output,JSON.stringify(report,null,2)+"\n",{flag:"wx",mode:0o600});
  completed=true;
  console.log("EF403_REPAIRED_READONLY_REVALIDATION_PASS "+JSON.stringify({red:3,green:3,model,globalFull:false}));
 }catch(error){
+ if(failureCode==="UNCLASSIFIED")failureCode=classifyRevalidationFailure({
+  message:error instanceof Error?error.message:"",errorName:error instanceof Error?error.name:"UnknownError",
+ });
  if(!completed)await writeFile(output,JSON.stringify({status:"FAIL_OR_INCOMPLETE",
-  stage,candidateSha:sha,writerAuthorized:false,globalFull:false,
-  errorClass:error instanceof Error?error.name:"UnknownError"})+"\n",{flag:"wx",mode:0o600});
- console.error("EF403_REPAIRED_READONLY_REVALIDATION_FAIL",stage);
+  stage,candidateSha:sha,callsReserved,providerCallsActuallyObserved:null,
+  failureCode,writerAuthorized:false,authorization:"NOT_GRANTED",globalFull:false})+"\n",{flag:"wx",mode:0o600});
+ console.error("EF403_REPAIRED_READONLY_REVALIDATION_FAIL",stage,failureCode);
  process.exitCode=1;
 }finally{
  await rm(scratch,{recursive:true,force:true,maxRetries:8,retryDelay:100});

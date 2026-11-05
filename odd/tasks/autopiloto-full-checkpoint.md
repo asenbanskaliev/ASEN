@@ -275,3 +275,11 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - HEAD publicado: 505d5bb467f068b75976d8f31f3110ca1732a79a. Acceptance [41945944693](https://github.com/asenbanskaliev/ASEN/actions/runs/41945944693) FAIL en provider-free job [126978046314](https://github.com/asenbanskaliev/ASEN/actions/runs/41945944693/job/126978046314), etapa F2/F3 deterministic. Test nuevo exigió un campo `humanConsent:false` que el harness no emite; su contrato mantiene writerAuthorized=false y authorization=NOT_GRANTED. El preflight bloqueó la lane; no se ejecutaron modelos ni se reservó cuota.
 - Corrección preparada: quitar solo la aserción del campo ausente. Mantener checks de run_attempt=1, noTools, dos reservas, writerAuthorized false y NOT_GRANTED. Ejecutar el mismo lane exacto una sola vez tras PASS del preflight.
 - La siguiente commit hereda los cambios de scope de secretos y la prueba de receipt EF603, pero la evidencia EF403 sigue abierta. No marcar nada de EF403 como PASS y no arrastrar éxito de otra SHA.
+
+
+## Checkpoint — 2026-11-05 — EF-403 live lane inconclusa
+
+- SHA publicado 7d99b3cde60f82d0be288fe7fbac4dee308aff14, mensaje `ci: one-time Pi repaired-review Beam proof`. Provider-free preflight SUCCESS; lane [126980183141](https://github.com/asenbanskaliev/ASEN/actions/runs/41946364721/job/126980183141) FAILED at `REVIEWER_PI_RPC` after model setup succeeded. No Verifier call. Job logs omit cause by design; provider request count unknown. The script reserves the Reviewer slot before dispatch; do not repeat a provider request without cause/quota evidence.
+- Corrección preparada solo para observabilidad provider-free: enum de fallo cuota/auth/billing/network/timeout/artifact/role assertion; número de slots lógicos reservados; HTTP count null; sin guardar response, secret o transcript. Añadir regresión determinista a tests existentes.
+- Esta falla no cierra EF-403. Próximo: ejecutar regression/provider-free exact-SHA de la clasificación, revisar CI/RG del SHA correcto y avanzar el siguiente EF provider-free. Mantener otros Beam lanes en espera hasta conocer acceso/cuota real.
+- Estado canónico 8/28; EF-601 idle/busy, EF-603 one-process, EF-604 TUI crash/reopen subchecks PASS; EF-403 subcheck no verificado; A/B 60 slots, consentimiento Writer, Reviewer independiente y FULL pendientes.

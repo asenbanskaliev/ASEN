@@ -5,7 +5,7 @@ import {mkdtemp,rm,writeFile} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 // @ts-expect-error Standalone JS acceptance contract intentionally has no declarations.
-import {executeCorrectionFixture,confirmCorrectionUnchanged,gradeCorrectedReviewer,gradeCorrectedVerifier,correctedPaths} from "../scripts/t12-revalidation-contract.mjs";
+import {executeCorrectionFixture,confirmCorrectionUnchanged,gradeCorrectedReviewer,gradeCorrectedVerifier,correctedPaths,classifyRevalidationFailure} from "../scripts/t12-revalidation-contract.mjs";
 const sha="a".repeat(40),fixtureSha="b".repeat(64),reviewHash="c".repeat(64),testsSha="d".repeat(64);
 const reasons=[
  {path:"src/access.js",text:"Editing is now limited to the correct document owner, even when the user is a viewer."},
@@ -69,4 +69,21 @@ test("EF-502 opt-in separate two-call Beam lane is pinned, write-disabled and no
   "ci: one-time Pi repaired-review Beam proof","ASEN_EXPECTED_SHA: $"+"{{ github.sha }}",
   "scripts/t12-real-repair-revalidation.mjs","persist-credentials: false"])assert.ok(section.includes(key),key);
  assert.doesNotMatch(section,/writerAuthorized: true|GROQ_API_KEY|OPENROUTER_API_KEY/iu);
+});
+
+
+test("EF-403 failure receipt classifies sanitized Pi errors without recording provider text",()=>{
+ const cases:Array<[Record<string,string>,string]>=[
+  [{output:"HTTP 429 too many requests; token secret-must-not-escape"},"PROVIDER_QUOTA_OR_RATE_LIMIT"],
+  [{output:"401 unauthorized invalid api key"},"PROVIDER_AUTH_REJECTED"],
+  [{output:"HTTP 402 payment required"},"BILLING_OR_PAID_PROVIDER_REJECTED"],
+  [{output:"ECONNRESET fetch failed"},"PROVIDER_NETWORK_OR_UPSTREAM_FAILURE"],
+  [{message:"Pi artifact RPC stream is malformed"},"ROLE_RPC_OR_ARTIFACT_CONTRACT_FAILURE"],
+  [{errorName:"AssertionError"},"ROLE_RESULT_OR_GRADE_REJECTED"],
+ ];
+ for(const [input,expected] of cases){
+  const code=classifyRevalidationFailure(input);
+  assert.equal(code,expected);
+  assert.doesNotMatch(code,/secret|token|429|401|402|ECONNRESET/u);
+ }
 });

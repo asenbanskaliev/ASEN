@@ -88,3 +88,17 @@ function grade(value,expected,verifier){
 }
 export const gradeCorrectedReviewer=(value,expected)=>grade(value,expected,false);
 export const gradeCorrectedVerifier=(value,expected)=>grade(value,expected,true);
+
+
+/** Emit only a bounded enum from Pi role failure data; never persist response text. */
+export function classifyRevalidationFailure({output,message,errorName}={}){
+ const detail=(typeof output==="string"?output:typeof message==="string"?message:"").slice(0,4096).toLowerCase();
+ if(/(?:\b429\b|rate[ -]?limit|quota[ -]?(?:exceeded|exhausted)|too many requests)/u.test(detail))return "PROVIDER_QUOTA_OR_RATE_LIMIT";
+ if(/(?:\b401\b|unauthorized|authentication failed|invalid api key|credential rejected)/u.test(detail))return "PROVIDER_AUTH_REJECTED";
+ if(/(?:\b402\b|payment required|billing|paid plan)/u.test(detail))return "BILLING_OR_PAID_PROVIDER_REJECTED";
+ if(/(?:\b(?:502|503|504)\b|econnreset|enotfound|etimedout|fetch failed|socket hang up|network error)/u.test(detail))return "PROVIDER_NETWORK_OR_UPSTREAM_FAILURE";
+ if(/(?:timed out|timeout)/u.test(detail))return "ROLE_PROCESS_TIMEOUT";
+ if(/(?:pi artifact|artifact proof|assistant response|rpc stream|malformed)/u.test(detail))return "ROLE_RPC_OR_ARTIFACT_CONTRACT_FAILURE";
+ if(errorName==="AssertionError")return "ROLE_RESULT_OR_GRADE_REJECTED";
+ return "ROLE_RPC_OR_ARTIFACT_FAILURE_UNCLASSIFIED";
+}
