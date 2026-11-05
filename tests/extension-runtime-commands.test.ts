@@ -196,3 +196,34 @@ test("optional history shortcut is opt-in, delegates selection, and stays disabl
  const noop = { on() {}, registerCommand() {}, registerTool() {}, registerShortcut() { throw new Error("disabled-by-default regression"); }, getCommands() { return []; }, getAllTools() { return []; } };
  createAsenExtension({ homeDir: () => root, enableAgentRuntime: false, enableTodoRuntime: false, enableWorkspaceRuntime: false, enableMemoryRuntime: false })(noop as any);
 });
+
+
+test("M1 native panel includes only owned project/session agents and closes on session change",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-ide-panel-scope-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
+ const root=await realpath(process.cwd()),h=host();
+ let session="m1-session",selected="AGENTS";
+ const entries=[
+  {id:"own",role:"owned-explorer",state:"running",sessionId:session,projectId:root},
+  {id:"other-session",role:"foreign-reviewer",state:"running",sessionId:"other",projectId:root},
+  {id:"other-project",role:"foreign-worker",state:"running",sessionId:session,projectId:home},
+ ].map(row=>({...row,owner:{kind:"user",id:"owner"},createdAt:"2026-11-05T00:00:00Z",updatedAt:"2026-11-05T00:00:00Z"}));
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,
+  enableWorkspaceRuntime:false,enableMemoryRuntime:false,agents:()=>entries as any})(h.pi as any);
+ const notices:string[]=[];
+ const context:any={cwd:root,mode:"tui",hasUI:true,
+  sessionManager:{getSessionId:()=>session},
+  ui:{notify:(message:string)=>notices.push(message),select:async()=>selected},
+ };
+ const command=h.commands.get("asen-panel");assert.ok(command);
+ const result=await command.handler("agents",context);
+ assert.match(String(result),/owned-explorer/u);
+ assert.doesNotMatch(String(result),/foreign-reviewer|foreign-worker/u);
+ assert.match(String(await command.handler("all",context)),/▾ TODOS/u);
+ assert.match(String(await command.handler("status",context)),/ASEN/u);
+ selected="AGENTS";
+ context.ui.select=async()=>{session="changed-session";return selected;};
+ const stale=await command.handler("",context);
+ assert.match(String(stale),/scope changed/u);
+ assert.doesNotMatch(String(stale),/owned-explorer/u);
+});

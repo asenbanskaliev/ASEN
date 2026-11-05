@@ -276,7 +276,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const identity=await sessionIdentity(ctx);
    const [todos,agents]=await Promise.all([
     todoStorePromise?(await todoStorePromise).list(identity):Promise.resolve([]),
-    agentRuntimePromise?(await agentRuntimePromise).list(identity):Promise.resolve(dependencies.agents?.()??[]),
+    agentRuntimePromise?(await agentRuntimePromise).list(identity):Promise.resolve((dependencies.agents?.()??[]).filter(record=>record.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(record.projectId,identity.projectId))),
    ]);
    const jobs=backgroundJobs.list(identity.sessionId,identity.projectId);
    // Git is consulted on explicit panel inspection, never on mouse movement.
@@ -295,7 +295,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const identity=await sessionIdentity(ctx);
     const [todos,agents]=await Promise.all([
      todoStorePromise?(await todoStorePromise).list(identity):Promise.resolve([]),
-     agentRuntimePromise?(await agentRuntimePromise).list(identity):Promise.resolve(dependencies.agents?.()??[]),
+     agentRuntimePromise?(await agentRuntimePromise).list(identity):Promise.resolve((dependencies.agents?.()??[]).filter(record=>record.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(record.projectId,identity.projectId))),
     ]);
     const jobs=backgroundJobs.list(identity.sessionId,identity.projectId);
     const now=await sessionIdentity(ctx);

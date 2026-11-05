@@ -1695,3 +1695,9 @@ Se consultó el código de repositorio externo de referencia, rama `main`, árbo
 - **Pruebas nuevas sin proveedor:** tests/ide-panel.test.ts cubre orden, colapso, estados, separación succeeded/done, jobs, estado incompleto, sanitización y ancho 12/35/80/140. Las pruebas TUI reales, mouse y A/B siguen pendientes.
 - **Correcciones de CI observadas en SHA f0e572f:** journal EF-601/604 comparaba orden indeterminado entre sistemas: comprobar deliveries/dispositions por eventId exacto; Windows ECO-06 rechazaba Writer antes de llegar al runner (failureClass AUTHORIZATION): el test usa Git temporal limpio aislado del checkout compartido, sin cambiar guards; timeout de espera worker en migraciones de memoria Windows pasa de 10s a 30s (15s en otros sistemas) sin modificar SQLite ni migración.
 - **Estado hasta nuevo CI:** 28 EF originales y 8 checks históricos inalterados; FULL=false. No merge a main; cada nueva observación debe provenir de la ejecución del SHA publicado.
+
+### M1b — aislamiento de sesión en panel y reparación del inventario (2026-11-05)
+
+- La primera publicación M1 (SHA 7a45a4b) supera arquitectura, F5, Pi runtime, CodeGraph, R4 automático, Release Gate en tres sistemas y aceptación funcional con preflight; el CI aún no ha terminado. En macOS shard 1 y Windows shard 1 falló el contrato estático del inventario de comandos porque el nuevo /asen-panel no estaba en su lista exacta; se actualiza dicha prueba manteniendo la comprobación estricta de todos los comandos.
+- Se exige al panel aplicar sesión y raíz de proyecto también en el proveedor de agentes inyectado (además de los stores persistentes, ya acotados). Nueva prueba de regresión con agentes de otra sesión y proyecto y con selector nativo Pi que cambia de sesión antes de confirmar. Ningún dato externo se devuelve.
+- Estos ajustes todavía no convierten UI-01..UI-14 en FULL ni acreditan el rail IDE o la paridad A/B. No se cambia la política de permisos ni se fusiona main.
