@@ -20,7 +20,11 @@ async function selectionFixture(t:TestContext){
  await writeProfilesFile(file,data);
  const pi={registerCommand:(name:string,command:any)=>commands.set(name,command),registerTool:(tool:any)=>tools.set(tool.name,tool),on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),getCommands:()=>[],getAllTools:()=>[]};
  createAsenExtension({homeDir:()=>home,profilesFile:file,enableAgentRuntime:true,enableTodoRuntime:false,enableMemoryRuntime:false,autoAdvancePlans:false,agentStoreFile:path.join(home,".asen","agents.json"),agentRunner:{run:async request=>{requests.push(request);waiting.get(request.id)?.(request);return{id:request.id,ok:true,output:"inert selection result"};}}})(pi as any);
- t.after(async()=>{try{for(const ctx of contexts)for(const shutdown of events.get("session_shutdown")??[])await shutdown({},ctx);}finally{await rm(home,{recursive:true,force:true});}});
+ t.after(async()=>{try{for(const ctx of contexts)for(const shutdown of events.get("session_shutdown")??[])await shutdown({},ctx);}finally{
+  // Process shutdown and delayed file-lease cleanup may briefly race with
+  // recursive rmdir on hosted runners; never suppress a persistent failure.
+  await rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:150});
+ }});
  const start=async(ctx:ReturnType<typeof context>)=>{for(const handler of events.get("session_start")??[])await handler({},ctx);};
  const command=(args:string,ctx:ReturnType<typeof context>)=>commands.get("asen-profiles").handler(args,ctx);
  const dispatch=async(ctx:ReturnType<typeof context>)=>{

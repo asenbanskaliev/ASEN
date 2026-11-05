@@ -1571,3 +1571,9 @@ Se consultó el código de repositorio externo de referencia, rama `main`, árbo
 - **Evidencia provider-free:** pruebas para recuperación sin mutación, aislamiento de scope, ausencia de permisos/consumo inventados, compatibilidad del status y rechazo de getters, proxies, mensajes no terminales y reclamaciones de facturación.
 - **F8 bloqueado:** CI 41984827167, Windows shard 2 FALLÓ otra vez en ECO-06: agentState=failed, todoState=blocked, writerConfirmations=2 tras 30 s. Esto descarta un simple problema de temporización. Gate de cobertura FAIL correctamente. Es preciso capturar la clase acotada de fallo del dispatcher antes de tocar seguridad. No se autoriza reintento de Writer real ni se marca EF-304.
 - Esta tanda no acredita C01–C20 A/B, consumo auténtico del padre, Writer humano, cuota real del proveedor ni R4 independiente. EF-601/604/702 permanecen PARTIAL; checks canónicos [ ]; FULL=false. Pendiente aceptación exact-SHA de CI tres OS, Release Gate, R4 auto y preflight sin proveedor.
+
+
+### F10 preflight cleanup corrective slice (2026-11-05)
+
+- En SHA 2be30ab6e7d6921c9b03e8c58f5a1382a37225cb, la aceptación provider-free 41986693917 superó typecheck y build, pero falló antes de pruebas reales al limpiar el fixture de profile-selection: ENOTEMPTY en un directorio temporal bajo .asen. No demuestra fallo de modelo ni de los cambios EF-601/604/702.
+- Corrección focalizada: la limpieza tras session_shutdown conserva eliminación obligatoria, pero admite hasta 10 reintentos acotados con pausa de 150 ms ante carreras de handles del sistema. No se ignoran errores persistentes, no se cambia el flujo de permisos y el test sigue verificando invalidación y ausencia de encolados. Pendiente nueva ejecución exact-SHA. No marcar FULL.
