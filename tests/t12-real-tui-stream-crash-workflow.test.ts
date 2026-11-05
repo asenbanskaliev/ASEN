@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const workflow=readFileSync(new URL("../.github/workflows/asen-real-agent-acceptance.yml",import.meta.url),"utf8");
+const harness=readFileSync(new URL("../scripts/t12-real-tui-stream-crash.mjs",import.meta.url),"utf8");
 const from=workflow.indexOf("  real-tui-stream-crash:");
 const to=workflow.indexOf("\n  real-stream-interruption:",from);
 test("EF-604 live TUI crash during child inference is one exact opt-in Beam call",()=>{
@@ -22,6 +23,8 @@ test("EF-604 live TUI crash during child inference is one exact opt-in Beam call
   "real-pi-tui-stream-crash.json",
  ])assert.ok(lane.includes(item),"Missing bounded exact-SHA gate "+item);
  assert.match(lane,/timeout 220s/u);assert.match(lane,/timeout-minutes: 12/u);
+ assert.ok(harness.includes('"--extension","npm:pi-ollama-cloud@0.13.1"'),"The no-extensions Pi TUI must explicitly load the pinned provider");
+ assert.ok(harness.includes("TUI_EXITED_BEFORE_MARKER")&&harness.includes("firstTuiExit"),"Failure receipt must preserve bounded startup diagnostics");
  assert.doesNotMatch(lane,/(?:OPENROUTER_API_KEY|GROQ_API_KEY|NVIDIA_API_KEY|WRITE_GRANT|writerAuthorized: true|continue-on-error: true|continue-on-error: )/u);
  assert.doesNotMatch(lane,/contains\s*\(\s*github\.event\.head_commit\.message/u);
 });

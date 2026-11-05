@@ -38,16 +38,24 @@ for(const key of Object.keys(env))
  if(/(?:API_KEY|TOKEN|PASSWORD|SECRET|CREDENTIAL)/iu.test(key)&&key!=="OLLAMA_API_KEY")delete env[key];
 const pty=await import("node-pty");
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-let first,second,childPid,phase="PREPARED",taskId,sessionId;
+let first,second,childPid,phase="PREPARED",taskId,sessionId,lastMarkerPhase="NONE",startupFailure="NONE";
 function launch(mode,extra={}){
  const hostEnv={...env,ASEN_REAL_TUI_PHASE:mode,...extra};
  if(mode==="reopen"){delete hostEnv.OLLAMA_API_KEY;delete hostEnv.ASEN_OLLAMA_API_KEY;}
- const child=pty.spawn(process.execPath,[piBinary,"--no-extensions","--extension",probe,
+ const child=pty.spawn(process.execPath,[piBinary,"--no-extensions","--extension","npm:pi-ollama-cloud@0.13.1","--extension",probe,
   "--no-skills","--no-builtin-tools","--session",sessionFile,
   "--provider","ollama-cloud","--model",model],
   {cwd:project,cols:120,rows:35,name:"xterm-256color",
    env:hostEnv});
- child.onData(data=>digest.update(data));
+ child.onData(data=>{
+  digest.update(data);
+  const visible=String(data).replace(/\u001b\[[0-?]*[ -/]*[@-~]/gu,"");
+  if(/unknown provider|provider.+not found|no provider/iu.test(visible))startupFailure="PROVIDER_UNAVAILABLE";
+  else if(/no model|model.+not found/iu.test(visible))startupFailure="MODEL_UNAVAILABLE";
+  else if(/unauthorized|authentication failed|quota exceeded|rate limit/iu.test(visible))startupFailure="PROVIDER_AUTH_OR_QUOTA";
+  else if(/failed to load extension|extension.+error/iu.test(visible))startupFailure="EXTENSION_LOAD_FAILURE";
+  else if(/cannot find module|module not found/iu.test(visible))startupFailure="MODULE_RESOLUTION_FAILURE";
+ });
  let exitInfo,exited=false;
  const exit=new Promise(resolve=>child.onExit(value=>{exitInfo=value;exited=true;resolve(value);}));
  return {child,exit,isExited:()=>exited,getExit:()=>exitInfo};
@@ -57,7 +65,8 @@ async function markerUntil(predicate,host,deadlineMs){
  while(Date.now()<deadline){
   if(existsSync(marker)){
    let value;try{value=JSON.parse(readFileSync(marker,"utf8"));}catch{await sleep(50);continue;}
-   if(Number.isSafeInteger(value.childPid))childPid=value.childPid;
+   lastMarkerPhase=typeof value.phase==="string"?value.phase:lastMarkerPhase;
+  if(Number.isSafeInteger(value.childPid))childPid=value.childPid;
    if(typeof value.taskId==="string")taskId=value.taskId;
    if(typeof value.sessionId==="string")sessionId=value.sessionId;
    if(value.phase==="probe_failed"||value.phase==="stream_observation_failed")
@@ -119,13 +128,20 @@ try{
  console.log("EF604_REAL_PI_TUI_STREAM_CRASH_PASS "+JSON.stringify({
   status:report.status,model:report.model,providerCallsReserved:1,globalFull:false}));
 }catch(error){
+ const diagnostic=lastMarkerPhase==="probe_failed"?"PROBE_FAILED":
+  lastMarkerPhase==="stream_observation_failed"?"STREAM_OBSERVER_FAILED":
+  startupFailure!=="NONE"?startupFailure:
+  error instanceof Error&&error.message==="Native Pi TUI exited before the evidence marker"?"TUI_EXITED_BEFORE_MARKER":
+  error instanceof Error&&error.message==="Bounded native Pi TUI marker deadline exceeded"?"MARKER_DEADLINE":
+  error instanceof Error&&error.message==="Recovered Pi TUI did not exit normally"?"RECOVERY_EXIT_FAILURE":"UNCLASSIFIED";
  try{mkdirSync(join(repo,"asen-acceptance-evidence"),{recursive:true});
   writeFileSync(output,JSON.stringify({schema:"asen-real-pi-tui-stream-crash/v1",
    candidateSha:sha,status:"FAIL_OR_INCOMPLETE",stage:phase,
    providerCallsReserved:phase.includes("STREAM")?1:0,providerCallsActuallyObserved:null,
-   writerAuthorized:false,globalFull:false,diagnostic:error instanceof Error?error.name:"Error"})+"\n",
+   writerAuthorized:false,globalFull:false,diagnostic,observed:{lastMarkerPhase,startupFailure,
+    firstTuiExit:first?.getExit()??null,secondTuiExit:second?.getExit()??null}})+"\\n",
    {flag:"wx",mode:0o600});}catch{}
- console.error("EF604_REAL_PI_TUI_STREAM_CRASH_FAILED "+phase);
+ console.error("EF604_REAL_PI_TUI_STREAM_CRASH_FAILED "+phase+" "+diagnostic);
  process.exitCode=1;
 }finally{
  if(first&&!first.isExited())try{first.child.kill("SIGKILL");}catch{}
