@@ -3,7 +3,7 @@ import {realpathSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {fileURLToPath} from "node:url";
 import {isAbsolute,relative,resolve} from "node:path";
-import {discoverTestFiles,planTestRuns} from "./test-plan.mjs";
+import {discoverTestFiles,planTestShards} from "./test-plan.mjs";
 
 const MAX_TIMER_DELAY_MS=2_147_483_647;
 const DEFAULT_LIMITS=Object.freeze({
@@ -194,10 +194,29 @@ export async function runTestPlan(runs,run=spawnNode,options={}){
  return {code:0,signal:null};
 }
 
+export function resolveTestShard(env){
+ if(!env||typeof env!=="object")throw new TypeError("test shard environment is required");
+ const rawIndex=env.ASEN_TEST_SHARD_INDEX,rawCount=env.ASEN_TEST_SHARD_COUNT;
+ if(rawIndex===undefined&&rawCount===undefined)return {index:0,count:1};
+ if(typeof rawIndex!=="string"||!/^(?:0|[1-9]\d*)$/.test(rawIndex)
+  ||typeof rawCount!=="string"||!/^[1-9]\d*$/.test(rawCount)){
+  throw new TypeError("ASEN_TEST_SHARD_INDEX and ASEN_TEST_SHARD_COUNT must be valid paired integers");
+ }
+ const index=Number(rawIndex),count=Number(rawCount);
+ if(!Number.isSafeInteger(index)||!Number.isSafeInteger(count)||count>32||index>=count){
+  throw new TypeError("test shard index/count are out of bounds");
+ }
+ return {index,count};
+}
+
 export async function main({cwd=process.cwd(),platform=process.platform,nodeOptions=process.argv.slice(2),env=process.env}={}){
  const limits=resolveWatchdogLimits(env);
+ const {index,count}=resolveTestShard(env);
  const files=await discoverTestFiles(cwd);
- return runTestPlan(planTestRuns({platform,testFiles:files,nodeOptions}),undefined,{limits,platform});
+ const shards=planTestShards({platform,testFiles:files,nodeOptions,shardCount:count});
+ const runs=shards[index];
+ if(!runs?.length)throw new Error("Empty or missing test shard");
+ return runTestPlan(runs,undefined,{limits,platform});
 }
 
 const entryPath=process.argv[1]&&resolve(process.argv[1]);

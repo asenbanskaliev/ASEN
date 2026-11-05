@@ -10,11 +10,24 @@ concurrency:
   cancel-in-progress: true
 jobs:
   test:
+    name: test (${{ matrix.os }} shard ${{ matrix.shard }})
     strategy:
       fail-fast: false
+      max-parallel: 6
       matrix:
-        os: [ubuntu-24.04, windows-latest, macos-latest]
+        include:
+          - {os: ubuntu-24.04, shard: 0, count: 1}
+          - {os: windows-latest, shard: 0, count: 3}
+          - {os: windows-latest, shard: 1, count: 3}
+          - {os: windows-latest, shard: 2, count: 3}
+          - {os: macos-latest, shard: 0, count: 2}
+          - {os: macos-latest, shard: 1, count: 2}
     runs-on: ${{ matrix.os }}
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      ASEN_TEST_SHARD_OS: ${{ matrix.os }}
+      ASEN_TEST_SHARD_INDEX: ${{ matrix.shard }}
+      ASEN_TEST_SHARD_COUNT: ${{ matrix.count }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
@@ -28,19 +41,30 @@ jobs:
           node-version: "22.19.0"
       - run: npm ci
       - name: Verify EF checklist against traceable evidence
+        if: matrix.shard == 0
         run: npm run audit:ef-plan
       - name: Prepare frozen ecosystem Git objects
         run: node .github/scripts/prepare-frozen-ecosystem-baseline.mjs
       # Same checks and order as npm run check, split into timed Actions steps.
       - name: Typecheck
+        if: matrix.shard == 0
         run: npm run typecheck
       - name: Full test suite
         env:
           ASEN_TEST_CHUNK_TIMEOUT_MS: "900000"
           ASEN_TEST_OVERALL_TIMEOUT_MS: ${{ matrix.os == 'windows-latest' && '2400000' || '1800000' }}
         run: npm test
+      - name: Record exact-SHA successful shard manifest
+        run: node scripts/ci-shard-receipts.mjs emit
+      - name: Upload exact-SHA shard manifest
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-ci-shard-${{ matrix.os }}-${{ matrix.shard }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ci-shard-receipts/${{ matrix.os }}-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 14
       - name: macOS retained-source witness
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && matrix.shard == 0
         shell: bash
         run: |
           set +e
@@ -50,7 +74,7 @@ jobs:
           printf '%s\n' "$witness_status" > retained-source-witness.exit
           exit "$witness_status"
       - name: Upload macOS retained-source witness
-        if: always() && runner.os == 'macOS'
+        if: always() && runner.os == 'macOS' && matrix.shard == 0
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: retained-source-macos-${{ github.event.pull_request.head.sha || github.sha }}
@@ -60,17 +84,54 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Phase parity audit
+        if: matrix.shard == 0
         run: npm run audit:parity
       - name: Skills audit
+        if: matrix.shard == 0
         run: npm run audit:skills
       - name: Skill parity audit
+        if: matrix.shard == 0
         run: npm run audit:skill-parity
       - name: Memory parity audit
+        if: matrix.shard == 0
         run: npm run audit:memory-parity
       - name: Ecosystem audit
+        if: matrix.shard == 0
         run: npm run audit:ecosystem
       - name: Upstream boundary audit
+        if: matrix.shard == 0
         run: npm run audit:upstream-boundary
+
+  test-shard-coverage:
+    name: test-shard-coverage
+    needs: test
+    if: always()
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Reject incomplete matrix before evidence admission
+        env:
+          ASEN_TEST_MATRIX_RESULT: ${{ needs.test.result }}
+        run: node -e "if(process.env.ASEN_TEST_MATRIX_RESULT!=='success')process.exit(1)"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Download six same-run exact-SHA shard receipts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          pattern: asen-ci-shard-*-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ci-shard-receipts
+          merge-multiple: true
+      - name: Reject missing, duplicate, stale or overlapping test coverage
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci-shard-receipts.mjs verify
+
   t07-real-codegraph:
     if: >-
       github.event_name == 'pull_request' &&

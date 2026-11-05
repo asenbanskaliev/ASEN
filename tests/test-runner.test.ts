@@ -6,9 +6,9 @@ import {mkdtemp,mkdir,readFile,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 // @ts-expect-error Test-only JavaScript runner is outside the runtime TypeScript package.
-import {discoverTestFiles,planTestRuns} from "../scripts/test-plan.mjs";
+import {discoverTestFiles,planTestRuns,planTestShards} from "../scripts/test-plan.mjs";
 // @ts-expect-error Test-only JavaScript runner is outside the runtime TypeScript package.
-import {resolveWatchdogLimits,runChildWithWatchdog,runTestPlan} from "../scripts/run-tests.mjs";
+import {resolveTestShard,resolveWatchdogLimits,runChildWithWatchdog,runTestPlan} from "../scripts/run-tests.mjs";
 
 class FakeClock {
  nowMs=0;
@@ -350,5 +350,44 @@ test("kill errors are contained and a late close cannot replace timeout 124",asy
   clock.advance(2);
   assert.deepEqual(await done,{code:124,signal:null});
   assert.equal(clock.timers.size,0);
+ }
+});
+
+
+test("CI shard environment is optional for local full-suite runs and fails closed on malformed overrides",()=>{
+ assert.deepEqual(resolveTestShard({}),{index:0,count:1});
+ assert.deepEqual(resolveTestShard({ASEN_TEST_SHARD_INDEX:"2",ASEN_TEST_SHARD_COUNT:"3"}),{index:2,count:3});
+ for(const overrides of [
+  {ASEN_TEST_SHARD_INDEX:"0"},
+  {ASEN_TEST_SHARD_COUNT:"3"},
+  {ASEN_TEST_SHARD_INDEX:"-1",ASEN_TEST_SHARD_COUNT:"3"},
+  {ASEN_TEST_SHARD_INDEX:"3",ASEN_TEST_SHARD_COUNT:"3"},
+  {ASEN_TEST_SHARD_INDEX:"01",ASEN_TEST_SHARD_COUNT:"3"},
+  {ASEN_TEST_SHARD_INDEX:"0",ASEN_TEST_SHARD_COUNT:"0"},
+  {ASEN_TEST_SHARD_INDEX:"0",ASEN_TEST_SHARD_COUNT:"33"},
+ ]){
+  assert.throws(()=>resolveTestShard(overrides),/shard/i);
+ }
+});
+
+test("F8 Windows 3-way and macOS 2-way shards cover all real tests once with stable isolation",async()=>{
+ const files=await discoverTestFiles(process.cwd());
+ for(const [platform,count] of [["win32",3],["darwin",2],["linux",1]] as const){
+  const all=planTestRuns({platform,testFiles:files,nodeOptions:[]});
+  const shards=planTestShards({platform,testFiles:files,nodeOptions:[],shardCount:count});
+  assert.equal(shards.length,count);
+  assert.ok(shards.every(shard=>shard.length>0));
+  const planned=shards.flat().flatMap(run=>run.args.filter(arg=>arg.endsWith(".test.ts")));
+  assert.deepEqual([...planned].sort(),files);
+  assert.equal(new Set(planned).size,files.length);
+  assert.deepEqual(shards,planTestShards({platform,testFiles:[...files].reverse(),nodeOptions:[],shardCount:count}));
+  assert.deepEqual(shards.flat().map(run=>run.name).sort(),all.map(run=>run.name).sort());
+  if(platform==="win32"){
+   for(const shard of shards){
+    for(const run of shard.filter(run=>run.name.startsWith("process-heavy-"))){
+     assert.ok(run.args.includes("--test-concurrency=1"));
+    }
+   }
+  }
  }
 });

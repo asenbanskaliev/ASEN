@@ -85,3 +85,43 @@ export function planTestRuns({platform,testFiles,nodeOptions}){
  }
  return runs;
 }
+
+
+// Measured chunk durations from run 41972127550; scheduling weights, never skipped tests.
+const HISTORIC_CHUNK_SECONDS=Object.freeze({
+ win32:Object.freeze({
+  "remaining-1":43.631,"remaining-2":67.198,"remaining-3":50.865,
+  "remaining-4":266.188,"remaining-5":171.692,"remaining-6":78.907,
+  "remaining-7":300.340,"process-heavy-1":214.587,"process-heavy-2":84.747,
+  "process-heavy-3":115.457,"process-heavy-4":236.775,
+ }),
+ darwin:Object.freeze({
+  "macos-1":33.167,"macos-2":128.987,"macos-3":100.012,
+  "macos-4":136.530,"macos-5":46.250,"macos-6":38.663,
+  "macos-7":92.518,"macos-8":64.014,
+ }),
+});
+
+export function planTestShards({platform,testFiles,nodeOptions,shardCount}){
+ const runs=planTestRuns({platform,testFiles,nodeOptions});
+ if(!Number.isSafeInteger(shardCount)||shardCount<1||shardCount>runs.length){
+  throw new TypeError("test shard count must be a positive integer no greater than the number of chunks");
+ }
+ const buckets=Array.from({length:shardCount},()=>({seconds:0,runs:[]}));
+ const sorted=runs.map((run,index)=>({
+  run,index,
+  seconds:HISTORIC_CHUNK_SECONDS[platform]?.[run.name]
+   ??Math.max(20,run.args.filter(arg=>arg.endsWith(".test.ts")).length*(platform==="win32"?1.5:1)),
+ })).sort((left,right)=>right.seconds-left.seconds||left.index-right.index);
+ for(const item of sorted){
+  let owner=0;
+  for(let index=1;index<buckets.length;index++){
+   if(buckets[index].seconds<buckets[owner].seconds)owner=index;
+  }
+  buckets[owner].runs.push(item);
+  buckets[owner].seconds+=item.seconds;
+ }
+ return buckets.map(bucket=>bucket.runs
+  .sort((left,right)=>left.index-right.index)
+  .map(item=>item.run));
+}
