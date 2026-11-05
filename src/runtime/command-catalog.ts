@@ -21,6 +21,7 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"configuration",name:"asen-commands",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-changes",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-continue",implemented:true,owner:"extensions/asen.ts"},
+ {group:"session",name:"asen-panel",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-agents",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-todos",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-history",implemented:true,owner:"extensions/asen.ts"},

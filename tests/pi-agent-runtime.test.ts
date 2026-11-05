@@ -385,13 +385,30 @@ test("next-plan dispatch starts ready read-only work without another confirmatio
 });
 
 test("ECO-06 worker dispatch binds one Pi write to the persisted ODD scope and requires review before completion",async t=>{
- const home=await mkdtemp(join(tmpdir(),"asen-eco06-controlled-write-"));t.after(()=>rm(home,{recursive:true,force:true}));const projectId=await realpath(process.cwd()),sessionId="eco06-controlled-write",identity={sessionId,projectId},todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),todos=await SessionTodoStore.open(todoFile),requests:import("../src/agents/dispatcher.js").AgentRequest[]=[],state=host();let confirmation="",confirmations=0,approveWrite=false;
+ const home=await mkdtemp(join(tmpdir(),"asen-eco06-controlled-write-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
+ // Exercise scoped Writer against an isolated, CLEAN Git root. The shared
+ // test checkout can legitimately be dirty from other concurrent suites.
+ const worktree=join(home,"worktree");await mkdir(join(worktree,"docs"),{recursive:true});
+ await writeFile(join(worktree,"README.md"),"Isolated ECO-06 integration fixture.\n");
+ await writeFile(join(worktree,"docs","guide.md"),"Approved documentation file.\n");
+ const git=(...args:string[])=>{
+  const result=spawnSync("git",["-C",worktree,...args],{encoding:"utf8",windowsHide:true});
+  assert.equal(result.status,0,"Isolated Git fixture: "+String(result.stderr).slice(0,500));
+ };
+ git("init","-q");git("add","README.md","docs/guide.md");
+ git("-c","user.name=ASEN Test","-c","user.email=asen-ci@example.invalid","commit","-qm","baseline");
+ const projectId=await realpath(worktree),sessionId="eco06-controlled-write",identity={sessionId,projectId},
+  todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),
+  todos=await SessionTodoStore.open(todoFile),requests:import("../src/agents/dispatcher.js").AgentRequest[]=[],state=host();
+ let confirmation="",confirmations=0,approveWrite=false;
  const profilesFile=join(home,".asen","profiles.json"),model="nvidia/nemotron-3.5-lightning-30b-a3b";await writeProfilesFile(profilesFile,{schema:ASEN_PROFILES_SCHEMA,active:"nvidia-e2e",profiles:[{name:"nvidia-e2e",routes:{worker:{model,thinking:"low"},reviewer:{model},verifier:{model}}}]});
- const context={...state.context(sessionId),ui:{...state.context(sessionId).ui,confirm:async(_title:string,message:string)=>{confirmations++;confirmation=message;return !message.includes("Authorize this single worker run")||approveWrite;}}};
+ const baseContext=state.context(sessionId,projectId);
+ const context={...baseContext,ui:{...baseContext.ui,confirm:async(_title:string,message:string)=>{confirmations++;confirmation=message;return !message.includes("Authorize this single worker run")||approveWrite;}}};
  createPiExtension({homeDir:()=>home,profilesFile,agentRunner:{run:async request=>{requests.push(request);return{id:request.id,ok:true,output:request.role==="worker"?"Updated only README.md and docs/guide.md; no other files changed.":"Inspected the exact authorized documentation scope."};}},agentStoreFile:agentFile,todoStoreFile:todoFile,autoAdvancePlans:false})(state.pi as any);await state.events.get("session_start")![0]!({},context);
  const facts={taskIdentity:"eco06-controlled-write",instruction:"Update only the two approved documentation files",intent:"implementation",scope:{kind:"known",expectedPaths:["README.md","docs/guide.md"]},writes:[{path:"README.md",changeKind:"documentation"},{path:"docs/guide.md",changeKind:"documentation"}],riskOperations:[],session:{estimatedMinutes:20,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:10},unresolvedDecisions:[]};
  await state.commands.get("asen-plan")!.handler(JSON.stringify(facts),context);const planned=JSON.parse(state.messages.at(-1)!),worker=planned.persistedTasks.find((item:any)=>item.planTaskId.endsWith(":worker"))!;
- assert.equal(planned.route,"orchestrate");assert.equal(planned.requiredAgentRoles.includes("explorer"),false);assert.ok(worker.todoId);let rows=await todos.list(identity);const workerRow=rows.find(row=>row.taskId===worker.todoId)!;assert.deepEqual(workerRow.plan?.writeSurfaces,["README.md","docs/guide.md"]);assert.equal(workerRow.plan?.candidate?.repository,projectId);assert.ok(workerRow.plan?.writerAuthorizationBasis);assert.equal(workerRow.plan?.model,model);assert.equal(workerRow.plan?.thinking,"low");
+ assert.equal(planned.route,"orchestrate");assert.equal(planned.requiredAgentRoles.includes("explorer"),false);assert.ok(worker.todoId);let rows=await todos.list(identity);const workerRow=rows.find(row=>row.taskId===worker.todoId)!;assert.deepEqual(workerRow.plan?.writeSurfaces,["README.md","docs/guide.md"]);assert.equal(workerRow.plan?.candidate?.repository,projectId);assert.equal(spawnSync("git",["-C",projectId,"status","--porcelain"],{encoding:"utf8"}).stdout,"","The isolated writer candidate must begin clean");assert.ok(workerRow.plan?.writerAuthorizationBasis);assert.equal(workerRow.plan?.model,model);assert.equal(workerRow.plan?.thinking,"low");
  let deadline=Date.now()+3000;const declined=await state.tools.get("asen_plan_dispatch_next").execute("decline-write-plan-worker",{},new AbortController().signal,()=>{},context);assert.equal(declined.details.status,"blocked");assert.match(declined.details.reason,/declined/u);assert.equal((await todos.list(identity)).find(row=>row.taskId===worker.todoId)?.current.state,"planned");assert.equal(requests.filter(value=>value.role==="worker").length,0);
  approveWrite=true;const writeLaunch=await state.tools.get("asen_plan_dispatch_next").execute("authorize-write-plan-worker",{},new AbortController().signal,()=>{},context);assert.equal(writeLaunch.details.status,"dispatched",writeLaunch.details.reason);assert.equal(writeLaunch.details.role,"worker");assert.ok(confirmation.includes("Candidate:"));assert.ok(confirmation.includes("README.md, docs/guide.md"));assert.ok(confirmation.includes("without commit or merge"));
  // Windows shard runners can cold-start the authorized worker after the 3s polling budget; preserve assertions and permit a bounded 10s startup window.

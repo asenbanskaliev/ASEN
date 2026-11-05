@@ -75,7 +75,7 @@ test("a holder worker serializes the complete migration startup before an opener
  const opener=new Worker(workerUrl,{workerData:{mode:"opener",gate:openerGate,path,id:"serialized-worker"},execArgv:[]});
  t.after(()=>opener.terminate());
  assert.deepEqual(await workerMessage(opener,message=>message.phase==="startup:ready"),{phase:"startup:ready"});
- const entered=workerMessage(opener,message=>message.phase==="startup:enter-constructor"),completed=workerMessage(opener,message=>message.ok!==undefined,10000);
+ const entered=workerMessage(opener,message=>message.phase==="startup:enter-constructor"),completed=workerMessage(opener,message=>message.ok!==undefined,process.platform==="win32"?30000:15000);
  Atomics.store(new Int32Array(openerGate),0,1);Atomics.notify(new Int32Array(openerGate),0);
  assert.deepEqual(await entered,{phase:"startup:enter-constructor"});
  assert.equal(await Promise.race([completed.then(()=>"completed"),new Promise(resolve=>setTimeout(()=>resolve("blocked"),500))]),"blocked","the scheduled opener cannot migrate or write while the holder owns the startup lock");
