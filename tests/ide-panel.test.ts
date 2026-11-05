@@ -5,6 +5,7 @@ import {
  renderAsenWorkRow,renderAsenStatusLine,type AsenPanelSnapshot,
 } from "../src/runtime/ide-panel.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
+import {projectHostStatus} from "../src/runtime/host-status-projection.js";
 
 type Todo=AsenPanelSnapshot["todos"][number];
 type Agent=AsenPanelSnapshot["agents"][number];
@@ -94,4 +95,27 @@ test("M1 malicious terminal controls and extremely long titles are bounded",()=>
  }
  assert.throws(()=>renderAsenPanel(snapshot(),11),/width/u);
  assert.throws(()=>renderAsenStatusLine(snapshot(),0),/width/u);
+});
+test("Jobs exposes bounded IDs instead of execution payloads and excludes historical active counts",()=>{
+ const historical={...job("running","SECRET_SENTINEL"),recoveredAt:"2026-11-06T00:00:00Z",resumable:false};
+ for(const width of [12,40,72]){
+  const base=snapshot({jobs:[historical]}),before=structuredClone(base);
+  const rows=renderAsenPanelSection(base,"JOBS",width);
+  assert.doesNotMatch(rows.join("\n"),/SECRET_SENTINEL|asen-background-status/);
+  assert.ok(rows.every(row=>visibleWidth(row)<=width));assert.deepEqual(base,before);
+  assert.equal(renderAsenWorkRow(base,width),undefined);
+  assert.ok(renderAsenPanel(base,width).some(row=>row.includes("JOBS · 0")));
+ }
+ const rows=renderAsenPanelSection(snapshot({jobs:[historical]}),"JOBS",100);
+ assert.match(rows.join("\n"),/job-1 · background · running · historical/);
+ assert.match(rows.join("\n"),/\/asen-job-inspect \[id\]/);
+ assert.doesNotMatch(renderAsenPanelSection(snapshot(),"JOBS",72).join("\n"),/asen-background-status/);
+});
+test("explicit observation state overrides stale legacy values without changing legacy omissions",()=>{
+ const observed=snapshot({hostStatus:projectHostStatus(),model:"stale/model",contextPercent:90,cost:123,subscription:true});
+ const before=structuredClone(observed);
+ assert.equal(renderAsenStatusLine(observed,100),"ASEN │ selected ? │ responding ? │ ctx ?");
+ assert.equal(renderAsenStatusLine(snapshot(),100),"ASEN");
+ assert.deepEqual(observed,before);
+ for(const width of [12,35,80,140])assert.ok(visibleWidth(renderAsenStatusLine(observed,width))<=width);
 });

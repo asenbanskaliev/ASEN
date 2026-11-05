@@ -4,7 +4,29 @@ import {SessionTodoStore} from "../src/runtime/todo-store.js";import {TaskAgentL
 import {AgentSession,DefaultResourceLoader,SessionManager,SettingsManager} from "@earendil-works/pi-coding-agent";import {Agent,runToolCall} from "@earendil-works/pi-agent-core";
 import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
 function host(){const commands=new Map<string,{handler:(...args:any[])=>unknown}>();return {commands,pi:{registerCommand:(name:string,c:any)=>commands.set(name,c),on:()=>{}}};}
-test("status, doctor and command inventory are wired fail-closed",async()=>{const h=host();createAsenExtension({status:()=>({agents:[],changes:[],skills:{enabled:true,count:2},historyEnabled:false,telemetryEnabled:false}),doctor:()=>({piVersionOk:true,homeWritable:true,registryAvailable:true,profileValid:true,historyPrivate:true,telemetryConsentValid:true})})(h.pi);assert.match(((await h.commands.get("asen-status")!.handler()) as string[])[0]!,/profile/);assert.equal(((await h.commands.get("asen-doctor")!.handler()) as any).exitCode,0);assert.ok((h.commands.get("asen-commands")!.handler() as any[]).some(x=>x.name==="asen-status"&&x.implemented));authority(h.pi as any);assert.deepEqual([...h.commands.keys()].sort(),[...implementedCommands(),"asen-task-agents"].sort());});
+test("status, doctor and command inventory are wired fail-closed",async()=>{
+ const root=await mkdtemp(path.resolve(".cache/command-inventory-consumer-")),h=host();
+ const pi={...h.pi,getCommands:()=>[...h.commands.keys()].map(name=>({name,source:"extension"}))};
+ createAsenExtension({homeDir:()=>root,status:()=>({agents:[],changes:[],skills:{enabled:true,count:2},historyEnabled:false,telemetryEnabled:false}),doctor:()=>({piVersionOk:true,homeWritable:true,registryAvailable:true,profileValid:true,historyPrivate:true,telemetryConsentValid:true})})(pi);
+ assert.match(((await h.commands.get("asen-status")!.handler()) as string[])[0]!,/profile/);
+ assert.equal(((await h.commands.get("asen-doctor")!.handler()) as any).exitCode,0);
+ // Preserve the synchronous internal API, but establish inventory from registrations.
+ const rows=h.commands.get("asen-commands")!.handler();
+ assert.ok(Array.isArray(rows));
+ assert.deepEqual(rows.map(row=>row.name).sort(),[...h.commands.keys()].sort());
+ assert.equal(new Set(rows.map(row=>row.name)).size,rows.length);
+ for(const row of rows){
+  assert.deepEqual(Object.keys(row).sort(),["description","group","implemented","name"]);
+  assert.equal(typeof row.group,"string");assert.equal(row.description,"");assert.equal(row.implemented,true);
+ }
+ assert.ok(rows.some(row=>row.name==="asen-status"&&row.implemented));
+ assert.deepEqual(h.commands.get("asen-commands")!.handler("not-registered"),[]);
+ // The same catalog cannot substitute for a missing host reader.
+ const missing=host();createAsenExtension({homeDir:()=>root})(missing.pi);
+ assert.deepEqual(missing.commands.get("asen-commands")!.handler(),{state:"unavailable",message:"Registered command inventory unavailable."});
+ authority(h.pi as any);
+ assert.deepEqual([...h.commands.keys()].sort(),[...implementedCommands(),"asen-task-agents"].sort());
+});
 test("status and doctor compose local state while reporting unconfigured runtimes",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-local-diagnostics-"));t.after(()=>rm(root,{recursive:true,force:true}));
  const h=host();createAsenExtension({homeDir:()=>root,packageRoot:root})(h.pi);

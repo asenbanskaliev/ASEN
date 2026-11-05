@@ -1,6 +1,6 @@
 # Truthful host-status projection
 
-`projectHostStatus` in `src/runtime/host-status-projection.ts` derives display data from public host observations. This is an unwired component for T2b (S1/S4/S6 and master S17/UI-08), not delivered status UI or a complete statusbar.
+`projectHostStatus` in `src/runtime/host-status-projection.ts` derives display data from public host observations. The existing `/asen-panel status` and additive `asen:host` status contribution now consume it (T2c, S1/S4/S6 and master S17/UI-08). This is bounded public observation wiring, not a complete statusbar.
 
 ## Input and output
 
@@ -34,17 +34,28 @@ Usage must contain finite nonnegative `tokens`, positive finite `contextWindow`,
 
 Do not sum assistant-only costs. Public accounting also includes tool-reported nested usage, compaction summaries, branch summaries, and separate usage entries such as cache warming. Model price tables, credential type, and response metadata do not prove spend, subscription coverage, balance, or quota. This component deliberately has no accounting input until a documented complete observation path is integrated. Even host-reported session cost would not establish actual billing.
 
-## Later integration contract
+## Integrated behavior
 
-T2c owns context-type extension, refresh events, session identity checks, and rendering. The existing local command-context type does not yet declare these public observations; add optional fields matching `HostStatusInput` there rather than inventing a separate host registry.
+`extensions/asen.ts` declares the public observations as optional context fields. `getPanelSnapshot` reads them fresh, after asynchronous profile/store loading and session/project revalidation. It never scans the transcript or caches a responder: the integrated responding identity remains `?` because no current response metadata reader is used.
+
+In TUI mode with `hasUI` and public `setStatus`, session start, model/thinking changes, turn end, agent settled, compaction success/failure and tree navigation refresh `asen:host`. Session shutdown or replacement clears the prior contribution; no-UI refresh clears it too. Late refreshes after shutdown do not restore it. Missing `setStatus` is supported. Existing `asen:workspace` Git status and the native footer remain separate and unchanged.
+
+Example plain output:
+
+```text
+ASEN │ selected p/m · high │ responding ? │ ctx 80% warning
+```
+
+The explicit observation field leaves legacy renderer snapshots unchanged:
 
 - Read fresh context on each refresh and replace, never merge with old percentages.
 - Label selected versus responding identity explicitly. If responder observations are retained by a future consumer, scope and clear them on session replacement; they do not establish the next response's model.
-- Existing panel fields can receive selected `provider/model` as `model`, effective thinking as `effort`, and a known numeric `context.percent` as `contextPercent`. Omit cost and subscription.
-- The old renderer cannot express unknown context or warning/error state. A later consumer must explicitly render `?` for unknown and use the unrounded derived state for tone; do not round first or substitute zero.
+- Integrated snapshots carry `hostStatus`; selected identity and thinking are labeled separately from responding identity. Cost, subscription and quota are omitted.
+- Explicit unknown context renders `ctx ?`, including immediately after compaction returns null. Rounded percentages are display-only: 79.999 displays 80% without warning, 94.999 displays 95% warning, and 95 displays 95% error.
+- A supported public `ctx.ui.theme.fg` applies `warning` or `error` to the bounded TUI contribution. Plain command/headless output retains the textual classification and contains no theme escapes.
 - Use an additive `ctx.ui.setStatus` key. Do not replace the native footer with `setFooter`. No UI calls occur in this module.
 
-No fallback selection, provider call, connectivity assertion, execution authority, or persistent store is added. Native UI, clickable usage, and integrated refresh behavior remain future work.
+No fallback selection, provider call, connectivity assertion, execution authority, or persistent observation store is added. Real native-session/visual acceptance and clickable usage remain unverified/out of this unit.
 
 ## Verify
 
@@ -53,4 +64,4 @@ node --import tsx --test tests/host-status-projection.test.ts
 npm run typecheck
 ```
 
-The in-memory tests verify derivation only, not provider execution or live UI behavior. Existing consumers in `extensions/asen.ts` and `src/runtime/ide-panel.ts` remain unchanged.
+Pure tests verify derivation; `tests/panel-observation-integration.test.ts` exercises registered commands and actual lifecycle callbacks with a fake public host and project-owned isolated roots. These are not provider execution, billing, live native-session or visual acceptance evidence.

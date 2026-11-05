@@ -2,7 +2,10 @@ import type {PublicAgentRecord} from "./agent-lifecycle.js";
 import type {TodoItem} from "./todo-store.js";
 import type {TaskEvent} from "./task-replay.js";
 import type {BackgroundJobSnapshot} from "./background-jobs.js";
+import {projectJobMetadata,jobInspectionLabel,isObservedActiveJob} from "./job-inspect.js";
 import {sanitizeTerminalText,truncateForTerminal} from "./responsive-layout.js";
+import type {HostStatusProjection} from "./host-status-projection.js";
+import type {IntegrationProfileInspection} from "./integration-profile-inspection.js";
 
 /** Read-only Pi UI projection: never grants a role, launches an agent, or replays a message. */
 export const ASEN_PANEL_SECTIONS=["TODOS","JOBS","AGENTS","CHANGES","REVIEW","INTEGRATIONS"] as const;
@@ -17,6 +20,9 @@ export interface AsenPanelSnapshot{
  readonly model?:string;
  readonly effort?:string;
  readonly contextPercent?:number;
+ /** Explicit observation state is additive; legacy snapshots retain omission semantics. */
+ readonly hostStatus?:HostStatusProjection;
+ readonly integrationInspection?:IntegrationProfileInspection;
  readonly cost?:number;
  readonly subscription?:boolean;
  readonly integrationStates?:readonly string[];
@@ -28,16 +34,15 @@ const glyph=(state:string):string=>({
  planned:"○",running:"◐",succeeded:"◇",blocked:"⊘",done:"✓",cancelled:"✕",
  queued:"○",completed:"✓",failed:"✗",interrupted:"!",stopped:"■",timed_out:"⌛",
 } as Record<string,string>)[state]??"·";
-const activeJob=new Set(["running","queued"]);
 const unfinishedTodo=new Set(["planned","running","succeeded","blocked"]);
 function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
  switch(section){
   case "TODOS":return snapshot.todos.filter(t=>t.current.state==="done").length+"/"+snapshot.todos.length;
-  case "JOBS":return snapshot.jobs.filter(j=>activeJob.has(j.state)).length+" running";
+  case "JOBS":return snapshot.jobs.filter(isObservedActiveJob).length+" running";
   case "AGENTS":return snapshot.agents.filter(a=>a.state==="running").length+" running";
   case "CHANGES":return snapshot.changes?snapshot.changes.files+" files":"unavailable";
   case "REVIEW":return snapshot.review?.pending?snapshot.review.pending+" needs you":"unverified";
-  case "INTEGRATIONS":return snapshot.integrationStates?.length?snapshot.integrationStates.length+" reported":"unknown";
+  case "INTEGRATIONS":return snapshot.integrationInspection?"observed":snapshot.integrationStates?.length?snapshot.integrationStates.length+" reported":"unknown";
  }
 }
 export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPanelSection,width=72):readonly string[]{
@@ -62,8 +67,12 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
   }
   case "JOBS":{
    const jobs=[...snapshot.jobs].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
-   if(!jobs.length)out.push("No local jobs · /asen-background-status");
-   for(const job of jobs.slice(0,8))out.push(glyph(job.state)+" "+clean(job.mode,20)+" · "+job.state+" · "+clean(job.command,100));
+   if(!jobs.length)out.push("No owned jobs");
+   for(const job of jobs.slice(0,8)){
+    const metadata=projectJobMetadata(job);
+    out.push(glyph(metadata.state)+" "+jobInspectionLabel(metadata)+(metadata.provenance==="journal-historical"?" · historical":" · observed"));
+   }
+   out.push("Metadata only · /asen-job-inspect [id] · logs withheld");
    if(jobs.length>8)out.push("… "+(jobs.length-8)+" more");
    break;
   }
@@ -79,7 +88,7 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
   case "CHANGES":{
    const status=snapshot.changes;
    out.push(status?("Git "+clean(status.branch,48)+" · "+(status.files?status.files+" files":"clean")):"Git state unavailable");
-   out.push("Inspect current Git with /asen-changes");
+   out.push("Inspect read-only diffs with /asen-changes-view");
    break;
   }
   case "REVIEW":{
@@ -88,6 +97,23 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    break;
   }
   case "INTEGRATIONS":{
+   const inspection=snapshot.integrationInspection;
+   if(inspection){
+    const profiles=inspection.profiles,frozen=profiles.snapshot;
+    out.push("Agent profile: "+(profiles.state==="unavailable"?"unavailable":frozen?`${frozen.active} (${frozen.source}; frozen in-process)`:"unknown"));
+    out.push("Actual routing: unknown · connection: unknown");
+    for(const route of profiles.routes)out.push(`${route.role}: ${route.source} · model ${route.model}`+(route.thinking?` · thinking ${route.thinking}`:"")+" · actual unknown");
+    if(profiles.limited)out.push("Profile routes limited; not a complete inventory");
+    for(const [label,inventory] of [["Commands",inspection.commands],["Tools",inspection.tools]] as const){
+     out.push(label+": "+(inventory.state==="empty"?"empty (no entries reported)":inventory.state));
+     for(const entry of inventory.entries){
+      const provenance=entry.provenance.source+(entry.provenance.scope?"/"+entry.provenance.scope:"");
+      out.push(entry.name+(entry.namespace?` [${entry.namespace}]`:"")+` · ${entry.status} · ${provenance} · connection unknown`);
+     }
+     if(inventory.limited)out.push(label+" limited; not a complete inventory");
+    }
+    break;
+   }
    out.push("Agent profile: "+(snapshot.profile?clean(snapshot.profile,80):"unknown"));
    out.push("Permission: "+(snapshot.permission?clean(snapshot.permission,40):"unknown"));
    if(snapshot.integrationStates?.length)out.push(...snapshot.integrationStates.slice(0,6).map(value=>clean(value,120)));
@@ -111,7 +137,7 @@ export function renderAsenWorkRow(snapshot:AsenPanelSnapshot,width=80):string|un
  const open=snapshot.todos.filter(t=>unfinishedTodo.has(t.current.state));
  const running=snapshot.agents.filter(a=>a.state==="running").length;
  const attention=snapshot.agents.filter(a=>a.state==="interrupted"||a.state==="failed").length;
- const jobs=snapshot.jobs.filter(j=>activeJob.has(j.state)).length;
+ const jobs=snapshot.jobs.filter(isObservedActiveJob).length;
  if(!open.length&&!running&&!attention&&!jobs)return undefined;
  const parts:string[]=[];
  if(running)parts.push("◐ "+running+" agents");
@@ -126,10 +152,19 @@ export function renderAsenStatusLine(snapshot:AsenPanelSnapshot,width=80):string
  const parts:string[]=["ASEN"];
  if(snapshot.changes)parts.push(clean(snapshot.changes.branch,45)+" "+(snapshot.changes.files?"±"+snapshot.changes.files:"clean"));
  if(snapshot.permission&&snapshot.permission!=="normal")parts.push(clean(snapshot.permission,25));
+ const host=snapshot.hostStatus;
+ if(host){
+  const identity=(value:HostStatusProjection["selectedModel"])=>value?clean(value.provider+"/"+value.model,55):"?";
+  parts.push("selected "+identity(host.selectedModel)+(host.effectiveThinking?" · "+clean(host.effectiveThinking,20):""));
+  parts.push("responding "+identity(host.respondingModel));
+  parts.push("ctx "+(host.context.percent===null?"?":Math.round(host.context.percent)+"%")+
+   (host.context.state==="warning"||host.context.state==="error"?" "+host.context.state:""));
+ }else{
  if(snapshot.model)parts.push(clean(snapshot.model,55)+(snapshot.effort?" · "+clean(snapshot.effort,20):""));
  if(typeof snapshot.contextPercent==="number"&&Number.isFinite(snapshot.contextPercent)&&snapshot.contextPercent>=0&&snapshot.contextPercent<=100)
   parts.push("ctx "+Math.round(snapshot.contextPercent)+"%");
- if(typeof snapshot.cost==="number"&&Number.isFinite(snapshot.cost)&&snapshot.cost>=0)
+ }
+ if(!host&&typeof snapshot.cost==="number"&&Number.isFinite(snapshot.cost)&&snapshot.cost>=0)
   parts.push("$"+snapshot.cost.toFixed(2)+(snapshot.subscription?" sub":""));
  return fit(parts.join(" │ "),width);
 }

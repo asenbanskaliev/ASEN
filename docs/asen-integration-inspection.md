@@ -1,6 +1,6 @@
 # Inspect registered integrations and configured profile routes
 
-`inspectIntegrationProfiles` derives detached, read-only facts for the existing Integrations section. It is not wired into that section yet. Inventory registration does not prove a working connection, and configured routing does not prove which provider executed a request.
+`inspectIntegrationProfiles` derives detached, read-only facts for the existing Integrations section. The existing `/asen-panel integrations` command and native panel now consume it through `getPanelSnapshot`. Inventory registration does not prove a working connection, and configured routing does not prove which provider executed a request.
 
 ## Caller contract
 
@@ -19,7 +19,7 @@ const inspection = inspectIntegrationProfiles({
 });
 ```
 
-The example is a proposed integration contract, not delivered host wiring. Callers retain session/project identity validation around asynchronous loading and before displaying the result. This synchronous component performs no loading or identity lookup.
+The production `createPiExtension` facade forwards the actual public readers bound to Pi; the inner extension never substitutes an empty inventory for an unsupported reader. It validates session/project identity around asynchronous loading and before displaying the result. The synchronous component itself performs no loading or identity lookup. Optional-reader consumers retain their unavailable fallback; production host admission still requires the existing callable inventory APIs and is not weakened.
 
 | Input | Meaning |
 |---|---|
@@ -61,7 +61,17 @@ Raw configured model strings are intentionally withheld because the existing pro
 
 Snapshot output retains `active`, the original `source`, `frozen: true`, `lifetime: "in-process"`, and `restartDurability: "unproven"`. The existing binding returns detached copies from an in-process registry. Neither that copy nor this projection proves restart-durable freezing. Outputs share no mutable route/provenance data with the inputs; inputs and binding registry remain unchanged.
 
-## Verification and next step
+## Integrated display
+
+`extensions/asen.ts` uses `readProfilesFile`, the existing session binding and the existing resolver through this projection. A metadata check distinguishes a missing project file from read/parse failure because the existing loader deliberately returns an empty file for absence. Malformed or unreadable project profiles render `Agent profile: unavailable`, not default routing. No raw MCP configuration is read.
+
+Roles are derived from already-supported loaded profile facts, not a second role registry. Explicit session selection overrides a project route; a role absent from the explicit snapshot can still fall through to the project/global layers. Inherited snapshots retain their captured global routes. Loading failures remain unavailable and no model is selected by inspection.
+
+The renderer shows bounded configured/registered entries, coarse provenance, configured role sources and `actual unknown` / `connection unknown`. Empty inventory is labeled `empty (no entries reported)`; missing or throwing readers are `unavailable`. Limits are labeled rather than presented as total server/extension counts. Permission is not duplicated in Integrations; the existing status contribution owns it.
+
+Session-manager replacement, session/project drift or shutdown during an asynchronous snapshot load rejects the stale panel before publication. The native overlay also closes on scope drift. Legacy renderer snapshots without explicit inspection data keep their previous output.
+
+## Verification
 
 Run the pure in-memory contract tests:
 
@@ -72,4 +82,4 @@ npm run typecheck
 
 Tests cover empty/unavailable distinctions, namespace truthfulness, sanitization, independent generic failures, bounds, route precedence, frozen provenance, malformed project facts and input preservation. No provider, connection, session launch or filesystem fixture is used.
 
-Shared renderer composition belongs to the later integration unit. It must render unavailable and empty states distinctly, preserve unknown connectivity/actual execution, avoid presenting entry lengths as complete server/extension counts, and avoid duplicating the existing permission row. No profile edits, storage schema, fallback execution, cooldown, defaults, permissions or model selection are changed here.
+`tests/panel-observation-integration.test.ts` additionally exercises the public registered command and lifecycle callbacks with project-owned isolated roots. Its production-facade regression starts through `createPiExtension`, invokes the registered panel command, verifies the original reader receiver, and distinguishes reported, empty and throwing inventory through exact notification output. No profile edits, storage schema, fallback execution, cooldown, defaults, permissions or model selection are introduced by the inspection path. Fake-host tests are not connectivity, real native-session/visual acceptance, provider execution or restart-durability evidence.
