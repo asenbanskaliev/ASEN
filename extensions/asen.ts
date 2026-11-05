@@ -858,7 +858,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // It is modal and read-only; it does not replace the persistent fullscreen rail.
     if(!view&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.custom==="function"){
      const snapshot=await getPanelSnapshot(ctx),before=ctx.cwd;
-     await ctx.ui.custom((tui,_theme,_bindings,done)=>{
+     await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,_bindings:unknown,done:(value:unknown)=>void)=>{
       const close=()=>done(undefined);
       return createNativeWorkPanel(snapshot,{
        requestRender:()=>tui.requestRender(),close,
