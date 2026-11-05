@@ -17,6 +17,18 @@ export interface AgentNoticeRow extends AgentNoticeScope{
  readonly eventId:string;readonly agentId:string;readonly state:AgentNoticeTerminalState;
  readonly delivery:AgentNoticeDelivery;readonly createdAt:string;readonly updatedAt:string;
 }
+/** Read-only restart reconciliation; a notice is not Pi model consumption. */
+export type AgentNoticeRecoveryDisposition=
+ "UNCLAIMED_RECHECK_BEFORE_ENQUEUE"|
+ "TRANSPORT_UNCERTAIN_DO_NOT_REPLAY"|
+ "ENQUEUED_REQUIRES_COORDINATOR_INSPECTION"|
+ "COORDINATOR_ACK_ONLY_NOT_CONSUMPTION";
+export interface AgentNoticeRecoveryView{
+ readonly eventId:string;readonly agentId:string;readonly state:AgentNoticeTerminalState;
+ readonly delivery:AgentNoticeDelivery;readonly disposition:AgentNoticeRecoveryDisposition;
+ readonly createdAt:string;readonly modelConsumedProven:false;readonly writerAuthorized:false;
+}
+
 interface File{schema:"asen.agent-notices/v1";revision:number;entries:AgentNoticeRow[];}
 const MAX_ENTRIES=20000;
 const terminal=new Set(["completed","failed","cancelled"]);
@@ -142,5 +154,21 @@ export class AgentNotificationJournal{
  async list(scope:AgentNoticeScope):Promise<readonly AgentNoticeRow[]>{
   if(!valid(scope.sessionId)||!valid(scope.projectId))throw new Error("Invalid agent notice scope");
   return Object.freeze((await read(this.path)).entries.filter(row=>sameScope(row,scope)).map(row=>Object.freeze({...row})));
+ }
+ /** On Pi restart, expose exact durable states for inspection only. This never
+  * claims an event, re-enqueues a message, or records consent/consumption. */
+ async recoveryReview(scope:AgentNoticeScope):Promise<readonly AgentNoticeRecoveryView[]>{
+  const rows=await this.list(scope);
+  const disposition:Record<AgentNoticeDelivery,AgentNoticeRecoveryDisposition>={
+   pending:"UNCLAIMED_RECHECK_BEFORE_ENQUEUE",
+   attempted:"TRANSPORT_UNCERTAIN_DO_NOT_REPLAY",
+   enqueued:"ENQUEUED_REQUIRES_COORDINATOR_INSPECTION",
+   acknowledged:"COORDINATOR_ACK_ONLY_NOT_CONSUMPTION",
+  };
+  return Object.freeze(rows.map(row=>Object.freeze({
+   eventId:row.eventId,agentId:row.agentId,state:row.state,
+   delivery:row.delivery,disposition:disposition[row.delivery],
+   createdAt:row.createdAt,modelConsumedProven:false as const,writerAuthorized:false as const,
+  })));
  }
 }

@@ -89,9 +89,12 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const active=await runtime(),taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...binding},signal);
   return result({id:taskId,state:"queued",role:dispatchRole,routing,...(typeof todoId==="string"?{todoId}:{})});
  }});
- pi.registerTool?.({name:"asen_agent_status",label:"ASEN agent status",description:"List owned agent tasks, or query one task and its durable state history by id.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{id:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
+ pi.registerTool?.({name:"asen_agent_status",label:"ASEN agent status",description:"List owned agent tasks, or query one task and its durable state history by id.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{id:idSchema,root:rootSchema,includeNotices:{type:"boolean"}}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);
   const taskId=(params as {id?:unknown})?.id;
+  const includeNotices=(params as {includeNotices?:unknown})?.includeNotices;
+  if(includeNotices!==undefined&&typeof includeNotices!=="boolean")throw new Error("Invalid includeNotices flag");
+  if(taskId!==undefined&&includeNotices===true)throw new Error("Notice reconciliation requires a list query, not an exact agent query");
   if(taskId!==undefined&&(typeof taskId!=="string"||!taskId.trim()||taskId.length>1024))throw new Error("Invalid agent task id");
   const active=await runtime(),session=await selectedIdentity((params as {root?:unknown}).root,context,false,signal);throwIfCancelled(signal);
   if(typeof taskId==="string"){
@@ -113,7 +116,18 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
    return result({id:taskId,task});
   }
   const rows=await active.list(session);
-  return result(rows.map(({id,role,state,createdAt,updatedAt,summary})=>({id,role,state,createdAt,updatedAt,...(summary?{summary}:{})})));
+  const agents=rows.map(({id,role,state,createdAt,updatedAt,summary})=>({id,role,state,createdAt,updatedAt,...(summary?{summary}:{})}));
+  if(includeNotices!==true)return result(agents);
+  if(!notificationJournal)throw new Error("Agent notice reconciliation journal is unavailable");
+  // Read-only recovery view. A durable terminal notice can be orphaned or
+  // contradictory after a crash: never present it as authenticated Pi output.
+  const recovery=await notificationJournal.recoveryReview(session);
+  const notices=recovery.map(row=>{
+   const matchingAgent=rows.find(agent=>agent.id===row.agentId&&agent.state===row.state&&
+    agent.sessionId===session.sessionId&&sameWorkspaceIdentityPath(agent.projectId,session.projectId));
+   return {...row,durableAgentVerified:!!matchingAgent};
+  });
+  return result({agents,notices,modelConsumedProven:false,writerAuthorized:false});
  }});
  pi.registerTool?.({name:"asen_agent_ack",label:"Acknowledge ASEN terminal notice",description:"Explicit coordinator acknowledgement after inspecting an enqueued durable Pi agent result. Not proof of UI display, human reading, independent review or write permission.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["eventId"],properties:{eventId:idSchema}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);

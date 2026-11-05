@@ -168,3 +168,25 @@ test("EF-604 corrupt legacy journal with contradictory terminal identities fails
  await assert.rejects(()=>journal.record(subject),/conflicting terminal outcomes/);
  assert.equal(await readFile(file,"utf8"),corrupt);
 });
+
+test("EF-601/604 restart recovery view preserves all delivery states without a model turn or journal mutation",async t=>{
+ const {file,journal}=await fixture(t);
+ const cases=[{id:"pending",state:"completed"},{id:"attempted",state:"failed"},{id:"enqueued",state:"cancelled"},{id:"acknowledged",state:"completed"}] as const;
+ const notices=await Promise.all(cases.map(value=>journal.record({...subject,...value})));
+ await journal.claim(notices[1]!.eventId,subject);
+ await journal.claim(notices[2]!.eventId,subject);await journal.markEnqueued(notices[2]!.eventId,subject);
+ await journal.claim(notices[3]!.eventId,subject);await journal.markEnqueued(notices[3]!.eventId,subject);
+ await journal.acknowledge(notices[3]!.eventId,subject,"acknowledged","completed");
+ const before=await readFile(file,"utf8"),reopened=new AgentNotificationJournal(file);
+ const review=await reopened.recoveryReview(subject);
+ assert.deepEqual(review.map(item=>item.delivery),["pending","attempted","enqueued","acknowledged"]);
+ assert.deepEqual(review.map(item=>item.disposition),[
+  "UNCLAIMED_RECHECK_BEFORE_ENQUEUE","TRANSPORT_UNCERTAIN_DO_NOT_REPLAY",
+  "ENQUEUED_REQUIRES_COORDINATOR_INSPECTION","COORDINATOR_ACK_ONLY_NOT_CONSUMPTION",
+ ]);
+ assert.ok(review.every(item=>item.writerAuthorized===false&&item.modelConsumedProven===false));
+ assert.ok(review.every(item=>!Object.hasOwn(item,"summary")));
+ assert.deepEqual(await reopened.recoveryReview({...subject,sessionId:"foreign"}),[]);
+ assert.equal(await readFile(file,"utf8"),before,"Read-only recovery must not claim or replay notices");
+ assert.equal(await reopened.claim(notices[1]!.eventId,subject),false,"Uncertain transport cannot be automatically replayed");
+});

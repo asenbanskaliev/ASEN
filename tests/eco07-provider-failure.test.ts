@@ -124,3 +124,34 @@ test("EF-702 only terminal Pi failure envelopes may classify provider quota, and
  assert.equal(eco07ProviderRateLimitError({type:"message_end",message:{stopReason:"stop",errorMessage}}),undefined);
 });
 
+
+test("EF-702 terminal-only quota classification never invokes malicious accessors",()=>{
+ const secret="EF702_PRIVATE_EXAMPLE";
+ let calls=0;
+ const getter=()=>{calls++;throw Error(secret);};
+ const attack=new Object();
+ Object.defineProperty(attack,"type",{get:getter});
+ Object.defineProperty(attack,"message",{get:getter});
+ assert.equal(eco07ProviderRateLimitError(attack),undefined);
+ const maliciousMessage={stopReason:"error"};
+ Object.defineProperty(maliciousMessage,"errorMessage",{get:getter});
+ assert.equal(eco07ProviderRateLimitError({type:"message_end",message:maliciousMessage}),undefined);
+ const inherited=Object.create({errorMessage:"429 quota exceeded",stopReason:"error"});
+ assert.equal(eco07ProviderRateLimitError({type:"message_end",message:inherited}),undefined);
+ const proxy=new Proxy({type:"message_end",message:{stopReason:"error",errorMessage:"429"}},{
+  getOwnPropertyDescriptor(){throw Error(secret);}
+ });
+ assert.equal(eco07ProviderRateLimitError(proxy),undefined);
+ const revoked=Proxy.revocable({type:"message_end"},{});revoked.revoke();
+ assert.equal(eco07ProviderRateLimitError(revoked.proxy),undefined);
+ assert.equal(calls,0,"Classifier must not execute input getters");
+ assert.equal(eco07ProviderRateLimitError({type:"message_update",message:{stopReason:"error",errorMessage:"429"}}),undefined);
+ assert.equal(eco07ProviderRateLimitError({message:{stopReason:"error",errorMessage:"429"}}),"Provider rate limit (HTTP 429)","Explicit legacy terminal envelope retained");
+});
+
+test("EF-702 quota-only diagnostics refuse billing claims even when a retry mentions 429",()=>{
+ const message={stopReason:"error",errorMessage:"HTTP 402 Payment Required after 429 retry"};
+ assert.equal(eco07ProviderRateLimitError({type:"message_end",message}),undefined);
+ assert.equal(eco07ProviderRateLimitError({type:"turn_end",message:{stopReason:"error",errorMessage:"insufficient credits and quota exceeded"}}),undefined);
+ assert.equal(eco07ProviderRateLimitError({type:"message_end",message:{stopReason:"error",errorMessage:"HTTP 429 quota exceeded"}}),"Provider rate limit (HTTP 429)");
+});

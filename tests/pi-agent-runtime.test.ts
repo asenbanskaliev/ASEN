@@ -409,7 +409,15 @@ test("ECO-06 worker dispatch binds one Pi write to the persisted ODD scope and r
   const latestTodo=(await todos.list(identity)).find(row=>row.taskId===worker.todoId);
   const latestAgents=JSON.parse(await readFile(agentFile,"utf8"));
   const latestAgent=latestAgents.entries.find((entry:any)=>entry.record.id===writeLaunch.details.agentId)?.record;
-  assert.fail(`authorized worker reached the runner; agentState=${latestAgent?.state??"missing"}, todoState=${latestTodo?.current.state??"missing"}, writerConfirmations=${confirmations}`);
+  const failure=String(latestAgent?.summary??"");
+  const failureClass=/write authority|writer admission|permission|authorization/iu.test(failure)?"AUTHORIZATION":
+   /phase grant|lifecycle grant/iu.test(failure)?"PHASE_GRANT":
+   /candidate|revision|scope|workspace/iu.test(failure)?"CANDIDATE_SCOPE":
+   /skill|evidence|context/iu.test(failure)?"SKILL_OR_EVIDENCE":
+   /lock|lease|busy/iu.test(failure)?"LEASE":
+   /abort|cancel|timeout/iu.test(failure)?"CANCEL_OR_TIMEOUT":
+   /git|process/iu.test(failure)?"GIT_OR_PROCESS":"UNCLASSIFIED";
+  assert.fail(`authorized worker reached the runner; agentState=${latestAgent?.state??"missing"}, todoState=${latestTodo?.current.state??"missing"}, writerConfirmations=${confirmations}, failureClass=${failureClass}, summaryLength=${failure.length}`);
  }
  assert.ok(request,"authorized worker reached the runner");assert.equal(request.role,"worker");assert.equal(request.model,model);assert.equal(request.thinking,"low");assert.deepEqual(request.writeSurfaces,["README.md","docs/guide.md"]);assert.equal(request.candidate?.repository,projectId);assert.equal(request.expectedPhase,"apply");assert.ok(request.phaseGrant,"the approved worker receives a one-run phase grant");assert.equal("writerAdmission" in request,false);assert.ok(request.runnerWriteReceiver,"runner receives only the one-use bound receiver");const storedAgents=JSON.parse(await readFile(agentFile,"utf8")),storedWorker=storedAgents.entries.find((entry:any)=>entry.record.id===writeLaunch.details.agentId)?.request;assert.equal(storedWorker?.role,"worker");for(const key of ["candidate","writeSurfaces","writerAdmission","phaseGrant"])assert.equal(Object.hasOwn(storedWorker??{},key),false,`${key} must not survive restart`);assert.equal(storedWorker?.model,model);assert.equal((await todos.list(identity)).find(row=>row.taskId===worker.todoId)?.current.state,"running");
  deadline=Date.now()+3000;let workerRowAfter:any;while(Date.now()<deadline){workerRowAfter=(await todos.list(identity)).find(row=>row.taskId===worker.todoId);if(workerRowAfter?.current.state==="succeeded")break;await new Promise(resolve=>setTimeout(resolve,5));}assert.equal(workerRowAfter?.current.state,"succeeded");assert.equal(requests.filter(value=>value.role==="worker").length,1);const nextPhase=await state.tools.get("asen_plan_dispatch_next").execute("advance-after-worker",{},new AbortController().signal,()=>{},context);assert.equal(nextPhase.details.status,"dispatched");assert.notEqual(nextPhase.details.role,"worker");assert.equal(requests.filter(value=>value.role==="worker").length,1);assert.equal(requests.at(-1)?.model,model,"independent review follows the same explicit model route");
@@ -842,6 +850,14 @@ test("EF-604 agent notice marks only Pi enqueue and never resends after restart"
  const reopened={...second.context("notice-session"),mode:"tui",isIdle:()=>true};
  await startPublicSession(second,reopened);
  assert.equal(second.sentMessages.filter(x=>x.message.customType==="asen.agent.result").length,0);
+ const reconciliation=await second.tools.get("asen_agent_status").execute("reopen-completed-notices",
+  {includeNotices:true},new AbortController().signal,()=>{},reopened);
+ assert.equal(reconciliation.details.notices.length,1);
+ assert.equal(reconciliation.details.notices[0].delivery,"enqueued");
+ assert.equal(reconciliation.details.notices[0].disposition,"ENQUEUED_REQUIRES_COORDINATOR_INSPECTION");
+ assert.equal(reconciliation.details.notices[0].durableAgentVerified,true);
+ assert.equal(reconciliation.details.modelConsumedProven,false);
+ assert.equal(reconciliation.details.writerAuthorized,false);
  for(const stop of second.events.get("session_shutdown")??[])await stop({},reopened);
 });
 test("EF-604 transport uncertainty is durably visible and never auto-replayed",async t=>{
@@ -864,6 +880,17 @@ test("EF-604 transport uncertainty is durably visible and never auto-replayed",a
  await startPublicSession(second,ctx2);
  assert.equal(second.sentMessages.filter(x=>x.message.customType==="asen.agent.result").length,0);
  assert.ok(second.messages.some(x=>x.includes("entrega incierta")));
+ const uncertain=await second.tools.get("asen_agent_status").execute("reopen-uncertain-notices",
+  {includeNotices:true},new AbortController().signal,()=>{},ctx2);
+ assert.equal(uncertain.details.notices.length,1);
+ assert.equal(uncertain.details.notices[0].delivery,"attempted");
+ assert.equal(uncertain.details.notices[0].disposition,"TRANSPORT_UNCERTAIN_DO_NOT_REPLAY");
+ assert.equal(uncertain.details.notices[0].durableAgentVerified,true);
+ assert.equal(uncertain.details.modelConsumedProven,false);
+ assert.equal(uncertain.details.writerAuthorized,false);
+ const defaultStatus=await second.tools.get("asen_agent_status").execute("reopen-default-status",
+  {},new AbortController().signal,()=>{},ctx2);
+ assert.ok(Array.isArray(defaultStatus.details),"Default status API remains backwards compatible");
  for(const stop of second.events.get("session_shutdown")??[])await stop({},ctx2);
 });
 
