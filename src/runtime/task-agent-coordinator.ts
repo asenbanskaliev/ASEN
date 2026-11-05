@@ -4,6 +4,59 @@ import type {TaskAgentLinkStore} from "./task-agent-link-store.js";
 import {sameWorkspaceIdentityPath} from "./workspace-store.js";
 
 type AgentView={id:string;role:string;state:string;summary?:string};
+type TaskView=Awaited<ReturnType<SessionTodoStore["list"]>>[number];
+type AgentRecord=Awaited<ReturnType<AgentRuntime["list"]>>[number];
+type Link=Awaited<ReturnType<TaskAgentLinkStore["list"]>>[number];
+const recoveryActions={
+ unknown:"inspect-task-and-links",
+ reconciliation:"reconcile-linked-evidence",
+ active:"observe",
+ "manual-continuation":"request-explicit-continuation",
+ "fresh-confirmation":"request-fresh-read-only-confirmation",
+ "manual-worker-reconciliation":"reconcile-worker-manually",
+ "inspect-result":"inspect-result-and-acceptance",
+} as const;
+function advisory(status:keyof typeof recoveryActions){
+ return {advisory:true as const,automaticDispatch:false as const,grantsAuthority:false as const,
+  status,nextAction:recoveryActions[status]};
+}
+const validIdentity=(value:unknown):value is string=>typeof value==="string"&&value.length>0&&value.length<=1024&&
+ value===value.trim()&&value===value.normalize("NFC")&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
+function matchesIdentity(value:AgentSessionIdentity,identity:AgentSessionIdentity){
+ return validIdentity(value.sessionId)&&validIdentity(value.projectId)&&
+  value.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(value.projectId,identity.projectId);
+}
+/** Observations only. A snapshot cannot validate consent, retry eligibility or acceptance. */
+function recoveryDisposition(task:TaskView,identity:AgentSessionIdentity,agents:readonly AgentRecord[],links:readonly Link[]){
+ if(!validIdentity(identity.sessionId)||!validIdentity(identity.projectId)||!validIdentity(task.taskId)||
+    task.current.taskId!==task.taskId||!matchesIdentity(task.current,identity)||
+    !["planned","running","blocked","succeeded","done","cancelled"].includes(task.current.state)||!links.length)return advisory("unknown");
+ const attempts:AgentRecord[]=[];
+ for(const link of links){
+  const records=agents.filter(agent=>agent.id===link.agentId);
+  const agent=records[0];
+  if(!validIdentity(link.agentId)||!matchesIdentity(link,identity)||link.taskId!==task.taskId||
+     records.length!==1||!agent||!matchesIdentity(agent,identity)||
+     !["explorer","worker","reviewer","verifier","clarifier"].includes(agent.role)||
+     (task.plan?agent.role!==task.plan.role:agent.role!=="explorer")||
+     !["queued","running","interrupted","failed","completed","cancelled"].includes(agent.state)||
+     attempts.some(previous=>previous.id===agent.id))return advisory("reconciliation");
+  attempts.push(agent);
+ }
+ // An absent, live or contradictory predecessor must not be hidden by the latest attempt.
+ // Failed-predecessor retry consent is not in these public records: do not infer it.
+ if(attempts.slice(0,-1).some(agent=>agent.state!=="interrupted"))return advisory("reconciliation");
+ const latest=attempts.at(-1)!;
+ if(task.current.state==="planned")return advisory(latest.role==="worker"?"manual-worker-reconciliation":"reconciliation");
+ if(["succeeded","done","cancelled"].includes(task.current.state))return advisory(
+  ["queued","running","interrupted"].includes(latest.state)?"reconciliation":"inspect-result");
+ if(latest.state==="queued"||latest.state==="running")return advisory("active");
+ if(latest.state==="completed"||latest.state==="cancelled")return advisory("inspect-result");
+ if(latest.role==="worker")return advisory("manual-worker-reconciliation");
+ if(latest.state==="interrupted"&&latest.role==="explorer")return advisory("manual-continuation");
+ if(latest.state==="failed"&&["explorer","reviewer","verifier"].includes(latest.role))return advisory("fresh-confirmation");
+ return advisory("unknown");
+}
 /** Read-only coordination. Correlation never conveys execution authority. */
 export class TaskAgentCoordinator {
  constructor(private readonly todos:Pick<SessionTodoStore,"list"|"history">,private readonly agents:Pick<AgentRuntime,"list">,private readonly links?:Pick<TaskAgentLinkStore,"list">){}
@@ -38,7 +91,8 @@ export class TaskAgentCoordinator {
     dependsOn:[...dependsOn],blockedBy,linkedAttempts:linked.length,latestLinkedAgentId,
     launchRequiresReconciliation,equivalentRunningExplorerId,
     ready:task.current.state==="planned"&&blockedBy.length===0&&!launchRequiresReconciliation&&
-     equivalentRunningExplorerId===null,agents:correlated};
+     equivalentRunningExplorerId===null,agents:correlated,
+    recoveryDisposition:recoveryDisposition(task,identity,agents,linked)};
   })};
  }
  async task(taskId:string,identity:AgentSessionIdentity){
