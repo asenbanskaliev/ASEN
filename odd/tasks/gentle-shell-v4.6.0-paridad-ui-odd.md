@@ -353,3 +353,7 @@ No introducir un servidor de telemetría ni guardar secretos para mostrar Integr
 - El estado de ASEN al auditar aún presenta CI F8 y functional acceptance FAIL; no confundir la ampliación del plan con solución del bloqueo ECO-06 ni marcar más EF por describirlos.
 - Las versiones de librerías Pi pueden divergir: comparar Pi 1.2 (histórico ASEN) con Pi 1.5 del paquete fuente, sin degradar transcripción ni contrato de interceptación. Aceptación real requiere test runtime compatible.
 - Nota de procedencia: la parte visual se validó contra Gentle Shell **v4.6.0**; la entrega/runtime/actualizaciones se validan contra Gentle AI **v4.3.1**. No afirmar que es el mismo repositorio o un solo release.
+
+## CI fixture checkpoint — 2026-11-05
+
+The PR #45 CI failure in run `42070066360` was reproduced in a job-inspection test fixture, not attributed to UI behavior: a broad-mode fixture home prevented the production journal's intentional privacy check from reading even an absent journal. The fixture now requests mode `0700`; a separate negative test preserves rejection of an unsafe `0755` parent. Production code is unchanged. This work provides no native UI interaction, visual, or A/B evidence; UI-01–UI-14 remain unverified and no UI status is promoted.

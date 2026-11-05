@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {spawn,spawnSync} from "node:child_process";
-import {mkdtempSync,readFileSync,rmSync,unlinkSync,writeFileSync} from "node:fs";
+import {chmodSync,mkdirSync,mkdtempSync,readFileSync,rmSync,unlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {pathToFileURL} from "node:url";
@@ -18,6 +18,13 @@ test("recovers an interrupted job as non-resumable status",()=>{
 
 test("refuses corrupt journal data instead of interpreting it as an empty healthy store",()=>{
  const root=mkdtempSync(join(tmpdir(),"asen-job-journal-corrupt-")),file=join(root,"jobs.json");try{writeFileSync(file,"{broken",{mode:0o600});const journal=new BackgroundJobJournal(file);assert.throws(()=>journal.load("s1"),/corrupt/u);}finally{rmSync(root,{recursive:true,force:true});}
+});
+
+test("refuses a journal in an unsafe parent directory",t=>{
+ if(process.platform==="win32"){t.skip("POSIX directory privacy modes are not enforced on Windows");return;}
+ const root=mkdtempSync(join(tmpdir(),"asen-job-journal-public-parent-")),directory=join(root,"shared"),file=join(directory,"jobs.json");
+ try{mkdirSync(directory,{mode:0o700});chmodSync(directory,0o755);assert.throws(()=>new BackgroundJobJournal(file).load("s1"),/directory is not private and safe/u);}
+ finally{rmSync(root,{recursive:true,force:true});}
 });
 
 test("serializes journal updates from independent Pi processes without losing records",async t=>{

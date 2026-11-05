@@ -299,3 +299,12 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - Auditoría del repositorio externo de referencia en rama `main`, árbol `7ecb826a2b1eafa6b522ee16d905a99e998f0c89`: completion/message queue in-memory, freshness 90 s, flush en límites de turno/idle y `dropAll()` en session start/shutdown. ASEN persiste estado exacto sesión/proyecto y nunca reenvía `attempted` incierto; esta diferencia de recuperación está documentada en el plan, sin declararla equivalencia C13.
 - Conteo canónico permanece 8/28. EF-601/603/604 siguen PARTIAL; EF-403 sin PASS; EF-002/701 C01–C20 y consentimiento Writer real continúan bloqueos externos. FULL=false.
 - Siguiente macrotanda: esperar y registrar el resultado final del CI exact-SHA antes de reutilizarlo; continuar revisión provider-free de EF-601/604 y los recibos de consumo/reapertura. No repetir el Beam EF-403 que falló en `REVIEWER_PI_RPC` hasta tener causa/cuota observada. En cualquier nuevo lane gratuito, conservar el presupuesto de una ejecución, sin reintentos ni fallback de pago.
+
+
+## Checkpoint — 2026-11-05 — fixture privado del journal de Jobs
+
+- Base local/remota reconciliada: `fbcc4c41d9799cc8dc555c8e05545c6dbe920923`, PR #45 abierto y sin merge. CI `42070066360` falló en Ubuntu shard 0 y macOS shard 1; cobertura falló como consecuencia.
+- Reproducción Linux antes del fix: 18/20 tests focales pasaron; los dos fallos fueron selección de Jobs vacía y journal ausente reportado unavailable. Root cause: el fixture creaba `home` con permisos amplios, mientras `BackgroundJobJournal.privatePath()` correctamente exige directorio privado en Unix.
+- Corrección limitada a tests: home fixture `0700`; regresión negativa nueva para rechazo de parent `0755` en POSIX. Ningún cambio a producción o weakening de seguridad.
+- Validación posterior: integración + journal **21/21**, `npm run typecheck` PASS, `npm run audit:ef-plan` PASS (8/28 EF; `globalFull:false`). CI exact-SHA multiplataforma y shard coverage del nuevo SHA pendientes; sin heredencia de resultados.
+- Próximo: publicar una tanda consolidada no-force en la rama autorizada, observar CI exact-SHA en Ubuntu/Windows/macOS y cobertura, y sólo entonces declarar Macrotanda A resuelta. EF/UI permanecen PARTIAL/pendientes; FULL=false.
