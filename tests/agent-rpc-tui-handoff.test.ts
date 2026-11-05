@@ -4,7 +4,7 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdtemp,realpath,rm} from "node:fs/promises";
+import {mkdir,mkdtemp,realpath,rm} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {createPiExtension} from "../extensions/asen.js";
@@ -194,4 +194,49 @@ test("EF-604 Pi TUI changing to hold AFTER a claim cannot send, replay or acknow
  assert.equal((await fileState(home,scope)).rows[0]!.delivery,"attempted");
  assert.equal(started,1);
  await recovered.fire("session_shutdown");
+});
+
+test("EF-601 same-session project drift after enqueue must not wake the foreign TUI workspace",
+ {timeout:35000},async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-ef601-cross-project-wake-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const scope={sessionId:"same-session-new-project",projectId:await realpath(process.cwd())};
+ const foreign=join(home,"other-project");await mkdir(foreign);
+ let childRuns=0;
+ const host=await open(home,scope,"tui",async id=>{childRuns++;return{id,ok:true,output:"Read-only owned summary"};});
+ const originalSend=host.pi.sendMessage.bind(host.pi);
+ host.pi.sendMessage=(message:any,options:any)=>{
+  originalSend(message,options);
+  if(message.customType==="asen.agent.result")host.context.cwd=foreign;
+ };
+ await host.use("asen_agent_start",{prompt:"Return bounded read-only findings in this project"});
+ await host.waitNotice(value=>value.includes("ASEN terminó"));
+ await new Promise(resolve=>setTimeout(resolve,100));
+ const results=host.sent.filter(value=>value.message.customType==="asen.agent.result");
+ const wakes=host.sent.filter(value=>value.message.customType==="asen.agent.wake");
+ assert.equal(results.length,1,"The original project result was delivered before the workspace changed");
+ assert.equal(wakes.length,0,"A delayed wake may never cross project scope despite the same Pi session");
+ const entries=(await fileState(home,scope)).rows;
+ assert.equal(entries.length,1);assert.equal(entries[0]?.delivery,"enqueued");
+ assert.equal(childRuns,1,"No model or child replay may occur for the rejected wake");
+ // Restore the owned project before teardown; the drift itself was already observed.
+ host.context.cwd=scope.projectId;
+ await host.fire("session_shutdown");
+});
+test("EF-601 unchanged TUI scope still wakes exactly once after the durable enqueue",
+ {timeout:35000},async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-ef601-one-owned-wake-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const scope={sessionId:"stable-wake",projectId:await realpath(process.cwd())};
+ const host=await open(home,scope,"tui",async id=>({id,ok:true,output:"Read-only result"}));
+ await host.use("asen_agent_start",{prompt:"Read one bounded source"});
+ await host.waitNotice(value=>value.includes("ASEN terminó"));
+ await new Promise(resolve=>setTimeout(resolve,100));
+ const results=host.sent.filter(value=>value.message.customType==="asen.agent.result");
+ const wakes=host.sent.filter(value=>value.message.customType==="asen.agent.wake");
+ assert.equal(results.length,1);assert.equal(results[0]?.options.triggerTurn,false);
+ assert.equal(wakes.length,1);assert.equal(wakes[0]?.options.triggerTurn,true);
+ assert.equal(wakes[0]?.message.details.projectId,scope.projectId);
+ assert.equal((await fileState(home,scope)).rows[0]?.delivery,"enqueued");
+ await host.fire("session_shutdown");
 });

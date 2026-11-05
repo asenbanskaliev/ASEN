@@ -471,24 +471,35 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      if(agentWakeTimer)return;
      agentWakeTimer=setTimeout(()=>{
       agentWakeTimer=undefined;
-      const owed=agentWakeOwed,current=agentDeliveryContext,active=agentDeliveryIdentity;
-      if(!owed||!current||!active||active.sessionId!==owed.sessionId||active.projectId!==owed.projectId||
-         current.sessionManager?.getSessionId?.()!==owed.sessionId)return;
-      const options=agentTerminalWakeOptions(current,owed,agentParentRunActive);
-      if(!options){
-       // A live run already owns the next LLM call; a compaction still owes the wake.
-       if(agentParentRoute(current,owed,agentParentRunActive)==="run")agentWakeOwed=undefined;
-       return;
-      }
-      try{
-       pi.sendMessage?.({customType:"asen.agent.wake",
-        content:"[ASEN-generated coordinator wake: review the previously enqueued agent outcome; this is not a user request or permission to write.]",
-        display:false,details:{sessionId:owed.sessionId,projectId:owed.projectId,trusted:false}},options);
-       agentWakeOwed=undefined;
-      }catch{
-       try{current.ui.notify("ASEN no pudo reactivar el coordinador; revisa los avisos guardados antes de continuar.","error");}
-       catch{/* Wake diagnostics cannot grant authority or trigger a second agent. */}
-      }
+      // The timeout executes after the durable enqueue and after the UI may
+      // have switched project without changing its Pi session ID. Re-check
+      // canonical project identity at the actual send boundary. A stale wake
+      // cannot resume a model in another workspace.
+      void (async()=>{
+       const owed=agentWakeOwed,current=agentDeliveryContext,active=agentDeliveryIdentity;
+       if(!owed||!current||!active||active.sessionId!==owed.sessionId||active.projectId!==owed.projectId||
+          current.sessionManager?.getSessionId?.()!==owed.sessionId)return;
+       let live:{sessionId:string;projectId:string};
+       try{live=await sessionIdentity(current);}catch{return;}
+       if(live.sessionId!==owed.sessionId||live.projectId!==owed.projectId||
+          agentDeliveryContext!==current||agentDeliveryIdentity!==active||
+          agentWakeOwed!==owed||current.sessionManager?.getSessionId?.()!==owed.sessionId)return;
+       const options=agentTerminalWakeOptions(current,owed,agentParentRunActive);
+       if(!options){
+        // A live run already owns the next LLM call; a compaction still owes the wake.
+        if(agentParentRoute(current,owed,agentParentRunActive)==="run")agentWakeOwed=undefined;
+        return;
+       }
+       try{
+        pi.sendMessage?.({customType:"asen.agent.wake",
+         content:"[ASEN-generated coordinator wake: review the previously enqueued agent outcome; this is not a user request or permission to write.]",
+         display:false,details:{sessionId:owed.sessionId,projectId:owed.projectId,trusted:false}},options);
+        agentWakeOwed=undefined;
+       }catch{
+        try{current.ui.notify("ASEN no pudo reactivar el coordinador; revisa los avisos guardados antes de continuar.","error");}
+        catch{/* Wake diagnostics cannot grant authority or trigger a second agent. */}
+       }
+      })().catch(()=>{/* Wake is advisory; never promote a failed check into an unscoped send. */});
      },20);
     };
     scheduleAgentWakeAtBoundary=()=>{const owed=agentWakeOwed,owner=agentDeliveryContext;

@@ -308,3 +308,11 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - Corrección limitada a tests: home fixture `0700`; regresión negativa nueva para rechazo de parent `0755` en POSIX. Ningún cambio a producción o weakening de seguridad.
 - Validación posterior: integración + journal **21/21**, `npm run typecheck` PASS, `npm run audit:ef-plan` PASS (8/28 EF; `globalFull:false`). CI exact-SHA multiplataforma y shard coverage del nuevo SHA pendientes; sin heredencia de resultados.
 - Próximo: publicar una tanda consolidada no-force en la rama autorizada, observar CI exact-SHA en Ubuntu/Windows/macOS y cobertura, y sólo entonces declarar Macrotanda A resuelta. EF/UI permanecen PARTIAL/pendientes; FULL=false.
+
+### EF-601/604 — wake diferido y cambio de proyecto con sesión Pi constante (2026-11-05)
+
+Corrección acotada de producción: el callback diferido de `requestAgentWake` revalidaba `sessionManager.getSessionId()` y una identidad capturada, pero podía enviar `asen.agent.wake` después de que `ctx.cwd` cambiase de proyecto **sin cambiar el ID de sesión**. Se revalida `sessionIdentity(ctx)` (proyecto canónico y sesión) en el límite real de envío, además de la identidad capturada, del propietario actual del contexto y del evento pendiente. Un cambio o error de identidad conserva el evento duradero y bloquea el despertar: no concede Writer, no relanza el hijo, no simula consumo del modelo ni hace replay.
+
+Se añaden dos pruebas de integración con la extensión real y runner proveedor-free: cambio de proyecto sincronizado justo durante `asen.agent.result` impide el wake tardío; control de mismo proyecto conserva exactamente un wake posterior al enqueue. Se preserva el alcance original de seguridad y no se alteran las reglas de consentimiento, las garantías de journal ni las comparaciones A/B.
+
+**Estado probatorio:** pendiente de CI, Release Gate y aceptación exact-SHA del commit; no es prueba de proveedor ni verificación total de EF-601/604. Se mantienen los checks canónicos 8/28 y FULL=false. Los workflows anteriores en SHA `810f08068889e3effb05bbe6951b1ab4739def3b` estaban `action_required` por el actor Copilot, sin jobs ejecutados; esta integración no obtiene ni elude dicha aprobación.
