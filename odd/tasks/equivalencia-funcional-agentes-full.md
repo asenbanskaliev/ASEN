@@ -1716,3 +1716,302 @@ Se consultó el código de repositorio externo de referencia, rama `main`, árbo
 
 - En SHA `30ad4b7b907414b32e318fa0d5434e7a6348fcb9`, la aceptación provider-free `41999351141` falló durante typecheck antes de realizar las pruebas, porque la firma local de `ui.custom` devolvía `unknown` y no era asignable al contrato genérico `ExtensionContext` de Pi. El problema afectó dos llamadas de composición que admiten el host real.
 - Corrección localizada: mantener `ui.custom` como entrada **opcional de host**, con comprobación `typeof` y componente de lectura, usando una firma adaptadora compatible con el genérico de Pi. No cambia `hasUI`, permisos ni autorización Writer. Se requiere preflight exact-SHA antes de aceptar M2.
+
+
+## Autopilot execution checkpoint and original authorization
+
+# ASEN full-equivalence autopilot checkpoint
+
+IN_PROGRESS; FULL=false. Branch `feat/t12-integrated-acceptance-merge`, PR #45.
+Execution supplement to `equivalencia-funcional-agentes-full.md`; neither historical checks nor frozen reference manifests are replaced.
+
+## Specs
+
+- S1: "Tu misión es **completar ASEN hasta conseguir equivalencia funcional FULL con Gentle Shell**."
+- S2: "Primero comprueba el entorno y la integración de REA."
+- S3: "No declares FULL sin evidencias suficientes."
+- S4: "No ejecutes toda la matriz CI por cada cambio pequeño. Consolida las verificaciones completas cuando corresponda."
+- S5: "Trabaja exclusivamente en la rama autorizada."
+- S6: "No modifiques Gentle Shell."
+- S7: "Mantén un checkpoint persistente para poder reanudar el trabajo."
+- S8: "Investiga también cómo implementar en ASEN un supervisor de ejecución que pueda reanudar tareas cuando Pi termine o se interrumpa, con límites de reintentos, presupuesto y permisos."
+- S9: "Prioriza implementación real, pruebas y avances verificables sobre informes repetitivos."
+- S10: "Puedes crear commits y publicar cambios validados en la rama de trabajo."
+- S11: "No hagas merge a main sin autorización explícita."
+
+## Tasks
+
+- T0 | S2,S5,S6 | DONE bounded environment/map; route: parent + read-only explorer after evidence-budget trigger; commit: pending | Dependency: none. ASEN local/remote `094c76b59add3b791a4c24b949f9be7950e3116b`, clean authorized branch; reference `7ecb826a2b1eafa6b522ee16d905a99e998f0c89`, clean main. Read-only map covers all 1719 master lines. REA CLI/MCP checked; Pi registration not ready. Next: T1, not FULL admission.
+- T1 | S3,S4,S5,S9 | IN_PROGRESS M0 stabilization; route: bounded worker because parent runtime context backstop fired; commit: pending | Dependency: T0. Validate pending M2 Pi adapter, scoped panel/catalog/Changes behavior. Reproduce and correct concrete failures without weakening contracts. Focused tests, typecheck, build, EF audit. Next: integrate evidence and select M1 unit.
+- T2 | S1,S3,S9 | PENDING M1: EF-102/703, UI-01/03/08/10/11 | Dependency: T1 and immutable source mapping. Reuse existing projections and public Pi contracts; rail/responsive/TODO/status/palette gaps remain open. Next: source-derived bounded unit after T1.
+- T3 | S1,S3,S8,S9 | PENDING M2: EF-201/203/601–604, UI-02/05/13 | Dependency: T2 shell contracts. Agents, Jobs, parent-child recovery; investigate supervisor without claiming it exists. Next: reference-derived safety and persistence map.
+- T4 | S1,S3,S9 | PENDING M3: EF-301–304/401–503, UI-04/06 | Dependency: shell contracts. Git, Review, Writer with genuine operation-specific consent; no provider/native authority fabricated. Next: dependency-ready read-only composition.
+- T5 | S1,S3,S9 | PENDING M4: EF-702/703, UI-07/09/12 | Dependency: immutable reference; profiles additionally Agents/status. Integrations, model routing, installer. Next: source comparison before changes.
+- T6 | S1,S3,S4 | PENDING M5: EF-002/701/704, UI-14 | Dependency: T2–T5. Actual A/B, native Pi UI, three-OS exact-SHA CI/Release Gate and genuinely independent evidence. Next: run consolidation only after bounded checks.
+
+Delivery: owner-selected existing branch and PR #45; no new PR, merge or release. Reviewable work-unit commits, roughly 400 authored lines per slice. Forecast for T1: 0–150 authored source/test/doc lines; later megabatches require measured scopes before forecast. No global FULL forecast asserted.
+
+## Log
+
+### L1 — original owner request (verbatim)
+
+# ASEN — AUTOPILOTO FULL CON GENTLE SHELL Y REA
+
+## 1. MISIÓN
+
+Actúa como ingeniero principal de software, arquitecto de agentes Pi, especialista en TypeScript, REA, ingeniería inversa, interfaces TUI, GitHub Actions y auditoría técnica R4.
+
+Tu misión es **completar ASEN hasta conseguir equivalencia funcional FULL con Gentle Shell**.
+
+No te limites a analizar, planificar o explicar lo que habría que hacer. Debes implementar directamente, ejecutar pruebas, corregir errores, actualizar el plan y continuar con las siguientes tareas.
+
+## 2. DIRECTORIOS
+
+**Proyecto que debes desarrollar:**
+`D:\Asen`
+
+**Proyecto de referencia, exclusivamente de lectura:**
+`D:\gentle-shell`
+
+**Plan maestro de ASEN:**
+`D:\Asen\odd\tasks\equivalencia-funcional-agentes-full.md`
+
+**Repositorio ASEN:**
+`asenbanskaliev/ASEN`
+
+**Rama:**
+`feat/t12-integrated-acceptance-merge`
+
+**Pull Request:**
+`#45`
+
+IMPORTANTE: La referencia es **Gentle Shell**, no Gentle AI. No modifiques archivos del repositorio Gentle Shell.
+
+## 3. INVESTIGACIÓN INICIAL OBLIGATORIA
+
+Antes de implementar:
+
+1. Comprueba los commits actuales de ASEN y Gentle Shell.
+2. Consulta el HEAD remoto real de ASEN.
+3. Comprueba si existen cambios locales sin publicar.
+4. Lee íntegramente el plan ODD.
+5. Examina el código fuente de Gentle Shell.
+6. Comprueba que REA está instalado y accesible desde Pi.
+7. Investiga la arquitectura, extensiones, comandos, agentes, estado y componentes de interfaz de Gentle Shell.
+8. Compara todo con la implementación actual de ASEN.
+9. Identifica qué funcionalidades están FULL, PARTIAL, BLOCKED o pendientes.
+
+Utiliza REA cuando aporte evidencias adicionales que no puedan obtenerse suficientemente mediante la lectura directa del código.
+
+No inventes resultados de ejecución ni funcionalidades no observadas.
+
+## 4. EQUIVALENCIA EXACTA CON GENTLE SHELL
+
+Investiga y reproduce en ASEN, respetando su arquitectura, las funcionalidades de Gentle Shell.
+
+### Interfaz
+
+- Diseño general de la TUI.
+- Panel lateral.
+- Sección TODOS.
+- Sección AGENTS.
+- Sección CHANGES.
+- Sección INTEGRATION.
+- Barra inferior de estado.
+- Paleta de comandos.
+- Atajos de teclado.
+- Indicadores de ejecución.
+- Navegación entre paneles.
+- Estados visuales.
+- Visualización de tareas, agentes y cambios.
+
+### Agentes
+
+- Descubrimiento y registro.
+- Lanzamiento desde comandos.
+- Lanzamiento desde la interfaz.
+- Ejecución paralela.
+- Delegación.
+- Comunicación entre agentes.
+- Seguimiento de progreso.
+- Cancelación.
+- Recuperación.
+- Persistencia de tareas.
+- Historial y resultados.
+
+### Funcionalidades adicionales
+
+- Integraciones MCP.
+- Skills.
+- CodeGraph.
+- Memoria.
+- ODD.
+- Revisiones.
+- Permisos y consentimientos.
+- Gestión de modelos.
+- Cambios Git.
+- Notificaciones.
+- Recuperación de sesiones.
+- Comandos y herramientas disponibles.
+
+Para cada funcionalidad, investiga exactamente cómo funciona Gentle Shell, cómo se inicia, qué código utiliza y qué comportamiento observable debe reproducir ASEN.
+
+## 5. PLANIFICACIÓN EN MEGATANDAS
+
+Reorganiza los puntos pendientes del plan ODD en **megatandas grandes**, agrupando funcionalidades relacionadas y sus dependencias.
+
+No trabajes un EF por turno cuando varios puedan implementarse conjuntamente.
+
+Para cada megatanda:
+
+1. Selecciona los EF.
+2. Comprueba las dependencias.
+3. Investiga su implementación en Gentle Shell.
+4. Diseña los cambios necesarios en ASEN.
+5. Implementa todas las funcionalidades del bloque.
+6. Añade o actualiza pruebas.
+7. Ejecuta las comprobaciones focalizadas.
+8. Corrige los errores.
+9. Actualiza los checks del plan ODD.
+10. Registra evidencias verificables.
+11. Crea un commit coherente cuando corresponda.
+12. Continúa con la siguiente megatanda.
+
+No ejecutes toda la matriz CI por cada cambio pequeño. Consolida las verificaciones completas cuando corresponda.
+
+## 6. PALETA Y SISTEMA DE TAREAS
+
+Utiliza el sistema de tareas disponible en Pi.
+
+Registra todas las fases y megatandas para que pueda consultarse su progreso.
+
+Cada tarea debe contener:
+
+- Identificador EF.
+- Descripción.
+- Dependencias.
+- Estado.
+- Implementación realizada.
+- Pruebas.
+- Evidencias.
+- Próxima acción.
+
+Mantén sincronizado el estado de las tareas con el plan ODD.
+
+Si el sistema de tareas no permite alguna operación, investiga su implementación y utiliza un mecanismo persistente compatible sin fingir que existe una funcionalidad que todavía no está implementada.
+
+## 7. VALIDACIÓN
+
+Prioriza inicialmente:
+
+- `npm run typecheck`
+- `npm run check:fast`
+- Pruebas focalizadas de los módulos modificados.
+- `npm run build`
+- `npm run audit:ef-plan`
+
+Ejecuta pruebas completas y Release Gate en puntos de consolidación, especialmente antes de declarar equivalencia FULL.
+
+Cuando sea posible, realiza pruebas A/B reales entre Gentle Shell y ASEN.
+
+Distingue claramente las pruebas reales, las simuladas y las no ejecutadas.
+
+No declares FULL sin evidencias suficientes.
+
+## 8. AUTOPILOTO Y CONTINUIDAD
+
+Quiero que trabajes con la máxima autonomía posible.
+
+- No te detengas después de una megatanda.
+- Selecciona automáticamente la siguiente.
+- No solicites confirmación para decisiones técnicas ordinarias y reversibles.
+- Si encuentras un error, investígalo y corrígelo.
+- Si un EF queda bloqueado, registra la causa y continúa con otro independiente.
+- Mantén un checkpoint persistente para poder reanudar el trabajo.
+- Guarda el estado antes de finalizar una sesión o agotar el contexto.
+- Si existe un mecanismo de recuperación automática, compruébalo y utilízalo.
+
+Investiga también cómo implementar en ASEN un supervisor de ejecución que pueda reanudar tareas cuando Pi termine o se interrumpa, con límites de reintentos, presupuesto y permisos.
+
+No presupongas que dicho supervisor existe ni afirmes que está funcionando sin haberlo probado.
+
+## 9. DECISIONES TÉCNICAS
+
+Si necesitas decidir cómo debe funcionar algo:
+
+1. Consulta primero el código de Gentle Shell.
+2. Investiga su comportamiento real.
+3. Utiliza REA cuando sea útil.
+4. Comprueba cómo está implementado ASEN.
+5. Adapta la solución manteniendo la compatibilidad con Pi.
+
+No me preguntes por decisiones que puedan resolverse técnicamente mediante esta investigación.
+
+Solicita autorización cuando sea imprescindible para acciones destructivas, cambios sensibles o permisos que no estén concedidos.
+
+## 10. GIT Y GITHUB
+
+Trabaja exclusivamente en la rama autorizada.
+
+Antes de publicar:
+
+- Verifica el HEAD remoto.
+- Comprueba cambios concurrentes.
+- Ejecuta las pruebas correspondientes.
+- Evita sobrescribir trabajo ajeno.
+
+Puedes crear commits y publicar cambios validados en la rama de trabajo.
+
+No hagas merge a main sin autorización explícita.
+
+No modifiques Gentle Shell.
+
+## 11. CRITERIO DE FINALIZACIÓN
+
+El objetivo es conseguir **FULL en todos los EF del plan maestro**.
+
+Para declarar un EF FULL debe existir:
+
+- Implementación completa.
+- Comportamiento equivalente demostrado.
+- Pruebas relevantes satisfactorias.
+- Evidencias reproducibles.
+- Documentación actualizada.
+- Check correspondiente marcado en el plan ODD.
+
+No declares FULL global mientras existan puntos pendientes o sin verificar.
+
+## 12. EJECUTA AHORA
+
+Empieza inmediatamente.
+
+Primero comprueba el entorno y la integración de REA.
+
+Después analiza ambos repositorios, reconcilia el plan ODD, registra las megatandas en el sistema de tareas y **comienza a implementar la primera megatanda sin esperar nuevas instrucciones**.
+
+Continúa con las siguientes mientras la sesión y los recursos estén disponibles.
+
+Prioriza implementación real, pruebas y avances verificables sobre informes repetitivos.
+
+### L2 — observed environment and permission incident
+
+Git initially refused both repositories with `detected dubious ownership`. Owner explicitly authorized only the two exact global safe.directory entries; both were added successfully, with no wildcard. Owner also authorized read-only installed Pi docs, Gentle assets and the named work-unit/docs skills. Both repository working trees were initially clean, ASEN local HEAD equalled `git ls-remote` for the authorized branch. Reference package declares 4.6.0 but current SHA is not the normative `1f74e9e24473e7e121a96b1680444ae0196d3009`; no baseline substitution permitted.
+
+REA 6.8.0 is callable from this Pi session's Bash. `rea mcp doctor --json`: exit 0, healthy true, production-stdio, 229/229 tools, 6/6 prompts, protocol 2025-11-25, target-free request OK. This proves CLI-launched MCP startup, not Pi registration. `rea doctor` reports unhealthy environment, unsupported Node 24.14.0 (REA requires >=24.22.1 on this major), missing analysis engines and Pi registration drift. No setup, installation, provider state or external config changed for REA.
+
+Engram `mem_context` and bounded `mem_search` failed; full mirror `odd/asen-full-autopilot/tasks` is PENDING, not persisted. Files are the available durable checkpoint. Generic explorer read the entire master and canonical latest log; corrupted canonical bytes were not modified. Master remains 8/28 historical verified scopes and FULL=false. No new tests, UI screenshots, provider calls, reference A/B executions or approvals are claimed by this initial checkpoint.
+
+
+### Autopilot M0 — baseline failure checkpoint
+
+Worker mw3cluka-2-xymz remains running. Focused baseline: 24 tests, 16 pass, 7 fail, 1 Windows skip. Panel/catalog cases pass; reported history EISDIR in hard-link directory claims, usage count mismatch and isolated Git fixture configuration failures remain unresolved. No source fixes or guard/config changes made. Remaining required checks pending; exact task evidence in odd/tasks/asen-full-autopilot.md. No EF promotion; FULL=false.
+
+
+### Autopilot M0 disposition and independent M1 continuation
+
+T1 worker finished PARTIAL with zero source edits: focused 16 pass/7 fail/1 Windows skip; check:fast 19 pass/9 fail/1 skip. Typecheck, build and EF audit PASS (28 EF, 8 verified, 15 partial, 5 blocked). Parent probe confirms regular-file hard links on D: fail EISDIR even with absent destination; isolated Git init succeeds but status rejects dubious ownership and config reports not in a git directory. No lock, Git guard or assertion changed. T1 waits for authorized suitable test storage. Pure-panel M1 keybinding compatibility can proceed independently, using public Pi contracts and literal-key preservation. No new EF checks; FULL=false. Current tasks/evidence: odd/tasks/asen-full-autopilot.md.
+
+
+### Autopilot M1 — interaction-local keybinding unit verified, not FULL
+
+The native panel now forwards Pi interaction-injected keybindings and matches public selection/input/editor actions, preserves unavailable-manager literal fallback and local j/k/Space/q aliases, and closes on changed scope. Worker observed RED for configured down and configured Tab, then GREEN 8/8 focused and 3/3 selected integration; typecheck/build/EF audit exit 0. Fifteen base/current preservation scenarios matched stdout/exit and stderr after PID normalization. Parent repeated 8/8 focused tests successfully and inspected the diff/docs. T1 environmental baseline failures remain disclosed, not suppressed. No native visual/mouse/rail or FULL equivalence claim. Reference evidence: current 7ecb826 source extensions/gentle-shell.ts:2249–2295; extensions/ask-user-choice.ts:103–110,259–276; installed Pi extension docs:2611,3035–3056. No normative baseline change. Parallel supervisor map mw3dj0fm-4-mr9m remains read-only. Commit pending; 8/28 EF unchanged, FULL=false.
