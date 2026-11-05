@@ -14,6 +14,7 @@ import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
 import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
+import {SKILL_REGISTRY_RELATIVE_PATH,SKILL_REGISTRY_CACHE_RELATIVE_PATH} from "../src/skills/generated-registry.js";
 
 function host(){
  const events=new Map<string,Function[]>(),commands=new Map<string,any>(),tools=new Map<string,any>(),messages:string[]=[],sentMessages:any[]=[],widgets=new Map<string,string[]|undefined>();
@@ -384,19 +385,40 @@ test("next-plan dispatch starts ready read-only work without another confirmatio
  rows=await todos.list(session);assert.equal(rows.find(row=>row.taskId===persisted[1]!.taskId)?.current.state,"planned");await state.events.get("session_shutdown")![0]!({},context);
 });
 
+function eco06FixtureFiles():Record<string,string>{
+ return {
+  ".gitignore":`/${SKILL_REGISTRY_RELATIVE_PATH}\n/${SKILL_REGISTRY_CACHE_RELATIVE_PATH}\n`,
+  "README.md":"Isolated ECO-06 integration fixture.\n",
+  "docs/guide.md":"Approved documentation file.\n",
+ };
+}
+
+test("ECO-06 generated registry fixture",()=>{
+ const files=eco06FixtureFiles(),ignores=(files[".gitignore"]??"").split("\n").filter(Boolean);
+ assert.deepEqual(ignores,[`/${SKILL_REGISTRY_RELATIVE_PATH}`,`/${SKILL_REGISTRY_CACHE_RELATIVE_PATH}`],"ignore only the two root-anchored generated outputs");
+ assert.deepEqual(Object.keys(files).sort(),[".gitignore","README.md","docs/guide.md"],"commit the ignore policy with the fixture baseline");
+ for(const entry of ignores){
+  assert.ok(entry.startsWith("/"));
+  assert.equal(entry.endsWith("/"),false,"no directory-wide ignores");
+  assert.doesNotMatch(entry,/[*?\[\]\\!]/u,"no glob or negation rules");
+ }
+ assert.equal(ignores.includes("/.asen/unexpected.txt"),false,"unrelated files remain outside the exclusion manifest");
+});
+
 test("ECO-06 worker dispatch binds one Pi write to the persisted ODD scope and requires review before completion",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-eco06-controlled-write-"));
  t.after(()=>rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
  // Exercise scoped Writer against an isolated, CLEAN Git root. The shared
  // test checkout can legitimately be dirty from other concurrent suites.
  const worktree=join(home,"worktree");await mkdir(join(worktree,"docs"),{recursive:true});
- await writeFile(join(worktree,"README.md"),"Isolated ECO-06 integration fixture.\n");
- await writeFile(join(worktree,"docs","guide.md"),"Approved documentation file.\n");
+ const fixtureFiles=eco06FixtureFiles();
+ for(const [path,content] of Object.entries(fixtureFiles))await writeFile(join(worktree,path),content);
  const git=(...args:string[])=>{
   const result=spawnSync("git",["-C",worktree,...args],{encoding:"utf8",windowsHide:true});
   assert.equal(result.status,0,"Isolated Git fixture: "+String(result.stderr).slice(0,500));
+  return result.stdout;
  };
- git("init","-q");git("add","README.md","docs/guide.md");
+ git("init","-q");git("add",...Object.keys(fixtureFiles));
  git("-c","user.name=ASEN Test","-c","user.email=asen-ci@example.invalid","commit","-qm","baseline");
  const projectId=await realpath(worktree),sessionId="eco06-controlled-write",identity={sessionId,projectId},
   todoFile=join(home,".asen","todos.json"),agentFile=join(home,".asen","agents.json"),
@@ -406,6 +428,14 @@ test("ECO-06 worker dispatch binds one Pi write to the persisted ODD scope and r
  const baseContext=state.context(sessionId,projectId);
  const context={...baseContext,ui:{...baseContext.ui,confirm:async(_title:string,message:string)=>{confirmations++;confirmation=message;return !message.includes("Authorize this single worker run")||approveWrite;}}};
  createPiExtension({homeDir:()=>home,profilesFile,agentRunner:{run:async request=>{requests.push(request);return{id:request.id,ok:true,output:request.role==="worker"?"Updated only README.md and docs/guide.md; no other files changed.":"Inspected the exact authorized documentation scope."};}},agentStoreFile:agentFile,todoStoreFile:todoFile,autoAdvancePlans:false})(state.pi as any);await state.events.get("session_start")![0]!({},context);
+ // Exact generated-file exclusions must not hide other startup artifacts.
+ const unexpectedPath=".asen/unexpected.txt",unexpectedFile=join(worktree,unexpectedPath);
+ await mkdir(join(worktree,".asen"),{recursive:true});
+ await writeFile(unexpectedFile,"Test-owned visibility sentinel.\n",{flag:"wx"});
+ try{
+  const untrackedPaths=git("ls-files","--others","--exclude-standard","-z").split("\0").filter(Boolean);
+  assert.ok(untrackedPaths.includes(unexpectedPath),"unrelated .asen file must remain visible to Git");
+ }finally{await rm(unexpectedFile);}
  const facts={taskIdentity:"eco06-controlled-write",instruction:"Update only the two approved documentation files",intent:"implementation",scope:{kind:"known",expectedPaths:["README.md","docs/guide.md"]},writes:[{path:"README.md",changeKind:"documentation"},{path:"docs/guide.md",changeKind:"documentation"}],riskOperations:[],session:{estimatedMinutes:20,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:10},unresolvedDecisions:[]};
  await state.commands.get("asen-plan")!.handler(JSON.stringify(facts),context);const planned=JSON.parse(state.messages.at(-1)!),worker=planned.persistedTasks.find((item:any)=>item.planTaskId.endsWith(":worker"))!;
  assert.equal(planned.route,"orchestrate");assert.equal(planned.requiredAgentRoles.includes("explorer"),false);assert.ok(worker.todoId);let rows=await todos.list(identity);const workerRow=rows.find(row=>row.taskId===worker.todoId)!;assert.deepEqual(workerRow.plan?.writeSurfaces,["README.md","docs/guide.md"]);assert.equal(workerRow.plan?.candidate?.repository,projectId);assert.equal(spawnSync("git",["-C",projectId,"status","--porcelain"],{encoding:"utf8"}).stdout,"","The isolated writer candidate must begin clean");assert.ok(workerRow.plan?.writerAuthorizationBasis);assert.equal(workerRow.plan?.model,model);assert.equal(workerRow.plan?.thinking,"low");
