@@ -2,6 +2,7 @@ import assert from "node:assert/strict";import test from "node:test";import {cre
 import {execFileSync} from "node:child_process";import {mkdir,mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import path,{join} from "node:path";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 import {AgentSession,DefaultResourceLoader,SessionManager,SettingsManager} from "@earendil-works/pi-coding-agent";import {Agent,runToolCall} from "@earendil-works/pi-agent-core";
+import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
 function host(){const commands=new Map<string,{handler:(...args:any[])=>unknown}>();return {commands,pi:{registerCommand:(name:string,c:any)=>commands.set(name,c),on:()=>{}}};}
 test("status, doctor and command inventory are wired fail-closed",async()=>{const h=host();createAsenExtension({status:()=>({agents:[],changes:[],skills:{enabled:true,count:2},historyEnabled:false,telemetryEnabled:false}),doctor:()=>({piVersionOk:true,homeWritable:true,registryAvailable:true,profileValid:true,historyPrivate:true,telemetryConsentValid:true})})(h.pi);assert.match(((await h.commands.get("asen-status")!.handler()) as string[])[0]!,/profile/);assert.equal(((await h.commands.get("asen-doctor")!.handler()) as any).exitCode,0);assert.ok((h.commands.get("asen-commands")!.handler() as any[]).some(x=>x.name==="asen-status"&&x.implemented));authority(h.pi as any);assert.deepEqual([...h.commands.keys()].sort(),[...implementedCommands(),"asen-task-agents"].sort());});
 test("status and doctor compose local state while reporting unconfigured runtimes",async t=>{
@@ -259,6 +260,31 @@ test("M2 public Pi native work panel uses custom overlay without launching agent
  assert.deepEqual(options,[{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}}]);
  assert.ok(notices.every(text=>!text.includes("Permission granted")));
 });
+test("native panel command forwards injected navigation bindings and rejects project drift",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-panel-bindings-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
+ const root=await realpath(process.cwd()),h=host();
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,
+  enableWorkspaceRuntime:false,enableMemoryRuntime:false})(h.pi as any);
+ const keys=new KeybindingsManager(TUI_KEYBINDINGS,{
+  "tui.input.tab":"ctrl+t","tui.select.confirm":"ctrl+f","tui.select.cancel":"ctrl+x",
+ });
+ let closes=0,redraws=0;
+ const context:any={cwd:root,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>"panel-bindings"},
+  ui:{notify(){},custom:async(factory:any)=>{
+   const panel=factory({terminal:{rows:20},requestRender:()=>redraws++},null,keys,()=>closes++);
+   panel.handleInput("\u0014");assert.match(panel.render(80)[0]!,/JOBS/u);
+   panel.handleInput("\u0006");assert.doesNotMatch(panel.render(80).join("\n"),/TODOS/u);
+   panel.handleInput("\u0018");assert.equal(closes,1);
+   context.cwd=home;
+   assert.match(panel.render(80).join("\n"),/scope changed/u);
+   panel.handleInput("\u0014");assert.equal(closes,2);
+   assert.equal(redraws,2,"project drift closes without navigation or redraw");
+  }},
+ };
+ assert.match(String(await h.commands.get("asen-panel")!.handler("",context)),/closed/u);
+});
+
 test("M2 agent inspection cannot read another session or project lifecycle",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-agent-inspect-scope-"));
  t.after(()=>rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100}));

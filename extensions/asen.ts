@@ -74,6 +74,7 @@ import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtim
 import {hostContentColumns,layoutMode,sanitizeTerminalText,truncateForTerminal} from "../src/runtime/responsive-layout.js";
 import {ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,renderAsenWorkRow,renderAsenStatusLine,type AsenPanelSnapshot,type AsenPanelSection} from "../src/runtime/ide-panel.js";
 import {createNativeWorkPanel} from "../src/runtime/native-work-panel.js";
+import type {KeybindingsManager} from "@earendil-works/pi-tui";
 import {renderAgentInspection} from "../src/runtime/agent-inspect.js";
 import {previewWorkspaceFileDiff,renderGitDiffPreview,gitChangesIndex} from "../src/runtime/git-diff-preview.js";
 import {AsenPermissionSession} from "../src/security/permission-session.js";
@@ -858,10 +859,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // It is modal and read-only; it does not replace the persistent fullscreen rail.
     if(!view&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.custom==="function"){
      const snapshot=await getPanelSnapshot(ctx),before=ctx.cwd;
-     await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,_bindings:unknown,done:(value:unknown)=>void)=>{
+     await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>{
       const close=()=>done(undefined);
       return createNativeWorkPanel(snapshot,{
        requestRender:()=>tui.requestRender(),close,
+       ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
        terminalRows:()=>Math.max(8,Number(tui.terminal?.rows??24)),
        stillCurrent:()=>ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId,
       });
