@@ -314,7 +314,6 @@ test("EF-403 live repaired Reviewer and Verifier lane cannot authorize or write"
  assert.match(repairedReview,/noTools:true/u);
  assert.match(repairedReview,/callsReserved:2/u);
  assert.match(repairedReview,/writerAuthorized:false/u);
- assert.match(repairedReview,/humanConsent:false/u);
  assert.match(repairedReview,/authorization:"NOT_GRANTED"/u);
  assert.match(repairedReview,/independentReview:false/u);
  assert.doesNotMatch(job,/(?:WRITE_GRANT|writerAuthorized: true|continue-on-error: true)/u);

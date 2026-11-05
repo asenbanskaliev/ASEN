@@ -268,3 +268,10 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - At checkpoint CI [41945306452](https://github.com/asenbanskaliev/ASEN/actions/runs/41945306452) and Release Gate [41945306292](https://github.com/asenbanskaliev/ASEN/actions/runs/41945306292) were still IN_PROGRESS; Phase 0, F5, CodeGraph, Pi Runtime and R4 self-audit were SUCCESS. The preceding candidate CI was cancelled by the later push; no result is carried to this SHA.
 - Next macro: exact one-time `ci: one-time Pi repaired-review Beam proof`. It runs corrected read-only Reviewer and Verifier on a disposable fixture, two logical reservations, deterministic RED/GREEN evidence, no tools/Writer, exact-SHA artifacts. Record actual provider call count as unknown unless observed.
 - EF-601 idle and busy-parent subchecks PASS, EF-604 TUI crash/reopen subcheck PASS, EF-603 one-process coalescing subcheck PASS. Canonical EF count remains 8/28; all canonical EF-601/603/604 remain PARTIAL; 60 A/B/ASEN observations, Writer human consent and independent review remain external blockers. FULL=false.
+
+
+## Checkpoint — 2026-11-05 — EF-403 preflight mismatch
+
+- HEAD publicado: 505d5bb467f068b75976d8f31f3110ca1732a79a. Acceptance [41945944693](https://github.com/asenbanskaliev/ASEN/actions/runs/41945944693) FAIL en provider-free job [126978046314](https://github.com/asenbanskaliev/ASEN/actions/runs/41945944693/job/126978046314), etapa F2/F3 deterministic. Test nuevo exigió un campo `humanConsent:false` que el harness no emite; su contrato mantiene writerAuthorized=false y authorization=NOT_GRANTED. El preflight bloqueó la lane; no se ejecutaron modelos ni se reservó cuota.
+- Corrección preparada: quitar solo la aserción del campo ausente. Mantener checks de run_attempt=1, noTools, dos reservas, writerAuthorized false y NOT_GRANTED. Ejecutar el mismo lane exacto una sola vez tras PASS del preflight.
+- La siguiente commit hereda los cambios de scope de secretos y la prueba de receipt EF603, pero la evidencia EF403 sigue abierta. No marcar nada de EF403 como PASS y no arrastrar éxito de otra SHA.

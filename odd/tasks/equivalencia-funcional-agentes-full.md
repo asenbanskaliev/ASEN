@@ -1518,3 +1518,10 @@ La nueva aserción de workflow tenía una comilla final mal colocada. La inspecc
 - [x] EF603-REAL-COALESCING-01 — PASS bounded real Pi/Beam test on SHA d76070265583e42bca003d40d33c2ccb0deb3e9e, acceptance [41945298981](https://github.com/asenbanskaliev/ASEN/actions/runs/41945298981), job [126976621404](https://github.com/asenbanskaliev/ASEN/actions/runs/41945298981/job/126976621404), artifact [13378860407](https://github.com/asenbanskaliev/ASEN/actions/runs/41945298981/artifacts/13378860407). Three concurrent identical ASEN Explorer requests received one durable ID, created one native Pi 1.2.0 RPC process, observed one child-selected Ollama Cloud Beam model and real assistant text delta, ended in one durable completed Explorer record, and left the disposable project unchanged. No child tools or Writer.
 - Receipt/log explicitly states providerCallsReserved=1 and providerCallsActuallyObserved=null. Evidence proves durable task/process coalescing, not HTTP request count or provider-side billing count. Historical workflow label corrected to say one Pi RPC process.
 - Subcheck only; canonical EF-603 remains partial because multi-session/process, real provider call counting, all role-scope cases, and frozen A/B C02-C03 comparison are still not closed. 8/28; FULL=false.
+
+
+## EF-403 — preflight corrigido antes de la prueba live — 2026-11-05
+
+- La aceptación [41945944693](https://github.com/asenbanskaliev/ASEN/actions/runs/41945944693) en SHA 505d5bb467f068b75976d8f31f3110ca1732a79a bloqueó correctamente todas las lanes de proveedor porque falló el test provider-free `EF-403 live repaired Reviewer and Verifier lane cannot authorize or write`.
+- Causa: el test exigía `humanConsent:false` en el texto del harness; el reporte no incluye ese campo. El contrato comprobable sí expresa `writerAuthorized:false`, `authorization:NOT_GRANTED` y `independentReview:false`. La expectativa adicional era ajena al contrato y se elimina; no se debilita ninguna autorización de Writer.
+- Resultado: cero llamada/reserva de proveedor en ese run, ningún subcheck EF-403 cerrado. Se vuelve a ejecutar solo después del preflight exact-SHA corregido.
