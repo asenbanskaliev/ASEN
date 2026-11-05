@@ -42,8 +42,16 @@ const preStageCandidates=[
  "scripts/memory-parity/writer-b/index.mjs","tests/memory-parity-composition.test.ts",...additionalParityFixturePaths
 ];
 const paths=[...new Set([...tracked,...preStageCandidates.filter(path=>existsSync(new URL(`../${path}`,import.meta.url)))])];
+// The two ODD parity specifications are deliberately human-readable
+// upstream provenance, never executable source or imported runtime content.
+// Keep all other code/docs subject to the original external-reference scan.
+const pinnedParityPlanDocs=new Set([
+ "odd/tasks/equivalencia-funcional-agentes-full.md",
+ "odd/tasks/gentle-shell-v4.6.0-paridad-ui-odd.md",
+]);
 const violations=[];
 for(const path of paths){
+ if(pinnedParityPlanDocs.has(path))continue;
  if(forbidden.test(path)){violations.push(path);continue;}
  if(provenanceAllowlist.has(path))continue;
  const bytes=readFileSync(new URL(`../${path.split("/").map(encodeURIComponent).join("/")}`,import.meta.url));

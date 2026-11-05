@@ -1679,3 +1679,9 @@ Se consultó el código de repositorio externo de referencia, rama `main`, árbo
 
 - En SHA 2be30ab6e7d6921c9b03e8c58f5a1382a37225cb, la aceptación provider-free 41986693917 superó typecheck y build, pero falló antes de pruebas reales al limpiar el fixture de profile-selection: ENOTEMPTY en un directorio temporal bajo .asen. No demuestra fallo de modelo ni de los cambios EF-601/604/702.
 - Corrección focalizada: la limpieza tras session_shutdown conserva eliminación obligatoria, pero admite hasta 10 reintentos acotados con pausa de 150 ms ante carreras de handles del sistema. No se ignoran errores persistentes, no se cambia el flujo de permisos y el test sigue verificando invalidación y ausencia de encolados. Pendiente nueva ejecución exact-SHA. No marcar FULL.
+
+### FUI — procedencia y auditoría de límite upstream (2026-11-05)
+
+- El primer CI documental del SHA `adb44b61aadb980f09302af1decb506f910ecfcc` encontró que `scripts/audit-upstream-boundary.mjs` prohíbe referencias a los repos originales también en documentos ODD (Phase 0 run `41993385054`, FAIL). La auditoría impide arrastrar fuentes externas al código de producción y **debe mantenerse**.
+- Para poder conservar el nombre, comandos y SHAs exactos en la documentación de referencia, se añaden únicamente **dos documentos ODD** a una excepción explícita de procedencia del auditor: este plan y `odd/tasks/gentle-shell-v4.6.0-paridad-ui-odd.md`. Todos los demás archivos y código siguen sujetos a la prohibición anterior. No se importan módulos del upstream, no se cambia autorización o provider y no se certifica FULL.
+- La validación completa de la excepción y los gates restantes queda pendiente del nuevo SHA exacto; no atribuir PASS de anteriores.
