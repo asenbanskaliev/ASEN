@@ -232,3 +232,13 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - El run provider-free de acceptance `41941897703` aún estaba en el test de reinicio Pi no-modelo al preparar el parche. Su lane autenticado parent-child permanece detrás de `offline-static-validation`; comprobar el estado antes de seguir. No repetir el proveedor del lane EF-604 de SHA `2a078...` a ciegas.
 - Próximo: publicar esta corrección consolidada, revisar F5 exact-SHA, CI/RG y acceptance; el primer fallo permanece asociado a su SHA, no se hereda PASS.
 - EF601-REAL-COORDINATOR-CONSUMPTION-01 pendiente; total 8/28; EF-601/603/604 PARTIAL; C01–C20, Writer humano, Reviewer independiente, FULL=false.
+
+
+## Checkpoint — 2026-11-05 — EF-604 credential scope
+
+- HEAD remoto PR #45/ref confirmado: 0f2eef941e768e0f5fb3235d08d96c8a2c3b5630. Próximo commit consolidado se publicará solo tras revalidar HEAD y el PR.
+- Acceptance exact-SHA [41942195379](https://github.com/asenbanskaliev/ASEN/actions/runs/41942195379): provider-free SUCCESS; A/B frozen source witness SUCCESS (fuentes únicamente; 0 escenarios); Writer lock SUCCESS; lanes autenticados SKIPPED por mensaje. CI [41942202876](https://github.com/asenbanskaliev/ASEN/actions/runs/41942202876) aún IN_PROGRESS; Release Gate [41942202877](https://github.com/asenbanskaliev/ASEN/actions/runs/41942202877), Phase 0 [41942202858](https://github.com/asenbanskaliev/ASEN/actions/runs/41942202858), F5 [41942203089](https://github.com/asenbanskaliev/ASEN/actions/runs/41942203089) SUCCESS.
+- EF-601 bounded coordinator consumption PASS at SHA 41f4b8d79323d8a738934f24773d40e8b3fe4097, run 41941897703, job 126965116445, artifact 13376622656; no HTTP call count claim. Canonical EF-601 remains PARTIAL.
+- Tanda preparada: workflow acceptance, test de workflow EF-604, ODD y checkpoint. Credential key scoped to provider selection and live inference steps only. Test must pass locally and exact-SHA preflight.
+- Tras publicar con mensaje exacto ci: one-time Pi Beam TUI child crash proof, comprobar preflight, luego el único lane Beam; no reintentar a ciegas. Aceptación del lane requiere delta Beam observado, TUI muerta durante RPC hijo, reinicio mismo task/session, estado interrupted y sin replay.
+- EF604 crash/provider test pendiente; EF-002/701 requieren 60 capturas auténticas A/B/ASEN y host B; Writer exige consentimiento humano legítimo; revisión externa independiente falta. Canonical 8/28, FULL=false.

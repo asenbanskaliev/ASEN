@@ -26,5 +26,8 @@ test("EF-604 live TUI crash during child inference is one exact opt-in Beam call
  assert.ok(harness.includes('"--extension","npm:pi-ollama-cloud@0.13.1"'),"The no-extensions Pi TUI must explicitly load the pinned provider");
  assert.ok(harness.includes("TUI_EXITED_BEFORE_MARKER")&&harness.includes("firstTuiExit"),"Failure receipt must preserve bounded startup diagnostics");
  assert.doesNotMatch(lane,/(?:OPENROUTER_API_KEY|GROQ_API_KEY|NVIDIA_API_KEY|WRITE_GRANT|writerAuthorized: true|continue-on-error: true|continue-on-error: )/u);
+ assert.doesNotMatch(lane,/\n    env:\n      ASEN_OLLAMA_API_KEY:/u,"Provider secret must not be job-wide");
+ assert.match(lane,/name: Select only the pinned free Beam model in isolated Pi home\n        shell: bash\n        env:\n          ASEN_OLLAMA_API_KEY: \$\{\{ secrets\.OLLAMA_API_KEY \}\}/u);
+ assert.match(lane,/name: Kill the real Pi TUI only after its ASEN Explorer streams a native Beam text delta\n        shell: bash\n        env:\n          ASEN_OLLAMA_API_KEY: \$\{\{ secrets\.OLLAMA_API_KEY \}\}/u);
  assert.doesNotMatch(lane,/contains\s*\(\s*github\.event\.head_commit\.message/u);
 });

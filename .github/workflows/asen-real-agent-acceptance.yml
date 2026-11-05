@@ -401,7 +401,6 @@ jobs:
       contents: read
     env:
       ASEN_EXPECTED_SHA: ${{ github.sha }}
-      ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
       PI_OLLAMA_WEB_TOOLS: '0'
       ASEN_MAX_AGENTS: '1'
     steps:
@@ -415,6 +414,8 @@ jobs:
       - run: npm ci
       - name: Select only the pinned free Beam model in isolated Pi home
         shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           set -euo pipefail
           export HOME="$RUNNER_TEMP/asen-live-tui-pi"
@@ -435,6 +436,8 @@ jobs:
           printf '%s\n' "$selected" > "$RUNNER_TEMP/asen-live-tui-selected-model"
       - name: Kill the real Pi TUI only after its ASEN Explorer streams a native Beam text delta
         shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           set -euo pipefail
           export HOME="$RUNNER_TEMP/asen-live-tui-pi"
