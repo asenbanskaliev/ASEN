@@ -2015,3 +2015,34 @@ T1 worker finished PARTIAL with zero source edits: focused 16 pass/7 fail/1 Wind
 ### Autopilot M1 — interaction-local keybinding unit verified, not FULL
 
 The native panel now forwards Pi interaction-injected keybindings and matches public selection/input/editor actions, preserves unavailable-manager literal fallback and local j/k/Space/q aliases, and closes on changed scope. Worker observed RED for configured down and configured Tab, then GREEN 8/8 focused and 3/3 selected integration; typecheck/build/EF audit exit 0. Fifteen base/current preservation scenarios matched stdout/exit and stderr after PID normalization. Parent repeated 8/8 focused tests successfully and inspected the diff/docs. T1 environmental baseline failures remain disclosed, not suppressed. No native visual/mouse/rail or FULL equivalence claim. Reference evidence: current 7ecb826 source extensions/gentle-shell.ts:2249–2295; extensions/ask-user-choice.ts:103–110,259–276; installed Pi extension docs:2611,3035–3056. No normative baseline change. Parallel supervisor map mw3dj0fm-4-mr9m remains read-only. Commit pending; 8/28 EF unchanged, FULL=false.
+
+
+### Parallel recovery map and published M1 candidate
+
+Owner requested another subagent work in parallel. Explorer mw3dj0fm-4-mr9m mapped recovery without edits: existing task/agent/link/checkpoint and notification journals support guarded recovery, not a demonstrated autonomous Pi-restarting daemon or aggregate spend controller. Reference Jobs stop with their parent session. Dependency-ready advisory coordinator projection is now delegated to mw3dsu3t-5-zivn with in-memory tests, no execution grants or permission/journal changes. Implementation pending.
+
+Checkpoint commit 173b2cd3 and panel source/test/doc commit 5267e6b28f4ea51c1664481bdaf3f7f296adf825 published with fresh remote-HEAD guard and normal non-force push; remote and PR45 HEAD subsequently confirmed exact 5267e6b2. Native assessment for panel unit: medium, reviewDue=false/under_budget, self-verification/no independent verifier; no approval invented. Phase 0 42008493697 and F5 42008493787 SUCCESS; Pi Free Smoke 42008493704 SKIPPED. CI 42008493792, Release Gate 42008493857, R4 auto 42008494029 (SELF_AUDIT_ONLY / NOT independent), Pi runtime 42008493860, CodeGraph 42008494418 and functional acceptance 42008483988 pending; job-3 watches existing runs. T1 environmental failures remain blocked and documented. No EF promotion; FULL=false.
+
+
+### Parallel preparation expanded at owner request
+
+Owner: vete lanzado subagenes para ir adealntando y asi ganamos tiempo en el desarollo. Worker mw3dsu3t-5-zivn continues the advisory recovery projection on coordinator-only surfaces. Explorer mw3e3t21-6-dsxe now maps truthful statusbar/context and integrations/profile inspection for further disjoint behavior units. No overlapping writers, duplicated full-matrix checks, provider/config mutation or supervisor activation. Parent retains shared integration and Git ownership. Task projection synchronized; CI watch job-3 still pending. FULL=false.
+
+
+### M1/M4 parallel writers launched; recovery unit locally committed
+
+Advisory recovery T3a committed locally as 0d9b2011ed0076199a3a629702e27a316149ba2e: worker RED 26 failures then GREEN 33 new cases and 2 existing pure cases; parent repeated 35/35. Typecheck/build/EF audit and boundary audit pass. No automatic dispatch, grant, supervisor or new public command behavior. Native assessment medium, reviewDue=false/under_budget; no independent/native approval claim. Publication deferred to consolidation; published CI still binds 5267e6b2.
+
+Two writers launched together with disjoint new module/test/doc surfaces: mw3ecfvl-7-nm9z implements truthful public-host status projection; mw3ecg1h-8-fqg1 implements read-only integration/profile inspection. Both test-first in memory. Shared extension/renderer wiring remains parent-owned T2c after join; no concurrent writes to shared dist, parent consolidates build. These are not delivered UI until integration and checks. Original EF checklist unchanged, FULL=false.
+
+
+### Parallel integrations/profile component checked; wiring still pending
+
+T5a worker mw3ecg1h-8-fqg1 completed read-only inspectIntegrationProfiles derivation, tests and caller documentation. RED 11/11 then GREEN 11/11 plus typecheck exit 0; parent repeated 11/11 and read module/docs. Registered inventory is not connectivity; project load failure is unavailable, not a default; configured routes retain actual unknown and in-process snapshot provenance is not restart durability. No raw configuration/auth reads or mutations. Host-status sibling remains pending; T2c wiring and consolidated build have not run. No UI-delivery, independent review or FULL claim, no EF checks changed.
+
+
+### Observation modules joined; shared wiring and CI diagnosis in parallel
+
+Both components passed 73/73 in parent verification. Host-status component committed as 49bfe61fe34ea9427d2d6a1d2a11a033ae303e53 (264 authored lines); integrations/profile component as 26cd645f8c2a03e115dfa49c81c998d3197a2343 (327 lines), each with tests/docs. Native assessment medium, reviewDue=false/under_budget; no independent/native approval claim. Neither component alone is delivered UI. T2c shared extension/renderer integration is delegated to worker mw3ew0sx-9-81qh with fake-host tests and one consolidated build.
+
+Published 5267e6b2 watch finished: CI42008493792 FAIL; ReleaseGate42008493857, R4auto42008494029 NOT independent, PiRuntime42008493860, CodeGraph42008494418 and functional workflow42008483988 exited successfully. Optional/live job status is not inferred from workflow success. Captured result/failed logs under .cache/ci-5267e6b2; read-only explorer mw3ewt74-a-gugw diagnoses exact failure and correction surfaces separately from integration. No matrix rerun or evidence inheritance to local HEAD. EF checklist unchanged, FULL=false.
