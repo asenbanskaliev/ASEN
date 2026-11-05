@@ -32,6 +32,49 @@ Los nombres/URLs de fuentes externas se conservan en la procedencia permitida de
 
 En el SHA inicial: Phase 0, Release Gate, F5, Pi Runtime, CodeGraph, autoauditoría R4 y aceptación T12 sin proveedor PASS. **CI general FAIL** en Ubuntu, macOS y Windows, por dos casos comunes de `tests/primary-tool-policy.test.ts`: confirmación Normal falsa-caducada y error del diálogo absorbido. Verificación con modelo real y Writer interactivo: no acreditadas. La tanda B0 corrige el origen y añade una prueba de autorización caducada; el PASS depende del CI del nuevo SHA.
 
+## Nueva baseline UX y equivalencia funcional — Gentle AI v4.3.1 + Gentle Shell v4.6.0 (2026-11-05)
+
+**Normativo para declaración FULL, NO una implementación terminada.** El runtime y su instalador se contrastan contra Gentle AI `v4.3.1`, SHA `2dba7784114fff57864519c4c0d067e952a8c98b` (27-10-2026). La UI se contrasta contra Gentle Shell/gentle-pi `v4.6.0`, SHA `1f74e9e24473e7e121a96b1680444ae0196d3009` (04-11-2026), que empaqueta Pi `1.5.0` y fija Gentle AI v4.3.1. El contrato de provider review es `1.4.0`. **ASEN HEAD observado:** `984d867d310c13b6d564c46a81f2dd263694f127`. No consultar main upstream como prueba de esa versión.
+
+**Especificación completa y ejecutable:** [Gentle Shell/UI — 28 EF detallados, comandos, pantallas, 14 tareas y 24 pruebas](gentle-shell-v4.6.0-paridad-ui-odd.md). El anexo es parte obligatoria de este ODD; contiene el contrato de cómo inicia cada agente en UI y cómo se representa en TODOS, JOBS, AGENTS, CHANGES, REVIEW, INTEGRATIONS y barra inferior, incluyendo escenarios de error, consentimiento, navegación, sesión y modelos. Los cambios se deben probar contra SHAs fijos. No se han añadido funcionalidades UI al runtime por la publicación de este plan.
+
+**Diferencias detectadas:** ASEN ya tiene comandos `/asen-agents`, `/asen-changes`, `/asen-todos`, `/asen-status` y `asen_agent_*`, pero el UI probado es fundamentalmente textual + widget TODO breve. No constan rail IDE único (>=140), overlay de Agents con thread, dos paneles de Changes, Panel sheet estrecho, Integrations MCP y barra inferior con contexto+coste+cuotas. El runtime fuente de 2026-11-04 es **Gentle Shell**, no solamente Gentle AI Go. Las garantías de seguridad no se deben rebajar por fidelidad de diseño.
+
+### Matriz de ampliación para los 28 EF (sin alterar checks canónicos)
+
+| EF | Funcionalidad | Lanzamiento/comando o gesto de referencia | Objetivo nuevo de UI y runtime | Dependencia/gate |
+|---|---|---|---|---|
+| EF-000 | Baseline y manifiesto de fuentes | Shell/AI release, /gentle:status y perfiles, SHA fijo. | Registrar tag/sha/path/estado de UI y Pi API por fuente, inventario de 6 paneles, comandos y renderer; archivo fuente referenciado por permalink. | FREF: comprobar inmutabilidad y hash, sin cambiar semántica de C01–C20. Requerir registro de entrada, estado antes/después, comand |
+| EF-001 | Confirmación y permisos | statusbar PERMISSION, modal de autorización al realizar acción restringida. | UI normal/auto/YOLO/super-yolo, herencia y rollback; denegar no cambia archivos/sesión; no se acepta consentimiento de CI como humano. | FPERM: TUI real allow/deny/cancel y 3 sistemas. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/reci |
+| EF-002 | Observación A/B | C01–C20 en herramientas, navegación Agents/Changes/Review/Todos. | Recopilar trazas observables por cada caso en Shell v4.6, Gentle AI 4.3.1 y ASEN; no heredar pruebas anteriores. | FREF: 60 slots ejecutados con provenance y host A/B de verdad. Requerir registro de entrada, estado antes/después, comandos/tool,  |
+| EF-003 | Harness observable UI | registro de comando/estado/selección/scroll y diff Git. | Normalizar tokens/tiempo/ANSI, NO normalizar cambios semánticos de permiso, modelo, rol o terminal status; comparar snapshots/acciones UI. | FTEST: A/B+ASEN misma secuencia y semántica. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo  |
+| EF-101 | Decisión de ruta | prompt normal → acción directa o subagent_run + Delegating. | Tarea simple sin spawn; tarea compuesta crea plan visible y razones; UI no exige JSON al usuario; perfilar roles sin pago implícito. | FAGENT: tests ruta para casos bajo/alto riesgo y UI-C05/06. Requerir registro de entrada, estado antes/después, comandos/tool, scr |
+| EF-102 | ODD/TODO | tool todo write/add/update/list/clear; rail TODOS glyph y progreso. | Mapeo de estados sin mentir: succeeded en ASEN sigue pendiente de revisión; blocked nota visible; histórico, dependencias, cache de prompt tras cambios. | FTODO: UI-C03/04/20 + reinicio y no duplicación. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/rec |
+| EF-103 | Reanudación de dependencias | TODO y Agents indican próximo step, nombre/estado y jerarquía. | Revalidar session/project/HEAD/perfil/consentimiento antes de despacho; UI muestra por qué no avanza y etapa en cola. | FAGENT+FTODO: UI-C07 y segundo proceso. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo de ho |
+| EF-201 | Explorer | subagent_run(agent=gentle-ai-explore, task, mode=task/background); cards Agents. | Priorizar CodeGraph, añadir fallback sólo si disponible/autorizado, registrar child tools reales, límite de contexto y lectura web controlada. | FAGENT+FINT: UI-C05/06/17, Pi RPC, sin Writer. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recib |
+| EF-202 | Presupuesto de exploración | fila Explorer con tokens/tiempo/coste y avisos no repetidos. | No polling ni relanzamientos bajo presupuesto; mostrar remaining/unknown verídico; UI no inventa consumo al reservar inferencia. | FBAR: UI-C11/15, medidores distintos logical HTTP. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/r |
+| EF-203 | Retorno compacto | ↩ Agent answer + estado + thread; Changes permanece clean. | Resultado redactado y bounded, archivos sin escritura y tool use auténtico; JSON/errores maliciosos no se interpretan como nueva orden. | FAGENT+FCHANGES: C05 + UI-C05. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo de host cuando |
+| EF-301 | Handoff Writer | agent worker en Agents, prompt de aprobación con rutas SHA y scope. | Proyectar instrucciones exactas, risk, test y rollback; no conceder acceso por hacer clic en tarjeta; usar repo Git temporal limpio para CI. | FWRITER+FUI: UI-C06/18; negativa real. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo de hos |
+| EF-302 | RED→GREEN/PRESERVE | TODO en curso, Changes refleja diff tras Writer, Review guarda pending. | Registrar fallo previo, fix autorizado, green y no regresión; no promover TODO a done sin resultado verificado, ni retroconceder grants al child. | FWRITER+FREVIEW: casos C06–07. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo de host cuando |
+| EF-303 | Paralelismo seguro | AGENTS múltiples, CHANGES grupos por worktree y archivos. | Admitir sólo scopes disjuntos/aliases resueltos, revertir por subworktree, no atribuir simultaneidad a CPU sin Pi real. | FCHANGES+FPERM: UI-C08/09 con dos grants. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo de  |
+| EF-304 | Consentimiento humano | WAITING agent, pregunta en editor, modal Pi, resumen candidato y cambios. | Una decisión por operación/archivo/candidato, revocación y denegación; UI no debe mostrar successful sin ejecución; archivar recibo de decisión real. | FPERM: UI-C10/18; bloqueante para FULL. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo de ho |
+| EF-401 | Política de riesgo | Review sólo con RDD; Risk: item N exige recordatorio, no concede permiso. | Límites del runtime AI 4.3.1: ítem 1 high-risk sólo dato irreconstruible; probar tanto no-verification como verification. | FREVIEW: C09 con inputs A/B. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo de host cuando c |
+| EF-402 | Verifier autónomo | AGENTS verifier separado del Worker; REVIEW muestra test results. | Pruebas nuevas contra petición original, baseline, scratch; ningún permiso de escritura por rol verifier, no considerar PASS sin corroboración. | FREVIEW: C10, UI-C12 y real Pi. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo de host cuand |
+| EF-403 | Defecto alto riesgo | Review finding → scope Changes → fix → fresh Verifier; distintos SHA. | Probar RED/diagnóstico/fix/segunda verificación con el modelo real; si fixture es construido, distinguir de bug ASEN; revisión tras nuevo SHA. | FREVIEW: C09–10, criterios de severidad y post-fix. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/ |
+| EF-501 | Revisión nativa | gentle_review y /gentle:review, panel Review needs you. | ACK positivo avanza reviewed boundary y sólo con candidato fijo; rctx1/rctx2, base upstream, errores typed; no esconder controles de usuario. | FREVIEW: UI-C12/13, contratos AI 1.4.0. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo de ho |
+| EF-502 | Juicios y re-evaluación | dos reviewers independientes; tarjeta findings y ACK, cambio en Changes. | Congelar snapshot, comparar perspectivas, aplicar fix sólo con grant válido, repetir juicio sobre commit/diff nuevos sin reusar evidencia. | FREVIEW: C11–12 y UI-C13. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo de host cuando corr |
+| EF-503 | Independencia de revisión | Reviewer/Verifier identificables como tasks distintas en AGENTS. | Diferenciar dos respuestas modelo de revisión externa; identidad del auditor, inputs ocultados del otro juicio, autoridad humana separada. | FREVIEW: pruebas de independencia y veredicto R4. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/re |
+| EF-601 | Entrega de hijos | ↩ Agent answer; si WAITING, pregunta; si stale, aviso; padre idle despierta. | Diferenciar parent running, idle, hold y print; deduplicar wake, demostrar consumo en Pi y no sólo enqueued. | FAGENT: UI-C10/14, Pi padre auténtico. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo de hos |
+| EF-602 | Sin sondeos | aviso async, no sleep, stale obliga consultar subagent_result. | Una notificación terminal por task; error de wake reintenta acotado, no reejecuta child; etiquetas y resultados saneados. | FAGENT: UI-C14, pruebas con fallos inyectados. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recib |
+| EF-603 | Coalescencia exacta | un Explorer activo, Reviewer/Verifier sin alias, coste único en AGENTS. | Incluir normalización física Windows de identidad, session/project/model/effort/task; tests con aliases UNC, cambios de ruta y owner; distinguir proceso RPC de llamadas HTTP observadas. | FAGENT: UI-C06/08 y recibos exactos. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo de host  |
+| EF-604 | Crash/recovery | reopen /gentle:agents; estado enqueued/attempted, preguntas no inventadas. | TUI crash durante inferencia, child exit incierto, historial durable, respuesta humana posterior, no replay/autoauth. | FAGENT+FTODO: UI-C10/14, Pi auténtico. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo de hos |
+| EF-701 | Paridad A/B con UI | capturas reproducibles de rail/palette/agents/gits/consentimiento. | Todos los C01–20 con trazas reales fuente y ASEN; UI-C01–24 complementarios; no sustituir 3OS por única captura Linux. | FREF+FTEST, manifests con SHA. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo de host cuando |
+| EF-702 | Modelos/cuotas | /gentle:profiles chains por agente, /gentle:usage, statusbar; aviso ↪ nuevo modelo. | Cadenas <=8 y cooldown 30 min auth/cuota y 2 min transitorios, avanzando sólo en tipos admitidos; API coste cero confirmado; ningún fallback a pago sin permiso explícito. | FPROFILE+FBAR: UI-C15/19, cuota real/no fake. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo |
+| EF-703 | TUI+3OS+Pi | fullscreen >=140, panel <140, 6 bloques, interop MCP, Pi 1.5, Install. | Verificar accesibilidad mouse/keyboard, escenarios con Pi 1.2 y 1.5, Windows UNC, macOS, Linux, firmas y provider; integrar nuevos UI-C gates y seguridad sin saltar shards. | FTEST+FINSTALL: UI-C01–24 + gates exact-SHA. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo  |
+| EF-704 | FULL estricto | todos paneles y comandos con evidencia; UI y CLI concordantes. | Cerrar sólo con todos EF, UI-C01–24, C01–20, S01–S20, CI+Release Gate, pruebas reales y revisión independiente; registrar divergencias explícitas sin false FULL. | FALL: aprobación final documental auditada. Requerir registro de entrada, estado antes/después, comandos/tool, screenshot/recibo d |
+
+**Lectura de tabla:** se necesita reproducción real (teclado, mouse, comandos y estado) cuando hay UI, pruebas de proceso Pi cuando hay agente y recibo exact-SHA cuando hay aceptación. Los detalles, denegaciones y casos límite de cada EF están en el anexo. Ningún punto pasa a `[x]` por estar aquí documentado.
+
 ## Specs
 
 ### S01 — Decisiones proporcionales del coordinador
@@ -105,6 +148,42 @@ En el SHA inicial: Phase 0, Release Gate, F5, Pi Runtime, CodeGraph, autoauditor
 - Exigir tests focalizados + suite completa PASS Ubuntu/Windows/macOS, build/typecheck, Arquitectura/Release Gate, Pi real, cada rol con modelo real cuando aplique, Writer solo con consentimiento humano, recuperación y despertar real. Una prueba con mocks prueba el contrato local, no el proveedor.
 - `SELF_AUDIT_ONLY / NOT independent` es un gate técnico temporal de PR #45; no cuenta como independencia real en el objetivo FULL.
 - **AC11:** matriz obligatoria cerrada con recibos exact-SHA, sin FAIL/SKIP obligatorio/BLOCKED ni incidencias materiales abiertas.
+
+### S12 — Marco terminal paritario (Gentle Shell v4.6.0)
+
+En fullscreen ancho >=140: título de proyecto/sesión/perfil, rail único tintado con TODOs → Jobs → Agents → Changes → Review → Integrations (Stats opcional), headers plegables con click, tooltip/hover y render incremental sin congelar transcript. Menos de 140: work row y botón Panel; hoja navegable j/k/↑/↓/mouse/esc; degradar con honestidad en headless/RPC.
+
+### S13 — TODO visible y semántica ODD
+
+Estados fuente pending/in_progress/blocked/done/dropped, glifos/notas y colapso; mapeo ASEN a plan/run/succeeded/review/done sin falsificar §succeeded§ como §done§; scroll, historial, mensaje tail y prompt cache. Iniciar/actualizar con tool real, no por pintado del panel.
+
+### S14 — Agents real y diálogo padre/hijo
+
+La UI expone subagent_run/list/status/result/reply/continue/cancel/send_message, roles, parent-child, modelos/effort/tokens/cost/time auténticos, wait/failed/completed y preguntas arriba del editor; overlay §/gentle:agents§ con thread, teclado, mouse y permisos de sesión. No autoconsentir Worker ni reutilizar Reviewer/Verifier como Explorer.
+
+### S15 — Changes refleja Git actual
+
+Multi-root worktrees, estado Git y diff HEAD, markers M/A/U/D/R, editor externo seguro, refresh y límite diff 1MiB/20000 líneas; diferencia entre cambios reales y atribución de herramientas. El panel Changes no es evidencia de autor de una mutación ni permiso de edición.
+
+### S16 — Jobs, Review e Integrations
+
+Job separado de agente con background/monitor/log/stop; Review con evidencia RDD y needs you únicamente cuando hay consentimiento pendiente; ACK de review avanza frontera exacta sólo si es válido. Integrations muestra estados reales MCP/extensiones/perfil, sin conectividad inventada.
+
+### S17 — Barra de estado y editor
+
+Barra inferior: rama Git ± dirty, permiso no-default, provider/model, effort/Fast, gauge de contexto (>=80 amber, >=95 red, ? tras compaction), coste/sub y usage clickable. Editor §─ ✿ estado ─§ y §›§ sin romper Pi. No confundir coste declarado con facturación real.
+
+### S18 — Paleta, teclas y customización
+
+§/gentle:commands§ / §alt+k§ como paleta de comandos registrados, buscar/ejecutar/reasignar; §/gentle:customize§ presets Light/Neutral/Power, keymaps con reload, conflicto de teclas reservado/rehusado, responsive y tour §/gentle:guide§. ASEN mantiene alias útiles sin registrar duplicados conflictivos.
+
+### S19 — Perfiles, fallbacks y migraciones
+
+§/gentle:profiles§ con sesión/default/repo, rutas por rol y orquestador, estado congelado tras resume, fallbacks de hasta 8, cooldown y errores typed. ASEN nunca seleccionará un modelo de pago sin autorización explícita. Instalación TUI/Manage/Update del runtime 4.3.1 preserva operador, pins, rollback, reconocimiento de manifest viejo Windows y lanzamiento gs/gentle-shell sin sobrescribir nombres ajenos.
+
+### S20 — Aceptación visible y auditoría FULL
+
+Añadir UI-C01–UI-C24 a C01–C20 sin modificar estos últimos. Probar TUI Pi nativo, ancho 80/120/139/140/160, permisos, teclado/ratón, ctx/usage real, multiagente, recuperación, Git diff, review, 3 OS, CI/Release Gate exact-SHA y revisión R4 independiente. Un screenshot o provider-free smoke no acredita consumo real, autorización humana ni FULL.
 
 ## Matriz de aceptación común (A/B y ASEN)
 
@@ -196,6 +275,29 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 - **Gate:** C01–C20 PASS obligatorios y ninguna diferencia esencial pendiente.
 
 **Resumen del plan:** 8/28 EF marcados como verificados en su alcance concreto; 20 siguen abiertos. Los checks no certifican FULL ni equivalencia C01–C20.
+
+### FUI — Paridad de interfaz con Gentle Shell v4.6.0 (tareas nuevas)
+
+**Son tareas ejecutables separadas y no hacen check de EF por sí mismas.** Referencia/detalles/criterios en [especificación UI](gentle-shell-v4.6.0-paridad-ui-odd.md#6-tareas-ui-nuevas-y-sus-dependencias-checks-separados-de-ef). Estado inicial: todas pendientes; no se han implementado al editar este documento. Respetar no merge a main sin autorización.
+
+- [ ] **UI-01: Shell IDE y rail.** Título, rail único tintado en orden, plegado, hover y cache por digest. Dependencias: FREF. Tests: UI-C01/02/22. Evidencia por SHA para marcar, no basta el desarrollo textual.
+- [ ] **UI-02: Overlay Agents y transcript.** Per task Pi RPC, lista/hierarchy/thread, model/effort/tokens/cost, stop/follow/resume. Dependencias: UI-01. Tests: UI-C05/06/07/10. Evidencia por SHA para marcar, no basta el desarrollo textual.
+- [ ] **UI-03: Todos y ODD.** Cinco estados fuente, proyección ASEN sin false DONE, scroll/prompt cache y listas guardadas. Dependencias: UI-01. Tests: UI-C03/04/20. Evidencia por SHA para marcar, no basta el desarrollo textual.
+- [ ] **UI-04: Changes Git.** Git multi-root, diff HEAD/untracked, 2 paneles, editor seguro, recuentos. Dependencias: UI-01. Tests: UI-C09. Evidencia por SHA para marcar, no basta el desarrollo textual.
+- [ ] **UI-05: Jobs y monitors.** Bash background/monitor, sidebar, logs, wake, stop y no sleep. Dependencias: UI-01. Tests: UI-C11/14. Evidencia por SHA para marcar, no basta el desarrollo textual.
+- [ ] **UI-06: Review RDD.** needs you, evidence, native review + ACK y boundary real. Dependencias: UI-01. Tests: UI-C12/13/18. Evidencia por SHA para marcar, no basta el desarrollo textual.
+- [ ] **UI-07: Integrations y MCP.** MCP status real + Agent profile y permiso no duplicado, desconocido veraz. Dependencias: UI-01. Tests: UI-C16/17. Evidencia por SHA para marcar, no basta el desarrollo textual.
+- [ ] **UI-08: Statusbar.** branch/dirty, mode, model/effort, ctx gauge, cost/sub, usage clickable. Dependencias: UI-01. Tests: UI-C15. Evidencia por SHA para marcar, no basta el desarrollo textual.
+- [ ] **UI-09: Profiles/fallback.** Tabs sesión/default/repo, frozen session, chain <=8, coste y cooldown. Dependencias: UI-02,UI-08. Tests: UI-C19/23. Evidencia por SHA para marcar, no basta el desarrollo textual.
+- [ ] **UI-10: Paleta/keymaps/guide.** Comandos registrados, búsqueda, atajos reasignables, /reload, recorrido. Dependencias: UI-01. Tests: UI-C17/21. Evidencia por SHA para marcar, no basta el desarrollo textual.
+- [ ] **UI-11: Responsive y presets.** >=140 rail; <140 work row + Panel sheet; Light/Neutral/Power; extremes. Dependencias: UI-01. Tests: UI-C01/02/22/24. Evidencia por SHA para marcar, no basta el desarrollo textual.
+- [ ] **UI-12: Installer/Update runtime.** TUI install/Manage, component pins, rollback, Windows manifiesto antiguo, gs launcher. Dependencias: FREF. Tests: UI-C23/24. Evidencia por SHA para marcar, no basta el desarrollo textual.
+- [ ] **UI-13: Padre-hijo y recuperación.** Task/background, preguntas correlacionadas, sin replay/consentimiento, historie. Dependencias: UI-02,UI-03. Tests: UI-C06/10/14. Evidencia por SHA para marcar, no basta el desarrollo textual.
+- [ ] **UI-14: Aceptación interfaz y seguridad.** Capturas 80/120/139/140/160, inputs reales mouse/teclado, Pi nativo, 3OS, R4. Dependencias: UI-01..UI-13. Tests: UI-C01..24. Evidencia por SHA para marcar, no basta el desarrollo textual.
+
+**Megatandas:** M1 contratos de render/estado/TODO/panel; M2 agentes/Jobs/parent-child; M3 Git/Review/Writer; M4 perfil/fallback/instalador; M5 tests C01–C20 + UI-C01–UI-C24 y auditoría independiente. Conservar los gates existentes para evitar rebajar seguridad. R4 automática no sustituye independiente.
+
+**Bloqueador anterior a esta actualización:** CI y aceptación exact-SHA de §984d867§ FAIL (fixture de journal y ECO-06 Windows); Release Gate, F5 y otros controles PASS. Actualizar el ODD NO corrige ese runtime. Registrar diferencias y priorizar correcciones con Git aislado al reanudar implementación. FULL=false.
 
 ## Estrategia de tandas grandes y CI
 
