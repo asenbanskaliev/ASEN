@@ -61,3 +61,11 @@ Agregador **separado** que verifique CI + Release Gate exactos, S01–S20, 28 EF
 2. Si falla, localizar el test/contrato exacto; corregir sin rebajar gates.
 3. Continuar R4-04 con capturas auténticas A/B/ASEN, y en paralelo cerrar UI por tareas.
 4. Mantener R4-05 opcional por riesgo; solicitar intervención humana legítima para R4-06 donde corresponda.
+
+### R4-04 — evidencia Pi TUI nativa reutilizada en tres OS (2026-11-05)
+
+Se amplía el probe host real de `t12-real-pi-tui-dialog` a anchuras 120/80/60/40/139/140/160 (Pi 1.2.0, sin inferencia ni proveedor). El job `r4-integrated-evidence` descarga **exclusivamente** los artefactos nativos de los tres sistemas de **la misma corrida** y candidato, verifica SHA, versión de host, identidad de plataforma, lista de anchuras, eventos reales de sesión/error/reinicio/cierre, render y ausencia de wrapping. Emite un informe acotado separado (`r4-native-ui-report.json`) y pruebas negativas de SHA cruzado, simulación, anchuras ausentes, estados falsos y enlaces inseguros. No duplica el arranque de Pi ni usa otro modelo.
+
+**Alcance certificado por el recibo R4-04:** observación técnica de 21 celdas host/anchura, si el CI exact-SHA concluye PASS. La observación de filas `/asen-status`, `/asen-agents` y `/asen-changes` **no demuestra** rail paritario, overlay, mouse, permisos ni UI-C01–UI-C24 completos. Las 24 UI-C siguen bloqueadas para comparación externa real y las 14 tareas UI conservan `[ ]`. El contrato A/B C01–C20 conserva 60 slots, cero casos observados con ambas fuentes y `globalFull:false`. Los CLIs `--help` de las fuentes no equivalen a su host funcional ni a A/B auténtico; R4-04 requiere posterior provisión de hosts/modelos/consentimiento y capturas reales antes de ascender un caso.
+
+**No emitir `R4-04 FULL`:** el gate técnico puede pasar con estado `PARTIAL_NATIVE_HOST_OBSERVED`. Queda abierta la matriz comparada A/B, controles nativos ratón/teclas y Pi 1.5 de referencia, Writer humano y revisión externa. El estado histórico 8/28 EF, 0/14 UI no se altera. CI y Release Gate pendientes de validar el nuevo SHA.

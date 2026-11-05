@@ -284,7 +284,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/t10-real-pi-tui-matrix.mjs
+          node scripts/t10-real-pi-tui-matrix.mjs 120,80,60,40,139,140,160
       - name: Retain exact-candidate real UI receipt
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
@@ -385,6 +385,25 @@ jobs:
         with:
           name: r4-integrated-technical-${{ github.event.pull_request.head.sha }}
           path: r4-integrated-evidence/r4-integrated-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: R4-04 download same-run native Pi TUI host receipts (three OS)
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          pattern: t10-real-pi-tui-*-${{ github.event.pull_request.head.sha }}
+          path: r4-native-ui-input
+          merge-multiple: true
+      - name: R4-04 adversarial evidence-admission tests (no model)
+        run: node --test tests/r4-native-ui-evidence.test.mjs
+      - name: R4-04 attest native Pi host geometry; keep A/B and UI FULL blocked
+        run: node scripts/r4-native-ui-evidence.mjs
+      - name: Preserve R4-04 actual-host bounded observations (not source parity)
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: r4-native-ui-observed-${{ github.event.pull_request.head.sha }}
+          path: r4-native-ui-evidence/r4-native-ui-report.json
           if-no-files-found: warn
           retention-days: 30
 
