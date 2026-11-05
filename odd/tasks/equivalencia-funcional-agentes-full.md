@@ -1483,3 +1483,10 @@ La nueva aserción de workflow tenía una comilla final mal colocada. La inspecc
 - Defensa añadida al harness: rehusar cualquier run attempt que no sea 1 y cualquier ruta de test que no sea `idle` o `busy`; la prueba provider-free verifica las condiciones exactas del lane. No cambia los controles del producto ni concede autorización.
 - **[ ] EF601-REAL-COORDINATOR-CONSUMPTION-01** permanece pendiente hasta que el lane autenticado del SHA exacto produzca recibo PASS, comprobado junto a status del job, artifact y grade. Al fallar/no haber cuota, no se repetirá sin causa y no se contará como observación real.
 - Estado global permanece 8/28; EF-601 PARTIAL; C01–C20 A/B, Writer humano, revisión externa independiente y FULL siguen abiertos. Próximo: preflight exact-SHA; si PASS, ejecutar solo el commit opt-in exacto `ci: one-time Pi parent-child Beam proof`, auditar artifact y CI/RG, luego seguir EF-604 con TUI crash real ya corregido.
+
+
+## F5 exact-SHA actionlint — corrección SC2155 — 2026-11-05
+
+- F5 [41941906230](https://github.com/asenbanskaliev/ASEN/actions/runs/41941906230) sobre SHA `41f4b8d79323d8a738934f24773d40e8b3fe4097` falló en `actionlint`: ShellCheck `SC2155` en la lane EF-604 TUI porque `export ASEN_SELECTED_MODEL="$(cat ...)"` podía ocultar el status del comando de sustitución.
+- Corrección: asignar el valor primero y exportarlo en línea separada. No cambia el comportamiento del modelo/proveedor ni afloja lint. El resultado exact-SHA del parche todavía está pendiente; F5 no se marca PASS con el SHA fallido.
+- La acceptance `41941897703` continúa ejecutando su preflight provider-free; el job Beam parent+child solo puede empezar después de este gate, no atribuirlo antes del registro del job. Mantener no-FULL.

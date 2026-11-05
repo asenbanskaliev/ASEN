@@ -223,3 +223,12 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - El lane anterior EF-604 TUI de SHA `2a07846117f57bc0d1b2e3a94b6317753375342f` falló antes de observar stream: job [126958937944](https://github.com/asenbanskaliev/ASEN/actions/runs/41940058136/job/126958937944), artifact [13374789516](https://github.com/asenbanskaliev/ASEN/actions/runs/41940058136/artifacts/13374789516). Corrige explícitamente la carga del proveedor en SHA actual, pero la lane real no ha sido repetida; no se atribuye salida Beam ni HTTP observada.
 - Próxima tanda: hardening de un solo intento y ruta explícita del harness EF-601 parent+child real; ejecutar su único lane opt-in `ci: one-time Pi parent-child Beam proof`. Este recibe tanto Pi TUI padre como Explorer Pi RPC hijo con Beam, y necesita que provider-free preflight pase antes de reservar el proveedor.
 - EF601-REAL-COORDINATOR-CONSUMPTION-01 pendiente. 8/28; EF-601/603/604 PARTIAL; A/B C01–C20 sin capturas reales, Writer consentimiento humano y Reviewer independiente externos pendientes, FULL=false.
+
+
+## Checkpoint — 2026-11-05 — F5 ShellCheck corregido
+
+- HEAD publicado: `41f4b8d79323d8a738934f24773d40e8b3fe4097`. La rama/PR #45 confirmados en ese SHA.
+- F5 `41941906230` falló en `actionlint` con `SC2155` en la declaración/export de modelo de la TUI live EF-604. Cambio preparado: separar asignación y `export` en el step del workflow. No se cambia el modelo Beam, el scope de key ni la lógica de autoridad.
+- El run provider-free de acceptance `41941897703` aún estaba en el test de reinicio Pi no-modelo al preparar el parche. Su lane autenticado parent-child permanece detrás de `offline-static-validation`; comprobar el estado antes de seguir. No repetir el proveedor del lane EF-604 de SHA `2a078...` a ciegas.
+- Próximo: publicar esta corrección consolidada, revisar F5 exact-SHA, CI/RG y acceptance; el primer fallo permanece asociado a su SHA, no se hereda PASS.
+- EF601-REAL-COORDINATOR-CONSUMPTION-01 pendiente; total 8/28; EF-601/603/604 PARTIAL; C01–C20, Writer humano, Reviewer independiente, FULL=false.

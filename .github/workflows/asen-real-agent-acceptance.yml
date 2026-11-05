@@ -441,7 +441,8 @@ jobs:
           export USERPROFILE="$HOME"
           export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
           export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
-          export ASEN_SELECTED_MODEL="$(cat "$RUNNER_TEMP/asen-live-tui-selected-model")"
+          ASEN_SELECTED_MODEL="$(cat "$RUNNER_TEMP/asen-live-tui-selected-model")"
+          export ASEN_SELECTED_MODEL
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           mkdir -p asen-acceptance-evidence
           timeout 220s node --import tsx scripts/t12-real-tui-stream-crash.mjs
