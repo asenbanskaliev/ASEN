@@ -7,6 +7,7 @@ const planner=readFileSync(new URL("../scripts/t12-real-model-plan.mjs",import.m
 const reviewVerifier=readFileSync(new URL("../scripts/t12-real-review-verifier.mjs",import.meta.url),"utf8");
 const verifierBrief=readFileSync(new URL("../scripts/t12-verifier-brief.mjs",import.meta.url),"utf8");
 const parentChild=readFileSync(new URL("../scripts/t12-real-child-parent-consumption.mjs",import.meta.url),"utf8");
+const repairedReview=readFileSync(new URL("../scripts/t12-real-repair-revalidation.mjs",import.meta.url),"utf8");
 const adversarialReview=readFileSync(new URL("../skills/asen-adversarial-review/SKILL.md",import.meta.url),"utf8");
 const verificationSkill=readFileSync(new URL("../skills/asen-verify/SKILL.md",import.meta.url),"utf8");
 
@@ -297,4 +298,24 @@ test("Ollama Cloud credentials are restricted to authenticated steps in real-age
    assert.ok(step.includes("ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}"),jobName+" exposes key at the wrong scope for "+stepName);
   }
  }
+});
+
+
+test("EF-403 live repaired Reviewer and Verifier lane cannot authorize or write",()=>{
+ const start=workflow.indexOf("  real-repaired-review:");
+ assert.ok(start>=0,"Missing exact-SHA repaired-review lane");
+ const next=/\n  [a-z0-9-]+:\n/g;next.lastIndex=start+5;
+ const end=next.exec(workflow)?.index??workflow.length;
+ const job=workflow.slice(start,end);
+ assert.match(job,/github\.run_attempt == 1/u);
+ assert.ok(job.includes("github.event.head_commit.message == 'ci: one-time Pi repaired-review Beam proof'"));
+ assert.match(job,/environment: ollama-cloud-beam/u);
+ assert.match(job,/timeout 320s node --import tsx scripts\/t12-real-repair-revalidation\.mjs/u);
+ assert.match(repairedReview,/noTools:true/u);
+ assert.match(repairedReview,/callsReserved:2/u);
+ assert.match(repairedReview,/writerAuthorized:false/u);
+ assert.match(repairedReview,/humanConsent:false/u);
+ assert.match(repairedReview,/authorization:"NOT_GRANTED"/u);
+ assert.match(repairedReview,/independentReview:false/u);
+ assert.doesNotMatch(job,/(?:WRITE_GRANT|writerAuthorized: true|continue-on-error: true)/u);
 });
