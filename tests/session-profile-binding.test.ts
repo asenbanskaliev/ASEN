@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {mkdtemp,mkdir,realpath,rm,writeFile} from "node:fs/promises";
-import {tmpdir} from "node:os";
+import {mkdtemp,mkdir,realpath,writeFile} from "node:fs/promises";
+import * as bindings from "../src/runtime/session-profile-binding.js";
 import path from "node:path";
 import {canonicalProfilePartition,captureSessionProfile,clearSessionProfiles,selectSessionProfile,resetSessionProfile} from "../src/runtime/session-profile-binding.js";
 import {ASEN_PROFILES_SCHEMA,resolveRuntimeRoute,type RuntimeProfilesFile} from "../src/runtime/profiles.js";
@@ -15,6 +15,40 @@ function deferred<T>(){
 
 const modelOf=(value:Awaited<ReturnType<typeof captureSessionProfile>>)=>value.file.profiles[0]?.routes.explorer?.model;
 const retained=(partition:string,owner:ReturnType<typeof identity>)=>captureSessionProfile(partition,owner,async()=>{throw new Error("must remain frozen");});
+
+test("readonly snapshot lookup preserves absence, identity and detached inherited/explicit values",async t=>{
+ const read=bindings.readSessionProfile;
+ assert.equal(typeof read,"function","existing bindings need a non-mutating reader");
+ const part="test:readonly",owner=identity();t.after(()=>clearSessionProfiles(part,owner.sessionId));
+ assert.equal(await read(part,owner),undefined);
+ await assert.rejects(read(part,identity("")),/exact session/u);
+ await assert.rejects(read("",owner),/partition/u);
+ let loads=0;
+ await captureSessionProfile(part,owner,async()=>{loads++;return profile("original");});
+ assert.equal(loads,1,"lookup must not have created a binding");
+ assert.equal(await read(part,identity("other")),undefined);
+ assert.equal(await read(part,identity("a","other")),undefined);
+ assert.equal(await read("test:readonly-other",owner),undefined);
+ const first=await read(part,owner);assert.ok(first);assert.equal(modelOf(first),"original");
+ first.file.profiles[0]!.routes.explorer!.model="changed-output";
+ assert.equal(modelOf((await read(part,owner))!),"original");
+ await selectSessionProfile(part,owner,"default",async()=>profile("selected"));
+ assert.equal((await read(part,owner))!.source,"explicit-session");
+ assert.equal(modelOf((await read(part,owner))!),"selected");
+ await resetSessionProfile(part,owner,async()=>profile("later"));
+ assert.equal(modelOf((await read(part,owner))!),"original");
+ clearSessionProfiles(part,owner.sessionId);assert.equal(await read(part,owner),undefined);
+});
+
+test("readonly pending lookup rejects cleared ownership without recapturing",async()=>{
+ const read=bindings.readSessionProfile;
+ assert.equal(typeof read,"function");
+ const part="test:readonly-pending",owner=identity(),release=deferred<RuntimeProfilesFile>();
+ const capture=captureSessionProfile(part,owner,()=>release.promise),lookup=read(part,owner);
+ const rejected=Promise.all([assert.rejects(capture,/capture ended/u),assert.rejects(lookup,/capture ended/u)]);
+ clearSessionProfiles(part,owner.sessionId);release.resolve(profile("stale"));await rejected;
+ assert.equal(await read(part,owner),undefined);
+});
 
 test("explicit selection is copied wholesale and reset reveals the original inherited snapshot",async t=>{
  const part="test:explicit",owner=identity();t.after(()=>clearSessionProfiles(part,owner.sessionId));
@@ -121,8 +155,9 @@ test("empty profile snapshot stays empty and module reload keeps an existing bin
  }finally{clearSessionProfiles(partition,owner.sessionId);}
 });
 
-test("configuration partition is stable before and after missing parents are created",async t=>{
- const home=await mkdtemp(path.join(tmpdir(),"asen-profile-partition-"));t.after(()=>rm(home,{recursive:true,force:true}));
+test("configuration partition is stable before and after missing parents are created",async()=>{
+ await mkdir(path.resolve(".cache"),{recursive:true});
+ const home=await mkdtemp(path.resolve(".cache/asen-profile-partition-"));
  const file=path.join(home,"missing","profiles.json"),before=await canonicalProfilePartition(file);
  assert.equal(before,path.join(await realpath(home),"missing","profiles.json"));
  await mkdir(path.dirname(file));await writeFile(file,"{}");assert.equal(await canonicalProfilePartition(file),before);

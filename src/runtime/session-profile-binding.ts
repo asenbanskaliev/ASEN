@@ -68,6 +68,16 @@ function getOrCreateBinding(partition:string,identity:ProfileSessionIdentity,loa
 function assertOwned(state:ReturnType<typeof getOrCreateBinding>):void{
  if(registry.get(state.partition)!==state.scope||state.scope.get(state.id)!==state.binding)throw new Error("Session profile capture ended before completion");
 }
+/** Read an existing binding only; absence never captures configuration or creates state. */
+export async function readSessionProfile(partition:string,identity:ProfileSessionIdentity):Promise<SessionProfileSnapshot|undefined>{
+ if(!partition)throw new Error("Session profile requires a configuration partition");
+ const id=key(identity),scope=registry.get(partition),binding=scope?.get(id);
+ if(!scope||!binding)return undefined;
+ const inherited=await binding.pending;
+ assertOwned({partition,scope,id,binding});
+ return structuredClone(binding.explicit??inherited);
+}
+
 /** Routing data only. Each consumer gets a copy; no permissions or approvals live here. */
 export async function captureSessionProfile(partition:string,identity:ProfileSessionIdentity,load:()=>Promise<RuntimeProfilesFile>):Promise<SessionProfileSnapshot>{
  const state=getOrCreateBinding(partition,identity,load),inherited=await state.binding.pending;
