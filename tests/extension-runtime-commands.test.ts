@@ -5,6 +5,7 @@ import {AgentSession,DefaultResourceLoader,SessionManager,SettingsManager} from 
 import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
 function host(){const commands=new Map<string,{handler:(...args:any[])=>unknown}>();return {commands,pi:{registerCommand:(name:string,c:any)=>commands.set(name,c),on:()=>{}}};}
 test("status, doctor and command inventory are wired fail-closed",async()=>{
+ await mkdir(path.resolve(".cache"),{recursive:true});
  const root=await mkdtemp(path.resolve(".cache/command-inventory-consumer-")),h=host();
  const pi={...h.pi,getCommands:()=>[...h.commands.keys()].map(name=>({name,source:"extension"}))};
  createAsenExtension({homeDir:()=>root,status:()=>({agents:[],changes:[],skills:{enabled:true,count:2},historyEnabled:false,telemetryEnabled:false}),doctor:()=>({piVersionOk:true,homeWritable:true,registryAvailable:true,profileValid:true,historyPrivate:true,telemetryConsentValid:true})})(pi);

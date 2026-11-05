@@ -8,6 +8,7 @@ import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
 
 // All state, including incidental lifecycle usage, stays in this excluded project root.
 async function fixture(t:TestContext,inventory:"reported"|"empty"|"missing"|"throwing"="reported",listGate?:()=>Promise<void>,production=false){
+ await mkdir(path.resolve(".cache"),{recursive:true});
  const root=await mkdtemp(path.resolve(".cache/panel-observation-"));
  const home=path.join(root,"home"),project=path.join(root,"project");
  await Promise.all([mkdir(home),mkdir(project)]);
@@ -112,7 +113,7 @@ test("project parse and read errors stay unavailable instead of silently default
 });
 
 test("existing explicit-session and project precedence remains frozen and observational",async t=>{
- const f=await fixture(t);await Promise.all([mkdir(path.join(f.home,".asen")),mkdir(path.join(f.project,".asen"))]);
+ const f=await fixture(t);await Promise.all([mkdir(path.join(f.home,".asen"),{mode:0o700}),mkdir(path.join(f.project,".asen"))]);
  const globalFile=path.join(f.home,".asen","profiles.json"),projectFile=path.join(f.project,".asen","profiles.json");
  await writeFile(globalFile,JSON.stringify(profile("global",{worker:{model:"global-model",thinking:"low"}})));
  await writeFile(projectFile,JSON.stringify(profile("project",{worker:{model:"project-model",thinking:"medium"},explorer:{model:"project-model"}})));

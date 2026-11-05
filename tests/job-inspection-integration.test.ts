@@ -7,6 +7,7 @@ import {BackgroundJobRegistry} from "../src/runtime/background-jobs.js";
 
 // Mocked public Pi host; all incidental startup files remain project-owned.
 async function fixture(t:TestContext){
+ await mkdir(path.resolve(".cache"),{recursive:true});
  const root=await mkdtemp(path.resolve(".cache/job-inspection-")),home=path.join(root,"home"),project=path.join(root,"project");
  await Promise.all([mkdir(home),mkdir(project)]);
  const env={HOME:home,USERPROFILE:home,XDG_CONFIG_HOME:path.join(root,"config"),XDG_CACHE_HOME:path.join(root,"cache"),XDG_DATA_HOME:path.join(root,"data"),TMP:path.join(root,"tmp"),TEMP:path.join(root,"tmp"),TMPDIR:path.join(root,"tmp"),ASEN_NO_SKILL_REGISTRY:"1"};

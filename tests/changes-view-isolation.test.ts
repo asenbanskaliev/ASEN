@@ -10,6 +10,7 @@ import {captureWorkspaceRootIdentity,assertWorkspaceRootIdentity,parseWorkspaceS
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 
 async function fixture(t:TestContext){
+ await mkdir(path.resolve(".cache"),{recursive:true});
  const root=await mkdtemp(path.resolve(".cache/changes-view-")),home=path.join(root,"home"),project=path.join(root,"project");
  for(const [key,value] of Object.entries({HOME:home,USERPROFILE:home,XDG_CONFIG_HOME:path.join(root,"config"),XDG_CACHE_HOME:path.join(root,"cache"),XDG_DATA_HOME:path.join(root,"data"),TMPDIR:path.join(root,"tmp"),TMP:path.join(root,"tmp"),TEMP:path.join(root,"tmp")})){
   await mkdir(value,{recursive:true});const prior=process.env[key];process.env[key]=value;

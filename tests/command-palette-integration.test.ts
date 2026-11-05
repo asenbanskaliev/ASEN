@@ -5,6 +5,7 @@ import path from "node:path";
 import {createAsenExtension,createPiExtension} from "../extensions/asen.js";
 
 async function fixture(t:TestContext,missing=false){
+ await mkdir(path.resolve(".cache"),{recursive:true});
  const root=await mkdtemp(path.resolve(".cache/command-palette-")),home=path.join(root,"home"),project=path.join(root,"project");
  await mkdir(project);
  const env={HOME:home,USERPROFILE:home,XDG_CONFIG_HOME:path.join(root,"config"),XDG_CACHE_HOME:path.join(root,"cache"),XDG_DATA_HOME:path.join(root,"data"),TMPDIR:path.join(root,"tmp"),TMP:path.join(root,"tmp"),TEMP:path.join(root,"tmp")};
