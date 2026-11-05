@@ -285,7 +285,7 @@ Los 28 EF canónicos conservan sus checks, fases y evidencias originales. Los ap
 ## 6. Tareas UI nuevas y sus dependencias (checks separados de EF)
 
 - [ ] **UI-01: Shell IDE y rail.** Título, rail único tintado en orden, plegado, hover y cache por digest. Dependencias: FREF. Tests: UI-C01/02/22. Evidencia por SHA para marcar, no basta el desarrollo textual.
-- [ ] **UI-02: Overlay Agents y transcript.** Per task Pi RPC, lista/hierarchy/thread, model/effort/tokens/cost, stop/follow/resume. Dependencias: UI-01. Tests: UI-C05/06/07/10. Evidencia por SHA para marcar, no basta el desarrollo textual.
+- [ ] **UI-02: Overlay Agents y transcript.** Per task Pi RPC, lista/hierarchy/thread, model/effort/tokens/cost, stop/follow/resume. Dependencias: UI-01. Tests: UI-C05/06/07/08/10. Evidencia por SHA para marcar, no basta el desarrollo textual.
 - [ ] **UI-03: Todos y ODD.** Cinco estados fuente, proyección ASEN sin false DONE, scroll/prompt cache y listas guardadas. Dependencias: UI-01. Tests: UI-C03/04/20. Evidencia por SHA para marcar, no basta el desarrollo textual.
 - [ ] **UI-04: Changes Git.** Git multi-root, diff HEAD/untracked, 2 paneles, editor seguro, recuentos. Dependencias: UI-01. Tests: UI-C09. Evidencia por SHA para marcar, no basta el desarrollo textual.
 - [ ] **UI-05: Jobs y monitors.** Bash background/monitor, sidebar, logs, wake, stop y no sleep. Dependencias: UI-01. Tests: UI-C11/14. Evidencia por SHA para marcar, no basta el desarrollo textual.

@@ -351,6 +351,43 @@ jobs:
             contract-evidence
           if-no-files-found: error
           retention-days: 14
+  r4-integrated:
+    name: r4-integrated-evidence
+    if: >-
+      always() &&
+      github.event_name == 'pull_request' &&
+      github.head_ref == 'feat/t12-integrated-acceptance-merge' &&
+      github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'
+    needs: [test-shard-coverage, architecture, t12-integrated-security, pi-support-matrix, t12-real-pi-tui-dialog]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+      ASEN_R4_JOB_RESULTS: >-
+        {"test-shard-coverage":"${{ needs.test-shard-coverage.result }}","architecture":"${{ needs.architecture.result }}","t12-integrated-security":"${{ needs.t12-integrated-security.result }}","pi-support-matrix":"${{ needs.pi-support-matrix.result }}","t12-real-pi-tui-dialog":"${{ needs.t12-real-pi-tui-dialog.result }}"}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: R4-01/02 negative tests for requirements and same-run evidence
+        run: node --test tests/r4-integrated-gate.test.mjs
+      - name: R4-03 aggregate exact-SHA technical acceptance (not independent or FULL)
+        run: node scripts/r4-integrated-gate.mjs
+      - name: Preserve exact-SHA R4 technical report
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: r4-integrated-technical-${{ github.event.pull_request.head.sha }}
+          path: r4-integrated-evidence/r4-integrated-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
   t05-r4-audit:
     if: >-
       github.repository == 'asenbanskaliev/ASEN' &&
