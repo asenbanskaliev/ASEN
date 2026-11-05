@@ -23,7 +23,8 @@ if(provenanceIssues.length){
 const referenceName=memoryManifest.targets[0].repository.split("/").at(-1);
 const forbidden=new RegExp(["gen"+"tle","gen"+"tleman",referenceName].filter(Boolean).join("|"),"i");
 const provenanceAllowlist=new Set([
- "registry/parity/skill-sources-v1.json","registry/parity/agent-ab-baselines-v1.json","registry/parity/ecosystem-sources-v1.json","registry/parity/ecosystem-media-v1.json",memoryManifestPath,"registry/parity/memory-foundation-contracts-v1.json",
+ "registry/parity/skill-sources-v1.json","registry/parity/agent-ab-baselines-v1.json",
+ "registry/parity/shell-asen-baseline-v1.json","registry/parity/ecosystem-sources-v1.json","registry/parity/ecosystem-media-v1.json",memoryManifestPath,"registry/parity/memory-foundation-contracts-v1.json",
  observationWriteManifestPath,retrievalSearchManifestPath,contextTimelineManifestPath,projectIdentityManifestPath,
  sessionTransportManifestPath,sessionStoreManifestPath,passiveCaptureManifestPath,relationManifestPath,
  "docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3/todo-pair-evidence.json",

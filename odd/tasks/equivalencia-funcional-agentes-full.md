@@ -1,5 +1,10 @@
 # ASEN — ODD de equivalencia funcional integral de agentes hasta FULL
 
+> **Decisión de equivalencia R4-04 (2026-11-05; prevalece sobre las entradas históricas A/B de este documento):**
+> La comparación funcional y de interfaz vigente es **Pi + Gentle Shell v4.6.0 vs Pi + ASEN**. La referencia ejecutable Shell está fijada en tag `v4.6.0`, commit `1f74e9e24473e7e121a96b1680444ae0196d3009`, tree `64d14750450d0144d65230eb0b6ecc69d841a8f3`, paquete 4.6.0. **Gentle AI no es una tercera ejecución de agente**: sus reglas metodológicas se estudian solo cuando la experiencia Shell las incorpora.
+> Los **20 casos C01–C20 requieren 40 observaciones** (SHELL + ASEN, ambas en Pi), recibos reales por host, misma entrada/proyecto/condiciones, consentimiento humano cuando proceda y verificación independiente para FULL. Los anteriores manifiestos, ejecuciones y cifras de **60 plazas A/B/ASEN** quedan **HISTÓRICOS, NO NORMATIVOS** y no son un requisito de aceptación nuevo. No se altera su historial ni se hereda ninguna prueba de Shell 4.5.1. La fuente de verdad ejecutable es `registry/parity/shell-asen-baseline-v1.json`, `registry/parity/shell-asen-case-readiness-v1.json` y `scripts/shell-asen-parity.mjs`.
+> Una prueba `--help`, un test aislado o un par de JSON coincidentes no equivalen a C01–C20 ejecutados. Mantener `globalFull:false`, 8/28 EF y 0/14 UI hasta recibir evidencia real. La seguridad y los permisos del plan original siguen aplicándose sin relajación.
+
 **Estado: IN_PROGRESS — FULL NO ALCANZADO.** Fecha: 2026-11-03. Rama: `feat/t12-integrated-acceptance-merge`, PR #45. Propietario autoriza el plan; NO autoriza merge a main, gasto en modelos ni saltarse permisos.
 
 ## Misión
@@ -185,7 +190,7 @@ Barra inferior: rama Git ± dirty, permiso no-default, provider/model, effort/Fa
 
 Añadir UI-C01–UI-C24 a C01–C20 sin modificar estos últimos. Probar TUI Pi nativo, ancho 80/120/139/140/160, permisos, teclado/ratón, ctx/usage real, multiagente, recuperación, Git diff, review, 3 OS, CI/Release Gate exact-SHA y revisión R4 independiente. Un screenshot o provider-free smoke no acredita consumo real, autorización humana ni FULL.
 
-## Matriz de aceptación común (A/B y ASEN)
+## Matriz de aceptación común (Gentle Shell v4.6.0 y ASEN; dos hosts Pi)
 
 | Caso | Qué deben hacer igual | Evidencia exigida | Estado |
 | --- | --- | --- | --- |

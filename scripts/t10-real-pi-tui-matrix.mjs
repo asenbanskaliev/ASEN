@@ -132,10 +132,19 @@ const rendered = strip(log.slice(start)).split(/\r?\n/).map((line) => line.repla
   const responseRows=[statusView.match(/profile:[^\r\n]{0,160}/u)?.[0],
     changesView.match(/Session-attributed changes:[^\r\n]{0,160}/u)?.[0]]
    .filter(Boolean).map(row=>row.trim());
-  if(nativeRows.length===0&&responseRows.length===0)
-   throw Error("Native Pi output has no observed TUI status or changes marker");
-  observed.rendered=nativeRows.length?nativeRows:responseRows;
-  observed.renderProvenance=nativeRows.length?"PTY_BUFFER_ROWS":"PTY_COMMAND_RESPONSE_MARKERS";
+  // Some PTYs on Linux/macOS rewrite their rows with cursor-control sequences.
+  // After ANSI stripping, the buffer can contain a single 1.7-kB line even
+  // though every physical row fits. Reject that collapsed representation, but
+  // retain only *observed substrings* from the actual command responses.
+  const rawRowsBounded=nativeRows.length>0&&nativeRows.length<=300&&
+   nativeRows.every(row=>row.length>0&&row.length<=1024);
+  if(!rawRowsBounded&&responseRows.length!==2)
+   throw Error("Native Pi output has no two independently captured TUI response markers");
+  observed.rendered=rawRowsBounded?nativeRows:responseRows;
+  observed.renderProvenance=rawRowsBounded?"PTY_BUFFER_ROWS":"PTY_COMMAND_RESPONSE_MARKERS";
+  observed.rawRowDiagnostic={count:nativeRows.length,
+   longestChars:Math.max(0,...nativeRows.map(row=>row.length)),
+   normalizedFromActualResponses:!rawRowsBounded};
   // Keyboard, error and restart: the same host session must survive an Escape and
   // re-render a view, and a rejected argument must produce a bounded usage line.
   const usage=await send("/asen-changes bogus","Uso: /asen-changes");

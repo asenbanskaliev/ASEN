@@ -23,6 +23,9 @@ on:
       - scripts/t12-parent-real-child-probe.ts
       - scripts/agent-ab-*.mjs
       - scripts/agent-observable-*.mjs
+      - scripts/shell-asen-parity.mjs
+      - scripts/shell-reference-probe.mjs
+      - registry/parity/shell-asen-baseline-v1.json
       - registry/parity/agent-ab-baselines-v1.json
       - registry/parity/agent-ab-case-readiness-v1.json
       - tests/**
@@ -220,7 +223,7 @@ jobs:
 
   ab-frozen-source-witness:
     needs: offline-static-validation
-    if: github.repository == 'asenbanskaliev/ASEN'
+    if: false # R4-04 migration: archived A/B/ASEN source triad, not an active two-Pi parity lane
     name: Frozen A/B source objects (source-only, not real C01-C20)
     runs-on: ubuntu-24.04
     timeout-minutes: 12
@@ -260,12 +263,7 @@ jobs:
 
   ab-native-host-smoke:
     needs: [offline-static-validation, ab-frozen-source-witness]
-    if: >-
-      github.repository == 'asenbanskaliev/ASEN' &&
-      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
-      github.run_attempt == 1 &&
-      github.event_name == 'push' &&
-      github.event.head_commit.message == 'ci: one-time A/B native host smoke'
+    if: false # Archived three-way host-only probe, no runtime parity claim
     name: Native A/B pinned CLI help — no C01-C20 claims
     runs-on: ubuntu-24.04
     timeout-minutes: 17
@@ -307,6 +305,46 @@ jobs:
           path: |
             asen-acceptance-evidence/ab-native-host-smoke.json
             asen-acceptance-evidence/r4-first-five-readiness.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  shell-reference-probe:
+    needs: [offline-static-validation]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.event_name == 'push'
+    name: R4-04 frozen Shell 4.6.0 native Pi launcher probe (not C01-C20)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Fail-closed frozen Shell 4.6.0 reference-probe tests
+        run: node --test tests/shell-reference-probe.test.mjs
+      - name: Execute pinned Shell 4.6.0 CLI --help in isolated temporary checkout
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+          ASEN_SHELL_PROBE_OUTPUT: ${{ github.workspace }}/asen-acceptance-evidence/shell-reference-probe.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p asen-acceptance-evidence
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          node scripts/shell-reference-probe.mjs
+      - name: Preserve actual source-only Pi launcher receipt
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-shell-reference-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/shell-reference-probe.json
           if-no-files-found: warn
           retention-days: 30
 

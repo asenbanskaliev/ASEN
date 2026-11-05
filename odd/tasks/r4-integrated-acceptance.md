@@ -1,5 +1,8 @@
 # ASEN — R4 integrada: arquitectura de aceptación por evidencia
 
+> **R4-04 — fuente de verdad actualizada (2026-11-05):** Pi + Shell 4.6.0 **frente a** Pi + ASEN. C01–C20 son 20 escenarios comparados en dos ejecuciones Pi cada uno: **40 recibos de origen**. No se exige una tercera ejecución de marco metodológico; su rol es únicamente metodológico. Referencia: `1f74e9e24473e7e121a96b1680444ae0196d3009` (tree `64d14750450d0144d65230eb0b6ecc69d841a8f3`). Los textos previos que mencionan 60, A/B/ASEN, fuente B o A 4.5.1 se preservan como **registro histórico no normativo**, sin efecto sobre el gate nuevo. El gate vigente valida `scripts/shell-asen-parity.mjs`; ni la coincidencia de respuestas ni `--help` acreditan ejecución real, Writer o FULL.
+> **PENDIENTE:** ejecutar escenarios reales en ambos Pi, almacenar observables de 40 plazas, pruebas visuales UI y revisión independiente; `globalFull:false`.
+
 **Estado:** R4-01/02/03 implementadas, pendientes de CI exact-SHA. **No equivale a FULL.**
 **Rama:** `feat/t12-integrated-acceptance-merge`; **PR:** #45. No merge ni modelos pagados.
 **Fuente de verdad:** `equivalencia-funcional-agentes-full.md` y `anexo ODD de paridad de interfaz v4.6.0`.

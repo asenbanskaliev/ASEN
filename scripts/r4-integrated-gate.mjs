@@ -39,8 +39,10 @@ export function evaluateR4IntegratedGate({expectedSha,headSha,repository,branch,
    runPattern.test(String(runAttempt??"")),evidence:"GitHub Actions run and attempt IDs"},
   {id:"requirements_inventory",passed:inventory.summary.efTotal===28&&
    inventory.summary.uiTotal===14&&inventory.summary.abCases===20&&
-   inventory.summary.uiCases===24&&inventory.summary.specs===20,
-   evidence:"Mandatory 28 EF, 14 UI, 20 A/B, 24 UI-C and 20 specs"},
+   inventory.summary.uiCases===24&&inventory.summary.specs===20&&
+   inventory.summary.sourceSlotsRequired===40&&
+   inventory.comparisonSources?.join(",")==="SHELL,ASEN",
+   evidence:"28 EF, 14 UI, 20 Shell/ASEN cases, 40 two-Pi slots, 24 UI-C and 20 specs"},
   ...REQUIRED_JOBS.map(id=>({id:"same_run_"+id,passed:jobs[id]==="success",
    evidence:"Native needs."+id+".result="+jobs[id]})),
  ];
@@ -53,7 +55,7 @@ export function evaluateR4IntegratedGate({expectedSha,headSha,repository,branch,
   status:passed?"R4_TECHNICAL_PASS":"R4_TECHNICAL_FAIL",
   technicalChecks:checks,requirements:inventory,
   externalEvidence:{
-   referenceAB:"NOT_ATTESTED",realModelPerRole:"NOT_ATTESTED",
+   shellParity:"NOT_ATTESTED",realModelPerRole:"NOT_ATTESTED",
    writerHumanConsent:"NOT_ATTESTED",independentReviewer:"NOT_ATTESTED",
    nativeUiParity:"NOT_ATTESTED",releaseGate:"NOT_EVALUATED",
   },

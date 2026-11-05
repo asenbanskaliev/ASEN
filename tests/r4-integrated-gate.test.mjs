@@ -47,7 +47,7 @@ test("R4-02 can pass only the same-run technical gate without promoting any EF, 
  assert.equal(report.globalFull,false);
  assert.equal(report.independentReviewPerformed,false);
  assert.equal(report.writerAuthorized,false);
- assert.equal(report.externalEvidence.referenceAB,"NOT_ATTESTED");
+ assert.equal(report.externalEvidence.shellParity,"NOT_ATTESTED");
  assert.equal(report.externalEvidence.releaseGate,"NOT_EVALUATED");
  assert.equal(report.provenance.crossWorkflowReleaseGate,"NOT_EVALUATED");
  assert.equal(report.requirements.summary.efCheckedHistorical,inventory().summary.efCheckedHistorical);
@@ -88,4 +88,14 @@ test("R4-02 input provenance refuses local fakes and oversized job payloads",()=
  assert.throws(()=>githubActionInput({...env,GITHUB_ACTIONS:"false"},sha,inventory()),/real GitHub Actions/u);
  assert.throws(()=>githubActionInput({...env,ASEN_R4_JOB_RESULTS:"x".repeat(4097)},sha,inventory()),/oversized/u);
  assert.throws(()=>githubActionInput({...env,GITHUB_REPOSITORY:"someone/else"},sha,inventory()),/repository provenance/u);
+});
+
+test("R4-04 legacy three-way source count never passes as active two-Pi acceptance",()=>{
+ const old=inventory();
+ const report=evaluateR4IntegratedGate(candidate({inventory:{
+  ...old,summary:{...old.summary,sourceSlotsRequired:60},
+  comparisonSources:["A","B","ASEN"]}}));
+ assert.equal(report.status,"R4_TECHNICAL_FAIL");
+ assert.equal(report.technicalChecks.find(x=>x.id==="requirements_inventory")?.passed,false);
+ assert.equal(report.globalFull,false);
 });

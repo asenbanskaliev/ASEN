@@ -7,7 +7,7 @@ import {execFileSync} from "node:child_process";
 import {lstat,realpath,readFile,mkdir,writeFile} from "node:fs/promises";
 import {resolve,join} from "node:path";
 import {fileURLToPath} from "node:url";
-import {buildAgentABCaseReadiness} from "./agent-ab-case-readiness.mjs";
+import {buildShellAsenReadiness} from "./shell-asen-parity.mjs";
 import {buildR4RequirementInventory} from "./r4-requirement-inventory.mjs";
 
 export const R4_UI_WIDTHS=Object.freeze([120,80,60,40,139,140,160]);
@@ -44,9 +44,14 @@ export function checkR4NativeUiReceipt(receipt,{candidateSha,platform}){
    "A native UI row failed the host rendering boundary");
   assert.ok(["PTY_BUFFER_ROWS","PTY_COMMAND_RESPONSE_MARKERS"].includes(result.renderProvenance),
    "Native TUI rows must identify their actual PTY capture source");
+  const renderedCount=Array.isArray(result.rendered)?result.rendered.length:-1;
+  const longestRenderedLine=Array.isArray(result.rendered)?
+   Math.max(0,...result.rendered.map(x=>typeof x==="string"?x.length:0)):-1;
   assert.ok(Array.isArray(result.rendered)&&result.rendered.length>0&&
    result.rendered.length<=300&&result.rendered.every(x=>typeof x==="string"&&x.length<=1024),
-   "Actual terminal-rendered rows must be captured and bounded");
+   "Actual terminal-rendered rows must be captured and bounded ("+
+   platform+", "+result.width+" cols, rows="+renderedCount+
+   ", maxLineChars="+longestRenderedLine+")");
   assert.ok(result.rendered.some(x=>/profile:|Session-attributed changes:|Git /u.test(x)),
    "Native TUI response must retain a real status or Git marker");
   assert.ok(phases.every(x=>result.phases.includes(x)),
@@ -67,10 +72,11 @@ export function assembleR4NativeUiEvidence({candidateSha,runId,runAttempt,receip
  assert.match(String(runId??""),/^[1-9][0-9]*$/u,"Same-run ID missing");
  assert.match(String(runAttempt??""),/^[1-9][0-9]*$/u,"Same-run attempt missing");
  assert.ok(inventory?.schema==="asen-r4-requirement-inventory/v1","Canonical ODD inventory required");
- assert.ok(readiness?.schema==="asen-agent-ab-case-readiness-report/v1"&&
+ assert.ok(readiness?.schema==="asen-shell-asen-readiness/v1"&&
    readiness.candidateSha===candidateSha&&readiness.casesPrepared===20&&
-   readiness.sourceSlotsRequired===60&&readiness.evidenceCaptured===0&&
-   readiness.casesBlocked===20,"A/B reference observations cannot be inferred");
+   readiness.sourceSlotsRequired===40&&readiness.evidenceCaptured===0&&
+   readiness.casesBlocked===20&&readiness.sources.join(",")==="SHELL,ASEN",
+   "Two-Pi parity claims cannot be inferred from legacy three-way evidence");
  assert.deepEqual(Object.keys(receipts??{}).sort(),[...R4_PLATFORMS].sort(),
   "Exactly three same-run native platform receipts are required");
  const observed=R4_PLATFORMS.flatMap(platform=>
@@ -95,8 +101,10 @@ export function assembleR4NativeUiEvidence({candidateSha,runId,runAttempt,receip
    runId:String(runId),runAttempt:String(runAttempt),host:expectedHost,pinnedPiVersion:"1.2.0"},
   status:"PARTIAL_NATIVE_HOST_OBSERVED",nativeTechnicalCells:observed.length,
   hostObservations:context,uiCases,
-  ab:{status:"BLOCKED_REFERENCE_EXECUTION_MISSING",cases:20,sourceSlots:60,
-   executedAuthenticCases:0,sourceCommits:readiness.sourceCommits},
+  comparison:{status:"BLOCKED_TWO_PI_RUNTIME_EXECUTIONS_MISSING",
+   sources:["SHELL","ASEN"],cases:20,sourceSlots:40,
+   referenceVersion:readiness.referenceVersion,referenceSha:readiness.referenceSha,
+   executedAuthenticCases:0},
   uiCasesVerified:0,referenceUiCasesExecuted:0,
   writerHumanConsent:false,independentReviewPerformed:false,globalFull:false,
   disclaimer:"These are real ASEN Pi host observations, not proof of reference UI parity. No C01-C20, UI-C01-C24 or FULL promotion is authorized.",
@@ -133,7 +141,7 @@ async function main(){
  const efMarkdown=await readFile("odd/tasks/equivalencia-funcional-agentes-full.md","utf8");
  const uiMarkdown=await readFile("odd/tasks/"+"gen"+"tle-shell-v4.6.0-paridad-ui-odd.md","utf8");
  const inventory=buildR4RequirementInventory({efMarkdown,uiMarkdown});
- const readiness=buildAgentABCaseReadiness({candidateSha:sha});
+ const readiness=buildShellAsenReadiness({candidateSha:sha});
  const receipts=await loadR4NativeUiReceipts("r4-native-ui-input");
  const report=assembleR4NativeUiEvidence({candidateSha:sha,runId:env.GITHUB_RUN_ID,
   runAttempt:env.GITHUB_RUN_ATTEMPT,receipts,inventory,readiness});
@@ -142,7 +150,7 @@ async function main(){
   JSON.stringify(report,null,2)+"\n",{flag:"wx",mode:0o600});
  console.log(JSON.stringify({status:report.status,sha,runId:report.provenance.runId,
   nativeTechnicalCells:report.nativeTechnicalCells,uiCasesVerified:0,
-  referenceUiCasesExecuted:0,referenceABCasesExecuted:0,globalFull:false}));
+  referenceUiCasesExecuted:0,referenceShellCasesExecuted:0,globalFull:false}));
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  try{await main();}catch(error){console.error("R4_NATIVE_UI_REJECTED: "+

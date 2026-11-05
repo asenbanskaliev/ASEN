@@ -388,6 +388,19 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      - name: R4-04 canonical two-Pi comparison contract and negative tests
+        run: node --test tests/shell-asen-parity.test.mjs
+      - name: R4-04 emit 20-case Shell/ASEN readiness (40 slots; no external claims)
+        run: node scripts/shell-asen-parity.mjs
+      - name: Preserve R4-04 two-Pi acceptance readiness
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: r4-shell-asen-readiness-${{ github.event.pull_request.head.sha }}
+          path: r4-shell-asen-evidence/readiness.json
+          if-no-files-found: error
+          retention-days: 30
+
       - name: R4-04 download same-run native Pi TUI host receipts (three OS)
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
@@ -396,7 +409,7 @@ jobs:
           merge-multiple: true
       - name: R4-04 adversarial evidence-admission tests (no model)
         run: node --test tests/r4-native-ui-evidence.test.mjs
-      - name: R4-04 attest native Pi host geometry; keep A/B and UI FULL blocked
+      - name: R4-04 attest native Pi host geometry; keep Shell/ASEN and UI FULL blocked
         run: node scripts/r4-native-ui-evidence.mjs
       - name: Preserve R4-04 actual-host bounded observations (not source parity)
         if: always()

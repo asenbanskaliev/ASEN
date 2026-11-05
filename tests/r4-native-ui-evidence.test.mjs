@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {mkdtemp,readFile,rm,symlink,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {buildAgentABCaseReadiness} from "../scripts/agent-ab-case-readiness.mjs";
+import {buildShellAsenReadiness} from "../scripts/shell-asen-parity.mjs";
 import {buildR4RequirementInventory} from "../scripts/r4-requirement-inventory.mjs";
 import {R4_PLATFORMS,R4_UI_WIDTHS,checkR4NativeUiReceipt,
  assembleR4NativeUiEvidence,loadR4NativeUiReceipts} from "../scripts/r4-native-ui-evidence.mjs";
@@ -29,7 +29,7 @@ async function fixture(){
 }
 async function accepted(receipts=all(),overrides={}){
  return assembleR4NativeUiEvidence({candidateSha:sha,runId:"1234",runAttempt:"1",
-  receipts,inventory:await fixture(),readiness:buildAgentABCaseReadiness({candidateSha:sha}),...overrides});
+  receipts,inventory:await fixture(),readiness:buildShellAsenReadiness({candidateSha:sha}),...overrides});
 }
 test("R4-04 records three real host platform witnesses without a single UI or A/B FULL claim",async()=>{
  const report=await accepted();
@@ -38,8 +38,8 @@ test("R4-04 records three real host platform witnesses without a single UI or A/
  assert.equal(report.status,"PARTIAL_NATIVE_HOST_OBSERVED");
  assert.equal(report.uiCasesVerified,0);
  assert.equal(report.referenceUiCasesExecuted,0);
- assert.equal(report.ab.executedAuthenticCases,0);
- assert.equal(report.ab.sourceSlots,60);
+ assert.equal(report.comparison.executedAuthenticCases,0);
+ assert.equal(report.comparison.sourceSlots,40);
  assert.equal(report.uiCases.length,24);
  assert.ok(report.uiCases.every(row=>row.status==="BLOCKED_REFERENCE_UI_PARITY"));
  assert.equal(report.independentReviewPerformed,false);
@@ -115,4 +115,17 @@ test("R4-04 rejects an aliased receipt path",{
  const target=join(root,"t10-real-pi-tui-matrix-linux.json"),actual=join(root,"alias.json");
  await writeFile(actual,await readFile(target));await rm(target);await symlink(actual,target);
  await assert.rejects(()=>loadR4NativeUiReceipts(root),/aliased or oversized/u);
+});
+
+test("R4-04 Linux/macOS cursor-collapsed PTY rows retain only actual bounded command markers",()=>{
+ for(const platform of ["linux","darwin"]){
+  const base=receipt(platform);
+  base.results=base.results.map(row=>({...row,
+   renderProvenance:"PTY_COMMAND_RESPONSE_MARKERS",
+   rendered:["profile: default","Session-attributed changes:"],
+   rawRowDiagnostic:{count:1,longestChars:1788,normalizedFromActualResponses:true}}));
+  const accepted=checkR4NativeUiReceipt(base,{candidateSha:sha,platform});
+  assert.equal(accepted.length,7);
+  assert.equal(accepted[6].renderedLineCount,2);
+ }
 });

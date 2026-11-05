@@ -71,7 +71,7 @@ export function buildR4RequirementInventory({efMarkdown,uiMarkdown}){
  checkIds(specs,SPEC_IDS,"S01-S20 specs");
  const ab=between(efMarkdown,"## Matriz de aceptación común","## Plan ejecutable");
  const abCases=[...ab.matchAll(/^\| (C\d{2}) \|[^\r\n]*\| (PENDING|PASS|FAIL|BLOCKED) \|\s*$/gmu)].map(x=>({id:x[1],status:x[2]}));
- checkIds(abCases.map(x=>x.id),AB_IDS,"A/B cases");
+ checkIds(abCases.map(x=>x.id),AB_IDS,"Shell/ASEN comparison cases");
  const uiCasesText=between(uiMarkdown,"## 7. Casos de paridad visual","## 8. Secuencia");
  const uiCases=[...uiCasesText.matchAll(/^\| (UI-C\d{2}) \|/gmu)].map(x=>x[1]);
  checkIds(uiCases,UI_CASE_IDS,"UI-C01..24");
@@ -84,8 +84,9 @@ export function buildR4RequirementInventory({efMarkdown,uiMarkdown}){
  const summary={efTotal:efRows.length,efCheckedHistorical:efRows.filter(x=>x.status==="CHECKED_HISTORICAL").length,
   efPartial:efRows.filter(x=>x.status==="PARTIAL").length,efBlocked:efRows.filter(x=>x.status==="BLOCKED").length,
   uiTotal:uiRows.length,uiCheckedHistorical:uiRows.filter(x=>x.status==="CHECKED_HISTORICAL").length,
-  abCases:abCases.length,uiCases:uiCases.length,specs:specs.length};
+  abCases:abCases.length,comparisonSources:2,sourceSlotsRequired:40,
+  uiCases:uiCases.length,specs:specs.length};
  return Object.freeze({schema:"asen-r4-requirement-inventory/v1",summary,
-  ef:efRows,ui:uiRows,specs,abCases,uiCases:coverage,
+  ef:efRows,ui:uiRows,specs,abCases,comparisonSources:["SHELL","ASEN"],uiCases:coverage,
   disclaimer:"Historical checkmarks and test ownership are structural inventory, not real-provider, UI or independent-review attestations."});
 }
