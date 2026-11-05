@@ -64,6 +64,17 @@ async function serveSignedPackage(packageRoot,manifestPath,signaturePath){
  await new Promise((resolve,reject)=>{server.once("error",reject);server.listen(0,"127.0.0.1",resolve);});
  return {url:`https://127.0.0.1:${server.address().port}/`,requests,serverErrors,close:()=>new Promise(resolve=>{server.closeAllConnections();server.close(()=>resolve());})};
 }
+const timingStart=process.hrtime.bigint();
+let phaseStart=timingStart,currentPhase="signed-install";
+const phaseTimings=[];
+function recordPhase(name,next){
+ const now=process.hrtime.bigint();
+ const elapsedMs=Math.round(Number(now-phaseStart)/1e6);
+ phaseTimings.push({phase:name,elapsedMs});
+ console.log("T09_PHASE_TIMING "+JSON.stringify({phase:name,elapsedMs}));
+ phaseStart=now;
+ currentPhase=next;
+}
 let success=false;
 try{
  const privateKey=path.join(root,"test-signing-private.pem"),trustAnchor=path.join(root,"test-trust-anchor.pem");
@@ -88,6 +99,7 @@ try{
  await mkdir(dataHome,{recursive:true});
  const personalData=path.join(dataHome,"t09-smoke-data.json");
  await writeFile(personalData,JSON.stringify({id:"t09-real-package",value:"preserve across HTTPS upgrade and rollback"})+"\n");
+ recordPhase("signed-install","https-upgrade-rollback");
 
  // Exercise the public acquisition/update path with the real npm-packed product tree.
  // The candidate release is an isolated versioned copy; only package and compiled CLI versions change.
@@ -120,6 +132,7 @@ try{
   assert.equal((await report(["doctor"])).managed.inspection.activeVersion,packageJson.version);
   assert.equal(JSON.parse(await readFile(personalData,"utf8")).value,"preserve across HTTPS upgrade and rollback");
  }finally{await releaseServer.close();}
+ recordPhase("https-upgrade-rollback","sqlite-backup-restore");
 
  const sqlitePath=path.join(dataHome,"memory.db"),{DatabaseSync}=await import("node:sqlite"),liveSqlite=new DatabaseSync(sqlitePath);
  liveSqlite.exec("PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0; CREATE TABLE entries(value TEXT NOT NULL); INSERT INTO entries VALUES('committed-before-packed-backup');");
@@ -144,6 +157,7 @@ try{
   assert.equal(restoredSqlite.prepare("PRAGMA integrity_check").get().integrity_check,"ok");
   assert.deepEqual(restoredSqlite.prepare("SELECT value FROM entries ORDER BY rowid").all().map(row=>row.value),["committed-before-packed-backup"]);
  }finally{restoredSqlite.close();}
+ recordPhase("sqlite-backup-restore","crash-recovery");
 
  const interruptedHome=path.join(root,"interrupted-restore-home"),interruptedConfig=path.join(root,"interrupted-restore-config.json");
  const restoreModule=pathToFileURL(path.join(realPackageRoot,"dist","runtime","home-backup.js")).href;
@@ -171,6 +185,7 @@ try{
  assert.equal(await readFile(path.join(interruptedHome,"t09-smoke-data.json"),"utf8"),await readFile(personalData,"utf8"));
  await assert.rejects(access(restoreOwner.stagedConfig.path),{code:"ENOENT"},"packed recovery removes its abandoned staged config");
  await assert.rejects(access(`${interruptedHome}.restore-owner.json`),{code:"ENOENT"},"packed recovery clears its marker after retry");
+ recordPhase("crash-recovery","managed-uninstall");
 
  const removed=report(["managed","uninstall","--yes"]);
  assert.equal(removed.status,"removed");
@@ -178,11 +193,26 @@ try{
  await access(personalData);
  await access(path.join(home,".asen","config.json"));
  await assert.rejects(access(path.join(home,".asen","install")),{code:"ENOENT"});
+ recordPhase("managed-uninstall","complete");
  success=true;
  console.log(JSON.stringify({schema:"asen.t09-real-package-smoke/v1",status:"passed",packageVersion:packageJson.version,updatedVersion:nextVersion,trust:"ephemeral-explicit-ed25519-anchor-and-verified-loopback-tls",operations:["npm-packed-package","signed-install","metadata-doctor","installed-cli-version","real-package-https-upgrade","updated-cli-version","user-data-preserved-across-update","rollback-to-original","user-data-preserved-across-rollback","backup","active-sqlite-wal-backup","backup-verify","corrupt-restore-no-effects","clean-target-restore-recovery","sqlite-integrity-and-snapshot-time-data-restore","sigkill-during-staged-config-creation","staged-config-recovery-and-retry","managed-uninstall","user-data-preserved"]}));
 }catch(error){
  console.error(`T09 real package smoke failed; disposable state retained at ${root}: ${error instanceof Error?error.stack:String(error)}`);
  throw error;
 }finally{
+ const totalElapsedMs=Math.round(Number(process.hrtime.bigint()-timingStart)/1e6);
+ const timingReceipt={
+  schema:"asen.t09-phase-timings/v1",
+  candidateSha:process.env.ASEN_EXPECTED_SHA??null,
+  platform:process.platform,
+  status:success?"PASS":"FAIL",
+  incompletePhase:success?null:currentPhase,
+  totalElapsedMs,
+  phases:phaseTimings,
+ };
+ console.log("T09_PHASE_SUMMARY "+JSON.stringify(timingReceipt));
+ if(process.env.ASEN_T09_TIMING_PATH){
+  await writeFile(process.env.ASEN_T09_TIMING_PATH,JSON.stringify(timingReceipt,null,2)+"\n");
+ }
  if(success)await rm(root,{recursive:true,force:true});
 }
