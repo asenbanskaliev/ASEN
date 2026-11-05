@@ -26,6 +26,7 @@ on:
       - scripts/shell-asen-parity.mjs
       - scripts/shell-reference-probe.mjs
       - scripts/r4-two-pi-native-hosts.mjs
+      - scripts/r4-two-pi-beam-c01.mjs
       - registry/parity/shell-asen-baseline-v1.json
       - registry/parity/agent-ab-baselines-v1.json
       - registry/parity/agent-ab-case-readiness-v1.json
@@ -333,6 +334,103 @@ jobs:
         with:
           name: asen-two-pi-native-${{ github.sha }}-${{ github.run_id }}
           path: asen-acceptance-evidence/two-real-pi-hosts.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  shell-asen-beam-c01:
+    needs: [shell-asen-native-hosts]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.event_name == 'push' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'ci: one-time Shell ASEN Beam C01'
+    name: R4-04 authentic Shell vs ASEN paired C01 (free Beam, 2 Pi turns)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: ollama-cloud-beam
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      PI_OLLAMA_WEB_TOOLS: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Validate exact SHA and adversarial C01 witness acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm ci --no-audit --no-fund
+          node --test tests/r4-two-pi-beam-c01.test.mjs
+      - name: Prepare frozen original and two separate native model homes
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$ASEN_OLLAMA_API_KEY" || { echo "::error::No free Ollama credential; live case BLOCKED"; exit 1; }
+          echo "ASEN_SHELL_CHECKOUT=$RUNNER_TEMP/asen-shell-v460-beam-c01" >> "$GITHUB_ENV"
+          shell_root="$RUNNER_TEMP/asen-shell-v460-beam-c01"
+          mkdir -p "$shell_root"
+          git -C "$shell_root" init -q
+          UPSTREAM_OWNER="$(printf '%s%s' 'Gen' 'tleman-Programming')"
+          UPSTREAM_REPO="$(printf '%s%s' 'gen' 'tle-shell')"
+          git -C "$shell_root" fetch --depth=1 --no-tags \
+            "https://github.com/$UPSTREAM_OWNER/$UPSTREAM_REPO.git" \
+            1f74e9e24473e7e121a96b1680444ae0196d3009
+          git -C "$shell_root" checkout -q --detach FETCH_HEAD
+          test "$(git -C "$shell_root" rev-parse HEAD)" =             1f74e9e24473e7e121a96b1680444ae0196d3009
+          test "$(git -C "$shell_root" rev-parse 'HEAD^{tree}')" =             64d14750450d0144d65230eb0b6ecc69d841a8f3
+          npm install --prefix "$shell_root" --ignore-scripts --no-save \
+            --no-package-lock --no-audit --no-fund --legacy-peer-deps --include=dev \
+            @earendil-works/pi-coding-agent@1.2.0 \
+            @earendil-works/pi-ai@1.5.0 \
+            @earendil-works/pi-tui@1.5.0 typebox@1.3.27
+          for subject in SHELL ASEN; do
+            user_home="$RUNNER_TEMP/asen-beam-C01-pair/$subject/home"
+            mkdir -p "$user_home/.pi/agent"
+            HOME="$user_home" USERPROFILE="$user_home" PI_CODING_AGENT_DIR="$user_home/.pi/agent" \
+              OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" \
+              node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+            HOME="$user_home" USERPROFILE="$user_home" PI_CODING_AGENT_DIR="$user_home/.pi/agent" \
+              OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" PI_OLLAMA_WEB_TOOLS=0 \
+              node_modules/.bin/pi --list-models > "$RUNNER_TEMP/beam-C01-$subject-models"
+            awk '$1 == "ollama-cloud" {print $2}' \
+              "$RUNNER_TEMP/beam-C01-$subject-models" > "$RUNNER_TEMP/beam-C01-$subject-ids"
+          done
+          if grep -Fxq 'beam:cloud' "$RUNNER_TEMP/beam-C01-SHELL-ids" && \
+             grep -Fxq 'beam:cloud' "$RUNNER_TEMP/beam-C01-ASEN-ids"; then
+            selected='beam:cloud'
+          elif grep -Fxq 'beam' "$RUNNER_TEMP/beam-C01-SHELL-ids" && \
+               grep -Fxq 'beam' "$RUNNER_TEMP/beam-C01-ASEN-ids"; then
+            selected='beam'
+          else
+            echo "::error::No common free Beam model; no paid fallback"; exit 1
+          fi
+          echo "ASEN_SELECTED_MODEL=$selected" >> "$GITHUB_ENV"
+          echo "Both isolated Pi installations have one identical free Beam model"
+      - name: Run C01 in both real Pi TUIs, disallow file writes and extra tools
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          mkdir -p asen-acceptance-evidence
+          timeout 420s node scripts/r4-two-pi-beam-c01.mjs
+      - name: Preserve actual model evidence or an explicit missing receipt
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-shell-asen-beam-C01-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/C01-two-real-Pi-Beam.json
           if-no-files-found: warn
           retention-days: 30
 
