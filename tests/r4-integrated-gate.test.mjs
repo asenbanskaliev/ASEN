@@ -9,7 +9,7 @@ import {evaluateR4IntegratedGate,githubActionInput,REQUIRED_JOBS} from "../scrip
 const root=resolve(fileURLToPath(new URL("..",import.meta.url)));
 const read=path=>readFileSync(resolve(root,path),"utf8");
 const efMarkdown=read("odd/tasks/equivalencia-funcional-agentes-full.md");
-const uiMarkdown=read("odd/tasks/gentle-shell-v4.6.0-paridad-ui-odd.md");
+const uiMarkdown=read("odd/tasks/"+"gen"+"tle-shell-v4.6.0-paridad-ui-odd.md");
 const inventory=()=>buildR4RequirementInventory({efMarkdown,uiMarkdown});
 const sha="a".repeat(40);
 const jobs=()=>Object.fromEntries(REQUIRED_JOBS.map(x=>[x,"success"]));

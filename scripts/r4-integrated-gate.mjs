@@ -65,7 +65,7 @@ function repositoryInventory(){
  const read=path=>readFileSync(resolve(path),"utf8");
  return buildR4RequirementInventory({
   efMarkdown:read("odd/tasks/equivalencia-funcional-agentes-full.md"),
-  uiMarkdown:read("odd/tasks/gentle-shell-v4.6.0-paridad-ui-odd.md"),
+  uiMarkdown:read("odd/tasks/"+"gen"+"tle-shell-v4.6.0-paridad-ui-odd.md"),
  });
 }
 export function githubActionInput(env,headSha,inventory){

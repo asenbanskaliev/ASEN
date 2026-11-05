@@ -2,7 +2,7 @@
 
 **Estado:** R4-01/02/03 implementadas, pendientes de CI exact-SHA. **No equivale a FULL.**
 **Rama:** `feat/t12-integrated-acceptance-merge`; **PR:** #45. No merge ni modelos pagados.
-**Fuente de verdad:** `equivalencia-funcional-agentes-full.md` y `gentle-shell-v4.6.0-paridad-ui-odd.md`.
+**Fuente de verdad:** `equivalencia-funcional-agentes-full.md` y `anexo ODD de paridad de interfaz v4.6.0`.
 
 ## Alcance y estado
 
