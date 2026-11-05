@@ -476,7 +476,6 @@ jobs:
       contents: read
     env:
       ASEN_EXPECTED_SHA: ${{ github.sha }}
-      ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
       PI_OLLAMA_WEB_TOOLS: '0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
@@ -489,6 +488,8 @@ jobs:
       - run: npm ci
       - name: Select only the pinned registered Ollama Beam model in isolated Pi home
         shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           set -euo pipefail
           export HOME="$RUNNER_TEMP/asen-stream-pi"
@@ -509,6 +510,8 @@ jobs:
           printf '%s\n' "$selected" > "$RUNNER_TEMP/asen-stream-selected-model"
       - name: Interrupt one authentic Pi RPC child only after a streamed model text delta
         shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           set -euo pipefail
           export HOME="$RUNNER_TEMP/asen-stream-pi"
@@ -537,7 +540,7 @@ jobs:
       github.run_attempt == 1 &&
       github.event_name == 'push' &&
       github.event.head_commit.message == 'ci: one-time Pi EF-603 coalesced Explorer Beam proof'
-    name: EF-603 real Pi Beam concurrent Explorer coalescing one provider call
+    name: EF-603 real Pi Beam concurrent Explorer coalescing one Pi RPC process
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     environment: ollama-cloud-beam
@@ -545,7 +548,6 @@ jobs:
       contents: read
     env:
       ASEN_EXPECTED_SHA: ${{ github.sha }}
-      ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
       PI_OLLAMA_WEB_TOOLS: '0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
@@ -558,6 +560,8 @@ jobs:
       - run: npm ci
       - name: Select only registered pinned Ollama Beam in disposable Pi home
         shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           set -euo pipefail
           export HOME="$RUNNER_TEMP/asen-ef603-pi"
@@ -578,6 +582,8 @@ jobs:
           printf '%s\n' "$selected" > "$RUNNER_TEMP/asen-ef603-selected"
       - name: Confirm real Pi concurrent dedupe with one reserved Beam inference
         shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           set -euo pipefail
           export HOME="$RUNNER_TEMP/asen-ef603-pi"
@@ -615,7 +621,6 @@ jobs:
       contents: read
     env:
       ASEN_EXPECTED_SHA: ${{ github.sha }}
-      ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
       PI_OLLAMA_WEB_TOOLS: '0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
@@ -628,6 +633,8 @@ jobs:
       - run: npm ci
       - name: Select only pinned registered Beam in isolated Pi home
         shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           set -euo pipefail
           export HOME="$RUNNER_TEMP/asen-repair-pi"
@@ -648,6 +655,8 @@ jobs:
           printf '%s\n' "$selected" > "$RUNNER_TEMP/asen-repair-selected-model"
       - name: Execute read-only real Pi Reviewer then Verifier with exact repaired fixture
         shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           set -euo pipefail
           export HOME="$RUNNER_TEMP/asen-repair-pi"
@@ -688,7 +697,6 @@ jobs:
       ASEN_MODEL: beam:cloud
       ASEN_STRICT_INFERENCE_ORDER: '1'
       ASEN_MAX_INFERENCE_CALLS: ${{ inputs.max-inference-calls || '5' }}
-      ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
@@ -707,9 +715,10 @@ jobs:
       - name: Install pinned Ollama Cloud provider extension
         shell: bash
         env:
-          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           set -euo pipefail
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
           export HOME="$RUNNER_TEMP/asen-pi-home"
           export USERPROFILE="$HOME"
           export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
@@ -740,6 +749,8 @@ jobs:
           echo "Selected one Ollama Cloud model from live Pi registration"
       - name: Bounded Ollama Cloud provider smoke
         shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           set -euo pipefail
           if test "$ASEN_MAX_INFERENCE_CALLS" != "3"; then
@@ -765,6 +776,7 @@ jobs:
       - name: Real ASEN Dispatcher explorer with Ollama Cloud (read-only)
         shell: bash
         env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
           ASEN_EXPECTED_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
@@ -778,6 +790,7 @@ jobs:
       - name: Real model planning on graded ASEN Explorer findings
         shell: bash
         env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
           ASEN_EXPECTED_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
@@ -792,6 +805,7 @@ jobs:
         shell: bash
         if: env.ASEN_MAX_INFERENCE_CALLS == '5'
         env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
           ASEN_EXPECTED_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail

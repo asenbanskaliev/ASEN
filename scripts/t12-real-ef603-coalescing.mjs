@@ -1,6 +1,7 @@
-/** EF-603 one-shot real Pi/Beam negative duplication proof.
+/** EF-603 one-shot real Pi/Beam proof of durable concurrent deduplication.
  * Three concurrent identical ASEN requests must create one durable Explorer
- * and ONE native Pi RPC inference. No tools, no Writer, no alternative provider.
+ * and ONE native Pi RPC process. One logical inference is reserved; HTTP
+ * request count is not instrumented. No tools, no Writer, no alternate provider.
  */
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";

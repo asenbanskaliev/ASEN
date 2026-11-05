@@ -30,6 +30,8 @@ test("EF-603 native Beam run is one-shot, provider-free prerequisite and strict 
  assert.doesNotMatch(lane,/contains\s*\(\s*github\.event\.head_commit\.message/u,
   "The provider lane must require the exact one-time message rather than a partial match");
  assert.match(lane,/timeout-minutes: 12/u);
+ assert.doesNotMatch(lane,/\n    env:\n      ASEN_OLLAMA_API_KEY:/u,"Provider key must not be job-wide");
+ assert.equal((lane.match(/^\s{10}ASEN_OLLAMA_API_KEY: \$\{\{ secrets\.OLLAMA_API_KEY \}\}$/gmu)||[]).length,2,"Only provider install and authenticated Pi execution receive the key");
 });
 test("EF-603 provider-free acceptance always runs the grader/workflow regressions",()=>{
  const offline=workflow.slice(workflow.indexOf("  offline-static-validation:"),from);

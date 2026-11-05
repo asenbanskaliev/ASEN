@@ -271,3 +271,30 @@ test("T12 live F7 ledger recomputes the strict grade from original receipts inst
  assert.match(ledger,/matchT12ValidatedLiveGate\(\{reported,computed\}\)/u);
  assert.match(ledger,/globalFull:false/u);
 });
+
+
+test("Ollama Cloud credentials are restricted to authenticated steps in real-agent lanes",()=>{
+ const expectations=[
+  ["real-stream-interruption",["Select only the pinned registered Ollama Beam model in isolated Pi home","Interrupt one authentic Pi RPC child only after a streamed model text delta"]],
+  ["real-ef603-coalescing",["Select only registered pinned Ollama Beam in disposable Pi home","Confirm real Pi concurrent dedupe with one reserved Beam inference"]],
+  ["real-repaired-review",["Select only pinned registered Beam in isolated Pi home","Execute read-only real Pi Reviewer then Verifier with exact repaired fixture"]],
+  ["real-provider-acceptance",["Install pinned Ollama Cloud provider extension","Bounded Ollama Cloud provider smoke","Real ASEN Dispatcher explorer with Ollama Cloud (read-only)","Real model planning on graded ASEN Explorer findings","Real ASEN Reviewer (two blind judgments) and Verifier reject deliberate defects"]],
+ ] as const;
+ for(const [jobName,stepNames] of expectations){
+  const start=workflow.indexOf("  "+jobName+":");
+  assert.ok(start>=0,"Missing real-provider lane "+jobName);
+  const next=/\n  [a-z0-9-]+:\n/g;next.lastIndex=start+5;
+  const end=next.exec(workflow)?.index??workflow.length;
+  const job=workflow.slice(start,end);
+  assert.doesNotMatch(job,/\n    env:\n      ASEN_OLLAMA_API_KEY:/u,jobName+" must not expose the provider key job-wide");
+  const scopes=job.match(/^\s{10}ASEN_OLLAMA_API_KEY: \$\{\{ secrets\.OLLAMA_API_KEY \}\}$/gmu)||[];
+  assert.equal(scopes.length,stepNames.length,jobName+" must scope the key only to authenticated steps");
+  for(const stepName of stepNames){
+   const heading="      - name: "+stepName,startStep=job.indexOf(heading);
+   assert.ok(startStep>=0,jobName+" missing authenticated step "+stepName);
+   const nextStep=job.indexOf("\n      - ",startStep+heading.length);
+   const step=job.slice(startStep,nextStep<0?undefined:nextStep);
+   assert.ok(step.includes("ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}"),jobName+" exposes key at the wrong scope for "+stepName);
+  }
+ }
+});
