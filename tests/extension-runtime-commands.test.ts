@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";import test from "node:test";import {createAsenExtension,createPiExtension} from "../extensions/asen.js";import authority from "../extensions/authority.js";import {implementedCommands} from "../src/runtime/command-catalog.js";
-import {execFileSync} from "node:child_process";import {mkdir,mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import path from "node:path";
+import {execFileSync} from "node:child_process";import {mkdir,mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import path,{join} from "node:path";
 import {SessionTodoStore} from "../src/runtime/todo-store.js";import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 import {AgentSession,DefaultResourceLoader,SessionManager,SettingsManager} from "@earendil-works/pi-coding-agent";import {Agent,runToolCall} from "@earendil-works/pi-agent-core";
 function host(){const commands=new Map<string,{handler:(...args:any[])=>unknown}>();return {commands,pi:{registerCommand:(name:string,c:any)=>commands.set(name,c),on:()=>{}}};}
@@ -226,4 +226,54 @@ test("M1 native panel includes only owned project/session agents and closes on s
  const stale=await command.handler("",context);
  assert.match(String(stale),/scope changed/u);
  assert.doesNotMatch(String(stale),/owned-explorer/u);
+});
+
+
+test("M2 public Pi native work panel uses custom overlay without launching agents or messages",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-native-panel-ui-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
+ const root=await realpath(process.cwd()),commands=host();
+ const seen:string[][]=[],notices:string[]=[],options:unknown[]=[];
+ let closes=0;
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})(commands.pi as any);
+ const context:any={
+  cwd:root,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=> "native-ui-session"},
+  ui:{
+   notify:(message:string)=>notices.push(message),
+   custom:async(factory:any,config:any)=>{
+    options.push(config);
+    const component=factory({terminal:{rows:20},requestRender(){}},null,null,()=>{closes++;});
+    seen.push(component.render(160));
+    component.handleInput("\t");
+    seen.push(component.render(139));
+    component.handleInput("q");
+   },
+  },
+ };
+ const result=await commands.commands.get("asen-panel")!.handler("",context);
+ assert.match(String(result),/closed/u);
+ assert.equal(seen.length,2);
+ assert.match(seen[0]!.join("\n"),/TODOS/u);
+ assert.match(seen[1]![0]??"",/JOBS/u);
+ assert.equal(closes,1);
+ assert.deepEqual(options,[{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}}]);
+ assert.ok(notices.every(text=>!text.includes("Permission granted")));
+});
+test("M2 agent inspection cannot read another session or project lifecycle",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-agent-inspect-scope-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
+ const cwd=await realpath(process.cwd()),sessionId="inspect-owner",h=host();
+ const records=[
+  {id:"agent-owned",role:"explorer",owner:{kind:"user",id:"owner"},sessionId,projectId:cwd,state:"interrupted",createdAt:"2026-11-05T00:00:00Z",updatedAt:"2026-11-05T00:01:00Z"},
+  {id:"agent-foreign",role:"worker",owner:{kind:"user",id:"foreign"},sessionId:"other",projectId:cwd,state:"completed",createdAt:"2026-11-05T00:00:00Z",updatedAt:"2026-11-05T00:01:00Z"},
+ ];
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false,agents:()=>records as any})(h.pi as any);
+ const messages:string[]=[],context:any={cwd,mode:"rpc",hasUI:false,sessionManager:{getSessionId:()=>sessionId},ui:{notify:(v:string)=>messages.push(v)}};
+ const inspect=h.commands.get("asen-agent-inspect")!.handler;
+ const owned=await inspect("agent-owned",context);
+ assert.match(String(owned),/agent-owned/u);
+ assert.match(String(owned),/Interrupted/u);
+ const denied=await inspect("agent-foreign",context);
+ assert.doesNotMatch(String(denied),/worker|agent-foreign/u);
+ assert.match(String(denied),/does not belong/u);
 });

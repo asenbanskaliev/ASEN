@@ -73,12 +73,15 @@ import {discoverWorkspaceWorktrees,snapshotWorkspaceRoots} from "../src/runtime/
 import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtime/workspace-resolution.js";
 import {hostContentColumns,layoutMode,sanitizeTerminalText,truncateForTerminal} from "../src/runtime/responsive-layout.js";
 import {ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,renderAsenWorkRow,renderAsenStatusLine,type AsenPanelSnapshot,type AsenPanelSection} from "../src/runtime/ide-panel.js";
+import {createNativeWorkPanel} from "../src/runtime/native-work-panel.js";
+import {renderAgentInspection} from "../src/runtime/agent-inspect.js";
+import {previewWorkspaceFileDiff,renderGitDiffPreview,gitChangesIndex} from "../src/runtime/git-diff-preview.js";
 import {AsenPermissionSession} from "../src/security/permission-session.js";
 import {AsenAutoPermissionReviewer} from "../src/security/auto-permission-reviewer.js";
 import {isAsenPermissionMode,readPermissionModeDefault,savePermissionModeDefault} from "../src/security/permission-mode-policy.js";
 import type {PrimaryModeOptions} from "../src/security/primary-tool-policy.js";
 
-type CommandContext={cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void}};
+type CommandContext={cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;custom?:(factory:(tui:any,theme:any,bindings:any,done:(value:unknown)=>void)=>unknown,options?:unknown)=>Promise<unknown>}};
 type PiLike={getCommands?:()=>readonly {name:string}[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
@@ -851,6 +854,20 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      return ["Usage: /asen-panel [all|status|todos|jobs|agents|changes|review|integrations]"];
     const identity=await sessionIdentity(ctx);
     let section:AsenPanelSection|undefined=ASEN_PANEL_SECTIONS.find(item=>item===view);
+    // A real Pi TUI overlay is preferred to message-only selection.
+    // It is modal and read-only; it does not replace the persistent fullscreen rail.
+    if(!view&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.custom==="function"){
+     const snapshot=await getPanelSnapshot(ctx),before=ctx.cwd;
+     await ctx.ui.custom((tui,_theme,_bindings,done)=>{
+      const close=()=>done(undefined);
+      return createNativeWorkPanel(snapshot,{
+       requestRender:()=>tui.requestRender(),close,
+       terminalRows:()=>Math.max(8,Number(tui.terminal?.rows??24)),
+       stillCurrent:()=>ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId,
+      });
+     },{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}});
+     return ["ASEN work panel closed (read-only)."];
+    }
     // Use Pi native interactive selection only when it really exists.
     if(!view&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.select==="function"){
      const selected=await ctx.ui.select("ASEN work panel (read-only)",[...ASEN_PANEL_SECTIONS],ctx.signal?{signal:ctx.signal}:undefined);
@@ -865,6 +882,44 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(section)return [...renderAsenPanelSection(snapshot,section,width)];
     if(view==="STATUS")return [renderAsenStatusLine(snapshot,width)];
     return [...renderAsenPanel(snapshot,width)];
+   }});
+   registerData("asen-agent-inspect",{description:"Inspect the persisted lifecycle of an owned agent, without claiming access to its Pi message transcript",handler:async(args:string|undefined,ctx:CommandContext)=>{
+    const identity=await sessionIdentity(ctx);
+    const runtime=agentRuntimePromise?await agentRuntimePromise:undefined;
+    const entries=runtime?await runtime.list(identity):(dependencies.agents?.()??[]).filter(row=>row.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(row.projectId,identity.projectId));
+    let id=String(args??"").trim();
+    if(!id&&ctx.mode==="tui"&&ctx.hasUI===true&&ctx.ui.select&&entries.length){
+     const labels=entries.slice(0,100).map(row=>row.role+" · "+row.state+" · "+row.id);
+     const chosen=await ctx.ui.select("ASEN agents (read-only)",labels,ctx.signal?{signal:ctx.signal}:undefined);
+     const at=labels.findIndex(row=>row===chosen);
+     if(at<0)return ["ASEN agent inspection closed."];
+     id=entries[at]!.id;
+    }
+    if(!id)return ["Usage: /asen-agent-inspect <agent-id>. No agents selected."];
+    const now=await sessionIdentity(ctx);
+    if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return ["ASEN agent scope changed. No inspection performed."];
+    const found=runtime?await runtime.query(id,identity):null;
+    const record=found?.record??entries.find(row=>row.id===id);
+    if(!record)return ["ASEN agent does not belong to this Pi session/project."];
+    return [...renderAgentInspection({record,history:found?.history??[]},Math.max(12,terminalColumns()))];
+   }});
+   registerData("asen-changes-view",{description:"Inspect bounded, read-only Git status and per-file diff for the current workspace",handler:async(args:string|undefined,ctx:CommandContext)=>{
+    const identity=await sessionIdentity(ctx);
+    const root=snapshotWorkspaceRoots([identity.projectId])[0];
+    if(!root||root.error)return ["Git state unavailable for this project."];
+    let filename=String(args??"").trim();
+    if(!filename&&ctx.mode==="tui"&&ctx.hasUI===true&&ctx.ui.select&&root.files.length){
+     const labels=root.files.slice(0,100).map(file=>file.status+" "+sanitizeTerminalText(file.path));
+     const selected=await ctx.ui.select("ASEN changed files (read-only)",labels,ctx.signal?{signal:ctx.signal}:undefined);
+     const index=labels.findIndex(item=>item===selected);
+     if(index<0)return ["Git diff inspection closed."];
+     filename=root.files[index]!.path;
+    }
+    const now=await sessionIdentity(ctx);
+    if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return ["ASEN Git scope changed. No diff read."];
+    if(!filename)return [...gitChangesIndex(root,Math.max(12,terminalColumns()))];
+    try{return [...renderGitDiffPreview(previewWorkspaceFileDiff(identity.projectId,filename),Math.max(12,terminalColumns()))];}
+    catch{return ["Git diff could not be safely previewed; inspect the current repository state."]; }
    }});
    registerData("asen-agents",{description:"Show attributed ASEN agent lifecycle",handler:async(_args:string|undefined,ctx:CommandContext)=>{const width=terminalColumns();if(agentRuntimePromise){const rows=await (await agentRuntimePromise).list(await sessionIdentity(ctx));return agentStatusRows(rows,width);}return dependencies.agents?agentStatusRows(dependencies.agents(),width):[truncateForTerminal("ASEN agents unavailable: no local agent provider configured.",width)];}});
   registerData("asen-changes",{description:"Show attributed Git changes or perform an explicit, scoped UI correction for a recorded conflict",handler:async(args:string|undefined,ctx:CommandContext)=>{const action=(args??"").trim();if(action&&action!=="resolve")return ["Uso: /asen-changes [resolve]"];if(action==="resolve"){
