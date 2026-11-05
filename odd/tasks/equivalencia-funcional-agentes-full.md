@@ -1540,11 +1540,11 @@ La nueva aserción de workflow tenía una comilla final mal colocada. La inspecc
 - Corrección: el harness valida explícitamente que el contador sea exactamente dos antes del recibo PASS; el test verifica esa aserción. La ejecución Beam fue SKIPPED por el gate fallido, por lo que esta falla no reservó proveedor ni cambia el resultado live anterior.
 
 
-### EF-601 — auditoría de implementación de Gentle Shell — 2026-11-05
+### EF-601 — auditoría de implementación de la referencia externa — 2026-11-05
 
-Se consultó el código de `Gentleman-Programming/gentle-shell`, rama `main`, árbol exacto `7ecb826a2b1eafa6b522ee16d905a99e998f0c89`: `lib/agents-completion-delivery.ts`, `lib/agents-message-delivery.ts` y `extensions/gentle-agents.ts`.
+Se consultó el código de repositorio externo de referencia, rama `main`, árbol exacto `7ecb826a2b1eafa6b522ee16d905a99e998f0c89`: `lib/agents-completion-delivery.ts`, `lib/agents-message-delivery.ts` y la extensión de agentes de la referencia.
 
-- Gentle Shell mantiene las finalizaciones en una cola en memoria, suprime duplicados/consumidos, aplica frescura de 90 segundos y las vacía en límites de turno o cuando queda inactivo. `dropAll()` elimina la cola y sus marcadores al iniciar o cerrar la sesión; no recupera avisos terminales desde un journal durable tras reinicio.
+- La referencia externa mantiene las finalizaciones en una cola en memoria, suprime duplicados/consumidos, aplica frescura de 90 segundos y las vacía en límites de turno o cuando queda inactivo. `dropAll()` elimina la cola y sus marcadores al iniciar o cerrar la sesión; no recupera avisos terminales desde un journal durable tras reinicio.
 - ASEN conserva avisos por sesión/proyecto en un journal durable, valida el agente terminal antes de encolar, distingue `pending → attempted → enqueued → acknowledged`, y no vuelve a transmitir `attempted` porque el transporte pudo haberlos aceptado antes de un crash. También omite el resumen de avisos pendientes con antigüedad ≥90 s. Esta diferencia amplía la recuperación, pero mantiene explícita la incertidumbre de transporte y no equivale a probar consumo por el modelo padre.
 - Evidencia ASEN acotada ya registrada en los subchecks de coordinador idle/ocupado y reinicio TUI. El recibo ocupado prueba que Pi padre llamó a status y ack; no demuestra por sí solo que el modelo haya leído/razonado sobre el mensaje. No modifica el criterio del caso C13.
 - **Clasificación:** documentación de referencia verificada; EF-601 canónico permanece PARTIAL, sin marcar checks nuevos. Para cerrar hacen falta ejecución comparable C13 en A/B/ASEN y evidencia auténtica del consumo/recuperación tras reinicio. FULL=false.

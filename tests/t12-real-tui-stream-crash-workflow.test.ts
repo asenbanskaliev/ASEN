@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-const workflow=readFileSync(new URL("../.github/workflows/asen-real-agent-acceptance.yml",import.meta.url),"utf8");
+const workflow=readFileSync(new URL("../.github/workflows/asen-real-agent-acceptance.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
 const harness=readFileSync(new URL("../scripts/t12-real-tui-stream-crash.mjs",import.meta.url),"utf8");
 const from=workflow.indexOf("  real-tui-stream-crash:");
 const to=workflow.indexOf("\n  real-stream-interruption:",from);
