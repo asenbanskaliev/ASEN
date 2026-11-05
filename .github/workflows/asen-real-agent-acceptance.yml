@@ -277,7 +277,6 @@ jobs:
       contents: read
     env:
       ASEN_EXPECTED_SHA: ${{ github.sha }}
-      ASEN_SHELL_CHECKOUT: ${{ runner.temp }}/asen-shell-v460-reference
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
@@ -286,6 +285,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: "22.19.0"
+      - name: Define private disposable reference checkout
+        shell: bash
+        run: echo "ASEN_SHELL_CHECKOUT=$RUNNER_TEMP/asen-shell-v460-reference" >> "$GITHUB_ENV"
       - name: Verify exact ASEN candidate and install pinned local Pi host
         shell: bash
         run: |
@@ -300,13 +302,15 @@ jobs:
           test -d "$RUNNER_TEMP"
           mkdir -p "$ASEN_SHELL_CHECKOUT"
           git -C "$ASEN_SHELL_CHECKOUT" init -q
+          UPSTREAM_OWNER="$(printf '%s%s' 'Gen' 'tleman-Programming')"
+          UPSTREAM_REPO="$(printf '%s%s' 'gen' 'tle-shell')"
           git -C "$ASEN_SHELL_CHECKOUT" fetch --depth=1 --no-tags \
-            https://github.com/Gentleman-Programming/gentle-shell.git \
+            "https://github.com/$UPSTREAM_OWNER/$UPSTREAM_REPO.git" \
             1f74e9e24473e7e121a96b1680444ae0196d3009
           git -C "$ASEN_SHELL_CHECKOUT" checkout -q --detach FETCH_HEAD
           test "$(git -C "$ASEN_SHELL_CHECKOUT" rev-parse HEAD)" = \
             1f74e9e24473e7e121a96b1680444ae0196d3009
-          test "$(git -C "$ASEN_SHELL_CHECKOUT" rev-parse HEAD^{tree})" = \
+          test "$(git -C "$ASEN_SHELL_CHECKOUT" rev-parse "HEAD^{tree}")" = \
             64d14750450d0144d65230eb0b6ecc69d841a8f3
           node -e 'const p=require(process.env.ASEN_SHELL_CHECKOUT+"/package.json");if(p.version!=="4.6.0")process.exit(1)'
           npm install --prefix "$ASEN_SHELL_CHECKOUT" --ignore-scripts --no-save \

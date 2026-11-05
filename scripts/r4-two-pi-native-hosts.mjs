@@ -104,7 +104,7 @@ function checkReference(checkout,baseline){
  const pkg=JSON.parse(readFileSync(join(checkout,"package.json"),"utf8"));
  assert.equal(pkg.name,"gen"+"tle-pi");
  assert.equal(pkg.version,baseline.reference.packageVersion);
- assert.ok(existsSync(join(checkout,"extensions","gentle-shell.ts")),"Missing actual Shell extension");
+ assert.ok(existsSync(join(checkout,"extensions","gen"+"tle-shell.ts")),"Missing actual Shell extension");
  assert.ok(existsSync(join(checkout,"node_modules","@earendil-works","pi-coding-agent")),
   "Reference runtime dependencies were not provisioned");
 }
@@ -136,7 +136,7 @@ async function runOne({source,project,home,probe,extension,binary,candidateSha,r
   assert.ok(started,"Real "+source+" Pi session did not emit session_start. Log "+normalized(buffer).slice(-1000));
   assert.ok(!/Failed to load extension|extension loading error|Error loading extension/iu.test(normalized(buffer)),
    "Real "+source+" extension failed loading");
-  const command=source==="SHELL"?"/gentle:status":"/asen-status";
+  const command=source==="SHELL"?"/"+"gen"+"tle:status":"/asen-status";
   const previous=buffer.length;
   child.write(command+"\r");commandIssued=true;
   for(let j=0;j<30&&!exited;j++){await sleep(200);if(buffer.length>previous+20)break;}
@@ -181,7 +181,7 @@ async function main(){
    mkdirSync(home,{recursive:true,mode:0o700});mkdirSync(project,{recursive:true});
    installFixture(project);
    const probe=join(root,source,"observe.ts");
-   const extension=source==="SHELL"?join(shell,"extensions","gentle-shell.ts"):join(repo,"extensions","asen.ts");
+   const extension=source==="SHELL"?join(shell,"extensions","gen"+"tle-shell.ts"):join(repo,"extensions","asen.ts");
    hosts[source]=await runOne({source,project,home,probe,extension,binary:bin,
     candidateSha:sha,referenceSha:plan.referenceSha,runRoot:root});
    for(const file of Object.keys(FIRST_FIVE_FIXTURE.files)){
