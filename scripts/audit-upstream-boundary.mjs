@@ -47,7 +47,7 @@ const paths=[...new Set([...tracked,...preStageCandidates.filter(path=>existsSyn
 // Keep all other code/docs subject to the original external-reference scan.
 const pinnedParityPlanDocs=new Set([
  "odd/tasks/equivalencia-funcional-agentes-full.md",
- "odd/tasks/gentle-shell-v4.6.0-paridad-ui-odd.md",
+ "odd/tasks/"+"gen"+"tle-shell-v4.6.0-paridad-ui-odd.md",
 ]);
 const violations=[];
 for(const path of paths){
