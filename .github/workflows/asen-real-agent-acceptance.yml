@@ -1,6 +1,7 @@
 name: ASEN real-agent functional acceptance
 
 # Bounded opt-in verifies direct provider and genuine read-only Dispatcher; no lifecycle bypass or Writer grant.
+# EF-603: single exact-SHA Ollama Beam witness; no Writer grant, no paid fallback.
 # To exercise the native parent lane, change this workflow in the same commit whose exact
 # message is 'ci: one-time Pi parent Beam proof'. A docs-only commit does not match paths.
 on:
