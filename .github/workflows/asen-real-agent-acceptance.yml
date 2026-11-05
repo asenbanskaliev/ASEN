@@ -311,7 +311,8 @@ jobs:
       github.event_name == 'push' &&
       (github.event.head_commit.message == 'ci: one-time Pi parent Beam proof' ||
       github.event.head_commit.message == 'ci: one-time Pi parent-child Beam proof' ||
-      github.event.head_commit.message == 'ci: one-time Pi busy-parent Beam proof')
+      github.event.head_commit.message == 'ci: one-time Pi busy-parent Beam proof' ||
+      github.event.head_commit.message == 'ci: bounded EF-601-604 parent recovery and TUI crash Beam proof')
     name: Real Pi parent notices with Beam (fixture or real RPC child)
     runs-on: ubuntu-24.04
     timeout-minutes: 12
@@ -367,7 +368,9 @@ jobs:
           export ASEN_SELECTED_MODEL
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           mkdir -p asen-acceptance-evidence
-          if test "$ASEN_ACCEPTANCE_COMMIT_MESSAGE" = "ci: one-time Pi busy-parent Beam proof"; then
+          if test "$ASEN_ACCEPTANCE_COMMIT_MESSAGE" = "ci: bounded EF-601-604 parent recovery and TUI crash Beam proof"; then
+             ASEN_PARENT_WITNESS_MODE=busy timeout 250s node scripts/t12-real-child-parent-consumption.mjs
+           elif test "$ASEN_ACCEPTANCE_COMMIT_MESSAGE" = "ci: one-time Pi busy-parent Beam proof"; then
             ASEN_PARENT_WITNESS_MODE=busy timeout 250s node scripts/t12-real-child-parent-consumption.mjs
           elif test "$ASEN_ACCEPTANCE_COMMIT_MESSAGE" = "ci: one-time Pi parent-child Beam proof"; then
             timeout 250s node scripts/t12-real-child-parent-consumption.mjs
@@ -395,7 +398,8 @@ jobs:
       github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
       github.run_attempt == 1 &&
       github.event_name == 'push' &&
-      github.event.head_commit.message == 'ci: one-time Pi Beam TUI child crash proof'
+      (github.event.head_commit.message == 'ci: one-time Pi Beam TUI child crash proof' ||
+       github.event.head_commit.message == 'ci: bounded EF-601-604 parent recovery and TUI crash Beam proof')
     name: EF-604 real Pi TUI crash during Beam child inference
     runs-on: ubuntu-24.04
     timeout-minutes: 12
