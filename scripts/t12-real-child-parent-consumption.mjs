@@ -14,7 +14,11 @@ import {gradeRealChildParentConsumption} from "./t12-real-child-parent-grade.mjs
 
 const repo=fileURLToPath(new URL("../",import.meta.url));
 const expected=process.env.ASEN_EXPECTED_SHA,model=process.env.ASEN_SELECTED_MODEL;
-const busy=process.env.ASEN_PARENT_WITNESS_MODE==="busy";
+const witnessMode=process.env.ASEN_PARENT_WITNESS_MODE;
+assert.ok(witnessMode===undefined||witnessMode==="idle"||witnessMode==="busy",
+ "Unknown Pi parent witness route is forbidden");
+assert.equal(process.env.GITHUB_RUN_ATTEMPT,"1","Authenticated parent+child proof is one-shot; do not rerun");
+const busy=witnessMode==="busy";
 assert.match(expected??"",/^[a-f0-9]{40}$/u);
 assert.ok(model==="beam"||model==="beam:cloud","Only registered Beam model is admitted");
 assert.equal(execFileSync("git",["-C",repo,"rev-parse","HEAD"],{encoding:"utf8"}).trim(),expected);

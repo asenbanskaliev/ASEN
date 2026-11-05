@@ -6,6 +6,7 @@ const workflow=readFileSync(new URL("../.github/workflows/asen-real-agent-accept
 const planner=readFileSync(new URL("../scripts/t12-real-model-plan.mjs",import.meta.url),"utf8");
 const reviewVerifier=readFileSync(new URL("../scripts/t12-real-review-verifier.mjs",import.meta.url),"utf8");
 const verifierBrief=readFileSync(new URL("../scripts/t12-verifier-brief.mjs",import.meta.url),"utf8");
+const parentChild=readFileSync(new URL("../scripts/t12-real-child-parent-consumption.mjs",import.meta.url),"utf8");
 const adversarialReview=readFileSync(new URL("../skills/asen-adversarial-review/SKILL.md",import.meta.url),"utf8");
 const verificationSkill=readFileSync(new URL("../skills/asen-verify/SKILL.md",import.meta.url),"utf8");
 
@@ -88,6 +89,18 @@ test("T12 five-call live lane spends the budget on Explorer, Planner, two blind 
   "Missing execution evidence must remain a failure");
 });
 
+test("EF-601 live Pi parent+child receipt is restricted to one exact Beam run attempt",()=>{
+ const jobStart=workflow.indexOf("  real-parent-consumption:");
+ const jobEnd=workflow.indexOf("\n  real-tui-stream-crash:",jobStart);
+ assert.ok(jobStart>=0&&jobEnd>jobStart,"Missing isolated native Pi parent+child lane");
+ const job=workflow.slice(jobStart,jobEnd);
+ assert.match(job,/github\.run_attempt == 1/u);
+ assert.ok(job.includes("Pi parent-child Beam proof"));
+ assert.match(job,/environment: ollama-cloud-beam/u);
+ assert.match(job,/timeout 250s node scripts\/t12-real-child-parent-consumption\.mjs/u);
+ assert.match(parentChild,/assert\.equal\(process\.env\.GITHUB_RUN_ATTEMPT,"1"/u);
+ assert.match(parentChild,/witnessMode===undefined\|\|witnessMode==="idle"\|\|witnessMode==="busy"/u);
+});
 test("T12 provider-free acceptance runs the existing interruption, recovery, timeout and quota suites",()=>{
  const heading="      - name: F6 interruption, restart, authorization and provider failure regressions";
  const start=workflow.indexOf(heading);
