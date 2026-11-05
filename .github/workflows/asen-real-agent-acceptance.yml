@@ -293,14 +293,22 @@ jobs:
           mkdir -p asen-acceptance-evidence
           timeout 740s node scripts/agent-ab-host-smoke.mjs
           node -e 'const r=require("./asen-acceptance-evidence/ab-native-host-smoke.json"); if(r.status!=="REFERENCE_HOST_HELP_ONLY"||r.hosts?.length!==2||r.executedCases!==0||r.modelCalls!==0||r.fullParity!==false||r.referenceBProvisioned!==false)process.exit(1);'
-      - name: Preserve native executable entrypoint receipt only
+      - name: R4-04 first-five runtime-readiness negative tests (no model)
+        run: node --test tests/r4-first-five-preflight.test.mjs
+      - name: R4-04 first-five pinned-executable readiness (NOT C01-C05 runtime)
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+        run: node scripts/r4-first-five-preflight.mjs
+      - name: Preserve native executable and first-five readiness receipts, never FULL
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: asen-ab-native-host-${{ github.sha }}-${{ github.run_id }}
-          path: asen-acceptance-evidence/ab-native-host-smoke.json
+          path: |
+            asen-acceptance-evidence/ab-native-host-smoke.json
+            asen-acceptance-evidence/r4-first-five-readiness.json
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 30
 
   real-parent-consumption:
     needs: offline-static-validation

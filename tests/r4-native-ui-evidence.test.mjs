@@ -16,7 +16,7 @@ function receipt(platform,overrides={}){
   version:"1.2.0",platform,mode:"tui-matrix",color:"disabled",
   widths:[...R4_UI_WIDTHS],result:"PASS",wrapped:[],
   results:R4_UI_WIDTHS.map(width=>({width,phases:[...phases],
-   wrapped:[],rendered:["profile: default","agents: 0 running","Git test status"]}))};
+   wrapped:[],renderProvenance:"PTY_BUFFER_ROWS",rendered:["profile: default","agents: 0 running","Git test status"]}))};
  return {...base,...overrides};
 }
 const all=()=>Object.fromEntries(R4_PLATFORMS.map(platform=>[platform,receipt(platform)]));
@@ -75,6 +75,8 @@ test("R4-04 refuses fabricated host phases, hidden wrapping and absent rendered 
   {results:baseline.results.map((x,i)=>i===0?{...x,rendered:[]}:x)},
   {results:baseline.results.map((x,i)=>i===0?{...x,wrapped:[{reason:"render-broken"}]}:x)},
   {wrapped:[{reason:"host-wrap"}]},
+  {results:baseline.results.map((x,i)=>i===0?{...x,renderProvenance:"SIMULATED"}:x)},
+  {results:baseline.results.map((x,i)=>i===0?{...x,rendered:["synthetic"]}:x)},
  ])assert.throws(()=>checkR4NativeUiReceipt(receipt("linux",patch),
   {candidateSha:sha,platform:"linux"}));
 });

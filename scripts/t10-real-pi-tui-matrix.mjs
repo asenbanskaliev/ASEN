@@ -94,11 +94,11 @@ async function driveWidth(width){
    for(let attempt=0;attempt<80;attempt++){await sleep(250);if(strip(log.slice(from)).includes(marker))return strip(log.slice(from));}
    throw new Error(`command ${command} never produced ${JSON.stringify(marker)} at ${width} columns`);
   };
-  await send("/asen-status","profile:");
+  const statusView=await send("/asen-status","profile:");
   const emptyAgents=await send("/asen-agents","No entries.");
   observed.phases.push(`agents/empty:${emptyAgents.includes("No entries.")?"empty-view":"unexpected"}`);
   if(!emptyAgents.includes("No entries."))observed.wrapped.push({name:"agents/empty",rendered:emptyAgents.slice(-160)});
-  await send("/asen-changes","Session-attributed changes:");
+  const changesView=await send("/asen-changes","Session-attributed changes:");
   await sleep(800);
 const rendered = strip(log.slice(start)).split(/\r?\n/).map((line) => line.replace(/\s+$/u, ""));
   const findRow = (prefix) =>
@@ -125,7 +125,17 @@ const rendered = strip(log.slice(start)).split(/\r?\n/).map((line) => line.repla
     observed.phases.push(`${row.name}:${ok?"fits":"wrapped"}`);
     if(!ok)observed.wrapped.push({name:row.name,rendered:tail,visibleWidth:visibleLineWidth,terminalWidth:width,pathEquivalent,reason:gitCheck?.reason??(widthOkay?"accept-failed":"width_overflow"),...(gitCheck?{diagnostics:gitCheck.diagnostics}:{})});
    }
-  observed.rendered=rendered.filter(line=>/agents:|workspace changes:|history:|telemetry:|Git |profile:/u.test(line));
+  const nativeRows=rendered.filter(line=>/agents:|workspace changes:|history:|telemetry:|Git |profile:/u.test(line));
+  // Real Pi output can use cursor rewrites instead of a literal newline at some
+  // widths. When raw-buffer line splitting loses the row, retain *actual PTY
+  // response* markers returned by send(), never a manufactured display string.
+  const responseRows=[statusView.match(/profile:[^\r\n]{0,160}/u)?.[0],
+    changesView.match(/Session-attributed changes:[^\r\n]{0,160}/u)?.[0]]
+   .filter(Boolean).map(row=>row.trim());
+  if(nativeRows.length===0&&responseRows.length===0)
+   throw Error("Native Pi output has no observed TUI status or changes marker");
+  observed.rendered=nativeRows.length?nativeRows:responseRows;
+  observed.renderProvenance=nativeRows.length?"PTY_BUFFER_ROWS":"PTY_COMMAND_RESPONSE_MARKERS";
   // Keyboard, error and restart: the same host session must survive an Escape and
   // re-render a view, and a rejected argument must produce a bounded usage line.
   const usage=await send("/asen-changes bogus","Uso: /asen-changes");

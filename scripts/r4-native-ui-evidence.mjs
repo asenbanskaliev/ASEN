@@ -42,9 +42,13 @@ export function checkR4NativeUiReceipt(receipt,{candidateSha,platform}){
    "Native host phase evidence is malformed or oversized");
   assert.ok(Array.isArray(result.wrapped)&&result.wrapped.length===0,
    "A native UI row failed the host rendering boundary");
+  assert.ok(["PTY_BUFFER_ROWS","PTY_COMMAND_RESPONSE_MARKERS"].includes(result.renderProvenance),
+   "Native TUI rows must identify their actual PTY capture source");
   assert.ok(Array.isArray(result.rendered)&&result.rendered.length>0&&
    result.rendered.length<=300&&result.rendered.every(x=>typeof x==="string"&&x.length<=1024),
    "Actual terminal-rendered rows must be captured and bounded");
+  assert.ok(result.rendered.some(x=>/profile:|Session-attributed changes:|Git /u.test(x)),
+   "Native TUI response must retain a real status or Git marker");
   assert.ok(phases.every(x=>result.phases.includes(x)),
    "Missing real Pi session, error, restart or shutdown phase");
   return Object.freeze({platform,width:result.width,hostVersion:receipt.version,

@@ -29,9 +29,10 @@ function fixture(){
     (malformed==="tree"? "0".repeat(40):identity.tree)+"\n":
     (malformed==="commit"? "0".repeat(40):identity.commit)+"\n";
    if(args.includes("status"))return malformed==="dirty"?" M README.md\n":"";
+   if(args.includes("checkout")&&id==="B")writeFileSync(join(args[1]!,"package.json"),JSON.stringify({version:"1.0.0"}));
    if(args.includes("checkout")&&id==="A"){
     const name=source[0].repository.split("/").at(-1);
-    writeFileSync(join(args[1]!,"package.json"),JSON.stringify({bin:{entry:"bin/"+name+".mjs"}}));
+    writeFileSync(join(args[1]!,"package.json"),JSON.stringify({version:"4.5.1",bin:{entry:"bin/"+name+".mjs"}}));
    }
    return "";
   }
@@ -63,6 +64,7 @@ test("EF-002 A/B native entrypoints run as actual pinned hosts without fabricati
  assert.equal(receipt.modelCalls,0);
  assert.equal(receipt.referenceBProvisioned,false);
  assert.equal(receipt.fullParity,false);
+ assert.deepEqual(receipt.hosts.map((x:{packageVersion:string})=>x.packageVersion),["4.5.1","1.0.0"]);
  assert.deepEqual(receipt.hosts.map((x:{runtime:string})=>x.runtime),
   ["node-pi-entrypoint","go-installer-binary"]);
  const gitFetch=f.calls.filter(x=>x.command==="git"&&x.args.includes("fetch"));
@@ -87,6 +89,7 @@ test("EF-701 native A/B receipt cannot assert C01-C20 or substitute Go for a Pi 
    id:x.id,repository:x.repository,commit:x.commit,tree:x.tree,
    runtime:i===0?"node-pi-entrypoint":"go-installer-binary",
    exitCode:0,outputSha256:"0".repeat(64),outputBytes:75,
+   packageVersion:i===0?"4.5.1":"1.0.0",
    onlyHelp:true,repositoryClean:true,
   })),
   executedCases:0,modelCalls:0,writerAuthorized:false,

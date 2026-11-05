@@ -39,6 +39,8 @@ export function validateReferenceHostSmoke(report,sourceList=pinnedAgentABSource
   assert.match(row.outputSha256??"",HASH);
   assert.ok(Number.isSafeInteger(row.outputBytes)&&row.outputBytes>20&&row.outputBytes<131072);
   assert.equal(row.repositoryClean,true);
+  assert.match(row.packageVersion??"",/^[0-9]+\.[0-9]+\.[0-9]+$/u,
+   "Native reference version must be read from the pinned package");
  }
  return true;
 }
@@ -62,6 +64,10 @@ export function runReferenceHostSmoke({root,runCommand=execFileSync}){
   if(git("rev-parse","HEAD")!==src.commit||
      git("rev-parse","HEAD^{tree}")!==src.tree)
    throw Error("A/B executable source mismatch for "+src.id);
+  const sourcePackage=JSON.parse(readFileSync(join(dir,"package.json"),"utf8"));
+  if(typeof sourcePackage.version!=="string"||
+     !/^[0-9]+\.[0-9]+\.[0-9]+$/u.test(sourcePackage.version))
+   throw Error("Pinned native source has no package version");
   let output;
   if(src.id==="A"){
    const manifest=JSON.parse(readFileSync(join(dir,"package.json"),"utf8"));
@@ -80,6 +86,7 @@ export function runReferenceHostSmoke({root,runCommand=execFileSync}){
   if(output.length<=20||output.length>=131072)throw Error("A/B --help produced invalid bounded output");
   if(git("status","--porcelain")!=="")throw Error("A/B native host modified its pinned checkout");
   rows.push({id:src.id,repository:src.repository,commit:src.commit,tree:src.tree,
+   packageVersion:sourcePackage.version,
    runtime:src.id==="A"?"node-pi-entrypoint":"go-installer-binary",
    exitCode:0,outputSha256:hash(output),outputBytes:Buffer.byteLength(output),
    onlyHelp:true,repositoryClean:true});
