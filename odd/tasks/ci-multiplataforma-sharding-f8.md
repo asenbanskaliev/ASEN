@@ -20,3 +20,6 @@ Referencia: GitHub Actions CI run 41972127550, SHA d47f5911f76bd4b698336bb84d555
 5. No activar selección parcial por cambios ni marcar EF-703 como FULL hasta tener una ejecución global correcta y el resto de evidencias canónicas.
 
 **Restricciones:** no se cambia main, no se conceden permisos Writer, no se modifican recibos A/B C01–C20 y ningún PASS de otro SHA se hereda.
+
+## Corrección de regresión de tipado F8 (2026-11-05)
+La primera ejecución exact-SHA F8 `e8c4bcd1c6b42d06514994746fb1ce14e5d54057` falló por TS7006 (parámetros de callbacks implícitamente any) en `tests/test-runner.test.ts:379-387`. El error común propagó FAIL a Release Gate, acceptance, runtime, R4 y al shard 0 del CI, sin mostrar una regresión de comportamiento de agentes. Se anotan explícitamente los tipos de las colecciones de chunks y shards para mantener `noImplicitAny`, sin rebajar el compilador ni la prueba. Pendiente nueva validación completa del SHA que publique esta corrección. EF canónicos sin cambios; FULL=false.

@@ -373,8 +373,8 @@ test("CI shard environment is optional for local full-suite runs and fails close
 test("F8 Windows 3-way and macOS 2-way shards cover all real tests once with stable isolation",async()=>{
  const files=await discoverTestFiles(process.cwd());
  for(const [platform,count] of [["win32",3],["darwin",2],["linux",1]] as const){
-  const all=planTestRuns({platform,testFiles:files,nodeOptions:[]});
-  const shards=planTestShards({platform,testFiles:files,nodeOptions:[],shardCount:count});
+  const all: Array<{name:string;args:string[]}>=planTestRuns({platform,testFiles:files,nodeOptions:[]});
+  const shards: Array<Array<{name:string;args:string[]}>>=planTestShards({platform,testFiles:files,nodeOptions:[],shardCount:count});
   assert.equal(shards.length,count);
   assert.ok(shards.every(shard=>shard.length>0));
   const planned=shards.flat().flatMap(run=>run.args.filter(arg=>arg.endsWith(".test.ts")));
