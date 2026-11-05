@@ -312,7 +312,7 @@ test("EF-403 live repaired Reviewer and Verifier lane cannot authorize or write"
  assert.match(job,/environment: ollama-cloud-beam/u);
  assert.match(job,/timeout 320s node --import tsx scripts\/t12-real-repair-revalidation\.mjs/u);
  assert.match(repairedReview,/noTools:true/u);
- assert.match(repairedReview,/callsReserved:2/u);
+ assert.match(repairedReview,/assert.equal\(callsReserved,2/u);
  assert.match(repairedReview,/writerAuthorized:false/u);
  assert.match(repairedReview,/authorization:"NOT_GRANTED"/u);
  assert.match(repairedReview,/independentReview:false/u);

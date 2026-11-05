@@ -283,3 +283,10 @@ La última tanda de implementación inspeccionada endureció EF-201/202 (telemet
 - Corrección preparada solo para observabilidad provider-free: enum de fallo cuota/auth/billing/network/timeout/artifact/role assertion; número de slots lógicos reservados; HTTP count null; sin guardar response, secret o transcript. Añadir regresión determinista a tests existentes.
 - Esta falla no cierra EF-403. Próximo: ejecutar regression/provider-free exact-SHA de la clasificación, revisar CI/RG del SHA correcto y avanzar el siguiente EF provider-free. Mantener otros Beam lanes en espera hasta conocer acceso/cuota real.
 - Estado canónico 8/28; EF-601 idle/busy, EF-603 one-process, EF-604 TUI crash/reopen subchecks PASS; EF-403 subcheck no verificado; A/B 60 slots, consentimiento Writer, Reviewer independiente y FULL pendientes.
+
+
+## Checkpoint — 2026-11-05 — ajustar contador de reservas en test
+
+- SHA bafe83e5788219fb5782efd986026c832bd90718: acceptance [41947366698](https://github.com/asenbanskaliev/ASEN/actions/runs/41947366698) falló en provider-free stage F2/F3. Test nuevo esperaba texto `callsReserved:2` y no reconocía el contador dinámico de dos slots; la lane EF403 fue SKIPPED, sin ejecución Beam.
+- Corrección preparada: afirmar assert.equal(callsReserved,2,...) en éxito del harness y buscar ese contrato en `tests/t12-real-provider-workflow.test.ts`. El contador exacto no se relaja; evidencia de fallo preserva HTTP count unknown y ningún output crudo.
+- El fallo anterior sigue siendo EF403 live stage REVIEWER_PI_RPC, sin causa distinguida ni repetición; no heredar resultado de otro SHA.

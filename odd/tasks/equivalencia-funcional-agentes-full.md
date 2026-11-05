@@ -1532,3 +1532,9 @@ La nueva aserción de workflow tenía una comilla final mal colocada. La inspecc
 - En SHA 7d99b3cde60f82d0be288fe7fbac4dee308aff14, preflight provider-free PASS y carga/selección del proveedor Beam PASS; el job live [126980183141](https://github.com/asenbanskaliev/ASEN/actions/runs/41946364721/job/126980183141) falló durante la etapa `REVIEWER_PI_RPC` en acceptance [41946364721](https://github.com/asenbanskaliev/ASEN/actions/runs/41946364721). El log no distingue cuota, respuesta del modelo, RPC o contrato del artifact; llamada HTTP efectiva desconocida.
 - La lane no llegó a invocar Verifier. El harness reserva el slot Reviewer antes de Pi RPC y no permite reintentos dentro del workflow. No hay subcheck EF-403 PASS ni se repetirá el proveedor a ciegas; el recibo no demuestra que haya habido HTTP.
 - La siguiente mejora de evidencia clasifica fallos a un enum acotado, guarda la cantidad de slots lógicos reservados y conserva `providerCallsActuallyObserved:null`, sin almacenar output/model transcript/credenciales. El test no convierte el fallo actual en PASS ni promete recuperación del proveedor.
+
+
+## EF-403 — corrección de expectativa del recibo — 2026-11-05
+
+- La aceptación provider-free [41947366698](https://github.com/asenbanskaliev/ASEN/actions/runs/41947366698), SHA bafe83e5788219fb5782efd986026c832bd90718, falló antes de cualquier lane autenticado en el subtest EF-403: esperaba el literal callsReserved:2, mientras la mejora sustituyó correctamente ese literal por un contador dinámico.
+- Corrección: el harness valida explícitamente que el contador sea exactamente dos antes del recibo PASS; el test verifica esa aserción. La ejecución Beam fue SKIPPED por el gate fallido, por lo que esta falla no reservó proveedor ni cambia el resultado live anterior.

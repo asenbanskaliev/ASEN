@@ -106,6 +106,7 @@ try{
  const verified=gradeCorrectedVerifier(second.value,{candidateSha:sha,
   fixtureSha:fixture.fixtureSha,reviewHash:first.responseHash,testsSha:fixture.testsSha});
  await confirmCorrectionUnchanged(fixture);
+ assert.equal(callsReserved,2,"Exactly two role reservations must precede the pass receipt");
  const report={schema:"asen-repaired-readonly-review/v1",status:"PASS_REPAIRED_READONLY_REVALIDATION",
   candidateSha:sha,provider:"ollama-cloud",model,fixtureSha:fixture.fixtureSha,testsSha:fixture.testsSha,
   red:fixture.red.length,green:fixture.green.length,preserved:true,
