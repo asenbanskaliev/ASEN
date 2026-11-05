@@ -5,7 +5,7 @@ const workflow=readFileSync(new URL("../.github/workflows/asen-real-agent-accept
 const harness=readFileSync(new URL("../scripts/t12-real-tui-stream-crash.mjs",import.meta.url),"utf8");
 const from=workflow.indexOf("  real-tui-stream-crash:");
 const to=workflow.indexOf("\n  real-stream-interruption:",from);
-test("EF-604 live TUI crash during child inference is one exact opt-in Beam call",()=>{
+test("EF-604 live TUI crash is one exact opt-in bounded Beam lane",()=>{
  assert.ok(from>0&&to>from,"Dedicated live TUI crash job must be isolated");
  const lane=workflow.slice(from,to);
  for(const item of [
@@ -26,6 +26,7 @@ test("EF-604 live TUI crash during child inference is one exact opt-in Beam call
  assert.ok(harness.includes('"--extension","npm:pi-ollama-cloud@0.13.1"'),"The no-extensions Pi TUI must explicitly load the pinned provider");
  assert.ok(harness.includes("TUI_EXITED_BEFORE_MARKER")&&harness.includes("firstTuiExit"),"Failure receipt must preserve bounded startup diagnostics");
  assert.doesNotMatch(lane,/(?:OPENROUTER_API_KEY|GROQ_API_KEY|NVIDIA_API_KEY|WRITE_GRANT|writerAuthorized: true|continue-on-error: true|continue-on-error: )/u);
+ assert.equal((lane.match(/ASEN_OLLAMA_API_KEY: \$\{\{ secrets\.OLLAMA_API_KEY \}\}/gu)||[]).length,2,"Only model setup and live inference receive the provider key");
  assert.doesNotMatch(lane,/\n    env:\n      ASEN_OLLAMA_API_KEY:/u,"Provider secret must not be job-wide");
  assert.match(lane,/name: Select only the pinned free Beam model in isolated Pi home\n        shell: bash\n        env:\n          ASEN_OLLAMA_API_KEY: \$\{\{ secrets\.OLLAMA_API_KEY \}\}/u);
  assert.match(lane,/name: Kill the real Pi TUI only after its ASEN Explorer streams a native Beam text delta\n        shell: bash\n        env:\n          ASEN_OLLAMA_API_KEY: \$\{\{ secrets\.OLLAMA_API_KEY \}\}/u);

@@ -319,7 +319,6 @@ jobs:
       contents: read
     env:
       ASEN_EXPECTED_SHA: ${{ github.sha }}
-      ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
       PI_OLLAMA_WEB_TOOLS: '0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
@@ -332,6 +331,8 @@ jobs:
       - run: npm ci
       - name: Install pinned Beam provider into isolated Pi home
         shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           set -euo pipefail
           export HOME="$RUNNER_TEMP/asen-pi-parent"
@@ -354,6 +355,7 @@ jobs:
       - name: Native Pi parent and optional real Pi RPC child — isolated, bounded Beam
         shell: bash
         env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
           ASEN_ACCEPTANCE_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -euo pipefail

@@ -100,6 +100,11 @@ test("EF-601 live Pi parent+child receipt is restricted to one exact Beam run at
  assert.match(job,/timeout 250s node scripts\/t12-real-child-parent-consumption\.mjs/u);
  assert.match(parentChild,/assert\.equal\(process\.env\.GITHUB_RUN_ATTEMPT,"1"/u);
  assert.match(parentChild,/witnessMode===undefined\|\|witnessMode==="idle"\|\|witnessMode==="busy"/u);
+ assert.doesNotMatch(job,/\n    env:\n      ASEN_OLLAMA_API_KEY:/u,"Provider credential must not be job-wide");
+ const keyCount=job.match(/ASEN_OLLAMA_API_KEY: \$\{\{ secrets\.OLLAMA_API_KEY \}\}/gu)||[];
+ assert.equal(keyCount.length,2,"Only provider install/model selection and authenticated Pi run receive the key");
+ assert.match(job,/name: Install pinned Beam provider into isolated Pi home\n        shell: bash\n        env:\n          ASEN_OLLAMA_API_KEY: \$\{\{ secrets\.OLLAMA_API_KEY \}\}/u);
+ assert.match(job,/name: Native Pi parent and optional real Pi RPC child — isolated, bounded Beam\n        shell: bash\n        env:\n          ASEN_OLLAMA_API_KEY: \$\{\{ secrets\.OLLAMA_API_KEY \}\}/u);
 });
 test("T12 provider-free acceptance runs the existing interruption, recovery, timeout and quota suites",()=>{
  const heading="      - name: F6 interruption, restart, authorization and provider failure regressions";
