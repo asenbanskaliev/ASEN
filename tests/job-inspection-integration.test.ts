@@ -16,8 +16,8 @@ async function fixture(t:TestContext){
   const before=process.env[key];process.env[key]=value;t.after(()=>{if(before===undefined)delete process.env[key];else process.env[key]=before;});
  }
  const commands=new Map<string,any>(),events=new Map<string,Function[]>(),notices:string[]=[],registrations:string[]=[];
- let id="s",effects=0;
- const pi:any={on(name:string,fn:Function){events.set(name,[...(events.get(name)??[]),fn]);},registerCommand(name:string,command:any){registrations.push(name);commands.set(name,command);},registerTool(){},getCommands(){return [];},getAllTools(){return [];},getFlag(){return false;},sendMessage(){effects++;},setActiveTools(){effects++;},setModel(){effects++;}};
+ let id="s",effects=0,inventoryUnavailable=false;
+ const pi:any={on(name:string,fn:Function){events.set(name,[...(events.get(name)??[]),fn]);},registerCommand(name:string,command:any){registrations.push(name);commands.set(name,command);},registerTool(){},getCommands(){if(inventoryUnavailable)throw new Error("PRIVATE inventory failure");return [...commands].map(([name,command])=>({name,description:command.description,source:"extension"}));},getAllTools(){return [];},getFlag(){return false;},sendMessage(){effects++;},setActiveTools(){effects++;},setModel(){effects++;}};
  const ctx:any={cwd:project,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>id},ui:{notify(text:string){notices.push(text);},setStatus(){},setWidget(){},confirm(){effects++;return false;}}};
  const journal=path.join(home,"jobs.json");
  createPiExtension({homeDir:()=>home,packageRoot:root,backgroundJobJournalFile:journal,registryLifecycle:{watch:()=>({close(){}})},autoAdvancePlans:false,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})(pi);
@@ -29,7 +29,7 @@ async function fixture(t:TestContext){
  const save=async(rows:unknown[])=>writeFile(journal,JSON.stringify(rows),{mode:0o600});
  const inspect=async(args="")=>{notices.length=0;await commands.get("asen-job-inspect").handler(args,ctx);return notices.join("\n");};
  t.after(()=>assert.equal(effects,0,"inspection must not dispatch/sendMessage/consent/change delivery"));
- return {ctx,commands,registrations,owned,save,inspect,journal,setId(value:string){id=value;},project,home,notices};
+ return {ctx,commands,registrations,owned,save,inspect,journal,setId(value:string){id=value;},setInventoryUnavailable(){inventoryUnavailable=true;},project,home,notices};
 }
 
 test("production registered command selects only owned metadata, refreshes and keeps journal immutable",async t=>{
@@ -51,7 +51,9 @@ test("production registered command selects only owned metadata, refreshes and k
  assert.match(await f.inspect(),/Observed exit code: 9/);
  f.ctx.ui.select=async()=>undefined;assert.match(await f.inspect(),/closed/);
  const help=await f.commands.get("asen-help").handler("asen-job-inspect",f.ctx);
- assert.equal(help,undefined);assert.match(f.notices.at(-1)!,/metadata|Metadata/);
+ assert.equal(help,undefined);assert.match(f.notices.at(-1)!,/metadata|Metadata/);assert.match(f.notices.at(-1)!,/logs withheld/iu);assert.match(f.notices.at(-1)!,/historical, not resumed/iu);assert.match(f.notices.at(-1)!,/not live follow/iu);
+ f.setInventoryUnavailable();f.notices.length=0;await f.commands.get("asen-help").handler("asen-job-inspect",f.ctx);
+ assert.match(f.notices.at(-1)!,/inventory unavailable/iu);assert.doesNotMatch(f.notices.at(-1)!,/metadata only|logs withheld|historical, not resumed|not live follow/iu);
 });
 
 test("Jobs custom overlay refreshes allowlisted scoped snapshots without journal or action effects",{timeout:5000},async t=>{

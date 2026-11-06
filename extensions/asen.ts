@@ -28,6 +28,7 @@ import {doctorChecks,doctorExitCode} from "../src/runtime/doctor.js";
 import {controlledInstructionPlanCommand,routePreviewCommand} from "../src/runtime/route-command.js";
 import {ASEN_COMMAND_CATALOG} from "../src/runtime/command-catalog.js";
 import {inspectRegisteredCommands,commandDiscoveryNotice} from "../src/runtime/command-palette.js";
+import {formatCommandGuide} from "../src/runtime/command-guide.js";
 import {agentStatusRows,type PublicAgentRecord} from "../src/runtime/agent-lifecycle.js";
 import {findPotentialWorkspaceConflicts,visibleWorkspaceConflictRows,visibleWorkspaceRows,type WorkspaceChange} from "../src/runtime/workspace-attribution.js";
 import {readProfilesFile,mutateProfilesFile} from "../src/runtime/profile-store.js";
@@ -801,7 +802,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(requested==="en"||requested==="es"){if(requested!==current)await writeAsenLanguage(homePath,requested as any);return {language:requested};}
    return {error:"Use `/asen language show`, `/asen language en` or `/asen language es`"};
   }});
-  registerData("asen-help",{description:"Plain-language guide for one ASEN command",handler:(args?:string)=>{const name=String(args??"").trim().toLowerCase();if(name==="asen-job-inspect")return [{what:"Inspect owned Jobs metadata only; logs withheld because safe projection is unavailable.",use:"Type /asen-job-inspect [id]; omit ID to select an owned job.",next:"Observation only, not live follow or execution control; recovered metadata is historical, not resumed."}];const entry=ASEN_COMMAND_CATALOG.find(command=>command.name===name);if(!entry)return [{what:"Unknown command",use:"Run /asen help to print the full ASEN list",next:"Try /asen-commands"}];return [{what:`${entry.name} performs its ${entry.group} function in ASEN.`,use:`Type /${entry.name}`,next:entry.implemented?"Read the command output and follow its next step":"This surface is still pending"}];}});
+  registerData("asen-help",{description:"Show the live registered command guide or exact command help",handler:(args?:string)=>{const discoveryQuery=String(args??"").trim().replace(/^\//u,"");return formatCommandGuide(inspectRegisteredCommands(pi.getCommands?.bind(pi),discoveryQuery),args,terminalColumns());}});
   pi.registerCommand?.("asen-banner",{description:"Report startup banner support without creating a separate datastore",handler:async(_args:any,ctx:any)=>{const message="ASEN startup banner: no separate persisted preference is shipped; startup presentation is owned by the Pi host and can be inspected through `asen-status`."; ctx?.ui?.notify?.(message,"info"); return [message];}});
   pi.registerCommand?.("asen-research-probe",{description:"Opt-in ASEN outbound probe, disabled by default until an explicit URL is supplied",handler:async(args:string,ctx:any)=>{
     const parsed=String(args||"").trim();

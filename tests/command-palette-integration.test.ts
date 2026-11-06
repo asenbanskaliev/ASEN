@@ -16,7 +16,7 @@ async function fixture(t:TestContext,missing=false){
  let effects=0,id="one",throwing=false,reads=0,selection:(labels:string[])=>Promise<string|undefined>=async labels=>labels[0];
  const forbidden=()=>{effects++;};
  const pi={registerCommand(name:string,command:any){commands.set(name,command);},registerTool(){},getAllTools(){return [];},getFlag(){return false;},on(name:string,fn:Function){events.set(name,[...(events.get(name)??[]),fn]);},
-  ...(missing?{}:{getCommands(){assert.equal(this,pi);reads++;if(throwing)throw Error("PRIVATE error");return [...commands].map(([name,command])=>({name,description:command.description,source:"extension",sourceInfo:{path:"PRIVATE path"}}));}}),
+  ...(missing?{}:{getCommands(){assert.equal(this,pi);reads++;if(throwing)throw Error("PRIVATE error");return [...commands].map(([name,command])=>{const row={name,description:command.description,source:"extension"};Object.defineProperties(row,{sourceInfo:{get(){effects++;return {path:"PRIVATE path"};}},handler:{get(){effects++;return command.handler;}}});return row;});}}),
   registerShortcut:forbidden,sendMessage:forbidden,sendUserMessage:forbidden,setModel:forbidden,setActiveTools:forbidden,exec:forbidden};
  const ctx:any={cwd:project,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>id},reload:forbidden,ui:{notify(message:string){notices.push(message);},setStatus(){},setWidget(){},setEditorText:forbidden,select:async(_title:string,labels:string[])=>selection(labels)}};
  (missing?createAsenExtension:createPiExtension)({homeDir:()=>home,packageRoot:root,registryLifecycle:{watch:()=>({close(){}})},autoAdvancePlans:false,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})(pi as any);
@@ -40,6 +40,16 @@ test("production commands use live receiver-bound inventory and description sear
  assert.match(await f.call("asen"),/pi-native/);
 });
 
+test("live help is grouped, exact, honest, receiver-bound and reads inventory once per invocation",async t=>{
+ const f=await fixture(t);
+ let before=f.reads(),output=await f.call("asen-help","");
+ assert.equal(f.reads()-before,1);assert.match(output,/Registered command guide/);assert.match(output,/\[extension\]/);assert.doesNotMatch(output,/Unknown command/);
+ before=f.reads();output=await f.call("asen-help","/external:2");
+ assert.equal(f.reads()-before,1);assert.match(output,/Distinct live description/);assert.match(output,/Type \/external:2 manually/);
+ assert.match(await f.call("asen-help","definitely-unknown"),/No exact registered command matches/);
+ const help=f.commands.get("asen-help");f.commands.clear();f.notices.length=0;await help.handler("",f.ctx);assert.match(f.notices.join("\n"),/No registered commands reported/);assert.doesNotMatch(f.notices.join("\n"),/Unknown command/);
+});
+
 test("palette offers only exact command labels and displays manual details without execution",async t=>{
  const f=await fixture(t);
  f.setSelection(async labels=>{assert.equal(labels.length,1);assert.match(labels[0]!,/^\/external:2 /);return labels[0];});
@@ -53,6 +63,8 @@ test("missing, throwing, empty and headless paths are honest and never select",a
  assert.match(await f.call("asen-commands"),/unavailable/);
  assert.equal(f.commands.get("asen-commands").handler().state,"unavailable","Direct internal callers need no UI context");
  assert.match(await f.call("asen-palette"),/unavailable/);
+ assert.match(await f.call("asen-help","asen-status"),/inventory unavailable/i);
+ assert.doesNotMatch(f.notices.join(""),/Type \/asen-status|performs its/u);
  const g=await fixture(t);g.ctx.hasUI=false;g.ctx.mode="print";g.setSelection(async()=>{assert.fail("headless must not select");});
  assert.match(await g.call("asen-palette","distinct"),/external:2/);
  assert.match(await g.call("asen-palette","absent-query"),/No matching/);
@@ -71,5 +83,6 @@ for(const drift of ["session","project","shutdown"] as const)test(`selection rej
 test("reader failures do not expose errors or fall back to the catalog",async t=>{
  const f=await fixture(t);f.setThrowing();
  assert.match(await f.call("asen-commands"),/unavailable/);
- assert.doesNotMatch(f.notices.join(""),/PRIVATE|asen-help/);
+ assert.match(await f.call("asen-help","asen-status"),/inventory unavailable/i);
+ assert.doesNotMatch(f.notices.join(""),/PRIVATE|Type \/asen-status|performs its/u);
 });
