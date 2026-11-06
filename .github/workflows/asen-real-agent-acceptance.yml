@@ -1085,10 +1085,12 @@ jobs:
             echo "::error::No registered free Beam model; no paid fallback"
             exit 1
           fi
-          echo "ASEN_SELECTED_MODEL=$selected" >> "$GITHUB_ENV"
-          echo "HOME=$HOME" >> "$GITHUB_ENV"
-          echo "USERPROFILE=$HOME" >> "$GITHUB_ENV"
-          echo "PI_CODING_AGENT_DIR=$PI_CODING_AGENT_DIR" >> "$GITHUB_ENV"
+          {
+            echo "ASEN_SELECTED_MODEL=$selected"
+            echo "HOME=$HOME"
+            echo "USERPROFILE=$HOME"
+            echo "PI_CODING_AGENT_DIR=$PI_CODING_AGENT_DIR"
+          } >> "$GITHUB_ENV"
       - name: One authentic Ollama Beam model turn and five automated writer guard scenarios
         shell: bash
         env:
