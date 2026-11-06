@@ -308,6 +308,58 @@ test("native panel command forwards injected navigation bindings and rejects pro
  assert.match(String(await h.commands.get("asen-panel")!.handler("",context)),/closed/u);
 });
 
+test("M2 Agents overlay explicitly rereads scoped fallback rows and ignores host drift",{timeout:5000},async()=>{
+ const home=path.resolve(".cache/agent-refresh-home"),cwd=await realpath(process.cwd()),h=host();
+ let state="running",reads=0,closes=0;
+ const record={id:"owned",role:"explorer",owner:{kind:"user",id:"owner"},sessionId:"s",projectId:cwd,
+  createdAt:"2026-11-05T00:00:00Z",updatedAt:"2026-11-05T00:01:00Z"};
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false,
+  agents:()=>{reads++;return [{...record,state},{...record,id:"foreign-session",sessionId:"other",state},
+   {...record,id:"foreign-project",projectId:home,state}] as any;}})(h.pi as any);
+ const context:any={cwd,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>"s"},ui:{notify(){},custom:async(factory:any)=>{
+  let refreshed!:()=>void,refreshRequested=false;
+  const finished=new Promise<void>(resolve=>{refreshed=resolve;});
+  const view=factory({terminal:{rows:30},requestRender(){if(refreshRequested&&!view.render(140).join("\n").includes("Refreshing snapshot"))refreshed();}},null,null,()=>closes++);
+  assert.doesNotMatch(view.render(140).join("\n"),/foreign-/u);
+  view.handleInput("\r");state="completed";refreshRequested=true;view.handleInput("r");
+  await finished;
+  assert.match(view.render(140).join("\n"),/explorer · completed/u);assert.equal(reads,2);
+  view.handleInput("\u007f");assert.doesNotMatch(view.render(140).join("\n"),/foreign-/u);
+  context.sessionManager={getSessionId:()=>"s"};view.handleInput("r");assert.equal(closes,1);assert.equal(reads,2);
+ }}};
+ assert.match(String(await h.commands.get("asen-agent-inspect")!.handler("",context)),/scope changed/u);
+});
+
+test("M2 Agents refresh rereads runtime list/query and discards a delayed query after manager drift",{timeout:5000},async()=>{
+ const cwd=await realpath(process.cwd()),h=host();let state="running",lists=0,queries=0,effects=0,hold=false;
+ let release!:()=>void,entered!:()=>void,refreshed!:()=>void;
+ const queryEntered=new Promise<void>(resolve=>{entered=resolve;});
+ const blocked=new Promise<void>(resolve=>{release=resolve;});
+ const finished=new Promise<void>(resolve=>{refreshed=resolve;});
+ const record=()=>({id:lists>1?"new-agent":"initial-agent",role:"explorer",owner:{kind:"user",id:"owner"},sessionId:"s",projectId:cwd,
+  state,createdAt:"2026-11-05T00:00:00Z",updatedAt:"2026-11-05T00:01:00Z"});
+ const runtime={list:async(identity:any)=>{assert.deepEqual(identity,{sessionId:"s",projectId:cwd,worktree:cwd});lists++;return [record()];},
+  query:async(_id:string,identity:any)=>{assert.deepEqual(identity,{sessionId:"s",projectId:cwd,worktree:cwd});queries++;
+   if(hold){entered();await blocked;}return {record:record(),history:[]};},
+  dispatch(){effects++;},cancel(){effects++;}};
+ createAsenExtension({homeDir:()=>path.resolve(".cache/agent-runtime-refresh-home"),enableAgentRuntime:false,enableTodoRuntime:false,
+  enableWorkspaceRuntime:false,enableMemoryRuntime:false,agentRuntimeFactory:async()=>runtime as any})(h.pi as any);
+ const context:any={cwd,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>"s"},ui:{notify(){},custom:async(factory:any)=>{
+  let refreshRequested=false,redraws=0;
+  const view=factory({terminal:{rows:30},requestRender(){redraws++;
+   if(refreshRequested&&!view.render(140).join("\n").includes("Refreshing snapshot"))refreshed();}},null,null,()=>{});
+  state="completed";refreshRequested=true;view.handleInput("r");await finished;
+  assert.match(view.render(140).join("\n"),/completed · new-agent/u);
+  assert.doesNotMatch(view.render(140).join("\n"),/initial-agent/u);assert.equal(lists,2);assert.equal(queries,2);
+  hold=true;view.handleInput("r");await queryEntered;const before=redraws;
+  context.sessionManager={getSessionId:()=>"s"};release();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.match(view.render(140).join("\n"),/scope changed/u);assert.equal(redraws,before);
+ }}};
+ assert.match(String(await h.commands.get("asen-agent-inspect")!.handler("",context)),/scope changed/u);
+ assert.equal(effects,0);
+});
+
 test("M2 agent inspection cannot read another session or project lifecycle",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-agent-inspect-scope-"));
  t.after(()=>rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100}));

@@ -54,6 +54,23 @@ test("production registered command selects only owned metadata, refreshes and k
  assert.equal(help,undefined);assert.match(f.notices.at(-1)!,/metadata|Metadata/);
 });
 
+test("Jobs custom overlay refreshes allowlisted scoped snapshots without journal or action effects",{timeout:5000},async t=>{
+ const f=await fixture(t);await f.save([f.owned,{...f.owned,id:"foreign",sessionId:"other"},
+  {...f.owned,id:"foreign-project",projectId:f.home}]);
+ f.ctx.ui.custom=async(factory:any)=>{
+  let refreshed!:()=>void,refreshRequested=false;const finished=new Promise<void>(resolve=>{refreshed=resolve;});
+  const view=factory({terminal:{rows:30},requestRender(){if(refreshRequested&&!view.render(140).join("\n").includes("Refreshing snapshot"))refreshed();}},null,null,()=>{});
+  assert.doesNotMatch(view.render(140).join("\n"),/foreign|SECRET_SENTINEL/u);
+  view.handleInput("\r");await f.save([{...f.owned,exitCode:9,eventCount:42},
+   {...f.owned,id:"foreign",sessionId:"other"}]);
+  const before=await readFile(f.journal,"utf8");refreshRequested=true;view.handleInput("r");await finished;
+  const text=view.render(140).join("\n");assert.match(text,/Observed exit code: 9/u);assert.match(text,/Historical events: 42/u);
+  assert.doesNotMatch(text,/foreign|SECRET_SENTINEL/u);assert.equal(await readFile(f.journal,"utf8"),before);
+  view.handleInput("q");
+ };
+ assert.match(await f.inspect(),/navigator closed/u);
+});
+
 for(const drift of ["session","project","manager","abort"] as const)test(`registered selection rejects ${drift} drift`,async t=>{
  const f=await fixture(t);await f.save([f.owned]);const abort=new AbortController();f.ctx.signal=abort.signal;
  f.ctx.ui.select=async(_title:string,options:string[])=>{if(drift==="session")f.setId("new");else if(drift==="project")f.ctx.cwd=f.home;else if(drift==="manager")f.ctx.sessionManager={getSessionId:()=>"s"};else abort.abort();return options[0];};

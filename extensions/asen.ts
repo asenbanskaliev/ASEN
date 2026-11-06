@@ -993,7 +993,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
         requestRender:()=>tui.requestRender(),close:()=>done(undefined),
         terminalRows:()=>Math.max(8,Number(tui.terminal?.rows??24)),
         ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
-        stillCurrent:()=>{try{assertScope();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}}
+        stillCurrent:()=>{try{assertScope();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}},
+        refresh:async()=>{await check();
+         const jobs=backgroundJobs.list(identity.sessionId,identity.projectId).slice(0,100).map(projectJobMetadata);
+         await check();return {kind:"jobs",jobs};}
        }),{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}});
       try{await check();}catch{return ["ASEN job scope changed; no action performed."];}
       return ["ASEN job navigator closed (metadata only; no execution)."];
@@ -1005,28 +1008,36 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     }catch{return [truncateForTerminal("ASEN job unavailable for this session/project.",width)];}
    }});
    registerData("asen-agent-inspect",{description:"Inspect the persisted lifecycle of an owned agent, without claiming access to its Pi message transcript",handler:async(args:string|undefined,ctx:CommandContext)=>{
-    const identity=await sessionIdentity(ctx);
-    const runtime=agentRuntimePromise?await agentRuntimePromise:undefined;
-    const entries=runtime?await runtime.list(identity):(dependencies.agents?.()??[]).filter(row=>row.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(row.projectId,identity.projectId));
     const assertScope=panelScope(ctx),before=ctx.cwd;
+    const identity=await sessionIdentity(ctx);assertScope();
+    const runtime=agentRuntimePromise?await agentRuntimePromise:undefined;assertScope();
+    const readEntries=()=>runtime?runtime.list(identity):(dependencies.agents?.()??[]).filter(row=>row.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(row.projectId,identity.projectId));
+    const entries=await readEntries();
     const validate=async()=>{assertScope();const current=await sessionIdentity(ctx);assertScope();
      if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId||ctx.cwd!==before)throw Error("Agent scope changed");};
     await validate();
     if(!String(args??"").trim()&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.custom==="function"){
-     const recent=entries.slice(0,100);
-     const inspections=await Promise.all(recent.map(async record=>{
-      const observed=runtime?await runtime.query(record.id,identity):null;
-      return {record:observed?.record??record,history:observed?.history??[]};
-     }));
-     let notices:Awaited<ReturnType<typeof agentNoticeJournal.recoveryReview>>|undefined;
-     try{notices=await agentNoticeJournal.recoveryReview(identity);}catch{/* Unavailable is explicit in the viewer. */}
-     await validate();
+     const readSnapshot=async(initial?:typeof entries)=>{
+      await validate();
+      const recent=(initial??await readEntries()).slice(0,100);await validate();
+      const inspections=await Promise.all(recent.map(async record=>{
+       await validate();const observed=runtime?await runtime.query(record.id,identity):null;await validate();
+       return {record:observed?.record??record,history:observed?.history??[]};
+      }));
+      let notices:Awaited<ReturnType<typeof agentNoticeJournal.recoveryReview>>|undefined;
+      await validate();
+      try{notices=await agentNoticeJournal.recoveryReview(identity);}catch{/* Unavailable is explicit in the viewer. */}
+      await validate();
+      return {kind:"agents" as const,agents:inspections,...(notices?{notices}:{})};
+     };
+     const snapshot=await readSnapshot(entries);
      await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>
-      createNativeM2Navigator({kind:"agents",agents:inspections,...(notices?{notices}:{})},{
+      createNativeM2Navigator(snapshot,{
        requestRender:()=>tui.requestRender(),close:()=>done(undefined),
        terminalRows:()=>Math.max(8,Number(tui.terminal?.rows??24)),
        ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
-       stillCurrent:()=>{try{assertScope();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}}
+       stillCurrent:()=>{try{assertScope();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}},
+       refresh:()=>readSnapshot()
       }),{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}});
      try{await validate();}catch{return ["ASEN agent scope changed; no action performed."];}
      return ["ASEN agent navigator closed (read-only; no transcript or replay)."];

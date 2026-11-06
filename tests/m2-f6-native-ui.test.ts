@@ -81,6 +81,70 @@ test("M2 honors Pi-native remapped input and rejects stale overlay without dispa
  assert.equal(ctx.get().closes,1);
  assert.equal(ctx.get().redraws>=3,true);
 });
+const settled=()=>new Promise<void>(resolve=>setImmediate(resolve));
+test("M2 explicit refresh preserves identity/detail across reorder and updates state",async()=>{
+ const ctx=fixture();let reads=0;
+ const view=createNativeM2Navigator({kind:"agents",agents:[agent("a","running"),agent("b","running")]},
+  {...ctx.controls,refresh:async()=>{reads++;return {kind:"agents",agents:[agent("b","completed"),agent("a","running")]};}});
+ view.handleInput("j");view.handleInput("\r");
+ assert.match(view.render(120).join("\n"),/r: refresh/u);
+ view.handleInput("r");await settled();
+ const text=view.render(120).join("\n");assert.match(text,/Persistent lifecycle/u);assert.match(text,/Task: b/u);assert.match(text,/explorer · completed/u);
+ assert.equal(reads,1);view.handleInput("\u007f");assert.match(view.render(120).join("\n"),/> explorer · completed · b/u);
+});
+test("M2 refresh retains filter and falls back to bounded list for missing, capped, ambiguous or filtered identity",async()=>{
+ for(const replacement of [[],[agent("b","running")],[agent("a","completed")],
+  [agent("a","running"),agent("a","running")],
+  [...Array.from({length:100},(_,i)=>agent("other-"+i,"running")),agent("a","running")]]){
+  const ctx=fixture(),view=createNativeM2Navigator({kind:"agents",agents:[agent("a","running")]},
+   {...ctx.controls,refresh:async()=>({kind:"agents",agents:replacement})});
+  view.handleInput("\t");view.handleInput("\r");view.handleInput("j");view.handleInput("r");await settled();
+  const text=view.render(120).join("\n");assert.match(text,/attention/u);assert.doesNotMatch(text,/Persistent lifecycle/u);
+  if(!replacement.length||replacement[0]?.record.state==="completed")assert.match(text,/No owned agents/u);
+  else assert.match(text,/> explorer/u);
+ }
+});
+test("M2 refresh is single-flight, failure is generic, and closed or stale results are ignored",async()=>{
+ for(const end of ["failure","close","drift"]){
+  const ctx=fixture();let resolve!:(value:any)=>void,reject!:(error:Error)=>void,reads=0;
+  const pending=new Promise<any>((yes,no)=>{resolve=yes;reject=no;});
+  const view=createNativeM2Navigator({kind:"agents",agents:[agent("original","running")]},
+   {...ctx.controls,refresh:()=>{reads++;return pending;}});
+  view.handleInput("r");view.handleInput("r");await settled();assert.equal(reads,1);
+  if(end==="close")view.handleInput("q");if(end==="drift")ctx.stale();
+  const redraws=ctx.get().redraws;
+  if(end==="failure")reject(Error("SECRET_ERROR"));else resolve({kind:"agents",agents:[agent("replacement","completed")]});
+  await settled();const text=view.render(120).join("\n");assert.doesNotMatch(text,/SECRET_ERROR|replacement/u);
+  if(end==="failure"){assert.match(text,/Refresh unavailable/u);assert.match(text,/original/u);}
+  else assert.equal(ctx.get().redraws,redraws);
+ }
+});
+test("M2 remapped cancellation wins over refresh and legacy snapshots do not advertise it",async()=>{
+ const ctx=fixture();let reads=0;
+ const keybindings={matches:(data:string,action:string)=>data==="r"&&action==="tui.select.cancel"};
+ const view=createNativeM2Navigator({kind:"jobs",jobs:[job()]},{...ctx.controls,keybindings,
+  refresh:async()=>{reads++;return {kind:"jobs",jobs:[]};}});
+ view.handleInput("r");await settled();assert.equal(reads,0);assert.equal(ctx.get().closes,1);
+ const legacy=createNativeM2Navigator({kind:"jobs",jobs:[job()]},fixture().controls);
+ legacy.handleInput("r");assert.doesNotMatch(legacy.render(120).join("\n"),/r: refresh/u);
+});
+test("M2 ambiguous display-bounded job IDs never retain another job detail",async()=>{
+ const ctx=fixture(),view=createNativeM2Navigator({kind:"jobs",jobs:[job()]},{...ctx.controls,
+  refresh:async()=>({kind:"jobs",jobs:[job("running"),job("interrupted")]})});
+ view.handleInput("\r");view.handleInput("r");await settled();
+ assert.doesNotMatch(view.render(120).join("\n"),/Registry metadata/u);
+ assert.match(view.render(120).join("\n"),/j\/k: select/u);
+});
+test("M2 truncated job IDs cannot retain detail across single-row projection collisions",async()=>{
+ const metadata=(suffix:string)=>projectJobMetadata({id:"x".repeat(100)+suffix,sessionId:"s",projectId:"p",command:"secret",
+  mode:"background",state:"running",createdAt:time,updatedAt:time,exitCode:null,eventCount:0,tail:[]});
+ const before=metadata("a"),after=metadata("b");assert.equal(before.id,after.id);
+ const view=createNativeM2Navigator({kind:"jobs",jobs:[before]},{...fixture().controls,
+  refresh:async()=>({kind:"jobs",jobs:[after]})});
+ view.handleInput("\r");view.handleInput("r");await settled();
+ assert.match(view.render(120).join("\n"),/j\/k: select/u);
+ assert.doesNotMatch(view.render(120).join("\n"),/Registry metadata/u);
+});
 test("EF-603 Windows path identity normalizes case, extended drive and UNC aliases",()=>{
  const drive="C:\\ASEN\\Repo";
  assert.equal(workspaceIdentityPathKey(drive,"win32"),workspaceIdentityPathKey("\\\\?\\c:\\asen\\repo","win32"));

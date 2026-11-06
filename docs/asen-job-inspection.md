@@ -6,7 +6,8 @@ Use `/asen-job-inspect [id]` to inspect a background job owned by the current Pi
 
 1. Open `/asen-panel jobs` for bounded IDs, mode and state, without command previews.
 2. Run `/asen-job-inspect` to select an owned job (up to 100 choices), or supply its full ID. Without a selection-capable UI, supply an ID.
-3. Read the observation provenance before interpreting state or counts. Long IDs are truncated for display; selection retains their original internal identity. Ambiguous display labels fail closed.
+3. In the native overlay, press `r` to explicitly reread the owned snapshot; there is no polling or live view. Use Tab for attention/all and Enter for detail. Host-remapped bindings take precedence over `r`.
+4. Read the observation provenance before interpreting state or counts. Long IDs are truncated for display. The selector retains original internal identity; the native overlay uses bounded metadata IDs and returns to the list if that identity is ambiguous.
 
 ## What the view means
 
@@ -19,7 +20,7 @@ Use `/asen-job-inspect [id]` to inspect a background job owned by the current Pi
 
 The allowlisted DTO contains only bounded ID, enumerated mode/state, normalized creation/update timestamps, observed exit code, event/retained-line counts and coarse provenance. It never includes command, arguments, working directory, log lines, persistence/delivery errors or authorization fields. Logs are explicitly withheld because no secret-safe log projection exists. Terminal text uses the existing sanitizer and width truncation.
 
-Unknown and foreign IDs receive the same generic unavailable response. Reader failure is distinct from an empty owned list. Cancellation closes inspection; session, manager, project or lifecycle drift invalidates it. Selection refreshes the scoped list before display. Inspection does not stop, retry, start, dispatch, request consent or alter delivery state. The existing journal reader can create its private parent directory: this is not a zero-filesystem-write promise.
+Unknown and foreign IDs receive the same generic unavailable response. Reader failure is distinct from an empty owned list. Cancellation closes inspection; session, manager, project or lifecycle drift invalidates it. Selection refreshes the scoped list before display. Native refresh keeps the filter and selected ID/detail only if the same unique entity remains visible within the 100-row cap; otherwise it returns to the first visible row (or empty list). Only one refresh is pending at a time. Failed reads retain the snapshot with a generic message; closed or scope-invalidated reads cannot publish results. Inspection does not stop, retry, start, dispatch, request consent or alter delivery state. The existing journal reader can create its private parent directory: this is not a zero-filesystem-write promise.
 
 ## Verification and limits
 

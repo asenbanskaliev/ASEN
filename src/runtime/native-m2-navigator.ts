@@ -15,6 +15,7 @@ export interface M2NavigatorControls {
  terminalRows:()=>number;
  stillCurrent:()=>boolean;
  keybindings?:Pick<KeybindingsManager,"matches">;
+ refresh?:()=>Promise<M2NavigatorSource>;
 }
 export interface M2NavigatorComponent {
  render(width:number):string[];
@@ -32,13 +33,43 @@ const label=(row:M2Row)=>row.kind==="agent"?
  clean(row.data.record.role)+" · "+clean(row.data.record.state)+" · "+clean(row.data.record.id):
  clean(row.data.mode)+" · "+clean(row.data.state)+" · "+clean(row.data.id);
 export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2NavigatorControls):M2NavigatorComponent {
- const rows:M2Row[]=source.kind==="agents"?source.agents.slice(0,100).map(data=>({
+ const project=(source:M2NavigatorSource):M2Row[]=>source.kind==="agents"?source.agents.slice(0,100).map(data=>({
   kind:"agent" as const,data,
   ...(source.notices?.find(notice=>notice.agentId===data.record.id)?{notice:source.notices.find(notice=>notice.agentId===data.record.id)!}:{}),
  })):source.jobs.slice(0,100).map(data=>({kind:"job" as const,data}));
- let selected=0,scroll=0,detail=false,attentionOnly=false;
+ let rows=project(source);
+ let selected=0,scroll=0,detail=false,attentionOnly=false,closed=false,pending=false,refreshFailed=false;
+ const close=()=>{closed=true;controls.close();};
+ const identity=(row:M2Row)=>row.kind+":"+(row.kind==="agent"?row.data.record.id:row.data.id);
  const filtered=()=>rows.filter(row=>!attentionOnly||attention.has(state(row)));
  const current=()=>{try{return controls.stillCurrent();}catch{return false;}};
+ const refresh=async()=>{
+  if(!controls.refresh||pending||closed||!current())return;
+  pending=true;refreshFailed=false;controls.requestRender();
+  try{
+   const next=await controls.refresh();
+   if(closed||!current())return;
+   if(next.kind!==source.kind)throw Error("Unexpected inspection kind");
+   // Compare opaque DTO identities, never labels or row positions. Duplicate bounded
+   // job IDs (including projection collisions) cannot prove entity continuity.
+   const previous=filtered()[selected],key=previous?identity(previous):undefined;
+   const uniqueBefore=key!==undefined&&rows.filter(row=>identity(row)===key).length===1&&
+    // A truncated ID cannot prove continuity even if only one collision is visible.
+    !(previous?.kind==="job"&&previous.data.id.includes("…"));
+   const nextRows=project(next);
+   source=next;rows=nextRows;
+   const visible=filtered(),at=key===undefined?-1:visible.findIndex(row=>identity(row)===key);
+   const survives=uniqueBefore&&at>=0&&rows.filter(row=>identity(row)===key).length===1;
+   selected=survives?at:0;
+   if(!survives){detail=false;scroll=0;}
+  }catch{
+   if(closed||!current())return;
+   refreshFailed=true;
+  }finally{
+   pending=false;
+   if(!closed&&current())controls.requestRender();
+  }
+ };
  const render=(width:number):string[]=>{
   if(!Number.isSafeInteger(width)||width<12||width>1000)throw Error("Invalid M2 width");
   if(!current())return [fit("ASEN M2 scope changed; close inspection.",width)];
@@ -67,16 +98,23 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
    "ACK is not model consumption · Backspace: list · q: close":
    "Stop via ownership-checked background tool · Backspace: list · q: close"):
    "j/k: select · Enter: inspect · Tab: attention/all · q: close";
-  const result=[heading,...body,fit(help,cols)];
+  const refreshHelp=controls.refresh?"r: refresh · ":"";
+  const status=pending?"Refreshing snapshot":refreshFailed?"Refresh unavailable; snapshot retained":"";
+  const result=[heading,...body,...(status?[fit(status,cols)]:[]),fit(refreshHelp+help,cols)];
   if(result.some(row=>visibleWidth(row)>width))throw Error("M2 width overflow");
   return result;
  };
  const handleInput=(data:string):void=>{
-  if(!current()){controls.close();return;}
+  if(closed)return;
+  if(!current()){close();return;}
   const matches=(action:Parameters<KeybindingsManager["matches"]>[1],...fallback:string[])=>
    typeof controls.keybindings?.matches==="function"?
     controls.keybindings.matches(data,action):fallback.includes(data);
-  if(data==="q"||matches("tui.select.cancel","\u001b","\u0003")){controls.close();return;}
+  if(data==="q"||matches("tui.select.cancel","\u001b","\u0003")){close();return;}
+  // Host bindings win over the local refresh shortcut, including remapped cancel.
+  const hostBound=(["tui.select.down","tui.select.up","tui.select.confirm","tui.input.tab","tui.editor.deleteCharBackward"] as const)
+   .some(action=>typeof controls.keybindings?.matches==="function"&&controls.keybindings.matches(data,action));
+  if(data==="r"&&!hostBound&&controls.refresh){void refresh();return;}
   if(detail){
    if(matches("tui.editor.deleteCharBackward","\u007f","\b")){detail=false;scroll=0;controls.requestRender();return;}
    if(data==="j"||matches("tui.select.down","\u001b[B")){scroll++;controls.requestRender();return;}
