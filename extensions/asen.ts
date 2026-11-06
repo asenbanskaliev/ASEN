@@ -75,12 +75,13 @@ import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtim
 import {hostContentColumns,layoutMode,sanitizeTerminalText,truncateForTerminal} from "../src/runtime/responsive-layout.js";
 import {ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,renderAsenWorkRow,renderAsenStatusLine,type AsenPanelSnapshot,type AsenPanelSection} from "../src/runtime/ide-panel.js";
 import {createNativeWorkPanel} from "../src/runtime/native-work-panel.js";
+import {createNativeM2Navigator} from "../src/runtime/native-m2-navigator.js";
 import {renderM1Surface,createM1SurfaceCache} from "../src/runtime/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/host-status-projection.js";
 import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInventoryRow} from "../src/runtime/integration-profile-inspection.js";
 import type {KeybindingsManager} from "@earendil-works/pi-tui";
 import {renderAgentInspection} from "../src/runtime/agent-inspect.js";
-import {inspectOwnedJob} from "../src/runtime/job-inspect.js";
+import {inspectOwnedJob,projectJobMetadata} from "../src/runtime/job-inspect.js";
 import {previewWorkspaceFileDiff,renderGitDiffPreview,gitChangesIndex} from "../src/runtime/git-diff-preview.js";
 import {AsenPermissionSession} from "../src/security/permission-session.js";
 import {AsenAutoPermissionReviewer} from "../src/security/auto-permission-reviewer.js";
@@ -981,6 +982,22 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const assertScope=panelScope(ctx),width=Math.max(12,terminalColumns());
     try{
      const identity=await sessionIdentity(ctx);assertScope();
+     if(!String(args??"").trim()&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.custom==="function"){
+      const metadata=backgroundJobs.list(identity.sessionId,identity.projectId).slice(0,100).map(projectJobMetadata);
+      const before=ctx.cwd;
+      const check=async()=>{assertScope();const now=await sessionIdentity(ctx);assertScope();
+       if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId||ctx.cwd!==before)throw Error("Job scope changed");};
+      await check();
+      await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>
+       createNativeM2Navigator({kind:"jobs",jobs:metadata},{
+        requestRender:()=>tui.requestRender(),close:()=>done(undefined),
+        terminalRows:()=>Math.max(8,Number(tui.terminal?.rows??24)),
+        ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
+        stillCurrent:()=>{try{assertScope();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}}
+       }),{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}});
+      try{await check();}catch{return ["ASEN job scope changed; no action performed."];}
+      return ["ASEN job navigator closed (metadata only; no execution)."];
+     }
      return await inspectOwnedJob({id:String(args??""),identity,width,signal:ctx.signal,
       read:()=>backgroundJobs.list(identity.sessionId,identity.projectId),
       assertCurrent:async()=>{assertScope();const now=await sessionIdentity(ctx);assertScope();if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)throw new Error("Job scope changed");},
@@ -991,6 +1008,29 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const identity=await sessionIdentity(ctx);
     const runtime=agentRuntimePromise?await agentRuntimePromise:undefined;
     const entries=runtime?await runtime.list(identity):(dependencies.agents?.()??[]).filter(row=>row.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(row.projectId,identity.projectId));
+    const assertScope=panelScope(ctx),before=ctx.cwd;
+    const validate=async()=>{assertScope();const current=await sessionIdentity(ctx);assertScope();
+     if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId||ctx.cwd!==before)throw Error("Agent scope changed");};
+    await validate();
+    if(!String(args??"").trim()&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.custom==="function"){
+     const recent=entries.slice(0,100);
+     const inspections=await Promise.all(recent.map(async record=>{
+      const observed=runtime?await runtime.query(record.id,identity):null;
+      return {record:observed?.record??record,history:observed?.history??[]};
+     }));
+     let notices:Awaited<ReturnType<typeof agentNoticeJournal.recoveryReview>>|undefined;
+     try{notices=await agentNoticeJournal.recoveryReview(identity);}catch{/* Unavailable is explicit in the viewer. */}
+     await validate();
+     await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>
+      createNativeM2Navigator({kind:"agents",agents:inspections,...(notices?{notices}:{})},{
+       requestRender:()=>tui.requestRender(),close:()=>done(undefined),
+       terminalRows:()=>Math.max(8,Number(tui.terminal?.rows??24)),
+       ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
+       stillCurrent:()=>{try{assertScope();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}}
+      }),{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}});
+     try{await validate();}catch{return ["ASEN agent scope changed; no action performed."];}
+     return ["ASEN agent navigator closed (read-only; no transcript or replay)."];
+    }
     let id=String(args??"").trim();
     if(!id&&ctx.mode==="tui"&&ctx.hasUI===true&&ctx.ui.select&&entries.length){
      const labels=entries.slice(0,100).map(row=>row.role+" · "+row.state+" · "+row.id);
