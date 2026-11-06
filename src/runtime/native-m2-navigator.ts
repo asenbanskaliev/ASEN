@@ -63,7 +63,9 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
   if(!detail&&selected>=scroll+maxRows)scroll=selected-maxRows+1;
   if(!detail&&selected<scroll)scroll=selected;
   const body=fitted.slice(scroll,scroll+maxRows).map(line=>fit(" "+line,width));
-  const help=detail?"Backspace: list · j/k: scroll · q: close":
+  const help=detail?(chosen?.kind==="agent"?
+   "ACK is not model consumption · Backspace: list · q: close":
+   "Stop via ownership-checked background tool · Backspace: list · q: close"):
    "j/k: select · Enter: inspect · Tab: attention/all · q: close";
   const result=[heading,...body,fit(help,cols)];
   if(result.some(row=>visibleWidth(row)>width))throw Error("M2 width overflow");
