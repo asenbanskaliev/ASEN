@@ -76,7 +76,7 @@ import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtim
 import {hostContentColumns,layoutMode,sanitizeTerminalText,truncateForTerminal} from "../src/runtime/responsive-layout.js";
 import {ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,renderAsenWorkRow,renderAsenStatusLine,type AsenPanelSnapshot,type AsenPanelSection} from "../src/runtime/ide-panel.js";
 import {createNativeWorkPanel} from "../src/runtime/native-work-panel.js";
-import {createNativeM2Navigator} from "../src/runtime/native-m2-navigator.js";
+import {createNativeM2Navigator,type M2AgentStopTarget} from "../src/runtime/native-m2-navigator.js";
 import {renderM1Surface,createM1SurfaceCache} from "../src/runtime/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/host-status-projection.js";
 import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInventoryRow} from "../src/runtime/integration-profile-inspection.js";
@@ -1032,16 +1032,28 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       return {kind:"agents" as const,agents:inspections,...(notices?{notices}:{})};
      };
      const snapshot=await readSnapshot(entries);
+     const stop=runtime?async(target:M2AgentStopTarget):Promise<boolean>=>{
+      await validate();
+      if(target.sessionId!==identity.sessionId||!sameWorkspaceIdentityPath(target.projectId,identity.projectId))return false;
+      const [observed,currentRows]=await Promise.all([runtime.query(target.id,identity),runtime.list(identity)]);await validate();
+      const exact=currentRows.filter(row=>row.id===target.id);
+      if(exact.length!==1||!observed||observed.record.id!==target.id||observed.record.sessionId!==identity.sessionId||
+         !sameWorkspaceIdentityPath(observed.record.projectId,identity.projectId)||
+         exact[0]!.sessionId!==identity.sessionId||!sameWorkspaceIdentityPath(exact[0]!.projectId,identity.projectId)||
+         observed.record.state!==exact[0]!.state||(observed.record.state!=="queued"&&observed.record.state!=="running"))return false;
+      await validate();
+      return runtime.cancel(target.id,identity);
+     }:undefined;
      await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>
       createNativeM2Navigator(snapshot,{
        requestRender:()=>tui.requestRender(),close:()=>done(undefined),
        terminalRows:()=>Math.max(8,Number(tui.terminal?.rows??24)),
        ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
        stillCurrent:()=>{try{assertScope();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}},
-       refresh:()=>readSnapshot()
+       refresh:()=>readSnapshot(),...(stop?{stop}:{})
       }),{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}});
      try{await validate();}catch{return ["ASEN agent scope changed; no action performed."];}
-     return ["ASEN agent navigator closed (read-only; no transcript or replay)."];
+     return ["ASEN agent navigator closed. Stop requests, if any, were explicit; no transcript or replay."];
     }
     let id=String(args??"").trim();
     if(!id&&ctx.mode==="tui"&&ctx.hasUI===true&&ctx.ui.select&&entries.length){

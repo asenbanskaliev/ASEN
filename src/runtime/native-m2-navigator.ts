@@ -9,6 +9,11 @@ import {sanitizeTerminalText,truncateForTerminal,visibleWidth} from "./responsiv
 export type M2NavigatorSource=
  {kind:"agents";agents:readonly AgentInspection[];notices?:readonly AgentNoticeRecoveryView[]}|
  {kind:"jobs";jobs:readonly JobMetadata[]};
+export interface M2AgentStopTarget {
+ readonly id:string;
+ readonly sessionId:string;
+ readonly projectId:string;
+}
 export interface M2NavigatorControls {
  requestRender:()=>void;
  close:()=>void;
@@ -16,6 +21,7 @@ export interface M2NavigatorControls {
  stillCurrent:()=>boolean;
  keybindings?:Pick<KeybindingsManager,"matches">;
  refresh?:()=>Promise<M2NavigatorSource>;
+ stop?:(target:M2AgentStopTarget)=>Promise<boolean>;
 }
 export interface M2NavigatorComponent {
  render(width:number):string[];
@@ -38,14 +44,23 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
   ...(source.notices?.find(notice=>notice.agentId===data.record.id)?{notice:source.notices.find(notice=>notice.agentId===data.record.id)!}:{}),
  })):source.jobs.slice(0,100).map(data=>({kind:"job" as const,data}));
  let rows=project(source);
- let selected=0,scroll=0,detail=false,attentionOnly=false,closed=false,pending=false,refreshFailed=false;
+ let selected=0,scroll=0,detail=false,attentionOnly=false,closed=false,closeOnly=false,refreshPending=false,stopPending=false,refreshFailed=false;
+ let stopStatus:"requested"|"unavailable"|undefined;
  const close=()=>{closed=true;controls.close();};
  const identity=(row:M2Row)=>row.kind+":"+(row.kind==="agent"?row.data.record.id:row.data.id);
  const filtered=()=>rows.filter(row=>!attentionOnly||attention.has(state(row)));
  const current=()=>{try{return controls.stillCurrent();}catch{return false;}};
+ const stopTarget=():M2AgentStopTarget|undefined=>{
+  if(!controls.stop||source.kind!=="agents"||closeOnly||closed||stopStatus||!current())return undefined;
+  const chosen=filtered()[selected];
+  if(chosen?.kind!=="agent"||(chosen.data.record.state!=="queued"&&chosen.data.record.state!=="running"))return undefined;
+  const record=chosen.data.record;
+  if(!record.id||!record.sessionId||!record.projectId||rows.filter(row=>row.kind==="agent"&&row.data.record.id===record.id).length!==1)return undefined;
+  return Object.freeze({id:record.id,sessionId:record.sessionId,projectId:record.projectId});
+ };
  const refresh=async()=>{
-  if(!controls.refresh||pending||closed||!current())return;
-  pending=true;refreshFailed=false;controls.requestRender();
+  if(!controls.refresh||refreshPending||stopPending||closed||!current())return;
+  refreshPending=true;refreshFailed=false;stopStatus=undefined;controls.requestRender();
   try{
    const next=await controls.refresh();
    if(closed||!current())return;
@@ -66,13 +81,31 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
    if(closed||!current())return;
    refreshFailed=true;
   }finally{
-   pending=false;
+   refreshPending=false;
+   if(!closed&&current())controls.requestRender();
+  }
+ };
+ const stop=async()=>{
+  if(refreshPending||stopPending)return;
+  const target=stopTarget();if(!target)return;
+  stopPending=true;stopStatus=undefined;controls.requestRender();
+  try{
+   const accepted=await controls.stop!(target);
+   if(closed||!current())return;
+   stopStatus=accepted?"requested":"unavailable";
+  }catch{
+   if(closed||!current())return;
+   stopStatus="unavailable";
+  }finally{
+   stopPending=false;
    if(!closed&&current())controls.requestRender();
   }
  };
  const render=(width:number):string[]=>{
-  if(!Number.isSafeInteger(width)||width<12||width>1000)throw Error("Invalid M2 width");
+  if(!Number.isSafeInteger(width)||width<1||width>1000||source.kind==="jobs"&&width<12)throw Error("Invalid M2 width");
+  closeOnly=source.kind==="agents"&&width<12;
   if(!current())return [fit("ASEN M2 scope changed; close inspection.",width)];
+  if(closeOnly)return [fit(width<5?"q":"Close",width)];
   const cols=width-1,chosenRows=filtered();
   selected=Math.max(0,Math.min(selected,chosenRows.length-1));
   const kind=source.kind==="agents"?"AGENTS":"JOBS";
@@ -94,12 +127,14 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
   if(!detail&&selected>=scroll+maxRows)scroll=selected-maxRows+1;
   if(!detail&&selected<scroll)scroll=selected;
   const body=fitted.slice(scroll,scroll+maxRows).map(line=>fit(" "+line,width));
+  const canStop=!refreshPending&&!stopPending&&!!stopTarget();
   const help=detail?(chosen?.kind==="agent"?
-   "ACK is not model consumption · Backspace: list · q: close":
+   (canStop?"s: stop · ":"")+"ACK is not model consumption · Backspace: list · q: close":
    "Stop via ownership-checked background tool · Backspace: list · q: close"):
-   "j/k: select · Enter: inspect · Tab: attention/all · q: close";
-  const refreshHelp=controls.refresh?"r: refresh · ":"";
-  const status=pending?"Refreshing snapshot":refreshFailed?"Refresh unavailable; snapshot retained":"";
+   "j/k: select · Enter: inspect · Tab: attention/all · "+(canStop?"s: stop · ":"")+"q: close";
+  const refreshHelp=controls.refresh&&!stopPending?"r: refresh · ":"";
+  const status=refreshPending?"Refreshing snapshot":stopPending?"Requesting Stop":refreshFailed?"Refresh unavailable; snapshot retained":
+   stopStatus==="requested"?"Stop requested; lifecycle state remains authoritative":stopStatus==="unavailable"?"Stop unavailable; snapshot retained":"";
   const result=[heading,...body,...(status?[fit(status,cols)]:[]),fit(refreshHelp+help,cols)];
   if(result.some(row=>visibleWidth(row)>width))throw Error("M2 width overflow");
   return result;
@@ -111,10 +146,12 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
    typeof controls.keybindings?.matches==="function"?
     controls.keybindings.matches(data,action):fallback.includes(data);
   if(data==="q"||matches("tui.select.cancel","\u001b","\u0003")){close();return;}
-  // Host bindings win over the local refresh shortcut, including remapped cancel.
+  if(closeOnly)return;
+  // Host bindings win over local shortcuts, including a native cancel remapped to "s".
   const hostBound=(["tui.select.down","tui.select.up","tui.select.confirm","tui.input.tab","tui.editor.deleteCharBackward"] as const)
    .some(action=>typeof controls.keybindings?.matches==="function"&&controls.keybindings.matches(data,action));
   if(data==="r"&&!hostBound&&controls.refresh){void refresh();return;}
+  if(data==="s"&&!hostBound&&stopTarget()){void stop();return;}
   if(detail){
    if(matches("tui.editor.deleteCharBackward","\u007f","\b")){detail=false;scroll=0;controls.requestRender();return;}
    if(data==="j"||matches("tui.select.down","\u001b[B")){scroll++;controls.requestRender();return;}
