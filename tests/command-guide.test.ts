@@ -37,12 +37,14 @@ test("an exact registered name uses its inspected public description and manual 
  ]);
 });
 
-test("known Jobs help retains bounded read-only safety policy only after live discovery",()=>{
+test("known Jobs help describes metadata-only inspection and optional owned-live native Stop",()=>{
  const lines=formatCommandGuide(discovery("reported",[entry("asen-job-inspect","workspace","Inspect owned Jobs")]),"asen-job-inspect",100).join("\n");
  assert.match(lines,/Type \/asen-job-inspect manually/u);
  assert.match(lines,/metadata only.*logs withheld/iu);
  assert.match(lines,/historical, not resumed/iu);
- assert.match(lines,/not live follow/iu);
+ assert.match(lines,/native.*Stop.*owned live ASEN/iu);
+ assert.match(lines,/no Follow/iu);
+ assert.match(lines,/guide does not execute/iu);
 });
 
 test("unknown, empty and unavailable inventories stay truthful without catalog fallback",()=>{

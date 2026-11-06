@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {projectJobMetadata,renderJobInspection,jobInspectionLabel,inspectOwnedJob} from "../src/runtime/job-inspect.js";
+import {createJobMetadataBindings,projectJobMetadata,renderJobInspection,jobInspectionLabel,inspectOwnedJob} from "../src/runtime/job-inspect.js";
 import type {BackgroundJobSnapshot} from "../src/runtime/background-jobs.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 
@@ -56,4 +56,27 @@ test("scope is revalidated after asynchronous reader and selection, before displ
    select:async(_title,options)=>{current=false;return options[0];}});
   assert.match(result.join(""),/unavailable/);assert.doesNotMatch(result.join(""),/job-1|SECRET_SENTINEL/);
  }
+});
+
+test("ephemeral bindings authorize only the exact metadata object and unchanged live registry identity",()=>{
+ const fullId="job-"+"x".repeat(240),source=row({id:fullId,args:["--safe"],cwd:"/owned"}),before=structuredClone(source);
+ const bindings=createJobMetadataBindings([source]);
+ assert.equal(bindings.metadata.length,1);assert.ok(Object.isFrozen(bindings.metadata[0]));
+ assert.equal(bindings.stopIdentity(bindings.metadata[0]!,[source])?.id,fullId,"full ID is retained outside the capped projection");
+ assert.equal(bindings.stopIdentity(bindings.metadata[0]!,[row({...source,eventCount:99,updatedAt:"2026-11-07T08:01:00.000Z"})])?.id,fullId,"observation counters are not identity authority");
+ assert.equal(bindings.stopIdentity({...bindings.metadata[0]!},[source]),undefined,"cloned display metadata grants no authority");
+ assert.equal(bindings.stopIdentity(bindings.metadata[0]!,[row({...source,command:"changed"})]),undefined);
+ assert.equal(bindings.stopIdentity(bindings.metadata[0]!,[row({...source,createdAt:"2026-11-06T00:00:00Z"})]),undefined,"ABA identity drift is denied");
+ assert.equal(bindings.stopIdentity(bindings.metadata[0]!,[source,source]),undefined,"duplicate fresh identities are ambiguous");
+ assert.equal(bindings.stopIdentity(bindings.metadata[0]!,[{...source,recoveredAt:"2026-11-07T00:00:00Z",resumable:false} as BackgroundJobSnapshot]),undefined);
+ assert.equal(bindings.stopIdentity(bindings.metadata[0]!,[row({...source,state:"completed"})]),undefined);
+ assert.doesNotMatch(JSON.stringify(bindings.metadata),/bounded command|--safe|\/owned/u);assert.deepEqual(source,before,"binding and rejection checks do not mutate the source snapshot or counters");
+});
+
+test("refresh bindings revoke every metadata object from the previous snapshot, including display collisions",()=>{
+ const prefix="x".repeat(100),first=row({id:prefix+"-one"}),second=row({id:prefix+"-two"});
+ const before=createJobMetadataBindings([first]),after=createJobMetadataBindings([second]);
+ assert.equal(before.metadata[0]!.id,after.metadata[0]!.id,"bounded display IDs collide");
+ assert.equal(after.stopIdentity(before.metadata[0]!,[second]),undefined,"old projected objects never grant a refreshed action");
+ assert.equal(after.stopIdentity(after.metadata[0]!,[second])?.id,second.id);
 });

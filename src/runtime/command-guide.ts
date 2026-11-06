@@ -52,8 +52,9 @@ export function formatCommandGuide(result:CommandDiscovery,query="",width=100):s
   if(exact.name==="asen-job-inspect")lines.push(
    line("Inspect owned Jobs metadata only; logs withheld because safe projection is unavailable.",columns),
    line("Type /asen-job-inspect [id]; omit ID to select an owned job.",columns),
-   line("Observation only; recovered metadata is historical, not resumed.",columns),
-   line("Not live follow or execution control.",columns),
+   line("Recovered metadata is historical, not resumed, and cannot be controlled.",columns),
+   line("The optional native view can request Stop only for a currently owned live ASEN registry job.",columns),
+   line("No Follow or log viewer is available; this guide does not execute Stop.",columns),
   );
   if(inspected.limited)lines.push(line("Limited view: duplicate, malformed, or excess rows were withheld.",columns));
   return lines;

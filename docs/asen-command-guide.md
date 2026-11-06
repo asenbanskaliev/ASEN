@@ -25,4 +25,6 @@ formatCommandGuide(result: CommandDiscovery, query?: string, width?: number): st
 
 `/asen-help` reads the live receiver-bound command inventory once per invocation, normalizes one leading `/` for discovery, and passes the original query plus the current host content width to the formatter. The existing command wrapper publishes the returned lines.
 
-Known Jobs inspection safety guidance is shown only when the live inventory reports `asen-job-inspect`. Missing or failed inventory remains unavailable and never falls back to the static catalog. The integration does not execute or select commands, read handlers or source metadata, open an editor, reload the host, or invoke a provider.
+Known Jobs inspection safety guidance is shown only when the live inventory reports `asen-job-inspect`. It states that the command and headless metadata paths are read-only, logs are withheld, recovered execution is unknown and uncontrollable, and no Follow or log viewer exists. It also describes the optional explicit `s` action in the native Jobs view: Stop can be requested only for a currently owned live ASEN registry handle.
+
+The guide itself never executes or inserts Stop, selects a job, reloads the host, or grants action authority. Missing or failed inventory remains unavailable and suppresses every static Jobs hint rather than falling back to the catalog. The integration does not read handlers or source metadata, open an editor, invoke a provider, or expose job output.

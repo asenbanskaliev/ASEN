@@ -51,9 +51,9 @@ test("production registered command selects only owned metadata, refreshes and k
  assert.match(await f.inspect(),/Observed exit code: 9/);
  f.ctx.ui.select=async()=>undefined;assert.match(await f.inspect(),/closed/);
  const help=await f.commands.get("asen-help").handler("asen-job-inspect",f.ctx);
- assert.equal(help,undefined);assert.match(f.notices.at(-1)!,/metadata|Metadata/);assert.match(f.notices.at(-1)!,/logs withheld/iu);assert.match(f.notices.at(-1)!,/historical, not resumed/iu);assert.match(f.notices.at(-1)!,/not live follow/iu);
+ assert.equal(help,undefined);assert.match(f.notices.at(-1)!,/metadata|Metadata/);assert.match(f.notices.at(-1)!,/logs withheld/iu);assert.match(f.notices.at(-1)!,/historical, not resumed/iu);assert.match(f.notices.at(-1)!,/native.*Stop.*owned live ASEN/iu);assert.match(f.notices.at(-1)!,/No Follow/iu);
  f.setInventoryUnavailable();f.notices.length=0;await f.commands.get("asen-help").handler("asen-job-inspect",f.ctx);
- assert.match(f.notices.at(-1)!,/inventory unavailable/iu);assert.doesNotMatch(f.notices.at(-1)!,/metadata only|logs withheld|historical, not resumed|not live follow/iu);
+ assert.match(f.notices.at(-1)!,/inventory unavailable/iu);assert.doesNotMatch(f.notices.at(-1)!,/metadata only|logs withheld|historical, not resumed|native.*Stop|No Follow/iu);
 });
 
 test("Jobs custom overlay refreshes allowlisted scoped snapshots without journal or action effects",{timeout:5000},async t=>{

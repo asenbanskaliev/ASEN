@@ -1,13 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
-import {mkdir,mkdtemp,realpath,rm} from "node:fs/promises";
+import {promises as fs} from "node:fs";
 import {createAsenExtension} from "../extensions/asen.js";
 import {createNativeM2Navigator} from "../src/runtime/native-m2-navigator.js";
 import type {AgentRuntime,AgentSessionIdentity} from "../src/agents/agent-runtime.js";
 import type {AgentInspection} from "../src/runtime/agent-inspect.js";
 import type {PublicAgentRecord,PublicAgentState} from "../src/runtime/agent-lifecycle.js";
 
+const {mkdir,mkdtemp,realpath,rm}=fs;
 const at="2026-11-06T08:00:00.000Z",testTimeout=4_000;
 const envKeys=["HOME","XDG_CONFIG_HOME","XDG_CACHE_HOME","XDG_DATA_HOME","TMPDIR","PI_CODING_AGENT_DIR"] as const;
 const deferred=<T>()=>{let resolve!:(value:T)=>void,reject!:(error:Error)=>void;const promise=new Promise<T>((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};};
@@ -16,9 +17,15 @@ async function within<T>(promise:Promise<T>,label:string,ms=1_000):Promise<T>{
  try{return await Promise.race([promise,new Promise<T>((_resolve,reject)=>{timer=setTimeout(()=>reject(Error(label+" did not settle")),ms);})]);}
  finally{if(timer)clearTimeout(timer);}
 }
+const renderUpdates=new Set<()=>void>();
+const notifyRender=()=>{for(const changed of renderUpdates)changed();};
 async function waitFor(check:()=>boolean,label:string):Promise<void>{
- for(let turn=0;turn<100;turn++){if(check())return;await within(new Promise<void>(resolve=>setImmediate(resolve)),label);}
- throw Error(label+" was not observed");
+ if(check())return;
+ let changed=()=>{};
+ try{await within(new Promise<void>((resolve,reject)=>{
+  changed=()=>{try{if(check())resolve();}catch(error){reject(error);}};
+  renderUpdates.add(changed);changed();
+ }),label);}finally{renderUpdates.delete(changed);}
 }
 const record=(id:string,state:PublicAgentState="running",sessionId="owner-session",projectId=process.cwd()):PublicAgentRecord=>({
  id,role:"explorer",owner:{kind:"user",id:"pi:"+sessionId},sessionId,projectId,state,createdAt:at,updatedAt:at,
@@ -26,7 +33,7 @@ const record=(id:string,state:PublicAgentState="running",sessionId="owner-sessio
 const inspection=(row:PublicAgentRecord):AgentInspection=>({record:row,history:[{id:row.id,revision:1,state:"queued",at}]});
 function controls(){
  let redraws=0,closes=0,current=true;
- return {value:{requestRender(){redraws++;},close(){closes++;},terminalRows(){return 20;},stillCurrent(){return current;}},
+ return {value:{requestRender(){redraws++;notifyRender();},close(){closes++;},terminalRows(){return 20;},stillCurrent(){return current;}},
   state:()=>({redraws,closes}),drift(){current=false;}};
 }
 
@@ -95,7 +102,7 @@ async function extensionFixture(options:{records:PublicAgentRecord[];query?:(id:
  catch(error){restoreEnvironment();await rm(root,{recursive:true,force:false});throw error;}
  const context:any={cwd:projectId,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>sessionId},ui:{notify(){},custom:undefined}};
  const open=async(run:(view:ReturnType<typeof createNativeM2Navigator>)=>Promise<void>|void)=>{
-  context.ui.custom=async(factory:any)=>{let closed=false;const view=factory({terminal:{rows:24},requestRender(){}},undefined,undefined,()=>{closed=true;});activeClose=()=>{if(!closed)view.handleInput("q");};try{await run(view);}finally{activeClose();activeClose=undefined;}};
+  context.ui.custom=async(factory:any)=>{let closed=false;const view=factory({terminal:{rows:24},requestRender(){notifyRender();}},undefined,undefined,()=>{closed=true;});activeClose=()=>{if(!closed)view.handleInput("q");};try{await run(view);}finally{activeClose();activeClose=undefined;}};
   return within(Promise.resolve(commands.get("asen-agent-inspect")!.handler("",context)),"agent navigator command",1_500);
  };
  const dispose=async()=>{if(disposed)return;disposed=true;activeClose?.();sessionId="disposed-session";context.hasUI=false;delete context.ui.custom;restoreEnvironment();await rm(root,{recursive:true,force:false});};

@@ -22,6 +22,7 @@ export interface M2NavigatorControls {
  keybindings?:Pick<KeybindingsManager,"matches">;
  refresh?:()=>Promise<M2NavigatorSource>;
  stop?:(target:M2AgentStopTarget)=>Promise<boolean>;
+ stopJob?:(metadata:JobMetadata)=>Promise<boolean>;
 }
 export interface M2NavigatorComponent {
  render(width:number):string[];
@@ -44,19 +45,23 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
   ...(source.notices?.find(notice=>notice.agentId===data.record.id)?{notice:source.notices.find(notice=>notice.agentId===data.record.id)!}:{}),
  })):source.jobs.slice(0,100).map(data=>({kind:"job" as const,data}));
  let rows=project(source);
- let selected=0,scroll=0,detail=false,attentionOnly=false,closed=false,closeOnly=false,refreshPending=false,stopPending=false,refreshFailed=false;
+ let selected=0,scroll=0,detail=false,attentionOnly=false,closed=false,closeOnly=false,invalidJobWidth=false,refreshPending=false,stopPending=false,refreshFailed=false;
  let stopStatus:"requested"|"unavailable"|undefined;
  const close=()=>{closed=true;controls.close();};
  const identity=(row:M2Row)=>row.kind+":"+(row.kind==="agent"?row.data.record.id:row.data.id);
  const filtered=()=>rows.filter(row=>!attentionOnly||attention.has(state(row)));
  const current=()=>{try{return controls.stillCurrent();}catch{return false;}};
- const stopTarget=():M2AgentStopTarget|undefined=>{
-  if(!controls.stop||source.kind!=="agents"||closeOnly||closed||stopStatus||!current())return undefined;
+ const stopTarget=():{kind:"agent";target:M2AgentStopTarget}|{kind:"job";metadata:JobMetadata}|undefined=>{
+  if(closeOnly||invalidJobWidth||closed||stopStatus||!current())return undefined;
   const chosen=filtered()[selected];
-  if(chosen?.kind!=="agent"||(chosen.data.record.state!=="queued"&&chosen.data.record.state!=="running"))return undefined;
-  const record=chosen.data.record;
-  if(!record.id||!record.sessionId||!record.projectId||rows.filter(row=>row.kind==="agent"&&row.data.record.id===record.id).length!==1)return undefined;
-  return Object.freeze({id:record.id,sessionId:record.sessionId,projectId:record.projectId});
+  if(chosen?.kind==="agent"){
+   if(!controls.stop||(chosen.data.record.state!=="queued"&&chosen.data.record.state!=="running"))return undefined;
+   const record=chosen.data.record;
+   if(!record.id||!record.sessionId||!record.projectId||rows.filter(row=>row.kind==="agent"&&row.data.record.id===record.id).length!==1)return undefined;
+   return {kind:"agent",target:Object.freeze({id:record.id,sessionId:record.sessionId,projectId:record.projectId})};
+  }
+  if(chosen?.kind!=="job"||!controls.stopJob||chosen.data.provenance!=="registry-observed"||(chosen.data.state!=="queued"&&chosen.data.state!=="running")||rows.filter(row=>row.kind==="job"&&row.data.id===chosen.data.id).length!==1)return undefined;
+  return {kind:"job",metadata:chosen.data};
  };
  const refresh=async()=>{
   if(!controls.refresh||refreshPending||stopPending||closed||!current())return;
@@ -90,7 +95,7 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
   const target=stopTarget();if(!target)return;
   stopPending=true;stopStatus=undefined;controls.requestRender();
   try{
-   const accepted=await controls.stop!(target);
+   const accepted=target.kind==="agent"?await controls.stop!(target.target):await controls.stopJob!(target.metadata);
    if(closed||!current())return;
    stopStatus=accepted?"requested":"unavailable";
   }catch{
@@ -102,7 +107,8 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
   }
  };
  const render=(width:number):string[]=>{
-  if(!Number.isSafeInteger(width)||width<1||width>1000||source.kind==="jobs"&&width<12)throw Error("Invalid M2 width");
+  if(!Number.isSafeInteger(width)||width<1||width>1000)throw Error("Invalid M2 width");
+  invalidJobWidth=source.kind==="jobs"&&width<12;if(invalidJobWidth)throw Error("Invalid M2 width");
   closeOnly=source.kind==="agents"&&width<12;
   if(!current())return [fit("ASEN M2 scope changed; close inspection.",width)];
   if(closeOnly)return [fit(width<5?"q":"Close",width)];
@@ -118,7 +124,7 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
       source.kind==="agents"&&source.notices===undefined?"Parent notice unavailable":"No parent notice recorded",
      "Coordinator ACK != model consumption; no automatic replay or consent"]:
     [...renderJobInspection(chosen.data,Math.max(12,cols)),
-     "Stop is permitted only by the ownership-checked background tool"]:
+     "Stop requires a fresh uniquely owned live ASEN registry handle"]:
    chosenRows.length?chosenRows.map((row,index)=>(index===selected?"> ":"  ")+label(row)):
    ["No owned "+kind.toLowerCase()+" in this view"];
   const fitted=details.map(line=>fit(line,cols));
@@ -130,7 +136,7 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
   const canStop=!refreshPending&&!stopPending&&!!stopTarget();
   const help=detail?(chosen?.kind==="agent"?
    (canStop?"s: stop · ":"")+"ACK is not model consumption · Backspace: list · q: close":
-   "Stop via ownership-checked background tool · Backspace: list · q: close"):
+   (canStop?"s: stop · ":"")+"Stop via owned live ASEN registry · Backspace: list · q: close"):
    "j/k: select · Enter: inspect · Tab: attention/all · "+(canStop?"s: stop · ":"")+"q: close";
   const refreshHelp=controls.refresh&&!stopPending?"r: refresh · ":"";
   const status=refreshPending?"Refreshing snapshot":stopPending?"Requesting Stop":refreshFailed?"Refresh unavailable; snapshot retained":

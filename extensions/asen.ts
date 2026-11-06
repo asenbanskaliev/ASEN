@@ -82,7 +82,7 @@ import {projectHostStatus,type HostStatusInput} from "../src/runtime/host-status
 import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInventoryRow} from "../src/runtime/integration-profile-inspection.js";
 import type {KeybindingsManager} from "@earendil-works/pi-tui";
 import {renderAgentInspection} from "../src/runtime/agent-inspect.js";
-import {inspectOwnedJob,projectJobMetadata} from "../src/runtime/job-inspect.js";
+import {createJobMetadataBindings,inspectOwnedJob,type JobMetadata} from "../src/runtime/job-inspect.js";
 import {previewWorkspaceFileDiff,renderGitDiffPreview,gitChangesIndex} from "../src/runtime/git-diff-preview.js";
 import {AsenPermissionSession} from "../src/security/permission-session.js";
 import {AsenAutoPermissionReviewer} from "../src/security/auto-permission-reviewer.js";
@@ -979,28 +979,32 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(view==="STATUS")return [renderAsenStatusLine(snapshot,width)];
     return [...renderAsenPanel(snapshot,width)];
    }});
-   registerData("asen-job-inspect",{description:"Inspect owned Jobs metadata only: /asen-job-inspect [id]; logs withheld",handler:async(args:string|undefined,ctx:CommandContext)=>{
+   registerData("asen-job-inspect",{description:"Inspect owned Jobs metadata; native view can request Stop for owned live ASEN jobs; logs withheld",handler:async(args:string|undefined,ctx:CommandContext)=>{
     const assertScope=panelScope(ctx),width=Math.max(12,terminalColumns());
     try{
      const identity=await sessionIdentity(ctx);assertScope();
      if(!String(args??"").trim()&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.custom==="function"){
-      const metadata=backgroundJobs.list(identity.sessionId,identity.projectId).slice(0,100).map(projectJobMetadata);
       const before=ctx.cwd;
       const check=async()=>{assertScope();const now=await sessionIdentity(ctx);assertScope();
        if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId||ctx.cwd!==before)throw Error("Job scope changed");};
-      await check();
+      const readBindings=()=>createJobMetadataBindings(backgroundJobs.list(identity.sessionId,identity.projectId));
+      let jobBindings=readBindings();await check();
+      const stopJob=async(metadata:JobMetadata):Promise<boolean>=>{
+       await check();const currentBindings=jobBindings;await check();
+       const fresh=backgroundJobs.list(identity.sessionId,identity.projectId),target=currentBindings.stopIdentity(metadata,fresh);
+       if(!target||target.sessionId!==identity.sessionId||target.projectId!==identity.projectId)return false;
+       backgroundJobs.stopScoped(target.id,identity.sessionId,identity.projectId);return true;
+      };
       await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>
-       createNativeM2Navigator({kind:"jobs",jobs:metadata},{
+       createNativeM2Navigator({kind:"jobs",jobs:jobBindings.metadata},{
         requestRender:()=>tui.requestRender(),close:()=>done(undefined),
         terminalRows:()=>Math.max(8,Number(tui.terminal?.rows??24)),
         ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
         stillCurrent:()=>{try{assertScope();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}},
-        refresh:async()=>{await check();
-         const jobs=backgroundJobs.list(identity.sessionId,identity.projectId).slice(0,100).map(projectJobMetadata);
-         await check();return {kind:"jobs",jobs};}
+        stopJob,refresh:async()=>{await check();const next=readBindings();await check();jobBindings=next;return {kind:"jobs",jobs:next.metadata};}
        }),{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}});
-      try{await check();}catch{return ["ASEN job scope changed; no action performed."];}
-      return ["ASEN job navigator closed (metadata only; no execution)."];
+      try{await check();}catch{return ["ASEN job scope changed; inspection closed. No further actions are available."];}
+      return ["ASEN job navigator closed. Stop requests, if any, were explicit; metadata and logs remain read-only."];
      }
      return await inspectOwnedJob({id:String(args??""),identity,width,signal:ctx.signal,
       read:()=>backgroundJobs.list(identity.sessionId,identity.projectId),
