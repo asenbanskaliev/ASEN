@@ -37,7 +37,7 @@ test("R4-01 rejects missing, duplicated or prematurely claimed canonical require
  assert.throws(()=>buildR4RequirementInventory({efMarkdown,uiMarkdown:uiMarkdown.replace("UI-C05\/06\/07\/08\/10","UI-C05/06/07/10")}),
   /implementation owner/u);
  assert.throws(()=>buildR4RequirementInventory({efMarkdown:efMarkdown.replace("| C20 |","| C19 |"),uiMarkdown}),
-  /A\/B cases/u);
+  /Shell\/ASEN comparison cases/u);
  assert.throws(()=>buildR4RequirementInventory({efMarkdown,uiMarkdown:uiMarkdown.replace("| UI-C24 |","| UI-C23 |")}),
   /UI-C01\.\.24/u);
 });
