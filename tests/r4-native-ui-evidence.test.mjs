@@ -89,7 +89,7 @@ test("R4-04 never treats a supplied ready/FULL label as legitimate acceptance",a
 });
 test("R4-04 refuses fabricated foreign candidate, run identity and A/B attestation",async()=>{
  for(const bad of [{candidateSha:"b".repeat(40)},{runId:"0"},{runAttempt:"0"},
-  {readiness:{...buildAgentABCaseReadiness({candidateSha:sha}),evidenceCaptured:20}},
+  {readiness:{...buildShellAsenReadiness({candidateSha:sha}),evidenceCaptured:20}},
  ])await assert.rejects(async()=>accepted(all(),bad));
 });
 test("R4-04 reads bounded physical receipt files and rejects symlink/oversize",async t=>{

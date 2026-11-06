@@ -7,6 +7,7 @@ import type {OrchestrationRouteEvidence} from "../orchestration/orchestrator.js"
 import {issueSkillContext} from "../skills/context.js";
 import type {PublicAgentRecord} from "../runtime/agent-lifecycle.js";
 import {PersistentAgentStore} from "../runtime/agent-store.js";
+import {workspaceIdentityPathKey} from "../runtime/workspace-store.js";
 import {issueControlledPlanPhaseGrant} from "../lifecycle/skill-lifecycle.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 
@@ -55,7 +56,7 @@ export class AgentRuntime{
   // Planned jobs and all reviewers/verifiers always retain unique identity.
   if(input.role==="explorer"&&!input.owner&&!input.skillSelection&&!input.onQueued&&!input.onPrepared){
    const dedupeKey=createHash("sha256").update(JSON.stringify([
-    "asen.explorer.active.v1",input.session.sessionId,input.session.projectId,
+    "asen.explorer.active.v1",input.session.sessionId,workspaceIdentityPathKey(input.session.projectId),
     input.role,input.prompt,request.model??null,request.thinking??null,
    ])).digest("hex");
    const claim=await this.store.enqueueAdHocExplorerOrReuse({...request,dedupeKey},request.owner!,signal);
