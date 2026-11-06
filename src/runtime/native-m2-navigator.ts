@@ -124,7 +124,7 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
       source.kind==="agents"&&source.notices===undefined?"Parent notice unavailable":"No parent notice recorded",
      "Coordinator ACK != model consumption; no automatic replay or consent"]:
     [...renderJobInspection(chosen.data,Math.max(12,cols)),
-     "Stop requires a fresh uniquely owned live ASEN registry handle"]:
+     controls.stopJob?"Stop requires a fresh uniquely owned live ASEN registry handle":"Stop is permitted only by the ownership-checked background tool"]:
    chosenRows.length?chosenRows.map((row,index)=>(index===selected?"> ":"  ")+label(row)):
    ["No owned "+kind.toLowerCase()+" in this view"];
   const fitted=details.map(line=>fit(line,cols));
@@ -136,7 +136,7 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
   const canStop=!refreshPending&&!stopPending&&!!stopTarget();
   const help=detail?(chosen?.kind==="agent"?
    (canStop?"s: stop · ":"")+"ACK is not model consumption · Backspace: list · q: close":
-   (canStop?"s: stop · ":"")+"Stop via owned live ASEN registry · Backspace: list · q: close"):
+   (canStop?"s: stop · ":"")+(controls.stopJob?"Stop via owned live ASEN registry · Backspace: list · q: close":"Stop via ownership-checked background tool · Backspace: list · q: close")):
    "j/k: select · Enter: inspect · Tab: attention/all · "+(canStop?"s: stop · ":"")+"q: close";
   const refreshHelp=controls.refresh&&!stopPending?"r: refresh · ":"";
   const status=refreshPending?"Refreshing snapshot":stopPending?"Requesting Stop":refreshFailed?"Refresh unavailable; snapshot retained":

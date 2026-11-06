@@ -57,7 +57,7 @@ test("Jobs Stop failures are generic and late closed results are not published",
 for(const driftAfterStop of [false,true])test(driftAfterStop?"registered Jobs scope drift does not deny an already accepted Stop":"registered native Jobs Stop cancels only the owned live job created by the public background tool",{timeout:10_000},async()=>{
  const base=await realpath(process.cwd()),scratch=path.join(base,".cache","r13-job-stop");await mkdir(scratch,{recursive:true});
  const root=await mkdtemp(path.join(scratch,"case-")),dirs={home:path.join(root,"home"),config:path.join(root,"config"),cache:path.join(root,"cache"),data:path.join(root,"data"),tmp:path.join(root,"tmp"),pi:path.join(root,"pi"),project:path.join(root,"project")};
- await Promise.all(Object.values(dirs).map(directory=>mkdir(directory,{recursive:true})));
+ await Promise.all(Object.values(dirs).map(directory=>mkdir(directory,{recursive:true,mode:0o700})));
  const keys=["HOME","XDG_CONFIG_HOME","XDG_CACHE_HOME","XDG_DATA_HOME","TMPDIR","PI_CODING_AGENT_DIR"] as const,prior=new Map(keys.map(key=>[key,process.env[key]]));
  Object.assign(process.env,{HOME:dirs.home,XDG_CONFIG_HOME:dirs.config,XDG_CACHE_HOME:dirs.cache,XDG_DATA_HOME:dirs.data,TMPDIR:dirs.tmp,PI_CODING_AGENT_DIR:dirs.pi});
  const commands=new Map<string,any>(),tools=new Map<string,any>(),aborted=deferred<void>(),stopRenderRequested=deferred<void>();let aborts=0,session="owner-session",viewError:unknown;
