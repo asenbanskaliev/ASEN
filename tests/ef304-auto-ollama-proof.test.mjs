@@ -4,7 +4,7 @@ import {parseBeamProposal,mayApplyFixtureDecision,readPiWitness} from "../script
 const valid='{"path":"README.md","marker":"EF304_BEAM_PROPOSAL_READY"}';
 test("EF-304 model proposal parser admits only exact bounded no-tool intent",()=>{
  assert.deepEqual(parseBeamProposal(valid),{path:"README.md",marker:"EF304_BEAM_PROPOSAL_READY"});
- assert.deepEqual(parseBeamProposal("`"`"`json\n`"`"`").path,undefined);
+ assert.deepEqual(parseBeamProposal(String.fromCharCode(96).repeat(3)+"json\n"+valid+"\n"+String.fromCharCode(96).repeat(3)),{path:"README.md",marker:"EF304_BEAM_PROPOSAL_READY"});
  for(const payload of ['{"path":"outside.txt","marker":"EF304_BEAM_PROPOSAL_READY"}',
   '{"path":"README.md","marker":"UNSAFE"}',
   '{"path":"README.md","marker":"EF304_BEAM_PROPOSAL_READY","approved":true}',

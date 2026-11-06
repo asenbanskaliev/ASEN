@@ -19,8 +19,9 @@ const git=(dir,...args)=>execFileSync("git",["-C",dir,...args],{encoding:"utf8",
 
 export function parseBeamProposal(text){
  assert.ok(typeof text==="string"&&text.length>0&&text.length<=8192,"One bounded Pi answer is required");
- const trimmed=text.trim(),fence=trimmed.match(/^`"`(?:json)?\s*([\s\S]*?)\s*`"`$/iu);
- const data=JSON.parse(fence?fence[1]:trimmed);
+ const trimmed=text.trim(),ticks=String.fromCharCode(96).repeat(3);
+ const plain=trimmed.startsWith(ticks)&&trimmed.endsWith(ticks)?trimmed.slice(3,-3).replace(/^json\s*/iu,"").trim():trimmed;
+ const data=JSON.parse(plain);
  assert.ok(data&&typeof data==="object"&&!Array.isArray(data)&&Object.keys(data).sort().join(",")==="marker,path","Exact proposal JSON schema is required");
  assert.equal(data.path,"README.md","Model proposal must keep the approved fixture path");
  assert.equal(data.marker,MARKER,"Model proposal must keep the exact bounded marker");
