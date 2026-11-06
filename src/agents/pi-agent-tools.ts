@@ -14,6 +14,7 @@ import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import {dispatchNextPlanTask} from "../runtime/plan-dispatcher.js";
 import {inspectInterruptedWrite} from "../runtime/interrupted-write-inspection.js";
 import {sameWorkspaceIdentityPath} from "../runtime/workspace-store.js";
+import {continueInterruptedExplorer} from "./interrupted-explorer-continuation.js";
 
 const text={type:"string",minLength:1,maxLength:32000};
 const rootSchema={type:"string",minLength:1,maxLength:4096};
@@ -162,22 +163,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
  }});
  pi.registerTool?.({name:"asen_agent_continue",label:"Continue ASEN agent",description:"After the user asks to continue, resume only an interrupted read-only explorer whose saved identity matches the current Pi session and project. Never use this for failed, cancelled, reviewer, verifier, or writer tasks.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["id"],properties:{id:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);const taskId=(params as {id?:unknown})?.id;if(typeof taskId!=="string")throw new Error("Invalid agent task id");const session=await selectedIdentity((params as {root?:unknown}).root,context,false,signal);throwIfCancelled(signal);
-  const active=await runtime(),prior=await active.query(taskId,session);
-  if(!prior)throw new Error("Agent task is unavailable to this session or project");
-  if(prior.record.state!=="interrupted"||prior.record.role!=="explorer"||prior.record.sessionId!==session.sessionId||prior.record.projectId!==session.projectId)throw new Error("Only an interrupted read-only explorer in the current session and project can continue automatically");
-  const link=todoLink?(await (await todoLink.links()).list(session)).find(item=>item.agentId===taskId):undefined;
-  const todos=link&&todoLink?await todoLink.todos():undefined;
-  const todo=link&&todos?(await todos.list(session)).find(item=>item.taskId===link.taskId):undefined;
-  if(link&&(!todo||todo.current.state!=="blocked"||!/(?:restarted|session ended|interrupted)/iu.test(todo.current.reason??"")||todo.plan&&todo.plan.role!=="explorer"))throw new Error("A linked Todo must match this interrupted read-only explorer before it can continue");
-  throwIfCancelled(signal);const confirmedIdentity=await identity(context);if(confirmedIdentity.sessionId!==session.sessionId||confirmedIdentity.projectId!==session.projectId)throw new Error("Pi session or project changed before agent continuation");
-  const resumed=link&&todo&&todos?await todos.update(todo.taskId,session,todo.current.revision,"running","User asked ASEN to continue this persisted read-only task in the same session and project",signal):undefined;
-  try{
-   const next=await active.continue(taskId,session,signal,link&&todoLink?async(agentId,dispatch)=>{const validate=async()=>{const current=await identity(context);if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before agent continuation dispatch");};await validate();await (await todoLink!.binder()).launch(link.taskId,agentId,session,dispatch,validate);}:undefined);
-   return result({id:next,state:"queued",continuedFrom:taskId,role:"explorer",...(link?{todoId:link.taskId}:{} )});
-  }catch(error){
-   if(resumed&&todos){const current=(await todos.list(session)).find(item=>item.taskId===resumed.taskId);if(current?.current.state==="running")await todos.update(current.taskId,session,current.current.revision,"blocked","Linked agent continuation was not dispatched; review is required",undefined).catch(()=>{});}
-   throw error;
-  }
+  return result(await continueInterruptedExplorer({runtime:await runtime(),agentId:taskId,identity:session,...(signal!==undefined?{signal}:{}),...(todoLink?{todo:todoLink}:{}),resolveCurrentIdentity:()=>identity(context)}));
  }});
  pi.registerTool?.({name:"asen_agent_retry",label:"Retry failed ASEN plan task",description:"After explicit Pi UI confirmation, create one new read-only attempt for a failed linked Todo task using its saved model and thinking; writes and cancelled tasks are not retried.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["id"],properties:{id:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);const agentId=(params as {id?:unknown})?.id;if(typeof agentId!=="string"||!agentId.trim()||!todoLink)throw new Error("Retry requires a linked ASEN Todo agent");
