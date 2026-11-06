@@ -35,3 +35,15 @@ test("specialized CI gates retain pull_request and exact branch admission", () =
   assert.doesNotMatch(workflow, /github\.head_ref == '[^']*[*][^']*'/);
   assert.doesNotMatch(workflow, /==\s*"[^"]+"/);
 });
+
+test("real Pi TUI receipts map each runner to its current platform artifact", () => {
+  const workflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+  const tui = block(workflow, "t12-real-pi-tui-dialog", "  architecture:");
+
+  assert.match(tui, /name: t12-real-pi-tui-dialog \(\$\{\{ matrix\.os \}\}\)/);
+  assert.match(tui, /matrix:\r?\n\s+include:\r?\n\s+- os: ubuntu-24\.04\r?\n\s+platform: linux\r?\n\s+- os: windows-latest\r?\n\s+platform: win32\r?\n\s+- os: macos-latest\r?\n\s+platform: darwin/);
+  assert.equal((tui.match(/^\s+- os: /gm) ?? []).length, 3);
+  assert.match(tui, /runs-on: \$\{\{ matrix\.os \}\}/);
+  assert.match(tui, /name: t10-real-pi-tui-\$\{\{ runner\.os \}\}-\$\{\{ github\.event\.pull_request\.head\.sha \}\}[\s\S]*path: t10-real-pi-tui-matrix-\$\{\{ matrix\.platform \}\}\.json\r?\n\s+if-no-files-found: error\r?\n\s+retention-days: 30/);
+  assert.doesNotMatch(tui, /path: t10-real-pi-tui-matrix-\*\.json/);
+});

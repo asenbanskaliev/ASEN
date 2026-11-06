@@ -249,6 +249,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
   t12-real-pi-tui-dialog:
+    name: t12-real-pi-tui-dialog (${{ matrix.os }})
     if: >-
       github.event_name == 'pull_request' &&
       (github.head_ref == 'feat/t12-integrated-acceptance' ||
@@ -257,7 +258,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+          - os: windows-latest
+            platform: win32
+          - os: macos-latest
+            platform: darwin
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     permissions:
@@ -298,8 +305,8 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: t10-real-pi-tui-${{ runner.os }}-${{ github.event.pull_request.head.sha }}
-          path: t10-real-pi-tui-matrix-*.json
-          if-no-files-found: warn
+          path: t10-real-pi-tui-matrix-${{ matrix.platform }}.json
+          if-no-files-found: error
           retention-days: 30
   architecture:
     runs-on: ubuntu-24.04
