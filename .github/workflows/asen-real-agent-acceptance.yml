@@ -1097,6 +1097,7 @@ jobs:
           OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           set -euo pipefail
+          export PATH="$PWD/node_modules/.bin:$PATH"
           timeout 180s node --import tsx scripts/ef304-auto-ollama-proof.mjs
           node -e 'const r=require("./asen-acceptance-evidence/ef304-automatic-ollama.json");if(r.status!=="PASS_AUTOMATED_OLLAMA_GUARDS_HUMAN_PENDING"||r.candidateSha!==process.env.ASEN_EXPECTED_SHA||r.modelWitness?.toolEvents!==0||r.scenarios?.length!==5||!r.scenarios.every(x=>x.passed)||r.humanConsentObserved!==false||r.realWriterAuthorized!==false||r.globalFull!==false)process.exit(1)'
       - name: Preserve bounded EF-304 evidence without model responses or credentials
