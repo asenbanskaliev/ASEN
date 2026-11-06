@@ -43,12 +43,14 @@ const preStageCandidates=[
  "scripts/memory-parity/writer-b/index.mjs","tests/memory-parity-composition.test.ts",...additionalParityFixturePaths
 ];
 const paths=[...new Set([...tracked,...preStageCandidates.filter(path=>existsSync(new URL(`../${path}`,import.meta.url)))])];
-// The two ODD parity specifications are deliberately human-readable
+// These registered ODD parity documents are deliberately human-readable
 // upstream provenance, never executable source or imported runtime content.
 // Keep all other code/docs subject to the original external-reference scan.
 const pinnedParityPlanDocs=new Set([
  "odd/tasks/equivalencia-funcional-agentes-full.md",
  "odd/tasks/"+"gen"+"tle-shell-v4.6.0-paridad-ui-odd.md",
+ "odd/tasks/pi-capability-completion.md",
+ "odd/tasks/shell-rea-megabatch.md",
 ]);
 const violations=[];
 for(const path of paths){
