@@ -99,6 +99,8 @@ jobs:
           node --check scripts/t12-native-tui-crash-grade.mjs
           node --check scripts/agent-ab-case-readiness.mjs
           node --check scripts/agent-ab-host-smoke.mjs
+      - name: EF-304 provider-free automated decision and witness contract tests
+        run: node --import tsx --test tests/ef304-auto-ollama-proof.test.mjs
       - name: Typecheck
         run: npm run typecheck
       - name: Build
@@ -1026,4 +1028,80 @@ jobs:
           name: asen-writer-blocked-${{ github.sha }}-${{ github.run_id }}
           path: asen-acceptance-evidence/writer-blocked.md
           if-no-files-found: error
+          retention-days: 30
+
+  ef304-automatic-ollama-beam:
+    needs: [offline-static-validation]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.event_name == 'push' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'ci: one-time EF-304 Ollama Beam automatic proof'
+    name: EF-304 bounded real Beam plus automated denial/revocation/scope evidence (not human consent)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: ollama-cloud-beam
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      PI_OLLAMA_WEB_TOOLS: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Validate exact checkout and provider-free negative cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm ci --no-audit --no-fund
+          npm run build
+          node --import tsx --test tests/ef304-auto-ollama-proof.test.mjs
+      - name: Register isolated pinned Ollama provider and choose only Beam
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$ASEN_OLLAMA_API_KEY" || { echo "::error::Ollama credential missing; no simulated PASS"; exit 1; }
+          export HOME="$RUNNER_TEMP/asen-ef304-pi-home"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+          node_modules/.bin/pi --list-models > "$RUNNER_TEMP/ef304-models.txt"
+          if awk '$1 == "ollama-cloud" && $2 == "beam" { found=1 } END {exit !found}' "$RUNNER_TEMP/ef304-models.txt"; then
+            selected="beam"
+          elif awk '$1 == "ollama-cloud" && $2 == "beam:cloud" { found=1 } END {exit !found}' "$RUNNER_TEMP/ef304-models.txt"; then
+            selected="beam:cloud"
+          else
+            echo "::error::No registered free Beam model; no paid fallback"
+            exit 1
+          fi
+          echo "ASEN_SELECTED_MODEL=$selected" >> "$GITHUB_ENV"
+          echo "HOME=$HOME" >> "$GITHUB_ENV"
+          echo "USERPROFILE=$HOME" >> "$GITHUB_ENV"
+          echo "PI_CODING_AGENT_DIR=$PI_CODING_AGENT_DIR" >> "$GITHUB_ENV"
+      - name: One authentic Ollama Beam model turn and five automated writer guard scenarios
+        shell: bash
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          timeout 180s node --import tsx scripts/ef304-auto-ollama-proof.mjs
+          node -e 'const r=require("./asen-acceptance-evidence/ef304-automatic-ollama.json");if(r.status!=="PASS_AUTOMATED_OLLAMA_GUARDS_HUMAN_PENDING"||r.candidateSha!==process.env.ASEN_EXPECTED_SHA||r.modelWitness?.toolEvents!==0||r.scenarios?.length!==5||!r.scenarios.every(x=>x.passed)||r.humanConsentObserved!==false||r.realWriterAuthorized!==false||r.globalFull!==false)process.exit(1)'
+      - name: Preserve bounded EF-304 evidence without model responses or credentials
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-ef304-automated-beam-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/ef304-automatic-ollama.json
+          if-no-files-found: warn
           retention-days: 30
