@@ -383,7 +383,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(!todoStorePromise){ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});await refreshWorkRow(ctx);return;}
     const identity=await sessionIdentity(ctx),rows=await (await todoStorePromise).list(identity),current=await sessionIdentity(ctx);
     if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId){ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});return;}
-    ctx.ui.setWidget("asen-todo-progress",todoProgressWidget(rows,3,activeValidationTask(identity.sessionId,identity.projectId)),{placement:"belowEditor"});
+    ctx.ui.setWidget("asen-todo-progress",todoProgressWidget(rows,3,activeValidationTask(identity.sessionId,identity.projectId),terminalColumns()),{placement:"belowEditor"});
     await refreshWorkRow(ctx);
    }catch{/* The progress display is optional and never blocks task work. */}
   };

@@ -1,7 +1,8 @@
 import type {TodoItem} from "./todo-store.js";
+import {sanitizeTerminalText,truncateForTerminal} from "./responsive-layout.js";
 
 const MAX_ROWS=100;
-function clean(value:string):string{return value.replace(/[\u0000-\u001f\u007f-\u009f]+/gu," ").replace(/\s+/gu," ").trim();}
+function clean(value:string):string{return sanitizeTerminalText(value).replace(/\s+/gu," ").trim();}
 
 /** Bounded, read-only Pi command projection; store filtering already binds the active session and project. */
 export function todoStatusRows(items:readonly (TodoItem&{current:TodoItem["events"][number]})[],width=160):string[]{
@@ -9,9 +10,9 @@ export function todoStatusRows(items:readonly (TodoItem&{current:TodoItem["event
  const rows=items.slice(0,MAX_ROWS).map(item=>{
   const status:Record<string,string>={planned:"Pendiente",running:"En curso",succeeded:"Ejecutada; pendiente de revisión",blocked:"Pausada; requiere revisión",done:"Completada",cancelled:"Cancelada"},roles:Record<string,string>={primary:"Tarea principal",explorer:"Exploración",worker:"Aplicación del cambio",reviewer:"Revisión",verifier:"Verificación",clarifier:"Aclaración"};
   const prefix=`${status[item.current.state]??"Estado"} · ${item.plan?roles[item.plan.role]??"Tarea": "Tarea"}: `,dependencies=item.dependsOn?.length?`${item.dependsOn.length} requisito(s) previo(s)`:"",detail=[clean(item.title),dependencies,item.current.reason?clean(item.current.reason):""].filter(Boolean).join(" — ");
-  return (prefix+(detail.length+prefix.length>width?`${detail.slice(0,Math.max(0,width-prefix.length-1))}…`:detail)).slice(0,width);
+  return truncateForTerminal(prefix+detail,width);
  });
- if(items.length>MAX_ROWS)rows.push(`… ${items.length-MAX_ROWS} tareas adicionales omitidas`);
+ if(items.length>MAX_ROWS)rows.push(truncateForTerminal(`… ${items.length-MAX_ROWS} tareas adicionales omitidas`,width));
  return rows;
 }
 
@@ -26,17 +27,18 @@ export function todoProgressSummary(items:readonly (TodoItem&{current:TodoItem["
 }
 
 /** Compact Pi editor widget for active work; it exposes progress, never task IDs or permissions. */
-export function todoProgressWidget(items:readonly (TodoItem&{current:TodoItem["events"][number]})[],maxRows=3,validatingTaskId?:string):string[]|undefined{
+export function todoProgressWidget(items:readonly (TodoItem&{current:TodoItem["events"][number]})[],maxRows=3,validatingTaskId?:string,width=100):string[]|undefined{
  if(!Number.isInteger(maxRows)||maxRows<1||maxRows>8)throw new Error("Todo widget row limit must be between 1 and 8");
+ if(!Number.isInteger(width)||width<1)throw new Error("Todo widget width must be a positive integer");
  const active=items.filter(item=>item.current.state!=="done"&&item.current.state!=="cancelled");
  if(!active.length)return undefined;
  const running=active.filter(item=>item.current.state==="running").length,blocked=active.filter(item=>item.current.state==="blocked").length;
  const header=`ASEN · ${active.length} ${active.length===1?"paso activo":"pasos activos"}${running?` · ${running} en curso`:""}${blocked?` · ${blocked} pausado${blocked===1?"":"s"}`:""}`;
  const rows=active.slice(0,maxRows).map(item=>{
   const state:Record<string,string>={planned:"Pendiente",running:"En curso",succeeded:"En revisión",blocked:"Pausado",failed:"Fallido"},role:Record<string,string>={primary:"Tarea",explorer:"Exploración",worker:"Cambio",reviewer:"Revisión",verifier:"Verificación",clarifier:"Aclaración"};
-  const activity=item.taskId===validatingTaskId&&item.current.state==="running"?" · Comprobando":"",label=`${state[item.current.state]??"Pendiente"} · ${role[item.plan?.role??"primary"]??"Tarea"}${activity}: `,title=clean(item.title),available=Math.max(1,100-label.length),visible=title.length>available?`${title.slice(0,available-1)}…`:title;
-  return `${label}${visible}`;
+  const activity=item.taskId===validatingTaskId&&item.current.state==="running"?" · Comprobando":"",label=`${state[item.current.state]??"Pendiente"} · ${role[item.plan?.role??"primary"]??"Tarea"}${activity}: `,title=clean(item.title);
+  return truncateForTerminal(label+title,width);
  });
- if(active.length>maxRows)rows.push(`y ${active.length-maxRows} paso${active.length-maxRows===1?"":"s"} más`);
- return [header,...rows];
+ if(active.length>maxRows)rows.push(truncateForTerminal(`y ${active.length-maxRows} paso${active.length-maxRows===1?"":"s"} más`,width));
+ return [truncateForTerminal(header,width),...rows];
 }
