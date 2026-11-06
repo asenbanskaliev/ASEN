@@ -16,7 +16,7 @@ export interface NativePanelComponent{
 }
 /** Keyboard-native read-only overlay on Pi's documented ui.custom component API. */
 export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:NativePanelControls):NativePanelComponent{
- let active=0,scrollTop=0,selectedOnly=false;
+ let active=0,scrollTop=0,selectedOnly=false,closeOnly=false;
  const collapsed=new Set<AsenPanelSection>();
  const sections=[...ASEN_PANEL_SECTIONS];
  const rowsFor=(width:number)=>{
@@ -28,14 +28,17 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
  };
  const activeName=()=>sections[active]!;
  const render=(width:number):string[]=>{
-  const cols=Math.max(12,Math.min(1000,Math.floor(width)));
+  const cols=Math.max(1,Math.min(1000,Math.floor(width)));
+  closeOnly=cols<12;
   if(controls.stillCurrent&&!controls.stillCurrent())return [truncateForTerminal("ASEN panel scope changed; press Esc to close",cols)];
+  // Keep a usable close affordance even when the full word cannot fit.
+  if(closeOnly)return [truncateForTerminal(cols<5?"q":"Close",cols)];
   const usable=Math.max(2,Math.min(200,controls.terminalRows()-4));
   const hasBindings=typeof controls.keybindings?.matches==="function";
   const title=truncateForTerminal("✿ ASEN PANEL · "+activeName()+(hasBindings
    ?" · j/k scroll · Space fold · q close"
    :" · j/k sections · Enter detail · Space fold · Esc close"),cols);
-  const content=rowsFor(cols-2);
+  const content=rowsFor(Math.max(12,cols-2));
   const max=Math.max(0,content.length-usable);
   scrollTop=Math.min(max,Math.max(0,scrollTop));
   const visible=content.slice(scrollTop,scrollTop+usable).map(line=>truncateForTerminal(" "+line,cols));
@@ -50,6 +53,7 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
    typeof controls.keybindings?.matches==="function"
     ?controls.keybindings.matches(data,action):fallback.includes(data);
   if(data==="q"||matches("tui.select.cancel","\u001b","\u0003")){controls.close();return;}
+  if(closeOnly)return;
   if(data==="j"||matches("tui.select.down","\u001b[B")){scrollTop++;controls.requestRender();return;}
   if(data==="k"||matches("tui.select.up","\u001b[A")){scrollTop=Math.max(0,scrollTop-1);controls.requestRender();return;}
   if(matches("tui.input.tab","\t")){active=(active+1)%sections.length;scrollTop=0;controls.requestRender();return;}

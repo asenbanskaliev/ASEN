@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createNativeWorkPanel} from "../src/runtime/native-work-panel.js";
-import {ASEN_PANEL_SECTIONS,type AsenPanelSnapshot} from "../src/runtime/ide-panel.js";
-import {visibleWidth} from "../src/runtime/responsive-layout.js";
+import {ASEN_PANEL_SECTIONS,renderAsenPanel,type AsenPanelSnapshot} from "../src/runtime/ide-panel.js";
+import {truncateForTerminal,visibleWidth} from "../src/runtime/responsive-layout.js";
 import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
 
 const snapshot={todos:[],agents:[],jobs:[],changes:{branch:"main",files:0},profile:"free",permission:"normal"} satisfies AsenPanelSnapshot;
@@ -38,6 +38,62 @@ test("M2 native overlay renders six real sections, scrolls and changes section w
  rows=5;
  assert.ok(overlay.render(35).every(line=>visibleWidth(line)<=35));
  assert.equal(ASEN_PANEL_SECTIONS.length,6);
+});
+
+test("native panel fits Close-only fallback at every width 1–11 and restores the full panel at 12",()=>{
+ const unicode={...snapshot,changes:{branch:"界👩‍👩‍👧‍👦e\u0301",files:1},profile:"🚀界e\u0301"};
+ const before=structuredClone(unicode);
+ Object.freeze(unicode.changes);Object.freeze(unicode);
+ let redraws=0;
+ const panel=createNativeWorkPanel(unicode,{
+  requestRender:()=>redraws++,close(){},terminalRows:()=>200,
+ });
+ for(let width=1;width<12;width++){
+  assert.deepEqual(panel.render(width),[width<5?"q":"Close"],`Close affordance at ${width}`);
+  assert.ok(panel.render(width).every(line=>visibleWidth(line)<=width));
+  for(const hidden of ["j","k","\u001b[B","\u001b[A","\t"," ","\r","\n","\u007f","\b"])panel.handleInput(hidden);
+ }
+ assert.equal(redraws,0,"hidden navigation, folding and detail controls are inert");
+ for(const width of [12,13,14,139,140]){
+  const lines=panel.render(width);
+  assert.equal(lines[0],truncateForTerminal("✿ ASEN PANEL · TODOS · j/k sections · Enter detail · Space fold · Esc close",width));
+  assert.ok(lines.every(line=>visibleWidth(line)<=width),`full panel fits ${width}`);
+  const content=renderAsenPanel(unicode,Math.max(12,width-2));
+  assert.deepEqual(lines.slice(1,-1),content.map(line=>truncateForTerminal(" "+line,width)),"unchanged full-panel projection and Unicode fitting");
+ }
+ panel.handleInput("\t");
+ assert.match(panel.render(80)[0]!,/JOBS/u,"navigation resumes after growing");
+ panel.handleInput("\r");
+ const detail=panel.render(80);
+ panel.render(5);panel.handleInput("\u007f");panel.handleInput(" ");panel.handleInput("j");
+ assert.deepEqual(panel.render(80),detail,"shrinking does not mutate existing detail/scroll/fold state");
+ assert.deepEqual(unicode,before,"fallback and full-panel rendering preserve the snapshot");
+});
+
+test("Close-only fallback retains local close, host cancel and stale-scope rejection",()=>{
+ for(const width of [1,5,11]){
+  for(const closeKey of ["q","\u001b","\u0003"]){
+   let closes=0;
+   const panel=createNativeWorkPanel(snapshot,{requestRender(){},close:()=>closes++,terminalRows:()=>8});
+   panel.render(width);panel.handleInput(closeKey);
+   assert.equal(closes,1,`close ${JSON.stringify(closeKey)} at ${width}`);
+  }
+  let closes=0,redraws=0,current=true;
+  const panel=createNativeWorkPanel(snapshot,{
+   keybindings:new KeybindingsManager(TUI_KEYBINDINGS,{
+    "tui.select.down":"ctrl+n","tui.input.tab":"ctrl+t","tui.select.confirm":"ctrl+f","tui.select.cancel":"ctrl+x",
+   }),
+   requestRender:()=>redraws++,close:()=>closes++,terminalRows:()=>8,stillCurrent:()=>current,
+  });
+  panel.render(width);
+  for(const hidden of ["\u000e","\u0014","\u0006"," ","j","k","\u001b"])panel.handleInput(hidden);
+  assert.equal(redraws,0,"configured hidden controls remain inert");
+  assert.equal(closes,0,"replaced Escape binding stays disabled");
+  panel.handleInput("\u0018");assert.equal(closes,1,"configured cancel remains enabled");
+  current=false;
+  assert.ok(panel.render(width).every(line=>visibleWidth(line)<=width),"stale message fits actual width");
+  panel.handleInput("j");assert.equal(closes,2,"stale scope closes before hidden control rejection");
+ }
 });
 
 test("panel honors injected host navigation bindings and disabled defaults",()=>{
