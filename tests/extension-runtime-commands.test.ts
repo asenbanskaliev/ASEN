@@ -330,17 +330,19 @@ test("M2 Agents overlay explicitly rereads scoped fallback rows and ignores host
  assert.match(String(await h.commands.get("asen-agent-inspect")!.handler("",context)),/scope changed/u);
 });
 
-test("M2 Agents refresh rereads runtime list/query and discards a delayed query after manager drift",{timeout:5000},async()=>{
- const cwd=await realpath(process.cwd()),h=host();let state="running",lists=0,queries=0,effects=0,hold=false;
+test("M2 Agents refresh rereads runtime list and scoped store rows and discards a delayed store read after manager drift",{timeout:5000},async()=>{
+ const cwd=await realpath(process.cwd()),h=host();let state="running",lists=0,reads=0,queries=0,effects=0,hold=false;
  let release!:()=>void,entered!:()=>void,refreshed!:()=>void;
- const queryEntered=new Promise<void>(resolve=>{entered=resolve;});
+ const readEntered=new Promise<void>(resolve=>{entered=resolve;});
  const blocked=new Promise<void>(resolve=>{release=resolve;});
  const finished=new Promise<void>(resolve=>{refreshed=resolve;});
  const record=()=>({id:lists>1?"new-agent":"initial-agent",role:"explorer",owner:{kind:"user",id:"owner"},sessionId:"s",projectId:cwd,
   state,createdAt:"2026-11-05T00:00:00Z",updatedAt:"2026-11-05T00:01:00Z"});
+ const entry=()=>({record:record(),events:[],request:{}});
  const runtime={list:async(identity:any)=>{assert.deepEqual(identity,{sessionId:"s",projectId:cwd,worktree:cwd});lists++;return [record()];},
-  query:async(_id:string,identity:any)=>{assert.deepEqual(identity,{sessionId:"s",projectId:cwd,worktree:cwd});queries++;
-   if(hold){entered();await blocked;}return {record:record(),history:[]};},
+  store:{get:async(id:string,sessionId:string,projectId:string)=>{assert.deepEqual([id,sessionId,projectId],[record().id,"s",cwd]);reads++;
+   if(hold){entered();await blocked;}return entry();},},
+  query:async(_id:string,identity:any)=>{assert.deepEqual(identity,{sessionId:"s",projectId:cwd,worktree:cwd});queries++;return entry();},
   dispatch(){effects++;},cancel(){effects++;}};
  createAsenExtension({homeDir:()=>path.resolve(".cache/agent-runtime-refresh-home"),enableAgentRuntime:false,enableTodoRuntime:false,
   enableWorkspaceRuntime:false,enableMemoryRuntime:false,agentRuntimeFactory:async()=>runtime as any})(h.pi as any);
@@ -349,9 +351,9 @@ test("M2 Agents refresh rereads runtime list/query and discards a delayed query 
   const view=factory({terminal:{rows:30},requestRender(){redraws++;
    if(refreshRequested&&!view.render(140).join("\n").includes("Refreshing snapshot"))refreshed();}},null,null,()=>{});
   state="completed";refreshRequested=true;view.handleInput("r");await finished;
-  assert.match(view.render(140).join("\n"),/completed · new-agent/u);
-  assert.doesNotMatch(view.render(140).join("\n"),/initial-agent/u);assert.equal(lists,2);assert.equal(queries,2);
-  hold=true;view.handleInput("r");await queryEntered;const before=redraws;
+  assert.match(view.render(140).join("\n"),/completed · root · new-agent/u);
+  assert.doesNotMatch(view.render(140).join("\n"),/initial-agent/u);assert.equal(lists,2);assert.equal(reads,2);assert.equal(queries,0);
+  hold=true;view.handleInput("r");await readEntered;const before=redraws;
   context.sessionManager={getSessionId:()=>"s"};release();
   await new Promise(resolve=>setImmediate(resolve));
   assert.match(view.render(140).join("\n"),/scope changed/u);assert.equal(redraws,before);
