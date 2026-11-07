@@ -2,12 +2,18 @@
 import type {KeybindingsManager} from "@earendil-works/pi-tui";
 import type {AgentInspection} from "./agent-inspect.js";
 import {renderAgentInspection} from "./agent-inspect.js";
+import type {AgentHierarchyRow} from "./agents-panel.js";
 import type {AgentNoticeRecoveryView} from "./agent-notification-journal.js";
 import type {JobMetadata} from "./job-inspect.js";
 import {renderJobInspection} from "./job-inspect.js";
 import {sanitizeTerminalText,truncateForTerminal,visibleWidth} from "./responsive-layout.js";
+export interface M2AgentHierarchyBinding {
+ readonly id:string;
+ readonly inspection:AgentInspection;
+ readonly hierarchy:AgentHierarchyRow;
+}
 export type M2NavigatorSource=
- {kind:"agents";agents:readonly AgentInspection[];notices?:readonly AgentNoticeRecoveryView[]}|
+ {kind:"agents";agents:readonly AgentInspection[];hierarchy?:readonly M2AgentHierarchyBinding[];notices?:readonly AgentNoticeRecoveryView[]}|
  {kind:"jobs";jobs:readonly JobMetadata[]};
 export interface M2AgentStopTarget {
  readonly id:string;
@@ -33,17 +39,54 @@ const attention=new Set(["queued","running","interrupted","failed","timed_out","
 const clean=(value:unknown):string=>typeof value==="string"?
  sanitizeTerminalText(value).replace(/\s+/gu," ").trim():"unknown";
 const fit=(value:string,width:number):string=>truncateForTerminal(value,Math.max(1,width));
-type M2Row={kind:"agent";data:AgentInspection;notice?:AgentNoticeRecoveryView}|
+type M2Row={kind:"agent";data:AgentInspection;hierarchy?:AgentHierarchyRow;notice?:AgentNoticeRecoveryView}|
  {kind:"job";data:JobMetadata};
 const state=(row:M2Row)=>row.kind==="agent"?row.data.record.state:row.data.state;
-const label=(row:M2Row)=>row.kind==="agent"?
- clean(row.data.record.role)+" · "+clean(row.data.record.state)+" · "+clean(row.data.record.id):
+const hierarchyLabel=(row:Extract<M2Row,{kind:"agent"}>):string=>{
+ const hierarchy=row.hierarchy,roleState=clean(row.data.record.role)+" · "+clean(row.data.record.state),id=clean(row.data.record.id);
+ if(!hierarchy)return roleState+" · "+id;
+ const prefix=hierarchy.depth>0?"  ".repeat(Math.min(hierarchy.depth,20))+"↳ ":"";
+ const lineage=hierarchy.lineage.kind==="proven"?"continues":hierarchy.lineage.kind==="unresolved"?"unresolved continuation":"root";
+ const task=hierarchy.association.kind==="task"?" · task "+clean(hierarchy.association.taskId):"";
+ return prefix+roleState+" · "+lineage+task+" · "+id;
+};
+const label=(row:M2Row)=>row.kind==="agent"?hierarchyLabel(row):
  clean(row.data.mode)+" · "+clean(row.data.state)+" · "+clean(row.data.id);
-export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2NavigatorControls):M2NavigatorComponent {
- const project=(source:M2NavigatorSource):M2Row[]=>source.kind==="agents"?source.agents.slice(0,100).map(data=>({
-  kind:"agent" as const,data,
+function agentRows(source:Extract<M2NavigatorSource,{kind:"agents"}>):M2Row[]{
+ const agents=source.agents.slice(0,100);
+ if(source.hierarchy===undefined)return agents.map(data=>({kind:"agent" as const,data,
   ...(source.notices?.find(notice=>notice.agentId===data.record.id)?{notice:source.notices.find(notice=>notice.agentId===data.record.id)!}:{}),
- })):source.jobs.slice(0,100).map(data=>({kind:"job" as const,data}));
+ }));
+ if(source.hierarchy.length!==agents.length)throw Error("Agent hierarchy binding is incomplete");
+ const inspections=new Map<string,AgentInspection>();
+ for(const inspection of agents){if(!inspection.record.id||inspections.has(inspection.record.id))throw Error("Agent hierarchy binding has duplicate inspection identity");inspections.set(inspection.record.id,inspection);}
+ const bindings=new Map<string,M2AgentHierarchyBinding>(),position=new Map<string,number>();
+ source.hierarchy.forEach((binding,index)=>{
+  if(!binding||!binding.id||bindings.has(binding.id)||binding.inspection!==inspections.get(binding.id)||binding.inspection.record.id!==binding.id||binding.hierarchy.id!==binding.id)
+   throw Error("Agent hierarchy binding identity mismatch");
+  bindings.set(binding.id,binding);position.set(binding.id,index);
+ });
+ if(bindings.size!==inspections.size)throw Error("Agent hierarchy binding is incomplete");
+ const children=new Map<string,M2AgentHierarchyBinding[]>(),roots:M2AgentHierarchyBinding[]=[];
+ for(const binding of bindings.values()){
+  const lineage=binding.hierarchy.lineage;
+  if(lineage.kind==="proven"){
+   if(!bindings.has(lineage.parentId))throw Error("Agent hierarchy binding parent is missing");
+   const rows=children.get(lineage.parentId)??[];rows.push(binding);children.set(lineage.parentId,rows);
+  }else roots.push(binding);
+ }
+ const byPosition=(left:M2AgentHierarchyBinding,right:M2AgentHierarchyBinding)=>(position.get(left.id)??0)-(position.get(right.id)??0);
+ roots.sort(byPosition);for(const rows of children.values())rows.sort(byPosition);
+ const ordered:M2AgentHierarchyBinding[]=[],visited=new Set<string>();
+ const visit=(binding:M2AgentHierarchyBinding)=>{if(visited.has(binding.id))throw Error("Agent hierarchy binding cycle");visited.add(binding.id);ordered.push(binding);for(const child of children.get(binding.id)??[])visit(child);};
+ for(const root of roots)visit(root);
+ if(ordered.length!==bindings.size)throw Error("Agent hierarchy binding is unresolved");
+ return ordered.map(binding=>({kind:"agent" as const,data:binding.inspection,hierarchy:binding.hierarchy,
+  ...(source.notices?.find(notice=>notice.agentId===binding.id)?{notice:source.notices.find(notice=>notice.agentId===binding.id)!}:{}),
+ }));
+}
+export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2NavigatorControls):M2NavigatorComponent {
+ const project=(source:M2NavigatorSource):M2Row[]=>source.kind==="agents"?agentRows(source):source.jobs.slice(0,100).map(data=>({kind:"job" as const,data}));
  let rows=project(source);
  let selected=0,scroll=0,detail=false,attentionOnly=false,closed=false,closeOnly=false,invalidJobWidth=false,refreshPending=false,stopPending=false,refreshFailed=false;
  let stopStatus:"requested"|"unavailable"|undefined;
@@ -120,6 +163,10 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
   const details:string[]=detail&&chosen?
    chosen.kind==="agent"?
     [...renderAgentInspection(chosen.data,Math.max(12,cols)),
+     ...(chosen.hierarchy?[chosen.hierarchy.lineage.kind==="root"?"Hierarchy: root":
+      chosen.hierarchy.lineage.kind==="proven"?"Continuation of: "+chosen.hierarchy.lineage.parentId:
+       "Continuation unresolved: "+chosen.hierarchy.lineage.continuationOf,
+      chosen.hierarchy.association.kind==="task"?"Task audit: "+chosen.hierarchy.association.taskId:"Task audit: none"]:[]),
      chosen.notice?"Parent notice: "+chosen.notice.delivery+"; "+chosen.notice.disposition:
       source.kind==="agents"&&source.notices===undefined?"Parent notice unavailable":"No parent notice recorded",
      "Coordinator ACK != model consumption; no automatic replay or consent"]:

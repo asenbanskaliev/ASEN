@@ -76,12 +76,13 @@ import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtim
 import {hostContentColumns,layoutMode,sanitizeTerminalText,truncateForTerminal} from "../src/runtime/responsive-layout.js";
 import {ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,renderAsenWorkRow,renderAsenStatusLine,type AsenPanelSnapshot,type AsenPanelSection} from "../src/runtime/ide-panel.js";
 import {createNativeWorkPanel} from "../src/runtime/native-work-panel.js";
-import {createNativeM2Navigator,type M2AgentStopTarget} from "../src/runtime/native-m2-navigator.js";
+import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/native-m2-navigator.js";
 import {renderM1Surface,createM1SurfaceCache} from "../src/runtime/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/host-status-projection.js";
 import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInventoryRow} from "../src/runtime/integration-profile-inspection.js";
 import type {KeybindingsManager} from "@earendil-works/pi-tui";
-import {renderAgentInspection} from "../src/runtime/agent-inspect.js";
+import {renderAgentInspection,type AgentInspection} from "../src/runtime/agent-inspect.js";
+import {projectAgentHierarchy,type AgentHierarchyRecord} from "../src/runtime/agents-panel.js";
 import {createJobMetadataBindings,inspectOwnedJob,type JobMetadata} from "../src/runtime/job-inspect.js";
 import {previewWorkspaceFileDiff,renderGitDiffPreview,gitChangesIndex} from "../src/runtime/git-diff-preview.js";
 import {AsenPermissionSession} from "../src/security/permission-session.js";
@@ -1022,20 +1023,40 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId||ctx.cwd!==before)throw Error("Agent scope changed");};
     await validate();
     if(!String(args??"").trim()&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.custom==="function"){
-     const readSnapshot=async(initial?:typeof entries)=>{
-      await validate();
-      const recent=(initial??await readEntries()).slice(0,100);await validate();
-      const inspections=await Promise.all(recent.map(async record=>{
-       await validate();const observed=runtime?await runtime.query(record.id,identity):null;await validate();
-       return {record:observed?.record??record,history:observed?.history??[]};
-      }));
+     const scopeChanged=Object.freeze(new Error("Agent scope changed"));
+     const assertCollectionScope=()=>{try{assertScope();if(ctx.signal?.aborted||ctx.cwd!==before||ctx.sessionManager?.getSessionId?.()!==identity.sessionId)throw scopeChanged;}catch{throw scopeChanged;}};
+     const readSnapshot=async(initial?:typeof entries):Promise<M2NavigatorSource>=>{
+      assertCollectionScope();const selected=(initial??await readEntries()).slice(0,100);assertCollectionScope();
+      if(!runtime){return {kind:"agents",agents:Object.freeze(selected.map(record=>Object.freeze({record,history:Object.freeze([])})))};}
+      const capturedIds=new Set(selected.map(record=>record.id));
+      const [stored,links]=await Promise.all([
+       Promise.all(selected.map(record=>runtime.store.get(record.id,identity.sessionId,identity.projectId))),
+       taskAgentLinks?taskAgentLinks.list(identity):Promise.resolve([]),
+      ]);assertCollectionScope();
+      const inspections:AgentInspection[]=[],hierarchyRecords:AgentHierarchyRecord[]=[];
+      let hierarchyAvailable=capturedIds.size===selected.length;
+      selected.forEach((listed,index)=>{
+       const entry=stored[index],valid=!!entry&&entry.record.id===listed.id&&entry.record.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(entry.record.projectId,identity.projectId);
+       if(!valid){hierarchyAvailable=false;inspections.push(Object.freeze({record:listed,history:Object.freeze([])}));return;}
+       const record=entry.record,history=Object.freeze(entry.events.map(event=>Object.freeze({id:event.id,revision:event.revision,state:event.state,at:event.at})));
+       const inspection=Object.freeze({record,history});inspections.push(inspection);
+       const continuationOf=entry.request.continuationOf;
+       hierarchyRecords.push(Object.freeze({id:record.id,role:record.role,owner:Object.freeze({kind:record.owner.kind,id:record.owner.id}),
+        sessionId:record.sessionId,projectId:record.projectId,state:record.state,createdAt:record.createdAt,updatedAt:record.updatedAt,history,
+        ...(continuationOf===undefined?{}:{continuationOf})}));
+      });
+      let hierarchy:readonly M2AgentHierarchyBinding[]|undefined;
+      if(hierarchyAvailable){
+       const associations=links.filter(link=>capturedIds.has(link.agentId)).map(link=>Object.freeze({taskId:link.taskId,agentId:link.agentId,sessionId:link.sessionId,projectId:link.projectId}));
+       const rows=projectAgentHierarchy({identity,records:hierarchyRecords,associations}),byId=new Map(inspections.map(inspection=>[inspection.record.id,inspection]));
+       hierarchy=Object.freeze(rows.map(row=>{const inspection=byId.get(row.id);if(!inspection||inspection.record.id!==row.id)throw new Error("Agent hierarchy binding is incomplete");return Object.freeze({id:row.id,inspection,hierarchy:row});}));
+      }
       let notices:Awaited<ReturnType<typeof agentNoticeJournal.recoveryReview>>|undefined;
-      await validate();
-      try{notices=await agentNoticeJournal.recoveryReview(identity);}catch{/* Unavailable is explicit in the viewer. */}
-      await validate();
-      return {kind:"agents" as const,agents:inspections,...(notices?{notices}:{})};
+      try{notices=await agentNoticeJournal.recoveryReview(identity);}catch{/* Unavailable is explicit in the viewer. */}assertCollectionScope();
+      return {kind:"agents",agents:Object.freeze(inspections),...(hierarchy?{hierarchy}:{}),...(notices?{notices}:{})};
      };
-     const snapshot=await readSnapshot(entries);
+     let snapshot:M2NavigatorSource;
+     try{snapshot=await readSnapshot(entries);assertCollectionScope();}catch(error){if(error===scopeChanged)return ["ASEN agent scope changed; no action performed."];throw error;}
      const stop=runtime?async(target:M2AgentStopTarget):Promise<boolean>=>{
       await validate();
       if(target.sessionId!==identity.sessionId||!sameWorkspaceIdentityPath(target.projectId,identity.projectId))return false;

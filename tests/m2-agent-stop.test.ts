@@ -88,7 +88,7 @@ test("M2 Stop suppresses stale or closed results and publishes generic failures 
 
 type Command={handler:(args:string|undefined,context:any)=>unknown};
 type ExtensionFixture=Awaited<ReturnType<typeof extensionFixture>>;
-async function extensionFixture(options:{records:PublicAgentRecord[];query?:(id:string,identity:AgentSessionIdentity)=>Promise<any>;cancel?:(id:string,identity:AgentSessionIdentity)=>Promise<boolean>;withRuntime?:boolean}){
+async function extensionFixture(options:{records:PublicAgentRecord[];query?:(id:string,identity:AgentSessionIdentity)=>Promise<any>;cancel?:(id:string,identity:AgentSessionIdentity)=>Promise<boolean>;withRuntime?:boolean;continuations?:Readonly<Record<string,string>>}){
  const projectId=await realpath(process.cwd()),base=path.join(projectId,".cache","r12-stop-fixture");await mkdir(base,{recursive:true});
  const root=await mkdtemp(path.join(base,"case-")),dirs={home:path.join(root,"home"),config:path.join(root,"config"),cache:path.join(root,"cache"),data:path.join(root,"data"),tmp:path.join(root,"tmp"),pi:path.join(root,"pi")};
  await Promise.all(Object.values(dirs).map(directory=>mkdir(directory,{recursive:true})));
@@ -96,7 +96,13 @@ async function extensionFixture(options:{records:PublicAgentRecord[];query?:(id:
  const restoreEnvironment=()=>{for(const key of envKeys){const value=prior.get(key);if(value===undefined)delete process.env[key];else process.env[key]=value;}};
  let sessionId="owner-session",disposed=false,activeClose:(()=>void)|undefined;const commands=new Map<string,Command>(),dispatches:Array<{id:string;identity:AgentSessionIdentity}>=[];
  const owns=(row:PublicAgentRecord,identity:AgentSessionIdentity)=>row.sessionId===identity.sessionId&&row.projectId===identity.projectId;
- const runtime={list:async(identity:AgentSessionIdentity)=>options.records.filter(row=>owns(row,identity)),query:options.query??(async(id:string,identity:AgentSessionIdentity)=>{const found=options.records.find(row=>row.id===id&&owns(row,identity));return found?{record:found,history:[]}:null;}),cancel:options.cancel??(async(id:string,identity:AgentSessionIdentity)=>{dispatches.push({id,identity});return true;})} as unknown as AgentRuntime;
+ const query=options.query??(async(id:string,identity:AgentSessionIdentity)=>{const found=options.records.find(row=>row.id===id&&owns(row,identity));return found?{record:found,history:[]}:null;});
+ const runtime={list:async(identity:AgentSessionIdentity)=>options.records.filter(row=>owns(row,identity)),query,
+  store:{get:async(id:string,sessionId:string,projectId:string)=>{const found=await query(id,{sessionId,projectId});if(!found)return undefined;
+   const request:Record<string,unknown>={...(options.continuations?.[id]?{continuationOf:options.continuations[id]}:{})};
+   Object.defineProperty(request,"prompt",{get(){throw Error("PRIVATE_PROMPT_GETTER_READ");}});
+   return {record:found.record,events:found.history,request};}},
+  cancel:options.cancel??(async(id:string,identity:AgentSessionIdentity)=>{dispatches.push({id,identity});return true;})} as unknown as AgentRuntime;
  const pi={registerCommand:(name:string,command:Command)=>commands.set(name,command)};
  try{createAsenExtension({homeDir:()=>dirs.home,enableAgentRuntime:false,...(options.withRuntime===false?{}:{agentRuntimeFactory:async()=>runtime}),...(options.withRuntime===false?{agents:()=>options.records}:{})})(pi);}
  catch(error){restoreEnvironment();await rm(root,{recursive:true,force:false});throw error;}
@@ -113,6 +119,30 @@ async function withFixture<T>(fixture:ExtensionFixture,run:(fixture:ExtensionFix
 test("registered native Agents view revalidates current ownership and dispatches exact scope through AgentRuntime.cancel",{timeout:testTimeout},async()=>{
  const projectId=await realpath(process.cwd()),id="owned-"+"x".repeat(240),row=record(id,"running","owner-session",projectId);
  await withFixture(await extensionFixture({records:[row]}),async f=>{await f.open(async view=>{assert.match(view.render(90).join("\n"),/s: stop/u);view.handleInput("s");await waitFor(()=>f.dispatches.length===1,"runtime cancellation");assert.match(view.render(90).join("\n"),/Stop requested/u);});assert.deepEqual(f.dispatches,[{id,identity:{sessionId:"owner-session",projectId,worktree:projectId}}]);});
+});
+
+test("registered hierarchy collection publishes nothing after session/project/cwd switch during store read",{timeout:testTimeout},async()=>{
+ const projectId=await realpath(process.cwd()),row=record("scope-switch","running","owner-session",projectId),lookup=deferred<any>(),started=deferred<void>();
+ await withFixture(await extensionFixture({records:[row],query:async()=>{started.resolve();return lookup.promise;}}),async f=>{
+  let customCalls=0;f.context.ui.custom=async()=>{customCalls++;};
+  const pending=Promise.resolve(f.commands.get("asen-agent-inspect")!.handler("",f.context));
+  await within(started.promise,"hierarchy store read start");f.drift();f.context.cwd=path.join(projectId,"scope-changed");lookup.resolve({record:row,history:[]});
+  const result=await within(pending,"scope-switched hierarchy command");
+  assert.deepEqual(result,["ASEN agent scope changed; no action performed."]);assert.equal(customCalls,0);assert.deepEqual(f.dispatches,[]);
+ });
+});
+
+test("registered native Agents view publishes only narrowed hierarchy metadata and preserves opaque Stop binding",{timeout:testTimeout},async()=>{
+ const projectId=await realpath(process.cwd()),rootId="root-"+"r".repeat(120),childId="child-"+"c".repeat(120);
+ const root={...record(rootId,"running","owner-session",projectId),createdAt:"2026-11-06T09:00:00.000Z",updatedAt:"2026-11-06T09:00:00.000Z"};
+ const child={...record(childId,"running","owner-session",projectId),createdAt:"2026-11-06T08:00:00.000Z",updatedAt:"2026-11-06T08:00:00.000Z"};
+ await withFixture(await extensionFixture({records:[child,root],continuations:{[childId]:rootId}}),async f=>{
+  await f.open(async view=>{
+   const list=view.render(140).join("\n");assert.ok(list.indexOf(rootId.slice(0,24))<list.indexOf(childId.slice(0,24)));assert.match(list,/continues/u);
+   assert.doesNotMatch(list,/PRIVATE_PROMPT_GETTER_READ/u);view.handleInput("j");view.handleInput("s");await waitFor(()=>f.dispatches.length===1,"hierarchy-bound cancellation");
+  });
+  assert.deepEqual(f.dispatches,[{id:childId,identity:{sessionId:"owner-session",projectId,worktree:projectId}}]);
+ });
 });
 
 test("registered Stop denies stale, foreign, duplicate, terminal, closed-source and context-drift targets with zero dispatch",{timeout:testTimeout},async()=>{
