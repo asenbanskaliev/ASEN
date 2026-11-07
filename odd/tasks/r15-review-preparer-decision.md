@@ -65,6 +65,6 @@ El dueño del lifecycle debe ser el mismo productor del work unit completado. La
 
 Se inspeccionó el lifecycle de agentes, task tracking y la búsqueda global por `ReadyWorkUnitBoundary`, `recordCompletedWorkUnit` y `recordWorkUnitReviewCandidate`. Resultado: no existe productor productivo de un work unit completado fuera de tests. Las funciones y contracts son genuinos y testeados, pero ninguna ruta runtime los ejecuta.
 
-Gentle Shell v4.6.0 tampoco aporta un productor implícito: la evidencia de revisión sigue siendo canddiato-only, descriptiva, sin autoridad nativa ni producer inventado.
+Reference Shell v4.6.0 tampoco aporta un productor implícito: la evidencia de revisión sigue siendo candidate-only, descriptiva, sin autoridad nativa ni producer inventado.
 
 Conclusión: R15 no puede implementarse sólo con contracts existentes. Requiere una decisión arquitectónica adicional: definir quién produce el boundary genuino desde commit/documento/checkpoint y cuándo publica el request ID. La alternativa mínima y recomendada es un puente explícito, dueño del work unit, que llame `recordCompletedWorkUnit` → `recordWorkUnitReviewCandidate` → `facade.review.prepare`, conservando exactamente la única closure instance. Sin ese producer, mantener API-only es la opción correcta.
