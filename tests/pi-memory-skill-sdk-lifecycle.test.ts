@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import {access,mkdir,readFile,realpath,rename,writeFile} from "node:fs/promises";
 import {mkdtempSync,rmSync} from "node:fs";
-import {tmpdir} from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {Agent,runToolCall} from "@earendil-works/pi-agent-core";
@@ -37,7 +36,10 @@ function fixtureRoot():string{
   return path.resolve(value);
  }
  if(!ownedFixtureRoot){
-  const created=mkdtempSync(path.join(tmpdir(),"asen-t06-"));ownedFixtureRoot=created;
+  // Keep the owned root under the repository's ignored .cache (same pattern as the panel-observation
+  // fixture): ancestor walks stop at this git root and can never reach the real user profile, and a
+  // fake .git marker is unnecessary — ASEN's registry validates real git metadata on its search path.
+  const created=mkdtempSync(path.join(path.resolve(".cache"),"asen-t06-"));ownedFixtureRoot=created;
   process.once("exit",()=>{try{rmSync(created,{recursive:true,force:true});}catch{/* best-effort temp cleanup */}});
  }
  return ownedFixtureRoot;
@@ -62,6 +64,10 @@ function ui(notices:Notice[],confirmations:{count:number}):ExtensionUIContext{
 }
 
 async function openSession(input:{project:string;agentDir:string;home:string;packageRoot:string;memoryFile:string}):Promise<SessionFixture>{
+ // The SDK scans join(getHomeDir(), ".agents", "skills") for global skills, and getHomeDir() honors
+ // process.env.HOME before os.homedir(). Point it at this test's owned home so user-profile skills
+ // never leak into the fixture; the real profile directory is never read, modified or removed.
+ process.env.HOME=input.home;
  const notices:Notice[]=[],confirmations={count:0},settings=SettingsManager.inMemory({
   compaction:{enabled:false},retry:{enabled:false},
  });
