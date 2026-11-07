@@ -11,7 +11,9 @@ import {
 } from "../src/runtime/keymaps.js";
 
 function fixtureHome():{home:string,dispose:()=>void}{
-	const home=mkdtempSync(path.resolve(".cache","asen-keymaps-"));
+	const base=path.resolve(".cache");
+	mkdirSync(base,{recursive:true});
+	const home=mkdtempSync(path.join(base,"asen-keymaps-"));
 	return {home,dispose:()=>rmSync(home,{recursive:true,force:true})};
 }
 
