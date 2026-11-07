@@ -1,6 +1,6 @@
 # Truthful host-status projection
 
-`projectHostStatus` in `src/runtime/host-status-projection.ts` derives display data from public host observations. The existing `/asen-panel status` and additive `asen:host` status contribution now consume it (T2c, S1/S4/S6 and master S17/UI-08). This is bounded public observation wiring, not a complete statusbar.
+`projectHostStatus` in `src/runtime/host-status-projection.ts` derives display data from public host observations. The existing `/asen-panel status`, the composed `asen:host` status row and the `/asen-status` integrations inventory line consume public observations (T2c, S1/S4/S6 and master S17/UI-08). This is bounded public observation wiring, not a complete statusbar.
 
 ## Input and output
 
@@ -38,9 +38,15 @@ Do not sum assistant-only costs. Public accounting also includes tool-reported n
 
 `extensions/asen.ts` declares the public observations as optional context fields. `getPanelSnapshot` reads them fresh, after asynchronous profile/store loading and session/project revalidation. It never scans the transcript or caches a responder: the integrated responding identity remains `?` because no current response metadata reader is used.
 
-In TUI mode with `hasUI` and public `setStatus`, session start, model/thinking changes, turn end, agent settled, compaction success/failure and tree navigation refresh `asen:host`. Session shutdown or replacement clears the prior contribution; no-UI refresh clears it too. Late refreshes after shutdown do not restore it. Missing `setStatus` is supported. Existing `asen:workspace` Git status and the native footer remain separate and unchanged.
+In TUI mode with `hasUI` and public `setStatus`, session start (after the permission session applies its trusted default), model/thinking changes, turn end, agent settled, compaction success/failure, tree navigation and an explicit permission-mode change refresh `asen:host`. The row is composed once by `renderAsenStatusLine`: observed workspace state (`branch ±N` or `clean`) and an elevated permission mode (uppercased, never `NORMAL`) appear as segments beside the host identity. A generation guard plus panel-scope and session/project revalidation keep a stale async refresh from overwriting or clearing a newer contribution. Session shutdown or replacement clears the prior contribution; no-UI refresh clears it too. Late refreshes after shutdown do not restore it. Missing `setStatus` is supported. ASEN no longer writes the separate `asen:workspace` Git label or an `asen:permissions` key: each fact is published in exactly one place, matching the reference shell that shows the mode banner only in the status bar while the Integrations rail states its meaning.
 
 Example plain output:
+
+```text
+ASEN │ main ±3 │ YOLO │ selected p/m · high │ responding ? │ ctx 80% warning
+```
+
+With no observed Git workspace and the normal permission mode, those segments are omitted:
 
 ```text
 ASEN │ selected p/m · high │ responding ? │ ctx 80% warning

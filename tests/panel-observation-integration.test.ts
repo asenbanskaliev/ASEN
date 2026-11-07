@@ -94,6 +94,22 @@ test("public theme applies the unrounded context tone without changing plain com
  assert.deepEqual(await f.panel("status"),["ASEN │ selected p/m · high │ responding ? │ ctx 80% warning"]);
 });
 
+test("the composed host row carries the observed detached workspace changes segment",async t=>{
+ const {spawnSync}=await import("node:child_process");
+ const f=await fixture(t);
+ const git=(...args:string[])=>{const result=spawnSync("git",["-C",f.project,...args],{encoding:"utf8"});assert.equal(result.status,0,`git ${args.join(" ")}: ${result.stderr}`);};
+ const commit=()=>git("-c","user.name=asen","-c","user.email=asen@example.invalid","-c","commit.gpgsign=false","commit","-q","-m","fixture");
+ git("init","-q");
+ await writeFile(path.join(f.project,"tracked.txt"),"tracked\n");
+ git("add","tracked.txt");commit();
+ await writeFile(path.join(f.project,"pending.txt"),"pending\n");
+ git("checkout","--detach","-q");
+ await f.emit("model_select");
+ assert.equal(f.statuses.get("asen:host"),`ASEN │ detached ±1 │ selected p/m · high │ responding ? │ ctx 80% warning`);
+ assert.doesNotMatch(f.statuses.get("asen:host")!,/Permission:|private|connected|healthy|servers: \d/i);
+ await f.emit("session_shutdown");
+});
+
 for(const inventory of ["reported","empty","missing","throwing"] as const)test(`registered Integrations distinguishes ${inventory} without connection or count claims`,async t=>{
  const f=await fixture(t,inventory),rows=await f.panel("integrations");
  const common=["  Agent profile: default (inherited-default; frozen in-process)","  Actual routing: unknown · connection: unknown"];
@@ -153,4 +169,30 @@ test("session replacement clears the previous UI contribution and observes only 
  await f.emit("model_select");
  assert.equal(f.statuses.get("asen:host"),undefined);
  assert.equal(current,"ASEN │ selected new/selected · high │ responding ? │ ctx ?");
+});
+
+test("the host row composes workspace and elevated permission once without secondary status keys",async t=>{
+ const f=await fixture(t);
+ await f.emit("session_start");
+ assert.equal(f.statuses.get("asen:host"),"ASEN │ selected p/m · high │ responding ? │ ctx 80% warning");
+ assert.equal(f.statuses.get("asen:permissions"),undefined,"The permission mode must not occupy a second status key");
+ assert.equal(f.statuses.get("asen:workspace"),undefined,"ASEN contributes no separate workspace status key");
+ await f.commands.get("asen-mode").handler("yolo",f.ctx);
+ assert.equal(f.statuses.get("asen:host"),"ASEN │ YOLO │ selected p/m · high │ responding ? │ ctx 80% warning");
+ const rows=await f.panel("integrations");
+ assert.ok(rows.some(row=>row.startsWith("  permissions standing permission for ordinary primary work")),rows.join("\n"));
+ assert.doesNotMatch(rows.join("\n"),/Permission:|connected|healthy|servers: \d/i);
+ await f.commands.get("asen-mode").handler("normal",f.ctx);
+ assert.equal(f.statuses.get("asen:host"),"ASEN │ selected p/m · high │ responding ? │ ctx 80% warning");
+ assert.doesNotMatch((await f.panel("integrations")).join("\n"),/permissions /,"Normal mode states no meaning row");
+});
+
+test("local status projects inventory states without connection or count claims",async t=>{
+ const f=await fixture(t,"reported");
+ const rows=await f.commands.get("asen-status").handler(undefined,f.ctx);
+ assert.ok(rows.includes("integrations: commands reported · tools reported"),rows.join("\n"));
+ assert.doesNotMatch(rows.join("\n"),/connected|servers: \d/i);
+ f.setInventory("throwing");
+ const failed=await f.commands.get("asen-status").handler(undefined,f.ctx);
+ assert.ok(failed.includes("integrations: commands unavailable · tools unavailable"),failed.join("\n"));
 });

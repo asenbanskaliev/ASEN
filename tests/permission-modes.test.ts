@@ -229,18 +229,18 @@ test("Explicit mode UI selections and user-global defaults are distinct authoriz
  let selected="Session: super-yolo";
  const indicators:string[]=[];
  const ctx:any={cwd:home,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>"s"},
-  ui:{notify(){},select:async()=>selected,setStatus:(_key:string,value:string|undefined)=>indicators.push(value??"NORMAL")},
+  ui:{notify(){},select:async()=>selected,setStatus:(key:string,value:string|undefined)=>indicators.push(`${key}=${value??"NORMAL"}`)},
  };
  const customize=(arg:string)=>commands.get("asen-customize")!.handler(arg,ctx) as Promise<any>;
  assert.equal((await customize("permissions")).session,"super-yolo");
- assert.ok(indicators.includes("ASEN SUPER-YOLO"));
+ assert.ok(indicators.includes("asen:host=ASEN │ SUPER-YOLO │ selected ? │ responding ? │ ctx ?"),"elevated mode composes the single asen:host row: "+indicators.join("\n"));
  selected="Default: auto";
  const state=await customize("permissions");
  assert.equal(state.savedDefault,"auto");
  assert.equal(state.session,"super-yolo","Saving a global default never switches the live session");
  selected="Session: normal";
  assert.equal((await customize("permissions")).session,"normal");
- assert.equal(indicators.at(-1),"NORMAL");
+ assert.equal(indicators.at(-1),"asen:host=ASEN │ selected ? │ responding ? │ ctx ?","Normal drops the banner segment from the composed row");
  selected="Session: unknown";
  await assert.rejects(()=>customize("permissions"),/unknown choice/);
  const rpc={...ctx,mode:"rpc"};

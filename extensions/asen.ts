@@ -175,8 +175,6 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const permissionDefault=()=>readPermissionModeDefault(home());
   const permissionStatus=(ctx:CommandContext)=>{
    const live=permissionSession.mode(ctx),defaultValue=permissionDefault();
-   try{ctx.ui?.setStatus?.("asen:permissions",live==="normal"?undefined:"ASEN "+live.toUpperCase());}
-   catch{/* Status UI is best effort and cannot confer authority. */}
    return {session:live,savedDefault:defaultValue.mode,malformedDefault:defaultValue.malformed,
     autoReviewerAvailable:typeof dependencies.autoPermissionReview==="function",
     autoUsage:dependencies.autoPermissionStatus?.()??null,superYoloAvailable:true,
@@ -187,12 +185,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(ctx?.hasUI!==true||ctx.mode!=="tui"||!ctx.sessionManager?.getSessionId?.())
     throw new Error("ASEN permission changes require the live primary Pi TUI");
   };
-  const applyPermissionMode=(mode:unknown,ctx:CommandContext)=>{
+  const applyPermissionMode=async(mode:unknown,ctx:CommandContext):Promise<ReturnType<typeof permissionStatus>>=>{
    requirePrimaryPermissionUI(ctx);
    if(!isAsenPermissionMode(mode))throw new Error("Unsupported ASEN permission mode");
    if(mode==="auto"&&typeof dependencies.autoPermissionReview!=="function")
     throw new Error("ASEN Auto requires an independent classifier; no Auto permission was granted");
    if(!permissionSession.set(mode,ctx))throw new Error("ASEN session permission identity unavailable");
+   await refreshHostStatus(ctx);
    return permissionStatus(ctx);
   };
   const registryObservations=new Map<string,number>(),registryRefreshGeneration=new Map<string,number>();
@@ -313,22 +312,28 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return ()=>{if(epoch!==panelEpoch||ctx.sessionManager!==manager||manager?.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("ASEN panel session changed");};
   };
   let hostStatusUI:CommandContext["ui"]|undefined;
+  let hostRefreshGeneration=0;
   const clearHostStatus=()=>{
    try{hostStatusUI?.setStatus?.("asen:host",undefined);}catch{/* Optional presentation only. */}
    hostStatusUI=undefined;
   };
-  const refreshHostStatus=(ctx:CommandContext)=>{
+  const refreshHostStatus=async(ctx:CommandContext):Promise<void>=>{
+   const generation=++hostRefreshGeneration;
    if(hostStatusClosed||ctx?.mode!=="tui"||ctx.hasUI!==true||typeof ctx.ui?.setStatus!=="function"||!ctx.sessionManager?.getSessionId?.()){
     clearHostStatus();return;
    }
    if(hostStatusUI&&hostStatusUI!==ctx.ui)clearHostStatus();
    hostStatusUI=ctx.ui;
    try{
-    const assertCurrent=panelScope(ctx),hostStatus=projectHostStatus(ctx),tone=hostStatus.context.state;
-    assertCurrent();
-    const line=renderAsenStatusLine({todos:[],agents:[],jobs:[],hostStatus},terminalColumns());
+    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),hostStatus=projectHostStatus(ctx),tone=hostStatus.context.state;
+    const observed=snapshotWorkspaceRoots([identity.projectId])[0];
+    const now=await sessionIdentity(ctx);assertCurrent();
+    if(generation!==hostRefreshGeneration||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
+    const changes=observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
+    const permission=permissionSession.mode(ctx);
+    const line=renderAsenStatusLine({todos:[],agents:[],jobs:[],hostStatus,...(changes?{changes}:{}),...(permission==="normal"?{}:{permission:permission.toUpperCase()})},terminalColumns());
     ctx.ui.setStatus("asen:host",(tone==="warning"||tone==="error")&&typeof ctx.ui.theme?.fg==="function"?ctx.ui.theme.fg(tone,line):line);
-   }catch{clearHostStatus();}
+   }catch{if(generation===hostRefreshGeneration&&!hostStatusClosed)clearHostStatus();}
   };
   // Immutable, session-scoped display data. Never performs an agent action.
   const getPanelSnapshot=async(ctx:CommandContext):Promise<AsenPanelSnapshot>=>{
@@ -369,16 +374,6 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ctx.ui.setWidget("asen-live-work",line?[line]:undefined,{placement:"aboveEditor"});
    }catch{/* Presentation must not block the host or confer permission. */}
   };
-  const refreshWorkspaceStatus=async(ctx:CommandContext):Promise<void>=>{
-   if(ctx?.mode!=="tui"||ctx.hasUI!==true||typeof ctx.ui?.setStatus!=="function")return;
-   try{
-    const identity=await sessionIdentity(ctx),observed=snapshotWorkspaceRoots([identity.projectId])[0];
-    const now=await sessionIdentity(ctx);
-    if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
-    const label=observed&&!observed.error?(sanitizeTerminalText(observed.branch)+" "+(observed.files.length?"±"+observed.files.length:"clean")):undefined;
-    ctx.ui.setStatus("asen:workspace",label);
-   }catch{/* Never infer a clean workspace if Git identity cannot be established. */}
-  };
   const refreshTodoWidget=async(ctx:CommandContext):Promise<void>=>{
    if(!ctx?.ui?.setWidget)return;
    try{
@@ -416,11 +411,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }finally{advancingPlans.delete(key);}
   };
   const startSession=async(ctx:CommandContext)=>{
-   panelEpoch++;hostStatusClosed=false;clearHostStatus();refreshHostStatus(ctx);
+   panelEpoch++;hostStatusClosed=false;clearHostStatus();
    const preference=permissionDefault();
    permissionSession.initialize(preference.malformed?"normal":preference.mode==="auto"&&
     typeof dependencies.autoPermissionReview!=="function"?"normal":preference.mode,ctx);
-   permissionStatus(ctx);
+   await refreshHostStatus(ctx);
    invalidateChildSelection();
    const selectionScope=Object.freeze({generation:selectionGeneration,context:ctx,manager:ctx.sessionManager,sessionId:ctx.sessionManager?.getSessionId?.(),cwd:ctx.cwd});selectionOwner=selectionScope;
    if(ctx.sessionManager?.getSessionId?.())await inheritedProfile(await sessionIdentity(ctx));
@@ -682,11 +677,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     scheduleAgentWakeAtBoundary?.();
   };
   pi.on?.("agent_settled",async(_event,ctx)=>{await flushAgentBoundary(ctx as CommandContext,true);await refreshWorkRow(ctx as CommandContext);});
-  pi.on?.("turn_end",async(_event,ctx)=>{await flushAgentBoundary(ctx as CommandContext);await refreshWorkRow(ctx as CommandContext);await refreshWorkspaceStatus(ctx as CommandContext);});
+  pi.on?.("turn_end",async(_event,ctx)=>{await flushAgentBoundary(ctx as CommandContext);await refreshWorkRow(ctx as CommandContext);await refreshHostStatus(ctx as CommandContext);});
   pi.on?.("session_compact",async(_event,ctx)=>flushAgentBoundary(ctx as CommandContext));
   pi.on?.("session_compact_failed",async(_event,ctx)=>flushAgentBoundary(ctx as CommandContext));
   for(const event of ["model_select","thinking_level_select","session_compact","session_compact_failed","session_tree","turn_end","agent_settled"])
-   pi.on?.(event,(_event,ctx)=>refreshHostStatus(ctx));
+   pi.on?.(event,async(_event,ctx)=>{await refreshHostStatus(ctx as CommandContext);});
   pi.on?.("session_shutdown",async(_event,ctx)=>{
    panelEpoch++;hostStatusClosed=true;clearHostStatus();
    traceVerifierShutdown("session-start");
@@ -890,7 +885,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(workspaceStorePromise&&ctx){changes=(await (await workspaceStorePromise).list(await sessionIdentity(ctx))).map(row=>row.change);changesAvailable=true;}else if(dependencies.changes){changes=dependencies.changes();changesAvailable=true;}
    const readPrivateStore=async<T>(file:string,parse:(raw:string)=>T,empty:()=>T):Promise<T>=>{if(!await privateFileState(file))throw new Error("ASEN private state is not safe to read");try{return parse(await readFile(file,"utf8"));}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return empty();throw error;}};
    const [project,profiles,history,usage]=await Promise.all([ctx?.cwd?canonical(ctx.cwd):Promise.resolve(undefined),readProfilesFile(profilesFile),readPrivateStore(historyFile,parseHistoryStore,emptyHistoryStore),readPrivateStore(usageFile,parseUsageFile,emptyUsageFile)]),registrySkillCount=project?registryObservations.get(project):undefined;
-   return statusLines({agents,changes,agentsAvailable,changesAvailable,skills:{enabled:registrySkillCount!==undefined,count:registrySkillCount??null},profile:profiles.active??"default",historyEnabled:history.policy.enabled,telemetryEnabled:usage.telemetryConsent?.enabled===true},terminalColumns());
+   const integrationInventory=pi.getCommands||pi.getAllTools?inspectIntegrationProfiles({...(pi.getCommands?{getCommands:pi.getCommands.bind(pi)}:{}),...(pi.getAllTools?{getAllTools:pi.getAllTools.bind(pi)}:{})}):undefined;
+   return statusLines({agents,changes,agentsAvailable,changesAvailable,skills:{enabled:registrySkillCount!==undefined,count:registrySkillCount??null},profile:profiles.active??"default",historyEnabled:history.policy.enabled,telemetryEnabled:usage.telemetryConsent?.enabled===true,...(integrationInventory?{integrations:{commands:{state:integrationInventory.commands.state,limited:integrationInventory.commands.limited},tools:{state:integrationInventory.tools.state,limited:integrationInventory.tools.limited}}}:{})},terminalColumns());
   }});
   registerData("asen-doctor",{description:"Check local ASEN invariants",handler:async(_args:string|undefined,ctx:CommandContext|undefined)=>{
    let input:Parameters<typeof doctorChecks>[0];
