@@ -91,6 +91,13 @@ test("tracked boundary checks paths and text while excluding binary payloads",()
   writeFileSync(join(root,"notes.txt"),`Reference ${marker} detected`);
   stage();assert.equal(audit().status,1,"the provenance identifier must fail outside the exact allowlisted manifest");
   rmSync(join(root,"notes.txt"));
+  writeFileSync(join(root,"odd","tasks","ui-runtime-delivery-order.md"),`port from C:\\gen${"tle"}-shell\\lib\\keymaps.ts`);
+  stage();
+  const oddPathShapeResult=audit();
+  assert.equal(oddPathShapeResult.status,1,"a machine-local upstream path inside a non-pinned ODD document is rejected");
+  assert.match(oddPathShapeResult.stderr,/odd\/tasks\/ui-runtime-delivery-order\.md/);
+  rmSync(join(root,"odd","tasks","ui-runtime-delivery-order.md"));
+  stage();assert.equal(audit().status,0,"removing the machine-local reference restores the boundary");
   writeFileSync(join(root,`${marker}.txt`),"opaque data");
   stage();assert.equal(audit().status,1,"a tracked path marker outside the allowlist is rejected");
  }finally{rmSync(root,{recursive:true,force:true});}
