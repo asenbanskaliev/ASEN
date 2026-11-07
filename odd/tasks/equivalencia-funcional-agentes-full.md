@@ -7,6 +7,56 @@
 
 **Estado: IN_PROGRESS — FULL NO ALCANZADO.** Fecha: 2026-11-03. Rama: `feat/t12-integrated-acceptance-merge`, PR #45. Propietario autoriza el plan; NO autoriza merge a main, gasto en modelos ni saltarse permisos.
 
+## Continuación portable vigente
+
+### Petición del propietario, literal
+
+> «quiro que completes y detalles el plan odd de tal forma que cualqueir modelo inferior y mas simple sea capaz de completarlo . mi idea es lanzar un psuh cuando termines la tarea empezada, descargar el proyecto ne otro ordenador y seugir tabajando alli con el modelo inferior OLLAMA BEAN cloud . hay que ver si necesitamos por ejemlo los achivos .chache y o rea-gentle-shell.json»
+
+Este registro conserva la petición completa en el documento de procedencia ya admitido. No se modifica el auditor ni su allowlist.
+
+### Punto de reanudación
+
+Rama vigente: `feat/t12-integrated-acceptance-merge`. Unidades locales: fuente `5854202f484837f4c78b170fddfd94abc85c839d`, checkpoint de ejecución `03a2d7c058c8ec4f22e6d174598be89156fa0069` y registros históricos revisados por el propietario `ea5203f1c038d7fd148b84538b65629d042205ea`. El operador debe proporcionar el HEAD realmente publicado antes de clonar; estos SHA locales no prueban que haya ocurrido un push. Las ramas, permisos y HEAD antiguos de las secciones históricas no son la orden de continuación actual.
+
+Orden de autoridad: último log de `odd/tasks/pi-capability-completion.md` para admisión global; `odd/tasks/ui-runtime-delivery-order.md` para ejecución UI y tarjetas R01–R23; este ODD para comparación funcional; `docs/remote-continuation.md` para preparación portable. No leer todo el historial como una lista de órdenes activas: seleccionar una tarjeta lista, sus requisitos y los últimos registros que la afectan.
+
+Secuencia pendiente: cerrar la documentación portable de task 42; después presentar el diseño nativo multiworker/worktree de task 40, sin crear nada; después tomar la integración Review de task 41 bajo la secuencia admitida. Los demás frentes continúan sujetos a las dependencias y criterios existentes. Un bloqueo de host o evidencia no se convierte en permiso para implementar un sustituto.
+
+### Inventario para otro ordenador
+
+| Clase | Qué llevar o reconstruir |
+|---|---|
+| Fuente necesaria | Archivos versionados: `package.json`, `package-lock.json`, `extensions/`, `src/`, `tests/`, `scripts/`, `registry/`, `odd/`, `docs/`, skills y workflows aplicables. |
+| Dependencias | `npm ci` desde el lockfile en el clon limpio, con Node `>=22.19.0`. La validación local observó Node 24.14.0; no certifica todas las versiones. No copiar `node_modules` ni SDKs instalados. |
+| Compilación | Regenerar `dist/` con `npm run build`; comprobar tipos con `npm run typecheck`. No copiar una salida anterior como si fuera fuente. |
+| Índices y fixtures | Inicializar CodeGraph en el nuevo clon solo si hace falta y existe esa herramienta. Crear HOME/config/cache/data/temp aislados y propiedad del proyecto para las pruebas con estado. |
+| `.cache/` | No se necesitan sus contenidos previos para los tests H1 inspeccionados. Estos crean sus propios directorios. No copiar la carpeta completa. |
+| Harness y recibos locales de H1/JD1 | Evidencia histórica de la unidad local cerrada, resumida en el ODD versionado; no dependencia de la siguiente tarea ni autoridad vigente en otro host. No trasladar el SDK privado usado para aquella validación. |
+| `rea-gentle-shell.json` (~459 MB) | No se encontró consumidor literal en fuente de runtime, build, CI ni registry mediante búsqueda Git no cacheada. Hay referencias documentales en dos ODDs. Productor, contenido, privacidad y eventual utilidad para investigación siguen UNKNOWN. Conservar localmente; no añadir, subir, mover, renombrar, borrar, archivar ni enviar a LFS sin decisión específica. |
+| Estado privado | No copiar perfiles, sesiones, skills privados, credenciales, tokens, homes de prueba, fixtures de C: ni configuración privada de otro host. Las skills versionadas del proyecto sí forman parte de la fuente. |
+| Autoridad | No copiar grants, consentimiento, lineage, ACK o recibos locales para simular aprobación en el clon. Reobtener el gate aplicable sobre el candidato real mediante el contrato público correspondiente. |
+
+La ausencia de consumidores literales no demuestra que el JSON sea inútil o publicable. Los futuros casos de paridad pueden requerir una referencia inmutable y observaciones reales obtenidas separadamente; el archivo bruto no es un sustituto admitido de esa prueba.
+
+### Modelo y herramientas mínimos
+
+“OLLAMA BEAN cloud” expresa la intención del propietario, no un endpoint, identificador de modelo o autorización para gastar. Confirmar en el destino el proveedor/modelo exactos, credenciales, límites y consentimiento. No inventar comandos de configuración ni invocar el proveedor desde esta actualización documental.
+
+El modelo debe estar dentro de un entorno de programación capaz de leer/editar archivos y ejecutar comandos/Git. Un chat sin esas herramientas no puede ejecutar las tarjetas. Comprobar también las capacidades de revisión/verificación exigidas por la tarjeta: si faltan, declarar el bloqueo y la necesidad concreta, no fabricar una segunda revisión. Memoria persistente e historial privado no son requisitos para continuar desde los documentos versionados.
+
+### Aceptación y reglas de parada
+
+Un modelo más simple no garantiza FULL. Siguen abiertos gates de API pública del host, referencia, proveedor, consentimiento y prueba independiente. Mantener `globalFull:false`, EF `8/28`, UI `0/14` y R4 de PR #45 como `SELF_AUDIT_ONLY / NOT independent`. Una verificación técnica separada no cambia esa etiqueta R4.
+
+La norma vigente son 20 casos C01–C20 y 40 observaciones reales: Shell + ASEN, ambas en Pi. Las antiguas 60 plazas A/B/ASEN y sus formulaciones históricas no añaden otra ejecución ni sustituyen la decisión R4-04 del encabezado. No editar contadores por añadir esta guía o por obtener dos JSON iguales.
+
+Seguir la receta de aislamiento y comandos concretos de `docs/remote-continuation.md`; después ejecutar una sola tarjeta del contrato portable de `odd/tasks/ui-runtime-delivery-order.md`. Registrar SHA, comando, salida, error, código de salida, totales/omisiones, efectos públicos y estado antes/después. No saltar un fallo de prerrequisito, aumentar un timeout, relanzar el verificador original no disponible, usar APIs privadas ni convertir un snapshot en consentimiento.
+
+Esta actualización es documental. No se ejecutaron aquí clonación limpia, `npm ci`, pruebas en otro ordenador, proveedor cloud, CI, comparación de referencia ni aprobación nativa.
+
+El orquestador debe validar enlaces/paths, nombres de scripts y tests, coherencia de IDs/dependencias, procedencia permitida y conservación de contadores/historial. Antes de cualquier entrega remota se necesita autorización de publicación vigente y revisión de los archivos incluidos; no usar `git add .` para incorporar el export bruto o estado ajeno.
+
 ## Misión
 
 Reproducir los comportamientos observables del entorno de referencia para **Explorer, Planner, Reviewer, Verifier y Writer**, incluida la elección de cuándo utilizarlos, la coordinación en segundo plano, los controles de riesgo, la recuperación, las decisiones humanas, las comprobaciones y el resultado de cierre. FULL no significa textos idénticos entre modelos estocásticos: significa rutas, acciones permitidas, rechazos, resultados de control y garantías funcionales equivalentes para los mismos escenarios.

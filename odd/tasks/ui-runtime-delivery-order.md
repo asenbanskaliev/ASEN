@@ -1,6 +1,6 @@
 # UI runtime delivery order
 Objective: provide a dependency-correct, lower-capability-AI runbook for future UI delivery without creating a competing task or state store.
-Status: activated for gate-first autopilot on `feat/t12-integrated-acceptance-merge` from base SHA `68fe5ca33cb885f8b687846273c2c9935f767919`; new work inherits no CI result from this base.
+Status: local continuation on `feat/t12-integrated-acceptance-merge`; bounded source checkpoint `5854202f484837f4c78b170fddfd94abc85c839d`, plan `03a2d7c058c8ec4f22e6d174598be89156fa0069`, and owner-reviewed canonical logs `ea5203f1c038d7fd148b84538b65629d042205ea`. No current remote publication, native approval, CI inheritance or FULL is claimed. The earlier activation base `68fe5ca3` remains historical.
 
 ## Specs
 
@@ -40,9 +40,66 @@ S17. «quiro que completes y detalles el plan odd de tal forma que cualqueir mod
 
 S18. «mi idea es lanzar un psuh cuando termines la tarea empezada, descargar el proyecto ne otro ordenador y seugir tabajando alli con el modelo inferior OLLAMA BEAN cloud .»
 
+S19. Owner-selected answer token `review-and-commit-existing-odd-edits`: review and separately commit the two pre-existing canonical ODD edits, without push. This records the exact answer token rather than inventing a verbatim Spanish label.
+
 ## Tasks
 
 This document refines delivery slices only. Canonical requirements, completion state, and acceptance remain in the plans registered by `odd/tasks/shell-rea-megabatch.md`; original workspace, provider, reference, publication, and FULL constraints remain inherited through its S2/S6/S7. The safe visual baseline is `registry/parity/shell-asen-baseline-v1.json`. Canonical IDs below are exact mappings, not replacement IDs.
+
+### Portable execution contract
+
+#### Checkpoint and authority
+
+The reviewable local chain is source `5854202f484837f4c78b170fddfd94abc85c839d` (parent `64d6449d`, 239 changed lines), plan `03a2d7c058c8ec4f22e6d174598be89156fa0069` (200 changed lines), and owner-reviewed canonical-log unit `ea5203f1c038d7fd148b84538b65629d042205ea` (39 changed lines). Only a separately authorized push makes these commits available to a clean clone. Obtain the actual published HEAD from the operator; do not assume these local commits are already remote. Historical CI and publication permissions are not current authorization or evidence for a later SHA.
+
+Read in this order:
+
+1. Latest log in `odd/tasks/pi-capability-completion.md`: overall admission and blockers.
+2. This runbook: current UI order and exact R01–R23 task cards.
+3. `odd/tasks/equivalencia-funcional-agentes-full.md`: normative global comparison, portable asset decision and literal owner request.
+4. `docs/remote-continuation.md`: setup and execution instructions, not a replacement authority.
+
+R21-H1/JD1 is complete only in its recorded local scope. Missing historical cache receipts do not authorize redoing completed source work, inventing approval or promoting FULL. Native assessment remained unassessable/null-candidate; no native consent, lineage, verdict or ACK exists for that assessment.
+
+#### Execute one ready card
+
+1. Select exactly one dependency-ready `R##` card or current queue unit. Read its prerequisites, `Read first`, `Allowed edits`, acceptance and directly linked canonical requirements. Do not interpret “continue” as “start everything”.
+2. Stop before editing if this card needs an unresolved owner decision, unavailable required tool, missing reference/evidence, provider credentials or execution consent, maintenance authorization, native opaque binding, or unclear edit ownership. Name the exact missing input; do not fabricate a substitute.
+3. Establish the card's meaningful RED before a behavior fix using its exact focused command. Setup failure, timeout, missing dependency or unrelated failure is not semantic RED. Passive documentation uses structural checks; test-only work must demonstrate its declared assertion improvement rather than inventing an application change.
+4. Edit only the listed paths. Reuse the admitted modal, navigator, projection, journal, formatter and store; do not create a duplicate panel/store to bypass a blocked host requirement.
+5. Run the exact listed focused command, then applicable checks. Record candidate SHA, command, exit code, stdout/stderr, emitted test totals/skips, isolated state roots and public effects. Rejected inputs must leave relevant stored data and counters unchanged. A snapshot match alone does not prove permissions, action dispatch, persistence or cleanup.
+6. Compare old/new stdout, stderr, exit and public behavior when a shared command/helper changes. Keep the previous code in owned disposable state; never make committed tests depend on Git history. Preserve failures and do not mask semantic differences.
+7. Never mark a required skipped, failed, unavailable or unexecuted case PASS. A claimed behavior change with no observable implementation is incomplete; documentary/test-only units satisfy their own declared outcomes instead.
+8. Keep work units near 400 authored changed lines, including their tests/docs. Inspect the index and stage named files only, never `git add .` or unrelated state. Local commits require current authorization; no push, merge, force, history rewrite, worktree creation or provider action follows from this card.
+9. Return card/spec IDs, files, RED/GREEN or structural evidence, exact proof level, remaining gates and one next ready card or specific blocker. Native approval, independent technical verification, R4 self-audit and real reference observations are different evidence classes.
+
+For an unmodified destination baseline, these are concrete public checkpoints, not commands already run on that destination:
+
+```text
+node --import tsx --test tests/m2-agent-hierarchy.test.ts tests/m2-agent-stop.test.ts
+node --import tsx --test tests/m2-f6-native-ui.test.ts tests/m2-job-stop.test.ts tests/job-inspect.test.ts tests/job-inspection-integration.test.ts
+npm run typecheck
+npm run build
+```
+
+Historical local totals are 13/13 and 28/28, followed by typecheck/build exit 0. Record actual destination results. These baseline commands do not replace another selected card's specific tests or grant permission for provider/real-host/CI work. Follow the guide's project-owned isolation recipe first.
+
+#### Current queue and blocked gates
+
+| Order | Unit | Exact readiness boundary |
+|---|---|---|
+| 1 | PORTABLE-HANDOFF / task 42 | Current documentation unit; structural checks and local saves only. No actual clean-clone setup is claimed. |
+| 2 | WORKTREE-DESIGN / task 40 | Read-only native-capability/design proposal after task 42. Present it before creating worktrees, worker folders or assigning implementation. Two-worker pilot, expansion only after proven isolation and explicit accepted sequencing. |
+| 3 | R21 candidate-only Review / task 41 | After accepted sequencing, reuse the verified Review core and the exact shared integration scope; do not recreate it or manufacture native STATUS/ACK. |
+
+The detailed cards below remain the implementation specifications:
+
+- R02–R06: require a supported public persistent-host mount/lifecycle and actual-host admission. Unknown/unsupported stays blocked; no private host patch, mock rail or framework replacement. Supported modal/module work is not persistent-root equivalence.
+- R11/R21 hierarchy: bounded local unit `5854202f`, not UI-02 FULL. R15's candidate-only core is `d124f3ec1f6aae8b0839296754a336cea76e380c`; wiring/native approval remain separate.
+- R13: local correction `bc261c337e7220ef10ec510f444316c040e0c923`; the whole-CI workspace-history failure remains causally unproved. Do not increase deadlines, retry the unavailable original verifier or call an unrelated pass a repair.
+- R19: the owner must resolve the existing production journal/exclusivity contract before a format extension. No second store/journal or silent v1 migration.
+- R20: FREF, accepted T09 scope and operation-specific maintenance consent remain necessary. A view must not install/update anything.
+- R22 preflights existing registries/commands; R23 follows only a stable exact SHA and required real C01–C20 observations/independent proof. They run last. Native/controller tokens and unavailable proof are never reconstructed from prose.
 
 ### Delivery table
 
@@ -58,17 +115,17 @@ This document refines delivery slices only. Canonical requirements, completion s
 | R08 | UI-07 Integrations/MCP | retained widget/modal branch selected | PARTIAL: existing projection characterized in 73/73 combined check | reuse existing module; no duplicate projector | pending |
 | R09 | UI-08 Statusbar | retained status/widget branch selected | PARTIAL: existing projection characterized in 73/73 combined check | reuse existing module; host acceptance separate | pending |
 | R10 | UI-10 palette/keymaps/guide | retained command/modal branch selected | PARTIAL: live guide integrated 21/21; keymaps/tour separate | bounded guide writer + sole integrator | 52239855 |
-| R11 | UI-02 Agents | retained modal branch selected | PARTIAL: owned-selection/inspection 17/17; hierarchy/thread not FULL | reuse existing navigator | baseline 68fe5ca3; characterization only |
+| R11 | UI-02 Agents | retained modal branch selected | PARTIAL: inspection + scoped hierarchy modal verified locally; thread/root/FULL not admitted | reuse existing navigator; no reimplementation of completed hierarchy | 5854202f; earlier baseline68fe5ca3 |
 | R12 | UI-02 Agents actions | R11 owned selection admitted; R18/R19 only for affected actions | PARTIAL: A1 Stop accepted 7/7 + regression31/31 + Jobs60/60 + separate guard PASS; Resume/Follow separate | sole M2/action integration owner | 7107b8b1 A1 |
-| R13 | UI-05 Jobs/monitors | retained modal branch; owned metadata/selection admitted | PARTIAL: A1 local checks green; compatibility CI correction pending; Follow/logs separate | sole M2/entrypoint action writer | dc804359 |
+| R13 | UI-05 Jobs/monitors | retained modal branch; owned metadata/selection admitted | PARTIAL: owned Stop/legacy compatibility locally verified; historical whole-CI lock timeout unproved; Follow/logs separate | sole M2/entrypoint owner; no speculative lock repair or CI inheritance | bc261c33; earlierdc804359 |
 | R14 | UI-04 Changes | R04 or retained modal branch | PENDING_PREREQUISITES | bounded module writer | pending |
-| R15 | UI-06 Review | R04 or retained modal branch | PENDING_PREREQUISITES | bounded module writer | pending |
+| R15 | UI-06 Review | R04 or retained modal branch | PARTIAL: genuine candidate-only core/labels verified; shared UI wiring/native authority separate | reuse core; sole integration owner after current queue gates | d124f3ec |
 | R16 | T09/UI-12 accepted maintenance reconciliation | activated plan | DONE: accepted scope; R20 gates retained | parent evidence owner | d517a69b |
 | R17 | UI-09 Profiles/fallback | R09,R11 | PENDING_PREREQUISITES | bounded projection writer | pending |
 | R18 | T10-3 host delivery/consumption and protocol capability map | activated plan | DONE: primitives mapped; trusted producer design pending | parent evidence owner | d517a69b |
 | R19 | UI-13 parent-child/recovery | R07,R11,R18; trusted producer/ownership required | PARTIAL: pinned RPC input/editor transport 1/1; query implementation not admitted | parent protocol owner; no API-block fiction | 1dcb2fec test-only |
 | R20 | UI-12 maintenance | FREF,accepted T09,R16 | BLOCKED on canonical gates | maintenance owner | pending |
-| R21 | UI-01..UI-13 shared wiring | relevant modules green; S9 local-only admission | IN_PROGRESS_LOCAL_ONLY: map Agent hierarchy/continuation and candidate-only Review wiring; delivery/CI/FULL gates intact | one serial integration lane; primary owns final integration/checks | e176b6d3,52239855,7107b8b1; new units pending |
+| R21 | UI-01..UI-13 shared wiring | relevant modules green; S9 local-only admission | PARTIAL_LOCAL_ONLY: hierarchy completed5854202f; candidate-only Review wiring remains; delivery/CI/FULL gates intact | one serial integration lane; next task41 after handoff/design gates | 5854202f plus e176b6d3/52239855/7107b8b1 |
 | R22 | UI-14 canonical acceptance preflight | R01..R21 complete as applicable | BLOCKED until stable candidate | acceptance planner | pending |
 | R23 | UI-14 real observations/F5/ECO | R22,stable exact SHA | BLOCKED until stable candidate | evidence owner | pending |
 | LCK1 | Owner-authorized CI/private-lock support, not a canonical UI completion | S4,S8; both core writers frozen | PARTIAL: C diagnostic15assertions/public proofs pass; historical CI timeout cause unproved | no production patch; remote gate remains blocked | evidence checkpoint |
@@ -76,7 +133,7 @@ This document refines delivery slices only. Canonical requirements, completion s
 | FIXTURE-MOVE | Relocate parent-owned verification fixtures | S10,S11 superseded by S12 | DROPPED: owner explicitly reauthorizes existing C fixture; relocation never performed | preserve C data and D diagnostic artifacts, no cleanup inferred | not completed |
 | R21-H1 | Wire trusted hierarchy into existing Agent list/detail only | S9,S12; verified R11-U1 core; L60 map | DONE_LOCAL_ONLY13/13 + separate TECHNICAL4/4 + shared28/28 + isolated type/build0 + Jobs36/36zeroDiff | bounded local modal integration ONLY; native assess unavailable/nullcandidate, no native/R4/reference/CI/FULL/delivery claim | 5854202f484837f4c78b170fddfd94abc85c839d |
 | R21-JD1 | Prepare one frozen-base Jobs sibling differential runner | S9,S12,S16; conditional shared navigator diff | DONE_LOCAL_PROOF parentjob8 EXIT0/19s,36base+36current,0diff,0hierarchyreads; Node/runtime/source/dependency/parking checked | cached harness/receipts remain historical; portable handoff must not require fullcache, no native/R4/reference/FULL | validates5854202f484837f4c78b170fddfd94abc85c839d |
-| PORTABLE-HANDOFF | Detail existing ODD and remote continuation for simpler-model clean-clone work | S17-S18; finish current H1+Jobs first | PENDING; visible42; bounded cache/large analysis JSON necessity/privacy audit, no blanket publication | reuse existing canonical plans/guide, concrete commands/acceptance/error/stop rules, current checkpoint; no cloud workloads | pending |
+| PORTABLE-HANDOFF | Detail existing ODD and remote continuation for simpler-model clean-clone work | S17-S19; H1+Jobs saved5854/03a2; reviewed historicallogs ea5203 | IN_PROGRESS visible42: maps/draft/guide complete; parent integrated canonical updates, final structural checks/save pending | existing canonical plans/guide only; exact taskcards/commands/acceptance/stops; no cloud/install/worktree/publication | source5854/plan03a2/ownerlogs ea5203; handoff commit pending |
 | WORKTREE-DESIGN | Analyze native coordinated multiworker/worktree design only | S13-S15; current H1+Jobs then portable handoff finished first | PENDING_PREREQUISITE; no implementation authorization | primary design after current unit/handoff, present before creating anything | pending |
 | R15-U1 | Candidate-only Review descriptor and fixed-label rendering | S3,S5-S7; R15-D1 | VERIFIED locald124f3ec1f6aae8b0839296754a336cea76e380c; Risk2own3/3+relay6/6;final15/types/build0 | bounded Writer, separate Risk2 verifier, parent checks/local slice | d124f3ec |
 
@@ -1038,3 +1095,26 @@ L83 — Saved bounded local code unit; native outside view unavailable, not appr
 - NativeASSESS calledONCE onEXACTcommitted64d-range withcommittedOnlytrue anditem2escalation. Actualresult nativeRisk=unassessable,reasonuntrackedfilesrequireexplicitdeclaration,candidate=null,outcomeunknown;0changedpaths/linesfromfailedassessmentareNOTemptycodeproof. NOlineage/consent/reviewer/verdict/ACK/approvedauthoritywascreated. No reviewDue/continuationwasreturned; doNOTinvent/reconstructSTART/opaquebindings/retryunavailableoutsideview. UserONswitchnotconsent. SeparateRisk2/3technical4/4+functionalproof alreadyobserved andunchanged; nativeviewneverreplacesthatgate.
 - R21-H1/JD1 boundedlocalimplementation/proofiscompleteandsavedincode5854202f; this DOESNOTcloseoldCI/SDK/rootdiagnostics/native/R4/reference/persistent-root/FULL/remote-deliverygates. Currentplan/evidencecheckpointwillrecordthisscopebeforeTodo37closes; no nativecheckboxmarkedapproved. Any future nativeapprovalneedsproperprovider-issueduntrackedscopeadmission/consentforitsactualcandidate, notcurrentNodefilegrantorhistoricalproof.
 - Next authorizedworkis PORTABLE-HANDOFF/visible42 onexistingcanonicalODD+remoteguide, explicitlycovercurrentcheckpoint/sourceproofandmissinggates, reproduciblecleanclonesetup/taskcards/cache-vs-trackeddata/privacyaudit. Futureworktreeproposal40andReviewwiring41remainpending; no pilotfolders/agents/referencewrites/cloudcalls/remoteactionsstarted. CurrentlargeanalysisJSONremainsuntracked/preserved.
+
+L84 — Task37 bounded checkpoint complete; portable handoff map starts with explicit slice boundaries:
+- Actualplancheckpointcommit03a2d7c058c8ec4f22e6d174598be89156fa0069 savedthisrunbook(198+/2-); Sourceunit5854202f484837f4c78b170fddfd94abc85c839d has214+/25- across5code/test/docfiles,parent64d6449d271880232f1201882fc0dd4f40e0c17c. TheseTWOreviewablelocalworkunits—notwholeaccumulatedbranch—are current slice boundaries. Existingfeaturebranchhistoryreported120574authoredchangedlines/1599commitsvsorigin/main; neverpasswholebranchasanativecandidate, giantPR,squash/reset/historyrewrite orimplicitdelivery. FutureDocunitbaseis03a2 andneedsownboundedcommit; no push/mergeauthorized.
+- Todo37 DONE_LOCAL_ONLY afteractualcode+plancommits/proof; nativeoutsideviewremainsunassessable/nullcandidate/unknown, no consent/authority/FULL. Todo42 nowIN_PROGRESS;40proposal/41Reviewremainpending. Originalhumanpi-capability/shell-megabatchworkingtreechangesanduntrackedlargeanalysisJSONpreserved/notstaged.
+- Primarysessiontopicpublishedportable-odd-handoff; explicitinventory0activebeforeassignment. TWOreusedexistingconfiguredexplorers nowREADONLY: mw67x9k3-o-0nht mapscanonicalcurrentpendingtasks/DAG/specs/realfile+test+stopguidance; mw67x7e1-n-yr74 auditsactualtrackedconsumers/producers/minimalassetneeds/privacy usingmetadata/boundedprefix<=4096bytes, notwhole459MBJSON. No overlappingwrites/sourcechecks/provider/Caccess/newagent/session/worktree. Parentwillonespotcheckeachmap, notrereadwholefeature.
+- CanonicalmapmustdistinguishauthoritativelatestUNCOMMITTEDhumanlogsfromHEAD03a2 toavoidfalsecleanclonehandoff. ParentONLYupdatesmasterODD; preserveowneredits, no blindstage/commit orreplacement. Assettablemustseparaterequiredtrackedsource/reproducibledependencies/fromhistoricalreceipts/privatecache/currentmachinegrants; currentnativeverdict/grantsnottransferable. Exactrawfilename/userpromptbelongsalreadyregisteredcanonicalparitydoc, no boundaryallowlistweakening/obfuscation. Documentationimplementationwaitstheboundedmaps; no actualcleanclone/npmci/cloudworkloadclaimed.
+
+L85 — Owner decision resolves pre-existing canonical edits without blanket staging:
+- Exact selected answer token: `review-and-commit-existing-odd-edits`. Parent reviewed/pinned the existing two ODD diffs (37 additions/2 deletions), checked boundary/diff exit0, and committed only their original reviewed bytes as ea5203f1c038d7fd148b84538b65629d042205ea, parent03a2d7c058c8ec4f22e6d174598be89156fa0069. No current-CI/native/FULL promotion, push, replacement of owner edits or inclusion of the untracked analysis export. The original historical material is now locally clone-reconstructible after future authorized publication; previous L84 uncommitted-state notes are historical.
+- Both original read-only maps completed. Parent uncached Git spot-check found no literal runtime/build/test/CI/registry consumer of the root export or closed-unit cache harness; two documentary references do exist. This is bounded dependency evidence, not proof of safe/private content or absence of dynamic uses. Preserve local data, transfer tracked source/lockfile, regenerate dependencies/output/owned test state. Full original user request and exact asset names are preserved only in the already registered equivalence ODD.
+
+L86 — Portable ODD integration and documentary-only validation boundary:
+- Reused guide writer mw6aitwm-p-ncje changed ONLY docs/remote-continuation.md; its worker-side structural checks passed, no runtime/bootstrap/provider execution. Reused read-only explorer continuation mw6alm7a-q-yax4 drafted bounded master blocks; parent alone integrated canonical ODDs. At most two reused native children ran simultaneously; all are now complete. No worktree-pilot folders, worktrees or pilot-worker provisioning occurred.
+- Parent updated this runbook's checkpoint, one-ready-card execution contract, concrete public baseline commands, queue40/41 and stale R11/R13/R15/R21 rows. The equivalence ODD records the full literal request, tracked/regenerated/private asset table, model/tool preflight and 40-observation norm over historical60. Canonical capability log now records bounded5854 evidence and present restrictions without inheriting68fe CI. Existing acceptance counters/admissions are unchanged.
+- Parent read back the worker guide and canonical log, then improved the guide with a unique project-owned PowerShell state root, explicit native-command exit guards, all three required ancestor checks and appropriately bounded literal-search claims. The previous worker hash describes its handoff, not these later parent edits. New-host commands are instructions only, not executed proof. Passive documentation has no meaningful behavior RED; structural verification is applicable.
+- Documentation unit base is ea5203; only FOUR existing Markdown files are intended. Combined diff must remain reviewable or be saved in separate bounded slices. No source/test/helper/guard/lockfile changes, root-data reads/cleanup, installs, provider calls, new worktrees, push, merge or history rewrite. Final structural validation, current-doc assessment routing and local save remain pending at this entry.
+
+L87 — Actual documentary verification, causal harness repair and assessment limits:
+- Parent structural attempt1 EXIT1: its fence regex crossed the indented ancestry block's closing Markdown fence, passed prose into the PowerShell parser and reported `Falta la cadena en el terminador: '.`. This is a validator harness defect, not semantic RED or a product/runtime failure. The corrected extractor matches complete opening/closing fence lines; diagnostics in .cache/portable-handoff/check-attempt1.json retain the observed failure and direct malformed-capture evidence. No deadline increase, assertion weakening, runtime command execution or unavailable-verifier replay.
+- Corrected local structural check EXIT0: 3 new relative links, 15 project-path references, 12 public-test arguments and both npm script names exist; all23 delivery IDs are preserved, onlyS19 added, and the full owner-reviewed canonical prefix remains unchanged. All3 PowerShell blocks parse via the actual language parser WITHOUT executing their contents; all3 required local anchors are ancestors. Untracked export remains regular/non-symlink458746596bytes, metadata only/no content read. Report .cache/portable-handoff/structural.json; structural stderr empty. Parent also removed inline JavaScript quoting from the minimum-version recipe in favor of PowerShell version comparison.
+- Boundary audit EXIT0: PASS1205 tracked/exact-prestage paths; stderr empty. Path-scoped diffcheck EXIT0 with the normal existing LF-to-CRLF warning. Markdown language tooling was intermittent/incomplete, not evidence of a clean root/LSP. No new-host npmci, runtime tests, build/typecheck, CI, provider, reference or independent review was executed for this passive documentation change; historical H1 results remain identified as historical.
+- Required ASSESS ran ONCE for this NEW uncommitted documentary diff, not a retry of the previous source candidate. Result nativeRisk=unassessable, riskmedium, nullcandidate, unknownoutcome because untracked files require explicit declaration. Zero returned paths/lines do NOT prove an empty diff. Plan: writerSelfVerification=true, independentVerifier=false, no TaskSize high-risk escalation. The actual structural self-verification above supplies the applicable documentary check; no native START/consent/lineage/verdict/ACK/approval or reviewDue continuation was returned or invented. No extra verifier or assessment retry.
+- Parent normalized the guide's task42 references to defer completion status to this runbook rather than making a future reader redo a saved handoff. Main documentation commit will include exactly the four named Markdown files, followed by a small completion checkpoint recording its actual SHA. Task42 remains in_progress until both saves succeed; task40 design and41 Review remain ordered afterwards, no remote action authorized.
