@@ -33,7 +33,7 @@ From `src/runtime/command-catalog.ts`:
 - configuration: `asen-profiles`, `asen-persona`, `asen-commands`, `asen-customize` (unimplemented)
 - session: `asen-changes`, `asen-agents`, `asen-todos`, `asen-history`, `asen-usage`, `asen-stats`
 - memory: `asen-memory`
-- diagnostics: `asen-status`, `asen-doctor`, `asen-authority-status`
+- diagnostics: `asen-status`, `asen-doctor`, `asen-authority-status`, `asen-integrations`
 
 ## 1. Functional family comparison
 
@@ -48,6 +48,7 @@ From `src/runtime/command-catalog.ts`:
 | Memory | optional separate companion (persistent-memory companion) | `/asen-memory`, R01-R09 memory foundation | Strong ASEN-local memory scope and deterministic parity. Evidence: `src/runtime/project-memory*`, `tests/project-memory-*.test.ts`, `odd/tasks/memory-strict-parity.md`. |
 | Profile / persona / models | `comparator:models`, `comparator:profiles`, `comparator:persona` | `/asen-profiles`, `/asen-persona`, `/asen-usage` | Equivalent control verbs in a simpler ASEN surface. Evidence: `src/runtime/profiles.ts`, `src/runtime/profile-store.ts`. |
 | Diagnostics | `comparator:doctor`, `comparator:status`, telemetry | `/asen-doctor`, `/asen-status`, `/asen-authority-status`, `/asen-usage`, `/asen-stats` | Equivalent, more locally bounded status/health gathering. Evidence: `src/runtime/doctor.ts`, `src/runtime/usage-command.ts`. |
+| Integration inventory | No dedicated command observed in the extracted snapshot | `/asen-integrations` | Read-only projection of public command/tool inventory and effective profile routes. Reports `unknown` connection state and never claims connectivity or execution. Evidence: `src/runtime/integration-profile-inspection.ts`, `src/runtime/integrations-panel.ts`, `tests/integrations-panel.test.ts`. |
 | Skills registry | `skill-registry:refresh` | `/asen-skill-registry` + startup watch | Equivalent. Evidence: `src/skills/registry-lifecycle.ts`, `src/skills/registry.ts`, tests. |
 | Authority and safety | `comparator:review-session-permission`, sensitive path protection, destructive command guards | `asen-authority-status`, host identity/project/worktree boundaries, consent, scoped correction | Equivalent with stricter machine-local identity. Evidence: `extensions/authority.ts`, `src/runtime`, `docs/remote-continuation.md`. |
 | Installation lifecycle | repair `comparator:*` install assets through harness ecosystem commands | signed acquire/stage/upgrade/rollback/update preview/selected version launch/browser consent/environment audit | ASEN is materially more transactional in this layer. Evidence: `src/runtime/managed-lifecycle.ts`, `managed-install.ts`, `managed-update-preview.ts`, `managed-selected-launch.ts`, `docs/installation.md`, tests `managed-*.test.ts`. |

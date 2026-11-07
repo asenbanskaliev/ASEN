@@ -22,7 +22,6 @@ import {ALL_INTERACTION_TOOL_NAMES,registerInteractionTools} from "../src/intera
 import {createLocalBashOperations,type ToolDefinition} from "@earendil-works/pi-coding-agent";
 import {ASEN_CODEGRAPH_TOOL_NAME,registerCodeGraphTools,type CodeIntelligenceOptions} from "../src/interaction/code-intelligence.js";
 import {buildStatus,statusLines,type AsenStatusInput} from "../src/runtime/status.js";
-import {bannerLines, effectivePresentation, normalizePresentation, type PresentationSettings} from "../src/runtime/presentation.js";
 import { readAsenLanguage, writeAsenLanguage } from "../src/runtime/language.js";
 import {doctorChecks,doctorExitCode} from "../src/runtime/doctor.js";
 import {controlledInstructionPlanCommand,routePreviewCommand} from "../src/runtime/route-command.js";
@@ -77,9 +76,10 @@ import {hostContentColumns,layoutMode,sanitizeTerminalText,truncateForTerminal} 
 import {ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,renderAsenWorkRow,renderAsenStatusLine,type AsenPanelSnapshot,type AsenPanelSection} from "../src/runtime/ide-panel.js";
 import {createNativeWorkPanel} from "../src/runtime/native-work-panel.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/native-m2-navigator.js";
-import {renderM1Surface,createM1SurfaceCache} from "../src/runtime/m1-readonly-rail.js";
+import {createM1SurfaceCache} from "../src/runtime/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/host-status-projection.js";
 import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInventoryRow} from "../src/runtime/integration-profile-inspection.js";
+import {integrationPanel} from "../src/runtime/integrations-panel.js";
 import type {KeybindingsManager} from "@earendil-works/pi-tui";
 import {renderAgentInspection,type AgentInspection} from "../src/runtime/agent-inspect.js";
 import {projectAgentHierarchy,type AgentHierarchyRecord} from "../src/runtime/agents-panel.js";
@@ -236,7 +236,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    // A local child can finish after another process has won the durable row.
    // Until this exact terminal outcome is persisted, it cannot be delivered as fact.
    if(result.persistenceError){
-    try{const current=await sessionIdentity(context);if(current.sessionId===result.sessionId&&current.projectId===result.projectId&&context.sessionManager?.getSessionId?.()===result.sessionId)context.ui.notify("ASEN no pudo guardar el resultado del proceso; comprueba asen_background_status antes de continuar.","error");}catch{/* A diagnostic cannot bypass session isolation. */}
+    try{const current=await sessionIdentity(context);if(current.sessionId===result.sessionId&&current.projectId===result.projectId&&context.sessionManager?.getSessionId?.()===result.sessionId)context.ui.notify("ASEN no pudo guardar el resultado del proceso; comprueba asen_background_status antes de continuar.","error");}catch (error) { void error; }
     return;
    }
    if(result.deliveryState==="enqueued")return;
@@ -253,7 +253,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     backgroundJobs.setDeliveryStateScoped(result.id,result.sessionId,result.projectId,"enqueued");
     notificationProjection.publish({sessionId:result.sessionId,projectId:result.projectId},context.ui,"job",notification.id,`Job ${result.id.slice(0,8)}: ${result.state==="completed"&&result.exitCode===0?"Succeeded":result.state}`);
    }catch(error){
-    if(transportAttempted)try{backgroundJobs.setDeliveryStateScoped(result.id,result.sessionId,result.projectId,"pending",error instanceof Error?error.message.slice(0,500):"Pi transport rejected result enqueue");}catch{/* Preserve the original pending journal entry if delivery-state persistence also fails. */}
+    if(transportAttempted)try{backgroundJobs.setDeliveryStateScoped(result.id,result.sessionId,result.projectId,"pending",error instanceof Error?error.message.slice(0,500):"Pi transport rejected result enqueue");}catch (error) { void error; }
     notificationProjection.publish({sessionId:result.sessionId,projectId:result.projectId},context.ui,"job",notification.id,`Job ${result.id.slice(0,8)}: ${result.state}; ${transportAttempted?"Pi enqueue failed or receipt not persisted":"delivery blocked before enqueue"}.`);
    }
   };
@@ -537,7 +537,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      // After claiming, any change of session or route leaves an *attempted*
      // uncertainty. Never enqueue, reclassify or silently replay such a claim.
      if(!await matches()||agentParentRoute(context,scope,agentParentRunActive)!==route){
-      try{context.ui.notify("ASEN detectó un cambio del estado de Pi durante la entrega. El aviso queda incierto; consulta asen-agents.","error");}catch{}
+      try{context.ui.notify("ASEN detectó un cambio del estado de Pi durante la entrega. El aviso queda incierto; consulta asen-agents.","error");}catch (error) { void error; }
       return false;
      }
      const notice=agentTerminalNoticeContent({id:record.id,role:record.role,state:record.state,
@@ -676,7 +676,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(settled)agentParentRunActive=false;
    if(!ctx)return;
    try{await flushPendingAgentNotices?.(ctx);}
-   catch{try{ctx.ui.notify("ASEN no pudo entregar los avisos pendientes; sus resultados continúan guardados.","error");}catch{}}
+   catch{try{ctx.ui.notify("ASEN no pudo entregar los avisos pendientes; sus resultados continúan guardados.","error");}catch (error) { void error; }}
    const pending=agentWakeOwed,owner=agentDeliveryContext,active=agentDeliveryIdentity;
    if(settled&&pending&&owner&&active&&pending.sessionId===active.sessionId&&pending.projectId===active.projectId)
     scheduleAgentWakeAtBoundary?.();
@@ -794,7 +794,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    assertCurrent();ctx?.ui?.notify?.(JSON.stringify(output,null,2),"info");
    return output;
   }});
-  registerData("asen-language",{description:"Show/switch ASEN language with /asen language <en|es>",handler:async(args?:string,ctx?:CommandContext):Promise<any>=>{
+  registerData("asen-language",{description:"Show/switch ASEN language with /asen language <en|es>",handler:async(args?:string,_ctx?:CommandContext):Promise<any>=>{
    const parts = String(args??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
    const requested = parts.length>1 ? parts[1] : "";
    const homePath = dependencies.homeDir?.() ?? home();
@@ -838,7 +838,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    assertCurrent();ctx.ui?.notify?.(details,"info");
   }});
   registerData("asen-continue",{description:"Resume current pending work in plain language",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(!todoStorePromise)return ["Continue unavailable: no local task store."];let identity:any;try{identity=await sessionIdentity(ctx);}catch{return ["Continue unavailable: no active Pi session/project."];}try{const rows=await (await todoStorePromise).list(identity),unfinished=rows.filter((row:any)=>row.current?.state!=="done");if(!unfinished.length)return ["Continue: no active tasks. You can start a new request."];const out=["Restarting from where you left off:","- unfinished tasks: "+unfinished.length];for(const row of unfinished.slice(0,5))out.push(`  ${row.taskId}: ${row.title ?? row.current?.state ?? "pending"} (${String(row.current?.state??"pending")})`);if(unfinished.length>5)out.push(`  ... plus ${unfinished.length-5} more`);return out;}catch{return ["Continue unavailable: could not load local task data."]}}});
-  registerData("asen-presentation",{description:"Show/switch short vs rich ASEN presentation mode: [status | compact | complete]",handler:async(args?:string,ctx?:CommandContext)=>{
+  registerData("asen-presentation",{description:"Show/switch short vs rich ASEN presentation mode: [status | compact | complete]",handler:async(args?:string,_ctx?:CommandContext)=>{
    const homePath=dependencies.homeDir?.() ?? home();
    const parts=String(args??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
    const requested=parts.length>0?parts[0]:"status";
@@ -1165,6 +1165,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return [`Archivo corregido con autorización de un uso: ${applied.path}. Cambios pendientes de revisión independiente; no se ha hecho commit.`,...warning];
   }
   const width=terminalColumns(),mode=layoutMode(width);if(workspaceStorePromise){const identity=await sessionIdentity(ctx),rows=await (await workspaceStorePromise).list(identity),changes=rows.map(row=>row.change),conflicts=findPotentialWorkspaceConflicts(changes),roots=[...new Set([identity.projectId,...rows.map(row=>row.change.worktree),...discoverWorkspaceWorktrees(identity.projectId)])],snapshots=snapshotWorkspaceRoots(roots),gitRows:string[]=["Current Git state (read-only; separate from session attribution):"];for(const snapshot of snapshots){if(snapshot.error){gitRows.push(truncateForTerminal(`unavailable: ${snapshot.root}`,width));continue;}gitRows.push(truncateForTerminal(`Git ${snapshot.branch} ${snapshot.head.slice(0,12)} — ${snapshot.files.length} changed — ${snapshot.root}`,width));if(mode!=="minimum")for(const file of snapshot.files.slice(0,50))gitRows.push(truncateForTerminal(`  ${file.status} ${sanitizeTerminalText(file.path)}${file.previousPath?` (from ${sanitizeTerminalText(file.previousPath)})`:""}`,width));if(snapshot.files.length>50)gitRows.push(truncateForTerminal(`  … ${snapshot.files.length-50} additional paths`,width));}return [...gitRows,"Session-attributed changes:",...(conflicts.length?["Potential conflicts require review; no content comparison, winner selection, or automatic resolution is performed.",...visibleWorkspaceConflictRows(conflicts,width)]:[]),...visibleWorkspaceRows(changes,width)];}return dependencies.changes?visibleWorkspaceRows(dependencies.changes(),width):[truncateForTerminal("ASEN workspace changes unavailable: no local change provider configured.",width)];}});
+  registerData("asen-integrations",{description:"Inspect public integration inventory and effective profile routes without claiming connectivity",handler:async(_args:string|undefined,ctx:CommandContext)=>{const identity=await sessionIdentity(ctx),profiles=await panelProfiles(identity);const integrationInspection=inspectIntegrationProfiles({...(typeof pi.getCommands==="function"?{getCommands:pi.getCommands.bind(pi)}:{}),...(typeof pi.getAllTools==="function"?{getAllTools:pi.getAllTools.bind(pi)}:{}),...(profiles?{profiles}:{})});return integrationPanel(integrationInspection,terminalColumns());}});
   registerData("asen-todos",{description:"Show active Todo tasks, or archived completed task history for the current Pi session and project",handler:async(args:string|undefined,ctx:CommandContext)=>{if(!todoStorePromise)return ["ASEN no tiene un almacén local de tareas configurado."];const store=await todoStorePromise,identity=await sessionIdentity(ctx),history=args?.trim()==="history",rows=history?await store.archived(identity):await store.list(identity);return rows.length?todoStatusRows(rows):[history?"No hay tareas archivadas para este proyecto y sesión.":"No hay tareas activas para este proyecto y sesión."];}});
   registerData("asen-memory",{description:"Consultar o borrar recuerdos locales del proyecto actual",handler:async(args:string|undefined,ctx:CommandContext)=>{
    if(!memoryStorePromise)return ["La memoria local de ASEN está desactivada."];

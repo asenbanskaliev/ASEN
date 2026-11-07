@@ -33,6 +33,7 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"memory",name:"asen-memory",implemented:true,owner:"extensions/asen.ts"},
  {group:"diagnostics",name:"asen-status",implemented:true,owner:"extensions/asen.ts"},
  {group:"diagnostics",name:"asen-doctor",implemented:true,owner:"extensions/asen.ts"},
+ {group:"diagnostics",name:"asen-integrations",implemented:true,owner:"extensions/asen.ts"},
  {group:"diagnostics",name:"asen-authority-status",implemented:true,owner:"extensions/authority.ts"},
  {group:"configuration",name:"asen-help",implemented:true,owner:"extensions/asen.ts"},
 ] as const;
