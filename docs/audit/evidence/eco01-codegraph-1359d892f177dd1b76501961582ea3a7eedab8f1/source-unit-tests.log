@@ -1,0 +1,20 @@
+✔ CodeGraph tool rejects non-project, nested-project, HOME, and temporary workspaces before init (18.875695ms)
+✔ CodeGraph tool runs only fixed cwd-scoped init, query, and explore commands (15.575889ms)
+✔ CodeGraph tool rejects pre-existing .codegraph symlinks and non-directories (22.514053ms)
+✔ CodeGraph tool passes hyphen-leading queries after the option terminator (10.258943ms)
+✔ CodeGraph tool returns structured fallback instructions when the binary is unavailable (9.877487ms)
+✔ CodeGraph tool returns fallback instructions when CodeGraph fails (8.764965ms)
+✔ CodeGraph tool configures a process buffer above the returned-output truncation threshold (10.442961ms)
+✔ CodeGraph tool rejects incomplete or oversized query requests before running a process (14.217225ms)
+✔ CodeGraph tool registration exposes a single constrained custom tool (0.325341ms)
+✔ Windows shim helpers skip stale PATH shims before resolving the npm script (3.021626ms)
+✔ Windows shim helpers resolve quoted PATH entries in order without stripping unmatched quotes (2.63342ms)
+✔ Windows launcher passes command metacharacters as one literal argv value (73.970173ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 310.608887

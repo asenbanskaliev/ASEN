@@ -1,0 +1,57 @@
+{
+  "input": {
+    "addTitles": [
+      "Review parser",
+      "Run regression suite"
+    ],
+    "action": "clear"
+  },
+  "added": [
+    {
+      "text": "Added #1 Review parser (pending)",
+      "state": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Review parser",
+            "status": "pending"
+          }
+        ],
+        "nextId": 2,
+        "updatedTurn": 1
+      }
+    },
+    {
+      "text": "Added #2 Run regression suite (pending)",
+      "state": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Review parser",
+            "status": "pending"
+          },
+          {
+            "id": 2,
+            "title": "Run regression suite",
+            "status": "pending"
+          }
+        ],
+        "nextId": 3,
+        "updatedTurn": 1
+      }
+    }
+  ],
+  "clearText": "Cleared 2 tasks",
+  "clearState": {
+    "tasks": [],
+    "nextId": 1,
+    "updatedTurn": 2
+  },
+  "replayedState": {
+    "tasks": [],
+    "nextId": 1,
+    "updatedTurn": 2
+  },
+  "activeTaskCount": 0,
+  "updatedTurn": 2
+}

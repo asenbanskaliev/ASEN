@@ -1,0 +1,91 @@
+{
+  "schema": "asen.eco01.todo-authorization-pair.v1",
+  "contractId": "ECO-SRC-91b70c5973297fbd:12",
+  "source": {
+    "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+    "sourceId": "ECO-SRC-91b70c5973297fbd",
+    "path": "extensions/gentle-todo.ts",
+    "fileSha256": "db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d",
+    "span": {
+      "startLine": 168,
+      "endLine": 203,
+      "sha256": "7d73a31a69f345bdd676a260d1a01a8c480cb792249fc7b8fe3bcc679324da2c"
+    }
+  },
+  "asen": {
+    "commit": "2e8444c42429102a2294e86fd9277963c8850353",
+    "tree": "f5d267adbd97fe5a33d21964d174f9f6b1ed9484",
+    "path": "src/runtime/todo-store.ts"
+  },
+  "runtime": {
+    "platform": "linux",
+    "node": "v24.19.0"
+  },
+  "scenario": {
+    "name": "denied",
+    "classification": "INTENTIONAL",
+    "reason": "The source Todo state operation has no session/project owner and applies the task update; ASEN rejects the same task ID from another session, preserving the owner state and file bytes. This is an intentional authorization boundary.",
+    "input": {
+      "source": {
+        "initialTask": "Owned task",
+        "attemptedSession": "eco01-outsider",
+        "action": {
+          "action": "update",
+          "id": 1,
+          "status": "done",
+          "note": "cross-session attempt"
+        }
+      },
+      "asen": {
+        "taskId": "todo-61185d7a-5040-4d92-a242-692fb4e97384",
+        "owner": {
+          "sessionId": "eco01-owner",
+          "projectId": "/eco01-project"
+        },
+        "outsider": {
+          "sessionId": "eco01-outsider",
+          "projectId": "/eco01-project"
+        },
+        "expectedRevision": 1,
+        "nextState": "done"
+      }
+    },
+    "sourceResult": {
+      "error": null,
+      "state": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Owned task",
+            "status": "done",
+            "note": "cross-session attempt"
+          }
+        ],
+        "nextId": 2,
+        "updatedTurn": 2
+      },
+      "allowedMutation": true
+    },
+    "asenResult": {
+      "error": {
+        "name": "Error",
+        "message": "Todo task is unavailable to this session or project"
+      },
+      "ownerBefore": [
+        "planned"
+      ],
+      "ownerAfter": [
+        "planned"
+      ],
+      "outsiderVisibleTasks": 0,
+      "fileBytesBefore": 456,
+      "fileBytesAfter": 456,
+      "fileSha256Before": "10470931af0ce7b2b0d4673e93516b47d07feb2de544e8be8cbe5732082f21e9",
+      "fileSha256After": "10470931af0ce7b2b0d4673e93516b47d07feb2de544e8be8cbe5732082f21e9",
+      "deniedWithoutMutation": true
+    }
+  },
+  "limitations": [
+    "The comparison exercises the actual Todo state operation and ASEN persistent store, not Pi tool registration or UI authorization lifecycle."
+  ]
+}

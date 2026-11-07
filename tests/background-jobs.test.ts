@@ -1,0 +1,246 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {mkdtemp,rm} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import path from "node:path";
+import {spawnSync} from "node:child_process";
+import {pathToFileURL} from "node:url";
+import {BackgroundJobRegistry,backgroundJobTerminalNotification,formatBackgroundJobStatus,pendingBackgroundJobNotifications} from "../src/runtime/background-jobs.js";
+import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
+
+test("bounds output, emits completion once, and keeps session isolation",()=>{
+ const registry=new BackgroundJobRegistry(),events=[] as string[],job=registry.start({sessionId:"s1",command:"long",maxTailLines:2,maxLineChars:4});
+ registry.subscribe(job.id,event=>events.push(event.kind));registry.append(job.id,"abcdef\nhello\nlast");registry.finish(job.id,"completed",0);
+ const snapshot=registry.snapshot(job.id);assert.deepEqual(snapshot.tail,["ello","last"]);assert.equal(snapshot.state,"completed");assert.deepEqual(events,["line","line","line","completed"]);assert.equal(registry.list("s2").length,0);
+});
+
+test("stops a session's running jobs and rejects later output",async()=>{
+ const registry=new BackgroundJobRegistry(),job=registry.start({sessionId:"s1",command:"watch"});registry.stop(job.id);assert.equal(registry.snapshot(job.id).state,"stopped");assert.throws(()=>registry.append(job.id,"late"),/not running/);await registry.disposeSession("s1");assert.equal(registry.list("s1").length,0);
+});
+
+test("session disposal waits for process close before deleting job state",async()=>{
+ const registry=new BackgroundJobRegistry(),{job,done}=registry.run({sessionId:"dispose",command:process.execPath,args:["-e","setTimeout(()=>{},10000)"]});
+ await registry.disposeSession("dispose");
+ assert.equal((await done).state,"stopped");
+ assert.equal(registry.list("dispose").length,0);
+});
+
+test("session disposal is bounded when an executor ignores abort and retains state until settlement",async()=>{
+ let settle!:()=>void;
+ const registry=new BackgroundJobRegistry(undefined,()=>new Promise(resolve=>{settle=()=>resolve({exitCode:0});}),20),{job,done}=registry.run({sessionId:"stuck",command:"long-running"});
+ const started=Date.now();await registry.disposeSession("stuck");assert.ok(Date.now()-started<500);assert.equal(registry.snapshot(job.id).state,"stopped");assert.equal(registry.list("stuck").length,1);
+ settle();await done;await new Promise(resolve=>setImmediate(resolve));assert.equal(registry.list("stuck").length,0);
+});
+
+test("spawn errors settle the job result and do not leave shutdown waiting",async()=>{
+ const registry=new BackgroundJobRegistry(),{done}=registry.run({sessionId:"spawn-error",command:"asen-command-that-does-not-exist-7a1d"});
+ assert.equal((await done).state,"failed");await registry.disposeSession("spawn-error");assert.equal(registry.list("spawn-error").length,0);
+});
+
+test("synchronous spawn setup failures become failed jobs instead of stranded running records",async()=>{
+ const registry=new BackgroundJobRegistry(),{job,done}=registry.run({sessionId:"spawn-sync-error",command:process.execPath,cwd:42 as unknown as string});
+ assert.equal((await done).state,"failed");await registry.disposeSession("spawn-sync-error");assert.equal(registry.list("spawn-sync-error").length,0);
+ assert.equal(job.sessionId,"spawn-sync-error");
+});
+
+test("fails closed on an event flood",()=>{
+ const registry=new BackgroundJobRegistry(),job=registry.start({sessionId:"s1",command:"monitor",maxEventsPerMinute:2});registry.append(job.id,"1\n2\n3");assert.equal(registry.snapshot(job.id).state,"flooded");
+});
+
+test("bounds running jobs globally and per Pi session",()=>{
+ const registry=new BackgroundJobRegistry();
+ for(let index=0;index<BackgroundJobRegistry.maxRunningJobsPerSession;index++)registry.start({sessionId:"same",command:`job-${index}`});
+ assert.throws(()=>registry.start({sessionId:"same",command:"overflow-session"}),/concurrency limit/);
+ for(let index=1;index<BackgroundJobRegistry.maxRunningJobs/BackgroundJobRegistry.maxRunningJobsPerSession;index++)for(let count=0;count<BackgroundJobRegistry.maxRunningJobsPerSession;count++)registry.start({sessionId:`session-${index}`,command:`job-${index}-${count}`});
+ assert.equal(registry.list("other").length,0);assert.throws(()=>registry.start({sessionId:"new-session",command:"overflow-global"}),/concurrency limit/);
+});
+
+test("bounds retained terminal jobs per session and globally",()=>{
+ const registry=new BackgroundJobRegistry();
+ for(let index=0;index<BackgroundJobRegistry.maxRetainedJobsPerSession+3;index++){const job=registry.start({sessionId:"retained",command:`job-${index}`});registry.finish(job.id,"completed",0);}
+ assert.equal(registry.list("retained").length,BackgroundJobRegistry.maxRetainedJobsPerSession);
+ for(let index=0;index<6;index++)for(let count=0;count<BackgroundJobRegistry.maxRetainedJobsPerSession;count++){const job=registry.start({sessionId:`session-${index}`,command:`global-${index}-${count}`});registry.finish(job.id,"completed",0);}
+ assert.ok([...Array(6).keys()].every(index=>registry.list(`session-${index}`).length<=BackgroundJobRegistry.maxRetainedJobsPerSession));
+ const retained=registry.list("retained").length+[...Array(6).keys()].reduce((count,index)=>count+registry.list(`session-${index}`).length,0);
+ assert.equal(retained,BackgroundJobRegistry.maxRetainedJobs);
+});
+
+test("background job status is isolated by both session and project",()=>{
+ const registry=new BackgroundJobRegistry(),one=registry.start({sessionId:"same-session",projectId:"/project/a",command:"a"}),two=registry.start({sessionId:"same-session",projectId:"/project/b",command:"b"});
+ assert.deepEqual(registry.list("same-session","/project/a").map(job=>job.id),[one.id]);assert.deepEqual(registry.list("same-session","/project/b").map(job=>job.id),[two.id]);
+});
+
+test("journal-backed registry reports a running job as interrupted after restart without replay",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-background-journal-restart-"));t.after(()=>rm(root,{recursive:true,force:true}));const journal=new BackgroundJobJournal(path.join(root,"jobs.json"));let starts=0,settle!:(value:{exitCode:number|null})=>void;
+ const first=new BackgroundJobRegistry(journal,async()=>{starts++;return new Promise(resolve=>{settle=resolve;});}),running=first.run({sessionId:"s",projectId:"p",command:"run-once"});
+ const restarted=new BackgroundJobRegistry(journal),recovered=restarted.list("s","p");assert.equal(starts,1);assert.equal(recovered.length,1);assert.equal(recovered[0]?.id,running.job.id);assert.equal(recovered[0]?.state,"interrupted");assert.equal((recovered[0] as typeof recovered[number]&{resumable?:boolean}).resumable,false);settle({exitCode:0});assert.equal((await running.done).state,"completed");
+});
+
+test("runs a real contained child and records its exit",async()=>{
+ const registry=new BackgroundJobRegistry(),child=registry.run({sessionId:"real",command:process.execPath,args:["-e","process.stdout.write('ok\\n')"]});
+ const result=await child.done;assert.equal(result.state,"completed");assert.equal(result.exitCode,0);assert.deepEqual(result.tail,["ok"]);
+});
+
+test("timeout terminates a real child",async()=>{
+ const registry=new BackgroundJobRegistry(),child=registry.run({sessionId:"timeout",command:process.execPath,args:["-e","setTimeout(()=>{},10000)"],timeoutMs:50});
+ const result=await child.done;assert.equal(result.state,"timed_out");
+});
+
+
+test("T10 scoped subscriptions reject cross-session and cross-project observers",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"project-a",command:"task"});
+ const received:string[]=[];
+ assert.throws(()=>registry.subscribeScoped(job.id,"intruder","project-a",()=>{}),/does not belong/);
+ assert.throws(()=>registry.subscribeScoped(job.id,"owner","project-b",()=>{}),/does not belong/);
+ assert.throws(()=>registry.subscribeScoped(job.id,"","project-a",()=>{}),/scope is invalid/);
+ const unsubscribe=registry.subscribeScoped(job.id,"owner","project-a",event=>received.push(event.kind));
+ registry.append(job.id,"output");registry.finish(job.id,"completed",0);
+ unsubscribe();
+ assert.deepEqual(received,["line","completed"]);
+});
+
+test("T10 scoped snapshots and cancellation reject cross-session and cross-project access",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"a",command:"long"});
+ assert.throws(()=>registry.snapshotScoped(job.id,"intruder","a"),/does not belong/);
+ assert.throws(()=>registry.snapshotScoped(job.id,"owner","b"),/does not belong/);
+ assert.throws(()=>registry.stopScoped(job.id,"intruder","a"),/does not belong/);
+ assert.throws(()=>registry.stopScoped(job.id,"owner","b"),/does not belong/);
+ assert.equal(registry.snapshotScoped(job.id,"owner","a").state,"running");
+ registry.stopScoped(job.id,"owner","a");
+ assert.equal(registry.snapshotScoped(job.id,"owner","a").state,"stopped");
+});
+
+test("T10 notifications use observed terminal state and stable identity",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"p",command:"task"});
+ assert.equal(backgroundJobTerminalNotification(job),null);
+ registry.finish(job.id,"failed",7);
+ const observed=registry.snapshot(job.id);
+ const first=backgroundJobTerminalNotification(observed);
+ assert.ok(first);assert.match(first.message,/Failed/);assert.match(first.message,/exit code 7/);
+ assert.deepEqual(backgroundJobTerminalNotification(observed),first);
+});
+test("T10 accessible status is bounded and requires no color or terminal controls",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",command:"task"});
+ registry.finish(job.id,"completed",0);
+ const status=formatBackgroundJobStatus(registry.snapshot(job.id),24);
+ assert.ok(status.length<=24);assert.doesNotMatch(status,/\\x1b/);
+ assert.match(formatBackgroundJobStatus(registry.snapshot(job.id)),/Succeeded/);
+ assert.throws(()=>formatBackgroundJobStatus(registry.snapshot(job.id),10),/width/);
+});
+
+test("T10 terminal notification identity does not change on subsequent status updates",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"project",command:"task"});
+ registry.finish(job.id,"failed",1);
+ const initial=backgroundJobTerminalNotification(registry.snapshot(job.id));
+ assert.ok(initial);
+ assert.doesNotMatch(initial.id,/project|[\x00-\x1f\x7f-\x9f]/u);
+ registry.setDeliveryState(job.id,"pending","retry");
+ const retried=backgroundJobTerminalNotification(registry.snapshot(job.id));
+ assert.equal(initial.id,retried?.id);
+});
+test("T10 accessible output removes terminal controls from untrusted job identity",()=>{
+ const registry=new BackgroundJobRegistry();
+ const job=registry.start({sessionId:"owner",projectId:"project",command:"task"});
+ assert.doesNotMatch(formatBackgroundJobStatus({...job,id:"unsafe\\x1b[31m\\nnext"}),/[\x00-\x1f\x7f-\x9f]/u);
+});
+
+test("T10 recovery projection deduplicates and respects project and session boundaries",()=>{
+ const registry=new BackgroundJobRegistry();
+ const own=registry.start({sessionId:"owner",projectId:"project",command:"one"});
+ const other=registry.start({sessionId:"intruder",projectId:"project",command:"two"});
+ registry.finish(own.id,"failed",3);registry.finish(other.id,"failed",4);
+ const ownSnapshot=registry.snapshot(own.id),otherSnapshot=registry.snapshot(other.id);
+ const pending=pendingBackgroundJobNotifications([ownSnapshot,otherSnapshot,ownSnapshot],"owner","project");
+ assert.equal(pending.length,1);
+ assert.equal(pending[0]?.id,backgroundJobTerminalNotification(ownSnapshot)?.id);
+ registry.setDeliveryState(own.id,"enqueued");
+ assert.equal(pendingBackgroundJobNotifications([registry.snapshot(own.id)],"owner","project").length,0);
+ assert.throws(()=>pendingBackgroundJobNotifications([],"","project"),/scope/);
+});
+
+
+test("T10 interruption is status-only, never an automatic delivery candidate",()=>{
+ const registry=new BackgroundJobRegistry();
+ const a=registry.start({sessionId:"owner",projectId:"project",command:"real work"});
+ registry.finish(a.id,"failed",7);
+ const completed=registry.snapshot(a.id),uncertain={...completed,id:"uncertain",state:"interrupted" as const};
+ assert.match(backgroundJobTerminalNotification(uncertain)?.message??"",/Interrupted/u,"uncertainty remains observable via read-only status");
+ const pending=pendingBackgroundJobNotifications([uncertain,completed,uncertain],"owner","project");
+ assert.equal(pending.length,1,"only the durably terminal event may be replayed");
+ assert.equal(pending[0]?.jobId,a.id);
+ assert.equal(pendingBackgroundJobNotifications([uncertain],"owner","project").length,0);
+ assert.equal(pendingBackgroundJobNotifications([{...uncertain,sessionId:"other"}],"owner","project").length,0);
+});
+
+test("T10 live delivery state updates preserve newer cross-process terminal results",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-background-cas-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const file=path.join(root,"journal.json"),writer=new BackgroundJobJournal(file),registry=new BackgroundJobRegistry(writer);
+ const j=registry.start({sessionId:"s",projectId:"p",command:"run"});
+ const owned=registry.snapshot(j.id);
+ // A separate Pi process closes the shared running row before the stale owner
+ // observes completion. The stale owner must not replace the new result.
+ const later={...owned,state:"failed" as const,exitCode:7,updatedAt:new Date(Date.now()+60_000).toISOString(),tail:["newer terminal result"],eventCount:1};
+ const moduleUrl=pathToFileURL(path.join(process.cwd(),"src/runtime/background-job-journal.ts")).href;
+ const script=`import {BackgroundJobJournal} from ${JSON.stringify(moduleUrl)};new BackgroundJobJournal(process.env.ASEN_CAS_FILE).record(JSON.parse(process.env.ASEN_CAS_SNAPSHOT));`;
+ const child=spawnSync(process.execPath,["--import","tsx","--input-type=module","-e",script],{cwd:process.cwd(),windowsHide:true,encoding:"utf8",timeout:15000,env:{...process.env,ASEN_CAS_FILE:file,ASEN_CAS_SNAPSHOT:JSON.stringify(later)}});
+ assert.equal(child.status,0,"independent writer must update the journal: "+child.stderr);
+ const other=new BackgroundJobJournal(file);
+ registry.finish(j.id,"completed",0);
+ assert.match(registry.snapshot(j.id).persistenceError??"",/could not persist the terminal result/u);
+ assert.match(formatBackgroundJobStatus(registry.snapshot(j.id)),/Result not persisted/u);
+ assert.equal(backgroundJobTerminalNotification(registry.snapshot(j.id)),null,"a non-durable terminal observation cannot become a Pi delivery");
+ assert.equal(pendingBackgroundJobNotifications([registry.snapshot(j.id)],"s","p").length,0,"failed persistence cannot be replayed on restart");
+ assert.throws(()=>registry.setDeliveryStateScoped(j.id,"s","p","enqueued"),/delivery conflict/u);
+ assert.equal(registry.snapshot(j.id).deliveryState,undefined,"a failed disk CAS must not be reported as delivered in memory");
+ assert.match(registry.snapshot(j.id).persistenceError??"",/could not persist delivery state/u);
+ const recovered=other.load("s","p")[0]!;
+ assert.equal(recovered.state,"failed");
+ assert.equal(recovered.exitCode,7);
+ assert.deepEqual(recovered.tail,["newer terminal result"]);
+ assert.equal(recovered.deliveryState,undefined,"a stale owner must not forge a receipt");
+ assert.equal(recovered.eventCount,1);
+});
+
+test("T10 delivery CAS preserves a concurrent enqueue and the terminal job payload",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-background-cas-enqueued-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const file=path.join(root,"journal.json"),journal=new BackgroundJobJournal(file),registry=new BackgroundJobRegistry(journal);
+ const j=registry.start({sessionId:"s",projectId:"p",command:"run"});
+ registry.append(j.id,"real output");
+ registry.finish(j.id,"failed",6);
+ const external=new BackgroundJobJournal(file);
+ external.updateDeliveryState(j.id,"s","p","enqueued");
+ assert.throws(()=>registry.setDeliveryState(j.id,"pending","late failure"),/delivery conflict/u,"stale pending must not undo a competing confirmed enqueue call");
+ const unchanged=external.load("s","p")[0]!;
+ assert.equal(unchanged.deliveryState,"enqueued");
+ assert.equal(unchanged.exitCode,6);
+ assert.deepEqual(unchanged.tail,["real output"]);
+ // A restarted or live reader can still query the terminal record safely.
+ assert.equal(registry.list("s","p")[0]?.state,"failed");
+});
+
+
+test("T04 an authorized retry still executes once through the real journal-backed registry",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-claimed-retry-registry-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const journal=new BackgroundJobJournal(path.join(root,"jobs.json"));
+ const first=new BackgroundJobRegistry(journal),original=first.start({sessionId:"session",projectId:root,command:"old command"});
+ const grant={sessionId:"session",projectId:root,interruptedJobId:original.id,newJobId:"12345678-1234-4234-8234-123456789abc",authorizedCommand:"approved command",authorizationId:"single-use",operationDigest:"a".repeat(64),expectedHead:"b".repeat(40),allowedPaths:["safe.txt"],authorizationExpiresAt:new Date(Date.now()+60_000).toISOString()};
+ journal.claimInterruptedForRetry(grant);
+ let executed=0;
+ const retry=new BackgroundJobRegistry(journal,async()=>{executed++;return{exitCode:0};});
+ const identity={jobId:grant.newJobId,authorizationId:grant.authorizationId,operationDigest:grant.operationDigest,originalJobId:original.id,expectedHead:grant.expectedHead,allowedPaths:grant.allowedPaths,authorizationExpiresAt:grant.authorizationExpiresAt};
+ const {done}=retry.runAuthorizedRetry({sessionId:"session",projectId:root,command:grant.authorizedCommand},identity);
+ const completed=await done;
+ assert.equal(executed,1);
+ assert.equal(completed.state,"completed");
+ assert.equal(completed.persistenceError,undefined);
+ const rows=journal.load("session",root);
+ assert.equal(rows.find(row=>row.id===original.id)?.state,"stopped");
+ assert.equal(rows.find(row=>row.id===grant.newJobId)?.state,"completed");
+ assert.equal(rows.find(row=>row.id===grant.newJobId)?.authorizationId,grant.authorizationId);
+ assert.throws(()=>journal.claimInterruptedForRetry({...grant,newJobId:"another",authorizationId:"different"}),/not available|uncertain outcome/u);
+});

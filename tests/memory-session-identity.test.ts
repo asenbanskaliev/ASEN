@@ -101,7 +101,7 @@ test("concurrent continuation requests reuse exactly one durable live child",asy
  api.createMemoryContext(db,{configured:"project-race"},"root-race");db.endSession("project-race","root-race");db.close();
  const gate=new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT),workerUrl=new URL("./memory-session-continue-worker.mjs",import.meta.url);
  const continueInWorker=(proposedSessionId:string)=>new Promise<string>((resolve,reject)=>{
-  const worker=new Worker(workerUrl,{workerData:{gate,path,proposedSessionId},execArgv:["--import","tsx"]});
+  const worker=new Worker(workerUrl,{workerData:{gate,path,proposedSessionId},execArgv:[]});
   worker.once("message",result=>result.ok?resolve(result.sessionId):reject(new Error(result.error)));
   worker.once("error",reject);worker.once("exit",code=>{if(code!==0)reject(new Error(`memory session worker exited ${code}`));});
  });

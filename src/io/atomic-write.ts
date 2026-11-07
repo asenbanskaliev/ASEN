@@ -18,6 +18,11 @@ export interface AtomicWriteFileSystem {
 export interface AtomicWriteOptions {
   fileSystem?: AtomicWriteFileSystem;
   temporaryPath?: (destination: string, attempt: number) => string;
+  /** Narrow runtime seam for deterministic platform-specific retry tests. */
+  retryRuntime?: {
+    platform: string;
+    delay(milliseconds: number): Promise<void>;
+  };
 }
 
 const defaultFileSystem: AtomicWriteFileSystem = {
@@ -25,6 +30,14 @@ const defaultFileSystem: AtomicWriteFileSystem = {
   open: (path, flags, mode) => fs.open(path, flags, mode),
   rename: (from, to) => fs.rename(from, to),
   unlink: (path) => fs.unlink(path),
+};
+
+const WINDOWS_RENAME_RETRY_DELAYS_MS = [10, 20, 40, 80, 160] as const;
+
+const defaultRetryRuntime = {
+  platform: process.platform,
+  delay: (milliseconds: number) =>
+    new Promise<void>((resolveDelay) => setTimeout(resolveDelay, milliseconds)),
 };
 
 function defaultTemporaryPath(destination: string): string {
@@ -45,6 +58,26 @@ function hasCode(error: unknown, code: string): boolean {
   );
 }
 
+async function commitTemporaryFile(
+  fileSystem: AtomicWriteFileSystem,
+  temporaryPath: string,
+  destination: string,
+  runtime: NonNullable<AtomicWriteOptions["retryRuntime"]>,
+): Promise<void> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await fileSystem.rename(temporaryPath, destination);
+      return;
+    } catch (error) {
+      const delay = WINDOWS_RENAME_RETRY_DELAYS_MS[attempt];
+      if (runtime.platform !== "win32" || !hasCode(error, "EPERM") || delay === undefined) {
+        throw error;
+      }
+      await runtime.delay(delay);
+    }
+  }
+}
+
 /** Persist text without exposing a partially written destination. */
 export async function atomicWriteText(
   path: string,
@@ -52,6 +85,7 @@ export async function atomicWriteText(
   options: AtomicWriteOptions = {},
 ): Promise<void> {
   const fileSystem = options.fileSystem ?? defaultFileSystem;
+  const retryRuntime = options.retryRuntime ?? defaultRetryRuntime;
   const parent = dirname(path);
   const destinationIdentity = pathIdentity(path);
   const parentIdentity = pathIdentity(parent);
@@ -88,7 +122,7 @@ export async function atomicWriteText(
     await handle.sync();
     await handle.close();
     closed = true;
-    await fileSystem.rename(temporaryPath, path);
+    await commitTemporaryFile(fileSystem, temporaryPath, path, retryRuntime);
     committed = true;
   } catch (error) {
     failed = true;

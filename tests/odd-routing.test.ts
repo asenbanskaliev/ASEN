@@ -43,24 +43,27 @@ test("issues every route with deterministic precedence", () => {
   assert.equal(route({ intent: "incident", scope: { kind: "unknown", reason: "Incident discovery pending" }, writes: [] }).route, "incident");
   assert.equal(route({ intent: "verification", riskOperations: ["external_write"] }).route, "verify");
   assert.equal(route({ riskOperations: ["destructive_git"] }).route, "plan");
-  assert.equal(route({ scope: { kind: "known", expectedPaths: ["a", "b", "c", "d"] }, writes: [] }).route, "orchestrate");
+  assert.equal(route({ scope: { kind: "known", expectedPaths: ["a", "b", "c", "d"] }, writes: [] }).route, "direct");
 });
 
-test("applies session, review, uncertainty, and risk thresholds", () => {
+test("routes by uncertainty, actual risk, and explicit independent review", () => {
   assert.equal(route({ session: { estimatedMinutes: 59, continuation: false } }).route, "direct");
-  assert.equal(route({ session: { estimatedMinutes: 60, continuation: false } }).route, "orchestrate");
-  assert.equal(route({ session: { estimatedMinutes: 0, continuation: true } }).route, "orchestrate");
-  for (const kind of ["ordinary", "dual_explicit"] as const) assert.equal(route({ review: { kind, estimatedMinutes: 1 } }).route, "orchestrate");
-  assert.equal(route({ review: { kind: "none", estimatedMinutes: 60 } }).route, "orchestrate");
+  assert.equal(route({ session: { estimatedMinutes: 600, continuation: false } }).route, "direct");
+  assert.equal(route({ session: { estimatedMinutes: 0, continuation: true } }).route, "direct");
+  assert.equal(route({ review: { kind: "ordinary", estimatedMinutes: 1 } }).route, "direct");
+  assert.equal(route({ review: { kind: "dual_explicit", estimatedMinutes: 1 } }).route, "orchestrate");
+  assert.equal(route({ review: { kind: "none", estimatedMinutes: 60 } }).route, "direct");
   assert.deepEqual(route({ scope: { kind: "unknown", reason: "Paths not mapped" }, writes: [] }).reasons, ["unknown-scope"]);
   assert.deepEqual(route({ unresolvedDecisions: ["Choose storage"] }).reasons, ["unresolved-decisions"]);
   assert.equal(route({ writes: [{ path: "src/a.ts", changeKind: "security" }] }).risk, "high");
+  assert.equal(route({ scope: { kind: "known", expectedPaths: ["a", "b", "c", "d"] }, writes: [{ path: "a", changeKind: "documentation" }, { path: "b", changeKind: "format" }, { path: "c", changeKind: "generated" }] }).route, "direct");
+  assert.equal(route({ scope: { kind: "known", expectedPaths: ["a", "b", "c", "d"] }, writes: [{ path: "a", changeKind: "behavior" }] }).route, "direct");
   for (const operation of ["external_write", "credential_or_auth", "security_boundary"] as const) assert.equal(route({ riskOperations: [operation] }).risk, "high");
 });
 
 test("derives verification from risk and emits no authority surface", () => {
-  assert.equal(route().verification, "structural");
-  assert.equal(route({ scope: { kind: "known", expectedPaths: ["a", "b", "c"] }, writes: [] }).verification, "tests");
+  assert.equal(route().verification, "tests");
+  assert.equal(route({ scope: { kind: "known", expectedPaths: ["a", "b", "c"] }, writes: [] }).verification, "structural");
   assert.equal(route({ unresolvedDecisions: ["Unknown"] }).verification, "independent");
   const decision = route();
   assert.deepEqual(Object.keys(decision).sort(), ["decisionId", "reasons", "repositoryIdentity", "requiresIsolatedChild", "requiresSingleWriter", "risk", "route", "taskIdentity", "verification"].sort());

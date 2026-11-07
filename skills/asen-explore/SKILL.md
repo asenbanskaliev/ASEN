@@ -5,7 +5,7 @@ description: "Trigger: explore, investigate, understand codebase, compare approa
 ## Activation Contract
 Use when scope, mechanism, affected areas or viable approaches require investigation.
 ## Hard Rules
-- Exploration is read-only.
+- Exploration is read-only. CodeGraph init/sync may write an index: never call them as read-only exploration; require separate interactive approval if explicitly needed.
 - Read actual entry points, implementation and tests; never infer architecture from filenames alone.
 - Separate observed facts from hypotheses.
 - Do not authorize implementation.
@@ -13,14 +13,25 @@ Use when scope, mechanism, affected areas or viable approaches require investiga
 | Situation | Action |
 | --- | --- |
 | One bounded known edit | Exploration may be skipped |
-| Four or more files need understanding | Use isolated exploration |
+| Direct exploration has exceeded three focused queries or 40 KiB of observed output, and more evidence is necessary | Recommend one isolated Explorer; never relaunch equivalent queued/running work |
 | Evidence contradicts the request hypothesis | Report the contradiction and follow evidence |
 ## Execution Steps
 1. Resolve the exact question and repository scope.
 2. Map current behavior, affected code, tests, dependencies and constraints.
-3. Compare viable approaches when more than one exists.
-4. Identify risks, unknowns and the smallest next decision.
+3. Keep a bounded count of focused tool queries and bytes of observed output. Prefer CodeGraph where installed; treat unavailable indexing as a reason for bounded file fallback, not as source evidence.
+4. When further investigation is necessary after three focused queries or 40 KiB, return the accumulated evidence and request one isolated Explorer handoff instead of repeatedly querying the same sources. Do not create nested Explorer tasks or poll background agents for completion.
+5. Compare viable approaches when more than one exists.
+6. Identify risks, unknowns and the smallest next decision.
 ## Output Contract
 Return current state, affected areas, approaches, evidence, risks, unknowns and readiness for proposal.
+- Attribute observations to a bounded path, source excerpt or executable check; distinguish reported child text from verified facts.
+- State explicitly whether CodeGraph was available, which read-only fallback was used and what was not inspected.
+- Include a compact next-step decision that cannot grant a write, retry or merge.
+- Never claim an absent tool or skipped test passed; the primary session must revalidate results before a write.
 ## References
 None.
+
+## Background Completion Contract
+- Return a compact read-only report tied to the original question; distinguish observed facts from assumptions and unknowns.
+- When started asynchronously, retain the task ID; completion is delivered by an event, not by sleep or repeated status polling. Inspect status only when there is a genuine next orchestration decision.
+- Never interpret an Explorer report as permission to write, merge, rerun a failed worker, or accept a reviewer result.

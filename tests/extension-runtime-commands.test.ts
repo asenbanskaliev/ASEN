@@ -1,0 +1,380 @@
+import assert from "node:assert/strict";import test from "node:test";import {createAsenExtension,createPiExtension} from "../extensions/asen.js";import authority from "../extensions/authority.js";import {implementedCommands} from "../src/runtime/command-catalog.js";
+import {execFileSync} from "node:child_process";import {mkdir,mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import path,{join} from "node:path";
+import {SessionTodoStore} from "../src/runtime/todo-store.js";import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
+import {AgentSession,DefaultResourceLoader,SessionManager,SettingsManager} from "@earendil-works/pi-coding-agent";import {Agent,runToolCall} from "@earendil-works/pi-agent-core";
+import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
+function host(){const commands=new Map<string,{handler:(...args:any[])=>unknown}>();return {commands,pi:{registerCommand:(name:string,c:any)=>commands.set(name,c),on:()=>{}}};}
+test("status, doctor and command inventory are wired fail-closed",async()=>{
+ await mkdir(path.resolve(".cache"),{recursive:true});
+ const root=await mkdtemp(path.resolve(".cache/command-inventory-consumer-")),h=host();
+ const pi={...h.pi,getCommands:()=>[...h.commands.keys()].map(name=>({name,source:"extension"}))};
+ createAsenExtension({homeDir:()=>root,status:()=>({agents:[],changes:[],skills:{enabled:true,count:2},historyEnabled:false,telemetryEnabled:false}),doctor:()=>({piVersionOk:true,homeWritable:true,registryAvailable:true,profileValid:true,historyPrivate:true,telemetryConsentValid:true})})(pi);
+ assert.match(((await h.commands.get("asen-status")!.handler()) as string[])[0]!,/profile/);
+ assert.equal(((await h.commands.get("asen-doctor")!.handler()) as any).exitCode,0);
+ // Preserve the synchronous internal API, but establish inventory from registrations.
+ const rows=h.commands.get("asen-commands")!.handler();
+ assert.ok(Array.isArray(rows));
+ assert.deepEqual(rows.map(row=>row.name).sort(),[...h.commands.keys()].sort());
+ assert.equal(new Set(rows.map(row=>row.name)).size,rows.length);
+ for(const row of rows){
+  assert.deepEqual(Object.keys(row).sort(),["description","group","implemented","name"]);
+  assert.equal(typeof row.group,"string");assert.equal(row.description,"");assert.equal(row.implemented,true);
+ }
+ assert.ok(rows.some(row=>row.name==="asen-status"&&row.implemented));
+ assert.deepEqual(h.commands.get("asen-commands")!.handler("not-registered"),[]);
+ // The same catalog cannot substitute for a missing host reader.
+ const missing=host();createAsenExtension({homeDir:()=>root})(missing.pi);
+ assert.deepEqual(missing.commands.get("asen-commands")!.handler(),{state:"unavailable",message:"Registered command inventory unavailable."});
+ authority(h.pi as any);
+ assert.deepEqual([...h.commands.keys()].sort(),[...implementedCommands(),"asen-task-agents"].sort());
+});
+test("status and doctor compose local state while reporting unconfigured runtimes",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-local-diagnostics-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const h=host();createAsenExtension({homeDir:()=>root,packageRoot:root})(h.pi);
+ const status=await h.commands.get("asen-status")!.handler(undefined,{cwd:root,ui:{notify(){},confirm:async()=>false},sessionManager:{getSessionId:()=>"session-one"}}) as string[];
+ assert.ok(status.includes("agents: unavailable"));assert.ok(status.includes("workspace changes: unavailable"));assert.ok(status.includes("skills: unavailable"));assert.ok(status.includes("history: disabled (opt-in)"));
+ const healthy=await h.commands.get("asen-doctor")!.handler() as {exitCode:number;checks:{name:string;state:string}[]};assert.equal(healthy.exitCode,0);assert.equal(healthy.checks.find(c=>c.name==="skill-registry")?.state,"warn");
+ await mkdir(path.join(root,".asen"),{recursive:true,mode:0o700});await writeFile(path.join(root,".asen","profiles.json"),"{invalid");
+ const broken=await h.commands.get("asen-doctor")!.handler() as {exitCode:number;checks:{name:string;state:string}[]};assert.equal(broken.exitCode,1);assert.equal(broken.checks.find(c=>c.name==="profiles")?.state,"fail");
+});
+test("registry diagnostics stay project-bound and clear stale success after refresh failure",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-registry-status-"));t.after(()=>rm(root,{recursive:true,force:true}));const firstProject=path.join(root,"first"),secondProject=path.join(root,"second");await Promise.all([mkdir(firstProject),mkdir(secondProject)]);
+ let calls=0;const fake={path:"/registry",count:3,cache:"hit" as const,persistence:{status:"unavailable" as const},entries:[],skipped:[]};const h=host();createAsenExtension({homeDir:()=>root,packageRoot:root,refresh:async()=>{calls++;if(calls===2)throw new Error("refresh failed");return fake;}})(h.pi);
+ const context=(cwd:string)=>({cwd,ui:{notify(){},confirm:async()=>false},sessionManager:{getSessionId:()=>"session-one"}}),registry=h.commands.get("asen-skill-registry")!,status=h.commands.get("asen-status")!,doctor=h.commands.get("asen-doctor")!;
+ await registry.handler("refresh",context(firstProject));assert.ok((await status.handler(undefined,context(firstProject)) as string[]).includes("skills: enabled (3)"));
+ assert.ok((await status.handler(undefined,context(secondProject)) as string[]).includes("skills: unavailable"));assert.equal(((await doctor.handler(undefined,context(secondProject)) as any).checks.find((c:any)=>c.name==="skill-registry")).state,"warn");
+ await assert.rejects(async()=>await registry.handler("refresh",context(firstProject)),/refresh failed/);assert.ok((await status.handler(undefined,context(firstProject)) as string[]).includes("skills: unavailable"));assert.equal(((await doctor.handler(undefined,context(firstProject)) as any).checks.find((c:any)=>c.name==="skill-registry")).state,"warn");
+});
+test("status and doctor reject overly broad private-state directory permissions",async t=>{
+ if(process.platform==="win32"){t.skip("POSIX private-directory modes are unavailable on Windows");return;}
+ const root=await mkdtemp(path.join(tmpdir(),"asen-diagnostics-permissions-"));t.after(()=>rm(root,{recursive:true,force:true}));const store=path.join(root,".asen");await mkdir(store,{mode:0o755});
+ const h=host();createAsenExtension({homeDir:()=>root,packageRoot:root})(h.pi);const context={cwd:root,ui:{notify(){},confirm:async()=>false},sessionManager:{getSessionId:()=>"session-one"}};
+ await assert.rejects(async()=>await h.commands.get("asen-status")!.handler(undefined,context),/not safe to read/);
+ const result=await h.commands.get("asen-doctor")!.handler() as {exitCode:number;checks:{name:string;state:string}[]};assert.equal(result.exitCode,1);assert.equal(result.checks.find(c=>c.name==="history-privacy")?.state,"fail");assert.equal(result.checks.find(c=>c.name==="telemetry-consent")?.state,"fail");
+});
+test("history search preview publishes only sanitized project DTOs through Pi notifications",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-search-preview-pi-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const commands=new Map<string,{handler:(...args:any[])=>any}>(),events=new Map<string,(...args:any[])=>any>(),notices:string[]=[];
+ const pi={registerCommand:(name:string,command:any)=>commands.set(name,command),on:(name:string,handler:any)=>events.set(name,handler),registerFlag(){},getFlag(){return false;}};
+ createAsenExtension({homeDir:()=>root,packageRoot:root})(pi);
+ const context={cwd:root,hasUI:true,ui:{notify:(message:string)=>notices.push(message),confirm:async()=>true},sessionManager:{getSessionId:()=>"private-session-marker"}};
+ await commands.get("asen-history")!.handler("enable",context);
+ await events.get("input")!({text:"needle \u001b]0;HIDDEN-PAYLOAD\u0007safe\u202e\npassword=private-value",source:"interactive"},context);
+ const file=path.join(root,".asen","history.json"),before=await readFile(file);
+ const exported=JSON.parse(await commands.get("asen-history")!.handler("export",context));notices.length=0;
+ const output=await commands.get("asen-history")!.handler("search needle",context);
+ const expected=[{id:exported[0].id,timestamp:exported[0].createdAt,redacted:true,preview:"needle safe password [REDACTED]"}];
+ assert.equal(output,JSON.stringify(expected,null,2));
+ assert.deepEqual(notices,[output]);
+ assert.doesNotMatch(output,/sessionId|projectId|createdAt|"text"|private-session-marker|HIDDEN-PAYLOAD|private-value/);
+ assert.deepEqual(await readFile(file),before);
+});
+
+test("Pi history capture is opt-in, redacted, project-scoped and usage stays local",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-history-pi-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const commands=new Map<string,{handler:(...args:any[])=>any}>(),events=new Map<string,(...args:any[])=>any>(),notices:string[]=[];let allow=false;
+ const pi={registerCommand:(name:string,command:any)=>commands.set(name,command),on:(name:string,handler:any)=>events.set(name,handler),registerFlag(){},getFlag(){return false;}};
+ createAsenExtension({homeDir:()=>root,packageRoot:root})(pi);
+ const context:any={cwd:root,hasUI:true,ui:{notify:(message:string)=>notices.push(message),confirm:async()=>allow},sessionManager:{getSessionId:()=>"session-one"}};
+ await events.get("session_start")!({},context);
+ assert.equal(JSON.parse((await commands.get("asen-usage")!.handler("show",context)).toString()).sessions,1);
+ assert.match(await commands.get("asen-history")!.handler("enable",context),/remains disabled/);allow=true;assert.match(await commands.get("asen-history")!.handler("enable",context),/enabled/);
+ await events.get("input")!({text:"password=private-value hello",source:"interactive"},context);
+ const file=await readFile(path.join(root,".asen","history.json"),"utf8");assert.doesNotMatch(file,/private-value/);assert.match(await commands.get("asen-history")!.handler("search hello",context),/REDACTED/);
+ assert.match(await commands.get("asen-usage")!.handler("telemetry preview",context),/nothing sent/);assert.ok(notices.length>0);
+ await events.get("session_shutdown")!({},context);
+});
+
+test("Pi history selection forwards selector and signal, returns void, and notifies without private row data",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-history-select-pi-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const commands=new Map<string,{handler:(...args:any[])=>any}>(),events=new Map<string,(...args:any[])=>any>(),notices:string[]=[];
+ const pi={registerCommand:(name:string,command:any)=>commands.set(name,command),on:(name:string,handler:any)=>events.set(name,handler),registerFlag(){},getFlag(){return false;}};
+ createAsenExtension({homeDir:()=>root,packageRoot:root})(pi);
+ const signal=new AbortController().signal;let seenSignal:AbortSignal|undefined,labels:string[]=[];
+ const context:any={cwd:root,hasUI:true,signal,ui:{notify:(message:string)=>notices.push(message),confirm:async()=>true,select:async(_title:string,options:string[],opts:{signal?:AbortSignal})=>{labels=options;seenSignal=opts.signal;return options[0];}},sessionManager:{getSessionId:()=>"session-one"}};
+ await commands.get("asen-history")!.handler("enable",context);await events.get("input")!({text:"private preview text",source:"interactive"},context);
+ const before=await readFile(path.join(root,".asen","history.json"),"utf8"),storedId=JSON.parse(before).entries[0].id;notices.length=0;
+ const returned=await commands.get("asen-history")!.handler("select private",context),after=await readFile(path.join(root,".asen","history.json"),"utf8");
+ assert.equal(returned,undefined);assert.equal(seenSignal,signal);assert.equal(labels.length,1);assert.match(labels[0]!,new RegExp(storedId));
+ assert.deepEqual(notices,["History entry selected."]);assert.doesNotMatch(notices[0]!,new RegExp(`${storedId}|private preview text`));assert.equal(after,before);
+});
+
+test("Pi history selection notifications stay generic for every non-success state and failure",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-history-select-notices-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const commands=new Map<string,{handler:(...args:any[])=>any}>(),events=new Map<string,(...args:any[])=>any>(),notices:string[]=[];
+ const pi={registerCommand:(name:string,command:any)=>commands.set(name,command),on:(name:string,handler:any)=>events.set(name,handler),registerFlag(){},getFlag(){return false;}};createAsenExtension({homeDir:()=>root,packageRoot:root})(pi);
+ const base:any={cwd:root,hasUI:true,ui:{notify:(message:string)=>notices.push(message),confirm:async()=>true,select:async()=>undefined},sessionManager:{getSessionId:()=>"session-one"}};
+ await commands.get("asen-history")!.handler("enable",base);await events.get("input")!({text:"private preview marker",source:"interactive"},base);
+ const storePath=path.join(root,".asen","history.json"),valid=await readFile(storePath,"utf8"),id=JSON.parse(valid).entries[0].id;
+ notices.length=0;base.ui.select=async()=>{throw new Error("raw selector failure marker");};assert.equal(await commands.get("asen-history")!.handler("select",base),undefined);assert.deepEqual(notices,["ASEN history selection failed."]);
+ notices.length=0;base.ui.select=async()=>undefined;assert.equal(await commands.get("asen-history")!.handler("select",base),undefined);assert.deepEqual(notices,["History selection cancelled."]);
+ notices.length=0;assert.equal(await commands.get("asen-history")!.handler("select absent-query",base),undefined);assert.deepEqual(notices,["No matching history entries."]);
+ await writeFile(storePath,"{malformed private raw marker\n");notices.length=0;assert.equal(await commands.get("asen-history")!.handler("select",{...base,hasUI:false}),undefined);assert.deepEqual(notices,["History selection is unavailable."]);
+ notices.length=0;assert.equal(await commands.get("asen-history")!.handler("select",base),undefined);assert.deepEqual(notices,["ASEN history selection failed."]);
+ assert.ok(notices.flat().every(message=>message.length<128));assert.doesNotMatch(notices.join("\n"),new RegExp(`${id}|private preview marker|raw selector failure marker|malformed private raw marker`));
+});
+
+test("successful worker dispatch reconstructs the persisted public plan against its own disposable candidate",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-worker-reroute-")),home=path.join(root,"home"),projectPath=path.join(root,"candidate");t.after(()=>rm(root,{recursive:true,force:true}));await Promise.all([mkdir(home,{recursive:true}),mkdir(projectPath,{recursive:true})]);const project=await realpath(projectPath);
+ const git=(...args:string[])=>execFileSync("git",args,{cwd:project,encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:10_000}).trim();
+ git("init","-q");git("config","user.email","asen-worker@example.invalid");git("config","user.name","ASEN worker test");await writeFile(path.join(project,"target.txt"),"before\n");git("add","--","target.txt");git("commit","-qm","fixture: clean candidate");const revision=git("rev-parse","HEAD");
+ const events=new Map<string,Function[]>(),commands=new Map<string,any>(),tools=new Map<string,any>(),messages:string[]=[],requests:any[]=[],authorizationPrompts:string[]=[];let authorize=false;
+ const pi={on(name:string,handler:Function){events.set(name,[...(events.get(name)??[]),handler]);},registerCommand(name:string,command:any){commands.set(name,command);},registerTool(tool:any){tools.set(tool.name,tool);},getCommands(){return[];},getAllTools(){return[];}};
+ const sessionId="successful-worker-reroute",identity={sessionId,projectId:project},todoFile=path.join(home,".asen","todos.json"),agentFile=path.join(home,".asen","agents.json"),linkFile=path.join(home,".asen","task-agent-links.json"),todos=await SessionTodoStore.open(todoFile);
+ const context:any={mode:"rpc",hasUI:true,cwd:project,sessionManager:{getSessionId:()=>sessionId},ui:{notify:(message:string)=>messages.push(String(message)),confirm:async(_title:string,message:string)=>{if(message.includes("Authorize this single worker run")){authorizationPrompts.push(message);return authorize;}return true;},setWidget(){}}};
+ const priorRegistry=process.env.ASEN_NO_SKILL_REGISTRY;t.after(()=>{if(priorRegistry===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=priorRegistry;});process.env.ASEN_NO_SKILL_REGISTRY="1";
+ createPiExtension({homeDir:()=>home,agentStoreFile:agentFile,todoStoreFile:todoFile,autoAdvancePlans:false,agentRunner:{run:async(request:any)=>{requests.push(request);return{id:request.id,ok:true,output:"Changed only target.txt within the authorized fixture."};}}})(pi as any);await events.get("session_start")![0]!({},context);
+ const instruction="Change only target.txt in the disposable candidate and preserve every other path",facts={taskIdentity:"successful-worker-reroute",instruction,intent:"implementation",scope:{kind:"known",expectedPaths:["target.txt"]},writes:[{path:"target.txt",changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:10,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:5},unresolvedDecisions:[]};
+ await commands.get("asen-plan")!.handler(JSON.stringify(facts),context);const planned=JSON.parse(messages.at(-1)!),expectedInstruction=`Perform only the authorized, scoped work for: ${instruction}`;
+ assert.equal(planned.route,"orchestrate");assert.deepEqual(planned.requiredAgentRoles,["worker", "reviewer", "reviewer"]);assert.deepEqual(planned.executablePlan.tasks.map((task:any)=>task.role),["worker", "reviewer", "reviewer"]);assert.deepEqual(planned.executablePlan.tasks.filter((task:any)=>task.role==="reviewer").map((task:any)=>task.id),[`${planned.executablePlan.taskId}:reviewer`,`${planned.executablePlan.taskId}:reviewer:2`]);assert.deepEqual(planned.executablePlan.tasks.at(-1).dependsOn,[`${planned.executablePlan.taskId}:worker`]);assert.equal(planned.executablePlan.tasks[0].instruction,expectedInstruction);
+ const worker=planned.persistedTasks.find((task:any)=>task.planTaskId.endsWith(":worker"));assert.ok(worker?.todoId);const persistedWorker=(await todos.list(identity)).find(row=>row.taskId===worker.todoId)!;assert.equal(persistedWorker.description,expectedInstruction);assert.deepEqual(persistedWorker.plan?.writeSurfaces,["target.txt"]);assert.equal(persistedWorker.plan?.candidate?.revision,revision);
+ const declined=await tools.get("asen_plan_dispatch_next").execute("decline-worker",{},new AbortController().signal,()=>{},context);assert.equal(declined.details.status,"blocked");assert.equal(requests.length,0);assert.equal((await todos.list(identity)).find(row=>row.taskId===worker.todoId)?.current.state,"planned");
+ authorize=true;const launched=await tools.get("asen_plan_dispatch_next").execute("authorize-worker",{},new AbortController().signal,()=>{},context);assert.equal(launched.details.status,"dispatched",launched.details.reason);assert.equal(launched.details.role,"worker");assert.equal(authorizationPrompts.length,2);
+ let row:any,deadline=Date.now()+5000;while(Date.now()<deadline){row=(await todos.list(identity)).find(item=>item.taskId===worker.todoId);if(requests.at(0)&&row?.current.state==="succeeded")break;await new Promise(resolve=>setTimeout(resolve,5));}
+ assert.equal(requests.length,1,"only the freshly authorized bounded writer may launch");const request=requests[0];assert.equal(request.role,"worker");assert.equal(request.prompt,expectedInstruction);assert.equal(request.repository,project);assert.equal(request.isolationKey,sessionId);assert.equal(request.candidate?.revision,revision);assert.deepEqual(request.writeSurfaces,["target.txt"]);assert.ok(request.phaseGrant);assert.ok(request.runnerWriteReceiver);
+ const links=await new TaskAgentLinkStore(linkFile).list(identity);assert.deepEqual(links.map(link=>[link.taskId,link.agentId]),[[worker.todoId,launched.details.agentId]]);assert.equal(row?.current.state,"succeeded","worker completion alone must await independent acceptance");assert.equal(git("status","--porcelain=v1","--untracked-files=all"),"","the fake writer must not mutate its candidate");
+ await events.get("session_shutdown")![0]!({},context);
+});
+
+test("controlled writer cancellation supports a fresh plan and explicit acceptance",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-writer-public-cycle-")),home=path.join(root,"home"),projectPath=path.join(root,"candidate");await Promise.all([mkdir(home,{recursive:true}),mkdir(projectPath,{recursive:true})]);const project=await realpath(projectPath);
+ const git=(...args:string[])=>execFileSync("git",args,{cwd:project,encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:10_000}).trim();git("init","-q");git("config","user.email","asen-cycle@example.invalid");git("config","user.name","ASEN cycle test");await writeFile(path.join(project,"old.txt"),"initial\n");git("add","--","old.txt");git("commit","-qm","fixture: initial candidate");const oldHead=git("rev-parse","HEAD");
+ const events=new Map<string,Function[]>(),commands=new Map<string,any>(),tools=new Map<string,any>(),messages:string[]=[],requests:any[]=[],authorizationPrompts:string[]=[],acceptancePrompts:string[]=[];let approveWrite=true,approveAcceptance=false,abortCount=0,cleanupCount=0,releaseOld=()=>{},finishNew=()=>{},resolveOldEntered!:()=>void,resolveNewEntered!:()=>void,resolveRefresh:(()=>void)|undefined;
+ const oldEntered=new Promise<void>(resolve=>{resolveOldEntered=resolve;}),newEntered=new Promise<void>(resolve=>{resolveNewEntered=resolve;}),nextRefresh=()=>new Promise<void>(resolve=>{resolveRefresh=resolve;});
+ const pi={on(name:string,handler:Function){events.set(name,[...(events.get(name)??[]),handler]);},registerCommand(name:string,command:any){commands.set(name,command);},registerTool(tool:any){tools.set(tool.name,tool);},getCommands(){return[];},getAllTools(){return[];}};
+ const sessionId="controlled-writer-public-cycle",identity={sessionId,projectId:project},todoFile=path.join(home,".asen","todos.json"),agentFile=path.join(home,".asen","agents.json"),linkFile=path.join(home,".asen","task-agent-links.json"),links=new TaskAgentLinkStore(linkFile);
+ const context:any={mode:"rpc",hasUI:true,cwd:project,sessionManager:{getSessionId:()=>sessionId},ui:{notify:(message:string)=>messages.push(String(message)),confirm:async(title:string,message:string)=>{if(message.includes("Authorize this single worker run")){authorizationPrompts.push(message);return approveWrite;}if(title==="Verify and accept Pi result"){acceptancePrompts.push(message);return approveAcceptance;}return true;},setWidget(){const ready=resolveRefresh;resolveRefresh=undefined;ready?.();}}};
+ const priorRegistry=process.env.ASEN_NO_SKILL_REGISTRY;t.after(()=>{releaseOld();finishNew();resolveRefresh?.();});t.after(async()=>{await events.get("session_shutdown")?.[0]?.({},context);});t.after(()=>{if(priorRegistry===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=priorRegistry;});t.after(()=>rm(root,{recursive:true,force:true}));process.env.ASEN_NO_SKILL_REGISTRY="1";
+ const runner={run:async(request:any,signal?:AbortSignal)=>{requests.push(request);if(requests.length===1){resolveOldEntered();return new Promise<any>(resolve=>{let settled=false;const finish=(result:any)=>{if(settled)return;settled=true;cleanupCount++;resolve(result);};releaseOld=()=>finish({id:request.id,ok:false,output:"released by test cleanup"});const aborted=()=>{abortCount++;finish({id:request.id,ok:false,output:"controlled cancellation observed"});};if(signal?.aborted)aborted();else signal?.addEventListener("abort",aborted,{once:true});});}resolveNewEntered();return new Promise<any>(resolve=>{finishNew=()=>{cleanupCount++;resolve({id:request.id,ok:true,output:"Fresh scoped writer completed without file effects."});};});}};
+ createPiExtension({homeDir:()=>home,agentStoreFile:agentFile,todoStoreFile:todoFile,autoAdvancePlans:false,agentRunner:runner})(pi as any);await events.get("session_start")![0]!({},context);
+ const plan=async(taskIdentity:string,instruction:string,surface:string)=>{const facts={taskIdentity,instruction,intent:"implementation",scope:{kind:"known",expectedPaths:[surface]},writes:[{path:surface,changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:10,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:5},unresolvedDecisions:[]};await commands.get("asen-plan")!.handler(JSON.stringify(facts),context);const value=JSON.parse(messages.at(-1)!);return value.persistedTasks.find((task:any)=>task.planTaskId.endsWith(":worker"));};
+ const publicViews=async()=>{const todoView=(await tools.get("asen_todo_list").execute("cycle-todos",{},new AbortController().signal,()=>{},context)).details,agentView=(await tools.get("asen_agent_status").execute("cycle-agents",{},new AbortController().signal,()=>{},context)).details;await commands.get("asen-task-agents")!.handler("",context);return{todoView,agentView,coordination:JSON.parse(messages.at(-1)!),workspace:await commands.get("asen-changes")!.handler("",context),links:await links.list(identity)};};
+ const oldInstruction="Change only old.txt for the first disposable candidate",oldWorker=await plan("cancelled-cycle-old",oldInstruction,"old.txt");assert.ok(oldWorker?.todoId);const oldLaunch=await tools.get("asen_plan_dispatch_next").execute("launch-old",{},new AbortController().signal,()=>{},context);assert.equal(oldLaunch.details.status,"dispatched");await oldEntered;assert.equal(requests.length,1);assert.equal(requests[0].candidate.revision,oldHead);assert.deepEqual(requests[0].writeSurfaces,["old.txt"]);assert.equal(requests[0].id,"cancelled-cycle-old:worker");assert.ok(requests[0].phaseGrant&&requests[0].runnerWriteReceiver);
+ const cancelledRefresh=nextRefresh(),cancelled=await tools.get("asen_agent_cancel").execute("cancel-old",{id:oldLaunch.details.agentId},new AbortController().signal,()=>{},context);assert.equal(cancelled.details.cancelled,true);await cancelledRefresh;
+ // T10 notification widgets may refresh before the asynchronous Todo reconciler persists its terminal state.
+ // Wait for the actual blocked Todo record, not an unrelated presentation event; keep a bounded deadline.
+ const cancelDeadline=Date.now()+5_000;let afterCancel=await publicViews();
+ while(afterCancel.todoView.find((row:any)=>row.taskId===oldWorker.todoId)?.current.state!=="blocked"&&Date.now()<cancelDeadline){
+  await new Promise(resolve=>setTimeout(resolve,20));afterCancel=await publicViews();
+ }
+ const oldTodo=afterCancel.todoView.find((row:any)=>row.taskId===oldWorker.todoId),oldAgent=afterCancel.agentView.find((row:any)=>row.id===oldLaunch.details.agentId);assert.equal(abortCount,1);assert.equal(cleanupCount,1);assert.equal(oldAgent?.state,"cancelled");assert.equal(oldTodo?.current.state,"blocked");assert.equal(afterCancel.links.filter((link:any)=>link.taskId===oldWorker.todoId).length,1);assert.equal(requests.length,1);assert.equal(git("status","--porcelain=v1","--untracked-files=all"),"");
+ await writeFile(path.join(project,"fresh.txt"),"checkpoint\n");git("add","--","fresh.txt");git("commit","-qm","fixture: fresh candidate checkpoint");const freshHead=git("rev-parse","HEAD");assert.notEqual(freshHead,oldHead);assert.equal(git("status","--porcelain=v1","--untracked-files=all"),"");
+ const freshInstruction="Change only fresh.txt for the newly checkpointed candidate",freshWorker=await plan("cancelled-cycle-fresh",freshInstruction,"fresh.txt");assert.ok(freshWorker?.todoId);assert.notEqual(freshWorker.todoId,oldWorker.todoId);approveWrite=false;const beforeDecline=await publicViews(),declined=await tools.get("asen_plan_dispatch_next").execute("decline-fresh",{},new AbortController().signal,()=>{},context);assert.equal(declined.details.status,"blocked");assert.equal(requests.length,1);assert.deepEqual(await publicViews(),beforeDecline);
+ approveWrite=true;const freshLaunch=await tools.get("asen_plan_dispatch_next").execute("launch-fresh",{},new AbortController().signal,()=>{},context);assert.equal(freshLaunch.details.status,"dispatched");await newEntered;assert.equal(requests.length,2);const freshRequest=requests[1];assert.notEqual(freshLaunch.details.agentId,oldLaunch.details.agentId);assert.equal(freshRequest.id,"cancelled-cycle-fresh:worker");assert.equal(freshRequest.candidate.revision,freshHead);assert.equal(freshRequest.prompt,`Perform only the authorized, scoped work for: ${freshInstruction}`);assert.deepEqual(freshRequest.writeSurfaces,["fresh.txt"]);assert.equal(freshRequest.repository,project);assert.equal(freshRequest.isolationKey,sessionId);assert.notStrictEqual(freshRequest.candidate,requests[0].candidate);assert.notStrictEqual(freshRequest.phaseGrant,requests[0].phaseGrant);assert.notStrictEqual(freshRequest.runnerWriteReceiver,requests[0].runnerWriteReceiver);assert.equal(authorizationPrompts.length,3,"old approval must not authorize either fresh attempt");
+ const completedRefresh=nextRefresh();finishNew();await completedRefresh;let current=await publicViews(),freshTodo=current.todoView.find((row:any)=>row.taskId===freshWorker.todoId);assert.equal(freshTodo?.current.state,"succeeded","fake writer completion alone must not complete the Todo");assert.equal(current.agentView.find((row:any)=>row.id===freshLaunch.details.agentId)?.state,"completed");assert.equal(current.links.filter((link:any)=>link.taskId===freshWorker.todoId&&link.agentId===freshLaunch.details.agentId).length,1);assert.equal(git("status","--porcelain=v1","--untracked-files=all"),"");
+ const beforeOldReject=await publicViews(),uiBeforeOldReject=acceptancePrompts.length;await assert.rejects(()=>tools.get("asen_todo_accept_result").execute("reject-old",{id:oldWorker.todoId,agentId:oldLaunch.details.agentId,revision:oldTodo.current.revision,evidence:"Inspected the cancelled old result."},new AbortController().signal,()=>{},context),/successful terminal result/u);assert.equal(acceptancePrompts.length,uiBeforeOldReject);assert.deepEqual(await publicViews(),beforeOldReject);assert.equal(requests.length,2);
+ freshTodo=(await tools.get("asen_todo_list").execute("fresh-before-accept",{},new AbortController().signal,()=>{},context)).details.find((row:any)=>row.taskId===freshWorker.todoId);const acceptance={id:freshWorker.todoId,agentId:freshLaunch.details.agentId,revision:freshTodo.current.revision,evidence:"Inspected the exact fresh candidate and authorized fresh.txt scope."};const beforeAcceptanceDecline=await publicViews();await assert.rejects(()=>tools.get("asen_todo_accept_result").execute("decline-fresh-result",acceptance,new AbortController().signal,()=>{},context),/Explicit Pi result verification confirmation/u);assert.deepEqual(await publicViews(),beforeAcceptanceDecline);assert.equal(acceptancePrompts.length,1);approveAcceptance=true;const accepted=await tools.get("asen_todo_accept_result").execute("accept-fresh-result",acceptance,new AbortController().signal,()=>{},context);assert.equal(accepted.details.events.at(-1)?.state,"done");assert.equal(acceptancePrompts.length,2);assert.match(acceptancePrompts[1]!,new RegExp(`${freshHead}.*fresh\\.txt`,"s"));
+ current=await publicViews();assert.equal(current.todoView.find((row:any)=>row.taskId===oldWorker.todoId)?.current.state,"blocked");assert.equal(current.todoView.find((row:any)=>row.taskId===freshWorker.todoId)?.current.state,"done");assert.equal(current.agentView.find((row:any)=>row.id===oldLaunch.details.agentId)?.state,"cancelled");assert.equal(current.agentView.find((row:any)=>row.id===freshLaunch.details.agentId)?.state,"completed");assert.equal(current.links.length,2);assert.equal(requests.length,2);assert.equal(cleanupCount,2);assert.equal(git("status","--porcelain=v1","--untracked-files=all"),"");
+});
+
+test("confirmed writer dispatch revalidates candidate HEAD before any public writer effect",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-worker-head-drift-")),home=path.join(root,"home"),projectPath=path.join(root,"candidate");t.after(()=>rm(root,{recursive:true,force:true}));await Promise.all([mkdir(home,{recursive:true}),mkdir(projectPath,{recursive:true})]);const project=await realpath(projectPath);
+ const git=(...args:string[])=>execFileSync("git",args,{cwd:project,encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:10_000}).trim();git("init","-q");git("config","user.email","asen-drift@example.invalid");git("config","user.name","ASEN drift test");await writeFile(path.join(project,"target.txt"),"before\n");git("add","--","target.txt");git("commit","-qm","fixture: initial candidate");
+ const events=new Map<string,Function[]>(),commands=new Map<string,any>(),tools=new Map<string,any>(),messages:string[]=[],requests:any[]=[];const pi={on(name:string,handler:Function){events.set(name,[...(events.get(name)??[]),handler]);},registerCommand(name:string,command:any){commands.set(name,command);},registerTool(tool:any){tools.set(tool.name,tool);},getCommands(){return[];},getAllTools(){return[];}};
+ const sessionId="writer-head-drift",identity={sessionId,projectId:project},todoFile=path.join(home,".asen","todos.json"),agentFile=path.join(home,".asen","agents.json"),linkFile=path.join(home,".asen","task-agent-links.json"),todos=await SessionTodoStore.open(todoFile),links=new TaskAgentLinkStore(linkFile);let confirmations=0;
+ const context:any={mode:"rpc",hasUI:true,cwd:project,sessionManager:{getSessionId:()=>sessionId},ui:{notify:(message:string)=>messages.push(String(message)),confirm:async(_title:string,message:string)=>{if(message.includes("Authorize this single worker run")){confirmations++;await writeFile(path.join(project,"target.txt"),"candidate changed after confirmation\n");git("add","--","target.txt");git("commit","-qm","fixture: advance candidate during confirmation");}return true;},setWidget(){}}};
+ const priorRegistry=process.env.ASEN_NO_SKILL_REGISTRY;t.after(()=>{if(priorRegistry===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=priorRegistry;});process.env.ASEN_NO_SKILL_REGISTRY="1";
+ createPiExtension({homeDir:()=>home,agentStoreFile:agentFile,todoStoreFile:todoFile,autoAdvancePlans:false,agentRunner:{run:async request=>{requests.push(request);return{id:request.id,ok:true,output:"must not run"};}}})(pi as any);await events.get("session_start")![0]!({},context);
+ const instruction="Change only target.txt in this disposable candidate",facts={taskIdentity:"writer-head-drift",instruction,intent:"implementation",scope:{kind:"known",expectedPaths:["target.txt"]},writes:[{path:"target.txt",changeKind:"behavior"}],riskOperations:[],session:{estimatedMinutes:10,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:5},unresolvedDecisions:[]};await commands.get("asen-plan")!.handler(JSON.stringify(facts),context);const plan=JSON.parse(messages.at(-1)!),worker=plan.persistedTasks.find((task:any)=>task.planTaskId.endsWith(":worker"));assert.ok(worker?.todoId);
+ const publicViews=async()=>{const todoView=(await tools.get("asen_todo_list").execute("drift-todos",{},new AbortController().signal,()=>{},context)).details,agentView=(await tools.get("asen_agent_status").execute("drift-agents",{},new AbortController().signal,()=>{},context)).details;await commands.get("asen-task-agents")!.handler("",context);const coordination=JSON.parse(messages.at(-1)!);const workspace=await commands.get("asen-changes")!.handler("",context);return{todoView,agentView,coordination,workspace,links:await links.list(identity)};};
+ const before=await publicViews(),result=await tools.get("asen_plan_dispatch_next").execute("confirm-stale-writer",{},new AbortController().signal,()=>{},context),after=await publicViews();
+ assert.equal(result.details.status,"blocked");assert.match(result.details.reason,/project changed while awaiting authorization/u);assert.equal(confirmations,1);assert.equal(requests.length,0);assert.deepEqual(after,before);assert.equal((await todos.list(identity)).find(row=>row.taskId===worker.todoId)?.current.state,"planned");assert.equal(git("status","--porcelain=v1","--untracked-files=all"),"");
+ await events.get("session_shutdown")![0]!({},context);
+});
+
+test("installed AgentSession pipeline vetoes a sensitive built-in write before its executor side effect",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-primary-host-veto-")),agentDir=path.join(root,"agent"),target=path.join(root,".env.host-proof");t.after(()=>rm(root,{recursive:true,force:true}));await mkdir(agentDir);
+ const settings=SettingsManager.inMemory({}),loader=new DefaultResourceLoader({cwd:root,agentDir,settingsManager:settings,extensionFactories:[{name:"asen-primary-host-proof",factory:createPiExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})}],noExtensions:true,noSkills:true,noPromptTemplates:true,noThemes:true,noContextFiles:true});await loader.reload();assert.deepEqual(loader.getExtensions().errors,[]);
+ const agent=new Agent({streamFn:(()=>{throw new Error("provider must not run");}) as any}),session=new AgentSession({agent,sessionManager:SessionManager.inMemory(root),settingsManager:settings,cwd:root,resourceLoader:loader,modelRuntime:{} as any,initialActiveToolNames:["write"]});t.after(()=>session.dispose());
+ const tools=agent.state.tools??[],assistantMessage={role:"assistant",content:[],api:"openai-completions",provider:"test",model:"fake",usage:{input:0,output:0,cacheRead:0,cacheWrite:0,totalTokens:0,cost:{input:0,output:0,cacheRead:0,cacheWrite:0,total:0}},stopReason:"toolUse",timestamp:Date.now()} as any;
+ const beforeToolCall=agent.beforeToolCall,afterToolCall=agent.afterToolCall;assert.ok(beforeToolCall,"AgentSession must install its pre-execution hook");
+ const outcome=await runToolCall({type:"toolCall",id:"host-sensitive-write",name:"write",arguments:{path:target,content:"must-not-exist"}},{tools,assistantMessage,context:{messages:[],tools},beforeToolCall,...(afterToolCall?{afterToolCall}:{})});
+ assert.equal(outcome.isError,true);assert.match(outcome.result.content.map((item:any)=>item.text??"").join("\n"),/primary tool policy blocked sensitive path access/);await assert.rejects(readFile(target,"utf8"),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
+});
+
+test("production composition registers one selective primary guard without replacing shared or child hooks",async()=>{
+ const events=new Map<string,Function[]>(),pi={on(name:string,handler:Function){events.set(name,[...(events.get(name)??[]),handler]);},registerCommand(){},registerTool(){},getCommands(){return[];},getAllTools(){return[];}};
+ const factory=createPiExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false});factory(pi as any);factory(pi as any);
+ assert.equal(events.get("tool_call")?.length,1);assert.equal(events.get("session_start")?.length,1);
+ const primary=events.get("tool_call")![0]!,headless={cwd:process.cwd(),hasUI:false,ui:{},sessionManager:{getSessionId:()=>"primary-composition"}};
+ assert.equal(await primary({toolName:"bash",toolCallId:"ordinary",input:{command:"echo ordinary"}},headless),undefined);
+ assert.equal((await primary({toolName:"bash_background",toolCallId:"dangerous",input:{command:"git reset --hard HEAD"}},headless))?.block,true);
+ assert.equal(await primary({toolName:"powershell",toolCallId:"passthrough",input:{command:"git reset --hard HEAD"}},headless),undefined);
+ const sharedEvents=new Map<string,Function[]>();createAsenExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})({on(name:string,handler:Function){sharedEvents.set(name,[...(sharedEvents.get(name)??[]),handler]);},registerCommand(){}} as any);
+ assert.equal(sharedEvents.has("tool_call"),false,"test/shared composition must not install a weaker primary replacement");
+ const childEvents=new Map<string,Function>();authority({on:(name:string,handler:Function)=>childEvents.set(name,handler),registerCommand(){}} as any);
+ assert.deepEqual(childEvents.get("tool_call")!({toolName:"bash",toolCallId:"child-shell",input:{command:"echo denied"}}),{block:true,reason:"ASEN tool authority denied"});
+});
+
+test("optional history shortcut is opt-in, delegates selection, and stays disabled by default", async t => {
+ const root = await mkdtemp(path.join(tmpdir(), "asen-optin-shortcut-")); t.after(() => rm(root, { recursive: true, force: true }));
+ const commands = new Map<string, { handler: (...args: any[]) => unknown }>();
+ let shortcut: any;
+ const pi = { on() {}, registerCommand(name: string, command: any) { commands.set(name, command); }, registerTool() {}, registerShortcut(key: string, options: any) { shortcut = { key, ...options }; }, getCommands() { return []; }, getAllTools() { return []; } };
+ createAsenExtension({ homeDir: () => root, enableAgentRuntime: false, enableTodoRuntime: false, enableWorkspaceRuntime: false, enableMemoryRuntime: false, historyShortcutKey: "ctrl+h" })(pi as any);
+ assert.ok(shortcut, "explicit opt-in registers Pi's native shortcut");
+ assert.equal(shortcut.key, "ctrl+h");
+ assert.match(shortcut.description, /history/iu);
+ const result = shortcut.handler({ cwd: root, hasUI: true, sessionManager: { getSessionId: () => "optin-session" }, ui: { notify() {} } });
+ await result;
+ const noop = { on() {}, registerCommand() {}, registerTool() {}, registerShortcut() { throw new Error("disabled-by-default regression"); }, getCommands() { return []; }, getAllTools() { return []; } };
+ createAsenExtension({ homeDir: () => root, enableAgentRuntime: false, enableTodoRuntime: false, enableWorkspaceRuntime: false, enableMemoryRuntime: false })(noop as any);
+});
+
+
+test("M1 native panel includes only owned project/session agents and closes on session change",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-ide-panel-scope-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
+ const root=await realpath(process.cwd()),h=host();
+ let session="m1-session",selected="AGENTS";
+ const entries=[
+  {id:"own",role:"owned-explorer",state:"running",sessionId:session,projectId:root},
+  {id:"other-session",role:"foreign-reviewer",state:"running",sessionId:"other",projectId:root},
+  {id:"other-project",role:"foreign-worker",state:"running",sessionId:session,projectId:home},
+ ].map(row=>({...row,owner:{kind:"user",id:"owner"},createdAt:"2026-11-05T00:00:00Z",updatedAt:"2026-11-05T00:00:00Z"}));
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,
+  enableWorkspaceRuntime:false,enableMemoryRuntime:false,agents:()=>entries as any})(h.pi as any);
+ const notices:string[]=[];
+ const context:any={cwd:root,mode:"tui",hasUI:true,
+  sessionManager:{getSessionId:()=>session},
+  ui:{notify:(message:string)=>notices.push(message),select:async()=>selected},
+ };
+ const command=h.commands.get("asen-panel");assert.ok(command);
+ const result=await command.handler("agents",context);
+ assert.match(String(result),/owned-explorer/u);
+ assert.doesNotMatch(String(result),/foreign-reviewer|foreign-worker/u);
+ assert.match(String(await command.handler("all",context)),/▾ TODOS/u);
+ assert.match(String(await command.handler("status",context)),/ASEN/u);
+ selected="AGENTS";
+ context.ui.select=async()=>{session="changed-session";return selected;};
+ const stale=await command.handler("",context);
+ assert.match(String(stale),/scope changed/u);
+ assert.doesNotMatch(String(stale),/owned-explorer/u);
+});
+
+
+test("M2 public Pi native work panel uses custom overlay without launching agents or messages",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-native-panel-ui-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
+ const root=await realpath(process.cwd()),commands=host();
+ const seen:string[][]=[],notices:string[]=[],options:unknown[]=[];
+ let closes=0;
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})(commands.pi as any);
+ const context:any={
+  cwd:root,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=> "native-ui-session"},
+  ui:{
+   notify:(message:string)=>notices.push(message),
+   custom:async(factory:any,config:any)=>{
+    options.push(config);
+    const component=factory({terminal:{rows:20},requestRender(){}},null,null,()=>{closes++;});
+    seen.push(component.render(160));
+    component.handleInput("\t");
+    seen.push(component.render(139));
+    component.handleInput("q");
+   },
+  },
+ };
+ const result=await commands.commands.get("asen-panel")!.handler("",context);
+ assert.match(String(result),/closed/u);
+ assert.equal(seen.length,2);
+ assert.match(seen[0]!.join("\n"),/TODOS/u);
+ assert.match(seen[1]![0]??"",/JOBS/u);
+ assert.equal(closes,1);
+ assert.deepEqual(options,[{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}}]);
+ assert.ok(notices.every(text=>!text.includes("Permission granted")));
+});
+test("native panel command forwards injected navigation bindings and rejects project drift",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-panel-bindings-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
+ const root=await realpath(process.cwd()),h=host();
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,
+  enableWorkspaceRuntime:false,enableMemoryRuntime:false})(h.pi as any);
+ const keys=new KeybindingsManager(TUI_KEYBINDINGS,{
+  "tui.input.tab":"ctrl+t","tui.select.confirm":"ctrl+f","tui.select.cancel":"ctrl+x",
+ });
+ let closes=0,redraws=0;
+ const context:any={cwd:root,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>"panel-bindings"},
+  ui:{notify(){},custom:async(factory:any)=>{
+   const panel=factory({terminal:{rows:20},requestRender:()=>redraws++},null,keys,()=>closes++);
+   panel.handleInput("\u0014");assert.match(panel.render(80)[0]!,/JOBS/u);
+   panel.handleInput("\u0006");assert.doesNotMatch(panel.render(80).join("\n"),/TODOS/u);
+   panel.handleInput("\u0018");assert.equal(closes,1);
+   context.cwd=home;
+   assert.match(panel.render(80).join("\n"),/scope changed/u);
+   panel.handleInput("\u0014");assert.equal(closes,2);
+   assert.equal(redraws,2,"project drift closes without navigation or redraw");
+  }},
+ };
+ assert.match(String(await h.commands.get("asen-panel")!.handler("",context)),/closed/u);
+});
+
+test("M2 Agents overlay explicitly rereads scoped fallback rows and ignores host drift",{timeout:5000},async()=>{
+ const home=path.resolve(".cache/agent-refresh-home"),cwd=await realpath(process.cwd()),h=host();
+ let state="running",reads=0,closes=0;
+ const record={id:"owned",role:"explorer",owner:{kind:"user",id:"owner"},sessionId:"s",projectId:cwd,
+  createdAt:"2026-11-05T00:00:00Z",updatedAt:"2026-11-05T00:01:00Z"};
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false,
+  agents:()=>{reads++;return [{...record,state},{...record,id:"foreign-session",sessionId:"other",state},
+   {...record,id:"foreign-project",projectId:home,state}] as any;}})(h.pi as any);
+ const context:any={cwd,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>"s"},ui:{notify(){},custom:async(factory:any)=>{
+  let refreshed!:()=>void,refreshRequested=false;
+  const finished=new Promise<void>(resolve=>{refreshed=resolve;});
+  const view=factory({terminal:{rows:30},requestRender(){if(refreshRequested&&!view.render(140).join("\n").includes("Refreshing snapshot"))refreshed();}},null,null,()=>closes++);
+  assert.doesNotMatch(view.render(140).join("\n"),/foreign-/u);
+  view.handleInput("\r");state="completed";refreshRequested=true;view.handleInput("r");
+  await finished;
+  assert.match(view.render(140).join("\n"),/explorer · completed/u);assert.equal(reads,2);
+  view.handleInput("\u007f");assert.doesNotMatch(view.render(140).join("\n"),/foreign-/u);
+  context.sessionManager={getSessionId:()=>"s"};view.handleInput("r");assert.equal(closes,1);assert.equal(reads,2);
+ }}};
+ assert.match(String(await h.commands.get("asen-agent-inspect")!.handler("",context)),/scope changed/u);
+});
+
+test("M2 Agents refresh rereads runtime list/query and discards a delayed query after manager drift",{timeout:5000},async()=>{
+ const cwd=await realpath(process.cwd()),h=host();let state="running",lists=0,queries=0,effects=0,hold=false;
+ let release!:()=>void,entered!:()=>void,refreshed!:()=>void;
+ const queryEntered=new Promise<void>(resolve=>{entered=resolve;});
+ const blocked=new Promise<void>(resolve=>{release=resolve;});
+ const finished=new Promise<void>(resolve=>{refreshed=resolve;});
+ const record=()=>({id:lists>1?"new-agent":"initial-agent",role:"explorer",owner:{kind:"user",id:"owner"},sessionId:"s",projectId:cwd,
+  state,createdAt:"2026-11-05T00:00:00Z",updatedAt:"2026-11-05T00:01:00Z"});
+ const runtime={list:async(identity:any)=>{assert.deepEqual(identity,{sessionId:"s",projectId:cwd,worktree:cwd});lists++;return [record()];},
+  query:async(_id:string,identity:any)=>{assert.deepEqual(identity,{sessionId:"s",projectId:cwd,worktree:cwd});queries++;
+   if(hold){entered();await blocked;}return {record:record(),history:[]};},
+  dispatch(){effects++;},cancel(){effects++;}};
+ createAsenExtension({homeDir:()=>path.resolve(".cache/agent-runtime-refresh-home"),enableAgentRuntime:false,enableTodoRuntime:false,
+  enableWorkspaceRuntime:false,enableMemoryRuntime:false,agentRuntimeFactory:async()=>runtime as any})(h.pi as any);
+ const context:any={cwd,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>"s"},ui:{notify(){},custom:async(factory:any)=>{
+  let refreshRequested=false,redraws=0;
+  const view=factory({terminal:{rows:30},requestRender(){redraws++;
+   if(refreshRequested&&!view.render(140).join("\n").includes("Refreshing snapshot"))refreshed();}},null,null,()=>{});
+  state="completed";refreshRequested=true;view.handleInput("r");await finished;
+  assert.match(view.render(140).join("\n"),/completed · new-agent/u);
+  assert.doesNotMatch(view.render(140).join("\n"),/initial-agent/u);assert.equal(lists,2);assert.equal(queries,2);
+  hold=true;view.handleInput("r");await queryEntered;const before=redraws;
+  context.sessionManager={getSessionId:()=>"s"};release();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.match(view.render(140).join("\n"),/scope changed/u);assert.equal(redraws,before);
+ }}};
+ assert.match(String(await h.commands.get("asen-agent-inspect")!.handler("",context)),/scope changed/u);
+ assert.equal(effects,0);
+});
+
+test("M2 agent inspection cannot read another session or project lifecycle",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-agent-inspect-scope-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
+ const cwd=await realpath(process.cwd()),sessionId="inspect-owner",h=host();
+ const records=[
+  {id:"agent-owned",role:"explorer",owner:{kind:"user",id:"owner"},sessionId,projectId:cwd,state:"interrupted",createdAt:"2026-11-05T00:00:00Z",updatedAt:"2026-11-05T00:01:00Z"},
+  {id:"agent-foreign",role:"worker",owner:{kind:"user",id:"foreign"},sessionId:"other",projectId:cwd,state:"completed",createdAt:"2026-11-05T00:00:00Z",updatedAt:"2026-11-05T00:01:00Z"},
+ ];
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false,agents:()=>records as any})(h.pi as any);
+ const messages:string[]=[],context:any={cwd,mode:"rpc",hasUI:false,sessionManager:{getSessionId:()=>sessionId},ui:{notify:(v:string)=>messages.push(v)}};
+ const inspect=h.commands.get("asen-agent-inspect")!.handler;
+ const owned=await inspect("agent-owned",context);
+ assert.match(String(owned),/agent-owned/u);
+ assert.match(String(owned),/Interrupted/u);
+ const denied=await inspect("agent-foreign",context);
+ assert.doesNotMatch(String(denied),/worker|agent-foreign/u);
+ assert.match(String(denied),/does not belong/u);
+});
