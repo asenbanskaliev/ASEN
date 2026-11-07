@@ -4,17 +4,17 @@
 
 This section is the operational entry point for a clean clone and a simpler coding model. It is guidance, not completion authority. The latest log in [`odd/tasks/pi-capability-completion.md`](../odd/tasks/pi-capability-completion.md) remains authoritative for overall blockers; [`odd/tasks/ui-runtime-delivery-order.md`](../odd/tasks/ui-runtime-delivery-order.md) controls the UI delivery sequence; and [`odd/tasks/equivalencia-funcional-agentes-full.md`](../odd/tasks/equivalencia-funcional-agentes-full.md) controls global equivalence. If this guide conflicts with one of those current logs, stop and follow the canonical document.
 
-### Current checkpoint in one minute
+### Where work stopped — read this first
 
-- Working branch at documentation time: `feat/t12-integrated-acceptance-merge`.
-- Bounded local H1 code unit: `5854202f484837f4c78b170fddfd94abc85c839d` (parent `64d6449d271880232f1201882fc0dd4f40e0c17c`).
-- Bounded local plan checkpoint: `03a2d7c058c8ec4f22e6d174598be89156fa0069`.
-- Owner-approved historical ODD update: `ea5203f1c038d7fd148b84538b65629d042205ea`.
-- These commits are local anchors, not proof that a remote contains them. After the owner publishes, record and verify the actual remote HEAD; never substitute a predicted SHA.
-- H1/JD1 is saved locally with focused evidence, but global FULL, native approval, provider consent, Reference parity and delivery approval remain false or unavailable.
-- Task 42 is this documentation handoff. Its completion status and saved documentation unit are recorded in the runbook's latest log after parent integration/checks/save. Do not claim completion from this guide alone or repeat a handoff already marked complete there.
-- Next sequence is Task 40 read-only design, then Task 41 Review UI only under the admitted order. Do not create a worktree pilot or implement Review UI while following this handoff.
-- The accumulated feature branch is roughly 120k changed lines across about 1,600 commits. It is not a review candidate. Use bounded slices; do not open a whole-branch PR, squash, reset or rewrite history.
+- Branch: `feat/t12-integrated-acceptance-merge`; expected origin: `https://github.com/asenbanskaliev/ASEN.git`.
+- Review source unit: `f66004a36d17d7715ff29204b4423865c653fa80`. Closure checkpoint: `428f7842b1cc51818a18b554a1782214febd9deb`. Frozen audit/admission base before these documentary corrections: `c0aa46658870e5342d10a4f597c3f02ccdb00c14`.
+- Task 41 is `DONE_LOCAL_API_ONLY`: the registered Review command can render a genuine prepared request, but the default host does not yet create and retain that request path.
+- Task 43 is `DONE_ADMISSION_MAP`: no source implementation card is ready. R18 is already complete at `d517a69b`; do not redo it. R15 is blocked on a trusted completion owner/product decision. R19 is separately blocked on trusted producer/consumer binding plus security and concurrency admission.
+- Task 44 is the current S21–S22 documentation correction. The frozen audit returned `CORRECTIONS_REQUIRED_DOCUMENTATION_ONLY`; these post-audit bytes are delegated authoring, not a refreshed independent verdict.
+- **Next gated action:** after the parent saves and validates Task 44, the parent may perform Task 45: one ordinary non-force push of this existing feature branch and verification of the exact remote HEAD. S21 authorizes only that WIP-closing publication; it does not authorize force, merge, PR, release or private/cache upload. No push is claimed here.
+- The SHA to download must come from the actual successful owner push and exact remote branch. Never guess or embed this document's future commit SHA. On the other computer, once the owner's successful-push SHA and the clone's exact HEAD agree, do NOT repeat Task 45 or push again: that publication step already happened. The next source action is the R15/R19 owner gate below, not another implementation by default.
+- Historical UI evidence remains bounded: new Review UI `7/7`, combined `41 PASS / 2 POSIX skips`, isolated 606-input typecheck/build exit `0`, and root diagnostic comparison `483/483` with zero delta. Those are history, not future-host PASS and not a clean-root claim.
+- Global FULL, native approval, provider consent, Reference parity and independent R4 remain absent; PR #45 is `SELF_AUDIT_ONLY / NOT independent`.
 
 ### What a continuation runtime must provide
 
@@ -24,23 +24,51 @@ No provider setup or cloud call is authorized by this guide. Never invent tokens
 
 ### Clean-clone prerequisites
 
-1. Obtain the repository through the owner's authorized publication path. A future push is expected, but this document does not authorize or claim it.
-2. Read `package.json` and `package-lock.json`. The declared Node engine is `>=22.19.0`. Node `24.14.0` was observed locally for one bounded run; that does not certify every Node version.
-3. Run `git branch --show-current`, `git status --short`, and `git rev-parse HEAD`. In a new clone, stop on unexplained changes before editing.
-4. Verify that the published history contains the required bounded anchors when they are expected:
+1. Obtain the repository only after the owner supplies the exact published 40-character HEAD from Task 45. Use one fresh PowerShell session for these steps. Set it explicitly; do not derive it from this document:
 
    ```powershell
-   git merge-base --is-ancestor 5854202f484837f4c78b170fddfd94abc85c839d HEAD
-   if ($LASTEXITCODE -ne 0) { throw "Missing source checkpoint" }
-   git merge-base --is-ancestor 03a2d7c058c8ec4f22e6d174598be89156fa0069 HEAD
-   if ($LASTEXITCODE -ne 0) { throw "Missing plan checkpoint" }
-   git merge-base --is-ancestor ea5203f1c038d7fd148b84538b65629d042205ea HEAD
-   if ($LASTEXITCODE -ne 0) { throw "Missing owner-reviewed canonical logs" }
+   $ErrorActionPreference = "Stop"
+   $ExpectedPublishedSha = Read-Host "Exact published feature-branch HEAD"
+   if ($ExpectedPublishedSha -notmatch '^[0-9a-f]{40}$') { throw "Expected full lowercase SHA" }
    ```
 
-   Each Git command must exit `0`. Compare `git rev-parse HEAD` with the operator's exact published HEAD as well; an ancestor alone does not identify the current snapshot. An absent commit or mismatched HEAD means the expected handoff is not available; stop rather than reconstructing it from cache.
-5. Read, in order: this Start Here section; the latest canonical capability log; the UI delivery-order task table and latest log; the relevant R01–R23 runbook card; and the mapped C01–C20 canonical card. Read only the files needed for the selected card.
-6. Choose exactly one ready card. Confirm its covered specs, prerequisites, allowed edit surfaces, commands, acceptance evidence and stop rules before writing.
+   If the repository is not present, first choose your own writable workspace on the NEW computer, then run the following there. Do not run this in the existing project or reuse an existing destination:
+
+   ```powershell
+   $ClonePath = Join-Path (Get-Location).Path "ASEN"
+   if (Test-Path -LiteralPath $ClonePath) { throw "Destination already exists; preserve it" }
+   git clone --single-branch --branch feat/t12-integrated-acceptance-merge https://github.com/asenbanskaliev/ASEN.git $ClonePath
+   if ($LASTEXITCODE -ne 0) { throw "Clone failed; do not continue" }
+   Set-Location -LiteralPath $ClonePath -ErrorAction Stop
+   ```
+2. From the clone root, run this provenance checkpoint before installation or editing:
+
+   ```powershell
+   function Read-CheckedGit {
+     param([string[]]$GitArgs)
+     $Result = & git @GitArgs
+     if ($LASTEXITCODE -ne 0) { throw "Git inspection failed; preserve stderr and stop" }
+     return $Result
+   }
+   $ExpectedBranch = "feat/t12-integrated-acceptance-merge"
+   $ExpectedOrigin = "https://github.com/asenbanskaliev/ASEN.git"
+   if ((Read-CheckedGit -GitArgs @("branch", "--show-current")) -ne $ExpectedBranch) { throw "Wrong branch" }
+   if (Read-CheckedGit -GitArgs @("status", "--porcelain")) { throw "Clone is not clean" }
+   if ((Read-CheckedGit -GitArgs @("remote", "get-url", "origin")) -ne $ExpectedOrigin) { throw "Unexpected origin" }
+   if ((Read-CheckedGit -GitArgs @("rev-parse", "--abbrev-ref", "--symbolic-full-name", '@{upstream}')) -ne "origin/$ExpectedBranch") { throw "Unexpected upstream" }
+   if ((Read-CheckedGit -GitArgs @("rev-parse", "HEAD")) -ne $ExpectedPublishedSha) { throw "HEAD does not match owner-published SHA" }
+   git merge-base --is-ancestor f66004a36d17d7715ff29204b4423865c653fa80 HEAD
+   if ($LASTEXITCODE -ne 0) { throw "Missing Review source unit" }
+   git merge-base --is-ancestor 428f7842b1cc51818a18b554a1782214febd9deb HEAD
+   if ($LASTEXITCODE -ne 0) { throw "Missing closure checkpoint" }
+   git merge-base --is-ancestor c0aa46658870e5342d10a4f597c3f02ccdb00c14 HEAD
+   if ($LASTEXITCODE -ne 0) { throw "Missing audit/admission base" }
+   ```
+
+   Stop on any mismatch. An ancestor is not a substitute for exact HEAD equality.
+3. Read `package.json` and `package-lock.json`. The declared Node engine is `>=22.19.0`; the previously observed Node `24.14.0` does not certify every version.
+4. Read, in order: this Start Here section; the latest canonical capability log; the UI delivery-order task table and latest log; the relevant R01–R23 card; and its mapped C01–C20 requirements. Do not reconstruct the whole history.
+5. Select exactly one card only after the latest log marks it ready. Record its S-specs, paths, symbols, prerequisites, public effects, commands and stop conditions before writing.
 
 ### Portable isolated PowerShell setup
 
@@ -145,34 +173,77 @@ For one selected ready card:
 5. **Implement one bounded slice:** keep a local review unit below roughly 400 changed lines. Stop before adjacent refactors, dependency changes or future cards.
 6. **Validate exactly:** record each command, exit code, stdout, stderr, test totals, skips and relevant counters. Never summarize an unexecuted command as passing.
 7. **Inspect the diff:** run a path-scoped diff and `git diff --check`. Confirm no unrelated file entered the slice.
-8. **Report honestly:** include changed paths, covered specs, evidence, remaining gaps, commit SHA if one was authorized, and the next blocker. Do not push, merge, release or force-update history.
+8. **Report honestly:** include changed paths, covered specs, evidence, remaining gaps, commit SHA if one was authorized, and the next blocker. Publication requires a current card-specific owner authorization; S21 applies only to the parent's Task 45 ordinary WIP push. Never force, merge, open a PR or release from this loop.
 
 Owner decisions are required for unresolved product behavior, destructive actions, provider use and opaque authorization. Stop with a closed, concrete choice rather than guessing.
 
-### Ready sequence after this documentation slice
+### Existing Review path and the next owner gate
 
-Use the current task table in the UI delivery-order ODD; the summary below cannot override it.
+Do not create another controller, pending map, store, command, synthetic request ID or preparer. The existing chain is:
 
-1. **Task 42 — portable handoff:** check the runbook's PORTABLE-HANDOFF row and latest completion log. Once saved and marked complete there, verify the published documentation checkpoint rather than starting the documentation task again. No push is authorized here.
-2. **Task 40 — worktree design:** read-only analysis must be presented before implementation. Reuse the existing R01–R23 runbook and C01–C20 canonical cards. Do not create pilot folders, agents or worktrees, and do not implement an unsupported persistent root mount.
-3. **Task 41 — Review UI:** begin only after the admitted sequence says ready. Reuse existing candidate-only Review contracts and panels; do not duplicate panels or infer native STATUS/ACK authority.
+1. `src/delivery/work-unit-evidence.ts` — `recordCompletedWorkUnit(...)` records a completed bounded unit.
+2. `src/delivery/work-unit-review-candidate.ts` — `recordWorkUnitReviewCandidate(...)` consumes that evidence into a one-use genuine candidate.
+3. `src/review/ordinary-review-command.ts` — `registerOrdinaryReviewCommand(...)` exposes controller `.prepare(...)` and its private `pending` map; both must be the same retained controller instance.
+4. `extensions/asen.ts` — `createAsenExtension(...)` returns `.review`, but actual `createPiExtension(...)` currently retains only `.startSession`. This is why Task 41 is API/registration-only, not default-host end-to-end.
+5. `tests/ordinary-review-command-ui.test.ts` — focused public UI command: `node --import tsx --test tests/ordinary-review-command-ui.test.ts`; historical result `7/7`, never a destination result until rerun under an authorized card.
 
-If the canonical log marks a prerequisite blocked, report the exact owner need and stop. A simpler model must not skip ahead because a later card looks easier.
+Before any R15 source edit, satisfy exactly one OWNER DECISION path:
+
+- **Existing-proof path:** prove a tracked, admitted completion owner already creates the genuine completed record/candidate, retains the same `.review` controller, invokes `.prepare(...)` once with current session/repository identity, and publishes the request ID through an admitted lifecycle; or
+- **Explicit-decision path:** owner defines the trigger, completion owner, controller retention/lifetime, request-ID publication, session/repository binding, failure retirement/retry behavior and exact allowed paths; or
+- **Retain-scope path:** owner intentionally keeps Review API-only and admits no producer work.
+
+R19 is a separate gate: trusted producer/consumer binding, authorization and security/concurrency admission are required before its source work. R18 is complete and is not a substitute for either gate. Until one gate is satisfied in the canonical Specs/Log, there is no source card ready.
+
+The `/asen-review` spelling is a registered host slash command, NOT a shell executable. Run its public tests with Node; do not paste slash commands into PowerShell. These existing observable messages are regression boundaries, not permission to add a producer or new behavior:
+
+| Existing case | Exact handler message / boundary |
+| --- | --- |
+| Usage | `Uso: /asen-review <solicitud-id> \| /asen-review workspace` |
+| No pending request in this instance | `No existe solicitud pendiente en esta instancia de ASEN` |
+| Verification failure notification | `No se pudo verificar la solicitud; se requiere una preparación nueva.` |
+| Rejected and retired request error | `Solicitud de revisión rechazada y retirada` |
+| Scope/candidate drift | `Review scope or candidate changed; no view published` |
+
+Only when the selected card authorizes this check, run it inside the already isolated session and capture real output:
+
+```powershell
+node --import tsx --test tests/ordinary-review-command-ui.test.ts
+if ($LASTEXITCODE -ne 0) { throw "Review public UI check failed; preserve output and stop" }
+```
+
+The historical expected new-test count is seven, with zero failed/cancelled cases; do not replace actual totals or skips with that expectation. Handler errors above are not invented standalone CLI stdout/stderr or exit codes. Inspect the existing public assertions before changing them; rejected inputs must preserve unrelated data/counters and retire only the claimed request.
+
+### One-card checkpoint template
+
+```text
+Card / covered S#: <one admitted card and exact specs>
+Allowed paths / symbols: <closed list>
+Meaningful RED: <command and observed failure, or documented passive-doc exception>
+Public effects and preserved state: <what changes / what must not change>
+Validation: <exact command, exit, stdout, stderr, totals, skips, counters>
+Changed paths: <exact list>
+Saved commit: <full SHA if parent authorized and created it>
+Historical evidence only: <counts not rerun on this host>
+Next gate: <one owner decision, missing capability, or next admitted card>
+```
+
+Run commands only when the selected card authorizes them. On failure, record exact output/state and stop; do not increase deadlines, loosen trust/assertion guards or retry an unavailable historical verifier.
 
 ### Copyable resume instruction for the next model
 
-> Read `docs/remote-continuation.md` Start Here and the latest logs in the canonical capability and UI delivery-order ODDs. Verify the actual branch, HEAD, status and required ancestor commits. Choose exactly one canonical ready card; report its covered specs and exact allowed edit surfaces before editing. Preserve unrelated changes. Use behavior RED only when meaningful, then run the card's focused functional check. Record exact commands, exits, stdout, stderr, test totals/counters and final diff. Stage only named files if locally authorized; never use `git add .`, push, merge, force, publish, call a provider or invent approval. Return the bounded commit SHA if created, remaining gaps and the next blocker.
+> Read this Start Here section and the latest canonical capability/UI logs. Verify exact owner-published HEAD, branch, clean status, origin, upstream and the `f66004a3` / `428f7842` / `c0aa4665` ancestors. Do not redo R18. There is no source card ready until the R15 OWNER DECISION gate or separate R19 trusted-binding gate is recorded. Choose one admitted card only, report S#, paths and symbols, preserve unrelated files, use meaningful RED when applicable, and record exact command/exits/stdout/stderr/skips/state/counters. Return changed paths, full saved SHA if authorized, and one next gate. Never use `git add .`, force, merge, release, upload private/cache data, call a provider or invent approval. Publication requires the current explicit owner authorization; S21 covers only the parent's Task 45 ordinary WIP push.
 
 ### Stop conditions
 
 Stop immediately when any of these is true:
 
-- The expected published commit is absent, branch identity is wrong, or status contains unexplained changes.
-- The selected card is not ready in the latest canonical log.
-- Required tools, provider/model identity, credentials, independent verifier or owner consent are unavailable.
-- A command exits nonzero, hangs past its documented bound, or mutates outside the allowed surface.
-- Validation requires old cache, private home/session data, external fixtures, historical grants or an unavailable machine binary.
-- The proposed change would require a new coordination document, dependency/lockfile change, worktree pilot, cloud call, publication, merge, release or destructive operation without explicit authorization.
+- Exact published HEAD, branch, clean status, origin, upstream or required ancestry is wrong.
+- The selected card is not ready, or R15/R19 still lacks its explicit decision/admission.
+- `npm ci` or an authorized focused check fails, or any command mutates outside its allowed surface.
+- Required tool, provider/model identity, credential, verifier or owner consent is unavailable.
+- Work would require copied cache/private authority, a `C:` fixture, private SDK/profile/session, old grant/ACK, or machine-specific approval.
+- The proposed change requires another coordinator, duplicate Review mechanism, dependency/lockfile change, worktree pilot, cloud call, force/merge/PR/release, or destructive action without explicit authorization.
 
 Report the exact blocker and required owner decision. Never convert missing evidence into FULL.
 
