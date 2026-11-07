@@ -11,17 +11,55 @@ import {assertWorkspaceProjectionRepository,revalidateWorkspaceReviewProjection,
 import {captureReviewRepositoryBinding,assertReviewRepositoryBinding} from "./review-tree-inspection.js";
 import {validatePortableReviewPaths} from "./review-tree-paths.js";
 import {hasSensitiveName} from "../security/primary-tool-policy.js";
+import {prepareReviewPanelDescriptor,renderReviewPanel} from "../runtime/review-panel.js";
 
+interface CandidateReviewComponent{render(width:number):string[];invalidate():void;handleInput(data:string):void}
+interface CandidateReviewBindings{matches(data:string,action:"tui.select.cancel"|"tui.select.confirm"):boolean}
+type CandidateReviewCustom=(factory:(tui:{requestRender():void},theme:unknown,bindings:CandidateReviewBindings|undefined,done:(value:unknown)=>void)=>CandidateReviewComponent)=>Promise<unknown>;
 interface ReviewCommandContext{
  cwd:string;hasUI?:boolean;signal?:AbortSignal;modelRegistry?:PiReviewRegistry;model?:PiReviewerModel;
  sessionManager:{getSessionId():string};
- ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>};
+ ui:{notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;custom?:CandidateReviewCustom};
 }
 interface ReviewCommand{
  description:string;handler(args:string|undefined,context:ReviewCommandContext):Promise<OrdinaryReviewCheckout|string|unknown>|OrdinaryReviewCheckout|string;
 }
 export interface OrdinaryReviewCommandController{
  prepare(candidate:WorkUnitReviewCandidate,input:OrdinaryReviewInput):OrdinaryReviewRequest;
+}
+interface CandidateReviewScope{
+ readonly manager:ReviewCommandContext["sessionManager"];readonly sessionId:string;
+ readonly cwd:string;readonly repository:string;readonly signal:AbortSignal|undefined;
+}
+/** Inspection only: project the genuine checkout afresh without consuming its review authority. */
+async function showPreparedReviewCandidate(context:ReviewCommandContext,checkout:OrdinaryReviewCheckout,scope:CandidateReviewScope,complete:()=>OrdinaryReviewCheckout):Promise<OrdinaryReviewCheckout>{
+ const unavailable=()=>new Error("Review scope or candidate changed; no view published");
+ const descriptor=()=>{
+  try{
+   if(context.sessionManager!==scope.manager||scope.manager.getSessionId()!==scope.sessionId||context.cwd!==scope.cwd||context.signal!==scope.signal||scope.signal?.aborted||checkout.repository!==scope.repository||realpathSync(context.cwd)!==scope.repository)return null;
+   return prepareReviewPanelDescriptor({checkout});
+  }catch{return null;}
+ };
+ const ui=context.ui,custom=ui.custom;
+ if(typeof custom!=="function"||descriptor()===null)throw unavailable();
+ let closeModal:(()=>void)|undefined;
+ const abort=()=>closeModal?.();
+ scope.signal?.addEventListener("abort",abort,{once:true});
+ try{
+  await custom.call(ui,(_tui,_theme,bindings,done)=>{
+   let closed=false;
+   const close=()=>{if(!closed){closed=true;done(undefined);}};closeModal=close;
+   const component:CandidateReviewComponent={
+    render:width=>[...renderReviewPanel(descriptor(),width)],
+    invalidate(){},
+    handleInput(data){if(descriptor()===null||!bindings||bindings.matches(data,"tui.select.cancel")||bindings.matches(data,"tui.select.confirm"))close();},
+   };
+   if(descriptor()===null)close();
+   return component;
+  });
+ }finally{scope.signal?.removeEventListener("abort",abort);closeModal=undefined;}
+ if(descriptor()===null)throw unavailable();
+ return complete();
 }
 interface CorrectionState{
  readonly request:CorrectionRequest;readonly repository:string;readonly sessionId:string;readonly priorRevision:string;readonly priorReviewerId:string;
@@ -226,7 +264,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
 /** Registro propio de ASEN: prepara el traspaso; no emite dictamen ni autorización RDD. */
 export function registerOrdinaryReviewCommand(register:(name:string,command:ReviewCommand)=>void):OrdinaryReviewCommandController{
  const pending=new Map<string,OrdinaryReviewRequest>();
- register("asen-review",{description:"Revisar de forma independiente el workspace o verificar una solicitud preparada; no autoriza entrega",handler:(args,context)=>{
+ register("asen-review",{description:"Revisar el workspace o inspeccionar un candidato preparado en vista de solo lectura; cancelar/confirmar cierra, sin UI devuelve checkout; no autoriza entrega",handler:(args,context)=>{
   const command=(args??"").trim();
   if(command==="workspace")return runWorkspaceReview(context);
   const correctionMatch=/^workspace\s+correction\s+([a-f0-9]{64})$/u.exec(command);
@@ -238,15 +276,16 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
   if(!request)throw new Error("No existe solicitud pendiente en esta instancia de ASEN");
   pending.delete(args);
   try{
-   const sessionId=context.sessionManager.getSessionId();
-   const checkout=bindOrdinaryReviewCheckout(request,sessionId,realpathSync(context.cwd));
-   context.ui.notify("Candidato y sesión verificados; revisión nativa RDD pendiente. No hay autorización de entrega.","info");
-   return checkout;
+   const manager=context.sessionManager,sessionId=manager.getSessionId(),cwd=context.cwd,repository=realpathSync(cwd);
+   const checkout=bindOrdinaryReviewCheckout(request,sessionId,repository);
+   const complete=()=>{context.ui.notify("Candidato y sesión verificados; revisión nativa RDD pendiente. No hay autorización de entrega.","info");return checkout;};
+   if(context.hasUI===true&&typeof context.ui.custom==="function")return showPreparedReviewCandidate(context,checkout,{manager,sessionId,cwd,repository,signal:context.signal},complete);
+   return complete();
   }catch{
    // También consume si el host falla antes de llegar a la comprobación del checkout.
-   try{claimOrdinaryReviewRequest(request,"");}catch{}
-   context.ui.notify("No se pudo verificar la solicitud; se requiere una preparación nueva.","error");
-   throw new Error("Solicitud de revisión rechazada y retirada");
+   const reject=():never=>{context.ui.notify("No se pudo verificar la solicitud; se requiere una preparación nueva.","error");throw new Error("Solicitud de revisión rechazada y retirada");};
+   try{claimOrdinaryReviewRequest(request,"");}catch{return reject();}
+   return reject();
   }
  }});
  return Object.freeze({prepare:(candidate:WorkUnitReviewCandidate,input:OrdinaryReviewInput)=>{

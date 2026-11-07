@@ -16,6 +16,14 @@ Signed install, upgrade, rollback, backup/restore and managed-only uninstall are
 
 See [docs/development-setup.md](docs/development-setup.md) for running ASEN locally without relying on hidden machine state.
 
+## Prepared-candidate review inspection
+
+When a genuine request has already been prepared in the current ASEN instance, `/asen-review <request-id>` validates its session and exact clean Git checkout. In an interactive host with custom UI support it opens a close-only candidate view: revision, tree, parent and fixed `review-needed`, `unavailable`, `not-acknowledged`, `not-approved` labels. The host's select-cancel/select-confirm keys only close the view; they never accept, acknowledge or approve a review.
+
+The view revalidates its session, active directory, cancellation signal and checkout at UI boundaries. Drift makes further rendering unavailable and prevents the success notification. Inspection does not consume the checkout's later review provenance, create a filesystem review view or invoke a provider. Without custom UI, the existing synchronous checkout return and notification are preserved. `/asen-review workspace` remains a separate independent-review flow; the candidate view neither runs nor authorizes it. `/asen-help` shows the live command description. No native RDD, delivery or FULL authority follows from this inspection.
+
+Current default-host limitation: activation registers the command but retains only the facade's session-start callback, not its `review` preparer. No public default-host path that populates this command's pending-request map has been observed. The candidate modal is therefore bounded command-controller/registration integration, **not end-to-end host Review**. An embedding caller must hold the same returned controller to prepare a request; production producer/retention wiring remains a separate prerequisite, not permission to fabricate an ID or create another preparer.
+
 ## Retained-version selection
 `asen [--link|--isolated|--home PATH] managed select <exact-target-version> --expected-current <exact-current-version>` changes only the ordinary stored selector for an already inventoried managed version. Both versions are mandatory and the expected current value is compare-and-set intent: stale or absent metadata is refused, while selecting the matching current version is unchanged and lock-free.
 
