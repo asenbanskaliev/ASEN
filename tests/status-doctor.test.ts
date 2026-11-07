@@ -34,3 +34,13 @@ test("ECO-06 doctor reports all-clear when every local prerequisite is valid",()
  assert.equal(doctorExitCode(checks),0);
  assert.ok(checks.length>0);
 });
+
+test("status projects integration inventory states only when the host reports them",()=>{
+ const base={agents:[],changes:[],skills:{enabled:true,count:null},historyEnabled:false,telemetryEnabled:false};
+ const en=statusLines({...base,integrations:{commands:{state:"reported",limited:true},tools:{state:"unavailable",limited:false}}},100);
+ assert.ok(en.includes("integrations: commands reported limited · tools unavailable"),en.join("\n"));
+ assert.equal(en.filter(row=>row.startsWith("integrations")).length,1);
+ const es=statusLines({...base,language:"es",integrations:{commands:{state:"empty",limited:false},tools:{state:"reported",limited:false}}},100);
+ assert.ok(es.includes("integraciones: comandos vacío · herramientas reportado"),es.join("\n"));
+ assert.equal(statusLines(base,100).some(row=>row.startsWith("integrations")),false,"Omission stays truthful when no inventory observation exists");
+});

@@ -6,6 +6,7 @@ import {
 } from "../src/runtime/ide-panel.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 import {projectHostStatus} from "../src/runtime/host-status-projection.js";
+import {inspectIntegrationProfiles} from "../src/runtime/integration-profile-inspection.js";
 
 type Todo=AsenPanelSnapshot["todos"][number];
 type Agent=AsenPanelSnapshot["agents"][number];
@@ -118,4 +119,24 @@ test("explicit observation state overrides stale legacy values without changing 
  assert.equal(renderAsenStatusLine(snapshot(),100),"ASEN");
  assert.deepEqual(observed,before);
  for(const width of [12,35,80,140])assert.ok(visibleWidth(renderAsenStatusLine(observed,width))<=width);
+});
+test("INTEGRATIONS states the permission meaning once without repeating the mode banner",()=>{
+ const inspection=inspectIntegrationProfiles({getCommands:()=>[],getAllTools:()=>[]});
+ const yolo=renderAsenPanelSection(snapshot({integrationInspection:inspection,permission:"yolo"}),"INTEGRATIONS",120);
+ assert.ok(yolo.some(row=>row.startsWith("  permissions standing permission for ordinary primary work")),yolo.join("\n"));
+ assert.doesNotMatch(yolo.join("\n"),/Permission:|connected|healthy/i);
+ assert.equal(yolo.filter(row=>/permission/iu.test(row)).length,1,"The elevated mode must not repeat as a second banner");
+ const auto=renderAsenPanelSection(snapshot({integrationInspection:inspection,permission:"auto"}),"INTEGRATIONS",120);
+ assert.ok(auto.some(row=>row.startsWith("  permissions independent classifier checks each action")),auto.join("\n"));
+ const superYolo=renderAsenPanelSection(snapshot({integrationInspection:inspection,permission:"super-yolo"}),"INTEGRATIONS",120);
+ assert.ok(superYolo.some(row=>row.startsWith("  permissions no routine permission prompts")),superYolo.join("\n"));
+ for(const permission of [undefined,"normal"])
+  assert.doesNotMatch(renderAsenPanelSection(snapshot({integrationInspection:inspection,...(permission?{permission}:{})}),"INTEGRATIONS",120).join("\n"),/permissions/i,"Normal mode must not state an elevated meaning row");
+});
+test("the composed status line orders workspace, permission and host segments",()=>{
+ const hostStatus=projectHostStatus({model:{provider:"p",id:"m"},thinkingLevel:"high",getContextUsage(){return{tokens:80,contextWindow:100,percent:80};}});
+ assert.equal(renderAsenStatusLine(snapshot({changes:{branch:"main",files:3},permission:"YOLO",hostStatus}),100),
+  "ASEN │ main ±3 │ YOLO │ selected p/m · high │ responding ? │ ctx 80% warning");
+ assert.equal(renderAsenStatusLine(snapshot({changes:{branch:"release",files:0},permission:"normal",hostStatus:projectHostStatus()}),100),
+  "ASEN │ release clean │ selected ? │ responding ? │ ctx ?","Normal mode adds no second banner");
 });

@@ -35,6 +35,13 @@ const glyph=(state:string):string=>({
  queued:"○",completed:"✓",failed:"✗",interrupted:"!",stopped:"■",timed_out:"⌛",
 } as Record<string,string>)[state]??"·";
 const unfinishedTodo=new Set(["planned","running","succeeded","blocked"]);
+/** What an elevated mode means; stated once in Integrations while the status bar owns the mode banner. */
+export const ASEN_PERMISSION_MODE_MEANINGS:Readonly<Record<string,string>>=Object.freeze({
+ normal:"",
+ auto:"independent classifier checks each action · extra inference cost · hard safety and consent remain",
+ yolo:"standing permission for ordinary primary work · destructive confirmations remain",
+ "super-yolo":"no routine permission prompts · sensitive-path and critical guards remain",
+});
 function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
  switch(section){
   case "TODOS":return snapshot.todos.filter(t=>t.current.state==="done").length+"/"+snapshot.todos.length;
@@ -104,6 +111,8 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
     out.push("Actual routing: unknown · connection: unknown");
     for(const route of profiles.routes)out.push(`${route.role}: ${route.source} · model ${route.model}`+(route.thinking?` · thinking ${route.thinking}`:"")+" · actual unknown");
     if(profiles.limited)out.push("Profile routes limited; not a complete inventory");
+    const meaning=snapshot.permission?ASEN_PERMISSION_MODE_MEANINGS[snapshot.permission]:undefined;
+    if(meaning)out.push(`permissions ${meaning}`);
     for(const [label,inventory] of [["Commands",inspection.commands],["Tools",inspection.tools]] as const){
      out.push(label+": "+(inventory.state==="empty"?"empty (no entries reported)":inventory.state));
      for(const entry of inventory.entries){
