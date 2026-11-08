@@ -210,8 +210,10 @@ test("optional history shortcut is opt-in, delegates selection, and stays disabl
  const root = await mkdtemp(path.join(tmpdir(), "asen-optin-shortcut-")); t.after(() => rm(root, { recursive: true, force: true }));
  const commands = new Map<string, { handler: (...args: any[]) => unknown }>();
  let shortcut: any;
- const pi = { on() {}, registerCommand(name: string, command: any) { commands.set(name, command); }, registerTool() {}, registerShortcut(key: string, options: any) { shortcut = { key, ...options }; }, getCommands() { return []; }, getAllTools() { return []; } };
+ const registered: any[] = [];
+ const pi = { on() {}, registerCommand(name: string, command: any) { commands.set(name, command); }, registerTool() {}, registerShortcut(key: string, options: any) { registered.push({ key, ...options }); }, getCommands() { return []; }, getAllTools() { return []; } };
  createAsenExtension({ homeDir: () => root, enableAgentRuntime: false, enableTodoRuntime: false, enableWorkspaceRuntime: false, enableMemoryRuntime: false, historyShortcutKey: "ctrl+h" })(pi as any);
+ shortcut = registered.find((row: any) => /history/iu.test(row.description ?? ""));
  assert.ok(shortcut, "explicit opt-in registers Pi's native shortcut");
  assert.equal(shortcut.key, "ctrl+h");
  assert.match(shortcut.description, /history/iu);

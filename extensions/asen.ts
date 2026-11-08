@@ -78,6 +78,7 @@ import {createNativeWorkPanel} from "../src/runtime/native-work-panel.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/native-m2-navigator.js";
 import {createM1SurfaceCache} from "../src/runtime/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/host-status-projection.js";
+import {ASEN_KEYMAP_ACTIONS,effectiveKey,readKeymaps} from "../src/runtime/keymaps.js";
 import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInventoryRow} from "../src/runtime/integration-profile-inspection.js";
 import {integrationPanel} from "../src/runtime/integrations-panel.js";
 import type {KeybindingsManager} from "@earendil-works/pi-tui";
@@ -152,8 +153,12 @@ function terminalColumns():number{const columns=Number.isSafeInteger(process.std
 export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(pi:PiLike)=>AsenExtensionFacade {
  const home=dependencies.homeDir??homedir,packageRoot=dependencies.packageRoot??productionPackageRoot,refresh=dependencies.refresh??refreshSkillRegistry;
  return pi=>{
-  const register=pi.registerCommand?.bind(pi);
-  if(!register)throw new Error("ASEN extension requires Pi command registration");
+  const registerRaw=pi.registerCommand?.bind(pi);
+  if(!registerRaw)throw new Error("ASEN extension requires Pi command registration");
+  // UFC-M1-04: registered handlers are captured so keymap shortcuts can invoke the very
+  // command the registry records; the public registration contract itself is unchanged.
+  const keymapCommandHandlers=new Map<string,(...args:any[])=>unknown>();
+  const register=(name:string,command:{description:string;handler:(...args:any[])=>unknown}):void=>{keymapCommandHandlers.set(name,command.handler);registerRaw(name,command);};
   const registerData=(name:string,command:{description:string;handler:(...args:any[])=>unknown},scopedPublication=false)=>register(name,{
    ...command,handler:(...args:any[])=>{
     // Opt-in, invocation-local continuity check; other commands keep their contract.
@@ -812,7 +817,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       ctx?.ui?.notify?.(message,"info"); return [message];
     }catch(error){const message=`Research probe failed: ${error instanceof Error?error.message:String(error)}`; ctx?.ui?.notify?.(message,"error"); return [message];}
   }});
-  pi.registerCommand?.("asen-palette",{description:"Search registered commands and inspect manual invocation guidance",handler:async(args:string|undefined,ctx:CommandContext)=>{
+  register("asen-palette",{description:"Search registered commands and inspect manual invocation guidance",handler:async(args:string|undefined,ctx:CommandContext)=>{
    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx);assertCurrent();
    const revalidate=async()=>{
     assertCurrent();const current=await sessionIdentity(ctx);assertCurrent();
@@ -1339,7 +1344,40 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     }
    }
   }
-  pi.registerCommand?.("asen-usage",{description:"Show, delete and review local ASEN usage and telemetry consent",handler:async(args:string,ctx:CommandContext)=>{
+  // UFC-M1-04: the saved registry drives real Pi shortcut registration at startup, through the
+  // public API only. The target decision recorded in odd/tasks/ui-functional-completion-and-
+  // acceptance.md keeps `changes` on its shipped registry command `asen-changes` (a shortcut
+  // invokes the command without the `resolve` argument, so it can never enter the correction
+  // flow); retargeting to the read-only browser is its own M3-track registry change. The
+  // history action stays on its dedicated opt-in seam above and is skipped here.
+  if(typeof pi.registerShortcut==="function"){
+   const keymapBindings=readKeymaps(home()).bindings;
+   const refusedKeymapBindings:string[]=[];
+   let refusalTold=false;
+   for(const action of ASEN_KEYMAP_ACTIONS){
+    if(action.id==="history"||!action.command)continue;
+    const key=effectiveKey(action.id,process.env,keymapBindings);
+    if(key===undefined||key.trim()==="")continue;
+    const command=action.command;
+    try{
+     pi.registerShortcut(key as never,{description:`ASEN ${action.label}`,handler:async(context:any)=>{
+      const handler=keymapCommandHandlers.get(command);
+      if(!handler){context?.ui?.notify?.(`ASEN /${command} is unavailable.`,"error");return;}
+      try{await handler("",context);}catch{context?.ui?.notify?.(`ASEN /${command} failed.`,"error");}
+     }});
+    }catch{
+     // A refused binding (reserved or clashing) must never be a silent drop: the notice
+     // surfaces on the next session start, when a host UI exists.
+     refusedKeymapBindings.push(`${action.label} (${key})`);
+    }
+   }
+   if(refusedKeymapBindings.length)pi.on?.("session_start",async(_event:unknown,ctx:any)=>{
+    if(refusalTold||!ctx?.ui?.notify)return;
+    refusalTold=true;
+    ctx.ui.notify(`ASEN keymaps not registered: ${refusedKeymapBindings.join("; ")}; the host refused the binding.`,"error");
+   });
+  }
+  register("asen-usage",{description:"Show, delete and review local ASEN usage and telemetry consent",handler:async(args:string,ctx:CommandContext)=>{
    try{const result=await runUsageCommand(args,{storePath:usageFile,hasUI:ctx.hasUI===true,...(ctx.ui.confirm?{confirm:ctx.ui.confirm.bind(ctx.ui)}:{})});ctx.ui.notify(result,"info");return result;}
    catch(error){ctx.ui.notify(`ASEN usage failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
@@ -1415,6 +1453,12 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
      validatePiExecutionContext(commandContext);
      await command.handler(args,commandContext);
     }});},
+    // UFC-M1-04: the host channel for keymap shortcuts is forwarded under the same
+    // readiness guard as commands; a refused binding is reported by the registration loop.
+    ...(typeof pi.registerShortcut==="function"?{registerShortcut:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>{publicWrites++;const guard=options.handler;pi.registerShortcut(shortcut as never,{...(options.description===undefined?{}:{description:options.description}),handler:async(context:any)=>{
+     if(!registrationsReady)throw new Error("ASEN registrations are disabled after an incomplete host setup");
+     await guard(context);
+    }});}}:{}),
    });
    registrationsReady=true;
    sessionStart=facade.startSession;

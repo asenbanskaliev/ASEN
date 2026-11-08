@@ -1,8 +1,9 @@
-import test from "node:test";
+import test,{type TestContext} from "node:test";
 import assert from "node:assert/strict";
 import {mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync,readdirSync} from "node:fs";
 import path from "node:path";
 import {ASEN_COMMAND_CATALOG,implementedCommands} from "../src/runtime/command-catalog.js";
+import {createAsenExtension} from "../extensions/asen.js";
 import {
 	ASEN_KEYMAP_ACTIONS,KEYMAPS_FILE,KEYMAPS_SCHEMA,KEYMAP_RELOAD_NOTICE,RESERVED_PI_KEYBINDINGS,
 	assignKeymap,checkKeymap,commandKeymapId,effectiveKey,keyFromInput,keymapAction,keymapCommand,
@@ -197,4 +198,81 @@ test("every ASEN keymap env slot is honoured before saved bindings and targets r
 		const disabled=effectiveKey(action.id,{[action.env]:""},{[action.id]:"alt+m"});
 		assert.equal(disabled,undefined,`${action.env}="" still wins over saved bindings`);
 	}
+});
+
+// UFC-M1-04 (functional RED against the shipped code): the registry has no consumer today.
+// Only the history seam may call pi.registerShortcut; no startup path registers the effective
+// keys of ASEN_KEYMAP_ACTIONS, so these registration tests fail until the wiring ships.
+const KEYMAP_ENV_SLOTS=["ASEN_PALETTE_KEY","ASEN_CHANGES_KEY","ASEN_USAGE_KEY","ASEN_AGENTS_VIEW_KEY","ASEN_HISTORY_SHORTCUT"] as const;
+function isolateKeymapEnv(t:TestContext){
+	for(const name of KEYMAP_ENV_SLOTS){
+		const prior=process.env[name];
+		delete process.env[name];
+		t.after(()=>{if(prior===undefined)delete process.env[name];else process.env[name]=prior;});
+	}
+}
+function keymapHostPi(refuse?:string){
+	const shortcuts:{key:string;description?:string;handler:(ctx:unknown)=>unknown}[]=[];
+	const events:Function[]=[];
+	const notices:string[]=[];
+	const pi={
+		registerCommand(_name:string,_command:{description:string;handler:(...args:unknown[])=>unknown}){},
+		registerTool(){},
+		on(_name:string,fn:Function){events.push(fn);},
+		getCommands:()=>[],
+		getAllTools:()=>[],
+		getFlag:()=>false,
+		registerShortcut(key:string,options:{description?:string;handler:(ctx:unknown)=>unknown}){
+			if(key===refuse)throw new Error("host refused the binding");
+			shortcuts.push({key,...options});
+		},
+	};
+	return {pi,shortcuts,notices,emitSessionStart(){
+		for(const fn of events){try{void fn({},{cwd:process.cwd(),mode:"print",hasUI:true,sessionManager:{getSessionId:()=>"keymaps-wiring"},ui:{notify(m:string){notices.push(String(m));},setStatus(){}}});}catch{/* unrelated startup listeners are not the subject */}}
+	}};
+}
+function wiringExtensions(home:string){
+	return createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false});
+}
+
+test("UFC-M1-04 startup registers the effective default keys through the public shortcut API",async t=>{
+	isolateKeymapEnv(t);
+	const {home,dispose}=fixtureHome();
+	t.after(dispose);
+	const host=keymapHostPi();
+	wiringExtensions(home)(host.pi as never);
+	const keys=host.shortcuts.map(row=>row.key);
+	for(const key of ["alt+k","alt+g","alt+u","alt+a"])assert.ok(keys.includes(key),`${key} registers at startup`);
+	assert.ok(!host.shortcuts.some(row=>/history/iu.test(row.description??"")),"history stays on its dedicated opt-in seam");
+	// Recorded target decision (plan UFC-M1-04): `changes` keeps the shipped registry command.
+	assert.equal(keymapAction("changes")?.command,"asen-changes","the recorded decision retains the shipped target");
+	const row=host.shortcuts.find(candidate=>candidate.key==="alt+g")!;
+	assert.equal(typeof row.handler,"function","the registered shortcut carries an invocation handler");
+});
+
+test("UFC-M1-04 env-locked, disabled and saved bindings drive registration without conflicts",t=>{
+	isolateKeymapEnv(t);
+	const {home,dispose}=fixtureHome();
+	t.after(dispose);
+	process.env.ASEN_PALETTE_KEY="alt+j";
+	process.env.ASEN_USAGE_KEY="";
+	writeKeymaps(home,{changes:null});
+	const host=keymapHostPi();
+	wiringExtensions(home)(host.pi as never);
+	const keys=host.shortcuts.map(row=>row.key);
+	assert.ok(keys.includes("alt+j"),"the env slot replaces the default key");
+	assert.ok(!keys.includes("alt+k"),"the default never registers while the env slot owns the action");
+	assert.ok(!keys.includes("alt+u"),"an explicitly disabled action registers nothing");
+	assert.ok(!keys.includes("alt+g"),"a saved null binding disables the action");
+});
+
+test("UFC-M1-04 a refused registration surfaces visibly and never silently drops",t=>{
+	isolateKeymapEnv(t);
+	const {home,dispose}=fixtureHome();
+	t.after(dispose);
+	const host=keymapHostPi("alt+k");
+	wiringExtensions(home)(host.pi as never); // startup must not throw on a host refusal
+	assert.ok(host.shortcuts.some(row=>row.key==="alt+g"),"other actions keep registering after a refusal");
+	host.emitSessionStart();
+	assert.ok(host.notices.some(row=>row.includes("alt+k")),`the refusal becomes a visible notice: ${JSON.stringify(host.notices)}`);
 });

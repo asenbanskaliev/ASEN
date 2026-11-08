@@ -17,7 +17,9 @@ async function fixture(t:TestContext,missing=false){
  const forbidden=()=>{effects++;};
  const pi={registerCommand(name:string,command:any){commands.set(name,command);},registerTool(){},getAllTools(){return [];},getFlag(){return false;},on(name:string,fn:Function){events.set(name,[...(events.get(name)??[]),fn]);},
   ...(missing?{}:{getCommands(){assert.equal(this,pi);reads++;if(throwing)throw Error("PRIVATE error");return [...commands].map(([name,command])=>{const row={name,description:command.description,source:"extension"};Object.defineProperties(row,{sourceInfo:{get(){effects++;return {path:"PRIVATE path"};}},handler:{get(){effects++;return command.handler;}}});return row;});}}),
-  registerShortcut:forbidden,sendMessage:forbidden,sendUserMessage:forbidden,setModel:forbidden,setActiveTools:forbidden,exec:forbidden};
+  // UFC-M1-04: startup shortcut registration is now an expected public contribution; it must
+  // stay outside the discovery-effects counter, which pins dispatch/rebind/reload/provider calls.
+  registerShortcut(){},sendMessage:forbidden,sendUserMessage:forbidden,setModel:forbidden,setActiveTools:forbidden,exec:forbidden};
  const ctx:any={cwd:project,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>id},reload:forbidden,ui:{notify(message:string){notices.push(message);},setStatus(){},setWidget(){},setEditorText:forbidden,select:async(_title:string,labels:string[])=>selection(labels)}};
  (missing?createAsenExtension:createPiExtension)({homeDir:()=>home,packageRoot:root,registryLifecycle:{watch:()=>({close(){}})},autoAdvancePlans:false,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})(pi as any);
  const emit=async(name:string)=>{for(const fn of events.get(name)??[])await fn({},ctx);};
