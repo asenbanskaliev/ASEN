@@ -12,6 +12,7 @@ export const ASEN_PANEL_SECTIONS=["TODOS","JOBS","AGENTS","CHANGES","REVIEW","IN
 export type AsenPanelSection=(typeof ASEN_PANEL_SECTIONS)[number];
 export interface AsenPanelSnapshot{
  readonly todos:readonly (TodoItem&{current:TaskEvent})[];
+ readonly todosObserved?:boolean;
  readonly agents:readonly PublicAgentRecord[];
  readonly jobs:readonly BackgroundJobSnapshot[];
  readonly changes?:{readonly branch:string;readonly files:number};
@@ -42,13 +43,20 @@ export const ASEN_PERMISSION_MODE_MEANINGS:Readonly<Record<string,string>>=Objec
  yolo:"standing permission for ordinary primary work · destructive confirmations remain",
  "super-yolo":"no routine permission prompts · sensitive-path and critical guards remain",
 });
+export function derivePanelReview(snapshot:AsenPanelSnapshot):{pending:number;known:boolean}{
+ const explicit=snapshot.review?.pending;
+ if(typeof explicit==="number"&&Number.isSafeInteger(explicit)&&explicit>=0)return {pending:explicit,known:true};
+ if(snapshot.todosObserved!==true)return {pending:0,known:false};
+ return {pending:snapshot.todos.filter(todo=>todo.current.state==="succeeded"||
+  todo.current.state==="blocked"&&todo.current.reason==="Linked review result requires explicit user acceptance").length,known:true};
+}
 function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
  switch(section){
   case "TODOS":return snapshot.todos.filter(t=>t.current.state==="done").length+"/"+snapshot.todos.length;
   case "JOBS":return snapshot.jobs.filter(isObservedActiveJob).length+" running";
   case "AGENTS":return snapshot.agents.filter(a=>a.state==="running").length+" running";
   case "CHANGES":return snapshot.changes?snapshot.changes.files+" files":"unavailable";
-  case "REVIEW":return snapshot.review?.pending?snapshot.review.pending+" needs you":"unverified";
+  case "REVIEW":{const review=derivePanelReview(snapshot);return review.known?(review.pending?review.pending+" needs review":"no pending results"):"unverified";}
   case "INTEGRATIONS":return snapshot.integrationInspection?"observed":snapshot.integrationStates?.length?snapshot.integrationStates.length+" reported":"unknown";
  }
 }
@@ -109,8 +117,8 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    // succeeded or blocked Todo is the only stored panel state that says its
    // result still needs review; no request, candidate, acknowledgement or
    // human-read state is inferred here.
-   const pending=snapshot.review?.pending??snapshot.todos.filter(todo=>todo.current.state==="succeeded"||todo.current.state==="blocked").length;
-   out.push(pending?"Human review needed · "+pending:"Review state unverified · /asen-review");
+   const {pending,known}=derivePanelReview(snapshot);
+   out.push(!known?"Review state unverified · /asen-review":pending?"Results awaiting review · "+pending:"No pending review results observed");
    if(snapshot.review?.label)out.push(clean(snapshot.review.label,140));
    else if(pending)out.push(`${pending} stored Todo result${pending===1?"":"s"} awaiting review`);
    break;
