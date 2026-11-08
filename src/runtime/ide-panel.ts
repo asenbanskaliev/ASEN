@@ -168,6 +168,10 @@ export function renderAsenStatusLine(snapshot:AsenPanelSnapshot,width=80):string
   parts.push("responding "+identity(host.respondingModel));
   parts.push("ctx "+(host.context.percent===null?"?":Math.round(host.context.percent)+"%")+
    (host.context.state==="warning"||host.context.state==="error"?" "+host.context.state:""));
+  // UI-08 cost/sub truthful unknown: the public projection publishes only "unavailable"
+  // for cost/subscription/quota today (host-status-projection.ts:20-22,67), so the host
+  // path states the unknown instead of omitting the segment entirely.
+  parts.push("cost/sub ?");
  }else{
  if(snapshot.model)parts.push(clean(snapshot.model,55)+(snapshot.effort?" · "+clean(snapshot.effort,20):""));
  if(typeof snapshot.contextPercent==="number"&&Number.isFinite(snapshot.contextPercent)&&snapshot.contextPercent>=0&&snapshot.contextPercent<=100)

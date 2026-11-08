@@ -115,7 +115,7 @@ test("Jobs exposes bounded IDs instead of execution payloads and excludes histor
 test("explicit observation state overrides stale legacy values without changing legacy omissions",()=>{
  const observed=snapshot({hostStatus:projectHostStatus(),model:"stale/model",contextPercent:90,cost:123,subscription:true});
  const before=structuredClone(observed);
- assert.equal(renderAsenStatusLine(observed,100),"ASEN │ selected ? │ responding ? │ ctx ?");
+ assert.equal(renderAsenStatusLine(observed,100),"ASEN │ selected ? │ responding ? │ ctx ? │ cost/sub ?");
  assert.equal(renderAsenStatusLine(snapshot(),100),"ASEN");
  assert.deepEqual(observed,before);
  for(const width of [12,35,80,140])assert.ok(visibleWidth(renderAsenStatusLine(observed,width))<=width);
@@ -136,7 +136,31 @@ test("INTEGRATIONS states the permission meaning once without repeating the mode
 test("the composed status line orders workspace, permission and host segments",()=>{
  const hostStatus=projectHostStatus({model:{provider:"p",id:"m"},thinkingLevel:"high",getContextUsage(){return{tokens:80,contextWindow:100,percent:80};}});
  assert.equal(renderAsenStatusLine(snapshot({changes:{branch:"main",files:3},permission:"YOLO",hostStatus}),100),
-  "ASEN │ main ±3 │ YOLO │ selected p/m · high │ responding ? │ ctx 80% warning");
+  "ASEN │ main ±3 │ YOLO │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ?");
  assert.equal(renderAsenStatusLine(snapshot({changes:{branch:"release",files:0},permission:"normal",hostStatus:projectHostStatus()}),100),
-  "ASEN │ release clean │ selected ? │ responding ? │ ctx ?","Normal mode adds no second banner");
+  "ASEN │ release clean │ selected ? │ responding ? │ ctx ? │ cost/sub ?","Normal mode adds no second banner");
+ const narrow=renderAsenStatusLine(snapshot({changes:{branch:"main",files:3},permission:"YOLO",hostStatus}),12);
+ assert.ok(visibleWidth(narrow)<=12,"the added unknown segment must respect the canonical width floor");
+});
+// UFC-M1-01 G1 (RED against shipped code): the host path must state the truthful cost/sub
+// unknown. Today the cost segment renders only on the legacy path (ide-panel.ts:176-177),
+// so the host-path row demonstrably omits the UI-08 cost/sub state.
+test("UFC-M1-01 host path carries the truthful cost/sub unknown segment",()=>{
+ const row=renderAsenStatusLine(snapshot({hostStatus:projectHostStatus()}),140);
+ assert.match(row,/cost\/sub \?/u,"UI-08 requires the cost/sub state visible on the host path");
+ assert.ok(!/\$\d/u.test(row),"an unknown state must never render as a currency figure");
+ const legacy=renderAsenStatusLine(snapshot({cost:2.5,subscription:true}),140);
+ assert.match(legacy,/\$2\.50 sub/u,"the observed legacy path keeps its shipped figures");
+ assert.ok(!renderAsenStatusLine(snapshot(),140).includes("cost"),"no host and no observed cost keeps the segment omitted");
+});
+// UFC-M1-01 G2 coverage pin (the click affordance never shipped; this guards the boundary
+// while UI-C15 stays CI-only; recorded as coverage, not a functional RED).
+test("UFC-M1-01 no clickability is claimed while UI-C15 remains CI-only",()=>{
+ for(const input of [{},{hostStatus:projectHostStatus()}]){
+  const row=renderAsenStatusLine(snapshot(input),140);
+  assert.ok(!row.includes("\u001b]8;;"),"no OSC-8 hyperlink affordance may be emitted without a host capability receipt");
+  assert.doesNotMatch(row,/click/iu,"the status row must not claim a clickable usage affordance");
+ }
+ for(const width of [12,35,80,140])
+  assert.ok(visibleWidth(renderAsenStatusLine(snapshot({hostStatus:projectHostStatus()}),width))<=width);
 });
