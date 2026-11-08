@@ -83,7 +83,7 @@ import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInven
 import {integrationPanel} from "../src/runtime/integrations-panel.js";
 import type {KeybindingsManager} from "@earendil-works/pi-tui";
 import {renderAgentInspection,type AgentInspection} from "../src/runtime/agent-inspect.js";
-import {projectAgentHierarchy,type AgentHierarchyRecord} from "../src/runtime/agents-panel.js";
+import {projectAgentHierarchy,renderAgentFollowTail,type AgentHierarchyRecord} from "../src/runtime/agents-panel.js";
 import {createJobMetadataBindings,inspectOwnedJob,type JobMetadata} from "../src/runtime/job-inspect.js";
 import {previewWorkspaceFileDiff,renderGitDiffPreview,gitChangesIndex} from "../src/runtime/git-diff-preview.js";
 import {AsenPermissionSession} from "../src/security/permission-session.js";
@@ -1097,6 +1097,33 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(!record)return ["ASEN agent does not belong to this Pi session/project."];
     return [...renderAgentInspection({record,history:found?.history??[],...(found?.spec?{spec:found.spec}:{})},Math.max(12,terminalColumns()))];
    }});
+   registerData("asen-agent-follow",{description:"Follow an owned agent's read-only notification journal tail; journal state is never delivery, consumption or authorization",handler:async(args:string|undefined,ctx:CommandContext)=>{
+     const assertScope=panelScope(ctx),before=ctx.cwd;
+     const identity=await sessionIdentity(ctx);assertScope();
+     const runtime=agentRuntimePromise?await agentRuntimePromise:undefined;assertScope();
+     const readEntries=()=>runtime?runtime.list(identity):(dependencies.agents?.()??[]).filter(row=>row.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(row.projectId,identity.projectId));
+     const entries=await readEntries();
+     const validate=async()=>{assertScope();const current=await sessionIdentity(ctx);assertScope();
+      if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId||ctx.cwd!==before)throw Error("Agent scope changed");};
+     let id=String(args??"").trim();
+     if(!id&&ctx.mode==="tui"&&ctx.hasUI===true&&ctx.ui.select&&entries.length){
+      const labels=entries.slice(0,100).map(row=>row.role+" · "+row.state+" · "+row.id);
+      const chosen=await ctx.ui.select("Follow which owned ASEN agent? (read-only journal tail)",labels,ctx.signal?{signal:ctx.signal}:undefined);
+      const at=labels.findIndex(row=>row===chosen);
+      if(at<0)return ["ASEN agent follow closed."];
+      id=entries[at]!.id;
+     }
+     if(!id)return ["Usage: /asen-agent-follow <agent-id>. No agent selected."];
+     await validate();
+     const found=runtime?await runtime.query(id,identity):null;
+     const record=found?.record??entries.find(row=>row.id===id);
+     if(!record||record.sessionId!==identity.sessionId||!sameWorkspaceIdentityPath(record.projectId,identity.projectId))return ["ASEN agent does not belong to this Pi session/project."];
+     try{
+      const journalRows=await agentNoticeJournal.list(identity);
+      await validate();
+      return [...renderAgentFollowTail(journalRows,{agentId:id,sessionId:identity.sessionId,projectId:identity.projectId},Math.max(12,terminalColumns()))];
+     }catch(error){if(error instanceof Error&&error.message==="Agent scope changed")return ["ASEN agent scope changed. No follow performed."];throw error;}
+    }});
    registerData("asen-changes-view",{description:"Inspect bounded, read-only Git status and per-file diff for the current workspace",handler:async(args:string|undefined,ctx:CommandContext,bindPublicationGuard:(guard:()=>void)=>void)=>{
     let assertScope:(()=>void)|undefined,rootIdentity:WorkspaceRootIdentity|undefined;
     const assertCurrent=()=>{

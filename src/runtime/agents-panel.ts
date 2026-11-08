@@ -1,5 +1,7 @@
 import type {PublicAgentRecord,PublicAgentState} from "./agent-lifecycle.js";
 import type {AgentStateEvent} from "./agent-store.js";
+import type {AgentNoticeRow} from "./agent-notification-journal.js";
+import {sanitizeTerminalText,truncateForTerminal} from "./responsive-layout.js";
 import {sameWorkspaceIdentityPath} from "./workspace-store.js";
 
 export interface AgentHierarchyRecord{
@@ -79,4 +81,31 @@ export function projectAgentHierarchy(input:AgentHierarchyInput):readonly AgentH
   return Object.freeze(record.continuationOf===undefined?row:{...row,continuationOf:record.continuationOf});
  });
  return Object.freeze(rows);
+}
+
+export interface AgentFollowQuery{readonly agentId:string;readonly sessionId:string;readonly projectId:string;}
+const deliveries=new Set<string>(["pending","attempted","enqueued","acknowledged"]);
+
+/** Read-only journal tail selection: the trusted agent inside the exact session and project scope, ascending, bounded to the last N. */
+export function selectAgentFollowTail(rows:readonly AgentNoticeRow[],query:AgentFollowQuery,limit=40):readonly AgentNoticeRow[]{
+ if(!Number.isSafeInteger(limit)||limit<1||limit>100)throw new Error("Invalid agent follow limit");
+ if(!query||!text(query.agentId)||!text(query.sessionId)||!text(query.projectId))throw new Error("Invalid agent follow identity");
+ if(!Array.isArray(rows))throw new Error("Invalid agent follow rows");
+ return Object.freeze(rows
+  .filter(row=>!!row&&row.agentId===query.agentId&&row.sessionId===query.sessionId&&sameWorkspaceIdentityPath(row.projectId,query.projectId)&&deliveries.has(row.delivery))
+  .slice()
+  .sort((left,right)=>Date.parse(left.updatedAt)-Date.parse(right.updatedAt)||compareOpaque(left.eventId,right.eventId)||compareOpaque(left.createdAt,right.createdAt))
+  .slice(-limit));
+}
+
+/** Renders the journal tail verbatim; queueing is never presented as delivery, acknowledgement or consumption, and Follow grants nothing. */
+export function renderAgentFollowTail(rows:readonly AgentNoticeRow[],query:AgentFollowQuery,width=100):readonly string[]{
+ if(!Number.isSafeInteger(width)||width<12||width>1000)throw new Error("Invalid agent follow width");
+ const tail=selectAgentFollowTail(rows,query);
+ const clean=(value:string,max=160)=>truncateForTerminal(sanitizeTerminalText(value).replace(/\s+/gu," ").trim(),Math.min(max,width));
+ const out:string[]=["FOLLOW · "+clean(query.agentId,180)+" · read-only journal tail"];
+ if(tail.length===0)out.push("No agent notification journal entries for this agent in this session/project.");
+ for(const row of tail)out.push("  "+clean(row.updatedAt,32)+" · "+clean(row.state,24)+" · delivery: "+clean(row.delivery,20));
+ out.push("Journal states are verbatim; queueing grants no consumption or authorization.");
+ return Object.freeze(out.map(row=>truncateForTerminal(row,width)));
 }

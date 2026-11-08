@@ -66,3 +66,48 @@ test("sorts copied lifecycle events without mutating any input",()=>{
  assert.deepEqual(value,before);assert.deepEqual(rows[0]?.history.map(event=>event.revision),[1,2]);
  assert.notEqual(rows[0]?.history,owned.history);assert.notEqual(rows[0]?.owner,owned.owner);
 });
+import {renderAgentFollowTail,selectAgentFollowTail,type AgentFollowQuery} from "../src/runtime/agents-panel.js";
+import type {AgentNoticeRow} from "../src/runtime/agent-notification-journal.js";
+import {visibleWidth} from "../src/runtime/responsive-layout.js";
+
+const notice=(overrides:Partial<AgentNoticeRow>&{agentId:string,sessionId:string,projectId:string,updatedAt:string}):AgentNoticeRow=>Object.freeze({
+ eventId:`asen:agent:${overrides.agentId}:${overrides.updatedAt.slice(11,19)}:terminal`,state:"completed",delivery:"enqueued",createdAt:"2026-11-08T10:00:00.000Z",...overrides});
+const followQuery:AgentFollowQuery={agentId:"agent-owned",sessionId:"session-owned",projectId:"D:/work/opaque-project"};
+
+test("M2-02 follow tail selects only the trusted agent inside the exact session and project scope",()=>{
+ const rows=[
+  notice({agentId:"agent-owned",...identity,updatedAt:at(2)}),
+  notice({agentId:"agent-owned",sessionId:"session-other",projectId:identity.projectId,updatedAt:at(3)}),
+  notice({agentId:"agent-owned",sessionId:identity.sessionId,projectId:"D:/work/other-project",updatedAt:at(4)}),
+  notice({agentId:"agent-other",...identity,updatedAt:at(5)}),
+  notice({agentId:"agent-owned",...identity,updatedAt:at(6)}),
+ ];
+ const tail=selectAgentFollowTail(rows,followQuery);
+ assert.deepEqual(tail.map(row=>row.updatedAt),[at(2),at(6)]);
+});
+test("M2-02 follow tail bounds memory with an ascending last-N window",()=>{
+ const rows=Array.from({length:100},(_,i)=>notice({agentId:"agent-owned",...identity,updatedAt:`2026-11-08T10:${String(i%60).padStart(2,"0")}:${String(Math.floor(i/60)).padStart(2,"0")}.000Z`}));
+ const tail=selectAgentFollowTail(rows,followQuery,40);
+ assert.equal(tail.length,40);
+ assert.ok(tail.every((row,i,arr)=>i===0||arr[i-1]!.updatedAt<=row.updatedAt));
+ assert.throws(()=>selectAgentFollowTail(rows,followQuery,0),/limit/u);
+ assert.throws(()=>selectAgentFollowTail(rows,followQuery,101),/limit/u);
+});
+test("M2-02 rendered follow tail shows enqueued verbatim and never claims delivery, acknowledgement or consumption",()=>{
+ const rows=[notice({agentId:"agent-owned",...identity,updatedAt:at(2),delivery:"enqueued"})];
+ const out=renderAgentFollowTail(rows,followQuery,80);
+ assert.ok(out.some(row=>row.includes("delivery: enqueued")));
+ assert.ok(out.some(row=>row.includes("FOLLOW")));
+ assert.ok(out.some(row=>row.includes("queueing grants no consumption or authorization")));
+ assert.ok(!out.some(row=>/delivered|acknowledged|consumed/iu.test(row)));
+ assert.ok(out.every(row=>visibleWidth(row)<=80&&!row.includes("\u001b")&&!row.includes("\n")));
+ const ack=renderAgentFollowTail([notice({agentId:"agent-owned",...identity,updatedAt:at(2),delivery:"acknowledged"})],followQuery,80);
+ assert.ok(ack.some(row=>row.includes("delivery: acknowledged")));
+});
+test("M2-02 follow fails closed without a trusted identity and states an empty tail honestly",()=>{
+ assert.throws(()=>selectAgentFollowTail([],{...followQuery,agentId:""}),/identity/u);
+ assert.throws(()=>selectAgentFollowTail([],{...followQuery,sessionId:""}),/identity/u);
+ const out=renderAgentFollowTail([],followQuery,80);
+ assert.ok(out.some(row=>row.includes("No agent notification journal entries")));
+ assert.ok(!out.some(row=>/acknowledged|delivered/iu.test(row)));
+});
