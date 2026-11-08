@@ -46,7 +46,7 @@ The certificate/OIDC-derived fields that verification can enforce:
 
 - `--repo`/`--owner` (attestation linkage lookup + owner URI enforcement)
 - `--signer-repo` and `--signer-workflow`
-  (e.g. `Gentleman-Programming/REPO/.github/workflows/<file>.yml@refs/heads/main`)
+  (e.g. `YOUR-ORG/REPO/.github/workflows/<file>.yml@refs/heads/main`)
 - `--cert-identity`, `--cert-oidc-issuer` (default enforced:
   `https://token.actions.githubusercontent.com`)
 - `--predicate-type` (default `https://slsa.dev/provenance/v1`)
