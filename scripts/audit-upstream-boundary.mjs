@@ -51,6 +51,7 @@ const pinnedParityPlanDocs=new Set([
  "odd/tasks/"+"gen"+"tle-shell-v4.6.0-paridad-ui-odd.md",
  "odd/tasks/pi-capability-completion.md",
  "odd/tasks/shell-rea-megabatch.md",
+ "odd/tasks/w5-applied-research-and-hardening.md",
 ]);
 const violations=[];
 for(const path of paths){

@@ -39,7 +39,8 @@ test("tracked boundary checks paths and text while excluding binary payloads",()
   mkdirSync(join(root,"odd","tasks"),{recursive:true});
   writeFileSync(join(root,"odd","tasks","pi-capability-completion.md"),`Reference ${marker} detected`);
   writeFileSync(join(root,"odd","tasks","shell-rea-megabatch.md"),`Reference ${marker} detected`);
-  stage();assert.equal(audit().status,0,"the two exact Phase0 provenance documents are allowed");
+  writeFileSync(join(root,"odd","tasks","w5-applied-research-and-hardening.md"),`Reference ${marker} detected`);
+  stage();assert.equal(audit().status,0,"the exact registered ODD provenance documents are allowed");
 
   writeFileSync(join(root,"odd","tasks","pi-capability-completion-copy.md"),`Reference ${marker} detected`);
   stage();
