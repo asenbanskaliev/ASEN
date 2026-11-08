@@ -60,3 +60,36 @@ test("linked continuation restores the current running Todo to blocked when disp
  }),/dispatch failed/u);
  assert.equal(updates.length,2);assert.match(updates[0]!,/^running:User asked ASEN/u);assert.equal(updates[1],"blocked:Linked agent continuation was not dispatched; review is required");
 });
+
+// UFC-M2-03c negative pin (external review §4): the guard behavior already ships, so the honest
+// RED here is the missing assertion, not a faked functional failure. The state:"failed" refusal
+// above never exercised the role clause; these refusals carry state:"interrupted" with matching
+// session and project, so ONLY `role!=="explorer"` can throw. The first test in this file remains
+// the positive control: an interrupted explorer still continues.
+test("interrupted Explorer continuation refuses an interrupted worker target on the role clause alone",async()=>{
+ let continuationCount=0,linkReads=0,todoReads=0,binderReads=0;
+ await assert.rejects(()=>continueInterruptedExplorer({
+  agentId:"parent",identity,
+  runtime:{query:async()=>({...interruptedEntry,record:{...interruptedEntry.record,role:"worker"}}),continue:async()=>{continuationCount++;return "unused";}},
+  todo:{links:async()=>{linkReads++;return {list:async()=>[]};},todos:async()=>{todoReads++;return {list:async()=>[],update:async()=>{throw new Error("unused");}};},binder:async()=>{binderReads++;return {launch:async()=>{}};}},
+ }),/Only an interrupted read-only explorer/u);
+ assert.deepEqual({continuationCount,linkReads,todoReads,binderReads},{continuationCount:0,linkReads:0,todoReads:0,binderReads:0},"a worker refusal must be side-effect-free before any coordination read");
+});
+
+test("interrupted Explorer continuation refuses an ended explorer without dispatch",async()=>{
+ let continuationCount=0;
+ await assert.rejects(()=>continueInterruptedExplorer({
+  agentId:"parent",identity,
+  runtime:{query:async()=>({...interruptedEntry,record:{...interruptedEntry.record,state:"completed"}}),continue:async()=>{continuationCount++;return "unused";}},
+ }),/Only an interrupted read-only explorer/u);
+ assert.equal(continuationCount,0,"an ended agent is never continued automatically");
+});
+
+test("UFC-M2-03c shipped request guidance and tool description keep the same no-worker vocabulary as the guard",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const guidance=readFileSync(new URL("../src/runtime/request-guidance.ts",import.meta.url),"utf8");
+ assert.match(guidance,/Never call asen_agent_continue for a worker/u,"the guidance forbids the exact conflation this pin guards");
+ const tools=readFileSync(new URL("../src/agents/pi-agent-tools.ts",import.meta.url),"utf8");
+ assert.match(tools,/resume only an interrupted read-only explorer/u,"the public tool description matches the guard clause");
+ assert.match(tools,/Never use this for failed, cancelled, reviewer, verifier, or writer tasks/u,"the description names every non-explorer target");
+});
