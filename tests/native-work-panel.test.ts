@@ -8,9 +8,12 @@ import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
 const snapshot={todos:[],agents:[],jobs:[],changes:{branch:"main",files:0},profile:"free",permission:"normal"} satisfies AsenPanelSnapshot;
 test("REVIEW derives only stored Todo states that actually await review",()=>{
  const todos=["succeeded","blocked","done","running"].map((state,index)=>({taskId:`todo-${index}`,title:`Todo ${index}`,events:[],current:{state,taskId:`todo-${index}`}})) as any;
- const output=renderAsenPanel({...snapshot,todos},120).join("\n");
- assert.match(output,/Human review needed · 2/u);
- assert.match(output,/2 stored Todo results awaiting review/u);
+ const output=renderAsenPanel({...snapshot,todos,todosObserved:true},120).join("\n");
+ assert.match(output,/REVIEW · 1 needs review/u);
+ assert.match(output,/Results awaiting review · 1/u);
+ assert.match(renderAsenPanel({...snapshot,todos},120).join("\n"),/REVIEW · unverified/u);
+ assert.match(renderAsenPanel({...snapshot,todosObserved:true},120).join("\n"),/REVIEW · no pending results/u);
+ assert.match(renderAsenPanel({...snapshot,review:{pending:2}},120).join("\n"),/REVIEW · 2 needs review/u);
 });
 test("detail mode expands session lists to 100 while the overview keeps its compact limits",()=>{
  const todos=Array.from({length:101},(_,index)=>({taskId:`todo-${index}`,title:`Todo ${index}`,events:[],current:{state:"planned",taskId:`todo-${index}`}})) as any;
