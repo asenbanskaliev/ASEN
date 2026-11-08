@@ -164,3 +164,21 @@ test("UFC-M1-01 no clickability is claimed while UI-C15 remains CI-only",()=>{
  for(const width of [12,35,80,140])
   assert.ok(visibleWidth(renderAsenStatusLine(snapshot({hostStatus:projectHostStatus()}),width))<=width);
 });
+// UFC-M1-02 G1 (functional RED): an OBSERVED integration state must surface in the status
+// row. Today renderAsenStatusLine ignores snapshot.integrationInspection entirely, so the
+// UI-07 presence state is demonstrably absent from the composed row even when observed.
+test("UFC-M1-02 status row states the observed integrations presence",()=>{
+ const throwing=inspectIntegrationProfiles({}); // readers missing -> unavailable, observed fact
+ assert.match(renderAsenStatusLine(snapshot({integrationInspection:throwing}),160),
+  /integrations unavailable/u,"UI-07 requires the observed presence state visible on the row");
+ const reported=inspectIntegrationProfiles({getCommands:()=>[{name:"asen-usage"}],getAllTools:()=>[{name:"read",namespace:{name:"asen"}}]});
+ assert.match(renderAsenStatusLine(snapshot({integrationInspection:reported}),160),/integrations reported/u);
+ const empty=inspectIntegrationProfiles({getCommands:()=>[],getAllTools:()=>[]});
+ assert.match(renderAsenStatusLine(snapshot({integrationInspection:empty}),160),/integrations empty/u);
+});
+// UFC-M1-02 boundary pins: presence never reads as connection; unobserved keeps omission.
+test("UFC-M1-02 presence never implies connection and omission stays legacy-safe",()=>{
+ const row=renderAsenStatusLine(snapshot({integrationInspection:inspectIntegrationProfiles({getCommands:()=>[{name:"asen-doctor"}],getAllTools:()=>[]})}),160);
+ assert.doesNotMatch(row,/connected|healthy/iu,"presence of a registered tool is not a connection (UI-07 discipline)");
+ assert.equal(renderAsenStatusLine(snapshot(),160),"ASEN","snapshots without an inspection keep the shipped omission");
+});

@@ -177,6 +177,13 @@ export function renderAsenStatusLine(snapshot:AsenPanelSnapshot,width=80):string
  if(typeof snapshot.contextPercent==="number"&&Number.isFinite(snapshot.contextPercent)&&snapshot.contextPercent>=0&&snapshot.contextPercent<=100)
   parts.push("ctx "+Math.round(snapshot.contextPercent)+"%");
  }
+ // UI-07 integration presence, stated only from the observed inventory enum; an absent
+ // inspection keeps the shipped omission and no wording here ever implies a connection.
+ if(snapshot.integrationInspection){
+  const observed=[snapshot.integrationInspection.commands.state,snapshot.integrationInspection.tools.state];
+  parts.push("integrations "+(observed.includes("unavailable")?"unavailable"
+   :observed.every(s=>s==="empty")?"empty":"reported"));
+ }
  if(!host&&typeof snapshot.cost==="number"&&Number.isFinite(snapshot.cost)&&snapshot.cost>=0)
   parts.push("$"+snapshot.cost.toFixed(2)+(snapshot.subscription?" sub":""));
  return fit(parts.join(" │ "),width);

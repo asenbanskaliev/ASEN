@@ -60,13 +60,13 @@ test("public lifecycle status is additive, fresh, threshold-aware and clears on 
  const prior=process.env.ASEN_NO_SKILL_REGISTRY;process.env.ASEN_NO_SKILL_REGISTRY="1";
  t.after(()=>{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;});
  await f.emit("session_start");
- const expected=(context:string)=>`ASEN │ selected p/m · high │ responding ? │ ctx ${context}`;
+ const expected=(context:string)=>`ASEN │ selected p/m · high │ responding ? │ ctx ${context} │ cost/sub ?`;
  assert.equal(f.statuses.get("asen:host"),expected("80% warning"));
  for(const [percent,label] of [[79.999,"80%"],[80,"80% warning"],[94.999,"95% warning"],[95,"95% error"],[null,"?"]] as const){
   f.ctx.getContextUsage=()=>({tokens:percent===null?null:80,contextWindow:100,percent});
   await f.emit("session_compact");
   assert.equal(f.statuses.get("asen:host"),expected(label));
-  assert.match((await f.panel("status"))[0]!,new RegExp(`ctx ${label.replace(/[?%]/g,"\\$&")}$`));
+  assert.match((await f.panel("status"))[0]!,new RegExp(`ctx ${label.replace(/[?%]/g,"\\$&")}(?= │|$)`));
  }
  f.statuses.set("asen:workspace","existing Git contribution");
  await f.emit("model_select");assert.equal(f.statuses.get("asen:workspace"),"existing Git contribution");
@@ -78,20 +78,20 @@ test("missing and throwing observations stay unknown; headless and optional stat
  const f=await fixture(t);
  delete f.ctx.model;delete f.ctx.thinkingLevel;
  f.ctx.getContextUsage=()=>{throw Error("private host error");};
- assert.deepEqual(await f.panel("status"),["ASEN │ selected ? │ responding ? │ ctx ?"]);
- await f.emit("thinking_level_select");assert.equal(f.statuses.get("asen:host"),"ASEN │ selected ? │ responding ? │ ctx ?");
+ assert.deepEqual(await f.panel("status"),["ASEN │ selected ? │ responding ? │ ctx ? │ cost/sub ? │ integrations reported"]);
+ await f.emit("thinking_level_select");assert.equal(f.statuses.get("asen:host"),"ASEN │ selected ? │ responding ? │ ctx ? │ cost/sub ?");
  f.ctx.hasUI=false;f.ctx.mode="print";await f.emit("model_select");assert.equal(f.statuses.get("asen:host"),undefined);
- assert.deepEqual(await f.panel("status"),["ASEN │ selected ? │ responding ? │ ctx ?"]);
+ assert.deepEqual(await f.panel("status"),["ASEN │ selected ? │ responding ? │ ctx ? │ cost/sub ? │ integrations reported"]);
  delete f.ctx.ui.setStatus;await f.emit("model_select");
- delete f.ctx.getContextUsage;assert.deepEqual(await f.panel("status"),["ASEN │ selected ? │ responding ? │ ctx ?"]);
+ delete f.ctx.getContextUsage;assert.deepEqual(await f.panel("status"),["ASEN │ selected ? │ responding ? │ ctx ? │ cost/sub ? │ integrations reported"]);
 });
 
 test("public theme applies the unrounded context tone without changing plain command output",async t=>{
  const f=await fixture(t);const tones:string[]=[];
  f.ctx.ui.theme={fg(tone:string,text:string){tones.push(tone);return `<${tone}>${text}</${tone}>`;}};
  await f.emit("model_select");assert.deepEqual(tones,["warning"]);
- assert.equal(f.statuses.get("asen:host"),"<warning>ASEN │ selected p/m · high │ responding ? │ ctx 80% warning</warning>");
- assert.deepEqual(await f.panel("status"),["ASEN │ selected p/m · high │ responding ? │ ctx 80% warning"]);
+ assert.equal(f.statuses.get("asen:host"),"<warning>ASEN │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ?</warning>");
+ assert.deepEqual(await f.panel("status"),["ASEN │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ? │ integrations reported"]);
 });
 
 test("the composed host row carries the observed detached workspace changes segment",async t=>{
@@ -105,7 +105,7 @@ test("the composed host row carries the observed detached workspace changes segm
  await writeFile(path.join(f.project,"pending.txt"),"pending\n");
  git("checkout","--detach","-q");
  await f.emit("model_select");
- assert.equal(f.statuses.get("asen:host"),`ASEN │ detached ±1 │ selected p/m · high │ responding ? │ ctx 80% warning`);
+ assert.equal(f.statuses.get("asen:host"),`ASEN │ detached ±1 │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ?`);
  assert.doesNotMatch(f.statuses.get("asen:host")!,/Permission:|private|connected|healthy|servers: \d/i);
  await f.emit("session_shutdown");
 });
@@ -168,22 +168,22 @@ test("session replacement clears the previous UI contribution and observes only 
  f.setId("session-b");f.ctx.model={provider:"new",id:"selected"};f.ctx.getContextUsage=()=>undefined;
  await f.emit("model_select");
  assert.equal(f.statuses.get("asen:host"),undefined);
- assert.equal(current,"ASEN │ selected new/selected · high │ responding ? │ ctx ?");
+ assert.equal(current,"ASEN │ selected new/selected · high │ responding ? │ ctx ? │ cost/sub ?");
 });
 
 test("the host row composes workspace and elevated permission once without secondary status keys",async t=>{
  const f=await fixture(t);
  await f.emit("session_start");
- assert.equal(f.statuses.get("asen:host"),"ASEN │ selected p/m · high │ responding ? │ ctx 80% warning");
+ assert.equal(f.statuses.get("asen:host"),"ASEN │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ?");
  assert.equal(f.statuses.get("asen:permissions"),undefined,"The permission mode must not occupy a second status key");
  assert.equal(f.statuses.get("asen:workspace"),undefined,"ASEN contributes no separate workspace status key");
  await f.commands.get("asen-mode").handler("yolo",f.ctx);
- assert.equal(f.statuses.get("asen:host"),"ASEN │ YOLO │ selected p/m · high │ responding ? │ ctx 80% warning");
+ assert.equal(f.statuses.get("asen:host"),"ASEN │ YOLO │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ?");
  const rows=await f.panel("integrations");
  assert.ok(rows.some(row=>row.startsWith("  permissions standing permission for ordinary primary work")),rows.join("\n"));
  assert.doesNotMatch(rows.join("\n"),/Permission:|connected|healthy|servers: \d/i);
  await f.commands.get("asen-mode").handler("normal",f.ctx);
- assert.equal(f.statuses.get("asen:host"),"ASEN │ selected p/m · high │ responding ? │ ctx 80% warning");
+ assert.equal(f.statuses.get("asen:host"),"ASEN │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ?");
  assert.doesNotMatch((await f.panel("integrations")).join("\n"),/permissions /,"Normal mode states no meaning row");
 });
 
