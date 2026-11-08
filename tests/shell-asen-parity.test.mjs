@@ -114,3 +114,123 @@ test("R4-04 scenario contract excludes methodology as a third runtime",()=>{
  consent.cases[18].requiresHumanConsent=false;
  assert.throws(()=>validateShellAsenScenarios(consent));
 });
+
+// UFC-M5-06 adapter pins. Honest functional RED (plan field 13): the shipped comparator already
+// rejects foreign SHA/duplicates/non-real rows, but NO shipped component converts a genuine C01
+// beam report into an accepted observation pair — these assertions fail today because that
+// behaviour is absent, exactly the inert-artifact gap §Q7 names. Negatives below are specified
+// now and proven at GREEN; none may regress the existing comparator rules.
+import {gradeRealC01,C01_PROMPT} from "../scripts/r4-two-pi-beam-c01.mjs";
+import {observationsFromC01Report,attestC01Comparison,validateParityConsentReceipt,
+ validateParityReviewRecord} from "../scripts/shell-asen-parity.mjs";
+import {createHash} from "node:crypto";
+import {mkdirSync,mkdtempSync,rmSync,symlinkSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+const digest=x=>createHash("sha256").update(x).digest("hex");
+const c01Witness=(source,cand=sha)=>({source,candidateSha:cand,referenceSha:ready().referenceSha,
+ promptDigest:digest(C01_PROMPT),hostVersion:"1.2.0",provider:"ollama-cloud",model:"beam:cloud",
+ fixtureFingerprint:digest("same fixture"),projectUnchanged:true,sessionStarted:true,agentEnded:true,
+ agentStarts:1,toolCalls:0,answerDigest:digest("5"),answerSample:"5",answerChars:1,
+ outputDigest:digest("real native Pi transcript"),humanConsent:false});
+const c01Report=(over={})=>gradeRealC01({candidateSha:sha,referenceSha:ready().referenceSha,
+ records:{SHELL:c01Witness("SHELL"),ASEN:c01Witness("ASEN")},runId:"44",runAttempt:"1",...over});
+function scratchC01(report){
+ const dir=mkdtempSync(join(tmpdir(),"asen-parity-adapter-"));
+ const file=join(dir,"c01-beam.json");
+ writeFileSync(file,JSON.stringify(report,null," ")+"\n");
+ return {dir,file};
+}
+const consumed=(report,artifact)=>compareShellAsenClaims({readiness:ready(),
+ observations:observationsFromC01Report({report,readiness:ready(),artifactPath:artifact})});
+const RUN={candidateSha:sha,runId:"44",runAttempt:"1"};
+const consentReceipt=(over={})=>({schema:"asen-parity-consent-receipt/v1",
+ receiptId:"owner-consent-000001",grantedBy:"owner:asenbanskaliev",
+ grantedAt:"2026-11-08T00:00:00.000Z",candidateSha:sha,
+ decision:"consumption-and-attestation-wiring",runId:"44",runAttempt:"1",...over});
+const reviewRecord=(over={})=>({schema:"asen-parity-independent-review/v1",
+ reviewerId:"reviewer:independent-socket",performedAt:"2026-11-08T00:10:00.000Z",
+ candidateSha:sha,runId:"44",runAttempt:"1",verdict:"approved",
+ findings:"bounded C01 match reviewed against the frozen contract",...over});
+
+test("UFC-M5-06 a genuine C01 report becomes a schema-validated observation pair the comparator consumes",t=>{
+ const report=c01Report();const {dir,file}=scratchC01(report);
+ t.after(()=>rmSync(dir,{recursive:true,force:true,maxRetries:8}));
+ const comparison=consumed(report,file);
+ const c01=comparison.cases.find(x=>x.id==="C01");
+ assert.equal(c01.status,"MATCH_CLAIM_UNATTESTED","a consumed genuine pair must reach the attested-claim path, never stay inert");
+ assert.equal(comparison.claimedSlots,2);
+ assert.equal(comparison.cases.filter(x=>x.id!=="C01"&&x.status==="BLOCKED").length,19);
+ assert.equal(comparison.certifiedMatches,0);assert.equal(comparison.certifiedDifferences,0);
+ assert.equal(comparison.globalFull,false);assert.equal(comparison.independentReviewPerformed,false);
+});
+
+test("UFC-M5-06 the adapter still rejects foreign SHA, duplicated, non-real, promoted and mismatched artifacts",t=>{
+ const report=c01Report();const {dir,file}=scratchC01(report);
+ t.after(()=>rmSync(dir,{recursive:true,force:true,maxRetries:8}));
+ const r=ready();
+ assert.throws(()=>observationsFromC01Report({report:{...report,candidateSha:"b".repeat(40)},readiness:r,artifactPath:file}),/candidate SHA/iu);
+ assert.throws(()=>observationsFromC01Report({report:{...report,referenceSha:"f".repeat(40)},readiness:r,artifactPath:file}),/reference SHA/iu);
+ assert.throws(()=>observationsFromC01Report({report:{...report,sourceAnswers:[report.sourceAnswers[0],report.sourceAnswers[0]]},readiness:r,artifactPath:file}),/duplicat/iu);
+ assert.throws(()=>observationsFromC01Report({report:{...report,modelCallsVerifiedByAgentStarts:false},readiness:r,artifactPath:file}),/real|observ/iu);
+ assert.throws(()=>observationsFromC01Report({report:{...report,globalFull:true},readiness:r,artifactPath:file}),/promotion|globalFull|never/iu);
+ const bad=join(dir,"tampered.json");writeFileSync(bad,JSON.stringify({...report,sourceAnswers:
+  report.sourceAnswers.map(a=>({...a,answerSample:"tampered"}))},null," ")+"\n");
+ assert.throws(()=>observationsFromC01Report({report,readiness:r,artifactPath:bad}),/artifact/iu);
+});
+
+test("UFC-M5-06 a symlinked or otherwise non-canonical artifact path is never admitted",t=>{
+ const report=c01Report();const {dir,file}=scratchC01(report);
+ t.after(()=>rmSync(dir,{recursive:true,force:true,maxRetries:8}));
+ const linkRoot=join(dir,"link");
+ symlinkSync(dir,linkRoot,"junction");
+ assert.throws(()=>observationsFromC01Report({report,readiness:ready(),
+  artifactPath:join(linkRoot,"c01-beam.json")}),/canonical/iu);
+});
+
+test("UFC-M5-06 verdicts stay UNATTESTED without attestation inputs and a partial pair fails closed",t=>{
+ const report=c01Report();const {dir,file}=scratchC01(report);
+ t.after(()=>rmSync(dir,{recursive:true,force:true,maxRetries:8}));
+ const comparison=consumed(report,file);
+ assert.deepEqual(attestC01Comparison({comparison,runContext:RUN}),comparison,"no inputs means byte-identical inert verdicts");
+ assert.throws(()=>attestC01Comparison({comparison,consentReceipt:consentReceipt(),runContext:RUN}),/both/iu);
+ assert.throws(()=>attestC01Comparison({comparison,reviewRecord:reviewRecord(),runContext:RUN}),/both/iu);
+ assert.throws(()=>attestC01Comparison({comparison,consentReceipt:consentReceipt(),
+  reviewRecord:reviewRecord(),runContext:{...RUN,candidateSha:"c".repeat(40)}}),/identity|match/iu);
+});
+
+test("UFC-M5-06 genuine bound attestation marks claims yet can never certify FULL or touch counters",t=>{
+ const report=c01Report();const {dir,file}=scratchC01(report);
+ t.after(()=>rmSync(dir,{recursive:true,force:true,maxRetries:8}));
+ const comparison=consumed(report,file);
+ const attested=attestC01Comparison({comparison,consentReceipt:consentReceipt(),
+  reviewRecord:reviewRecord(),runContext:RUN});
+ assert.equal(attested.cases.find(x=>x.id==="C01").status,"MATCH_CLAIM_ATTESTED");
+ assert.equal(attested.certifiedMatches,0);assert.equal(attested.certifiedDifferences,0);
+ assert.equal(attested.globalFull,false);
+ assert.equal(attested.independentReviewPerformed,true,"the review record exists in this shape");
+ assert.equal(attested.attestation.consentReceiptId,"owner-consent-000001");
+});
+
+test("UFC-M5-06 consent receipts are SHA-bound, run-bound and never replayable across identities",()=>{
+ assert.doesNotThrow(()=>validateParityConsentReceipt(consentReceipt(),RUN));
+ assert.throws(()=>validateParityConsentReceipt(consentReceipt({runId:"45"}),RUN),/bind|run/iu);
+ assert.throws(()=>validateParityConsentReceipt(consentReceipt({runAttempt:"2"}),RUN),/bind|run/iu);
+ assert.throws(()=>validateParityConsentReceipt(consentReceipt({candidateSha:"d".repeat(40)}),RUN),/SHA|bind/iu);
+ assert.throws(()=>validateParityConsentReceipt(consentReceipt({receiptId:"x"})),/receiptId|shape|receipt/iu);
+ assert.throws(()=>validateParityConsentReceipt(consentReceipt({grantedAt:"not-a-time"})),/time|date|grantedAt/iu);
+ assert.throws(()=>validateParityConsentReceipt(consentReceipt({decision:"anything-else"})),/decision/iu);
+ assert.throws(()=>validateParityConsentReceipt({...consentReceipt(),extra:1}),/shape/iu);
+});
+
+test("UFC-M5-06 independent review records demand independence and an approving verdict",()=>{
+ assert.doesNotThrow(()=>validateParityReviewRecord(reviewRecord(),RUN));
+ assert.throws(()=>validateParityReviewRecord(reviewRecord({verdict:"rejected"}),RUN),/approved|verdict/iu);
+ assert.throws(()=>validateParityReviewRecord(reviewRecord({reviewerId:"owner:asenbanskaliev"}),RUN),/independ|owner/iu);
+ assert.throws(()=>validateParityReviewRecord({...reviewRecord(),findings:""},RUN),/findings/iu);
+ const report=c01Report();const {dir,file}=scratchC01(report);
+ try{
+  assert.throws(()=>attestC01Comparison({comparison:consumed(report,file),
+   consentReceipt:consentReceipt(),reviewRecord:reviewRecord({verdict:"rejected"}),runContext:RUN}),/approved|verdict/iu);
+ }finally{rmSync(dir,{recursive:true,force:true,maxRetries:8});}
+});

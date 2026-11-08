@@ -3,7 +3,7 @@
  * This module can expose gaps and differences, not independently attest execution.
  */
 import assert from "node:assert/strict";
-import {readFileSync,mkdirSync,writeFileSync} from "node:fs";
+import {readFileSync,mkdirSync,realpathSync,writeFileSync} from "node:fs";
 import {execFileSync} from "node:child_process";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -140,6 +140,144 @@ export function compareShellAsenClaims({readiness,observations}){
   humanConsentReceived:false,globalFull:false,
   disclaimer:"Only a matching, authenticated host receipt and independent acceptance gate may promote a claimed comparison. This function never certifies FULL.",
  });
+}
+const ISO_TIME=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u;
+const RUN_FIELD=/^[1-9][0-9]*$/u;
+const DIGEST64=/^[a-f0-9]{64}$/u;
+/**
+ * UFC-M5-06: convert one captured, graded C01 beam report into the observation pair the
+ * shipped comparator consumes. Identity first: SHA equality against the readiness, plausible
+ * CI run identity, a canonical non-symlink artifact whose bytes match the report exactly.
+ * A report that already claims promotion is refused; execution may only be marked real when
+ * the report carries the bounded agent-start proof. This never weakens comparator rules;
+ * verdicts still leave the comparator UNATTESTED until attestC01Comparison sees genuine inputs.
+ */
+export function observationsFromC01Report({report,readiness,artifactPath}){
+ assert.equal(report?.schema,"asen-r4-c01-two-real-pi-inferences/v1","only the shipped C01 beam report shape can be consumed");
+ assert.equal(report?.caseId,"C01","the C01 adapter only consumes caseId C01");
+ assert.equal(readiness?.schema,"asen-shell-asen-readiness/v1");
+ assert.equal(report.candidateSha,readiness.candidateSha,"Foreign candidate SHA in the C01 report");
+ assert.equal(report.referenceSha,readiness.referenceSha,"Foreign reference SHA in the C01 report");
+ assert.equal(report.referenceSha,trustedBaseline.commit,"the C01 report must carry the frozen reference commit");
+ assert.match(String(report.runId),RUN_FIELD,"a consumed report requires a real CI run identity");
+ assert.match(String(report.runAttempt),RUN_FIELD,"a consumed report requires a real CI run attempt");
+ assert.equal(report.modelCallsVerifiedByAgentStarts,true,"a consumed report must carry real-observation proof");
+ assert.equal(report.certifiedFullCases,0,"capture reports never carry promotion state");
+ assert.equal(report.globalFull,false,"capture reports never carry promotion state");
+ assert.equal(report.independentReviewPerformed,false,"capture reports never carry promotion state");
+ const answers=report.sourceAnswers;
+ assert.ok(Array.isArray(answers)&&answers.length===2,"a C01 report must carry exactly two source answers");
+ assert.ok(new Set(answers.map(a=>a.source)).size===2,"Duplicated source answers in the C01 report");
+ assert.deepEqual(answers.map(a=>a.source).sort(),["ASEN","SHELL"]);
+ let canonical;
+ try{canonical=realpathSync(artifactPath);}
+ catch{throw new Error("artifact path must be canonical, never symlinked or redirected");}
+ assert.equal(canonical,resolve(artifactPath),"artifact path must be canonical, never symlinked or redirected");
+ const parsed=JSON.parse(readFileSync(canonical,"utf8"));
+ assert.deepEqual(parsed,report,"artifact bytes do not match the consumed report");
+ const rows=answers.map(a=>{
+  assert.ok(same(a,["source","outputDigest","answerDigest","answerSample","answerChars",
+   "toolCalls","agentStarts","model","hostVersion","projectUnchanged"]),
+   `unexpected C01 answer shape for ${a?.source}`);
+  assert.match(a.outputDigest,DIGEST64,`${a.source}: bounded output digest is required for a real observation`);
+  assert.match(a.answerDigest,DIGEST64,`${a.source}: bounded answer digest is required`);
+  assert.ok(Number.isInteger(a.agentStarts)&&a.agentStarts>=1&&a.agentStarts<=2,
+   `${a.source}: a real observation needs a bounded agent-start count`);
+  assert.ok(Number.isInteger(a.toolCalls)&&a.toolCalls>=0,`${a.source}: tool-call count missing`);
+  assert.ok(Number.isInteger(a.answerChars)&&a.answerChars>=1&&a.answerChars<=8000,
+   `${a.source}: real answer text is required for a real observation`);
+  assert.ok(typeof a.answerSample==="string"&&a.answerSample.length>=1&&a.answerSample.length<=300,
+   `${a.source}: answer sample missing`);
+  assert.equal(a.hostVersion,"1.2.0",`${a.source}: pinned host version required`);
+  assert.match(a.model,/^[A-Za-z0-9][A-Za-z0-9.:-]{0,59}$/u,`${a.source}: model identity required`);
+  const bound=a.source==="SHELL"?report.referenceSha:report.candidateSha;
+  return Object.freeze({id:report.caseId,source:a.source,sha:bound,execution:"real",
+   trace:Object.freeze({route:`pi:${a.hostVersion}/model:${a.model}`,
+    roles:Object.freeze([`assistant-turns:${a.agentStarts}`]),
+    guards:Object.freeze(a.toolCalls===0?["no-tool-calls"]:["tool-calls-observed"]),
+    checks:Object.freeze(a.projectUnchanged?["fixture-unchanged"]:["fixture-changed"]),
+    notifications:Object.freeze(["bounded-answer-observed"]),
+    effects:Object.freeze(a.projectUnchanged?[]:["filesystem-mutation"])}),
+   receipt:`c01-beam run=${report.runId}/${report.runAttempt} sha=${bound.slice(0,12)} `+
+    `out=${a.outputDigest.slice(0,16)} answer=${a.answerDigest.slice(0,16)}`});
+ });
+ return Object.freeze({schema:"asen-shell-asen-observations/v1",
+  candidateSha:report.candidateSha,referenceSha:report.referenceSha,rows:Object.freeze(rows)});
+}
+/** Consent for parity consumption: SHA-bound, run-bound, single-decision, never replayable. */
+export function validateParityConsentReceipt(receipt,run){
+ assert.ok(same(receipt,["schema","receiptId","grantedBy","grantedAt","candidateSha","decision","runId","runAttempt"]),
+  "Unexpected consent receipt shape");
+ assert.equal(receipt.schema,"asen-parity-consent-receipt/v1");
+ assert.match(receipt.receiptId,/^[a-z0-9][a-z0-9._-]{7,63}$/u,"Invalid consent receiptId");
+ assert.match(receipt.grantedBy,/^owner:[A-Za-z0-9._-]{1,100}$/u,"consent must be granted under an owner identity");
+ assert.match(receipt.grantedAt,ISO_TIME,"Invalid grantedAt time");
+ assert.match(receipt.candidateSha,EXACT_SHA,"consent receipt requires the exact candidate SHA");
+ assert.match(String(receipt.runId),RUN_FIELD,"consent receipt requires a real run id");
+ assert.match(String(receipt.runAttempt),RUN_FIELD,"consent receipt requires a real run attempt");
+ assert.equal(receipt.decision,"consumption-and-attestation-wiring",
+  "only the consumption-and-attestation-wiring decision may be consented here");
+ if(run!==undefined){
+  assert.equal(receipt.candidateSha,run.candidateSha,"consent receipt is not bound to this candidate SHA");
+  assert.equal(String(receipt.runId)===String(run.runId)&&String(receipt.runAttempt)===String(run.runAttempt),true,
+   "consent receipt is bound to a different run and is not replayable into this run");
+ }
+ return Object.freeze(receipt);
+}
+/** The independent witness: a reviewer identity that is not the granting owner. */
+export function validateParityReviewRecord(record,run){
+ assert.ok(same(record,["schema","reviewerId","performedAt","candidateSha","runId","runAttempt","verdict","findings"]),
+  "Unexpected independent review record shape");
+ assert.equal(record.schema,"asen-parity-independent-review/v1");
+ assert.match(record.reviewerId,/^[a-z][a-z0-9._:-]{3,99}$/u,"Invalid reviewer identity");
+ assert.ok(!/^owner:/u.test(record.reviewerId),"the reviewer identity must be independent of the owner grant");
+ assert.match(record.performedAt,ISO_TIME,"Invalid performedAt time");
+ assert.match(record.candidateSha,EXACT_SHA,"review record requires the exact candidate SHA");
+ assert.match(String(record.runId),RUN_FIELD,"review record requires a real run id");
+ assert.match(String(record.runAttempt),RUN_FIELD,"review record requires a real run attempt");
+ assert.equal(record.verdict,"approved","Independent review verdict must be approved to witness attestation");
+ assert.ok(typeof record.findings==="string"&&record.findings.length>=10&&record.findings.length<=512,
+  "Missing findings: an empty review proves nothing");
+ if(run!==undefined){
+  assert.equal(record.candidateSha,run.candidateSha,"review record is not bound to this candidate SHA");
+  assert.equal(String(record.runId)===String(run.runId)&&String(record.runAttempt)===String(run.runAttempt),true,
+   "review record is bound to a different run and is not replayable into this run");
+ }
+ return Object.freeze(record);
+}
+/**
+ * UFC-M5-06 attestation: with NO inputs the comparison is returned byte-identical — genuine
+ * runs must not stay inert, but nothing gets promoted either. A partial pair fails closed.
+ * With both genuine inputs the per-case claim status moves from *_UNATTESTED to *_ATTESTED
+ * for exactly this run identity; certified counters and globalFull remain untouched here.
+ * Registry stage advancement stays owned by CI assembly and independent acceptance.
+ */
+export function attestC01Comparison({comparison,consentReceipt,reviewRecord,runContext}){
+ assert.equal(comparison?.schema,"asen-shell-asen-observable-comparison/v1");
+ assert.equal(comparison?.referenceSha,trustedBaseline.commit,"the comparison must carry the frozen reference");
+ assert.match(runContext?.candidateSha??"",EXACT_SHA,"run identity requires the exact candidate SHA");
+ assert.match(String(runContext?.runId),RUN_FIELD,"attestation requires a real run id");
+ assert.match(String(runContext?.runAttempt),RUN_FIELD,"attestation requires a real run attempt");
+ assert.equal(comparison.candidateSha,runContext.candidateSha,
+  "run identity mismatch between attestation context and comparison");
+ const hasConsent=consentReceipt!==undefined,hasReview=reviewRecord!==undefined;
+ assert.ok(hasConsent===hasReview,
+  "attestation requires both a consent receipt and an independent review record");
+ if(!hasConsent)return comparison;
+ validateParityConsentReceipt(consentReceipt,runContext);
+ validateParityReviewRecord(reviewRecord,runContext);
+ assert.notEqual(reviewRecord.reviewerId,consentReceipt.grantedBy,
+  "the reviewer identity must be independent of the granting owner identity");
+ const upgrade={MATCH_CLAIM_UNATTESTED:"MATCH_CLAIM_ATTESTED",
+  DIFFERENCE_CLAIM_UNATTESTED:"DIFFERENCE_CLAIM_ATTESTED"};
+ const cases=comparison.cases.map(row=>Object.freeze(upgrade[row.status]
+  ?{...row,status:upgrade[row.status],attestation:"consent-and-independent-review-recorded"}:row));
+ return Object.freeze({...comparison,cases:Object.freeze(cases),
+  attestation:Object.freeze({consentReceiptId:consentReceipt.receiptId,grantedBy:consentReceipt.grantedBy,
+   grantedAt:consentReceipt.grantedAt,reviewerId:reviewRecord.reviewerId,
+   performedAt:reviewRecord.performedAt,decision:consentReceipt.decision}),
+  independentReviewPerformed:true,
+  disclaimer:"Attested claims bind exactly one CI run identity (candidate SHA, runId, runAttempt). Certified counters stay zero and globalFull stays false here: registry stage advancement remains owned by CI assembly and independent acceptance."});
 }
 function main(){
  const env=process.env;
