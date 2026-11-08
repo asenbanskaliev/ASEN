@@ -52,14 +52,20 @@ function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
   case "INTEGRATIONS":return snapshot.integrationInspection?"observed":snapshot.integrationStates?.length?snapshot.integrationStates.length+" reported":"unknown";
  }
 }
-export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPanelSection,width=72):readonly string[]{
+/**
+ * Summary views stay deliberately compact.  A caller that has entered one
+ * section may request the bounded detail projection; it is still read-only
+ * and never changes the underlying session state.
+ */
+export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPanelSection,width=72,detail=false):readonly string[]{
  if(!Number.isSafeInteger(width)||width<12||width>1000)throw new Error("Invalid ASEN panel width");
  const out:string[]=[];
+ const itemLimit=detail?100:12,secondaryLimit=detail?100:8;
  switch(section){
   case "TODOS":{
    const open=snapshot.todos.filter(t=>unfinishedTodo.has(t.current.state));
    if(!snapshot.todos.length)out.push("No tasks in this session");
-   for(const item of open.slice(0,12)){
+   for(const item of open.slice(0,itemLimit)){
     const state=item.current.state==="succeeded"?"awaiting independent review":item.current.state;
     out.push(glyph(item.current.state)+" "+clean(item.title,240)+" ["+state+"]");
     if(item.current.state==="blocked"||item.current.state==="succeeded")
@@ -69,26 +75,26 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    const cancelled=snapshot.todos.filter(t=>t.current.state==="cancelled").length;
    if(done)out.push("✓ "+done+" done");
    if(cancelled)out.push("✕ "+cancelled+" cancelled");
-   if(open.length>12)out.push("… "+(open.length-12)+" more · /asen-todos");
+   if(open.length>itemLimit)out.push("… "+(open.length-itemLimit)+" more · /asen-todos");
    break;
   }
   case "JOBS":{
    const jobs=[...snapshot.jobs].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
    if(!jobs.length)out.push("No owned jobs");
-   for(const job of jobs.slice(0,8)){
+   for(const job of jobs.slice(0,secondaryLimit)){
     const metadata=projectJobMetadata(job);
     out.push(glyph(metadata.state)+" "+jobInspectionLabel(metadata)+(metadata.provenance==="journal-historical"?" · historical":" · observed"));
    }
    out.push("Read-only tail · /asen-job-inspect [id] · bounded metadata and log tail");
-   if(jobs.length>8)out.push("… "+(jobs.length-8)+" more");
+   if(jobs.length>secondaryLimit)out.push("… "+(jobs.length-secondaryLimit)+" more");
    break;
   }
   case "AGENTS":{
    const priority:Record<string,number>={interrupted:0,running:1,queued:2,failed:3,cancelled:4,completed:5};
    const agents=[...snapshot.agents].sort((a,b)=>(priority[a.state]??9)-(priority[b.state]??9)||b.updatedAt.localeCompare(a.updatedAt));
    if(!agents.length)out.push("No agents · /asen-agents");
-   for(const agent of agents.slice(0,8))out.push(glyph(agent.state)+" "+clean(agent.role,30)+" · "+agent.state+(agent.state==="interrupted"?" · inspect first":""));
-   if(agents.length>8)out.push("… "+(agents.length-8)+" more · /asen-agents");
+   for(const agent of agents.slice(0,secondaryLimit))out.push(glyph(agent.state)+" "+clean(agent.role,30)+" · "+agent.state+(agent.state==="interrupted"?" · inspect first":""));
+   if(agents.length>secondaryLimit)out.push("… "+(agents.length-secondaryLimit)+" more · /asen-agents");
    // No real tokens/prices/model on the durable public agent record: never fabricate.
    break;
   }
@@ -99,8 +105,14 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    break;
   }
   case "REVIEW":{
-   out.push(snapshot.review?.pending?"Human review needed · "+snapshot.review.pending:"Review state unverified · /asen-review");
+   // The panel snapshot's Todos come from the scoped SessionTodoStore.  A
+   // succeeded or blocked Todo is the only stored panel state that says its
+   // result still needs review; no request, candidate, acknowledgement or
+   // human-read state is inferred here.
+   const pending=snapshot.review?.pending??snapshot.todos.filter(todo=>todo.current.state==="succeeded"||todo.current.state==="blocked").length;
+   out.push(pending?"Human review needed · "+pending:"Review state unverified · /asen-review");
    if(snapshot.review?.label)out.push(clean(snapshot.review.label,140));
+   else if(pending)out.push(`${pending} stored Todo result${pending===1?"":"s"} awaiting review`);
    break;
   }
   case "INTEGRATIONS":{
