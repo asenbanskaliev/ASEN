@@ -16,8 +16,8 @@ This matrix is not actual-host R02 evidence, root-layout admission, source equiv
 | Persistent content near editor | `setWidget`, placement aboveEditor/belowEditor; `extensions/asen.ts:352-387` | SUPPORTED additive widget; not reserved right-side layout. |
 | Header/footer/editor replacement | Public component factories; `tests/pi-memory-skill-sdk-lifecycle.test.ts:7-13,48-58` | SUPPORTED replacement surface; not proof of additive layout. Existing footer ownership must remain unchanged. |
 | Temporary interactive screen | `custom()`; `extensions/asen.ts:953-979` | SUPPORTED modal/screen and text fallback, not persistent shell admission. |
-| Non-capturing positioned overlay | `showOverlay`, right anchors, nonCapturing, visible(width,height), handle hide/focus/unfocus/getBounds | PARTIAL candidate: editor focus may coexist, but overlay placement can occlude content. No root reflow/reserved-column proof. |
-| Persistent root split / reserved rail / transcript reflow | No exact public root-partition interface established in the inspected versioned docs or tracked adapter | UNKNOWN; absence in inspected material is not proof of global API absence. R02-R06 persistent branch is not admitted. |
+| Non-capturing positioned overlay | `showOverlay`, right anchors, nonCapturing, visible(width,height), handle hide/focus/unfocus/getBounds; executed observation in `docs/audit/evidence/rail-feasibility-probe-ef4507f35a99.json` | EXECUTED at 140 columns on the real Pi 1.2.0 win32 host: overlay opened non-capturing with right anchor, typed input kept echoing beneath it and disposal stayed clean (`overlay-noncapturing`, `input-preservation-under-overlay`, `disposal-cleanliness` VERIFIED). Still coexistence, not root reflow/reserved-column proof. |
+| Persistent root split / reserved rail / transcript reflow | Executed probe `scripts/rail-feasibility-probe.mjs` receipt `docs/audit/evidence/rail-feasibility-probe-ef4507f35a99.json` at `ef4507f35a99`; no exact public root-partition interface observed | UNKNOWN after execution: `transcript-reflow` INDETERMINATE (PTY line joins defeated width measurement), `resize-behavior` GAP, `additive-widget` persistence UNKNOWN; the root-split VERIFIED gates were not met. Absence in this run is not proof of global API absence. R02-R06 persistent branch is not admitted. |
 | Responsive dimensions | render(width), terminal rows, overlay visibility/bounds | SUPPORTED dimensions; durable root reflow/resize contract remains PARTIAL. |
 | Editor/autocomplete preservation | Public editor/autocomplete APIs; existing type-backed lifecycle fixture | SUPPORTED APIs; simultaneous preservation under a side overlay is PARTIAL and needs actual-host evidence. |
 | Native keybindings | Injected keybinding matcher and overlay focus handles; `src/runtime/native-work-panel.ts:6-14,46-67` | SUPPORTED composition; no second global keymap. |
@@ -27,8 +27,8 @@ This matrix is not actual-host R02 evidence, root-layout admission, source equiv
 
 ## Decision
 
-1. R01 is complete as a documentary matrix. It does not admit the full persistent split rail.
-2. R02 remains BLOCKED for that full contract: the overlay is only a PARTIAL alternative, not a supported root-partition candidate.
+1. R01 is complete as a documentary matrix, now backed by an executed rail-feasibility probe (UFC-M4-01). It does not admit the full persistent split rail: the run recorded `persistent-root-split-rail` UNKNOWN with `transcript-reflow` INDETERMINATE.
+2. R02 remains BLOCKED for that full contract: the executed overlay path is a coexistence alternative with VERIFIED non-capturing/input/disposal observations, not a supported root-partition candidate.
 3. Do not patch private containers, modify the runtime, install a different SDK, invent setRail, or call an occluding overlay a reserved rail.
 4. R07-R15 may use the already supported widget/status/modal branches after bounded gap analysis; reuse existing projections, commands and stores rather than add wrappers for already implemented behavior.
 5. An actual overlay experiment would have to identify persistence across turns, input/autocomplete, resize, disposal and occlusion versus reflow explicitly. It cannot pass root-layout admission by measuring position alone.

@@ -124,8 +124,8 @@ The detailed cards below remain the implementation specifications:
 
 | ID | Canonical mapping | Dependencies | Execution readiness | Future route / owner | Commit placeholder |
 |---|---|---|---|---|---|
-| R01 | UI-01 shell/rail | activated plan | DONE: documentary matrix; root split UNKNOWN | parent evidence owner | d517a69b |
-| R02 | UI-01 shell/rail | R01=supported public candidate | BLOCKED until R01 identifies a supported public candidate | actual-host evidence owner | pending |
+| R01 | UI-01 shell/rail | activated plan | DONE: documentary matrix plus EXECUTED rail-feasibility probe (UFC-M4-01, `scripts/rail-feasibility-probe.mjs`); root split still UNKNOWN after the run — receipt `docs/audit/evidence/rail-feasibility-probe-ef4507f35a99.json` at `ef4507f35a99` records transcript-reflow INDETERMINATE, resize GAP, widget persistence UNKNOWN, overlay non-capturing/input/disposal VERIFIED at 140 cols | parent evidence owner | d517a69b; ef4507f3 |
+| R02 | UI-01 shell/rail | R01=supported public candidate | BLOCKED: the probe was executed and no supported public root-partition candidate emerged (reflow INDETERMINATE, root-split gates unmet); VERIFIED overlay coexistence is explicitly not admission | actual-host evidence owner | ef4507f3 |
 | R03 | UI-01 shell/rail | R01,R02=supported | BLOCKED until host admission | core integration writer | pending |
 | R04 | UI-01 shell/rail | R03 | BLOCKED until host admission | integration writer | pending |
 | R05 | UI-11 responsive/presets | R03 | PENDING_PREREQUISITES | bounded geometry writer | pending |
