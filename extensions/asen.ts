@@ -1040,7 +1040,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        const entry=stored[index],valid=!!entry&&entry.record.id===listed.id&&entry.record.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(entry.record.projectId,identity.projectId);
        if(!valid){hierarchyAvailable=false;inspections.push(Object.freeze({record:listed,history:Object.freeze([])}));return;}
        const record=entry.record,history=Object.freeze(entry.events.map(event=>Object.freeze({id:event.id,revision:event.revision,state:event.state,at:event.at})));
-       const inspection=Object.freeze({record,history});inspections.push(inspection);
+       const inspection=Object.freeze({record,history,spec:Object.freeze({...(entry.request.model===undefined?{}:{model:entry.request.model}),...(entry.request.thinking===undefined?{}:{thinking:entry.request.thinking}),...(entry.request.continuationOf===undefined?{}:{continuationOf:entry.request.continuationOf})})});inspections.push(inspection);
        const continuationOf=entry.request.continuationOf;
        hierarchyRecords.push(Object.freeze({id:record.id,role:record.role,owner:Object.freeze({kind:record.owner.kind,id:record.owner.id}),
         sessionId:record.sessionId,projectId:record.projectId,state:record.state,createdAt:record.createdAt,updatedAt:record.updatedAt,history,
@@ -1095,7 +1095,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const found=runtime?await runtime.query(id,identity):null;
     const record=found?.record??entries.find(row=>row.id===id);
     if(!record)return ["ASEN agent does not belong to this Pi session/project."];
-    return [...renderAgentInspection({record,history:found?.history??[]},Math.max(12,terminalColumns()))];
+    return [...renderAgentInspection({record,history:found?.history??[],...(found?.spec?{spec:found.spec}:{})},Math.max(12,terminalColumns()))];
    }});
    registerData("asen-changes-view",{description:"Inspect bounded, read-only Git status and per-file diff for the current workspace",handler:async(args:string|undefined,ctx:CommandContext,bindPublicationGuard:(guard:()=>void)=>void)=>{
     let assertScope:(()=>void)|undefined,rootIdentity:WorkspaceRootIdentity|undefined;

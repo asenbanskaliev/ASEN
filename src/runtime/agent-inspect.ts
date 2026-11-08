@@ -1,9 +1,15 @@
 import type {PublicAgentRecord} from "./agent-lifecycle.js";
 import type {AgentStateEvent} from "./agent-store.js";
 import {sanitizeTerminalText,truncateForTerminal} from "./responsive-layout.js";
+export interface AgentInspectionSpec{
+ readonly model?:string;
+ readonly thinking?:string;
+ readonly continuationOf?:string;
+}
 export interface AgentInspection{
  readonly record:PublicAgentRecord;
  readonly history:readonly AgentStateEvent[];
+ readonly spec?:AgentInspectionSpec;
 }
 const clean=(value:string,max=160)=>sanitizeTerminalText(value).replace(/\s+/gu," ").trim().slice(0,max);
 /** Persisted lifecycle trace; never claim child Pi RPC thought/tool transcript. */
@@ -15,6 +21,12 @@ export function renderAgentInspection(view:AgentInspection,width=100):readonly s
   "Task: "+clean(record.id,180),
   "Project: "+clean(record.projectId,140),
   "Owner: "+clean(record.owner.kind,16)+" · "+clean(record.owner.id,90),
+  "Thread: "+clean(record.sessionId,90),
+  ...(view.spec===undefined?[]:[
+   "Requested model: "+clean(view.spec.model??"unspecified",80),
+   "Requested effort: "+clean(view.spec.thinking??"unspecified",40),
+   "Continuation of: "+clean(view.spec.continuationOf??"root",180),
+  ]),
   "Persistent lifecycle (not the model transcript):",
  ];
  const sorted=[...history].sort((a,b)=>a.revision-b.revision);
@@ -23,6 +35,6 @@ export function renderAgentInspection(view:AgentInspection,width=100):readonly s
  }
  if(history.length>40)rows.push("… "+(history.length-40)+" older events omitted");
  if(record.state==="interrupted")rows.push("Interrupted: inspect before an explicit restart; no automatic replay");
- rows.push("Model message/thread metadata unavailable in this durable lifecycle store");
+ rows.push("Tokens and cost are not observable in this durable lifecycle store");
  return Object.freeze(rows.map(row=>truncateForTerminal(row,width)));
 }

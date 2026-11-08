@@ -25,7 +25,7 @@ export class AgentRuntime{
  async list(identity:AgentSessionIdentity):Promise<readonly PublicAgentRecord[]>{return this.store.list(identity.sessionId,identity.projectId);}
  async query(id:string,identity:AgentSessionIdentity){
   const entry=await this.store.get(id,identity.sessionId,identity.projectId);
-  return entry?{record:entry.record,history:entry.events}:null;
+  return entry?{record:entry.record,history:entry.events,spec:{...(entry.request.model===undefined?{}:{model:entry.request.model}),...(entry.request.thinking===undefined?{}:{thinking:entry.request.thinking}),...(entry.request.continuationOf===undefined?{}:{continuationOf:entry.request.continuationOf})}}:null;
  }
  /** Observers receive only persisted terminal outcomes; notification failures cannot alter execution. */
  subscribeTerminal(listener:(record:PublicAgentRecord)=>void):()=>void{
