@@ -3,10 +3,11 @@ import test,{type TestContext} from "node:test";
 import {mkdir,mkdtemp,readFile,realpath,writeFile,readdir} from "node:fs/promises";
 import path from "node:path";
 import {createPiExtension} from "../extensions/asen.js";
-import {ASEN_PROFILES_SCHEMA,resolveRuntimeRoute,type RuntimeProfilesFile} from "../src/runtime/profiles.js";
-import {canonicalProfilePartition,readSessionProfile} from "../src/runtime/session-profile-binding.js";
+import {ASEN_PROFILES_SCHEMA,resolveRuntimeRoute,type RouteChoice,type RuntimeProfilesFile} from "../src/runtime/profiles.js";
+import {canonicalProfilePartition,readSessionProfile,captureSessionProfile,selectSessionProfile,resetSessionProfile,clearSessionProfiles} from "../src/runtime/session-profile-binding.js";
 
 const profile=(active:string,routes:Record<string,unknown>)=>({schema:ASEN_PROFILES_SCHEMA,active,profiles:[{name:active,routes}]});
+const routeFile=(name:string,routes:Record<string,RouteChoice>):RuntimeProfilesFile=>({schema:ASEN_PROFILES_SCHEMA,active:name,profiles:[{name,routes}]});
 async function fixture(t:TestContext){
  await mkdir(path.resolve(".cache"),{recursive:true});
  const root=await mkdtemp(path.resolve(".cache/profile-scope-")),home=path.join(root,"home"),project=path.join(root,"project");
@@ -120,4 +121,54 @@ test("saved global failure is unavailable, not default, and no raw diagnostic es
  const result=await f.show();assert.equal(result.available,false);assert.equal(result.savedGlobalProfile.state,"unavailable");
  assert.equal(result.effectiveProfile.state,"unavailable");assert.equal(result.sessionProfile.active,"A");
  assert.doesNotMatch(JSON.stringify(result),/private failure|profiles\.json/);
+});
+
+// UFC-M3-02: pure precedence over the shipped schema and binding contract. Zero provider calls,
+// zero file-system state: every case resolves in memory, as the owner's verification list needs.
+test("resolveRuntimeRoute precedence is session over project over global over default",()=>{
+ const session=routeFile("s-session",{worker:{thinking:"high"}});
+ const project=routeFile("s-project",{worker:{thinking:"medium"},explorer:{thinking:"low"}});
+ const global=routeFile("s-global",{worker:{thinking:"low"}});
+ assert.deepEqual(resolveRuntimeRoute({session,project,global},"worker"),{choice:{thinking:"high"},source:"session"});
+ assert.deepEqual(resolveRuntimeRoute({project,global},"worker"),{choice:{thinking:"medium"},source:"project"});
+ assert.deepEqual(resolveRuntimeRoute({global},"worker"),{choice:{thinking:"low"},source:"global"});
+ assert.deepEqual(resolveRuntimeRoute({},"worker"),{source:"default"},"Absent layers never fabricate a choice");
+ assert.deepEqual(resolveRuntimeRoute({session,project,global},"explorer"),{choice:{thinking:"low"},source:"project"},"A role missing upstream hops exactly one layer down");
+ assert.deepEqual(resolveRuntimeRoute({session:{schema:ASEN_PROFILES_SCHEMA,profiles:[]},project},"worker"),{choice:{thinking:"medium"},source:"project"},"An active-less session file cannot shadow lower layers");
+});
+test("resolveRuntimeRoute rejects invalid roles instead of guessing",()=>{
+ const layers={session:routeFile("s-session",{worker:{thinking:"high"}})};
+ for(const role of [""," worker","bad role","__proto__","constructor","-x","x".repeat(65),42 as unknown as string])
+  assert.deepEqual(resolveRuntimeRoute(layers,role),{source:"default"},"Invalid role "+JSON.stringify(role));
+});
+test("resolveRuntimeRoute is pure: hand-outs are copies and layers stay untouched",()=>{
+ const layers={session:routeFile("s-session",{worker:{model:"private://session/model",thinking:"high"}})},frozen=JSON.stringify(layers);
+ const first=resolveRuntimeRoute(layers,"worker"),second=resolveRuntimeRoute(layers,"worker");
+ assert.notEqual(first.choice,second.choice);assert.deepEqual(first.choice,second.choice);
+ first.choice!.thinking="low";first.choice!.model="tampered";
+ assert.equal(JSON.stringify(layers),frozen,"Resolution cannot mutate a configuration layer");
+ assert.equal(resolveRuntimeRoute(layers,"worker").choice!.thinking,"high","Tampering a hand-out cannot rewrite later precedence");
+});
+test("session binding freezes capture, selection wins, reset restores capture, reads hand out clones",async()=>{
+ const identity={sessionId:"freeze-session",projectId:process.cwd()};
+ const captured=routeFile("A",{worker:{thinking:"low"}});
+ const two:RuntimeProfilesFile={schema:ASEN_PROFILES_SCHEMA,active:"B",profiles:[
+  {name:"A",routes:{worker:{thinking:"low"}}},
+  {name:"B",routes:{worker:{thinking:"high"}}},
+ ]};
+ const first=await captureSessionProfile("freeze-partition",identity,async()=>captured);
+ assert.equal(first.active,"A");assert.equal(first.source,"inherited-global");
+ assert.deepEqual(await captureSessionProfile("freeze-partition",identity,async()=>two),first,
+  "A later saved file never alters the frozen in-process capture");
+ const change=await selectSessionProfile("freeze-partition",identity,"A",async()=>two);
+ assert.equal(change.snapshot.source,"explicit-session");assert.equal(change.snapshot.active,"A");
+ assert.equal(change.global.active,"B","The writer receives the current saved file for its own persistence decision");
+ await assert.rejects(selectSessionProfile("freeze-partition",identity,"missing",async()=>two),/Profile does not exist/);
+ const restored=await resetSessionProfile("freeze-partition",identity,async()=>captured);
+ assert.equal(restored.snapshot.source,"inherited-global");assert.equal(restored.snapshot.active,"A");
+ const clone=await readSessionProfile("freeze-partition",identity);assert.ok(clone);
+ clone.file.profiles.length=0;
+ assert.equal((await readSessionProfile("freeze-partition",identity))?.file.profiles.length,1,"Reads hand out clones");
+ clearSessionProfiles("freeze-partition",identity.sessionId);
+ assert.equal(await readSessionProfile("freeze-partition",identity),undefined,"Clearing the session leaves no binding");
 });
