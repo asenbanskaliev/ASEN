@@ -19,7 +19,7 @@ const notice:AgentNoticeRecoveryView={eventId:"event",agentId:"agent-1",state:"c
 const job=(state:"running"|"interrupted"="running")=>projectJobMetadata({
  id:"job-1",sessionId:"s",projectId:"p",command:"SECRET_SHELL_COMMAND",
  mode:"monitor",state,createdAt:time,updatedAt:time,exitCode:null,eventCount:2,
- tail:["SECRET_LOG"],args:["SECRET_ARGS"],cwd:"SECRET_CWD",
+ tail:["LOG_TAIL_VISIBLE"],args:["SECRET_ARGS"],cwd:"SECRET_CWD",
 });
 function fixture(){
  let redraws=0,closes=0,current=true,rows=15;
@@ -56,7 +56,8 @@ test("M2 Jobs: opaque metadata only, historical states never imply active proces
  view.handleInput("j");view.handleInput("\r");
  const rows=view.render(100).join("\n");
  assert.match(rows,/historical|Registry metadata|Observed exit code/u);
- assert.doesNotMatch(rows,/SECRET_SHELL_COMMAND|SECRET_ARGS|SECRET_LOG|SECRET_CWD/u);
+ assert.doesNotMatch(rows,/SECRET_SHELL_COMMAND|SECRET_ARGS|SECRET_CWD/u);
+ assert.match(rows,/Log tail \(read-only/u);assert.match(rows,/LOG_TAIL_VISIBLE/u); // UFC-M2-04 authorized: retained log lines render bounded; execution payloads stay withheld.
  assert.match(rows,/ownership-checked background tool/u);
  view.handleInput("\u007f");view.handleInput("q");
  assert.equal(ctx.get().closes,1);

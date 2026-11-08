@@ -175,7 +175,7 @@ export function createNativeM2Navigator(source:M2NavigatorSource,controls:M2Navi
    chosenRows.length?chosenRows.map((row,index)=>(index===selected?"> ":"  ")+label(row)):
    ["No owned "+kind.toLowerCase()+" in this view"];
   const fitted=details.map(line=>fit(line,cols));
-  const terminalRows=controls.terminalRows(),maxRows=Math.max(2,Math.min(100,Number.isFinite(terminalRows)?Math.floor(terminalRows)-5:12));
+  const terminalRows=controls.terminalRows(),maxRows=Math.max(2,Math.min(100,Number.isFinite(terminalRows)?Math.floor(terminalRows)-(detail?3:5):12));
   scroll=Math.max(0,Math.min(scroll,Math.max(0,fitted.length-maxRows)));
   if(!detail&&selected>=scroll+maxRows)scroll=selected-maxRows+1;
   if(!detail&&selected<scroll)scroll=selected;
