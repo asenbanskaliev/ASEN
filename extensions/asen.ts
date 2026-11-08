@@ -1110,27 +1110,47 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      assertCurrent();assertScope=panelScope(ctx);assertCurrent();
      const identity=await sessionIdentity(ctx);assertCurrent();
      rootIdentity=captureWorkspaceRootIdentity(ctx.cwd);assertCurrent();
-     const root=snapshotWorkspaceRoots([identity.projectId])[0];assertCurrent();
-     if(!root||root.error)return ["Git state unavailable for this project."];
-     let filename=String(args??"").trim();
-     if(!filename&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.select==="function"&&root.files.length){
-      const width=Math.min(100,Math.max(12,terminalColumns()));
+     // Bounded multi-root (G1): the project plus its own linked worktrees. Discovery runs only
+     // from the verified project repository, so enclosing or unrelated repositories can never
+     // enter the listing. Read-only.
+     const primary=snapshotWorkspaceRoots([identity.projectId])[0];assertCurrent();
+     if(!primary||primary.error)return ["Git state unavailable for this project."];
+     const extraRoots=discoverWorkspaceWorktrees(identity.projectId)
+      .filter((candidate)=>!sameWorkspaceIdentityPath(candidate,identity.projectId))
+      .slice(0,7);
+     const roots=[primary,...snapshotWorkspaceRoots(extraRoots)];assertCurrent();
+     const totalFiles=roots.reduce((count,snapshot)=>count+snapshot.files.length,0);
+     const rootTag=(root:string)=>sanitizeTerminalText(root.split(/[\\/]/u).at(-1)??root);
+     let filename=String(args??"").trim(),previewRoot=identity.projectId;
+     if(!filename&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.select==="function"&&totalFiles){
+      const width=Math.min(100,Math.max(12,terminalColumns())),multi=roots.length>1;
       // The ordinal survives truncation; display text is never parsed back into a path.
-      const choices=new Map(root.files.slice(0,100).map((file,index)=>[
-       truncateForTerminal(`${index+1}. ${file.status} ${sanitizeTerminalText(file.path)}`,width),file.path,
-      ]));
-      const title=root.files.length>100?`ASEN changed files (read-only; 100 of ${root.files.length}, partial choice set)`:"ASEN changed files (read-only)";
+      const choices=new Map<string,{root:string;path:string}>();
+      for(const snapshot of roots){
+       if(choices.size>=100)break;
+       for(const file of snapshot.files){
+        if(choices.size>=100)break;
+        choices.set(truncateForTerminal(`${choices.size+1}. ${file.status} ${sanitizeTerminalText(file.path)}${multi?` [${rootTag(snapshot.root)}]`:""}`,width),{root:snapshot.root,path:file.path});
+       }
+      }
+      const title=totalFiles>100?`ASEN changed files (read-only; 100 of ${totalFiles}, partial choice set)`:"ASEN changed files (read-only)";
       assertCurrent();
       const selected=await ctx.ui.select(title,[...choices.keys()],ctx.signal?{signal:ctx.signal}:undefined);
       assertCurrent();
       if(selected===undefined||!choices.has(selected))return ["Git diff inspection closed."];
-      filename=choices.get(selected)!;
+      const choice=choices.get(selected)!;filename=choice.path;previewRoot=choice.root;
      }
      assertCurrent();const now=await sessionIdentity(ctx);assertCurrent();
      if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)throw new Error("Git scope changed");
-     if(!filename)return [...gitChangesIndex(root,Math.max(12,terminalColumns()))];
+     if(!filename){
+      const indexWidth=Math.max(12,terminalColumns());
+      if(roots.length===1)return [...gitChangesIndex(roots[0]!,indexWidth)];
+      const indexed:string[]=[];
+      for(const snapshot of roots)indexed.push(truncateForTerminal(`${rootTag(snapshot.root)} (${sanitizeTerminalText(snapshot.branch)})`,indexWidth),...gitChangesIndex(snapshot,indexWidth));
+      return indexed;
+     }
      // Preview still captures its own root and rechecks current status membership.
-     const lines=[...renderGitDiffPreview(previewWorkspaceFileDiff(identity.projectId,filename),Math.max(12,terminalColumns()))];
+     const lines=[...renderGitDiffPreview(previewWorkspaceFileDiff(previewRoot,filename),Math.max(12,terminalColumns()))];
      assertCurrent();return lines;
     }catch{
      assertCurrent();

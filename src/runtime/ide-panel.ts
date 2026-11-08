@@ -95,7 +95,7 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
   case "CHANGES":{
    const status=snapshot.changes;
    out.push(status?("Git "+clean(status.branch,48)+" · "+(status.files?status.files+" files":"clean")):"Git state unavailable");
-   out.push("Inspect read-only diffs with /asen-changes-view");
+   out.push(status&&status.files>0?"Open /asen-changes-view to pick a changed file and preview its diff":"Inspect read-only diffs with /asen-changes-view");
    break;
   }
   case "REVIEW":{

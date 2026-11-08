@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test,{type TestContext} from "node:test";
-import {mkdir,mkdtemp,writeFile,readFile,rename} from "node:fs/promises";
+import {mkdir,mkdtemp,writeFile,readFile,rename,symlink} from "node:fs/promises";
 import path from "node:path";
 import {execFileSync} from "node:child_process";
 import {createPiExtension} from "../extensions/asen.js";
@@ -177,4 +177,86 @@ test("Git explicit path and headless or missing selector retain index behavior",
  assert.match((await f.view("change.txt")).join(""),/EXPLICIT_PAYLOAD/);
  f.ctx.mode="tui";f.ctx.hasUI=true;delete f.ctx.ui.select;assert.match((await f.view()).join(""),/1 changes/);
  assert.equal(await readFile(path.join(f.project,"change.txt"),"utf8"),"EXPLICIT_PAYLOAD\n");
+});
+
+// UFC-M3-01 G1/G2: bounded multi-worktree browsing over shipped primitives, and a panel
+// CHANGES row that navigates into the shipped picker/preview. Read-only invariants pinned.
+test("Git view lists changes from every linked worktree of the project",async t=>{
+ const f=await gitFixture(t);
+ await writeFile(path.join(f.project,"primary.txt"),"PRIMARY_CHANGED\n");
+ const secondary=path.join(f.root,"secondary");
+ f.git("worktree","add","-b","fixture-secondary",secondary);
+ await writeFile(path.join(secondary,"extra.txt"),"SECONDARY_CHANGED\n");
+ const beforePrimary=f.git("status","--porcelain=v1");
+ f.ctx.mode="print";f.ctx.hasUI=false;
+ const lines=(await f.view()).join("\n");
+ assert.match(lines,/primary\.txt/,"Primary worktree stays listed");
+ assert.match(lines,/extra\.txt/,"Linked worktree changes are enumerated (G1)");
+ assert.equal(f.git("status","--porcelain=v1"),beforePrimary,"Index browsing mutates nothing");
+});
+test("Git view ignores unrelated repositories inside the same workspace directory",async t=>{
+ const f=await gitFixture(t);
+ await writeFile(path.join(f.project,"primary.txt"),"PRIMARY_CHANGED\n");
+ const stray=path.join(f.root,"stray");await mkdir(stray);
+ execFileSync("git",["-C",stray,"init"],{encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:5000,windowsHide:true});
+ await writeFile(path.join(stray,"stray-secret.txt"),"STRAY_PAYLOAD\n");
+ f.ctx.mode="print";f.ctx.hasUI=false;
+ const lines=(await f.view()).join("");
+ assert.match(lines,/primary\.txt/);
+ assert.doesNotMatch(lines,/stray-secret\.txt|STRAY_PAYLOAD/,"Foreign repositories are never enumerated");
+});
+test("Git picker previews the exact worktree root the selection belongs to",async t=>{
+ const f=await gitFixture(t);
+ const secondary=path.join(f.root,"secondary");
+ f.git("worktree","add","-b","fixture-secondary",secondary);
+ await writeFile(path.join(f.project,"link.txt"),"FROM_PRIMARY\n");
+ await writeFile(path.join(secondary,"link.txt"),"FROM_SECONDARY\n");
+ f.ctx.ui.select=async(_title:string,labels:string[])=>{
+  assert.equal(new Set(labels).size,labels.length,"Same path in two roots never collapses");
+  const wanted=labels.find(label=>/\[secondary\]/u.test(label));
+  assert.ok(wanted,"Secondary worktree files are selectable with their root");
+  return wanted;
+ };
+ const lines=(await f.view()).join("\n");
+ assert.match(lines,/FROM_SECONDARY/,"Preview reads the selected root");
+ assert.doesNotMatch(lines,/FROM_PRIMARY/,"No cross-root content leakage");
+});
+test("Git multi-root selector keeps the global 100-entry bound across worktrees",async t=>{
+ const f=await gitFixture(t);
+ const secondary=path.join(f.root,"secondary");
+ f.git("worktree","add","-b","fixture-secondary",secondary);
+ for(let i=0;i<60;i++)await writeFile(path.join(f.project,`primary-${String(i).padStart(2,"0")}.txt`),"line\n");
+ for(let i=0;i<60;i++)await writeFile(path.join(secondary,`secondary-${String(i).padStart(2,"0")}.txt`),"line\n");
+ f.ctx.ui.select=async(title:string,labels:string[])=>{
+  assert.match(title,/100 of 120/u);assert.equal(labels.length,100);return undefined;
+ };
+ assert.deepEqual(await f.view(),["Git diff inspection closed."]);
+});
+test("Git cross-root selection discloses nothing after the session scope changes",async t=>{
+ const f=await gitFixture(t);
+ const secondary=path.join(f.root,"secondary");
+ f.git("worktree","add","-b","fixture-secondary",secondary);
+ await writeFile(path.join(secondary,"link.txt"),"FROM_SECONDARY\n");
+ f.ctx.ui.select=async(_title:string,labels:string[])=>{
+  f.setId("other");return labels.find(label=>/\[secondary\]/u.test(label))??labels[0]!;
+ };
+ await assert.rejects(f.view(),/Git inspection cancelled or context changed/);
+ assert.doesNotMatch(f.notices.join(""),/FROM_SECONDARY/);
+});
+test("Git view refuses symlinked untracked files without disclosing the target",async t=>{
+ const f=await gitFixture(t);
+ const outside=path.join(f.root,"outside-secret.txt");await writeFile(outside,"OUTSIDE_SECRET\n");
+ try{await symlink(outside,path.join(f.project,"symlinked.txt"),"file");}
+ catch{t.skip("Symlink creation is not permitted on this host");return;}
+ const lines=(await f.view("symlinked.txt")).join("");
+ assert.match(lines,/could not be safely previewed/u);
+ assert.doesNotMatch(lines,/OUTSIDE_SECRET/,"Symlink targets are never disclosed");
+});
+test("panel CHANGES row navigates into the shipped picker and per-file preview",()=>{
+ const dirty=renderAsenPanelSection({todos:[],agents:[],jobs:[],changes:{branch:"main",files:3}},"CHANGES",100).join("\n");
+ assert.match(dirty,/\/asen-changes-view/u);
+ assert.match(dirty,/pick/iu,"Row states the picker navigation step (G2)");
+ assert.match(dirty,/preview/iu,"Row states the per-file preview destination (G2)");
+ const clean=renderAsenPanelSection({todos:[],agents:[],jobs:[],changes:{branch:"main",files:0}},"CHANGES",100).join("\n");
+ assert.match(clean,/\/asen-changes-view/u,"Clean repositories still point to the shipped command");
 });
