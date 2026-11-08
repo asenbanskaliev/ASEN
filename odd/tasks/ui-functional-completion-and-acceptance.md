@@ -277,3 +277,40 @@ W4 = UFC-M2-03a Follow/Resume contract freeze (DOC), UFC-M2-05 class-(a) negativ
 - UFC-M4-02 — research proposal prepared (commit `0d691f11`), explicitly NOT approved: `docs/audit/m4-02-rail-architecture-options-2026-11-08.md` compares option A (public Pi APIs) vs option B (own compatible presentation layer) per the capabilities the owner named — persistent column, transcript reflow, editor preservation, resize, focus/keyboard, disposal, cross-platform, maintenance cost, Pi-version risk — classifying each as VERIFIED/GAP/UNKNOWN/INDETERMINATE strictly from the executed probe receipt `ef4507f35a99` and the capability matrix (cost/risk statements labelled ANALYSIS). Finding: no capability is VERIFIED for a persistent reserved-width rail under either option; A's only VERIFIED trio is overlay coexistence (non-capturing, input preservation, disposal), which the matrix itself rules out as rail proof; every B cell is UNKNOWN with worse maintenance/version analysis. The doc's proposal (not a decision): keep R02 BLOCKED and M4-03 closed; if the owner wants M4 alive, one small probe-revision round under A targeting exactly the two decisive unknowns (widget-persistence observability; host-side reflow measurement) is the cheapest evidence-producing step; shipped UI continues on already-supported branches only. Runbook R02 row now references the proposal. No rail code, no workflow/registry/gate change; audit exit 0.
 - Full-suite ledger on the final W4 content (third attempt): 3233 tests / 3173 pass / 0 fail / 60 host-gated skips (= the accepted W3 ledger 3229/3169/0/60 plus the four new M2-05 pins). Two earlier attempts aborted on infrastructure, not on any assertion — attempt 1: chunk `process-heavy-4` overall timeout exceeded by 23 ms (235291/235268, cleanup confirmed, no failing test logged); attempt 2: transient Windows `EPERM rename` inside the concurrent background-job-journal stress test (passes 15/15 twice in isolation under the tsx harness; one intermediate isolated failure was my own wrong-harness invocation without the loader, re-run correctly). Clean third run: zero timeouts, zero failures, all four `UFC-M2-05a` pins executed.
 - CI at published SHA `e6165553`: 8 workflows success (CI, Release Gate, F5 exact-SHA static verification, R4 automated self-audit [explicitly NOT independent], Pi 1.0 runtime evidence, T07 CodeGraph probe, Phase 0 Architecture, real-agent acceptance — non-model jobs green, its 11 real-model jobs skip by design on ordinary runs, so this is an honest no-FULL). Pi Free Smoke ran but its only job is conditionally skipped by its own configuration (runs only on `workflow_dispatch` or PR #30 — `if:` at `.github/workflows/pi-free-smoke.yml:18-21`); a `gh run watch --exit-status` exit 1 on that run reflects the skip, not a failing test. No flake re-runs were needed. The CI-record commit itself (`59567ccf`, the final remote tip) verified green too: 7 workflows success and Pi Free Smoke skipped by the same design.
+
+## W5 reconciliation (2026-11-08, owner-authorized megabatch; evidence pointers only, no status promotion)
+
+Published-lineage evidence documents (branch `w5-research`): W5-A rail probe v2 results
+`docs/audit/m4-02b-rail-probe-v2-results-2026-11-08.md` with executed receipts
+`docs/audit/evidence/rail-feasibility-probe-v2-4d3bbb87-primary.json` / `-supplementary.json`;
+W5-B R19 ownership decision `docs/audit/r19-resume-ownership-decision-2026-11-08.md`;
+W5-D message-stage classification `docs/audit/t12-message-stage-classification-2026-11-08.md`.
+W5-C hardening exists ONLY on the isolated local branch `p3-hardening` (base `4ad28040`,
+hardening commit `406b0d53`) and is not part of this lineage.
+
+- UFC-M2-03b (Resume): stays BLOCKED per-op. W5-B answered the eight ownership questions from
+  real code (four durable state owners + one launch gateway, path:line pinned) and placed the
+  Option 1 / Option 2 decision with the owner. R19 is NOT unlocked by research; no Resume was
+  implemented and no human consent was generated or simulated.
+- UFC-M2-05 (consumption evidence): stays as recorded. W5-D classifies, against authentic
+  receipts only: created (ledger chain, proven), sent (host-wrapped `pi.sendMessage`, direct),
+  enqueued (validated journal predecessor, proven), displayed PENDING (no per-message
+  primitive; the PTY hash is session-scoped), consumed split (coordinator consumption observed
+  and bounded; human-read never observed), answer-linked observed for the notice flow only
+  and BLOCKED for R19 interactive questions. No stage was laundered into a stronger one.
+- UFC-M4-02/M4-03: W5-A probe v2 measured on the real host that the persistent reserved
+  column is absent from the public render surface (ADDITIVE NO RESERVATION class; overlays
+  occlude only). Option A CLOSED-NEGATIVE on executed evidence; the M4-03 design is NOT
+  prepared, per owner instruction S13. B-vs-C remains an owner architecture decision; the
+  current additive interface continues, probe-verified collision-safe.
+- UFC-M5-06 / P3: P3 remains the preferred receipt source, still `PENDING_REAL_SIGNATURE`.
+  W5-C closed four evidence-admission defects in the isolated prototype (no-material receipts
+  now verify false and never consume the ledger; DSSE signature sets shape-required; the
+  fabricated `officialOk` success flag on skipped stages removed; caller claims can no longer
+  stand in for the signed bundle), pinned all ten owner-enumerated negative cases in
+  `tests/m5-06-p3-admission-hardening.test.mjs`, and documented the M5-06 self-declared
+  consent/review shape-acceptance as an evidence-admission vulnerability WITHOUT any
+  production-exploitation claim. Nothing from P3/M5 was published or merged, no acceptance
+  state was connected, no workflow changed, and `scripts/shell-asen-parity.mjs` semantics in
+  this lineage are untouched.
+- `globalFull:false` stands in every W5 artifact; this batch made zero model/provider calls.
