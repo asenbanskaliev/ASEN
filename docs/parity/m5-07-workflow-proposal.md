@@ -61,3 +61,58 @@ review.
 - The grader and cards ship now with full synthetic test coverage, so the approved runner has a
   frozen contract to bind against (`asen-r4-two-real-pi-scenario/v1`).
 - Stages in `registry/parity` stay `NOT_EXECUTED`; advancement remains owned by CI assembly.
+
+## Provider-call inventory, measured cost, and guarantees (owner review item, 2026-11-08)
+
+Requested by the owner alongside the "no workflow, no provider execution" decision. Nothing in
+this section authorizes execution; it exists so approval is informed by measurements, not guesses.
+
+### Exact provider calls per run (C02-C05 job, once)
+
+Per case, the runner would repeat the shipped C01 discipline exactly twice — once per source:
+
+1. Disposable fixture creation (local, no provider).
+2. `node bin/pi` (1.2.0 bundle) TUI session under a sanitized PTY, one bounded text turn against
+   `ollama-cloud` free lane (`beam:cloud`) — ONE model inference turn per session, no tool use
+   requested in the prompt except where the case itself is the delegation/guard behavior.
+3. Session/agent lifecycle events read from the local trace JSON (no extra calls).
+4. Fixture disposal.
+
+Total per workflow run: **8 model turns** (4 cases x 2 sources), sequential inside each case pair.
+No embeddings, no streaming repeats, no fallback lane, no retry beyond the bounded deadline
+(failed deadline = case NOT_EXECUTED, never a silent re-fire).
+
+### Measured cost evidence (not estimates)
+
+- Executed C01 one-time run `42117617981` at trigger commit `3e93facd…` (2026-11-05):
+  the paired `R4-04 authentic Shell vs ASEN paired C01 (free Beam, 2 Pi turns)` job succeeded in
+  **53 s job wall-time** (22:03:27Z-22:04:20Z) for 2 model turns; the launcher probe before it ran
+  16 s. This is the only genuine historical C01 execution; the workflow gate is an exact one-time
+  commit message `ci: one-time Shell ASEN Beam C01` AND `github.run_attempt == 1`, so the job is
+  skipped on every ordinary run (observed again at `f75e0786`: skipped, never passed).
+- Projected C02-C05 from that measurement: 4 cases x 53 s ≈ **3.5-4.5 min** of live turns,
+  plus npm ci and fixture setup; job `timeout-minutes: 45` is a generous ceiling, not an estimate.
+- Money: same `ollama-cloud` free `beam:cloud` lane already used by the shipped C01 job under the
+  existing `ASEN_OLLAMA_API_KEY` secret — **$0 model cost** as measured for C01; the spend is
+  GitHub windows-latest runner minutes (≈4-8 min of job time).
+- C02-C05 are heavier than C01 by nature (C02/C03 expect tool-use traces, C04 exercises the guard
+  path); the agent-start/tool bounds in `SCENARIO_CARDS` cap that: `agentStarts<=3`, `toolCalls<=12`
+  per witness, so the worst bounded live time is ~2-4x the C01 measurement per case.
+
+### Guarantees
+
+1. **Lane lock.** Only `ollama-cloud` + `beam`/`beam:cloud` witnesses grade: any other model or
+   provider string fails the grade (`pinned free Beam lane only`). Paid lanes are refused at grade
+   time, not just at env time.
+2. **Case scope lock.** `validateScenarioCard` refuses any consent-flagged id (C06/C07/C08/C18-C20)
+   — those belong to UFC-M5-02 with the owner's human-prescribed sessions, never to this producer.
+3. **Inert output.** Graded reports certify nothing: `certifiedFullCases:0`, `globalFull:false`,
+   `writerAuthorized:false` are structurally frozen in `gradeRealScenario`; consumption stays
+   behind the separate UFC-M5-06 approval.
+4. **No fake captures.** Every required observable field must be grounded by the captured witness
+   (a grounder returning null aborts the whole grade); NOT_EXECUTED is a valid outcome, a fabricated
+   observation never is.
+5. **Host/version pin.** Pi 1.2.0 bundle only, sanitized env, disposable fixture, `wx`/0600
+   artifacts — identical discipline to the shipped C01 harness, asserted by the same bounds.
+6. **Publish gate.** No change to `.github/workflows/` and no runner script ships until the owner
+   approves this exact document section plus the job block above.
