@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
 import {mkdirSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
 import path from "node:path";
+// @ts-expect-error The reachability auditor is a standalone provider-free ESM script without a declaration file.
 import {auditReachability} from "../scripts/asen-reachability-audit.mjs";
 
 function fixtureRoot():string{
