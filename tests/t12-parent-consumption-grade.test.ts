@@ -71,3 +71,18 @@ test("EF-601 Pi cannot acknowledge before it actually inspects the exact durable
  v.events[3]=ack;v.events[4]=inspected;
  assert.throws(()=>gradeParentConsumption(v),/AFTER idle wake/u);
 });
+test("W6 T12 pins the complete event order and does not claim durable question-answer linkage",()=>{
+ const expected=["result_enqueued","idle_wake","parent_turn_start","status_inspected","acknowledged","parent_turn_end"];
+ for(let index=0;index<expected.length-1;index++){
+  const v=sample();
+  [v.events[index],v.events[index+1]]=[v.events[index+1]!,v.events[index]!];
+  assert.throws(()=>gradeParentConsumption(v),/AFTER idle wake/u,`${expected[index]} before ${expected[index+1]}`);
+ }
+ const v=sample() as ReturnType<typeof sample>&{question?:unknown;answer?:unknown};
+ v.events.push({kind:"answer_linked",questionId:"unverified-question",answerId:"unverified-answer"} as never);
+ const result=gradeParentConsumption(v);
+ assert.equal("questionId" in result,false);
+ assert.equal("answerId" in result,false);
+ assert.equal("answerLinked" in result,false);
+ assert.equal(result.globalFull,false);
+});

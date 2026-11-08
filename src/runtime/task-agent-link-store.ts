@@ -30,7 +30,9 @@ export class TaskAgentLinkStore{
  async bind(link:TaskAgentLink):Promise<TaskAgentLink>{
   return withExclusiveFileLock(this.file,async()=>{
    const journal=await load(this.file);
-   if(!valid(link.taskId)||!valid(link.agentId)||!valid(link.sessionId)||!valid(link.projectId)||typeof link.createdAt!=="string"||!Number.isFinite(Date.parse(link.createdAt))||new Date(link.createdAt).toISOString()!==link.createdAt)throw new Error("Invalid ASEN task-agent link");
+   if(!link||typeof link!=="object"||Array.isArray(link)||Object.getPrototypeOf(link)!==Object.prototype||
+      Object.keys(link).sort().join(",")!=="agentId,createdAt,projectId,sessionId,taskId"||
+      !valid(link.taskId)||!valid(link.agentId)||!valid(link.sessionId)||!valid(link.projectId)||typeof link.createdAt!=="string"||!Number.isFinite(Date.parse(link.createdAt))||new Date(link.createdAt).toISOString()!==link.createdAt)throw new Error("Invalid ASEN task-agent link");
    const previous=journal.links.find(x=>x.agentId===link.agentId);
    if(previous){
     if(previous.taskId!==link.taskId||previous.sessionId!==link.sessionId||!sameWorkspaceIdentityPath(previous.projectId,link.projectId))throw new Error("Agent is already linked to another task or identity");
