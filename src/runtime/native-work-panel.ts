@@ -22,7 +22,7 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
  const rowsFor=(width:number)=>{
   if(selectedOnly){
    const section=sections[active]!;
-   return [truncateForTerminal("▾ "+section,width),...renderAsenPanelSection(snapshot,section,width)];
+   return [truncateForTerminal("▾ "+section,width),...renderAsenPanelSection(snapshot,section,width,true)];
   }
   return renderAsenPanel(snapshot,width,[...collapsed]);
  };
