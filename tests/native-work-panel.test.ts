@@ -6,6 +6,26 @@ import {truncateForTerminal,visibleWidth} from "../src/runtime/responsive-layout
 import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
 
 const snapshot={todos:[],agents:[],jobs:[],changes:{branch:"main",files:0},profile:"free",permission:"normal"} satisfies AsenPanelSnapshot;
+test("REVIEW derives only stored Todo states that actually await review",()=>{
+ const todos=["succeeded","blocked","done","running"].map((state,index)=>({taskId:`todo-${index}`,title:`Todo ${index}`,events:[],current:{state,taskId:`todo-${index}`}})) as any;
+ const output=renderAsenPanel({...snapshot,todos},120).join("\n");
+ assert.match(output,/Human review needed · 2/u);
+ assert.match(output,/2 stored Todo results awaiting review/u);
+});
+test("detail mode expands session lists to 100 while the overview keeps its compact limits",()=>{
+ const todos=Array.from({length:101},(_,index)=>({taskId:`todo-${index}`,title:`Todo ${index}`,events:[],current:{state:"planned",taskId:`todo-${index}`}})) as any;
+ const agents=Array.from({length:101},(_,index)=>({id:`agent-${index}`,role:"explorer",state:"queued",updatedAt:`2026-01-01T00:00:${String(index%60).padStart(2,"0")}Z`})) as any;
+ const panel=createNativeWorkPanel({...snapshot,todos,agents},{requestRender(){},close(){},terminalRows:()=>400});
+ const overview=panel.render(200).join("\n");
+ assert.match(overview,/… 89 more/u,"overview retains the twelve-Todo summary cap");
+ panel.handleInput("\r");
+ const detail=panel.render(200).join("\n");
+ assert.match(detail,/Todo 99/u);assert.doesNotMatch(detail,/Todo 100/u);
+ panel.handleInput("\u007f");panel.handleInput("\t");panel.handleInput("\t");
+ panel.handleInput("\r");
+ const agentDetail=panel.render(200).join("\n");
+ assert.match(agentDetail,/… 1 more/u,"detail is bounded at one hundred agents");
+});
 test("M2 native overlay renders six real sections, scrolls and changes section without effects",()=>{
  let redraws=0,closes=0,current=true,rows=10;
  const overlay=createNativeWorkPanel(snapshot,{
