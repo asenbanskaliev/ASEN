@@ -50,11 +50,11 @@ export function formatCommandGuide(result:CommandDiscovery,query="",width=100):s
   const summary=exact.description?`/${exact.name} - ${exact.description}`:`/${exact.name} - No public description reported.`;
   const lines=[line(summary,columns),line(`Type /${exact.name} manually`,columns),line("This guide does not execute the command.",columns)];
   if(exact.name==="asen-job-inspect")lines.push(
-   line("Inspect owned Jobs metadata only; logs withheld because safe projection is unavailable.",columns),
+   line("Inspect owned Jobs metadata with a bounded, read-only log tail.",columns),
    line("Type /asen-job-inspect [id]; omit ID to select an owned job.",columns),
    line("Recovered metadata is historical, not resumed, and cannot be controlled.",columns),
    line("The optional native view can request Stop only for a currently owned live ASEN registry job.",columns),
-   line("No Follow or log viewer is available; this guide does not execute Stop.",columns),
+   line("Follow an agent journal with /asen-agent-follow; this job view tails retained logs. This guide does not execute Stop.",columns),
   );
   if(inspected.limited)lines.push(line("Limited view: duplicate, malformed, or excess rows were withheld.",columns));
   return lines;

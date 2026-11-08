@@ -10,6 +10,7 @@ export interface JobMetadata{
  readonly exitCode:number|null;
  readonly eventCount:number|null;
  readonly retainedLineCount:number;
+ readonly tail:readonly string[];
  readonly provenance:"registry-observed"|"journal-historical";
 }
 const states=new Set(["queued","running","interrupted","completed","failed","stopped","timed_out","flooded"]);
@@ -21,6 +22,7 @@ export function projectJobMetadata(job:BackgroundJobSnapshot):JobMetadata{
  return Object.freeze({id:bounded(job.id),mode:job.mode==="background"||job.mode==="monitor"?job.mode:"unknown",
   state:states.has(job.state)?job.state:"unknown",createdAt:timestamp(job.createdAt),updatedAt:timestamp(job.updatedAt),
   exitCode:Number.isSafeInteger(job.exitCode)?job.exitCode:null,eventCount:count(job.eventCount),retainedLineCount:job.tail.length,
+  tail:Object.freeze(job.tail.slice(-40).map(line=>truncateForTerminal(sanitizeTerminalText(line).replace(/\s+/gu," ").trim(),240))),
   provenance:"recoveredAt" in job?"journal-historical":"registry-observed"});
 }
 export function isObservedActiveJob(job:BackgroundJobSnapshot):boolean{
@@ -53,11 +55,13 @@ export function renderJobInspection(job:JobMetadata,width=72):readonly string[]{
  if(!Number.isSafeInteger(width)||width<12||width>1000)throw new Error("Invalid job inspection width");
  const historical=job.provenance==="journal-historical",prefix=historical?"Historical":"Observed";
  const lines=[`Job: ${job.id}`,`Mode: ${job.mode}`,`State: ${job.state}`,
-  historical?"Journal metadata: historical; current execution unknown":"Registry metadata: observed at inspection; not live follow",
+  historical?"Journal metadata: historical; current execution unknown":"Registry metadata: observed at inspection; tail is a read-only snapshot",
   ...(job.state==="interrupted"?["Interrupted: outcome uncertain; not resumed"]:[]),
   `Observed exit code: ${job.exitCode??"unknown"}`,`Created: ${job.createdAt}`,`Updated: ${job.updatedAt}`,
   `${prefix} events: ${job.eventCount??"unknown"}`,`${prefix} retained lines: ${job.retainedLineCount}`,
-  "Logs withheld: safe projection unavailable"];
+  `Log tail (read-only, last ${job.tail.length} of ${job.retainedLineCount} retained lines):`,
+  ...(job.tail.length?job.tail.map(line=>"  "+line):["  No retained log lines in this snapshot."]),
+  ...(job.retainedLineCount>job.tail.length?[`… ${job.retainedLineCount-job.tail.length} earlier retained lines omitted`]:[])];
  return Object.freeze(lines.map(line=>truncateForTerminal(sanitizeTerminalText(line),width)));
 }
 interface InspectionOptions{
@@ -91,7 +95,7 @@ export async function inspectOwnedJob(options:InspectionOptions):Promise<readonl
    if(!options.select)return message("Usage: /asen-job-inspect <id>; owned-job selection unavailable.");
    // Full IDs remain internal; never parse a sanitized/truncated display label as an ID.
    const candidates=rows.slice(0,100),labels=candidates.map(row=>jobInspectionLabel(projectJobMetadata(row)));
-   const chosen=await options.select("ASEN jobs: metadata only (up to 100)",labels,signal?{signal}:undefined);
+   const chosen=await options.select("ASEN jobs: metadata and bounded log tail (up to 100)",labels,signal?{signal}:undefined);
    await check();if(signal?.aborted||chosen===undefined)return closed();
    const index=labels.indexOf(chosen);
    if(index<0||labels.lastIndexOf(chosen)!==index)return unavailable();

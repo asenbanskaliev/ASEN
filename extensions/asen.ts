@@ -981,7 +981,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(view==="STATUS")return [renderAsenStatusLine(snapshot,width)];
     return [...renderAsenPanel(snapshot,width)];
    }});
-   registerData("asen-job-inspect",{description:"Inspect owned Jobs metadata; native view can request Stop for owned live ASEN jobs; logs withheld",handler:async(args:string|undefined,ctx:CommandContext)=>{
+   registerData("asen-job-inspect",{description:"Inspect owned Jobs metadata with a bounded read-only log tail; native view can request Stop for owned live ASEN jobs",handler:async(args:string|undefined,ctx:CommandContext)=>{
     const assertScope=panelScope(ctx),width=Math.max(12,terminalColumns());
     try{
      const identity=await sessionIdentity(ctx);assertScope();

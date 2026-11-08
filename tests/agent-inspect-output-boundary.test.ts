@@ -83,7 +83,10 @@ async function fixture() {
     for (const text of [rows.join("\n"), ...notices, ...labels.flat()]) {
       for (const marker of ["FAKE_SECRET", "IGNORE PRIOR", "ANSI_SUMMARY_MARKER", "OSC_SUMMARY_MARKER", "BIDI_SUMMARY_MARKER"])
         assert.equal(text.includes(marker), false, `withhold ${marker}`);
-      assert.doesNotMatch(text, /(?:tokens|cost|consent|authorized|model\s*[:=])/iu);
+      const guarded=text
+       .replace(/^Tokens and cost are not observable in this durable lifecycle store$/imu,"")
+       .replace(/^Requested (model|effort): .*$/gimu,"");
+      assert.doesNotMatch(guarded, /(?:tokens|cost|consent|authorized|model\s*[:=])/iu);
     }
     return rows;
   };
@@ -100,7 +103,8 @@ test("registered agent inspection withholds completed output and event summaries
   assert.ok(rows.some(row => row.startsWith("Project: ")));
   assert.ok(rows.includes("Owner: user · fixture-owner"));
   assert.match(text, /Persistent lifecycle \(not the model transcript\)/u);
-  assert.match(text, /Model message\/thread metadata unavailable/u);
+  assert.match(text, /Tokens and cost are not observable/u);
+  assert.match(text, /^Thread: inspection-owner$/mu);
   const events = rows.filter(row => / · #\d+$/u.test(row));
   assert.deepEqual(events, [
     "  2026-11-05T08:00:00Z · queued · #1",

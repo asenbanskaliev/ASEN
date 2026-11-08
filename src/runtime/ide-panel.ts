@@ -79,7 +79,7 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
     const metadata=projectJobMetadata(job);
     out.push(glyph(metadata.state)+" "+jobInspectionLabel(metadata)+(metadata.provenance==="journal-historical"?" · historical":" · observed"));
    }
-   out.push("Metadata only · /asen-job-inspect [id] · logs withheld");
+   out.push("Read-only tail · /asen-job-inspect [id] · bounded metadata and log tail");
    if(jobs.length>8)out.push("… "+(jobs.length-8)+" more");
    break;
   }

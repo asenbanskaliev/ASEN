@@ -24,7 +24,7 @@ async function fixture(t:TestContext){
  for(const fn of events.get("session_start")??[])await fn({},ctx);
  assert.ok(commands.has("asen-job-inspect"),"production facade must register Jobs inspection");
  const secret="SECRET_SENTINEL";
- const registry=new BackgroundJobRegistry();const started=registry.start({sessionId:"s",projectId:project,command:secret});registry.append(started.id,secret);registry.finish(started.id,"completed",7);
+ const registry=new BackgroundJobRegistry();const started=registry.start({sessionId:"s",projectId:project,command:secret});registry.append(started.id,"TAIL_VISIBLE");registry.finish(started.id,"completed",7);
  const owned={...registry.snapshot(started.id),args:[secret],cwd:secret,persistenceError:secret,deliveryError:secret,authorizationId:secret,recoveredAt:new Date().toISOString(),resumable:false};
  const save=async(rows:unknown[])=>writeFile(journal,JSON.stringify(rows),{mode:0o600});
  const inspect=async(args="")=>{notices.length=0;await commands.get("asen-job-inspect").handler(args,ctx);return notices.join("\n");};
@@ -41,7 +41,7 @@ test("production registered command selects only owned metadata, refreshes and k
  assert.equal(await readFile(f.journal,"utf8"),before,"inspection must not update the delivery journal");
  assert.deepEqual(labels,[`${f.owned.id} · background · completed`]);
  assert.match(text,/Observed exit code: 7/);assert.match(text,/historical; current execution unknown/);
- assert.match(text,/Logs withheld/);assert.doesNotMatch(text,/SECRET_SENTINEL/);
+ assert.match(text,/Log tail \(read-only/);assert.match(text,/TAIL_VISIBLE/);assert.doesNotMatch(text,/SECRET_SENTINEL/);
  assert.equal(await f.inspect("foreign"),await f.inspect("absent"));
  assert.match(await f.inspect(f.owned.id),/Observed exit code: 7/);
  await f.save([{...f.owned,id:"foreign-project",projectId:f.home}]);
@@ -51,9 +51,9 @@ test("production registered command selects only owned metadata, refreshes and k
  assert.match(await f.inspect(),/Observed exit code: 9/);
  f.ctx.ui.select=async()=>undefined;assert.match(await f.inspect(),/closed/);
  const help=await f.commands.get("asen-help").handler("asen-job-inspect",f.ctx);
- assert.equal(help,undefined);assert.match(f.notices.at(-1)!,/metadata|Metadata/);assert.match(f.notices.at(-1)!,/logs withheld/iu);assert.match(f.notices.at(-1)!,/historical, not resumed/iu);assert.match(f.notices.at(-1)!,/native.*Stop.*owned live ASEN/iu);assert.match(f.notices.at(-1)!,/No Follow/iu);
+ assert.equal(help,undefined);assert.match(f.notices.at(-1)!,/metadata|Metadata/);assert.match(f.notices.at(-1)!,/log tail/iu);assert.match(f.notices.at(-1)!,/historical, not resumed/iu);assert.match(f.notices.at(-1)!,/native.*Stop.*owned live ASEN/iu);assert.match(f.notices.at(-1)!,/asen-agent-follow/u);
  f.setInventoryUnavailable();f.notices.length=0;await f.commands.get("asen-help").handler("asen-job-inspect",f.ctx);
- assert.match(f.notices.at(-1)!,/inventory unavailable/iu);assert.doesNotMatch(f.notices.at(-1)!,/metadata only|logs withheld|historical, not resumed|native.*Stop|No Follow/iu);
+ assert.match(f.notices.at(-1)!,/inventory unavailable/iu);assert.doesNotMatch(f.notices.at(-1)!,/log tail|historical, not resumed|native.*Stop|asen-agent-follow/iu);
 });
 
 test("Jobs custom overlay refreshes allowlisted scoped snapshots without journal or action effects",{timeout:5000},async t=>{

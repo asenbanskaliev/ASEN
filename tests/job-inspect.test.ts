@@ -5,14 +5,16 @@ import type {BackgroundJobSnapshot} from "../src/runtime/background-jobs.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 
 const secret="SECRET_SENTINEL";
-const row=(extra:Record<string,unknown>={}):BackgroundJobSnapshot=>({id:"job-1",sessionId:"s",projectId:"p",mode:"background",state:"running",createdAt:"2026-11-05T00:00:00Z",updatedAt:"2026-11-05T00:00:01Z",exitCode:null,eventCount:3,command:secret,args:[secret],cwd:secret,tail:[secret],persistenceError:secret,deliveryError:secret,authorizationId:secret,...extra});
+const row=(extra:Record<string,unknown>={}):BackgroundJobSnapshot=>({id:"job-1",sessionId:"s",projectId:"p",mode:"background",state:"running",createdAt:"2026-11-05T00:00:00Z",updatedAt:"2026-11-05T00:00:01Z",exitCode:null,eventCount:3,command:secret,args:[secret],cwd:secret,tail:["RUN log line one","RUN log line two"],persistenceError:secret,deliveryError:secret,authorizationId:secret,...extra});
 
 test("allowlisted metadata and public rendering withhold all execution payloads",()=>{
  const metadata=projectJobMetadata(row());
- assert.deepEqual(Object.keys(metadata).sort(),["id","mode","state","createdAt","updatedAt","exitCode","eventCount","retainedLineCount","provenance"].sort());
- assert.doesNotMatch(JSON.stringify(metadata),/SECRET_SENTINEL|command|args|cwd|tail|Error|authorization/);
- assert.match(renderJobInspection(metadata).join("\n"),/observed at inspection; not live follow/);
- assert.match(renderJobInspection(metadata).join("\n"),/Logs withheld: safe projection unavailable/);
+ assert.deepEqual(Object.keys(metadata).sort(),["id","mode","state","createdAt","updatedAt","exitCode","eventCount","retainedLineCount","tail","provenance"].sort());
+ assert.doesNotMatch(JSON.stringify(metadata),/SECRET_SENTINEL|command|args|cwd|Error|authorization/);
+ assert.match(renderJobInspection(metadata).join("\n"),/observed at inspection; tail is a read-only snapshot/);
+ assert.match(renderJobInspection(metadata).join("\n"),/Log tail \(read-only, last 2 of 2 retained lines\)/);
+ assert.match(renderJobInspection(metadata).join("\n"),/RUN log line one/);
+ assert.doesNotMatch(renderJobInspection(metadata).join("\n"),/Logs withheld/);
  assert.equal(jobInspectionLabel(metadata),"job-1 · background · running");
  for(const width of [12,40,72]){
   const text=renderJobInspection(projectJobMetadata(row({id:"\x1b[2J"+"界".repeat(400)+"\n\u202e"})),width);
@@ -28,7 +30,7 @@ test("recovered metadata and counts are historical; interruption never implies r
  assert.match(text,/historical; current execution unknown/);
  assert.match(text,/outcome uncertain; not resumed/);
  assert.match(text,/Historical events: 0/);
- assert.match(text,/Historical retained lines: 1/);
+ assert.match(text,/Historical retained lines: 2/);
  assert.doesNotMatch(text,/succeeded|live follow active/i);
  const invalid=projectJobMetadata(row({mode:secret,state:secret,createdAt:secret,updatedAt:secret,eventCount:-1,exitCode:Infinity}));
  assert.doesNotMatch(JSON.stringify(invalid),new RegExp(secret));
@@ -79,4 +81,32 @@ test("refresh bindings revoke every metadata object from the previous snapshot, 
  assert.equal(before.metadata[0]!.id,after.metadata[0]!.id,"bounded display IDs collide");
  assert.equal(after.stopIdentity(before.metadata[0]!,[second]),undefined,"old projected objects never grant a refreshed action");
  assert.equal(after.stopIdentity(after.metadata[0]!,[second])?.id,second.id);
+});
+
+test("M2-04 job tail projection is size-bounded against huge retained logs",()=>{
+ const huge=Array.from({length:200},(_,i)=>`line-${i} ${"x".repeat(9_990)}`);
+ const metadata=projectJobMetadata(row({tail:huge}));
+ assert.equal(metadata.tail.length,40);assert.equal(metadata.retainedLineCount,200);
+ assert.ok(metadata.tail.every(line=>line.length<=240));
+ assert.ok(metadata.tail[39]!.startsWith("line-199"));
+ assert.ok(!metadata.tail.some(line=>line.startsWith("line-159 ")));
+ const text=renderJobInspection(metadata,120).join("\n");
+ assert.match(text,/Log tail \(read-only, last 40 of 200 retained lines\)/);
+ assert.match(text,/… 160 earlier retained lines omitted/);
+});
+test("M2-04 empty tail is honest and foreign-scope tails never render",async()=>{
+ const empty=renderJobInspection(projectJobMetadata(row({tail:[]})),72).join("\n");
+ assert.match(empty,/No retained log lines in this snapshot/);
+ assert.doesNotMatch(empty,/earlier retained lines omitted/);
+ const foreign=row({id:"job-9",sessionId:"other",tail:["FOREIGN_TAIL_LINE"]});
+ const text=(await inspectOwnedJob({id:"job-9",identity:{sessionId:"s",projectId:"p"},assertCurrent:async()=>{},width:72,read:()=>[foreign]})).join("\n");
+ assert.match(text,/unavailable/);assert.doesNotMatch(text,/FOREIGN_TAIL_LINE/);
+});
+test("M2-04 tail projection is a frozen sanitized copy and never mutates the snapshot",()=>{
+ const source=row({tail:["  \u001b[31mred line  ","x".repeat(500)]});const before=structuredClone(source);
+ const metadata=projectJobMetadata(source);
+ assert.ok(Object.isFrozen(metadata.tail));
+ assert.ok(metadata.tail.every(line=>line.length<=240&&!line.includes("\u001b")&&!/[\x00-\x1f]/u.test(line)));
+ assert.ok(metadata.tail[0]!.includes("red line"));
+ assert.deepEqual(source,before);
 });
