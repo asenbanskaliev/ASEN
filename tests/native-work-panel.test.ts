@@ -74,8 +74,8 @@ test("CHANGES Enter requests the host viewer without running Git inside the pane
  });
  for(let index=0;index<3;index++)p.handleInput("\t");
  assert.match(p.render(100)[0]!,/CHANGES/u);
- p.handleInput("\r");
- assert.equal(opened,1);assert.equal(closed,0,"host owns modal dismissal and subsequent Git action");
+ p.handleInput("\r");p.handleInput("\r");p.handleInput("q");
+ assert.equal(opened,1);assert.equal(closed,0,"activation is single-use; host owns modal dismissal and Git action");
  const q=createNativeWorkPanel(snapshot,{requestRender(){},close(){closed++;},openChanges(){opened++;},terminalRows:()=>30,stillCurrent:()=>current});
  for(let index=0;index<3;index++)q.handleInput("\t");
  q.handleInput("q");assert.equal(opened,1,"cancel does not activate viewer");
