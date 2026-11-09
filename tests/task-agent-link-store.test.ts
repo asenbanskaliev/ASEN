@@ -25,3 +25,10 @@ test("ECO-07 malformed link journal fails closed without overwriting bytes",asyn
  await assert.rejects(()=>store.list({sessionId:"s1",projectId:"/project"}),/Invalid ASEN task-agent links/);
  assert.equal(await readFile(file,"utf8"),raw);
 });
+test("R19 preparation: task-agent links reject question-answer correlation fields",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-links-no-correlation-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const store=new TaskAgentLinkStore(join(dir,"links.json"));
+ const link={taskId:"todo-1",agentId:"agent-1",sessionId:"s1",projectId:"/project",createdAt:"2026-10-13T00:00:00.000Z"};
+ await assert.rejects(()=>store.bind({...link,questionId:"question-1",answerId:"answer-1"} as never),/Invalid ASEN task-agent link/u);
+ assert.deepEqual(await store.list({sessionId:"s1",projectId:"/project"}),[]);
+});
