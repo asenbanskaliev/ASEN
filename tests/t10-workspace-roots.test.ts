@@ -40,8 +40,12 @@ test("discovers exact real linked worktree paths containing trailing space and n
  // Discovery deliberately canonicalizes each worktree with realpathSync; temp
  // directories may resolve through aliases on hosted macOS and Linux runners.
  const expectedTrailing=realpathSync(trailing),expectedNewline=realpathSync(newline);
- assert.ok(discovered.includes(expectedTrailing),`trailing-space root must retain identity: ${JSON.stringify({expectedTrailing,discovered})}`);
- assert.ok(discovered.includes(expectedNewline),`embedded newline must remain in canonical root: ${JSON.stringify({expectedNewline,discovered})}`);
+ if(!discovered.includes(expectedTrailing)||!discovered.includes(expectedNewline)){
+  const raw=execFileSync("git",["-C",root,"worktree","list","--porcelain","-z"],{encoding:"utf8"});
+  throw new Error("Real -z worktree identity mismatch: "+JSON.stringify({
+   raw,parsed:parseWorktreeListOutput(raw),discovered,expectedTrailing,expectedNewline,
+  }));
+ }
  const rows=snapshotWorkspaceRoots(discovered);
  assert.ok(rows.some(row=>row.root===expectedTrailing&&row.error===undefined));
  assert.ok(rows.some(row=>row.root===expectedNewline&&row.error===undefined));
