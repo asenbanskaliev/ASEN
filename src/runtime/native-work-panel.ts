@@ -18,7 +18,7 @@ export interface NativePanelComponent{
 }
 /** Keyboard-native read-only overlay on Pi's documented ui.custom component API. */
 export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:NativePanelControls):NativePanelComponent{
- let active=0,scrollTop=0,selectedOnly=false,closeOnly=false;
+ let active=0,scrollTop=0,selectedOnly=false,closeOnly=false,activationRequested=false;
  const collapsed=new Set<AsenPanelSection>();
  const sections=[...ASEN_PANEL_SECTIONS];
  const rowsFor=(width:number)=>{
@@ -49,6 +49,7 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
   return [title,...visible,truncateForTerminal(hint+remaining,cols)];
  };
  const handleInput=(data:string)=>{
+  if(activationRequested)return;
   if(controls.stillCurrent&&!controls.stillCurrent()){controls.close();return;}
   // Use this interaction's manager, not a global registry or a second keymap.
   const matches=(action:Parameters<KeybindingsManager["matches"]>[1],...fallback:string[])=>
@@ -61,7 +62,7 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
   if(matches("tui.input.tab","\t")){active=(active+1)%sections.length;scrollTop=0;controls.requestRender();return;}
   if(data===" "){if(collapsed.has(activeName()))collapsed.delete(activeName());else collapsed.add(activeName());controls.requestRender();return;}
   if(matches("tui.select.confirm","\r","\n")){
-   if(activeName()==="CHANGES"&&controls.openChanges){controls.openChanges();return;}
+   if(activeName()==="CHANGES"&&controls.openChanges){activationRequested=true;controls.openChanges();return;}
    selectedOnly=true;scrollTop=0;controls.requestRender();return;
   }
   if(matches("tui.editor.deleteCharBackward","\u007f","\b")){selectedOnly=false;scrollTop=0;controls.requestRender();}
