@@ -51,26 +51,47 @@ export async function selectProfileFallback(options:SelectProfileFallbackOptions
  const attempted=new Set<string>();
  for(const model of options.attemptedModels){if(!validModel(model)||attempted.has(model))return {status:"blocked",reason:"attempt-state-unknown"};attempted.add(model);}
  const seen=new Set<string>();
+ const models:string[]=[];
  for(const candidate of options.candidates){
   if(!candidate||typeof candidate!=="object"||!validModel(candidate.model))throw new Error("Invalid fallback model");
-  if(seen.has(candidate.model))throw new Error("duplicate fallback model");seen.add(candidate.model);
+  const model=candidate.model;
+  if(seen.has(model))throw new Error("duplicate fallback model");seen.add(model);models.push(model);
  }
  if(new Set([...attempted,...seen]).size>MAX_PROFILE_FALLBACK_MODELS)throw new Error("Fallback chain exceeds the eight-model limit");
+ // The caller owns these mutable objects. A consent granted while an await is pending
+ // cannot authorize a changed route, retry history, cooldown, or decision callback.
+ const tried=[...options.attemptedModels],cooldownEntries=Object.entries(options.cooldowns??{}).sort(([a],[b])=>a.localeCompare(b));
+ const at=options.now, classify=options.classifyCost, confirm=options.confirmHuman, isCurrent=options.isCurrent, signal=options.signal;
+ const sameDecision=():boolean=>{
+  try{
+   if(options.now!==at||options.classifyCost!==classify||options.confirmHuman!==confirm||options.isCurrent!==isCurrent||options.signal!==signal)return false;
+   if(options.candidates.length!==models.length||options.candidates.some((candidate,index)=>candidate?.model!==models[index]))return false;
+   if(options.attemptedModels.length!==tried.length||options.attemptedModels.some((value,index)=>value!==tried[index]))return false;
+   const remaining=Object.entries(options.cooldowns??{}).sort(([a],[b])=>a.localeCompare(b));
+   return remaining.length===cooldownEntries.length&&remaining.every(([key,value],index)=>key===cooldownEntries[index]?.[0]&&value===cooldownEntries[index]?.[1]);
+  }catch{return false;}
+ };
  if(!current(options))return {status:"blocked",reason:options.signal?.aborted?"cancelled":"stale"};
  if(options.candidates.length===0)return {status:"unavailable",reason:attempted.size?"exhausted":"empty"};
  let cooled=false,alreadyAttempted=false;
- for(const candidate of options.candidates){
-  if(attempted.has(candidate.model)){alreadyAttempted=true;continue;}
-  if(options.cooldowns&&Object.hasOwn(options.cooldowns,candidate.model)&&options.cooldowns[candidate.model]!>options.now){cooled=true;continue;}
+ for(const model of models){
+  if(!sameDecision()||!current(options))return {status:"blocked",reason:options.signal?.aborted?"cancelled":"stale"};
+  if(attempted.has(model)){alreadyAttempted=true;continue;}
+  if(options.cooldowns&&Object.hasOwn(options.cooldowns,model)&&options.cooldowns[model]!>at){cooled=true;continue;}
   let cost:FallbackCost;
-  try{cost=options.classifyCost(candidate.model);}catch{return {status:"blocked",reason:"cost-unknown"};}
-  if(cost!=="included"&&cost!=="paid"&&cost!=="unknown")return {status:"blocked",reason:"cost-unknown"};
-  if(cost==="included")return current(options)?{status:"selected",model:candidate.model,cost}:{status:"blocked",reason:options.signal?.aborted?"cancelled":"stale"};
-  if(typeof options.confirmHuman!=="function")return {status:"blocked",reason:"consent-required"};
-  let approved=false;try{approved=await options.confirmHuman(candidate.model,cost)==true;}catch{return {status:"blocked",reason:"consent-denied"};}
+  try{cost=classify(model);}catch{return {status:"blocked",reason:"cost-unknown"};}
+  if(!sameDecision())return {status:"blocked",reason:"stale"};
+  if(cost!=="included"&&cost!=="paid")return {status:"blocked",reason:"cost-unknown"};
+  if(cost==="included")return current(options)?{status:"selected",model,cost}:{status:"blocked",reason:options.signal?.aborted?"cancelled":"stale"};
+  if(typeof confirm!=="function")return {status:"blocked",reason:"consent-required"};
+  let approved=false;try{approved=(await confirm(model,cost))===true;}catch{return {status:"blocked",reason:"consent-denied"};}
   if(!current(options))return {status:"blocked",reason:options.signal?.aborted?"cancelled":"stale"};
+  if(!sameDecision())return {status:"blocked",reason:"stale"};
   if(!approved)return {status:"blocked",reason:"consent-denied"};
-  return {status:"selected",model:candidate.model,cost};
+  // Recheck trusted cost classification at the decision boundary; a changed
+  // classification cannot inherit the prior consent.
+  try{if(classify(model)!==cost)return {status:"blocked",reason:"cost-unknown"};}catch{return {status:"blocked",reason:"cost-unknown"};}
+  return {status:"selected",model,cost};
  }
  return {status:"unavailable",reason:cooled?"cooldown":alreadyAttempted||attempted.size?"exhausted":"empty"};
 }
