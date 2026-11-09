@@ -1391,12 +1391,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     }
    }
   }
-  // UFC-M1-04: the saved registry drives real Pi shortcut registration at startup, through the
-  // public API only. The target decision recorded in odd/tasks/ui-functional-completion-and-
-  // acceptance.md keeps `changes` on its shipped registry command `asen-changes` (a shortcut
-  // invokes the command without the `resolve` argument, so it can never enter the correction
-  // flow); retargeting to the read-only browser is its own M3-track registry change. The
-  // history action stays on its dedicated opt-in seam above and is skipped here.
+  // UFC-M3-01 G2: the built-in Changes key invokes /asen-changes-view (guarded,
+  // read-only). /asen-changes remains a separately registered explicit correction
+  // command; shortcuts send no "resolve" argument. The existing registry keeps
+  // env > saved > default precedence and opt-in history separate.
   if(typeof pi.registerShortcut==="function"){
    const keymapBindings=readKeymaps(home()).bindings;
    const refusedKeymapBindings:string[]=[];
