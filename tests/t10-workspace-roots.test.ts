@@ -47,8 +47,8 @@ test("discovers exact real linked worktree paths containing trailing space and n
   }));
  }
  const rows=snapshotWorkspaceRoots(discovered);
- assert.ok(rows.some(row=>row.root===expectedTrailing&&row.error===undefined));
- assert.ok(rows.some(row=>row.root===expectedNewline&&row.error===undefined));
+ assert.ok(rows.some(row=>row.root===expectedTrailing&&row.error===undefined),JSON.stringify(rows));
+ assert.ok(rows.some(row=>row.root===expectedNewline&&row.error===undefined),JSON.stringify(rows));
 });
 
 test("ignores entries without a worktree path and empty output",()=>{
