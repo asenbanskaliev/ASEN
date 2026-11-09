@@ -28,7 +28,7 @@ export interface KeymapAction{
 
 export const ASEN_KEYMAP_ACTIONS:readonly KeymapAction[]=[
 	{id:"commands",label:"Command palette",env:"ASEN_PALETTE_KEY",defaultKey:"alt+k",command:"asen-palette"},
-	{id:"changes",label:"Browse changes",env:"ASEN_CHANGES_KEY",defaultKey:"alt+g",command:"asen-changes"},
+	{id:"changes",label:"Browse changes",env:"ASEN_CHANGES_KEY",defaultKey:"alt+g",command:"asen-changes-view"},
 	{id:"usage",label:"Usage overview",env:"ASEN_USAGE_KEY",defaultKey:"alt+u",command:"asen-usage"},
 	{id:"agents.view",label:"Agents overlay",env:"ASEN_AGENTS_VIEW_KEY",defaultKey:"alt+a",command:"asen-agents"},
 	// History keeps the opt-in env slot it already had; there is no default binding to hijack.
