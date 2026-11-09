@@ -103,6 +103,42 @@ test("a cost classifier that changes during consent fails closed",async()=>{
  assert.deepEqual(actual,{status:"blocked",reason:"cost-unknown"});
 });
 
+
+test("a non-boolean isCurrent result never grants freshness to a paid route",async()=>{
+ const result=await select({candidates:chain(["paid/model"]),now:0,classifyCost:classify(new Set(["paid/model"])),isCurrent:(()=>1) as unknown as ()=>boolean,confirmHuman:async()=>true});
+ assert.deepEqual(result,{status:"blocked",reason:"stale"});
+});
+
+test("a final paid-cost check cannot mutate the route after consent and still select it",async()=>{
+ const candidates=chain(["paid/model"]),attemptedModels:string[]=[],cooldowns:Record<string,number>={};
+ const controller=new AbortController();
+ for(const mutation of ["candidate","attempt","cooldown","abort"] as const){
+  candidates[0]!.model="paid/model";attemptedModels.length=0;delete cooldowns["paid/model"];
+  const localAbort=new AbortController();let calls=0;
+  const result=await select({candidates,attemptedModels,cooldowns,now:0,signal:localAbort.signal,
+   classifyCost:()=>{calls++;if(calls===2){
+    if(mutation==="candidate")candidates[0]!.model="other/model";
+    if(mutation==="attempt")attemptedModels.push("paid/model");
+    if(mutation==="cooldown")cooldowns["paid/model"]=100;
+    if(mutation==="abort")localAbort.abort();
+   }return "paid";},
+   confirmHuman:async()=>true});
+  assert.deepEqual(result,{status:"blocked",reason:mutation==="abort"?"cancelled":"stale"},mutation);
+ }
+});
+
+test("a final included-route freshness callback cannot change route or cooldown while selecting",async()=>{
+ for(const mutation of ["candidate","attempt","cooldown"] as const){
+  const candidates=chain(["free/model"]),attemptedModels:string[]=[],cooldowns:Record<string,number>={};
+  const result=await select({candidates,attemptedModels,cooldowns,now:0,classifyCost:()=> "included",
+   isCurrent:()=>{if(mutation==="candidate")candidates[0]!.model="paid/other";
+    if(mutation==="attempt")attemptedModels.push("free/model");
+    if(mutation==="cooldown")cooldowns["free/model"]=900;
+    return true;}});
+  assert.deepEqual(result,{status:"blocked",reason:"stale"},mutation);
+ }
+});
+
 test("a forged confirmed flag is ignored and cannot replace the human confirmation callback",async()=>{
  const input={candidates:chain(["paid/model"]),now:0,classifyCost:classify(new Set(["paid/model"])),confirmed:true} as any;
  assert.deepEqual(await select(input),{status:"blocked",reason:"consent-required"});
