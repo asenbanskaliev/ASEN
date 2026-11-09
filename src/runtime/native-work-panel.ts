@@ -5,6 +5,8 @@ import type {KeybindingsManager} from "@earendil-works/pi-tui";
 export interface NativePanelControls{
  readonly requestRender:()=>void;
  readonly close:()=>void;
+ /** Only returns a selection to the host; never runs Git inside the modal. */
+ readonly openChanges?:()=>void;
  readonly terminalRows:()=>number;
  readonly stillCurrent?:()=>boolean;
  readonly keybindings?:Pick<KeybindingsManager,"matches">|undefined;
@@ -58,7 +60,10 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
   if(data==="k"||matches("tui.select.up","\u001b[A")){scrollTop=Math.max(0,scrollTop-1);controls.requestRender();return;}
   if(matches("tui.input.tab","\t")){active=(active+1)%sections.length;scrollTop=0;controls.requestRender();return;}
   if(data===" "){if(collapsed.has(activeName()))collapsed.delete(activeName());else collapsed.add(activeName());controls.requestRender();return;}
-  if(matches("tui.select.confirm","\r","\n")){selectedOnly=true;scrollTop=0;controls.requestRender();return;}
+  if(matches("tui.select.confirm","\r","\n")){
+   if(activeName()==="CHANGES"&&controls.openChanges){controls.openChanges();return;}
+   selectedOnly=true;scrollTop=0;controls.requestRender();return;
+  }
   if(matches("tui.editor.deleteCharBackward","\u007f","\b")){selectedOnly=false;scrollTop=0;controls.requestRender();}
  };
  return {render,handleInput,invalidate(){scrollTop=0;}};
