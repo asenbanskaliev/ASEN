@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
+import {realpathSync} from "node:fs";
 import {mkdtemp,mkdir,rm} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -36,11 +37,14 @@ test("discovers exact real linked worktree paths containing trailing space and n
  execFileSync("git",["-C",root,"worktree","add","-q","-b","trailing-path",trailing]);
  execFileSync("git",["-C",root,"worktree","add","-q","-b","newline-path",newline]);
  const discovered=discoverWorkspaceWorktrees(root);
- assert.ok(discovered.includes(trailing),"trailing-space root must retain identity");
- assert.ok(discovered.includes(newline),"embedded newline must remain inside root");
+ // Discovery deliberately canonicalizes each worktree with realpathSync; temp
+ // directories may resolve through aliases on hosted macOS and Linux runners.
+ const expectedTrailing=realpathSync(trailing),expectedNewline=realpathSync(newline);
+ assert.ok(discovered.includes(expectedTrailing),`trailing-space root must retain identity: ${JSON.stringify({expectedTrailing,discovered})}`);
+ assert.ok(discovered.includes(expectedNewline),`embedded newline must remain in canonical root: ${JSON.stringify({expectedNewline,discovered})}`);
  const rows=snapshotWorkspaceRoots(discovered);
- assert.ok(rows.some(row=>row.root===trailing&&row.error===undefined));
- assert.ok(rows.some(row=>row.root===newline&&row.error===undefined));
+ assert.ok(rows.some(row=>row.root===expectedTrailing&&row.error===undefined));
+ assert.ok(rows.some(row=>row.root===expectedNewline&&row.error===undefined));
 });
 
 test("ignores entries without a worktree path and empty output",()=>{
