@@ -356,7 +356,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)throw new Error("ASEN panel session changed");
    const integrationInspection=inspectIntegrationProfiles({...(pi.getCommands?{getCommands:pi.getCommands.bind(pi)}:{}),...(pi.getAllTools?{getAllTools:pi.getAllTools.bind(pi)}:{}),...(profiles?{profiles}:{})});
    const hostStatus=projectHostStatus(ctx);assertCurrent();
-   return {todos,agents,jobs,...(changes?{changes}:{}),hostStatus,integrationInspection,permission:permissionSession.mode(ctx)};
+   return {todos,todosObserved:!!todoStorePromise,agents,jobs,...(changes?{changes}:{}),hostStatus,integrationInspection,permission:permissionSession.mode(ctx)};
   };
   const m1Cache=createM1SurfaceCache();
   let workRowGeneration=0;

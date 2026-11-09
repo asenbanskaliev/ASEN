@@ -6,6 +6,65 @@ import {truncateForTerminal,visibleWidth} from "../src/runtime/responsive-layout
 import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
 
 const snapshot={todos:[],agents:[],jobs:[],changes:{branch:"main",files:0},profile:"free",permission:"normal"} satisfies AsenPanelSnapshot;
+test("REVIEW derives only stored Todo states that actually await review",()=>{
+ const todos=["succeeded","blocked","done","running"].map((state,index)=>({taskId:`todo-${index}`,title:`Todo ${index}`,events:[],current:{state,taskId:`todo-${index}`}})) as any;
+ const output=renderAsenPanel({...snapshot,todos,todosObserved:true},120).join("\n");
+ assert.match(output,/REVIEW · 1 needs review/u);
+ assert.match(output,/Results awaiting review · 1/u);
+ assert.match(renderAsenPanel({...snapshot,todos},120).join("\n"),/REVIEW · unverified/u);
+ assert.match(renderAsenPanel({...snapshot,todosObserved:true},120).join("\n"),/REVIEW · no pending results/u);
+ assert.match(renderAsenPanel({...snapshot,review:{pending:2}},120).join("\n"),/REVIEW · 2 needs review/u);
+});
+test("detail mode expands session lists to 100 while the overview keeps its compact limits",()=>{
+ const todos=Array.from({length:101},(_,index)=>({taskId:`todo-${index}`,title:`Todo ${index}`,events:[],current:{state:"planned",taskId:`todo-${index}`}})) as any;
+ const agents=Array.from({length:101},(_,index)=>({id:`agent-${index}`,role:"explorer",state:"queued",updatedAt:`2026-01-01T00:00:${String(index%60).padStart(2,"0")}Z`})) as any;
+ const panel=createNativeWorkPanel({...snapshot,todos,agents},{requestRender(){},close(){},terminalRows:()=>400});
+ const overview=panel.render(200).join("\n");
+ assert.match(overview,/… 89 more/u,"overview retains the twelve-Todo summary cap");
+ panel.handleInput("\r");
+ const detail=panel.render(200).join("\n");
+ assert.match(detail,/Todo 99/u);assert.doesNotMatch(detail,/Todo 100/u);
+ panel.handleInput("\u007f");panel.handleInput("\t");panel.handleInput("\t");
+ panel.handleInput("\r");
+ const agentDetail=panel.render(200).join("\n");
+ assert.match(agentDetail,/… 1 more/u,"detail is bounded at one hundred agents");
+});
+test("REVIEW counts the exact acceptance block but excludes technical and near-match blocks",()=>{
+ const reason="Linked review result requires explicit user acceptance";
+ const todos=[
+  {state:"succeeded"},
+  {state:"blocked",reason},
+  {state:"blocked",reason:"Agent launch was interrupted before dispatch"},
+  {state:"blocked",reason:reason+" later"},
+  {state:"done",reason},
+ ].map((current,index)=>({taskId:`review-${index}`,title:`Review ${index}`,events:[],current:{...current,taskId:`review-${index}`}})) as any;
+ const before=structuredClone(todos);
+ const output=renderAsenPanel({...snapshot,todos,todosObserved:true},160).join("\n");
+ assert.match(output,/REVIEW · 2 needs review/u);
+ assert.match(output,/Results awaiting review · 2/u);
+ assert.match(output,/2 stored Todo results awaiting review/u);
+ assert.deepEqual(todos,before,"review projection never acknowledges or accepts a result");
+});
+test("JOBS detail retains exactly one hundred entries and compact overview only eight",()=>{
+ const jobs=Array.from({length:101},(_,index)=>({
+  id:`job-${String(index).padStart(3,"0")}`,sessionId:"session-a",projectId:"/project-a",
+  command:"fixture",mode:"background" as const,state:"queued" as const,
+  createdAt:"2026-11-08T00:00:00.000Z",updatedAt:new Date(Date.UTC(2026,10,8,0,0,index)).toISOString(),
+  exitCode:null,eventCount:0,tail:[],
+ }));
+ const before=structuredClone(jobs);
+ const panel=createNativeWorkPanel({...snapshot,jobs},{requestRender(){},close(){},terminalRows:()=>400});
+ const overview=panel.render(200).join("\n");
+ assert.match(overview,/… 93 more/u);
+ assert.equal((overview.match(/job-\d{3}/gu)??[]).length,8);
+ panel.handleInput("\t");panel.handleInput("\r");
+ const detail=panel.render(200).join("\n");
+ assert.match(detail,/… 1 more/u);
+ assert.equal((detail.match(/job-\d{3}/gu)??[]).length,100);
+ assert.match(detail,/job-100/u);assert.match(detail,/job-001/u);
+ assert.doesNotMatch(detail,/job-000/u,"oldest item is outside the bounded detail");
+ assert.deepEqual(jobs,before,"detail navigation cannot reorder or mutate owned jobs");
+});
 test("M2 native overlay renders six real sections, scrolls and changes section without effects",()=>{
  let redraws=0,closes=0,current=true,rows=10;
  const overlay=createNativeWorkPanel(snapshot,{
