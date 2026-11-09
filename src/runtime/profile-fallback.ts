@@ -41,7 +41,9 @@ export type ProfileFallbackSelection=
  |{status:"blocked";reason:"consent-required"|"consent-denied"|"stale"|"cancelled"|"cost-unknown"|"attempt-state-unknown"};
 function current(options:SelectProfileFallbackOptions):boolean{
  if(options.signal?.aborted)return false;
- try{return options.isCurrent?.()!==false;}catch{return false;}
+ // A supplied freshness authority must return literal true. An absent authority
+ // is allowed only for this offline selector; provider execution has its own gate.
+ try{return options.isCurrent===undefined||options.isCurrent()===true;}catch{return false;}
 }
 /** Selects a route only; it never invokes a provider or persists profile/configuration data. */
 export async function selectProfileFallback(options:SelectProfileFallbackOptions):Promise<ProfileFallbackSelection>{
@@ -82,7 +84,11 @@ export async function selectProfileFallback(options:SelectProfileFallbackOptions
   try{cost=classify(model);}catch{return {status:"blocked",reason:"cost-unknown"};}
   if(!sameDecision())return {status:"blocked",reason:"stale"};
   if(cost!=="included"&&cost!=="paid")return {status:"blocked",reason:"cost-unknown"};
-  if(cost==="included")return current(options)?{status:"selected",model,cost}:{status:"blocked",reason:options.signal?.aborted?"cancelled":"stale"};
+  if(cost==="included"){
+   const active=current(options);
+   if(!active||!sameDecision())return {status:"blocked",reason:options.signal?.aborted?"cancelled":"stale"};
+   return {status:"selected",model,cost};
+  }
   if(typeof confirm!=="function")return {status:"blocked",reason:"consent-required"};
   let approved=false;try{approved=(await confirm(model,cost))===true;}catch{return {status:"blocked",reason:"consent-denied"};}
   if(!current(options))return {status:"blocked",reason:options.signal?.aborted?"cancelled":"stale"};
@@ -91,6 +97,10 @@ export async function selectProfileFallback(options:SelectProfileFallbackOptions
   // Recheck trusted cost classification at the decision boundary; a changed
   // classification cannot inherit the prior consent.
   try{if(classify(model)!==cost)return {status:"blocked",reason:"cost-unknown"};}catch{return {status:"blocked",reason:"cost-unknown"};}
+  // A classifier or freshness callback may synchronously mutate caller-owned
+  // state. Revalidate *after* their final invocation, not just before it.
+  const active=current(options);
+  if(!active||!sameDecision())return {status:"blocked",reason:options.signal?.aborted?"cancelled":"stale"};
   return {status:"selected",model,cost};
  }
  return {status:"unavailable",reason:cooled?"cooldown":alreadyAttempted||attempted.size?"exhausted":"empty"};
