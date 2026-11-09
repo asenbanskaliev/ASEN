@@ -955,15 +955,30 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // It is modal and read-only; it does not replace the persistent fullscreen rail.
     if(!view&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.custom==="function"){
      const snapshot=await getPanelSnapshot(ctx),before=ctx.cwd;assertCurrent();
-     await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>{
+     const action=await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>{
       const close=()=>done(undefined);
       return createNativeWorkPanel(snapshot,{
        requestRender:()=>tui.requestRender(),close,
+       openChanges:()=>done("ASEN_OPEN_CHANGES_VIEW"),
        ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
        terminalRows:()=>Math.max(8,Number(tui.terminal?.rows??24)),
        stillCurrent:()=>{try{assertCurrent();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}},
       });
      },{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}});
+     if(action==="ASEN_OPEN_CHANGES_VIEW"){
+      // The modal only returns a selection. Recheck scope before invoking the
+      // existing guarded, read-only viewer, including its own root identity guard.
+      try{
+       assertCurrent();
+       const now=await sessionIdentity(ctx);assertCurrent();
+       if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId||ctx.cwd!==before)
+        return ["ASEN panel scope changed. No Changes preview opened."];
+       const viewer=keymapCommandHandlers.get("asen-changes-view");
+       if(!viewer)return ["ASEN Changes viewer unavailable."];
+       await viewer("",ctx);assertCurrent();
+       return ["ASEN Changes viewer closed (read-only)."];
+      }catch{return ["ASEN panel context changed or Git inspection failed. No further action performed."];}
+     }
      return ["ASEN work panel closed (read-only)."];
     }
     // Use Pi native interactive selection only when it really exists.

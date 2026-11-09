@@ -65,6 +65,24 @@ test("JOBS detail retains exactly one hundred entries and compact overview only 
  assert.doesNotMatch(detail,/job-000/u,"oldest item is outside the bounded detail");
  assert.deepEqual(jobs,before,"detail navigation cannot reorder or mutate owned jobs");
 });
+
+test("CHANGES Enter requests the host viewer without running Git inside the panel",()=>{
+ let opened=0,closed=0,current=true;
+ const p=createNativeWorkPanel({...snapshot,changes:{branch:"feature",files:2}},{
+  requestRender(){},close(){closed++;},openChanges(){opened++;},terminalRows:()=>30,
+  stillCurrent:()=>current,
+ });
+ for(let index=0;index<3;index++)p.handleInput("\t");
+ assert.match(p.render(100)[0]!,/CHANGES/u);
+ p.handleInput("\r");p.handleInput("\r");p.handleInput("q");
+ assert.equal(opened,1);assert.equal(closed,0,"activation is single-use; host owns modal dismissal and Git action");
+ const q=createNativeWorkPanel(snapshot,{requestRender(){},close(){closed++;},openChanges(){opened++;},terminalRows:()=>30,stillCurrent:()=>current});
+ for(let index=0;index<3;index++)q.handleInput("\t");
+ q.handleInput("q");assert.equal(opened,1,"cancel does not activate viewer");
+ current=false;q.handleInput("\r");
+ assert.equal(opened,1,"stale panel cannot activate viewer");assert.equal(closed,2);
+});
+
 test("M2 native overlay renders six real sections, scrolls and changes section without effects",()=>{
  let redraws=0,closes=0,current=true,rows=10;
  const overlay=createNativeWorkPanel(snapshot,{

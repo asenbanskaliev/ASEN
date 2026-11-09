@@ -285,6 +285,31 @@ test("M2 public Pi native work panel uses custom overlay without launching agent
  assert.deepEqual(options,[{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}}]);
  assert.ok(notices.every(text=>!text.includes("Permission granted")));
 });
+
+test("M3 G2: CHANGES Enter closes panel and opens the existing scoped Git picker",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-panel-changes-entry-"));t.after(()=>rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
+ const root=join(home,"repo");await mkdir(root);
+ execFileSync("git",["init","-q",root]);
+ execFileSync("git",["-C",root,"-c","user.name=ASEN test","-c","user.email=asen@example.invalid","commit","--allow-empty","-qm","initial"]);
+ await writeFile(join(root,"changed-file.txt"),"untracked content");
+ const h=host(),messages:string[]=[];let picks=0;
+ createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})(h.pi as any);
+ const context:any={cwd:root,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>"panel-changes"},
+  ui:{notify:(message:string)=>messages.push(message),
+   custom:async(factory:any)=>await new Promise(resolve=>{
+    const p=factory({terminal:{rows:20},requestRender(){}},null,null,resolve);
+    for(let i=0;i<3;i++)p.handleInput("\t");
+    assert.match(p.render(100)[0]!,/CHANGES/u);p.handleInput("\r");
+   }),
+   select:async(_title:string,options:string[])=>{picks++;return options[0];},
+  },
+ };
+ const answer=await h.commands.get("asen-panel")!.handler("",context);
+ assert.equal(picks,1,"Enter routes through existing scoped Git selector");
+ assert.match(String(answer),/Changes viewer closed/u);
+ assert.ok(messages.some(message=>message.includes("changed-file.txt")),JSON.stringify(messages));
+});
+
 test("native panel command forwards injected navigation bindings and rejects project drift",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-panel-bindings-"));
  t.after(()=>rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
