@@ -62,7 +62,12 @@ export function snapshotWorkspaceRoots(roots:readonly string[]):readonly Workspa
   try{
    const rootIdentity=captureWorkspaceRootIdentity(root),canonical=rootIdentity.canonical;
    assertWorkspaceRootIdentity(root,rootIdentity);
-   const observedRoot=realpathSync(git(canonical,["rev-parse","--show-toplevel"]).trim());
+   const rootLine=git(canonical,["rev-parse","--show-toplevel"]);
+   // Git terminates this path with a line break. Do not use trim(): trailing
+   // spaces and embedded newlines are valid POSIX worktree directory names.
+   if(!rootLine.endsWith("\n"))throw new Error("git root path is unterminated");
+   const rootPath=rootLine.endsWith("\r\n")?rootLine.slice(0,-2):rootLine.slice(0,-1);
+   const observedRoot=realpathSync(rootPath);
    assertWorkspaceRootIdentity(root,rootIdentity);
    if(!sameWorkspaceIdentityPath(observedRoot,canonical))throw new Error("workspace must be the exact Git root");
    const head=git(canonical,["rev-parse","HEAD"]).trim();
