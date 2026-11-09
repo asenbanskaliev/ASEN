@@ -5,6 +5,20 @@ import {sameWorkspaceIdentityPath} from "./workspace-store.js";
 export interface WorkspaceFileChange{readonly path:string;readonly status:string;readonly previousPath?:string;}
 export interface WorkspaceRootSnapshot{readonly root:string;readonly head:string;readonly branch:string;readonly files:readonly WorkspaceFileChange[];readonly error?:string;}
 export function parseWorktreeListOutput(output:string):readonly string[]{
+ if(output.includes("\0")){
+  // -z makes records and paths unambiguous, including embedded newlines and trailing spaces.
+  if(!output.endsWith("\0\0"))throw new Error("git worktree returned unterminated -z records");
+  const roots:string[]=[];
+  for(const record of output.split("\0\0")){
+   if(!record)continue;
+   const fields=record.split("\0"),entry=fields[0];
+   if(!entry?.startsWith("worktree ")||entry.length<10||fields.slice(1).some(field=>field.startsWith("worktree ")))
+    throw new Error("git worktree returned malformed -z records");
+   roots.push(entry.slice("worktree ".length));
+  }
+  return Object.freeze([...new Set(roots)]);
+ }
+ // Historical newline parser remains for direct legacy callers; discovery always requests -z.
  const roots:string[]=[];let current:string|null=null;
  for(const line of output.split(/\r?\n/)){
   if(/^worktree\s+/u.test(line)){if(current)roots.push(current);current=line.slice(line.indexOf(' ')+1).trim();continue}
@@ -13,7 +27,7 @@ export function parseWorktreeListOutput(output:string):readonly string[]{
  if(current)roots.push(current);
  return Object.freeze([...new Set(roots.filter(Boolean))]);
 }
-export function discoverWorkspaceWorktrees(directory:string,runGit?:(cwd:string,args:string[])=>string):readonly string[]{try{const run=runGit??((cwd,args)=>execFileSync("git",["-C",cwd,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:5000,maxBuffer:1024*1024,windowsHide:true}));const output=run(directory,["worktree","list","--porcelain"]);return Object.freeze(parseWorktreeListOutput(output).map((canonical)=>{try{return realpathSync(canonical)}catch{return canonical}}));}catch{return Object.freeze([]);}}
+export function discoverWorkspaceWorktrees(directory:string,runGit?:(cwd:string,args:string[])=>string):readonly string[]{try{const run=runGit??((cwd,args)=>execFileSync("git",["-C",cwd,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:5000,maxBuffer:1024*1024,windowsHide:true}));const output=run(directory,["worktree","list","--porcelain","-z"]);if(output!==""&&!output.includes("\0"))throw new Error("Git -z worktree output missing NUL records");return Object.freeze(parseWorktreeListOutput(output).map((canonical)=>{try{return realpathSync(canonical)}catch{return canonical}}));}catch{return Object.freeze([]);}}
 export function parseWorkspaceStatus(output:string):WorkspaceFileChange[]{
  if(output!==""&&!output.endsWith("\0"))throw new Error("git status returned unterminated porcelain data");
  const records=output.split("\0"),files:WorkspaceFileChange[]=[];
@@ -48,7 +62,12 @@ export function snapshotWorkspaceRoots(roots:readonly string[]):readonly Workspa
   try{
    const rootIdentity=captureWorkspaceRootIdentity(root),canonical=rootIdentity.canonical;
    assertWorkspaceRootIdentity(root,rootIdentity);
-   const observedRoot=realpathSync(git(canonical,["rev-parse","--show-toplevel"]).trim());
+   const rootLine=git(canonical,["rev-parse","--show-toplevel"]);
+   // Git terminates this path with a line break. Do not use trim(): trailing
+   // spaces and embedded newlines are valid POSIX worktree directory names.
+   if(!rootLine.endsWith("\n"))throw new Error("git root path is unterminated");
+   const rootPath=rootLine.endsWith("\r\n")?rootLine.slice(0,-2):rootLine.slice(0,-1);
+   const observedRoot=realpathSync(rootPath);
    assertWorkspaceRootIdentity(root,rootIdentity);
    if(!sameWorkspaceIdentityPath(observedRoot,canonical))throw new Error("workspace must be the exact Git root");
    const head=git(canonical,["rev-parse","HEAD"]).trim();

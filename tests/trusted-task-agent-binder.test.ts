@@ -58,6 +58,25 @@ test("ECO-07 revalidates Pi identity after persistence and before invoking the r
  await assert.rejects(()=>binder.launch(task.taskId,"agent-race",own,()=>{dispatches++;},()=>{if(++validations===6)throw new Error("Pi session or project changed");}),/session or project changed/);
  assert.equal(validations,6);assert.equal(dispatches,0);assert.equal((await links.list(own)).length,1,"the durable attempted binding remains auditable");assert.equal((await todos.list(own))[0]?.current.state,"blocked","a claimed launch that fails final identity validation requires review");
 });
+test("R19 preparation: launch failure remains blocked and cannot auto-replay after reopen",async t=>{
+ const dir=await mkdtemp(join(tmpdir(),"asen-binder-launch-failure-"));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const identity={sessionId:"launch-failure",projectId:dir};
+ const todos=await SessionTodoStore.open(join(dir,"todos.json")),task=await todos.add("Do not replay failed launch",identity);
+ const links=new TaskAgentLinkStore(join(dir,"links.json"));
+ const runtime={query:async(id:string)=>id==="agent-once"?{record:{id,...identity,role:"explorer",state:"queued"}}:null};
+ const binder=new TrustedTaskAgentBinder(todos,runtime as never,links);
+ let dispatches=0;
+ await assert.rejects(()=>binder.launch(task.taskId,"agent-once",identity,()=>{dispatches++;throw new Error("runner launch failed");}),/runner launch failed/u);
+ assert.equal(dispatches,1);
+ const reopened=await SessionTodoStore.open(join(dir,"todos.json"));
+ const current=(await reopened.list(identity))[0]!;
+ assert.equal(current.current.state,"blocked");
+ assert.equal(current.current.reason,"Agent launch was interrupted before dispatch");
+ assert.deepEqual((await new TaskAgentLinkStore(join(dir,"links.json")).list(identity)).map(x=>x.agentId),["agent-once"]);
+ await assert.rejects(()=>new TrustedTaskAgentBinder(reopened,runtime as never,new TaskAgentLinkStore(join(dir,"links.json")))
+  .launch(task.taskId,"agent-once",identity,()=>{dispatches++;}),/Todo must remain active/u);
+ assert.equal(dispatches,1,"a failed launch must not replay after process restart");
+});
 
 test("EF-603 same agent ID may never be dispatched twice, even after interruption",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-ef603-no-replay-"));t.after(()=>rm(dir,{recursive:true,force:true}));

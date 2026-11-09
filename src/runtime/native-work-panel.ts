@@ -5,6 +5,8 @@ import type {KeybindingsManager} from "@earendil-works/pi-tui";
 export interface NativePanelControls{
  readonly requestRender:()=>void;
  readonly close:()=>void;
+ /** Only returns a selection to the host; never runs Git inside the modal. */
+ readonly openChanges?:()=>void;
  readonly terminalRows:()=>number;
  readonly stillCurrent?:()=>boolean;
  readonly keybindings?:Pick<KeybindingsManager,"matches">|undefined;
@@ -16,13 +18,13 @@ export interface NativePanelComponent{
 }
 /** Keyboard-native read-only overlay on Pi's documented ui.custom component API. */
 export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:NativePanelControls):NativePanelComponent{
- let active=0,scrollTop=0,selectedOnly=false,closeOnly=false;
+ let active=0,scrollTop=0,selectedOnly=false,closeOnly=false,activationRequested=false;
  const collapsed=new Set<AsenPanelSection>();
  const sections=[...ASEN_PANEL_SECTIONS];
  const rowsFor=(width:number)=>{
   if(selectedOnly){
    const section=sections[active]!;
-   return [truncateForTerminal("▾ "+section,width),...renderAsenPanelSection(snapshot,section,width)];
+   return [truncateForTerminal("▾ "+section,width),...renderAsenPanelSection(snapshot,section,width,true)];
   }
   return renderAsenPanel(snapshot,width,[...collapsed]);
  };
@@ -47,6 +49,7 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
   return [title,...visible,truncateForTerminal(hint+remaining,cols)];
  };
  const handleInput=(data:string)=>{
+  if(activationRequested)return;
   if(controls.stillCurrent&&!controls.stillCurrent()){controls.close();return;}
   // Use this interaction's manager, not a global registry or a second keymap.
   const matches=(action:Parameters<KeybindingsManager["matches"]>[1],...fallback:string[])=>
@@ -58,7 +61,10 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
   if(data==="k"||matches("tui.select.up","\u001b[A")){scrollTop=Math.max(0,scrollTop-1);controls.requestRender();return;}
   if(matches("tui.input.tab","\t")){active=(active+1)%sections.length;scrollTop=0;controls.requestRender();return;}
   if(data===" "){if(collapsed.has(activeName()))collapsed.delete(activeName());else collapsed.add(activeName());controls.requestRender();return;}
-  if(matches("tui.select.confirm","\r","\n")){selectedOnly=true;scrollTop=0;controls.requestRender();return;}
+  if(matches("tui.select.confirm","\r","\n")){
+   if(activeName()==="CHANGES"&&controls.openChanges){activationRequested=true;controls.openChanges();return;}
+   selectedOnly=true;scrollTop=0;controls.requestRender();return;
+  }
   if(matches("tui.editor.deleteCharBackward","\u007f","\b")){selectedOnly=false;scrollTop=0;controls.requestRender();}
  };
  return {render,handleInput,invalidate(){scrollTop=0;}};

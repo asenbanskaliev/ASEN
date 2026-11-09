@@ -1,4 +1,5 @@
 import test,{type TestContext} from "node:test";
+import {execFileSync} from "node:child_process";
 import assert from "node:assert/strict";
 import {mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync,readdirSync} from "node:fs";
 import path from "node:path";
@@ -68,7 +69,8 @@ test("effectiveKey and keymapSource follow env > saved > default, and both can d
 });
 
 test("command keymap ids map built-ins and wrap the rest as command:<name>",()=>{
-	assert.equal(commandKeymapId("asen-changes"),"changes");
+	assert.equal(commandKeymapId("asen-changes-view"),"changes");
+	assert.equal(commandKeymapId("asen-changes"),"command:asen-changes","explicit legacy command remains separately configurable");
 	assert.equal(commandKeymapId("asen-usage"),"usage");
 	assert.equal(commandKeymapId("asen-palette"),"commands");
 	assert.equal(commandKeymapId("asen-agents"),"agents.view");
@@ -245,9 +247,29 @@ test("UFC-M1-04 startup registers the effective default keys through the public 
 	for(const key of ["alt+k","alt+g","alt+u","alt+a"])assert.ok(keys.includes(key),`${key} registers at startup`);
 	assert.ok(!host.shortcuts.some(row=>/history/iu.test(row.description??"")),"history stays on its dedicated opt-in seam");
 	// Recorded target decision (plan UFC-M1-04): `changes` keeps the shipped registry command.
-	assert.equal(keymapAction("changes")?.command,"asen-changes","the recorded decision retains the shipped target");
+	assert.equal(keymapAction("changes")?.command,"asen-changes-view","Browse changes routes to the existing guarded viewer");
 	const row=host.shortcuts.find(candidate=>candidate.key==="alt+g")!;
 	assert.equal(typeof row.handler,"function","the registered shortcut carries an invocation handler");
+});
+
+
+test("M3 G2: Browse changes shortcut opens a guarded Git file picker, not legacy resolve",async t=>{
+ isolateKeymapEnv(t);
+ const {home,dispose}=fixtureHome();t.after(dispose);
+ execFileSync("git",["init","-q",home]);
+ execFileSync("git",["-C",home,"-c","user.name=ASEN test","-c","user.email=asen@example.invalid","commit","--allow-empty","-qm","initial"]);
+ writeFileSync(path.join(home,"inspect-me.txt"),"safe untracked content");
+ const host=keymapHostPi();wiringExtensions(home)(host.pi as never);
+ const shortcut=host.shortcuts.find(row=>row.key==="alt+g");
+ assert.ok(shortcut,"default Changes shortcut is registered");
+ let selected=0;const messages:string[]=[];
+ await shortcut.handler({cwd:home,mode:"tui",hasUI:true,
+  sessionManager:{getSessionId:()=>"keymap-changes-test"},
+  ui:{notify(message:string){messages.push(message);},select:async(_title:string,choices:string[])=>{selected++;return choices[0];}},
+ });
+ assert.equal(selected,1,"the key must launch the read-only Git file selector");
+ assert.ok(messages.some(message=>message.includes("inspect-me.txt")),JSON.stringify(messages));
+ assert.equal(commandKeymapId("asen-changes"),"command:asen-changes","legacy command stays independent");
 });
 
 test("UFC-M1-04 env-locked, disabled and saved bindings drive registration without conflicts",t=>{

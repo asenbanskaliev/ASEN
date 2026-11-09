@@ -356,7 +356,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)throw new Error("ASEN panel session changed");
    const integrationInspection=inspectIntegrationProfiles({...(pi.getCommands?{getCommands:pi.getCommands.bind(pi)}:{}),...(pi.getAllTools?{getAllTools:pi.getAllTools.bind(pi)}:{}),...(profiles?{profiles}:{})});
    const hostStatus=projectHostStatus(ctx);assertCurrent();
-   return {todos,agents,jobs,...(changes?{changes}:{}),hostStatus,integrationInspection,permission:permissionSession.mode(ctx)};
+   return {todos,todosObserved:!!todoStorePromise,agents,jobs,...(changes?{changes}:{}),hostStatus,integrationInspection,permission:permissionSession.mode(ctx)};
   };
   const m1Cache=createM1SurfaceCache();
   let workRowGeneration=0;
@@ -955,15 +955,30 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // It is modal and read-only; it does not replace the persistent fullscreen rail.
     if(!view&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.custom==="function"){
      const snapshot=await getPanelSnapshot(ctx),before=ctx.cwd;assertCurrent();
-     await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>{
+     const action=await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>{
       const close=()=>done(undefined);
       return createNativeWorkPanel(snapshot,{
        requestRender:()=>tui.requestRender(),close,
+       openChanges:()=>done("ASEN_OPEN_CHANGES_VIEW"),
        ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
        terminalRows:()=>Math.max(8,Number(tui.terminal?.rows??24)),
        stillCurrent:()=>{try{assertCurrent();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}},
       });
      },{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}});
+     if(action==="ASEN_OPEN_CHANGES_VIEW"){
+      // The modal only returns a selection. Recheck scope before invoking the
+      // existing guarded, read-only viewer, including its own root identity guard.
+      try{
+       assertCurrent();
+       const now=await sessionIdentity(ctx);assertCurrent();
+       if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId||ctx.cwd!==before)
+        return ["ASEN panel scope changed. No Changes preview opened."];
+       const viewer=keymapCommandHandlers.get("asen-changes-view");
+       if(!viewer)return ["ASEN Changes viewer unavailable."];
+       await viewer("",ctx);assertCurrent();
+       return ["ASEN Changes viewer closed (read-only)."];
+      }catch{return ["ASEN panel context changed or Git inspection failed. No further action performed."];}
+     }
      return ["ASEN work panel closed (read-only)."];
     }
     // Use Pi native interactive selection only when it really exists.
@@ -1391,12 +1406,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     }
    }
   }
-  // UFC-M1-04: the saved registry drives real Pi shortcut registration at startup, through the
-  // public API only. The target decision recorded in odd/tasks/ui-functional-completion-and-
-  // acceptance.md keeps `changes` on its shipped registry command `asen-changes` (a shortcut
-  // invokes the command without the `resolve` argument, so it can never enter the correction
-  // flow); retargeting to the read-only browser is its own M3-track registry change. The
-  // history action stays on its dedicated opt-in seam above and is skipped here.
+  // UFC-M3-01 G2: the built-in Changes key invokes /asen-changes-view (guarded,
+  // read-only). /asen-changes remains a separately registered explicit correction
+  // command; shortcuts send no "resolve" argument. The existing registry keeps
+  // env > saved > default precedence and opt-in history separate.
   if(typeof pi.registerShortcut==="function"){
    const keymapBindings=readKeymaps(home()).bindings;
    const refusedKeymapBindings:string[]=[];
