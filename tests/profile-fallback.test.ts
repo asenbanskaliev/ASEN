@@ -48,10 +48,10 @@ test("missing, false, non-boolean, or stale consent cannot select a paid route o
  assert.deepEqual(stale,{status:"blocked",reason:"stale"});
 });
 
-test("unknown cost classification requires consent and classifier failures fail closed",async()=>{
+test("unknown cost classification fails closed even if a callback claims consent",async()=>{
  let asked=0;
- const unknown=await select({candidates:chain(["vendor/model"]),now:0,classifyCost:classify(new Set(),new Set(["vendor/model"])),confirmHuman:async(_model,cost)=>{asked++;assert.equal(cost,"unknown");return true;}});
- assert.deepEqual(unknown,{status:"selected",model:"vendor/model",cost:"unknown"});assert.equal(asked,1);
+ const unknown=await select({candidates:chain(["vendor/model"]),now:0,classifyCost:classify(new Set(),new Set(["vendor/model"])),confirmHuman:async()=>{asked++;return true;}});
+ assert.deepEqual(unknown,{status:"blocked",reason:"cost-unknown"});assert.equal(asked,0,"unknown cost never reaches a consent dialog");
  const missing=await select({candidates:chain(["vendor/model"]),now:0,classifyCost:()=>{throw new Error("classifier unavailable");},confirmHuman:async()=>true});
  assert.deepEqual(missing,{status:"blocked",reason:"cost-unknown"});
 });
@@ -64,6 +64,43 @@ test("cancellation and context changes during the consent dialog prevent selecti
  controller.abort();release(true);assert.deepEqual(await selection,{status:"blocked",reason:"cancelled"});
  const ctx=await select({candidates:chain(["paid/model"]),now:0,classifyCost:classify(new Set(["paid/model"])),isCurrent:()=>live,confirmHuman:async()=>{live=false;return true;}});
  assert.deepEqual(ctx,{status:"blocked",reason:"stale"});
+});
+
+
+test("literal true is mandatory: numeric one is not a human approval",async()=>{
+ const actual=await select({candidates:chain(["paid/model"]),now:0,classifyCost:classify(new Set(["paid/model"])),confirmHuman:async()=>1 as unknown as boolean});
+ assert.deepEqual(actual,{status:"blocked",reason:"consent-denied"});
+});
+
+test("a route cannot change identity while paid consent is awaiting a response",async()=>{
+ const candidates=chain(["paid/model"]),attemptedModels:string[]=[];
+ let release!:(approved:boolean)=>void;
+ const pending=new Promise<boolean>(resolve=>{release=resolve;});
+ const selection=select({candidates,attemptedModels,now:0,classifyCost:classify(new Set(["paid/model"])),confirmHuman:async()=>pending});
+ candidates[0]!.model="included/other";
+ release(true);
+ assert.deepEqual(await selection,{status:"blocked",reason:"stale"},"a decision for the first model cannot approve a mutated replacement");
+});
+
+test("mutations of attempt history, cooldown, and decision context invalidate consent",async()=>{
+ for(const change of ["attempt","cooldown","context"] as const){
+  const candidates=chain(["paid/model"]),attemptedModels:string[]=[],cooldowns:Record<string,number>={};
+  let resolve!:(approved:boolean)=>void,context=true;
+  const pending=new Promise<boolean>(r=>{resolve=r;});
+  const options:SelectOptions={candidates,attemptedModels,cooldowns,now:10,classifyCost:classify(new Set(["paid/model"])),isCurrent:()=>context,confirmHuman:async()=>pending};
+  const selection=select(options);
+  if(change==="attempt")attemptedModels.push("paid/model");
+  if(change==="cooldown")cooldowns["paid/model"]=999;
+  if(change==="context")context=false;
+  resolve(true);
+  assert.deepEqual(await selection,{status:"blocked",reason:"stale"},change);
+ }
+});
+
+test("a cost classifier that changes during consent fails closed",async()=>{
+ let cost:"paid"|"unknown"="paid";
+ const actual=await select({candidates:chain(["paid/model"]),now:0,classifyCost:()=>cost,confirmHuman:async()=>{cost="unknown";return true;}});
+ assert.deepEqual(actual,{status:"blocked",reason:"cost-unknown"});
 });
 
 test("a forged confirmed flag is ignored and cannot replace the human confirmation callback",async()=>{
