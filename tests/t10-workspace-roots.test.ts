@@ -11,6 +11,38 @@ test("parses Git porcelain worktree output and deduplicates shared roots",()=>{
  assert.deepEqual(parseWorktreeListOutput(output),["/repo","/repo-extra"]);
 });
 
+
+test("parses -z worktree roots without trimming or splitting unusual paths",()=>{
+ const trailing="/repo/trailing ",newline="/repo/line\nbreak",records=[
+  "worktree "+trailing,"HEAD "+"a".repeat(40),"branch refs/heads/one","",
+  "worktree "+newline,"HEAD "+"b".repeat(40),"detached","","",
+ ].join("\0");
+ assert.deepEqual(parseWorktreeListOutput(records),[trailing,newline]);
+ assert.throws(()=>parseWorktreeListOutput("worktree /repo\0HEAD aaa\0"),/unterminated -z/u);
+ assert.throws(()=>parseWorktreeListOutput("not-a-worktree /repo\0HEAD aaa\0\0"),/malformed -z/u);
+ let args:string[]=[];
+ const discovered=discoverWorkspaceWorktrees("/repo",(cwd,actual)=>{args=actual;return records;});
+ assert.deepEqual(args,["worktree","list","--porcelain","-z"]);
+ assert.deepEqual(discovered,[trailing,newline]);
+});
+
+test("discovers exact real linked worktree paths containing trailing space and newline",async t=>{
+ if(process.platform==="win32"){t.skip("Git and Windows path policy differ for trailing spaces and embedded newlines");return;}
+ const parent=await mkdtemp(path.join(tmpdir(),"asen-worktree-nul-"));
+ t.after(()=>rm(parent,{recursive:true,force:true}));
+ const root=path.join(parent,"root"),trailing=path.join(parent,"trailing "),newline=path.join(parent,"line\nbreak");
+ execFileSync("git",["init","-q",root]);
+ execFileSync("git",["-C",root,"-c","user.name=ASEN test","-c","user.email=asen@example.invalid","commit","--allow-empty","-qm","initial"]);
+ execFileSync("git",["-C",root,"worktree","add","-q","-b","trailing-path",trailing]);
+ execFileSync("git",["-C",root,"worktree","add","-q","-b","newline-path",newline]);
+ const discovered=discoverWorkspaceWorktrees(root);
+ assert.ok(discovered.includes(trailing),"trailing-space root must retain identity");
+ assert.ok(discovered.includes(newline),"embedded newline must remain inside root");
+ const rows=snapshotWorkspaceRoots(discovered);
+ assert.ok(rows.some(row=>row.root===trailing&&row.error===undefined));
+ assert.ok(rows.some(row=>row.root===newline&&row.error===undefined));
+});
+
 test("ignores entries without a worktree path and empty output",()=>{
  assert.deepEqual(parseWorktreeListOutput(""),[]);
  assert.deepEqual(parseWorktreeListOutput("HEAD 012\nbranch refs/heads/x\n"),[]);
