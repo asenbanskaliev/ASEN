@@ -30,6 +30,13 @@ export const WINDOWS_PROCESS_TESTS=Object.freeze([
  "tests/workspace-attribution.test.ts",
 ]);
 
+// Spawn-heavy Pi RPC fixtures have strict *existing* timeouts: isolate the test
+// processes from the many concurrent ordinary test modules rather than raising
+// deadlines or ignoring failures. Each member remains covered by exact-SHA receipts.
+const POSIX_ISOLATED_PROCESS_TESTS=new Set([
+ "tests/pi-process-runner.test.ts",
+ "tests/pi-agent-runtime.test.ts",
+]);
 const WINDOWS_REMAINING_CHUNK_SIZE=50;
 const WINDOWS_PROCESS_CHUNK_SIZE=4;
 const MACOS_CHUNK_SIZE=50;
@@ -60,11 +67,18 @@ export function planTestRuns({platform,testFiles,nodeOptions}){
  }
  const sorted=[...testFiles].sort(comparePaths);
  const base=["--import","tsx","--test",...nodeOptions];
- if(platform==="darwin"){
+ if(platform==="darwin"||platform==="linux"){
+  const ordinary=sorted.filter(file=>!POSIX_ISOLATED_PROCESS_TESTS.has(file));
+  const processHeavy=sorted.filter(file=>POSIX_ISOLATED_PROCESS_TESTS.has(file));
   const runs=[];
-  for(let index=0;index<sorted.length;index+=MACOS_CHUNK_SIZE){
-   const chunk=sorted.slice(index,index+MACOS_CHUNK_SIZE);
-   runs.push({name:`macos-${Math.floor(index/MACOS_CHUNK_SIZE)+1}`,args:[...base,...chunk]});
+  if(platform==="darwin"){
+   for(let index=0;index<ordinary.length;index+=MACOS_CHUNK_SIZE){
+    const chunk=ordinary.slice(index,index+MACOS_CHUNK_SIZE);
+    runs.push({name:`macos-${Math.floor(index/MACOS_CHUNK_SIZE)+1}`,args:[...base,...chunk]});
+   }
+  }else if(ordinary.length){runs.push({name:"linux-ordinary",args:[...base,...ordinary]});}
+  for(const file of processHeavy){
+   runs.push({name:`isolated-${file.split("/").at(-1)!.replace(".test.ts","")}`,args:[...base,"--test-concurrency=1",file]});
   }
   return runs;
  }

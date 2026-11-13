@@ -47,7 +47,7 @@ test("public TUI startup applies an in-memory focus theme and truthful compact h
   assert.ok(lines.every((s:string)=>visibleWidth(s)<=width));
   if(width===160){assert.match(lines.join("\n"),/π ASEN/u);assert.ok(lines.join("\n").includes("v"+version));assert.ok(lines.join("\n").includes("Pi "+VERSION));assert.doesNotMatch(lines.join("\n"),/p\/m|responding|cost/u);}
  }
- assert.equal(stripTerminalSequences(f.statuses.get("asen:host")??""),"ASEN │ selected p/m · high │ responding ? │ ctx 20% │ cost/sub ?");
+ assert.equal(stripTerminalSequences(f.statuses.get("asen:host")??""),"ASEN │ selected p/m · high │ responding ? │ ctx 20% ▰▰▱▱▱▱▱▱ │ cost/sub ?");
  header.invalidate();
 });
 test("non-TUI and missing optional UI support retain previous startup/status behaviour",async t=>{
