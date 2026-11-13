@@ -50,7 +50,8 @@ if(missing.status!==1||!/Pi runtime not found/.test(missing.stderr))throw new Er
 if(process.platform!=="win32"){
   const fake=join(installation,"fake pi.mjs");writeFileSync(fake,"#!/usr/bin/env node\nconsole.log(JSON.stringify({args:process.argv.slice(2),dir:process.env.PI_CODING_AGENT_DIR}));\n");chmodSync(fake,0o755);
   const out=JSON.parse(execFileSync(bin,["--home",spaced,"--model","x y","ñ"],{encoding:"utf8",cwd:installation,env:{...cleanEnv,ASEN_PI:fake}}));
-  if(out.dir!==spaced||JSON.stringify(out.args)!==JSON.stringify(["--model","x y","ñ"]))throw new Error("packed ASEN executable passthrough/home environment mismatch");
+  const expectedArgs=["-e",installed,"--model","x y","ñ"];
+  if(out.dir!==spaced||JSON.stringify(out.args)!==JSON.stringify(expectedArgs))throw new Error("packed ASEN executable passthrough/home environment mismatch: "+JSON.stringify({homeMatches:out.dir===spaced,expectedArgs,actualArgs:out.args}));
 }
 
 const forbidden=new RegExp(["gen"+"tle","gen"+"tleman","eng"+"ram"].join("|"),"i");
