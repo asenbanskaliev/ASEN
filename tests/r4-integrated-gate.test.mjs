@@ -77,6 +77,19 @@ test("R4-02 wrong SHA, wrong repository, branch, event or absent run ID never pa
   assert.equal(out.globalFull,false);
  }
 });
+test("R4-02 review PR is allowed only on the exact development base; never main or an arbitrary head",()=>{
+ const trusted=candidate({branch:"fix/ci-portable-baseline-20261113",baseRef:"feat/t12-integrated-acceptance-merge"});
+ assert.equal(evaluateR4IntegratedGate(trusted).status,"R4_TECHNICAL_PASS");
+ for(const baseRef of ["main","",undefined,"feat/t12-integrated-acceptance"]){
+  const report=evaluateR4IntegratedGate({...trusted,baseRef});
+  assert.equal(report.status,"R4_TECHNICAL_FAIL");
+  assert.equal(report.technicalChecks.find(item=>item.id==="allowed_branch")?.passed,false);
+  assert.equal(report.globalFull,false);
+ }
+ const other=evaluateR4IntegratedGate({...trusted,branch:"fix/unrelated"});
+ assert.equal(other.status,"R4_TECHNICAL_FAIL");
+});
+
 test("R4-02 input provenance refuses local fakes and oversized job payloads",()=>{
  const env={GITHUB_ACTIONS:"true",GITHUB_EVENT_NAME:"pull_request",
   GITHUB_REPOSITORY:"asenbanskaliev/ASEN",GITHUB_HEAD_REF:"feat/t12-integrated-acceptance-merge",
@@ -85,6 +98,9 @@ test("R4-02 input provenance refuses local fakes and oversized job payloads",()=
  const values=githubActionInput(env,sha,inventory());
  assert.equal(values.expectedSha,sha);
  assert.deepEqual(values.jobs,jobs());
+ const reviewEnv={...env,GITHUB_HEAD_REF:"fix/ci-portable-baseline-20261113",GITHUB_BASE_REF:"feat/t12-integrated-acceptance-merge"};
+ assert.equal(githubActionInput(reviewEnv,sha,inventory()).baseRef,"feat/t12-integrated-acceptance-merge");
+ assert.throws(()=>githubActionInput({...reviewEnv,GITHUB_BASE_REF:"main"},sha,inventory()),/branch or target provenance/u);
  assert.throws(()=>githubActionInput({...env,GITHUB_ACTIONS:"false"},sha,inventory()),/real GitHub Actions/u);
  assert.throws(()=>githubActionInput({...env,ASEN_R4_JOB_RESULTS:"x".repeat(4097)},sha,inventory()),/oversized/u);
  assert.throws(()=>githubActionInput({...env,GITHUB_REPOSITORY:"someone/else"},sha,inventory()),/repository provenance/u);

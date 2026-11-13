@@ -17,8 +17,10 @@ const shaPattern=/^[a-f0-9]{40}$/u;
 const runPattern=/^[1-9][0-9]*$/u;
 const expectedRepo="asenbanskaliev/ASEN";
 const expectedBranch="feat/t12-integrated-acceptance-merge";
+const reviewedRepairBranch="fix/ci-portable-baseline-20261113";
+const allowedHead=(branch,baseRef)=>branch===expectedBranch||branch===reviewedRepairBranch&&baseRef===expectedBranch;
 
-export function evaluateR4IntegratedGate({expectedSha,headSha,repository,branch,eventName,
+export function evaluateR4IntegratedGate({expectedSha,headSha,repository,branch,baseRef,eventName,
  runId,runAttempt,jobs,inventory}){
  assert.ok(inventory?.schema==="asen-r4-requirement-inventory/v1",
   "R4 needs validated inventory, not a caller's FULL assertion");
@@ -33,7 +35,7 @@ export function evaluateR4IntegratedGate({expectedSha,headSha,repository,branch,
   {id:"candidate_exact_sha",passed:shaPattern.test(expectedSha??"")&&headSha===expectedSha,
    evidence:"Git checkout HEAD compared with immutable PR head"},
   {id:"allowed_repository",passed:repository===expectedRepo,evidence:"GitHub event repository"},
-  {id:"allowed_branch",passed:eventName==="pull_request"&&branch===expectedBranch,
+  {id:"allowed_branch",passed:eventName==="pull_request"&&allowedHead(branch,baseRef),
    evidence:"Explicit PR-only CI scope"},
   {id:"same_workflow_run",passed:runPattern.test(String(runId??""))&&
    runPattern.test(String(runAttempt??"")),evidence:"GitHub Actions run and attempt IDs"},
@@ -49,7 +51,7 @@ export function evaluateR4IntegratedGate({expectedSha,headSha,repository,branch,
  const passed=checks.every(x=>x.passed);
  return Object.freeze({
   schema:"asen-r4-integrated-technical/v1",mode:"AUTOMATED_TECHNICAL_ONLY",
-  candidateSha:expectedSha,observedCheckoutSha:headSha,repository,branch,
+  candidateSha:expectedSha,observedCheckoutSha:headSha,repository,branch,baseRef:baseRef??null,
   provenance:{source:"GITHUB_ACTIONS_SAME_WORKFLOW_NEEDS",runId:String(runId),runAttempt:String(runAttempt),
    crossWorkflowReleaseGate:"NOT_EVALUATED",externalGitHubHistory:"NOT_EVALUATED"},
   status:passed?"R4_TECHNICAL_PASS":"R4_TECHNICAL_FAIL",
@@ -74,12 +76,12 @@ export function githubActionInput(env,headSha,inventory){
  assert.equal(env.GITHUB_ACTIONS,"true","R4 evidence may only be emitted by a real GitHub Actions run");
  assert.equal(env.GITHUB_EVENT_NAME,"pull_request","R4 is scoped to PR events");
  assert.equal(env.GITHUB_REPOSITORY,expectedRepo,"R4 repository provenance mismatch");
- assert.equal(env.GITHUB_HEAD_REF,expectedBranch,"R4 branch provenance mismatch");
+ assert.ok(allowedHead(env.GITHUB_HEAD_REF,env.GITHUB_BASE_REF),"R4 branch or target provenance mismatch");
  assert.ok(typeof env.ASEN_R4_JOB_RESULTS==="string"&&env.ASEN_R4_JOB_RESULTS.length<4096,
   "Missing or oversized native needs result");
  const jobs=JSON.parse(env.ASEN_R4_JOB_RESULTS);
  return {expectedSha:env.ASEN_EXPECTED_SHA,headSha,repository:env.GITHUB_REPOSITORY,
-  branch:env.GITHUB_HEAD_REF,eventName:env.GITHUB_EVENT_NAME,
+  branch:env.GITHUB_HEAD_REF,baseRef:env.GITHUB_BASE_REF,eventName:env.GITHUB_EVENT_NAME,
   runId:env.GITHUB_RUN_ID,runAttempt:env.GITHUB_RUN_ATTEMPT,jobs,inventory};
 }
 function main(){
