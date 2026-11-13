@@ -78,7 +78,7 @@ export function planTestRuns({platform,testFiles,nodeOptions}){
    }
   }else if(ordinary.length){runs.push({name:"linux-ordinary",args:[...base,...ordinary]});}
   for(const file of processHeavy){
-   runs.push({name:`isolated-${file.split("/").at(-1)!.replace(".test.ts","")}`,args:[...base,"--test-concurrency=1",file]});
+   runs.push({name:`isolated-${file.slice(file.lastIndexOf("/")+1).replace(".test.ts","")}`,args:[...base,"--test-concurrency=1",file]});
   }
   return runs;
  }
