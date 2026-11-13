@@ -3,6 +3,7 @@ import {existsSync,readFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 import {loadCheckedInMemoryParity,validateMemoryParity} from "./audit-memory-parity.mjs";
 import {additionalParityFixturePaths} from "./memory-parity/additional-slices.mjs";
+import {isPinnedReferenceDocument,maskApprovedWireSchemas} from "./upstream-reference-policy.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const memoryManifestPath="registry/parity/memory-upstream-v3.json";
@@ -55,14 +56,14 @@ const pinnedParityPlanDocs=new Set([
 ]);
 const violations=[];
 for(const path of paths){
- if(pinnedParityPlanDocs.has(path))continue;
+ if(pinnedParityPlanDocs.has(path)||isPinnedReferenceDocument(path))continue;
  if(forbidden.test(path)){violations.push(path);continue;}
  if(provenanceAllowlist.has(path))continue;
  const bytes=readFileSync(new URL(`../${path.split("/").map(encodeURIComponent).join("/")}`,import.meta.url));
  if(bytes.includes(0))continue;
  let content;
  try{content=new TextDecoder("utf-8",{fatal:true}).decode(bytes);}catch{continue;}
- if(forbidden.test(content))violations.push(path);
+ if(forbidden.test(maskApprovedWireSchemas(path,content)))violations.push(path);
 }
 if(violations.length){console.error("External reference in tracked tree:\n"+violations.join("\n"));process.exit(1);}
 console.log(`tracked boundary: PASS (${paths.length} tracked or exact pre-staging paths)`);

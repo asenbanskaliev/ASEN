@@ -20,6 +20,7 @@ test("tracked boundary checks paths and text while excluding binary payloads",()
   mkdirSync(join(root,"scripts","memory-parity","writer-b"),{recursive:true});
   mkdirSync(join(root,"registry","parity"),{recursive:true});
   copyFileSync(resolve("scripts/audit-upstream-boundary.mjs"),join(root,"scripts/audit-upstream-boundary.mjs"));
+  copyFileSync(resolve("scripts/upstream-reference-policy.mjs"),join(root,"scripts/upstream-reference-policy.mjs"));
   copyFileSync(resolve("scripts/audit-memory-parity.mjs"),join(root,"scripts/audit-memory-parity.mjs"));
   copyFileSync(resolve("scripts/memory-parity/additional-slices.mjs"),join(root,"scripts","memory-parity","additional-slices.mjs"));
   copyFileSync(resolve("scripts/memory-parity/writer-a/index.mjs"),join(root,"scripts","memory-parity","writer-a","index.mjs"));
@@ -99,6 +100,24 @@ test("tracked boundary checks paths and text while excluding binary payloads",()
   assert.match(oddPathShapeResult.stderr,/odd\/tasks\/ui-runtime-delivery-order\.md/);
   rmSync(join(root,"odd","tasks","ui-runtime-delivery-order.md"));
   stage();assert.equal(audit().status,0,"removing the machine-local reference restores the boundary");
+  mkdirSync(join(root,"docs"),{recursive:true});
+  writeFileSync(join(root,"docs","portable-checkpoint.md"),`Historical provenance ${marker}`);
+  stage();assert.equal(audit().status,0,"the single declared handoff document is provenance-only");
+  writeFileSync(join(root,"docs","portable-checkpoint-copy.md"),`Unregistered provenance ${marker}`);
+  stage();const lookalikeDoc=audit();assert.equal(lookalikeDoc.status,1,"new provenance lookalike remains denied");
+  assert.match(lookalikeDoc.stderr,/docs\/portable-checkpoint-copy\.md/);
+  rmSync(join(root,"docs","portable-checkpoint-copy.md"));
+  mkdirSync(join(root,"src","review"),{recursive:true});
+  const wire="gen"+"tle-ai.review-mode/v1",native=join(root,"src","review","native-rdd-control.ts");
+  writeFileSync(native,`const mode={schema:"${wire}"};`);
+  stage();assert.equal(audit().status,0,"exact native schema field is permitted in its owned file");
+  writeFileSync(native,`const mode={schema:"${wire}"}; import "${wire}";`);
+  stage();const executableImport=audit();assert.equal(executableImport.status,1,"upstream executable import remains denied");
+  assert.match(executableImport.stderr,/src\/review\/native-rdd-control\.ts/);
+  writeFileSync(native,`const mode={schema:"${wire}-unregistered"};`);
+  stage();assert.equal(audit().status,1,"modified protocol suffix is never an admitted schema");
+  rmSync(native);
+  stage();assert.equal(audit().status,0,"removing unapproved native content restores the boundary");
   writeFileSync(join(root,`${marker}.txt`),"opaque data");
   stage();assert.equal(audit().status,1,"a tracked path marker outside the allowlist is rejected");
  }finally{rmSync(root,{recursive:true,force:true});}

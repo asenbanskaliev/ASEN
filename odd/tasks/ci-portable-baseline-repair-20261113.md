@@ -26,3 +26,9 @@ No changes to the upstream Pi fork, P32 font/capture/footer implementation, perm
 ## Verification and acceptance
 
 Static source review only before publication. Publish on separate feature fix branch, open draft PR *into the existing development branch*, run GitHub CI against its exact head, inspect all relevant checks and follow remaining failures with separate test-first fixes. Do not merge automatically, do not alter the base PR #57 or its head, and do not claim `globalFull:true`.
+
+## Next security-boundary candidate — explicit path/schema treatment
+
+The previous candidate proved that packaged Pi RPC can advance beyond native-menu waits and CLI vector assertions, but Phase0 and the package scan still reject the same exact external wire-schema strings. The next change adds one shared **audit-only** policy helper for 25 historically published, non-executable provenance documents and for exactly three `schema`-property values in `src/review/native-rdd-control.ts` and its test. All unknown paths, executable imports, unmatched strings and suffix mutations continue to fail. The packed-product verifier uses the same schema-masking helper; no production RDD validator or wire format is modified. Tests verify legitimate exact shapes and malicious lookalikes/imports. Documentation exceptions are path-literal, never directory globbing.
+
+This is a **risk-relevant security policy change, IMPLEMENTED_PENDING_INDEPENDENT_REVIEW**: a green automated gate does not establish an independent review, genuine native authority, publisher provenance, real host acceptance or global parity. In particular, grandfathered provenance text must be reviewed before adding new exception paths. Do not promote this candidate to a release or merge without separately evaluating the policy changes and the complete CI results.
